@@ -9,4 +9,4 @@ lean_lib ModalAgents where
   srcDir := "."
 
 require Foundation from git
-  "https://github.com/FormalizedFormalLogic/Foundation" @ "main"
+  "https://github.com/FormalizedFormalLogic/Foundation" @ "master"
