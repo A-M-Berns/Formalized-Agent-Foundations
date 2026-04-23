@@ -24,7 +24,7 @@
   - `prudentBot`   (§3, Algorithm 5)
 -/
 
-import AgentFoundations.GL
+import Barasz.GL
 
 open LO LO.Modal
 

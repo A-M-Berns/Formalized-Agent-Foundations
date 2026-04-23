@@ -30,7 +30,7 @@
   - `prudentBot_vs_prudentBot`   §3, Thm 3.2
 -/
 
-import AgentFoundations.Agent
+import Barasz.Agent
 import Foundation.ProvabilityLogic.GL.Soundness
 
 open LO LO.Modal

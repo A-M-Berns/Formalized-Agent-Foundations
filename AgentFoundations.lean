@@ -1,6 +1,0 @@
-import AgentFoundations.GL
-import AgentFoundations.Agent
-import AgentFoundations.FixedPoint
-import AgentFoundations.Cooperation
-import AgentFoundations.Game
-import AgentFoundations.Equilibrium

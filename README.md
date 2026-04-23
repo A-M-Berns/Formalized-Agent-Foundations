@@ -9,13 +9,13 @@ Built on the [Foundation](https://github.com/FormalizedFormalLogic/Foundation) l
 * `outcome`, `outcome_fixed_point` — Modal-agent fixed-point equation, one-step form (§4, Thm 4.7). Admitted; derivable from the three axioms above plus `subst_congr` (Lemma 4.5, proved). Domain-specific to modal agents; pending formalization.
 
 #### Files:
-* `AgentFoundations/GL.lean` — GL toolkit: Löb's rule, the Löbian circle, and unprovability of `□⊥` / `□□⊥`.
-* `AgentFoundations/Agent.lean` — Modal agents (§4, Definition p. 11). Concrete agents: `cooperateBot` (§2, Alg 1), `defectBot` (§2, Alg 2), `fairBot` (§3, Alg 4), `prudentBot` (§3, Alg 5).
-* `AgentFoundations/FixedPoint.lean` — GL fixed-point axioms (Thm 4.2, 4.3) and substitution congruence (Lemma 4.5, proved).
-* `AgentFoundations/Cooperation.lean` — Cooperation theorems: §2 (`defectBot_defects`, `cooperateBot_cooperates`), §3, Thm 3.1 (`fairBot_vs_fairBot`), §3, Thm 3.2 (all `prudentBot_vs_*` pairs), §4, Thm 4.1 (`Cooperates.arithmeticLift`).
+* `Barasz/GL.lean` — GL toolkit: Löb's rule, the Löbian circle, and unprovability of `□⊥` / `□□⊥`.
+* `Barasz/Agent.lean` — Modal agents (§4, Definition p. 11). Concrete agents: `cooperateBot` (§2, Alg 1), `defectBot` (§2, Alg 2), `fairBot` (§3, Alg 4), `prudentBot` (§3, Alg 5).
+* `Barasz/FixedPoint.lean` — GL fixed-point axioms (Thm 4.2, 4.3) and substitution congruence (Lemma 4.5, proved).
+* `Barasz/Cooperation.lean` — Cooperation theorems: §2 (`defectBot_defects`, `cooperateBot_cooperates`), §3, Thm 3.1 (`fairBot_vs_fairBot`), §3, Thm 3.2 (all `prudentBot_vs_*` pairs), §4, Thm 4.1 (`Cooperates.arithmeticLift`).
 
 #### To do:
 * Derive `outcome_fixed_point` from the GL primitives in `FixedPoint.lean` (eliminate the Thm 4.7 axiom).
 * Behavioral equivalence (§4, p. 12) and Thm 4.8.
 * Cor 4.9, Thm 4.10.
-* `AgentFoundations/Game.lean` and `AgentFoundations/Equilibrium.lean`: program equilibrium of the open-source PD (currently stubs).
+* `Barasz/Game.lean` and `Barasz/Equilibrium.lean`: program equilibrium of the open-source PD (currently stubs).

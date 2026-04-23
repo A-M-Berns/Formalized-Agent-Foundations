@@ -5,7 +5,7 @@ package agentFoundations where
   leanOptions := #[⟨`autoImplicit, false⟩]
 
 @[default_target]
-lean_lib AgentFoundations where
+lean_lib Barasz where
   srcDir := "."
 
 require Foundation from git

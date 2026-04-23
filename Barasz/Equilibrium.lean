@@ -10,9 +10,9 @@
   - This equilibrium achieves mutual cooperation (Reward, Reward)
   - The standard (Defect, Defect) Nash equilibrium is Pareto-dominated
 
-  Connects: AgentFoundations.Game (Nash equilibrium)
-            AgentFoundations.Cooperation (modal agents, cooperation)
+  Connects: Barasz.Game (Nash equilibrium)
+            Barasz.Cooperation (modal agents, cooperation)
 -/
 
-import AgentFoundations.Game
-import AgentFoundations.Cooperation
+import Barasz.Game
+import Barasz.Cooperation

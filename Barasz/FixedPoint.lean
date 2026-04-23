@@ -7,7 +7,7 @@
   (substitution congruence) is proved from Foundation's K-congruence.
 -/
 
-import AgentFoundations.Agent
+import Barasz.Agent
 
 open LO LO.Modal
 open LO.Entailment LO.Modal.Entailment
