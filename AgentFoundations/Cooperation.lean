@@ -2,11 +2,18 @@
   Cooperation analysis for modal agents (Barasz, §3).
 
   `outcome X Y` is the paper's `ψ_{[X(Y)]}` (§4, Thm 4.7), the
-  GL-sentence naming X's output against Y, constructed by the modal
-  fixed-point theorem (§4, Thm 4.2 existence; Thm 4.3 uniqueness). We
-  axiomatize the equation in one-step form; Thm 4.7's fully-unfolded
-  form is equivalent by uniqueness. §3 only uses the equation as a
-  black box.
+  GL-sentence naming X's output against Y. §3 only uses the equation
+  as a black box.
+
+  `outcome` and `outcome_fixed_point` are currently admitted as axioms.
+  Unlike the GL-primitive axioms in `FixedPoint.lean` (Thm 4.2, 4.3 —
+  de Jongh–Sambin / uniqueness, standard in Boolos Ch. 8), Thm 4.7 is
+  domain-specific: it is the application of the modal fixed-point
+  theorem to the two-variable formula induced by a pair of modal
+  agents. It is *derivable* from `glFixedPoint_spec`,
+  `glFixedPoint_uniqueness`, and `subst_congr` (Lemma 4.5) via a
+  two-level substitution argument; that derivation has not yet been
+  formalized here.
 
   So far we work purely in GL. Thm 4.1 (arithmetic soundness of GL)
   lifts GL-level results to PA-level corollaries.
@@ -36,13 +43,16 @@ abbrev substFull (β : Formula ℕ) {m : ℕ} (refs : Fin m → Formula ℕ) : S
     | 0 => β
     | j + 1 => if h : j < m then refs ⟨j, h⟩ else .atom (j + 1)
 
-/-! ## Modal agent outcome (Barasz, §4, Thm 4.7) -/
+/-! ## Modal agent outcome (Barasz, §4, Thm 4.7)
 
-/-- `outcome X Y`: the paper's `ψ_{[X(Y)]}`. -/
+Admitted. Derivable from `FixedPoint.lean`'s axioms; see module header. -/
+
+/-- `outcome X Y`: the paper's `ψ_{[X(Y)]}`. Admitted; derivable. -/
 axiom outcome : Agent → Agent → Formula ℕ
 
 /-- Modal agent fixed-point equation, one-step form (Barasz, §4,
-Thm 4.7; existence Thm 4.2, uniqueness Thm 4.3). -/
+Thm 4.7). Admitted; derivable from `glFixedPoint_spec`,
+`glFixedPoint_uniqueness`, and `subst_congr`. -/
 axiom outcome_fixed_point (X Y : Agent) :
     Modal.GL ⊢ outcome X Y 🡘
       X.formula⟦substFull (outcome Y X) (fun j => outcome Y (X.references j))⟧
