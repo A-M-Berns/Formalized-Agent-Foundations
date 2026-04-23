@@ -1,5 +1,5 @@
 This repository consists of Lean 4 formalizations of important papers in agent foundations and open-source game theory.
-Built on the [Foundation](https://github.com/FormalizedFormalLogic/Foundation) library from the Formalized Formal Logic project.
+Built on the [Foundation](https://github.com/FormalizedFormalLogic/Foundation) library from the Formalized Formal Logic project. Created with help from Claude Code.
 
 ### Barasz et al., *Robust Cooperation in the Prisoner's Dilemma via Provability Logic* (2014)
 
