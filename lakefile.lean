@@ -1,11 +1,11 @@
 import Lake
 open Lake DSL
 
-package modalAgents where
+package agentFoundations where
   leanOptions := #[⟨`autoImplicit, false⟩]
 
 @[default_target]
-lean_lib ModalAgents where
+lean_lib AgentFoundations where
   srcDir := "."
 
 require Foundation from git

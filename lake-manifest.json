@@ -141,5 +141,5 @@
    "inputRev": "main",
    "inherited": true,
    "configFile": "lakefile.toml"}],
- "name": "modalAgents",
+ "name": "agentFoundations",
  "lakeDir": ".lake"}
