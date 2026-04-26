@@ -42,6 +42,29 @@ lemma rank0_modalized {φ : Formula ℕ} (h : Modalized 0 φ) :
     ∀ i, i ≤ 0 → Modalized i φ := by
   intro i hi; rwa [Nat.le_zero.mp hi]
 
+/-- If atom n doesn't appear in φ at all, then φ is trivially modalized in n. -/
+lemma modalized_of_notMem_atoms {n : ℕ} :
+    ∀ {φ : Formula ℕ}, n ∉ φ.atoms → Modalized n φ
+  | .atom a, h => by
+    simp only [Formula.atoms, Finset.mem_singleton] at h
+    exact fun heq => h heq.symm
+  | .falsum, _ => trivial
+  | .imp _ _, h => by
+    simp only [Formula.atoms, Finset.mem_union, not_or] at h
+    exact ⟨modalized_of_notMem_atoms h.1, modalized_of_notMem_atoms h.2⟩
+  | .box _, _ => trivial
+
+/-- If φ is modalized in n and every σ(k) with k ≠ n is modalized in n, then
+φ⟦σ⟧ is modalized in n. No condition on σ(n) — its content always lands under
+a □ because φ had all atom-n occurrences boxed. -/
+lemma modalized_subst {n : ℕ} {σ : Substitution ℕ}
+    (hσ : ∀ k, k ≠ n → Modalized n (σ k)) :
+    ∀ {φ : Formula ℕ}, Modalized n φ → Modalized n (φ⟦σ⟧)
+  | .atom a, h => hσ a h
+  | .falsum, _ => trivial
+  | .imp _ _, h => ⟨modalized_subst hσ h.1, modalized_subst hσ h.2⟩
+  | .box _, _ => trivial
+
 /-! ## Agents -/
 
 /-- A modal agent (Barasz, §4, Definition p. 11): a GL formula together
@@ -68,11 +91,21 @@ def arity : Agent → ℕ
 def references : (X : Agent) → Fin X.arity → Agent
   | .mk _ _ r _ => r
 
+def modalized : (X : Agent) → ∀ i, i ≤ X.arity → Modalized i X.formula
+  | .mk _ _ _ m => m
+
 /-- Rank of a modal agent (Barasz, §4): 0 if no references, else
 1 + max rank of references. Distinct from `arity`. -/
 def rank : Agent → ℕ
   | .mk _ 0     _ _ => 0
   | .mk _ (_+1) r _ => (Finset.univ.sup fun i => rank (r i)) + 1
+
+/-- A reference has strictly smaller rank than its parent agent. -/
+lemma rank_ref_lt : ∀ (X : Agent) (i : Fin X.arity), (X.references i).rank < X.rank
+  | .mk _ (_+1) r _, i => by
+    show (r i).rank < (Finset.univ.sup fun j => (r j).rank) + 1
+    exact Nat.lt_succ_of_le
+      (Finset.le_sup (f := fun j => (r j).rank) (Finset.mem_univ i))
 
 /-- Build a rank-0 agent; default tactic discharges `Modalized 0` for
 the standard bot formulas. -/
