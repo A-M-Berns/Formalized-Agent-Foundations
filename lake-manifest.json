@@ -8,7 +8,7 @@
    "rev": "83d98a36091ffd9e7220ffa0033b1fc9097f5ab9",
    "name": "Foundation",
    "manifestFile": "lake-manifest.json",
-   "inputRev": "master",
+   "inputRev": "83d98a36091ffd9e7220ffa0033b1fc9097f5ab9",
    "inherited": false,
    "configFile": "lakefile.toml"},
   {"url": "https://github.com/leanprover/doc-gen4",

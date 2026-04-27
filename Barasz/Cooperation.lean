@@ -382,3 +382,8 @@ theorem Cooperates.arithmeticLift {X Y : ModalAgent} (h : Cooperates X Y)
     [T ⪯ U] {𝔅 : FirstOrder.ProvabilityAbstraction.Provability T U} [𝔅.HBL]
     {f : ProvabilityLogic.Realization 𝔅} : U ⊢ f (outcome X Y) :=
   ProvabilityLogic.GL.arithmetical_soundness h
+
+/-- Example: the GL proof that FairBot cooperates with itself lifts to PA
+under any standard arithmetical realization. -/
+example (f : 𝗣𝗔.StandardRealization) : 𝗣𝗔 ⊢ f (outcome fairBot fairBot) :=
+  Cooperates.arithmeticLift fairBot_vs_fairBot
