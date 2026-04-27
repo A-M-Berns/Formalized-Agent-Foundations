@@ -25,9 +25,9 @@ not yet available in Foundation:
 * fixed-point existence, in the single-variable form used by Barasz §4, Thm 4.2;
 * fixed-point uniqueness, corresponding to Barasz §4, Thm 4.3.
 
-These are the de Jongh-Sambin-Bernardi fixed-point theorem and its uniqueness
-theorem. Barasz cites Lindstrom's presentation; Boolos, *The Logic of
-Provability*, Ch. 8 is another standard reference.
+These are the de Jongh-Sambin-Bernardi modal fixed-point theorem and its uniqueness
+theorem. These theorems are prior to the modal agent framework, and Barasz et al do not provide a proof. 
+Instead, they cite Lindström (1996) Thms 11 and 12 as a reference (full reference in `FixedPoint.lean`.)
 
 ### Files
 
