@@ -1,4 +1,4 @@
-# Agent Foundations
+# Formalized Agent Foundations
 
 Lean 4 formalizations of important papers in the fields of agent foundations and open-source game
 theory, built on the
