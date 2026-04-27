@@ -13,14 +13,6 @@ namespace LO
 namespace FirstOrder
 namespace Critch
 
-open Arithmetic
-
-variable {L : Language} [L.ReferenceableBy ℒₒᵣ] [L.Encodable] [L.LORDefinable]
-
-noncomputable def restrictedBoundedProvability (T : Theory L) [T.Δ₁] :
-    BoundedProvability 𝗜𝚺₁ T where
-  prov := fun e ↦ (T.restrictedProvable e).val
-
 end Critch
 end FirstOrder
 end LO
