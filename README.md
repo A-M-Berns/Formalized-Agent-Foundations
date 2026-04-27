@@ -46,7 +46,8 @@ paper.
 
 ## Critch (2019) *A Parametric, Resource-Bounded Generalization of Löb's Theorem, and a Robust Cooperation Criterion for Open-Source Game Theory*
 
-Status: **In progress.** Setup phase only; no theorems have been formalized yet.
+Status: **In progress.** Abstract infrastructure is being built; no paper
+theorems have been formalized yet.
 
 The Critch folder will contain a formalization of this paper in two layers. The
 first layer will axiomatize bounded provability abstractly, parallel to

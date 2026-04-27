@@ -5,7 +5,7 @@
   assumptions used in the abstract proof of Theorems 1 and 2.
 -/
 
-import Mathlib.Data.Nat.Log
+import Critch.BoundedProvability.Asymp
 import Foundation.FirstOrder.Incompleteness.ProvabilityAbstraction.Basic
 
 namespace LO
@@ -16,10 +16,6 @@ namespace FirstOrder
 namespace Critch
 
 variable {L₀ L : Language}
-
-/-- The meta-level logarithmic overhead `lg k` from Critch §4. -/
-def lg (k : Nat) : Nat :=
-  Nat.log 2 k
 
 /--
 Bounded provability predicate family.
