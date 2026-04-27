@@ -1,11 +1,10 @@
 /-
-  Cooperation analysis for modal agents (Barasz, §3).
+  Cooperation analysis for modal agents (Barasz, §3-4).
 
-  `outcome X Y` is the paper's `ψ_{[X(Y)]}` (§4, Thm 4.7), the
-  GL-sentence naming X's output against Y. `outcome_fixed_point`
-  (Thm 4.7, one-step form) is derived from Thm 4.2 + Thm 4.3 +
-  Lemma 4.5. Thm 4.1 (arithmetic soundness of GL) lifts GL-level
-  results to PA.
+  `outcome X Y` is the GL formula corresponding to the paper's
+  `ψ_{[X(Y)]}` (§4, Thm 4.7). `outcome_fixed_point` is the GL-level
+  fixed-point equation; `Cooperates.arithmeticLift` applies the generic
+  arithmetical soundness theorem for GL.
 -/
 
 import Barasz.FixedPoint
@@ -22,8 +21,7 @@ abbrev substFull (β : Formula ℕ) {m : ℕ} (refs : Fin m → Formula ℕ) : S
     | j + 1 => if h : j < m then refs ⟨j, h⟩ else .atom (j + 1)
 
 /-- For `k ≠ 0`, `substFull β refs k` is modalized in atom 0 whenever each
-`refs j` omits atom 0. The atom-0 slot is unconstrained (callers handle it
-via `modalized_subst`'s box-only requirement on the input formula). -/
+`refs j` omits atom 0. -/
 lemma substFull_modalized_step {m : ℕ} (β : Formula ℕ)
     (refs : Fin m → Formula ℕ) (hrefs : ∀ j, 0 ∉ (refs j).atoms)
     {k : ℕ} (hk : k ≠ 0) : Modalized 0 (substFull β refs k) := by
@@ -38,18 +36,16 @@ lemma substFull_modalized_step {m : ℕ} (β : Formula ℕ)
 
 /-- `X.formula⟦substFull β refs⟧` is modalized in atom 0 whenever each
 `refs i` omits atom 0. -/
-lemma modalized_substFull (X : Agent) (β : Formula ℕ)
+lemma modalized_substFull (X : ModalAgent) (β : Formula ℕ)
     (refs : Fin X.arity → Formula ℕ) (hrefs : ∀ i, 0 ∉ (refs i).atoms) :
     Modalized 0 (X.formula⟦substFull β refs⟧) :=
   modalized_subst (fun _ hk => substFull_modalized_step β refs hrefs hk)
     (X.modalized 0 (Nat.zero_le _))
 
-/-! ## `outcome` definition by well-founded recursion -/
+/-! ## Outcomes -/
 
-/-- The paper's `ψ_{[X(Y)]}` (Barasz, §4): the GL fixed point of the
-two-level substitution formula. Recurses on `X.rank + Y.rank` via the
-recursive `outcome` calls inside the formula body. -/
-noncomputable def outcome (X Y : Agent) : Formula ℕ :=
+/-- GL formula corresponding to the paper's `ψ_{[X(Y)]}` (Barasz, §4). -/
+noncomputable def outcome (X Y : ModalAgent) : Formula ℕ :=
   glFixedPoint 0
     (X.formula⟦substFull
       (Y.formula⟦substFull (.atom 0)
@@ -58,46 +54,41 @@ noncomputable def outcome (X Y : Agent) : Formula ℕ :=
 termination_by X.rank + Y.rank
 decreasing_by
   all_goals first
-    | (have h := Agent.rank_ref_lt Y j; omega)
-    | (have h := Agent.rank_ref_lt X i; omega)
+    | (have h := ModalAgent.rank_ref_lt Y j; omega)
+    | (have h := ModalAgent.rank_ref_lt X i; omega)
 
 /-- Two-level operator. `F_of X Y (.atom 0)` is the formula whose
-GL fixed point is `outcome X Y`. The body must mirror `outcome`'s body
-exactly (substituted with `p` for the atom-0 placeholder); changes to
-either definition must be reflected in both. -/
-noncomputable def F_of (X Y : Agent) (p : Formula ℕ) : Formula ℕ :=
+GL fixed point is `outcome X Y`. -/
+noncomputable def F_of (X Y : ModalAgent) (p : Formula ℕ) : Formula ℕ :=
   X.formula⟦substFull
     (Y.formula⟦substFull p (fun j : Fin Y.arity => outcome X (Y.references j))⟧)
     (fun i : Fin X.arity => outcome Y (X.references i))⟧
 
-/-- Bridge between the WF definition of `outcome` and `F_of`.
-`rw [outcome]` fires the WF equation lemma; `rfl` closes the definitional
-equality between `outcome`'s body and `F_of X Y (.atom 0)`. -/
-lemma outcome_unfold (X Y : Agent) :
+/-- Bridge between the recursive definition of `outcome` and `F_of`. -/
+lemma outcome_unfold (X Y : ModalAgent) :
     outcome X Y = glFixedPoint 0 (F_of X Y (.atom 0)) := by
   rw [outcome]; rfl
 
-/-- Atom 0 doesn't appear in `outcome X Y`. Proven by WF induction on
-`X.rank + Y.rank`, using the strong form of Thm 4.2. -/
-lemma outcome_atoms_notMem (X Y : Agent) : 0 ∉ (outcome X Y).atoms := by
+/-- Atom 0 doesn't appear in `outcome X Y`. -/
+lemma outcome_atoms_notMem (X Y : ModalAgent) : 0 ∉ (outcome X Y).atoms := by
   intro hmem
   rw [outcome_unfold] at hmem
   have hMod : Modalized 0 (F_of X Y (.atom 0)) :=
     modalized_substFull X _ _ (fun i => outcome_atoms_notMem Y (X.references i))
   exact (glFixedPoint_atoms hMod 0 hmem).2 rfl
 termination_by X.rank + Y.rank
-decreasing_by have h := Agent.rank_ref_lt X i; omega
+decreasing_by have h := ModalAgent.rank_ref_lt X i; omega
 
 /-- `F_of X Y p` is modalized in atom 0 for any `p`: X.formula's atom-0
 occurrences are already under boxes, and the outer references omit atom 0. -/
-lemma F_of_modalized (X Y : Agent) (p : Formula ℕ) : Modalized 0 (F_of X Y p) :=
+lemma F_of_modalized (X Y : ModalAgent) (p : Formula ℕ) : Modalized 0 (F_of X Y p) :=
   modalized_substFull X _ _ (fun _ => outcome_atoms_notMem _ _)
 
-/-! ## Substitution helpers for deriving Thm 4.7 -/
+/-! ## Substitution lemmas -/
 
 /-- Substitution composition: `substFull β refs` post-composed with
 `diag 0 χ` equals `substFull (β⟦diag 0 χ⟧) refs`, provided each `refs j`
-doesn't mention atom 0 (so it's unaffected by `diag 0 χ`). -/
+doesn't mention atom 0. -/
 lemma substFull_comp_diag_of_notMem (β χ : Formula ℕ) {m : ℕ}
     (refs : Fin m → Formula ℕ) (hrefs : ∀ j, 0 ∉ (refs j).atoms) :
     (substFull β refs) ∘ (diag 0 χ) = substFull (β⟦diag 0 χ⟧) refs := by
@@ -115,10 +106,9 @@ lemma substFull_comp_diag_of_notMem (β χ : Formula ℕ) {m : ℕ}
       show diag 0 χ (j+1) = .atom (j+1)
       simp [diag]
 
-/-- Key substitution identity: `F_of X Y (.atom 0)` with atom 0 instantiated
-to `ψ` equals `F_of X Y ψ`. Pushes `diag 0 ψ` through both nested substFulls;
-the trailing `rfl` handles the leaf reduction `(.atom 0)⟦diag 0 ψ⟧ = ψ`. -/
-lemma F_of_subst (X Y : Agent) (ψ : Formula ℕ) :
+/-- Substitution identity: `F_of X Y (.atom 0)` with atom 0 instantiated
+to `ψ` equals `F_of X Y ψ`. -/
+lemma F_of_subst (X Y : ModalAgent) (ψ : Formula ℕ) :
     (F_of X Y (.atom 0))⟦diag 0 ψ⟧ = F_of X Y ψ := by
   unfold F_of
   rw [← Formula.subst.def_comp,
@@ -127,19 +117,33 @@ lemma F_of_subst (X Y : Agent) (ψ : Formula ℕ) :
       substFull_comp_diag_of_notMem _ _ _ (fun _ => outcome_atoms_notMem _ _)]
   rfl
 
+/-- For zero-reference substitutions, changing the atom-0 replacement is the
+only nontrivial substitution case. -/
+lemma substFull_zero_congr (φ β γ : Formula ℕ) (refs : Fin 0 → Formula ℕ)
+    (h : Modal.GL ⊢ β 🡘 γ) :
+    Modal.GL ⊢ φ⟦substFull β refs⟧ 🡘 φ⟦substFull γ refs⟧ := by
+  apply subst_congr
+  intro a
+  cases a with
+  | zero => exact h
+  | succ k =>
+    show Modal.GL ⊢
+      (if hk : k < 0 then refs ⟨k, hk⟩ else .atom (k + 1)) 🡘
+      (if hk : k < 0 then refs ⟨k, hk⟩ else .atom (k + 1))
+    simp
+
 /-! ## Fixed-point equations -/
 
-/-- Two-level fixed-point form (immediate from Thm 4.2). -/
-lemma outcome_twoLevel (X Y : Agent) :
+/-- Two-level fixed-point equation for `outcome`. -/
+lemma outcome_twoLevel (X Y : ModalAgent) :
     Modal.GL ⊢ outcome X Y 🡘 F_of X Y (outcome X Y) := by
   have h := glFixedPoint_spec (F_of_modalized X Y (.atom 0))
   rw [← outcome_unfold, F_of_subst] at h
   exact h
 
-/-- Modal agent fixed-point equation, one-step form (Barasz, §4, Thm 4.7).
-`K := X.formula⟦substFull (outcome Y X) outerRefs⟧` is also a fixed point of
-`F_of X Y`, so by uniqueness (Thm 4.3) it equals `outcome X Y`. -/
-theorem outcome_fixed_point (X Y : Agent) :
+/-- GL-level form of the modal-agent fixed-point equation
+(Barasz, §4, Thm 4.7). -/
+theorem outcome_fixed_point (X Y : ModalAgent) :
     Modal.GL ⊢ outcome X Y 🡘
       X.formula⟦substFull (outcome Y X)
         (fun j : Fin X.arity => outcome Y (X.references j))⟧ := by
@@ -182,50 +186,48 @@ theorem outcome_fixed_point (X Y : Agent) :
 
 /-! ## Cooperation predicates -/
 
-/-- X cooperates with Y: GL proves the outcome formula. Lifts to PA via
-`Cooperates.arithmeticLift` (Thm 4.1). -/
-def Cooperates (X Y : Agent) : Prop := Modal.GL ⊢ outcome X Y
+/-- X cooperates with Y: GL proves the outcome formula. -/
+def Cooperates (X Y : ModalAgent) : Prop := Modal.GL ⊢ outcome X Y
 
-/-- X defects against Y: GL does *not* prove the outcome formula. Note that
-this does NOT lift to PA symmetrically — `GL ⊬ A` only yields *some*
-realization with `U ⊬ f A`, not unprovability under every realization. -/
-def Defects (X Y : Agent) : Prop := Modal.GL ⊬ outcome X Y
+/-- X defects against Y: GL does not prove the outcome formula. This is a
+modal-level proxy, not a PA unprovability statement. -/
+def Defects (X Y : ModalAgent) : Prop := Modal.GL ⊬ outcome X Y
 
 /-! ## Cooperation theorems -/
 
 /-- `outcome defectBot Y ↔ ⊥` for every Y. -/
-lemma outcome_defectBot (Y : Agent) : Modal.GL ⊢ outcome defectBot Y 🡘 ⊥ := by
+lemma outcome_defectBot (Y : ModalAgent) : Modal.GL ⊢ outcome defectBot Y 🡘 ⊥ := by
   have h := outcome_fixed_point defectBot Y
   simpa [defectBot_formula_substFull] using h
 
 /-- `outcome cooperateBot Y ↔ ⊤` for every Y. -/
-lemma outcome_cooperateBot (Y : Agent) : Modal.GL ⊢ outcome cooperateBot Y 🡘 ⊤ := by
+lemma outcome_cooperateBot (Y : ModalAgent) : Modal.GL ⊢ outcome cooperateBot Y 🡘 ⊤ := by
   have h := outcome_fixed_point cooperateBot Y
   simpa [cooperateBot_formula_substFull] using h
 
 /-- `outcome fairBot Y ↔ □(outcome Y fairBot)` for every Y. -/
-lemma outcome_fairBot (Y : Agent) :
+lemma outcome_fairBot (Y : ModalAgent) :
     Modal.GL ⊢ outcome fairBot Y 🡘 □(outcome Y fairBot) := by
   have h := outcome_fixed_point fairBot Y
   simpa [fairBot_formula_substFull] using h
 
 /-- `outcome prudentBot Y ↔ □(outcome Y prudentBot) ⋏ □(∼□⊥ 🡒 ∼(outcome Y defectBot))`
 for every Y. -/
-lemma outcome_prudentBot (Y : Agent) :
+lemma outcome_prudentBot (Y : ModalAgent) :
     Modal.GL ⊢ outcome prudentBot Y 🡘
       □(outcome Y prudentBot) ⋏ □(∼□⊥ 🡒 ∼(outcome Y defectBot)) := by
   have h := outcome_fixed_point prudentBot Y
   simpa [prudentBot_formula_substFull] using h
 
 /-- DefectBot defects against every opponent (Barasz, §2). -/
-theorem defectBot_defects (Y : Agent) : Defects defectBot Y := by
+theorem defectBot_defects (Y : ModalAgent) : Defects defectBot Y := by
   intro ⟨hb⟩
   have ⟨hβ⟩ := outcome_defectBot Y
   exact (inferInstance : Consistent Modal.GL).not_inconsistent
     (fun _ => ⟨efq ⨀ (and₁ ⨀ hβ ⨀ hb)⟩)
 
 /-- CooperateBot cooperates with every opponent (Barasz, §2). -/
-theorem cooperateBot_cooperates (Y : Agent) : Cooperates cooperateBot Y := by
+theorem cooperateBot_cooperates (Y : ModalAgent) : Cooperates cooperateBot Y := by
   have ⟨h⟩ := outcome_cooperateBot Y
   exact ⟨and₂ ⨀ h ⨀ verum⟩
 
@@ -238,14 +240,69 @@ theorem fairBot_vs_fairBot : Cooperates fairBot fairBot := by
     lobian_circle (and₂ ⨀ hα) (and₂ ⨀ hα)
   exact ⟨and₁ ⨀ h⟩
 
-/-- FairBot vs CooperateBot: both cooperate (Barasz, §3). -/
+/-- FairBot and CooperateBot mutually cooperate (Barasz, §3). -/
 theorem fairBot_vs_cooperateBot :
     Cooperates fairBot cooperateBot ∧ Cooperates cooperateBot fairBot := by
   have ⟨hα⟩ := outcome_fairBot cooperateBot
   have ⟨h_cb⟩ := cooperateBot_cooperates fairBot
   exact ⟨⟨and₂ ⨀ hα ⨀ nec h_cb⟩, cooperateBot_cooperates fairBot⟩
 
-/-- FairBot vs DefectBot: both defect (Barasz, §3). -/
+/-- GL-level form of Barasz §4, Thm 4.10: a rank-0 modal agent that
+cooperates with FairBot also cooperates with CooperateBot. -/
+theorem rank0_fairBot_implies_cooperateBot (X : ModalAgent) (h_rank : X.rank = 0) :
+    Cooperates X fairBot → Cooperates X cooperateBot := by
+  intro hXF
+  have h_arity := ModalAgent.arity_eq_zero_of_rank_eq_zero h_rank
+  cases X with
+  | mk φ n refs mod =>
+    simp [ModalAgent.arity] at h_arity
+    subst n
+    let X : ModalAgent := ModalAgent.mk φ 0 refs mod
+    change Cooperates X cooperateBot
+    change Cooperates X fairBot at hXF
+    have hXF_proof := hXF.some
+    have hXFB_fp := outcome_fixed_point X fairBot
+    have hFBX := outcome_fairBot X
+    have h_to_box : Modal.GL ⊢
+        φ⟦substFull (outcome fairBot X)
+          (fun j : Fin 0 => outcome fairBot (X.references j))⟧ 🡘
+        φ⟦substFull (□(outcome X fairBot))
+          (fun j : Fin 0 => outcome fairBot (X.references j))⟧ :=
+      substFull_zero_congr φ (outcome fairBot X) (□(outcome X fairBot))
+        (fun j : Fin 0 => outcome fairBot (X.references j)) hFBX
+    have h_phi_box : Modal.GL ⊢!
+        φ⟦substFull (□(outcome X fairBot))
+          (fun j : Fin 0 => outcome fairBot (X.references j))⟧ := by
+      exact and₁ ⨀ h_to_box.some ⨀ (and₁ ⨀ hXFB_fp.some ⨀ hXF_proof)
+    have h_box_top : Modal.GL ⊢ □(outcome X fairBot) 🡘 (⊤ : Formula ℕ) := by
+      exact ⟨E_intro (C_of_conseq verum) (C_of_conseq (nec hXF_proof))⟩
+    have h_to_top : Modal.GL ⊢
+        φ⟦substFull (□(outcome X fairBot))
+          (fun j : Fin 0 => outcome fairBot (X.references j))⟧ 🡘
+        φ⟦substFull (⊤ : Formula ℕ)
+          (fun j : Fin 0 => outcome fairBot (X.references j))⟧ :=
+      substFull_zero_congr φ (□(outcome X fairBot)) (⊤ : Formula ℕ)
+        (fun j : Fin 0 => outcome fairBot (X.references j)) h_box_top
+    have h_phi_top : Modal.GL ⊢!
+        φ⟦substFull (⊤ : Formula ℕ)
+          (fun j : Fin 0 => outcome fairBot (X.references j))⟧ := by
+      exact and₁ ⨀ h_to_top.some ⨀ h_phi_box
+    have hCBX := outcome_cooperateBot X
+    have h_to_cb : Modal.GL ⊢
+        φ⟦substFull (outcome cooperateBot X)
+          (fun j : Fin 0 => outcome cooperateBot (X.references j))⟧ 🡘
+        φ⟦substFull (⊤ : Formula ℕ)
+          (fun j : Fin 0 => outcome cooperateBot (X.references j))⟧ :=
+      substFull_zero_congr φ (outcome cooperateBot X) (⊤ : Formula ℕ)
+        (fun j : Fin 0 => outcome cooperateBot (X.references j)) hCBX
+    have hXCB_fp := outcome_fixed_point X cooperateBot
+    have h_rhs_cb : Modal.GL ⊢!
+        φ⟦substFull (outcome cooperateBot X)
+          (fun j : Fin 0 => outcome cooperateBot (X.references j))⟧ := by
+      simpa using (and₂ ⨀ h_to_cb.some ⨀ h_phi_top)
+    exact ⟨and₂ ⨀ hXCB_fp.some ⨀ h_rhs_cb⟩
+
+/-- FairBot and DefectBot mutually defect (Barasz, §3). -/
 theorem fairBot_vs_defectBot :
     Defects fairBot defectBot ∧ Defects defectBot fairBot := by
   have ⟨hα⟩ := outcome_fairBot defectBot
@@ -257,9 +314,7 @@ theorem fairBot_vs_defectBot :
   have : Modal.GL ⊢! □(⊥ : Formula ℕ) := axiomK' (nec h_imp) ⨀ h_box
   exact unprovable_box_bot ⟨this⟩
 
-/-! ## Concrete cooperation: rank 1 -/
-
-/-- PrudentBot vs FairBot: both cooperate (Barasz, §3, Thm 3.2). -/
+/-- PrudentBot and FairBot mutually cooperate (Barasz, §3, Thm 3.2). -/
 theorem prudentBot_vs_fairBot :
     Cooperates prudentBot fairBot ∧ Cooperates fairBot prudentBot := by
   have ⟨hα⟩ := outcome_prudentBot fairBot
@@ -275,7 +330,7 @@ theorem prudentBot_vs_fairBot :
       (C_trans (CK_of_C_of_C C_id (C_of_conseq h_consist)) (and₂ ⨀ hα))
   exact ⟨⟨and₁ ⨀ h⟩, ⟨and₂ ⨀ h⟩⟩
 
-/-- PrudentBot vs DefectBot: both defect (Barasz, §3, Thm 3.2). -/
+/-- PrudentBot and DefectBot mutually defect (Barasz, §3, Thm 3.2). -/
 theorem prudentBot_vs_defectBot :
     Defects prudentBot defectBot ∧ Defects defectBot prudentBot := by
   have ⟨hα⟩ := outcome_prudentBot defectBot
@@ -286,7 +341,8 @@ theorem prudentBot_vs_defectBot :
   have h_imp : Modal.GL ⊢! outcome defectBot prudentBot 🡒 ⊥ := and₁ ⨀ hβ
   exact unprovable_box_bot ⟨axiomK' (nec h_imp) ⨀ h_box⟩
 
-/-- PrudentBot vs CooperateBot: PB defects, CB cooperates (Barasz, §3, Thm 3.2). -/
+/-- PrudentBot defects against CooperateBot; CooperateBot cooperates
+with PrudentBot (Barasz, §3, Thm 3.2). -/
 theorem prudentBot_vs_cooperateBot :
     Defects prudentBot cooperateBot ∧ Cooperates cooperateBot prudentBot := by
   have ⟨hα⟩ := outcome_prudentBot cooperateBot
@@ -316,15 +372,11 @@ theorem prudentBot_vs_prudentBot : Cooperates prudentBot prudentBot := by
     CK_of_C_of_C C_id (C_of_conseq h_consist)
   exact ⟨lob_rule (C_trans h₁ (and₂ ⨀ hα))⟩
 
-/-! ## Arithmetical lift to PA (Barasz, §4, Thm 4.1) -/
+/-! ## Arithmetical lift (Barasz, §4, Thm 4.1) -/
 
-/-- Lift cooperation to PA-provability (Barasz, §4, Thm 4.1). Wraps
-`LO.ProvabilityLogic.GL.arithmetical_soundness`; specialized to PA's
-standard provability predicate, yields `PA ⊢ [X(Y) = C]`.
-
-`Defects` does not lift symmetrically: `GL ⊬ A` only yields *some*
-realization with `U ⊬ f A`, not unprovability under every realization. -/
-theorem Cooperates.arithmeticLift {X Y : Agent} (h : Cooperates X Y)
+/-- Lift GL-provable cooperation through an arithmetical realization
+(Barasz, §4, Thm 4.1). -/
+theorem Cooperates.arithmeticLift {X Y : ModalAgent} (h : Cooperates X Y)
     {L : FirstOrder.Language} [L.ReferenceableBy L] [L.DecidableEq]
     {T U : FirstOrder.Theory L} [FirstOrder.ProvabilityAbstraction.Diagonalization T]
     [T ⪯ U] {𝔅 : FirstOrder.ProvabilityAbstraction.Provability T U} [𝔅.HBL]

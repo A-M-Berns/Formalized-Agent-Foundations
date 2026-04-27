@@ -1,13 +1,18 @@
 /-
-  GL modal fixed-point theorems (Barasz, §4, Thm 4.2 / 4.3 / Lemma 4.5).
+  GL modal fixed-point theorems (Barasz, §4, Thm 4.2 / 4.3).
+  These are taken as axioms, because these are purely logical results
+  that are external to the modal agent framework.
 
-  Thm 4.2 (de Jongh–Sambin) and Thm 4.3 (uniqueness) are standard GL
-  results (Boolos, *Logic of Provability*, Ch. 8) not yet available in
-  FFL/Foundation; axiomatized here in single-variable form. Lemma 4.5
-  (substitution congruence) is proved from Foundation's K-congruence.
+  Instead of proofs, Barasz et al give the following reference for these theorems:
+  Lindström, Per. 1996. “Provability Logic-a Short Introduction.”
+  Barasz Thm 4.2 (the de Jongh–Sambin fixed-point theorem) is Lindström Thm 11,
+  and Thm 4.3 (uniqueness of the fixed point) is Lindström Thm 12. These are standard GL
+  results not yet available in FFL/Foundation; axiomatized here in single-variable form.
+
+  The substitution congruence below is the GL-level counterpart of §4, Lemma 4.5.
 -/
 
-import Barasz.Agent
+import Barasz.ModalAgent
 
 open LO LO.Modal
 open LO.Entailment LO.Modal.Entailment
@@ -16,10 +21,10 @@ open LO.Entailment LO.Modal.Entailment
 abbrev diag (p : ℕ) (ψ : Formula ℕ) : Substitution ℕ :=
   fun k => if k = p then ψ else .atom k
 
-/-! ## Lemma 4.5 (Barasz, §4): substitution congruence -/
+/-! ## Substitution congruence -/
 
 /-- Pointwise GL-iff-equivalent substitutions yield GL-iff-equivalent
-formulas (Barasz, §4, Lemma 4.5). -/
+formulas. This is the GL-level counterpart of Barasz §4, Lemma 4.5. -/
 theorem subst_congr {σ σ' : Substitution ℕ}
     (h : ∀ a, Modal.GL ⊢ (σ a) 🡘 (σ' a)) (φ : Formula ℕ) :
     Modal.GL ⊢ φ⟦σ⟧ 🡘 φ⟦σ'⟧ := by
@@ -41,9 +46,8 @@ axiom glFixedPoint_thm42 {p : ℕ} {φ : Formula ℕ} (h : Modalized p φ) :
       (Modal.GL ⊢ ψ 🡘 φ⟦diag p ψ⟧) ∧
       (∀ a, a ∈ ψ.atoms → a ∈ φ.atoms ∧ a ≠ p)
 
-/-- Skolemized fixed-point operator. For non-modalized inputs returns a
-junk value (the input itself); the spec lemmas only apply when the input
-is modalized in `p`. -/
+/-- Skolemized fixed-point operator. For non-modalized inputs it returns the
+input formula; the spec lemmas only apply when the input is modalized in `p`. -/
 noncomputable def glFixedPoint (p : ℕ) (φ : Formula ℕ) : Formula ℕ :=
   haveI := Classical.propDecidable (Modalized p φ)
   if h : Modalized p φ then (glFixedPoint_thm42 h).choose else φ
@@ -61,7 +65,7 @@ theorem glFixedPoint_spec {p : ℕ} {φ : Formula ℕ} (h : Modalized p φ) :
   exact (glFixedPoint_thm42 h).choose_spec.1
 
 /-- Atoms of the fixed point are a subset of the input's atoms minus `p`. -/
-theorem glFixedPoint_atoms {p : ℕ} {φ : Formula ℕ} (h : Modalized p φ) :
+lemma glFixedPoint_atoms {p : ℕ} {φ : Formula ℕ} (h : Modalized p φ) :
     ∀ a, a ∈ (glFixedPoint p φ).atoms → a ∈ φ.atoms ∧ a ≠ p := by
   rw [glFixedPoint_eq h]
   exact (glFixedPoint_thm42 h).choose_spec.2
@@ -78,7 +82,7 @@ axiom glFixedPoint_uniqueness {p : ℕ} {φ : Formula ℕ} (_ : Modalized p φ)
 
 /-! ## Substitution identity for absent atoms -/
 
-/-- Substituting at an atom that doesn't appear in the formula is a no-op. -/
+/-- Substituting for an atom not in the formula leaves the formula unchanged. -/
 lemma subst_diag_of_notMem_atoms {p : ℕ} {χ : Formula ℕ} :
     ∀ {ψ : Formula ℕ}, p ∉ ψ.atoms → ψ⟦diag p χ⟧ = ψ
   | .atom a, h => by

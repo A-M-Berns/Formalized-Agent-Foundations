@@ -1,19 +1,48 @@
-This repository consists of Lean 4 formalizations of important papers in agent foundations and open-source game theory.
-Built on the [Foundation](https://github.com/FormalizedFormalLogic/Foundation) library from the Formalized Formal Logic project. Created with help from Claude Code. In general, results that use `theorem` in the codebase are directly from the relevant papers, while results that use `lemma` are helpers not present in the papers directly.
+# Agent Foundations
 
-### Barasz et al., *Robust Cooperation in the Prisoner's Dilemma via Provability Logic* (2014)
+Lean 4 formalizations of papers in agent foundations and open-source game
+theory, built on the
+[Foundation](https://github.com/FormalizedFormalLogic/Foundation) library of the Formalized Formal Logic project.
 
-#### Axioms:
-* `glFixedPoint_thm42` — de Jongh–Sambin–Bernardi fixed-point theorem, single-variable form, with the strong form of the existence claim that the fixed point uses only atoms from the input formula and not the diagonal variable (§4, Thm 4.2). Standard GL result (Boolos, *Logic of Provability*, Ch. 8); not yet available in Foundation. The Skolemized operator `glFixedPoint` and its spec theorems are derived from this single axiom.
-* `glFixedPoint_uniqueness` — Fixed-point uniqueness (§4, Thm 4.3). Standard GL result; not yet available in Foundation.
+## Barasz et al. 2014
 
-#### Files:
-* `Barasz/GL.lean` — GL toolkit: Löb's rule, the Löbian circle, and unprovability of `□⊥` / `□□⊥`.
-* `Barasz/Agent.lean` — Modal agents (§4, Definition p. 11). Concrete agents: `cooperateBot` (§2, Alg 1), `defectBot` (§2, Alg 2), `fairBot` (§3, Alg 4), `prudentBot` (§3, Alg 5).
-* `Barasz/FixedPoint.lean` — GL fixed-point axioms (Thm 4.2, 4.3) and substitution congruence (Lemma 4.5, proved).
-* `Barasz/Cooperation.lean` — `outcome` (defined by well-founded recursion on `X.rank + Y.rank` as a GL fixed point) and `outcome_fixed_point` (§4, Thm 4.7, derived from the GL axioms). Cooperation theorems: §2 (`defectBot_defects`, `cooperateBot_cooperates`), §3, Thm 3.1 (`fairBot_vs_fairBot`), §3, Thm 3.2 (all `prudentBot_vs_*` pairs), §4, Thm 4.1 (`Cooperates.arithmeticLift`).
+Formalization of *Robust Cooperation in the Prisoner's Dilemma via
+Provability Logic*.
 
-#### To do:
-* Behavioral equivalence (§4, p. 12) and Thm 4.8.
-* Cor 4.9, Thm 4.10.
-* `Barasz/Game.lean` and `Barasz/Equilibrium.lean`: program equilibrium of the open-source PD (currently stubs).
+The Barasz development is formalized at the level of Gödel-Löb provability logic. It covers:
+
+* the modal agent definition from §4;
+* CooperateBot, DefectBot, FairBot, and PrudentBot;
+* the GL fixed-point construction used to define interaction outcomes;
+* the cooperation results for FairBot and PrudentBot from §§2-3;
+* the modal agent fixed-point equation (§4, Thm 4.7);
+* the modal agent behavioral result (§4, Thm 4.8, GL-level form);
+* the rank-0 FairBot-to-CooperateBot result (§4, Thm 4.10);
+* the generic lift from GL-provability to arithmetical realizations (§4, Thm 4.1).
+
+### Axioms
+
+Two standard GL fixed-point facts are currently axiomatized because they are
+not yet available in Foundation:
+
+* fixed-point existence, in the single-variable form used by Barasz §4, Thm 4.2;
+* fixed-point uniqueness, corresponding to Barasz §4, Thm 4.3.
+
+These are the de Jongh-Sambin-Bernardi fixed-point theorem and its uniqueness
+theorem. Barasz cites Lindstrom's presentation; Boolos, *The Logic of
+Provability*, Ch. 8 is another standard reference.
+
+### Files
+
+* `Barasz/GL.lean` — GL lemmas used by the agent proofs.
+* `Barasz/ModalAgent.lean` — modal agents and the four concrete agents.
+* `Barasz/FixedPoint.lean` — fixed-point assumptions and substitution congruence.
+* `Barasz/Cooperation.lean` — outcomes, cooperation/defection, and the main cooperation theorems.
+* `Barasz/Behavioral.lean` — behavioral equivalence for modal agents.
+
+### Scope
+
+This is not a formalization of arbitrary arithmetic agents. Corollary 4.9
+(CliqueBot is not a modal agent) is therefore outside the current scope. The
+game-theoretic program-equilibrium framing is also left for a future
+paper.

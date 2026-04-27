@@ -1,27 +1,14 @@
 /-
   Modal agents over GL (Barasz, §4).
 
-  A *modal agent of rank k* is determined by modal agents Y₁, …, Yₙ of
-  rank < k and a fully modalized formula φ(p, q₁, …, qₙ) such that for
-  every opponent Z,
+  The paper defines modal agents arithmetically. This file formalizes the
+  corresponding GL-level structure: a fully modalized formula together with
+  lower-rank reference agents.
 
-      PA ⊢ [X(Z)] ↔ φ([Z(X)], [Z(Y₁)], …, [Z(Yₙ)]).
+  Atom 0 means "the opponent cooperates with this agent"; atom i + 1 means
+  "the opponent cooperates with reference i".
 
-  (§4, Eq 4.1 and the unnumbered Definition on page 11.)
-
-  "Fully modalized" = every propositional variable occurs inside a □;
-  this syntactic condition is what makes the modal fixed-point theorem
-  (§4, Thm 4.2 existence; Thm 4.3 uniqueness) applicable.
-
-  Atoms of `formula`:
-    atom 0       — "opponent cooperates with me"
-    atom 1, …, n — "opponent cooperates with reference agent i"
-
-  Concrete agents:
-  - `cooperateBot` (§2, Algorithm 1)
-  - `defectBot`    (§2, Algorithm 2)
-  - `fairBot`      (§3, Algorithm 4)
-  - `prudentBot`   (§3, Algorithm 5)
+  The concrete agents are CooperateBot, DefectBot, FairBot, and PrudentBot.
 -/
 
 import Barasz.GL
@@ -65,71 +52,76 @@ lemma modalized_subst {n : ℕ} {σ : Substitution ℕ}
   | .imp _ _, h => ⟨modalized_subst hσ h.1, modalized_subst hσ h.2⟩
   | .box _, _ => trivial
 
-/-! ## Agents -/
+/-! ## Modal agents -/
 
 /-- A modal agent (Barasz, §4, Definition p. 11): a GL formula together
-with a finite family of *reference agents*. Atom 0 of `formula` is
-"opponent cooperates with me"; atoms 1, …, `arity` are "opponent
-cooperates with reference i". `modalized` requires every such atom
-under a □.
-
-References use `Fin arity → Agent` to avoid Lean's nested-inductive
-restriction on `List Agent`. -/
-inductive Agent : Type where
+with a finite family of reference agents. Atom 0 of `formula` is
+"opponent cooperates with me." Atom `i + 1` is "opponent cooperates
+with reference `i`". All relevant atoms must occur under a □. -/
+inductive ModalAgent : Type where
   | mk (formula : Formula ℕ) (arity : ℕ)
-      (references : Fin arity → Agent)
-      (modalized : ∀ i, i ≤ arity → Modalized i formula) : Agent
+      (references : Fin arity → ModalAgent)
+      (modalized : ∀ i, i ≤ arity → Modalized i formula) : ModalAgent
 
-namespace Agent
+namespace ModalAgent
 
-def formula : Agent → Formula ℕ
+def formula : ModalAgent → Formula ℕ
   | .mk f _ _ _ => f
 
-def arity : Agent → ℕ
+def arity : ModalAgent → ℕ
   | .mk _ n _ _ => n
 
-def references : (X : Agent) → Fin X.arity → Agent
+def references : (X : ModalAgent) → Fin X.arity → ModalAgent
   | .mk _ _ r _ => r
 
-def modalized : (X : Agent) → ∀ i, i ≤ X.arity → Modalized i X.formula
+def modalized : (X : ModalAgent) → ∀ i, i ≤ X.arity → Modalized i X.formula
   | .mk _ _ _ m => m
 
-/-- Rank of a modal agent (Barasz, §4): 0 if no references, else
-1 + max rank of references. Distinct from `arity`. -/
-def rank : Agent → ℕ
+/-- Rank of a modal agent (Barasz, §4): 0 if there are no references, otherwise
+1 + max rank of references. -/
+def rank : ModalAgent → ℕ
   | .mk _ 0     _ _ => 0
   | .mk _ (_+1) r _ => (Finset.univ.sup fun i => rank (r i)) + 1
 
 /-- A reference has strictly smaller rank than its parent agent. -/
-lemma rank_ref_lt : ∀ (X : Agent) (i : Fin X.arity), (X.references i).rank < X.rank
+lemma rank_ref_lt : ∀ (X : ModalAgent) (i : Fin X.arity), (X.references i).rank < X.rank
   | .mk _ (_+1) r _, i => by
     show (r i).rank < (Finset.univ.sup fun j => (r j).rank) + 1
     exact Nat.lt_succ_of_le
       (Finset.le_sup (f := fun j => (r j).rank) (Finset.mem_univ i))
 
-/-- Build a rank-0 agent; default tactic discharges `Modalized 0` for
-the standard bot formulas. -/
+/-- Rank-0 modal agents have no reference agents. -/
+lemma arity_eq_zero_of_rank_eq_zero {X : ModalAgent} (h : X.rank = 0) : X.arity = 0 := by
+  cases X with
+  | mk _ n _ _ =>
+    cases n with
+    | zero => rfl
+    | succ _ =>
+      simp [rank] at h
+
+/-- Build a rank-0 agent. -/
 def mkRank0 (φ : Formula ℕ)
-    (h : Modalized 0 φ := by simp [Modalized]) : Agent :=
+    (h : Modalized 0 φ := by simp [Modalized]) : ModalAgent :=
   .mk φ 0 Fin.elim0 (rank0_modalized h)
 
-end Agent
+end ModalAgent
 
 /-! ## Concrete agents -/
 
 /-- CooperateBot: always cooperates, φ = ⊤ (Barasz, §2, Alg 1). -/
-def cooperateBot : Agent := .mkRank0 ⊤
+def cooperateBot : ModalAgent := .mkRank0 ⊤
 
 /-- DefectBot: always defects, φ = ⊥ (Barasz, §2, Alg 2). -/
-def defectBot : Agent := .mkRank0 ⊥
+def defectBot : ModalAgent := .mkRank0 ⊥
 
-/-- FairBot: cooperates iff it can *prove* the opponent cooperates,
-φ = □(atom 0) (Barasz, §3, Alg 4). -/
-def fairBot : Agent := .mkRank0 (□(.atom 0 : Formula ℕ))
+/-- FairBot: cooperates iff it can prove the opponent cooperates, φ = □(atom 0) (Barasz, §3, Alg 4). -/
+def fairBot : ModalAgent := .mkRank0 (□(.atom 0 : Formula ℕ))
 
-/-- PrudentBot: φ = □(atom 0) ⋏ □(∼□⊥ 🡒 ∼(atom 1)), atom 1 referencing
-DefectBot (Barasz, §3, Alg 5). In GL, `□(∼□⊥ 🡒 ψ)` encodes `PA+1 ⊢ ψ`. -/
-def prudentBot : Agent :=
+/-- PrudentBot cooperates with `Y` iff PA proves that `Y` cooperates with
+PrudentBot and PA+1 proves that `Y` does not cooperate with DefectBot
+(Barasz, §3, Alg 5). In GL, the PA+1 condition is represented as
+`□(∼□⊥ 🡒 ψ)`. -/
+def prudentBot : ModalAgent :=
   .mk (□(.atom 0 : Formula ℕ) ⋏ □(∼□⊥ 🡒 ∼(.atom 1 : Formula ℕ)))
     1 (fun _ => defectBot)
     (fun i hi => by
