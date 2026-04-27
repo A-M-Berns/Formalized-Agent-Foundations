@@ -4,12 +4,9 @@ Lean 4 formalizations of important papers in the fields of agent foundations and
 theory, built on the
 [Foundation](https://github.com/FormalizedFormalLogic/Foundation) library of the Formalized Formal Logic project.
 
-## Barasz et al. 2014
+## Barasz et al. (2014) *Robust Cooperation in the Prisoner's Dilemma via Provability Logic*.
 
-Formalization of *Robust Cooperation in the Prisoner's Dilemma via
-Provability Logic*.
-
-The Barasz development is formalized at the level of Gödel-Löb provability logic. It covers:
+The Barasz folder contains a formalization of this paper at the level of Gödel-Löb provability logic. It covers:
 
 * the modal agent definition from §4;
 * CooperateBot, DefectBot, FairBot, and PrudentBot;
