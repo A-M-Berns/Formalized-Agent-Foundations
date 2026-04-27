@@ -43,3 +43,29 @@ This is not a formalization of arbitrary arithmetic agents. Corollary 4.9
 (CliqueBot is not a modal agent) is therefore outside the current scope. The
 game-theoretic program-equilibrium framing is also left for a future
 paper.
+
+## Critch (2019) *A Parametric, Resource-Bounded Generalization of Löb's Theorem, and a Robust Cooperation Criterion for Open-Source Game Theory*
+
+Status: **In progress.** Setup phase only; no theorems have been formalized yet.
+
+The Critch folder will contain a formalization of this paper in two layers. The
+first layer will axiomatize bounded provability abstractly, parallel to
+Foundation's provability abstraction interface, and use it for the parametric
+bounded Löb theorem and robust cooperation criterion. The second layer will
+ground that interface in Foundation's restricted provability predicate.
+
+### Files
+
+* `Critch/BoundedProvability/Basic.lean` — bounded provability and bounded HBL interfaces.
+* `Critch/BoundedProvability/Asymp.lean` — asymptotic comparison for proof-bound bookkeeping.
+* `Critch/ParametricDiagonal.lean` — the parametric diagonal lemma used in §4.
+* `Critch/ParametricLöb.lean` — the abstract bounded Löb theorem from §4.
+* `Critch/RobustCooperation.lean` — G-fairness and the robust cooperation theorem from §5.
+* `Critch/Grounding/Basic.lean` — restricted provability as the concrete bounded provability predicate.
+* `Critch/Grounding/BoundedHBL.lean` — bounded D2 and D3 for restricted provability.
+* `Critch/Grounding/BoundedNec.lean` — bounded D1 and related proof-size bookkeeping.
+
+### Axioms
+
+None yet. The abstract layer will make Critch's bounded provability properties
+explicit as typeclass assumptions before any paper theorem depends on them.
