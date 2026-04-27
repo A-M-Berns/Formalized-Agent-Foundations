@@ -4,9 +4,15 @@ open Lake DSL
 package agentFoundations where
   leanOptions := #[⟨`autoImplicit, false⟩]
 
-@[default_target]
 lean_lib Barasz where
   srcDir := "."
 
+lean_lib Critch where
+  srcDir := "."
+
+@[default_target]
+lean_lib AgentFoundations where
+  srcDir := "."
+
 require Foundation from git
-  "https://github.com/FormalizedFormalLogic/Foundation" @ "83d98a36091ffd9e7220ffa0033b1fc9097f5ab9"
+  "https://github.com/FormalizedFormalLogic/Foundation" @ "c28942b7d9d0df41ee5b736602c3f27b8643532c"
