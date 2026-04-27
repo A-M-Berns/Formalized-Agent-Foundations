@@ -22,8 +22,8 @@ The Barasz folder contains a formalization of this paper at the level of Gödel-
 Two standard GL fixed-point facts are currently axiomatized because they are
 not yet available in Foundation:
 
-* fixed-point existence, in the single-variable form used by Barasz §4, Thm 4.2;
-* fixed-point uniqueness, corresponding to Barasz §4, Thm 4.3.
+* `glFixedPoint_thm42`: fixed-point existence, in the single-variable form used by Barasz §4, Thm 4.2;
+* `glFixedPoint_uniqueness`: fixed-point uniqueness, corresponding to Barasz §4, Thm 4.3.
 
 These are the de Jongh-Sambin-Bernardi modal fixed-point theorem and its uniqueness
 theorem. These theorems are prior to the modal agent framework, and Barasz et al do not provide a proof. 
