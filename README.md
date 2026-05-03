@@ -39,6 +39,6 @@ Instead, they cite Lindström (1996) Thms 11 and 12 as a reference (full citatio
 ### Scope
 
 This formalization deals only with modal agents, rather than arbitrary
-arithmetic agents. Therefore, Corrollary 4.9 about `CliqueBot`, an algorithm 
-that only cooperates with syntactic copies of itself, is outside the scope.
+arithmetic agents. Therefore, Corrollary 4.9 about `CliqueBot` (an algorithm 
+that only cooperates with syntactic copies of itself) is outside the scope.
 Game-theoretic program equilibrium framing is also left for a future paper.
