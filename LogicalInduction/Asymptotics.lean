@@ -98,6 +98,24 @@ theorem AsympEq.asympLE {f g : ℕ → ℝ} (h : f ≈ₙ g) : f ≲ₙ g := by
 theorem AsympEq.asympGE {f g : ℕ → ℝ} (h : f ≈ₙ g) : f ≳ₙ g :=
   h.symm.asympLE
 
+/-- `≲ₙ` is transitive. -/
+theorem AsympLE.trans {f g h : ℕ → ℝ} (h₁ : f ≲ₙ g) (h₂ : g ≲ₙ h) : f ≲ₙ h := by
+  intro ε hε
+  filter_upwards [h₁ (ε / 2) (by linarith), h₂ (ε / 2) (by linarith)] with n hn₁ hn₂
+  linarith
+
+/-- `f ≲ₙ g` followed by `g ≈ₙ h` gives `f ≲ₙ h`. -/
+theorem AsympLE.trans_asympEq {f g h : ℕ → ℝ} (h₁ : f ≲ₙ g) (h₂ : g ≈ₙ h) : f ≲ₙ h :=
+  h₁.trans h₂.asympLE
+
+/-- Finite sums respect `≈ₙ` (this is the additivity `thm:loe` supplies over a finite
+menu; a downstream consumer discharges its `thm:loe` hypothesis with this). -/
+theorem AsympEq.finsetSum {J : Type*} [Fintype J] {f g : J → ℕ → ℝ}
+    (h : ∀ j, f j ≈ₙ g j) : (fun n => ∑ j, f j n) ≈ₙ (fun n => ∑ j, g j n) := by
+  have key : Tendsto (fun n => ∑ j, (f j n - g j n)) atTop (𝓝 (∑ _j : J, (0 : ℝ))) :=
+    tendsto_finset_sum _ (fun j _ => h j)
+  simpa [AsympEq, Finset.sum_sub_distrib] using key
+
 theorem asympEq_iff_asympLE_asympGE {f g : ℕ → ℝ} :
     f ≈ₙ g ↔ f ≲ₙ g ∧ f ≳ₙ g := by
   refine ⟨fun h => ⟨h.asympLE, h.asympGE⟩, fun ⟨h₁, h₂⟩ => ?_⟩

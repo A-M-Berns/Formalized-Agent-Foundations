@@ -18,3 +18,4 @@ import LogicalInduction.Criterion
 import LogicalInduction.Engine
 import LogicalInduction.Properties
 import LogicalInduction.Construction
+import LogicalInduction.IntegrationTest
