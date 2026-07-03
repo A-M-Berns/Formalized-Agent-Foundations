@@ -17,8 +17,10 @@ lean_lib LogicalInduction where
 lean_lib Scratchpad where
   srcDir := "."
 
--- Fork of FormalizedFormalLogic/Foundation @ 83d98a36 with one patch: `Matrix.map`
--- renamed to `Matrix.vecMap` so Foundation co-imports with Mathlib matrix/analysis
--- theory (Bochner integration, finite-dim analysis). See PROGRESS.md, OPEN RISK 1.
+-- Fork of FormalizedFormalLogic/Foundation @ 83d98a36 with one patch class: three
+-- `Matrix.*` decls that shadow Mathlib names (`map`, `forall_iff`, `exists_iff`) renamed
+-- (`vecMap`, `vecForall_iff`, `vecExists_iff`) so Foundation co-imports with Mathlib
+-- matrix/analysis theory (Bochner integration; EuclideanSpace via InnerProductSpace.PiL2,
+-- needed by the Brouwer construction). Upstreamed as PR #835. See PROGRESS.md, OPEN RISK 1.
 require Foundation from git
-  "https://github.com/A-M-Berns/Foundation" @ "0939b51dd9d57b40b1f4048271e5cf7736a9e8de"
+  "https://github.com/A-M-Berns/Foundation" @ "aada66ef517064ce4fe025bb6c9072dacdf83991"
