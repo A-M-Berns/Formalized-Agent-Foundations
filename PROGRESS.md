@@ -32,8 +32,8 @@ available), which sidesteps Mathlib's `errorOnBuild` guard. Re-run if it recurs.
 | M | Scope | Status |
 |---|---|---|
 | M0 | Project stands up; namespace/file scaffold; substrate verified | **done** (pending Anson's statement read-through) — scaffold, `Scratchpad`, `Asymptotics` content all green |
-| M1 | `def:tf` keystone + `def:lang` + criterion defs | **done** (pending Anson's statement read-through) — keystone + all Part-I criterion defs stated & green; one **provisional type-`(c)`** in `EfficientlyComputable` flagged for M2 |
-| M2 | Engine + one e.c.-certified exploiting trader, end-to-end | not started |
+| M1 | `def:tf` keystone + `def:lang` + criterion defs | **done** (pending Anson's statement read-through) — keystone + all Part-I criterion defs stated & green; one **provisional type-`(c)`** in `EfficientlyComputable` |
+| M2 | Engine + one e.c.-certified exploiting trader, end-to-end | **done** (pending read-through) — the loop is wired **completely and with no `sorry`**: real trader, e.c. discharged via `EF.cost`, exploitation proved, criterion invoked. Engine `def:tradermag`/`def:roi` defined. **Caveat (recalibrated):** M2 did *not* fix the poly-size↔poly-time fidelity of `EfficientlyComputable` — see OPEN RISK 3 |
 | M3–M7 | see roadmap | not started |
 
 Out-of-sequence bonus: `brouwer_fixed_point` (the M6 gate) is already **proved**, not
@@ -56,6 +56,12 @@ axiomatized — see the ledger row and OPEN RISK 2 below.
 | `def:exploitation` (non-vac) | `Trader.zero_not_exploits` | done | **N+** | do-nothing trader (netWorth ≡ 0) does not exploit → `Exploits` is refutable, criterion non-vacuous |
 | `def:ec` | `EfficientlyComputable` | done | **T / provisional** | ⚠ **type-`(c)`, flagged for M2:** poly bound on `Strategy.cost` (poly *size*), NOT the paper's poly *runtime* (`dd:fuel` clocked interpreter). Broader than paper ⇒ `IsLogicalInductor` stronger than paper. Reconcile at M2 |
 | **`def:lic`** | `IsLogicalInductor` (class over `P`, `DP`) | done | Def | "no e.c. trader exploits `P`". The property-tail hypothesis. Meaningfulness rests on the provisional `EfficientlyComputable` above |
+| `def:trader` (M2) | `buyDaily` (buys 1 share of `φ`/day) | done | **C** | the **constructed** exploiting trader for the base case of `thm:provind`. Real EF (`[(const 1, φ)]`), not a stub |
+| `def:ec` (M2 cert) | `buyDaily_ec` via `buyDaily_cost` | done | **P** | e.c. **discharged through `EF.cost`**: strategy cost `= 3` ∀n ⇒ poly. The load-bearing M2 step, done for real |
+| `def:exploitation` (M2) | `buyDaily_exploits` | done | **P** | full proof: BddBelow (net worth ≥ 0 in every plausible world) ∧ ¬BddAbove (≥ (m+1)ε → ∞). No `sorry`; `#print axioms` = the 3 standard only |
+| `thm:provind` (base case) | `lic_deducible_price_near_one` | done | **C** | the loop closed against `def:lic`: under `[IsLogicalInductor]`, an always-deducible `φ` has `1−ε < Pₙφ` for some n, ∀ε>0. **Special case** (always-deducible, uniformly underpriced); general `thm:provind` is M3 |
+| `def:tradermag` | `Strategy.magnitude`, `Trader.magnitude`, `abs_value_le_magnitude` | done | Def+P | magnitude + the `\|value\| ≤ magnitude` bound proved (needs `[0,1]` prices + `{0,1}` world) |
+| `def:roi` | `HasROI` | done | Def | ε-ROI predicate over `ConvergesTo` (`dd:asymp`). The ROI⇒exploitation **lemma** is M4 |
 | **`def:tf`** | `EF` (inductive), `EF.denote`, `EF.cost`, `EF.rank` (`Criterion.lean`) | done | Def | keystone DSL: price/const/add/mul/max/safeRecip. `denote` noncomputable (ℝ inv); `cost` = structural node count — **disclosed `dd:fuel` deferral:** precise unary day/code charging tying `cost` to poly-runtime is M2, when the trader e.c. cert first consumes it |
 | `def:tf` (continuity) | `EF.continuous_denote` | done | **P** | continuity **proved** for the whole DSL (not left as a stated constraint), by induction; safeRecip via `max 1 · ≥ 1 > 0`. Hyps `(b)` (Mathlib `continuous_apply`/`Continuous.{add,mul,max,inv₀}`). This is what breaks the price/trade circularity for Brouwer |
 | `def:tf` (ring) | `EF.ExpressibleRankLE`/`EFn`, `CommRing (EFn n)` | done | **P** | `𝔼_n` realized as a **`Subring` of `History → ℝ`** (features are functions): carrier `{denote e \| rank e ≤ n}`, closure under `+,×,neg` proved; `CommRing` inherited. Faithful to the paper's "𝔼_n is a commutative ring" `(b)` |
@@ -97,6 +103,24 @@ axiomatized — see the ledger row and OPEN RISK 2 below.
   full provenance and trust-surface accounting. M6 is no longer gated. Upstreaming the
   proof to Mathlib is still desirable (and would let us delete the 1300-line vendored
   proof) but is now optional, not blocking.
+
+- **⚠ OPEN RISK 3 — `EfficientlyComputable` fidelity (poly-size vs poly-time) — NOT closed
+  by M2.** I earlier implied M2 would reconcile this; that was over-stated, and here is the
+  honest position. `EfficientlyComputable` is a polynomial bound on `Strategy.cost`
+  (description *size*). The paper's `def:ec` is polynomial *runtime* via a clocked
+  interpreter (`dd:fuel`). Size is necessary but not sufficient for poly-time — worse, a
+  poly-size *sequence* need not even be computable — so our predicate is strictly *broader*
+  than the paper's, making `IsLogicalInductor` strictly *stronger*. Consequences: (a) it is
+  harmless for M2/M3 property proofs — their traders are genuinely poly-time, so they sit
+  in both classes (M2's `buyDaily` has constant cost); (b) it is **potentially fatal at M7**
+  — the construction must satisfy this *stronger* criterion, which the paper only proves
+  for poly-time traders. What M2 *did* deliver: the `EF.cost` **certification mechanism**,
+  exercised for real on a constructed trader. What remains: replacing the predicate with a
+  genuine computability-plus-clock notion (needs Mathlib's computability layer / a
+  `Primcodable` encoding of strategies — its own effort). **Decision needed from Anson:**
+  tackle the faithful e.c. model now, or proceed through the (conditional) property tail
+  and confront it before M7. Until resolved, every `[IsLogicalInductor]` result inherits
+  this caveat.
 
 ## Decisions log
 
