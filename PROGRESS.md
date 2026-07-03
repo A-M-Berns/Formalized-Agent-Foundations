@@ -32,7 +32,7 @@ available), which sidesteps Mathlib's `errorOnBuild` guard. Re-run if it recurs.
 | M | Scope | Status |
 |---|---|---|
 | M0 | Project stands up; namespace/file scaffold; substrate verified | **done** (pending Anson's statement read-through) — scaffold, `Scratchpad`, `Asymptotics` content all green |
-| M1 | `def:tf` keystone + `def:lang` + criterion defs | **in progress** — `def:tf` keystone + `def:lang` substrate done (below); `World`/`Trader`/`Exploits`/`IsLogicalInductor` still TODO |
+| M1 | `def:tf` keystone + `def:lang` + criterion defs | **done** (pending Anson's statement read-through) — keystone + all Part-I criterion defs stated & green; one **provisional type-`(c)`** in `EfficientlyComputable` flagged for M2 |
 | M2 | Engine + one e.c.-certified exploiting trader, end-to-end | not started |
 | M3–M7 | see roadmap | not started |
 
@@ -48,7 +48,14 @@ axiomatized — see the ledger row and OPEN RISK 2 below.
 | `dd:asymp` API | `asympEq_iff_eventuallyWithin`, `AsympEq.refl/symm/trans`, `AsympEq.asympLE/asympGE`, `asympEq_iff_asympLE_asympGE`, `convergesTo_iff_asympEq_const` | done | P | all hypotheses `(b)` (Mathlib: `Metric.tendsto_atTop`, `tendsto_sub_nhds_zero_iff`, …); no sorries |
 | `def:lang` | `Sentence` (`Foundations.lean`) | done | Def | reducible `abbrev` over `LO.Propositional.Formula ℕ` `(b)`; `DecidableEq`+`Encodable` transfer for free (`example` witnesses in-file) |
 | `def:market` (substrate) | `Valuation`, `History` (`Foundations.lean`) | done | Def | `Valuation := Sentence → ℝ`, `History := ℕ → Valuation`. Type-`(c)` disclosures: codomain `ℝ` not `[0,1]` (constraint imposed downstream); days indexed from `0` not `ℕ⁺` (uniform convention). Full `def:market`/`def:world`/`def:pricing` structures still TODO |
-| `dd:fuel` | `EfficientlyComputable` (planned) | — | Def | fuel-clocked interpreter; **disclosed type-`(c)`** modeling of poly-time |
+| `def:world`+p.c. | `PCWorld`, `.Holds`, `.payout`, `.ConsistentWith` | done | Def | p.c. world = Foundation Boolean model (`Formula.Boolean.val` over `ℕ → Prop`) `(b)`; `payout` the `{0,1}` share value (classical `if`) |
+| `def:dedproc` | `DeductiveProcess` (`D : ℕ → Finset Sentence`, `mono`) | done | Def | type-`(c)`: computability of `D` not carried in the type (re-enters in Part IV); disclosed |
+| `def:tradestrat` | `Strategy n` (`trades`, `rank_le`), `.value`, `.cost` | done | Def | paper's canonical `(eᵢ,φᵢ)` encoding; `value = Σ eᵢ(𝓥)·(w φᵢ − 𝓥ₙ φᵢ)` |
+| `def:trader` | `Trader` (`strat`), `.netWorth`, `.plausibleAssessments` | done | Def | sequence of `n`-strategies; net worth `∑_{i≤n}` day-`i` values |
+| `def:exploitation` | `Trader.Exploits` | done | Def | `BddBelow ∧ ¬BddAbove` of plausible assessments — quantifiers per paper `(b)` |
+| `def:exploitation` (non-vac) | `Trader.zero_not_exploits` | done | **N+** | do-nothing trader (netWorth ≡ 0) does not exploit → `Exploits` is refutable, criterion non-vacuous |
+| `def:ec` | `EfficientlyComputable` | done | **T / provisional** | ⚠ **type-`(c)`, flagged for M2:** poly bound on `Strategy.cost` (poly *size*), NOT the paper's poly *runtime* (`dd:fuel` clocked interpreter). Broader than paper ⇒ `IsLogicalInductor` stronger than paper. Reconcile at M2 |
+| **`def:lic`** | `IsLogicalInductor` (class over `P`, `DP`) | done | Def | "no e.c. trader exploits `P`". The property-tail hypothesis. Meaningfulness rests on the provisional `EfficientlyComputable` above |
 | **`def:tf`** | `EF` (inductive), `EF.denote`, `EF.cost`, `EF.rank` (`Criterion.lean`) | done | Def | keystone DSL: price/const/add/mul/max/safeRecip. `denote` noncomputable (ℝ inv); `cost` = structural node count — **disclosed `dd:fuel` deferral:** precise unary day/code charging tying `cost` to poly-runtime is M2, when the trader e.c. cert first consumes it |
 | `def:tf` (continuity) | `EF.continuous_denote` | done | **P** | continuity **proved** for the whole DSL (not left as a stated constraint), by induction; safeRecip via `max 1 · ≥ 1 > 0`. Hyps `(b)` (Mathlib `continuous_apply`/`Continuous.{add,mul,max,inv₀}`). This is what breaks the price/trade circularity for Brouwer |
 | `def:tf` (ring) | `EF.ExpressibleRankLE`/`EFn`, `CommRing (EFn n)` | done | **P** | `𝔼_n` realized as a **`Subring` of `History → ℝ`** (features are functions): carrier `{denote e \| rank e ≤ n}`, closure under `+,×,neg` proved; `CommRing` inherited. Faithful to the paper's "𝔼_n is a commutative ring" `(b)` |
@@ -109,6 +116,16 @@ axiomatized — see the ledger row and OPEN RISK 2 below.
   Continuity is *proved*, not just stated (the roadmap allowed `sorry`); it was cheap and
   it strengthens the Brouwer hand-off. (4) `cost` = structural node count for now; the
   precise `dd:fuel` unary charging is deferred to M2 where the e.c. cert first needs it.
+- **`def:lic` criterion definitions** (M1): worlds modeled as Foundation Boolean models
+  (`PCWorld := ℕ → Prop` read through `Formula.Boolean.val`), so propositional consistency
+  is free and faithful rather than hand-rolled over Foundation's connectives. Strategies use
+  the paper's canonical `(eᵢ,φᵢ)`-list encoding. **The one load-bearing debt is
+  `EfficientlyComputable`** — a provisional poly-*size* bound standing in for the paper's
+  poly-*runtime* `def:ec`; it is *broader* than the paper's notion (so `IsLogicalInductor`
+  is *stronger*), which is the single most important thing to get right in M2 before any
+  property proof leans on it. Flagged loudly in the def's docstring and the ledger. This is
+  a **surfaced friction**, not a silent shortcut: M2 exists precisely to wire `EF.cost`
+  through a genuine efficiency notion end-to-end.
 - **Extended the Foundation fork to the full clash set** (M1): the `Matrix.map` rename
   (M0) was one of three colliders; `forall_iff`/`exists_iff` surfaced when the roll-up
   first co-imported Foundation with the Brouwer file. Chose to fix the root cause now

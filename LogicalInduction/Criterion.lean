@@ -29,6 +29,9 @@ import LogicalInduction.Foundations
 import Mathlib.Topology.Algebra.GroupWithZero
 import Mathlib.Topology.Order.OrderClosed
 import Mathlib.Algebra.Ring.Subring.Basic
+import Mathlib.Algebra.BigOperators.Group.Finset.Basic
+import Mathlib.Order.Bounds.Basic
+import Foundation.Propositional.Boolean.Basic
 
 namespace LogicalInduction
 
@@ -192,5 +195,157 @@ example (a : EF) (V : History) :
   · rw [inv_le_one_iff₀]; right; exact h1
 
 end EF
+
+/-! ## `def:world` + Propositional Consistency
+
+A world (`def:world`) is a truth assignment `Sentence → 𝔹`. The only worlds the criterion
+quantifies over are the **propositionally consistent** ones (`def:pc`): those determined by
+Boolean algebra from an assignment to prime sentences. Rather than re-derive Boolean
+recursion over Foundation's connectives, we take a p.c. world to *be* a Foundation Boolean
+model — an atom valuation `ℕ → Prop` read through `Formula.Boolean.val` — which is exactly
+"determined by Boolean algebra from the atoms". Provenance `(b)`. -/
+
+/-- A propositionally consistent world (`def:world` + p.c.): an assignment to the atoms,
+whose truth value on a compound sentence is fixed by Foundation's classical Boolean
+semantics. -/
+def PCWorld : Type := LO.Propositional.Boolean.Valuation ℕ
+
+namespace PCWorld
+
+open Classical
+
+/-- Whether `φ` is true in the p.c. world `v` (Foundation's Boolean evaluation). -/
+def Holds (v : PCWorld) (φ : Sentence) : Prop :=
+  LO.Propositional.Formula.Boolean.val v φ
+
+/-- The truth value of `φ` in `v` as a real number in `{0, 1}` — the payout of a
+`φ`-share in world `v`. Used to value a trader's holdings. -/
+noncomputable def payout (v : PCWorld) (φ : Sentence) : ℝ :=
+  if v.Holds φ then 1 else 0
+
+/-- `v` is propositionally consistent **with** a finite set `D` (`v ∈ pcworlds(D)`): it
+makes every sentence in `D` true. (Consistency itself is automatic — `v` is a Boolean
+model.) -/
+def ConsistentWith (v : PCWorld) (D : Finset Sentence) : Prop :=
+  ∀ φ ∈ D, v.Holds φ
+
+end PCWorld
+
+/-! ## `def:dedproc` — Deductive Process -/
+
+/-- `def:dedproc`. A nested sequence `D 0 ⊆ D 1 ⊆ ⋯` of finite sets of sentences,
+interpreted as the theorems revealed by day `n`.
+
+Modeling note (disclosed type-`(c)`): the paper additionally requires `D` to be
+*computable*. We do not carry a computability witness in the type; the criterion's
+statement quantifies over traders, not over `D`, so it is unaffected, and computability of
+`D` re-enters only in the construction (Part IV). -/
+structure DeductiveProcess where
+  /-- The sentences revealed by day `n`. -/
+  D : ℕ → Finset Sentence
+  /-- The revealed sets are nondecreasing. -/
+  mono : ∀ n, D n ⊆ D (n + 1)
+
+/-! ## `def:tradestrat`, `def:trader` — Trading strategies and traders
+
+An `n`-strategy (`def:tradestrat`) is the paper's canonical encoding: a finite list of
+`(coefficient, sentence)` pairs `(eᵢ, φᵢ)` with each `eᵢ` an expressible feature of rank
+`≤ n`. It denotes `∑ᵢ eᵢ · (φᵢ − φᵢ*ⁿ)` — "buy `eᵢ(𝓥)` shares of `φᵢ` at the day-`n`
+price", the cash term being determined by the pairs. -/
+
+/-- `def:tradestrat`. A trading strategy for day `n`. -/
+structure Strategy (n : ℕ) where
+  /-- The `(expressible-feature coefficient, sentence)` pairs `(eᵢ, φᵢ)`. -/
+  trades : List (EF × Sentence)
+  /-- Every coefficient has rank `≤ n` (the strategy sees only prices up to day `n`). -/
+  rank_le : ∀ p ∈ trades, p.1.rank ≤ n
+
+namespace Strategy
+
+/-- The value of an `n`-strategy against a history `𝓥`, as assessed by a world with payout
+`w` (`w φ ∈ {0,1}`): `∑ᵢ eᵢ(𝓥) · (w φᵢ − 𝓥ₙ(φᵢ))`. Each summand is "shares bought times
+(world payout − price paid at day `n`)". -/
+noncomputable def value {n : ℕ} (T : Strategy n) (V : History) (w : Sentence → ℝ) : ℝ :=
+  (T.trades.map (fun p => p.1.denote V * (w p.2 - V n p.2))).sum
+
+/-- Syntactic size of a strategy, summing its coefficients' `EF.cost`. Feeds the
+efficient-computability bound (`dd:fuel`). -/
+def cost {n : ℕ} (T : Strategy n) : ℕ :=
+  (T.trades.map (fun p => p.1.cost)).sum + T.trades.length + 1
+
+end Strategy
+
+/-- `def:trader`. A sequence of trading strategies, one per day. -/
+structure Trader where
+  /-- The strategy the trader plays on day `n`. -/
+  strat : (n : ℕ) → Strategy n
+
+namespace Trader
+
+/-- The trader's net worth after day `n`, assessed by the p.c. world `v`:
+`∑_{i ≤ n} vᵢ(𝓥)` — the sum of its day-`i` strategy values, priced at each day `i`. -/
+noncomputable def netWorth (Tr : Trader) (V : History) (v : PCWorld) (n : ℕ) : ℝ :=
+  ∑ i ∈ Finset.range (n + 1), (Tr.strat i).value V v.payout
+
+/-- The set of **plausible assessments** of `Tr`'s net worth against history `𝓥`: its net
+worth on day `n`, as valued by any world propositionally consistent with `D n`, over all
+`n` (`def:exploitation`). -/
+def plausibleAssessments (Tr : Trader) (V : History) (DP : DeductiveProcess) : Set ℝ :=
+  { x | ∃ (n : ℕ) (v : PCWorld), v.ConsistentWith (DP.D n) ∧ x = Tr.netWorth V v n }
+
+/-- `def:exploitation`. `Tr` **exploits** the history `𝓥` relative to `DP` if its plausible
+assessments are bounded below but not bounded above — unbounded upside off bounded
+downside. -/
+def Exploits (Tr : Trader) (V : History) (DP : DeductiveProcess) : Prop :=
+  BddBelow (Tr.plausibleAssessments V DP) ∧ ¬ BddAbove (Tr.plausibleAssessments V DP)
+
+end Trader
+
+/-! ## `def:ec`, `def:lic` — Efficient computability and the Logical Induction Criterion -/
+
+/-- `def:ec` (`dd:fuel`), **PROVISIONAL**. Efficient computability of a trader, modeled as a
+polynomial bound on the total `EF.cost` of its day-`n` strategy.
+
+⚠ Disclosed type-`(c)`, and a flagged open question for M2: this bounds the trader's poly
+*description size*, whereas the paper's `def:ec` is poly *runtime* (the clocked-interpreter
+enumeration of `dd:fuel`). Size is necessary but not sufficient for poly-time, so this
+predicate is *broader* than the paper's — which makes `IsLogicalInductor` correspondingly
+*stronger*. Reconciling the two (either a genuine clocked model, or a justification that the
+gap is harmless for the properties in scope) is the **M2 deliverable**; until then every
+`IsLogicalInductor` hypothesis carries this caveat. -/
+def EfficientlyComputable (Tr : Trader) : Prop :=
+  ∃ c k : ℕ, ∀ n, (Tr.strat n).cost ≤ c * (n + 1) ^ k + c
+
+/-- `def:lic`. The market `P` satisfies the **Logical Induction Criterion** relative to
+`DP` if no efficiently computable trader exploits it. This is the hypothesis the entire
+property tail is conditioned on (`[IsLogicalInductor P DP]`).
+
+Its meaningfulness rests on `EfficientlyComputable` being the right notion — see the
+provisional-`(c)` caveat there. -/
+class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
+  /-- No efficiently computable trader exploits `P`. -/
+  noExploit : ∀ Tr : Trader, EfficientlyComputable Tr → ¬ Tr.Exploits P DP
+
+/-! ### Sanity / non-vacuity for the criterion machinery.
+
+`Exploits` must be a genuinely refutable condition, not vacuously true — otherwise `def:lic`
+would be empty. The do-nothing trader witnesses this: it never trades, so its net worth is
+identically `0`, its plausible assessments lie in `{0}`, and it does **not** exploit. -/
+
+/-- The trader that never trades. -/
+def Trader.zero : Trader := ⟨fun _ => ⟨[], by simp⟩⟩
+
+@[simp] theorem Trader.zero_netWorth (V : History) (v : PCWorld) (n : ℕ) :
+    Trader.zero.netWorth V v n = 0 := by
+  simp [Trader.netWorth, Trader.zero, Strategy.value]
+
+/-- The do-nothing trader exploits nothing: `Exploits` is refutable, so the criterion is
+not vacuous. (It is also efficiently computable — its cost is the constant `1`.) -/
+theorem Trader.zero_not_exploits (V : History) (DP : DeductiveProcess) :
+    ¬ Trader.zero.Exploits V DP := by
+  rintro ⟨_, hnab⟩
+  refine hnab ⟨0, ?_⟩
+  rintro x ⟨n, v, _, rfl⟩
+  simp
 
 end LogicalInduction
