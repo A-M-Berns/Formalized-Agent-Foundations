@@ -52,9 +52,13 @@ demonstrated with zero gaps. The general `thm:provind` (eventually deducible, `�
 M3 work; it reuses this exact loop with a heavier accumulation argument.
 -/
 import LogicalInduction.Criterion
+import LogicalInduction.Asymptotics
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
+import Mathlib.Order.Filter.AtTopBot.Basic
 
 namespace LogicalInduction
+
+open Filter Topology
 
 /-! ### The exploiting trader (`def:trader`, constructed — not stubbed) -/
 
@@ -141,5 +145,91 @@ theorem lic_deducible_price_near_one (P : History) (DP : DeductiveProcess)
   by_contra h
   push_neg at h
   exact hLI.noExploit (buyDaily φ) (buyDaily_ec φ) (buyDaily_exploits P DP φ ε hε hded h hcons)
+
+/-! ## M3 — Provability Induction in the limit (fixed sentence), via accumulation
+
+The base case above assumed *uniform* underpricing and concluded only that the price rises
+above `1 − ε` *once*. The genuine `thm:provind` conclusion is the **limit** statement
+`Pₙ(φ) → 1`. For a *fixed* always-deducible `φ` we obtain it from the **same constant
+`buyDaily` trader** — no new construction, no new e.c. proof — by a stronger analysis: if
+the price dips below `1 − ε` *infinitely often*, then buying one share a day accumulates
+profit `≥ ε` on each of infinitely many days, so the net worth is unbounded. (The
+*responsive* `max(0,·)` trader and its harder efficient-computability proof are only needed
+for the **sequence** form of `thm:provind` — an `𝓔𝓒`-sequence `φₙ` — which is deferred; see
+the milestone notes.) -/
+
+/-- Exploitation under *infinitely-often* underpricing (the accumulation argument). With
+prices bounded by `1`, every plausible assessment is `≥ 0` (bounded below); and along the
+subsequence of underpriced days the net worth grows without bound. -/
+theorem buyDaily_exploits_freq (P : History) (DP : DeductiveProcess) (φ : Sentence) (ε : ℝ)
+    (hε : 0 < ε) (hded : ∀ n, φ ∈ DP.D n) (hP1 : ∀ n, P n φ ≤ 1)
+    (hfreq : ∃ᶠ n in atTop, P n φ ≤ 1 - ε)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    (buyDaily φ).Exploits P DP := by
+  have hpay : ∀ (m : ℕ) (v : PCWorld), v.ConsistentWith (DP.D m) → v.payout φ = 1 :=
+    fun m v hv => by rw [PCWorld.payout, if_pos (hv φ (hded m))]
+  refine ⟨⟨0, ?_⟩, ?_⟩
+  · -- bounded below by 0: each term `1 − Pᵢ φ ≥ 0` since `Pᵢ φ ≤ 1`.
+    rintro x ⟨m, v, hv, rfl⟩
+    rw [buyDaily_netWorth]
+    refine Finset.sum_nonneg (fun i _ => ?_)
+    rw [hpay m v hv]; have := hP1 i; linarith
+  · -- unbounded above: extract the underpriced subsequence and accumulate.
+    rintro ⟨B, hB⟩
+    obtain ⟨g, hg_mono, hg⟩ := extraction_of_frequently_atTop hfreq
+    obtain ⟨M, hM⟩ := exists_nat_gt (B / ε)
+    obtain ⟨v, hv⟩ := hcons (g M)
+    -- the day-`g M` assessment is `≥ (M+1)·ε`.
+    have hsub : (Finset.range (M + 1)).image g ⊆ Finset.range (g M + 1) := by
+      intro i hi
+      simp only [Finset.mem_image, Finset.mem_range] at hi
+      obtain ⟨k, hk, rfl⟩ := hi
+      exact Finset.mem_range.mpr (by have := hg_mono.monotone (Nat.lt_succ_iff.mp hk); omega)
+    have hge : (M + 1 : ℝ) * ε ≤ (buyDaily φ).netWorth P v (g M) := by
+      rw [buyDaily_netWorth, hpay (g M) v hv]
+      calc (M + 1 : ℝ) * ε
+          = ∑ _k ∈ Finset.range (M + 1), ε := by
+            rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]; push_cast; ring
+        _ ≤ ∑ k ∈ Finset.range (M + 1), (1 - P (g k) φ) :=
+            Finset.sum_le_sum (fun k _ => by have := hg k; linarith)
+        _ = ∑ i ∈ (Finset.range (M + 1)).image g, (1 - P i φ) := by
+            rw [Finset.sum_image (hg_mono.injective.injOn)]
+        _ ≤ ∑ i ∈ Finset.range (g M + 1), (1 - P i φ) :=
+            Finset.sum_le_sum_of_subset_of_nonneg hsub
+              (fun i _ _ => by have := hP1 i; linarith)
+    have hmem : (buyDaily φ).netWorth P v (g M) ∈ (buyDaily φ).plausibleAssessments P DP :=
+      ⟨g M, v, hv, rfl⟩
+    have hBm : B < (M + 1 : ℝ) * ε := by
+      rw [div_lt_iff₀ hε] at hM; nlinarith
+    exact absurd (le_trans hge (hB hmem)) (by linarith)
+
+/-- **Provability Induction, limiting form, for a fixed sentence** (`thm:provind`): under a
+logical inductor, an always-deducible `φ` with prices in `(-∞, 1]` has `Pₙ(φ)` eventually
+within any `ε` of `1`. This is the criterion output — `¬(underpriced infinitely often)`. -/
+theorem lic_deducible_eventually_ge (P : History) (DP : DeductiveProcess)
+    [hLI : IsLogicalInductor P DP] (φ : Sentence) (hded : ∀ n, φ ∈ DP.D n)
+    (hP1 : ∀ n, P n φ ≤ 1) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (ε : ℝ) (hε : 0 < ε) :
+    ∀ᶠ n in atTop, 1 - ε < P n φ := by
+  by_contra h
+  rw [not_eventually] at h
+  simp only [not_lt] at h
+  exact hLI.noExploit (buyDaily φ) (buyDaily_ec φ)
+    (buyDaily_exploits_freq P DP φ ε hε hded hP1 h hcons)
+
+/-- **Provability Induction, convergence form** (`thm:provind`): the price of an
+always-deducible sentence converges to `1`. Packages `lic_deducible_eventually_ge` with the
+upper bound `Pₙ(φ) ≤ 1` into `ConvergesTo` (`dd:asymp`). -/
+theorem lic_deducible_tendsto_one (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP] (φ : Sentence) (hded : ∀ n, φ ∈ DP.D n)
+    (hP1 : ∀ n, P n φ ≤ 1) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    ConvergesTo (fun n => P n φ) 1 := by
+  refine Metric.tendsto_atTop.mpr (fun ε hε => ?_)
+  obtain ⟨N, hN⟩ := eventually_atTop.mp (lic_deducible_eventually_ge P DP φ hded hP1 hcons ε hε)
+  refine ⟨N, fun n hn => ?_⟩
+  rw [Real.dist_eq, abs_lt]
+  have h1 := hN n hn
+  have h2 := hP1 n
+  constructor <;> linarith
 
 end LogicalInduction
