@@ -74,16 +74,19 @@ theorem buyDaily_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) 
     (buyDaily φ).netWorth V v m = ∑ i ∈ Finset.range (m + 1), (v.payout φ - V i φ) := by
   simp [Trader.netWorth]
 
-/-! ### Efficient computability, discharged through `EF.cost` (no stub)
+/-! ### Efficient computability, via the clocked interpreter (no stub)
 
-The day-`n` strategy is the constant `[(const 1, φ)]`, so its `EF.cost` is the constant
-`3`, independent of `n`. That is a genuine `EF.cost` computation certifying the trader is
-efficiently computable — the load-bearing step M2 exists to demonstrate for real. -/
-theorem buyDaily_cost (φ : Sentence) (n : ℕ) : ((buyDaily φ).strat n).cost = 3 := by
-  simp [buyDaily, Strategy.cost, EF.cost]
-
-theorem buyDaily_ec (φ : Sentence) : EfficientlyComputable (buyDaily φ) :=
-  ⟨3, 0, fun n => by rw [buyDaily_cost]; norm_num⟩
+The day-`n` strategy is the same constant list `[(const 1, φ)]` for every `n`, so the
+program that computes it is `Code.const K`, where `K` is that list's code. It halts within
+`n + K + 1` fuel (`evaln_const_self`), which is affine in `n`, hence within the polynomial
+budget the faithful `EfficientlyComputable` requires. This certifies e.c. through the
+genuine `dd:fuel` model — a single program producing the strategies under a poly clock. -/
+theorem buyDaily_ec (φ : Sentence) : EfficientlyComputable (buyDaily φ) := by
+  refine ⟨Nat.Partrec.Code.const (Encodable.encode ([(EF.const 1, φ)] : List (EF × Sentence))),
+          Encodable.encode ([(EF.const 1, φ)] : List (EF × Sentence)) + 1, 1, fun n => ?_⟩
+  have hs : ((buyDaily φ).strat n).trades = [(EF.const 1, φ)] := rfl
+  rw [hs]
+  exact Nat.Partrec.Code.evaln_mono (by simp only [pow_one]; nlinarith) (evaln_const_self _ n)
 
 /-! ### The exploitation (`def:exploitation`, proved in full) -/
 

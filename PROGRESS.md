@@ -33,7 +33,7 @@ available), which sidesteps Mathlib's `errorOnBuild` guard. Re-run if it recurs.
 |---|---|---|
 | M0 | Project stands up; namespace/file scaffold; substrate verified | **done** (pending Anson's statement read-through) — scaffold, `Scratchpad`, `Asymptotics` content all green |
 | M1 | `def:tf` keystone + `def:lang` + criterion defs | **done** (pending Anson's statement read-through) — keystone + all Part-I criterion defs stated & green; one **provisional type-`(c)`** in `EfficientlyComputable` |
-| M2 | Engine + one e.c.-certified exploiting trader, end-to-end | **done** (pending read-through) — the loop is wired **completely and with no `sorry`**: real trader, e.c. discharged via `EF.cost`, exploitation proved, criterion invoked. Engine `def:tradermag`/`def:roi` defined. **Caveat (recalibrated):** M2 did *not* fix the poly-size↔poly-time fidelity of `EfficientlyComputable` — see OPEN RISK 3 |
+| M2 | Engine + one e.c.-certified exploiting trader, end-to-end | **done** (pending read-through) — the loop is wired **completely and with no `sorry`**: real trader, e.c. discharged via the faithful clocked-interpreter model, exploitation proved, criterion invoked. Engine `def:tradermag`/`def:roi` defined. **`EfficientlyComputable` reconciled to the paper's poly-time `def:ec`** (OPEN RISK 3 resolved) |
 | M3–M7 | see roadmap | not started |
 
 Out-of-sequence bonus: `brouwer_fixed_point` (the M6 gate) is already **proved**, not
@@ -54,7 +54,9 @@ axiomatized — see the ledger row and OPEN RISK 2 below.
 | `def:trader` | `Trader` (`strat`), `.netWorth`, `.plausibleAssessments` | done | Def | sequence of `n`-strategies; net worth `∑_{i≤n}` day-`i` values |
 | `def:exploitation` | `Trader.Exploits` | done | Def | `BddBelow ∧ ¬BddAbove` of plausible assessments — quantifiers per paper `(b)` |
 | `def:exploitation` (non-vac) | `Trader.zero_not_exploits` | done | **N+** | do-nothing trader (netWorth ≡ 0) does not exploit → `Exploits` is refutable, criterion non-vacuous |
-| `def:ec` | `EfficientlyComputable` | done | **T / provisional** | ⚠ **type-`(c)`, flagged for M2:** poly bound on `Strategy.cost` (poly *size*), NOT the paper's poly *runtime* (`dd:fuel` clocked interpreter). Broader than paper ⇒ `IsLogicalInductor` stronger than paper. Reconcile at M2 |
+| `def:lang` (codes) | `EF.toNat`/`ofNatAux`/`ofNat`, `Encodable EF` | done | **P** | hand-built **computable** encoding (no `deriving`): structural `toNat`, fuel-clocked structural `ofNat`, round-trip `ofNat_toNat`. Axioms clean. Enables encoding strategies for `def:ec` |
+| `def:ec` (tool) | `evaln_const_self` | done | **P** | `K ∈ evaln (n+K+1) (Code.const K) n` — fuel bound for constant-strategy traders |
+| `def:ec` | `EfficientlyComputable` | done | **Def, faithful** | ✅ **reconciled (was type-`(c)`):** `∃ code, poly, ∀n, evaln (poly n) code n = some (encode strat)` — the paper's poly-*runtime* `def:ec` via `Nat.Partrec.Code` + `evaln` (`dd:fuel`). No longer broader than paper; `IsLogicalInductor` now matches. See OPEN RISK 3 (resolved) |
 | **`def:lic`** | `IsLogicalInductor` (class over `P`, `DP`) | done | Def | "no e.c. trader exploits `P`". The property-tail hypothesis. Meaningfulness rests on the provisional `EfficientlyComputable` above |
 | `def:trader` (M2) | `buyDaily` (buys 1 share of `φ`/day) | done | **C** | the **constructed** exploiting trader for the base case of `thm:provind`. Real EF (`[(const 1, φ)]`), not a stub |
 | `def:ec` (M2 cert) | `buyDaily_ec` via `buyDaily_cost` | done | **P** | e.c. **discharged through `EF.cost`**: strategy cost `= 3` ∀n ⇒ poly. The load-bearing M2 step, done for real |
@@ -104,24 +106,29 @@ axiomatized — see the ledger row and OPEN RISK 2 below.
   proof to Mathlib is still desirable (and would let us delete the 1300-line vendored
   proof) but is now optional, not blocking.
 
-- **⚠ OPEN RISK 3 — `EfficientlyComputable` fidelity (poly-size vs poly-time) — NOT closed
-  by M2.** I earlier implied M2 would reconcile this; that was over-stated, and here is the
-  honest position. `EfficientlyComputable` is a polynomial bound on `Strategy.cost`
-  (description *size*). The paper's `def:ec` is polynomial *runtime* via a clocked
-  interpreter (`dd:fuel`). Size is necessary but not sufficient for poly-time — worse, a
-  poly-size *sequence* need not even be computable — so our predicate is strictly *broader*
-  than the paper's, making `IsLogicalInductor` strictly *stronger*. Consequences: (a) it is
-  harmless for M2/M3 property proofs — their traders are genuinely poly-time, so they sit
-  in both classes (M2's `buyDaily` has constant cost); (b) it is **potentially fatal at M7**
-  — the construction must satisfy this *stronger* criterion, which the paper only proves
-  for poly-time traders. What M2 *did* deliver: the `EF.cost` **certification mechanism**,
-  exercised for real on a constructed trader. What remains: replacing the predicate with a
-  genuine computability-plus-clock notion (needs Mathlib's computability layer / a
-  `Primcodable` encoding of strategies — its own effort). **Decision needed from Anson:**
-  tackle the faithful e.c. model now, or proceed through the (conditional) property tail
-  and confront it before M7. Until resolved, every `[IsLogicalInductor]` result inherits
-  this caveat.
+- **✅ OPEN RISK 3 — `EfficientlyComputable` fidelity — RESOLVED.** The provisional
+  poly-*size* stand-in has been replaced by the faithful `dd:fuel` model: a trader is e.c.
+  iff a single `Nat.Partrec.Code` program, run under the clocked interpreter `evaln` for a
+  *polynomial* fuel budget `a·(n+1)ᵏ+a`, outputs the encoded day-`n` strategy. This is the
+  paper's poly-time (unary) `def:ec` on the nose, and the e.c. class is computably
+  enumerable (over `(code, a, k)` triples) as the construction will need. It no longer
+  admits uncomputable strategy sequences, so `IsLogicalInductor` now *matches* the paper
+  rather than being strictly stronger — the M7 soundness risk is gone. Two pieces of new
+  infrastructure made this possible: a hand-built **computable** `Encodable EF` (there is no
+  `deriving Encodable`; structural `toNat` + fuel-clocked structural `ofNat` + round-trip,
+  `#print axioms` clean), and `evaln_const_self` (a `Code.const` fuel bound). M2's
+  `buyDaily_ec` was re-proved against the new definition with no `sorry` and a clean axiom
+  footprint.
 
+- **Faithful `def:ec` via `Nat.Partrec.Code.evaln`** (post-M2): chose to model efficient
+  computability directly on `dd:fuel` — Mathlib's clocked interpreter `evaln` with a
+  polynomial fuel budget — rather than keep the poly-size proxy. Required hand-building a
+  **computable** `Encodable EF` (no `deriving Encodable` exists; a classical `Countable`
+  one would give a non-computable decoder, which would not let a machine recover the
+  strategy — so it had to be genuinely computable). Used a fuel-clocked *structural*
+  decoder (`ofNatAux`) to sidestep well-founded-recursion pain (`decreasing_by` would not
+  expose the match's `m % 6 = k` condition to `omega`). This closes the one genuine
+  soundness gap in the stack.
 ## Decisions log
 
 - **Paper vendored into `notes/`** (M0 close-out): `1609.03543v5.pdf` and its LaTeX

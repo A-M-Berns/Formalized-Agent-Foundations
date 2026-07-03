@@ -9,8 +9,7 @@ hosted here (see roadmap §3, Part I):
   syntax over price features `pf φ`, `ℚ`, `+`, `×`, `max(·,·)`, safe reciprocation
   `max(1,·)⁻¹`, with two semantics:
     - `EF.denote : EF → (History → ℝ)` — continuous ℝ-valued; feeds Brouwer.
-    - `EF.cost   : EF → ℕ` — syntactic size; certifies efficient computability in the
-      construction **and in every property proof's exploiting trader**.
+    - `EF.cost   : EF → ℕ` — syntactic size; an auxiliary bound on description size.
   `EF_n` (rank ≤ `n`) is a commutative ring. The continuity of `denote` is *stated* here;
   its proof may defer.
 * `def:valfeature` → `ValuationFeature` — semantic target `EF.denote` lands in.
@@ -31,6 +30,8 @@ import Mathlib.Topology.Order.OrderClosed
 import Mathlib.Algebra.Ring.Subring.Basic
 import Mathlib.Algebra.BigOperators.Group.Finset.Basic
 import Mathlib.Order.Bounds.Basic
+import Mathlib.Computability.PartrecCode
+import Mathlib.Data.Rat.Encodable
 import Foundation.Propositional.Boolean.Basic
 
 namespace LogicalInduction
@@ -68,13 +69,10 @@ noncomputable def denote : EF → History → ℝ
   | max a b,     V => Max.max (a.denote V) (b.denote V)
   | safeRecip a, V => (Max.max 1 (a.denote V))⁻¹
 
-/-- Syntactic size (`def:tf`). Certifies efficient computability of any feature we build:
-a trader whose coefficients have bounded `cost` is e.c. This is the structural node count.
-
-Disclosed modeling note (`dd:fuel`): the *precise* unary charging that ties `cost` to a
-polynomial runtime bound — in particular charging the price-feature day index `n` and the
-sentence code length — is deferred to M2, where the exploiting-trader e.c. certification
-first consumes `cost`. The structural measure here is a lower bound on that. -/
+/-- Syntactic size of an expressible feature (`def:tf`): the structural node count. An
+auxiliary complexity measure — a small feature is cheap to write down. (Efficient
+computability itself is *not* defined via `cost`; it goes through the clocked interpreter,
+see `EfficientlyComputable`. `cost` remains a convenient bound on description size.) -/
 def cost : EF → ℕ
   | price _ _   => 1
   | const _     => 1
@@ -194,6 +192,82 @@ example (a : EF) (V : History) :
   · positivity
   · rw [inv_le_one_iff₀]; right; exact h1
 
+/-! ### `Encodable EF` — computable codes for expressible features.
+
+Efficient computability (`def:ec`) requires talking about a machine that *outputs* a
+trader's strategies, so those strategies must be encodable as naturals — with a
+**computable** decoder (a classical `Countable`-derived encoding would not let a machine
+recover the strategy). We build the encoding by hand (there is no `deriving Encodable`),
+following Mathlib's own `Nat.Partrec.Code` template: a structural `toNat` and a
+well-founded `ofNat`, each child encoded strictly smaller than its parent. -/
+
+/-- Structural encoding of an expressible feature as a natural number. Tag ∈ `0..5`
+selects the constructor; the payload packs the children via `Nat.pair`, so each child's
+code is `< 6·payload ≤` the parent's code (used for the decoder's termination). -/
+def toNat : EF → ℕ
+  | const q     => 6 * (Encodable.encode q) + 0
+  | price φ n   => 6 * (Nat.pair (Encodable.encode φ) n) + 1
+  | add a b     => 6 * (Nat.pair a.toNat b.toNat) + 2
+  | mul a b     => 6 * (Nat.pair a.toNat b.toNat) + 3
+  | max a b     => 6 * (Nat.pair a.toNat b.toNat) + 4
+  | safeRecip a => 6 * a.toNat + 5
+
+/-- Fuel-clocked decoder inverting `EF.toNat`. Structural recursion on `fuel` (no
+well-founded obligation); each child's code is strictly smaller, so `fuel = m + 1` always
+suffices (`ofNat` below). -/
+def ofNatAux : ℕ → ℕ → Option EF
+  | 0, _ => none
+  | fuel + 1, m =>
+    match m % 6 with
+    | 0 => (Encodable.decode (m / 6) : Option ℚ).map const
+    | 1 => (Encodable.decode (m / 6).unpair.1 : Option Sentence).map
+             (fun φ => price φ (m / 6).unpair.2)
+    | 2 => (ofNatAux fuel (m / 6).unpair.1).bind
+             (fun a => (ofNatAux fuel (m / 6).unpair.2).map (add a))
+    | 3 => (ofNatAux fuel (m / 6).unpair.1).bind
+             (fun a => (ofNatAux fuel (m / 6).unpair.2).map (mul a))
+    | 4 => (ofNatAux fuel (m / 6).unpair.1).bind
+             (fun a => (ofNatAux fuel (m / 6).unpair.2).map (max a))
+    | 5 => (ofNatAux fuel (m / 6)).map safeRecip
+    | _ => none
+
+/-- Decoder inverting `EF.toNat`, with fuel `m + 1` (always enough). -/
+def ofNat (m : ℕ) : Option EF := ofNatAux (m + 1) m
+
+theorem ofNatAux_toNat : ∀ (fuel : ℕ) (e : EF), e.toNat < fuel → ofNatAux fuel e.toNat = some e := by
+  intro fuel
+  induction fuel with
+  | zero => intro e he; omega
+  | succ fuel ih =>
+      intro e he
+      cases e with
+      | const q => simp [toNat, ofNatAux, Nat.mul_add_div]
+      | price φ n => simp [toNat, ofNatAux, Nat.mul_add_div, Nat.unpair_pair]
+      | add a b =>
+          simp only [toNat] at he ⊢
+          have ha : a.toNat < fuel := by have := Nat.left_le_pair a.toNat b.toNat; omega
+          have hb : b.toNat < fuel := by have := Nat.right_le_pair a.toNat b.toNat; omega
+          simp [ofNatAux, Nat.mul_add_div, Nat.unpair_pair, ih a ha, ih b hb]
+      | mul a b =>
+          simp only [toNat] at he ⊢
+          have ha : a.toNat < fuel := by have := Nat.left_le_pair a.toNat b.toNat; omega
+          have hb : b.toNat < fuel := by have := Nat.right_le_pair a.toNat b.toNat; omega
+          simp [ofNatAux, Nat.mul_add_div, Nat.unpair_pair, ih a ha, ih b hb]
+      | max a b =>
+          simp only [toNat] at he ⊢
+          have ha : a.toNat < fuel := by have := Nat.left_le_pair a.toNat b.toNat; omega
+          have hb : b.toNat < fuel := by have := Nat.right_le_pair a.toNat b.toNat; omega
+          simp [ofNatAux, Nat.mul_add_div, Nat.unpair_pair, ih a ha, ih b hb]
+      | safeRecip a =>
+          simp only [toNat] at he ⊢
+          have ha : a.toNat < fuel := by omega
+          simp [ofNatAux, Nat.mul_add_div, ih a ha]
+
+theorem ofNat_toNat (e : EF) : ofNat e.toNat = some e :=
+  ofNatAux_toNat _ e (Nat.lt_succ_self _)
+
+instance : Encodable EF := ⟨toNat, ofNat, ofNat_toNat⟩
+
 end EF
 
 /-! ## `def:world` + Propositional Consistency
@@ -303,25 +377,48 @@ end Trader
 
 /-! ## `def:ec`, `def:lic` — Efficient computability and the Logical Induction Criterion -/
 
-/-- `def:ec` (`dd:fuel`), **PROVISIONAL**. Efficient computability of a trader, modeled as a
-polynomial bound on the total `EF.cost` of its day-`n` strategy.
+/-- Fuel bound for the constant code: `Code.const K` on input `n` halts with output `K`
+within `n + K + 1` steps of the clocked interpreter. (`comp` layers share fuel in `evaln`,
+so the budget is just the input length `n` plus the `K` successor steps.) A reusable tool
+for certifying that constant-strategy traders are efficiently computable. -/
+theorem evaln_const_self : ∀ (K n : ℕ),
+    K ∈ Nat.Partrec.Code.evaln (n + K + 1) (Nat.Partrec.Code.const K) n := by
+  intro K
+  induction K with
+  | zero =>
+      intro n
+      show 0 ∈ Nat.Partrec.Code.evaln (n + 1) Nat.Partrec.Code.zero n
+      simp [Nat.Partrec.Code.evaln]
+  | succ K ih =>
+      intro n
+      have hxe : Nat.Partrec.Code.evaln (n + (K + 1) + 1) (Nat.Partrec.Code.const K) n
+          = some K := Nat.Partrec.Code.evaln_mono (by omega) (ih n)
+      show (K + 1) ∈ Nat.Partrec.Code.evaln (n + (K + 1) + 1)
+        (Nat.Partrec.Code.comp .succ (Nat.Partrec.Code.const K)) n
+      simp [Nat.Partrec.Code.evaln, hxe, Option.bind_eq_some_iff, Option.guard_eq_some']
+      omega
 
-⚠ Disclosed type-`(c)`, and a flagged open question for M2: this bounds the trader's poly
-*description size*, whereas the paper's `def:ec` is poly *runtime* (the clocked-interpreter
-enumeration of `dd:fuel`). Size is necessary but not sufficient for poly-time, so this
-predicate is *broader* than the paper's — which makes `IsLogicalInductor` correspondingly
-*stronger*. Reconciling the two (either a genuine clocked model, or a justification that the
-gap is harmless for the properties in scope) is the **M2 deliverable**; until then every
-`IsLogicalInductor` hypothesis carries this caveat. -/
+/-- `def:ec` (`dd:fuel`) — **faithful clocked model**. A trader is **efficiently
+computable** if a single program `c`, run on input `n` under the clocked interpreter
+`evaln` for a *polynomial* fuel budget `a·(n+1)ᵏ + a`, outputs the (encoded) day-`n`
+strategy.
+
+This is the paper's `def:ec` — polynomial-time (unary) computable — modeled directly on
+`dd:fuel`: `Nat.Partrec.Code` is the machine, `evaln` clips execution at the fuel budget,
+and the class of e.c. traders is computably enumerable (over `(code, a, k)` triples), which
+is exactly what the construction (Part IV) will need. It replaces the earlier provisional
+poly-*size* bound; unlike that stand-in, it does not admit uncomputable strategy sequences,
+so `IsLogicalInductor` now matches the paper rather than being strictly stronger. -/
 def EfficientlyComputable (Tr : Trader) : Prop :=
-  ∃ c k : ℕ, ∀ n, (Tr.strat n).cost ≤ c * (n + 1) ^ k + c
+  ∃ (c : Nat.Partrec.Code) (a k : ℕ),
+    ∀ n, Nat.Partrec.Code.evaln (a * (n + 1) ^ k + a) c n
+        = some (Encodable.encode (Tr.strat n).trades)
 
 /-- `def:lic`. The market `P` satisfies the **Logical Induction Criterion** relative to
 `DP` if no efficiently computable trader exploits it. This is the hypothesis the entire
-property tail is conditioned on (`[IsLogicalInductor P DP]`).
-
-Its meaningfulness rests on `EfficientlyComputable` being the right notion — see the
-provisional-`(c)` caveat there. -/
+property tail is conditioned on (`[IsLogicalInductor P DP]`). With the faithful
+`EfficientlyComputable` above (poly-time via the clocked interpreter), this is the paper's
+`def:lic` on the nose. -/
 class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
   /-- No efficiently computable trader exploits `P`. -/
   noExploit : ∀ Tr : Trader, EfficientlyComputable Tr → ¬ Tr.Exploits P DP
@@ -340,7 +437,7 @@ def Trader.zero : Trader := ⟨fun _ => ⟨[], by simp⟩⟩
   simp [Trader.netWorth, Trader.zero, Strategy.value]
 
 /-- The do-nothing trader exploits nothing: `Exploits` is refutable, so the criterion is
-not vacuous. (It is also efficiently computable — its cost is the constant `1`.) -/
+not vacuous. -/
 theorem Trader.zero_not_exploits (V : History) (DP : DeductiveProcess) :
     ¬ Trader.zero.Exploits V DP := by
   rintro ⟨_, hnab⟩
