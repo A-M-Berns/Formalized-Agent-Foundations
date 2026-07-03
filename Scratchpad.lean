@@ -9,40 +9,26 @@ NOT part of the formalization. This file exists to answer two M0 questions again
   2. What does Foundation actually give us for `def:lang` / `def:ec` — in particular, a
      *computable encoding* of propositional sentences, plus `⊢` and consistency?
 
-Findings are recorded inline and summarized in `PROGRESS.md`. Delete this file once its
-conclusions are absorbed into the real modules.
+Findings are recorded inline and summarized in `PROGRESS.md`. It is kept green as a
+standing regression guard for the substrate (see the Bochner section: the co-import it
+checks is exactly the one OPEN RISK 1 was about).
 
-⚠ HEADLINE FINDING (M0) — a scoped Foundation/Mathlib co-import conflict:
-
-  `Foundation.Vorspiel.Matrix` (line 245) defines its own `Matrix.map`
-  `(f : α → β) : (Fin k → α) → (Fin k → β)` — a *vector* map that shadows Mathlib's
-  `Matrix.map`. Both auto-generate `Matrix.map.eq_1`, so importing Foundation together
-  with any Mathlib module that materializes Mathlib's `Matrix.map.eq_1` fails with:
-    `import Foundation.Vorspiel.Matrix failed, environment already contains
-     'Matrix.map.eq_1' from Mathlib.LinearAlgebra.Matrix.InvariantBasisNumber`
-  Because `Vorspiel.Matrix` sits in Foundation's prelude (`Vorspiel.List.Basic` →
-  `Vorspiel.Matrix`), *every* Foundation module is affected.
-
-  Empirically the boundary is:
-    Foundation + filters / topology / `Analysis.SpecificLimits` / Convex / Compact /
-      ContinuousMap                                            → ✓ co-build
-    Foundation + Bochner integration (`MeasureTheory.integral`) → ✗ clash
-  i.e. the conflict spares the convergence/coherence/probability tail but bites the
-  **LUV expectation bridge (M3+)** and, almost certainly, the **finite-dimensional
-  analysis behind Brouwer (M6)**.
-
-  RECOMMENDED FIX (cheap, needs Anson's ok — it edits a pinned dep): fork the Foundation
-  pin and rename `Foundation.Vorspiel.Matrix.map` out of the `Matrix` namespace (e.g.
-  `vecMap`), fixing the `⨟` notation. There are 0 qualified `Matrix.map` usages, so this
-  is a one-file change. Do this before M3.
-
-Until then: targeted Mathlib imports only, and no Bochner alongside Foundation (below).
+✅ RESOLVED (was HEADLINE FINDING, M0): `Foundation.Vorspiel.Matrix` used to define its
+own `Matrix.map : (Fin k → α) → (Fin k → β)`, shadowing Mathlib's `Matrix.map`; both
+generated `Matrix.map.eq_1`, so Foundation could not be imported alongside any Mathlib
+module that materialized it (Bochner integration, matrix-heavy analysis). Fixed by
+pinning the fork `A-M-Berns/Foundation@0939b51`, which renames the def to
+`Matrix.vecMap` (one-file change; notation `⨟` and lemmas unchanged). The Bochner
+import below is the live proof that the clash is gone. Discipline note kept: still never
+`import Mathlib` (umbrella) alongside Foundation in Parts I–III files — use targeted
+imports. (`Construction/Brouwer.lean` is the one disclosed exception; it imports no
+Foundation and predates its import trim.)
 -/
 import Mathlib.Analysis.SpecificLimits.Basic        -- Tendsto, atTop, nhds, Eventually
 import Mathlib.Analysis.Convex.Basic                -- Convex
 import Mathlib.Topology.Compactness.Compact         -- IsCompact
 import Mathlib.Topology.ContinuousMap.Basic         -- ContinuousMap
--- import Mathlib.MeasureTheory.Integral.Bochner.Basic  -- ✗ clashes (see HEADLINE FINDING)
+import Mathlib.MeasureTheory.Integral.Bochner.Basic -- ✓ co-imports since the fork (OPEN RISK 1 resolved)
 import Foundation.Propositional.Logic.Basic
 import Foundation.Propositional.Hilbert.Minimal.Basic  -- the classical system `Hilbert.Cl`
 import Foundation.Logic.Entailment
@@ -54,6 +40,7 @@ namespace LogicalInduction.Scratchpad
 section Mathlib
 
 -- Asymptotics vocabulary (`dd:asymp`): `Tendsto (·−·) atTop (𝓝 0)` and `∀ᶠ n in atTop`.
+-- Now packaged once in `LogicalInduction.Asymptotics` (`≈ₙ`, `≲ₙ`, `≳ₙ`, …).
 #check @Filter.Tendsto
 #check (Filter.atTop : Filter ℕ)
 #check @nhds
@@ -61,20 +48,21 @@ section Mathlib
 example : Prop := ∀ᶠ n in Filter.atTop, (0 : ℝ) ≤ n  -- the eventually-idiom elaborates
 
 -- Bochner integral, for the LUV expectation bridge (`lem:limexpapprox`). The audit rule
--- says expectations route through `MeasureTheory.integral`, not hand-computation. The
--- def is confirmed present at `Mathlib/MeasureTheory/Integral/Bochner/Basic.lean`, but
--- CANNOT be imported alongside Foundation until the `Vorspiel.Matrix` clash above is
--- fixed — hence it is not `#check`ed here. This is the M3 blocker to resolve first.
+-- says expectations route through `MeasureTheory.integral`, not hand-computation. This
+-- `#check`, co-resident with the Foundation imports above, is the standing regression
+-- guard that OPEN RISK 1 stays resolved across Foundation/Mathlib pin bumps.
+#check @MeasureTheory.integral
 
 -- Compact-convex topology, the home of the price-adjustment fixed point (`lem:fpl`).
 #check @IsCompact
 #check @Convex
 
--- ⚠ Brouwer: `exact?`/grep find NO Brouwer (or Schauder/Kakutani) fixed-point theorem in
--- the installed Mathlib — only Brouwerian/Heyting *algebras* and Riesz–Markov–Kakutani
--- (a measure theorem). So the roadmap's "use Mathlib's Brouwer" is currently false.
--- Intentionally left unimported; M6 is gated on resolving this. Sanity check that the
--- relevant ambient API (continuous self-maps of a convex compact) at least exists:
+-- ✅ Brouwer (was OPEN RISK 2): the installed Mathlib still has NO Brouwer (or
+-- Schauder/Kakutani) fixed-point theorem — only Brouwerian/Heyting *algebras* and
+-- Riesz–Markov–Kakutani (a measure theorem). Resolved in-project instead:
+-- `LogicalInduction.Construction.Brouwer` now PROVES `brouwer_fixed_point` from scratch
+-- (Sperner/Kuhn), axioms = [propext, Classical.choice, Quot.sound]. Not imported here
+-- (it is heavy); see that file.
 #check @ContinuousMap
 
 end Mathlib
@@ -108,19 +96,18 @@ example : DecidableEq (Formula ℕ) := inferInstance
 end Foundation
 
 /-
-## Verdict (M0)
+## Verdict (M0, updated at M0 close-out)
 
-* Mathlib + Foundation co-build under `leanprover/lean4:v4.28.0-rc1`; both are
-  precompiled (Foundation already `require`s mathlib).
+* Mathlib + Foundation co-build under `leanprover/lean4:v4.28.0-rc1`, **including Bochner
+  integration** (the import above) — the full-stack co-build is verified, not assumed.
 * `def:lang` is well-served: `Formula ℕ` + `Encodable` + `DecidableEq` + `LO.Entailment`
   (`⊢`/`⊬`/`Consistent`) + `Hilbert.Cl`. The computable-encoding worry for `def:ec` is
   resolved in our favor — wrap these behind `LogicalInduction.Sentence`.
-* OPEN RISK 1 (M3): the Foundation `Vorspiel.Matrix.map` clash blocks Bochner
-  integration alongside Foundation. Fix by renaming in a Foundation fork (one file) before
-  the expectation bridge. See HEADLINE FINDING at the top.
-* OPEN RISK 2 (M6): no Brouwer/Kakutani fixed point in Mathlib — must contribute it
-  upstream or find an alternate route. The single biggest schedule risk. (Brouwer's
-  finite-dimensional analysis will also re-trigger OPEN RISK 1, so fix that first.)
+* ✅ OPEN RISK 1 resolved via the Foundation fork (`Matrix.map` → `Matrix.vecMap`).
+* ✅ OPEN RISK 2 resolved in-project: `brouwer_fixed_point` proved (Sperner/Kuhn route,
+  autoformalized by Aristotle, revalidated on this toolchain) in
+  `LogicalInduction/Construction/Brouwer.lean`. Upstreaming to Mathlib remains desirable
+  but no longer gates M6.
 -/
 
 end LogicalInduction.Scratchpad

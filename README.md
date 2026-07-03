@@ -4,6 +4,23 @@ This repo contains Lean 4 formalizations of important papers in the fields of ag
 theory, built on the
 [Foundation](https://github.com/FormalizedFormalLogic/Foundation) library of the Formalized Formal Logic project.
 
+## Garrabrant et al. (2016) *Logical Induction* — in progress
+
+`LogicalInduction/` is the beginning of a full formalization of
+[arXiv:1609.03543](https://arxiv.org/abs/1609.03543). The spec is
+`notes/logical-induction-roadmap.md`; the honest ledger of what is defined, proved,
+stubbed, or assumed is `PROGRESS.md`. Status: M0 (scaffold, substrate verification, the
+shared `Asymptotics` vocabulary) is done.
+
+**Disclosure (read before citing anything here):** until the construction milestone (M7)
+lands, every property theorem in this development is *conditional on the existence of a
+logical inductor* (`[IsLogicalInductor P]`), which is assumed, not proved. The one
+substantial result already unconditional is `LogicalInduction.brouwer_fixed_point`
+(Brouwer's fixed-point theorem, absent from Mathlib), proved from scratch via Sperner's
+lemma; the proof body was autoformalized by Harmonic's Aristotle and is kernel-checked
+(`#print axioms` = `propext, Classical.choice, Quot.sound`) but its ~1300-line interior
+has not had a human read-through — only its *statement* is part of the trust surface.
+
 ## Barasz et al. (2014) *Robust Cooperation in the Prisoner's Dilemma via Provability Logic*.
 
 The Barasz folder contains a formalization of this paper at the level of Gödel-Löb provability logic. It covers:

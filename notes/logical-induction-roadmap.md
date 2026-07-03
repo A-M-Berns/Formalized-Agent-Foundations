@@ -97,7 +97,7 @@ Grouped by paper subsection. **Bold = M3 downstream-priority slice** (discharges
 
 | Label | Proposed Lean name | Kind | Notes |
 |---|---|---|---|
-| `lem:fpl` | `fixed_point_lemma` | P | **Brouwer.** The price-adjustment map `adj` on compact convex `Valuations'` is continuous *because trading strategies are continuous* (this is what `EF.denote` continuity buys). Use Mathlib's Brouwer; check exact API. |
+| `lem:fpl` | `fixed_point_lemma` | P | **Brouwer.** The price-adjustment map `adj` on compact convex `Valuations'` is continuous *because trading strategies are continuous* (this is what `EF.denote` continuity buys). ~~Use Mathlib's Brouwer~~ — Mathlib has **no** Brouwer; `LogicalInduction.brouwer_fixed_point` is now proved from scratch (`Construction/Brouwer.lean`, Sperner route, Aristotle-autoformalized). Apply that to `adj`. |
 | `def:markemaker` | `MarketMaker` | C | Rational approximation to the fixed point by bounded search. |
 | `lem:budgeter` | `Budgeter`, `budgeter_props` | C | Caps each enumerated trader so the firm's total worth stays bounded below. |
 | `def:tradingfirm` (`sec` 2533) | `TradingFirm` | C | Combines enumerated traders with budgets. |
@@ -113,12 +113,12 @@ The ordering is **criterion → property tail → construction**, the inverse of
 | M | Scope | Definition of done |
 |---|---|---|
 | **M0** | Project stands up. Lean 4 + Lake; Mathlib + Foundation co-building under one toolchain; namespace/file scaffold mirroring Parts I–IV; `Asymptotics` module (`dd:asymp`). | Green `lake build`; pinned versions in `PROGRESS.md`. If Mathlib + Foundation won't co-build, **stop and report the conflict** — don't hack around it. |
-| **M1** | **The `def:ef` keystone** + the foundation interface (`def:lang`) and the criterion definitions (`def:market`, `def:world`, `def:tradestrat`, `def:trader`, `def:exploitation`, `def:lic`). `EF.denote`/`EF.cost`/`CommRing EF_n` built; `denote` continuity *stated* (`sorry` ok). | Everything elaborates; `def:lic` stated; ≥2 genuine `EF` examples as non-vacuity witnesses (the deference corpus's clean-definition discipline starts here). |
+| **M1** | **The `def:tf` keystone** + the foundation interface (`def:lang`) and the criterion definitions (`def:market`, `def:world`, `def:tradestrat`, `def:trader`, `def:exploitation`, `def:lic`). `EF.denote`/`EF.cost`/`CommRing EF_n` built; `denote` continuity *stated* (`sorry` ok). | Everything elaborates; `def:lic` stated; ≥2 genuine `EF` examples as non-vacuity witnesses (the deference corpus's clean-definition discipline starts here). |
 | **M2** | The shared engine: `def:roi`/`roi_bound`, `def:tradermag`, `def:emulatabletraders`. The "assume-fail-build-trader-invoke-criterion" pattern wired once, end-to-end, on the *easiest* real property, with the trader's e.c.-ness certified via `EF.cost`. | One property proven conditionally with a **genuinely constructed, genuinely e.c.-certified** exploiting trader — no arithmetic stub standing in for the exploit. This is the proof-of-concept that the hard step is real. |
 | **M3** | **Downstream-priority slice.** `thm:con`, `thm:lc`, `thm:provind`; the LUV approx lemmas; `thm:ec`, `thm:loe`, `thm:expprovind`; Self-Trust `thm:cee`/`ceu`/`ccee`/`st`; `thm:nd`. | Each stated conditionally on `[IsLogicalInductor P]`, proved (not squeezed), ledgered with kind+provenance. **Integration test:** pick one deference theorem and discharge its named hypothesis from the corresponding result here; if the interface doesn't fit, fix the statement now. |
 | **M4** | The two lift hubs made reusable: `thm:affpolymax` (affine master) and the LUV bridge, each as *one* shared lemma + mechanical members. | The affine and expectation families collapse to the hubs + thin per-member glue, not member-by-member re-proof. |
 | **M5** | Remainder of the property tail: calibration/unbiasedness, statistical patterns, logical relationships, closure/Non-Dogmatism remainder, halting, introspection, consistency. | Full conditional property tail green; ledger complete; adversarial audit pass (§5) run and findings triaged. |
-| **M6** | Construction, Part 1: `lem:fpl` (Brouwer) + `MarketMaker`. | Fixed point established via Mathlib Brouwer; `MarketMaker` properties proven. Expect this milestone to be where real time goes. |
+| **M6** | Construction, Part 1: `lem:fpl` (Brouwer) + `MarketMaker`. | Fixed point established via the in-project `brouwer_fixed_point` (Mathlib has none — proved from scratch at M0, see `Construction/Brouwer.lean`); `MarketMaker` properties proven. Expect this milestone to be where real time goes. |
 | **M7** | Construction, Part 2: `Budgeter`, `TradingFirm`, `LIA`, `thm:lia`, `thm:li`. Discharge `def:lic` → unconditionalize the tail. | `LIA_is_logical_inductor` proven; main existence theorem `exists_logical_inductor` follows; every M3–M5 property now holds unconditionally. |
 
 **Scope discipline:** do only the current milestone. Do not wander into the construction during the property tail, or into the affine/expectation members before the lift hubs (M4).
@@ -162,7 +162,7 @@ The deference audit's one-line verdict on that corpus: *it proved the implicatio
 ```
 We're starting a Lean 4 formalization of the paper *Logical Induction*
 (Garrabrant et al., arXiv:1609.03543). Read logical-induction-roadmap.md first
-— it is the spec. Every node has the paper's real \label (e.g. def:ef,
+— it is the spec. Every node has the paper's real \label (e.g. def:tf,
 def:lic, thm:loe) and a proposed Lean name under the `LogicalInduction`
 namespace; mirror those labels in comments so status maps back to the graph.
 
@@ -192,7 +192,7 @@ type system, SURFACE it in your report rather than working around it):
 - Build the concrete clocked enumeration; abstraction over a trader class is
   optional (dd:abstract).
 
-This session is scoped to M0 plus the keystone node def:ef. Do NOT touch the
+This session is scoped to M0 plus the keystone node def:tf. Do NOT touch the
 construction (Part IV) or the property tail (Part III).
 
 Goals, in order:
@@ -207,7 +207,7 @@ Goals, in order:
    for how it exposes propositional sentences, ⊢, and propositional
    consistency — don't assume the API. Wrap what you need behind a thin
    `LogicalInduction.Sentence` interface.
-4. Build the keystone def:ef (expressible features): an inductive `EF` syntax
+4. Build the keystone def:tf (expressible features): an inductive `EF` syntax
    (price features pf φ, ℚ, +, ×, max(·,·), safe reciprocation max(1,·)⁻¹);
    `EF.denote` into ℝ-valued functions of a valuation history; `EF.cost`
    (syntactic size); the CommRing instance on EF_n; and the STATEMENT of
