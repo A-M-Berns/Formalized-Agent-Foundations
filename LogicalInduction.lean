@@ -15,6 +15,7 @@ This roll-up imports the project's Parts, mirroring the roadmap:
 import LogicalInduction.Asymptotics
 import LogicalInduction.Foundations
 import LogicalInduction.Criterion
+import LogicalInduction.Computable
 import LogicalInduction.Engine
 import LogicalInduction.Properties
 import LogicalInduction.Expectations
