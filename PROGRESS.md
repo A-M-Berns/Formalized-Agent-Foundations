@@ -34,10 +34,12 @@ available), which sidesteps Mathlib's `errorOnBuild` guard. Re-run if it recurs.
 | M0 | Project stands up; namespace/file scaffold; substrate verified | **done** (pending Anson's statement read-through) — scaffold, `Scratchpad`, `Asymptotics` content all green |
 | M1 | `def:tf` keystone + `def:lang` + criterion defs | **done** (pending Anson's statement read-through) — keystone + all Part-I criterion defs stated & green; one **provisional type-`(c)`** in `EfficientlyComputable` |
 | M2 | Engine + one e.c.-certified exploiting trader, end-to-end | **done** (pending read-through) — the loop is wired **completely and with no `sorry`**: real trader, e.c. discharged via the faithful clocked-interpreter model, exploitation proved, criterion invoked. Engine `def:tradermag`/`def:roi` defined. **`EfficientlyComputable` reconciled to the paper's poly-time `def:ec`** (OPEN RISK 3 resolved) |
-| M3–M7 | see roadmap | not started |
+| M3 | Downstream property slice + LUV bridge + integration test | **in progress** — proved: `thm:provind` (fixed φ, limiting `→1`), `thm:lc` bullet 2 (`→0`); LUV/expectation bridge (`E^H_n(X)` concrete); integration test (deference interface verified at price & expectation level). **Responsive-trader e.c. infrastructure complete** (`Fueled` combinators → `PolyFueled` → `priceTrader_ec`), clearing the last research-level obstacle. Remaining: expectation family + interior-target/sequence properties (`thm:con`, additivity, `thm:ec/loe/ei/expprovind`) — now patterned. One disclosed `sorry` (`thm:ec` statement). |
+| M4–M7 | see roadmap | not started (Brouwer `lem:fpl` already proved — M6 gate cleared) |
 
-Out-of-sequence bonus: `brouwer_fixed_point` (the M6 gate) is already **proved**, not
-axiomatized — see the ledger row and OPEN RISK 2 below.
+Out-of-sequence: `brouwer_fixed_point` (the M6 gate) is already **proved**, not axiomatized;
+and the faithful poly-time `def:ec` with a working responsive-trader certification pipeline
+(the other multi-week risk) is **done** — the two hardest foundational items are behind us.
 
 ## Node ledger
 
@@ -62,7 +64,7 @@ axiomatized — see the ledger row and OPEN RISK 2 below.
 | `def:ec` | `EfficientlyComputable` | done | **Def, faithful** | ✅ **reconciled (was type-`(c)`):** `∃ code, poly, ∀n, evaln (poly n) code n = some (encode strat)` — the paper's poly-*runtime* `def:ec` via `Nat.Partrec.Code` + `evaln` (`dd:fuel`). No longer broader than paper; `IsLogicalInductor` now matches. See OPEN RISK 3 (resolved) |
 | **`def:lic`** | `IsLogicalInductor` (class over `P`, `DP`) | done | Def | "no e.c. trader exploits `P`". The property-tail hypothesis. Meaningfulness rests on the provisional `EfficientlyComputable` above |
 | `def:trader` (M2) | `buyDaily` (buys 1 share of `φ`/day) | done | **C** | the **constructed** exploiting trader for the base case of `thm:provind`. Real EF (`[(const 1, φ)]`), not a stub |
-| `def:ec` (M2 cert) | `buyDaily_ec` via `buyDaily_cost` | done | **P** | e.c. **discharged through `EF.cost`**: strategy cost `= 3` ∀n ⇒ poly. The load-bearing M2 step, done for real |
+| `def:ec` (M2 cert) | `buyDaily_ec` | done | **P** | e.c. discharged via the faithful clocked model: constant strategy ⇒ `Code.const`, affine fuel via `evaln_const_self`. Axiom-clean |
 | `def:exploitation` (M2) | `buyDaily_exploits` | done | **P** | full proof: BddBelow (net worth ≥ 0 in every plausible world) ∧ ¬BddAbove (≥ (m+1)ε → ∞). No `sorry`; `#print axioms` = the 3 standard only |
 | `def:luv` | `LUV` (threshold sentences `gt : ℚ → Sentence`) | done | Def | **disclosed type-`(c)`:** LUVs are first-order (formula free in one var over Θ-rep-computations); we model the `[0,1]`-LUV by its market-observable content = its threshold-sentence family `⌜X>r⌝`. No first-order syntax reconstructed |
 | `def:e` | `LUV.expectApprox`, `.expect`, `.expectSeq`, `.expectInf`; `expect_mem_Icc` | done | Def+P | `𝔼ₙ(X)=(1/n)∑_{i<n}Pₙ(⌜X>i/n⌝)` — the **concrete `ℕ→ℝ` expectation** the deference corpus abstracts as `E^H_n(X)`. Bounds `∈[0,1]` proved. **This is the LUV-bridge object that closes the price→expectation level gap** |

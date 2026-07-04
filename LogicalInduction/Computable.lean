@@ -141,11 +141,9 @@ theorem IsPolyBounded.pair {f g : ℕ → ℕ} (hf : IsPolyBounded f) (hg : IsPo
   set X := (n + 1) ^ (Max.max k₁ k₂) with hX
   have hXpos : 1 ≤ X := Nat.one_le_pow _ _ (by omega)
   have hf' : f n ≤ a₁ * X + a₁ := (hk₁ n).trans (by
-    have h1 : (n + 1) ^ k₁ ≤ X := Nat.pow_le_pow_right (by omega) (le_max_left _ _)
-    nlinarith [mul_le_mul_left' h1 a₁])
+    gcongr; exact Nat.pow_le_pow_right (by omega) (le_max_left _ _))
   have hg' : g n ≤ a₂ * X + a₂ := (hk₂ n).trans (by
-    have h2 : (n + 1) ^ k₂ ≤ X := Nat.pow_le_pow_right (by omega) (le_max_right _ _)
-    nlinarith [mul_le_mul_left' h2 a₂])
+    gcongr; exact Nat.pow_le_pow_right (by omega) (le_max_right _ _))
   have hsum : f n + g n + 1 ≤ 2 * (a₁ + a₂ + 1) * X := by nlinarith [hf', hg', hXpos]
   have hsq : (n + 1) ^ (2 * Max.max k₁ k₂) = X ^ 2 := by rw [hX, mul_comm, pow_mul]
   calc Nat.pair (f n) (g n)
