@@ -201,38 +201,45 @@ recover the strategy). We build the encoding by hand (there is no `deriving Enco
 following Mathlib's own `Nat.Partrec.Code` template: a structural `toNat` and a
 well-founded `ofNat`, each child encoded strictly smaller than its parent. -/
 
-/-- Structural encoding of an expressible feature as a natural number. Tag ∈ `0..5`
-selects the constructor; the payload packs the children via `Nat.pair`, so each child's
-code is `< 6·payload ≤` the parent's code (used for the decoder's termination). -/
+/-- Structural encoding of an expressible feature as a natural number, tag-then-payload via
+`Nat.pair` only — **no multiplication**. This matters for `def:ec`: `Nat.pair` is a
+`Nat.Partrec.Code` *primitive* (`Code.pair`, no `prec`), so a program that builds a
+strategy's code from `n` is a tree of `const`/`pair`/`comp` whose clocked-interpreter fuel
+is a clean `n + O(1)` — which is what makes responsive traders' efficient computability
+provable (see `Computable.lean`). The encoding is still a genuine computable bijection, so
+faithfulness of the poly-time e.c. class is unchanged. -/
 def toNat : EF → ℕ
-  | const q     => 6 * (Encodable.encode q) + 0
-  | price φ n   => 6 * (Nat.pair (Encodable.encode φ) n) + 1
-  | add a b     => 6 * (Nat.pair a.toNat b.toNat) + 2
-  | mul a b     => 6 * (Nat.pair a.toNat b.toNat) + 3
-  | max a b     => 6 * (Nat.pair a.toNat b.toNat) + 4
-  | safeRecip a => 6 * a.toNat + 5
+  | const q     => Nat.pair 0 (Encodable.encode q)
+  | price φ n   => Nat.pair 1 (Nat.pair (Encodable.encode φ) n)
+  | add a b     => Nat.pair 2 (Nat.pair a.toNat b.toNat)
+  | mul a b     => Nat.pair 3 (Nat.pair a.toNat b.toNat)
+  | max a b     => Nat.pair 4 (Nat.pair a.toNat b.toNat)
+  | safeRecip a => Nat.pair 5 a.toNat
 
-/-- Fuel-clocked decoder inverting `EF.toNat`. Structural recursion on `fuel` (no
-well-founded obligation); each child's code is strictly smaller, so `fuel = m + 1` always
-suffices (`ofNat` below). -/
+/-- Fuel-clocked decoder inverting `EF.toNat`. Structural recursion on `fuel`; each child's
+code is strictly smaller (tag `≥ 1` ⇒ `Nat.pair tag X > X`), so `fuel = m + 1` suffices. -/
 def ofNatAux : ℕ → ℕ → Option EF
   | 0, _ => none
   | fuel + 1, m =>
-    match m % 6 with
-    | 0 => (Encodable.decode (m / 6) : Option ℚ).map const
-    | 1 => (Encodable.decode (m / 6).unpair.1 : Option Sentence).map
-             (fun φ => price φ (m / 6).unpair.2)
-    | 2 => (ofNatAux fuel (m / 6).unpair.1).bind
-             (fun a => (ofNatAux fuel (m / 6).unpair.2).map (add a))
-    | 3 => (ofNatAux fuel (m / 6).unpair.1).bind
-             (fun a => (ofNatAux fuel (m / 6).unpair.2).map (mul a))
-    | 4 => (ofNatAux fuel (m / 6).unpair.1).bind
-             (fun a => (ofNatAux fuel (m / 6).unpair.2).map (max a))
-    | 5 => (ofNatAux fuel (m / 6)).map safeRecip
+    match m.unpair.1 with
+    | 0 => (Encodable.decode m.unpair.2 : Option ℚ).map const
+    | 1 => (Encodable.decode m.unpair.2.unpair.1 : Option Sentence).map
+             (fun φ => price φ m.unpair.2.unpair.2)
+    | 2 => (ofNatAux fuel m.unpair.2.unpair.1).bind
+             (fun a => (ofNatAux fuel m.unpair.2.unpair.2).map (add a))
+    | 3 => (ofNatAux fuel m.unpair.2.unpair.1).bind
+             (fun a => (ofNatAux fuel m.unpair.2.unpair.2).map (mul a))
+    | 4 => (ofNatAux fuel m.unpair.2.unpair.1).bind
+             (fun a => (ofNatAux fuel m.unpair.2.unpair.2).map (max a))
+    | 5 => (ofNatAux fuel m.unpair.2).map safeRecip
     | _ => none
 
 /-- Decoder inverting `EF.toNat`, with fuel `m + 1` (always enough). -/
 def ofNat (m : ℕ) : Option EF := ofNatAux (m + 1) m
+
+/-- `Nat.pair t X > X` when the tag `t ≥ 1` — the strict decrease making children smaller. -/
+private theorem lt_pair_tag (t X : ℕ) (ht : 0 < t) : X < Nat.pair t X :=
+  lt_of_le_of_lt (Nat.right_le_pair 0 X) (Nat.pair_lt_pair_left X ht)
 
 theorem ofNatAux_toNat : ∀ (fuel : ℕ) (e : EF), e.toNat < fuel → ofNatAux fuel e.toNat = some e := by
   intro fuel
@@ -241,27 +248,33 @@ theorem ofNatAux_toNat : ∀ (fuel : ℕ) (e : EF), e.toNat < fuel → ofNatAux 
   | succ fuel ih =>
       intro e he
       cases e with
-      | const q => simp [toNat, ofNatAux, Nat.mul_add_div]
-      | price φ n => simp [toNat, ofNatAux, Nat.mul_add_div, Nat.unpair_pair]
+      | const q => simp [toNat, ofNatAux, Nat.unpair_pair]
+      | price φ n => simp [toNat, ofNatAux, Nat.unpair_pair]
       | add a b =>
           simp only [toNat] at he ⊢
-          have ha : a.toNat < fuel := by have := Nat.left_le_pair a.toNat b.toNat; omega
-          have hb : b.toNat < fuel := by have := Nat.right_le_pair a.toNat b.toNat; omega
-          simp [ofNatAux, Nat.mul_add_div, Nat.unpair_pair, ih a ha, ih b hb]
+          have h1 := Nat.left_le_pair a.toNat b.toNat
+          have h2 := Nat.right_le_pair a.toNat b.toNat
+          have h3 := lt_pair_tag 2 (Nat.pair a.toNat b.toNat) (by norm_num)
+          simp only [ofNatAux, Nat.unpair_pair, ih a (by omega), ih b (by omega),
+            Option.bind_some, Option.map_some]
       | mul a b =>
           simp only [toNat] at he ⊢
-          have ha : a.toNat < fuel := by have := Nat.left_le_pair a.toNat b.toNat; omega
-          have hb : b.toNat < fuel := by have := Nat.right_le_pair a.toNat b.toNat; omega
-          simp [ofNatAux, Nat.mul_add_div, Nat.unpair_pair, ih a ha, ih b hb]
+          have h1 := Nat.left_le_pair a.toNat b.toNat
+          have h2 := Nat.right_le_pair a.toNat b.toNat
+          have h3 := lt_pair_tag 3 (Nat.pair a.toNat b.toNat) (by norm_num)
+          simp only [ofNatAux, Nat.unpair_pair, ih a (by omega), ih b (by omega),
+            Option.bind_some, Option.map_some]
       | max a b =>
           simp only [toNat] at he ⊢
-          have ha : a.toNat < fuel := by have := Nat.left_le_pair a.toNat b.toNat; omega
-          have hb : b.toNat < fuel := by have := Nat.right_le_pair a.toNat b.toNat; omega
-          simp [ofNatAux, Nat.mul_add_div, Nat.unpair_pair, ih a ha, ih b hb]
+          have h1 := Nat.left_le_pair a.toNat b.toNat
+          have h2 := Nat.right_le_pair a.toNat b.toNat
+          have h3 := lt_pair_tag 4 (Nat.pair a.toNat b.toNat) (by norm_num)
+          simp only [ofNatAux, Nat.unpair_pair, ih a (by omega), ih b (by omega),
+            Option.bind_some, Option.map_some]
       | safeRecip a =>
           simp only [toNat] at he ⊢
-          have ha : a.toNat < fuel := by omega
-          simp [ofNatAux, Nat.mul_add_div, ih a ha]
+          have h3 := lt_pair_tag 5 a.toNat (by norm_num)
+          simp only [ofNatAux, Nat.unpair_pair, ih a (by omega), Option.map_some]
 
 theorem ofNat_toNat (e : EF) : ofNat e.toNat = some e :=
   ofNatAux_toNat _ e (Nat.lt_succ_self _)
