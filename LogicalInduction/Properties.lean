@@ -232,4 +232,100 @@ theorem lic_deducible_tendsto_one (P : History) (DP : DeductiveProcess)
   have h2 := hP1 n
   constructor <;> linarith
 
+/-! ## M3 — Limit Coherence, bullet (2): disprovable ⇒ price → 0 (`thm:lc`)
+
+The dual of the provability bullet, via the mirror-image **sell** trader. If `φ` is
+disprovable — `∼φ` always deducible — then every plausible world values `φ` at `0`, so
+selling one share of `φ` a day yields net worth `∑ᵢ Pᵢ(φ) ≥ 0`; if the price stays above
+`ε` infinitely often that is unbounded, so a logical inductor forces `Pₙ(φ) → 0`. Same
+constant-trader, same already-certified efficient computability — only the sign flips. -/
+
+/-- In a world consistent with a set containing `∼φ`, `φ` is false (Foundation Boolean
+semantics: `∼φ = φ 🡒 ⊥`, so `Holds (∼φ) ↔ ¬ Holds φ`). -/
+theorem PCWorld.payout_of_disprovable (v : PCWorld) (φ : Sentence) (h : v.Holds (∼φ)) :
+    v.payout φ = 0 := by
+  have : ¬ v.Holds φ := by
+    simpa [PCWorld.Holds, LO.Propositional.Formula.Boolean.val,
+      LO.Propositional.Formula.neg_def] using h
+  rw [PCWorld.payout, if_neg this]
+
+/-- The trader that sells one share of `φ` every day (buys `-1`). -/
+def sellDaily (φ : Sentence) : Trader where
+  strat _ := { trades := [(EF.const (-1), φ)]
+               rank_le := by intro p hp; simp only [List.mem_singleton] at hp
+                             subst hp; exact Nat.zero_le _ }
+
+theorem sellDaily_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) :
+    (sellDaily φ).netWorth V v m = ∑ i ∈ Finset.range (m + 1), (V i φ - v.payout φ) := by
+  simp only [Trader.netWorth, sellDaily, Strategy.value]
+  refine Finset.sum_congr rfl (fun i _ => ?_)
+  simp [EF.denote]
+
+theorem sellDaily_ec (φ : Sentence) : EfficientlyComputable (sellDaily φ) := by
+  refine ⟨Nat.Partrec.Code.const (Encodable.encode ([(EF.const (-1), φ)] : List (EF × Sentence))),
+          Encodable.encode ([(EF.const (-1), φ)] : List (EF × Sentence)) + 1, 1, fun n => ?_⟩
+  have hs : ((sellDaily φ).strat n).trades = [(EF.const (-1), φ)] := rfl
+  rw [hs]
+  exact Nat.Partrec.Code.evaln_mono (by simp only [pow_one]; nlinarith) (evaln_const_self _ n)
+
+/-- Exploitation of the sell trader under infinitely-often *overpricing* of a disprovable
+`φ`: net worth `∑ Pᵢ(φ) ≥ 0` (prices `≥ 0`), unbounded along the overpriced subsequence. -/
+theorem sellDaily_exploits_freq (P : History) (DP : DeductiveProcess) (φ : Sentence) (ε : ℝ)
+    (hε : 0 < ε) (hdis : ∀ n, (∼φ) ∈ DP.D n) (hP0 : ∀ n, 0 ≤ P n φ)
+    (hfreq : ∃ᶠ n in atTop, ε ≤ P n φ)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    (sellDaily φ).Exploits P DP := by
+  have hpay : ∀ (m : ℕ) (v : PCWorld), v.ConsistentWith (DP.D m) → v.payout φ = 0 :=
+    fun m v hv => PCWorld.payout_of_disprovable v φ (hv (∼φ) (hdis m))
+  refine ⟨⟨0, ?_⟩, ?_⟩
+  · rintro x ⟨m, v, hv, rfl⟩
+    rw [sellDaily_netWorth]
+    refine Finset.sum_nonneg (fun i _ => ?_)
+    rw [hpay m v hv]; have := hP0 i; linarith
+  · rintro ⟨B, hB⟩
+    obtain ⟨g, hg_mono, hg⟩ := extraction_of_frequently_atTop hfreq
+    obtain ⟨M, hM⟩ := exists_nat_gt (B / ε)
+    obtain ⟨v, hv⟩ := hcons (g M)
+    have hsub : (Finset.range (M + 1)).image g ⊆ Finset.range (g M + 1) := by
+      intro i hi
+      simp only [Finset.mem_image, Finset.mem_range] at hi
+      obtain ⟨k, hk, rfl⟩ := hi
+      exact Finset.mem_range.mpr (by have := hg_mono.monotone (Nat.lt_succ_iff.mp hk); omega)
+    have hge : (M + 1 : ℝ) * ε ≤ (sellDaily φ).netWorth P v (g M) := by
+      rw [sellDaily_netWorth, hpay (g M) v hv]
+      calc (M + 1 : ℝ) * ε
+          = ∑ _k ∈ Finset.range (M + 1), ε := by
+            rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]; push_cast; ring
+        _ ≤ ∑ k ∈ Finset.range (M + 1), (P (g k) φ - 0) :=
+            Finset.sum_le_sum (fun k _ => by have := hg k; linarith)
+        _ = ∑ i ∈ (Finset.range (M + 1)).image g, (P i φ - 0) := by
+            rw [Finset.sum_image (hg_mono.injective.injOn)]
+        _ ≤ ∑ i ∈ Finset.range (g M + 1), (P i φ - 0) :=
+            Finset.sum_le_sum_of_subset_of_nonneg hsub
+              (fun i _ _ => by have := hP0 i; linarith)
+    have hmem : (sellDaily φ).netWorth P v (g M) ∈ (sellDaily φ).plausibleAssessments P DP :=
+      ⟨g M, v, hv, rfl⟩
+    have hBm : B < (M + 1 : ℝ) * ε := by rw [div_lt_iff₀ hε] at hM; nlinarith
+    exact absurd (le_trans hge (hB hmem)) (by linarith)
+
+/-- **Limit Coherence, bullet (2)** (`thm:lc`): the price of a disprovable sentence
+converges to `0` under a logical inductor. -/
+theorem lic_disprovable_tendsto_zero (P : History) (DP : DeductiveProcess)
+    [hLI : IsLogicalInductor P DP] (φ : Sentence) (hdis : ∀ n, (∼φ) ∈ DP.D n)
+    (hP0 : ∀ n, 0 ≤ P n φ) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    ConvergesTo (fun n => P n φ) 0 := by
+  refine Metric.tendsto_atTop.mpr (fun ε hε => ?_)
+  have hev : ∀ᶠ n in atTop, P n φ < ε := by
+    by_contra h
+    rw [not_eventually] at h
+    simp only [not_lt] at h
+    exact hLI.noExploit (sellDaily φ) (sellDaily_ec φ)
+      (sellDaily_exploits_freq P DP φ ε hε hdis hP0 h hcons)
+  obtain ⟨N, hN⟩ := eventually_atTop.mp hev
+  refine ⟨N, fun n hn => ?_⟩
+  rw [Real.dist_eq, abs_lt]
+  have := hP0 n
+  have h1 := hN n hn
+  constructor <;> linarith
+
 end LogicalInduction
