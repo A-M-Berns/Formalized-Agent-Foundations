@@ -96,4 +96,42 @@ theorem fueled_id :
   have h := fueled_pair fueled_left fueled_right
   simpa [Nat.pair_unpair] using h.mono (fun n => by simp)
 
+/-! ## Polynomial fuel bounds — the bridge to `EfficientlyComputable`
+
+A `Fueled` bound built from the combinators over a fixed trader template is a fixed
+composition, hence bounded by a polynomial in `n`. `IsPolyBounded` packages that, and
+`EfficientlyComputable.of_fueled` turns a poly-bounded `Fueled` fact for the strategy-encoding
+function into `def:ec`. -/
+
+/-- `b` is bounded by a polynomial (in the `a·(n+1)ᵏ + a` normal form used by `def:ec`). -/
+def IsPolyBounded (b : ℕ → ℕ) : Prop := ∃ a k : ℕ, ∀ n, b n ≤ a * (n + 1) ^ k + a
+
+theorem IsPolyBounded.of_le {b b' : ℕ → ℕ} (h : IsPolyBounded b') (hb : ∀ n, b n ≤ b' n) :
+    IsPolyBounded b := by
+  obtain ⟨a, k, hk⟩ := h; exact ⟨a, k, fun n => (hb n).trans (hk n)⟩
+
+theorem IsPolyBounded.linear (c : ℕ) : IsPolyBounded (fun n => n + c) :=
+  ⟨c + 1, 1, fun n => by simp only [pow_one]; nlinarith⟩
+
+theorem IsPolyBounded.max {b₁ b₂ : ℕ → ℕ} (h₁ : IsPolyBounded b₁) (h₂ : IsPolyBounded b₂) :
+    IsPolyBounded (fun n => max (b₁ n) (b₂ n)) := by
+  obtain ⟨a₁, k₁, hk₁⟩ := h₁
+  obtain ⟨a₂, k₂, hk₂⟩ := h₂
+  refine ⟨a₁ + a₂, Max.max k₁ k₂, fun n => max_le ((hk₁ n).trans ?_) ((hk₂ n).trans ?_)⟩
+  · gcongr <;> omega
+  · gcongr <;> omega
+
+/-- **The bridge.** A poly-bounded `Fueled` fact for a trader's strategy-encoding function is
+exactly efficient computability (`def:ec`). -/
+theorem EfficientlyComputable.of_fueled {Tr : Trader} {code : Nat.Partrec.Code} {b : ℕ → ℕ}
+    (h : Fueled code (fun n => Encodable.encode (Tr.strat n).trades) b)
+    (hb : IsPolyBounded b) : EfficientlyComputable Tr := by
+  obtain ⟨a, k, hk⟩ := hb
+  exact ⟨code, a, k, fun n => h.mono hk n⟩
+
+/-- Degree-2 growth of `Nat.pair`, the reason a strategy-encoding function is poly-bounded:
+`Nat.pair m n < (m + n + 1)²`. -/
+theorem pair_lt_sq (m n : ℕ) : Nat.pair m n < (m + n + 1) ^ 2 :=
+  (Nat.pair_lt_max_add_one_sq m n).trans_le (by gcongr; omega)
+
 end LogicalInduction
