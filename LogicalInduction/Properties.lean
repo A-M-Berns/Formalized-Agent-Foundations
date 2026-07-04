@@ -308,6 +308,35 @@ theorem sellDaily_exploits_freq (P : History) (DP : DeductiveProcess) (φ : Sent
     have hBm : B < (M + 1 : ℝ) * ε := by rw [div_lt_iff₀ hε] at hM; nlinarith
     exact absurd (le_trans hge (hB hmem)) (by linarith)
 
+/-! ### Boolean payout lemmas — the ingredients for finite additivity (`thm:lc` bullet 3)
+
+A p.c. world evaluates compound sentences by Boolean algebra (Foundation's `val`), so its
+`{0,1}` payouts add the way a coherent probability must. These are the reusable pieces the
+additivity trader's exploitation rests on. -/
+
+/-- `∼χ`-worlds falsify `χ` (Foundation: `∼χ = χ 🡒 ⊥`). -/
+theorem PCWorld.holds_neg (v : PCWorld) (χ : Sentence) : v.Holds (∼χ) ↔ ¬ v.Holds χ := by
+  simp [PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+
+theorem PCWorld.holds_or (v : PCWorld) (φ ψ : Sentence) :
+    v.Holds (φ ⋎ ψ) ↔ v.Holds φ ∨ v.Holds ψ := Iff.rfl
+
+theorem PCWorld.holds_and (v : PCWorld) (φ ψ : Sentence) :
+    v.Holds (φ ⋏ ψ) ↔ v.Holds φ ∧ v.Holds ψ := Iff.rfl
+
+/-- **Finite additivity of payout under exclusion.** If `∼(φ∧ψ)` holds (the disjuncts are
+mutually exclusive), the payout of `φ∨ψ` is the sum of the payouts — the world-level identity
+behind coherent finite additivity. -/
+theorem PCWorld.payout_or_of_excl (v : PCWorld) (φ ψ : Sentence)
+    (h : v.Holds (∼(φ ⋏ ψ))) : v.payout (φ ⋎ ψ) = v.payout φ + v.payout ψ := by
+  rw [PCWorld.holds_neg, PCWorld.holds_and] at h
+  simp only [PCWorld.payout]
+  by_cases hφ : v.Holds φ <;> by_cases hψ : v.Holds ψ
+  · exact absurd ⟨hφ, hψ⟩ h
+  · rw [if_pos (show v.Holds (φ ⋎ ψ) from Or.inl hφ), if_pos hφ, if_neg hψ]; norm_num
+  · rw [if_pos (show v.Holds (φ ⋎ ψ) from Or.inr hψ), if_neg hφ, if_pos hψ]; norm_num
+  · rw [if_neg (show ¬ v.Holds (φ ⋎ ψ) from not_or.mpr ⟨hφ, hψ⟩), if_neg hφ, if_neg hψ]; norm_num
+
 /-- **Limit Coherence, bullet (2)** (`thm:lc`): the price of a disprovable sentence
 converges to `0` under a logical inductor. -/
 theorem lic_disprovable_tendsto_zero (P : History) (DP : DeductiveProcess)
