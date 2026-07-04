@@ -28,6 +28,7 @@ hypotheses the corpus mostly runs on — that needs the LUV/expectation layer (E
 See the milestone notes.
 -/
 import LogicalInduction.Properties
+import LogicalInduction.Expectations
 
 namespace LogicalInduction.IntegrationTest
 
@@ -85,5 +86,31 @@ example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] (φ : Sen
     (consumer : ProvindHypothesis P φ → (fun n => P n φ) ≲ₙ (fun _ => 1)) :
     (fun n => P n φ) ≲ₙ (fun _ => (1 : ℝ)) :=
   consumer (provind_hypothesis_discharged P DP φ hded hP1 hcons)
+
+/-! ## Part C — closing the level gap: expectation-level interface
+
+The corpus's *main* hypotheses are over expectations `E^H_n(X)`, which it treats as abstract
+`ℕ → ℝ`. With the LUV bridge (`Expectations.lean`) those are now **concrete**: `E^H_n(X)` is
+`X.expectSeq P`, a real sum of `P`'s prices on `X`'s threshold sentences. So the corpus's
+`ES, Em, …` are literally `X.expectSeq P` for concrete LUVs, and its expectation hypotheses
+`Approx (E_now X) (E_now Y)` are `X.expectSeq P ≈ₙ Y.expectSeq P` here — the *same* type. -/
+
+/-- The corpus's `E_now(X) : ℕ → ℝ` slot is inhabited by our concrete expectation sequence. -/
+noncomputable example (P : History) (X : LUV) : ℕ → ℝ := X.expectSeq P
+
+/-- A `thm:cee`-shaped expectation hypothesis, in our concrete objects. -/
+example (P : History) (X Y : LUV) : Prop := X.expectSeq P ≈ₙ Y.expectSeq P
+
+/-- **The deference `Value` theorem, applied to our concrete expectations.** Every abstract
+`E_now(·)` slot in `value_argmax_asymptotic` is instantiated by `expectSeq P` of a concrete
+LUV. The LI hypotheses (`thm:cee`/`thm:expprovind`) are still assumed here — proving them is
+the property-tail work `Expectations.lean` states — but the *interface is closed*: the
+corpus's expectation sequences are our objects, with no adapter and no type mismatch. -/
+example (P : History) (Ŝ M mi Oi : LUV)
+    (hUM_S : Ŝ.expectSeq P ≈ₙ M.expectSeq P)      -- thm:cee on the selected LUV
+    (hMon  : mi.expectSeq P ≲ₙ M.expectSeq P)     -- thm:expprovind
+    (hCee  : Oi.expectSeq P ≈ₙ mi.expectSeq P) :  -- thm:cee on Oⁱ
+    Oi.expectSeq P ≲ₙ Ŝ.expectSeq P :=
+  value_argmax_asymptotic _ _ _ _ hUM_S hMon hCee
 
 end LogicalInduction.IntegrationTest

@@ -1,0 +1,95 @@
+/-
+# Part III — Expectations of LUVs (`def:luv`, `def:e`, the LUV bridge)
+
+The deference / dose-response corpora run almost entirely on **expectations** `E^H_n(X)` of
+logically uncertain variables — objects they treat as abstract `ℕ → ℝ` sequences. This file
+makes that object *concrete*, which is what lets their expectation-level hypotheses be
+discharged from our side (roadmap M3/M4 LUV bridge).
+
+The unlock is the paper's `def:e`: the day-`n` expectation of a `[0,1]`-LUV `X` is a **finite
+sum of the market's prices** on `X`'s threshold sentences,
+`𝔼ₙ(X) = (1/n) · ∑_{i<n} Pₙ(⌜X > i/n⌝)`. So once a LUV is presented by its threshold
+sentences, `𝔼ₙ(X)` is a genuine `ℕ → ℝ` derived from `P : History`.
+
+Modeling note (`def:luv`, disclosed type-`(c)`): the paper's LUVs are *first-order* — a
+formula `X(ν)` free in one variable, over a theory `Θ` that represents computations — whereas
+our `Sentence = Formula ℕ` is propositional. We model a `[0,1]`-LUV faithfully **by its
+observable content for the market**: the family of threshold sentences `X.gt r = ⌜X > r⌝ ∈
+Sentence`. The paper's well-definedness (`Θ` proves a unique value) becomes monotonicity /
+coherence conditions on that family; we carry only what a given theorem needs, as explicit
+hypotheses, rather than reconstructing the first-order syntax.
+-/
+import LogicalInduction.Criterion
+import LogicalInduction.Asymptotics
+import Mathlib.Algebra.Order.BigOperators.Group.Finset
+
+namespace LogicalInduction
+
+open Filter Topology
+
+/-- `def:luv` (abstracted). A `[0,1]`-logically-uncertain variable, presented by its
+threshold sentences: `X.gt r = ⌜X > r⌝`. This is the LUV's entire observable content for a
+market, which prices those sentences. -/
+structure LUV where
+  /-- The sentence `⌜X > r⌝`, for a rational threshold `r`. -/
+  gt : ℚ → Sentence
+
+namespace LUV
+
+/-- `def:e`. The **approximate expectation** of `X` under a valuation `V` at precision `k`:
+`𝔼_k^V(X) = ∑_{i<k} (1/k) · V(⌜X > i/k⌝)`. Lands in `[0,1]` when `V` does (a share is worth
+at most 1), so expectations of `[0,1]`-LUVs are themselves `[0,1]`-valued. -/
+noncomputable def expectApprox (V : Valuation) (k : ℕ) (X : LUV) : ℝ :=
+  (k : ℝ)⁻¹ * ∑ i ∈ Finset.range k, V (X.gt ((i : ℚ) / (k : ℚ)))
+
+/-- `𝔼ₙ := 𝔼_n^{Pₙ}` — the day-`n` expectation, precision tied to the day (`def:e`). -/
+noncomputable def expect (P : History) (n : ℕ) (X : LUV) : ℝ :=
+  X.expectApprox (P n) n
+
+/-- The **expectation sequence** `n ↦ 𝔼ₙ(X)`. This is the concrete object the deference
+corpus abstracts as `E^H_n(X) : ℕ → ℝ`; a hypothesis `Approx (E_now X) (E_now Y)` there is
+`expectSeq P X ≈ₙ expectSeq P Y` here. -/
+noncomputable def expectSeq (P : History) (X : LUV) : ℕ → ℝ := fun n => X.expect P n
+
+/-! ### Basic bounds — `𝔼` inherits `[0,1]` from the prices. -/
+
+theorem expectApprox_nonneg (V : Valuation) (k : ℕ) (X : LUV)
+    (hV : ∀ s, 0 ≤ V s) : 0 ≤ X.expectApprox V k := by
+  refine mul_nonneg (by positivity) (Finset.sum_nonneg (fun i _ => hV _))
+
+theorem expectApprox_le_one (V : Valuation) (k : ℕ) (X : LUV)
+    (hV : ∀ s, V s ≤ 1) : X.expectApprox V k ≤ 1 := by
+  rcases Nat.eq_zero_or_pos k with hk | hk
+  · simp [expectApprox, hk]
+  · have hsum : ∑ i ∈ Finset.range k, V (X.gt ((i : ℚ) / (k : ℚ))) ≤ (k : ℝ) := by
+      calc ∑ i ∈ Finset.range k, V (X.gt ((i : ℚ) / (k : ℚ)))
+          ≤ ∑ _i ∈ Finset.range k, (1 : ℝ) := Finset.sum_le_sum (fun i _ => hV _)
+        _ = k := by simp
+    rw [expectApprox, inv_mul_le_iff₀ (by exact_mod_cast hk)]
+    simpa using hsum
+
+theorem expect_mem_Icc (P : History) (n : ℕ) (X : LUV)
+    (hP : ∀ s, 0 ≤ P n s ∧ P n s ≤ 1) : 0 ≤ X.expect P n ∧ X.expect P n ≤ 1 :=
+  ⟨X.expectApprox_nonneg (P n) n (fun s => (hP s).1),
+   X.expectApprox_le_one (P n) n (fun s => (hP s).2)⟩
+
+/-! ### `thm:ec` — Expectations Converge.
+
+The day-`n` expectation of any `[0,1]`-LUV converges. Stated conditionally on a logical
+inductor. **Proof deferred**: it is a genuine property-tail theorem (`app:ec`) — it needs
+per-threshold price convergence (`thm:con`) plus control of the moving precision, which
+routes through the trader machinery not yet built for moving-threshold sequences. Ledgered
+as `sorry`. -/
+theorem expect_converges (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (X : LUV) (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
+    ∃ L : ℝ, ConvergesTo (X.expectSeq P) L := by
+  sorry
+
+/-- `𝔼_∞(X)` — the limiting expectation (`thm:ec`), extracted from `expect_converges`. -/
+noncomputable def expectInf (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (X : LUV) (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) : ℝ :=
+  (X.expect_converges P DP hP).choose
+
+end LUV
+
+end LogicalInduction
