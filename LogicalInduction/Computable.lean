@@ -214,17 +214,64 @@ def priceTrader (φ : Sentence) : Trader where
                rank_le := by intro p hp; simp only [List.mem_singleton] at hp
                              subst hp; simp [EF.rank] }
 
-theorem priceTrader_ec (φ : Sentence) : EfficientlyComputable (priceTrader φ) := by
+/-! ### `PolyEF` — day-indexed feature templates with e.c. codes.
+
+`PolyEF t` says the per-day code `n ↦ (t n).toNat` is poly-fueled. It is closed under the
+`EF` constructors (leaves `const`/`price φ n`), so *any* feature template a property proof
+builds — e.g. the responsive `max(0, c − φ*ⁿ)` buy-signal — is e.c. for free, and a
+single-sentence responsive trader's efficient computability drops out via `ec_of_polyEF`. -/
+
+/-- The per-day code of the template `t` is efficiently computable. -/
+def PolyEF (t : ℕ → EF) : Prop := ∃ c, PolyFueled c (fun n => (t n).toNat)
+
+theorem PolyEF.const (q : ℚ) : PolyEF (fun _ => EF.const q) :=
+  ⟨_, PolyFueled.const (Nat.pair 0 (Encodable.encode q))⟩
+
+theorem PolyEF.price (φ : Sentence) : PolyEF (fun n => EF.price φ n) :=
+  ⟨_, (PolyFueled.const 1).pair ((PolyFueled.const (Encodable.encode φ)).pair PolyFueled.id)⟩
+
+theorem PolyEF.add {a b : ℕ → EF} (ha : PolyEF a) (hb : PolyEF b) :
+    PolyEF (fun n => EF.add (a n) (b n)) := by
+  obtain ⟨_, hca⟩ := ha; obtain ⟨_, hcb⟩ := hb
+  exact ⟨_, (PolyFueled.const 2).pair (hca.pair hcb)⟩
+
+theorem PolyEF.mul {a b : ℕ → EF} (ha : PolyEF a) (hb : PolyEF b) :
+    PolyEF (fun n => EF.mul (a n) (b n)) := by
+  obtain ⟨_, hca⟩ := ha; obtain ⟨_, hcb⟩ := hb
+  exact ⟨_, (PolyFueled.const 3).pair (hca.pair hcb)⟩
+
+theorem PolyEF.max {a b : ℕ → EF} (ha : PolyEF a) (hb : PolyEF b) :
+    PolyEF (fun n => EF.max (a n) (b n)) := by
+  obtain ⟨_, hca⟩ := ha; obtain ⟨_, hcb⟩ := hb
+  exact ⟨_, (PolyFueled.const 4).pair (hca.pair hcb)⟩
+
+theorem PolyEF.safeRecip {a : ℕ → EF} (ha : PolyEF a) :
+    PolyEF (fun n => EF.safeRecip (a n)) := by
+  obtain ⟨_, hca⟩ := ha
+  exact ⟨_, (PolyFueled.const 5).pair hca⟩
+
+/-- A single-sentence responsive trader `[(t n, φ)]` with a `PolyEF` coefficient is
+efficiently computable. -/
+theorem ec_of_polyEF {t : ℕ → EF} (φ : Sentence) (ht : PolyEF t) {Tr : Trader}
+    (hTr : ∀ n, (Tr.strat n).trades = [(t n, φ)]) : EfficientlyComputable Tr := by
+  obtain ⟨_, hct⟩ := ht
   have hpf := PolyFueled.succ_comp
-      ((((PolyFueled.const 1).pair
-          ((PolyFueled.const (Encodable.encode φ)).pair PolyFueled.id)).pair
-        (PolyFueled.const (Encodable.encode φ))).pair (PolyFueled.const 0))
-  have heq : (fun n => Nat.pair (Nat.pair (Nat.pair 1
-        (Nat.pair (Encodable.encode φ) n)) (Encodable.encode φ)) 0 + 1)
-      = (fun n => Encodable.encode ((priceTrader φ).strat n).trades) := by
-    funext n; rfl
+    ((hct.pair (PolyFueled.const (Encodable.encode φ))).pair (PolyFueled.const 0))
+  have heq : (fun n => Nat.pair (Nat.pair (t n).toNat (Encodable.encode φ)) 0 + 1)
+      = (fun n => Encodable.encode (Tr.strat n).trades) := by funext n; rw [hTr n]; rfl
   rw [heq] at hpf
   exact EfficientlyComputable.of_polyFueled hpf
+
+theorem priceTrader_ec (φ : Sentence) : EfficientlyComputable (priceTrader φ) :=
+  ec_of_polyEF φ (PolyEF.price φ) (fun _ => rfl)
+
+/-- Payoff: the responsive **buy-signal** coefficient `max(0, c − φ*ⁿ)` — the actual shape
+the convergence / provability-induction property proofs use — is `PolyEF` in one line, so
+any trader built from it is efficiently computable via `ec_of_polyEF`. -/
+example (φ : Sentence) (c : ℚ) :
+    PolyEF (fun n => EF.max (EF.const 0) (EF.add (EF.const c) (EF.mul (EF.const (-1))
+      (EF.price φ n)))) :=
+  (PolyEF.const 0).max ((PolyEF.const c).add ((PolyEF.const (-1)).mul (PolyEF.price φ)))
 
 
 end LogicalInduction
