@@ -55,6 +55,7 @@ import LogicalInduction.Criterion
 import LogicalInduction.Asymptotics
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 import Mathlib.Order.Filter.AtTopBot.Basic
+import Mathlib.Topology.Order.LiminfLimsup
 
 namespace LogicalInduction
 
@@ -356,5 +357,103 @@ theorem lic_disprovable_tendsto_zero (P : History) (DP : DeductiveProcess)
   have := hP0 n
   have h1 := hN n hn
   constructor <;> linarith
+
+/-! ## `thm:con` — Convergence.
+
+> The limit `P_∞(φ) := limₙ Pₙ(φ)` exists for all `φ`.  *(Garrabrant et al., `thm:con`.)*
+
+The paper's argument (`sec:convergence` / `app:con`): if the market never makes up its mind
+about `φ`, its price oscillates, and a trader can **arbitrage** the oscillation — buy `φ`
+cheap, sell it back dear — pocketing a fixed profit on each swing at no risk, hence
+exploiting. A logical inductor forbids this, so the price must converge.
+
+This splits into two halves along the M2 pattern:
+
+1. **The reduction (`exists_rat_oscillation_of_not_convergesTo`, proved below, no `sorry`).**
+   Non-convergence of a `[0,1]`-bounded price forces a *rational* oscillation: `a < b` in `ℚ`
+   with `Pₙφ < a` infinitely often and `Pₙφ > b` infinitely often. This is exactly the
+   contrapositive of Mathlib's `tendsto_of_no_upcrossings`, taken over the dense set `↑ℚ ⊆ ℝ`
+   — the "assume the property fails → extract the exploitable configuration" step, carried by
+   a library lemma rather than hand-rolled.
+
+2. **The exploiting trader (`oscillation_exploitable`, `sorry` — the genuine remaining work).**
+   Given the oscillation, build the arbitrage trader and show it exploits. See that lemma's
+   TODO for the concrete construction and the two obstacles it currently faces.
+
+`lic_price_convergesTo` chains them against `def:lic`. -/
+
+open Filter Topology in
+/-- **Reduction step for `thm:con`** (fully proved). A `[0,1]`-bounded price that does *not*
+converge must **oscillate across a rational gap**: there are rationals `a < b` with the price
+below `a` infinitely often and above `b` infinitely often.
+
+This is the contrapositive of `tendsto_of_no_upcrossings` instantiated at the dense range of
+`(↑) : ℚ → ℝ`; the rationality of `a, b` is what lets the arbitrage trader use them as `EF`
+constants. -/
+theorem exists_rat_oscillation_of_not_convergesTo (P : History) (φ : Sentence)
+    (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
+    (hnc : ¬ ∃ L, ConvergesTo (fun n => P n φ) L) :
+    ∃ a b : ℚ, (a : ℝ) < b ∧ (∃ᶠ n in atTop, P n φ < (a : ℝ)) ∧
+      (∃ᶠ n in atTop, (b : ℝ) < P n φ) := by
+  by_contra hcon
+  refine hnc (tendsto_of_no_upcrossings (u := fun n => P n φ) Rat.denseRange_cast ?_
+    (isBoundedUnder_of ⟨1, fun n => (hb n).2⟩) (isBoundedUnder_of ⟨0, fun n => (hb n).1⟩))
+  rintro _ ⟨a, rfl⟩ _ ⟨b, rfl⟩ hab ⟨hA, hB⟩
+  exact hcon ⟨a, b, hab, hA, hB⟩
+
+/-- **The oscillation-arbitrage trader exists and exploits** (`app:con`, the genuine hard
+core — currently `sorry`).
+
+Given a rational oscillation of `Pₙφ` across `[a, b]` (price `< a` i.o. and `> b` i.o.), with
+plausible worlds available every day, there is an *efficiently computable* trader that
+exploits `P`.
+
+**The intended construction** (the paper's continuous arbitrage, well-formed *for free* here
+because every `EF` coefficient is continuous by `EF.continuous_denote`, so the paper's
+discontinuity caveat does not arise): trade a continuous **target-holding**
+`T(x) := clamp₀₁((b − x)/(b − a))` — a full share when `φ` is cheap (`x ≤ a`), none when dear
+(`x ≥ b`) — realized as the day-`n` coefficient `c_n := T(Pₙφ) − T(P_{n-1}φ)` on `φ`. Then the
+cumulative holding telescopes to `T(Pₙφ) − T(P₀φ) ∈ [-1,1]` (bounded downside), while each
+completed buy-low/sell-high swing contributes `P_m φ − P_n φ ≥ b − a > 0` to net worth **in
+every world** (the payout term cancels on a closed round trip), so infinitely many swings give
+unbounded upside: exploitation.
+
+**Two obstacles, surfaced not routed around** (`dd:fuel` pressure points):
+- *Exploitation inequality.* The net worth reduces (Abel summation) to
+  `T_n(payout − Pₙφ) + Σ_{i<n} T_i(P_{i+1}φ − P_iφ)`; bounding the Stieltjes sum below by
+  `(#swings)·(b−a)` under the oscillation hypothesis is a real discrete-arbitrage lemma, not
+  yet formalized.
+- *Efficient computability.* This is the **first property trader referencing two consecutive
+  days' prices** (`price φ n` *and* `price φ (n-1)`). The prec-free `dd:fuel` combinator set
+  (`Computable.lean`: const/id/pair/succ_comp) has **no predecessor**, and `Nat.pred` via
+  `Code.prec` makes `evaln` decrement fuel — breaking poly-fuel composition. Certifying this
+  trader e.c. needs a prec-free `pred` combinator (or an index-shift redesign). See the
+  session report.
+
+Both are genuine deferred work, ledgered `sorry`; nothing is stubbed. -/
+theorem oscillation_exploitable (P : History) (DP : DeductiveProcess) (φ : Sentence)
+    (a b : ℚ) (hab : (a : ℝ) < b) (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hA : ∃ᶠ n in atTop, P n φ < (a : ℝ)) (hB : ∃ᶠ n in atTop, (b : ℝ) < P n φ) :
+    ∃ Tr : Trader, EfficientlyComputable Tr ∧ Tr.Exploits P DP := by
+  sorry
+
+/-- **Convergence** (`thm:con`): under a logical inductor, the price of every sentence `φ`
+converges. Proof: if not, the price oscillates across a rational gap
+(`exists_rat_oscillation_of_not_convergesTo`), and that oscillation is exploitable
+(`oscillation_exploitable`) by an e.c. trader — contradicting `def:lic`.
+
+Hypotheses (both honest, both matching the rest of this file): prices lie in `[0,1]`, and each
+day admits a plausible world (`hcons`; without it the market is vacuously unexploitable and
+nothing constrains the price). -/
+theorem lic_price_convergesTo (P : History) (DP : DeductiveProcess)
+    [hLI : IsLogicalInductor P DP] (φ : Sentence)
+    (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    ∃ L, ConvergesTo (fun n => P n φ) L := by
+  by_contra hnc
+  obtain ⟨a, b, hab, hA, hB⟩ := exists_rat_oscillation_of_not_convergesTo P φ hb hnc
+  obtain ⟨Tr, hec, hexp⟩ := oscillation_exploitable P DP φ a b hab hb hcons hA hB
+  exact hLI.noExploit Tr hec hexp
 
 end LogicalInduction
