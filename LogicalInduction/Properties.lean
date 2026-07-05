@@ -408,29 +408,29 @@ Given a rational oscillation of `Pₙφ` across `[a, b]` (price `< a` i.o. and `
 plausible worlds available every day, there is an *efficiently computable* trader that
 exploits `P`.
 
-**The intended construction** (the paper's continuous arbitrage, well-formed *for free* here
-because every `EF` coefficient is continuous by `EF.continuous_denote`, so the paper's
-discontinuity caveat does not arise): trade a continuous **target-holding**
-`T(x) := clamp₀₁((b − x)/(b − a))` — a full share when `φ` is cheap (`x ≤ a`), none when dear
-(`x ≥ b`) — realized as the day-`n` coefficient `c_n := T(Pₙφ) − T(P_{n-1}φ)` on `φ`. Then the
-cumulative holding telescopes to `T(Pₙφ) − T(P₀φ) ∈ [-1,1]` (bounded downside), while each
-completed buy-low/sell-high swing contributes `P_m φ − P_n φ ≥ b − a > 0` to net worth **in
-every world** (the payout term cancels on a closed round trip), so infinitely many swings give
-unbounded upside: exploitation.
+**The construction is genuinely subtle — hysteresis is required.** A *memoryless* target
+holding `T(Pₙφ)` (hold a share when cheap, none when dear) does **not** work: its net worth is
+`≈ Σ T(Pₙφ)·ΔPₙφ ≈ ∫ T dP`, and since `T` is a function of price alone this integral is
+*path-independent* — it telescopes to `G(P_N) − G(P₀)` (a bounded state function) and nets
+**zero over a closed oscillation cycle**. So a memoryless trader stays bounded and cannot
+exploit. This is exactly the "discontinuous / not-well-formed trader" subtlety the paper flags
+(`sec:convergence`): the real arbitrage needs a **stopping-time / hysteresis** rule — *buy* when
+`Pₙφ < a`, then **hold** (memory!) until some later `m` with `Pₘφ > b`, then *sell* — so that
+each completed swing banks `Pₘφ − Pₙφ ≥ b − a` at no risk (position closed ⇒ payout cancels),
+and infinitely many swings give unbounded upside off bounded downside. Encoding that
+path-dependent rule as a continuous `EF`-history function is the deferred work.
 
-**Two obstacles, surfaced not routed around** (`dd:fuel` pressure points):
-- *Exploitation inequality.* The net worth reduces (Abel summation) to
-  `T_n(payout − Pₙφ) + Σ_{i<n} T_i(P_{i+1}φ − P_iφ)`; bounding the Stieltjes sum below by
-  `(#swings)·(b−a)` under the oscillation hypothesis is a real discrete-arbitrage lemma, not
-  yet formalized.
-- *Efficient computability.* This is the **first property trader referencing two consecutive
-  days' prices** (`price φ n` *and* `price φ (n-1)`). The prec-free `dd:fuel` combinator set
-  (`Computable.lean`: const/id/pair/succ_comp) has **no predecessor**, and `Nat.pred` via
-  `Code.prec` makes `evaln` decrement fuel — breaking poly-fuel composition. Certifying this
-  trader e.c. needs a prec-free `pred` combinator (or an index-shift redesign). See the
-  session report.
+Status of the two ingredients:
+- *Efficient computability — RESOLVED.* Such a trader references two consecutive days' prices;
+  the day-`(n-1)` feature is now e.c. via `PolyEF.pricePred` (`Computable.lean`, the prec-fueled
+  `predc`). So once the trader is written, its e.c. certification is in reach.
+- *Exploitation inequality — the remaining hard core.* Constructing the hysteresis `EF` and
+  proving its net worth is bounded below yet unbounded above under the oscillation hypothesis is
+  a genuine discrete-arbitrage lemma (the paper itself sidesteps it in `app:con` by routing
+  convergence through `thm:tbo`). Not yet formalized.
 
-Both are genuine deferred work, ledgered `sorry`; nothing is stubbed. -/
+`sorry`, honestly; nothing is stubbed, and the earlier memoryless-`T` sketch is retracted as
+mathematically insufficient. -/
 theorem oscillation_exploitable (P : History) (DP : DeductiveProcess) (φ : Sentence)
     (a b : ℚ) (hab : (a : ℝ) < b) (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
