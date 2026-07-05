@@ -273,5 +273,115 @@ example (φ : Sentence) (c : ℚ) :
       (EF.price φ n)))) :=
   (PolyEF.const 0).max ((PolyEF.const c).add ((PolyEF.const (-1)).mul (PolyEF.price φ)))
 
+/-! ## Prec-fueled predecessor — the day-`(n-1)` price reference.
+
+The single-day templates above (`PolyEF.price φ n`) suffice for accumulation traders, but the
+**convergence arbitrage trader** (`thm:con`) is the first to reference *two consecutive days'*
+prices — it must know the previous day's holding to close a position risk-free — so its
+coefficient template contains `EF.price φ (n-1)`, whose encoding contains `n - 1 = Nat.pred n`.
+
+`Nat.pred` is *the* canonical primitive-recursive function: it cannot be built from the
+prec-free primitives (`const`/`succ`/`pair`/`comp`/`left`/`right`), so this is the one place we
+must account `evaln` fuel through a genuine `Code.prec` — which *does* decrement fuel. We do it
+once, here, and bound the cost by a degree-4 polynomial, so every multi-day-referencing trader
+(convergence, moving-threshold expectation control, …) reuses `PolyEF.pricePred` for free. -/
+
+/-- The core recursor: `prec zero (comp left right)` on `pair a m` returns `pred m`
+(independent of the dummy `a`) — the `succ`-case `cg = comp left right` extracts the recursion
+index `y` and ignores the recursive value. -/
+def predAux : Nat.Partrec.Code := prec zero (comp left right)
+
+/-- One unrolling of the `prec` recursion for `predAux` at `pair 0 (m+1)`, given the recursive
+value `i` and the two guard bounds it produces. -/
+theorem predAux_step (k m i : ℕ) (hg : Nat.pair 0 (m+1) ≤ k)
+    (hrec : evaln k predAux (Nat.pair 0 m) = some i)
+    (hg2 : Nat.pair 0 (Nat.pair m i) ≤ k) :
+    evaln (k+1) predAux (Nat.pair 0 (m+1)) = some m := by
+  have hmi : Nat.pair m i ≤ k := le_trans (Nat.right_le_pair 0 (Nat.pair m i)) hg2
+  conv_lhs => rw [predAux, evaln]
+  simp only [Nat.unpaired, Nat.unpair_pair, predAux] at hrec ⊢
+  rw [hrec]
+  simp only [evaln, Option.guard, Nat.unpair_pair]
+  simp [hg, hg2, hmi]
+
+/-- `predAux` computes `m ↦ pred m` on `pair 0 m` within a degree-4 fuel budget. The recursion
+depth is `m` (each `prec` level decrements `evaln`'s fuel by one), and the dominant guard is the
+`comp` call on `pair 0 (pair m (m-1))` — of size `≈ (2m)⁴` — hence the `32·(m+1)⁴` bound. -/
+theorem predAux_evaln : ∀ (m F : ℕ), 32 * (m+1)^4 < F →
+    evaln F predAux (Nat.pair 0 m) = some (m - 1) := by
+  intro m
+  induction m with
+  | zero =>
+      intro F hF
+      obtain ⟨k, rfl⟩ : ∃ k, F = k + 1 := ⟨F - 1, by omega⟩
+      rw [show Nat.pair 0 0 = 0 from rfl]
+      simp [predAux, evaln, Nat.unpaired]
+  | succ m ih =>
+      intro F hF
+      obtain ⟨k, rfl⟩ : ∃ k, F = k + 1 := ⟨F - 1, by omega⟩
+      have hA : 32 * (m+2)^4 ≤ k := by
+        have : (m+1+1) = m+2 := by ring
+        rw [this] at hF; omega
+      have hIH : evaln k predAux (Nat.pair 0 m) = some (m - 1) := by
+        refine ih k ?_
+        have h4 : (m+1)^4 < (m+2)^4 := by gcongr <;> omega
+        omega
+      refine predAux_step k m (m-1) ?hg hIH ?hg2
+      case hg =>
+        have h1 : Nat.pair 0 (m+1) < (m+2)^2 := by simpa using pair_lt_sq 0 (m+1)
+        have h2 : (m+2)^2 ≤ (m+2)^4 := by gcongr <;> omega
+        omega
+      case hg2 =>
+        have h1 : Nat.pair m (m-1) < (2*m+1)^2 := by
+          calc Nat.pair m (m-1) < (m+(m-1)+1)^2 := pair_lt_sq m (m-1)
+            _ ≤ (2*m+1)^2 := by gcongr <;> omega
+        have h2 : Nat.pair 0 (Nat.pair m (m-1)) < ((2*m+1)^2)^2 := by
+          calc Nat.pair 0 (Nat.pair m (m-1)) < (Nat.pair m (m-1) + 1)^2 := by
+                simpa using pair_lt_sq 0 (Nat.pair m (m-1))
+            _ ≤ ((2*m+1)^2)^2 := by gcongr; omega
+        have h3 : ((2*m+1)^2)^2 ≤ 16 * (m+2)^4 := by
+          have : ((2*m+1)^2)^2 = (2*m+1)^4 := by ring
+          rw [this]; calc (2*m+1)^4 ≤ (2*m+4)^4 := by gcongr <;> omega
+            _ = 16 * (m+2)^4 := by ring
+        omega
+
+/-- The one-argument predecessor code: feed `n` as the recursion variable via `pair 0 n`. -/
+def predc : Nat.Partrec.Code :=
+  comp predAux (pair (Nat.Partrec.Code.const 0) (left.pair right))
+
+theorem predc_fueled : Fueled predc Nat.pred (fun n => 32*(n+1)^4 + n + 1) := by
+  intro n
+  have hgn : evaln (32*(n+1)^4+n+1) (pair (Nat.Partrec.Code.const 0) (left.pair right)) n
+      = some (Nat.pair 0 n) :=
+    evaln_mono (by show max (n+0+1) (n+1) ≤ 32*(n+1)^4+n+1; omega)
+      ((fueled_pair (fueled_const 0) fueled_id) n)
+  have hfn : evaln (32*(n+1)^4+n+1) predAux (Nat.pair 0 n) = some (Nat.pred n) := by
+    have := predAux_evaln n (32*(n+1)^4+n+1) (by omega); rwa [Nat.sub_one] at this
+  show evaln (32*(n+1)^4+n+1) predc n = some (Nat.pred n)
+  rw [predc]
+  generalize predAux = pa at hfn ⊢
+  generalize (pair (Nat.Partrec.Code.const 0) (left.pair right)) = cg at hgn ⊢
+  simp [evaln, Option.guard_eq_some', hgn, hfn, Option.bind_eq_some_iff]
+
+/-- **The predecessor combinator.** `predc` computes `Nat.pred` with polynomial (degree-4) fuel
+— the reusable e.c. primitive for day-`(n-1)` price references. -/
+theorem predc_polyFueled : PolyFueled predc Nat.pred := by
+  refine ⟨fun n => 32*(n+1)^4 + n + 1, predc_fueled,
+    ⟨1, 1, fun n => by simp only [pow_one, one_mul, Nat.pred_eq_sub_one]; omega⟩,
+    ⟨33, 4, fun n => ?_⟩⟩
+  show 32*(n+1)^4 + n + 1 ≤ 33*(n+1)^4 + 33
+  have hx : n+1 ≤ (n+1)^4 := Nat.le_self_pow (by norm_num) _
+  omega
+
+/-- The **previous-day** price feature `φ*⁽ⁿ⁻¹⁾` is an efficiently-computable template — the
+piece the convergence arbitrage trader needs beyond the single-day `PolyEF.price`. -/
+theorem PolyEF.pricePred (φ : Sentence) : PolyEF (fun n => EF.price φ (n-1)) := by
+  have h := (PolyFueled.const 1).pair
+    ((PolyFueled.const (Encodable.encode φ)).pair predc_polyFueled)
+  have heq : (fun n => Nat.pair 1 (Nat.pair (Encodable.encode φ) (Nat.pred n)))
+      = (fun n => (EF.price φ (n-1)).toNat) := by
+    funext n; simp only [EF.toNat, Nat.pred_eq_sub_one]
+  rw [heq] at h
+  exact ⟨_, h⟩
 
 end LogicalInduction
