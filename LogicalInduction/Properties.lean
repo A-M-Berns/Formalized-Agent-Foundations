@@ -725,4 +725,131 @@ theorem lic_provind_seq (P : History) (DP : DeductiveProcess) [hLI : IsLogicalIn
   rw [Real.dist_eq, abs_lt]
   have := hP1 n; have := hN n hn; constructor <;> linarith
 
+/-! ## `thm:lex` — learning logical equivalence
+
+If `⊢ φ ↔ ψ` then the prices track each other: `Pₙφ − Pₙψ → 0`. Structurally this is the
+additivity result with a *two*-sentence world-neutral portfolio `σ·[(1,φ),(-1,ψ)]` — by
+equivalence the payouts are equal (`payout_eq_of_iff`), so the day value is the deterministic
+difference `σ·(Pφ−Pψ)`, and the same buy-signal + reusable exploitation engine apply. -/
+
+/-- If both `∼φ⋎ψ` and `∼ψ⋎φ` hold (i.e. `φ ↔ ψ`), the payouts coincide. -/
+theorem PCWorld.payout_eq_of_iff (v : PCWorld) (φ ψ : Sentence)
+    (h1 : v.Holds (∼φ ⋎ ψ)) (h2 : v.Holds (∼ψ ⋎ φ)) : v.payout φ = v.payout ψ := by
+  rw [PCWorld.holds_or, PCWorld.holds_neg] at h1 h2
+  simp only [PCWorld.payout]
+  by_cases hφ : v.Holds φ <;> by_cases hψ : v.Holds ψ <;>
+    simp_all [hφ, hψ]
+
+/-- Price difference `Pₙφ − Pₙψ` as an `EF`. -/
+noncomputable def gap2EF (φ ψ : Sentence) (n : ℕ) : EF :=
+  .add (.price φ n) (.mul (.const (-1)) (.price ψ n))
+
+noncomputable def sig2EF (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : EF :=
+  .max (.const 0) (.add (.mul (.const σ) (gap2EF φ ψ n)) (.const (-ε/2)))
+
+theorem gap2EF_denote (φ ψ : Sentence) (P : History) (n : ℕ) :
+    (gap2EF φ ψ n).denote P = P n φ - P n ψ := by
+  simp only [gap2EF, EF.denote_add, EF.denote_mul, EF.denote_const, EF.denote_price,
+    Pi.add_apply, Pi.mul_apply]; push_cast; ring
+
+theorem sig2EF_denote (φ ψ : Sentence) (σ ε : ℚ) (P : History) (n : ℕ) :
+    (sig2EF φ ψ σ ε n).denote P = max 0 ((σ:ℝ) * (gap2EF φ ψ n).denote P + (-(ε:ℝ)/2)) := by
+  simp only [sig2EF, EF.denote_max, EF.denote_add, EF.denote_mul, EF.denote_const,
+    Pi.add_apply, Pi.mul_apply]; push_cast; ring_nf
+
+/-- The equivalence-arbitrage trader for direction `σ`: plays `sig` copies of
+`σ·[(1,φ),(-1,ψ)]` — world-neutral when `φ ↔ ψ`. -/
+noncomputable def eqTr (φ ψ : Sentence) (σ ε : ℚ) : Trader where
+  strat n := { trades := [(.mul (sig2EF φ ψ σ ε n) (.const (-σ)), φ),
+                          (.mul (sig2EF φ ψ σ ε n) (.const σ), ψ)]
+               rank_le := by
+                 intro p hp
+                 have hs : (sig2EF φ ψ σ ε n).rank ≤ n := by simp [sig2EF, EF.rank, gap2EF]
+                 simp only [List.mem_cons, List.not_mem_nil, or_false] at hp
+                 rcases hp with h|h <;> subst h <;>
+                   exact (by simpa [EF.rank] using hs) }
+
+noncomputable def eqW (P : History) (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : ℝ :=
+  (sig2EF φ ψ σ ε n).denote P * ((σ : ℝ) * (gap2EF φ ψ n).denote P)
+
+theorem eqTr_value (φ ψ : Sentence) (σ ε : ℚ) (P : History) (v : PCWorld) (n : ℕ)
+    (h1 : v.Holds (∼φ ⋎ ψ)) (h2 : v.Holds (∼ψ ⋎ φ)) :
+    ((eqTr φ ψ σ ε).strat n).value P v.payout = eqW P φ ψ σ ε n := by
+  have hpay : v.payout φ = v.payout ψ := PCWorld.payout_eq_of_iff v φ ψ h1 h2
+  simp only [eqTr, eqW, gap2EF, Strategy.value, List.map_cons, List.map_nil, List.sum_cons,
+    List.sum_nil, EF.denote_mul, EF.denote_const, EF.denote_add, EF.denote_price,
+    Pi.mul_apply, Pi.add_apply]
+  rw [hpay]; push_cast; ring
+
+theorem eqW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε) (n : ℕ) :
+    0 ≤ eqW P φ ψ σ ε n := by
+  rw [eqW, sig2EF_denote]
+  set G := (σ:ℝ) * (gap2EF φ ψ n).denote P with hG
+  by_cases h : G + (-(ε:ℝ)/2) ≤ 0
+  · rw [max_eq_left h]; simp
+  · push_neg at h
+    have hεr : (0:ℝ) < (ε:ℝ) := by exact_mod_cast hε
+    exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
+
+theorem sig2EF_polyEF (φ ψ : Sentence) (σ ε : ℚ) : PolyEF (sig2EF φ ψ σ ε) := by
+  have hgap : PolyEF (gap2EF φ ψ) :=
+    (PolyEF.price φ).add ((PolyEF.const (-1)).mul (PolyEF.price ψ))
+  exact (PolyEF.const 0).max (((PolyEF.const σ).mul hgap).add (PolyEF.const (-ε/2)))
+
+theorem eqTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputable (eqTr φ ψ σ ε) := by
+  obtain ⟨_, h1⟩ := (sig2EF_polyEF φ ψ σ ε).mul (PolyEF.const (-σ))
+  obtain ⟨_, h2⟩ := (sig2EF_polyEF φ ψ σ ε).mul (PolyEF.const σ)
+  have e1 := h1.pair (PolyFueled.const (Encodable.encode φ))
+  have e2 := h2.pair (PolyFueled.const (Encodable.encode ψ))
+  have l1 := ((e1.pair ((e2.pair (PolyFueled.const 0)).succ_comp)).succ_comp)
+  have heq : (fun n => Nat.pair (Nat.pair (EF.mul (sig2EF φ ψ σ ε n) (EF.const (-σ))).toNat
+      (Encodable.encode φ))
+      (Nat.pair (Nat.pair (EF.mul (sig2EF φ ψ σ ε n) (EF.const σ)).toNat (Encodable.encode ψ))
+        0 + 1) + 1)
+      = (fun n => Encodable.encode ((eqTr φ ψ σ ε).strat n).trades) := by funext n; rfl
+  rw [heq] at l1
+  exact EfficientlyComputable.of_polyFueled l1
+
+theorem eqTr_exploits (P : History) (DP : DeductiveProcess) (φ ψ : Sentence) (σ ε : ℚ)
+    (hε : 0 < ε) (himp1 : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n) (himp2 : ∀ n, (∼ψ ⋎ φ) ∈ DP.D n)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hfreq : ∃ᶠ n in atTop, (ε:ℝ) ≤ (σ:ℝ) * (gap2EF φ ψ n).denote P) :
+    (eqTr φ ψ σ ε).Exploits P DP := by
+  have hεr : (0:ℝ) < (ε:ℝ) := by exact_mod_cast hε
+  refine exploits_of_nonneg_partialSums (eqTr φ ψ σ ε) P DP (eqW P φ ψ σ ε) ((ε:ℝ)^2/2)
+    (by positivity) (fun i => eqW_nonneg P φ ψ σ ε hε i) ?_ ?_ hcons
+  · intro n v hv
+    simp only [Trader.netWorth]
+    refine Finset.sum_congr rfl (fun i _ => ?_)
+    exact eqTr_value φ ψ σ ε P v i (hv _ (himp1 n)) (hv _ (himp2 n))
+  · refine hfreq.mono (fun n hn => ?_)
+    rw [eqW, sig2EF_denote]
+    set g := (σ:ℝ) * (gap2EF φ ψ n).denote P with hgdef
+    rw [max_eq_right (by linarith)]
+    nlinarith [hn, hεr]
+
+/-- **Learning of logical equivalence** (`thm:lex`, finite-stage form): if `⊢ φ ↔ ψ` (both
+implications revealed by the deductive process), the price difference `Pₙφ − Pₙψ → 0` under a
+logical inductor. World-neutral 2-sentence portfolio (payouts equal by equivalence). -/
+theorem lic_lex_tendsto_zero (P : History) (DP : DeductiveProcess)
+    [hLI : IsLogicalInductor P DP] (φ ψ : Sentence) (himp1 : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n)
+    (himp2 : ∀ n, (∼ψ ⋎ φ) ∈ DP.D n) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    ConvergesTo (fun n => P n φ - P n ψ) 0 := by
+  refine Metric.tendsto_atTop.mpr (fun ε hε => ?_)
+  obtain ⟨q, hq0, hqε⟩ := exists_rat_btwn hε
+  have hq0' : 0 < q := by exact_mod_cast hq0
+  have h1 : ∀ᶠ n in atTop, (gap2EF φ ψ n).denote P < (q:ℝ) := by
+    by_contra hc; rw [not_eventually] at hc; simp only [not_lt] at hc
+    exact hLI.noExploit _ (eqTr_ec φ ψ 1 q)
+      (eqTr_exploits P DP φ ψ 1 q hq0' himp1 himp2 hcons (by simpa using hc))
+  have h2 : ∀ᶠ n in atTop, -(q:ℝ) < (gap2EF φ ψ n).denote P := by
+    by_contra hc; rw [not_eventually] at hc; simp only [not_lt] at hc
+    refine hLI.noExploit _ (eqTr_ec φ ψ (-1) q)
+      (eqTr_exploits P DP φ ψ (-1) q hq0' himp1 himp2 hcons ?_)
+    refine hc.mono (fun n hn => ?_); push_cast; nlinarith [hn]
+  have hfin : ∀ᶠ n in atTop, dist (P n φ - P n ψ) 0 < ε := by
+    filter_upwards [h1, h2] with n hn1 hn2
+    rw [Real.dist_eq, ← gap2EF_denote φ ψ P n, abs_lt]; constructor <;> linarith
+  exact eventually_atTop.mp hfin
+
 end LogicalInduction
