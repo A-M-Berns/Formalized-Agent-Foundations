@@ -650,4 +650,21 @@ theorem lic_excl_gap_tendsto_zero (P : History) (DP : DeductiveProcess)
     constructor <;> linarith
   exact eventually_atTop.mp hfin
 
+/-- **Finite additivity of the limit** (`thm:lc`, bullet 3, limit form): wherever the three
+prices converge (guaranteed by `thm:con`), an exclusive disjunction's limiting price is the sum
+`P∞(φ∨ψ) = P∞(φ) + P∞(ψ)`. Immediate from `lic_excl_gap_tendsto_zero` and uniqueness of limits.
+Stated with the convergences as explicit hypotheses so it is unconditional (the sorry lives only
+in the general `thm:con`, not here). -/
+theorem lic_limit_additive (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (φ ψ : Sentence) (hexcl : ∀ n, (∼(φ ⋏ ψ)) ∈ DP.D n)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (Lφψ Lφ Lψ : ℝ) (hφψ : ConvergesTo (fun n => P n (φ ⋎ ψ)) Lφψ)
+    (hφ : ConvergesTo (fun n => P n φ) Lφ) (hψ : ConvergesTo (fun n => P n ψ) Lψ) :
+    Lφψ = Lφ + Lψ := by
+  have hgap := lic_excl_gap_tendsto_zero P DP φ ψ hexcl hcons
+  have hto : ConvergesTo (fun n => P n (φ ⋎ ψ) - P n φ - P n ψ) (Lφψ - Lφ - Lψ) :=
+    (hφψ.sub hφ).sub hψ
+  have := tendsto_nhds_unique hto hgap
+  linarith
+
 end LogicalInduction
