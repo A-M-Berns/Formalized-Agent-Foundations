@@ -33,29 +33,38 @@ Given a rational oscillation of `Pₙφ` across `[a, b]` (price `< a` i.o. and `
 plausible worlds available every day, there is an *efficiently computable* trader that
 exploits `P`.
 
-**The construction is genuinely subtle — hysteresis is required.** A *memoryless* target
-holding `T(Pₙφ)` (hold a share when cheap, none when dear) does **not** work: its net worth is
-`≈ Σ T(Pₙφ)·ΔPₙφ ≈ ∫ T dP`, and since `T` is a function of price alone this integral is
-*path-independent* — it telescopes to `G(P_N) − G(P₀)` (a bounded state function) and nets
-**zero over a closed oscillation cycle**. So a memoryless trader stays bounded and cannot
-exploit. This is exactly the "discontinuous / not-well-formed trader" subtlety the paper flags
-(`sec:convergence`): the real arbitrage needs a **stopping-time / hysteresis** rule — *buy* when
-`Pₙφ < a`, then **hold** (memory!) until some later `m` with `Pₘφ > b`, then *sell* — so that
-each completed swing banks `Pₘφ − Pₙφ ≥ b − a` at no risk (position closed ⇒ payout cancels),
-and infinitely many swings give unbounded upside off bounded downside. Encoding that
-path-dependent rule as a continuous `EF`-history function is the deferred work.
+**Why this is blocked — a genuine `def:ec` fidelity limit (type-`(c)`), surfaced not stubbed.**
+The investigation below is recorded because it pins down *exactly* what fails; see `PROGRESS.md`
+OPEN RISK 4.
 
-Status of the two ingredients:
-- *Efficient computability — RESOLVED.* Such a trader references two consecutive days' prices;
-  the day-`(n-1)` feature is now e.c. via `PolyEF.pricePred` (`Computable.lean`, the prec-fueled
-  `predc`). So once the trader is written, its e.c. certification is in reach.
-- *Exploitation inequality — the remaining hard core.* Constructing the hysteresis `EF` and
-  proving its net worth is bounded below yet unbounded above under the oscillation hypothesis is
-  a genuine discrete-arbitrage lemma (the paper itself sidesteps it in `app:con` by routing
-  convergence through `thm:tbo`). Not yet formalized.
+Every trader whose day-`n` coefficient is a **bounded-depth** `EF` (references a fixed window
+`Pₙ, Pₙ₋₁, …, Pₙ₋d`) provably fails to exploit a *smooth* oscillation:
+- *Memoryless target-holding* `c_n = T(Pₙ) − T(Pₙ₋₁)` telescopes the position to `T(Pₙ) − T(P₀)`
+  (a state function of the current price); its net worth is `≈ ∫ T dP`, path-independent, and
+  nets ~0 over a closed cycle. (The earlier "just use `Pₙ` and `Pₙ₋₁`" sketch — retracted.)
+- *Mean-reversion* `c_n = Pₙ₋₁ − Pₙ` does slightly better: its net worth is exactly
+  `(P_N² − P₀²)/2 + ½·Σ(Pᵢ − Pᵢ₋₁)²` (in the `payout = 0` world) — it harvests the price's
+  **quadratic variation**. But a smooth ramp from `a` to `b` in `M` steps contributes
+  `≈ (b−a)²/M → 0`, so an adversary that oscillates *smoothly* keeps the quadratic variation
+  bounded and this trader stays bounded too.
 
-`sorry`, honestly; nothing is stubbed, and the earlier memoryless-`T` sketch is retracted as
-mathematically insufficient. -/
+Banking the full `b − a` per swing *regardless of smoothness* requires **holding a fixed
+position through the whole ramp** and flipping it only at the thresholds — a stopping-time /
+**hysteresis** rule (buy at `a`, hold until `> b`, sell). "Am I currently holding" depends on how
+long ago the price last crossed `a` vs `b` — an **unbounded look-back**, i.e. a **linear-depth**
+(size-`Θ(n)`) `EF`.
+
+And here is the wall: our `EfficientlyComputable` requires a `Code` that outputs the strategy's
+`Encodable.encode` — the `EF.toNat`, a **`Nat.pair`-nested number whose bit-length quadruples per
+depth level** (measured: `6, 23, 91, 362, 1445, …` bits at depth `0,1,2,3,4` — `≈ 6·4ᵈ`). A
+linear-depth feature therefore has a `~4ⁿ`-bit code, which **no `evaln (poly n)` run can even
+write down**. So the hysteresis trader — legal under the paper's poly-*size* `def:ec` (a size-`n`
+syntax tree is poly-size) — is **excluded by our poly-*runtime*-of-`toNat` model**. Our e.c.
+class is thus strictly *smaller* than the paper's on exactly the deep-but-poly-size strategies
+convergence needs, so `IsLogicalInductor` does not forbid the exploiter, and `thm:con` is not
+derivable as stated. This is not a trader to build; it is a **trust-surface decision** (redefine
+`EfficientlyComputable` to bound the poly *size of a structural description*, not the runtime of
+the `Nat.pair` `toNat`) that needs Anson before proceeding. Kept `sorry`, honestly. -/
 theorem oscillation_exploitable (P : History) (DP : DeductiveProcess) (φ : Sentence)
     (a b : ℚ) (hab : (a : ℝ) < b) (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
