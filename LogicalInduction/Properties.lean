@@ -852,4 +852,150 @@ theorem lic_lex_tendsto_zero (P : History) (DP : DeductiveProcess)
     rw [Real.dist_eq, ← gap2EF_denote φ ψ P n, abs_lt]; constructor <;> linarith
   exact eventually_atTop.mp hfin
 
+/-! ## `thm:lex` — learning logical implication (price monotonicity)
+
+The one-directional companion to equivalence: `⊢ φ → ψ` ⇒ eventually `Pₙφ ≤ Pₙψ + ε`. Here the
+sell-`φ`/buy-`ψ` portfolio is **not** world-neutral — its value carries a world-dependent term
+`payout ψ − payout φ ≥ 0` (nonneg because `φ→ψ`) on top of the deterministic `Pφ−Pψ`. So the day
+value is only *bounded below* by the world-independent `impSig·(Pφ−Pψ)`, which the generalized
+`exploits_of_ge_partialSums` (a `≥`-partial-sums exploitation engine) is built to consume. -/
+
+/-- Generalized exploitation: if each plausible-world net worth is **at least** the partial sum
+of a nonnegative sequence `w` that is `≥ ε` frequently, the trader exploits. (Covers
+world-dependent traders whose value is only bounded below by a world-independent quantity.) -/
+theorem exploits_of_ge_partialSums (Tr : Trader) (P : History) (DP : DeductiveProcess)
+    (w : ℕ → ℝ) (ε : ℝ) (hε : 0 < ε) (hnonneg : ∀ i, 0 ≤ w i)
+    (hge : ∀ (n : ℕ) (v : PCWorld), v.ConsistentWith (DP.D n) →
+      ∑ i ∈ Finset.range (n+1), w i ≤ Tr.netWorth P v n)
+    (hfreq : ∃ᶠ n in atTop, ε ≤ w n)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    Tr.Exploits P DP := by
+  refine ⟨⟨0, ?_⟩, ?_⟩
+  · rintro x ⟨m, v, hv, rfl⟩
+    exact le_trans (Finset.sum_nonneg (fun i _ => hnonneg i)) (hge m v hv)
+  · rintro ⟨B, hB⟩
+    obtain ⟨g, hg_mono, hg⟩ := extraction_of_frequently_atTop hfreq
+    obtain ⟨M, hM⟩ := exists_nat_gt (B / ε)
+    obtain ⟨v, hv⟩ := hcons (g M)
+    have hsub : (Finset.range (M+1)).image g ⊆ Finset.range (g M + 1) := by
+      intro i hi; simp only [Finset.mem_image, Finset.mem_range] at hi
+      obtain ⟨k, hk, rfl⟩ := hi
+      exact Finset.mem_range.mpr (by have := hg_mono.monotone (Nat.lt_succ_iff.mp hk); omega)
+    have hge2 : (M+1 : ℝ) * ε ≤ Tr.netWorth P v (g M) := by
+      refine le_trans ?_ (hge (g M) v hv)
+      calc (M+1:ℝ)*ε = ∑ _k ∈ Finset.range (M+1), ε := by
+            rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]; push_cast; ring
+        _ ≤ ∑ k ∈ Finset.range (M+1), w (g k) := Finset.sum_le_sum (fun k _ => hg k)
+        _ = ∑ i ∈ (Finset.range (M+1)).image g, w i :=
+            (Finset.sum_image (hg_mono.injective.injOn)).symm
+        _ ≤ ∑ i ∈ Finset.range (g M + 1), w i :=
+            Finset.sum_le_sum_of_subset_of_nonneg hsub (fun i _ _ => hnonneg i)
+    have hmem : Tr.netWorth P v (g M) ∈ Tr.plausibleAssessments P DP := ⟨g M, v, hv, rfl⟩
+    have hBm : B < (M+1:ℝ)*ε := by rw [div_lt_iff₀ hε] at hM; nlinarith
+    exact absurd (le_trans hge2 (hB hmem)) (by linarith)
+
+/-- `∼φ⋎ψ` (i.e. `φ→ψ`) makes `φ`'s payout `≤ ψ`'s. -/
+theorem PCWorld.payout_le_of_imp (v : PCWorld) (φ ψ : Sentence)
+    (h : v.Holds (∼φ ⋎ ψ)) : v.payout φ ≤ v.payout ψ := by
+  rw [PCWorld.holds_or, PCWorld.holds_neg] at h
+  simp only [PCWorld.payout]
+  by_cases hφ : v.Holds φ <;> by_cases hψ : v.Holds ψ <;> simp_all
+
+/-- Buy-signal for the implication trader: `max(0, (Pφ−Pψ) − ε/2)`. -/
+noncomputable def impSig (φ ψ : Sentence) (ε : ℚ) (n : ℕ) : EF :=
+  .max (.const 0) (.add (gap2EF φ ψ n) (.const (-ε/2)))
+
+theorem impSig_denote (φ ψ : Sentence) (ε : ℚ) (P : History) (n : ℕ) :
+    (impSig φ ψ ε n).denote P = max 0 ((gap2EF φ ψ n).denote P + (-(ε:ℝ)/2)) := by
+  simp only [impSig, EF.denote_max, EF.denote_add, EF.denote_const, Pi.add_apply]; push_cast; ring_nf
+
+/-- Implication trader: `impSig` copies of `[(-1,φ),(1,ψ)]` (sell `φ`, buy `ψ`) — profits when
+`φ` is overpriced relative to `ψ`; risk-free because `φ→ψ` ⇒ `payout φ ≤ payout ψ`. -/
+noncomputable def impTr (φ ψ : Sentence) (ε : ℚ) : Trader where
+  strat n := { trades := [(.mul (impSig φ ψ ε n) (.const (-1)), φ),
+                          (impSig φ ψ ε n, ψ)]
+               rank_le := by
+                 intro p hp
+                 have hs : (impSig φ ψ ε n).rank ≤ n := by simp [impSig, EF.rank, gap2EF]
+                 simp only [List.mem_cons, List.not_mem_nil, or_false] at hp
+                 rcases hp with h|h
+                 · subst h; simpa [EF.rank] using hs
+                 · subst h; exact hs }
+
+/-- World-independent lower bound for the day-`n` value: `impSig · (Pφ − Pψ)`. -/
+noncomputable def impW (P : History) (φ ψ : Sentence) (ε : ℚ) (n : ℕ) : ℝ :=
+  (impSig φ ψ ε n).denote P * ((gap2EF φ ψ n).denote P)
+
+theorem impTr_value_ge (φ ψ : Sentence) (ε : ℚ) (P : History) (v : PCWorld) (n : ℕ)
+    (himp : v.Holds (∼φ ⋎ ψ)) :
+    impW P φ ψ ε n ≤ ((impTr φ ψ ε).strat n).value P v.payout := by
+  have hpay : v.payout φ ≤ v.payout ψ := PCWorld.payout_le_of_imp v φ ψ himp
+  have hs0 : 0 ≤ (impSig φ ψ ε n).denote P := by rw [impSig_denote]; exact le_max_left _ _
+  simp only [impTr, impW, gap2EF, Strategy.value, List.map_cons, List.map_nil, List.sum_cons,
+    List.sum_nil, EF.denote_mul, EF.denote_const, EF.denote_add, EF.denote_price,
+    Pi.mul_apply, Pi.add_apply]
+  have hgap : (impSig φ ψ ε n).denote P * (P n φ + (-1) * P n ψ)
+      ≤ (impSig φ ψ ε n).denote P * (-1) * (v.payout φ - P n φ)
+        + (impSig φ ψ ε n).denote P * (v.payout ψ - P n ψ) := by
+    have : (impSig φ ψ ε n).denote P * (-1) * (v.payout φ - P n φ)
+        + (impSig φ ψ ε n).denote P * (v.payout ψ - P n ψ)
+        = (impSig φ ψ ε n).denote P * (P n φ + (-1)*P n ψ)
+          + (impSig φ ψ ε n).denote P * (v.payout ψ - v.payout φ) := by ring
+    rw [this]; nlinarith [hs0, hpay]
+  simpa [gap2EF, EF.denote_add, EF.denote_mul, EF.denote_const, EF.denote_price] using hgap
+
+theorem impW_nonneg (P : History) (φ ψ : Sentence) (ε : ℚ) (hε : 0 < ε) (n : ℕ) :
+    0 ≤ impW P φ ψ ε n := by
+  rw [impW, impSig_denote]
+  set G := (gap2EF φ ψ n).denote P
+  by_cases h : G + (-(ε:ℝ)/2) ≤ 0
+  · rw [max_eq_left h]; simp
+  · push_neg at h
+    have hεr : (0:ℝ) < (ε:ℝ) := by exact_mod_cast hε
+    exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
+
+theorem impSig_polyEF (φ ψ : Sentence) (ε : ℚ) : PolyEF (impSig φ ψ ε) := by
+  have hgap : PolyEF (gap2EF φ ψ) :=
+    (PolyEF.price φ).add ((PolyEF.const (-1)).mul (PolyEF.price ψ))
+  exact (PolyEF.const 0).max (hgap.add (PolyEF.const (-ε/2)))
+
+theorem impTr_ec (φ ψ : Sentence) (ε : ℚ) : EfficientlyComputable (impTr φ ψ ε) := by
+  obtain ⟨_, h1⟩ := (impSig_polyEF φ ψ ε).mul (PolyEF.const (-1))
+  obtain ⟨_, h2⟩ := impSig_polyEF φ ψ ε
+  have e1 := h1.pair (PolyFueled.const (Encodable.encode φ))
+  have e2 := h2.pair (PolyFueled.const (Encodable.encode ψ))
+  have l1 := ((e1.pair ((e2.pair (PolyFueled.const 0)).succ_comp)).succ_comp)
+  have heq : (fun n => Nat.pair (Nat.pair (EF.mul (impSig φ ψ ε n) (EF.const (-1))).toNat
+      (Encodable.encode φ))
+      (Nat.pair (Nat.pair (impSig φ ψ ε n).toNat (Encodable.encode ψ)) 0 + 1) + 1)
+      = (fun n => Encodable.encode ((impTr φ ψ ε).strat n).trades) := by funext n; rfl
+  rw [heq] at l1
+  exact EfficientlyComputable.of_polyFueled l1
+
+/-- **Learning logical implication** (`thm:lex` family): if `⊢ φ → ψ` (revealed as `∼φ⋎ψ`),
+then a logical inductor eventually stops overpricing `φ` relative to `ψ`: for every `ε > 0`,
+eventually `Pₙφ ≤ Pₙψ + ε`. -/
+theorem lic_imp_eventually_le (P : History) (DP : DeductiveProcess)
+    [hLI : IsLogicalInductor P DP] (φ ψ : Sentence) (himp : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (ε : ℝ) (hε : 0 < ε) :
+    ∀ᶠ n in atTop, P n φ ≤ P n ψ + ε := by
+  obtain ⟨q, hq0, hqε⟩ := exists_rat_btwn hε
+  have hq0' : 0 < q := by exact_mod_cast hq0
+  have hmain : ∀ᶠ n in atTop, (gap2EF φ ψ n).denote P < (q:ℝ) := by
+    by_contra hc; rw [not_eventually] at hc; simp only [not_lt] at hc
+    refine hLI.noExploit _ (impTr_ec φ ψ q) ?_
+    refine exploits_of_ge_partialSums (impTr φ ψ q) P DP (impW P φ ψ q) ((q:ℝ)^2/2)
+      (by positivity) (fun i => impW_nonneg P φ ψ q hq0' i) ?_ ?_ hcons
+    · intro n v hv
+      simp only [Trader.netWorth]
+      refine Finset.sum_le_sum (fun i _ => impTr_value_ge φ ψ q P v i (hv _ (himp n)))
+    · refine hc.mono (fun n hn => ?_)
+      rw [impW, impSig_denote]
+      set g := (gap2EF φ ψ n).denote P with hgdef
+      have hqr : (0:ℝ) < (q:ℝ) := by exact_mod_cast hq0'
+      rw [max_eq_right (by push_cast; linarith)]
+      push_cast; nlinarith [hn, hqr]
+  filter_upwards [hmain] with n hn
+  rw [gap2EF_denote] at hn; linarith
+
 end LogicalInduction
