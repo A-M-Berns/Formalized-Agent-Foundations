@@ -56,6 +56,7 @@ import LogicalInduction.Asymptotics
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 import Mathlib.Order.Filter.AtTopBot.Basic
 import Mathlib.Topology.Order.LiminfLimsup
+import LogicalInduction.Computable
 
 namespace LogicalInduction
 
@@ -455,5 +456,198 @@ theorem lic_price_convergesTo (P : History) (DP : DeductiveProcess)
   obtain ⟨a, b, hab, hA, hB⟩ := exists_rat_oscillation_of_not_convergesTo P φ hb hnc
   obtain ⟨Tr, hec, hexp⟩ := oscillation_exploitable P DP φ a b hab hb hcons hA hB
   exact hLI.noExploit Tr hec hexp
+
+/-! ## M3 — Limit Coherence, bullet (3): finite additivity (`thm:lc`)
+
+The third coherence bullet: if `⊢ ∼(φ∧ψ)` (the disjuncts are mutually exclusive) then the
+limiting belief is additive, `P∞(φ∨ψ) = P∞(φ) + P∞(ψ)`. The finite-stage engine below shows the
+price *gap* `Pₙ(φ∨ψ) − Pₙ(φ) − Pₙ(ψ) → 0`; with convergence (`thm:con`) this is the limit
+identity. Unlike the memoryless convergence trader, the additivity trader needs **no
+hysteresis**: the portfolio `σ·[(-1,φ∨ψ),(1,φ),(1,ψ)]` is *world-neutral* — by exclusivity the
+`{0,1}` payouts cancel (`payout_or_of_excl`), so each day's value is the deterministic gap `σ·g`,
+and a continuous buy-signal `max(0, σ·g − ε/2)` makes it a bounded-below, unbounded-above
+accumulation (`exploits_of_nonneg_partialSums`). Both mispricing directions (`σ = ±1`) are one
+parametrized trader. -/
+
+/-- Reusable exploitation: a trader whose day-`i` value in every plausible world equals a fixed
+nonnegative sequence `w i`, with `w n ≥ ε` frequently, exploits. -/
+theorem exploits_of_nonneg_partialSums (Tr : Trader) (P : History) (DP : DeductiveProcess)
+    (w : ℕ → ℝ) (ε : ℝ) (hε : 0 < ε) (hnonneg : ∀ i, 0 ≤ w i)
+    (hval : ∀ (n : ℕ) (v : PCWorld), v.ConsistentWith (DP.D n) →
+      Tr.netWorth P v n = ∑ i ∈ Finset.range (n+1), w i)
+    (hfreq : ∃ᶠ n in atTop, ε ≤ w n)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    Tr.Exploits P DP := by
+  refine ⟨⟨0, ?_⟩, ?_⟩
+  · rintro x ⟨m, v, hv, rfl⟩
+    rw [hval m v hv]; exact Finset.sum_nonneg (fun i _ => hnonneg i)
+  · rintro ⟨B, hB⟩
+    obtain ⟨g, hg_mono, hg⟩ := extraction_of_frequently_atTop hfreq
+    obtain ⟨M, hM⟩ := exists_nat_gt (B / ε)
+    obtain ⟨v, hv⟩ := hcons (g M)
+    have hsub : (Finset.range (M+1)).image g ⊆ Finset.range (g M + 1) := by
+      intro i hi; simp only [Finset.mem_image, Finset.mem_range] at hi
+      obtain ⟨k, hk, rfl⟩ := hi
+      exact Finset.mem_range.mpr (by have := hg_mono.monotone (Nat.lt_succ_iff.mp hk); omega)
+    have hge : (M+1 : ℝ) * ε ≤ Tr.netWorth P v (g M) := by
+      rw [hval (g M) v hv]
+      calc (M+1:ℝ)*ε = ∑ _k ∈ Finset.range (M+1), ε := by
+            rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]; push_cast; ring
+        _ ≤ ∑ k ∈ Finset.range (M+1), w (g k) := Finset.sum_le_sum (fun k _ => hg k)
+        _ = ∑ i ∈ (Finset.range (M+1)).image g, w i :=
+            (Finset.sum_image (hg_mono.injective.injOn)).symm
+        _ ≤ ∑ i ∈ Finset.range (g M + 1), w i :=
+            Finset.sum_le_sum_of_subset_of_nonneg hsub (fun i _ _ => hnonneg i)
+    have hmem : Tr.netWorth P v (g M) ∈ Tr.plausibleAssessments P DP := ⟨g M, v, hv, rfl⟩
+    have hBm : B < (M+1:ℝ)*ε := by rw [div_lt_iff₀ hε] at hM; nlinarith
+    exact absurd (le_trans hge (hB hmem)) (by linarith)
+
+
+/-- Price gap of an exclusive pair: `P(φ∨ψ) − P(φ) − P(ψ)`, as an `EF`. -/
+noncomputable def gapEF (φ ψ : Sentence) (n : ℕ) : EF :=
+  .add (.price (φ ⋎ ψ) n) (.add (.mul (.const (-1)) (.price φ n)) (.mul (.const (-1)) (.price ψ n)))
+
+/-- Continuous buy-signal for direction `σ ∈ {1,-1}`: `max(0, σ·gap − ε/2)`. -/
+noncomputable def sigEF (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : EF :=
+  .max (.const 0) (.add (.mul (.const σ) (gapEF φ ψ n)) (.const (-ε/2)))
+
+theorem gapEF_rank (φ ψ : Sentence) (n : ℕ) : (gapEF φ ψ n).rank ≤ n := by
+  simp [gapEF, EF.rank]
+theorem sigEF_rank (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : (sigEF φ ψ σ ε n).rank ≤ n := by
+  simp [sigEF, EF.rank, gapEF]
+
+/-- The exclusion-arbitrage trader for direction `σ`: each day plays `sig` copies of the
+world-neutral portfolio `σ·[(-1,φ∨ψ),(1,φ),(1,ψ)]`. -/
+noncomputable def exclTr (φ ψ : Sentence) (σ ε : ℚ) : Trader where
+  strat n := { trades := [(.mul (sigEF φ ψ σ ε n) (.const (-σ)), φ ⋎ ψ),
+                          (.mul (sigEF φ ψ σ ε n) (.const σ), φ),
+                          (.mul (sigEF φ ψ σ ε n) (.const σ), ψ)]
+               rank_le := by
+                 intro p hp
+                 have hs := sigEF_rank φ ψ σ ε n
+                 simp only [List.mem_cons, List.not_mem_nil, or_false] at hp
+                 rcases hp with h|h|h <;> subst h <;>
+                   exact (by simpa [EF.rank] using sigEF_rank φ ψ σ ε n) }
+
+/-- The day-`n` payoff sequence: `sig · σ · gap`, a nonnegative world-independent real. -/
+noncomputable def exclW (P : History) (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : ℝ :=
+  (sigEF φ ψ σ ε n).denote P * ((σ : ℝ) * (gapEF φ ψ n).denote P)
+
+theorem exclTr_value (φ ψ : Sentence) (σ ε : ℚ) (P : History) (v : PCWorld) (n : ℕ)
+    (hv : v.Holds (∼(φ ⋏ ψ))) :
+    ((exclTr φ ψ σ ε).strat n).value P v.payout = exclW P φ ψ σ ε n := by
+  have hpay : v.payout (φ ⋎ ψ) = v.payout φ + v.payout ψ := PCWorld.payout_or_of_excl v φ ψ hv
+  simp only [exclTr, exclW, gapEF, Strategy.value, List.map_cons, List.map_nil, List.sum_cons,
+    List.sum_nil, EF.denote_mul, EF.denote_const, EF.denote_add, EF.denote_price,
+    Pi.mul_apply, Pi.add_apply]
+  rw [hpay]; push_cast; ring
+
+/-- Denotation of the buy-signal: `max(0, σ·gap − ε/2)`. -/
+theorem sigEF_denote (φ ψ : Sentence) (σ ε : ℚ) (P : History) (n : ℕ) :
+    (sigEF φ ψ σ ε n).denote P = max 0 ((σ:ℝ) * (gapEF φ ψ n).denote P + (-(ε:ℝ)/2)) := by
+  simp only [sigEF, EF.denote_max, EF.denote_add, EF.denote_mul, EF.denote_const,
+    Pi.add_apply, Pi.mul_apply]; push_cast; ring_nf
+
+/-- `exclW` is nonnegative (needs `ε > 0`): when the signal fires, `σ·gap ≥ ε/2 > 0`. -/
+theorem exclW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε) (n : ℕ) :
+    0 ≤ exclW P φ ψ σ ε n := by
+  rw [exclW, sigEF_denote]
+  set G := (σ:ℝ) * (gapEF φ ψ n).denote P with hG
+  by_cases h : G + (-(ε:ℝ)/2) ≤ 0
+  · rw [max_eq_left h]; simp
+  · push_neg at h
+    have hεr : (0:ℝ) < (ε:ℝ) := by exact_mod_cast hε
+    exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
+
+theorem exclTr_netWorth (φ ψ : Sentence) (σ ε : ℚ) (P : History) (DP : DeductiveProcess)
+    (hexcl : ∀ n, (∼(φ ⋏ ψ)) ∈ DP.D n) (n : ℕ) (v : PCWorld) (hv : v.ConsistentWith (DP.D n)) :
+    (exclTr φ ψ σ ε).netWorth P v n = ∑ i ∈ Finset.range (n+1), exclW P φ ψ σ ε i := by
+  simp only [Trader.netWorth]
+  refine Finset.sum_congr rfl (fun i _ => ?_)
+  exact exclTr_value φ ψ σ ε P v i (hv _ (hexcl n))
+
+
+/-- The real price-gap equals the `gapEF` denotation. -/
+theorem gapEF_denote (φ ψ : Sentence) (P : History) (n : ℕ) :
+    (gapEF φ ψ n).denote P = P n (φ ⋎ ψ) - P n φ - P n ψ := by
+  simp only [gapEF, EF.denote_add, EF.denote_mul, EF.denote_const, EF.denote_price,
+    Pi.add_apply, Pi.mul_apply]; push_cast; ring
+
+/-- The signal template is efficiently computable. -/
+theorem sigEF_polyEF (φ ψ : Sentence) (σ ε : ℚ) : PolyEF (sigEF φ ψ σ ε) := by
+  have hgap : PolyEF (gapEF φ ψ) :=
+    (PolyEF.price (φ ⋎ ψ)).add
+      (((PolyEF.const (-1)).mul (PolyEF.price φ)).add ((PolyEF.const (-1)).mul (PolyEF.price ψ)))
+  exact (PolyEF.const 0).max (((PolyEF.const σ).mul hgap).add (PolyEF.const (-ε/2)))
+
+/-- The exclusion-arbitrage trader is efficiently computable (three single-day templates,
+assembled through the `Nat.pair`-tree list encoding). -/
+theorem exclTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputable (exclTr φ ψ σ ε) := by
+  obtain ⟨_, h1⟩ := (sigEF_polyEF φ ψ σ ε).mul (PolyEF.const (-σ))
+  obtain ⟨_, h2⟩ := (sigEF_polyEF φ ψ σ ε).mul (PolyEF.const σ)
+  obtain ⟨_, h3⟩ := (sigEF_polyEF φ ψ σ ε).mul (PolyEF.const σ)
+  have e1 := h1.pair (PolyFueled.const (Encodable.encode (φ ⋎ ψ)))
+  have e2 := h2.pair (PolyFueled.const (Encodable.encode φ))
+  have e3 := h3.pair (PolyFueled.const (Encodable.encode ψ))
+  have l1 := ((e1.pair ((e2.pair ((e3.pair (PolyFueled.const 0)).succ_comp)).succ_comp)).succ_comp)
+  have heq : (fun n => Nat.pair (Nat.pair (EF.mul (sigEF φ ψ σ ε n) (EF.const (-σ))).toNat
+      (Encodable.encode (φ ⋎ ψ)))
+      (Nat.pair (Nat.pair (EF.mul (sigEF φ ψ σ ε n) (EF.const σ)).toNat (Encodable.encode φ))
+        (Nat.pair (Nat.pair (EF.mul (sigEF φ ψ σ ε n) (EF.const σ)).toNat (Encodable.encode ψ))
+          0 + 1) + 1) + 1)
+      = (fun n => Encodable.encode ((exclTr φ ψ σ ε).strat n).trades) := by
+    funext n; rfl
+  rw [heq] at l1
+  exact EfficientlyComputable.of_polyFueled l1
+
+/-- Under a logical inductor with `∼(φ∧ψ)` revealed, if `σ·gap ≥ ε` frequently then the
+exclusion-arbitrage trader (direction `σ`, rational threshold `ε > 0`) exploits — contradicting
+`def:lic`. Its net worth is `Σ exclW`, each term nonnegative (world-neutral by exclusivity), and
+`≥ ε²/2` on the frequently-underpriced days. -/
+theorem exclTr_exploits (P : History) (DP : DeductiveProcess) (φ ψ : Sentence) (σ ε : ℚ)
+    (hε : 0 < ε) (hexcl : ∀ n, (∼(φ ⋏ ψ)) ∈ DP.D n)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hfreq : ∃ᶠ n in atTop, (ε:ℝ) ≤ (σ:ℝ) * (gapEF φ ψ n).denote P) :
+    (exclTr φ ψ σ ε).Exploits P DP := by
+  have hεr : (0:ℝ) < (ε:ℝ) := by exact_mod_cast hε
+  refine exploits_of_nonneg_partialSums (exclTr φ ψ σ ε) P DP (exclW P φ ψ σ ε) ((ε:ℝ)^2/2)
+    (by positivity) (fun i => exclW_nonneg P φ ψ σ ε hε i)
+    (exclTr_netWorth φ ψ σ ε P DP hexcl) ?_ hcons
+  refine hfreq.mono (fun n hn => ?_)
+  rw [exclW, sigEF_denote]
+  set g := (σ:ℝ) * (gapEF φ ψ n).denote P with hgdef
+  rw [max_eq_right (by linarith)]
+  nlinarith [hn, hεr]
+
+/-- **Finite additivity of the limiting belief** (`thm:lc`, bullet 3, finite-stage form): if
+`∼(φ∧ψ)` is a theorem (the disjuncts are exclusive), the price gap
+`Pₙ(φ∨ψ) − Pₙ(φ) − Pₙ(ψ)` converges to `0` under a logical inductor. Hence
+`P∞(φ∨ψ) = P∞(φ) + P∞(ψ)` wherever the limits exist (`thm:con`). Both over- and under-pricing
+are killed by the world-neutral portfolio `σ·[(-1,φ∨ψ),(1,φ),(1,ψ)]` (`σ = ±1`), whose value is
+world-independent by exclusivity. -/
+theorem lic_excl_gap_tendsto_zero (P : History) (DP : DeductiveProcess)
+    [hLI : IsLogicalInductor P DP] (φ ψ : Sentence) (hexcl : ∀ n, (∼(φ ⋏ ψ)) ∈ DP.D n)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    ConvergesTo (fun n => P n (φ ⋎ ψ) - P n φ - P n ψ) 0 := by
+  refine Metric.tendsto_atTop.mpr (fun ε hε => ?_)
+  obtain ⟨q, hq0, hqε⟩ := exists_rat_btwn hε
+  have hq0' : 0 < q := by exact_mod_cast hq0
+  -- upper: gap eventually < q
+  have h1 : ∀ᶠ n in atTop, (gapEF φ ψ n).denote P < (q:ℝ) := by
+    by_contra hc; rw [not_eventually] at hc; simp only [not_lt] at hc
+    exact hLI.noExploit _ (exclTr_ec φ ψ 1 q)
+      (exclTr_exploits P DP φ ψ 1 q hq0' hexcl hcons (by simpa using hc))
+  -- lower: gap eventually > -q
+  have h2 : ∀ᶠ n in atTop, -(q:ℝ) < (gapEF φ ψ n).denote P := by
+    by_contra hc; rw [not_eventually] at hc; simp only [not_lt] at hc
+    refine hLI.noExploit _ (exclTr_ec φ ψ (-1) q)
+      (exclTr_exploits P DP φ ψ (-1) q hq0' hexcl hcons ?_)
+    refine hc.mono (fun n hn => ?_)
+    push_cast; nlinarith [hn]
+  have hfin : ∀ᶠ n in atTop, dist (P n (φ ⋎ ψ) - P n φ - P n ψ) 0 < ε := by
+    filter_upwards [h1, h2] with n hn1 hn2
+    rw [Real.dist_eq, ← gapEF_denote φ ψ P n, abs_lt]
+    constructor <;> linarith
+  exact eventually_atTop.mp hfin
 
 end LogicalInduction
