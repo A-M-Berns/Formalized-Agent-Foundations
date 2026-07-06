@@ -265,6 +265,20 @@ theorem ec_of_polyEF {t : ℕ → EF} (φ : Sentence) (ht : PolyEF t) {Tr : Trad
 theorem priceTrader_ec (φ : Sentence) : EfficientlyComputable (priceTrader φ) :=
   ec_of_polyEF φ (PolyEF.price φ) (fun _ => rfl)
 
+/-- A single-trade trader `[(t n, φ n)]` whose **sentence also varies** with `n` is efficiently
+computable, given that the sentence sequence's codes are poly-fueled (an *efficiently
+computable sequence of sentences*, the paper's `𝓔𝓒`-sequence). This is what lets the
+*sequence* form of Provability Induction certify its trader. -/
+theorem ec_of_polyEF_seq {t : ℕ → EF} {φ : ℕ → Sentence} {cφ : Nat.Partrec.Code}
+    (ht : PolyEF t) (hφ : PolyFueled cφ (fun n => Encodable.encode (φ n))) {Tr : Trader}
+    (hTr : ∀ n, (Tr.strat n).trades = [(t n, φ n)]) : EfficientlyComputable Tr := by
+  obtain ⟨_, hct⟩ := ht
+  have hpf := PolyFueled.succ_comp ((hct.pair hφ).pair (PolyFueled.const 0))
+  have heq : (fun n => Nat.pair (Nat.pair (t n).toNat (Encodable.encode (φ n))) 0 + 1)
+      = (fun n => Encodable.encode (Tr.strat n).trades) := by funext n; rw [hTr n]; rfl
+  rw [heq] at hpf
+  exact EfficientlyComputable.of_polyFueled hpf
+
 /-- Payoff: the responsive **buy-signal** coefficient `max(0, c − φ*ⁿ)` — the actual shape
 the convergence / provability-induction property proofs use — is `PolyEF` in one line, so
 any trader built from it is efficiently computable via `ec_of_polyEF`. -/

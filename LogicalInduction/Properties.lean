@@ -667,4 +667,62 @@ theorem lic_limit_additive (P : History) (DP : DeductiveProcess) [IsLogicalInduc
   have := tendsto_nhds_unique hto hgap
   linarith
 
+/-! ## `thm:provind` — sequence form (efficiently computable sentence sequence)
+
+The fixed-`φ` limiting form (`lic_deducible_tendsto_one`) generalizes to a *sequence* `φₙ`: the
+same constant buy trader, now indexed, works — the only new ingredient is certifying the
+trader efficiently computable when the *sentence* varies, which needs the sequence to be an
+efficiently computable sequence of sentences (`hφ`, the paper's `𝓔𝓒`-sequence), discharged via
+`ec_of_polyEF_seq`. -/
+
+/-- The trader that buys one share of `φ n` on day `n` — the constant-coefficient trader for
+the **sequence** form of Provability Induction. -/
+noncomputable def buySeq (φ : ℕ → Sentence) : Trader where
+  strat n := { trades := [(.const 1, φ n)]
+               rank_le := by intro p hp; simp only [List.mem_singleton] at hp; subst hp
+                             simp [EF.rank] }
+
+theorem buySeq_value (φ : ℕ → Sentence) (V : History) (v : PCWorld) (n : ℕ)
+    (hpay : v.payout (φ n) = 1) :
+    ((buySeq φ).strat n).value V v.payout = 1 - V n (φ n) := by
+  simp only [buySeq, Strategy.value, List.map_cons, List.map_nil, List.sum_cons, List.sum_nil,
+    EF.denote_const, Pi.zero_apply]
+  rw [hpay]; push_cast; ring
+
+theorem buySeq_ec (φ : ℕ → Sentence) {cφ : Nat.Partrec.Code}
+    (hφ : PolyFueled cφ (fun n => Encodable.encode (φ n))) :
+    EfficientlyComputable (buySeq φ) :=
+  ec_of_polyEF_seq (PolyEF.const 1) hφ (fun _ => rfl)
+
+/-- **Provability Induction, sequence form** (`thm:provind`): for an efficiently computable
+sequence of sentences `φₙ`, each deducible by its own day, the price `Pₙ(φₙ) → 1`. Same
+constant buy trader as the fixed case, now indexed by the sequence; e.c. via `ec_of_polyEF_seq`
+and the `𝓔𝓒`-sequence hypothesis. -/
+theorem lic_provind_seq (P : History) (DP : DeductiveProcess) [hLI : IsLogicalInductor P DP]
+    (φ : ℕ → Sentence) {cφ : Nat.Partrec.Code}
+    (hφ : PolyFueled cφ (fun n => Encodable.encode (φ n)))
+    (hded : ∀ n, φ n ∈ DP.D n) (hP1 : ∀ n, P n (φ n) ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    ConvergesTo (fun n => P n (φ n)) 1 := by
+  refine Metric.tendsto_atTop.mpr (fun ε hε => ?_)
+  have hev : ∀ᶠ n in atTop, 1 - ε < P n (φ n) := by
+    by_contra h
+    rw [not_eventually] at h; simp only [not_lt] at h
+    refine hLI.noExploit (buySeq φ) (buySeq_ec φ hφ) ?_
+    refine exploits_of_nonneg_partialSums (buySeq φ) P DP (fun i => 1 - P i (φ i)) ε hε
+      (fun i => by have := hP1 i; linarith) ?_ ?_ hcons
+    · intro n v hv
+      simp only [Trader.netWorth]
+      refine Finset.sum_congr rfl (fun i hi => ?_)
+      have hi' : i ≤ n := Nat.lt_succ_iff.mp (Finset.mem_range.mp hi)
+      have hsub : DP.D i ⊆ DP.D n := Finset.le_iff_subset.mp
+        (monotone_nat_of_le_succ (fun k => Finset.le_iff_subset.mpr (DP.mono k)) hi')
+      have hmem : φ i ∈ DP.D n := hsub (hded i)
+      exact buySeq_value φ P v i (by rw [PCWorld.payout, if_pos (hv _ hmem)])
+    · exact h.mono (fun n hn => by linarith)
+  obtain ⟨N, hN⟩ := eventually_atTop.mp hev
+  refine ⟨N, fun n hn => ?_⟩
+  rw [Real.dist_eq, abs_lt]
+  have := hP1 n; have := hN n hn; constructor <;> linarith
+
 end LogicalInduction
