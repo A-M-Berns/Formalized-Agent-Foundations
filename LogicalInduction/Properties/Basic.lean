@@ -16,6 +16,40 @@ namespace LogicalInduction
 
 open Filter Topology
 
+/-! ### The continuous buy-signal `max(0, feat − ε/2)`
+
+Every responsive coherence/relationship trader gates its portfolio by a continuous buy-signal on
+some deterministic *feature* `feat` (a price gap): it trades only when `feat` exceeds `ε/2`, and
+proportionally to the excess. Factoring the signal here gives its denotation, rank, efficient
+computability, and the two facts the exploitation arguments need (nonnegativity of `signal·feat`
+when `feat ≥ 0` at trade time, and the `≥ ε²/2` lower bound on frequently-large days) once. -/
+
+/-- Continuous buy-signal `max(0, feat − ε/2)`. -/
+noncomputable def buySignal (feat : EF) (ε : ℚ) : EF :=
+  .max (.const 0) (.add feat (.const (-ε/2)))
+
+@[simp] theorem buySignal_denote (feat : EF) (ε : ℚ) (P : History) :
+    (buySignal feat ε).denote P = max 0 (feat.denote P + (-(ε:ℝ)/2)) := by
+  simp only [buySignal, EF.denote_max, EF.denote_add, EF.denote_const, Pi.add_apply]
+  push_cast; ring_nf
+
+@[simp] theorem buySignal_rank (feat : EF) (ε : ℚ) : (buySignal feat ε).rank = feat.rank := by
+  simp [buySignal, EF.rank]
+
+theorem buySignal_polyEF {t : ℕ → EF} (ht : PolyEF t) (ε : ℚ) :
+    PolyEF (fun n => buySignal (t n) ε) :=
+  (PolyEF.const 0).max (ht.add (PolyEF.const (-ε/2)))
+
+/-- `0 ≤ buySignal feat ε`. -/
+theorem buySignal_nonneg (feat : EF) (ε : ℚ) (P : History) :
+    0 ≤ (buySignal feat ε).denote P := by rw [buySignal_denote]; exact le_max_left _ _
+
+/-- When the signal fires (`feat > ε/2 ≥ 0`), its value equals `feat − ε/2`. -/
+theorem buySignal_eq_of_pos (feat : EF) (ε : ℚ) (P : History)
+    (h : (0:ℝ) ≤ feat.denote P + (-(ε:ℝ)/2)) :
+    (buySignal feat ε).denote P = feat.denote P + (-(ε:ℝ)/2) := by
+  rw [buySignal_denote, max_eq_right h]
+
 
 /-! ### Boolean payout lemmas
 

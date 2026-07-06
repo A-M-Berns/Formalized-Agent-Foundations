@@ -158,7 +158,7 @@ noncomputable def gapEF (φ ψ : Sentence) (n : ℕ) : EF :=
 
 /-- Continuous buy-signal for direction `σ ∈ {1,-1}`: `max(0, σ·gap − ε/2)`. -/
 noncomputable def sigEF (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : EF :=
-  .max (.const 0) (.add (.mul (.const σ) (gapEF φ ψ n)) (.const (-ε/2)))
+  buySignal (.mul (.const σ) (gapEF φ ψ n)) ε
 
 
 theorem gapEF_rank (φ ψ : Sentence) (n : ℕ) : (gapEF φ ψ n).rank ≤ n := by
@@ -200,8 +200,7 @@ theorem exclTr_value (φ ψ : Sentence) (σ ε : ℚ) (P : History) (v : PCWorld
 /-- Denotation of the buy-signal: `max(0, σ·gap − ε/2)`. -/
 theorem sigEF_denote (φ ψ : Sentence) (σ ε : ℚ) (P : History) (n : ℕ) :
     (sigEF φ ψ σ ε n).denote P = max 0 ((σ:ℝ) * (gapEF φ ψ n).denote P + (-(ε:ℝ)/2)) := by
-  simp only [sigEF, EF.denote_max, EF.denote_add, EF.denote_mul, EF.denote_const,
-    Pi.add_apply, Pi.mul_apply]; push_cast; ring_nf
+  simp only [sigEF, buySignal_denote, EF.denote_mul, EF.denote_const, Pi.mul_apply]
 
 
 /-- `exclW` is nonnegative (needs `ε > 0`): when the signal fires, `σ·gap ≥ ε/2 > 0`. -/
@@ -237,7 +236,7 @@ theorem sigEF_polyEF (φ ψ : Sentence) (σ ε : ℚ) : PolyEF (sigEF φ ψ σ �
   have hgap : PolyEF (gapEF φ ψ) :=
     (PolyEF.price (φ ⋎ ψ)).add
       (((PolyEF.const (-1)).mul (PolyEF.price φ)).add ((PolyEF.const (-1)).mul (PolyEF.price ψ)))
-  exact (PolyEF.const 0).max (((PolyEF.const σ).mul hgap).add (PolyEF.const (-ε/2)))
+  exact buySignal_polyEF ((PolyEF.const σ).mul hgap) ε
 
 
 /-- The exclusion-arbitrage trader is efficiently computable (three single-day templates,

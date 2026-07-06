@@ -30,7 +30,7 @@ noncomputable def gap2EF (φ ψ : Sentence) (n : ℕ) : EF :=
 
 
 noncomputable def sig2EF (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : EF :=
-  .max (.const 0) (.add (.mul (.const σ) (gap2EF φ ψ n)) (.const (-ε/2)))
+  buySignal (.mul (.const σ) (gap2EF φ ψ n)) ε
 
 
 theorem gap2EF_denote (φ ψ : Sentence) (P : History) (n : ℕ) :
@@ -41,8 +41,7 @@ theorem gap2EF_denote (φ ψ : Sentence) (P : History) (n : ℕ) :
 
 theorem sig2EF_denote (φ ψ : Sentence) (σ ε : ℚ) (P : History) (n : ℕ) :
     (sig2EF φ ψ σ ε n).denote P = max 0 ((σ:ℝ) * (gap2EF φ ψ n).denote P + (-(ε:ℝ)/2)) := by
-  simp only [sig2EF, EF.denote_max, EF.denote_add, EF.denote_mul, EF.denote_const,
-    Pi.add_apply, Pi.mul_apply]; push_cast; ring_nf
+  simp only [sig2EF, buySignal_denote, EF.denote_mul, EF.denote_const, Pi.mul_apply]
 
 
 /-- The equivalence-arbitrage trader for direction `σ`: plays `sig` copies of
@@ -86,7 +85,7 @@ theorem eqW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε)
 theorem sig2EF_polyEF (φ ψ : Sentence) (σ ε : ℚ) : PolyEF (sig2EF φ ψ σ ε) := by
   have hgap : PolyEF (gap2EF φ ψ) :=
     (PolyEF.price φ).add ((PolyEF.const (-1)).mul (PolyEF.price ψ))
-  exact (PolyEF.const 0).max (((PolyEF.const σ).mul hgap).add (PolyEF.const (-ε/2)))
+  exact buySignal_polyEF ((PolyEF.const σ).mul hgap) ε
 
 
 theorem eqTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputable (eqTr φ ψ σ ε) := by
@@ -158,12 +157,12 @@ theorem PCWorld.payout_le_of_imp (v : PCWorld) (φ ψ : Sentence)
 
 /-- Buy-signal for the implication trader: `max(0, (Pφ−Pψ) − ε/2)`. -/
 noncomputable def impSig (φ ψ : Sentence) (ε : ℚ) (n : ℕ) : EF :=
-  .max (.const 0) (.add (gap2EF φ ψ n) (.const (-ε/2)))
+  buySignal (gap2EF φ ψ n) ε
 
 
 theorem impSig_denote (φ ψ : Sentence) (ε : ℚ) (P : History) (n : ℕ) :
     (impSig φ ψ ε n).denote P = max 0 ((gap2EF φ ψ n).denote P + (-(ε:ℝ)/2)) := by
-  simp only [impSig, EF.denote_max, EF.denote_add, EF.denote_const, Pi.add_apply]; push_cast; ring_nf
+  simp only [impSig, buySignal_denote]
 
 
 /-- Implication trader: `impSig` copies of `[(-1,φ),(1,ψ)]` (sell `φ`, buy `ψ`) — profits when
@@ -218,7 +217,7 @@ theorem impW_nonneg (P : History) (φ ψ : Sentence) (ε : ℚ) (hε : 0 < ε) (
 theorem impSig_polyEF (φ ψ : Sentence) (ε : ℚ) : PolyEF (impSig φ ψ ε) := by
   have hgap : PolyEF (gap2EF φ ψ) :=
     (PolyEF.price φ).add ((PolyEF.const (-1)).mul (PolyEF.price ψ))
-  exact (PolyEF.const 0).max (hgap.add (PolyEF.const (-ε/2)))
+  exact buySignal_polyEF hgap ε
 
 
 theorem impTr_ec (φ ψ : Sentence) (ε : ℚ) : EfficientlyComputable (impTr φ ψ ε) := by
