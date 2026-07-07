@@ -34,7 +34,7 @@ available), which sidesteps Mathlib's `errorOnBuild` guard. Re-run if it recurs.
 | M0 | Project stands up; namespace/file scaffold; substrate verified | **done** (pending Anson's statement read-through) — scaffold, `Scratchpad`, `Asymptotics` content all green |
 | M1 | `def:tf` keystone + `def:lang` + criterion defs | **done** (pending Anson's statement read-through) — keystone + all Part-I criterion defs stated & green; one **provisional type-`(c)`** in `EfficientlyComputable` |
 | M2 | Engine + one e.c.-certified exploiting trader, end-to-end | **done** (pending read-through) — the loop is wired **completely and with no `sorry`**: real trader, e.c. discharged via the faithful clocked-interpreter model, exploitation proved, criterion invoked. Engine `def:tradermag`/`def:roi` defined. **`EfficientlyComputable` reconciled to the paper's poly-time `def:ec`** (OPEN RISK 3 resolved) |
-| M3 | Downstream property slice + LUV bridge + integration test | **in progress (Convergence/Coherence + Timely-Learning slice largely done)** — **proved & axiom-clean:** `thm:provind` (fixed φ `→1` **and** `𝓔𝓒`-sequence form), all three **`thm:lc`** bullets (provable`→1`, disprovable`→0`, finite additivity + limit identity), **`thm:lex`** (logical equivalence `Pφ−Pψ→0` and implication/price-monotonicity `Pφ≤Pψ+ε`), the `thm:con` **reduction** (non-conv ⇒ rational oscillation). LUV/expectation bridge + integration test done. **New reusable infra:** prec-fueled `pred` (`PolyEF.pricePred`) resolving the multi-day-trader e.c. gap; `ec_of_polyEF_seq` (varying-sentence e.c.); multi-trade `Nat.pair`-tree list-encoding e.c.; world-neutral & world-dependent portfolio patterns; two exploitation engines (`exploits_of_nonneg/ge_partialSums`). **Remaining:** the `thm:con` full arbitrage trader (needs **hysteresis** — memoryless sketch retracted; e.c. ingredient now in place), the expectation family (`thm:ec/loe/ei/expprovind` — needs `thm:con` or LUV-approx infra), `thm:nd`, Self-Trust. Two disclosed `sorry`s (`thm:ec`, `oscillation_exploitable`). **Note:** `Properties.lean` now ~900 lines — due for promotion to a `Properties/` directory. |
+| M3 | Downstream property slice + LUV bridge + integration test | **in progress (Convergence/Coherence + Timely-Learning slice largely done)** — **proved & axiom-clean:** `thm:provind` (fixed φ `→1` **and** `𝓔𝓒`-sequence form), all three **`thm:lc`** bullets (provable`→1`, disprovable`→0`, finite additivity + limit identity), **`thm:lex`** (logical equivalence `Pφ−Pψ→0` and implication/price-monotonicity `Pφ≤Pψ+ε`), the `thm:con` **reduction** (non-conv ⇒ rational oscillation). LUV/expectation bridge + integration test done. **New reusable infra:** prec-fueled `pred` (`PolyEF.pricePred`) resolving the multi-day-trader e.c. gap; `ec_of_polyEF_seq` (varying-sentence e.c.); multi-trade `Nat.pair`-tree list-encoding e.c.; world-neutral & world-dependent portfolio patterns; two exploitation engines (`exploits_of_nonneg/ge_partialSums`). **Remaining:** the `thm:con` full arbitrage trader (needs **hysteresis** — memoryless sketch retracted; e.c. ingredient now in place), the expectation family (`thm:ec/loe/ei/expprovind` — needs `thm:con` or LUV-approx infra), `thm:nd`, Self-Trust. Two disclosed `sorry`s (`thm:ec`, `oscillation_exploitable`). |
 | M4–M7 | see roadmap | not started (Brouwer `lem:fpl` already proved — M6 gate cleared) |
 
 Out-of-sequence: `brouwer_fixed_point` (the M6 gate) is already **proved**, not axiomatized;
@@ -175,6 +175,29 @@ and the faithful poly-time `def:ec` with a working responsive-trader certificati
   decided, `oscillation_exploitable` / `thm:ec` stay `sorry`. The `PolyEF.pricePred` (prec-fueled
   `predc`) infra remains valid and useful (any two-day-referencing bounded-depth trader), but it
   does **not** unblock `thm:con` as earlier hoped — depth, not the `n-1` reference, is the wall.
+
+  **Addendum (2026-07-07, pre-session analysis; verified against Mathlib source).** The gap is
+  wider than depth, and the fix as originally proposed is insufficient:
+  - *Output-value ceiling.* Every `evaln` clause guards its **input** by fuel (`guard (n ≤ k)`,
+    `Mathlib/Computability/PartrecCode.lean:569` ff.), so intermediate values — including `prec`
+    accumulators — stay ≤ fuel; the only unguarded growth is the fixed composition of `pair`s at
+    the output. Hence for a fixed code `c`, `evaln k c n` outputs values ≤ `(k+1)^(2^|c|)`: with
+    poly fuel, **only poly-value (O(log n)-bit) outputs are producible**. So swapping `toNat` for
+    a flat/linear-bit list packing does **not** fix OPEN RISK 4 — any injective `List ℕ → ℕ`
+    packing of a size-Θ(n) description has value 2^Θ(n) (Mathlib's own list encoding is
+    `Nat.pair`-nested and exponentially wasteful; balanced trees don't help either — a balanced
+    size-n `EF` still has an ~n·log n-bit `toNat`). The redefinition must use **token-indexed
+    emission**: the code computes the `i`-th token of the day-`n` strategy's flat serialization,
+    with a separate poly length bound. Precise spec in `notes/next-session.md` §2.
+  - *Blast radius.* The wall gates more than `thm:con`: `thm:nd`'s budget-halving trader needs a
+    purchase **counter** (unbounded look-back, size-Θ(n) EF), and bounded-depth substitutes
+    provably fail (a fixed price-window rule either spends unboundedly on a price plateau or,
+    day-discounted, has convergent profit). Expect **every remaining M3 node** (`thm:con`,
+    `thm:nd`, the expectation family, Self-Trust) to be gated on this decision, not just
+    `thm:con`.
+  - *Existing certs unaffected in truth-value* (bounded-depth traders have poly-value `toNat`s,
+    which is why they worked), but under the token-emission def they need mechanical
+    re-certification — plan and helper-lemma sketch in `notes/next-session.md` §2 T4.
 ## Decisions log
 
 - **Paper vendored into `notes/`** (M0 close-out): `1609.03543v5.pdf` and its LaTeX
