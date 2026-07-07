@@ -281,7 +281,167 @@ theorem ofNat_toNat (e : EF) : ofNat e.toNat = some e :=
 
 instance : Encodable EF := ⟨toNat, ofNat, ofNat_toNat⟩
 
+/-! ### `EF.serialize` — a **flat, poly-size** token stream for the feature.
+
+`toNat` (above) is a faithful *bijective* code, but its **value blows up doubly-exponentially
+in tree depth** (`Nat.pair`-nesting squares the magnitude per level), so a size-`n`, depth-`n`
+feature has a `2^{2^n}`-value `toNat` — a `4ⁿ`-*bit* number. Under the clocked interpreter a
+fixed program run for `poly n` fuel can only *output* a `poly n`-**value** natural (every
+`evaln` clause fuel-guards its inputs, so intermediates stay `≤ fuel`; see
+`EfficientlyComputableTok`), i.e. `O(log n)` bits. So whole-number emission of `toNat` wrongly
+excludes deep-but-poly-*size* features — the wall behind OPEN RISK 4.
+
+`serialize` is the fix: a flat postfix (RPN) token stream whose **length is `Θ(node count)`**
+(`serialize_length_le_cost`), so poly-*size* ⇔ poly-*length*, and whose individual tokens are
+small (tags `0..5`, day indices, and the atomic sentence/constant codes). Efficient
+computability (`EfficientlyComputableTok`) asks a program to emit this stream *one token at a
+time* — polynomially many small tokens — which deep poly-size features admit. The stream is a
+genuine encoding: `serialize_injective` (via the stack machine `readM`) shows it determines the
+feature. -/
+def serialize : EF → List ℕ
+  | price φ n   => [0, Encodable.encode φ, n]
+  | const q     => [1, Encodable.encode q]
+  | add a b     => a.serialize ++ b.serialize ++ [2]
+  | mul a b     => a.serialize ++ b.serialize ++ [3]
+  | max a b     => a.serialize ++ b.serialize ++ [4]
+  | safeRecip a => a.serialize ++ [5]
+
+/-- `serialize`'s length is bounded by `3 · cost` — linear in the node count. This is the
+whole point: poly-*size* (poly-`cost`) features have poly-*length* serializations, so
+`EfficientlyComputableTok` admits them (unlike `toNat`, whose *value* is exponential). -/
+theorem serialize_length_le_cost (e : EF) : (serialize e).length ≤ 3 * e.cost := by
+  induction e with
+  | price φ n => simp [serialize, cost]
+  | const q => simp [serialize, cost]
+  | add a b iha ihb => simp only [serialize, cost, List.length_append, List.length_cons,
+      List.length_nil]; omega
+  | mul a b iha ihb => simp only [serialize, cost, List.length_append, List.length_cons,
+      List.length_nil]; omega
+  | max a b iha ihb => simp only [serialize, cost, List.length_append, List.length_cons,
+      List.length_nil]; omega
+  | safeRecip a iha => simp only [serialize, cost, List.length_append, List.length_cons,
+      List.length_nil]; omega
+
 end EF
+
+/-! ## Flat serialization of strategies + unique decodability
+
+A **strategy** is a `List (EF × Sentence)`; `serializeTrades` flattens it to a token stream by
+concatenating each coefficient's `EF.serialize` followed by a trade-frame `[6, ⌜φ⌝]`. A single
+stack machine `readM` decodes both features (tags `0..5`, pushing onto an `EF` stack) and trade
+frames (tag `6`, popping a coefficient and recording the trade), which lets us prove both
+`serialize` and `serializeTrades` injective from one roundtrip induction — the honesty guarantee
+that the token stream `EfficientlyComputableTok` emits genuinely determines the strategy. -/
+
+namespace EF
+
+/-- The stack machine decoding a token stream. `efst` is the stack of features built so far;
+`tr` accumulates decoded trades. Tags `0..5` build features (pushing); tag `6` reads a sentence
+code and pops one feature to record a trade. Returns the final `(feature stack, trades)`. -/
+def readM : List ℕ → List EF → List (EF × Sentence) → Option (List EF × List (EF × Sentence))
+  | [], efst, tr => some (efst, tr)
+  | (0 :: p1 :: p2 :: rest), efst, tr =>
+      match (Encodable.decode p1 : Option Sentence) with
+      | some φ => readM rest (price φ p2 :: efst) tr
+      | none => none
+  | (1 :: p :: rest), efst, tr =>
+      match (Encodable.decode p : Option ℚ) with
+      | some q => readM rest (const q :: efst) tr
+      | none => none
+  | (2 :: rest), (b :: a :: efst), tr => readM rest (add a b :: efst) tr
+  | (3 :: rest), (b :: a :: efst), tr => readM rest (mul a b :: efst) tr
+  | (4 :: rest), (b :: a :: efst), tr => readM rest (max a b :: efst) tr
+  | (5 :: rest), (a :: efst), tr => readM rest (safeRecip a :: efst) tr
+  | (6 :: p :: rest), (e :: efst), tr =>
+      match (Encodable.decode p : Option Sentence) with
+      | some φ => readM rest efst (tr ++ [(e, φ)])
+      | none => none
+  | _, _, _ => none
+
+/-- Reading a feature's serialization pushes exactly that feature (for any stack/trade state).
+The single roundtrip induction both `serialize` and `serializeTrades` injectivity rest on. -/
+theorem readM_serialize (e : EF) : ∀ (rest : List ℕ) (efst : List EF)
+    (tr : List (EF × Sentence)), readM (e.serialize ++ rest) efst tr = readM rest (e :: efst) tr := by
+  induction e with
+  | price φ n => intro rest efst tr; simp [serialize, readM, Encodable.encodek]
+  | const q => intro rest efst tr; simp [serialize, readM, Encodable.encodek]
+  | add a b iha ihb => intro rest efst tr
+                       simp only [serialize, List.append_assoc, List.cons_append,
+                         List.nil_append]
+                       rw [iha, ihb]; simp only [readM]
+  | mul a b iha ihb => intro rest efst tr
+                       simp only [serialize, List.append_assoc, List.cons_append,
+                         List.nil_append]
+                       rw [iha, ihb]; simp only [readM]
+  | max a b iha ihb => intro rest efst tr
+                       simp only [serialize, List.append_assoc, List.cons_append,
+                         List.nil_append]
+                       rw [iha, ihb]; simp only [readM]
+  | safeRecip a iha => intro rest efst tr
+                       simp only [serialize, List.append_assoc, List.cons_append,
+                         List.nil_append]
+                       rw [iha]; simp only [readM]
+
+/-- Decode a lone feature: accept iff the machine ends with a single feature and no trades. -/
+def deserialize (toks : List ℕ) : Option EF :=
+  match readM toks [] [] with
+  | some ([e], []) => some e
+  | _ => none
+
+theorem deserialize_serialize (e : EF) : deserialize e.serialize = some e := by
+  unfold deserialize
+  rw [← List.append_nil e.serialize, readM_serialize]
+  simp only [readM]
+
+/-- **`serialize` is injective** — the token stream determines the feature. -/
+theorem serialize_injective : Function.Injective serialize := by
+  intro a b h
+  have ha := deserialize_serialize a
+  rw [h, deserialize_serialize] at ha
+  exact (Option.some.inj ha).symm
+
+end EF
+
+/-- Flatten a strategy to a token stream: each trade is its coefficient's `EF.serialize`
+followed by the frame `[6, ⌜φ⌝]`. This is the object `EfficientlyComputableTok` requires a
+program to emit token-by-token. -/
+def serializeTrades : List (EF × Sentence) → List ℕ
+  | [] => []
+  | (e, φ) :: rest => e.serialize ++ (6 :: Encodable.encode φ :: serializeTrades rest)
+
+/-- Reading a strategy's serialization records exactly its trades (onto any state). -/
+theorem readM_serializeTrades (l : List (EF × Sentence)) : ∀ (rest : List ℕ) (efst : List EF)
+    (tr : List (EF × Sentence)),
+    EF.readM (serializeTrades l ++ rest) efst tr = EF.readM rest efst (tr ++ l) := by
+  induction l with
+  | nil => intro rest efst tr; simp [serializeTrades]
+  | cons t rest_l ih =>
+      obtain ⟨e, φ⟩ := t
+      intro rest efst tr
+      simp only [serializeTrades, List.append_assoc, List.cons_append]
+      rw [EF.readM_serialize]
+      simp only [EF.readM, Encodable.encodek]
+      rw [ih, List.append_assoc]
+      rfl
+
+/-- Decode a strategy: accept iff the machine ends with an empty feature stack. -/
+def deserializeTrades (toks : List ℕ) : Option (List (EF × Sentence)) :=
+  match EF.readM toks [] [] with
+  | some ([], l) => some l
+  | _ => none
+
+theorem deserializeTrades_serializeTrades (l : List (EF × Sentence)) :
+    deserializeTrades (serializeTrades l) = some l := by
+  unfold deserializeTrades
+  rw [← List.append_nil (serializeTrades l), readM_serializeTrades]
+  simp only [EF.readM, List.nil_append]
+
+/-- **`serializeTrades` is injective** — the token stream determines the strategy. -/
+theorem serializeTrades_injective : Function.Injective serializeTrades := by
+  intro a b h
+  have ha := deserializeTrades_serializeTrades a
+  rw [h, deserializeTrades_serializeTrades] at ha
+  exact (Option.some.inj ha).symm
 
 /-! ## `def:world` + Propositional Consistency
 
@@ -426,6 +586,34 @@ def EfficientlyComputable (Tr : Trader) : Prop :=
   ∃ (c : Nat.Partrec.Code) (a k : ℕ),
     ∀ n, Nat.Partrec.Code.evaln (a * (n + 1) ^ k + a) c n
         = some (Encodable.encode (Tr.strat n).trades)
+
+/-- `def:ec` (`dd:fuel`) — **token-indexed emission, the poly-*size* model**. A trader is
+**efficiently computable** if a single program `c` emits the day-`n` strategy's *flat token
+stream* `serializeTrades (strat n)` **one token at a time**: run on input `⟨n, i⟩` for a
+polynomial fuel budget, `c` outputs the `i`-th token, and the stream has polynomially many
+tokens.
+
+This replaces whole-number emission of `Encodable.encode` (`EfficientlyComputable` above). The
+reason is a hard limit of the clocked interpreter, not a stylistic choice: every `evaln` clause
+fuel-guards its inputs (`guard (n ≤ k)` in `Mathlib.Computability.PartrecCode`), so a fixed
+program run for `poly n` fuel can only *output* a value `≤ poly n` — `O(log n)` bits. A strategy
+whose `Encodable.encode` is a large number (any poly-*size* but deep feature: its `toNat` value
+is `2^{poly n}`) is therefore *unemittable as one number*, though the paper's poly-*size*
+`def:ec` admits it. Emitting the `serializeTrades` stream token-by-token — polynomially many
+`poly n`-value tokens (`serialize_length_le_cost` makes the stream length `Θ(size)`) — is the
+faithful poly-*size* rendering, and it is what deep traders (`thm:con` hysteresis, `thm:nd`
+purchase counters) need. See OPEN RISK 4 in `PROGRESS.md`.
+
+**Residual disclosure (type-`(c)`):** each token's *value* is still `≤ poly n`, so a traded
+sentence's atomic code `⌜φ⌝` must be `poly n`-value on day `n`. Fixed sentences (every current
+trader) are constant, absorbed into `a`; varying-sentence traders already carry a poly bound on
+`⌜φₙ⌝`. Formula-level sub-tokenization would remove even this and is a later refinement. -/
+def EfficientlyComputableTok (Tr : Trader) : Prop :=
+  ∃ (c : Nat.Partrec.Code) (a k : ℕ),
+    (∀ n, (serializeTrades (Tr.strat n).trades).length ≤ a * (n + 1) ^ k + a) ∧
+    ∀ n i, i < (serializeTrades (Tr.strat n).trades).length →
+      Nat.Partrec.Code.evaln (a * (n + 1) ^ k + a) c (Nat.pair n i)
+        = some ((serializeTrades (Tr.strat n).trades).getD i 0)
 
 /-- `def:lic`. The market `P` satisfies the **Logical Induction Criterion** relative to
 `DP` if no efficiently computable trader exploits it. This is the hypothesis the entire
