@@ -908,5 +908,110 @@ theorem PolyTokenStream.trades_cons {e : ℕ → EF} {φ : ℕ → Sentence}
 theorem PolyTokenStream.trades_nil : PolyTokenStream (fun _ => serializeTrades []) := by
   simpa [serializeTrades] using PolyTokenStream.nil
 
+/-! ### `subc` — truncated subtraction with polynomial fuel.
+
+`subc ⟨a, b⟩ = a - b`, via `prec` on `b` whose `succ` step applies `predc` to the previous
+value (`sub a (b+1) = pred (sub a b)`). This is the one **nested** `prec` in the file — its
+recursive step invokes `predc` (itself a `prec`) — so the fuel proof composes `predc`'s
+degree-4 budget across `b` levels. It is the remaining primitive for varying-length token
+emission: a deep trader's trailing frame sits at an `n`-dependent stream position, so emitting
+its tokens needs a comparison against `n`, i.e. `subc`. -/
+def subAux : Nat.Partrec.Code :=
+  Nat.Partrec.Code.prec (left.pair right) (comp predc (comp right right))
+
+/-- The `comp predc (comp right right)` recursive step evaluates to `pred prev` when the fuel
+covers `predc`'s degree-4 budget on `prev`. -/
+theorem subAux_cg_eval (a b prev k : ℕ) (hg2 : Nat.pair a (Nat.pair b prev) ≤ k)
+    (hpc : 32 * (prev + 1) ^ 4 + prev + 1 ≤ k) :
+    evaln (k + 1) (comp predc (comp right right)) (Nat.pair a (Nat.pair b prev))
+      = some (Nat.pred prev) := by
+  have hbp : Nat.pair b prev ≤ k :=
+    le_trans (Nat.right_le_pair a (Nat.pair b prev)) hg2
+  have key := (fueled_comp predc_fueled (fueled_comp fueled_right fueled_right))
+    (Nat.pair a (Nat.pair b prev))
+  simp only [Nat.unpair_pair] at key
+  exact evaln_mono (by omega) key
+
+/-- One unrolling of the `prec` recursion for `subAux`. -/
+theorem subAux_step (a b prev k : ℕ)
+    (hg1 : Nat.pair a (b + 1) ≤ k)
+    (hrec : evaln k subAux (Nat.pair a b) = some prev)
+    (hcg : evaln (k + 1) (comp predc (comp right right))
+        (Nat.pair a (Nat.pair b prev)) = some (Nat.pred prev)) :
+    evaln (k + 1) subAux (Nat.pair a (b + 1)) = some (Nat.pred prev) := by
+  conv_lhs => rw [subAux, evaln]
+  simp only [Nat.unpaired, Nat.unpair_pair, subAux] at hrec ⊢
+  simp [hrec, hcg, hg1]
+
+/-- **`subc` computes truncated subtraction with a polynomial fuel budget.** Degree-4 (from
+`predc`) times the recursion depth `b`; the explicit bound `32(a+1)⁴ + pair a (pair b a) + a +
+b + 8` dominates every level's `predc` call and guard. -/
+theorem subAux_evaln : ∀ (a b F : ℕ),
+    32 * (a + 1) ^ 4 + Nat.pair a (Nat.pair b a) + a + b + 8 < F →
+    evaln F subAux (Nat.pair a b) = some (a - b) := by
+  intro a b
+  induction b with
+  | zero =>
+      intro F hF
+      obtain ⟨k, rfl⟩ : ∃ k, F = k + 1 := ⟨F - 1, by omega⟩
+      have hg : Nat.pair a 0 ≤ k := by
+        have h1 : Nat.pair a 0 ≤ Nat.pair a (Nat.pair 0 a) :=
+          pair_le_pair_right' a (Nat.zero_le _)
+        omega
+      have hak : a ≤ k := le_trans (Nat.left_le_pair a 0) hg
+      show evaln (k + 1) subAux (Nat.pair a 0) = some (a - 0)
+      rw [subAux, evaln]
+      simp only [Nat.unpaired, Nat.unpair_pair, Nat.rec_zero, Nat.sub_zero]
+      simp [Seq.seq, hg, hak, evaln, Nat.pair_unpair]
+  | succ b ih =>
+      intro F hF
+      obtain ⟨k, rfl⟩ : ∃ k, F = k + 1 := ⟨F - 1, by omega⟩
+      have hmono : Nat.pair a (Nat.pair b a) ≤ Nat.pair a (Nat.pair (b + 1) a) :=
+        pair_le_pair_right' a (pair_le_pair_left' a (by omega))
+      have hIH : evaln k subAux (Nat.pair a b) = some (a - b) := by
+        refine ih k ?_; omega
+      have hprev : a - b ≤ a := Nat.sub_le a b
+      have hg2 : Nat.pair a (Nat.pair b (a - b)) ≤ k := by
+        have h1 : Nat.pair b (a - b) ≤ Nat.pair b a := pair_le_pair_right' b hprev
+        have h2 : Nat.pair a (Nat.pair b (a - b)) ≤ Nat.pair a (Nat.pair b a) :=
+          pair_le_pair_right' a h1
+        omega
+      have hpc : 32 * ((a - b) + 1) ^ 4 + (a - b) + 1 ≤ k := by
+        have : (a - b) + 1 ≤ a + 1 := by omega
+        have hp : ((a - b) + 1) ^ 4 ≤ (a + 1) ^ 4 := Nat.pow_le_pow_left this 4
+        omega
+      have hcg := subAux_cg_eval a b (a - b) k hg2 hpc
+      have hstep := subAux_step a b (a - b) k ?_ hIH hcg
+      · rw [Nat.sub_succ]; exact hstep
+      · have : Nat.pair a (b + 1) ≤ Nat.pair a (Nat.pair (b + 1) a) :=
+          pair_le_pair_right' a (Nat.left_le_pair (b + 1) a)
+        omega
+
+/-- The one-argument-pair truncated subtraction code and its `Fueled`/`PolyFueled` bundle. -/
+def subc : Nat.Partrec.Code := subAux
+
+theorem subc_fueled :
+    Fueled subc (fun m => m.unpair.1 - m.unpair.2)
+      (fun m => 32 * (m.unpair.1 + 1) ^ 4 +
+        Nat.pair m.unpair.1 (Nat.pair m.unpair.2 m.unpair.1) + m.unpair.1 + m.unpair.2 + 9) := by
+  intro m
+  set a := m.unpair.1 with ha
+  set b := m.unpair.2 with hb
+  have hm : Nat.pair a b = m := Nat.pair_unpair m
+  show evaln (32 * (a + 1) ^ 4 + Nat.pair a (Nat.pair b a) + a + b + 9) subc m = some (a - b)
+  rw [← hm, subc]
+  exact subAux_evaln a b _ (by omega)
+
+theorem subc_polyFueled : PolyFueled subc (fun m => m.unpair.1 - m.unpair.2) := by
+  refine ⟨_, subc_fueled, isPolyBounded_fst.of_le (fun m => Nat.sub_le _ _), ?_⟩
+  have h4 : IsPolyBounded (fun m => 32 * (m.unpair.1 + 1) ^ 4) :=
+    (show IsPolyBounded (fun x => 32 * (x + 1) ^ 4) from ⟨32, 4, fun _ => Nat.le_add_right _ _⟩).comp
+      isPolyBounded_fst
+  have hpair : IsPolyBounded (fun m => Nat.pair m.unpair.1 (Nat.pair m.unpair.2 m.unpair.1)) :=
+    isPolyBounded_fst.pair (isPolyBounded_snd.pair isPolyBounded_fst)
+  exact (((h4.add hpair).add isPolyBounded_fst).add isPolyBounded_snd).add
+    (⟨9, 0, fun _ => by simp⟩ : IsPolyBounded (fun _ => 9))
+
 end LogicalInduction
+
 
