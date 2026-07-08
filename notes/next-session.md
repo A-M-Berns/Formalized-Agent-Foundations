@@ -1,5 +1,15 @@
 # Session plan — token-emission `def:ec` and the deep-trader unlock
 
+> **STATUS 2026-07-08: Phase 2 (§§1–2, T1–T5) COMPLETE and pushed.** `def:ec` redefined to
+> the token-indexed `EfficientlyComputableTok`; `IsLogicalInductor` switched; all 7 traders
+> re-certified; build green, axiom footprint and sorry count unchanged; OPEN RISK 4 resolved
+> at the trust-surface level. See `PROGRESS.md` (ledger + OPEN RISK 4 resolution) for the
+> authoritative state. **Phase 3 (deep-trader construction) NOT started** — and note a
+> newly-surfaced prerequisite: the re-cert tooling (`ecTok_of_tokenList`/`PolyTokenStream`) is
+> **fixed-length only**; a genuinely size-`Θ(n)` trader (`thm:con` hysteresis, `thm:nd`
+> counter) needs a **varying-length emission helper** built first, *then* the trader. The
+> §3 sketches below stand, but each now also needs that helper.
+
 Written 2026-07-07 by the outgoing session, for the next (possibly weaker-model) session.
 Read `CLAUDE.md` and `PROGRESS.md` (especially OPEN RISK 4 **and its 2026-07-07 addendum**)
 before starting. This file is the task list; those files are the law.
