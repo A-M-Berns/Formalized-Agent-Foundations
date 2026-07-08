@@ -40,12 +40,12 @@ theorem sellDaily_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ)
   simp [EF.denote]
 
 
-theorem sellDaily_ec (φ : Sentence) : EfficientlyComputable (sellDaily φ) := by
-  refine ⟨Nat.Partrec.Code.const (Encodable.encode ([(EF.const (-1), φ)] : List (EF × Sentence))),
-          Encodable.encode ([(EF.const (-1), φ)] : List (EF × Sentence)) + 1, 1, fun n => ?_⟩
-  have hs : ((sellDaily φ).strat n).trades = [(EF.const (-1), φ)] := rfl
-  rw [hs]
-  exact Nat.Partrec.Code.evaln_mono (by simp only [pow_one]; nlinarith) (evaln_const_self _ n)
+theorem sellDaily_ec (φ : Sentence) : EfficientlyComputableTok (sellDaily φ) := by
+  refine ecTok_of_stream _ ?_
+  have h : ∀ n, ((sellDaily φ).strat n).trades = [(EF.const (-1), φ)] := fun _ => rfl
+  simp only [h]
+  exact PolyTokenStream.trades_cons (PolyTokenStream.serialize_const (-1))
+    (PolyFueled.const (Encodable.encode φ)) PolyTokenStream.trades_nil
 
 
 /-- Exploitation of the sell trader under infinitely-often *overpricing* of a disprovable
@@ -239,25 +239,42 @@ theorem sigEF_polyEF (φ ψ : Sentence) (σ ε : ℚ) : PolyEF (sigEF φ ψ σ �
   exact buySignal_polyEF ((PolyEF.const σ).mul hgap) ε
 
 
-/-- The exclusion-arbitrage trader is efficiently computable (three single-day templates,
-assembled through the `Nat.pair`-tree list encoding). -/
-theorem exclTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputable (exclTr φ ψ σ ε) := by
-  obtain ⟨_, h1⟩ := (sigEF_polyEF φ ψ σ ε).mul (PolyEF.const (-σ))
-  obtain ⟨_, h2⟩ := (sigEF_polyEF φ ψ σ ε).mul (PolyEF.const σ)
-  obtain ⟨_, h3⟩ := (sigEF_polyEF φ ψ σ ε).mul (PolyEF.const σ)
-  have e1 := h1.pair (PolyFueled.const (Encodable.encode (φ ⋎ ψ)))
-  have e2 := h2.pair (PolyFueled.const (Encodable.encode φ))
-  have e3 := h3.pair (PolyFueled.const (Encodable.encode ψ))
-  have l1 := ((e1.pair ((e2.pair ((e3.pair (PolyFueled.const 0)).succ_comp)).succ_comp)).succ_comp)
-  have heq : (fun n => Nat.pair (Nat.pair (EF.mul (sigEF φ ψ σ ε n) (EF.const (-σ))).toNat
-      (Encodable.encode (φ ⋎ ψ)))
-      (Nat.pair (Nat.pair (EF.mul (sigEF φ ψ σ ε n) (EF.const σ)).toNat (Encodable.encode φ))
-        (Nat.pair (Nat.pair (EF.mul (sigEF φ ψ σ ε n) (EF.const σ)).toNat (Encodable.encode ψ))
-          0 + 1) + 1) + 1)
-      = (fun n => Encodable.encode ((exclTr φ ψ σ ε).strat n).trades) := by
-    funext n; rfl
-  rw [heq] at l1
-  exact EfficientlyComputable.of_polyFueled l1
+/-- The token stream of `gapEF` is compositional (an `add`/`mul`/`price`/`const` tree). -/
+theorem gapEF_stream (φ ψ : Sentence) : PolyTokenStream (fun n => (gapEF φ ψ n).serialize) := by
+  simp only [gapEF]
+  exact PolyTokenStream.serialize_add (PolyTokenStream.serialize_price (φ ⋎ ψ))
+    (PolyTokenStream.serialize_add
+      (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const _)
+        (PolyTokenStream.serialize_price φ))
+      (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const _)
+        (PolyTokenStream.serialize_price ψ)))
+
+/-- The token stream of the buy-signal `sigEF = max(0, σ·gap − ε/2)`. -/
+theorem sigEF_stream (φ ψ : Sentence) (σ ε : ℚ) :
+    PolyTokenStream (fun n => (sigEF φ ψ σ ε n).serialize) := by
+  simp only [sigEF, buySignal]
+  exact PolyTokenStream.serialize_max (PolyTokenStream.serialize_const _)
+    (PolyTokenStream.serialize_add
+      (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const _) (gapEF_stream φ ψ))
+      (PolyTokenStream.serialize_const _))
+
+theorem exclTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputableTok (exclTr φ ψ σ ε) := by
+  refine ecTok_of_stream _ ?_
+  have h : ∀ n, ((exclTr φ ψ σ ε).strat n).trades =
+      [(.mul (sigEF φ ψ σ ε n) (.const (-σ)), φ ⋎ ψ),
+       (.mul (sigEF φ ψ σ ε n) (.const σ), φ),
+       (.mul (sigEF φ ψ σ ε n) (.const σ), ψ)] := fun _ => rfl
+  simp only [h]
+  exact PolyTokenStream.trades_cons
+      (PolyTokenStream.serialize_mul (sigEF_stream φ ψ σ ε) (PolyTokenStream.serialize_const _))
+      (PolyFueled.const (Encodable.encode (φ ⋎ ψ)))
+    (PolyTokenStream.trades_cons
+      (PolyTokenStream.serialize_mul (sigEF_stream φ ψ σ ε) (PolyTokenStream.serialize_const _))
+      (PolyFueled.const (Encodable.encode φ))
+    (PolyTokenStream.trades_cons
+      (PolyTokenStream.serialize_mul (sigEF_stream φ ψ σ ε) (PolyTokenStream.serialize_const _))
+      (PolyFueled.const (Encodable.encode ψ))
+    PolyTokenStream.trades_nil))
 
 
 /-- Under a logical inductor with `∼(φ∧ψ)` revealed, if `σ·gap ≥ ε` frequently then the

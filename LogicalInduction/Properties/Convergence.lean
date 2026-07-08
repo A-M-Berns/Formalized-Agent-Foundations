@@ -33,43 +33,29 @@ Given a rational oscillation of `Pₙφ` across `[a, b]` (price `< a` i.o. and `
 plausible worlds available every day, there is an *efficiently computable* trader that
 exploits `P`.
 
-**Why this is blocked — a genuine `def:ec` fidelity limit (type-`(c)`), surfaced not stubbed.**
-The investigation below is recorded because it pins down *exactly* what fails; see `PROGRESS.md`
-OPEN RISK 4.
+**Status update — the `def:ec` wall (OPEN RISK 4) is gone; this is now a construction task.**
+The exploiter here is a **hysteresis** trader: buy one share whenever the price dips below `a`,
+hold through the ramp, sell when it rises above `b`, banking `b − a` per swing *regardless of
+smoothness*. "Am I currently holding" is an unbounded look-back — a **linear-depth**, size-`Θ(n)`
+`EF`. Under the *old* whole-number-`toNat` `EfficientlyComputable` that feature's code was a
+`~4ⁿ`-bit number, unemittable in `evaln (poly n)`, so the exploiter fell outside the e.c. class
+and `thm:con` genuinely did not follow. Bounded-depth substitutes provably fail (memoryless
+target-holding telescopes to a path-independent state function; mean-reversion harvests only
+quadratic variation, which a smooth ramp drives to `0`).
 
-Every trader whose day-`n` coefficient is a **bounded-depth** `EF` (references a fixed window
-`Pₙ, Pₙ₋₁, …, Pₙ₋d`) provably fails to exploit a *smooth* oscillation:
-- *Memoryless target-holding* `c_n = T(Pₙ) − T(Pₙ₋₁)` telescopes the position to `T(Pₙ) − T(P₀)`
-  (a state function of the current price); its net worth is `≈ ∫ T dP`, path-independent, and
-  nets ~0 over a closed cycle. (The earlier "just use `Pₙ` and `Pₙ₋₁`" sketch — retracted.)
-- *Mean-reversion* `c_n = Pₙ₋₁ − Pₙ` does slightly better: its net worth is exactly
-  `(P_N² − P₀²)/2 + ½·Σ(Pᵢ − Pᵢ₋₁)²` (in the `payout = 0` world) — it harvests the price's
-  **quadratic variation**. But a smooth ramp from `a` to `b` in `M` steps contributes
-  `≈ (b−a)²/M → 0`, so an adversary that oscillates *smoothly* keeps the quadratic variation
-  bounded and this trader stays bounded too.
-
-Banking the full `b − a` per swing *regardless of smoothness* requires **holding a fixed
-position through the whole ramp** and flipping it only at the thresholds — a stopping-time /
-**hysteresis** rule (buy at `a`, hold until `> b`, sell). "Am I currently holding" depends on how
-long ago the price last crossed `a` vs `b` — an **unbounded look-back**, i.e. a **linear-depth**
-(size-`Θ(n)`) `EF`.
-
-And here is the wall: our `EfficientlyComputable` requires a `Code` that outputs the strategy's
-`Encodable.encode` — the `EF.toNat`, a **`Nat.pair`-nested number whose bit-length quadruples per
-depth level** (measured: `6, 23, 91, 362, 1445, …` bits at depth `0,1,2,3,4` — `≈ 6·4ᵈ`). A
-linear-depth feature therefore has a `~4ⁿ`-bit code, which **no `evaln (poly n)` run can even
-write down**. So the hysteresis trader — legal under the paper's poly-*size* `def:ec` (a size-`n`
-syntax tree is poly-size) — is **excluded by our poly-*runtime*-of-`toNat` model**. Our e.c.
-class is thus strictly *smaller* than the paper's on exactly the deep-but-poly-size strategies
-convergence needs, so `IsLogicalInductor` does not forbid the exploiter, and `thm:con` is not
-derivable as stated. This is not a trader to build; it is a **trust-surface decision** (redefine
-`EfficientlyComputable` to bound the poly *size of a structural description*, not the runtime of
-the `Nat.pair` `toNat`) that needs Anson before proceeding. Kept `sorry`, honestly. -/
+That obstruction is **resolved**: `EfficientlyComputableTok` (the token-indexed, poly-*size*
+model — see `Criterion.lean` and `PROGRESS.md` OPEN RISK 4) admits exactly these deep poly-size
+strategies. So the hysteresis exploiter is now e.c., `IsLogicalInductor` forbids it, and `thm:con`
+*does* follow — **once the trader is actually constructed**. What remains is real work, not a
+trust-surface question: build the hysteresis `EF` (a size-`Θ(n)` running-state feature; the
+`PolyTokenStream`/`ecTok_of_tokenList` layer will discharge its e.c.), prove it banks `≥ b − a`
+per completed swing, and feed the accumulation to `exploits_of_ge_partialSums`. Per Rule 1
+(no arithmetic stub may stand in for a trader) this stays `sorry` until that trader exists. -/
 theorem oscillation_exploitable (P : History) (DP : DeductiveProcess) (φ : Sentence)
     (a b : ℚ) (hab : (a : ℝ) < b) (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hA : ∃ᶠ n in atTop, P n φ < (a : ℝ)) (hB : ∃ᶠ n in atTop, (b : ℝ) < P n φ) :
-    ∃ Tr : Trader, EfficientlyComputable Tr ∧ Tr.Exploits P DP := by
+    ∃ Tr : Trader, EfficientlyComputableTok Tr ∧ Tr.Exploits P DP := by
   sorry
 
 

@@ -88,19 +88,35 @@ theorem sig2EF_polyEF (φ ψ : Sentence) (σ ε : ℚ) : PolyEF (sig2EF φ ψ σ
   exact buySignal_polyEF ((PolyEF.const σ).mul hgap) ε
 
 
-theorem eqTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputable (eqTr φ ψ σ ε) := by
-  obtain ⟨_, h1⟩ := (sig2EF_polyEF φ ψ σ ε).mul (PolyEF.const (-σ))
-  obtain ⟨_, h2⟩ := (sig2EF_polyEF φ ψ σ ε).mul (PolyEF.const σ)
-  have e1 := h1.pair (PolyFueled.const (Encodable.encode φ))
-  have e2 := h2.pair (PolyFueled.const (Encodable.encode ψ))
-  have l1 := ((e1.pair ((e2.pair (PolyFueled.const 0)).succ_comp)).succ_comp)
-  have heq : (fun n => Nat.pair (Nat.pair (EF.mul (sig2EF φ ψ σ ε n) (EF.const (-σ))).toNat
-      (Encodable.encode φ))
-      (Nat.pair (Nat.pair (EF.mul (sig2EF φ ψ σ ε n) (EF.const σ)).toNat (Encodable.encode ψ))
-        0 + 1) + 1)
-      = (fun n => Encodable.encode ((eqTr φ ψ σ ε).strat n).trades) := by funext n; rfl
-  rw [heq] at l1
-  exact EfficientlyComputable.of_polyFueled l1
+/-- The token stream of `gap2EF = φ*ⁿ − ψ*ⁿ` (an `add`/`mul`/`price`/`const` tree). -/
+theorem gap2EF_stream (φ ψ : Sentence) : PolyTokenStream (fun n => (gap2EF φ ψ n).serialize) := by
+  simp only [gap2EF]
+  exact PolyTokenStream.serialize_add (PolyTokenStream.serialize_price φ)
+    (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const _)
+      (PolyTokenStream.serialize_price ψ))
+
+/-- The token stream of `sig2EF = max(0, σ·(φ*−ψ*) − ε/2)`. -/
+theorem sig2EF_stream (φ ψ : Sentence) (σ ε : ℚ) :
+    PolyTokenStream (fun n => (sig2EF φ ψ σ ε n).serialize) := by
+  simp only [sig2EF, buySignal]
+  exact PolyTokenStream.serialize_max (PolyTokenStream.serialize_const _)
+    (PolyTokenStream.serialize_add
+      (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const _) (gap2EF_stream φ ψ))
+      (PolyTokenStream.serialize_const _))
+
+theorem eqTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputableTok (eqTr φ ψ σ ε) := by
+  refine ecTok_of_stream _ ?_
+  have h : ∀ n, ((eqTr φ ψ σ ε).strat n).trades =
+      [(.mul (sig2EF φ ψ σ ε n) (.const (-σ)), φ), (.mul (sig2EF φ ψ σ ε n) (.const σ), ψ)] :=
+    fun _ => rfl
+  simp only [h]
+  exact PolyTokenStream.trades_cons
+      (PolyTokenStream.serialize_mul (sig2EF_stream φ ψ σ ε) (PolyTokenStream.serialize_const _))
+      (PolyFueled.const (Encodable.encode φ))
+    (PolyTokenStream.trades_cons
+      (PolyTokenStream.serialize_mul (sig2EF_stream φ ψ σ ε) (PolyTokenStream.serialize_const _))
+      (PolyFueled.const (Encodable.encode ψ))
+    PolyTokenStream.trades_nil)
 
 
 theorem eqTr_exploits (P : History) (DP : DeductiveProcess) (φ ψ : Sentence) (σ ε : ℚ)
@@ -220,18 +236,23 @@ theorem impSig_polyEF (φ ψ : Sentence) (ε : ℚ) : PolyEF (impSig φ ψ ε) :
   exact buySignal_polyEF hgap ε
 
 
-theorem impTr_ec (φ ψ : Sentence) (ε : ℚ) : EfficientlyComputable (impTr φ ψ ε) := by
-  obtain ⟨_, h1⟩ := (impSig_polyEF φ ψ ε).mul (PolyEF.const (-1))
-  obtain ⟨_, h2⟩ := impSig_polyEF φ ψ ε
-  have e1 := h1.pair (PolyFueled.const (Encodable.encode φ))
-  have e2 := h2.pair (PolyFueled.const (Encodable.encode ψ))
-  have l1 := ((e1.pair ((e2.pair (PolyFueled.const 0)).succ_comp)).succ_comp)
-  have heq : (fun n => Nat.pair (Nat.pair (EF.mul (impSig φ ψ ε n) (EF.const (-1))).toNat
-      (Encodable.encode φ))
-      (Nat.pair (Nat.pair (impSig φ ψ ε n).toNat (Encodable.encode ψ)) 0 + 1) + 1)
-      = (fun n => Encodable.encode ((impTr φ ψ ε).strat n).trades) := by funext n; rfl
-  rw [heq] at l1
-  exact EfficientlyComputable.of_polyFueled l1
+/-- The token stream of `impSig = max(0, (φ*−ψ*) − ε/2)`. -/
+theorem impSig_stream (φ ψ : Sentence) (ε : ℚ) :
+    PolyTokenStream (fun n => (impSig φ ψ ε n).serialize) := by
+  simp only [impSig, buySignal]
+  exact PolyTokenStream.serialize_max (PolyTokenStream.serialize_const _)
+    (PolyTokenStream.serialize_add (gap2EF_stream φ ψ) (PolyTokenStream.serialize_const _))
+
+theorem impTr_ec (φ ψ : Sentence) (ε : ℚ) : EfficientlyComputableTok (impTr φ ψ ε) := by
+  refine ecTok_of_stream _ ?_
+  have h : ∀ n, ((impTr φ ψ ε).strat n).trades =
+      [(.mul (impSig φ ψ ε n) (.const (-1)), φ), (impSig φ ψ ε n, ψ)] := fun _ => rfl
+  simp only [h]
+  exact PolyTokenStream.trades_cons
+      (PolyTokenStream.serialize_mul (impSig_stream φ ψ ε) (PolyTokenStream.serialize_const _))
+      (PolyFueled.const (Encodable.encode φ))
+    (PolyTokenStream.trades_cons (impSig_stream φ ψ ε) (PolyFueled.const (Encodable.encode ψ))
+    PolyTokenStream.trades_nil)
 
 
 /-- **Learning logical implication** (`thm:lex` family): if `⊢ φ → ψ` (revealed as `∼φ⋎ψ`),
@@ -261,3 +282,7 @@ theorem lic_imp_eventually_le (P : History) (DP : DeductiveProcess)
   rw [gap2EF_denote] at hn; linarith
 
 end LogicalInduction
+
+#print axioms LogicalInduction.eqTr_ec
+#print axioms LogicalInduction.impTr_ec
+#print axioms LogicalInduction.lic_imp_eventually_le

@@ -36,12 +36,12 @@ program that computes it is `Code.const K`, where `K` is that list's code. It ha
 `n + K + 1` fuel (`evaln_const_self`), which is affine in `n`, hence within the polynomial
 budget the faithful `EfficientlyComputable` requires. This certifies e.c. through the
 genuine `dd:fuel` model — a single program producing the strategies under a poly clock. -/
-theorem buyDaily_ec (φ : Sentence) : EfficientlyComputable (buyDaily φ) := by
-  refine ⟨Nat.Partrec.Code.const (Encodable.encode ([(EF.const 1, φ)] : List (EF × Sentence))),
-          Encodable.encode ([(EF.const 1, φ)] : List (EF × Sentence)) + 1, 1, fun n => ?_⟩
-  have hs : ((buyDaily φ).strat n).trades = [(EF.const 1, φ)] := rfl
-  rw [hs]
-  exact Nat.Partrec.Code.evaln_mono (by simp only [pow_one]; nlinarith) (evaln_const_self _ n)
+theorem buyDaily_ec (φ : Sentence) : EfficientlyComputableTok (buyDaily φ) := by
+  refine ecTok_of_stream _ ?_
+  have h : ∀ n, ((buyDaily φ).strat n).trades = [(EF.const 1, φ)] := fun _ => rfl
+  simp only [h]
+  exact PolyTokenStream.trades_cons (PolyTokenStream.serialize_const 1)
+    (PolyFueled.const (Encodable.encode φ)) PolyTokenStream.trades_nil
 
 
 /-! ### The exploitation (`def:exploitation`, proved in full) -/
@@ -215,8 +215,12 @@ theorem buySeq_value (φ : ℕ → Sentence) (V : History) (v : PCWorld) (n : �
 
 theorem buySeq_ec (φ : ℕ → Sentence) {cφ : Nat.Partrec.Code}
     (hφ : PolyFueled cφ (fun n => Encodable.encode (φ n))) :
-    EfficientlyComputable (buySeq φ) :=
-  ec_of_polyEF_seq (PolyEF.const 1) hφ (fun _ => rfl)
+    EfficientlyComputableTok (buySeq φ) := by
+  refine ecTok_of_stream _ ?_
+  have h : ∀ n, ((buySeq φ).strat n).trades = [(EF.const 1, φ n)] := fun _ => rfl
+  simp only [h]
+  exact PolyTokenStream.trades_cons (PolyTokenStream.serialize_const 1) hφ
+    PolyTokenStream.trades_nil
 
 
 /-- **Provability Induction, sequence form** (`thm:provind`): for an efficiently computable

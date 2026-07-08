@@ -571,17 +571,15 @@ theorem evaln_const_self : ∀ (K n : ℕ),
       simp [Nat.Partrec.Code.evaln, hxe, Option.bind_eq_some_iff, Option.guard_eq_some']
       omega
 
-/-- `def:ec` (`dd:fuel`) — **faithful clocked model**. A trader is **efficiently
-computable** if a single program `c`, run on input `n` under the clocked interpreter
-`evaln` for a *polynomial* fuel budget `a·(n+1)ᵏ + a`, outputs the (encoded) day-`n`
-strategy.
-
-This is the paper's `def:ec` — polynomial-time (unary) computable — modeled directly on
-`dd:fuel`: `Nat.Partrec.Code` is the machine, `evaln` clips execution at the fuel budget,
-and the class of e.c. traders is computably enumerable (over `(code, a, k)` triples), which
-is exactly what the construction (Part IV) will need. It replaces the earlier provisional
-poly-*size* bound; unlike that stand-in, it does not admit uncomputable strategy sequences,
-so `IsLogicalInductor` now matches the paper rather than being strictly stronger. -/
+/-- `def:ec` (`dd:fuel`) — **whole-number clocked model. SUPERSEDED by
+`EfficientlyComputableTok`** (below); no longer the definition `IsLogicalInductor` uses. Kept
+because its statement is true and its certification pipeline (`EfficientlyComputable.of_fueled`,
+`ec_of_polyEF`, …) is sound — but it is **faithful only for bounded-depth traders**: it asks a
+program to output the day-`n` strategy's `Encodable.encode` *as one number*, and that number's
+value is `2^{poly n}` for a deep poly-size feature, unemittable in `evaln (poly n)`. That is
+OPEN RISK 4; the fix is the token-indexed `EfficientlyComputableTok`. A trader is (Val-)e.c. if a
+program `c`, run on input `n` for a *polynomial* fuel budget `a·(n+1)ᵏ + a`, outputs the encoded
+day-`n` strategy. -/
 def EfficientlyComputable (Tr : Trader) : Prop :=
   ∃ (c : Nat.Partrec.Code) (a k : ℕ),
     ∀ n, Nat.Partrec.Code.evaln (a * (n + 1) ^ k + a) c n
@@ -618,11 +616,13 @@ def EfficientlyComputableTok (Tr : Trader) : Prop :=
 /-- `def:lic`. The market `P` satisfies the **Logical Induction Criterion** relative to
 `DP` if no efficiently computable trader exploits it. This is the hypothesis the entire
 property tail is conditioned on (`[IsLogicalInductor P DP]`). With the faithful
-`EfficientlyComputable` above (poly-time via the clocked interpreter), this is the paper's
-`def:lic` on the nose. -/
+`EfficientlyComputableTok` above (the poly-*size*, token-indexed model — OPEN RISK 4
+resolved), this is the paper's `def:lic` on the nose, and it now admits deep poly-size
+exploiters (hysteresis, purchase counters) that the whole-number `EfficientlyComputable`
+excluded. -/
 class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
   /-- No efficiently computable trader exploits `P`. -/
-  noExploit : ∀ Tr : Trader, EfficientlyComputable Tr → ¬ Tr.Exploits P DP
+  noExploit : ∀ Tr : Trader, EfficientlyComputableTok Tr → ¬ Tr.Exploits P DP
 
 /-! ### Sanity / non-vacuity for the criterion machinery.
 

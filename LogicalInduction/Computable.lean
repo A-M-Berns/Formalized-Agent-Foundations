@@ -714,4 +714,114 @@ theorem priceTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (priceTrade
       (PolyFueledTuple.cons (PolyFueled.const (Encodable.encode φ)) PolyFueledTuple.nil))))
   · intro n; simp [priceTrader, serializeTrades, EF.serialize]
 
+/-! ### `PolyTokenStream` — compositional re-certification over the serialization tree.
+
+Writing an explicit token list for a deep trader (its stream is `Θ(size)` tokens long) is
+error-prone. `PolyTokenStream s` bundles "the day-`n` stream `s n` is `ts.map (· n)` for a
+fixed-length list of poly-fueled tokens", and — crucially — is **closed under append**, so a
+re-certification mirrors the trader's `serialize` tree via combinators, never a flat list. -/
+
+/-- The day-`n` token stream `s n` is a fixed-length list of poly-fueled tokens. -/
+def PolyTokenStream (s : ℕ → List ℕ) : Prop :=
+  ∃ ts : List (ℕ → ℕ), (∀ n, s n = ts.map (fun t => t n)) ∧ (∀ t ∈ ts, ∃ c, PolyFueled c t)
+
+theorem PolyFueledTuple.of_forall {ts : List (ℕ → ℕ)} (h : ∀ t ∈ ts, ∃ c, PolyFueled c t) :
+    PolyFueledTuple ts := by
+  induction ts with
+  | nil => exact PolyFueledTuple.nil
+  | cons t ts ih =>
+      obtain ⟨ct, hct⟩ := h t (List.mem_cons_self)
+      exact PolyFueledTuple.cons hct (ih (fun t' ht' => h t' (List.mem_cons_of_mem _ ht')))
+
+theorem PolyTokenStream.nil : PolyTokenStream (fun _ => []) :=
+  ⟨[], fun _ => rfl, fun _ h => absurd h (List.not_mem_nil)⟩
+
+theorem PolyTokenStream.append {a b : ℕ → List ℕ} (ha : PolyTokenStream a)
+    (hb : PolyTokenStream b) : PolyTokenStream (fun n => a n ++ b n) := by
+  obtain ⟨tsa, hmapa, hpfa⟩ := ha
+  obtain ⟨tsb, hmapb, hpfb⟩ := hb
+  refine ⟨tsa ++ tsb, fun n => ?_, fun t ht => ?_⟩
+  · show a n ++ b n = (tsa ++ tsb).map (fun t => t n)
+    rw [hmapa n, hmapb n, List.map_append]
+  · rcases List.mem_append.mp ht with h | h
+    · exact hpfa t h
+    · exact hpfb t h
+
+theorem PolyTokenStream.const (k : ℕ) : PolyTokenStream (fun _ => [k]) := by
+  refine ⟨[fun _ => k], fun _ => rfl, fun t ht => ?_⟩
+  simp only [List.mem_singleton] at ht; subst ht; exact ⟨_, PolyFueled.const k⟩
+
+theorem PolyTokenStream.idTok : PolyTokenStream (fun n => [n]) := by
+  refine ⟨[fun n => n], fun _ => rfl, fun t ht => ?_⟩
+  simp only [List.mem_singleton] at ht; subst ht; exact ⟨_, PolyFueled.id⟩
+
+theorem PolyTokenStream.polyTok {c : Nat.Partrec.Code} {f : ℕ → ℕ} (h : PolyFueled c f) :
+    PolyTokenStream (fun n => [f n]) := by
+  refine ⟨[f], fun _ => rfl, fun t ht => ?_⟩
+  simp only [List.mem_singleton] at ht; subst ht; exact ⟨c, h⟩
+
+/-- Efficient computability from a compositional stream proof. -/
+theorem ecTok_of_stream (Tr : Trader)
+    (h : PolyTokenStream (fun n => serializeTrades (Tr.strat n).trades)) :
+    EfficientlyComputableTok Tr := by
+  obtain ⟨ts, hmap, hpf⟩ := h
+  exact ecTok_of_tokenList Tr ts (PolyFueledTuple.of_forall hpf) hmap
+
+/-! #### Per-constructor `serialize` stream lemmas (family level). -/
+
+theorem PolyTokenStream.serialize_const (q : ℚ) :
+    PolyTokenStream (fun _ => (EF.const q).serialize) := by
+  have : (fun _ : ℕ => (EF.const q).serialize) = (fun _ => [1] ++ [Encodable.encode q]) := by
+    funext n; simp [EF.serialize]
+  rw [this]; exact (PolyTokenStream.const 1).append (PolyTokenStream.const _)
+
+theorem PolyTokenStream.serialize_price (φ : Sentence) :
+    PolyTokenStream (fun n => (EF.price φ n).serialize) := by
+  have : (fun n => (EF.price φ n).serialize)
+      = (fun n => [0] ++ ([Encodable.encode φ] ++ [n])) := by funext n; simp [EF.serialize]
+  rw [this]
+  exact (PolyTokenStream.const 0).append ((PolyTokenStream.const _).append PolyTokenStream.idTok)
+
+theorem PolyTokenStream.serialize_add {A B : ℕ → EF}
+    (hA : PolyTokenStream (fun n => (A n).serialize))
+    (hB : PolyTokenStream (fun n => (B n).serialize)) :
+    PolyTokenStream (fun n => (EF.add (A n) (B n)).serialize) := by
+  have : (fun n => (EF.add (A n) (B n)).serialize)
+      = (fun n => ((A n).serialize ++ (B n).serialize) ++ [2]) := by funext n; simp [EF.serialize]
+  rw [this]; exact (hA.append hB).append (PolyTokenStream.const 2)
+
+theorem PolyTokenStream.serialize_mul {A B : ℕ → EF}
+    (hA : PolyTokenStream (fun n => (A n).serialize))
+    (hB : PolyTokenStream (fun n => (B n).serialize)) :
+    PolyTokenStream (fun n => (EF.mul (A n) (B n)).serialize) := by
+  have : (fun n => (EF.mul (A n) (B n)).serialize)
+      = (fun n => ((A n).serialize ++ (B n).serialize) ++ [3]) := by funext n; simp [EF.serialize]
+  rw [this]; exact (hA.append hB).append (PolyTokenStream.const 3)
+
+theorem PolyTokenStream.serialize_max {A B : ℕ → EF}
+    (hA : PolyTokenStream (fun n => (A n).serialize))
+    (hB : PolyTokenStream (fun n => (B n).serialize)) :
+    PolyTokenStream (fun n => (EF.max (A n) (B n)).serialize) := by
+  have : (fun n => (EF.max (A n) (B n)).serialize)
+      = (fun n => ((A n).serialize ++ (B n).serialize) ++ [4]) := by funext n; simp [EF.serialize]
+  rw [this]; exact (hA.append hB).append (PolyTokenStream.const 4)
+
+/-- The trade frame: `serializeTrades ((e,φ)::rest) = e.serialize ++ [6] ++ [⌜φ⌝] ++ …`. The
+sentence code is supplied as a poly-fueled token (constant for fixed `φ`, `PolyFueled`-bounded
+for a varying `φ n`). -/
+theorem PolyTokenStream.trades_cons {e : ℕ → EF} {φ : ℕ → Sentence}
+    {rest : ℕ → List (EF × Sentence)} {cφ : Nat.Partrec.Code}
+    (he : PolyTokenStream (fun n => (e n).serialize))
+    (hφ : PolyFueled cφ (fun n => Encodable.encode (φ n)))
+    (hrest : PolyTokenStream (fun n => serializeTrades (rest n))) :
+    PolyTokenStream (fun n => serializeTrades ((e n, φ n) :: rest n)) := by
+  have : (fun n => serializeTrades ((e n, φ n) :: rest n))
+      = (fun n => ((e n).serialize ++ [6]) ++ [Encodable.encode (φ n)] ++ serializeTrades (rest n)) := by
+    funext n; simp [serializeTrades]
+  rw [this]
+  exact ((he.append (PolyTokenStream.const 6)).append (PolyTokenStream.polyTok hφ)).append hrest
+
+theorem PolyTokenStream.trades_nil : PolyTokenStream (fun _ => serializeTrades []) := by
+  simpa [serializeTrades] using PolyTokenStream.nil
+
 end LogicalInduction
