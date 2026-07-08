@@ -43,14 +43,22 @@ and `thm:con` genuinely did not follow. Bounded-depth substitutes provably fail 
 target-holding telescopes to a path-independent state function; mean-reversion harvests only
 quadratic variation, which a smooth ramp drives to `0`).
 
-That obstruction is **resolved**: `EfficientlyComputableTok` (the token-indexed, poly-*size*
-model — see `Criterion.lean` and `PROGRESS.md` OPEN RISK 4) admits exactly these deep poly-size
-strategies. So the hysteresis exploiter is now e.c., `IsLogicalInductor` forbids it, and `thm:con`
-*does* follow — **once the trader is actually constructed**. What remains is real work, not a
-trust-surface question: build the hysteresis `EF` (a size-`Θ(n)` running-state feature; the
-`PolyTokenStream`/`ecTok_of_tokenList` layer will discharge its e.c.), prove it banks `≥ b − a`
-per completed swing, and feed the accumulation to `exploits_of_ge_partialSums`. Per Rule 1
-(no arithmetic stub may stand in for a trader) this stays `sorry` until that trader exists. -/
+That obstruction is **resolved at the definition level**: `EfficientlyComputableTok` (the
+token-indexed, poly-*size* model — see `Criterion.lean` and `PROGRESS.md` OPEN RISK 4) admits
+strategies whose stream is poly-*length* with poly-*value* tokens, which is exactly what a
+size-`Θ(n)` structural description of the hysteresis feature is. So the exploiter is now inside
+the e.c. class in principle, `IsLogicalInductor` forbids it, and `thm:con` *does* follow — **once
+the trader is actually built and certified**. Two concrete pieces of real work remain (neither a
+trust-surface question):
+1. Construct the hysteresis `EF` — a size-`Θ(n)` running-state feature (its shape grows with `n`,
+   unlike every trader certified so far) — prove it banks `≥ b − a` per completed swing, and feed
+   the accumulation to `exploits_of_ge_partialSums`.
+2. Discharge its e.c.: the existing `ecTok_of_tokenList`/`PolyTokenStream` layer only handles
+   **fixed-length** streams (bounded-shape strategies); a size-`Θ(n)` strategy has a *growing*
+   stream, so it needs a **varying-length** emission helper (a genuine generalization, not yet
+   built). The definition supports it; the tooling does not yet.
+
+Per Rule 1 (no arithmetic stub may stand in for a trader) this stays `sorry` until both exist. -/
 theorem oscillation_exploitable (P : History) (DP : DeductiveProcess) (φ : Sentence)
     (a b : ℚ) (hab : (a : ℝ) < b) (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
