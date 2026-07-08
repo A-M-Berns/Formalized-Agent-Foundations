@@ -398,4 +398,320 @@ theorem PolyEF.pricePred (φ : Sentence) : PolyEF (fun n => EF.price φ (n-1)) :
   rw [heq] at h
   exact ⟨_, h⟩
 
+/-! ## Token-indexed dispatch — emitting the `i`-th token of a fixed-length stream.
+
+`EfficientlyComputableTok` asks for a program that, on input `⟨n, i⟩`, outputs the `i`-th token
+of `serializeTrades (strat n)`. For every trader in the development the token stream has a
+**fixed length** `L` (the strategy's tree shape is `n`-independent; only day-index tokens and
+sentence codes vary with `n`), so the stream is `[t₀ n, …, t_{L-1} n]` with each `tⱼ`
+poly-fueled. This section builds the one reusable tool for that shape:
+
+* encode the tuple `⟨t₀ n, …, t_{L-1} n⟩` as the right-nested pair `pair (t₀ n) (pair … 0)`
+  (`tupleEnc`), poly-fueled from the `tⱼ` (`tupleCode`);
+* select index `i` by `left ∘ right^i` (`sel = comp left iterRight`), a single `prec` recursion
+  on `i` — the analogue of `predc`, fuel bounded through the clocked interpreter;
+* package the two into `ecTok_of_tokenList`, turning "the day-`n` stream is `ts.map (· n)` with
+  each token poly-fueled" into `EfficientlyComputableTok`.
+
+The one genuine `prec` fuel proof is `iterRight_evaln` (mirrors `predAux_evaln`). -/
+
+/-- Spec: `right` iterated `i` times on `T` (`Nat.unpair · |>.2`). `sel`'s meaning. -/
+def rightIterFn (T : ℕ) : ℕ → ℕ
+  | 0 => T
+  | (i + 1) => (rightIterFn T i).unpair.2
+
+/-- Selection spec: the `i`-th component of the right-nested tuple headed at `T`. -/
+def selFn (T i : ℕ) : ℕ := (rightIterFn T i).unpair.1
+
+/-- Encode a list as a right-nested pair tuple `pair v₀ (pair v₁ (… 0))`. -/
+def tupleEnc : List ℕ → ℕ
+  | [] => 0
+  | v :: vs => Nat.pair v (tupleEnc vs)
+
+/-- Iterating `right` once more on `pair v T'` peels the head: `right^{i+1}(pair v T') = right^i T'`. -/
+theorem rightIterFn_pair (v T' : ℕ) : ∀ i, rightIterFn (Nat.pair v T') (i + 1) = rightIterFn T' i := by
+  intro i
+  induction i with
+  | zero => simp [rightIterFn, Nat.unpair_pair]
+  | succ i ih => rw [rightIterFn, ih]; rw [rightIterFn]
+
+/-- `right^i` on the all-zero tuple stays `0` (`unpair 0 = (0,0)`). -/
+theorem rightIterFn_zero (i : ℕ) : rightIterFn 0 i = 0 := by
+  induction i with
+  | zero => rfl
+  | succ i ih => rw [rightIterFn, ih]; rfl
+
+/-- **Selection correctness (pure spec).** `selFn (tupleEnc vs) i = vs.getD i 0`. -/
+theorem selFn_tupleEnc (vs : List ℕ) (i : ℕ) : selFn (tupleEnc vs) i = vs.getD i 0 := by
+  induction vs generalizing i with
+  | nil => simp only [tupleEnc, selFn, rightIterFn_zero, List.getD_nil]; rfl
+  | cons v vs ih =>
+      cases i with
+      | zero => simp [selFn, tupleEnc, rightIterFn, Nat.unpair_pair]
+      | succ i => simp only [selFn, tupleEnc, rightIterFn_pair, List.getD_cons_succ]; exact ih i
+
+/-- `iterRight = prec id (right ∘ right ∘ right)`: on `pair T i`, returns `right^i T`. The
+`succ` step ignores the recursion index and the fixed `T`, applying one `right` to the previous
+value — so `f(T, i+1) = right (f(T, i))`. -/
+def iterRight : Nat.Partrec.Code :=
+  Nat.Partrec.Code.prec (left.pair right) (comp right (comp right right))
+
+/-- Index selection code: `sel (pair T i) = left (right^i T) = selFn T i`. -/
+def sel : Nat.Partrec.Code := comp left iterRight
+
+theorem rightIterFn_le (T i : ℕ) : rightIterFn T i ≤ T := by
+  induction i with
+  | zero => exact le_rfl
+  | succ i ih => exact le_trans (Nat.unpair_right_le _) ih
+
+theorem pair_le_pair_right' (a : ℕ) {b₁ b₂ : ℕ} (h : b₁ ≤ b₂) :
+    Nat.pair a b₁ ≤ Nat.pair a b₂ := by
+  rcases eq_or_lt_of_le h with rfl | h
+  · exact le_rfl
+  · exact le_of_lt (Nat.pair_lt_pair_right a h)
+
+theorem pair_le_pair_left' (b : ℕ) {a₁ a₂ : ℕ} (h : a₁ ≤ a₂) :
+    Nat.pair a₁ b ≤ Nat.pair a₂ b := by
+  rcases eq_or_lt_of_le h with rfl | h
+  · exact le_rfl
+  · exact le_of_lt (Nat.pair_lt_pair_left b h)
+
+/-- One unrolling of the `prec` recursion for `iterRight`. -/
+theorem iterRight_step (T i r k : ℕ)
+    (hrec : evaln k iterRight (Nat.pair T i) = some r)
+    (hg1 : Nat.pair T (i + 1) ≤ k) (hg2 : Nat.pair T (Nat.pair i r) ≤ k) :
+    evaln (k + 1) iterRight (Nat.pair T (i + 1)) = some r.unpair.2 := by
+  have hir : Nat.pair i r ≤ k := le_trans (Nat.right_le_pair T (Nat.pair i r)) hg2
+  have hr : r ≤ k := le_trans (Nat.right_le_pair i r) hir
+  conv_lhs => rw [iterRight, evaln]
+  simp only [Nat.unpaired, Nat.unpair_pair, iterRight] at hrec ⊢
+  rw [hrec]
+  simp only [evaln, Nat.unpair_pair]
+  simp [hg1, hg2, hir, hr]
+
+/-- **`iterRight` computes `right^i` with a polynomial fuel budget** (one genuine `prec`
+recursion through the clocked interpreter; mirrors `predAux_evaln`). The dominant guard is
+`pair T (pair i T)`, and the recursion depth is `i`, so the budget is degree-2 in `pair T i`. -/
+theorem iterRight_evaln : ∀ (T i F : ℕ), Nat.pair T (Nat.pair i T) + i + 1 < F →
+    evaln F iterRight (Nat.pair T i) = some (rightIterFn T i) := by
+  intro T i
+  induction i with
+  | zero =>
+      intro F hF
+      obtain ⟨k, rfl⟩ : ∃ k, F = k + 1 := ⟨F - 1, by omega⟩
+      have hg : Nat.pair T 0 ≤ k := by
+        have h1 : Nat.pair T 0 ≤ Nat.pair T (Nat.pair 0 T) :=
+          pair_le_pair_right' T (Nat.left_le_pair 0 T)
+        omega
+      have hTk : T ≤ k := le_trans (Nat.left_le_pair T 0) hg
+      show evaln (k + 1) iterRight (Nat.pair T 0) = some (rightIterFn T 0)
+      rw [iterRight, evaln]
+      simp only [Nat.unpaired, Nat.unpair_pair, Nat.rec_zero, rightIterFn]
+      simp [Seq.seq, hg, hTk, evaln, Nat.pair_unpair]
+  | succ i ih =>
+      intro F hF
+      obtain ⟨k, rfl⟩ : ∃ k, F = k + 1 := ⟨F - 1, by omega⟩
+      have hmono : Nat.pair T (Nat.pair i T) ≤ Nat.pair T (Nat.pair (i + 1) T) :=
+        pair_le_pair_right' T (pair_le_pair_left' T (by omega))
+      have hIH : evaln k iterRight (Nat.pair T i) = some (rightIterFn T i) := by
+        refine ih k ?_; omega
+      have hri : rightIterFn T i ≤ T := rightIterFn_le T i
+      have hstep := iterRight_step T i (rightIterFn T i) k hIH ?_ ?_
+      · rw [rightIterFn]; exact hstep
+      · -- hg1 : pair T (i+1) ≤ k
+        have : Nat.pair T (i + 1) ≤ Nat.pair T (Nat.pair (i + 1) T) :=
+          pair_le_pair_right' T (Nat.left_le_pair (i + 1) T)
+        omega
+      · -- hg2 : pair T (pair i (rightIterFn T i)) ≤ k
+        have hp : Nat.pair i (rightIterFn T i) ≤ Nat.pair (i + 1) T :=
+          le_trans (pair_le_pair_left' _ (by omega)) (pair_le_pair_right' _ hri)
+        have : Nat.pair T (Nat.pair i (rightIterFn T i)) ≤ Nat.pair T (Nat.pair (i + 1) T) :=
+          pair_le_pair_right' T hp
+        omega
+
+/-! ### `sel` as a poly-fueled function, and `IsPolyBounded` closure under `+`. -/
+
+theorem IsPolyBounded.add {b₁ b₂ : ℕ → ℕ} (h₁ : IsPolyBounded b₁) (h₂ : IsPolyBounded b₂) :
+    IsPolyBounded (fun n => b₁ n + b₂ n) := by
+  obtain ⟨a₁, k₁, hk₁⟩ := h₁; obtain ⟨a₂, k₂, hk₂⟩ := h₂
+  refine ⟨a₁ + a₂, Max.max k₁ k₂, fun n => ?_⟩
+  have e₁ : (n + 1) ^ k₁ ≤ (n + 1) ^ Max.max k₁ k₂ :=
+    Nat.pow_le_pow_right (by omega) (le_max_left _ _)
+  have e₂ : (n + 1) ^ k₂ ≤ (n + 1) ^ Max.max k₁ k₂ :=
+    Nat.pow_le_pow_right (by omega) (le_max_right _ _)
+  have := hk₁ n; have := hk₂ n; nlinarith [e₁, e₂]
+
+/-- `m.unpair.1` is poly-bounded (it is `≤ m`). -/
+theorem isPolyBounded_fst : IsPolyBounded (fun m => m.unpair.1) :=
+  (IsPolyBounded.linear 0).of_le (fun m => by simpa using Nat.unpair_left_le m)
+
+theorem isPolyBounded_snd : IsPolyBounded (fun m => m.unpair.2) :=
+  (IsPolyBounded.linear 0).of_le (fun m => by simpa using Nat.unpair_right_le m)
+
+/-- `iterRight` as a `Fueled` fact on arbitrary input `m` (read as `pair m.1 m.2`). -/
+theorem iterRight_fueled :
+    Fueled iterRight (fun m => rightIterFn m.unpair.1 m.unpair.2)
+      (fun m => Nat.pair m.unpair.1 (Nat.pair m.unpair.2 m.unpair.1) + m.unpair.2 + 2) := by
+  intro m
+  set T := m.unpair.1 with hT
+  set i := m.unpair.2 with hi
+  have hm : Nat.pair T i = m := Nat.pair_unpair m
+  show evaln (Nat.pair T (Nat.pair i T) + i + 2) iterRight m = some (rightIterFn T i)
+  rw [← hm]
+  exact iterRight_evaln T i _ (by omega)
+
+theorem isPolyBounded_iterRight_fuel :
+    IsPolyBounded (fun m => Nat.pair m.unpair.1 (Nat.pair m.unpair.2 m.unpair.1) + m.unpair.2 + 2) :=
+  ((isPolyBounded_fst.pair (isPolyBounded_snd.pair isPolyBounded_fst)).add
+    isPolyBounded_snd).add (IsPolyBounded.linear 2 |>.of_le (fun _ => by omega))
+
+/-- **`sel` computes `selFn` with polynomial fuel.** `sel = comp left iterRight`, so its output
+is `(right^i T).unpair.1 = selFn T i` and its fuel is the `iterRight` budget plus one. -/
+theorem sel_fueled :
+    Fueled sel (fun m => selFn m.unpair.1 m.unpair.2)
+      (fun m => Max.max (Nat.pair m.unpair.1 (Nat.pair m.unpair.2 m.unpair.1) + m.unpair.2 + 2)
+        (rightIterFn m.unpair.1 m.unpair.2 + 1)) :=
+  fueled_comp fueled_left iterRight_fueled
+
+theorem isPolyBounded_sel_fuel :
+    IsPolyBounded (fun m => Max.max
+      (Nat.pair m.unpair.1 (Nat.pair m.unpair.2 m.unpair.1) + m.unpair.2 + 2)
+      (rightIterFn m.unpair.1 m.unpair.2 + 1)) :=
+  isPolyBounded_iterRight_fuel.max
+    ((isPolyBounded_fst.of_le (fun _ => rightIterFn_le _ _)).add_one)
+
+/-- Composition of poly-bounded functions is poly-bounded — the missing closure needed to
+compose `sel` with the tuple code. -/
+theorem IsPolyBounded.comp {b g : ℕ → ℕ} (hb : IsPolyBounded b) (hg : IsPolyBounded g) :
+    IsPolyBounded (fun n => b (g n)) := by
+  obtain ⟨a, k, hk⟩ := hb
+  obtain ⟨a', k', hk'⟩ := hg
+  refine ⟨a * (2 * (a' + 1)) ^ k, k * k', fun n => ?_⟩
+  have hp : 1 ≤ (n + 1) ^ k' := Nat.one_le_pow _ _ (by omega)
+  have hstep : g n + 1 ≤ 2 * (a' + 1) * (n + 1) ^ k' := by
+    have h1 : g n ≤ a' * (n + 1) ^ k' + a' := hk' n
+    nlinarith [h1, hp]
+  have hpow : 1 ≤ (2 * (a' + 1)) ^ k := Nat.one_le_pow _ _ (by omega)
+  calc b (g n) ≤ a * (g n + 1) ^ k + a := hk (g n)
+    _ ≤ a * (2 * (a' + 1) * (n + 1) ^ k') ^ k + a := by gcongr
+    _ = a * (2 * (a' + 1)) ^ k * (n + 1) ^ (k * k') + a := by
+        rw [mul_pow, ← pow_mul]; ring
+    _ ≤ a * (2 * (a' + 1)) ^ k * (n + 1) ^ (k * k') + a * (2 * (a' + 1)) ^ k := by
+        gcongr; exact Nat.le_mul_of_pos_right a hpow
+
+theorem PolyFueled.left : PolyFueled Nat.Partrec.Code.left (fun m => m.unpair.1) :=
+  ⟨fun n => n + 1, fueled_left, isPolyBounded_fst, IsPolyBounded.linear 1⟩
+
+theorem PolyFueled.right : PolyFueled Nat.Partrec.Code.right (fun m => m.unpair.2) :=
+  ⟨fun n => n + 1, fueled_right, isPolyBounded_snd, IsPolyBounded.linear 1⟩
+
+/-- **`PolyFueled` is closed under composition.** Needs `IsPolyBounded.comp` for both the
+output size `f ∘ g` and the fuel `bf ∘ g`. -/
+theorem PolyFueled.comp {cf cg : Nat.Partrec.Code} {f g : ℕ → ℕ}
+    (hf : PolyFueled cf f) (hg : PolyFueled cg g) :
+    PolyFueled (cf.comp cg) (fun n => f (g n)) := by
+  obtain ⟨bf, hff, hpff, hpbf⟩ := hf
+  obtain ⟨bg, hfg, hpfg, hpbg⟩ := hg
+  exact ⟨fun n => max (bg n) (bf (g n)), fueled_comp hff hfg,
+    hpff.comp hpfg, hpbg.max (hpbf.comp hpfg)⟩
+
+/-- `sel` bundled as `PolyFueled`. -/
+theorem sel_polyFueled : PolyFueled sel (fun m => selFn m.unpair.1 m.unpair.2) :=
+  ⟨_, sel_fueled, (isPolyBounded_fst.of_le (fun _ => le_trans (Nat.unpair_left_le _)
+    (rightIterFn_le _ _))), isPolyBounded_sel_fuel⟩
+
+/-! ### `ecTok_of_tokenList` — the re-certification workhorse.
+
+A trader whose day-`n` token stream is a **fixed-length** list `ts.map (· n)` of poly-fueled
+tokens is `EfficientlyComputableTok`. The emitter is `comp sel ((comp cV left).pair right)`:
+on `⟨n, i⟩` it builds the tuple `⟨t₀ n, …⟩` (`cV`), then selects index `i` (`sel`). -/
+
+/-- The day-`n` tuple `⟨t₀ n, …, t_{L-1} n⟩` is poly-fueled (built from the tokens by `pair`). -/
+def PolyFueledTuple (ts : List (ℕ → ℕ)) : Prop :=
+  ∃ c, PolyFueled c (fun n => tupleEnc (ts.map (fun t => t n)))
+
+theorem PolyFueledTuple.nil : PolyFueledTuple [] :=
+  ⟨Nat.Partrec.Code.const 0, by simpa [tupleEnc] using PolyFueled.const 0⟩
+
+theorem PolyFueledTuple.cons {t : ℕ → ℕ} {ts : List (ℕ → ℕ)} {ct : Nat.Partrec.Code}
+    (ht : PolyFueled ct t) (hts : PolyFueledTuple ts) : PolyFueledTuple (t :: ts) := by
+  obtain ⟨cs, hcs⟩ := hts
+  refine ⟨ct.pair cs, ?_⟩
+  have heq : (fun n => tupleEnc ((t :: ts).map (fun t => t n)))
+      = (fun n => Nat.pair (t n) (tupleEnc (ts.map (fun t => t n)))) := by
+    funext n; simp [tupleEnc]
+  rw [heq]; exact ht.pair hcs
+
+/-- **The token-emission re-certification lemma.** If the day-`n` strategy serializes to a
+fixed-length list `ts.map (· n)` of poly-fueled tokens, the trader is `EfficientlyComputableTok`. -/
+theorem ecTok_of_tokenList (Tr : Trader) (ts : List (ℕ → ℕ)) (hts : PolyFueledTuple ts)
+    (hTr : ∀ n, serializeTrades (Tr.strat n).trades = ts.map (fun t => t n)) :
+    EfficientlyComputableTok Tr := by
+  obtain ⟨cV, hV⟩ := hts
+  set c := Nat.Partrec.Code.comp sel
+      ((Nat.Partrec.Code.comp cV Nat.Partrec.Code.left).pair Nat.Partrec.Code.right) with hc
+  -- The full emitter, as a PolyFueled fact.
+  have hcode : PolyFueled c
+      (fun m => selFn (Nat.pair
+        (tupleEnc (ts.map (fun t => t m.unpair.1))) m.unpair.2).unpair.1
+        (Nat.pair (tupleEnc (ts.map (fun t => t m.unpair.1))) m.unpair.2).unpair.2) :=
+    sel_polyFueled.comp ((hV.comp PolyFueled.left).pair PolyFueled.right)
+  obtain ⟨bc, hfc, _, hpbc⟩ := hcode
+  obtain ⟨a₀, k₀, hk₀⟩ := hpbc
+  -- Length of the stream is the constant `ts.length`.
+  have hlen : ∀ n, (serializeTrades (Tr.strat n).trades).length = ts.length := by
+    intro n; rw [hTr n, List.length_map]
+  -- The polynomial fuel: coefficient absorbs the `(L+1)^{2k₀}` blow-up, plus `L` for the
+  -- length clause; degree `2k₀` from `pair n i < (n+L+1)²`.
+  set A := a₀ * (ts.length + 1) ^ (2 * k₀) + a₀ + ts.length with hA
+  refine ⟨c, A, 2 * k₀, ?_, ?_⟩
+  · intro n; rw [hlen n]
+    have : ts.length ≤ A := by rw [hA]; omega
+    exact le_trans this (Nat.le_add_left _ _)
+  · intro n i hi
+    rw [hlen n] at hi
+    -- The emitter outputs the i-th token at input ⟨n, i⟩.
+    have hout : selFn (tupleEnc (ts.map (fun t => t n))) i
+        = (serializeTrades (Tr.strat n).trades).getD i 0 := by
+      rw [selFn_tupleEnc, hTr n]
+    -- `bc ⟨n,i⟩` is bounded by the chosen polynomial (uses `i < ts.length`).
+    have hbc : bc (Nat.pair n i) ≤ A * (n + 1) ^ (2 * k₀) + A := by
+      have h1 : Nat.pair n i + 1 ≤ (n + ts.length + 1) ^ 2 := by
+        have hlt := pair_lt_sq n i
+        have hle : (n + i + 1) ^ 2 ≤ (n + ts.length + 1) ^ 2 := Nat.pow_le_pow_left (by omega) 2
+        omega
+      have h2 : (Nat.pair n i + 1) ^ k₀ ≤ (n + ts.length + 1) ^ (2 * k₀) := by
+        calc (Nat.pair n i + 1) ^ k₀ ≤ ((n + ts.length + 1) ^ 2) ^ k₀ :=
+              Nat.pow_le_pow_left h1 k₀
+          _ = (n + ts.length + 1) ^ (2 * k₀) := by rw [← pow_mul]
+      have h4 : n + ts.length + 1 ≤ (n + 1) * (ts.length + 1) := by nlinarith
+      have h5 : (n + ts.length + 1) ^ (2 * k₀) ≤
+          (n + 1) ^ (2 * k₀) * (ts.length + 1) ^ (2 * k₀) := by
+        calc (n + ts.length + 1) ^ (2 * k₀) ≤ ((n + 1) * (ts.length + 1)) ^ (2 * k₀) :=
+              Nat.pow_le_pow_left h4 _
+          _ = (n + 1) ^ (2 * k₀) * (ts.length + 1) ^ (2 * k₀) := by rw [mul_pow]
+      calc bc (Nat.pair n i) ≤ a₀ * (Nat.pair n i + 1) ^ k₀ + a₀ := hk₀ (Nat.pair n i)
+        _ ≤ a₀ * ((n + 1) ^ (2 * k₀) * (ts.length + 1) ^ (2 * k₀)) + a₀ := by
+            gcongr; exact le_trans h2 h5
+        _ = (a₀ * (ts.length + 1) ^ (2 * k₀)) * (n + 1) ^ (2 * k₀) + a₀ := by ring
+        _ ≤ A * (n + 1) ^ (2 * k₀) + A := by rw [hA]; gcongr <;> omega
+    have key := hfc (Nat.pair n i)
+    simp only [Nat.unpair_pair] at key
+    rw [hout] at key
+    exact evaln_mono hbc key
+
+/-- **Validation of the pipeline** (the `def:ec`-Tok analogue of `priceTrader_ec`): the
+responsive trader `priceTrader φ` — whose day-`n` stream `[0, ⌜φ⌝, n, 6, ⌜φ⌝]` contains the
+*varying* day-index token `n` — is `EfficientlyComputableTok`. The `n` token is `PolyFueled.id`;
+the rest are constants. This is the template the property-file re-certifications follow. -/
+theorem priceTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (priceTrader φ) := by
+  refine ecTok_of_tokenList _ [fun _ => 0, fun _ => Encodable.encode φ, fun n => n,
+    fun _ => 6, fun _ => Encodable.encode φ] ?_ ?_
+  · exact PolyFueledTuple.cons (PolyFueled.const 0)
+      (PolyFueledTuple.cons (PolyFueled.const (Encodable.encode φ))
+      (PolyFueledTuple.cons PolyFueled.id
+      (PolyFueledTuple.cons (PolyFueled.const 6)
+      (PolyFueledTuple.cons (PolyFueled.const (Encodable.encode φ)) PolyFueledTuple.nil))))
+  · intro n; simp [priceTrader, serializeTrades, EF.serialize]
+
 end LogicalInduction
