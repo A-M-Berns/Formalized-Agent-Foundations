@@ -1012,6 +1012,40 @@ theorem subc_polyFueled : PolyFueled subc (fun m => m.unpair.1 - m.unpair.2) := 
   exact (((h4.add hpair).add isPolyBounded_fst).add isPolyBounded_snd).add
     (⟨9, 0, fun _ => by simp⟩ : IsPolyBounded (fun _ => 9))
 
+/-! ### `ecTok_of_tokenFn` — the varying-length emission workhorse.
+
+Generalizes `ecTok_of_tokenList` (fixed length) to **growing** streams: a trader is
+`EfficientlyComputableTok` as soon as a *single* poly-fueled function `tokenFn` computes the
+`i`-th token of `serializeTrades (strat n)` from `⟨n, i⟩`, and the stream length is polynomial.
+This is what deep (size-`Θ(n)`) traders need — their `i`-th token is a fixed arithmetic
+expression in `⟨n,i⟩` (built from `ifzSel`/`predc`/`subc`), not a lookup in a fixed list. -/
+theorem ecTok_of_tokenFn (Tr : Trader) {tokenFn : ℕ → ℕ} {c : Nat.Partrec.Code}
+    (hpf : PolyFueled c tokenFn)
+    (hlen : IsPolyBounded (fun n => (serializeTrades (Tr.strat n).trades).length))
+    (htok : ∀ n i, i < (serializeTrades (Tr.strat n).trades).length →
+        tokenFn (Nat.pair n i) = (serializeTrades (Tr.strat n).trades).getD i 0) :
+    EfficientlyComputableTok Tr := by
+  obtain ⟨bc, hfc, _, a₀, k₀, hk₀⟩ := hpf
+  set len := fun n => (serializeTrades (Tr.strat n).trades).length with hlendef
+  -- A poly upper bound for `bc ⟨n,i⟩` over all `i < len n`, monotone in the pair.
+  have hbcbound : IsPolyBounded (fun n => a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀) :=
+    (show IsPolyBounded (fun x => a₀ * (x + 1) ^ k₀ + a₀) from ⟨a₀, k₀, fun _ => le_rfl⟩).comp
+      ((IsPolyBounded.linear 0).pair hlen)
+  obtain ⟨A, K, hAK⟩ := hlen.max hbcbound
+  refine ⟨c, A, K, fun n => ?_, fun n i hi => ?_⟩
+  · exact le_trans (le_max_left _ _) (hAK n)
+  · -- `bc ⟨n,i⟩ ≤ A(n+1)^K + A`, then `evaln_mono` on `hfc`.
+    have hple : Nat.pair n i ≤ Nat.pair n (len n) :=
+      pair_le_pair_right' n (le_of_lt hi)
+    have hbc : bc (Nat.pair n i) ≤ A * (n + 1) ^ K + A := by
+      calc bc (Nat.pair n i) ≤ a₀ * (Nat.pair n i + 1) ^ k₀ + a₀ := hk₀ _
+        _ ≤ a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀ := by gcongr
+        _ ≤ A * (n + 1) ^ K + A := le_trans (le_max_right _ _) (hAK n)
+    have key := hfc (Nat.pair n i)
+    rw [htok n i hi] at key
+    exact evaln_mono hbc key
+
 end LogicalInduction
+
 
 
