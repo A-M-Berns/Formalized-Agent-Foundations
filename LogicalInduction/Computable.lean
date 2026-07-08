@@ -620,6 +620,90 @@ theorem sel_polyFueled : PolyFueled sel (fun m => selFn m.unpair.1 m.unpair.2) :
   ⟨_, sel_fueled, (isPolyBounded_fst.of_le (fun _ => le_trans (Nat.unpair_left_le _)
     (rightIterFn_le _ _))), isPolyBounded_sel_fuel⟩
 
+/-! ### `ifzSel` — a branchless zero-test selector (toward varying-length emission).
+
+`ifzSel (pair (pair A B) i) = if i = 0 then A else B`. The two candidates ride *in the input*
+(`A = T.unpair.1`, `B = T.unpair.2` with `T = pair A B`), so the `prec` uses only projections
+(`cf = left`, `cg = comp right left`) — no `const` in the recursion, so the fuel proof is as
+cheap as `iterRight`'s. This is the bottleneck primitive for emitting a *growing* token stream:
+the `i`-th token of a size-`Θ(n)` strategy is a fixed nesting of `ifzSel`s over `pred`-shifted
+indices (comparisons against small constants), each poly-fuel. -/
+def ifzSel : Nat.Partrec.Code := Nat.Partrec.Code.prec left (comp right left)
+
+/-- Spec of `ifzSel`: pick `T.unpair.1` (`i = 0`) or `T.unpair.2` (`i > 0`). -/
+def ifzSelFn (T i : ℕ) : ℕ := if i = 0 then T.unpair.1 else T.unpair.2
+
+theorem ifzSelFn_le (T i : ℕ) : ifzSelFn T i ≤ T := by
+  rw [ifzSelFn]; split
+  · exact Nat.unpair_left_le T
+  · exact Nat.unpair_right_le T
+
+/-- One unrolling of the `prec` recursion for `ifzSel` (the `succ` step returns `T.unpair.2`
+regardless of the recursive value — `cg = comp right left` ignores it). -/
+theorem ifzSel_step (T i r k : ℕ)
+    (hrec : evaln k ifzSel (Nat.pair T i) = some r)
+    (hg1 : Nat.pair T (i + 1) ≤ k) (hg2 : Nat.pair T (Nat.pair i r) ≤ k) :
+    evaln (k + 1) ifzSel (Nat.pair T (i + 1)) = some T.unpair.2 := by
+  have hTle : T ≤ k := le_trans (Nat.left_le_pair T (Nat.pair i r)) hg2
+  conv_lhs => rw [ifzSel, evaln]
+  simp only [Nat.unpaired, Nat.unpair_pair, ifzSel] at hrec ⊢
+  rw [hrec]
+  simp only [evaln, Nat.unpair_pair]
+  simp [hg1, hg2, hTle]
+
+/-- **`ifzSel` computes the zero-test selection with polynomial fuel** (mirrors
+`iterRight_evaln`: same `prec`-with-projections shape, same degree-2 budget). -/
+theorem ifzSel_evaln : ∀ (T i F : ℕ), Nat.pair T (Nat.pair i T) + i + 1 < F →
+    evaln F ifzSel (Nat.pair T i) = some (ifzSelFn T i) := by
+  intro T i
+  induction i with
+  | zero =>
+      intro F hF
+      obtain ⟨k, rfl⟩ : ∃ k, F = k + 1 := ⟨F - 1, by omega⟩
+      have hg : Nat.pair T 0 ≤ k := by
+        have h1 : Nat.pair T 0 ≤ Nat.pair T (Nat.pair 0 T) :=
+          pair_le_pair_right' T (Nat.left_le_pair 0 T)
+        omega
+      have hTk : T ≤ k := le_trans (Nat.left_le_pair T 0) hg
+      show evaln (k + 1) ifzSel (Nat.pair T 0) = some (ifzSelFn T 0)
+      rw [ifzSel, evaln]
+      simp only [Nat.unpaired, Nat.unpair_pair, Nat.rec_zero, ifzSelFn, if_pos rfl]
+      simp [hg, hTk, evaln]
+  | succ i ih =>
+      intro F hF
+      obtain ⟨k, rfl⟩ : ∃ k, F = k + 1 := ⟨F - 1, by omega⟩
+      have hmono : Nat.pair T (Nat.pair i T) ≤ Nat.pair T (Nat.pair (i + 1) T) :=
+        pair_le_pair_right' T (pair_le_pair_left' T (by omega))
+      have hIH : evaln k ifzSel (Nat.pair T i) = some (ifzSelFn T i) := by
+        refine ih k ?_; omega
+      have hri : ifzSelFn T i ≤ T := ifzSelFn_le T i
+      have hstep := ifzSel_step T i (ifzSelFn T i) k hIH ?_ ?_
+      · rw [ifzSelFn, if_neg (Nat.succ_ne_zero i)]; exact hstep
+      · have : Nat.pair T (i + 1) ≤ Nat.pair T (Nat.pair (i + 1) T) :=
+          pair_le_pair_right' T (Nat.left_le_pair (i + 1) T)
+        omega
+      · have hp : Nat.pair i (ifzSelFn T i) ≤ Nat.pair (i + 1) T :=
+          le_trans (pair_le_pair_left' _ (by omega)) (pair_le_pair_right' _ hri)
+        have : Nat.pair T (Nat.pair i (ifzSelFn T i)) ≤ Nat.pair T (Nat.pair (i + 1) T) :=
+          pair_le_pair_right' T hp
+        omega
+
+theorem ifzSel_fueled :
+    Fueled ifzSel (fun m => ifzSelFn m.unpair.1 m.unpair.2)
+      (fun m => Nat.pair m.unpair.1 (Nat.pair m.unpair.2 m.unpair.1) + m.unpair.2 + 2) := by
+  intro m
+  set T := m.unpair.1 with hT
+  set i := m.unpair.2 with hi
+  have hm : Nat.pair T i = m := Nat.pair_unpair m
+  show evaln (Nat.pair T (Nat.pair i T) + i + 2) ifzSel m = some (ifzSelFn T i)
+  rw [← hm]
+  exact ifzSel_evaln T i _ (by omega)
+
+theorem ifzSel_polyFueled : PolyFueled ifzSel (fun m => ifzSelFn m.unpair.1 m.unpair.2) :=
+  ⟨_, ifzSel_fueled,
+    isPolyBounded_fst.of_le (fun m => ifzSelFn_le m.unpair.1 m.unpair.2),
+    isPolyBounded_iterRight_fuel⟩
+
 /-! ### `ecTok_of_tokenList` — the re-certification workhorse.
 
 A trader whose day-`n` token stream is a **fixed-length** list `ts.map (· n)` of poly-fueled
@@ -825,3 +909,4 @@ theorem PolyTokenStream.trades_nil : PolyTokenStream (fun _ => serializeTrades [
   simpa [serializeTrades] using PolyTokenStream.nil
 
 end LogicalInduction
+
