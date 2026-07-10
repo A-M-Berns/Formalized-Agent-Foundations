@@ -48,17 +48,17 @@ token-indexed, poly-*size* model — see `Criterion.lean` and `PROGRESS.md` OPEN
 strategies whose stream is poly-*length* with poly-*value* tokens, which is exactly what a
 size-`Θ(n)` structural description of the hysteresis feature is. So the exploiter is now inside
 the e.c. class in principle, `IsLogicalInductor` forbids it, and `thm:con` *does* follow — **once
-the trader is actually built and certified**. Two concrete pieces of real work remain (neither a
-trust-surface question):
-1. Construct the hysteresis `EF` — a size-`Θ(n)` running-state feature (its shape grows with `n`,
-   unlike every trader certified so far) — prove it banks `≥ b − a` per completed swing, and feed
+the trader is actually built**. The **e.c.-discharge tooling is now complete**: the
+`ifzSel`/`predc`/`subc` arithmetic primitives + the varying-length workhorse `ecTok_of_tokenFn`
+(all in `Computable.lean`) certify any size-`Θ(n)` trader whose `i`-th token is a fixed
+arithmetic expression in `⟨n,i⟩`; `deepTrader_ecTok` is a worked size-`Θ(n)` example. So the
+*only* remaining work here is the **economic construction**, no longer any tooling gap:
+1. Construct the hysteresis `EF` — a size-`Θ(n)` running-state feature (buy at `< a`, hold, sell
+   at `> b`) — and prove it banks `≥ b − a` per completed swing.
+2. Discharge its e.c. via `ecTok_of_tokenFn` (mechanical, following `deepTrader_ecTok`) and feed
    the accumulation to `exploits_of_ge_partialSums`.
-2. Discharge its e.c.: the existing `ecTok_of_tokenList`/`PolyTokenStream` layer only handles
-   **fixed-length** streams (bounded-shape strategies); a size-`Θ(n)` strategy has a *growing*
-   stream, so it needs a **varying-length** emission helper (a genuine generalization, not yet
-   built). The definition supports it; the tooling does not yet.
 
-Per Rule 1 (no arithmetic stub may stand in for a trader) this stays `sorry` until both exist. -/
+Per Rule 1 (no arithmetic stub may stand in for a trader) this stays `sorry` until it is built. -/
 theorem oscillation_exploitable (P : History) (DP : DeductiveProcess) (φ : Sentence)
     (a b : ℚ) (hab : (a : ℝ) < b) (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
