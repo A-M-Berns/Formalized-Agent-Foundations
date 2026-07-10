@@ -1045,7 +1045,124 @@ theorem ecTok_of_tokenFn (Tr : Trader) {tokenFn : ℕ → ℕ} {c : Nat.Partrec.
     rw [htok n i hi] at key
     exact evaln_mono hbc key
 
+/-! ### Validation: a genuinely size-`Θ(n)` trader is `EfficientlyComputableTok`.
+
+`srChain n = safeRecip^[n] (const 1)` is a **depth-`n`** feature: its `serialize` is
+`[1, ⌜1⌝] ++ replicate n 5` — a *growing* (length `n+2`) token stream, exactly the shape the
+old whole-number `def:ec` could not emit (its `toNat` is `~2^{2^n}`). `deepTrader φ` trades it;
+we certify `EfficientlyComputableTok` via `ecTok_of_tokenFn`, with the `i`-th token computed by
+a fixed nesting of `ifzSel` over `predc`/`subc`-shifted indices. This is the payoff of the whole
+`ifzSel`/`subc`/`ecTok_of_tokenFn` toolkit — the first deep trader admitted by the new `def:ec`. -/
+
+/-- A depth-`n` feature: `n`-fold safe reciprocal of the constant `1`. Rank `0` (no price
+features), so it is a legal day-`n` coefficient; its *size* is `Θ(n)`. -/
+def srChain : ℕ → EF
+  | 0 => EF.const 1
+  | (k + 1) => EF.safeRecip (srChain k)
+
+theorem srChain_rank (n : ℕ) : (srChain n).rank = 0 := by
+  induction n with
+  | zero => rfl
+  | succ k ih => rw [srChain, EF.rank, ih]
+
+/-- The trader playing the depth-`n` feature on `φ` each day. -/
+def deepTrader (φ : Sentence) : Trader where
+  strat n := { trades := [(srChain n, φ)]
+               rank_le := by intro p hp; simp only [List.mem_singleton] at hp
+                             subst hp; rw [srChain_rank]; exact Nat.zero_le _ }
+
+/-- `serialize (srChain n) = [1, ⌜1⌝] ++ replicate n 5` — a growing stream. -/
+theorem serialize_srChain (n : ℕ) :
+    (srChain n).serialize = [1, Encodable.encode (1 : ℚ)] ++ List.replicate n 5 := by
+  induction n with
+  | zero => rfl
+  | succ k ih =>
+      rw [srChain, EF.serialize, ih, List.replicate_succ']
+      simp [List.append_assoc]
+
+/-- The day-`n` token stream and its length `n + 4`. -/
+theorem serializeTrades_deepTrader (φ : Sentence) (n : ℕ) :
+    serializeTrades ((deepTrader φ).strat n).trades
+      = [1, Encodable.encode (1 : ℚ)] ++ List.replicate n 5
+        ++ [6, Encodable.encode φ] := by
+  show serializeTrades [(srChain n, φ)] = _
+  rw [serializeTrades, serialize_srChain]
+  simp [serializeTrades]
+
+theorem length_serializeTrades_deepTrader (φ : Sentence) (n : ℕ) :
+    (serializeTrades ((deepTrader φ).strat n).trades).length = n + 4 := by
+  rw [serializeTrades_deepTrader]
+  simp only [List.length_append, List.length_replicate, List.length_cons, List.length_nil]
+  omega
+
+/-- The `i`-th token of the deep stream, by region. -/
+theorem deepStream_getD (n i eφ : ℕ) (hi : i < n + 4) :
+    ([1, Encodable.encode (1 : ℚ)] ++ List.replicate n 5 ++ [6, eφ]).getD i 0
+      = if i = 0 then 1 else if i = 1 then Encodable.encode (1 : ℚ)
+        else if i ≤ n + 1 then 5 else if i = n + 2 then 6 else eφ := by
+  rcases Nat.lt_or_ge i 2 with h2 | h2
+  · -- head [1, ⌜1⌝]
+    obtain rfl | rfl : i = 0 ∨ i = 1 := by omega
+    · simp
+    · simp
+  · rw [if_neg (by omega : ¬ i = 0), if_neg (by omega : ¬ i = 1)]
+    rcases Nat.lt_or_ge i (n + 2) with h3 | h3
+    · -- inside the run of 5s
+      rw [if_pos (by omega : i ≤ n + 1)]
+      rw [List.getD_append ([1, Encodable.encode (1 : ℚ)] ++ List.replicate n 5) [6, eφ] 0 i
+          (by simp only [List.length_append, List.length_cons, List.length_nil,
+            List.length_replicate]; omega)]
+      rw [List.getD_append_right [1, Encodable.encode (1 : ℚ)] (List.replicate n 5) 0 i
+          ((by simp only [List.length_cons, List.length_nil]; omega) :
+            ([1, Encodable.encode (1 : ℚ)]).length ≤ i)]
+      rw [List.getD_replicate (h := (by simp only [List.length_cons, List.length_nil]; omega :
+            i - ([1, Encodable.encode (1 : ℚ)]).length < n))]
+    · -- tail [6, eφ]
+      have hlen2 : ([1, Encodable.encode (1 : ℚ)] ++ List.replicate n 5).length = n + 2 := by
+        simp only [List.length_append, List.length_cons, List.length_nil,
+          List.length_replicate]; omega
+      rw [if_neg (by omega : ¬ i ≤ n + 1)]
+      rw [List.getD_append_right ([1, Encodable.encode (1 : ℚ)] ++ List.replicate n 5) [6, eφ] 0 i
+          (by rw [hlen2]; omega)]
+      rw [hlen2]
+      rcases Nat.lt_or_ge i (n + 3) with h4 | h4
+      · rw [if_pos (by omega : i = n + 2), show i - (n + 2) = 0 by omega]
+        rfl
+      · rw [if_neg (by omega : ¬ i = n + 2), show i - (n + 2) = 1 by omega]
+        rfl
+
+/-- **Validation of `ecTok_of_tokenFn`**: the depth-`n` (size-`Θ(n)`) `deepTrader φ` — whose
+day-`n` token stream *grows* with `n` — is `EfficientlyComputableTok`. The old whole-number
+`def:ec` could not certify it; the new one does. The `i`-th token is a fixed nesting of
+`ifzSel` over `predc`/`subc`-shifted indices. -/
+theorem deepTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (deepTrader φ) := by
+  have nPlus3 : PolyFueled _ (fun m => m.unpair.1 + 1 + 1 + 1) :=
+    PolyFueled.left.succ_comp.succ_comp.succ_comp
+  have rSel := subc_polyFueled.comp (nPlus3.pair PolyFueled.right)
+  have predR := predc_polyFueled.comp rSel
+  have predI := predc_polyFueled.comp PolyFueled.right
+  have L4 :=
+    ifzSel_polyFueled.comp (((PolyFueled.const 6).pair (PolyFueled.const 5)).pair predR)
+  have L3 :=
+    ifzSel_polyFueled.comp (((PolyFueled.const (Encodable.encode φ)).pair L4).pair rSel)
+  have L2 :=
+    ifzSel_polyFueled.comp
+      (((PolyFueled.const (Encodable.encode (1 : ℚ))).pair L3).pair predI)
+  have L1 :=
+    ifzSel_polyFueled.comp (((PolyFueled.const 1).pair L2).pair PolyFueled.right)
+  refine ecTok_of_tokenFn (deepTrader φ) L1 ?_ ?_
+  · have hL : (fun n => (serializeTrades ((deepTrader φ).strat n).trades).length)
+        = (fun n => n + 4) := by funext n; exact length_serializeTrades_deepTrader φ n
+    rw [hL]; exact IsPolyBounded.linear 4
+  · intro n i hi
+    rw [length_serializeTrades_deepTrader] at hi
+    rw [serializeTrades_deepTrader, deepStream_getD n i (Encodable.encode φ) hi]
+    simp only [Nat.unpair_pair, ifzSelFn, Nat.pred_eq_sub_one]
+    -- LHS = the `ifzSel` token nesting, RHS = the by-region value; equal in every case.
+    split_ifs <;> omega
+
 end LogicalInduction
+
 
 
 
