@@ -257,15 +257,27 @@ Needs C for nothing *logically*, but do it after C — the limit-form statement 
   **Permission to stop-and-report** after a serious attempt; `thm:ec` staying
   `sorry` with C landed is still a strong M3.
 - **D3 — statements only** (kind `stmt` ledger rows, proofs → M4 per G1):
-  - `thm:ei`: define `LUV.indicator (φ : Sentence) : LUV` (`gt r` = `⊤`-sentence
-    for `r < 0`, `φ` for `0 ≤ r < 1`, `⊥`-sentence for `1 ≤ r` — use Foundation's
-    `⊤`/`⊥` `Formula` constants; check they exist with `#check`, don't guess
-    names). **Beware:** with our `def:e`, `expect P n (indicator φ) = P n φ`
-    *definitionally* (all `n` thresholds `i/n ∈ [0,1)` collapse to `φ`) — so our
-    `thm:ei` is (nearly) `rfl`. That is a **modeling artifact, not a proof** — the
-    paper's content lives in first-order quoting we deliberately don't carry.
-    Prove the one-liner, ledger it kind `T` with exactly this disclosure, and flag
-    it for the M3 audit. Do not present it as the paper's theorem discharged.
+  - `thm:ei` (**relational form — do not construct a canonical indicator**):
+    define
+    `def LUV.IsIndicator (Y : LUV) (φ : Sentence) (DP : DeductiveProcess) : Prop :=`
+    `∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∀ r : ℚ,`
+    `(r < 0 → v.Holds (Y.gt r)) ∧ (0 ≤ r → r < 1 → (v.Holds (Y.gt r) ↔ v.Holds φ))`
+    `∧ (1 ≤ r → ¬ v.Holds (Y.gt r))`
+    and state: `IsIndicator Y φ DP → AsympEq (Y.expectSeq P) (fun n => P n φ)`.
+    **Why relational:** the tempting canonical construction (`gt r := φ` on
+    `[0,1)`) makes `𝔼ₙ(indicator φ) = Pₙ φ` *definitionally* — the theorem
+    evaporates. That collapse is a modeling artifact: the paper's `1(φ)`
+    thresholds are *distinct sentences provably linked* to `φ`, and `thm:ei`'s
+    content is the inductor learning that growing bundle of equivalences
+    uniformly. Quantifying over any linked family `Y` restores exactly that
+    content — and note per-threshold `thm:lex` does **not** suffice (the
+    threshold set grows with `n`; it needs a bundle trader, D2's shape). So:
+    state now, `sorry` with TODO(M4/D2 engine), ledger `stmt` with this
+    rationale. **General principle for Phases D and E:** paper-side LUV
+    *constructions* (indicators, sums `aX+bY`, quoted expectations) enter our
+    modeling as **relational predicates over arbitrary threshold families**,
+    never as canonical `LUV` values — constructing a representative silently
+    pre-discharges the learning content.
   - `thm:loe`: state with world-level hypotheses replacing `Θ ⊢ Z = aX + bY`:
     `∀ n v (h : v.ConsistentWith (DP.D n)) x y z, v.ValuesAt X x → v.ValuesAt Y y →`
     `v.ValuesAt Z z → z = a·x + b·y` ⇒ `AsympEq (a·𝔼(X) + b·𝔼(Y)) (𝔼(Z))`
@@ -291,6 +303,24 @@ Statements only; **do not start proofs in M3.** Propose to Anson:
   `ccee` (adds the `w`-weighting — needs a product-LUV modeling note), `st`
   (adds the `ctsind` conditioning) the same way. Mind the roadmap's naming caution:
   deference "cee" = paper `thm:ceu`.
+- **Two sub-decisions inside G2 — flag both explicitly:**
+  1. *Timing.* The sample `hrefl` above makes day-`n` plausible worlds already
+     value `Y n` at the day-`f n` price. The paper only guarantees the linkage
+     facts are revealed by the deductive process *eventually* (Θ proves them;
+     they enter `D` at some finite day, not necessarily by day `n`). The strong
+     by-day-`n` form is simpler and may serve the deference corpus; the faithful
+     form carries an explicit revelation-schedule hypothesis. Anson picks.
+  2. *Non-vacuity.* In the paper the quoted sentences **exist** because `P` is a
+     computable rational-valued market and `Θ` represents computations. Our
+     substrate has neither (`History` is arbitrary `ℝ`-valued; `DeductiveProcess`
+     carries no computability — both disclosed type-`(c)`s), so the linkage
+     hypothesis is where that entire mechanism is imported. It *is* satisfiable —
+     take fresh atoms per `(n, q)` and a `DP` revealing the true threshold
+     literals — but that witness is an oracle-like `DP` that "knows" the future
+     market: exactly the **degenerate non-vacuity** the audit protocol hunts.
+     The principled discharge is M7's construction, where `P` is the computable
+     `LIA` and the reflective `DP` is built, not conjured. Write both facts into
+     the ledger rows at statement time.
 - Ledger all four as `stmt`, provenance noting the reflection hypothesis is a
   disclosed type-`(c)` substitute for first-order quoting, awaiting G2 sign-off.
   If a statement fights the types, **that is a finding** — write it up, don't force.
@@ -309,8 +339,10 @@ Statements only; **do not start proofs in M3.** Propose to Anson:
 4. Remind Anson to launch the **fresh-context adversarial audit** (CLAUDE.md §audit;
    it must not be run by the session that wrote the proofs). Hand it the §2 table
    and the inventory from item 2. Known audit bait to hand over explicitly:
-   `thm:ei`'s kind-`T` collapse (D3), the `ValuesAt` modeling, G3's rendering of
-   `⊬`, and any engine whose hypotheses were tailored to one trader.
+   the relational `IsIndicator`/`ValuesAt` modeling (D1/D3 — check the linkage
+   hypotheses aren't conclusion-shaped), the Self-Trust reflection hypotheses and
+   their oracle-`DP` degenerate witness (E), G3's rendering of `⊬`, and any
+   engine whose hypotheses were tailored to one trader.
 
 ## 10. Standing guardrails (unchanged; the failure modes this plan is designed against)
 
