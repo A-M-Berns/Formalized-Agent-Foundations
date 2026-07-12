@@ -1156,14 +1156,16 @@ theorem PolyFueled.addConst {c : Nat.Partrec.Code} {f : ℕ → ℕ} (h : PolyFu
       obtain ⟨c', h'⟩ := h.addConst K
       exact ⟨_, h'.succ_comp.of_eq (fun n => by omega)⟩
 
+theorem isPolyBounded_mul_const (W : ℕ) : IsPolyBounded (fun x => x * W) :=
+  ⟨W, 1, fun n => by
+    show n * W ≤ W * (n + 1) ^ 1 + W
+    rw [pow_one, Nat.mul_add, Nat.mul_comm W n]; omega⟩
+
 /-- Multiplication by a constant: `n ↦ n * W`, as the `prec` iterate of `+ W`. -/
 theorem mulc_polyFueled (W : ℕ) : ∃ c, PolyFueled c (fun n => n * W) := by
   obtain ⟨ca, hca⟩ := (PolyFueled.right.comp PolyFueled.right).addConst W
-  have hmulW : IsPolyBounded (fun x => x * W) :=
-    ⟨W, 1, fun n => by
-      show n * W ≤ W * (n + 1) ^ 1 + W
-      rw [pow_one, Nat.mul_add, Nat.mul_comm W n]; omega⟩
-  have hstW : IsPolyBounded (fun m => m.unpair.2 * W) := hmulW.comp isPolyBounded_snd
+  have hstW : IsPolyBounded (fun m => m.unpair.2 * W) :=
+    (isPolyBounded_mul_const W).comp isPolyBounded_snd
   have hprec := PolyFueled.prec (PolyFueled.const 0) hca
     (st := fun _ j => j * W) (fun _ => by simp)
     (fun a j => by simp [Nat.unpair_pair, Nat.succ_mul]) hstW
@@ -1366,6 +1368,196 @@ theorem deepTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (deepTrader 
     simp only [Nat.unpair_pair, ifzSelFn, Nat.pred_eq_sub_one]
     -- LHS = the `ifzSel` token nesting, RHS = the by-region value; equal in every case.
     split_ifs <;> omega
+
+/-! ### `ecTok_of_blockStream` — the repeating-block emission workhorse (Phase A2).
+
+Every remaining property-tail trader is *deep*: its day-`n` feature scans history, so its
+token stream is `head ++ block 0 ++ … ++ block (cnt n − 1) ++ tail` with fixed-width blocks,
+where `block j` may contain the day index `j` (e.g. a `price φ j` node serializes to
+`[0, ⌜φ⌝, j]`). This lemma certifies any such trader `EfficientlyComputableTok` from
+poly-fueled per-region tokens: the emitter dispatches on the region (`subc` comparisons via
+`ifzSel`), computes the block index/offset by `divmodc`, and selects within the region's
+fixed tuple (`sel`). -/
+
+/-- Length of a flat concatenation of constant-width blocks. -/
+theorem length_flatMap_const_width {α : Type _} (f : ℕ → List α) (W : ℕ) :
+    ∀ c, (∀ j < c, (f j).length = W) → ((List.range c).flatMap f).length = c * W := by
+  intro c
+  induction c with
+  | zero => intro _; simp
+  | succ c ih =>
+      intro hW
+      rw [List.range_succ, List.flatMap_append, List.length_append,
+        ih (fun j hj => hW j (by omega)), List.flatMap_singleton, hW c (by omega),
+        Nat.succ_mul]
+
+/-- Indexing into a flat concatenation of constant-width blocks: token `d` sits in block
+`d / W` at offset `d % W`. -/
+theorem getD_flatMap_const_width (f : ℕ → List ℕ) (W : ℕ) (hW0 : 0 < W) :
+    ∀ c d, (∀ j < c, (f j).length = W) → d < c * W →
+    ((List.range c).flatMap f).getD d 0 = (f (d / W)).getD (d % W) 0 := by
+  intro c
+  induction c with
+  | zero => intro d _ hd; simp at hd
+  | succ c ih =>
+      intro d hW hd
+      have hsm : Nat.succ c * W = c * W + W := Nat.succ_mul c W
+      have hsm' : (c + 1) * W = c * W + W := by ring
+      have hlen : ((List.range c).flatMap f).length = c * W :=
+        length_flatMap_const_width f W c (fun j hj => hW j (by omega))
+      rw [List.range_succ, List.flatMap_append, List.flatMap_singleton]
+      rcases Nat.lt_or_ge d (c * W) with h | h
+      · rw [List.getD_append _ _ _ _ (by omega)]
+        exact ih d (fun j hj => hW j (by omega)) h
+      · rw [List.getD_append_right _ _ _ _ (by omega), hlen]
+        obtain ⟨hdiv, hmod⟩ := div_mod_of_decomp hW0
+          (show d = W * c + (d - c * W) by have := Nat.mul_comm W c; omega)
+          (by omega)
+        rw [hdiv, hmod]
+
+/-- **The block-emission workhorse (`def:ec`, Phase A2).** A trader whose day-`n` token
+stream is `head.map (· n) ++ (range (cnt n)).flatMap (fun j => bs.map (· ⟨n, j⟩)) ++
+tail.map (· n)` — fixed head/tail, `cnt n` fixed-width blocks of poly-fueled tokens of
+`⟨n, j⟩`, `cnt` poly-fueled — is `EfficientlyComputableTok`. -/
+theorem ecTok_of_blockStream (Tr : Trader) (head bs tail : List (ℕ → ℕ))
+    {ccnt : Nat.Partrec.Code} {cnt : ℕ → ℕ} (hcnt : PolyFueled ccnt cnt)
+    (hhead : ∀ t ∈ head, ∃ c, PolyFueled c t)
+    (hbs : ∀ b ∈ bs, ∃ c, PolyFueled c b)
+    (htail : ∀ t ∈ tail, ∃ c, PolyFueled c t)
+    (hbs0 : bs ≠ [])
+    (hTr : ∀ n, serializeTrades (Tr.strat n).trades
+        = head.map (fun t => t n)
+          ++ (List.range (cnt n)).flatMap (fun j => bs.map (fun b => b (Nat.pair n j)))
+          ++ tail.map (fun t => t n)) :
+    EfficientlyComputableTok Tr := by
+  set H := head.length with hHdef
+  set W := bs.length with hWdef
+  set T := tail.length with hTdef
+  have hW0 : 0 < W := List.length_pos_iff.mpr hbs0
+  obtain ⟨cH, hHt⟩ := PolyFueledTuple.of_forall hhead
+  obtain ⟨cB, hBt⟩ := PolyFueledTuple.of_forall hbs
+  obtain ⟨cT, hTt⟩ := PolyFueledTuple.of_forall htail
+  obtain ⟨cdm, hdm⟩ := divmodc_polyFueled W hW0
+  obtain ⟨cml, hml⟩ := mulc_polyFueled W
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  -- The emitter, assembled on input `m = ⟨n, i⟩`.
+  have t1PF := subc_polyFueled.comp (PolyFueled.right.succ_comp.pair (PolyFueled.const H))
+  have dmPF := hdm.comp (subc_polyFueled.comp (PolyFueled.right.pair (PolyFueled.const H)))
+  have jPF := PolyFueled.left.comp dmPF
+  have oPF := PolyFueled.right.comp dmPF
+  have cntPF := hcnt.comp PolyFueled.left
+  have t2PF := subc_polyFueled.comp (jPF.succ_comp.pair cntPF)
+  have headTok := sel_polyFueled.comp ((hHt.comp PolyFueled.left).pair PolyFueled.right)
+  have bodyTok := sel_polyFueled.comp ((hBt.comp (PolyFueled.left.pair jPF)).pair oPF)
+  have offPF := had.comp ((PolyFueled.const H).pair (hml.comp cntPF))
+  have tailIdxPF := subc_polyFueled.comp (PolyFueled.right.pair offPF)
+  have tailTok := sel_polyFueled.comp ((hTt.comp PolyFueled.left).pair tailIdxPF)
+  have innerPF := ifzSel_polyFueled.comp ((bodyTok.pair tailTok).pair t2PF)
+  have tokPF := ifzSel_polyFueled.comp ((headTok.pair innerPF).pair t1PF)
+  have hblockLen : ∀ n j, (bs.map (fun b => b (Nat.pair n j))).length = W := by
+    intro n j; simp [hWdef]
+  have hlen' : ∀ n, (serializeTrades (Tr.strat n).trades).length = H + cnt n * W + T := by
+    intro n
+    rw [hTr n]
+    simp only [List.length_append, List.length_map,
+      length_flatMap_const_width _ W (cnt n) (fun j _ => hblockLen n j)]
+    omega
+  refine ecTok_of_tokenFn Tr tokPF ?_ ?_
+  · -- Stream length is `H + cnt n · W + T`, polynomial since `cnt` is.
+    obtain ⟨_, _, hcntpb, _⟩ := hcnt
+    have heq : (fun n => (serializeTrades (Tr.strat n).trades).length)
+        = (fun n => H + cnt n * W + T) := funext hlen'
+    rw [heq]
+    have hHc : IsPolyBounded (fun _ => H) := ⟨H, 0, fun _ => by simp⟩
+    have hTc : IsPolyBounded (fun _ => T) := ⟨T, 0, fun _ => by simp⟩
+    exact (hHc.add ((isPolyBounded_mul_const W).comp hcntpb)).add hTc
+  · intro n i hi
+    rw [hlen' n] at hi
+    rw [hTr n]
+    simp only [Nat.unpair_pair, ifzSelFn, selFn_tupleEnc]
+    have hlenH : (head.map (fun t => t n)).length = H := by simp [hHdef]
+    have hlenB : ((List.range (cnt n)).flatMap
+        (fun j => bs.map (fun b => b (Nat.pair n j)))).length = cnt n * W :=
+      length_flatMap_const_width _ W (cnt n) (fun j _ => hblockLen n j)
+    rcases Nat.lt_or_ge i H with h1 | h1
+    · -- head region
+      rw [if_pos (by omega)]
+      rw [List.getD_append _ _ _ _ (by rw [List.length_append, hlenH, hlenB]; omega),
+        List.getD_append _ _ _ _ (by omega)]
+    · rcases Nat.lt_or_ge i (H + cnt n * W) with h2 | h2
+      · -- block region: block index `(i−H)/W`, offset `(i−H)%W`
+        have hj : (i - H) / W < cnt n := (Nat.div_lt_iff_lt_mul hW0).mpr (by omega)
+        rw [if_neg (by omega), if_pos (by omega)]
+        rw [List.getD_append _ _ _ _ (by rw [List.length_append, hlenH, hlenB]; omega),
+          List.getD_append_right _ _ _ _ (by omega), hlenH,
+          getD_flatMap_const_width _ W hW0 (cnt n) (i - H)
+            (fun j _ => hblockLen n j) (by omega)]
+      · -- tail region
+        have hj : cnt n ≤ (i - H) / W := (Nat.le_div_iff_mul_le hW0).mpr (by omega)
+        rw [if_neg (by omega), if_neg (by omega)]
+        rw [List.getD_append_right _ _ _ _
+            (by rw [List.length_append, hlenH, hlenB]; omega),
+          List.length_append, hlenH, hlenB]
+
+/-! ### Validation (Phase A3): a size-`Θ(n)` history-scanning trader.
+
+`histSum φ n = Σ_{k<n} φ*ᵏ` (left-nested adds) is the direct dress rehearsal for the
+`thm:con`/`thm:nd` traders: its day-`n` serialization is `[1, ⌜0⌝]` followed by `n`
+fixed-width blocks `[0, ⌜φ⌝, k, 2]` **containing the day index `k`** — exactly the shape
+`ecTok_of_blockStream` emits (the `k` token is `PolyFueled.right` of the block input
+`⟨n, k⟩`). -/
+
+/-- The history-scanning feature `Σ_{k<n} φ*ᵏ`, as left-nested `add`s. -/
+def histSum (φ : Sentence) : ℕ → EF
+  | 0 => EF.const 0
+  | (n + 1) => EF.add (histSum φ n) (EF.price φ n)
+
+theorem histSum_rank (φ : Sentence) : ∀ n, (histSum φ n).rank ≤ n
+  | 0 => Nat.le_refl 0
+  | (n + 1) => by
+      rw [histSum, EF.rank]
+      exact max_le ((histSum_rank φ n).trans (by omega)) (by rw [EF.rank]; omega)
+
+/-- The trader playing the history sum on `φ` each day. -/
+def histTrader (φ : Sentence) : Trader where
+  strat n := { trades := [(histSum φ n, φ)]
+               rank_le := by intro p hp; simp only [List.mem_singleton] at hp
+                             subst hp; exact histSum_rank φ n }
+
+theorem serialize_histSum (φ : Sentence) : ∀ n,
+    (histSum φ n).serialize
+      = [1, Encodable.encode (0 : ℚ)]
+        ++ (List.range n).flatMap (fun k => [0, Encodable.encode φ, k, 2])
+  | 0 => by simp [histSum, EF.serialize]
+  | (n + 1) => by
+      rw [histSum, EF.serialize, serialize_histSum φ n, List.range_succ]
+      simp [EF.serialize, List.flatMap_append]
+
+/-- **Validation of `ecTok_of_blockStream`**: the size-`Θ(n)` `histTrader φ`, whose day-`n`
+stream has `n` width-4 blocks each containing the day index, is `EfficientlyComputableTok`. -/
+theorem histTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (histTrader φ) := by
+  refine ecTok_of_blockStream _
+    [fun _ => 1, fun _ => Encodable.encode (0 : ℚ)]
+    [fun _ => 0, fun _ => Encodable.encode φ, fun x => x.unpair.2, fun _ => 2]
+    [fun _ => 6, fun _ => Encodable.encode φ]
+    PolyFueled.id ?_ ?_ ?_ (by simp) ?_
+  · intro t ht
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+    rcases ht with rfl | rfl
+    exacts [⟨_, PolyFueled.const 1⟩, ⟨_, PolyFueled.const (Encodable.encode (0 : ℚ))⟩]
+  · intro b hb
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
+    rcases hb with rfl | rfl | rfl | rfl
+    exacts [⟨_, PolyFueled.const 0⟩, ⟨_, PolyFueled.const (Encodable.encode φ)⟩,
+      ⟨_, PolyFueled.right⟩, ⟨_, PolyFueled.const 2⟩]
+  · intro t ht
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+    rcases ht with rfl | rfl
+    exacts [⟨_, PolyFueled.const 6⟩, ⟨_, PolyFueled.const (Encodable.encode φ)⟩]
+  · intro n
+    show serializeTrades [(histSum φ n, φ)] = _
+    rw [serializeTrades, serializeTrades, serialize_histSum]
+    simp [Nat.unpair_pair]
 
 end LogicalInduction
 
