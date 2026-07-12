@@ -69,18 +69,18 @@ def clip01 (e : EF) : EF := .max (.const 0) (efMin (.const 1) e)
 
 /-! ### Real-side clip facts -/
 
-private theorem clipVal_nonneg (x : ℝ) : 0 ≤ max 0 (min 1 x) := le_max_left _ _
+theorem clipVal_nonneg (x : ℝ) : 0 ≤ max 0 (min 1 x) := le_max_left _ _
 
-private theorem clipVal_le_one (x : ℝ) : max 0 (min 1 x) ≤ 1 :=
+theorem clipVal_le_one (x : ℝ) : max 0 (min 1 x) ≤ 1 :=
   max_le (by norm_num) (min_le_left _ _)
 
-private theorem clipVal_eq_one {x : ℝ} (h : 1 ≤ x) : max 0 (min 1 x) = 1 := by
+theorem clipVal_eq_one {x : ℝ} (h : 1 ≤ x) : max 0 (min 1 x) = 1 := by
   rw [min_eq_left h, max_eq_right (by norm_num)]
 
-private theorem clipVal_eq_zero {x : ℝ} (h : x ≤ 0) : max 0 (min 1 x) = 0 :=
+theorem clipVal_eq_zero {x : ℝ} (h : x ≤ 0) : max 0 (min 1 x) = 0 :=
   max_eq_left ((min_le_right 1 x).trans h)
 
-private theorem clipVal_pos_imp {x : ℝ} (h : 0 < max 0 (min 1 x)) : 0 < x := by
+theorem clipVal_pos_imp {x : ℝ} (h : 0 < max 0 (min 1 x)) : 0 < x := by
   by_contra hx
   push_neg at hx
   rw [clipVal_eq_zero hx] at h

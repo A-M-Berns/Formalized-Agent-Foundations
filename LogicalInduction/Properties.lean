@@ -19,8 +19,12 @@ File layout (promoted from a single file once it grew past ~1000 lines):
   and `oscillation_exploitable`, discharged by the hysteresis trader.
 * `Properties.Hysteresis` — the `thm:con` arbitrage core: the size-`Θ(n)` hysteresis
   holdings state, the sign-decomposition accounting, and its five-segment e.c. emission.
-* `Properties.NonDogmatism` — `thm:nd` (weak fragment): the price of a never-refuted `φ`
-  eventually clears `2^{-(n+2)}` (`ndTrader`, the first Phase-A block-emission trader).
+* `Properties.NonDogmatism` — `thm:nd`: the weak fragment (`ndTrader`, the first Phase-A
+  block-emission trader) and the full theorem, both directions (the `app:obu` scale
+  ladders `ndLadderTrader`/`ndSellLadderTrader`) plus the `P∞` limit forms.
+* `Properties.ExpectationConvergence` — `thm:ec`: the feature-generic hysteresis layer
+  (`buyIndF`/`sellIndF`/`hystChain`) and the bundle trader `excTrader` on the
+  expectation feature `𝔼(X)`, gated to absorb the `lem:conluvapprox` payout error.
 * `Properties.Relationships` — `thm:lex`: learning logical equivalence (`eqTr`) and implication
   / price monotonicity (`impTr`).
 * `Properties.SelfTrust` — `thm:cee`/`ceu`/`ccee`/`st` **statements** (proofs → M4):
@@ -35,5 +39,6 @@ import LogicalInduction.Properties.Coherence
 import LogicalInduction.Properties.Convergence
 import LogicalInduction.Properties.Hysteresis
 import LogicalInduction.Properties.NonDogmatism
+import LogicalInduction.Properties.ExpectationConvergence
 import LogicalInduction.Properties.Relationships
 import LogicalInduction.Properties.SelfTrust

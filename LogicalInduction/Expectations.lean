@@ -75,20 +75,11 @@ theorem expect_mem_Icc (P : History) (n : ℕ) (X : LUV)
 
 /-! ### `thm:ec` — Expectations Converge.
 
-The day-`n` expectation of any `[0,1]`-LUV converges. Stated conditionally on a logical
-inductor. **Proof deferred**: it is a genuine property-tail theorem (`app:ec`) — it needs
-per-threshold price convergence (`thm:con`) plus control of the moving precision, which
-routes through the trader machinery not yet built for moving-threshold sequences. Ledgered
-as `sorry`. -/
-theorem expect_converges (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (X : LUV) (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
-    ∃ L : ℝ, ConvergesTo (X.expectSeq P) L := by
-  sorry
-
-/-- `𝔼_∞(X)` — the limiting expectation (`thm:ec`), extracted from `expect_converges`. -/
-noncomputable def expectInf (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (X : LUV) (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) : ℝ :=
-  (X.expect_converges P DP hP).choose
+Proved in `Properties/ExpectationConvergence.lean` (`LUV.expect_converges`, Phase D2):
+the bundle-hysteresis trader — `thm:con`'s state driven by the expectation feature,
+trading the day-`n` threshold bundle, gated to absorb the `lem:conluvapprox` payout
+error. The statement lives there (it needs the world-value linkage `hval` and daily
+plausible worlds, on top of the price bounds). -/
 
 end LUV
 
