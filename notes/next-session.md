@@ -9,7 +9,29 @@ Phases are ordered; each phase boundary is a safe stopping point with a green bu
 Do the phases in order: A → B1 → C → B2 → D → E → F. One phase (or less) per session
 is the right pace; do not start a phase you can't leave green.
 
-## 0. Context snapshot (updated 2026-07-12, session 3 — B2 and D1 DONE; D2 started)
+## 0. Context snapshot (updated 2026-07-12, session 3b — D2 DONE; M3 = F + cert session)
+
+> **Session 3b result: Phase D2 landed — `thm:ec` is proved** (`LUV.expect_converges`,
+> `Properties/ExpectationConvergence.lean`), exploitation axiom-clean, e.c. cert a
+> disclosed `sorry`. Design as derived in the session-3 notes below, plus:
+> - New **feature-generic hysteresis layer** (`buyIndF`/`sellIndF`/`hystChain` +
+>   facts 1–3 + variation bookkeeping `hcDelta`/`hcBpos`/`hcBneg`/`hcBneg_unbounded`)
+>   built *alongside* `Hysteresis.lean` (C's certs untouched; its `clipVal_*` lemmas
+>   un-privated). Reusable for any future feature-driven hysteresis (M4's `thm:ei`
+>   bundle engine should reuse it directly).
+> - **`thm:ec`'s statement gained hypotheses** vs the old sorried form (trust-surface
+>   change, flag at read-through): `hcons` (daily plausible worlds) and `hval`
+>   (`∀ n v, ConsistentWith → ∃ x, v.ValuesAt X x` — the type-`(c)` linkage). Old
+>   `Expectations.lean` sorry deleted; `expectInf` re-homed with the new hypotheses.
+> - `excTrader_ecTok` sorry needs the B2 three pieces **plus a fourth**: emission of
+>   `⌜X.gt (i/n)⌝` sentence-code tokens — an encodability interface on the `LUV`
+>   threshold family (new modeling hypothesis to design at cert time).
+> - Sorry inventory now: **3 × `ecTok` certs** (`ndLadderTrader`, `ndSellLadderTrader`,
+>   `excTrader`) + 7 intended stmt-sorries. Everything else in M3 is proved.
+> - **Remaining in M3: the e.c.-cert session (all three certs; see the B2 notes) and
+>   F (exit package, incl. the stale `thm:con` ledger rows 114/115 sweep).**
+
+## 0-prev-3. Context snapshot (2026-07-12, session 3 — B2 and D1 DONE; D2 started)
 
 > **2026-07-12 session 3 result: Phase B2 (full `thm:nd`, both directions) and Phase D1
 > landed; D2 step 1 (reduction generalization) done.** What changed vs. session 2:
