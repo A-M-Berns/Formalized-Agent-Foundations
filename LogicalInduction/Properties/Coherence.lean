@@ -141,9 +141,9 @@ This splits into two halves along the M2 pattern:
    — the "assume the property fails → extract the exploitable configuration" step, carried by
    a library lemma rather than hand-rolled.
 
-2. **The exploiting trader (`oscillation_exploitable`, `sorry` — the genuine remaining work).**
-   Given the oscillation, build the arbitrage trader and show it exploits. See that lemma's
-   TODO for the concrete construction and the two obstacles it currently faces.
+2. **The exploiting trader (`oscillation_exploitable`, proved).** Given the oscillation, the
+   hysteresis trader (`Properties/Hysteresis.lean`) arbitrages it: buy below `a`, hold, sell
+   above `b`; e.c. discharged via the five-segment `PolySegStream` emission.
 
 `lic_price_convergesTo` chains them against `def:lic`. -/
 
@@ -332,8 +332,8 @@ theorem lic_excl_gap_tendsto_zero (P : History) (DP : DeductiveProcess)
 /-- **Finite additivity of the limit** (`thm:lc`, bullet 3, limit form): wherever the three
 prices converge (guaranteed by `thm:con`), an exclusive disjunction's limiting price is the sum
 `P∞(φ∨ψ) = P∞(φ) + P∞(ψ)`. Immediate from `lic_excl_gap_tendsto_zero` and uniqueness of limits.
-Stated with the convergences as explicit hypotheses so it is unconditional (the sorry lives only
-in the general `thm:con`, not here). -/
+Stated with the convergences as explicit hypotheses so it is self-contained (and `thm:con`,
+now proved, discharges them). -/
 theorem lic_limit_additive (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ ψ : Sentence) (hexcl : ∀ n, (∼(φ ⋏ ψ)) ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
