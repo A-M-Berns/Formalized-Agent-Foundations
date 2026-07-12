@@ -1559,6 +1559,107 @@ theorem histTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (histTrader 
     rw [serializeTrades, serializeTrades, serialize_histSum]
     simp [Nat.unpair_pair]
 
+/-! ### `PolySegStream` — segment-composable emission.
+
+`ecTok_of_blockStream` covers `head ++ blocks ++ tail`. The hysteresis trade
+(`thm:con`) serializes to **five** segments — two block runs (the `H (n+1)` and `H n`
+chains) interleaved with fixed frames — so this layer makes emission *compositional*: a
+`PolySegStream` is a stream family with poly-fueled emitter **and length**, closed under
+append (dispatch on the runtime boundary via `subc`/`ifzSel`), with fixed-tuple and
+repeating-block base cases. Any future multi-segment trader (B2's budget chains, D2's
+bundles) composes. -/
+
+/-- A stream family with a poly-fueled per-token emitter and a poly-fueled length. -/
+def PolySegStream (s : ℕ → List ℕ) : Prop :=
+  ∃ (ct cl : Nat.Partrec.Code) (tokenFn lenFn : ℕ → ℕ),
+    PolyFueled ct tokenFn ∧ PolyFueled cl lenFn ∧
+    (∀ n, (s n).length = lenFn n) ∧
+    (∀ n i, i < lenFn n → tokenFn (Nat.pair n i) = (s n).getD i 0)
+
+theorem PolySegStream.of_eq {s s' : ℕ → List ℕ} (h : PolySegStream s)
+    (he : ∀ n, s n = s' n) : PolySegStream s' := by
+  rwa [funext he] at h
+
+/-- Base case: a fixed-length stream of poly-fueled tokens (tuple-select emitter). -/
+theorem PolySegStream.ofTokenStream {s : ℕ → List ℕ} (h : PolyTokenStream s) :
+    PolySegStream s := by
+  obtain ⟨ts, hmap, hpf⟩ := h
+  obtain ⟨cV, hV⟩ := PolyFueledTuple.of_forall hpf
+  refine ⟨_, _, _, _,
+    sel_polyFueled.comp ((hV.comp PolyFueled.left).pair PolyFueled.right),
+    PolyFueled.const ts.length, fun n => by rw [hmap n, List.length_map], ?_⟩
+  intro n i _
+  simp only [Nat.unpair_pair, selFn_tupleEnc]
+  rw [hmap n]
+
+/-- Closure under append: dispatch on the runtime boundary `lenFn₁ n`. -/
+theorem PolySegStream.append {s₁ s₂ : ℕ → List ℕ} (h₁ : PolySegStream s₁)
+    (h₂ : PolySegStream s₂) : PolySegStream (fun n => s₁ n ++ s₂ n) := by
+  obtain ⟨ct₁, cl₁, t₁, l₁, ht₁, hl₁, hlen₁, htok₁⟩ := h₁
+  obtain ⟨ct₂, cl₂, t₂, l₂, ht₂, hl₂, hlen₂, htok₂⟩ := h₂
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have lenPF := PolyFueled.of_eq (f' := fun n => l₁ n + l₂ n)
+    (had.comp (hl₁.pair hl₂)) (fun n => by simp only [Nat.unpair_pair])
+  have testPF := subc_polyFueled.comp (PolyFueled.right.succ_comp.pair
+    (hl₁.comp PolyFueled.left))
+  have shiftPF := ht₂.comp (PolyFueled.left.pair
+    (subc_polyFueled.comp (PolyFueled.right.pair (hl₁.comp PolyFueled.left))))
+  have tokPF := ifzSel_polyFueled.comp ((ht₁.pair shiftPF).pair testPF)
+  refine ⟨_, _, _, _, tokPF, lenPF,
+    fun n => by rw [List.length_append, hlen₁ n, hlen₂ n], ?_⟩
+  intro n i hi
+  simp only [Nat.unpair_pair, ifzSelFn]
+  rcases Nat.lt_or_ge i (l₁ n) with h | h
+  · rw [if_pos (by omega), htok₁ n i h,
+      List.getD_append _ _ _ _ (by rw [hlen₁ n]; omega)]
+  · rw [if_neg (by omega), htok₂ n (i - l₁ n) (by omega),
+      List.getD_append_right _ _ _ _ (by rw [hlen₁ n]; omega), hlen₁ n]
+
+/-- Base case: `cnt n` repetitions of a fixed-width block of poly-fueled tokens of
+`⟨n, j⟩` (`divmodc` emitter). -/
+theorem PolySegStream.blocks {blk : ℕ → List ℕ} (hblk : PolyTokenStream blk)
+    (W : ℕ) (hW : ∀ m, (blk m).length = W) (hW0 : 0 < W)
+    {ccnt : Nat.Partrec.Code} {cnt : ℕ → ℕ} (hcnt : PolyFueled ccnt cnt) :
+    PolySegStream (fun n => (List.range (cnt n)).flatMap (fun j => blk (Nat.pair n j))) := by
+  obtain ⟨ts, hmap, hpf⟩ := hblk
+  obtain ⟨cV, hV⟩ := PolyFueledTuple.of_forall hpf
+  obtain ⟨cml, hml⟩ := mulc_polyFueled W
+  obtain ⟨cdm, hdm⟩ := divmodc_polyFueled W hW0
+  have dmPF := hdm.comp PolyFueled.right
+  have jPF := PolyFueled.left.comp dmPF
+  have oPF := PolyFueled.right.comp dmPF
+  have tokPF := sel_polyFueled.comp
+    ((hV.comp (PolyFueled.left.pair jPF)).pair oPF)
+  have lenPF := hml.comp hcnt
+  refine ⟨_, _, _, _, tokPF, lenPF,
+    fun n => length_flatMap_const_width _ W (cnt n) (fun j _ => hW _), ?_⟩
+  intro n i hi
+  simp only [Nat.unpair_pair, selFn_tupleEnc]
+  rw [getD_flatMap_const_width _ W hW0 (cnt n) i (fun j _ => hW _) hi, hmap]
+
+/-- **The segment-emission capstone**: a trader whose day-`n` stream is a
+`PolySegStream` is `EfficientlyComputableTok`. -/
+theorem ecTok_of_segStream (Tr : Trader)
+    (h : PolySegStream (fun n => serializeTrades (Tr.strat n).trades)) :
+    EfficientlyComputableTok Tr := by
+  obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hlens, hspec⟩ := h
+  obtain ⟨_, _, hlpb, _⟩ := hlen
+  refine ecTok_of_tokenFn Tr htok ?_ ?_
+  · exact hlpb.of_le (fun n => le_of_eq (hlens n))
+  · intro n i hi
+    exact hspec n i (by rw [← hlens n]; exact hi)
+
+/-- `price φ (f m)` streams for a poly-fueled index `f` — the day-index-in-block case. -/
+theorem PolyTokenStream.serialize_price_comp {f : ℕ → ℕ} {c : Nat.Partrec.Code}
+    (hf : PolyFueled c f) (φ : Sentence) :
+    PolyTokenStream (fun m => (EF.price φ (f m)).serialize) := by
+  have heq : (fun m => (EF.price φ (f m)).serialize)
+      = (fun m => [0] ++ ([Encodable.encode φ] ++ [f m])) := by
+    funext m; simp [EF.serialize]
+  rw [heq]
+  exact (PolyTokenStream.const 0).append
+    ((PolyTokenStream.const _).append (PolyTokenStream.polyTok hf))
+
 end LogicalInduction
 
 

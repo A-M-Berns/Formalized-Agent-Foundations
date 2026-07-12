@@ -462,11 +462,111 @@ theorem hystTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence
 The day-`n` stream decomposes into five segments — fixed head `[1,⌜0⌝]`, `n+1`
 fixed-width blocks (the `H (n+1)` chain), fixed mid `[1,⌜−1⌝,1,⌜0⌝]`, `n` more blocks
 (the `H n` chain), fixed tail `[3,2,6,⌜φ⌝]` — emitted by the segment-composition layer
-in `Computable.lean`. -/
+(`PolySegStream`, `Computable.lean`). -/
+
+/-- Token streams of `oneMinus` families. -/
+theorem PolyTokenStream.serialize_oneMinus {e : ℕ → EF}
+    (he : PolyTokenStream (fun m => (e m).serialize)) :
+    PolyTokenStream (fun m => (oneMinus (e m)).serialize) :=
+  PolyTokenStream.serialize_add (PolyTokenStream.serialize_const 1)
+    (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const (-1)) he)
+
+/-- Token streams of `efMin` families. -/
+theorem PolyTokenStream.serialize_efMin {e f : ℕ → EF}
+    (he : PolyTokenStream (fun m => (e m).serialize))
+    (hf : PolyTokenStream (fun m => (f m).serialize)) :
+    PolyTokenStream (fun m => (efMin (e m) (f m)).serialize) :=
+  PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const (-1))
+    (PolyTokenStream.serialize_max
+      (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const (-1)) he)
+      (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const (-1)) hf))
+
+/-- Token streams of `clip01` families. -/
+theorem PolyTokenStream.serialize_clip01 {e : ℕ → EF}
+    (he : PolyTokenStream (fun m => (e m).serialize)) :
+    PolyTokenStream (fun m => (clip01 (e m)).serialize) :=
+  PolyTokenStream.serialize_max (PolyTokenStream.serialize_const 0)
+    (PolyTokenStream.serialize_efMin (PolyTokenStream.serialize_const 1) he)
+
+theorem buyIndEF_tokenStream {f : ℕ → ℕ} {c : Nat.Partrec.Code} (hf : PolyFueled c f)
+    (φ : Sentence) (a δ : ℚ) :
+    PolyTokenStream (fun m => (buyIndEF φ a δ (f m)).serialize) :=
+  PolyTokenStream.serialize_clip01 (PolyTokenStream.serialize_mul
+    (PolyTokenStream.serialize_add (PolyTokenStream.serialize_const _)
+      (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const _)
+        (PolyTokenStream.serialize_price_comp hf φ)))
+    (PolyTokenStream.serialize_const _))
+
+theorem sellIndEF_tokenStream {f : ℕ → ℕ} {c : Nat.Partrec.Code} (hf : PolyFueled c f)
+    (φ : Sentence) (b δ : ℚ) :
+    PolyTokenStream (fun m => (sellIndEF φ b δ (f m)).serialize) :=
+  PolyTokenStream.serialize_clip01 (PolyTokenStream.serialize_mul
+    (PolyTokenStream.serialize_add (PolyTokenStream.serialize_price_comp hf φ)
+      (PolyTokenStream.serialize_const _))
+    (PolyTokenStream.serialize_const _))
+
+/-- The day-`j` block of the holdings chain's serialization. -/
+def hystBlk (φ : Sentence) (a b δ : ℚ) (j : ℕ) : List ℕ :=
+  (oneMinus (sellIndEF φ b δ j)).serialize ++ [3] ++ (buyIndEF φ a δ j).serialize ++ [4]
+
+theorem hystBlk_tokenStream (φ : Sentence) (a b δ : ℚ) :
+    PolyTokenStream (fun m => hystBlk φ a b δ m.unpair.2) := by
+  show PolyTokenStream (fun m =>
+    (oneMinus (sellIndEF φ b δ m.unpair.2)).serialize ++ [3]
+      ++ (buyIndEF φ a δ m.unpair.2).serialize ++ [4])
+  exact (((PolyTokenStream.serialize_oneMinus
+      (sellIndEF_tokenStream PolyFueled.right φ b δ)).append
+    (PolyTokenStream.const 3)).append
+    (buyIndEF_tokenStream PolyFueled.right φ a δ)).append (PolyTokenStream.const 4)
+
+/-- Block width is day-independent (only the leaf day-index token varies). -/
+theorem hystBlk_length (φ : Sentence) (a b δ : ℚ) (j : ℕ) :
+    (hystBlk φ a b δ j).length = (hystBlk φ a b δ 0).length := by
+  simp [hystBlk, buyIndEF, sellIndEF, oneMinus, clip01, efMin, EF.serialize]
+
+theorem serialize_hystN (φ : Sentence) (a b δ : ℚ) : ∀ k,
+    (hystN φ a b δ k).serialize
+      = [1, Encodable.encode (0:ℚ)] ++ (List.range k).flatMap (hystBlk φ a b δ)
+  | 0 => by simp [hystN, EF.serialize]
+  | (k + 1) => by
+      rw [hystN]
+      simp only [EF.serialize]
+      rw [serialize_hystN φ a b δ k, List.range_succ, List.flatMap_append,
+        List.flatMap_singleton, hystBlk]
+      simp [List.append_assoc]
+
+/-- **C4: the hysteresis trader is efficiently computable** — five-segment emission. -/
 theorem hystTrader_ecTok (φ : Sentence) (a b δ : ℚ) :
     EfficientlyComputableTok (hystTrader φ a b δ) := by
-  -- TODO(blueprint:app:con): segment-composition emission (PolySegStream); Phase C4.
-  sorry
+  have hW : ∀ m : ℕ, (hystBlk φ a b δ m.unpair.2).length = (hystBlk φ a b δ 0).length :=
+    fun m => hystBlk_length φ a b δ _
+  have hW0 : 0 < (hystBlk φ a b δ 0).length := by
+    norm_num [hystBlk, buyIndEF, sellIndEF, oneMinus, clip01, efMin, EF.serialize]
+  have seg1 : PolySegStream (fun _ : ℕ => [1, Encodable.encode (0:ℚ)]) :=
+    PolySegStream.ofTokenStream
+      ((PolyTokenStream.const 1).append (PolyTokenStream.const _))
+  have blocks1 := PolySegStream.blocks (hystBlk_tokenStream φ a b δ) _ hW hW0
+    PolyFueled.id.succ_comp
+  have seg3 : PolySegStream (fun _ : ℕ =>
+      [1, Encodable.encode (-1:ℚ), 1, Encodable.encode (0:ℚ)]) :=
+    PolySegStream.ofTokenStream ((PolyTokenStream.const 1).append
+      ((PolyTokenStream.const _).append
+        ((PolyTokenStream.const 1).append (PolyTokenStream.const _))))
+  have blocks2 := PolySegStream.blocks (hystBlk_tokenStream φ a b δ) _ hW hW0
+    PolyFueled.id
+  have seg5 : PolySegStream (fun _ : ℕ => [3, 2, 6, Encodable.encode φ]) :=
+    PolySegStream.ofTokenStream ((PolyTokenStream.const 3).append
+      ((PolyTokenStream.const 2).append
+        ((PolyTokenStream.const 6).append (PolyTokenStream.const _))))
+  refine ecTok_of_segStream _ (PolySegStream.of_eq
+    ((((seg1.append blocks1).append seg3).append blocks2).append seg5) ?_)
+  intro n
+  show _ = serializeTrades ((hystTrader φ a b δ).strat n).trades
+  rw [show ((hystTrader φ a b δ).strat n).trades = [(hystTradeEF φ a b δ n, φ)] from rfl,
+    serializeTrades, serializeTrades, hystTradeEF]
+  simp only [EF.serialize]
+  rw [serialize_hystN φ a b δ (n + 1), serialize_hystN φ a b δ n]
+  simp [Nat.unpair_pair, List.append_assoc]
 
 /-- **The oscillation-arbitrage package** (`app:con`): the trader witnessing
 `oscillation_exploitable`. `δ := (b−a)/4`. -/

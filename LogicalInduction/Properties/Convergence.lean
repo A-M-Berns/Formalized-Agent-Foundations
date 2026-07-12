@@ -1,7 +1,8 @@
 /-
-# `thm:con` — Convergence (reduction + arbitrage-trader interface)
+# `thm:con` — Convergence (reduction + arbitrage trader)
 -/
 import LogicalInduction.Properties.Basic
+import LogicalInduction.Properties.Hysteresis
 
 namespace LogicalInduction
 
@@ -26,45 +27,27 @@ theorem exists_rat_oscillation_of_not_convergesTo (P : History) (φ : Sentence)
   exact hcon ⟨a, b, hab, hA, hB⟩
 
 
-/-- **The oscillation-arbitrage trader exists and exploits** (`app:con`, the genuine hard
-core — currently `sorry`).
+/-- **The oscillation-arbitrage trader exists and exploits** (`app:con` — proved).
 
 Given a rational oscillation of `Pₙφ` across `[a, b]` (price `< a` i.o. and `> b` i.o.), with
 plausible worlds available every day, there is an *efficiently computable* trader that
 exploits `P`.
 
-**Status update — the `def:ec` wall (OPEN RISK 4) is gone; this is now a construction task.**
-The exploiter here is a **hysteresis** trader: buy one share whenever the price dips below `a`,
-hold through the ramp, sell when it rises above `b`, banking `b − a` per swing *regardless of
-smoothness*. "Am I currently holding" is an unbounded look-back — a **linear-depth**, size-`Θ(n)`
-`EF`. Under the *old* whole-number-`toNat` `EfficientlyComputable` that feature's code was a
-`~4ⁿ`-bit number, unemittable in `evaln (poly n)`, so the exploiter fell outside the e.c. class
-and `thm:con` genuinely did not follow. Bounded-depth substitutes provably fail (memoryless
-target-holding telescopes to a path-independent state function; mean-reversion harvests only
-quadratic variation, which a smooth ramp drives to `0`).
-
-That obstruction is **resolved at the definition level**: `EfficientlyComputableTok` (the
-token-indexed, poly-*size* model — see `Criterion.lean` and `PROGRESS.md` OPEN RISK 4) admits
-strategies whose stream is poly-*length* with poly-*value* tokens, which is exactly what a
-size-`Θ(n)` structural description of the hysteresis feature is. So the exploiter is now inside
-the e.c. class in principle, `IsLogicalInductor` forbids it, and `thm:con` *does* follow — **once
-the trader is actually built**. The **e.c.-discharge tooling is now complete**: the
-`ifzSel`/`predc`/`subc` arithmetic primitives + the varying-length workhorse `ecTok_of_tokenFn`
-(all in `Computable.lean`) certify any size-`Θ(n)` trader whose `i`-th token is a fixed
-arithmetic expression in `⟨n,i⟩`; `deepTrader_ecTok` is a worked size-`Θ(n)` example. So the
-*only* remaining work here is the **economic construction**, no longer any tooling gap:
-1. Construct the hysteresis `EF` — a size-`Θ(n)` running-state feature (buy at `< a`, hold, sell
-   at `> b`) — and prove it banks `≥ b − a` per completed swing.
-2. Discharge its e.c. via `ecTok_of_tokenFn` (mechanical, following `deepTrader_ecTok`) and feed
-   the accumulation to `exploits_of_ge_partialSums`.
-
-Per Rule 1 (no arithmetic stub may stand in for a trader) this stays `sorry` until it is built. -/
+The witness is the **hysteresis trader** (`Properties/Hysteresis.lean`, band `δ = (b−a)/4`):
+a size-`Θ(n)` running holdings state — buy on dips below `a`, hold through the ramp, sell on
+spikes above `b`. Its net worth is `≥ ((b−a)/2)·B₋ − (a+δ)` in *every* world (buys happen
+only below `a+δ`, sells only above `b−δ`), and each completed swing adds `1` to the negative
+variation `B₋`, so the oscillation drives it to unbounded upside off bounded downside.
+Efficient computability is discharged through the clocked interpreter via the five-segment
+`PolySegStream` emission (`hystTrader_ecTok`) — this is exactly the deep (linear-depth)
+exploiter the poly-size `EfficientlyComputableTok` redefinition of `def:ec` was built to
+admit (OPEN RISK 4). -/
 theorem oscillation_exploitable (P : History) (DP : DeductiveProcess) (φ : Sentence)
     (a b : ℚ) (hab : (a : ℝ) < b) (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hA : ∃ᶠ n in atTop, P n φ < (a : ℝ)) (hB : ∃ᶠ n in atTop, (b : ℝ) < P n φ) :
-    ∃ Tr : Trader, EfficientlyComputableTok Tr ∧ Tr.Exploits P DP := by
-  sorry
+    ∃ Tr : Trader, EfficientlyComputableTok Tr ∧ Tr.Exploits P DP :=
+  oscillation_exploitable_hyst P DP φ a b hab hb hcons hA hB
 
 
 /-- **Convergence** (`thm:con`): under a logical inductor, the price of every sentence `φ`
