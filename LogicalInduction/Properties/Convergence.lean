@@ -8,23 +8,34 @@ namespace LogicalInduction
 
 open Filter Topology
 
-/-- **Reduction step for `thm:con`** (fully proved). A `[0,1]`-bounded price that does *not*
-converge must **oscillate across a rational gap**: there are rationals `a < b` with the price
-below `a` infinitely often and above `b` infinitely often.
+/-- **The oscillation reduction, general form** (D2 step 1). A `[0,1]`-bounded real
+sequence that does *not* converge must **oscillate across a rational gap**: there are
+rationals `a < b` with the sequence below `a` infinitely often and above `b` infinitely
+often. Instantiated at prices (`exists_rat_oscillation_of_not_convergesTo`) and at
+expectation sequences (`thm:ec`, Phase D2).
 
-This is the contrapositive of `tendsto_of_no_upcrossings` instantiated at the dense range of
-`(↑) : ℚ → ℝ`; the rationality of `a, b` is what lets the arbitrage trader use them as `EF`
-constants. -/
+This is the contrapositive of `tendsto_of_no_upcrossings` instantiated at the dense range
+of `(↑) : ℚ → ℝ`; the rationality of `a, b` is what lets the arbitrage traders use them as
+`EF` constants. -/
+theorem exists_rat_oscillation_of_not_exists_convergesTo (u : ℕ → ℝ)
+    (hb : ∀ n, 0 ≤ u n ∧ u n ≤ 1)
+    (hnc : ¬ ∃ L, ConvergesTo u L) :
+    ∃ a b : ℚ, (a : ℝ) < b ∧ (∃ᶠ n in atTop, u n < (a : ℝ)) ∧
+      (∃ᶠ n in atTop, (b : ℝ) < u n) := by
+  by_contra hcon
+  refine hnc (tendsto_of_no_upcrossings (u := u) Rat.denseRange_cast ?_
+    (isBoundedUnder_of ⟨1, fun n => (hb n).2⟩) (isBoundedUnder_of ⟨0, fun n => (hb n).1⟩))
+  rintro _ ⟨a, rfl⟩ _ ⟨b, rfl⟩ hab ⟨hA, hB⟩
+  exact hcon ⟨a, b, hab, hA, hB⟩
+
+/-- **Reduction step for `thm:con`** (fully proved): the price specialization of
+`exists_rat_oscillation_of_not_exists_convergesTo`. -/
 theorem exists_rat_oscillation_of_not_convergesTo (P : History) (φ : Sentence)
     (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hnc : ¬ ∃ L, ConvergesTo (fun n => P n φ) L) :
     ∃ a b : ℚ, (a : ℝ) < b ∧ (∃ᶠ n in atTop, P n φ < (a : ℝ)) ∧
-      (∃ᶠ n in atTop, (b : ℝ) < P n φ) := by
-  by_contra hcon
-  refine hnc (tendsto_of_no_upcrossings (u := fun n => P n φ) Rat.denseRange_cast ?_
-    (isBoundedUnder_of ⟨1, fun n => (hb n).2⟩) (isBoundedUnder_of ⟨0, fun n => (hb n).1⟩))
-  rintro _ ⟨a, rfl⟩ _ ⟨b, rfl⟩ hab ⟨hA, hB⟩
-  exact hcon ⟨a, b, hab, hA, hB⟩
+      (∃ᶠ n in atTop, (b : ℝ) < P n φ) :=
+  exists_rat_oscillation_of_not_exists_convergesTo (fun n => P n φ) hb hnc
 
 
 /-- **The oscillation-arbitrage trader exists and exploits** (`app:con` — proved).
