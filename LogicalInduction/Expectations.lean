@@ -106,4 +106,55 @@ def PCWorld.ValuesAt (v : PCWorld) (X : LUV) (x : ℝ) : Prop :=
   0 ≤ x ∧ x ≤ 1 ∧
     ∀ r : ℚ, ((r : ℝ) < x → v.Holds (X.gt r)) ∧ (x < (r : ℝ) → ¬ v.Holds (X.gt r))
 
+/-! ### The expectation family — statements (proofs → M4, per the G1 decision)
+
+`thm:ei`, `thm:loe`, `thm:expprovind` are stated here faithfully and left `sorry`: their
+proofs ride the affine lift hubs (`thm:affpolymax` etc.), which the roadmap places in M4.
+**General principle (D3):** paper-side LUV *constructions* — indicators, affine
+combinations — enter our modeling as **relational predicates over arbitrary threshold
+families**, never as canonical `LUV` values. Constructing a representative (e.g. defining
+the indicator of `φ` as `gt r := φ` on `[0,1)`) would make the theorem *definitional* —
+the collapse is a modeling artifact, since the paper's thresholds are distinct sentences
+provably linked to `φ`, and the theorem's content is the inductor learning that growing
+bundle of equivalences uniformly. -/
+
+/-- `Y` is an **indicator family for `φ`** (relational rendering of the paper's `1(φ)`):
+in every plausible world, `Y`'s thresholds below `0` hold, thresholds in `[0,1)` are
+equivalent to `φ`, and thresholds at `≥ 1` fail. -/
+def LUV.IsIndicator (Y : LUV) (φ : Sentence) (DP : DeductiveProcess) : Prop :=
+  ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∀ r : ℚ,
+    ((r : ℝ) < 0 → v.Holds (Y.gt r)) ∧
+    (0 ≤ (r : ℝ) → (r : ℝ) < 1 → (v.Holds (Y.gt r) ↔ v.Holds φ)) ∧
+    (1 ≤ (r : ℝ) → ¬ v.Holds (Y.gt r))
+
+/-- **Expectations of indicators** (`thm:ei`): `𝔼ₙ(1(φ)) ≈ₙ Pₙ(φ)` for any indicator
+family for `φ`. Note per-threshold `thm:lex` does *not* suffice — the threshold set grows
+with `n`, so the exploiter is a bundle trader (the D2/hysteresis shape). -/
+theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP] (φ : Sentence) (Y : LUV) (hY : Y.IsIndicator φ DP) :
+    AsympEq (Y.expectSeq P) (fun n => P n φ) := by
+  -- TODO(blueprint:thm:ei): proof in M4 (bundle trader, D2's engine).
+  sorry
+
+/-- **Linearity of expectation** (`thm:loe`, fixed `X, Y, Z` form): if every plausible
+world values `Z` as the affine combination `a·X + b·Y`, the expectations combine the same
+way in the limit. (The `𝓔𝓒`-sequence form is the M4 target.) -/
+theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP] (a b : ℚ) (X Y Z : LUV)
+    (hlin : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∀ x y z,
+      v.ValuesAt X x → v.ValuesAt Y y → v.ValuesAt Z z → z = a * x + b * y) :
+    AsympEq (fun n => (a : ℝ) * X.expect P n + (b : ℝ) * Y.expect P n)
+      (Z.expectSeq P) := by
+  -- TODO(blueprint:thm:loe): proof in M4 (affine machinery, thm:affpolymax).
+  sorry
+
+/-- **Expectation provability induction** (`thm:expprovind`, single-LUV form): if every
+plausible world values `X` at least `c`, the expectation is eventually at least `c − ε`. -/
+theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP] (X : LUV) (c : ℝ)
+    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, c ≤ x ∧ v.ValuesAt X x) :
+    AsympGE (X.expectSeq P) (fun _ => c) := by
+  -- TODO(blueprint:thm:expprovind): proof in M4 (affine machinery).
+  sorry
+
 end LogicalInduction
