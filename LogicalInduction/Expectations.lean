@@ -106,6 +106,106 @@ def PCWorld.ValuesAt (v : PCWorld) (X : LUV) (x : ℝ) : Prop :=
   0 ≤ x ∧ x ≤ 1 ∧
     ∀ r : ℚ, ((r : ℝ) < x → v.Holds (X.gt r)) ∧ (x < (r : ℝ) → ¬ v.Holds (X.gt r))
 
+/-- **`lem:conluvapprox`, single-LUV form (D1)** (paper `main.tex` 4982): a world that
+values `X` at `x` assesses the precision-`n` approximate expectation within `1/n` of `x`.
+
+Counting argument: thresholds `i/n` strictly below `x` pay `1` (there are at least
+`⌈nx⌉ ≥ nx` of them among `i < n`, since `x ≤ 1`), thresholds strictly above pay `0`
+(so the payout sum is at most `⌊nx⌋ + 1 ≤ nx + 1` — only `i ≤ ⌊nx⌋` can pay), and the
+one possible threshold *equal* to `x` is the `+1` slack. Hence
+`x ≤ 𝔼ₙ ≤ x + 1/n` — one-sided, which `|·|` weakens. The combination (`b/n`) form for
+affine LUV combinations waits for M4's affine layer. -/
+theorem PCWorld.ValuesAt.expectApprox_near {v : PCWorld} {X : LUV} {x : ℝ}
+    (hval : v.ValuesAt X x) {n : ℕ} (hn : 0 < n) :
+    |X.expectApprox v.payout n - x| ≤ 1 / n := by
+  obtain ⟨hx0, hx1, hthr⟩ := hval
+  have hnR : (0 : ℝ) < n := by exact_mod_cast hn
+  have hcast : ∀ i : ℕ, (((i : ℚ) / (n : ℚ) : ℚ) : ℝ) = (i : ℝ) / (n : ℝ) := by
+    intro i; push_cast; ring
+  have hmem : ∀ i : ℕ, 0 ≤ v.payout (X.gt ((i : ℚ) / (n : ℚ)))
+      ∧ v.payout (X.gt ((i : ℚ) / (n : ℚ))) ≤ 1 := by
+    intro i; rw [PCWorld.payout]; split <;> norm_num
+  have hone : ∀ i : ℕ, (i : ℝ) / n < x → v.payout (X.gt ((i : ℚ) / (n : ℚ))) = 1 := by
+    intro i hi
+    have h := (hthr ((i : ℚ) / (n : ℚ))).1 (by rw [hcast]; exact hi)
+    rw [PCWorld.payout, if_pos h]
+  have hzero : ∀ i : ℕ, x < (i : ℝ) / n → v.payout (X.gt ((i : ℚ) / (n : ℚ))) = 0 := by
+    intro i hi
+    have h := (hthr ((i : ℚ) / (n : ℚ))).2 (by rw [hcast]; exact hi)
+    rw [PCWorld.payout, if_neg h]
+  -- Lower bound: the first `min n ⌈nx⌉` thresholds all pay 1, and `min n ⌈nx⌉ ≥ nx`.
+  have hsum_lo : (n : ℝ) * x
+      ≤ ∑ i ∈ Finset.range n, v.payout (X.gt ((i : ℚ) / (n : ℚ))) := by
+    calc (n : ℝ) * x ≤ (min n ⌈(n : ℝ) * x⌉₊ : ℕ) := by
+          rcases le_total (⌈(n : ℝ) * x⌉₊) n with h | h
+          · rw [min_eq_right h]
+            exact_mod_cast Nat.le_ceil _
+          · rw [min_eq_left h]
+            nlinarith
+      _ = ∑ i ∈ Finset.range (min n ⌈(n : ℝ) * x⌉₊),
+            v.payout (X.gt ((i : ℚ) / (n : ℚ))) := by
+          rw [Finset.sum_congr rfl (fun i hi => ?_), Finset.sum_const, Finset.card_range,
+            nsmul_eq_mul, mul_one]
+          rw [Finset.mem_range] at hi
+          refine hone i ?_
+          have hic : (i : ℝ) < (n : ℝ) * x :=
+            Nat.lt_ceil.mp (lt_of_lt_of_le hi (min_le_right _ _))
+          rw [div_lt_iff₀ hnR]
+          linarith
+      _ ≤ _ := Finset.sum_le_sum_of_subset_of_nonneg
+          (Finset.range_subset_range.mpr (min_le_left _ _)) (fun i _ _ => (hmem i).1)
+  -- Upper bound: only thresholds with `i ≤ ⌊nx⌋` can pay, so the sum is `≤ ⌊nx⌋ + 1`.
+  have hsum_hi : ∑ i ∈ Finset.range n, v.payout (X.gt ((i : ℚ) / (n : ℚ)))
+      ≤ (n : ℝ) * x + 1 := by
+    set c' := min n (⌊(n : ℝ) * x⌋₊ + 1) with hc'
+    have hc'n : c' ≤ n := min_le_left _ _
+    have hsplit := Finset.sum_range_add_sum_Ico
+      (fun i => v.payout (X.gt ((i : ℚ) / (n : ℚ)))) hc'n
+    have hpart1 : ∑ i ∈ Finset.range c', v.payout (X.gt ((i : ℚ) / (n : ℚ)))
+        ≤ (c' : ℝ) := by
+      calc ∑ i ∈ Finset.range c', v.payout (X.gt ((i : ℚ) / (n : ℚ)))
+          ≤ ∑ _i ∈ Finset.range c', (1 : ℝ) :=
+            Finset.sum_le_sum (fun i _ => (hmem i).2)
+        _ = c' := by simp
+    have hpart2 : ∑ i ∈ Finset.Ico c' n, v.payout (X.gt ((i : ℚ) / (n : ℚ))) = 0 := by
+      refine Finset.sum_eq_zero (fun i hi => ?_)
+      rw [Finset.mem_Ico] at hi
+      obtain ⟨hi1, hi2⟩ := hi
+      have hiM : ⌊(n : ℝ) * x⌋₊ + 1 ≤ i := by
+        rcases le_total (⌊(n : ℝ) * x⌋₊ + 1) n with h | h
+        · rwa [hc', min_eq_right h] at hi1
+        · rw [hc', min_eq_left h] at hi1
+          omega
+      refine hzero i ?_
+      have h1 : (n : ℝ) * x < (⌊(n : ℝ) * x⌋₊ : ℝ) + 1 := Nat.lt_floor_add_one _
+      have h2 : ((⌊(n : ℝ) * x⌋₊ : ℝ) + 1) ≤ (i : ℝ) := by exact_mod_cast hiM
+      rw [lt_div_iff₀ hnR]
+      linarith
+    have hc'M : (c' : ℝ) ≤ (⌊(n : ℝ) * x⌋₊ : ℝ) + 1 := by
+      have h := min_le_right n (⌊(n : ℝ) * x⌋₊ + 1)
+      exact_mod_cast h
+    have hfl : ((⌊(n : ℝ) * x⌋₊ : ℝ)) ≤ (n : ℝ) * x :=
+      Nat.floor_le (mul_nonneg hnR.le hx0)
+    linarith
+  -- Assemble: `x ≤ 𝔼 ≤ x + 1/n`.
+  rw [LUV.expectApprox, abs_le]
+  constructor
+  · have hlo : x ≤ (n : ℝ)⁻¹
+        * ∑ i ∈ Finset.range n, v.payout (X.gt ((i : ℚ) / (n : ℚ))) := by
+      rw [le_inv_mul_iff₀ hnR]
+      exact hsum_lo
+    have h1n : (0 : ℝ) < 1 / n := by positivity
+    linarith
+  · have hhi : (n : ℝ)⁻¹
+        * ∑ i ∈ Finset.range n, v.payout (X.gt ((i : ℚ) / (n : ℚ))) ≤ x + 1 / n := by
+      rw [inv_mul_le_iff₀ hnR]
+      calc ∑ i ∈ Finset.range n, v.payout (X.gt ((i : ℚ) / (n : ℚ)))
+          ≤ (n : ℝ) * x + 1 := hsum_hi
+        _ = (n : ℝ) * (x + 1 / n) := by field_simp
+    linarith
+
+#print axioms PCWorld.ValuesAt.expectApprox_near
+
 /-! ### The expectation family — statements (proofs → M4, per the G1 decision)
 
 `thm:ei`, `thm:loe`, `thm:expprovind` are stated here faithfully and left `sorry`: their
