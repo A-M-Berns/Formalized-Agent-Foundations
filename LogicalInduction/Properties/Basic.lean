@@ -150,4 +150,22 @@ theorem exploits_of_ge_partialSums (Tr : Trader) (P : History) (DP : DeductivePr
     have hBm : B < (M+1:ℝ)*ε := by rw [div_lt_iff₀ hε] at hM; nlinarith
     exact absurd (le_trans hge2 (hB hmem)) (by linarith)
 
+/-! ### The definitional engine — for traders whose growth is world-*dependent*.
+
+The partial-sums engines above force world-independent growth. The non-dogmatism trader
+grows only in `φ`-worlds (its unboundedness witnesses come from the plausible `φ`-worlds
+the hypothesis supplies), so the engine is `Exploits`' definition itself: bounded below
+everywhere, unbounded along some witness family. -/
+
+/-- Definitional exploitation: plausible assessments bounded below by `−C` and reaching
+above every bound. -/
+theorem exploits_of_bddBelow_of_unbounded (Tr : Trader) (P : History) (DP : DeductiveProcess)
+    (C : ℝ) (h1 : ∀ x ∈ Tr.plausibleAssessments P DP, -C ≤ x)
+    (h2 : ∀ B : ℝ, ∃ x ∈ Tr.plausibleAssessments P DP, B < x) :
+    Tr.Exploits P DP := by
+  refine ⟨⟨-C, fun x hx => h1 x hx⟩, ?_⟩
+  rintro ⟨B, hB⟩
+  obtain ⟨x, hx, hBx⟩ := h2 B
+  exact absurd (hB hx) (not_le.mpr hBx)
+
 end LogicalInduction
