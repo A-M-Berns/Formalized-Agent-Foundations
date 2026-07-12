@@ -1220,6 +1220,62 @@ theorem divmodc_polyFueled (w : ℕ) (hw : 0 < w) :
   exact ⟨_, (hprec.comp ((PolyFueled.const 0).pair PolyFueled.id)).of_eq
     (fun n => by simp only [Nat.unpair_pair])⟩
 
+/-- **Runtime multiplication**: `⟨a, b⟩ ↦ a · b`, the `prec` iterate of `+ a`. (`mulc`
+multiplies by a baked-in constant; the ladder/bundle stream lengths are runtime
+products `cnt n · width n`.) -/
+theorem mul_polyFueled : ∃ c, PolyFueled c (fun m => m.unpair.1 * m.unpair.2) := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have gPF := had.comp ((PolyFueled.right.comp PolyFueled.right).pair PolyFueled.left)
+  have hst : IsPolyBounded (fun m => m.unpair.1 * m.unpair.2) :=
+    ⟨1, 2, fun m => by
+      have h1 := Nat.unpair_left_le m
+      have h2 := Nat.unpair_right_le m
+      nlinarith⟩
+  exact ⟨_, PolyFueled.prec (PolyFueled.const 0) gPF
+    (st := fun a j => a * j) (fun a => by simp)
+    (fun a j => by simp only [Function.comp_apply, Nat.unpair_pair]; ring) hst⟩
+
+/-- **Runtime-divisor division**: `⟨w, x⟩ ↦ ⟨x / (w+1), x % (w+1)⟩`. The divisor is
+`w + 1`, so the spec is total with no division-by-zero case; callers pass `w := W − 1`
+for a positive runtime width `W`. Mirrors `divmodc` with the divisor read from the
+input: the wrap test is `w − r` via `subc`, dispatched by `ifzSel`. -/
+theorem divmod1_polyFueled :
+    ∃ c, PolyFueled c (fun m =>
+      Nat.pair (m.unpair.2 / (m.unpair.1 + 1)) (m.unpair.2 % (m.unpair.1 + 1))) := by
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  have qPF := PolyFueled.left.comp prevPF
+  have rPF := PolyFueled.right.comp prevPF
+  have wrapPF := qPF.succ_comp.pair (PolyFueled.const 0)
+  have stayPF := qPF.pair rPF.succ_comp
+  have testPF := subc_polyFueled.comp (PolyFueled.left.pair rPF)
+  have gPF := ifzSel_polyFueled.comp ((wrapPF.pair stayPF).pair testPF)
+  have hst : IsPolyBounded (fun m =>
+      Nat.pair (m.unpair.2 / (m.unpair.1 + 1)) (m.unpair.2 % (m.unpair.1 + 1))) :=
+    (isPolyBounded_snd.pair isPolyBounded_snd).of_le (fun m =>
+      le_trans (pair_le_pair_right' _ (Nat.mod_le _ _))
+        (pair_le_pair_left' _ (Nat.div_le_self _ _)))
+  have hprec := PolyFueled.prec (PolyFueled.const 0) gPF
+    (st := fun w j => Nat.pair (j / (w + 1)) (j % (w + 1)))
+    (fun w => by
+      show Nat.pair (0 / (w + 1)) (0 % (w + 1)) = 0
+      rw [Nat.zero_div, Nat.zero_mod]
+      rfl)
+    (fun w j => by
+      have hw : 0 < w + 1 := Nat.succ_pos w
+      have hqr := Nat.div_add_mod j (w + 1)
+      have hrlt := Nat.mod_lt j hw
+      show Nat.pair ((j + 1) / (w + 1)) ((j + 1) % (w + 1)) = _
+      simp only [Function.comp_apply, Nat.unpair_pair, ifzSelFn]
+      by_cases hcase : w - j % (w + 1) = 0
+      · have h1 : j + 1 = (w + 1) * (j / (w + 1) + 1) + 0 := by rw [Nat.mul_succ]; omega
+        obtain ⟨hd, hm⟩ := div_mod_of_decomp hw h1 hw
+        rw [if_pos hcase, hd, hm]
+      · have h1 : j + 1 = (w + 1) * (j / (w + 1)) + (j % (w + 1) + 1) := by omega
+        obtain ⟨hd, hm⟩ := div_mod_of_decomp hw h1 (by omega)
+        rw [if_neg hcase, hd, hm])
+    hst
+  exact ⟨_, hprec⟩
+
 /-! ### `ecTok_of_tokenFn` — the varying-length emission workhorse.
 
 Generalizes `ecTok_of_tokenList` (fixed length) to **growing** streams: a trader is
@@ -1636,6 +1692,55 @@ theorem PolySegStream.blocks {blk : ℕ → List ℕ} (hblk : PolyTokenStream bl
   intro n i hi
   simp only [Nat.unpair_pair, selFn_tupleEnc]
   rw [getD_flatMap_const_width _ W hW0 (cnt n) i (fun j _ => hW _) hi, hmap]
+
+/-- **`n`-fold segment concatenation, uniform runtime width**: if `seg` is a
+`PolySegStream` over the paired input `⟨n, j⟩` whose length depends only on `n`, and
+`cnt` is poly-fueled, then `n ↦ seg ⟨n,0⟩ ++ … ++ seg ⟨n, cnt n − 1⟩` is a
+`PolySegStream`. The emitter finds block index and offset by runtime-divisor division
+(`divmod1_polyFueled` at divisor `(L n − 1) + 1`, harmless when `L n = 0` since the
+spec range is then empty); the length is the runtime product `cnt n · L n`. This is the
+`thm:nd`-ladder / `thm:ec`-bundle emission shape: `cnt n` rung/bundle chunks per day,
+each of day-dependent (but rung-independent) width. -/
+theorem PolySegStream.concat {seg : ℕ → List ℕ} (hseg : PolySegStream seg)
+    {ccnt : Nat.Partrec.Code} {cnt : ℕ → ℕ} (hcnt : PolyFueled ccnt cnt)
+    (hunif : ∀ n j, (seg (Nat.pair n j)).length = (seg (Nat.pair n 0)).length) :
+    PolySegStream (fun n => (List.range (cnt n)).flatMap (fun j => seg (Nat.pair n j))) := by
+  obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hlens, hspec⟩ := hseg
+  obtain ⟨cmul, hmul⟩ := mul_polyFueled
+  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
+  -- the common width L n = lenFn ⟨n, 0⟩
+  have hL := hlen.comp (PolyFueled.id.pair (PolyFueled.const 0))
+  -- stream length: cnt n · L n
+  have lenPF := (hmul.comp (hcnt.pair hL)).of_eq
+    (f' := fun n => cnt n * lenFn (Nat.pair n 0))
+    (fun n => by simp only [Function.comp_apply, Nat.unpair_pair])
+  -- block index / offset: divmod1 ⟨L n − 1, i⟩ on input m = ⟨n, i⟩
+  have hLm := hL.comp PolyFueled.left
+  have hLpred := predc_polyFueled.comp hLm
+  have dmPF := hdm.comp (hLpred.pair PolyFueled.right)
+  have jPF := PolyFueled.left.comp dmPF
+  have oPF := PolyFueled.right.comp dmPF
+  have tokPF := htok.comp ((PolyFueled.left.pair jPF).pair oPF)
+  have hlf : ∀ n j, lenFn (Nat.pair n j) = lenFn (Nat.pair n 0) := fun n j => by
+    rw [← hlens, hunif n j, hlens]
+  refine ⟨_, _, _, _, tokPF, lenPF, ?_, ?_⟩
+  · intro n
+    exact length_flatMap_const_width _ (lenFn (Nat.pair n 0)) (cnt n)
+      (fun j _ => by rw [hlens, hlf])
+  · intro n i hi
+    -- the width is positive on the spec range
+    have hW0 : 0 < lenFn (Nat.pair n 0) := by
+      rcases Nat.eq_zero_or_pos (lenFn (Nat.pair n 0)) with h0 | h0
+      · rw [h0, Nat.mul_zero] at hi; omega
+      · exact h0
+    have hpred : (lenFn (Nat.pair n 0)).pred + 1 = lenFn (Nat.pair n 0) := by
+      rw [Nat.pred_eq_sub_one]
+      omega
+    simp only [Function.comp_apply, Nat.unpair_pair]
+    rw [getD_flatMap_const_width _ (lenFn (Nat.pair n 0)) hW0 (cnt n) i
+      (fun j _ => by rw [hlens, hlf]) hi, hpred]
+    exact hspec (Nat.pair n (i / lenFn (Nat.pair n 0))) (i % lenFn (Nat.pair n 0))
+      (by rw [hlf n (i / lenFn (Nat.pair n 0))]; exact Nat.mod_lt _ hW0)
 
 /-- **The segment-emission capstone**: a trader whose day-`n` stream is a
 `PolySegStream` is `EfficientlyComputableTok`. -/
