@@ -9,9 +9,25 @@ Phases are ordered; each phase boundary is a safe stopping point with a green bu
 Do the phases in order: A → B1 → C → B2 → D → E → F. One phase (or less) per session
 is the right pace; do not start a phase you can't leave green.
 
-## 0. Context snapshot (verified 2026-07-10)
+## 0. Context snapshot (updated 2026-07-11 — Phases A and B1 are DONE)
 
-- Branch `logical-induction`, build green, exactly **two `sorry`s**, both disclosed:
+> **2026-07-11 session result: Phase A (all of A1–A3) and Phase B1 landed, green,
+> axiom-clean, zero new `sorry`s. Next session starts at Phase C.** What changed:
+> - A1 was done *generically*: `evaln_prec` + **`PolyFueled.prec`** (closure of
+>   `PolyFueled` under `Code.prec` for poly-bounded states) replace the planned bespoke
+>   `subAux_evaln`-style proof; `divmodc_polyFueled`, `addc_polyFueled`, `mulc_polyFueled`,
+>   `PolyFueled.addConst`, `PolyFueled.of_eq` are corollaries (`Computable.lean`). Any
+>   future prec combinator (B2's option (i) offsets included) is now a few lines.
+> - A2 = **`ecTok_of_blockStream`** (+ `length/getD_flatMap_const_width`); A3 =
+>   `histTrader_ecTok`. Both in `Computable.lean`, end of file.
+> - B1 = `Properties/NonDogmatism.lean` (`lic_nonDogmatism_weak`, trader `ndTrader`,
+>   pow-chain `twoPowChain` — **left-nested** so the blocks are homogeneous width-3;
+>   reuse it in B2/C) + the new engine `exploits_of_bddBelow_of_unbounded`
+>   (`Properties/Basic.lean`, end of file). G3's hypothesis form used and ledgered.
+> - Gates: **G1/G2/G3 still await Anson** (G2 blocks Phase E only). Ledger rows all in.
+
+- Branch `logical-induction`, build green, exactly **two `sorry`s**, both disclosed
+  (unchanged from 2026-07-10):
   - `oscillation_exploitable` — `LogicalInduction/Properties/Convergence.lean:62`
   - `LUV.expect_converges` (`thm:ec`) — `LogicalInduction/Expectations.lean:83`
 - **Done in M3:** `thm:provind` (fixed-φ and 𝓔𝓒-sequence forms), all three `thm:lc`
