@@ -1012,6 +1012,212 @@ theorem subc_polyFueled : PolyFueled subc (fun m => m.unpair.1 - m.unpair.2) := 
   exact (((h4.add hpair).add isPolyBounded_fst).add isPolyBounded_snd).add
     (⟨9, 0, fun _ => by simp⟩ : IsPolyBounded (fun _ => 9))
 
+/-! ### Generic `prec` fuel accounting — `PolyFueled` closure under primitive recursion.
+
+Every fuel proof above (`predAux_evaln`, `iterRight_evaln`, `ifzSel_evaln`, `subAux_evaln`)
+is the same induction: unroll `evaln`'s `prec` clause once per level, feed the recursive
+value to the step code, and dominate every level's budget and guard by one monotone
+polynomial. This section does that induction **once**, generically: `evaln_prec` runs any
+`prec cf cg` whose base/step codes are `Fueled`, and `PolyFueled.prec` packages it —
+`PolyFueled` is closed under `Code.prec` whenever the iterated state stays polynomially
+bounded. Every further primitive-recursive combinator (`addc`, `mulc`, `divmodc`, …) is a
+corollary, with no new `evaln` reasoning. -/
+
+/-- Transport a `PolyFueled` fact along a pointwise-equal spec. -/
+theorem PolyFueled.of_eq {c : Nat.Partrec.Code} {f f' : ℕ → ℕ}
+    (h : PolyFueled c f) (he : ∀ n, f n = f' n) : PolyFueled c f' := by
+  rwa [funext he] at h
+
+/-- Base unrolling of `evaln`'s `prec` clause. -/
+theorem evaln_prec_zero {cf cg : Nat.Partrec.Code} {k a v : ℕ}
+    (hg : Nat.pair a 0 ≤ k) (hcf : evaln (k + 1) cf a = some v) :
+    evaln (k + 1) (Nat.Partrec.Code.prec cf cg) (Nat.pair a 0) = some v := by
+  rw [evaln]
+  simp [Nat.unpaired, hg, hcf]
+
+/-- Step unrolling of `evaln`'s `prec` clause. -/
+theorem evaln_prec_succ {cf cg : Nat.Partrec.Code} {k a m prev v : ℕ}
+    (hg1 : Nat.pair a (m + 1) ≤ k)
+    (hrec : evaln k (Nat.Partrec.Code.prec cf cg) (Nat.pair a m) = some prev)
+    (hcg : evaln (k + 1) cg (Nat.pair a (Nat.pair m prev)) = some v) :
+    evaln (k + 1) (Nat.Partrec.Code.prec cf cg) (Nat.pair a (m + 1)) = some v := by
+  conv_lhs => rw [evaln]
+  simp [Nat.unpaired, hg1, hrec, hcg]
+
+/-- **Generic fueled `prec` evaluation.** If `cf`/`cg` are `Fueled` and `st` satisfies the
+primitive recursion `st a 0 = f a`, `st a (j+1) = g ⟨a, j, st a j⟩`, then `prec cf cg`
+computes `st a i` within any fuel exceeding `B + i`, where `B` dominates the base budget,
+every level's step budget, and the input (each level costs one fuel decrement plus its
+step-code budget, all of which `B` majorizes). -/
+theorem evaln_prec {cf cg : Nat.Partrec.Code} {f g bf bg : ℕ → ℕ}
+    (hf : Fueled cf f bf) (hg : Fueled cg g bg)
+    {st : ℕ → ℕ → ℕ} (h0 : ∀ a, st a 0 = f a)
+    (hS : ∀ a j, st a (j + 1) = g (Nat.pair a (Nat.pair j (st a j))))
+    (a : ℕ) {B : ℕ} (hBf : bf a ≤ B) :
+    ∀ i, (∀ j < i, bg (Nat.pair a (Nat.pair j (st a j))) ≤ B) → Nat.pair a i ≤ B →
+      ∀ F, B + i < F →
+      evaln F (Nat.Partrec.Code.prec cf cg) (Nat.pair a i) = some (st a i) := by
+  intro i
+  induction i with
+  | zero =>
+      intro _ hBi F hF
+      obtain ⟨k, rfl⟩ : ∃ k, F = k + 1 := ⟨F - 1, by omega⟩
+      rw [h0 a]
+      exact evaln_prec_zero (by omega) (evaln_mono (by omega) (hf a))
+  | succ i ih =>
+      intro hBg hBi F hF
+      obtain ⟨k, rfl⟩ : ∃ k, F = k + 1 := ⟨F - 1, by omega⟩
+      have hBi' : Nat.pair a i ≤ B := le_trans (pair_le_pair_right' a (by omega)) hBi
+      have hrec := ih (fun j hj => hBg j (by omega)) hBi' k (by omega)
+      have hcg : evaln (k + 1) cg (Nat.pair a (Nat.pair i (st a i)))
+          = some (g (Nat.pair a (Nat.pair i (st a i)))) :=
+        evaln_mono (le_trans (hBg i (Nat.lt_succ_self i)) (by omega)) (hg _)
+      rw [hS a i]
+      exact evaln_prec_succ (by omega) hrec hcg
+
+/-- Monotonicity of the `def:ec` polynomial normal form. -/
+private theorem poly_mono {a k x y : ℕ} (h : x ≤ y) :
+    a * (x + 1) ^ k + a ≤ a * (y + 1) ^ k + a := by
+  gcongr
+
+/-- **`PolyFueled` is closed under `Code.prec`** whenever the iterated state is polynomially
+bounded in the input `⟨a, i⟩`. The budget dominates every level `j ≤ i` at once, by
+monotonicity of `Nat.pair` and of the polynomial bounds. -/
+theorem PolyFueled.prec {cf cg : Nat.Partrec.Code} {f g : ℕ → ℕ}
+    (hf : PolyFueled cf f) (hg : PolyFueled cg g)
+    {st : ℕ → ℕ → ℕ} (h0 : ∀ a, st a 0 = f a)
+    (hS : ∀ a j, st a (j + 1) = g (Nat.pair a (Nat.pair j (st a j))))
+    (hst : IsPolyBounded (fun m => st m.unpair.1 m.unpair.2)) :
+    PolyFueled (cf.prec cg) (fun m => st m.unpair.1 m.unpair.2) := by
+  obtain ⟨bf, hff, _, a₃, k₃, hk₃⟩ := hf
+  obtain ⟨bg, hfg, _, a₂, k₂, hk₂⟩ := hg
+  obtain ⟨a₁, k₁, hk₁⟩ : IsPolyBounded (fun m => st m.unpair.1 m.unpair.2) := hst
+  -- Monotone majorants: `S m` for the state at any level `j ≤ m.unpair.2`, `X m` for the
+  -- step input at any level, `B m` for all budgets and guards.
+  set S : ℕ → ℕ := fun m => a₁ * (m + 1) ^ k₁ + a₁ with hSdef
+  set X : ℕ → ℕ := fun m => Nat.pair m.unpair.1 (Nat.pair m.unpair.2 (S m)) with hXdef
+  set B : ℕ → ℕ :=
+    fun m => a₃ * (m + 1) ^ k₃ + a₃ + (a₂ * (X m + 1) ^ k₂ + a₂) + m with hBdef
+  refine ⟨fun m => B m + m.unpair.2 + 1, fun m => ?_, ⟨a₁, k₁, hk₁⟩, ?_⟩
+  · have hBf : bf m.unpair.1 ≤ B m := by
+      have h1 : bf m.unpair.1 ≤ a₃ * (m.unpair.1 + 1) ^ k₃ + a₃ := hk₃ _
+      have h2 : a₃ * (m.unpair.1 + 1) ^ k₃ + a₃ ≤ a₃ * (m + 1) ^ k₃ + a₃ :=
+        poly_mono (Nat.unpair_left_le m)
+      simp only [hBdef]; omega
+    have hBg : ∀ j < m.unpair.2,
+        bg (Nat.pair m.unpair.1 (Nat.pair j (st m.unpair.1 j))) ≤ B m := by
+      intro j hj
+      have hstj : st m.unpair.1 j ≤ S m := by
+        have h1 := hk₁ (Nat.pair m.unpair.1 j)
+        simp only [Nat.unpair_pair] at h1
+        refine le_trans h1 (poly_mono ?_)
+        calc Nat.pair m.unpair.1 j
+            ≤ Nat.pair m.unpair.1 m.unpair.2 := pair_le_pair_right' _ (le_of_lt hj)
+          _ = m := Nat.pair_unpair m
+      have hx : Nat.pair m.unpair.1 (Nat.pair j (st m.unpair.1 j)) ≤ X m :=
+        pair_le_pair_right' _ (le_trans (pair_le_pair_right' _ hstj)
+          (pair_le_pair_left' _ (le_of_lt hj)))
+      have h1 := hk₂ (Nat.pair m.unpair.1 (Nat.pair j (st m.unpair.1 j)))
+      have h2 : a₂ * (Nat.pair m.unpair.1 (Nat.pair j (st m.unpair.1 j)) + 1) ^ k₂ + a₂
+          ≤ a₂ * (X m + 1) ^ k₂ + a₂ := poly_mono hx
+      simp only [hBdef]; omega
+    have hBi : Nat.pair m.unpair.1 m.unpair.2 ≤ B m := by
+      simp only [hBdef]; rw [Nat.pair_unpair]; omega
+    have key := evaln_prec hff hfg h0 hS m.unpair.1 hBf m.unpair.2 hBg hBi
+      (B m + m.unpair.2 + 1) (by omega)
+    rwa [Nat.pair_unpair] at key
+  · have hSpb : IsPolyBounded S := ⟨a₁, k₁, fun _ => le_rfl⟩
+    have hXpb : IsPolyBounded X := isPolyBounded_fst.pair (isPolyBounded_snd.pair hSpb)
+    have hpoly₂ : IsPolyBounded (fun x => a₂ * (x + 1) ^ k₂ + a₂) := ⟨a₂, k₂, fun _ => le_rfl⟩
+    have ht2 : IsPolyBounded (fun m => a₂ * (X m + 1) ^ k₂ + a₂) := hpoly₂.comp hXpb
+    have ht1 : IsPolyBounded (fun m => a₃ * (m + 1) ^ k₃ + a₃) := ⟨a₃, k₃, fun _ => le_rfl⟩
+    have hid : IsPolyBounded (fun m : ℕ => m) :=
+      (IsPolyBounded.linear 0).of_le (fun _ => by omega)
+    exact (((ht1.add ht2).add hid).add isPolyBounded_snd).add_one
+
+/-! ### Poly-fueled arithmetic: `addc`, `mulc`, `divmodc`.
+
+The `prec` closure makes the arithmetic combinators the block-emission tooling needs
+(`thm:con` / `thm:nd` traders: block index and offset from a token position) one-liners:
+each is a primitive recursion with a polynomially-bounded state. -/
+
+/-- Addition: `addc ⟨a, b⟩ = a + b`, as the `prec` iterate of `succ`. -/
+theorem addc_polyFueled : ∃ c, PolyFueled c (fun m => m.unpair.1 + m.unpair.2) :=
+  ⟨_, PolyFueled.prec PolyFueled.id ((PolyFueled.right.comp PolyFueled.right).succ_comp)
+    (st := fun a j => a + j) (fun _ => rfl)
+    (fun a j => by simp only [Nat.unpair_pair]; omega)
+    (isPolyBounded_fst.add isPolyBounded_snd)⟩
+
+/-- Adding a constant: `n ↦ f n + K`, a fixed `succ` chain over `c`. -/
+theorem PolyFueled.addConst {c : Nat.Partrec.Code} {f : ℕ → ℕ} (h : PolyFueled c f) :
+    ∀ K : ℕ, ∃ c', PolyFueled c' (fun n => f n + K)
+  | 0 => ⟨c, h⟩
+  | (K + 1) => by
+      obtain ⟨c', h'⟩ := h.addConst K
+      exact ⟨_, h'.succ_comp.of_eq (fun n => by omega)⟩
+
+/-- Multiplication by a constant: `n ↦ n * W`, as the `prec` iterate of `+ W`. -/
+theorem mulc_polyFueled (W : ℕ) : ∃ c, PolyFueled c (fun n => n * W) := by
+  obtain ⟨ca, hca⟩ := (PolyFueled.right.comp PolyFueled.right).addConst W
+  have hmulW : IsPolyBounded (fun x => x * W) :=
+    ⟨W, 1, fun n => by
+      show n * W ≤ W * (n + 1) ^ 1 + W
+      rw [pow_one, Nat.mul_add, Nat.mul_comm W n]; omega⟩
+  have hstW : IsPolyBounded (fun m => m.unpair.2 * W) := hmulW.comp isPolyBounded_snd
+  have hprec := PolyFueled.prec (PolyFueled.const 0) hca
+    (st := fun _ j => j * W) (fun _ => by simp)
+    (fun a j => by simp [Nat.unpair_pair, Nat.succ_mul]) hstW
+  exact ⟨_, (hprec.comp ((PolyFueled.const 0).pair PolyFueled.id)).of_eq
+    (fun n => by simp only [Nat.unpair_pair])⟩
+
+/-- Uniqueness of division with remainder, in rewrite-ready form. -/
+private theorem div_mod_of_decomp {w q s x : ℕ} (hw : 0 < w) (hx : x = w * q + s)
+    (hs : s < w) : x / w = q ∧ x % w = s := by
+  subst hx
+  exact ⟨by rw [Nat.mul_add_div hw, Nat.div_eq_of_lt hs, Nat.add_zero],
+         by rw [Nat.mul_add_mod, Nat.mod_eq_of_lt hs]⟩
+
+/-- **`divmodc` (`dd:fuel`): division and remainder by a constant width `w > 0`.** One
+`prec` recursion on the input whose state is `⟨quotient, remainder⟩`: the step wraps
+(`⟨q+1, 0⟩`) when the remainder is about to reach `w`, else increments the remainder —
+the wrap test is `(w-1) − r` via `subc`, dispatched by `ifzSel`. This is the block-index /
+block-offset primitive for repeating-block token emission (`def:ec`). -/
+theorem divmodc_polyFueled (w : ℕ) (hw : 0 < w) :
+    ∃ c, PolyFueled c (fun n => Nat.pair (n / w) (n % w)) := by
+  -- Step pieces, on the `prec` state `x = ⟨a, j, ⟨q, r⟩⟩`.
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  have qPF := PolyFueled.left.comp prevPF
+  have rPF := PolyFueled.right.comp prevPF
+  have wrapPF := qPF.succ_comp.pair (PolyFueled.const 0)
+  have stayPF := qPF.pair rPF.succ_comp
+  have testPF := subc_polyFueled.comp ((PolyFueled.const (w - 1)).pair rPF)
+  have gPF := ifzSel_polyFueled.comp ((wrapPF.pair stayPF).pair testPF)
+  have hst : IsPolyBounded (fun m => Nat.pair (m.unpair.2 / w) (m.unpair.2 % w)) :=
+    (isPolyBounded_snd.pair isPolyBounded_snd).of_le (fun m =>
+      le_trans (pair_le_pair_right' _ (Nat.mod_le _ _))
+        (pair_le_pair_left' _ (Nat.div_le_self _ _)))
+  have hprec := PolyFueled.prec (PolyFueled.const 0) gPF
+    (st := fun _ j => Nat.pair (j / w) (j % w))
+    (fun _ => by
+      show Nat.pair (0 / w) (0 % w) = 0
+      rw [Nat.zero_div, Nat.zero_mod]
+      rfl)
+    (fun a j => by
+      have hqr := Nat.div_add_mod j w
+      have hrlt := Nat.mod_lt j hw
+      show Nat.pair ((j + 1) / w) ((j + 1) % w) = _
+      simp only [Nat.unpair_pair, ifzSelFn]
+      by_cases hcase : w - 1 - j % w = 0
+      · have h1 : j + 1 = w * (j / w + 1) + 0 := by rw [Nat.mul_succ]; omega
+        obtain ⟨hd, hm⟩ := div_mod_of_decomp hw h1 hw
+        rw [if_pos hcase, hd, hm]
+      · have h1 : j + 1 = w * (j / w) + (j % w + 1) := by omega
+        obtain ⟨hd, hm⟩ := div_mod_of_decomp hw h1 (by omega)
+        rw [if_neg hcase, hd, hm])
+    hst
+  exact ⟨_, (hprec.comp ((PolyFueled.const 0).pair PolyFueled.id)).of_eq
+    (fun n => by simp only [Nat.unpair_pair])⟩
+
 /-! ### `ecTok_of_tokenFn` — the varying-length emission workhorse.
 
 Generalizes `ecTok_of_tokenList` (fixed length) to **growing** streams: a trader is
