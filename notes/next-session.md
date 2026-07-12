@@ -9,7 +9,57 @@ Phases are ordered; each phase boundary is a safe stopping point with a green bu
 Do the phases in order: A → B1 → C → B2 → D → E → F. One phase (or less) per session
 is the right pace; do not start a phase you can't leave green.
 
-## 0. Context snapshot (updated 2026-07-11, session 2 — A, B1, C, E, D3 all DONE)
+## 0. Context snapshot (updated 2026-07-12, session 3 — B2 and D1 DONE; D2 started)
+
+> **2026-07-12 session 3 result: Phase B2 (full `thm:nd`, both directions) and Phase D1
+> landed; D2 step 1 (reduction generalization) done.** What changed vs. session 2:
+> - **B2 REDESIGNED — read this before touching the e.c. certs.** The plan's §6 recursive
+>   budget trader is **not poly-size expressible as an `EF` tree**: its update
+>   `r(n+1) = r n − Pₙ·clip((r n/2 − Pₙ)·2^{n+2})` consumes the state twice ⇒ the tree
+>   doubles per day; and *no* single-occurrence chain can express it (single-occurrence
+>   recursions are compositions of unary affine/max steps, hence monotone-or-antitone in
+>   the state; the budget update is non-monotone). Replaced by the **paper's own `app:obu`
+>   scale-ladder** (sketch `main.tex:1533`), rescaled polynomially for `dd:fuel` (the
+>   paper's `2^{-j}` constants have exponential-*value* encodings under the fuel clock):
+>   rung `j` buys ≤ `j³` shares below `1/j³` at weight `1/j²` (coefficient const `j`);
+>   spend ≤ `Σ1/j² ≤ 2`; a fired rung banks `≥ j − 1`. Both directions proved
+>   (`lic_nonDogmatism`, `lic_nonDogmatism_dual`, **no price-range hypotheses**) + limit
+>   corollaries (`lic_limit_pos`, `lic_limit_lt_one`). Key new engine: `armChain`
+>   (generic single-occurrence arming chain, `Π(1 − sig i)`, with telescoping shares sum)
+>   + `δ = 0` degenerate-ctsind padding for uniform rung widths (`1/0 = 0` in ℚ).
+> - **The two `ndLadder…_ecTok` sorries are the only B2 gap** and need a dedicated
+>   session: (i) runtime-divisor `divmod` (`divmodc` bakes the divisor in; block width
+>   here is `Θ(n)`); (ii) `PolySegStream.concat` (n-fold segment concatenation);
+>   (iii) poly-fueled emission of rung-varying ℚ-constant tokens (`⌜ndThr j⌝` from `j` —
+>   requires `PolyFueled` codes for `Encodable.encode ∘ (rational function of j)`, which
+>   means opening up Mathlib's ℚ-encoding; expect real friction, budget accordingly).
+>   Note the paper certifies its parametric traders by **dynamic programming**
+>   (`app:dynamicprogramming`) — sharing our `EF` trees don't have; that's why the ladder
+>   uses product-form state.
+> - **D1 done**: `PCWorld.ValuesAt.expectApprox_near` (`lem:conluvapprox`, single-LUV):
+>   `ValuesAt v X x → |𝔼ₙ − x| ≤ 1/n` (one-sided `x ≤ 𝔼ₙ ≤ x + 1/n`), needs `0 < n`.
+>   Floor/ceil sandwich, no filter cards. Axiom-clean.
+> - **D2 step 1 done**: `exists_rat_oscillation_of_not_exists_convergesTo` (general
+>   `u : ℕ → ℝ` in `[0,1]`; price form now a corollary). **D2 design notes (derived,
+>   not yet implemented):** (i) generalize C's signals/state to an arbitrary feature
+>   family — `buyIndOn (e : EF) a δ` with `buyIndEF φ a δ n = buyIndOn (.price φ n) a δ`
+>   definitional, then `hystN` over `feat : ℕ → EF`; the expectation feature
+>   `eEF n = (1/n)·Σ_{i<n} price (X.gt (i/n)) n` is a Θ(n) EF. (ii) Day-`n` trade =
+>   `(List.range n).map (fun i => ((1/n)·Δₙ, X.gt (i/n)))` — bundle value in world `v`
+>   with `ValuesAt X x` is `Δₙ·(Wₙ − Eₙ)`, `Wₙ ∈ [x, x + 1/n]` by D1. (iii) The C2
+>   analog picks up an error term `Σ|Δₙ|/n ≤ (2B₋ + h)/n₀ + C(n₀)` — **gate the trader
+>   to start at day `n₀ := ⌈8/(b−a)⌉`** (padding, as in B2) so the linear-in-`B₋` gain
+>   `(b−a−2δ − 2/n₀)·B₋` keeps a positive coefficient. (iv) hval hypothesis:
+>   `∀ n v, ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x`.
+> - Sorry inventory: `thm:ec` (`Expectations.lean`), 2 × `ndLadder…_ecTok`
+>   (`NonDogmatism.lean`), + the seven intended stmt-sorries (4 Self-Trust, 3
+>   expectation-family). All disclosed, all ledgered.
+> - **Remaining: D2 proper (`thm:ec` bundle-hysteresis — the feature-generic refactor
+>   of `Hysteresis.lean` is the first, mechanical step), the B2 e.c.-cert session, F
+>   (M3 exit package — includes the stale `thm:con` ledger rows sweep: rows 114/115
+>   still say `sorry`/conditional though C closed them).**
+
+## 0-prev-2. Context snapshot (2026-07-11, session 2 — A, B1, C, E, D3 all DONE)
 
 > **2026-07-11 session 2 result: Phases E (per Anson's G2 decision: "the non-vacuous
 > way"), C (COMPLETE — `oscillation_exploitable` un-sorried, `lic_price_convergesTo`
