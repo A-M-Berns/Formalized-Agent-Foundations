@@ -92,4 +92,18 @@ noncomputable def expectInf (P : History) (DP : DeductiveProcess) [IsLogicalIndu
 
 end LUV
 
+/-! ### World-side LUV values (`lem:conluvapprox` substrate, D1 modeling)
+
+The paper's "`Θ` represents computations, so every consistent world assigns each LUV its
+true value" becomes, in our threshold presentation, a coherence condition relating a world
+to a value: `v` affirms every threshold strictly below `x` and denies every one strictly
+above. **Disclosed type-`(c)`**: this is the market-observable content of "`v` believes
+`X = x`", not a first-order reconstruction. -/
+
+/-- The p.c. world `v` **values** the `[0,1]`-LUV `X` at `x`: threshold coherence around
+`x`. -/
+def PCWorld.ValuesAt (v : PCWorld) (X : LUV) (x : ℝ) : Prop :=
+  0 ≤ x ∧ x ≤ 1 ∧
+    ∀ r : ℚ, ((r : ℝ) < x → v.Holds (X.gt r)) ∧ (x < (r : ℝ) → ¬ v.Holds (X.gt r))
+
 end LogicalInduction

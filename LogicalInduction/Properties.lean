@@ -21,6 +21,9 @@ File layout (promoted from a single file once it grew past ~1000 lines):
   eventually clears `2^{-(n+2)}` (`ndTrader`, the first Phase-A block-emission trader).
 * `Properties.Relationships` — `thm:lex`: learning logical equivalence (`eqTr`) and implication
   / price monotonicity (`impTr`).
+* `Properties.SelfTrust` — `thm:cee`/`ceu`/`ccee`/`st` **statements** (proofs → M4):
+  reflection as revelation-schedule linkage hypotheses over relational quoted families
+  (the G2-approved non-vacuous modeling); `DeferralFunction` (`def:deferralfunc`).
 
 See `PROGRESS.md` for the per-node ledger (label → decl → status → kind → provenance).
 -/
@@ -30,3 +33,4 @@ import LogicalInduction.Properties.Coherence
 import LogicalInduction.Properties.Convergence
 import LogicalInduction.Properties.NonDogmatism
 import LogicalInduction.Properties.Relationships
+import LogicalInduction.Properties.SelfTrust
