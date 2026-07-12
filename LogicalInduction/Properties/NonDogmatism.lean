@@ -20,6 +20,7 @@ homogeneous width-3 serialization blocks, so `ecTok_of_blockStream` (Phase A2) c
 the trader e.c. directly.
 -/
 import LogicalInduction.Properties.Basic
+import LogicalInduction.Properties.Hysteresis
 
 namespace LogicalInduction
 
@@ -263,5 +264,480 @@ theorem lic_nonDogmatism_weak (P : History) (DP : DeductiveProcess)
     (ndTrader_exploits P DP φ hP0 hP1 hφ hfreq)
 
 #print axioms lic_nonDogmatism_weak
+
+/-! ## Full `thm:nd` — the scale-ladder trader
+
+Paper (`main.tex` 1533, sketch; `app:obu`/`lem:type2`, 5556 ff., the formal construction):
+the trader "spend[s] their first 50 cents when `Pₙ(φ) < 1/2` … their next 25 cents when
+`Pₙ(φ) < 1/4`", one rung per scale, so that under `liminf Pₙφ = 0` every rung eventually
+fires and plausible profits diverge while total spend stays bounded.
+
+**Two modeling findings, disclosed here rather than discovered later:**
+
+1. *The recursive budget trader is not poly-size expressible as an `EF` tree.* The natural
+   state `r(n+1) = r n − Pₙ·ctsind(Pₙ < r n/2)` uses `r n` twice (once bare, once inside
+   the clip), so its tree doubles per day. No single-occurrence recursion can repair this:
+   a chain that consumes its state once is a composition of unary affine/`max`/`min` steps,
+   hence *monotone or antitone* in the state, while the budget update is genuinely
+   non-monotone. The paper's own `app:obu` trader dodges this — its state update
+   `α(n+1) = α n + (k+1−α n)·Lₙ` is affine in `α`, i.e. `α n·(1−Lₙ) + (k+1)·Lₙ`, single
+   occurrence — and in product form (`remaining shares = target·Π(1−Lᵢ)`) it is exactly the
+   `hystN` chain shape from `thm:con`. (The paper certifies its version by dynamic
+   programming, `app:dynamicprogramming` — sharing our tree `dd:dsl` does not have.)
+
+2. *The paper's constants are rescaled polynomially for `dd:fuel`.* The fuel-clocked
+   interpreter prices tokens by **value**, and the encodings of `2^{-j}`-style rationals
+   are exponentially large values. Rung `j` here buys up to `j³` shares below the price
+   `1/j³` at weight `1/j²` (trade coefficient constant `j = j³/j²`): total spend
+   `≤ Σ 1/j² ≤ 2`, and a fired rung `j` banks `j·(1 − 1/j³) ≥ j − 1` — same economics,
+   poly-value constants.
+
+Rungs are padded with degenerate (`δ = 0`, identically-zero) `ctsind` factors on days
+before their start day `j`, so every rung's arming chain has the same, uniform-width
+serialization — the shape the (pending) doubly-indexed emission needs. -/
+
+/-! ### The generic arming chain -/
+
+/-- Arming chain over a per-day disarm signal: `armChain sig n = Π_{i<n} (1 − sig i)`.
+With `sig i ∈ [0,1]` it decays from `1` toward `0`, and the *shares telescope*: the total
+of `armChain · sig` over any window is the drop in the chain's value. Shared by the buy
+and sell ladders. -/
+def armChain (sig : ℕ → EF) : ℕ → EF
+  | 0 => .const 1
+  | (n + 1) => .mul (armChain sig n) (oneMinus (sig n))
+
+theorem armChain_denote_zero (sig : ℕ → EF) (P : History) :
+    (armChain sig 0).denote P = 1 := by simp [armChain]
+
+theorem armChain_denote_succ (sig : ℕ → EF) (P : History) (n : ℕ) :
+    (armChain sig (n + 1)).denote P
+      = (armChain sig n).denote P * (1 - (sig n).denote P) := by
+  simp [armChain, EF.denote_mul, Pi.mul_apply, oneMinus_denote]
+
+theorem armChain_mem (sig : ℕ → EF) (P : History)
+    (hs : ∀ i, 0 ≤ (sig i).denote P ∧ (sig i).denote P ≤ 1) :
+    ∀ n, 0 ≤ (armChain sig n).denote P ∧ (armChain sig n).denote P ≤ 1
+  | 0 => by rw [armChain_denote_zero]; norm_num
+  | (n + 1) => by
+      obtain ⟨ih0, ih1⟩ := armChain_mem sig P hs n
+      obtain ⟨hs0, hs1⟩ := hs n
+      rw [armChain_denote_succ]
+      constructor
+      · nlinarith
+      · nlinarith
+
+/-- Padded-start rungs stay fully armed until their start day. -/
+theorem armChain_denote_of_le (sig : ℕ → EF) (P : History) {j : ℕ}
+    (hpad : ∀ i < j, (sig i).denote P = 0) :
+    ∀ n, n ≤ j → (armChain sig n).denote P = 1 := by
+  intro n
+  induction n with
+  | zero => intro _; exact armChain_denote_zero sig P
+  | succ n ih =>
+      intro h
+      rw [armChain_denote_succ, ih (by omega), hpad n (by omega)]
+      ring
+
+/-- The shares telescope: `Σ_{n ∈ [j, N)} armChain·sig = armChain j − armChain N`. -/
+theorem armChain_shares_sum (sig : ℕ → EF) (P : History) {j N : ℕ} (h : j ≤ N) :
+    ∑ n ∈ Finset.Ico j N, (armChain sig n).denote P * (sig n).denote P
+      = (armChain sig j).denote P - (armChain sig N).denote P := by
+  induction N, h using Nat.le_induction with
+  | base => simp
+  | succ N hN ih =>
+      rw [Finset.sum_Ico_succ_top hN, ih, armChain_denote_succ]
+      ring
+
+theorem armChain_rank (sig : ℕ → EF) (hs : ∀ i, (sig i).rank ≤ i) :
+    ∀ n, (armChain sig n).rank ≤ n - 1
+  | 0 => by simp [armChain, EF.rank]
+  | (n + 1) => by
+      have ih := armChain_rank sig hs n
+      have hn := hs n
+      simp only [armChain, EF.rank, oneMinus_rank, max_le_iff]
+      omega
+
+/-! ### Rung constants -/
+
+/-- Rung-`j` threshold: `1/(2j³)`. The rung's `ctsind` is `1` below `ndThr j` and `0` above
+`2·ndThr j = 1/j³`; both the threshold and the rung weight `1/j²` have poly-**value**
+rational encodings (`dd:fuel`), unlike the paper's `2^{-j}` ladder. -/
+def ndThr (j : ℕ) : ℚ := 1 / (2 * (j : ℚ) ^ 3)
+
+/-- Ramp-width schedule with padding: `0` before the rung's start day `j` (a degenerate
+`ctsind` that is identically `0`, since `1/0 = 0` in `ℚ`), `ndThr j` from day `j` on. -/
+def ndPadThr (j n : ℕ) : ℚ := if n < j then 0 else ndThr j
+
+theorem ndThr_cast (j : ℕ) : ((ndThr j : ℚ) : ℝ) = 1 / (2 * (j : ℝ) ^ 3) := by
+  rw [ndThr]; push_cast; ring
+
+theorem ndThr_pos {j : ℕ} (hj : 1 ≤ j) : 0 < ((ndThr j : ℚ) : ℝ) := by
+  rw [ndThr_cast]
+  have h1 : (1 : ℝ) ≤ (j : ℝ) := by exact_mod_cast hj
+  have h0 : (0 : ℝ) < (j : ℝ) := lt_of_lt_of_le one_pos h1
+  exact div_pos one_pos (by nlinarith [pow_pos h0 3])
+
+theorem ndThr_double {j : ℕ} (hj : 1 ≤ j) :
+    ((ndThr j : ℚ) : ℝ) + ((ndThr j : ℚ) : ℝ) = 1 / (j : ℝ) ^ 3 := by
+  rw [ndThr_cast]
+  have h1 : (1 : ℝ) ≤ (j : ℝ) := by exact_mod_cast hj
+  have h0 : (0 : ℝ) < (j : ℝ) := lt_of_lt_of_le one_pos h1
+  have h3 : ((j : ℝ)) ^ 3 ≠ 0 := ne_of_gt (pow_pos h0 3)
+  field_simp
+  ring
+
+theorem ndCube_le_one {j : ℕ} (hj : 1 ≤ j) : 1 / (j : ℝ) ^ 3 ≤ 1 := by
+  have h1 : (1 : ℝ) ≤ (j : ℝ) := by exact_mod_cast hj
+  have h0 : (0 : ℝ) < (j : ℝ) := lt_of_lt_of_le one_pos h1
+  rw [div_le_one (pow_pos h0 3)]
+  exact one_le_pow₀ h1
+
+theorem ndWeight_mul {j : ℕ} (hj : 1 ≤ j) :
+    (j : ℝ) * (1 / (j : ℝ) ^ 3) = 1 / (j : ℝ) ^ 2 := by
+  have h1 : (1 : ℝ) ≤ (j : ℝ) := by exact_mod_cast hj
+  have h0 : (j : ℝ) ≠ 0 := ne_of_gt (lt_of_lt_of_le one_pos h1)
+  field_simp
+
+/-! ### The buy rungs -/
+
+/-- Rung-`j` day-`i` buy trigger: `ctsind(Pᵢφ < 1/j³)` once live (`i ≥ j`), identically
+`0` before (the `δ = 0` padding). -/
+def ndBuySig (φ : Sentence) (j i : ℕ) : EF := buyIndEF φ (ndThr j) (ndPadThr j i) i
+
+theorem ndBuySig_live (φ : Sentence) {j i : ℕ} (h : j ≤ i) :
+    ndBuySig φ j i = buyIndEF φ (ndThr j) (ndThr j) i := by
+  rw [ndBuySig, ndPadThr, if_neg (by omega)]
+
+theorem ndBuySig_denote_pad (φ : Sentence) (P : History) {j i : ℕ} (h : i < j) :
+    (ndBuySig φ j i).denote P = 0 := by
+  rw [ndBuySig, ndPadThr, if_pos h, buyIndEF_denote]
+  norm_num
+
+theorem ndBuySig_mem (φ : Sentence) (P : History) (j i : ℕ) :
+    0 ≤ (ndBuySig φ j i).denote P ∧ (ndBuySig φ j i).denote P ≤ 1 :=
+  buyInd_mem φ _ _ i P
+
+theorem ndBuySig_pos_imp (φ : Sentence) (P : History) {j i : ℕ} (hj : 1 ≤ j)
+    (h : 0 < (ndBuySig φ j i).denote P) : P i φ < 1 / (j : ℝ) ^ 3 := by
+  rcases lt_or_ge i j with hij | hij
+  · rw [ndBuySig_denote_pad φ P hij] at h
+    exact absurd h (lt_irrefl 0)
+  · rw [ndBuySig_live φ hij] at h
+    have hlt := buyInd_pos_imp (ndThr_pos hj) h
+    rwa [ndThr_double hj] at hlt
+
+theorem ndBuySig_eq_one (φ : Sentence) (P : History) {j i : ℕ} (hj : 1 ≤ j) (hlive : j ≤ i)
+    (h : P i φ < ((ndThr j : ℚ) : ℝ)) : (ndBuySig φ j i).denote P = 1 := by
+  rw [ndBuySig_live φ hlive]
+  exact buyInd_eq_one (ndThr_pos hj) h
+
+theorem ndBuySig_rank (φ : Sentence) (j i : ℕ) : (ndBuySig φ j i).rank = i :=
+  buyIndEF_rank φ _ _ i
+
+/-- Day-`n` shares bought by rung `j` (per unit of the coefficient constant `j`):
+`armChain · trigger ∈ [0, 1]`. -/
+noncomputable def ndShares (φ : Sentence) (P : History) (j n : ℕ) : ℝ :=
+  (armChain (ndBuySig φ j) n).denote P * (ndBuySig φ j n).denote P
+
+theorem ndShares_nonneg (φ : Sentence) (P : History) (j n : ℕ) : 0 ≤ ndShares φ P j n :=
+  mul_nonneg (armChain_mem _ P (fun i => ndBuySig_mem φ P j i) n).1
+    (ndBuySig_mem φ P j n).1
+
+theorem ndShares_pos_sig {φ : Sentence} {P : History} {j n : ℕ}
+    (h : 0 < ndShares φ P j n) : 0 < (ndBuySig φ j n).denote P := by
+  rcases (ndBuySig_mem φ P j n).1.lt_or_eq with hs | hs
+  · exact hs
+  · rw [ndShares, ← hs, mul_zero] at h
+    exact absurd h (lt_irrefl 0)
+
+/-- Rung-`j` lifetime shares by day `N`: exactly the arming drop, hence `≤ 1`. -/
+theorem ndShares_sum (φ : Sentence) (P : History) {j N : ℕ} (h : j ≤ N) :
+    ∑ n ∈ Finset.Ico j N, ndShares φ P j n
+      = 1 - (armChain (ndBuySig φ j) N).denote P := by
+  simp only [ndShares]
+  rw [armChain_shares_sum (ndBuySig φ j) P h,
+    armChain_denote_of_le (ndBuySig φ j) P
+      (fun i hi => ndBuySig_denote_pad φ P hi) j le_rfl]
+
+theorem ndShares_sum_le_one (φ : Sentence) (P : History) {j N : ℕ} (h : j ≤ N) :
+    ∑ n ∈ Finset.Ico j N, ndShares φ P j n ≤ 1 := by
+  rw [ndShares_sum φ P h]
+  have := (armChain_mem (ndBuySig φ j) P (fun i => ndBuySig_mem φ P j i) N).1
+  linarith
+
+/-- Rung-`j` day-`n` trade coefficient: `j · armChain · trigger` — up to `j³` shares at
+weight `1/j²` each, i.e. coefficient constant `j³/j² = j`. -/
+def ndCoef (φ : Sentence) (j n : ℕ) : EF :=
+  .mul (.const (j : ℚ)) (.mul (armChain (ndBuySig φ j) n) (ndBuySig φ j n))
+
+theorem ndCoef_denote (φ : Sentence) (P : History) (j n : ℕ) :
+    (ndCoef φ j n).denote P = (j : ℝ) * ndShares φ P j n := by
+  simp only [ndCoef, EF.denote_mul, EF.denote_const, Pi.mul_apply, ndShares]
+  push_cast
+  ring
+
+theorem ndCoef_rank (φ : Sentence) (j n : ℕ) : (ndCoef φ j n).rank ≤ n := by
+  have h1 := armChain_rank (ndBuySig φ j) (fun i => (ndBuySig_rank φ j i).le) n
+  have h2 := (ndBuySig_rank φ j n).le
+  simp only [ndCoef, EF.rank, max_le_iff]
+  omega
+
+/-! ### The ladder and the trader -/
+
+/-- The day-`n` ladder: `Σ_{j=1}^{m} ndCoef j n` (left-nested adds). -/
+def ndLadderEF (φ : Sentence) (n : ℕ) : ℕ → EF
+  | 0 => .const 0
+  | (m + 1) => .add (ndLadderEF φ n m) (ndCoef φ (m + 1) n)
+
+theorem ndLadderEF_denote (φ : Sentence) (P : History) (n : ℕ) : ∀ m,
+    (ndLadderEF φ n m).denote P
+      = ∑ k ∈ Finset.range m, ((k + 1 : ℕ) : ℝ) * ndShares φ P (k + 1) n
+  | 0 => by simp [ndLadderEF]
+  | (m + 1) => by
+      rw [ndLadderEF]
+      simp only [EF.denote_add, Pi.add_apply]
+      rw [ndLadderEF_denote φ P n m, Finset.sum_range_succ, ndCoef_denote]
+
+theorem ndLadderEF_rank (φ : Sentence) (n : ℕ) : ∀ m, (ndLadderEF φ n m).rank ≤ n
+  | 0 => by simp [ndLadderEF, EF.rank]
+  | (m + 1) => by
+      have h1 := ndLadderEF_rank φ n m
+      have h2 := ndCoef_rank φ (m + 1) n
+      simp only [ndLadderEF, EF.rank, max_le_iff]
+      omega
+
+/-- The **scale-ladder non-dogmatism trader** (`thm:nd`, `app:obu` shape): on day `n`,
+rung `j ≤ n` buys `j · armChainⱼ · ctsind(Pₙφ < 1/j³)` shares of `φ`. -/
+def ndLadderTrader (φ : Sentence) : Trader where
+  strat n := { trades := [(ndLadderEF φ n n, φ)]
+               rank_le := by
+                 intro p hp
+                 simp only [List.mem_singleton] at hp
+                 subst hp
+                 exact ndLadderEF_rank φ n n }
+
+@[simp] theorem ndLadderTrader_value (φ : Sentence) (V : History) (w : Sentence → ℝ)
+    (n : ℕ) : ((ndLadderTrader φ).strat n).value V w
+      = (ndLadderEF φ n n).denote V * (w φ - V n φ) := by
+  simp [ndLadderTrader, Strategy.value]
+
+theorem ndLadderTrader_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) :
+    (ndLadderTrader φ).netWorth V v m
+      = ∑ n ∈ Finset.range (m + 1), ∑ k ∈ Finset.range n,
+          ((k + 1 : ℕ) : ℝ) * ndShares φ V (k + 1) n * (v.payout φ - V n φ) := by
+  simp only [Trader.netWorth, ndLadderTrader_value, ndLadderEF_denote, Finset.sum_mul]
+
+/-! ### The economics -/
+
+/-- Triangle swap for the ladder's double sums. -/
+private theorem sum_range_triangle_comm (f : ℕ → ℕ → ℝ) (N : ℕ) :
+    ∑ n ∈ Finset.range N, ∑ k ∈ Finset.range n, f k n
+      = ∑ k ∈ Finset.range N, ∑ n ∈ Finset.Ico (k + 1) N, f k n := by
+  simp only [Finset.range_eq_Ico]
+  exact (Finset.sum_Ico_Ico_comm' 0 N (fun k n => f k n)).symm
+
+/-- `Σ_{k<M} 1/(k+1)² ≤ 2` — the ladder's total-spend bound. -/
+theorem sum_inv_sq_le_two (M : ℕ) :
+    ∑ k ∈ Finset.range M, (1 : ℝ) / ((k + 1 : ℕ) : ℝ) ^ 2 ≤ 2 := by
+  have key : ∀ N : ℕ, 1 ≤ N →
+      ∑ k ∈ Finset.range N, (1 : ℝ) / ((k + 1 : ℕ) : ℝ) ^ 2 ≤ 2 - 1 / (N : ℝ) := by
+    intro N hN
+    induction N, hN using Nat.le_induction with
+    | base => norm_num
+    | succ N hN ih =>
+        rw [Finset.sum_range_succ]
+        have hN1 : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+        have hstep : (1 : ℝ) / ((N : ℝ) + 1) ^ 2 ≤ 1 / (N : ℝ) - 1 / ((N : ℝ) + 1) := by
+          rw [div_sub_div _ _ (by nlinarith) (by nlinarith),
+            div_le_div_iff₀ (by nlinarith) (by nlinarith)]
+          ring_nf
+          nlinarith
+        push_cast at ih ⊢
+        linarith
+  rcases Nat.eq_zero_or_pos M with rfl | hM
+  · simp
+  · have h := key M hM
+    have h1 : (0 : ℝ) < (M : ℝ) := by exact_mod_cast hM
+    have h2 : (0 : ℝ) < 1 / (M : ℝ) := by positivity
+    linarith
+
+/-- In **any** world, the rung-`j` day-`n` value term loses at most `shares/j²`
+(spend happens only below the price `1/j³`, and `j·(1/j³) = 1/j²`). -/
+theorem ndTerm_ge (φ : Sentence) (P : History) (v : PCWorld) {j : ℕ} (hj : 1 ≤ j)
+    (n : ℕ) : -(ndShares φ P j n * (1 / (j : ℝ) ^ 2))
+      ≤ (j : ℝ) * ndShares φ P j n * (v.payout φ - P n φ) := by
+  have hb := ndShares_nonneg φ P j n
+  rcases hb.lt_or_eq with hb' | hb'
+  · have hP := ndBuySig_pos_imp φ P hj (ndShares_pos_sig hb')
+    have hpay : 0 ≤ v.payout φ := by rw [PCWorld.payout]; split <;> norm_num
+    have hj1 : (1 : ℝ) ≤ (j : ℝ) := by exact_mod_cast hj
+    have hjb : 0 < (j : ℝ) * ndShares φ P j n := mul_pos (by linarith) hb'
+    have hge : -(1 / (j : ℝ) ^ 3) ≤ v.payout φ - P n φ := by linarith
+    calc -(ndShares φ P j n * (1 / (j : ℝ) ^ 2))
+        = (j : ℝ) * ndShares φ P j n * (-(1 / (j : ℝ) ^ 3)) := by
+          rw [← ndWeight_mul hj]; ring
+      _ ≤ (j : ℝ) * ndShares φ P j n * (v.payout φ - P n φ) :=
+          mul_le_mul_of_nonneg_left hge hjb.le
+  · rw [← hb']
+    norm_num
+
+/-- In a `φ`-world every rung's term is a gain: shares are bought below `1/j³ ≤ 1`. -/
+theorem ndTerm_nonneg (φ : Sentence) (P : History) (v : PCWorld) (hv : v.Holds φ)
+    {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
+    0 ≤ (j : ℝ) * ndShares φ P j n * (v.payout φ - P n φ) := by
+  have hb := ndShares_nonneg φ P j n
+  rcases hb.lt_or_eq with hb' | hb'
+  · have hP := ndBuySig_pos_imp φ P hj (ndShares_pos_sig hb')
+    have hpay : v.payout φ = 1 := by rw [PCWorld.payout, if_pos hv]
+    have hle := ndCube_le_one hj
+    have hj1 : (1 : ℝ) ≤ (j : ℝ) := by exact_mod_cast hj
+    rw [hpay]
+    exact mul_nonneg (mul_nonneg (by linarith) hb'.le) (by linarith)
+  · rw [← hb']
+    norm_num
+
+/-- In a `φ`-world the rung-`j` term banks at least `j·shares·(1 − 1/j³)`. -/
+theorem ndTerm_profit (φ : Sentence) (P : History) (v : PCWorld) (hv : v.Holds φ)
+    {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
+    (j : ℝ) * ndShares φ P j n * (1 - 1 / (j : ℝ) ^ 3)
+      ≤ (j : ℝ) * ndShares φ P j n * (v.payout φ - P n φ) := by
+  have hpay : v.payout φ = 1 := by rw [PCWorld.payout, if_pos hv]
+  rw [hpay]
+  have hb := ndShares_nonneg φ P j n
+  rcases hb.lt_or_eq with hb' | hb'
+  · have hP := ndBuySig_pos_imp φ P hj (ndShares_pos_sig hb')
+    have hj1 : (1 : ℝ) ≤ (j : ℝ) := by exact_mod_cast hj
+    exact mul_le_mul_of_nonneg_left (by linarith)
+      (mul_nonneg (by linarith) hb'.le)
+  · rw [← hb']
+    norm_num
+
+/-- **The exploitation** (`thm:nd`): if the price frequently dips below every positive
+threshold, the scale-ladder trader exploits — every rung eventually fires, banking
+`≥ j − 1` in the plausible `φ`-worlds, while total spend stays `≤ 2` in every world. -/
+theorem ndLadderTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
+    (hφ : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds φ)
+    (hfreq : ∀ ε : ℝ, 0 < ε → ∃ᶠ n in atTop, P n φ < ε) :
+    (ndLadderTrader φ).Exploits P DP := by
+  refine exploits_of_bddBelow_of_unbounded _ _ _ 2 ?_ ?_
+  · -- Bounded below by −2: rung `j` spends at most `1/j²` in every world.
+    rintro x ⟨m, v, hv, rfl⟩
+    rw [ndLadderTrader_netWorth, sum_range_triangle_comm]
+    have hk : ∀ k ∈ Finset.range (m + 1),
+        -((1 : ℝ) / ((k + 1 : ℕ) : ℝ) ^ 2)
+          ≤ ∑ n ∈ Finset.Ico (k + 1) (m + 1),
+              ((k + 1 : ℕ) : ℝ) * ndShares φ P (k + 1) n * (v.payout φ - P n φ) := by
+      intro k hkm
+      have hj : 1 ≤ k + 1 := by omega
+      have hsum := ndShares_sum_le_one φ P
+        (j := k + 1) (N := m + 1) (by simp only [Finset.mem_range] at hkm; omega)
+      have hw2 : (0 : ℝ) ≤ 1 / ((k + 1 : ℕ) : ℝ) ^ 2 := by positivity
+      calc -((1 : ℝ) / ((k + 1 : ℕ) : ℝ) ^ 2)
+          ≤ -((∑ n ∈ Finset.Ico (k + 1) (m + 1), ndShares φ P (k + 1) n)
+              * (1 / ((k + 1 : ℕ) : ℝ) ^ 2)) := by
+            have h1 := mul_le_mul_of_nonneg_right hsum hw2
+            rw [one_mul] at h1
+            linarith
+        _ = ∑ n ∈ Finset.Ico (k + 1) (m + 1),
+              -(ndShares φ P (k + 1) n * (1 / ((k + 1 : ℕ) : ℝ) ^ 2)) := by
+            rw [Finset.sum_neg_distrib, ← Finset.sum_mul]
+        _ ≤ _ := Finset.sum_le_sum (fun n _ => ndTerm_ge φ P v hj n)
+    calc (-2 : ℝ)
+        ≤ -∑ k ∈ Finset.range (m + 1), (1 : ℝ) / ((k + 1 : ℕ) : ℝ) ^ 2 := by
+          have := sum_inv_sq_le_two (m + 1)
+          linarith
+      _ = ∑ k ∈ Finset.range (m + 1), -((1 : ℝ) / ((k + 1 : ℕ) : ℝ) ^ 2) := by
+          rw [Finset.sum_neg_distrib]
+      _ ≤ _ := Finset.sum_le_sum hk
+  · -- Unbounded: rung `j > B + 1` fires at its first dip below `ndThr j` past day `j`.
+    intro B
+    obtain ⟨j', hj'⟩ := exists_nat_gt B
+    have hj : 1 ≤ j' + 1 := by omega
+    have hθ := ndThr_pos (j := j' + 1) hj
+    obtain ⟨n₀, hn₀, hdip⟩ := (Filter.frequently_atTop.mp (hfreq _ hθ)) (j' + 1)
+    obtain ⟨v, hv, hvφ⟩ := hφ n₀
+    refine ⟨(ndLadderTrader φ).netWorth P v n₀, ⟨n₀, v, hv, rfl⟩, ?_⟩
+    rw [ndLadderTrader_netWorth, sum_range_triangle_comm]
+    have hterm : ∀ k ∈ Finset.range (n₀ + 1),
+        0 ≤ ∑ n ∈ Finset.Ico (k + 1) (n₀ + 1),
+            ((k + 1 : ℕ) : ℝ) * ndShares φ P (k + 1) n * (v.payout φ - P n φ) :=
+      fun k _ => Finset.sum_nonneg (fun n _ => ndTerm_nonneg φ P v hvφ (by omega) n)
+    have hjmem : j' ∈ Finset.range (n₀ + 1) := Finset.mem_range.mpr (by omega)
+    -- the rung-(j'+1) slice alone exceeds B
+    have harm0 : (armChain (ndBuySig φ (j' + 1)) (n₀ + 1)).denote P = 0 := by
+      rw [armChain_denote_succ, ndBuySig_eq_one φ P hj hn₀ hdip]
+      ring
+    have hsum1 : ∑ n ∈ Finset.Ico (j' + 1) (n₀ + 1), ndShares φ P (j' + 1) n = 1 := by
+      rw [ndShares_sum φ P (by omega), harm0, sub_zero]
+    have hj1 : (1 : ℝ) ≤ ((j' + 1 : ℕ) : ℝ) := by exact_mod_cast hj
+    have hslice : ((j' + 1 : ℕ) : ℝ) - 1
+        ≤ ∑ n ∈ Finset.Ico (j' + 1) (n₀ + 1),
+            ((j' + 1 : ℕ) : ℝ) * ndShares φ P (j' + 1) n * (v.payout φ - P n φ) := by
+      have hw := ndWeight_mul (j := j' + 1) hj
+      have hsq : 1 / ((j' + 1 : ℕ) : ℝ) ^ 2 ≤ 1 := by
+        rw [div_le_one (by nlinarith)]
+        nlinarith
+      calc ((j' + 1 : ℕ) : ℝ) - 1
+          ≤ ((j' + 1 : ℕ) : ℝ) * (1 - 1 / ((j' + 1 : ℕ) : ℝ) ^ 3) := by nlinarith
+        _ = ∑ n ∈ Finset.Ico (j' + 1) (n₀ + 1),
+              ((j' + 1 : ℕ) : ℝ) * ndShares φ P (j' + 1) n
+                * (1 - 1 / ((j' + 1 : ℕ) : ℝ) ^ 3) := by
+            have hfac : ∑ n ∈ Finset.Ico (j' + 1) (n₀ + 1),
+                  ((j' + 1 : ℕ) : ℝ) * ndShares φ P (j' + 1) n
+                    * (1 - 1 / ((j' + 1 : ℕ) : ℝ) ^ 3)
+                = (((j' + 1 : ℕ) : ℝ) * (1 - 1 / ((j' + 1 : ℕ) : ℝ) ^ 3))
+                    * ∑ n ∈ Finset.Ico (j' + 1) (n₀ + 1), ndShares φ P (j' + 1) n := by
+              rw [Finset.mul_sum]
+              exact Finset.sum_congr rfl (fun n _ => by ring)
+            rw [hfac, hsum1, mul_one]
+        _ ≤ _ := Finset.sum_le_sum (fun n _ => ndTerm_profit φ P v hvφ hj n)
+    have hB : B < ((j' + 1 : ℕ) : ℝ) - 1 := by push_cast; linarith
+    have hsingle := Finset.single_le_sum hterm hjmem
+    linarith
+
+#print axioms ndLadderTrader_exploits
+
+/-- Efficient computability of the scale-ladder trader. The trader is genuinely
+poly-size — day `n` carries `n` rungs, each a uniform-width padded chain of `n` blocks,
+`Θ(n²)` tokens with poly-value constants — but certifying it through `dd:fuel` needs
+three pieces the emission toolkit does not yet have:
+
+1. **runtime-divisor `divmod`** (`divmodc` bakes the divisor into the code; here the
+   block width is `Θ(n)`, known only at runtime);
+2. **`PolySegStream.concat`** — `n`-fold segment concatenation (`.append` is binary;
+   the day-`n` stream is `n` rung chunks);
+3. **poly-fueled emission of rung-varying rational constants** — the tokens
+   `⌜ndThr j⌝`, `⌜(j : ℚ)⌝` vary with the rung, so the emitter must compute
+   `Encodable.encode` of these rationals from `j` inside the fuel budget (poly-value by
+   the `1/j³` rescaling, but the encoding functions still need `PolyFueled` codes).
+
+This is the plan's known B2 decision point (growing-width blocks), plus the new
+finding that parametric-family traders (the paper's "efficiently emulatable sequences",
+`app:preliminaries`.3) need constant-token emission our kit hasn't exercised. -/
+theorem ndLadderTrader_ecTok (φ : Sentence) :
+    EfficientlyComputableTok (ndLadderTrader φ) := by
+  sorry -- TODO(blueprint:def:ec): runtime-divisor divmod + PolySegStream.concat + poly-fueled ℚ-constant tokens
+
+/-- **Non-Dogmatism, positive direction** (`thm:nd`): under a logical inductor, if
+`φ`-satisfying plausible worlds keep existing (the per-day semantic rendering of
+`Θ ⊬ ¬φ`), the price is eventually bounded away from `0`. No price-range hypotheses:
+the ladder's economics localize to its trigger bands.
+
+Depends on the `ndLadderTrader_ecTok` `sorry` (emission cert pending); the trader and
+its exploitation are fully proved. -/
+theorem lic_nonDogmatism (P : History) (DP : DeductiveProcess)
+    [hLI : IsLogicalInductor P DP] (φ : Sentence)
+    (hφ : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds φ) :
+    ∃ ε : ℝ, 0 < ε ∧ ∀ᶠ n in atTop, ε ≤ P n φ := by
+  by_contra h
+  have hfreq : ∀ ε : ℝ, 0 < ε → ∃ᶠ n in atTop, P n φ < ε := by
+    intro ε hε
+    by_contra h'
+    rw [Filter.not_frequently] at h'
+    exact h ⟨ε, hε, h'.mono (fun n hn => le_of_not_gt hn)⟩
+  exact hLI.noExploit (ndLadderTrader φ) (ndLadderTrader_ecTok φ)
+    (ndLadderTrader_exploits P DP φ hφ hfreq)
+
+#print axioms lic_nonDogmatism
 
 end LogicalInduction
