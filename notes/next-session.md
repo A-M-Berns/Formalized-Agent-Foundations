@@ -9,10 +9,39 @@ Phases are ordered; each phase boundary is a safe stopping point with a green bu
 Do the phases in order: A → B1 → C → B2 → D → E → F. One phase (or less) per session
 is the right pace; do not start a phase you can't leave green.
 
-## 0. Context snapshot (updated 2026-07-11 — Phases A and B1 are DONE)
+## 0. Context snapshot (updated 2026-07-11, session 2 — A, B1, C, E, D3 all DONE)
 
-> **2026-07-11 session result: Phase A (all of A1–A3) and Phase B1 landed, green,
-> axiom-clean, zero new `sorry`s. Next session starts at Phase C.** What changed:
+> **2026-07-11 session 2 result: Phases E (per Anson's G2 decision: "the non-vacuous
+> way"), C (COMPLETE — `oscillation_exploitable` un-sorried, `lic_price_convergesTo`
+> axiom-clean end-to-end), and D3 landed.** What changed beyond the session-1 note below:
+> - **G2 resolved**: Self-Trust stated with the faithful revelation-schedule modeling
+>   (linkage at finite day `r n`, not by day `n`; dischargeable by M7, no oracle `DP`).
+>   `Properties/SelfTrust.lean`: `DeferralFunction` (both paper conditions),
+>   `cee`/`ceu`/`ccee`/`st` stmt+sorry+TODO(M4). `PCWorld.ValuesAt` (D1's def) is in
+>   `Expectations.lean`.
+> - **Phase C complete** (`Properties/Hysteresis.lean` + `PolySegStream` in
+>   `Computable.lean`): hysteresis holdings state `hystN` (recursive-branch-first ⇒
+>   one-sided block accretion), C2 sign-decomposition accounting
+>   (`netWorth ≥ (b−a−2δ)·B₋ − (a+δ)` in every world), C3 `B₋ → ∞` by induction (no
+>   interleaved-sequence construction), C4 five-segment emission. **`PolySegStream`**
+>   (emitter + runtime length, closed under `append`, `blocks`, `ofTokenStream`) is the
+>   new emission workhorse — use it for B2/D2, not `ecTok_of_blockStream`.
+> - **D3 done**: `LUV.IsIndicator` (relational) + `thm:ei`/`loe`/`expprovind` stmts in
+>   `Expectations.lean`, sorry+TODO(M4) per G1.
+> - **Remaining: B2 (full `thm:nd`), D1 (`lem:conluvapprox` counting lemma), D2
+>   (`thm:ec` bundle-hysteresis attempt), F (M3 exit package).** For B2's e.c.: the
+>   budget state `r n` has *growing-width* increments (the Θ(j) pow-chain inside `β j`),
+>   which neither `ecTok_of_blockStream` nor a fixed `PolySegStream.append` chain
+>   expresses — that is the plan's option (i)/(ii) decision point; consider option (ii)
+>   (constant-width restructure) first now that C is done, or an honest e.c. `sorry`.
+> - Sorry inventory: `thm:ec` (`Expectations.lean:83`) — the only pre-existing one left —
+>   plus the seven *intended* stmt-sorries (4 Self-Trust + 3 expectation-family).
+> - Gates: G1 in force (proofs → M4); G2 resolved 2026-07-11; G3 in use since B1.
+
+## 0-prev. Context snapshot (2026-07-11 session 1 — Phases A and B1)
+
+> **Session-1 result: Phase A (all of A1–A3) and Phase B1 landed, green,
+> axiom-clean, zero new `sorry`s.** What changed:
 > - A1 was done *generically*: `evaln_prec` + **`PolyFueled.prec`** (closure of
 >   `PolyFueled` under `Code.prec` for poly-bounded states) replace the planned bespoke
 >   `subAux_evaln`-style proof; `divmodc_polyFueled`, `addc_polyFueled`, `mulc_polyFueled`,
