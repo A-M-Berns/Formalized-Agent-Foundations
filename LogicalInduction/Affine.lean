@@ -26,6 +26,45 @@ arbitrary valuation of its sentences. -/
 noncomputable def value (A : AffineCombination) (V : History) (w : Valuation) : ℝ :=
   A.const.denote V + (A.terms.map (fun p => p.1.denote V * w p.2)).sum
 
+/-- Operational certificate for a polynomially generated, rank-legal sequence of affine
+combinations.  The paired index for a term is `⟨n,j⟩`: sequence member, then term number.
+This is the affine analogue of `PolyTradeEmulatable`; it exposes syntax boundaries so
+uniform transformations can emit coefficients and sentence codes without decoding an
+opaque serialized value. -/
+structure PolySequence (As : ℕ → AffineCombination) where
+  termCount : ℕ → ℕ
+  coefficient : ℕ → EF
+  sentence : ℕ → Sentence
+  termCount_poly : ∃ c, PolyFueled c termCount
+  const_poly : PolySegStream (fun n => (As n).const.serialize)
+  coefficient_poly : PolySegStream (fun z => (coefficient z).serialize)
+  sentence_poly : ∃ c, PolyFueled c (fun z => Encodable.encode (sentence z))
+  terms_eq : ∀ n,
+    (As n).terms = (List.range (termCount n)).map (fun j =>
+      (coefficient (Nat.pair n j), sentence (Nat.pair n j)))
+  const_rank : ∀ n, (As n).const.rank ≤ n
+  coefficient_rank : ∀ n j, j < termCount n → (coefficient (Nat.pair n j)).rank ≤ n
+  const_closed : ∀ n ρ V, (As n).const.denoteWith ρ V = (As n).const.denote V
+  coefficient_closed : ∀ z ρ V,
+    (coefficient z).denoteWith ρ V = (coefficient z).denote V
+
+theorem PolySequence.terms_rank {As : ℕ → AffineCombination} (h : PolySequence As)
+    (n : ℕ) : ∀ p ∈ (As n).terms, p.1.rank ≤ n := by
+  intro p hp
+  rw [h.terms_eq] at hp
+  simp only [List.mem_map, List.mem_range] at hp
+  obtain ⟨j, hj, rfl⟩ := hp
+  exact h.coefficient_rank n j hj
+
+theorem PolySequence.term_closed {As : ℕ → AffineCombination} (h : PolySequence As)
+    (n : ℕ) : ∀ p ∈ (As n).terms, ∀ ρ V,
+      p.1.denoteWith ρ V = p.1.denote V := by
+  intro p hp ρ V
+  rw [h.terms_eq] at hp
+  simp only [List.mem_map, List.mem_range] at hp
+  obtain ⟨j, _, rfl⟩ := hp
+  exact h.coefficient_closed (Nat.pair n j) ρ V
+
 /-- Market price of an affine combination on day `n`. -/
 noncomputable def price (A : AffineCombination) (V : History) (n : ℕ) : ℝ :=
   A.value V (V n)
@@ -33,6 +72,73 @@ noncomputable def price (A : AffineCombination) (V : History) (n : ℕ) : ℝ :=
 /-- The day-`n` market price of `A`, represented inside the expressible-feature DSL. -/
 def priceFeature (A : AffineCombination) (n : ℕ) : EF :=
   A.terms.foldl (fun acc p => .add acc (.mul p.1 (.price p.2 n))) A.const
+
+/-- Serialization of an affine price feature as its constant prefix followed by one
+coefficient/price/multiply/add block per term. -/
+theorem priceFeature_serialize (A : AffineCombination) (n : ℕ) :
+    (A.priceFeature n).serialize = A.const.serialize ++
+      A.terms.flatMap (fun p =>
+        p.1.serialize ++ (EF.price p.2 n).serialize ++ [3, 2]) := by
+  rw [priceFeature]
+  have aux : ∀ (l : List (EF × Sentence)) (c : EF),
+      (l.foldl (fun acc p => EF.add acc (EF.mul p.1 (EF.price p.2 n))) c).serialize =
+        c.serialize ++ l.flatMap (fun p =>
+          p.1.serialize ++ (EF.price p.2 n).serialize ++ [3, 2]) := by
+    intro l
+    induction l with
+    | nil => intro c; simp
+    | cons p ps ih =>
+        intro c
+        simp only [List.foldl_cons, List.flatMap_cons]
+        rw [ih]
+        simp [EF.serialize, List.append_assoc]
+  exact aux A.terms A.const
+
+/-- A polynomial affine sequence has a uniform segment emitter for every cross-time price
+feature.  Input `z = ⟨n,m⟩` denotes the feature pricing `Aₙ` on market day `m`. -/
+theorem PolySequence.priceFeature_polySeg {As : ℕ → AffineCombination}
+    (h : PolySequence As) :
+    PolySegStream (fun z => ((As z.unpair.1).priceFeature z.unpair.2).serialize) := by
+  obtain ⟨ccount, hcount⟩ := h.termCount_poly
+  obtain ⟨csentence, hsentence⟩ := h.sentence_poly
+  -- An individual term block is indexed by `q = ⟨⟨n,m⟩,j⟩`.
+  have hmember := PolyFueled.left.comp PolyFueled.left
+  have hday := PolyFueled.right.comp PolyFueled.left
+  have hterm := PolyFueled.right
+  have hcanonical := hmember.pair hterm
+  have hcoeff := h.coefficient_poly.comp hcanonical
+  have hpriceTok : PolyTokenStream (fun q =>
+      (EF.price (h.sentence
+          (Nat.pair q.unpair.1.unpair.1 q.unpair.2)) q.unpair.1.unpair.2).serialize) := by
+    have heq : (fun q : ℕ =>
+        (EF.price (h.sentence
+            (Nat.pair q.unpair.1.unpair.1 q.unpair.2)) q.unpair.1.unpair.2).serialize) =
+        (fun q : ℕ => [0] ++ [Encodable.encode (h.sentence
+            (Nat.pair q.unpair.1.unpair.1 q.unpair.2))] ++ [q.unpair.1.unpair.2]) := by
+      funext q
+      simp [EF.serialize]
+    rw [heq]
+    exact (PolyTokenStream.const 0).append
+      ((PolyTokenStream.polyTok (hsentence.comp hcanonical)).append
+        (PolyTokenStream.polyTok hday))
+  have hprice := PolySegStream.ofTokenStream hpriceTok
+  have hmul : PolySegStream (fun _ => [3]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 3)
+  have hadd : PolySegStream (fun _ => [2]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 2)
+  have hblock : PolySegStream (fun q =>
+      (h.coefficient (Nat.pair q.unpair.1.unpair.1 q.unpair.2)).serialize ++
+        (EF.price (h.sentence (Nat.pair q.unpair.1.unpair.1 q.unpair.2))
+          q.unpair.1.unpair.2).serialize ++ [3, 2]) := by
+    refine PolySegStream.of_eq (((hcoeff.append hprice).append hmul).append hadd) ?_
+    intro q
+    simp [List.append_assoc]
+  have hblocks := PolySegStream.concatVar hblock (hcount.comp PolyFueled.left)
+  have hconst := h.const_poly.comp PolyFueled.left
+  refine PolySegStream.of_eq (hconst.append hblocks) ?_
+  intro z
+  rw [priceFeature_serialize, h.terms_eq]
+  simp only [List.flatMap_map, Nat.unpair_pair, Function.comp_apply]
 
 theorem priceFeature_denote (A : AffineCombination) (V : History) (n : ℕ) :
     (A.priceFeature n).denote V = A.price V n := by
@@ -51,6 +157,30 @@ theorem priceFeature_denote (A : AffineCombination) (V : History) (n : ℕ) :
           Pi.add_apply, Pi.mul_apply]
         ring
   exact aux A.terms A.const
+
+theorem PolySequence.priceFeature_closed {As : ℕ → AffineCombination}
+    (h : PolySequence As) (n m : ℕ) (ρ : List ℝ) (V : History) :
+    ((As n).priceFeature m).denoteWith ρ V = ((As n).priceFeature m).denote V := by
+  rw [priceFeature]
+  have aux : ∀ (l : List (EF × Sentence)) (c : EF),
+      c.denoteWith ρ V = c.denote V →
+      (∀ p ∈ l, p.1.denoteWith ρ V = p.1.denote V) →
+      (l.foldl (fun acc p => EF.add acc (EF.mul p.1 (EF.price p.2 m))) c).denoteWith ρ V =
+        (l.foldl (fun acc p => EF.add acc (EF.mul p.1 (EF.price p.2 m))) c).denote V := by
+    intro l
+    induction l with
+    | nil => intro c hc _; exact hc
+    | cons p ps ih =>
+        intro c hc ht
+        simp only [List.foldl_cons]
+        apply ih
+        · simp only [EF.denoteWith, EF.denote_add, EF.denote_mul, EF.denote_price,
+            Pi.add_apply, Pi.mul_apply]
+          rw [hc, ht p (by simp)]
+        · intro q hq
+          exact ht q (by simp [hq])
+  exact aux (As n).terms (As n).const (h.const_closed n ρ V)
+    (fun p hp => h.term_closed n p hp ρ V)
 
 theorem priceFeature_rank (A : AffineCombination) {k n : ℕ} (hkn : k ≤ n)
     (hc : A.const.rank ≤ k) (ht : ∀ p ∈ A.terms, p.1.rank ≤ k) :
@@ -84,9 +214,44 @@ theorem magnitude_nonneg (A : AffineCombination) (V : History) :
     obtain ⟨p, _, rfl⟩ := hx
     exact abs_nonneg _)
 
+/-- Two market assessments of the same affine combination differ by at most its share
+magnitude.  The affine constant again cancels. -/
+theorem abs_price_sub_price_le_magnitude (A : AffineCombination) (V : History) (m n : ℕ)
+    (hm : ∀ φ, 0 ≤ V m φ ∧ V m φ ≤ 1)
+    (hn : ∀ φ, 0 ≤ V n φ ∧ V n φ ≤ 1) :
+    |A.price V m - A.price V n| ≤ A.magnitude V := by
+  simp only [price, value, magnitude]
+  ring_nf
+  induction A.terms with
+  | nil => simp
+  | cons p ps ih =>
+      simp only [List.map_cons, List.sum_cons]
+      have hdiff : |V m p.2 - V n p.2| ≤ 1 := by
+        rw [abs_le]
+        constructor <;> linarith [hm p.2, hn p.2]
+      calc
+        |p.1.denote V * V m p.2 +
+              (ps.map (fun q => q.1.denote V * V m q.2)).sum -
+            (p.1.denote V * V n p.2 +
+              (ps.map (fun q => q.1.denote V * V n q.2)).sum)| =
+            |p.1.denote V * (V m p.2 - V n p.2) +
+              ((ps.map (fun q => q.1.denote V * V m q.2)).sum -
+                (ps.map (fun q => q.1.denote V * V n q.2)).sum)| := by ring_nf
+        _ ≤ |p.1.denote V * (V m p.2 - V n p.2)| +
+              |(ps.map (fun q => q.1.denote V * V m q.2)).sum -
+                (ps.map (fun q => q.1.denote V * V n q.2)).sum| := abs_add_le _ _
+        _ ≤ |p.1.denote V| + (ps.map (fun q => |q.1.denote V|)).sum := by
+          rw [abs_mul]
+          exact add_le_add (by nlinarith [abs_nonneg (p.1.denote V)]) ih
+
 /-- Absolute value inside the expressible-feature DSL. -/
 def absFeature (e : EF) : EF :=
   .max e (.mul (.const (-1)) e)
+
+theorem absFeature_serialize (e : EF) :
+    (absFeature e).serialize =
+      e.serialize ++ (EF.const (-1)).serialize ++ e.serialize ++ [3, 4] := by
+  simp [absFeature, EF.serialize, List.append_assoc]
 
 theorem absFeature_denoteWith (e : EF) (V : History) (ρ : List ℝ) :
     (absFeature e).denoteWith ρ V = |e.denoteWith ρ V| := by
@@ -99,6 +264,51 @@ theorem absFeature_denoteWith (e : EF) (V : History) (ρ : List ℝ) :
 /-- Share magnitude reified as an expressible feature. -/
 def magnitudeFeature (A : AffineCombination) : EF :=
   A.terms.foldr (fun p acc => EF.add (absFeature p.1) acc) (EF.const 0)
+
+theorem magnitudeFeature_serialize (A : AffineCombination) :
+    A.magnitudeFeature.serialize =
+      A.terms.flatMap (fun p => (absFeature p.1).serialize) ++
+        (EF.const 0).serialize ++ List.replicate A.terms.length 2 := by
+  rw [magnitudeFeature]
+  induction A.terms with
+  | nil => simp [EF.serialize]
+  | cons p ps ih =>
+      simp only [List.foldr_cons, List.flatMap_cons, List.length_cons]
+      rw [show (EF.add (absFeature p.1)
+          (ps.foldr (fun q acc => EF.add (absFeature q.1) acc) (EF.const 0))).serialize =
+        (absFeature p.1).serialize ++
+          (ps.foldr (fun q acc => EF.add (absFeature q.1) acc) (EF.const 0)).serialize ++
+            [2] by simp [EF.serialize]]
+      rw [ih]
+      simp [List.replicate_succ', List.append_assoc]
+
+/-- Uniform emission of the reified share magnitude for a polynomial affine sequence. -/
+theorem PolySequence.magnitudeFeature_polySeg {As : ℕ → AffineCombination}
+    (h : PolySequence As) :
+    PolySegStream (fun n => (As n).magnitudeFeature.serialize) := by
+  obtain ⟨ccount, hcount⟩ := h.termCount_poly
+  have hneg : PolySegStream (fun _ => (EF.const (-1)).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))
+  have hmul : PolySegStream (fun _ => [3]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 3)
+  have hmax : PolySegStream (fun _ => [4]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 4)
+  have habs : PolySegStream (fun z => (absFeature (h.coefficient z)).serialize) := by
+    refine PolySegStream.of_eq
+      ((((h.coefficient_poly.append hneg).append h.coefficient_poly).append hmul).append
+        hmax) ?_
+    intro z
+    rw [absFeature_serialize]
+    simp [List.append_assoc]
+  have hterms := PolySegStream.concatVar habs hcount
+  have hzero : PolySegStream (fun _ => (EF.const 0).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
+  have htags := PolySegStream.repeatTag 2 hcount
+  refine PolySegStream.of_eq ((hterms.append hzero).append htags) ?_
+  intro n
+  rw [magnitudeFeature_serialize, h.terms_eq]
+  simp only [List.flatMap_map, Nat.unpair_pair, List.length_map, List.length_range,
+    Function.comp_apply]
 
 theorem magnitudeFeature_denoteWith (A : AffineCombination) (V : History) (ρ : List ℝ) :
     (A.magnitudeFeature).denoteWith ρ V =
@@ -118,6 +328,15 @@ theorem magnitudeFeature_denote (A : AffineCombination) (V : History) :
     A.magnitudeFeature.denote V = A.magnitude V := by
   rw [EF.denote, magnitudeFeature_denoteWith]
   rfl
+
+theorem PolySequence.magnitudeFeature_closed {As : ℕ → AffineCombination}
+    (h : PolySequence As) (n : ℕ) (ρ : List ℝ) (V : History) :
+    (As n).magnitudeFeature.denoteWith ρ V = (As n).magnitudeFeature.denote V := by
+  rw [magnitudeFeature_denoteWith, magnitudeFeature_denote, magnitude]
+  congr 1
+  apply List.map_congr_left
+  intro p hp
+  rw [h.term_closed n p hp ρ V]
 
 theorem magnitudeFeature_rank_le (A : AffineCombination) {n : ℕ}
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ n) : A.magnitudeFeature.rank ≤ n := by
@@ -141,11 +360,27 @@ theorem riskFeature_denote (A : AffineCombination) (entry : EF) (V : History) :
     (A.riskFeature entry).denote V = entry.denote V * A.magnitude V := by
   simp [riskFeature, EF.denote_mul, magnitudeFeature_denote]
 
+theorem PolySequence.riskFeature_closed {As : ℕ → AffineCombination}
+    (h : PolySequence As) {entry : ℕ → EF}
+    (hentry : ∀ n ρ V, (entry n).denoteWith ρ V = (entry n).denote V)
+    (n : ℕ) (ρ : List ℝ) (V : History) :
+    ((As n).riskFeature (entry n)).denoteWith ρ V =
+      ((As n).riskFeature (entry n)).denote V := by
+  simp only [riskFeature, EF.denoteWith, EF.denote_mul, Pi.mul_apply]
+  rw [hentry n ρ V, h.magnitudeFeature_closed n ρ V]
+
 theorem riskFeature_rank_le (A : AffineCombination) (entry : EF) {n : ℕ}
     (hentry : entry.rank ≤ n) (hterms : ∀ p ∈ A.terms, p.1.rank ≤ n) :
     (A.riskFeature entry).rank ≤ n := by
   simp only [riskFeature, EF.rank]
   exact Nat.max_le.mpr ⟨hentry, A.magnitudeFeature_rank_le hterms⟩
+
+/-- Uniform launch-risk emission once the entry feature is uniformly emitted. -/
+theorem PolySequence.riskFeature_polySeg {As : ℕ → AffineCombination}
+    (h : PolySequence As) {entry : ℕ → EF}
+    (hentry : PolySegStream (fun n => (entry n).serialize)) :
+    PolySegStream (fun n => ((As n).riskFeature (entry n)).serialize) :=
+  PolySegStream.serialize_mul hentry h.magnitudeFeature_polySeg
 
 /-- Buying `A` on day `n`: purchase each sentence coefficient at the current market price.
 The affine constant needs no trade because it cancels between world value and price. -/

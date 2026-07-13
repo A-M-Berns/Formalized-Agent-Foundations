@@ -79,6 +79,92 @@ structure PolyTradeEmulatable (Ts : ℕ → Trader) where
         let z := Nat.pair (Nat.pair k n) j
         (coefficient z, sentence z))
 
+/-- A paired segment emitter supplies the raw universal-program witness for an emulatable
+family.  This is the family analogue of `ecTok_of_segStream`; the proof converts polynomial
+bounds in the paired input `⟨k,n⟩` to bounds in `n` using the side condition `k ≤ n`. -/
+theorem EfficientlyEmulatable.of_polySeg {Ts : ℕ → Trader}
+    (hzero : ∀ k n, n < k → ((Ts k).strat n).trades = [])
+    (hs : PolySegStream (fun z =>
+      serializeTrades ((Ts z.unpair.1).strat z.unpair.2).trades)) :
+    EfficientlyEmulatable Ts := by
+  obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hlens, hspec⟩ := hs
+  -- Reassociate `⟨k,⟨n,i⟩⟩` to the segment emitter's `⟨⟨k,n⟩,i⟩`.
+  let canonicalCode : Nat.Partrec.Code :=
+    ((Nat.Partrec.Code.left.pair
+      (Nat.Partrec.Code.left.comp Nat.Partrec.Code.right)).pair
+        (Nat.Partrec.Code.right.comp Nat.Partrec.Code.right))
+  have hcanonical : PolyFueled canonicalCode (fun x =>
+      Nat.pair (Nat.pair x.unpair.1 x.unpair.2.unpair.1) x.unpair.2.unpair.2) := by
+    exact (PolyFueled.left.pair (PolyFueled.left.comp PolyFueled.right)).pair
+      (PolyFueled.right.comp PolyFueled.right)
+  have htoken : PolyFueled (ct.comp canonicalCode) (fun x =>
+      tokenFn (Nat.pair (Nat.pair x.unpair.1 x.unpair.2.unpair.1)
+        x.unpair.2.unpair.2)) := htok.comp hcanonical
+  obtain ⟨bc, hfc, _, aT, kT, hkT⟩ := htoken
+  obtain ⟨_, _, hlenPoly, _⟩ := hlen
+  obtain ⟨aL, kL, hkL⟩ := hlenPoly
+  let lenBound : ℕ → ℕ := fun n => aL * (Nat.pair n n + 1) ^ kL + aL
+  have hdiagPair : IsPolyBounded (fun n => Nat.pair n n) :=
+    (IsPolyBounded.linear 0).pair (IsPolyBounded.linear 0)
+  have hlenBound : IsPolyBounded lenBound := by
+    exact (show IsPolyBounded (fun x => aL * (x + 1) ^ kL + aL) from
+      ⟨aL, kL, fun _ => le_rfl⟩).comp hdiagPair
+  let inputBound : ℕ → ℕ := fun n => Nat.pair n (Nat.pair n (lenBound n))
+  have hinputBound : IsPolyBounded inputBound :=
+    (IsPolyBounded.linear 0).pair ((IsPolyBounded.linear 0).pair hlenBound)
+  let fuelBound : ℕ → ℕ := fun n => aT * (inputBound n + 1) ^ kT + aT
+  have hfuelBound : IsPolyBounded fuelBound := by
+    exact (show IsPolyBounded (fun x => aT * (x + 1) ^ kT + aT) from
+      ⟨aT, kT, fun _ => le_rfl⟩).comp hinputBound
+  obtain ⟨A, K, hAK⟩ := hlenBound.max hfuelBound
+  refine ⟨ct.comp canonicalCode, A, K, hzero, ?_, ?_⟩
+  · intro k n hkn
+    have hstreamLen :
+        (serializeTrades ((Ts k).strat n).trades).length = lenFn (Nat.pair k n) := by
+      have raw := hlens (Nat.pair k n)
+      dsimp only at raw
+      rw [Nat.unpair_pair k n] at raw
+      exact raw
+    rw [hstreamLen]
+    have hpair : Nat.pair k n ≤ Nat.pair n n := pair_le_pair_left' n hkn
+    calc
+      lenFn (Nat.pair k n) ≤ aL * (Nat.pair k n + 1) ^ kL + aL := hkL _
+      _ ≤ lenBound n := by dsimp only [lenBound]; gcongr
+      _ ≤ A * (n + 1) ^ K + A := (le_max_left _ _).trans (hAK n)
+  · intro k n i hkn hi
+    have hstreamLen :
+        (serializeTrades ((Ts k).strat n).trades).length = lenFn (Nat.pair k n) := by
+      have raw := hlens (Nat.pair k n)
+      dsimp only at raw
+      rw [Nat.unpair_pair k n] at raw
+      exact raw
+    have hpair : Nat.pair k n ≤ Nat.pair n n := pair_le_pair_left' n hkn
+    have hlenLe : lenFn (Nat.pair k n) ≤ lenBound n :=
+      (hkL _).trans (by dsimp only [lenBound]; gcongr)
+    have hiLe : i ≤ lenBound n := by rw [hstreamLen] at hi; omega
+    have hinner : Nat.pair n i ≤ Nat.pair n (lenBound n) :=
+      pair_le_pair_right' n hiLe
+    have hx : Nat.pair k (Nat.pair n i) ≤ inputBound n := by
+      dsimp only [inputBound]
+      exact (pair_le_pair_left' (Nat.pair n i) hkn).trans
+        (pair_le_pair_right' n hinner)
+    have hbc : bc (Nat.pair k (Nat.pair n i)) ≤ A * (n + 1) ^ K + A := by
+      calc
+        bc (Nat.pair k (Nat.pair n i)) ≤
+            aT * (Nat.pair k (Nat.pair n i) + 1) ^ kT + aT := hkT _
+        _ ≤ fuelBound n := by dsimp only [fuelBound]; gcongr
+        _ ≤ A * (n + 1) ^ K + A := (le_max_right _ _).trans (hAK n)
+    have key := hfc (Nat.pair k (Nat.pair n i))
+    simp only [Function.comp_apply, Nat.unpair_pair] at key
+    have hspec' : tokenFn (Nat.pair (Nat.pair k n) i) =
+        (serializeTrades ((Ts k).strat n).trades).getD i 0 := by
+      have raw := hspec (Nat.pair k n) i (by rw [← hstreamLen]; exact hi)
+      dsimp only at raw
+      rw [Nat.unpair_pair k n] at raw
+      exact raw
+    rw [hspec'] at key
+    simpa [Nat.unpair_pair] using Nat.Partrec.Code.evaln_mono hbc key
+
 @[simp] theorem serializeTrades_append (xs ys : List (EF × Sentence)) :
     serializeTrades (xs ++ ys) = serializeTrades xs ++ serializeTrades ys := by
   induction xs with
@@ -2264,6 +2350,7 @@ theorem maturitySchedule_closing (Ts : ℕ → Trader) (V : History)
 #print axioms fractionalBudgetedTrader_ecTok
 #print axioms fractionalBudgetedTrader_exploits
 #print axioms noFractionalRepeatableReturn
+#print axioms EfficientlyEmulatable.of_polySeg
 #print axioms maturityDay_spec
 #print axioms featureWeight_denote
 #print axioms budgetedTrader_value

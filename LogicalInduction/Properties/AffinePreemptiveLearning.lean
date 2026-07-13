@@ -183,6 +183,69 @@ previous state once, so its feature syntax grows linearly rather than exponentia
 
 namespace AffineCombination
 
+theorem oneMinus_closed {e : EF} {ρ : List ℝ} {V : History}
+    (he : e.denoteWith ρ V = e.denote V) :
+    (oneMinus e).denoteWith ρ V = (oneMinus e).denote V := by
+  simp only [oneMinus, EF.denoteWith, EF.denote_add, EF.denote_mul, EF.denote_const,
+    Pi.add_apply, Pi.mul_apply]
+  rw [he]
+
+theorem sellIndF_closed {e : EF} {ρ : List ℝ} {V : History} (high δ : ℚ)
+    (he : e.denoteWith ρ V = e.denote V) :
+    (sellIndF e high δ).denoteWith ρ V = (sellIndF e high δ).denote V := by
+  simp only [sellIndF, clip01, efMin, EF.denoteWith, EF.denote_max, EF.denote_mul,
+    EF.denote_add, EF.denote_const, Pi.mul_apply, Pi.add_apply]
+  rw [he]
+
+/-- Segment-level closure for the feature-generic sell ramp. -/
+theorem PolySegStream.serialize_sellIndF {e : ℕ → EF}
+    (he : PolySegStream (fun n => (e n).serialize)) (high δ : ℚ) :
+    PolySegStream (fun n => (sellIndF (e n) high δ).serialize) :=
+  PolySegStream.serialize_clip01
+    (PolySegStream.serialize_mul
+      (PolySegStream.serialize_add he
+        (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (δ - high))))
+      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (1 / δ))))
+
+/-- Segment-level closure for the feature-generic buy ramp. -/
+theorem PolySegStream.serialize_buyIndF {e : ℕ → EF}
+    (he : PolySegStream (fun n => (e n).serialize)) (low δ : ℚ) :
+    PolySegStream (fun n => (buyIndF (e n) low δ).serialize) :=
+  PolySegStream.serialize_clip01
+    (PolySegStream.serialize_mul
+      (PolySegStream.serialize_add
+        (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (low + δ)))
+        (PolySegStream.serialize_mul
+          (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) he))
+      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (1 / δ))))
+
+/-- Continuous entry signal for the diagonal affine price. -/
+def gradualEntry (As : ℕ → AffineCombination) (low δ : ℚ) (n : ℕ) : EF :=
+  buyIndF ((As n).priceFeature n) low δ
+
+theorem PolySequence.gradualEntry_polySeg {As : ℕ → AffineCombination}
+    (h : PolySequence As) (low δ : ℚ) :
+    PolySegStream (fun n => (gradualEntry As low δ n).serialize) := by
+  have hdiag : PolySegStream (fun n => ((As n).priceFeature n).serialize) := by
+    refine PolySegStream.of_eq (h.priceFeature_polySeg.comp (PolyFueled.id.pair PolyFueled.id)) ?_
+    intro n
+    simp only [Nat.unpair_pair]
+  exact PolySegStream.serialize_buyIndF hdiag low δ
+
+theorem PolySequence.gradualEntry_rank_le {As : ℕ → AffineCombination}
+    (h : PolySequence As) (low δ : ℚ) (n : ℕ) :
+    (gradualEntry As low δ n).rank ≤ n := by
+  simp only [gradualEntry, buyIndF_rank]
+  exact (As n).priceFeature_rank le_rfl (h.const_rank n) (h.terms_rank n)
+
+theorem PolySequence.gradualEntry_closed {As : ℕ → AffineCombination}
+    (h : PolySequence As) (low δ : ℚ) (n : ℕ) (ρ : List ℝ) (V : History) :
+    (gradualEntry As low δ n).denoteWith ρ V =
+      (gradualEntry As low δ n).denote V := by
+  simp only [gradualEntry, buyIndF, clip01, efMin, EF.denoteWith, EF.denote_max,
+    EF.denote_mul, EF.denote_add, EF.denote_const, Pi.mul_apply, Pi.add_apply]
+  rw [h.priceFeature_closed n n ρ V]
+
 def gradualRemaining (A : AffineCombination) (buyDay : ℕ) (high δ : ℚ) : ℕ → EF
   | 0 => .const 1
   | t + 1 => .mul (A.gradualRemaining buyDay high δ t)
@@ -192,6 +255,132 @@ def gradualSellFraction (A : AffineCombination) (buyDay : ℕ) (high δ : ℚ)
     (t : ℕ) : EF :=
   .mul (A.gradualRemaining buyDay high δ t)
     (sellIndF (A.priceFeature (buyDay + t + 1)) high δ)
+
+/-- The recursive occupancy feature serializes as its initial `1` followed by one update
+block for every elapsed day. -/
+theorem gradualRemaining_serialize (A : AffineCombination) (buyDay : ℕ)
+    (high δ : ℚ) (t : ℕ) :
+    (A.gradualRemaining buyDay high δ t).serialize =
+      (EF.const 1).serialize ++
+        (List.range t).flatMap (fun j =>
+          (oneMinus (sellIndF (A.priceFeature (buyDay + j + 1)) high δ)).serialize ++ [3]) := by
+  induction t with
+  | zero => simp [gradualRemaining]
+  | succ t ih =>
+      rw [gradualRemaining]
+      simp only [EF.serialize, ih, List.range_succ, List.flatMap_append,
+        List.flatMap_singleton]
+      simp [List.append_assoc]
+
+/-- Uniform emission of the two-index gradual occupancy family.  Input `z = ⟨i,t⟩`
+denotes member `Aᵢ`, opened on day `i`, after `t` gradual-sale updates. -/
+theorem PolySequence.gradualRemaining_polySeg {As : ℕ → AffineCombination}
+    (h : PolySequence As) (high δ : ℚ) :
+    PolySegStream (fun z =>
+      ((As z.unpair.1).gradualRemaining z.unpair.1 high δ z.unpair.2).serialize) := by
+  obtain ⟨cadd, hadd⟩ := addc_polyFueled
+  -- An update block is indexed by `q = ⟨⟨i,t⟩,j⟩`.
+  have hmember := PolyFueled.left.comp PolyFueled.left
+  have hstep := PolyFueled.right
+  have hfuture := (hadd.comp (hmember.pair hstep)).succ_comp
+  have hpriceIndex := hmember.pair hfuture
+  have hprice : PolySegStream (fun q =>
+      ((As q.unpair.1.unpair.1).priceFeature
+        (q.unpair.1.unpair.1 + q.unpair.2 + 1)).serialize) := by
+    refine PolySegStream.of_eq (h.priceFeature_polySeg.comp hpriceIndex) ?_
+    intro q
+    simp only [Nat.unpair_pair]
+  have hsell := PolySegStream.serialize_sellIndF hprice high δ
+  have hremain := PolySegStream.serialize_oneMinus hsell
+  have hmul : PolySegStream (fun _ => [3]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 3)
+  have hblock : PolySegStream (fun q =>
+      (oneMinus (sellIndF
+        ((As q.unpair.1.unpair.1).priceFeature
+          (q.unpair.1.unpair.1 + q.unpair.2 + 1)) high δ)).serialize ++ [3]) := by
+    exact hremain.append hmul
+  have hblocks := PolySegStream.concatVar hblock PolyFueled.right
+  have hone : PolySegStream (fun _ => (EF.const 1).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)
+  refine PolySegStream.of_eq (hone.append hblocks) ?_
+  intro z
+  rw [gradualRemaining_serialize]
+  simp only [Nat.unpair_pair]
+
+theorem PolySequence.gradualSellFraction_polySeg {As : ℕ → AffineCombination}
+    (h : PolySequence As) (high δ : ℚ) :
+    PolySegStream (fun z =>
+      ((As z.unpair.1).gradualSellFraction z.unpair.1 high δ z.unpair.2).serialize) := by
+  obtain ⟨cadd, hadd⟩ := addc_polyFueled
+  have hmember := PolyFueled.left
+  have hstep := PolyFueled.right
+  have hfuture := (hadd.comp (hmember.pair hstep)).succ_comp
+  have hprice : PolySegStream (fun z =>
+      ((As z.unpair.1).priceFeature (z.unpair.1 + z.unpair.2 + 1)).serialize) := by
+    refine PolySegStream.of_eq
+      (h.priceFeature_polySeg.comp (hmember.pair hfuture)) ?_
+    intro z
+    simp only [Nat.unpair_pair]
+  have hsell := PolySegStream.serialize_sellIndF hprice high δ
+  refine PolySegStream.of_eq
+    (PolySegStream.serialize_mul (h.gradualRemaining_polySeg high δ) hsell) ?_
+  intro z
+  rfl
+
+/-- Day/member ordering used by `noFractionalRepeatableReturn`: on day `n`, member `i`
+has elapsed occupancy `n-i` (truncated to zero before launch). -/
+def gradualOccupancy (As : ℕ → AffineCombination) (high δ : ℚ)
+    (i n : ℕ) : EF :=
+  (As i).gradualRemaining i high δ (n - i)
+
+def gradualRisk (As : ℕ → AffineCombination) (low δ : ℚ) (i : ℕ) : EF :=
+  (As i).riskFeature (gradualEntry As low δ i)
+
+theorem PolySequence.gradualRisk_polySeg {As : ℕ → AffineCombination}
+    (h : PolySequence As) (low δ : ℚ) :
+    PolySegStream (fun i => (gradualRisk As low δ i).serialize) :=
+  h.riskFeature_polySeg (h.gradualEntry_polySeg low δ)
+
+theorem PolySequence.gradualRisk_rank_le {As : ℕ → AffineCombination}
+    (h : PolySequence As) (low δ : ℚ) (i : ℕ) :
+    (gradualRisk As low δ i).rank ≤ i :=
+  (As i).riskFeature_rank_le (gradualEntry As low δ i)
+    (h.gradualEntry_rank_le low δ i) (h.terms_rank i)
+
+theorem PolySequence.gradualRisk_closed {As : ℕ → AffineCombination}
+    (h : PolySequence As) (low δ : ℚ) (i : ℕ) (ρ : List ℝ) (V : History) :
+    (gradualRisk As low δ i).denoteWith ρ V = (gradualRisk As low δ i).denote V :=
+  h.riskFeature_closed (h.gradualEntry_closed low δ) i ρ V
+
+def gradualTradeCount {As : ℕ → AffineCombination} (h : PolySequence As) (z : ℕ) : ℕ :=
+  if z.unpair.1 ≤ z.unpair.2 then h.termCount z.unpair.1 else 0
+
+def gradualCoefficient {As : ℕ → AffineCombination} (h : PolySequence As)
+    (low high δ : ℚ) (z : ℕ) : EF :=
+  let k := z.unpair.1.unpair.1
+  let n := z.unpair.1.unpair.2
+  let j := z.unpair.2
+  let base := h.coefficient (Nat.pair k j)
+  if n = k then EF.mul (gradualEntry As low δ k) base
+  else
+    EF.mul
+      (EF.mul (EF.const (-1))
+        (EF.mul (gradualEntry As low δ k)
+          ((As k).gradualSellFraction k high δ (n - k - 1))))
+      base
+
+def gradualSentence {As : ℕ → AffineCombination} (h : PolySequence As) (z : ℕ) : Sentence :=
+  h.sentence (Nat.pair z.unpair.1.unpair.1 z.unpair.2)
+
+theorem PolySequence.gradualOccupancy_polySeg {As : ℕ → AffineCombination}
+    (h : PolySequence As) (high δ : ℚ) :
+    PolySegStream (fun z =>
+      (gradualOccupancy As high δ z.unpair.2 z.unpair.1).serialize) := by
+  have helapsed := subc_polyFueled.comp (PolyFueled.left.pair PolyFueled.right)
+  refine PolySegStream.of_eq
+    ((h.gradualRemaining_polySeg high δ).comp (PolyFueled.right.pair helapsed)) ?_
+  intro z
+  simp only [Nat.unpair_pair, gradualOccupancy]
 
 @[simp] theorem gradualRemaining_zero (A : AffineCombination) (buyDay : ℕ)
     (high δ : ℚ) : A.gradualRemaining buyDay high δ 0 = .const 1 := rfl
@@ -305,6 +494,67 @@ theorem gradualSellFraction_rank_le (A : AffineCombination) (buyDay : ℕ)
   exact Nat.max_le.mpr ⟨(A.gradualRemaining_rank_le buyDay high δ hconst hterms t).trans
     (by omega), A.priceFeature_rank (by omega) hconst hterms⟩
 
+theorem PolySequence.gradualRemaining_closed {As : ℕ → AffineCombination}
+    (h : PolySequence As) (i : ℕ) (high δ : ℚ) (ρ : List ℝ) (V : History) : ∀ t,
+    ((As i).gradualRemaining i high δ t).denoteWith ρ V =
+      ((As i).gradualRemaining i high δ t).denote V := by
+  intro t
+  induction t with
+  | zero => rfl
+  | succ t ih =>
+      simp only [gradualRemaining, EF.denoteWith, EF.denote_mul, Pi.mul_apply]
+      rw [ih]
+      rw [oneMinus_closed (sellIndF_closed high δ
+        (h.priceFeature_closed i (i + t + 1) ρ V))]
+
+theorem PolySequence.gradualOccupancy_closed {As : ℕ → AffineCombination}
+    (h : PolySequence As) (high δ : ℚ) (i n : ℕ) (ρ : List ℝ) (V : History) :
+    (gradualOccupancy As high δ i n).denoteWith ρ V =
+      (gradualOccupancy As high δ i n).denote V :=
+  h.gradualRemaining_closed i high δ ρ V (n - i)
+
+theorem PolySequence.gradualOccupancy_rank_le {As : ℕ → AffineCombination}
+    (h : PolySequence As) (high δ : ℚ) (i n : ℕ) (hin : i ≤ n) :
+    (gradualOccupancy As high δ i n).rank ≤ n := by
+  rw [gradualOccupancy]
+  have hr := (As i).gradualRemaining_rank_le i high δ (h.const_rank i)
+    (h.terms_rank i) (n - i)
+  exact hr.trans (by omega)
+
+theorem gradualOccupancy_decreasing (As : ℕ → AffineCombination) (V : History)
+    (high δ : ℚ) :
+    ROIBudget.DecreasingOccupancy (fun i n => (gradualOccupancy As high δ i n).denote V) := by
+  constructor
+  · intro i n
+    exact ((As i).gradualRemaining_mem V i high δ (n - i)).1
+  · intro i n
+    exact ((As i).gradualRemaining_mem V i high δ (n - i)).2
+  · intro i n
+    by_cases hin : i ≤ n
+    · have hstep := (As i).gradualRemaining_denote_antitone V i high δ (n - i)
+      have hn : n - i + 1 = n + 1 - i := by omega
+      rwa [hn] at hstep
+    · have hni : n + 1 ≤ i := by omega
+      simp [gradualOccupancy, Nat.sub_eq_zero_of_le hni,
+        Nat.sub_eq_zero_of_le (Nat.le_of_lt (by omega : n < i))]
+
+theorem gradualOccupancy_eventually_zero (As : ℕ → AffineCombination) (V : History)
+    (high δ : ℚ)
+    (hfull : ∀ i, ∃ t,
+      (sellIndF ((As i).priceFeature (i + t + 1)) high δ).denote V = 1) :
+    ∀ i, ∃ N, ∀ n, N ≤ n → (gradualOccupancy As high δ i n).denote V = 0 := by
+  intro i
+  obtain ⟨t, ht⟩ := hfull i
+  refine ⟨i + t + 1, fun n hn => ?_⟩
+  have hz := (As i).gradualRemaining_eq_zero_of_full_signal V i high δ t ht
+  have hmono : ∀ s, t + 1 ≤ s →
+      ((As i).gradualRemaining i high δ s).denote V = 0 := by
+    intro s hts
+    induction s, hts using Nat.le_induction with
+    | base => exact hz
+    | succ s _ ih => rw [gradualRemaining_denote_succ, ih, zero_mul]
+  exact hmono (n - i) (by omega)
+
 /-- The paper's component trader: buy the entry-weighted combination on `buyDay`, then
 sell `entry · gradualSellFraction t` copies on each future day. -/
 def gradualTrader (A : AffineCombination) (entry : EF) (buyDay : ℕ) (high δ : ℚ)
@@ -330,6 +580,150 @@ def gradualTrader (A : AffineCombination) (entry : EF) (buyDay : ℕ) (high δ :
         exact (A.scale coeff).buy n (A.scale_terms_rank_le coeff hcoeff
           (fun p hp => (hterms p hp).trans (Nat.le_of_lt ha)))
       · exact emptyStrategy n
+
+/-- The uniformly generated gradual component family used by the affine ROI argument. -/
+def gradualFamily (As : ℕ → AffineCombination) (low high δ : ℚ)
+    (h : PolySequence As) : ℕ → Trader := fun i =>
+  (As i).gradualTrader (gradualEntry As low δ i) i high δ
+    (h.gradualEntry_rank_le low δ i) (h.const_rank i) (h.terms_rank i)
+
+theorem PolySequence.gradualTradeCount_poly {As : ℕ → AffineCombination}
+    (h : PolySequence As) : ∃ c, PolyFueled c (gradualTradeCount h) := by
+  obtain ⟨ccount, hcount⟩ := h.termCount_poly
+  have htest := subc_polyFueled.comp
+    (PolyFueled.right.succ_comp.pair PolyFueled.left)
+  have hraw := ifzSel_polyFueled.comp
+    (((PolyFueled.const 0).pair (hcount.comp PolyFueled.left)).pair htest)
+  refine ⟨_, PolyFueled.of_eq hraw ?_⟩
+  intro z
+  simp only [Function.comp_apply, Nat.unpair_pair, ifzSelFn, gradualTradeCount]
+  by_cases hle : z.unpair.1 ≤ z.unpair.2
+  · rw [if_pos hle, if_neg (by omega)]
+  · rw [if_neg hle, if_pos (by omega)]
+
+theorem PolySequence.gradualCoefficient_polySeg {As : ℕ → AffineCombination}
+    (h : PolySequence As) (low high δ : ℚ) :
+    PolySegStream (fun z => (gradualCoefficient h low high δ z).serialize) := by
+  obtain ⟨cadd, hadd⟩ := addc_polyFueled
+  have hk := PolyFueled.left.comp PolyFueled.left
+  have hn := PolyFueled.right.comp PolyFueled.left
+  have hj := PolyFueled.right
+  have hcanonical := hk.pair hj
+  have hentry := (h.gradualEntry_polySeg low δ).comp hk
+  have hbase := h.coefficient_poly.comp hcanonical
+  have hbuy := PolySegStream.serialize_mul hentry hbase
+  have helapsedRaw := predc_polyFueled.comp (subc_polyFueled.comp (hn.pair hk))
+  have helapsed : PolyFueled
+      (predc.comp (subc.comp
+        ((Nat.Partrec.Code.right.comp Nat.Partrec.Code.left).pair
+          (Nat.Partrec.Code.left.comp Nat.Partrec.Code.left)))) (fun z =>
+      z.unpair.1.unpair.2 - z.unpair.1.unpair.1 - 1) := by
+    apply PolyFueled.of_eq helapsedRaw
+    intro z
+    simp only [Function.comp_apply, Nat.unpair_pair, Nat.pred_eq_sub_one]
+  have hsellFraction := (h.gradualSellFraction_polySeg high δ).comp (hk.pair helapsed)
+  have hneg : PolySegStream (fun _ => (EF.const (-1)).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))
+  have houter := PolySegStream.serialize_mul hneg
+    (PolySegStream.serialize_mul hentry hsellFraction)
+  have hsell := PolySegStream.serialize_mul houter hbase
+  have hneq := subc_polyFueled.comp (hn.pair hk)
+  have hken := subc_polyFueled.comp (hk.pair hn)
+  have heqtestRaw := hadd.comp (hneq.pair hken)
+  have heqtest : PolyFueled
+      (cadd.comp
+        ((subc.comp
+          ((Nat.Partrec.Code.right.comp Nat.Partrec.Code.left).pair
+            (Nat.Partrec.Code.left.comp Nat.Partrec.Code.left))).pair
+          (subc.comp
+            ((Nat.Partrec.Code.left.comp Nat.Partrec.Code.left).pair
+              (Nat.Partrec.Code.right.comp Nat.Partrec.Code.left))))) (fun z =>
+      (z.unpair.1.unpair.2 - z.unpair.1.unpair.1) +
+        (z.unpair.1.unpair.1 - z.unpair.1.unpair.2)) := by
+    apply PolyFueled.of_eq heqtestRaw
+    intro z
+    simp only [Function.comp_apply, Nat.unpair_pair]
+  refine PolySegStream.of_eq (PolySegStream.ifZero hbuy hsell heqtest) ?_
+  intro z
+  simp only [gradualCoefficient, Function.comp_apply, Nat.unpair_pair, ifzSelFn]
+  by_cases heq : z.unpair.1.unpair.2 = z.unpair.1.unpair.1
+  · simp [heq]
+  · have htest : z.unpair.1.unpair.2 - z.unpair.1.unpair.1 +
+        (z.unpair.1.unpair.1 - z.unpair.1.unpair.2) ≠ 0 := by omega
+    rw [if_neg htest, if_neg heq]
+
+theorem PolySequence.gradualFamily_trades_eq {As : ℕ → AffineCombination}
+    (h : PolySequence As) (low high δ : ℚ) (k n : ℕ) :
+    (((gradualFamily As low high δ h) k).strat n).trades =
+      (List.range (gradualTradeCount h (Nat.pair k n))).map (fun j =>
+        let z := Nat.pair (Nat.pair k n) j
+        (gradualCoefficient h low high δ z, gradualSentence h z)) := by
+  by_cases hbefore : n < k
+  · simp [gradualFamily, gradualTrader, ne_of_lt hbefore,
+      Nat.not_lt.mpr (Nat.le_of_lt hbefore), emptyStrategy, gradualTradeCount, hbefore]
+  · have hkn : k ≤ n := by omega
+    by_cases heq : n = k
+    · subst n
+      simp only [gradualFamily, gradualTrader, ↓reduceDIte]
+      rw [AffineCombination.buy_trades, AffineCombination.scale, h.terms_eq]
+      simp [gradualTradeCount, gradualCoefficient, gradualSentence]
+    · have hlt : k < n := lt_of_le_of_ne hkn (Ne.symm heq)
+      simp only [gradualFamily, gradualTrader, heq, hlt, ↓reduceDIte]
+      rw [AffineCombination.buy_trades, AffineCombination.scale, h.terms_eq]
+      simp [gradualTradeCount, hkn, gradualCoefficient, gradualSentence, heq,
+        List.map_map, Function.comp_apply]
+
+/-- The gradual affine components form a structured efficiently emulatable family. -/
+noncomputable def PolySequence.gradualFamilyPolyTrade {As : ℕ → AffineCombination}
+    (h : PolySequence As) (low high δ : ℚ) :
+    PolyTradeEmulatable (gradualFamily As low high δ h) := by
+  let ccount := Classical.choose h.gradualTradeCount_poly
+  have hcount := Classical.choose_spec h.gradualTradeCount_poly
+  let csentence := Classical.choose h.sentence_poly
+  have hsentence := Classical.choose_spec h.sentence_poly
+  have hk := PolyFueled.left.comp PolyFueled.left
+  have hj := PolyFueled.right
+  have hcanonical := hk.pair hj
+  have hcoeff := h.gradualCoefficient_polySeg low high δ
+  have htag : PolySegStream (fun _ => [6]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 6)
+  have hsentencePF : PolyFueled
+      (csentence.comp
+        ((Nat.Partrec.Code.left.comp Nat.Partrec.Code.left).pair Nat.Partrec.Code.right))
+      (fun z => Encodable.encode (gradualSentence h z)) := by
+    apply PolyFueled.of_eq (hsentence.comp hcanonical)
+    intro z
+    rfl
+  have hsentenceSeg : PolySegStream (fun z => [Encodable.encode (gradualSentence h z)]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.polyTok hsentencePF)
+  have hone : PolySegStream (fun z => serializeTrades
+      [(gradualCoefficient h low high δ z, gradualSentence h z)]) := by
+    refine PolySegStream.of_eq ((hcoeff.append htag).append hsentenceSeg) ?_
+    intro z
+    simp [serializeTrades, List.append_assoc]
+  have hserialized : PolySegStream (fun z => serializeTrades
+      (((gradualFamily As low high δ h) z.unpair.1).strat z.unpair.2).trades) := by
+    refine PolySegStream.of_eq (PolySegStream.concatVar hone hcount) ?_
+    intro z
+    rw [h.gradualFamily_trades_eq]
+    rw [serializeTrades_map_singleton]
+    simp only [Nat.pair_unpair]
+  have hzero : ∀ k n, n < k →
+      (((gradualFamily As low high δ h) k).strat n).trades = [] := by
+    intro k n hnk
+    rw [h.gradualFamily_trades_eq]
+    simp [gradualTradeCount, hnk]
+  refine
+    { emulatable := EfficientlyEmulatable.of_polySeg hzero hserialized
+      tradeCount := gradualTradeCount h
+      coefficient := gradualCoefficient h low high δ
+      sentence := gradualSentence h
+      tradeCount_poly := ⟨ccount, hcount⟩
+      coefficient_poly := hcoeff
+      sentence_poly := ⟨csentence.comp
+        ((Nat.Partrec.Code.left.comp Nat.Partrec.Code.left).pair Nat.Partrec.Code.right),
+          hsentencePF⟩
+      trades_eq := h.gradualFamily_trades_eq low high δ }
 
 @[simp] theorem gradualTrader_strat_buyDay (A : AffineCombination) (entry : EF)
     (buyDay : ℕ) (high δ : ℚ) (hentry : entry.rank ≤ buyDay)
@@ -502,6 +896,91 @@ theorem gradualTrader_netWorth_lower_partial (A : AffineCombination) (entry : EF
         A.gradualSaleProceeds V buyDay high δ t)
   apply mul_le_mul_of_nonneg_left _ hentry0
   nlinarith
+
+/-- Continuous-budget capstone for the gradual affine family.  If every component
+eventually receives a full high-price signal and the protected opening spread pays a fixed
+rate on its affine share risk, logical induction forces the launch-risk sizes to vanish. -/
+theorem PolySequence.gradualRisk_converges {As : ℕ → AffineCombination}
+    (h : PolySequence As) (V : History) (DP : DeductiveProcess)
+    [IsLogicalInductor V DP] (low high δ : ℚ) (ε : ℝ)
+    (hε : 0 < ε) (hδ : 0 < (δ : ℝ))
+    (hmag : ∀ i, (As i).magnitude V ≤ 1)
+    (hspread : ∀ i,
+      (gradualEntry As low δ i).denote V * (ε * (As i).magnitude V) ≤
+        (gradualEntry As low δ i).denote V *
+          ((high : ℝ) - δ - (As i).price V i))
+    (hfuture : ∀ i, ∃ t, (high : ℝ) < (As i).price V (i + t + 1))
+    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    ConvergesTo (fun i => (gradualRisk As low δ i).denote V) 0 := by
+  let entry := gradualEntry As low δ
+  let occupancy := gradualOccupancy As high δ
+  let α := gradualRisk As low δ
+  let Ts := gradualFamily As low high δ h
+  have hentry0 : ∀ i, 0 ≤ (entry i).denote V := fun i =>
+    (buyIndF_mem ((As i).priceFeature i) low δ V).1
+  have hentry1 : ∀ i, (entry i).denote V ≤ 1 := fun i =>
+    (buyIndF_mem ((As i).priceFeature i) low δ V).2
+  have hα0 : ∀ i, 0 ≤ (α i).denote V := fun i => by
+    dsimp only [α]
+    rw [gradualRisk, riskFeature_denote]
+    exact mul_nonneg (hentry0 i) ((As i).magnitude_nonneg V)
+  have hα1 : ∀ i, (α i).denote V ≤ 1 := fun i => by
+    dsimp only [α]
+    rw [gradualRisk, riskFeature_denote]
+    calc
+      (entry i).denote V * (As i).magnitude V ≤ 1 * (As i).magnitude V :=
+        mul_le_mul_of_nonneg_right (hentry1 i) ((As i).magnitude_nonneg V)
+      _ ≤ 1 := by simpa using hmag i
+  have hzero : ∀ i, ∃ N, ∀ n, N ≤ n → (occupancy i n).denote V = 0 := by
+    apply gradualOccupancy_eventually_zero As V high δ
+    intro i
+    obtain ⟨t, ht⟩ := hfuture i
+    refine ⟨t, ?_⟩
+    apply sellIndF_eq_one hδ
+    rwa [(As i).priceFeature_denote]
+  have hworth : ∀ i n, i ≤ n → ∀ v : PCWorld, v.ConsistentWith (DP.D n) →
+      ε * (α i).denote V * (1 - (occupancy i n).denote V) -
+          (α i).denote V * (occupancy i n).denote V ≤
+        (Ts i).netWorth V v n := by
+    intro i n hin v hv
+    let t := n - i
+    have hday : i + t = n := by dsimp only [t]; omega
+    let rem := ((As i).gradualRemaining i high δ t).denote V
+    let mag := (As i).magnitude V
+    have hrem0 : 0 ≤ rem := ((As i).gradualRemaining_mem V i high δ t).1
+    have hrem1 : rem ≤ 1 := ((As i).gradualRemaining_mem V i high δ t).2
+    have hincome : (1 - rem) * ((entry i).denote V * (ε * mag)) ≤
+        (1 - rem) * ((entry i).denote V *
+          ((high : ℝ) - δ - (As i).price V i)) :=
+      mul_le_mul_of_nonneg_left (hspread i) (sub_nonneg.mpr hrem1)
+    have hpartial := (As i).gradualTrader_netWorth_lower_partial (entry i) V v i high δ
+      (h.gradualEntry_rank_le low δ i) (h.const_rank i) (h.terms_rank i)
+      (hentry0 i) hδ (hP i) t
+    rw [hday] at hpartial
+    calc
+      ε * (α i).denote V * (1 - (occupancy i n).denote V) -
+            (α i).denote V * (occupancy i n).denote V =
+          (1 - rem) * ((entry i).denote V * (ε * mag)) -
+            (entry i).denote V * rem * mag := by
+            simp only [α, gradualRisk, riskFeature_denote, occupancy, gradualOccupancy,
+              rem, mag, t]
+            ring
+      _ ≤ (1 - rem) * ((entry i).denote V *
+            ((high : ℝ) - δ - (As i).price V i)) -
+          (entry i).denote V * rem * mag := sub_le_sub_right hincome _
+      _ = (entry i).denote V *
+          ((1 - rem) * ((high : ℝ) - δ - (As i).price V i) - rem * mag) := by ring
+      _ ≤ (Ts i).netWorth V v n := by
+        simpa [Ts, gradualFamily, entry, rem, mag] using hpartial
+  exact ROIBudget.noFractionalRepeatableReturn Ts V DP ε hε occupancy α
+    (fun i => h.gradualRisk_rank_le low δ i)
+    (fun i n hin => h.gradualOccupancy_rank_le high δ i n hin)
+    (h.gradualRisk_polySeg low δ) (h.gradualOccupancy_polySeg high δ)
+    (fun i ρ W => h.gradualRisk_closed low δ i ρ W)
+    (fun i n ρ W => h.gradualOccupancy_closed high δ i n ρ W)
+    (gradualOccupancy_decreasing As V high δ) hzero hα0 hα1
+    (h.gradualFamilyPolyTrade low high δ) hworth hworld
 
 /-- Once fully liquidated, the component's net worth is world-independent and bounded by
 the entry weight times the guaranteed price spread. -/
@@ -757,6 +1236,7 @@ end AffineCombination
 #print axioms AffineCombination.gradualTrader_value_future
 #print axioms AffineCombination.gradualTrader_netWorth
 #print axioms AffineCombination.gradualTrader_netWorth_lower_partial
+#print axioms AffineCombination.PolySequence.gradualRisk_converges
 #print axioms AffineCombination.gradualTrader_netWorth_lower_of_full_signal
 #print axioms AffineCombination.gradualTrader_magnitude_of_full_signal
 #print axioms AffineCombination.gradualTrader_hasROI_of_full_signal
