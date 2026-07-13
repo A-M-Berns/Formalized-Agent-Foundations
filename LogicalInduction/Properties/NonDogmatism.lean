@@ -1237,11 +1237,271 @@ theorem ndSellLadderTrader_exploits (P : History) (DP : DeductiveProcess) (φ : 
 
 #print axioms ndSellLadderTrader_exploits
 
-/-- Efficient computability of the sell ladder: same shape, same three missing pieces
-as `ndLadderTrader_ecTok` (see its docstring). -/
+/-! ### Sell-ladder emission — negative-numerator constant tokens
+
+The sell chunks mirror the buy chunks, but the band constants `δ − b` (with
+`b = 1 − ndThr j` near `1`) have **negative numerators**: their encodes route through
+`Int.negSucc` (`⌜−(a/b)⌝ = pair (2(a−1)+1) b` for a normalized positive fraction
+`a/b`), with an extra rung-1 branch where the live constant collapses to `0`. -/
+
+theorem encode_int_neg_natCast {n : ℕ} (hn : 0 < n) :
+    Encodable.encode ((-(n : ℤ))) = 2 * n - 1 := by
+  have h : -((n : ℤ)) = Int.negSucc (n - 1) := by omega
+  rw [h, show Encodable.encode (Int.negSucc (n - 1)) = 2 * (n - 1) + 1 from rfl]
+  omega
+
+theorem encode_rat_neg_natCast {n : ℕ} (hn : 0 < n) :
+    Encodable.encode (-((n : ℚ))) = Nat.pair (2 * n - 1) 1 := by
+  rw [encode_rat_eq, Rat.neg_num, Rat.neg_den, Rat.num_natCast, Rat.den_natCast,
+    encode_int_neg_natCast hn]
+
+/-- Encoding a normalized negative fraction: `⌜−(a/b)⌝ = pair (2(a−1)+1) b`. -/
+theorem encode_rat_neg_div {a b : ℕ} (ha : 0 < a) (hab : a < b) (hcop : a.Coprime b) :
+    Encodable.encode (-((a : ℚ) / (b : ℚ))) = Nat.pair (2 * (a - 1) + 1) b := by
+  have hb : b ≠ 0 := by omega
+  have hnat : (Int.negSucc (a - 1)).natAbs = a := by
+    rw [Int.natAbs_negSucc]
+    omega
+  have hcop' : (Int.negSucc (a - 1)).natAbs.Coprime b := by rwa [hnat]
+  have heq : -((a : ℚ) / (b : ℚ)) = Rat.mk' (Int.negSucc (a - 1)) b hb hcop' := by
+    rw [Rat.mk_eq_divInt, Rat.divInt_eq_div]
+    have hcast : ((Int.negSucc (a - 1) : ℤ) : ℚ) = -(a : ℚ) := by
+      have h1 : Int.negSucc (a - 1) = -(a : ℤ) := by omega
+      rw [h1]
+      push_cast
+      ring
+    rw [hcast]
+    push_cast
+    ring
+  rw [heq, encode_rat_eq]
+  rfl
+
+theorem encode_sellB_pad {j : ℕ} (hj : 1 ≤ j) :
+    Encodable.encode ((0 : ℚ) - (1 - ndThr j))
+      = Nat.pair (2 * (2 * j ^ 3 - 1 - 1) + 1) (2 * j ^ 3) := by
+  have h3 : 0 < j ^ 3 := pow_pos (by omega) 3
+  have heq : (0 : ℚ) - (1 - ndThr j)
+      = -(((2 * j ^ 3 - 1 : ℕ) : ℚ) / ((2 * j ^ 3 : ℕ) : ℚ)) := by
+    rw [ndThr]
+    have hcast : ((2 * j ^ 3 - 1 : ℕ) : ℚ) = 2 * (j : ℚ) ^ 3 - 1 := by
+      push_cast [Nat.cast_sub (by omega : 1 ≤ 2 * j ^ 3)]
+      ring
+    rw [hcast]
+    push_cast
+    have hx : (2 : ℚ) * (j : ℚ) ^ 3 ≠ 0 :=
+      mul_ne_zero two_ne_zero (pow_ne_zero 3 (Nat.cast_ne_zero.mpr (by omega)))
+    field_simp
+    ring
+  have hcop : (2 * j ^ 3 - 1).Coprime (2 * j ^ 3) := by
+    have h : 2 * j ^ 3 = (2 * j ^ 3 - 1) + 1 := by omega
+    rw [h]
+    exact Nat.coprime_self_add_right.mpr (Nat.coprime_one_right _)
+  rw [heq, encode_rat_neg_div (by omega) (by omega) hcop]
+
+theorem encode_sellB_live {j : ℕ} (hj : 2 ≤ j) :
+    Encodable.encode (ndThr j - (1 - ndThr j))
+      = Nat.pair (2 * (j ^ 3 - 1 - 1) + 1) (j ^ 3) := by
+  have h8 : 8 ≤ j ^ 3 := by
+    calc (8 : ℕ) = 2 ^ 3 := by norm_num
+      _ ≤ j ^ 3 := Nat.pow_le_pow_left hj 3
+  have heq : ndThr j - (1 - ndThr j)
+      = -(((j ^ 3 - 1 : ℕ) : ℚ) / ((j ^ 3 : ℕ) : ℚ)) := by
+    rw [ndThr]
+    have hcast : ((j ^ 3 - 1 : ℕ) : ℚ) = (j : ℚ) ^ 3 - 1 := by
+      push_cast [Nat.cast_sub (by omega : 1 ≤ j ^ 3)]
+      ring
+    rw [hcast]
+    push_cast
+    have hx : ((j : ℚ)) ^ 3 ≠ 0 := pow_ne_zero 3 (Nat.cast_ne_zero.mpr (by omega))
+    field_simp
+    ring
+  have hcop : (j ^ 3 - 1).Coprime (j ^ 3) := by
+    have h : j ^ 3 = (j ^ 3 - 1) + 1 := by omega
+    rw [h]
+    exact Nat.coprime_self_add_right.mpr (Nat.coprime_one_right _)
+  rw [heq, encode_rat_neg_div (by omega) (by omega) hcop]
+
+theorem encode_sellB_live_one : Encodable.encode (ndThr 1 - (1 - ndThr 1)) = 1 := by
+  have h : ndThr 1 - (1 - ndThr 1) = 0 := by norm_num [ndThr]
+  rw [h, encode_rat_zero]
+
+/-- Poly-fueled emission of the padded sell-band token
+`⌜ndPadThr (j'+1) i − (1 − ndThr (j'+1))⌝` (pad / rung-1 live / general live). -/
+theorem encode_sellB_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → ℕ}
+    (hj : PolyFueled cj j'f) (hi : PolyFueled ci if_) :
+    ∃ c, PolyFueled c (fun m =>
+      Encodable.encode (ndPadThr (j'f m + 1) (if_ m) - (1 - ndThr (j'f m + 1)))) := by
+  obtain ⟨c3, h3⟩ := cube_succ_polyFueled hj
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have h2cube := (had.comp (h3.pair h3)).of_eq
+    (f' := fun m => 2 * (j'f m + 1) ^ 3)
+    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; ring)
+  have h4cube := (had.comp (h2cube.pair h2cube)).of_eq
+    (f' := fun m => 4 * (j'f m + 1) ^ 3)
+    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; ring)
+  have hpadnum := (subc_polyFueled.comp (h4cube.pair (PolyFueled.const 3))).of_eq
+    (f' := fun m => 2 * (2 * (j'f m + 1) ^ 3 - 1 - 1) + 1)
+    (fun m => by
+      simp only [Function.comp_apply, Nat.unpair_pair]
+      have := pow_pos (show 0 < j'f m + 1 by omega) 3
+      omega)
+  have hpadv := hpadnum.pair h2cube
+  have hsub2 := (subc_polyFueled.comp (h3.pair (PolyFueled.const 2))).of_eq
+    (f' := fun m => (j'f m + 1) ^ 3 - 2)
+    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair])
+  have hlivenum := ((had.comp (hsub2.pair hsub2)).succ_comp).of_eq
+    (f' := fun m => 2 * ((j'f m + 1) ^ 3 - 1 - 1) + 1)
+    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; omega)
+  have hlivev := hlivenum.pair h3
+  have hinner := ifzSel_polyFueled.comp (((PolyFueled.const 1).pair hlivev).pair hj)
+  have houter := ifzSel_polyFueled.comp
+    ((hpadv.pair hinner).pair (subc_polyFueled.comp (hi.pair hj)))
+  refine ⟨_, houter.of_eq (fun m => ?_)⟩
+  simp only [Function.comp_apply, Nat.unpair_pair, ifzSelFn]
+  rcases Nat.lt_or_ge (if_ m) (j'f m + 1) with hcase | hcase
+  · rw [if_pos (by omega), ndPadThr, if_pos hcase,
+      encode_sellB_pad (by omega : 1 ≤ j'f m + 1)]
+  · rcases Nat.eq_zero_or_pos (j'f m) with h0 | h0
+    · rw [if_neg (by omega), if_pos h0, ndPadThr, if_neg (by omega), h0]
+      exact (encode_sellB_live_one).symm
+    · rw [if_neg (by omega), if_neg (by omega), ndPadThr, if_neg (by omega),
+        encode_sellB_live (by omega : 2 ≤ j'f m + 1)]
+
+/-- Poly-fueled emission of the sell rung-weight token `⌜−((j'+1 : ℕ) : ℚ)⌝`. -/
+theorem encode_neg_ratCast_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ}
+    (hj : PolyFueled cj j'f) :
+    ∃ c, PolyFueled c (fun m => Encodable.encode (-((j'f m + 1 : ℕ) : ℚ))) := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have h2j1 := ((had.comp (hj.pair hj)).succ_comp).of_eq
+    (f' := fun m => 2 * (j'f m + 1) - 1)
+    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; omega)
+  exact ⟨_, (h2j1.pair (PolyFueled.const 1)).of_eq
+    (fun m => (encode_rat_neg_natCast (Nat.succ_pos _)).symm)⟩
+
+/-- The sell-rung day-`i` arm-chain serialization block. -/
+def ndSellArmBlock (φ : Sentence) (j i : ℕ) : List ℕ :=
+  (oneMinus (ndSellSig φ j i)).serialize ++ [3]
+
+theorem ndSellArmBlock_tokenStream (φ : Sentence) :
+    PolyTokenStream (fun x => ndSellArmBlock φ (x.unpair.1.unpair.2 + 1) x.unpair.2) := by
+  have hsell : PolyTokenStream (fun x =>
+      (ndSellSig φ (x.unpair.1.unpair.2 + 1) x.unpair.2).serialize) :=
+    sellIndEF_tokenStream_comp (jf := fun x => x.unpair.2)
+      (bf := fun x => 1 - ndThr (x.unpair.1.unpair.2 + 1))
+      (δf := fun x => ndPadThr (x.unpair.1.unpair.2 + 1) x.unpair.2)
+      PolyFueled.right φ
+      (encode_sellB_polyFueled (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
+      (encode_thrRecip_polyFueled (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
+  exact (PolyTokenStream.serialize_oneMinus hsell).append (PolyTokenStream.const 3)
+
+theorem ndSellArmBlock_length (φ : Sentence) (j i : ℕ) :
+    (ndSellArmBlock φ j i).length = (ndSellArmBlock φ 1 0).length := by
+  simp [ndSellArmBlock, ndSellSig, sellIndEF, oneMinus, clip01, efMin, EF.serialize]
+
+theorem serialize_ndSellSig_length (φ : Sentence) (j i : ℕ) :
+    (ndSellSig φ j i).serialize.length = (ndSellSig φ 1 0).serialize.length := by
+  simp [ndSellSig, sellIndEF, clip01, efMin, EF.serialize]
+
+theorem serialize_armChain_ndSell (φ : Sentence) (j : ℕ) : ∀ n,
+    (armChain (ndSellSig φ j) n).serialize
+      = [1, Encodable.encode ((1 : ℚ))]
+        ++ (List.range n).flatMap (fun i => ndSellArmBlock φ j i)
+  | 0 => by simp [armChain, EF.serialize]
+  | (n + 1) => by
+      rw [armChain]
+      simp only [EF.serialize]
+      rw [serialize_armChain_ndSell φ j n, List.range_succ, List.flatMap_append,
+        List.flatMap_singleton, ndSellArmBlock]
+      simp [List.append_assoc]
+
+theorem serialize_ndSellCoef (φ : Sentence) (j n : ℕ) :
+    (ndSellCoef φ j n).serialize
+      = [1, Encodable.encode (-((j : ℚ)))]
+        ++ (armChain (ndSellSig φ j) n).serialize
+        ++ (ndSellSig φ j n).serialize ++ [3, 3] := by
+  simp [ndSellCoef, EF.serialize, List.append_assoc]
+
+theorem serialize_ndSellLadderEF (φ : Sentence) (n : ℕ) : ∀ m,
+    (ndSellLadderEF φ n m).serialize
+      = [1, Encodable.encode ((0 : ℚ))]
+        ++ (List.range m).flatMap (fun j' => (ndSellCoef φ (j' + 1) n).serialize ++ [2])
+  | 0 => by simp [ndSellLadderEF, EF.serialize]
+  | (m + 1) => by
+      rw [ndSellLadderEF]
+      simp only [EF.serialize]
+      rw [serialize_ndSellLadderEF φ n m, List.range_succ, List.flatMap_append,
+        List.flatMap_singleton]
+      simp [List.append_assoc]
+
+/-- The sell-rung chunk as a `PolySegStream` over the paired input `⟨n, j'⟩`. -/
+theorem ndSellChunkSeg_polySegStream (φ : Sentence) :
+    PolySegStream (fun m =>
+      (ndSellCoef φ (m.unpair.2 + 1) m.unpair.1).serialize ++ [2]) := by
+  have hW0 : 0 < (ndSellArmBlock φ 1 0).length := by
+    norm_num [ndSellArmBlock, ndSellSig, sellIndEF, oneMinus, clip01, efMin, EF.serialize]
+  have segA : PolySegStream (fun m =>
+      (EF.const (-((m.unpair.2 + 1 : ℕ) : ℚ))).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const_comp
+      (encode_neg_ratCast_polyFueled PolyFueled.right))
+  have segB : PolySegStream (fun _ : ℕ => [1, Encodable.encode ((1 : ℚ))]) :=
+    PolySegStream.ofTokenStream
+      ((PolyTokenStream.const 1).append (PolyTokenStream.const _))
+  have segC := PolySegStream.blocks (ndSellArmBlock_tokenStream φ)
+    ((ndSellArmBlock φ 1 0).length) (fun x => ndSellArmBlock_length φ _ _) hW0
+    PolyFueled.left
+  have segD : PolySegStream (fun m =>
+      (ndSellSig φ (m.unpair.2 + 1) m.unpair.1).serialize) :=
+    PolySegStream.ofTokenStream (sellIndEF_tokenStream_comp (jf := fun m => m.unpair.1)
+      (bf := fun m => 1 - ndThr (m.unpair.2 + 1))
+      (δf := fun m => ndPadThr (m.unpair.2 + 1) m.unpair.1)
+      PolyFueled.left φ
+      (encode_sellB_polyFueled PolyFueled.right PolyFueled.left)
+      (encode_thrRecip_polyFueled PolyFueled.right PolyFueled.left))
+  have segE : PolySegStream (fun _ : ℕ => [3, 3, 2]) :=
+    PolySegStream.ofTokenStream ((PolyTokenStream.const 3).append
+      ((PolyTokenStream.const 3).append (PolyTokenStream.const 2)))
+  refine PolySegStream.of_eq
+    ((((segA.append segB).append segC).append segD).append segE) (fun m => ?_)
+  rw [serialize_ndSellCoef, serialize_armChain_ndSell]
+  simp [EF.serialize, Nat.unpair_pair, List.append_assoc]
+
+/-- **The sell ladder is efficiently computable** — the mirror of
+`ndLadderTrader_ecTok`, with the negative-numerator band constants emitted through
+`encode_sellB_polyFueled`. -/
 theorem ndSellLadderTrader_ecTok (φ : Sentence) :
     EfficientlyComputableTok (ndSellLadderTrader φ) := by
-  sorry -- TODO(blueprint:def:ec): runtime-divisor divmod + PolySegStream.concat + poly-fueled ℚ-constant tokens
+  have hunif : ∀ n j,
+      ((ndSellCoef φ ((Nat.pair n j).unpair.2 + 1) (Nat.pair n j).unpair.1).serialize
+          ++ [2]).length
+        = ((ndSellCoef φ ((Nat.pair n 0).unpair.2 + 1) (Nat.pair n 0).unpair.1).serialize
+          ++ [2]).length := by
+    intro n j
+    simp only [Nat.unpair_pair]
+    rw [serialize_ndSellCoef, serialize_ndSellCoef, serialize_armChain_ndSell,
+      serialize_armChain_ndSell]
+    have hfm : ∀ j' : ℕ, ((List.range n).flatMap (fun i => ndSellArmBlock φ j' i)).length
+        = n * (ndSellArmBlock φ 1 0).length := fun j' =>
+      length_flatMap_const_width _ _ n (fun i _ => ndSellArmBlock_length φ _ _)
+    have hsig := serialize_ndSellSig_length φ (j + 1) n
+    have hsig0 := serialize_ndSellSig_length φ (0 + 1) n
+    simp only [List.length_append, List.length_cons, List.length_nil, hfm]
+    omega
+  have segChunks := PolySegStream.concat (ndSellChunkSeg_polySegStream φ)
+    PolyFueled.id hunif
+  have seg1 : PolySegStream (fun _ : ℕ => [1, Encodable.encode ((0 : ℚ))]) :=
+    PolySegStream.ofTokenStream
+      ((PolyTokenStream.const 1).append (PolyTokenStream.const _))
+  have seg3 : PolySegStream (fun _ : ℕ => [6, Encodable.encode φ]) :=
+    PolySegStream.ofTokenStream
+      ((PolyTokenStream.const 6).append (PolyTokenStream.const _))
+  refine ecTok_of_segStream _ (PolySegStream.of_eq ((seg1.append segChunks).append seg3) ?_)
+  intro n
+  show _ = serializeTrades ((ndSellLadderTrader φ).strat n).trades
+  rw [show ((ndSellLadderTrader φ).strat n).trades = [(ndSellLadderEF φ n n, φ)] from rfl,
+    serializeTrades, serializeTrades, serialize_ndSellLadderEF]
+  simp [Nat.unpair_pair, List.append_assoc]
+
+#print axioms ndSellLadderTrader_ecTok
 
 /-- **Non-Dogmatism, dual direction** (`thm:nd`): under a logical inductor, if
 `φ`-falsifying plausible worlds keep existing (the per-day semantic rendering of
