@@ -34,7 +34,7 @@ noncomputable def buySignal (feat : EF) (ε : ℚ) : EF :=
   push_cast; ring_nf
 
 @[simp] theorem buySignal_rank (feat : EF) (ε : ℚ) : (buySignal feat ε).rank = feat.rank := by
-  simp [buySignal, EF.rank]
+  simp [buySignal]
 
 theorem buySignal_polyEF {t : ℕ → EF} (ht : PolyEF t) (ε : ℚ) :
     PolyEF (fun n => buySignal (t n) ε) :=

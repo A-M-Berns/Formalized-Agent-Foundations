@@ -71,6 +71,9 @@ the quote correctly; by `DP.mono` this persists to all later days). -/
 at the actual day-`f n` expectation of `X n`. -/
 theorem lic_expected_future_expectations (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (X Y : ℕ → LUV) (r : ℕ → ℕ)
+    (hcodeX : LUV.PolyThresholdCodeSeq X) (hcodeY : LUV.PolyThresholdCodeSeq Y)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hrefl : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) →
       v.ValuesAt (Y n) ((X n).expect P (f n))) :
     AsympEq (fun n => (X n).expect P n) (fun n => (Y n).expect P n) := by
@@ -83,6 +86,9 @@ actual day-`f n` price of `φ n`. (Deference-corpus name: "cee".) -/
 theorem lic_no_expected_net_update (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (φ : ℕ → Sentence)
     (Y : ℕ → LUV) (r : ℕ → ℕ)
+    (hcodeφ : PolySentenceCodes φ) (hcodeY : LUV.PolyThresholdCodeSeq Y)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hrefl : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) →
       v.ValuesAt (Y n) (P (f n) (φ n))) :
     AsympEq (fun n => P n (φ n)) (fun n => (Y n).expect P n) := by
@@ -99,7 +105,11 @@ Paper-side `w` is P-generable (`def:pgen`, an M4 object); as stated this is the 
 `[0,1]`-sequence form — the P-generability hypothesis is added when the proof lands. -/
 theorem lic_no_expected_net_update_conditional (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (X Z Z' : ℕ → LUV)
-    (w : ℕ → ℝ) (hw : ∀ n, 0 ≤ w n ∧ w n ≤ 1) (r : ℕ → ℕ)
+    (w : ℕ → ℚ) (hw : ∀ n, 0 ≤ w n ∧ w n ≤ 1) (hwgen : PGenerableRat P w)
+    (r : ℕ → ℕ) (hcodeX : LUV.PolyThresholdCodeSeq X)
+    (hcodeZ : LUV.PolyThresholdCodeSeq Z) (hcodeZ' : LUV.PolyThresholdCodeSeq Z')
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hX : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) → ∃ x, v.ValuesAt (X n) x)
     (hZ : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) → ∀ x,
       v.ValuesAt (X n) x → v.ValuesAt (Z n) (x * w (f n)))
@@ -123,6 +133,10 @@ theorem lic_self_trust (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (φ : ℕ → Sentence)
     (δ : ℕ → ℚ) (hδ : ∀ n, 0 < δ n) (p : ℕ → ℚ) (hp : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
     (A B : ℕ → LUV) (r : ℕ → ℕ)
+    (hcodeφ : PolySentenceCodes φ) (hcodeδ : PolyRatCodes δ) (hcodep : PolyRatCodes p)
+    (hcodeA : LUV.PolyThresholdCodeSeq A) (hcodeB : LUV.PolyThresholdCodeSeq B)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hB : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) →
       v.ValuesAt (B n) (ctsInd (δ n) (P (f n) (φ n)) (p n)))
     (hA : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) →

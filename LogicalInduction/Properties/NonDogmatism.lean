@@ -943,8 +943,8 @@ theorem ndLadderTrader_ecTok (φ : Sentence) :
 `Θ ⊬ ¬φ`), the price is eventually bounded away from `0`. No price-range hypotheses:
 the ladder's economics localize to its trigger bands.
 
-Depends on the `ndLadderTrader_ecTok` `sorry` (emission cert pending); the trader and
-its exploitation are fully proved. -/
+The scale-ladder trader, its exploitation proof, and its variable-width token-emission
+certificate are all discharged. -/
 theorem lic_nonDogmatism (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence)
     (hφ : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds φ) :
@@ -1507,8 +1507,8 @@ theorem ndSellLadderTrader_ecTok (φ : Sentence) :
 `φ`-falsifying plausible worlds keep existing (the per-day semantic rendering of
 `Θ ⊬ φ`), the price is eventually bounded away from `1`.
 
-Depends on the `ndSellLadderTrader_ecTok` `sorry` (emission cert pending); the trader
-and its exploitation are fully proved. -/
+The mirrored sell-ladder trader, its exploitation proof, and its variable-width
+token-emission certificate are all discharged. -/
 theorem lic_nonDogmatism_dual (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence)
     (hφ : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ ¬ v.Holds φ) :

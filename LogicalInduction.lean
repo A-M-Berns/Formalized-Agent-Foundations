@@ -17,6 +17,8 @@ import LogicalInduction.Foundations
 import LogicalInduction.Criterion
 import LogicalInduction.Computable
 import LogicalInduction.Engine
+import LogicalInduction.ROI
+import LogicalInduction.Affine
 import LogicalInduction.Properties
 import LogicalInduction.Expectations
 import LogicalInduction.Construction

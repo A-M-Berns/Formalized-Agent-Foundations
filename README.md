@@ -9,8 +9,9 @@ theory, built on the
 `LogicalInduction/` is the beginning of a full formalization of
 [arXiv:1609.03543](https://arxiv.org/abs/1609.03543). The spec is
 `notes/logical-induction-roadmap.md`; the honest ledger of what is defined, proved,
-stubbed, or assumed is `PROGRESS.md`. Status: M0 (scaffold, substrate verification, the
-shared `Asymptotics` vocabulary) is done.
+stubbed, or assumed is `PROGRESS.md`. Status: M0–M3 are implementation-complete; M4
+(the affine and LUV lift hubs) is in progress. See `PROGRESS.md` for the current audit and
+trust-surface gates.
 
 **Disclosure (read before citing anything here):** until the construction milestone (M7)
 lands, every property theorem in this development is *conditional on the existence of a

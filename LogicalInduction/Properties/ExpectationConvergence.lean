@@ -746,28 +746,252 @@ theorem excTrader_exploits (P : History) (DP : DeductiveProcess) (X : LUV)
 
 #print axioms excTrader_exploits
 
-/-- Efficient computability of the bundle trader. The trader is poly-size — the day-`n`
-stream is `n` identical coefficient serializations (each `Θ(n²)`: the two hysteresis
-chains, whose day-`k` blocks carry the `Θ(k)` expectation feature) with distinct
-threshold sentences — but the cert needs the same three pieces as the `thm:nd` ladder
-(`ndLadderTrader_ecTok`): runtime-divisor `divmod`, `PolySegStream.concat`, and
-poly-fueled emission of day-varying `ℚ`-constant tokens (`⌜1/n⌝`, `⌜i/n⌝`), plus
-`⌜X.gt (i/n)⌝` sentence codes — which additionally requires an encodability interface
-for the threshold family (`⌜X.gt q⌝` as a poly-fueled function of `⌜q⌝`, a new
-modeling hypothesis on `LUV` to surface at cert time). -/
-theorem excTrader_ecTok (X : LUV) (a b δ : ℚ) (n₀ : ℕ) :
+/-! ### Efficient emission of the expectation feature and variable-width chain -/
+
+theorem encode_inv_nat_polyFueled :
+    ∃ c, PolyFueled c (fun n => Encodable.encode (1 / (n : ℚ))) := by
+  have livePF := (PolyFueled.const 2).pair PolyFueled.id
+  have pickPF := ifzSel_polyFueled.comp
+    (((PolyFueled.const (Encodable.encode (0 : ℚ))).pair livePF).pair PolyFueled.id)
+  refine ⟨_, pickPF.of_eq (fun n => ?_)⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  rcases n with _ | n
+  · simp
+  · simp only [Nat.succ_ne_zero, if_false, one_div]
+    simpa using (encode_rat_inv_natCast (Nat.succ_pos n)).symm
+
+theorem encode_if_lt_const_polyFueled (n₀ : ℕ) (q₀ q₁ : ℚ) :
+    ∃ c, PolyFueled c (fun n => Encodable.encode (if n < n₀ then q₀ else q₁)) := by
+  have testPF := subc_polyFueled.comp
+    ((PolyFueled.const n₀).pair PolyFueled.id)
+  have pickPF := ifzSel_polyFueled.comp
+    (((PolyFueled.const (Encodable.encode q₁)).pair
+      (PolyFueled.const (Encodable.encode q₀))).pair testPF)
+  refine ⟨_, pickPF.of_eq (fun n => ?_)⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  by_cases h : n < n₀
+  · rw [if_pos h, if_neg (by omega)]
+  · rw [if_neg h, if_pos (by omega)]
+
+/-- A threshold-price term followed by the enclosing sum's `add` tag. -/
+def excThresholdBlk (X : LUV) (n i : ℕ) : List ℕ :=
+  (EF.price (X.gt ((i : ℚ) / (n : ℚ))) n).serialize ++ [2]
+
+theorem excThresholdBlk_tokenStream (X : LUV) (hcode : X.PolyThresholdCodes) :
+    PolyTokenStream (fun m => excThresholdBlk X m.unpair.1 m.unpair.2) := by
+  obtain ⟨cX, hX⟩ := hcode
+  show PolyTokenStream (fun m =>
+    [0, Encodable.encode (X.gt ((m.unpair.2 : ℚ) / (m.unpair.1 : ℚ))),
+      m.unpair.1, 2])
+  exact (((PolyTokenStream.const 0).append (PolyTokenStream.polyTok hX)).append
+    (PolyTokenStream.polyTok PolyFueled.left)).append (PolyTokenStream.const 2)
+
+theorem excThresholdBlk_length (X : LUV) (n i : ℕ) :
+    (excThresholdBlk X n i).length = 4 := by
+  simp [excThresholdBlk, EF.serialize]
+
+theorem serialize_thresholdSumEF (X : LUV) (n : ℕ) : ∀ m,
+    (X.thresholdSumEF n m).serialize =
+      [1, Encodable.encode (0 : ℚ)] ++
+        (List.range m).flatMap (fun i => excThresholdBlk X n i)
+  | 0 => by simp [LUV.thresholdSumEF, EF.serialize]
+  | m + 1 => by
+      rw [LUV.thresholdSumEF, EF.serialize, serialize_thresholdSumEF X n m,
+        List.range_succ, List.flatMap_append, List.flatMap_singleton]
+      simp [excThresholdBlk, EF.serialize, List.append_assoc]
+
+theorem expectEF_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes) :
+    PolySegStream (fun n => (X.expectEF n).serialize) := by
+  have head : PolySegStream (fun n => (EF.const (1 / (n : ℚ))).serialize) :=
+    PolySegStream.ofTokenStream
+      (PolyTokenStream.serialize_const_comp encode_inv_nat_polyFueled)
+  have zero : PolySegStream (fun _ : ℕ => [1, Encodable.encode (0 : ℚ)]) :=
+    PolySegStream.ofTokenStream
+      ((PolyTokenStream.const 1).append (PolyTokenStream.const _))
+  have blocks := PolySegStream.blocks (excThresholdBlk_tokenStream X hcode) 4
+    (fun m => excThresholdBlk_length X _ _) (by omega) PolyFueled.id
+  have sums := zero.append blocks
+  refine PolySegStream.of_eq ((head.append sums).append
+    (PolySegStream.ofTokenStream (PolyTokenStream.const 3))) ?_
+  intro n
+  rw [LUV.expectEF]
+  simp only [EF.serialize]
+  rw [serialize_thresholdSumEF]
+  simp
+
+theorem PolySegStream.serialize_oneMinus {e : ℕ → EF}
+    (he : PolySegStream (fun n => (e n).serialize)) :
+    PolySegStream (fun n => (oneMinus (e n)).serialize) :=
+  PolySegStream.serialize_add
+    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1))
+    (PolySegStream.serialize_mul
+      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) he)
+
+theorem PolySegStream.serialize_efMin {e f : ℕ → EF}
+    (he : PolySegStream (fun n => (e n).serialize))
+    (hf : PolySegStream (fun n => (f n).serialize)) :
+    PolySegStream (fun n => (efMin (e n) (f n)).serialize) :=
+  PolySegStream.serialize_mul
+    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1)))
+    (PolySegStream.serialize_max
+      (PolySegStream.serialize_mul
+        (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) he)
+      (PolySegStream.serialize_mul
+        (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) hf))
+
+theorem PolySegStream.serialize_clip01 {e : ℕ → EF}
+    (he : PolySegStream (fun n => (e n).serialize)) :
+    PolySegStream (fun n => (clip01 (e n)).serialize) :=
+  PolySegStream.serialize_max
+    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0))
+    (PolySegStream.serialize_efMin
+      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)) he)
+
+theorem excBuy_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
+    (a δ : ℚ) (n₀ : ℕ) :
+    PolySegStream (fun n => (excBuy X a δ n₀ n).serialize) := by
+  have he := expectEF_polySegStream X hcode
+  have hca : ∃ c, PolyFueled c (fun n =>
+      Encodable.encode (a + excPad n₀ δ n)) := by
+    simpa [excPad, apply_ite] using encode_if_lt_const_polyFueled n₀ a (a + δ)
+  have hcs : ∃ c, PolyFueled c (fun n =>
+      Encodable.encode (1 / excPad n₀ δ n)) := by
+    simpa [excPad, apply_ite] using encode_if_lt_const_polyFueled n₀ 0 (1 / δ)
+  have hc : PolySegStream (fun n => (EF.const (a + excPad n₀ δ n)).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const_comp hca)
+  have hs : PolySegStream (fun n => (EF.const (1 / excPad n₀ δ n)).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const_comp hcs)
+  show PolySegStream (fun n =>
+    (clip01 (.mul (.add (.const (a + excPad n₀ δ n))
+      (.mul (.const (-1)) (X.expectEF n))) (.const (1 / excPad n₀ δ n)))).serialize)
+  exact PolySegStream.serialize_clip01 (PolySegStream.serialize_mul
+    (PolySegStream.serialize_add hc (PolySegStream.serialize_mul
+      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) he)) hs)
+
+theorem excSell_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
+    (b δ : ℚ) (n₀ : ℕ) :
+    PolySegStream (fun n => (excSell X b δ n₀ n).serialize) := by
+  have he := expectEF_polySegStream X hcode
+  have hcb : ∃ c, PolyFueled c (fun n =>
+      Encodable.encode (excPad n₀ δ n - b)) := by
+    obtain ⟨c, hc⟩ := encode_if_lt_const_polyFueled n₀ (-b) (δ - b)
+    refine ⟨c, hc.of_eq (fun n => ?_)⟩
+    by_cases h : n < n₀ <;> simp [excPad, h]
+  have hcs : ∃ c, PolyFueled c (fun n =>
+      Encodable.encode (1 / excPad n₀ δ n)) := by
+    simpa [excPad, apply_ite] using encode_if_lt_const_polyFueled n₀ 0 (1 / δ)
+  have hc : PolySegStream (fun n => (EF.const (excPad n₀ δ n - b)).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const_comp hcb)
+  have hs : PolySegStream (fun n => (EF.const (1 / excPad n₀ δ n)).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const_comp hcs)
+  show PolySegStream (fun n =>
+    (clip01 (.mul (.add (X.expectEF n) (.const (excPad n₀ δ n - b)))
+      (.const (1 / excPad n₀ δ n)))).serialize)
+  exact PolySegStream.serialize_clip01
+    (PolySegStream.serialize_mul (PolySegStream.serialize_add he hc) hs)
+
+/-- One historical block in the feature-generic hysteresis chain. -/
+def excHystBlk (X : LUV) (a b δ : ℚ) (n₀ k : ℕ) : List ℕ :=
+  (oneMinus (excSell X b δ n₀ k)).serialize ++ [3] ++
+    (excBuy X a δ n₀ k).serialize ++ [4]
+
+theorem excHystBlk_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
+    (a b δ : ℚ) (n₀ : ℕ) :
+    PolySegStream (fun k => excHystBlk X a b δ n₀ k) := by
+  exact (((PolySegStream.serialize_oneMinus (excSell_polySegStream X hcode b δ n₀)).append
+    (PolySegStream.ofTokenStream (PolyTokenStream.const 3))).append
+    (excBuy_polySegStream X hcode a δ n₀)).append
+    (PolySegStream.ofTokenStream (PolyTokenStream.const 4))
+
+theorem serialize_excHystChain (X : LUV) (a b δ : ℚ) (n₀ : ℕ) : ∀ k,
+    (hystChain (excBuy X a δ n₀) (excSell X b δ n₀) k).serialize =
+      [1, Encodable.encode (0 : ℚ)] ++
+        (List.range k).flatMap (fun j => excHystBlk X a b δ n₀ j)
+  | 0 => by simp [hystChain, EF.serialize]
+  | k + 1 => by
+      rw [hystChain]
+      simp only [EF.serialize]
+      rw [serialize_excHystChain X a b δ n₀ k,
+        List.range_succ, List.flatMap_append, List.flatMap_singleton]
+      simp [excHystBlk, List.append_assoc]
+
+theorem excCoef_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
+    (a b δ : ℚ) (n₀ : ℕ) :
+    PolySegStream (fun n => (excCoef X a b δ n₀ n).serialize) := by
+  have blk := excHystBlk_polySegStream X hcode a b δ n₀
+  have z : PolySegStream (fun _ : ℕ => [1, Encodable.encode (0 : ℚ)]) :=
+    PolySegStream.ofTokenStream ((PolyTokenStream.const 1).append (PolyTokenStream.const _))
+  have blk' := blk.comp PolyFueled.right
+  have chain1 : PolySegStream (fun n =>
+      (hystChain (excBuy X a δ n₀) (excSell X b δ n₀) (n + 1)).serialize) :=
+    PolySegStream.of_eq (z.append (PolySegStream.concatVar blk' PolyFueled.id.succ_comp))
+      (fun n => by rw [serialize_excHystChain]; simp [Nat.unpair_pair])
+  have chain0 : PolySegStream (fun n =>
+      (hystChain (excBuy X a δ n₀) (excSell X b δ n₀) n).serialize) :=
+    PolySegStream.of_eq (z.append (PolySegStream.concatVar blk' PolyFueled.id))
+      (fun n => by rw [serialize_excHystChain]; simp [Nat.unpair_pair])
+  have delta := PolySegStream.serialize_add chain1
+    (PolySegStream.serialize_mul
+      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) chain0)
+  have scale : PolySegStream (fun n => (EF.const (1 / (n : ℚ))).serialize) :=
+    PolySegStream.ofTokenStream
+      (PolyTokenStream.serialize_const_comp encode_inv_nat_polyFueled)
+  refine PolySegStream.of_eq (PolySegStream.serialize_mul scale delta) ?_
+  intro n
+  rw [excCoef, excDeltaEF]
+
+private theorem serializeTrades_map_same (e : EF) (f : ℕ → Sentence) : ∀ l : List ℕ,
+    serializeTrades (l.map (fun i => (e, f i))) =
+      l.flatMap (fun i => e.serialize ++ [6, Encodable.encode (f i)])
+  | [] => by simp [serializeTrades]
+  | i :: l => by
+      rw [List.map_cons, List.flatMap_cons, serializeTrades, serializeTrades_map_same]
+      simp [List.append_assoc]
+
+private theorem serializeTrades_excTrader (X : LUV) (a b δ : ℚ) (n₀ n : ℕ) :
+    serializeTrades ((excTrader X a b δ n₀).strat n).trades =
+      (List.range n).flatMap (fun i : ℕ =>
+        (excCoef X a b δ n₀ n).serialize ++
+          [6, Encodable.encode (X.gt ((i : ℚ) / (n : ℚ)))]) := by
+  show serializeTrades ((List.range n).map
+    (fun i : ℕ => (excCoef X a b δ n₀ n, X.gt ((i : ℚ) / (n : ℚ))))) = _
+  exact serializeTrades_map_same (excCoef X a b δ n₀ n)
+    (fun i : ℕ => X.gt ((i : ℚ) / (n : ℚ))) (List.range n)
+
+/-- Efficient computability of the bundle trader. The day-`n` stream is `n` identical
+coefficient serializations (each `Θ(n²)`: the two hysteresis chains contain historical
+day-`k` blocks carrying the `Θ(k)` expectation feature) with distinct threshold sentences.
+`PolySegStream.concatVar` emits the variable-width chains; the outer bundle is uniform-width.
+`hcode` supplies the compact sentence-code interface for `⌜X > i/n⌝`. -/
+theorem excTrader_ecTok (X : LUV) (hcode : X.PolyThresholdCodes)
+    (a b δ : ℚ) (n₀ : ℕ) :
     EfficientlyComputableTok (excTrader X a b δ n₀) := by
-  sorry -- TODO(blueprint:def:ec): runtime-divisor divmod + PolySegStream.concat + poly-fueled ℚ-constant tokens + LUV threshold-code interface
+  have hcode' := hcode
+  obtain ⟨cX, hX⟩ := hcode
+  have coef := (excCoef_polySegStream X hcode' a b δ n₀).comp PolyFueled.left
+  have frame : PolySegStream (fun m =>
+      [6, Encodable.encode (X.gt ((m.unpair.2 : ℚ) / (m.unpair.1 : ℚ)))]) :=
+    PolySegStream.ofTokenStream
+      ((PolyTokenStream.const 6).append (PolyTokenStream.polyTok hX))
+  have chunk := coef.append frame
+  have chunks := PolySegStream.concat chunk PolyFueled.id (fun n j => by
+    simp only [List.length_append, Nat.unpair_pair]
+    rfl)
+  exact ecTok_of_segStream _ (PolySegStream.of_eq chunks (fun n => by
+    rw [serializeTrades_excTrader]
+    simp only [Nat.unpair_pair]))
 
 /-- **Expectations Converge** (`thm:ec`): under a logical inductor, the day-`n`
 expectation of any `[0,1]`-LUV converges, provided plausible worlds keep existing
 (`hcons`) and assign `X` values (`hval` — the `lem:conluvapprox` linkage, disclosed
 type-`(c)`: it imports "Θ represents computations" as a hypothesis).
 
-Depends on the `excTrader_ecTok` `sorry` (emission cert pending); the trader and its
-exploitation are fully proved. -/
+The compact threshold-code hypothesis is the `def:ec` interface for the paper's
+Θ-definable LUV syntax. The bundle trader, its exploitation proof, and its variable-width
+emission certificate are all discharged. -/
 theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (X : LUV)
+    (hcode : X.PolyThresholdCodes)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x) :
@@ -802,7 +1026,7 @@ theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
     rw [div_le_div_iff₀ hn₀pos (by norm_num : (0:ℝ) < 2)]
     rw [div_le_iff₀ hγ0] at hn₀R
     nlinarith
-  exact hLI.noExploit (excTrader X a b δ n₀) (excTrader_ecTok X a b δ n₀)
+  exact hLI.noExploit (excTrader X a b δ n₀) (excTrader_ecTok X hcode a b δ n₀)
     (excTrader_exploits P DP X hδ ha hgapab hn₀ hgap hcons hval hA hB)
 
 #print axioms LUV.expect_converges
@@ -810,9 +1034,10 @@ theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
 /-- `𝔼_∞(X)` — the limiting expectation (`thm:ec`). -/
 noncomputable def LUV.expectInf (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV)
+    (hcode : X.PolyThresholdCodes)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x) : ℝ :=
-  (X.expect_converges P DP hP hcons hval).choose
+  (X.expect_converges P DP hcode hP hcons hval).choose
 
 end LogicalInduction

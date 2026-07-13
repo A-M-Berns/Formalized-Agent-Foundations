@@ -8,9 +8,9 @@ roadmap §3, Part IV):
   compact convex `Valuations'` is continuous *because trading strategies are continuous*
   (what `EF.denote` continuity buys).
   ⚠ FINDING (M0): Mathlib has **no Brouwer fixed-point theorem** (only Brouwerian/Heyting
-  *algebras* and Riesz–Markov–*Kakutani*, both unrelated). The roadmap's "use Mathlib's
-  Brouwer" assumption is false. This Part is gated on either contributing Brouwer/Kakutani
-  upstream or finding an alternate route. See `Scratchpad.lean` and `PROGRESS.md`.
+  *algebras* and Riesz–Markov–*Kakutani*, both unrelated). The missing theorem has since
+  been proved in-project via Sperner's lemma; `Construction.Brouwer` is the completed M6
+  gate. See `PROGRESS.md` for its trust-surface disclosure.
 * `def:markemaker` → `MarketMaker` — rational approximation to the fixed point.
 * `lem:budgeter` → `Budgeter`, `budgeter_props` — caps each enumerated trader.
 * `def:tradingfirm` → `TradingFirm` — combines enumerated traders with budgets.
@@ -18,7 +18,6 @@ roadmap §3, Part IV):
 * `thm:lia` → `LIA_is_logical_inductor` — discharges `def:lic` for `LIA`.
 * `thm:li`  → `exists_logical_inductor` — main existence result.
 
-TODO(blueprint:lem:fpl): resolve the Brouwer gap before starting this Part.
 -/
 import LogicalInduction.Construction.Brouwer
 

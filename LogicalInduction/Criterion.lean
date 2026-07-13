@@ -54,6 +54,12 @@ inductive EF : Type where
   | max (a b : EF) : EF
   /-- Safe reciprocation `max(1, a)⁻¹` — never divides by zero, stays in `(0, 1]`. -/
   | safeRecip (a : EF) : EF
+  /-- De Bruijn reference used inside a shared `letE` expression. A free reference
+  evaluates to zero, making all raw syntax total. -/
+  | var (i : ℕ) : EF
+  /-- Shared straight-line binding: evaluate `value` once, then evaluate `body` with that
+  value available as variable `0` (and prior variables shifted by one). -/
+  | letE (value body : EF) : EF
   deriving DecidableEq
 
 namespace EF
@@ -61,13 +67,79 @@ namespace EF
 /-- Continuous ℝ-valued semantics (`def:tf`). Feeds Brouwer via `continuous_denote`.
 Noncomputable because safe reciprocation uses `ℝ`'s (noncomputable) inverse; efficient
 computability is tracked syntactically by `cost`, not by running `denote`. -/
-noncomputable def denote : EF → History → ℝ
-  | price φ n,   V => V n φ
-  | const q,     _ => (q : ℝ)
-  | add a b,     V => a.denote V + b.denote V
-  | mul a b,     V => a.denote V * b.denote V
-  | max a b,     V => Max.max (a.denote V) (b.denote V)
-  | safeRecip a, V => (Max.max 1 (a.denote V))⁻¹
+noncomputable def denoteWith : EF → List ℝ → History → ℝ
+  | price φ n,   _, V => V n φ
+  | const q,     _, _ => (q : ℝ)
+  | add a b,     ρ, V => a.denoteWith ρ V + b.denoteWith ρ V
+  | mul a b,     ρ, V => a.denoteWith ρ V * b.denoteWith ρ V
+  | max a b,     ρ, V => Max.max (a.denoteWith ρ V) (b.denoteWith ρ V)
+  | safeRecip a, ρ, V => (Max.max 1 (a.denoteWith ρ V))⁻¹
+  | var i,       ρ, _ => ρ.getD i 0
+  | letE x body, ρ, V => body.denoteWith (x.denoteWith ρ V :: ρ) V
+
+noncomputable def denote (e : EF) (V : History) : ℝ := e.denoteWith [] V
+
+@[simp] theorem denoteWith_price (φ : Sentence) (n : ℕ) (ρ : List ℝ) (V : History) :
+    (price φ n).denoteWith ρ V = V n φ := rfl
+@[simp] theorem denoteWith_const (q : ℚ) (ρ : List ℝ) (V : History) :
+    (const q).denoteWith ρ V = (q : ℝ) := rfl
+@[simp] theorem denoteWith_add (a b : EF) (ρ : List ℝ) (V : History) :
+    (add a b).denoteWith ρ V = a.denoteWith ρ V + b.denoteWith ρ V := rfl
+@[simp] theorem denoteWith_mul (a b : EF) (ρ : List ℝ) (V : History) :
+    (mul a b).denoteWith ρ V = a.denoteWith ρ V * b.denoteWith ρ V := rfl
+@[simp] theorem denoteWith_max (a b : EF) (ρ : List ℝ) (V : History) :
+    (max a b).denoteWith ρ V = Max.max (a.denoteWith ρ V) (b.denoteWith ρ V) := rfl
+@[simp] theorem denoteWith_safeRecip (a : EF) (ρ : List ℝ) (V : History) :
+    (safeRecip a).denoteWith ρ V = (Max.max 1 (a.denoteWith ρ V))⁻¹ := rfl
+@[simp] theorem denoteWith_var (i : ℕ) (ρ : List ℝ) (V : History) :
+    (var i).denoteWith ρ V = ρ.getD i 0 := rfl
+@[simp] theorem denoteWith_letE (x body : EF) (ρ : List ℝ) (V : History) :
+    (letE x body).denoteWith ρ V = body.denoteWith (x.denoteWith ρ V :: ρ) V := rfl
+
+/-- Exact rational evaluation of an expressible feature against a rational price table.
+This is the executable semantics used when a computable-market certificate is available. -/
+def denoteRatWith : EF → List ℚ → (ℕ → Sentence → ℚ) → ℚ
+  | price φ n,   _, V => V n φ
+  | const q,     _, _ => q
+  | add a b,     ρ, V => a.denoteRatWith ρ V + b.denoteRatWith ρ V
+  | mul a b,     ρ, V => a.denoteRatWith ρ V * b.denoteRatWith ρ V
+  | max a b,     ρ, V => Max.max (a.denoteRatWith ρ V) (b.denoteRatWith ρ V)
+  | safeRecip a, ρ, V => (Max.max 1 (a.denoteRatWith ρ V))⁻¹
+  | var i,       ρ, _ => ρ.getD i 0
+  | letE x body, ρ, V => body.denoteRatWith (x.denoteRatWith ρ V :: ρ) V
+
+def denoteRat (e : EF) (V : ℕ → Sentence → ℚ) : ℚ := e.denoteRatWith [] V
+
+/-- Rational and real feature semantics agree under pointwise-related variable
+environments and price tables. -/
+theorem denoteWith_eq_ratCast (e : EF) (P : History) (Q : ℕ → Sentence → ℚ)
+    (hQ : ∀ n φ, P n φ = (Q n φ : ℝ)) :
+    ∀ (ρR : List ℝ) (ρQ : List ℚ),
+      (∀ i, ρR.getD i 0 = (ρQ.getD i 0 : ℝ)) →
+      e.denoteWith ρR P = (e.denoteRatWith ρQ Q : ℝ) := by
+  induction e with
+  | price φ n => intro ρR ρQ hρ; simpa [denoteWith, denoteRatWith] using hQ n φ
+  | const q => intro ρR ρQ hρ; rfl
+  | add a b iha ihb => intro ρR ρQ hρ; simp [denoteWith, denoteRatWith, iha ρR ρQ hρ, ihb ρR ρQ hρ]
+  | mul a b iha ihb => intro ρR ρQ hρ; simp [denoteWith, denoteRatWith, iha ρR ρQ hρ, ihb ρR ρQ hρ]
+  | max a b iha ihb => intro ρR ρQ hρ; simp [denoteWith, denoteRatWith, iha ρR ρQ hρ, ihb ρR ρQ hρ]
+  | safeRecip a iha => intro ρR ρQ hρ; simp [denoteWith, denoteRatWith, iha ρR ρQ hρ]
+  | var i => intro ρR ρQ hρ; exact hρ i
+  | letE x body ihx ihbody =>
+      intro ρR ρQ hρ
+      simp only [denoteWith, denoteRatWith]
+      apply ihbody
+      intro i
+      cases i with
+      | zero => simpa using ihx ρR ρQ hρ
+      | succ i => simpa using hρ i
+
+/-- Rational and real feature semantics agree when the real history is the coercion of the
+rational price table. -/
+theorem denote_eq_ratCast (e : EF) (P : History) (Q : ℕ → Sentence → ℚ)
+    (hQ : ∀ n φ, P n φ = (Q n φ : ℝ)) :
+    e.denote P = (e.denoteRat Q : ℝ) := by
+  exact denoteWith_eq_ratCast e P Q hQ [] [] (by simp)
 
 /-- Syntactic size of an expressible feature (`def:tf`): the structural node count. An
 auxiliary complexity measure — a small feature is cheap to write down. (Efficient
@@ -80,9 +152,21 @@ def cost : EF → ℕ
   | mul a b     => a.cost + b.cost + 1
   | max a b     => a.cost + b.cost + 1
   | safeRecip a => a.cost + 1
+  | var _       => 1
+  | letE x body => x.cost + body.cost + 1
 
 /-- Rank = the latest day the feature inspects (`def:valfeature`); `EF_n` = rank ≤ `n`.
 `const` inspects nothing (rank `0`); a binary node takes the `max` of its children. -/
+def rankWith : EF → List ℕ → ℕ
+  | price _ n,   _ => n
+  | const _,     _ => 0
+  | add a b,     ρ => Nat.max (a.rankWith ρ) (b.rankWith ρ)
+  | mul a b,     ρ => Nat.max (a.rankWith ρ) (b.rankWith ρ)
+  | max a b,     ρ => Nat.max (a.rankWith ρ) (b.rankWith ρ)
+  | safeRecip a, ρ => a.rankWith ρ
+  | var i,       ρ => ρ.getD i 0
+  | letE x body, ρ => body.rankWith (x.rankWith ρ :: ρ)
+
 def rank : EF → ℕ
   | price _ n   => n
   | const _     => 0
@@ -90,6 +174,17 @@ def rank : EF → ℕ
   | mul a b     => Nat.max a.rank b.rank
   | max a b     => Nat.max a.rank b.rank
   | safeRecip a => a.rank
+  | var _       => 0
+  | letE x body => Nat.max x.rank body.rank
+
+@[simp] theorem rank_price (φ : Sentence) (n : ℕ) : (price φ n).rank = n := rfl
+@[simp] theorem rank_const (q : ℚ) : (const q).rank = 0 := rfl
+@[simp] theorem rank_add (a b : EF) : (add a b).rank = Nat.max a.rank b.rank := rfl
+@[simp] theorem rank_mul (a b : EF) : (mul a b).rank = Nat.max a.rank b.rank := rfl
+@[simp] theorem rank_max (a b : EF) : (max a b).rank = Nat.max a.rank b.rank := rfl
+@[simp] theorem rank_safeRecip (a : EF) : (safeRecip a).rank = a.rank := rfl
+@[simp] theorem rank_var (i : ℕ) : (var i).rank = 0 := rfl
+@[simp] theorem rank_letE (x body : EF) : (letE x body).rank = Nat.max x.rank body.rank := rfl
 
 /-! ### `denote` is a ring map on the nose (all `rfl`), packaged for `simp`. -/
 
@@ -100,10 +195,10 @@ def rank : EF → ℕ
     (const q).denote = fun _ => (q : ℝ) := rfl
 
 @[simp] theorem denote_add (a b : EF) : (add a b).denote = a.denote + b.denote := by
-  funext V; simp [denote, Pi.add_apply]
+  funext V; simp [denote, denoteWith, Pi.add_apply]
 
 @[simp] theorem denote_mul (a b : EF) : (mul a b).denote = a.denote * b.denote := by
-  funext V; simp [denote, Pi.mul_apply]
+  funext V; simp [denote, denoteWith, Pi.mul_apply]
 
 @[simp] theorem denote_max (a b : EF) (V : History) :
     (max a b).denote V = Max.max (a.denote V) (b.denote V) := rfl
@@ -116,17 +211,47 @@ constraint — this is what breaks the price/trade circularity the paper needs f
 Safe reciprocation is the only nontrivial case: `max 1 x ≥ 1 > 0`, so the reciprocal is
 continuous with no removable singularity. -/
 
-theorem continuous_denote (e : EF) : Continuous e.denote := by
+private theorem continuous_env_getD (ρ : List (History → ℝ))
+    (hρ : ∀ f ∈ ρ, Continuous f) (i : ℕ) :
+    Continuous (fun V => (ρ.map (fun f => f V)).getD i 0) := by
+  induction ρ generalizing i with
+  | nil => simp; exact continuous_const
+  | cons f ρ ih =>
+      cases i with
+      | zero => simpa using hρ f (by simp)
+      | succ i =>
+          simp only [List.map_cons, List.getD_cons_succ]
+          exact ih (fun g hg => hρ g (by simp [hg])) i
+
+theorem continuous_denoteWith (e : EF) : ∀ (ρ : List (History → ℝ)),
+    (∀ f ∈ ρ, Continuous f) →
+    Continuous (fun V => e.denoteWith (ρ.map (fun f => f V)) V) := by
   induction e with
-  | price φ n => exact (continuous_apply φ).comp (continuous_apply n)
-  | const q => exact continuous_const
-  | add a b ha hb => exact ha.add hb
-  | mul a b ha hb => exact ha.mul hb
-  | max a b ha hb => exact ha.max hb
+  | price φ n => intro ρ hρ; exact (continuous_apply φ).comp (continuous_apply n)
+  | const q => intro ρ hρ; exact continuous_const
+  | add a b ha hb => intro ρ hρ; exact (ha ρ hρ).add (hb ρ hρ)
+  | mul a b ha hb => intro ρ hρ; exact (ha ρ hρ).mul (hb ρ hρ)
+  | max a b ha hb => intro ρ hρ; exact (ha ρ hρ).max (hb ρ hρ)
   | safeRecip a ha =>
-      refine (continuous_const.max ha).inv₀ (fun V => ?_)
-      have : (1 : ℝ) ≤ Max.max 1 (a.denote V) := le_max_left _ _
+      intro ρ hρ
+      refine (continuous_const.max (ha ρ hρ)).inv₀ (fun V => ?_)
+      have : (1 : ℝ) ≤ Max.max 1 (a.denoteWith (ρ.map (fun f => f V)) V) :=
+        le_max_left _ _
       positivity
+  | var i => intro ρ hρ; exact continuous_env_getD ρ hρ i
+  | letE x body hx hbody =>
+      intro ρ hρ
+      simpa [denoteWith] using hbody
+        ((fun V => x.denoteWith (ρ.map (fun f => f V)) V) :: ρ)
+        (by
+          intro f hf
+          simp only [List.mem_cons] at hf
+          rcases hf with rfl | hf
+          · exact hx ρ hρ
+          · exact hρ f hf)
+
+theorem continuous_denote (e : EF) : Continuous e.denote := by
+  simpa [denote] using continuous_denoteWith e [] (by simp)
 
 /-! ### `EF_n` is a commutative ring (`def:tf`).
 
@@ -140,8 +265,8 @@ algebra (`2 - φ*6`, etc.) actually takes place in. -/
 ring `History → ℝ`. -/
 def ExpressibleRankLE (n : ℕ) : Subring (History → ℝ) where
   carrier := { f | ∃ e : EF, e.rank ≤ n ∧ e.denote = f }
-  zero_mem' := ⟨const 0, by simp [rank], by funext V; simp [denote]⟩
-  one_mem' := ⟨const 1, by simp [rank], by funext V; simp [denote]⟩
+  zero_mem' := ⟨const 0, by simp, by funext V; simp [denote, denoteWith]⟩
+  one_mem' := ⟨const 1, by simp, by funext V; simp [denote, denoteWith]⟩
   add_mem' := by
     rintro f g ⟨ef, hf, rfl⟩ ⟨eg, hg, rfl⟩
     exact ⟨add ef eg, Nat.max_le.mpr ⟨hf, hg⟩, by simp⟩
@@ -150,8 +275,8 @@ def ExpressibleRankLE (n : ℕ) : Subring (History → ℝ) where
     exact ⟨mul ef eg, Nat.max_le.mpr ⟨hf, hg⟩, by simp⟩
   neg_mem' := by
     rintro f ⟨ef, hf, rfl⟩
-    refine ⟨mul (const (-1)) ef, by simpa [rank] using hf, ?_⟩
-    funext V; simp [denote]
+    refine ⟨mul (const (-1)) ef, by simpa using hf, ?_⟩
+    funext V; simp [denote, denoteWith]
 
 /-- `EF_n`: the rank-≤`n` expressible features. A commutative ring (`def:tf`). -/
 abbrev EFn (n : ℕ) : Subring (History → ℝ) := ExpressibleRankLE n
@@ -172,7 +297,7 @@ def exMaxDiff (φ ψ : Sentence) : EF :=
 
 /-- Its rank is `7`, matching the paper. -/
 example (φ ψ : Sentence) : (exMaxDiff φ ψ).rank = 7 := by
-  simp [exMaxDiff, rank]
+  simp [exMaxDiff]
 
 /-- The paper's computed value: with `p₆(φ) = 0.5` and `p₇(ψ) = 0.2`, it returns `0.3`. -/
 example (φ ψ : Sentence) (V : History) (h6 : V 6 φ = 0.5) (h7 : V 7 ψ = 0.2) :
@@ -215,6 +340,8 @@ def toNat : EF → ℕ
   | mul a b     => Nat.pair 3 (Nat.pair a.toNat b.toNat)
   | max a b     => Nat.pair 4 (Nat.pair a.toNat b.toNat)
   | safeRecip a => Nat.pair 5 a.toNat
+  | var i       => Nat.pair 6 i
+  | letE x body => Nat.pair 7 (Nat.pair x.toNat body.toNat)
 
 /-- Fuel-clocked decoder inverting `EF.toNat`. Structural recursion on `fuel`; each child's
 code is strictly smaller (tag `≥ 1` ⇒ `Nat.pair tag X > X`), so `fuel = m + 1` suffices. -/
@@ -232,6 +359,9 @@ def ofNatAux : ℕ → ℕ → Option EF
     | 4 => (ofNatAux fuel m.unpair.2.unpair.1).bind
              (fun a => (ofNatAux fuel m.unpair.2.unpair.2).map (max a))
     | 5 => (ofNatAux fuel m.unpair.2).map safeRecip
+    | 6 => some (var m.unpair.2)
+    | 7 => (ofNatAux fuel m.unpair.2.unpair.1).bind
+             (fun x => (ofNatAux fuel m.unpair.2.unpair.2).map (letE x))
     | _ => none
 
 /-- Decoder inverting `EF.toNat`, with fuel `m + 1` (always enough). -/
@@ -275,6 +405,14 @@ theorem ofNatAux_toNat : ∀ (fuel : ℕ) (e : EF), e.toNat < fuel → ofNatAux 
           simp only [toNat] at he ⊢
           have h3 := lt_pair_tag 5 a.toNat (by norm_num)
           simp only [ofNatAux, Nat.unpair_pair, ih a (by omega), Option.map_some]
+      | var i => simp [toNat, ofNatAux, Nat.unpair_pair]
+      | letE x body =>
+          simp only [toNat] at he ⊢
+          have h1 := Nat.left_le_pair x.toNat body.toNat
+          have h2 := Nat.right_le_pair x.toNat body.toNat
+          have h3 := lt_pair_tag 7 (Nat.pair x.toNat body.toNat) (by norm_num)
+          simp only [ofNatAux, Nat.unpair_pair, ih x (by omega), ih body (by omega),
+            Option.bind_some, Option.map_some]
 
 theorem ofNat_toNat (e : EF) : ofNat e.toNat = some e :=
   ofNatAux_toNat _ e (Nat.lt_succ_self _)
@@ -305,6 +443,8 @@ def serialize : EF → List ℕ
   | mul a b     => a.serialize ++ b.serialize ++ [3]
   | max a b     => a.serialize ++ b.serialize ++ [4]
   | safeRecip a => a.serialize ++ [5]
+  | var i       => [7, i]
+  | letE x body => x.serialize ++ body.serialize ++ [8]
 
 /-- `serialize`'s length is bounded by `3 · cost` — linear in the node count. This is the
 whole point: poly-*size* (poly-`cost`) features have poly-*length* serializations, so
@@ -321,6 +461,9 @@ theorem serialize_length_le_cost (e : EF) : (serialize e).length ≤ 3 * e.cost 
       List.length_nil]; omega
   | safeRecip a iha => simp only [serialize, cost, List.length_append, List.length_cons,
       List.length_nil]; omega
+  | var i => simp [serialize, cost]
+  | letE x body ihx ihbody => simp only [serialize, cost, List.length_append,
+      List.length_cons, List.length_nil]; omega
 
 end EF
 
@@ -356,6 +499,8 @@ def readM : List ℕ → List EF → List (EF × Sentence) → Option (List EF �
       match (Encodable.decode p : Option Sentence) with
       | some φ => readM rest efst (tr ++ [(e, φ)])
       | none => none
+  | (7 :: i :: rest), efst, tr => readM rest (var i :: efst) tr
+  | (8 :: rest), (body :: x :: efst), tr => readM rest (letE x body :: efst) tr
   | _, _, _ => none
 
 /-- Reading a feature's serialization pushes exactly that feature (for any stack/trade state).
@@ -381,6 +526,11 @@ theorem readM_serialize (e : EF) : ∀ (rest : List ℕ) (efst : List EF)
                        simp only [serialize, List.append_assoc, List.cons_append,
                          List.nil_append]
                        rw [iha]; simp only [readM]
+  | var i => intro rest efst tr; simp [serialize, readM]
+  | letE x body ihx ihbody => intro rest efst tr
+                              simp only [serialize, List.append_assoc, List.cons_append,
+                                List.nil_append]
+                              rw [ihx, ihbody]; simp only [readM]
 
 /-- Decode a lone feature: accept iff the machine ends with a single feature and no trades. -/
 def deserialize (toks : List ℕ) : Option EF :=
@@ -483,15 +633,32 @@ end PCWorld
 /-- `def:dedproc`. A nested sequence `D 0 ⊆ D 1 ⊆ ⋯` of finite sets of sentences,
 interpreted as the theorems revealed by day `n`.
 
-Modeling note (disclosed type-`(c)`): the paper additionally requires `D` to be
-*computable*. We do not carry a computability witness in the type; the criterion's
-statement quantifies over traders, not over `D`, so it is unaffected, and computability of
-`D` re-enters only in the construction (Part IV). -/
+Computability is packaged separately below, so the bare order-theoretic object remains
+convenient in semantic lemmas while logical-inductor instances carry the paper-required
+certificate. -/
 structure DeductiveProcess where
   /-- The sentences revealed by day `n`. -/
   D : ℕ → Finset Sentence
   /-- The revealed sets are nondecreasing. -/
   mono : ∀ n, D n ⊆ D (n + 1)
+
+/-- A deductive process is computable in the paper's unary-time sense: one fixed partial
+recursive program eventually emits the encoded finite set `D n`.  No polynomial runtime is
+required. -/
+def ComputableDeductiveProcess (DP : DeductiveProcess) : Prop :=
+  ∃ code : Nat.Partrec.Code, ∀ n, Encodable.encode (DP.D n) ∈ code.eval n
+
+/-- A paper-faithful computable rational market certificate. `quote n ⌜φ⌝` is the exact
+rational price of `φ` on day `n`, and one fixed partial-recursive program computes this
+two-argument table (with its input paired into one natural). No polynomial runtime is
+required of the market itself.
+
+The extra values of `quote` on naturals that do not encode a sentence are harmless and make
+the computational interface total. -/
+def ComputableMarket (P : History) : Prop :=
+  ∃ (quote : ℕ → ℕ → ℚ) (code : Nat.Partrec.Code),
+    (∀ n φ, P n φ = (quote n (Encodable.encode φ) : ℝ)) ∧
+    ∀ z, Encodable.encode (quote z.unpair.1 z.unpair.2) ∈ code.eval z
 
 /-! ## `def:tradestrat`, `def:trader` — Trading strategies and traders
 
@@ -621,6 +788,11 @@ resolved), this is the paper's `def:lic` on the nose, and it now admits deep pol
 exploiters (hysteresis, purchase counters) that the whole-number `EfficientlyComputable`
 excluded. -/
 class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
+  /-- Markets are computable rational pricing sequences in the paper's definition. -/
+  marketComputable : ComputableMarket P
+  /-- Deductive processes are computable nested finite-set sequences in the paper's
+  definition. -/
+  processComputable : ComputableDeductiveProcess DP
   /-- No efficiently computable trader exploits `P`. -/
   noExploit : ∀ Tr : Trader, EfficientlyComputableTok Tr → ¬ Tr.Exploits P DP
 

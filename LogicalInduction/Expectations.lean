@@ -19,13 +19,36 @@ Sentence`. The paper's well-definedness (`Θ` proves a unique value) becomes mon
 coherence conditions on that family; we carry only what a given theorem needs, as explicit
 hypotheses, rather than reconstructing the first-order syntax.
 -/
-import LogicalInduction.Criterion
+import LogicalInduction.Computable
 import LogicalInduction.Asymptotics
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
 namespace LogicalInduction
 
 open Filter Topology
+
+/-! ### Efficient family interfaces used by the M4 lifts
+
+The paper's affine and Self-Trust theorems quantify over efficiently computable sequences.
+An arbitrary Lean function `ℕ → Sentence` or `ℕ → LUV` is much broader: it can encode an
+uncomputable diagonal that no legal trader can follow.  These interfaces expose exactly the
+compact codes consumed by the token-emission model. -/
+
+/-- An efficiently codeable sequence of sentences. -/
+def PolySentenceCodes (φ : ℕ → Sentence) : Prop :=
+  ∃ c : Nat.Partrec.Code, PolyFueled c (fun n => Encodable.encode (φ n))
+
+/-- An efficiently codeable sequence of rational constants. -/
+def PolyRatCodes (q : ℕ → ℚ) : Prop :=
+  ∃ c : Nat.Partrec.Code, PolyFueled c (fun n => Encodable.encode (q n))
+
+/-- A rational sequence generated continuously from the market by a polynomial-size feature
+progression. This is the propositional/token-model rendering of the paper's `def:pgen` for
+rational sequences. -/
+def PGenerableRat (P : History) (q : ℕ → ℚ) : Prop :=
+  ∃ feature : ℕ → EF, (∀ n, (feature n).rank ≤ n) ∧
+    PolyTokenStream (fun n => (feature n).serialize) ∧
+    ∀ n, (feature n).denote P = (q n : ℝ)
 
 /-- `def:luv` (abstracted). A `[0,1]`-logically-uncertain variable, presented by its
 threshold sentences: `X.gt r = ⌜X > r⌝`. This is the LUV's entire observable content for a
@@ -35,6 +58,22 @@ structure LUV where
   gt : ℚ → Sentence
 
 namespace LUV
+
+/-- A threshold presentation is **polynomially codeable** when the sentence code for
+`X > i/n` is computable with polynomial fuel from `⟨n,i⟩`.  Paper LUVs are
+Θ-definable, so this is the propositional interface corresponding to their compact
+syntactic presentation (`def:ec`, disclosed type-`(c)`). -/
+def PolyThresholdCodes (X : LUV) : Prop :=
+  ∃ c : Nat.Partrec.Code, PolyFueled c (fun m =>
+    Encodable.encode (X.gt ((m.unpair.2 : ℚ) / (m.unpair.1 : ℚ))))
+
+/-- A sequence of LUV presentations is polynomially codeable when `⌜X_n > i/k⌝` can be
+emitted from `⟨n,⟨k,i⟩⟩`. This is the varying-LUV analogue of `PolyThresholdCodes` and is
+the interface needed by the affine and Self-Trust traders. -/
+def PolyThresholdCodeSeq (X : ℕ → LUV) : Prop :=
+  ∃ c : Nat.Partrec.Code, PolyFueled c (fun m =>
+    Encodable.encode ((X m.unpair.1).gt
+      ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))))
 
 /-- `def:e`. The **approximate expectation** of `X` under a valuation `V` at precision `k`:
 `𝔼_k^V(X) = ∑_{i<k} (1/k) · V(⌜X > i/k⌝)`. Lands in `[0,1]` when `V` does (a share is worth
@@ -218,11 +257,43 @@ def LUV.IsIndicator (Y : LUV) (φ : Sentence) (DP : DeductiveProcess) : Prop :=
     (0 ≤ (r : ℝ) → (r : ℝ) < 1 → (v.Holds (Y.gt r) ↔ v.Holds φ)) ∧
     (1 ≤ (r : ℝ) → ¬ v.Holds (Y.gt r))
 
+/-- The relational indicator hypotheses really assign the indicator its intended world value:
+`1` in `φ`-worlds and `0` otherwise. This is the world-side input to the M4 LUV lift. -/
+theorem LUV.IsIndicator.valuesAt {Y : LUV} {φ : Sentence} {DP : DeductiveProcess}
+    (hY : Y.IsIndicator φ DP) {n : ℕ} {v : PCWorld}
+    (hv : v.ConsistentWith (DP.D n)) : v.ValuesAt Y (v.payout φ) := by
+  have hlink := hY n v hv
+  by_cases hφ : v.Holds φ
+  · rw [PCWorld.payout, if_pos hφ]
+    refine ⟨by norm_num, by norm_num, fun r => ?_⟩
+    obtain ⟨hneg, hmid, hhi⟩ := hlink r
+    constructor
+    · intro hr
+      by_cases hr0 : (r : ℝ) < 0
+      · exact hneg hr0
+      · exact (hmid (le_of_not_gt hr0) hr).2 hφ
+    · intro hr
+      exact hhi (le_of_lt hr)
+  · rw [PCWorld.payout, if_neg hφ]
+    refine ⟨by norm_num, by norm_num, fun r => ?_⟩
+    obtain ⟨hneg, hmid, hhi⟩ := hlink r
+    constructor
+    · exact hneg
+    · intro hr
+      by_cases hr1 : (r : ℝ) < 1
+      · exact fun h => hφ ((hmid (le_of_lt hr) hr1).1 h)
+      · exact hhi (le_of_not_gt hr1)
+
+#print axioms LUV.IsIndicator.valuesAt
+
 /-- **Expectations of indicators** (`thm:ei`): `𝔼ₙ(1(φ)) ≈ₙ Pₙ(φ)` for any indicator
 family for `φ`. Note per-threshold `thm:lex` does *not* suffice — the threshold set grows
 with `n`, so the exploiter is a bundle trader (the D2/hysteresis shape). -/
 theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (φ : Sentence) (Y : LUV) (hY : Y.IsIndicator φ DP) :
+    [IsLogicalInductor P DP] (φ : Sentence) (Y : LUV) (hcode : Y.PolyThresholdCodes)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hY : Y.IsIndicator φ DP) :
     AsympEq (Y.expectSeq P) (fun n => P n φ) := by
   -- TODO(blueprint:thm:ei): proof in M4 (bundle trader, D2's engine).
   sorry
@@ -232,6 +303,12 @@ world values `Z` as the affine combination `a·X + b·Y`, the expectations combi
 way in the limit. (The `𝓔𝓒`-sequence form is the M4 target.) -/
 theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (a b : ℚ) (X Y Z : LUV)
+    (hcodeX : X.PolyThresholdCodes) (hcodeY : Y.PolyThresholdCodes)
+    (hcodeZ : Z.PolyThresholdCodes)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hvals : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) →
+      ∃ x y z, v.ValuesAt X x ∧ v.ValuesAt Y y ∧ v.ValuesAt Z z)
     (hlin : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∀ x y z,
       v.ValuesAt X x → v.ValuesAt Y y → v.ValuesAt Z z → z = a * x + b * y) :
     AsympEq (fun n => (a : ℝ) * X.expect P n + (b : ℝ) * Y.expect P n)
@@ -242,7 +319,9 @@ theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
 /-- **Expectation provability induction** (`thm:expprovind`, single-LUV form): if every
 plausible world values `X` at least `c`, the expectation is eventually at least `c − ε`. -/
 theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (X : LUV) (c : ℝ)
+    [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
     (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, c ≤ x ∧ v.ValuesAt X x) :
     AsympGE (X.expectSeq P) (fun _ => c) := by
   -- TODO(blueprint:thm:expprovind): proof in M4 (affine machinery).

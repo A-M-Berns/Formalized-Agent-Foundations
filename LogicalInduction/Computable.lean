@@ -212,7 +212,7 @@ read off efficient computability — the first responsive trader certified under
 def priceTrader (φ : Sentence) : Trader where
   strat n := { trades := [(EF.price φ n, φ)]
                rank_le := by intro p hp; simp only [List.mem_singleton] at hp
-                             subst hp; simp [EF.rank] }
+                             subst hp; simp }
 
 /-! ### `PolyEF` — day-indexed feature templates with e.c. codes.
 
@@ -1361,7 +1361,7 @@ def srChain : ℕ → EF
 theorem srChain_rank (n : ℕ) : (srChain n).rank = 0 := by
   induction n with
   | zero => rfl
-  | succ k ih => rw [srChain, EF.rank, ih]
+  | succ k ih => rw [srChain, EF.rank_safeRecip, ih]
 
 /-- The trader playing the depth-`n` feature on `φ` each day. -/
 def deepTrader (φ : Sentence) : Trader where
@@ -1605,8 +1605,8 @@ def histSum (φ : Sentence) : ℕ → EF
 theorem histSum_rank (φ : Sentence) : ∀ n, (histSum φ n).rank ≤ n
   | 0 => Nat.le_refl 0
   | (n + 1) => by
-      rw [histSum, EF.rank]
-      exact max_le ((histSum_rank φ n).trans (by omega)) (by rw [EF.rank]; omega)
+      rw [histSum, EF.rank_add]
+      exact max_le ((histSum_rank φ n).trans (by omega)) (by simp)
 
 /-- The trader playing the history sum on `φ` each day. -/
 def histTrader (φ : Sentence) : Trader where
@@ -1705,6 +1705,90 @@ theorem PolySegStream.append {s₁ s₂ : ℕ → List ℕ} (h₁ : PolySegStrea
   · rw [if_neg (by omega), htok₂ n (i - l₁ n) (by omega),
       List.getD_append_right _ _ _ _ (by rw [hlen₁ n]; omega), hlen₁ n]
 
+/-- Conditional segment selection with a polynomially fueled Boolean-as-natural test.
+`test n = 0` selects `s₀`; every nonzero value selects `s₁`. Both token and runtime-length
+emitters dispatch through the same `ifzSel` primitive. -/
+theorem PolySegStream.ifZero {s₀ s₁ : ℕ → List ℕ} (h₀ : PolySegStream s₀)
+    (h₁ : PolySegStream s₁) {ctest : Nat.Partrec.Code} {test : ℕ → ℕ}
+    (htest : PolyFueled ctest test) :
+    PolySegStream (fun n => if test n = 0 then s₀ n else s₁ n) := by
+  obtain ⟨ct₀, cl₀, t₀, l₀, htt₀, hll₀, hlen₀, htok₀⟩ := h₀
+  obtain ⟨ct₁, cl₁, t₁, l₁, htt₁, hll₁, hlen₁, htok₁⟩ := h₁
+  have lenPF := ifzSel_polyFueled.comp ((hll₀.pair hll₁).pair htest)
+  have tokPF := ifzSel_polyFueled.comp
+    ((htt₀.pair htt₁).pair (htest.comp PolyFueled.left))
+  refine ⟨_, _, _, _, tokPF, lenPF, fun n => ?_, ?_⟩
+  · simp only [ifzSelFn]
+    by_cases h : test n = 0
+    · simp [h, hlen₀ n]
+    · simp [h, hlen₁ n]
+  · intro n i hi
+    simp only [Nat.unpair_pair, ifzSelFn]
+    by_cases h : test n = 0
+    · simp only [h, if_pos]
+      exact htok₀ n i (by simpa [ifzSelFn, h, hlen₀ n] using hi)
+    · simp only [h, if_neg]
+      exact htok₁ n i (by simpa [ifzSelFn, h, hlen₁ n] using hi)
+
+/-- Reindex a segment stream along a polynomially fueled input function. -/
+theorem PolySegStream.comp {s : ℕ → List ℕ} (hs : PolySegStream s)
+    {cf : Nat.Partrec.Code} {f : ℕ → ℕ} (hf : PolyFueled cf f) :
+    PolySegStream (fun n => s (f n)) := by
+  obtain ⟨ct, cl, t, l, ht, hl, hlen, htok⟩ := hs
+  refine ⟨_, _, _, _, ht.comp ((hf.comp PolyFueled.left).pair PolyFueled.right), hl.comp hf,
+    fun n => hlen (f n), ?_⟩
+  intro n i hi
+  simp only [Function.comp_apply, Nat.unpair_pair]
+  exact htok (f n) i hi
+
+/-- Segment-level serialization closure for `EF.add`. -/
+theorem PolySegStream.serialize_add {A B : ℕ → EF}
+    (hA : PolySegStream (fun n => (A n).serialize))
+    (hB : PolySegStream (fun n => (B n).serialize)) :
+    PolySegStream (fun n => (EF.add (A n) (B n)).serialize) := by
+  refine PolySegStream.of_eq ((hA.append hB).append
+    (PolySegStream.ofTokenStream (PolyTokenStream.const 2))) ?_
+  intro n; simp [EF.serialize, List.append_assoc]
+
+/-- Segment-level serialization closure for `EF.mul`. -/
+theorem PolySegStream.serialize_mul {A B : ℕ → EF}
+    (hA : PolySegStream (fun n => (A n).serialize))
+    (hB : PolySegStream (fun n => (B n).serialize)) :
+    PolySegStream (fun n => (EF.mul (A n) (B n)).serialize) := by
+  refine PolySegStream.of_eq ((hA.append hB).append
+    (PolySegStream.ofTokenStream (PolyTokenStream.const 3))) ?_
+  intro n; simp [EF.serialize, List.append_assoc]
+
+/-- Segment-level serialization closure for `EF.max`. -/
+theorem PolySegStream.serialize_max {A B : ℕ → EF}
+    (hA : PolySegStream (fun n => (A n).serialize))
+    (hB : PolySegStream (fun n => (B n).serialize)) :
+    PolySegStream (fun n => (EF.max (A n) (B n)).serialize) := by
+  refine PolySegStream.of_eq ((hA.append hB).append
+    (PolySegStream.ofTokenStream (PolyTokenStream.const 4))) ?_
+  intro n; simp [EF.serialize, List.append_assoc]
+
+/-- Segment-level serialization of a variable reference `[7, i]`. -/
+theorem PolySegStream.serialize_var {f : ℕ → ℕ} {cf : Nat.Partrec.Code}
+    (hf : PolyFueled cf f) :
+    PolySegStream (fun n => (EF.var (f n)).serialize) := by
+  have hs := (PolyTokenStream.const 7).append (PolyTokenStream.polyTok hf)
+  have heq : (fun n => (EF.var (f n)).serialize) = (fun n => [7] ++ [f n]) := by
+    funext n
+    simp [EF.serialize]
+  rw [heq]
+  exact PolySegStream.ofTokenStream hs
+
+/-- Segment-level serialization of a shared binding. -/
+theorem PolySegStream.serialize_letE {X Body : ℕ → EF}
+    (hX : PolySegStream (fun n => (X n).serialize))
+    (hBody : PolySegStream (fun n => (Body n).serialize)) :
+    PolySegStream (fun n => (EF.letE (X n) (Body n)).serialize) := by
+  refine PolySegStream.of_eq ((hX.append hBody).append
+    (PolySegStream.ofTokenStream (PolyTokenStream.const 8))) ?_
+  intro n
+  simp [EF.serialize, List.append_assoc]
+
 /-- Base case: `cnt n` repetitions of a fixed-width block of poly-fueled tokens of
 `⟨n, j⟩` (`divmodc` emitter). -/
 theorem PolySegStream.blocks {blk : ℕ → List ℕ} (hblk : PolyTokenStream blk)
@@ -1726,6 +1810,19 @@ theorem PolySegStream.blocks {blk : ℕ → List ℕ} (hblk : PolyTokenStream bl
   intro n i hi
   simp only [Nat.unpair_pair, selFn_tupleEnc]
   rw [getD_flatMap_const_width _ W hW0 (cnt n) i (fun j _ => hW _) hi, hmap]
+
+/-- A polynomially many repetition of one fixed tag. -/
+theorem PolySegStream.repeatTag (tag : ℕ) {ccnt : Nat.Partrec.Code} {cnt : ℕ → ℕ}
+    (hcnt : PolyFueled ccnt cnt) :
+    PolySegStream (fun n => List.replicate (cnt n) tag) := by
+  have hb : PolyTokenStream (fun _ => [tag]) := PolyTokenStream.const tag
+  have hblocks := PolySegStream.blocks hb 1 (fun _ => rfl) (by omega) hcnt
+  refine PolySegStream.of_eq hblocks ?_
+  intro n
+  change (List.range (cnt n)).flatMap (fun _ => [tag]) = List.replicate (cnt n) tag
+  induction cnt n with
+  | zero => rfl
+  | succ c ih => simp [List.range_succ, ih, List.replicate_succ']
 
 /-- **`n`-fold segment concatenation, uniform runtime width**: if `seg` is a
 `PolySegStream` over the paired input `⟨n, j⟩` whose length depends only on `n`, and
@@ -1776,6 +1873,206 @@ theorem PolySegStream.concat {seg : ℕ → List ℕ} (hseg : PolySegStream seg)
     exact hspec (Nat.pair n (i / lenFn (Nat.pair n 0))) (i % lenFn (Nat.pair n 0))
       (by rw [hlf n (i / lenFn (Nat.pair n 0))]; exact Nat.mod_lt _ hW0)
 
+/-! #### Variable-width concatenation
+
+Expectation hysteresis (`thm:ec`) has a genuinely different shape from the uniform-width
+scale ladders above: its historical day-`j` block contains `j` threshold-price nodes.  The
+following prefix scan is the generic emitter for that shape. -/
+
+/-- Sum of the first `k` runtime segment lengths for outer input `n`. -/
+def segPrefix (lenFn : ℕ → ℕ) (n : ℕ) : ℕ → ℕ
+  | 0 => 0
+  | k + 1 => segPrefix lenFn n k + lenFn (Nat.pair n k)
+
+@[simp] theorem segPrefix_zero (lenFn : ℕ → ℕ) (n : ℕ) :
+    segPrefix lenFn n 0 = 0 := rfl
+
+@[simp] theorem segPrefix_succ (lenFn : ℕ → ℕ) (n k : ℕ) :
+    segPrefix lenFn n (k + 1) = segPrefix lenFn n k + lenFn (Nat.pair n k) := rfl
+
+theorem segPrefix_mono (lenFn : ℕ → ℕ) (n : ℕ) : Monotone (segPrefix lenFn n) := by
+  intro a b hab
+  induction b with
+  | zero => simp at hab; subst a; exact le_rfl
+  | succ b ih =>
+      rcases Nat.eq_or_lt_of_le hab with rfl | hlt
+      · exact le_rfl
+      · exact (ih (by omega)).trans (Nat.le_add_right _ _)
+
+/-- The last segment boundary not exceeding token offset `i`, scanned through `k` blocks. -/
+def segLocate (lenFn : ℕ → ℕ) (n i : ℕ) : ℕ → ℕ
+  | 0 => 0
+  | k + 1 => if segPrefix lenFn n (k + 1) ≤ i then k + 1 else segLocate lenFn n i k
+
+theorem segLocate_le (lenFn : ℕ → ℕ) (n i : ℕ) : ∀ k,
+    segLocate lenFn n i k ≤ k
+  | 0 => by simp [segLocate]
+  | k + 1 => by
+      rw [segLocate]
+      split
+      · exact le_rfl
+      · exact (segLocate_le lenFn n i k).trans (Nat.le_succ k)
+
+theorem segLocate_spec (lenFn : ℕ → ℕ) (n i : ℕ) : ∀ k,
+    segPrefix lenFn n (segLocate lenFn n i k) ≤ i ∧
+      (∀ j, j ≤ k → segPrefix lenFn n j ≤ i → j ≤ segLocate lenFn n i k)
+  | 0 => by simp [segLocate]
+  | k + 1 => by
+      rw [segLocate]
+      split_ifs with h
+      · exact ⟨h, fun j hj _ => hj⟩
+      · obtain ⟨hlo, hmax⟩ := segLocate_spec lenFn n i k
+        refine ⟨hlo, fun j hj hji => ?_⟩
+        rcases Nat.eq_or_lt_of_le hj with rfl | hjlt
+        · exact (h hji).elim
+        · exact hmax j (by omega) hji
+
+/-- Prefix length agrees with the length of the corresponding `flatMap`. -/
+theorem length_flatMap_eq_segPrefix (seg : ℕ → List ℕ) (lenFn : ℕ → ℕ)
+    (n : ℕ) (hlen : ∀ j, (seg (Nat.pair n j)).length = lenFn (Nat.pair n j)) : ∀ k,
+    ((List.range k).flatMap (fun j => seg (Nat.pair n j))).length = segPrefix lenFn n k
+  | 0 => by simp
+  | k + 1 => by
+      rw [List.range_succ, List.flatMap_append, List.flatMap_singleton, List.length_append,
+        length_flatMap_eq_segPrefix seg lenFn n hlen k, hlen, segPrefix_succ]
+
+/-- Index a variable-width `flatMap` from the enclosing prefix interval. -/
+theorem getD_flatMap_of_prefix (seg : ℕ → List ℕ) (lenFn : ℕ → ℕ)
+    (n cnt i j : ℕ) (hlen : ∀ k, (seg (Nat.pair n k)).length = lenFn (Nat.pair n k))
+    (hj : j < cnt) (hlo : segPrefix lenFn n j ≤ i)
+    (hhi : i < segPrefix lenFn n (j + 1)) :
+    ((List.range cnt).flatMap (fun k => seg (Nat.pair n k))).getD i 0
+      = (seg (Nat.pair n j)).getD (i - segPrefix lenFn n j) 0 := by
+  induction cnt generalizing j i with
+  | zero => omega
+  | succ cnt ih =>
+      rw [List.range_succ, List.flatMap_append, List.flatMap_singleton]
+      rcases Nat.eq_or_lt_of_le (show j ≤ cnt by omega) with rfl | hjlt
+      · rw [List.getD_append_right]
+        · rw [length_flatMap_eq_segPrefix seg lenFn n hlen]
+        · rw [length_flatMap_eq_segPrefix seg lenFn n hlen]
+          exact hlo
+      · rw [List.getD_append]
+        · exact ih i j hjlt hlo hhi
+        · rw [length_flatMap_eq_segPrefix seg lenFn n hlen]
+          exact lt_of_lt_of_le hhi (segPrefix_mono lenFn n (by omega))
+
+/-- Runtime prefix sums of polynomially fueled segment lengths are polynomially fueled. -/
+theorem segPrefix_polyFueled {cl : Nat.Partrec.Code} {lenFn : ℕ → ℕ}
+    (hlen : PolyFueled cl lenFn) :
+    ∃ c, PolyFueled c (fun m => segPrefix lenFn m.unpair.1 m.unpair.2) := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have nPF := PolyFueled.left
+  have jPF := PolyFueled.left.comp PolyFueled.right
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  have stepPF := had.comp (prevPF.pair (hlen.comp (nPF.pair jPF)))
+  obtain ⟨_, _, hlenBound, _⟩ := hlen
+  obtain ⟨A, K, hAK⟩ := hlenBound
+  have hst : IsPolyBounded (fun m => segPrefix lenFn m.unpair.1 m.unpair.2) := by
+    refine ⟨2 * (A + 1), K + 1, fun m => ?_⟩
+    set n := m.unpair.1
+    set k := m.unpair.2
+    set B := A * (m + 1) ^ K + A
+    have hp : ∀ r, r ≤ k → segPrefix lenFn n r ≤ r * B := by
+      intro r hr
+      induction r with
+      | zero => simp
+      | succ r ih =>
+          rw [segPrefix_succ, Nat.succ_mul]
+          have hpair : Nat.pair n r ≤ m := by
+            rw [show m = Nat.pair n k by simp [n, k, Nat.pair_unpair]]
+            exact pair_le_pair_right' _ (by omega)
+          have hlenle : lenFn (Nat.pair n r) ≤ B := by
+            exact (hAK _).trans (by
+              show A * (Nat.pair n r + 1) ^ K + A ≤ A * (m + 1) ^ K + A
+              gcongr)
+          exact Nat.add_le_add (ih (by omega)) hlenle
+    have hk : k ≤ m := Nat.unpair_right_le m
+    have hpow : 1 ≤ (m + 1) ^ K := Nat.one_le_pow _ _ (by omega)
+    have hB : B ≤ 2 * (A + 1) * (m + 1) ^ K := by
+      dsimp [B]
+      have hA : A ≤ A * (m + 1) ^ K := by
+        simpa using Nat.mul_le_mul_left A hpow
+      calc
+        A * (m + 1) ^ K + A ≤ A * (m + 1) ^ K + A * (m + 1) ^ K :=
+          Nat.add_le_add_left hA _
+        _ ≤ 2 * (A + 1) * (m + 1) ^ K := by ring_nf; omega
+    calc
+      segPrefix lenFn n k ≤ k * B := hp k le_rfl
+      _ ≤ (m + 1) * (2 * (A + 1) * (m + 1) ^ K) := by gcongr; omega
+      _ ≤ (2 * (A + 1)) * (m + 1) ^ (K + 1) + 2 * (A + 1) := by
+        rw [pow_succ]; ring_nf; omega
+  exact ⟨_, PolyFueled.prec (PolyFueled.const 0) stepPF
+    (st := segPrefix lenFn) (fun _ => rfl)
+    (fun a j => by simp only [Nat.unpair_pair, segPrefix_succ]) hst⟩
+
+/-- The prefix-scan block locator is polynomially fueled. -/
+theorem segLocate_polyFueled {cl : Nat.Partrec.Code} {lenFn : ℕ → ℕ}
+    (hlen : PolyFueled cl lenFn) :
+    ∃ c, PolyFueled c (fun m =>
+      segLocate lenFn m.unpair.1.unpair.1 m.unpair.1.unpair.2 m.unpair.2) := by
+  obtain ⟨cp, hp⟩ := segPrefix_polyFueled hlen
+  have aPF := PolyFueled.left
+  have nPF := PolyFueled.left.comp aPF
+  have iPF := PolyFueled.right.comp aPF
+  have jPF := PolyFueled.left.comp PolyFueled.right
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  have prefPF := hp.comp (nPF.pair jPF.succ_comp)
+  have testPF := subc_polyFueled.comp (iPF.succ_comp.pair prefPF)
+  have stepPF := ifzSel_polyFueled.comp ((prevPF.pair jPF.succ_comp).pair testPF)
+  have hst : IsPolyBounded (fun m =>
+      segLocate lenFn m.unpair.1.unpair.1 m.unpair.1.unpair.2 m.unpair.2) :=
+    isPolyBounded_snd.of_le (fun m => segLocate_le _ _ _ _)
+  refine ⟨_, PolyFueled.prec (PolyFueled.const 0) stepPF
+    (st := fun a k => segLocate lenFn a.unpair.1 a.unpair.2 k)
+    (fun _ => rfl) (fun a j => ?_) hst⟩
+  simp only [Nat.unpair_pair, Function.comp_apply, ifzSelFn]
+  rw [segLocate]
+  by_cases h : segPrefix lenFn a.unpair.1 (j + 1) ≤ a.unpair.2
+  · rw [if_pos h, if_neg (by omega)]
+  · rw [if_neg h, if_pos (by omega)]
+
+/-- **Variable-width segment concatenation**: concatenate `cnt n` polynomially emitted
+segments whose individual lengths may depend on both `n` and the segment index.  A
+primitive-recursive prefix scan locates the enclosing segment for each output token. -/
+theorem PolySegStream.concatVar {seg : ℕ → List ℕ} (hseg : PolySegStream seg)
+    {ccnt : Nat.Partrec.Code} {cnt : ℕ → ℕ} (hcnt : PolyFueled ccnt cnt) :
+    PolySegStream (fun n => (List.range (cnt n)).flatMap (fun j => seg (Nat.pair n j))) := by
+  obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hlens, hspec⟩ := hseg
+  obtain ⟨cp, hp⟩ := segPrefix_polyFueled hlen
+  obtain ⟨cj, hj⟩ := segLocate_polyFueled hlen
+  have lenPF := hp.comp (PolyFueled.id.pair hcnt)
+  -- On input `m = ⟨n,i⟩`, scan `cnt n` prefixes and return the enclosing block.
+  have locPF := hj.comp (PolyFueled.id.pair (hcnt.comp PolyFueled.left))
+  have startPF := hp.comp (PolyFueled.left.pair locPF)
+  have offPF := subc_polyFueled.comp (PolyFueled.right.pair startPF)
+  have tokPF := htok.comp ((PolyFueled.left.pair locPF).pair offPF)
+  refine ⟨_, _, _, _, tokPF, lenPF, ?_, ?_⟩
+  · intro n
+    rw [length_flatMap_eq_segPrefix seg lenFn n (fun j => hlens _)]
+    simp only [Function.comp_apply, Nat.unpair_pair]
+  · intro n i hi
+    simp only [Function.comp_apply, Nat.unpair_pair]
+    set j := segLocate lenFn n i (cnt n) with hjdef
+    obtain ⟨hlo, hmax⟩ := segLocate_spec lenFn n i (cnt n)
+    rw [← hjdef] at hlo hmax
+    have hjle : j ≤ cnt n := by rw [hjdef]; exact segLocate_le _ _ _ _
+    have hjlt : j < cnt n := by
+      rcases Nat.eq_or_lt_of_le hjle with heq | hlt
+      · rw [heq] at hlo
+        exact absurd hlo (by simpa using hi)
+      · exact hlt
+    have hhi : i < segPrefix lenFn n (j + 1) := by
+      by_contra hnot
+      have hpji : segPrefix lenFn n (j + 1) ≤ i := by omega
+      have := hmax (j + 1) (by omega) hpji
+      omega
+    rw [getD_flatMap_of_prefix seg lenFn n (cnt n) i j (fun k => hlens _) hjlt hlo hhi]
+    exact hspec (Nat.pair n j) (i - segPrefix lenFn n j) (by
+      rw [segPrefix_succ] at hhi
+      omega)
+
+
 /-- **The segment-emission capstone**: a trader whose day-`n` stream is a
 `PolySegStream` is `EfficientlyComputableTok`. -/
 theorem ecTok_of_segStream (Tr : Trader)
@@ -1800,7 +2097,3 @@ theorem PolyTokenStream.serialize_price_comp {f : ℕ → ℕ} {c : Nat.Partrec.
     ((PolyTokenStream.const _).append (PolyTokenStream.polyTok hf))
 
 end LogicalInduction
-
-
-
-

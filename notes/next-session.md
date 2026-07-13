@@ -1,4 +1,4 @@
-# M3 completion plan — remaining property-tail nodes
+# Logical Induction working plan — M4 lift hubs
 
 > Supersedes the 2026-07-07 token-emission plan (fully executed; its record lives in
 > `PROGRESS.md` under OPEN RISK 4 and the `def:ec` ledger rows, and in git history).
@@ -9,7 +9,72 @@ Phases are ordered; each phase boundary is a safe stopping point with a green bu
 Do the phases in order: A → B1 → C → B2 → D → E → F. One phase (or less) per session
 is the right pace; do not start a phase you can't leave green.
 
-## 0. Context snapshot (updated 2026-07-12, session 4 — thm:nd certs DONE; M3 = excTrader cert + F)
+## 0. Context snapshot (updated 2026-07-12, session 7 — M4 started)
+
+> **M4 trust-surface/API audit and affine core started.** The seven parked theorem
+> signatures were not provable as written: without daily plausible worlds their relational
+> linkages are vacuous (an inconsistent `DP` makes every history satisfy `def:lic`), and
+> arbitrary Lean LUV/sentence sequences need not be legal for an e.c. trader. Signatures now
+> carry price bounds, plausible-world existence, non-vacuous `ValuesAt` witnesses where
+> needed, and compact fixed/varying-family code interfaces (`PolySentenceCodes`,
+> `PolyRatCodes`, `PolyThresholdCodeSeq`, `PGenerableRat`). `HasROI` now explicitly carries
+> summability—without it, Mathlib's non-summable real `tsum = 0` convention understated
+> infinite risk. Axiom-clean finite-magnitude downside bounds are proved. New
+> `Affine.lean` defines `AffineCombination`, buying/scaling/negation, and the DSL
+> `priceFeature`, with value/rank laws proved. The semantic repeatable-ROI core is now also
+> kernel-checked: finite magnitude gives uniform downside control, ROI witnesses have finite
+> `Trader.Matured` days, and `ROI.lean` proves the adaptive `β` budget stays in `[0,1]` with
+> at most one unit of open capital. Semantic maturity schedules eventually close. The honest
+> computability edge has now been repaired at the criterion boundary: `IsLogicalInductor`
+> carries exact computable-rational-market and computable-deductive-process certificates,
+> and EF has an exact rational evaluator agreeing with real denotation. The Appendix A.2
+> representation gate is now closed: `EF.var`/`EF.letE` provide shared straight-line bindings
+> with continuity, exact rational semantics, structural rank/cost, and injective postfix
+> serialization. `sharedFeatureWeight` binds `β₀…βₙ` once each and is proved equal to the real
+> budget recurrence, rank-legal, and additive in cost; `sharedBudgetedTrader` has proved
+> value/magnitude formulas. The uniform emission gate is now **closed end-to-end**:
+> `featureWeightBody_polySeg` emits the triangular recurrence;
+> `sharedFeatureWeight_polySeg` emits the binding chain; `PolyTradeEmulatable` supplies honest
+> polynomial trade counts/coefficient segments/sentence codes; and
+> `sharedBudgetedTrader_ecTok` performs the nested trade/component concatenations and reaches
+> the criterion's faithful `EfficientlyComputableTok`. The conditional semantic construction
+> is closed too:
+> `netWorth_lower_of_matured` controls post-close tails, `activeAllocation_le_one` bounds live
+> risk, `allocationPrefix_not_bddAbove` proves recycling is unbounded, and `repeatableROI`
+> packages the shared trader with both `EfficientlyComputableTok` and `Exploits`. The theorem
+> explicitly requires a summable tolerance schedule, uniform positive magnitude floor, daily
+> plausible worlds, and a maturity schedule whose openness table is polynomially emit-able;
+> none is hidden in classical choice. **Next hard gates:** generalize recycling to sparse
+> (frequently positive) magnitudes and construct the polynomial maturity table from the
+> computable market/process certificates. Then build/consume `thm:affpolymax` and discharge
+> the seven parked expectation/Self-Trust statements.
+
+## 0-prev-7. Context snapshot (updated 2026-07-12, session 6 — Phase F complete)
+
+> **Phase F exit package complete.** `PROGRESS.md` now has a current ledger, an explicit
+> proved-versus-M4 inventory, a flat statement/definition read-through list with source
+> locations, and the fresh-context audit brief. `IntegrationTest.lean` now discharges
+> concrete LUV expectation convergence via `LUV.expect_converges` in addition to the
+> existing provability-induction and deference-interface checks. Targeted integration and
+> full-project builds are green. The only Lean `sorry`s are exactly the seven intended M4
+> statements. **M3 is implementation-complete; remaining gates are Anson's statement
+> read-through and the separate fresh-context adversarial audit.**
+
+## 0-prev-6. Context snapshot (updated 2026-07-12, session 5 — all M3 certs DONE; M3 = F)
+
+> **Session 5 result: `excTrader_ecTok` discharged; `LUV.expect_converges` is now
+> axiom-clean.** The statement now explicitly requires `LUV.PolyThresholdCodes`, a
+> poly-fueled emitter for `⌜X > i/n⌝` from `⟨n,i⟩`; this is the disclosed
+> propositional interface for the paper's compact Θ-definable LUV syntax. New reusable
+> infrastructure in `Computable.lean`: `PolySegStream.comp`, segment-level EF constructor
+> closures, and **`PolySegStream.concatVar`**, whose `segPrefix`/`segLocate` primitive-
+> recursive scan emits variable-width concatenations. The certificate composes inner
+> fixed-width threshold blocks, variable-width historical hysteresis blocks, and the outer
+> uniform threshold-trade bundle. Full `lake build` green; remaining Lean `sorry`s are
+> exactly the 7 intended M4 statements. **Remaining M3 work: Phase F only** (ledger sweep,
+> statement inventory/read-through, integration re-check, fresh-context audit).
+
+## 0-prev-5. Context snapshot (updated 2026-07-12, session 4 — thm:nd certs DONE; M3 = excTrader cert + F)
 
 > **Session 4 result: both `thm:nd` ladder e.c. certs discharged — `lic_nonDogmatism`,
 > `lic_nonDogmatism_dual`, `lic_limit_pos/lt_one` all axiom-clean.** New reusable infra

@@ -5,7 +5,7 @@ The downstream consumers (`deference-in-logical-induction`, `dose-response`) pro
 deference/dose-response *algebra* but take every Logical-Induction fact as a **named
 hypothesis** over abstract `ℕ → ℝ` sequences, in their own `DeferenceAsymp` vocabulary
 (`Approx` / `AsympLE`). This file is the roadmap's M3 integration test: *does our work
-actually plug into that back end?* We check it two ways.
+actually plug into that back end?* We check it three ways.
 
 **Part A — vocabulary drop-in.** `DeferenceAsymp.Approx`/`AsympLE` are *definitionally* our
 `Asymptotics.AsympEq`/`AsympLE` (`Tendsto (·−·) atTop (𝓝 0)` and the `ε`-form). We reproduce
@@ -15,17 +15,15 @@ Asymptotics` is a genuine drop-in for `DeferenceAsymp`. (Writing this test is wh
 the three combinators just added to `Asymptotics`: `AsympLE.trans`, `AsympLE.trans_asympEq`,
 `AsympEq.finsetSum` — the corpus's `AsympLE.trans` / `trans_approx` / `approx_sum`.)
 
-**Part B — LI-content discharge, at the level we have reached.** The corpus's hypotheses are
-mostly *expectation*-level (`thm:cee/ceu/ccee/loe/expprovind` over `E^H_n`), which sits above
-a LUV bridge we have not built yet. But a Provability-Induction / Convergence hypothesis is
-*price*-level, and we have it: `lic_deducible_tendsto_one` discharges a hypothesis of the
-exact shape `Approx (fun n => P n φ) (fun _ => 1)`. Part B wires that end to end.
+**Part B — price-level LI-content discharge.** `lic_deducible_tendsto_one` discharges a
+Provability-Induction hypothesis of the exact downstream shape
+`Approx (fun n => P n φ) (fun _ => 1)`. Part B wires that end to end.
 
-**What this test establishes, and what it does not.** It establishes that the asymptotic
-interface matches exactly and that a price-level LI theorem of ours discharges a
-provind-shaped hypothesis with no adapter. It does *not* reach the expectation-level
-hypotheses the corpus mostly runs on — that needs the LUV/expectation layer (Engine, M3/M4).
-See the milestone notes.
+**Part C — expectation-level interface and content.** Concrete `LUV.expectSeq` objects inhabit
+the corpus's abstract expectation slots with no adapter, and `LUV.expect_converges` now
+discharges convergence for one such sequence end to end. The stronger expectation relations
+consumed by the reproduced Value theorem (`thm:cee`/`thm:expprovind`) remain the explicitly
+ledgered M4 statements; this test does not pretend convergence alone implies them.
 -/
 import LogicalInduction.Properties
 import LogicalInduction.Expectations
@@ -100,6 +98,19 @@ noncomputable example (P : History) (X : LUV) : ℕ → ℝ := X.expectSeq P
 
 /-- A `thm:cee`-shaped expectation hypothesis, in our concrete objects. -/
 example (P : History) (X Y : LUV) : Prop := X.expectSeq P ≈ₙ Y.expectSeq P
+
+/-- `thm:ec` now discharges convergence of a concrete expectation sequence end to end.
+The compact threshold-code and world-value hypotheses are the explicit interfaces by which
+the propositional model represents the paper's Θ-definable LUV. -/
+theorem expectation_convergence_discharged (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x) :
+    ∃ L, ConvergesTo (X.expectSeq P) L :=
+  X.expect_converges P DP hcode hP hcons hval
+
+#print axioms expectation_convergence_discharged
 
 /-- **The deference `Value` theorem, applied to our concrete expectations.** Every abstract
 `E_now(·)` slot in `value_argmax_asymptotic` is instantiated by `expectSeq P` of a concrete
