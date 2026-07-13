@@ -897,6 +897,106 @@ theorem weight_le_one
     · exact mul_nonneg (weight_nonneg active α hclose hα0 hα1 i) (hα0 i)
     · exact le_rfl))
 
+/-! ### Continuous occupancy budget
+
+The affine gradual-sale construction exposes its still-risky fraction as an expressible
+feature in `[0,1]`.  The following semantic budget is the fractional analogue of the
+Boolean `active` scheduler above.  It needs no externally computed maturity day. -/
+
+/-- Capital tied up by earlier components, weighted by their current fractional
+occupancy. -/
+noncomputable def fractionalOutstanding (occupancy : ℕ → ℕ → ℝ)
+    (α β : ℕ → ℝ) (n : ℕ) : ℝ :=
+  ∑ i : Fin n, β i * α i * occupancy i n
+
+/-- Adaptive launch weight with fractional rather than Boolean capital occupancy. -/
+noncomputable def fractionalWeight (occupancy : ℕ → ℕ → ℝ)
+    (α : ℕ → ℝ) (n : ℕ) : ℝ :=
+  1 - ∑ i : Fin n, fractionalWeight occupancy α i * α i * occupancy i n
+termination_by n
+decreasing_by exact i.isLt
+
+theorem fractionalWeight_eq (occupancy : ℕ → ℕ → ℝ) (α : ℕ → ℝ)
+    (n : ℕ) :
+    fractionalWeight occupancy α n =
+      1 - fractionalOutstanding occupancy α (fractionalWeight occupancy α) n := by
+  rw [fractionalWeight, fractionalOutstanding]
+
+/-- Fractional capital occupancy stays in `[0,1]` and can only decrease with time. -/
+structure DecreasingOccupancy (occupancy : ℕ → ℕ → ℝ) : Prop where
+  nonneg : ∀ i n, 0 ≤ occupancy i n
+  le_one : ∀ i n, occupancy i n ≤ 1
+  antitone : ∀ i n, occupancy i (n + 1) ≤ occupancy i n
+
+/-- Fractional occupancy preserves the unit-capital invariant: every launch weight is
+nonnegative, and outstanding capital plus the new allocation is at most one. -/
+theorem fractionalWeight_nonneg_and_postAllocation_le
+    (occupancy : ℕ → ℕ → ℝ) (α : ℕ → ℝ)
+    (hocc : DecreasingOccupancy occupancy)
+    (hα0 : ∀ i, 0 ≤ α i) (hα1 : ∀ i, α i ≤ 1) :
+    ∀ n, 0 ≤ fractionalWeight occupancy α n ∧
+      fractionalOutstanding occupancy α (fractionalWeight occupancy α) n +
+        fractionalWeight occupancy α n * α n ≤ 1 := by
+  intro n
+  induction n using Nat.strong_induction_on with
+  | h n ih =>
+      have hw0 : ∀ i < n, 0 ≤ fractionalWeight occupancy α i :=
+        fun i hi => (ih i hi).1
+      have hout0 : 0 ≤
+          fractionalOutstanding occupancy α (fractionalWeight occupancy α) n := by
+        rw [fractionalOutstanding]
+        exact Finset.sum_nonneg (fun i _ =>
+          mul_nonneg (mul_nonneg (hw0 i i.isLt) (hα0 i)) (hocc.nonneg i n))
+      have hout1 :
+          fractionalOutstanding occupancy α (fractionalWeight occupancy α) n ≤ 1 := by
+        cases n with
+        | zero => simp [fractionalOutstanding]
+        | succ k =>
+            have hprev := (ih k (by omega)).2
+            rw [fractionalOutstanding, Fin.sum_univ_castSucc]
+            have hprior :
+                (∑ i : Fin k, fractionalWeight occupancy α (Fin.castSucc i) *
+                    α (Fin.castSucc i) * occupancy (Fin.castSucc i) (k + 1)) ≤
+                  fractionalOutstanding occupancy α
+                    (fractionalWeight occupancy α) k := by
+              rw [fractionalOutstanding]
+              apply Finset.sum_le_sum
+              intro i hi
+              exact mul_le_mul_of_nonneg_left (hocc.antitone i k)
+                (mul_nonneg (hw0 i (by omega)) (hα0 i))
+            have hlast :
+                fractionalWeight occupancy α (Fin.last k) * α (Fin.last k) *
+                    occupancy (Fin.last k) (k + 1) ≤
+                  fractionalWeight occupancy α k * α k := by
+              simp only [Fin.val_last]
+              exact mul_le_of_le_one_right
+                (mul_nonneg (hw0 k (by omega)) (hα0 k)) (hocc.le_one k (k + 1))
+            exact le_trans (add_le_add hprior hlast) hprev
+      have hw := fractionalWeight_eq occupancy α n
+      constructor
+      · rw [hw]
+        linarith
+      · rw [hw]
+        nlinarith [hα0 n, hα1 n]
+
+theorem fractionalWeight_nonneg
+    (occupancy : ℕ → ℕ → ℝ) (α : ℕ → ℝ)
+    (hocc : DecreasingOccupancy occupancy)
+    (hα0 : ∀ i, 0 ≤ α i) (hα1 : ∀ i, α i ≤ 1) (n : ℕ) :
+    0 ≤ fractionalWeight occupancy α n :=
+  (fractionalWeight_nonneg_and_postAllocation_le occupancy α hocc hα0 hα1 n).1
+
+theorem fractionalWeight_le_one
+    (occupancy : ℕ → ℕ → ℝ) (α : ℕ → ℝ)
+    (hocc : DecreasingOccupancy occupancy)
+    (hα0 : ∀ i, 0 ≤ α i) (hα1 : ∀ i, α i ≤ 1) (n : ℕ) :
+    fractionalWeight occupancy α n ≤ 1 := by
+  rw [fractionalWeight_eq]
+  exact sub_le_self _ (Finset.sum_nonneg (fun i _ =>
+    mul_nonneg
+      (mul_nonneg (fractionalWeight_nonneg occupancy α hocc hα0 hα1 i) (hα0 i))
+      (hocc.nonneg i n)))
+
 /-- Capital allocated to component `i`. -/
 noncomputable def allocation (active : ℕ → ℕ → Bool) (α : ℕ → ℝ) (i : ℕ) : ℝ :=
   weight active α i * α i
@@ -1522,6 +1622,7 @@ theorem maturitySchedule_closing (Ts : ℕ → Trader) (V : History)
   activeUntil_closing _
 
 #print axioms weight_nonneg_and_postAllocation_le
+#print axioms fractionalWeight_nonneg_and_postAllocation_le
 #print axioms maturityDay_spec
 #print axioms featureWeight_denote
 #print axioms budgetedTrader_value

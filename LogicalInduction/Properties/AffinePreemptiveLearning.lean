@@ -237,6 +237,16 @@ theorem gradualRemaining_mem (A : AffineCombination) (V : History)
             mul_le_mul_of_nonneg_right ih.2 (sub_nonneg.mpr hs1)
           _ ≤ 1 := by linarith
 
+theorem gradualRemaining_denote_antitone (A : AffineCombination) (V : History)
+    (buyDay : ℕ) (high δ : ℚ) (t : ℕ) :
+    (A.gradualRemaining buyDay high δ (t + 1)).denote V ≤
+      (A.gradualRemaining buyDay high δ t).denote V := by
+  rw [gradualRemaining_denote_succ]
+  obtain ⟨hrem0, _⟩ := A.gradualRemaining_mem V buyDay high δ t
+  obtain ⟨hsell0, hsell1⟩ :=
+    sellIndF_mem (A.priceFeature (buyDay + t + 1)) high δ V
+  nlinarith
+
 theorem gradualSellFraction_nonneg (A : AffineCombination) (V : History)
     (buyDay : ℕ) (high δ : ℚ) (t : ℕ) :
     0 ≤ (A.gradualSellFraction buyDay high δ t).denote V := by
