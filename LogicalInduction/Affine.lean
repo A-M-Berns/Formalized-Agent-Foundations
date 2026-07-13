@@ -139,6 +139,25 @@ theorem scale_price (e : EF) (A : AffineCombination) (V : History) (n : ℕ) :
     (A.scale e).price V n = e.denote V * A.price V n := by
   simp [price, scale_value]
 
+theorem scale_magnitude (e : EF) (A : AffineCombination) (V : History) :
+    (A.scale e).magnitude V = |e.denote V| * A.magnitude V := by
+  simp only [scale, magnitude, List.map_map]
+  induction A.terms with
+  | nil => simp
+  | cons p ps ih =>
+      simp only [List.map_cons, List.sum_cons, Function.comp_apply, EF.denote_mul,
+        Pi.mul_apply, abs_mul, ih]
+      ring
+
+theorem scale_terms_rank_le (e : EF) (A : AffineCombination) {n : ℕ}
+    (he : e.rank ≤ n) (hA : ∀ p ∈ A.terms, p.1.rank ≤ n) :
+    ∀ p ∈ (A.scale e).terms, p.1.rank ≤ n := by
+  intro p hp
+  simp only [scale, List.mem_map] at hp
+  obtain ⟨q, hq, rfl⟩ := hp
+  simp only [EF.rank]
+  exact Nat.max_le.mpr ⟨he, hA q hq⟩
+
 /-- Negation of an affine combination. -/
 def neg (A : AffineCombination) : AffineCombination := A.scale (.const (-1))
 
