@@ -1129,6 +1129,77 @@ def MaturitySchedule (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
     (ε : ℝ) (η : ℕ → ℝ) (close : ℕ → ℕ) : Prop :=
   ∀ i, (Ts i).Matured V DP ε (η i) (close i)
 
+/-! ## Polynomial bounded-verification bridge
+
+The paper does not require the first maturity day itself to be polynomially computable.
+It requires each finite maturity claim to be checkable efficiently.  On budget day `k` we
+therefore scan only the prefix `m ≤ k`; `polyFueled_boundedNone` turns that bounded scan into
+the openness table consumed by the shared trader.
+-/
+
+/-- A uniformly polynomial, sound, eventually successful verifier for component maturity.
+The checker input is `⟨component, day⟩`. -/
+structure VerifiedMaturitySchedule (Ts : ℕ → Trader) (V : History)
+    (DP : DeductiveProcess) (ε : ℝ) (η : ℕ → ℝ) where
+  check : ℕ → ℕ → Bool
+  check_poly : ∃ c, PolyFueled c
+    (fun z => if check z.unpair.1 z.unpair.2 then 1 else 0)
+  sound : ∀ i m, check i m = true → (Ts i).Matured V DP ε (η i) m
+  complete : ∀ i, ∃ m, check i m = true
+
+/-- The first verified maturity day.  This value may be selected noncomputably; queries of
+the form “is it after day `k`?” are nevertheless polynomial by bounded verification. -/
+noncomputable def VerifiedMaturitySchedule.close
+    {Ts : ℕ → Trader} {V : History} {DP : DeductiveProcess} {ε : ℝ} {η : ℕ → ℝ}
+    (h : VerifiedMaturitySchedule Ts V DP ε η) (i : ℕ) : ℕ :=
+  Nat.find (h.complete i)
+
+theorem VerifiedMaturitySchedule.check_close
+    {Ts : ℕ → Trader} {V : History} {DP : DeductiveProcess} {ε : ℝ} {η : ℕ → ℝ}
+    (h : VerifiedMaturitySchedule Ts V DP ε η) (i : ℕ) :
+    h.check i (h.close i) = true :=
+  Nat.find_spec (h.complete i)
+
+theorem VerifiedMaturitySchedule.check_false_of_lt_close
+    {Ts : ℕ → Trader} {V : History} {DP : DeductiveProcess} {ε : ℝ} {η : ℕ → ℝ}
+    (h : VerifiedMaturitySchedule Ts V DP ε η) {i m : ℕ} (hm : m < h.close i) :
+    h.check i m = false := by
+  apply Bool.eq_false_of_not_eq_true
+  exact Nat.find_min (h.complete i) hm
+
+theorem VerifiedMaturitySchedule.boundedNone_eq_activeUntil
+    {Ts : ℕ → Trader} {V : History} {DP : DeductiveProcess} {ε : ℝ} {η : ℕ → ℝ}
+    (h : VerifiedMaturitySchedule Ts V DP ε η) (i k : ℕ) :
+    boundedNone h.check i k = activeUntil h.close i k := by
+  apply Bool.eq_iff_iff.mpr
+  rw [boundedNone_eq_true_iff]
+  simp only [activeUntil, decide_eq_true_eq]
+  constructor
+  · intro hall
+    by_contra hnot
+    have hle : h.close i ≤ k := by omega
+    have := hall (h.close i) hle
+    rw [h.check_close i] at this
+    contradiction
+  · intro hlt m hm
+    exact h.check_false_of_lt_close (lt_of_le_of_lt hm hlt)
+
+theorem VerifiedMaturitySchedule.polyActive
+    {Ts : ℕ → Trader} {V : History} {DP : DeductiveProcess} {ε : ℝ} {η : ℕ → ℝ}
+    (h : VerifiedMaturitySchedule Ts V DP ε η) :
+    PolyActiveSchedule (activeUntil h.close) := by
+  obtain ⟨c, hc⟩ := polyFueled_boundedNone h.check h.check_poly
+  have hswap := hc.comp (PolyFueled.right.pair PolyFueled.left)
+  refine ⟨_, hswap.of_eq (fun z => ?_)⟩
+  simp only [Function.comp_apply, Nat.unpair_pair]
+  rw [h.boundedNone_eq_activeUntil]
+
+theorem VerifiedMaturitySchedule.maturity
+    {Ts : ℕ → Trader} {V : History} {DP : DeductiveProcess} {ε : ℝ} {η : ℕ → ℝ}
+    (h : VerifiedMaturitySchedule Ts V DP ε η) :
+    MaturitySchedule Ts V DP ε η h.close :=
+  fun i => h.sound i (h.close i) (h.check_close i)
+
 /-- Quantitative lower bound for the repeatable-ROI bundle. Total launched allocation earns
 `ε`; at most one unit remains active, and the summable maturity tolerances pay for every
 closed component's post-maturity tail. -/
@@ -1410,6 +1481,28 @@ theorem noRepeatableROI
   rw [Real.dist_eq, sub_zero, abs_of_nonneg (hα0 n)]
   exact lt_of_not_ge (hN n hn)
 
+/-- Paper-facing verifier form of `noRepeatableROI`.  Callers provide only a polynomial,
+sound, eventually successful maturity checker; the bounded-verification bridge constructs
+the closing days, semantic maturity schedule, and polynomial openness table. -/
+theorem noRepeatableROI_of_verifiedMaturity
+    (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
+    [hLI : IsLogicalInductor V DP]
+    (ε : ℝ) (hε : 0 < ε) (η : ℕ → ℝ)
+    (α : ℕ → EF) (hαrank : ∀ i, (α i).rank ≤ i)
+    (hαseg : PolySegStream (fun i => (α i).serialize))
+    (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
+    (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
+    (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
+    (hP : ∀ d φ, 0 ≤ V d φ ∧ V d φ ≤ 1)
+    (hTs : PolyTradeEmulatable Ts)
+    (hroi : ∀ i, HasROI (Ts i) V DP ε)
+    (hη0 : ∀ i, 0 ≤ η i) (hηsum : Summable η)
+    (hver : VerifiedMaturitySchedule Ts V DP ε η)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    ConvergesTo (fun i => (α i).denote V) 0 := by
+  exact noRepeatableROI Ts V DP ε hε η hver.close α hαrank hαseg hαc hmag hα0 hα1
+    hP hTs hver.polyActive hroi hη0 hηsum hver.maturity hworld
+
 /-- A semantic closing day selected from each member's ROI witness. This is deliberately
 noncomputable: the paper-facing construction instead uses a bounded verification search
 built from the computable market/process certificates carried by `IsLogicalInductor`. -/
@@ -1446,6 +1539,8 @@ theorem maturitySchedule_closing (Ts : ℕ → Trader) (V : History)
 #print axioms sharedBudgetedTrader_exploits
 #print axioms repeatableROI
 #print axioms noRepeatableROI
+#print axioms VerifiedMaturitySchedule.polyActive
+#print axioms noRepeatableROI_of_verifiedMaturity
 
 end ROIBudget
 

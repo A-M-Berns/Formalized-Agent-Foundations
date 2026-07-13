@@ -2096,4 +2096,131 @@ theorem PolyTokenStream.serialize_price_comp {f : ℕ → ℕ} {c : Nat.Partrec.
   exact (PolyTokenStream.const 0).append
     ((PolyTokenStream.const _).append (PolyTokenStream.polyTok hf))
 
+/-! ### Bounded verification tables
+
+The repeatable-ROI construction must ask, on day `k`, whether a component has already
+received a finite certificate.  An unbounded minimization is not polynomial time, but this
+question only requires checking the bounded rectangle `m ≤ k`.  The following closure
+lemma performs that scan with one `Code.prec`, retaining a Boolean state throughout.
+-/
+
+/-- `boundedAny p i k` is true exactly when `p i m` holds for some `m ≤ k`. -/
+def boundedAny (p : ℕ → ℕ → Bool) (i k : ℕ) : Bool :=
+  decide (∃ m ≤ k, p i m = true)
+
+theorem boundedAny_eq_true_iff (p : ℕ → ℕ → Bool) (i k : ℕ) :
+    boundedAny p i k = true ↔ ∃ m ≤ k, p i m = true := by
+  simp [boundedAny]
+
+/-- Polynomial Boolean tables are closed under bounded existential search.  Inputs use
+`⟨i,k⟩`; the result is normalized to the natural numbers `0` and `1`. -/
+theorem polyFueled_boundedAny (p : ℕ → ℕ → Bool)
+    (hp : ∃ c, PolyFueled c
+      (fun z => if p z.unpair.1 z.unpair.2 then 1 else 0)) :
+    ∃ c, PolyFueled c
+      (fun z => if boundedAny p z.unpair.1 z.unpair.2 then 1 else 0) := by
+  obtain ⟨cp, hp⟩ := hp
+  let st : ℕ → ℕ → ℕ := fun i j =>
+    if ∃ m < j, p i m = true then 1 else 0
+  have pAtPF := hp.comp (PolyFueled.left.pair (PolyFueled.left.comp PolyFueled.right))
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  have stepPF := ifzSel_polyFueled.comp
+    (((pAtPF.pair (PolyFueled.const 1)).pair prevPF))
+  have hst : IsPolyBounded (fun z => st z.unpair.1 z.unpair.2) :=
+    (show IsPolyBounded (fun _ : ℕ => 1) from ⟨1, 0, fun _ => by simp⟩).of_le
+      (fun z => by simp only [st]; split <;> omega)
+  have scanPF : ∃ c, PolyFueled c (fun z => st z.unpair.1 z.unpair.2) := by
+    refine ⟨_, PolyFueled.prec (PolyFueled.const 0) stepPF
+      (st := st) (fun i => by simp [st]) (fun i j => ?_) hst⟩
+    simp only [Nat.unpair_pair, Function.comp_apply]
+    by_cases hold : ∃ m < j, p i m = true
+    · have hsucc : ∃ m < j + 1, p i m = true :=
+        ⟨hold.choose, Nat.lt_succ_of_lt hold.choose_spec.1, hold.choose_spec.2⟩
+      have hle : ∃ m ≤ j, p i m = true :=
+        ⟨hold.choose, Nat.le_of_lt hold.choose_spec.1, hold.choose_spec.2⟩
+      simp [st, hold, hsucc, hle, ifzSelFn]
+    · have hprev : st i j = 0 := by simp [st, hold]
+      by_cases hpj : p i j = true
+      · have hsucc : ∃ m < j + 1, p i m = true := ⟨j, Nat.lt_succ_self _, hpj⟩
+        have hle : ∃ m ≤ j, p i m = true := ⟨j, le_rfl, hpj⟩
+        simp [st, hold, hpj, hsucc, hle, ifzSelFn]
+      · have hsucc : ¬ ∃ m < j + 1, p i m = true := by
+          rintro ⟨m, hm, hpm⟩
+          rcases Nat.lt_or_eq_of_le (Nat.le_of_lt_succ hm) with hlt | rfl
+          · exact hold ⟨m, hlt, hpm⟩
+          · exact hpj hpm
+        have hnle : ∀ m ≤ j, p i m = false := by
+          intro m hm
+          apply Bool.eq_false_of_not_eq_true
+          intro hpm
+          rcases Nat.lt_or_eq_of_le hm with hlt | rfl
+          · exact hold ⟨m, hlt, hpm⟩
+          · exact hpj hpm
+        simp [st, hold, hpj, hsucc, hnle, ifzSelFn]
+        exact hnle
+  obtain ⟨cscan, hscan⟩ := scanPF
+  have inputPF := PolyFueled.left.pair PolyFueled.right.succ_comp
+  refine ⟨_, (hscan.comp inputPF).of_eq (fun z => ?_)⟩
+  simp only [Function.comp_apply, Nat.unpair_pair, st]
+  by_cases h : ∃ m ≤ z.unpair.2, p z.unpair.1 m = true
+  · have hs : ∃ m < z.unpair.2 + 1, p z.unpair.1 m = true := by
+      obtain ⟨m, hm, hpm⟩ := h
+      exact ⟨m, by omega, hpm⟩
+    rw [if_pos hs]
+    simp [boundedAny, h]
+  · have hs : ¬ ∃ m < z.unpair.2 + 1, p z.unpair.1 m = true := by
+      rintro ⟨m, hm, hpm⟩
+      exact h ⟨m, by omega, hpm⟩
+    rw [if_neg hs]
+    simp [boundedAny, h]
+
+/-- `boundedNone p i k` says that no certificate appears in the prefix `m ≤ k`. -/
+def boundedNone (p : ℕ → ℕ → Bool) (i k : ℕ) : Bool :=
+  Bool.not (boundedAny p i k)
+
+theorem boundedNone_eq_true_iff (p : ℕ → ℕ → Bool) (i k : ℕ) :
+    boundedNone p i k = true ↔ ∀ m ≤ k, p i m = false := by
+  change Bool.not (boundedAny p i k) = true ↔ _
+  constructor
+  · intro hnone m hm
+    have hany : boundedAny p i k = false := by
+      cases h : boundedAny p i k <;> simp_all
+    by_cases hp : p i m = true
+    · have : boundedAny p i k = true :=
+        (boundedAny_eq_true_iff p i k).2 ⟨m, hm, hp⟩
+      rw [this] at hany
+      contradiction
+    · exact Bool.eq_false_of_not_eq_true hp
+  · intro hall
+    have hany : boundedAny p i k = false := by
+      apply Bool.eq_false_of_not_eq_true
+      intro htrue
+      obtain ⟨m, hm, hp⟩ := (boundedAny_eq_true_iff p i k).1 htrue
+      rw [hall m hm] at hp
+      contradiction
+    rw [hany]
+    rfl
+
+/-- Polynomial Boolean tables are also closed under bounded universal failure. -/
+theorem polyFueled_boundedNone (p : ℕ → ℕ → Bool)
+    (hp : ∃ c, PolyFueled c
+      (fun z => if p z.unpair.1 z.unpair.2 then 1 else 0)) :
+    ∃ c, PolyFueled c
+      (fun z => if boundedNone p z.unpair.1 z.unpair.2 then 1 else 0) := by
+  obtain ⟨ca, ha⟩ := polyFueled_boundedAny p hp
+  have hneg := ifzSel_polyFueled.comp
+    (((PolyFueled.const 1).pair (PolyFueled.const 0)).pair ha)
+  exact ⟨_, hneg.of_eq (fun z => by
+    simp only [Function.comp_apply, ifzSelFn, Nat.unpair_pair, boundedNone]
+    by_cases h : boundedAny p z.unpair.1 z.unpair.2 = true
+    · simp only [h, if_pos, Bool.not_true, Bool.false_eq_true, if_false]
+      norm_num
+    · have hf : boundedAny p z.unpair.1 z.unpair.2 = false :=
+        Bool.eq_false_of_not_eq_true h
+      simp only [h, hf, if_false, Bool.not_false, if_pos]
+      norm_num)⟩
+
+#print axioms polyFueled_boundedAny
+#print axioms polyFueled_boundedNone
+
 end LogicalInduction

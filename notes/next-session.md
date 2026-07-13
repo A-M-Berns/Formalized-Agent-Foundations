@@ -42,12 +42,14 @@ is the right pace; do not start a phase you can't leave green.
 > `netWorth_lower_of_matured` controls post-close tails, `activeAllocation_le_one` bounds live
 > risk, `allocationPrefix_not_bddAbove` proves recycling is unbounded, and `repeatableROI`
 > packages the shared trader with both `EfficientlyComputableTok` and `Exploits`. The theorem
-> explicitly requires a summable tolerance schedule, uniform positive magnitude floor, daily
-> plausible worlds, and a maturity schedule whose openness table is polynomially emit-able;
-> none is hidden in classical choice. **Next hard gates:** generalize recycling to sparse
-> (frequently positive) magnitudes and construct the polynomial maturity table from the
-> computable market/process certificates. Then build/consume `thm:affpolymax` and discharge
-> the seven parked expectation/Self-Trust statements.
+> explicitly requires a summable tolerance schedule, daily plausible worlds, and verified
+> maturity; none is hidden in classical choice. Sparse/frequently-positive magnitudes are now
+> supported. `VerifiedMaturitySchedule` closes the generic computability bridge: one polynomial
+> checker is scanned only through the current day to obtain the exact polynomial openness table,
+> while the first successful day may remain classically selected. **Next hard gate:** define and
+> certify the concrete rational finite-day checker for the affine component traders from the
+> computable market/process certificates. Then build/consume `thm:affpolymax` and discharge the
+> seven parked expectation/Self-Trust statements.
 
 ## 0-prev-7. Context snapshot (updated 2026-07-12, session 6 — Phase F complete)
 
