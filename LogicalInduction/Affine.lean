@@ -84,6 +84,69 @@ theorem magnitude_nonneg (A : AffineCombination) (V : History) :
     obtain ⟨p, _, rfl⟩ := hx
     exact abs_nonneg _)
 
+/-- Absolute value inside the expressible-feature DSL. -/
+def absFeature (e : EF) : EF :=
+  .max e (.mul (.const (-1)) e)
+
+theorem absFeature_denoteWith (e : EF) (V : History) (ρ : List ℝ) :
+    (absFeature e).denoteWith ρ V = |e.denoteWith ρ V| := by
+  simp only [absFeature, EF.denoteWith, Rat.cast_neg, Rat.cast_one, neg_mul, one_mul]
+  rw [abs_eq_max_neg]
+
+@[simp] theorem absFeature_rank (e : EF) : (absFeature e).rank = e.rank := by
+  simp [absFeature, EF.rank]
+
+/-- Share magnitude reified as an expressible feature. -/
+def magnitudeFeature (A : AffineCombination) : EF :=
+  A.terms.foldr (fun p acc => EF.add (absFeature p.1) acc) (EF.const 0)
+
+theorem magnitudeFeature_denoteWith (A : AffineCombination) (V : History) (ρ : List ℝ) :
+    (A.magnitudeFeature).denoteWith ρ V =
+      (A.terms.map (fun p => |p.1.denoteWith ρ V|)).sum := by
+  have aux : ∀ l : List (EF × Sentence),
+      (l.foldr (fun p acc => EF.add (absFeature p.1) acc) (EF.const 0)).denoteWith ρ V =
+        (l.map (fun p => |p.1.denoteWith ρ V|)).sum := by
+    intro l
+    induction l with
+    | nil => simp [EF.denoteWith]
+    | cons p ps ih =>
+        simp only [List.foldr_cons, EF.denoteWith, absFeature_denoteWith,
+          List.map_cons, List.sum_cons, ih]
+  exact aux A.terms
+
+theorem magnitudeFeature_denote (A : AffineCombination) (V : History) :
+    A.magnitudeFeature.denote V = A.magnitude V := by
+  rw [EF.denote, magnitudeFeature_denoteWith]
+  rfl
+
+theorem magnitudeFeature_rank_le (A : AffineCombination) {n : ℕ}
+    (hterms : ∀ p ∈ A.terms, p.1.rank ≤ n) : A.magnitudeFeature.rank ≤ n := by
+  have aux : ∀ l : List (EF × Sentence),
+      (∀ p ∈ l, p.1.rank ≤ n) →
+      (l.foldr (fun p acc => EF.add (absFeature p.1) acc) (EF.const 0)).rank ≤ n := by
+    intro l
+    induction l with
+    | nil => intro _; simp [EF.rank]
+    | cons p ps ih =>
+        intro h
+        simp only [List.foldr_cons, EF.rank, absFeature_rank]
+        exact Nat.max_le.mpr ⟨h p (by simp), ih (fun q hq => h q (by simp [hq]))⟩
+  exact aux A.terms hterms
+
+/-- Launch-risk feature for an entry-weighted affine component. -/
+def riskFeature (A : AffineCombination) (entry : EF) : EF :=
+  EF.mul entry A.magnitudeFeature
+
+theorem riskFeature_denote (A : AffineCombination) (entry : EF) (V : History) :
+    (A.riskFeature entry).denote V = entry.denote V * A.magnitude V := by
+  simp [riskFeature, EF.denote_mul, magnitudeFeature_denote]
+
+theorem riskFeature_rank_le (A : AffineCombination) (entry : EF) {n : ℕ}
+    (hentry : entry.rank ≤ n) (hterms : ∀ p ∈ A.terms, p.1.rank ≤ n) :
+    (A.riskFeature entry).rank ≤ n := by
+  simp only [riskFeature, EF.rank]
+  exact Nat.max_le.mpr ⟨hentry, A.magnitudeFeature_rank_le hterms⟩
+
 /-- Buying `A` on day `n`: purchase each sentence coefficient at the current market price.
 The affine constant needs no trade because it cancels between world value and price. -/
 def buy (A : AffineCombination) (n : ℕ)
@@ -386,6 +449,8 @@ end AffineCombination
 
 #print axioms AffineCombination.buy_value
 #print axioms AffineCombination.abs_value_sub_price_le_magnitude
+#print axioms AffineCombination.magnitudeFeature_denote
+#print axioms AffineCombination.riskFeature_denote
 #print axioms AffineCombination.scale_value
 #print axioms AffineCombination.priceFeature_denote
 #print axioms AffineCombination.roundTrip_netWorth
