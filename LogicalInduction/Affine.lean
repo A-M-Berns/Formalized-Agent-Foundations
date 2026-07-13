@@ -150,10 +150,217 @@ theorem neg_price (A : AffineCombination) (V : History) (n : ℕ) :
     A.neg.price V n = -A.price V n := by
   simp [neg, scale_price]
 
+theorem neg_magnitude (A : AffineCombination) (V : History) :
+    A.neg.magnitude V = A.magnitude V := by
+  simp only [neg, scale, magnitude, List.map_map]
+  induction A.terms with
+  | nil => simp
+  | cons p ps ih =>
+      simp only [List.map_cons, List.sum_cons, Function.comp_apply, EF.denote_mul,
+        Pi.mul_apply, EF.denote_const, Rat.cast_neg, Rat.cast_one, neg_mul,
+        one_mul, abs_neg, ih]
+
+/-! ## Finite round trips
+
+The affine-preemptive-learning trader is assembled from finite buy-low/sell-high round
+trips.  The lemmas below isolate their world-independent payoff; later constructions only
+have to choose their opening weights and verified closing days.
+-/
+
+theorem neg_terms_rank_le (A : AffineCombination) {n : ℕ}
+    (h : ∀ p ∈ A.terms, p.1.rank ≤ n) :
+    ∀ p ∈ A.neg.terms, p.1.rank ≤ n := by
+  intro p hp
+  simp only [neg, scale, List.mem_map] at hp
+  obtain ⟨q, hq, rfl⟩ := hp
+  simp only [EF.rank]
+  exact Nat.max_le.mpr ⟨by simp, h q hq⟩
+
+/-- The empty strategy at an arbitrary day. -/
+def emptyStrategy (n : ℕ) : Strategy n where
+  trades := []
+  rank_le := by simp
+
+/-- Buy `A` on `buyDay`, sell the same affine position on `sellDay`, and otherwise do
+nothing.  The strict ordering makes the two exceptional days disjoint. -/
+def roundTrip (A : AffineCombination) (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
+    (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) : Trader where
+  strat n := by
+    by_cases ho : n = buyDay
+    · subst n
+      exact A.buy buyDay hrank
+    · by_cases hc : n = sellDay
+      · subst n
+        exact A.neg.buy sellDay (A.neg_terms_rank_le
+          (fun p hp => (hrank p hp).trans (Nat.le_of_lt hopen)))
+      · exact emptyStrategy n
+
+@[simp] theorem roundTrip_strat_open (A : AffineCombination) (buyDay sellDay : ℕ)
+    (hopen : buyDay < sellDay) (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
+    (A.roundTrip buyDay sellDay hopen hrank).strat buyDay = A.buy buyDay hrank := by
+  simp [roundTrip]
+
+theorem roundTrip_strat_close (A : AffineCombination) (buyDay sellDay : ℕ)
+    (hopen : buyDay < sellDay) (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
+    (A.roundTrip buyDay sellDay hopen hrank).strat sellDay =
+      A.neg.buy sellDay (A.neg_terms_rank_le
+        (fun p hp => (hrank p hp).trans (Nat.le_of_lt hopen))) := by
+  simp [roundTrip, ne_of_gt hopen]
+
+theorem roundTrip_strat_other (A : AffineCombination) (buyDay sellDay n : ℕ)
+    (hopen : buyDay < sellDay) (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay)
+    (ho : n ≠ buyDay) (hc : n ≠ sellDay) :
+    (A.roundTrip buyDay sellDay hopen hrank).strat n = emptyStrategy n := by
+  simp [roundTrip, ho, hc]
+
+theorem roundTrip_value_open (A : AffineCombination) (V : History) (w : Valuation)
+    (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
+    (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
+    ((A.roundTrip buyDay sellDay hopen hrank).strat buyDay).value V w =
+      A.value V w - A.price V buyDay := by
+  rw [roundTrip_strat_open]
+  exact A.buy_value V w buyDay hrank
+
+theorem roundTrip_value_close (A : AffineCombination) (V : History) (w : Valuation)
+    (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
+    (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
+    ((A.roundTrip buyDay sellDay hopen hrank).strat sellDay).value V w =
+      -A.value V w + A.price V sellDay := by
+  rw [roundTrip_strat_close]
+  rw [A.neg.buy_value]
+  rw [neg_value, neg_price]
+  ring
+
+theorem roundTrip_value_other (A : AffineCombination) (V : History) (w : Valuation)
+    (buyDay sellDay n : ℕ) (hopen : buyDay < sellDay)
+    (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay)
+    (ho : n ≠ buyDay) (hc : n ≠ sellDay) :
+    ((A.roundTrip buyDay sellDay hopen hrank).strat n).value V w = 0 := by
+  rw [roundTrip_strat_other A buyDay sellDay n hopen hrank ho hc]
+  simp [emptyStrategy, Strategy.value]
+
+theorem roundTrip_magnitude_open (A : AffineCombination) (V : History)
+    (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
+    (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
+    ((A.roundTrip buyDay sellDay hopen hrank).strat buyDay).magnitude V =
+      A.magnitude V := by
+  rw [roundTrip_strat_open]
+  exact A.buy_magnitude V buyDay hrank
+
+theorem roundTrip_magnitude_close (A : AffineCombination) (V : History)
+    (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
+    (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
+    ((A.roundTrip buyDay sellDay hopen hrank).strat sellDay).magnitude V =
+      A.magnitude V := by
+  rw [roundTrip_strat_close]
+  rw [A.neg.buy_magnitude, neg_magnitude]
+
+theorem roundTrip_magnitude_other (A : AffineCombination) (V : History)
+    (buyDay sellDay n : ℕ) (hopen : buyDay < sellDay)
+    (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay)
+    (ho : n ≠ buyDay) (hc : n ≠ sellDay) :
+    ((A.roundTrip buyDay sellDay hopen hrank).strat n).magnitude V = 0 := by
+  rw [roundTrip_strat_other A buyDay sellDay n hopen hrank ho hc]
+  simp [emptyStrategy, Strategy.magnitude]
+
+theorem roundTrip_summable (A : AffineCombination) (V : History)
+    (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
+    (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
+    Summable (fun n =>
+      ((A.roundTrip buyDay sellDay hopen hrank).strat n).magnitude V) := by
+  apply summable_of_finite_support
+  refine ((Set.finite_singleton sellDay).insert buyDay).subset ?_
+  intro n hn
+  simp only [Function.mem_support, ne_eq] at hn
+  simp only [Set.mem_insert_iff, Set.mem_singleton_iff]
+  by_contra hdays
+  push_neg at hdays
+  exact hn (roundTrip_magnitude_other A V buyDay sellDay n hopen hrank hdays.1 hdays.2)
+
+/-- A round trip moves exactly two copies of the affine share magnitude. -/
+theorem roundTrip_magnitude (A : AffineCombination) (V : History)
+    (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
+    (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
+    (A.roundTrip buyDay sellDay hopen hrank).magnitude V = 2 * A.magnitude V := by
+  let f : ℕ → ℝ := fun n =>
+    ((A.roundTrip buyDay sellDay hopen hrank).strat n).magnitude V
+  have hsum : Summable f := roundTrip_summable A V buyDay sellDay hopen hrank
+  rw [Trader.magnitude]
+  change ∑' n, f n = _
+  rw [hsum.tsum_eq_add_tsum_ite buyDay]
+  have hbuy : f buyDay = A.magnitude V :=
+    roundTrip_magnitude_open A V buyDay sellDay hopen hrank
+  rw [hbuy]
+  have hrest : (∑' n, if n = buyDay then 0 else f n) = A.magnitude V := by
+    calc
+      (∑' n, if n = buyDay then 0 else f n) =
+          ∑' n, if n = sellDay then A.magnitude V else 0 := by
+            apply tsum_congr
+            intro n
+            by_cases hb : n = buyDay
+            · subst n
+              simp [ne_of_lt hopen]
+            · by_cases hs : n = sellDay
+              · subst n
+                rw [if_neg hb, if_pos rfl]
+                exact roundTrip_magnitude_close A V buyDay sellDay hopen hrank
+              · rw [if_neg hb, if_neg hs]
+                exact roundTrip_magnitude_other A V buyDay sellDay n hopen hrank hb hs
+      _ = A.magnitude V := by
+        simpa using tsum_ite_eq sellDay (fun _ : ℕ => A.magnitude V)
+  rw [hrest]
+  ring
+
+/-- After the closing day, every world assigns the round trip exactly the realized price
+difference.  All sentence holdings cancel. -/
+theorem roundTrip_netWorth (A : AffineCombination) (V : History) (v : PCWorld)
+    (buyDay sellDay n : ℕ) (hopen : buyDay < sellDay)
+    (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (hn : sellDay ≤ n) :
+    (A.roundTrip buyDay sellDay hopen hrank).netWorth V v n =
+      A.price V sellDay - A.price V buyDay := by
+  rw [Trader.netWorth]
+  let f : ℕ → ℝ := fun i =>
+    ((A.roundTrip buyDay sellDay hopen hrank).strat i).value V v.payout
+  have hc : sellDay ∈ Finset.range (n + 1) := by simp; omega
+  rw [Finset.sum_eq_add_sum_diff_singleton hc]
+  rw [Finset.sdiff_singleton_eq_erase]
+  have ho : buyDay ∈ (Finset.range (n + 1)).erase sellDay := by
+    simp only [Finset.mem_erase, Finset.mem_range]
+    exact ⟨ne_of_lt hopen, by omega⟩
+  rw [Finset.sum_eq_add_sum_diff_singleton ho]
+  rw [Finset.sdiff_singleton_eq_erase]
+  have hz : ∑ x ∈ ((Finset.range (n + 1)).erase sellDay).erase buyDay, f x = 0 := by
+    apply Finset.sum_eq_zero
+    intro x hx
+    simp only [Finset.mem_erase] at hx
+    exact roundTrip_value_other A V v.payout buyDay sellDay x hopen hrank hx.1 hx.2.1
+  rw [hz, add_zero]
+  rw [roundTrip_value_close, roundTrip_value_open]
+  ring
+
+/-- Any realized price gain that covers `rate` times the two-sided share volume gives a
+`rate`-ROI witness, uniformly over all plausible worlds. -/
+theorem roundTrip_hasROI (A : AffineCombination) (V : History) (DP : DeductiveProcess)
+    (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
+    (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (rate : ℝ)
+    (hprofit : rate * (2 * A.magnitude V) ≤
+      A.price V sellDay - A.price V buyDay) :
+    HasROI (A.roundTrip buyDay sellDay hopen hrank) V DP rate := by
+  constructor
+  · exact roundTrip_summable A V buyDay sellDay hopen hrank
+  · intro η hη
+    refine ⟨sellDay, fun n hn v _ => ?_⟩
+    rw [roundTrip_magnitude, roundTrip_netWorth A V v buyDay sellDay n hopen hrank hn]
+    have hmag := A.magnitude_nonneg V
+    nlinarith
+
 end AffineCombination
 
 #print axioms AffineCombination.buy_value
 #print axioms AffineCombination.scale_value
 #print axioms AffineCombination.priceFeature_denote
+#print axioms AffineCombination.roundTrip_netWorth
+#print axioms AffineCombination.roundTrip_magnitude
+#print axioms AffineCombination.roundTrip_hasROI
 
 end LogicalInduction
