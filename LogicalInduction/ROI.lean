@@ -997,6 +997,642 @@ theorem fractionalWeight_le_one
       (mul_nonneg (fractionalWeight_nonneg occupancy α hocc hα0 hα1 i) (hα0 i))
       (hocc.nonneg i n)))
 
+/-! #### Shared expressible-feature representation -/
+
+/-- The fractional-weight recurrence body in an environment
+`[βₖ₋₁, …, β₀]`. -/
+def fractionalWeightBody (occupancy : ℕ → ℕ → EF) (α : ℕ → EF) (k : ℕ) : EF :=
+  EF.add (EF.const 1) (EF.mul (EF.const (-1))
+    (sumFeatures (List.ofFn (fun i : Fin k =>
+      EF.mul (EF.mul (EF.var (k - 1 - i)) (α i)) (occupancy i k)))))
+
+/-- Shared straight-line chain for consecutive fractional launch weights. -/
+def fractionalSharedWeights (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
+    (k : ℕ) : ℕ → EF
+  | 0 => EF.var 0
+  | count + 1 => EF.letE (fractionalWeightBody occupancy α k)
+      (fractionalSharedWeights occupancy α (k + 1) count)
+
+/-- Polynomial-sharing feature for the day-`n` fractional budget coefficient. -/
+def fractionalSharedFeatureWeight (occupancy : ℕ → ℕ → EF)
+    (α : ℕ → EF) (n : ℕ) : EF :=
+  fractionalSharedWeights occupancy α 0 (n + 1)
+
+theorem fractionalSharedWeights_serialize (occupancy : ℕ → ℕ → EF)
+    (α : ℕ → EF) (k count : ℕ) :
+    (fractionalSharedWeights occupancy α k count).serialize =
+      (List.range' k count).flatMap
+          (fun j => (fractionalWeightBody occupancy α j).serialize) ++
+        (EF.var 0).serialize ++ List.replicate count 8 := by
+  induction count generalizing k with
+  | zero => simp [fractionalSharedWeights, EF.serialize]
+  | succ count ih =>
+      rw [fractionalSharedWeights]
+      change (fractionalWeightBody occupancy α k).serialize ++
+          (fractionalSharedWeights occupancy α (k + 1) count).serialize ++ [8] = _
+      rw [ih (k + 1)]
+      simp [List.range'_succ, List.replicate_succ', List.append_assoc]
+
+/-- Uniform segment emitter for the fractional recurrence bodies. The occupancy stream is
+indexed by `⟨day, component⟩`. -/
+theorem fractionalWeightBody_polySeg (occupancy : ℕ → ℕ → EF)
+    (α : ℕ → EF) (hα : PolySegStream (fun i => (α i).serialize))
+    (hocc : PolySegStream (fun z =>
+      (occupancy z.unpair.2 z.unpair.1).serialize)) :
+    PolySegStream (fun k => (fractionalWeightBody occupancy α k).serialize) := by
+  let term : ℕ → EF := fun z =>
+    EF.mul (EF.mul (EF.var (z.unpair.1 - 1 - z.unpair.2)) (α z.unpair.2))
+      (occupancy z.unpair.2 z.unpair.1)
+  have idxPF := subc_polyFueled.comp
+    ((predc_polyFueled.comp PolyFueled.left).pair PolyFueled.right)
+  have idxPF' := idxPF.of_eq (f' := fun z => z.unpair.1 - 1 - z.unpair.2)
+    (fun z => by simp [Nat.pred_eq_sub_one])
+  have hvar : PolySegStream
+      (fun z => (EF.var (z.unpair.1 - 1 - z.unpair.2)).serialize) :=
+    PolySegStream.serialize_var idxPF'
+  have hαright : PolySegStream (fun z => (α z.unpair.2).serialize) :=
+    hα.comp PolyFueled.right
+  have hterm : PolySegStream (fun z => (term z).serialize) :=
+    PolySegStream.serialize_mul (PolySegStream.serialize_mul hvar hαright) hocc
+  have hterms : PolySegStream (fun k =>
+      (List.range k).flatMap (fun i => (term (Nat.pair k i)).serialize)) :=
+    PolySegStream.concatVar hterm PolyFueled.id
+  have hzero : PolySegStream (fun _ => (EF.const 0).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
+  have haddTags : PolySegStream (fun k => List.replicate k 2) :=
+    PolySegStream.repeatTag 2 PolyFueled.id
+  have hsumRaw := (hterms.append hzero).append haddTags
+  have hsum : PolySegStream (fun k =>
+      (sumFeatures (List.ofFn (fun i : Fin k => term (Nat.pair k i)))).serialize) := by
+    refine PolySegStream.of_eq hsumRaw ?_
+    intro k
+    rw [serialize_sumFeatures]
+    simp only [List.length_ofFn]
+    congr 2
+    rw [← List.map_coe_finRange_eq_range]
+    rw [List.flatMap_map]
+    simp only [List.ofFn_eq_map, List.flatMap_map]
+  have hone : PolySegStream (fun _ => (EF.const 1).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)
+  have hnegone : PolySegStream (fun _ => (EF.const (-1)).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))
+  have hbody := PolySegStream.serialize_add hone
+    (PolySegStream.serialize_mul hnegone hsum)
+  refine PolySegStream.of_eq hbody ?_
+  intro k
+  simp only [fractionalWeightBody, term]
+  congr 4
+  congr 1
+  funext i
+  simp
+
+theorem fractionalSharedFeatureWeight_polySeg (occupancy : ℕ → ℕ → EF)
+    (α : ℕ → EF) (hα : PolySegStream (fun i => (α i).serialize))
+    (hocc : PolySegStream (fun z =>
+      (occupancy z.unpair.2 z.unpair.1).serialize)) :
+    PolySegStream (fun n => (fractionalSharedFeatureWeight occupancy α n).serialize) := by
+  have hbody := fractionalWeightBody_polySeg occupancy α hα hocc
+  have hbodies : PolySegStream (fun n =>
+      (List.range (n + 1)).flatMap
+        (fun j => (fractionalWeightBody occupancy α j).serialize)) := by
+    refine PolySegStream.of_eq
+      (PolySegStream.concatVar (hbody.comp PolyFueled.right)
+        PolyFueled.id.succ_comp) ?_
+    intro n
+    simp only [Nat.unpair_pair]
+  have hvar : PolySegStream (fun _ => (EF.var 0).serialize) :=
+    PolySegStream.serialize_var (PolyFueled.const 0)
+  have htags : PolySegStream (fun n => List.replicate (n + 1) 8) :=
+    PolySegStream.repeatTag 8 PolyFueled.id.succ_comp
+  refine PolySegStream.of_eq ((hbodies.append hvar).append htags) ?_
+  intro n
+  rw [fractionalSharedFeatureWeight, fractionalSharedWeights_serialize]
+  rw [List.range_eq_range']
+
+private def FractionalPriorWeightEnv (occupancy : ℕ → ℕ → EF)
+    (α : ℕ → EF) (V : History) (k : ℕ) (ρ : List ℝ) : Prop :=
+  ∀ i : Fin k, ρ.getD (k - 1 - i) 0 =
+    fractionalWeight (fun j n => (occupancy j n).denote V)
+      (fun j => (α j).denote V) i
+
+private theorem fractionalWeightBody_denoteWith
+    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
+    (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
+    (hoccc : ∀ i n ρ V, (occupancy i n).denoteWith ρ V = (occupancy i n).denote V)
+    (V : History) (k : ℕ) (ρ : List ℝ)
+    (hρ : FractionalPriorWeightEnv occupancy α V k ρ) :
+    (fractionalWeightBody occupancy α k).denoteWith ρ V =
+      fractionalWeight (fun i n => (occupancy i n).denote V)
+        (fun i => (α i).denote V) k := by
+  rw [fractionalWeightBody, fractionalWeight]
+  simp only [EF.denoteWith, Rat.cast_one, Rat.cast_neg, neg_mul, one_mul]
+  rw [sumFeatures_denoteWith]
+  simp only [List.map_ofFn, List.sum_ofFn, Function.comp_apply, EF.denoteWith]
+  apply congrArg (fun x : ℝ => 1 - x)
+  apply Finset.sum_congr rfl
+  intro i hi
+  rw [hρ i, hαc i ρ V, hoccc i k ρ V]
+
+private theorem fractionalPriorWeightEnv_cons
+    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF) (V : History)
+    (k : ℕ) (ρ : List ℝ) (hρ : FractionalPriorWeightEnv occupancy α V k ρ) :
+    FractionalPriorWeightEnv occupancy α V (k + 1)
+      (fractionalWeight (fun i n => (occupancy i n).denote V)
+        (fun i => (α i).denote V) k :: ρ) := by
+  intro i
+  by_cases hi : (i : ℕ) = k
+  · have hilast : i = Fin.last k := Fin.ext hi
+    subst i
+    simp
+  · have hik : (i : ℕ) < k := by omega
+    have hidx : k + 1 - 1 - (i : ℕ) = (k - 1 - (i : ℕ)) + 1 := by omega
+    rw [hidx]
+    simp only [List.getD_cons_succ]
+    exact hρ ⟨i, hik⟩
+
+private theorem fractionalSharedWeights_denoteWith
+    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
+    (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
+    (hoccc : ∀ i n ρ V, (occupancy i n).denoteWith ρ V = (occupancy i n).denote V)
+    (V : History) (k count : ℕ) (ρ : List ℝ)
+    (hρ : FractionalPriorWeightEnv occupancy α V k ρ) :
+    (fractionalSharedWeights occupancy α k count).denoteWith ρ V =
+      if count = 0 then ρ.getD 0 0
+      else fractionalWeight (fun i n => (occupancy i n).denote V)
+        (fun i => (α i).denote V) (k + count - 1) := by
+  induction count generalizing k ρ with
+  | zero => simp [fractionalSharedWeights, EF.denoteWith]
+  | succ count ih =>
+      rw [fractionalSharedWeights, EF.denoteWith,
+        fractionalWeightBody_denoteWith occupancy α hαc hoccc V k ρ hρ]
+      rw [ih (k := k + 1)
+        (ρ := fractionalWeight (fun i n => (occupancy i n).denote V)
+          (fun i => (α i).denote V) k :: ρ)
+        (fractionalPriorWeightEnv_cons occupancy α V k ρ hρ)]
+      cases count with
+      | zero => simp
+      | succ count =>
+          simp
+          congr 1
+          omega
+
+theorem fractionalSharedFeatureWeight_denote
+    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
+    (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
+    (hoccc : ∀ i n ρ V, (occupancy i n).denoteWith ρ V = (occupancy i n).denote V)
+    (V : History) (n : ℕ) :
+    (fractionalSharedFeatureWeight occupancy α n).denote V =
+      fractionalWeight (fun i n => (occupancy i n).denote V)
+        (fun i => (α i).denote V) n := by
+  rw [fractionalSharedFeatureWeight, EF.denote]
+  simpa using fractionalSharedWeights_denoteWith occupancy α hαc hoccc V
+    0 (n + 1) [] (by intro i; exact Fin.elim0 i)
+
+private theorem fractionalWeightBody_rank_le
+    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
+    (hα : ∀ i, (α i).rank ≤ i)
+    (hocc : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n) (k : ℕ) :
+    (fractionalWeightBody occupancy α k).rank ≤ k := by
+  rw [fractionalWeightBody]
+  simp only [EF.rank]
+  apply Nat.max_le.mpr
+  constructor
+  · omega
+  · apply Nat.max_le.mpr
+    constructor
+    · omega
+    · apply sumFeatures_rank_le
+      intro e he
+      simp only [List.mem_ofFn] at he
+      obtain ⟨i, rfl⟩ := he
+      exact Nat.max_le.mpr ⟨Nat.max_le.mpr
+        ⟨by simp, (hα i).trans (Nat.le_of_lt i.isLt)⟩,
+        hocc i k (Nat.le_of_lt i.isLt)⟩
+
+private theorem fractionalSharedWeights_rank_le
+    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
+    (hα : ∀ i, (α i).rank ≤ i)
+    (hocc : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n) (k count : ℕ) :
+    (fractionalSharedWeights occupancy α k count).rank ≤
+      if count = 0 then 0 else k + count - 1 := by
+  induction count generalizing k with
+  | zero => simp [fractionalSharedWeights, EF.rank]
+  | succ count ih =>
+      rw [fractionalSharedWeights, EF.rank]
+      apply Nat.max_le.mpr
+      constructor
+      · exact (fractionalWeightBody_rank_le occupancy α hα hocc k).trans (by
+          cases count <;> simp <;> omega)
+      · have H := ih (k + 1)
+        cases count with
+        | zero => simpa [fractionalSharedWeights, EF.rank] using H
+        | succ count =>
+            simpa [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using H
+
+theorem fractionalSharedFeatureWeight_rank_le
+    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
+    (hα : ∀ i, (α i).rank ≤ i)
+    (hocc : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n) (n : ℕ) :
+    (fractionalSharedFeatureWeight occupancy α n).rank ≤ n := by
+  rw [fractionalSharedFeatureWeight]
+  simpa using fractionalSharedWeights_rank_le occupancy α hα hocc 0 (n + 1)
+
+/-- Component-family sum scaled by shared fractional launch weights. -/
+def fractionalBudgetedTrader (Ts : ℕ → Trader) (occupancy : ℕ → ℕ → EF)
+    (α : ℕ → EF) (hα : ∀ i, (α i).rank ≤ i)
+    (hocc : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n) : Trader where
+  strat n := Strategy.join (List.ofFn (fun i : Fin (n + 1) =>
+    Strategy.scaleBy (fractionalSharedFeatureWeight occupancy α i)
+      ((fractionalSharedFeatureWeight_rank_le occupancy α hα hocc i).trans (by omega))
+      ((Ts i).strat n)))
+
+theorem fractionalBudgetedTrader_polySeg (Ts : ℕ → Trader)
+    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
+    (hαrank : ∀ i, (α i).rank ≤ i)
+    (hoccRank : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n)
+    (hαseg : PolySegStream (fun i => (α i).serialize))
+    (hoccSeg : PolySegStream (fun z =>
+      (occupancy z.unpair.2 z.unpair.1).serialize))
+    (hTs : PolyTradeEmulatable Ts) :
+    PolySegStream (fun n => serializeTrades
+      ((fractionalBudgetedTrader Ts occupancy α hαrank hoccRank).strat n).trades) := by
+  obtain ⟨ccount, hcount⟩ := hTs.tradeCount_poly
+  obtain ⟨csentence, hsentence⟩ := hTs.sentence_poly
+  have hday := PolyFueled.left.comp PolyFueled.left
+  have hmember := PolyFueled.right.comp PolyFueled.left
+  have htradeNo := PolyFueled.right
+  have hcanonical := (hmember.pair hday).pair htradeNo
+  have hβ := (fractionalSharedFeatureWeight_polySeg occupancy α hαseg hoccSeg).comp hmember
+  have hcoeff := hTs.coefficient_poly.comp hcanonical
+  have hscaled := PolySegStream.serialize_mul hβ hcoeff
+  have htag : PolySegStream (fun _ => [6]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 6)
+  have hsentenceSeg : PolySegStream (fun q =>
+      [Encodable.encode (hTs.sentence
+        (Nat.pair (Nat.pair q.unpair.1.unpair.2 q.unpair.1.unpair.1) q.unpair.2))]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.polyTok (hsentence.comp hcanonical))
+  have hone : PolySegStream (fun q =>
+      let n := q.unpair.1.unpair.1
+      let k := q.unpair.1.unpair.2
+      let j := q.unpair.2
+      let z := Nat.pair (Nat.pair k n) j
+      serializeTrades [
+        (EF.mul (fractionalSharedFeatureWeight occupancy α k) (hTs.coefficient z),
+          hTs.sentence z)]) := by
+    refine PolySegStream.of_eq ((hscaled.append htag).append hsentenceSeg) ?_
+    intro q
+    simp [serializeTrades, List.append_assoc]
+  have hcountReindexed := hcount.comp (PolyFueled.right.pair PolyFueled.left)
+  have hcomponent := PolySegStream.concatVar hone hcountReindexed
+  have hall := PolySegStream.concatVar hcomponent PolyFueled.id.succ_comp
+  refine PolySegStream.of_eq hall ?_
+  intro n
+  rw [fractionalBudgetedTrader]
+  simp only [Strategy.join, Strategy.scaleBy]
+  rw [serializeTrades_flatMap]
+  simp only [List.ofFn_eq_map]
+  rw [← List.map_coe_finRange_eq_range]
+  rw [List.flatMap_map, List.flatMap_map]
+  apply List.flatMap_congr
+  intro k hk
+  simp only [Nat.unpair_pair]
+  rw [hTs.trades_eq, List.map_map, serializeTrades_map_singleton]
+  simp only [Function.comp_apply]
+
+theorem fractionalBudgetedTrader_ecTok (Ts : ℕ → Trader)
+    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
+    (hαrank : ∀ i, (α i).rank ≤ i)
+    (hoccRank : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n)
+    (hαseg : PolySegStream (fun i => (α i).serialize))
+    (hoccSeg : PolySegStream (fun z =>
+      (occupancy z.unpair.2 z.unpair.1).serialize))
+    (hTs : PolyTradeEmulatable Ts) :
+    EfficientlyComputableTok
+      (fractionalBudgetedTrader Ts occupancy α hαrank hoccRank) :=
+  ecTok_of_segStream _
+    (fractionalBudgetedTrader_polySeg Ts occupancy α hαrank hoccRank
+      hαseg hoccSeg hTs)
+
+theorem fractionalBudgetedTrader_value (Ts : ℕ → Trader)
+    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
+    (hαrank : ∀ i, (α i).rank ≤ i)
+    (hoccRank : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n)
+    (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
+    (hoccc : ∀ i n ρ V, (occupancy i n).denoteWith ρ V = (occupancy i n).denote V)
+    (V : History) (w : Valuation) (n : ℕ) :
+    ((fractionalBudgetedTrader Ts occupancy α hαrank hoccRank).strat n).value V w =
+      ∑ i : Fin (n + 1),
+        fractionalWeight (fun j d => (occupancy j d).denote V)
+            (fun j => (α j).denote V) i *
+          ((Ts i).strat n).value V w := by
+  rw [fractionalBudgetedTrader, Strategy.join_value]
+  simp only [List.map_ofFn, List.sum_ofFn, Function.comp_apply]
+  apply Finset.sum_congr rfl
+  intro i hi
+  rw [Strategy.scaleBy_value,
+    fractionalSharedFeatureWeight_denote occupancy α hαc hoccc]
+
+theorem fractionalBudgetedTrader_netWorth (Ts : ℕ → Trader)
+    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
+    (hαrank : ∀ i, (α i).rank ≤ i)
+    (hoccRank : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n)
+    (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
+    (hoccc : ∀ i n ρ V, (occupancy i n).denoteWith ρ V = (occupancy i n).denote V)
+    (hTs : EfficientlyEmulatable Ts) (V : History) (v : PCWorld) : ∀ n,
+    (fractionalBudgetedTrader Ts occupancy α hαrank hoccRank).netWorth V v n =
+      ∑ i : Fin (n + 1),
+        fractionalWeight (fun j d => (occupancy j d).denote V)
+            (fun j => (α j).denote V) i * (Ts i).netWorth V v n := by
+  intro n
+  induction n with
+  | zero =>
+      simpa [Trader.netWorth] using
+        (fractionalBudgetedTrader_value Ts occupancy α hαrank hoccRank hαc hoccc
+          V v.payout 0)
+  | succ n ih =>
+      have hday := fractionalBudgetedTrader_value Ts occupancy α hαrank hoccRank
+        hαc hoccc V v.payout (n + 1)
+      have hlaunch := hTs.netWorth_launch V v (n + 1)
+      rw [Trader.netWorth_succ, hday, ih]
+      conv_lhs =>
+        rhs
+        rw [Fin.sum_univ_castSucc]
+      conv_rhs => rw [Fin.sum_univ_castSucc]
+      simp only [Fin.val_castSucc, Fin.val_last]
+      rw [hlaunch]
+      simp_rw [Trader.netWorth_succ, mul_add]
+      rw [Finset.sum_add_distrib]
+      ring
+
+/-- Capital allocated at the launch of fractional component `i`. -/
+noncomputable def fractionalAllocation (occupancy : ℕ → ℕ → ℝ)
+    (α : ℕ → ℝ) (i : ℕ) : ℝ :=
+  fractionalWeight occupancy α i * α i
+
+noncomputable def fractionalAllocationPrefix (occupancy : ℕ → ℕ → ℝ)
+    (α : ℕ → ℝ) (n : ℕ) : ℝ :=
+  ∑ i : Fin (n + 1), fractionalAllocation occupancy α i
+
+noncomputable def fractionalActiveAllocation
+    (occupancy : ℕ → ℕ → ℝ) (α : ℕ → ℝ) (n : ℕ) : ℝ :=
+  ∑ i : Fin (n + 1), fractionalAllocation occupancy α i * occupancy i n
+
+theorem fractionalAllocation_nonneg (occupancy : ℕ → ℕ → ℝ)
+    (α : ℕ → ℝ) (hocc : DecreasingOccupancy occupancy)
+    (hα0 : ∀ i, 0 ≤ α i) (hα1 : ∀ i, α i ≤ 1) (i : ℕ) :
+    0 ≤ fractionalAllocation occupancy α i :=
+  mul_nonneg (fractionalWeight_nonneg occupancy α hocc hα0 hα1 i) (hα0 i)
+
+theorem fractionalActiveAllocation_le_one (occupancy : ℕ → ℕ → ℝ)
+    (α : ℕ → ℝ) (hocc : DecreasingOccupancy occupancy)
+    (hα0 : ∀ i, 0 ≤ α i) (hα1 : ∀ i, α i ≤ 1) (n : ℕ) :
+    fractionalActiveAllocation occupancy α n ≤ 1 := by
+  rw [fractionalActiveAllocation, Fin.sum_univ_castSucc]
+  have hbudget :=
+    (fractionalWeight_nonneg_and_postAllocation_le occupancy α hocc hα0 hα1 n).2
+  have hprior :
+      (∑ i : Fin n, fractionalAllocation occupancy α (Fin.castSucc i) *
+          occupancy (Fin.castSucc i) n) =
+        fractionalOutstanding occupancy α (fractionalWeight occupancy α) n := by
+    rw [fractionalOutstanding]
+    apply Finset.sum_congr rfl
+    intro i hi
+    simp only [fractionalAllocation, Fin.val_castSucc]
+  rw [hprior]
+  simp only [Fin.val_last]
+  have hlast : fractionalAllocation occupancy α n * occupancy n n ≤
+      fractionalWeight occupancy α n * α n := by
+    exact mul_le_of_le_one_right
+      (fractionalAllocation_nonneg occupancy α hocc hα0 hα1 n) (hocc.le_one n n)
+  exact le_trans (add_le_add (le_refl _) hlast) hbudget
+
+/-- If every fractional position eventually reaches zero, frequent positive launch sizes
+force unbounded cumulative allocation. No polynomial closing-day oracle is involved. -/
+theorem fractionalAllocationPrefix_not_bddAbove_of_frequently
+    (occupancy : ℕ → ℕ → ℝ) (α : ℕ → ℝ)
+    (hocc : DecreasingOccupancy occupancy)
+    (hzero : ∀ i, ∃ N, ∀ n, N ≤ n → occupancy i n = 0)
+    (hα0 : ∀ i, 0 ≤ α i) (hα1 : ∀ i, α i ≤ 1)
+    {δ : ℝ} (hδ : 0 < δ) (hδα : ∃ᶠ i in Filter.atTop, δ ≤ α i) :
+    ¬ BddAbove (Set.range (fractionalAllocationPrefix occupancy α)) := by
+  have ha0 : ∀ i, 0 ≤ fractionalAllocation occupancy α i :=
+    fractionalAllocation_nonneg occupancy α hocc hα0 hα1
+  intro hbdd
+  obtain ⟨B, hB⟩ := hbdd
+  have hsumRange : ∀ n,
+      (∑ i ∈ Finset.range n, fractionalAllocation occupancy α i) ≤ B := by
+    intro n
+    cases n with
+    | zero =>
+        have hbase := hB (show fractionalAllocationPrefix occupancy α 0 ∈
+          Set.range (fractionalAllocationPrefix occupancy α) from ⟨0, rfl⟩)
+        have hbase0 : 0 ≤ fractionalAllocationPrefix occupancy α 0 :=
+          Finset.sum_nonneg (fun i _ => ha0 i)
+        simp only [Finset.sum_range_zero]
+        linarith
+    | succ n =>
+        have hn := hB (show fractionalAllocationPrefix occupancy α n ∈
+          Set.range (fractionalAllocationPrefix occupancy α) from ⟨n, rfl⟩)
+        rw [fractionalAllocationPrefix, Fin.sum_univ_eq_sum_range] at hn
+        exact hn
+  have haSum : Summable (fractionalAllocation occupancy α) :=
+    summable_of_sum_range_le ha0 hsumRange
+  let r : ℝ := min (1 / 2 : ℝ) (δ / 2)
+  have hr : 0 < r := lt_min (by norm_num) (half_pos hδ)
+  obtain ⟨K, htail⟩ : ∃ K, ∀ n, K ≤ n →
+      ∑ i ∈ Finset.Ico K n, fractionalAllocation occupancy α i < r := by
+    have htend := haSum.hasSum.tendsto_sum_nat
+    obtain ⟨K, hK⟩ := Metric.tendsto_atTop.mp htend r hr
+    refine ⟨K, fun n hKn => ?_⟩
+    have hnear := hK K le_rfl
+    rw [Real.dist_eq, abs_lt] at hnear
+    have hnle : (∑ i ∈ Finset.range n, fractionalAllocation occupancy α i) ≤
+        ∑' i, fractionalAllocation occupancy α i :=
+      haSum.sum_le_tsum _ (fun i _ => ha0 i)
+    have hsplit := Finset.sum_range_add_sum_Ico
+      (fractionalAllocation occupancy α) hKn
+    linarith
+  choose close hclose using hzero
+  let N := K + ∑ i ∈ Finset.range K, close i
+  have hKN : K ≤ N := by simp [N]
+  obtain ⟨J, hNJ, hαJ⟩ := (Filter.frequently_atTop.mp hδα) N
+  have hKJ : K ≤ J := hKN.trans hNJ
+  have hcloseBefore : ∀ i < K, close i ≤ N := by
+    intro i hi
+    have himem : i ∈ Finset.range K := Finset.mem_range.mpr hi
+    have hile : close i ≤ ∑ j ∈ Finset.range K, close j :=
+      Finset.single_le_sum (fun j _ => Nat.zero_le (close j)) himem
+    dsimp [N]
+    omega
+  have hout : fractionalOutstanding occupancy α
+      (fractionalWeight occupancy α) J < r := by
+    have houtLe : fractionalOutstanding occupancy α
+        (fractionalWeight occupancy α) J ≤
+        ∑ i ∈ Finset.Ico K J, fractionalAllocation occupancy α i := by
+      rw [fractionalOutstanding]
+      calc
+        (∑ i : Fin J, fractionalWeight occupancy α i * α i * occupancy i J) ≤
+            ∑ i : Fin J, if K ≤ i then fractionalAllocation occupancy α i else 0 := by
+          apply Finset.sum_le_sum
+          intro i hi
+          by_cases hKi : K ≤ i
+          · simp only [hKi, if_true, fractionalAllocation]
+            exact mul_le_of_le_one_right
+              (mul_nonneg
+                (fractionalWeight_nonneg occupancy α hocc hα0 hα1 i) (hα0 i))
+              (hocc.le_one i J)
+          · have hiK : (i : ℕ) < K := by omega
+            have hz := hclose i J ((hcloseBefore i hiK).trans hNJ)
+            simp [hKi, hz]
+        _ = ∑ i ∈ Finset.Ico K J, fractionalAllocation occupancy α i := by
+          rw [Fin.sum_univ_eq_sum_range (fun i : ℕ =>
+            if K ≤ i then fractionalAllocation occupancy α i else 0)]
+          rw [← Finset.sum_filter]
+          congr 1
+          ext i
+          simp [Finset.mem_Ico]
+          omega
+    exact lt_of_le_of_lt houtLe (htail J hKJ)
+  have hβhalf : (1 / 2 : ℝ) < fractionalWeight occupancy α J := by
+    rw [fractionalWeight_eq]
+    have hrhalf : r ≤ (1 / 2 : ℝ) := min_le_left _ _
+    linarith
+  have haJlower : δ / 2 < fractionalAllocation occupancy α J := by
+    dsimp [fractionalAllocation]
+    calc
+      δ / 2 = (1 / 2 : ℝ) * δ := by ring
+      _ < fractionalWeight occupancy α J * δ :=
+        mul_lt_mul_of_pos_right hβhalf hδ
+      _ ≤ fractionalWeight occupancy α J * α J :=
+        mul_le_mul_of_nonneg_left hαJ
+          (le_trans (by norm_num : (0 : ℝ) ≤ 1 / 2) (le_of_lt hβhalf))
+  have htailNext := htail (J + 1) (by omega)
+  have haJtail : fractionalAllocation occupancy α J ≤
+      ∑ i ∈ Finset.Ico K (J + 1), fractionalAllocation occupancy α i := by
+    apply Finset.single_le_sum (fun i _ => ha0 i)
+    simp [Finset.mem_Ico, hKJ]
+  have hrδ : r ≤ δ / 2 := min_le_right _ _
+  linarith
+
+/-- Continuous repeatable-return theorem. Each component earns `ε` on the released
+fraction and risks at most the still-occupied fraction. Fractional budgeting then gives
+bounded downside and, when launch sizes recur and occupancies vanish, unbounded upside. -/
+theorem fractionalBudgetedTrader_exploits
+    (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
+    (ε : ℝ) (hε : 0 < ε) (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
+    (hαrank : ∀ i, (α i).rank ≤ i)
+    (hoccRank : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n)
+    (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
+    (hoccc : ∀ i n ρ W, (occupancy i n).denoteWith ρ W = (occupancy i n).denote W)
+    (hocc : DecreasingOccupancy (fun i n => (occupancy i n).denote V))
+    (hzero : ∀ i, ∃ N, ∀ n, N ≤ n → (occupancy i n).denote V = 0)
+    (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
+    {δ : ℝ} (hδ : 0 < δ) (hfreq : ∃ᶠ i in Filter.atTop, δ ≤ (α i).denote V)
+    (hTs : EfficientlyEmulatable Ts)
+    (hworth : ∀ i n, i ≤ n → ∀ v : PCWorld, v.ConsistentWith (DP.D n) →
+      ε * (α i).denote V * (1 - (occupancy i n).denote V) -
+          (α i).denote V * (occupancy i n).denote V ≤
+        (Ts i).netWorth V v n)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    (fractionalBudgetedTrader Ts occupancy α hαrank hoccRank).Exploits V DP := by
+  let O : ℕ → ℕ → ℝ := fun i n => (occupancy i n).denote V
+  let M : ℕ → ℝ := fun i => (α i).denote V
+  let Tr := fractionalBudgetedTrader Ts occupancy α hαrank hoccRank
+  have hunbounded : ¬ BddAbove (Set.range (fractionalAllocationPrefix O M)) :=
+    fractionalAllocationPrefix_not_bddAbove_of_frequently O M hocc hzero hα0 hα1 hδ hfreq
+  have hlower : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) →
+      ε * fractionalAllocationPrefix O M n - (ε + 1) ≤ Tr.netWorth V v n := by
+    intro n v hv
+    have hβ0 : ∀ i, 0 ≤ fractionalWeight O M i :=
+      fractionalWeight_nonneg O M hocc hα0 hα1
+    have hpoint : ∀ i : Fin (n + 1),
+        ε * fractionalAllocation O M i -
+            (ε + 1) * (fractionalAllocation O M i * O i n) ≤
+          fractionalWeight O M i * (Ts i).netWorth V v n := by
+      intro i
+      have hiworth := hworth i n (by omega) v hv
+      have hscaled := mul_le_mul_of_nonneg_left hiworth (hβ0 i)
+      calc
+        ε * fractionalAllocation O M i -
+              (ε + 1) * (fractionalAllocation O M i * O i n) =
+            fractionalWeight O M i *
+              (ε * M i * (1 - O i n) - M i * O i n) := by
+                simp only [fractionalAllocation]
+                ring
+        _ ≤ fractionalWeight O M i * (Ts i).netWorth V v n := hscaled
+    have hsum := Finset.sum_le_sum (fun i (_ : i ∈ Finset.univ) => hpoint i)
+    have hcoarse :
+        (∑ i : Fin (n + 1),
+          (ε * fractionalAllocation O M i -
+            (ε + 1) * (fractionalAllocation O M i * O i n))) =
+          ε * fractionalAllocationPrefix O M n -
+            (ε + 1) * fractionalActiveAllocation O M n := by
+      simp only [Finset.sum_sub_distrib]
+      rw [← Finset.mul_sum, ← Finset.mul_sum]
+      rfl
+    rw [hcoarse] at hsum
+    have hnet := fractionalBudgetedTrader_netWorth Ts occupancy α hαrank hoccRank
+      hαc hoccc hTs V v n
+    change Tr.netWorth V v n = _ at hnet
+    rw [hnet]
+    have hactive := fractionalActiveAllocation_le_one O M hocc hα0 hα1 n
+    nlinarith
+  constructor
+  · refine ⟨-(ε + 1), ?_⟩
+    rintro x ⟨n, v, hv, rfl⟩
+    have hlo := hlower n v hv
+    have hpref0 : 0 ≤ fractionalAllocationPrefix O M n :=
+      Finset.sum_nonneg (fun i _ => fractionalAllocation_nonneg O M hocc hα0 hα1 i)
+    nlinarith
+  · intro hbdd
+    obtain ⟨B, hB⟩ := hbdd
+    obtain ⟨A, ⟨n, rfl⟩, hA⟩ := not_bddAbove_iff.mp hunbounded ((B + ε + 1) / ε)
+    obtain ⟨v, hv⟩ := hworld n
+    have hlo := hlower n v hv
+    have hmem : Tr.netWorth V v n ∈ Tr.plausibleAssessments V DP := ⟨n, v, hv, rfl⟩
+    have hup := hB hmem
+    have hεne : ε ≠ 0 := ne_of_gt hε
+    field_simp [hεne] at hA
+    nlinarith
+
+/-- A logical inductor admits no uniformly emulatable continuous-return family with
+eventually vanishing occupancies unless its launch-risk sizes converge to zero. -/
+theorem noFractionalRepeatableReturn
+    (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
+    [hLI : IsLogicalInductor V DP]
+    (ε : ℝ) (hε : 0 < ε) (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
+    (hαrank : ∀ i, (α i).rank ≤ i)
+    (hoccRank : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n)
+    (hαseg : PolySegStream (fun i => (α i).serialize))
+    (hoccSeg : PolySegStream (fun z =>
+      (occupancy z.unpair.2 z.unpair.1).serialize))
+    (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
+    (hoccc : ∀ i n ρ W, (occupancy i n).denoteWith ρ W = (occupancy i n).denote W)
+    (hocc : DecreasingOccupancy (fun i n => (occupancy i n).denote V))
+    (hzero : ∀ i, ∃ N, ∀ n, N ≤ n → (occupancy i n).denote V = 0)
+    (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
+    (hTs : PolyTradeEmulatable Ts)
+    (hworth : ∀ i n, i ≤ n → ∀ v : PCWorld, v.ConsistentWith (DP.D n) →
+      ε * (α i).denote V * (1 - (occupancy i n).denote V) -
+          (α i).denote V * (occupancy i n).denote V ≤
+        (Ts i).netWorth V v n)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    ConvergesTo (fun i => (α i).denote V) 0 := by
+  refine Metric.tendsto_atTop.mpr (fun δ hδ => ?_)
+  have hnotfreq : ¬ ∃ᶠ i in Filter.atTop, δ ≤ (α i).denote V := by
+    intro hfreq
+    have hec := fractionalBudgetedTrader_ecTok Ts occupancy α hαrank hoccRank
+      hαseg hoccSeg hTs
+    have hex := fractionalBudgetedTrader_exploits Ts V DP ε hε occupancy α
+      hαrank hoccRank hαc hoccc hocc hzero hα0 hα1 hδ hfreq hTs.emulatable
+      hworth hworld
+    exact hLI.noExploit _ hec hex
+  rw [Filter.not_frequently] at hnotfreq
+  obtain ⟨N, hN⟩ := Filter.eventually_atTop.mp hnotfreq
+  refine ⟨N, fun n hn => ?_⟩
+  rw [Real.dist_eq, sub_zero, abs_of_nonneg (hα0 n)]
+  exact lt_of_not_ge (hN n hn)
+
 /-- Capital allocated to component `i`. -/
 noncomputable def allocation (active : ℕ → ℕ → Bool) (α : ℕ → ℝ) (i : ℕ) : ℝ :=
   weight active α i * α i
@@ -1623,6 +2259,11 @@ theorem maturitySchedule_closing (Ts : ℕ → Trader) (V : History)
 
 #print axioms weight_nonneg_and_postAllocation_le
 #print axioms fractionalWeight_nonneg_and_postAllocation_le
+#print axioms fractionalSharedFeatureWeight_denote
+#print axioms fractionalSharedFeatureWeight_polySeg
+#print axioms fractionalBudgetedTrader_ecTok
+#print axioms fractionalBudgetedTrader_exploits
+#print axioms noFractionalRepeatableReturn
 #print axioms maturityDay_spec
 #print axioms featureWeight_denote
 #print axioms budgetedTrader_value
