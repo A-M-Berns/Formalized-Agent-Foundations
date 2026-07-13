@@ -9,7 +9,34 @@ Phases are ordered; each phase boundary is a safe stopping point with a green bu
 Do the phases in order: A → B1 → C → B2 → D → E → F. One phase (or less) per session
 is the right pace; do not start a phase you can't leave green.
 
-## 0. Context snapshot (updated 2026-07-12, session 3b — D2 DONE; M3 = F + cert session)
+## 0. Context snapshot (updated 2026-07-12, session 4 — thm:nd certs DONE; M3 = excTrader cert + F)
+
+> **Session 4 result: both `thm:nd` ladder e.c. certs discharged — `lic_nonDogmatism`,
+> `lic_nonDogmatism_dual`, `lic_limit_pos/lt_one` all axiom-clean.** New reusable infra
+> (in `Computable.lean`): `mul_polyFueled`, `divmod1_polyFueled` (divisor `w+1` from
+> input — total spec), `PolySegStream.concat` (n-fold, j-uniform runtime width),
+> `PolyTokenStream.serialize_const_comp`; (in `Hysteresis.lean`):
+> `buyIndEF/sellIndEF_tokenStream_comp` (rung-varying constants). **Key discovery:
+> `Encodable.encode` on ℚ/ℤ is `rfl`-transparent** — `encode q = pair (encodeℤ q.num)
+> q.den`, `encodeℤ (n:ℕ) = 2n`, `encodeℤ (negSucc k) = 2k+1` — so ℚ-constant tokens are
+> pure poly-fueled arithmetic (`encode_ndThr`, `encode_rat_neg_div` for the sell side's
+> negative numerators via `Rat.mk'`, whose num/den are `rfl`).
+> - **Remaining sorry inventory: `excTrader_ecTok` (thm:ec) + 7 intended stmt-sorries.**
+> - **excTrader cert (next session):** two genuinely new obstacles: (i) the hysteresis
+>   chain's day-`i` blocks contain the Θ(i)-size expectation feature ⇒ **variable-width
+>   blocks** — needs a prec-scan emitter (state = (block, cumulative offset), step via
+>   `PolyFueled.prec`) or an affine-width `PolySegStream.blocksVar`; (ii) the
+>   `⌜X.gt (i/n)⌝` sentence tokens need a **`LUV` threshold-code interface** — a new
+>   hypothesis (`∃ c, PolyFueled c (fun m => encode (X.gt (m.unpair.1/m.unpair.2 : ℚ)))`
+>   -shaped) added to `excTrader_ecTok` AND threaded into `LUV.expect_converges` — a
+>   disclosed statement change (faithful: paper LUVs are Θ-definable, hence computable).
+>   The bundle's per-threshold coefficient is *identical* across `i`, so the trade-list
+>   emission itself is `concat`-shaped once the coefficient stream exists.
+> - Then **F** (exit package): ledger sweep (incl. stale `thm:con` rows 114/115),
+>   statement inventory for Anson, integration re-check, hand off the fresh-context
+>   audit.
+
+## 0-prev-4. Context snapshot (2026-07-12, session 3b — D2 DONE; M3 = F + cert session)
 
 > **Session 3b result: Phase D2 landed — `thm:ec` is proved** (`LUV.expect_converges`,
 > `Properties/ExpectationConvergence.lean`), exploitation axiom-clean, e.c. cert a
