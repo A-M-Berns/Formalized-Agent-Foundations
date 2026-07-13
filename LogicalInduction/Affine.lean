@@ -113,6 +113,15 @@ theorem buy_magnitude (A : AffineCombination) (V : History) (n : ℕ)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ n) :
     (A.buy n hrank).magnitude V = A.magnitude V := rfl
 
+/-- An affine combination's world value differs from its market price by at most its
+share magnitude. The affine constant cancels, so it contributes no risk. -/
+theorem abs_value_sub_price_le_magnitude (A : AffineCombination) (V : History)
+    (w : Valuation) (n : ℕ) (hrank : ∀ p ∈ A.terms, p.1.rank ≤ n)
+    (hw : ∀ φ, w φ = 0 ∨ w φ = 1) (hV : ∀ φ, 0 ≤ V n φ ∧ V n φ ≤ 1) :
+    |A.value V w - A.price V n| ≤ A.magnitude V := by
+  rw [← A.buy_value V w n hrank, ← A.buy_magnitude V n hrank]
+  exact Strategy.abs_value_le_magnitude (A.buy n hrank) V w hw hV
+
 /-- Scale every coefficient, including the affine constant, by an expressible feature. -/
 def scale (e : EF) (A : AffineCombination) : AffineCombination where
   const := .mul e A.const
@@ -376,6 +385,7 @@ theorem roundTrip_hasROI (A : AffineCombination) (V : History) (DP : DeductivePr
 end AffineCombination
 
 #print axioms AffineCombination.buy_value
+#print axioms AffineCombination.abs_value_sub_price_le_magnitude
 #print axioms AffineCombination.scale_value
 #print axioms AffineCombination.priceFeature_denote
 #print axioms AffineCombination.roundTrip_netWorth

@@ -423,20 +423,20 @@ theorem gradualSellFraction_pos_imp_price (A : AffineCombination) (V : History)
   have := sellIndF_pos_imp hδ hsig
   rwa [A.priceFeature_denote] at this
 
-/-- If a full signal has occurred, all shares are sold at prices at least `high - δ`. -/
-theorem gradualSaleProceeds_lower_of_full_signal (A : AffineCombination) (V : History)
-    (buyDay : ℕ) (high δ : ℚ) (hδ : 0 < (δ : ℝ)) (t : ℕ)
-    (hfull : (sellIndF (A.priceFeature (buyDay + t + 1)) high δ).denote V = 1) :
-    (high : ℝ) - δ ≤ A.gradualSaleProceeds V buyDay high δ (t + 1) := by
-  have hzero := A.gradualRemaining_eq_zero_of_full_signal V buyDay high δ t hfull
-  have hsum := A.sum_gradualSellFraction V buyDay high δ (t + 1)
-  rw [hzero, sub_zero] at hsum
+/-- Every partial sale is executed above the protected threshold `high - δ`. -/
+theorem gradualSaleProceeds_lower (A : AffineCombination) (V : History)
+    (buyDay : ℕ) (high δ : ℚ) (hδ : 0 < (δ : ℝ)) (t : ℕ) :
+    ((high : ℝ) - δ) *
+        (1 - (A.gradualRemaining buyDay high δ t).denote V) ≤
+      A.gradualSaleProceeds V buyDay high δ t := by
+  have hsum := A.sum_gradualSellFraction V buyDay high δ t
   calc
-    (high : ℝ) - δ =
-        ∑ j ∈ Finset.range (t + 1),
+    ((high : ℝ) - δ) *
+        (1 - (A.gradualRemaining buyDay high δ t).denote V) =
+        ∑ j ∈ Finset.range t,
           ((high : ℝ) - δ) * (A.gradualSellFraction buyDay high δ j).denote V := by
-            rw [← Finset.mul_sum, hsum, mul_one]
-    _ ≤ A.gradualSaleProceeds V buyDay high δ (t + 1) := by
+            rw [← Finset.mul_sum, hsum]
+    _ ≤ A.gradualSaleProceeds V buyDay high δ t := by
       apply Finset.sum_le_sum
       intro j hj
       by_cases hz : (A.gradualSellFraction buyDay high δ j).denote V = 0
@@ -446,6 +446,52 @@ theorem gradualSaleProceeds_lower_of_full_signal (A : AffineCombination) (V : Hi
           lt_of_le_of_ne hf0 (Ne.symm hz)
         simpa [mul_comm] using mul_le_mul_of_nonneg_right
           (le_of_lt (A.gradualSellFraction_pos_imp_price V buyDay high δ hδ j hfp)) hf0
+
+/-- If a full signal has occurred, all shares are sold at prices at least `high - δ`. -/
+theorem gradualSaleProceeds_lower_of_full_signal (A : AffineCombination) (V : History)
+    (buyDay : ℕ) (high δ : ℚ) (hδ : 0 < (δ : ℝ)) (t : ℕ)
+    (hfull : (sellIndF (A.priceFeature (buyDay + t + 1)) high δ).denote V = 1) :
+    (high : ℝ) - δ ≤ A.gradualSaleProceeds V buyDay high δ (t + 1) := by
+  have hzero := A.gradualRemaining_eq_zero_of_full_signal V buyDay high δ t hfull
+  have h := A.gradualSaleProceeds_lower V buyDay high δ hδ (t + 1)
+  rwa [hzero, sub_zero, mul_one] at h
+
+/-- At every intermediate day, realized protected spread pays for the sold fraction; only
+the remaining fraction can still carry affine world risk. This is the economic invariant
+needed by an online, feature-driven capital budgeter. -/
+theorem gradualTrader_netWorth_lower_partial (A : AffineCombination) (entry : EF)
+    (V : History) (v : PCWorld) (buyDay : ℕ) (high δ : ℚ)
+    (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
+    (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay)
+    (hentry0 : 0 ≤ entry.denote V) (hδ : 0 < (δ : ℝ))
+    (hP : ∀ φ, 0 ≤ V buyDay φ ∧ V buyDay φ ≤ 1) (t : ℕ) :
+    entry.denote V *
+        ((1 - (A.gradualRemaining buyDay high δ t).denote V) *
+            ((high : ℝ) - δ - A.price V buyDay) -
+          (A.gradualRemaining buyDay high δ t).denote V * A.magnitude V) ≤
+      (A.gradualTrader entry buyDay high δ hentry hconst hterms).netWorth V v
+        (buyDay + t) := by
+  classical
+  rw [A.gradualTrader_netWorth entry V v buyDay high δ hentry hconst hterms t]
+  let rem := (A.gradualRemaining buyDay high δ t).denote V
+  have hrem0 : 0 ≤ rem := (A.gradualRemaining_mem V buyDay high δ t).1
+  have hvalueAbs := A.abs_value_sub_price_le_magnitude V v.payout buyDay hterms
+    (fun φ => by
+      by_cases hφ : v.Holds φ
+      · exact Or.inr (by simp [PCWorld.payout, hφ])
+      · exact Or.inl (by simp [PCWorld.payout, hφ])) hP
+  have hvalue : -A.magnitude V ≤ A.value V v.payout - A.price V buyDay :=
+    neg_le_of_abs_le hvalueAbs
+  have hvalueScaled := mul_le_mul_of_nonneg_left hvalue hrem0
+  have hsales := A.gradualSaleProceeds_lower V buyDay high δ hδ t
+  change entry.denote V *
+      ((1 - rem) * ((high : ℝ) - δ - A.price V buyDay) -
+        rem * A.magnitude V) ≤
+    entry.denote V *
+      (rem * A.value V v.payout - A.price V buyDay +
+        A.gradualSaleProceeds V buyDay high δ t)
+  apply mul_le_mul_of_nonneg_left _ hentry0
+  nlinarith
 
 /-- Once fully liquidated, the component's net worth is world-independent and bounded by
 the entry weight times the guaranteed price spread. -/
@@ -700,6 +746,7 @@ end AffineCombination
 #print axioms AffineCombination.gradualSellFraction_rank_le
 #print axioms AffineCombination.gradualTrader_value_future
 #print axioms AffineCombination.gradualTrader_netWorth
+#print axioms AffineCombination.gradualTrader_netWorth_lower_partial
 #print axioms AffineCombination.gradualTrader_netWorth_lower_of_full_signal
 #print axioms AffineCombination.gradualTrader_magnitude_of_full_signal
 #print axioms AffineCombination.gradualTrader_hasROI_of_full_signal
