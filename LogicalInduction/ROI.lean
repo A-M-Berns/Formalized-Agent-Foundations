@@ -953,14 +953,16 @@ theorem summable_tail_Ico_lt {f : ℕ → ℝ} (hf0 : ∀ i, 0 ≤ f i)
   have hsplit := Finset.sum_range_add_sum_Ico f hKn
   linarith
 
-/-- If every component eventually closes and every component magnitude is uniformly
-positive, the unit budget is recycled infinitely often: cumulative allocation is not
-bounded above. -/
-theorem allocationPrefix_not_bddAbove (close : ℕ → ℕ) (active : ℕ → ℕ → Bool)
+/-- If every component eventually closes and component magnitudes are frequently bounded
+away from zero, the unit budget is recycled infinitely often: cumulative allocation is not
+bounded above. This is the sparse-opportunity form needed by the paper's repeatable-ROI
+lemma; components with zero magnitude on non-opportunity days are harmless. -/
+theorem allocationPrefix_not_bddAbove_of_frequently
+    (close : ℕ → ℕ) (active : ℕ → ℕ → Bool)
     (hclosing : ClosingSchedule active)
     (hclosed : ∀ i n, close i ≤ n → active i n = false) (α : ℕ → ℝ)
     (hα0 : ∀ i, 0 ≤ α i) (hα1 : ∀ i, α i ≤ 1)
-    {δ : ℝ} (hδ : 0 < δ) (hδα : ∀ i, δ ≤ α i) :
+    {δ : ℝ} (hδ : 0 < δ) (hδα : ∃ᶠ i in Filter.atTop, δ ≤ α i) :
     ¬ BddAbove (Set.range (allocationPrefix active α)) := by
   have ha0 : ∀ i, 0 ≤ allocation active α i :=
     fun i => allocation_nonneg active α hclosing hα0 hα1 i
@@ -988,6 +990,8 @@ theorem allocationPrefix_not_bddAbove (close : ℕ → ℕ) (active : ℕ → �
   obtain ⟨K, htail⟩ := summable_tail_Ico_lt ha0 haSum hr
   let N := K + ∑ i ∈ Finset.range K, close i
   have hKN : K ≤ N := by simp [N]
+  obtain ⟨J, hNJ, hαJ⟩ := (Filter.frequently_atTop.mp hδα) N
+  have hKJ : K ≤ J := hKN.trans hNJ
   have hcloseBefore : ∀ i < K, close i ≤ N := by
     intro i hi
     have himem : i ∈ Finset.range K := Finset.mem_range.mpr hi
@@ -995,23 +999,23 @@ theorem allocationPrefix_not_bddAbove (close : ℕ → ℕ) (active : ℕ → �
       Finset.single_le_sum (fun j _ => Nat.zero_le (close j)) himem
     dsimp [N]
     omega
-  have hout : outstanding active α (weight active α) N < r := by
-    have houtLe : outstanding active α (weight active α) N ≤
-        ∑ i ∈ Finset.Ico K N, allocation active α i := by
+  have hout : outstanding active α (weight active α) J < r := by
+    have houtLe : outstanding active α (weight active α) J ≤
+        ∑ i ∈ Finset.Ico K J, allocation active α i := by
       rw [outstanding]
       calc
-        (∑ i : Fin N,
-            if active i N then weight active α i * α i else 0) ≤
-            ∑ i : Fin N,
+        (∑ i : Fin J,
+            if active i J then weight active α i * α i else 0) ≤
+            ∑ i : Fin J,
               if K ≤ i then allocation active α i else 0 := by
           apply Finset.sum_le_sum
           intro i hi
-          by_cases hop : active i N = true
+          by_cases hop : active i J = true
           · have hKi : K ≤ i := by
               by_contra hnot
               have hiK : i < K := Nat.lt_of_not_ge hnot
               have hci := hcloseBefore i hiK
-              have hf := hclosed i N hci
+              have hf := hclosed i J (hci.trans hNJ)
               rw [hf] at hop
               contradiction
             simp [hop, hKi, allocation]
@@ -1020,7 +1024,7 @@ theorem allocationPrefix_not_bddAbove (close : ℕ → ℕ) (active : ℕ → �
             split
             · exact ha0 i
             · exact le_rfl
-        _ = ∑ i ∈ Finset.Ico K N, allocation active α i := by
+        _ = ∑ i ∈ Finset.Ico K J, allocation active α i := by
           rw [Fin.sum_univ_eq_sum_range (fun i : ℕ =>
             if K ≤ i then allocation active α i else 0)]
           rw [← Finset.sum_filter]
@@ -1028,27 +1032,38 @@ theorem allocationPrefix_not_bddAbove (close : ℕ → ℕ) (active : ℕ → �
           ext i
           simp [Finset.mem_Ico]
           omega
-    exact lt_of_le_of_lt houtLe (htail N hKN)
-  have hβhalf : (1 / 2 : ℝ) < weight active α N := by
+    exact lt_of_le_of_lt houtLe (htail J hKJ)
+  have hβhalf : (1 / 2 : ℝ) < weight active α J := by
     rw [weight_eq]
     have hrhalf : r ≤ (1 / 2 : ℝ) := min_le_left _ _
     linarith
-  have haNlower : δ / 2 < allocation active α N := by
+  have haJlower : δ / 2 < allocation active α J := by
     dsimp [allocation]
     calc
       δ / 2 = (1 / 2 : ℝ) * δ := by ring
-      _ < weight active α N * δ :=
+      _ < weight active α J * δ :=
         mul_lt_mul_of_pos_right hβhalf hδ
-      _ ≤ weight active α N * α N :=
-        mul_le_mul_of_nonneg_left (hδα N)
+      _ ≤ weight active α J * α J :=
+        mul_le_mul_of_nonneg_left hαJ
           (le_trans (by norm_num : (0 : ℝ) ≤ 1 / 2) (le_of_lt hβhalf))
-  have htailNext := htail (N + 1) (by omega)
-  have haNtail : allocation active α N ≤
-      ∑ i ∈ Finset.Ico K (N + 1), allocation active α i := by
+  have htailNext := htail (J + 1) (by omega)
+  have haJtail : allocation active α J ≤
+      ∑ i ∈ Finset.Ico K (J + 1), allocation active α i := by
     apply Finset.single_le_sum (fun i _ => ha0 i)
-    simp [Finset.mem_Ico, hKN]
+    simp [Finset.mem_Ico, hKJ]
   have hrδ : r ≤ δ / 2 := min_le_right _ _
   linarith
+
+/-- Uniformly positive magnitudes are the immediate special case of sparse recycling. -/
+theorem allocationPrefix_not_bddAbove (close : ℕ → ℕ) (active : ℕ → ℕ → Bool)
+    (hclosing : ClosingSchedule active)
+    (hclosed : ∀ i n, close i ≤ n → active i n = false) (α : ℕ → ℝ)
+    (hα0 : ∀ i, 0 ≤ α i) (hα1 : ∀ i, α i ≤ 1)
+    {δ : ℝ} (hδ : 0 < δ) (hδα : ∀ i, δ ≤ α i) :
+    ¬ BddAbove (Set.range (allocationPrefix active α)) := by
+  apply allocationPrefix_not_bddAbove_of_frequently close active hclosing hclosed α
+    hα0 hα1 hδ
+  exact Filter.frequently_atTop.mpr (fun N => ⟨N, le_rfl, hδα N⟩)
 
 /-! ### From ROI maturity to a closing schedule -/
 
@@ -1285,6 +1300,32 @@ theorem sharedBudgetedTrader_exploits
       simp [activeUntil]
       omega) (fun i => (α i).denote V) hα0 hα1 hδ hδα
 
+/-- Sparse repeatable positive ROI is exploitable: it is enough that component magnitudes
+are bounded away from zero infinitely often. Zero-magnitude components between profitable
+opportunities consume no allocation and do not obstruct recycling. -/
+theorem sharedBudgetedTrader_exploits_of_frequently
+    (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
+    (ε : ℝ) (hε : 0 < ε) (η : ℕ → ℝ) (close : ℕ → ℕ)
+    (α : ℕ → EF) (hαrank : ∀ i, (α i).rank ≤ i)
+    (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
+    (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
+    (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
+    {δ : ℝ} (hδ : 0 < δ)
+    (hδα : ∃ᶠ i in Filter.atTop, δ ≤ (α i).denote V)
+    (hP : ∀ d φ, 0 ≤ V d φ ∧ V d φ ≤ 1)
+    (hemul : EfficientlyEmulatable Ts)
+    (hroi : ∀ i, HasROI (Ts i) V DP ε)
+    (hη0 : ∀ i, 0 ≤ η i) (hηsum : Summable η)
+    (hmature : MaturitySchedule Ts V DP ε η close)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    (sharedBudgetedTrader Ts (activeUntil close) α hαrank).Exploits V DP := by
+  apply sharedBudgetedTrader_exploits_of_unboundedAllocation Ts V DP ε hε η close α
+    hαrank hαc hmag hα0 hα1 hP hemul hroi hη0 hηsum hmature hworld
+  exact allocationPrefix_not_bddAbove_of_frequently close (activeUntil close)
+    (activeUntil_closing close) (fun i n hn => by
+      simp [activeUntil]
+      omega) (fun i => (α i).denote V) hα0 hα1 hδ hδα
+
 /-- Full repeatable-ROI hub: the shared budget trader is both faithfully polynomial-time
 token-computable and exploiting. -/
 theorem repeatableROI
@@ -1310,6 +1351,64 @@ theorem repeatableROI
   · exact sharedBudgetedTrader_ecTok Ts (activeUntil close) α hαrank hαseg hactive hTs
   · exact sharedBudgetedTrader_exploits Ts V DP ε hε η close α hαrank hαc hmag
       hα0 hα1 hδ hδα hP hTs.emulatable hroi hη0 hηsum hmature hworld
+
+/-- Sparse form of the full repeatable-ROI construction. -/
+theorem repeatableROI_of_frequently
+    (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
+    (ε : ℝ) (hε : 0 < ε) (η : ℕ → ℝ) (close : ℕ → ℕ)
+    (α : ℕ → EF) (hαrank : ∀ i, (α i).rank ≤ i)
+    (hαseg : PolySegStream (fun i => (α i).serialize))
+    (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
+    (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
+    (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
+    {δ : ℝ} (hδ : 0 < δ)
+    (hδα : ∃ᶠ i in Filter.atTop, δ ≤ (α i).denote V)
+    (hP : ∀ d φ, 0 ≤ V d φ ∧ V d φ ≤ 1)
+    (hTs : PolyTradeEmulatable Ts)
+    (hactive : PolyActiveSchedule (activeUntil close))
+    (hroi : ∀ i, HasROI (Ts i) V DP ε)
+    (hη0 : ∀ i, 0 ≤ η i) (hηsum : Summable η)
+    (hmature : MaturitySchedule Ts V DP ε η close)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    EfficientlyComputableTok
+        (sharedBudgetedTrader Ts (activeUntil close) α hαrank) ∧
+      (sharedBudgetedTrader Ts (activeUntil close) α hαrank).Exploits V DP := by
+  constructor
+  · exact sharedBudgetedTrader_ecTok Ts (activeUntil close) α hαrank hαseg hactive hTs
+  · exact sharedBudgetedTrader_exploits_of_frequently Ts V DP ε hε η close α hαrank
+      hαc hmag hα0 hα1 hδ hδα hP hTs.emulatable hroi hη0 hηsum hmature hworld
+
+/-- `lem:type3`, operational paper-facing form: a logical inductor admits no efficiently
+repeatable family with fixed positive ROI and a polynomial maturity verifier unless the
+component magnitudes converge to zero. -/
+theorem noRepeatableROI
+    (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
+    [hLI : IsLogicalInductor V DP]
+    (ε : ℝ) (hε : 0 < ε) (η : ℕ → ℝ) (close : ℕ → ℕ)
+    (α : ℕ → EF) (hαrank : ∀ i, (α i).rank ≤ i)
+    (hαseg : PolySegStream (fun i => (α i).serialize))
+    (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
+    (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
+    (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
+    (hP : ∀ d φ, 0 ≤ V d φ ∧ V d φ ≤ 1)
+    (hTs : PolyTradeEmulatable Ts)
+    (hactive : PolyActiveSchedule (activeUntil close))
+    (hroi : ∀ i, HasROI (Ts i) V DP ε)
+    (hη0 : ∀ i, 0 ≤ η i) (hηsum : Summable η)
+    (hmature : MaturitySchedule Ts V DP ε η close)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    ConvergesTo (fun i => (α i).denote V) 0 := by
+  refine Metric.tendsto_atTop.mpr (fun δ hδ => ?_)
+  have hnotfreq : ¬ ∃ᶠ i in Filter.atTop, δ ≤ (α i).denote V := by
+    intro hfreq
+    obtain ⟨hec, hex⟩ := repeatableROI_of_frequently Ts V DP ε hε η close α hαrank
+      hαseg hαc hmag hα0 hα1 hδ hfreq hP hTs hactive hroi hη0 hηsum hmature hworld
+    exact hLI.noExploit _ hec hex
+  rw [Filter.not_frequently] at hnotfreq
+  obtain ⟨N, hN⟩ := Filter.eventually_atTop.mp hnotfreq
+  refine ⟨N, fun n hn => ?_⟩
+  rw [Real.dist_eq, sub_zero, abs_of_nonneg (hα0 n)]
+  exact lt_of_not_ge (hN n hn)
 
 /-- A semantic closing day selected from each member's ROI witness. This is deliberately
 noncomputable: the paper-facing construction instead uses a bounded verification search
@@ -1343,8 +1442,10 @@ theorem maturitySchedule_closing (Ts : ℕ → Trader) (V : History)
 #print axioms sharedBudgetedTrader_ecTok
 #print axioms sharedBudgetedTrader_netWorth_lower
 #print axioms allocationPrefix_not_bddAbove
+#print axioms allocationPrefix_not_bddAbove_of_frequently
 #print axioms sharedBudgetedTrader_exploits
 #print axioms repeatableROI
+#print axioms noRepeatableROI
 
 end ROIBudget
 
