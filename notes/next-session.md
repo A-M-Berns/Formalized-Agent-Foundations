@@ -1,16 +1,14 @@
 # Logical Induction working plan — M4 lift hubs
 
-> **Current correction (2026-07-13):** the affine analytic hub, gradual-sale component,
-> exact liquidation/magnitude/ROI theorems, and partial-risk invariant are kernel-checked.
-> Do **not** try to derive `VerifiedMaturitySchedule.check_poly` from
-> `ComputableMarket`/`ComputableDeductiveProcess`: those certificates are only
-> partial-recursive, so the implication to polynomial fuel is unavailable in general.
-> The next construction should generalize the shared `β` budget from Boolean `active`
-> bits to decreasing `[0,1]` occupancy features and instantiate occupancy with
-> `AffineCombination.gradualRemaining`. Its proved partial-risk bound is precisely the
-> economic invariant needed for that route. After the continuous budget and uniform token
-> emitter, derive `AffineNoPreemptiveGaps`, apply `affpolymax_of_noPreemptiveGaps`, then
-> discharge the three expectation and four Self-Trust statements.
+> **Current correction (2026-07-13):** the continuous budget and affine uniform-emission
+> route are now closed through `PolySequence.gradualRisk_converges`. This includes the
+> paired-family raw-program bridge, decreasing/rank-legal/closed gradual occupancy, the
+> complete `PolyTradeEmulatable` gradual family, and the logical-inductor contradiction.
+> Do **not** return to the invalid polynomial-maturity-checker route.
+> **Next exact gate:** add a polynomial finite-prefix launch gate so an *eventual*
+> future-price condition can zero out early components that need not ever liquidate. Then
+> derive both fields of `AffineNoPreemptiveGaps`, apply `affpolymax_of_noPreemptiveGaps`,
+> and discharge the three expectation and four Self-Trust statements.
 
 > Supersedes the 2026-07-07 token-emission plan (fully executed; its record lives in
 > `PROGRESS.md` under OPEN RISK 4 and the `def:ec` ledger rows, and in git history).
