@@ -859,6 +859,40 @@ theorem PolyTokenStream.serialize_const (q : ℚ) :
     funext n; simp [EF.serialize]
   rw [this]; exact (PolyTokenStream.const 1).append (PolyTokenStream.const _)
 
+/-! #### Rational-constant token values in closed arithmetic form.
+
+`Encodable.encode` on `ℚ` unfolds definitionally to `Nat.pair (encode q.num) q.den`
+(through the `Encodable.ofEquiv` Sigma/Subtype layers of `Rat`'s instance), and on
+`ℤ`-from-`ℕ` to the sign-fold `2n`. Parametric-family traders (`thm:nd`'s scale
+ladder) emit tokens `⌜q(j)⌝` for rung-varying rationals, so their emitters need
+these values as poly-fueled arithmetic in `j` (`dd:fuel`). -/
+
+theorem encode_rat_eq (q : ℚ) :
+    Encodable.encode q = Nat.pair (Encodable.encode q.num) q.den := rfl
+
+theorem encode_int_natCast (n : ℕ) : Encodable.encode ((n : ℤ)) = 2 * n := rfl
+
+theorem encode_rat_natCast (n : ℕ) :
+    Encodable.encode ((n : ℚ)) = Nat.pair (2 * n) 1 := by
+  rw [encode_rat_eq, Rat.num_natCast, Rat.den_natCast, encode_int_natCast]
+
+theorem encode_rat_inv_natCast {n : ℕ} (hn : 0 < n) :
+    Encodable.encode ((n : ℚ)⁻¹) = Nat.pair 2 n := by
+  rw [encode_rat_eq, Rat.inv_natCast_num_of_pos hn, Rat.inv_natCast_den_of_pos hn]
+  rfl
+
+/-- Token stream of a **varying**-constant family: `[1, ⌜q(m)⌝]` with the encoded
+value poly-fueled. The fixed-constant `serialize_const` is the special case. -/
+theorem PolyTokenStream.serialize_const_comp {qf : ℕ → ℚ}
+    (h : ∃ c, PolyFueled c (fun m => Encodable.encode (qf m))) :
+    PolyTokenStream (fun m => (EF.const (qf m)).serialize) := by
+  obtain ⟨c, hc⟩ := h
+  have heq : (fun m => (EF.const (qf m)).serialize)
+      = (fun m => [1] ++ [Encodable.encode (qf m)]) := by
+    funext m; simp [EF.serialize]
+  rw [heq]
+  exact (PolyTokenStream.const 1).append (PolyTokenStream.polyTok hc)
+
 theorem PolyTokenStream.serialize_price (φ : Sentence) :
     PolyTokenStream (fun n => (EF.price φ n).serialize) := by
   have : (fun n => (EF.price φ n).serialize)

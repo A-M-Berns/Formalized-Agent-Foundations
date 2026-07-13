@@ -497,6 +497,30 @@ theorem buyIndEF_tokenStream {f : ℕ → ℕ} {c : Nat.Partrec.Code} (hf : Poly
         (PolyTokenStream.serialize_price_comp hf φ)))
     (PolyTokenStream.serialize_const _))
 
+/-- `buyIndEF` streams with **rung-varying constants**: the threshold and slope encodes
+are poly-fueled functions of the input (the parametric-ladder case). -/
+theorem buyIndEF_tokenStream_comp {af δf : ℕ → ℚ} {cj : Nat.Partrec.Code} {jf : ℕ → ℕ}
+    (hj : PolyFueled cj jf) (φ : Sentence)
+    (ha : ∃ c, PolyFueled c (fun m => Encodable.encode (af m + δf m)))
+    (hd : ∃ c, PolyFueled c (fun m => Encodable.encode (1 / δf m))) :
+    PolyTokenStream (fun m => (buyIndEF φ (af m) (δf m) (jf m)).serialize) :=
+  PolyTokenStream.serialize_clip01 (PolyTokenStream.serialize_mul
+    (PolyTokenStream.serialize_add (PolyTokenStream.serialize_const_comp ha)
+      (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const _)
+        (PolyTokenStream.serialize_price_comp hj φ)))
+    (PolyTokenStream.serialize_const_comp hd))
+
+/-- `sellIndEF` streams with rung-varying constants. -/
+theorem sellIndEF_tokenStream_comp {bf δf : ℕ → ℚ} {cj : Nat.Partrec.Code} {jf : ℕ → ℕ}
+    (hj : PolyFueled cj jf) (φ : Sentence)
+    (hb : ∃ c, PolyFueled c (fun m => Encodable.encode (δf m - bf m)))
+    (hd : ∃ c, PolyFueled c (fun m => Encodable.encode (1 / δf m))) :
+    PolyTokenStream (fun m => (sellIndEF φ (bf m) (δf m) (jf m)).serialize) :=
+  PolyTokenStream.serialize_clip01 (PolyTokenStream.serialize_mul
+    (PolyTokenStream.serialize_add (PolyTokenStream.serialize_price_comp hj φ)
+      (PolyTokenStream.serialize_const_comp hb))
+    (PolyTokenStream.serialize_const_comp hd))
+
 theorem sellIndEF_tokenStream {f : ℕ → ℕ} {c : Nat.Partrec.Code} (hf : PolyFueled c f)
     (φ : Sentence) (b δ : ℚ) :
     PolyTokenStream (fun m => (sellIndEF φ b δ (f m)).serialize) :=

@@ -697,26 +697,246 @@ theorem ndLadderTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sent
 
 #print axioms ndLadderTrader_exploits
 
-/-- Efficient computability of the scale-ladder trader. The trader is genuinely
-poly-size — day `n` carries `n` rungs, each a uniform-width padded chain of `n` blocks,
-`Θ(n²)` tokens with poly-value constants — but certifying it through `dd:fuel` needs
-three pieces the emission toolkit does not yet have:
+/-! ### Efficient computability (the parametric-ladder emission)
 
-1. **runtime-divisor `divmod`** (`divmodc` bakes the divisor into the code; here the
-   block width is `Θ(n)`, known only at runtime);
-2. **`PolySegStream.concat`** — `n`-fold segment concatenation (`.append` is binary;
-   the day-`n` stream is `n` rung chunks);
-3. **poly-fueled emission of rung-varying rational constants** — the tokens
-   `⌜ndThr j⌝`, `⌜(j : ℚ)⌝` vary with the rung, so the emitter must compute
-   `Encodable.encode` of these rationals from `j` inside the fuel budget (poly-value by
-   the `1/j³` rescaling, but the encoding functions still need `PolyFueled` codes).
+The day-`n` stream is `n` rung chunks of uniform width `Θ(n)`, each: a rung-constant
+head, `n` fixed-width arm blocks (only the day-index and the rung's `ℚ`-constant tokens
+vary), the day-`n` trade signal, and closers. Emission: `PolySegStream.concat` over the
+rungs (runtime-divisor division), `PolySegStream.blocks` within each chunk, and
+poly-fueled arithmetic for the rung-varying encoded constants
+(`⌜ndThr j⌝ = Nat.pair 2 (2j³)` etc. — the closed forms of `encode_rat_eq`). -/
 
-This is the plan's known B2 decision point (growing-width blocks), plus the new
-finding that parametric-family traders (the paper's "efficiently emulatable sequences",
-`app:preliminaries`.3) need constant-token emission our kit hasn't exercised. -/
+theorem encode_rat_zero : Encodable.encode ((0 : ℚ)) = 1 := rfl
+
+theorem ndThr_eq_inv (j : ℕ) : ndThr j = ((2 * j ^ 3 : ℕ) : ℚ)⁻¹ := by
+  rw [ndThr, one_div]
+  norm_cast
+
+theorem encode_ndThr {j : ℕ} (hj : 1 ≤ j) :
+    Encodable.encode (ndThr j) = Nat.pair 2 (2 * j ^ 3) := by
+  have h3 : 0 < 2 * j ^ 3 := by
+    have := pow_pos (show 0 < j by omega) 3
+    omega
+  rw [ndThr_eq_inv, encode_rat_inv_natCast h3]
+
+theorem encode_ndThr_double {j : ℕ} (hj : 1 ≤ j) :
+    Encodable.encode (ndThr j + ndThr j) = Nat.pair 2 (j ^ 3) := by
+  have h3 : 0 < j ^ 3 := pow_pos (show 0 < j by omega) 3
+  have heq : ndThr j + ndThr j = ((j ^ 3 : ℕ) : ℚ)⁻¹ := by
+    have hx : ((j : ℚ)) ^ 3 ≠ 0 := by
+      have : ((j : ℚ)) ≠ 0 := Nat.cast_ne_zero.mpr (by omega)
+      exact pow_ne_zero 3 this
+    rw [ndThr]
+    push_cast
+    field_simp
+    ring
+  rw [heq, encode_rat_inv_natCast h3]
+
+theorem encode_ndThr_recip {j : ℕ} (hj : 1 ≤ j) :
+    Encodable.encode (1 / ndThr j) = Nat.pair (4 * j ^ 3) 1 := by
+  have heq : (1 : ℚ) / ndThr j = ((2 * j ^ 3 : ℕ) : ℚ) := by
+    rw [ndThr, one_div_one_div]
+    push_cast
+    ring
+  rw [heq, encode_rat_natCast, show 2 * (2 * j ^ 3) = 4 * j ^ 3 from by ring]
+
+/-- Poly-fueled cube `(j' + 1)³` from a poly-fueled extractor. -/
+theorem cube_succ_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ}
+    (hj : PolyFueled cj j'f) : ∃ c, PolyFueled c (fun m => (j'f m + 1) ^ 3) := by
+  obtain ⟨cmul, hmul⟩ := mul_polyFueled
+  have hj1 := hj.succ_comp
+  have hsq := (hmul.comp (hj1.pair hj1)).of_eq
+    (f' := fun m => (j'f m + 1) * (j'f m + 1))
+    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair])
+  exact ⟨_, (hmul.comp (hsq.pair hj1)).of_eq (fun m => by
+    simp only [Function.comp_apply, Nat.unpair_pair]
+    ring)⟩
+
+/-- Poly-fueled emission of the padded threshold-sum token
+`⌜ndThr (j'+1) + ndPadThr (j'+1) i⌝` (pad below the rung's start day, live after). -/
+theorem encode_thrSum_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → ℕ}
+    (hj : PolyFueled cj j'f) (hi : PolyFueled ci if_) :
+    ∃ c, PolyFueled c (fun m =>
+      Encodable.encode (ndThr (j'f m + 1) + ndPadThr (j'f m + 1) (if_ m))) := by
+  obtain ⟨c3, h3⟩ := cube_succ_polyFueled hj
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have h2cube := (had.comp (h3.pair h3)).of_eq
+    (f' := fun m => 2 * (j'f m + 1) ^ 3)
+    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; ring)
+  have padv := (PolyFueled.const 2).pair h2cube
+  have livev := (PolyFueled.const 2).pair h3
+  have test := subc_polyFueled.comp (hi.pair hj)
+  refine ⟨_, (ifzSel_polyFueled.comp ((padv.pair livev).pair test)).of_eq (fun m => ?_)⟩
+  simp only [Function.comp_apply, Nat.unpair_pair, ifzSelFn]
+  rcases Nat.lt_or_ge (if_ m) (j'f m + 1) with hcase | hcase
+  · rw [if_pos (by omega), ndPadThr, if_pos hcase, add_zero,
+      encode_ndThr (by omega : 1 ≤ j'f m + 1)]
+  · rw [if_neg (by omega), ndPadThr, if_neg (by omega),
+      encode_ndThr_double (by omega : 1 ≤ j'f m + 1)]
+
+/-- Poly-fueled emission of the padded slope token `⌜1 / ndPadThr (j'+1) i⌝`
+(`⌜0⌝ = 1` in the pad region, `⌜2(j'+1)³⌝` live). -/
+theorem encode_thrRecip_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → ℕ}
+    (hj : PolyFueled cj j'f) (hi : PolyFueled ci if_) :
+    ∃ c, PolyFueled c (fun m =>
+      Encodable.encode (1 / ndPadThr (j'f m + 1) (if_ m))) := by
+  obtain ⟨c3, h3⟩ := cube_succ_polyFueled hj
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have h2cube := (had.comp (h3.pair h3)).of_eq
+    (f' := fun m => 2 * (j'f m + 1) ^ 3)
+    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; ring)
+  have h4cube := (had.comp (h2cube.pair h2cube)).of_eq
+    (f' := fun m => 4 * (j'f m + 1) ^ 3)
+    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; ring)
+  have padv := PolyFueled.const 1
+  have livev := h4cube.pair (PolyFueled.const 1)
+  have test := subc_polyFueled.comp (hi.pair hj)
+  refine ⟨_, (ifzSel_polyFueled.comp ((padv.pair livev).pair test)).of_eq (fun m => ?_)⟩
+  simp only [Function.comp_apply, Nat.unpair_pair, ifzSelFn]
+  rcases Nat.lt_or_ge (if_ m) (j'f m + 1) with hcase | hcase
+  · rw [if_pos (by omega), ndPadThr, if_pos hcase, div_zero, encode_rat_zero]
+  · rw [if_neg (by omega), ndPadThr, if_neg (by omega),
+      encode_ndThr_recip (by omega : 1 ≤ j'f m + 1)]
+
+/-- Poly-fueled emission of the rung-weight token `⌜((j'+1 : ℕ) : ℚ)⌝`. -/
+theorem encode_ratCast_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ}
+    (hj : PolyFueled cj j'f) :
+    ∃ c, PolyFueled c (fun m => Encodable.encode (((j'f m + 1 : ℕ) : ℚ))) := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have hj1 := hj.succ_comp
+  have h2j := (had.comp (hj1.pair hj1)).of_eq
+    (f' := fun m => 2 * (j'f m + 1))
+    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; ring)
+  exact ⟨_, (h2j.pair (PolyFueled.const 1)).of_eq
+    (fun m => (encode_rat_natCast _).symm)⟩
+
+/-- The rung-`j` day-`i` arm-chain serialization block. -/
+def ndArmBlock (φ : Sentence) (j i : ℕ) : List ℕ :=
+  (oneMinus (ndBuySig φ j i)).serialize ++ [3]
+
+theorem ndArmBlock_tokenStream (φ : Sentence) :
+    PolyTokenStream (fun x => ndArmBlock φ (x.unpair.1.unpair.2 + 1) x.unpair.2) := by
+  have hbuy : PolyTokenStream (fun x =>
+      (ndBuySig φ (x.unpair.1.unpair.2 + 1) x.unpair.2).serialize) :=
+    buyIndEF_tokenStream_comp (jf := fun x => x.unpair.2)
+      (af := fun x => ndThr (x.unpair.1.unpair.2 + 1))
+      (δf := fun x => ndPadThr (x.unpair.1.unpair.2 + 1) x.unpair.2)
+      PolyFueled.right φ
+      (encode_thrSum_polyFueled (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
+      (encode_thrRecip_polyFueled (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
+  exact (PolyTokenStream.serialize_oneMinus hbuy).append (PolyTokenStream.const 3)
+
+/-- Arm blocks have rung- and day-independent width (only token values vary). -/
+theorem ndArmBlock_length (φ : Sentence) (j i : ℕ) :
+    (ndArmBlock φ j i).length = (ndArmBlock φ 1 0).length := by
+  simp [ndArmBlock, ndBuySig, buyIndEF, oneMinus, clip01, efMin, EF.serialize]
+
+theorem serialize_ndBuySig_length (φ : Sentence) (j i : ℕ) :
+    (ndBuySig φ j i).serialize.length = (ndBuySig φ 1 0).serialize.length := by
+  simp [ndBuySig, buyIndEF, clip01, efMin, EF.serialize]
+
+theorem serialize_armChain_ndBuy (φ : Sentence) (j : ℕ) : ∀ n,
+    (armChain (ndBuySig φ j) n).serialize
+      = [1, Encodable.encode ((1 : ℚ))]
+        ++ (List.range n).flatMap (fun i => ndArmBlock φ j i)
+  | 0 => by simp [armChain, EF.serialize]
+  | (n + 1) => by
+      rw [armChain]
+      simp only [EF.serialize]
+      rw [serialize_armChain_ndBuy φ j n, List.range_succ, List.flatMap_append,
+        List.flatMap_singleton, ndArmBlock]
+      simp [List.append_assoc]
+
+theorem serialize_ndCoef (φ : Sentence) (j n : ℕ) :
+    (ndCoef φ j n).serialize
+      = [1, Encodable.encode ((j : ℚ))]
+        ++ (armChain (ndBuySig φ j) n).serialize
+        ++ (ndBuySig φ j n).serialize ++ [3, 3] := by
+  simp [ndCoef, EF.serialize, List.append_assoc]
+
+theorem serialize_ndLadderEF (φ : Sentence) (n : ℕ) : ∀ m,
+    (ndLadderEF φ n m).serialize
+      = [1, Encodable.encode ((0 : ℚ))]
+        ++ (List.range m).flatMap (fun j' => (ndCoef φ (j' + 1) n).serialize ++ [2])
+  | 0 => by simp [ndLadderEF, EF.serialize]
+  | (m + 1) => by
+      rw [ndLadderEF]
+      simp only [EF.serialize]
+      rw [serialize_ndLadderEF φ n m, List.range_succ, List.flatMap_append,
+        List.flatMap_singleton]
+      simp [List.append_assoc]
+
+/-- The rung chunk (coefficient serialization plus the ladder's `add` tag), as a
+`PolySegStream` over the paired input `⟨n, j'⟩`. -/
+theorem ndChunkSeg_polySegStream (φ : Sentence) :
+    PolySegStream (fun m =>
+      (ndCoef φ (m.unpair.2 + 1) m.unpair.1).serialize ++ [2]) := by
+  have hW0 : 0 < (ndArmBlock φ 1 0).length := by
+    norm_num [ndArmBlock, ndBuySig, buyIndEF, oneMinus, clip01, efMin, EF.serialize]
+  have segA : PolySegStream (fun m =>
+      (EF.const (((m.unpair.2 + 1 : ℕ) : ℚ))).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const_comp
+      (encode_ratCast_polyFueled PolyFueled.right))
+  have segB : PolySegStream (fun _ : ℕ => [1, Encodable.encode ((1 : ℚ))]) :=
+    PolySegStream.ofTokenStream
+      ((PolyTokenStream.const 1).append (PolyTokenStream.const _))
+  have segC := PolySegStream.blocks (ndArmBlock_tokenStream φ)
+    ((ndArmBlock φ 1 0).length) (fun x => ndArmBlock_length φ _ _) hW0 PolyFueled.left
+  have segD : PolySegStream (fun m =>
+      (ndBuySig φ (m.unpair.2 + 1) m.unpair.1).serialize) :=
+    PolySegStream.ofTokenStream (buyIndEF_tokenStream_comp (jf := fun m => m.unpair.1)
+      (af := fun m => ndThr (m.unpair.2 + 1))
+      (δf := fun m => ndPadThr (m.unpair.2 + 1) m.unpair.1)
+      PolyFueled.left φ
+      (encode_thrSum_polyFueled PolyFueled.right PolyFueled.left)
+      (encode_thrRecip_polyFueled PolyFueled.right PolyFueled.left))
+  have segE : PolySegStream (fun _ : ℕ => [3, 3, 2]) :=
+    PolySegStream.ofTokenStream ((PolyTokenStream.const 3).append
+      ((PolyTokenStream.const 3).append (PolyTokenStream.const 2)))
+  refine PolySegStream.of_eq
+    ((((segA.append segB).append segC).append segD).append segE) (fun m => ?_)
+  rw [serialize_ndCoef, serialize_armChain_ndBuy]
+  simp [EF.serialize, Nat.unpair_pair, List.append_assoc]
+
+/-- **The scale-ladder trader is efficiently computable** — the first parametric-family
+emission cert: head `[1, ⌜0⌝]`, then `n` rung chunks of uniform runtime width via
+`PolySegStream.concat` (each chunk: rung-constant head, `n` fixed-width arm blocks via
+`PolySegStream.blocks`, the day-`n` signal, closers), then the trade tail. The
+rung-varying `ℚ`-constant tokens are emitted as poly-fueled arithmetic through the
+closed encoding forms (`encode_ndThr` etc.). -/
 theorem ndLadderTrader_ecTok (φ : Sentence) :
     EfficientlyComputableTok (ndLadderTrader φ) := by
-  sorry -- TODO(blueprint:def:ec): runtime-divisor divmod + PolySegStream.concat + poly-fueled ℚ-constant tokens
+  have hunif : ∀ n j,
+      ((ndCoef φ ((Nat.pair n j).unpair.2 + 1) (Nat.pair n j).unpair.1).serialize
+          ++ [2]).length
+        = ((ndCoef φ ((Nat.pair n 0).unpair.2 + 1) (Nat.pair n 0).unpair.1).serialize
+          ++ [2]).length := by
+    intro n j
+    simp only [Nat.unpair_pair]
+    rw [serialize_ndCoef, serialize_ndCoef, serialize_armChain_ndBuy,
+      serialize_armChain_ndBuy]
+    have hfm : ∀ j' : ℕ, ((List.range n).flatMap (fun i => ndArmBlock φ j' i)).length
+        = n * (ndArmBlock φ 1 0).length := fun j' =>
+      length_flatMap_const_width _ _ n (fun i _ => ndArmBlock_length φ _ _)
+    have hsig := serialize_ndBuySig_length φ (j + 1) n
+    have hsig0 := serialize_ndBuySig_length φ (0 + 1) n
+    simp only [List.length_append, List.length_cons, List.length_nil, hfm]
+    omega
+  have segChunks := PolySegStream.concat (ndChunkSeg_polySegStream φ) PolyFueled.id hunif
+  have seg1 : PolySegStream (fun _ : ℕ => [1, Encodable.encode ((0 : ℚ))]) :=
+    PolySegStream.ofTokenStream
+      ((PolyTokenStream.const 1).append (PolyTokenStream.const _))
+  have seg3 : PolySegStream (fun _ : ℕ => [6, Encodable.encode φ]) :=
+    PolySegStream.ofTokenStream
+      ((PolyTokenStream.const 6).append (PolyTokenStream.const _))
+  refine ecTok_of_segStream _ (PolySegStream.of_eq ((seg1.append segChunks).append seg3) ?_)
+  intro n
+  show _ = serializeTrades ((ndLadderTrader φ).strat n).trades
+  rw [show ((ndLadderTrader φ).strat n).trades = [(ndLadderEF φ n n, φ)] from rfl,
+    serializeTrades, serializeTrades, serialize_ndLadderEF]
+  simp [Nat.unpair_pair, List.append_assoc]
+
+#print axioms ndLadderTrader_ecTok
 
 /-- **Non-Dogmatism, positive direction** (`thm:nd`): under a logical inductor, if
 `φ`-satisfying plausible worlds keep existing (the per-day semantic rendering of
