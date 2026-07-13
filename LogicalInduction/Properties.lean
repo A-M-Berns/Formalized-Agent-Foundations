@@ -27,6 +27,8 @@ File layout (promoted from a single file once it grew past ~1000 lines):
   expectation feature `𝔼(X)`, gated to absorb the `lem:conluvapprox` payout error.
 * `Properties.Relationships` — `thm:lex`: learning logical equivalence (`eqTr`) and implication
   / price monotonicity (`impTr`).
+* `Properties.AffinePreemptiveLearning` — `thm:affpolymax`'s exact liminf/limsup analytic
+  hub, factored over the two operational no-preemptive-gap conditions supplied by ROI.
 * `Properties.SelfTrust` — `thm:cee`/`ceu`/`ccee`/`st` **statements** (proofs → M4):
   reflection as revelation-schedule linkage hypotheses over relational quoted families
   (the G2-approved non-vacuous modeling); `DeferralFunction` (`def:deferralfunc`).
@@ -42,3 +44,4 @@ import LogicalInduction.Properties.NonDogmatism
 import LogicalInduction.Properties.ExpectationConvergence
 import LogicalInduction.Properties.Relationships
 import LogicalInduction.Properties.SelfTrust
+import LogicalInduction.Properties.AffinePreemptiveLearning
