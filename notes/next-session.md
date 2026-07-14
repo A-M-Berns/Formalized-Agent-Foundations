@@ -1,4 +1,16 @@
-# Logical Induction working plan — M5 verification/audit closeout
+# Logical Induction working plan — M7 not started
+
+> **M6 verified complete (2026-07-14):**
+> `LogicalInduction/Construction/MarketMaker.lean` now proves the strategy fixed-point
+> lemma, implements the exact rational fuel-clocked first-success MarketMaker, recursively
+> generates its history, and proves it is not exploited by its input trader for every
+> deductive process. See `notes/m6-verification-packet.md` for the statement comparison and
+> modeling disclosures. The construction roll-up passed 2,426/2,426 jobs, the full build
+> passed 2,671/2,671, source/diff checks are clean, and capstone axiom reports contain only
+> the approved three axioms. M7 (`Budgeter`, `TradingFirm`, `LIA`, existence) is wholly
+> unstarted and is the next milestone only when explicitly scoped.
+
+# Historical M5 closeout
 
 > **Fresh-context audit correction pass (2026-07-14):** Anson authorized and a fresh
 > subagent completed the adversarial audit. It passed kernel soundness, trader token

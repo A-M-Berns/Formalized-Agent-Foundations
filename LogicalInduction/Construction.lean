@@ -19,7 +19,7 @@ roadmap §3, Part IV):
 * `thm:li`  → `exists_logical_inductor` — main existence result.
 
 -/
-import LogicalInduction.Construction.Brouwer
+import LogicalInduction.Construction.MarketMaker
 
 namespace LogicalInduction
 
