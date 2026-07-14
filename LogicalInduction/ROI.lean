@@ -169,6 +169,487 @@ theorem EfficientlyEmulatable.of_polySeg {Ts : ℕ → Trader}
 def gateTraderFamily (start : ℕ) (Ts : ℕ → Trader) (i : ℕ) : Trader :=
   if start ≤ i then Ts i else Trader.zero
 
+/-- The zero trader has every ROI rate vacuously.  This is the harmless finite-prefix
+padding used when a repeatable profitable family only starts after some day. -/
+theorem Trader.zero_hasROI (V : History) (DP : DeductiveProcess) (ε : ℝ) :
+    HasROI Trader.zero V DP ε := by
+  constructor
+  · simpa [Trader.zero, Strategy.magnitude] using
+      (summable_zero : Summable (fun _ : ℕ => (0 : ℝ)))
+  · intro η hη
+    refine ⟨0, fun n _ v _ => ?_⟩
+    have hmag : Trader.zero.magnitude V = 0 := by
+      simp [Trader.magnitude, Trader.zero, Strategy.magnitude]
+    rw [hmag, mul_zero, Trader.zero_netWorth]
+
+/-! ### Exact rational finite-prefix semantics for maturity certificates -/
+
+/-- Executable rational share magnitude for one strategy. -/
+def Strategy.magnitudeRat {n : ℕ} (T : Strategy n)
+    (Q : ℕ → Sentence → ℚ) : ℚ :=
+  (T.trades.map (fun p => |p.1.denoteRat Q|)).sum
+
+/-- Executable rational value for one strategy under a rational payout table. -/
+def Strategy.valueRat {n : ℕ} (T : Strategy n)
+    (Q : ℕ → Sentence → ℚ) (w : Sentence → ℚ) : ℚ :=
+  (T.trades.map (fun p => p.1.denoteRat Q * (w p.2 - Q n p.2))).sum
+
+/-- Market cells needed to compute the rational magnitude of a trade list. -/
+def Strategy.magnitudeRatQueries : List (EF × Sentence) → List (ℕ × Sentence)
+  | [] => []
+  | p :: rest => p.1.priceQueries ++ magnitudeRatQueries rest
+
+/-- Market cells needed to compute the rational value of a day-`n` trade list.  Besides
+coefficient features, this includes the day-`n` purchase quote of every traded sentence. -/
+def Strategy.valueRatQueries (n : ℕ) : List (EF × Sentence) → List (ℕ × Sentence)
+  | [] => []
+  | p :: rest => p.1.priceQueries ++ (n, p.2) :: valueRatQueries n rest
+
+/-- Bounded exact magnitude evaluator for a raw trade list. -/
+def Strategy.magnitudeRatListAtFuel {P : History} (market : MarketComputation P)
+    (fuel : ℕ) : List (EF × Sentence) → Option ℚ
+  | [] => some 0
+  | p :: rest => do
+      let coefficient ← p.1.denoteRatWithAtFuel market fuel []
+      let tail ← magnitudeRatListAtFuel market fuel rest
+      pure (|coefficient| + tail)
+
+/-- Bounded exact value evaluator for a raw day-`n` trade list. -/
+def Strategy.valueRatListAtFuel {P : History} (market : MarketComputation P)
+    (fuel n : ℕ) (w : Sentence → ℚ) : List (EF × Sentence) → Option ℚ
+  | [] => some 0
+  | p :: rest => do
+      let coefficient ← p.1.denoteRatWithAtFuel market fuel []
+      let price ← market.quoteAtFuel fuel n p.2
+      let tail ← valueRatListAtFuel market fuel n w rest
+      pure (coefficient * (w p.2 - price) + tail)
+
+/-- Bounded rational magnitude of one strategy. -/
+def Strategy.magnitudeRatAtFuel {n : ℕ} (T : Strategy n)
+    {P : History} (market : MarketComputation P) (fuel : ℕ) : Option ℚ :=
+  magnitudeRatListAtFuel market fuel T.trades
+
+/-- Bounded rational value of one strategy under a rational payout table. -/
+def Strategy.valueRatAtFuel {n : ℕ} (T : Strategy n)
+    {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (w : Sentence → ℚ) : Option ℚ :=
+  valueRatListAtFuel market fuel n w T.trades
+
+theorem Strategy.magnitudeRatListAtFuel_sound
+    {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (trades : List (EF × Sentence)) {q : ℚ}
+    (h : magnitudeRatListAtFuel market fuel trades = some q) :
+    q = (trades.map (fun p =>
+      |p.1.denoteRat (fun d φ => market.quote d (Encodable.encode φ))|)).sum := by
+  induction trades generalizing q with
+  | nil => simpa [magnitudeRatListAtFuel] using h.symm
+  | cons p rest ih =>
+      simp only [magnitudeRatListAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨coefficient, hcoefficient, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨tail, htail, hq⟩ := h
+      change some (|coefficient| + tail) = some q at hq
+      injection hq with hq
+      subst q
+      simp only [List.map_cons, List.sum_cons, EF.denoteRat]
+      rw [p.1.denoteRatWithAtFuel_sound market fuel [] hcoefficient, ih htail]
+      rfl
+
+theorem Strategy.valueRatListAtFuel_sound
+    {P : History} (market : MarketComputation P) (fuel n : ℕ)
+    (w : Sentence → ℚ) (trades : List (EF × Sentence)) {q : ℚ}
+    (h : valueRatListAtFuel market fuel n w trades = some q) :
+    q = (trades.map (fun p =>
+      p.1.denoteRat (fun d φ => market.quote d (Encodable.encode φ)) *
+        (w p.2 - market.quote n (Encodable.encode p.2)))).sum := by
+  induction trades generalizing q with
+  | nil => simpa [valueRatListAtFuel] using h.symm
+  | cons p rest ih =>
+      simp only [valueRatListAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨coefficient, hcoefficient, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨price, hprice, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨tail, htail, hq⟩ := h
+      change some (coefficient * (w p.2 - price) + tail) = some q at hq
+      injection hq with hq
+      subst q
+      simp only [List.map_cons, List.sum_cons, EF.denoteRat]
+      rw [p.1.denoteRatWithAtFuel_sound market fuel [] hcoefficient,
+        market.quoteAtFuel_sound hprice, ih htail]
+      rfl
+
+theorem Strategy.magnitudeRatListAtFuel_complete
+    {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (trades : List (EF × Sentence))
+    (hready : ∀ query ∈ magnitudeRatQueries trades,
+      market.quoteAtFuel fuel query.1 query.2 =
+        some (market.quote query.1 (Encodable.encode query.2))) :
+    magnitudeRatListAtFuel market fuel trades = some
+      (trades.map (fun p =>
+        |p.1.denoteRat (fun d φ => market.quote d (Encodable.encode φ))|)).sum := by
+  induction trades with
+  | nil => rfl
+  | cons p rest ih =>
+      have hcoefficient := p.1.denoteRatWithAtFuel_complete market fuel []
+        (fun query hquery => hready query (by
+          simp only [magnitudeRatQueries, List.mem_append]
+          exact Or.inl hquery))
+      have htail := ih (fun query hquery => hready query (by
+        simp only [magnitudeRatQueries, List.mem_append]
+        exact Or.inr hquery))
+      simp [magnitudeRatListAtFuel, hcoefficient, htail, EF.denoteRat]
+
+theorem Strategy.valueRatListAtFuel_complete
+    {P : History} (market : MarketComputation P) (fuel n : ℕ)
+    (w : Sentence → ℚ) (trades : List (EF × Sentence))
+    (hready : ∀ query ∈ valueRatQueries n trades,
+      market.quoteAtFuel fuel query.1 query.2 =
+        some (market.quote query.1 (Encodable.encode query.2))) :
+    valueRatListAtFuel market fuel n w trades = some
+      (trades.map (fun p =>
+        p.1.denoteRat (fun d φ => market.quote d (Encodable.encode φ)) *
+          (w p.2 - market.quote n (Encodable.encode p.2)))).sum := by
+  induction trades with
+  | nil => rfl
+  | cons p rest ih =>
+      have hcoefficient := p.1.denoteRatWithAtFuel_complete market fuel []
+        (fun query hquery => hready query (by
+          simp only [valueRatQueries, List.mem_append, List.mem_cons]
+          exact Or.inl hquery))
+      have hprice := hready (n, p.2) (by
+        simp only [valueRatQueries, List.mem_append, List.mem_cons]
+        exact Or.inr (Or.inl trivial))
+      have htail := ih (fun query hquery => hready query (by
+        simp only [valueRatQueries, List.mem_append, List.mem_cons]
+        exact Or.inr (Or.inr hquery)))
+      simp [valueRatListAtFuel, hcoefficient, hprice, htail, EF.denoteRat]
+
+/-- A successful bounded strategy-magnitude computation is exact. -/
+theorem Strategy.magnitudeRatAtFuel_sound
+    {n : ℕ} (T : Strategy n) {P : History} (market : MarketComputation P)
+    (fuel : ℕ) {q : ℚ} (h : T.magnitudeRatAtFuel market fuel = some q) :
+    q = T.magnitudeRat
+      (fun d φ => market.quote d (Encodable.encode φ)) := by
+  exact magnitudeRatListAtFuel_sound market fuel T.trades h
+
+/-- A successful bounded strategy-value computation is exact. -/
+theorem Strategy.valueRatAtFuel_sound
+    {n : ℕ} (T : Strategy n) {P : History} (market : MarketComputation P)
+    (fuel : ℕ) (w : Sentence → ℚ) {q : ℚ}
+    (h : T.valueRatAtFuel market fuel w = some q) :
+    q = T.valueRat (fun d φ => market.quote d (Encodable.encode φ)) w := by
+  exact valueRatListAtFuel_sound market fuel n w T.trades h
+
+/-- Every finite strategy magnitude eventually computes at one market clock. -/
+theorem Strategy.exists_fuel_magnitudeRatAtFuel
+    {n : ℕ} (T : Strategy n) {P : History} (market : MarketComputation P) :
+    ∃ fuel, T.magnitudeRatAtFuel market fuel = some
+      (T.magnitudeRat (fun d φ => market.quote d (Encodable.encode φ))) := by
+  obtain ⟨fuel, hfuel⟩ :=
+    market.exists_fuel_quoteAtFuel_list (magnitudeRatQueries T.trades)
+  exact ⟨fuel, magnitudeRatListAtFuel_complete market fuel T.trades hfuel⟩
+
+/-- Every finite strategy value eventually computes at one market clock. -/
+theorem Strategy.exists_fuel_valueRatAtFuel
+    {n : ℕ} (T : Strategy n) {P : History} (market : MarketComputation P)
+    (w : Sentence → ℚ) :
+    ∃ fuel, T.valueRatAtFuel market fuel w = some
+      (T.valueRat (fun d φ => market.quote d (Encodable.encode φ)) w) := by
+  obtain ⟨fuel, hfuel⟩ :=
+    market.exists_fuel_quoteAtFuel_list (valueRatQueries n T.trades)
+  exact ⟨fuel, valueRatListAtFuel_complete market fuel n w T.trades hfuel⟩
+
+/-- Exact rational `{0,1}` payout associated with a Boolean world. -/
+noncomputable def PCWorld.payoutRat (v : PCWorld) (φ : Sentence) : ℚ :=
+  by
+    classical
+    exact if v.Holds φ then 1 else 0
+
+theorem PCWorld.payout_eq_ratCast (v : PCWorld) (φ : Sentence) :
+    v.payout φ = (v.payoutRat φ : ℝ) := by
+  classical
+  by_cases h : v.Holds φ <;> simp [PCWorld.payout, PCWorld.payoutRat, h]
+
+/-- Rational strategy magnitude agrees exactly with the real semantics of an exact
+rational market table. -/
+theorem Strategy.magnitude_eq_ratCast {n : ℕ} (T : Strategy n)
+    (P : History) (Q : ℕ → Sentence → ℚ)
+    (hQ : ∀ d φ, P d φ = (Q d φ : ℝ)) :
+    T.magnitude P = (T.magnitudeRat Q : ℝ) := by
+  unfold Strategy.magnitude Strategy.magnitudeRat
+  induction T.trades with
+  | nil => simp
+  | cons p ps ih =>
+      simp only [List.map_cons, List.sum_cons, Rat.cast_add, Rat.cast_abs]
+      rw [EF.denote_eq_ratCast p.1 P Q hQ, ih]
+
+/-- Rational strategy value agrees exactly with real value whenever the payout tables
+agree pointwise. -/
+theorem Strategy.value_eq_ratCast {n : ℕ} (T : Strategy n)
+    (P : History) (Q : ℕ → Sentence → ℚ)
+    (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
+    (wR : Sentence → ℝ) (wQ : Sentence → ℚ)
+    (hw : ∀ φ, wR φ = (wQ φ : ℝ)) :
+    T.value P wR = (T.valueRat Q wQ : ℝ) := by
+  unfold Strategy.value Strategy.valueRat
+  induction T.trades with
+  | nil => simp
+  | cons p ps ih =>
+      simp only [List.map_cons, List.sum_cons, Rat.cast_add, Rat.cast_mul,
+        Rat.cast_sub]
+      rw [EF.denote_eq_ratCast p.1 P Q hQ, hw p.2, hQ n p.2, ih]
+
+/-- Exact rational magnitude traded through day `n`. -/
+def Trader.partialMagnitudeRat (Tr : Trader) (Q : ℕ → Sentence → ℚ)
+    (n : ℕ) : ℚ :=
+  ∑ d ∈ Finset.range (n + 1), (Tr.strat d).magnitudeRat Q
+
+/-- Exact rational net worth through day `n` under a rational payout table. -/
+def Trader.partialNetWorthRat (Tr : Trader) (Q : ℕ → Sentence → ℚ)
+    (w : Sentence → ℚ) (n : ℕ) : ℚ :=
+  ∑ d ∈ Finset.range (n + 1), (Tr.strat d).valueRat Q w
+
+/-- Market queries needed by rational magnitude across a finite list of trading days. -/
+def Trader.partialMagnitudeRatQueriesDays (Tr : Trader) :
+    List ℕ → List (ℕ × Sentence)
+  | [] => []
+  | d :: rest => Strategy.magnitudeRatQueries (Tr.strat d).trades ++
+      partialMagnitudeRatQueriesDays Tr rest
+
+/-- Market queries needed by rational net worth across a finite list of trading days. -/
+def Trader.partialNetWorthRatQueriesDays (Tr : Trader) :
+    List ℕ → List (ℕ × Sentence)
+  | [] => []
+  | d :: rest => Strategy.valueRatQueries d (Tr.strat d).trades ++
+      partialNetWorthRatQueriesDays Tr rest
+
+def Trader.partialMagnitudeRatQueries (Tr : Trader) (n : ℕ) :
+    List (ℕ × Sentence) :=
+  partialMagnitudeRatQueriesDays Tr (List.range (n + 1))
+
+def Trader.partialNetWorthRatQueries (Tr : Trader) (n : ℕ) :
+    List (ℕ × Sentence) :=
+  partialNetWorthRatQueriesDays Tr (List.range (n + 1))
+
+/-- Bounded exact magnitude computation across a finite list of days. -/
+def Trader.partialMagnitudeRatDaysAtFuel (Tr : Trader)
+    {P : History} (market : MarketComputation P) (fuel : ℕ) :
+    List ℕ → Option ℚ
+  | [] => some 0
+  | d :: rest => do
+      let today ← (Tr.strat d).magnitudeRatAtFuel market fuel
+      let tail ← partialMagnitudeRatDaysAtFuel Tr market fuel rest
+      pure (today + tail)
+
+/-- Bounded exact net-worth computation across a finite list of days. -/
+def Trader.partialNetWorthRatDaysAtFuel (Tr : Trader)
+    {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (w : Sentence → ℚ) : List ℕ → Option ℚ
+  | [] => some 0
+  | d :: rest => do
+      let today ← (Tr.strat d).valueRatAtFuel market fuel w
+      let tail ← partialNetWorthRatDaysAtFuel Tr market fuel w rest
+      pure (today + tail)
+
+/-- Bounded exact magnitude traded through day `n`. -/
+def Trader.partialMagnitudeRatAtFuel (Tr : Trader)
+    {P : History} (market : MarketComputation P) (fuel n : ℕ) : Option ℚ :=
+  partialMagnitudeRatDaysAtFuel Tr market fuel (List.range (n + 1))
+
+/-- Bounded exact net worth through day `n`. -/
+def Trader.partialNetWorthRatAtFuel (Tr : Trader)
+    {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (w : Sentence → ℚ) (n : ℕ) : Option ℚ :=
+  partialNetWorthRatDaysAtFuel Tr market fuel w (List.range (n + 1))
+
+theorem Trader.partialMagnitudeRatDaysAtFuel_sound
+    (Tr : Trader) {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (days : List ℕ) {q : ℚ}
+    (h : partialMagnitudeRatDaysAtFuel Tr market fuel days = some q) :
+    q = (days.map (fun d => (Tr.strat d).magnitudeRat
+      (fun j φ => market.quote j (Encodable.encode φ)))).sum := by
+  induction days generalizing q with
+  | nil => simpa [partialMagnitudeRatDaysAtFuel] using h.symm
+  | cons d rest ih =>
+      simp only [partialMagnitudeRatDaysAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨today, htoday, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨tail, htail, hq⟩ := h
+      change some (today + tail) = some q at hq
+      injection hq with hq
+      subst q
+      simp only [List.map_cons, List.sum_cons]
+      rw [(Tr.strat d).magnitudeRatAtFuel_sound market fuel htoday, ih htail]
+
+theorem Trader.partialNetWorthRatDaysAtFuel_sound
+    (Tr : Trader) {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (w : Sentence → ℚ) (days : List ℕ) {q : ℚ}
+    (h : partialNetWorthRatDaysAtFuel Tr market fuel w days = some q) :
+    q = (days.map (fun d => (Tr.strat d).valueRat
+      (fun j φ => market.quote j (Encodable.encode φ)) w)).sum := by
+  induction days generalizing q with
+  | nil => simpa [partialNetWorthRatDaysAtFuel] using h.symm
+  | cons d rest ih =>
+      simp only [partialNetWorthRatDaysAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨today, htoday, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨tail, htail, hq⟩ := h
+      change some (today + tail) = some q at hq
+      injection hq with hq
+      subst q
+      simp only [List.map_cons, List.sum_cons]
+      rw [(Tr.strat d).valueRatAtFuel_sound market fuel w htoday, ih htail]
+
+theorem Trader.partialMagnitudeRatDaysAtFuel_complete
+    (Tr : Trader) {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (days : List ℕ)
+    (hready : ∀ query ∈ partialMagnitudeRatQueriesDays Tr days,
+      market.quoteAtFuel fuel query.1 query.2 =
+        some (market.quote query.1 (Encodable.encode query.2))) :
+    partialMagnitudeRatDaysAtFuel Tr market fuel days = some
+      (days.map (fun d => (Tr.strat d).magnitudeRat
+        (fun j φ => market.quote j (Encodable.encode φ)))).sum := by
+  induction days with
+  | nil => rfl
+  | cons d rest ih =>
+      have htoday := Strategy.magnitudeRatListAtFuel_complete market fuel
+        (Tr.strat d).trades (fun query hquery => hready query (by
+          simp only [partialMagnitudeRatQueriesDays, List.mem_append]
+          exact Or.inl hquery))
+      have htail := ih (fun query hquery => hready query (by
+        simp only [partialMagnitudeRatQueriesDays, List.mem_append]
+        exact Or.inr hquery))
+      simp [partialMagnitudeRatDaysAtFuel, Strategy.magnitudeRatAtFuel,
+        Strategy.magnitudeRat, htoday, htail]
+
+theorem Trader.partialNetWorthRatDaysAtFuel_complete
+    (Tr : Trader) {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (w : Sentence → ℚ) (days : List ℕ)
+    (hready : ∀ query ∈ partialNetWorthRatQueriesDays Tr days,
+      market.quoteAtFuel fuel query.1 query.2 =
+        some (market.quote query.1 (Encodable.encode query.2))) :
+    partialNetWorthRatDaysAtFuel Tr market fuel w days = some
+      (days.map (fun d => (Tr.strat d).valueRat
+        (fun j φ => market.quote j (Encodable.encode φ)) w)).sum := by
+  induction days with
+  | nil => rfl
+  | cons d rest ih =>
+      have htoday := Strategy.valueRatListAtFuel_complete market fuel d w
+        (Tr.strat d).trades (fun query hquery => hready query (by
+          simp only [partialNetWorthRatQueriesDays, List.mem_append]
+          exact Or.inl hquery))
+      have htail := ih (fun query hquery => hready query (by
+        simp only [partialNetWorthRatQueriesDays, List.mem_append]
+        exact Or.inr hquery))
+      simp [partialNetWorthRatDaysAtFuel, Strategy.valueRatAtFuel,
+        Strategy.valueRat, htoday, htail]
+
+theorem Trader.partialMagnitudeRatAtFuel_sound
+    (Tr : Trader) {P : History} (market : MarketComputation P) (fuel n : ℕ)
+    {q : ℚ} (h : Tr.partialMagnitudeRatAtFuel market fuel n = some q) :
+    q = Tr.partialMagnitudeRat
+      (fun d φ => market.quote d (Encodable.encode φ)) n := by
+  simpa [partialMagnitudeRatAtFuel, partialMagnitudeRat] using
+    Tr.partialMagnitudeRatDaysAtFuel_sound market fuel (List.range (n + 1)) h
+
+theorem Trader.partialNetWorthRatAtFuel_sound
+    (Tr : Trader) {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (w : Sentence → ℚ) (n : ℕ) {q : ℚ}
+    (h : Tr.partialNetWorthRatAtFuel market fuel w n = some q) :
+    q = Tr.partialNetWorthRat
+      (fun d φ => market.quote d (Encodable.encode φ)) w n := by
+  simpa [partialNetWorthRatAtFuel, partialNetWorthRat] using
+    Tr.partialNetWorthRatDaysAtFuel_sound market fuel w (List.range (n + 1)) h
+
+theorem Trader.partialMagnitudeRatAtFuel_complete
+    (Tr : Trader) {P : History} (market : MarketComputation P) (fuel n : ℕ)
+    (hready : ∀ query ∈ Tr.partialMagnitudeRatQueries n,
+      market.quoteAtFuel fuel query.1 query.2 =
+        some (market.quote query.1 (Encodable.encode query.2))) :
+    Tr.partialMagnitudeRatAtFuel market fuel n = some
+      (Tr.partialMagnitudeRat
+        (fun d φ => market.quote d (Encodable.encode φ)) n) := by
+  simpa [partialMagnitudeRatAtFuel, partialMagnitudeRat,
+    partialMagnitudeRatQueries] using
+      Tr.partialMagnitudeRatDaysAtFuel_complete market fuel
+        (List.range (n + 1)) hready
+
+theorem Trader.partialNetWorthRatAtFuel_complete
+    (Tr : Trader) {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (w : Sentence → ℚ) (n : ℕ)
+    (hready : ∀ query ∈ Tr.partialNetWorthRatQueries n,
+      market.quoteAtFuel fuel query.1 query.2 =
+        some (market.quote query.1 (Encodable.encode query.2))) :
+    Tr.partialNetWorthRatAtFuel market fuel w n = some
+      (Tr.partialNetWorthRat
+        (fun d φ => market.quote d (Encodable.encode φ)) w n) := by
+  simpa [partialNetWorthRatAtFuel, partialNetWorthRat,
+    partialNetWorthRatQueries] using
+      Tr.partialNetWorthRatDaysAtFuel_complete market fuel w
+        (List.range (n + 1)) hready
+
+/-- Every finite trader-magnitude prefix eventually computes at one market clock. -/
+theorem Trader.exists_fuel_partialMagnitudeRatAtFuel
+    (Tr : Trader) {P : History} (market : MarketComputation P) (n : ℕ) :
+    ∃ fuel, Tr.partialMagnitudeRatAtFuel market fuel n = some
+      (Tr.partialMagnitudeRat
+        (fun d φ => market.quote d (Encodable.encode φ)) n) := by
+  obtain ⟨fuel, hfuel⟩ := market.exists_fuel_quoteAtFuel_list
+    (Tr.partialMagnitudeRatQueries n)
+  exact ⟨fuel, Tr.partialMagnitudeRatAtFuel_complete market fuel n hfuel⟩
+
+/-- Every finite trader net-worth prefix eventually computes at one market clock. -/
+theorem Trader.exists_fuel_partialNetWorthRatAtFuel
+    (Tr : Trader) {P : History} (market : MarketComputation P)
+    (w : Sentence → ℚ) (n : ℕ) :
+    ∃ fuel, Tr.partialNetWorthRatAtFuel market fuel w n = some
+      (Tr.partialNetWorthRat
+        (fun d φ => market.quote d (Encodable.encode φ)) w n) := by
+  obtain ⟨fuel, hfuel⟩ := market.exists_fuel_quoteAtFuel_list
+    (Tr.partialNetWorthRatQueries n)
+  exact ⟨fuel, Tr.partialNetWorthRatAtFuel_complete market fuel w n hfuel⟩
+
+/-- Rational partial net worth only depends on payouts of sentences actually traded
+through the requested day. -/
+theorem Trader.partialNetWorthRat_congr (Tr : Trader)
+    (Q : ℕ → Sentence → ℚ) (w w' : Sentence → ℚ) (n : ℕ)
+    (hw : ∀ d ≤ n, ∀ p ∈ (Tr.strat d).trades, w p.2 = w' p.2) :
+    Tr.partialNetWorthRat Q w n = Tr.partialNetWorthRat Q w' n := by
+  apply Finset.sum_congr rfl
+  intro d hd
+  simp only [Finset.mem_range] at hd
+  unfold Strategy.valueRat
+  apply congrArg List.sum
+  apply List.map_congr_left
+  intro x hx
+  rw [hw d (by omega) x hx]
+
+theorem Trader.partialMagnitude_eq_ratCast (Tr : Trader)
+    (P : History) (Q : ℕ → Sentence → ℚ)
+    (hQ : ∀ d φ, P d φ = (Q d φ : ℝ)) (n : ℕ) :
+    (∑ d ∈ Finset.range (n + 1), (Tr.strat d).magnitude P) =
+      (Tr.partialMagnitudeRat Q n : ℝ) := by
+  simp only [Trader.partialMagnitudeRat, Rat.cast_sum]
+  apply Finset.sum_congr rfl
+  intro d hd
+  exact (Tr.strat d).magnitude_eq_ratCast P Q hQ
+
+theorem Trader.netWorth_eq_ratCast (Tr : Trader)
+    (P : History) (Q : ℕ → Sentence → ℚ)
+    (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
+    (v : PCWorld) (wQ : Sentence → ℚ)
+    (hw : ∀ φ, v.payout φ = (wQ φ : ℝ)) (n : ℕ) :
+    Tr.netWorth P v n = (Tr.partialNetWorthRat Q wQ n : ℝ) := by
+  simp only [Trader.netWorth, Trader.partialNetWorthRat, Rat.cast_sum]
+  apply Finset.sum_congr rfl
+  intro d hd
+  exact (Tr.strat d).value_eq_ratCast P Q hQ v.payout wQ hw
+
 @[simp] theorem serializeTrades_append (xs ys : List (EF × Sentence)) :
     serializeTrades (xs ++ ys) = serializeTrades xs ++ serializeTrades ys := by
   induction xs with
@@ -1152,6 +1633,67 @@ theorem fractionalWeight_le_one
       (mul_nonneg (fractionalWeight_nonneg occupancy α hocc hα0 hα1 i) (hα0 i))
       (hocc.nonneg i n)))
 
+/-- Any collection of launches through day `n` which is still fully occupied at day
+`n` (apart from the current launch itself) has total allocation at most one.  This is
+the finite-set form of the fractional capital invariant used by patient selectors. -/
+theorem fractional_allocations_finset_le_one
+    (occupancy : ℕ → ℕ → ℝ) (α : ℕ → ℝ)
+    (hocc : DecreasingOccupancy occupancy)
+    (hα0 : ∀ i, 0 ≤ α i) (hα1 : ∀ i, α i ≤ 1)
+    (s : Finset ℕ) (n : ℕ)
+    (hs : ∀ i ∈ s, i ≤ n)
+    (hfull : ∀ i ∈ s, i < n → occupancy i n = 1) :
+    ∑ i ∈ s, fractionalWeight occupancy α i * α i ≤ 1 := by
+  classical
+  let β : ℕ → ℝ := fractionalWeight occupancy α
+  let q : ℕ → ℝ := fun i ↦ β i * α i
+  let r : ℕ → ℝ := fun i ↦ if i = n then q i else q i * occupancy i n
+  have hβ0 : ∀ i, 0 ≤ β i := fun i ↦
+    fractionalWeight_nonneg occupancy α hocc hα0 hα1 i
+  have hsubset : s ⊆ Finset.range (n + 1) := by
+    intro i hi
+    simp only [Finset.mem_range]
+    have hil := hs i hi
+    omega
+  have hqr : ∀ i ∈ s, q i = r i := by
+    intro i hi
+    by_cases hin : i = n
+    · simp [r, hin]
+    · have hil : i < n := by
+        have hle := hs i hi
+        omega
+      simp [r, hin, hfull i hi hil]
+  have hr0 : ∀ i ∈ Finset.range (n + 1), i ∉ s → 0 ≤ r i := by
+    intro i _ _
+    by_cases hin : i = n
+    · change 0 ≤ if i = n then β i * α i else
+          β i * α i * occupancy i n
+      rw [if_pos hin]
+      exact mul_nonneg (hβ0 i) (hα0 i)
+    · change 0 ≤ if i = n then β i * α i else
+          β i * α i * occupancy i n
+      rw [if_neg hin]
+      exact mul_nonneg (mul_nonneg (hβ0 i) (hα0 i)) (hocc.nonneg i n)
+  have hbudget :=
+    (fractionalWeight_nonneg_and_postAllocation_le occupancy α hocc hα0 hα1 n).2
+  calc
+    ∑ i ∈ s, fractionalWeight occupancy α i * α i = ∑ i ∈ s, q i := by
+      rfl
+    _ = ∑ i ∈ s, r i := Finset.sum_congr rfl hqr
+    _ ≤ ∑ i ∈ Finset.range (n + 1), r i :=
+      Finset.sum_le_sum_of_subset_of_nonneg hsubset hr0
+    _ = fractionalOutstanding occupancy α (fractionalWeight occupancy α) n +
+        fractionalWeight occupancy α n * α n := by
+      rw [Finset.sum_range_succ]
+      simp only [r, q, β, if_pos]
+      congr 1
+      rw [fractionalOutstanding, ← Fin.sum_univ_eq_sum_range]
+      apply Finset.sum_congr rfl
+      intro i _
+      have hin : (i : ℕ) ≠ n := by omega
+      simp [r, q, β, hin]
+    _ ≤ 1 := hbudget
+
 /-! #### Shared expressible-feature representation -/
 
 /-- The fractional-weight recurrence body in an environment
@@ -1342,6 +1884,24 @@ theorem fractionalSharedFeatureWeight_denote
   rw [fractionalSharedFeatureWeight, EF.denote]
   simpa using fractionalSharedWeights_denoteWith occupancy α hαc hoccc V
     0 (n + 1) [] (by intro i; exact Fin.elim0 i)
+
+/-- A shared fractional-weight feature is closed with respect to any surrounding `letE`
+environment whenever its attempted-weight and occupancy inputs are closed.  The internal
+straight-line bindings shadow and discharge every variable used by the recurrence. -/
+theorem fractionalSharedFeatureWeight_closed
+    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
+    (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
+    (hoccc : ∀ i n ρ V, (occupancy i n).denoteWith ρ V =
+      (occupancy i n).denote V)
+    (n : ℕ) (ρ : List ℝ) (V : History) :
+    (fractionalSharedFeatureWeight occupancy α n).denoteWith ρ V =
+      (fractionalSharedFeatureWeight occupancy α n).denote V := by
+  rw [fractionalSharedFeatureWeight, EF.denote]
+  have hleft := fractionalSharedWeights_denoteWith occupancy α hαc hoccc V
+    0 (n + 1) ρ (by intro i; exact Fin.elim0 i)
+  have hright := fractionalSharedWeights_denoteWith occupancy α hαc hoccc V
+    0 (n + 1) [] (by intro i; exact Fin.elim0 i)
+  simpa using hleft.trans hright.symm
 
 private theorem fractionalWeightBody_rank_le
     (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
@@ -2047,6 +2607,54 @@ structure VerifiedMaturitySchedule (Ts : ℕ → Trader) (V : History)
   sound : ∀ i m, check i m = true → (Ts i).Matured V DP ε (η i) m
   complete : ∀ i, ∃ m, check i m = true
 
+/-- A bounded verifier may finish checking an *earlier* maturity witness long after that
+witness day.  This is the form used in the paper: on outer day `n`, a fixed computation
+budget can certify some `m ≤ n`.  The witness uses half the requested tolerance so that
+the post-`m` trading tail can be absorbed when it is promoted to maturity at day `n`.
+
+Keeping this structure separate from `VerifiedMaturitySchedule` makes the computational
+boundary explicit: concrete market/process code only has to enumerate finite historical
+certificates; the semantic persistence argument below is generic. -/
+structure HistoricalVerifiedMaturitySchedule (Ts : ℕ → Trader) (V : History)
+    (DP : DeductiveProcess) (ε : ℝ) (η : ℕ → ℝ) where
+  check : ℕ → ℕ → Bool
+  check_poly : ∃ c, PolyFueled c
+    (fun z => if check z.unpair.1 z.unpair.2 then 1 else 0)
+  sound : ∀ i n, check i n = true →
+    ∃ m ≤ n, (Ts i).Matured V DP ε (η i / 2) m
+  complete : ∀ i, ∃ n, check i n = true
+
+/-- Historical maturity persists to the day on which its bounded verification finishes.
+The already-traded magnitude only increases, while `netWorth_lower_of_matured` charges at
+most one further copy of the historical tolerance for the remaining trading tail. -/
+def HistoricalVerifiedMaturitySchedule.toVerified
+    {Ts : ℕ → Trader} {V : History} {DP : DeductiveProcess} {ε : ℝ} {η : ℕ → ℝ}
+    (h : HistoricalVerifiedMaturitySchedule Ts V DP ε η)
+    (hη0 : ∀ i, 0 ≤ η i)
+    (hP : ∀ d φ, 0 ≤ V d φ ∧ V d φ ≤ 1)
+    (hroi : ∀ i, HasROI (Ts i) V DP ε) :
+    VerifiedMaturitySchedule Ts V DP ε η where
+  check := h.check
+  check_poly := h.check_poly
+  complete := h.complete
+  sound i n hcheck := by
+    obtain ⟨m, hmn, hm⟩ := h.sound i n hcheck
+    constructor
+    · calc
+        (1 - η i) * (Ts i).magnitude V ≤
+            (1 - η i / 2) * (Ts i).magnitude V := by
+              have hmag0 := Trader.magnitude_nonneg (Ts i) V
+              nlinarith [hη0 i]
+        _ ≤ ∑ d ∈ Finset.range (m + 1), ((Ts i).strat d).magnitude V := hm.1
+        _ ≤ ∑ d ∈ Finset.range (n + 1), ((Ts i).strat d).magnitude V :=
+          Finset.sum_le_sum_of_subset_of_nonneg
+            (Finset.range_subset_range.mpr (by omega))
+            (fun d _ _ => Strategy.magnitude_nonneg ((Ts i).strat d) V)
+    · intro v hv
+      have hworth := netWorth_lower_of_matured (Ts i) V DP ε (η i / 2)
+        m n hP (hroi i) hm hmn v hv
+      simpa only [show 2 * (η i / 2) = η i by ring] using hworth
+
 /-- The first verified maturity day.  This value may be selected noncomputably; queries of
 the form “is it after day `k`?” are nevertheless polynomial by bounded verification. -/
 noncomputable def VerifiedMaturitySchedule.close
@@ -2429,6 +3037,12 @@ theorem maturitySchedule_closing (Ts : ℕ → Trader) (V : History)
 #print axioms fractionalBudgetedTrader_exploits
 #print axioms noFractionalRepeatableReturn
 #print axioms EfficientlyEmulatable.of_polySeg
+#print axioms Trader.zero_hasROI
+#print axioms Strategy.magnitude_eq_ratCast
+#print axioms Strategy.value_eq_ratCast
+#print axioms Trader.partialNetWorthRat_congr
+#print axioms Trader.netWorth_eq_ratCast
+#print axioms HistoricalVerifiedMaturitySchedule.toVerified
 #print axioms maturityDay_spec
 #print axioms featureWeight_denote
 #print axioms budgetedTrader_value

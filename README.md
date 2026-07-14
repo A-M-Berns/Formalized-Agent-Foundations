@@ -9,13 +9,14 @@ theory, built on the
 `LogicalInduction/` is the beginning of a full formalization of
 [arXiv:1609.03543](https://arxiv.org/abs/1609.03543). The spec is
 `notes/logical-induction-roadmap.md`; the honest ledger of what is defined, proved,
-stubbed, or assumed is `PROGRESS.md`. Status: M0–M3 are implementation-complete; M4
-(the affine and LUV lift hubs) is in progress. See `PROGRESS.md` for the current audit and
-trust-surface gates.
+stubbed, or assumed is `PROGRESS.md`. Status: the conditional property layer through M5
+is verified complete; M6–M7 construction and unconditionalization remain, with Brouwer's
+fixed-point theorem already proved. See `PROGRESS.md` for the current audit and
+trust-surface disclosures, including the explicit quotation/coherence interfaces.
 
 **Disclosure (read before citing anything here):** until the construction milestone (M7)
 lands, every property theorem in this development is *conditional on the existence of a
-logical inductor* (`[IsLogicalInductor P]`), which is assumed, not proved. The one
+logical inductor* (`[IsLogicalInductor P DP]`), which is assumed, not proved. The one
 substantial result already unconditional is `LogicalInduction.brouwer_fixed_point`
 (Brouwer's fixed-point theorem, absent from Mathlib), proved from scratch via Sperner's
 lemma; the proof body was autoformalized by Harmonic's Aristotle and is kernel-checked

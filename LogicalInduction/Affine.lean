@@ -207,12 +207,66 @@ theorem priceFeature_rank (A : AffineCombination) {k n : ℕ} (hkn : k ≤ n)
 noncomputable def magnitude (A : AffineCombination) (V : History) : ℝ :=
   (A.terms.map (fun p => |p.1.denote V|)).sum
 
+/-- The paper's affine `L¹` norm, including the trailing constant coefficient. -/
+noncomputable def l1Norm (A : AffineCombination) (V : History) : ℝ :=
+  |A.const.denote V| + A.magnitude V
+
 theorem magnitude_nonneg (A : AffineCombination) (V : History) :
     0 ≤ A.magnitude V :=
   List.sum_nonneg (fun x hx => by
     simp only [List.mem_map] at hx
     obtain ⟨p, _, rfl⟩ := hx
     exact abs_nonneg _)
+
+theorem magnitude_le_l1Norm (A : AffineCombination) (V : History) :
+    A.magnitude V ≤ A.l1Norm V := by
+  simp only [l1Norm]
+  exact le_add_of_nonneg_left (abs_nonneg _)
+
+/-- Market prices in `[0,1]` evaluate an affine combination within its paper `L¹` norm. -/
+theorem abs_price_le_l1Norm (A : AffineCombination) (V : History) (n : ℕ)
+    (hP : ∀ φ, 0 ≤ V n φ ∧ V n φ ≤ 1) :
+    |A.price V n| ≤ A.l1Norm V := by
+  have hsum :
+      |(A.terms.map (fun p => p.1.denote V * V n p.2)).sum| ≤
+        (A.terms.map (fun p => |p.1.denote V|)).sum := by
+    induction A.terms with
+    | nil => simp
+    | cons p ps ih =>
+        simp only [List.map_cons, List.sum_cons]
+        calc
+          |p.1.denote V * V n p.2 +
+                (ps.map (fun q => q.1.denote V * V n q.2)).sum| ≤
+              |p.1.denote V * V n p.2| +
+                |(ps.map (fun q => q.1.denote V * V n q.2)).sum| := abs_add_le _ _
+          _ ≤ |p.1.denote V| +
+                (ps.map (fun q => |q.1.denote V|)).sum := by
+              apply add_le_add
+              · rw [abs_mul, abs_of_nonneg (hP p.2).1]
+                exact mul_le_of_le_one_right (abs_nonneg _) (hP p.2).2
+              · exact ih
+  calc
+    |A.price V n| =
+        |A.const.denote V +
+          (A.terms.map (fun p => p.1.denote V * V n p.2)).sum| := rfl
+    _ ≤ |A.const.denote V| +
+        |(A.terms.map (fun p => p.1.denote V * V n p.2)).sum| := abs_add_le _ _
+    _ ≤ A.l1Norm V := by
+      simpa only [l1Norm, magnitude] using
+        add_le_add_right hsum |A.const.denote V|
+
+/-- `def:bap` / the paper's `BCS`: a uniformly polynomially generated affine sequence
+whose full coefficient `L¹` norm (including the trailing constant) has one uniform bound. -/
+structure BoundedCombinationSequence (As : ℕ → AffineCombination) (V : History) where
+  poly : PolySequence As
+  bounded : ∃ B : ℝ, ∀ n, (As n).l1Norm V ≤ B
+
+theorem BoundedCombinationSequence.magnitudeBounded
+    {As : ℕ → AffineCombination} {V : History}
+    (h : BoundedCombinationSequence As V) :
+    ∃ B : ℝ, ∀ n, (As n).magnitude V ≤ B := by
+  obtain ⟨B, hB⟩ := h.bounded
+  exact ⟨B, fun n => ((As n).magnitude_le_l1Norm V).trans (hB n)⟩
 
 /-- Two market assessments of the same affine combination differ by at most its share
 magnitude.  The affine constant again cancels. -/
@@ -455,6 +509,43 @@ theorem scale_magnitude (e : EF) (A : AffineCombination) (V : History) :
       simp only [List.map_cons, List.sum_cons, Function.comp_apply, EF.denote_mul,
         Pi.mul_apply, abs_mul, ih]
       ring
+
+/-- Polynomial affine families are closed under multiplication by a fixed rational.
+This is the uniform normalization operation used to pass from the paper's arbitrary
+bounded-combination sequences to the unit-magnitude economic core. -/
+def PolySequence.scaleRat {As : ℕ → AffineCombination} (h : PolySequence As) (q : ℚ) :
+    PolySequence (fun n => (As n).scale (.const q)) where
+  termCount := h.termCount
+  coefficient := fun z => EF.mul (EF.const q) (h.coefficient z)
+  sentence := h.sentence
+  termCount_poly := h.termCount_poly
+  const_poly := PolySegStream.serialize_mul
+    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const q)) h.const_poly
+  coefficient_poly := PolySegStream.serialize_mul
+    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const q))
+    h.coefficient_poly
+  sentence_poly := h.sentence_poly
+  terms_eq := by
+    intro n
+    rw [AffineCombination.scale, h.terms_eq]
+    simp [List.map_map, Function.comp_def]
+  const_rank := by
+    intro n
+    simp only [AffineCombination.scale, EF.rank]
+    exact Nat.max_le.mpr ⟨by simp, h.const_rank n⟩
+  coefficient_rank := by
+    intro n j hj
+    simp only [EF.rank]
+    exact Nat.max_le.mpr ⟨by simp, h.coefficient_rank n j hj⟩
+  const_closed := by
+    intro n ρ V
+    simp only [AffineCombination.scale, EF.denoteWith, EF.denote_mul, EF.denote_const,
+      Pi.mul_apply]
+    rw [h.const_closed n ρ V]
+  coefficient_closed := by
+    intro z ρ V
+    simp only [EF.denoteWith, EF.denote_mul, EF.denote_const, Pi.mul_apply]
+    rw [h.coefficient_closed z ρ V]
 
 theorem scale_terms_rank_le (e : EF) (A : AffineCombination) {n : ℕ}
     (he : e.rank ≤ n) (hA : ∀ p ∈ A.terms, p.1.rank ≤ n) :

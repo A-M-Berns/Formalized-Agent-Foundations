@@ -1,25 +1,434 @@
-# Logical Induction working plan — M4 lift hubs
+# Logical Induction working plan — M5 verification/audit closeout
 
-> **Current correction (2026-07-13, expectation lift complete):** the affine master is
-> complete through `PolySequence.affpolymax`, and the reusable semantic bridge
-> `affine_provind`/`affine_tendsto_zero` now discharges `thm:ei`, `thm:loe`, and
-> `thm:expprovind`. Their certified expectation/indicator/linearity bundles and all three
-> final theorems are axiom-clean. Full `lake build` is green (2,654 jobs); the exact Lean
-> `sorry` inventory is now the four Self-Trust declarations.
+> **Fresh-context audit correction pass (2026-07-14):** Anson authorized and a fresh
+> subagent completed the adversarial audit. It passed kernel soundness, trader token
+> certificates, downside/upside non-vacuity, and conclusion-in-premise attacks, but found
+> two real scope gaps plus incomplete boundary tracking. The arbitrary-BCS gap is repaired
+> by one canonical positive rational `BoundedCombinationSequence.unitNormalization` and
+> paper-facing `recunbiasedaff`, `wubaff`, and `prandaff_{above,below,eq}` wrappers. The
+> `thm:ref` endpoint package now carries closed `GeneratedRatFeature`s, exactly matching
+> market-generated `aₙ,bₙ`, instead of independently polynomial rational tables. Concrete
+> `M7-LUV-SYNTAX`, `M7-DUS-PREFIX-SYNTAX`, and `M7-SCON-PRESENTATION` obligations have been
+> added, and the three TeX inconsistencies in `recurringunbiasednessexp`, `wubexp`, and
+> `pazfc` are explicitly triaged. The public property/integration build is green at
+> 1,958/1,958, the full build is green at 2,670/2,670, wrapper axiom reports expose only
+> the approved three axioms, the executable-hole scan is empty, and `git diff --check` is
+> clean. The independent correction recheck returned PASS: no new circularity, vacuity, or
+> paper-scope defect was found. All eight M5 verification gates are closed.
+
+> **Expectation-property tranche complete (2026-07-14):**
+> `Properties/ExpectationProperties.lean` now proves all six remaining paper nodes:
+> `BoundedSequence.exppolymax`, `perexpkno`, `expcoh`,
+> `recurringunbiasednessexp`, `wubexp`, and the paper-facing nonnegative
+> `prandexp`, together with its stated analogous `prandexp_below` and derived
+> `prandexp_eq` directions. Arbitrary BLCS magnitude is handled by the explicit positive
+> normalization `meshNormScale`; no unit-bound premise is silently substituted. An exact
+> first-order presentation determines the completed-world threshold mesh, whose truth
+> differs from exact LUV truth by `O(b/n)`. The new Toeplitz theorem proves that every
+> nonnegative divergent weighting sends this pointwise null error to a null weighted
+> average. This supplies the exact-truth transfers for recurring unbiasedness, feedback
+> unbiasedness, and pseudorandom learning rather than assuming them in a certificate.
+> Every new capstone prints only `propext`, `Classical.choice`, and `Quot.sound`; the flat
+> ledger is updated. The public property/integration roll-up is green at 1,958/1,958 jobs,
+> the full project is green at 2,670/2,670 jobs, the executable-placeholder scan is empty,
+> and `git diff --check` is clean. Anson confirmed the statement-by-statement paper
+> read-through in the project thread on 2026-07-14. The fresh-context audit described in
+> `PROGRESS.md` has now run and its findings are in correction/recheck. The
+> compact, checkboxed handoff for both reviews is
+> `notes/m5-verification-packet.md`; its author-context pre-audit is explicitly not counted
+> as the independent audit.
 >
-> **Blocking audit finding:** the current Self-Trust quote hypotheses do not relate the
-> day-`n` threshold bundle to the different day-`f n` bundle. `thm:affpolymax` carries a
-> *fixed* affine portfolio to an arbitrary later liquidation day; `PolyThresholdCodeSeq`
-> proves only that both grids can be emitted. Neither supplies the missing logical
-> cross-grid coherence, and arbitrary delayed `ValuesAt` facts cannot be transported
-> backward to day `n`.
+> **Latest structural/audit progress (2026-07-14):** the `affpolymax` regression found
+> and repaired a real normalization mismatch: the paper-facing theorem now consumes an
+> exact `BoundedCombinationSequence` with the trailing constant included in its `L¹` norm,
+> derives semantic bounded prices, rationally normalizes an arbitrary real bound, and
+> transports all extrema conclusions back. The `thm:lex` regression likewise found that
+> fixed equivalence/implication had been mislabeled as the paper theorem; the actual
+> fixed-`k` exclusive/exhaustive sum theorem is now proved by a genuinely uniform tuple
+> emitter. Both targets and Non-Dogmatism are green and axiom-clean.
 >
-> **Next 1–5:** (1) choose a non-oracular quoted-expectation/coherence interface; (2) state
-> its exact fixed-portfolio/cross-grid law and polynomial emission certificate; (3) prove a
-> reusable preemptive-to-`AsympEq` bridge for such quote families; (4) repair and discharge
-> `cee` → `ceu` → `ccee` → `st` in that order; (5) rerun the sorry/axiom/build and
-> non-vacuity audits, then checkpoint M4. Do **not** resume theorem tactics against the
-> current four signatures or return to the invalid polynomial-maturity-checker route.
+> `thm:ifp` is now complete as an exact conditional biconditional in
+> `Properties/FinitePerturbations.lean`. `EF.freezeBefore` is the paper's literal
+> false-report transformation; Lean proves rank/cost preservation, exact tail semantics,
+> an explicit finite magnitude bound on net-worth error, and exploitation transport in
+> both directions. The audit exposed one honest clock-model gap: `ComputableMarket` does
+> not give polynomial-time access to old quotes, so the paper's “hard-code” sentence does
+> not by itself prove token-emission closure for arbitrary varying sentence codes.
+> `EfficientPrefixPatch` isolates only that concrete compiler fact, and
+> `M7-PREFIX-PATCH` records its witness obligation. The 1,693-job target is green and all
+> public proof reports contain only the approved foundational axioms.
+>
+> `thm:obu` is complete as the exact conditional `lic_uniform_nonDogmatism` capstone in
+> `Properties/UniformNonDogmatism.lean`. Its varying-sentence scale ladder has a literal
+> polynomial token emitter, an explicit global `-2` floor, and non-vacuous unbounded
+> jointly consistent-world upside. Fixed-sentence convergence and infinite repetition
+> turn failure of a common positive `P∞` bound into one full trigger at every scale. The
+> paper's c.e.-enumeration padding step is isolated as the syntax-only
+> `EfficientRepeatedEnumeration` witness and ledgered as `M7-CE-REPETITION`; it carries
+> no prices or limiting conclusion. The 1,705-job target is green and the capstone is
+> axiom-clean.
+>
+> `thm:ob` is now complete as the exact conditional two-sided `lic_occamBounds` capstone
+> in `Properties/OccamBounds.lean`. A single Kraft-weighted ladder diagonalizes the paper's
+> trader family: rung `j` spends at most `1/j²`, total net worth is bounded below by `-2`,
+> and a full possible-world trigger produces order-`j²` upside. The actual variable-width
+> day/sentence/rung/history serialization has a kernel-checked
+> `EfficientlyComputableTok` certificate. The lower theorem yields one common multiple of
+> `2^{-κ(φ)}`; the upper theorem uses the audited exclusive–exhaustive limit law and one
+> fixed negation-program overhead, preserving a single constant for both inequalities.
+> `M7-PREFIX-MACHINE` isolates only the concrete universal-prefix-machine syntax,
+> rational-token arithmetic, Kraft/coverage proof, and negation compiler; it contains no
+> prices or Occam conclusion. Direct checking and the authoritative 1,951-job property
+> roll-up are green; the source scan is empty, `git diff --check` passes, and all printed
+> declarations expose only the approved foundational axioms.
+>
+> Work on `thm:dus` has begun in `Properties/UniversalSemimeasure.lean`. The file now
+> faithfully defines continuous, lower-semicomputable (with an actual unrestricted
+> `Code.evaln` presentation), and universal semimeasures, together with the exact Boolean
+> semantics and finite realizability of the paper's independent bit-prefix sentences.
+> The central `MeanPayout ≤ MaxPayout` step is proved by finite binary-tree induction;
+> semimeasure leakage is handled as stopping at an internal node. A tempting reduction to
+> `thm:ob` was audited and removed: continuous prefix mass can stay `1` along an infinite
+> deterministic path, while ordinary prefix complexity of its distinct prefix sentences
+> cannot remain bounded. Do not reintroduce a fixed Shannon–Fano compiler for sentence
+> prefix complexity. The next hard gate is the paper's unit-budget purchase trader (or a
+> genuinely equivalent monotone-code proof), followed by its real uniform token emitter
+> and a summable diagonal of the scale family.
+>
+> **DUS completion update (2026-07-14):** `thm:dus` is now green end to end.
+> `DUSApproximationPresentation`/`DUSThresholdEmission` isolate the paper's syntax-only
+> bounded-simulation slowdown as `M7-DUS-APPROX`. The direct trader uses the equivalent
+> dovetail `enumeration n.unpair.2`, revisiting every prefix infinitely often while making
+> one chronological purchase decision per day. `dusRemainingEF` is the actual shared
+> expressible-feature cash recurrence, `dusSpendThrough_le_one` proves total cost at most
+> one, and `dusScaleTrader_netWorth_ge_neg_one` proves a literal all-world downside floor.
+> The full recurrence is uniformly serialized across scale and day—prior values are
+> referenced with `EF.var`, not duplicated—and `dusScaleTrader_ecTok` is axiom-clean.
+> A violating prefix forces semimeasure-weighted payout to reach `k+1`. The finite event
+> list is aggregated by prefix into an explicit binary purchase tree; a maximizing branch
+> is realized as a same-day `B.prefix_possible` world, so the upside is non-vacuous.
+>
+> `dusTrader` is the literal scale diagonal: rung `j` runs scale `(j+1)^4` at weight
+> `1/(j+1)^2`. `dusTrader_netWorth_ge_neg_two` proves its global floor;
+> `dusTrader_exploits_of_failed_scales` proves unbounded plausible wealth if every fixed
+> constant fails; and `dusTrader_ecTok` emits the actual joined strategy, including the
+> polynomial scale and rational weight. `lic_domination_universalSemimeasure` is the exact
+> fixed-`C>0` capstone. All printed DUS declarations expose only `propext`,
+> `Classical.choice`, and `Quot.sound`.
+>
+> **Strict-domination update (2026-07-14):** `Properties/StrictSemimeasure.lean` now proves
+> the exact non-domination conclusion. `StrictSeparatorPresentation` exposes the paper's
+> nested recursively-inseparable separator prefix class, its efficient repetition and
+> finite joint realizability, and the computability-theory fact that universal-semimeasure
+> mass tends to zero. `strict_domination_of_null_prefix_theory` combines that fact with
+> Uniform Non-Dogmatism; `lic_strict_domination_universalSemimeasure` defeats every `C>0`
+> at an actual finite prefix. The concrete c.e.-machine-set instantiation is explicitly
+> ledgered as `M7-STRICT-SEPARATORS`; the boundary contains no market or non-domination
+> conclusion. Both printed theorems are axiom-clean. Next paper node: `thm:scon`.
+>
+> **Conditioning substrate update (2026-07-14):** `Properties/Conditioning.lean` now has
+> the paper's exact capped `conditionalQuote`, `conditionedHistory`, its `[0,1]` theorem,
+> stagewise `DeductiveProcess.union`, and the exact combined-world equivalence.
+> `ConditioningPresentation` uniformly covers a fixed condition and growing finite
+> conjunctions. `ConditioningTraderCompiler` is the auditable target for the remaining
+> Appendix construction: it must emit an actual translated trader, preserve its token
+> certificate, track conditional-world wealth within the summable error `1`, and establish
+> a global base-world floor. Lean already proves from exactly those fields that exploits
+> transport (`ConditioningTraderCompiler.exploits_base`) and that the conditioned market is
+> an LI (`lic_conditioned`). The safe-ratio/gated translator itself remains
+> `M7-SCON-COMPILER`, so `thm:scon` is still pending rather than oversold.
+>
+> The translator is no longer wholly abstract. `EF.lowerSafeRecip` implements
+> `1/max(ε,p)` from the DSL's safe reciprocal; `EF.conditionalPriceEF` denotes the exact
+> capped quote under the patched denominator floor; and `EF.conditionPrices` recursively
+> rewrites every price leaf of arbitrary shared feature syntax with exact denotation and
+> unchanged rank. `Strategy.conditionalContract` emits the literal conjunction/condition
+> stock pair for every original position, and `conditionalContract_value` proves exact
+> value agreement in condition-satisfying worlds whenever the cap is inactive.
+>
+> **Conditioning semantic-compiler update (2026-07-14):** the Appendix economic
+> construction is now concrete. `conditioningBudget n = 1/((n+1)(n+2))` is strictly
+> positive, telescopes, and has every finite prefix sum `≤1`; it replaces paper `2⁻ⁿ`
+> because literal exponential denominators are not polynomial-value tokens in this model.
+> `EF.conditioningCapGate` normalizes this budget by the reified strategy magnitude, and
+> `gatedConditionalPosition_lower` proves the cap-case loss is at most `|α|δ` while leaving
+> negative positions untouched. `Strategy.gatedConditionalContract_value_lower` sums the
+> real two-stock contracts and gives the per-day budget loss;
+> `Trader.conditionedTranslation_netWorth_lower` sums it to one. Separately,
+> `gatedConditionalContract_value_eq_zero_of_not_holds` proves that a false condition
+> annihilates payout and cash exactly, and
+> `ConditioningPresentation.conditionedTranslation_preserves_floor` formalizes the least
+> failed condition argument and global base-world downside floor.
+>
+> `GatedConditioningOperationalWitness.toCompiler` now assembles those theorems into the
+> compiler contract, and `lic_conditioned_gated` is the paper-facing conditional capstone.
+> The remaining `M7-SCON-COMPILER` boundary is operational only: construct the finite-prefix
+> positive-denominator patch, emit the exact rational conditional market program, and
+> transform arbitrary `EfficientlyComputableTok` streams into the concrete translated
+> stream. It contains no tracking, floor, exploitation, or LIC conclusion. Targeted project
+> build: 1,714/1,714 green; source-hole scan and `git diff --check` clean; all new axiom
+> prints expose only `propext`, `Classical.choice`, and `Quot.sound`.
+
+> **Active M5 state (2026-07-13):** the falsifiable M5 verification goal is active and
+> `PROGRESS.md` now contains the flat paper-label obligation ledger. `thm:tbo` is proved as
+> `lic_preemptive_learning` by an explicit legal one-share specialization of the completed
+> affine preemptive-learning trader; its targeted build and axiom report are green. The
+> canonical limiting valuation `limitingBelief`, sentence convergence to it, and fixed
+> affine-combination convergence are also proved in `Properties/AffinePersistence.lean`.
+> `thm:peraffkno` is now proved exactly as `PolySequence.peraffkno`: the day-indexed
+> normalized prefix portfolio has explicit polynomial term/feature/sentence emission,
+> bounded magnitude and prices, a non-vacuous full-launch argument for every tail dip,
+> and uses the completed affine gradual-return ROI hub for the economic contradiction.
+> Both negation-dual equalities, targeted build, and axiom inventory are green.
+> `thm:perkno` is also complete as `lic_persistence_of_knowledge`: its explicit
+> polynomial centered family `φₙ-pₙ` consumes both the sentence and rational code
+> witnesses, derives the two uniform one-sided tail bounds from the operational
+> persistence gaps, and combines them into the exact future absolute-deviation claim.
+> Its targeted build and axiom report are green.
+> `thm:affcoh` is complete as `PolySequence.affcoh`. The completed theory is represented
+> by consistency with every finite deductive stage; the finite-to-completed uniformization
+> is proved by compactness of `ℕ → Bool`, with closed formula-model and affine-sublevel
+> sets. A padded constant-member polynomial certificate then reuses the affine provability
+> trader to connect completed worlds to `P∞`, and `peraffkno` connects `P∞` to the diagonal.
+> The exact lower and upper liminf/limsup chains and axiom inventory are green.
+>
+> **Repaired verification finding:** `lic_provind_seq` assumes
+> `φₙ ∈ Dₙ`. It is a valid same-day-deduction support lemma, but it is not the
+> paper's `thm:provind`, whose efficiently generated theorem may be proved much later.
+> The paper's real route is now complete: `peraffkno` → `affcoh` →
+> `affine_provind_theory_{ge,le,eq}` → `lic_provind`. The new `lic_provind` requires only
+> that each theorem (or negation of a disprovable sentence) appear at some deductive stage,
+> so it permits arbitrarily late individual proof discovery. Its targeted build and axiom
+> report are green. Consistency and halting results must use this declaration, not the
+> same-day support lemma.
+> The completed persistence/coherence/provability tranche passes the 1,714-job
+> roll-up/integration build and a fresh 2,657-job full build.
+>
+> **Immediate implementation tranche:** implement the recurring calibration/unbiasedness
+> spine and its affine/feedback/pseudorandom corollaries. Keep all later M5 nodes pending in the flat
+> ledger until their own statement and trust-surface gates pass.
+>
+> **Recurring-unbiasedness spine progress (2026-07-13):**
+> `Properties/Calibration.lean` is now a green, roll-up-imported infrastructure module.
+> It defines honest P-generable divergent weightings, normalized averages/bias, standard
+> subsequential limit points, the vanishing-step/crossing proof, the paper's continuous
+> calibration selector and the exact `simcal` analytic consumer.  On the economic side it
+> defines completed-theory determination and proves its finite-stage compactness bridge;
+> constructs a continuous one-unit capped affine run; proves genuine summability, exact
+> full-risk use under persistent bias, the finite Abel/Cesàro surplus bound, and actual
+> positive ROI after controlling finitely many settled positions plus the summable tail.
+> The entire two-index run family now has a concrete `PolyTradeEmulatable` token certificate,
+> including a family-uniform straight-line emitter for the fractional recurrence.
+>
+> **Corrected bounded-verification boundary:** `ComputableMarket` and
+> `ComputableDeductiveProcess` do not promise that the data for day `m` can be produced in
+> polynomial time in `m`.  The paper does not need that stronger claim.  On outer day `n`,
+> its openness computation spends a bounded amount of work checking whether some historical
+> witness `m ≤ n` has finished verification.  `ROI.lean` now represents this faithfully as
+> `HistoricalVerifiedMaturitySchedule`: a successful check carries maturity at tolerance
+> `η/2` on an earlier day, and `HistoricalVerifiedMaturitySchedule.toVerified` proves that
+> the magnitude monotonicity and post-maturity tail bound promote it to maturity at the
+> current day and tolerance `η`.  Thus arbitrary eventual computation and a polynomial
+> per-day openness table are no longer conflated.
+>
+> The complete downstream one-sided contradiction is also green as
+> `DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier`.  It gates the
+> finite non-ROI prefix to the zero trader, proves the magnitude feature is exactly `0` then
+> `1`, retains the real uniform `PolyTradeEmulatable` certificate, invokes verified
+> repeatable ROI, and contradicts convergence of that eventual-one magnitude stream to zero.
+> The two-sided continuation is now green too. `BiasRunHistoricallyVerifiable` isolates the
+> remaining boundary as a `Nonempty HistoricalVerifiedMaturitySchedule`, so its payload is
+> the actual polynomial Boolean checker plus soundness and eventual completeness, not a
+> conclusion-bearing oracle. `recunbiasedaff_of_historicalVerifiers` applies the economic
+> contradiction to `As` and `-As`, proves the negated-bias identity, and invokes the
+> vanishing-step crossing theorem to obtain the exact zero limit point. The one-share
+> `recurringunbiasedness_of_historicalVerifiers` and both-clause
+> `simcal_of_historicalVerifiers` specializations are also green and axiom-clean. They remain
+> conditional support capstones until the verifier constructor below is discharged.
+>
+> Exact finite certificate semantics and the first executable checker are now green.
+> `ROI.lean` proves rational computations
+> of strategy magnitude/value and trader partial magnitude/net worth agree with the real
+> semantics; `AffineCoherence.lean` defines sentence atom bounds, finite Boolean worlds, and
+> proves restriction/extension preserves evaluation and payouts for every bounded-support
+> sentence. `Criterion.lean` exposes the existential computability assumptions as named
+> `MarketComputation`/`DeductiveProcessComputation` presentations and proves that any
+> terminating `evaln` output is uniquely the certified quote/stage. In
+> `Calibration.lean`, `UnitMaturitySemanticCertificate.sound` proves that exact rational
+> risk/payoff inequalities over all finite Boolean assignments imply the full real-valued
+> `Trader.Matured` predicate; `nonempty_iff_matured` proves the converse using the explicit
+> finite support sum over the deductive stage and strategy prefix. `Criterion.lean` and
+> `ROI.lean` now also expose monotone bounded decoding for the deductive stage, every market
+> quote, every feature, a whole finite strategy, and a whole trader prefix. On top of those
+> APIs, `unitMaturityCheckAtFuel` is an actual Boolean program: it rejects timeouts, checks
+> the exact rational risk inequality, and exhausts the finite Boolean worlds. A `true`
+> result constructs the semantic certificate and hence real `Trader.Matured`; conversely,
+> `unitMaturityCheckAtFuel_eventually_complete` proves that every genuine unit-magnitude
+> maturity witness is accepted at some common finite process/market fuel. Thus the finite
+> checker itself is both sound and eventually complete. The verifier boundary now
+> quantifies only over rational bias gaps; arbitrary positive real gaps are reduced to this
+> executable core by density of `ℚ`.
+>
+> **Next hard gate (now sharply isolated):** wrap the completed checker in the paper's
+> polynomial historical dovetail. The missing reusable theorem is a `PolyFueled` universal
+> bounded simulator: for a fixed partial-recursive checker code, the day-`n` table must run
+> only `n` interpreter steps and normalize success to `0/1`, with a proved polynomial fuel
+> bound in the repository's own interpreter model. Mathlib proves that `Code.evaln` is
+> primitive recursive, and this repository proves polynomial bounded search once a Boolean
+> table is certified, but neither fact currently supplies that `PolyFueled` runtime theorem.
+> Do not disguise this as another maturity oracle. Prove the universal-simulation lemma (or
+> carry it as the one explicit M7 witness), compile `unitMaturityCheckAtFuel` plus the
+> `PolyTradeEmulatable` bias-run decoder to a fixed checker code, and then wrap the bounded
+> dovetail table as `BiasRunHistoricallyVerifiable`. Once that constructor
+> is kernel-checked, the three existing conditional capstones become the unconditional paper
+> nodes and can be promoted in the ledger.
+>
+> **Metamathematical/halting tranche (2026-07-14):**
+> `Properties/MetaLearning.lean` now supplies axiom-clean paper-facing declarations for
+> `pac`, `pazfc`, `incons`, `halts`, `loops`, and `dontwait`. New one-sided
+> `lic_provind_true`/`lic_provind_false` wrappers correctly allow each represented theorem
+> or refutation to appear arbitrarily later than its sequence index. The representation
+> interfaces are deliberately narrow: they expose polynomial sentence emission and
+> truth-to-eventual-theorem/refutation laws, but no prices or asymptotic conclusions.
+> `CodeHalts` uses actual `Nat.Partrec.Code` semantics; the `dontwait` proof explicitly
+> lifts any bounded `evaln` success to unbounded halting before contradicting its premise.
+> The concrete future first-order/Gödel syntax instantiation is ledgered as
+> `M7-COMP-SYNTAX`, not hidden in these M5 composition theorems. The targeted property
+> roll-up is green at 1,715 jobs and every new capstone prints only the approved axioms.
+>
+> **Same-day quotation/paradox tranche (2026-07-14):**
+> `Properties/Introspection.lean` adds `CompletedAffineQuoteEq`, the same-day analogue of
+> the audited future quote portfolio. `lic_expectations_of_probabilities` (`epr`) and
+> `lic_iterated_expectations` (`er`) are exact `affprovind` consumers. The new
+> `lic_paradox_resistance` (`lp`) is not a packaged convergence assumption: its quote
+> supplies two completed-world-zero continuous-gate products, and Lean separately proves
+> that prices persistently below or above `p∈(0,1)` would make one product uniformly
+> positive. The exact asymptotic equality follows. The concrete first-order quotation and
+> diagonal construction is named `M7-QUOTE-AFFINE`. The targeted property roll-up is green
+> at 1,716 jobs; all four new axiom reports contain only the approved axioms.
+>
+> **Exact interval-introspection extension (2026-07-14):** the same file now supplies
+> `IntrospectionIntervalQuote` and `lic_introspection` (`ref`). The representation boundary
+> contains polynomial sentence codes, closed polynomial market-generated endpoint features,
+> the completed-world quotation law, and
+> exactly the two affine continuous-gate products from the paper; it contains no error or
+> downstream belief bound. Lean learns both products, then independently constructs a
+> positive rational `εₙ → 0` by rationally sandwiching the maximum absolute gap plus a
+> vanishing `1/(n+1)` margin. Both shrunken-interval belief and expanded-interval disbelief
+> implications hold on every day. Direct checking and the 1,716-job property roll-up are
+> green, and `#print axioms lic_introspection` lists only the approved axioms.
+>
+> **Affine pseudorandomness tranche (2026-07-14):**
+> `Properties/Pseudorandomness.lean` now proves the exact above, below, and equality
+> branches of `thm:prandaff` over every P-generable divergent `f`-patient weighting,
+> conditional on the already disclosed historical-verifier constructor and one narrowly
+> operational settlement clock. The failed-diagonal selector is an actual uniformly
+> emitted expressible-feature recurrence. Lean proves its values lie in `[0,1]`, its
+> inclusive `f`-windows have weight at most one, and recurrent full underpricing makes its
+> prefix sums tend to infinity via the audited fractional capital-recycling theorem.
+> Importantly, the paper's `DeferralFunction` is not monotone: the implementation makes
+> the necessary envelope `max_{k≤i} f(k)` explicit rather than silently assuming
+> `f(n)≤f(i)` for `n≤i`. The activity table is ledgered as `M7-PATIENT-CLOCK`; it contains
+> no price, bias, divergence, or pseudorandomness conclusion. The nonnegative branch then
+> combines recurring affine unbiasedness, pseudorandom completed-theory values, and an
+> explicit normalized-average contradiction; the other branches use certified affine
+> negation. Direct checking reports only the approved foundational axioms.
+> The first downstream specialization is also green directly: `GeneratedRatFeature`
+> repairs `PGenerableRat` by requiring the emitted target-probability feature to be closed
+> (a free internal `EF.var` was previously not excluded), and
+> `sentenceMinusFeature` uniformly emits the exact market-generated centered family
+> `φₙ-pₙ`. `lic_learning_varied_pseudorandom_above`, `_below`, and the two-sided theorem
+> are the three advertised `thm:prand` conclusions, with no new trader or conclusion-
+> bearing premise. The authoritative property roll-up completes all 1,717 jobs, and every
+> new selector, affine, `prandaff`, and `prand` declaration prints only `propext`,
+> `Classical.choice`, and `Quot.sound`.
+>
+> **Fixed-frequency pseudorandomness extension (2026-07-14):** `thm:benford` is now
+> green as the paper's actual rational-squeeze argument. `PseudorandomFrequency` keeps the
+> advertised frequency `p : ℝ` and quantifies over every P-generable, divergent,
+> `f`-patient weighting. For each ε, the proof chooses a new rational `q∈[0,1]` strictly
+> between `p` and the relevant ε-offset, constructs its closed one-token constant market
+> feature, derives the appropriate varied-pseudorandom premise, and applies `prand`;
+> endpoint frequencies zero and one are discharged from the market probability bounds.
+> `PseudorandomFrequencyInfrastructure` packages only the rational centered families'
+> settlement clocks and executable historical verifiers, so the existing
+> `M7-PATIENT-CLOCK`/`M7-HIST-EVALN` boundary remains explicit and contains no learning
+> conclusion. Direct checking and the authoritative 1,717-job property roll-up pass, and
+> all six new printed declarations expose only `propext`, `Classical.choice`, and
+> `Quot.sound`.
+>
+> **Affine-feedback Kelly tranche (2026-07-14):** `thm:wubaff` now has its explicit
+> economic core. `feedbackWealthFeature` and `feedbackBetaFeature` represent the paper's
+> multiplicative wealth and `δ·Wealth·W` share count as closed, rank-legal market
+> features. `feedbackRoundTrip` opens each scaled `A_{f k}` position at `f k` and closes
+> it at `f(k+1)`; `feedbackTrader` joins the finite prefix of those actual components on
+> every day. The accounting proof works on `Trader.netWorth` itself: completed positions
+> telescope to `Wealth-1`, exactly one position is live, and all later components are
+> unopened. Consequently every world/day has net worth at least `-1`, every feedback day
+> has net worth at least `Wealth/2-1`, and recurrent positive supported return gives a
+> genuinely bounded-downside/unbounded-upside `Exploits` witness.
+>
+> The token boundary is explicit rather than smuggled into the economics.
+> `FeedbackTraderEmission` exposes the exact day trade count, coefficient syntax, sentence
+> codes, and literal `trades_eq`; `feedbackTrader_ecTok` compiles it through the segment
+> emitter to a real `EfficientlyComputableTok` certificate. Its concrete bounded-dovetail
+> construction from `DeferralFunction.code/fueled` is ledgered `M7-FEEDBACK-EMIT`.
+> Separately, `FeedbackTruthSequence.accurate` applies the already verified `affprovind`
+> theorem to a zero-valued sparse centered sequence and derives delayed-price accuracy;
+> constructing that sequence from the paper's `poly(f(k+1))` truth computation is
+> `M7-FEEDBACK-TRUTH`.
+>
+> The full conditional `wubaff` capstone is now green. `feedbackWeightedAverage_asympEq_zero`
+> absorbs delayed quote error under divergent sparse mass;
+> `feedbackWeightedBias_asympGE_zero` converts recurrent negative bias into the forbidden
+> positive-return condition; `feedbackPrefixSum_tendsto_atTop` and
+> `weightedAverage_supported_asympEq_zero_of_feedback` prove the support-image transfer
+> without introducing a hidden inverse for `f`; and the explicit negated affine family
+> supplies the other sign. `lic_wubaff` concludes the exact all-day `weightedBias ≈ₙ 0`
+> statement. Only the disclosed `M7-FEEDBACK-EMIT` and `M7-FEEDBACK-TRUTH` constructors
+> remain outside this conditional node, and neither assumes a bias conclusion.
+>
+> The ordinary `thm:wub` specialization is green as `AffineCombination.lic_wub`.
+> It instantiates the affine theorem with the one-share `sentenceAffine` family, derives
+> completed-theory determination from `TheoryTruth`, and simplifies the affine price and
+> magnitude to the paper's weighted truth-minus-price bias. It inherits exactly the same
+> two M7 feedback constructors and adds no new operational boundary.
+>
+> **Capstone verification evidence (2026-07-14):** the expanded targeted build completes
+> all 1,941 jobs and a fresh full build completes all 2,661 jobs. The newly printed
+> weighted-Cesàro, sparse-mass, support-transfer, one-/two-sided bias, `lic_wubaff`, and
+> `lic_wub` declarations expose only `propext`, `Classical.choice`, and `Quot.sound`.
+>
+> **Latest verification evidence (2026-07-14):** after the Kelly/trader/feedback-bridge
+> tranche, `Pseudorandomness` completes all 1,941 targeted jobs and a fresh full-project
+> regression completes all 2,661 jobs. The newly printed feature, accounting, downside,
+> upside, exploitation, token-certificate, criterion, and `affprovind`-bridge declarations
+> expose only `propext`, `Classical.choice`, and `Quot.sound`. `git diff --check` is clean
+> and the executable-placeholder scan of `Pseudorandomness.lean` is empty.
+
+## Completed M4 handoff (historical)
+
+> **Current correction (2026-07-13, M4 implementation complete):** the audited
+> Self-Trust gap is repaired. `AffineQuotePortfolio` exposes one normalized fixed affine
+> family, its polynomial emitter, its exact day-`n` gap, and bounded risk;
+> `AffineQuoteEq`/`AffineQuoteGE` impose coherence only when that same portfolio is repriced
+> at the actual deferred day `f n`. The four theorem-specific quote objects bundle this
+> operational law with the earlier compact-code and delayed revelation-schedule
+> `ValuesAt` semantics.
+>
+> Reusable two-sided and one-sided preemptive bridges now transport deferred-day
+> coherence to the diagonal, and `cee` → `ceu` → `ccee` → `st` are all discharged and
+> axiom-clean. The exact Lean `sorry` inventory under `LogicalInduction/` is zero.
+>
+> **Trust-surface disclosure:** the new cross-grid field is a deliberate type-`(c)`
+> interface for the paper's first-order quotation/encoding-coherence mechanism. It is
+> non-oracular with respect to `D n`—it constrains an actual later market price—but M7
+> must construct it from the concrete quoting machinery rather than let downstream users
+> assume it ad hoc. Targeted and full builds are green (2,654 jobs), the source-level
+> `sorry`/`sorryAx` inventories are empty, and the six new bridge/final axiom reports contain
+> only the three standard axioms. The implementation-session non-vacuity audit is recorded
+> in `PROGRESS.md`; the remaining gates are Anson's statement read-through and the separate
+> fresh-context audit. Do not return to the invalid polynomial-maturity-checker route.
 
 > Supersedes the 2026-07-07 token-emission plan (fully executed; its record lives in
 > `PROGRESS.md` under OPEN RISK 4 and the `def:ec` ledger rows, and in git history).

@@ -22,19 +22,52 @@ File layout (promoted from a single file once it grew past ~1000 lines):
 * `Properties.NonDogmatism` — `thm:nd`: the weak fragment (`ndTrader`, the first Phase-A
   block-emission trader) and the full theorem, both directions (the `app:obu` scale
   ladders `ndLadderTrader`/`ndSellLadderTrader`) plus the `P∞` limit forms.
+* `Properties.UniformNonDogmatism` — `thm:obu`: the varying-sentence scale ladder,
+  non-vacuous joint-consistency exploitation proof, polynomial token emitter, and exact
+  common positive `P∞` bound over an explicit efficient-repetition preprocessing witness.
+* `Properties.OccamBounds` — `thm:ob`: the Kraft-weighted sentence/rung ladder, literal
+  triangular token emitter, global summable-risk floor, unbounded possible-world upside,
+  and the exact common lower/upper `P∞` bounds through a fixed negation compiler overhead.
+* `Properties.UniversalSemimeasure` — faithful continuous/lower-semicomputable/universal
+  semimeasure and independent bit-prefix syntax for `thm:dus`, plus the finite-tree
+  `MeanPayout ≤ MaxPayout` analytic core and the direct unit-budget scale trader with
+  maximizing-world extraction, the summable scale diagonal and its literal token emitter,
+  global downside/unbounded-upside proof, and the exact fixed-constant capstone.
+* `Properties.StrictSemimeasure` — `thm:strict` from Uniform Non-Dogmatism and the
+  explicit recursively-inseparable null-prefix-class representation boundary.
+* `Properties.Conditioning` — exact capped conditional markets and stagewise combined
+  deductive-process semantics for the fixed and growing-prefix forms of `thm:scon`.
 * `Properties.ExpectationConvergence` — `thm:ec`: the feature-generic hysteresis layer
   (`buyIndF`/`sellIndF`/`hystChain`) and the bundle trader `excTrader` on the
   expectation feature `𝔼(X)`, gated to absorb the `lem:conluvapprox` payout error.
-* `Properties.Relationships` — `thm:lex`: learning logical equivalence (`eqTr`) and implication
-  / price monotonicity (`impTr`).
+* `Properties.Relationships` — `thm:lex`: the paper's finite exclusive/exhaustive family
+  theorem, plus fixed-equivalence (`eqTr`) and implication/price-monotonicity (`impTr`)
+  consequences.
+* `Properties.FinitePerturbations` — `thm:ifp`: the literal old-price syntax freeze,
+  finite net-worth error accounting, exploitation transport, and exact conditional
+  logical-inductor biconditional over the disclosed efficient-prefix compiler boundary.
 * `Properties.AffinePreemptiveLearning` — `thm:affpolymax`'s exact liminf/limsup analytic
   hub, factored over the two operational no-preemptive-gap conditions supplied by ROI.
 * `Properties.AffineProvability` / `Properties.ExpectationAffine` — the semantic affine
   lower-bound theorem and the proved `thm:ei`/`loe`/`expprovind` LUV lift.
-* `Properties.SelfTrust` — `thm:cee`/`ceu`/`ccee`/`st` statement surface:
-  reflection as revelation-schedule linkage hypotheses over relational quoted families
-  (under audit after the M4 lift exposed a missing cross-grid quote interface);
-  `DeferralFunction` (`def:deferralfunc`).
+* `Properties.ExpectationProperties` — concrete LUV-combination threshold meshes,
+  completed-world approximation, and the collected expectation-property lifts.
+* `Properties.Calibration` — generated divergent weightings, normalized bias/limit-point
+  analysis, and the capped affine run family for recurring unbiasedness.
+* `Properties.Pseudorandomness` — exact deferral-patient weighting vocabulary, the
+  explicit Kelly feedback trader/economic kernel and conditional `thm:wubaff`/`thm:wub`
+  capstones, the polynomial patient-capacity selector, and all three conditional `thm:prandaff` comparison
+  directions, plus the exact varied-frequency `thm:prand` specialization and arbitrary-
+  real-frequency rational squeeze for `thm:benford`.
+* `Properties.MetaLearning` — the `pac`/`pazfc`/`incons` and
+  `halts`/`loops`/`dontwait` consequences over explicit computation-representation
+  interfaces, all reduced to completed-theory Provability Induction.
+* `Properties.Introspection` — exact interval introspection (`ref`), paradox resistance
+  (`lp`), and same-day quoted-price/quoted-expectation identities (`epr`/`er`) through
+  concrete completed-theory affine quote portfolios.
+* `Properties.SelfTrust` — proved `thm:cee`/`ceu`/`ccee`/`st`, over theorem-specific
+  quote certificates bundling delayed revelation semantics with the fixed-portfolio
+  cross-grid law; `DeferralFunction` (`def:deferralfunc`).
 
 See `PROGRESS.md` for the per-node ledger (label → decl → status → kind → provenance).
 -/
@@ -44,9 +77,23 @@ import LogicalInduction.Properties.Coherence
 import LogicalInduction.Properties.Convergence
 import LogicalInduction.Properties.Hysteresis
 import LogicalInduction.Properties.NonDogmatism
+import LogicalInduction.Properties.UniformNonDogmatism
+import LogicalInduction.Properties.OccamBounds
+import LogicalInduction.Properties.UniversalSemimeasure
+import LogicalInduction.Properties.StrictSemimeasure
+import LogicalInduction.Properties.Conditioning
 import LogicalInduction.Properties.ExpectationConvergence
 import LogicalInduction.Properties.Relationships
+import LogicalInduction.Properties.FinitePerturbations
 import LogicalInduction.Properties.AffineProvability
 import LogicalInduction.Properties.ExpectationAffine
+import LogicalInduction.Properties.ExpectationProperties
 import LogicalInduction.Properties.SelfTrust
 import LogicalInduction.Properties.AffinePreemptiveLearning
+import LogicalInduction.Properties.TimelyLearning
+import LogicalInduction.Properties.AffinePersistence
+import LogicalInduction.Properties.AffineCoherence
+import LogicalInduction.Properties.Calibration
+import LogicalInduction.Properties.Pseudorandomness
+import LogicalInduction.Properties.MetaLearning
+import LogicalInduction.Properties.Introspection

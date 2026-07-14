@@ -26,16 +26,12 @@ the **non-vacuous way**:
 witness is M7's construction. Naming caution (roadmap): the deference corpus's "cee" is
 the paper's `thm:ceu`.
 
-**M4 audit result (2026-07-13):** the affine and fixed-LUV expectation lifts are now
-proved, but these four signatures still omit the bridge their proofs need. A fixed affine
-bundle can be carried to arbitrary later liquidation days by `thm:affpolymax`; it cannot
-identify the day-`n` expectation grid with the different day-`f n` grid. Moreover,
-`PolyThresholdCodeSeq` certifies only emission, not the logical coherence between those
-two bundles. The revelation hypotheses constrain quoted LUV values once `D (r n)` is
-known, but do not supply this cross-grid relation. The four `sorry`s therefore remain an
-explicit statement/interface blocker, not unfinished limit algebra. Imminent work is to
-choose and formalize a non-oracular quote/coherence interface, then restate and prove the
-four results.
+**M4 repair (2026-07-13):** the revelation hypotheses below still record the delayed
+world semantics of each quote, while `AffineQuoteEq`/`AffineQuoteGE` now supply the missing
+operational certificate: one fixed, uniformly emitted affine portfolio whose later price
+is coherent.  This separates logical quotation (ultimately witnessed by M7) from the
+preemptive-learning transport proved here, without giving day-`n` plausible worlds oracle
+access to the day-`f n` market.
 -/
 import LogicalInduction.Properties.ExpectationAffine
 import LogicalInduction.Properties.Basic
@@ -68,40 +64,267 @@ instance : CoeFun DeferralFunction (fun _ => ℕ → ℕ) := ⟨DeferralFunction
 noncomputable def ctsInd (δ : ℚ) (x y : ℝ) : ℝ :=
   min 1 (max 0 ((x - y) / (δ : ℝ)))
 
+/-! ### Fixed-portfolio quote coherence
+
+The paper's `thm:exppolymax` step does not compare two independently regenerated
+day-indexed expectation grids.  It fixes one affine portfolio on day `n`, and compares
+the price of that *same portfolio* on day `n` with its price on the deferred day `f n`.
+The certificate below exposes exactly that missing boundary.  It contains the concrete
+portfolio family, its uniform polynomial emitter, the normalization used to keep one
+unit of affine risk, and the exact identification of its day-`n` price with the quoted
+gap.  Coherence is imposed only at the later market day, so it does not give `D n`
+oracle access to future prices.
+-/
+
+/-- A polynomial, normalized fixed-portfolio presentation of a real-valued gap. -/
+structure AffineQuotePortfolio (P : History) (gap : ℕ → ℝ) where
+  /-- The portfolio fixed on day `n` and retained unchanged when priced later. -/
+  family : ℕ → AffineCombination
+  /-- Honest uniform syntax/emission certificate for the family. -/
+  poly : AffineCombination.PolySequence family
+  /-- Positive rational normalization of the represented gap. -/
+  scale : ℚ
+  scale_pos : 0 < scale
+  /-- Exact current-day interpretation of the fixed portfolio. -/
+  current_price : ∀ n, (family n).price P n = (scale : ℝ) * gap n
+  /-- Cross-time prices are uniformly bounded, as required by `thm:affpolymax`. -/
+  bounded : BoundedAffinePrices family P
+  /-- The normalization keeps every component within one unit of affine risk. -/
+  magnitude_le_one : ∀ n, (family n).magnitude P ≤ 1
+
+/-- Two-sided quote coherence: the fixed portfolio's actual deferred-day price tends to
+zero.  This is the propositional interface for the paper's quoted-expectation reasoning
+(`thm:er`/`thm:epr` plus encoding coherence), and is the obligation that M7's concrete
+quotation mechanism must discharge. -/
+structure AffineQuoteEq (P : History) (f : DeferralFunction) (gap : ℕ → ℝ)
+    extends AffineQuotePortfolio P gap where
+  future_coherent :
+    AsympEq (fun n => (family n).price P (f n)) (fun _ => 0)
+
+/-- One-sided quote coherence, used by `thm:st`: the fixed portfolio's deferred-day
+price is asymptotically nonnegative. -/
+structure AffineQuoteGE (P : History) (f : DeferralFunction) (gap : ℕ → ℝ)
+    extends AffineQuotePortfolio P gap where
+  future_coherent :
+    AsympGE (fun n => (family n).price P (f n)) (fun _ => 0)
+
+/-- Complete quote certificate for `thm:cee`: compact source/quote syntax, delayed
+world semantics, and the fixed-portfolio cross-grid law are one explicit trust object. -/
+structure ExpectedFutureExpectationQuote (P : History) (DP : DeductiveProcess)
+    (f : DeferralFunction) (X Y : ℕ → LUV) where
+  revelationDay : ℕ → ℕ
+  source_codes : LUV.PolyThresholdCodeSeq X
+  quote_codes : LUV.PolyThresholdCodeSeq Y
+  reflected : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (revelationDay n)) →
+    v.ValuesAt (Y n) ((X n).expect P (f n))
+  affine : AffineQuoteEq P f (fun n => (X n).expect P n - (Y n).expect P n)
+
+/-- Complete quote certificate for `thm:ceu`. -/
+structure FuturePriceQuote (P : History) (DP : DeductiveProcess)
+    (f : DeferralFunction) (φ : ℕ → Sentence) (Y : ℕ → LUV) where
+  revelationDay : ℕ → ℕ
+  sentence_codes : PolySentenceCodes φ
+  quote_codes : LUV.PolyThresholdCodeSeq Y
+  reflected : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (revelationDay n)) →
+    v.ValuesAt (Y n) (P (f n) (φ n))
+  affine : AffineQuoteEq P f (fun n => P n (φ n) - (Y n).expect P n)
+
+/-- Complete weighted-product quote certificate for `thm:ccee`. -/
+structure ConditionalExpectationQuote (P : History) (DP : DeductiveProcess)
+    (f : DeferralFunction) (X Z Z' : ℕ → LUV) (w : ℕ → ℚ) where
+  revelationDay : ℕ → ℕ
+  weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1
+  weight_generable : PGenerableRat P w
+  source_codes : LUV.PolyThresholdCodeSeq X
+  left_codes : LUV.PolyThresholdCodeSeq Z
+  right_codes : LUV.PolyThresholdCodeSeq Z'
+  source_valued : ∀ n (v : PCWorld),
+    v.ConsistentWith (DP.D (revelationDay n)) → ∃ x, v.ValuesAt (X n) x
+  left_reflected : ∀ n (v : PCWorld),
+    v.ConsistentWith (DP.D (revelationDay n)) → ∀ x,
+      v.ValuesAt (X n) x → v.ValuesAt (Z n) (x * w (f n))
+  right_reflected : ∀ n (v : PCWorld),
+    v.ConsistentWith (DP.D (revelationDay n)) →
+      v.ValuesAt (Z' n) ((X n).expect P (f n) * w (f n))
+  affine : AffineQuoteEq P f
+    (fun n => (Z n).expect P n - (Z' n).expect P n)
+
+/-- Complete confidence/product quote certificate for `thm:st`. -/
+structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
+    (f : DeferralFunction) (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
+    (A B : ℕ → LUV) where
+  revelationDay : ℕ → ℕ
+  delta_pos : ∀ n, 0 < δ n
+  probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1
+  sentence_codes : PolySentenceCodes φ
+  delta_codes : PolyRatCodes δ
+  probability_codes : PolyRatCodes p
+  product_codes : LUV.PolyThresholdCodeSeq A
+  confidence_codes : LUV.PolyThresholdCodeSeq B
+  confidence_reflected : ∀ n (v : PCWorld),
+    v.ConsistentWith (DP.D (revelationDay n)) →
+      v.ValuesAt (B n) (ctsInd (δ n) (P (f n) (φ n)) (p n))
+  product_reflected : ∀ n (v : PCWorld),
+    v.ConsistentWith (DP.D (revelationDay n)) →
+      v.ValuesAt (A n)
+        (v.payout (φ n) * ctsInd (δ n) (P (f n) (φ n)) (p n))
+  affine : AffineQuoteGE P f
+    (fun n => (A n).expect P n - (p n : ℝ) * (B n).expect P n)
+
+namespace AffineQuotePortfolio
+
+private theorem price_le_futureHigh {P : History} {gap : ℕ → ℝ}
+    (q : AffineQuotePortfolio P gap) {n m : ℕ}
+    (hnm : n ≤ m) :
+    (q.family n).price P m ≤ affineFutureHigh q.family P n := by
+  obtain ⟨B, _, hB⟩ := q.bounded
+  apply le_csSup
+  · refine ⟨B, ?_⟩
+    rintro x ⟨j, rfl⟩
+    exact (le_abs_self _).trans (hB n (n + j))
+  · refine ⟨m - n, ?_⟩
+    simpa using congrArg (fun k => (q.family n).price P k) (Nat.add_sub_of_le hnm)
+
+private theorem futureLow_le_price {P : History} {gap : ℕ → ℝ}
+    (q : AffineQuotePortfolio P gap) {n m : ℕ}
+    (hnm : n ≤ m) :
+    affineFutureLow q.family P n ≤ (q.family n).price P m := by
+  obtain ⟨B, _, hB⟩ := q.bounded
+  apply csInf_le
+  · refine ⟨-B, ?_⟩
+    rintro x ⟨j, rfl⟩
+    linarith [neg_abs_le ((q.family n).price P (n + j)), hB n (n + j)]
+  · refine ⟨m - n, ?_⟩
+    simpa using congrArg (fun k => (q.family n).price P k) (Nat.add_sub_of_le hnm)
+
+/-- Reusable `thm:affpolymax` transport: if a fixed polynomial affine portfolio is
+asymptotically worth zero when repriced on its deferred day, then its diagonal price is
+already asymptotically zero. -/
+theorem preemptive_asympEq_zero {P : History} {gap : ℕ → ℝ}
+    (q : AffineQuotePortfolio P gap)
+    (DP : DeductiveProcess) [IsLogicalInductor P DP] (f : DeferralFunction)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hfuture : AsympEq (fun n => (q.family n).price P (f n)) (fun _ => 0)) :
+    AsympEq (fun n => (q.family n).price P n) (fun _ => 0) := by
+  rw [asympEq_iff_asympLE_asympGE]
+  have hgaps := q.poly.noPreemptiveGaps P DP q.magnitude_le_one hP hcons
+  constructor
+  · intro ε hε
+    have hnear := asympEq_iff_eventuallyWithin.1 hfuture (ε / 4) (by linarith)
+    have hfutureLow : ∀ᶠ n in atTop, affineFutureLow q.family P n < ε / 2 := by
+      filter_upwards [hnear] with n hn
+      have hlo := q.futureLow_le_price (f.lt n).le
+      simp only [sub_zero] at hn
+      have hupper := (abs_le.mp hn).2
+      linarith
+    have hnot := hgaps.overpriced (ε / 2) ε (by linarith) hfutureLow
+    rw [Filter.not_frequently] at hnot
+    filter_upwards [hnot] with n hn
+    simpa only [Pi.zero_apply, zero_add] using le_of_not_gt hn
+  · intro ε hε
+    have hnear := asympEq_iff_eventuallyWithin.1 hfuture (ε / 4) (by linarith)
+    have hfutureHigh : ∀ᶠ n in atTop, -ε / 2 < affineFutureHigh q.family P n := by
+      filter_upwards [hnear] with n hn
+      have hhi := q.price_le_futureHigh (f.lt n).le
+      simp only [sub_zero] at hn
+      have hlower := (abs_le.mp hn).1
+      linarith
+    have hnot := hgaps.underpriced (-ε) (-ε / 2) (by linarith) hfutureHigh
+    rw [Filter.not_frequently] at hnot
+    filter_upwards [hnot] with n hn
+    have hbound : -ε ≤ (q.family n).price P n := by linarith [le_of_not_gt hn]
+    linarith
+
+/-- Remove the positive normalization from a two-sided fixed-portfolio certificate. -/
+theorem gap_asympEq_zero {P : History} {gap : ℕ → ℝ}
+    (q : AffineQuotePortfolio P gap)
+    (DP : DeductiveProcess) [IsLogicalInductor P DP] (f : DeferralFunction)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hfuture : AsympEq (fun n => (q.family n).price P (f n)) (fun _ => 0)) :
+    AsympEq gap (fun _ => 0) := by
+  rw [asympEq_iff_eventuallyWithin]
+  intro ε hε
+  have hs : (0 : ℝ) < q.scale := by exact_mod_cast q.scale_pos
+  have hzero := asympEq_iff_eventuallyWithin.1
+    (q.preemptive_asympEq_zero DP f hP hcons hfuture)
+    ((q.scale : ℝ) * ε) (mul_pos hs hε)
+  filter_upwards [hzero] with n hn
+  rw [q.current_price, sub_zero, abs_mul, abs_of_pos hs] at hn
+  simpa only [sub_zero] using (mul_le_mul_iff_of_pos_left hs).mp hn
+
+/-- One-sided version of the preemptive transport. -/
+theorem preemptive_asympGE_zero {P : History} {gap : ℕ → ℝ}
+    (q : AffineQuotePortfolio P gap)
+    (DP : DeductiveProcess) [IsLogicalInductor P DP] (f : DeferralFunction)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hfuture : AsympGE (fun n => (q.family n).price P (f n)) (fun _ => 0)) :
+    AsympGE (fun n => (q.family n).price P n) (fun _ => 0) := by
+  intro ε hε
+  have hgaps := q.poly.noPreemptiveGaps P DP q.magnitude_le_one hP hcons
+  have hfutureHigh : ∀ᶠ n in atTop, -ε / 2 < affineFutureHigh q.family P n := by
+    filter_upwards [hfuture (ε / 4) (by linarith)] with n hn
+    have hhi := q.price_le_futureHigh (f.lt n).le
+    linarith
+  have hnot := hgaps.underpriced (-ε) (-ε / 2) (by linarith) hfutureHigh
+  rw [Filter.not_frequently] at hnot
+  filter_upwards [hnot] with n hn
+  have hbound : -ε ≤ (q.family n).price P n := by linarith [le_of_not_gt hn]
+  linarith
+
+/-- Remove the positive normalization from a one-sided fixed-portfolio certificate. -/
+theorem gap_asympGE_zero {P : History} {gap : ℕ → ℝ}
+    (q : AffineQuotePortfolio P gap)
+    (DP : DeductiveProcess) [IsLogicalInductor P DP] (f : DeferralFunction)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hfuture : AsympGE (fun n => (q.family n).price P (f n)) (fun _ => 0)) :
+    AsympGE gap (fun _ => 0) := by
+  intro ε hε
+  have hs : (0 : ℝ) < q.scale := by exact_mod_cast q.scale_pos
+  have hzero := q.preemptive_asympGE_zero DP f hP hcons hfuture
+    ((q.scale : ℝ) * ε) (mul_pos hs hε)
+  filter_upwards [hzero] with n hn
+  rw [q.current_price] at hn
+  nlinarith
+
+end AffineQuotePortfolio
+
 /-! ### The four Self-Trust statements
 
-Common shape: `f` a deferral function, `r : ℕ → ℕ` the revelation schedule, and for each
-quoted family a linkage hypothesis at day `r n` (worlds consistent with `D (r n)` value
-the quote correctly; by `DP.mono` this persists to all later days). -/
+Common shape: `f` a deferral function, `r : ℕ → ℕ` the revelation schedule, a delayed
+world-semantics linkage for each quoted family, and a fixed-portfolio coherence
+certificate.  By `DP.mono`, the semantic linkage persists after `r n`; the portfolio
+certificate separately exposes the paper's cross-grid `thm:exppolymax` obligation. -/
 
 /-- **Expected Future Expectations** (`thm:cee`): `𝔼ₙ(Xₙ) ≈ₙ 𝔼ₙ(⌜𝔼_{f(n)}(Xₙ)⌝)`.
 `Y n` is the quoted future expectation: every world consistent with `D (r n)` values it
 at the actual day-`f n` expectation of `X n`. -/
 theorem lic_expected_future_expectations (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (f : DeferralFunction) (X Y : ℕ → LUV) (r : ℕ → ℕ)
-    (hcodeX : LUV.PolyThresholdCodeSeq X) (hcodeY : LUV.PolyThresholdCodeSeq Y)
+    [IsLogicalInductor P DP] (f : DeferralFunction) (X Y : ℕ → LUV)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hrefl : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) →
-      v.ValuesAt (Y n) ((X n).expect P (f n))) :
+    (hquote : ExpectedFutureExpectationQuote P DP f X Y) :
     AsympEq (fun n => (X n).expect P n) (fun n => (Y n).expect P n) := by
-  -- TODO(blocked:thm:cee): add a non-oracular cross-grid quote/coherence interface.
-  sorry
+  simpa only [AsympEq, sub_zero] using
+    hquote.affine.toAffineQuotePortfolio.gap_asympEq_zero DP f hP hcons
+      hquote.affine.future_coherent
 
 /-- **No Expected Net Update** (`thm:ceu`): `Pₙ(φₙ) ≈ₙ 𝔼ₙ(⌜P_{f(n)}(φₙ)⌝)`.
 `Y n` is the quoted future price: every world consistent with `D (r n)` values it at the
 actual day-`f n` price of `φ n`. (Deference-corpus name: "cee".) -/
 theorem lic_no_expected_net_update (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (φ : ℕ → Sentence)
-    (Y : ℕ → LUV) (r : ℕ → ℕ)
-    (hcodeφ : PolySentenceCodes φ) (hcodeY : LUV.PolyThresholdCodeSeq Y)
+    (Y : ℕ → LUV)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hrefl : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) →
-      v.ValuesAt (Y n) (P (f n) (φ n))) :
+    (hquote : FuturePriceQuote P DP f φ Y) :
     AsympEq (fun n => P n (φ n)) (fun n => (Y n).expect P n) := by
-  -- TODO(blocked:thm:ceu): consume the repaired quote interface and thm:ei.
-  sorry
+  simpa only [AsympEq, sub_zero] using
+    hquote.affine.toAffineQuotePortfolio.gap_asympEq_zero DP f hP hcons
+      hquote.affine.future_coherent
 
 /-- **No Expected Net Update under Conditionals** (`thm:ccee`):
 `𝔼ₙ(⌜Xₙ·w_{f(n)}⌝) ≈ₙ 𝔼ₙ(⌜𝔼_{f(n)}(Xₙ)·w_{f(n)}⌝)`, for a weight sequence `w` in
@@ -109,23 +332,18 @@ theorem lic_no_expected_net_update (P : History) (DP : DeductiveProcess)
 `X n`: in any world valuing `X n` at `x`, `Z n` is valued at `x · w (f n)`, and `Z' n` at
 the (world-independent) `𝔼_{f n}(Xₙ) · w (f n)`.
 
-Paper-side `w` is P-generable (`def:pgen`, an M4 object); as stated this is the stronger
-`[0,1]`-sequence form — the P-generability hypothesis is added when the proof lands. -/
+The bundled certificate records both `[0,1]` membership and paper-side P-generability
+(`def:pgen`) of `w`. -/
 theorem lic_no_expected_net_update_conditional (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (X Z Z' : ℕ → LUV)
-    (w : ℕ → ℚ) (hw : ∀ n, 0 ≤ w n ∧ w n ≤ 1) (hwgen : PGenerableRat P w)
-    (r : ℕ → ℕ) (hcodeX : LUV.PolyThresholdCodeSeq X)
-    (hcodeZ : LUV.PolyThresholdCodeSeq Z) (hcodeZ' : LUV.PolyThresholdCodeSeq Z')
+    (w : ℕ → ℚ)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hX : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) → ∃ x, v.ValuesAt (X n) x)
-    (hZ : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) → ∀ x,
-      v.ValuesAt (X n) x → v.ValuesAt (Z n) (x * w (f n)))
-    (hZ' : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) →
-      v.ValuesAt (Z' n) ((X n).expect P (f n) * w (f n))) :
+    (hquote : ConditionalExpectationQuote P DP f X Z Z' w) :
     AsympEq (fun n => (Z n).expect P n) (fun n => (Z' n).expect P n) := by
-  -- TODO(blocked:thm:ccee): add the weighted cross-grid quote/coherence interface.
-  sorry
+  simpa only [AsympEq, sub_zero] using
+    hquote.affine.toAffineQuotePortfolio.gap_asympEq_zero DP f hP hcons
+      hquote.affine.future_coherent
 
 /-- **Self-Trust** (`thm:st`):
 `𝔼ₙ(⌜1(φₙ)·ctsind_{δₙ}(P_{f(n)}(φₙ) > pₙ)⌝) ≳ₙ pₙ · 𝔼ₙ(⌜ctsind_{δₙ}(…)⌝)` — the
@@ -139,18 +357,22 @@ the quoted product `1(φₙ)·B n`, valued at `payout(φₙ)` times that indicat
 world-dependent). -/
 theorem lic_self_trust (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (φ : ℕ → Sentence)
-    (δ : ℕ → ℚ) (hδ : ∀ n, 0 < δ n) (p : ℕ → ℚ) (hp : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (A B : ℕ → LUV) (r : ℕ → ℕ)
-    (hcodeφ : PolySentenceCodes φ) (hcodeδ : PolyRatCodes δ) (hcodep : PolyRatCodes p)
-    (hcodeA : LUV.PolyThresholdCodeSeq A) (hcodeB : LUV.PolyThresholdCodeSeq B)
+    (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hB : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) →
-      v.ValuesAt (B n) (ctsInd (δ n) (P (f n) (φ n)) (p n)))
-    (hA : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) →
-      v.ValuesAt (A n) (v.payout (φ n) * ctsInd (δ n) (P (f n) (φ n)) (p n))) :
+    (hquote : SelfTrustQuote P DP f φ δ p A B) :
     AsympGE (fun n => (A n).expect P n) (fun n => (p n : ℝ) * (B n).expect P n) := by
-  -- TODO(blocked:thm:st): consume repaired thm:ccee and the indicator lift.
-  sorry
+  have hgap := hquote.affine.toAffineQuotePortfolio.gap_asympGE_zero DP f hP hcons
+    hquote.affine.future_coherent
+  intro ε hε
+  filter_upwards [hgap ε hε] with n hn
+  linarith
+
+#print axioms AffineQuotePortfolio.preemptive_asympEq_zero
+#print axioms AffineQuotePortfolio.preemptive_asympGE_zero
+#print axioms lic_expected_future_expectations
+#print axioms lic_no_expected_net_update
+#print axioms lic_no_expected_net_update_conditional
+#print axioms lic_self_trust
 
 end LogicalInduction

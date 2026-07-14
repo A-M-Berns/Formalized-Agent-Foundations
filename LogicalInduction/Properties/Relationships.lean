@@ -2,6 +2,7 @@
 # `thm:lex` — learning logical relationships (equivalence, implication)
 -/
 import LogicalInduction.Properties.Basic
+import LogicalInduction.Properties.AffineCoherence
 
 namespace LogicalInduction
 
@@ -280,6 +281,175 @@ theorem lic_imp_eventually_le (P : History) (DP : DeductiveProcess)
       push_cast; nlinarith [hn, hqr]
   filter_upwards [hmain] with n hn
   rw [gap2EF_denote] at hn; linarith
+
+/-! ## Exact `thm:lex`: finite exclusive–exhaustive families -/
+
+/-- A finite list of independently polynomial sentence streams can be evaluated as one
+polynomial tuple.  This is the uniformity step needed by the paper's fixed-`k` family. -/
+theorem polyFueledTuple_of_sentenceCodes
+    (φs : List (ℕ → Sentence))
+    (hφs : ∀ φ ∈ φs, PolySentenceCodes φ) :
+    PolyFueledTuple (φs.map (fun φ n => Encodable.encode (φ n))) := by
+  induction φs with
+  | nil => exact PolyFueledTuple.nil
+  | cons φ φs ih =>
+      obtain ⟨c, hc⟩ := hφs φ (by simp)
+      apply PolyFueledTuple.cons hc
+      exact ih (fun ψ hψ => hφs ψ (by simp [hψ]))
+
+/-- The normalized affine constraint `(Σ_{j<k} φʲₙ - 1) / k`.  Normalization is internal
+and leaves its share magnitude exactly one. -/
+def exclusiveExhaustiveAffine (k : ℕ) (φ : ℕ → ℕ → Sentence) (n : ℕ) :
+    AffineCombination where
+  const := .const (-(1 / (k : ℚ)))
+  terms := (List.range k).map (fun j => (.const (1 / (k : ℚ)), φ j n))
+
+/-- Uniform polynomial affine syntax for a fixed positive number of efficiently codeable
+sentence sequences. -/
+noncomputable def exclusiveExhaustive_polySequence
+    (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
+    (hφ : ∀ j < k, PolySentenceCodes (φ j)) :
+    AffineCombination.PolySequence (exclusiveExhaustiveAffine k φ) := by
+  let streams : List (ℕ → ℕ) :=
+    (List.range k).map (fun j n => Encodable.encode (φ j n))
+  have hstreams : PolyFueledTuple streams := by
+    simpa only [streams, List.map_map, Function.comp_def] using
+      (polyFueledTuple_of_sentenceCodes (List.range k |>.map φ) (by
+        intro ψ hψ
+        simp only [List.mem_map, List.mem_range] at hψ
+        obtain ⟨j, hj, rfl⟩ := hψ
+        exact hφ j hj))
+  let ct := Classical.choose hstreams
+  have hct := Classical.choose_spec hstreams
+  let cdm := Classical.choose (divmodc_polyFueled k hk)
+  have hdm := Classical.choose_spec (divmodc_polyFueled k hk)
+  have hrem : PolyFueled (Nat.Partrec.Code.comp Nat.Partrec.Code.right
+      (Nat.Partrec.Code.comp cdm Nat.Partrec.Code.right))
+      (fun z => z.unpair.2 % k) := by
+    simpa only [Function.comp_apply, Nat.unpair_pair] using
+      PolyFueled.right.comp (hdm.comp PolyFueled.right)
+  have hsentence : ∃ c, PolyFueled c
+      (fun z => Encodable.encode (φ (z.unpair.2 % k) z.unpair.1)) := by
+    refine ⟨Nat.Partrec.Code.comp sel
+      ((Nat.Partrec.Code.comp ct Nat.Partrec.Code.left).pair
+        (Nat.Partrec.Code.comp Nat.Partrec.Code.right
+          (Nat.Partrec.Code.comp cdm Nat.Partrec.Code.right))), ?_⟩
+    have hsel := sel_polyFueled.comp ((hct.comp PolyFueled.left).pair hrem)
+    convert hsel using 1
+    funext z
+    simp only [Function.comp_apply, Nat.unpair_pair]
+    rw [selFn_tupleEnc]
+    have hr : z.unpair.2 % k <
+        (streams.map (fun t => t z.unpair.1)).length := by
+      simp only [streams, List.length_map, List.length_range]
+      exact Nat.mod_lt z.unpair.2 hk
+    rw [List.getD_eq_getElem _ _ hr]
+    simp [streams]
+  exact {
+    termCount := fun _ => k
+    coefficient := fun _ => .const (1 / (k : ℚ))
+    sentence := fun z => φ (z.unpair.2 % k) z.unpair.1
+    termCount_poly := ⟨Nat.Partrec.Code.const k, PolyFueled.const k⟩
+    const_poly := PolySegStream.ofTokenStream
+      (PolyTokenStream.serialize_const (-(1 / (k : ℚ))))
+    coefficient_poly := PolySegStream.ofTokenStream
+      (PolyTokenStream.serialize_const (1 / (k : ℚ)))
+    sentence_poly := hsentence
+    terms_eq := by
+      intro n
+      rw [exclusiveExhaustiveAffine]
+      apply List.map_congr_left
+      intro a ha
+      simp only [Nat.unpair_pair]
+      rw [Nat.mod_eq_of_lt (List.mem_range.mp ha)]
+    const_rank := by intro n; simp [exclusiveExhaustiveAffine]
+    coefficient_rank := by intro n j hj; simp [EF.rank]
+    const_closed := by intro n ρ V; simp [exclusiveExhaustiveAffine, EF.denoteWith]
+    coefficient_closed := by intro z ρ V; simp [EF.denoteWith]
+  }
+
+theorem exclusiveExhaustiveAffine_price
+    (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
+    (P : History) (n m : ℕ) :
+    (exclusiveExhaustiveAffine k φ n).price P m =
+      ((List.range k).map (fun j => P m (φ j n))).sum / k - 1 / k := by
+  simp only [exclusiveExhaustiveAffine, AffineCombination.price,
+    AffineCombination.value, List.map_map]
+  simp only [Function.comp_def, EF.denote_const]
+  rw [List.sum_map_mul_left]
+  push_cast
+  ring
+
+theorem exclusiveExhaustiveAffine_magnitude
+    (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
+    (P : History) (n : ℕ) :
+    (exclusiveExhaustiveAffine k φ n).magnitude P = 1 := by
+  have hkR : (0 : ℝ) < k := by exact_mod_cast hk
+  simp only [exclusiveExhaustiveAffine, AffineCombination.magnitude, List.map_map,
+    Function.comp_def, EF.denote_const]
+  let q : ℚ := 1 / (k : ℚ)
+  change (List.map (Function.const ℕ |(q : ℝ)|) (List.range k)).sum = 1
+  rw [List.map_const, List.length_range, List.sum_replicate, nsmul_eq_mul]
+  dsimp only [q]
+  rw [Rat.cast_div, Rat.cast_one, Rat.cast_natCast]
+  rw [abs_of_pos (one_div_pos.mpr hkR)]
+  field_simp
+
+/-- **Learning Exclusive–Exhaustive Relationships** (`thm:lex`).  The semantic premise is
+the completed-theory rendering of the paper's statement that `Theory` proves exactly one
+member of each fixed finite tuple. -/
+theorem lic_learning_exclusive_exhaustive
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
+    (hφ : ∀ j < k, PolySentenceCodes (φ j))
+    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hexclusiveExhaustive : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
+      ((List.range k).map (fun j => v.payout (φ j n))).sum = 1) :
+    (fun n => ((List.range k).map (fun j => P n (φ j n))).sum) ≈ₙ fun _ => 1 := by
+  let As := exclusiveExhaustiveAffine k φ
+  have hpoly := exclusiveExhaustive_polySequence k hk φ hφ
+  have hmag : ∀ n, (As n).magnitude P ≤ 1 := fun n => by
+    simp only [As]
+    rw [exclusiveExhaustiveAffine_magnitude k hk φ P n]
+  have hbcs : AffineCombination.BoundedCombinationSequence As P := {
+    poly := hpoly
+    bounded := ⟨1 + 1 / (k : ℝ), fun n => by
+      rw [AffineCombination.l1Norm]
+      rw [show (As n).magnitude P = 1 by
+        exact exclusiveExhaustiveAffine_magnitude k hk φ P n]
+      dsimp only [As, exclusiveExhaustiveAffine]
+      simp only [EF.denote_const]
+      have hkR : (0 : ℝ) < k := by exact_mod_cast hk
+      push_cast
+      rw [abs_neg, abs_of_pos (one_div_pos.mpr hkR)]
+      exact le_of_eq (add_comm _ _)⟩
+  }
+  have hzero := hpoly.affine_provind_theory_eq P DP
+    (hbcs.boundedPrices hP) ⟨1, hmag⟩ hP hworld 0 (fun n v hv => by
+      rw [show (As n).value P v.payout =
+          (((List.range k).map (fun j => v.payout (φ j n))).sum - 1) / k by
+        change (exclusiveExhaustiveAffine k φ n).value P v.payout = _
+        simp only [exclusiveExhaustiveAffine, AffineCombination.value, EF.denote_const,
+          List.map_map]
+        simp only [Function.comp_def, EF.denote_const]
+        rw [List.sum_map_mul_left]
+        push_cast
+        ring]
+      rw [hexclusiveExhaustive n v hv]
+      simp)
+  unfold As at hzero
+  simp only [exclusiveExhaustiveAffine_price k hk φ P] at hzero
+  unfold AsympEq at hzero ⊢
+  convert hzero.const_mul (k : ℝ) using 1
+  · funext n
+    simp only [Pi.zero_apply]
+    field_simp
+    ring
+  · simp
+
+#print axioms exclusiveExhaustive_polySequence
+#print axioms lic_learning_exclusive_exhaustive
 
 end LogicalInduction
 

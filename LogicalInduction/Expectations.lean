@@ -42,13 +42,19 @@ def PolySentenceCodes (φ : ℕ → Sentence) : Prop :=
 def PolyRatCodes (q : ℕ → ℚ) : Prop :=
   ∃ c : Nat.Partrec.Code, PolyFueled c (fun n => Encodable.encode (q n))
 
-/-- A rational sequence generated continuously from the market by a polynomial-size feature
-progression. This is the propositional/token-model rendering of the paper's `def:pgen` for
-rational sequences. -/
+/-- A rational sequence generated continuously from the market by a polynomial-size,
+closed feature progression. This is the propositional/token-model rendering of the
+paper's `def:pgen` for rational sequences. Closure is load-bearing: internal `EF.var`
+nodes are legal only underneath the shared `letE` emitter and cannot be free inputs. -/
+structure GeneratedRatFeature (P : History) (q : ℕ → ℚ)
+    (feature : ℕ → EF) : Prop where
+  rank_le : ∀ n, (feature n).rank ≤ n
+  polyTok : PolyTokenStream (fun n => (feature n).serialize)
+  closed : ∀ n ρ V, (feature n).denoteWith ρ V = (feature n).denote V
+  denote : ∀ n, (feature n).denote P = (q n : ℝ)
+
 def PGenerableRat (P : History) (q : ℕ → ℚ) : Prop :=
-  ∃ feature : ℕ → EF, (∀ n, (feature n).rank ≤ n) ∧
-    PolyTokenStream (fun n => (feature n).serialize) ∧
-    ∀ n, (feature n).denote P = (q n : ℝ)
+  ∃ feature : ℕ → EF, GeneratedRatFeature P q feature
 
 /-- `def:luv` (abstracted). A `[0,1]`-logically-uncertain variable, presented by its
 threshold sentences: `X.gt r = ⌜X > r⌝`. This is the LUV's entire observable content for a

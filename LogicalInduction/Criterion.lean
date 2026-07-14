@@ -648,6 +648,83 @@ required. -/
 def ComputableDeductiveProcess (DP : DeductiveProcess) : Prop :=
   ∃ code : Nat.Partrec.Code, ∀ n, Encodable.encode (DP.D n) ∈ code.eval n
 
+/-- A named presentation of a computable deductive process.  This is equivalent to
+`ComputableDeductiveProcess`, but keeps the program and its semantic specification
+available to finite certificate checkers. -/
+structure DeductiveProcessComputation (DP : DeductiveProcess) where
+  code : Nat.Partrec.Code
+  code_spec : ∀ n, Encodable.encode (DP.D n) ∈ code.eval n
+
+theorem ComputableDeductiveProcess.nonemptyComputation
+    {DP : DeductiveProcess} (h : ComputableDeductiveProcess DP) :
+    Nonempty (DeductiveProcessComputation DP) := by
+  obtain ⟨code, hcode⟩ := h
+  exact ⟨⟨code, hcode⟩⟩
+
+theorem DeductiveProcessComputation.toComputable
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) :
+    ComputableDeductiveProcess DP :=
+  ⟨c.code, c.code_spec⟩
+
+/-- Any terminating clocked output of the certified deductive-process program is the
+unique encoding of the claimed finite stage.  This is the soundness bridge used by a
+bounded dovetailer. -/
+theorem DeductiveProcessComputation.evaln_eq_stage
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP)
+    {n fuel out : ℕ}
+    (h : out ∈ Nat.Partrec.Code.evaln fuel c.code n) :
+    out = Encodable.encode (DP.D n) := by
+  exact Part.mem_unique (Nat.Partrec.Code.evaln_sound h) (c.code_spec n)
+
+/-- Every certified deductive stage eventually appears at some finite clock. -/
+theorem DeductiveProcessComputation.exists_evaln_stage
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) (n : ℕ) :
+    ∃ fuel, Encodable.encode (DP.D n) ∈
+      Nat.Partrec.Code.evaln fuel c.code n :=
+  Nat.Partrec.Code.evaln_complete.mp (c.code_spec n)
+
+/-- Run the deductive-process program for exactly `fuel` interpreter steps and decode its
+output as a finite sentence set.  `none` represents either timeout or malformed output. -/
+def DeductiveProcessComputation.stageAtFuel
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP)
+    (fuel n : ℕ) : Option (Finset Sentence) :=
+  (Nat.Partrec.Code.evaln fuel c.code n).bind
+    (Encodable.decode (α := Finset Sentence))
+
+theorem DeductiveProcessComputation.stageAtFuel_sound
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP)
+    {fuel n : ℕ} {stage : Finset Sentence}
+    (h : c.stageAtFuel fuel n = some stage) :
+    stage = DP.D n := by
+  unfold stageAtFuel at h
+  rw [Option.bind_eq_some_iff] at h
+  obtain ⟨out, hout, hdecode⟩ := h
+  have houtEq := c.evaln_eq_stage hout
+  subst out
+  simpa using hdecode.symm
+
+theorem DeductiveProcessComputation.stageAtFuel_complete
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) (n : ℕ) :
+    ∃ fuel, c.stageAtFuel fuel n = some (DP.D n) := by
+  obtain ⟨fuel, hfuel⟩ := c.exists_evaln_stage n
+  refine ⟨fuel, ?_⟩
+  unfold stageAtFuel
+  change Nat.Partrec.Code.evaln fuel c.code n =
+    some (Encodable.encode (DP.D n)) at hfuel
+  rw [hfuel]
+  simp
+
+/-- A decoded deductive stage, once available, remains available at every larger clock. -/
+theorem DeductiveProcessComputation.stageAtFuel_mono
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP)
+    {fuel fuel' n : ℕ} {stage : Finset Sentence}
+    (hff : fuel ≤ fuel') (h : c.stageAtFuel fuel n = some stage) :
+    c.stageAtFuel fuel' n = some stage := by
+  unfold stageAtFuel at h ⊢
+  rw [Option.bind_eq_some_iff] at h ⊢
+  obtain ⟨out, hout, hdecode⟩ := h
+  exact ⟨out, Nat.Partrec.Code.evaln_mono hff hout, hdecode⟩
+
 /-- A paper-faithful computable rational market certificate. `quote n ⌜φ⌝` is the exact
 rational price of `φ` on day `n`, and one fixed partial-recursive program computes this
 two-argument table (with its input paired into one natural). No polynomial runtime is
@@ -659,6 +736,329 @@ def ComputableMarket (P : History) : Prop :=
   ∃ (quote : ℕ → ℕ → ℚ) (code : Nat.Partrec.Code),
     (∀ n φ, P n φ = (quote n (Encodable.encode φ) : ℝ)) ∧
     ∀ z, Encodable.encode (quote z.unpair.1 z.unpair.2) ∈ code.eval z
+
+/-- A named exact rational program presenting a computable market.  The existential
+paper-facing predicate above is convenient in theorem statements; this structure is the
+operational form consumed by finite clocked certificate checkers. -/
+structure MarketComputation (P : History) where
+  quote : ℕ → ℕ → ℚ
+  code : Nat.Partrec.Code
+  quote_exact : ∀ n φ, P n φ = (quote n (Encodable.encode φ) : ℝ)
+  code_spec : ∀ z, Encodable.encode (quote z.unpair.1 z.unpair.2) ∈ code.eval z
+
+theorem ComputableMarket.nonemptyComputation
+    {P : History} (h : ComputableMarket P) : Nonempty (MarketComputation P) := by
+  obtain ⟨quote, code, hexact, hcode⟩ := h
+  exact ⟨⟨quote, code, hexact, hcode⟩⟩
+
+theorem MarketComputation.toComputable
+    {P : History} (c : MarketComputation P) : ComputableMarket P :=
+  ⟨c.quote, c.code, c.quote_exact, c.code_spec⟩
+
+/-- Any terminating clocked output of the certified market program is the unique exact
+rational quote for that paired input. -/
+theorem MarketComputation.evaln_eq_quote
+    {P : History} (c : MarketComputation P) {z fuel out : ℕ}
+    (h : out ∈ Nat.Partrec.Code.evaln fuel c.code z) :
+    out = Encodable.encode (c.quote z.unpair.1 z.unpair.2) := by
+  exact Part.mem_unique (Nat.Partrec.Code.evaln_sound h) (c.code_spec z)
+
+/-- Decoded rational form of `MarketComputation.evaln_eq_quote`. -/
+theorem MarketComputation.evaln_quote_eq
+    {P : History} (c : MarketComputation P) {z fuel : ℕ} {q : ℚ}
+    (h : Encodable.encode q ∈ Nat.Partrec.Code.evaln fuel c.code z) :
+    q = c.quote z.unpair.1 z.unpair.2 := by
+  exact Encodable.encode_injective (c.evaln_eq_quote h)
+
+/-- Every exact rational market quote eventually appears at some finite clock. -/
+theorem MarketComputation.exists_evaln_quote
+    {P : History} (c : MarketComputation P) (z : ℕ) :
+    ∃ fuel, Encodable.encode (c.quote z.unpair.1 z.unpair.2) ∈
+      Nat.Partrec.Code.evaln fuel c.code z :=
+  Nat.Partrec.Code.evaln_complete.mp (c.code_spec z)
+
+/-- Run the market program for exactly `fuel` interpreter steps and decode its output as
+an exact rational.  This is the executable quote source for historical maturity checks. -/
+def MarketComputation.quoteAtFuel
+    {P : History} (c : MarketComputation P)
+    (fuel day : ℕ) (φ : Sentence) : Option ℚ :=
+  (Nat.Partrec.Code.evaln fuel c.code
+    (Nat.pair day (Encodable.encode φ))).bind (Encodable.decode (α := ℚ))
+
+theorem MarketComputation.quoteAtFuel_sound
+    {P : History} (c : MarketComputation P)
+    {fuel day : ℕ} {φ : Sentence} {q : ℚ}
+    (h : c.quoteAtFuel fuel day φ = some q) :
+    q = c.quote day (Encodable.encode φ) := by
+  unfold quoteAtFuel at h
+  rw [Option.bind_eq_some_iff] at h
+  obtain ⟨out, hout, hdecode⟩ := h
+  have houtEq := c.evaln_eq_quote hout
+  simp only [Nat.unpair_pair] at houtEq
+  subst out
+  simpa using hdecode.symm
+
+theorem MarketComputation.quoteAtFuel_complete
+    {P : History} (c : MarketComputation P) (day : ℕ) (φ : Sentence) :
+    ∃ fuel, c.quoteAtFuel fuel day φ =
+      some (c.quote day (Encodable.encode φ)) := by
+  let z := Nat.pair day (Encodable.encode φ)
+  obtain ⟨fuel, hfuel⟩ := c.exists_evaln_quote z
+  refine ⟨fuel, ?_⟩
+  unfold quoteAtFuel
+  change Nat.Partrec.Code.evaln fuel c.code z =
+    some (Encodable.encode (c.quote z.unpair.1 z.unpair.2)) at hfuel
+  simp only [z, Nat.unpair_pair] at hfuel
+  rw [hfuel]
+  simp
+
+/-- A decoded market quote, once available, remains available at every larger clock. -/
+theorem MarketComputation.quoteAtFuel_mono
+    {P : History} (c : MarketComputation P)
+    {fuel fuel' day : ℕ} {φ : Sentence} {q : ℚ}
+    (hff : fuel ≤ fuel') (h : c.quoteAtFuel fuel day φ = some q) :
+    c.quoteAtFuel fuel' day φ = some q := by
+  unfold quoteAtFuel at h ⊢
+  rw [Option.bind_eq_some_iff] at h ⊢
+  obtain ⟨out, hout, hdecode⟩ := h
+  exact ⟨out, Nat.Partrec.Code.evaln_mono hff hout, hdecode⟩
+
+/-- One finite clock simultaneously recovers every quote in a finite query list.  This is
+the compactness step used to evaluate a whole finite strategy prefix at one fuel value. -/
+theorem MarketComputation.exists_fuel_quoteAtFuel_list
+    {P : History} (c : MarketComputation P)
+    (queries : List (ℕ × Sentence)) :
+    ∃ fuel, ∀ query ∈ queries,
+      c.quoteAtFuel fuel query.1 query.2 =
+        some (c.quote query.1 (Encodable.encode query.2)) := by
+  induction queries with
+  | nil => exact ⟨0, by simp⟩
+  | cons head tail ih =>
+      obtain ⟨headFuel, hhead⟩ := c.quoteAtFuel_complete head.1 head.2
+      obtain ⟨tailFuel, htail⟩ := ih
+      refine ⟨max headFuel tailFuel, ?_⟩
+      intro query hquery
+      simp only [List.mem_cons] at hquery
+      rcases hquery with rfl | hquery
+      · exact c.quoteAtFuel_mono (le_max_left _ _) hhead
+      · exact c.quoteAtFuel_mono (le_max_right _ _) (htail query hquery)
+
+namespace EF
+
+/-- The finite market cells inspected by an expressible feature.  Duplicates are harmless:
+the list is syntax-directed and therefore directly executable. -/
+def priceQueries : EF → List (ℕ × Sentence)
+  | price φ n => [(n, φ)]
+  | const _ => []
+  | add a b => a.priceQueries ++ b.priceQueries
+  | mul a b => a.priceQueries ++ b.priceQueries
+  | max a b => a.priceQueries ++ b.priceQueries
+  | safeRecip a => a.priceQueries
+  | var _ => []
+  | letE value body => value.priceQueries ++ body.priceQueries
+
+/-- Exact rational evaluation with a partial quote table.  At a price node it runs the
+certified market program for `fuel` steps; timeout or malformed output propagates as `none`. -/
+def denoteRatWithAtFuel {P : History} (market : MarketComputation P) (fuel : ℕ) :
+    EF → List ℚ → Option ℚ
+  | price φ n,   _ => market.quoteAtFuel fuel n φ
+  | const q,     _ => some q
+  | add a b,     ρ => do
+      let qa ← a.denoteRatWithAtFuel market fuel ρ
+      let qb ← b.denoteRatWithAtFuel market fuel ρ
+      pure (qa + qb)
+  | mul a b,     ρ => do
+      let qa ← a.denoteRatWithAtFuel market fuel ρ
+      let qb ← b.denoteRatWithAtFuel market fuel ρ
+      pure (qa * qb)
+  | max a b,     ρ => do
+      let qa ← a.denoteRatWithAtFuel market fuel ρ
+      let qb ← b.denoteRatWithAtFuel market fuel ρ
+      pure (Max.max qa qb)
+  | safeRecip a, ρ => do
+      let qa ← a.denoteRatWithAtFuel market fuel ρ
+      pure (Max.max 1 qa)⁻¹
+  | var i,       ρ => some (ρ.getD i 0)
+  | letE value body, ρ => do
+      let q ← value.denoteRatWithAtFuel market fuel ρ
+      body.denoteRatWithAtFuel market fuel (q :: ρ)
+
+/-- Every successful bounded evaluation is semantically exact.  In particular, malformed
+decoded outputs cannot make a finite certificate checker accept: quote soundness fixes each
+price leaf, and the remaining computation is exact rational arithmetic. -/
+theorem denoteRatWithAtFuel_sound
+    {P : History} (market : MarketComputation P) (fuel : ℕ) (e : EF) (ρ : List ℚ)
+    {q : ℚ} (h : e.denoteRatWithAtFuel market fuel ρ = some q) :
+    q = e.denoteRatWith ρ
+      (fun n φ => market.quote n (Encodable.encode φ)) := by
+  induction e generalizing ρ q with
+  | price φ n =>
+      exact market.quoteAtFuel_sound h
+  | const value =>
+      simpa [denoteRatWithAtFuel, denoteRatWith] using h.symm
+  | add a b iha ihb =>
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qa, ha, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qb, hb, hq⟩ := h
+      change some (qa + qb) = some q at hq
+      injection hq with hq
+      subst q
+      simp only [denoteRatWith]
+      rw [iha ρ ha, ihb ρ hb]
+  | mul a b iha ihb =>
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qa, ha, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qb, hb, hq⟩ := h
+      change some (qa * qb) = some q at hq
+      injection hq with hq
+      subst q
+      simp only [denoteRatWith]
+      rw [iha ρ ha, ihb ρ hb]
+  | max a b iha ihb =>
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qa, ha, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qb, hb, hq⟩ := h
+      change some (Max.max qa qb) = some q at hq
+      injection hq with hq
+      subst q
+      simp only [denoteRatWith]
+      rw [iha ρ ha, ihb ρ hb]
+  | safeRecip a iha =>
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qa, ha, hq⟩ := h
+      change some (Max.max 1 qa)⁻¹ = some q at hq
+      injection hq with hq
+      subst q
+      simp only [denoteRatWith]
+      rw [iha ρ ha]
+  | var i =>
+      simpa [denoteRatWithAtFuel, denoteRatWith] using h.symm
+  | letE value body ihvalue ihbody =>
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qvalue, hvalue, hbody⟩ := h
+      have hv := ihvalue ρ hvalue
+      have hb := ihbody (qvalue :: ρ) hbody
+      simpa only [denoteRatWith, hv] using hb
+
+/-- Successful bounded feature evaluation is monotone in the interpreter clock. -/
+theorem denoteRatWithAtFuel_mono
+    {P : History} (market : MarketComputation P) {fuel fuel' : ℕ} (e : EF)
+    (ρ : List ℚ) {q : ℚ} (hff : fuel ≤ fuel')
+    (h : e.denoteRatWithAtFuel market fuel ρ = some q) :
+    e.denoteRatWithAtFuel market fuel' ρ = some q := by
+  induction e generalizing ρ q with
+  | price φ n => exact market.quoteAtFuel_mono hff h
+  | const value => simpa [denoteRatWithAtFuel] using h
+  | add a b iha ihb =>
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h ⊢
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qa, ha, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qb, hb, hq⟩ := h
+      rw [iha ρ ha, ihb ρ hb]
+      exact hq
+  | mul a b iha ihb =>
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h ⊢
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qa, ha, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qb, hb, hq⟩ := h
+      rw [iha ρ ha, ihb ρ hb]
+      exact hq
+  | max a b iha ihb =>
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h ⊢
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qa, ha, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qb, hb, hq⟩ := h
+      rw [iha ρ ha, ihb ρ hb]
+      exact hq
+  | safeRecip a iha =>
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h ⊢
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qa, ha, hq⟩ := h
+      rw [iha ρ ha]
+      exact hq
+  | var i => simpa [denoteRatWithAtFuel] using h
+  | letE value body ihvalue ihbody =>
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h ⊢
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qvalue, hvalue, hbody⟩ := h
+      rw [ihvalue ρ hvalue]
+      exact ihbody (qvalue :: ρ) hbody
+
+/-- With every syntactically requested quote ready at the shared clock, bounded evaluation
+returns exactly the total rational semantics. -/
+theorem denoteRatWithAtFuel_complete
+    {P : History} (market : MarketComputation P) (fuel : ℕ) (e : EF) (ρ : List ℚ)
+    (hready : ∀ query ∈ e.priceQueries,
+      market.quoteAtFuel fuel query.1 query.2 =
+        some (market.quote query.1 (Encodable.encode query.2))) :
+    e.denoteRatWithAtFuel market fuel ρ =
+      some (e.denoteRatWith ρ
+        (fun n φ => market.quote n (Encodable.encode φ))) := by
+  induction e generalizing ρ with
+  | price φ n => exact hready (n, φ) (by simp [priceQueries])
+  | const q => rfl
+  | add a b iha ihb =>
+      have ha := iha ρ (fun query hquery => hready query (by
+        simp only [priceQueries, List.mem_append]
+        exact Or.inl hquery))
+      have hb := ihb ρ (fun query hquery => hready query (by
+        simp only [priceQueries, List.mem_append]
+        exact Or.inr hquery))
+      simp [denoteRatWithAtFuel, denoteRatWith, ha, hb]
+  | mul a b iha ihb =>
+      have ha := iha ρ (fun query hquery => hready query (by
+        simp only [priceQueries, List.mem_append]
+        exact Or.inl hquery))
+      have hb := ihb ρ (fun query hquery => hready query (by
+        simp only [priceQueries, List.mem_append]
+        exact Or.inr hquery))
+      simp [denoteRatWithAtFuel, denoteRatWith, ha, hb]
+  | max a b iha ihb =>
+      have ha := iha ρ (fun query hquery => hready query (by
+        simp only [priceQueries, List.mem_append]
+        exact Or.inl hquery))
+      have hb := ihb ρ (fun query hquery => hready query (by
+        simp only [priceQueries, List.mem_append]
+        exact Or.inr hquery))
+      simp [denoteRatWithAtFuel, denoteRatWith, ha, hb]
+  | safeRecip a iha =>
+      have ha := iha ρ (fun query hquery => hready query (by
+        simpa only [priceQueries] using hquery))
+      simp [denoteRatWithAtFuel, denoteRatWith, ha]
+  | var i => rfl
+  | letE value body ihvalue ihbody =>
+      have hvalue := ihvalue ρ (fun query hquery => hready query (by
+        simp only [priceQueries, List.mem_append]
+        exact Or.inl hquery))
+      let q := value.denoteRatWith ρ
+        (fun n φ => market.quote n (Encodable.encode φ))
+      have hbody := ihbody (q :: ρ) (fun query hquery => hready query (by
+        simp only [priceQueries, List.mem_append]
+        exact Or.inr hquery))
+      simpa [denoteRatWithAtFuel, denoteRatWith, hvalue, q] using hbody
+
+/-- Every finite expressible feature eventually evaluates exactly under the certified
+market program, at one shared clock for all of its price queries. -/
+theorem exists_fuel_denoteRatWithAtFuel
+    {P : History} (market : MarketComputation P) (e : EF) (ρ : List ℚ) :
+    ∃ fuel, e.denoteRatWithAtFuel market fuel ρ =
+      some (e.denoteRatWith ρ
+        (fun n φ => market.quote n (Encodable.encode φ))) := by
+  obtain ⟨fuel, hfuel⟩ := market.exists_fuel_quoteAtFuel_list e.priceQueries
+  exact ⟨fuel, e.denoteRatWithAtFuel_complete market fuel ρ hfuel⟩
+
+end EF
 
 /-! ## `def:tradestrat`, `def:trader` — Trading strategies and traders
 

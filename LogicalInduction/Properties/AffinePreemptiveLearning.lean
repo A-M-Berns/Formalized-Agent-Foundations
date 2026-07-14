@@ -92,6 +92,79 @@ analytic hub records only the consequence it consumes. -/
 def BoundedAffinePrices (As : ℕ → AffineCombination) (V : History) : Prop :=
   ∃ B : ℝ, 0 ≤ B ∧ ∀ n m, |(As n).price V m| ≤ B
 
+/-- A paper `BCS` supplies the cross-time price bound consumed by the analytic liminf/
+limsup layer whenever market prices lie in `[0,1]`. -/
+theorem AffineCombination.BoundedCombinationSequence.boundedPrices
+    {As : ℕ → AffineCombination} {V : History}
+    (h : BoundedCombinationSequence As V)
+    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1) :
+    BoundedAffinePrices As V := by
+  obtain ⟨B, hB⟩ := h.bounded
+  have hB0 : 0 ≤ B :=
+    (add_nonneg (abs_nonneg _) ((As 0).magnitude_nonneg V)).trans (hB 0)
+  refine ⟨B, hB0, ?_⟩
+  intro n m
+  exact ((As n).abs_price_le_l1Norm V m (hP m)).trans (hB n)
+
+/-- A canonical positive rational rescaling of an arbitrary paper `BCS` into the
+unit-magnitude regime used by the economic trader constructions.  The scale is part of
+the data so downstream capstones can state their operational witnesses for exactly the
+normalized sequence they consume. -/
+structure AffineCombination.BoundedCombinationSequence.UnitNormalization
+    {As : ℕ → AffineCombination} {V : History}
+    (h : BoundedCombinationSequence As V) where
+  scale : ℚ
+  scale_pos : 0 < (scale : ℝ)
+  magnitude_le_one : ∀ n,
+    ((As n).scale (.const scale)).magnitude V ≤ 1
+
+/-- Every paper `BCS` admits a single positive rational unit normalization. -/
+noncomputable def AffineCombination.BoundedCombinationSequence.unitNormalization
+    {As : ℕ → AffineCombination} {V : History}
+    (h : BoundedCombinationSequence As V) : h.UnitNormalization := by
+  let B : ℝ := Classical.choose h.magnitudeBounded
+  have hB : ∀ n, (As n).magnitude V ≤ B :=
+    Classical.choose_spec h.magnitudeBounded
+  let C : ℚ := Classical.choose (exists_rat_gt (max B 0))
+  have hC : max B 0 < (C : ℝ) :=
+    Classical.choose_spec (exists_rat_gt (max B 0))
+  have hC0 : 0 < (C : ℝ) := lt_of_le_of_lt (le_max_right B 0) hC
+  let q : ℚ := 1 / C
+  have hq0 : 0 < (q : ℝ) := by
+    dsimp only [q]
+    rw [Rat.cast_div, Rat.cast_one]
+    exact one_div_pos.mpr hC0
+  refine ⟨q, hq0, ?_⟩
+  intro n
+  rw [AffineCombination.scale_magnitude, EF.denote_const, abs_of_pos hq0]
+  have hn : (As n).magnitude V < (C : ℝ) :=
+    (hB n).trans_lt ((le_max_left B 0).trans_lt hC)
+  have hdiv : (As n).magnitude V / (C : ℝ) ≤ 1 :=
+    (div_le_one hC0).mpr (le_of_lt hn)
+  simpa [q, div_eq_mul_inv, mul_comm] using hdiv
+
+/-- A fixed rational rescaling preserves uniform cross-time boundedness. -/
+theorem BoundedAffinePrices.scaleRat
+    {As : ℕ → AffineCombination} {V : History}
+    (h : BoundedAffinePrices As V) (q : ℚ) :
+    BoundedAffinePrices (fun n => (As n).scale (.const q)) V := by
+  obtain ⟨B, hB0, hB⟩ := h
+  refine ⟨|(q : ℝ)| * B, mul_nonneg (abs_nonneg (q : ℝ)) hB0, ?_⟩
+  intro n m
+  rw [AffineCombination.scale_price, EF.denote_const, abs_mul]
+  exact mul_le_mul_of_nonneg_left (hB n m) (abs_nonneg (q : ℝ))
+
+/-- Negation preserves uniform cross-time boundedness. -/
+theorem BoundedAffinePrices.neg
+    {As : ℕ → AffineCombination} {V : History}
+    (h : BoundedAffinePrices As V) :
+    BoundedAffinePrices (fun n => (As n).neg) V := by
+  obtain ⟨B, hB0, hB⟩ := h
+  refine ⟨B, hB0, ?_⟩
+  intro n m
+  rw [AffineCombination.neg_price, abs_neg]
+  exact hB n m
+
 theorem BoundedAffinePrices.diagonal_le_futureHigh
     {As : ℕ → AffineCombination} {V : History} (h : BoundedAffinePrices As V) (n : ℕ) :
     (As n).price V n ≤ affineFutureHigh As V n := by
@@ -1190,6 +1263,73 @@ theorem affineFutureHigh_neg (As : ℕ → AffineCombination) (V : History) (n :
       exact ⟨j, by linarith⟩]
   exact Real.sSup_neg _
 
+/-- Positive rational rescaling transports a strict tail-supremum lower bound.  This is
+the only supremum fact needed to normalize an arbitrary bounded affine family; it avoids
+silently replacing the paper's tail convention by a different index set. -/
+theorem BoundedAffinePrices.mul_lt_scaledFutureHigh
+    {As : ℕ → AffineCombination} {V : History}
+    (h : BoundedAffinePrices As V) (q : ℚ) (hq : 0 < (q : ℝ))
+    (n : ℕ) {b : ℝ} (hb : b < affineFutureHigh As V n) :
+    (q : ℝ) * b <
+      affineFutureHigh (fun i => (As i).scale (.const q)) V n := by
+  obtain ⟨x, ⟨j, rfl⟩, hx⟩ :=
+    exists_lt_of_lt_csSup (Set.range_nonempty
+      (fun j => (As n).price V (n + j))) hb
+  have hscaledBound := h.scaleRat q
+  obtain ⟨B, _, hB⟩ := hscaledBound
+  have hmember :
+      ((As n).scale (.const q)).price V (n + j) ≤
+        affineFutureHigh (fun i => (As i).scale (.const q)) V n := by
+    apply le_csSup
+    · refine ⟨B, ?_⟩
+      rintro y ⟨k, rfl⟩
+      exact (le_abs_self _).trans (hB n (n + k))
+    · exact ⟨j, rfl⟩
+  rw [scale_price, EF.denote_const] at hmember
+  exact (mul_lt_mul_of_pos_left hx hq).trans_le hmember
+
+/-- The paper permits any uniformly bounded BCS.  Normalize by a single positive rational
+larger than the magnitude bound, invoke the unit-risk economic construction, and transport
+its operational no-underpricing conclusion back to the original prices. -/
+theorem PolySequence.noPreemptiveUnderpricing_of_boundedMagnitude
+    {As : ℕ → AffineCombination}
+    (h : PolySequence As) (V : History) (DP : DeductiveProcess)
+    [IsLogicalInductor V DP]
+    (hbounded : BoundedAffinePrices As V)
+    (hmag : ∃ B : ℝ, ∀ i, (As i).magnitude V ≤ B)
+    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    NoPreemptiveUnderpricing
+      (fun n => (As n).price V n) (affineFutureHigh As V) := by
+  obtain ⟨B, hB⟩ := hmag
+  obtain ⟨C, hC⟩ := exists_rat_gt (max B 0)
+  have hC0 : 0 < (C : ℝ) := lt_of_le_of_lt (le_max_right B 0) hC
+  let q : ℚ := 1 / C
+  have hq0 : 0 < (q : ℝ) := by
+    dsimp only [q]
+    rw [Rat.cast_div, Rat.cast_one]
+    exact one_div_pos.mpr hC0
+  have hscaledMag : ∀ i,
+      ((As i).scale (.const q)).magnitude V ≤ 1 := by
+    intro i
+    rw [scale_magnitude, EF.denote_const, abs_of_pos hq0]
+    have hi : (As i).magnitude V < (C : ℝ) :=
+      (hB i).trans_lt ((le_max_left B 0).trans_lt hC)
+    have hdiv : (As i).magnitude V / (C : ℝ) ≤ 1 :=
+      (div_le_one hC0).mpr (le_of_lt hi)
+    simpa [q, div_eq_mul_inv, mul_comm] using hdiv
+  have hscaled := (h.scaleRat q).noPreemptiveUnderpricing V DP
+    hscaledMag hP hworld
+  intro a b hab hfuture hcurrent
+  apply hscaled ((q : ℝ) * a) ((q : ℝ) * b)
+  · exact mul_lt_mul_of_pos_left hab hq0
+  · filter_upwards [hfuture] with n hn
+    exact BoundedAffinePrices.mul_lt_scaledFutureHigh hbounded q hq0 n hn
+  · exact hcurrent.mono (fun n hn => by
+      change ((As n).scale (.const q)).price V n < (q : ℝ) * a
+      rw [scale_price, EF.denote_const]
+      exact mul_lt_mul_of_pos_left hn hq0)
+
 /-- The overpricing half is the underpricing construction applied to the uniformly
 emittable pointwise negation of the affine family. -/
 theorem PolySequence.noPreemptiveOverpricing {As : ℕ → AffineCombination}
@@ -1212,6 +1352,33 @@ theorem PolySequence.noPreemptiveOverpricing {As : ℕ → AffineCombination}
       rw [neg_price]
       linarith)
 
+/-- Arbitrary bounded-magnitude overpricing, obtained from the preceding normalized
+underpricing transport applied to the uniformly emitted negated family. -/
+theorem PolySequence.noPreemptiveOverpricing_of_boundedMagnitude
+    {As : ℕ → AffineCombination}
+    (h : PolySequence As) (V : History) (DP : DeductiveProcess)
+    [IsLogicalInductor V DP]
+    (hbounded : BoundedAffinePrices As V)
+    (hmag : ∃ B : ℝ, ∀ i, (As i).magnitude V ≤ B)
+    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    NoPreemptiveOverpricing
+      (fun n => (As n).price V n) (affineFutureLow As V) := by
+  have hnegMag : ∃ B : ℝ, ∀ i, ((As i).neg).magnitude V ≤ B := by
+    obtain ⟨B, hB⟩ := hmag
+    exact ⟨B, fun i => by simpa only [neg_magnitude] using hB i⟩
+  have hneg := h.neg.noPreemptiveUnderpricing_of_boundedMagnitude V DP
+    hbounded.neg hnegMag hP hworld
+  intro a b hab hfuture hcurrent
+  apply hneg (-b) (-a) (by linarith)
+  · filter_upwards [hfuture] with n hn
+    rw [affineFutureHigh_neg]
+    linarith
+  · exact hcurrent.mono (fun n hn => by
+      change (As n).neg.price V n < -b
+      rw [neg_price]
+      linarith)
+
 /-- Operational affine preemptive learning, obtained from the two gradual-return
 constructions. -/
 theorem PolySequence.noPreemptiveGaps {As : ℕ → AffineCombination}
@@ -1224,13 +1391,30 @@ theorem PolySequence.noPreemptiveGaps {As : ℕ → AffineCombination}
   ⟨h.noPreemptiveUnderpricing V DP hmag hP hworld,
     h.noPreemptiveOverpricing V DP hmag hP hworld⟩
 
-/-- Paper-facing affine preemptive-learning capstone for normalized polynomial affine
-families with bounded cross-time prices. -/
+/-- Operational affine preemptive learning for the paper's arbitrary uniformly bounded
+combination sequences. -/
+theorem PolySequence.noPreemptiveGaps_of_boundedMagnitude
+    {As : ℕ → AffineCombination}
+    (h : PolySequence As) (V : History) (DP : DeductiveProcess)
+    [IsLogicalInductor V DP]
+    (hbounded : BoundedAffinePrices As V)
+    (hmag : ∃ B : ℝ, ∀ i, (As i).magnitude V ≤ B)
+    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    AffineNoPreemptiveGaps As V :=
+  ⟨h.noPreemptiveUnderpricing_of_boundedMagnitude V DP hbounded hmag hP hworld,
+    h.noPreemptiveOverpricing_of_boundedMagnitude V DP hbounded hmag hP hworld⟩
+
+/-- Paper-facing affine preemptive-learning capstone for arbitrary bounded polynomial
+affine families.  `hmag` is the share-coefficient part of the paper's BCS `L¹` bound;
+`hbounded` records its constant-coefficient consequence for cross-time prices.  The proof
+chooses its normalization internally, exactly as the paper's “without loss of generality”
+step requires. -/
 theorem PolySequence.affpolymax {As : ℕ → AffineCombination}
     (h : PolySequence As) (V : History) (DP : DeductiveProcess)
     [IsLogicalInductor V DP]
     (hbounded : BoundedAffinePrices As V)
-    (hmag : ∀ i, (As i).magnitude V ≤ 1)
+    (hmag : ∃ B : ℝ, ∀ i, (As i).magnitude V ≤ B)
     (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (fun n => (As n).price V n) atTop =
@@ -1238,7 +1422,20 @@ theorem PolySequence.affpolymax {As : ℕ → AffineCombination}
       limsup (fun n => (As n).price V n) atTop =
         limsup (affineFutureLow As V) atTop :=
   affpolymax_of_noPreemptiveGaps As V hbounded
-    (h.noPreemptiveGaps V DP hmag hP hworld)
+    (h.noPreemptiveGaps_of_boundedMagnitude V DP hbounded hmag hP hworld)
+
+/-- Exact `thm:affpolymax` over the paper's `BCS` interface. -/
+theorem BoundedCombinationSequence.affpolymax
+    {As : ℕ → AffineCombination} {V : History}
+    (h : BoundedCombinationSequence As V) (DP : DeductiveProcess)
+    [IsLogicalInductor V DP]
+    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    liminf (fun n => (As n).price V n) atTop =
+        liminf (affineFutureHigh As V) atTop ∧
+      limsup (fun n => (As n).price V n) atTop =
+        limsup (affineFutureLow As V) atTop :=
+  h.poly.affpolymax V DP (h.boundedPrices hP) h.magnitudeBounded hP hworld
 
 /-- Once fully liquidated, the component's net worth is world-independent and bounded by
 the entry weight times the guaranteed price spread. -/
@@ -1499,9 +1696,14 @@ end AffineCombination
 #print axioms AffineCombination.gradualTrader_magnitude_of_full_signal
 #print axioms AffineCombination.gradualTrader_hasROI_of_full_signal
 #print axioms AffineCombination.gradualTrader_hasROI_of_price_gap
+#print axioms AffineCombination.PolySequence.scaleRat
 #print axioms AffineCombination.PolySequence.noPreemptiveUnderpricing
 #print axioms AffineCombination.PolySequence.noPreemptiveOverpricing
 #print axioms AffineCombination.PolySequence.noPreemptiveGaps
+#print axioms AffineCombination.PolySequence.noPreemptiveUnderpricing_of_boundedMagnitude
+#print axioms AffineCombination.PolySequence.noPreemptiveOverpricing_of_boundedMagnitude
+#print axioms AffineCombination.PolySequence.noPreemptiveGaps_of_boundedMagnitude
 #print axioms AffineCombination.PolySequence.affpolymax
+#print axioms AffineCombination.BoundedCombinationSequence.affpolymax
 
 end LogicalInduction
