@@ -1,5 +1,5 @@
 /-
-# Self-Trust — `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` (statements; proofs → M4)
+# Self-Trust — `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` (statement audit)
 
 Paper §4.12 (`main.tex` 2045–2092). These theorems quantify over *quoted* sentences
 (`⌜𝔼_{f(n)}(X_n)⌝`, `⌜P_{f(n)}(φ_n)⌝`) — first-order reflection our propositional
@@ -26,10 +26,18 @@ the **non-vacuous way**:
 witness is M7's construction. Naming caution (roadmap): the deference corpus's "cee" is
 the paper's `thm:ceu`.
 
-Proofs are M4 work (they ride the affine/expectation lift hubs, per G1) — every theorem
-here is `sorry` with its blueprint TODO, ledgered `stmt`.
+**M4 audit result (2026-07-13):** the affine and fixed-LUV expectation lifts are now
+proved, but these four signatures still omit the bridge their proofs need. A fixed affine
+bundle can be carried to arbitrary later liquidation days by `thm:affpolymax`; it cannot
+identify the day-`n` expectation grid with the different day-`f n` grid. Moreover,
+`PolyThresholdCodeSeq` certifies only emission, not the logical coherence between those
+two bundles. The revelation hypotheses constrain quoted LUV values once `D (r n)` is
+known, but do not supply this cross-grid relation. The four `sorry`s therefore remain an
+explicit statement/interface blocker, not unfinished limit algebra. Imminent work is to
+choose and formalize a non-oracular quote/coherence interface, then restate and prove the
+four results.
 -/
-import LogicalInduction.Expectations
+import LogicalInduction.Properties.ExpectationAffine
 import LogicalInduction.Properties.Basic
 
 namespace LogicalInduction
@@ -77,7 +85,7 @@ theorem lic_expected_future_expectations (P : History) (DP : DeductiveProcess)
     (hrefl : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) →
       v.ValuesAt (Y n) ((X n).expect P (f n))) :
     AsympEq (fun n => (X n).expect P n) (fun n => (Y n).expect P n) := by
-  -- TODO(blueprint:thm:cee): proof in M4 (affine lift hubs per G1; D2's bundle engine).
+  -- TODO(blocked:thm:cee): add a non-oracular cross-grid quote/coherence interface.
   sorry
 
 /-- **No Expected Net Update** (`thm:ceu`): `Pₙ(φₙ) ≈ₙ 𝔼ₙ(⌜P_{f(n)}(φₙ)⌝)`.
@@ -92,7 +100,7 @@ theorem lic_no_expected_net_update (P : History) (DP : DeductiveProcess)
     (hrefl : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) →
       v.ValuesAt (Y n) (P (f n) (φ n))) :
     AsympEq (fun n => P n (φ n)) (fun n => (Y n).expect P n) := by
-  -- TODO(blueprint:thm:ceu): proof in M4 (via thm:cee + thm:ei, as in the paper).
+  -- TODO(blocked:thm:ceu): consume the repaired quote interface and thm:ei.
   sorry
 
 /-- **No Expected Net Update under Conditionals** (`thm:ccee`):
@@ -116,7 +124,7 @@ theorem lic_no_expected_net_update_conditional (P : History) (DP : DeductiveProc
     (hZ' : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) →
       v.ValuesAt (Z' n) ((X n).expect P (f n) * w (f n))) :
     AsympEq (fun n => (Z n).expect P n) (fun n => (Z' n).expect P n) := by
-  -- TODO(blueprint:thm:ccee): proof in M4 (affine machinery; generalizes thm:cee).
+  -- TODO(blocked:thm:ccee): add the weighted cross-grid quote/coherence interface.
   sorry
 
 /-- **Self-Trust** (`thm:st`):
@@ -142,7 +150,7 @@ theorem lic_self_trust (P : History) (DP : DeductiveProcess)
     (hA : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (r n)) →
       v.ValuesAt (A n) (v.payout (φ n) * ctsInd (δ n) (P (f n) (φ n)) (p n))) :
     AsympGE (fun n => (A n).expect P n) (fun n => (p n : ℝ) * (B n).expect P n) := by
-  -- TODO(blueprint:thm:st): proof in M4 (combines thm:ccee with the indicator family).
+  -- TODO(blocked:thm:st): consume repaired thm:ccee and the indicator lift.
   sorry
 
 end LogicalInduction

@@ -1,12 +1,25 @@
 # Logical Induction working plan — M4 lift hubs
 
-> **Current correction (2026-07-13):** the affine master is complete through
-> `PolySequence.affpolymax`. Finite-prefix gates, active-only liquidation, the operational
-> underpricing proof, the certified negation dual, and both final limit equalities are
-> kernel-checked. Do **not** return to the invalid polynomial-maturity-checker route.
-> **Next exact gate:** build reusable fixed/varying LUV threshold-bundle `PolySequence`
-> constructors, discharge the three expectation statements, then consume them in the four
-> Self-Trust statements.
+> **Current correction (2026-07-13, expectation lift complete):** the affine master is
+> complete through `PolySequence.affpolymax`, and the reusable semantic bridge
+> `affine_provind`/`affine_tendsto_zero` now discharges `thm:ei`, `thm:loe`, and
+> `thm:expprovind`. Their certified expectation/indicator/linearity bundles and all three
+> final theorems are axiom-clean. Full `lake build` is green (2,654 jobs); the exact Lean
+> `sorry` inventory is now the four Self-Trust declarations.
+>
+> **Blocking audit finding:** the current Self-Trust quote hypotheses do not relate the
+> day-`n` threshold bundle to the different day-`f n` bundle. `thm:affpolymax` carries a
+> *fixed* affine portfolio to an arbitrary later liquidation day; `PolyThresholdCodeSeq`
+> proves only that both grids can be emitted. Neither supplies the missing logical
+> cross-grid coherence, and arbitrary delayed `ValuesAt` facts cannot be transported
+> backward to day `n`.
+>
+> **Next 1–5:** (1) choose a non-oracular quoted-expectation/coherence interface; (2) state
+> its exact fixed-portfolio/cross-grid law and polynomial emission certificate; (3) prove a
+> reusable preemptive-to-`AsympEq` bridge for such quote families; (4) repair and discharge
+> `cee` → `ceu` → `ccee` → `st` in that order; (5) rerun the sorry/axiom/build and
+> non-vacuity audits, then checkpoint M4. Do **not** resume theorem tactics against the
+> current four signatures or return to the invalid polynomial-maturity-checker route.
 
 > Supersedes the 2026-07-07 token-emission plan (fully executed; its record lives in
 > `PROGRESS.md` under OPEN RISK 4 and the `def:ec` ledger rows, and in git history).

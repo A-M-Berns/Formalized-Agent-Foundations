@@ -29,9 +29,12 @@ File layout (promoted from a single file once it grew past ~1000 lines):
   / price monotonicity (`impTr`).
 * `Properties.AffinePreemptiveLearning` — `thm:affpolymax`'s exact liminf/limsup analytic
   hub, factored over the two operational no-preemptive-gap conditions supplied by ROI.
-* `Properties.SelfTrust` — `thm:cee`/`ceu`/`ccee`/`st` **statements** (proofs → M4):
+* `Properties.AffineProvability` / `Properties.ExpectationAffine` — the semantic affine
+  lower-bound theorem and the proved `thm:ei`/`loe`/`expprovind` LUV lift.
+* `Properties.SelfTrust` — `thm:cee`/`ceu`/`ccee`/`st` statement surface:
   reflection as revelation-schedule linkage hypotheses over relational quoted families
-  (the G2-approved non-vacuous modeling); `DeferralFunction` (`def:deferralfunc`).
+  (under audit after the M4 lift exposed a missing cross-grid quote interface);
+  `DeferralFunction` (`def:deferralfunc`).
 
 See `PROGRESS.md` for the per-node ledger (label → decl → status → kind → provenance).
 -/
@@ -43,5 +46,7 @@ import LogicalInduction.Properties.Hysteresis
 import LogicalInduction.Properties.NonDogmatism
 import LogicalInduction.Properties.ExpectationConvergence
 import LogicalInduction.Properties.Relationships
+import LogicalInduction.Properties.AffineProvability
+import LogicalInduction.Properties.ExpectationAffine
 import LogicalInduction.Properties.SelfTrust
 import LogicalInduction.Properties.AffinePreemptiveLearning

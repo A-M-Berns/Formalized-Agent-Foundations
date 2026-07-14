@@ -236,10 +236,11 @@ theorem PCWorld.ValuesAt.expectApprox_near {v : PCWorld} {X : LUV} {x : ℝ}
 
 #print axioms PCWorld.ValuesAt.expectApprox_near
 
-/-! ### The expectation family — statements (proofs → M4, per the G1 decision)
+/-! ### Relational expectation-family substrate
 
-`thm:ei`, `thm:loe`, `thm:expprovind` are stated here faithfully and left `sorry`: their
-proofs ride the affine lift hubs (`thm:affpolymax` etc.), which the roadmap places in M4.
+The definitions live here because expectation convergence consumes them. The M4 theorems
+`thm:ei`, `thm:loe`, and `thm:expprovind` are proved in
+`Properties/ExpectationAffine.lean`, after the affine machinery is available.
 **General principle (D3):** paper-side LUV *constructions* — indicators, affine
 combinations — enter our modeling as **relational predicates over arbitrary threshold
 families**, never as canonical `LUV` values. Constructing a representative (e.g. defining
@@ -286,45 +287,8 @@ theorem LUV.IsIndicator.valuesAt {Y : LUV} {φ : Sentence} {DP : DeductiveProces
 
 #print axioms LUV.IsIndicator.valuesAt
 
-/-- **Expectations of indicators** (`thm:ei`): `𝔼ₙ(1(φ)) ≈ₙ Pₙ(φ)` for any indicator
-family for `φ`. Note per-threshold `thm:lex` does *not* suffice — the threshold set grows
-with `n`, so the exploiter is a bundle trader (the D2/hysteresis shape). -/
-theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (φ : Sentence) (Y : LUV) (hcode : Y.PolyThresholdCodes)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
-    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hY : Y.IsIndicator φ DP) :
-    AsympEq (Y.expectSeq P) (fun n => P n φ) := by
-  -- TODO(blueprint:thm:ei): proof in M4 (bundle trader, D2's engine).
-  sorry
-
-/-- **Linearity of expectation** (`thm:loe`, fixed `X, Y, Z` form): if every plausible
-world values `Z` as the affine combination `a·X + b·Y`, the expectations combine the same
-way in the limit. (The `𝓔𝓒`-sequence form is the M4 target.) -/
-theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (a b : ℚ) (X Y Z : LUV)
-    (hcodeX : X.PolyThresholdCodes) (hcodeY : Y.PolyThresholdCodes)
-    (hcodeZ : Z.PolyThresholdCodes)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
-    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hvals : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) →
-      ∃ x y z, v.ValuesAt X x ∧ v.ValuesAt Y y ∧ v.ValuesAt Z z)
-    (hlin : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∀ x y z,
-      v.ValuesAt X x → v.ValuesAt Y y → v.ValuesAt Z z → z = a * x + b * y) :
-    AsympEq (fun n => (a : ℝ) * X.expect P n + (b : ℝ) * Y.expect P n)
-      (Z.expectSeq P) := by
-  -- TODO(blueprint:thm:loe): proof in M4 (affine machinery, thm:affpolymax).
-  sorry
-
-/-- **Expectation provability induction** (`thm:expprovind`, single-LUV form): if every
-plausible world values `X` at least `c`, the expectation is eventually at least `c − ε`. -/
-theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
-    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
-    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, c ≤ x ∧ v.ValuesAt X x) :
-    AsympGE (X.expectSeq P) (fun _ => c) := by
-  -- TODO(blueprint:thm:expprovind): proof in M4 (affine machinery).
-  sorry
+/-! The three expectation-family theorems are proved in
+`Properties/ExpectationAffine.lean`, after the affine machinery is available.  Keeping
+their relational LUV definitions here avoids an import cycle with expectation convergence. -/
 
 end LogicalInduction
