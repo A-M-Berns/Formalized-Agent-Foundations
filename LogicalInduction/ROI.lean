@@ -165,6 +165,10 @@ theorem EfficientlyEmulatable.of_polySeg {Ts : ℕ → Trader}
     rw [hspec'] at key
     simpa [Nat.unpair_pair] using Nat.Partrec.Code.evaln_mono hbc key
 
+/-- Drop the finite prefix of a trader family, replacing early members by the zero trader. -/
+def gateTraderFamily (start : ℕ) (Ts : ℕ → Trader) (i : ℕ) : Trader :=
+  if start ≤ i then Ts i else Trader.zero
+
 @[simp] theorem serializeTrades_append (xs ys : List (EF × Sentence)) :
     serializeTrades (xs ++ ys) = serializeTrades xs ++ serializeTrades ys := by
   induction xs with
@@ -211,6 +215,71 @@ theorem PolyTradeEmulatable.polySeg {Ts : ℕ → Trader} (h : PolyTradeEmulatab
   rw [h.trades_eq]
   rw [serializeTrades_map_singleton]
   simp only [Nat.pair_unpair]
+
+/-- Structured emulatability is closed under a fixed finite-prefix gate. -/
+noncomputable def PolyTradeEmulatable.gateBefore {Ts : ℕ → Trader}
+    (h : PolyTradeEmulatable Ts) (start : ℕ) :
+    PolyTradeEmulatable (gateTraderFamily start Ts) := by
+  let ccount := Classical.choose h.tradeCount_poly
+  have hcount := Classical.choose_spec h.tradeCount_poly
+  have htest := subc_polyFueled.comp
+    (PolyFueled.left.succ_comp.pair (PolyFueled.const start))
+  have hcountRaw := ifzSel_polyFueled.comp
+    (((PolyFueled.const 0).pair hcount).pair htest)
+  let count : ℕ → ℕ := fun z => if start ≤ z.unpair.1 then h.tradeCount z else 0
+  let countCode : Nat.Partrec.Code := ifzSel.comp
+    (((Nat.Partrec.Code.const 0).pair ccount).pair
+      (subc.comp ((Nat.Partrec.Code.succ.comp Nat.Partrec.Code.left).pair
+        (Nat.Partrec.Code.const start))))
+  have hcountGate : PolyFueled countCode count := by
+    apply PolyFueled.of_eq hcountRaw
+    intro z
+    simp only [Function.comp_apply, Nat.unpair_pair, ifzSelFn, count]
+    by_cases hs : start ≤ z.unpair.1
+    · rw [if_pos hs, if_neg (by omega)]
+    · rw [if_neg hs, if_pos (by omega)]
+  have hzeroSeg : PolySegStream (fun _ => []) :=
+    PolySegStream.ofTokenStream PolyTokenStream.nil
+  have hmemberTestRaw := subc_polyFueled.comp
+    (PolyFueled.left.succ_comp.pair (PolyFueled.const start))
+  have hmemberTest : PolyFueled
+      (subc.comp ((Nat.Partrec.Code.succ.comp Nat.Partrec.Code.left).pair
+        (Nat.Partrec.Code.const start)))
+      (fun z => z.unpair.1 + 1 - start) := by
+    apply PolyFueled.of_eq hmemberTestRaw
+    intro z
+    simp only [Function.comp_apply, Nat.unpair_pair]
+  have hstream : PolySegStream (fun z => serializeTrades
+      (((gateTraderFamily start Ts) z.unpair.1).strat z.unpair.2).trades) := by
+    refine PolySegStream.of_eq
+      (PolySegStream.ifZero hzeroSeg h.polySeg hmemberTest) ?_
+    intro z
+    simp only [gateTraderFamily, ifzSelFn]
+    by_cases hs : start ≤ z.unpair.1
+    · rw [if_pos hs, if_neg (by omega)]
+    · rw [if_neg hs, if_pos (by omega)]
+      simp [Trader.zero, serializeTrades]
+  have hzero : ∀ k n, n < k →
+      (((gateTraderFamily start Ts) k).strat n).trades = [] := by
+    intro k n hnk
+    by_cases hs : start ≤ k
+    · rw [gateTraderFamily, if_pos hs]
+      exact h.emulatable.zero_before hnk
+    · simp [gateTraderFamily, hs, Trader.zero]
+  refine
+    { emulatable := EfficientlyEmulatable.of_polySeg hzero hstream
+      tradeCount := count
+      coefficient := h.coefficient
+      sentence := h.sentence
+      tradeCount_poly := ⟨countCode, hcountGate⟩
+      coefficient_poly := h.coefficient_poly
+      sentence_poly := h.sentence_poly
+      trades_eq := ?_ }
+  intro k n
+  by_cases hs : start ≤ k
+  · rw [gateTraderFamily, if_pos hs, h.trades_eq]
+    simp [count, hs]
+  · simp [gateTraderFamily, hs, Trader.zero, count]
 
 namespace Strategy
 
@@ -1492,12 +1561,13 @@ theorem fractionalActiveAllocation_le_one (occupancy : ℕ → ℕ → ℝ)
       (fractionalAllocation_nonneg occupancy α hocc hα0 hα1 n) (hocc.le_one n n)
   exact le_trans (add_le_add (le_refl _) hlast) hbudget
 
-/-- If every fractional position eventually reaches zero, frequent positive launch sizes
-force unbounded cumulative allocation. No polynomial closing-day oracle is involved. -/
+/-- If every nonzero fractional position eventually reaches zero, frequent positive launch
+sizes force unbounded cumulative allocation. Zero-size positions need no closing day, and
+no polynomial closing-day oracle is involved. -/
 theorem fractionalAllocationPrefix_not_bddAbove_of_frequently
     (occupancy : ℕ → ℕ → ℝ) (α : ℕ → ℝ)
     (hocc : DecreasingOccupancy occupancy)
-    (hzero : ∀ i, ∃ N, ∀ n, N ≤ n → occupancy i n = 0)
+    (hzero : ∀ i, α i = 0 ∨ ∃ N, ∀ n, N ≤ n → occupancy i n = 0)
     (hα0 : ∀ i, 0 ≤ α i) (hα1 : ∀ i, α i ≤ 1)
     {δ : ℝ} (hδ : 0 < δ) (hδα : ∃ᶠ i in Filter.atTop, δ ≤ α i) :
     ¬ BddAbove (Set.range (fractionalAllocationPrefix occupancy α)) := by
@@ -1538,7 +1608,13 @@ theorem fractionalAllocationPrefix_not_bddAbove_of_frequently
     have hsplit := Finset.sum_range_add_sum_Ico
       (fractionalAllocation occupancy α) hKn
     linarith
-  choose close hclose using hzero
+  have hweightedZero : ∀ i, ∃ N, ∀ n, N ≤ n →
+      fractionalWeight occupancy α i * α i * occupancy i n = 0 := by
+    intro i
+    rcases hzero i with hα | ⟨N, hN⟩
+    · exact ⟨0, fun n _ => by simp [hα]⟩
+    · exact ⟨N, fun n hn => by rw [hN n hn, mul_zero]⟩
+  choose close hclose using hweightedZero
   let N := K + ∑ i ∈ Finset.range K, close i
   have hKN : K ≤ N := by simp [N]
   obtain ⟨J, hNJ, hαJ⟩ := (Filter.frequently_atTop.mp hδα) N
@@ -1611,7 +1687,8 @@ theorem fractionalBudgetedTrader_exploits
     (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
     (hoccc : ∀ i n ρ W, (occupancy i n).denoteWith ρ W = (occupancy i n).denote W)
     (hocc : DecreasingOccupancy (fun i n => (occupancy i n).denote V))
-    (hzero : ∀ i, ∃ N, ∀ n, N ≤ n → (occupancy i n).denote V = 0)
+    (hzero : ∀ i, (α i).denote V = 0 ∨
+      ∃ N, ∀ n, N ≤ n → (occupancy i n).denote V = 0)
     (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
     {δ : ℝ} (hδ : 0 < δ) (hfreq : ∃ᶠ i in Filter.atTop, δ ≤ (α i).denote V)
     (hTs : EfficientlyEmulatable Ts)
@@ -1695,7 +1772,8 @@ theorem noFractionalRepeatableReturn
     (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
     (hoccc : ∀ i n ρ W, (occupancy i n).denoteWith ρ W = (occupancy i n).denote W)
     (hocc : DecreasingOccupancy (fun i n => (occupancy i n).denote V))
-    (hzero : ∀ i, ∃ N, ∀ n, N ≤ n → (occupancy i n).denote V = 0)
+    (hzero : ∀ i, (α i).denote V = 0 ∨
+      ∃ N, ∀ n, N ≤ n → (occupancy i n).denote V = 0)
     (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
     (hTs : PolyTradeEmulatable Ts)
     (hworth : ∀ i n, i ≤ n → ∀ v : PCWorld, v.ConsistentWith (DP.D n) →

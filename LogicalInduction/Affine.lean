@@ -486,6 +486,42 @@ theorem neg_magnitude (A : AffineCombination) (V : History) :
         Pi.mul_apply, EF.denote_const, Rat.cast_neg, Rat.cast_one, neg_mul,
         one_mul, abs_neg, ih]
 
+/-- Polynomial affine families are closed under pointwise negation. -/
+def PolySequence.neg {As : ℕ → AffineCombination} (h : PolySequence As) :
+    PolySequence (fun n => (As n).neg) where
+  termCount := h.termCount
+  coefficient := fun z => EF.mul (EF.const (-1)) (h.coefficient z)
+  sentence := h.sentence
+  termCount_poly := h.termCount_poly
+  const_poly := PolySegStream.serialize_mul
+    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) h.const_poly
+  coefficient_poly := PolySegStream.serialize_mul
+    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1)))
+    h.coefficient_poly
+  sentence_poly := h.sentence_poly
+  terms_eq := by
+    intro n
+    rw [AffineCombination.neg, AffineCombination.scale, h.terms_eq]
+    simp [List.map_map, Function.comp_def]
+  const_rank := by
+    intro n
+    simp only [AffineCombination.neg, AffineCombination.scale, EF.rank]
+    exact Nat.max_le.mpr ⟨by simp, h.const_rank n⟩
+  coefficient_rank := by
+    intro n j hj
+    simp only [EF.rank]
+    exact Nat.max_le.mpr ⟨by simp, h.coefficient_rank n j hj⟩
+  const_closed := by
+    intro n ρ V
+    simp only [AffineCombination.neg, AffineCombination.scale, EF.denoteWith,
+      EF.denote_mul, EF.denote_const,
+      Pi.mul_apply]
+    rw [h.const_closed n ρ V]
+  coefficient_closed := by
+    intro z ρ V
+    simp only [EF.denoteWith, EF.denote_mul, EF.denote_const, Pi.mul_apply]
+    rw [h.coefficient_closed z ρ V]
+
 /-! ## Finite round trips
 
 The affine-preemptive-learning trader is assembled from finite buy-low/sell-high round

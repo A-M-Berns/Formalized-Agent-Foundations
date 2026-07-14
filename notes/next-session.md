@@ -1,14 +1,12 @@
 # Logical Induction working plan — M4 lift hubs
 
-> **Current correction (2026-07-13):** the continuous budget and affine uniform-emission
-> route are now closed through `PolySequence.gradualRisk_converges`. This includes the
-> paired-family raw-program bridge, decreasing/rank-legal/closed gradual occupancy, the
-> complete `PolyTradeEmulatable` gradual family, and the logical-inductor contradiction.
-> Do **not** return to the invalid polynomial-maturity-checker route.
-> **Next exact gate:** add a polynomial finite-prefix launch gate so an *eventual*
-> future-price condition can zero out early components that need not ever liquidate. Then
-> derive both fields of `AffineNoPreemptiveGaps`, apply `affpolymax_of_noPreemptiveGaps`,
-> and discharge the three expectation and four Self-Trust statements.
+> **Current correction (2026-07-13):** the affine master is complete through
+> `PolySequence.affpolymax`. Finite-prefix gates, active-only liquidation, the operational
+> underpricing proof, the certified negation dual, and both final limit equalities are
+> kernel-checked. Do **not** return to the invalid polynomial-maturity-checker route.
+> **Next exact gate:** build reusable fixed/varying LUV threshold-bundle `PolySequence`
+> constructors, discharge the three expectation statements, then consume them in the four
+> Self-Trust statements.
 
 > Supersedes the 2026-07-07 token-emission plan (fully executed; its record lives in
 > `PROGRESS.md` under OPEN RISK 4 and the `def:ec` ledger rows, and in git history).

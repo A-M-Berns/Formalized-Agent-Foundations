@@ -336,6 +336,53 @@ def gradualOccupancy (As : ℕ → AffineCombination) (high δ : ℚ)
 def gradualRisk (As : ℕ → AffineCombination) (low δ : ℚ) (i : ℕ) : EF :=
   (As i).riskFeature (gradualEntry As low δ i)
 
+def gateFeature (start : ℕ) (f : ℕ → EF) (i : ℕ) : EF :=
+  if start ≤ i then f i else EF.const 0
+
+def gateOccupancy (start : ℕ) (f : ℕ → ℕ → EF) (i n : ℕ) : EF :=
+  if start ≤ i then f i n else EF.const 0
+
+theorem PolySegStream.gateFeature {f : ℕ → EF}
+    (hf : PolySegStream (fun i => (f i).serialize)) (start : ℕ) :
+    PolySegStream (fun i => (gateFeature start f i).serialize) := by
+  have hzero : PolySegStream (fun _ => (EF.const 0).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
+  have htestRaw := subc_polyFueled.comp
+    (PolyFueled.id.succ_comp.pair (PolyFueled.const start))
+  have htest : PolyFueled
+      (subc.comp ((Nat.Partrec.Code.succ.comp
+        (Nat.Partrec.Code.left.pair Nat.Partrec.Code.right)).pair
+          (Nat.Partrec.Code.const start)))
+      (fun i => i + 1 - start) := by
+    apply PolyFueled.of_eq htestRaw
+    intro i
+    simp only [Nat.unpair_pair]
+  refine PolySegStream.of_eq (PolySegStream.ifZero hzero hf htest) ?_
+  intro i
+  by_cases hs : start ≤ i
+  · rw [if_neg (by omega), AffineCombination.gateFeature, if_pos hs]
+  · rw [if_pos (by omega), AffineCombination.gateFeature, if_neg hs]
+
+theorem PolySegStream.gateOccupancy {f : ℕ → ℕ → EF}
+    (hf : PolySegStream (fun z => (f z.unpair.2 z.unpair.1).serialize)) (start : ℕ) :
+    PolySegStream (fun z => (gateOccupancy start f z.unpair.2 z.unpair.1).serialize) := by
+  have hzero : PolySegStream (fun _ => (EF.const 0).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
+  have htestRaw := subc_polyFueled.comp
+    (PolyFueled.right.succ_comp.pair (PolyFueled.const start))
+  have htest : PolyFueled
+      (subc.comp ((Nat.Partrec.Code.succ.comp Nat.Partrec.Code.right).pair
+        (Nat.Partrec.Code.const start)))
+      (fun z => z.unpair.2 + 1 - start) := by
+    apply PolyFueled.of_eq htestRaw
+    intro z
+    simp only [Nat.unpair_pair]
+  refine PolySegStream.of_eq (PolySegStream.ifZero hzero hf htest) ?_
+  intro z
+  by_cases hs : start ≤ z.unpair.2
+  · rw [if_neg (by omega), AffineCombination.gateOccupancy, if_pos hs]
+  · rw [if_pos (by omega), AffineCombination.gateOccupancy, if_neg hs]
+
 theorem PolySequence.gradualRisk_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) (low δ : ℚ) :
     PolySegStream (fun i => (gradualRisk As low δ i).serialize) :=
@@ -902,48 +949,77 @@ eventually receives a full high-price signal and the protected opening spread pa
 rate on its affine share risk, logical induction forces the launch-risk sizes to vanish. -/
 theorem PolySequence.gradualRisk_converges {As : ℕ → AffineCombination}
     (h : PolySequence As) (V : History) (DP : DeductiveProcess)
-    [IsLogicalInductor V DP] (low high δ : ℚ) (ε : ℝ)
+    [IsLogicalInductor V DP] (start : ℕ) (low high δ : ℚ) (ε : ℝ)
     (hε : 0 < ε) (hδ : 0 < (δ : ℝ))
     (hmag : ∀ i, (As i).magnitude V ≤ 1)
     (hspread : ∀ i,
       (gradualEntry As low δ i).denote V * (ε * (As i).magnitude V) ≤
         (gradualEntry As low δ i).denote V *
           ((high : ℝ) - δ - (As i).price V i))
-    (hfuture : ∀ i, ∃ t, (high : ℝ) < (As i).price V (i + t + 1))
+    (hfuture : ∀ i, start ≤ i →
+      0 < (gradualEntry As low δ i).denote V →
+        ∃ t, (high : ℝ) < (As i).price V (i + t + 1))
     (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConvergesTo (fun i => (gradualRisk As low δ i).denote V) 0 := by
   let entry := gradualEntry As low δ
-  let occupancy := gradualOccupancy As high δ
-  let α := gradualRisk As low δ
-  let Ts := gradualFamily As low high δ h
+  let baseOccupancy := gradualOccupancy As high δ
+  let occupancy := gateOccupancy start baseOccupancy
+  let baseα := gradualRisk As low δ
+  let α := gateFeature start baseα
+  let baseTs := gradualFamily As low high δ h
+  let Ts := gateTraderFamily start baseTs
   have hentry0 : ∀ i, 0 ≤ (entry i).denote V := fun i =>
     (buyIndF_mem ((As i).priceFeature i) low δ V).1
   have hentry1 : ∀ i, (entry i).denote V ≤ 1 := fun i =>
     (buyIndF_mem ((As i).priceFeature i) low δ V).2
   have hα0 : ∀ i, 0 ≤ (α i).denote V := fun i => by
-    dsimp only [α]
-    rw [gradualRisk, riskFeature_denote]
-    exact mul_nonneg (hentry0 i) ((As i).magnitude_nonneg V)
+    by_cases hs : start ≤ i
+    · simp only [α, gateFeature, hs, if_true, baseα, gradualRisk, riskFeature_denote]
+      exact mul_nonneg (hentry0 i) ((As i).magnitude_nonneg V)
+    · simp [α, gateFeature, hs]
   have hα1 : ∀ i, (α i).denote V ≤ 1 := fun i => by
-    dsimp only [α]
-    rw [gradualRisk, riskFeature_denote]
-    calc
-      (entry i).denote V * (As i).magnitude V ≤ 1 * (As i).magnitude V :=
-        mul_le_mul_of_nonneg_right (hentry1 i) ((As i).magnitude_nonneg V)
-      _ ≤ 1 := by simpa using hmag i
-  have hzero : ∀ i, ∃ N, ∀ n, N ≤ n → (occupancy i n).denote V = 0 := by
-    apply gradualOccupancy_eventually_zero As V high δ
+    by_cases hs : start ≤ i
+    · simp only [α, gateFeature, hs, if_true, baseα, gradualRisk, riskFeature_denote]
+      calc
+        (entry i).denote V * (As i).magnitude V ≤ 1 * (As i).magnitude V :=
+          mul_le_mul_of_nonneg_right (hentry1 i) ((As i).magnitude_nonneg V)
+        _ ≤ 1 := by simpa using hmag i
+    · simp [α, gateFeature, hs]
+  have hzero : ∀ i, (α i).denote V = 0 ∨
+      ∃ N, ∀ n, N ≤ n → (occupancy i n).denote V = 0 := by
     intro i
-    obtain ⟨t, ht⟩ := hfuture i
-    refine ⟨t, ?_⟩
-    apply sellIndF_eq_one hδ
-    rwa [(As i).priceFeature_denote]
+    by_cases hs : start ≤ i
+    · by_cases he : (entry i).denote V = 0
+      · left
+        simp [α, gateFeature, hs, baseα, gradualRisk, riskFeature_denote, entry, he]
+      right
+      obtain ⟨t, ht⟩ := hfuture i hs
+        (lt_of_le_of_ne (hentry0 i) (Ne.symm he))
+      have hfull : (sellIndF ((As i).priceFeature (i + t + 1)) high δ).denote V = 1 := by
+        apply sellIndF_eq_one hδ
+        rwa [(As i).priceFeature_denote]
+      have hz := (As i).gradualRemaining_eq_zero_of_full_signal V i high δ t hfull
+      refine ⟨i + t + 1, fun n hn => ?_⟩
+      have hmono : ∀ s, t + 1 ≤ s →
+          ((As i).gradualRemaining i high δ s).denote V = 0 := by
+        intro s hts
+        induction s, hts using Nat.le_induction with
+        | base => exact hz
+        | succ s _ ih => rw [gradualRemaining_denote_succ, ih, zero_mul]
+      simpa [occupancy, gateOccupancy, hs, baseOccupancy, gradualOccupancy] using
+        hmono (n - i) (by omega)
+    · left
+      simp [α, gateFeature, hs]
   have hworth : ∀ i n, i ≤ n → ∀ v : PCWorld, v.ConsistentWith (DP.D n) →
       ε * (α i).denote V * (1 - (occupancy i n).denote V) -
           (α i).denote V * (occupancy i n).denote V ≤
         (Ts i).netWorth V v n := by
     intro i n hin v hv
+    by_cases hs : start ≤ i
+    swap
+    · simp [α, occupancy, Ts, gateFeature, gateOccupancy, gateTraderFamily, hs,
+        Trader.zero_netWorth]
     let t := n - i
     have hday : i + t = n := by dsimp only [t]; omega
     let rem := ((As i).gradualRemaining i high δ t).denote V
@@ -964,7 +1040,7 @@ theorem PolySequence.gradualRisk_converges {As : ℕ → AffineCombination}
           (1 - rem) * ((entry i).denote V * (ε * mag)) -
             (entry i).denote V * rem * mag := by
             simp only [α, gradualRisk, riskFeature_denote, occupancy, gradualOccupancy,
-              rem, mag, t]
+              gateFeature, gateOccupancy, hs, if_true, baseα, baseOccupancy, rem, mag, t]
             ring
       _ ≤ (1 - rem) * ((entry i).denote V *
             ((high : ℝ) - δ - (As i).price V i)) -
@@ -972,15 +1048,197 @@ theorem PolySequence.gradualRisk_converges {As : ℕ → AffineCombination}
       _ = (entry i).denote V *
           ((1 - rem) * ((high : ℝ) - δ - (As i).price V i) - rem * mag) := by ring
       _ ≤ (Ts i).netWorth V v n := by
-        simpa [Ts, gradualFamily, entry, rem, mag] using hpartial
-  exact ROIBudget.noFractionalRepeatableReturn Ts V DP ε hε occupancy α
-    (fun i => h.gradualRisk_rank_le low δ i)
-    (fun i n hin => h.gradualOccupancy_rank_le high δ i n hin)
-    (h.gradualRisk_polySeg low δ) (h.gradualOccupancy_polySeg high δ)
-    (fun i ρ W => h.gradualRisk_closed low δ i ρ W)
-    (fun i n ρ W => h.gradualOccupancy_closed high δ i n ρ W)
-    (gradualOccupancy_decreasing As V high δ) hzero hα0 hα1
-    (h.gradualFamilyPolyTrade low high δ) hworth hworld
+        simpa [Ts, gateTraderFamily, hs, baseTs, gradualFamily, entry, rem, mag] using hpartial
+  have hconv := ROIBudget.noFractionalRepeatableReturn Ts V DP ε hε occupancy α
+    (fun i => by
+      by_cases hs : start ≤ i
+      · simpa [α, gateFeature, hs, baseα] using h.gradualRisk_rank_le low δ i
+      · simp [α, gateFeature, hs, EF.rank])
+    (fun i n hin => by
+      by_cases hs : start ≤ i
+      · simpa [occupancy, gateOccupancy, hs, baseOccupancy] using
+          h.gradualOccupancy_rank_le high δ i n hin
+      · simp [occupancy, gateOccupancy, hs, EF.rank])
+    (PolySegStream.gateFeature (h.gradualRisk_polySeg low δ) start)
+    (PolySegStream.gateOccupancy (h.gradualOccupancy_polySeg high δ) start)
+    (fun i ρ W => by
+      by_cases hs : start ≤ i
+      · simpa [α, gateFeature, hs, baseα] using h.gradualRisk_closed low δ i ρ W
+      · simp [α, gateFeature, hs, EF.denoteWith])
+    (fun i n ρ W => by
+      by_cases hs : start ≤ i
+      · simpa [occupancy, gateOccupancy, hs, baseOccupancy] using
+          h.gradualOccupancy_closed high δ i n ρ W
+      · simp [occupancy, gateOccupancy, hs, EF.denoteWith])
+    (by
+      constructor
+      · intro i n
+        by_cases hs : start ≤ i
+        · simpa [occupancy, gateOccupancy, hs, baseOccupancy] using
+            (gradualOccupancy_decreasing As V high δ).nonneg i n
+        · simp [occupancy, gateOccupancy, hs]
+      · intro i n
+        by_cases hs : start ≤ i
+        · simpa [occupancy, gateOccupancy, hs, baseOccupancy] using
+            (gradualOccupancy_decreasing As V high δ).le_one i n
+        · simp [occupancy, gateOccupancy, hs]
+      · intro i n
+        by_cases hs : start ≤ i
+        · simpa [occupancy, gateOccupancy, hs, baseOccupancy] using
+            (gradualOccupancy_decreasing As V high δ).antitone i n
+        · simp [occupancy, gateOccupancy, hs])
+    hzero hα0 hα1
+    ((h.gradualFamilyPolyTrade low high δ).gateBefore start) hworth hworld
+  refine Filter.Tendsto.congr' ?_ hconv
+  filter_upwards [Filter.eventually_atTop.mpr ⟨start, fun _ hi => hi⟩] with i hi
+  simp [α, gateFeature, hi, baseα]
+
+/-- A polynomial affine family cannot remain frequently underpriced relative to an
+eventually separated future supremum.  Only components with a nonzero buy signal require
+liquidation; for those components, the current low price ensures the supremum witness is
+strictly in the future. -/
+theorem PolySequence.noPreemptiveUnderpricing {As : ℕ → AffineCombination}
+    (h : PolySequence As) (V : History) (DP : DeductiveProcess)
+    [IsLogicalInductor V DP]
+    (hmag : ∀ i, (As i).magnitude V ≤ 1)
+    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    NoPreemptiveUnderpricing
+      (fun n => (As n).price V n) (affineFutureHigh As V) := by
+  intro a b hab hfuture hcurrent
+  obtain ⟨low, halow, hlowb⟩ := exists_rat_btwn hab
+  obtain ⟨high, hlowhigh, hhighb⟩ := exists_rat_btwn hlowb
+  have hquarter : 0 < ((high : ℝ) - (low : ℝ)) / 4 := by linarith
+  obtain ⟨δ, hδ0, hδsmall⟩ := exists_rat_btwn hquarter
+  have hδ : 0 < (δ : ℝ) := hδ0
+  let ε : ℝ := (high : ℝ) - low - 2 * δ
+  have hε : 0 < ε := by dsimp only [ε]; linarith
+  obtain ⟨start, hstart⟩ := Filter.eventually_atTop.mp hfuture
+  have hspread : ∀ i,
+      (gradualEntry As low δ i).denote V * (ε * (As i).magnitude V) ≤
+        (gradualEntry As low δ i).denote V *
+          ((high : ℝ) - δ - (As i).price V i) := by
+    intro i
+    have hentry0 := (buyIndF_mem ((As i).priceFeature i) low δ V).1
+    by_cases hz : (gradualEntry As low δ i).denote V = 0
+    · simp [hz]
+    have hentryPos : 0 < (gradualEntry As low δ i).denote V :=
+      lt_of_le_of_ne hentry0 (Ne.symm hz)
+    have hopen := buyIndF_pos_imp hδ hentryPos
+    rw [(As i).priceFeature_denote] at hopen
+    have hscaled : ε * (As i).magnitude V ≤ ε :=
+      mul_le_of_le_one_right (le_of_lt hε) (hmag i)
+    apply mul_le_mul_of_nonneg_left _ hentry0
+    exact hscaled.trans (by dsimp only [ε]; linarith)
+  have hfutureActive : ∀ i, start ≤ i →
+      0 < (gradualEntry As low δ i).denote V →
+        ∃ t, (high : ℝ) < (As i).price V (i + t + 1) := by
+    intro i hi hentry
+    have hopen := buyIndF_pos_imp hδ hentry
+    rw [(As i).priceFeature_denote] at hopen
+    have hsup : (high : ℝ) < affineFutureHigh As V i :=
+      hhighb.trans (hstart i hi)
+    obtain ⟨x, ⟨j, rfl⟩, hj⟩ :=
+      exists_lt_of_lt_csSup (Set.range_nonempty
+        (fun j => (As i).price V (i + j))) hsup
+    cases j with
+    | zero => simp only [Nat.add_zero] at hj; linarith
+    | succ t => exact ⟨t, by simpa [Nat.add_assoc] using hj⟩
+  have hconv := h.gradualRisk_converges V DP start low high δ ε hε hδ
+    hmag hspread hfutureActive hP hworld
+  let r : ℝ := (high : ℝ) - low
+  have hr : 0 < r := by dsimp only [r]; linarith
+  have hrisk : ∃ᶠ i in Filter.atTop,
+      r ≤ (gradualRisk As low δ i).denote V := by
+    refine (hcurrent.and_eventually (Filter.eventually_ge_atTop start)).mono ?_
+    intro i hi
+    have hentryOne : (gradualEntry As low δ i).denote V = 1 := by
+      apply buyIndF_eq_one hδ
+      rw [(As i).priceFeature_denote]
+      exact hi.1.trans halow
+    obtain ⟨t, ht⟩ := hfutureActive i hi.2 (by rw [hentryOne]; norm_num)
+    have hpriceBound := (As i).abs_price_sub_price_le_magnitude V i (i + t + 1)
+      (hP i) (hP (i + t + 1))
+    rw [abs_of_nonpos (by linarith [hi.1, halow, hlowhigh, ht])] at hpriceBound
+    rw [gradualRisk, riskFeature_denote, hentryOne, one_mul]
+    exact le_trans (le_of_lt (by dsimp only [r]; linarith [hi.1, ht])) hpriceBound
+  have hevent : ∀ᶠ i in Filter.atTop,
+      (gradualRisk As low δ i).denote V < r := by
+    obtain ⟨N, hN⟩ := Metric.tendsto_atTop.mp hconv r hr
+    refine Filter.eventually_atTop.mpr ⟨N, fun i hi => ?_⟩
+    have hnear := hN i hi
+    have hrisk0 : 0 ≤ (gradualRisk As low δ i).denote V := by
+      rw [gradualRisk, riskFeature_denote]
+      exact mul_nonneg
+        (buyIndF_mem ((As i).priceFeature i) low δ V).1
+        ((As i).magnitude_nonneg V)
+    rw [Real.dist_eq, sub_zero, abs_of_nonneg hrisk0] at hnear
+    exact hnear
+  obtain ⟨i, hirisk, hir⟩ := (hrisk.and_eventually hevent).exists
+  exact (not_lt_of_ge hirisk) hir
+
+theorem affineFutureHigh_neg (As : ℕ → AffineCombination) (V : History) (n : ℕ) :
+    affineFutureHigh (fun i => (As i).neg) V n = -affineFutureLow As V n := by
+  simp only [affineFutureHigh, affineFutureLow, neg_price]
+  rw [show Set.range (fun j => -(As n).price V (n + j)) =
+      -(Set.range (fun j => (As n).price V (n + j))) by
+    ext x
+    constructor
+    · rintro ⟨j, hj⟩
+      exact ⟨j, by linarith⟩
+    · rintro ⟨j, hj⟩
+      exact ⟨j, by linarith⟩]
+  exact Real.sSup_neg _
+
+/-- The overpricing half is the underpricing construction applied to the uniformly
+emittable pointwise negation of the affine family. -/
+theorem PolySequence.noPreemptiveOverpricing {As : ℕ → AffineCombination}
+    (h : PolySequence As) (V : History) (DP : DeductiveProcess)
+    [IsLogicalInductor V DP]
+    (hmag : ∀ i, (As i).magnitude V ≤ 1)
+    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    NoPreemptiveOverpricing
+      (fun n => (As n).price V n) (affineFutureLow As V) := by
+  intro a b hab hfuture hcurrent
+  have hneg := h.neg.noPreemptiveUnderpricing V DP
+    (fun i => by simpa only [neg_magnitude] using hmag i) hP hworld
+  apply hneg (-b) (-a) (by linarith)
+  · filter_upwards [hfuture] with n hn
+    rw [affineFutureHigh_neg]
+    linarith
+  · exact hcurrent.mono (fun n hn => by
+      change (As n).neg.price V n < -b
+      rw [neg_price]
+      linarith)
+
+/-- Operational affine preemptive learning, obtained from the two gradual-return
+constructions. -/
+theorem PolySequence.noPreemptiveGaps {As : ℕ → AffineCombination}
+    (h : PolySequence As) (V : History) (DP : DeductiveProcess)
+    [IsLogicalInductor V DP]
+    (hmag : ∀ i, (As i).magnitude V ≤ 1)
+    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    AffineNoPreemptiveGaps As V :=
+  ⟨h.noPreemptiveUnderpricing V DP hmag hP hworld,
+    h.noPreemptiveOverpricing V DP hmag hP hworld⟩
+
+/-- Paper-facing affine preemptive-learning capstone for normalized polynomial affine
+families with bounded cross-time prices. -/
+theorem PolySequence.affpolymax {As : ℕ → AffineCombination}
+    (h : PolySequence As) (V : History) (DP : DeductiveProcess)
+    [IsLogicalInductor V DP]
+    (hbounded : BoundedAffinePrices As V)
+    (hmag : ∀ i, (As i).magnitude V ≤ 1)
+    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    liminf (fun n => (As n).price V n) atTop =
+        liminf (affineFutureHigh As V) atTop ∧
+      limsup (fun n => (As n).price V n) atTop =
+        limsup (affineFutureLow As V) atTop :=
+  affpolymax_of_noPreemptiveGaps As V hbounded
+    (h.noPreemptiveGaps V DP hmag hP hworld)
 
 /-- Once fully liquidated, the component's net worth is world-independent and bounded by
 the entry weight times the guaranteed price spread. -/
@@ -1241,5 +1499,9 @@ end AffineCombination
 #print axioms AffineCombination.gradualTrader_magnitude_of_full_signal
 #print axioms AffineCombination.gradualTrader_hasROI_of_full_signal
 #print axioms AffineCombination.gradualTrader_hasROI_of_price_gap
+#print axioms AffineCombination.PolySequence.noPreemptiveUnderpricing
+#print axioms AffineCombination.PolySequence.noPreemptiveOverpricing
+#print axioms AffineCombination.PolySequence.noPreemptiveGaps
+#print axioms AffineCombination.PolySequence.affpolymax
 
 end LogicalInduction
