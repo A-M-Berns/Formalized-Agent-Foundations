@@ -274,6 +274,197 @@ theorem precEvalState_final (cf cg : Nat.Partrec.Code)
         have hnle : ¬Nat.pair a total ≤ k := by omega
         simp [Nat.Partrec.Code.evaln, hnle]
 
+/-! ## Universal bounded simulator — the `M7-HIST-EVALN` linchpin
+
+Target: for every fixed `simulated : Code`, the total normalized bounded interpreter
+`codeEvalnNat simulated : ℕ → ℕ` is computable in the project's own polynomial-fuel model
+(`PolyFueled`). This is the reusable universal-simulation theorem flagged in the M5 notes
+as the piece neither Mathlib (`Code.primrec_evaln` is only primitive recursive, not
+poly-fuel) nor this repo previously supplied. The proof is a structural induction on
+`simulated`. Every `evaln` clause self-guards its input (`guard (n ≤ k)`), so a failed
+guard already forces the sub-code interpreter to `none`; that makes the `pair`/`comp`
+cases pure combinations of the sub-code compilers, while only `prec`/`rfind'` require
+genuine fuel-decrement iteration. -/
+
+/-- The interpreter returns `none` once the input exceeds the clock. -/
+theorem evaln_eq_none_of_gt {k : ℕ} (c : Nat.Partrec.Code) {n : ℕ} (h : k ≤ n) :
+    Nat.Partrec.Code.evaln k c n = none := by
+  rcases hx : Nat.Partrec.Code.evaln k c n with _ | x
+  · rfl
+  · exact absurd (Nat.Partrec.Code.evaln_bound hx) (by omega)
+
+open Nat.Partrec.Code in
+/-- Base-code interpreters `zero/succ/left/right` share the shape
+`if z.1 ≤ z.2 then 0 else rawValue + 1`: the guard fails exactly when `z.1 ≤ z.2`
+(`z.2 ≥ fuel`, incl. `fuel = 0`). Compiles via one `ifzSel` over `subc` (`z.1 - z.2`). -/
+theorem polyFueled_baseGuard {bv : ℕ → ℕ} {c : Nat.Partrec.Code} (h : PolyFueled c bv) :
+    ∃ prog, PolyFueled prog (fun z => if z.unpair.1 ≤ z.unpair.2 then 0 else bv z + 1) := by
+  refine ⟨_, (ifzSel_polyFueled.comp
+    (((PolyFueled.const 0).pair h.succ_comp).pair subc_polyFueled)).of_eq (fun z => ?_)⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  by_cases hle : z.unpair.1 ≤ z.unpair.2
+  · rw [if_pos hle, if_pos (Nat.sub_eq_zero_of_le hle)]
+  · rw [if_neg hle, if_neg (by omega : ¬ z.unpair.1 - z.unpair.2 = 0)]
+
+theorem codeEvalnNat_zero_eq (z : ℕ) :
+    codeEvalnNat .zero z = if z.unpair.1 ≤ z.unpair.2 then 0 else 0 + 1 := by
+  rw [codeEvalnNat]
+  cases hk : z.unpair.1 with
+  | zero => simp [Nat.Partrec.Code.evaln]
+  | succ k =>
+    by_cases hle : z.unpair.2 ≤ k
+    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : ¬ k + 1 ≤ z.unpair.2)]
+    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : k + 1 ≤ z.unpair.2)]
+
+theorem codeEvalnNat_succ_eq (z : ℕ) :
+    codeEvalnNat .succ z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2 + 1 + 1 := by
+  rw [codeEvalnNat]
+  cases hk : z.unpair.1 with
+  | zero => simp [Nat.Partrec.Code.evaln]
+  | succ k =>
+    by_cases hle : z.unpair.2 ≤ k
+    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : ¬ k + 1 ≤ z.unpair.2)]
+    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : k + 1 ≤ z.unpair.2)]
+
+theorem codeEvalnNat_left_eq (z : ℕ) :
+    codeEvalnNat .left z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2.unpair.1 + 1 := by
+  rw [codeEvalnNat]
+  cases hk : z.unpair.1 with
+  | zero => simp [Nat.Partrec.Code.evaln]
+  | succ k =>
+    by_cases hle : z.unpair.2 ≤ k
+    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : ¬ k + 1 ≤ z.unpair.2)]
+    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : k + 1 ≤ z.unpair.2)]
+
+theorem codeEvalnNat_right_eq (z : ℕ) :
+    codeEvalnNat .right z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2.unpair.2 + 1 := by
+  rw [codeEvalnNat]
+  cases hk : z.unpair.1 with
+  | zero => simp [Nat.Partrec.Code.evaln]
+  | succ k =>
+    by_cases hle : z.unpair.2 ≤ k
+    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : ¬ k + 1 ≤ z.unpair.2)]
+    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : k + 1 ≤ z.unpair.2)]
+
+/-- `pair`: with both sub-code interpreters at the *same* fuel/input `z`, the whole clause is
+`none` iff either sub-result is (the guard-fail case is subsumed, since a failed guard sends
+each sub-interpreter to `0`). -/
+theorem codeEvalnNat_pair_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
+    codeEvalnNat (.pair cf cg) z =
+      if codeEvalnNat cf z = 0 ∨ codeEvalnNat cg z = 0 then 0
+      else Nat.pair (codeEvalnNat cf z - 1) (codeEvalnNat cg z - 1) + 1 := by
+  simp only [codeEvalnNat]
+  cases hk : z.unpair.1 with
+  | zero => simp [Nat.Partrec.Code.evaln]
+  | succ k =>
+    by_cases hle : z.unpair.2 ≤ k
+    · cases hf : Nat.Partrec.Code.evaln (k + 1) cf z.unpair.2 with
+      | none => simp [Nat.Partrec.Code.evaln, hle, Option.guard, hf, Seq.seq]
+      | some vf =>
+        cases hg : Nat.Partrec.Code.evaln (k + 1) cg z.unpair.2 with
+        | none => simp [Nat.Partrec.Code.evaln, hle, Option.guard, hf, hg, Seq.seq]
+        | some vg =>
+          simp [Nat.Partrec.Code.evaln, hle, Option.guard, hf, hg, Seq.seq]
+    · have hf : Nat.Partrec.Code.evaln (k + 1) cf z.unpair.2 = none :=
+        evaln_eq_none_of_gt cf (by omega)
+      simp [Nat.Partrec.Code.evaln, hle, Option.guard, hf, Seq.seq]
+
+/-- `comp`: the outer interpreter feeds `cf` the *output* of `cg`, at the same fuel `z.1`. -/
+theorem codeEvalnNat_comp_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
+    codeEvalnNat (.comp cf cg) z =
+      if codeEvalnNat cg z = 0 then 0
+      else codeEvalnNat cf (Nat.pair z.unpair.1 (codeEvalnNat cg z - 1)) := by
+  simp only [codeEvalnNat, Nat.unpair_pair]
+  cases hk : z.unpair.1 with
+  | zero => simp [Nat.Partrec.Code.evaln]
+  | succ k =>
+    by_cases hle : z.unpair.2 ≤ k
+    · cases hg : Nat.Partrec.Code.evaln (k + 1) cg z.unpair.2 with
+      | none => simp [Nat.Partrec.Code.evaln, hle, Option.guard, hg]
+      | some vg =>
+        simp [Nat.Partrec.Code.evaln, hle, Option.guard, hg, Nat.add_sub_cancel]
+    · have hg : Nat.Partrec.Code.evaln (k + 1) cg z.unpair.2 = none :=
+        evaln_eq_none_of_gt cg (by omega)
+      simp [Nat.Partrec.Code.evaln, hle, Option.guard, hg]
+
+theorem codeEvalnNat_pair_polyFueled {cf cg : Nat.Partrec.Code}
+    (hf : ∃ prog, PolyFueled prog (codeEvalnNat cf))
+    (hg : ∃ prog, PolyFueled prog (codeEvalnNat cg)) :
+    ∃ prog, PolyFueled prog (codeEvalnNat (.pair cf cg)) := by
+  obtain ⟨_, hf⟩ := hf
+  obtain ⟨_, hg⟩ := hg
+  -- pairVal z = ⟨cf z - 1, cg z - 1⟩ + 1
+  have pairVal := ((predc_polyFueled.comp hf).pair (predc_polyFueled.comp hg)).succ_comp
+  -- inner z = if cg z = 0 then 0 else pairVal z
+  have inner := ifzSel_polyFueled.comp (((PolyFueled.const 0).pair pairVal).pair hg)
+  -- outer z = if cf z = 0 then 0 else inner z
+  have outer := ifzSel_polyFueled.comp (((PolyFueled.const 0).pair inner).pair hf)
+  refine ⟨_, outer.of_eq (fun z => ?_)⟩
+  rw [codeEvalnNat_pair_eq]
+  simp only [Nat.unpair_pair, ifzSelFn]
+  by_cases h0f : codeEvalnNat cf z = 0
+  · rw [if_pos h0f, if_pos (Or.inl h0f)]
+  · rw [if_neg h0f]
+    by_cases h0g : codeEvalnNat cg z = 0
+    · rw [if_pos h0g, if_pos (Or.inr h0g)]
+    · rw [if_neg h0g, if_neg (by tauto : ¬(codeEvalnNat cf z = 0 ∨ codeEvalnNat cg z = 0))]
+      simp only [Nat.pred_eq_sub_one]
+
+theorem codeEvalnNat_comp_polyFueled {cf cg : Nat.Partrec.Code}
+    (hf : ∃ prog, PolyFueled prog (codeEvalnNat cf))
+    (hg : ∃ prog, PolyFueled prog (codeEvalnNat cg)) :
+    ∃ prog, PolyFueled prog (codeEvalnNat (.comp cf cg)) := by
+  obtain ⟨_, hf⟩ := hf
+  obtain ⟨_, hg⟩ := hg
+  -- cfCall z = cf ⟨z.1, cg z - 1⟩
+  have cfCall := hf.comp (PolyFueled.left.pair (predc_polyFueled.comp hg))
+  have outer := ifzSel_polyFueled.comp (((PolyFueled.const 0).pair cfCall).pair hg)
+  refine ⟨_, outer.of_eq (fun z => ?_)⟩
+  rw [codeEvalnNat_comp_eq]
+  simp only [Nat.unpair_pair, ifzSelFn]
+  by_cases h0g : codeEvalnNat cg z = 0
+  · rw [if_pos h0g, if_pos h0g]
+  · rw [if_neg h0g, if_neg h0g]
+    simp only [Nat.pred_eq_sub_one]
+
+/-- **Universal bounded simulator (`M7-HIST-EVALN`).** For every fixed `simulated`, the total
+normalized bounded interpreter is computable in the project polynomial-fuel model. -/
+theorem codeEvalnNat_polyFueled :
+    ∀ c : Nat.Partrec.Code, ∃ prog, PolyFueled prog (codeEvalnNat c)
+  | .zero =>
+    (polyFueled_baseGuard (PolyFueled.const 0)).imp fun _ h =>
+      h.of_eq fun z => (codeEvalnNat_zero_eq z).symm
+  | .succ =>
+    (polyFueled_baseGuard PolyFueled.right.succ_comp).imp fun _ h =>
+      h.of_eq fun z => (codeEvalnNat_succ_eq z).symm
+  | .left =>
+    (polyFueled_baseGuard (PolyFueled.left.comp PolyFueled.right)).imp fun _ h =>
+      h.of_eq fun z => (codeEvalnNat_left_eq z).symm
+  | .right =>
+    (polyFueled_baseGuard (PolyFueled.right.comp PolyFueled.right)).imp fun _ h =>
+      h.of_eq fun z => (codeEvalnNat_right_eq z).symm
+  | .pair cf cg =>
+    codeEvalnNat_pair_polyFueled (codeEvalnNat_polyFueled cf) (codeEvalnNat_polyFueled cg)
+  | .comp cf cg =>
+    codeEvalnNat_comp_polyFueled (codeEvalnNat_polyFueled cf) (codeEvalnNat_polyFueled cg)
+  | .prec cf cg =>
+    -- TODO(blueprint:M7-HIST-EVALN): the fuel-decrement recursion. `evaln (k+1) (prec cf cg)`
+    -- recurses on the depth `i = z.2.2` at fuel `k`, so this is a `PolyFueled.prec` iteration
+    -- over `i` whose step calls the `cg` compiler at the residual fuel `(k+1) - i + j`
+    -- (the `precEvalState` bookkeeping above), with state bounded by `codeEvalBound`.
+    sorry
+  | .rfind' cf =>
+    -- TODO(blueprint:M7-HIST-EVALN): bounded minimization. `evaln (k+1) (rfind' cf)` searches
+    -- `m, m+1, …` at decreasing fuel until `cf` returns 0 or fuel is exhausted — a
+    -- `PolyFueled.prec` bounded search of length ≤ fuel calling the `cf` compiler per step.
+    sorry
+
+/-- The `M7-HIST-EVALN` hub is inhabited for every simulated code (modulo the two
+`prec`/`rfind'` iteration cases marked above). -/
+noncomputable def boundedEvalnCompiler (simulated : Nat.Partrec.Code) :
+    BoundedEvalnCompiler simulated :=
+  ⟨_, (codeEvalnNat_polyFueled simulated).choose_spec⟩
+
 /-! ## Efficient repeated enumeration -/
 
 /-- Triangular repetition of an already polynomial sentence stream.  The second pairing
