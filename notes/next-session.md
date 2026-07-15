@@ -1,5 +1,64 @@
 # Logical Induction working plan — M7 active
 
+## ▶ START HERE — closing out M7 (handoff 2026-07-15)
+
+Baseline: `LogicalInduction.Construction` builds **green, zero `sorry`s (2437 jobs)** at
+commit `fe58b16`. All M7 *semantics* are proved and axiom-clean; `exists_logical_inductor`
+is reduced to one obligation — instantiate `LIABoundedEvaluatorCompiler`, i.e. prove
+`Computable₂ (liaEncodedQuoteNatAtFuel process)`. Everything below is the primitive-recursive
+compiler assembly in `Construction/LIACompiler.lean` toward that, then the two capstones.
+
+**GOTCHA (read first, will recur every step):** `Primrec` proofs over the deep product
+input types here blow up `whnf` on `Nat.sqrt` (via `Nat.unpair` in the `Primcodable`
+instance), *not* on the domain math. When an `exact`/`rfl` spins, do **not** bump
+heartbeats or touch the domain leaves — wrap the theorem in `section … end` and
+`attribute [local irreducible] Nat.sqrt <domain-leaf-defs>`. Diagnose with
+`set_option maxHeartbeats 40000 in` + `set_option diagnostics true in` and look for
+`Nat.sqrt`/`Nat.rec`/`Bool.decEq` topping the unfold list. Use an **interactive** VS Code
+session for these, not 8-min batch builds. See the worked fix at
+`firmBudgetBreachAtDayData_prim` (LIACompiler.lean ~line 5040).
+
+**Already proved (reuse — don't rebuild):** `rationalHistory_prim` (1790),
+`processStagePrefixAtFuel_prim` (1987), `firmRawTraderTrades_prim` (2679),
+`tradingFirmWeight_prim` (2748), `marketMakerSearchUpToTradeList_prim` (4107), the whole
+Budgeter-gate stack through `priorBudgetBreachData_prim` (5135). The semantic `_eq` bridges
+(`liaPrefixFromTradeListsAtFuel_eq`, `…StageListsAtFuel_eq`, `tradingFirm…_eq`,
+`marketMakerSearchUpToTradeList_eq`, `liaPrefixAtFuel_sound`, `liaEncodedQuoteAtFuel_sound`,
+`exists_liaEncodedQuoteAtFuel`) are all in `LIAComputation.lean` and already proved.
+
+**Build order (each is a `Primrec`/`Computable` lemma; append to LIACompiler.lean):**
+1. `budgeterTradesFromStageTradeLists_prim` — budgeted trade-list emission. Uses
+   `priorBudgetBreachData_prim` ✓ (the gate) + the erased budgeted-trade ops. Def in
+   `Budgeter.lean`.
+2. `tradingFirmComponentTradesFromStageTradeLists_prim` — def at `TradingFirm.lean:511`;
+   `flatMap` over `tradingFirmCutoffTradeLists n` of
+   `scaleConstTradeList (tradingFirmWeight …) (budgeterTrades…)`, appended with the
+   final `scaleConstTradeList … (firmRawTrader j).strat n`. Uses (1) + `tradingFirmWeight_prim`
+   ✓ + `firmRawTraderTrades_prim` ✓ + `scaleConstTradeList` primrec.
+3. `tradingFirmTradesFromStageTradeLists_prim` — def at `TradingFirm.lean:521`; `flatMap`
+   over `range (n+1)` of (2).
+4. `liaPrefixFromTradeListsAtFuel_prim`/`_computable` — def at `LIAComputation.lean:140`;
+   `Option`-bind recursion on `n` using `marketMakerSearchUpToTradeList_prim` ✓ + (3) +
+   `rationalHistory_prim` ✓. (Structural `Nat.rec`/`Option.bind` computability.)
+5. `liaPrefixAtFuel` computable — compose `processStagePrefixAtFuel_prim` ✓ +
+   `decodedStageTable` + (4) via the `…_eq` bridges (`liaPrefixFromTradeListsAtFuel_eq` →
+   `…StageListsAtFuel_eq` → `…StagesAtFuel`).
+6. `liaEncodedQuoteAtFuel` computable → `liaEncodedQuoteNatAtFuel` `Computable₂`
+   (index `[day]` + `Encodable.decode` Sentence + `state.quote` + `encode`).
+   **This is the `LIABoundedEvaluatorCompiler.computable` field.**
+7. `LIABoundedEvaluatorCompiler process` instance (from 6). Then `LIA_is_logical_inductor`
+   (`thm:lia`) = `lia_isLogicalInductor_of_compiler` + the instance built from a
+   `DeductiveProcessComputation`.
+8. `exists_logical_inductor` (`thm:li`): `∀ DP, ComputableDeductiveProcess DP →
+   ∃ P, IsLogicalInductor P DP`, via `ComputableDeductiveProcess.nonemptyComputation`
+   (Criterion.lean) → the instance → `lia_isLogicalInductor_of_compiler`.
+
+**After the compiler lands, remaining M7 gates (see PROGRESS.md contract items 4–6):**
+the 15 boundary witnesses (`M7-HIST-EVALN`, `M7-COMP-SYNTAX`, …), fully-instantiated M3–M5
+property corollaries, the `def/lem:budgeter`/`def:tradingfirm`/`lem:tfdom`/`def/alg:lia`/
+`thm:lia`/`thm:li` line-by-line paper comparison, the full-build/axiom/diff gates, Anson's
+statement read-through, and the separate fresh-context M7 audit + recheck.
+
 > **Build-state correction (2026-07-15):** the previous session (Codex) was cut off
 > mid-proof and left `Construction/LIACompiler.lean` **not elaborating** — a `whnf`
 > heartbeat timeout in `firmBudgetBreachAtDayData_prim` (the last Budgeter-gate primrec
