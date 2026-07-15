@@ -488,6 +488,117 @@ theorem codeEvalnNat_prec_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
   simp only [Nat.pair_unpair] at hfin
   rw [← hfin, optNat_if]
 
+section PrecCompile
+attribute [local irreducible] Nat.sqrt
+
+/-- Compile the `prec` case: `precNat` is a primitive recursion whose base/step call the
+sub-code compilers, so `PolyFueled.prec` applies; a poly bound on the state comes from
+`codeEvalnNat_le` (each value is `0`, a `cf`-call, or a `cg`-call). -/
+theorem codeEvalnNat_prec_polyFueled {cf cg : Nat.Partrec.Code}
+    (hf : ∃ prog, PolyFueled prog (codeEvalnNat cf))
+    (hg : ∃ prog, PolyFueled prog (codeEvalnNat cg)) :
+    ∃ prog, PolyFueled prog (codeEvalnNat (.prec cf cg)) := by
+  obtain ⟨_, hf⟩ := hf
+  obtain ⟨_, hg⟩ := hg
+  obtain ⟨_, hadd⟩ := addc_polyFueled
+  -- Base program `f A = precNat cf cg A 0`.
+  have LclockP := PolyFueled.left
+  have LaP := PolyFueled.left.comp PolyFueled.right
+  have LiP := PolyFueled.right.comp PolyFueled.right
+  have LcmiP := subc_polyFueled.comp (LclockP.pair LiP)
+  have Lpa0P := LaP.pair (PolyFueled.const 0)
+  have LtestP := subc_polyFueled.comp (LcmiP.pair Lpa0P)
+  have LcfCallP := hf.comp (LcmiP.pair LaP)
+  have fPF : PolyFueled _ (fun A => precNat cf cg A 0) :=
+    (ifzSel_polyFueled.comp (((PolyFueled.const 0).pair LcfCallP).pair LtestP)).of_eq
+      (fun A => by
+        simp only [Nat.unpair_pair, ifzSelFn, precNat]
+        by_cases h : A.unpair.2.unpair.1.pair 0 < A.unpair.1 - A.unpair.2.unpair.2
+        · rw [if_pos h, if_neg (by omega : ¬ A.unpair.1 - A.unpair.2.unpair.2 -
+            A.unpair.2.unpair.1.pair 0 = 0)]
+        · rw [if_neg h, if_pos (by omega : A.unpair.1 - A.unpair.2.unpair.2 -
+            A.unpair.2.unpair.1.pair 0 = 0)])
+  -- Step program `g` (spec via projections of `X = ⟨A, ⟨j, prior⟩⟩`).
+  have SAP := PolyFueled.left
+  have SjP := PolyFueled.left.comp PolyFueled.right
+  have SpriorP := PolyFueled.right.comp PolyFueled.right
+  have SclockP := PolyFueled.left.comp SAP
+  have SaP := (PolyFueled.left.comp PolyFueled.right).comp SAP
+  have SiP := (PolyFueled.right.comp PolyFueled.right).comp SAP
+  have ScmiP := subc_polyFueled.comp (SclockP.pair SiP)
+  have SfuelP := (hadd.comp (ScmiP.pair SjP)).succ_comp
+  have Spaj1P := SaP.pair SjP.succ_comp
+  have Stest1P := subc_polyFueled.comp (SfuelP.pair Spaj1P)
+  have Spm1P := predc_polyFueled.comp SpriorP
+  have ScgInP := SfuelP.pair (SaP.pair (SjP.pair Spm1P))
+  have ScgCallP := hg.comp ScgInP
+  have SinnerP := ifzSel_polyFueled.comp (((PolyFueled.const 0).pair ScgCallP).pair SpriorP)
+  set gspec : ℕ → ℕ := fun X =>
+    if X.unpair.1.unpair.2.unpair.1.pair (X.unpair.2.unpair.1 + 1) <
+        X.unpair.1.unpair.1 - X.unpair.1.unpair.2.unpair.2 + X.unpair.2.unpair.1 + 1 ∧
+        X.unpair.2.unpair.2 ≠ 0 then
+      codeEvalnNat cg (Nat.pair
+        (X.unpair.1.unpair.1 - X.unpair.1.unpair.2.unpair.2 + X.unpair.2.unpair.1 + 1)
+        (Nat.pair X.unpair.1.unpair.2.unpair.1
+          (Nat.pair X.unpair.2.unpair.1 (X.unpair.2.unpair.2 - 1))))
+    else 0 with hgspec
+  have gPF : PolyFueled _ gspec :=
+    (ifzSel_polyFueled.comp (((PolyFueled.const 0).pair SinnerP).pair Stest1P)).of_eq
+      (fun X => by
+        simp only [Nat.unpair_pair, ifzSelFn, hgspec, Nat.pred_eq_sub_one]
+        by_cases hlt : X.unpair.1.unpair.2.unpair.1.pair (X.unpair.2.unpair.1 + 1) <
+            X.unpair.1.unpair.1 - X.unpair.1.unpair.2.unpair.2 + X.unpair.2.unpair.1 + 1
+        · rw [if_neg (show X.unpair.1.unpair.1 - X.unpair.1.unpair.2.unpair.2 +
+              X.unpair.2.unpair.1 + 1 -
+              X.unpair.1.unpair.2.unpair.1.pair (X.unpair.2.unpair.1 + 1) ≠ 0 by omega)]
+          by_cases h2 : X.unpair.2.unpair.2 = 0
+          · rw [if_pos h2, if_neg (fun h => h.2 h2)]
+          · rw [if_neg h2, if_pos ⟨hlt, h2⟩]
+        · rw [if_pos (show X.unpair.1.unpair.1 - X.unpair.1.unpair.2.unpair.2 +
+              X.unpair.2.unpair.1 + 1 -
+              X.unpair.1.unpair.2.unpair.1.pair (X.unpair.2.unpair.1 + 1) = 0 by omega),
+            if_neg (fun h => hlt h.1)])
+  -- State bound: each `precNat` value is `0`, a `cf`-call, or a `cg`-call.
+  have hst : IsPolyBounded (fun m => precNat cf cg m.unpair.1 m.unpair.2) := by
+    refine (((codeEvalBound_poly cf).comp isPolyBounded_fst).add
+      ((codeEvalBound_poly cg).comp
+        ((isPolyBounded_fst.add isPolyBounded_snd).add_one))).add_one.of_le (fun m => ?_)
+    show precNat cf cg m.unpair.1 m.unpair.2 ≤
+      codeEvalBound cf m.unpair.1 + codeEvalBound cg (m.unpair.1 + m.unpair.2 + 1) + 1
+    have hcl : m.unpair.1.unpair.1 ≤ m.unpair.1 := Nat.unpair_left_le _
+    cases hj : m.unpair.2 with
+    | zero =>
+      rw [precNat]
+      split_ifs with hc
+      · refine le_trans (codeEvalnNat_le cf _) ?_
+        simp only [Nat.unpair_pair]
+        have := codeEvalBound_mono cf (le_trans (Nat.sub_le m.unpair.1.unpair.1
+          m.unpair.1.unpair.2.unpair.2) hcl)
+        omega
+      · exact Nat.zero_le _
+    | succ j =>
+      rw [precNat]
+      split_ifs with hc
+      · refine le_trans (codeEvalnNat_le cg _) ?_
+        simp only [Nat.unpair_pair]
+        have := codeEvalBound_mono cg (show m.unpair.1.unpair.1 -
+          m.unpair.1.unpair.2.unpair.2 + j + 1 ≤ m.unpair.1 + (j + 1) + 1 by omega)
+        omega
+      · exact Nat.zero_le _
+  have hprec := PolyFueled.prec fPF gPF (st := precNat cf cg) (fun _ => rfl)
+    (fun A j => by rw [precNat]; simp only [hgspec, Nat.unpair_pair]) hst
+  -- Feed `⟨z, z.2.2⟩`, then guard by `z.2 < z.1`.
+  have hval := hprec.comp (PolyFueled.id.pair (PolyFueled.right.comp PolyFueled.right))
+  refine ⟨_, (ifzSel_polyFueled.comp
+    (((PolyFueled.const 0).pair hval).pair subc_polyFueled)).of_eq (fun z => ?_)⟩
+  rw [codeEvalnNat_prec_eq]
+  simp only [Nat.unpair_pair, ifzSelFn]
+  by_cases h : z.unpair.2 < z.unpair.1
+  · rw [if_pos h, if_neg (by omega : ¬ z.unpair.1 - z.unpair.2 = 0)]
+  · rw [if_neg h, if_pos (by omega : z.unpair.1 - z.unpair.2 = 0)]
+
+end PrecCompile
+
 /-- **Universal bounded simulator (`M7-HIST-EVALN`).** For every fixed `simulated`, the total
 normalized bounded interpreter is computable in the project polynomial-fuel model. -/
 theorem codeEvalnNat_polyFueled :
@@ -509,11 +620,7 @@ theorem codeEvalnNat_polyFueled :
   | .comp cf cg =>
     codeEvalnNat_comp_polyFueled (codeEvalnNat_polyFueled cf) (codeEvalnNat_polyFueled cg)
   | .prec cf cg =>
-    -- TODO(blueprint:M7-HIST-EVALN): the fuel-decrement recursion. `evaln (k+1) (prec cf cg)`
-    -- recurses on the depth `i = z.2.2` at fuel `k`, so this is a `PolyFueled.prec` iteration
-    -- over `i` whose step calls the `cg` compiler at the residual fuel `(k+1) - i + j`
-    -- (the `precEvalState` bookkeeping above), with state bounded by `codeEvalBound`.
-    sorry
+    codeEvalnNat_prec_polyFueled (codeEvalnNat_polyFueled cf) (codeEvalnNat_polyFueled cg)
   | .rfind' cf =>
     -- TODO(blueprint:M7-HIST-EVALN): bounded minimization. `evaln (k+1) (rfind' cf)` searches
     -- `m, m+1, …` at decreasing fuel until `cf` returns 0 or fuel is exhausted — a
