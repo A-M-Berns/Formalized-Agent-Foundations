@@ -26,6 +26,7 @@ import LogicalInduction.Construction.TradingFirm
 import LogicalInduction.Construction.LIA
 import LogicalInduction.Construction.LIAComputation
 import LogicalInduction.Construction.LIACompiler
+import LogicalInduction.Construction.M7Witnesses
 
 namespace LogicalInduction
 

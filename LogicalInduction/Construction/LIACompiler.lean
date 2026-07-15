@@ -5099,6 +5099,597 @@ private theorem firmBudgetBreachAtDayData_prim : Primrec fun p :
 
 end
 
+/-! ## Exact compiler for the TradingFirm cutoff
+
+The firm cutoff uses `EF.absBound`, whose operations differ slightly from ordinary
+rational denotation.  We reuse the verified rational machine's command format and
+continuation discipline, changing only constants, prices, `max`, and `safeRecip`. -/
+
+private theorem ratAbs_prim : Primrec fun q : ℚ => |q| := by
+  exact (ratMax_prim.comp Primrec.id (ratNeg_prim.comp Primrec.id)).of_eq
+    fun q => by simp [abs_eq_max_neg]
+
+private def efBoundRawStep
+    (p : ℕ × (List ℚ × EFRatMachineState)) : EFRatMachineState :=
+  let code := p.1
+  let rho := p.2.1
+  let state := p.2.2
+  let tag := code.unpair.1
+  let payload := code.unpair.2
+  if tag = 0 then
+    (state.1, |(Encodable.decode (α := ℚ) payload).getD 0| :: state.2)
+  else if tag = 1 then
+    (state.1, (1 : ℚ) :: state.2)
+  else if tag = 4 then
+    efRatRawStep (fun (_ : Unit) (_ : ℕ) (_ : Sentence) => 0)
+      ((), Nat.pair 2 payload, rho, state)
+  else
+    efRatRawStep (fun (_ : Unit) (_ : ℕ) (_ : Sentence) => 0)
+      ((), code, rho, state)
+
+private theorem efBoundRawStep_prim : Primrec efBoundRawStep := by
+  let P := ℕ × (List ℚ × EFRatMachineState)
+  have hcode : Primrec fun p : P => p.1 := Primrec.fst
+  have hrho : Primrec fun p : P => p.2.1 :=
+    Primrec.fst.comp Primrec.snd
+  have hstate : Primrec fun p : P => p.2.2 :=
+    Primrec.snd.comp Primrec.snd
+  have hcommands : Primrec fun p : P => p.2.2.1 :=
+    Primrec.fst.comp (Primrec.snd.comp Primrec.snd)
+  have hvalues : Primrec fun p : P => p.2.2.2 :=
+    Primrec.snd.comp (Primrec.snd.comp Primrec.snd)
+  have htag : Primrec fun p : P => p.1.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp hcode)
+  have hpayload : Primrec fun p : P => p.1.unpair.2 :=
+    Primrec.snd.comp (Primrec.unpair.comp hcode)
+  have hzeroQuote : Primrec fun
+      _p : Unit × (ℕ × Sentence) => (0 : ℚ) := Primrec.const 0
+  have hraw := efRatRawStep_prim
+    (fun (_ : Unit) (_ : ℕ) (_ : Sentence) => (0 : ℚ)) hzeroQuote
+  have hdefaultArg : Primrec fun p : P =>
+      ((), (p.1, (p.2.1, p.2.2))) :=
+    (Primrec.const ()).pair (hcode.pair (hrho.pair hstate))
+  have hdefault : Primrec fun p : P =>
+      efRatRawStep (fun (_ : Unit) (_ : ℕ) (_ : Sentence) => 0)
+        ((), p.1, p.2.1, p.2.2) :=
+    hraw.comp hdefaultArg
+  have hmaxCode : Primrec fun p : P => Nat.pair 2 p.1.unpair.2 :=
+    Primrec₂.natPair.comp (Primrec.const 2) hpayload
+  have hmaxArg : Primrec fun p : P =>
+      ((), (Nat.pair 2 p.1.unpair.2, (p.2.1, p.2.2))) :=
+    (Primrec.const ()).pair (hmaxCode.pair (hrho.pair hstate))
+  have hmax : Primrec fun p : P =>
+      efRatRawStep (fun (_ : Unit) (_ : ℕ) (_ : Sentence) => 0)
+        ((), Nat.pair 2 p.1.unpair.2, p.2.1, p.2.2) :=
+    hraw.comp hmaxArg
+  have hdecoded : Primrec fun p : P =>
+      (Encodable.decode (α := ℚ) p.1.unpair.2).getD 0 :=
+    Primrec.option_getD.comp
+      ((Primrec.decode : Primrec fun n : ℕ => Encodable.decode (α := ℚ) n).comp
+        hpayload)
+      (Primrec.const 0)
+  have hcase0 : Primrec fun p : P =>
+      (p.2.2.1, |(Encodable.decode (α := ℚ) p.1.unpair.2).getD 0| ::
+        p.2.2.2) :=
+    hcommands.pair (Primrec.list_cons.comp
+      (ratAbs_prim.comp hdecoded) hvalues)
+  have hcase1 : Primrec fun p : P =>
+      (p.2.2.1, (1 : ℚ) :: p.2.2.2) :=
+    hcommands.pair (Primrec.list_cons.comp (Primrec.const 1) hvalues)
+  have htagEq (k : ℕ) : PrimrecPred fun p : P => p.1.unpair.1 = k :=
+    Primrec.eq.comp htag (Primrec.const k)
+  exact (Primrec.ite (htagEq 0) hcase0
+    (Primrec.ite (htagEq 1) hcase1
+      (Primrec.ite (htagEq 4) hmax hdefault))).of_eq fun p => by
+        simp only [efBoundRawStep]
+
+private def efBoundCommandStep
+    (p : EFRatCommand × EFRatMachineState) : EFRatMachineState :=
+  let kind := p.1.1
+  let payload := p.1.2.1
+  let rho := p.1.2.2
+  let state := p.2
+  if kind = 0 then efBoundRawStep (payload, rho, state)
+  else if kind = 4 then efRatUnaryValueStep (fun _ => (1 : ℚ)) state
+  else efRatCommandStep (fun (_ : Unit) (_ : ℕ) (_ : Sentence) => 0)
+    ((), p.1, state)
+
+private theorem efBoundCommandStep_prim : Primrec efBoundCommandStep := by
+  let P := EFRatCommand × EFRatMachineState
+  have hkind : Primrec fun p : P => p.1.1 :=
+    Primrec.fst.comp Primrec.fst
+  have hpayload : Primrec fun p : P => p.1.2.1 :=
+    Primrec.fst.comp (Primrec.snd.comp Primrec.fst)
+  have hrho : Primrec fun p : P => p.1.2.2 :=
+    Primrec.snd.comp (Primrec.snd.comp Primrec.fst)
+  have hstate : Primrec fun p : P => p.2 := Primrec.snd
+  have hcase0 : Primrec fun p : P =>
+      efBoundRawStep (p.1.2.1, p.1.2.2, p.2) :=
+    efBoundRawStep_prim.comp (hpayload.pair (hrho.pair hstate))
+  have hcase4 : Primrec fun p : P =>
+      efRatUnaryValueStep (fun _ => (1 : ℚ)) p.2 :=
+    (efRatUnaryValueStep_prim (fun _ => (1 : ℚ))
+      (Primrec.const 1)).comp hstate
+  have hzeroQuote : Primrec fun
+      _p : Unit × (ℕ × Sentence) => (0 : ℚ) := Primrec.const 0
+  have hdefaultArg : Primrec fun p : P => ((), (p.1, p.2)) :=
+    (Primrec.const ()).pair (Primrec.fst.pair Primrec.snd)
+  have hdefault : Primrec fun p : P =>
+      efRatCommandStep (fun (_ : Unit) (_ : ℕ) (_ : Sentence) => 0)
+        ((), p.1, p.2) :=
+    (efRatCommandStep_prim
+      (fun (_ : Unit) (_ : ℕ) (_ : Sentence) => (0 : ℚ))
+      hzeroQuote).comp hdefaultArg
+  have hkindEq (k : ℕ) : PrimrecPred fun p : P => p.1.1 = k :=
+    Primrec.eq.comp hkind (Primrec.const k)
+  exact (Primrec.ite (hkindEq 0) hcase0
+    (Primrec.ite (hkindEq 4) hcase4 hdefault)).of_eq fun p => by
+      simp only [efBoundCommandStep]
+
+private def efBoundMachineStep : EFRatMachineState → EFRatMachineState
+  | ([], values) => ([], values)
+  | (command :: commands, values) =>
+      efBoundCommandStep (command, commands, values)
+
+private theorem efBoundMachineStep_prim : Primrec efBoundMachineStep := by
+  have hcommands : Primrec fun state : EFRatMachineState => state.1 :=
+    Primrec.fst
+  have hcons : Primrec₂ fun (state : EFRatMachineState)
+      (cr : EFRatCommand × List EFRatCommand) =>
+      efBoundCommandStep (cr.1, cr.2, state.2) := by
+    have harg : Primrec fun z :
+        EFRatMachineState × (EFRatCommand × List EFRatCommand) =>
+        (z.2.1, (z.2.2, z.1.2)) :=
+      (Primrec.fst.comp Primrec.snd).pair
+        ((Primrec.snd.comp Primrec.snd).pair
+          (Primrec.snd.comp Primrec.fst))
+    exact (efBoundCommandStep_prim.comp harg).to₂
+  exact (Primrec.list_casesOn hcommands Primrec.id hcons).of_eq fun state => by
+    rcases state with ⟨commands, values⟩
+    cases commands <;> rfl
+
+private theorem efBoundMachineStep_add (a b : EF) (rho : List ℚ)
+    (commands : List EFRatCommand) (values : List ℚ) :
+    efBoundMachineStep
+        (efRatEvalCommand (EF.add a b) rho :: commands, values) =
+      (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
+        efRatOpCommand 1 :: commands, values) := by
+  simp [efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
+    efRatCommandStep, efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
+    EF.toNat]
+
+private theorem efBoundMachineStep_mul (a b : EF) (rho : List ℚ)
+    (commands : List EFRatCommand) (values : List ℚ) :
+    efBoundMachineStep
+        (efRatEvalCommand (EF.mul a b) rho :: commands, values) =
+      (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
+        efRatOpCommand 2 :: commands, values) := by
+  simp [efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
+    efRatCommandStep, efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
+    EF.toNat]
+
+private theorem efBoundMachineStep_max (a b : EF) (rho : List ℚ)
+    (commands : List EFRatCommand) (values : List ℚ) :
+    efBoundMachineStep
+        (efRatEvalCommand (EF.max a b) rho :: commands, values) =
+      (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
+        efRatOpCommand 1 :: commands, values) := by
+  simp [efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
+    efRatCommandStep, efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
+    EF.toNat]
+
+private theorem efBoundMachineStep_safeRecip (a : EF) (rho : List ℚ)
+    (commands : List EFRatCommand) (values : List ℚ) :
+    efBoundMachineStep
+        (efRatEvalCommand (EF.safeRecip a) rho :: commands, values) =
+      (efRatEvalCommand a rho :: efRatOpCommand 4 :: commands, values) := by
+  simp [efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
+    efRatCommandStep, efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
+    EF.toNat]
+
+private theorem efBoundMachineStep_letE (x body : EF) (rho : List ℚ)
+    (commands : List EFRatCommand) (values : List ℚ) :
+    efBoundMachineStep
+        (efRatEvalCommand (EF.letE x body) rho :: commands, values) =
+      (efRatEvalCommand x rho :: efRatLetBodyCommand body.toNat rho :: commands,
+        values) := by
+  simp [efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
+    efRatCommandStep, efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
+    EF.toNat]
+
+private theorem efBoundMachineStep_letBody (payload : ℕ) (rho : List ℚ)
+    (q : ℚ) (commands : List EFRatCommand) (values : List ℚ) :
+    efBoundMachineStep
+        (efRatLetBodyCommand payload rho :: commands, q :: values) =
+      (efRatRawEvalCommand payload (q :: rho) :: commands, values) := by
+  simp [efBoundMachineStep, efBoundCommandStep, efRatCommandStep,
+    efRatLetBodyCommand, efRatLetValueStep]
+
+private theorem efBoundMachine_correct (e : EF) (rho : List ℚ)
+    (commands : List EFRatCommand) (values : List ℚ) :
+    efBoundMachineStep^[efRatMachineSteps e]
+        (efRatEvalCommand e rho :: commands, values) =
+      (commands, e.absBoundWith (rho.getD · 0) :: values) := by
+  induction e generalizing rho commands values with
+  | price φ day =>
+      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
+        efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
+        EF.toNat, EF.absBoundWith]
+  | const q =>
+      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
+        efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
+        EF.toNat, EF.absBoundWith, Encodable.encodek]
+  | var i =>
+      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
+        efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
+        efRatCommandStep, efRatRawStep, EF.toNat, EF.absBoundWith]
+  | add a b iha ihb =>
+      let f := efBoundMachineStep
+      rw [show efRatMachineSteps (EF.add a b) =
+          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
+        simp only [efRatMachineSteps]
+        omega]
+      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
+          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
+      rw [iterate_add_forward f 1]
+      simp only [Function.iterate_one]
+      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
+          (f (efRatEvalCommand (EF.add a b) rho :: commands, values)) = _
+      rw [show f (efRatEvalCommand (EF.add a b) rho :: commands, values) =
+          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
+            efRatOpCommand 1 :: commands, values) by
+        exact efBoundMachineStep_add a b rho commands values]
+      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
+          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
+      rw [iterate_add_forward f (efRatMachineSteps a)]
+      rw [show f^[efRatMachineSteps a]
+          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
+            efRatOpCommand 1 :: commands, values) =
+          (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands,
+            a.absBoundWith (rho.getD · 0) :: values) by
+        simpa only [f, efRatEvalCommand] using
+          iha rho (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands) values]
+      rw [iterate_add_forward f (efRatMachineSteps b) 1]
+      rw [show f^[efRatMachineSteps b]
+          (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands,
+            a.absBoundWith (rho.getD · 0) :: values) =
+          (efRatOpCommand 1 :: commands,
+            b.absBoundWith (rho.getD · 0) ::
+              a.absBoundWith (rho.getD · 0) :: values) by
+        simpa only [f, efRatEvalCommand] using
+          ihb rho (efRatOpCommand 1 :: commands)
+            (a.absBoundWith (rho.getD · 0) :: values)]
+      simp [f, efBoundMachineStep, efBoundCommandStep, efRatCommandStep,
+        efRatOpCommand, efRatBinaryValueStep, EF.absBoundWith]
+  | mul a b iha ihb =>
+      let f := efBoundMachineStep
+      rw [show efRatMachineSteps (EF.mul a b) =
+          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
+        simp only [efRatMachineSteps]
+        omega]
+      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
+          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
+      rw [iterate_add_forward f 1]
+      simp only [Function.iterate_one]
+      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
+          (f (efRatEvalCommand (EF.mul a b) rho :: commands, values)) = _
+      rw [show f (efRatEvalCommand (EF.mul a b) rho :: commands, values) =
+          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
+            efRatOpCommand 2 :: commands, values) by
+        exact efBoundMachineStep_mul a b rho commands values]
+      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
+          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
+      rw [iterate_add_forward f (efRatMachineSteps a)]
+      rw [show f^[efRatMachineSteps a]
+          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
+            efRatOpCommand 2 :: commands, values) =
+          (efRatEvalCommand b rho :: efRatOpCommand 2 :: commands,
+            a.absBoundWith (rho.getD · 0) :: values) by
+        simpa only [f, efRatEvalCommand] using
+          iha rho (efRatEvalCommand b rho :: efRatOpCommand 2 :: commands) values]
+      rw [iterate_add_forward f (efRatMachineSteps b) 1]
+      rw [show f^[efRatMachineSteps b]
+          (efRatEvalCommand b rho :: efRatOpCommand 2 :: commands,
+            a.absBoundWith (rho.getD · 0) :: values) =
+          (efRatOpCommand 2 :: commands,
+            b.absBoundWith (rho.getD · 0) ::
+              a.absBoundWith (rho.getD · 0) :: values) by
+        simpa only [f, efRatEvalCommand] using
+          ihb rho (efRatOpCommand 2 :: commands)
+            (a.absBoundWith (rho.getD · 0) :: values)]
+      simp [f, efBoundMachineStep, efBoundCommandStep, efRatCommandStep,
+        efRatOpCommand, efRatBinaryValueStep, EF.absBoundWith]
+  | max a b iha ihb =>
+      let f := efBoundMachineStep
+      rw [show efRatMachineSteps (EF.max a b) =
+          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
+        simp only [efRatMachineSteps]
+        omega]
+      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
+          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
+      rw [iterate_add_forward f 1]
+      simp only [Function.iterate_one]
+      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
+          (f (efRatEvalCommand (EF.max a b) rho :: commands, values)) = _
+      rw [show f (efRatEvalCommand (EF.max a b) rho :: commands, values) =
+          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
+            efRatOpCommand 1 :: commands, values) by
+        exact efBoundMachineStep_max a b rho commands values]
+      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
+          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
+      rw [iterate_add_forward f (efRatMachineSteps a)]
+      rw [show f^[efRatMachineSteps a]
+          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
+            efRatOpCommand 1 :: commands, values) =
+          (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands,
+            a.absBoundWith (rho.getD · 0) :: values) by
+        simpa only [f, efRatEvalCommand] using
+          iha rho (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands) values]
+      rw [iterate_add_forward f (efRatMachineSteps b) 1]
+      rw [show f^[efRatMachineSteps b]
+          (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands,
+            a.absBoundWith (rho.getD · 0) :: values) =
+          (efRatOpCommand 1 :: commands,
+            b.absBoundWith (rho.getD · 0) ::
+              a.absBoundWith (rho.getD · 0) :: values) by
+        simpa only [f, efRatEvalCommand] using
+          ihb rho (efRatOpCommand 1 :: commands)
+            (a.absBoundWith (rho.getD · 0) :: values)]
+      simp [f, efBoundMachineStep, efBoundCommandStep, efRatCommandStep,
+        efRatOpCommand, efRatBinaryValueStep, EF.absBoundWith]
+  | safeRecip a iha =>
+      let f := efBoundMachineStep
+      rw [show efRatMachineSteps (EF.safeRecip a) =
+          1 + efRatMachineSteps a + 1 by
+        simp only [efRatMachineSteps]
+        omega]
+      rw [show 1 + efRatMachineSteps a + 1 =
+          1 + (efRatMachineSteps a + 1) by omega]
+      rw [iterate_add_forward f 1]
+      simp only [Function.iterate_one]
+      change f^[efRatMachineSteps a + 1]
+          (f (efRatEvalCommand (EF.safeRecip a) rho :: commands, values)) = _
+      rw [show f (efRatEvalCommand (EF.safeRecip a) rho :: commands, values) =
+          (efRatEvalCommand a rho :: efRatOpCommand 4 :: commands, values) by
+        exact efBoundMachineStep_safeRecip a rho commands values]
+      rw [iterate_add_forward f (efRatMachineSteps a) 1]
+      rw [show f^[efRatMachineSteps a]
+          (efRatEvalCommand a rho :: efRatOpCommand 4 :: commands, values) =
+          (efRatOpCommand 4 :: commands,
+            a.absBoundWith (rho.getD · 0) :: values) by
+        simpa only [f, efRatEvalCommand] using
+          iha rho (efRatOpCommand 4 :: commands) values]
+      simp [f, efBoundMachineStep, efBoundCommandStep,
+        efRatOpCommand, efRatUnaryValueStep, EF.absBoundWith]
+  | letE x body ihx ihbody =>
+      let f := efBoundMachineStep
+      rw [show efRatMachineSteps (EF.letE x body) =
+          1 + efRatMachineSteps x + 1 + efRatMachineSteps body by
+        simp [efRatMachineSteps]
+        omega]
+      rw [show 1 + efRatMachineSteps x + 1 + efRatMachineSteps body =
+          1 + (efRatMachineSteps x + 1 + efRatMachineSteps body) by omega]
+      rw [iterate_add_forward f 1]
+      simp only [Function.iterate_one]
+      change f^[efRatMachineSteps x + 1 + efRatMachineSteps body]
+          (f (efRatEvalCommand (EF.letE x body) rho :: commands, values)) = _
+      rw [show f (efRatEvalCommand (EF.letE x body) rho :: commands, values) =
+          (efRatEvalCommand x rho :: efRatLetBodyCommand body.toNat rho :: commands,
+            values) by
+        exact efBoundMachineStep_letE x body rho commands values]
+      rw [show efRatMachineSteps x + 1 + efRatMachineSteps body =
+          efRatMachineSteps x + (1 + efRatMachineSteps body) by omega]
+      rw [iterate_add_forward f (efRatMachineSteps x)]
+      rw [show f^[efRatMachineSteps x]
+          (efRatEvalCommand x rho :: efRatLetBodyCommand body.toNat rho :: commands,
+            values) =
+          (efRatLetBodyCommand body.toNat rho :: commands,
+            x.absBoundWith (rho.getD · 0) :: values) by
+        simpa only [f, efRatEvalCommand] using
+          ihx rho (efRatLetBodyCommand body.toNat rho :: commands) values]
+      rw [iterate_add_forward f 1 (efRatMachineSteps body)]
+      simp only [Function.iterate_one]
+      rw [show f
+          (efRatLetBodyCommand body.toNat rho :: commands,
+            x.absBoundWith (rho.getD · 0) :: values) =
+          (efRatRawEvalCommand body.toNat
+            (x.absBoundWith (rho.getD · 0) :: rho) :: commands, values) by
+        exact efBoundMachineStep_letBody body.toNat rho
+          (x.absBoundWith (rho.getD · 0)) commands values]
+      rw [show efBoundMachineStep^[efRatMachineSteps body]
+          (efRatRawEvalCommand body.toNat
+              (x.absBoundWith (rho.getD · 0) :: rho) :: commands, values) =
+          (commands, body.absBoundWith
+            ((x.absBoundWith (rho.getD · 0) :: rho).getD · 0) :: values) by
+        simpa only [efRatEvalCommand] using
+          ihbody (x.absBoundWith (rho.getD · 0) :: rho) commands values]
+      congr 2
+      apply congrArg body.absBoundWith
+      funext i
+      cases i <;> rfl
+
+private theorem efBoundMachine_terminal (values : List ℚ) :
+    efBoundMachineStep ([], values) = ([], values) := rfl
+
+private theorem efBoundMachine_fuel_correct (e : EF) :
+    efBoundMachineStep^[efRatMachineFuel e]
+        ([efRatEvalCommand e []], []) = ([], [e.absBound]) := by
+  obtain ⟨extra, hextra⟩ := Nat.exists_eq_add_of_le
+    (efRatMachineSteps_le_fuel e)
+  rw [hextra, iterate_add_forward]
+  rw [show efBoundMachineStep^[efRatMachineSteps e]
+      ([efRatEvalCommand e []], []) = ([], [e.absBound]) by
+    simpa [EF.absBound] using efBoundMachine_correct e [] [] []]
+  exact Function.iterate_fixed (efBoundMachine_terminal [e.absBound]) extra
+
+private def efCompiledAbsBound (e : EF) : ℚ :=
+  ((efBoundMachineStep^[efRatMachineFuel e]
+    ([efRatEvalCommand e []], [])).2).getD 0 0
+
+private theorem efCompiledAbsBound_eq (e : EF) :
+    efCompiledAbsBound e = e.absBound := by
+  rw [efCompiledAbsBound, efBoundMachine_fuel_correct]
+  rfl
+
+private theorem efCompiledAbsBound_prim : Primrec efCompiledAbsBound := by
+  have hcode : Primrec fun e : EF => e.toNat := by
+    exact Primrec.encode.of_eq fun e => rfl
+  have hfuel : Primrec fun e : EF => efRatMachineFuel e := by
+    have hsucc : Primrec fun e : EF => e.toNat + 1 :=
+      Primrec.nat_add.comp hcode (Primrec.const 1)
+    exact (Primrec.nat_mul.comp (Primrec.const 2) hsucc).of_eq fun e => by
+      rfl
+  have hcommand : Primrec fun e : EF => efRatEvalCommand e [] :=
+    (Primrec.const 0).pair (hcode.pair (Primrec.const []))
+  have hcommands : Primrec fun e : EF => [efRatEvalCommand e []] :=
+    Primrec.list_cons.comp hcommand (Primrec.const [])
+  have hinit : Primrec fun e : EF =>
+      (([efRatEvalCommand e []], []) : EFRatMachineState) :=
+    hcommands.pair (Primrec.const [])
+  have hstep : Primrec₂ fun (_e : EF) (state : EFRatMachineState) =>
+      efBoundMachineStep state :=
+    efBoundMachineStep_prim.comp₂ Primrec₂.right
+  have hrun : Primrec fun e : EF =>
+      efBoundMachineStep^[efRatMachineFuel e]
+        ([efRatEvalCommand e []], []) :=
+    Primrec.nat_iterate hfuel hinit hstep
+  exact (Primrec.list_getD 0).comp (Primrec.snd.comp hrun)
+    (Primrec.const 0)
+
+private theorem efAbsBound_prim : Primrec EF.absBound :=
+  efCompiledAbsBound_prim.of_eq efCompiledAbsBound_eq
+
+private theorem tradeListAbsBound_prim :
+    Primrec Strategy.tradeListAbsBound := by
+  have hbounds : Primrec fun trades : List (EF × Sentence) =>
+      trades.map fun trade => trade.1.absBound :=
+    Primrec.list_map Primrec.id
+      (efAbsBound_prim.comp₂ (Primrec.fst.comp₂ Primrec₂.right))
+  have hstep : Primrec₂ fun (_trades : List (EF × Sentence))
+      (p : ℚ × ℚ) => p.1 + p.2 :=
+    ratAdd_prim.comp₂
+      (Primrec.fst.comp₂ Primrec₂.right)
+      (Primrec.snd.comp₂ Primrec₂.right)
+  exact (Primrec.list_foldr hbounds (Primrec.const 0) hstep).of_eq
+    fun trades => by rfl
+
+private def firmDayAbsBoundData (j i : ℕ) : ℚ :=
+  Strategy.tradeListAbsBound ((firmRawTrader j).strat i).trades
+
+private theorem firmDayAbsBoundData_prim :
+    Primrec₂ firmDayAbsBoundData := by
+  exact (tradeListAbsBound_prim.comp
+    (firmRawTraderTrades_prim.comp Primrec.fst Primrec.snd)).to₂
+
+private def firmPrefixTotalBoundData (n j : ℕ) : ℚ :=
+  ((List.range (n + 1)).map fun i => firmDayAbsBoundData j i).sum
+
+private theorem firmPrefixTotalBoundData_prim :
+    Primrec₂ firmPrefixTotalBoundData := by
+  let P := ℕ × ℕ
+  have hrange : Primrec fun p : P => List.range (p.1 + 1) :=
+    Primrec.list_range.comp
+      (Primrec.nat_add.comp Primrec.fst (Primrec.const 1))
+  have hday : Primrec₂ fun (p : P) (i : ℕ) =>
+      firmDayAbsBoundData p.2 i :=
+    firmDayAbsBoundData_prim.comp₂
+      (Primrec.snd.comp₂ Primrec₂.left) Primrec₂.right
+  have hvalues : Primrec fun p : P =>
+      (List.range (p.1 + 1)).map fun i => firmDayAbsBoundData p.2 i :=
+    Primrec.list_map hrange hday
+  have hstep : Primrec₂ fun (_p : P) (q : ℚ × ℚ) => q.1 + q.2 :=
+    ratAdd_prim.comp₂
+      (Primrec.fst.comp₂ Primrec₂.right)
+      (Primrec.snd.comp₂ Primrec₂.right)
+  exact (Primrec.list_foldr hvalues (Primrec.const 0) hstep).to₂.of_eq
+    fun n j => by rfl
+
+private theorem firmPrefixTotalBoundData_eq (n j : ℕ) :
+    firmPrefixTotalBoundData n j =
+      ∑ i ∈ Finset.range (n + 1),
+        Strategy.tradeListAbsBound ((firmRawTrader j).strat i).trades := by
+  unfold firmPrefixTotalBoundData firmDayAbsBoundData
+  have hsum : ∀ k : ℕ,
+      ((List.range k).map fun i =>
+        Strategy.tradeListAbsBound ((firmRawTrader j).strat i).trades).sum =
+      ∑ i ∈ Finset.range k,
+        Strategy.tradeListAbsBound ((firmRawTrader j).strat i).trades := by
+    intro k
+    induction k with
+    | zero => simp
+    | succ k ih =>
+        rw [List.sum_range_succ, Finset.sum_range_succ, ih]
+  exact hsum (n + 1)
+
+private def firmTotalBoundData (n : ℕ) : ℚ :=
+  ((List.range (n + 1)).map fun j => firmPrefixTotalBoundData n j).sum
+
+private theorem firmTotalBoundData_prim : Primrec firmTotalBoundData := by
+  have hrange : Primrec fun n : ℕ => List.range (n + 1) :=
+    Primrec.list_range.comp
+      (Primrec.nat_add.comp Primrec.id (Primrec.const 1))
+  have hvalue : Primrec₂ fun (n j : ℕ) => firmPrefixTotalBoundData n j :=
+    firmPrefixTotalBoundData_prim
+  have hvalues : Primrec fun n : ℕ =>
+      (List.range (n + 1)).map fun j => firmPrefixTotalBoundData n j :=
+    Primrec.list_map hrange hvalue
+  have hstep : Primrec₂ fun (_n : ℕ) (q : ℚ × ℚ) => q.1 + q.2 :=
+    ratAdd_prim.comp₂
+      (Primrec.fst.comp₂ Primrec₂.right)
+      (Primrec.snd.comp₂ Primrec₂.right)
+  exact (Primrec.list_foldr hvalues (Primrec.const 0) hstep).of_eq
+    fun n => by rfl
+
+private theorem firmTotalBoundData_eq (n : ℕ) :
+    firmTotalBoundData n = tradingFirmTotalBoundTradeLists n := by
+  unfold firmTotalBoundData tradingFirmTotalBoundTradeLists
+  have hsum : ∀ k : ℕ,
+      ((List.range k).map fun j => firmPrefixTotalBoundData n j).sum =
+      ∑ j ∈ Finset.range k,
+        ∑ i ∈ Finset.range (n + 1),
+          Strategy.tradeListAbsBound ((firmRawTrader j).strat i).trades := by
+    intro k
+    induction k with
+    | zero => simp
+    | succ k ih =>
+        rw [List.sum_range_succ, Finset.sum_range_succ, ih,
+          firmPrefixTotalBoundData_eq]
+  exact hsum (n + 1)
+
+private def ratNatCeilData (q : ℚ) : ℕ :=
+  (-((-q.num) / (q.den : ℤ))).natAbs
+
+private theorem ratNatCeilData_prim : Primrec ratNatCeilData := by
+  exact (intNatAbs_prim.comp
+    (intNeg_prim.comp
+      (intDivNat_prim.comp (intNeg_prim.comp ratNum_prim)
+        ratDen_prim))).of_eq fun q => by rfl
+
+private theorem ratNatCeilData_eq (q : ℚ) (hq : 0 ≤ q) :
+    ratNatCeilData q = ⌈q⌉₊ := by
+  have hceil : (0 : ℤ) ≤ ⌈q⌉ := Int.ceil_nonneg hq
+  change (-((-q.num) / (q.den : ℤ))).natAbs = Int.toNat ⌈q⌉
+  rw [← Rat.ceil_def']
+  apply Int.ofNat_inj.mp
+  rw [Int.natAbs_of_nonneg hceil, Int.toNat_of_nonneg hceil]
+
+private theorem tradingFirmTotalBoundTradeLists_prim :
+    Primrec tradingFirmTotalBoundTradeLists :=
+  firmTotalBoundData_prim.of_eq firmTotalBoundData_eq
+
+private theorem tradingFirmCutoffTradeLists_prim :
+    Primrec tradingFirmCutoffTradeLists := by
+  have hcompiled : Primrec fun n =>
+      ratNatCeilData (tradingFirmTotalBoundTradeLists n) + 1 :=
+    Primrec.nat_add.comp
+      (ratNatCeilData_prim.comp tradingFirmTotalBoundTradeLists_prim)
+      (Primrec.const 1)
+  exact hcompiled.of_eq fun n => by
+    unfold tradingFirmCutoffTradeLists
+    rw [ratNatCeilData_eq]
+    simpa using tradingFirmTotalBound_nonneg n
+
+
 private def firmBudgetAssignmentBreachesData
     (core : BudgetCoreInput) (xs : List Bool) : Bool :=
   (List.range core.2).any fun m => firmBudgetBreachAtDayData core xs m
@@ -5168,5 +5759,759 @@ private theorem priorBudgetBreachData_prim : Primrec priorBudgetBreachData := by
         | nil => rfl
         | cons xs xss ih => simp [ih]
       exact hAny assignments
+
+/-! The remaining Budgeter compiler builds the proof-erased world-value feature before
+assembling the finite minimum.  Keeping this syntax constructor separate makes the bridge
+back to `Strategy.tradeListWorldValueFeature` exact and reusable. -/
+
+private def tradeListWorldValueFeatureData
+    (atoms : List ℕ) (xs : List Bool) (trades : List (EF × Sentence))
+    (n : ℕ) : EF :=
+  ROIBudget.sumFeatures (trades.map fun p =>
+    .mul p.1 (.add
+      (.const (bif sentenceBoolFromAtomList atoms xs p.2 then 1 else 0))
+      (.mul (.const (-1)) (.price p.2 n))))
+
+section
+attribute [local irreducible] Nat.sqrt sentenceBoolFromAtomList
+  tradeListWorldValueFeatureData
+
+private theorem tradeListWorldValueFeatureData_prim : Primrec fun p :
+    ((List ℕ × List Bool) × List (EF × Sentence)) × ℕ =>
+      tradeListWorldValueFeatureData p.1.1.1 p.1.1.2 p.1.2 p.2 := by
+  let P := ((List ℕ × List Bool) × List (EF × Sentence)) × ℕ
+  have htrades : Primrec fun p : P => p.1.2 :=
+    Primrec.snd.comp Primrec.fst
+  have heval : Primrec₂ fun (p : P) (trade : EF × Sentence) =>
+      sentenceBoolFromAtomList p.1.1.1 p.1.1.2 trade.2 :=
+    sentenceBoolFromAtomList_prim.to₂.comp₂
+      ((Primrec.fst.comp (Primrec.fst.comp Primrec.fst)).pair
+        (Primrec.snd.comp (Primrec.fst.comp Primrec.fst)) |>.comp₂
+          Primrec₂.left)
+      (Primrec.snd.comp₂ Primrec₂.right)
+  have hpayout : Primrec₂ fun (p : P) (trade : EF × Sentence) =>
+      (bif sentenceBoolFromAtomList p.1.1.1 p.1.1.2 trade.2 then
+        (1 : ℚ) else 0) :=
+    Primrec.cond heval (Primrec.const 1) (Primrec.const 0)
+  have hprice : Primrec₂ fun (p : P) (trade : EF × Sentence) =>
+      EF.price trade.2 p.2 :=
+    efPrice_prim.comp₂
+      (Primrec.snd.comp₂ Primrec₂.right)
+      (Primrec.snd.comp₂ Primrec₂.left)
+  have hdelta : Primrec₂ fun (p : P) (trade : EF × Sentence) =>
+      EF.add
+        (EF.const (bif sentenceBoolFromAtomList p.1.1.1 p.1.1.2 trade.2 then
+          1 else 0))
+        (EF.mul (EF.const (-1)) (EF.price trade.2 p.2)) :=
+    efAdd_prim.comp₂
+      (efConst_prim.comp₂ hpayout)
+      (efMul_prim.comp₂
+        (efConst_prim.comp₂ (Primrec₂.const (-1 : ℚ))) hprice)
+  have htrade : Primrec₂ fun (p : P) (trade : EF × Sentence) =>
+      EF.mul trade.1
+        (EF.add
+          (EF.const (bif sentenceBoolFromAtomList p.1.1.1 p.1.1.2 trade.2 then
+            1 else 0))
+          (EF.mul (EF.const (-1)) (EF.price trade.2 p.2))) :=
+    efMul_prim.comp₂ (Primrec.fst.comp₂ Primrec₂.right) hdelta
+  exact (sumFeatures_prim.comp
+    (Primrec.list_map htrades htrade)).of_eq fun p => by
+      unfold tradeListWorldValueFeatureData
+      rfl
+
+end
+
+private theorem tradeListWorldValueFeatureData_eq
+    (atoms : List ℕ) (xs : List Bool) (trades : List (EF × Sentence))
+    (n : ℕ) :
+    tradeListWorldValueFeatureData atoms xs trades n =
+      Strategy.tradeListWorldValueFeature trades n (atomListTable atoms xs) := by
+  unfold tradeListWorldValueFeatureData Strategy.tradeListWorldValueFeature
+  apply congrArg ROIBudget.sumFeatures
+  apply List.map_congr_left
+  intro trade htrade
+  rcases trade with ⟨e, φ⟩
+  cases h : sentenceBoolFromAtomList atoms xs φ
+  · have h' : sentenceBool (atomListTable atoms xs) φ = false := h
+    simp [boolPayoutRat, h']
+  · have h' : sentenceBool (atomListTable atoms xs) φ = true := h
+    simp [boolPayoutRat, h']
+
+private def budgetWorldScaleData
+    (core : BudgetCoreInput) (xs : List Bool) : EF :=
+  let atoms := budgetAtomList core.1.1.1.1 core.1.1.2 core.2
+  let trades := ((firmRawTrader core.1.1.2).strat core.2).trades
+  .safeRecip (.mul
+    (.const (((core.1.2 : ℕ) : ℚ) + firmRawPriorWorthData
+      (core.1.1.1.2, atoms, xs) core.1.1.2 core.2)⁻¹)
+    (EF.neg (tradeListWorldValueFeatureData atoms xs trades core.2)))
+
+section
+attribute [local irreducible] Nat.sqrt budgetWorldScaleData budgetAtomList
+  firmRawPriorWorthData tradeListWorldValueFeatureData
+
+private theorem budgetWorldScaleData_prim : Primrec fun p :
+    BudgetCoreInput × List Bool => budgetWorldScaleData p.1 p.2 := by
+  let P := BudgetCoreInput × List Bool
+  have hstages : Primrec fun p : P => p.1.1.1.1.1 :=
+    Primrec.fst.comp (Primrec.fst.comp
+      (Primrec.fst.comp (Primrec.fst.comp Primrec.fst)))
+  have hpast : Primrec fun p : P => p.1.1.1.1.2 :=
+    Primrec.snd.comp (Primrec.fst.comp
+      (Primrec.fst.comp (Primrec.fst.comp Primrec.fst)))
+  have hj : Primrec fun p : P => p.1.1.1.2 :=
+    Primrec.snd.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
+  have hb : Primrec fun p : P => p.1.1.2 :=
+    Primrec.snd.comp (Primrec.fst.comp Primrec.fst)
+  have hn : Primrec fun p : P => p.1.2 :=
+    Primrec.snd.comp Primrec.fst
+  have hxs : Primrec fun p : P => p.2 := Primrec.snd
+  have hatoms : Primrec fun p : P =>
+      budgetAtomList p.1.1.1.1.1 p.1.1.1.2 p.1.2 :=
+    budgetAtomList_prim.comp ((hstages.pair hj).pair hn)
+  have htrades : Primrec fun p : P =>
+      ((firmRawTrader p.1.1.1.2).strat p.1.2).trades :=
+    firmRawTraderTrades_prim.comp hj hn
+  have hctx : Primrec fun p : P =>
+      ((p.1.1.1.1.2,
+        budgetAtomList p.1.1.1.1.1 p.1.1.1.2 p.1.2,
+        p.2) : BudgetWorldContext) :=
+    hpast.pair (hatoms.pair hxs)
+  have hworth : Primrec fun p : P =>
+      firmRawPriorWorthData
+        (p.1.1.1.1.2,
+          budgetAtomList p.1.1.1.1.1 p.1.1.1.2 p.1.2, p.2)
+        p.1.1.1.2 p.1.2 :=
+    firmRawPriorWorthData_prim.comp ((hctx.pair hj).pair hn)
+  have hcoefficient : Primrec fun p : P =>
+      (((p.1.1.2 : ℕ) : ℚ) + firmRawPriorWorthData
+        (p.1.1.1.1.2,
+          budgetAtomList p.1.1.1.1.1 p.1.1.1.2 p.1.2, p.2)
+        p.1.1.1.2 p.1.2)⁻¹ :=
+    ratInv_prim.comp (ratAdd_prim.comp (natCastRat_prim.comp hb) hworth)
+  have hvalue : Primrec fun p : P =>
+      tradeListWorldValueFeatureData
+        (budgetAtomList p.1.1.1.1.1 p.1.1.1.2 p.1.2) p.2
+        ((firmRawTrader p.1.1.1.2).strat p.1.2).trades p.1.2 :=
+    tradeListWorldValueFeatureData_prim.comp
+      (((hatoms.pair hxs).pair htrades).pair hn)
+  exact (efSafeRecip_prim.comp
+    (efMul_prim.comp (efConst_prim.comp hcoefficient)
+      (efNeg_prim.comp hvalue))).of_eq fun p => by
+        unfold budgetWorldScaleData
+        rfl
+
+end
+
+private theorem budgetWorldScaleData_eq
+    (stages : List (Finset Sentence)) (past : List RationalBeliefState)
+    (j b n : ℕ) (xs : List Bool) :
+    budgetWorldScaleData ((((stages, past), j), b), n) xs =
+      budgetWorldScaleTradeLists
+        (fun i => ((firmRawTrader j).strat i).trades) b
+        (rationalHistory past)
+        (atomListTable (budgetAtomList stages j n) xs) n := by
+  change EF.safeRecip (EF.mul
+      (EF.const (((b : ℕ) : ℚ) + firmRawPriorWorthData
+        (past, budgetAtomList stages j n, xs) j n)⁻¹)
+      (EF.neg (tradeListWorldValueFeatureData
+        (budgetAtomList stages j n) xs
+        ((firmRawTrader j).strat n).trades n))) =
+    EF.safeRecip (EF.mul
+      (EF.const (((b : ℕ) : ℚ) + rawPriorWorthRatTradeLists
+        (fun i => ((firmRawTrader j).strat i).trades)
+        (rationalHistory past) (atomListTable (budgetAtomList stages j n) xs) n)⁻¹)
+      (EF.neg (Strategy.tradeListWorldValueFeature
+        ((firmRawTrader j).strat n).trades n
+        (atomListTable (budgetAtomList stages j n) xs))))
+  rw [firmRawPriorWorthData_eq,
+    tradeListWorldValueFeatureData_eq]
+
+private def budgetScaleFeaturesData (core : BudgetCoreInput) : List EF :=
+  let atoms := budgetAtomList core.1.1.1.1 core.1.1.2 core.2
+  (allBoolLists atoms.length).foldr (fun xs acc =>
+    bif budgetConsistentAtDayData atoms xs core.1.1.1.1 core.2 then
+      budgetWorldScaleData core xs :: acc
+    else acc) []
+
+private def budgetScaleFeatureData (core : BudgetCoreInput) : EF :=
+  EF.listMin (budgetScaleFeaturesData core)
+
+section
+attribute [local irreducible] Nat.sqrt budgetScaleFeaturesData
+  budgetScaleFeatureData budgetConsistentAtDayData budgetWorldScaleData
+  budgetAtomList decodedStageTable tableConsistentFromAtomList
+
+private theorem budgetScaleFeaturesData_prim :
+    Primrec budgetScaleFeaturesData := by
+  have hstages : Primrec fun core : BudgetCoreInput => core.1.1.1.1 :=
+    Primrec.fst.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
+  have hj : Primrec fun core : BudgetCoreInput => core.1.1.2 :=
+    Primrec.snd.comp (Primrec.fst.comp Primrec.fst)
+  have hn : Primrec fun core : BudgetCoreInput => core.2 := Primrec.snd
+  have hatoms : Primrec fun core : BudgetCoreInput =>
+      budgetAtomList core.1.1.1.1 core.1.1.2 core.2 :=
+    budgetAtomList_prim.comp ((hstages.pair hj).pair hn)
+  have hassignments : Primrec fun core : BudgetCoreInput =>
+      allBoolLists
+        (budgetAtomList core.1.1.1.1 core.1.1.2 core.2).length :=
+    allBoolLists_prim.comp (Primrec.list_length.comp hatoms)
+  have hconsistent : Primrec fun p : BudgetCoreInput × List Bool =>
+      budgetConsistentAtDayData
+        (budgetAtomList p.1.1.1.1.1 p.1.1.1.2 p.1.2)
+        p.2 p.1.1.1.1.1 p.1.2 :=
+    budgetConsistentAtDayData_prim.comp
+      ((((hatoms.comp Primrec.fst).pair Primrec.snd).pair
+        (hstages.comp Primrec.fst)).pair (hn.comp Primrec.fst))
+  have hstep : Primrec₂ fun (core : BudgetCoreInput)
+      (q : List Bool × List EF) =>
+      bif budgetConsistentAtDayData
+          (budgetAtomList core.1.1.1.1 core.1.1.2 core.2)
+          q.1 core.1.1.1.1 core.2 then
+        budgetWorldScaleData core q.1 :: q.2
+      else q.2 := by
+    have htest : Primrec fun p : BudgetCoreInput × (List Bool × List EF) =>
+        budgetConsistentAtDayData
+          (budgetAtomList p.1.1.1.1.1 p.1.1.1.2 p.1.2)
+          p.2.1 p.1.1.1.1.1 p.1.2 :=
+      hconsistent.comp ((Primrec.fst).pair (Primrec.fst.comp Primrec.snd))
+    have hthen : Primrec fun p : BudgetCoreInput × (List Bool × List EF) =>
+        budgetWorldScaleData p.1 p.2.1 :: p.2.2 :=
+      Primrec.list_cons.comp
+        (budgetWorldScaleData_prim.comp
+          (Primrec.fst.pair (Primrec.fst.comp Primrec.snd)))
+        (Primrec.snd.comp Primrec.snd)
+    exact (Primrec.cond htest hthen
+      (Primrec.snd.comp Primrec.snd)).to₂
+  exact (Primrec.list_foldr hassignments (Primrec.const []) hstep).of_eq
+    fun core => by
+      unfold budgetScaleFeaturesData
+      rfl
+
+private theorem budgetScaleFeatureData_prim :
+    Primrec budgetScaleFeatureData := by
+  exact (efListMin_prim.comp budgetScaleFeaturesData_prim).of_eq fun core => by
+    unfold budgetScaleFeatureData
+    rfl
+
+end
+
+private theorem firmBudgetBreachAtDayData_eq
+    (stages : List (Finset Sentence)) (past : List RationalBeliefState)
+    (j b n : ℕ) (xs : List Bool) (m : ℕ) :
+    firmBudgetBreachAtDayData ((((stages, past), j), b), n) xs m =
+      (tableConsistent
+          (finiteAtomTableFromList
+            (budgetAtomsFromStageTradeLists (decodedStageTable stages)
+              (fun i => ((firmRawTrader j).strat i).trades) n) xs)
+          (decodedStageTable stages m) &&
+        decide (rawWorthRatTradeLists
+          (fun i => ((firmRawTrader j).strat i).trades)
+          (rationalHistory past)
+          (finiteAtomTableFromList
+            (budgetAtomsFromStageTradeLists (decodedStageTable stages)
+              (fun i => ((firmRawTrader j).strat i).trades) n) xs)
+          m ≤ -(b : ℚ))) := by
+  let A := budgetAtomsFromStageTradeLists (decodedStageTable stages)
+    (fun i => ((firmRawTrader j).strat i).trades) n
+  change
+    (tableConsistentFromAtomList (budgetAtomList stages j n) xs
+        (decodedStageTable stages m) &&
+      decide (firmRawPriorWorthData
+        (past, budgetAtomList stages j n, xs) j (m + 1) ≤ -(b : ℚ))) =
+    (tableConsistent (finiteAtomTableFromList A xs)
+        (decodedStageTable stages m) &&
+      decide (rawWorthRatTradeLists
+        (fun i => ((firmRawTrader j).strat i).trades)
+        (rationalHistory past) (finiteAtomTableFromList A xs) m ≤ -(b : ℚ)))
+  rw [budgetAtomList_eq]
+  rw [tableConsistentFromAtomList_sort_eq, firmRawPriorWorthData_eq,
+    atomListTable_sort_eq]
+  rfl
+
+private theorem firmBudgetAssignmentBreachesData_eq
+    (stages : List (Finset Sentence)) (past : List RationalBeliefState)
+    (j b n : ℕ) (xs : List Bool) :
+    firmBudgetAssignmentBreachesData ((((stages, past), j), b), n) xs =
+      (List.range n).any fun m =>
+        tableConsistent
+            (finiteAtomTableFromList
+              (budgetAtomsFromStageTradeLists (decodedStageTable stages)
+                (fun i => ((firmRawTrader j).strat i).trades) n) xs)
+            (decodedStageTable stages m) &&
+          decide (rawWorthRatTradeLists
+            (fun i => ((firmRawTrader j).strat i).trades)
+            (rationalHistory past)
+            (finiteAtomTableFromList
+              (budgetAtomsFromStageTradeLists (decodedStageTable stages)
+                (fun i => ((firmRawTrader j).strat i).trades) n) xs)
+            m ≤ -(b : ℚ)) := by
+  unfold firmBudgetAssignmentBreachesData
+  apply List.any_congr rfl
+  intro m
+  exact firmBudgetBreachAtDayData_eq stages past j b n xs m
+
+private theorem priorBudgetBreachData_eq
+    (stages : List (Finset Sentence)) (past : List RationalBeliefState)
+    (j b n : ℕ) :
+    priorBudgetBreachData ((((stages, past), j), b), n) =
+      priorBudgetBreachFromStageTradeLists (decodedStageTable stages)
+        (fun i => ((firmRawTrader j).strat i).trades) b
+        (rationalHistory past) n := by
+  unfold priorBudgetBreachData priorBudgetBreachFromStageTradeLists
+  dsimp only
+  rw [budgetAtomList_eq, Finset.length_sort]
+  apply List.any_congr rfl
+  intro xs
+  exact firmBudgetAssignmentBreachesData_eq stages past j b n xs
+
+private theorem budgetScaleFeatureData_eq
+    (stages : List (Finset Sentence)) (past : List RationalBeliefState)
+    (j b n : ℕ) :
+    budgetScaleFeatureData ((((stages, past), j), b), n) =
+      budgetScaleFeatureFromStageTradeLists (decodedStageTable stages)
+        (fun i => ((firmRawTrader j).strat i).trades) b
+        (rationalHistory past) n := by
+  let A := budgetAtomsFromStageTradeLists (decodedStageTable stages)
+    (fun i => ((firmRawTrader j).strat i).trades) n
+  have hatoms : budgetAtomList stages j n = A.sort (fun a b => a ≤ b) :=
+    budgetAtomList_eq stages j n
+  have hconsistent (xs : List Bool) :
+      budgetConsistentAtDayData (A.sort (fun a b => a ≤ b)) xs stages n =
+        tableConsistent (finiteAtomTableFromList A xs)
+          (decodedStageTable stages n) := by
+    unfold budgetConsistentAtDayData
+    exact tableConsistentFromAtomList_sort_eq A xs
+      (decodedStageTable stages n)
+  have hscale (xs : List Bool) :
+      budgetWorldScaleData ((((stages, past), j), b), n) xs =
+        budgetWorldScaleTradeLists
+          (fun i => ((firmRawTrader j).strat i).trades) b
+          (rationalHistory past) (finiteAtomTableFromList A xs) n := by
+    rw [budgetWorldScaleData_eq, hatoms, atomListTable_sort_eq]
+  unfold budgetScaleFeatureData budgetScaleFeaturesData
+    budgetScaleFeatureFromStageTradeLists
+  rw [hatoms]
+  dsimp only
+  rw [Finset.length_sort]
+  apply congrArg EF.listMin
+  generalize allBoolLists A.card = assignments
+  induction assignments with
+  | nil => rfl
+  | cons xs rest ih =>
+      rw [List.foldr_cons, hconsistent xs, hscale xs, List.filter_cons]
+      cases h : tableConsistent (finiteAtomTableFromList A xs)
+          (decodedStageTable stages n)
+      · exact ih
+      · exact congrArg
+          (List.cons (budgetWorldScaleTradeLists
+            (fun i => ((firmRawTrader j).strat i).trades) b
+            (rationalHistory past) (finiteAtomTableFromList A xs) n)) ih
+
+section
+attribute [local irreducible] Nat.sqrt priorBudgetBreachData
+  budgetScaleFeatureData
+
+private theorem budgeterTradesFromStageTradeLists_prim : Primrec fun core :
+    BudgetCoreInput =>
+      budgeterTradesFromStageTradeLists
+        (decodedStageTable core.1.1.1.1)
+        (fun i => ((firmRawTrader core.1.1.2).strat i).trades)
+        core.1.2 (rationalHistory core.1.1.1.2) core.2 := by
+  have hj : Primrec fun core : BudgetCoreInput => core.1.1.2 :=
+    Primrec.snd.comp (Primrec.fst.comp Primrec.fst)
+  have hn : Primrec fun core : BudgetCoreInput => core.2 := Primrec.snd
+  have hraw : Primrec fun core : BudgetCoreInput =>
+      ((firmRawTrader core.1.1.2).strat core.2).trades :=
+    firmRawTraderTrades_prim.comp hj hn
+  have htrade : Primrec₂ fun (core : BudgetCoreInput)
+      (trade : EF × Sentence) =>
+      (EF.mul (budgetScaleFeatureData core) trade.1, trade.2) :=
+    Primrec₂.pair.comp₂
+      (efMul_prim.comp₂
+        (budgetScaleFeatureData_prim.comp₂ Primrec₂.left)
+        (Primrec.fst.comp₂ Primrec₂.right))
+        (Primrec.snd.comp₂ Primrec₂.right)
+  have hscaled : Primrec fun core : BudgetCoreInput =>
+      (((firmRawTrader core.1.1.2).strat core.2).trades.map fun trade =>
+        (EF.mul (budgetScaleFeatureData core) trade.1, trade.2)) :=
+    Primrec.list_map hraw htrade
+  have hcompiled : Primrec fun core : BudgetCoreInput =>
+      bif priorBudgetBreachData core then [] else
+        ((firmRawTrader core.1.1.2).strat core.2).trades.map fun trade =>
+          (EF.mul (budgetScaleFeatureData core) trade.1, trade.2) :=
+    Primrec.cond priorBudgetBreachData_prim (Primrec.const []) hscaled
+  exact hcompiled.of_eq fun core => by
+    rcases core with ⟨⟨⟨⟨stages, past⟩, j⟩, b⟩, n⟩
+    rw [priorBudgetBreachData_eq, budgetScaleFeatureData_eq]
+    unfold budgeterTradesFromStageTradeLists
+    cases priorBudgetBreachFromStageTradeLists (decodedStageTable stages)
+      (fun i => ((firmRawTrader j).strat i).trades) b
+      (rationalHistory past) n <;> rfl
+
+end
+
+private abbrev TradingFirmComponentInput :=
+  ((List (Finset Sentence) × List RationalBeliefState) × ℕ) × ℕ
+
+section
+attribute [local irreducible] Nat.sqrt tradingFirmCutoffTradeLists
+  budgeterTradesFromStageTradeLists
+
+private theorem tradingFirmComponentTradesFromStageTradeLists_prim :
+    Primrec fun p : TradingFirmComponentInput =>
+      tradingFirmComponentTradesFromStageTradeLists
+        (decodedStageTable p.1.1.1) (rationalHistory p.1.1.2)
+        p.1.2 p.2 := by
+  let P := TradingFirmComponentInput
+  have hstages : Primrec fun p : P => p.1.1.1 :=
+    Primrec.fst.comp (Primrec.fst.comp Primrec.fst)
+  have hpast : Primrec fun p : P => p.1.1.2 :=
+    Primrec.snd.comp (Primrec.fst.comp Primrec.fst)
+  have hn : Primrec fun p : P => p.1.2 :=
+    Primrec.snd.comp Primrec.fst
+  have hj : Primrec fun p : P => p.2 := Primrec.snd
+  have hcutoff : Primrec fun p : P =>
+      tradingFirmCutoffTradeLists p.1.2 :=
+    tradingFirmCutoffTradeLists_prim.comp hn
+  have hrange : Primrec fun p : P =>
+      List.range (tradingFirmCutoffTradeLists p.1.2) :=
+    Primrec.list_range.comp hcutoff
+  have hbudget : Primrec₂ fun (p : P) (r : ℕ) =>
+      budgeterTradesFromStageTradeLists
+        (decodedStageTable p.1.1.1)
+        (fun i => ((firmRawTrader p.2).strat i).trades)
+        (r + 1) (rationalHistory p.1.1.2) p.1.2 := by
+    have hcore : Primrec fun z : P × ℕ =>
+        (((((z.1.1.1.1, z.1.1.1.2), z.1.2), z.2 + 1), z.1.1.2) :
+          BudgetCoreInput) := by
+      have hstages' : Primrec fun z : P × ℕ => z.1.1.1.1 :=
+        hstages.comp Primrec.fst
+      have hpast' : Primrec fun z : P × ℕ => z.1.1.1.2 :=
+        hpast.comp Primrec.fst
+      have hj' : Primrec fun z : P × ℕ => z.1.2 :=
+        hj.comp Primrec.fst
+      have hb' : Primrec fun z : P × ℕ => z.2 + 1 :=
+        Primrec.nat_add.comp Primrec.snd (Primrec.const 1)
+      have hn' : Primrec fun z : P × ℕ => z.1.1.2 :=
+        hn.comp Primrec.fst
+      exact (((hstages'.pair hpast').pair hj').pair hb').pair hn'
+    exact (budgeterTradesFromStageTradeLists_prim.comp hcore).to₂
+  have hweight : Primrec₂ fun (p : P) (r : ℕ) =>
+      tradingFirmWeight p.2 (r + 1) :=
+    tradingFirmWeight_prim.comp₂
+      (hj.comp₂ Primrec₂.left)
+      (Primrec.nat_add.comp₂ Primrec₂.right (Primrec₂.const 1))
+  have hscaledBudget : Primrec₂ fun (p : P) (r : ℕ) =>
+      scaleConstTradeList (tradingFirmWeight p.2 (r + 1))
+        (budgeterTradesFromStageTradeLists
+          (decodedStageTable p.1.1.1)
+          (fun i => ((firmRawTrader p.2).strat i).trades)
+          (r + 1) (rationalHistory p.1.1.2) p.1.2) :=
+    scaleConstTradeList_prim.comp₂ hweight hbudget
+  have hbudgets : Primrec fun p : P =>
+      (List.range (tradingFirmCutoffTradeLists p.1.2)).flatMap fun r =>
+        scaleConstTradeList (tradingFirmWeight p.2 (r + 1))
+          (budgeterTradesFromStageTradeLists
+            (decodedStageTable p.1.1.1)
+            (fun i => ((firmRawTrader p.2).strat i).trades)
+            (r + 1) (rationalHistory p.1.1.2) p.1.2) :=
+    Primrec.list_flatMap hrange hscaledBudget
+  have htailWeight : Primrec fun p : P =>
+      tradingFirmWeight p.2 (tradingFirmCutoffTradeLists p.1.2) :=
+    tradingFirmWeight_prim.comp hj hcutoff
+  have htailRaw : Primrec fun p : P =>
+      ((firmRawTrader p.2).strat p.1.2).trades :=
+    firmRawTraderTrades_prim.comp hj hn
+  have htail : Primrec fun p : P =>
+      scaleConstTradeList
+        (tradingFirmWeight p.2 (tradingFirmCutoffTradeLists p.1.2))
+        ((firmRawTrader p.2).strat p.1.2).trades :=
+    scaleConstTradeList_prim.comp htailWeight htailRaw
+  exact (Primrec.list_append.comp hbudgets htail).of_eq fun p => by
+    unfold tradingFirmComponentTradesFromStageTradeLists
+    rfl
+
+end
+
+private abbrev TradingFirmInput :=
+  (List (Finset Sentence) × List RationalBeliefState) × ℕ
+
+section
+attribute [local irreducible] Nat.sqrt
+  tradingFirmComponentTradesFromStageTradeLists
+
+private theorem tradingFirmTradesFromStageTradeLists_prim :
+    Primrec fun p : TradingFirmInput =>
+      tradingFirmTradesFromStageTradeLists
+        (decodedStageTable p.1.1) (rationalHistory p.1.2) p.2 := by
+  let P := TradingFirmInput
+  have hrange : Primrec fun p : P => List.range (p.2 + 1) :=
+    Primrec.list_range.comp
+      (Primrec.nat_add.comp Primrec.snd (Primrec.const 1))
+  have hcomponent : Primrec₂ fun (p : P) (j : ℕ) =>
+      tradingFirmComponentTradesFromStageTradeLists
+        (decodedStageTable p.1.1) (rationalHistory p.1.2) p.2 j := by
+    have hinput : Primrec fun z : P × ℕ =>
+        ((((z.1.1.1, z.1.1.2), z.1.2), z.2) :
+          TradingFirmComponentInput) :=
+      (((Primrec.fst.comp (Primrec.fst.comp Primrec.fst)).pair
+        (Primrec.snd.comp (Primrec.fst.comp Primrec.fst))).pair
+          (Primrec.snd.comp Primrec.fst)).pair Primrec.snd
+    exact (tradingFirmComponentTradesFromStageTradeLists_prim.comp hinput).to₂
+  exact (Primrec.list_flatMap hrange hcomponent).of_eq fun p => by
+    unfold tradingFirmTradesFromStageTradeLists
+    rfl
+
+end
+
+private theorem marketMakerError_prim : Primrec marketMakerError := by
+  have hexponent : Primrec fun n : ℕ => n + 1 :=
+    Primrec.nat_add.comp Primrec.id (Primrec.const 1)
+  have hpow : Primrec fun n : ℕ => (2 : ℚ) ^ (n + 1) :=
+    ratPow_prim.comp (Primrec.const 2) hexponent
+  exact (ratDiv_prim.comp (Primrec.const 1) hpow).of_eq fun n => by
+    rfl
+
+section
+attribute [local irreducible] Nat.sqrt liaPrefixFromTradeListsAtFuel
+  tradingFirmTradesFromStageTradeLists marketMakerSearchUpToTradeList
+
+private theorem liaPrefixFromTradeListsAtFuel_prim : Primrec fun p :
+    (List (Finset Sentence) × ℕ) × ℕ =>
+      liaPrefixFromTradeListsAtFuel
+        (decodedStageTable p.1.1) p.1.2 p.2 := by
+  let C := List (Finset Sentence) × ℕ
+  have hbase : Primrec fun _ctx : C =>
+      (some [] : Option (List RationalBeliefState)) :=
+    Primrec.const (some [])
+  have hstep : Primrec₂ fun (ctx : C)
+      (ni : ℕ × Option (List RationalBeliefState)) =>
+      ni.2.bind fun past =>
+        (marketMakerSearchUpToTradeList
+          (tradingFirmTradesFromStageTradeLists
+            (decodedStageTable ctx.1) (rationalHistory past) ni.1)
+          ni.1 past (marketMakerError ni.1) ctx.2).bind fun state =>
+            some (past ++ [state]) := by
+    let X := C × (ℕ × Option (List RationalBeliefState))
+    have hfirm : Primrec₂ fun (x : X)
+        (past : List RationalBeliefState) =>
+        tradingFirmTradesFromStageTradeLists
+          (decodedStageTable x.1.1) (rationalHistory past) x.2.1 := by
+      have hinput : Primrec fun z : X × List RationalBeliefState =>
+          (((z.1.1.1, z.2), z.1.2.1) : TradingFirmInput) :=
+        ((Primrec.fst.comp (Primrec.fst.comp Primrec.fst)).pair
+          Primrec.snd).pair
+            (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
+      exact (tradingFirmTradesFromStageTradeLists_prim.comp hinput).to₂
+    have hsearch : Primrec₂ fun (x : X)
+        (past : List RationalBeliefState) =>
+        marketMakerSearchUpToTradeList
+          (tradingFirmTradesFromStageTradeLists
+            (decodedStageTable x.1.1) (rationalHistory past) x.2.1)
+          x.2.1 past (marketMakerError x.2.1) x.1.2 := by
+      have htrades : Primrec fun z : X × List RationalBeliefState =>
+          tradingFirmTradesFromStageTradeLists
+            (decodedStageTable z.1.1.1) (rationalHistory z.2) z.1.2.1 :=
+        hfirm.comp Primrec.fst Primrec.snd
+      have hn : Primrec fun z : X × List RationalBeliefState => z.1.2.1 :=
+        Primrec.fst.comp (Primrec.snd.comp Primrec.fst)
+      have hpast : Primrec fun z : X × List RationalBeliefState => z.2 :=
+        Primrec.snd
+      have hepsilon : Primrec fun z : X × List RationalBeliefState =>
+          marketMakerError z.1.2.1 :=
+        marketMakerError_prim.comp hn
+      have hfuel : Primrec fun z : X × List RationalBeliefState => z.1.1.2 :=
+        Primrec.snd.comp (Primrec.fst.comp Primrec.fst)
+      have hinput : Primrec fun z : X × List RationalBeliefState =>
+          (((((tradingFirmTradesFromStageTradeLists
+              (decodedStageTable z.1.1.1) (rationalHistory z.2) z.1.2.1,
+            z.1.2.1), z.2), marketMakerError z.1.2.1),
+              z.1.1.2) : MarketMakerSearchInput × ℕ) :=
+        (((htrades.pair hn).pair hpast).pair hepsilon).pair hfuel
+      exact (marketMakerSearchUpToTradeList_prim.comp hinput).to₂
+    have hout : Primrec₂ fun
+        (y : (X × List RationalBeliefState))
+        (state : RationalBeliefState) =>
+        some (y.2 ++ [state]) :=
+      Primrec₂.option_some_iff.mpr
+        (Primrec.list_concat.comp₂
+          (Primrec.snd.comp₂ Primrec₂.left) Primrec₂.right)
+    have hinner : Primrec₂ fun (x : X)
+        (past : List RationalBeliefState) =>
+        (marketMakerSearchUpToTradeList
+          (tradingFirmTradesFromStageTradeLists
+            (decodedStageTable x.1.1) (rationalHistory past) x.2.1)
+          x.2.1 past (marketMakerError x.2.1) x.1.2).bind fun state =>
+            some (past ++ [state]) :=
+      (Primrec.option_bind
+        (hsearch.comp Primrec.fst Primrec.snd) hout).to₂
+    exact (Primrec.option_bind
+      (Primrec.snd.comp Primrec.snd) hinner).to₂
+  have hrec : Primrec₂ fun (ctx : C) n =>
+      liaPrefixFromTradeListsAtFuel
+        (decodedStageTable ctx.1) ctx.2 n := by
+    exact (Primrec.nat_rec hbase hstep).of_eq fun ctx n => by
+      induction n with
+      | zero => simp [liaPrefixFromTradeListsAtFuel]
+      | succ n ih => simp [liaPrefixFromTradeListsAtFuel, ih]
+  exact hrec.comp Primrec.fst Primrec.snd
+
+end
+
+/-- The proof-carrying finite-stage recurrence has the same primitive-recursive
+first-order implementation as its fully erased trade-list presentation. -/
+private theorem liaPrefixFromStagesAtFuel_prim : Primrec fun p :
+    (List (Finset Sentence) × ℕ) × ℕ =>
+      liaPrefixFromStagesAtFuel
+        (decodedStageTable p.1.1) p.1.2 p.2 := by
+  exact liaPrefixFromTradeListsAtFuel_prim.of_eq fun p => by
+    rw [liaPrefixFromTradeListsAtFuel_eq,
+      liaPrefixFromStageListsAtFuel_eq]
+
+/-- The complete common-clock LIA state-prefix evaluator is primitive recursive. -/
+private theorem liaPrefixAtFuel_prim {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) :
+    Primrec₂ fun fuel n => liaPrefixAtFuel process fuel n := by
+  let X := ℕ × ℕ
+  have hstages : Primrec fun x : X =>
+      processStagePrefixAtFuel process x.1 x.2 :=
+    (processStagePrefixAtFuel_prim process).comp Primrec.fst Primrec.snd
+  have hrun : Primrec₂ fun (x : X) (stages : List (Finset Sentence)) =>
+      liaPrefixFromStagesAtFuel
+        (decodedStageTable stages) x.1 x.2 := by
+    have hinput : Primrec fun z : X × List (Finset Sentence) =>
+        (((z.2, z.1.1), z.1.2) :
+          (List (Finset Sentence) × ℕ) × ℕ) :=
+      ((Primrec.snd.pair
+        (Primrec.fst.comp Primrec.fst)).pair
+          (Primrec.snd.comp Primrec.fst))
+    exact (liaPrefixFromStagesAtFuel_prim.comp hinput).to₂
+  exact ((Primrec.option_bind hstages hrun).to₂).of_eq fun fuel n => by
+    rfl
+
+section
+attribute [local irreducible] Nat.sqrt liaEncodedQuoteAtFuel
+
+/-- The bounded exact rational quote evaluator is primitive recursive in its common
+clock, day, and external sentence code. -/
+private theorem liaEncodedQuoteAtFuel_prim {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) : Primrec fun p :
+    (ℕ × ℕ) × ℕ =>
+      liaEncodedQuoteAtFuel process p.1.1 p.1.2 p.2 := by
+  let P := (ℕ × ℕ) × ℕ
+  have hfuel : Primrec fun p : P => p.1.1 :=
+    Primrec.fst.comp Primrec.fst
+  have hday : Primrec fun p : P => p.1.2 :=
+    Primrec.snd.comp Primrec.fst
+  have hdaySucc : Primrec fun p : P => p.1.2 + 1 :=
+    Primrec.nat_add.comp hday (Primrec.const 1)
+  have hprefix : Primrec fun p : P =>
+      liaPrefixAtFuel process p.1.1 (p.1.2 + 1) :=
+    (liaPrefixAtFuel_prim process).comp hfuel hdaySucc
+  let Y := P × List RationalBeliefState
+  have hlookup : Primrec fun y : Y => y.2[y.1.1.2]? :=
+    Primrec.list_getElem?.comp Primrec.snd
+      (hday.comp Primrec.fst)
+  have hfinish : Primrec₂ fun (y : Y) (state : RationalBeliefState) =>
+      some (match Encodable.decode (α := Sentence) y.1.2 with
+        | some phi => state.quote phi
+        | none => 0) := by
+    let Z := Y × RationalBeliefState
+    have hdecode : Primrec fun z : Z =>
+        Encodable.decode (α := Sentence) z.1.1.2 :=
+      (Primrec.decode : Primrec fun n : ℕ =>
+        Encodable.decode (α := Sentence) n).comp
+          (Primrec.snd.comp (Primrec.fst.comp Primrec.fst))
+    have hquote : Primrec₂ fun (z : Z) (phi : Sentence) =>
+        z.2.quote phi :=
+      rationalBeliefStateQuote_prim.comp₂
+        (Primrec.snd.comp₂ Primrec₂.left) Primrec₂.right
+    let valueCompiled : Z → ℚ := fun z =>
+      Option.casesOn (Encodable.decode (α := Sentence) z.1.1.2)
+        (0 : ℚ) fun phi => z.2.quote phi
+    have hvalueCompiled : Primrec valueCompiled :=
+      Primrec.option_casesOn hdecode (Primrec.const 0) hquote
+    have hvalue : Primrec fun z : Z =>
+        match Encodable.decode (α := Sentence) z.1.1.2 with
+        | some phi => z.2.quote phi
+        | none => 0 := hvalueCompiled.of_eq fun z => by
+      unfold valueCompiled
+      cases Encodable.decode (α := Sentence) z.1.1.2 <;> rfl
+    exact Primrec₂.option_some_iff.mpr hvalue.to₂
+  have hinner : Primrec₂ fun (p : P)
+      (states : List RationalBeliefState) =>
+      states[p.1.2]?.bind fun state =>
+        some (match Encodable.decode (α := Sentence) p.2 with
+          | some phi => state.quote phi
+          | none => 0) :=
+    (Primrec.option_bind hlookup hfinish).to₂
+  exact (Primrec.option_bind hprefix hinner).of_eq fun p => by
+    unfold liaEncodedQuoteAtFuel
+    rfl
+
+end
+
+section
+attribute [local irreducible] Nat.sqrt liaEncodedQuoteNatAtFuel
+
+/-- The natural-coded bounded evaluator is primitive recursive in the paired
+day/sentence input and its common fuel clock. -/
+private theorem liaEncodedQuoteNatAtFuel_prim {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) :
+    Primrec₂ (liaEncodedQuoteNatAtFuel process) := by
+  let X := ℕ × ℕ
+  have hleft : Primrec fun p : X => p.1.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp Primrec.fst)
+  have hright : Primrec fun p : X => p.1.unpair.2 :=
+    Primrec.snd.comp (Primrec.unpair.comp Primrec.fst)
+  have hinput : Primrec fun p : X =>
+      (((p.2, p.1.unpair.1), p.1.unpair.2) : (ℕ × ℕ) × ℕ) :=
+    (Primrec.snd.pair hleft).pair hright
+  have hquote : Primrec fun p : X =>
+      liaEncodedQuoteAtFuel process p.2 p.1.unpair.1 p.1.unpair.2 :=
+    liaEncodedQuoteAtFuel_prim process |>.comp hinput
+  have hencode : Primrec₂ fun (_p : X) (q : ℚ) =>
+      Encodable.encode q :=
+    Primrec.encode.comp₂ Primrec₂.right
+  exact ((Primrec.option_map hquote hencode).to₂).of_eq fun z fuel => by
+    unfold liaEncodedQuoteNatAtFuel
+    rfl
+
+end
+
+
+/-- Concrete computability certificate for the sole bounded-evaluator boundary in the
+core LIA construction. -/
+theorem liaEncodedQuoteNatAtFuel_computable {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) :
+    Computable₂ (liaEncodedQuoteNatAtFuel process) :=
+  (liaEncodedQuoteNatAtFuel_prim process).to_comp
+
+/-- The concrete bounded evaluator compiler assembled from the primitive-recursive
+first-order implementation above. -/
+def liaBoundedEvaluatorCompiler {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) :
+    LIABoundedEvaluatorCompiler process where
+  computable := liaEncodedQuoteNatAtFuel_computable process
+
+/-- `thm:lia`: the recursively constructed rational LIA market is a logical inductor
+over every computable deductive process. -/
+theorem LIA_is_logical_inductor (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP) :
+    IsLogicalInductor (liaHistory DP) DP := by
+  obtain ⟨process⟩ := hDP.nonemptyComputation
+  exact lia_isLogicalInductor_of_compiler process
+    (liaBoundedEvaluatorCompiler process)
+
+/-- `thm:li`: every computable deductive process admits a logical inductor. -/
+theorem exists_logical_inductor (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP) :
+    ∃ P : History, IsLogicalInductor P DP :=
+  ⟨liaHistory DP, LIA_is_logical_inductor DP hDP⟩
+
+#print axioms liaEncodedQuoteNatAtFuel_computable
+#print axioms LIA_is_logical_inductor
+#print axioms exists_logical_inductor
 
 end LogicalInduction

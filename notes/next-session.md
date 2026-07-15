@@ -2,11 +2,14 @@
 
 ## ▶ START HERE — closing out M7 (handoff 2026-07-15)
 
-Baseline: `LogicalInduction.Construction` builds **green, zero `sorry`s (2437 jobs)** at
-commit `fe58b16`. All M7 *semantics* are proved and axiom-clean; `exists_logical_inductor`
-is reduced to one obligation — instantiate `LIABoundedEvaluatorCompiler`, i.e. prove
-`Computable₂ (liaEncodedQuoteNatAtFuel process)`. Everything below is the primitive-recursive
-compiler assembly in `Construction/LIACompiler.lean` toward that, then the two capstones.
+Current frontier: the core M7 construction is complete. `Construction/LIACompiler.lean`
+now proves `Computable₂ (liaEncodedQuoteNatAtFuel process)`, constructs
+`liaBoundedEvaluatorCompiler`, and proves the paper-facing `LIA_is_logical_inductor` and
+`exists_logical_inductor`; direct Lean checking is green and all three public declarations
+expose only `propext`, `Classical.choice`, and `Quot.sound`. Active work has moved to
+`Construction/M7Witnesses.lean`: construct the fifteen conclusion-free post-M5 witnesses,
+instantiate the advertised property corollaries, and then run the paper/read-through/audit
+gates below.
 
 **GOTCHA (read first, will recur every step):** `Primrec` proofs over the deep product
 input types here blow up `whnf` on `Nat.sqrt` (via `Nat.unpair` in the `Primcodable`
@@ -26,7 +29,7 @@ Budgeter-gate stack through `priorBudgetBreachData_prim` (5135). The semantic `_
 `marketMakerSearchUpToTradeList_eq`, `liaPrefixAtFuel_sound`, `liaEncodedQuoteAtFuel_sound`,
 `exists_liaEncodedQuoteAtFuel`) are all in `LIAComputation.lean` and already proved.
 
-**Build order (each is a `Primrec`/`Computable` lemma; append to LIACompiler.lean):**
+**Completed core build order (each now proved in `LIACompiler.lean`):**
 1. `budgeterTradesFromStageTradeLists_prim` — budgeted trade-list emission. Uses
    `priorBudgetBreachData_prim` ✓ (the gate) + the erased budgeted-trade ops. Def in
    `Budgeter.lean`.
