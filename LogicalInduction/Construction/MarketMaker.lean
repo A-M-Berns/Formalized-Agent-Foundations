@@ -13,6 +13,23 @@ namespace LogicalInduction
 
 open Classical Set Function
 
+/-- All Boolean lists of exactly the requested length, in a fixed executable order. -/
+def allBoolLists : ℕ → List (List Bool)
+  | 0 => [[]]
+  | n + 1 =>
+      (allBoolLists n).map (false :: ·) ++ (allBoolLists n).map (true :: ·)
+
+theorem mem_allBoolLists_iff : ∀ {n : ℕ} {xs : List Bool},
+    xs ∈ allBoolLists n ↔ xs.length = n := by
+  intro n
+  induction n with
+  | zero => intro xs; simp [allBoolLists]
+  | succ n ih =>
+      intro xs
+      cases xs with
+      | nil => simp [allBoolLists]
+      | cons b xs => cases b <;> simp [allBoolLists, ih]
+
 namespace Strategy
 
 private theorem sum_map_eq_fin {α : Type*} (l : List α) (f : α → ℝ) :
@@ -69,6 +86,22 @@ theorem value_eq_sum_support {n : ℕ} (T : Strategy n) (V : History)
   rw [hsentence]
 
 end Strategy
+
+/-! Raw trade-list counterparts used at the compiler boundary.  A `Strategy n` carries
+only one computational field, its list of trades; the rank proof is erased by evaluation.
+These definitions make that erasure explicit and avoid a value-dependent `Strategy n`
+type in the primitive-recursive compiler. -/
+
+def tradeListSupport (trades : List (EF × Sentence)) : Finset Sentence :=
+  trades.toFinset.image Prod.snd
+
+def tradeListMarketValueRat (trades : List (EF × Sentence)) (n : ℕ)
+    (Q : ℕ → Sentence → ℚ) (w : Sentence → ℚ) : ℚ :=
+  (trades.map fun p => p.1.denoteRat Q * (w p.2 - Q n p.2)).sum
+
+@[simp] theorem tradeListSupport_strategy {n : ℕ} (T : Strategy n) :
+    tradeListSupport T.trades = T.support := by
+  rfl
 
 /-! ## The finite-dimensional current-price cube -/
 
@@ -656,10 +689,78 @@ theorem value_eq_marketRatCast {n : ℕ} (T : Strategy n) (P : History)
 
 end Strategy
 
+@[simp] theorem tradeListMarketValueRat_strategy {n : ℕ} (T : Strategy n)
+    (Q : ℕ → Sentence → ℚ) (w : Sentence → ℚ) :
+    tradeListMarketValueRat T.trades n Q w = T.marketValueRat Q w := by
+  rfl
+
 /-- Rational version of a support bit table. -/
 def supportBitWorldRat {n : ℕ} (T : Strategy n) (b : ↥T.support → Bool) :
     Sentence → ℚ := fun φ =>
   if hφ : φ ∈ T.support then if b ⟨φ, hφ⟩ then 1 else 0 else 0
+
+/-! First-order bit-list presentation of the finite support worlds. -/
+
+def supportSentenceList (S : Finset Sentence) : List Sentence :=
+  let r : Sentence → Sentence → Prop := fun φ ψ =>
+    Encodable.encode φ ≤ Encodable.encode ψ
+  letI : IsTrans Sentence r :=
+    ⟨fun _ _ _ hab hbc => hab.trans hbc⟩
+  letI : Std.Antisymm r :=
+    ⟨fun _ _ hab hba => Encodable.encode_injective (le_antisymm hab hba)⟩
+  letI : Std.Total r :=
+    ⟨fun φ ψ => le_total (Encodable.encode φ) (Encodable.encode ψ)⟩
+  S.sort r
+
+def supportAssignmentOfList (S : Finset Sentence) (xs : List Bool) : S → Bool := fun φ =>
+  xs.getD ((supportSentenceList S).idxOf φ.1) false
+
+def supportBitWorldRatFromList {n : ℕ} (T : Strategy n) (xs : List Bool) :
+    Sentence → ℚ := fun φ =>
+  if hφ : φ ∈ T.support then
+    if xs.getD ((supportSentenceList T.support).idxOf φ) false then 1 else 0
+  else 0
+
+def tradeListSupportBitWorldRatFromList (trades : List (EF × Sentence))
+    (xs : List Bool) : Sentence → ℚ := fun φ =>
+  if hφ : φ ∈ tradeListSupport trades then
+    if xs.getD ((supportSentenceList (tradeListSupport trades)).idxOf φ) false then 1 else 0
+  else 0
+
+@[simp] theorem tradeListSupportBitWorldRatFromList_strategy {n : ℕ}
+    (T : Strategy n) (xs : List Bool) :
+    tradeListSupportBitWorldRatFromList T.trades xs =
+      supportBitWorldRatFromList T xs := by
+  rfl
+
+theorem supportBitWorldRatFromList_eq {n : ℕ} (T : Strategy n) (xs : List Bool) :
+    supportBitWorldRatFromList T xs =
+      supportBitWorldRat T (supportAssignmentOfList T.support xs) := by
+  funext φ
+  by_cases hφ : φ ∈ T.support
+  · simp [supportBitWorldRatFromList, supportBitWorldRat,
+      supportAssignmentOfList, hφ]
+  · simp [supportBitWorldRatFromList, supportBitWorldRat, hφ]
+
+def supportAssignmentList (S : Finset Sentence) (b : S → Bool) : List Bool :=
+  (supportSentenceList S).map fun φ => if hφ : φ ∈ S then b ⟨φ, hφ⟩ else false
+
+@[simp] theorem supportAssignmentList_length (S : Finset Sentence) (b : S → Bool) :
+    (supportAssignmentList S b).length = S.card := by
+  simp [supportAssignmentList, supportSentenceList]
+
+theorem supportAssignmentOfList_supportAssignmentList (S : Finset Sentence)
+    (b : S → Bool) :
+    supportAssignmentOfList S (supportAssignmentList S b) = b := by
+  funext φ
+  unfold supportAssignmentOfList supportAssignmentList
+  have hmem : φ.1 ∈ supportSentenceList S := by
+    simp [supportSentenceList, φ.2]
+  have hidx : (supportSentenceList S).idxOf φ.1 < (supportSentenceList S).length :=
+    List.idxOf_lt_length_of_mem hmem
+  rw [List.getD_eq_getElem _ _ (by simpa using hidx), List.getElem_map,
+    List.getElem_idxOf hidx]
+  simp [φ.2]
 
 theorem supportBitWorld_eq_ratCast {n : ℕ} (T : Strategy n)
     (b : ↥T.support → Bool) (φ : Sentence) :
@@ -681,6 +782,60 @@ instance MarketMakerAccepts.instDecidable {n : ℕ} (T : Strategy n)
     Decidable (MarketMakerAccepts T past ε B) := by
   unfold MarketMakerAccepts
   infer_instance
+
+/-- First-order finite-list presentation of the same MarketMaker acceptance test. -/
+def MarketMakerAcceptsFromLists {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) (B : RationalBeliefState) : Prop :=
+  B.support ⊆ T.support ∧
+    ∀ xs ∈ allBoolLists T.support.card,
+      T.marketValueRat (candidateRationalHistory past n B)
+        (supportBitWorldRatFromList T xs) ≤ ε
+
+/-- Completely first-order MarketMaker acceptance: the day and raw trade list are data. -/
+def MarketMakerAcceptsTradeList (trades : List (EF × Sentence)) (n : ℕ)
+    (past : List RationalBeliefState) (ε : ℚ) (B : RationalBeliefState) : Prop :=
+  B.support ⊆ tradeListSupport trades ∧
+    ∀ xs ∈ allBoolLists (tradeListSupport trades).card,
+      tradeListMarketValueRat trades n (candidateRationalHistory past n B)
+        (tradeListSupportBitWorldRatFromList trades xs) ≤ ε
+
+instance MarketMakerAcceptsTradeList.instDecidable (trades : List (EF × Sentence))
+    (n : ℕ) (past : List RationalBeliefState) (ε : ℚ) (B : RationalBeliefState) :
+    Decidable (MarketMakerAcceptsTradeList trades n past ε B) := by
+  unfold MarketMakerAcceptsTradeList
+  infer_instance
+
+theorem marketMakerAcceptsTradeList_iff {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) (B : RationalBeliefState) :
+    MarketMakerAcceptsTradeList T.trades n past ε B ↔
+      MarketMakerAcceptsFromLists T past ε B := by
+  rfl
+
+instance MarketMakerAcceptsFromLists.instDecidable {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) (B : RationalBeliefState) :
+    Decidable (MarketMakerAcceptsFromLists T past ε B) := by
+  unfold MarketMakerAcceptsFromLists
+  infer_instance
+
+theorem marketMakerAcceptsFromLists_iff {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) (B : RationalBeliefState) :
+    MarketMakerAcceptsFromLists T past ε B ↔ MarketMakerAccepts T past ε B := by
+  constructor
+  · intro h
+    refine ⟨h.1, ?_⟩
+    intro b
+    let xs := supportAssignmentList T.support b
+    have hxs : xs ∈ allBoolLists T.support.card :=
+      mem_allBoolLists_iff.mpr (supportAssignmentList_length T.support b)
+    have hv := h.2 xs hxs
+    rw [supportBitWorldRatFromList_eq,
+      supportAssignmentOfList_supportAssignmentList] at hv
+    exact hv
+  · intro h
+    refine ⟨h.1, ?_⟩
+    intro xs hxs
+    rw [supportBitWorldRatFromList_eq]
+    exact h.2 (supportAssignmentOfList T.support xs)
 
 /-- The acceptance predicate is semantically sound for all Boolean support tables. -/
 theorem MarketMakerAccepts.worldValue_le {n : ℕ} {T : Strategy n}
@@ -776,6 +931,68 @@ instance MarketMakerCandidateAccepts.instDecidable {n : ℕ} (T : Strategy n)
           cases hB'
           exact h)
 
+def MarketMakerCandidateAcceptsFromLists {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) (k : ℕ) : Prop :=
+  ∃ B, marketMakerCandidate k = some B ∧ MarketMakerAcceptsFromLists T past ε B
+
+def MarketMakerCandidateAcceptsTradeList (trades : List (EF × Sentence)) (n : ℕ)
+    (past : List RationalBeliefState) (ε : ℚ) (k : ℕ) : Prop :=
+  ∃ B, marketMakerCandidate k = some B ∧
+    MarketMakerAcceptsTradeList trades n past ε B
+
+instance MarketMakerCandidateAcceptsTradeList.instDecidable
+    (trades : List (EF × Sentence)) (n : ℕ)
+    (past : List RationalBeliefState) (ε : ℚ) (k : ℕ) :
+    Decidable (MarketMakerCandidateAcceptsTradeList trades n past ε k) := by
+  unfold MarketMakerCandidateAcceptsTradeList
+  cases hB : marketMakerCandidate k with
+  | none =>
+      exact isFalse (by rintro ⟨B, h, _⟩; simp [hB] at h)
+  | some B =>
+      exact decidable_of_iff (MarketMakerAcceptsTradeList trades n past ε B) (by
+        constructor
+        · intro h; exact ⟨B, rfl, h⟩
+        · rintro ⟨B', hB', h⟩
+          cases hB'
+          exact h)
+
+instance MarketMakerCandidateAcceptsFromLists.instDecidable {n : ℕ}
+    (T : Strategy n) (past : List RationalBeliefState) (ε : ℚ) (k : ℕ) :
+    Decidable (MarketMakerCandidateAcceptsFromLists T past ε k) := by
+  unfold MarketMakerCandidateAcceptsFromLists
+  cases hB : marketMakerCandidate k with
+  | none =>
+      exact isFalse (by rintro ⟨B, h, _⟩; simp [hB] at h)
+  | some B =>
+      exact decidable_of_iff (MarketMakerAcceptsFromLists T past ε B) (by
+        constructor
+        · intro h; exact ⟨B, rfl, h⟩
+        · rintro ⟨B', hB', h⟩
+          cases hB'
+          exact h)
+
+theorem marketMakerCandidateAcceptsFromLists_iff {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) (k : ℕ) :
+    MarketMakerCandidateAcceptsFromLists T past ε k ↔
+      MarketMakerCandidateAccepts T past ε k := by
+  unfold MarketMakerCandidateAcceptsFromLists MarketMakerCandidateAccepts
+  constructor
+  · rintro ⟨B, hB, h⟩
+    exact ⟨B, hB, (marketMakerAcceptsFromLists_iff T past ε B).mp h⟩
+  · rintro ⟨B, hB, h⟩
+    exact ⟨B, hB, (marketMakerAcceptsFromLists_iff T past ε B).mpr h⟩
+
+theorem marketMakerCandidateAcceptsTradeList_iff {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) (k : ℕ) :
+    MarketMakerCandidateAcceptsTradeList T.trades n past ε k ↔
+      MarketMakerCandidateAcceptsFromLists T past ε k := by
+  unfold MarketMakerCandidateAcceptsTradeList MarketMakerCandidateAcceptsFromLists
+  constructor
+  · rintro ⟨B, hB, h⟩
+    exact ⟨B, hB, (marketMakerAcceptsTradeList_iff T past ε B).mp h⟩
+  · rintro ⟨B, hB, h⟩
+    exact ⟨B, hB, (marketMakerAcceptsTradeList_iff T past ε B).mpr h⟩
+
 theorem exists_marketMakerCandidateAccepts {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) {ε : ℚ} (hε : 0 < ε) :
     ∃ k, MarketMakerCandidateAccepts T past ε k := by
@@ -802,6 +1019,68 @@ def marketMakerSearchIndexUpTo {n : ℕ} (T : Strategy n)
       | some k => some k
       | none =>
           if MarketMakerCandidateAccepts T past ε fuel then some fuel else none
+
+/-- First-order Boolean-list search, extensionally identical to the semantic search. -/
+def marketMakerSearchIndexUpToFromLists {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) : ℕ → Option ℕ
+  | 0 => none
+  | fuel + 1 =>
+      match marketMakerSearchIndexUpToFromLists T past ε fuel with
+      | some k => some k
+      | none =>
+          if MarketMakerCandidateAcceptsFromLists T past ε fuel then some fuel else none
+
+def marketMakerSearchIndexUpToTradeList (trades : List (EF × Sentence)) (n : ℕ)
+    (past : List RationalBeliefState) (ε : ℚ) : ℕ → Option ℕ
+  | 0 => none
+  | fuel + 1 =>
+      match marketMakerSearchIndexUpToTradeList trades n past ε fuel with
+      | some k => some k
+      | none =>
+          if MarketMakerCandidateAcceptsTradeList trades n past ε fuel then
+            some fuel
+          else none
+
+theorem marketMakerSearchIndexUpToTradeList_eq {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) (fuel : ℕ) :
+    marketMakerSearchIndexUpToTradeList T.trades n past ε fuel =
+      marketMakerSearchIndexUpToFromLists T past ε fuel := by
+  induction fuel with
+  | zero => rfl
+  | succ fuel ih =>
+      simp only [marketMakerSearchIndexUpToTradeList,
+        marketMakerSearchIndexUpToFromLists, ih]
+      cases hsearch : marketMakerSearchIndexUpToFromLists T past ε fuel with
+      | some k => rfl
+      | none =>
+          by_cases h : MarketMakerCandidateAcceptsTradeList T.trades n past ε fuel
+          · have h' : MarketMakerCandidateAcceptsFromLists T past ε fuel :=
+              (marketMakerCandidateAcceptsTradeList_iff T past ε fuel).mp h
+            simp [hsearch, h, h']
+          · have h' : ¬MarketMakerCandidateAcceptsFromLists T past ε fuel := by
+              exact fun h' => h
+                ((marketMakerCandidateAcceptsTradeList_iff T past ε fuel).mpr h')
+            simp [hsearch, h, h']
+
+theorem marketMakerSearchIndexUpToFromLists_eq {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) (fuel : ℕ) :
+    marketMakerSearchIndexUpToFromLists T past ε fuel =
+      marketMakerSearchIndexUpTo T past ε fuel := by
+  induction fuel with
+  | zero => rfl
+  | succ fuel ih =>
+      simp only [marketMakerSearchIndexUpToFromLists, marketMakerSearchIndexUpTo, ih]
+      cases hsearch : marketMakerSearchIndexUpTo T past ε fuel with
+      | some k => rfl
+      | none =>
+          by_cases h : MarketMakerCandidateAcceptsFromLists T past ε fuel
+          · have h' : MarketMakerCandidateAccepts T past ε fuel :=
+              (marketMakerCandidateAcceptsFromLists_iff T past ε fuel).mp h
+            simp [hsearch, h, h']
+          · have h' : ¬MarketMakerCandidateAccepts T past ε fuel := by
+              exact fun h' => h
+                ((marketMakerCandidateAcceptsFromLists_iff T past ε fuel).mpr h')
+            simp [hsearch, h, h']
 
 theorem marketMakerSearchIndexUpTo_eq_none_iff {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (fuel : ℕ) :
@@ -843,6 +1122,53 @@ def marketMakerSearchUpTo {n : ℕ} (T : Strategy n)
     Option RationalBeliefState :=
   (marketMakerSearchIndexUpTo T past ε fuel).bind marketMakerCandidate
 
+def marketMakerSearchUpToFromLists {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) (fuel : ℕ) :
+    Option RationalBeliefState :=
+  (marketMakerSearchIndexUpToFromLists T past ε fuel).bind marketMakerCandidate
+
+def marketMakerSearchUpToTradeList (trades : List (EF × Sentence)) (n : ℕ)
+    (past : List RationalBeliefState) (ε : ℚ) (fuel : ℕ) :
+    Option RationalBeliefState :=
+  (marketMakerSearchIndexUpToTradeList trades n past ε fuel).bind marketMakerCandidate
+
+theorem marketMakerSearchUpToTradeList_eq {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) (fuel : ℕ) :
+    marketMakerSearchUpToTradeList T.trades n past ε fuel =
+      marketMakerSearchUpToFromLists T past ε fuel := by
+  unfold marketMakerSearchUpToTradeList marketMakerSearchUpToFromLists
+  rw [marketMakerSearchIndexUpToTradeList_eq]
+
+theorem marketMakerSearchUpToFromLists_eq {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) (fuel : ℕ) :
+    marketMakerSearchUpToFromLists T past ε fuel =
+      marketMakerSearchUpTo T past ε fuel := by
+  unfold marketMakerSearchUpToFromLists marketMakerSearchUpTo
+  rw [marketMakerSearchIndexUpToFromLists_eq]
+
+theorem marketMakerSearchIndexUpTo_mono_success {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) {fuel fuel' k : ℕ}
+    (hff : fuel ≤ fuel')
+    (h : marketMakerSearchIndexUpTo T past ε fuel = some k) :
+    marketMakerSearchIndexUpTo T past ε fuel' = some k := by
+  induction fuel', hff using Nat.le_induction with
+  | base => exact h
+  | succ fuel' _ ih =>
+      simp [marketMakerSearchIndexUpTo, ih]
+
+theorem marketMakerSearchUpTo_mono_success {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) {fuel fuel' : ℕ}
+    {B : RationalBeliefState} (hff : fuel ≤ fuel')
+    (h : marketMakerSearchUpTo T past ε fuel = some B) :
+    marketMakerSearchUpTo T past ε fuel' = some B := by
+  unfold marketMakerSearchUpTo at h ⊢
+  cases hs : marketMakerSearchIndexUpTo T past ε fuel with
+  | none => simp [hs] at h
+  | some k =>
+      rw [hs] at h
+      rw [marketMakerSearchIndexUpTo_mono_success T past ε hff hs]
+      exact h
+
 private theorem marketMakerCandidate_index_isSome {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) :
     (marketMakerCandidate (marketMakerIndex T past ε hε)).isSome = true := by
@@ -883,6 +1209,28 @@ theorem MarketMaker_search_clock {n : ℕ} (T : Strategy n)
   have haccepts := marketMakerIndex_spec T past ε hε
   simp [marketMakerSearchUpTo, marketMakerSearchIndexUpTo, hnone, haccepts,
     MarketMaker_candidate T past ε hε]
+
+theorem MarketMaker_search_of_clock_le {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) {fuel : ℕ}
+    (hclock : marketMakerIndex T past ε hε + 1 ≤ fuel) :
+    marketMakerSearchUpTo T past ε fuel = some (MarketMaker T past ε hε) :=
+  marketMakerSearchUpTo_mono_success T past ε hclock
+    (MarketMaker_search_clock T past ε hε)
+
+/-- Any successful bounded search already returns the canonical first accepted candidate;
+the fuel bound affects termination only, never the result. -/
+theorem MarketMaker_searchUpTo_sound {n : ℕ} (T : Strategy n)
+    (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε)
+    {fuel : ℕ} {B : RationalBeliefState}
+    (h : marketMakerSearchUpTo T past ε fuel = some B) :
+    B = MarketMaker T past ε hε := by
+  let common := max fuel (marketMakerIndex T past ε hε + 1)
+  have hB : marketMakerSearchUpTo T past ε common = some B :=
+    marketMakerSearchUpTo_mono_success T past ε (Nat.le_max_left _ _) h
+  have hMM : marketMakerSearchUpTo T past ε common =
+      some (MarketMaker T past ε hε) :=
+    MarketMaker_search_of_clock_le T past ε hε (Nat.le_max_right _ _)
+  exact Option.some.inj (hB.symm.trans hMM)
 
 /-- The paper's 0-based error allowance: day `n` corresponds to paper day `n+1`. -/
 def marketMakerError (n : ℕ) : ℚ := 1 / (2 : ℚ) ^ (n + 1)

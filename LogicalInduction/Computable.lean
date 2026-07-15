@@ -726,6 +726,48 @@ theorem PolyFueledTuple.cons {t : ℕ → ℕ} {ts : List (ℕ → ℕ)} {ct : N
     funext n; simp [tupleEnc]
   rw [heq]; exact ht.pair hcs
 
+/-- Exact canonical token emitters instantiate the bounded-emulator definition of efficient
+computability.  This is the bridge used by all concrete trader compilers below. -/
+theorem ecTok_of_exactEmission (Tr : Trader)
+    (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
+    (hlength : ∀ n, evaln (a * (n + 1) ^ k + a) lengthCode n =
+      some (serializeTrades (Tr.strat n).trades).length)
+    (hsize : ∀ n, (serializeTrades (Tr.strat n).trades).length ≤
+      a * (n + 1) ^ k + a)
+    (htoken : ∀ n i, i < (serializeTrades (Tr.strat n).trades).length →
+      evaln (a * (n + 1) ^ k + a) tokenCode (Nat.pair n i) =
+        some ((serializeTrades (Tr.strat n).trades).getD i 0)) :
+    EfficientlyComputableTok Tr := by
+  refine ⟨lengthCode, tokenCode, a, k, ?_⟩
+  have hstrat :
+      (clockedTrader lengthCode tokenCode (fun n => a * (n + 1) ^ k + a)).strat =
+        Tr.strat := by
+    funext n
+    change strategyOfTokens n
+      (clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n) = Tr.strat n
+    have htoks :
+        clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n =
+          serializeTrades (Tr.strat n).trades := by
+      unfold clockedTokens
+      rw [hlength n]
+      simp only
+      rw [min_eq_left (hsize n)]
+      apply List.ext_getElem
+      · simp
+      · intro i hleft hright
+        simp only [List.getElem_ofFn]
+        rw [htoken n i hright, Option.getD_some]
+        exact List.getD_eq_get (serializeTrades (Tr.strat n).trades) 0 ⟨i, hright⟩
+    rw [htoks]
+    unfold strategyOfTokens
+    rw [deserializeTrades_serializeTrades]
+    simp only
+    split
+    · rfl
+    · rename_i h
+      exact False.elim (h (Tr.strat n).rank_le)
+  exact congrArg Trader.mk hstrat
+
 /-- **The token-emission re-certification lemma.** If the day-`n` strategy serializes to a
 fixed-length list `ts.map (· n)` of poly-fueled tokens, the trader is `EfficientlyComputableTok`. -/
 theorem ecTok_of_tokenList (Tr : Trader) (ts : List (ℕ → ℕ)) (hts : PolyFueledTuple ts)
@@ -747,11 +789,25 @@ theorem ecTok_of_tokenList (Tr : Trader) (ts : List (ℕ → ℕ)) (hts : PolyFu
     intro n; rw [hTr n, List.length_map]
   -- The polynomial fuel: coefficient absorbs the `(L+1)^{2k₀}` blow-up, plus `L` for the
   -- length clause; degree `2k₀` from `pair n i < (n+L+1)²`.
-  set A := a₀ * (ts.length + 1) ^ (2 * k₀) + a₀ + ts.length with hA
-  refine ⟨c, A, 2 * k₀, ?_, ?_⟩
-  · intro n; rw [hlen n]
-    have : ts.length ≤ A := by rw [hA]; omega
-    exact le_trans this (Nat.le_add_left _ _)
+  set K := 2 * k₀ + 1 with hK
+  set A := a₀ * (ts.length + 1) ^ (2 * k₀) + a₀ + ts.length + 1 with hA
+  refine ecTok_of_exactEmission Tr (Nat.Partrec.Code.const ts.length) c A K ?_ ?_ ?_
+  · intro n
+    have hbase := evaln_const_self ts.length n
+    rw [hlen n]
+    apply Nat.Partrec.Code.evaln_mono _ hbase
+    have hpow : n + 1 ≤ (n + 1) ^ K := by
+      rw [show K = 1 + 2 * k₀ by omega, pow_add]
+      have hpos : 1 ≤ (n + 1) ^ (2 * k₀) := Nat.one_le_pow _ _ (by omega)
+      nlinarith
+    have hApos : 1 ≤ A := by rw [hA]; omega
+    have hlenA : ts.length + 1 ≤ A := by rw [hA]; omega
+    nlinarith
+  · intro n
+    rw [hlen n]
+    have hlenA : ts.length + 1 ≤ A := by rw [hA]; omega
+    have hnonneg : A ≤ A * (n + 1) ^ K + A := Nat.le_add_left _ _
+    omega
   · intro n i hi
     rw [hlen n] at hi
     -- The emitter outputs the i-th token at input ⟨n, i⟩.
@@ -759,7 +815,7 @@ theorem ecTok_of_tokenList (Tr : Trader) (ts : List (ℕ → ℕ)) (hts : PolyFu
         = (serializeTrades (Tr.strat n).trades).getD i 0 := by
       rw [selFn_tupleEnc, hTr n]
     -- `bc ⟨n,i⟩` is bounded by the chosen polynomial (uses `i < ts.length`).
-    have hbc : bc (Nat.pair n i) ≤ A * (n + 1) ^ (2 * k₀) + A := by
+    have hbc : bc (Nat.pair n i) ≤ A * (n + 1) ^ K + A := by
       have h1 : Nat.pair n i + 1 ≤ (n + ts.length + 1) ^ 2 := by
         have hlt := pair_lt_sq n i
         have hle : (n + i + 1) ^ 2 ≤ (n + ts.length + 1) ^ 2 := Nat.pow_le_pow_left (by omega) 2
@@ -778,7 +834,11 @@ theorem ecTok_of_tokenList (Tr : Trader) (ts : List (ℕ → ℕ)) (hts : PolyFu
         _ ≤ a₀ * ((n + 1) ^ (2 * k₀) * (ts.length + 1) ^ (2 * k₀)) + a₀ := by
             gcongr; exact le_trans h2 h5
         _ = (a₀ * (ts.length + 1) ^ (2 * k₀)) * (n + 1) ^ (2 * k₀) + a₀ := by ring
-        _ ≤ A * (n + 1) ^ (2 * k₀) + A := by rw [hA]; gcongr <;> omega
+        _ ≤ A * (n + 1) ^ K + A := by
+          have hp : (n + 1) ^ (2 * k₀) ≤ (n + 1) ^ K :=
+            Nat.pow_le_pow_right (by omega) (by omega)
+          rw [hA]
+          gcongr <;> omega
     have key := hfc (Nat.pair n i)
     simp only [Nat.unpair_pair] at key
     rw [hout] at key
@@ -1319,26 +1379,33 @@ This is what deep (size-`Θ(n)`) traders need — their `i`-th token is a fixed 
 expression in `⟨n,i⟩` (built from `ifzSel`/`predc`/`subc`), not a lookup in a fixed list. -/
 theorem ecTok_of_tokenFn (Tr : Trader) {tokenFn : ℕ → ℕ} {c : Nat.Partrec.Code}
     (hpf : PolyFueled c tokenFn)
-    (hlen : IsPolyBounded (fun n => (serializeTrades (Tr.strat n).trades).length))
+    (hlen : ∃ lengthCode : Nat.Partrec.Code, PolyFueled lengthCode
+      (fun n => (serializeTrades (Tr.strat n).trades).length))
     (htok : ∀ n i, i < (serializeTrades (Tr.strat n).trades).length →
         tokenFn (Nat.pair n i) = (serializeTrades (Tr.strat n).trades).getD i 0) :
     EfficientlyComputableTok Tr := by
+  obtain ⟨lengthCode, hlen⟩ := hlen
   obtain ⟨bc, hfc, _, a₀, k₀, hk₀⟩ := hpf
+  obtain ⟨bl, hfl, hlenBounded, hblBounded⟩ := hlen
   set len := fun n => (serializeTrades (Tr.strat n).trades).length with hlendef
   -- A poly upper bound for `bc ⟨n,i⟩` over all `i < len n`, monotone in the pair.
   have hbcbound : IsPolyBounded (fun n => a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀) :=
     (show IsPolyBounded (fun x => a₀ * (x + 1) ^ k₀ + a₀) from ⟨a₀, k₀, fun _ => le_rfl⟩).comp
-      ((IsPolyBounded.linear 0).pair hlen)
-  obtain ⟨A, K, hAK⟩ := hlen.max hbcbound
-  refine ⟨c, A, K, fun n => ?_, fun n i hi => ?_⟩
-  · exact le_trans (le_max_left _ _) (hAK n)
+      ((IsPolyBounded.linear 0).pair hlenBounded)
+  obtain ⟨A, K, hAK⟩ := (hblBounded.max hbcbound).max hlenBounded
+  refine ecTok_of_exactEmission Tr lengthCode c A K (fun n => ?_) (fun n => ?_)
+    (fun n i hi => ?_)
+  · exact evaln_mono
+      ((le_max_left _ _).trans ((le_max_left _ _).trans (hAK n))) (hfl n)
+  · exact (le_max_right _ _).trans (hAK n)
   · -- `bc ⟨n,i⟩ ≤ A(n+1)^K + A`, then `evaln_mono` on `hfc`.
     have hple : Nat.pair n i ≤ Nat.pair n (len n) :=
       pair_le_pair_right' n (le_of_lt hi)
     have hbc : bc (Nat.pair n i) ≤ A * (n + 1) ^ K + A := by
       calc bc (Nat.pair n i) ≤ a₀ * (Nat.pair n i + 1) ^ k₀ + a₀ := hk₀ _
         _ ≤ a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀ := by gcongr
-        _ ≤ A * (n + 1) ^ K + A := le_trans (le_max_right _ _) (hAK n)
+        _ ≤ A * (n + 1) ^ K + A :=
+          (le_max_right _ _).trans ((le_max_left _ _).trans (hAK n))
     have key := hfc (Nat.pair n i)
     rw [htok n i hi] at key
     exact evaln_mono hbc key
@@ -1451,7 +1518,8 @@ theorem deepTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (deepTrader 
   refine ecTok_of_tokenFn (deepTrader φ) L1 ?_ ?_
   · have hL : (fun n => (serializeTrades ((deepTrader φ).strat n).trades).length)
         = (fun n => n + 4) := by funext n; exact length_serializeTrades_deepTrader φ n
-    rw [hL]; exact IsPolyBounded.linear 4
+    exact ⟨_, PolyFueled.id.succ_comp.succ_comp.succ_comp.succ_comp.of_eq
+      (fun n => (congrFun hL n).symm)⟩
   · intro n i hi
     rw [length_serializeTrades_deepTrader] at hi
     rw [serializeTrades_deepTrader, deepStream_getD n i (Encodable.encode φ) hi]
@@ -1553,14 +1621,13 @@ theorem ecTok_of_blockStream (Tr : Trader) (head bs tail : List (ℕ → ℕ))
       length_flatMap_const_width _ W (cnt n) (fun j _ => hblockLen n j)]
     omega
   refine ecTok_of_tokenFn Tr tokPF ?_ ?_
-  · -- Stream length is `H + cnt n · W + T`, polynomial since `cnt` is.
-    obtain ⟨_, _, hcntpb, _⟩ := hcnt
-    have heq : (fun n => (serializeTrades (Tr.strat n).trades).length)
-        = (fun n => H + cnt n * W + T) := funext hlen'
-    rw [heq]
-    have hHc : IsPolyBounded (fun _ => H) := ⟨H, 0, fun _ => by simp⟩
-    have hTc : IsPolyBounded (fun _ => T) := ⟨T, 0, fun _ => by simp⟩
-    exact (hHc.add ((isPolyBounded_mul_const W).comp hcntpb)).add hTc
+  · -- Emit the exact stream length `H + cnt n · W + T` under a polynomial clock.
+    have hcntW := hml.comp hcnt
+    have hHplus := had.comp ((PolyFueled.const H).pair hcntW)
+    have htotal := had.comp (hHplus.pair (PolyFueled.const T))
+    exact ⟨_, htotal.of_eq (fun n => by
+      simp only [Function.comp_apply, Nat.unpair_pair]
+      rw [hlen' n])⟩
   · intro n i hi
     rw [hlen' n] at hi
     rw [hTr n]
@@ -2079,9 +2146,8 @@ theorem ecTok_of_segStream (Tr : Trader)
     (h : PolySegStream (fun n => serializeTrades (Tr.strat n).trades)) :
     EfficientlyComputableTok Tr := by
   obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hlens, hspec⟩ := h
-  obtain ⟨_, _, hlpb, _⟩ := hlen
   refine ecTok_of_tokenFn Tr htok ?_ ?_
-  · exact hlpb.of_le (fun n => le_of_eq (hlens n))
+  · exact ⟨_, hlen.of_eq (fun n => (hlens n).symm)⟩
   · intro n i hi
     exact hspec n i (by rw [← hlens n]; exact hi)
 

@@ -559,6 +559,138 @@ def serializeTrades : List (EF × Sentence) → List ℕ
   | [] => []
   | (e, φ) :: rest => e.serialize ++ (6 :: Encodable.encode φ :: serializeTrades rest)
 
+/-! ### A one-token streaming decoder
+
+`EF.readM` above is convenient for round-trip proofs, but several of its equations consume
+two or three tokens at once.  The equivalent streaming presentation below records that small
+amount of parser control state explicitly, so execution is one `List.foldl`.  This is the form
+used by the concrete LIA compiler.
+
+The state is `((mode, pendingSentence), (featureStack, trades))`.  Mode `0` is ready; modes
+`1,2` read a price's sentence/day; mode `3` reads a constant; mode `4` reads a trade sentence;
+and mode `5` reads a variable index. -/
+
+abbrev EF.StreamState :=
+  (ℕ × Option Sentence) × (List EF × List (EF × Sentence))
+
+def EF.streamInitial : EF.StreamState := ((0, none), ([], []))
+
+/-- Consume exactly one token of the flat strategy serialization. -/
+def EF.streamStep : Option EF.StreamState → ℕ → Option EF.StreamState
+  | none, _ => none
+  | some ((mode, pending), (efst, trades)), token =>
+      if mode = 0 then
+        if token = 0 then some ((1, none), (efst, trades))
+        else if token = 1 then some ((3, none), (efst, trades))
+        else if token = 2 then
+          match efst with
+          | b :: a :: rest => some ((0, none), (EF.add a b :: rest, trades))
+          | _ => none
+        else if token = 3 then
+          match efst with
+          | b :: a :: rest => some ((0, none), (EF.mul a b :: rest, trades))
+          | _ => none
+        else if token = 4 then
+          match efst with
+          | b :: a :: rest => some ((0, none), (EF.max a b :: rest, trades))
+          | _ => none
+        else if token = 5 then
+          match efst with
+          | a :: rest => some ((0, none), (EF.safeRecip a :: rest, trades))
+          | [] => none
+        else if token = 6 then some ((4, none), (efst, trades))
+        else if token = 7 then some ((5, none), (efst, trades))
+        else if token = 8 then
+          match efst with
+          | body :: x :: rest => some ((0, none), (EF.letE x body :: rest, trades))
+          | _ => none
+        else none
+      else if mode = 1 then
+        (Encodable.decode (α := Sentence) token).map fun φ =>
+          ((2, some φ), (efst, trades))
+      else if mode = 2 then
+        pending.map fun φ => ((0, none), (EF.price φ token :: efst, trades))
+      else if mode = 3 then
+        (Encodable.decode (α := ℚ) token).map fun q =>
+          ((0, none), (EF.const q :: efst, trades))
+      else if mode = 4 then
+        match efst, Encodable.decode (α := Sentence) token with
+        | e :: rest, some φ => some ((0, none), (rest, trades ++ [(e, φ)]))
+        | _, _ => none
+      else if mode = 5 then
+        some ((0, none), (EF.var token :: efst, trades))
+      else none
+
+/-- Run the streaming parser from an explicit state. -/
+def EF.streamReadFrom (tokens : List ℕ) (state : Option EF.StreamState) :
+    Option EF.StreamState :=
+  tokens.foldl EF.streamStep state
+
+@[simp] theorem EF.streamReadFrom_append (left right : List ℕ)
+    (state : Option EF.StreamState) :
+    EF.streamReadFrom (left ++ right) state =
+      EF.streamReadFrom right (EF.streamReadFrom left state) := by
+  simp [EF.streamReadFrom, List.foldl_append]
+
+/-- Reading one canonical feature serialization pushes exactly that feature. -/
+theorem EF.streamReadFrom_serialize_self (e : EF) (efst : List EF)
+    (trades : List (EF × Sentence)) :
+    EF.streamReadFrom e.serialize (some ((0, none), (efst, trades))) =
+      some ((0, none), (e :: efst, trades)) := by
+  induction e generalizing efst trades with
+  | price φ n => simp [EF.serialize, EF.streamReadFrom, EF.streamStep, Encodable.encodek]
+  | const q => simp [EF.serialize, EF.streamReadFrom, EF.streamStep, Encodable.encodek]
+  | add a b iha ihb =>
+      simp only [EF.serialize, List.append_assoc]
+      rw [EF.streamReadFrom_append, iha, EF.streamReadFrom_append, ihb]
+      simp [EF.streamReadFrom, EF.streamStep]
+  | mul a b iha ihb =>
+      simp only [EF.serialize, List.append_assoc]
+      rw [EF.streamReadFrom_append, iha, EF.streamReadFrom_append, ihb]
+      simp [EF.streamReadFrom, EF.streamStep]
+  | max a b iha ihb =>
+      simp only [EF.serialize, List.append_assoc]
+      rw [EF.streamReadFrom_append, iha, EF.streamReadFrom_append, ihb]
+      simp [EF.streamReadFrom, EF.streamStep]
+  | safeRecip a iha =>
+      simp only [EF.serialize]
+      rw [EF.streamReadFrom_append, iha]
+      simp [EF.streamReadFrom, EF.streamStep]
+  | var i => simp [EF.serialize, EF.streamReadFrom, EF.streamStep]
+  | letE x body ihx ihbody =>
+      simp only [EF.serialize, List.append_assoc]
+      rw [EF.streamReadFrom_append, ihx, EF.streamReadFrom_append, ihbody]
+      simp [EF.streamReadFrom, EF.streamStep]
+
+theorem EF.streamReadFrom_serialize (e : EF) (rest : List ℕ) (efst : List EF)
+    (trades : List (EF × Sentence)) :
+    EF.streamReadFrom (e.serialize ++ rest)
+      (some ((0, none), (efst, trades))) =
+    EF.streamReadFrom rest (some ((0, none), (e :: efst, trades))) := by
+  rw [EF.streamReadFrom_append, EF.streamReadFrom_serialize_self]
+
+/-- Reading a canonical strategy serialization records exactly its trades. -/
+theorem EF.streamReadFrom_serializeTrades_self (l : List (EF × Sentence))
+    (efst : List EF) (trades : List (EF × Sentence)) :
+    EF.streamReadFrom (serializeTrades l)
+      (some ((0, none), (efst, trades))) =
+      some ((0, none), (efst, trades ++ l)) := by
+  induction l generalizing efst trades with
+  | nil => simp [serializeTrades, EF.streamReadFrom]
+  | cons trade rest ih =>
+      rcases trade with ⟨e, φ⟩
+      change EF.streamReadFrom
+        (e.serialize ++ ([6, Encodable.encode φ] ++ serializeTrades rest))
+        (some ((0, none), (efst, trades))) = _
+      rw [EF.streamReadFrom_append, EF.streamReadFrom_serialize_self,
+        EF.streamReadFrom_append]
+      have hframe : EF.streamReadFrom [6, Encodable.encode φ]
+          (some ((0, none), (e :: efst, trades))) =
+          some ((0, none), (efst, trades ++ [(e, φ)])) := by
+        simp [EF.streamReadFrom, EF.streamStep, Encodable.encodek]
+      rw [hframe, ih]
+      simp [List.append_assoc]
+
 /-- Reading a strategy's serialization records exactly its trades (onto any state). -/
 theorem readM_serializeTrades (l : List (EF × Sentence)) : ∀ (rest : List ℕ) (efst : List EF)
     (tr : List (EF × Sentence)),
@@ -574,17 +706,18 @@ theorem readM_serializeTrades (l : List (EF × Sentence)) : ∀ (rest : List ℕ
       rw [ih, List.append_assoc]
       rfl
 
-/-- Decode a strategy: accept iff the machine ends with an empty feature stack. -/
+/-- Decode a strategy with the one-token streaming machine: accept iff parsing ends ready
+with an empty feature stack. -/
 def deserializeTrades (toks : List ℕ) : Option (List (EF × Sentence)) :=
-  match EF.readM toks [] [] with
-  | some ([], l) => some l
+  match EF.streamReadFrom toks (some EF.streamInitial) with
+  | some ((0, none), ([], l)) => some l
   | _ => none
 
 theorem deserializeTrades_serializeTrades (l : List (EF × Sentence)) :
     deserializeTrades (serializeTrades l) = some l := by
-  unfold deserializeTrades
-  rw [← List.append_nil (serializeTrades l), readM_serializeTrades]
-  simp only [EF.readM, List.nil_append]
+  unfold deserializeTrades EF.streamInitial
+  rw [EF.streamReadFrom_serializeTrades_self]
+  rfl
 
 /-- **`serializeTrades` is injective** — the token stream determines the strategy. -/
 theorem serializeTrades_injective : Function.Injective serializeTrades := by
@@ -724,6 +857,98 @@ theorem DeductiveProcessComputation.stageAtFuel_mono
   rw [Option.bind_eq_some_iff] at h ⊢
   obtain ⟨out, hout, hdecode⟩ := h
   exact ⟨out, Nat.Partrec.Code.evaln_mono hff hout, hdecode⟩
+
+/-- Search the first `fuel` interpreter clocks for a decoded deductive stage.  This is a
+literal bounded dovetail: it is total for each bound and retains the first successful
+decode. -/
+def DeductiveProcessComputation.stageSearchUpTo
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) (n : ℕ) :
+    ℕ → Option (Finset Sentence)
+  | 0 => none
+  | fuel + 1 =>
+      match c.stageSearchUpTo n fuel with
+      | some stage => some stage
+      | none => c.stageAtFuel fuel n
+
+/-- Every successful bounded stage search returns the certified semantic stage; malformed
+outputs and timeouts can never manufacture a different finite theory. -/
+theorem DeductiveProcessComputation.stageSearchUpTo_sound
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP)
+    {n fuel : ℕ} {stage : Finset Sentence}
+    (h : c.stageSearchUpTo n fuel = some stage) :
+    stage = DP.D n := by
+  induction fuel with
+  | zero => simp [stageSearchUpTo] at h
+  | succ fuel ih =>
+      rw [stageSearchUpTo] at h
+      cases hprev : c.stageSearchUpTo n fuel with
+      | some prior =>
+          simp only [hprev] at h
+          cases h
+          exact ih hprev
+      | none =>
+          simp only [hprev] at h
+          exact c.stageAtFuel_sound h
+
+/-- The bounded deductive-stage dovetail reaches the exact stage at a finite clock. -/
+theorem DeductiveProcessComputation.exists_stageSearchUpTo
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) (n : ℕ) :
+    ∃ clock, c.stageSearchUpTo n clock = some (DP.D n) := by
+  obtain ⟨fuel, hfuel⟩ := c.stageAtFuel_complete n
+  cases hprev : c.stageSearchUpTo n fuel with
+  | some stage =>
+      have hstage := c.stageSearchUpTo_sound hprev
+      subst stage
+      exact ⟨fuel, hprev⟩
+  | none =>
+      refine ⟨fuel + 1, ?_⟩
+      simp [stageSearchUpTo, hprev, hfuel]
+
+/-- The least successful bound for the deductive-stage dovetail.  As with MarketMaker's
+stopping index, the noncomputable minimum is used only to state totality; execution is the
+bounded function `stageSearchUpTo`. -/
+noncomputable def DeductiveProcessComputation.stageSearchClock
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) (n : ℕ) : ℕ :=
+  Nat.find (c.exists_stageSearchUpTo n)
+
+theorem DeductiveProcessComputation.stageSearch_clock
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) (n : ℕ) :
+    c.stageSearchUpTo n (c.stageSearchClock n) = some (DP.D n) :=
+  Nat.find_spec (c.exists_stageSearchUpTo n)
+
+/-- Exact finite stage decoded at the certified stopping clock. -/
+noncomputable def DeductiveProcessComputation.computedStage
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) (n : ℕ) :
+    Finset Sentence :=
+  (c.stageSearchUpTo n (c.stageSearchClock n)).get
+    (by rw [c.stageSearch_clock n]; rfl)
+
+theorem DeductiveProcessComputation.computedStage_eq
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) (n : ℕ) :
+    c.computedStage n = DP.D n := by
+  apply Option.some.inj
+  calc
+    some (c.computedStage n) =
+        c.stageSearchUpTo n (c.stageSearchClock n) := by
+      exact Option.some_get _
+    _ = some (DP.D n) := c.stageSearch_clock n
+
+/-- The deductive process reconstructed solely through the bounded stage-search interface.
+Its monotonicity is transported from the certified semantic specification. -/
+noncomputable def DeductiveProcessComputation.computedProcess
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) : DeductiveProcess where
+  D := c.computedStage
+  mono n := by
+    rw [c.computedStage_eq n, c.computedStage_eq (n + 1)]
+    exact DP.mono n
+
+theorem DeductiveProcessComputation.computedProcess_eq
+    {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) :
+    c.computedProcess = DP := by
+  unfold computedProcess
+  congr 1
+  funext n
+  exact c.computedStage_eq n
 
 /-- A paper-faithful computable rational market certificate. `quote n ⌜φ⌝` is the exact
 rational price of `φ` on day `n`, and one fixed partial-recursive program computes this
@@ -1152,11 +1377,13 @@ def EfficientlyComputable (Tr : Trader) : Prop :=
     ∀ n, Nat.Partrec.Code.evaln (a * (n + 1) ^ k + a) c n
         = some (Encodable.encode (Tr.strat n).trades)
 
-/-- `def:ec` (`dd:fuel`) — **token-indexed emission, the poly-*size* model**. A trader is
-**efficiently computable** if a single program `c` emits the day-`n` strategy's *flat token
-stream* `serializeTrades (strat n)` **one token at a time**: run on input `⟨n, i⟩` for a
-polynomial fuel budget, `c` outputs the `i`-th token, and the stream has polynomially many
-tokens.
+/-! `def:ec` (`dd:fuel`) — **token-indexed emission, the poly-*size* model**. A trader is
+**efficiently computable** if one program emits the length of the day-`n` strategy's flat
+token stream and a second program emits that stream **one token at a time**.  Both programs
+run under one polynomial clock.  The length emitter is load-bearing: a mere polynomial
+*bound* on the extensional stream length would admit traders whose stopping length varies
+uncomputably with `n`, and such a class could not be redundantly enumerated by the
+construction's `TradingFirm`.
 
 This replaces whole-number emission of `Encodable.encode` (`EfficientlyComputable` above). The
 reason is a hard limit of the clocked interpreter, not a stylistic choice: every `evaln` clause
@@ -1169,16 +1396,36 @@ is `2^{poly n}`) is therefore *unemittable as one number*, though the paper's po
 faithful poly-*size* rendering, and it is what deep traders (`thm:con` hysteresis, `thm:nd`
 purchase counters) need. See OPEN RISK 4 in `PROGRESS.md`.
 
-**Residual disclosure (type-`(c)`):** each token's *value* is still `≤ poly n`, so a traded
+**Residual disclosure (type-`(c)`):** each token's *value* is still generated by a clocked
+program, so a traded
 sentence's atomic code `⌜φ⌝` must be `poly n`-value on day `n`. Fixed sentences (every current
 trader) are constant, absorbed into `a`; varying-sentence traders already carry a poly bound on
 `⌜φₙ⌝`. Formula-level sub-tokenization would remove even this and is a later refinement. -/
+
+/-- Run a length program and then a token program under a shared clock.  The requested
+length is clamped to the clock, so every index emits a polynomial-size stream even when its
+length program returns a large paired numeral. -/
+def clockedTokens (lengthCode tokenCode : Nat.Partrec.Code) (clock n : ℕ) : List ℕ :=
+  match Nat.Partrec.Code.evaln clock lengthCode n with
+  | none => []
+  | some length => List.ofFn fun i : Fin (min length clock) =>
+      (Nat.Partrec.Code.evaln clock tokenCode (Nat.pair n i)).getD 0
+
+/-- Validate a serialized day-`n` strategy, including its rank discipline.  Malformed
+streams denote the zero strategy. -/
+def strategyOfTokens (n : ℕ) (tokens : List ℕ) : Strategy n :=
+  match hdecode : deserializeTrades tokens with
+  | none => ⟨[], by simp⟩
+  | some trades =>
+      if h : ∀ trade ∈ trades, trade.1.rank ≤ n then ⟨trades, h⟩ else ⟨[], by simp⟩
+
+/-- The total trader denoted by two programs and a day-dependent clock. -/
+def clockedTrader (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ) : Trader where
+  strat n := strategyOfTokens n (clockedTokens lengthCode tokenCode (clock n) n)
+
 def EfficientlyComputableTok (Tr : Trader) : Prop :=
-  ∃ (c : Nat.Partrec.Code) (a k : ℕ),
-    (∀ n, (serializeTrades (Tr.strat n).trades).length ≤ a * (n + 1) ^ k + a) ∧
-    ∀ n i, i < (serializeTrades (Tr.strat n).trades).length →
-      Nat.Partrec.Code.evaln (a * (n + 1) ^ k + a) c (Nat.pair n i)
-        = some ((serializeTrades (Tr.strat n).trades).getD i 0)
+  ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
+    clockedTrader lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
 
 /-- `def:lic`. The market `P` satisfies the **Logical Induction Criterion** relative to
 `DP` if no efficiently computable trader exploits it. This is the hypothesis the entire

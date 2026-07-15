@@ -38,7 +38,60 @@ available), which sidesteps Mathlib's `errorOnBuild` guard. Re-run if it recurs.
 | M4 | Affine master + reusable LUV lift; close expectation/Self-Trust statements | **implementation complete (2026-07-13; pending statement read-through/audit)** — the affine master, fixed-LUV semantic lift, and all seven expectation/Self-Trust statements are axiom-clean. The repaired Self-Trust API bundles delayed `ValuesAt` semantics with an explicit normalized fixed-portfolio certificate (`AffineQuotePortfolio`, `AffineQuoteEq`/`GE`): uniform polynomial emission, exact day-`n` gap representation, and coherence only at the actual deferred day `f n`. Reusable two-sided/one-sided preemptive bridges transport that later price law back to the diagonal. **Disclosed type-`(c)` boundary:** the cross-grid field packages the paper's quotation/encoding-coherence step; M7's concrete first-order quotation mechanism remains its principled witness. No Lean `sorry` remains in `LogicalInduction/`. |
 | M5 | Full remaining conditional property tail | **verified complete (2026-07-14)** — every paper node has an exact theorem or explicitly classified conditional representation lift; Anson confirmed the statement read-through; the independent fresh-context audit found and drove repairs for arbitrary-BCS affine scope, market-generated introspection endpoints, and boundary tracking, then returned PASS on correction recheck. The 1,958-job property/integration roll-up and 2,670-job full build are green; source, axiom, and diff checks pass. |
 | M6 | construction Part 1: strategy fixed point + computable rational `MarketMaker` + inexploitability | **verified complete (2026-07-14)** — `fixed_point_lemma`, the exact rational fuel-clocked `MarketMaker`, and recursive-history `marketMaker_not_exploited` are proved. The search is an executable bounded recursion over decoded candidates, with a certified stopping clock obtained from rational density; it is not an opaque choice or a conclusion-bearing certificate. The statement comparison/disclosure packet is complete, the 2,426-job construction roll-up and 2,671-job full build are green, executable-hole and diff checks pass, and all M6 capstones expose only the approved three axioms. |
-| M7 | budgeter, trading firm, LIA, existence, unconditionalization | not started; deliberately out of M6 scope |
+| M7 | budgeter, trading firm, LIA, existence, unconditionalization | **active (2026-07-14)** — full completion contract below. Efficient-trader enumeration, the process-backed Budgeter, and the concrete finite exact `TradingFirm` are complete; `trading_firm_dominance` includes the paper's summable residual floor and is axiom-clean. `Construction/LIA.lean` defines the recursive rational states and proves the semantic no-e.c.-exploitation capstone. `Construction/LIAComputation.lean` now gives a total fuel-bounded evaluator that decodes the finite process prefix, runs the finite-stage TradingFirm/MarketMaker recursion, proves every successful quote exactly equals `liaQuote`, and proves a successful common clock exists. Generic `rfindOpt` compilation proves that a concrete `Computable₂` certificate for this bounded evaluator suffices for the exact `ComputableMarket` program and full `IsLogicalInductor` assembly. `Construction/LIACompiler.lean` now proves exact primitive-recursive normalize-after-decode compilers for Foundation `Sentence`, Mathlib's reduced rational encoding, the project's `EF.toNat`/`EF.ofNat` encoding, and Mathlib's existing sorted `Finset Sentence` encoding; exact rational arithmetic/comparison; `EF.rank`; proof-erased validated encodings of `RationalBeliefState` and `Strategy n`; exact primitive-recursive belief-state quotation, chronological history lookup, MarketMaker candidate decoding, clocked deductive-stage decoding, and common-clock process-prefix decoding; and the complete flat trader-program path from one-token parsing through rank validation, decoded polynomial clocks, redundant enumeration, and gated `firmRawTrader` actions. The compiler now also contains a verified exact rational stack machine for every `EF` constructor, a syntax-derived uniform fuel bound, an exact primitive-recursive evaluator theorem, and a generic finite trade-list market-value compiler specialized to candidate histories and Boolean support worlds. The finite semantic pipeline has additionally been erased to fixed first-order data: raw-trade MarketMaker acceptance/search, Budgeter wealth/bankruptcy/scaling, TradingFirm mixture assembly, and the complete state-prefix recurrence are each executable and proved exactly equal to their proof-carrying `Strategy n` counterparts. The remaining core gate begins with compiling the finite universal MarketMaker acceptance predicate and candidate search, then the erased Budgeter/TradingFirm/prefix operations, and composing them into `Computable₂ liaEncodedQuoteNatAtFuel`; the fifteen post-M5 compiler witnesses and final audit gates also remain open. |
+
+### Build-state correction (2026-07-15)
+
+The prior session was cut off mid-proof and left `Construction/LIACompiler.lean`
+**non-elaborating** (a `whnf` heartbeat timeout in `firmBudgetBreachAtDayData_prim`, the
+last Budgeter-gate primrec lemma, cascading to a downstream kernel error). The M7 notes'
+"targeted LIACompiler build is green" claim was therefore not actual, and the file was not
+truly `sorry`-free — it simply did not compile. This session fixed two genuine bugs in the
+cut-off proof (a `Primrec`-into-`Type` `hctx` ascription; a systematically mis-indexed
+seven-projection block) and isolated the residual failure to the final defeq bridge, which
+loops `whnf` regardless of closing tactic (`rfl`/`simp`/`simpa`/heartbeat-bump/`_eq`
+rewrite/`local irreducible` all tried). That mechanical primrec fact is now carried as
+**one documented `sorry`** (intended witness + diagnosis in-comment); it is a tooling/defeq
+fix for an interactive session, not a mathematical gap. `LogicalInduction.Construction` now
+builds **green with exactly one `sorry`**. The compiler assembly above
+`firmBudgetBreachAtDayData_prim` — `tradingFirmTradesFromStageTradeLists_prim`,
+`liaPrefixFromTradeListsAtFuel_prim`, and the top-level `Computable₂ liaEncodedQuoteNatAtFuel`
+composition that instantiates `LIABoundedEvaluatorCompiler` for `exists_logical_inductor` —
+remains unbuilt. Until it lands, `thm:li` is open.
+
+### Active M7 completion contract (set 2026-07-14)
+
+M7 is complete only when all of the following are true:
+
+1. The paper's `Budgeter` is concretely computable from a computable deductive process and
+   has kernel-checked exact-trade preservation above budget, a uniform `-b` plausible-world
+   floor, and exploitation preservation for some positive integer budget.
+2. A concrete redundant enumeration contains every `EfficientlyComputableTok` trader; the
+   daywise finite `TradingFirm` mixture is executable; and Trading Firm Dominance proves
+   that it exploits every market exploited by any e.c. trader while the other components
+   have one summable uniform downside bound.
+3. Recursive `LIA` is the exact MarketMaker response to that firm, has an exact computable
+   rational `[0,1]` market presentation for every computable deductive process, satisfies
+   `IsLogicalInductor`, and yields the paper-strength `exists_logical_inductor` theorem.
+4. Every explicit post-M5 construction boundary is inhabited by a concrete conclusion-free
+   witness: `M7-HIST-EVALN`, `M7-COMP-SYNTAX`, `M7-QUOTE-AFFINE`,
+   `M7-PATIENT-CLOCK`, `M7-FEEDBACK-EMIT`, `M7-FEEDBACK-TRUTH`,
+   `M7-PREFIX-PATCH`, `M7-CE-REPETITION`, `M7-PREFIX-MACHINE`,
+   `M7-DUS-APPROX`, `M7-DUS-PREFIX-SYNTAX`, `M7-STRICT-SEPARATORS`,
+   `M7-SCON-COMPILER`, `M7-SCON-PRESENTATION`, and `M7-LUV-SYNTAX`.
+   The advertised M3--M5 paper nodes have fully instantiated corollaries rather than hidden
+   logical-inductor or representation-oracle assumptions.
+5. `def/lem:budgeter`, `def:tradingfirm`, `lem:tfdom`, `def/alg:lia`, `thm:lia`, and
+   `thm:li` have a line-by-line paper comparison with every indexing or modeling
+   substitution disclosed. No conclusion-in-premise, vacuous, noncomputable, or merely
+   bounded-but-not-enumerable stand-in counts.
+6. Construction/property/integration targets and a fresh full build pass; the executable
+   hole scan and `git diff --check` are clean; capstone axiom reports contain only
+   `propext`, `Classical.choice`, and `Quot.sound`; Anson completes the top-level
+   statement/definition read-through; and a separate fresh-context M7 adversarial audit is
+   repaired and independently rechecked.
+
+Partial infrastructure and conditional capstones do not close M7.
 
 **M4 implementation audit (2026-07-13):** targeted Self-Trust build and full `lake build`
 (2,654 jobs) are green; the source-level `sorry`/`sorryAx` searches are empty; all four
