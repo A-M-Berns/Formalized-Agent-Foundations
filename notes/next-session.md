@@ -8,16 +8,15 @@
 > cut-off proof were fixed this session: (1) `hctx` was ascribed `Primrec (fun _ =>
 > BudgetWorldContext)` — a `Primrec` into `Type`; (2) the seven-projection block was
 > systematically mis-indexed (`hpast/hj/hb/hn` one nesting level too shallow, `hxs`
-> computing `p.1.1.2` instead of `p.1.2`). A residual defeq pathology remains: the final
-> bridge `firmBudgetBreachAtDayData p.1.1 p.1.2 p.2 =?= (composed && form)` sends `whnf`
-> into a heartbeat blowup (isDefEq eagerly reduces the rational `decide` / `budgetAtomList`
-> leaves). `rfl`, `simp only [def]`, `simpa … using`, a 2.4M heartbeat bump, a
-> goal-rewrite via a hand-proved `_eq` lemma, and `attribute [local irreducible]` on the
-> leaf defs were all tried and loop identically — this needs an **interactive** Lean
-> session, not batch builds, and is a tooling/defeq fix, **not** a mathematical gap (the
-> fact is trivially true). `firmBudgetBreachAtDayData_prim` is therefore carried as **one
-> documented `sorry`** (the intended witness + full diagnosis are in a comment above it).
-> With that, `LogicalInduction.Construction` builds **green with exactly one `sorry`**.
+> computing `p.1.1.2` instead of `p.1.2`). The residual defeq pathology was then
+> **diagnosed and fixed** interactively: `set_option diagnostics true` on the final `exact`
+> showed it blowing up computing `Nat.sqrt` (~23k unfoldings) via `Nat.unpair` — isDefEq
+> reconciling the `Primcodable` instance of the deeply-nested product input type, **not**
+> the budget math. (That is why `rfl`/`simp`/`simpa`/heartbeat-bumps/leaf-`irreducible`
+> all looped — wrong layer.) Scoping `attribute [local irreducible] Nat.sqrt …` around the
+> theorem stops that reduction; `firmBudgetBreachAtDayData_prim` is now **proved, no
+> `sorry`**, and `LogicalInduction.Construction` builds **green with zero `sorry`s
+> (2437 jobs)**.
 > The compiler chain above this point is still unbuilt: `tradingFirmComponentTrades…_prim`
 > → `tradingFirmTradesFromStageTradeLists_prim` → `liaPrefixFromTradeListsAtFuel_prim`
 > (Option-bind recursion) → `liaPrefixAtFuel`/`liaEncodedQuoteAtFuel` computable →

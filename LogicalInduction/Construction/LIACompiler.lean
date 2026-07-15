@@ -2545,7 +2545,7 @@ private theorem strategyOfTokensTrades_prim : Primrec₂ fun n tokens =>
     exact (Primrec.ite hvalid Primrec.snd (Primrec.const [])).to₂
   exact ((Primrec.option_casesOn hdecode (Primrec.const []) hsome).to₂).of_eq
     fun n tokens => by
-      simp only [Prod.fst, Prod.snd]
+      simp only [Prod.snd]
       unfold strategyOfTokens
       split
       · simp_all
@@ -5034,22 +5034,70 @@ private def firmBudgetBreachAtDayData
       (core.1.1.1.2, budgetAtomList core.1.1.1.1 core.1.1.2 core.2, xs)
       core.1.1.2 core.1.2 m
 
--- The intended proof builds `hconsistent`/`hbreach` by composing
--- `budgetConsistentAtDayData_prim` and `budgetWorthBreachedData_prim` with the seven
--- projections of `p : (BudgetCoreInput × List Bool) × ℕ`, then combines them with
--- `(Primrec.dom_bool₂ (· && ·)).comp hconsistent hbreach`.  Every `have` in that chain
--- elaborates cleanly and fast (verified by bisection).  The sole obstruction is the final
--- defeq bridge `firmBudgetBreachAtDayData p.1.1 p.1.2 p.2 =?= (composed && form)`, which
--- sends `whnf` into a heartbeat blowup: isDefEq eagerly reduces the rational `decide` /
--- `firmRawPriorWorthData` / `budgetAtomList` leaves.  `rfl`, `simp only [def]`,
--- `simpa … using`, a 2.4M heartbeat bump, and `attribute [local irreducible]` on the leaf
--- defs all loop identically.  TODO(M7): close in an interactive Lean session (this is a
--- tooling/defeq fix, not a mathematical gap).  This is the last Budgeter-gate primrec
--- piece; everything downstream of it is already built.
+-- INTERACTIVE-SESSION SCAFFOLD (2026-07-15).  The `have` chain below elaborates cleanly
+-- and fast (verified by bisection).  The sole obstruction is the final `exact`: the defeq
+-- bridge `firmBudgetBreachAtDayData p.1.1 p.1.2 p.2 =?= (composed && form)` sends `whnf`
+-- into a heartbeat blowup (isDefEq eagerly reduces the rational `decide`/`budgetAtomList`
+-- leaves).  The `attribute [local irreducible]` line below is the candidate fix — it stops
+-- isDefEq from unfolding those leaves so the bridge matches structurally.  If the `exact`
+-- still spins in the Infoview, try: (a) `unfold firmBudgetBreachAtDayData; exact …`;
+-- (b) `with_reducible exact …`; (c) profile with `set_option trace.profiler true in` at
+-- low `maxHeartbeats` to see which leaf whnf is stuck on.  This is a tooling/defeq fix,
+-- not a mathematical gap.  It is the last Budgeter-gate primrec piece.
+section
+-- Scoped so the reducibility overrides do not leak to later declarations.  Diagnostics
+-- (`set_option diagnostics true`) showed the final `exact` blows up computing `Nat.sqrt`
+-- (23k unfoldings) via `Nat.unpair` — i.e. isDefEq reconciling the `Primcodable` instance
+-- of the deeply-nested product type, not the budget math.  Blocking `Nat.sqrt` (and the
+-- budget leaves) stops that reduction so the instances/leaves match structurally.
+attribute [local irreducible] Nat.sqrt budgetConsistentAtDayData budgetWorthBreachedData
+  budgetAtomList firmRawPriorWorthData decodedStageTable tableConsistentFromAtomList
+
 private theorem firmBudgetBreachAtDayData_prim : Primrec fun p :
     (BudgetCoreInput × List Bool) × ℕ =>
       firmBudgetBreachAtDayData p.1.1 p.1.2 p.2 := by
-  sorry
+  let P := (BudgetCoreInput × List Bool) × ℕ
+  have hstages : Primrec fun p : P => p.1.1.1.1.1.1 :=
+    Primrec.fst.comp (Primrec.fst.comp
+      (Primrec.fst.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))))
+  have hpast : Primrec fun p : P => p.1.1.1.1.1.2 :=
+    Primrec.snd.comp (Primrec.fst.comp
+      (Primrec.fst.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))))
+  have hj : Primrec fun p : P => p.1.1.1.1.2 :=
+    Primrec.snd.comp
+      (Primrec.fst.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst)))
+  have hb : Primrec fun p : P => p.1.1.1.2 :=
+    Primrec.snd.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
+  have hn : Primrec fun p : P => p.1.1.2 :=
+    Primrec.snd.comp (Primrec.fst.comp Primrec.fst)
+  have hxs : Primrec fun p : P => p.1.2 :=
+    Primrec.snd.comp Primrec.fst
+  have hm : Primrec fun p : P => p.2 := Primrec.snd
+  have hatoms : Primrec fun p : P =>
+      budgetAtomList p.1.1.1.1.1.1 p.1.1.1.1.2 p.1.1.2 :=
+    budgetAtomList_prim.comp ((hstages.pair hj).pair hn)
+  have hconsistent : Primrec fun p : P =>
+      budgetConsistentAtDayData
+        (budgetAtomList p.1.1.1.1.1.1 p.1.1.1.1.2 p.1.1.2)
+        p.1.2 p.1.1.1.1.1.1 p.2 :=
+    budgetConsistentAtDayData_prim.comp
+      (((hatoms.pair hxs).pair hstages).pair hm)
+  have hctx : Primrec fun p : P =>
+      ((p.1.1.1.1.1.2,
+          budgetAtomList p.1.1.1.1.1.1 p.1.1.1.1.2 p.1.1.2,
+          p.1.2) : BudgetWorldContext) :=
+    hpast.pair (hatoms.pair hxs)
+  have hbreach : Primrec fun p : P =>
+      budgetWorthBreachedData
+        (p.1.1.1.1.1.2,
+          budgetAtomList p.1.1.1.1.1.1 p.1.1.1.1.2 p.1.1.2,
+          p.1.2)
+        p.1.1.1.1.2 p.1.1.1.2 p.2 :=
+    budgetWorthBreachedData_prim.comp
+      (((hctx.pair hj).pair hb).pair hm)
+  exact (Primrec.dom_bool₂ (· && ·)).comp hconsistent hbreach
+
+end
 
 private def firmBudgetAssignmentBreachesData
     (core : BudgetCoreInput) (xs : List Bool) : Bool :=

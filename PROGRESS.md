@@ -48,16 +48,21 @@ last Budgeter-gate primrec lemma, cascading to a downstream kernel error). The M
 "targeted LIACompiler build is green" claim was therefore not actual, and the file was not
 truly `sorry`-free — it simply did not compile. This session fixed two genuine bugs in the
 cut-off proof (a `Primrec`-into-`Type` `hctx` ascription; a systematically mis-indexed
-seven-projection block) and isolated the residual failure to the final defeq bridge, which
-loops `whnf` regardless of closing tactic (`rfl`/`simp`/`simpa`/heartbeat-bump/`_eq`
-rewrite/`local irreducible` all tried). That mechanical primrec fact is now carried as
-**one documented `sorry`** (intended witness + diagnosis in-comment); it is a tooling/defeq
-fix for an interactive session, not a mathematical gap. `LogicalInduction.Construction` now
-builds **green with exactly one `sorry`**. The compiler assembly above
-`firmBudgetBreachAtDayData_prim` — `tradingFirmTradesFromStageTradeLists_prim`,
+seven-projection block). The residual failure was then **diagnosed and fixed**: an
+interactive `set_option diagnostics true` run showed the final `exact` blowing up computing
+`Nat.sqrt` (~23k unfoldings) via `Nat.unpair` — i.e. isDefEq reconciling the `Primcodable`
+instance of the deeply-nested product input type, *not* the budget math (`rfl`/`simp`/
+`simpa`/heartbeat-bumps had all chased the wrong layer). Scoping `attribute [local
+irreducible] Nat.sqrt …` around the theorem stops that reduction so the instances/leaves
+match structurally; `firmBudgetBreachAtDayData_prim` is now **proved, no `sorry`**.
+`LogicalInduction.Construction` builds **green with zero `sorry`s (2437 jobs)**. The
+compiler assembly above `firmBudgetBreachAtDayData_prim` — `tradingFirmTradesFromStageTradeLists_prim`,
 `liaPrefixFromTradeListsAtFuel_prim`, and the top-level `Computable₂ liaEncodedQuoteNatAtFuel`
 composition that instantiates `LIABoundedEvaluatorCompiler` for `exists_logical_inductor` —
-remains unbuilt. Until it lands, `thm:li` is open.
+remains unbuilt. Until it lands, `thm:li` is open. (Reusable lesson: for `Primrec` goals
+over deep product types, an `exact`/`rfl` `whnf` blowup is usually `Nat.unpair`/`Nat.sqrt`
+in the `Primcodable` instances — check `set_option diagnostics true` and scope
+`irreducible Nat.sqrt` rather than bumping heartbeats.)
 
 ### Active M7 completion contract (set 2026-07-14)
 
