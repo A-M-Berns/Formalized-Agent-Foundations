@@ -427,6 +427,67 @@ theorem codeEvalnNat_comp_polyFueled {cf cg : Nat.Partrec.Code}
   · rw [if_neg h0g, if_neg h0g]
     simp only [Nat.pred_eq_sub_one]
 
+/-- `none ↦ 0`, `some x ↦ x+1`; the normalization shared by `codeEvalnNat`. -/
+def optNat : Option ℕ → ℕ
+  | none => 0
+  | some x => x + 1
+
+theorem codeEvalnNat_eq_optNat (c : Nat.Partrec.Code) (z : ℕ) :
+    codeEvalnNat c z = optNat (Nat.Partrec.Code.evaln z.unpair.1 c z.unpair.2) := rfl
+
+theorem optNat_if {P : Prop} [Decidable P] (o : Option ℕ) :
+    optNat (if P then o else none) = if P then optNat o else 0 := by
+  by_cases h : P <;> simp [h, optNat]
+
+/-- Normalized version of `precEvalState`, written through the sub-code compilers
+`codeEvalnNat cf/cg` (not the raw `evaln`), so it can be handed to `PolyFueled.prec`.
+`A` packs the prec input `⟨clock, ⟨a, i⟩⟩ = z`; iteration `j` runs the residual clock
+`clock - i + j`. -/
+def precNat (cf cg : Nat.Partrec.Code) (A : ℕ) : ℕ → ℕ
+  | 0 =>
+      if Nat.pair A.unpair.2.unpair.1 0 < A.unpair.1 - A.unpair.2.unpair.2 then
+        codeEvalnNat cf (Nat.pair (A.unpair.1 - A.unpair.2.unpair.2) A.unpair.2.unpair.1)
+      else 0
+  | j + 1 =>
+      if Nat.pair A.unpair.2.unpair.1 (j + 1) < A.unpair.1 - A.unpair.2.unpair.2 + j + 1 ∧
+          precNat cf cg A j ≠ 0 then
+        codeEvalnNat cg (Nat.pair (A.unpair.1 - A.unpair.2.unpair.2 + j + 1)
+          (Nat.pair A.unpair.2.unpair.1 (Nat.pair j (precNat cf cg A j - 1))))
+      else 0
+
+theorem precNat_eq (cf cg : Nat.Partrec.Code) (A : ℕ) :
+    ∀ j, precNat cf cg A j =
+      optNat (precEvalState cf cg A.unpair.1 A.unpair.2.unpair.1 A.unpair.2.unpair.2 j) := by
+  intro j
+  induction j with
+  | zero =>
+      rw [precNat, precEvalState, optNat_if, codeEvalnNat_eq_optNat, Nat.unpair_pair]
+  | succ j ih =>
+      rw [precNat, precEvalState]
+      rcases hp : precEvalState cf cg A.unpair.1 A.unpair.2.unpair.1 A.unpair.2.unpair.2 j
+        with _ | p
+      · have hp0 : precNat cf cg A j = 0 := by rw [ih, hp]; rfl
+        rw [if_neg (by simp [hp0]), optNat_if]
+        simp [hp, optNat]
+      · have hp1 : precNat cf cg A j = p + 1 := by rw [ih, hp]; rfl
+        by_cases hguard : Nat.pair A.unpair.2.unpair.1 (j + 1) <
+            A.unpair.1 - A.unpair.2.unpair.2 + j + 1
+        · rw [if_pos ⟨hguard, by simp [hp1]⟩, if_pos hguard, hp1,
+            Nat.add_sub_cancel, codeEvalnNat_eq_optNat, Nat.unpair_pair]
+          simp [hp]
+        · rw [if_neg (by tauto), if_neg hguard]
+          simp [optNat]
+
+/-- `prec`: the fuel-decrement recursion, packaged as the guarded final value of `precNat`. -/
+theorem codeEvalnNat_prec_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
+    codeEvalnNat (.prec cf cg) z =
+      if z.unpair.2 < z.unpair.1 then precNat cf cg z z.unpair.2.unpair.2 else 0 := by
+  rw [codeEvalnNat_eq_optNat, precNat_eq]
+  have hfin := precEvalState_final cf cg
+    (clock := z.unpair.1) (a := z.unpair.2.unpair.1) (total := z.unpair.2.unpair.2)
+  simp only [Nat.pair_unpair] at hfin
+  rw [← hfin, optNat_if]
+
 /-- **Universal bounded simulator (`M7-HIST-EVALN`).** For every fixed `simulated`, the total
 normalized bounded interpreter is computable in the project polynomial-fuel model. -/
 theorem codeEvalnNat_polyFueled :
