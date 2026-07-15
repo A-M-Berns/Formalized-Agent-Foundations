@@ -40,23 +40,33 @@ available), which sidesteps Mathlib's `errorOnBuild` guard. Re-run if it recurs.
 | M6 | construction Part 1: strategy fixed point + computable rational `MarketMaker` + inexploitability | **verified complete (2026-07-14)** — `fixed_point_lemma`, the exact rational fuel-clocked `MarketMaker`, and recursive-history `marketMaker_not_exploited` are proved. The search is an executable bounded recursion over decoded candidates, with a certified stopping clock obtained from rational density; it is not an opaque choice or a conclusion-bearing certificate. The statement comparison/disclosure packet is complete, the 2,426-job construction roll-up and 2,671-job full build are green, executable-hole and diff checks pass, and all M6 capstones expose only the approved three axioms. |
 | M7 | budgeter, trading firm, LIA, existence, unconditionalization | **active (core construction complete 2026-07-15; witness/audit contract open)** — full completion contract below. Efficient-trader enumeration, the process-backed Budgeter, concrete exact `TradingFirm`, summable-residual dominance, recursive rational LIA, and the complete executable compiler are now proved. `Construction/LIACompiler.lean` compiles every finite layer—sentence/rational/EF encodings, process stages, raw trader programs, MarketMaker, Budgeter, exact TradingFirm cutoff/mixture, state-prefix recurrence, rational quotation, and natural output—through `Computable₂ (liaEncodedQuoteNatAtFuel process)`. `liaBoundedEvaluatorCompiler` instantiates the formerly open boundary; paper-facing `LIA_is_logical_inductor` and `exists_logical_inductor` compile and expose only `propext`, `Classical.choice`, and `Quot.sound`. The fifteen post-M5 compiler/syntax witnesses, their fully instantiated M3–M5 corollaries, paper comparison, read-through, and final audit gates remain open. |
 
-### M7-HIST-EVALN linchpin progress (2026-07-15)
+### M7-HIST-EVALN linchpin COMPLETE (2026-07-15)
 
-`Construction/M7Witnesses.lean` now attacks the universal bounded-simulator theorem
-`codeEvalnNat_polyFueled : ∀ c, ∃ prog, PolyFueled prog (codeEvalnNat c)` — the reusable
-poly-clock interpreter the M5 notes flagged as missing (Mathlib only proves `evaln`
-primitive recursive, not poly-fuel in this repo's `evaln`-clocked model). It is true because
-the interpreted code is *fixed* (constant nesting depth) and the output is poly-bounded
-(`codeEvalnNat_output_poly`). Proof is an induction on the simulated code. **6 of 8
-constructor cases are fully proved and kernel-checked**: `zero`/`succ`/`left`/`right` via the
-shared `polyFueled_baseGuard` (one `ifzSel` over `subc`, exploiting that every `evaln` clause
-self-guards its input); `pair` and `comp` via `codeEvalnNat_{pair,comp}_eq` + `_polyFueled`
-(the self-guard makes both a pure combination of the sub-code compilers at the same/output
-input, no fuel arithmetic). The two remaining cases — `prec` and `rfind'` — are the genuine
-fuel-decrement iterations, isolated with `sorry` + `TODO(blueprint:M7-HIST-EVALN)` naming the
-tools (`PolyFueled.prec` + the `precEvalState`/`precEvalState_final` residual-fuel bridges).
-`boundedEvalnCompiler` wires the hub from the theorem. Build green (2467 jobs); the six proved
-cases are axiom-clean.
+`Construction/M7Witnesses.lean` proves the universal bounded-simulator theorem
+`codeEvalnNat_polyFueled : ∀ c, ∃ prog, PolyFueled prog (codeEvalnNat c)` — **no `sorry`,
+axiom-clean** (`propext`/`Classical.choice`/`Quot.sound`). This is the reusable poly-clock
+interpreter the M5 notes flagged as missing (Mathlib only proves `evaln` primitive recursive,
+not poly-fuel in this repo's `evaln`-clocked model). It is true because the interpreted code
+is *fixed* (constant nesting depth) and the output is poly-bounded (`codeEvalnNat_output_poly`).
+Proof is an induction on the simulated code, all 8 constructor cases discharged:
+- `zero`/`succ`/`left`/`right`: shared `polyFueled_baseGuard` (one `ifzSel` over `subc`,
+  exploiting that every `evaln` clause self-guards its input).
+- `pair`/`comp`: `codeEvalnNat_{pair,comp}_eq` + `_polyFueled` — the self-guard makes both a
+  pure combination of the sub-code compilers at the same/output input, no fuel arithmetic.
+- `prec`: `precNat` (normalized `precEvalState`) + `codeEvalnNat_prec_eq` (semantic core via
+  `precEvalState_final`) + `codeEvalnNat_prec_polyFueled` (`PolyFueled.prec` over `precNat`,
+  base/step from the `cf`/`cg` sub-compilers, state bounded via `codeEvalnNat_le`).
+- `rfind'`: `rfindNat` (forward search where fuel and search index move together, so the
+  answer is the final state at `j = clock` with no outer guard) + `rfindNat_eq` +
+  `codeEvalnNat_rfind_eq` + `codeEvalnNat_rfind_polyFueled` (`PolyFueled.prec`, bound via
+  `rfindNat_le`).
+
+`PolyFueled.prec` assemblies are scoped under `attribute [local irreducible] Nat.sqrt` to
+avoid the deep-product `whnf` blowup. `boundedEvalnCompiler` inhabits the `BoundedEvalnCompiler`
+hub for every simulated code. Build green (2467 jobs). This unblocks the witnesses that route
+through the universal simulator (`M7-HIST-EVALN`, general `M7-CE-REPETITION`, `M7-COMP-SYNTAX`,
+`M7-PATIENT-CLOCK`, `M7-FEEDBACK-EMIT`), which can now bind concrete checker/enumeration codes
+to a poly-fuel program instead of assuming one.
 
 ### Build-state correction (2026-07-15)
 

@@ -488,6 +488,70 @@ theorem codeEvalnNat_prec_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
   simp only [Nat.pair_unpair] at hfin
   rw [← hfin, optNat_if]
 
+/-- Normalized `rfind'` search state.  Iteration `j` mirrors the interpreter at fuel `j`
+and search position `m0 + (clock - j)`; the fuel and the search index move together, so the
+answer is `rfindNat cf z clock` with no outer guard. -/
+def rfindNat (cf : Nat.Partrec.Code) (A : ℕ) : ℕ → ℕ
+  | 0 => 0
+  | j + 1 =>
+      let m := A.unpair.2.unpair.2 + (A.unpair.1 - (j + 1))
+      let cfval := codeEvalnNat cf (Nat.pair (j + 1) (Nat.pair A.unpair.2.unpair.1 m))
+      if cfval = 0 then 0 else if cfval = 1 then m + 1 else rfindNat cf A j
+
+theorem rfindNat_eq (cf : Nat.Partrec.Code) (A : ℕ) :
+    ∀ j, j ≤ A.unpair.1 →
+      rfindNat cf A j =
+        optNat (Nat.Partrec.Code.evaln j (.rfind' cf)
+          (Nat.pair A.unpair.2.unpair.1 (A.unpair.2.unpair.2 + (A.unpair.1 - j)))) := by
+  intro j
+  induction j with
+  | zero => intro _; simp [rfindNat, Nat.Partrec.Code.evaln, optNat]
+  | succ j ih =>
+      intro hj
+      have hIH := ih (by omega)
+      have hM1 : A.unpair.2.unpair.2 + (A.unpair.1 - (j + 1)) + 1
+          = A.unpair.2.unpair.2 + (A.unpair.1 - j) := by omega
+      rw [rfindNat]
+      rcases hx : Nat.Partrec.Code.evaln (j + 1) cf
+          (Nat.pair A.unpair.2.unpair.1 (A.unpair.2.unpair.2 + (A.unpair.1 - (j + 1))))
+          with _ | x
+      · have hcf0 : codeEvalnNat cf (Nat.pair (j + 1) (Nat.pair A.unpair.2.unpair.1
+            (A.unpair.2.unpair.2 + (A.unpair.1 - (j + 1))))) = 0 := by
+          simp only [codeEvalnNat, Nat.unpair_pair, hx]
+        rw [hcf0, if_pos rfl, Nat.Partrec.Code.evaln]
+        simp [Nat.unpaired, Nat.unpair_pair, hx, optNat, Option.guard]
+      · have hguard : Nat.pair A.unpair.2.unpair.1
+            (A.unpair.2.unpair.2 + (A.unpair.1 - (j + 1))) ≤ j := by
+          have := Nat.Partrec.Code.evaln_bound hx; omega
+        have hcfv : codeEvalnNat cf (Nat.pair (j + 1) (Nat.pair A.unpair.2.unpair.1
+            (A.unpair.2.unpair.2 + (A.unpair.1 - (j + 1))))) = x + 1 := by
+          simp only [codeEvalnNat, Nat.unpair_pair, hx]
+        rw [hcfv, Nat.Partrec.Code.evaln]
+        rcases x with _ | y
+        · simp [Nat.unpaired, Nat.unpair_pair, hx, hguard, optNat, Option.guard]
+        · rw [if_neg (by omega : y + 1 + 1 ≠ 0), if_neg (by omega : y + 1 + 1 ≠ 1)]
+          simp [Nat.unpaired, Nat.unpair_pair, hx, hguard, optNat, Option.guard,
+            Nat.succ_ne_zero, hM1, hIH]
+
+/-- `rfind'`: normalized bounded minimization is the final search state at `j = clock`. -/
+theorem codeEvalnNat_rfind_eq (cf : Nat.Partrec.Code) (z : ℕ) :
+    codeEvalnNat (.rfind' cf) z = rfindNat cf z z.unpair.1 := by
+  rw [rfindNat_eq cf z z.unpair.1 le_rfl, codeEvalnNat_eq_optNat]
+  simp only [Nat.sub_self, Nat.add_zero, Nat.pair_unpair]
+
+/-- Every `rfindNat` value is `0` or a returned search position `≤ m0 + clock`. -/
+theorem rfindNat_le (cf : Nat.Partrec.Code) (A : ℕ) :
+    ∀ j, rfindNat cf A j ≤ A.unpair.2.unpair.2 + A.unpair.1 + 1 := by
+  intro j
+  induction j with
+  | zero => simp [rfindNat]
+  | succ j ih =>
+      rw [rfindNat]
+      split_ifs
+      · exact Nat.zero_le _
+      · omega
+      · exact ih
+
 section PrecCompile
 attribute [local irreducible] Nat.sqrt
 
@@ -599,6 +663,67 @@ theorem codeEvalnNat_prec_polyFueled {cf cg : Nat.Partrec.Code}
 
 end PrecCompile
 
+section RfindCompile
+attribute [local irreducible] Nat.sqrt
+
+/-- Compile the `rfind'` case via `PolyFueled.prec` over `rfindNat`. -/
+theorem codeEvalnNat_rfind_polyFueled {cf : Nat.Partrec.Code}
+    (hf : ∃ prog, PolyFueled prog (codeEvalnNat cf)) :
+    ∃ prog, PolyFueled prog (codeEvalnNat (.rfind' cf)) := by
+  obtain ⟨_, hf⟩ := hf
+  obtain ⟨_, hadd⟩ := addc_polyFueled
+  -- Step program `g` (spec via projections of `X = ⟨A, ⟨j, prior⟩⟩`).
+  have SAP := PolyFueled.left
+  have SjP := PolyFueled.left.comp PolyFueled.right
+  have SpriorP := PolyFueled.right.comp PolyFueled.right
+  have SclockP := PolyFueled.left.comp SAP
+  have SaP := (PolyFueled.left.comp PolyFueled.right).comp SAP
+  have Sm0P := (PolyFueled.right.comp PolyFueled.right).comp SAP
+  have Sj1P := SjP.succ_comp
+  have ScmjP := subc_polyFueled.comp (SclockP.pair Sj1P)
+  have SmP := hadd.comp (Sm0P.pair ScmjP)
+  have ScfInP := Sj1P.pair (SaP.pair SmP)
+  have ScfvalP := hf.comp ScfInP
+  have SinnerP := ifzSel_polyFueled.comp
+    ((SmP.succ_comp.pair SpriorP).pair (predc_polyFueled.comp ScfvalP))
+  set gspec : ℕ → ℕ := fun X =>
+    if codeEvalnNat cf (Nat.pair (X.unpair.2.unpair.1 + 1) (Nat.pair X.unpair.1.unpair.2.unpair.1
+        (X.unpair.1.unpair.2.unpair.2 + (X.unpair.1.unpair.1 - (X.unpair.2.unpair.1 + 1))))) = 0
+    then 0
+    else if codeEvalnNat cf (Nat.pair (X.unpair.2.unpair.1 + 1) (Nat.pair
+        X.unpair.1.unpair.2.unpair.1 (X.unpair.1.unpair.2.unpair.2 +
+        (X.unpair.1.unpair.1 - (X.unpair.2.unpair.1 + 1))))) = 1
+    then X.unpair.1.unpair.2.unpair.2 + (X.unpair.1.unpair.1 - (X.unpair.2.unpair.1 + 1)) + 1
+    else X.unpair.2.unpair.2 with hgspec
+  have gPF : PolyFueled _ gspec :=
+    (ifzSel_polyFueled.comp (((PolyFueled.const 0).pair SinnerP).pair ScfvalP)).of_eq
+      (fun X => by
+        simp only [Nat.unpair_pair, ifzSelFn, hgspec, Nat.pred_eq_sub_one]
+        set c := codeEvalnNat cf (Nat.pair (X.unpair.2.unpair.1 + 1) (Nat.pair
+          X.unpair.1.unpair.2.unpair.1 (X.unpair.1.unpair.2.unpair.2 +
+          (X.unpair.1.unpair.1 - (X.unpair.2.unpair.1 + 1)))))
+        by_cases h0 : c = 0
+        · simp [h0]
+        · rw [if_neg h0, if_neg h0]
+          by_cases h1 : c = 1
+          · rw [if_pos h1, if_pos (by omega : c - 1 = 0)]
+          · rw [if_neg h1, if_neg (by omega : c - 1 ≠ 0)])
+  have hst : IsPolyBounded (fun m => rfindNat cf m.unpair.1 m.unpair.2) :=
+    ((isPolyBounded_fst.add isPolyBounded_fst).add_one).of_le (fun m => by
+      have := rfindNat_le cf m.unpair.1 m.unpair.2
+      have h1 : m.unpair.1.unpair.2.unpair.2 ≤ m.unpair.1 :=
+        le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _)
+      have h2 : m.unpair.1.unpair.1 ≤ m.unpair.1 := Nat.unpair_left_le _
+      omega)
+  have hprec := PolyFueled.prec (PolyFueled.const 0) gPF (st := rfindNat cf)
+    (fun _ => rfl) (fun A j => by rw [rfindNat]; simp only [hgspec, Nat.unpair_pair]) hst
+  have hval := hprec.comp (PolyFueled.id.pair PolyFueled.left)
+  refine ⟨_, hval.of_eq (fun z => ?_)⟩
+  rw [codeEvalnNat_rfind_eq]
+  simp only [Nat.unpair_pair]
+
+end RfindCompile
+
 /-- **Universal bounded simulator (`M7-HIST-EVALN`).** For every fixed `simulated`, the total
 normalized bounded interpreter is computable in the project polynomial-fuel model. -/
 theorem codeEvalnNat_polyFueled :
@@ -622,13 +747,9 @@ theorem codeEvalnNat_polyFueled :
   | .prec cf cg =>
     codeEvalnNat_prec_polyFueled (codeEvalnNat_polyFueled cf) (codeEvalnNat_polyFueled cg)
   | .rfind' cf =>
-    -- TODO(blueprint:M7-HIST-EVALN): bounded minimization. `evaln (k+1) (rfind' cf)` searches
-    -- `m, m+1, …` at decreasing fuel until `cf` returns 0 or fuel is exhausted — a
-    -- `PolyFueled.prec` bounded search of length ≤ fuel calling the `cf` compiler per step.
-    sorry
+    codeEvalnNat_rfind_polyFueled (codeEvalnNat_polyFueled cf)
 
-/-- The `M7-HIST-EVALN` hub is inhabited for every simulated code (modulo the two
-`prec`/`rfind'` iteration cases marked above). -/
+/-- The `M7-HIST-EVALN` hub is inhabited for every simulated code. -/
 noncomputable def boundedEvalnCompiler (simulated : Nat.Partrec.Code) :
     BoundedEvalnCompiler simulated :=
   ⟨_, (codeEvalnNat_polyFueled simulated).choose_spec⟩
@@ -670,3 +791,4 @@ def EfficientRepeatedEnumeration.ofPoly (source : ℕ → Sentence)
 #print axioms EfficientRepeatedEnumeration.ofPoly
 
 end LogicalInduction
+
