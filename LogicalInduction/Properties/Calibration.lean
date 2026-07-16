@@ -809,6 +809,73 @@ theorem AffineCombination.DeterminedViaTheory.eventually_close
   rw [abs_lt]
   constructor <;> linarith
 
+/-! ### Exact finite-stage settlement
+
+`eventually_close` gives only *approximate* finite-stage determination, but the paper's
+patient selector (`app:prandaff`) needs **exact** settlement: a stage `m` at which every
+plausible world already values `As i` at exactly `truth i`.  The gap closes because an
+affine combination has *finitely many* terms, so its value depends on a world only through
+finitely many `{0,1}` payouts and therefore ranges over a finite set.  Pick `δ` below the
+smallest nonzero gap to `truth i` and approximate determination becomes exact. -/
+
+open Classical in
+/-- The payout-sum of a fixed term list ranges over a finite set of reals: each term
+contributes one of two values (`0`, or its coefficient). -/
+private theorem AffineCombination.exists_termsSum_finset (P : History) :
+    ∀ terms : List (EF × Sentence),
+      ∃ S : Finset ℝ, ∀ v : PCWorld,
+        (terms.map (fun p => p.1.denote P * v.payout p.2)).sum ∈ S
+  | [] => ⟨{0}, by intro v; simp⟩
+  | (e, φ) :: rest => by
+      obtain ⟨S, hS⟩ := AffineCombination.exists_termsSum_finset P rest
+      refine ⟨Finset.image (fun p : ℝ × ℝ => p.1 + p.2)
+        (({0, e.denote P} : Finset ℝ) ×ˢ S), ?_⟩
+      intro v
+      simp only [List.map_cons, List.sum_cons]
+      refine Finset.mem_image.mpr ⟨(e.denote P * v.payout φ, _), ?_, rfl⟩
+      refine Finset.mem_product.mpr ⟨?_, hS v⟩
+      by_cases h : v.Holds φ <;> simp [PCWorld.payout, h]
+
+/-- An affine combination's value ranges over a finite set of reals, uniformly in the
+world.  Finiteness of `terms` is what makes this true — it is the fact that upgrades
+approximate determination to exact settlement. -/
+theorem AffineCombination.exists_valueSet (A : AffineCombination) (P : History) :
+    ∃ S : Finset ℝ, ∀ v : PCWorld, A.value P v.payout ∈ S := by
+  classical
+  obtain ⟨S, hS⟩ := AffineCombination.exists_termsSum_finset P A.terms
+  exact ⟨S.image (fun x => A.const.denote P + x), fun v => Finset.mem_image_of_mem _ (hS v)⟩
+
+/-- **Exact finite-stage settlement.**  If the completed theory determines `As i`, then
+some finite stage already pins its value to `truth i` in *every* plausible world.
+
+This is the realizability core of `PatientSettlementClock.eventually_inactive`: it is what
+guarantees the settlement checker eventually fires, so the clock can be sound (inactive ⇒
+settled) and still eventually go inactive.  Purely semantic — no computability claim. -/
+theorem AffineCombination.DeterminedViaTheory.exists_settled_stage
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    {truth : ℕ → ℝ}
+    (h : AffineCombination.DeterminedViaTheory As P DP truth) (i : ℕ) :
+    ∃ m, ∀ v : PCWorld, v.ConsistentWith (DP.D m) →
+      (As i).value P v.payout = truth i := by
+  classical
+  obtain ⟨S, hS⟩ := AffineCombination.exists_valueSet (As i) P
+  by_cases hB : (S.filter (fun x => x ≠ truth i)).Nonempty
+  · -- `δ` = smallest gap from an achievable wrong value to `truth i`; it is positive.
+    have hδpos :
+        0 < (S.filter (fun x => x ≠ truth i)).inf' hB (fun x => |x - truth i|) := by
+      rw [Finset.lt_inf'_iff]
+      intro x hx
+      exact abs_pos.mpr (sub_ne_zero.mpr (Finset.mem_filter.mp hx).2)
+    obtain ⟨m, hm⟩ := (h.eventually_close i _ hδpos).exists
+    refine ⟨m, fun v hv => ?_⟩
+    by_contra hne
+    exact absurd (hm v hv)
+      (not_lt.mpr (Finset.inf'_le _ (Finset.mem_filter.mpr ⟨hS v, hne⟩)))
+  · -- No achievable value differs from `truth i`, so every stage settles — take `0`.
+    refine ⟨0, fun v _ => ?_⟩
+    by_contra hne
+    exact hB ⟨_, Finset.mem_filter.mpr ⟨hS v, hne⟩⟩
+
 theorem AffineCombination.DeterminedViaTheory.unique
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {x y : ℕ → ℝ}
@@ -2830,6 +2897,8 @@ end AffineCombination
 #print axioms DeductiveProcessComputation.exists_evaln_stage
 #print axioms DeductiveProcessComputation.stageAtFuel_sound
 #print axioms DeductiveProcessComputation.stageAtFuel_complete
+#print axioms AffineCombination.exists_valueSet
+#print axioms AffineCombination.DeterminedViaTheory.exists_settled_stage
 #print axioms EF.denoteRatWithAtFuel_sound
 #print axioms EF.denoteRatWithAtFuel_complete
 #print axioms EF.exists_fuel_denoteRatWithAtFuel
