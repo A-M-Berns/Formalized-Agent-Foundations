@@ -6,14 +6,47 @@ replacing every old price leaf in its feature syntax with the corresponding rati
 constant.  This file makes that transformation literal and proves its rank, semantic,
 net-worth, and exploitation laws.
 
-There is one computational subtlety which the paper suppresses.  `ComputableMarket` only
-requires an unbounded partial-recursive quote program, while `EfficientlyComputableTok`
-requires a polynomial clock.  Consequently an arbitrary computable table of old quotes
-cannot in general be inserted into a polynomial token emitter.  `EfficientPrefixPatch`
-states exactly that missing closure fact for the concrete syntax transformation below; it
-contains no trading, exploitation, or logical-inductor conclusion.  A later concrete
-prefix-quote compiler can discharge it when the old finite-day quote tables have the
-required efficient presentation.
+## PAPER ERRATUM — the appendix proof of `thm:ifp` has a gap (see PROGRESS.md "Paper errata")
+
+This is **not** a modeling artifact of our substrate.  The paper's proof (`app:ifp`)
+transports the trader by hard-coding the old prices, and justifies efficiency thus:
+
+> "Note that `F` is efficiently computable: by the assumption that `pt_n = pt'_n` for all
+> `n ≥ N`, only finitely many constants `pt_i(phi)` are needed, and can be hard-coded
+> into `F`."
+
+That sentence is false.  Finitely many *days* `i < N` are involved, but `phi` still ranges
+over **all** sentences: a day-`n` trade expression may reference `phi^{*i}` for any `phi` of
+rank `≤ n`, so the constant set `{pt_i(phi) : i < N, phi ∈ Sentences}` is infinite.  `F`
+must therefore *compute* `pt_i(phi)` rather than hard-code it, and `def:marketprocess`
+(a market is any computable sequence of pricings — no finite support, no time bound)
+guarantees only that this is computable, with no bound on its runtime or on the bit-size of
+the resulting rational.  So `F` is not efficiently computable in general, and the paper's
+proof does not go through for the class of markets it quantifies over.
+
+The gap is real, not merely pedantic.  Let `P'` agree with `LIA` from day 1 on, with
+`P' 0 phi = 1 - 1/2^(2^(encode phi))` — a legal market by `def:marketprocess`.  A trader
+whose day-`n` strategy prices a sentence of code `~n` at day 0 freezes to a `.const` whose
+numeral is `~2^(2^n)`, which no polynomial clock can emit.  For such a `P'`,
+`EfficientPrefixPatch P' 1` is **uninhabited** — the hypothesis is not merely unproved but
+unsatisfiable.  (This argument is *not* formalized; see the "Paper errata" entry for the
+one unformalized fact it rests on, and for what remains open.)
+
+Note the paper is aware `LIA` itself has finite support per day (`sec:construct`, remark
+following the belief-sequence definition) and *deliberately* generalizes the property tail
+to arbitrary markets.  Finite support is exactly what would rescue the hard-coding step, so
+the gap is a genuine cost of that generalization, not an oversight about `LIA`.
+
+**What this file does about it.**  We keep the theorem to what is actually provable:
+`EfficientPrefixPatch` states the missing closure fact for the concrete syntax
+transformation, and `lic_iff_of_finitePerturbation` takes it as a hypothesis for each
+market.  The structure contains no trading, exploitation, or logical-inductor conclusion.
+Consequently `lic_iff_of_finitePerturbation` is **strictly weaker than the paper's
+`thm:ifp`**: it does not cover every finite perturbation of a computable market, only those
+whose frozen prefix admits an efficient presentation.  It is not vacuous — for `LIA` the
+per-day quote table is a finite entry list (`RationalBeliefState`, `MarketMaker.lean`), so
+the patch is a hardcodable finite lookup and `M7-PREFIX-PATCH` can discharge it — but the
+restriction must be stated whenever this theorem is cited as the paper's.
 -/
 import LogicalInduction.Engine
 import LogicalInduction.Computable
@@ -248,7 +281,18 @@ theorem Trader.Exploits.of_boundedDifference
 
 /-- The narrowly computational boundary in finite-prefix closure: the literal syntax
 freeze above preserves token-indexed polynomial emission.  It contains no semantic market
-claim and no exploitation or convergence conclusion. -/
+claim and no exploitation or convergence conclusion.
+
+**This is a paper erratum, not a modeling substitution** (see the file header and
+PROGRESS.md "Paper errata").  `app:ifp` asserts this closure is immediate because "only
+finitely many constants are needed"; that is false — finitely many *days*, but unboundedly
+many sentences.  This structure is **not inhabited for every `ComputableMarket P`**: a
+market with huge-encoding day-`0` quotes admits no such patch at all.  Do not read it as a
+routine obligation awaiting labor; instantiating it is a real claim about `P`.
+
+For `LIA` it *is* inhabitable — each day's quote table is a finite `RationalBeliefState`
+entry list, so the freeze is a hardcodable finite lookup with constant-size tokens.  That
+is `M7-PREFIX-PATCH`. -/
 structure EfficientPrefixPatch (P : History) (cutoff : ℕ) where
   quote : ℕ → Sentence → ℚ
   quote_exact : ∀ day < cutoff, ∀ φ, P day φ = (quote day φ : ℝ)
