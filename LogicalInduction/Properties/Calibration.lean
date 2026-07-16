@@ -876,6 +876,31 @@ theorem AffineCombination.DeterminedViaTheory.exists_settled_stage
     by_contra hne
     exact hB ⟨_, Finset.mem_filter.mpr ⟨hS v, hne⟩⟩
 
+/-- **The settlement test does not need to know `truth`.**  Provided the theory is
+consistent, `As i` is settled at stage `m` — every world plausible at `m` values it at
+exactly `truth i` — **iff** the worlds plausible at `m` merely *agree with each other*.
+
+This is what makes the paper's `settled` machine (`app:prandaff`) implementable, and the
+paper does not spell it out: a checker cannot compute `truth i` (it is defined by a limit
+over the completed theory), but it *can* test agreement across the finitely many relevant
+assignments.  The forward direction is trivial; the reverse leans on completed-theory
+worlds being a nonempty subset of the stage-`m` plausible worlds, which is exactly where
+consistency (`hworld`) is used. -/
+theorem AffineCombination.DeterminedViaTheory.settled_iff_agree
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    {truth : ℕ → ℝ}
+    (h : AffineCombination.DeterminedViaTheory As P DP truth)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (i m : ℕ) :
+    (∀ v : PCWorld, v.ConsistentWith (DP.D m) → (As i).value P v.payout = truth i) ↔
+      (∀ v w : PCWorld, v.ConsistentWith (DP.D m) → w.ConsistentWith (DP.D m) →
+        (As i).value P v.payout = (As i).value P w.payout) := by
+  constructor
+  · intro hs v w hv hw
+    rw [hs v hv, hs w hw]
+  · intro hagree v hv
+    obtain ⟨v₀, hv₀⟩ := exists_consistentWithTheory DP hworld
+    rw [hagree v v₀ hv (hv₀ m), h i v₀ hv₀]
+
 theorem AffineCombination.DeterminedViaTheory.unique
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {x y : ℕ → ℝ}
@@ -2899,6 +2924,7 @@ end AffineCombination
 #print axioms DeductiveProcessComputation.stageAtFuel_complete
 #print axioms AffineCombination.exists_valueSet
 #print axioms AffineCombination.DeterminedViaTheory.exists_settled_stage
+#print axioms AffineCombination.DeterminedViaTheory.settled_iff_agree
 #print axioms EF.denoteRatWithAtFuel_sound
 #print axioms EF.denoteRatWithAtFuel_complete
 #print axioms EF.exists_fuel_denoteRatWithAtFuel
