@@ -786,9 +786,109 @@ def EfficientRepeatedEnumeration.ofPoly (source : ℕ → Sentence)
   sound j := ⟨j.unpair.1, rfl⟩
   covers i := ⟨Nat.pair i 0, by simp [triangularRepeat]⟩
 
+/-! ### General (c.e.) efficient repetition via the universal simulator
+
+`ofPoly` requires the source stream to already be polynomially codeable. The paper's Uniform
+Non-Dogmatism preprocesses an arbitrary **c.e.** stream, which need not be poly. With the
+`M7-HIST-EVALN` simulator this is now inhabitable: a code-enumerable source is dovetailed —
+on `⟨i, fuel⟩` we run the enumerator on `i` for `fuel` steps (the bounded interpreter
+`codeEvalnNat`, poly by `codeEvalnNat_polyFueled`) and emit the decoded output, padding with
+`source 0` before it halts. The emitted stream is poly regardless of how expensive `source`
+itself is. -/
+
+/-- The result at fuel `fuel` is stable under larger fuel (bounded interpreter monotonicity). -/
+theorem codeEvalnNat_pair_mono {code : Nat.Partrec.Code} {i fuel fuel' v : ℕ}
+    (hle : fuel ≤ fuel')
+    (hv : codeEvalnNat code (Nat.pair fuel i) = v + 1) :
+    codeEvalnNat code (Nat.pair fuel' i) = v + 1 := by
+  simp only [codeEvalnNat, Nat.unpair_pair] at hv ⊢
+  cases hx : Nat.Partrec.Code.evaln fuel code i with
+  | none => rw [hx] at hv; simp at hv
+  | some w =>
+      rw [hx] at hv
+      have h2 : Nat.Partrec.Code.evaln fuel' code i = some w :=
+        Nat.Partrec.Code.evaln_mono hle hx
+      rw [h2]; omega
+
+/-- A code-enumerable ("c.e.") sentence source: a program that halts on every index `i`
+returning `⌜source i⌝`, and whose every output lies in `source`'s range. -/
+structure CEEnumeration (source : ℕ → Sentence) where
+  code : Nat.Partrec.Code
+  halts : ∀ i, ∃ fuel,
+    codeEvalnNat code (Nat.pair fuel i) = Encodable.encode (source i) + 1
+  outputs_sound : ∀ z, codeEvalnNat code z ≠ 0 →
+    ∃ i, codeEvalnNat code z = Encodable.encode (source i) + 1
+
+/-- Dovetailed stream: `n = ⟨i, fuel⟩ ↦` decoded enumerator output, or `source 0` before it
+halts. -/
+noncomputable def ceRepeatSeq {source : ℕ → Sentence} (h : CEEnumeration source)
+    (n : ℕ) : Sentence :=
+  let r := codeEvalnNat h.code (Nat.pair n.unpair.2 n.unpair.1)
+  if r = 0 then source 0 else (Encodable.decode (r - 1)).getD (source 0)
+
+theorem ceRepeatSeq_eq_source {source : ℕ → Sentence} (h : CEEnumeration source)
+    {n i : ℕ} (hr : codeEvalnNat h.code (Nat.pair n.unpair.2 n.unpair.1)
+      = Encodable.encode (source i) + 1) :
+    ceRepeatSeq h n = source i := by
+  simp only [ceRepeatSeq, hr, Nat.add_sub_cancel, Encodable.encodek, Option.getD_some,
+    Nat.add_one_ne_zero, if_false]
+
+theorem ceRepeatSeq_encode {source : ℕ → Sentence} (h : CEEnumeration source) (n : ℕ) :
+    Encodable.encode (ceRepeatSeq h n) =
+      if codeEvalnNat h.code (Nat.pair n.unpair.2 n.unpair.1) = 0 then
+        Encodable.encode (source 0)
+      else codeEvalnNat h.code (Nat.pair n.unpair.2 n.unpair.1) - 1 := by
+  by_cases hz : codeEvalnNat h.code (Nat.pair n.unpair.2 n.unpair.1) = 0
+  · simp [ceRepeatSeq, hz]
+  · obtain ⟨i, hi⟩ := h.outputs_sound _ hz
+    rw [ceRepeatSeq_eq_source h hi, if_neg hz, hi, Nat.add_sub_cancel]
+
+theorem ceRepeatSeq_codes {source : ℕ → Sentence} (h : CEEnumeration source) :
+    PolySentenceCodes (ceRepeatSeq h) := by
+  obtain ⟨prog, hprog⟩ := codeEvalnNat_polyFueled h.code
+  have rP := hprog.comp (PolyFueled.right.pair PolyFueled.left)
+  refine ⟨_, (ifzSel_polyFueled.comp
+    (((PolyFueled.const (Encodable.encode (source 0))).pair
+      (predc_polyFueled.comp rP)).pair rP)).of_eq (fun n => ?_)⟩
+  rw [ceRepeatSeq_encode]
+  simp only [Nat.unpair_pair, ifzSelFn, Nat.pred_eq_sub_one]
+
+/-- **General efficient repetition (`M7-CE-REPETITION`).** Every code-enumerable source has an
+efficient-repetition witness — no polynomial-clock assumption on the source itself. -/
+noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
+    (h : CEEnumeration source) : EfficientRepeatedEnumeration source where
+  sequence := ceRepeatSeq h
+  sequence_poly := ceRepeatSeq_codes h
+  repeats := by
+    intro i N
+    -- `ceRepeatSeq h i` is some `source i'`; that member recurs at arbitrarily large fuel.
+    have hsi : ∃ i', ceRepeatSeq h i = source i' := by
+      by_cases hz : codeEvalnNat h.code (Nat.pair i.unpair.2 i.unpair.1) = 0
+      · exact ⟨0, by simp [ceRepeatSeq, hz]⟩
+      · obtain ⟨i', hi'⟩ := h.outputs_sound _ hz
+        exact ⟨i', ceRepeatSeq_eq_source h hi'⟩
+    obtain ⟨i', hi'⟩ := hsi
+    obtain ⟨fuel, hfuel⟩ := h.halts i'
+    refine ⟨Nat.pair i' (max fuel N), le_trans (le_max_right _ _) (Nat.right_le_pair _ _), ?_⟩
+    rw [hi']
+    apply ceRepeatSeq_eq_source h
+    simp only [Nat.unpair_pair]
+    exact codeEvalnNat_pair_mono (le_max_left _ _) hfuel
+  sound j := by
+    by_cases hz : codeEvalnNat h.code (Nat.pair j.unpair.2 j.unpair.1) = 0
+    · exact ⟨0, by simp [ceRepeatSeq, hz]⟩
+    · obtain ⟨i, hi⟩ := h.outputs_sound _ hz
+      exact ⟨i, ceRepeatSeq_eq_source h hi⟩
+  covers i := by
+    obtain ⟨fuel, hfuel⟩ := h.halts i
+    refine ⟨Nat.pair i fuel, ceRepeatSeq_eq_source h ?_⟩
+    simp only [Nat.unpair_pair]
+    exact hfuel
+
 #print axioms triangularRepeat_codes
 #print axioms triangularRepeat_repeats
 #print axioms EfficientRepeatedEnumeration.ofPoly
+#print axioms EfficientRepeatedEnumeration.ofCE
 
 end LogicalInduction
 

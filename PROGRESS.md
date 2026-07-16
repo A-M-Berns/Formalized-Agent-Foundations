@@ -68,6 +68,19 @@ through the universal simulator (`M7-HIST-EVALN`, general `M7-CE-REPETITION`, `M
 `M7-PATIENT-CLOCK`, `M7-FEEDBACK-EMIT`), which can now bind concrete checker/enumeration codes
 to a poly-fuel program instead of assuming one.
 
+### M7-CE-REPETITION general case COMPLETE (2026-07-15)
+
+`Construction/M7Witnesses.lean`: `EfficientRepeatedEnumeration.ofCE` inhabits the repetition
+boundary for an arbitrary **code-enumerable (c.e.) source** — no polynomial-clock assumption
+on the source itself (the paper's actual UND obligation, vs `ofPoly`'s poly-source case).
+`CEEnumeration source` packages an enumerator code that halts on each index giving `⌜source i⌝`
+and whose outputs all lie in `source`'s range. `ceRepeatSeq` dovetails on `⟨i, fuel⟩` through
+the `M7-HIST-EVALN` simulator (`codeEvalnNat`, poly by `codeEvalnNat_polyFueled`), emits the
+decoded bounded output and pads with `source 0` before halting — poly regardless of how
+expensive `source` is. `codeEvalnNat_pair_mono` (interpreter output stable under larger fuel,
+via `evaln_mono`) drives `repeats`. Axiom-clean. **2 of 15 witnesses now fully inhabited**
+(`M7-HIST-EVALN`, `M7-CE-REPETITION`).
+
 ### Build-state correction (2026-07-15)
 
 The prior session was cut off mid-proof and left `Construction/LIACompiler.lean`
