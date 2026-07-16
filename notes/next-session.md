@@ -11,6 +11,51 @@ expose only `propext`, `Classical.choice`, and `Quot.sound`. Active work has mov
 instantiate the advertised property corollaries, and then run the paper/read-through/audit
 gates below.
 
+**Witnesses done (2 of 15, both axiom-clean, no `sorry`):** `M7-HIST-EVALN`
+(`codeEvalnNat_polyFueled` — universal poly-clock bounded `Code.evaln` simulator, all 8
+constructors; `boundedEvalnCompiler` hub) and `M7-CE-REPETITION`
+(`EfficientRepeatedEnumeration.ofCE` — general c.e. source via the simulator). Both in
+`M7Witnesses.lean`.
+
+### ▶ Witness triage (2026-07-15) — read before grinding the remaining 13
+
+The 13 remaining witnesses are **not** uniform in value. The core existence theorem
+(`exists_logical_inductor`) is already unconditional/axiom-clean and depends on **none** of
+them; the witnesses only make the M3–M5 **property tail** non-vacuous. Sorted by whether
+realizability is genuinely in doubt (construct = resolves a real question) vs known-realizable
+(construct = labor that at most catches an encoding bug):
+
+**Tier 1 — realizability genuinely uncertain → construct (real epistemic value):**
+- `M7-PREFIX-PATCH` — `EfficientPrefixPatch.preserves_ec` may be *false* under the weak
+  `ComputableMarket` premise (old quotes aren't poly-accessible). Constructing forces the
+  truth: it holds, or the premise must be honestly strengthened. **The one witness that can
+  falsify something.** Med-hard.
+- `M7-QUOTE-AFFINE` — introspection portfolios need the market to coherently price sentences
+  about its own future prices (reflection/diagonalization); whether that coheres *is* the
+  self-trust content, not a standard object. Hard (needs first-order quotation).
+- `M7-PATIENT-CLOCK` — `settled_of_inactive` ties the clock to the process settling affine
+  values; verify it doesn't smuggle an unrealizable settlement assumption. Med.
+
+**Tier 2 — known-realizable "match the def + emit tokens" → construct only for completeness:**
+low realizability doubt, ~a day of wiring each, low surprise. `M7-FEEDBACK-EMIT` (emit
+`feedbackTrader`'s trades; deferral dovetail can ride the simulator — most tractable),
+`M7-FEEDBACK-TRUTH`, `M7-DUS-PREFIX-SYNTAX` (fresh independent atoms), `M7-SCON-COMPILER`,
+`M7-SCON-PRESENTATION`, `M7-LUV-SYNTAX`.
+
+**Tier 3 — standard math objects / deep machinery → disclose Barasz-style, don't grind:**
+near-zero realizability doubt, weeks of labor re-proving textbook facts (some hit Mathlib
+gaps). `M7-PREFIX-MACHINE` (prefix-free + Kraft — *most self-contained*; build this one if you
+want a single "pipeline reaches Kraft territory" showcase), `M7-DUS-APPROX` (needs a concrete
+Solomonoff–Levin universal semimeasure first), `M7-STRICT-SEPARATORS` (recursively-inseparable
+c.e. sets + universal-semimeasure-mass→0, a real computability theorem not in Mathlib —
+deepest), `M7-COMP-SYNTAX` (Gödel encoding + proof calculus for Σ₁-representability of halting).
+
+**Recommended strong-but-honest close:** Tier 1 constructed + one Tier-3 showcase
+(`PREFIX-MACHINE`) + everything else disclosed with cited standard results, exactly like the
+finished `Barasz/` names its two unproved facts. That is days, not weeks. Full literal
+M7-contract closure (all 15 constructed) is weeks and mostly re-proving known objects — a
+deliberate decision for Anson, since the disclose route does not meet the contract's letter.
+
 **GOTCHA (read first, will recur every step):** `Primrec` proofs over the deep product
 input types here blow up `whnf` on `Nat.sqrt` (via `Nat.unpair` in the `Primcodable`
 instance), *not* on the domain math. When an `exact`/`rfl` spins, do **not** bump
