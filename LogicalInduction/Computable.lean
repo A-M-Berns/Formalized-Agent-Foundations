@@ -16,6 +16,174 @@ exactly `EfficientlyComputable`. Faithfulness is untouched: this is the paper's 
 -/
 import LogicalInduction.Criterion
 
+/-! ## Output bound for the clocked interpreter
+
+General facts about Mathlib's `evaln`, stated in its own namespace — nothing here is
+specific to logical induction, and `evaln_output_bound` is a plausible Mathlib
+contribution.
+
+`evaln_output_bound` discharges the claim that OPEN RISK 4's token-indexed `def:ec` design
+rests on, and that the `thm:ifp` paper erratum's counterexample needs (see PROGRESS.md
+"Paper errata" — that row cited this as *true but unformalized* until now). -/
+
+namespace Nat.Partrec.Code
+
+/-- Outputs of `evaln` genuinely **exceed** the fuel: `pair` squares its arguments and
+nothing guards the result.  So `evaln_output_bound` below must give a *polynomial* in the
+fuel rather than the fuel itself, and Mathlib's input-side `evaln_bound` does not suffice.
+
+Kernel-checked (`simp` on the equation lemmas) rather than `decide`/`native_decide`:
+`evaln`'s well-founded recursion does not reduce in the kernel, and `native_decide` would
+trust the compiler and drag in `Lean.ofReduceBool`. -/
+theorem evaln_output_can_exceed_fuel :
+    ∃ (c : Nat.Partrec.Code) (k n x : ℕ), x ∈ evaln k c n ∧ k < x :=
+  ⟨.pair .succ .succ, 20, 5, 48, by simp [evaln, Seq.seq, Nat.pair], by norm_num⟩
+
+/-- Monotonicity of the `a * (K+1)^d` bound shape in both parameters. -/
+theorem evalnBound_mono {a a' d d' K : ℕ} (ha : a ≤ a') (hd : d ≤ d') :
+    a * (K + 1) ^ d ≤ a' * (K + 1) ^ d' :=
+  Nat.mul_le_mul ha (Nat.pow_le_pow_right (by omega) hd)
+
+/-- The `rfind'` clause returns either an input-guarded index or a smaller-fuel recursive
+result, so its output is bounded by the fuel outright — independent of `cf`. -/
+theorem evaln_rfind'_output_lt (cf : Nat.Partrec.Code) :
+    ∀ {k n x : ℕ}, x ∈ evaln k (rfind' cf) n → x < k := by
+  intro k
+  induction k with
+  | zero => intro n x h; simp [evaln] at h
+  | succ k ih =>
+    intro n x h
+    simp only [Option.mem_def] at h
+    simp [evaln, Option.bind_eq_some_iff] at h
+    obtain ⟨hn, a, -, h⟩ := h
+    split_ifs at h with ha
+    · simp only [Option.some_inj] at h
+      have := Nat.unpair_right_le n
+      omega
+    · exact Nat.lt_succ_of_lt (ih h)
+
+/-- **Output bound for the clocked interpreter.**  For a *fixed* code `c` there are `a, d`
+with `a * (k+1)^d` bounding every value `evaln k c n` can return.
+
+This is the output analogue of Mathlib's `evaln_bound`, which bounds only the *input*
+(`n < k`), and it does **not** follow from it: outputs genuinely exceed the fuel
+(`evaln_output_can_exceed_fuel`).  The ceiling is polynomial rather than linear because a
+fixed code nests `pair` (which squares) only boundedly often, while `comp`/`prec` feed
+intermediates back in as *inputs*, where the `guard (n ≤ k)` clause caps them at the fuel.
+`rfind'` returns a guarded index.
+
+Consequence for `dd:fuel`: a program run for `poly n` fuel emits only `poly n`-valued
+tokens (compose this bound with the clock), which is exactly why `EfficientlyComputableTok`
+must emit `serializeTrades` token-by-token rather than one `Encodable.encode` numeral.
+The quantifier order matters and is the honest form: `a`/`d` depend on `c`, so this bounds
+each *fixed* program, not the interpreter uniformly. -/
+theorem evaln_output_bound (c : Nat.Partrec.Code) :
+    ∃ a d : ℕ, 1 ≤ a ∧ ∀ {k n x : ℕ}, x ∈ evaln k c n → x ≤ a * (k + 1) ^ d := by
+  induction c with
+  | zero =>
+    refine ⟨1, 0, le_refl 1, ?_⟩
+    intro k n x h
+    rcases k with _ | k
+    · simp [evaln] at h
+    · simp only [Option.mem_def] at h
+      simp [evaln, Option.bind_eq_some_iff] at h
+      simp only [pow_zero, mul_one]
+      omega
+  | succ =>
+    refine ⟨1, 1, le_refl 1, ?_⟩
+    intro k n x h
+    rcases k with _ | k
+    · simp [evaln] at h
+    · simp only [Option.mem_def] at h
+      simp [evaln, Option.bind_eq_some_iff] at h
+      simp only [one_mul, pow_one]
+      omega
+  | left =>
+    refine ⟨1, 1, le_refl 1, ?_⟩
+    intro k n x h
+    rcases k with _ | k
+    · simp [evaln] at h
+    · simp only [Option.mem_def] at h
+      simp [evaln, Option.bind_eq_some_iff] at h
+      have := Nat.unpair_left_le n
+      simp only [one_mul, pow_one]
+      omega
+  | right =>
+    refine ⟨1, 1, le_refl 1, ?_⟩
+    intro k n x h
+    rcases k with _ | k
+    · simp [evaln] at h
+    · simp only [Option.mem_def] at h
+      simp [evaln, Option.bind_eq_some_iff] at h
+      have := Nat.unpair_right_le n
+      simp only [one_mul, pow_one]
+      omega
+  | pair cf cg ihf ihg =>
+    obtain ⟨a1, d1, ha1, h1⟩ := ihf
+    obtain ⟨a2, d2, ha2, h2⟩ := ihg
+    have hA : 1 ≤ max a1 a2 := le_trans ha1 (le_max_left _ _)
+    refine ⟨4 * (max a1 a2) ^ 2, 2 * max d1 d2, by nlinarith [hA], ?_⟩
+    intro k n x h
+    rcases k with _ | k
+    · simp [evaln] at h
+    · simp only [Option.mem_def] at h
+      simp [evaln, Option.bind_eq_some_iff, Seq.seq] at h
+      obtain ⟨-, y, hy, z, hz, hx⟩ := h
+      set M : ℕ := max a1 a2 * (k + 1 + 1) ^ (max d1 d2) with hM
+      have hy' : y ≤ M := le_trans (h1 hy) (evalnBound_mono (le_max_left _ _) (le_max_left _ _))
+      have hz' : z ≤ M := le_trans (h2 hz) (evalnBound_mono (le_max_right _ _) (le_max_right _ _))
+      have hp : 1 ≤ (k + 1 + 1) ^ (max d1 d2) := Nat.one_le_pow _ _ (by omega)
+      have hM1 : 1 ≤ M := by
+        rw [hM]
+        calc 1 = 1 * 1 := by ring
+        _ ≤ max a1 a2 * (k + 1 + 1) ^ (max d1 d2) := Nat.mul_le_mul hA hp
+      have hstep : Nat.pair y z < (M + 1) ^ 2 :=
+        lt_of_lt_of_le (Nat.pair_lt_max_add_one_sq y z) (Nat.pow_le_pow_left (by omega) 2)
+      have hsq : (2 * M) ^ 2 = 4 * (max a1 a2) ^ 2 * (k + 1 + 1) ^ (2 * max d1 d2) := by
+        rw [hM]; ring
+      have hfin : (M + 1) ^ 2 ≤ 4 * (max a1 a2) ^ 2 * (k + 1 + 1) ^ (2 * max d1 d2) :=
+        hsq ▸ Nat.pow_le_pow_left (by omega) 2
+      rw [← hx]
+      exact le_of_lt (lt_of_lt_of_le hstep hfin)
+  | comp cf cg ihf _ =>
+    obtain ⟨a1, d1, ha1, h1⟩ := ihf
+    refine ⟨a1, d1, ha1, ?_⟩
+    intro k n x h
+    rcases k with _ | k
+    · simp [evaln] at h
+    · simp only [Option.mem_def] at h
+      simp [evaln, Option.bind_eq_some_iff] at h
+      obtain ⟨-, y, -, h⟩ := h
+      exact h1 h
+  | prec cf cg ihf ihg =>
+    obtain ⟨a1, d1, ha1, h1⟩ := ihf
+    obtain ⟨a2, d2, ha2, h2⟩ := ihg
+    refine ⟨max a1 a2, max d1 d2, le_trans ha1 (le_max_left _ _), ?_⟩
+    intro k n x h
+    rcases k with _ | k
+    · simp [evaln] at h
+    · simp only [Option.mem_def] at h
+      simp [evaln, Option.bind_eq_some_iff] at h
+      obtain ⟨-, h⟩ := h
+      rcases hy : (Nat.unpair n).2 with _ | y
+      · rw [hy] at h
+        exact le_trans (h1 h) (evalnBound_mono (le_max_left _ _) (le_max_left _ _))
+      · rw [hy] at h
+        simp only [Option.bind_eq_some_iff] at h
+        obtain ⟨i, -, h⟩ := h
+        exact le_trans (h2 h) (evalnBound_mono (le_max_right _ _) (le_max_right _ _))
+  | rfind' cf _ =>
+    refine ⟨1, 1, le_refl 1, ?_⟩
+    intro k n x h
+    have := evaln_rfind'_output_lt cf h
+    simp only [one_mul, pow_one]
+    omega
+
+#print axioms evaln_output_bound
+#print axioms evaln_output_can_exceed_fuel
+
+end Nat.Partrec.Code
+
 namespace LogicalInduction
 
 open Nat.Partrec.Code

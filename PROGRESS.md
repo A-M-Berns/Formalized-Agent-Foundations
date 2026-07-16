@@ -178,9 +178,20 @@ Conflating them either flatters us or slanders them. Any public writeup must car
 | Paper node | Severity | Defect | Our disposition |
 |---|---|---|---|
 | `thm:ifp` | **substantive — proof gap, theorem possibly false as stated** | `app:ifp` justifies efficiency of the false-report transform `F` with: *"only finitely many constants `pt_i(phi)` are needed, and can be hard-coded into `F`."* False: finitely many **days** `i < N`, but `phi` ranges over all sentences, so the constant set is infinite. `F` must *compute* `pt_i(phi)`, and `def:marketprocess` (computable sequence of pricings — no finite support, no time bound) gives no runtime or bit-size bound. The proof does not go through for the market class it quantifies over. | Theorem kept to what is provable: `lic_iff_of_finitePerturbation` takes an `EfficientPrefixPatch` per market and is **strictly weaker than `thm:ifp`** — see below. |
-| `thm:wubexp` | minor — TeX slip | Omits the good-feedback support-in-image premise used by its own appendix proof. | Lean states the intended premise explicitly. |
-| `thm:recurringunbiasednessexp` | minor — TeX slip | Support in the image of an unbound `f`. | Lean proves the coherent (strictly stronger) reading: every divergent weighting. |
-| `thm:pazfc` | minor — TeX slip | Uses `f` without binding it. | Lean takes an arbitrary fixed computable bound. |
+| `thm:wubexp` | minor — TeX slip ⚠️ **unaudited** | Omits the good-feedback support-in-image premise used by its own appendix proof. | Lean states the intended premise explicitly. |
+| `thm:recurringunbiasednessexp` | minor — TeX slip ⚠️ **unaudited** | Support in the image of an unbound `f`. | Lean proves the coherent (strictly stronger) reading: every divergent weighting. |
+| `thm:pazfc` | minor — TeX slip ⚠️ **unaudited** | Uses `f` without binding it. | Lean takes an arbitrary fixed computable bound. |
+
+> ⚠️ **The three "minor — TeX slip" rows need an in-depth verification pass and have not
+> had one.** They are recorded as notation slips with an obvious intended reading, and each
+> was classified from the TeX surface without working the appendix proof. **That is exactly
+> how `thm:ifp` was recorded** — as a routine `(c)` modeling note — until it was worked
+> through and turned out to be a substantive proof gap. The prior should therefore be that
+> at least one of these three is misclassified. Until each has been re-derived against its
+> appendix proof, the "minor" severity is a *hypothesis*, not a finding. Cheap to do (they
+> are localized), and each is a place we claim the paper erred — the claim that most
+> deserves scrutiny, since being wrong here means slandering the authors rather than
+> merely overselling ourselves. Track as `M7-ERRATA-AUDIT`; fresh context, per CLAUDE.md.
 
 ### `thm:ifp` — detail, and what is open
 
@@ -193,15 +204,18 @@ day-`n` strategy prices a code-`~n` sentence at day 0 freezes to a `.const` with
 Confidence, stated honestly:
 
 - **Established (by reading the TeX):** the quoted justification is false as written.
-- **Argued, not formalized:** the counterexample above. It rests on one fact —
-  *for a fixed `Code c`, `evaln k c n` outputs a value `≤ p_c(k)` for a fixed polynomial
-  `p_c`* — which is **true but unformalized**, in Mathlib or here. Mathlib's `evaln_bound`
-  bounds the *input* (`n < k`) only; there is no output lemma. Outputs genuinely exceed the
-  fuel (`evaln 20 (pair succ succ) 5 = 48`); the polynomial ceiling comes from `pair`
-  squaring only finitely often for a fixed code while `comp`/`prec` intermediates are
-  input-guarded to `≤ k`. This is the same read-the-source claim OPEN RISK 4 already relies
-  on (and already discloses as such). Formalizing it would upgrade this row from *argued*
-  to *established* and is the single highest-value follow-up here.
+- **Argued, not formalized — but its one load-bearing fact is now PROVED (2026-07-16).**
+  The counterexample rests on: *for a fixed `Code c`, `evaln k c n` outputs a value
+  `≤ p_c(k)` for a fixed polynomial `p_c`*. That is now
+  `Nat.Partrec.Code.evaln_output_bound` (`Computable.lean`), proved, axiom-clean, no
+  `sorry`. It is **not** implied by Mathlib's `evaln_bound`, which bounds the *input*
+  (`n < k`) only; outputs genuinely exceed the fuel — itself now a proved theorem,
+  `evaln_output_can_exceed_fuel` (kernel-checked, not `native_decide`). The polynomial ceiling comes from `pair` squaring only boundedly often
+  for a fixed code, while `comp`/`prec` intermediates are input-guarded to `≤ k` and
+  `rfind'` returns a guarded index. This also discharges the read-the-source claim OPEN
+  RISK 4's design rests on. **Still unformalized:** the counterexample *itself* (exhibiting
+  the market `P'`, the trader, and deriving the contradiction in Lean). The gap is now
+  narrow — the hard general fact is in hand — but the row stays *argued* until that lands.
 - **Open:** whether `thm:ifp` is *false* for general markets, or merely unproved. Suggestive
   argument: a day-`0` pricing hands an e.c. trader a free oracle to an exponential-time
   computable function — real power that `LIA`'s poly-time trader enumeration never
@@ -232,6 +246,7 @@ market, and must never be cited as if it did.
 | `def:exploitation` (non-vac) | `Trader.zero_not_exploits` | done | **N+** | do-nothing trader (netWorth ≡ 0) does not exploit → `Exploits` is refutable, criterion non-vacuous |
 | `def:lang` (codes) | `EF.toNat`/`ofNatAux`/`ofNat`, `Encodable EF` | done | **P** | hand-built **computable** encoding (no `deriving`), **`Nat.pair`-tagged (no multiplication)** so the strategy-encoding function is `Nat.Partrec.Code`-primitive-friendly (`pair`/`comp`/`const`, no `prec`) — the key to provable responsive-trader e.c. (design (B), full faithfulness preserved). Round-trip axiom-clean |
 | `dd:fuel` (infra) | `Fueled` + `fueled_const/left/right/succ/pair/comp/id` (`Computable.lean`) | done | **P** | prec-free fuel combinators: `Code.pair`/`comp` don't decrement `evaln`, so a `Nat.pair`-tree code's budget composes. The hard, novel part — fuel accounting through the clocked interpreter. Axiom-clean |
+| `dd:fuel` (output bound) | `Nat.Partrec.Code.evaln_output_bound`, `evaln_output_can_exceed_fuel`, `evaln_rfind'_output_lt`, `evalnBound_mono` (`Computable.lean`) | done | **P** `(b)` | **Discharges the read-the-source claim OPEN RISK 4's whole design rests on**, and the one general fact the `thm:ifp` erratum's counterexample needs (see "Paper errata"). For a fixed code, `evaln k c n` outputs `≤ a·(k+1)^d`: `pair` squares but only boundedly often; `comp`/`prec` intermediates are input-guarded to `≤ k`; `rfind'` returns a guarded index. **Not** implied by Mathlib's `evaln_bound` (input-side only), and **not** "output ≤ fuel" — `evaln_output_can_exceed_fuel` proves that false (`evaln 20 (pair succ succ) 5 = 48`), kernel-checked via equation lemmas, not `native_decide` (which would trust the compiler and add `Lean.ofReduceBool`). Nothing here is LI-specific; plausible Mathlib contribution. Axiom-clean |
 | `dd:fuel` (bridge) | `IsPolyBounded` (+`of_le`/`linear`/`max`/`add_one`/`pair`), `pair_lt_sq`, `of_fueled` | done | **P** | poly-bound closure incl. `Nat.pair` (degree doubles); turns a poly-bounded `Fueled` fact into `def:ec` |
 | `dd:fuel` (templates) | `PolyEF` (+`const`/`price`/`add`/`mul`/`max`/`safeRecip`), `ec_of_polyEF` | done | **P** | reusable layer: any `EF` feature template built from the constructors has an e.c. per-day code, so a single-sentence responsive trader's e.c. is a few lines (`priceTrader_ec` now one line; the responsive `max(0,c−φ*ⁿ)` buy-signal e.c. in one line). Makes the property-tail responsive-trader e.c. proofs cheap |
 | `dd:fuel` (pred) | `predAux`, `predAux_evaln`, `predc`, `predc_polyFueled`, **`PolyEF.pricePred`** | done | **P** | **prec-fueled predecessor** — the one place `evaln` fuel is accounted through a genuine `Code.prec` (which decrements), since `Nat.pred` is not prec-free-expressible. `predAux = prec zero (comp left right)` computes `pred` on `pair 0 m`; induction through the prec clause bounds fuel by `32(m+1)⁴` (dominant guard `pair 0 (pair m (m-1)) ≈ (2m)⁴`). `PolyEF.pricePred`: the day-`(n-1)` feature `φ*⁽ⁿ⁻¹⁾` is e.c. valid, reusable infra for any *bounded-depth* two-day-referencing trader. (Note: this does **not** unblock `thm:con` after all — convergence needs *linear-depth* hysteresis, and depth, not the `n-1` reference, is the wall; see OPEN RISK 4.) Axiom-clean |
