@@ -754,6 +754,95 @@ noncomputable def boundedEvalnCompiler (simulated : Nat.Partrec.Code) :
     BoundedEvalnCompiler simulated :=
   ⟨_, (codeEvalnNat_polyFueled simulated).choose_spec⟩
 
+/-! ## The bounded dovetail
+
+The paper's `app:prandaff` clock is built from an *arbitrary-runtime* decider run under a
+growing budget:
+
+> `DefinitelySettled(n, m) :↔ ∃ i ≤ m: settled(n, i)` returns true within `m` steps
+
+with the three properties it needs: poly in `m`; `DefinitelySettled → Settled`; and if
+`Settled(n,m)` then `DefinitelySettled(n,M)` for some `M ≥ m`.  Nothing here is specific to
+settlement — this is the generic move that turns *any* code into a polynomial Boolean table
+that is monotone in the budget and eventually fires.  It is what
+`PatientSettlementClock.active_codes` and `HistoricalVerifiedMaturitySchedule.check_poly`
+both need (`M7-PATIENT-CLOCK`, `M7-FEEDBACK-EMIT`), so it is stated once, generically.
+
+The simulator (`codeEvalnNat_polyFueled`, `M7-HIST-EVALN`) is what makes the budgeted run
+polynomial; `polyFueled_boundedAny` supplies the bounded search. -/
+
+/-- `c` returns `1` on input `x` within `fuel` steps of the clocked interpreter.
+(`codeEvalnNat` normalizes `none ↦ 0` and `some out ↦ out+1`, so acceptance is `2`.) -/
+def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool :=
+  decide (codeEvalnNat c (Nat.pair fuel x) = 2)
+
+/-- The dovetail's inner predicate, indexed as `⟨⟨i,n⟩, j⟩`. -/
+private def dovetailStep (c : Nat.Partrec.Code) (z j : ℕ) : Bool :=
+  acceptsWithin c z.unpair.2 (Nat.pair z.unpair.1 j)
+
+/-- `dovetailFound c i n`: some `j ≤ n` is accepted for `i` within budget `n`. -/
+def dovetailFound (c : Nat.Partrec.Code) (i n : ℕ) : Bool :=
+  boundedAny (dovetailStep c) (Nat.pair i n) n
+
+theorem dovetailFound_eq_true_iff (c : Nat.Partrec.Code) (i n : ℕ) :
+    dovetailFound c i n = true ↔ ∃ j ≤ n, acceptsWithin c n (Nat.pair i j) = true := by
+  simp [dovetailFound, boundedAny_eq_true_iff, dovetailStep]
+
+section
+-- The documented `dd:fuel` gotcha: `whnf` loops on `Nat.sqrt` (reached via `Nat.unpair`'s
+-- `Primcodable` instance), not on any domain math.  Scope it irreducible rather than
+-- raising heartbeats.
+attribute [local irreducible] Nat.sqrt
+
+/-- A test for equality against a fixed constant, as a polynomial Boolean table. -/
+private theorem polyFueled_eqConst {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
+    (hf : PolyFueled cf f) (K : ℕ) :
+    ∃ c, PolyFueled c (fun z => if f z = K then 1 else 0) := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  -- `f z = K` iff truncated `(f z - K) + (K - f z) = 0`.
+  obtain ⟨c1, h1⟩ : ∃ c, PolyFueled c (fun z => f z - K) :=
+    ⟨_, (subc_polyFueled.comp (hf.pair (PolyFueled.const K))).of_eq (fun z => by simp)⟩
+  obtain ⟨c2, h2⟩ : ∃ c, PolyFueled c (fun z => K - f z) :=
+    ⟨_, (subc_polyFueled.comp ((PolyFueled.const K).pair hf)).of_eq (fun z => by simp)⟩
+  obtain ⟨cgap, hgapc⟩ : ∃ c, PolyFueled c (fun z => (f z - K) + (K - f z)) :=
+    ⟨_, (had.comp (h1.pair h2)).of_eq (fun z => by simp)⟩
+  refine ⟨_, (ifzSel_polyFueled.comp
+    (((PolyFueled.const 1).pair (PolyFueled.const 0)).pair hgapc)).of_eq (fun z => ?_)⟩
+  simp only [ifzSelFn, Nat.unpair_pair]
+  by_cases h : f z = K
+  · have hz : (f z - K) + (K - f z) = 0 := by omega
+    rw [if_pos hz, if_pos h]
+  · have hne : (f z - K) + (K - f z) ≠ 0 := by omega
+    rw [if_neg hne, if_neg h]
+
+/-- **The bounded dovetail is polynomial.**  For *any* code `c` — no runtime assumption —
+the predicate "`c` accepts `⟨i,j⟩` within `n` steps, for some `j ≤ n`" has a polynomial
+Boolean table in `⟨i,n⟩`.
+
+This is the paper's first bullet ("`DefinitelySettled(n,m)` can be decided in time
+polynomial in `m`") discharged. -/
+theorem polyFueled_dovetailFound (c : Nat.Partrec.Code) :
+    ∃ prog, PolyFueled prog
+      (fun z => if dovetailFound c z.unpair.1 z.unpair.2 then 1 else 0) := by
+  obtain ⟨sim, hsim⟩ := codeEvalnNat_polyFueled c
+  -- The inner step, at input `⟨⟨i,n⟩, j⟩`, simulates `c` on `⟨i,j⟩` with budget `n`.
+  have hstep : ∃ p, PolyFueled p
+      (fun w => if dovetailStep c w.unpair.1 w.unpair.2 then 1 else 0) := by
+    obtain ⟨carg, harg⟩ : ∃ p, PolyFueled p (fun w : ℕ =>
+        codeEvalnNat c (Nat.pair w.unpair.1.unpair.2
+          (Nat.pair w.unpair.1.unpair.1 w.unpair.2))) :=
+      ⟨_, (hsim.comp ((PolyFueled.right.comp PolyFueled.left).pair
+        ((PolyFueled.left.comp PolyFueled.left).pair PolyFueled.right))).of_eq
+          (fun w => by simp)⟩
+    obtain ⟨p, hp⟩ := polyFueled_eqConst harg 2
+    exact ⟨p, hp.of_eq (fun w => by simp [dovetailStep, acceptsWithin])⟩
+  obtain ⟨ca, ha⟩ := polyFueled_boundedAny (dovetailStep c) hstep
+  -- Re-index: the table at `z = ⟨i,n⟩` is the search table at `⟨z, n⟩`.
+  refine ⟨_, (ha.comp (PolyFueled.id.pair PolyFueled.right)).of_eq (fun z => ?_)⟩
+  simp [dovetailFound, Nat.unpair_pair]
+
+end
+
 /-! ## Efficient repeated enumeration -/
 
 /-- Triangular repetition of an already polynomial sentence stream.  The second pairing
@@ -885,6 +974,8 @@ noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
     simp only [Nat.unpair_pair]
     exact hfuel
 
+#print axioms polyFueled_dovetailFound
+#print axioms dovetailFound_eq_true_iff
 #print axioms triangularRepeat_codes
 #print axioms triangularRepeat_repeats
 #print axioms EfficientRepeatedEnumeration.ofPoly
