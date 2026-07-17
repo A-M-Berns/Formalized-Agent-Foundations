@@ -1080,6 +1080,85 @@ instance AffineCombination.SettlementTest.decidable (A : AffineCombination)
   unfold AffineCombination.SettlementTest
   infer_instance
 
+/-! ### A non-dependent presentation of the test
+
+`SettlementTest` quantifies over `BoolPCWorld.FiniteWorld B = Fin B → Bool`, whose *type*
+depends on `B` — which is computed from the input.  Lean's `Computable` machinery wants
+`Primcodable` domains and does not decompose a `decide` over such a dependent family, so no
+code can be shown to recognize the test in that form.  (Verified 2026-07-16: no
+`Computable`/`Primrec` proof over a `FiniteWorld` quantifier exists anywhere in this repo,
+and the analogous `unitMaturityCheckAtFuel` was never compiled either.)
+
+`SettlementTestBool` is the same test presented over `List Bool` — one non-dependent
+`Primcodable` type — with `settlementTestBool_iff` proving them equivalent.  The checker's
+obligation is stated against the Bool version.  Bit-vectors are enumerated as lists rather
+than as naturals-with-`Nat.testBit` deliberately: the list route needs only `List.ofFn`
+length/index lemmas, where the numeric route would need bit arithmetic Mathlib does not
+carry. -/
+
+/-- Every Boolean list of a given length. -/
+def allBitLists : ℕ → List (List Bool)
+  | 0 => [[]]
+  | n + 1 => (allBitLists n).flatMap (fun l => [false :: l, true :: l])
+
+theorem mem_allBitLists : ∀ (n : ℕ) (l : List Bool), l ∈ allBitLists n ↔ l.length = n
+  | 0, l => by
+      simp only [allBitLists, List.mem_singleton]
+      exact ⟨fun h => by rw [h]; rfl, fun h => List.length_eq_zero_iff.mp h⟩
+  | n + 1, l => by
+      simp only [allBitLists, List.mem_flatMap, List.mem_cons, List.mem_singleton,
+        List.not_mem_nil, or_false]
+      constructor
+      · rintro ⟨t, ht, rfl | rfl⟩ <;>
+          simp [(mem_allBitLists n t).1 ht]
+      · intro h
+        cases l with
+        | nil => simp at h
+        | cons b t =>
+            refine ⟨t, (mem_allBitLists n t).2 (by simpa using h), ?_⟩
+            cases b <;> simp
+
+/-- The finite world denoted by a bit list (missing entries read `false`). -/
+def bitsToFin (B : ℕ) (l : List Bool) : BoolPCWorld.FiniteWorld B := fun a => l.getD a false
+
+@[simp] theorem bitsToFin_ofFn {B : ℕ} (u : BoolPCWorld.FiniteWorld B) :
+    bitsToFin B (List.ofFn u) = u := by
+  funext a
+  rw [bitsToFin, List.getD_eq_getElem _ _ (by simp [a.isLt])]
+  simp
+
+/-- The settlement test as a Boolean function over a non-dependent enumeration. -/
+def AffineCombination.SettlementTestBool (A : AffineCombination) (Q : ℕ → Sentence → ℚ)
+    (stage : Finset Sentence) : Bool :=
+  (allBitLists (A.settlementAtomLimit stage)).all fun l =>
+    (allBitLists (A.settlementAtomLimit stage)).all fun l' =>
+      decide
+        ((∀ φ ∈ stage, BoolPCWorld.eval
+            (bitsToFin (A.settlementAtomLimit stage) l).toBoolPCWorld φ = true) →
+         (∀ φ ∈ stage, BoolPCWorld.eval
+            (bitsToFin (A.settlementAtomLimit stage) l').toBoolPCWorld φ = true) →
+          A.valueRat Q (bitsToFin (A.settlementAtomLimit stage) l).payoutRat
+            = A.valueRat Q (bitsToFin (A.settlementAtomLimit stage) l').payoutRat)
+
+/-- The `List Bool` presentation is the same test.  Surjectivity of `bitsToFin` onto
+`FiniteWorld B` (via `List.ofFn`) is what makes it complete, not merely sound. -/
+theorem AffineCombination.settlementTestBool_iff (A : AffineCombination)
+    (Q : ℕ → Sentence → ℚ) (stage : Finset Sentence) :
+    A.SettlementTestBool Q stage = true ↔ A.SettlementTest Q stage := by
+  simp only [AffineCombination.SettlementTestBool, AffineCombination.SettlementTest,
+    List.all_eq_true, decide_eq_true_iff]
+  constructor
+  · intro h u u' hu hu'
+    have hm : List.ofFn u ∈ allBitLists (A.settlementAtomLimit stage) :=
+      (mem_allBitLists _ _).2 (by simp)
+    have hm' : List.ofFn u' ∈ allBitLists (A.settlementAtomLimit stage) :=
+      (mem_allBitLists _ _).2 (by simp)
+    have hall := h _ hm _ hm'
+    rw [bitsToFin_ofFn, bitsToFin_ofFn] at hall
+    exact hall hu hu'
+  · intro h l _ l' _
+    exact h _ _
+
 /-- **The concrete test is exactly settlement.**  Both directions: sound (a passing test
 implies every plausible world values `As i` at `truth i`) and complete (settlement implies
 the test passes).  Consistency (`hworld`) and rationality of the market (`hQ`) are the two

@@ -1106,20 +1106,26 @@ predicate."  It carries no semantics at all. -/
 
 /-- A code recognizing the concrete decidable settlement test.
 
-**Purely computational**: the spec relates a program to a decidable predicate on
-`⟨i,j⟩` and nothing else — no history, no `truth`, no market conclusion.  `SettlementTest`
-is exponential (it enumerates `2^B` finite worlds), which is exactly what the dovetail
-absorbs, so no efficiency is asked of `code`.
+**Purely computational**: the spec relates a program to a `Bool`-valued function of
+`⟨i,j⟩` and nothing else — no history, no `truth`, no market conclusion.
+`SettlementTestBool` is exponential (it enumerates every bit list of length `B`), which is
+exactly what the dovetail absorbs, so no efficiency is asked of `code`.
+
+The **Bool** presentation is deliberate and load-bearing.  The equivalent `SettlementTest`
+quantifies over `FiniteWorld B = Fin B → Bool` with `B` computed from the input — a
+dependent family that `Computable` cannot decompose, so no code could be shown to
+recognize it in that form.  `SettlementTestBool` ranges over `List Bool`, one
+non-dependent `Primcodable` type; `settlementTestBool_iff` bridges them.
 
 Inhabiting this is the sole remaining obligation of `M7-PATIENT-CLOCK`: exhibit a
-`Nat.Partrec.Code` for a decidable function, i.e. `Computable` plumbing through
-`MarketComputation.quoteAtFuel`, `DeductiveProcessComputation.stageAtFuel` and
+`Nat.Partrec.Code` for a non-dependent decidable function, i.e. `Computable` plumbing
+through `MarketComputation.quoteAtFuel`, `DeductiveProcessComputation.stageAtFuel` and
 `PolySequence`. -/
 structure SettlementChecker (As : ℕ → AffineCombination) (Q : ℕ → Sentence → ℚ)
     (DP : DeductiveProcess) where
   code : Nat.Partrec.Code
   spec : ∀ i j, (∃ F, acceptsWithin code F (Nat.pair i j) = true) ↔
-    (As i).SettlementTest Q (DP.D j)
+    (As i).SettlementTestBool Q (DP.D j) = true
 
 /-- A concrete checker yields a semi-decider: soundness and completeness are **derived**
 from `settlementTest_iff_settled`, not assumed. -/
@@ -1132,9 +1138,11 @@ def SettlementChecker.toSemiDecider
     SettlementSemiDecider As P DP truth where
   code := chk.code
   sound i j F ha :=
-    (hdet.settlementTest_iff_settled Q hQ hworld i j).1 ((chk.spec i j).1 ⟨F, ha⟩)
+    (hdet.settlementTest_iff_settled Q hQ hworld i j).1
+      (((As i).settlementTestBool_iff Q (DP.D j)).1 ((chk.spec i j).1 ⟨F, ha⟩))
   complete i j hsettled :=
-    (chk.spec i j).2 ((hdet.settlementTest_iff_settled Q hQ hworld i j).2 hsettled)
+    (chk.spec i j).2 (((As i).settlementTestBool_iff Q (DP.D j)).2
+      ((hdet.settlementTest_iff_settled Q hQ hworld i j).2 hsettled))
 
 /-- **The patient settlement clock from a concrete checker.**  The only assumption is that
 one program recognizes one decidable predicate; every semantic field of the clock —
@@ -1287,6 +1295,8 @@ noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
 #print axioms PatientSettlementClock.ofChecker
 #print axioms SettlementChecker.toSemiDecider
 #print axioms AffineCombination.DeterminedViaTheory.settlementTest_iff_settled
+#print axioms AffineCombination.settlementTestBool_iff
+#print axioms mem_allBitLists
 #print axioms AffineCombination.finiteWorlds_agree_of_agree
 #print axioms acceptsWithin_mono
 #print axioms dovetailFound_mono
