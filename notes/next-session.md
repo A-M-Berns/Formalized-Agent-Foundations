@@ -75,20 +75,36 @@ for the `Primrec` step.
    `List.range`-map, mechanical, but note `PolySequence` supplies `PolyFueled` *codes*, not
    `Primrec` functions, so `As` enters through the fuel layer (step 5), not as a `Primrec`
    leaf.
-5. **START HERE — and the shape changes here.** Everything above is `Primrec`. `valueRat`
-   is **not**: it calls `EF.denoteRat Q`, and `Q` is the *market*, reachable only through
-   `market.quoteAtFuel`. So the checker is a **fuel-clocked** program, not a primrec
-   function — which is exactly what `SettlementChecker.spec` asks for
-   (`∃ F, acceptsWithin code F ⟨i,j⟩ = true ↔ …`). Build `settlementCheckAtFuel` on the
-   model of `unitMaturityCheckAtFuel` (`Calibration.lean`, ~2549): reject timeouts, else
-   evaluate the test. **Read that first — it is the same shape and was never compiled**,
-   which is why `M7-FEEDBACK-EMIT`/`M7-FEEDBACK-TRUTH` are blocked on the same wall.
-   Reuse, do **not** rebuild: the EF rational stack machine (`LIACompiler.lean:3095+`,
-   fueled result already proved `= EF.denoteRat`), `market.quoteAtFuel` value folds
-   (`ROI.lean:223`), `exists_fuel_quoteAtFuel_list`, `stageAtFuel_complete`.
-6. Assemble into a `Nat.Partrec.Code` and prove `spec` by dovetailing market/process fuel.
-   Deliverable is `SettlementChecker.ofComputations` taking `PolySequence As` +
-   `MarketComputation P` + `DeductiveProcessComputation DP`.
+5. ~~The fuel layer + the bounded check~~ — **DONE** (`AffineCombination.valueRatAtFuel`
+   and `settlementCheckAtFuel`, each with `_sound`/`_mono`/`exists_fuel` /
+   `_sound`/`_complete`). Built **on** the existing `EF.denoteRatWithAtFuel`; the EF
+   rational machine was already there and was not rebuilt.
+   `settlementCheckAtFuel_{sound,complete}` is **exactly the biconditional `spec` needs**,
+   modulo turning the `Bool` function into a code.
+6. **START HERE — the last step.** Two parts:
+   (a) **`Computable` the check.** All leaves are in hand (`stageSatBits_prim`,
+   `allBitLists_prim`, `settlementAtomLimit_prim`, `evalBits_prim`, `atomBound_prim`,
+   `affineCombinationPrimcodable`). The remaining glue is `stageAtFuel`/`quoteAtFuel`,
+   which are `evaln`-based: `process.stageAtFuel` is already `Primrec₂`
+   (`LIACompiler.lean:1974`) — **grep before rebuilding an analogue for `quoteAtFuel`.**
+   This is where the `Nat.sqrt`/`whnf` GOTCHA is most likely to finally fire (deep product
+   input); it has not fired once so far, so do **not** pre-scatter `local irreducible` —
+   diagnose first, per the recipe below.
+   (b) **Code + `spec`.** Turn the `Computable` check into a `Nat.Partrec.Code` and prove
+   `∃ F, acceptsWithin code F ⟨i,j⟩ = true ↔ SettlementTestBool …`. `←` is
+   `settlementCheckAtFuel_complete`, `→` is `_sound`. Note `acceptsWithin` already carries
+   its own fuel monotonicity (`acceptsWithin_mono`), so the dovetail needs no new mono.
+   Deliverable: `SettlementChecker.ofComputations` taking `PolySequence As` +
+   `MarketComputation P` + `DeductiveProcessComputation DP`, with
+   `Q := fun d φ => market.quote d (Encodable.encode φ)` — the instantiation every fuel-layer
+   lemma is already stated against.
+
+   **`As` from `PolySequence` is still owed** and is the one loose end: the checker is
+   currently stated for a *fixed* `A : AffineCombination`, but `SettlementChecker` needs
+   the family `As : ℕ → AffineCombination` indexed by `i`. `PolySequence.terms_eq` gives a
+   `List.range`-map, and `PolySequence` supplies `PolyFueled` codes, so `As i` enters
+   through the fuel layer alongside the market — not as a `Primrec` leaf. Budget this
+   properly; it is the only part of the remaining step without a worked precedent.
 
 `SettlementChecker` takes arbitrary `As`/`Q`/`DP`, so the deliverable is a new
 `SettlementChecker.ofComputations` taking `PolySequence As` + `MarketComputation P` +
