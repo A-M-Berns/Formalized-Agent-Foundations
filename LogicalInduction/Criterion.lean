@@ -1390,11 +1390,11 @@ reason is a hard limit of the clocked interpreter, not a stylistic choice: every
 fuel-guards its inputs (`guard (n ≤ k)` in `Mathlib.Computability.PartrecCode`), so a fixed
 program run for `poly n` fuel can only *output* a value `≤ poly n` — `O(log n)` bits.
 
-That claim is now **proved**, not read off the source: `Nat.Partrec.Code.evaln_output_bound`
-(`Computable.lean`) gives, for each fixed code, `a`/`d` with output `≤ a * (fuel + 1)^d`;
-compose with the clock. Note it is *not* "output `≤ fuel`" — that is false, and proved false
-(`evaln_output_can_exceed_fuel`) — and it does not follow from Mathlib's `evaln_bound`,
-which bounds the input only. A strategy
+That claim is **proved**, not read off the source: `codeEvaln_result_le` with
+`codeEvalBound_poly` (`Construction/M7Witnesses.lean`) bound a fixed code's output by an
+explicit polynomial in the fuel; compose with the clock. Note it is *not* "output `≤ fuel`"
+— that is false, and proved false (`evaln_output_can_exceed_fuel`, `Computable.lean`) — and
+it does not follow from Mathlib's `evaln_bound`, which bounds the input only. A strategy
 whose `Encodable.encode` is a large number (any poly-*size* but deep feature: its `toNat` value
 is `2^{poly n}`) is therefore *unemittable as one number*, though the paper's poly-*size*
 `def:ec` admits it. Emitting the `serializeTrades` stream token-by-token — polynomially many
