@@ -1289,6 +1289,196 @@ noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
     simp only [Nat.unpair_pair]
     exact hfuel
 
+/-! ## Compiling the settlement test
+
+`SettlementChecker` needs a code recognizing `SettlementTestBool`.  The leaves below are
+the `Primrec` facts about its components.
+
+Recursions over `Sentence` cannot be done directly: `Sentence`'s recursor is not a
+`Primrec` combinator.  They go instead by course-of-values recursion on the Gödel code,
+via `Primrec.nat_strong_rec`, following the `sentencePrimcodable` template in
+`LIACompiler.lean`.  Every such quantity is `Option`-encoded — `0` for "the code does not
+decode", `v + 1` for "it decodes with value `v`".  That encoding is load-bearing rather
+than cosmetic: for a binary code whose left child decodes and whose right child does not,
+the code itself does not decode, so the answer must be `0`, and a plain fold over child
+values could not distinguish that from a genuine value of `0`.  (`formulaBinaryNorm` in
+`LIACompiler.lean` uses the same `left = 0 ∨ right = 0` guard for the same reason.)
+
+Foundation's tags: `0 = ⊥`, `1 = atom`, `2 = 🡒`, `3 = ⋏`, `4 = ⋎`. -/
+
+section SettlementCompile
+
+open LO.Propositional
+
+/-- `atomBound` on a Gödel code, `Option`-encoded (`0` = does not decode). -/
+private def atomBoundNorm (n : ℕ) : ℕ :=
+  match (@LO.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) with
+  | none => 0
+  | some φ => BoolPCWorld.atomBound φ + 1
+
+/-- All three binary connectives take the `max` of their children's bounds, so unlike
+`formulaBinaryNorm` this needs no tag argument. -/
+private def atomBoundBinary (prior : List ℕ) (children : ℕ) : ℕ :=
+  let left := prior.getD children.unpair.1 0
+  let right := prior.getD children.unpair.2 0
+  if left = 0 ∨ right = 0 then 0
+  else max (left - 1) (right - 1) + 1
+
+private theorem atomBoundBinary_prim : Primrec₂ atomBoundBinary := by
+  let childLeft : List ℕ × ℕ → ℕ := fun p => p.1.getD p.2.unpair.1 0
+  let childRight : List ℕ × ℕ → ℕ := fun p => p.1.getD p.2.unpair.2 0
+  have hleft : Primrec childLeft :=
+    (Primrec.list_getD 0).comp Primrec.fst
+      (Primrec.fst.comp (Primrec.unpair.comp Primrec.snd))
+  have hright : Primrec childRight :=
+    (Primrec.list_getD 0).comp Primrec.fst
+      (Primrec.snd.comp (Primrec.unpair.comp Primrec.snd))
+  have hbad : PrimrecPred fun p : List ℕ × ℕ =>
+      childLeft p = 0 ∨ childRight p = 0 :=
+    (Primrec.eq.comp hleft (Primrec.const 0)).or
+      (Primrec.eq.comp hright (Primrec.const 0))
+  have hmax : Primrec fun p : List ℕ × ℕ =>
+      max (childLeft p - 1) (childRight p - 1) + 1 :=
+    Primrec.nat_add.comp
+      (Primrec.nat_max.comp
+        (Primrec.nat_sub.comp hleft (Primrec.const 1))
+        (Primrec.nat_sub.comp hright (Primrec.const 1)))
+      (Primrec.const 1)
+  exact (Primrec.ite hbad (Primrec.const 0) hmax).to₂.of_eq fun prior children => by
+    simp only [atomBoundBinary, childLeft, childRight]
+
+private def atomBoundSucc (prior : List ℕ) (e : ℕ) : ℕ :=
+  let tag := e.unpair.1
+  let payload := e.unpair.2
+  if tag = 0 then 1
+  else if tag = 1 then payload + 2
+  else if tag = 2 then atomBoundBinary prior payload
+  else if tag = 3 then atomBoundBinary prior payload
+  else if tag = 4 then atomBoundBinary prior payload
+  else 0
+
+private theorem atomBoundSucc_prim : Primrec₂ atomBoundSucc := by
+  let tag : List ℕ × ℕ → ℕ := fun p => p.2.unpair.1
+  let payload : List ℕ × ℕ → ℕ := fun p => p.2.unpair.2
+  have htag : Primrec tag := Primrec.fst.comp (Primrec.unpair.comp Primrec.snd)
+  have hpayload : Primrec payload := Primrec.snd.comp (Primrec.unpair.comp Primrec.snd)
+  have hatom : Primrec fun p : List ℕ × ℕ => payload p + 2 :=
+    Primrec.nat_add.comp hpayload (Primrec.const 2)
+  have hbin : Primrec fun p : List ℕ × ℕ => atomBoundBinary p.1 (payload p) :=
+    atomBoundBinary_prim.comp Primrec.fst hpayload
+  have htagEq (k : ℕ) : PrimrecPred fun p : List ℕ × ℕ => tag p = k :=
+    Primrec.eq.comp htag (Primrec.const k)
+  have h4 := Primrec.ite (htagEq 4) hbin (Primrec.const 0)
+  have h3 := Primrec.ite (htagEq 3) hbin h4
+  have h2 := Primrec.ite (htagEq 2) hbin h3
+  have h1 := Primrec.ite (htagEq 1) hatom h2
+  exact (Primrec.ite (htagEq 0) (Primrec.const 1) h1).to₂.of_eq fun prior e => by
+    simp only [atomBoundSucc, tag, payload]
+
+private def atomBoundList (prior : List ℕ) : ℕ :=
+  prior.length.casesOn 0 (atomBoundSucc prior)
+
+private theorem atomBoundList_prim : Primrec atomBoundList :=
+  (Primrec.nat_casesOn Primrec.list_length (Primrec.const 0)
+    atomBoundSucc_prim).of_eq fun prior => by simp only [atomBoundList]
+
+private theorem atomBoundNorm_zero : atomBoundNorm 0 = 0 := by
+  simp [atomBoundNorm, LO.Propositional.Formula.ofNat]
+
+private theorem atomBoundHistory_getD {n k : ℕ} (hk : k < n) :
+    ((List.range n).map atomBoundNorm).getD k 0 = atomBoundNorm k := by
+  rw [← atomBoundNorm_zero, List.getD_map]
+  simp [List.getD_eq_getElem, hk]
+
+/-- The binary step reads both children out of the history correctly.  Shared by all three
+connectives: `atomBound` maxes its children regardless of which one it is. -/
+private theorem atomBoundBinary_history (payload n : ℕ)
+    (hleft : payload.unpair.1 < n) (hright : payload.unpair.2 < n) :
+    atomBoundBinary ((List.range n).map atomBoundNorm) payload =
+      match (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.1 : Option Sentence),
+          (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.2 : Option Sentence) with
+      | some φ, some ψ => max (BoolPCWorld.atomBound φ) (BoolPCWorld.atomBound ψ) + 1
+      | _, _ => 0 := by
+  unfold atomBoundBinary
+  rw [atomBoundHistory_getD hleft, atomBoundHistory_getD hright]
+  cases hL : (@LO.Propositional.Formula.ofNat ℕ inferInstance
+      payload.unpair.1 : Option Sentence) <;>
+    cases hR : (@LO.Propositional.Formula.ofNat ℕ inferInstance
+      payload.unpair.2 : Option Sentence) <;>
+    simp [atomBoundNorm, hL, hR]
+
+private theorem atomBoundList_history (n : ℕ) :
+    atomBoundList ((List.range n).map atomBoundNorm) = atomBoundNorm n := by
+  cases n with
+  | zero => simp [atomBoundList, atomBoundNorm, LO.Propositional.Formula.ofNat]
+  | succ e =>
+      have hleft : e.unpair.2.unpair.1 < e + 1 :=
+        Nat.lt_succ_iff.mpr <|
+          le_trans (Nat.unpair_left_le _) (Nat.unpair_right_le _)
+      have hright : e.unpair.2.unpair.2 < e + 1 :=
+        Nat.lt_succ_iff.mpr <|
+          le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _)
+      have hbin := atomBoundBinary_history e.unpair.2 (e + 1) hleft hright
+      by_cases h0 : e.unpair.1 = 0
+      · simp [atomBoundList, atomBoundSucc, atomBoundNorm, BoolPCWorld.atomBound,
+          LO.Propositional.Formula.ofNat, h0]
+      by_cases h1 : e.unpair.1 = 1
+      · simp [atomBoundList, atomBoundSucc, atomBoundNorm, BoolPCWorld.atomBound,
+          LO.Propositional.Formula.ofNat, h0, h1]
+      -- The three binary tags: identical modulo the constructor `ofNat` rebuilds.
+      by_cases h2 : e.unpair.1 = 2
+      · simp only [atomBoundList, List.length_map, List.length_range, atomBoundSucc,
+          h0, h1, h2, ↓reduceIte]
+        rw [hbin]
+        simp only [atomBoundNorm, LO.Propositional.Formula.ofNat, h2]
+        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            e.unpair.2.unpair.1 : Option Sentence) <;>
+          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            e.unpair.2.unpair.2 : Option Sentence) <;>
+          simp [BoolPCWorld.atomBound]
+      by_cases h3 : e.unpair.1 = 3
+      · simp only [atomBoundList, List.length_map, List.length_range, atomBoundSucc,
+          h0, h1, h2, h3, ↓reduceIte]
+        rw [hbin]
+        simp only [atomBoundNorm, LO.Propositional.Formula.ofNat, h3]
+        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            e.unpair.2.unpair.1 : Option Sentence) <;>
+          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            e.unpair.2.unpair.2 : Option Sentence) <;>
+          simp [BoolPCWorld.atomBound]
+      by_cases h4 : e.unpair.1 = 4
+      · simp only [atomBoundList, List.length_map, List.length_range, atomBoundSucc,
+          h0, h1, h2, h3, h4, ↓reduceIte]
+        rw [hbin]
+        simp only [atomBoundNorm, LO.Propositional.Formula.ofNat, h4]
+        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            e.unpair.2.unpair.1 : Option Sentence) <;>
+          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            e.unpair.2.unpair.2 : Option Sentence) <;>
+          simp [BoolPCWorld.atomBound]
+      · have htag : 5 ≤ e.unpair.1 := by omega
+        simp [atomBoundList, atomBoundSucc, atomBoundNorm,
+          LO.Propositional.Formula.ofNat, h0, h1, h2, h3, h4, htag]
+
+private theorem atomBoundNorm_prim : Primrec atomBoundNorm := by
+  have hstep : Primrec₂ (fun (_ : Unit) (prior : List ℕ) =>
+      some (atomBoundList prior)) :=
+    Primrec₂.option_some_iff.mpr (atomBoundList_prim.comp Primrec₂.right)
+  have hrec := Primrec.nat_strong_rec (fun (_ : Unit) n => atomBoundNorm n)
+    hstep (fun _ n => by simpa using congrArg some (atomBoundList_history n))
+  exact (hrec.comp (Primrec.const ()) Primrec.id).of_eq fun n => rfl
+
+/-- **`atomBound` is primitive recursive.**  The first of the two `Sentence` recursions the
+settlement test needs; `evalBits_prim` below is the other. -/
+theorem atomBound_prim : Primrec BoolPCWorld.atomBound := by
+  have h : Primrec fun φ : Sentence => atomBoundNorm (Encodable.encode φ) - 1 :=
+    Primrec.nat_sub.comp (atomBoundNorm_prim.comp Primrec.encode) (Primrec.const 1)
+  exact h.of_eq fun φ => by
+    simp only [atomBoundNorm, Encodable.encode,
+      LO.Propositional.Formula.ofNat_toNat φ, Nat.add_sub_cancel]
+
+end SettlementCompile
+
 #print axioms polyFueled_dovetailFound
 #print axioms polyFueled_deadlinePassed
 #print axioms PatientSettlementClock.ofSemiDecider
