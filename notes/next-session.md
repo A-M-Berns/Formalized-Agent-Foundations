@@ -49,12 +49,18 @@ canonical order the stock `Finset Sentence` encoding sorts by (`LIACompiler.lean
 so `stageSort stage` is the list that stage's own code decodes to — you need exactly that
 for the `Primrec` step.
 
-**Remaining scope: ~1–1.5 weeks, not "plumbing".** Honest build order, each a real step:
-1. `atomBound` `Primrec` — via `Primrec.nat_strong_rec` over Gödel codes; mirrors the
-   `sentencePrimcodable` template (`LIACompiler.lean:203`, ~200 lines of tag dispatch).
+**Remaining scope: ~1 week, not "plumbing".** Honest build order, each a real step:
+1. ~~`atomBound` `Primrec`~~ — **DONE** (`atomBound_prim`, `M7Witnesses.lean`). Went by
+   `Primrec.nat_strong_rec` over Gödel codes on the `sentencePrimcodable` template
+   (`LIACompiler.lean:203`). **Read it before step 2** — it is the worked example, and the
+   `Option`-encoding (`0` = does not decode, `v+1` = decodes) is load-bearing, not
+   bookkeeping. Compiled first try; the template transfers.
 2. `BoolPCWorld.eval` as `Primrec₂ fun (l : List Bool) (φ : Sentence) => eval (bitsWorld l) φ`
-   — **the crux**, ~2 days. Same `nat_strong_rec` shape but *parameterized* by the world;
-   no precedent in the repo for a parameterized one.
+   — **the crux, start here**, ~2 days. Same `nat_strong_rec` shape as step 1 but
+   *parameterized* by the world (`α := List Bool` rather than `Unit`); no precedent for a
+   parameterized one. The atom case is where the parameter is consumed:
+   `eval (bitsWorld l) (atom a) = l.getD a false`, so it needs `Primrec.list_getD` on the
+   parameter — that is the one genuinely new move over step 1.
 3. `allBitLists` `Primrec` (list-valued nat recursion).
 4. `AffineCombination` `Primcodable` + `As` computable from `PolySequence` (`terms_eq`
    gives a `List.range`-map, so this is mechanical).
