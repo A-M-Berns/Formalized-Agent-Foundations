@@ -46,6 +46,34 @@ one-line arithmetic, has formalized nothing we didn't already assume.
    fabricate. (We have already found one roadmap assumption that fails this test:
    Mathlib has **no** Brouwer fixed-point theorem. See `Scratchpad.lean`.)
 
+2b. **Search before you prove — the dual of rule 2, and the one that actually bites.**
+   Rule 2 stops you using a name that doesn't exist. It does *nothing* to stop you
+   spending an hour proving a lemma that already does. **Before writing the first tactic
+   of any new lemma, grep for the fact — not the name you'd give it.** Search the
+   *statement's shape* and its vocabulary, in this order: `rg` this repo (including
+   `Construction/`, which is downstream and easy to miss from an upstream file), then
+   `.lake/packages/mathlib`, then `exact?` / `loogle`. Names differ; the fact is what
+   collides.
+
+   This is not hypothetical. In one session, three separate re-proofs of existing
+   results were committed and then reverted:
+   - `pair_lt_sq` — Mathlib already had it verbatim as `Nat.pair_lt_max_add_one_sq`,
+     and this repo's own `pair_lt_sq` was *already built on it*;
+   - a ~90-line `evaln` output bound — already in the repo as `codeEvaln_result_le`
+     + `codeEvalBound_poly` (`Construction/M7Witnesses.lean`), and the existing version
+     was **better** (an explicit bound function, not an existential);
+   - `DeductiveProcess.mono_le` — already in `Construction/Budgeter.lean`.
+
+   Only the third was caught by the compiler. The other two were caught by accident,
+   while reading for something unrelated — so assume your hit rate for noticing this
+   unaided is near zero, and make the grep mechanical rather than a judgment call.
+   A duplicate is worse than wasted time: it is a second, divergent proof of the same
+   fact that some later reader must reconcile.
+
+   Corollary for the ledger: if you *do* find you duplicated something, the honest fix
+   is to delete yours and cite the original — even when yours is the one you just
+   debugged, and even when it is in a more convenient file.
+
 3. **The build stays green at every stopping point.** `sorry` is allowed and expected;
    elaboration/type errors are not. Small compiling commits over large broken ones.
 
