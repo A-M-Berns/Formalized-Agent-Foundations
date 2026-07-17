@@ -1695,6 +1695,73 @@ theorem evalBits_prim : Primrec₂ fun (l : List Bool) (φ : Sentence) =>
     simp only [evalNorm, Encodable.encode, LO.Propositional.Formula.ofNat_toNat φ]
     cases BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ <;> simp
 
+/-! ### The stage quantifier
+
+`stageSort` was chosen to be `Finset.sort` under `sentenceCodeLE` precisely because that is
+the order the stock `Finset Sentence` encoding already sorts by (Mathlib's `encodeMultiset`
+sorts by its private `enle = encode ⁻¹'o (· ≤ ·)`, which `sentenceCodeLE` matches
+definitionally, instances included).  So a stage's code *is* the code of its `stageSort`,
+by `rfl`, and the compiled test recovers the list by decoding — no sorting is performed and
+no `Finset` operation needs compiling.
+
+None of this is semantic: `mem_stageSort` pins `stageSatBits` to `∀ φ ∈ stage` regardless
+of the order, so the choice buys compilability only. -/
+
+/-- A stage's Gödel code is exactly the code of its sorted sentence list. -/
+theorem encode_eq_encode_stageSort (stage : Finset Sentence) :
+    Encodable.encode stage = Encodable.encode (stageSort stage) := rfl
+
+theorem stageSort_prim : Primrec stageSort := by
+  have h : Primrec fun stage : Finset Sentence =>
+      (Encodable.decode (α := List Sentence) (Encodable.encode stage)).getD [] :=
+    Primrec.option_getD.comp (Primrec.decode.comp Primrec.encode) (Primrec.const [])
+  exact h.of_eq fun stage => by
+    rw [encode_eq_encode_stageSort, Encodable.encodek, Option.getD_some]
+
+private theorem list_all_eq_foldr {α : Type} (l : List α) (p : α → Bool) :
+    l.all p = l.foldr (fun a r => p a && r) true := by
+  induction l with
+  | nil => rfl
+  | cons a t ih => simp [List.all_cons, ih]
+
+/-- **The stage quantifier is primitive recursive.**  Closes `evalBits_prim` over the
+stage's sentence list. -/
+theorem stageSatBits_prim : Primrec₂ stageSatBits := by
+  have hstep : Primrec₂ fun (p : Finset Sentence × List Bool) (x : Sentence × Bool) =>
+      BoolPCWorld.eval (BoolPCWorld.bitsWorld p.2) x.1 && x.2 :=
+    (Primrec.and.comp
+      (evalBits_prim.comp (Primrec.snd.comp Primrec.fst) (Primrec.fst.comp Primrec.snd))
+      (Primrec.snd.comp Primrec.snd)).to₂
+  have h := Primrec.list_foldr
+    (f := fun p : Finset Sentence × List Bool => stageSort p.1)
+    (g := fun _ : Finset Sentence × List Bool => true)
+    (stageSort_prim.comp Primrec.fst) (Primrec.const true) hstep
+  exact h.to₂.of_eq fun stage l => by
+    simp only [stageSatBits, list_all_eq_foldr]
+
+/-! ### The world enumeration -/
+
+/-- **The bit-list enumeration is primitive recursive.**  A plain `Nat.rec` — this is the
+one leaf that needed no `Sentence` machinery at all. -/
+theorem allBitLists_prim : Primrec allBitLists := by
+  have hstep : Primrec₂ fun (_ : ℕ) (prev : List (List Bool)) =>
+      prev.flatMap (fun l => [false :: l, true :: l]) := by
+    have hg : Primrec₂ fun (_ : ℕ × List (List Bool)) (l : List Bool) =>
+        [false :: l, true :: l] :=
+      (Primrec.list_cons.comp
+        (Primrec.list_cons.comp (Primrec.const false) Primrec.snd)
+        (Primrec.list_cons.comp
+          (Primrec.list_cons.comp (Primrec.const true) Primrec.snd)
+          (Primrec.const []))).to₂
+    exact (Primrec.list_flatMap Primrec.snd hg).to₂
+  have h : Primrec (Nat.rec (motive := fun _ => List (List Bool)) [[]]
+      (fun _ prev => prev.flatMap (fun l => [false :: l, true :: l]))) :=
+    Primrec.nat_rec₁ _ hstep
+  exact h.of_eq fun n => by
+    induction n with
+    | zero => rfl
+    | succ k ih => simp only [allBitLists, ← ih]
+
 end SettlementCompile
 
 #print axioms polyFueled_dovetailFound
