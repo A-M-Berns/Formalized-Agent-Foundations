@@ -1762,6 +1762,70 @@ theorem allBitLists_prim : Primrec allBitLists := by
     | zero => rfl
     | succ k ih => simp only [allBitLists, ← ih]
 
+/-! ### The affine combination and its support bound -/
+
+/-- `AffineCombination` is a plain pair of its two fields; `EF`, `Sentence` and `List`
+already have `Primcodable` instances, so the structure inherits one through the equiv. -/
+def affineEquiv : AffineCombination ≃ EF × List (EF × Sentence) where
+  toFun A := (A.const, A.terms)
+  invFun p := ⟨p.1, p.2⟩
+  left_inv := fun ⟨_, _⟩ => rfl
+  right_inv := fun ⟨_, _⟩ => rfl
+
+instance affineCombinationPrimcodable : Primcodable AffineCombination :=
+  Primcodable.ofEquiv _ affineEquiv
+
+theorem affineEquiv_prim : Primrec affineEquiv := Primrec.of_equiv
+
+theorem affineConst_prim : Primrec AffineCombination.const :=
+  Primrec.fst.comp affineEquiv_prim
+
+theorem affineTerms_prim : Primrec AffineCombination.terms :=
+  Primrec.snd.comp affineEquiv_prim
+
+/-- A `Finset` sum is the sum over `stageSort`: `Finset.sort_eq` says the sorted list is a
+list representation of the underlying multiset, so no reordering argument is needed. -/
+theorem finset_sum_eq_stageSort_sum (stage : Finset Sentence) (f : Sentence → ℕ) :
+    stage.sum f = ((stageSort stage).map f).sum := by
+  have h : (stageSort stage : Multiset Sentence) = stage.val := Finset.sort_eq _ _
+  rw [Finset.sum_eq_multiset_sum, ← h]
+  simp
+
+/-- `settlementAtomLimit` over the sorted stage list rather than the `Finset`. -/
+theorem settlementAtomLimit_eq_stageSort (A : AffineCombination) (stage : Finset Sentence) :
+    A.settlementAtomLimit stage =
+      ((stageSort stage).map BoolPCWorld.atomBound).sum +
+        (A.terms.map (fun p => BoolPCWorld.atomBound p.2)).sum := by
+  rw [AffineCombination.settlementAtomLimit,
+    finset_sum_eq_stageSort_sum stage BoolPCWorld.atomBound]
+
+/-- Mathlib's `Primrec` API has no `list_sum`; `List.sum` is a `foldr`. -/
+private theorem list_sum_prim : Primrec (fun l : List ℕ => l.sum) := by
+  have h := Primrec.list_foldr (f := fun l : List ℕ => l) (g := fun _ : List ℕ => 0)
+    Primrec.id (Primrec.const 0)
+    (Primrec.nat_add.comp (Primrec.fst.comp Primrec.snd)
+      (Primrec.snd.comp Primrec.snd)).to₂
+  exact h.of_eq fun l => by
+    induction l with
+    | nil => rfl
+    | cons a t ih => simp [List.sum_cons, ← ih]
+
+/-- **The support bound is primitive recursive.** -/
+theorem settlementAtomLimit_prim :
+    Primrec₂ AffineCombination.settlementAtomLimit := by
+  have hstage : Primrec fun p : AffineCombination × Finset Sentence =>
+      ((stageSort p.2).map BoolPCWorld.atomBound).sum :=
+    list_sum_prim.comp
+      (Primrec.list_map (stageSort_prim.comp Primrec.snd)
+        (atomBound_prim.comp Primrec.snd).to₂)
+  have hterms : Primrec fun p : AffineCombination × Finset Sentence =>
+      (p.1.terms.map (fun q => BoolPCWorld.atomBound q.2)).sum :=
+    list_sum_prim.comp
+      (Primrec.list_map (affineTerms_prim.comp Primrec.fst)
+        (atomBound_prim.comp (Primrec.snd.comp Primrec.snd)).to₂)
+  exact (Primrec.nat_add.comp hstage hterms).to₂.of_eq fun A stage =>
+    (settlementAtomLimit_eq_stageSort A stage).symm
+
 end SettlementCompile
 
 #print axioms polyFueled_dovetailFound

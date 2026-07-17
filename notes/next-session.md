@@ -63,18 +63,32 @@ for the `Primrec` step.
    instance. It does **not** unfold to `Primrec`, and no type ascription will make it;
    `PrimrecPred.decide` and `Primrec.primrecPred` are the two directions. Reach for those
    immediately rather than fighting defeq.
-3. **START HERE.** `stageSatBits` `Primrec₂`: needs `stageSort` `Primrec` (`Finset.sort`
-   under `sentenceCodeLE` — recover it from the stage's *encoding*, which is already sorted
-   by that order; see `sentenceFinsetEncode_eq`/`encodeMultiset`, `LIACompiler.lean:1921`)
-   plus `Primrec.list_all`-style closure over `evalBits_prim`. Then `allBitLists` `Primrec`
-   (list-valued nat recursion).
-4. `AffineCombination` `Primcodable` + `As` computable from `PolySequence` (`terms_eq`
-   gives a `List.range`-map, so this is mechanical).
-5. `valueRat` — wire onto the **existing** EF rational stack machine
-   (`LIACompiler.lean:3095+`, fueled result already proved `= EF.denoteRat`) and
-   `market.quoteAtFuel`; precedent at `ROI.lean:223`. Do not rebuild the EF machine.
-6. Assemble the code + prove `spec` by dovetailing market/process fuel
-   (`exists_fuel_quoteAtFuel_list`, `stageAtFuel_complete`).
+3. ~~`stageSatBits` / `allBitLists` `Primrec`~~ — **DONE** (`stageSatBits_prim`,
+   `allBitLists_prim`, `stageSort_prim`). `stageSort` cost nothing:
+   `encode_eq_encode_stageSort` is **`rfl`**, since Mathlib's `encodeMultiset` already
+   sorts by (a defeq copy of) `sentenceCodeLE` — so a stage's code *is* its sorted list's
+   code and `stageSort_prim` is just `decode ∘ encode`. Mathlib has no `Primrec.list_all`
+   or `list_sum`; both are `list_foldr` (see `list_all_eq_foldr`, `list_sum_prim`).
+4. ~~`AffineCombination` `Primcodable` + support bound~~ — **DONE**
+   (`affineCombinationPrimcodable` via `Primcodable.ofEquiv`; `settlementAtomLimit_prim`).
+   **`As` from `PolySequence` is NOT done** and is still owed — `terms_eq` gives a
+   `List.range`-map, mechanical, but note `PolySequence` supplies `PolyFueled` *codes*, not
+   `Primrec` functions, so `As` enters through the fuel layer (step 5), not as a `Primrec`
+   leaf.
+5. **START HERE — and the shape changes here.** Everything above is `Primrec`. `valueRat`
+   is **not**: it calls `EF.denoteRat Q`, and `Q` is the *market*, reachable only through
+   `market.quoteAtFuel`. So the checker is a **fuel-clocked** program, not a primrec
+   function — which is exactly what `SettlementChecker.spec` asks for
+   (`∃ F, acceptsWithin code F ⟨i,j⟩ = true ↔ …`). Build `settlementCheckAtFuel` on the
+   model of `unitMaturityCheckAtFuel` (`Calibration.lean`, ~2549): reject timeouts, else
+   evaluate the test. **Read that first — it is the same shape and was never compiled**,
+   which is why `M7-FEEDBACK-EMIT`/`M7-FEEDBACK-TRUTH` are blocked on the same wall.
+   Reuse, do **not** rebuild: the EF rational stack machine (`LIACompiler.lean:3095+`,
+   fueled result already proved `= EF.denoteRat`), `market.quoteAtFuel` value folds
+   (`ROI.lean:223`), `exists_fuel_quoteAtFuel_list`, `stageAtFuel_complete`.
+6. Assemble into a `Nat.Partrec.Code` and prove `spec` by dovetailing market/process fuel.
+   Deliverable is `SettlementChecker.ofComputations` taking `PolySequence As` +
+   `MarketComputation P` + `DeductiveProcessComputation DP`.
 
 `SettlementChecker` takes arbitrary `As`/`Q`/`DP`, so the deliverable is a new
 `SettlementChecker.ofComputations` taking `PolySequence As` + `MarketComputation P` +
