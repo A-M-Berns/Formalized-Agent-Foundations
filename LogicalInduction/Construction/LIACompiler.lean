@@ -1969,7 +1969,7 @@ instance sentenceFinsetPrimcodable : Primcodable (Finset Sentence) where
 
 /-- A fixed deductive-process program, run for a supplied clock, is primitive recursive in
 the clock and requested day, including exact decoding of its finite sentence set. -/
-private theorem processStageAtFuel_prim {DP : DeductiveProcess}
+theorem processStageAtFuel_prim {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) :
     Primrec₂ fun fuel n => process.stageAtFuel fuel n := by
   have heval : Primrec fun p : ℕ × ℕ =>
@@ -1981,6 +1981,24 @@ private theorem processStageAtFuel_prim {DP : DeductiveProcess}
   exact (Primrec.option_bind heval
     ((hdecode.comp Primrec.snd).to₂)).to₂.of_eq fun fuel n => by
       rfl
+
+/-- A fixed market program, run for a supplied clock, is primitive recursive in the clock,
+day and sentence, including exact decoding of its rational output. -/
+theorem quoteAtFuel_prim {P : History} (market : MarketComputation P) :
+    Primrec fun p : ℕ × ℕ × Sentence => market.quoteAtFuel p.1 p.2.1 p.2.2 := by
+  have hz : Primrec fun p : ℕ × ℕ × Sentence =>
+      Nat.pair p.2.1 (Encodable.encode p.2.2) :=
+    Primrec₂.natPair.comp (Primrec.fst.comp Primrec.snd)
+      (Primrec.encode.comp (Primrec.snd.comp Primrec.snd))
+  have heval : Primrec fun p : ℕ × ℕ × Sentence =>
+      Nat.Partrec.Code.evaln p.1 market.code
+        (Nat.pair p.2.1 (Encodable.encode p.2.2)) :=
+    Nat.Partrec.Code.primrec_evaln.comp
+      ((Primrec.fst.pair (Primrec.const market.code)).pair hz)
+  have hdecode : Primrec fun out : ℕ =>
+      Encodable.decode (α := ℚ) out := Primrec.decode
+  exact (Primrec.option_bind heval
+    ((hdecode.comp Primrec.snd).to₂)).of_eq fun p => rfl
 
 /-- Decoding the entire finite deductive-stage prefix under one common clock is primitive
 recursive. -/
@@ -3724,18 +3742,18 @@ private theorem efRatMachine_fuel_correct {C : Type*}
   rw [efRatMachine_correct V ctx e [] [] []]
   exact Function.iterate_fixed (efRatMachine_terminal V ctx [e.denoteRat (V ctx)]) extra
 
-private def efRatCompiledEval {C : Type*} (V : C → ℕ → Sentence → ℚ)
+def efRatCompiledEval {C : Type*} (V : C → ℕ → Sentence → ℚ)
     (ctx : C) (e : EF) : ℚ :=
   (((efRatMachineStep V ctx)^[efRatMachineFuel e]
       ([efRatEvalCommand e []], [])).2).getD 0 0
 
-private theorem efRatCompiledEval_eq {C : Type*}
+theorem efRatCompiledEval_eq {C : Type*}
     (V : C → ℕ → Sentence → ℚ) (ctx : C) (e : EF) :
     efRatCompiledEval V ctx e = e.denoteRat (V ctx) := by
   rw [efRatCompiledEval, efRatMachine_fuel_correct]
   rfl
 
-private theorem efRatCompiledEval_prim {C : Type*} [Primcodable C]
+theorem efRatCompiledEval_prim {C : Type*} [Primcodable C]
     (V : C → ℕ → Sentence → ℚ)
     (hV : Primrec fun p : C × (ℕ × Sentence) => V p.1 p.2.1 p.2.2) :
     Primrec fun p : C × EF => efRatCompiledEval V p.1 p.2 := by
