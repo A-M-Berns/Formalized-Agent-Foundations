@@ -1826,6 +1826,132 @@ theorem settlementAtomLimit_prim :
   exact (Primrec.nat_add.comp hstage hterms).to₂.of_eq fun A stage =>
     (settlementAtomLimit_eq_stageSort A stage).symm
 
+/-! ### The fuel layer
+
+Everything above is `Primrec`.  `valueRat` is not, and cannot be: it calls `EF.denoteRat Q`
+where `Q` is the *market*, which a program reaches only through `market.quoteAtFuel`.  So
+the checker is a fuel-clocked program rather than a primitive recursive function — which is
+exactly the shape `SettlementChecker.spec` asks for (`∃ F, acceptsWithin code F ⟨i,j⟩`).
+
+This mirrors `Strategy.valueRatListAtFuel` (`ROI.lean`) exactly: a three-part
+sound/mono/exists-fuel contract over the existing `EF.denoteRatWithAtFuel`. -/
+
+/-- Bounded exact evaluator for an affine combination's term list. -/
+def affineTermsRatAtFuel {P : History} (market : MarketComputation P)
+    (fuel : ℕ) (w : Sentence → ℚ) : List (EF × Sentence) → Option ℚ
+  | [] => some 0
+  | p :: rest => do
+      let coefficient ← p.1.denoteRatWithAtFuel market fuel []
+      let tail ← affineTermsRatAtFuel market fuel w rest
+      pure (coefficient * w p.2 + tail)
+
+/-- Bounded exact evaluator for `AffineCombination.valueRat`. -/
+def AffineCombination.valueRatAtFuel (A : AffineCombination)
+    {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (w : Sentence → ℚ) : Option ℚ := do
+  let c ← A.const.denoteRatWithAtFuel market fuel []
+  let ts ← affineTermsRatAtFuel market fuel w A.terms
+  pure (c + ts)
+
+theorem affineTermsRatAtFuel_sound {P : History} (market : MarketComputation P)
+    (fuel : ℕ) (w : Sentence → ℚ) (terms : List (EF × Sentence)) {q : ℚ}
+    (h : affineTermsRatAtFuel market fuel w terms = some q) :
+    q = (terms.map (fun p =>
+      p.1.denoteRat (fun d φ => market.quote d (Encodable.encode φ)) * w p.2)).sum := by
+  induction terms generalizing q with
+  | nil => simpa [affineTermsRatAtFuel] using h.symm
+  | cons p rest ih =>
+      simp only [affineTermsRatAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨coefficient, hcoefficient, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨tail, htail, hq⟩ := h
+      change some (coefficient * w p.2 + tail) = some q at hq
+      injection hq with hq
+      subst q
+      simp only [List.map_cons, List.sum_cons, EF.denoteRat]
+      rw [p.1.denoteRatWithAtFuel_sound market fuel [] hcoefficient, ih htail]
+      rfl
+
+theorem affineTermsRatAtFuel_mono {P : History} (market : MarketComputation P)
+    {fuel fuel' : ℕ} (w : Sentence → ℚ) (terms : List (EF × Sentence)) {q : ℚ}
+    (hff : fuel ≤ fuel')
+    (h : affineTermsRatAtFuel market fuel w terms = some q) :
+    affineTermsRatAtFuel market fuel' w terms = some q := by
+  induction terms generalizing q with
+  | nil => simpa [affineTermsRatAtFuel] using h
+  | cons p rest ih =>
+      simp only [affineTermsRatAtFuel, Option.bind_eq_bind] at h ⊢
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨coefficient, hcoefficient, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨tail, htail, hq⟩ := h
+      rw [p.1.denoteRatWithAtFuel_mono market [] hff hcoefficient, Option.bind_eq_some_iff]
+      exact ⟨coefficient, rfl, by rw [ih htail, Option.bind_eq_some_iff]; exact ⟨tail, rfl, hq⟩⟩
+
+theorem exists_fuel_affineTermsRatAtFuel {P : History} (market : MarketComputation P)
+    (w : Sentence → ℚ) (terms : List (EF × Sentence)) :
+    ∃ fuel, affineTermsRatAtFuel market fuel w terms = some ((terms.map (fun p =>
+      p.1.denoteRat (fun d φ => market.quote d (Encodable.encode φ)) * w p.2)).sum) := by
+  induction terms with
+  | nil => exact ⟨0, rfl⟩
+  | cons p rest ih =>
+      obtain ⟨f1, h1⟩ := EF.exists_fuel_denoteRatWithAtFuel market p.1 []
+      obtain ⟨f2, h2⟩ := ih
+      refine ⟨max f1 f2, ?_⟩
+      simp only [affineTermsRatAtFuel, Option.bind_eq_bind]
+      rw [EF.denoteRatWithAtFuel_mono market p.1 [] (le_max_left _ _) h1,
+        Option.bind_eq_some_iff]
+      refine ⟨_, rfl, ?_⟩
+      rw [affineTermsRatAtFuel_mono market w rest (le_max_right _ _) h2,
+        Option.bind_eq_some_iff]
+      exact ⟨_, rfl, by simp [EF.denoteRat]⟩
+
+theorem AffineCombination.valueRatAtFuel_sound (A : AffineCombination) {P : History}
+    (market : MarketComputation P) (fuel : ℕ) (w : Sentence → ℚ) {q : ℚ}
+    (h : A.valueRatAtFuel market fuel w = some q) :
+    q = A.valueRat (fun d φ => market.quote d (Encodable.encode φ)) w := by
+  simp only [AffineCombination.valueRatAtFuel, Option.bind_eq_bind] at h
+  rw [Option.bind_eq_some_iff] at h
+  obtain ⟨c, hc, h⟩ := h
+  rw [Option.bind_eq_some_iff] at h
+  obtain ⟨ts, hts, hq⟩ := h
+  change some (c + ts) = some q at hq
+  injection hq with hq
+  subst q
+  rw [AffineCombination.valueRat, EF.denoteRat,
+    A.const.denoteRatWithAtFuel_sound market fuel [] hc,
+    affineTermsRatAtFuel_sound market fuel w A.terms hts]
+
+theorem AffineCombination.valueRatAtFuel_mono (A : AffineCombination) {P : History}
+    (market : MarketComputation P) {fuel fuel' : ℕ} (w : Sentence → ℚ) {q : ℚ}
+    (hff : fuel ≤ fuel') (h : A.valueRatAtFuel market fuel w = some q) :
+    A.valueRatAtFuel market fuel' w = some q := by
+  simp only [AffineCombination.valueRatAtFuel, Option.bind_eq_bind] at h ⊢
+  rw [Option.bind_eq_some_iff] at h
+  obtain ⟨c, hc, h⟩ := h
+  rw [Option.bind_eq_some_iff] at h
+  obtain ⟨ts, hts, hq⟩ := h
+  rw [A.const.denoteRatWithAtFuel_mono market [] hff hc, Option.bind_eq_some_iff]
+  exact ⟨c, rfl, by
+    rw [affineTermsRatAtFuel_mono market w A.terms hff hts, Option.bind_eq_some_iff]
+    exact ⟨ts, rfl, hq⟩⟩
+
+theorem AffineCombination.exists_fuel_valueRatAtFuel (A : AffineCombination) {P : History}
+    (market : MarketComputation P) (w : Sentence → ℚ) :
+    ∃ fuel, A.valueRatAtFuel market fuel w =
+      some (A.valueRat (fun d φ => market.quote d (Encodable.encode φ)) w) := by
+  obtain ⟨f1, h1⟩ := EF.exists_fuel_denoteRatWithAtFuel market A.const []
+  obtain ⟨f2, h2⟩ := exists_fuel_affineTermsRatAtFuel market w A.terms
+  refine ⟨max f1 f2, ?_⟩
+  simp only [AffineCombination.valueRatAtFuel, Option.bind_eq_bind]
+  rw [EF.denoteRatWithAtFuel_mono market A.const [] (le_max_left _ _) h1,
+    Option.bind_eq_some_iff]
+  refine ⟨_, rfl, ?_⟩
+  rw [affineTermsRatAtFuel_mono market w A.terms (le_max_right _ _) h2,
+    Option.bind_eq_some_iff]
+  exact ⟨_, rfl, by simp [AffineCombination.valueRat, EF.denoteRat]⟩
+
 end SettlementCompile
 
 #print axioms polyFueled_dovetailFound
