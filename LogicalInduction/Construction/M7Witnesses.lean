@@ -842,7 +842,7 @@ theorem polyFueled_dovetailFound (c : Nat.Partrec.Code) :
   simp [dovetailFound, Nat.unpair_pair]
 
 /-- Select between two constants on a zero test. -/
-private theorem polyFueled_selectConst {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
+theorem polyFueled_selectConst {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
     (hf : PolyFueled cf f) (A B : ℕ) :
     ∃ c, PolyFueled c (fun z => if f z = 0 then A else B) := by
   refine ⟨_, (ifzSel_polyFueled.comp
@@ -991,6 +991,109 @@ theorem polyFueled_deadlinePassed (f : DeferralFunction) :
   refine ⟨_, (hn.comp (PolyFueled.id.pair PolyFueled.left)).of_eq (fun z => ?_)⟩
   simp [deadlinePassed, Nat.unpair_pair]
 
+/-! ### Assembling the clock
+
+Everything the clock needs is now in hand except one thing: a *code* semi-deciding
+settlement.  That is isolated as `SettlementSemiDecider` — a pure computability
+obligation with no market, economic or limit content — and the clock is constructed from
+it.  The remaining M7 work for `M7-PATIENT-CLOCK` is exactly to inhabit that structure. -/
+
+theorem acceptsWithin_mono (c : Nat.Partrec.Code) {F F' x : ℕ} (h : F ≤ F')
+    (ha : acceptsWithin c F x = true) : acceptsWithin c F' x = true := by
+  cases hev : Nat.Partrec.Code.evaln F c x with
+  | none => simp [acceptsWithin, codeEvalnNat, hev] at ha
+  | some out =>
+      have hm : Nat.Partrec.Code.evaln F' c x = some out :=
+        Nat.Partrec.Code.evaln_mono h hev
+      simp only [acceptsWithin, codeEvalnNat, Nat.unpair_pair, hev, decide_eq_true_iff] at ha
+      simp [acceptsWithin, codeEvalnNat, hm, ha]
+
+theorem dovetailFound_mono (c : Nat.Partrec.Code) {i n : ℕ}
+    (h : dovetailFound c i n = true) : dovetailFound c i (n + 1) = true := by
+  rw [dovetailFound_eq_true_iff] at h ⊢
+  obtain ⟨j, hj, ha⟩ := h
+  exact ⟨j, by omega, acceptsWithin_mono c (Nat.le_succ n) ha⟩
+
+/-- A code semi-deciding settlement: it accepts `⟨i,j⟩` at some fuel exactly when `As i`
+is settled at stage `j`.
+
+This is a pure computability obligation.  It contains no market, economic, limit or
+pseudorandomness conclusion — soundness only ever *reads off* settlement, and completeness
+only asks that a genuinely settled pair be eventually accepted.  Realizable exactly when
+the market is rational (see `agree_of_finiteWorlds_agree`); the settlement test is
+exponential, which is precisely what the dovetail exists to absorb. -/
+structure SettlementSemiDecider (As : ℕ → AffineCombination) (P : History)
+    (DP : DeductiveProcess) (truth : ℕ → ℝ) where
+  code : Nat.Partrec.Code
+  sound : ∀ i j F, acceptsWithin code F (Nat.pair i j) = true →
+    ∀ v : PCWorld, v.ConsistentWith (DP.D j) → (As i).value P v.payout = truth i
+  complete : ∀ i j, (∀ v : PCWorld, v.ConsistentWith (DP.D j) →
+      (As i).value P v.payout = truth i) →
+    ∃ F, acceptsWithin code F (Nat.pair i j) = true
+
+private theorem orNot_eq_false_iff (a b : Bool) :
+    ((!a) || (!b)) = false ↔ a = true ∧ b = true := by
+  cases a <;> cases b <;> simp
+
+/-- **The patient settlement clock, constructed.**  Given a settlement semi-decider and
+completed-theory determination, the clock exists: activity is the deadline
+under-approximation OR'd with the dovetail's failure to certify settlement. -/
+noncomputable def PatientSettlementClock.ofSemiDecider
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
+    (d : SettlementSemiDecider As P DP truth)
+    (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    (f : DeferralFunction) : PatientSettlementClock As P DP truth f where
+  active i n := (!(deadlinePassed f i n)) || (!(dovetailFound d.code i n))
+  active_codes := by
+    obtain ⟨cdp, hdp⟩ := polyFueled_deadlinePassed f
+    obtain ⟨cdf, hdf⟩ := polyFueled_dovetailFound d.code
+    obtain ⟨cml, hml⟩ := mul_polyFueled
+    obtain ⟨cprod, hprod⟩ : ∃ c, PolyFueled c (fun w =>
+        (if deadlinePassed f w.unpair.1 w.unpair.2 then 1 else 0) *
+        (if dovetailFound d.code w.unpair.1 w.unpair.2 then 1 else 0)) :=
+      ⟨_, (hml.comp (hdp.pair hdf)).of_eq (fun w => by simp)⟩
+    obtain ⟨cswap, hswap⟩ : ∃ c, PolyFueled c (fun z =>
+        (if deadlinePassed f z.unpair.2 z.unpair.1 then 1 else 0) *
+        (if dovetailFound d.code z.unpair.2 z.unpair.1 then 1 else 0)) :=
+      ⟨_, (hprod.comp (PolyFueled.right.pair PolyFueled.left)).of_eq (fun z => by simp)⟩
+    obtain ⟨c, hc⟩ := polyFueled_selectConst hswap
+      (Encodable.encode (1 : ℚ)) (Encodable.encode (0 : ℚ))
+    refine ⟨c, hc.of_eq (fun z => ?_)⟩
+    by_cases h1 : deadlinePassed f z.unpair.2 z.unpair.1 = true <;>
+      by_cases h2 : dovetailFound d.code z.unpair.2 z.unpair.1 = true <;>
+      simp [h1, h2]
+  antitone := by
+    intro i n hactive
+    by_contra hcon
+    rw [Bool.not_eq_true] at hcon
+    obtain ⟨hdp, hdf⟩ := (orNot_eq_false_iff _ _).1 hcon
+    rw [(orNot_eq_false_iff _ _).2 ⟨deadlinePassed_mono f hdp,
+      dovetailFound_mono d.code hdf⟩] at hactive
+    exact Bool.false_ne_true hactive
+  active_through_envelope := by
+    intro i n hn
+    by_contra hcon
+    rw [Bool.not_eq_true] at hcon
+    obtain ⟨hdp, -⟩ := (orNot_eq_false_iff _ _).1 hcon
+    exact absurd hn (not_le.mpr (deadlinePassed_sound f hdp))
+  eventually_inactive := by
+    intro i
+    obtain ⟨N1, hN1⟩ := deadlinePassed_eventually f i
+    obtain ⟨m, hm⟩ := hdet.exists_settled_stage i
+    obtain ⟨F, hF⟩ := d.complete i m hm
+    refine ⟨max N1 (max F m), fun n hn => ?_⟩
+    refine (orNot_eq_false_iff _ _).2 ⟨hN1 n (le_trans (le_max_left _ _) hn), ?_⟩
+    rw [dovetailFound_eq_true_iff]
+    exact ⟨m, le_trans (le_trans (le_max_right _ _) (le_max_right _ _)) hn,
+      acceptsWithin_mono d.code
+        (le_trans (le_trans (le_max_left _ _) (le_max_right _ _)) hn) hF⟩
+  settled_of_inactive := by
+    intro i n hinactive
+    obtain ⟨hdp, hdf⟩ := (orNot_eq_false_iff _ _).1 hinactive
+    refine ⟨deadlinePassed_sound f hdp, fun v hv => ?_⟩
+    obtain ⟨j, hj, ha⟩ := (dovetailFound_eq_true_iff d.code i n).1 hdf
+    exact d.sound i j n ha v (fun φ hφ => hv φ (DP.mono_le hj hφ))
+
 end
 
 /-! ## Efficient repeated enumeration -/
@@ -1126,6 +1229,9 @@ noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
 
 #print axioms polyFueled_dovetailFound
 #print axioms polyFueled_deadlinePassed
+#print axioms PatientSettlementClock.ofSemiDecider
+#print axioms acceptsWithin_mono
+#print axioms dovetailFound_mono
 #print axioms deadlinePassed_sound
 #print axioms deadlinePassed_eventually
 #print axioms deadlinePassed_mono
