@@ -1314,7 +1314,7 @@ private theorem efHistory_getD {n k : ℕ} (hk : k < n) :
   rw [← hzero, List.getD_map]
   simp [hk]
 
-private theorem efChildPair_lt (child code fuel : ℕ) (hchild : child ≤ code) :
+theorem efChildPair_lt (child code fuel : ℕ) (hchild : child ≤ code) :
     Nat.pair child fuel < Nat.pair code (fuel + 1) := by
   rcases hchild.eq_or_lt with heq | hlt
   · subst code
@@ -1681,6 +1681,224 @@ private theorem efRank_prim : Primrec EF.rank := by
       (Primrec.nat_add.comp Primrec.encode (Primrec.const 1))
   exact (Primrec.pred.comp (efAuxRankNormIndex_prim.comp hindex)).of_eq fun e => by
     simp [efAuxRankNormIndex, EF.instEncodable, EF.ofNatAux_toNat]
+
+/-! ## Primitive-recursive `EF.priceQueries`
+
+`EF.priceQueries` (`Criterion.lean`) lists the `(day, sentence)` market cells a feature
+inspects.  Its primitive recursivity is the guard that keeps the total quote table `V`
+(which substitutes `0` for an unanswered query) from silently certifying a false
+settlement test: `EF.denoteRatWithAtFuel_complete` fires only once every listed query is
+answered.  Compiled by course-of-values recursion on the Gödel code, exactly mirroring the
+`EF.rank` compiler above, but carrying the list-valued result directly through
+`Nat.strong_rec` (`σ := Option (List (ℕ × Sentence))`) rather than a normalized `ℕ`. -/
+
+/-- Query-list values `List (ℕ × Sentence)`, tracked as `Option` (`none` = decoder
+failure). -/
+private abbrev EFQueryList := List (ℕ × Sentence)
+
+/-- Append two query lists, propagating decoder failure. -/
+private def efQueriesAppend (left right : Option EFQueryList) : Option EFQueryList :=
+  left.bind fun a => right.map fun b => a ++ b
+
+private theorem efQueriesAppend_prim : Primrec₂ efQueriesAppend := by
+  have hg : Primrec₂ fun (z : (Option EFQueryList × Option EFQueryList) × EFQueryList)
+      (b : EFQueryList) => z.2 ++ b :=
+    Primrec.list_append.comp (Primrec.snd.comp Primrec.fst) Primrec.snd
+  have hmap : Primrec₂ fun (p : Option EFQueryList × Option EFQueryList)
+      (a : EFQueryList) => p.2.map fun b => a ++ b :=
+    (Primrec.option_map (Primrec.snd.comp Primrec.fst) hg).to₂
+  exact Primrec.option_bind Primrec.fst hmap
+
+/-- Decoded value of a child code from the recursion history, mirroring `efPriorNorm`
+but carrying the list value directly (no `Encodable` round-trip). -/
+private def efPriorQueries (prior : List (Option EFQueryList)) (child : ℕ) :
+    Option EFQueryList :=
+  prior.getD (Nat.pair child (prior.length.unpair.2 - 1)) none
+
+private theorem efPriorQueries_prim : Primrec₂ efPriorQueries := by
+  have hfuel : Primrec fun prior : List (Option EFQueryList) =>
+      prior.length.unpair.2 - 1 :=
+    Primrec.nat_sub.comp
+      (Primrec.snd.comp (Primrec.unpair.comp Primrec.list_length))
+      (Primrec.const 1)
+  have hindex : Primrec₂ fun (prior : List (Option EFQueryList)) (child : ℕ) =>
+      Nat.pair child (prior.length.unpair.2 - 1) :=
+    Primrec₂.natPair.comp₂ Primrec₂.right (hfuel.comp Primrec₂.left)
+  exact (Primrec.list_getD none).comp₂ Primrec₂.left hindex
+
+/-- One strong-recursion step for `(EF.ofNatAux fuel code).map EF.priceQueries`. -/
+private def efQueriesNormVal (prior : List (Option EFQueryList)) : Option EFQueryList :=
+  let index := prior.length
+  let code := index.unpair.1
+  let fuel := index.unpair.2
+  let tag := code.unpair.1
+  let payload := code.unpair.2
+  if fuel = 0 then none
+  else if tag = 0 then (Encodable.decode (α := ℚ) payload).map fun _ => []
+  else if tag = 1 then
+    (Encodable.decode (α := Sentence) payload.unpair.1).map
+      fun φ => [(payload.unpair.2, φ)]
+  else if tag = 2 then
+    efQueriesAppend (efPriorQueries prior payload.unpair.1)
+      (efPriorQueries prior payload.unpair.2)
+  else if tag = 3 then
+    efQueriesAppend (efPriorQueries prior payload.unpair.1)
+      (efPriorQueries prior payload.unpair.2)
+  else if tag = 4 then
+    efQueriesAppend (efPriorQueries prior payload.unpair.1)
+      (efPriorQueries prior payload.unpair.2)
+  else if tag = 5 then efPriorQueries prior payload
+  else if tag = 6 then some []
+  else if tag = 7 then
+    efQueriesAppend (efPriorQueries prior payload.unpair.1)
+      (efPriorQueries prior payload.unpair.2)
+  else none
+
+private theorem efQueriesNormVal_prim : Primrec efQueriesNormVal := by
+  let code : List (Option EFQueryList) → ℕ := fun prior => prior.length.unpair.1
+  let fuel : List (Option EFQueryList) → ℕ := fun prior => prior.length.unpair.2
+  let tag : List (Option EFQueryList) → ℕ := fun prior => (code prior).unpair.1
+  let payload : List (Option EFQueryList) → ℕ := fun prior => (code prior).unpair.2
+  have hcode : Primrec code := Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
+  have hfuel : Primrec fuel := Primrec.snd.comp (Primrec.unpair.comp Primrec.list_length)
+  have htag : Primrec tag := Primrec.fst.comp (Primrec.unpair.comp hcode)
+  have hpayload : Primrec payload := Primrec.snd.comp (Primrec.unpair.comp hcode)
+  have hpayloadLeft : Primrec fun prior : List (Option EFQueryList) =>
+      (payload prior).unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp hpayload)
+  have hpayloadRight : Primrec fun prior : List (Option EFQueryList) =>
+      (payload prior).unpair.2 :=
+    Primrec.snd.comp (Primrec.unpair.comp hpayload)
+  have htagEq (k : ℕ) : PrimrecPred fun prior : List (Option EFQueryList) =>
+      tag prior = k :=
+    Primrec.eq.comp htag (Primrec.const k)
+  have hfuelZero : PrimrecPred fun prior : List (Option EFQueryList) => fuel prior = 0 :=
+    Primrec.eq.comp hfuel (Primrec.const 0)
+  have hbinary : Primrec fun prior : List (Option EFQueryList) =>
+      efQueriesAppend (efPriorQueries prior (payload prior).unpair.1)
+        (efPriorQueries prior (payload prior).unpair.2) :=
+    efQueriesAppend_prim.comp
+      (efPriorQueries_prim.comp Primrec.id hpayloadLeft)
+      (efPriorQueries_prim.comp Primrec.id hpayloadRight)
+  have hconst : Primrec fun prior : List (Option EFQueryList) =>
+      (Encodable.decode (α := ℚ) (payload prior)).map fun _ => ([] : EFQueryList) :=
+    Primrec.option_map (Primrec.decode.comp hpayload)
+      (Primrec.const ([] : EFQueryList)).to₂
+  have hprice : Primrec fun prior : List (Option EFQueryList) =>
+      (Encodable.decode (α := Sentence) (payload prior).unpair.1).map
+        fun φ => [((payload prior).unpair.2, φ)] := by
+    refine Primrec.option_map (Primrec.decode.comp hpayloadLeft) ?_
+    exact (Primrec.list_cons.comp
+      ((Primrec.snd.comp (Primrec.unpair.comp hpayload)).comp Primrec.fst |>.pair
+        Primrec.snd)
+      (Primrec.const [])).to₂
+  have hsafe : Primrec fun prior : List (Option EFQueryList) =>
+      efPriorQueries prior (payload prior) :=
+    efPriorQueries_prim.comp Primrec.id hpayload
+  exact (Primrec.ite hfuelZero (Primrec.const none)
+    (Primrec.ite (htagEq 0) hconst
+      (Primrec.ite (htagEq 1) hprice
+        (Primrec.ite (htagEq 2) hbinary
+          (Primrec.ite (htagEq 3) hbinary
+            (Primrec.ite (htagEq 4) hbinary
+              (Primrec.ite (htagEq 5) hsafe
+                (Primrec.ite (htagEq 6) (Primrec.const (some ([] : EFQueryList)))
+                  (Primrec.ite (htagEq 7) hbinary
+                    (Primrec.const none)))))))))).of_eq fun prior => rfl
+
+/-- The intended value at index `n`: decode `n` under its fuel, take price queries. -/
+private def efAuxQueriesVal (n : ℕ) : Option EFQueryList :=
+  (EF.ofNatAux n.unpair.2 n.unpair.1).map EF.priceQueries
+
+private theorem efAuxQueriesVal_zero : efAuxQueriesVal 0 = none := by
+  simp [efAuxQueriesVal, EF.ofNatAux]
+
+private theorem efQueriesHistory_getD {n k : ℕ} (hk : k < n) :
+    ((List.range n).map efAuxQueriesVal).getD k none = efAuxQueriesVal k := by
+  rw [← efAuxQueriesVal_zero, List.getD_map]
+  simp [hk]
+
+private theorem efQueriesNormVal_history (n : ℕ) :
+    efQueriesNormVal ((List.range n).map efAuxQueriesVal) = efAuxQueriesVal n := by
+  rcases hpair : n.unpair with ⟨code, fuel⟩
+  have hn : Nat.pair code fuel = n := by
+    simpa [hpair] using Nat.pair_unpair n
+  subst n
+  simp only [efAuxQueriesVal, Nat.unpair_pair]
+  cases fuel with
+  | zero => simp [efQueriesNormVal, EF.ofNatAux]
+  | succ fuel =>
+      have hprior (child : ℕ) (hchild : child ≤ code) :
+          efPriorQueries
+              ((List.range (Nat.pair code (fuel + 1))).map efAuxQueriesVal) child =
+            (EF.ofNatAux fuel child).map EF.priceQueries := by
+        unfold efPriorQueries
+        simp only [List.length_map, List.length_range, Nat.unpair_pair,
+          Nat.add_sub_cancel]
+        rw [efQueriesHistory_getD (efChildPair_lt child code fuel hchild)]
+        simp [efAuxQueriesVal, Nat.unpair_pair]
+      have hleft : code.unpair.2.unpair.1 ≤ code :=
+        (Nat.unpair_left_le _).trans (Nat.unpair_right_le _)
+      have hright : code.unpair.2.unpair.2 ≤ code :=
+        (Nat.unpair_right_le _).trans (Nat.unpair_right_le _)
+      have hpayload : code.unpair.2 ≤ code := Nat.unpair_right_le _
+      rcases htag : code.unpair.1 with _ | tag
+      · cases hq : (@Encodable.decode ℚ inferInstance code.unpair.2) <;>
+          simp [efQueriesNormVal, EF.ofNatAux, htag, hq, EF.priceQueries]
+      · rcases tag with _ | tag
+        · cases hs : (@LO.Propositional.Formula.ofNat ℕ inferInstance
+              code.unpair.2.unpair.1 : Option Sentence) <;>
+            simp [efQueriesNormVal, EF.ofNatAux, htag, hs, EF.priceQueries,
+              LO.Propositional.Formula.instEncodable]
+        · rcases tag with _ | tag
+          · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
+              cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
+              simp [efQueriesNormVal, EF.ofNatAux, htag,
+                hprior _ hleft, hprior _ hright, efQueriesAppend, EF.priceQueries, hL, hR]
+          · rcases tag with _ | tag
+            · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
+                cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
+                simp [efQueriesNormVal, EF.ofNatAux, htag,
+                  hprior _ hleft, hprior _ hright, efQueriesAppend, EF.priceQueries, hL, hR]
+            · rcases tag with _ | tag
+              · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
+                  cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
+                  simp [efQueriesNormVal, EF.ofNatAux, htag,
+                    hprior _ hleft, hprior _ hright, efQueriesAppend, EF.priceQueries, hL, hR]
+              · rcases tag with _ | tag
+                · cases hA : EF.ofNatAux fuel code.unpair.2 <;>
+                    simp [efQueriesNormVal, EF.ofNatAux, htag,
+                      hprior _ hpayload, EF.priceQueries, hA]
+                · rcases tag with _ | tag
+                  · simp [efQueriesNormVal, EF.ofNatAux, htag, EF.priceQueries]
+                  · rcases tag with _ | tag
+                    · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
+                        cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
+                        simp [efQueriesNormVal, EF.ofNatAux, htag,
+                          hprior _ hleft, hprior _ hright, efQueriesAppend,
+                          EF.priceQueries, hL, hR]
+                    · simp [efQueriesNormVal, EF.ofNatAux, htag]
+
+private theorem efAuxQueriesVal_prim : Primrec efAuxQueriesVal := by
+  have hstep : Primrec₂ (fun (_ : Unit) (prior : List (Option EFQueryList)) =>
+      some (efQueriesNormVal prior)) :=
+    Primrec₂.option_some_iff.mpr (efQueriesNormVal_prim.comp Primrec₂.right)
+  have hrec := Primrec.nat_strong_rec
+    (fun (_ : Unit) n => efAuxQueriesVal n)
+    hstep (fun _ n => by simpa using congrArg some (efQueriesNormVal_history n))
+  exact hrec.comp (Primrec.const ()) Primrec.id
+
+/-- `EF.priceQueries` is primitive recursive.  The guard behind the settlement checker's
+soundness: only when every listed query is answered does the total quote table stand in
+for the real market. -/
+theorem efPriceQueries_prim : Primrec EF.priceQueries := by
+  have hindex : Primrec fun e : EF => Nat.pair (Encodable.encode e)
+      (Encodable.encode e + 1) :=
+    Primrec₂.natPair.comp Primrec.encode
+      (Primrec.nat_add.comp Primrec.encode (Primrec.const 1))
+  exact (Primrec.option_getD.comp (efAuxQueriesVal_prim.comp hindex)
+    (Primrec.const ([] : EFQueryList))).of_eq fun e => by
+      simp [efAuxQueriesVal, EF.instEncodable, EF.ofNatAux_toNat]
 
 private def strategyOfTrades? (n : ℕ) (trades : List (EF × Sentence)) :
     Option (Strategy n) :=
