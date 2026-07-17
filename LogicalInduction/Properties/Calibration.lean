@@ -901,6 +901,140 @@ theorem AffineCombination.DeterminedViaTheory.settled_iff_agree
     obtain ⟨v₀, hv₀⟩ := exists_consistentWithTheory DP hworld
     rw [hagree v v₀ hv (hv₀ m), h i v₀ hv₀]
 
+/-! ### Deciding settlement (`M7-PATIENT-CLOCK`, step 2b)
+
+`settled_iff_agree` reduces settlement to *agreement* among plausible worlds and
+`exists_settled_stage` guarantees agreement eventually holds.  What remains is to decide
+agreement.  Two facts make it decidable, and both are exactly what the `ℝ`-valued
+`History` hides:
+
+* against a **rational** market every coefficient is rational (`EF.denoteRat`), so values
+  compare exactly.  Over an arbitrary `History` this is equality of reals — undecidable,
+  which is why no clock exists at that generality.
+* an affine combination and a deductive stage each mention finitely many atoms, so world
+  quantification collapses onto the finite type `BoolPCWorld.FiniteWorld`.
+
+This mirrors the maturity checker (`unitMaturityCheckAtFuel`) below. -/
+
+/-- Executable rational value of an affine combination under a rational price table and a
+rational payout table. -/
+def AffineCombination.valueRat (A : AffineCombination) (Q : ℕ → Sentence → ℚ)
+    (w : Sentence → ℚ) : ℚ :=
+  A.const.denoteRat Q + (A.terms.map (fun p => p.1.denoteRat Q * w p.2)).sum
+
+private theorem AffineCombination.termsSum_eq_ratCast
+    (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
+    (wR : Sentence → ℝ) (wQ : Sentence → ℚ) (hw : ∀ φ, wR φ = (wQ φ : ℝ)) :
+    ∀ terms : List (EF × Sentence),
+      (terms.map (fun p => p.1.denote P * wR p.2)).sum
+        = ((terms.map (fun p => p.1.denoteRat Q * wQ p.2)).sum : ℝ)
+  | [] => by simp
+  | p :: rest => by
+      simp only [List.map_cons, List.sum_cons, Rat.cast_add, Rat.cast_mul]
+      rw [EF.denote_eq_ratCast p.1 P Q hQ, hw p.2,
+        AffineCombination.termsSum_eq_ratCast P Q hQ wR wQ hw rest]
+
+/-- Rational affine value agrees exactly with the real semantics of an exact rational
+market whenever the payout tables agree pointwise. -/
+theorem AffineCombination.value_eq_ratCast (A : AffineCombination)
+    (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
+    (wR : Sentence → ℝ) (wQ : Sentence → ℚ) (hw : ∀ φ, wR φ = (wQ φ : ℝ)) :
+    A.value P wR = (A.valueRat Q wQ : ℝ) := by
+  unfold AffineCombination.value AffineCombination.valueRat
+  rw [Rat.cast_add, EF.denote_eq_ratCast A.const P Q hQ,
+    AffineCombination.termsSum_eq_ratCast P Q hQ wR wQ hw A.terms]
+
+private theorem AffineCombination.termsSum_congr (Q : ℕ → Sentence → ℚ)
+    (w w' : Sentence → ℚ) :
+    ∀ terms : List (EF × Sentence), (∀ p ∈ terms, w p.2 = w' p.2) →
+      (terms.map (fun p => p.1.denoteRat Q * w p.2)).sum
+        = (terms.map (fun p => p.1.denoteRat Q * w' p.2)).sum
+  | [], _ => rfl
+  | p :: rest, h => by
+      simp only [List.map_cons, List.sum_cons]
+      rw [h p (by simp),
+        AffineCombination.termsSum_congr Q w w' rest
+          (fun q hq => h q (List.mem_cons_of_mem _ hq))]
+
+/-- The rational value only inspects the payouts of the combination's own sentences. -/
+theorem AffineCombination.valueRat_congr (A : AffineCombination) (Q : ℕ → Sentence → ℚ)
+    (w w' : Sentence → ℚ) (h : ∀ p ∈ A.terms, w p.2 = w' p.2) :
+    A.valueRat Q w = A.valueRat Q w' := by
+  unfold AffineCombination.valueRat
+  rw [AffineCombination.termsSum_congr Q w w' A.terms h]
+
+/-- Support bound covering every sentence the stage-`m` settlement test inspects: the
+stage's own sentences and the combination's traded sentences.  Sums rather than maxima
+keep the membership proofs elementary; only the upper bound matters. -/
+def AffineCombination.settlementAtomLimit (A : AffineCombination)
+    (stage : Finset Sentence) : ℕ :=
+  stage.sum BoolPCWorld.atomBound +
+    (A.terms.map (fun p => BoolPCWorld.atomBound p.2)).sum
+
+theorem AffineCombination.settlementAtomLimit_stage_bounded (A : AffineCombination)
+    (stage : Finset Sentence) : ∀ φ ∈ stage,
+      BoolPCWorld.atomBound φ ≤ A.settlementAtomLimit stage := by
+  intro φ hφ
+  have hsingle : BoolPCWorld.atomBound φ ≤ stage.sum BoolPCWorld.atomBound :=
+    Finset.single_le_sum (fun ψ _ => Nat.zero_le (BoolPCWorld.atomBound ψ)) hφ
+  unfold AffineCombination.settlementAtomLimit
+  omega
+
+theorem AffineCombination.settlementAtomLimit_terms_bounded (A : AffineCombination)
+    (stage : Finset Sentence) : ∀ p ∈ A.terms,
+      BoolPCWorld.atomBound p.2 ≤ A.settlementAtomLimit stage := by
+  intro p hp
+  have hlocal : BoolPCWorld.atomBound p.2 ≤
+      (A.terms.map (fun q => BoolPCWorld.atomBound q.2)).sum :=
+    List.single_le_sum (fun x _ => Nat.zero_le x) _ (List.mem_map.mpr ⟨p, hp, rfl⟩)
+  unfold AffineCombination.settlementAtomLimit
+  omega
+
+/-- Restricting a plausible world to the settlement support keeps it plausible. -/
+private theorem AffineCombination.restrict_plausible (A : AffineCombination)
+    (stage : Finset Sentence) (v : PCWorld) (hv : v.ConsistentWith stage) :
+    ∀ φ ∈ stage, BoolPCWorld.eval
+      (BoolPCWorld.FiniteWorld.restrict (BoolPCWorld.ofPCWorld v)
+        (A.settlementAtomLimit stage)).toBoolPCWorld φ = true := by
+  intro φ hφ
+  rw [BoolPCWorld.eval_toBoolPCWorld_restrict _ _ φ
+    (A.settlementAtomLimit_stage_bounded stage φ hφ)]
+  have heval := BoolPCWorld.eval_eq_true_iff_holds (BoolPCWorld.ofPCWorld v) φ
+  rw [BoolPCWorld.ofPCWorld_toPCWorld] at heval
+  exact heval.mpr (hv φ hφ)
+
+/-- **The settlement test is decidable, on a rational market.**  If every pair of
+*finite* plausible worlds assigns `A` the same rational value, then every pair of genuine
+plausible worlds assigns it the same real value.
+
+The finite quantifier on the left is over `BoolPCWorld.FiniteWorld B = Fin B → Bool`, a
+`Fintype` with decidable rational equality — so the left side is a `decide`-able Boolean
+test.  This is the step that needs `P` rational, and it is the whole reason
+`PatientSettlementClock` is realizable at `liaHistory` but not at an arbitrary
+`History`. -/
+theorem AffineCombination.agree_of_finiteWorlds_agree (A : AffineCombination)
+    (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
+    (stage : Finset Sentence)
+    (h : ∀ u u' : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage),
+      (∀ φ ∈ stage, BoolPCWorld.eval u.toBoolPCWorld φ = true) →
+      (∀ φ ∈ stage, BoolPCWorld.eval u'.toBoolPCWorld φ = true) →
+        A.valueRat Q u.payoutRat = A.valueRat Q u'.payoutRat)
+    (v w : PCWorld) (hv : v.ConsistentWith stage) (hw : w.ConsistentWith stage) :
+    A.value P v.payout = A.value P w.payout := by
+  classical
+  have hrestrict (x : PCWorld) :
+      A.valueRat Q
+          (BoolPCWorld.FiniteWorld.restrict (BoolPCWorld.ofPCWorld x)
+            (A.settlementAtomLimit stage)).payoutRat
+        = A.valueRat Q x.payoutRat :=
+    A.valueRat_congr Q _ _ (fun p hp =>
+      BoolPCWorld.FiniteWorld.payoutRat_restrict_ofPCWorld x _ p.2
+        (A.settlementAtomLimit_terms_bounded stage p hp))
+  rw [A.value_eq_ratCast P Q hQ v.payout v.payoutRat (PCWorld.payout_eq_ratCast v),
+    A.value_eq_ratCast P Q hQ w.payout w.payoutRat (PCWorld.payout_eq_ratCast w),
+    ← hrestrict v, ← hrestrict w]
+  exact congrArg _ (h _ _ (A.restrict_plausible stage v hv) (A.restrict_plausible stage w hw))
+
 theorem AffineCombination.DeterminedViaTheory.unique
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {x y : ℕ → ℝ}
@@ -2925,6 +3059,9 @@ end AffineCombination
 #print axioms AffineCombination.exists_valueSet
 #print axioms AffineCombination.DeterminedViaTheory.exists_settled_stage
 #print axioms AffineCombination.DeterminedViaTheory.settled_iff_agree
+#print axioms AffineCombination.value_eq_ratCast
+#print axioms AffineCombination.valueRat_congr
+#print axioms AffineCombination.agree_of_finiteWorlds_agree
 #print axioms EF.denoteRatWithAtFuel_sound
 #print axioms EF.denoteRatWithAtFuel_complete
 #print axioms EF.exists_fuel_denoteRatWithAtFuel
