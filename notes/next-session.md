@@ -1,21 +1,89 @@
 # Logical Induction working plan — M7 active
 
-## ▶ START HERE — closing out M7 (handoff 2026-07-15)
+## ▶ START HERE — closing out M7 (handoff 2026-07-16)
 
-Current frontier: the core M7 construction is complete. `Construction/LIACompiler.lean`
-now proves `Computable₂ (liaEncodedQuoteNatAtFuel process)`, constructs
-`liaBoundedEvaluatorCompiler`, and proves the paper-facing `LIA_is_logical_inductor` and
-`exists_logical_inductor`; direct Lean checking is green and all three public declarations
-expose only `propext`, `Classical.choice`, and `Quot.sound`. Active work has moved to
-`Construction/M7Witnesses.lean`: construct the fifteen conclusion-free post-M5 witnesses,
-instantiate the advertised property corollaries, and then run the paper/read-through/audit
-gates below.
+Core M7 is complete and unconditional: `LIA_is_logical_inductor` and
+`exists_logical_inductor` are proved, axiom-clean, and depend on **none** of the fifteen
+witnesses. Repo has **zero `sorry`** and full build is green (2,680 jobs). Active work is
+`Construction/M7Witnesses.lean` + the property-tail witnesses.
 
-**Witnesses done (2 of 15, both axiom-clean, no `sorry`):** `M7-HIST-EVALN`
-(`codeEvalnNat_polyFueled` — universal poly-clock bounded `Code.evaln` simulator, all 8
-constructors; `boundedEvalnCompiler` hub) and `M7-CE-REPETITION`
-(`EfficientRepeatedEnumeration.ofCE` — general c.e. source via the simulator). Both in
-`M7Witnesses.lean`.
+**Witnesses done (2 of 15, axiom-clean, no `sorry`):** `M7-HIST-EVALN`
+(`codeEvalnNat_polyFueled` — universal poly-clock bounded `Code.evaln` simulator) and
+`M7-CE-REPETITION` (`EfficientRepeatedEnumeration.ofCE`). Both in `M7Witnesses.lean`.
+
+**`M7-PATIENT-CLOCK`: done except one named obligation.** `PatientSettlementClock` is
+**constructed** (`PatientSettlementClock.ofChecker`) — all six fields discharged, no
+`sorry`, axiom-clean. Every epistemic question is settled and proved:
+- settlement *occurs* at a finite stage (`exists_settled_stage` — the paper never argues
+  this; `eventually_close` gives only approximate determination and is too weak);
+- the test needs **no** `truth` oracle (`settled_iff_agree`);
+- the test is **decidable** on a rational market, both directions
+  (`agree_of_finiteWorlds_agree`, `finiteWorlds_agree_of_agree`);
+- the deadline is handled despite `deferralEnvelope` **not** being poly-computable
+  (`DeferralFunction` gives fuel poly in `f n`, not `n`) via the sound under-approximation
+  `deadlinePassed`.
+
+### ⚠ THE ONE THING LEFT ON `M7-PATIENT-CLOCK` — and it is shared infrastructure
+
+Inhabit `SettlementChecker`: a `Nat.Partrec.Code` recognizing the decidable
+`AffineCombination.SettlementTest`. No efficiency is required of it (the dovetail absorbs
+the exponential), and it carries no semantics — soundness/completeness are already
+theorems (`settlementTest_iff_settled`).
+
+**Unretired risk — read before starting.** `SettlementTest` quantifies over
+`BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage)` = `Fin B → Bool`, where `B` is
+**computed from the input**. That is a *dependent family*, and Lean's `Computable`
+machinery wants `Primcodable` domains: a `decide` over a `Fintype` whose type depends on
+the argument does not decompose through the combinators. **No `Computable`/`Primrec` proof
+over a `FiniteWorld` quantifier exists anywhere in this repo** — verified by grep
+2026-07-16. The pre-existing `unitMaturityCheckAtFuel` has the identical shape and was
+never compiled either, because `HistoricalVerifiedMaturitySchedule` was never constructed.
+
+Expected fix (~1–2 days, known shape, not yet attempted): restate the test
+non-dependently — enumerate `List Bool` of length `B` (`allBitLists B : List (List Bool)`,
+`worldOfBits`), express the check as a `List.all`, and bridge back to the `Fin B → Bool`
+form. Then the `Computable` plumbing through `MarketComputation.quoteAtFuel`,
+`DeductiveProcessComputation.stageAtFuel` and `PolySequence`.
+
+**Do this before another checker-style witness.** The same dependent-type wall blocks the
+maturity checker, hence `M7-FEEDBACK-EMIT`/`M7-FEEDBACK-TRUTH`. Retiring it once unblocks
+all of them; skipping it means hitting it later on a second witness having built on a
+factoring that may not compile.
+
+### Reusable infrastructure landed 2026-07-16 (do not rebuild)
+
+- **`polyFueled_dovetailFound`** — the paper's `DefinitelySettled` bullet, generically: for
+  an *arbitrary* code, "accepts `⟨i,j⟩` within `n` steps for some `j ≤ n`" has a polynomial
+  Boolean table. `PatientSettlementClock.active_codes` and
+  `HistoricalVerifiedMaturitySchedule.check_poly` have the **same shape**
+  (`check : ℕ → ℕ → Bool` + a `PolyFueled` table) and neither had ever been built — this
+  serves both. Composes `codeEvalnNat_polyFueled` with `polyFueled_boundedAny`.
+- **`polyFueled_deadlinePassed`** + `deadlineRun`/`deadlineStep`/`deadlinePassed_{sound,
+  mono,eventually}` — the deadline under-approximation.
+- **`polyFueled_selectConst`**, `acceptsWithin_mono`, `dovetailFound_mono`.
+
+### Gates outstanding (not optional)
+
+1. **Anson's statement read-through** is owed on ~10 new statements from 2026-07-16, and
+   `SettlementTest` is the priority: it is now the trust surface for the whole witness. If
+   it is the *wrong predicate*, `settlementTest_iff_settled` proves a true thing about the
+   wrong object and **compiling will not tell you**. Its two directions are where to look.
+2. **`M7-ERRATA-AUDIT`** (fresh context, must not be the session that wrote the rows). The
+   three "minor — TeX slip" errata rows are ⚠ **unaudited** — classified from the TeX
+   surface without working their appendix proofs, which is exactly how `thm:ifp` was
+   recorded before it turned out to be a substantive gap. Cheap; high stakes (an erratum
+   claims the *paper* is wrong).
+3. **`thm:ifp` follow-ups** — the counterexample is argued, not formalized; whether
+   `thm:ifp` is *false* for general markets is **open, not claimed**. See PROGRESS.md
+   "Paper errata".
+
+### Process note (2026-07-16) — CLAUDE.md rule 2b
+
+Three duplicated proofs were committed and reverted in one session (`pair_lt_sq`; the
+`evaln` output bound, already present as `codeEvaln_result_le` + `codeEvalBound_poly`;
+`DeductiveProcess.mono_le`). Only one was caught by the compiler. **Grep for the fact —
+not the name — before writing the first tactic**, and search `Construction/` too: it is
+downstream and invisible from an upstream file.
 
 ### ▶ Witness triage (2026-07-15) — read before grinding the remaining 13
 
@@ -24,6 +92,31 @@ The 13 remaining witnesses are **not** uniform in value. The core existence theo
 them; the witnesses only make the M3–M5 **property tail** non-vacuous. Sorted by whether
 realizability is genuinely in doubt (construct = resolves a real question) vs known-realizable
 (construct = labor that at most catches an encoding bug):
+
+> **CORRECTIONS TO THIS TRIAGE (2026-07-16) — read before using it.**
+> 1. **`M7-QUOTE-AFFINE` is misfiled.** It sits in Tier 1 ("construct"), but its honest
+>    discharge needs Gödel encoding + representability of `LIA`'s own computation — i.e.
+>    `M7-COMP-SYNTAX`, which this triage files in **Tier 3** ("disclose"). Tier 1 depends
+>    on Tier 3, so the "Recommended strong-but-honest close" below is internally
+>    inconsistent as written. It *is* inhabitable in general (the paper's argument is
+>    sound and not circular: `Θ = PA` does not depend on the market, `LIA`-over-`PA` is a
+>    fixed computable algorithm, the diagonal lemma applies) and Foundation carries the
+>    machinery — `codeOfPartrec'` (`FirstOrder/Arithmetic/R0/Representation.lean`) bridges
+>    **Mathlib's** `Nat.Partrec'` to first-order semisentences, plus `Bootstrapping/
+>    FixedPoint.lean`. So it is weeks of real integration, not "disclose", and the
+>    Tier-3 estimate of "re-proving textbook facts with Mathlib gaps" was wrong.
+> 2. **`M7-PREFIX-PATCH` is too pessimistic here.** It is *inhabitable* for `LIA`: each
+>    day's quote table is a finite `RationalBeliefState` entry list, so the freeze is a
+>    hardcodable finite lookup with constant-size tokens. What it "falsifies" is real but
+>    different — the **paper's `thm:ifp` proof is wrong** (see PROGRESS.md "Paper errata"),
+>    not our premise. Med, and now partly disclosure rather than construction.
+> 3. **`M7-PATIENT-CLOCK` is largely done** (see START HERE). Realizability confirmed: it
+>    smuggles no unrealizable settlement assumption — but the structure *is* uninhabitable
+>    at its stated generality, over an `ℝ`-valued `History`, because the test is equality
+>    of reals. That is **our** `dd:fuel`/`History` type-`(c)`, not a paper defect.
+> 4. **Tier 2 is cheaper than stated.** `polyFueled_dovetailFound` now supplies the
+>    `check`-plus-`PolyFueled`-table shape that `HistoricalVerifiedMaturitySchedule` needs
+>    — but see the dependent-type wall in START HERE, which is the real cost there.
 
 **Tier 1 — realizability genuinely uncertain → construct (real epistemic value):**
 - `M7-PREFIX-PATCH` — `EfficientPrefixPatch.preserves_ec` may be *false* under the weak
