@@ -841,6 +841,156 @@ theorem polyFueled_dovetailFound (c : Nat.Partrec.Code) :
   refine ⟨_, (ha.comp (PolyFueled.id.pair PolyFueled.right)).of_eq (fun z => ?_)⟩
   simp [dovetailFound, Nat.unpair_pair]
 
+/-- Select between two constants on a zero test. -/
+private theorem polyFueled_selectConst {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
+    (hf : PolyFueled cf f) (A B : ℕ) :
+    ∃ c, PolyFueled c (fun z => if f z = 0 then A else B) := by
+  refine ⟨_, (ifzSel_polyFueled.comp
+    (((PolyFueled.const A).pair (PolyFueled.const B)).pair hf)).of_eq (fun z => ?_)⟩
+  simp only [ifzSelFn, Nat.unpair_pair]
+
+/-! ### The deadline under-approximation
+
+`PatientSettlementClock` must keep component `i` active through `deferralEnvelope f i`, and
+may only go inactive once that deadline has *provably* passed.  But `DeferralFunction`
+guarantees only fuel polynomial in `f n` — **not** in `n` (the paper's "time polynomial in
+`f(n)`", deliberately weaker since `f` may grow fast).  So `deferralEnvelope f i` is not
+polynomial-time computable and the clock cannot decide the deadline exactly.
+
+It does not need to.  `active_through_envelope` only requires activity to be *true* before
+the deadline, so a **sound under-approximation** suffices: run `f`'s code on each `k ≤ i`
+with budget `n` and certify only when every one halts with `f k < n`.  That is sound
+(a halting run returns the true `f k`), monotone in `n` (`evaln_mono`), and eventually
+fires (each `f k`, `k ≤ i`, is a fixed finite number). -/
+
+/-- `f`'s clocked run on `k` with budget `n`, normalized: `0` if it has not halted, else
+`f k + 1`. -/
+def deadlineRun (f : DeferralFunction) (n k : ℕ) : ℕ :=
+  codeEvalnNat f.code (Nat.pair n k)
+
+/-- A halting clocked run of a deferral code returns exactly `f k`. -/
+theorem deadlineRun_eq (f : DeferralFunction) {n k : ℕ} (h : 0 < deadlineRun f n k) :
+    deadlineRun f n k = f.f k + 1 := by
+  obtain ⟨a, kk, hspec⟩ := f.fueled
+  cases hev : Nat.Partrec.Code.evaln n f.code k with
+  | none => simp [deadlineRun, codeEvalnNat, hev] at h
+  | some out =>
+      have h1 : out ∈ Nat.Partrec.Code.eval f.code k :=
+        Nat.Partrec.Code.evaln_sound hev
+      have h2 : f.f k ∈ Nat.Partrec.Code.eval f.code k :=
+        Nat.Partrec.Code.evaln_sound (hspec k)
+      simp [deadlineRun, codeEvalnNat, hev, Part.mem_unique h1 h2]
+
+/-- A halting clocked run is unchanged by a larger budget. -/
+theorem deadlineRun_mono (f : DeferralFunction) {n m k : ℕ} (hm : n ≤ m)
+    (h : 0 < deadlineRun f n k) : deadlineRun f m k = deadlineRun f n k := by
+  cases hev : Nat.Partrec.Code.evaln n f.code k with
+  | none => simp [deadlineRun, codeEvalnNat, hev] at h
+  | some out =>
+      have hmono : Nat.Partrec.Code.evaln m f.code k = some out :=
+        Nat.Partrec.Code.evaln_mono hm hev
+      simp [deadlineRun, codeEvalnNat, hev, hmono]
+
+/-- The per-`k` failure test of the deadline check, indexed as `⟨⟨i,n⟩,k⟩`. -/
+def deadlineStep (f : DeferralFunction) (z k : ℕ) : Bool :=
+  decide ((1 - deadlineRun f z.unpair.2 k)
+    + (deadlineRun f z.unpair.2 k - z.unpair.2) ≠ 0)
+
+/-- Every `k ≤ i` has been certified `f k < n` within budget `n`. -/
+def deadlinePassed (f : DeferralFunction) (i n : ℕ) : Bool :=
+  boundedNone (deadlineStep f) (Nat.pair i n) i
+
+theorem deadlinePassed_eq_true_iff (f : DeferralFunction) (i n : ℕ) :
+    deadlinePassed f i n = true ↔
+      ∀ k ≤ i, 0 < deadlineRun f n k ∧ deadlineRun f n k ≤ n := by
+  rw [deadlinePassed, boundedNone_eq_true_iff]
+  simp only [deadlineStep, Nat.unpair_pair, decide_eq_false_iff_not, not_not]
+  constructor
+  · intro h k hk; have := h k hk; omega
+  · intro h k hk; have := h k hk; omega
+
+theorem deferralEnvelope_lt_of_forall (f : DeferralFunction) (i n : ℕ)
+    (h : ∀ k ≤ i, f.f k < n) : deferralEnvelope f i < n := by
+  induction i with
+  | zero => simpa [deferralEnvelope] using h 0 le_rfl
+  | succ i ih =>
+      simp only [deferralEnvelope, max_lt_iff]
+      exact ⟨ih (fun k hk => h k (by omega)), h (i + 1) le_rfl⟩
+
+/-- **Soundness**: certification implies the deadline really has passed. -/
+theorem deadlinePassed_sound (f : DeferralFunction) {i n : ℕ}
+    (h : deadlinePassed f i n = true) : deferralEnvelope f i < n := by
+  refine deferralEnvelope_lt_of_forall f i n (fun k hk => ?_)
+  obtain ⟨hpos, hle⟩ := (deadlinePassed_eq_true_iff f i n).1 h k hk
+  rw [deadlineRun_eq f hpos] at hle
+  omega
+
+/-- **Monotone**: a larger budget preserves certification. -/
+theorem deadlinePassed_mono (f : DeferralFunction) {i n : ℕ}
+    (h : deadlinePassed f i n = true) : deadlinePassed f i (n + 1) = true := by
+  rw [deadlinePassed_eq_true_iff] at h ⊢
+  intro k hk
+  obtain ⟨hpos, hle⟩ := h k hk
+  rw [deadlineRun_mono f (Nat.le_succ n) hpos]
+  exact ⟨hpos, by omega⟩
+
+/-- **Eventual completion**: every component's deadline is eventually certified. -/
+theorem deadlinePassed_eventually (f : DeferralFunction) (i : ℕ) :
+    ∃ N, ∀ n, N ≤ n → deadlinePassed f i n = true := by
+  obtain ⟨a, kk, hspec⟩ := f.fueled
+  refine ⟨(Finset.range (i + 1)).sup
+    (fun k => max (a * (f.f k + 1) ^ kk + a) (f.f k + 1)), fun n hn => ?_⟩
+  rw [deadlinePassed_eq_true_iff]
+  intro k hk
+  have hmem : k ∈ Finset.range (i + 1) := Finset.mem_range.mpr (by omega)
+  have hsup := Finset.le_sup (f := fun k => max (a * (f.f k + 1) ^ kk + a) (f.f k + 1)) hmem
+  have hmono : Nat.Partrec.Code.evaln n f.code k = some (f.f k) :=
+    Nat.Partrec.Code.evaln_mono (le_trans (le_trans (le_max_left _ _) hsup) hn) (hspec k)
+  have hrun : deadlineRun f n k = f.f k + 1 := by
+    simp [deadlineRun, codeEvalnNat, hmono]
+  rw [hrun]
+  have : f.f k + 1 ≤ n := le_trans (le_trans (le_max_right _ _) hsup) hn
+  omega
+
+/-- The deadline under-approximation is a polynomial Boolean table. -/
+theorem polyFueled_deadlinePassed (f : DeferralFunction) :
+    ∃ prog, PolyFueled prog
+      (fun z => if deadlinePassed f z.unpair.1 z.unpair.2 then 1 else 0) := by
+  obtain ⟨sim, hsim⟩ := codeEvalnNat_polyFueled f.code
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  -- Inner step at `w = ⟨⟨i,n⟩,k⟩`: run `f` on `k` with budget `n`, then test `1 ≤ r ≤ n`.
+  have hstep : ∃ p, PolyFueled p (fun w =>
+      if deadlineStep f w.unpair.1 w.unpair.2 then 1 else 0) := by
+    obtain ⟨cr, hr⟩ : ∃ p, PolyFueled p (fun w =>
+        deadlineRun f w.unpair.1.unpair.2 w.unpair.2) :=
+      ⟨_, (hsim.comp ((PolyFueled.right.comp PolyFueled.left).pair
+        PolyFueled.right)).of_eq (fun w => by simp [deadlineRun])⟩
+    obtain ⟨c1, h1⟩ : ∃ p, PolyFueled p (fun w =>
+        1 - deadlineRun f w.unpair.1.unpair.2 w.unpair.2) :=
+      ⟨_, (subc_polyFueled.comp ((PolyFueled.const 1).pair hr)).of_eq (fun w => by simp)⟩
+    obtain ⟨c2, h2⟩ : ∃ p, PolyFueled p (fun w =>
+        deadlineRun f w.unpair.1.unpair.2 w.unpair.2 - w.unpair.1.unpair.2) :=
+      ⟨_, (subc_polyFueled.comp
+        (hr.pair (PolyFueled.right.comp PolyFueled.left))).of_eq (fun w => by simp)⟩
+    obtain ⟨cgap, hgap⟩ : ∃ p, PolyFueled p (fun w =>
+        (1 - deadlineRun f w.unpair.1.unpair.2 w.unpair.2)
+          + (deadlineRun f w.unpair.1.unpair.2 w.unpair.2 - w.unpair.1.unpair.2)) :=
+      ⟨_, (had.comp (h1.pair h2)).of_eq (fun w => by simp)⟩
+    obtain ⟨p, hp⟩ := polyFueled_selectConst hgap 0 1
+    refine ⟨p, hp.of_eq (fun w => ?_)⟩
+    by_cases hz : (1 - deadlineRun f w.unpair.1.unpair.2 w.unpair.2)
+        + (deadlineRun f w.unpair.1.unpair.2 w.unpair.2 - w.unpair.1.unpair.2) = 0
+    · have hf : deadlineStep f w.unpair.1 w.unpair.2 = false :=
+        decide_eq_false (not_not_intro hz)
+      rw [hf, if_pos hz]
+      simp
+    · have ht : deadlineStep f w.unpair.1 w.unpair.2 = true := decide_eq_true hz
+      rw [ht, if_neg hz]
+      simp
+  obtain ⟨cn, hn⟩ := polyFueled_boundedNone (deadlineStep f) hstep
+  refine ⟨_, (hn.comp (PolyFueled.id.pair PolyFueled.left)).of_eq (fun z => ?_)⟩
+  simp [deadlinePassed, Nat.unpair_pair]
+
 end
 
 /-! ## Efficient repeated enumeration -/
@@ -975,6 +1125,10 @@ noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
     exact hfuel
 
 #print axioms polyFueled_dovetailFound
+#print axioms polyFueled_deadlinePassed
+#print axioms deadlinePassed_sound
+#print axioms deadlinePassed_eventually
+#print axioms deadlinePassed_mono
 #print axioms dovetailFound_eq_true_iff
 #print axioms triangularRepeat_codes
 #print axioms triangularRepeat_repeats
