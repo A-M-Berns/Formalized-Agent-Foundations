@@ -1035,6 +1035,67 @@ theorem AffineCombination.agree_of_finiteWorlds_agree (A : AffineCombination)
     ← hrestrict v, ← hrestrict w]
   exact congrArg _ (h _ _ (A.restrict_plausible stage v hv) (A.restrict_plausible stage w hw))
 
+/-- The converse of `agree_of_finiteWorlds_agree`: genuine agreement restricts to finite
+agreement.  Every plausible *finite* world extends to a genuine plausible `PCWorld` with
+the same payouts, so the finite test cannot be stricter than the real condition.  This is
+what makes the concrete test **complete**, not merely sound. -/
+theorem AffineCombination.finiteWorlds_agree_of_agree (A : AffineCombination)
+    (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
+    (stage : Finset Sentence)
+    (h : ∀ v w : PCWorld, v.ConsistentWith stage → w.ConsistentWith stage →
+      A.value P v.payout = A.value P w.payout) :
+    ∀ u u' : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage),
+      (∀ φ ∈ stage, BoolPCWorld.eval u.toBoolPCWorld φ = true) →
+      (∀ φ ∈ stage, BoolPCWorld.eval u'.toBoolPCWorld φ = true) →
+        A.valueRat Q u.payoutRat = A.valueRat Q u'.payoutRat := by
+  classical
+  intro u u' hu hu'
+  have hcons (x : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage))
+      (hx : ∀ φ ∈ stage, BoolPCWorld.eval x.toBoolPCWorld φ = true) :
+      x.toBoolPCWorld.toPCWorld.ConsistentWith stage :=
+    fun φ hφ => (BoolPCWorld.eval_eq_true_iff_holds x.toBoolPCWorld φ).1 (hx φ hφ)
+  have htransfer (x : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage)) :
+      A.valueRat Q x.payoutRat = A.valueRat Q x.toBoolPCWorld.toPCWorld.payoutRat :=
+    A.valueRat_congr Q _ _ (fun p _ => BoolPCWorld.FiniteWorld.payoutRat_eq_toPCWorld x p.2)
+  have hreal := h _ _ (hcons u hu) (hcons u' hu')
+  rw [A.value_eq_ratCast P Q hQ _ _ (PCWorld.payout_eq_ratCast _),
+    A.value_eq_ratCast P Q hQ _ _ (PCWorld.payout_eq_ratCast _)] at hreal
+  rw [htransfer u, htransfer u']
+  exact_mod_cast hreal
+
+/-- **The concrete settlement test.**  Decidable: a `Fintype` quantifier over
+`BoolPCWorld.FiniteWorld B = Fin B → Bool` with exact rational equality.  This is the
+object the paper's `settled` Turing machine (`app:prandaff`) decides — stated here so that
+a checker's correctness is a *theorem* rather than an assumption. -/
+def AffineCombination.SettlementTest (A : AffineCombination) (Q : ℕ → Sentence → ℚ)
+    (stage : Finset Sentence) : Prop :=
+  ∀ u u' : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage),
+    (∀ φ ∈ stage, BoolPCWorld.eval u.toBoolPCWorld φ = true) →
+    (∀ φ ∈ stage, BoolPCWorld.eval u'.toBoolPCWorld φ = true) →
+      A.valueRat Q u.payoutRat = A.valueRat Q u'.payoutRat
+
+instance AffineCombination.SettlementTest.decidable (A : AffineCombination)
+    (Q : ℕ → Sentence → ℚ) (stage : Finset Sentence) :
+    Decidable (A.SettlementTest Q stage) := by
+  unfold AffineCombination.SettlementTest
+  infer_instance
+
+/-- **The concrete test is exactly settlement.**  Both directions: sound (a passing test
+implies every plausible world values `As i` at `truth i`) and complete (settlement implies
+the test passes).  Consistency (`hworld`) and rationality of the market (`hQ`) are the two
+hypotheses that carry it; neither is dispensable. -/
+theorem AffineCombination.DeterminedViaTheory.settlementTest_iff_settled
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
+    (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (i j : ℕ) :
+    (As i).SettlementTest Q (DP.D j) ↔
+      ∀ v : PCWorld, v.ConsistentWith (DP.D j) → (As i).value P v.payout = truth i := by
+  rw [hdet.settled_iff_agree hworld i j]
+  exact ⟨fun htest v w hv hw =>
+      (As i).agree_of_finiteWorlds_agree P Q hQ (DP.D j) htest v w hv hw,
+    fun hagree => (As i).finiteWorlds_agree_of_agree P Q hQ (DP.D j) hagree⟩
+
 theorem AffineCombination.DeterminedViaTheory.unique
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {x y : ℕ → ℝ}

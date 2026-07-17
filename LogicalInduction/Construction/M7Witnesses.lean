@@ -1014,14 +1014,14 @@ theorem dovetailFound_mono (c : Nat.Partrec.Code) {i n : ℕ}
   obtain ⟨j, hj, ha⟩ := h
   exact ⟨j, by omega, acceptsWithin_mono c (Nat.le_succ n) ha⟩
 
-/-- A code semi-deciding settlement: it accepts `⟨i,j⟩` at some fuel exactly when `As i`
-is settled at stage `j`.
+/-- A code semi-deciding settlement, stated **semantically**.
 
-This is a pure computability obligation.  It contains no market, economic, limit or
-pseudorandomness conclusion — soundness only ever *reads off* settlement, and completeness
-only asks that a genuinely settled pair be eventually accepted.  Realizable exactly when
-the market is rational (see `agree_of_finiteWorlds_agree`); the settlement test is
-exponential, which is precisely what the dovetail exists to absorb. -/
+Prefer `SettlementChecker` and `PatientSettlementClock.ofChecker` below.  This structure's
+`sound` field *states* settlement, so a clock built from it has its `settled_of_inactive`
+transported from an assumption rather than derived — a conclusion-in-hypothesis shape.  It
+is kept because it is the honest general interface (any semi-decider will do, however
+obtained), and because `ofChecker` factors through it; but the concrete route derives both
+fields as theorems.  See `settlementTest_iff_settled`. -/
 structure SettlementSemiDecider (As : ℕ → AffineCombination) (P : History)
     (DP : DeductiveProcess) (truth : ℕ → ℝ) where
   code : Nat.Partrec.Code
@@ -1093,6 +1093,60 @@ noncomputable def PatientSettlementClock.ofSemiDecider
     refine ⟨deadlinePassed_sound f hdp, fun v hv => ?_⟩
     obtain ⟨j, hj, ha⟩ := (dovetailFound_eq_true_iff d.code i n).1 hdf
     exact d.sound i j n ha v (fun φ hφ => hv φ (DP.mono_le hj hφ))
+
+/-! ### The purely computational checker
+
+`SettlementSemiDecider` above assumes a *semantic* property of a code.  The honest route
+assumes only that a code recognizes a **named decidable function** — `SettlementTest`,
+which mentions no market, no `truth`, no worlds beyond the finite enumeration — and then
+*derives* soundness and completeness from `settlementTest_iff_settled`.
+
+What is left assumed is then irreducible plumbing: "this program recognizes this decidable
+predicate."  It carries no semantics at all. -/
+
+/-- A code recognizing the concrete decidable settlement test.
+
+**Purely computational**: the spec relates a program to a decidable predicate on
+`⟨i,j⟩` and nothing else — no history, no `truth`, no market conclusion.  `SettlementTest`
+is exponential (it enumerates `2^B` finite worlds), which is exactly what the dovetail
+absorbs, so no efficiency is asked of `code`.
+
+Inhabiting this is the sole remaining obligation of `M7-PATIENT-CLOCK`: exhibit a
+`Nat.Partrec.Code` for a decidable function, i.e. `Computable` plumbing through
+`MarketComputation.quoteAtFuel`, `DeductiveProcessComputation.stageAtFuel` and
+`PolySequence`. -/
+structure SettlementChecker (As : ℕ → AffineCombination) (Q : ℕ → Sentence → ℚ)
+    (DP : DeductiveProcess) where
+  code : Nat.Partrec.Code
+  spec : ∀ i j, (∃ F, acceptsWithin code F (Nat.pair i j) = true) ↔
+    (As i).SettlementTest Q (DP.D j)
+
+/-- A concrete checker yields a semi-decider: soundness and completeness are **derived**
+from `settlementTest_iff_settled`, not assumed. -/
+def SettlementChecker.toSemiDecider
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
+    {Q : ℕ → Sentence → ℚ} (chk : SettlementChecker As Q DP)
+    (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    SettlementSemiDecider As P DP truth where
+  code := chk.code
+  sound i j F ha :=
+    (hdet.settlementTest_iff_settled Q hQ hworld i j).1 ((chk.spec i j).1 ⟨F, ha⟩)
+  complete i j hsettled :=
+    (chk.spec i j).2 ((hdet.settlementTest_iff_settled Q hQ hworld i j).2 hsettled)
+
+/-- **The patient settlement clock from a concrete checker.**  The only assumption is that
+one program recognizes one decidable predicate; every semantic field of the clock —
+including `settled_of_inactive` — is proved. -/
+noncomputable def PatientSettlementClock.ofChecker
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
+    {Q : ℕ → Sentence → ℚ} (chk : SettlementChecker As Q DP)
+    (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (f : DeferralFunction) : PatientSettlementClock As P DP truth f :=
+  PatientSettlementClock.ofSemiDecider (chk.toSemiDecider hdet hQ hworld) hdet f
 
 end
 
@@ -1230,6 +1284,10 @@ noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
 #print axioms polyFueled_dovetailFound
 #print axioms polyFueled_deadlinePassed
 #print axioms PatientSettlementClock.ofSemiDecider
+#print axioms PatientSettlementClock.ofChecker
+#print axioms SettlementChecker.toSemiDecider
+#print axioms AffineCombination.DeterminedViaTheory.settlementTest_iff_settled
+#print axioms AffineCombination.finiteWorlds_agree_of_agree
 #print axioms acceptsWithin_mono
 #print axioms dovetailFound_mono
 #print axioms deadlinePassed_sound
