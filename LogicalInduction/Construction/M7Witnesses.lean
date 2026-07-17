@@ -1952,6 +1952,113 @@ theorem AffineCombination.exists_fuel_valueRatAtFuel (A : AffineCombination) {P 
     Option.bind_eq_some_iff]
   exact ⟨_, rfl, by simp [AffineCombination.valueRat, EF.denoteRat]⟩
 
+/-- A single fuel serving finitely many payout tables at once. -/
+theorem AffineCombination.exists_fuel_valueRatAtFuel_list (A : AffineCombination)
+    {P : History} (market : MarketComputation P) (ws : List (Sentence → ℚ)) :
+    ∃ fuel, ∀ w ∈ ws, A.valueRatAtFuel market fuel w =
+      some (A.valueRat (fun d φ => market.quote d (Encodable.encode φ)) w) := by
+  induction ws with
+  | nil => exact ⟨0, by simp⟩
+  | cons w rest ih =>
+      obtain ⟨f1, h1⟩ := A.exists_fuel_valueRatAtFuel market w
+      obtain ⟨f2, h2⟩ := ih
+      refine ⟨max f1 f2, fun x hx => ?_⟩
+      rcases List.mem_cons.mp hx with rfl | hx
+      · exact A.valueRatAtFuel_mono market x (le_max_left _ _) h1
+      · exact A.valueRatAtFuel_mono market x (le_max_right _ _) (h2 x hx)
+
+/-! ### The bounded settlement check
+
+The analogue of `unitMaturityCheckAtFuel` (`Calibration.lean`) for settlement, and — unlike
+that one — carried through to a `Primrec`-backed code below.  It is conservative: any
+timeout (of the process program or of any market call) reads as `false`, so a `true` result
+always certifies the real test. -/
+
+/-- The executable bounded settlement check.  Accepts only once the certified process
+program has produced stage `j` and every market call needed by both worlds' values has
+terminated. -/
+def AffineCombination.settlementCheckAtFuel (A : AffineCombination)
+    {P : History} {DP : DeductiveProcess}
+    (market : MarketComputation P) (process : DeductiveProcessComputation DP)
+    (j fuel : ℕ) : Bool :=
+  match process.stageAtFuel fuel j with
+  | none => false
+  | some stage =>
+      (allBitLists (A.settlementAtomLimit stage)).all fun l =>
+        (allBitLists (A.settlementAtomLimit stage)).all fun l' =>
+          !(stageSatBits stage l) || !(stageSatBits stage l') ||
+            (match A.valueRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l),
+                 A.valueRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l') with
+             | some v, some v' => decide (v = v')
+             | _, _ => false)
+
+theorem AffineCombination.settlementCheckAtFuel_sound (A : AffineCombination)
+    {P : History} {DP : DeductiveProcess}
+    (market : MarketComputation P) (process : DeductiveProcessComputation DP)
+    {j fuel : ℕ}
+    (h : A.settlementCheckAtFuel market process j fuel = true) :
+    A.SettlementTestBool (fun d φ => market.quote d (Encodable.encode φ)) (DP.D j) = true := by
+  unfold AffineCombination.settlementCheckAtFuel at h
+  cases hstage : process.stageAtFuel fuel j with
+  | none => rw [hstage] at h; exact absurd h (by simp)
+  | some stage =>
+      rw [hstage] at h
+      obtain rfl : stage = DP.D j := process.stageAtFuel_sound hstage
+      rw [List.all_eq_true] at h
+      rw [AffineCombination.SettlementTestBool, List.all_eq_true]
+      intro l hl
+      rw [List.all_eq_true]
+      intro l' hl'
+      have hb := List.all_eq_true.mp (h l hl) l' hl'
+      -- Both worlds satisfy the stage, or the disjunction is already discharged.
+      cases ha : stageSatBits (DP.D j) l
+      · simp [ha]
+      cases ha' : stageSatBits (DP.D j) l'
+      · simp [ha']
+      rw [ha, ha'] at hb
+      simp only [Bool.not_true, Bool.false_or] at hb ⊢
+      -- The check's match certifies both market evaluations terminated and agreed.
+      cases hv : A.valueRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l) with
+      | none => rw [hv] at hb; exact absurd hb (by simp)
+      | some v =>
+          cases hv' : A.valueRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l') with
+          | none => rw [hv, hv'] at hb; exact absurd hb (by simp)
+          | some v' =>
+              rw [hv, hv'] at hb
+              simp only [decide_eq_true_iff] at hb ⊢
+              rw [← A.valueRatAtFuel_sound market fuel _ hv,
+                ← A.valueRatAtFuel_sound market fuel _ hv']
+              exact hb
+
+theorem AffineCombination.settlementCheckAtFuel_complete (A : AffineCombination)
+    {P : History} {DP : DeductiveProcess}
+    (market : MarketComputation P) (process : DeductiveProcessComputation DP)
+    (j : ℕ)
+    (h : A.SettlementTestBool (fun d φ => market.quote d (Encodable.encode φ))
+      (DP.D j) = true) :
+    ∃ fuel, A.settlementCheckAtFuel market process j fuel = true := by
+  obtain ⟨f0, h0⟩ := process.stageAtFuel_complete j
+  obtain ⟨f1, h1⟩ := A.exists_fuel_valueRatAtFuel_list market
+    ((allBitLists (A.settlementAtomLimit (DP.D j))).map BoolPCWorld.bitsPayoutRat)
+  refine ⟨max f0 f1, ?_⟩
+  unfold AffineCombination.settlementCheckAtFuel
+  rw [process.stageAtFuel_mono (le_max_left _ _) h0]
+  rw [AffineCombination.SettlementTestBool, List.all_eq_true] at h
+  rw [List.all_eq_true]
+  intro l hl
+  rw [List.all_eq_true]
+  intro l' hl'
+  have hb := List.all_eq_true.mp (h l hl) l' hl'
+  -- Both payout tables are in the list the common fuel was chosen for.
+  have hv := A.valueRatAtFuel_mono market (fuel := f1) (fuel' := max f0 f1)
+    (BoolPCWorld.bitsPayoutRat l) (le_max_right f0 f1)
+    (h1 _ (List.mem_map_of_mem hl))
+  have hv' := A.valueRatAtFuel_mono market (fuel := f1) (fuel' := max f0 f1)
+    (BoolPCWorld.bitsPayoutRat l') (le_max_right f0 f1)
+    (h1 _ (List.mem_map_of_mem hl'))
+  rw [hv, hv']
+  exact hb
+
 end SettlementCompile
 
 #print axioms polyFueled_dovetailFound
