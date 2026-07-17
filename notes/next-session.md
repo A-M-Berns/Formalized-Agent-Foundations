@@ -11,9 +11,12 @@ witnesses. Repo has **zero `sorry`** and full build is green (2,680 jobs). Activ
 (`codeEvalnNat_polyFueled` — universal poly-clock bounded `Code.evaln` simulator) and
 `M7-CE-REPETITION` (`EfficientRepeatedEnumeration.ofCE`). Both in `M7Witnesses.lean`.
 
-**`M7-PATIENT-CLOCK`: done except one named obligation.** `PatientSettlementClock` is
-**constructed** (`PatientSettlementClock.ofChecker`) — all six fields discharged, no
-`sorry`, axiom-clean. Every epistemic question is settled and proved:
+**`M7-PATIENT-CLOCK`: one obligation left, and it is now purely mechanical (~2 days — see
+the next section).** `PatientSettlementClock` is **constructed**
+(`PatientSettlementClock.ofChecker`) — all six fields discharged, no `sorry`, axiom-clean.
+Steps 5–11 (2026-07-16) compiled the settlement test down to a `Bool` function that is
+*proved sound and complete* against `SettlementTestBool`; only wrapping it in a
+`Nat.Partrec.Code` remains. Every epistemic question is settled and proved:
 - settlement *occurs* at a finite stage (`exists_settled_stage` — the paper never argues
   this; `eventually_close` gives only approximate determination and is too weak);
 - the test needs **no** `truth` oracle (`settled_iff_agree`);
@@ -23,131 +26,88 @@ witnesses. Repo has **zero `sorry`** and full build is green (2,680 jobs). Activ
   (`DeferralFunction` gives fuel poly in `f n`, not `n`) via the sound under-approximation
   `deadlinePassed`.
 
-### ⚠ THE ONE THING LEFT ON `M7-PATIENT-CLOCK` — and it is shared infrastructure
+### ⚠ WHAT IS LEFT ON `M7-PATIENT-CLOCK` — four items, ~2 days
 
-Inhabit `SettlementChecker` (`M7Witnesses.lean:1124`): a `Nat.Partrec.Code` recognizing
-`AffineCombination.SettlementTestBool`. No efficiency is required of it (the dovetail
-absorbs the exponential), and it carries no semantics — soundness/completeness are already
-theorems (`settlementTest_iff_settled`).
+Inhabit `SettlementChecker` (`M7Witnesses.lean`): a `Nat.Partrec.Code` recognizing
+`AffineCombination.SettlementTestBool`. No efficiency is required (the dovetail absorbs the
+exponential) and it carries no semantics.
 
-**The restatement is done (2026-07-16).** `SettlementTestBool` is now fully
-`Primrec`-decomposable: every quantifier a `List.all`, every connective a `Bool` op, over
-the `Primcodable` types `List Bool`/`Sentence`/`ℚ`. No `Fin B` and no world argument
-survive. `settlementTestBool_iff` bridges it to `SettlementTest`; the `SettlementTest`
-statement and `SettlementChecker.spec` are unchanged. What the earlier handoff called the
-wall was **two** walls, and only the first had been retired:
-- the *quantifier* was dependent (`FiniteWorld B`) — fixed by `allBitLists`/`bitsToFin`;
-- the *body* still built `bitsToFin B l` and fed it to `eval`/`payoutRat`. The real
-  obstruction there is **not** `Fin B`: `BoolPCWorld = ℕ → Bool` is a **function type with
-  no `Primcodable` instance**, so `Primrec (eval v)` cannot even be *stated* for a world
-  `v`. `BoolPCWorld.bitsWorld : List Bool → BoolPCWorld` keeps the world a beta-reduced
-  intermediate so the compiled quantities take `List Bool × Sentence`.
+**The node's real content is finished.** `settlementCheckAtFuel_{sound,complete}` **is** the
+biconditional `spec` asks for:
 
-**Do not use `Finset.toList`** — it is noncomputable (`Multiset.toList` picks a
-representative). Use `stageSort` (`Finset.sort` under `sentenceCodeLE`), which is also the
-canonical order the stock `Finset Sentence` encoding sorts by (`LIACompiler.lean:1949`),
-so `stageSort stage` is the list that stage's own code decodes to — you need exactly that
-for the `Primrec` step.
+```
+check = true                          →  SettlementTestBool Q (DP.D j) = true
+SettlementTestBool Q (DP.D j) = true  →  ∃ fuel, check = true
+```
 
-**Remaining scope: ~1 week, not "plumbing".** Honest build order, each a real step:
-1. ~~`atomBound` `Primrec`~~ — **DONE** (`atomBound_prim`, `M7Witnesses.lean`). Went by
-   `Primrec.nat_strong_rec` over Gödel codes on the `sentencePrimcodable` template
-   (`LIACompiler.lean:203`). **Read it before step 2** — it is the worked example, and the
-   `Option`-encoding (`0` = does not decode, `v+1` = decodes) is load-bearing, not
-   bookkeeping. Compiled first try; the template transfers.
-2. ~~`BoolPCWorld.eval` `Primrec₂`~~ — **DONE** (`evalBits_prim`). The crux is past. The
-   parameterized `nat_strong_rec` worked exactly like step 1; the binary-tag dispatch cost
-   nothing (`Primrec.dom_bool₂` gives every `Bool → Bool → Bool` free, `Bool` being finite).
-   **The one real trap, which will recur:** `PrimrecPred p` is
-   `∃ _ : DecidablePred p, Primrec fun a => decide (p a)` — an existential over the
-   instance. It does **not** unfold to `Primrec`, and no type ascription will make it;
-   `PrimrecPred.decide` and `Primrec.primrecPred` are the two directions. Reach for those
-   immediately rather than fighting defeq.
-3. ~~`stageSatBits` / `allBitLists` `Primrec`~~ — **DONE** (`stageSatBits_prim`,
-   `allBitLists_prim`, `stageSort_prim`). `stageSort` cost nothing:
-   `encode_eq_encode_stageSort` is **`rfl`**, since Mathlib's `encodeMultiset` already
-   sorts by (a defeq copy of) `sentenceCodeLE` — so a stage's code *is* its sorted list's
-   code and `stageSort_prim` is just `decode ∘ encode`. Mathlib has no `Primrec.list_all`
-   or `list_sum`; both are `list_foldr` (see `list_all_eq_foldr`, `list_sum_prim`).
-4. ~~`AffineCombination` `Primcodable` + support bound~~ — **DONE**
-   (`affineCombinationPrimcodable` via `Primcodable.ofEquiv`; `settlementAtomLimit_prim`).
-   **`As` from `PolySequence` is NOT done** and is still owed — `terms_eq` gives a
-   `List.range`-map, mechanical, but note `PolySequence` supplies `PolyFueled` *codes*, not
-   `Primrec` functions, so `As` enters through the fuel layer (step 5), not as a `Primrec`
-   leaf.
-5. ~~The fuel layer + the bounded check~~ — **DONE** (`AffineCombination.valueRatAtFuel`
-   and `settlementCheckAtFuel`, each with `_sound`/`_mono`/`exists_fuel` /
-   `_sound`/`_complete`). Built **on** the existing `EF.denoteRatWithAtFuel`; the EF
-   rational machine was already there and was not rebuilt.
-   `settlementCheckAtFuel_{sound,complete}` is **exactly the biconditional `spec` needs**,
-   modulo turning the `Bool` function into a code.
-6. ⚠ **SCOPING CORRECTION (2026-07-16, established not guessed): what I called "the last
-   step" is TWO steps. It hides a third `EF` recursion.** Read this before starting.
+All six `Primrec` leaves are in hand (`atomBound_prim`, `evalBits_prim`, `stageSatBits_prim`,
+`allBitLists_prim`, `settlementAtomLimit_prim`, `affineCombinationPrimcodable`) and the fuel
+layer (`valueRatAtFuel` + sound/mono/exists-fuel) is proved. What remains is mechanical:
+turn a `Bool` function *already proved correct* into a code. **No mathematics left, no
+realizability question — the witness is inhabitable and we know it.**
 
-   To make `settlementCheckAtFuel` `Computable` you must compute `valueRatAtFuel`, hence
-   `EF.denoteRatWithAtFuel market fuel []`. That is a recursion over `EF` calling the market
-   at its `price` leaves, and **nothing in the repo compiles it**.
+#### 1. `EF.priceQueries` → `Primrec` — ~1 day, the only real work
+Fresh `nat_strong_rec` over `EF` Gödel codes, list-valued. **Template is the `EF.rank`
+compiler** (`efRankNormStep` …, `LIACompiler.lean:1428–1595`, ~170 lines), *not*
+`evalBits_prim`. This is the step nobody costed, including the step-5 estimate.
 
-   **6a. The EF rational machine is exactly the right reuse — and it is `private`.**
-   `efRatCompiledEval_prim {C} [Primcodable C] (V) (hV : Primrec …) : Primrec fun p : C × EF
-   => efRatCompiledEval V p.1 p.2`, with `efRatCompiledEval_eq : efRatCompiledEval V ctx e
-   = e.denoteRat (V ctx)` (`LIACompiler.lean:3727–3741`). Its `C`-parameter is plainly
-   designed for this: take **`C := ℕ` (the fuel)** and
-   `V fuel n φ := (market.quoteAtFuel fuel n φ).getD 0`. Our `ρ` is always `[]`, so
-   `denoteRat` (not `denoteRatWith`) is all we need — the machine fits.
+#### 2. `quoteAtFuel` → `Primrec` — ~30 lines, genuinely missing
+Mirror `processStageAtFuel_prim`: `Nat.Partrec.Code.primrec_evaln` + `Primrec.decode` +
+`Primrec.option_bind`. (Checked: no `Primrec` proof for `quoteAtFuel` exists.)
 
-   **The catch, and it is real:** the machine's `V` is *total*, so it silently substitutes
-   `0` for an **unanswered** query. It cannot distinguish "market timed out" from "the quote
-   really is 0". Using it unguarded **breaks `settlementCheckAtFuel_sound`** — two worlds
-   could spuriously "agree" at 0 and certify a test that is false. So the machine's value is
-   usable only under a readiness guard:
-   `readyAtFuel market fuel e := e.priceQueries.all (fun q => (market.quoteAtFuel fuel q.1 q.2).isSome)`,
-   after which `EF.denoteRatWithAtFuel_complete` (`Criterion.lean:1225`, hypothesis is
-   literally `∀ query ∈ e.priceQueries, …`) gives the `some`. You then need a small
-   congruence lemma: `denoteRat V₁ = denoteRat V₂` when `V₁`/`V₂` agree on `e.priceQueries`.
+#### 3. Expose four `private` decls in `LIACompiler.lean` — minutes
+`efRatCompiledEval`, `efRatCompiledEval_eq`, `efRatCompiledEval_prim` (~3727–3741), and
+`processStageAtFuel_prim` (~1972). **Delete the keyword; do not duplicate.** Rule 2b's
+corollary applies to a private-but-perfect lemma exactly as to a public one — this repo has
+already reverted three duplicate proofs.
 
-   **6b. So `EF.priceQueries` must be compiled** — a fresh `nat_strong_rec` over `EF` codes,
-   list-valued. **Precedent: the `EF.rank` compiler** (`efRankNormStep` …, `LIACompiler.lean:
-   1428–1595`, ~170 lines) — that is the template, not `evalBits_prim`. Budget ~1 day. This
-   is the step nobody costed, including me.
+#### 4. Glue and assemble — ~half a day
+`readyAtFuel` guard + a `denoteRat` congruence lemma → bridge the EF machine to
+`denoteRatWithAtFuel` → `Computable settlementCheckAtFuel` → `Partrec.rfindOpt` +
+`Nat.Partrec.Code.exists_code` → `spec` → `SettlementChecker.ofComputations`.
+`spec` is short: `acceptsWithin c F x = decide (evaln F c x = some 1)`, so the code needs
+`eval ⟨i,j⟩ = 1` exactly when the test passes and divergence otherwise —
+`rfindOpt (fun fuel => if settlementCheckAtFuel … then some 1 else none)`. `→` is
+`settlementCheckAtFuel_sound`, `←` is `_complete`; both are **already proved**.
+`acceptsWithin_mono` already carries the fuel monotonicity.
 
-   **Everything needed is `private`:** `efRatCompiledEval{,_eq,_prim}` and
-   `processStageAtFuel_prim` (`LIACompiler.lean:1972`, already `Primrec₂ fun fuel n =>
-   process.stageAtFuel fuel n`). **Expose them; do not duplicate** — rule 2b's corollary
-   says delete-yours-and-cite-the-original, and a private-but-perfect lemma is the same
-   situation. `quoteAtFuel` has **no** `Primrec` proof; build one mirroring
-   `processStageAtFuel_prim` (`Nat.Partrec.Code.primrec_evaln` + `Primrec.decode` +
-   `option_bind`) — that one genuinely does not exist.
+### ⚠ The one place a shortcut still yields a *wrong witness*
 
-   **6c. Then code + `spec`.** `acceptsWithin c F x = decide (evaln F c x = some 1)`, so the
-   code must have `eval ⟨i,j⟩ = 1` exactly when the test passes and diverge otherwise:
-   `Partrec.rfindOpt (fun fuel => if settlementCheckAtFuel … then some 1 else none)`, then
-   `Nat.Partrec.Code.exists_code`. `→` of `spec` is `settlementCheckAtFuel_sound`, `←` is
-   `_complete` — **both already proved**, so `spec` is short once the code exists.
-   `acceptsWithin_mono` already carries the fuel monotonicity.
+The EF rational machine is the right reuse and its design anticipated this:
+`efRatCompiledEval_prim {C} [Primcodable C] (V) (hV) : Primrec fun p : C × EF => …`, with
+`efRatCompiledEval_eq : efRatCompiledEval V ctx e = e.denoteRat (V ctx)`. Take **`C := ℕ`
+(the fuel)** and `V fuel n φ := (market.quoteAtFuel fuel n φ).getD 0`. Our `ρ` is always
+`[]`, so `denoteRat` (not `denoteRatWith`) is all we need.
 
-   **`As` from `PolySequence` is still owed** — the check is stated for a *fixed*
-   `A : AffineCombination`, but `SettlementChecker` needs the family `As`. Now that
-   `affineCombinationPrimcodable` exists, the cheap honest route is to take **`Primrec As`
-   as an explicit hypothesis** on `ofComputations` (a `PolySequence` is poly-time, hence
-   morally primrec, so this is weaker than `PolySequence`) and **ledger the
-   `PolySequence As → Primrec As` bridge as owed** rather than pretend. Do not silently
-   swap `PolySequence` for `Primrec` without disclosing it — that is a type-`(c)`
-   substitution.
+**But that `V` is total.** It substitutes `0` for an *unanswered* query and cannot
+distinguish "the market timed out" from "the quote really is `0`". Unguarded, it **breaks
+`settlementCheckAtFuel_sound`**: two worlds spuriously "agree" at `0` and certify a test
+that is false. It would compile, the proofs would be kernel-clean, and the witness would be
+wrong — a program accepting when settlement has not happened. This is exactly why item 1 is
+not optional bookkeeping, and why `settlementCheckAtFuel` is conservative (every timeout
+reads `false`). With the guard, `EF.denoteRatWithAtFuel_complete` (`Criterion.lean:1225` —
+its hypothesis is literally `∀ query ∈ e.priceQueries, …`) hands you the `some`.
 
-`SettlementChecker` takes arbitrary `As`/`Q`/`DP`, so the deliverable is a new
-`SettlementChecker.ofComputations` taking `PolySequence As` + `MarketComputation P` +
-`DeductiveProcessComputation DP`.
+### When this lands, the node closes **modulo one disclosed bridge**
 
-**Grep before each step (rule 2b):** `atomBound`, `eval`, `payoutRat`, `allBitLists` had
-**no** `Primrec` proof anywhere as of 2026-07-16 — but the EF machine and `quoteAtFuel`
-value folds **do** exist, and re-deriving them is the standing failure mode here.
+`SettlementChecker` needs the family `As : ℕ → AffineCombination`, but the check is stated
+for a fixed `A`. Now that `affineCombinationPrimcodable` exists, take **`Primrec As` as an
+explicit hypothesis** on `ofComputations` (a `PolySequence` is poly-time, hence morally
+primrec, so this is *weaker* than `PolySequence`) and **ledger `PolySequence As → Primrec As`
+as owed**. Do not silently swap `PolySequence` for `Primrec` without disclosing it — that is
+a type-`(c)` substitution. So the honest ledger row reads *closed modulo one disclosed
+bridge*, **not** unconditional.
 
-**Do this before another checker-style witness.** The same wall blocks the maturity
-checker, hence `M7-FEEDBACK-EMIT`/`M7-FEEDBACK-TRUTH`. Retiring it once unblocks all of
-them; skipping it means hitting it later on a second witness having built on a factoring
-that may not compile. Expect the `Nat.sqrt`/`whnf` GOTCHA below on every step — use
-interactive VS Code, not batch builds.
+**Do this before another checker-style witness.** The same wall blocks the maturity checker
+(`unitMaturityCheckAtFuel` has the identical shape and was never compiled), hence
+`M7-FEEDBACK-EMIT`/`M7-FEEDBACK-TRUTH`. Retiring it once unblocks all of them.
+
+**Grep before each step (rule 2b).** The standing failure mode here is re-deriving what
+exists. The EF machine, `quoteAtFuel` value folds, `denoteRatWithAtFuel_{sound,mono,complete}`,
+`exists_fuel_quoteAtFuel_list` and `stageAtFuel_{sound,mono,complete}` **all already exist**.
+The `Nat.sqrt`/`whnf` GOTCHA below has **not fired once across steps 5–11**, including the
+deep-product `settlementAtomLimit_prim` — do **not** pre-scatter `local irreducible`;
+diagnose first.
 
 ### Reusable infrastructure landed 2026-07-16 (do not rebuild)
 
