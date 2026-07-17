@@ -1836,6 +1836,210 @@ exactly the shape `SettlementChecker.spec` asks for (`∃ F, acceptsWithin code 
 This mirrors `Strategy.valueRatListAtFuel` (`ROI.lean`) exactly: a three-part
 sound/mono/exists-fuel contract over the existing `EF.denoteRatWithAtFuel`. -/
 
+/-! ### The computable bounded EF evaluator (the `readyAtFuel` guard)
+
+`AffineCombination.valueRatAtFuel` folds `EF.denoteRatWithAtFuel` — an `EF` recursion that
+hits the market at each `price` leaf — so the settlement check is computable only once that
+evaluator is.  Rather than compile a fourth `EF`-code recursion, we reuse the total EF
+rational stack machine (`efRatCompiledEval`, `LIACompiler.lean`) with the **total** quote
+table `totalQuote fuel n φ := (market.quoteAtFuel fuel n φ).getD 0`.
+
+That table is total: it reads `0` for an *unanswered* query, so on its own it cannot tell a
+timeout from a genuine `0`.  The `readyAtFuel` guard — every syntactic `priceQueries` cell
+of `e` has terminated — is what makes it sound: behind the guard `denoteRatComp` agrees
+exactly with the partial `denoteRatWithAtFuel` (`denoteRatComp_eq`); without it, two worlds
+could spuriously agree at `0` and certify a false settlement test.  This is why
+`efPriceQueries_prim` (`LIACompiler.lean`) is load-bearing, not bookkeeping. -/
+
+/-- Congruence: `denoteRatWith` depends on the price table only at its own price queries. -/
+theorem EF.denoteRatWith_congr (e : EF) (ρ : List ℚ) (V₁ V₂ : ℕ → Sentence → ℚ)
+    (h : ∀ q ∈ e.priceQueries, V₁ q.1 q.2 = V₂ q.1 q.2) :
+    e.denoteRatWith ρ V₁ = e.denoteRatWith ρ V₂ := by
+  induction e generalizing ρ with
+  | price φ n => exact h (n, φ) (by simp [EF.priceQueries])
+  | const q => rfl
+  | add a b iha ihb =>
+      have ha := iha ρ (fun q hq => h q (by
+        simp only [EF.priceQueries, List.mem_append]; exact Or.inl hq))
+      have hb := ihb ρ (fun q hq => h q (by
+        simp only [EF.priceQueries, List.mem_append]; exact Or.inr hq))
+      simp [EF.denoteRatWith, ha, hb]
+  | mul a b iha ihb =>
+      have ha := iha ρ (fun q hq => h q (by
+        simp only [EF.priceQueries, List.mem_append]; exact Or.inl hq))
+      have hb := ihb ρ (fun q hq => h q (by
+        simp only [EF.priceQueries, List.mem_append]; exact Or.inr hq))
+      simp [EF.denoteRatWith, ha, hb]
+  | max a b iha ihb =>
+      have ha := iha ρ (fun q hq => h q (by
+        simp only [EF.priceQueries, List.mem_append]; exact Or.inl hq))
+      have hb := ihb ρ (fun q hq => h q (by
+        simp only [EF.priceQueries, List.mem_append]; exact Or.inr hq))
+      simp [EF.denoteRatWith, ha, hb]
+  | safeRecip a iha =>
+      have ha := iha ρ (fun q hq => h q (by simpa only [EF.priceQueries] using hq))
+      simp [EF.denoteRatWith, ha]
+  | var i => rfl
+  | letE value body ihvalue ihbody =>
+      have hvalue := ihvalue ρ (fun q hq => h q (by
+        simp only [EF.priceQueries, List.mem_append]; exact Or.inl hq))
+      have hbody := ihbody (value.denoteRatWith ρ V₁ :: ρ)
+        (fun q hq => h q (by simp only [EF.priceQueries, List.mem_append]; exact Or.inr hq))
+      simp only [EF.denoteRatWith]
+      rw [hbody, hvalue]
+
+/-- Success of bounded evaluation implies every price query terminated at that clock. -/
+theorem EF.denoteRatWithAtFuel_isSome_of_some {P : History}
+    (market : MarketComputation P) (fuel : ℕ) (e : EF) (ρ : List ℚ) {q : ℚ}
+    (h : e.denoteRatWithAtFuel market fuel ρ = some q) :
+    ∀ query ∈ e.priceQueries, (market.quoteAtFuel fuel query.1 query.2).isSome := by
+  induction e generalizing ρ q with
+  | price φ n =>
+      intro query hq
+      simp only [EF.priceQueries, List.mem_singleton] at hq
+      subst hq
+      simp only [EF.denoteRatWithAtFuel] at h
+      rw [h]; rfl
+  | const c => intro query hq; simp [EF.priceQueries] at hq
+  | add a b iha ihb =>
+      simp only [EF.denoteRatWithAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qa, ha, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qb, hb, _⟩ := h
+      intro query hq
+      simp only [EF.priceQueries, List.mem_append] at hq
+      rcases hq with hq | hq
+      · exact iha ρ ha query hq
+      · exact ihb ρ hb query hq
+  | mul a b iha ihb =>
+      simp only [EF.denoteRatWithAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qa, ha, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qb, hb, _⟩ := h
+      intro query hq
+      simp only [EF.priceQueries, List.mem_append] at hq
+      rcases hq with hq | hq
+      · exact iha ρ ha query hq
+      · exact ihb ρ hb query hq
+  | max a b iha ihb =>
+      simp only [EF.denoteRatWithAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qa, ha, h⟩ := h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qb, hb, _⟩ := h
+      intro query hq
+      simp only [EF.priceQueries, List.mem_append] at hq
+      rcases hq with hq | hq
+      · exact iha ρ ha query hq
+      · exact ihb ρ hb query hq
+  | safeRecip a iha =>
+      simp only [EF.denoteRatWithAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qa, ha, _⟩ := h
+      intro query hq
+      simp only [EF.priceQueries] at hq
+      exact iha ρ ha query hq
+  | var i => intro query hq; simp [EF.priceQueries] at hq
+  | letE value body ihvalue ihbody =>
+      simp only [EF.denoteRatWithAtFuel, Option.bind_eq_bind] at h
+      rw [Option.bind_eq_some_iff] at h
+      obtain ⟨qv, hv, hbody⟩ := h
+      intro query hq
+      simp only [EF.priceQueries, List.mem_append] at hq
+      rcases hq with hq | hq
+      · exact ihvalue ρ hv query hq
+      · exact ihbody (qv :: ρ) hbody query hq
+
+/-- The total quote table: substitutes `0` for an unanswered query (safe only behind the
+`readyAtFuel` guard). -/
+def MarketComputation.totalQuote {P : History} (market : MarketComputation P) (fuel : ℕ) :
+    ℕ → Sentence → ℚ :=
+  fun n φ => (market.quoteAtFuel fuel n φ).getD 0
+
+/-- Every price query of `e` has terminated at this clock. -/
+def MarketComputation.readyAtFuel {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (e : EF) : Bool :=
+  e.priceQueries.all fun q => (market.quoteAtFuel fuel q.1 q.2).isSome
+
+/-- Computable bounded EF evaluator: the total EF rational machine, gated by readiness. -/
+def MarketComputation.denoteRatComp {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (e : EF) : Option ℚ :=
+  if market.readyAtFuel fuel e then
+    some (efRatCompiledEval market.totalQuote fuel e)
+  else none
+
+/-- **The bridge.**  The gated total machine computes exactly the partial bounded semantics
+(at `ρ = []`). -/
+theorem MarketComputation.denoteRatComp_eq {P : History} (market : MarketComputation P)
+    (fuel : ℕ) (e : EF) :
+    market.denoteRatComp fuel e = e.denoteRatWithAtFuel market fuel [] := by
+  unfold MarketComputation.denoteRatComp
+  by_cases hready : market.readyAtFuel fuel e
+  · rw [if_pos hready]
+    unfold MarketComputation.readyAtFuel at hready
+    rw [List.all_eq_true] at hready
+    have hready' : ∀ query ∈ e.priceQueries,
+        market.quoteAtFuel fuel query.1 query.2 =
+          some (market.quote query.1 (Encodable.encode query.2)) := by
+      intro query hq
+      have hs := hready query hq
+      rw [Option.isSome_iff_exists] at hs
+      obtain ⟨v, hv⟩ := hs
+      rw [hv, market.quoteAtFuel_sound hv]
+    rw [e.denoteRatWithAtFuel_complete market fuel [] hready', efRatCompiledEval_eq]
+    congr 1
+    rw [EF.denoteRat]
+    apply EF.denoteRatWith_congr
+    intro query hq
+    unfold MarketComputation.totalQuote
+    rw [hready' query hq]; rfl
+  · rw [if_neg hready]
+    unfold MarketComputation.readyAtFuel at hready
+    rw [List.all_eq_true] at hready
+    cases hd : e.denoteRatWithAtFuel market fuel [] with
+    | none => rfl
+    | some q =>
+        exact absurd (fun query hq =>
+          e.denoteRatWithAtFuel_isSome_of_some market fuel [] hd query hq) hready
+
+/-- `readyAtFuel` is primitive recursive in `(fuel, e)` for a fixed market. -/
+theorem MarketComputation.readyAtFuel_prim {P : History} (market : MarketComputation P) :
+    Primrec₂ fun fuel e => market.readyAtFuel fuel e := by
+  have hstep : Primrec₂ fun (p : ℕ × EF) (x : (ℕ × Sentence) × Bool) =>
+      (market.quoteAtFuel p.1 x.1.1 x.1.2).isSome && x.2 :=
+    (Primrec.and.comp
+      (Primrec.option_isSome.comp
+        ((quoteAtFuel_prim market).comp
+          ((Primrec.fst.comp Primrec.fst).pair (Primrec.fst.comp Primrec.snd))))
+      (Primrec.snd.comp Primrec.snd)).to₂
+  have h := Primrec.list_foldr
+    (f := fun p : ℕ × EF => p.2.priceQueries)
+    (g := fun _ : ℕ × EF => true)
+    (efPriceQueries_prim.comp Primrec.snd) (Primrec.const true) hstep
+  exact h.to₂.of_eq fun fuel e => by
+    simp only [MarketComputation.readyAtFuel, list_all_eq_foldr]
+
+/-- `denoteRatComp` is primitive recursive in `(fuel, e)` for a fixed market. -/
+theorem MarketComputation.denoteRatComp_prim {P : History} (market : MarketComputation P) :
+    Primrec₂ fun fuel e => market.denoteRatComp fuel e := by
+  have hV : Primrec fun p : ℕ × (ℕ × Sentence) =>
+      market.totalQuote p.1 p.2.1 p.2.2 :=
+    Primrec.option_getD.comp
+      ((quoteAtFuel_prim market).comp (Primrec.fst.pair Primrec.snd)) (Primrec.const 0)
+  have heval : Primrec fun p : ℕ × EF =>
+      efRatCompiledEval market.totalQuote p.1 p.2 :=
+    efRatCompiledEval_prim market.totalQuote hV
+  have hite : Primrec fun p : ℕ × EF =>
+      if market.readyAtFuel p.1 p.2 = true then
+        some (efRatCompiledEval market.totalQuote p.1 p.2) else none :=
+    Primrec.ite (Primrec.eq.comp
+        ((market.readyAtFuel_prim).comp Primrec.fst Primrec.snd) (Primrec.const true))
+      (Primrec.option_some.comp heval) (Primrec.const none)
+  exact hite.to₂.of_eq fun fuel e => by
+    simp only [MarketComputation.denoteRatComp]
+
 /-- Bounded exact evaluator for an affine combination's term list. -/
 def affineTermsRatAtFuel {P : History} (market : MarketComputation P)
     (fuel : ℕ) (w : Sentence → ℚ) : List (EF × Sentence) → Option ℚ
