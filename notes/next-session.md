@@ -55,13 +55,19 @@ for the `Primrec` step.
    (`LIACompiler.lean:203`). **Read it before step 2** — it is the worked example, and the
    `Option`-encoding (`0` = does not decode, `v+1` = decodes) is load-bearing, not
    bookkeeping. Compiled first try; the template transfers.
-2. `BoolPCWorld.eval` as `Primrec₂ fun (l : List Bool) (φ : Sentence) => eval (bitsWorld l) φ`
-   — **the crux, start here**, ~2 days. Same `nat_strong_rec` shape as step 1 but
-   *parameterized* by the world (`α := List Bool` rather than `Unit`); no precedent for a
-   parameterized one. The atom case is where the parameter is consumed:
-   `eval (bitsWorld l) (atom a) = l.getD a false`, so it needs `Primrec.list_getD` on the
-   parameter — that is the one genuinely new move over step 1.
-3. `allBitLists` `Primrec` (list-valued nat recursion).
+2. ~~`BoolPCWorld.eval` `Primrec₂`~~ — **DONE** (`evalBits_prim`). The crux is past. The
+   parameterized `nat_strong_rec` worked exactly like step 1; the binary-tag dispatch cost
+   nothing (`Primrec.dom_bool₂` gives every `Bool → Bool → Bool` free, `Bool` being finite).
+   **The one real trap, which will recur:** `PrimrecPred p` is
+   `∃ _ : DecidablePred p, Primrec fun a => decide (p a)` — an existential over the
+   instance. It does **not** unfold to `Primrec`, and no type ascription will make it;
+   `PrimrecPred.decide` and `Primrec.primrecPred` are the two directions. Reach for those
+   immediately rather than fighting defeq.
+3. **START HERE.** `stageSatBits` `Primrec₂`: needs `stageSort` `Primrec` (`Finset.sort`
+   under `sentenceCodeLE` — recover it from the stage's *encoding*, which is already sorted
+   by that order; see `sentenceFinsetEncode_eq`/`encodeMultiset`, `LIACompiler.lean:1921`)
+   plus `Primrec.list_all`-style closure over `evalBits_prim`. Then `allBitLists` `Primrec`
+   (list-valued nat recursion).
 4. `AffineCombination` `Primcodable` + `As` computable from `PolySequence` (`terms_eq`
    gives a `List.range`-map, so this is mechanical).
 5. `valueRat` — wire onto the **existing** EF rational stack machine

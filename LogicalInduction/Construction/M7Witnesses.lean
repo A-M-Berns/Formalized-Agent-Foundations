@@ -1477,6 +1477,224 @@ theorem atomBound_prim : Primrec BoolPCWorld.atomBound := by
     simp only [atomBoundNorm, Encodable.encode,
       LO.Propositional.Formula.ofNat_toNat φ, Nat.add_sub_cancel]
 
+/-! ### Evaluation
+
+`eval` is the second `Sentence` recursion, and the one the whole test rests on.  Two things
+make it harder than `atomBound`:
+
+* the recursion is **parameterized by the world** (`α := List Bool` in `nat_strong_rec`,
+  where `atomBound` used `Unit`), and the atom case is where that parameter is consumed —
+  `eval (bitsWorld l) (.atom a) = l.getD a false`, i.e. `Primrec.list_getD` on the
+  parameter;
+* the three binary tags genuinely differ (`🡒`/`⋏`/`⋎`), where `atomBound` maxed all three
+  alike.  The second costs nothing in the end: `Bool` is finite, so `Primrec.dom_bool₂`
+  gives *every* `Bool → Bool → Bool` for free, and `evalOp` dispatches on the tag.
+
+The `Option` encoding carries a Boolean, so it is three-valued: `0` = does not decode,
+`1` = decodes to `false`, `2` = decodes to `true`. -/
+
+/-- The connective a tag denotes.  `Primrec₂` for free by `Primrec.dom_bool₂`. -/
+private def evalOp (tag : ℕ) (a b : Bool) : Bool :=
+  if tag = 2 then (!a || b) else if tag = 3 then (a && b) else (a || b)
+
+/-- `eval` on a Gödel code, `Option`-encoded (`0` = does not decode, `1` = false,
+`2` = true). -/
+private def evalNorm (l : List Bool) (n : ℕ) : ℕ :=
+  match (@LO.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) with
+  | none => 0
+  | some φ => if BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ then 2 else 1
+
+private def evalBinary (tag : ℕ) (prior : List ℕ) (children : ℕ) : ℕ :=
+  let left := prior.getD children.unpair.1 0
+  let right := prior.getD children.unpair.2 0
+  if left = 0 ∨ right = 0 then 0
+  else if evalOp tag (decide (left = 2)) (decide (right = 2)) then 2 else 1
+
+private theorem evalBinary_prim (tag : ℕ) : Primrec₂ (evalBinary tag) := by
+  let childLeft : List ℕ × ℕ → ℕ := fun p => p.1.getD p.2.unpair.1 0
+  let childRight : List ℕ × ℕ → ℕ := fun p => p.1.getD p.2.unpair.2 0
+  have hleft : Primrec childLeft :=
+    (Primrec.list_getD 0).comp Primrec.fst
+      (Primrec.fst.comp (Primrec.unpair.comp Primrec.snd))
+  have hright : Primrec childRight :=
+    (Primrec.list_getD 0).comp Primrec.fst
+      (Primrec.snd.comp (Primrec.unpair.comp Primrec.snd))
+  have hbad : PrimrecPred fun p : List ℕ × ℕ =>
+      childLeft p = 0 ∨ childRight p = 0 :=
+    (Primrec.eq.comp hleft (Primrec.const 0)).or
+      (Primrec.eq.comp hright (Primrec.const 0))
+  -- `PrimrecPred p` is `∃ _ : DecidablePred p, Primrec fun a => decide (p a)` — an
+  -- existential over the instance, so it never unfolds to `Primrec` on its own.
+  -- `PrimrecPred.decide`/`Primrec.primrecPred` are the two directions.
+  have ha : Primrec fun p : List ℕ × ℕ => decide (childLeft p = 2) :=
+    (Primrec.eq.comp hleft (Primrec.const 2)).decide
+  have hb : Primrec fun p : List ℕ × ℕ => decide (childRight p = 2) :=
+    (Primrec.eq.comp hright (Primrec.const 2)).decide
+  have hop : Primrec fun p : List ℕ × ℕ =>
+      evalOp tag (decide (childLeft p = 2)) (decide (childRight p = 2)) :=
+    (Primrec.dom_bool₂ (evalOp tag)).comp ha hb
+  have hcondp : PrimrecPred fun p : List ℕ × ℕ =>
+      evalOp tag (decide (childLeft p = 2)) (decide (childRight p = 2)) = true :=
+    Primrec.primrecPred (by simpa using hop)
+  have hres := Primrec.ite hcondp (Primrec.const 2) (Primrec.const 1)
+  exact (Primrec.ite hbad (Primrec.const 0) hres).to₂.of_eq fun prior children => by
+    simp only [evalBinary, childLeft, childRight]
+
+private def evalSucc (l : List Bool) (prior : List ℕ) (e : ℕ) : ℕ :=
+  let tag := e.unpair.1
+  let payload := e.unpair.2
+  if tag = 0 then 1
+  else if tag = 1 then (if l.getD payload false then 2 else 1)
+  else if tag = 2 then evalBinary 2 prior payload
+  else if tag = 3 then evalBinary 3 prior payload
+  else if tag = 4 then evalBinary 4 prior payload
+  else 0
+
+private theorem evalSucc_prim :
+    Primrec fun p : List Bool × List ℕ × ℕ => evalSucc p.1 p.2.1 p.2.2 := by
+  let tag : List Bool × List ℕ × ℕ → ℕ := fun p => p.2.2.unpair.1
+  let payload : List Bool × List ℕ × ℕ → ℕ := fun p => p.2.2.unpair.2
+  have htag : Primrec tag :=
+    Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.snd))
+  have hpayload : Primrec payload :=
+    Primrec.snd.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.snd))
+  -- The atom case: this is where the world parameter is consumed, by `list_getD` on the
+  -- parameter rather than on the recursion history.  It is the one move `atomBound` (whose
+  -- `nat_strong_rec` parameter was `Unit`) did not need.
+  have hatom : Primrec fun p : List Bool × List ℕ × ℕ =>
+      cond (p.1.getD (payload p) false) 2 1 :=
+    Primrec.cond ((Primrec.list_getD false).comp Primrec.fst hpayload)
+      (Primrec.const 2) (Primrec.const 1)
+  have hbin (k : ℕ) : Primrec fun p : List Bool × List ℕ × ℕ =>
+      evalBinary k p.2.1 (payload p) :=
+    (evalBinary_prim k).comp (Primrec.fst.comp Primrec.snd) hpayload
+  have htagEq (k : ℕ) : PrimrecPred fun p : List Bool × List ℕ × ℕ => tag p = k :=
+    Primrec.eq.comp htag (Primrec.const k)
+  have h4 := Primrec.ite (htagEq 4) (hbin 4) (Primrec.const 0)
+  have h3 := Primrec.ite (htagEq 3) (hbin 3) h4
+  have h2 := Primrec.ite (htagEq 2) (hbin 2) h3
+  have h1 := Primrec.ite (htagEq 1) hatom h2
+  exact (Primrec.ite (htagEq 0) (Primrec.const 1) h1).of_eq fun p => by
+    simp only [evalSucc, tag, payload]
+    by_cases hc0 : p.2.2.unpair.1 = 0
+    · simp [hc0]
+    by_cases hc1 : p.2.2.unpair.1 = 1
+    · simp only [hc1, if_true]
+      cases p.1.getD p.2.2.unpair.2 false <;> simp
+    · simp [hc0, hc1]
+
+private def evalList (l : List Bool) (prior : List ℕ) : ℕ :=
+  prior.length.casesOn 0 (evalSucc l prior)
+
+private theorem evalList_prim :
+    Primrec fun p : List Bool × List ℕ => evalList p.1 p.2 := by
+  have h := Primrec.nat_casesOn (Primrec.list_length.comp Primrec.snd)
+    (Primrec.const 0)
+    (evalSucc_prim.comp
+      ((Primrec.fst.comp Primrec.fst).pair
+        ((Primrec.snd.comp Primrec.fst).pair Primrec.snd))).to₂
+  exact h.of_eq fun p => by simp only [evalList]
+
+private theorem evalNorm_zero (l : List Bool) : evalNorm l 0 = 0 := by
+  simp [evalNorm, LO.Propositional.Formula.ofNat]
+
+private theorem evalHistory_getD (l : List Bool) {n k : ℕ} (hk : k < n) :
+    ((List.range n).map (evalNorm l)).getD k 0 = evalNorm l k := by
+  rw [← evalNorm_zero l, List.getD_map]
+  simp [List.getD_eq_getElem, hk]
+
+private theorem evalBinary_history (tag : ℕ) (l : List Bool) (payload n : ℕ)
+    (hleft : payload.unpair.1 < n) (hright : payload.unpair.2 < n) :
+    evalBinary tag ((List.range n).map (evalNorm l)) payload =
+      match (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.1 : Option Sentence),
+          (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.2 : Option Sentence) with
+      | some φ, some ψ =>
+          if evalOp tag (BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ)
+            (BoolPCWorld.eval (BoolPCWorld.bitsWorld l) ψ) then 2 else 1
+      | _, _ => 0 := by
+  unfold evalBinary
+  rw [evalHistory_getD l hleft, evalHistory_getD l hright]
+  cases hL : (@LO.Propositional.Formula.ofNat ℕ inferInstance
+      payload.unpair.1 : Option Sentence) <;>
+    cases hR : (@LO.Propositional.Formula.ofNat ℕ inferInstance
+      payload.unpair.2 : Option Sentence) <;>
+    simp only [evalNorm, hL, hR] <;>
+    [skip; skip; skip;
+      (cases BoolPCWorld.eval (BoolPCWorld.bitsWorld l) _ <;>
+        cases BoolPCWorld.eval (BoolPCWorld.bitsWorld l) _ <;> simp)] <;>
+    simp
+
+private theorem evalList_history (l : List Bool) (n : ℕ) :
+    evalList l ((List.range n).map (evalNorm l)) = evalNorm l n := by
+  cases n with
+  | zero => simp [evalList, evalNorm, LO.Propositional.Formula.ofNat]
+  | succ e =>
+      have hleft : e.unpair.2.unpair.1 < e + 1 :=
+        Nat.lt_succ_iff.mpr <| le_trans (Nat.unpair_left_le _) (Nat.unpair_right_le _)
+      have hright : e.unpair.2.unpair.2 < e + 1 :=
+        Nat.lt_succ_iff.mpr <| le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _)
+      by_cases h0 : e.unpair.1 = 0
+      · simp [evalList, evalSucc, evalNorm, BoolPCWorld.eval,
+          LO.Propositional.Formula.ofNat, h0]
+      by_cases h1 : e.unpair.1 = 1
+      · simp [evalList, evalSucc, evalNorm, BoolPCWorld.eval, BoolPCWorld.bitsWorld,
+          LO.Propositional.Formula.ofNat, h0, h1]
+      by_cases h2 : e.unpair.1 = 2
+      · simp only [evalList, List.length_map, List.length_range, evalSucc,
+          h0, h1, h2, ↓reduceIte]
+        rw [evalBinary_history 2 l e.unpair.2 (e + 1) hleft hright]
+        simp only [evalNorm, LO.Propositional.Formula.ofNat, h2]
+        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            e.unpair.2.unpair.1 : Option Sentence) <;>
+          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            e.unpair.2.unpair.2 : Option Sentence) <;>
+          simp [BoolPCWorld.eval, evalOp]
+      by_cases h3 : e.unpair.1 = 3
+      · simp only [evalList, List.length_map, List.length_range, evalSucc,
+          h0, h1, h2, h3, ↓reduceIte]
+        rw [evalBinary_history 3 l e.unpair.2 (e + 1) hleft hright]
+        simp only [evalNorm, LO.Propositional.Formula.ofNat, h3]
+        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            e.unpair.2.unpair.1 : Option Sentence) <;>
+          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            e.unpair.2.unpair.2 : Option Sentence) <;>
+          simp [BoolPCWorld.eval, evalOp]
+      by_cases h4 : e.unpair.1 = 4
+      · simp only [evalList, List.length_map, List.length_range, evalSucc,
+          h0, h1, h2, h3, h4, ↓reduceIte]
+        rw [evalBinary_history 4 l e.unpair.2 (e + 1) hleft hright]
+        simp only [evalNorm, LO.Propositional.Formula.ofNat, h4]
+        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            e.unpair.2.unpair.1 : Option Sentence) <;>
+          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            e.unpair.2.unpair.2 : Option Sentence) <;>
+          simp [BoolPCWorld.eval, evalOp]
+      · have htag : 5 ≤ e.unpair.1 := by omega
+        simp [evalList, evalSucc, evalNorm,
+          LO.Propositional.Formula.ofNat, h0, h1, h2, h3, h4, htag]
+
+private theorem evalNorm_prim : Primrec₂ evalNorm := by
+  have hstep : Primrec₂ (fun (l : List Bool) (prior : List ℕ) =>
+      some (evalList l prior)) :=
+    Primrec₂.option_some_iff.mpr evalList_prim.to₂
+  exact Primrec.nat_strong_rec evalNorm hstep
+    (fun l n => by simpa using congrArg some (evalList_history l n))
+
+/-- **Evaluation is primitive recursive**, as a function of the bit list denoting the world
+and the sentence.  The world never appears as an argument — `bitsWorld` is applied and
+beta-reduced in place — which is what makes the statement well-typed at all: `BoolPCWorld`
+is `ℕ → Bool` and has no `Primcodable` instance. -/
+theorem evalBits_prim : Primrec₂ fun (l : List Bool) (φ : Sentence) =>
+    BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ := by
+  have h : Primrec fun p : List Bool × Sentence =>
+      decide (evalNorm p.1 (Encodable.encode p.2) = 2) :=
+    (Primrec.eq.comp
+      (evalNorm_prim.comp Primrec.fst (Primrec.encode.comp Primrec.snd))
+      (Primrec.const 2)).decide
+  exact h.to₂.of_eq fun l φ => by
+    simp only [evalNorm, Encodable.encode, LO.Propositional.Formula.ofNat_toNat φ]
+    cases BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ <;> simp
+
 end SettlementCompile
 
 #print axioms polyFueled_dovetailFound
