@@ -25,30 +25,58 @@ witnesses. Repo has **zero `sorry`** and full build is green (2,680 jobs). Activ
 
 ### ⚠ THE ONE THING LEFT ON `M7-PATIENT-CLOCK` — and it is shared infrastructure
 
-Inhabit `SettlementChecker`: a `Nat.Partrec.Code` recognizing the decidable
-`AffineCombination.SettlementTest`. No efficiency is required of it (the dovetail absorbs
-the exponential), and it carries no semantics — soundness/completeness are already
+Inhabit `SettlementChecker` (`M7Witnesses.lean:1124`): a `Nat.Partrec.Code` recognizing
+`AffineCombination.SettlementTestBool`. No efficiency is required of it (the dovetail
+absorbs the exponential), and it carries no semantics — soundness/completeness are already
 theorems (`settlementTest_iff_settled`).
 
-**Unretired risk — read before starting.** `SettlementTest` quantifies over
-`BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage)` = `Fin B → Bool`, where `B` is
-**computed from the input**. That is a *dependent family*, and Lean's `Computable`
-machinery wants `Primcodable` domains: a `decide` over a `Fintype` whose type depends on
-the argument does not decompose through the combinators. **No `Computable`/`Primrec` proof
-over a `FiniteWorld` quantifier exists anywhere in this repo** — verified by grep
-2026-07-16. The pre-existing `unitMaturityCheckAtFuel` has the identical shape and was
-never compiled either, because `HistoricalVerifiedMaturitySchedule` was never constructed.
+**The restatement is done (2026-07-16).** `SettlementTestBool` is now fully
+`Primrec`-decomposable: every quantifier a `List.all`, every connective a `Bool` op, over
+the `Primcodable` types `List Bool`/`Sentence`/`ℚ`. No `Fin B` and no world argument
+survive. `settlementTestBool_iff` bridges it to `SettlementTest`; the `SettlementTest`
+statement and `SettlementChecker.spec` are unchanged. What the earlier handoff called the
+wall was **two** walls, and only the first had been retired:
+- the *quantifier* was dependent (`FiniteWorld B`) — fixed by `allBitLists`/`bitsToFin`;
+- the *body* still built `bitsToFin B l` and fed it to `eval`/`payoutRat`. The real
+  obstruction there is **not** `Fin B`: `BoolPCWorld = ℕ → Bool` is a **function type with
+  no `Primcodable` instance**, so `Primrec (eval v)` cannot even be *stated* for a world
+  `v`. `BoolPCWorld.bitsWorld : List Bool → BoolPCWorld` keeps the world a beta-reduced
+  intermediate so the compiled quantities take `List Bool × Sentence`.
 
-Expected fix (~1–2 days, known shape, not yet attempted): restate the test
-non-dependently — enumerate `List Bool` of length `B` (`allBitLists B : List (List Bool)`,
-`worldOfBits`), express the check as a `List.all`, and bridge back to the `Fin B → Bool`
-form. Then the `Computable` plumbing through `MarketComputation.quoteAtFuel`,
-`DeductiveProcessComputation.stageAtFuel` and `PolySequence`.
+**Do not use `Finset.toList`** — it is noncomputable (`Multiset.toList` picks a
+representative). Use `stageSort` (`Finset.sort` under `sentenceCodeLE`), which is also the
+canonical order the stock `Finset Sentence` encoding sorts by (`LIACompiler.lean:1949`),
+so `stageSort stage` is the list that stage's own code decodes to — you need exactly that
+for the `Primrec` step.
 
-**Do this before another checker-style witness.** The same dependent-type wall blocks the
-maturity checker, hence `M7-FEEDBACK-EMIT`/`M7-FEEDBACK-TRUTH`. Retiring it once unblocks
-all of them; skipping it means hitting it later on a second witness having built on a
-factoring that may not compile.
+**Remaining scope: ~1–1.5 weeks, not "plumbing".** Honest build order, each a real step:
+1. `atomBound` `Primrec` — via `Primrec.nat_strong_rec` over Gödel codes; mirrors the
+   `sentencePrimcodable` template (`LIACompiler.lean:203`, ~200 lines of tag dispatch).
+2. `BoolPCWorld.eval` as `Primrec₂ fun (l : List Bool) (φ : Sentence) => eval (bitsWorld l) φ`
+   — **the crux**, ~2 days. Same `nat_strong_rec` shape but *parameterized* by the world;
+   no precedent in the repo for a parameterized one.
+3. `allBitLists` `Primrec` (list-valued nat recursion).
+4. `AffineCombination` `Primcodable` + `As` computable from `PolySequence` (`terms_eq`
+   gives a `List.range`-map, so this is mechanical).
+5. `valueRat` — wire onto the **existing** EF rational stack machine
+   (`LIACompiler.lean:3095+`, fueled result already proved `= EF.denoteRat`) and
+   `market.quoteAtFuel`; precedent at `ROI.lean:223`. Do not rebuild the EF machine.
+6. Assemble the code + prove `spec` by dovetailing market/process fuel
+   (`exists_fuel_quoteAtFuel_list`, `stageAtFuel_complete`).
+
+`SettlementChecker` takes arbitrary `As`/`Q`/`DP`, so the deliverable is a new
+`SettlementChecker.ofComputations` taking `PolySequence As` + `MarketComputation P` +
+`DeductiveProcessComputation DP`.
+
+**Grep before each step (rule 2b):** `atomBound`, `eval`, `payoutRat`, `allBitLists` had
+**no** `Primrec` proof anywhere as of 2026-07-16 — but the EF machine and `quoteAtFuel`
+value folds **do** exist, and re-deriving them is the standing failure mode here.
+
+**Do this before another checker-style witness.** The same wall blocks the maturity
+checker, hence `M7-FEEDBACK-EMIT`/`M7-FEEDBACK-TRUTH`. Retiring it once unblocks all of
+them; skipping it means hitting it later on a second witness having built on a factoring
+that may not compile. Expect the `Nat.sqrt`/`whnf` GOTCHA below on every step — use
+interactive VS Code, not batch builds.
 
 ### Reusable infrastructure landed 2026-07-16 (do not rebuild)
 

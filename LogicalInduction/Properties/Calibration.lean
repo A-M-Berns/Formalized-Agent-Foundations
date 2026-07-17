@@ -1127,18 +1127,90 @@ def bitsToFin (B : ℕ) (l : List Bool) : BoolPCWorld.FiniteWorld B := fun a => 
   rw [bitsToFin, List.getD_eq_getElem _ _ (by simp [a.isLt])]
   simp
 
-/-- The settlement test as a Boolean function over a non-dependent enumeration. -/
+/-- A bit list of the right length denotes the same world whether read dependently (through
+`FiniteWorld B`) or non-dependently (through `BoolPCWorld.bitsWorld`).  Past the end of the
+list both read `false`: `toBoolPCWorld` by its `dif_neg` branch, `bitsWorld` because
+`getD` is out of range.  This is what lets the compiled test avoid `Fin B` entirely. -/
+theorem toBoolPCWorld_bitsToFin {B : ℕ} {l : List Bool} (hl : l.length = B) :
+    (bitsToFin B l).toBoolPCWorld = BoolPCWorld.bitsWorld l := by
+  funext a
+  rw [BoolPCWorld.FiniteWorld.toBoolPCWorld, BoolPCWorld.bitsWorld]
+  by_cases h : a < B
+  · simp [h, bitsToFin]
+  · rw [dif_neg h, List.getD_eq_default _ _ (by omega)]
+
+theorem payoutRat_bitsToFin {B : ℕ} {l : List Bool} (hl : l.length = B) :
+    (bitsToFin B l).payoutRat = BoolPCWorld.bitsPayoutRat l := by
+  funext φ
+  rw [BoolPCWorld.FiniteWorld.payoutRat, BoolPCWorld.bitsPayoutRat,
+    toBoolPCWorld_bitsToFin hl]
+
+theorem bitsWorld_ofFn {B : ℕ} (u : BoolPCWorld.FiniteWorld B) :
+    BoolPCWorld.bitsWorld (List.ofFn u) = u.toBoolPCWorld := by
+  have h := toBoolPCWorld_bitsToFin (B := B) (l := List.ofFn u) (by simp)
+  rw [bitsToFin_ofFn] at h
+  exact h.symm
+
+theorem bitsPayoutRat_ofFn {B : ℕ} (u : BoolPCWorld.FiniteWorld B) :
+    BoolPCWorld.bitsPayoutRat (List.ofFn u) = u.payoutRat := by
+  have h := payoutRat_bitsToFin (B := B) (l := List.ofFn u) (by simp)
+  rw [bitsToFin_ofFn] at h
+  exact h.symm
+
+/-! ### Extracting the stage's sentences
+
+`Finset.toList` is noncomputable (it picks a representative through `Multiset.toList`), so
+it cannot appear in a test we intend to compile.  `Finset.sort` under the order below is
+both computable and *canonical*: it is the very order the stock `Finset Sentence` encoding
+sorts by, so `stageSort` is the list that stage's own code decodes to.  That is what lets
+the compiled checker recover the stage from its encoding. -/
+
+/-- The order the stock `Finset Sentence` encoding sorts by: comparison of Gödel codes. -/
+def sentenceCodeLE (φ ψ : Sentence) : Prop := Encodable.encode φ ≤ Encodable.encode ψ
+
+instance : DecidableRel sentenceCodeLE := fun _ _ => Nat.decLe _ _
+instance : IsTrans Sentence sentenceCodeLE := ⟨fun _ _ _ hab hbc => Nat.le_trans hab hbc⟩
+instance : Std.Antisymm sentenceCodeLE :=
+  ⟨fun _ _ hab hba => Encodable.encode_injective (Nat.le_antisymm hab hba)⟩
+instance : Std.Total sentenceCodeLE :=
+  ⟨fun φ ψ => Nat.le_total (Encodable.encode φ) (Encodable.encode ψ)⟩
+
+/-- The stage's sentences, in the canonical order of its own encoding. -/
+def stageSort (stage : Finset Sentence) : List Sentence := stage.sort sentenceCodeLE
+
+@[simp] theorem mem_stageSort (stage : Finset Sentence) (φ : Sentence) :
+    φ ∈ stageSort stage ↔ φ ∈ stage := Finset.mem_sort _
+
+/-- Every sentence of the stage is satisfied by the world a bit list denotes.
+
+A `List.all` over `stageSort`, not a `Finset` quantifier: `Primrec` decomposes the former
+and not the latter. -/
+def stageSatBits (stage : Finset Sentence) (l : List Bool) : Bool :=
+  (stageSort stage).all fun φ => BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ
+
+theorem stageSatBits_eq_true_iff (stage : Finset Sentence) (l : List Bool) :
+    stageSatBits stage l = true ↔
+      ∀ φ ∈ stage, BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ = true := by
+  simp [stageSatBits, List.all_eq_true]
+
+private theorem orNot_orNot_eq_true_iff (a b c : Bool) :
+    ((!a) || (!b) || c) = true ↔ (a = true → b = true → c = true) := by
+  cases a <;> cases b <;> cases c <;> simp
+
+/-- The settlement test as a Boolean function over a non-dependent enumeration.
+
+Every quantifier is a `List.all` and every connective a `Bool` operation, over the
+`Primcodable` types `List Bool`, `Sentence` and `ℚ`.  Nothing here mentions `Fin B`, and no
+world appears as an argument — `bitsWorld` is applied and beta-reduced in place.  That is
+what makes the test compilable; `settlementTestBool_iff` proves it is still the same
+test. -/
 def AffineCombination.SettlementTestBool (A : AffineCombination) (Q : ℕ → Sentence → ℚ)
     (stage : Finset Sentence) : Bool :=
   (allBitLists (A.settlementAtomLimit stage)).all fun l =>
     (allBitLists (A.settlementAtomLimit stage)).all fun l' =>
-      decide
-        ((∀ φ ∈ stage, BoolPCWorld.eval
-            (bitsToFin (A.settlementAtomLimit stage) l).toBoolPCWorld φ = true) →
-         (∀ φ ∈ stage, BoolPCWorld.eval
-            (bitsToFin (A.settlementAtomLimit stage) l').toBoolPCWorld φ = true) →
-          A.valueRat Q (bitsToFin (A.settlementAtomLimit stage) l).payoutRat
-            = A.valueRat Q (bitsToFin (A.settlementAtomLimit stage) l').payoutRat)
+      !(stageSatBits stage l) || !(stageSatBits stage l') ||
+        decide (A.valueRat Q (BoolPCWorld.bitsPayoutRat l)
+          = A.valueRat Q (BoolPCWorld.bitsPayoutRat l'))
 
 /-- The `List Bool` presentation is the same test.  Surjectivity of `bitsToFin` onto
 `FiniteWorld B` (via `List.ofFn`) is what makes it complete, not merely sound. -/
@@ -1146,17 +1218,20 @@ theorem AffineCombination.settlementTestBool_iff (A : AffineCombination)
     (Q : ℕ → Sentence → ℚ) (stage : Finset Sentence) :
     A.SettlementTestBool Q stage = true ↔ A.SettlementTest Q stage := by
   simp only [AffineCombination.SettlementTestBool, AffineCombination.SettlementTest,
-    List.all_eq_true, decide_eq_true_iff]
+    List.all_eq_true, orNot_orNot_eq_true_iff, stageSatBits_eq_true_iff, decide_eq_true_iff]
   constructor
-  · intro h u u' hu hu'
-    have hm : List.ofFn u ∈ allBitLists (A.settlementAtomLimit stage) :=
-      (mem_allBitLists _ _).2 (by simp)
-    have hm' : List.ofFn u' ∈ allBitLists (A.settlementAtomLimit stage) :=
-      (mem_allBitLists _ _).2 (by simp)
-    have hall := h _ hm _ hm'
-    rw [bitsToFin_ofFn, bitsToFin_ofFn] at hall
+  · -- Completeness: every finite world is `bitsToFin` of its own `List.ofFn`.
+    intro h u u' hu hu'
+    have hall := h (List.ofFn u) ((mem_allBitLists _ _).2 (by simp))
+      (List.ofFn u') ((mem_allBitLists _ _).2 (by simp))
+    rw [bitsWorld_ofFn, bitsWorld_ofFn, bitsPayoutRat_ofFn, bitsPayoutRat_ofFn] at hall
     exact hall hu hu'
-  · intro h l _ l' _
+  · -- Soundness: a listed bit list has length `B`, so it denotes `bitsToFin B l`.
+    intro h l hl l' hl'
+    rw [← toBoolPCWorld_bitsToFin ((mem_allBitLists _ _).1 hl),
+      ← toBoolPCWorld_bitsToFin ((mem_allBitLists _ _).1 hl'),
+      ← payoutRat_bitsToFin ((mem_allBitLists _ _).1 hl),
+      ← payoutRat_bitsToFin ((mem_allBitLists _ _).1 hl')]
     exact h _ _
 
 /-- **The concrete test is exactly settlement.**  Both directions: sound (a passing test

@@ -67,6 +67,20 @@ def FiniteWorld.toBoolPCWorld {B : ℕ} (u : FiniteWorld B) : BoolPCWorld :=
 def FiniteWorld.restrict (v : BoolPCWorld) (B : ℕ) : FiniteWorld B :=
   fun a => v a
 
+/-- The Boolean world denoted by a bit list; atoms past the end read `false`.
+
+This is the non-dependent cousin of `FiniteWorld.toBoolPCWorld`, and it exists for
+compilation rather than for the mathematics.  `BoolPCWorld` is `ℕ → Bool`, a *function*
+type, which admits no `Primcodable` instance — so `Primrec (eval v)` cannot even be stated
+for a world `v`.  Routing through a `List Bool` keeps every compiled quantity a function of
+`Primcodable` arguments (`List Bool × Sentence`), with the world appearing only as a
+beta-reduced intermediate.  `bitsWorld_eq_toBoolPCWorld` bridges back. -/
+def bitsWorld (l : List Bool) : BoolPCWorld := fun a => l.getD a false
+
+/-- Rational payout under a bit list: the non-dependent form of `FiniteWorld.payoutRat`. -/
+def bitsPayoutRat (l : List Bool) (φ : Sentence) : ℚ :=
+  if eval (bitsWorld l) φ then 1 else 0
+
 /-- Evaluation of a bounded-support sentence is unchanged by finite restriction and
 extension.  Consequently every universal payout check over finitely many sentences can
 be reduced to the finite type `FiniteWorld B`. -/
