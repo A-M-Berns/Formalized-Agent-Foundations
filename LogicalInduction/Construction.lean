@@ -10,7 +10,7 @@ roadmap §3, Part IV):
   ⚠ FINDING (M0): Mathlib has **no Brouwer fixed-point theorem** (only Brouwerian/Heyting
   *algebras* and Riesz–Markov–*Kakutani*, both unrelated). The missing theorem has since
   been proved in-project via Sperner's lemma; `Construction.Brouwer` is the completed M6
-  gate. See `PROGRESS.md` for its trust-surface disclosure.
+  gate. See `Construction.Brouwer`'s header for its trust-surface disclosure.
 * `def:markemaker` → `MarketMaker` — rational approximation to the fixed point.
 * `lem:budgeter` → `Budgeter`, `budgeter_props` — caps each enumerated trader.
 * `def:tradingfirm` → `TradingFirm` — combines enumerated traders with budgets.

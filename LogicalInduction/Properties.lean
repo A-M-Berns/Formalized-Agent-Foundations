@@ -69,7 +69,8 @@ File layout (promoted from a single file once it grew past ~1000 lines):
   quote certificates bundling delayed revelation semantics with the fixed-portfolio
   cross-grid law; `DeferralFunction` (`def:deferralfunc`).
 
-See `PROGRESS.md` for the per-node ledger (label → decl → status → kind → provenance).
+See `notes/logical-induction-roadmap.md` for the paper-node map and
+`notes/next-session.md` for the active construction scope.
 -/
 import LogicalInduction.Properties.Basic
 import LogicalInduction.Properties.ProvabilityInduction

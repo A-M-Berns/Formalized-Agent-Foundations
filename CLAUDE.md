@@ -77,11 +77,11 @@ one-line arithmetic, has formalized nothing we didn't already assume.
 3. **The build stays green at every stopping point.** `sorry` is allowed and expected;
    elaboration/type errors are not. Small compiling commits over large broken ones.
 
-4. **Ledger rows are written at proof time, by the person who knows they cheated.**
-   `PROGRESS.md` maps `label → Lean decl → status → kind → provenance`. The kind and
-   provenance columns are the anti-self-deception mechanism; they only work if filled
-   honestly as you go, never retroactively. **A new theorem does not get committed
-   without its ledger row in the same commit.**
+4. **Provenance is written at proof time, by the person who knows they cheated.**
+   Record the proof kind and provenance in the theorem's docstring or the active
+   `notes/next-session.md` construction entry. This anti-self-deception mechanism only works
+   if filled honestly as you go, never retroactively. **A new boundary theorem does not get
+   committed without its provenance recorded in the same commit.**
    - *kind:* `Def` · `P` proved · `C` composition · `S` squeeze-over-named (conclusion ≡
      a hypothesis — flag and justify) · `T` trivial stub · `N±` non-vacuity witness.
    - *provenance* (per hypothesis): `(a)` derived in-project · `(b)` Foundation/Mathlib
