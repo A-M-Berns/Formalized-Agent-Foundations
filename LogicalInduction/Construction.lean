@@ -31,6 +31,7 @@ import LogicalInduction.Construction.FeedbackEmission
 import LogicalInduction.Construction.ConditioningPresentation
 import LogicalInduction.Construction.BitPrefixSyntax
 import LogicalInduction.Construction.ComputationSyntax
+import LogicalInduction.Construction.QuotationAffine
 
 namespace LogicalInduction
 

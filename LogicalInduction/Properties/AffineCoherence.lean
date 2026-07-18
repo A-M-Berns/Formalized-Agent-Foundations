@@ -14,11 +14,6 @@ namespace LogicalInduction
 
 open Filter Topology
 
-/-- Worlds consistent with every finite stage of the deductive process: the propositional
-rendering of the paper's `cworlds(Θ)`. -/
-def PCWorld.ConsistentWithTheory (v : PCWorld) (DP : DeductiveProcess) : Prop :=
-  ∀ n, v.ConsistentWith (DP.D n)
-
 /-- A Boolean-valued presentation of a propositionally consistent world, used only for
 the compactness proof. -/
 abbrev BoolPCWorld := ℕ → Bool
@@ -750,11 +745,63 @@ theorem PolySequence.affine_provind_theory_eq
     h.affine_provind_theory_ge P DP hbounded hmag hP hworld b
       (fun n v hv => (hval n v hv).ge)⟩
 
+/-- Vanishing-error form of paper-facing affine provability induction.  This is the form
+needed by quoted `[0,1]` values: the finite threshold sum approximates its represented real
+value within `O(1/n)`, so completed-theory values tend uniformly to zero rather than being
+definitionally zero on every index. -/
+theorem PolySequence.affine_provind_theory_tendsto_zero
+    {As : ℕ → AffineCombination} (h : PolySequence As)
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (hbounded : BoundedAffinePrices As P)
+    (hmag : ∃ C : ℝ, ∀ n, (As n).magnitude P ≤ C)
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hval : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld,
+      v.ConsistentWithTheory DP → |(As n).value P v.payout| ≤ ε) :
+    (fun n => (As n).price P n) ≈ₙ fun _ => 0 := by
+  rw [asympEq_iff_eventuallyWithin]
+  intro ε hε
+  obtain ⟨hdlo, hdhi, _, _, _, _⟩ := hbounded.filterBounds
+  obtain ⟨_, htlhi, hthlo, _⟩ :=
+    h.completedAffineExtrema_filterBounds P DP hbounded hmag hP hworld
+  have hcoh := h.affcoh P DP hbounded hmag hP hworld
+  have hnear := hval (ε / 2) (by linarith)
+  have hlow : ∀ᶠ n in atTop, -ε / 2 ≤ completedAffineLow As P DP n := by
+    filter_upwards [hnear] with n hn
+    apply le_csInf (completedAffineValues_nonempty DP (As n) P hworld)
+    rintro x ⟨v, hv, rfl⟩
+    have hx := hn v hv
+    rw [abs_le] at hx
+    linarith
+  have hhigh : ∀ᶠ n in atTop, completedAffineHigh As P DP n ≤ ε / 2 := by
+    filter_upwards [hnear] with n hn
+    apply csSup_le (completedAffineValues_nonempty DP (As n) P hworld)
+    rintro x ⟨v, hv, rfl⟩
+    have hx := hn v hv
+    rw [abs_le] at hx
+    linarith
+  have hliminfLow : -ε / 2 ≤ liminf (completedAffineLow As P DP) atTop :=
+    le_liminf_of_le htlhi.isCobounded_flip hlow
+  have hliminfPrice : -ε / 2 ≤ liminf (fun n => (As n).price P n) atTop :=
+    hliminfLow.trans (hcoh.1.1.trans hcoh.1.2)
+  have hlower : ∀ᶠ n in atTop, -ε < (As n).price P n :=
+    eventually_lt_of_lt_liminf (by linarith) hdlo
+  have hlimsupHigh : limsup (completedAffineHigh As P DP) atTop ≤ ε / 2 :=
+    limsup_le_of_le hthlo.isCobounded_flip hhigh
+  have hlimsupPrice : limsup (fun n => (As n).price P n) atTop ≤ ε / 2 :=
+    (hcoh.2.1.trans hcoh.2.2).trans hlimsupHigh
+  have hupper : ∀ᶠ n in atTop, (As n).price P n < ε :=
+    eventually_lt_of_limsup_lt (by linarith) hdhi
+  filter_upwards [hlower, hupper] with n hnlo hnhi
+  rw [sub_zero, abs_le]
+  exact ⟨hnlo.le, hnhi.le⟩
+
 #print axioms eventually_affineValue_gt_of_theory
 #print axioms AffineCombination.PolySequence.eventualMember
 #print axioms AffineCombination.PolySequence.completedTheoryLow_le_limitingValue
 #print axioms AffineCombination.PolySequence.affcoh
 #print axioms AffineCombination.PolySequence.affine_provind_theory_eq
+#print axioms AffineCombination.PolySequence.affine_provind_theory_tendsto_zero
 
 end AffineCombination
 

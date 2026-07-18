@@ -19,7 +19,7 @@ than a stop instruction.
 | 2 | `M7-CE-REPETITION` | **constructed** | Keep; `EfficientRepeatedEnumeration.ofCE` |
 | 3 | `M7-PATIENT-CLOCK` | **constructed** | Keep; `SettlementChecker.ofComputations`, `PatientSettlementClock.ofComputations` |
 | 4 | `M7-PREFIX-PATCH` | **constructed** | Keep; `liaEfficientPrefixPatch` |
-| 5 | `M7-QUOTE-AFFINE` | disclosed | **construct**, attempt 4 after `M7-COMP-SYNTAX` |
+| 5 | `M7-QUOTE-AFFINE` | **constructed** | Keep; `QuotationAffine.lean` arithmetic codes, affine constructors, and eight direct consumers |
 | 6 | `M7-PREFIX-MACHINE` | disclosed | **keep disclosed**; optional post-target Kraft/prefix-machine stretch |
 | 7 | `M7-FEEDBACK-EMIT` | **constructed** | Keep; `FeedbackEmission.feedbackTraderEmissionSigns` |
 | 8 | `M7-FEEDBACK-TRUTH` | disclosed | **construct**, attempt 5 |
@@ -31,9 +31,8 @@ than a stop instruction.
 | 14 | `M7-STRICT-SEPARATORS` | disclosed | Leave disclosed unless Anson reopens it |
 | 15 | `M7-COMP-SYNTAX` | **constructed** | Keep; `ComputationClaim`, three boundary constructors, and six direct consumers in `Construction/ComputationSyntax.lean` |
 
-Current count: **8/15 constructed**. Target count: **12/15 constructed**. The four remaining
-constructions are `M7-QUOTE-AFFINE`, `M7-FEEDBACK-TRUTH`, `M7-SCON-COMPILER`, and
-`M7-LUV-SYNTAX`.
+Current count: **9/15 constructed**. Target count: **12/15 constructed**. The three remaining
+constructions are `M7-FEEDBACK-TRUTH`, `M7-SCON-COMPILER`, and `M7-LUV-SYNTAX`.
 `M7-PREFIX-MACHINE`, `M7-DUS-APPROX`, and `M7-STRICT-SEPARATORS` are the three intentional
 disclosures at the target.
 
@@ -84,6 +83,24 @@ construction slate is complete.
   `..._ofComputation` consumers discharge them at `pac`, `pazfc`, `incons`, `halts`, `loops`,
   and `dontwait`; `loops` now takes an arithmetic proof of the negated halting instance, not a
   preassembled eventual-membership family.
+- `M7-QUOTE-AFFINE` is complete in
+  `LogicalInduction/Construction/QuotationAffine.lean` and imported from
+  `LogicalInduction/Construction.lean`.
+- It supplies dual FFL Boolean/rational quotation codes, compact injective public names,
+  genuine FFL `parameterizedFixedpoint` diagonalization, exact same-day Boolean/numeric
+  affine meshes, completed-theory coherence, and all four concrete deferred packages.
+- The direct endpoints are `lic_introspection_ofCode`,
+  `lic_paradox_resistance_ofDiagonal`, `lic_expectations_of_probabilities_ofCode`,
+  `lic_iterated_expectations_ofCode`, and the four deferred `..._ofRepresentation`
+  consumers for `cee`, `ceu`, `ccee`, and `st`.
+- The Foundation audit found the required fixed-point theorem in
+  `Foundation/FirstOrder/Bootstrapping/FixedPoint.lean`; no public propositional adapter
+  existed, so `QuotationTheoryPresentation` remains the explicit proof-to-market seam.
+- A paper-level ambiguity was repaired locally: image reindexing is not well-defined for an
+  arbitrary noninjective deferral. Only the four concrete deferred constructors require
+  `StrictlyIncreasingDeferral`; the abstract quote structures and consumers still accept
+  every `DeferralFunction`. Cross-mesh comparison also requires explicit completed-world
+  `ValuesAt` premises rather than pretending compact syntax determines semantics.
 - `deductiveStageCondition` is the actual `Finset.conj`; Foundation Boolean semantics prove
   the exact stage equivalence, including the empty conjunction. `DeductiveProcessComputation.union`
   pairs the two stage programs and applies a primitive-recursive code-sorted union normalizer.
@@ -96,11 +113,12 @@ construction slate is complete.
 - Derived consumers with the emission boundary discharged are
   `lic_wubaff_ofFeedbackTruth`, `boundedCombination_wubaff_ofFeedbackTruth`, and
   `luv_wubexp_ofFeedbackTruth`.
-- The focused construction/property/integration roll-up built **2,566 jobs**; the full
-  project built **2,684 jobs**.
-- The computation-syntax reports, six public prefix-syntax axiom reports, five public
-  conditioning-presentation reports, and four public feedback-emission reports contain only
-  `propext`, `Classical.choice`, and `Quot.sound` (some prefix reports need a strict subset).
+- The focused construction/property/integration roll-up built **2,572 jobs**; the full
+  project built **2,685 jobs**.
+- The quotation reports, computation-syntax reports, six public prefix-syntax axiom reports,
+  five public conditioning-presentation reports, and four public feedback-emission reports
+  contain only `propext`, `Classical.choice`, and `Quot.sound` (some prefix reports need a
+  strict subset).
 - The last verified tree was green and contained no executable proof holes.
 
 Relevant commits, newest first:
@@ -120,7 +138,7 @@ Relevant commits, newest first:
 - `78f0860` — remove the stale progress ledger
 - `4fb0939` — restore the expanded witness construction scope
 
-## Attempt order for the four remaining constructions
+## Attempt order for the remaining constructions
 
 This order is deliberate: take the two narrowest old Tier 2 presentations first, then build
 the faithfulness-critical first-order representation and quotation spine, then return to the
@@ -131,8 +149,8 @@ three broader operational compilers.
 | 1 | `M7-SCON-PRESENTATION` | **Complete**; finite conjunction, exact semantics, and union computation landed |
 | 2 | `M7-DUS-PREFIX-SYNTAX` | **Complete**; Boolean-prefix syntax, enumeration, semantics, and finite realizability landed |
 | 3 | `M7-COMP-SYNTAX` | **Complete**; FFL arithmetic schemas, compact Gödel names, representation constructors, and direct consumers landed |
-| 4 | `M7-QUOTE-AFFINE` | **Next**; consumes attempt 3 and closes introspection/self-trust quotation |
-| 5 | `M7-FEEDBACK-TRUTH` | Bounded delayed truth compiler; already scoped but has a real boundary correction |
+| 4 | `M7-QUOTE-AFFINE` | **Complete**; FFL quotation/diagonalization and concrete same-day/deferred affine packages landed |
+| 5 | `M7-FEEDBACK-TRUTH` | **Next**; bounded delayed truth compiler with the scoped boundary correction |
 | 6 | `M7-SCON-COMPILER` | Market-dependent denominator patch plus arbitrary token-stream translation |
 | 7 | `M7-LUV-SYNTAX` | Broadest Tier 2 package: thresholds, exact-theory semantics, meshes, and softmax emission |
 
@@ -204,28 +222,36 @@ boundaries in `Properties/MetaLearning.lean`:
   MetaLearning consumers. Concrete Code.zero/zero-fuel theorems exercise the positive and
   complementary negative paths.
 
-## START HERE — attempt 4, `M7-QUOTE-AFFINE`
+## Completed attempt 4 — `M7-QUOTE-AFFINE`
 
-`M7-COMP-SYNTAX` must precede `M7-QUOTE-AFFINE`. The current `Sentence` is propositional, so
-this is a real integration campaign rather than a wrapper around the existing boundary
-structures.
+`LogicalInduction/Construction/QuotationAffine.lean` closes both the same-day and deferred
+quotation boundaries:
 
-- `M7-COMP-SYNTAX` now supplies the first-order representability/Gödel machinery behind the
-  three MetaLearning boundaries. Reuse its FFL schemas, compact naming, and explicit
-  proof-to-`DP` seam rather than reopening that construction.
-- `M7-QUOTE-AFFINE` must construct both the same-day completed-theory quotation packages and
-  the deferred fixed-portfolio `AffineQuoteEq`/`AffineQuoteGE` packages. It must cover the
-  quotation, diagonal/fixed-point, exact current-price, completed-world, and deferred
-  coherence obligations used by introspection and self-trust.
-- Do not describe quotation as mere wiring, silently leave its computation-representation
-  root disclosed, or assume the consumer conclusions in the quotation certificate.
+- `ArithmeticDecision`, `BooleanQuoteCode`, and `RationalQuoteCode` use FFL weak
+  representation for a predicate and its complement, with one injective polynomial public
+  name. `QuotationTheoryPresentation` is the honest residual bridge from arithmetic proofs
+  to membership of the corresponding positive or negated market literal.
+- `ParameterizedDiagonalQuoteCode` uses FFL's actual `parameterizedFixedpoint` theorem.
+  `introspectionIntervalQuoteOfCode` and `paradoxResistanceQuoteOfDiagonal` build literal
+  gate portfolios, while the two numeric constructors build the current-price/current-
+  expectation mesh portfolios.
+- `CompletedAffineQuoteApprox`, image flags, bounded preimages, and cross-precision meshes
+  discharge completed-theory and deferred repricing obligations. The `cee`, `ceu`, `ccee`,
+  and `st` constructors are concrete fixed affine portfolios; self-trust proves the required
+  one-sided correction rather than smuggling in its conclusion.
+- The paper's informal image assignment is ambiguous for noninjective deferrals. The repair
+  is deliberately local: only the four concrete deferred constructors take
+  `StrictlyIncreasingDeferral`; `AffineQuoteEq`, `AffineQuoteGE`, and all consumer theorems
+  retain their original arbitrary-`DeferralFunction` interfaces.
+- Compact LUV syntax does not determine completed-world values. Cross-precision constructors
+  therefore expose the necessary `ValuesAt` facts explicitly. This is a representation
+  premise, not a price or convergence premise.
+- Eight direct paper-facing consumers discharge the constructed packages. Their axiom
+  reports contain only `propext`, `Classical.choice`, and `Quot.sound`.
 
-This witness takes priority over the later operational compilers because it tests the largest
-remaining paper-faithfulness claim.
+## START HERE — attempt 5, `M7-FEEDBACK-TRUTH`
 
-## Attempt 5 brief — `M7-FEEDBACK-TRUTH`
-
-Preserve this scoped design when the ordered campaign reaches it:
+Preserve this scoped design:
 
 - `DeterminedViaTheory As P DP truth` is semantic and cannot make `truth : ℕ → ℝ`
   computable. Introduce a conclusion-free operational certificate (working name

@@ -44,6 +44,37 @@ theorem gap_asympEq_zero {P : History} {DP : DeductiveProcess} {gap : ℕ → �
 
 end CompletedAffineQuoteEq
 
+/-- A same-day quotation whose completed-theory value vanishes uniformly.  Numeric LUV
+quotes naturally have this form: their finite threshold bundle differs from the represented
+real by at most the mesh width, while Boolean quotation identities use the exact
+`CompletedAffineQuoteEq` specialization above. -/
+structure CompletedAffineQuoteApprox (P : History) (DP : DeductiveProcess)
+    (gap : ℕ → ℝ) extends AffineQuotePortfolio P gap where
+  theory_coherent : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld,
+    v.ConsistentWithTheory DP → |(family n).value P v.payout| ≤ ε
+
+namespace CompletedAffineQuoteApprox
+
+/-- A uniformly vanishing completed-theory quotation error is learned on the market
+diagonal. -/
+theorem gap_asympEq_zero {P : History} {DP : DeductiveProcess} {gap : ℕ → ℝ}
+    (q : CompletedAffineQuoteApprox P DP gap) [IsLogicalInductor P DP]
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    gap ≈ₙ fun _ => 0 := by
+  have hprice := q.poly.affine_provind_theory_tendsto_zero P DP q.bounded
+    ⟨1, q.magnitude_le_one⟩ hP hworld q.theory_coherent
+  rw [asympEq_iff_eventuallyWithin]
+  intro ε hε
+  have hs : (0 : ℝ) < q.scale := by exact_mod_cast q.scale_pos
+  have hnear := asympEq_iff_eventuallyWithin.1 hprice
+    ((q.scale : ℝ) * ε) (mul_pos hs hε)
+  filter_upwards [hnear] with n hn
+  rw [q.current_price, sub_zero, abs_mul, abs_of_pos hs] at hn
+  simpa only [sub_zero] using (mul_le_mul_iff_of_pos_left hs).mp hn
+
+end CompletedAffineQuoteApprox
+
 /-- Operational quotation package for `thm:epr`. `Y n` is the LUV expressing the actual
 day-`n` price of `φ n`. The delayed/world field records the intended first-order semantics;
 the affine field is the concrete same-day portfolio consumed by the proof. -/
@@ -53,7 +84,7 @@ structure CurrentPriceExpectationQuote (P : History) (DP : DeductiveProcess)
   quote_codes : LUV.PolyThresholdCodeSeq Y
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) (P n (φ n))
-  affine : CompletedAffineQuoteEq P DP
+  affine : CompletedAffineQuoteApprox P DP
     (fun n => P n (φ n) - (Y n).expect P n)
 
 /-- Operational quotation package for `thm:er`. `Y n` expresses the actual day-`n`
@@ -64,7 +95,7 @@ structure CurrentExpectationQuote (P : History) (DP : DeductiveProcess)
   quote_codes : LUV.PolyThresholdCodeSeq Y
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) ((X n).expect P n)
-  affine : CompletedAffineQuoteEq P DP
+  affine : CompletedAffineQuoteApprox P DP
     (fun n => (X n).expect P n - (Y n).expect P n)
 
 /-- **Expectations of Probabilities** (`thm:epr`): the price of `φ n` agrees
@@ -331,6 +362,7 @@ theorem lic_paradox_resistance
     linarith
 
 #print axioms CompletedAffineQuoteEq.gap_asympEq_zero
+#print axioms CompletedAffineQuoteApprox.gap_asympEq_zero
 #print axioms lic_expectations_of_probabilities
 #print axioms lic_iterated_expectations
 #print axioms lic_introspection

@@ -10,28 +10,23 @@ the **non-vacuous way**:
   family `Y : ℕ → LUV` constrained by a linkage hypothesis (`PCWorld.ValuesAt`), never as
   a canonical construction — constructing a representative would silently pre-discharge
   the learning content (the D3 general principle).
-* **Timing is the faithful revelation-schedule form.** The linkage facts are revealed by
-  the deductive process at some finite day `r n` — *not* necessarily by day `n`. The
-  by-day-`n` form would force plausible worlds to know the day-`f n > n` price already,
-  and its only witnesses are oracle-like `DP`s that know the future market: exactly the
-  degenerate non-vacuity the audit protocol hunts. With an unconstrained schedule
-  `r : ℕ → ℕ`, the hypotheses are dischargeable by **M7's construction** (`P` is the
-  computable `LIA`, `Θ` represents computations, so each threshold fact about
-  `P_{f n}(φ_n)` is eventually proved and enters `D`) — no future-knowing `DP` needed.
-  The theorems' content survives: the inductor's *day-`n`* expectations must track values
-  whose defining facts arrive only later; that anticipation is Self-Trust.
+* **Reflection uses the completed theory.** A value assertion quantifies over every rational
+  threshold, so no finite deductive stage can in general contain its entire infinite
+  threshold diagram.  The faithful propositional translation therefore asks every world
+  consistent with the completed theory to value the quote correctly.  M7's construction
+  discharges this pointwise: each true or false threshold computation is eventually proved
+  and enters `D`.  Deferred market timing remains a separate, load-bearing obligation in
+  `AffineQuoteEq`/`AffineQuoteGE`; no future-knowing deductive process is introduced.
 
 **Residual type-`(c)` (ledgered):** the linkage hypotheses import the paper's entire
-"quoting + Θ-represents-computations" mechanism; they are satisfiable but their principled
-witness is M7's construction. Naming caution (roadmap): the deference corpus's "cee" is
-the paper's `thm:ceu`.
+"quoting + Θ-represents-computations" mechanism; their principled witness is M7's
+construction. Naming caution (roadmap): the deference corpus's "cee" is the paper's
+`thm:ceu`.
 
-**M4 repair (2026-07-13):** the revelation hypotheses below still record the delayed
-world semantics of each quote, while `AffineQuoteEq`/`AffineQuoteGE` now supply the missing
-operational certificate: one fixed, uniformly emitted affine portfolio whose later price
-is coherent.  This separates logical quotation (ultimately witnessed by M7) from the
-preemptive-learning transport proved here, without giving day-`n` plausible worlds oracle
-access to the day-`f n` market.
+**M4/M7 repair:** completed-theory hypotheses record the logical semantics of each quote,
+while `AffineQuoteEq`/`AffineQuoteGE` supply the operational certificate: one fixed,
+uniformly emitted affine portfolio whose later price is coherent.  This separates logical
+quotation from the preemptive-learning transport proved here.
 -/
 import LogicalInduction.Properties.ExpectationAffine
 import LogicalInduction.Properties.Basic
@@ -112,39 +107,36 @@ structure AffineQuoteGE (P : History) (f : DeferralFunction) (gap : ℕ → ℝ)
 world semantics, and the fixed-portfolio cross-grid law are one explicit trust object. -/
 structure ExpectedFutureExpectationQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (X Y : ℕ → LUV) where
-  revelationDay : ℕ → ℕ
   source_codes : LUV.PolyThresholdCodeSeq X
   quote_codes : LUV.PolyThresholdCodeSeq Y
-  reflected : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (revelationDay n)) →
+  reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) ((X n).expect P (f n))
   affine : AffineQuoteEq P f (fun n => (X n).expect P n - (Y n).expect P n)
 
 /-- Complete quote certificate for `thm:ceu`. -/
 structure FuturePriceQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (φ : ℕ → Sentence) (Y : ℕ → LUV) where
-  revelationDay : ℕ → ℕ
   sentence_codes : PolySentenceCodes φ
   quote_codes : LUV.PolyThresholdCodeSeq Y
-  reflected : ∀ n (v : PCWorld), v.ConsistentWith (DP.D (revelationDay n)) →
+  reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) (P (f n) (φ n))
   affine : AffineQuoteEq P f (fun n => P n (φ n) - (Y n).expect P n)
 
 /-- Complete weighted-product quote certificate for `thm:ccee`. -/
 structure ConditionalExpectationQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (X Z Z' : ℕ → LUV) (w : ℕ → ℚ) where
-  revelationDay : ℕ → ℕ
   weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1
   weight_generable : PGenerableRat P w
   source_codes : LUV.PolyThresholdCodeSeq X
   left_codes : LUV.PolyThresholdCodeSeq Z
   right_codes : LUV.PolyThresholdCodeSeq Z'
   source_valued : ∀ n (v : PCWorld),
-    v.ConsistentWith (DP.D (revelationDay n)) → ∃ x, v.ValuesAt (X n) x
+    v.ConsistentWithTheory DP → ∃ x, v.ValuesAt (X n) x
   left_reflected : ∀ n (v : PCWorld),
-    v.ConsistentWith (DP.D (revelationDay n)) → ∀ x,
+    v.ConsistentWithTheory DP → ∀ x,
       v.ValuesAt (X n) x → v.ValuesAt (Z n) (x * w (f n))
   right_reflected : ∀ n (v : PCWorld),
-    v.ConsistentWith (DP.D (revelationDay n)) →
+    v.ConsistentWithTheory DP →
       v.ValuesAt (Z' n) ((X n).expect P (f n) * w (f n))
   affine : AffineQuoteEq P f
     (fun n => (Z n).expect P n - (Z' n).expect P n)
@@ -153,7 +145,6 @@ structure ConditionalExpectationQuote (P : History) (DP : DeductiveProcess)
 structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
     (A B : ℕ → LUV) where
-  revelationDay : ℕ → ℕ
   delta_pos : ∀ n, 0 < δ n
   probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1
   sentence_codes : PolySentenceCodes φ
@@ -162,10 +153,10 @@ structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
   product_codes : LUV.PolyThresholdCodeSeq A
   confidence_codes : LUV.PolyThresholdCodeSeq B
   confidence_reflected : ∀ n (v : PCWorld),
-    v.ConsistentWith (DP.D (revelationDay n)) →
+    v.ConsistentWithTheory DP →
       v.ValuesAt (B n) (ctsInd (δ n) (P (f n) (φ n)) (p n))
   product_reflected : ∀ n (v : PCWorld),
-    v.ConsistentWith (DP.D (revelationDay n)) →
+    v.ConsistentWithTheory DP →
       v.ValuesAt (A n)
         (v.payout (φ n) * ctsInd (δ n) (P (f n) (φ n)) (p n))
   affine : AffineQuoteGE P f
@@ -294,13 +285,13 @@ end AffineQuotePortfolio
 
 /-! ### The four Self-Trust statements
 
-Common shape: `f` a deferral function, `r : ℕ → ℕ` the revelation schedule, a delayed
-world-semantics linkage for each quoted family, and a fixed-portfolio coherence
-certificate.  By `DP.mono`, the semantic linkage persists after `r n`; the portfolio
-certificate separately exposes the paper's cross-grid `thm:exppolymax` obligation. -/
+Common shape: `f` a deferral function, completed-theory semantics for each quoted family,
+and a fixed-portfolio coherence certificate.  The semantic fields are pointwise consequences
+of arithmetic representation; the portfolio certificate separately exposes the paper's
+cross-grid `thm:exppolymax` obligation. -/
 
 /-- **Expected Future Expectations** (`thm:cee`): `𝔼ₙ(Xₙ) ≈ₙ 𝔼ₙ(⌜𝔼_{f(n)}(Xₙ)⌝)`.
-`Y n` is the quoted future expectation: every world consistent with `D (r n)` values it
+`Y n` is the quoted future expectation: every completed-theory world values it
 at the actual day-`f n` expectation of `X n`. -/
 theorem lic_expected_future_expectations (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (X Y : ℕ → LUV)
@@ -350,7 +341,7 @@ theorem lic_no_expected_net_update_conditional (P : History) (DP : DeductiveProc
 inductor's current expectation of `φₙ`, restricted to the (fuzzy) event that its future
 self will be confident in `φₙ`, is at least `pₙ` times its expectation of that event.
 
-`B n` is the quoted indicator of future confidence — valued in every `D (r n)`-consistent
+`B n` is the quoted indicator of future confidence — valued in every completed-theory
 world at the actual `ctsind` of the day-`f n` price against threshold `p n` — and `A n`
 the quoted product `1(φₙ)·B n`, valued at `payout(φₙ)` times that indicator (the value of
 `1(φ)` in `v` **is** `v`'s payout on `φ`, which is what makes the conclusion genuinely

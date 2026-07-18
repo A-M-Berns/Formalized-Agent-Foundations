@@ -775,6 +775,13 @@ structure DeductiveProcess where
   /-- The revealed sets are nondecreasing. -/
   mono : ∀ n, D n ⊆ D (n + 1)
 
+/-- Worlds consistent with every finite stage of the deductive process: the propositional
+rendering of the paper's `cworlds(Θ)`.  This definition lives with the core world/process
+types so quotation interfaces can use it without importing the later affine-coherence
+development. -/
+def PCWorld.ConsistentWithTheory (v : PCWorld) (DP : DeductiveProcess) : Prop :=
+  ∀ n, v.ConsistentWith (DP.D n)
+
 /-- A deductive process is computable in the paper's unary-time sense: one fixed partial
 recursive program eventually emits the encoded finite set `D n`.  No polynomial runtime is
 required. -/
