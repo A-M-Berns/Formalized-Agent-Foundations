@@ -123,5 +123,179 @@ theorem scheduledValue_eq
   rw [hrun, hbase]
   omega
 
+/-- Day-indexed notation for the decoded bounded deferral lookup. -/
+def scheduledDeferral (f : DeferralFunction) (a degree n k : ℕ) : ℕ :=
+  scheduledValue f a degree (Nat.pair n k)
+
+theorem scheduledDeferral_eq
+    (f : DeferralFunction) {a degree : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
+    {n k : ℕ} (hkn : f k ≤ n) :
+    scheduledDeferral f a degree n k = f k :=
+  scheduledValue_eq f hspec hkn
+
+/-- Bounded-schedule version of one feedback return feature. -/
+def scheduledReturnFeature (As : ℕ → AffineCombination)
+    (f : DeferralFunction) (a degree : ℕ) (z : ℕ) : EF :=
+  let n := z.unpair.1
+  let k := z.unpair.2
+  EF.add
+    ((As (scheduledDeferral f a degree n k)).priceFeature
+      (scheduledDeferral f a degree n (k + 1)))
+    (EF.mul (EF.const (-1))
+      ((As (scheduledDeferral f a degree n k)).priceFeature
+        (scheduledDeferral f a degree n k)))
+
+/-- Bounded-schedule version of one multiplicative Kelly factor. -/
+def scheduledFactorFeature (As : ℕ → AffineCombination) (W : ℕ → EF)
+    (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (z : ℕ) : EF :=
+  let n := z.unpair.1
+  let k := z.unpair.2
+  EF.add (EF.const 1)
+    (EF.mul
+      (EF.mul (EF.const δ) (W (scheduledDeferral f a degree n k)))
+      (scheduledReturnFeature As f a degree z))
+
+/-- Bounded-schedule wealth syntax before component `k` on runtime day `n`. -/
+def scheduledWealthFeature (As : ℕ → AffineCombination) (W : ℕ → EF)
+    (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (z : ℕ) : EF :=
+  ROIBudget.prodFeatures ((List.range z.unpair.2).map (fun j ↦
+    scheduledFactorFeature As W f a degree δ (Nat.pair z.unpair.1 j)))
+
+/-- Bounded-schedule shares for component `k` on runtime day `n`. -/
+def scheduledBetaFeature (As : ℕ → AffineCombination) (W : ℕ → EF)
+    (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (z : ℕ) : EF :=
+  EF.mul
+    (EF.mul (EF.const δ) (scheduledWealthFeature As W f a degree δ z))
+    (W (scheduledDeferral f a degree z.unpair.1 z.unpair.2))
+
+theorem scheduledReturnFeature_eq
+    (As : ℕ → AffineCombination) (f : DeferralFunction) {a degree : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
+    {n k : ℕ} (hcur : f k ≤ n) (hnext : f (k + 1) ≤ n) :
+    scheduledReturnFeature As f a degree (Nat.pair n k) =
+      feedbackReturnFeature As f k := by
+  simp [scheduledReturnFeature, feedbackReturnFeature,
+    scheduledDeferral_eq f hspec hcur, scheduledDeferral_eq f hspec hnext]
+
+theorem scheduledFactorFeature_eq
+    (As : ℕ → AffineCombination) (W : ℕ → EF)
+    (f : DeferralFunction) {a degree : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
+    (δ : ℚ) {n k : ℕ} (hcur : f k ≤ n) (hnext : f (k + 1) ≤ n) :
+    scheduledFactorFeature As W f a degree δ (Nat.pair n k) =
+      feedbackFactorFeature As W f δ k := by
+  simp [scheduledFactorFeature, feedbackFactorFeature,
+    scheduledReturnFeature_eq As f hspec hcur hnext,
+    scheduledDeferral_eq f hspec hcur]
+
+theorem scheduledWealthFeature_eq
+    {As : ℕ → AffineCombination} {W : ℕ → EF}
+    {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
+    {a degree : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
+    (δ : ℚ) {n k : ℕ} (hk : f k ≤ n) :
+    scheduledWealthFeature As W f a degree δ (Nat.pair n k) =
+      feedbackWealthFeature As W f δ k := by
+  simp only [scheduledWealthFeature, feedbackWealthFeature, Nat.unpair_pair]
+  apply congrArg ROIBudget.prodFeatures
+  apply List.map_congr_left
+  intro j hj
+  simp only [List.mem_range] at hj
+  apply scheduledFactorFeature_eq As W f hspec δ
+  · exact (hstrict.monotone (by omega)).trans hk
+  · exact (hstrict.monotone (by omega)).trans hk
+
+theorem scheduledBetaFeature_eq
+    {As : ℕ → AffineCombination} {W : ℕ → EF}
+    {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
+    {a degree : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
+    (δ : ℚ) {n k : ℕ} (hk : f k ≤ n) :
+    scheduledBetaFeature As W f a degree δ (Nat.pair n k) =
+      feedbackBetaFeature As W f δ k := by
+  simp [scheduledBetaFeature, feedbackBetaFeature,
+    scheduledWealthFeature_eq hstrict hspec δ hk,
+    scheduledDeferral_eq f hspec hk]
+
+/-! ### Polynomial syntax streams for the scheduled features -/
+
+theorem scheduledDeferral_polyFueled (f : DeferralFunction) (a degree : ℕ) :
+    ∃ c, PolyFueled c (fun z ↦
+      scheduledDeferral f a degree z.unpair.1 z.unpair.2) := by
+  obtain ⟨c, h⟩ := scheduledValue_polyFueled f a degree
+  exact ⟨c, h.of_eq (fun z => by simp [scheduledDeferral])⟩
+
+theorem scheduledReturnFeature_polySeg
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) (a degree : ℕ) :
+    PolySegStream (fun z ↦ (scheduledReturnFeature As f a degree z).serialize) := by
+  obtain ⟨cvalue, hvalue⟩ := scheduledValue_polyFueled f a degree
+  have hcur : PolyFueled cvalue (fun z ↦
+      scheduledDeferral f a degree z.unpair.1 z.unpair.2) :=
+    hvalue.of_eq (fun z => by simp [scheduledDeferral])
+  have hnextInput : PolyFueled _ (fun z : ℕ ↦
+      Nat.pair z.unpair.1 (z.unpair.2 + 1)) :=
+    PolyFueled.left.pair PolyFueled.right.succ_comp
+  have hnext : PolyFueled _ (fun z ↦
+      scheduledDeferral f a degree z.unpair.1 (z.unpair.2 + 1)) :=
+    (hvalue.comp hnextInput).of_eq (fun z => by simp [scheduledDeferral])
+  have hfuture := hpoly.priceFeature_polySeg.comp (hcur.pair hnext)
+  have hpresent := hpoly.priceFeature_polySeg.comp (hcur.pair hcur)
+  have hneg : PolySegStream (fun _ ↦ (EF.const (-1)).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))
+  simpa [scheduledReturnFeature] using
+    PolySegStream.serialize_add hfuture
+      (PolySegStream.serialize_mul hneg hpresent)
+
+theorem scheduledFactorFeature_polySeg
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) :
+    PolySegStream (fun z ↦ (scheduledFactorFeature As W f a degree δ z).serialize) := by
+  obtain ⟨cvalue, hvalue⟩ := scheduledDeferral_polyFueled f a degree
+  have hweight := hW.polySeg.comp hvalue
+  have hone : PolySegStream (fun _ ↦ (EF.const 1).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)
+  have hdelta : PolySegStream (fun _ ↦ (EF.const δ).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const δ)
+  have hreturn := scheduledReturnFeature_polySeg hpoly f a degree
+  simpa [scheduledFactorFeature] using PolySegStream.serialize_add hone
+    (PolySegStream.serialize_mul
+      (PolySegStream.serialize_mul hdelta hweight) hreturn)
+
+theorem scheduledWealthFeature_polySeg
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) :
+    PolySegStream (fun z ↦ (scheduledWealthFeature As W f a degree δ z).serialize) := by
+  have hfactor := scheduledFactorFeature_polySeg hpoly hW f a degree δ
+  have hcanonical : PolyFueled _ (fun q : ℕ ↦
+      Nat.pair q.unpair.1.unpair.1 q.unpair.2) :=
+    (PolyFueled.left.comp PolyFueled.left).pair PolyFueled.right
+  have hblocks := PolySegStream.concatVar (hfactor.comp hcanonical) PolyFueled.right
+  have hone : PolySegStream (fun _ ↦ (EF.const 1).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)
+  have htags := PolySegStream.repeatTag 3 PolyFueled.right
+  refine PolySegStream.of_eq ((hblocks.append hone).append htags) ?_
+  intro z
+  unfold scheduledWealthFeature
+  rw [ROIBudget.serialize_prodFeatures]
+  simp only [List.flatMap_map, List.length_map,
+    List.length_range, Nat.unpair_pair, List.append_assoc]
+
+theorem scheduledBetaFeature_polySeg
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) :
+    PolySegStream (fun z ↦ (scheduledBetaFeature As W f a degree δ z).serialize) := by
+  obtain ⟨cvalue, hvalue⟩ := scheduledDeferral_polyFueled f a degree
+  have hdelta : PolySegStream (fun _ ↦ (EF.const δ).serialize) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const δ)
+  have hwealth := scheduledWealthFeature_polySeg hpoly hW f a degree δ
+  have hweight := hW.polySeg.comp hvalue
+  simpa [scheduledBetaFeature] using PolySegStream.serialize_mul
+    (PolySegStream.serialize_mul hdelta hwealth) hweight
+
 end FeedbackEmission
 end LogicalInduction
