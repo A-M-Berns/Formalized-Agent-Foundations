@@ -791,6 +791,50 @@ def feedbackTrader {As : ℕ → AffineCombination} (hpoly : PolySequence As)
   strat n := Strategy.join ((List.range (n + 1)).map fun k ↦
     (feedbackRoundTrip hpoly hW hstrict δ k).strat n)
 
+/-- Proof-erased day-`n` trade list of one feedback round trip.  This is deliberately the
+literal syntax of `feedbackRoundTrip`, not a value-equivalent normal form: the closing
+branch retains `AffineCombination.neg`'s actual nested coefficient multiplication. -/
+def feedbackRoundTripTrades (As : ℕ → AffineCombination) (W : ℕ → EF)
+    (f : DeferralFunction) (δ : ℚ) (k n : ℕ) : List (EF × Sentence) :=
+  if n = f k then (feedbackPosition As W f δ k).terms
+  else if n = f (k + 1) then (feedbackPosition As W f δ k).neg.terms
+  else []
+
+/-- The proof-bearing round-trip trader has exactly the proof-erased trade list above. -/
+theorem feedbackRoundTrip_trades
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
+    (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ) (k n : ℕ) :
+    ((feedbackRoundTrip hpoly hW hstrict δ k).strat n).trades =
+      feedbackRoundTripTrades As W f δ k n := by
+  by_cases hopen : n = f k
+  · subst n
+    rw [feedbackRoundTrip, roundTrip_strat_open]
+    simp [feedbackRoundTripTrades]
+  · by_cases hclose : n = f (k + 1)
+    · subst n
+      rw [feedbackRoundTrip, roundTrip_strat_close]
+      simp [feedbackRoundTripTrades, ne_of_gt (hstrict (Nat.lt_succ_self k))]
+    · rw [feedbackRoundTrip, roundTrip_strat_other _ _ _ _ _ _ hopen hclose]
+      simp [feedbackRoundTripTrades, hopen, hclose, emptyStrategy]
+
+/-- Complete proof-erased day-`n` syntax of the joined feedback trader. -/
+def feedbackTraderTrades (As : ℕ → AffineCombination) (W : ℕ → EF)
+    (f : DeferralFunction) (δ : ℚ) (n : ℕ) : List (EF × Sentence) :=
+  (List.range (n + 1)).flatMap fun k ↦ feedbackRoundTripTrades As W f δ k n
+
+/-- `feedbackTraderTrades` is literal list equality with the existing economic trader. -/
+theorem feedbackTrader_trades
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
+    (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ) (n : ℕ) :
+    ((feedbackTrader hpoly hW hstrict δ).strat n).trades =
+      feedbackTraderTrades As W f δ n := by
+  simp only [feedbackTrader, Strategy.join, List.flatMap_map, feedbackTraderTrades]
+  apply List.flatMap_congr
+  intro k hk
+  exact feedbackRoundTrip_trades hpoly hW hstrict δ k n
+
 /-- Structured token-emission boundary for the concrete feedback trader.  It exposes
 the exact trade count, each coefficient feature, and each sentence code; `trades_eq`
 requires these fields to reconstruct the trader's real day strategy.  It contains no
