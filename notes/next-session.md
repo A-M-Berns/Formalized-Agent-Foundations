@@ -128,78 +128,72 @@ by Foundation's decoder and emits the exact quote from `liaStatePrefix`. The aff
 
 ---
 
-## ▶ START HERE — consolidate the frozen public surface (handoff 2026-07-18)
+## ▶ START HERE — construct `M7-FEEDBACK-EMIT` (scope corrected 2026-07-18)
 
 The conditional+disclosed **construction-scope endpoint is green**: four witnesses are
 constructed, eleven are field-audited and disclosed with primary citations, the README and
-ledger agree on the public claim, and the 15-row inventory has no open cells. Do not reopen
-a compiler witness, repeat the disclosure pass, request piecemeal statement read-through,
-or start `M7-ERRATA-AUDIT` yet.
+ledger agree on the public claim, and the 15-row inventory has no open cells. Anson has now
+explicitly reopened the stronger **actual-construction** campaign. Defer public-surface
+consolidation, statement read-through, and `M7-ERRATA-AUDIT`; the next work is another
+concrete witness, not release documentation.
 
 Verification: the construction/property/integration roll-up completed 2,469 jobs, the full
 build completed 2,680, the executable-hole and project-axiom scans are empty (broad keyword
 hits are comments only), `git diff --check` passes, and the audited capstones expose exactly
 `propext`, `Classical.choice`, and `Quot.sound`.
 
-### Next sizeable goal — freeze the release-candidate surface and M7 verification packet
+### Next sizeable goal — the concrete feedback-trader compiler
 
-Treat the next tranche as one trust-surface deliverable, not as an open-ended cleanup:
-**freeze the milestone-facing M0–M7 API, then produce the packet Anson can read without
-opening proof bodies.** This is the right next goal because theorem construction is green,
-while the remaining risk is that the public statements, paper correspondence, and status
-documents disagree about what was actually proved.
+Construct `M7-FEEDBACK-EMIT` completely: inhabit `FeedbackTraderEmissionSigns` for every
+`AffineCombination.PolySequence`, `PGenerableWeighting`, strictly increasing
+`DeferralFunction`, and admissible rational Kelly fraction. This is the best next tranche
+because it reuses the already-constructed `codeEvalnNat_polyFueled` bounded simulator, has
+an exact target trade list (`feedbackTrader`), and removes a real efficient-computability
+premise from `thm:wubaff`/`thm:wubexp` without first opening Gödel representability or a
+universal-semimeasure development.
 
-The tranche has three coupled outputs:
+Put the implementation in a focused construction module (prefer
+`LogicalInduction/Construction/FeedbackEmission.lean`) rather than further enlarging
+`M7Witnesses.lean`. The tranche is:
 
-1. **A thin, frozen public interface.** Put the reusable `Sentence`/Boolean-semantics facts
-   at the Foundation/Criterion boundary so property modules do not unfold Foundation
-   internals merely to prove routine semantic facts. At present the avoidable public leaks
-   are in `Properties/Basic.lean`, `Properties/Coherence.lean`, and
-   `Properties/AffineCoherence.lean`. Direct `LO.*` use remains allowed in
-   `Foundations.lean`, the Criterion adapter, and syntax/encoding implementation code in
-   `Construction/Budgeter.lean`, `Construction/LIACompiler.lean`, and
-   `Construction/M7Witnesses.lean`; do not mechanically wrap those compiler internals.
-   Audit `Asymptotics.lean` as the sole owner of `AsympEq`, `AsympLE`, `AsympGE`,
-   `EventuallyWithin`, and `ConvergesTo`; consolidate exports, names, and docstrings, but do
-   not create duplicate aliases or rewrite working proofs for cosmetic uniformity.
-2. **`notes/m7-verification-packet.md`.** Compare the paper line by line with the exact
-   construction declarations: `BudgeterAt`/`Budgeter` and the three
-   `lem:budgeter` capstones, `TradingFirmAt`/`TradingFirm`,
-   `trading_firm_dominance`, `liaStates`/`liaHistory`,
-   `LIA_is_logical_inductor`, and `exists_logical_inductor`. For each paper label
-   (`def:budgeter`, `lem:budgeter`, `def:tradingfirm`, `lem:tfdom`, `def:lia`/`alg:li`,
-   `thm:lia`, `thm:li`), record its Lean source, the exact statement correspondence,
-   every 0-based/indexing or modeling substitution, boundary/disclosure dependencies, and
-   the relevant build/axiom evidence.
-3. **A frozen statement/definition inventory for the human pass.** Inventory only
-   milestone-facing M0–M7 declarations selected from the paper-label ledger—not the roughly
-   2,500 internal helper declarations. Give each row its paper label, Lean declaration,
-   source location, public signature or definition summary, provenance/disclosure status,
-   and a blank Anson sign-off field. Reconcile `README.md`, `PROGRESS.md`, this handoff, and
-   `notes/logical-induction-roadmap.md`; in particular remove the roadmap's stale claim that
-   construction automatically made every conditional or representation-dependent property
-   theorem unconditional.
+1. **Expose the exact finite trade-list normal form.** Prove a reusable theorem expanding
+   day `n` of `feedbackTrader` into the flattened open/close trades of components `k ≤ n`,
+   with the literal ordering used by `Strategy.join` and `roundTrip`. Do not introduce an
+   alternative trader that is merely value-equivalent.
+2. **Compile the deferral schedule by bounded dovetail.** Reuse `deadlineRun` and
+   `codeEvalnNat_polyFueled` to recover only those `f k`/`f(k+1)` values relevant by day
+   `n`. The compiler must remain polynomial in the day even when the total computation of
+   `f k` takes time polynomial in the much larger output `f k`; never call `f.f` as an
+   unexplained efficient oracle.
+3. **Emit the actual coefficient and sentence streams.** Compose the existing
+   `PolySequence` term emitters, affine `priceFeature` serializer, weighting serializer,
+   Kelly wealth-product features, scaling, and round-trip open/close signs. Supply
+   polynomial trade count, coefficient segment stream, sentence codes, and an extensional
+   `trades_eq` proof for the exact `feedbackTrader` strategy.
+4. **Close the quantified family and both signs.** Package the per-`δ` compiler into
+   `FeedbackTraderEmissionFamily`, reuse `PolySequence.neg` for the negative orientation,
+   and expose one public constructor for `FeedbackTraderEmissionSigns`. Add thin derived
+   `wubaff`/`wubexp` entry points in which the emitter argument has disappeared; the separate
+   `FeedbackTruthSequence` premise remains explicit.
+5. **Ledger and checkpoint each green layer.** Suggested commits are: bounded deferral
+   lookup; feedback feature/trade serialization; family/sign constructor and consumer
+   wiring; ledger/README reconciliation. Build the focused module after each code commit.
 
-Work in coherent commits: boundary lemmas and their consumers; asymptotics/module/docs
-cleanup; M7 comparison packet; frozen inventory and cross-document reconciliation. Run the
-relevant targeted build after each code commit and keep the worktree green.
+### Definition of done for `M7-FEEDBACK-EMIT`
 
-### Definition of done for this tranche
-
-- The three property files above contain no direct `LO.*` references; any remaining direct
-  Foundation reference is on the explicit boundary/compiler allowlist and explained.
-- `Asymptotics.lean` remains the unique definition site for the five shared asymptotic
-  concepts, with stable imports and consistent public notation.
-- The M7 packet covers all seven paper nodes named above and has no unresolved
-  correspondence, substitution, or disclosure cell.
-- The read-through inventory covers every milestone-facing ledger row and deliberately
-  excludes private/compiler helpers; README, ledger, roadmap, and handoff state the same
-  conditional+disclosed endpoint.
-- The construction/property/integration roll-up and full build pass, executable-hole and
-  project-axiom scans are clean, `git diff --check` passes, and the public capstones expose
-  only `propext`, `Classical.choice`, and `Quot.sound`.
-- Stop with the packet ready for Anson's statement/definition-only read-through. Do not begin
-  that human pass or `M7-ERRATA-AUDIT` inside this tranche.
+- A public axiom-clean constructor inhabits `FeedbackTraderEmissionSigns` from the existing
+  computational inputs, with no market, wealth, bias, exploitation, or convergence premise.
+- Its `trades_eq` field is literal list equality with `feedbackTrader`, not semantic value
+  equality, and malformed/unfinished deferral runs cannot create spurious trades.
+- The derived weighted-unbiasedness entry points no longer request
+  `FeedbackTraderEmission*`; `M7-FEEDBACK-TRUTH` is the only remaining feedback boundary.
+- The 15-row inventory moves `M7-FEEDBACK-EMIT` from disclosed to constructed (5 of 15),
+  while `M7-FEEDBACK-TRUTH` stays honestly disclosed and conditional.
+- `lake build LogicalInduction.Construction.FeedbackEmission LogicalInduction.Properties
+  LogicalInduction.IntegrationTest`, the full build, executable-hole scan, axiom reports,
+  and `git diff --check` pass.
+- Stop after the emitter is closed. Do not silently absorb `M7-FEEDBACK-TRUTH`,
+  `M7-PREFIX-MACHINE`, public-surface cleanup, or the errata audit into this tranche.
 
 ## ✅ Disclosure packet and endpoint-green checklist (completed 2026-07-18)
 
