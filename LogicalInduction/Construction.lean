@@ -29,6 +29,7 @@ import LogicalInduction.Construction.LIACompiler
 import LogicalInduction.Construction.M7Witnesses
 import LogicalInduction.Construction.FeedbackEmission
 import LogicalInduction.Construction.ConditioningPresentation
+import LogicalInduction.Construction.BitPrefixSyntax
 
 namespace LogicalInduction
 

@@ -43,10 +43,20 @@ structure UniversalContinuousSemimeasure extends
   universal : ∀ ν : LowerSemicomputableContinuousSemimeasure,
     ∃ c : ℝ, 0 < c ∧ ∀ σ, c * ν.mass σ ≤ mass σ
 
+/-- The genuine semantic premise behind the independent zero-arity predicates used in
+`thm:dus`: every finite Boolean assignment to the atoms remains compatible with every
+finite deductive stage.  It contains no preassembled prefix sentence, syntax semantics,
+market data, or domination conclusion. -/
+structure IndependentBitAtoms (DP : DeductiveProcess) where
+  atom : ℕ → Sentence
+  finite_realizable : ∀ (n : ℕ) (σ : List Bool), ∃ v : PCWorld,
+    v.ConsistentWith (DP.D n) ∧
+      ∀ k : Fin σ.length, (v.Holds (atom k) ↔ σ.get k = true)
+
 /-- Propositional syntax for the independent zero-arity predicates and their finite-prefix
-conjunctions from `thm:dus`. `holds_prefix` fixes the exact Boolean semantics;
-`finite_realizable` is the semantic rendering of the atoms not occurring in the theory.
-The enumeration/code fields record the paper's efficient list of all finite strings. -/
+conjunctions from `thm:dus`. `holds_prefix` fixes the exact Boolean semantics, while
+`finite_realizable` records compatibility with each finite deductive stage.  The
+enumeration/code fields record the paper's efficient list of all finite strings. -/
 structure BitPrefixSentences (DP : DeductiveProcess) where
   atom : ℕ → Sentence
   prefixSentence : List Bool → Sentence
