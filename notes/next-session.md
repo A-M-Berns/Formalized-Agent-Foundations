@@ -23,17 +23,17 @@ than a stop instruction.
 | 6 | `M7-PREFIX-MACHINE` | disclosed | **keep disclosed**; optional post-target Kraft/prefix-machine stretch |
 | 7 | `M7-FEEDBACK-EMIT` | **constructed** | Keep; `FeedbackEmission.feedbackTraderEmissionSigns` |
 | 8 | `M7-FEEDBACK-TRUTH` | disclosed | **construct**, attempt 5 |
-| 9 | `M7-DUS-PREFIX-SYNTAX` | disclosed | **construct**, attempt 2 |
+| 9 | `M7-DUS-PREFIX-SYNTAX` | disclosed | **construct next**, attempt 2 |
 | 10 | `M7-SCON-COMPILER` | disclosed | **construct**, attempt 6 |
-| 11 | `M7-SCON-PRESENTATION` | disclosed | **construct next**, attempt 1 |
+| 11 | `M7-SCON-PRESENTATION` | **constructed** | Keep; `conditioningPresentationOfComputations`, `lic_conditioned_gated_ofComputations` |
 | 12 | `M7-LUV-SYNTAX` | disclosed | **construct**, attempt 7 |
 | 13 | `M7-DUS-APPROX` | disclosed | Leave disclosed unless Anson reopens it |
 | 14 | `M7-STRICT-SEPARATORS` | disclosed | Leave disclosed unless Anson reopens it |
 | 15 | `M7-COMP-SYNTAX` | disclosed | **construct**, attempt 3 and prerequisite of `M7-QUOTE-AFFINE` |
 
-Current count: **5/15 constructed**. Target count: **12/15 constructed**. The seven remaining
-constructions are `M7-SCON-PRESENTATION`, `M7-DUS-PREFIX-SYNTAX`, `M7-COMP-SYNTAX`,
-`M7-QUOTE-AFFINE`, `M7-FEEDBACK-TRUTH`, `M7-SCON-COMPILER`, and `M7-LUV-SYNTAX`.
+Current count: **6/15 constructed**. Target count: **12/15 constructed**. The six remaining
+constructions are `M7-DUS-PREFIX-SYNTAX`, `M7-COMP-SYNTAX`, `M7-QUOTE-AFFINE`,
+`M7-FEEDBACK-TRUTH`, `M7-SCON-COMPILER`, and `M7-LUV-SYNTAX`.
 `M7-PREFIX-MACHINE`, `M7-DUS-APPROX`, and `M7-STRICT-SEPARATORS` are the three intentional
 disclosures at the target.
 
@@ -48,15 +48,27 @@ construction slate is complete.
 - `M7-FEEDBACK-EMIT` is complete in
   `LogicalInduction/Construction/FeedbackEmission.lean` and imported from
   `LogicalInduction/Construction.lean`.
-- Its public constructor is
+- `M7-SCON-PRESENTATION` is complete in
+  `LogicalInduction/Construction/ConditioningPresentation.lean` and imported from
+  `LogicalInduction/Construction.lean`.
+- Its public constructor is `conditioningPresentationOfComputations`; the useful closure
+  entry point with the presentation discharged is `lic_conditioned_gated_ofComputations`.
+- `deductiveStageCondition` is the actual `Finset.conj`; Foundation Boolean semantics prove
+  the exact stage equivalence, including the empty conjunction. `DeductiveProcessComputation.union`
+  pairs the two stage programs and applies a primitive-recursive code-sorted union normalizer.
+- Polynomial naming is honestly isolated in `CompactConditioningProcessComputation`: one
+  program must emit the actual extra-stage conjunction code with `PolyFueled`. Ordinary
+  `ComputableDeductiveProcess` was not silently upgraded to a polynomial oracle. The
+  interface has an `N+` inhabitance witness using the constantly empty process.
+- The feedback-emission public constructor is
   `LogicalInduction.FeedbackEmission.feedbackTraderEmissionSigns`.
 - Derived consumers with the emission boundary discharged are
   `lic_wubaff_ofFeedbackTruth`, `boundedCombination_wubaff_ofFeedbackTruth`, and
   `luv_wubexp_ofFeedbackTruth`.
-- The focused construction/property/integration roll-up built **2,470 jobs**; the full
-  project built **2,681 jobs**.
-- The four public feedback-emission axiom reports contain only `propext`,
-  `Classical.choice`, and `Quot.sound`.
+- The focused construction/property/integration roll-up built **2,471 jobs**; the full
+  project built **2,682 jobs**.
+- The five public conditioning-presentation axiom reports and the four public
+  feedback-emission reports contain only `propext`, `Classical.choice`, and `Quot.sound`.
 - The last verified tree was green and contained no executable proof holes.
 
 Relevant commits, newest first:
@@ -73,7 +85,7 @@ Relevant commits, newest first:
 - `78f0860` — remove the stale progress ledger
 - `4fb0939` — restore the expanded witness construction scope
 
-## Attempt order for the seven remaining constructions
+## Attempt order for the six remaining constructions
 
 This order is deliberate: take the two narrowest old Tier 2 presentations first, then build
 the faithfulness-critical first-order representation and quotation spine, then return to the
@@ -81,8 +93,8 @@ three broader operational compilers.
 
 | Attempt | Boundary | Why here |
 |---:|---|---|
-| 1 | `M7-SCON-PRESENTATION` | Smallest finite-conjunction/union presentation; also prepares `M7-SCON-COMPILER` |
-| 2 | `M7-DUS-PREFIX-SYNTAX` | Self-contained Boolean-prefix syntax and finite realizability |
+| 1 | `M7-SCON-PRESENTATION` | **Complete**; finite conjunction, exact semantics, and union computation landed |
+| 2 | `M7-DUS-PREFIX-SYNTAX` | **Next**; self-contained Boolean-prefix syntax and finite realizability |
 | 3 | `M7-COMP-SYNTAX` | Faithfulness root: concrete representation of computations and Gödel syntax |
 | 4 | `M7-QUOTE-AFFINE` | Directly consumes attempt 3; closes introspection/self-trust quotation |
 | 5 | `M7-FEEDBACK-TRUTH` | Bounded delayed truth compiler; already scoped but has a real boundary correction |
@@ -96,31 +108,62 @@ dependency; do not manufacture a circular or oracle-like constructor merely to p
 order. A minimal LUV threshold-code sublayer needed by quotation may be pulled into attempts
 3–4, while the full `M7-LUV-SYNTAX` package remains attempt 7.
 
-## START HERE — attempt 1, `M7-SCON-PRESENTATION`
+## Completed attempt 1 — `M7-SCON-PRESENTATION`
 
-Construct the `ConditioningPresentation DP extra` used by `thm:scon`:
+`LogicalInduction/Construction/ConditioningPresentation.lean` closes the former
+`ConditioningPresentation` boundary:
 
-1. Define the finite conjunction sentence for `extra.D n`, using a canonical ordering and
-   existing propositional conjunction semantics.
-2. Prove `v.Holds (condition n) ↔ v.ConsistentWith (extra.D n)`, including the empty-stage
-   case.
-3. Supply `PolySentenceCodes condition` from an honest compact compiler. Audit this before
-   coding: bare `ComputableDeductiveProcess extra` has no polynomial runtime or output-size
-   promise, so a direct enumeration of `extra.D n` may be too weak for the current field.
-   Strengthen the operational input or route through compact represented computation if that
-   is what the paper requires; do not treat `extra.D` as a polynomial oracle.
-4. Construct `ComputableDeductiveProcess (DP.union extra)` from explicit computations for
-   the two inputs, reusing the existing finite-stage encoding machinery.
-5. Expose a public constructor with no conditional price, trader, wealth, exploitation, or
-   logical-inductor conclusion, then discharge the presentation argument in the most useful
-   `lic_conditioned_gated` entry point.
-6. Run focused/full builds, hole and diff checks, public axiom reports, and commit coherent
-   green layers.
+- `deductiveStageCondition` is the canonical `Finset.conj`; the theorem
+  `PCWorld.holds_deductiveStageCondition` proves exact finite-stage semantics and covers the
+  empty-stage `⊤` case.
+- `sentenceFinsetUnionNorm` reuses the LIA compiler's canonical sentence sorting and duplicate
+  removal. `DeductiveProcessComputation.union` explicitly composes that normalizer with the
+  two certified stage programs.
+- `CompactConditioningProcessComputation` is the strengthened operational input forced by the
+  audit: it retains an ordinary stage computation and requires one `PolyFueled` program for
+  the code of the actual stage conjunction. This is provenance `(a)` for the semantic and
+  union fields and an explicit operational premise for polynomial naming, not a semantic or
+  market conclusion. `compactConditioningProcessComputation_nonempty` proves the interface is
+  inhabited.
+- `conditioningPresentationOfComputations` constructs the boundary object, and
+  `lic_conditioned_gated_ofComputations` removes the presentation argument from the useful
+  gated closure entry point. Neither constructor assumes prices, trades, wealth, exploitation,
+  or a logical-inductor conclusion.
 
-Definition of done: callers provide only the operational process data genuinely required by
-the paper; the conjunction syntax, exact stage semantics, and union computation are concrete.
-If compact polynomial conjunction naming genuinely depends on `M7-COMP-SYNTAX`, land every
-independent green layer, record that dependency, and resume the remainder in attempt 3.
+## START HERE — attempt 2, `M7-DUS-PREFIX-SYNTAX`
+
+Construct `BitPrefixSentences DP` in `Properties/UniversalSemimeasure.lean` from a narrow
+independent-atom premise and concrete Boolean syntax:
+
+1. Audit the interface first. An arbitrary deductive process can constrain every propositional
+   atom, so `finite_realizable` cannot be derived from `DP` alone. Isolate the genuine paper
+   premise as a conclusion-free `IndependentBitAtoms DP`-style certificate: an atom sequence
+   plus finite compatibility with every deductive stage. Do not retain `holds_prefix` or a
+   preassembled `prefixSentence` in that premise.
+2. Define `prefixSentence σ` as the finite conjunction of literals
+   `atom k` / `¬ atom k` for `k < σ.length`. Prove exact Boolean semantics for all strings,
+   explicitly including `[]`, and derive `finite_realizable` from the independent-atom
+   certificate.
+3. Use the stock `List Bool` encoding for a concrete total enumeration, e.g. decode-with-empty,
+   and prove coverage by `Encodable.encodek`. Keep literal equality to the enumerated string;
+   the DUS trader consumes `prefix_codes` at the enumeration indices.
+4. Supply `prefix_codes` honestly. The same whole-number `PolySentenceCodes` issue seen in
+   attempt 1 applies to growing conjunctions. Either prove a reusable polynomial conjunction
+   normalizer from a polynomial literal-list program, or require one explicit compact program
+   that emits the *actual* prefix-conjunction code. Do not infer polynomial fuel from mere
+   primitive recursiveness and do not hide a preassembled semantic boundary in the premise.
+5. Expose a public constructor and a direct
+   `lic_domination_universalSemimeasure` entry point with the `BitPrefixSentences` argument
+   discharged. The remaining `DUSApproximationPresentation` / `DUSThresholdEmission` premises
+   stay untouched; `M7-DUS-APPROX` is intentionally disclosed.
+6. Add an `N+` witness (the constantly empty deductive process with ordinary propositional
+   atoms is sufficient), print axioms for every new public constructor/consumer, run the
+   focused/full build and hygiene gates, then update this handoff to attempt 3.
+
+Definition of done: enumeration, literal conjunction syntax, exact prefix semantics, and the
+reduction from independent finite realizability are concrete. The only residual premise is
+the genuine independence/operational data; no price, payoff, semimeasure domination, or
+asymptotic market conclusion is assumed.
 
 ## Attempts 3–4 — the faithfulness-critical campaign
 

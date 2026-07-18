@@ -28,6 +28,7 @@ import LogicalInduction.Construction.LIAComputation
 import LogicalInduction.Construction.LIACompiler
 import LogicalInduction.Construction.M7Witnesses
 import LogicalInduction.Construction.FeedbackEmission
+import LogicalInduction.Construction.ConditioningPresentation
 
 namespace LogicalInduction
 

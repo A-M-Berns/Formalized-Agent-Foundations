@@ -2032,14 +2032,15 @@ private theorem marketMakerCandidate_prim : Primrec marketMakerCandidate := by
 
 /-! ## Exact finite-sentence-set encoding -/
 
-private theorem sentenceCodeLE_prim :
+/-- Comparison of sentence Gödel codes is primitive recursive. -/
+theorem sentenceCodeLE_prim :
     PrimrecRel fun φ ψ : Sentence => Encodable.encode φ ≤ Encodable.encode ψ :=
   Primrec.nat_le.comp₂
     (Primrec.encode.comp₂ Primrec₂.left)
     (Primrec.encode.comp₂ Primrec₂.right)
 
 /-- Insertion into the code-sorted sentence list is primitive recursive. -/
-private theorem sentenceOrderedInsert_prim :
+theorem sentenceOrderedInsert_prim :
     Primrec₂ (List.orderedInsert
       (fun φ ψ : Sentence => Encodable.encode φ ≤ Encodable.encode ψ)) := by
   let r : Sentence → Sentence → Prop := fun φ ψ =>
@@ -2088,7 +2089,7 @@ private theorem sentenceOrderedInsert_prim :
     | cons ψ l ih => simp [List.orderedInsert, ih]
 
 /-- The canonical insertion sort used below is primitive recursive. -/
-private theorem sentenceInsertionSort_prim :
+theorem sentenceInsertionSort_prim :
     Primrec (List.insertionSort
       (fun φ ψ : Sentence => Encodable.encode φ ≤ Encodable.encode ψ)) := by
   exact (Primrec.list_foldr Primrec.id (Primrec.const [])
@@ -2991,17 +2992,18 @@ private theorem tradingFirmWeight_prim : Primrec₂ tradingFirmWeight := by
   exact (ratDiv_prim.comp (Primrec.const 1) hpow).to₂.of_eq fun j b => by
     rfl
 
-private def sentenceDedup (l : List Sentence) : List Sentence :=
+/-- Remove duplicate sentences while preserving the last occurrence of each sentence. -/
+def sentenceDedup (l : List Sentence) : List Sentence :=
   l.foldr (fun φ acc => if φ ∈ acc then acc else φ :: acc) []
 
-@[simp] private theorem sentenceDedup_nil : sentenceDedup [] = [] := by rfl
+@[simp] theorem sentenceDedup_nil : sentenceDedup [] = [] := by rfl
 
-@[simp] private theorem sentenceDedup_cons (a : Sentence) (l : List Sentence) :
+@[simp] theorem sentenceDedup_cons (a : Sentence) (l : List Sentence) :
     sentenceDedup (a :: l) =
       if a ∈ sentenceDedup l then sentenceDedup l else a :: sentenceDedup l := by
   rfl
 
-@[simp] private theorem mem_sentenceDedup : ∀ (l : List Sentence) (φ : Sentence),
+@[simp] theorem mem_sentenceDedup : ∀ (l : List Sentence) (φ : Sentence),
     φ ∈ sentenceDedup l ↔ φ ∈ l := by
   intro l
   induction l with
@@ -3020,7 +3022,7 @@ private def sentenceDedup (l : List Sentence) : List Sentence :=
       · have hal : a ∉ l := fun hal => h ((ih a).mpr hal)
         simp [sentenceDedup_cons, h, ih φ, hal]
 
-private theorem sentenceDedup_nodup (l : List Sentence) :
+theorem sentenceDedup_nodup (l : List Sentence) :
     (sentenceDedup l).Nodup := by
   induction l with
   | nil => simp
@@ -3029,7 +3031,7 @@ private theorem sentenceDedup_nodup (l : List Sentence) :
       · simpa [sentenceDedup_cons, h] using ih
       · simp [sentenceDedup_cons, h, ih]
 
-private theorem sentenceDedup_prim : Primrec sentenceDedup := by
+theorem sentenceDedup_prim : Primrec sentenceDedup := by
   have hmem : PrimrecRel fun (tail : List Sentence) (φ : Sentence) => φ ∈ tail :=
     (Primrec.eq.exists_mem_list).of_eq fun tail φ => by
       simp [eq_comm]
