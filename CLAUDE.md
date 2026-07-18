@@ -106,6 +106,15 @@ top-level **statement** and every **definition** before a milestone is marked do
 trust surface is small and this is tractable — it is the specific discipline the
 deference methodology skipped. Keep statements legible to that read-through.
 
+> **Sequencing override (Anson, 2026-07-17).** The read-through is **deferred** to the
+> project's *conditional+disclosed* green endpoint — it is **not** run per-milestone in the
+> interim. Order of operations is fixed: **(1)** drive to green on the conditional+disclosed
+> endpoint (see `notes/next-session.md` "PROJECT SCOPE & ENDPOINT"); **(2)** then
+> consolidation / API surface / style, and *that* is when the deferred read-through happens,
+> over the frozen surface; **(3)** then `M7-ERRATA-AUDIT`, last. Do not stop to request a
+> statement read-through before step 2, and do not push the ERRATA audit before step 3.
+> "Keep statements legible as you go" still holds; running the gate does not.
+
 ### Scheduled adversarial audit
 
 At the end of M3, M5, and M7, run a **separate, fresh-context** statement-level audit

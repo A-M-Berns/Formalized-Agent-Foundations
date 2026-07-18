@@ -1,5 +1,104 @@
 # Logical Induction working plan — M7 active
 
+## ▶▶ PROJECT SCOPE & ENDPOINT — the plan of record (2026-07-17)
+
+**Read this before anything else.** It fixes the target we are driving to and the order of
+operations. Individual-task detail lives in START HERE below; this section is the map.
+
+### The target endpoint: "conditional + disclosed"
+
+We are **not** driving to literal closure of all fifteen boundary witnesses (that is weeks of
+mostly re-proving textbook computability facts that hit Mathlib gaps, with near-zero
+realizability doubt). The target is the **honest strong close**:
+
+- The **existence theorem** (`exists_logical_inductor`, `LIA_is_logical_inductor`) is already
+  **unconditional and axiom-clean** — the crown jewel, done, depends on **no** witness.
+- The **M3–M5 property tail** stays **green and conditional on `[IsLogicalInductor P]`** — real
+  and valuable, but explicitly conditional.
+- Every witness where **realizability is genuinely in doubt** is **constructed** (so the
+  property tail's non-vacuity is real, not stubbed).
+- Every witness that is a **standard object / known-realizable wiring** is **disclosed**
+  Barasz-style: the unproved fact named, cited to a standard result, and isolated in the
+  README's "Axioms/boundary" section. Disclosure is a *deliverable*, not a skip — it is the
+  same discipline the finished `Barasz/` formalization models.
+
+"Green on the endpoint" = the construct-set is built and axiom-clean, **and** every disclosed
+witness has its written disclosure. At that point the artifact's public claim is: *"central
+existence result formalized unconditionally; property tail formalized conditionally; every
+construction with genuine realizability content is real; the rest is disclosed and cited."*
+
+### Sequencing decision (Anson, 2026-07-17) — do not reorder
+
+1. **Drive to GREEN on the conditional+disclosed endpoint first.** **No individual-statement
+   read-through happens until then.** The CLAUDE.md "Human read-through" gate is *deferred* to
+   the endpoint, not run per-milestone in the interim. Keep statements legible as you go
+   (still the rule), but do not stop to request read-through.
+2. **Then consolidation + API surface + style** — the `Sentence`/`Asymptotics` interfaces,
+   naming, module layout, the README's axiom/disclosure section, the paper line-by-line
+   comparison. This is also when the deferred statement read-through happens, over the frozen
+   surface.
+3. **Then `M7-ERRATA-AUDIT`** (the fresh-context erratum audit + `thm:ifp` follow-ups), last.
+
+Rationale: read-through and audits are irreversible-trust work over a surface that is still
+moving while witnesses land; doing them before the surface is frozen means redoing them. Style
+polish before the witness scope is frozen means re-polishing. So: build → freeze → read/audit
+→ polish, not interleaved.
+
+### Where we are vs. the endpoint
+
+- Existence theorem: **done, unconditional, axiom-clean.**
+- Property tail (M3–M5): **green, conditional.**
+- Witnesses: **2 of 15 fully done**; **1 in progress** (`M7-PATIENT-CLOCK`, ~⅔ — next session);
+  the construct-set for the endpoint is **3–4 witnesses total**, the rest disclose.
+- Full build green, zero `sorry`, capstones expose only the three approved axioms.
+
+### The 15 witnesses — current state & endpoint disposition
+
+Disposition is for the **conditional+disclosed endpoint** (§ above). "Construct" = realizability
+in genuine doubt or the chosen showcase; "Disclose" = named + cited, no construction. Estimates
+are rough and assume the checker/EF infrastructure already built (steps 13–16).
+
+| # | Witness | Tier | Endpoint disposition | Current status | Est. |
+|---|---------|------|----------------------|----------------|------|
+| 1 | `M7-HIST-EVALN` | — | construct | **done** (axiom-clean) | — |
+| 2 | `M7-CE-REPETITION` | — | construct | **done** (axiom-clean) | — |
+| 3 | `M7-PATIENT-CLOCK` | 1 | **construct** | **in progress** (~⅔; steps 13–16 done; items A/B/C remain — see START HERE) | 1–2 sessions |
+| 4 | `M7-PREFIX-PATCH` | 1 | **construct** | to do | 1–2 sessions (inhabitable for LIA: per-day quote table is a finite hardcodable lookup; also *falsifies* the paper's `thm:ifp` proof — real content) |
+| 5 | `M7-QUOTE-AFFINE` | 1→3 | **disclose** (decision) | to do | **construct = weeks** (needs first-order quotation: Foundation's `codeOfPartrec'` + `FixedPoint`, depends on `M7-COMP-SYNTAX`). Inhabitable, argument sound & non-circular. **Recommend disclose**; construct only if the self-trust content is wanted in-kernel. |
+| 6 | `M7-PREFIX-MACHINE` | 3 | **construct** (the one showcase) — *optional* | to do | ~1 week (prefix-free machine + Kraft inequality; most self-contained Tier 3). Drop to *disclose* if leanest close is wanted. |
+| 7 | `M7-FEEDBACK-EMIT` | 2 | disclose (or construct ~1 day) | to do | most tractable Tier 2; checker wall is the same one `M7-PATIENT-CLOCK` retires — construct is cheap once PATIENT-CLOCK lands |
+| 8 | `M7-FEEDBACK-TRUTH` | 2 | disclose (or construct ~1 day) | to do | as #7 |
+| 9 | `M7-DUS-PREFIX-SYNTAX` | 2 | disclose (or construct ~1 day) | to do | fresh independent atoms |
+| 10 | `M7-SCON-COMPILER` | 2 | disclose (or construct ~1 day) | to do | safe-ratio/gated translator |
+| 11 | `M7-SCON-PRESENTATION` | 2 | disclose (or construct ~1 day) | to do | — |
+| 12 | `M7-LUV-SYNTAX` | 2 | disclose (or construct ~1 day) | to do | — |
+| 13 | `M7-DUS-APPROX` | 3 | **disclose** | to do | needs a concrete Solomonoff–Levin universal semimeasure; weeks to construct |
+| 14 | `M7-STRICT-SEPARATORS` | 3 | **disclose** | to do | recursively-inseparable c.e. sets + universal-semimeasure-mass→0; deepest, not in Mathlib |
+| 15 | `M7-COMP-SYNTAX` | 3 | **disclose** | to do | Gödel encoding + Σ₁-representability of halting; also the dependency under #5 |
+
+**Construct-set for the endpoint:** #3 `PATIENT-CLOCK` (finish), #4 `PREFIX-PATCH`, and
+optionally #6 `PREFIX-MACHINE` (showcase). Everything else **disclose**. `QUOTE-AFFINE` (#5) is
+the one flagged decision — Tier-1 by content but Tier-3 by cost.
+
+**Realistic effort to green on the endpoint:** ~2–4 weeks of construction (#3 + #4 + optional
+#6) plus a few days writing the ~9 disclosures. *Not* "days" — the earlier "days not weeks"
+estimate ignored that `PREFIX-MACHINE` and a constructed `QUOTE-AFFINE` are each week-scale;
+disclosing them is what keeps the total bounded.
+
+### `M7-PATIENT-CLOCK` — the next session
+
+The one witness in flight, and the next session's work. Items 1–3 of the original four-item
+close-out are **done** (steps 13–14: `quoteAtFuel_prim`, `efPriceQueries_prim`, privates
+exposed); item 4 is **~⅔ done** (steps 15–16: the `readyAtFuel`-gated computable EF evaluator
+`denoteRatComp` + its correctness `denoteRatComp_eq`, and the computable value evaluator
+`valueRatCompAt`). **Remaining:** (A) `settlementCheckAtFuel_prim` (all leaves now in hand,
+incl. `valueRatCompAt_prim`), (B) `rfindOpt` + `exists_code` → `SettlementChecker.ofComputations`
+(the one genuinely new machinery — Partrec/code extraction), (C) the disclosed
+`PolySequence As → Primrec As` bridge (or prove it, ~hours, to close unconditionally). Full
+detail in "WHAT IS LEFT ON `M7-PATIENT-CLOCK`" below.
+
+---
+
 ## ▶ START HERE — closing out M7 (handoff 2026-07-16)
 
 Core M7 is complete and unconditional: `LIA_is_logical_inductor` and
