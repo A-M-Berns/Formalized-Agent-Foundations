@@ -73,6 +73,7 @@ construction slate is complete.
 
 Relevant commits, newest first:
 
+- `0d6ae13` — construct the conditioning presentation witness
 - `d51d456` — rewrite this file as the authoritative current handoff
 - `3eb3d93` — scope the delayed feedback truth compiler
 - `caf5562` — construct feedback trader emission
