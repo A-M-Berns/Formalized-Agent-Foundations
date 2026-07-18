@@ -9,7 +9,7 @@ intentionally no `PROGRESS.md`.
 
 ## Active target
 
-Construct thirteen of the fifteen M7 witness boundaries. The earlier
+Construct twelve of the fifteen M7 witness boundaries. The earlier
 “four constructed, eleven disclosed” endpoint was achieved, but it is a baseline rather
 than a stop instruction.
 
@@ -19,22 +19,23 @@ than a stop instruction.
 | 2 | `M7-CE-REPETITION` | **constructed** | Keep; `EfficientRepeatedEnumeration.ofCE` |
 | 3 | `M7-PATIENT-CLOCK` | **constructed** | Keep; `SettlementChecker.ofComputations`, `PatientSettlementClock.ofComputations` |
 | 4 | `M7-PREFIX-PATCH` | **constructed** | Keep; `liaEfficientPrefixPatch` |
-| 5 | `M7-QUOTE-AFFINE` | disclosed | **construct**, after `M7-COMP-SYNTAX` |
-| 6 | `M7-PREFIX-MACHINE` | disclosed | **construct**, including the finite Kraft proof and fixed-overhead negation compiler |
+| 5 | `M7-QUOTE-AFFINE` | disclosed | **construct**, attempt 4 after `M7-COMP-SYNTAX` |
+| 6 | `M7-PREFIX-MACHINE` | disclosed | **keep disclosed**; optional post-target Kraft/prefix-machine stretch |
 | 7 | `M7-FEEDBACK-EMIT` | **constructed** | Keep; `FeedbackEmission.feedbackTraderEmissionSigns` |
-| 8 | `M7-FEEDBACK-TRUTH` | disclosed | **construct next** |
-| 9 | `M7-DUS-PREFIX-SYNTAX` | disclosed | **construct** (old Tier 2) |
-| 10 | `M7-SCON-COMPILER` | disclosed | **construct** (old Tier 2) |
-| 11 | `M7-SCON-PRESENTATION` | disclosed | **construct** (old Tier 2) |
-| 12 | `M7-LUV-SYNTAX` | disclosed | **construct** (old Tier 2) |
+| 8 | `M7-FEEDBACK-TRUTH` | disclosed | **construct**, attempt 5 |
+| 9 | `M7-DUS-PREFIX-SYNTAX` | disclosed | **construct**, attempt 2 |
+| 10 | `M7-SCON-COMPILER` | disclosed | **construct**, attempt 6 |
+| 11 | `M7-SCON-PRESENTATION` | disclosed | **construct next**, attempt 1 |
+| 12 | `M7-LUV-SYNTAX` | disclosed | **construct**, attempt 7 |
 | 13 | `M7-DUS-APPROX` | disclosed | Leave disclosed unless Anson reopens it |
 | 14 | `M7-STRICT-SEPARATORS` | disclosed | Leave disclosed unless Anson reopens it |
-| 15 | `M7-COMP-SYNTAX` | disclosed | **construct**, prerequisite of `M7-QUOTE-AFFINE` |
+| 15 | `M7-COMP-SYNTAX` | disclosed | **construct**, attempt 3 and prerequisite of `M7-QUOTE-AFFINE` |
 
-Current count: **5/15 constructed**. Target count: **13/15 constructed**. The eight remaining
-constructions are `M7-FEEDBACK-TRUTH`, `M7-DUS-PREFIX-SYNTAX`, `M7-SCON-COMPILER`,
-`M7-SCON-PRESENTATION`, `M7-LUV-SYNTAX`, `M7-PREFIX-MACHINE`, `M7-COMP-SYNTAX`, and
-`M7-QUOTE-AFFINE`.
+Current count: **5/15 constructed**. Target count: **12/15 constructed**. The seven remaining
+constructions are `M7-SCON-PRESENTATION`, `M7-DUS-PREFIX-SYNTAX`, `M7-COMP-SYNTAX`,
+`M7-QUOTE-AFFINE`, `M7-FEEDBACK-TRUTH`, `M7-SCON-COMPILER`, and `M7-LUV-SYNTAX`.
+`M7-PREFIX-MACHINE`, `M7-DUS-APPROX`, and `M7-STRICT-SEPARATORS` are the three intentional
+disclosures at the target.
 
 Do not revive instructions to stop after feedback emission, treat all former Tier 2
 witnesses as permanently disclosed, or begin final closeout/audit work before this active
@@ -60,6 +61,7 @@ construction slate is complete.
 
 Relevant commits, newest first:
 
+- `d51d456` — rewrite this file as the authoritative current handoff
 - `3eb3d93` — scope the delayed feedback truth compiler
 - `caf5562` — construct feedback trader emission
 - `2cb2a03` — flatten scheduled feedback trades
@@ -71,103 +73,104 @@ Relevant commits, newest first:
 - `78f0860` — remove the stale progress ledger
 - `4fb0939` — restore the expanded witness construction scope
 
-## START HERE — construct `M7-FEEDBACK-TRUTH`
+## Attempt order for the seven remaining constructions
 
-This is the next sizeable goal. It completes the other half of the delayed-feedback
-representation used by `thm:wubaff` and reused by `thm:wubexp`.
+This order is deliberate: take the two narrowest old Tier 2 presentations first, then build
+the faithfulness-critical first-order representation and quotation spine, then return to the
+three broader operational compilers.
 
-### Boundary correction that must happen first
+| Attempt | Boundary | Why here |
+|---:|---|---|
+| 1 | `M7-SCON-PRESENTATION` | Smallest finite-conjunction/union presentation; also prepares `M7-SCON-COMPILER` |
+| 2 | `M7-DUS-PREFIX-SYNTAX` | Self-contained Boolean-prefix syntax and finite realizability |
+| 3 | `M7-COMP-SYNTAX` | Faithfulness root: concrete representation of computations and Gödel syntax |
+| 4 | `M7-QUOTE-AFFINE` | Directly consumes attempt 3; closes introspection/self-trust quotation |
+| 5 | `M7-FEEDBACK-TRUTH` | Bounded delayed truth compiler; already scoped but has a real boundary correction |
+| 6 | `M7-SCON-COMPILER` | Market-dependent denominator patch plus arbitrary token-stream translation |
+| 7 | `M7-LUV-SYNTAX` | Broadest Tier 2 package: thresholds, exact-theory semantics, meshes, and softmax emission |
 
-`DeterminedViaTheory As P DP truth` is semantic. It does not make the real-valued function
-`truth : ℕ → ℝ` computable, so there cannot be a uniform `FeedbackTruthSequence` constructor
-from determination alone.
+“Attempt” is intentional. Before implementing each witness, audit whether its current
+interface can be inhabited at the stated generality. If it needs a paper-faithful
+computability, language, or independence premise, repair the interface and record the
+dependency; do not manufacture a circular or oracle-like constructor merely to preserve the
+order. A minimal LUV threshold-code sublayer needed by quotation may be pulled into attempts
+3–4, while the full `M7-LUV-SYNTAX` package remains attempt 7.
 
-The paper additionally assumes that the completed-theory value of the relevant affine
-combination is computable before the next deferral deadline. Represent that premise
-explicitly with a conclusion-free operational certificate (working name
-`FeedbackTruthComputation`). It should provide:
+## START HERE — attempt 1, `M7-SCON-PRESENTATION`
 
-- rational truth values, or rational codes for them, at the required `f k` indices;
-- equality of those rationals with the semantic completed-theory values;
-- one code/program that produces the rational result from `k` (or an equivalent uniform
-  input convention); and
-- a halting specification within `ecClock a degree (f (k + 1))`.
+Construct the `ConditioningPresentation DP extra` used by `thm:scon`:
 
-The computation certificate must not contain prices, delayed-price accuracy, bias,
-convergence, exploitation, or weighted-unbiasedness conclusions. Do not use the semantic
-real-valued `truth` function as an efficient oracle.
+1. Define the finite conjunction sentence for `extra.D n`, using a canonical ordering and
+   existing propositional conjunction semantics.
+2. Prove `v.Holds (condition n) ↔ v.ConsistentWith (extra.D n)`, including the empty-stage
+   case.
+3. Supply `PolySentenceCodes condition` from an honest compact compiler. Audit this before
+   coding: bare `ComputableDeductiveProcess extra` has no polynomial runtime or output-size
+   promise, so a direct enumeration of `extra.D n` may be too weak for the current field.
+   Strengthen the operational input or route through compact represented computation if that
+   is what the paper requires; do not treat `extra.D` as a polynomial oracle.
+4. Construct `ComputableDeductiveProcess (DP.union extra)` from explicit computations for
+   the two inputs, reusing the existing finite-stage encoding machinery.
+5. Expose a public constructor with no conditional price, trader, wealth, exploitation, or
+   logical-inductor conclusion, then discharge the presentation argument in the most useful
+   `lic_conditioned_gated` entry point.
+6. Run focused/full builds, hole and diff checks, public axiom reports, and commit coherent
+   green layers.
 
-### Construction tranche
+Definition of done: callers provide only the operational process data genuinely required by
+the paper; the conjunction syntax, exact stage semantics, and union computation are concrete.
+If compact polynomial conjunction naming genuinely depends on `M7-COMP-SYNTAX`, land every
+independent green layer, record that dependency, and resume the remainder in attempt 3.
 
-1. **Fix the interface.** State the minimal operational computation certificate near
-   `FeedbackTruthSequence`, document its correspondence with the premise of `thm:wubaff`,
-   and keep normalization/magnitude data separate from the computation claim.
+## Attempts 3–4 — the faithfulness-critical campaign
 
-2. **Compile the sparse schedule.** Reuse `codeEvalnNat_polyFueled`, `scheduledMatch`, and
-   `scheduledDeferral`. On day `n`, boundedly recognize the unique `k` satisfying
-   `f (k + 1) = n`; emit zero when no bounded run establishes a scheduled match. Strict
-   increase supplies uniqueness. Do not compute an unbounded inverse of `f`.
+`M7-COMP-SYNTAX` must precede `M7-QUOTE-AFFINE`. The current `Sentence` is propositional, so
+this is a real integration campaign rather than a wrapper around the existing boundary
+structures.
 
-3. **Emit literal centered affine syntax.** At a scheduled day emit
-   `A (f k) - truthRat (f k)`, including polynomial term count, coefficient serialization,
-   sentence codes, and constant serialization. Prefer the existing variable-width
-   conditional blocks and prefix scanner.
+- `M7-COMP-SYNTAX` must supply the first-order representability/Gödel machinery behind
+  `RepresentedSemidecidableClaims`, `RepresentedDecidableClaims`, and
+  `InconsistentTheoryClaims`, with polynomial sentence naming and eventual proof/refutation
+  laws for the represented computations.
+- `M7-QUOTE-AFFINE` must construct both the same-day completed-theory quotation packages and
+  the deferred fixed-portfolio `AffineQuoteEq`/`AffineQuoteGE` packages. It must cover the
+  quotation, diagonal/fixed-point, exact current-price, completed-world, and deferred
+  coherence obligations used by introspection and self-trust.
+- Do not describe quotation as mere wiring, silently leave its computation-representation
+  root disclosed, or assume the consumer conclusions in the quotation certificate.
 
-4. **Prove the `FeedbackTruthSequence` fields.** Establish `PolySequence`, bounded prices,
-   magnitude at most one, completed-world value zero, and the exact identity
+These two witnesses take priority over the later operational compilers because they test the
+largest remaining paper-faithfulness claim.
 
-   ```text
-   sequence (f (k + 1)) priced on day f (k + 1)
-     = price of A (f k) on day f (k + 1) - truth (f k).
-   ```
+## Attempt 5 brief — `M7-FEEDBACK-TRUTH`
 
-   Obtain normalization and magnitude bounds from the normalized
-   `BoundedCombinationSequence` data used by `wubaff`, rather than putting an artificial
-   bound inside the truth-computation certificate.
+Preserve this scoped design when the ordered campaign reaches it:
 
-5. **Discharge public consumers.** Add a public constructor from the computation
-   certificate and derived `wubaff`/`wubexp` entry points that accept the paper-faithful
-   computation premise instead of an opaque preassembled `FeedbackTruthSequence`.
+- `DeterminedViaTheory As P DP truth` is semantic and cannot make `truth : ℕ → ℝ`
+  computable. Introduce a conclusion-free operational certificate (working name
+  `FeedbackTruthComputation`) supplying rational values at the required `f k` indices, their
+  semantic equality, one uniform program, and halting within
+  `ecClock a degree (f (k + 1))`.
+- Reuse `codeEvalnNat_polyFueled`, `scheduledMatch`, and `scheduledDeferral` to recognize the
+  unique scheduled `k` without computing an unbounded inverse of `f`.
+- Emit literal centered syntax `A (f k) - truthRat (f k)`, else zero, with polynomial term,
+  coefficient, sentence, and constant serialization.
+- Prove `PolySequence`, bounded prices, magnitude, completed-world value zero, and the exact
+  delayed `feedback_price` identity. Keep normalization data outside the computation
+  certificate.
+- Add public `wubaff`/`wubexp` entry points taking the computation premise instead of an
+  opaque preassembled `FeedbackTruthSequence`. Accuracy remains derived, never assumed.
 
-6. **Close the tranche.** Build the focused roll-up and the whole project, scan for holes,
-   inspect the diff, print public axioms, and commit each coherent green layer.
+## Deliberately disclosed boundaries
 
-Definition of done: the derived public feedback theorems no longer require callers to
-manufacture `FeedbackTruthSequence`. Their remaining extra input is an explicit uniform
-program-and-deadline law matching the paper. The constructed sequence is literal syntax,
-and its accuracy is still derived by `FeedbackTruthSequence.accurate` rather than assumed.
+- `M7-PREFIX-MACHINE` stays disclosed because it mainly supplies standard universal
+  self-delimiting-machine, from-below weight, finite Kraft, and fixed negation-overhead facts
+  for Occam Bounds. The paper-specific market proof is already formalized. Keep it as an
+  optional post-target showcase; if reopened, the finite Kraft core is a good Aristotle job.
+- `M7-DUS-APPROX` and `M7-STRICT-SEPARATORS` remain disclosed unless Anson separately reopens
+  them.
 
-Likely commit layers:
-
-1. expose the operational truth-computation certificate;
-2. compile/decode the bounded sparse schedule;
-3. emit the centered affine fields;
-4. assemble `FeedbackTruthSequence` and prove semantics;
-5. discharge consumers and run the full verification gate.
-
-## What follows `M7-FEEDBACK-TRUTH`
-
-The next session should reassess ordering after the truth compiler lands, but it must retain
-all eight active constructions above. The dependency shape is:
-
-- The remaining old Tier 2 operational witnesses are `M7-DUS-PREFIX-SYNTAX`,
-  `M7-SCON-PRESENTATION`, `M7-SCON-COMPILER`, and `M7-LUV-SYNTAX`.
-  `M7-SCON-PRESENTATION` should precede the parts of `M7-SCON-COMPILER` that consume it.
-- `M7-PREFIX-MACHINE` is an independent, sizeable tranche. It includes a concrete universal
-  self-delimiting machine/presentation, efficient sentence coverage, from-below weight
-  emission, the finite Kraft inequality, derived threshold-token arithmetic, and the
-  fixed-overhead syntactic-negation compiler. It may be moved earlier when a self-contained
-  Kraft tranche is desirable.
-- `M7-COMP-SYNTAX` must precede `M7-QUOTE-AFFINE`. It supplies the first-order
-  representability, Gödel coding, and diagonal/fixed-point machinery needed to make affine
-  quotation concrete.
-- `M7-QUOTE-AFFINE` must cover both the same-day completed-theory quotation packages and the
-  deferred fixed-portfolio `AffineQuoteEq`/`AffineQuoteGE` packages. Do not describe it as a
-  mere wiring theorem or silently leave its `M7-COMP-SYNTAX` root disclosed.
-- `M7-DUS-APPROX` and `M7-STRICT-SEPARATORS` remain the only two disclosed boundaries at the
-  13/15 target.
-
-Only after the 13/15 construction target is green should the work move to surface freeze,
+Only after the **12/15** construction target is green should the work move to surface freeze,
 human statement read-through, consolidation/API/style work, paper comparison, and the
 fresh-context errata audit.
 
