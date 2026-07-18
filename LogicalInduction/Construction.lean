@@ -30,6 +30,7 @@ import LogicalInduction.Construction.M7Witnesses
 import LogicalInduction.Construction.FeedbackEmission
 import LogicalInduction.Construction.ConditioningPresentation
 import LogicalInduction.Construction.BitPrefixSyntax
+import LogicalInduction.Construction.ComputationSyntax
 
 namespace LogicalInduction
 
