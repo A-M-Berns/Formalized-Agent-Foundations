@@ -794,8 +794,8 @@ section
 -- raising heartbeats.
 attribute [local irreducible] Nat.sqrt
 
-/-- A test for equality against a fixed constant, as a polynomial Boolean table. -/
-private theorem polyFueled_eqConst {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
+/-- Equality against a fixed natural constant as a polynomial `0`/`1` table. -/
+theorem polyFueled_eqConst {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
     (hf : PolyFueled cf f) (K : ℕ) :
     ∃ c, PolyFueled c (fun z => if f z = K then 1 else 0) := by
   obtain ⟨cad, had⟩ := addc_polyFueled
@@ -2695,7 +2695,8 @@ attribute [local irreducible] Nat.sqrt
 /-- The polynomial clock carried by an `EfficientlyComputableTok` certificate. -/
 def ecClock (a k n : ℕ) : ℕ := a * (n + 1) ^ k + a
 
-private theorem ecClock_polyFueled (a k : ℕ) :
+/-- The standard polynomial evaluator clock is itself polynomially emitted. -/
+theorem ecClock_polyFueled (a k : ℕ) :
     ∃ c, PolyFueled c (ecClock a k) := by
   obtain ⟨cmul, hmul⟩ := mul_polyFueled
   obtain ⟨cadd, hadd⟩ := addc_polyFueled
