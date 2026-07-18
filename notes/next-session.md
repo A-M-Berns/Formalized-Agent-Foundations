@@ -29,11 +29,11 @@ than a stop instruction.
 | 12 | `M7-LUV-SYNTAX` | disclosed | **construct**, attempt 7 |
 | 13 | `M7-DUS-APPROX` | disclosed | Leave disclosed unless Anson reopens it |
 | 14 | `M7-STRICT-SEPARATORS` | disclosed | Leave disclosed unless Anson reopens it |
-| 15 | `M7-COMP-SYNTAX` | disclosed | **construct next**, attempt 3 and prerequisite of `M7-QUOTE-AFFINE` |
+| 15 | `M7-COMP-SYNTAX` | **constructed** | Keep; `ComputationClaim`, three boundary constructors, and six direct consumers in `Construction/ComputationSyntax.lean` |
 
-Current count: **7/15 constructed**. Target count: **12/15 constructed**. The five remaining
-constructions are `M7-COMP-SYNTAX`, `M7-QUOTE-AFFINE`, `M7-FEEDBACK-TRUTH`,
-`M7-SCON-COMPILER`, and `M7-LUV-SYNTAX`.
+Current count: **8/15 constructed**. Target count: **12/15 constructed**. The four remaining
+constructions are `M7-QUOTE-AFFINE`, `M7-FEEDBACK-TRUTH`, `M7-SCON-COMPILER`, and
+`M7-LUV-SYNTAX`.
 `M7-PREFIX-MACHINE`, `M7-DUS-APPROX`, and `M7-STRICT-SEPARATORS` are the three intentional
 disclosures at the target.
 
@@ -66,6 +66,24 @@ construction slate is complete.
   conjunction code; no primitive-recursive-to-polynomial shortcut was introduced.
 - `ordinaryIndependentBitAtoms` and `independentBitAtoms_nonempty` witness the semantic
   premise over the constantly empty deductive process with ordinary propositional atoms.
+- `M7-COMP-SYNTAX` is complete in
+  `LogicalInduction/Construction/ComputationSyntax.lean` and imported from
+  `LogicalInduction/Construction.lean`.
+- FFL supplies the actual quoted arithmetic schemas: `UniversalCodeHalts` is r.e.,
+  `UniversalCodeHaltsWithin` is computable, and `codeOfREPred_spec`/`re_complete` prove the
+  standard-model and theory representation laws. `ComputationClaim.godelCode` injectively
+  names a role, an FFL arithmetic schema, and a compact input inside a propositional atom.
+- `ComputationTheoryPresentation` is the exact residual seam: a `Δ₁` arithmetic theory, a
+  computable deductive process, and pointwise translation of proofs of the fixed schemas into
+  positive or negative market literals. FFL only supplies weak positive r.e. representation;
+  bounded false claims therefore use a separate complementary r.e. failure schema rather than
+  pretending the original r.e. formula is strongly refutable.
+- `representedSemidecidableClaimsOfComputation`,
+  `representedDecidableClaimsOfComputation`, and
+  `inconsistentTheoryClaimsOfComputation` discharge all three old boundaries. The six
+  `..._ofComputation` consumers discharge them at `pac`, `pazfc`, `incons`, `halts`, `loops`,
+  and `dontwait`; `loops` now takes an arithmetic proof of the negated halting instance, not a
+  preassembled eventual-membership family.
 - `deductiveStageCondition` is the actual `Finset.conj`; Foundation Boolean semantics prove
   the exact stage equivalence, including the empty conjunction. `DeductiveProcessComputation.union`
   pairs the two stage programs and applies a primitive-recursive code-sorted union normalizer.
@@ -78,15 +96,16 @@ construction slate is complete.
 - Derived consumers with the emission boundary discharged are
   `lic_wubaff_ofFeedbackTruth`, `boundedCombination_wubaff_ofFeedbackTruth`, and
   `luv_wubexp_ofFeedbackTruth`.
-- The focused construction/property/integration roll-up built **2,472 jobs**; the full
-  project built **2,683 jobs**.
-- The six public prefix-syntax axiom reports, five public conditioning-presentation
-  reports, and four public feedback-emission reports contain only `propext`,
-  `Classical.choice`, and `Quot.sound` (some prefix reports need a strict subset).
+- The focused construction/property/integration roll-up built **2,566 jobs**; the full
+  project built **2,684 jobs**.
+- The computation-syntax reports, six public prefix-syntax axiom reports, five public
+  conditioning-presentation reports, and four public feedback-emission reports contain only
+  `propext`, `Classical.choice`, and `Quot.sound` (some prefix reports need a strict subset).
 - The last verified tree was green and contained no executable proof holes.
 
 Relevant commits, newest first:
 
+- `f1c1355` — construct FFL-backed computation syntax and all six direct MetaLearning consumers
 - `4546178` — construct independent Boolean-prefix syntax and the direct DUS entry point
 - `0d6ae13` — construct the conditioning presentation witness
 - `d51d456` — rewrite this file as the authoritative current handoff
@@ -101,7 +120,7 @@ Relevant commits, newest first:
 - `78f0860` — remove the stale progress ledger
 - `4fb0939` — restore the expanded witness construction scope
 
-## Attempt order for the five remaining constructions
+## Attempt order for the four remaining constructions
 
 This order is deliberate: take the two narrowest old Tier 2 presentations first, then build
 the faithfulness-critical first-order representation and quotation spine, then return to the
@@ -111,8 +130,8 @@ three broader operational compilers.
 |---:|---|---|
 | 1 | `M7-SCON-PRESENTATION` | **Complete**; finite conjunction, exact semantics, and union computation landed |
 | 2 | `M7-DUS-PREFIX-SYNTAX` | **Complete**; Boolean-prefix syntax, enumeration, semantics, and finite realizability landed |
-| 3 | `M7-COMP-SYNTAX` | **Next**; faithfulness root: concrete representation of computations and Gödel syntax |
-| 4 | `M7-QUOTE-AFFINE` | Directly consumes attempt 3; closes introspection/self-trust quotation |
+| 3 | `M7-COMP-SYNTAX` | **Complete**; FFL arithmetic schemas, compact Gödel names, representation constructors, and direct consumers landed |
+| 4 | `M7-QUOTE-AFFINE` | **Next**; consumes attempt 3 and closes introspection/self-trust quotation |
 | 5 | `M7-FEEDBACK-TRUTH` | Bounded delayed truth compiler; already scoped but has a real boundary correction |
 | 6 | `M7-SCON-COMPILER` | Market-dependent denominator patch plus arbitrary token-stream translation |
 | 7 | `M7-LUV-SYNTAX` | Broadest Tier 2 package: thresholds, exact-theory semantics, meshes, and softmax emission |
@@ -165,54 +184,35 @@ order. A minimal LUV threshold-code sublayer needed by quotation may be pulled i
   None of the new inputs assumes prices, trader payoff, domination, or an asymptotic market
   conclusion.
 
-## START HERE — attempt 3, `M7-COMP-SYNTAX`
+## Completed attempt 3 — `M7-COMP-SYNTAX`
 
-Construct the computation-representation root currently exposed by
-`RepresentedSemidecidableClaims`, `RepresentedDecidableClaims`, and
-`InconsistentTheoryClaims` in `Properties/MetaLearning.lean`. Audit generality before
-writing a constructor:
+`LogicalInduction/Construction/ComputationSyntax.lean` closes all three representation
+boundaries in `Properties/MetaLearning.lean`:
 
-1. An arbitrary `DeductiveProcess` does not prove true machine claims. Isolate the actual
-   paper premise tying `DP` to a recursively axiomatized background theory that represents
-   the repository's `Nat.Partrec.Code` computations. Do not assume the three completed
-   representation structures or any market conclusion wholesale.
-2. Decide the language integration explicitly. The current public `Sentence` is
-   `LO.Propositional.Formula ℕ`; atom labels may carry Gödel codes, but Boolean semantics alone
-   cannot prove representability. A faithful constructor therefore needs concrete quoted
-   first-order syntax plus a translation/naming layer into `Sentence`, or a narrow certified
-   theory-enumeration premise whose fields are strictly below the existing consumer boundaries.
-   Record any required repair rather than treating an atom label as a representability theorem.
-3. Build uniform sentence constructors for unbounded halting/semidecidable claims, bounded
-   `CodeHaltsWithin` claims and their negations, and the paired consistency/inconsistency
-   claims. Prove the exact positive and negative eventual-membership laws from the background
-   representation certificate.
-4. Supply `PolySentenceCodes` honestly for every family. Compact syntax may name a fixed
-   machine/horizon program without executing it, but the whole sentence-code program and its
-   polynomial fuel/output bound must be explicit.
-5. Expose public constructors discharging all three MetaLearning interfaces and direct entry
-   points for the six consumers (`pac`, `pazfc`, `incons`, `halts`, `loops`, `dontwait`). Add
-   non-vacuity witnesses that exercise both positive and negative representation paths; print
-   axioms for every new public constructor/consumer.
-6. Keep attempt 3 scoped to computation/Gödel representation. A minimal threshold-code layer
-   may be factored now if quotation genuinely needs it, but do not begin the market-dependent
-   `CompletedAffineQuoteEq` / `AffineQuoteEq` / `AffineQuoteGE` construction until this root is
-   green.
+- `UniversalCodeHalts` and `UniversalCodeHaltsWithin` are tied directly to
+  `Nat.Partrec.Code.eval`/`evaln`; the former is proved r.e. and the latter computable.
+- FFL's `codeOfREPred` supplies real arithmetic schemas, with explicit standard-model
+  specifications. The bounded-failure schema is proved complementary to bounded halting.
+- `ComputationClaim` stores its role, arithmetic schema, and compact input. Its nested-pair
+  Gödel code and the resulting propositional atom are injective.
+- `PolyMachineCodes`, `PolyNatCodes`, and the `PolyFueled` pair/atom compiler prove whole
+  `PolySentenceCodes` for every emitted family without running the named machine.
+- `ComputationTheoryPresentation` records a `Δ₁` theory, a concrete `DP` computation, and
+  only pointwise proof translations for the fixed schemas. It assumes no sentence family,
+  market datum, or consumer conclusion.
+- The three boundary constructors and two sequence-specialized constructors feed six direct
+  MetaLearning consumers. Concrete Code.zero/zero-fuel theorems exercise the positive and
+  complementary negative paths.
 
-Definition of done: computation claims and their Gödel names are concrete, polynomially named,
-and enter/refute in `DP` for the right computational reasons. The residual premise describes a
-background theory and its representation theorem, not preassembled claim families, market
-prices, convergence, exploitation, or a logical-inductor conclusion.
-
-## Attempt 4 — quotation and affine portfolios
+## START HERE — attempt 4, `M7-QUOTE-AFFINE`
 
 `M7-COMP-SYNTAX` must precede `M7-QUOTE-AFFINE`. The current `Sentence` is propositional, so
 this is a real integration campaign rather than a wrapper around the existing boundary
 structures.
 
-- `M7-COMP-SYNTAX` must supply the first-order representability/Gödel machinery behind
-  `RepresentedSemidecidableClaims`, `RepresentedDecidableClaims`, and
-  `InconsistentTheoryClaims`, with polynomial sentence naming and eventual proof/refutation
-  laws for the represented computations.
+- `M7-COMP-SYNTAX` now supplies the first-order representability/Gödel machinery behind the
+  three MetaLearning boundaries. Reuse its FFL schemas, compact naming, and explicit
+  proof-to-`DP` seam rather than reopening that construction.
 - `M7-QUOTE-AFFINE` must construct both the same-day completed-theory quotation packages and
   the deferred fixed-portfolio `AffineQuoteEq`/`AffineQuoteGE` packages. It must cover the
   quotation, diagonal/fixed-point, exact current-price, completed-world, and deferred
@@ -220,8 +220,8 @@ structures.
 - Do not describe quotation as mere wiring, silently leave its computation-representation
   root disclosed, or assume the consumer conclusions in the quotation certificate.
 
-These two witnesses take priority over the later operational compilers because they test the
-largest remaining paper-faithfulness claim.
+This witness takes priority over the later operational compilers because it tests the largest
+remaining paper-faithfulness claim.
 
 ## Attempt 5 brief — `M7-FEEDBACK-TRUTH`
 
