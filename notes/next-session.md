@@ -1,1741 +1,220 @@
-# Logical Induction working plan — M7 exit active
-
-## ▶▶ ACTIVE SCOPE CORRECTION — expanded witness construction (Anson, 2026-07-18)
-
-This section supersedes the narrower **conditional + disclosed** endpoint below as the
-project's final construction target.  That endpoint remains a useful achieved baseline and
-an honest description of what is green today; it is no longer the instruction to stop.
-
-The expanded construction slate is:
-
-1. **Construct every witness in the old Tier 2 operational set:**
-   `M7-FEEDBACK-EMIT`, `M7-FEEDBACK-TRUTH`, `M7-DUS-PREFIX-SYNTAX`,
-   `M7-SCON-COMPILER`, `M7-SCON-PRESENTATION`, and `M7-LUV-SYNTAX`.
-2. **Construct `M7-PREFIX-MACHINE`**, including a concrete universal self-delimiting
-   machine/presentation, efficient sentence coverage and from-below weight emission, the
-   finite Kraft inequality, derived threshold-token arithmetic, and the fixed-overhead
-   syntactic-negation compiler.
-3. **Construct `M7-QUOTE-AFFINE`**, both the same-day completed-theory quotation packages
-   and the deferred fixed-portfolio `AffineQuoteEq`/`AffineQuoteGE` packages.  This is not a
-   standalone wiring task: record and construct its prerequisite `M7-COMP-SYNTAX`
-   representability/Gödel/diagonal machinery rather than continuing to disclose that root
-   while claiming quotation is concrete.
-
-This makes the intended stronger target **thirteen constructed boundaries out of fifteen**:
-the four already constructed roots, the six old Tier 2 witnesses, `M7-PREFIX-MACHINE`,
-`M7-COMP-SYNTAX`, and `M7-QUOTE-AFFINE`.  `M7-DUS-APPROX` and
-`M7-STRICT-SEPARATORS` remain disclosed unless Anson separately reopens them.
-
-Current execution order: `M7-FEEDBACK-EMIT` is complete (`caf5562`); construct
-`M7-FEEDBACK-TRUTH` next. The most dependency-aware default after the six operational witnesses is
-`M7-COMP-SYNTAX` → `M7-QUOTE-AFFINE`; `M7-PREFIX-MACHINE` is independent and may be moved
-earlier as the self-contained Kraft tranche.  All later instructions below saying to stop
-after feedback emission, disclose these witnesses permanently, or move immediately to
-trust-surface cleanup are superseded by this section.
-
-## ▶ START HERE — construct `M7-FEEDBACK-TRUTH`
-
-### Just completed: `M7-FEEDBACK-EMIT`
-
-`FeedbackEmission.feedbackTraderEmissionSigns` now constructs the exact bounded-dovetail
-emitter for every polynomial affine sequence, generable weighting, strictly increasing
-deferral function, rational Kelly fraction, and both affine signs.  The proof emits the
-literal nested open/close coefficients and proves list equality with `feedbackTrader`.
-Derived `wubaff`/`wubexp` entry points no longer request an emitter; they retain only the
-separate `FeedbackTruthSequence` premise. Focused build: 2,470 jobs. Full build: 2,681 jobs.
-The four new public axiom reports contain only `propext`, `Classical.choice`, and
-`Quot.sound`. Main completion commit: `caf5562` (preceded by four green compiler-layer
-commits).
-
-### Next sizeable goal: the delayed truth-value compiler
-
-Construct `M7-FEEDBACK-TRUTH`, but first repair the boundary so it states the paper's actual
-computational premise. `DeterminedViaTheory As P DP truth` is semantic and does **not** make
-the real-valued stream `truth` computable. A uniform constructor from that premise alone
-would be false. App. `wubaff` additionally assumes that `ThmValue(Aₙ)` is computable within
-the next deferral deadline; the Lean input must expose that program and its clock explicitly.
-
-The intended construction tranche is:
-
-1. **State the paper-faithful operational input.** Introduce a conclusion-free certificate
-   (working name `FeedbackTruthComputation`) containing a rational truth-value stream, its
-   equality with `truth` on the required `f(k)` indices, one program producing its rational
-   code from `k`, and an `ecClock a degree (f (k+1))` halting specification. It must contain
-   no prices, accuracy, bias, or convergence conclusion.
-2. **Compile the delayed sparse schedule.** Reuse `codeEvalnNat_polyFueled`,
-   `scheduledMatch`, and `scheduledDeferral`: on day `n`, boundedly recognize the unique
-   `k` with `f(k+1)=n`; unfinished runs emit the zero affine combination. Never call the
-   semantic `truth : ℕ → ℝ` as an efficient oracle.
-3. **Emit the centered affine syntax.** At an active day emit the literal centered member
-   `A_{f k} - truthRat(f k)`: polynomial term count, coefficient serialization, sentence
-   codes, and constant serialization. Prefer variable-width conditional blocks and the
-   existing prefix scanner rather than computing an inverse of `f`.
-4. **Prove the semantic fields.** Strict increase gives uniqueness. Use the operational
-   truth-code specification plus `DeterminedViaTheory` to prove completed-world value zero
-   and the exact delayed `feedback_price` identity. Derive the uniform magnitude/price bound
-   from the normalized `BoundedCombinationSequence` data used by `wubaff`; do not smuggle a
-   bound into the computation certificate.
-5. **Package and discharge consumers.** Expose a public constructor of
-   `FeedbackTruthSequence` from the computation certificate, then add `wubaff` and `wubexp`
-   entry points whose only extra input is the paper-faithful truth computation. Verify the
-   focused construction/property/integration roll-up, full build, holes, diff, and public
-   axiom reports; commit each green layer.
-
-Definition of done: the opaque preassembled `FeedbackTruthSequence` is no longer required
-by the public derived feedback theorems; the remaining hypothesis is an explicit program and
-deadline law matching `thm:wubaff`. The constructed sparse sequence is literal syntax and
-contains no delayed-accuracy or weighted-unbiasedness assumption.
-
-## Aristotle orchestration — working (2026-07-17)
-
-Harmonic's Aristotle CLI is wired and **verified end-to-end**. Use it to farm *fully-stated,
-self-contained* goals — never construction (it chooses no definitions; it struggled on that
-before, structurally). See the outsourcing analysis in this file's history: prime target is
-the **Kraft-inequality core** if `PREFIX-MACHINE` is constructed, plus the long tail of small
-Mathlib-provable lemmas I can state exactly.
-
-- **CLI:** `aristotle` (`~/.local/bin`, `aristotlelib` ≥ 2.1.0 — v1.x used the dead API v2;
-  `uv tool upgrade aristotlelib` if it 404s with "API v2 deprecated"). Key in `~/.zshenv`
-  (`ARISTOTLE_API_KEY`), inherited by non-interactive shells.
-- **Workflow:** `submit "<prompt>" --project-dir <dir>` → poll `aristotle list` (status
-  `RUNNING`→`IDLE` = done; `show` *streams and blocks*, don't use it for status) →
-  `download <id> --destination <file>` (a **gzipped tar**, `tar -xf`). Returns a full lake
-  project (lakefile pins Mathlib, solved `.lean`, `ARISTOTLE_SUMMARY.md`).
-- **Harness:** `scripts/aristotle-prove.sh <project-dir> "<prompt>" [out-dir]` does
-  submit→poll→download→extract. Run it in the background (`--wait`-style jobs take minutes).
-- **⚠ Trust gate (non-negotiable):** Aristotle builds against `leanprover/lean4:v4.28.0` +
-  Mathlib `v4.28.0`; **this repo is `v4.28.0-rc1`**. A returned proof is trusted **only after
-  it compiles in THIS repo** (`lake env lean` on a scratch file) — the harness copies our
-  `lean-toolchain` in as a hint, but Aristotle may pin its own Mathlib, so the in-repo build
-  is the real gate. Aristotle is agentic (it ran `git commit && push` inside its sandbox
-  copy) — it never touches our tree, but treat it as an agent, not a pure prover.
-- **Submit small, Mathlib-only projects** — not the whole repo (large; Foundation deps
-  Aristotle can't resolve). The extraction that makes a fact *importable* is the same one
-  that makes it *submittable*.
-
-## HISTORICAL ACHIEVED BASELINE — conditional + disclosed (2026-07-18)
-
-This section records the previously achieved milestone.  The active construction target is
-the scope correction at the top of this file.
-
-### The target endpoint: "conditional + disclosed"
-
-We are **not** driving to literal closure of all fifteen boundary witnesses (that is weeks of
-mostly re-proving textbook computability facts that hit Mathlib gaps, with near-zero
-realizability doubt). The target is the **honest strong close**:
-
-- The **existence theorem** (`exists_logical_inductor`, `LIA_is_logical_inductor`) is already
-  **unconditional and axiom-clean** — the crown jewel, done, depends on **no** witness.
-- The **M3–M5 property tail** stays **green and conditional on `[IsLogicalInductor P]`** — real
-  and valuable, but explicitly conditional.
-- Every witness where **realizability is genuinely in doubt** is **constructed** (so the
-  property tail's non-vacuity is real, not stubbed).
-- Every witness that is a **standard object / known-realizable wiring** is **disclosed**
-  Barasz-style: the unproved fact named, cited to a standard result, and isolated in the
-  README's "Axioms/boundary" section. Disclosure is a *deliverable*, not a skip — it is the
-  same discipline the finished `Barasz/` formalization models.
-
-"Green on the endpoint" = the construct-set is built and axiom-clean, **and** every disclosed
-witness has its written disclosure. At that point the artifact's public claim is: *"central
-existence result formalized unconditionally; property tail formalized conditionally; every
-construction with genuine realizability content is real; the rest is disclosed and cited."*
-
-### Sequencing decision (Anson, 2026-07-17) — do not reorder
-
-1. **Drive to GREEN on the conditional+disclosed endpoint first.** **No individual-statement
-   read-through happens until then.** The CLAUDE.md "Human read-through" gate is *deferred* to
-   the endpoint, not run per-milestone in the interim. Keep statements legible as you go
-   (still the rule), but do not stop to request read-through.
-2. **Then consolidation + API surface + style** — the `Sentence`/`Asymptotics` interfaces,
-   naming, module layout, the README's axiom/disclosure section, the paper line-by-line
-   comparison. This is also when the deferred statement read-through happens, over the frozen
-   surface.
-3. **Then `M7-ERRATA-AUDIT`** (the fresh-context erratum audit + `thm:ifp` follow-ups), last.
-
-Rationale: read-through and audits are irreversible-trust work over a surface that is still
-moving while witnesses land; doing them before the surface is frozen means redoing them. Style
-polish before the witness scope is frozen means re-polishing. So: build → freeze → read/audit
-→ polish, not interleaved.
-
-### Where we are vs. the endpoint
-
-- Existence theorem: **done, unconditional, axiom-clean.**
-- Property tail (M3–M5): **green, conditional.**
-- Witnesses: **4 of 15 constructed and eleven disclosed**. The construction-scope endpoint
-  is closed; reopen a boundary only as an explicit product goal.
-- Full build green, zero `sorry`, capstones expose only the three approved axioms.
-
-### The 15 witnesses — current state & endpoint disposition
-
-Disposition is for the **conditional+disclosed endpoint** (§ above). "Construct" = realizability
-in genuine doubt or the chosen showcase; "Disclose" = named + cited, no construction. Estimates
-are rough and assume the checker/EF infrastructure already built (steps 13–16).
-
-| # | Witness | Tier | Endpoint disposition | Current status | Est. |
-|---|---------|------|----------------------|----------------|------|
-| 1 | `M7-HIST-EVALN` | — | construct | **done** (axiom-clean) | — |
-| 2 | `M7-CE-REPETITION` | — | construct | **done** (axiom-clean) | — |
-| 3 | `M7-PATIENT-CLOCK` | 1 | **construct** | **done** (axiom-clean; steps 17–19 close the checker and direct clock constructor) | — |
-| 4 | `M7-PREFIX-PATCH` | 1 | **construct** | **done** (axiom-clean; parser-transparent raw transducer + finite LIA quote lookup) | — |
-| 5 | `M7-QUOTE-AFFINE` | 1→3 | **disclose** | **disclosed and field-audited** | README records the first-order quotation realizer, exact current/deferred price premises, primary citations, and consumers. |
-| 6 | `M7-PREFIX-MACHINE` | 3 | **disclose** | **disclosed and field-audited** | README records the universal self-delimiting-machine/Kraft realizer and fixed negation overhead. |
-| 7 | `M7-FEEDBACK-EMIT` | 2 | **disclose** | **disclosed and field-audited** | Exact token-emission fields; no economic conclusion. |
-| 8 | `M7-FEEDBACK-TRUTH` | 2 | **disclose** | **disclosed and field-audited** | Exact delayed price identity is disclosed; accuracy and unbiasedness are not assumed. |
-| 9 | `M7-DUS-PREFIX-SYNTAX` | 2 | **disclose** | **disclosed and field-audited** | Exact independent-bit semantics and finite realizability are disclosed. |
-| 10 | `M7-SCON-COMPILER` | 2 | **disclose** | **disclosed and field-audited** | The market-dependent denominator floor and conditional-market computability are explicit. |
-| 11 | `M7-SCON-PRESENTATION` | 2 | **disclose** | **disclosed and field-audited** | Conjunction semantics and combined-process computability are explicit. |
-| 12 | `M7-LUV-SYNTAX` | 2 | **disclose** | **disclosed and field-audited** | Threshold/world semantics and market-indexed mesh bounds are explicit. |
-| 13 | `M7-DUS-APPROX` | 3 | **disclose** | **disclosed and field-audited** | Universal-semimeasure approximation and convergence are cited; domination is not assumed. |
-| 14 | `M7-STRICT-SEPARATORS` | 3 | **disclose** | **disclosed and field-audited** | The substantive universal-semimeasure-mass→0 field is explicit. |
-| 15 | `M7-COMP-SYNTAX` | 3 | **disclose** | **disclosed and field-audited** | Gödel encoding and computation representability are cited; no market conclusion. |
-
-**Construction-scope endpoint:** complete. #1–#4 are constructed and #5–#15 are disclosed
-in the README's “Axioms and disclosed M7 boundaries” packet. Literal all-15 construction
-remains a separately identified stronger future scope.
-
-**Realistic remaining effort to the final exit point:** about **7–12 focused workdays**, plus
-Anson's review turnaround: 2–4 days for consolidation/paper comparison/read-through
-preparation and 2–4 days for review
-repairs plus the fresh-context errata audit and final recheck. Constructing `PREFIX-MACHINE`
-would add about one week; constructing `QUOTE-AFFINE` is higher-variance and depends on
-`M7-COMP-SYNTAX`.
-
-### `M7-PREFIX-PATCH` — complete 2026-07-18
-
-`liaEfficientPrefixPatch DP cutoff` now inhabits
-`EfficientPrefixPatch (liaHistory DP) cutoff`. The implementation retains each frozen price
-leaf under a dead `letE`, making the flat rewrite parser-transparent and exactly
-rank-preserving (cost is at most tripled). A polynomial raw-stream bridge handles arbitrary
-malformed clocked trader programs; the transducer correctness proof shows validation commutes
-with freezing. The finite LIA lookup recognizes every noncanonical raw sentence code accepted
-by Foundation's decoder and emits the exact quote from `liaStatePrefix`. The affected
-2,467-job roll-up and 2,680-job full build are green; executable-hole/diff checks pass and
-`freezeBefore_preserves_ec`/`liaEfficientPrefixPatch` expose only the approved three axioms.
-
----
-
-## ✅ COMPLETED TRANCHE — `M7-FEEDBACK-EMIT` (2026-07-18)
-
-The conditional+disclosed **construction-scope endpoint is green**: four witnesses are
-constructed, eleven are field-audited and disclosed with primary citations, the README and
-ledger agree on the public claim, and the 15-row inventory has no open cells. Anson has now
-explicitly reopened the stronger **actual-construction** campaign. Defer public-surface
-consolidation, statement read-through, and `M7-ERRATA-AUDIT`; the next work is another
-concrete witness, not release documentation.
-
-Verification: the construction/property/integration roll-up completed 2,469 jobs, the full
-build completed 2,680, the executable-hole and project-axiom scans are empty (broad keyword
-hits are comments only), `git diff --check` passes, and the audited capstones expose exactly
-`propext`, `Classical.choice`, and `Quot.sound`.
-
-### Next sizeable goal — the concrete feedback-trader compiler
-
-Construct `M7-FEEDBACK-EMIT` completely: inhabit `FeedbackTraderEmissionSigns` for every
-`AffineCombination.PolySequence`, `PGenerableWeighting`, strictly increasing
-`DeferralFunction`, and admissible rational Kelly fraction. This is the best next tranche
-because it reuses the already-constructed `codeEvalnNat_polyFueled` bounded simulator, has
-an exact target trade list (`feedbackTrader`), and removes a real efficient-computability
-premise from `thm:wubaff`/`thm:wubexp` without first opening Gödel representability or a
-universal-semimeasure development.
-
-Put the implementation in a focused construction module (prefer
-`LogicalInduction/Construction/FeedbackEmission.lean`) rather than further enlarging
-`M7Witnesses.lean`. The tranche is:
-
-1. **Expose the exact finite trade-list normal form.** Prove a reusable theorem expanding
-   day `n` of `feedbackTrader` into the flattened open/close trades of components `k ≤ n`,
-   with the literal ordering used by `Strategy.join` and `roundTrip`. Do not introduce an
-   alternative trader that is merely value-equivalent.
-2. **Compile the deferral schedule by bounded dovetail.** Reuse `deadlineRun` and
-   `codeEvalnNat_polyFueled` to recover only those `f k`/`f(k+1)` values relevant by day
-   `n`. The compiler must remain polynomial in the day even when the total computation of
-   `f k` takes time polynomial in the much larger output `f k`; never call `f.f` as an
-   unexplained efficient oracle.
-3. **Emit the actual coefficient and sentence streams.** Compose the existing
-   `PolySequence` term emitters, affine `priceFeature` serializer, weighting serializer,
-   Kelly wealth-product features, scaling, and round-trip open/close signs. Supply
-   polynomial trade count, coefficient segment stream, sentence codes, and an extensional
-   `trades_eq` proof for the exact `feedbackTrader` strategy.
-4. **Close the quantified family and both signs.** Package the per-`δ` compiler into
-   `FeedbackTraderEmissionFamily`, reuse `PolySequence.neg` for the negative orientation,
-   and expose one public constructor for `FeedbackTraderEmissionSigns`. Add thin derived
-   `wubaff`/`wubexp` entry points in which the emitter argument has disappeared; the separate
-   `FeedbackTruthSequence` premise remains explicit.
-5. **Ledger and checkpoint each green layer.** Suggested commits are: bounded deferral
-   lookup; feedback feature/trade serialization; family/sign constructor and consumer
-   wiring; ledger/README reconciliation. Build the focused module after each code commit.
-
-### Definition of done for `M7-FEEDBACK-EMIT`
-
-- A public axiom-clean constructor inhabits `FeedbackTraderEmissionSigns` from the existing
-  computational inputs, with no market, wealth, bias, exploitation, or convergence premise.
-- Its `trades_eq` field is literal list equality with `feedbackTrader`, not semantic value
-  equality, and malformed/unfinished deferral runs cannot create spurious trades.
-- The derived weighted-unbiasedness entry points no longer request
-  `FeedbackTraderEmission*`; `M7-FEEDBACK-TRUTH` is the only remaining feedback boundary.
-- The 15-row inventory moves `M7-FEEDBACK-EMIT` from disclosed to constructed (5 of 15),
-  while `M7-FEEDBACK-TRUTH` stays honestly disclosed and conditional.
-- `lake build LogicalInduction.Construction.FeedbackEmission LogicalInduction.Properties
-  LogicalInduction.IntegrationTest`, the full build, executable-hole scan, axiom reports,
-  and `git diff --check` pass.
-- Stop after the emitter is closed. Do not silently absorb `M7-FEEDBACK-TRUTH`,
-  `M7-PREFIX-MACHINE`, public-surface cleanup, or the errata audit into this tranche.
-
-## ✅ Disclosure packet and endpoint-green checklist (completed 2026-07-18)
-
-Core M7 is complete and unconditional: `LIA_is_logical_inductor` and
-`exists_logical_inductor` are proved, axiom-clean, and depend on **none** of the fifteen
-witnesses. Repo has **zero executable `sorry`** and full build is green (2,680 jobs).
-The required construct-set is closed. The recommended default is to **disclose all eleven
-remaining witnesses**, including `M7-PREFIX-MACHINE`, and move immediately to the trust-surface
-work. Do not start another compiler witness unless Anson explicitly reopens its scope.
-
-**Witnesses done (4 of 15, axiom-clean, no `sorry`):** `M7-HIST-EVALN`
-(`codeEvalnNat_polyFueled` — universal poly-clock bounded `Code.evaln` simulator) and
-`M7-CE-REPETITION` (`EfficientRepeatedEnumeration.ofCE`), plus `M7-PATIENT-CLOCK`
-(`PatientSettlementClock.ofComputations`) and `M7-PREFIX-PATCH`
-(`liaEfficientPrefixPatch`).
-
-### Completed task — disclosure packet
-
-The completed pass used this acceptance order:
-
-1. **Freeze and reconcile the scope.** Update `PROGRESS.md`'s old literal-all-15 completion
-   contract to the plan of record: four constructed witnesses, eleven disclosed witnesses,
-   unconditional existence, and explicitly conditional M3–M5 property corollaries. Preserve a
-   separate sentence explaining what literal all-15 construction would require; do not silently
-   redefine the historical contract.
-2. **Repair the stale Logical Induction README status.** It still says M6–M7 construction and
-   unconditionalization remain. Replace that with the actual state, then add a dedicated
-   **“Axioms and disclosed M7 boundaries”** section modeled on `Barasz/`.
-3. **Write one auditable disclosure for each remaining witness:**
-   `M7-QUOTE-AFFINE`, `M7-PREFIX-MACHINE`, `M7-FEEDBACK-EMIT`,
-   `M7-FEEDBACK-TRUTH`, `M7-DUS-PREFIX-SYNTAX`, `M7-SCON-COMPILER`,
-   `M7-SCON-PRESENTATION`, `M7-LUV-SYNTAX`, `M7-DUS-APPROX`,
-   `M7-STRICT-SEPARATORS`, and `M7-COMP-SYNTAX`.
-4. **For every disclosure, record six things:** the exact Lean interface/declaration and source
-   file; the paper definition/theorem it represents; the standard external result or concrete
-   construction that would inhabit it; a primary citation; the downstream conditional
-   capstones that consume it; and an explicit statement of what conclusion the interface does
-   *not* assume. Group closely coupled interfaces under one witness rather than inflating the
-   count.
-5. **Cross-check the disclosures against the actual structure fields.** A prose claim is not
-   enough: inspect every field for hidden price, convergence, exploitation, or LIC conclusions,
-   and reconcile any mismatch in the Lean docstring and `PROGRESS.md` during the same session.
-6. **Run the endpoint-green gate:** affected roll-up, full `lake build`, executable-hole scan,
-   `git diff --check`, public capstone axiom reports, and a 15-row constructed/disclosed
-   inventory with no “to do” cells. Stop there; consolidation/read-through comes only after
-   this gate is green.
-
-The disclosure pass should start with the three dependency roots because they explain several
-downstream rows at once: `M7-COMP-SYNTAX` → `M7-QUOTE-AFFINE`, then
-`M7-PREFIX-MACHINE`/`M7-DUS-APPROX`/`M7-STRICT-SEPARATORS`, then the six Tier-2 operational
-witnesses. This ordering makes the README tell a dependency story instead of reading like an
-unstructured list of omissions.
-
-### What remains after endpoint-green
-
-Once the eleven disclosures are written and verified, the remaining exit work is deliberately
-trust-facing rather than theorem-volume work:
-
-1. **Freeze and consolidate the public surface:** `Sentence`/Foundation leakage,
-   `Asymptotics` vocabulary, naming, module layout, docstrings, and stale status prose.
-2. **Finish the M7 paper comparison:** line-by-line comparison for Budgeter, Trading Firm,
-   dominance, recursive LIA, `thm:lia`, and `thm:li`; enumerate every indexing/modeling
-   substitution and link it to the ledger.
-3. **Generate the frozen statement/definition inventory** for all milestone-facing M1–M7
-   declarations, with source locations and paper labels.
-4. **Anson's deferred human read-through:** statements and definitions only, followed by a
-   correction build. This is a real exit dependency; calendar time is not estimable here.
-5. **Run `M7-ERRATA-AUDIT` in a genuinely fresh context:** re-derive every paper erratum,
-   scrutinize the `thm:ifp` counterexample/follow-up status, repair findings, then perform an
-   independent correction recheck.
-6. **Final release gate:** construction/property/integration/full builds; executable-hole,
-   diff, and axiom audits; README/ledger consistency; no open or ambiguous completion cells;
-   final clean commit(s) and handoff.
-
-The exit point is reached only when all six stages above are complete. “Eleven disclosures
-written” closes the construction-scope phase; it does **not** by itself close M7.
-
-**`M7-PATIENT-CLOCK` is complete.** `PatientSettlementClock` is constructed directly from
-the polynomial affine family and concrete market/process computations; no checker hypothesis
-or disclosed `PolySequence → Primrec` bridge remains. Every epistemic question is proved:
-- settlement *occurs* at a finite stage (`exists_settled_stage` — the paper never argues
-  this; `eventually_close` gives only approximate determination and is too weak);
-- the test needs **no** `truth` oracle (`settled_iff_agree`);
-- the test is **decidable** on a rational market, both directions
-  (`agree_of_finiteWorlds_agree`, `finiteWorlds_agree_of_agree`);
-- the deadline is handled despite `deferralEnvelope` **not** being poly-computable
-  (`DeferralFunction` gives fuel poly in `f n`, not `n`) via the sound under-approximation
-  `deadlinePassed`.
-
-### ✅ `M7-PATIENT-CLOCK` closure record (2026-07-18 — steps 13–19 landed)
-
-`SettlementChecker.ofComputations` now supplies a `Nat.Partrec.Code` recognizing
-`AffineCombination.SettlementTestBool`. No efficiency is required (the dovetail absorbs the
-exponential) and it carries no semantics.
-
-**The node's real content is finished.** `settlementCheckAtFuel_{sound,complete}` **is** the
-biconditional `spec` asks for.
-
-**All items are done. Targeted builds are green; the new capstones expose only the approved
-three axioms.**
-
-- **✅ Item 3 (step 13):** `efRatCompiledEval{,_eq,_prim}` + `processStageAtFuel_prim`
-  un-`private`d in `LIACompiler.lean`. Also un-`private`d later: `efChildPair_lt`,
-  `ratAdd_prim`, `ratMul_prim`.
-- **✅ Item 2 (step 13):** `quoteAtFuel_prim` (`LIACompiler.lean`), on the
-  `processStageAtFuel_prim` template.
-- **✅ Item 1 (step 14):** `efPriceQueries_prim : Primrec EF.priceQueries`
-  (`LIACompiler.lean`). Course-of-values recursion mirroring the `EF.rank` compiler, but
-  carrying the list value directly through `Nat.strong_rec`'s polymorphic `σ` (no
-  encode/decode round-trip).
-- **✅ Item 4, the guard (step 15):** `MarketComputation.denoteRatComp` +
-  `denoteRatComp_eq` + `denoteRatComp_prim` (`M7Witnesses.lean`) — the total EF machine
-  gated by `readyAtFuel`, proved equal to the partial `denoteRatWithAtFuel` and `Primrec`.
-  Supporting: `EF.denoteRatWith_congr`, `EF.denoteRatWithAtFuel_isSome_of_some`.
-- **✅ Item 4, the value evaluator (step 16):** `valueRatCompAt` + `_eq` + `_prim` and
-  `affineTermsRatComp` + `bitsPayoutRat_prim` (`M7Witnesses.lean`) —
-  `A.valueRatAtFuel market fuel (bitsPayoutRat l)` recast through `denoteRatComp`, `Primrec`
-  in `((A, fuel), l)`. (This is where the `Nat.sqrt` gotcha finally fired; fixed with scoped
-  `local irreducible Nat.sqrt`.)
-
-#### ✅ Item 4 assembly — completed in steps 17–19
-
-**A. `settlementCheckAtFuel_prim` (step 17, done)** — `Primrec fun (q : AffineCombination × ℕ × ℕ) =>
-q.1.settlementCheckAtFuel market process q.2.1 q.2.2` (input `(A, j, fuel)`). All leaves are
-now in hand: `processStageAtFuel_prim` (match on `stageAtFuel fuel j`), `settlementAtomLimit_prim`,
-`allBitLists_prim`, `stageSatBits_prim`, and **`valueRatCompAt_prim`** (step 16) for the
-`valueRatAtFuel … (bitsPayoutRat l)` comparison — rewrite the check's two `valueRatAtFuel`
-calls via `valueRatCompAt_eq` first. It is a nested double `List.all` over `allBitLists`
-(use `list_all_eq_foldr` + `Primrec.list_foldr`, as `stageSatBits_prim` does) inside an
-`Option.rec`/match on the stage. Sizable but purely mechanical; the whole thing is
-primitive recursive (the only unbounded search is the *outer* `rfindOpt`).
-
-**B. `rfindOpt` → `Code` → `SettlementChecker` (step 19, done).** With `settlementCheckAtFuel_prim` (hence
-`Computable`), build the partial function `fun z => rfindOpt (fun fuel => if
-(As z.unpair.1).settlementCheckAtFuel market process z.unpair.2 fuel then some 1 else none)`,
-show it `Partrec` (`Partrec.rfindOpt` + `Computable` of the inner guard), extract a
-`Nat.Partrec.Code` via `Nat.Partrec.Code.exists_code`, and prove `spec` from
-`settlementCheckAtFuel_{sound,complete}` (both already proved). `spec` is
-`acceptsWithin c F ⟨i,j⟩ = decide (evaln F c ⟨i,j⟩ = some 1)`; monotonicity from
-`acceptsWithin_mono`. This is packaged as `SettlementChecker.ofComputations`.
-**This is the one genuinely new machinery (Partrec/code extraction, not Primrec).**
-
-**C. The polynomial bridge (step 18, done).** `PolyFueled.primrec` evaluates its code at the
-explicit polynomial clock, `PolySegStream.primrec` reconstructs a token list from its length
-and emitter, and `AffineCombination.PolySequence.primrec` assembles the decoded constants,
-coefficients, sentences, and term list. `ofComputations` therefore consumes `PolySequence As`
-directly; no type-`(c)` disclosure remains.
-
-### ⚠ The one place a shortcut still yields a *wrong witness*
-
-The EF rational machine is the right reuse and its design anticipated this:
-`efRatCompiledEval_prim {C} [Primcodable C] (V) (hV) : Primrec fun p : C × EF => …`, with
-`efRatCompiledEval_eq : efRatCompiledEval V ctx e = e.denoteRat (V ctx)`. Take **`C := ℕ`
-(the fuel)** and `V fuel n φ := (market.quoteAtFuel fuel n φ).getD 0`. Our `ρ` is always
-`[]`, so `denoteRat` (not `denoteRatWith`) is all we need.
-
-**But that `V` is total.** It substitutes `0` for an *unanswered* query and cannot
-distinguish "the market timed out" from "the quote really is `0`". Unguarded, it **breaks
-`settlementCheckAtFuel_sound`**: two worlds spuriously "agree" at `0` and certify a test
-that is false. It would compile, the proofs would be kernel-clean, and the witness would be
-wrong — a program accepting when settlement has not happened. This is exactly why item 1 is
-not optional bookkeeping, and why `settlementCheckAtFuel` is conservative (every timeout
-reads `false`). With the guard, `EF.denoteRatWithAtFuel_complete` (`Criterion.lean:1225` —
-its hypothesis is literally `∀ query ∈ e.priceQueries, …`) hands you the `some`.
-
-### When this lands, the node closes **modulo one disclosed bridge**
-
-`SettlementChecker` needs the family `As : ℕ → AffineCombination`, but the check is stated
-for a fixed `A`. Now that `affineCombinationPrimcodable` exists, take **`Primrec As` as an
-explicit hypothesis** on `ofComputations` (a `PolySequence` is poly-time, hence morally
-primrec, so this is *weaker* than `PolySequence`) and **ledger `PolySequence As → Primrec As`
-as owed**. Do not silently swap `PolySequence` for `Primrec` without disclosing it — that is
-a type-`(c)` substitution. So the honest ledger row reads *closed modulo one disclosed
-bridge*, **not** unconditional.
-
-**Do this before another checker-style witness.** The same wall blocks the maturity checker
-(`unitMaturityCheckAtFuel` has the identical shape and was never compiled), hence
-`M7-FEEDBACK-EMIT`/`M7-FEEDBACK-TRUTH`. Retiring it once unblocks all of them.
-
-**Grep before each step (rule 2b).** The standing failure mode here is re-deriving what
-exists. The EF machine, `quoteAtFuel` value folds, `denoteRatWithAtFuel_{sound,mono,complete}`,
-`exists_fuel_quoteAtFuel_list` and `stageAtFuel_{sound,mono,complete}` **all already exist**.
-The `Nat.sqrt`/`whnf` GOTCHA below has **not fired once across steps 5–11**, including the
-deep-product `settlementAtomLimit_prim` — do **not** pre-scatter `local irreducible`;
-diagnose first.
-
-### Reusable infrastructure landed 2026-07-16 (do not rebuild)
-
-- **`polyFueled_dovetailFound`** — the paper's `DefinitelySettled` bullet, generically: for
-  an *arbitrary* code, "accepts `⟨i,j⟩` within `n` steps for some `j ≤ n`" has a polynomial
-  Boolean table. `PatientSettlementClock.active_codes` and
-  `HistoricalVerifiedMaturitySchedule.check_poly` have the **same shape**
-  (`check : ℕ → ℕ → Bool` + a `PolyFueled` table) and neither had ever been built — this
-  serves both. Composes `codeEvalnNat_polyFueled` with `polyFueled_boundedAny`.
-- **`polyFueled_deadlinePassed`** + `deadlineRun`/`deadlineStep`/`deadlinePassed_{sound,
-  mono,eventually}` — the deadline under-approximation.
-- **`polyFueled_selectConst`**, `acceptsWithin_mono`, `dovetailFound_mono`.
-
-### Gates outstanding (not optional)
-
-1. **Anson's statement read-through** is owed on ~10 new statements from 2026-07-16, and
-   `SettlementTest` is the priority: it is now the trust surface for the whole witness. If
-   it is the *wrong predicate*, `settlementTest_iff_settled` proves a true thing about the
-   wrong object and **compiling will not tell you**. Its two directions are where to look.
-2. **`M7-ERRATA-AUDIT`** (fresh context, must not be the session that wrote the rows). The
-   three "minor — TeX slip" errata rows are ⚠ **unaudited** — classified from the TeX
-   surface without working their appendix proofs, which is exactly how `thm:ifp` was
-   recorded before it turned out to be a substantive gap. Cheap; high stakes (an erratum
-   claims the *paper* is wrong).
-3. **`thm:ifp` follow-ups** — the counterexample is argued, not formalized; whether
-   `thm:ifp` is *false* for general markets is **open, not claimed**. See PROGRESS.md
-   "Paper errata".
-
-### Process note (2026-07-16) — CLAUDE.md rule 2b
-
-Three duplicated proofs were committed and reverted in one session (`pair_lt_sq`; the
-`evaln` output bound, already present as `codeEvaln_result_le` + `codeEvalBound_poly`;
-`DeductiveProcess.mono_le`). Only one was caught by the compiler. **Grep for the fact —
-not the name — before writing the first tactic**, and search `Construction/` too: it is
-downstream and invisible from an upstream file.
-
-### ▶ Witness triage (2026-07-15) — read before grinding the remaining 13
-
-The 13 remaining witnesses are **not** uniform in value. The core existence theorem
-(`exists_logical_inductor`) is already unconditional/axiom-clean and depends on **none** of
-them; the witnesses only make the M3–M5 **property tail** non-vacuous. Sorted by whether
-realizability is genuinely in doubt (construct = resolves a real question) vs known-realizable
-(construct = labor that at most catches an encoding bug):
-
-> **CORRECTIONS TO THIS TRIAGE (2026-07-16) — read before using it.**
-> 1. **`M7-QUOTE-AFFINE` is misfiled.** It sits in Tier 1 ("construct"), but its honest
->    discharge needs Gödel encoding + representability of `LIA`'s own computation — i.e.
->    `M7-COMP-SYNTAX`, which this triage files in **Tier 3** ("disclose"). Tier 1 depends
->    on Tier 3, so the "Recommended strong-but-honest close" below is internally
->    inconsistent as written. It *is* inhabitable in general (the paper's argument is
->    sound and not circular: `Θ = PA` does not depend on the market, `LIA`-over-`PA` is a
->    fixed computable algorithm, the diagonal lemma applies) and Foundation carries the
->    machinery — `codeOfPartrec'` (`FirstOrder/Arithmetic/R0/Representation.lean`) bridges
->    **Mathlib's** `Nat.Partrec'` to first-order semisentences, plus `Bootstrapping/
->    FixedPoint.lean`. So it is weeks of real integration, not "disclose", and the
->    Tier-3 estimate of "re-proving textbook facts with Mathlib gaps" was wrong.
-> 2. **`M7-PREFIX-PATCH` is too pessimistic here.** It is *inhabitable* for `LIA`: each
->    day's quote table is a finite `RationalBeliefState` entry list, so the freeze is a
->    hardcodable finite lookup with constant-size tokens. What it "falsifies" is real but
->    different — the **paper's `thm:ifp` proof is wrong** (see PROGRESS.md "Paper errata"),
->    not our premise. Med, and now partly disclosure rather than construction.
-> 3. **`M7-PATIENT-CLOCK` is largely done** (see START HERE). Realizability confirmed: it
->    smuggles no unrealizable settlement assumption — but the structure *is* uninhabitable
->    at its stated generality, over an `ℝ`-valued `History`, because the test is equality
->    of reals. That is **our** `dd:fuel`/`History` type-`(c)`, not a paper defect.
-> 4. **Tier 2 is cheaper than stated.** `polyFueled_dovetailFound` now supplies the
->    `check`-plus-`PolyFueled`-table shape that `HistoricalVerifiedMaturitySchedule` needs
->    — but see the dependent-type wall in START HERE, which is the real cost there.
-
-**Tier 1 — realizability genuinely uncertain → construct (real epistemic value):**
-- `M7-PREFIX-PATCH` — `EfficientPrefixPatch.preserves_ec` may be *false* under the weak
-  `ComputableMarket` premise (old quotes aren't poly-accessible). Constructing forces the
-  truth: it holds, or the premise must be honestly strengthened. **The one witness that can
-  falsify something.** Med-hard.
-- `M7-QUOTE-AFFINE` — introspection portfolios need the market to coherently price sentences
-  about its own future prices (reflection/diagonalization); whether that coheres *is* the
-  self-trust content, not a standard object. Hard (needs first-order quotation).
-- `M7-PATIENT-CLOCK` — `settled_of_inactive` ties the clock to the process settling affine
-  values; verify it doesn't smuggle an unrealizable settlement assumption. Med.
-
-**Tier 2 — known-realizable "match the def + emit tokens" → construct only for completeness:**
-low realizability doubt, ~a day of wiring each, low surprise. `M7-FEEDBACK-EMIT` (emit
-`feedbackTrader`'s trades; deferral dovetail can ride the simulator — most tractable),
-`M7-FEEDBACK-TRUTH`, `M7-DUS-PREFIX-SYNTAX` (fresh independent atoms), `M7-SCON-COMPILER`,
-`M7-SCON-PRESENTATION`, `M7-LUV-SYNTAX`.
-
-**Tier 3 — standard math objects / deep machinery → disclose Barasz-style, don't grind:**
-near-zero realizability doubt, weeks of labor re-proving textbook facts (some hit Mathlib
-gaps). `M7-PREFIX-MACHINE` (prefix-free + Kraft — *most self-contained*; build this one if you
-want a single "pipeline reaches Kraft territory" showcase), `M7-DUS-APPROX` (needs a concrete
-Solomonoff–Levin universal semimeasure first), `M7-STRICT-SEPARATORS` (recursively-inseparable
-c.e. sets + universal-semimeasure-mass→0, a real computability theorem not in Mathlib —
-deepest), `M7-COMP-SYNTAX` (Gödel encoding + proof calculus for Σ₁-representability of halting).
-
-**Superseded recommendation (updated 2026-07-18):** the required construct-set is now complete:
-`HIST-EVALN`, `CE-REPETITION`, `PATIENT-CLOCK`, and `PREFIX-PATCH` are built and axiom-clean.
-For the project exit, disclose every remaining boundary, including `PREFIX-MACHINE`; construct
-that witness only if Anson explicitly reopens a Kraft/prefix-machine showcase goal. Reconcile
-the old literal-all-15 contract transparently in `PROGRESS.md` rather than claiming that the
-conditional+disclosed endpoint satisfies its letter.
-
-**GOTCHA (read first, will recur every step):** `Primrec` proofs over the deep product
-input types here blow up `whnf` on `Nat.sqrt` (via `Nat.unpair` in the `Primcodable`
-instance), *not* on the domain math. When an `exact`/`rfl` spins, do **not** bump
-heartbeats or touch the domain leaves — wrap the theorem in `section … end` and
-`attribute [local irreducible] Nat.sqrt <domain-leaf-defs>`. Diagnose with
-`set_option maxHeartbeats 40000 in` + `set_option diagnostics true in` and look for
-`Nat.sqrt`/`Nat.rec`/`Bool.decEq` topping the unfold list. Use an **interactive** VS Code
-session for these, not 8-min batch builds. See the worked fix at
-`firmBudgetBreachAtDayData_prim` (LIACompiler.lean ~line 5040).
-
-**Already proved (reuse — don't rebuild):** `rationalHistory_prim` (1790),
-`processStagePrefixAtFuel_prim` (1987), `firmRawTraderTrades_prim` (2679),
-`tradingFirmWeight_prim` (2748), `marketMakerSearchUpToTradeList_prim` (4107), the whole
-Budgeter-gate stack through `priorBudgetBreachData_prim` (5135). The semantic `_eq` bridges
-(`liaPrefixFromTradeListsAtFuel_eq`, `…StageListsAtFuel_eq`, `tradingFirm…_eq`,
-`marketMakerSearchUpToTradeList_eq`, `liaPrefixAtFuel_sound`, `liaEncodedQuoteAtFuel_sound`,
-`exists_liaEncodedQuoteAtFuel`) are all in `LIAComputation.lean` and already proved.
-
-**Completed core build order (each now proved in `LIACompiler.lean`):**
-1. `budgeterTradesFromStageTradeLists_prim` — budgeted trade-list emission. Uses
-   `priorBudgetBreachData_prim` ✓ (the gate) + the erased budgeted-trade ops. Def in
-   `Budgeter.lean`.
-2. `tradingFirmComponentTradesFromStageTradeLists_prim` — def at `TradingFirm.lean:511`;
-   `flatMap` over `tradingFirmCutoffTradeLists n` of
-   `scaleConstTradeList (tradingFirmWeight …) (budgeterTrades…)`, appended with the
-   final `scaleConstTradeList … (firmRawTrader j).strat n`. Uses (1) + `tradingFirmWeight_prim`
-   ✓ + `firmRawTraderTrades_prim` ✓ + `scaleConstTradeList` primrec.
-3. `tradingFirmTradesFromStageTradeLists_prim` — def at `TradingFirm.lean:521`; `flatMap`
-   over `range (n+1)` of (2).
-4. `liaPrefixFromTradeListsAtFuel_prim`/`_computable` — def at `LIAComputation.lean:140`;
-   `Option`-bind recursion on `n` using `marketMakerSearchUpToTradeList_prim` ✓ + (3) +
-   `rationalHistory_prim` ✓. (Structural `Nat.rec`/`Option.bind` computability.)
-5. `liaPrefixAtFuel` computable — compose `processStagePrefixAtFuel_prim` ✓ +
-   `decodedStageTable` + (4) via the `…_eq` bridges (`liaPrefixFromTradeListsAtFuel_eq` →
-   `…StageListsAtFuel_eq` → `…StagesAtFuel`).
-6. `liaEncodedQuoteAtFuel` computable → `liaEncodedQuoteNatAtFuel` `Computable₂`
-   (index `[day]` + `Encodable.decode` Sentence + `state.quote` + `encode`).
-   **This is the `LIABoundedEvaluatorCompiler.computable` field.**
-7. `LIABoundedEvaluatorCompiler process` instance (from 6). Then `LIA_is_logical_inductor`
-   (`thm:lia`) = `lia_isLogicalInductor_of_compiler` + the instance built from a
-   `DeductiveProcessComputation`.
-8. `exists_logical_inductor` (`thm:li`): `∀ DP, ComputableDeductiveProcess DP →
-   ∃ P, IsLogicalInductor P DP`, via `ComputableDeductiveProcess.nonemptyComputation`
-   (Criterion.lean) → the instance → `lia_isLogicalInductor_of_compiler`.
-
-**After the compiler lands, remaining M7 gates (see PROGRESS.md contract items 4–6):**
-the 15 boundary witnesses (`M7-HIST-EVALN`, `M7-COMP-SYNTAX`, …), fully-instantiated M3–M5
-property corollaries, the `def/lem:budgeter`/`def:tradingfirm`/`lem:tfdom`/`def/alg:lia`/
-`thm:lia`/`thm:li` line-by-line paper comparison, the full-build/axiom/diff gates, Anson's
-statement read-through, and the separate fresh-context M7 audit + recheck.
-
-> **Build-state correction (2026-07-15):** the previous session (Codex) was cut off
-> mid-proof and left `Construction/LIACompiler.lean` **not elaborating** — a `whnf`
-> heartbeat timeout in `firmBudgetBreachAtDayData_prim` (the last Budgeter-gate primrec
-> piece), cascading to a kernel error downstream. So the earlier "targeted LIACompiler
-> build is green" note below was aspirational, not actual. Two genuine bugs in that
-> cut-off proof were fixed this session: (1) `hctx` was ascribed `Primrec (fun _ =>
-> BudgetWorldContext)` — a `Primrec` into `Type`; (2) the seven-projection block was
-> systematically mis-indexed (`hpast/hj/hb/hn` one nesting level too shallow, `hxs`
-> computing `p.1.1.2` instead of `p.1.2`). The residual defeq pathology was then
-> **diagnosed and fixed** interactively: `set_option diagnostics true` on the final `exact`
-> showed it blowing up computing `Nat.sqrt` (~23k unfoldings) via `Nat.unpair` — isDefEq
-> reconciling the `Primcodable` instance of the deeply-nested product input type, **not**
-> the budget math. (That is why `rfl`/`simp`/`simpa`/heartbeat-bumps/leaf-`irreducible`
-> all looped — wrong layer.) Scoping `attribute [local irreducible] Nat.sqrt …` around the
-> theorem stops that reduction; `firmBudgetBreachAtDayData_prim` is now **proved, no
-> `sorry`**, and `LogicalInduction.Construction` builds **green with zero `sorry`s
-> (2437 jobs)**.
-> The compiler chain above this point is still unbuilt: `tradingFirmComponentTrades…_prim`
-> → `tradingFirmTradesFromStageTradeLists_prim` → `liaPrefixFromTradeListsAtFuel_prim`
-> (Option-bind recursion) → `liaPrefixAtFuel`/`liaEncodedQuoteAtFuel` computable →
-> `Computable₂ liaEncodedQuoteNatAtFuel` → instantiate `LIABoundedEvaluatorCompiler` →
-> `exists_logical_inductor`.
-
-> **M7 goal set (2026-07-14):** M7 now has the falsifiable completion contract in
-> `PROGRESS.md`: faithful `Budgeter`, redundant e.c.-trader enumeration, executable
-> `TradingFirm` plus dominance, recursive computable rational `LIA`, `thm:lia`/`thm:li`,
-> all fifteen named post-M5 representation/compiler witnesses, fully instantiated property
-> corollaries, paper comparison, builds/source/diff/axiom gates, Anson's read-through, and a
-> separate fresh-context audit with correction recheck. Conditional or analytic progress
-> does not close the milestone.
->
-> **First construction tranche complete:** the former `EfficientlyComputableTok` required
-> a polynomial bound on serialized length but no program computing that length. It therefore
-> admitted traders with uncomputable stopping lengths and could not support the paper's
-> redundant enumeration. The repaired definition is the paper-aligned total bounded
-> emulator: exact length/token programs, a polynomial clock, a clock-clamped emitted stream,
-> and validation with malformed outputs normalized to the zero strategy. Exact-emission
-> compilers recover all existing traders through `ecTok_of_exactEmission`. The concrete
-> `enumeratedTrader : ℕ → Trader` now proves both that every entry is e.c.
-> (`enumeratedTrader_ecTok`) and that every e.c. trader occurs
-> (`exists_enumeratedTrader_eq`). Construction/Properties/Integration is green at
-> 2,461/2,461 jobs. Budgeter is the active construction step.
->
-> **Budgeter semantic tranche green:** `Construction/Budgeter.lean` now uses an executable
-> enumeration of finite atom assignments, an exact rational past-loss scan, and an adaptive
-> action layer over the rational history representation already used by MarketMaker. The
-> scan is proved equivalent to the paper's quantification over p.c. worlds. The three
-> Budgeter properties are kernel-checked: `BudgeterAt_value_eq_of_safe`,
-> `budgetedTrader_netWorth_floor`, and `exists_budgetedTrader_exploits`. The remaining
-> Budgeter construction item is to expose the bounded search/stopping-clock wrapper that
-> obtains finite `D_m` stages from `DeductiveProcessComputation`, rather than counting
-> access to the semantic `DP.D` field as the final computability witness.
->
-> **TradingFirm and semantic LIA tranche green:** `Construction/TradingFirm.lean` gives a
-> finite exact day strategy for the paper's double geometric mixture, compresses both
-> infinite tails with proved `HasSum` identities, proves component/global/residual loss
-> floors, and closes `trading_firm_dominance`. `Construction/LIA.lean` recursively feeds
-> the actual finite rational prefix to TradingFirm and MarketMaker, proves equality with
-> the generic MarketMaker recursion and with the static dominance firm, and proves that no
-> e.c. trader exploits the resulting rational `[0,1]` history. All new capstones expose
-> only the approved three axioms. `Construction/LIAComputation.lean` now supplies the exact
-> bounded operational presentation: one common fuel decodes `D₀,…,Dₙ`, executes the
-> explicit-stage TradingFirm/MarketMaker recursion, and returns the encoded rational quote.
-> Soundness, monotonic-success, and finite-clock existence are proved end to end. A generic
-> `Partrec.rfindOpt` bridge derives the exact `ComputableMarket` program and criterion once
-> the bounded evaluator's conclusion-free `Computable₂` certificate is supplied. The active
-> blocker is precisely that certificate (primitive-recursive compilation of the finite
-> syntax/rational/list evaluator), not recursion correctness or stopping. Until it is
-> instantiated, `LIA_is_logical_inductor` and `exists_logical_inductor` remain open.
->
-> **Compiler tranche active:** `Construction/LIACompiler.lean` now proves exact
-> primitive-recursive normalize-after-decode functions for the concrete Foundation
-> `Formula ℕ` Gödel coding, Mathlib's reduced rational coding, and the project's recursive
-> `EF.toNat`/`EF.ofNat` coding. It proves agreement with each real `Encodable.decode`, covers
-> every malformed/failure branch, and installs matching hole-free `Primcodable` instances
-> for `Sentence`, `ℚ`, and `EF`. Exact primitive-recursive rational arithmetic/comparison is
-> now complete, as are proof-erased validated `RationalBeliefState` and day-indexed
-> `Strategy n` encodings (including a concrete compiler for `EF.rank`), plus exact
-> primitive-recursive belief-state quotation, finite chronological history lookup,
-> MarketMaker candidate decoding, and the stock sorted `Finset Sentence` encoding. The
-> latter compiles insertion sort and uses Mathlib's
-> `List.mergeSort_eq_insertionSort` theorem to preserve the already-fixed deductive-process
-> encoding exactly; `process.stageAtFuel` and the full common-clock deductive-stage prefix
-> are now primitive recursive. The flat trader-program boundary is compiled too: the
-> one-token `EF.streamStep`, its full list fold, terminal validation, `deserializeTrades`,
-> rank-validated `strategyOfTokens`, decoded polynomial program clocks, the uniformly
-> enumerated trader, and its gated `firmRawTrader` action are all exact primitive-recursive
-> functions. The dependent-type erasure is now complete as well. `MarketMaker.lean`
-> exposes raw-trade acceptance, candidate checking, and bounded search;
-> `Budgeter.lean` exposes raw-trade atom support, exact wealth, bankruptcy, world scaling,
-> and budgeted trade emission; `TradingFirm.lean` assembles the entire finite mixture as a
-> raw trade list; and `LIAComputation.lean` runs the complete bounded recurrence without
-> ever constructing a value-dependent `Strategy n`. Every layer has an exact equality
-> theorem back to the original typed semantics. The bottom-up compiler now additionally
-> includes an exact rational stack machine for the full `EF` language (constants, prices,
-> variables, `letE`, arithmetic, `max`, and safe reciprocal), a syntax-derived uniform
-> fuel bound, a proof that the fueled result is exactly `EF.denoteRat`, and a generic
-> primitive-recursive finite trade-list market-value fold. This has been specialized and
-> verified for candidate-updated rational histories and MarketMaker Boolean support
-> worlds. The targeted `LIACompiler` build is green. The next compiler step is the finite
-> universal Boolean-world acceptance predicate and bounded candidate search, followed by
-> the erased Budgeter/TradingFirm/state-prefix operations and final composition into
-> `Computable₂ liaEncodedQuoteNatAtFuel`.
-
-> **M6 verified complete (2026-07-14):**
-> `LogicalInduction/Construction/MarketMaker.lean` now proves the strategy fixed-point
-> lemma, implements the exact rational fuel-clocked first-success MarketMaker, recursively
-> generates its history, and proves it is not exploited by its input trader for every
-> deductive process. See `notes/m6-verification-packet.md` for the statement comparison and
-> modeling disclosures. The construction roll-up passed 2,426/2,426 jobs, the full build
-> passed 2,671/2,671, source/diff checks are clean, and capstone axiom reports contain only
-> the approved three axioms. At M6 close, M7 (`Budgeter`, `TradingFirm`, `LIA`, existence)
-> was wholly unstarted; it has now been explicitly scoped and activated above.
-
-# Historical M5 closeout
-
-> **Fresh-context audit correction pass (2026-07-14):** Anson authorized and a fresh
-> subagent completed the adversarial audit. It passed kernel soundness, trader token
-> certificates, downside/upside non-vacuity, and conclusion-in-premise attacks, but found
-> two real scope gaps plus incomplete boundary tracking. The arbitrary-BCS gap is repaired
-> by one canonical positive rational `BoundedCombinationSequence.unitNormalization` and
-> paper-facing `recunbiasedaff`, `wubaff`, and `prandaff_{above,below,eq}` wrappers. The
-> `thm:ref` endpoint package now carries closed `GeneratedRatFeature`s, exactly matching
-> market-generated `aₙ,bₙ`, instead of independently polynomial rational tables. Concrete
-> `M7-LUV-SYNTAX`, `M7-DUS-PREFIX-SYNTAX`, and `M7-SCON-PRESENTATION` obligations have been
-> added, and the three TeX inconsistencies in `recurringunbiasednessexp`, `wubexp`, and
-> `pazfc` are explicitly triaged. The public property/integration build is green at
-> 1,958/1,958, the full build is green at 2,670/2,670, wrapper axiom reports expose only
-> the approved three axioms, the executable-hole scan is empty, and `git diff --check` is
-> clean. The independent correction recheck returned PASS: no new circularity, vacuity, or
-> paper-scope defect was found. All eight M5 verification gates are closed.
-
-> **Expectation-property tranche complete (2026-07-14):**
-> `Properties/ExpectationProperties.lean` now proves all six remaining paper nodes:
-> `BoundedSequence.exppolymax`, `perexpkno`, `expcoh`,
-> `recurringunbiasednessexp`, `wubexp`, and the paper-facing nonnegative
-> `prandexp`, together with its stated analogous `prandexp_below` and derived
-> `prandexp_eq` directions. Arbitrary BLCS magnitude is handled by the explicit positive
-> normalization `meshNormScale`; no unit-bound premise is silently substituted. An exact
-> first-order presentation determines the completed-world threshold mesh, whose truth
-> differs from exact LUV truth by `O(b/n)`. The new Toeplitz theorem proves that every
-> nonnegative divergent weighting sends this pointwise null error to a null weighted
-> average. This supplies the exact-truth transfers for recurring unbiasedness, feedback
-> unbiasedness, and pseudorandom learning rather than assuming them in a certificate.
-> Every new capstone prints only `propext`, `Classical.choice`, and `Quot.sound`; the flat
-> ledger is updated. The public property/integration roll-up is green at 1,958/1,958 jobs,
-> the full project is green at 2,670/2,670 jobs, the executable-placeholder scan is empty,
-> and `git diff --check` is clean. Anson confirmed the statement-by-statement paper
-> read-through in the project thread on 2026-07-14. The fresh-context audit described in
-> `PROGRESS.md` has now run and its findings are in correction/recheck. The
-> compact, checkboxed handoff for both reviews is
-> `notes/m5-verification-packet.md`; its author-context pre-audit is explicitly not counted
-> as the independent audit.
->
-> **Latest structural/audit progress (2026-07-14):** the `affpolymax` regression found
-> and repaired a real normalization mismatch: the paper-facing theorem now consumes an
-> exact `BoundedCombinationSequence` with the trailing constant included in its `L¹` norm,
-> derives semantic bounded prices, rationally normalizes an arbitrary real bound, and
-> transports all extrema conclusions back. The `thm:lex` regression likewise found that
-> fixed equivalence/implication had been mislabeled as the paper theorem; the actual
-> fixed-`k` exclusive/exhaustive sum theorem is now proved by a genuinely uniform tuple
-> emitter. Both targets and Non-Dogmatism are green and axiom-clean.
->
-> `thm:ifp` is now complete as an exact conditional biconditional in
-> `Properties/FinitePerturbations.lean`. `EF.freezeBefore` is the paper's literal
-> false-report transformation; Lean proves rank/cost preservation, exact tail semantics,
-> an explicit finite magnitude bound on net-worth error, and exploitation transport in
-> both directions. The audit exposed one honest clock-model gap: `ComputableMarket` does
-> not give polynomial-time access to old quotes, so the paper's “hard-code” sentence does
-> not by itself prove token-emission closure for arbitrary varying sentence codes.
-> `EfficientPrefixPatch` isolates only that concrete compiler fact, and
-> `M7-PREFIX-PATCH` records its witness obligation. The 1,693-job target is green and all
-> public proof reports contain only the approved foundational axioms.
->
-> `thm:obu` is complete as the exact conditional `lic_uniform_nonDogmatism` capstone in
-> `Properties/UniformNonDogmatism.lean`. Its varying-sentence scale ladder has a literal
-> polynomial token emitter, an explicit global `-2` floor, and non-vacuous unbounded
-> jointly consistent-world upside. Fixed-sentence convergence and infinite repetition
-> turn failure of a common positive `P∞` bound into one full trigger at every scale. The
-> paper's c.e.-enumeration padding step is isolated as the syntax-only
-> `EfficientRepeatedEnumeration` witness and ledgered as `M7-CE-REPETITION`; it carries
-> no prices or limiting conclusion. The 1,705-job target is green and the capstone is
-> axiom-clean.
->
-> `thm:ob` is now complete as the exact conditional two-sided `lic_occamBounds` capstone
-> in `Properties/OccamBounds.lean`. A single Kraft-weighted ladder diagonalizes the paper's
-> trader family: rung `j` spends at most `1/j²`, total net worth is bounded below by `-2`,
-> and a full possible-world trigger produces order-`j²` upside. The actual variable-width
-> day/sentence/rung/history serialization has a kernel-checked
-> `EfficientlyComputableTok` certificate. The lower theorem yields one common multiple of
-> `2^{-κ(φ)}`; the upper theorem uses the audited exclusive–exhaustive limit law and one
-> fixed negation-program overhead, preserving a single constant for both inequalities.
-> `M7-PREFIX-MACHINE` isolates only the concrete universal-prefix-machine syntax,
-> rational-token arithmetic, Kraft/coverage proof, and negation compiler; it contains no
-> prices or Occam conclusion. Direct checking and the authoritative 1,951-job property
-> roll-up are green; the source scan is empty, `git diff --check` passes, and all printed
-> declarations expose only the approved foundational axioms.
->
-> Work on `thm:dus` has begun in `Properties/UniversalSemimeasure.lean`. The file now
-> faithfully defines continuous, lower-semicomputable (with an actual unrestricted
-> `Code.evaln` presentation), and universal semimeasures, together with the exact Boolean
-> semantics and finite realizability of the paper's independent bit-prefix sentences.
-> The central `MeanPayout ≤ MaxPayout` step is proved by finite binary-tree induction;
-> semimeasure leakage is handled as stopping at an internal node. A tempting reduction to
-> `thm:ob` was audited and removed: continuous prefix mass can stay `1` along an infinite
-> deterministic path, while ordinary prefix complexity of its distinct prefix sentences
-> cannot remain bounded. Do not reintroduce a fixed Shannon–Fano compiler for sentence
-> prefix complexity. The next hard gate is the paper's unit-budget purchase trader (or a
-> genuinely equivalent monotone-code proof), followed by its real uniform token emitter
-> and a summable diagonal of the scale family.
->
-> **DUS completion update (2026-07-14):** `thm:dus` is now green end to end.
-> `DUSApproximationPresentation`/`DUSThresholdEmission` isolate the paper's syntax-only
-> bounded-simulation slowdown as `M7-DUS-APPROX`. The direct trader uses the equivalent
-> dovetail `enumeration n.unpair.2`, revisiting every prefix infinitely often while making
-> one chronological purchase decision per day. `dusRemainingEF` is the actual shared
-> expressible-feature cash recurrence, `dusSpendThrough_le_one` proves total cost at most
-> one, and `dusScaleTrader_netWorth_ge_neg_one` proves a literal all-world downside floor.
-> The full recurrence is uniformly serialized across scale and day—prior values are
-> referenced with `EF.var`, not duplicated—and `dusScaleTrader_ecTok` is axiom-clean.
-> A violating prefix forces semimeasure-weighted payout to reach `k+1`. The finite event
-> list is aggregated by prefix into an explicit binary purchase tree; a maximizing branch
-> is realized as a same-day `B.prefix_possible` world, so the upside is non-vacuous.
->
-> `dusTrader` is the literal scale diagonal: rung `j` runs scale `(j+1)^4` at weight
-> `1/(j+1)^2`. `dusTrader_netWorth_ge_neg_two` proves its global floor;
-> `dusTrader_exploits_of_failed_scales` proves unbounded plausible wealth if every fixed
-> constant fails; and `dusTrader_ecTok` emits the actual joined strategy, including the
-> polynomial scale and rational weight. `lic_domination_universalSemimeasure` is the exact
-> fixed-`C>0` capstone. All printed DUS declarations expose only `propext`,
-> `Classical.choice`, and `Quot.sound`.
->
-> **Strict-domination update (2026-07-14):** `Properties/StrictSemimeasure.lean` now proves
-> the exact non-domination conclusion. `StrictSeparatorPresentation` exposes the paper's
-> nested recursively-inseparable separator prefix class, its efficient repetition and
-> finite joint realizability, and the computability-theory fact that universal-semimeasure
-> mass tends to zero. `strict_domination_of_null_prefix_theory` combines that fact with
-> Uniform Non-Dogmatism; `lic_strict_domination_universalSemimeasure` defeats every `C>0`
-> at an actual finite prefix. The concrete c.e.-machine-set instantiation is explicitly
-> ledgered as `M7-STRICT-SEPARATORS`; the boundary contains no market or non-domination
-> conclusion. Both printed theorems are axiom-clean. Next paper node: `thm:scon`.
->
-> **Conditioning substrate update (2026-07-14):** `Properties/Conditioning.lean` now has
-> the paper's exact capped `conditionalQuote`, `conditionedHistory`, its `[0,1]` theorem,
-> stagewise `DeductiveProcess.union`, and the exact combined-world equivalence.
-> `ConditioningPresentation` uniformly covers a fixed condition and growing finite
-> conjunctions. `ConditioningTraderCompiler` is the auditable target for the remaining
-> Appendix construction: it must emit an actual translated trader, preserve its token
-> certificate, track conditional-world wealth within the summable error `1`, and establish
-> a global base-world floor. Lean already proves from exactly those fields that exploits
-> transport (`ConditioningTraderCompiler.exploits_base`) and that the conditioned market is
-> an LI (`lic_conditioned`). The safe-ratio/gated translator itself remains
-> `M7-SCON-COMPILER`, so `thm:scon` is still pending rather than oversold.
->
-> The translator is no longer wholly abstract. `EF.lowerSafeRecip` implements
-> `1/max(ε,p)` from the DSL's safe reciprocal; `EF.conditionalPriceEF` denotes the exact
-> capped quote under the patched denominator floor; and `EF.conditionPrices` recursively
-> rewrites every price leaf of arbitrary shared feature syntax with exact denotation and
-> unchanged rank. `Strategy.conditionalContract` emits the literal conjunction/condition
-> stock pair for every original position, and `conditionalContract_value` proves exact
-> value agreement in condition-satisfying worlds whenever the cap is inactive.
->
-> **Conditioning semantic-compiler update (2026-07-14):** the Appendix economic
-> construction is now concrete. `conditioningBudget n = 1/((n+1)(n+2))` is strictly
-> positive, telescopes, and has every finite prefix sum `≤1`; it replaces paper `2⁻ⁿ`
-> because literal exponential denominators are not polynomial-value tokens in this model.
-> `EF.conditioningCapGate` normalizes this budget by the reified strategy magnitude, and
-> `gatedConditionalPosition_lower` proves the cap-case loss is at most `|α|δ` while leaving
-> negative positions untouched. `Strategy.gatedConditionalContract_value_lower` sums the
-> real two-stock contracts and gives the per-day budget loss;
-> `Trader.conditionedTranslation_netWorth_lower` sums it to one. Separately,
-> `gatedConditionalContract_value_eq_zero_of_not_holds` proves that a false condition
-> annihilates payout and cash exactly, and
-> `ConditioningPresentation.conditionedTranslation_preserves_floor` formalizes the least
-> failed condition argument and global base-world downside floor.
->
-> `GatedConditioningOperationalWitness.toCompiler` now assembles those theorems into the
-> compiler contract, and `lic_conditioned_gated` is the paper-facing conditional capstone.
-> The remaining `M7-SCON-COMPILER` boundary is operational only: construct the finite-prefix
-> positive-denominator patch, emit the exact rational conditional market program, and
-> transform arbitrary `EfficientlyComputableTok` streams into the concrete translated
-> stream. It contains no tracking, floor, exploitation, or LIC conclusion. Targeted project
-> build: 1,714/1,714 green; source-hole scan and `git diff --check` clean; all new axiom
-> prints expose only `propext`, `Classical.choice`, and `Quot.sound`.
-
-> **Active M5 state (2026-07-13):** the falsifiable M5 verification goal is active and
-> `PROGRESS.md` now contains the flat paper-label obligation ledger. `thm:tbo` is proved as
-> `lic_preemptive_learning` by an explicit legal one-share specialization of the completed
-> affine preemptive-learning trader; its targeted build and axiom report are green. The
-> canonical limiting valuation `limitingBelief`, sentence convergence to it, and fixed
-> affine-combination convergence are also proved in `Properties/AffinePersistence.lean`.
-> `thm:peraffkno` is now proved exactly as `PolySequence.peraffkno`: the day-indexed
-> normalized prefix portfolio has explicit polynomial term/feature/sentence emission,
-> bounded magnitude and prices, a non-vacuous full-launch argument for every tail dip,
-> and uses the completed affine gradual-return ROI hub for the economic contradiction.
-> Both negation-dual equalities, targeted build, and axiom inventory are green.
-> `thm:perkno` is also complete as `lic_persistence_of_knowledge`: its explicit
-> polynomial centered family `φₙ-pₙ` consumes both the sentence and rational code
-> witnesses, derives the two uniform one-sided tail bounds from the operational
-> persistence gaps, and combines them into the exact future absolute-deviation claim.
-> Its targeted build and axiom report are green.
-> `thm:affcoh` is complete as `PolySequence.affcoh`. The completed theory is represented
-> by consistency with every finite deductive stage; the finite-to-completed uniformization
-> is proved by compactness of `ℕ → Bool`, with closed formula-model and affine-sublevel
-> sets. A padded constant-member polynomial certificate then reuses the affine provability
-> trader to connect completed worlds to `P∞`, and `peraffkno` connects `P∞` to the diagonal.
-> The exact lower and upper liminf/limsup chains and axiom inventory are green.
->
-> **Repaired verification finding:** `lic_provind_seq` assumes
-> `φₙ ∈ Dₙ`. It is a valid same-day-deduction support lemma, but it is not the
-> paper's `thm:provind`, whose efficiently generated theorem may be proved much later.
-> The paper's real route is now complete: `peraffkno` → `affcoh` →
-> `affine_provind_theory_{ge,le,eq}` → `lic_provind`. The new `lic_provind` requires only
-> that each theorem (or negation of a disprovable sentence) appear at some deductive stage,
-> so it permits arbitrarily late individual proof discovery. Its targeted build and axiom
-> report are green. Consistency and halting results must use this declaration, not the
-> same-day support lemma.
-> The completed persistence/coherence/provability tranche passes the 1,714-job
-> roll-up/integration build and a fresh 2,657-job full build.
->
-> **Immediate implementation tranche:** implement the recurring calibration/unbiasedness
-> spine and its affine/feedback/pseudorandom corollaries. Keep all later M5 nodes pending in the flat
-> ledger until their own statement and trust-surface gates pass.
->
-> **Recurring-unbiasedness spine progress (2026-07-13):**
-> `Properties/Calibration.lean` is now a green, roll-up-imported infrastructure module.
-> It defines honest P-generable divergent weightings, normalized averages/bias, standard
-> subsequential limit points, the vanishing-step/crossing proof, the paper's continuous
-> calibration selector and the exact `simcal` analytic consumer.  On the economic side it
-> defines completed-theory determination and proves its finite-stage compactness bridge;
-> constructs a continuous one-unit capped affine run; proves genuine summability, exact
-> full-risk use under persistent bias, the finite Abel/Cesàro surplus bound, and actual
-> positive ROI after controlling finitely many settled positions plus the summable tail.
-> The entire two-index run family now has a concrete `PolyTradeEmulatable` token certificate,
-> including a family-uniform straight-line emitter for the fractional recurrence.
->
-> **Corrected bounded-verification boundary:** `ComputableMarket` and
-> `ComputableDeductiveProcess` do not promise that the data for day `m` can be produced in
-> polynomial time in `m`.  The paper does not need that stronger claim.  On outer day `n`,
-> its openness computation spends a bounded amount of work checking whether some historical
-> witness `m ≤ n` has finished verification.  `ROI.lean` now represents this faithfully as
-> `HistoricalVerifiedMaturitySchedule`: a successful check carries maturity at tolerance
-> `η/2` on an earlier day, and `HistoricalVerifiedMaturitySchedule.toVerified` proves that
-> the magnitude monotonicity and post-maturity tail bound promote it to maturity at the
-> current day and tolerance `η`.  Thus arbitrary eventual computation and a polynomial
-> per-day openness table are no longer conflated.
->
-> The complete downstream one-sided contradiction is also green as
-> `DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier`.  It gates the
-> finite non-ROI prefix to the zero trader, proves the magnitude feature is exactly `0` then
-> `1`, retains the real uniform `PolyTradeEmulatable` certificate, invokes verified
-> repeatable ROI, and contradicts convergence of that eventual-one magnitude stream to zero.
-> The two-sided continuation is now green too. `BiasRunHistoricallyVerifiable` isolates the
-> remaining boundary as a `Nonempty HistoricalVerifiedMaturitySchedule`, so its payload is
-> the actual polynomial Boolean checker plus soundness and eventual completeness, not a
-> conclusion-bearing oracle. `recunbiasedaff_of_historicalVerifiers` applies the economic
-> contradiction to `As` and `-As`, proves the negated-bias identity, and invokes the
-> vanishing-step crossing theorem to obtain the exact zero limit point. The one-share
-> `recurringunbiasedness_of_historicalVerifiers` and both-clause
-> `simcal_of_historicalVerifiers` specializations are also green and axiom-clean. They remain
-> conditional support capstones until the verifier constructor below is discharged.
->
-> Exact finite certificate semantics and the first executable checker are now green.
-> `ROI.lean` proves rational computations
-> of strategy magnitude/value and trader partial magnitude/net worth agree with the real
-> semantics; `AffineCoherence.lean` defines sentence atom bounds, finite Boolean worlds, and
-> proves restriction/extension preserves evaluation and payouts for every bounded-support
-> sentence. `Criterion.lean` exposes the existential computability assumptions as named
-> `MarketComputation`/`DeductiveProcessComputation` presentations and proves that any
-> terminating `evaln` output is uniquely the certified quote/stage. In
-> `Calibration.lean`, `UnitMaturitySemanticCertificate.sound` proves that exact rational
-> risk/payoff inequalities over all finite Boolean assignments imply the full real-valued
-> `Trader.Matured` predicate; `nonempty_iff_matured` proves the converse using the explicit
-> finite support sum over the deductive stage and strategy prefix. `Criterion.lean` and
-> `ROI.lean` now also expose monotone bounded decoding for the deductive stage, every market
-> quote, every feature, a whole finite strategy, and a whole trader prefix. On top of those
-> APIs, `unitMaturityCheckAtFuel` is an actual Boolean program: it rejects timeouts, checks
-> the exact rational risk inequality, and exhausts the finite Boolean worlds. A `true`
-> result constructs the semantic certificate and hence real `Trader.Matured`; conversely,
-> `unitMaturityCheckAtFuel_eventually_complete` proves that every genuine unit-magnitude
-> maturity witness is accepted at some common finite process/market fuel. Thus the finite
-> checker itself is both sound and eventually complete. The verifier boundary now
-> quantifies only over rational bias gaps; arbitrary positive real gaps are reduced to this
-> executable core by density of `ℚ`.
->
-> **Next hard gate (now sharply isolated):** wrap the completed checker in the paper's
-> polynomial historical dovetail. The missing reusable theorem is a `PolyFueled` universal
-> bounded simulator: for a fixed partial-recursive checker code, the day-`n` table must run
-> only `n` interpreter steps and normalize success to `0/1`, with a proved polynomial fuel
-> bound in the repository's own interpreter model. Mathlib proves that `Code.evaln` is
-> primitive recursive, and this repository proves polynomial bounded search once a Boolean
-> table is certified, but neither fact currently supplies that `PolyFueled` runtime theorem.
-> Do not disguise this as another maturity oracle. Prove the universal-simulation lemma (or
-> carry it as the one explicit M7 witness), compile `unitMaturityCheckAtFuel` plus the
-> `PolyTradeEmulatable` bias-run decoder to a fixed checker code, and then wrap the bounded
-> dovetail table as `BiasRunHistoricallyVerifiable`. Once that constructor
-> is kernel-checked, the three existing conditional capstones become the unconditional paper
-> nodes and can be promoted in the ledger.
->
-> **Metamathematical/halting tranche (2026-07-14):**
-> `Properties/MetaLearning.lean` now supplies axiom-clean paper-facing declarations for
-> `pac`, `pazfc`, `incons`, `halts`, `loops`, and `dontwait`. New one-sided
-> `lic_provind_true`/`lic_provind_false` wrappers correctly allow each represented theorem
-> or refutation to appear arbitrarily later than its sequence index. The representation
-> interfaces are deliberately narrow: they expose polynomial sentence emission and
-> truth-to-eventual-theorem/refutation laws, but no prices or asymptotic conclusions.
-> `CodeHalts` uses actual `Nat.Partrec.Code` semantics; the `dontwait` proof explicitly
-> lifts any bounded `evaln` success to unbounded halting before contradicting its premise.
-> The concrete future first-order/Gödel syntax instantiation is ledgered as
-> `M7-COMP-SYNTAX`, not hidden in these M5 composition theorems. The targeted property
-> roll-up is green at 1,715 jobs and every new capstone prints only the approved axioms.
->
-> **Same-day quotation/paradox tranche (2026-07-14):**
-> `Properties/Introspection.lean` adds `CompletedAffineQuoteEq`, the same-day analogue of
-> the audited future quote portfolio. `lic_expectations_of_probabilities` (`epr`) and
-> `lic_iterated_expectations` (`er`) are exact `affprovind` consumers. The new
-> `lic_paradox_resistance` (`lp`) is not a packaged convergence assumption: its quote
-> supplies two completed-world-zero continuous-gate products, and Lean separately proves
-> that prices persistently below or above `p∈(0,1)` would make one product uniformly
-> positive. The exact asymptotic equality follows. The concrete first-order quotation and
-> diagonal construction is named `M7-QUOTE-AFFINE`. The targeted property roll-up is green
-> at 1,716 jobs; all four new axiom reports contain only the approved axioms.
->
-> **Exact interval-introspection extension (2026-07-14):** the same file now supplies
-> `IntrospectionIntervalQuote` and `lic_introspection` (`ref`). The representation boundary
-> contains polynomial sentence codes, closed polynomial market-generated endpoint features,
-> the completed-world quotation law, and
-> exactly the two affine continuous-gate products from the paper; it contains no error or
-> downstream belief bound. Lean learns both products, then independently constructs a
-> positive rational `εₙ → 0` by rationally sandwiching the maximum absolute gap plus a
-> vanishing `1/(n+1)` margin. Both shrunken-interval belief and expanded-interval disbelief
-> implications hold on every day. Direct checking and the 1,716-job property roll-up are
-> green, and `#print axioms lic_introspection` lists only the approved axioms.
->
-> **Affine pseudorandomness tranche (2026-07-14):**
-> `Properties/Pseudorandomness.lean` now proves the exact above, below, and equality
-> branches of `thm:prandaff` over every P-generable divergent `f`-patient weighting,
-> conditional on the already disclosed historical-verifier constructor and one narrowly
-> operational settlement clock. The failed-diagonal selector is an actual uniformly
-> emitted expressible-feature recurrence. Lean proves its values lie in `[0,1]`, its
-> inclusive `f`-windows have weight at most one, and recurrent full underpricing makes its
-> prefix sums tend to infinity via the audited fractional capital-recycling theorem.
-> Importantly, the paper's `DeferralFunction` is not monotone: the implementation makes
-> the necessary envelope `max_{k≤i} f(k)` explicit rather than silently assuming
-> `f(n)≤f(i)` for `n≤i`. The activity table is ledgered as `M7-PATIENT-CLOCK`; it contains
-> no price, bias, divergence, or pseudorandomness conclusion. The nonnegative branch then
-> combines recurring affine unbiasedness, pseudorandom completed-theory values, and an
-> explicit normalized-average contradiction; the other branches use certified affine
-> negation. Direct checking reports only the approved foundational axioms.
-> The first downstream specialization is also green directly: `GeneratedRatFeature`
-> repairs `PGenerableRat` by requiring the emitted target-probability feature to be closed
-> (a free internal `EF.var` was previously not excluded), and
-> `sentenceMinusFeature` uniformly emits the exact market-generated centered family
-> `φₙ-pₙ`. `lic_learning_varied_pseudorandom_above`, `_below`, and the two-sided theorem
-> are the three advertised `thm:prand` conclusions, with no new trader or conclusion-
-> bearing premise. The authoritative property roll-up completes all 1,717 jobs, and every
-> new selector, affine, `prandaff`, and `prand` declaration prints only `propext`,
-> `Classical.choice`, and `Quot.sound`.
->
-> **Fixed-frequency pseudorandomness extension (2026-07-14):** `thm:benford` is now
-> green as the paper's actual rational-squeeze argument. `PseudorandomFrequency` keeps the
-> advertised frequency `p : ℝ` and quantifies over every P-generable, divergent,
-> `f`-patient weighting. For each ε, the proof chooses a new rational `q∈[0,1]` strictly
-> between `p` and the relevant ε-offset, constructs its closed one-token constant market
-> feature, derives the appropriate varied-pseudorandom premise, and applies `prand`;
-> endpoint frequencies zero and one are discharged from the market probability bounds.
-> `PseudorandomFrequencyInfrastructure` packages only the rational centered families'
-> settlement clocks and executable historical verifiers, so the existing
-> `M7-PATIENT-CLOCK`/`M7-HIST-EVALN` boundary remains explicit and contains no learning
-> conclusion. Direct checking and the authoritative 1,717-job property roll-up pass, and
-> all six new printed declarations expose only `propext`, `Classical.choice`, and
-> `Quot.sound`.
->
-> **Affine-feedback Kelly tranche (2026-07-14):** `thm:wubaff` now has its explicit
-> economic core. `feedbackWealthFeature` and `feedbackBetaFeature` represent the paper's
-> multiplicative wealth and `δ·Wealth·W` share count as closed, rank-legal market
-> features. `feedbackRoundTrip` opens each scaled `A_{f k}` position at `f k` and closes
-> it at `f(k+1)`; `feedbackTrader` joins the finite prefix of those actual components on
-> every day. The accounting proof works on `Trader.netWorth` itself: completed positions
-> telescope to `Wealth-1`, exactly one position is live, and all later components are
-> unopened. Consequently every world/day has net worth at least `-1`, every feedback day
-> has net worth at least `Wealth/2-1`, and recurrent positive supported return gives a
-> genuinely bounded-downside/unbounded-upside `Exploits` witness.
->
-> The token boundary is explicit rather than smuggled into the economics.
-> `FeedbackTraderEmission` exposes the exact day trade count, coefficient syntax, sentence
-> codes, and literal `trades_eq`; `feedbackTrader_ecTok` compiles it through the segment
-> emitter to a real `EfficientlyComputableTok` certificate. Its concrete bounded-dovetail
-> construction from `DeferralFunction.code/fueled` is ledgered `M7-FEEDBACK-EMIT`.
-> Separately, `FeedbackTruthSequence.accurate` applies the already verified `affprovind`
-> theorem to a zero-valued sparse centered sequence and derives delayed-price accuracy;
-> constructing that sequence from the paper's `poly(f(k+1))` truth computation is
-> `M7-FEEDBACK-TRUTH`.
->
-> The full conditional `wubaff` capstone is now green. `feedbackWeightedAverage_asympEq_zero`
-> absorbs delayed quote error under divergent sparse mass;
-> `feedbackWeightedBias_asympGE_zero` converts recurrent negative bias into the forbidden
-> positive-return condition; `feedbackPrefixSum_tendsto_atTop` and
-> `weightedAverage_supported_asympEq_zero_of_feedback` prove the support-image transfer
-> without introducing a hidden inverse for `f`; and the explicit negated affine family
-> supplies the other sign. `lic_wubaff` concludes the exact all-day `weightedBias ≈ₙ 0`
-> statement. Only the disclosed `M7-FEEDBACK-EMIT` and `M7-FEEDBACK-TRUTH` constructors
-> remain outside this conditional node, and neither assumes a bias conclusion.
->
-> The ordinary `thm:wub` specialization is green as `AffineCombination.lic_wub`.
-> It instantiates the affine theorem with the one-share `sentenceAffine` family, derives
-> completed-theory determination from `TheoryTruth`, and simplifies the affine price and
-> magnitude to the paper's weighted truth-minus-price bias. It inherits exactly the same
-> two M7 feedback constructors and adds no new operational boundary.
->
-> **Capstone verification evidence (2026-07-14):** the expanded targeted build completes
-> all 1,941 jobs and a fresh full build completes all 2,661 jobs. The newly printed
-> weighted-Cesàro, sparse-mass, support-transfer, one-/two-sided bias, `lic_wubaff`, and
-> `lic_wub` declarations expose only `propext`, `Classical.choice`, and `Quot.sound`.
->
-> **Latest verification evidence (2026-07-14):** after the Kelly/trader/feedback-bridge
-> tranche, `Pseudorandomness` completes all 1,941 targeted jobs and a fresh full-project
-> regression completes all 2,661 jobs. The newly printed feature, accounting, downside,
-> upside, exploitation, token-certificate, criterion, and `affprovind`-bridge declarations
-> expose only `propext`, `Classical.choice`, and `Quot.sound`. `git diff --check` is clean
-> and the executable-placeholder scan of `Pseudorandomness.lean` is empty.
-
-## Completed M4 handoff (historical)
-
-> **Current correction (2026-07-13, M4 implementation complete):** the audited
-> Self-Trust gap is repaired. `AffineQuotePortfolio` exposes one normalized fixed affine
-> family, its polynomial emitter, its exact day-`n` gap, and bounded risk;
-> `AffineQuoteEq`/`AffineQuoteGE` impose coherence only when that same portfolio is repriced
-> at the actual deferred day `f n`. The four theorem-specific quote objects bundle this
-> operational law with the earlier compact-code and delayed revelation-schedule
-> `ValuesAt` semantics.
->
-> Reusable two-sided and one-sided preemptive bridges now transport deferred-day
-> coherence to the diagonal, and `cee` → `ceu` → `ccee` → `st` are all discharged and
-> axiom-clean. The exact Lean `sorry` inventory under `LogicalInduction/` is zero.
->
-> **Trust-surface disclosure:** the new cross-grid field is a deliberate type-`(c)`
-> interface for the paper's first-order quotation/encoding-coherence mechanism. It is
-> non-oracular with respect to `D n`—it constrains an actual later market price—but M7
-> must construct it from the concrete quoting machinery rather than let downstream users
-> assume it ad hoc. Targeted and full builds are green (2,654 jobs), the source-level
-> `sorry`/`sorryAx` inventories are empty, and the six new bridge/final axiom reports contain
-> only the three standard axioms. The implementation-session non-vacuity audit is recorded
-> in `PROGRESS.md`; the remaining gates are Anson's statement read-through and the separate
-> fresh-context audit. Do not return to the invalid polynomial-maturity-checker route.
-
-> Supersedes the 2026-07-07 token-emission plan (fully executed; its record lives in
-> `PROGRESS.md` under OPEN RISK 4 and the `def:ec` ledger rows, and in git history).
-
-Written 2026-07-10 for the implementing session(s), possibly a weaker model. **Read
-`CLAUDE.md` and `PROGRESS.md` first — they are the law; this file is the task list.**
-Phases are ordered; each phase boundary is a safe stopping point with a green build.
-Do the phases in order: A → B1 → C → B2 → D → E → F. One phase (or less) per session
-is the right pace; do not start a phase you can't leave green.
-
-## 0. Context snapshot (updated 2026-07-12, session 7 — M4 started)
-
-> **M4 trust-surface/API audit and affine core started.** The seven parked theorem
-> signatures were not provable as written: without daily plausible worlds their relational
-> linkages are vacuous (an inconsistent `DP` makes every history satisfy `def:lic`), and
-> arbitrary Lean LUV/sentence sequences need not be legal for an e.c. trader. Signatures now
-> carry price bounds, plausible-world existence, non-vacuous `ValuesAt` witnesses where
-> needed, and compact fixed/varying-family code interfaces (`PolySentenceCodes`,
-> `PolyRatCodes`, `PolyThresholdCodeSeq`, `PGenerableRat`). `HasROI` now explicitly carries
-> summability—without it, Mathlib's non-summable real `tsum = 0` convention understated
-> infinite risk. Axiom-clean finite-magnitude downside bounds are proved. New
-> `Affine.lean` defines `AffineCombination`, buying/scaling/negation, and the DSL
-> `priceFeature`, with value/rank laws proved. The semantic repeatable-ROI core is now also
-> kernel-checked: finite magnitude gives uniform downside control, ROI witnesses have finite
-> `Trader.Matured` days, and `ROI.lean` proves the adaptive `β` budget stays in `[0,1]` with
-> at most one unit of open capital. Semantic maturity schedules eventually close. The honest
-> computability edge has now been repaired at the criterion boundary: `IsLogicalInductor`
-> carries exact computable-rational-market and computable-deductive-process certificates,
-> and EF has an exact rational evaluator agreeing with real denotation. The Appendix A.2
-> representation gate is now closed: `EF.var`/`EF.letE` provide shared straight-line bindings
-> with continuity, exact rational semantics, structural rank/cost, and injective postfix
-> serialization. `sharedFeatureWeight` binds `β₀…βₙ` once each and is proved equal to the real
-> budget recurrence, rank-legal, and additive in cost; `sharedBudgetedTrader` has proved
-> value/magnitude formulas. The uniform emission gate is now **closed end-to-end**:
-> `featureWeightBody_polySeg` emits the triangular recurrence;
-> `sharedFeatureWeight_polySeg` emits the binding chain; `PolyTradeEmulatable` supplies honest
-> polynomial trade counts/coefficient segments/sentence codes; and
-> `sharedBudgetedTrader_ecTok` performs the nested trade/component concatenations and reaches
-> the criterion's faithful `EfficientlyComputableTok`. The conditional semantic construction
-> is closed too:
-> `netWorth_lower_of_matured` controls post-close tails, `activeAllocation_le_one` bounds live
-> risk, `allocationPrefix_not_bddAbove` proves recycling is unbounded, and `repeatableROI`
-> packages the shared trader with both `EfficientlyComputableTok` and `Exploits`. The theorem
-> explicitly requires a summable tolerance schedule, daily plausible worlds, and verified
-> maturity; none is hidden in classical choice. Sparse/frequently-positive magnitudes are now
-> supported. `VerifiedMaturitySchedule` closes the generic computability bridge: one polynomial
-> checker is scanned only through the current day to obtain the exact polynomial openness table,
-> while the first successful day may remain classically selected. **Next hard gate:** define and
-> certify the concrete rational finite-day checker for the affine component traders from the
-> computable market/process certificates. Then build/consume `thm:affpolymax` and discharge the
-> seven parked expectation/Self-Trust statements.
-
-## 0-prev-7. Context snapshot (updated 2026-07-12, session 6 — Phase F complete)
-
-> **Phase F exit package complete.** `PROGRESS.md` now has a current ledger, an explicit
-> proved-versus-M4 inventory, a flat statement/definition read-through list with source
-> locations, and the fresh-context audit brief. `IntegrationTest.lean` now discharges
-> concrete LUV expectation convergence via `LUV.expect_converges` in addition to the
-> existing provability-induction and deference-interface checks. Targeted integration and
-> full-project builds are green. The only Lean `sorry`s are exactly the seven intended M4
-> statements. **M3 is implementation-complete; remaining gates are Anson's statement
-> read-through and the separate fresh-context adversarial audit.**
-
-## 0-prev-6. Context snapshot (updated 2026-07-12, session 5 — all M3 certs DONE; M3 = F)
-
-> **Session 5 result: `excTrader_ecTok` discharged; `LUV.expect_converges` is now
-> axiom-clean.** The statement now explicitly requires `LUV.PolyThresholdCodes`, a
-> poly-fueled emitter for `⌜X > i/n⌝` from `⟨n,i⟩`; this is the disclosed
-> propositional interface for the paper's compact Θ-definable LUV syntax. New reusable
-> infrastructure in `Computable.lean`: `PolySegStream.comp`, segment-level EF constructor
-> closures, and **`PolySegStream.concatVar`**, whose `segPrefix`/`segLocate` primitive-
-> recursive scan emits variable-width concatenations. The certificate composes inner
-> fixed-width threshold blocks, variable-width historical hysteresis blocks, and the outer
-> uniform threshold-trade bundle. Full `lake build` green; remaining Lean `sorry`s are
-> exactly the 7 intended M4 statements. **Remaining M3 work: Phase F only** (ledger sweep,
-> statement inventory/read-through, integration re-check, fresh-context audit).
-
-## 0-prev-5. Context snapshot (updated 2026-07-12, session 4 — thm:nd certs DONE; M3 = excTrader cert + F)
-
-> **Session 4 result: both `thm:nd` ladder e.c. certs discharged — `lic_nonDogmatism`,
-> `lic_nonDogmatism_dual`, `lic_limit_pos/lt_one` all axiom-clean.** New reusable infra
-> (in `Computable.lean`): `mul_polyFueled`, `divmod1_polyFueled` (divisor `w+1` from
-> input — total spec), `PolySegStream.concat` (n-fold, j-uniform runtime width),
-> `PolyTokenStream.serialize_const_comp`; (in `Hysteresis.lean`):
-> `buyIndEF/sellIndEF_tokenStream_comp` (rung-varying constants). **Key discovery:
-> `Encodable.encode` on ℚ/ℤ is `rfl`-transparent** — `encode q = pair (encodeℤ q.num)
-> q.den`, `encodeℤ (n:ℕ) = 2n`, `encodeℤ (negSucc k) = 2k+1` — so ℚ-constant tokens are
-> pure poly-fueled arithmetic (`encode_ndThr`, `encode_rat_neg_div` for the sell side's
-> negative numerators via `Rat.mk'`, whose num/den are `rfl`).
-> - **Remaining sorry inventory: `excTrader_ecTok` (thm:ec) + 7 intended stmt-sorries.**
-> - **excTrader cert (next session):** two genuinely new obstacles: (i) the hysteresis
->   chain's day-`i` blocks contain the Θ(i)-size expectation feature ⇒ **variable-width
->   blocks** — needs a prec-scan emitter (state = (block, cumulative offset), step via
->   `PolyFueled.prec`) or an affine-width `PolySegStream.blocksVar`; (ii) the
->   `⌜X.gt (i/n)⌝` sentence tokens need a **`LUV` threshold-code interface** — a new
->   hypothesis (`∃ c, PolyFueled c (fun m => encode (X.gt (m.unpair.1/m.unpair.2 : ℚ)))`
->   -shaped) added to `excTrader_ecTok` AND threaded into `LUV.expect_converges` — a
->   disclosed statement change (faithful: paper LUVs are Θ-definable, hence computable).
->   The bundle's per-threshold coefficient is *identical* across `i`, so the trade-list
->   emission itself is `concat`-shaped once the coefficient stream exists.
-> - Then **F** (exit package): ledger sweep (incl. stale `thm:con` rows 114/115),
->   statement inventory for Anson, integration re-check, hand off the fresh-context
->   audit.
-
-## 0-prev-4. Context snapshot (2026-07-12, session 3b — D2 DONE; M3 = F + cert session)
-
-> **Session 3b result: Phase D2 landed — `thm:ec` is proved** (`LUV.expect_converges`,
-> `Properties/ExpectationConvergence.lean`), exploitation axiom-clean, e.c. cert a
-> disclosed `sorry`. Design as derived in the session-3 notes below, plus:
-> - New **feature-generic hysteresis layer** (`buyIndF`/`sellIndF`/`hystChain` +
->   facts 1–3 + variation bookkeeping `hcDelta`/`hcBpos`/`hcBneg`/`hcBneg_unbounded`)
->   built *alongside* `Hysteresis.lean` (C's certs untouched; its `clipVal_*` lemmas
->   un-privated). Reusable for any future feature-driven hysteresis (M4's `thm:ei`
->   bundle engine should reuse it directly).
-> - **`thm:ec`'s statement gained hypotheses** vs the old sorried form (trust-surface
->   change, flag at read-through): `hcons` (daily plausible worlds) and `hval`
->   (`∀ n v, ConsistentWith → ∃ x, v.ValuesAt X x` — the type-`(c)` linkage). Old
->   `Expectations.lean` sorry deleted; `expectInf` re-homed with the new hypotheses.
-> - `excTrader_ecTok` sorry needs the B2 three pieces **plus a fourth**: emission of
->   `⌜X.gt (i/n)⌝` sentence-code tokens — an encodability interface on the `LUV`
->   threshold family (new modeling hypothesis to design at cert time).
-> - Sorry inventory now: **3 × `ecTok` certs** (`ndLadderTrader`, `ndSellLadderTrader`,
->   `excTrader`) + 7 intended stmt-sorries. Everything else in M3 is proved.
-> - **Remaining in M3: the e.c.-cert session (all three certs; see the B2 notes) and
->   F (exit package, incl. the stale `thm:con` ledger rows 114/115 sweep).**
-
-## 0-prev-3. Context snapshot (2026-07-12, session 3 — B2 and D1 DONE; D2 started)
-
-> **2026-07-12 session 3 result: Phase B2 (full `thm:nd`, both directions) and Phase D1
-> landed; D2 step 1 (reduction generalization) done.** What changed vs. session 2:
-> - **B2 REDESIGNED — read this before touching the e.c. certs.** The plan's §6 recursive
->   budget trader is **not poly-size expressible as an `EF` tree**: its update
->   `r(n+1) = r n − Pₙ·clip((r n/2 − Pₙ)·2^{n+2})` consumes the state twice ⇒ the tree
->   doubles per day; and *no* single-occurrence chain can express it (single-occurrence
->   recursions are compositions of unary affine/max steps, hence monotone-or-antitone in
->   the state; the budget update is non-monotone). Replaced by the **paper's own `app:obu`
->   scale-ladder** (sketch `main.tex:1533`), rescaled polynomially for `dd:fuel` (the
->   paper's `2^{-j}` constants have exponential-*value* encodings under the fuel clock):
->   rung `j` buys ≤ `j³` shares below `1/j³` at weight `1/j²` (coefficient const `j`);
->   spend ≤ `Σ1/j² ≤ 2`; a fired rung banks `≥ j − 1`. Both directions proved
->   (`lic_nonDogmatism`, `lic_nonDogmatism_dual`, **no price-range hypotheses**) + limit
->   corollaries (`lic_limit_pos`, `lic_limit_lt_one`). Key new engine: `armChain`
->   (generic single-occurrence arming chain, `Π(1 − sig i)`, with telescoping shares sum)
->   + `δ = 0` degenerate-ctsind padding for uniform rung widths (`1/0 = 0` in ℚ).
-> - **The two `ndLadder…_ecTok` sorries are the only B2 gap** and need a dedicated
->   session: (i) runtime-divisor `divmod` (`divmodc` bakes the divisor in; block width
->   here is `Θ(n)`); (ii) `PolySegStream.concat` (n-fold segment concatenation);
->   (iii) poly-fueled emission of rung-varying ℚ-constant tokens (`⌜ndThr j⌝` from `j` —
->   requires `PolyFueled` codes for `Encodable.encode ∘ (rational function of j)`, which
->   means opening up Mathlib's ℚ-encoding; expect real friction, budget accordingly).
->   Note the paper certifies its parametric traders by **dynamic programming**
->   (`app:dynamicprogramming`) — sharing our `EF` trees don't have; that's why the ladder
->   uses product-form state.
-> - **D1 done**: `PCWorld.ValuesAt.expectApprox_near` (`lem:conluvapprox`, single-LUV):
->   `ValuesAt v X x → |𝔼ₙ − x| ≤ 1/n` (one-sided `x ≤ 𝔼ₙ ≤ x + 1/n`), needs `0 < n`.
->   Floor/ceil sandwich, no filter cards. Axiom-clean.
-> - **D2 step 1 done**: `exists_rat_oscillation_of_not_exists_convergesTo` (general
->   `u : ℕ → ℝ` in `[0,1]`; price form now a corollary). **D2 design notes (derived,
->   not yet implemented):** (i) generalize C's signals/state to an arbitrary feature
->   family — `buyIndOn (e : EF) a δ` with `buyIndEF φ a δ n = buyIndOn (.price φ n) a δ`
->   definitional, then `hystN` over `feat : ℕ → EF`; the expectation feature
->   `eEF n = (1/n)·Σ_{i<n} price (X.gt (i/n)) n` is a Θ(n) EF. (ii) Day-`n` trade =
->   `(List.range n).map (fun i => ((1/n)·Δₙ, X.gt (i/n)))` — bundle value in world `v`
->   with `ValuesAt X x` is `Δₙ·(Wₙ − Eₙ)`, `Wₙ ∈ [x, x + 1/n]` by D1. (iii) The C2
->   analog picks up an error term `Σ|Δₙ|/n ≤ (2B₋ + h)/n₀ + C(n₀)` — **gate the trader
->   to start at day `n₀ := ⌈8/(b−a)⌉`** (padding, as in B2) so the linear-in-`B₋` gain
->   `(b−a−2δ − 2/n₀)·B₋` keeps a positive coefficient. (iv) hval hypothesis:
->   `∀ n v, ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x`.
-> - Sorry inventory: `thm:ec` (`Expectations.lean`), 2 × `ndLadder…_ecTok`
->   (`NonDogmatism.lean`), + the seven intended stmt-sorries (4 Self-Trust, 3
->   expectation-family). All disclosed, all ledgered.
-> - **Remaining: D2 proper (`thm:ec` bundle-hysteresis — the feature-generic refactor
->   of `Hysteresis.lean` is the first, mechanical step), the B2 e.c.-cert session, F
->   (M3 exit package — includes the stale `thm:con` ledger rows sweep: rows 114/115
->   still say `sorry`/conditional though C closed them).**
-
-## 0-prev-2. Context snapshot (2026-07-11, session 2 — A, B1, C, E, D3 all DONE)
-
-> **2026-07-11 session 2 result: Phases E (per Anson's G2 decision: "the non-vacuous
-> way"), C (COMPLETE — `oscillation_exploitable` un-sorried, `lic_price_convergesTo`
-> axiom-clean end-to-end), and D3 landed.** What changed beyond the session-1 note below:
-> - **G2 resolved**: Self-Trust stated with the faithful revelation-schedule modeling
->   (linkage at finite day `r n`, not by day `n`; dischargeable by M7, no oracle `DP`).
->   `Properties/SelfTrust.lean`: `DeferralFunction` (both paper conditions),
->   `cee`/`ceu`/`ccee`/`st` stmt+sorry+TODO(M4). `PCWorld.ValuesAt` (D1's def) is in
->   `Expectations.lean`.
-> - **Phase C complete** (`Properties/Hysteresis.lean` + `PolySegStream` in
->   `Computable.lean`): hysteresis holdings state `hystN` (recursive-branch-first ⇒
->   one-sided block accretion), C2 sign-decomposition accounting
->   (`netWorth ≥ (b−a−2δ)·B₋ − (a+δ)` in every world), C3 `B₋ → ∞` by induction (no
->   interleaved-sequence construction), C4 five-segment emission. **`PolySegStream`**
->   (emitter + runtime length, closed under `append`, `blocks`, `ofTokenStream`) is the
->   new emission workhorse — use it for B2/D2, not `ecTok_of_blockStream`.
-> - **D3 done**: `LUV.IsIndicator` (relational) + `thm:ei`/`loe`/`expprovind` stmts in
->   `Expectations.lean`, sorry+TODO(M4) per G1.
-> - **Remaining: B2 (full `thm:nd`), D1 (`lem:conluvapprox` counting lemma), D2
->   (`thm:ec` bundle-hysteresis attempt), F (M3 exit package).** For B2's e.c.: the
->   budget state `r n` has *growing-width* increments (the Θ(j) pow-chain inside `β j`),
->   which neither `ecTok_of_blockStream` nor a fixed `PolySegStream.append` chain
->   expresses — that is the plan's option (i)/(ii) decision point; consider option (ii)
->   (constant-width restructure) first now that C is done, or an honest e.c. `sorry`.
-> - Sorry inventory: `thm:ec` (`Expectations.lean:83`) — the only pre-existing one left —
->   plus the seven *intended* stmt-sorries (4 Self-Trust + 3 expectation-family).
-> - Gates: G1 in force (proofs → M4); G2 resolved 2026-07-11; G3 in use since B1.
-
-## 0-prev. Context snapshot (2026-07-11 session 1 — Phases A and B1)
-
-> **Session-1 result: Phase A (all of A1–A3) and Phase B1 landed, green,
-> axiom-clean, zero new `sorry`s.** What changed:
-> - A1 was done *generically*: `evaln_prec` + **`PolyFueled.prec`** (closure of
->   `PolyFueled` under `Code.prec` for poly-bounded states) replace the planned bespoke
->   `subAux_evaln`-style proof; `divmodc_polyFueled`, `addc_polyFueled`, `mulc_polyFueled`,
->   `PolyFueled.addConst`, `PolyFueled.of_eq` are corollaries (`Computable.lean`). Any
->   future prec combinator (B2's option (i) offsets included) is now a few lines.
-> - A2 = **`ecTok_of_blockStream`** (+ `length/getD_flatMap_const_width`); A3 =
->   `histTrader_ecTok`. Both in `Computable.lean`, end of file.
-> - B1 = `Properties/NonDogmatism.lean` (`lic_nonDogmatism_weak`, trader `ndTrader`,
->   pow-chain `twoPowChain` — **left-nested** so the blocks are homogeneous width-3;
->   reuse it in B2/C) + the new engine `exploits_of_bddBelow_of_unbounded`
->   (`Properties/Basic.lean`, end of file). G3's hypothesis form used and ledgered.
-> - Gates: **G1/G2/G3 still await Anson** (G2 blocks Phase E only). Ledger rows all in.
-
-- Branch `logical-induction`, build green, exactly **two `sorry`s**, both disclosed
-  (unchanged from 2026-07-10):
-  - `oscillation_exploitable` — `LogicalInduction/Properties/Convergence.lean:62`
-  - `LUV.expect_converges` (`thm:ec`) — `LogicalInduction/Expectations.lean:83`
-- **Done in M3:** `thm:provind` (fixed-φ and 𝓔𝓒-sequence forms), all three `thm:lc`
-  bullets, `thm:lex` (both directions), the `thm:con` reduction
-  (`exists_rat_oscillation_of_not_convergesTo`), the LUV bridge object (`def:luv`,
-  `def:e`), the integration test, and the entire e.c. pipeline: the token-indexed
-  `def:ec` (`EfficientlyComputableTok`, wired into `IsLogicalInductor`), all seven
-  traders re-certified, and the varying-length emission toolkit
-  (`ifzSel`/`predc`/`subc`/`ecTok_of_tokenFn`, validated by `deepTrader_ecTok`).
-- **Remaining in M3 (roadmap §4):** the `thm:con` arbitrage trader; `thm:nd`; the
-  expectation family (`thm:ec`, `thm:loe`, `thm:ei`, `thm:expprovind`) + LUV approx
-  lemmas; Self-Trust (`thm:cee`/`ceu`/`ccee`/`st`); the M3-exit audit package.
-- No remaining trust-surface blockers: what's left is **construction and analysis**,
-  plus two modeling decisions that go to Anson (§1).
-
-## 1. Decision gates for Anson (surface early, don't guess)
-
-Raise these in your first report; only **G2** blocks work (and only Phase E).
-
-- **G1 — the M3/M4 boundary for the expectation family.** The paper proves `thm:ec`
-  via `thm:exppolymax`, and `thm:loe`/`thm:expprovind` via the affine machinery
-  (`thm:affpolymax`, `alta`, softmax traders) — all of which the roadmap places in
-  **M4** (the lift hubs). Proving them ad hoc inside M3 would duplicate M4's work.
-  **Recommendation:** M3 closes with `thm:con` + `thm:nd` proved, `thm:ec` proved via
-  the direct bundle-hysteresis route (Phase D2, attempted after C), and
-  `loe`/`ei`/`expprovind` **stated faithfully** with proofs assigned to M4. This plan
-  is written to that recommendation; if Anson wants full M3 proofs instead, M4's hub
-  (`thm:affpolymax`) must be pulled forward first — a different, larger plan.
-- **G2 — Self-Trust reflection modeling.** `thm:cee`/`ceu`/`ccee`/`st` quantify over
-  *quoted* sentences (`⌜𝔼_{f(n)}(X_n)⌝`, `⌜P_{f(n)}(φ_n)⌝`) — first-order reflection
-  our propositional `Sentence` cannot express. Phase E proposes the modeling
-  (reflection as explicit payout hypotheses); **statements need Anson's sign-off
-  before any proof effort**, since they are pure trust surface.
-- **G3 — hypothesis form for `thm:nd`.** The paper's `Θ ⊬ ¬φ` becomes, in our
-  semantic substrate, "φ-satisfying plausible worlds keep existing":
-  `∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds φ`. This is the honest
-  per-day form (weaker than one world consistent forever, hence a *stronger* theorem).
-  Phase B uses it; flag it in the ledger as the `def:lang`-level rendering of `⊬` and
-  let Anson veto at read-through.
-
-## 2. API cheat sheet (verified anchors — do not re-derive, do not invent)
-
-| What | Where |
-|---|---|
-| `EF` syntax + `serialize` (postfix tags 0–5; trades add `[6, ⌜φ⌝]`) | `Criterion.lean:47`, `:301`, `:408` |
-| `EfficientlyComputableTok` (the `def:ec` in force) | `Criterion.lean:609` |
-| `IsLogicalInductor` | `Criterion.lean:623` |
-| `Trader.netWorth` = `∑_{i≤n}` of `Strategy.value` = `∑ e(V)·(w φ − Vᵢ φ)` | `Criterion.lean:515`, `:534` |
-| `PolyFueled` (+`const/id/pair/succ_comp/left/right/comp`) | `Computable.lean:172`–`618` |
-| Arithmetic codes: `predc`, `ifzSel`, `subc` (all poly-fueled) | `Computable.lean:306`, `:631`, `:919` |
-| **`ecTok_of_tokenFn`** — varying-length e.c. workhorse | `Computable.lean:1022` |
-| Worked deep-trader example: `deepTrader_ecTok` | `Computable.lean:1138` |
-| Fixed-length e.c.: `ecTok_of_stream` + `PolyTokenStream` combinators | `Computable.lean:809`–`908` |
-| Exploitation engines (`=` and `≥` partial-sums forms) | `Properties/Basic.lean:85`, `:122` |
-| `buySignal` clipped-signal template + `PCWorld.holds_*` | `Properties/Basic.lean:28`–`72` |
-| `thm:con` reduction + `sorry` + chain | `Properties/Convergence.lean:17`, `:62`, `:78` |
-| LUV + `expectApprox`/`expect`/`expectSeq`, `thm:ec` `sorry` | `Expectations.lean:33`–`92` |
-| Paper: `thm:nd` 1528 (sketch below it) · `thm:ec` 1688 · `thm:loe` 1700 · `thm:ei` 1719 · `thm:expprovind` 1753 · `cee/ceu/ccee/st` 2045–2092 · `def:ctsind` 1174 · `def:deferralfunc` 1240 · approx lemmas 4982/5015/5111 | `notes/1609.03543v5-main.tex` |
-
-Recurring `EF` idioms (no new constructors exist; build from these):
-`x − y` = `add x (mul (const (-1)) y)`; `min x y` = `mul (const (-1)) (max (−x) (−y))`;
-the paper's continuous indicator `ctsind_δ(x < c)` = `max 0 (min 1 ((c − x)·(1/δ)))`
-with δ a **rational constant** (so `1/δ` is `const`; never divide by a feature —
-`safeRecip` is `1/max(1,·)` and is useless below 1).
-
-## 3. Phase A — emission tooling: `divmodc` + repeating-block streams
-
-**Why.** Every remaining trader is *deep*: its day-`n` feature scans history, so its
-token stream is `head ++ block(0) ++ block(1) ++ … ++ block(k) ++ tail` with
-fixed-width blocks, where `block(j)` contains the day index `j` (a `price φ j` node
-serializes to `[0, ⌜φ⌝, j]`). To emit token `i` you must compute the block index and
-offset — **division/remainder by a constant width `w`**, which the toolkit does not
-yet have (`deepTrader`'s blocks were width 1). This is the one genuinely new fuel
-proof; everything after it is mechanical.
-
-- **A1 — `divmodc`.** One `Code.prec` recursion on `i` whose state is
-  `Nat.pair q r` (quotient, remainder): step = "if `r+1 = w` then `pair (q+1) 0` else
-  `pair q (r+1)`". Equality-with-constant tests via `subc` both ways
-  (`a = w` iff `(a−w)+(w−a) = 0`) fed to `ifzSel`. Model the fuel proof on
-  `subAux_evaln` (`Computable.lean:949`) — it is the same shape (nested prec: the
-  step applies `subc`/`ifzSel`, themselves prec), one nesting level deeper. Deliver
-  `divmodc_polyFueled : PolyFueled divmodc (fun m => Nat.pair (m.unpair.1 / m.unpair.2 …))`
-  — fix the exact input convention yourself (constant `w` may be baked into the code
-  per-width, like `Code.const`; that is simpler than taking `w` as input and is all
-  we need). **Budget: this is the phase's hard part.** If the fuel accounting won't
-  close after ~2 serious attempts, `sorry` it with `-- TODO(blueprint:def:ec): need
-  poly fuel bound for divmodc`, report, and continue — downstream work stays honest
-  (economics don't depend on it).
-- **A2 — the block-emission workhorse.** Prove once, in `Computable.lean`:
-  a trader whose day-`n` stream is `head n ++ (List.range (cnt n)).flatMap (body n)
-  ++ tail n` — `head`/`tail` fixed-length lists of poly-fueled tokens, `body n j` a
-  fixed-width-`w` list of poly-fueled tokens of `⟨n,j⟩`, `cnt` poly — is
-  `EfficientlyComputableTok`. Proof: assemble `tokenFn` from `subc` (region tests),
-  `divmodc` (block index/offset), `ifzSel` (dispatch), then apply `ecTok_of_tokenFn`.
-  Follow `deepTrader_ecTok`'s assembly style and `deepStream_getD`'s region-case
-  lemma style. Get the statement shape right by *first* writing A3's example and
-  generalizing from it — don't design the helper in the abstract.
-- **A3 — validation.** A worked size-Θ(n) example whose blocks contain the day
-  index: e.g. `histSum φ n = Σ_{k<n} price φ k` (left-nested adds; stream =
-  `[0,⌜φ⌝,0] ++ ([0,⌜φ⌝,k,2] blocks)`), a trader trading it, certified via A2.
-  This is the direct dress rehearsal for B and C's emissions.
-
-**Done when:** A1–A3 green, `#print axioms` clean, ledger rows
-(`dd:fuel (divmodc)`, `def:ec (block workhorse)`) in the same commits.
-
-## 4. Phase B1 — `thm:nd`, weak fragment (first real deep trader)
-
-Easiest economics of the remaining nodes; exercises Phase A end-to-end.
-
-- **Statement** (new file `Properties/NonDogmatism.lean`):
-  under `[IsLogicalInductor P DP]`, prices in `[0,1]`, and G3's hypothesis
-  `hφ : ∀ n, ∃ v, v.ConsistentWith (DP.D n) ∧ v.Holds φ`:
-  `∀ᶠ n in atTop, 2^(-(n+2) : ℤ) ≤ P n φ`. Ledger as `thm:nd (weak fragment)`,
-  kind `C` — it is honestly *weaker* than `thm:nd` (the bound decays); B2 is the
-  real node.
-- **Trader** (memoryless): day-`n` buy signal `β n = max 0 (1 − 2^(n+1)·(price φ n))`
-  shares of φ. The power `2^(n+1)` is a right-nested `mul`-chain of `const 2` —
-  size Θ(n), constant-content width-2 blocks + a run of `[3]` tags: A2 emits it.
-  Spend on day `n` is `β·P ≤ 2^(-(n+1))` (signal support is `P < 2^(-(n+1))`), so
-  total spend ≤ 1.
-- **New engine** (in `Properties/Basic.lean`): the existing engines force
-  world-*independent* growth; here growth happens only in φ-worlds. Add the
-  definitional one:
-  `exploits_of_bddBelow_of_unbounded (h1 : ∀ x ∈ Tr.plausibleAssessments P DP, −C ≤ x)`
-  `(h2 : ∀ B, ∃ x ∈ Tr.plausibleAssessments P DP, B < x) : Tr.Exploits P DP` —
-  a few lines from `Exploits`' definition (`BddBelow ∧ ¬BddAbove`). Kind `P`.
-- **Economics.** BddBelow: in any plausible world, `netWorth = Σ βᵢ(w φ − Pᵢ) ≥
-  −Σ βᵢPᵢ ≥ −1`. Unbounded: if `P n φ < 2^(-(n+2))` frequently, then `β n ≥ 1/2`
-  frequently, and in the day-`n` φ-world from `hφ` every term `βᵢ(1 − Pᵢ)` is ≥ 0
-  with the triggered terms ≥ 1/4 — accumulate along the frequent subsequence
-  (imitate `buyDaily_exploits_freq`, `Properties/ProvabilityInduction.lean:118`).
-  Conclude by contradiction with `IsLogicalInductor`.
-
-## 5. Phase C — `oscillation_exploitable`: the `thm:con` hysteresis trader
-
-The hardest single item and the highest-value one (it un-`sorry`s
-`lic_price_convergesTo`, and `P∞` then exists for B2/D). Everything is in place:
-the statement is fixed (`Properties/Convergence.lean:62` — do not weaken it), the
-e.c. tooling is Phase A, the target engine is B1's. Given: rationals `a < b`,
-`P n φ < a` frequently, `b < P n φ` frequently, plausible worlds daily.
-
-- **C1 — the state feature.** Fix `δ := (b−a)/4` (rational ⇒ `const`s). Signals:
-  `buyInd n = ctsind` supported **inside the gap**: `1` when `P ≤ a`, `0` when
-  `P ≥ a+δ` (i.e. `max 0 (min 1 ((a+δ − price φ n)·(1/δ)))`); `sellInd n`: `1` when
-  `P ≥ b`, `0` when `P ≤ b−δ`. Holdings state, recursively:
-  `H 0 = buyInd 0`, `H (n+1) = max (buyInd (n+1)) (H n · (1 − sellInd (n+1)))`.
-  Each day adds a constant number of nodes wrapping `H n` ⇒ size Θ(n), rank ≤ n,
-  block-structured stream (A2 emits; the day-`n` trade coefficient is the EF
-  `H n − H (n−1)`, with the day-0 case just `H 0`).
-- **C2 — the accounting (the genuine analysis).** Denote by `h i ∈ [0,1]` the real
-  value `(H i).denote P` and `Δᵢ = h i − h (i−1)` (with `Δ₀ = h 0`). Key pointwise
-  facts, straight from the `max`/`ctsind` shapes:
-  1. `Δᵢ > 0 → P i φ < a + δ` (buys only while `buyInd > 0`);
-  2. `Δᵢ < 0 → P i φ > b − δ` (sells only while `sellInd > 0`);
-  3. `P i φ < a → h i = 1` (full buy); `P i φ > b → h i = 0` (full sell).
-  Then **decompose by sign** — no per-swing induction needed. With
-  `B₊ = Σ_{i≤n} max Δᵢ 0` and `B₋ = Σ_{i≤n} max (−Δᵢ) 0` (so `B₊ − B₋ = h n`):
-  `netWorth = Σ Δᵢ(w φ − Pᵢ) = (w φ)·h n − Σ ΔᵢPᵢ ≥ −Σ ΔᵢPᵢ`
-  `≥ −(a+δ)B₊ + (b−δ)B₋ = (b−a−2δ)·B₋ − (a+δ)·h n ≥ ((b−a)/2)·B₋ − (a+δ)`.
-  So plausible-world net worth ≥ `((b−a)/2)·B₋ − 1` **in every world** — BddBelow is
-  immediate, and unboundedness reduces to `B₋ → ∞`.
-- **C3 — `B₋ → ∞`.** From the two frequency hypotheses extract an interleaved
-  sequence `n₁ < m₁ < n₂ < m₂ < …` with `P n_j φ < a` and `P m_j φ > b` (standard
-  double-`extraction_of_frequently_atTop` argument). By fact 3, `h n_j = 1` and
-  `h m_j = 0`, so on `(n_j, m_j]` the negative variation is ≥ 1: `B₋(m_j) ≥ j`.
-  Feed C2+C3 to B1's engine; close `oscillation_exploitable`; verify
-  `lic_price_convergesTo` and its downstreams drop `sorryAx` from `#print axioms`.
-- **C4 — e.c.** Mechanical: write `serialize (H n)` in A2's block shape (a
-  `serialize_H` lemma by induction, like `serialize_srChain`), apply the workhorse.
-- **Guardrail:** C2's inequality chain is where a session can thrash. The
-  decomposition above is believed correct but **re-derive it, don't transcribe it**;
-  if the pointwise facts 1–2 resist your exact `ctsind` encoding after ~2 serious
-  attempts, adjust the *encoding* (band placement), not the statement. A session
-  that lands only C1+C2 (with C3/C4 `sorry`+TODO) is a success — commit it.
-
-## 6. Phase B2 — full `thm:nd` (budget-halving trader)
-
-Needs C for nothing *logically*, but do it after C — the limit-form statement wants
-`P∞` and the proof reuses C's state-feature techniques.
-
-- **Statement:** under `[IsLogicalInductor]`, prices in `[0,1]`, G3's hypothesis for
-  φ ⇒ `∃ ε > 0, ∀ᶠ n, ε ≤ P n φ` (liminf form; with `thm:con`, `P∞ φ > 0` as a
-  corollary — state that too, with the convergence as an explicit hypothesis, like
-  `lic_limit_additive`, `Properties/Coherence.lean:337`). Dual (`Θ ⊬ φ` ⇒
-  `P∞ φ < 1`): apply the first form to `∼φ`? **No** — prices of `φ` and `∼φ` are not
-  linked without coherence; instead run the mirrored *sell* trader (imitate
-  `sellDaily` vs `buyDaily`). Ledger `thm:nd`, kind `C`.
-- **Trader (paper's sketch, rendered without dividing by a feature):** carry the
-  **remaining budget** `r` as the state: `r 0 = const 1`,
-  `β n = max 0 (min 1 ((r n / 2 − price φ n)·2^(n+2)))` (the `2^(n+2)` is B1's
-  pow-chain — a *fixed* sharpening schedule, avoiding `1/r`),
-  `r (n+1) = r n − β n·(price φ n)`. Buys `β n` shares. Support of `β n` is
-  `P < (r n)/2`, so `r` never drops below half its previous positive value:
-  after `m` full purchases `r ≥ 2^(−m)`, total spend `≤ 1`.
-- **Economics:** BddBelow by −1 as in B1. If `liminf P n φ = 0`: show by induction
-  on `m` that infinitely many *full* (`β = 1`) purchases occur — having made `m`,
-  `r ≥ 2^(−m)`, and eventually `2^(−(n+2)) < 2^(−(m+3))` while `P` dips below
-  `2^(−(m+3)) ≤ r/4` frequently, forcing a full trigger. Each full purchase adds
-  `≥ 1 − P ≥ 1/2` of φ-world value; accumulate via B1's engine. Conclude
-  `¬(liminf = 0)`, i.e. the ε exists (`Filter.liminf` API, or elementarily:
-  `¬∃ε` gives the frequent dips directly — prefer the elementary route, matching
-  the codebase's style).
-- **e.c.:** `r n` is again a constant-nodes-per-day recursive EF ⇒ A2.
-  Size note: `β n` contains the Θ(n) pow-chain *and* `r n` contains all past `β`s ⇒
-  `size (r n) = Θ(n²)`. **Fine** — poly-size is all `def:ec` asks; but the A2 block
-  widths are now day-dependent (block `j` embeds a Θ(j) pow-chain), so A2's
-  fixed-width form does not apply directly. Two options, pick at implementation
-  time: (i) generalize A2 to affinely-growing block widths (offset of block `j` is
-  a quadratic in `j` — still poly-fueled arithmetic via `divmodc`-style search, but
-  a real generalization); (ii) restructure: replace the pow-chain sharpening with
-  the constant-width trick of tracking `s n = 2^(n+2)·(r n)/2` … — **do not decide
-  in advance**; try (i), stop-and-report if it balloons. An honest B2 with the
-  economics proved and the e.c. cert `sorry`+TODO is committable progress —
-  Rule 1 cuts the other way here (the *trader* is real; only its cert is pending),
-  but say so loudly in the ledger row.
-
-## 7. Phase D — expectation family (statements + what's provable without M4)
-
-- **D1 — `lem:conluvapprox`, single-LUV form** (in `Expectations.lean`). Model a
-  world's LUV value: `def PCWorld.ValuesAt (v) (X : LUV) (x : ℝ) : Prop :=`
-  `x ∈ Icc 0 1 ∧ ∀ r : ℚ, ((r:ℝ) < x → v.Holds (X.gt r)) ∧ (x < r → ¬ v.Holds (X.gt r))`
-  (the threshold-coherence rendering of the paper's "Θ represents computations";
-  disclosed type-`(c)`, ledger it). Prove: `ValuesAt v X x →`
-  `|X.expectApprox (fun s => v.payout s) n − x| ≤ 1/n` — pure counting
-  (`#{i < n : i/n < x}` vs `n·x`, floor arithmetic; `Nat.floor` API). Kind `P`.
-  The combination (`b/n`) form waits for M4's affine layer.
-- **D2 — `thm:ec` via bundle hysteresis** (only after C is green). Route:
-  1. Generalize `exists_rat_oscillation_of_not_convergesTo` to an arbitrary
-     `u : ℕ → ℝ` with `u ∈ [0,1]` (the proof already is that general — refactor,
-     keep the φ-specialization as a corollary), apply to `expectSeq P X`.
-  2. The exploiter trades the **day-`n` threshold bundle** `{(1/n)·gt(i/n)}_{i<n}`
-     with C's hysteresis state driven by the *expectation* value — note
-     `expect P n X` is an EF-expressible function of prices (a rational-coefficient
-     sum of `price` nodes), so the signals are EFs; the bundle trade list has
-     length `n` (growing trade lists are fine — `serializeTrades` handles any list;
-     emission is A2-shaped with the D-block caveat of B2).
-  3. New wrinkle vs C: bought day-`n` bundles are sold as day-`m` bundles; in any
-     world satisfying `ValuesAt v X x` (add D1's hypothesis for plausible worlds:
-     `hval : ∀ n v, v.ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x`), the two
-     bundles' payouts differ by ≤ `1/n + 1/m` (D1), so late swings still bank
-     ≥ `(b−a)/2 − small` — thread an `n₀` cutoff through C3's extraction.
-  This is C's proof again with bookkeeping, not new ideas — but it is real work.
-  **Permission to stop-and-report** after a serious attempt; `thm:ec` staying
-  `sorry` with C landed is still a strong M3.
-- **D3 — statements only** (kind `stmt` ledger rows, proofs → M4 per G1):
-  - `thm:ei` (**relational form — do not construct a canonical indicator**):
-    define
-    `def LUV.IsIndicator (Y : LUV) (φ : Sentence) (DP : DeductiveProcess) : Prop :=`
-    `∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∀ r : ℚ,`
-    `(r < 0 → v.Holds (Y.gt r)) ∧ (0 ≤ r → r < 1 → (v.Holds (Y.gt r) ↔ v.Holds φ))`
-    `∧ (1 ≤ r → ¬ v.Holds (Y.gt r))`
-    and state: `IsIndicator Y φ DP → AsympEq (Y.expectSeq P) (fun n => P n φ)`.
-    **Why relational:** the tempting canonical construction (`gt r := φ` on
-    `[0,1)`) makes `𝔼ₙ(indicator φ) = Pₙ φ` *definitionally* — the theorem
-    evaporates. That collapse is a modeling artifact: the paper's `1(φ)`
-    thresholds are *distinct sentences provably linked* to `φ`, and `thm:ei`'s
-    content is the inductor learning that growing bundle of equivalences
-    uniformly. Quantifying over any linked family `Y` restores exactly that
-    content — and note per-threshold `thm:lex` does **not** suffice (the
-    threshold set grows with `n`; it needs a bundle trader, D2's shape). So:
-    state now, `sorry` with TODO(M4/D2 engine), ledger `stmt` with this
-    rationale. **General principle for Phases D and E:** paper-side LUV
-    *constructions* (indicators, sums `aX+bY`, quoted expectations) enter our
-    modeling as **relational predicates over arbitrary threshold families**,
-    never as canonical `LUV` values — constructing a representative silently
-    pre-discharges the learning content.
-  - `thm:loe`: state with world-level hypotheses replacing `Θ ⊢ Z = aX + bY`:
-    `∀ n v (h : v.ConsistentWith (DP.D n)) x y z, v.ValuesAt X x → v.ValuesAt Y y →`
-    `v.ValuesAt Z z → z = a·x + b·y` ⇒ `AsympEq (a·𝔼(X) + b·𝔼(Y)) (𝔼(Z))`
-    (fixed X,Y,Z first; the 𝓔𝓒-sequence form is the M4 target). `sorry`, TODO(M4).
-  - `thm:expprovind`, single-LUV form: `(∀ n v, ConsistentWith → ValuesAt … ≥ b)`
-    ⇒ `AsympGE (expectSeq P X) b`-style. `sorry`, TODO(M4).
-  Keep every statement short and paper-checked against the anchors in §2.
-
-## 8. Phase E — Self-Trust statements (gate G2 first)
-
-Statements only; **do not start proofs in M3.** Propose to Anson:
-
-- `structure DeferralFunction` — `f : ℕ → ℕ`, `n ≤ f n`, monotone(?) — check the
-  paper's `def:deferralfunc` (`main.tex:1240`) for the exact conditions; carry only
-  those.
-- Reflection rendered as payout hypotheses (the propositional substitute for
-  quoting), e.g. for `thm:ceu`: given `φ : ℕ → Sentence`, `f : DeferralFunction`,
-  and a family `Y : ℕ → LUV` with
-  `hrefl : ∀ n v, v.ConsistentWith (DP.D n) → v.ValuesAt (Y n) (P (f n) (φ n))`
-  ("`Y n` is the LUV ⌜P_{f n}(φ n)⌝: every plausible world values it at the actual
-  future price"), conclude `AsympEq (fun n => P n (φ n)) (fun n => expect P n (Y n))`.
-  State `cee` (LUV version: `X : ℕ → LUV`, `Y n` reflects `expect P (f n) (X n)`),
-  `ccee` (adds the `w`-weighting — needs a product-LUV modeling note), `st`
-  (adds the `ctsind` conditioning) the same way. Mind the roadmap's naming caution:
-  deference "cee" = paper `thm:ceu`.
-- **Two sub-decisions inside G2 — flag both explicitly:**
-  1. *Timing.* The sample `hrefl` above makes day-`n` plausible worlds already
-     value `Y n` at the day-`f n` price. The paper only guarantees the linkage
-     facts are revealed by the deductive process *eventually* (Θ proves them;
-     they enter `D` at some finite day, not necessarily by day `n`). The strong
-     by-day-`n` form is simpler and may serve the deference corpus; the faithful
-     form carries an explicit revelation-schedule hypothesis. Anson picks.
-  2. *Non-vacuity.* In the paper the quoted sentences **exist** because `P` is a
-     computable rational-valued market and `Θ` represents computations. Our
-     substrate has neither (`History` is arbitrary `ℝ`-valued; `DeductiveProcess`
-     carries no computability — both disclosed type-`(c)`s), so the linkage
-     hypothesis is where that entire mechanism is imported. It *is* satisfiable —
-     take fresh atoms per `(n, q)` and a `DP` revealing the true threshold
-     literals — but that witness is an oracle-like `DP` that "knows" the future
-     market: exactly the **degenerate non-vacuity** the audit protocol hunts.
-     The principled discharge is M7's construction, where `P` is the computable
-     `LIA` and the reflective `DP` is built, not conjured. Write both facts into
-     the ledger rows at statement time.
-- Ledger all four as `stmt`, provenance noting the reflection hypothesis is a
-  disclosed type-`(c)` substitute for first-order quoting, awaiting G2 sign-off.
-  If a statement fights the types, **that is a finding** — write it up, don't force.
-
-## 9. Phase F — M3 exit package
-
-1. Ledger sweep: every row's status/kind/provenance current; the two old `sorry`s'
-   rows updated (hopefully to `done`); milestone table row for M3 updated with an
-   honest inventory: proved / stated-only / moved-to-M4 (per G1).
-2. Statement inventory for Anson's read-through: append to `PROGRESS.md` a flat
-   list — every M3 top-level theorem + `file:line` + one-line gloss. Definitions
-   too (`ValuesAt`, `indicator`, `DeferralFunction`, the reflection hypotheses).
-3. Re-run the integration test file; confirm the deference-corpus hypotheses that
-   are now discharge-able actually discharge (`thm:con` should let you strengthen
-   Part C — check).
-4. Remind Anson to launch the **fresh-context adversarial audit** (CLAUDE.md §audit;
-   it must not be run by the session that wrote the proofs). Hand it the §2 table
-   and the inventory from item 2. Known audit bait to hand over explicitly:
-   the relational `IsIndicator`/`ValuesAt` modeling (D1/D3 — check the linkage
-   hypotheses aren't conclusion-shaped), the Self-Trust reflection hypotheses and
-   their oracle-`DP` degenerate witness (E), G3's rendering of `⊬`, and any
-   engine whose hypotheses were tailored to one trader.
-
-## 10. Standing guardrails (unchanged; the failure modes this plan is designed against)
-
-1. **Never invent a Mathlib/Foundation name.** `rg` `.lake/packages` or `#check`
-   before first use; missing ⇒ `sorry` + `-- TODO(blueprint:LABEL): need <stmt>`.
-2. **Green at every commit;** small commits; `lake build LogicalInduction.<Module>`
-   to iterate, full `lake build` before committing.
-3. **Every new theorem ships with its ledger row in the same commit**, kind and
-   provenance filled at proof time.
-4. **`#print axioms` every new theorem in-file** (copy the existing idiom).
-5. **No arithmetic stub may stand in for a trader** (Rule 1). A `sorry` on a
-   construction is honest; a fake trader is the one unforgivable move.
-6. **Don't touch:** `Construction/Brouwer.lean` interior, `Barasz/`, `lakefile.lean`,
-   `lean-toolchain`, `lake-manifest.json`, the Foundation pin. Never `lake update`;
-   never the `import Mathlib` umbrella.
-7. **Don't redefine limit vocabulary** — `Asymptotics.lean` owns it (`dd:asymp`).
-8. **Stop-and-report is a success.** ~2 serious attempts, then write up what fails
-   (imitate the `oscillation_exploitable` docstring) and move on.
-9. ProofWidgets "failed to reuse pre-built JS" ⇒ `cd .lake/packages/proofwidgets
-   && lake build` once.
-10. Use the `lean4-theorem-proving` skill. Commits: no AI co-authorship lines;
-    push to `origin` freely, nowhere else.
+# Logical Induction — current construction handoff
+
+_Last updated: 2026-07-18. Branch: `logical-induction`._
+
+This is the authoritative execution handoff. The M7 table in `README.md` is the public
+inventory of what is concrete today; this file records the stronger active construction
+target and what to build next. Historical plans remain available in Git history. There is
+intentionally no `PROGRESS.md`.
+
+## Active target
+
+Construct thirteen of the fifteen M7 witness boundaries. The earlier
+“four constructed, eleven disclosed” endpoint was achieved, but it is a baseline rather
+than a stop instruction.
+
+| # | Boundary | Current state | Active disposition / evidence |
+|---:|---|---|---|
+| 1 | `M7-HIST-EVALN` | **constructed** | Keep; `codeEvalnNat_polyFueled`, `boundedEvalnCompiler` |
+| 2 | `M7-CE-REPETITION` | **constructed** | Keep; `EfficientRepeatedEnumeration.ofCE` |
+| 3 | `M7-PATIENT-CLOCK` | **constructed** | Keep; `SettlementChecker.ofComputations`, `PatientSettlementClock.ofComputations` |
+| 4 | `M7-PREFIX-PATCH` | **constructed** | Keep; `liaEfficientPrefixPatch` |
+| 5 | `M7-QUOTE-AFFINE` | disclosed | **construct**, after `M7-COMP-SYNTAX` |
+| 6 | `M7-PREFIX-MACHINE` | disclosed | **construct**, including the finite Kraft proof and fixed-overhead negation compiler |
+| 7 | `M7-FEEDBACK-EMIT` | **constructed** | Keep; `FeedbackEmission.feedbackTraderEmissionSigns` |
+| 8 | `M7-FEEDBACK-TRUTH` | disclosed | **construct next** |
+| 9 | `M7-DUS-PREFIX-SYNTAX` | disclosed | **construct** (old Tier 2) |
+| 10 | `M7-SCON-COMPILER` | disclosed | **construct** (old Tier 2) |
+| 11 | `M7-SCON-PRESENTATION` | disclosed | **construct** (old Tier 2) |
+| 12 | `M7-LUV-SYNTAX` | disclosed | **construct** (old Tier 2) |
+| 13 | `M7-DUS-APPROX` | disclosed | Leave disclosed unless Anson reopens it |
+| 14 | `M7-STRICT-SEPARATORS` | disclosed | Leave disclosed unless Anson reopens it |
+| 15 | `M7-COMP-SYNTAX` | disclosed | **construct**, prerequisite of `M7-QUOTE-AFFINE` |
+
+Current count: **5/15 constructed**. Target count: **13/15 constructed**. The eight remaining
+constructions are `M7-FEEDBACK-TRUTH`, `M7-DUS-PREFIX-SYNTAX`, `M7-SCON-COMPILER`,
+`M7-SCON-PRESENTATION`, `M7-LUV-SYNTAX`, `M7-PREFIX-MACHINE`, `M7-COMP-SYNTAX`, and
+`M7-QUOTE-AFFINE`.
+
+Do not revive instructions to stop after feedback emission, treat all former Tier 2
+witnesses as permanently disclosed, or begin final closeout/audit work before this active
+construction slate is complete.
+
+## Verified state at this handoff
+
+- The main existence result remains unconditional and axiom-clean.
+- The M3–M5 property tail remains green under `[IsLogicalInductor P DP]`.
+- `M7-FEEDBACK-EMIT` is complete in
+  `LogicalInduction/Construction/FeedbackEmission.lean` and imported from
+  `LogicalInduction/Construction.lean`.
+- Its public constructor is
+  `LogicalInduction.FeedbackEmission.feedbackTraderEmissionSigns`.
+- Derived consumers with the emission boundary discharged are
+  `lic_wubaff_ofFeedbackTruth`, `boundedCombination_wubaff_ofFeedbackTruth`, and
+  `luv_wubexp_ofFeedbackTruth`.
+- The focused construction/property/integration roll-up built **2,470 jobs**; the full
+  project built **2,681 jobs**.
+- The four public feedback-emission axiom reports contain only `propext`,
+  `Classical.choice`, and `Quot.sound`.
+- The last verified tree was green and contained no executable proof holes.
+
+Relevant commits, newest first:
+
+- `3eb3d93` — scope the delayed feedback truth compiler
+- `caf5562` — construct feedback trader emission
+- `2cb2a03` — flatten scheduled feedback trades
+- `d95db6a` — emit scheduled feedback features
+- `e069871` — decode scheduled feedback values
+- `e3cb97f` — compile the bounded feedback schedule
+- `5b1de90` — expose feedback trader syntax
+- `d780996` — redirect active progress references to this handoff
+- `78f0860` — remove the stale progress ledger
+- `4fb0939` — restore the expanded witness construction scope
+
+## START HERE — construct `M7-FEEDBACK-TRUTH`
+
+This is the next sizeable goal. It completes the other half of the delayed-feedback
+representation used by `thm:wubaff` and reused by `thm:wubexp`.
+
+### Boundary correction that must happen first
+
+`DeterminedViaTheory As P DP truth` is semantic. It does not make the real-valued function
+`truth : ℕ → ℝ` computable, so there cannot be a uniform `FeedbackTruthSequence` constructor
+from determination alone.
+
+The paper additionally assumes that the completed-theory value of the relevant affine
+combination is computable before the next deferral deadline. Represent that premise
+explicitly with a conclusion-free operational certificate (working name
+`FeedbackTruthComputation`). It should provide:
+
+- rational truth values, or rational codes for them, at the required `f k` indices;
+- equality of those rationals with the semantic completed-theory values;
+- one code/program that produces the rational result from `k` (or an equivalent uniform
+  input convention); and
+- a halting specification within `ecClock a degree (f (k + 1))`.
+
+The computation certificate must not contain prices, delayed-price accuracy, bias,
+convergence, exploitation, or weighted-unbiasedness conclusions. Do not use the semantic
+real-valued `truth` function as an efficient oracle.
+
+### Construction tranche
+
+1. **Fix the interface.** State the minimal operational computation certificate near
+   `FeedbackTruthSequence`, document its correspondence with the premise of `thm:wubaff`,
+   and keep normalization/magnitude data separate from the computation claim.
+
+2. **Compile the sparse schedule.** Reuse `codeEvalnNat_polyFueled`, `scheduledMatch`, and
+   `scheduledDeferral`. On day `n`, boundedly recognize the unique `k` satisfying
+   `f (k + 1) = n`; emit zero when no bounded run establishes a scheduled match. Strict
+   increase supplies uniqueness. Do not compute an unbounded inverse of `f`.
+
+3. **Emit literal centered affine syntax.** At a scheduled day emit
+   `A (f k) - truthRat (f k)`, including polynomial term count, coefficient serialization,
+   sentence codes, and constant serialization. Prefer the existing variable-width
+   conditional blocks and prefix scanner.
+
+4. **Prove the `FeedbackTruthSequence` fields.** Establish `PolySequence`, bounded prices,
+   magnitude at most one, completed-world value zero, and the exact identity
+
+   ```text
+   sequence (f (k + 1)) priced on day f (k + 1)
+     = price of A (f k) on day f (k + 1) - truth (f k).
+   ```
+
+   Obtain normalization and magnitude bounds from the normalized
+   `BoundedCombinationSequence` data used by `wubaff`, rather than putting an artificial
+   bound inside the truth-computation certificate.
+
+5. **Discharge public consumers.** Add a public constructor from the computation
+   certificate and derived `wubaff`/`wubexp` entry points that accept the paper-faithful
+   computation premise instead of an opaque preassembled `FeedbackTruthSequence`.
+
+6. **Close the tranche.** Build the focused roll-up and the whole project, scan for holes,
+   inspect the diff, print public axioms, and commit each coherent green layer.
+
+Definition of done: the derived public feedback theorems no longer require callers to
+manufacture `FeedbackTruthSequence`. Their remaining extra input is an explicit uniform
+program-and-deadline law matching the paper. The constructed sequence is literal syntax,
+and its accuracy is still derived by `FeedbackTruthSequence.accurate` rather than assumed.
+
+Likely commit layers:
+
+1. expose the operational truth-computation certificate;
+2. compile/decode the bounded sparse schedule;
+3. emit the centered affine fields;
+4. assemble `FeedbackTruthSequence` and prove semantics;
+5. discharge consumers and run the full verification gate.
+
+## What follows `M7-FEEDBACK-TRUTH`
+
+The next session should reassess ordering after the truth compiler lands, but it must retain
+all eight active constructions above. The dependency shape is:
+
+- The remaining old Tier 2 operational witnesses are `M7-DUS-PREFIX-SYNTAX`,
+  `M7-SCON-PRESENTATION`, `M7-SCON-COMPILER`, and `M7-LUV-SYNTAX`.
+  `M7-SCON-PRESENTATION` should precede the parts of `M7-SCON-COMPILER` that consume it.
+- `M7-PREFIX-MACHINE` is an independent, sizeable tranche. It includes a concrete universal
+  self-delimiting machine/presentation, efficient sentence coverage, from-below weight
+  emission, the finite Kraft inequality, derived threshold-token arithmetic, and the
+  fixed-overhead syntactic-negation compiler. It may be moved earlier when a self-contained
+  Kraft tranche is desirable.
+- `M7-COMP-SYNTAX` must precede `M7-QUOTE-AFFINE`. It supplies the first-order
+  representability, Gödel coding, and diagonal/fixed-point machinery needed to make affine
+  quotation concrete.
+- `M7-QUOTE-AFFINE` must cover both the same-day completed-theory quotation packages and the
+  deferred fixed-portfolio `AffineQuoteEq`/`AffineQuoteGE` packages. Do not describe it as a
+  mere wiring theorem or silently leave its `M7-COMP-SYNTAX` root disclosed.
+- `M7-DUS-APPROX` and `M7-STRICT-SEPARATORS` remain the only two disclosed boundaries at the
+  13/15 target.
+
+Only after the 13/15 construction target is green should the work move to surface freeze,
+human statement read-through, consolidation/API/style work, paper comparison, and the
+fresh-context errata audit.
+
+## Verification and commit discipline
+
+Commit coherent green layers as construction proceeds. Before each commit, use the smallest
+relevant build; before closing a witness, run at least:
+
+```sh
+lake build LogicalInduction.Construction LogicalInduction.Properties LogicalInduction.IntegrationTest
+lake build
+rg -n '(^|[[:space:]])(sorry|admit)([[:space:]]|$)' LogicalInduction --glob '*.lean'
+git diff --check
+git status --short
+```
+
+Also print the axioms of every new public constructor and consumer. Expected reports contain
+only `propext`, `Classical.choice`, and `Quot.sound`; investigate any additional axiom.
+
+Record a short durable update in this file whenever a completed tranche changes the count,
+the exact next goal, its boundary design, or its verification state. Keep historical detail
+in Git rather than appending superseded plans below the active handoff.
+
+## Aristotle
+
+Aristotle is available through `scripts/aristotle-prove.sh`. Use it only after a proof goal is
+fully stated and self-contained; it is not a substitute for construction or interface
+design. A likely high-value use is the long Mathlib-only finite Kraft inequality core after
+the prefix-machine definitions are fixed.
+
+Requirements and trust rule:
+
+- `ARISTOTLE_API_KEY` must be available to the process.
+- Prefer small extracted Mathlib-only projects, not the entire repository.
+- Toolchain versions may differ.
+- A returned proof is trusted only after it compiles in this repository.
+
+## Reusable construction notes
+
+- Search before proving. Useful existing anchors include `codeEvalnNat_polyFueled`,
+  `deadlineRun`, `scheduledMatch`, `segPrefix_polyFueled`, `segLocate_polyFueled`,
+  `PolySegStream.concatVar`, `PolySequence.priceFeature_polySeg`, and
+  `PGenerableWeighting.polySeg`.
+- Deep `PolyFueled` proofs involving nested `Nat.unpair` may trigger `Nat.sqrt` weak-head
+  normalization blowups. Prefer a narrow local `attribute [irreducible] Nat.sqrt` over
+  raising heartbeat limits.
+- Preserve literal token/list equalities at representation boundaries. Semantic equality
+  alone is not enough for the witness constructors.
+- Keep computation certificates conclusion-free. Economic and asymptotic conclusions
+  belong in the already-proved consumer layer.
