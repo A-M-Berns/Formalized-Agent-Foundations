@@ -1,5 +1,32 @@
 # Logical Induction working plan — M7 active
 
+## Aristotle orchestration — working (2026-07-17)
+
+Harmonic's Aristotle CLI is wired and **verified end-to-end**. Use it to farm *fully-stated,
+self-contained* goals — never construction (it chooses no definitions; it struggled on that
+before, structurally). See the outsourcing analysis in this file's history: prime target is
+the **Kraft-inequality core** if `PREFIX-MACHINE` is constructed, plus the long tail of small
+Mathlib-provable lemmas I can state exactly.
+
+- **CLI:** `aristotle` (`~/.local/bin`, `aristotlelib` ≥ 2.1.0 — v1.x used the dead API v2;
+  `uv tool upgrade aristotlelib` if it 404s with "API v2 deprecated"). Key in `~/.zshenv`
+  (`ARISTOTLE_API_KEY`), inherited by non-interactive shells.
+- **Workflow:** `submit "<prompt>" --project-dir <dir>` → poll `aristotle list` (status
+  `RUNNING`→`IDLE` = done; `show` *streams and blocks*, don't use it for status) →
+  `download <id> --destination <file>` (a **gzipped tar**, `tar -xf`). Returns a full lake
+  project (lakefile pins Mathlib, solved `.lean`, `ARISTOTLE_SUMMARY.md`).
+- **Harness:** `scripts/aristotle-prove.sh <project-dir> "<prompt>" [out-dir]` does
+  submit→poll→download→extract. Run it in the background (`--wait`-style jobs take minutes).
+- **⚠ Trust gate (non-negotiable):** Aristotle builds against `leanprover/lean4:v4.28.0` +
+  Mathlib `v4.28.0`; **this repo is `v4.28.0-rc1`**. A returned proof is trusted **only after
+  it compiles in THIS repo** (`lake env lean` on a scratch file) — the harness copies our
+  `lean-toolchain` in as a hint, but Aristotle may pin its own Mathlib, so the in-repo build
+  is the real gate. Aristotle is agentic (it ran `git commit && push` inside its sandbox
+  copy) — it never touches our tree, but treat it as an agent, not a pure prover.
+- **Submit small, Mathlib-only projects** — not the whole repo (large; Foundation deps
+  Aristotle can't resolve). The extraction that makes a fact *importable* is the same one
+  that makes it *submittable*.
+
 ## ▶▶ PROJECT SCOPE & ENDPOINT — the plan of record (2026-07-17)
 
 **Read this before anything else.** It fixes the target we are driving to and the order of
