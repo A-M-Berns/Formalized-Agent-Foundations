@@ -87,5 +87,41 @@ theorem scheduledMatch_eq_one_iff
     subst n
     simp [scheduledMatch, scheduledRun, deadlineRun, codeEvalnNat, hspec]
 
+/-- The decoded value of the scheduled run, with the unfinished sentinel normalized to
+zero.  Input is again `⟨day,component⟩`. -/
+def scheduledValue (f : DeferralFunction) (a degree : ℕ) (z : ℕ) : ℕ :=
+  scheduledRun f a degree z - 1
+
+/-- Decoding the bounded run preserves polynomial fuel. -/
+theorem scheduledValue_polyFueled (f : DeferralFunction) (a degree : ℕ) :
+    ∃ c, PolyFueled c (scheduledValue f a degree) := by
+  obtain ⟨crun, hrun⟩ := scheduledRun_polyFueled f a degree
+  exact ⟨_, (predc_polyFueled.comp hrun).of_eq (fun z => by
+    simp [scheduledValue, Nat.pred_eq_sub_one])⟩
+
+/-- The standard evaluator clock is monotone in its day argument. -/
+theorem ecClock_mono (a degree : ℕ) {m n : ℕ} (hmn : m ≤ n) :
+    ecClock a degree m ≤ ecClock a degree n := by
+  simp only [ecClock]
+  gcongr
+
+/-- Once the runtime day reaches `f k`, the scheduled value has converged to the true
+deferral value.  This is the lookup fact used by every feedback feature emitted on that
+day. -/
+theorem scheduledValue_eq
+    (f : DeferralFunction) {a degree : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
+    {n k : ℕ} (hkn : f k ≤ n) :
+    scheduledValue f a degree (Nat.pair n k) = f k := by
+  have hbase : deadlineRun f (ecClock a degree (f k)) k = f k + 1 := by
+    simp [deadlineRun, codeEvalnNat, hspec]
+  have hpos : 0 < deadlineRun f (ecClock a degree (f k)) k := by
+    rw [hbase]
+    omega
+  have hrun := deadlineRun_mono f (ecClock_mono a degree hkn) hpos
+  simp only [scheduledValue, scheduledRun, Nat.unpair_pair]
+  rw [hrun, hbase]
+  omega
+
 end FeedbackEmission
 end LogicalInduction
