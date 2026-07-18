@@ -26,13 +26,65 @@ the four already constructed roots, the six old Tier 2 witnesses, `M7-PREFIX-MAC
 `M7-COMP-SYNTAX`, and `M7-QUOTE-AFFINE`.  `M7-DUS-APPROX` and
 `M7-STRICT-SEPARATORS` remain disclosed unless Anson separately reopens them.
 
-Current execution order: finish the already-active `M7-FEEDBACK-EMIT` construction and its
-verification/ledger commit; then scope the next sizeable witness from the remaining slate.
-The most dependency-aware default after the six operational witnesses is
+Current execution order: `M7-FEEDBACK-EMIT` is complete (`caf5562`); construct
+`M7-FEEDBACK-TRUTH` next. The most dependency-aware default after the six operational witnesses is
 `M7-COMP-SYNTAX` → `M7-QUOTE-AFFINE`; `M7-PREFIX-MACHINE` is independent and may be moved
 earlier as the self-contained Kraft tranche.  All later instructions below saying to stop
 after feedback emission, disclose these witnesses permanently, or move immediately to
 trust-surface cleanup are superseded by this section.
+
+## ▶ START HERE — construct `M7-FEEDBACK-TRUTH`
+
+### Just completed: `M7-FEEDBACK-EMIT`
+
+`FeedbackEmission.feedbackTraderEmissionSigns` now constructs the exact bounded-dovetail
+emitter for every polynomial affine sequence, generable weighting, strictly increasing
+deferral function, rational Kelly fraction, and both affine signs.  The proof emits the
+literal nested open/close coefficients and proves list equality with `feedbackTrader`.
+Derived `wubaff`/`wubexp` entry points no longer request an emitter; they retain only the
+separate `FeedbackTruthSequence` premise. Focused build: 2,470 jobs. Full build: 2,681 jobs.
+The four new public axiom reports contain only `propext`, `Classical.choice`, and
+`Quot.sound`. Main completion commit: `caf5562` (preceded by four green compiler-layer
+commits).
+
+### Next sizeable goal: the delayed truth-value compiler
+
+Construct `M7-FEEDBACK-TRUTH`, but first repair the boundary so it states the paper's actual
+computational premise. `DeterminedViaTheory As P DP truth` is semantic and does **not** make
+the real-valued stream `truth` computable. A uniform constructor from that premise alone
+would be false. App. `wubaff` additionally assumes that `ThmValue(Aₙ)` is computable within
+the next deferral deadline; the Lean input must expose that program and its clock explicitly.
+
+The intended construction tranche is:
+
+1. **State the paper-faithful operational input.** Introduce a conclusion-free certificate
+   (working name `FeedbackTruthComputation`) containing a rational truth-value stream, its
+   equality with `truth` on the required `f(k)` indices, one program producing its rational
+   code from `k`, and an `ecClock a degree (f (k+1))` halting specification. It must contain
+   no prices, accuracy, bias, or convergence conclusion.
+2. **Compile the delayed sparse schedule.** Reuse `codeEvalnNat_polyFueled`,
+   `scheduledMatch`, and `scheduledDeferral`: on day `n`, boundedly recognize the unique
+   `k` with `f(k+1)=n`; unfinished runs emit the zero affine combination. Never call the
+   semantic `truth : ℕ → ℝ` as an efficient oracle.
+3. **Emit the centered affine syntax.** At an active day emit the literal centered member
+   `A_{f k} - truthRat(f k)`: polynomial term count, coefficient serialization, sentence
+   codes, and constant serialization. Prefer variable-width conditional blocks and the
+   existing prefix scanner rather than computing an inverse of `f`.
+4. **Prove the semantic fields.** Strict increase gives uniqueness. Use the operational
+   truth-code specification plus `DeterminedViaTheory` to prove completed-world value zero
+   and the exact delayed `feedback_price` identity. Derive the uniform magnitude/price bound
+   from the normalized `BoundedCombinationSequence` data used by `wubaff`; do not smuggle a
+   bound into the computation certificate.
+5. **Package and discharge consumers.** Expose a public constructor of
+   `FeedbackTruthSequence` from the computation certificate, then add `wubaff` and `wubexp`
+   entry points whose only extra input is the paper-faithful truth computation. Verify the
+   focused construction/property/integration roll-up, full build, holes, diff, and public
+   axiom reports; commit each green layer.
+
+Definition of done: the opaque preassembled `FeedbackTruthSequence` is no longer required
+by the public derived feedback theorems; the remaining hypothesis is an explicit program and
+deadline law matching `thm:wubaff`. The constructed sparse sequence is literal syntax and
+contains no delayed-accuracy or weighted-unbiasedness assumption.
 
 ## Aristotle orchestration — working (2026-07-17)
 
@@ -162,7 +214,7 @@ by Foundation's decoder and emits the exact quote from `liaStatePrefix`. The aff
 
 ---
 
-## ▶ START HERE — construct `M7-FEEDBACK-EMIT` (scope corrected 2026-07-18)
+## ✅ COMPLETED TRANCHE — `M7-FEEDBACK-EMIT` (2026-07-18)
 
 The conditional+disclosed **construction-scope endpoint is green**: four witnesses are
 constructed, eleven are field-audited and disclosed with primary citations, the README and
