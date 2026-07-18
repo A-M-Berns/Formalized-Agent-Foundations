@@ -871,7 +871,7 @@ private theorem ratNeg_prim : Primrec fun q : ℚ => -q := by
   exact hpair.of_eq fun q => by
     simp [encode_rat_eq, Rat.neg_num, Rat.neg_den]
 
-private theorem ratAdd_prim : Primrec₂ fun q r : ℚ => q + r := by
+theorem ratAdd_prim : Primrec₂ fun q r : ℚ => q + r := by
   have hqd : Primrec₂ fun q r : ℚ => q.num * (r.den : ℤ) :=
     intMul_prim.comp₂ (ratNum_prim.comp₂ Primrec₂.left)
       ((intOfNat_prim.comp ratDen_prim).comp₂ Primrec₂.right)
@@ -885,7 +885,7 @@ private theorem ratAdd_prim : Primrec₂ fun q r : ℚ => q + r := by
       (ratDen_prim.comp₂ Primrec₂.right)
   exact (ratMk_prim.comp₂ hnum hden).of_eq fun q r => (Rat.add_def' q r).symm
 
-private theorem ratMul_prim : Primrec₂ fun q r : ℚ => q * r := by
+theorem ratMul_prim : Primrec₂ fun q r : ℚ => q * r := by
   have hnum : Primrec₂ fun q r : ℚ => q.num * r.num :=
     intMul_prim.comp₂ (ratNum_prim.comp₂ Primrec₂.left)
       (ratNum_prim.comp₂ Primrec₂.right)

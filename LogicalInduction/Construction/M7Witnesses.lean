@@ -2171,6 +2171,110 @@ theorem AffineCombination.exists_fuel_valueRatAtFuel_list (A : AffineCombination
       · exact A.valueRatAtFuel_mono market x (le_max_left _ _) h1
       · exact A.valueRatAtFuel_mono market x (le_max_right _ _) (h2 x hx)
 
+/-! ### The computable value evaluator at a bit-list world
+
+`settlementCheckAtFuel` compares `valueRatAtFuel market fuel (bitsPayoutRat l)` across the
+enumerated worlds `l`.  These recast that quantity through the computable `denoteRatComp`
+(so the whole check is primitive recursive), with a proved equality back to the original. -/
+
+/-- `bitsPayoutRat` is primitive recursive. -/
+theorem bitsPayoutRat_prim :
+    Primrec₂ fun (l : List Bool) (φ : Sentence) => BoolPCWorld.bitsPayoutRat l φ := by
+  have heval : PrimrecPred fun p : List Bool × Sentence =>
+      BoolPCWorld.eval (BoolPCWorld.bitsWorld p.1) p.2 = true :=
+    Primrec.eq.comp (evalBits_prim.comp Primrec.fst Primrec.snd) (Primrec.const true)
+  exact (Primrec.ite heval (Primrec.const 1) (Primrec.const 0)).to₂.of_eq
+    fun l φ => rfl
+
+/-- Computable form of the affine term fold at `w := bitsPayoutRat l`, using the gated
+evaluator `denoteRatComp` in place of the partial `denoteRatWithAtFuel`. -/
+def affineTermsRatComp {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (l : List Bool) (terms : List (EF × Sentence)) : Option ℚ :=
+  terms.foldr (fun p acc =>
+    (market.denoteRatComp fuel p.1).bind fun cf =>
+      acc.map fun t => cf * BoolPCWorld.bitsPayoutRat l p.2 + t) (some 0)
+
+theorem affineTermsRatComp_eq {P : History} (market : MarketComputation P) (fuel : ℕ)
+    (l : List Bool) (terms : List (EF × Sentence)) :
+    affineTermsRatComp market fuel l terms =
+      affineTermsRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l) terms := by
+  induction terms with
+  | nil => rfl
+  | cons p rest ih =>
+      rw [affineTermsRatComp, List.foldr_cons, ← affineTermsRatComp, ih,
+        market.denoteRatComp_eq, affineTermsRatAtFuel]
+      cases EF.denoteRatWithAtFuel market fuel p.1 [] with
+      | none => rfl
+      | some cf =>
+          cases affineTermsRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l) rest <;> rfl
+
+/-- Computable form of `valueRatAtFuel` at `w := bitsPayoutRat l`. -/
+def valueRatCompAt {P : History} (A : AffineCombination) (market : MarketComputation P)
+    (fuel : ℕ) (l : List Bool) : Option ℚ :=
+  (market.denoteRatComp fuel A.const).bind fun c =>
+    (affineTermsRatComp market fuel l A.terms).map fun ts => c + ts
+
+theorem valueRatCompAt_eq {P : History} (A : AffineCombination)
+    (market : MarketComputation P) (fuel : ℕ) (l : List Bool) :
+    valueRatCompAt A market fuel l =
+      A.valueRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l) := by
+  rw [valueRatCompAt, market.denoteRatComp_eq, affineTermsRatComp_eq,
+    AffineCombination.valueRatAtFuel]
+  cases A.const.denoteRatWithAtFuel market fuel [] with
+  | none => rfl
+  | some c =>
+      cases affineTermsRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l) A.terms <;> rfl
+
+section
+attribute [local irreducible] Nat.sqrt
+
+/-- The affine term fold is primitive recursive in `((A, fuel), l)`. -/
+theorem affineTermsRatComp_prim {P : History} (market : MarketComputation P) :
+    Primrec fun q : (AffineCombination × ℕ) × List Bool =>
+      affineTermsRatComp market q.1.2 q.2 q.1.1.terms := by
+  have hcf : Primrec fun z : ((AffineCombination × ℕ) × List Bool) ×
+      ((EF × Sentence) × Option ℚ) =>
+      market.denoteRatComp z.1.1.2 z.2.1.1 :=
+    (market.denoteRatComp_prim).comp
+      (Primrec.snd.comp (Primrec.fst.comp Primrec.fst))
+      (Primrec.fst.comp (Primrec.fst.comp Primrec.snd))
+  have hbody : Primrec₂ fun (w : (((AffineCombination × ℕ) × List Bool) ×
+      ((EF × Sentence) × Option ℚ)) × ℚ) (t : ℚ) =>
+      w.2 * BoolPCWorld.bitsPayoutRat w.1.1.2 w.1.2.1.2 + t :=
+    (ratAdd_prim.comp
+      (ratMul_prim.comp (Primrec.snd.comp Primrec.fst)
+        (bitsPayoutRat_prim.comp
+          (Primrec.snd.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst)))
+          (Primrec.snd.comp (Primrec.fst.comp (Primrec.snd.comp (Primrec.fst.comp Primrec.fst))))))
+      Primrec.snd).to₂
+  have hmap : Primrec₂ fun (z : ((AffineCombination × ℕ) × List Bool) ×
+      ((EF × Sentence) × Option ℚ)) (cf : ℚ) =>
+      z.2.2.map fun t => cf * BoolPCWorld.bitsPayoutRat z.1.2 z.2.1.2 + t :=
+    (Primrec.option_map (Primrec.snd.comp (Primrec.snd.comp Primrec.fst)) hbody).to₂
+  have hstep : Primrec₂ fun (q : (AffineCombination × ℕ) × List Bool)
+      (x : (EF × Sentence) × Option ℚ) =>
+      (market.denoteRatComp q.1.2 x.1.1).bind fun cf =>
+        x.2.map fun t => cf * BoolPCWorld.bitsPayoutRat q.2 x.1.2 + t :=
+    (Primrec.option_bind hcf hmap).to₂
+  exact Primrec.list_foldr (affineTerms_prim.comp (Primrec.fst.comp Primrec.fst))
+    (Primrec.const (some 0)) hstep
+
+/-- `valueRatCompAt` is primitive recursive in `((A, fuel), l)`. -/
+theorem valueRatCompAt_prim {P : History} (market : MarketComputation P) :
+    Primrec fun q : (AffineCombination × ℕ) × List Bool =>
+      valueRatCompAt q.1.1 market q.1.2 q.2 := by
+  have hconst : Primrec fun q : (AffineCombination × ℕ) × List Bool =>
+      market.denoteRatComp q.1.2 q.1.1.const :=
+    (market.denoteRatComp_prim).comp (Primrec.snd.comp Primrec.fst)
+      (affineConst_prim.comp (Primrec.fst.comp Primrec.fst))
+  have hmap : Primrec₂ fun (q : (AffineCombination × ℕ) × List Bool) (c : ℚ) =>
+      (affineTermsRatComp market q.1.2 q.2 q.1.1.terms).map fun ts => c + ts :=
+    (Primrec.option_map ((affineTermsRatComp_prim market).comp Primrec.fst)
+      (ratAdd_prim.comp (Primrec.snd.comp Primrec.fst) Primrec.snd).to₂).to₂
+  exact (Primrec.option_bind hconst hmap).of_eq fun q => rfl
+
+end
+
 /-! ### The bounded settlement check
 
 The analogue of `unitMaturityCheckAtFuel` (`Calibration.lean`) for settlement, and — unlike
