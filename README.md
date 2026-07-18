@@ -6,22 +6,92 @@ theory, built on the
 
 ## Garrabrant et al. (2016) *Logical Induction* — in progress
 
-`LogicalInduction/` is the beginning of a full formalization of
-[arXiv:1609.03543](https://arxiv.org/abs/1609.03543). The spec is
-`notes/logical-induction-roadmap.md`; the honest ledger of what is defined, proved,
-stubbed, or assumed is `PROGRESS.md`. Status: the conditional property layer through M5
-is verified complete; M6–M7 construction and unconditionalization remain, with Brouwer's
-fixed-point theorem already proved. See `PROGRESS.md` for the current audit and
-trust-surface disclosures, including the explicit quotation/coherence interfaces.
+`LogicalInduction/` formalizes [arXiv:1609.03543v5](https://arxiv.org/abs/1609.03543).
+The spec is `notes/logical-induction-roadmap.md`; `PROGRESS.md` is the declaration-level
+ledger.
 
-**Disclosure (read before citing anything here):** until the construction milestone (M7)
-lands, every property theorem in this development is *conditional on the existence of a
-logical inductor* (`[IsLogicalInductor P DP]`), which is assumed, not proved. The one
-substantial result already unconditional is `LogicalInduction.brouwer_fixed_point`
-(Brouwer's fixed-point theorem, absent from Mathlib), proved from scratch via Sperner's
-lemma; the proof body was autoformalized by Harmonic's Aristotle and is kernel-checked
-(`#print axioms` = `propext, Classical.choice, Quot.sound`) but its ~1300-line interior
-has not had a human read-through — only its *statement* is part of the trust surface.
+The central construction is complete. For every computable deductive process,
+`LogicalInduction.exists_logical_inductor` constructs a logical inductor, and
+`LogicalInduction.LIA_is_logical_inductor` proves that the repository's concrete recursive
+rational `LIA` satisfies the criterion. These theorems are unconditional and use none of
+the M7 representation boundaries listed below. Their only reported axioms are Lean and
+Mathlib's standard `propext`, `Classical.choice`, and `Quot.sound`.
+
+The M3–M5 property theorems are genuine but conditional: their paper-facing declarations
+take `[IsLogicalInductor P DP]`. Some additionally take one of eleven explicitly disclosed
+representation or compiler interfaces. Four other M7 witnesses have been constructed in
+Lean. Thus the public endpoint is **unconditional existence plus a conditional, disclosed
+property tail**, not a claim that all of the paper's first-order syntax and classical
+computability theory have been reconstructed in this propositional development.
+
+`LogicalInduction.brouwer_fixed_point`, used by the construction, was proved from scratch
+via Sperner's lemma because Mathlib has no suitable Brouwer theorem. Its proof body was
+autoformalized by Harmonic's Aristotle and revalidated in this repository; its statement
+and axiom report are part of the audited surface, while its roughly 1,300-line generated
+interior has not received a human line-by-line read-through.
+
+### Axioms and disclosed M7 boundaries
+
+There are no `axiom` declarations or executable `sorry`s in `LogicalInduction/`. The
+three names in the capstone axiom reports (`propext`, `Classical.choice`, `Quot.sound`) are
+standard dependencies, not project-specific postulates. The remaining assumptions are
+ordinary hypotheses on the conditional property theorems. They are isolated below rather
+than being confused with the unconditional existence result.
+
+The primary paper citation in the table is Garrabrant et al., especially its named theorem
+and Appendix sections. Older primary sources cover facts imported at the boundary: Gödel's
+arithmetization and diagonal construction
+([1931](https://doi.org/10.1007/BF01700692)), Kleene's general-recursive and arithmetical-
+predicate machinery ([1936](https://doi.org/10.1007/BF01565439),
+[1943](https://doi.org/10.1090/S0002-9947-1943-0007371-8)), Solomonoff's universal
+inductive probability ([1964, Part I](https://doi.org/10.1016/S0019-9958(64)90223-2)),
+Chaitin's self-delimiting program-size complexity
+([1975](https://doi.org/10.1145/321892.321894)), and Zvonkin and Levin's algorithmic
+probability/universal semimeasure treatment
+([1970](https://doi.org/10.1070/RM1970v025n06ABEH001269)).
+
+Paths abbreviated as `Properties/...` or `Expectations.lean` in the table are relative to
+`LogicalInduction/`.
+
+| Boundary | Exact Lean interface and source | Paper node and concrete realizer / primary citation | Conditional consumers | What is assumed, and what is not |
+|---|---|---|---|---|
+| `M7-COMP-SYNTAX` | `RepresentedSemidecidableClaims`, `RepresentedDecidableClaims`, and `InconsistentTheoryClaims` in `LogicalInduction/Properties/MetaLearning.lean` | The paper's “represents computations” convention (§2.1) and `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` (Apps. `pac`–`dontwait`). A realizer is a first-order Gödel coding with the representability theorem for recursive predicates; see [Kleene 1936](https://doi.org/10.1007/BF01565439), [Kleene 1943](https://doi.org/10.1090/S0002-9947-1943-0007371-8), and [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | `lic_belief_finitistic_consistency`, `lic_belief_stronger_theory_consistency`, `lic_disbelief_inconsistent_theories`, `lic_learns_halting_patterns`, `lic_learns_provable_nonhalting_patterns`, `lic_does_not_anticipate_halting` | Assumes polynomial sentence emission and eventual proof/refutation when the represented computation has the stated truth value. It assumes no price, convergence, exploitation, or logical-inductor conclusion. |
+| `M7-QUOTE-AFFINE` | Same-day interfaces `CompletedAffineQuoteEq`, `CurrentPriceExpectationQuote`, `CurrentExpectationQuote`, `IntrospectionIntervalQuote`, `ParadoxResistanceQuote` in `Properties/Introspection.lean`; deferred interfaces `AffineQuotePortfolio`, `AffineQuoteEq`, `AffineQuoteGE`, `ExpectedFutureExpectationQuote`, `FuturePriceQuote`, `ConditionalExpectationQuote`, `SelfTrustQuote` in `Properties/SelfTrust.lean` | First-order quotation and diagonalization for `thm:ref`, `thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` (Apps. `ref`–`st`). A realizer quotes the concrete LIA computation using Gödel coding, representability, and fixed-point/diagonal syntax; see [Gödel 1931](https://doi.org/10.1007/BF01700692), [Garrabrant et al.](https://arxiv.org/abs/1609.03543), and the Kleene sources above. | `lic_introspection`, `lic_paradox_resistance`, `lic_expectations_of_probabilities`, `lic_iterated_expectations`, `lic_expected_future_expectations`, `lic_no_expected_net_update`, `lic_no_expected_net_update_conditional`, `lic_self_trust` | This is not syntax alone. It assumes exact current-price portfolio identities and completed-world or delayed revelation semantics; `AffineQuoteEq/GE` also assume deferred-price coherence at `f n`. It does **not** assume the consumers' resulting diagonal introspection, expectation, paradox-resistance, or self-trust conclusions. |
+| `M7-PREFIX-MACHINE` | `PrefixMachinePresentation`, `OccamThresholdEmission`, `PrefixNegationCompiler` in `Properties/OccamBounds.lean` | `thm:ob` / App. `ob`. A concrete universal self-delimiting machine supplies sentence coverage, from-below `2^{-κ}` approximations, Kraft's finite inequality, gate-token arithmetic, and fixed-overhead negation; see [Chaitin 1975](https://doi.org/10.1145/321892.321894) and [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | `lic_occam_lower`, `lic_occamBounds` | Assumes the prefix-complexity presentation, convergence/Kraft facts, and negation overhead. It contains no market price, possible-world, trader wealth, exploitation, or Occam-bound conclusion. |
+| `M7-FEEDBACK-EMIT` | `FeedbackTraderEmission`, `FeedbackTraderEmissionFamily`, `FeedbackTraderEmissionSigns` in `Properties/Pseudorandomness.lean` | `thm:wubaff` / App. `wubaff`, reused by `thm:wubexp` / App. `wubexp`. The paper's bounded dovetail over the deferral computation emits the literal open/close trade list for every small Kelly fraction and both signs; see [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | `lic_wubaff`, `LUVCombination.BoundedSequence.wubexp` | Assumes exact polynomial token emission for the already-defined feedback traders. It assumes no market values, wealth bound, bias, exploitation, convergence, or LI conclusion. |
+| `M7-FEEDBACK-TRUTH` | `FeedbackTruthSequence` in `Properties/Pseudorandomness.lean` | `thm:wubaff` / App. `wubaff`, reused by `thm:wubexp`. The paper's `poly(f(k+1))` completed-theory-value computation yields the sparse centered affine sequence; see [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | `lic_wubaff`, `LUVCombination.BoundedSequence.wubexp` | Assumes completed-theory determination, polynomial/bounded sparse syntax, zero completed-world value, and the exact delayed price identity. It does not assume delayed-price accuracy, weighted unbiasedness, or convergence; `FeedbackTruthSequence.accurate` derives accuracy using affine provability induction. |
+| `M7-DUS-APPROX` | `DUSApproximationPresentation`, `DUSThresholdEmission` in `Properties/UniversalSemimeasure.lean` | `thm:dus` / App. `dus`. The paper's bounded-simulation slowdown turns a lower semicomputable universal semimeasure into a polynomially emitted rational approximation; see [Solomonoff 1964](https://doi.org/10.1016/S0019-9958(64)90223-2), [Zvonkin–Levin 1970](https://doi.org/10.1070/RM1970v025n06ABEH001269), and [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | `lic_domination_universalSemimeasure` | Assumes a nonnegative from-below rational table converging to prefix mass and polynomial emission of it and the derived gate tokens. It contains no market price, purchase, possible-world, exploitation, or domination conclusion. |
+| `M7-DUS-PREFIX-SYNTAX` | `BitPrefixSentences` in `Properties/UniversalSemimeasure.lean` | `thm:dus` / App. `dus`; also supplies the prefix language used by `thm:strict`. Fresh independent atoms and their finite conjunctions realize the exact bit-prefix semantics and stagewise finite realizability; see [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | `lic_domination_universalSemimeasure`; indirectly `lic_strict_domination_universalSemimeasure` through `StrictSeparatorPresentation` | Assumes efficient enumeration/encoding, exact Boolean prefix semantics, and a compatible world at every finite deductive stage. It assumes no price, payoff, semimeasure domination, or asymptotic market conclusion. |
+| `M7-STRICT-SEPARATORS` | `StrictSeparatorPresentation` in `Properties/StrictSemimeasure.lean` | `thm:strict` / App. `strict`. Disjoint recursively inseparable c.e. sets yield nested finite separator constraints; the appendix's computability argument shows every universal continuous semimeasure gives their separator class vanishing mass; see [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | `strict_domination_of_null_prefix_theory`, `lic_strict_domination_universalSemimeasure` | Assumes nested unbounded prefixes, efficient repetition, joint stagewise realizability, and the substantive `mass_tendsto_zero` theorem. It contains no market prices and assumes no strict-domination conclusion. |
+| `M7-SCON-COMPILER` | `GatedConditioningOperationalWitness` in `Properties/Conditioning.lean` | `thm:scon` / App. `scon`. The paper's finite-prefix denominator patch supplies a positive floor, a computable rational conditional market, and a polynomial transducer for the concrete gated trader translation; see [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | `lic_conditioned_gated` | Assumes the market-dependent denominator floor, conditional-market computability, and token-level translation efficiency. The loss bound, failed-condition behavior, wealth floor, exploit transport, and LI closure are proved outside the interface. |
+| `M7-SCON-PRESENTATION` | `ConditioningPresentation` in `Properties/Conditioning.lean` | `thm:scon` / App. `scon`. A first-order conjunction compiler and the union of the base and extra deductive processes supply the condition sentences and exact stage semantics; see [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | `lic_conditioned_gated` and the construction of `M7-SCON-COMPILER` | Assumes polynomial condition syntax, the equivalence between holding the condition and satisfying the extra stage, and computability of the combined process. It assumes no conditional prices, trader, wealth, exploitation, or LI conclusion. |
+| `M7-LUV-SYNTAX` | `LUV.PolyThresholdCodes`/`PolyThresholdCodeSeq` in `Expectations.lean`; `LUVCombination.PolySequence`, `WorldValued`, `ConvergencePresentation`, `ExactTheoryPresentation`, `MeshSoftmaxOperationalWitness` in `Properties/ExpectationProperties.lean` | `def:luv`, `thm:expprovind`, `thm:expcoh`, `thm:perexpkno`, `thm:exppolymax`, `thm:recurringunbiasednessexp`, `thm:wubexp`, `thm:prandexp` and their appendices. First-order threshold formulas plus the paper's finite soft-max mesh realize the packages; see [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | The expectation-property tail, especially `BoundedSequence.exppolymax`, `.perexpkno`, `.expcoh`, `.recurringunbiasednessexp`, `.wubexp`, and `.prandexp` | Assumes compact threshold syntax, daily/completed-world LUV semantics, exact theory values where needed, and polynomial/bounded/magnitude certificates for the concrete soft-max meshes. It assumes no expectation limit, persistence, unbiasedness, pseudorandom-learning, or preemptive-learning conclusion. |
+
+### M7 witness inventory
+
+| # | Boundary | Endpoint status | Evidence / disclosure |
+|---:|---|---|---|
+| 1 | `M7-HIST-EVALN` | **constructed** | `codeEvalnNat_polyFueled`, `boundedEvalnCompiler` (`Construction/M7Witnesses.lean`) |
+| 2 | `M7-CE-REPETITION` | **constructed** | `EfficientRepeatedEnumeration.ofCE` (`Construction/M7Witnesses.lean`) |
+| 3 | `M7-PATIENT-CLOCK` | **constructed** | `SettlementChecker.ofComputations`, `PatientSettlementClock.ofComputations` (`Construction/M7Witnesses.lean`) |
+| 4 | `M7-PREFIX-PATCH` | **constructed** | `liaEfficientPrefixPatch` (`Construction/M7Witnesses.lean`) |
+| 5 | `M7-QUOTE-AFFINE` | **disclosed** | Exact interfaces and assumptions in the table above |
+| 6 | `M7-PREFIX-MACHINE` | **disclosed** | Exact interfaces and assumptions in the table above |
+| 7 | `M7-FEEDBACK-EMIT` | **disclosed** | Exact interfaces and assumptions in the table above |
+| 8 | `M7-FEEDBACK-TRUTH` | **disclosed** | Exact interfaces and assumptions in the table above |
+| 9 | `M7-DUS-PREFIX-SYNTAX` | **disclosed** | Exact interfaces and assumptions in the table above |
+| 10 | `M7-SCON-COMPILER` | **disclosed** | Exact interfaces and assumptions in the table above |
+| 11 | `M7-SCON-PRESENTATION` | **disclosed** | Exact interfaces and assumptions in the table above |
+| 12 | `M7-LUV-SYNTAX` | **disclosed** | Exact interfaces and assumptions in the table above |
+| 13 | `M7-DUS-APPROX` | **disclosed** | Exact interfaces and assumptions in the table above |
+| 14 | `M7-STRICT-SEPARATORS` | **disclosed** | Exact interfaces and assumptions in the table above |
+| 15 | `M7-COMP-SYNTAX` | **disclosed** | Exact interfaces and assumptions in the table above |
+
+Constructing all fifteen remains a legitimate stronger future project. It would require,
+among other things, a first-order Gödel syntax and representability development, a concrete
+universal prefix machine and Kraft proof, a universal lower semicomputable continuous
+semimeasure, and the recursively-inseparable-set mass theorem. The present endpoint does
+not claim that stronger scope.
 
 ## Barasz et al. (2014) *Robust Cooperation in the Prisoner's Dilemma via Provability Logic*.
 

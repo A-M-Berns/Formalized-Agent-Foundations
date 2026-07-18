@@ -200,6 +200,28 @@ strategy-encoding function, so its efficient computability drops out. -/
 def PolyFueled (c : Nat.Partrec.Code) (f : ℕ → ℕ) : Prop :=
   ∃ b, Fueled c f b ∧ IsPolyBounded f ∧ IsPolyBounded b
 
+/-- A polynomially fueled function is primitive recursive.  Run its code at the explicit
+polynomial majorant of the bundled fuel bound; `Code.evaln` is itself primitive recursive. -/
+theorem PolyFueled.primrec {c : Nat.Partrec.Code} {f : ℕ → ℕ}
+    (h : PolyFueled c f) : Primrec f := by
+  obtain ⟨b, hrun, -, a, k, hbound⟩ := h
+  have hpow₂ : Primrec₂ ((· ^ ·) : ℕ → ℕ → ℕ) :=
+    Primrec₂.unpaired'.mp Nat.Primrec.pow
+  have hclock : Primrec fun n : ℕ => a * (n + 1) ^ k + a := by
+    have hbase : Primrec fun n : ℕ => n + 1 :=
+      Primrec.nat_add.comp Primrec.id (Primrec.const 1)
+    have hpow : Primrec fun n : ℕ => (n + 1) ^ k :=
+      hpow₂.comp hbase (Primrec.const k)
+    exact Primrec.nat_add.comp
+      (Primrec.nat_mul.comp (Primrec.const a) hpow) (Primrec.const a)
+  have heval : Primrec fun n : ℕ =>
+      Nat.Partrec.Code.evaln (a * (n + 1) ^ k + a) c n :=
+    Nat.Partrec.Code.primrec_evaln.comp
+      ((hclock.pair (Primrec.const c)).pair Primrec.id)
+  exact (Primrec.option_getD.comp heval (Primrec.const 0)).of_eq fun n => by
+    rw [(hrun.mono hbound) n]
+    rfl
+
 theorem PolyFueled.const (K : ℕ) : PolyFueled (Nat.Partrec.Code.const K) (fun _ => K) :=
   ⟨fun n => n + K + 1, fueled_const K, ⟨K, 0, fun n => by simp⟩, IsPolyBounded.linear (K + 1)⟩
 
@@ -756,6 +778,41 @@ theorem PolyFueledTuple.cons {t : ℕ → ℕ} {ts : List (ℕ → ℕ)} {ct : N
 
 /-- Exact canonical token emitters instantiate the bounded-emulator definition of efficient
 computability.  This is the bridge used by all concrete trader compilers below. -/
+theorem ecTok_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
+    (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
+    (hlength : ∀ n, evaln (a * (n + 1) ^ k + a) lengthCode n =
+      some (raw n).length)
+    (hsize : ∀ n, (raw n).length ≤ a * (n + 1) ^ k + a)
+    (htoken : ∀ n i, i < (raw n).length →
+      evaln (a * (n + 1) ^ k + a) tokenCode (Nat.pair n i) =
+        some ((raw n).getD i 0))
+    (hstrategy : ∀ n, strategyOfTokens n (raw n) = Tr.strat n) :
+    EfficientlyComputableTok Tr := by
+  refine ⟨lengthCode, tokenCode, a, k, ?_⟩
+  have hstrat :
+      (clockedTrader lengthCode tokenCode (fun n => a * (n + 1) ^ k + a)).strat =
+        Tr.strat := by
+    funext n
+    change strategyOfTokens n
+      (clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n) = Tr.strat n
+    have htoks :
+        clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n = raw n := by
+      unfold clockedTokens
+      rw [hlength n]
+      simp only
+      rw [min_eq_left (hsize n)]
+      apply List.ext_getElem
+      · simp
+      · intro i hleft hright
+        simp only [List.getElem_ofFn]
+        rw [htoken n i hright, Option.getD_some]
+        exact List.getD_eq_get (raw n) 0 ⟨i, hright⟩
+    rw [htoks, hstrategy n]
+  exact congrArg Trader.mk hstrat
+
+/-- Exact canonical token emitters instantiate the bounded-emulator definition of efficient
+computability.  This specialization additionally proves that canonical decoding recovers the
+supplied trader. -/
 theorem ecTok_of_exactEmission (Tr : Trader)
     (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
     (hlength : ∀ n, evaln (a * (n + 1) ^ k + a) lengthCode n =
@@ -1438,6 +1495,43 @@ theorem ecTok_of_tokenFn (Tr : Trader) {tokenFn : ℕ → ℕ} {c : Nat.Partrec.
     rw [htok n i hi] at key
     exact evaln_mono hbc key
 
+/-- Raw-stream counterpart of `ecTok_of_tokenFn`.  The stream need not be a canonical
+serialization: it may be malformed, provided validation of the emitted stream is exactly the
+target strategy.  This is the closure principle needed by parser-transparent transducers. -/
+theorem ecTok_of_rawTokenFn (Tr : Trader) (raw : ℕ → List ℕ)
+    {tokenFn : ℕ → ℕ} {c : Nat.Partrec.Code}
+    (hpf : PolyFueled c tokenFn)
+    (hlen : ∃ lengthCode : Nat.Partrec.Code, PolyFueled lengthCode
+      (fun n => (raw n).length))
+    (htok : ∀ n i, i < (raw n).length →
+        tokenFn (Nat.pair n i) = (raw n).getD i 0)
+    (hstrategy : ∀ n, strategyOfTokens n (raw n) = Tr.strat n) :
+    EfficientlyComputableTok Tr := by
+  obtain ⟨lengthCode, hlen⟩ := hlen
+  obtain ⟨bc, hfc, _, a₀, k₀, hk₀⟩ := hpf
+  obtain ⟨bl, hfl, hlenBounded, hblBounded⟩ := hlen
+  set len := fun n => (raw n).length with hlendef
+  have hbcbound : IsPolyBounded (fun n => a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀) :=
+    (show IsPolyBounded (fun x => a₀ * (x + 1) ^ k₀ + a₀) from
+      ⟨a₀, k₀, fun _ => le_rfl⟩).comp
+      ((IsPolyBounded.linear 0).pair hlenBounded)
+  obtain ⟨A, K, hAK⟩ := (hblBounded.max hbcbound).max hlenBounded
+  refine ecTok_of_rawEmission Tr raw lengthCode c A K (fun n => ?_) (fun n => ?_)
+    (fun n i hi => ?_) hstrategy
+  · exact evaln_mono
+      ((le_max_left _ _).trans ((le_max_left _ _).trans (hAK n))) (hfl n)
+  · exact (le_max_right _ _).trans (hAK n)
+  · have hple : Nat.pair n i ≤ Nat.pair n (len n) :=
+      pair_le_pair_right' n (le_of_lt hi)
+    have hbc : bc (Nat.pair n i) ≤ A * (n + 1) ^ K + A := by
+      calc bc (Nat.pair n i) ≤ a₀ * (Nat.pair n i + 1) ^ k₀ + a₀ := hk₀ _
+        _ ≤ a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀ := by gcongr
+        _ ≤ A * (n + 1) ^ K + A :=
+          (le_max_right _ _).trans ((le_max_left _ _).trans (hAK n))
+    have key := hfc (Nat.pair n i)
+    rw [htok n i hi] at key
+    exact evaln_mono hbc key
+
 /-! ### Validation: a genuinely size-`Θ(n)` trader is `EfficientlyComputableTok`.
 
 `srChain n = safeRecip^[n] (const 1)` is a **depth-`n`** feature: its `serialize` is
@@ -1760,6 +1854,40 @@ def PolySegStream (s : ℕ → List ℕ) : Prop :=
     PolyFueled ct tokenFn ∧ PolyFueled cl lenFn ∧
     (∀ n, (s n).length = lenFn n) ∧
     (∀ n i, i < lenFn n → tokenFn (Nat.pair n i) = (s n).getD i 0)
+
+/-- A polynomial segment stream is primitive recursive as a whole list.  Its length and
+per-token programs are primitive recursive by `PolyFueled.primrec`; mapping the token
+program over the emitted range reconstructs the original list extensionally. -/
+theorem PolySegStream.primrec {s : ℕ → List ℕ} (h : PolySegStream s) : Primrec s := by
+  obtain ⟨ct, cl, tokenFn, lenFn, htoken, hlen, hslen, hget⟩ := h
+  have htokenPrim : Primrec tokenFn := htoken.primrec
+  have hlenPrim : Primrec lenFn := hlen.primrec
+  have hrange : Primrec fun n => List.range (lenFn n) :=
+    Primrec.list_range.comp hlenPrim
+  have htokenAt : Primrec₂ fun n i => tokenFn (Nat.pair n i) :=
+    (htokenPrim.comp (Primrec₂.natPair.comp Primrec.fst Primrec.snd)).to₂
+  have hlist : Primrec fun n =>
+      (List.range (lenFn n)).map fun i => tokenFn (Nat.pair n i) :=
+    Primrec.list_map hrange htokenAt
+  exact hlist.of_eq fun n => by
+    apply List.ext_getElem
+    · simp [hslen n]
+    · intro i hleft hright
+      rw [List.getElem_map]
+      simp only [List.getElem_range]
+      rw [hget n i (by simpa [hslen n] using hright)]
+      exact List.getD_eq_getElem (l := s n) (d := 0) hright
+
+/-- A polynomial raw segment stream certifies any trader obtained by validating that stream.
+Unlike canonical serialization bridges, this remains valid for parser-transparent rewrites of
+malformed source programs. -/
+theorem PolySegStream.ecTok {s : ℕ → List ℕ} (h : PolySegStream s) (Tr : Trader)
+    (hstrategy : ∀ n, strategyOfTokens n (s n) = Tr.strat n) :
+    EfficientlyComputableTok Tr := by
+  obtain ⟨ct, cl, tokenFn, lenFn, htoken, hlen, hslen, hget⟩ := h
+  apply ecTok_of_rawTokenFn Tr s htoken ⟨cl, hlen.of_eq (fun n => (hslen n).symm)⟩
+    (fun n i hi => hget n i (by rwa [← hslen n]))
+  exact hstrategy
 
 theorem PolySegStream.of_eq {s s' : ℕ → List ℕ} (h : PolySegStream s)
     (he : ∀ n, s n = s' n) : PolySegStream s' := by

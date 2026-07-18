@@ -1783,6 +1783,97 @@ theorem affineConst_prim : Primrec AffineCombination.const :=
 theorem affineTerms_prim : Primrec AffineCombination.terms :=
   Primrec.snd.comp affineEquiv_prim
 
+/-! ### Polynomial affine sequences are primitive recursive
+
+`PolySequence` exposes each feature as a polynomially emitted serialization rather than an
+opaque encoded `EF`.  Reconstruct the token list via `PolySegStream.primrec`, then reuse the
+existing primitive-recursive trade-stream decoder to invert `EF.serialize`. -/
+
+private def serializationMarkerSentence : Sentence :=
+  LO.Propositional.Formula.atom 0
+
+/-- Decode one serialized feature by appending a dummy trade frame and reusing the canonical
+trade-stream decoder.  Malformed streams totalize to the zero feature. -/
+def efFromSerializedTokens (tokens : List ℕ) : EF :=
+  match deserializeTrades
+      (tokens ++ [6, Encodable.encode serializationMarkerSentence]) with
+  | some ((e, _) :: _) => e
+  | _ => EF.const 0
+
+theorem efFromSerializedTokens_prim : Primrec efFromSerializedTokens := by
+  have hframe : Primrec fun tokens : List ℕ =>
+      tokens ++ [6, Encodable.encode serializationMarkerSentence] :=
+    Primrec.list_append.comp Primrec.id
+      (Primrec.const [6, Encodable.encode serializationMarkerSentence])
+  have hdecode : Primrec fun tokens : List ℕ =>
+      deserializeTrades (tokens ++ [6, Encodable.encode serializationMarkerSentence]) :=
+    deserializeTrades_prim.comp hframe
+  have hsome : Primrec₂ fun (_ : List ℕ) (trades : List (EF × Sentence)) =>
+      match trades with
+      | [] => EF.const 0
+      | (e, _) :: _ => e :=
+    (Primrec.list_casesOn Primrec.snd (Primrec.const (EF.const 0))
+      (Primrec.fst.comp (Primrec.fst.comp Primrec.snd)).to₂).to₂.of_eq
+        fun _ trades => by cases trades <;> rfl
+  exact (Primrec.option_casesOn hdecode (Primrec.const (EF.const 0)) hsome).of_eq
+    fun tokens => by
+      unfold efFromSerializedTokens
+      cases deserializeTrades
+          (tokens ++ [6, Encodable.encode serializationMarkerSentence]) with
+      | none => rfl
+      | some trades => cases trades <;> rfl
+
+theorem efFromSerializedTokens_serialize (e : EF) :
+    efFromSerializedTokens e.serialize = e := by
+  unfold efFromSerializedTokens
+  rw [show e.serialize ++ [6, Encodable.encode serializationMarkerSentence] =
+      serializeTrades [(e, serializationMarkerSentence)] by
+    simp [serializeTrades]]
+  rw [deserializeTrades_serializeTrades]
+
+/-- The operational polynomial interface on an affine family entails ordinary primitive
+recursiveness of the family.  This closes the representation bridge needed by concrete
+settlement and maturity checkers. -/
+theorem AffineCombination.PolySequence.primrec {As : ℕ → AffineCombination}
+    (h : PolySequence As) : Primrec As := by
+  have hcount : Primrec h.termCount := by
+    obtain ⟨c, hc⟩ := h.termCount_poly
+    exact hc.primrec
+  have hconstTokens : Primrec fun n => (As n).const.serialize :=
+    h.const_poly.primrec
+  have hconst : Primrec fun n => (As n).const :=
+    (efFromSerializedTokens_prim.comp hconstTokens).of_eq fun n =>
+      efFromSerializedTokens_serialize (As n).const
+  have hcoefficientTokens : Primrec fun z => (h.coefficient z).serialize :=
+    h.coefficient_poly.primrec
+  have hcoefficient : Primrec h.coefficient :=
+    (efFromSerializedTokens_prim.comp hcoefficientTokens).of_eq fun z =>
+      efFromSerializedTokens_serialize (h.coefficient z)
+  have hsentenceCode : Primrec fun z => Encodable.encode (h.sentence z) := by
+    obtain ⟨c, hc⟩ := h.sentence_poly
+    exact hc.primrec
+  have hsentence : Primrec h.sentence := by
+    have hdecode : Primrec fun z =>
+        (Encodable.decode (Encodable.encode (h.sentence z))).getD
+          serializationMarkerSentence :=
+      Primrec.option_getD.comp (Primrec.decode.comp hsentenceCode)
+        (Primrec.const serializationMarkerSentence)
+    exact hdecode.of_eq fun z => by rw [Encodable.encodek]; rfl
+  have hrange : Primrec fun n => List.range (h.termCount n) :=
+    Primrec.list_range.comp hcount
+  have hterm : Primrec₂ fun n j =>
+      (h.coefficient (Nat.pair n j), h.sentence (Nat.pair n j)) :=
+    ((hcoefficient.comp Primrec₂.natPair).pair
+      (hsentence.comp Primrec₂.natPair)).to₂
+  have htermsRaw : Primrec fun n =>
+      (List.range (h.termCount n)).map fun j =>
+        (h.coefficient (Nat.pair n j), h.sentence (Nat.pair n j)) :=
+    Primrec.list_map hrange hterm
+  have hterms : Primrec fun n => (As n).terms :=
+    htermsRaw.of_eq fun n => (h.terms_eq n).symm
+  exact (Primrec.of_equiv_symm.comp (hconst.pair hterms)).of_eq fun n => by
+    exact affineEquiv.left_inv (As n)
+
 /-- A `Finset` sum is the sum over `stageSort`: `Finset.sort_eq` says the sorted list is a
 list representation of the underlying multiset, so no reordering argument is needed. -/
 theorem finset_sum_eq_stageSort_sum (stage : Finset Sentence) (f : Sentence → ℕ) :
@@ -2300,6 +2391,133 @@ def AffineCombination.settlementCheckAtFuel (A : AffineCombination)
              | some v, some v' => decide (v = v')
              | _, _ => false)
 
+section
+attribute [local irreducible] Nat.sqrt
+
+/-- The bounded settlement check is primitive recursive in `(A, j, fuel)` for fixed
+market and deductive-process computations.  The unbounded search for a successful fuel is
+kept outside this function and is supplied by `Partrec.rfindOpt` below. -/
+theorem AffineCombination.settlementCheckAtFuel_prim
+    {P : History} {DP : DeductiveProcess}
+    (market : MarketComputation P) (process : DeductiveProcessComputation DP) :
+    Primrec fun q : AffineCombination × ℕ × ℕ =>
+      q.1.settlementCheckAtFuel market process q.2.1 q.2.2 := by
+  let Q := AffineCombination × ℕ × ℕ
+  let S := Q × Finset Sentence
+  let R := S × List Bool
+  have hlimit : Primrec fun p : S => p.1.1.settlementAtomLimit p.2 :=
+    settlementAtomLimit_prim.comp (Primrec.fst.comp Primrec.fst) Primrec.snd
+  have hworlds : Primrec fun p : S => allBitLists (p.1.1.settlementAtomLimit p.2) :=
+    allBitLists_prim.comp hlimit
+  have hsat : Primrec fun p : R => stageSatBits p.1.2 p.2 :=
+    stageSatBits_prim.comp (Primrec.snd.comp Primrec.fst) Primrec.snd
+  have hvalue : Primrec fun p : R =>
+      valueRatCompAt p.1.1.1 market p.1.1.2.2 p.2 :=
+    (valueRatCompAt_prim market).comp
+      (((Primrec.fst.comp (Primrec.fst.comp Primrec.fst)).pair
+        (Primrec.snd.comp (Primrec.snd.comp (Primrec.fst.comp Primrec.fst)))).pair
+        Primrec.snd)
+  have hagree : Primrec fun p : R × List Bool =>
+      let v := valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2 p.1.2
+      let v' := valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2 p.2
+      v.isSome && decide (v = v') := by
+    have hv : Primrec fun p : R × List Bool =>
+        valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2 p.1.2 :=
+      hvalue.comp Primrec.fst
+    have hv' : Primrec fun p : R × List Bool =>
+        valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2 p.2 :=
+      hvalue.comp ((Primrec.fst.comp Primrec.fst).pair Primrec.snd)
+    exact Primrec.and.comp (Primrec.option_isSome.comp hv)
+      (Primrec.eq.comp hv hv').decide
+  have hcondition : Primrec fun p : R × List Bool =>
+      (!stageSatBits p.1.1.2 p.1.2) || (!stageSatBits p.1.1.2 p.2) ||
+        (let v := valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2 p.1.2
+         let v' := valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2 p.2
+         v.isSome && decide (v = v')) := by
+    have hs1 : Primrec fun p : R × List Bool => stageSatBits p.1.1.2 p.1.2 :=
+      hsat.comp Primrec.fst
+    have hs2 : Primrec fun p : R × List Bool => stageSatBits p.1.1.2 p.2 :=
+      hsat.comp ((Primrec.fst.comp Primrec.fst).pair Primrec.snd)
+    exact Primrec.or.comp
+      (Primrec.or.comp (Primrec.not.comp hs1) (Primrec.not.comp hs2)) hagree
+  have hinnerStep : Primrec₂ fun (r : R) (x : List Bool × Bool) =>
+      ((!stageSatBits r.1.2 r.2) || (!stageSatBits r.1.2 x.1) ||
+        (let v := valueRatCompAt r.1.1.1 market r.1.1.2.2 r.2
+         let v' := valueRatCompAt r.1.1.1 market r.1.1.2.2 x.1
+         v.isSome && decide (v = v'))) && x.2 :=
+    (Primrec.and.comp
+      (hcondition.comp (Primrec.fst.pair (Primrec.fst.comp Primrec.snd)))
+      (Primrec.snd.comp Primrec.snd)).to₂
+  have hinner : Primrec fun r : R =>
+      (allBitLists (r.1.1.1.settlementAtomLimit r.1.2)).foldr
+        (fun l' acc =>
+          ((!stageSatBits r.1.2 r.2) || (!stageSatBits r.1.2 l') ||
+            (let v := valueRatCompAt r.1.1.1 market r.1.1.2.2 r.2
+             let v' := valueRatCompAt r.1.1.1 market r.1.1.2.2 l'
+             v.isSome && decide (v = v'))) && acc) true :=
+    Primrec.list_foldr (hworlds.comp Primrec.fst) (Primrec.const true) hinnerStep
+  have houterStep : Primrec₂ fun (s : S) (x : List Bool × Bool) =>
+      ((allBitLists (s.1.1.settlementAtomLimit s.2)).foldr
+        (fun l' acc =>
+          ((!stageSatBits s.2 x.1) || (!stageSatBits s.2 l') ||
+            (let v := valueRatCompAt s.1.1 market s.1.2.2 x.1
+             let v' := valueRatCompAt s.1.1 market s.1.2.2 l'
+             v.isSome && decide (v = v'))) && acc) true) && x.2 :=
+    (Primrec.and.comp
+      (hinner.comp (Primrec.fst.pair (Primrec.fst.comp Primrec.snd)))
+      (Primrec.snd.comp Primrec.snd)).to₂
+  have houter : Primrec fun s : S =>
+      (allBitLists (s.1.1.settlementAtomLimit s.2)).foldr
+        (fun l acc =>
+          ((allBitLists (s.1.1.settlementAtomLimit s.2)).foldr
+            (fun l' acc' =>
+              ((!stageSatBits s.2 l) || (!stageSatBits s.2 l') ||
+                (let v := valueRatCompAt s.1.1 market s.1.2.2 l
+                 let v' := valueRatCompAt s.1.1 market s.1.2.2 l'
+                 v.isSome && decide (v = v'))) && acc') true) && acc) true :=
+    Primrec.list_foldr hworlds (Primrec.const true) houterStep
+  have hstage : Primrec fun q : Q => process.stageAtFuel q.2.2 q.2.1 :=
+    processStageAtFuel_prim process |>.comp
+      (Primrec.snd.comp Primrec.snd) (Primrec.fst.comp Primrec.snd)
+  have hcompiled : Primrec fun q : Q =>
+      match process.stageAtFuel q.2.2 q.2.1 with
+      | none => false
+      | some stage =>
+          (allBitLists (q.1.settlementAtomLimit stage)).foldr
+            (fun l acc =>
+              ((allBitLists (q.1.settlementAtomLimit stage)).foldr
+                (fun l' acc' =>
+                  ((!stageSatBits stage l) || (!stageSatBits stage l') ||
+                    (let v := valueRatCompAt q.1 market q.2.2 l
+                     let v' := valueRatCompAt q.1 market q.2.2 l'
+                     v.isSome && decide (v = v'))) && acc') true) && acc) true :=
+    (Primrec.option_casesOn hstage (Primrec.const false)
+      (houter.comp (Primrec.fst.pair Primrec.snd)).to₂).of_eq fun q => by
+        cases process.stageAtFuel q.2.2 q.2.1 <;> rfl
+  exact hcompiled.of_eq fun q => by
+    unfold AffineCombination.settlementCheckAtFuel
+    cases hst : process.stageAtFuel q.2.2 q.2.1 with
+    | none => rfl
+    | some stage =>
+        simp only
+        rw [list_all_eq_foldr]
+        apply congrArg (fun f : List Bool → Bool → Bool =>
+          List.foldr f true (allBitLists (q.1.settlementAtomLimit stage)))
+        funext l acc
+        rw [list_all_eq_foldr]
+        apply congrArg₂ (fun x y => x && y) _ rfl
+        apply congrArg (fun f : List Bool → Bool → Bool =>
+          List.foldr f true (allBitLists (q.1.settlementAtomLimit stage)))
+        funext l' acc'
+        rw [valueRatCompAt_eq, valueRatCompAt_eq]
+        cases hs : stageSatBits stage l <;>
+          cases hs' : stageSatBits stage l' <;>
+          cases hv : q.1.valueRatAtFuel market q.2.2 (BoolPCWorld.bitsPayoutRat l) <;>
+          cases hv' : q.1.valueRatAtFuel market q.2.2 (BoolPCWorld.bitsPayoutRat l') <;>
+          simp
+
+end
+
 theorem AffineCombination.settlementCheckAtFuel_sound (A : AffineCombination)
     {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) (process : DeductiveProcessComputation DP)
@@ -2367,12 +2585,911 @@ theorem AffineCombination.settlementCheckAtFuel_complete (A : AffineCombination)
   rw [hv, hv']
   exact hb
 
+/-! ### Extracting the settlement checker code -/
+
+/-- Market and deductive-process computations determine a concrete code semi-deciding the
+named settlement predicate for every polynomial affine family.  The only unbounded operation
+is `rfindOpt` over fuel; soundness and completeness come from the bounded check above. -/
+noncomputable def SettlementChecker.ofComputations
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    (hpoly : AffineCombination.PolySequence As)
+    (market : MarketComputation P) (process : DeductiveProcessComputation DP) :
+    SettlementChecker As (fun d φ => market.quote d (Encodable.encode φ)) DP := by
+  have hAs : Primrec As := hpoly.primrec
+  have hcheck : Primrec₂ fun (z fuel : ℕ) =>
+      (As z.unpair.1).settlementCheckAtFuel market process z.unpair.2 fuel := by
+    have hinput : Primrec fun p : ℕ × ℕ =>
+        (As p.1.unpair.1, p.1.unpair.2, p.2) :=
+      (hAs.comp (Primrec.fst.comp (Primrec.unpair.comp Primrec.fst))).pair
+        ((Primrec.snd.comp (Primrec.unpair.comp Primrec.fst)).pair Primrec.snd)
+    exact ((AffineCombination.settlementCheckAtFuel_prim market process).comp hinput).to₂
+  let guard : ℕ → ℕ → Option ℕ := fun z fuel =>
+    if (As z.unpair.1).settlementCheckAtFuel market process z.unpair.2 fuel then
+      some 1
+    else
+      none
+  have hguard : Computable₂ guard := by
+    have hp : Primrec fun p : ℕ × ℕ =>
+        if (As p.1.unpair.1).settlementCheckAtFuel market process p.1.unpair.2 p.2 then
+          some 1
+        else
+          none := by
+      exact Primrec.ite
+        (Primrec.eq.comp hcheck (Primrec.const true))
+        (Primrec.const (some 1)) (Primrec.const (none : Option ℕ))
+    exact hp.to₂.to_comp
+  have hpart : Partrec fun z => Nat.rfindOpt (guard z) :=
+    Partrec.rfindOpt hguard
+  have hnat : Nat.Partrec fun z => Nat.rfindOpt (guard z) :=
+    Partrec.nat_iff.mp hpart
+  let code := Classical.choose (Nat.Partrec.Code.exists_code.mp hnat)
+  have hcode : Nat.Partrec.Code.eval code = fun z => Nat.rfindOpt (guard z) :=
+    Classical.choose_spec (Nat.Partrec.Code.exists_code.mp hnat)
+  refine ⟨code, fun i j => ?_⟩
+  constructor
+  · rintro ⟨fuel, haccept⟩
+    have hevaln : Nat.Partrec.Code.evaln fuel code (Nat.pair i j) = some 1 := by
+      cases he : Nat.Partrec.Code.evaln fuel code (Nat.pair i j) with
+      | none =>
+          simp [acceptsWithin, codeEvalnNat, he] at haccept
+      | some out =>
+          simp [acceptsWithin, codeEvalnNat, he] at haccept
+          obtain rfl : out = 1 := by omega
+          rfl
+    have hmem : 1 ∈ Nat.rfindOpt (guard (Nat.pair i j)) := by
+      have : 1 ∈ Nat.Partrec.Code.eval code (Nat.pair i j) :=
+        Nat.Partrec.Code.evaln_sound hevaln
+      rw [hcode] at this
+      exact this
+    obtain ⟨fuel', hfuel'⟩ := Nat.rfindOpt_spec hmem
+    have hcheckTrue :
+        (As i).settlementCheckAtFuel market process j fuel' = true := by
+      simpa [guard] using hfuel'
+    exact (As i).settlementCheckAtFuel_sound market process hcheckTrue
+  · intro htest
+    obtain ⟨fuel, hfuel⟩ :=
+      (As i).settlementCheckAtFuel_complete market process j htest
+    have hdom : (Nat.rfindOpt (guard (Nat.pair i j))).Dom := by
+      rw [Nat.rfindOpt_dom]
+      exact ⟨fuel, 1, by simp [guard, hfuel]⟩
+    have hone : 1 ∈ Nat.rfindOpt (guard (Nat.pair i j)) := by
+      have hout := Part.get_mem hdom
+      obtain ⟨fuel', hfuel'⟩ := Nat.rfindOpt_spec hout
+      have houtEq : (Nat.rfindOpt (guard (Nat.pair i j))).get hdom = 1 := by
+        have hp : (As i).settlementCheckAtFuel market process j fuel' = true ∧
+            1 = (Nat.rfindOpt (guard (Nat.pair i j))).get hdom := by
+          simpa [guard] using hfuel'
+        exact hp.2.symm
+      rw [houtEq] at hout
+      exact hout
+    have hmem : 1 ∈ Nat.Partrec.Code.eval code (Nat.pair i j) := by
+      rw [hcode]
+      exact hone
+    obtain ⟨fuel', hevaln⟩ := Nat.Partrec.Code.evaln_complete.mp hmem
+    refine ⟨fuel', ?_⟩
+    change Nat.Partrec.Code.evaln fuel' code (Nat.pair i j) = some 1 at hevaln
+    simp [acceptsWithin, codeEvalnNat, hevaln]
+
+/-- The patient settlement clock with its checker constructed from the supplied market and
+deductive-process programs.  No computability bridge or checker remains as a hypothesis. -/
+noncomputable def PatientSettlementClock.ofComputations
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
+    (hpoly : AffineCombination.PolySequence As)
+    (market : MarketComputation P) (process : DeductiveProcessComputation DP)
+    (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (f : DeferralFunction) : PatientSettlementClock As P DP truth f :=
+  PatientSettlementClock.ofChecker
+    (SettlementChecker.ofComputations hpoly market process) hdet market.quote_exact hworld f
+
 end SettlementCompile
+
+/-! ## M7-PREFIX-PATCH: polynomial flat-token transduction -/
+
+namespace PrefixPatchCompile
+
+-- Deep `PolyFueled`/segment compositions carry nested `Primcodable` products.  Prevent
+-- elaboration from reducing their `Nat.unpair` implementation through `Nat.sqrt`.
+attribute [local irreducible] Nat.sqrt
+
+/-- The polynomial clock carried by an `EfficientlyComputableTok` certificate. -/
+def ecClock (a k n : ℕ) : ℕ := a * (n + 1) ^ k + a
+
+private theorem ecClock_polyFueled (a k : ℕ) :
+    ∃ c, PolyFueled c (ecClock a k) := by
+  obtain ⟨cmul, hmul⟩ := mul_polyFueled
+  obtain ⟨cadd, hadd⟩ := addc_polyFueled
+  have hpow : ∀ d : ℕ, ∃ c, PolyFueled c (fun n => (n + 1) ^ d) := by
+    intro d
+    induction d with
+    | zero => exact ⟨_, PolyFueled.const 1⟩
+    | succ d ih =>
+        obtain ⟨cpow, hpow⟩ := ih
+        refine ⟨_, (hmul.comp (hpow.pair PolyFueled.id.succ_comp)).of_eq (fun n => ?_)⟩
+        simp [pow_succ]
+  obtain ⟨cpow, hpow⟩ := hpow k
+  have hscaled := hmul.comp ((PolyFueled.const a).pair hpow)
+  refine ⟨_, (hadd.comp (hscaled.pair (PolyFueled.const a))).of_eq (fun n => ?_)⟩
+  simp [ecClock]
+
+/-- Actual clamped length requested by one clocked trader program. -/
+def clockedRawLength (lengthCode : Nat.Partrec.Code) (a k n : ℕ) : ℕ :=
+  min (Nat.pred (codeEvalnNat lengthCode (Nat.pair (ecClock a k n) n)))
+    (ecClock a k n)
+
+/-- Total source-token oracle of one clocked trader program. -/
+def clockedRawToken (tokenCode : Nat.Partrec.Code) (a k z : ℕ) : ℕ :=
+  Nat.pred (codeEvalnNat tokenCode
+    (Nat.pair (ecClock a k z.unpair.1) z))
+
+private theorem clockedRawLength_polyFueled
+    (lengthCode : Nat.Partrec.Code) (a k : ℕ) :
+    ∃ c, PolyFueled c (clockedRawLength lengthCode a k) := by
+  obtain ⟨csim, hsim⟩ := codeEvalnNat_polyFueled lengthCode
+  obtain ⟨cclock, hclock⟩ := ecClock_polyFueled a k
+  have hrun := hsim.comp (hclock.pair PolyFueled.id)
+  have hrequested := predc_polyFueled.comp hrun
+  have hgap := subc_polyFueled.comp (hrequested.pair hclock)
+  refine ⟨_, (subc_polyFueled.comp (hrequested.pair hgap)).of_eq (fun n => ?_)⟩
+  simp only [Function.comp_apply, Nat.unpair_pair, Nat.pred_eq_sub_one]
+  unfold clockedRawLength
+  let requested := codeEvalnNat lengthCode (Nat.pair (ecClock a k n) n) - 1
+  let clock := ecClock a k n
+  change requested - (requested - clock) = min requested clock
+  by_cases h : requested ≤ clock
+  · rw [Nat.sub_eq_zero_of_le h, Nat.sub_zero, min_eq_left h]
+  · have h' : clock ≤ requested := Nat.le_of_lt (Nat.lt_of_not_ge h)
+    rw [Nat.sub_sub_self h', min_eq_right h']
+
+private theorem clockedRawToken_polyFueled
+    (tokenCode : Nat.Partrec.Code) (a k : ℕ) :
+    ∃ c, PolyFueled c (clockedRawToken tokenCode a k) := by
+  obtain ⟨csim, hsim⟩ := codeEvalnNat_polyFueled tokenCode
+  obtain ⟨cclock, hclock⟩ := ecClock_polyFueled a k
+  refine ⟨_, (predc_polyFueled.comp
+    (hsim.comp ((hclock.comp PolyFueled.left).pair PolyFueled.id))).of_eq (fun z => ?_)⟩
+  simp [clockedRawToken]
+
+theorem clockedRawLength_eq (lengthCode tokenCode : Nat.Partrec.Code)
+    (a k n : ℕ) :
+    (clockedTokens lengthCode tokenCode (ecClock a k n) n).length =
+      clockedRawLength lengthCode a k n := by
+  unfold clockedTokens clockedRawLength codeEvalnNat
+  simp only [Nat.unpair_pair]
+  cases h : Nat.Partrec.Code.evaln (ecClock a k n) lengthCode n <;> simp [h]
+
+theorem clockedRawToken_eq (lengthCode tokenCode : Nat.Partrec.Code)
+    (a k n i : ℕ)
+    (hi : i < (clockedTokens lengthCode tokenCode (ecClock a k n) n).length) :
+    clockedRawToken tokenCode a k (Nat.pair n i) =
+      (clockedTokens lengthCode tokenCode (ecClock a k n) n).getD i 0 := by
+  unfold clockedRawToken clockedTokens
+  simp only [Nat.unpair_pair]
+  cases hl : Nat.Partrec.Code.evaln (ecClock a k n) lengthCode n with
+  | none =>
+      have hi' : i < 0 := by simpa [clockedTokens, hl] using hi
+      omega
+  | some length =>
+      have hi' : i < min length (ecClock a k n) := by
+        simpa [clockedTokens, hl] using hi
+      have hiList : i < (List.ofFn fun j : Fin (min length (ecClock a k n)) =>
+          (Nat.Partrec.Code.evaln (ecClock a k n) tokenCode (Nat.pair n j)).getD 0).length := by
+        simpa using hi'
+      rw [List.getD_eq_getElem (l := List.ofFn fun j : Fin (min length (ecClock a k n)) =>
+        (Nat.Partrec.Code.evaln (ecClock a k n) tokenCode (Nat.pair n j)).getD 0)
+        (d := 0) hiList]
+      simp only [List.getElem_ofFn]
+      unfold codeEvalnNat
+      simp only [Nat.unpair_pair]
+      cases ht : Nat.Partrec.Code.evaln (ecClock a k n) tokenCode (Nat.pair n i) <;>
+        simp [ht]
+
+/-- Every raw clocked token list is itself a polynomial segment stream. -/
+theorem clockedTokens_polySegStream (lengthCode tokenCode : Nat.Partrec.Code)
+    (a k : ℕ) :
+    PolySegStream (fun n => clockedTokens lengthCode tokenCode (ecClock a k n) n) := by
+  obtain ⟨ct, ht⟩ := clockedRawToken_polyFueled tokenCode a k
+  obtain ⟨cl, hl⟩ := clockedRawLength_polyFueled lengthCode a k
+  exact ⟨ct, cl, clockedRawToken tokenCode a k, clockedRawLength lengthCode a k,
+    ht, hl, fun n => clockedRawLength_eq lengthCode tokenCode a k n,
+    fun n i hi => clockedRawToken_eq lengthCode tokenCode a k n i
+      (by rwa [clockedRawLength_eq lengthCode tokenCode a k n])⟩
+
+/-! ### Polynomial parser control -/
+
+/-- Numeric form of the small parser-control transition. -/
+def freezeNextNat (z : ℕ) : ℕ :=
+  let mode := z.unpair.1.unpair.1
+  let token := z.unpair.2
+  if mode = 0 then
+    if token = 0 then Nat.pair 1 0
+    else if token = 1 then Nat.pair 3 0
+    else if token = 6 then Nat.pair 4 0
+    else if token = 7 then Nat.pair 5 0
+    else 0
+  else if mode = 1 then Nat.pair 2 token
+  else 0
+
+private theorem freezeNextNat_eq (state : EF.FreezeTokenState) (token : ℕ) :
+    freezeNextNat (Nat.pair (Nat.pair state.1 state.2) token) =
+      Nat.pair (EF.freezeTokenNext state token).1 (EF.freezeTokenNext state token).2 := by
+  rcases state with ⟨mode, pending⟩
+  simp only [freezeNextNat, Nat.unpair_pair]
+  cases mode with
+  | zero =>
+      simp only [EF.freezeTokenNext]
+      by_cases h0 : token = 0
+      · simp [h0]
+      by_cases h1 : token = 1
+      · simp [h0, h1]
+      by_cases h6 : token = 6
+      · simp [h0, h1, h6]
+      by_cases h7 : token = 7
+      · simp [h0, h1, h6, h7]
+      · simp [h0, h1, h6, h7]
+        rfl
+  | succ mode =>
+      cases mode with
+      | zero => simp [EF.freezeTokenNext]
+      | succ mode =>
+          simp [EF.freezeTokenNext]
+          rfl
+
+private theorem polyFueled_ifZero {ct c₀ c₁ : Nat.Partrec.Code}
+    {test f₀ f₁ : ℕ → ℕ} (ht : PolyFueled ct test)
+    (h₀ : PolyFueled c₀ f₀) (h₁ : PolyFueled c₁ f₁) :
+    ∃ c, PolyFueled c (fun z => if test z = 0 then f₀ z else f₁ z) := by
+  exact ⟨_, (ifzSel_polyFueled.comp ((h₀.pair h₁).pair ht)).of_eq (fun z => by
+    simp only [ifzSelFn, Nat.unpair_pair])⟩
+
+private theorem freezeNextNat_polyFueled : ∃ c, PolyFueled c freezeNextNat := by
+  have hmode := PolyFueled.left.comp PolyFueled.left
+  have htoken := PolyFueled.right
+  obtain ⟨eq0, heq0⟩ := polyFueled_eqConst htoken 0
+  obtain ⟨eq1, heq1⟩ := polyFueled_eqConst htoken 1
+  obtain ⟨eq6, heq6⟩ := polyFueled_eqConst htoken 6
+  obtain ⟨eq7, heq7⟩ := polyFueled_eqConst htoken 7
+  obtain ⟨out7, hout7⟩ := polyFueled_ifZero heq7 (PolyFueled.const 0)
+    (PolyFueled.const (Nat.pair 5 0))
+  obtain ⟨out6, hout6⟩ := polyFueled_ifZero heq6 hout7
+    (PolyFueled.const (Nat.pair 4 0))
+  obtain ⟨out1, hout1⟩ := polyFueled_ifZero heq1 hout6
+    (PolyFueled.const (Nat.pair 3 0))
+  obtain ⟨out0, hout0⟩ := polyFueled_ifZero heq0 hout1
+    (PolyFueled.const (Nat.pair 1 0))
+  have hmode1 : PolyFueled ((Nat.Partrec.Code.const 2).pair Nat.Partrec.Code.right)
+      (fun z => Nat.pair 2 z.unpair.2) :=
+    (PolyFueled.const 2).pair PolyFueled.right
+  obtain ⟨modeEq1, hmodeEq1⟩ := polyFueled_eqConst hmode 1
+  obtain ⟨other, hother⟩ := polyFueled_ifZero hmodeEq1 (PolyFueled.const 0) hmode1
+  obtain ⟨modeEq0, hmodeEq0⟩ := polyFueled_eqConst hmode 0
+  obtain ⟨result, hresult⟩ := polyFueled_ifZero hmodeEq0 hother hout0
+  refine ⟨result, hresult.of_eq (fun z => ?_)⟩
+  simp only [freezeNextNat]
+  by_cases hm0 : z.unpair.1.unpair.1 = 0
+  · simp [hm0]
+  · by_cases hm1 : z.unpair.1.unpair.1 = 1 <;> simp [hm0, hm1]
+
+private theorem freezeTokenNext_mode_le (state : EF.FreezeTokenState) (token : ℕ) :
+    (EF.freezeTokenNext state token).1 ≤ 5 := by
+  rcases state with ⟨mode, pending⟩
+  cases mode with
+  | zero =>
+      by_cases h0 : token = 0 <;> by_cases h1 : token = 1 <;>
+        by_cases h6 : token = 6 <;> by_cases h7 : token = 7 <;>
+        simp [EF.freezeTokenNext, h0, h1, h6, h7]
+  | succ mode =>
+      cases mode <;> simp [EF.freezeTokenNext]
+
+private theorem freezeTokenNext_pending (state : EF.FreezeTokenState) (token : ℕ) :
+    (EF.freezeTokenNext state token).2 = 0 ∨
+      (EF.freezeTokenNext state token).2 = token := by
+  rcases state with ⟨mode, pending⟩
+  cases mode with
+  | zero =>
+      by_cases h0 : token = 0 <;> by_cases h1 : token = 1 <;>
+        by_cases h6 : token = 6 <;> by_cases h7 : token = 7 <;>
+        simp [EF.freezeTokenNext, h0, h1, h6, h7]
+  | succ mode =>
+      cases mode <;> simp [EF.freezeTokenNext]
+
+private theorem freezeTokenControlAt_mode_le (tokenFn : ℕ → ℕ) (n j : ℕ) :
+    (EF.freezeTokenControlAt tokenFn n j).1 ≤ 5 := by
+  cases j with
+  | zero => simp [EF.freezeTokenControlAt]
+  | succ j =>
+      simp only [EF.freezeTokenControlAt]
+      exact freezeTokenNext_mode_le _ _
+
+private theorem freezeTokenControlAt_pending (tokenFn : ℕ → ℕ) (n j : ℕ) :
+    (EF.freezeTokenControlAt tokenFn n j).2 = 0 ∨
+      ∃ i < j, (EF.freezeTokenControlAt tokenFn n j).2 = tokenFn (Nat.pair n i) := by
+  cases j with
+  | zero => simp [EF.freezeTokenControlAt]
+  | succ j =>
+      rcases freezeTokenNext_pending (EF.freezeTokenControlAt tokenFn n j)
+          (tokenFn (Nat.pair n j)) with h | h
+      · exact Or.inl (by simpa only [EF.freezeTokenControlAt] using h)
+      · exact Or.inr ⟨j, Nat.lt_succ_self j,
+          by simpa only [EF.freezeTokenControlAt] using h⟩
+
+/-- Encoded parser control before the token index carried in `z = ⟨n,j⟩`. -/
+def freezeControlNat (tokenFn : ℕ → ℕ) (z : ℕ) : ℕ :=
+  let state := EF.freezeTokenControlAt tokenFn z.unpair.1 z.unpair.2
+  Nat.pair state.1 state.2
+
+private theorem freezeControlNat_polyFueled {ct : Nat.Partrec.Code} {tokenFn : ℕ → ℕ}
+    (htoken : PolyFueled ct tokenFn) :
+    ∃ c, PolyFueled c (freezeControlNat tokenFn) := by
+  obtain ⟨cnext, hnext⟩ := freezeNextNat_polyFueled
+  have hn := PolyFueled.left
+  have hj := PolyFueled.left.comp PolyFueled.right
+  have hprev := PolyFueled.right.comp PolyFueled.right
+  have hsource := htoken.comp (hn.pair hj)
+  have hstep := hnext.comp (hprev.pair hsource)
+  obtain ⟨_, _, htokenBounded, _⟩ := htoken
+  obtain ⟨a, k, hbound⟩ := htokenBounded
+  have hmajor : IsPolyBounded (fun m => Nat.pair 5 (a * (m + 1) ^ k + a)) :=
+    ((IsPolyBounded.linear 5).of_le (fun _ => by omega)).pair
+      ⟨a, k, fun _ => le_rfl⟩
+  have hstate : IsPolyBounded (fun m => freezeControlNat tokenFn m) :=
+    hmajor.of_le (fun m => by
+      simp only [freezeControlNat]
+      have hmode := freezeTokenControlAt_mode_le tokenFn m.unpair.1 m.unpair.2
+      rcases freezeTokenControlAt_pending tokenFn m.unpair.1 m.unpair.2 with hpending | hpending
+      · rw [hpending]
+        exact (pair_le_pair_left' 0 hmode).trans
+          (pair_le_pair_right' 5 (Nat.zero_le _))
+      · obtain ⟨i, hi, hpending⟩ := hpending
+        rw [hpending]
+        have hpair : Nat.pair m.unpair.1 i ≤ m := by
+          calc Nat.pair m.unpair.1 i ≤ Nat.pair m.unpair.1 m.unpair.2 :=
+              pair_le_pair_right' _ (le_of_lt hi)
+            _ = m := Nat.pair_unpair m
+        have htok : tokenFn (Nat.pair m.unpair.1 i) ≤ a * (m + 1) ^ k + a :=
+          (hbound _).trans (by gcongr)
+        exact (pair_le_pair_right' _ htok).trans (pair_le_pair_left' _ hmode))
+  have hstate' : IsPolyBounded (fun m =>
+      freezeControlNat tokenFn (Nat.pair m.unpair.1 m.unpair.2)) :=
+    hstate.of_le (fun m => by rw [Nat.pair_unpair])
+  refine ⟨_, (PolyFueled.prec (PolyFueled.const 0) hstep
+    (st := fun n j => freezeControlNat tokenFn (Nat.pair n j)) (fun n => ?_)
+    (fun n j => ?_) hstate').of_eq (fun z => ?_)⟩
+  · simp only [freezeControlNat, Nat.unpair_pair, EF.freezeTokenControlAt]
+    rfl
+  · simp only [freezeControlNat, Nat.unpair_pair, EF.freezeTokenControlAt]
+    exact (freezeNextNat_eq (EF.freezeTokenControlAt tokenFn n j)
+      (tokenFn (Nat.pair n j))).symm
+  · rw [Nat.pair_unpair]
+
+/-! ### Variable-width freeze emission -/
+
+/-- A polynomial quote-code lookup makes the parser-transparent prefix rewrite polynomial on
+every polynomial raw source stream. -/
+theorem freezeTokenRun_polySegStream {source : ℕ → List ℕ}
+    (hsource : PolySegStream source) (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+    {cq : Nat.Partrec.Code}
+    (hquote : PolyFueled cq (fun z => quoteCode z.unpair.1 z.unpair.2)) :
+    PolySegStream (fun n =>
+      (EF.freezeTokenRun quoteCode cutoff (0, 0) (source n)).2) := by
+  obtain ⟨ct, cl, tokenFn, lenFn, htoken, hlen, hslen, hget⟩ := hsource
+  obtain ⟨ccontrol, hcontrol⟩ := freezeControlNat_polyFueled htoken
+  have hmode := PolyFueled.left.comp hcontrol
+  have hpending := PolyFueled.right.comp hcontrol
+  have hquoteAt := hquote.comp (htoken.pair hpending)
+  have hquoteAt' : PolyFueled _ (fun z =>
+      quoteCode (tokenFn z) (freezeControlNat tokenFn z).unpair.2) :=
+    hquoteAt.of_eq (fun z => by simp only [Nat.unpair_pair])
+  have hshort : PolySegStream (fun z => [tokenFn z]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.polyTok htoken)
+  have hlong : PolySegStream (fun z => [tokenFn z, 1,
+      quoteCode (tokenFn z) (freezeControlNat tokenFn z).unpair.2, 8]) := by
+    exact PolySegStream.ofTokenStream
+      (((PolyTokenStream.polyTok htoken).append (PolyTokenStream.const 1)).append
+        ((PolyTokenStream.polyTok hquoteAt').append (PolyTokenStream.const 8)))
+  obtain ⟨cmode, hmodeEq⟩ := polyFueled_eqConst hmode 2
+  have hdayGap := subc_polyFueled.comp ((PolyFueled.const cutoff).pair htoken)
+  have hdayGap' : PolyFueled _ (fun z => cutoff - tokenFn z) :=
+    hdayGap.of_eq (fun z => by simp only [Nat.unpair_pair])
+  have hday : PolySegStream (fun z =>
+      if cutoff - tokenFn z = 0 then [tokenFn z]
+      else [tokenFn z, 1,
+        quoteCode (tokenFn z) (freezeControlNat tokenFn z).unpair.2, 8]) :=
+    hshort.ifZero hlong hdayGap'
+  have hsegmentRaw : PolySegStream (fun z =>
+      if (if (freezeControlNat tokenFn z).unpair.1 = 2 then 1 else 0) = 0 then
+        [tokenFn z]
+      else if cutoff - tokenFn z = 0 then [tokenFn z]
+      else [tokenFn z, 1,
+        quoteCode (tokenFn z) (freezeControlNat tokenFn z).unpair.2, 8]) :=
+    hshort.ifZero hday hmodeEq
+  have hsegment : PolySegStream (fun z =>
+      EF.freezeTokenEmit quoteCode cutoff
+        ((freezeControlNat tokenFn z).unpair.1,
+          (freezeControlNat tokenFn z).unpair.2) (tokenFn z)) :=
+    hsegmentRaw.of_eq (fun z => by
+      simp only [EF.freezeTokenEmit]
+      by_cases hm : (freezeControlNat tokenFn z).unpair.1 = 2
+      · by_cases hd : tokenFn z < cutoff
+        · have hgap : cutoff - tokenFn z ≠ 0 := by omega
+          simp [hm, hd, hgap]
+        · have hgap : cutoff - tokenFn z = 0 := Nat.sub_eq_zero_of_le (by omega)
+          simp [hm, hd, hgap]
+      · simp [hm])
+  have hconcat := hsegment.concatVar hlen
+  refine hconcat.of_eq (fun n => ?_)
+  have hsourceEq : source n =
+      (List.range (lenFn n)).map (fun j => tokenFn (Nat.pair n j)) := by
+    apply List.ext_getElem
+    · simp [hslen n]
+    · intro i hleft hright
+      rw [List.getElem_map]
+      simp only [List.getElem_range]
+      rw [hget n i (by simpa [hslen n] using hleft)]
+      exact (List.getD_eq_getElem (l := source n) (d := 0) hleft).symm
+  have hrun := congrArg Prod.snd
+    (EF.freezeTokenRun_range quoteCode cutoff tokenFn n (lenFn n))
+  simp only at hrun
+  rw [hsourceEq]
+  simpa [freezeControlNat] using hrun.symm
+
+/-- Generic compiler theorem behind the concrete prefix patch: a polynomial encoded quote
+lookup closes the administrative freeze under `EfficientlyComputableTok`. -/
+theorem freezeBefore_preserves_ec
+    (quote : ℕ → Sentence → ℚ) (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+    (hquoteExact : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
+      quoteCode day code = Encodable.encode (quote day φ))
+    {cq : Nat.Partrec.Code}
+    (hquotePoly : PolyFueled cq (fun z => quoteCode z.unpair.1 z.unpair.2))
+    (Tr : Trader) (hTr : EfficientlyComputableTok Tr) :
+    EfficientlyComputableTok (Tr.freezeBefore quote cutoff) := by
+  obtain ⟨lengthCode, tokenCode, a, k, hcert⟩ := hTr
+  let raw : ℕ → List ℕ := fun n =>
+    clockedTokens lengthCode tokenCode (ecClock a k n) n
+  have hraw : PolySegStream raw :=
+    clockedTokens_polySegStream lengthCode tokenCode a k
+  have hfrozen : PolySegStream (fun n =>
+      (EF.freezeTokenRun quoteCode cutoff (0, 0) (raw n)).2) :=
+    freezeTokenRun_polySegStream hraw quoteCode cutoff hquotePoly
+  apply hfrozen.ecTok (Tr.freezeBefore quote cutoff)
+  intro n
+  have hcomm := EF.strategyOfTokens_freezeTokenRun_trades quote quoteCode cutoff n
+    hquoteExact (raw n)
+  simp only at hcomm
+  have horig : strategyOfTokens n (raw n) = Tr.strat n := by
+    have hs := congrFun (congrArg Trader.strat hcert) n
+    exact hs
+  rw [congrArg Strategy.trades horig] at hcomm
+  have htrades :
+      (strategyOfTokens n
+        (EF.freezeTokenRun quoteCode cutoff (0, 0) (raw n)).2).trades =
+        ((Tr.freezeBefore quote cutoff).strat n).trades := by
+    simpa [Trader.freezeBefore, Strategy.freezeBefore] using hcomm
+  cases hleft : strategyOfTokens n
+      (EF.freezeTokenRun quoteCode cutoff (0, 0) (raw n)).2 with
+  | mk leftTrades leftRank =>
+      cases hright : (Tr.freezeBefore quote cutoff).strat n with
+      | mk rightTrades rightRank =>
+          simp only [hleft, hright] at htrades ⊢
+          subst rightTrades
+          rfl
+
+/-! ### Finite LIA prefix lookup -/
+
+/-- Decide whether an arbitrary raw sentence token decodes to one fixed sentence.  Unlike
+comparison with `Encodable.encode`, this accepts every noncanonical token accepted by the
+Foundation decoder. -/
+def sentenceMatches : Sentence → ℕ → ℕ
+  | ⊥, code =>
+      if code = 0 then 0
+      else if code.pred.unpair.1 = 0 then 1 else 0
+  | .atom a, code =>
+      if code = 0 then 0
+      else if code.pred.unpair.1 = 1 then
+        if code.pred.unpair.2 = a then 1 else 0
+      else 0
+  | φ 🡒 ψ, code =>
+      if code = 0 then 0
+      else if code.pred.unpair.1 = 2 then
+        sentenceMatches φ code.pred.unpair.2.unpair.1 *
+          sentenceMatches ψ code.pred.unpair.2.unpair.2
+      else 0
+  | φ ⋏ ψ, code =>
+      if code = 0 then 0
+      else if code.pred.unpair.1 = 3 then
+        sentenceMatches φ code.pred.unpair.2.unpair.1 *
+          sentenceMatches ψ code.pred.unpair.2.unpair.2
+      else 0
+  | φ ⋎ ψ, code =>
+      if code = 0 then 0
+      else if code.pred.unpair.1 = 4 then
+        sentenceMatches φ code.pred.unpair.2.unpair.1 *
+          sentenceMatches ψ code.pred.unpair.2.unpair.2
+      else 0
+
+theorem sentenceMatches_eq_one_iff (target : Sentence) (code : ℕ) :
+    sentenceMatches target code = 1 ↔
+      Encodable.decode (α := Sentence) code = some target := by
+  induction target using LO.Propositional.Formula.rec' generalizing code with
+  | hfalsum =>
+      cases code with
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          LO.Propositional.Formula.ofNat]
+      | succ e =>
+          rcases htag : e.unpair.1 with _ | tag
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag]
+          · rcases tag with _ | _ | _ | _ | tag <;>
+              simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+                LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+  | hatom a =>
+      cases code with
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          LO.Propositional.Formula.ofNat]
+      | succ e =>
+          rcases htag : e.unpair.1 with _ | _ | tag
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag]
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag]
+          · rcases tag with _ | _ | _ | tag <;>
+              simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+                LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+  | himp φ ψ ihφ ihψ =>
+      cases code with
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          LO.Propositional.Formula.ofNat]
+      | succ e =>
+          rcases htag : e.unpair.1 with _ | _ | _ | tag
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag]
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag]
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag, ihφ, ihψ,
+              Option.bind_eq_some_iff]
+            cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
+              cases hright : LO.Propositional.Formula.ofNat (α := ℕ)
+                e.unpair.2.unpair.2 <;>
+              simp [hleft, hright, LO.Propositional.Formula.imp_inj]
+          · rcases tag with _ | _ | tag <;>
+              simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+                LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+  | hand φ ψ ihφ ihψ =>
+      cases code with
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          LO.Propositional.Formula.ofNat]
+      | succ e =>
+          rcases htag : e.unpair.1 with _ | _ | _ | _ | tag
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag]
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag]
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag, ihφ, ihψ]
+            cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
+              cases hright : LO.Propositional.Formula.ofNat (α := ℕ)
+                e.unpair.2.unpair.2 <;>
+              simp [hleft, hright, LO.Propositional.Formula.and_inj]
+          · rcases tag with _ | tag <;>
+              simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+                LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+  | hor φ ψ ihφ ihψ =>
+      cases code with
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          LO.Propositional.Formula.ofNat]
+      | succ e =>
+          rcases htag : e.unpair.1 with _ | _ | _ | _ | _ | tag
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag]
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag]
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag, ihφ, ihψ]
+            cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
+              cases hright : LO.Propositional.Formula.ofNat (α := ℕ)
+                e.unpair.2.unpair.2 <;>
+              simp [hleft, hright, LO.Propositional.Formula.or_inj]
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+
+private theorem sentenceMatches_polyFueled (target : Sentence) :
+    ∃ c, PolyFueled c (sentenceMatches target) := by
+  obtain ⟨cmul, hmul⟩ := mul_polyFueled
+  induction target using LO.Propositional.Formula.rec' with
+  | hfalsum =>
+      have htag := PolyFueled.left.comp predc_polyFueled
+      obtain ⟨ceq, heq⟩ := polyFueled_eqConst htag 0
+      obtain ⟨c, hc⟩ := polyFueled_ifZero PolyFueled.id (PolyFueled.const 0) heq
+      exact ⟨c, hc.of_eq (fun code => by simp [sentenceMatches])⟩
+  | hatom a =>
+      have hpred := predc_polyFueled
+      have htag := PolyFueled.left.comp hpred
+      have hpayload := PolyFueled.right.comp hpred
+      obtain ⟨cpayload, hpayloadEq⟩ := polyFueled_eqConst hpayload a
+      obtain ⟨ctag, htagEq⟩ := polyFueled_eqConst htag 1
+      obtain ⟨cbody, hbody⟩ := polyFueled_ifZero htagEq (PolyFueled.const 0) hpayloadEq
+      obtain ⟨c, hc⟩ := polyFueled_ifZero PolyFueled.id (PolyFueled.const 0) hbody
+      exact ⟨c, hc.of_eq (fun code => by simp [sentenceMatches])⟩
+
+  | himp φ ψ ihφ ihψ =>
+      have hpred := predc_polyFueled
+      have htag := PolyFueled.left.comp hpred
+      have hpayload := PolyFueled.right.comp hpred
+      obtain ⟨cφ, hφ⟩ := ihφ
+      obtain ⟨cψ, hψ⟩ := ihψ
+      have hleft := hφ.comp (PolyFueled.left.comp hpayload)
+      have hright := hψ.comp (PolyFueled.right.comp hpayload)
+      have hproduct := hmul.comp (hleft.pair hright)
+      have hproduct' : PolyFueled _ (fun code =>
+          sentenceMatches φ code.pred.unpair.2.unpair.1 *
+            sentenceMatches ψ code.pred.unpair.2.unpair.2) :=
+        hproduct.of_eq (fun code => by simp only [Nat.unpair_pair])
+      obtain ⟨ctag, htagEq⟩ := polyFueled_eqConst htag 2
+      obtain ⟨cbody, hbody⟩ := polyFueled_ifZero htagEq (PolyFueled.const 0) hproduct'
+      obtain ⟨c, hc⟩ := polyFueled_ifZero PolyFueled.id (PolyFueled.const 0) hbody
+      exact ⟨c, hc.of_eq (fun code => by simp [sentenceMatches])⟩
+  | hand φ ψ ihφ ihψ =>
+      have hpred := predc_polyFueled
+      have htag := PolyFueled.left.comp hpred
+      have hpayload := PolyFueled.right.comp hpred
+      obtain ⟨cφ, hφ⟩ := ihφ
+      obtain ⟨cψ, hψ⟩ := ihψ
+      have hleft := hφ.comp (PolyFueled.left.comp hpayload)
+      have hright := hψ.comp (PolyFueled.right.comp hpayload)
+      have hproduct := hmul.comp (hleft.pair hright)
+      have hproduct' : PolyFueled _ (fun code =>
+          sentenceMatches φ code.pred.unpair.2.unpair.1 *
+            sentenceMatches ψ code.pred.unpair.2.unpair.2) :=
+        hproduct.of_eq (fun code => by simp only [Nat.unpair_pair])
+      obtain ⟨ctag, htagEq⟩ := polyFueled_eqConst htag 3
+      obtain ⟨cbody, hbody⟩ := polyFueled_ifZero htagEq (PolyFueled.const 0) hproduct'
+      obtain ⟨c, hc⟩ := polyFueled_ifZero PolyFueled.id (PolyFueled.const 0) hbody
+      exact ⟨c, hc.of_eq (fun code => by simp [sentenceMatches])⟩
+  | hor φ ψ ihφ ihψ =>
+      have hpred := predc_polyFueled
+      have htag := PolyFueled.left.comp hpred
+      have hpayload := PolyFueled.right.comp hpred
+      obtain ⟨cφ, hφ⟩ := ihφ
+      obtain ⟨cψ, hψ⟩ := ihψ
+      have hleft := hφ.comp (PolyFueled.left.comp hpayload)
+      have hright := hψ.comp (PolyFueled.right.comp hpayload)
+      have hproduct := hmul.comp (hleft.pair hright)
+      have hproduct' : PolyFueled _ (fun code =>
+          sentenceMatches φ code.pred.unpair.2.unpair.1 *
+            sentenceMatches ψ code.pred.unpair.2.unpair.2) :=
+        hproduct.of_eq (fun code => by simp only [Nat.unpair_pair])
+      obtain ⟨ctag, htagEq⟩ := polyFueled_eqConst htag 4
+      obtain ⟨cbody, hbody⟩ := polyFueled_ifZero htagEq (PolyFueled.const 0) hproduct'
+      obtain ⟨c, hc⟩ := polyFueled_ifZero PolyFueled.id (PolyFueled.const 0) hbody
+      exact ⟨c, hc.of_eq (fun code => by simp [sentenceMatches])⟩
+
+private theorem sentenceMatches_le_one (target : Sentence) (code : ℕ) :
+    sentenceMatches target code ≤ 1 := by
+  induction target using LO.Propositional.Formula.rec' generalizing code with
+  | hfalsum =>
+      cases code with
+      | zero => simp [sentenceMatches]
+      | succ e =>
+          simp only [sentenceMatches, Nat.succ_ne_zero, if_false, Nat.pred_succ]
+          split <;> omega
+  | hatom a =>
+      cases code with
+      | zero => simp [sentenceMatches]
+      | succ e =>
+          simp only [sentenceMatches, Nat.succ_ne_zero, if_false, Nat.pred_succ]
+          by_cases htag : e.unpair.1 = 1
+          · by_cases hpayload : e.unpair.2 = a <;> simp [htag, hpayload]
+          · simp [htag]
+  | himp φ ψ ihφ ihψ =>
+      cases code with
+      | zero => simp [sentenceMatches]
+      | succ e =>
+          simp only [sentenceMatches, Nat.succ_ne_zero, if_false, Nat.pred_succ]
+          by_cases htag : e.unpair.1 = 2
+          · simp only [htag, if_true]
+            nlinarith [ihφ e.unpair.2.unpair.1, ihψ e.unpair.2.unpair.2]
+          · simp [htag]
+  | hand φ ψ ihφ ihψ =>
+      cases code with
+      | zero => simp [sentenceMatches]
+      | succ e =>
+          simp only [sentenceMatches, Nat.succ_ne_zero, if_false, Nat.pred_succ]
+          by_cases htag : e.unpair.1 = 3
+          · simp only [htag, if_true]
+            nlinarith [ihφ e.unpair.2.unpair.1, ihψ e.unpair.2.unpair.2]
+          · simp [htag]
+  | hor φ ψ ihφ ihψ =>
+      cases code with
+      | zero => simp [sentenceMatches]
+      | succ e =>
+          simp only [sentenceMatches, Nat.succ_ne_zero, if_false, Nat.pred_succ]
+          by_cases htag : e.unpair.1 = 4
+          · simp only [htag, if_true]
+            nlinarith [ihφ e.unpair.2.unpair.1, ihψ e.unpair.2.unpair.2]
+          · simp [htag]
+
+private theorem sentenceMatches_eq_zero_iff (target : Sentence) (code : ℕ) :
+    sentenceMatches target code = 0 ↔
+      Encodable.decode (α := Sentence) code ≠ some target := by
+  constructor
+  · intro hzero hdecode
+    have hone := (sentenceMatches_eq_one_iff target code).mpr hdecode
+    omega
+  · intro hdecode
+    have hne : sentenceMatches target code ≠ 1 :=
+      fun hone => hdecode ((sentenceMatches_eq_one_iff target code).mp hone)
+    have hle := sentenceMatches_le_one target code
+    omega
+
+/-- Encoded exact lookup in one fixed rational-belief entry list. -/
+def encodedQuoteFromEntries : List (Sentence × ℚ) → ℕ → ℕ
+  | [], _ => Encodable.encode (0 : ℚ)
+  | (target, q) :: entries, code =>
+      if sentenceMatches target code = 0 then encodedQuoteFromEntries entries code
+      else Encodable.encode q
+
+private theorem encodedQuoteFromEntries_exact
+    (entries : List (Sentence × ℚ)) (code : ℕ) (target : Sentence)
+    (hdecode : Encodable.decode (α := Sentence) code = some target) :
+    encodedQuoteFromEntries entries code =
+      Encodable.encode (quoteFromEntries entries target) := by
+  induction entries with
+  | nil => simp [encodedQuoteFromEntries, quoteFromEntries]
+  | cons entry entries ih =>
+      rcases entry with ⟨ψ, q⟩
+      by_cases htarget : target = ψ
+      · subst ψ
+        have hone := (sentenceMatches_eq_one_iff target code).mpr hdecode
+        simp [encodedQuoteFromEntries, quoteFromEntries, hone]
+      · have hdecNe : Encodable.decode (α := Sentence) code ≠ some ψ := by
+          rw [hdecode]
+          simpa using htarget
+        have hzero := (sentenceMatches_eq_zero_iff ψ code).mpr hdecNe
+        simp [encodedQuoteFromEntries, quoteFromEntries, htarget, hzero, ih]
+
+private theorem encodedQuoteFromEntries_polyFueled
+    (entries : List (Sentence × ℚ)) :
+    ∃ c, PolyFueled c (encodedQuoteFromEntries entries) := by
+  induction entries with
+  | nil => exact ⟨_, PolyFueled.const (Encodable.encode (0 : ℚ))⟩
+  | cons entry entries ih =>
+      rcases entry with ⟨target, q⟩
+      obtain ⟨cmatch, hmatch⟩ := sentenceMatches_polyFueled target
+      obtain ⟨crest, hrest⟩ := ih
+      obtain ⟨c, hc⟩ := polyFueled_ifZero hmatch hrest
+        (PolyFueled.const (Encodable.encode q))
+      exact ⟨c, hc.of_eq (fun code => by simp [encodedQuoteFromEntries])⟩
+
+/-- Quote from the state at one fixed position of a finite belief-state prefix, with zero
+after the end of the prefix. -/
+def prefixQuoteFromStates : List RationalBeliefState → ℕ → Sentence → ℚ
+  | [], _, _ => 0
+  | state :: _, 0, φ => state.quote φ
+  | _ :: states, day + 1, φ => prefixQuoteFromStates states day φ
+
+/-- Raw-code form of `prefixQuoteFromStates`.  Each fixed state uses the exhaustive decoder
+matcher above, so noncanonical sentence tokens receive the same quote as canonical ones. -/
+def encodedPrefixQuoteFromStates : List RationalBeliefState → ℕ → ℕ → ℕ
+  | [], _, _ => Encodable.encode (0 : ℚ)
+  | state :: _, 0, code => encodedQuoteFromEntries state.entries code
+  | _ :: states, day + 1, code => encodedPrefixQuoteFromStates states day code
+
+theorem encodedPrefixQuoteFromStates_exact
+    (states : List RationalBeliefState) (day code : ℕ) (φ : Sentence)
+    (hdecode : Encodable.decode (α := Sentence) code = some φ) :
+    encodedPrefixQuoteFromStates states day code =
+      Encodable.encode (prefixQuoteFromStates states day φ) := by
+  induction states generalizing day with
+  | nil => simp [encodedPrefixQuoteFromStates, prefixQuoteFromStates]
+  | cons state states ih =>
+      cases day with
+      | zero =>
+          simpa [encodedPrefixQuoteFromStates, prefixQuoteFromStates,
+            RationalBeliefState.quote] using
+            encodedQuoteFromEntries_exact state.entries code φ hdecode
+      | succ day =>
+          simpa [encodedPrefixQuoteFromStates, prefixQuoteFromStates] using ih day
+
+theorem encodedPrefixQuoteFromStates_polyFueled
+    (states : List RationalBeliefState) :
+    ∃ c, PolyFueled c (fun z =>
+      encodedPrefixQuoteFromStates states z.unpair.1 z.unpair.2) := by
+  induction states with
+  | nil => exact ⟨_, PolyFueled.const (Encodable.encode (0 : ℚ))⟩
+  | cons state states ih =>
+      obtain ⟨centry, hentry⟩ := encodedQuoteFromEntries_polyFueled state.entries
+      obtain ⟨crest, hrest⟩ := ih
+      have hdayZero := hentry.comp PolyFueled.right
+      have hdaySucc := hrest.comp
+        ((predc_polyFueled.comp PolyFueled.left).pair PolyFueled.right)
+      obtain ⟨c, hc⟩ := polyFueled_ifZero PolyFueled.left hdayZero hdaySucc
+      refine ⟨c, hc.of_eq (fun z => ?_)⟩
+      cases hday : z.unpair.1 with
+      | zero =>
+          simp [encodedPrefixQuoteFromStates]
+      | succ day =>
+          simp [encodedPrefixQuoteFromStates]
+
+private theorem prefixQuoteFromStates_eq_getD
+    (states : List RationalBeliefState) (fallback : RationalBeliefState)
+    {day : ℕ} (hday : day < states.length) (φ : Sentence) :
+    prefixQuoteFromStates states day φ = (states.getD day fallback).quote φ := by
+  induction states generalizing day with
+  | nil => simp at hday
+  | cons state states ih =>
+      cases day with
+      | zero => simp [prefixQuoteFromStates]
+      | succ day =>
+          simp only [List.length_cons, Nat.succ_lt_succ_iff] at hday
+          simpa [prefixQuoteFromStates] using ih hday
+
+/-- The finite rational quote table used by the LIA prefix patch. -/
+noncomputable def liaPrefixQuote (DP : DeductiveProcess) (cutoff : ℕ) :
+    ℕ → Sentence → ℚ :=
+  prefixQuoteFromStates (liaStatePrefix DP cutoff)
+
+/-- Polynomial raw-code implementation of `liaPrefixQuote`. -/
+noncomputable def liaPrefixQuoteCode (DP : DeductiveProcess) (cutoff : ℕ) :
+    ℕ → ℕ → ℕ :=
+  encodedPrefixQuoteFromStates (liaStatePrefix DP cutoff)
+
+theorem liaPrefixQuote_exact (DP : DeductiveProcess) (cutoff : ℕ)
+    (day : ℕ) (hday : day < cutoff) (φ : Sentence) :
+    liaHistory DP day φ = (liaPrefixQuote DP cutoff day φ : ℝ) := by
+  have hprefix :
+      liaPrefixQuote DP cutoff day φ = (liaStates DP day).quote φ := by
+    rw [liaPrefixQuote,
+      prefixQuoteFromStates_eq_getD (liaStatePrefix DP cutoff) (liaStates DP 0)
+        (by simpa [liaStatePrefix_length] using hday) φ,
+      liaStatePrefix_getD DP hday]
+  simp [liaHistory, RationalBeliefState.toValuation, hprefix]
+
+theorem liaPrefixQuoteCode_exact (DP : DeductiveProcess) (cutoff day code : ℕ)
+    (φ : Sentence) (hdecode : Encodable.decode (α := Sentence) code = some φ) :
+    liaPrefixQuoteCode DP cutoff day code =
+      Encodable.encode (liaPrefixQuote DP cutoff day φ) := by
+  exact encodedPrefixQuoteFromStates_exact (liaStatePrefix DP cutoff) day code φ hdecode
+
+theorem liaPrefixQuoteCode_polyFueled (DP : DeductiveProcess) (cutoff : ℕ) :
+    ∃ c, PolyFueled c (fun z =>
+      liaPrefixQuoteCode DP cutoff z.unpair.1 z.unpair.2) :=
+  encodedPrefixQuoteFromStates_polyFueled (liaStatePrefix DP cutoff)
+
+end PrefixPatchCompile
+
+/-- **Concrete finite-prefix compiler (`M7-PREFIX-PATCH`).**  The LIA's first `cutoff`
+rational belief states form a fixed finite table.  Exhaustive raw sentence matching and the
+flat administrative freeze transducer compile that table into a polynomial token emitter. -/
+noncomputable def liaEfficientPrefixPatch (DP : DeductiveProcess) (cutoff : ℕ) :
+    EfficientPrefixPatch (liaHistory DP) cutoff where
+  quote := PrefixPatchCompile.liaPrefixQuote DP cutoff
+  quote_exact := PrefixPatchCompile.liaPrefixQuote_exact DP cutoff
+  preserves_ec := by
+    intro Tr hTr
+    obtain ⟨cq, hquotePoly⟩ :=
+      PrefixPatchCompile.liaPrefixQuoteCode_polyFueled DP cutoff
+    exact PrefixPatchCompile.freezeBefore_preserves_ec
+      (PrefixPatchCompile.liaPrefixQuote DP cutoff)
+      (PrefixPatchCompile.liaPrefixQuoteCode DP cutoff) cutoff
+      (PrefixPatchCompile.liaPrefixQuoteCode_exact DP cutoff)
+      hquotePoly Tr hTr
 
 #print axioms polyFueled_dovetailFound
 #print axioms polyFueled_deadlinePassed
+#print axioms AffineCombination.PolySequence.primrec
+#print axioms AffineCombination.settlementCheckAtFuel_prim
+#print axioms SettlementChecker.ofComputations
 #print axioms PatientSettlementClock.ofSemiDecider
 #print axioms PatientSettlementClock.ofChecker
+#print axioms PatientSettlementClock.ofComputations
 #print axioms SettlementChecker.toSemiDecider
 #print axioms AffineCombination.DeterminedViaTheory.settlementTest_iff_settled
 #print axioms AffineCombination.settlementTestBool_iff
@@ -2388,6 +3505,7 @@ end SettlementCompile
 #print axioms triangularRepeat_repeats
 #print axioms EfficientRepeatedEnumeration.ofPoly
 #print axioms EfficientRepeatedEnumeration.ofCE
+#print axioms PrefixPatchCompile.freezeBefore_preserves_ec
+#print axioms liaEfficientPrefixPatch
 
 end LogicalInduction
-

@@ -140,6 +140,10 @@ writeup must say so explicitly.
 
 - Namespace `LogicalInduction`; file layout mirrors the roadmap's Parts (see
   `LogicalInduction.lean`).
+- **Commit completed coherent work as you go.** Do not leave a finished green tranche
+  accumulating in the working tree while starting the next tranche; checkpoint it with a
+  focused commit after its relevant build/audit gate passes. Preserve unrelated user changes
+  and never use a commit as a substitute for reporting an incomplete or broken stopping point.
 - One `Asymptotics` module owns the limit vocabulary (`≈ₙ`/`≳ₙ`, "eventually within ε",
   "converges to"), built on Mathlib's `Tendsto (· − ·) atTop (𝓝 0)` and `∀ᶠ n in atTop`.
   Do not redefine these per file (`dd:asymp`). Default to the **limiting** form (the

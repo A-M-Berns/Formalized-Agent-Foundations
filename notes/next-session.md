@@ -1,4 +1,4 @@
-# Logical Induction working plan — M7 active
+# Logical Induction working plan — M7 exit active
 
 ## Aristotle orchestration — working (2026-07-17)
 
@@ -27,7 +27,7 @@ Mathlib-provable lemmas I can state exactly.
   Aristotle can't resolve). The extraction that makes a fact *importable* is the same one
   that makes it *submittable*.
 
-## ▶▶ PROJECT SCOPE & ENDPOINT — the plan of record (2026-07-17)
+## ▶▶ PROJECT SCOPE & ENDPOINT — the plan of record (2026-07-18)
 
 **Read this before anything else.** It fixes the target we are driving to and the order of
 operations. Individual-task detail lives in START HERE below; this section is the map.
@@ -75,8 +75,8 @@ polish before the witness scope is frozen means re-polishing. So: build → free
 
 - Existence theorem: **done, unconditional, axiom-clean.**
 - Property tail (M3–M5): **green, conditional.**
-- Witnesses: **2 of 15 fully done**; **1 in progress** (`M7-PATIENT-CLOCK`, ~⅔ — next session);
-  the construct-set for the endpoint is **3–4 witnesses total**, the rest disclose.
+- Witnesses: **4 of 15 constructed and eleven disclosed**. The construction-scope endpoint
+  is closed; reopen a boundary only as an explicit product goal.
 - Full build green, zero `sorry`, capstones expose only the three approved axioms.
 
 ### The 15 witnesses — current state & endpoint disposition
@@ -89,60 +89,142 @@ are rough and assume the checker/EF infrastructure already built (steps 13–16)
 |---|---------|------|----------------------|----------------|------|
 | 1 | `M7-HIST-EVALN` | — | construct | **done** (axiom-clean) | — |
 | 2 | `M7-CE-REPETITION` | — | construct | **done** (axiom-clean) | — |
-| 3 | `M7-PATIENT-CLOCK` | 1 | **construct** | **in progress** (~⅔; steps 13–16 done; items A/B/C remain — see START HERE) | 1–2 sessions |
-| 4 | `M7-PREFIX-PATCH` | 1 | **construct** | to do | 1–2 sessions (inhabitable for LIA: per-day quote table is a finite hardcodable lookup; also *falsifies* the paper's `thm:ifp` proof — real content) |
-| 5 | `M7-QUOTE-AFFINE` | 1→3 | **disclose** (decision) | to do | **construct = weeks** (needs first-order quotation: Foundation's `codeOfPartrec'` + `FixedPoint`, depends on `M7-COMP-SYNTAX`). Inhabitable, argument sound & non-circular. **Recommend disclose**; construct only if the self-trust content is wanted in-kernel. |
-| 6 | `M7-PREFIX-MACHINE` | 3 | **construct** (the one showcase) — *optional* | to do | ~1 week (prefix-free machine + Kraft inequality; most self-contained Tier 3). Drop to *disclose* if leanest close is wanted. |
-| 7 | `M7-FEEDBACK-EMIT` | 2 | disclose (or construct ~1 day) | to do | most tractable Tier 2; checker wall is the same one `M7-PATIENT-CLOCK` retires — construct is cheap once PATIENT-CLOCK lands |
-| 8 | `M7-FEEDBACK-TRUTH` | 2 | disclose (or construct ~1 day) | to do | as #7 |
-| 9 | `M7-DUS-PREFIX-SYNTAX` | 2 | disclose (or construct ~1 day) | to do | fresh independent atoms |
-| 10 | `M7-SCON-COMPILER` | 2 | disclose (or construct ~1 day) | to do | safe-ratio/gated translator |
-| 11 | `M7-SCON-PRESENTATION` | 2 | disclose (or construct ~1 day) | to do | — |
-| 12 | `M7-LUV-SYNTAX` | 2 | disclose (or construct ~1 day) | to do | — |
-| 13 | `M7-DUS-APPROX` | 3 | **disclose** | to do | needs a concrete Solomonoff–Levin universal semimeasure; weeks to construct |
-| 14 | `M7-STRICT-SEPARATORS` | 3 | **disclose** | to do | recursively-inseparable c.e. sets + universal-semimeasure-mass→0; deepest, not in Mathlib |
-| 15 | `M7-COMP-SYNTAX` | 3 | **disclose** | to do | Gödel encoding + Σ₁-representability of halting; also the dependency under #5 |
+| 3 | `M7-PATIENT-CLOCK` | 1 | **construct** | **done** (axiom-clean; steps 17–19 close the checker and direct clock constructor) | — |
+| 4 | `M7-PREFIX-PATCH` | 1 | **construct** | **done** (axiom-clean; parser-transparent raw transducer + finite LIA quote lookup) | — |
+| 5 | `M7-QUOTE-AFFINE` | 1→3 | **disclose** | **disclosed and field-audited** | README records the first-order quotation realizer, exact current/deferred price premises, primary citations, and consumers. |
+| 6 | `M7-PREFIX-MACHINE` | 3 | **disclose** | **disclosed and field-audited** | README records the universal self-delimiting-machine/Kraft realizer and fixed negation overhead. |
+| 7 | `M7-FEEDBACK-EMIT` | 2 | **disclose** | **disclosed and field-audited** | Exact token-emission fields; no economic conclusion. |
+| 8 | `M7-FEEDBACK-TRUTH` | 2 | **disclose** | **disclosed and field-audited** | Exact delayed price identity is disclosed; accuracy and unbiasedness are not assumed. |
+| 9 | `M7-DUS-PREFIX-SYNTAX` | 2 | **disclose** | **disclosed and field-audited** | Exact independent-bit semantics and finite realizability are disclosed. |
+| 10 | `M7-SCON-COMPILER` | 2 | **disclose** | **disclosed and field-audited** | The market-dependent denominator floor and conditional-market computability are explicit. |
+| 11 | `M7-SCON-PRESENTATION` | 2 | **disclose** | **disclosed and field-audited** | Conjunction semantics and combined-process computability are explicit. |
+| 12 | `M7-LUV-SYNTAX` | 2 | **disclose** | **disclosed and field-audited** | Threshold/world semantics and market-indexed mesh bounds are explicit. |
+| 13 | `M7-DUS-APPROX` | 3 | **disclose** | **disclosed and field-audited** | Universal-semimeasure approximation and convergence are cited; domination is not assumed. |
+| 14 | `M7-STRICT-SEPARATORS` | 3 | **disclose** | **disclosed and field-audited** | The substantive universal-semimeasure-mass→0 field is explicit. |
+| 15 | `M7-COMP-SYNTAX` | 3 | **disclose** | **disclosed and field-audited** | Gödel encoding and computation representability are cited; no market conclusion. |
 
-**Construct-set for the endpoint:** #3 `PATIENT-CLOCK` (finish), #4 `PREFIX-PATCH`, and
-optionally #6 `PREFIX-MACHINE` (showcase). Everything else **disclose**. `QUOTE-AFFINE` (#5) is
-the one flagged decision — Tier-1 by content but Tier-3 by cost.
+**Construction-scope endpoint:** complete. #1–#4 are constructed and #5–#15 are disclosed
+in the README's “Axioms and disclosed M7 boundaries” packet. Literal all-15 construction
+remains a separately identified stronger future scope.
 
-**Realistic effort to green on the endpoint:** ~2–4 weeks of construction (#3 + #4 + optional
-#6) plus a few days writing the ~9 disclosures. *Not* "days" — the earlier "days not weeks"
-estimate ignored that `PREFIX-MACHINE` and a constructed `QUOTE-AFFINE` are each week-scale;
-disclosing them is what keeps the total bounded.
+**Realistic remaining effort to the final exit point:** about **7–12 focused workdays**, plus
+Anson's review turnaround: 2–4 days for consolidation/paper comparison/read-through
+preparation and 2–4 days for review
+repairs plus the fresh-context errata audit and final recheck. Constructing `PREFIX-MACHINE`
+would add about one week; constructing `QUOTE-AFFINE` is higher-variance and depends on
+`M7-COMP-SYNTAX`.
 
-### `M7-PATIENT-CLOCK` — the next session
+### `M7-PREFIX-PATCH` — complete 2026-07-18
 
-The one witness in flight, and the next session's work. Items 1–3 of the original four-item
-close-out are **done** (steps 13–14: `quoteAtFuel_prim`, `efPriceQueries_prim`, privates
-exposed); item 4 is **~⅔ done** (steps 15–16: the `readyAtFuel`-gated computable EF evaluator
-`denoteRatComp` + its correctness `denoteRatComp_eq`, and the computable value evaluator
-`valueRatCompAt`). **Remaining:** (A) `settlementCheckAtFuel_prim` (all leaves now in hand,
-incl. `valueRatCompAt_prim`), (B) `rfindOpt` + `exists_code` → `SettlementChecker.ofComputations`
-(the one genuinely new machinery — Partrec/code extraction), (C) the disclosed
-`PolySequence As → Primrec As` bridge (or prove it, ~hours, to close unconditionally). Full
-detail in "WHAT IS LEFT ON `M7-PATIENT-CLOCK`" below.
+`liaEfficientPrefixPatch DP cutoff` now inhabits
+`EfficientPrefixPatch (liaHistory DP) cutoff`. The implementation retains each frozen price
+leaf under a dead `letE`, making the flat rewrite parser-transparent and exactly
+rank-preserving (cost is at most tripled). A polynomial raw-stream bridge handles arbitrary
+malformed clocked trader programs; the transducer correctness proof shows validation commutes
+with freezing. The finite LIA lookup recognizes every noncanonical raw sentence code accepted
+by Foundation's decoder and emits the exact quote from `liaStatePrefix`. The affected
+2,467-job roll-up and 2,680-job full build are green; executable-hole/diff checks pass and
+`freezeBefore_preserves_ec`/`liaEfficientPrefixPatch` expose only the approved three axioms.
 
 ---
 
-## ▶ START HERE — closing out M7 (handoff 2026-07-16)
+## ▶ START HERE — consolidate the frozen public surface (handoff 2026-07-18)
+
+The conditional+disclosed **construction-scope endpoint is green**: four witnesses are
+constructed, eleven are field-audited and disclosed with primary citations, the README and
+ledger agree on the public claim, and the 15-row inventory has no open cells. Do not reopen
+a compiler witness, repeat the disclosure pass, request piecemeal statement read-through,
+or start `M7-ERRATA-AUDIT` yet.
+
+Verification: the construction/property/integration roll-up completed 2,469 jobs, the full
+build completed 2,680, the executable-hole and project-axiom scans are empty (broad keyword
+hits are comments only), `git diff --check` passes, and the audited capstones expose exactly
+`propext`, `Classical.choice`, and `Quot.sound`.
+
+The next work is the first item under “What remains after endpoint-green”: consolidate the
+public `Sentence`/Foundation and `Asymptotics` surfaces, naming, module layout, docstrings,
+and remaining stale prose. Then finish the M7 paper comparison and generate the frozen
+statement/definition inventory for Anson's deferred read-through.
+
+## ✅ Disclosure packet and endpoint-green checklist (completed 2026-07-18)
 
 Core M7 is complete and unconditional: `LIA_is_logical_inductor` and
 `exists_logical_inductor` are proved, axiom-clean, and depend on **none** of the fifteen
-witnesses. Repo has **zero `sorry`** and full build is green (2,680 jobs). Active work is
-`Construction/M7Witnesses.lean` + the property-tail witnesses.
+witnesses. Repo has **zero executable `sorry`** and full build is green (2,680 jobs).
+The required construct-set is closed. The recommended default is to **disclose all eleven
+remaining witnesses**, including `M7-PREFIX-MACHINE`, and move immediately to the trust-surface
+work. Do not start another compiler witness unless Anson explicitly reopens its scope.
 
-**Witnesses done (2 of 15, axiom-clean, no `sorry`):** `M7-HIST-EVALN`
+**Witnesses done (4 of 15, axiom-clean, no `sorry`):** `M7-HIST-EVALN`
 (`codeEvalnNat_polyFueled` — universal poly-clock bounded `Code.evaln` simulator) and
-`M7-CE-REPETITION` (`EfficientRepeatedEnumeration.ofCE`). Both in `M7Witnesses.lean`.
+`M7-CE-REPETITION` (`EfficientRepeatedEnumeration.ofCE`), plus `M7-PATIENT-CLOCK`
+(`PatientSettlementClock.ofComputations`) and `M7-PREFIX-PATCH`
+(`liaEfficientPrefixPatch`).
 
-**`M7-PATIENT-CLOCK`: one obligation left, and it is now purely mechanical (~2 days — see
-the next section).** `PatientSettlementClock` is **constructed**
-(`PatientSettlementClock.ofChecker`) — all six fields discharged, no `sorry`, axiom-clean.
-Steps 5–11 (2026-07-16) compiled the settlement test down to a `Bool` function that is
-*proved sound and complete* against `SettlementTestBool`; only wrapping it in a
-`Nat.Partrec.Code` remains. Every epistemic question is settled and proved:
+### Completed task — disclosure packet
+
+The completed pass used this acceptance order:
+
+1. **Freeze and reconcile the scope.** Update `PROGRESS.md`'s old literal-all-15 completion
+   contract to the plan of record: four constructed witnesses, eleven disclosed witnesses,
+   unconditional existence, and explicitly conditional M3–M5 property corollaries. Preserve a
+   separate sentence explaining what literal all-15 construction would require; do not silently
+   redefine the historical contract.
+2. **Repair the stale Logical Induction README status.** It still says M6–M7 construction and
+   unconditionalization remain. Replace that with the actual state, then add a dedicated
+   **“Axioms and disclosed M7 boundaries”** section modeled on `Barasz/`.
+3. **Write one auditable disclosure for each remaining witness:**
+   `M7-QUOTE-AFFINE`, `M7-PREFIX-MACHINE`, `M7-FEEDBACK-EMIT`,
+   `M7-FEEDBACK-TRUTH`, `M7-DUS-PREFIX-SYNTAX`, `M7-SCON-COMPILER`,
+   `M7-SCON-PRESENTATION`, `M7-LUV-SYNTAX`, `M7-DUS-APPROX`,
+   `M7-STRICT-SEPARATORS`, and `M7-COMP-SYNTAX`.
+4. **For every disclosure, record six things:** the exact Lean interface/declaration and source
+   file; the paper definition/theorem it represents; the standard external result or concrete
+   construction that would inhabit it; a primary citation; the downstream conditional
+   capstones that consume it; and an explicit statement of what conclusion the interface does
+   *not* assume. Group closely coupled interfaces under one witness rather than inflating the
+   count.
+5. **Cross-check the disclosures against the actual structure fields.** A prose claim is not
+   enough: inspect every field for hidden price, convergence, exploitation, or LIC conclusions,
+   and reconcile any mismatch in the Lean docstring and `PROGRESS.md` during the same session.
+6. **Run the endpoint-green gate:** affected roll-up, full `lake build`, executable-hole scan,
+   `git diff --check`, public capstone axiom reports, and a 15-row constructed/disclosed
+   inventory with no “to do” cells. Stop there; consolidation/read-through comes only after
+   this gate is green.
+
+The disclosure pass should start with the three dependency roots because they explain several
+downstream rows at once: `M7-COMP-SYNTAX` → `M7-QUOTE-AFFINE`, then
+`M7-PREFIX-MACHINE`/`M7-DUS-APPROX`/`M7-STRICT-SEPARATORS`, then the six Tier-2 operational
+witnesses. This ordering makes the README tell a dependency story instead of reading like an
+unstructured list of omissions.
+
+### What remains after endpoint-green
+
+Once the eleven disclosures are written and verified, the remaining exit work is deliberately
+trust-facing rather than theorem-volume work:
+
+1. **Freeze and consolidate the public surface:** `Sentence`/Foundation leakage,
+   `Asymptotics` vocabulary, naming, module layout, docstrings, and stale status prose.
+2. **Finish the M7 paper comparison:** line-by-line comparison for Budgeter, Trading Firm,
+   dominance, recursive LIA, `thm:lia`, and `thm:li`; enumerate every indexing/modeling
+   substitution and link it to the ledger.
+3. **Generate the frozen statement/definition inventory** for all milestone-facing M1–M7
+   declarations, with source locations and paper labels.
+4. **Anson's deferred human read-through:** statements and definitions only, followed by a
+   correction build. This is a real exit dependency; calendar time is not estimable here.
+5. **Run `M7-ERRATA-AUDIT` in a genuinely fresh context:** re-derive every paper erratum,
+   scrutinize the `thm:ifp` counterexample/follow-up status, repair findings, then perform an
+   independent correction recheck.
+6. **Final release gate:** construction/property/integration/full builds; executable-hole,
+   diff, and axiom audits; README/ledger consistency; no open or ambiguous completion cells;
+   final clean commit(s) and handoff.
+
+The exit point is reached only when all six stages above are complete. “Eleven disclosures
+written” closes the construction-scope phase; it does **not** by itself close M7.
+
+**`M7-PATIENT-CLOCK` is complete.** `PatientSettlementClock` is constructed directly from
+the polynomial affine family and concrete market/process computations; no checker hypothesis
+or disclosed `PolySequence → Primrec` bridge remains. Every epistemic question is proved:
 - settlement *occurs* at a finite stage (`exists_settled_stage` — the paper never argues
   this; `eventually_close` gives only approximate determination and is too weak);
 - the test needs **no** `truth` oracle (`settled_iff_agree`);
@@ -152,17 +234,17 @@ Steps 5–11 (2026-07-16) compiled the settlement test down to a `Bool` function
   (`DeferralFunction` gives fuel poly in `f n`, not `n`) via the sound under-approximation
   `deadlinePassed`.
 
-### ⚠ WHAT IS LEFT ON `M7-PATIENT-CLOCK` (updated 2026-07-17 — steps 13–16 landed)
+### ✅ `M7-PATIENT-CLOCK` closure record (2026-07-18 — steps 13–19 landed)
 
-Inhabit `SettlementChecker` (`M7Witnesses.lean`): a `Nat.Partrec.Code` recognizing
+`SettlementChecker.ofComputations` now supplies a `Nat.Partrec.Code` recognizing
 `AffineCombination.SettlementTestBool`. No efficiency is required (the dovetail absorbs the
 exponential) and it carries no semantics.
 
 **The node's real content is finished.** `settlementCheckAtFuel_{sound,complete}` **is** the
 biconditional `spec` asks for.
 
-**Items 1, 2, 3 are DONE (steps 13–14), and item 4 is ~⅔ done (steps 15–16). All green,
-axiom-clean, committed.**
+**All items are done. Targeted builds are green; the new capstones expose only the approved
+three axioms.**
 
 - **✅ Item 3 (step 13):** `efRatCompiledEval{,_eq,_prim}` + `processStageAtFuel_prim`
   un-`private`d in `LIACompiler.lean`. Also un-`private`d later: `efChildPair_lt`,
@@ -183,9 +265,9 @@ axiom-clean, committed.**
   in `((A, fuel), l)`. (This is where the `Nat.sqrt` gotcha finally fired; fixed with scoped
   `local irreducible Nat.sqrt`.)
 
-#### ▶ WHAT REMAINS on item 4 (the assembly) — the next session starts here
+#### ✅ Item 4 assembly — completed in steps 17–19
 
-**A. `settlementCheckAtFuel_prim`** — `Primrec fun (q : AffineCombination × ℕ × ℕ) =>
+**A. `settlementCheckAtFuel_prim` (step 17, done)** — `Primrec fun (q : AffineCombination × ℕ × ℕ) =>
 q.1.settlementCheckAtFuel market process q.2.1 q.2.2` (input `(A, j, fuel)`). All leaves are
 now in hand: `processStageAtFuel_prim` (match on `stageAtFuel fuel j`), `settlementAtomLimit_prim`,
 `allBitLists_prim`, `stageSatBits_prim`, and **`valueRatCompAt_prim`** (step 16) for the
@@ -195,24 +277,21 @@ calls via `valueRatCompAt_eq` first. It is a nested double `List.all` over `allB
 `Option.rec`/match on the stage. Sizable but purely mechanical; the whole thing is
 primitive recursive (the only unbounded search is the *outer* `rfindOpt`).
 
-**B. `rfindOpt` → `Code` → `SettlementChecker`.** With `settlementCheckAtFuel_prim` (hence
+**B. `rfindOpt` → `Code` → `SettlementChecker` (step 19, done).** With `settlementCheckAtFuel_prim` (hence
 `Computable`), build the partial function `fun z => rfindOpt (fun fuel => if
 (As z.unpair.1).settlementCheckAtFuel market process z.unpair.2 fuel then some 1 else none)`,
 show it `Partrec` (`Partrec.rfindOpt` + `Computable` of the inner guard), extract a
 `Nat.Partrec.Code` via `Nat.Partrec.Code.exists_code`, and prove `spec` from
 `settlementCheckAtFuel_{sound,complete}` (both already proved). `spec` is
 `acceptsWithin c F ⟨i,j⟩ = decide (evaln F c ⟨i,j⟩ = some 1)`; monotonicity from
-`acceptsWithin_mono`. Package as a new `SettlementChecker.ofComputations` constructor.
+`acceptsWithin_mono`. This is packaged as `SettlementChecker.ofComputations`.
 **This is the one genuinely new machinery (Partrec/code extraction, not Primrec).**
 
-**C. The disclosed bridge.** `ofComputations` needs `As : ℕ → AffineCombination` computable;
-take **`Primrec As` as an explicit hypothesis** and **ledger `PolySequence As → Primrec As`
-as owed** (do NOT silently swap — type-`(c)`). This is why the node closes *modulo one
-disclosed bridge*, not unconditionally. (`affineCombinationPrimcodable` makes `Primrec As`
-statable.) Consider whether to just *prove* `PolySequence As → Primrec As` instead — it is
-a few hours on existing machinery (`PolyFueled` → `IsPolyBounded` clock → `evaln`; the
-`PolySegStream` serializations invert via `EF.deserialize`/`deserialize_serialize`) and
-would close the node unconditionally. Flagged for Anson at the start of this session.
+**C. The polynomial bridge (step 18, done).** `PolyFueled.primrec` evaluates its code at the
+explicit polynomial clock, `PolySegStream.primrec` reconstructs a token list from its length
+and emitter, and `AffineCombination.PolySequence.primrec` assembles the decoded constants,
+coefficients, sentences, and term list. `ofComputations` therefore consumes `PolySequence As`
+directly; no type-`(c)` disclosure remains.
 
 ### ⚠ The one place a shortcut still yields a *wrong witness*
 
@@ -345,11 +424,12 @@ Solomonoff–Levin universal semimeasure first), `M7-STRICT-SEPARATORS` (recursi
 c.e. sets + universal-semimeasure-mass→0, a real computability theorem not in Mathlib —
 deepest), `M7-COMP-SYNTAX` (Gödel encoding + proof calculus for Σ₁-representability of halting).
 
-**Recommended strong-but-honest close:** Tier 1 constructed + one Tier-3 showcase
-(`PREFIX-MACHINE`) + everything else disclosed with cited standard results, exactly like the
-finished `Barasz/` names its two unproved facts. That is days, not weeks. Full literal
-M7-contract closure (all 15 constructed) is weeks and mostly re-proving known objects — a
-deliberate decision for Anson, since the disclose route does not meet the contract's letter.
+**Superseded recommendation (updated 2026-07-18):** the required construct-set is now complete:
+`HIST-EVALN`, `CE-REPETITION`, `PATIENT-CLOCK`, and `PREFIX-PATCH` are built and axiom-clean.
+For the project exit, disclose every remaining boundary, including `PREFIX-MACHINE`; construct
+that witness only if Anson explicitly reopens a Kraft/prefix-machine showcase goal. Reconcile
+the old literal-all-15 contract transparently in `PROGRESS.md` rather than claiming that the
+conditional+disclosed endpoint satisfies its letter.
 
 **GOTCHA (read first, will recur every step):** `Primrec` proofs over the deep product
 input types here blow up `whnf` on `Nat.sqrt` (via `Nat.unpair` in the `Primcodable`

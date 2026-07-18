@@ -2746,7 +2746,7 @@ private theorem efStreamFinish_prim : Primrec efStreamFinish := by
             | zero => exact (hm rfl).elim
             | succ mode => rfl
 
-private theorem deserializeTrades_prim : Primrec deserializeTrades := by
+theorem deserializeTrades_prim : Primrec deserializeTrades := by
   have hread : Primrec fun tokens : List ℕ =>
       EF.streamReadFrom tokens (some EF.streamInitial) :=
     efStreamReadFrom_prim.comp Primrec.id (Primrec.const (some EF.streamInitial))

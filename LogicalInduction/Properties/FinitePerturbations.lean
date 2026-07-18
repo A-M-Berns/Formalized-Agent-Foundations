@@ -3,8 +3,10 @@
 
 The paper transports an exploiting trader across a finite change of market history by
 replacing every old price leaf in its feature syntax with the corresponding rational
-constant.  This file makes that transformation literal and proves its rank, semantic,
-net-worth, and exploitation laws.
+constant.  This file realizes that semantics with an administrative dead binding which
+retains the original price leaf, and proves its rank, size, semantic, net-worth, and
+exploitation laws.  Retaining the leaf is what makes the flat rewrite parser-transparent
+even on malformed raw trader programs.
 
 ## PAPER ERRATUM — the appendix proof of `thm:ifp` has a gap (see PROGRESS.md "Paper errata")
 
@@ -45,8 +47,9 @@ Consequently `lic_iff_of_finitePerturbation` is **strictly weaker than the paper
 `thm:ifp`**: it does not cover every finite perturbation of a computable market, only those
 whose frozen prefix admits an efficient presentation.  It is not vacuous — for `LIA` the
 per-day quote table is a finite entry list (`RationalBeliefState`, `MarketMaker.lean`), so
-the patch is a hardcodable finite lookup and `M7-PREFIX-PATCH` can discharge it — but the
-restriction must be stated whenever this theorem is cited as the paper's.
+the patch is a hardcodable finite lookup and `liaEfficientPrefixPatch` discharges
+`M7-PREFIX-PATCH` — but the restriction must be stated whenever this theorem is cited as
+the paper's.
 -/
 import LogicalInduction.Engine
 import LogicalInduction.Computable
@@ -57,9 +60,16 @@ open scoped BigOperators
 
 namespace EF
 
-/-- Replace every price leaf strictly before `cutoff` by its exact rational quote. -/
+/-- Freeze every price leaf strictly before `cutoff` at its exact rational quote.
+
+The administrative `letE` deliberately retains the dead original price leaf.  Its body is
+the constant quote, so the denotation is independent of that leaf, while retaining it makes
+the flat-token rewrite parser-transparent and preserves the feature's original rank.  This
+matters for arbitrary clocked trader programs: malformed sentence tokens stay malformed and
+a rank-invalid source program cannot become valid merely because an old leaf was frozen. -/
 def freezeBefore (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) : EF → EF
-  | .price φ day => if day < cutoff then .const (quote day φ) else .price φ day
+  | .price φ day =>
+      if day < cutoff then .letE (.price φ day) (.const (quote day φ)) else .price φ day
   | .const q => .const q
   | .add a b => .add (a.freezeBefore quote cutoff) (b.freezeBefore quote cutoff)
   | .mul a b => .mul (a.freezeBefore quote cutoff) (b.freezeBefore quote cutoff)
@@ -69,33 +79,444 @@ def freezeBefore (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) : EF → EF
   | .letE value body =>
       .letE (value.freezeBefore quote cutoff) (body.freezeBefore quote cutoff)
 
-/-- Freezing old leaves never increases the feature's information horizon. -/
-theorem freezeBefore_rank_le (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
-    (e.freezeBefore quote cutoff).rank ≤ e.rank := by
+/-- The retained dead leaf makes the administrative freeze rank-preserving. -/
+@[simp] theorem freezeBefore_rank (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
+    (e.freezeBefore quote cutoff).rank = e.rank := by
   induction e with
   | price φ day =>
       simp only [freezeBefore]
       split <;> simp
   | const q => simp [freezeBefore]
-  | add a b iha ihb => simpa [freezeBefore] using max_le_max iha ihb
-  | mul a b iha ihb => simpa [freezeBefore] using max_le_max iha ihb
-  | max a b iha ihb => simpa [freezeBefore] using max_le_max iha ihb
-  | safeRecip a iha => simpa [freezeBefore] using iha
+  | add a b iha ihb => simp [freezeBefore, iha, ihb]
+  | mul a b iha ihb => simp [freezeBefore, iha, ihb]
+  | max a b iha ihb => simp [freezeBefore, iha, ihb]
+  | safeRecip a iha => simp [freezeBefore, iha]
   | var i => simp [freezeBefore]
-  | letE value body ihv ihb => simpa [freezeBefore] using max_le_max ihv ihb
+  | letE value body ihv ihb => simp [freezeBefore, ihv, ihb]
 
-/-- The syntax transformation is size-preserving at the structural-node level. -/
-@[simp] theorem freezeBefore_cost (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
-    (e.freezeBefore quote cutoff).cost = e.cost := by
+theorem freezeBefore_rank_le (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
+    (e.freezeBefore quote cutoff).rank ≤ e.rank := by
+  rw [freezeBefore_rank]
+
+/-- The administrative binding makes the literal rewrite at most three times larger. -/
+theorem freezeBefore_cost_le (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
+    (e.freezeBefore quote cutoff).cost ≤ 3 * e.cost := by
   induction e with
-  | price φ day => simp only [freezeBefore]; split <;> rfl
-  | const q => rfl
-  | add a b iha ihb => simp only [freezeBefore, cost, iha, ihb]
-  | mul a b iha ihb => simp only [freezeBefore, cost, iha, ihb]
-  | max a b iha ihb => simp only [freezeBefore, cost, iha, ihb]
-  | safeRecip a iha => simp only [freezeBefore, cost, iha]
-  | var i => rfl
-  | letE value body ihv ihb => simp only [freezeBefore, cost, ihv, ihb]
+  | price φ day => simp only [freezeBefore]; split <;> simp [cost]
+  | const q => norm_num [freezeBefore, cost]
+  | add a b iha ihb => simp only [freezeBefore, cost]; omega
+  | mul a b iha ihb => simp only [freezeBefore, cost]; omega
+  | max a b iha ihb => simp only [freezeBefore, cost]; omega
+  | safeRecip a iha => simp only [freezeBefore, cost]; omega
+  | var i => norm_num [freezeBefore, cost]
+  | letE value body ihv ihb => simp only [freezeBefore, cost]; omega
+
+/-! #### Flat-token presentation of the prefix freeze
+
+The retained price leaf makes the compiler a bounded streaming transducer.  It copies every
+input token and, immediately after an old price frame `[0, phi, day]`, appends the constant
+and administrative-binding suffix `[1, quote, 8]`. -/
+
+/-- Parser control needed by the flat-token prefix transducer: `(mode, pendingSentenceCode)`.
+The modes agree with `EF.streamStep`; only mode `2` uses the pending code. -/
+abbrev FreezeTokenState := ℕ × ℕ
+
+def freezeTokenNext (state : FreezeTokenState) (token : ℕ) : FreezeTokenState :=
+  match state.1 with
+  | 0 =>
+      if token = 0 then (1, 0)
+      else if token = 1 then (3, 0)
+      else if token = 6 then (4, 0)
+      else if token = 7 then (5, 0)
+      else (0, 0)
+  | 1 => (2, token)
+  | _ => (0, 0)
+
+/-- Tokens emitted while consuming one source token. -/
+def freezeTokenEmit (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+    (state : FreezeTokenState) (token : ℕ) : List ℕ :=
+  if state.1 = 2 ∧ token < cutoff then
+    [token, 1, quoteCode token state.2, 8]
+  else
+    [token]
+
+/-- Run the prefix transducer, returning its final parser control and emitted stream. -/
+def freezeTokenRun (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) :
+    FreezeTokenState → List ℕ → FreezeTokenState × List ℕ
+  | state, [] => (state, [])
+  | state, token :: tokens =>
+      let rest := freezeTokenRun quoteCode cutoff (freezeTokenNext state token) tokens
+      (rest.1, freezeTokenEmit quoteCode cutoff state token ++ rest.2)
+
+/-- Control state before source-token index `j`. -/
+def freezeTokenControlAt (tokenFn : ℕ → ℕ) (n : ℕ) : ℕ → FreezeTokenState
+  | 0 => (0, 0)
+  | j + 1 => freezeTokenNext (freezeTokenControlAt tokenFn n j)
+      (tokenFn (Nat.pair n j))
+
+@[simp] theorem freezeTokenRun_nil (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+    (state : FreezeTokenState) :
+    freezeTokenRun quoteCode cutoff state [] = (state, []) := rfl
+
+theorem freezeTokenRun_append (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+    (state : FreezeTokenState) (xs ys : List ℕ) :
+    freezeTokenRun quoteCode cutoff state (xs ++ ys) =
+      let first := freezeTokenRun quoteCode cutoff state xs
+      let second := freezeTokenRun quoteCode cutoff first.1 ys
+      (second.1, first.2 ++ second.2) := by
+  induction xs generalizing state with
+  | nil => rfl
+  | cons token tokens ih =>
+      simp only [List.cons_append, freezeTokenRun]
+      rw [ih]
+      simp [List.append_assoc]
+
+theorem freezeTokenRun_range (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+    (tokenFn : ℕ → ℕ) (n count : ℕ) :
+    freezeTokenRun quoteCode cutoff (0, 0)
+        ((List.range count).map fun j => tokenFn (Nat.pair n j)) =
+      (freezeTokenControlAt tokenFn n count,
+        (List.range count).flatMap fun j =>
+          freezeTokenEmit quoteCode cutoff (freezeTokenControlAt tokenFn n j)
+            (tokenFn (Nat.pair n j))) := by
+  induction count with
+  | zero => rfl
+  | succ count ih =>
+      rw [List.range_succ, List.map_append, List.flatMap_append,
+        freezeTokenRun_append, ih]
+      simp [freezeTokenRun, freezeTokenControlAt]
+
+/-- On a canonical feature serialization the streaming rewrite is exactly
+`EF.freezeBefore`. -/
+theorem freezeTokenRun_serialize (quote : ℕ → Sentence → ℚ)
+    (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+    (hquote : ∀ day φ, quoteCode day (Encodable.encode φ) =
+      Encodable.encode (quote day φ)) (e : EF) :
+    freezeTokenRun quoteCode cutoff (0, 0) e.serialize =
+      ((0, 0), (e.freezeBefore quote cutoff).serialize) := by
+  induction e with
+  | price φ day =>
+      simp only [serialize, freezeTokenRun, freezeTokenNext, freezeTokenEmit]
+      by_cases hday : day < cutoff
+      · simp [hday, hquote, freezeBefore, serialize]
+      · simp [hday, freezeBefore, serialize]
+  | const q => simp [serialize, freezeTokenRun, freezeTokenNext, freezeTokenEmit, freezeBefore]
+  | add a b iha ihb =>
+      simp only [serialize, freezeBefore, freezeTokenRun_append]
+      rw [iha, ihb]
+      simp [freezeTokenRun, freezeTokenNext, freezeTokenEmit, List.append_assoc]
+  | mul a b iha ihb =>
+      simp only [serialize, freezeBefore, freezeTokenRun_append]
+      rw [iha, ihb]
+      simp [freezeTokenRun, freezeTokenNext, freezeTokenEmit, List.append_assoc]
+  | max a b iha ihb =>
+      simp only [serialize, freezeBefore, freezeTokenRun_append]
+      rw [iha, ihb]
+      simp [freezeTokenRun, freezeTokenNext, freezeTokenEmit, List.append_assoc]
+  | safeRecip a iha =>
+      simp only [serialize, freezeBefore, freezeTokenRun_append]
+      rw [iha]
+      simp [freezeTokenRun, freezeTokenNext, freezeTokenEmit, List.append_assoc]
+  | var i => simp [serialize, freezeTokenRun, freezeTokenNext, freezeTokenEmit, freezeBefore]
+  | letE value body ihv ihb =>
+      simp only [serialize, freezeBefore, freezeTokenRun_append]
+      rw [ihv, ihb]
+      simp [freezeTokenRun, freezeTokenNext, freezeTokenEmit, List.append_assoc]
+
+theorem freezeTokenRun_serializeTrades (quote : ℕ → Sentence → ℚ)
+    (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+    (hquote : ∀ day φ, quoteCode day (Encodable.encode φ) =
+      Encodable.encode (quote day φ)) (trades : List (EF × Sentence)) :
+    freezeTokenRun quoteCode cutoff (0, 0) (serializeTrades trades) =
+      ((0, 0), serializeTrades
+        (trades.map fun trade => (trade.1.freezeBefore quote cutoff, trade.2))) := by
+  induction trades with
+  | nil => rfl
+  | cons trade trades ih =>
+      rcases trade with ⟨e, φ⟩
+      simp only [serializeTrades, List.map_cons, freezeTokenRun_append]
+      rw [freezeTokenRun_serialize quote quoteCode cutoff hquote e]
+      simp [freezeTokenRun, freezeTokenNext, freezeTokenEmit, ih, List.append_assoc]
+
+/-- Apply the feature freeze to every feature currently held by the streaming decoder. -/
+def freezeStreamState (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
+    EF.StreamState → EF.StreamState
+  | (control, stack, trades) =>
+      (control,
+        stack.map fun e => e.freezeBefore quote cutoff,
+        trades.map fun trade => (trade.1.freezeBefore quote cutoff, trade.2))
+
+/-- The small transducer control agrees with the real decoder control.  In the price-day
+mode it additionally remembers the raw code which decoded to the pending sentence. -/
+def FreezeTokenState.Matches (control : FreezeTokenState) (state : EF.StreamState) : Prop :=
+  control.1 = state.1.1 ∧
+    (state.1.1 = 2 → ∃ φ, state.1.2 = some φ ∧
+      Encodable.decode (α := Sentence) control.2 = some φ)
+
+theorem freezeToken_initial_matches :
+    FreezeTokenState.Matches (0, 0) EF.streamInitial := by
+  simp [FreezeTokenState.Matches, EF.streamInitial]
+
+/-- One source token and the bounded suffix emitted for it commute with the actual streaming
+decoder.  This includes malformed inputs: the copied offending token fails before an inserted
+suffix could repair it. -/
+theorem streamReadFrom_freezeTokenEmit
+    (quote : ℕ → Sentence → ℚ) (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+    (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
+      quoteCode day code = Encodable.encode (quote day φ))
+    (control : FreezeTokenState) (state : EF.StreamState) (token : ℕ)
+    (hmatch : control.Matches state) :
+    EF.streamReadFrom (freezeTokenEmit quoteCode cutoff control token)
+        (some (freezeStreamState quote cutoff state)) =
+      (EF.streamStep (some state) token).map (freezeStreamState quote cutoff) ∧
+    ∀ next, EF.streamStep (some state) token = some next →
+      (freezeTokenNext control token).Matches next := by
+  rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
+  simp only [FreezeTokenState.Matches] at hmatch ⊢
+  rcases hmatch with ⟨hmode, hpending⟩
+  rcases control with ⟨controlMode, code⟩
+  simp only at hmode
+  subst controlMode
+  cases mode with
+  | zero =>
+      by_cases h0 : token = 0
+      · subst token
+        simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+          EF.streamReadFrom, EF.streamStep]
+      by_cases h1 : token = 1
+      · subst token
+        simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+          EF.streamReadFrom, EF.streamStep]
+      by_cases h2 : token = 2
+      · subst token
+        cases stack with
+        | nil => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+            EF.streamReadFrom, EF.streamStep]
+        | cons a stack =>
+          cases stack with
+          | nil => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+              EF.streamReadFrom, EF.streamStep]
+          | cons b stack => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+              EF.streamReadFrom, EF.streamStep, freezeBefore]
+      by_cases h3 : token = 3
+      · subst token
+        cases stack with
+        | nil => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+            EF.streamReadFrom, EF.streamStep]
+        | cons a stack =>
+          cases stack with
+          | nil => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+              EF.streamReadFrom, EF.streamStep]
+          | cons b stack => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+              EF.streamReadFrom, EF.streamStep, freezeBefore]
+      by_cases h4 : token = 4
+      · subst token
+        cases stack with
+        | nil => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+            EF.streamReadFrom, EF.streamStep]
+        | cons a stack =>
+          cases stack with
+          | nil => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+              EF.streamReadFrom, EF.streamStep]
+          | cons b stack => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+              EF.streamReadFrom, EF.streamStep, freezeBefore]
+      by_cases h5 : token = 5
+      · subst token
+        cases stack <;> simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+          EF.streamReadFrom, EF.streamStep, freezeBefore]
+      by_cases h6 : token = 6
+      · subst token
+        simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+          EF.streamReadFrom, EF.streamStep]
+      by_cases h7 : token = 7
+      · subst token
+        simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+          EF.streamReadFrom, EF.streamStep]
+      by_cases h8 : token = 8
+      · subst token
+        cases stack with
+        | nil => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+            EF.streamReadFrom, EF.streamStep]
+        | cons a stack =>
+          cases stack with
+          | nil => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+              EF.streamReadFrom, EF.streamStep]
+          | cons b stack => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+              EF.streamReadFrom, EF.streamStep, freezeBefore]
+      · simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+          EF.streamReadFrom, EF.streamStep, h0, h1, h2, h3, h4, h5, h6, h7, h8]
+  | succ mode =>
+      cases mode with
+      | zero =>
+          cases hdecode : Encodable.decode (α := Sentence) token <;>
+            simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+              EF.streamReadFrom, EF.streamStep, hdecode]
+      | succ mode =>
+          cases mode with
+          | zero =>
+              obtain ⟨φ, hpendingEq, hdecode⟩ := hpending rfl
+              subst pending
+              by_cases hday : token < cutoff
+              · simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+                  EF.streamReadFrom, EF.streamStep, hday, hdecode,
+                  hquote token code φ hdecode, freezeBefore]
+              · simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+                  EF.streamReadFrom, EF.streamStep, hday, hdecode, freezeBefore]
+          | succ mode =>
+              cases mode with
+              | zero =>
+                  cases hdecode : Encodable.decode (α := ℚ) token <;>
+                    simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+                      EF.streamReadFrom, EF.streamStep, hdecode, freezeBefore]
+              | succ mode =>
+                  cases mode with
+                  | zero =>
+                      cases stack with
+                      | nil => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+                          EF.streamReadFrom, EF.streamStep]
+                      | cons e stack =>
+                        cases hdecode : Encodable.decode (α := Sentence) token <;>
+                          simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+                            EF.streamReadFrom, EF.streamStep, hdecode]
+                  | succ mode =>
+                      cases mode with
+                      | zero => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+                          EF.streamReadFrom, EF.streamStep, freezeBefore]
+                      | succ mode => simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
+                          EF.streamReadFrom, EF.streamStep]
+
+@[simp] theorem streamReadFrom_none (tokens : List ℕ) :
+    EF.streamReadFrom tokens none = none := by
+  induction tokens with
+  | nil => rfl
+  | cons token tokens ih =>
+      simp only [EF.streamReadFrom, List.foldl_cons, EF.streamStep]
+      simpa [EF.streamReadFrom] using ih
+
+theorem streamReadFrom_freezeTokenRun
+    (quote : ℕ → Sentence → ℚ) (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+    (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
+      quoteCode day code = Encodable.encode (quote day φ))
+    (control : FreezeTokenState) (state : EF.StreamState) (tokens : List ℕ)
+    (hmatch : control.Matches state) :
+    let run := freezeTokenRun quoteCode cutoff control tokens
+    EF.streamReadFrom run.2 (some (freezeStreamState quote cutoff state)) =
+        (EF.streamReadFrom tokens (some state)).map (freezeStreamState quote cutoff) ∧
+      ∀ next, EF.streamReadFrom tokens (some state) = some next → run.1.Matches next := by
+  induction tokens generalizing control state with
+  | nil =>
+      simp [freezeTokenRun, EF.streamReadFrom, hmatch]
+  | cons token tokens ih =>
+      simp only [freezeTokenRun]
+      have hstep := streamReadFrom_freezeTokenEmit quote quoteCode cutoff hquote
+        control state token hmatch
+      rcases hstep with ⟨hstep, hnext⟩
+      cases hs : EF.streamStep (some state) token with
+      | none =>
+          constructor
+          · rw [EF.streamReadFrom_append, hstep]
+            rw [hs]
+            simp only [Option.map_none]
+            rw [streamReadFrom_none]
+            change none = (EF.streamReadFrom tokens
+              (EF.streamStep (some state) token)).map (freezeStreamState quote cutoff)
+            rw [hs, streamReadFrom_none]
+            rfl
+          · intro final hfinalSource
+            change EF.streamReadFrom tokens (EF.streamStep (some state) token) =
+              some final at hfinalSource
+            rw [hs, streamReadFrom_none] at hfinalSource
+            contradiction
+      | some next =>
+          have hmatches := hnext next hs
+          have hrest := ih (freezeTokenNext control token) next hmatches
+          simp only at hrest
+          rcases hrest with ⟨hrest, hfinal⟩
+          constructor
+          · rw [EF.streamReadFrom_append, hstep, hs]
+            simp only [Option.map_some]
+            rw [hrest]
+            simp [EF.streamReadFrom, hs]
+          · intro final hfinalSource
+            apply hfinal final
+            simpa [EF.streamReadFrom, hs] using hfinalSource
+
+theorem deserializeTrades_freezeTokenRun
+    (quote : ℕ → Sentence → ℚ) (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+    (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
+      quoteCode day code = Encodable.encode (quote day φ)) (tokens : List ℕ) :
+    let run := freezeTokenRun quoteCode cutoff (0, 0) tokens
+    deserializeTrades run.2 =
+      (deserializeTrades tokens).map fun trades =>
+        trades.map fun trade => (trade.1.freezeBefore quote cutoff, trade.2) := by
+  have hrun := (streamReadFrom_freezeTokenRun quote quoteCode cutoff hquote
+    (0, 0) EF.streamInitial tokens freezeToken_initial_matches).1
+  simp only at hrun ⊢
+  have hinitial : freezeStreamState quote cutoff EF.streamInitial = EF.streamInitial := rfl
+  rw [hinitial] at hrun
+  unfold deserializeTrades
+  rw [hrun]
+  cases hread : EF.streamReadFrom tokens (some EF.streamInitial) with
+  | none => rfl
+  | some state =>
+      rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
+      cases mode <;> cases pending <;> cases stack <;>
+        simp [freezeStreamState]
+
+private def validatedTrades (n : ℕ) (trades : List (EF × Sentence)) :
+    List (EF × Sentence) :=
+  if ∀ trade ∈ trades, trade.1.rank ≤ n then trades else []
+
+private theorem strategyOfTokens_trades_eq (n : ℕ) (tokens : List ℕ) :
+    (strategyOfTokens n tokens).trades =
+      match deserializeTrades tokens with
+      | none => []
+      | some trades => validatedTrades n trades := by
+  unfold strategyOfTokens validatedTrades
+  split <;> rename_i hdecode
+  · simp [hdecode]
+  · split <;> simp_all
+
+theorem strategyOfTokens_freezeTokenRun_trades
+    (quote : ℕ → Sentence → ℚ) (quoteCode : ℕ → ℕ → ℕ) (cutoff n : ℕ)
+    (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
+      quoteCode day code = Encodable.encode (quote day φ)) (tokens : List ℕ) :
+    let run := freezeTokenRun quoteCode cutoff (0, 0) tokens
+    (strategyOfTokens n run.2).trades =
+      (strategyOfTokens n tokens).trades.map fun trade =>
+        (trade.1.freezeBefore quote cutoff, trade.2) := by
+  have hdecode := deserializeTrades_freezeTokenRun quote quoteCode cutoff hquote tokens
+  simp only at hdecode ⊢
+  rw [strategyOfTokens_trades_eq, strategyOfTokens_trades_eq, hdecode]
+  cases hs : deserializeTrades tokens with
+  | none => simp
+  | some trades =>
+      simp only [Option.map_some]
+      have hrank :
+          (∀ trade ∈ trades.map (fun trade =>
+              (trade.1.freezeBefore quote cutoff, trade.2)), trade.1.rank ≤ n) ↔
+            ∀ trade ∈ trades, trade.1.rank ≤ n := by
+        constructor
+        · intro h trade hmem
+          have hmapped : (trade.1.freezeBefore quote cutoff, trade.2) ∈
+              trades.map (fun trade =>
+                (trade.1.freezeBefore quote cutoff, trade.2)) :=
+            List.mem_map_of_mem hmem
+          simpa using h _ hmapped
+        · intro h trade hmem
+          simp only [List.mem_map] at hmem
+          obtain ⟨source, hsource, rfl⟩ := hmem
+          simpa using h source hsource
+      by_cases hvalid : ∀ trade ∈ trades, trade.1.rank ≤ n
+      · have hfrozenValid := hrank.mpr hvalid
+        unfold validatedTrades
+        rw [if_pos hfrozenValid, if_pos hvalid]
+      · have hfrozenInvalid : ¬∀ trade ∈ trades.map (fun trade =>
+            (trade.1.freezeBefore quote cutoff, trade.2)), trade.1.rank ≤ n :=
+          fun h => hvalid (hrank.mp h)
+        unfold validatedTrades
+        rw [if_neg hfrozenInvalid, if_neg hvalid]
+        rfl
 
 /-- If `quote` is the old prefix of `P` and `P'` agrees with `P` after the cutoff,
 the frozen feature sees exactly what the original feature saw against `P`. -/
@@ -279,7 +700,7 @@ theorem Trader.Exploits.of_boundedDifference
     rw [abs_le] at herr
     linarith
 
-/-- The narrowly computational boundary in finite-prefix closure: the literal syntax
+/-- The narrowly computational boundary in finite-prefix closure: the administrative syntax
 freeze above preserves token-indexed polynomial emission.  It contains no semantic market
 claim and no exploitation or convergence conclusion.
 
