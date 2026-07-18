@@ -106,7 +106,28 @@ over deep product types, an `exact`/`rfl` `whnf` blowup is usually `Nat.unpair`/
 in the `Primcodable` instances — check `set_option diagnostics true` and scope
 `irreducible Nat.sqrt` rather than bumping heartbeats.)
 
-### M7 completion contract — current plan of record (set 2026-07-17)
+### M7 construction target — scope reopened 2026-07-18
+
+The **conditional + disclosed** packet below is an achieved, green baseline, not the final
+construction target.  Anson has reopened the important remaining witnesses for concrete
+construction.  The active slate is:
+
+- all six boundaries from the old Tier 2 operational set:
+  `M7-FEEDBACK-EMIT`, `M7-FEEDBACK-TRUTH`, `M7-DUS-PREFIX-SYNTAX`,
+  `M7-SCON-COMPILER`, `M7-SCON-PRESENTATION`, and `M7-LUV-SYNTAX`;
+- `M7-PREFIX-MACHINE`, including the concrete prefix-free presentation, efficient
+  from-below weights and gate tokens, finite Kraft inequality/coverage, and fixed-overhead
+  negation compiler;
+- `M7-COMP-SYNTAX` followed by `M7-QUOTE-AFFINE`, so the same-day and deferred affine quote
+  packages are built from represented computation/diagonal syntax rather than resting on a
+  disclosed prerequisite.
+
+Together with the four already constructed roots, this targets **thirteen of the fifteen**
+boundaries as concrete Lean inhabitants. `M7-DUS-APPROX` and
+`M7-STRICT-SEPARATORS` remain disclosed unless separately reopened.  Work currently proceeds
+through `M7-FEEDBACK-EMIT`; the old stop-after-disclosure instruction is superseded.
+
+### M7 achieved baseline — conditional + disclosed (set 2026-07-17)
 
 The project endpoint is **conditional + disclosed**:
 

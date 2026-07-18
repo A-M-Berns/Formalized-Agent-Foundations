@@ -1,5 +1,39 @@
 # Logical Induction working plan — M7 exit active
 
+## ▶▶ ACTIVE SCOPE CORRECTION — expanded witness construction (Anson, 2026-07-18)
+
+This section supersedes the narrower **conditional + disclosed** endpoint below as the
+project's final construction target.  That endpoint remains a useful achieved baseline and
+an honest description of what is green today; it is no longer the instruction to stop.
+
+The expanded construction slate is:
+
+1. **Construct every witness in the old Tier 2 operational set:**
+   `M7-FEEDBACK-EMIT`, `M7-FEEDBACK-TRUTH`, `M7-DUS-PREFIX-SYNTAX`,
+   `M7-SCON-COMPILER`, `M7-SCON-PRESENTATION`, and `M7-LUV-SYNTAX`.
+2. **Construct `M7-PREFIX-MACHINE`**, including a concrete universal self-delimiting
+   machine/presentation, efficient sentence coverage and from-below weight emission, the
+   finite Kraft inequality, derived threshold-token arithmetic, and the fixed-overhead
+   syntactic-negation compiler.
+3. **Construct `M7-QUOTE-AFFINE`**, both the same-day completed-theory quotation packages
+   and the deferred fixed-portfolio `AffineQuoteEq`/`AffineQuoteGE` packages.  This is not a
+   standalone wiring task: record and construct its prerequisite `M7-COMP-SYNTAX`
+   representability/Gödel/diagonal machinery rather than continuing to disclose that root
+   while claiming quotation is concrete.
+
+This makes the intended stronger target **thirteen constructed boundaries out of fifteen**:
+the four already constructed roots, the six old Tier 2 witnesses, `M7-PREFIX-MACHINE`,
+`M7-COMP-SYNTAX`, and `M7-QUOTE-AFFINE`.  `M7-DUS-APPROX` and
+`M7-STRICT-SEPARATORS` remain disclosed unless Anson separately reopens them.
+
+Current execution order: finish the already-active `M7-FEEDBACK-EMIT` construction and its
+verification/ledger commit; then scope the next sizeable witness from the remaining slate.
+The most dependency-aware default after the six operational witnesses is
+`M7-COMP-SYNTAX` → `M7-QUOTE-AFFINE`; `M7-PREFIX-MACHINE` is independent and may be moved
+earlier as the self-contained Kraft tranche.  All later instructions below saying to stop
+after feedback emission, disclose these witnesses permanently, or move immediately to
+trust-surface cleanup are superseded by this section.
+
 ## Aristotle orchestration — working (2026-07-17)
 
 Harmonic's Aristotle CLI is wired and **verified end-to-end**. Use it to farm *fully-stated,
@@ -27,10 +61,10 @@ Mathlib-provable lemmas I can state exactly.
   Aristotle can't resolve). The extraction that makes a fact *importable* is the same one
   that makes it *submittable*.
 
-## ▶▶ PROJECT SCOPE & ENDPOINT — the plan of record (2026-07-18)
+## HISTORICAL ACHIEVED BASELINE — conditional + disclosed (2026-07-18)
 
-**Read this before anything else.** It fixes the target we are driving to and the order of
-operations. Individual-task detail lives in START HERE below; this section is the map.
+This section records the previously achieved milestone.  The active construction target is
+the scope correction at the top of this file.
 
 ### The target endpoint: "conditional + disclosed"
 
