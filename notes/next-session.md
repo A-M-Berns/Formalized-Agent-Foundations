@@ -141,10 +141,65 @@ build completed 2,680, the executable-hole and project-axiom scans are empty (br
 hits are comments only), `git diff --check` passes, and the audited capstones expose exactly
 `propext`, `Classical.choice`, and `Quot.sound`.
 
-The next work is the first item under “What remains after endpoint-green”: consolidate the
-public `Sentence`/Foundation and `Asymptotics` surfaces, naming, module layout, docstrings,
-and remaining stale prose. Then finish the M7 paper comparison and generate the frozen
-statement/definition inventory for Anson's deferred read-through.
+### Next sizeable goal — freeze the release-candidate surface and M7 verification packet
+
+Treat the next tranche as one trust-surface deliverable, not as an open-ended cleanup:
+**freeze the milestone-facing M0–M7 API, then produce the packet Anson can read without
+opening proof bodies.** This is the right next goal because theorem construction is green,
+while the remaining risk is that the public statements, paper correspondence, and status
+documents disagree about what was actually proved.
+
+The tranche has three coupled outputs:
+
+1. **A thin, frozen public interface.** Put the reusable `Sentence`/Boolean-semantics facts
+   at the Foundation/Criterion boundary so property modules do not unfold Foundation
+   internals merely to prove routine semantic facts. At present the avoidable public leaks
+   are in `Properties/Basic.lean`, `Properties/Coherence.lean`, and
+   `Properties/AffineCoherence.lean`. Direct `LO.*` use remains allowed in
+   `Foundations.lean`, the Criterion adapter, and syntax/encoding implementation code in
+   `Construction/Budgeter.lean`, `Construction/LIACompiler.lean`, and
+   `Construction/M7Witnesses.lean`; do not mechanically wrap those compiler internals.
+   Audit `Asymptotics.lean` as the sole owner of `AsympEq`, `AsympLE`, `AsympGE`,
+   `EventuallyWithin`, and `ConvergesTo`; consolidate exports, names, and docstrings, but do
+   not create duplicate aliases or rewrite working proofs for cosmetic uniformity.
+2. **`notes/m7-verification-packet.md`.** Compare the paper line by line with the exact
+   construction declarations: `BudgeterAt`/`Budgeter` and the three
+   `lem:budgeter` capstones, `TradingFirmAt`/`TradingFirm`,
+   `trading_firm_dominance`, `liaStates`/`liaHistory`,
+   `LIA_is_logical_inductor`, and `exists_logical_inductor`. For each paper label
+   (`def:budgeter`, `lem:budgeter`, `def:tradingfirm`, `lem:tfdom`, `def:lia`/`alg:li`,
+   `thm:lia`, `thm:li`), record its Lean source, the exact statement correspondence,
+   every 0-based/indexing or modeling substitution, boundary/disclosure dependencies, and
+   the relevant build/axiom evidence.
+3. **A frozen statement/definition inventory for the human pass.** Inventory only
+   milestone-facing M0–M7 declarations selected from the paper-label ledger—not the roughly
+   2,500 internal helper declarations. Give each row its paper label, Lean declaration,
+   source location, public signature or definition summary, provenance/disclosure status,
+   and a blank Anson sign-off field. Reconcile `README.md`, `PROGRESS.md`, this handoff, and
+   `notes/logical-induction-roadmap.md`; in particular remove the roadmap's stale claim that
+   construction automatically made every conditional or representation-dependent property
+   theorem unconditional.
+
+Work in coherent commits: boundary lemmas and their consumers; asymptotics/module/docs
+cleanup; M7 comparison packet; frozen inventory and cross-document reconciliation. Run the
+relevant targeted build after each code commit and keep the worktree green.
+
+### Definition of done for this tranche
+
+- The three property files above contain no direct `LO.*` references; any remaining direct
+  Foundation reference is on the explicit boundary/compiler allowlist and explained.
+- `Asymptotics.lean` remains the unique definition site for the five shared asymptotic
+  concepts, with stable imports and consistent public notation.
+- The M7 packet covers all seven paper nodes named above and has no unresolved
+  correspondence, substitution, or disclosure cell.
+- The read-through inventory covers every milestone-facing ledger row and deliberately
+  excludes private/compiler helpers; README, ledger, roadmap, and handoff state the same
+  conditional+disclosed endpoint.
+- The construction/property/integration roll-up and full build pass, executable-hole and
+  project-axiom scans are clean, `git diff --check` passes, and the public capstones expose
+  only `propext`, `Classical.choice`, and `Quot.sound`.
+- Stop with the packet ready for Anson's statement/definition-only read-through. Do not begin
+  that human pass or `M7-ERRATA-AUDIT` inside this tranche.
 
 ## ✅ Disclosure packet and endpoint-green checklist (completed 2026-07-18)
 
