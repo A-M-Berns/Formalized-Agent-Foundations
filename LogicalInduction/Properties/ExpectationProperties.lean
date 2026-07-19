@@ -178,14 +178,43 @@ def meshAffine (A : LUVCombination) (k : ℕ) : AffineCombination where
   terms := A.terms.flatMap (fun p =>
     ((p.2.expectAffine k).scale p.1).terms)
 
+/-- Add a closed feature to the constant coordinate of an affine combination.  Unlike
+`addConst`, this preserves the operational expression tree of a generated rational. -/
+def addConstEF (A : AffineCombination) (e : EF) : AffineCombination where
+  const := EF.add A.const e
+  terms := A.terms
+
+theorem addConstEF_value (A : AffineCombination) (e : EF)
+    (V : History) (w : Valuation) :
+    (addConstEF A e).value V w = A.value V w + e.denote V := by
+  simp [addConstEF, AffineCombination.value]
+  ring
+
+theorem addConstEF_price (A : AffineCombination) (e : EF)
+    (V : History) (n : ℕ) :
+    (addConstEF A e).price V n = A.price V n + e.denote V := by
+  simp [AffineCombination.price, addConstEF_value]
+
+@[simp] theorem addConstEF_magnitude (A : AffineCombination) (e : EF)
+    (V : History) :
+    (addConstEF A e).magnitude V = A.magnitude V := rfl
+
+def meshErrorFeature (n : ℕ) (b : ℚ) : EF :=
+  EF.mul (EF.const (-(2 * b))) (EF.const (1 / (n : ℚ)))
+
+@[simp] theorem meshErrorFeature_denote (n : ℕ) (b : ℚ) (P : History) :
+    (meshErrorFeature n b).denote P = (-(2 * b / n) : ℚ) := by
+  simp [meshErrorFeature]
+  ring
+
 /-- Appendix `lem:mesh`'s cross-precision gap.  It compares precision `n` with precision
 `m` and subtracts the completed-world error allowance `2b/n`. -/
 def meshGap (A : LUVCombination) (n m : ℕ) (b : ℚ) : AffineCombination :=
-  ((A.meshAffine n).sub (A.meshAffine m)).addConst (-(2 * b / n))
+  addConstEF ((A.meshAffine n).sub (A.meshAffine m)) (meshErrorFeature n b)
 
 /-- Reverse cross-precision gap for the lower half of `lem:mesh`. -/
 def meshGapLower (A : LUVCombination) (n m : ℕ) (b : ℚ) : AffineCombination :=
-  ((A.meshAffine m).sub (A.meshAffine n)).addConst (-(2 * b / n))
+  addConstEF ((A.meshAffine m).sub (A.meshAffine n)) (meshErrorFeature n b)
 
 /-- Positive rational normalization used to feed an arbitrary bounded LUV mesh into
 the unit-magnitude statistical affine hubs. -/
@@ -355,8 +384,9 @@ theorem meshGap_price (A : LUVCombination) (P : History)
     (n m : ℕ) (b : ℚ) (day : ℕ) :
     (A.meshGap n m b).price P day =
       A.expectAt P n day - A.expectAt P m day - (2 * (b : ℝ) / n) := by
-  rw [meshGap, AffineCombination.addConst_price, AffineCombination.sub_price,
+  rw [meshGap, addConstEF_price, AffineCombination.sub_price,
     meshAffine_price, meshAffine_price]
+  rw [meshErrorFeature_denote]
   push_cast
   ring
 
@@ -387,7 +417,8 @@ theorem meshGap_value_nonpos
       (A.meshAffine n).value P v.payout - (A.meshAffine m).value P v.payout ≤
         2 * ((b : ℝ) / n) := by
     linarith [hnnear.2, hmnear.1]
-  rw [meshGap, AffineCombination.addConst_value, AffineCombination.sub_value]
+  rw [meshGap, addConstEF_value, AffineCombination.sub_value]
+  rw [meshErrorFeature_denote]
   push_cast
   ring_nf at hgap ⊢
   linarith
@@ -396,8 +427,9 @@ theorem meshGapLower_price (A : LUVCombination) (P : History)
     (n m : ℕ) (b : ℚ) (day : ℕ) :
     (A.meshGapLower n m b).price P day =
       A.expectAt P m day - A.expectAt P n day - (2 * (b : ℝ) / n) := by
-  rw [meshGapLower, AffineCombination.addConst_price, AffineCombination.sub_price,
+  rw [meshGapLower, addConstEF_price, AffineCombination.sub_price,
     meshAffine_price, meshAffine_price]
+  rw [meshErrorFeature_denote]
   push_cast
   ring
 
@@ -428,7 +460,8 @@ theorem meshGapLower_value_nonpos
       (A.meshAffine m).value P v.payout - (A.meshAffine n).value P v.payout ≤
         2 * ((b : ℝ) / n) := by
     linarith [hmnear.2, hnnear.1]
-  rw [meshGapLower, AffineCombination.addConst_value, AffineCombination.sub_value]
+  rw [meshGapLower, addConstEF_value, AffineCombination.sub_value]
+  rw [meshErrorFeature_denote]
   push_cast
   ring_nf at hgap ⊢
   linarith
@@ -511,6 +544,88 @@ theorem softmaxMass_nonneg
         simp only [EF.denote_mul, Pi.mul_apply, oneMinus_denote]
         exact mul_nonneg hrem (sub_nonneg.mpr hsig.2)
       exact add_nonneg (mul_nonneg hrem hsig.1) (ih _ hnew)
+
+/-- A first-active softmax of uniformly magnitude-bounded inputs has the same magnitude
+bound: its nonnegative allocation weights have total mass at most the initial mass. -/
+theorem softmaxAffine_magnitude_le
+    (gaps : List AffineCombination) (P : History) (day : ℕ)
+    (threshold pad : ℚ) (remaining : EF) (C : ℝ)
+    (hrem : 0 ≤ remaining.denote P) (hC : 0 ≤ C)
+    (hgaps : ∀ A ∈ gaps, A.magnitude P ≤ C) :
+    (softmaxAffine gaps day threshold pad remaining).magnitude P ≤
+      remaining.denote P * C := by
+  induction gaps generalizing remaining with
+  | nil =>
+      simp only [softmaxAffine, AffineCombination.empty, AffineCombination.magnitude,
+        List.map_nil, List.sum_nil]
+      exact mul_nonneg hrem hC
+  | cons A rest ih =>
+      let signal := sellIndF (A.priceFeature day) threshold pad
+      have hsig := sellIndF_mem (A.priceFeature day) threshold pad P
+      have hnew : 0 ≤ (EF.mul remaining (oneMinus signal)).denote P := by
+        simp only [EF.denote_mul, Pi.mul_apply, oneMinus_denote]
+        exact mul_nonneg hrem (sub_nonneg.mpr hsig.2)
+      have htail := ih (.mul remaining (oneMinus signal)) hnew
+        (fun B hB ↦ hgaps B (by simp [hB]))
+      have hA := hgaps A (by simp)
+      have hweight :
+          |(EF.mul remaining signal).denote P| =
+            remaining.denote P * signal.denote P := by
+        rw [EF.denote_mul, Pi.mul_apply,
+          abs_of_nonneg (mul_nonneg hrem hsig.1)]
+      simp only [softmaxAffine]
+      rw [AffineCombination.add_magnitude, AffineCombination.scale_magnitude, hweight]
+      simp only [EF.denote_mul, Pi.mul_apply, oneMinus_denote] at htail
+      have hheadMul := mul_le_mul_of_nonneg_left hA
+        (mul_nonneg hrem hsig.1)
+      have htailMul := mul_le_mul_of_nonneg_left hC
+        (mul_nonneg hrem (sub_nonneg.mpr hsig.2))
+      nlinarith
+
+/-- Price analogue of `softmaxAffine_magnitude_le`. -/
+theorem abs_softmaxAffine_price_le
+    (gaps : List AffineCombination) (P : History) (day priceDay : ℕ)
+    (threshold pad : ℚ) (remaining : EF) (C : ℝ)
+    (hrem : 0 ≤ remaining.denote P) (hC : 0 ≤ C)
+    (hgaps : ∀ A ∈ gaps, |A.price P priceDay| ≤ C) :
+    |(softmaxAffine gaps day threshold pad remaining).price P priceDay| ≤
+      remaining.denote P * C := by
+  induction gaps generalizing remaining with
+  | nil =>
+      simp only [softmaxAffine, AffineCombination.empty, AffineCombination.price,
+        AffineCombination.value, List.map_nil, List.sum_nil, add_zero, EF.denote_const,
+        Rat.cast_zero, abs_zero]
+      exact mul_nonneg hrem hC
+  | cons A rest ih =>
+      let signal := sellIndF (A.priceFeature day) threshold pad
+      have hsig := sellIndF_mem (A.priceFeature day) threshold pad P
+      have hnew : 0 ≤ (EF.mul remaining (oneMinus signal)).denote P := by
+        simp only [EF.denote_mul, Pi.mul_apply, oneMinus_denote]
+        exact mul_nonneg hrem (sub_nonneg.mpr hsig.2)
+      have htail := ih (.mul remaining (oneMinus signal)) hnew
+        (fun B hB ↦ hgaps B (by simp [hB]))
+      have hA := hgaps A (by simp)
+      simp only [softmaxAffine, AffineCombination.add_price,
+        AffineCombination.scale_price, EF.denote_mul, Pi.mul_apply]
+      calc
+        |remaining.denote P * signal.denote P * A.price P priceDay +
+            (softmaxAffine rest day threshold pad
+              (remaining.mul (oneMinus signal))).price P priceDay| ≤
+            |remaining.denote P * signal.denote P * A.price P priceDay| +
+              |(softmaxAffine rest day threshold pad
+                (remaining.mul (oneMinus signal))).price P priceDay| := by
+          exact abs_add_le _ _
+        _ = remaining.denote P * signal.denote P * |A.price P priceDay| +
+              |(softmaxAffine rest day threshold pad
+                (remaining.mul (oneMinus signal))).price P priceDay| := by
+          rw [abs_mul, abs_mul, abs_of_nonneg hrem, abs_of_nonneg hsig.1]
+        _ ≤ remaining.denote P * signal.denote P * C +
+              (remaining.mul (oneMinus signal)).denote P * C :=
+          add_le_add
+            (mul_le_mul_of_nonneg_left hA (mul_nonneg hrem hsig.1)) htail
+        _ = remaining.denote P * C := by
+          simp only [EF.denote_mul, Pi.mul_apply, oneMinus_denote]
+          ring
 
 theorem softmaxAffine_value_nonpos
     (gaps : List AffineCombination) (P : History) (w : Valuation) (day : ℕ)
@@ -877,6 +992,20 @@ theorem meshAffine_magnitude_le_shareNorm
       simp only [AffineCombination.magnitude] at hp
       linarith
 
+theorem meshGap_magnitude_le (A : LUVCombination) (P : History)
+    (n m : ℕ) (b : ℚ) :
+    (A.meshGap n m b).magnitude P ≤ 2 * A.shareNorm P := by
+  rw [meshGap, addConstEF_magnitude, AffineCombination.sub_magnitude]
+  linarith [A.meshAffine_magnitude_le_shareNorm P n,
+    A.meshAffine_magnitude_le_shareNorm P m]
+
+theorem meshGapLower_magnitude_le (A : LUVCombination) (P : History)
+    (n m : ℕ) (b : ℚ) :
+    (A.meshGapLower n m b).magnitude P ≤ 2 * A.shareNorm P := by
+  rw [meshGapLower, addConstEF_magnitude, AffineCombination.sub_magnitude]
+  linarith [A.meshAffine_magnitude_le_shareNorm P n,
+    A.meshAffine_magnitude_le_shareNorm P m]
+
 /-- Mesh expansion does not increase the full `L¹` norm. -/
 theorem meshAffine_l1Norm_le (A : LUVCombination) (P : History) (k : ℕ) :
     (A.meshAffine k).l1Norm P ≤ A.l1Norm P := by
@@ -890,6 +1019,48 @@ theorem abs_expectAt_le_l1Norm
   rw [← meshAffine_price]
   exact ((A.meshAffine k).abs_price_le_l1Norm P m hP).trans
     (A.meshAffine_l1Norm_le P k)
+
+theorem abs_meshGap_price_le (A : LUVCombination) (P : History)
+    {n m day : ℕ} (hn : 0 < n) (b : ℚ) (B : ℝ)
+    (hB : A.l1Norm P ≤ B) (hP : ∀ φ, 0 ≤ P day φ ∧ P day φ ≤ 1) :
+    |(A.meshGap n m b).price P day| ≤ 2 * B + 2 * |(b : ℝ)| := by
+  have hnExp := A.abs_expectAt_le_l1Norm P n day hP
+  have hmExp := A.abs_expectAt_le_l1Norm P m day hP
+  have hnR : (1 : ℝ) ≤ n := by exact_mod_cast hn
+  have hden : (1 : ℝ) ≤ |(n : ℝ)| := by
+    rw [abs_of_nonneg (by positivity)]
+    exact hnR
+  have hz : |2 * (b : ℝ) / n| ≤ 2 * |(b : ℝ)| := by
+    rw [abs_div, abs_mul, abs_of_nonneg (show (0 : ℝ) ≤ 2 by norm_num)]
+    exact div_le_self (mul_nonneg (by norm_num) (abs_nonneg _)) hden
+  rw [meshGap_price]
+  calc
+    |A.expectAt P n day - A.expectAt P m day - 2 * (b : ℝ) / n| ≤
+        |A.expectAt P n day| + |A.expectAt P m day| + |2 * (b : ℝ) / n| := by
+      linarith [abs_sub (A.expectAt P n day) (A.expectAt P m day),
+        abs_sub (A.expectAt P n day - A.expectAt P m day) (2 * (b : ℝ) / n)]
+    _ ≤ 2 * B + 2 * |(b : ℝ)| := by linarith
+
+theorem abs_meshGapLower_price_le (A : LUVCombination) (P : History)
+    {n m day : ℕ} (hn : 0 < n) (b : ℚ) (B : ℝ)
+    (hB : A.l1Norm P ≤ B) (hP : ∀ φ, 0 ≤ P day φ ∧ P day φ ≤ 1) :
+    |(A.meshGapLower n m b).price P day| ≤ 2 * B + 2 * |(b : ℝ)| := by
+  have hnExp := A.abs_expectAt_le_l1Norm P n day hP
+  have hmExp := A.abs_expectAt_le_l1Norm P m day hP
+  have hnR : (1 : ℝ) ≤ n := by exact_mod_cast hn
+  have hden : (1 : ℝ) ≤ |(n : ℝ)| := by
+    rw [abs_of_nonneg (by positivity)]
+    exact hnR
+  have hz : |2 * (b : ℝ) / n| ≤ 2 * |(b : ℝ)| := by
+    rw [abs_div, abs_mul, abs_of_nonneg (show (0 : ℝ) ≤ 2 by norm_num)]
+    exact div_le_self (mul_nonneg (by norm_num) (abs_nonneg _)) hden
+  rw [meshGapLower_price]
+  calc
+    |A.expectAt P m day - A.expectAt P n day - 2 * (b : ℝ) / n| ≤
+        |A.expectAt P m day| + |A.expectAt P n day| + |2 * (b : ℝ) / n| := by
+      linarith [abs_sub (A.expectAt P m day) (A.expectAt P n day),
+        abs_sub (A.expectAt P m day - A.expectAt P n day) (2 * (b : ℝ) / n)]
+    _ ≤ 2 * B + 2 * |(b : ℝ)| := by linarith
 
 /-- Tail supremum appearing literally in Appendix `lem:mesh`. -/
 noncomputable def meshTailError (As : ℕ → LUVCombination)

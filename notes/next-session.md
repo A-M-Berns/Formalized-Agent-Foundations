@@ -7,11 +7,11 @@ inventory of what is concrete today; this file records the stronger active const
 target and what to build next. Historical plans remain available in Git history. There is
 intentionally no `PROGRESS.md`.
 
-## Active target
+## Active target achieved
 
-Construct twelve of the fifteen M7 witness boundaries. The earlier
-“four constructed, eleven disclosed” endpoint was achieved, but it is a baseline rather
-than a stop instruction.
+The twelve-of-fifteen M7 construction target is complete and repository-wide green. The
+next work is closeout/API review or an explicitly chosen stretch boundary, not unfinished
+LUV implementation.
 
 | # | Boundary | Current state | Active disposition / evidence |
 |---:|---|---|---|
@@ -26,19 +26,18 @@ than a stop instruction.
 | 9 | `M7-DUS-PREFIX-SYNTAX` | **constructed** | Keep; `bitPrefixSentencesOfIndependentAtoms`, `lic_domination_universalSemimeasure_ofIndependentAtoms` |
 | 10 | `M7-SCON-COMPILER` | **constructed** | Keep; `ConditioningCompiler.lean` rational market, finite patch, arbitrary-stream transducers, and direct consumers |
 | 11 | `M7-SCON-PRESENTATION` | **constructed** | Keep; `conditioningPresentationOfComputations`, `lic_conditioned_gated_ofComputations` |
-| 12 | `M7-LUV-SYNTAX` | disclosed | **construct**, attempt 7 |
+| 12 | `M7-LUV-SYNTAX` | **constructed** | Keep; compact thresholds, exact semantic presentations, cross-precision meshes, and operational softmax witness |
 | 13 | `M7-DUS-APPROX` | disclosed | Leave disclosed unless Anson reopens it |
 | 14 | `M7-STRICT-SEPARATORS` | disclosed | Leave disclosed unless Anson reopens it |
 | 15 | `M7-COMP-SYNTAX` | **constructed** | Keep; `ComputationClaim`, three boundary constructors, and six direct consumers in `Construction/ComputationSyntax.lean` |
 
-Current count: **11/15 constructed**. Target count: **12/15 constructed**. The remaining
-construction is `M7-LUV-SYNTAX`.
+Current count: **12/15 constructed**. Target count: **12/15 constructed**. The target has
+been achieved.
 `M7-PREFIX-MACHINE`, `M7-DUS-APPROX`, and `M7-STRICT-SEPARATORS` are the three intentional
 disclosures at the target.
 
-Do not revive instructions to stop after feedback emission, treat all former Tier 2
-witnesses as permanently disclosed, or begin final closeout/audit work before this active
-construction slate is complete.
+Do not revive instructions to stop after feedback emission or treat all former Tier 2
+witnesses as permanently disclosed. The active construction slate is complete.
 
 ## Verified state at this handoff
 
@@ -148,8 +147,15 @@ construction slate is complete.
 - Derived consumers with the emission boundary discharged are
   `lic_wubaff_ofFeedbackTruth`, `boundedCombination_wubaff_ofFeedbackTruth`, and
   `luv_wubexp_ofFeedbackTruth`.
-- The focused construction/property/integration roll-up built **2,522 jobs**; the full
-  project built **2,687 jobs**.
+- `M7-LUV-SYNTAX` is complete in `LogicalInduction/Construction/LUVSyntax.lean`. Its
+  `meshSoftmaxOperationalWitness` combines literal upper/lower mesh gaps with the generic
+  triangular first-active compiler; the supporting magnitude and cross-time price bounds
+  live in `Properties/ExpectationProperties.lean`.
+- The pre-existing `ConditioningCompiler.lean` source breakage was repaired by replacing
+  the fragile parser-state simplification with explicit mode cases and by making dependent
+  strategy decoding and reconstruction proofs robust under Lean 4.28 RC1.
+- The focused construction/property/integration roll-up and the full project are green; the
+  final full build completed **2,688 jobs**.
 - The quotation reports, computation-syntax reports, six public prefix-syntax axiom reports,
   five public conditioning-presentation reports, five public conditioning-compiler reports,
   four public feedback-emission reports, and four public feedback-truth reports
@@ -159,6 +165,7 @@ construction slate is complete.
 
 Relevant commits, newest first:
 
+- `d3d1c62` — construct the compact LUV threshold syntax and semantic packages
 - `261bdf7` — construct the bounded delayed feedback truth compiler and direct consumers
 - `f1c1355` — construct FFL-backed computation syntax and all six direct MetaLearning consumers
 - `4546178` — construct independent Boolean-prefix syntax and the direct DUS entry point
@@ -189,7 +196,7 @@ three broader operational compilers.
 | 4 | `M7-QUOTE-AFFINE` | **Complete**; FFL quotation/diagonalization and concrete same-day/deferred affine packages landed |
 | 5 | `M7-FEEDBACK-TRUTH` | **Complete**; bounded delayed truth compiler and direct consumers landed |
 | 6 | `M7-SCON-COMPILER` | **Complete**; rational conditional market, finite patch, arbitrary token-stream translation, and direct consumers landed |
-| 7 | `M7-LUV-SYNTAX` | **Next**; broadest Tier 2 package: thresholds, exact-theory semantics, meshes, and softmax emission |
+| 7 | `M7-LUV-SYNTAX` | **Complete**; thresholds, exact-theory semantics, meshes, and operational softmax emission landed |
 
 “Attempt” is intentional. Before implementing each witness, audit whether its current
 interface can be inhabited at the stated generality. If it needs a paper-faithful
@@ -329,7 +336,7 @@ downside, wealth floors, exploit transport, and LI closure remain derived in
 `Properties/Conditioning.lean`. The finite-perturbation erratum is not hidden: LI transport
 to the patched market still goes through the qualified `EfficientPrefixPatch` theorem.
 
-## START HERE — attempt 7, `M7-LUV-SYNTAX`
+## Completed attempt 7 — `M7-LUV-SYNTAX`
 
 `LogicalInduction/Construction/LUVSyntax.lean` now constructs the compact threshold layer,
 the literal diagonal affine mesh, `LUVCombination.PolySequence`, `WorldValued`,
@@ -337,14 +344,22 @@ the literal diagonal affine mesh, `LUVCombination.PolySequence`, `WorldValued`,
 its conclusion-free stage/completed-theory representation laws.  Its public axiom reports
 contain only `propext`, `Classical.choice`, and `Quot.sound`.
 
-The remaining task is the finite cross-precision selector: construct
-`MeshSoftmaxOperationalWitness` from the same component syntax, including direct polynomial
-emission of both upper/lower mesh selectors and derived bounded-price/magnitude proofs.
-Do not fold expectation convergence, persistence, unbiasedness, or pseudorandom-learning
-conclusions into the operational certificate.
+The finite cross-precision selector is now complete. `LUVSyntax.lean` constructs exact
+upper/lower paired mesh-gap families, a generic variable-width triangular first-active
+softmax emitter, `meshSoftmaxPoly`, `meshSoftmaxLowerPoly`, and finally
+`meshSoftmaxOperationalWitness`. `ExpectationProperties.lean` supplies the conclusion-free
+softmax magnitude/cross-time price bounds and uses an operational constant-feature syntax
+for the mesh error. The new public witness's axiom report contains only `propext`,
+`Classical.choice`, and `Quot.sound`.
 
-Once LUV reaches green, the stated 12/15 target is complete. At that point reassess the
-three disclosed boundaries (`M7-PREFIX-MACHINE`, `M7-DUS-APPROX`, and
+Focused LUV, expectation-property, and conditioning-compiler checks are green. The
+repository-wide `lake build` completed all **2,688 jobs**. The pre-existing
+`Construction/ConditioningCompiler.lean` parser/dependent-match failures exposed by the
+first full build were repaired, and its five public axiom reports again contain only
+`propext`, `Classical.choice`, and `Quot.sound`.
+
+The stated 12/15 target is complete. Reassess the three disclosed boundaries
+(`M7-PREFIX-MACHINE`, `M7-DUS-APPROX`, and
 `M7-STRICT-SEPARATORS`) as a possible 15/15 stretch rather than assuming their substantially
 larger classical-computability obligations are routine.
 

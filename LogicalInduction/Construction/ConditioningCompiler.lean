@@ -1557,15 +1557,68 @@ def prependStreamTrades (prior : List (EF × Sentence)) :
       ((mode, pending), (stack, prior ++ trades))
 
 /-- The one-token parser is equivariant under adding a fixed prefix of completed trades. -/
-set_option maxHeartbeats 1000000 in
 theorem streamStep_prependStreamTrades (prior : List (EF × Sentence))
     (state : EF.StreamState) (token : ℕ) :
     EF.streamStep (some (prependStreamTrades prior state)) token =
       (EF.streamStep (some state) token).map (prependStreamTrades prior) := by
   rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
-  simp only [prependStreamTrades, EF.streamStep]
-  repeat' split
-  all_goals simp_all [prependStreamTrades, List.append_assoc]
+  by_cases h0 : mode = 0
+  · subst mode
+    simp only [prependStreamTrades, EF.streamStep, if_pos]
+    by_cases ht0 : token = 0
+    · simp [ht0, prependStreamTrades]
+    by_cases ht1 : token = 1
+    · simp [ht0, ht1, prependStreamTrades]
+    by_cases ht2 : token = 2
+    · rcases stack with _ | ⟨a, stack⟩
+      · simp [ht0, ht1, ht2]
+      · rcases stack with _ | ⟨b, rest⟩ <;>
+          simp [ht0, ht1, ht2, prependStreamTrades]
+    by_cases ht3 : token = 3
+    · rcases stack with _ | ⟨a, stack⟩
+      · simp [ht0, ht1, ht2, ht3]
+      · rcases stack with _ | ⟨b, rest⟩ <;>
+          simp [ht0, ht1, ht2, ht3, prependStreamTrades]
+    by_cases ht4 : token = 4
+    · rcases stack with _ | ⟨a, stack⟩
+      · simp [ht0, ht1, ht2, ht3, ht4]
+      · rcases stack with _ | ⟨b, rest⟩ <;>
+          simp [ht0, ht1, ht2, ht3, ht4, prependStreamTrades]
+    by_cases ht5 : token = 5
+    · rcases stack with _ | ⟨a, rest⟩ <;>
+        simp [ht0, ht1, ht2, ht3, ht4, ht5, prependStreamTrades]
+    by_cases ht6 : token = 6
+    · simp [ht0, ht1, ht2, ht3, ht4, ht5, ht6, prependStreamTrades]
+    by_cases ht7 : token = 7
+    · simp [ht0, ht1, ht2, ht3, ht4, ht5, ht6, ht7,
+        prependStreamTrades]
+    by_cases ht8 : token = 8
+    · rcases stack with _ | ⟨a, stack⟩
+      · simp [ht0, ht1, ht2, ht3, ht4, ht5, ht6, ht7, ht8]
+      · rcases stack with _ | ⟨b, rest⟩ <;>
+          simp [ht0, ht1, ht2, ht3, ht4, ht5, ht6, ht7, ht8,
+            prependStreamTrades]
+    simp [ht0, ht1, ht2, ht3, ht4, ht5, ht6, ht7, ht8]
+  · by_cases h1 : mode = 1
+    · cases hdecode : Encodable.decode (α := Sentence) token <;>
+        simp [EF.streamStep, h0, h1, hdecode, prependStreamTrades]
+    by_cases h2 : mode = 2
+    · cases pending <;>
+        simp [EF.streamStep, h0, h1, h2, prependStreamTrades]
+    by_cases h3 : mode = 3
+    · cases hdecode : Encodable.decode (α := ℚ) token <;>
+        simp [EF.streamStep, h0, h1, h2, h3, hdecode,
+          prependStreamTrades]
+    by_cases h4 : mode = 4
+    · rcases stack with _ | ⟨a, rest⟩
+      · simp [EF.streamStep, h0, h1, h2, h3, h4, prependStreamTrades]
+      · cases hdecode : Encodable.decode (α := Sentence) token <;>
+          simp [EF.streamStep, h0, h1, h2, h3, h4, hdecode,
+            prependStreamTrades, List.append_assoc]
+    by_cases h5 : mode = 5
+    · simp [EF.streamStep, h0, h1, h2, h3, h4, h5,
+        prependStreamTrades]
+    simp [EF.streamStep, h0, h1, h2, h3, h4, h5, prependStreamTrades]
 
 /-- The same equivariance holds for an arbitrary suffix stream. -/
 theorem streamReadFrom_prependStreamTrades (prior : List (EF × Sentence))
@@ -1576,15 +1629,15 @@ theorem streamReadFrom_prependStreamTrades (prior : List (EF × Sentence))
   induction tokens generalizing state with
   | nil => rfl
   | cons token rest ih =>
-      simp only [EF.streamReadFrom, List.foldl_cons]
+      change
+        EF.streamReadFrom rest
+            (EF.streamStep (some (prependStreamTrades prior state)) token) =
+          (EF.streamReadFrom rest (EF.streamStep (some state) token)).map
+            (prependStreamTrades prior)
       rw [streamStep_prependStreamTrades]
       cases hstep : EF.streamStep (some state) token with
-      | none =>
-          simp only [Option.map_none]
-          rw [EF.streamReadFrom_none]
-      | some next =>
-          simp only [Option.map_some]
-          exact ih next
+      | none => simp
+      | some next => simpa using ih next
 
 /-- A successful trade-list decode exposes the exact accepting streaming state. -/
 theorem streamReadFrom_eq_ready_of_deserializeTrades_eq_some
@@ -1615,7 +1668,8 @@ theorem deserializeTrades_append_of_some (left right : List ℕ)
   unfold deserializeTrades
   rw [EF.streamReadFrom_append, hleft]
   rw [show some ((0, none), ([], first)) =
-      some (prependStreamTrades first EF.streamInitial) from rfl]
+      some (prependStreamTrades first EF.streamInitial) from by
+        simp [prependStreamTrades, EF.streamInitial]]
   rw [streamReadFrom_prependStreamTrades first right EF.streamInitial, hright]
   rfl
 
@@ -2479,13 +2533,20 @@ theorem deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
     (day : ℕ) (tokens : List ℕ)
     (hne : (strategyOfTokens day tokens).trades ≠ []) :
     deserializeTrades tokens = some (strategyOfTokens day tokens).trades := by
-  unfold strategyOfTokens at hne ⊢
-  cases hdecode : deserializeTrades tokens with
-  | none => simp at hne
-  | some trades =>
-      by_cases hvalid : ∀ trade ∈ trades, trade.1.rank ≤ day
-      · simp [hdecode, hvalid]
-      · simp [hdecode, hvalid] at hne
+  generalize hS : strategyOfTokens day tokens = S at hne ⊢
+  unfold strategyOfTokens at hS
+  split at hS
+  next hdecode =>
+    subst S
+    simp at hne
+  next trades hdecode =>
+    split at hS
+    next hvalid =>
+      subst S
+      exact hdecode
+    next hinvalid =>
+      subst S
+      simp at hne
 
 /-- The concrete price rewrite, trade-count scan, and two guarded frame passes preserve
 token-indexed efficient computability of the gated conditioning translation. -/
@@ -2541,6 +2602,7 @@ theorem conditionedTranslation_preserves_ec
     · rw [hprice, hempty]
       simp [target, Trader.conditionedTranslation,
         Strategy.separatedLocallyGatedConditionalContract]
+      exact hempty
     · have hpricedNe : (strategyOfTokens n (priced n)).trades ≠ [] := by
         rw [hprice]
         simpa using hempty
@@ -2549,17 +2611,25 @@ theorem conditionedTranslation_preserves_ec
           n (priced n) hpricedNe
       have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
         (priced n) (strategyOfTokens n (priced n)).trades hdecodePriced
-      rw [hpricedEq] at hreadyPriced
+      have hreadyPricedTokens :
+          EF.streamReadFrom
+              ((List.range (priceLen n)).map fun i => priceToken (Nat.pair n i))
+              (some EF.streamInitial) =
+            some ((0, none),
+              ([], (strategyOfTokens n (priced n)).trades)) := by
+        rw [← hpricedEq]
+        exact hreadyPriced
       have hcount : frameTradeCount priceToken priceLen n =
           (T.strat n).trades.length := by
         calc
           frameTradeCount priceToken priceLen n =
               (strategyOfTokens n (priced n)).trades.length :=
             frameTradeCount_eq_length_of_read priceToken priceLen n
-              ((0, none), ([], (strategyOfTokens n (priced n)).trades)) hreadyPriced
+              ((0, none), ([], (strategyOfTokens n (priced n)).trades))
+              hreadyPricedTokens
           _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
       have hpos : 0 < (T.strat n).trades.length :=
-        List.length_pos.mpr hempty
+        List.length_pos_iff.mpr hempty
       rw [hprice, hcount, frameBudget_eq n (T.strat n).trades.length hpos]
       simp only [List.map_map]
       change
@@ -2580,9 +2650,8 @@ theorem conditionedTranslation_preserves_ec
   | mk leftTrades leftRank =>
       cases hright : (T.conditionedTranslation ψ ε).strat n with
       | mk rightTrades rightRank =>
-          simp only [hleft, hright] at htrades ⊢
-          subst rightTrades
-          rfl
+          simp only [hleft, hright, target, Strategy.mk.injEq] at htrades ⊢
+          exact htrades
 
 /-! ### Public operational witness constructors -/
 
