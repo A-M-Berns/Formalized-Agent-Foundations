@@ -141,6 +141,7 @@ construction slate is complete.
 
 Relevant commits, newest first:
 
+- `261bdf7` — construct the bounded delayed feedback truth compiler and direct consumers
 - `f1c1355` — construct FFL-backed computation syntax and all six direct MetaLearning consumers
 - `4546178` — construct independent Boolean-prefix syntax and the direct DUS entry point
 - `0d6ae13` — construct the conditioning presentation witness
