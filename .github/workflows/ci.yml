@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main, logical-induction]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Build (Barasz + LogicalInduction default targets)
+        uses: leanprover/lean-action@v1
+        with:
+          use-mathlib-cache: true
+          use-github-cache: true
