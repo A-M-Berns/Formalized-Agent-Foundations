@@ -746,24 +746,27 @@ def locallyGatedFirstLeg (ψ : ℕ → Sentence) (ε : ℚ) (day : ℕ)
     (τ : ℚ) (count : ℕ) (p : EF × Sentence) : EF × Sentence :=
   let α := p.1.retainedConditionPrices ψ ε
   let ratio := EF.conditionalRatioEF (ψ day) ε p.2 day
-  let bound := EF.var 0
+  let boundRatio := EF.var 0
+  let bound := EF.var 1
   let magnitude := EF.absVal bound
-  let gate := EF.conditioningCapGate ratio magnitude
+  let gate := EF.conditioningCapGate boundRatio magnitude
     (localConditioningBudget τ count)
   let β := efMin bound (EF.mul bound gate)
-  (EF.letE α β, p.2 ⋏ ψ day)
+  (EF.letE α (EF.letE ratio β), p.2 ⋏ ψ day)
 
 /-- Second output leg of the locally normalized conditioning compiler. -/
 def locallyGatedSecondLeg (ψ : ℕ → Sentence) (ε : ℚ) (day : ℕ)
     (τ : ℚ) (count : ℕ) (p : EF × Sentence) : EF × Sentence :=
   let α := p.1.retainedConditionPrices ψ ε
   let ratio := EF.conditionalRatioEF (ψ day) ε p.2 day
-  let bound := EF.var 0
+  let boundRatio := EF.var 0
+  let bound := EF.var 1
   let magnitude := EF.absVal bound
-  let gate := EF.conditioningCapGate ratio magnitude
+  let gate := EF.conditioningCapGate boundRatio magnitude
     (localConditioningBudget τ count)
   let β := efMin bound (EF.mul bound gate)
-  (EF.letE α (EF.mul (EF.const (-1)) (EF.mul β ratio)), ψ day)
+  (EF.letE α (EF.letE ratio
+    (EF.mul (EF.const (-1)) (EF.mul β boundRatio))), ψ day)
 
 /-- Compiler-order form of the locally gated contract.  It emits all first legs and then
 all second legs, allowing two parser-transparent passes over an arbitrary raw certificate. -/

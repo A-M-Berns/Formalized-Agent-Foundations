@@ -24,15 +24,15 @@ than a stop instruction.
 | 7 | `M7-FEEDBACK-EMIT` | **constructed** | Keep; `FeedbackEmission.feedbackTraderEmissionSigns` |
 | 8 | `M7-FEEDBACK-TRUTH` | **constructed** | Keep; `FeedbackTruth.feedbackTruthSequence` and three computation-based consumers |
 | 9 | `M7-DUS-PREFIX-SYNTAX` | **constructed** | Keep; `bitPrefixSentencesOfIndependentAtoms`, `lic_domination_universalSemimeasure_ofIndependentAtoms` |
-| 10 | `M7-SCON-COMPILER` | disclosed | **construct**, attempt 6 |
+| 10 | `M7-SCON-COMPILER` | **constructed** | Keep; `ConditioningCompiler.lean` rational market, finite patch, arbitrary-stream transducers, and direct consumers |
 | 11 | `M7-SCON-PRESENTATION` | **constructed** | Keep; `conditioningPresentationOfComputations`, `lic_conditioned_gated_ofComputations` |
 | 12 | `M7-LUV-SYNTAX` | disclosed | **construct**, attempt 7 |
 | 13 | `M7-DUS-APPROX` | disclosed | Leave disclosed unless Anson reopens it |
 | 14 | `M7-STRICT-SEPARATORS` | disclosed | Leave disclosed unless Anson reopens it |
 | 15 | `M7-COMP-SYNTAX` | **constructed** | Keep; `ComputationClaim`, three boundary constructors, and six direct consumers in `Construction/ComputationSyntax.lean` |
 
-Current count: **10/15 constructed**. Target count: **12/15 constructed**. The two remaining
-constructions are `M7-SCON-COMPILER` and `M7-LUV-SYNTAX`.
+Current count: **11/15 constructed**. Target count: **12/15 constructed**. The remaining
+construction is `M7-LUV-SYNTAX`.
 `M7-PREFIX-MACHINE`, `M7-DUS-APPROX`, and `M7-STRICT-SEPARATORS` are the three intentional
 disclosures at the target.
 
@@ -44,6 +44,24 @@ construction slate is complete.
 
 - The main existence result remains unconditional and axiom-clean.
 - The M3–M5 property tail remains green under `[IsLogicalInductor P DP]`.
+- `M7-SCON-COMPILER` is complete in
+  `LogicalInduction/Construction/ConditioningCompiler.lean` and imported from
+  `LogicalInduction/Construction.lean`.
+- `conditionedMarketComputation` computes exact rational capped conditional quotes;
+  `denominatorPatchedMarketComputation` computes the paper's finite denominator repair.
+  The flat compiler handles arbitrary polynomial-length raw certificates: it rewrites every
+  price leaf, counts completed trades, emits both separated locally gated legs, and uses a
+  polynomial mode/stack-depth scan so malformed zero-strategy programs cannot resume across
+  the concatenation boundary.
+- The central closure theorem is `conditionedTranslation_preserves_ec`. Public constructors
+  are `gatedConditioningOperationalWitness` and
+  `denominatorPatchedGatedConditioningOperationalWitness`; direct criterion consumers are
+  `lic_conditioned_gated_ofMarketComputation` and
+  `lic_conditioned_gated_ofComputationsAndMarket`.
+- The finite-patch theorem remains honest about the paper erratum: the patched operational
+  witness is concrete, while transporting logical induction from the original market to the
+  patched history still requires the two `EfficientPrefixPatch` certificates exposed by
+  `lic_iff_of_finitePerturbation`.
 - `M7-FEEDBACK-EMIT` is complete in
   `LogicalInduction/Construction/FeedbackEmission.lean` and imported from
   `LogicalInduction/Construction.lean`.
@@ -130,11 +148,11 @@ construction slate is complete.
 - Derived consumers with the emission boundary discharged are
   `lic_wubaff_ofFeedbackTruth`, `boundedCombination_wubaff_ofFeedbackTruth`, and
   `luv_wubexp_ofFeedbackTruth`.
-- The focused construction/property/integration roll-up built **2,573 jobs**; the full
-  project built **2,686 jobs**.
+- The focused construction/property/integration roll-up built **2,522 jobs**; the full
+  project built **2,687 jobs**.
 - The quotation reports, computation-syntax reports, six public prefix-syntax axiom reports,
-  five public conditioning-presentation reports, four public feedback-emission reports, and
-  four public feedback-truth reports
+  five public conditioning-presentation reports, five public conditioning-compiler reports,
+  four public feedback-emission reports, and four public feedback-truth reports
   contain only `propext`, `Classical.choice`, and `Quot.sound` (some prefix reports need a
   strict subset).
 - The last verified tree was green and contained no executable proof holes.
@@ -170,8 +188,8 @@ three broader operational compilers.
 | 3 | `M7-COMP-SYNTAX` | **Complete**; FFL arithmetic schemas, compact Gödel names, representation constructors, and direct consumers landed |
 | 4 | `M7-QUOTE-AFFINE` | **Complete**; FFL quotation/diagonalization and concrete same-day/deferred affine packages landed |
 | 5 | `M7-FEEDBACK-TRUTH` | **Complete**; bounded delayed truth compiler and direct consumers landed |
-| 6 | `M7-SCON-COMPILER` | **Next**; market-dependent denominator patch plus arbitrary token-stream translation |
-| 7 | `M7-LUV-SYNTAX` | Broadest Tier 2 package: thresholds, exact-theory semantics, meshes, and softmax emission |
+| 6 | `M7-SCON-COMPILER` | **Complete**; rational conditional market, finite patch, arbitrary token-stream translation, and direct consumers landed |
+| 7 | `M7-LUV-SYNTAX` | **Next**; broadest Tier 2 package: thresholds, exact-theory semantics, meshes, and softmax emission |
 
 “Attempt” is intentional. Before implementing each witness, audit whether its current
 interface can be inhabited at the stated generality. If it needs a paper-faithful
@@ -293,24 +311,38 @@ rational-code emission, affine syntax, semantic zero-value law, bounds, and cons
 proved composition (`C`) from those inputs and existing project compilers. The only type-(c)
 modeling substitution remains the repository-wide disclosed `dd:fuel` clock model.
 
-## START HERE — attempt 6, `M7-SCON-COMPILER`
+## Completed attempt 6 — `M7-SCON-COMPILER`
 
-Construct `GatedConditioningOperationalWitness` in
-`LogicalInduction/Properties/Conditioning.lean`. Keep the boundary split already enforced by
-the property file: `ConditioningPresentation` supplies the real stage conjunction and union
-process, while the new operational constructor must supply only a positive rational
-denominator floor, computation of the actual conditional market, and token-level efficient
-translation of every `EfficientlyComputableTok` trader through
-`Trader.conditionedTranslation`.
+`LogicalInduction/Construction/ConditioningCompiler.lean` constructs the complete
+`GatedConditioningOperationalWitness`. The implementation includes exact rational programs
+for capped conditional quotes and the finite denominator patch, a parser-transparent price
+rewrite, two locally gated frame passes, polynomial trade counting and budget coding, and a
+shallow acceptance scan that makes the two-pass join safe for arbitrary malformed source
+certificates. `conditionedTranslation_preserves_ec` is the central token-level theorem;
+`lic_conditioned_gated_ofComputationsAndMarket` combines it with the already-constructed
+finite-stage presentation.
 
-Audit the interface at the intended generality before coding. The denominator patch is
-market-dependent, so expose whatever concrete base-market computation and finite-prefix
-minimum program are genuinely required; do not infer computability from the semantic
-`History`. The translated trader has an arbitrary polynomial-length token stream, so compile
-the literal gated conditional contract stream rather than assuming a fixed extensional
-length. Economic tracking, first-failure downside control, exploitation transport, and the
-LI conclusion are already proved in `Conditioning.lean` and must not enter the operational
-certificate.
+Provenance: the constructor assumes only a named base-market computation, polynomial codes
+for the real condition sequence, and a positive denominator floor. The patch constructor
+derives the floor from the paper's eventual lower bound. Economic tracking, first-failure
+downside, wealth floors, exploit transport, and LI closure remain derived in
+`Properties/Conditioning.lean`. The finite-perturbation erratum is not hidden: LI transport
+to the patched market still goes through the qualified `EfficientPrefixPatch` theorem.
+
+## START HERE — attempt 7, `M7-LUV-SYNTAX`
+
+Audit and construct the interfaces collected under `LUV.PolyThresholdCodes`,
+`LUVCombination.PolySequence`, `WorldValued`, `ConvergencePresentation`,
+`ExactTheoryPresentation`, and `MeshSoftmaxOperationalWitness`. Reuse the threshold-code
+sublayer already built for quotation where possible, then separate the remaining tasks into
+literal threshold syntax/semantics, completed-theory exact values, polynomial affine meshes,
+and the finite softmax emitter. Do not fold expectation convergence, persistence,
+unbiasedness, or pseudorandom-learning conclusions into the operational certificates.
+
+Once LUV reaches green, the stated 12/15 target is complete. At that point reassess the
+three disclosed boundaries (`M7-PREFIX-MACHINE`, `M7-DUS-APPROX`, and
+`M7-STRICT-SEPARATORS`) as a possible 15/15 stretch rather than assuming their substantially
+larger classical-computability obligations are routine.
 
 ## Deliberately disclosed boundaries
 

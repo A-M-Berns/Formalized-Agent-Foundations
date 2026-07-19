@@ -405,20 +405,28 @@ def rawConditioningRatioTokens (sentenceCode conditionCode day : ℕ)
 def rawLocallyGatedBetaBodyTokens
     (sentenceCode conditionCode day budgetCode inverseBudgetCode : ℕ)
     (ε : ℚ) : List ℕ :=
-  let bound := [7, 0]
-  let ratio := rawConditioningRatioTokens sentenceCode conditionCode day ε
-  let gate := rawConditioningGateTokens ratio (rawAbsTokens bound)
+  let ratioValue := rawConditioningRatioTokens sentenceCode conditionCode day ε
+  let boundRatio := [7, 0]
+  let bound := [7, 1]
+  let gate := rawConditioningGateTokens boundRatio (rawAbsTokens bound)
     budgetCode inverseBudgetCode
-  rawMinTokens bound (rawMulTokens bound gate)
+  ratioValue ++ rawMinTokens bound (rawMulTokens bound gate) ++ [8]
 
 def rawLocallyGatedSecondBodyTokens
     (sentenceCode conditionCode day budgetCode inverseBudgetCode : ℕ)
     (ε : ℚ) : List ℕ :=
   let beta := rawLocallyGatedBetaBodyTokens
     sentenceCode conditionCode day budgetCode inverseBudgetCode ε
-  let ratio := rawConditioningRatioTokens sentenceCode conditionCode day ε
-  rawMulTokens (rawConstTokens (Encodable.encode (-1 : ℚ)))
-    (rawMulTokens beta ratio)
+  -- Replace the inner beta body by the corresponding second-leg body under the same
+  -- leading ratio binding.
+  let ratioValue := rawConditioningRatioTokens sentenceCode conditionCode day ε
+  let boundRatio := [7, 0]
+  let bound := [7, 1]
+  let gate := rawConditioningGateTokens boundRatio (rawAbsTokens bound)
+    budgetCode inverseBudgetCode
+  let betaCore := rawMinTokens bound (rawMulTokens bound gate)
+  ratioValue ++ rawMulTokens (rawConstTokens (Encodable.encode (-1 : ℚ)))
+    (rawMulTokens betaCore boundRatio) ++ [8]
 
 theorem streamRead_rawPrice_some {code : ℕ} {φ : Sentence}
     (h : Encodable.decode (α := Sentence) code = some φ)
@@ -572,6 +580,25 @@ theorem conditionPriceTokenRun_append (ψCode : ℕ → ℕ) (ε : ℚ)
       simp only [List.cons_append, conditionPriceTokenRun]
       rw [ih]
       simp [List.append_assoc]
+
+theorem conditionPriceTokenRun_range (tokenFn : ℕ → ℕ) (ψCode : ℕ → ℕ)
+    (ε : ℚ) (n count : ℕ) :
+    conditionPriceTokenRun ψCode ε (0, 0)
+        ((List.range count).map fun j => tokenFn (Nat.pair n j)) =
+      (EF.freezeTokenControlAt tokenFn n count,
+        (List.range count).flatMap fun j =>
+          conditionPriceTokenSegment tokenFn ψCode ε (Nat.pair n j)) := by
+  induction count with
+  | zero => rfl
+  | succ count ih =>
+      rw [List.range_succ, List.map_append, conditionPriceTokenRun_append, ih]
+      simp [conditionPriceTokenRun, conditionPriceTokenSegment,
+        conditionPriceTokenEmit, PrefixPatchCompile.freezeControlNat,
+        EF.freezeTokenControlAt]
+      by_cases hm0 : (EF.freezeTokenControlAt tokenFn n count).1 = 0 <;>
+        by_cases hm1 : (EF.freezeTokenControlAt tokenFn n count).1 = 1 <;>
+        by_cases hm2 : (EF.freezeTokenControlAt tokenFn n count).1 = 2 <;>
+        simp [hm0, hm1, hm2]
 
 theorem conditionPriceTokenRun_serialize (ψ : ℕ → Sentence)
     (ε : ℚ) (e : EF) :
@@ -858,6 +885,42 @@ theorem deserializeTrades_conditionPriceTokenRun
       cases mode <;> cases pending <;> cases stack <;>
         simp [retainedConditionStreamState]
 
+theorem strategyOfTokens_conditionPriceTokenRun_trades
+    (ψ : ℕ → Sentence) (ε : ℚ) (day : ℕ) (tokens : List ℕ) :
+    (strategyOfTokens day
+      (conditionPriceTokenRun (fun d => Encodable.encode (ψ d)) ε
+        (0, 0) tokens).2).trades =
+      (strategyOfTokens day tokens).trades.map fun trade =>
+        (trade.1.retainedConditionPrices ψ ε, trade.2) := by
+  have hdecode := deserializeTrades_conditionPriceTokenRun ψ ε tokens
+  unfold strategyOfTokens
+  simp only at hdecode
+  rw [hdecode]
+  cases hs : deserializeTrades tokens with
+  | none => simp
+  | some trades =>
+      simp only [Option.map_some]
+      have hrank :
+          (∀ trade ∈ trades.map (fun trade =>
+              (trade.1.retainedConditionPrices ψ ε, trade.2)),
+              trade.1.rank ≤ day) ↔
+            ∀ trade ∈ trades, trade.1.rank ≤ day := by
+        constructor
+        · intro h trade hmem
+          simpa using h (trade.1.retainedConditionPrices ψ ε, trade.2)
+            (List.mem_map_of_mem hmem)
+        · intro h trade hmem
+          simp only [List.mem_map] at hmem
+          obtain ⟨source, hsource, rfl⟩ := hmem
+          simpa using h source hsource
+      by_cases hvalid : ∀ trade ∈ trades, trade.1.rank ≤ day
+      · rw [dif_pos (hrank.mpr hvalid), dif_pos hvalid]
+      · have hinvalid : ¬∀ trade ∈ trades.map (fun trade =>
+            (trade.1.retainedConditionPrices ψ ε, trade.2)),
+            trade.1.rank ≤ day := fun h => hvalid (hrank.mp h)
+        rw [dif_neg hinvalid, dif_neg hvalid]
+        rfl
+
 /-! ### Two parser-transparent trade-frame passes -/
 
 def frameBudgetDenominator (day count : ℕ) : ℕ :=
@@ -865,6 +928,63 @@ def frameBudgetDenominator (day count : ℕ) : ℕ :=
 
 def frameBudget (day count : ℕ) : ℚ :=
   if count = 0 then 0 else (frameBudgetDenominator day count : ℚ) ⁻¹
+
+def frameBudgetCode (day count : ℕ) : ℕ :=
+  if count = 0 then Encodable.encode (0 : ℚ)
+  else Nat.pair 2 (frameBudgetDenominator day count)
+
+def frameInverseBudgetCode (day count : ℕ) : ℕ :=
+  if count = 0 then Encodable.encode (0 : ℚ)
+  else Nat.pair (2 * frameBudgetDenominator day count) 1
+
+theorem frameBudgetCode_exact (day count : ℕ) :
+    frameBudgetCode day count = Encodable.encode (frameBudget day count) := by
+  by_cases hzero : count = 0
+  · simp [frameBudgetCode, frameBudget, hzero]
+  · have hpos : 0 < frameBudgetDenominator day count := by
+      simp [frameBudgetDenominator]
+      positivity
+    simp [frameBudgetCode, frameBudget, hzero,
+      encode_rat_inv_natCast hpos]
+
+theorem frameInverseBudgetCode_exact (day count : ℕ) :
+    frameInverseBudgetCode day count = Encodable.encode (frameBudget day count)⁻¹ := by
+  by_cases hzero : count = 0
+  · simp [frameInverseBudgetCode, frameBudget, hzero]
+  · have hpos : 0 < frameBudgetDenominator day count := by
+      simp [frameBudgetDenominator]
+      positivity
+    simp [frameInverseBudgetCode, frameBudget, hzero,
+      encode_rat_natCast, ne_of_gt hpos]
+
+theorem frameBudgetCodes_polyFueled
+    {day count : ℕ → ℕ} {cd cc : Nat.Partrec.Code}
+    (hday : PolyFueled cd day) (hcount : PolyFueled cc count) :
+    (∃ c, PolyFueled c (fun z => frameBudgetCode (day z) (count z))) ∧
+      ∃ c, PolyFueled c (fun z => frameInverseBudgetCode (day z) (count z)) := by
+  obtain ⟨cadd, hadd⟩ := addc_polyFueled
+  obtain ⟨cmul, hmul⟩ := mul_polyFueled
+  have hday1 := hday.succ_comp
+  have hday2 := hday1.succ_comp
+  have hden : PolyFueled _ (fun z => frameBudgetDenominator (day z) (count z)) :=
+    (hmul.comp ((hmul.comp (hday1.pair hday2)).pair hcount)).of_eq fun z => by
+      simp [frameBudgetDenominator]
+  have hbudgetPositive : PolyFueled _ (fun z =>
+      Nat.pair 2 (frameBudgetDenominator (day z) (count z))) :=
+    (PolyFueled.const 2).pair hden
+  have htwice : PolyFueled _ (fun z =>
+      2 * frameBudgetDenominator (day z) (count z)) :=
+    (hmul.comp ((PolyFueled.const 2).pair hden)).of_eq fun z => by
+      simp only [Nat.unpair_pair]
+  have hinversePositive : PolyFueled _ (fun z =>
+      Nat.pair (2 * frameBudgetDenominator (day z) (count z)) 1) :=
+    htwice.pair (PolyFueled.const 1)
+  obtain ⟨cb, hb⟩ := PrefixPatchCompile.polyFueled_ifZero hcount
+    (PolyFueled.const (Encodable.encode (0 : ℚ))) hbudgetPositive
+  obtain ⟨ci, hi⟩ := PrefixPatchCompile.polyFueled_ifZero hcount
+    (PolyFueled.const (Encodable.encode (0 : ℚ))) hinversePositive
+  exact ⟨⟨cb, hb.of_eq fun z => by simp [frameBudgetCode]⟩,
+    ⟨ci, hi.of_eq fun z => by simp [frameInverseBudgetCode]⟩⟩
 
 theorem frameBudget_eq (day count : ℕ) (hcount : 0 < count) :
     frameBudget day count =
@@ -921,16 +1041,21 @@ theorem conditioningFrameTokenRun_append (second : Bool) (ψCode day : ℕ)
 
 def firstFrameBody (ψ : Sentence) (ε q : ℚ) (day : ℕ)
     (φ : Sentence) : EF :=
-  let bound := EF.var 0
   let ratio := EF.conditionalRatioEF ψ ε φ day
-  let gate := EF.conditioningCapGate ratio (EF.absVal bound) q
+  let boundRatio := EF.var 0
+  let bound := EF.var 1
+  let gate := EF.conditioningCapGate boundRatio (EF.absVal bound) q
   efMin bound (EF.mul bound gate)
+  |> EF.letE ratio
 
 def secondFrameBody (ψ : Sentence) (ε q : ℚ) (day : ℕ)
     (φ : Sentence) : EF :=
-  EF.mul (EF.const (-1))
-    (EF.mul (firstFrameBody ψ ε q day φ)
-      (EF.conditionalRatioEF ψ ε φ day))
+  let ratio := EF.conditionalRatioEF ψ ε φ day
+  let boundRatio := EF.var 0
+  let bound := EF.var 1
+  let gate := EF.conditioningCapGate boundRatio (EF.absVal bound) q
+  let beta := efMin bound (EF.mul bound gate)
+  EF.letE ratio (EF.mul (EF.const (-1)) (EF.mul beta boundRatio))
 
 theorem streamReadFrom_rawFirstFrame
     {sentenceCode : ℕ} {φ ψ : Sentence}
@@ -974,6 +1099,91 @@ theorem streamReadFrom_rawSecondFrame
     EF.conditioningCapGate, EF.conditioningTolerance, EF.absVal,
     EF.conditionalRatioEF, EF.lowerSafeRecip, clip01, efMin]
 
+theorem streamRead_rawConditioningRatio_none {sentenceCode : ℕ} {ψ : Sentence}
+    (hdecode : Encodable.decode (α := Sentence) sentenceCode = none)
+    (day : ℕ) (ε : ℚ) (stack : List EF) (trades : List (EF × Sentence)) :
+    EF.streamReadFrom
+        (rawConditioningRatioTokens sentenceCode (Encodable.encode ψ) day ε)
+        (some ((0, none), (stack, trades))) = none := by
+  apply streamRead_append_none
+  apply streamRead_append_none
+  exact streamRead_rawPrice_none (conjunctionCode_decode_none hdecode) day stack trades
+
+set_option maxHeartbeats 800000 in
+theorem streamRead_rawFirstBody_none {sentenceCode : ℕ} {ψ : Sentence}
+    (hdecode : Encodable.decode (α := Sentence) sentenceCode = none)
+    (day : ℕ) (ε q : ℚ) (stack : List EF) (trades : List (EF × Sentence)) :
+    EF.streamReadFrom
+        (rawLocallyGatedBetaBodyTokens sentenceCode (Encodable.encode ψ) day
+          (Encodable.encode q) (Encodable.encode q⁻¹) ε)
+        (some ((0, none), (stack, trades))) = none := by
+  rw [rawLocallyGatedBetaBodyTokens, EF.streamReadFrom_append,
+    EF.streamReadFrom_append,
+    streamRead_rawConditioningRatio_none hdecode, EF.streamReadFrom_none,
+    EF.streamReadFrom_none]
+
+set_option maxHeartbeats 800000 in
+theorem streamRead_rawSecondBody_none {sentenceCode : ℕ} {ψ : Sentence}
+    (hdecode : Encodable.decode (α := Sentence) sentenceCode = none)
+    (day : ℕ) (ε q : ℚ) (stack : List EF) (trades : List (EF × Sentence)) :
+    EF.streamReadFrom
+        (rawLocallyGatedSecondBodyTokens sentenceCode (Encodable.encode ψ) day
+          (Encodable.encode q) (Encodable.encode q⁻¹) ε)
+        (some ((0, none), (stack, trades))) = none := by
+  rw [rawLocallyGatedSecondBodyTokens, EF.streamReadFrom_append,
+    EF.streamReadFrom_append,
+    streamRead_rawConditioningRatio_none hdecode, EF.streamReadFrom_none,
+    EF.streamReadFrom_none]
+
+set_option maxHeartbeats 800000 in
+theorem streamRead_rawFrame_empty (second : Bool) (sentenceCode : ℕ)
+    (ψ : Sentence) (day : ℕ) (ε q : ℚ) (trades : List (EF × Sentence)) :
+    EF.streamReadFrom
+        (if second then
+          rawLocallyGatedSecondBodyTokens sentenceCode (Encodable.encode ψ) day
+              (Encodable.encode q) (Encodable.encode q⁻¹) ε ++
+            [8, 6, Encodable.encode ψ]
+        else
+          rawLocallyGatedBetaBodyTokens sentenceCode (Encodable.encode ψ) day
+              (Encodable.encode q) (Encodable.encode q⁻¹) ε ++
+            [8, 6, conjunctionCode sentenceCode (Encodable.encode ψ)])
+        (some ((0, none), ([], trades))) = none := by
+  cases hdecode : Encodable.decode (α := Sentence) sentenceCode with
+  | none =>
+      cases second
+      · rw [if_neg (by simp), EF.streamReadFrom_append,
+          streamRead_rawFirstBody_none hdecode, EF.streamReadFrom_none]
+      · rw [if_pos (by simp), EF.streamReadFrom_append,
+          streamRead_rawSecondBody_none hdecode, EF.streamReadFrom_none]
+  | some φ =>
+      cases second <;>
+        simp [rawLocallyGatedSecondBodyTokens, rawLocallyGatedBetaBodyTokens,
+          rawConditioningRatioTokens, rawConditioningGateTokens, rawAbsTokens,
+          rawClip01Tokens, rawPriceTokens, rawConstTokens, rawAddTokens,
+          rawMulTokens, rawMaxTokens, rawSafeRecipTokens, rawMinTokens,
+          rawLowerSafeRecipTokens, EF.streamReadFrom, EF.streamStep, hdecode,
+          conjunctionCode_decode hdecode, Encodable.encodek]
+
+theorem streamRead_rawFrame_invalid (second : Bool) {sentenceCode : ℕ}
+    (hdecode : Encodable.decode (α := Sentence) sentenceCode = none)
+    (ψ : Sentence) (day : ℕ) (ε q : ℚ) (e : EF) (stack : List EF)
+    (trades : List (EF × Sentence)) :
+    EF.streamReadFrom
+        (if second then
+          rawLocallyGatedSecondBodyTokens sentenceCode (Encodable.encode ψ) day
+              (Encodable.encode q) (Encodable.encode q⁻¹) ε ++
+            [8, 6, Encodable.encode ψ]
+        else
+          rawLocallyGatedBetaBodyTokens sentenceCode (Encodable.encode ψ) day
+              (Encodable.encode q) (Encodable.encode q⁻¹) ε ++
+            [8, 6, conjunctionCode sentenceCode (Encodable.encode ψ)])
+        (some ((0, none), (e :: stack, trades))) = none := by
+  cases second
+  · rw [if_neg (by simp), EF.streamReadFrom_append,
+      streamRead_rawFirstBody_none hdecode, EF.streamReadFrom_none]
+  · rw [if_pos (by simp), EF.streamReadFrom_append,
+      streamRead_rawSecondBody_none hdecode, EF.streamReadFrom_none]
+
 def frameLeg (second : Bool) (ψ : Sentence) (ε q : ℚ) (day : ℕ)
     (p : EF × Sentence) : EF × Sentence :=
   if second then (EF.letE p.1 (secondFrameBody ψ ε q day p.2), ψ)
@@ -986,10 +1196,7 @@ def frameStreamState (second : Bool) (ψ : Sentence) (ε q : ℚ) (day : ℕ) :
           if mode = 4 ∨ mode = 0 then none else pending),
         stack, trades.map (frameLeg second ψ ε q day))
 
-/- The full malformed-frame simulation is the remaining proof obligation for the two-pass
-translator.  Keep the attempted case split out of the compiled surface until its invalid-code
-and empty-stack helper lemmas are factored into small parser equations.
-set_option maxHeartbeats 800000 in
+set_option maxHeartbeats 3000000 in
 theorem streamReadFrom_conditioningFrameTokenEmit
     (second : Bool) (ψ : Sentence) (ε q : ℚ) (day : ℕ)
     (control : EF.FreezeTokenState) (state : EF.StreamState) (token : ℕ)
@@ -1091,31 +1298,60 @@ theorem streamReadFrom_conditioningFrameTokenEmit
                   | zero =>
                       cases stack with
                       | nil =>
-                          cases hdecode : Encodable.decode (α := Sentence) token <;>
-                            simp [conditioningFrameTokenEmit, EF.freezeTokenNext,
-                              frameStreamState, EF.streamReadFrom, EF.streamStep,
-                              hdecode, rawLocallyGatedBetaBodyTokens,
-                              rawLocallyGatedSecondBodyTokens]
+                          cases hdecode : Encodable.decode (α := Sentence) token
+                          · constructor
+                            · cases second with
+                              | false =>
+                                  simpa [conditioningFrameTokenEmit, frameStreamState,
+                                    EF.streamStep, hdecode] using
+                                    streamRead_rawFrame_empty false token ψ day ε q
+                                      (trades.map (frameLeg false ψ ε q day))
+                              | true =>
+                                  simpa [conditioningFrameTokenEmit, frameStreamState,
+                                    EF.streamStep, hdecode] using
+                                    streamRead_rawFrame_empty true token ψ day ε q
+                                      (trades.map (frameLeg true ψ ε q day))
+                            · intro next hnext
+                              simp [EF.streamStep, hdecode] at hnext
+                          · constructor
+                            · cases second with
+                              | false =>
+                                  simpa [conditioningFrameTokenEmit, frameStreamState,
+                                    EF.streamStep, hdecode] using
+                                    streamRead_rawFrame_empty false token ψ day ε q
+                                      (trades.map (frameLeg false ψ ε q day))
+                              | true =>
+                                  simpa [conditioningFrameTokenEmit, frameStreamState,
+                                    EF.streamStep, hdecode] using
+                                    streamRead_rawFrame_empty true token ψ day ε q
+                                      (trades.map (frameLeg true ψ ε q day))
+                            · intro next hnext
+                              simp [EF.streamStep, hdecode] at hnext
                       | cons e stack =>
                           cases hdecode : Encodable.decode (α := Sentence) token with
                           | none =>
-                              cases second <;> simp [conditioningFrameTokenEmit,
-                                frameStreamState, EF.streamReadFrom, EF.streamStep,
-                                hdecode, rawLocallyGatedBetaBodyTokens,
-                                rawLocallyGatedSecondBodyTokens,
-                                rawConditioningRatioTokens, rawPriceTokens]
+                              constructor
+                              · simpa [conditioningFrameTokenEmit, frameStreamState,
+                                  EF.streamStep, hdecode] using
+                                  streamRead_rawFrame_invalid second (sentenceCode := token)
+                                    hdecode ψ day ε q e
+                                    stack (trades.map (frameLeg second ψ ε q day))
+                              · intro next hnext
+                                simp [EF.streamStep, hdecode] at hnext
                           | some φ =>
                               constructor
                               · cases second with
                                 | false =>
                                     simpa [conditioningFrameTokenEmit, frameStreamState,
-                                      frameLeg] using streamReadFrom_rawFirstFrame
-                                        hdecode day ε q e stack
+                                      frameLeg, EF.streamStep, hdecode,
+                                      List.map_append] using streamReadFrom_rawFirstFrame
+                                        (ψ := ψ) hdecode day ε q e stack
                                         (trades.map (frameLeg false ψ ε q day))
                                 | true =>
                                     simpa [conditioningFrameTokenEmit, frameStreamState,
-                                      frameLeg] using streamReadFrom_rawSecondFrame
-                                        hdecode day ε q e stack
+                                      frameLeg, EF.streamStep, hdecode,
+                                      List.map_append] using streamReadFrom_rawSecondFrame
+                                        (ψ := ψ) hdecode day ε q e stack
                                         (trades.map (frameLeg true ψ ε q day))
                               · intro next hnext
                                 simp [EF.streamStep, hdecode] at hnext
@@ -1127,6 +1363,261 @@ theorem streamReadFrom_conditioningFrameTokenEmit
                           frameStreamState, EF.streamReadFrom, EF.streamStep]
                       | succ mode => simp [conditioningFrameTokenEmit, EF.freezeTokenNext,
                           frameStreamState, EF.streamReadFrom, EF.streamStep]
+
+theorem streamReadFrom_conditioningFrameTokenRun
+    (second : Bool) (ψ : Sentence) (ε q : ℚ) (day : ℕ)
+    (control : EF.FreezeTokenState) (state : EF.StreamState) (tokens : List ℕ)
+    (hmatch : control.Matches state) :
+    let run := conditioningFrameTokenRun second (Encodable.encode ψ) day ε
+      (Encodable.encode q) (Encodable.encode q⁻¹) control tokens
+    EF.streamReadFrom run.2 (some (frameStreamState second ψ ε q day state)) =
+        (EF.streamReadFrom tokens (some state)).map
+          (frameStreamState second ψ ε q day) ∧
+      ∀ next, EF.streamReadFrom tokens (some state) = some next →
+        run.1.Matches next := by
+  induction tokens generalizing control state with
+  | nil => simp [conditioningFrameTokenRun, EF.streamReadFrom, hmatch]
+  | cons token tokens ih =>
+      simp only [conditioningFrameTokenRun]
+      have hstep := streamReadFrom_conditioningFrameTokenEmit
+        second ψ ε q day control state token hmatch
+      rcases hstep with ⟨hstep, hnext⟩
+      cases hs : EF.streamStep (some state) token with
+      | none =>
+          constructor
+          · rw [EF.streamReadFrom_append, hstep, hs]
+            simp only [Option.map_none]
+            rw [EF.streamReadFrom_none]
+            change none = (EF.streamReadFrom tokens
+              (EF.streamStep (some state) token)).map
+                (frameStreamState second ψ ε q day)
+            rw [hs, EF.streamReadFrom_none]
+            rfl
+          · intro final hfinal
+            change EF.streamReadFrom tokens (EF.streamStep (some state) token) =
+              some final at hfinal
+            rw [hs, EF.streamReadFrom_none] at hfinal
+            contradiction
+      | some next =>
+          have hmatches := hnext next hs
+          have hrest := ih (EF.freezeTokenNext control token) next hmatches
+          simp only at hrest
+          rcases hrest with ⟨hrest, hfinal⟩
+          constructor
+          · rw [EF.streamReadFrom_append, hstep, hs]
+            simp only [Option.map_some]
+            rw [hrest]
+            simp [EF.streamReadFrom, hs]
+          · intro final hfinalSource
+            apply hfinal final
+            simpa [EF.streamReadFrom, hs] using hfinalSource
+
+/-- A successful run of the flat decoder never carries a pending sentence while it is in
+the ready mode.  The framing map normalizes that unreachable component, so this invariant
+is what prevents a malformed source stream from being accidentally repaired. -/
+def readyPendingInvariant (state : EF.StreamState) : Prop :=
+  state.1.1 = 0 → state.1.2 = none
+
+theorem streamStep_readyPendingInvariant
+    (state next : EF.StreamState) (token : ℕ)
+    (hinv : readyPendingInvariant state)
+    (hstep : EF.streamStep (some state) token = some next) :
+    readyPendingInvariant next := by
+  rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
+  rcases next with ⟨⟨nextMode, nextPending⟩, ⟨nextStack, nextTrades⟩⟩
+  simp only [EF.streamStep] at hstep
+  repeat' split at hstep
+  all_goals aesop (add simp [readyPendingInvariant])
+
+theorem streamReadFrom_readyPendingInvariant_from
+    (tokens : List ℕ) (initial final : EF.StreamState)
+    (hinv : readyPendingInvariant initial)
+    (hread : EF.streamReadFrom tokens (some initial) = some final) :
+    readyPendingInvariant final := by
+  induction tokens generalizing initial final with
+  | nil =>
+      change some initial = some final at hread
+      injection hread with heq
+      subst final
+      exact hinv
+  | cons token tokens ih =>
+      change EF.streamReadFrom tokens (EF.streamStep (some initial) token) =
+        some final at hread
+      cases hstep : EF.streamStep (some initial) token with
+      | none =>
+          rw [hstep] at hread
+          rw [EF.streamReadFrom_none] at hread
+          contradiction
+      | some next =>
+          rw [hstep] at hread
+          apply ih next final
+            (streamStep_readyPendingInvariant initial next token hinv hstep)
+          exact hread
+
+theorem streamReadFrom_readyPendingInvariant
+    (tokens : List ℕ) (state : EF.StreamState)
+    (hread : EF.streamReadFrom tokens (some EF.streamInitial) = some state) :
+    readyPendingInvariant state :=
+  streamReadFrom_readyPendingInvariant_from tokens EF.streamInitial state
+    (by simp [readyPendingInvariant, EF.streamInitial]) hread
+
+/-- Flush an unfinished source trade tag.  The frame pass withholds token `6` until it sees
+the sentence; re-emitting it at end-of-stream preserves rejection of a truncated frame. -/
+def conditioningFrameTokenOutput (second : Bool) (ψCode day : ℕ) (ε : ℚ)
+    (budgetCode inverseBudgetCode : ℕ) (tokens : List ℕ) : List ℕ :=
+  let run := conditioningFrameTokenRun second ψCode day ε
+    budgetCode inverseBudgetCode (0, 0) tokens
+  run.2 ++ if run.1.1 = 4 then [6] else []
+
+set_option maxHeartbeats 1000000 in
+theorem deserializeTrades_conditioningFrameTokenRun
+    (second : Bool) (ψ : Sentence) (ε q : ℚ) (day : ℕ) (tokens : List ℕ) :
+    deserializeTrades
+      (conditioningFrameTokenOutput second (Encodable.encode ψ) day ε
+        (Encodable.encode q) (Encodable.encode q⁻¹) tokens) =
+      (deserializeTrades tokens).map fun trades =>
+        trades.map (frameLeg second ψ ε q day) := by
+  have hrunFull := streamReadFrom_conditioningFrameTokenRun second ψ ε q day
+    (0, 0) EF.streamInitial tokens EF.freezeToken_initial_matches
+  simp only at hrunFull ⊢
+  rcases hrunFull with ⟨hrun, hmatches⟩
+  have hinitial : frameStreamState second ψ ε q day EF.streamInitial =
+      EF.streamInitial := rfl
+  rw [hinitial] at hrun
+  unfold deserializeTrades
+  simp only [conditioningFrameTokenOutput, EF.streamReadFrom_append]
+  rw [hrun]
+  cases hread : EF.streamReadFrom tokens (some EF.streamInitial) with
+  | none => simp [hread, EF.streamReadFrom_none]
+  | some state =>
+      have hinv := streamReadFrom_readyPendingInvariant tokens state hread
+      have hcontrol := hmatches state hread
+      rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
+      cases mode with
+      | zero =>
+          cases pending <;> cases stack <;>
+            simp_all [frameStreamState, readyPendingInvariant,
+              EF.FreezeTokenState.Matches, EF.streamReadFrom, EF.streamStep]
+      | succ mode =>
+          cases pending <;> cases stack <;>
+            (by_cases hfour : mode = 3) <;>
+            simp_all [frameStreamState, readyPendingInvariant,
+              EF.FreezeTokenState.Matches, EF.streamReadFrom, EF.streamStep]
+
+theorem frameLeg_rank_le_iff (second : Bool) (ψ : Sentence) (ε q : ℚ)
+    (day : ℕ) (p : EF × Sentence) :
+    (frameLeg second ψ ε q day p).1.rank ≤ day ↔ p.1.rank ≤ day := by
+  cases second <;>
+    simp [frameLeg, firstFrameBody, secondFrameBody,
+      EF.conditioningCapGate_rank, EF.conditionalRatioEF,
+      EF.lowerSafeRecip, EF.absVal, clip01, efMin, EF.rank]
+
+theorem strategyOfTokens_conditioningFrameTokenOutput_trades
+    (second : Bool) (ψ : Sentence) (ε q : ℚ) (day : ℕ) (tokens : List ℕ) :
+    (strategyOfTokens day
+      (conditioningFrameTokenOutput second (Encodable.encode ψ) day ε
+        (Encodable.encode q) (Encodable.encode q⁻¹) tokens)).trades =
+      (strategyOfTokens day tokens).trades.map
+        (frameLeg second ψ ε q day) := by
+  have hdecode := deserializeTrades_conditioningFrameTokenRun
+    second ψ ε q day tokens
+  unfold strategyOfTokens
+  rw [hdecode]
+  cases hs : deserializeTrades tokens with
+  | none => simp
+  | some trades =>
+      simp only [Option.map_some]
+      have hrank :
+          (∀ trade ∈ trades.map (frameLeg second ψ ε q day),
+              trade.1.rank ≤ day) ↔
+            ∀ trade ∈ trades, trade.1.rank ≤ day := by
+        constructor
+        · intro h trade hmem
+          have hmapped := h (frameLeg second ψ ε q day trade)
+            (List.mem_map_of_mem hmem)
+          exact (frameLeg_rank_le_iff second ψ ε q day trade).mp hmapped
+        · intro h trade hmem
+          simp only [List.mem_map] at hmem
+          obtain ⟨source, hsource, rfl⟩ := hmem
+          exact (frameLeg_rank_le_iff second ψ ε q day source).mpr
+            (h source hsource)
+      by_cases hvalid : ∀ trade ∈ trades, trade.1.rank ≤ day
+      · rw [dif_pos (hrank.mpr hvalid), dif_pos hvalid]
+      · have hinvalid : ¬∀ trade ∈ trades.map (frameLeg second ψ ε q day),
+            trade.1.rank ≤ day := fun h => hvalid (hrank.mp h)
+        rw [dif_neg hinvalid, dif_neg hvalid]
+        rfl
+
+/-! ### Concatenating independently compiled strategy streams -/
+
+/-- Add already-decoded trades to the front of a streaming parser state. -/
+def prependStreamTrades (prior : List (EF × Sentence)) :
+    EF.StreamState → EF.StreamState
+  | ((mode, pending), (stack, trades)) =>
+      ((mode, pending), (stack, prior ++ trades))
+
+/-- The one-token parser is equivariant under adding a fixed prefix of completed trades. -/
+set_option maxHeartbeats 1000000 in
+theorem streamStep_prependStreamTrades (prior : List (EF × Sentence))
+    (state : EF.StreamState) (token : ℕ) :
+    EF.streamStep (some (prependStreamTrades prior state)) token =
+      (EF.streamStep (some state) token).map (prependStreamTrades prior) := by
+  rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
+  simp only [prependStreamTrades, EF.streamStep]
+  repeat' split
+  all_goals simp_all [prependStreamTrades, List.append_assoc]
+
+/-- The same equivariance holds for an arbitrary suffix stream. -/
+theorem streamReadFrom_prependStreamTrades (prior : List (EF × Sentence))
+    (tokens : List ℕ) (state : EF.StreamState) :
+    EF.streamReadFrom tokens (some (prependStreamTrades prior state)) =
+      (EF.streamReadFrom tokens (some state)).map
+        (prependStreamTrades prior) := by
+  induction tokens generalizing state with
+  | nil => rfl
+  | cons token rest ih =>
+      simp only [EF.streamReadFrom, List.foldl_cons]
+      rw [streamStep_prependStreamTrades]
+      cases hstep : EF.streamStep (some state) token with
+      | none =>
+          simp only [Option.map_none]
+          rw [EF.streamReadFrom_none]
+      | some next =>
+          simp only [Option.map_some]
+          exact ih next
+
+/-- A successful trade-list decode exposes the exact accepting streaming state. -/
+theorem streamReadFrom_eq_ready_of_deserializeTrades_eq_some
+    (tokens : List ℕ) (trades : List (EF × Sentence))
+    (hdecode : deserializeTrades tokens = some trades) :
+    EF.streamReadFrom tokens (some EF.streamInitial) =
+      some ((0, none), ([], trades)) := by
+  unfold deserializeTrades at hdecode
+  cases hread : EF.streamReadFrom tokens (some EF.streamInitial) with
+  | none => simp [hread] at hdecode
+  | some state =>
+      rcases state with ⟨⟨mode, pending⟩, ⟨stack, decoded⟩⟩
+      simp only [hread] at hdecode
+      split at hdecode
+      next heq =>
+        rcases heq with ⟨⟨rfl, rfl⟩, rfl, rfl⟩
+        simpa using hdecode
+      next heq => simp at hdecode
+
+/-- Two independently valid streams concatenate to the concatenation of their trade lists. -/
+theorem deserializeTrades_append_of_some (left right : List ℕ)
+    (first second : List (EF × Sentence))
+    (hfirst : deserializeTrades left = some first)
+    (hsecond : deserializeTrades right = some second) :
+    deserializeTrades (left ++ right) = some (first ++ second) := by
+  have hleft := streamReadFrom_eq_ready_of_deserializeTrades_eq_some left first hfirst
+  have hright := streamReadFrom_eq_ready_of_deserializeTrades_eq_some right second hsecond
+  unfold deserializeTrades
+  rw [EF.streamReadFrom_append, hleft]
+  rw [show some ((0, none), ([], first)) =
+      some (prependStreamTrades first EF.streamInitial) from rfl]
+  rw [streamReadFrom_prependStreamTrades first right EF.streamInitial, hright]
+  rfl
 
 /-- A price-leaf rewrite over an arbitrary polynomial-length raw stream.  The source is
 addressed by `tokenFn ⟨day,index⟩`; each source token emits a bounded segment, and
@@ -1174,8 +1665,167 @@ theorem conditionPriceTokenSegments_poly
         simp [mode, token, pending, condition, control, hm0, hm1, hm2]
   exact hsegment.concatVar hlen
 
--/
+theorem conditionPriceTokenRun_polySegStream
+    {source : ℕ → List ℕ} {tokenFn lenFn : ℕ → ℕ}
+    {ct cl : Nat.Partrec.Code}
+    (htoken : PolyFueled ct tokenFn) (hlen : PolyFueled cl lenFn)
+    (hslen : ∀ n, (source n).length = lenFn n)
+    (hget : ∀ n i, i < lenFn n →
+      tokenFn (Nat.pair n i) = (source n).getD i 0)
+    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) (ε : ℚ) :
+    PolySegStream (fun n =>
+      (conditionPriceTokenRun (fun day => Encodable.encode (ψ day)) ε
+        (0, 0) (source n)).2) := by
+  have hsegments := conditionPriceTokenSegments_poly htoken hlen ψ hψ ε
+  refine hsegments.of_eq fun n => ?_
+  have hsourceEq : source n =
+      (List.range (lenFn n)).map (fun j => tokenFn (Nat.pair n j)) := by
+    apply List.ext_getElem
+    · simp [hslen n]
+    · intro i hleft hright
+      rw [List.getElem_map]
+      simp only [List.getElem_range]
+      rw [hget n i (by simpa [hslen n] using hleft)]
+      exact (List.getD_eq_getElem (l := source n) (d := 0) hleft).symm
+  rw [hsourceEq]
+  have hrun := congrArg Prod.snd (conditionPriceTokenRun_range tokenFn
+    (fun day => Encodable.encode (ψ day)) ε n (lenFn n))
+  simpa using hrun.symm
 
+/-- The long segment emitted at a completed trade frame is a fixed-width polynomial token
+stream in its five varying numeric fields. -/
+theorem rawConditioningFrameTokens_poly
+    {sentence condition day budget inverse : ℕ → ℕ}
+    {cs cc cd cb ci : Nat.Partrec.Code}
+    (hsentence : PolyFueled cs sentence) (hcondition : PolyFueled cc condition)
+    (hday : PolyFueled cd day) (hbudget : PolyFueled cb budget)
+    (hinverse : PolyFueled ci inverse) (second : Bool) (ε : ℚ) :
+    PolySegStream (fun z =>
+      if second then
+        rawLocallyGatedSecondBodyTokens (sentence z) (condition z) (day z)
+            (budget z) (inverse z) ε ++ [8, 6, condition z]
+      else
+        rawLocallyGatedBetaBodyTokens (sentence z) (condition z) (day z)
+            (budget z) (inverse z) ε ++
+          [8, 6, conjunctionCode (sentence z) (condition z)]) := by
+  obtain ⟨cadd, haddNat⟩ := addc_polyFueled
+  have hconj : PolyFueled _ (fun z =>
+      conjunctionCode (sentence z) (condition z)) :=
+    (haddNat.comp
+      (((PolyFueled.const 3).pair (hsentence.pair hcondition)).pair
+        (PolyFueled.const 1))).of_eq fun z => by simp [conjunctionCode]
+  have hconst (code : ℕ → ℕ) {c : Nat.Partrec.Code}
+      (hcode : PolyFueled c code) :
+      PolyTokenStream (fun z => rawConstTokens (code z)) :=
+    (PolyTokenStream.const 1).append (PolyTokenStream.polyTok hcode)
+  have hconstQ (q : ℚ) : PolyTokenStream (fun _ : ℕ =>
+      rawConstTokens (Encodable.encode q)) :=
+    hconst (fun _ => Encodable.encode q) (PolyFueled.const _)
+  have hprice (scode d : ℕ → ℕ) {cscode cd' : Nat.Partrec.Code}
+      (hscode : PolyFueled cscode scode) (hd : PolyFueled cd' d) :
+      PolyTokenStream (fun z => rawPriceTokens (scode z) (d z)) :=
+    ((PolyTokenStream.const 0).append (PolyTokenStream.polyTok hscode)).append
+      (PolyTokenStream.polyTok hd)
+  have hadd {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
+      PolyTokenStream (fun z => rawAddTokens (a z) (b z)) :=
+    (ha.append hb).append (PolyTokenStream.const 2)
+  have hmul {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
+      PolyTokenStream (fun z => rawMulTokens (a z) (b z)) :=
+    (ha.append hb).append (PolyTokenStream.const 3)
+  have hmax {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
+      PolyTokenStream (fun z => rawMaxTokens (a z) (b z)) :=
+    (ha.append hb).append (PolyTokenStream.const 4)
+  have hsafe {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
+      PolyTokenStream (fun z => rawSafeRecipTokens (a z)) :=
+    ha.append (PolyTokenStream.const 5)
+  have hmin {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
+      PolyTokenStream (fun z => rawMinTokens (a z) (b z)) :=
+    hmul (hconstQ (-1))
+      (hmax (hmul (hconstQ (-1)) ha) (hmul (hconstQ (-1)) hb))
+  have habs {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
+      PolyTokenStream (fun z => rawAbsTokens (a z)) :=
+    hmax ha (hmul (hconstQ (-1)) ha)
+  have hclip {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
+      PolyTokenStream (fun z => rawClip01Tokens (a z)) :=
+    hmax (hconstQ 0) (hmin (hconstQ 1) ha)
+  let ratio : ℕ → List ℕ := fun z => rawConditioningRatioTokens
+    (sentence z) (condition z) (day z) ε
+  have hratio : PolyTokenStream ratio := by
+    have hnum := hprice (fun z => conjunctionCode (sentence z) (condition z)) day
+      hconj hday
+    have hden := hprice condition day hcondition hday
+    exact hmul hnum
+      (hmul (hconstQ (1 / ε)) (hsafe (hmul (hconstQ (1 / ε)) hden)))
+  let boundRatio : ℕ → List ℕ := fun _ => [7, 0]
+  let bound : ℕ → List ℕ := fun _ => [7, 1]
+  have hboundRatio : PolyTokenStream boundRatio :=
+    (PolyTokenStream.const 7).append (PolyTokenStream.const 0)
+  have hbound : PolyTokenStream bound :=
+    (PolyTokenStream.const 7).append (PolyTokenStream.const 1)
+  let gate : ℕ → List ℕ := fun z => rawConditioningGateTokens
+    (boundRatio z) (rawAbsTokens (bound z)) (budget z) (inverse z)
+  have hgate : PolyTokenStream gate := by
+    let magnitude : ℕ → List ℕ := fun z => rawAbsTokens (bound z)
+    have hmagnitude : PolyTokenStream magnitude := habs hbound
+    have hmaxMag := hmax (hconstQ 1) hmagnitude
+    have htolerance := hmul (hconst budget hbudget) (hsafe hmagnitude)
+    have hshift := hadd (hadd (hconstQ 1) htolerance)
+      (hmul (hconstQ (-1)) hboundRatio)
+    exact hclip (hmul hshift (hmul (hconst inverse hinverse) hmaxMag))
+  let betaCore : ℕ → List ℕ := fun z =>
+    rawMinTokens (bound z) (rawMulTokens (bound z) (gate z))
+  have hbetaCore : PolyTokenStream betaCore := hmin hbound (hmul hbound hgate)
+  have hfirstBody : PolyTokenStream (fun z =>
+      rawLocallyGatedBetaBodyTokens (sentence z) (condition z) (day z)
+        (budget z) (inverse z) ε) :=
+    (hratio.append hbetaCore).append (PolyTokenStream.const 8)
+  have hsecondBody : PolyTokenStream (fun z =>
+      rawLocallyGatedSecondBodyTokens (sentence z) (condition z) (day z)
+        (budget z) (inverse z) ε) :=
+    (hratio.append
+      (hmul (hconstQ (-1)) (hmul hbetaCore hboundRatio))).append
+        (PolyTokenStream.const 8)
+  have hfirst := ((hfirstBody.append (PolyTokenStream.const 8)).append
+      (PolyTokenStream.const 6)).append (PolyTokenStream.polyTok hconj)
+  have hsecond := ((hsecondBody.append (PolyTokenStream.const 8)).append
+      (PolyTokenStream.const 6)).append (PolyTokenStream.polyTok hcondition)
+  cases second
+  · exact PolySegStream.of_eq (PolySegStream.ofTokenStream hfirst) fun z => by
+      simp [rawLocallyGatedBetaBodyTokens, rawConditioningRatioTokens,
+        rawConditioningGateTokens, rawAbsTokens, rawClip01Tokens,
+        rawLowerSafeRecipTokens, rawPriceTokens, rawConstTokens, rawAddTokens,
+        rawMulTokens, rawMaxTokens, rawSafeRecipTokens, rawMinTokens,
+        ratio, boundRatio, bound, gate, betaCore, List.append_assoc]
+  · exact PolySegStream.of_eq (PolySegStream.ofTokenStream hsecond) fun z => by
+      simp [rawLocallyGatedSecondBodyTokens, rawConditioningRatioTokens,
+        rawConditioningGateTokens, rawAbsTokens, rawClip01Tokens,
+        rawLowerSafeRecipTokens, rawPriceTokens, rawConstTokens, rawAddTokens,
+        rawMulTokens, rawMaxTokens, rawSafeRecipTokens, rawMinTokens,
+        ratio, boundRatio, bound, gate, betaCore, List.append_assoc]
+
+def conditioningFrameTokenSegment (second : Bool) (tokenFn : ℕ → ℕ)
+    (ψCode day budgetCode inverseBudgetCode : ℕ) (ε : ℚ)
+    (z : ℕ) : List ℕ :=
+  let control := PrefixPatchCompile.freezeControlNat tokenFn z
+  conditioningFrameTokenEmit second ψCode day ε budgetCode inverseBudgetCode
+    (control.unpair.1, control.unpair.2) (tokenFn z)
+
+theorem conditioningFrameTokenRun_range (second : Bool) (tokenFn : ℕ → ℕ)
+    (ψCode day budgetCode inverseBudgetCode : ℕ) (ε : ℚ)
+    (n count : ℕ) :
+    conditioningFrameTokenRun second ψCode day ε budgetCode inverseBudgetCode (0, 0)
+        ((List.range count).map fun j => tokenFn (Nat.pair n j)) =
+      (EF.freezeTokenControlAt tokenFn n count,
+        (List.range count).flatMap fun j =>
+          conditioningFrameTokenSegment second tokenFn ψCode day budgetCode
+            inverseBudgetCode ε (Nat.pair n j)) := by
+  induction count with
+  | zero => rfl
+  | succ count ih =>
+      rw [List.range_succ, List.map_append,
+        conditioningFrameTokenRun_append, ih]
+      simp [conditioningFrameTokenRun, conditioningFrameTokenSegment,
+        PrefixPatchCompile.freezeControlNat, EF.freezeTokenControlAt]
 /-! ### Trade-frame scan -/
 
 /-- Before source index `j`, record the first token after the preceding trade frame and the
@@ -1191,6 +1841,185 @@ def tradeScanAt (tokenFn : ℕ → ℕ) (n : ℕ) : ℕ → ℕ × ℕ
 def tradeScanNat (tokenFn : ℕ → ℕ) (z : ℕ) : ℕ :=
   let state := tradeScanAt tokenFn z.unpair.1 z.unpair.2
   Nat.pair state.1 state.2
+
+def frameTradeCount (tokenFn lenFn : ℕ → ℕ) (n : ℕ) : ℕ :=
+  (tradeScanNat tokenFn (Nat.pair n (lenFn n))).unpair.2
+
+theorem streamStep_trades_length (state next : EF.StreamState) (token : ℕ)
+    (hstep : EF.streamStep (some state) token = some next) :
+    next.2.2.length = state.2.2.length + if state.1.1 = 4 then 1 else 0 := by
+  rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
+  rcases next with ⟨⟨nextMode, nextPending⟩, ⟨nextStack, nextTrades⟩⟩
+  simp only [EF.streamStep] at hstep
+  repeat' split at hstep
+  all_goals aesop (add simp [List.length_append])
+
+theorem tradeScanAt_count_eq_of_read (tokenFn : ℕ → ℕ) (n j : ℕ)
+    (state : EF.StreamState)
+    (hread : EF.streamReadFrom
+      ((List.range j).map fun i => tokenFn (Nat.pair n i))
+      (some EF.streamInitial) = some state) :
+    (tradeScanAt tokenFn n j).2 = state.2.2.length ∧
+      (EF.freezeTokenControlAt tokenFn n j).Matches state := by
+  induction j generalizing state with
+  | zero =>
+      simp [tradeScanAt, EF.streamReadFrom, EF.streamInitial,
+        EF.freezeTokenControlAt, EF.FreezeTokenState.Matches] at hread ⊢
+      subst state
+      simp [EF.streamInitial, EF.FreezeTokenState.Matches]
+  | succ j ih =>
+      rw [List.range_succ, List.map_append, EF.streamReadFrom_append] at hread
+      cases hprev : EF.streamReadFrom
+          ((List.range j).map fun i => tokenFn (Nat.pair n i))
+          (some EF.streamInitial) with
+      | none =>
+          rw [hprev, EF.streamReadFrom_none] at hread
+          contradiction
+      | some previous =>
+          rw [hprev] at hread
+          have hstep : EF.streamStep (some previous) (tokenFn (Nat.pair n j)) =
+              some state := by
+            simpa [EF.streamReadFrom] using hread
+          rcases ih previous hprev with ⟨hcount, hmatches⟩
+          have hnext := (streamReadFrom_conditionPriceTokenEmit
+            (fun _ => ⊤) 1 (EF.freezeTokenControlAt tokenFn n j) previous
+              (tokenFn (Nat.pair n j)) hmatches).2 state hstep
+          have hlength := streamStep_trades_length previous state
+            (tokenFn (Nat.pair n j)) hstep
+          constructor
+          · simp only [tradeScanAt]
+            rw [hcount, hlength]
+            have hmode : (EF.freezeTokenControlAt tokenFn n j).1 =
+                previous.1.1 := hmatches.1
+            by_cases hm : (EF.freezeTokenControlAt tokenFn n j).1 = 4
+            · simp [PrefixPatchCompile.freezeControlNat, hm, ← hmode]
+            · simp [PrefixPatchCompile.freezeControlNat, hm, ← hmode, hcount]
+          · simpa only [EF.freezeTokenControlAt] using hnext
+
+theorem frameTradeCount_eq_length_of_read
+    (tokenFn lenFn : ℕ → ℕ) (n : ℕ) (state : EF.StreamState)
+    (hread : EF.streamReadFrom
+      ((List.range (lenFn n)).map fun i => tokenFn (Nat.pair n i))
+      (some EF.streamInitial) = some state) :
+    frameTradeCount tokenFn lenFn n = state.2.2.length := by
+  simpa [frameTradeCount, tradeScanNat] using
+    (tradeScanAt_count_eq_of_read tokenFn n (lenFn n) state hread).1
+
+/-! ### A shallow acceptance scan for safely joining two passes -/
+
+/-- Update only the feature-stack depth of the streaming parser.  The transition is exact
+whenever the real parser step succeeds; on a decoding or stack-underflow failure its value is
+irrelevant. -/
+def parserDepthNext (mode token depth : ℕ) : ℕ :=
+  if mode = 0 then
+    if token = 2 then depth.pred
+    else if token = 3 then depth.pred
+    else if token = 4 then depth.pred
+    else if token = 8 then depth.pred
+    else depth
+  else if mode = 2 then depth + 1
+  else if mode = 3 then depth + 1
+  else if mode = 4 then depth.pred
+  else if mode = 5 then depth + 1
+  else depth
+
+def parserDepthScanAt (tokenFn : ℕ → ℕ) (n : ℕ) : ℕ → ℕ
+  | 0 => 0
+  | j + 1 =>
+      parserDepthNext
+        (PrefixPatchCompile.freezeControlNat tokenFn (Nat.pair n j)).unpair.1
+        (tokenFn (Nat.pair n j)) (parserDepthScanAt tokenFn n j)
+
+def parserDepthScanNat (tokenFn : ℕ → ℕ) (z : ℕ) : ℕ :=
+  parserDepthScanAt tokenFn z.unpair.1 z.unpair.2
+
+/-- Boolean-as-natural test for a ready parser with an empty feature stack.  Decode failures
+may produce false positives, which are harmless because `none` is absorbing; a successful
+real parse agrees exactly with this shallow scan. -/
+def parserStructurallyAccepts (tokenFn lenFn : ℕ → ℕ) (n : ℕ) : ℕ :=
+  if (PrefixPatchCompile.freezeControlNat tokenFn
+      (Nat.pair n (lenFn n))).unpair.1 = 0 then
+    if parserDepthScanNat tokenFn (Nat.pair n (lenFn n)) = 0 then 1 else 0
+  else 0
+
+theorem streamStep_stack_length (state next : EF.StreamState) (token : ℕ)
+    (hstep : EF.streamStep (some state) token = some next) :
+    next.2.1.length = parserDepthNext state.1.1 token state.2.1.length := by
+  rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
+  rcases next with ⟨⟨nextMode, nextPending⟩, ⟨nextStack, nextTrades⟩⟩
+  simp only [EF.streamStep] at hstep
+  repeat' split at hstep
+  all_goals aesop (add simp [parserDepthNext])
+
+theorem parserDepthScanAt_eq_of_read (tokenFn : ℕ → ℕ) (n j : ℕ)
+    (state : EF.StreamState)
+    (hread : EF.streamReadFrom
+      ((List.range j).map fun i => tokenFn (Nat.pair n i))
+      (some EF.streamInitial) = some state) :
+    parserDepthScanAt tokenFn n j = state.2.1.length := by
+  induction j generalizing state with
+  | zero =>
+      simp [parserDepthScanAt, EF.streamReadFrom, EF.streamInitial] at hread ⊢
+      subst state
+      rfl
+  | succ j ih =>
+      rw [List.range_succ, List.map_append, EF.streamReadFrom_append] at hread
+      cases hprev : EF.streamReadFrom
+          ((List.range j).map fun i => tokenFn (Nat.pair n i))
+          (some EF.streamInitial) with
+      | none =>
+          rw [hprev, EF.streamReadFrom_none] at hread
+          contradiction
+      | some previous =>
+          rw [hprev] at hread
+          have hstep : EF.streamStep (some previous) (tokenFn (Nat.pair n j)) =
+              some state := by
+            simpa [EF.streamReadFrom] using hread
+          rw [parserDepthScanAt, ih previous hprev]
+          have hmode := (tradeScanAt_count_eq_of_read tokenFn n j previous hprev).2.1
+          simp only [PrefixPatchCompile.freezeControlNat, Nat.unpair_pair]
+          rw [hmode]
+          exact (streamStep_stack_length previous state
+            (tokenFn (Nat.pair n j)) hstep).symm
+
+theorem parserStructurallyAccepts_eq_one_of_read
+    (tokenFn lenFn : ℕ → ℕ) (n : ℕ) (trades : List (EF × Sentence))
+    (hread : EF.streamReadFrom
+      ((List.range (lenFn n)).map fun i => tokenFn (Nat.pair n i))
+      (some EF.streamInitial) = some ((0, none), ([], trades))) :
+    parserStructurallyAccepts tokenFn lenFn n = 1 := by
+  have hmatches := (tradeScanAt_count_eq_of_read tokenFn n (lenFn n)
+    ((0, none), ([], trades)) hread).2.1
+  have hdepth := parserDepthScanAt_eq_of_read tokenFn n (lenFn n)
+    ((0, none), ([], trades)) hread
+  simp [parserStructurallyAccepts, parserDepthScanNat,
+    PrefixPatchCompile.freezeControlNat, hmatches, hdepth]
+
+theorem parserStructurallyAccepts_eq_one_iff_of_read
+    (tokenFn lenFn : ℕ → ℕ) (n : ℕ) (state : EF.StreamState)
+    (hread : EF.streamReadFrom
+      ((List.range (lenFn n)).map fun i => tokenFn (Nat.pair n i))
+      (some EF.streamInitial) = some state) :
+    parserStructurallyAccepts tokenFn lenFn n = 1 ↔
+      state.1.1 = 0 ∧ state.2.1 = [] := by
+  have hmatches := (tradeScanAt_count_eq_of_read tokenFn n (lenFn n) state hread).2.1
+  have hdepth := parserDepthScanAt_eq_of_read tokenFn n (lenFn n) state hread
+  rw [show parserStructurallyAccepts tokenFn lenFn n =
+      if state.1.1 = 0 then if state.2.1.length = 0 then 1 else 0 else 0 by
+    simp [parserStructurallyAccepts, parserDepthScanNat,
+      PrefixPatchCompile.freezeControlNat, hmatches, hdepth]]
+  by_cases hm : state.1.1 = 0 <;> by_cases hs : state.2.1 = [] <;>
+    simp [hm, hs, List.length_eq_zero_iff]
+
+theorem parserDepthScanAt_le (tokenFn : ℕ → ℕ) (n j : ℕ) :
+    parserDepthScanAt tokenFn n j ≤ j := by
+  induction j with
+  | zero => simp [parserDepthScanAt]
+  | succ j ih =>
+      simp only [parserDepthScanAt]
+      have hpred := Nat.pred_le (parserDepthScanAt tokenFn n j)
+      unfold parserDepthNext
+      split_ifs <;> omega
 
 theorem tradeScanAt_fst_le (tokenFn : ℕ → ℕ) (n j : ℕ) :
     (tradeScanAt tokenFn n j).1 ≤ j := by
@@ -1262,6 +2091,562 @@ theorem tradeScanNat_polyFueled {tokenFn : ℕ → ℕ} {ct : Nat.Partrec.Code}
     · simp [hm]
     · simp [hm]
   · rw [Nat.pair_unpair]
+
+theorem parserDepthScanNat_polyFueled {tokenFn : ℕ → ℕ} {ct : Nat.Partrec.Code}
+    (htoken : PolyFueled ct tokenFn) :
+    ∃ c, PolyFueled c (parserDepthScanNat tokenFn) := by
+  obtain ⟨ccontrol, hcontrol⟩ :=
+    PrefixPatchCompile.freezeControlNat_polyFueled htoken
+  have hn : PolyFueled Nat.Partrec.Code.left (fun z => z.unpair.1) :=
+    PolyFueled.left
+  have hj : PolyFueled (Nat.Partrec.Code.left.comp Nat.Partrec.Code.right)
+      (fun z => z.unpair.2.unpair.1) :=
+    PolyFueled.left.comp PolyFueled.right
+  have hprevious : PolyFueled (Nat.Partrec.Code.right.comp Nat.Partrec.Code.right)
+      (fun z => z.unpair.2.unpair.2) :=
+    PolyFueled.right.comp PolyFueled.right
+  have hindex := hn.pair hj
+  have htokenAt := htoken.comp hindex
+  have hcontrolAt := hcontrol.comp hindex
+  have hmode := PolyFueled.left.comp hcontrolAt
+  have hpred := predc_polyFueled.comp hprevious
+  have hsucc := hprevious.succ_comp
+  obtain ⟨ct2, ht2⟩ := polyFueled_eqConst htokenAt 2
+  obtain ⟨ct3, ht3⟩ := polyFueled_eqConst htokenAt 3
+  obtain ⟨ct4, ht4⟩ := polyFueled_eqConst htokenAt 4
+  obtain ⟨ct8, ht8⟩ := polyFueled_eqConst htokenAt 8
+  obtain ⟨cout8, hout8⟩ := PrefixPatchCompile.polyFueled_ifZero
+    ht8 hprevious hpred
+  obtain ⟨cout4, hout4⟩ := PrefixPatchCompile.polyFueled_ifZero
+    ht4 hout8 hpred
+  obtain ⟨cout3, hout3⟩ := PrefixPatchCompile.polyFueled_ifZero
+    ht3 hout4 hpred
+  obtain ⟨ctoken, htokenBranch⟩ := PrefixPatchCompile.polyFueled_ifZero
+    ht2 hout3 hpred
+  obtain ⟨cm0, hm0⟩ := polyFueled_eqConst hmode 0
+  obtain ⟨cm2, hm2⟩ := polyFueled_eqConst hmode 2
+  obtain ⟨cm3, hm3⟩ := polyFueled_eqConst hmode 3
+  obtain ⟨cm4, hm4⟩ := polyFueled_eqConst hmode 4
+  obtain ⟨cm5, hm5⟩ := polyFueled_eqConst hmode 5
+  obtain ⟨cout5, hout5⟩ := PrefixPatchCompile.polyFueled_ifZero
+    hm5 hprevious hsucc
+  obtain ⟨coutMode4, houtMode4⟩ := PrefixPatchCompile.polyFueled_ifZero
+    hm4 hout5 hpred
+  obtain ⟨coutMode3, houtMode3⟩ := PrefixPatchCompile.polyFueled_ifZero
+    hm3 houtMode4 hsucc
+  obtain ⟨coutMode2, houtMode2⟩ := PrefixPatchCompile.polyFueled_ifZero
+    hm2 houtMode3 hsucc
+  obtain ⟨cstep, hstep⟩ := PrefixPatchCompile.polyFueled_ifZero
+    hm0 houtMode2 htokenBranch
+  have hstate : IsPolyBounded (parserDepthScanNat tokenFn) := by
+    exact (IsPolyBounded.linear 0).of_le fun z => by
+      have hjle := parserDepthScanAt_le tokenFn z.unpair.1 z.unpair.2
+      exact hjle.trans (Nat.unpair_right_le z)
+  have hstate' : IsPolyBounded (fun m =>
+      parserDepthScanNat tokenFn (Nat.pair m.unpair.1 m.unpair.2)) := by
+    simpa only [Nat.pair_unpair] using hstate
+  refine ⟨_, (PolyFueled.prec (PolyFueled.const 0) hstep
+    (st := fun n j => parserDepthScanNat tokenFn (Nat.pair n j))
+    (fun n => ?_) (fun n j => ?_) hstate').of_eq fun z => ?_⟩
+  · simp [parserDepthScanNat, parserDepthScanAt]
+  · simp only [parserDepthScanNat, Nat.unpair_pair, parserDepthScanAt]
+    unfold parserDepthNext
+    by_cases hm0' :
+        (PrefixPatchCompile.freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 0 <;>
+      by_cases hm2' :
+        (PrefixPatchCompile.freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 2 <;>
+      by_cases hm3' :
+        (PrefixPatchCompile.freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 3 <;>
+      by_cases hm4' :
+        (PrefixPatchCompile.freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 4 <;>
+      by_cases hm5' :
+        (PrefixPatchCompile.freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 5 <;>
+      by_cases ht2' : tokenFn (Nat.pair n j) = 2 <;>
+      by_cases ht3' : tokenFn (Nat.pair n j) = 3 <;>
+      by_cases ht4' : tokenFn (Nat.pair n j) = 4 <;>
+      by_cases ht8' : tokenFn (Nat.pair n j) = 8 <;>
+      simp [hm0', hm2', hm3', hm4', hm5', ht2', ht3', ht4', ht8']
+  · rw [Nat.pair_unpair]
+
+theorem parserStructurallyAccepts_polyFueled
+    {tokenFn lenFn : ℕ → ℕ} {ct cl : Nat.Partrec.Code}
+    (htoken : PolyFueled ct tokenFn) (hlen : PolyFueled cl lenFn) :
+    ∃ c, PolyFueled c (parserStructurallyAccepts tokenFn lenFn) := by
+  obtain ⟨ccontrol, hcontrol⟩ :=
+    PrefixPatchCompile.freezeControlNat_polyFueled htoken
+  obtain ⟨cdepth, hdepth⟩ := parserDepthScanNat_polyFueled htoken
+  have hfinalIndex := PolyFueled.id.pair hlen
+  have hmode := PolyFueled.left.comp (hcontrol.comp hfinalIndex)
+  have hfinalDepth := hdepth.comp hfinalIndex
+  obtain ⟨cmode0, hmode0⟩ := polyFueled_eqConst hmode 0
+  obtain ⟨cdepth0, hdepth0⟩ := polyFueled_eqConst hfinalDepth 0
+  obtain ⟨cmul, hmul⟩ := mul_polyFueled
+  exact ⟨_, (hmul.comp (hmode0.pair hdepth0)).of_eq fun n => by
+    by_cases hm : (PrefixPatchCompile.freezeControlNat tokenFn
+        (Nat.pair n (lenFn n))).unpair.1 = 0 <;>
+      by_cases hd : parserDepthScanNat tokenFn (Nat.pair n (lenFn n)) = 0 <;>
+      simp [parserStructurallyAccepts, hm, hd]⟩
+
+/-! ### Safely joining the two conditioning legs -/
+
+/-- A failed source parser run remains failed through either framing pass, including its
+end-of-stream flush suffix. -/
+theorem streamReadFrom_conditioningFrameTokenOutput_none
+    (second : Bool) (ψ : Sentence) (ε q : ℚ) (day : ℕ) (tokens : List ℕ)
+    (hread : EF.streamReadFrom tokens (some EF.streamInitial) = none) :
+    EF.streamReadFrom
+      (conditioningFrameTokenOutput second (Encodable.encode ψ) day ε
+        (Encodable.encode q) (Encodable.encode q⁻¹) tokens)
+      (some EF.streamInitial) = none := by
+  have hrun := (streamReadFrom_conditioningFrameTokenRun second ψ ε q day
+    (0, 0) EF.streamInitial tokens EF.freezeToken_initial_matches).1
+  unfold conditioningFrameTokenOutput
+  rw [EF.streamReadFrom_append]
+  have hinitial : frameStreamState second ψ ε q day EF.streamInitial =
+      EF.streamInitial := rfl
+  rw [← hinitial, hrun, hread]
+  simp [EF.streamReadFrom_none]
+
+/-- Join the two independently framed legs only at a structurally accepting source
+boundary.  A source decode failure may be a false positive for the shallow test, but then
+the first pass has already reached `none`, which is absorbing under append. -/
+def safeSeparatedFrameTokenOutput
+    (tokenFn lenFn : ℕ → ℕ) (ψ : Sentence) (ε q : ℚ)
+    (day : ℕ) (tokens : List ℕ) : List ℕ :=
+  let first := conditioningFrameTokenOutput false (Encodable.encode ψ) day ε
+    (Encodable.encode q) (Encodable.encode q⁻¹) tokens
+  let second := conditioningFrameTokenOutput true (Encodable.encode ψ) day ε
+    (Encodable.encode q) (Encodable.encode q⁻¹) tokens
+  if parserStructurallyAccepts tokenFn lenFn day = 0 then first else first ++ second
+
+theorem deserializeTrades_safeSeparatedFrameTokenOutput
+    (tokenFn lenFn : ℕ → ℕ) (ψ : Sentence) (ε q : ℚ)
+    (day : ℕ) (tokens : List ℕ)
+    (htokens : tokens =
+      (List.range (lenFn day)).map fun i => tokenFn (Nat.pair day i)) :
+    deserializeTrades
+      (safeSeparatedFrameTokenOutput tokenFn lenFn ψ ε q day tokens) =
+      (deserializeTrades tokens).map fun trades =>
+        trades.map (frameLeg false ψ ε q day) ++
+          trades.map (frameLeg true ψ ε q day) := by
+  let first := conditioningFrameTokenOutput false (Encodable.encode ψ) day ε
+    (Encodable.encode q) (Encodable.encode q⁻¹) tokens
+  let second := conditioningFrameTokenOutput true (Encodable.encode ψ) day ε
+    (Encodable.encode q) (Encodable.encode q⁻¹) tokens
+  have hfirst := deserializeTrades_conditioningFrameTokenRun false ψ ε q day tokens
+  have hsecond := deserializeTrades_conditioningFrameTokenRun true ψ ε q day tokens
+  simp only at hfirst hsecond
+  cases hsource : deserializeTrades tokens with
+  | some trades =>
+      have hready := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
+        tokens trades hsource
+      have haccept : parserStructurallyAccepts tokenFn lenFn day = 1 := by
+        rw [htokens] at hready
+        exact parserStructurallyAccepts_eq_one_of_read
+          tokenFn lenFn day trades hready
+      rw [hsource] at hfirst hsecond
+      simp only [Option.map_some] at hfirst hsecond
+      unfold safeSeparatedFrameTokenOutput
+      simp only [haccept, if_false]
+      exact deserializeTrades_append_of_some first second _ _ hfirst hsecond
+  | none =>
+      rw [hsource] at hfirst hsecond
+      simp only [Option.map_none] at hfirst hsecond
+      by_cases haccept : parserStructurallyAccepts tokenFn lenFn day = 0
+      · unfold safeSeparatedFrameTokenOutput
+        simp [haccept, hfirst]
+      · have haccept1 : parserStructurallyAccepts tokenFn lenFn day = 1 := by
+          unfold parserStructurallyAccepts at haccept ⊢
+          split_ifs at haccept ⊢ <;> simp_all
+        have hreadNone : EF.streamReadFrom tokens (some EF.streamInitial) = none := by
+          cases hread : EF.streamReadFrom tokens (some EF.streamInitial) with
+          | none => rfl
+          | some state =>
+              have hread' := hread
+              rw [htokens] at hread'
+              have hshape := (parserStructurallyAccepts_eq_one_iff_of_read
+                tokenFn lenFn day state hread').mp haccept1
+              have hpending := streamReadFrom_readyPendingInvariant tokens state hread
+              unfold deserializeTrades at hsource
+              rw [hread] at hsource
+              rcases state with ⟨⟨mode, pending⟩, ⟨stack, decoded⟩⟩
+              simp only at hshape hpending
+              rcases hshape with ⟨rfl, rfl⟩
+              have hp : pending = none := hpending rfl
+              subst pending
+              simp at hsource
+        have hfirstRead := streamReadFrom_conditioningFrameTokenOutput_none
+          false ψ ε q day tokens hreadNone
+        unfold safeSeparatedFrameTokenOutput
+        simp only [haccept, if_false]
+        unfold deserializeTrades
+        rw [EF.streamReadFrom_append, hfirstRead, EF.streamReadFrom_none]
+        rfl
+
+theorem strategyOfTokens_safeSeparatedFrameTokenOutput_trades
+    (tokenFn lenFn : ℕ → ℕ) (ψ : Sentence) (ε q : ℚ)
+    (day : ℕ) (tokens : List ℕ)
+    (htokens : tokens =
+      (List.range (lenFn day)).map fun i => tokenFn (Nat.pair day i)) :
+    (strategyOfTokens day
+      (safeSeparatedFrameTokenOutput tokenFn lenFn ψ ε q day tokens)).trades =
+      (strategyOfTokens day tokens).trades.map (frameLeg false ψ ε q day) ++
+        (strategyOfTokens day tokens).trades.map (frameLeg true ψ ε q day) := by
+  have hdecode := deserializeTrades_safeSeparatedFrameTokenOutput
+    tokenFn lenFn ψ ε q day tokens htokens
+  unfold strategyOfTokens
+  rw [hdecode]
+  cases hs : deserializeTrades tokens with
+  | none => simp
+  | some trades =>
+      simp only [Option.map_some]
+      let mapped := trades.map (frameLeg false ψ ε q day) ++
+        trades.map (frameLeg true ψ ε q day)
+      have hrank :
+          (∀ trade ∈ mapped, trade.1.rank ≤ day) ↔
+            ∀ trade ∈ trades, trade.1.rank ≤ day := by
+        constructor
+        · intro h trade hmem
+          have hmapped := h (frameLeg false ψ ε q day trade)
+            (List.mem_append_left _ (List.mem_map_of_mem hmem))
+          exact (frameLeg_rank_le_iff false ψ ε q day trade).mp hmapped
+        · intro h trade hmem
+          rw [List.mem_append, List.mem_map, List.mem_map] at hmem
+          rcases hmem with ⟨source, hsource, rfl⟩ | ⟨source, hsource, rfl⟩
+          · exact (frameLeg_rank_le_iff false ψ ε q day source).mpr
+              (h source hsource)
+          · exact (frameLeg_rank_le_iff true ψ ε q day source).mpr
+              (h source hsource)
+      by_cases hvalid : ∀ trade ∈ trades, trade.1.rank ≤ day
+      · rw [dif_pos (hrank.mpr hvalid), dif_pos hvalid]
+      · have hinvalid : ¬∀ trade ∈ mapped, trade.1.rank ≤ day :=
+          fun h => hvalid (hrank.mp h)
+        rw [dif_neg hinvalid, dif_neg hvalid]
+        rfl
+
+theorem frameLeg_retained_eq_locallyGatedFirstLeg
+    (ψ : ℕ → Sentence) (ε τ : ℚ) (day count : ℕ) (p : EF × Sentence) :
+    frameLeg false (ψ day) ε (Strategy.localConditioningBudget τ count) day
+        (p.1.retainedConditionPrices ψ ε, p.2) =
+      Strategy.locallyGatedFirstLeg ψ ε day τ count p := by
+  simp [frameLeg, firstFrameBody, Strategy.locallyGatedFirstLeg]
+
+theorem frameLeg_retained_eq_locallyGatedSecondLeg
+    (ψ : ℕ → Sentence) (ε τ : ℚ) (day count : ℕ) (p : EF × Sentence) :
+    frameLeg true (ψ day) ε (Strategy.localConditioningBudget τ count) day
+        (p.1.retainedConditionPrices ψ ε, p.2) =
+      Strategy.locallyGatedSecondLeg ψ ε day τ count p := by
+  simp [frameLeg, secondFrameBody, Strategy.locallyGatedSecondLeg]
+
+
+theorem conditioningFrameTokenOutput_polySegStream
+    {source : ℕ → List ℕ} {tokenFn lenFn : ℕ → ℕ}
+    {ct cl : Nat.Partrec.Code}
+    (htoken : PolyFueled ct tokenFn) (hlen : PolyFueled cl lenFn)
+    (hslen : ∀ n, (source n).length = lenFn n)
+    (hget : ∀ n i, i < lenFn n →
+      tokenFn (Nat.pair n i) = (source n).getD i 0)
+    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ)
+    (second : Bool) (ε : ℚ) :
+    PolySegStream (fun n =>
+      let count := frameTradeCount tokenFn lenFn n
+      conditioningFrameTokenOutput second (Encodable.encode (ψ n)) n ε
+        (frameBudgetCode n count) (frameInverseBudgetCode n count) (source n)) := by
+  let count : ℕ → ℕ := frameTradeCount tokenFn lenFn
+  obtain ⟨cscan, hscan⟩ := tradeScanNat_polyFueled htoken
+  have hscanTotal := hscan.comp (PolyFueled.id.pair hlen)
+  have hcount : PolyFueled _ count :=
+    (PolyFueled.right.comp hscanTotal).of_eq fun n => by
+      simp [count, frameTradeCount]
+  rcases frameBudgetCodes_polyFueled PolyFueled.id hcount with
+    ⟨⟨cb, hb⟩, ⟨ci, hi⟩⟩
+  let control : ℕ → ℕ := PrefixPatchCompile.freezeControlNat tokenFn
+  obtain ⟨ccontrol, hcontrol⟩ :=
+    PrefixPatchCompile.freezeControlNat_polyFueled htoken
+  let mode : ℕ → ℕ := fun z => (control z).unpair.1
+  have hmode : PolyFueled _ mode := PolyFueled.left.comp hcontrol
+  let condition : ℕ → ℕ := fun z => Encodable.encode (ψ z.unpair.1)
+  obtain ⟨cψ, hψCode⟩ := hψ
+  have hcondition : PolyFueled _ condition := hψCode.comp PolyFueled.left
+  let day : ℕ → ℕ := fun z => z.unpair.1
+  have hday : PolyFueled Nat.Partrec.Code.left day := PolyFueled.left
+  let budget : ℕ → ℕ := fun z => frameBudgetCode z.unpair.1 (count z.unpair.1)
+  have hbudget : PolyFueled _ budget := hb.comp PolyFueled.left
+  let inverse : ℕ → ℕ := fun z =>
+    frameInverseBudgetCode z.unpair.1 (count z.unpair.1)
+  have hinverse : PolyFueled _ inverse := hi.comp PolyFueled.left
+  have hlong := rawConditioningFrameTokens_poly htoken hcondition hday
+    hbudget hinverse second ε
+  have hcopy : PolySegStream (fun z => [tokenFn z]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.polyTok htoken)
+  have hempty : PolySegStream (fun _ : ℕ => []) :=
+    PolySegStream.ofTokenStream PolyTokenStream.nil
+  obtain ⟨ctag6, htag6⟩ := polyFueled_eqConst htoken 6
+  obtain ⟨cmode0, hmode0⟩ := polyFueled_eqConst hmode 0
+  obtain ⟨cmode4, hmode4⟩ := polyFueled_eqConst hmode 4
+  have hready : PolySegStream (fun z =>
+      if (if tokenFn z = 6 then 1 else 0) = 0 then [tokenFn z] else []) :=
+    hcopy.ifZero hempty htag6
+  have hnonready : PolySegStream (fun z =>
+      if (if mode z = 4 then 1 else 0) = 0 then [tokenFn z]
+      else if second then
+        rawLocallyGatedSecondBodyTokens (tokenFn z) (condition z) (day z)
+            (budget z) (inverse z) ε ++ [8, 6, condition z]
+      else
+        rawLocallyGatedBetaBodyTokens (tokenFn z) (condition z) (day z)
+            (budget z) (inverse z) ε ++
+          [8, 6, conjunctionCode (tokenFn z) (condition z)]) :=
+    hcopy.ifZero hlong hmode4
+  have hraw : PolySegStream (fun z =>
+      if (if mode z = 0 then 1 else 0) = 0 then
+        (if (if mode z = 4 then 1 else 0) = 0 then [tokenFn z]
+        else if second then
+          rawLocallyGatedSecondBodyTokens (tokenFn z) (condition z) (day z)
+              (budget z) (inverse z) ε ++ [8, 6, condition z]
+        else
+          rawLocallyGatedBetaBodyTokens (tokenFn z) (condition z) (day z)
+              (budget z) (inverse z) ε ++
+            [8, 6, conjunctionCode (tokenFn z) (condition z)])
+      else if (if tokenFn z = 6 then 1 else 0) = 0 then [tokenFn z] else []) :=
+    hnonready.ifZero hready hmode0
+  have hsegment : PolySegStream (fun z =>
+      conditioningFrameTokenSegment second tokenFn (condition z) (day z)
+        (budget z) (inverse z) ε z) := hraw.of_eq fun z => by
+    simp only [conditioningFrameTokenSegment]
+    by_cases hm0 : mode z = 0 <;> by_cases hm4 : mode z = 4 <;>
+      by_cases ht6 : tokenFn z = 6 <;>
+      simp [conditioningFrameTokenEmit, mode, control, hm0, hm4, ht6]
+  have hbody := hsegment.concatVar hlen
+  let finalControl : ℕ → ℕ := fun n =>
+    control (Nat.pair n (lenFn n))
+  have hfinalControl : PolyFueled _ finalControl :=
+    hcontrol.comp (PolyFueled.id.pair hlen)
+  have hfinalMode : PolyFueled _ (fun n => (finalControl n).unpair.1) :=
+    PolyFueled.left.comp hfinalControl
+  obtain ⟨cfinal4, hfinal4⟩ := polyFueled_eqConst hfinalMode 4
+  have hsix : PolySegStream (fun _ : ℕ => [6]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 6)
+  have hsuffix : PolySegStream (fun n =>
+      if (if (finalControl n).unpair.1 = 4 then 1 else 0) = 0 then [] else [6]) :=
+    hempty.ifZero hsix hfinal4
+  have hout := hbody.append hsuffix
+  refine hout.of_eq fun n => ?_
+  have hsourceEq : source n =
+      (List.range (lenFn n)).map (fun j => tokenFn (Nat.pair n j)) := by
+    apply List.ext_getElem
+    · simp [hslen n]
+    · intro i hleft hright
+      rw [List.getElem_map]
+      simp only [List.getElem_range]
+      rw [hget n i (by simpa [hslen n] using hleft)]
+      exact (List.getD_eq_getElem (l := source n) (d := 0) hleft).symm
+  rw [hsourceEq]
+  have hrun := conditioningFrameTokenRun_range second tokenFn
+    (Encodable.encode (ψ n)) n (frameBudgetCode n (count n))
+    (frameInverseBudgetCode n (count n)) ε n (lenFn n)
+  unfold conditioningFrameTokenOutput
+  simp only [count] at hrun ⊢
+  rw [hrun]
+  simp [conditioningFrameTokenSegment, condition, day, budget, inverse, count,
+    finalControl, control, PrefixPatchCompile.freezeControlNat]
+
+/-- The guarded concatenation of both conditioning legs is a polynomial segment stream. -/
+theorem safeSeparatedFrameTokenOutput_polySegStream
+    {source : ℕ → List ℕ} {tokenFn lenFn : ℕ → ℕ}
+    {ct cl : Nat.Partrec.Code}
+    (htoken : PolyFueled ct tokenFn) (hlen : PolyFueled cl lenFn)
+    (hslen : ∀ n, (source n).length = lenFn n)
+    (hget : ∀ n i, i < lenFn n →
+      tokenFn (Nat.pair n i) = (source n).getD i 0)
+    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) (ε : ℚ) :
+    PolySegStream (fun n =>
+      let count := frameTradeCount tokenFn lenFn n
+      safeSeparatedFrameTokenOutput tokenFn lenFn (ψ n) ε
+        (frameBudget n count) n (source n)) := by
+  have hfirst := conditioningFrameTokenOutput_polySegStream htoken hlen hslen hget
+    ψ hψ false ε
+  have hsecond := conditioningFrameTokenOutput_polySegStream htoken hlen hslen hget
+    ψ hψ true ε
+  obtain ⟨caccept, haccept⟩ := parserStructurallyAccepts_polyFueled htoken hlen
+  have hselected := hfirst.ifZero (hfirst.append hsecond) haccept
+  refine hselected.of_eq fun n => ?_
+  simp [safeSeparatedFrameTokenOutput, frameBudgetCode_exact,
+    frameInverseBudgetCode_exact]
+
+/-! ### End-to-end translator closure -/
+
+theorem deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
+    (day : ℕ) (tokens : List ℕ)
+    (hne : (strategyOfTokens day tokens).trades ≠ []) :
+    deserializeTrades tokens = some (strategyOfTokens day tokens).trades := by
+  unfold strategyOfTokens at hne ⊢
+  cases hdecode : deserializeTrades tokens with
+  | none => simp at hne
+  | some trades =>
+      by_cases hvalid : ∀ trade ∈ trades, trade.1.rank ≤ day
+      · simp [hdecode, hvalid]
+      · simp [hdecode, hvalid] at hne
+
+/-- The concrete price rewrite, trade-count scan, and two guarded frame passes preserve
+token-indexed efficient computability of the gated conditioning translation. -/
+theorem conditionedTranslation_preserves_ec
+    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) (ε : ℚ)
+    (T : Trader) (hT : EfficientlyComputableTok T) :
+    EfficientlyComputableTok (T.conditionedTranslation ψ ε) := by
+  obtain ⟨lengthCode, tokenCode, a, k, hcert⟩ := hT
+  let source : ℕ → List ℕ := fun n =>
+    clockedTokens lengthCode tokenCode (PrefixPatchCompile.ecClock a k n) n
+  have hsource : PolySegStream source :=
+    PrefixPatchCompile.clockedTokens_polySegStream lengthCode tokenCode a k
+  obtain ⟨cst, csl, sourceToken, sourceLen, hst, hsl, hslen, hsget⟩ := hsource
+  let priced : ℕ → List ℕ := fun n =>
+    (conditionPriceTokenRun (fun day => Encodable.encode (ψ day)) ε
+      (0, 0) (source n)).2
+  have hpriced : PolySegStream priced := by
+    exact conditionPriceTokenRun_polySegStream hst hsl hslen hsget ψ hψ ε
+  obtain ⟨cpt, cpl, priceToken, priceLen, hpt, hpl, hplen, hpget⟩ := hpriced
+  let output : ℕ → List ℕ := fun n =>
+    let count := frameTradeCount priceToken priceLen n
+    safeSeparatedFrameTokenOutput priceToken priceLen (ψ n) ε
+      (frameBudget n count) n (priced n)
+  have houtput : PolySegStream output := by
+    exact safeSeparatedFrameTokenOutput_polySegStream hpt hpl hplen hpget ψ hψ ε
+  apply houtput.ecTok (T.conditionedTranslation ψ ε)
+  intro n
+  have horig : strategyOfTokens n (source n) = T.strat n := by
+    exact congrFun (congrArg Trader.strat hcert) n
+  have hpricedEq : priced n =
+      (List.range (priceLen n)).map fun i => priceToken (Nat.pair n i) := by
+    apply List.ext_getElem
+    · simp [hplen n]
+    · intro i hleft hright
+      rw [List.getElem_map]
+      simp only [List.getElem_range]
+      rw [hpget n i (by simpa [hplen n] using hleft)]
+      exact (List.getD_eq_getElem (l := priced n) (d := 0) hleft).symm
+  have hframes := strategyOfTokens_safeSeparatedFrameTokenOutput_trades
+    priceToken priceLen (ψ n) ε
+      (frameBudget n (frameTradeCount priceToken priceLen n)) n (priced n) hpricedEq
+  have hprice := strategyOfTokens_conditionPriceTokenRun_trades ψ ε n (source n)
+  change (strategyOfTokens n (priced n)).trades = _ at hprice
+  rw [congrArg Strategy.trades horig] at hprice
+  let target := (T.conditionedTranslation ψ ε).strat n
+  have htrades : (strategyOfTokens n (output n)).trades = target.trades := by
+    change (strategyOfTokens n
+      (safeSeparatedFrameTokenOutput priceToken priceLen (ψ n) ε
+        (frameBudget n (frameTradeCount priceToken priceLen n)) n
+        (priced n))).trades = target.trades
+    rw [hframes]
+    by_cases hempty : (T.strat n).trades = []
+    · rw [hprice, hempty]
+      simp [target, Trader.conditionedTranslation,
+        Strategy.separatedLocallyGatedConditionalContract]
+    · have hpricedNe : (strategyOfTokens n (priced n)).trades ≠ [] := by
+        rw [hprice]
+        simpa using hempty
+      have hdecodePriced :=
+        deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
+          n (priced n) hpricedNe
+      have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
+        (priced n) (strategyOfTokens n (priced n)).trades hdecodePriced
+      rw [hpricedEq] at hreadyPriced
+      have hcount : frameTradeCount priceToken priceLen n =
+          (T.strat n).trades.length := by
+        calc
+          frameTradeCount priceToken priceLen n =
+              (strategyOfTokens n (priced n)).trades.length :=
+            frameTradeCount_eq_length_of_read priceToken priceLen n
+              ((0, none), ([], (strategyOfTokens n (priced n)).trades)) hreadyPriced
+          _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
+      have hpos : 0 < (T.strat n).trades.length :=
+        List.length_pos.mpr hempty
+      rw [hprice, hcount, frameBudget_eq n (T.strat n).trades.length hpos]
+      simp only [List.map_map]
+      change
+        ((T.strat n).trades.map fun p =>
+          frameLeg false (ψ n) ε
+            (Strategy.localConditioningBudget (conditioningBudget n)
+              (T.strat n).trades.length) n
+            (p.1.retainedConditionPrices ψ ε, p.2)) ++
+          ((T.strat n).trades.map fun p =>
+            frameLeg true (ψ n) ε
+              (Strategy.localConditioningBudget (conditioningBudget n)
+                (T.strat n).trades.length) n
+              (p.1.retainedConditionPrices ψ ε, p.2)) = target.trades
+      simp only [frameLeg_retained_eq_locallyGatedFirstLeg,
+        frameLeg_retained_eq_locallyGatedSecondLeg]
+      rfl
+  cases hleft : strategyOfTokens n (output n) with
+  | mk leftTrades leftRank =>
+      cases hright : (T.conditionedTranslation ψ ε).strat n with
+      | mk rightTrades rightRank =>
+          simp only [hleft, hright] at htrades ⊢
+          subst rightTrades
+          rfl
+
+/-! ### Public operational witness constructors -/
+
+/-- Construct the complete gated-conditioning operational witness from a named rational
+base-market computation and an actual positive denominator floor. -/
+noncomputable def gatedConditioningOperationalWitness
+    {P : History} {DP extra : DeductiveProcess}
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (ε : ℚ) (hε : 0 < (ε : ℝ))
+    (hfloor : ∀ d, (ε : ℝ) ≤ P d (C.condition d)) :
+    GatedConditioningOperationalWitness P DP extra C ε where
+  epsilon_pos := hε
+  denominator_floor := hfloor
+  conditioned_computable :=
+    (conditionedMarketComputation market C.condition C.condition_codes).toComputable
+  translation_ec := fun T hT =>
+    conditionedTranslation_preserves_ec C.condition C.condition_codes ε T hT
+
+/-- The paper's finite-prefix denominator repair supplies the floor and the exact rational
+market computation required by the operational witness.  Transporting logical induction
+from `P` to this patched history remains correctly isolated behind the qualified finite-
+perturbation theorem and its two `EfficientPrefixPatch` certificates. -/
+noncomputable def denominatorPatchedGatedConditioningOperationalWitness
+    {P : History} {DP extra : DeductiveProcess}
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (cutoff : ℕ) (ε : ℚ) (hε : 0 < (ε : ℝ)) (hεone : (ε : ℝ) ≤ 1)
+    (htail : ∀ day, cutoff ≤ day → (ε : ℝ) ≤ P day (C.condition day)) :
+    GatedConditioningOperationalWitness
+      (denominatorPatchedHistory P C.condition cutoff) DP extra C ε :=
+  gatedConditioningOperationalWitness C
+    (denominatorPatchedMarketComputation market C.condition C.condition_codes cutoff)
+    ε hε (denominatorPatchedHistory_floor P C.condition cutoff hεone htail)
+
+/-- Criterion-level conditioning closure with every compiler field discharged by the
+concrete construction. -/
+theorem lic_conditioned_gated_ofMarketComputation
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (ε : ℚ) (hε : 0 < (ε : ℝ))
+    (hfloor : ∀ d, (ε : ℝ) ≤ P d (C.condition d)) :
+    IsLogicalInductor (conditionedHistory P C.condition) (DP.union extra) :=
+  lic_conditioned_gated P DP extra C
+    (gatedConditioningOperationalWitness C market ε hε hfloor)
+
+/-- Paper-facing SCON constructor: the canonical finite-stage presentation and the complete
+market/trader compiler are both assembled from their named computations. -/
+theorem lic_conditioned_gated_ofComputationsAndMarket
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
+    (base : DeductiveProcessComputation DP)
+    (more : CompactConditioningProcessComputation extra)
+    (market : MarketComputation P) (ε : ℚ) (hε : 0 < (ε : ℝ))
+    (hfloor : ∀ d, (ε : ℝ) ≤
+      P d (deductiveStageCondition (extra.D d))) :
+    IsLogicalInductor
+      (conditionedHistory P (fun n => deductiveStageCondition (extra.D n)))
+      (DP.union extra) :=
+  lic_conditioned_gated_ofMarketComputation P DP extra
+    (conditioningPresentationOfComputations base more) market ε hε hfloor
+
+#print axioms conditionedTranslation_preserves_ec
+#print axioms gatedConditioningOperationalWitness
+#print axioms denominatorPatchedGatedConditioningOperationalWitness
+#print axioms lic_conditioned_gated_ofMarketComputation
+#print axioms lic_conditioned_gated_ofComputationsAndMarket
 
 end ConditioningCompile
 
