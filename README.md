@@ -19,10 +19,17 @@ Mathlib's standard `propext`, `Classical.choice`, and `Quot.sound`.
 
 The M3–M5 property theorems are genuine but conditional: their paper-facing declarations
 take `[IsLogicalInductor P DP]`. Some additionally take an explicitly disclosed
-representation or compiler interface. Eleven M7 witness boundaries have been constructed in
-Lean. Thus the public endpoint is **unconditional existence plus a conditional, disclosed
-property tail**, not a claim that all of the paper's first-order syntax and classical
-computability theory have been reconstructed in this propositional development.
+representation or compiler interface. Twelve of the fifteen M7 witness boundaries have been
+constructed in Lean. Thus the public endpoint is **unconditional existence plus a
+conditional, disclosed property tail**, not a claim that all of the paper's first-order
+syntax and classical computability theory have been reconstructed in this propositional
+development.
+
+One modeling substitution is repository-wide rather than local to a boundary: efficient
+computability (`EfficientlyComputable`, `PolyFueled`, and every "polynomial" certificate)
+is defined relative to a fuel-clocked interpreter over `Nat.Partrec.Code`, not an abstract
+complexity class (`dd:fuel` in the roadmap). Every efficiency claim below is correct
+relative to that model.
 
 `LogicalInduction.brouwer_fixed_point`, used by the construction, was proved from scratch
 via Sperner's lemma because Mathlib has no suitable Brouwer theorem. Its proof body was
@@ -37,6 +44,10 @@ three names in the capstone axiom reports (`propext`, `Classical.choice`, `Quot.
 standard dependencies, not project-specific postulates. The remaining assumptions are
 ordinary hypotheses on the conditional property theorems. They are isolated below rather
 than being confused with the unconditional existence result.
+
+These cleanliness claims are checked by the build: `LogicalInduction/AxiomAudit.lean`
+enumerates every public endpoint and fails compilation if any of them acquires an axiom
+beyond the three named above or ceases to exist.
 
 The primary paper citation in the table is Garrabrant et al., especially its named theorem
 and Appendix sections. Older primary sources cover facts imported at the boundary: Gödel's
@@ -65,7 +76,7 @@ Paths abbreviated as `Properties/...` or `Expectations.lean` in the table are re
 | `M7-STRICT-SEPARATORS` | `StrictSeparatorPresentation` in `Properties/StrictSemimeasure.lean` | `thm:strict` / App. `strict`. Disjoint recursively inseparable c.e. sets yield nested finite separator constraints; the appendix's computability argument shows every universal continuous semimeasure gives their separator class vanishing mass; see [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | `strict_domination_of_null_prefix_theory`, `lic_strict_domination_universalSemimeasure` | Assumes nested unbounded prefixes, efficient repetition, joint stagewise realizability, and the substantive `mass_tendsto_zero` theorem. It contains no market prices and assumes no strict-domination conclusion. |
 | `M7-SCON-COMPILER` | Interface `GatedConditioningOperationalWitness` in `Properties/Conditioning.lean`; rational market programs, finite denominator patch, arbitrary-stream price/frame transducers, `gatedConditioningOperationalWitness`, and direct consumers in `Construction/ConditioningCompiler.lean` | `thm:scon` / App. `scon`. The construction computes exact capped conditional quotes, rewrites arbitrary polynomial raw trader certificates parser-transparently, counts trades, emits both locally gated legs, and guards malformed-stream concatenation with a polynomial shallow parser scan; see [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | `lic_conditioned_gated_ofMarketComputation`, `lic_conditioned_gated_ofComputationsAndMarket` | Constructed from a named rational base-market computation, polynomial condition codes, and an actual positive denominator floor. The finite patch constructor derives that floor from an eventual one. Economic loss, failed-condition behavior, wealth floors, exploit transport, and LI closure are proved outside the operational certificate; transport across the finite market patch remains honestly qualified by `EfficientPrefixPatch`. |
 | `M7-SCON-PRESENTATION` | Interface `ConditioningPresentation` in `Properties/Conditioning.lean`; concrete `deductiveStageCondition`, `DeductiveProcessComputation.union`, `conditioningPresentationOfComputations`, and `lic_conditioned_gated_ofComputations` in `Construction/ConditioningPresentation.lean` | `thm:scon` / App. `scon`. The constructed condition is the canonical finite conjunction of the extra stage, with exact Boolean semantics including the empty stage. A primitive-recursive code-sorted union normalizer composes the two stage programs; see [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | `lic_conditioned_gated_ofComputations` and the construction of `M7-SCON-COMPILER` | Constructed from ordinary computations for the two processes and one compact operational program that emits the actual extra-stage conjunction code with polynomial fuel. It assumes no condition semantics, combined-process computation, conditional prices, trader, wealth, exploitation, or LI conclusion. |
-| `M7-LUV-SYNTAX` | `LUV.PolyThresholdCodes`/`PolyThresholdCodeSeq` in `Expectations.lean`; `LUVCombination.PolySequence`, `WorldValued`, `ConvergencePresentation`, `ExactTheoryPresentation`, `MeshSoftmaxOperationalWitness` in `Properties/ExpectationProperties.lean` | `def:luv`, `thm:expprovind`, `thm:expcoh`, `thm:perexpkno`, `thm:exppolymax`, `thm:recurringunbiasednessexp`, `thm:wubexp`, `thm:prandexp` and their appendices. First-order threshold formulas plus the paper's finite soft-max mesh realize the packages; see [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | The expectation-property tail, especially `BoundedSequence.exppolymax`, `.perexpkno`, `.expcoh`, `.recurringunbiasednessexp`, `.wubexp`, and `.prandexp` | Assumes compact threshold syntax, daily/completed-world LUV semantics, exact theory values where needed, and polynomial/bounded/magnitude certificates for the concrete soft-max meshes. It assumes no expectation limit, persistence, unbiasedness, pseudorandom-learning, or preemptive-learning conclusion. |
+| `M7-LUV-SYNTAX` | Boundary interfaces `LUV.PolyThresholdCodes`/`PolyThresholdCodeSeq` in `Expectations.lean` and `LUVCombination.PolySequence`, `WorldValued`, `ConvergencePresentation`, `ExactTheoryPresentation`, `MeshSoftmaxOperationalWitness` in `Properties/ExpectationProperties.lean`; concrete compact thresholds, semantic presentations, cross-precision meshes, and `LUVCombinationSyntax.meshSoftmaxOperationalWitness` in `Construction/LUVSyntax.lean` | `def:luv`, `thm:expprovind`, `thm:expcoh`, `thm:perexpkno`, `thm:exppolymax`, `thm:recurringunbiasednessexp`, `thm:wubexp`, `thm:prandexp` and their appendices. First-order threshold formulas plus the paper's finite soft-max mesh realize the packages; see [Garrabrant et al.](https://arxiv.org/abs/1609.03543). | The expectation-property tail, especially `BoundedSequence.exppolymax`, `.perexpkno`, `.expcoh`, `.recurringunbiasednessexp`, `.wubexp`, and `.prandexp` | Constructed from `LUVCombinationSyntax` plus its conclusion-free stage/completed-theory representation laws: compact threshold codes, exact semantic presentations, and polynomial/bounded/magnitude certificates for the concrete soft-max meshes. It assumes no expectation limit, persistence, unbiasedness, pseudorandom-learning, or preemptive-learning conclusion. |
 
 ### M7 witness inventory
 
@@ -82,7 +93,7 @@ Paths abbreviated as `Properties/...` or `Expectations.lean` in the table are re
 | 9 | `M7-DUS-PREFIX-SYNTAX` | **constructed** | `bitPrefixSentencesOfIndependentAtoms`, `lic_domination_universalSemimeasure_ofIndependentAtoms` (`Construction/BitPrefixSyntax.lean`) |
 | 10 | `M7-SCON-COMPILER` | **constructed** | `gatedConditioningOperationalWitness`, `denominatorPatchedGatedConditioningOperationalWitness`, and `lic_conditioned_gated_ofComputationsAndMarket` (`Construction/ConditioningCompiler.lean`) |
 | 11 | `M7-SCON-PRESENTATION` | **constructed** | `conditioningPresentationOfComputations`, `lic_conditioned_gated_ofComputations` (`Construction/ConditioningPresentation.lean`) |
-| 12 | `M7-LUV-SYNTAX` | **disclosed** | Exact interfaces and assumptions in the table above |
+| 12 | `M7-LUV-SYNTAX` | **constructed** | Compact thresholds, semantic presentations, cross-precision meshes, and `LUVCombinationSyntax.meshSoftmaxOperationalWitness` (`Construction/LUVSyntax.lean`) |
 | 13 | `M7-DUS-APPROX` | **disclosed** | Exact interfaces and assumptions in the table above |
 | 14 | `M7-STRICT-SEPARATORS` | **disclosed** | Exact interfaces and assumptions in the table above |
 | 15 | `M7-COMP-SYNTAX` | **constructed** | `representedSemidecidableClaimsOfComputation`, `representedDecidableClaimsOfComputation`, `inconsistentTheoryClaimsOfComputation`, and the six `..._ofComputation` consumers (`Construction/ComputationSyntax.lean`) |

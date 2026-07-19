@@ -31,7 +31,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 
 /-! ## Existence (`thm:li`) -/
 
-#assert_axioms_clean exists_logical_inductor
+#assert_axioms_clean exists_logical_inductor LIA_is_logical_inductor
 
 /-! ## Property tail, conditional on `[IsLogicalInductor P DP]` (M3–M5) -/
 
