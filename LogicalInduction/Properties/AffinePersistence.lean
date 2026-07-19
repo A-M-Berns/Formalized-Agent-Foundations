@@ -348,7 +348,7 @@ theorem PolySequence.persistenceTermCount_poly {As : ℕ → AffineCombination}
     (hprefix.comp (PolyFueled.id.pair PolyFueled.id.succ_comp)).of_eq
       (fun k => by simp [persistenceTermCount])⟩
 
-set_option maxHeartbeats 4000000 in
+attribute [local irreducible] Nat.sqrt in
 theorem prefixMember_poly (count : ℕ → ℕ)
     (hcount : ∃ c, PolyFueled c count) : ∃ c, PolyFueled c (fun z =>
       segLocate (fun q => count q.unpair.2) z.unpair.1 z.unpair.2
@@ -364,7 +364,7 @@ theorem prefixMember_poly (count : ℕ → ℕ)
       (Nat.Partrec.Code.succ.comp Nat.Partrec.Code.left))), ?_⟩
   simpa only [Function.comp_apply, Nat.unpair_pair] using hlocate.comp hinput
 
-set_option maxHeartbeats 4000000 in
+attribute [local irreducible] Nat.sqrt in
 theorem prefixOffset_poly (count : ℕ → ℕ)
     (hcount : ∃ c, PolyFueled c count) : ∃ c, PolyFueled c (fun z =>
       z.unpair.2 - segPrefix (fun q => count q.unpair.2) z.unpair.1

@@ -615,7 +615,7 @@ def dusSharesEF {DP : DeductiveProcess}
   .mul (dusRemainingEF A k n) (dusSignal A k n)
 
 /- Uniform emission of the all-open budget-recurrence body for input `⟨k,j⟩`. -/
-set_option maxHeartbeats 1000000 in
+attribute [local irreducible] Nat.sqrt in
 theorem dusWeightBody_polySegStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}

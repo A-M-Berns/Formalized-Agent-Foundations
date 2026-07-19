@@ -4044,7 +4044,7 @@ private theorem candidateCompiledEFValue_prim :
       candidateCompiledEFValue p.1 p.2 :=
   efRatCompiledEval_prim candidateQuote candidateQuote_prim
 
-set_option maxHeartbeats 800000 in
+attribute [local irreducible] Nat.sqrt in
 /-- A generic exact compiler for rational market value.  The context supplies both the
 history quotation and the finite world's payout; the trade list itself remains ordinary
 first-order data. -/
@@ -4122,7 +4122,7 @@ private def marketMakerWorldValue (p : MarketMakerWorldInput) : ℚ :=
     (candidateRationalHistory p.1.1.2 p.1.1.1.2 p.1.2)
     (tradeListSupportBitWorldRatFromList p.1.1.1.1 p.2)
 
-set_option maxHeartbeats 800000 in
+attribute [local irreducible] Nat.sqrt in
 private theorem marketMakerWorldValue_prim :
     Primrec marketMakerWorldValue := by
   have htrades : Primrec fun p : MarketMakerWorldInput => p.1.1.1.1 :=
@@ -4226,7 +4226,7 @@ private instance marketMakerCandidateAcceptsDataDecidable
       p.1.1.2 p.1.2 p.2)
     (marketMakerCandidateAcceptsData_iff p).symm
 
-set_option maxHeartbeats 800000 in
+attribute [local irreducible] Nat.sqrt in
 private theorem marketMakerCandidateAcceptsData_prim :
     PrimrecPred marketMakerCandidateAcceptsData := by
   letI : DecidablePred marketMakerAcceptsData :=
@@ -4295,7 +4295,7 @@ private theorem marketMakerSearchIndexData_eq
               h ((marketMakerCandidateAcceptsData_iff (ctx, fuel)).mpr hs)
             simp [h, h']
 
-set_option maxHeartbeats 800000 in
+attribute [local irreducible] Nat.sqrt in
 private theorem marketMakerSearchStepData_prim :
     Primrec₂ marketMakerSearchStepData := by
   let X := MarketMakerSearchInput × (ℕ × Option ℕ)
@@ -5161,7 +5161,7 @@ private def firmDayMarketValueData
   tradeListMarketValueRat ((firmRawTrader j).strat i).trades i
     (budgetWorldHistory ctx) (budgetWorldPayout ctx)
 
-set_option maxHeartbeats 800000 in
+attribute [local irreducible] Nat.sqrt in
 private theorem firmDayMarketValueData_prim : Primrec fun p :
     (BudgetWorldContext × ℕ) × ℕ =>
       firmDayMarketValueData p.1.1 p.1.2 p.2 := by
@@ -5180,7 +5180,7 @@ private def firmRawPriorWorthData
     (ctx : BudgetWorldContext) (j n : ℕ) : ℚ :=
   ((List.range n).map fun i => firmDayMarketValueData ctx j i).sum
 
-set_option maxHeartbeats 800000 in
+attribute [local irreducible] Nat.sqrt in
 private theorem firmRawPriorWorthData_prim : Primrec fun p :
     (BudgetWorldContext × ℕ) × ℕ =>
       firmRawPriorWorthData p.1.1 p.1.2 p.2 := by
@@ -5245,7 +5245,7 @@ private def budgetWorthBreachedData
     (ctx : BudgetWorldContext) (j b m : ℕ) : Bool :=
   decide (firmRawPriorWorthData ctx j (m + 1) ≤ -(b : ℚ))
 
-set_option maxHeartbeats 800000 in
+attribute [local irreducible] Nat.sqrt in
 private theorem budgetWorthBreachedData_prim : Primrec fun p :
     ((BudgetWorldContext × ℕ) × ℕ) × ℕ =>
       budgetWorthBreachedData p.1.1.1 p.1.1.2 p.1.2 p.2 := by

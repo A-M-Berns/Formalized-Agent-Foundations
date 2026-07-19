@@ -76,7 +76,7 @@ theorem meshTermCount_poly {As : ℕ → LUVCombination}
     (hmul.comp (hcount.pair PolyFueled.id)).of_eq (fun n ↦ by
       simp [meshTermCount])⟩
 
-set_option maxHeartbeats 800000 in
+attribute [local irreducible] Nat.sqrt in
 private theorem meshDivMod_poly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) :
     ∃ c, PolyFueled c (fun z ↦ Nat.pair (S.meshMember z) (S.meshOffset z)) := by
