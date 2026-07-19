@@ -34,6 +34,7 @@ import LogicalInduction.Construction.BitPrefixSyntax
 import LogicalInduction.Construction.ComputationSyntax
 import LogicalInduction.Construction.QuotationAffine
 import LogicalInduction.Construction.FeedbackTruth
+import LogicalInduction.Construction.LUVSyntax
 
 namespace LogicalInduction
 

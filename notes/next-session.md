@@ -331,13 +331,17 @@ to the patched market still goes through the qualified `EfficientPrefixPatch` th
 
 ## START HERE — attempt 7, `M7-LUV-SYNTAX`
 
-Audit and construct the interfaces collected under `LUV.PolyThresholdCodes`,
-`LUVCombination.PolySequence`, `WorldValued`, `ConvergencePresentation`,
-`ExactTheoryPresentation`, and `MeshSoftmaxOperationalWitness`. Reuse the threshold-code
-sublayer already built for quotation where possible, then separate the remaining tasks into
-literal threshold syntax/semantics, completed-theory exact values, polynomial affine meshes,
-and the finite softmax emitter. Do not fold expectation convergence, persistence,
-unbiasedness, or pseudorandom-learning conclusions into the operational certificates.
+`LogicalInduction/Construction/LUVSyntax.lean` now constructs the compact threshold layer,
+the literal diagonal affine mesh, `LUVCombination.PolySequence`, `WorldValued`,
+`ConvergencePresentation`, and `ExactTheoryPresentation` from `LUVCombinationSyntax` plus
+its conclusion-free stage/completed-theory representation laws.  Its public axiom reports
+contain only `propext`, `Classical.choice`, and `Quot.sound`.
+
+The remaining task is the finite cross-precision selector: construct
+`MeshSoftmaxOperationalWitness` from the same component syntax, including direct polynomial
+emission of both upper/lower mesh selectors and derived bounded-price/magnitude proofs.
+Do not fold expectation convergence, persistence, unbiasedness, or pseudorandom-learning
+conclusions into the operational certificate.
 
 Once LUV reaches green, the stated 12/15 target is complete. At that point reassess the
 three disclosed boundaries (`M7-PREFIX-MACHINE`, `M7-DUS-APPROX`, and
