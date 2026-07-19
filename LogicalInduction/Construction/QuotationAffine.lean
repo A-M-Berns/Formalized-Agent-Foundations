@@ -27,7 +27,7 @@ open LO.FirstOrder LO.FirstOrder.Arithmetic
 
 /-! ## Dual arithmetic decisions -/
 
-/-- Positive and complementary arithmetic representations of a decidable predicate. -/
+/-- Positive and complementary arithmetic representations of a decidable predicate.  Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
 structure ArithmeticDecision (T : ArithmeticTheory) (truth : ℕ → Prop) where
   positive : ArithmeticSemisentence 1
   negative : ArithmeticSemisentence 1
@@ -97,7 +97,7 @@ theorem quotationClaimSentence_poly
 
 /-- A first-order arithmetic background and one generic proof-to-public-language
 translation.  Unlike the old quote packages this object contains no sentence family,
-LUV, price, affine combination, or asymptotic field. -/
+LUV, price, affine combination, or asymptotic field.  Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
 structure QuotationTheoryPresentation
     (DP : DeductiveProcess) (T : ArithmeticTheory)
     extends ComputationTheoryPresentation DP T where
@@ -113,7 +113,7 @@ structure QuotationTheoryPresentation
 
 /-! ## Boolean quote families -/
 
-/-- A uniformly named Boolean quote backed by a dual arithmetic decision. -/
+/-- A uniformly named Boolean quote backed by a dual arithmetic decision.  Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
 structure BooleanQuoteCode (T : ArithmeticTheory) (truth : ℕ → Prop) where
   decision : ArithmeticDecision T truth
 
@@ -166,7 +166,7 @@ noncomputable def arithmeticThresholdLUV
     (Nat.pair n (Encodable.encode r))
 
 /-- A rational-valued computation together with dual FFL threshold schemas and an honest
-polynomial emitter for the resulting threshold syntax. -/
+polynomial emitter for the resulting threshold syntax.  Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
 structure RationalQuoteCode (T : ArithmeticTheory) (value : ℕ → ℚ) where
   decision : ArithmeticDecision T (fun z =>
     decodedQuotationRat z.unpair.2 < value z.unpair.1)
@@ -277,7 +277,7 @@ noncomputable def expectAffineSeq_polySequence (X : ℕ → LUV)
 
 end LUV
 
-/-- A closed polynomial feature carrying the represented numeric target. -/
+/-- A closed polynomial feature carrying the represented numeric target.  Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
 structure NumericQuoteTarget (P : History) (target : ℕ → ℝ) where
   feature : ℕ → EF
   generated : PGenerableWeighting feature
@@ -2226,7 +2226,7 @@ noncomputable def introspectionIntervalQuoteOfCode
 
 /-- A Boolean quote family whose positive schema is FFL's actual parameterized fixed
 point.  The decision completeness fields connect that fixed point and its complementary
-schema to the intended public truth predicate. -/
+schema to the intended public truth predicate.  Paper node: the diagonal family realizing `thm:lp` (App. `lp`). -/
 structure ParameterizedDiagonalQuoteCode
     (T : ArithmeticTheory) (truth : ℕ → Prop)
     extends BooleanQuoteCode T truth where

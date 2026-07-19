@@ -1323,7 +1323,7 @@ theorem ConditioningPresentation.conditionedTranslation_preserves_floor
 is the actual base-market trader compiled from a conditional-market trader `T`.
 `tracks_on_condition` is the paper's summable-error estimate, while `preserves_floor`
 records the separate analysis of worlds that first falsify the growing condition. The
-interface contains no exploitation or logical-induction conclusion. -/
+interface contains no exploitation or logical-induction conclusion.  Paper node: `thm:scon` (App. `scon`). -/
 structure ConditioningTraderCompiler
     (P : History) (DP extra : DeductiveProcess)
     (C : ConditioningPresentation DP extra) where
@@ -1343,7 +1343,7 @@ structure ConditioningTraderCompiler
 /-- The remaining operational boundary after the gated translator's economic proof.  It
 contains only the patched positive denominator, computability of the rational conditional
 market, and a token-level implementation of the concrete syntax transformation.  In
-particular it contains no wealth, boundedness, exploitation, or logical-inductor field. -/
+particular it contains no wealth, boundedness, exploitation, or logical-inductor field.  Paper node: `thm:scon` (App. `scon`). -/
 structure GatedConditioningOperationalWitness
     (P : History) (DP extra : DeductiveProcess)
     (C : ConditioningPresentation DP extra) (ε : ℚ) where

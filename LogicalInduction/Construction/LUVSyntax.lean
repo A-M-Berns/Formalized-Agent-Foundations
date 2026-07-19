@@ -20,7 +20,7 @@ namespace LogicalInduction
 /-! ## Compact combination syntax -/
 
 /-- Operational syntax for a sequence of LUV combinations.  The LUV and coefficient at
-`z = ⟨n,j⟩` are the `j`th term of member `n`. -/
+`z = ⟨n,j⟩` are the `j`th term of member `n`.  Paper node: compact syntax for `def:luv`. -/
 structure LUVCombinationSyntax (As : ℕ → LUVCombination) where
   termCount : ℕ → ℕ
   coefficient : ℕ → EF
@@ -280,7 +280,7 @@ noncomputable def polySequence {As : ℕ → LUVCombination}
 /-! ## Exact represented semantics -/
 
 /-- Stagewise and completed-theory truth laws for the threshold families named by a
-compact syntax presentation.  These are representation facts only. -/
+compact syntax presentation.  These are representation facts only.  Paper node: stage/completed-theory semantics for `def:luv`. -/
 structure TheorySemantics {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (DP : DeductiveProcess) where
   value : ℕ → LUV → ℝ

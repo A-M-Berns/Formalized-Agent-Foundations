@@ -141,7 +141,7 @@ the code of the *actual* finite conjunction within polynomial fuel; it assumes n
 trades, wealth bound, exploitation fact, or logical-inductor conclusion.
 
 This strengthening is necessary: `ComputableDeductiveProcess` alone promises termination
-but no polynomial runtime or output-size bound. -/
+but no polynomial runtime or output-size bound.  Paper node: `thm:scon` (App. `scon`). -/
 structure CompactConditioningProcessComputation (extra : DeductiveProcess)
     extends DeductiveProcessComputation extra where
   condition_code : Nat.Partrec.Code

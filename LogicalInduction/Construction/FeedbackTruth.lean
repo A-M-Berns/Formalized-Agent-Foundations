@@ -25,7 +25,7 @@ attribute [local irreducible] Nat.sqrt
 
 /-- The paper's delayed truth computation premise.  Input `k` names the value of
 `A_{f k}`; the program must return its canonical rational code by day `f(k+1)`.
-The equality with the semantic real stream is recorded only on those required indices. -/
+The equality with the semantic real stream is recorded only on those required indices.  Paper node: `thm:wubaff` (App. `wubaff`), reused by `thm:wubexp`. -/
 structure FeedbackTruthComputation (truth : ℕ → ℝ) (f : DeferralFunction) where
   value : ℕ → ℚ
   code : Nat.Partrec.Code

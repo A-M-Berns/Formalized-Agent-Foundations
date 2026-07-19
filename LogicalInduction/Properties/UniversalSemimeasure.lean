@@ -37,7 +37,7 @@ structure LowerSemicomputableContinuousSemimeasure extends ContinuousSemimeasure
     Tendsto (fun n ↦ ((approximation n σ : ℚ) : ℝ)) atTop (𝓝 (mass σ))
 
 /-- Universality is the usual multiplicative domination of every lower-semicomputable
-continuous semimeasure. -/
+continuous semimeasure.  Paper node: `thm:dus` (App. `dus`). -/
 structure UniversalContinuousSemimeasure extends
     LowerSemicomputableContinuousSemimeasure where
   universal : ∀ ν : LowerSemicomputableContinuousSemimeasure,
@@ -324,7 +324,7 @@ That compiler fact is kept separate from the mathematical semimeasure presentati
 structure contains only the rational table and its syntax-level polynomial certificate,
 and no prices, purchases, or domination conclusion. -/
 
-/-- Polynomially emitted from-below approximation used by the DUS trader. -/
+/-- Polynomially emitted from-below approximation used by the DUS trader.  Paper node: `thm:dus` (App. `dus`). -/
 structure DUSApproximationPresentation {DP : DeductiveProcess}
     (M : LowerSemicomputableContinuousSemimeasure)
     (B : BitPrefixSentences DP) where
@@ -362,7 +362,7 @@ def dusEmitBase {DP : DeductiveProcess}
   dusBase A z.unpair.1 z.unpair.2
 
 /-- Derived rational tokens used by the continuous low-price gate. This is a
-syntax-only compiler boundary: it contains neither market data nor a domination claim. -/
+syntax-only compiler boundary: it contains neither market data nor a domination claim.  Paper node: `thm:dus` (App. `dus`). -/
 structure DUSThresholdEmission {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B) : Prop where

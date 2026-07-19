@@ -67,14 +67,14 @@ def obEmitBase {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
 
 This is a syntax-only representation boundary: it says that rational arithmetic on the
 prefix approximation can emit the gate's threshold-sum and reciprocal-width tokens in
-polynomial fuel. It contains no market prices, worlds, exploitation, or limiting bound. -/
+polynomial fuel. It contains no market prices, worlds, exploitation, or limiting bound.  Paper node: `thm:ob` (App. `ob`). -/
 structure OccamThresholdEmission {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) : Prop where
   threshold_sum_codes : PolyRatCodes (fun z ↦ obEmitBase U z + obEmitBase U z)
   inverse_width_codes : PolyRatCodes (fun z ↦ 1 / obEmitBase U z)
 
 /-- A fixed prefix program that negates the decoded sentence. The sole semantic content is
-the standard additive complexity overhead; it contains no prices or Occam conclusion. -/
+the standard additive complexity overhead; it contains no prices or Occam conclusion.  Paper node: `thm:ob` (App. `ob`). -/
 structure PrefixNegationCompiler (κ : Sentence → ℕ) where
   overhead : ℕ
   complexity_neg_le : ∀ φ, κ (∼φ) ≤ κ φ + overhead

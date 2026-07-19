@@ -971,7 +971,7 @@ def ComputableMarket (P : History) : Prop :=
 
 /-- A named exact rational program presenting a computable market.  The existential
 paper-facing predicate above is convenient in theorem statements; this structure is the
-operational form consumed by finite clocked certificate checkers. -/
+operational form consumed by finite clocked certificate checkers.  Paper node: the operational form of `def:ec` for markets. -/
 structure MarketComputation (P : History) where
   quote : ℕ → ℕ → ℚ
   code : Nat.Partrec.Code

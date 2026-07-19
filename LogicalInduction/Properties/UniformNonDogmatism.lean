@@ -525,7 +525,7 @@ theorem lic_uniform_nonDogmatism_repeating
 /-- A concrete witness for the paper's preprocessing of a c.e. sentence stream into an
 efficiently emitted stream in which every member repeats infinitely often.  `sound` and
 `covers` say that preprocessing changes only order and multiplicity.  This structure is
-purely syntactic: it contains neither prices nor a non-dogmatism conclusion. -/
+purely syntactic: it contains neither prices nor a non-dogmatism conclusion.  Paper node: `thm:obu` (App. `obu`). -/
 structure EfficientRepeatedEnumeration (source : ℕ → Sentence) where
   sequence : ℕ → Sentence
   sequence_poly : PolySentenceCodes sequence

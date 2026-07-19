@@ -840,7 +840,7 @@ the exact trade count, each coefficient feature, and each sentence code; `trades
 requires these fields to reconstruct the trader's real day strategy.  It contains no
 prices, worlds, wealth bounds, bias premise, exploitation claim, or logical-induction
 conclusion.  Constructing it uniformly from a deferral program is the ledgered
-`M7-FEEDBACK-EMIT` bounded-dovetail obligation. -/
+`M7-FEEDBACK-EMIT` bounded-dovetail obligation.  Paper node: `thm:wubaff` (App. `wubaff`), reused by `thm:wubexp`. -/
 structure FeedbackTraderEmission
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -859,7 +859,7 @@ structure FeedbackTraderEmission
 /-- Uniform emission boundary for every sufficiently small rational Kelly fraction.
 The feedback proof selects the fraction only after receiving an analytic error tolerance,
 so a single preselected trader is not enough for the paper's quantified convergence
-claim.  Each member is still the exact, conclusion-free `FeedbackTraderEmission` above. -/
+claim.  Each member is still the exact, conclusion-free `FeedbackTraderEmission` above.  Paper node: `thm:wubaff` (App. `wubaff`). -/
 structure FeedbackTraderEmissionFamily
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -869,7 +869,7 @@ structure FeedbackTraderEmissionFamily
 
 /-- The two sign orientations required for an equality conclusion.  The negative family
 emits the same concrete Kelly construction applied to the explicitly negated affine
-sequence; no bias or convergence claim is stored in this boundary. -/
+sequence; no bias or convergence claim is stored in this boundary.  Paper node: `thm:wubaff` (App. `wubaff`). -/
 structure FeedbackTraderEmissionSigns
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -1754,7 +1754,7 @@ theorem feedbackWeightedBias_asympEq_zero
 provability induction.  At day `f(k+1)` its diagonal price is exactly the delayed quote
 error for `A_{f k}`; every completed-theory world values it at zero.  The polynomial
 sequence and normalization data are the ledgered `M7-FEEDBACK-TRUTH` witness corresponding
-to the paper's premise that `ThmValue(A_{f k})` is computable within `poly(f(k+1))`. -/
+to the paper's premise that `ThmValue(A_{f k})` is computable within `poly(f(k+1))`.  Paper node: `thm:wubaff` (App. `wubaff`), reused by `thm:wubexp`. -/
 structure FeedbackTruthSequence
     (As : ℕ → AffineCombination) (truth : ℕ → ℝ)
     (P : History) (DP : DeductiveProcess) (f : DeferralFunction) where

@@ -117,7 +117,7 @@ inductive ComputationClaimKind
   | consistency
   deriving DecidableEq
 
-/-- A concrete quoted first-order claim: its role, arithmetic schema, and compact input. -/
+/-- A concrete quoted first-order claim: its role, arithmetic schema, and compact input.  Paper node: the §2.1 computation-representation convention serving `thm:pac`–`thm:dontwait` (Apps. `pac`–`dontwait`). -/
 structure ComputationClaim where
   kind : ComputationClaimKind
   schema : ArithmeticSemisentence 1
@@ -258,7 +258,7 @@ theorem consistencyClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCod
 computation schemas are translated into the corresponding public propositional literals.
 
 The separate bounded-failure field is necessary because FFL supplies weak positive
-representation of r.e. predicates, not strong refutation of false r.e. formulas. -/
+representation of r.e. predicates, not strong refutation of false r.e. formulas.  Paper nodes: `thm:pac`–`thm:dontwait` (Apps. `pac`–`dontwait`). -/
 structure ComputationTheoryPresentation
     (DP : DeductiveProcess) (T : ArithmeticTheory) where
   theory_deltaOne : LO.FirstOrder.Theory.Δ₁ T
@@ -285,14 +285,14 @@ structure ComputationTheoryPresentation
 /-! ## Operational predicate presentations -/
 
 /-- A semidecidable predicate reduced to one fixed repository machine on polynomially
-named inputs. -/
+named inputs.  Paper nodes: the §2.1 representation premises for `thm:pac`–`thm:dontwait`. -/
 structure SemidecidableComputation (truth : ℕ → Prop) where
   machine : Nat.Partrec.Code
   input : ℕ → ℕ
   input_poly : PolyNatCodes input
   truth_iff : ∀ n, truth n ↔ CodeHalts machine (input n)
 
-/-- A decidable predicate reduced to a bounded run of one fixed repository machine. -/
+/-- A decidable predicate reduced to a bounded run of one fixed repository machine.  Paper nodes: the §2.1 representation premises for `thm:pac`–`thm:dontwait`. -/
 structure BoundedComputation (truth : ℕ → Prop) where
   machine : Nat.Partrec.Code
   input : ℕ → ℕ

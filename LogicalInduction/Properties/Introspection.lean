@@ -47,7 +47,7 @@ end CompletedAffineQuoteEq
 /-- A same-day quotation whose completed-theory value vanishes uniformly.  Numeric LUV
 quotes naturally have this form: their finite threshold bundle differs from the represented
 real by at most the mesh width, while Boolean quotation identities use the exact
-`CompletedAffineQuoteEq` specialization above. -/
+`CompletedAffineQuoteEq` specialization above.  Paper nodes: deferred quotation for `thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` (Apps. `cee`–`st`). -/
 structure CompletedAffineQuoteApprox (P : History) (DP : DeductiveProcess)
     (gap : ℕ → ℝ) extends AffineQuotePortfolio P gap where
   theory_coherent : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld,

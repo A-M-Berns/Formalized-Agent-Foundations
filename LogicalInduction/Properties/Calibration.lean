@@ -24,7 +24,7 @@ open scoped BigOperators
 
 /-- A sequence of expressible features generated uniformly in polynomial time and legal
 on its own day.  Its denotation may depend continuously on the market prefix, exactly as
-in the paper's notion “generable from `P`”. -/
+in the paper's notion “generable from `P`”.  Paper node: `def:ece` (generable from `P`), over `def:fuz` divergent weightings. -/
 structure PGenerableWeighting (W : ℕ → EF) : Prop where
   polySeg : PolySegStream (fun n => (W n).serialize)
   rank_le : ∀ n, (W n).rank ≤ n

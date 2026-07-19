@@ -104,7 +104,7 @@ theorem independentBitAtoms_nonempty :
 /-! ### Operational certificate and public constructor -/
 
 /-- Compact operational input for polynomial naming of the concrete prefix conjunction.
-The program is indexed by the same enumeration index consumed by the DUS trader. -/
+The program is indexed by the same enumeration index consumed by the DUS trader.  Paper node: `thm:dus` (App. `dus`); the prefix language is reused by `thm:strict`. -/
 structure BitPrefixCodeComputation {DP : DeductiveProcess}
     (I : IndependentBitAtoms DP) where
   code : Nat.Partrec.Code
