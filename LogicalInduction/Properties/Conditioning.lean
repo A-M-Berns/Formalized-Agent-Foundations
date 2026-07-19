@@ -274,6 +274,60 @@ theorem conditionPrices_denote
       e.denote (conditionedHistory P ψ) :=
   e.conditionPrices_denoteWith P ψ hε hden []
 
+/-- Parser-transparent conditional-price substitution.  The dead binding retains the raw
+source leaf, while the body is the actual conditional-price feature. -/
+def retainedConditionPrices (ψ : ℕ → Sentence) (ε : ℚ) : EF → EF
+  | .price φ day => .letE (.price φ day) (conditionalPriceEF (ψ day) ε φ day)
+  | .const q => .const q
+  | .add a b => .add (a.retainedConditionPrices ψ ε) (b.retainedConditionPrices ψ ε)
+  | .mul a b => .mul (a.retainedConditionPrices ψ ε) (b.retainedConditionPrices ψ ε)
+  | .max a b => .max (a.retainedConditionPrices ψ ε) (b.retainedConditionPrices ψ ε)
+  | .safeRecip a => .safeRecip (a.retainedConditionPrices ψ ε)
+  | .var i => .var i
+  | .letE x body => .letE (x.retainedConditionPrices ψ ε)
+      (body.retainedConditionPrices ψ ε)
+
+@[simp] theorem retainedConditionPrices_rank (e : EF) (ψ : ℕ → Sentence) (ε : ℚ) :
+    (e.retainedConditionPrices ψ ε).rank = e.rank := by
+  induction e with
+  | price φ day => simp [retainedConditionPrices, conditionalPriceEF,
+      conditionalRatioEF, lowerSafeRecip, efMin, rank]
+  | const q => rfl
+  | add a b iha ihb => simp [retainedConditionPrices, iha, ihb]
+  | mul a b iha ihb => simp [retainedConditionPrices, iha, ihb]
+  | max a b iha ihb => simp [retainedConditionPrices, iha, ihb]
+  | safeRecip a iha => simp [retainedConditionPrices, iha]
+  | var i => rfl
+  | letE x body ihx ihbody => simp [retainedConditionPrices, ihx, ihbody]
+
+theorem retainedConditionPrices_denoteWith (e : EF) (P : History)
+    (ψ : ℕ → Sentence) {ε : ℚ} (hε : 0 < (ε : ℝ))
+    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d)) :
+    ∀ ρ : List ℝ, (e.retainedConditionPrices ψ ε).denoteWith ρ P =
+      e.denoteWith ρ (conditionedHistory P ψ) := by
+  induction e with
+  | price φ day =>
+      intro ρ
+      simp only [retainedConditionPrices, denoteWith_letE]
+      exact conditionalPriceEF_denote P (ψ day) hε (hden day) φ
+  | const q => intro ρ; rfl
+  | add a b iha ihb => intro ρ; simp [retainedConditionPrices, iha ρ, ihb ρ]
+  | mul a b iha ihb => intro ρ; simp [retainedConditionPrices, iha ρ, ihb ρ]
+  | max a b iha ihb => intro ρ; simp [retainedConditionPrices, iha ρ, ihb ρ]
+  | safeRecip a iha => intro ρ; simp [retainedConditionPrices, iha ρ]
+  | var i => intro ρ; rfl
+  | letE x body ihx ihbody =>
+      intro ρ
+      simp only [retainedConditionPrices, denoteWith_letE]
+      rw [ihx ρ, ihbody]
+
+theorem retainedConditionPrices_denote (e : EF) (P : History)
+    (ψ : ℕ → Sentence) {ε : ℚ} (hε : 0 < (ε : ℝ))
+    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d)) :
+    (e.retainedConditionPrices ψ ε).denote P =
+      e.denote (conditionedHistory P ψ) :=
+  e.retainedConditionPrices_denoteWith P ψ hε hden []
+
 /-- Absolute value as an expressible feature, local to the conditioning translator. -/
 def absVal (e : EF) : EF :=
   .max e (.mul (.const (-1)) e)
@@ -630,6 +684,315 @@ theorem gatedConditionalContract_value_eq_zero_of_not_holds
   exact gatedConditionalContractTrades_value_zero T.trades P ψ hε hden τ
     (T.conditionedMagnitudeFeature ψ ε) v hψ
 
+/-! ### Locally normalized gate
+
+The strategy-wide magnitude above is convenient analytically but expensive to serialize:
+every output coefficient repeats the whole input strategy.  The compiler uses the equivalent
+per-position allocation below.  A list of `k` positions gives each position budget `τ/k`
+and normalizes it by that position's own magnitude, so the errors still sum to at most `τ`.
+-/
+
+def localConditioningBudget (τ : ℚ) (count : ℕ) : ℚ := τ / (count : ℚ)
+
+def locallyGatedConditionalContractTrades
+    (ψ : ℕ → Sentence) (ε : ℚ) (day : ℕ) (τ : ℚ) (count : ℕ) :
+    List (EF × Sentence) → List (EF × Sentence) :=
+  fun trades ↦ trades.flatMap (fun p ↦
+      let α := p.1.conditionPrices ψ ε
+      let ratio := EF.conditionalRatioEF (ψ day) ε p.2 day
+      let magnitude := EF.absVal α
+      let gate := EF.conditioningCapGate ratio magnitude
+        (localConditioningBudget τ count)
+      let β := efMin α (EF.mul α gate)
+      [(β, p.2 ⋏ ψ day),
+        (EF.mul (EF.const (-1)) (EF.mul β ratio), ψ day)])
+
+def locallyGatedConditionalContract {day : ℕ} (ψ : ℕ → Sentence) (ε τ : ℚ)
+    (T : Strategy day) : Strategy day where
+  trades := locallyGatedConditionalContractTrades ψ ε day τ T.trades.length T.trades
+  rank_le := by
+    intro out hout
+    simp only [locallyGatedConditionalContractTrades, List.mem_flatMap] at hout
+    obtain ⟨p, hp, hout⟩ := hout
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hout
+    let α := p.1.conditionPrices ψ ε
+    let ratio := EF.conditionalRatioEF (ψ day) ε p.2 day
+    let magnitude := EF.absVal α
+    let gate := EF.conditioningCapGate ratio magnitude
+      (localConditioningBudget τ T.trades.length)
+    let β := efMin α (EF.mul α gate)
+    have hα : α.rank ≤ day := by
+      dsimp only [α]
+      rw [p.1.conditionPrices_rank]
+      exact T.rank_le p hp
+    have hratio : ratio.rank ≤ day := by
+      simp [ratio, EF.conditionalRatioEF, EF.lowerSafeRecip, EF.rank]
+    have hmagnitude : magnitude.rank ≤ day := by
+      simpa [magnitude] using hα
+    have hgate : gate.rank ≤ day := by
+      rw [show gate.rank = Nat.max ratio.rank magnitude.rank by
+        exact EF.conditioningCapGate_rank ratio magnitude _]
+      exact Nat.max_le.mpr ⟨hratio, hmagnitude⟩
+    have hβ : β.rank ≤ day := by
+      simp only [β, efMin_rank, EF.rank_mul]
+      exact Nat.max_le.mpr ⟨hα, Nat.max_le.mpr ⟨hα, hgate⟩⟩
+    rcases hout with rfl | rfl
+    · exact hβ
+    · simp only [EF.rank_mul, EF.rank_const, Nat.zero_max]
+      exact Nat.max_le.mpr ⟨hβ, hratio⟩
+
+/-- First output leg of the locally normalized conditioning compiler. -/
+def locallyGatedFirstLeg (ψ : ℕ → Sentence) (ε : ℚ) (day : ℕ)
+    (τ : ℚ) (count : ℕ) (p : EF × Sentence) : EF × Sentence :=
+  let α := p.1.retainedConditionPrices ψ ε
+  let ratio := EF.conditionalRatioEF (ψ day) ε p.2 day
+  let bound := EF.var 0
+  let magnitude := EF.absVal bound
+  let gate := EF.conditioningCapGate ratio magnitude
+    (localConditioningBudget τ count)
+  let β := efMin bound (EF.mul bound gate)
+  (EF.letE α β, p.2 ⋏ ψ day)
+
+/-- Second output leg of the locally normalized conditioning compiler. -/
+def locallyGatedSecondLeg (ψ : ℕ → Sentence) (ε : ℚ) (day : ℕ)
+    (τ : ℚ) (count : ℕ) (p : EF × Sentence) : EF × Sentence :=
+  let α := p.1.retainedConditionPrices ψ ε
+  let ratio := EF.conditionalRatioEF (ψ day) ε p.2 day
+  let bound := EF.var 0
+  let magnitude := EF.absVal bound
+  let gate := EF.conditioningCapGate ratio magnitude
+    (localConditioningBudget τ count)
+  let β := efMin bound (EF.mul bound gate)
+  (EF.letE α (EF.mul (EF.const (-1)) (EF.mul β ratio)), ψ day)
+
+/-- Compiler-order form of the locally gated contract.  It emits all first legs and then
+all second legs, allowing two parser-transparent passes over an arbitrary raw certificate. -/
+def separatedLocallyGatedConditionalContract {day : ℕ}
+    (ψ : ℕ → Sentence) (ε τ : ℚ) (T : Strategy day) : Strategy day where
+  trades :=
+    T.trades.map (locallyGatedFirstLeg ψ ε day τ T.trades.length) ++
+    T.trades.map (locallyGatedSecondLeg ψ ε day τ T.trades.length)
+  rank_le := by
+    intro out hout
+    rw [List.mem_append, List.mem_map, List.mem_map] at hout
+    rcases hout with ⟨p, hp, rfl⟩ | ⟨p, hp, rfl⟩
+    · have hα : (p.1.retainedConditionPrices ψ ε).rank ≤ day := by
+        rw [p.1.retainedConditionPrices_rank]
+        exact T.rank_le p hp
+      have hr : (EF.conditionalRatioEF (ψ day) ε p.2 day).rank ≤ day := by
+        simp [EF.conditionalRatioEF, EF.lowerSafeRecip, EF.rank]
+      simpa [locallyGatedFirstLeg, EF.rank, EF.conditioningCapGate_rank, hα, hr]
+        using T.rank_le p hp
+    · have hα : (p.1.retainedConditionPrices ψ ε).rank ≤ day := by
+        rw [p.1.retainedConditionPrices_rank]
+        exact T.rank_le p hp
+      have hr : (EF.conditionalRatioEF (ψ day) ε p.2 day).rank ≤ day := by
+        simp [EF.conditionalRatioEF, EF.lowerSafeRecip, EF.rank]
+      simpa [locallyGatedSecondLeg, EF.rank, EF.conditioningCapGate_rank, hα, hr]
+        using T.rank_le p hp
+
+theorem separatedLocallyGatedConditionalContract_value
+    {day : ℕ} (ψ : ℕ → Sentence) (ε τ : ℚ) (T : Strategy day)
+    (P : History) (w : Valuation) (hε : 0 < (ε : ℝ))
+    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d)) :
+    (T.separatedLocallyGatedConditionalContract ψ ε τ).value P w =
+      (T.locallyGatedConditionalContract ψ ε τ).value P w := by
+  let value : EF × Sentence → ℝ := fun p ↦
+    p.1.denote P * (w p.2 - P day p.2)
+  have hsum (count : ℕ) (trades : List (EF × Sentence)) :
+      (trades.map (locallyGatedFirstLeg ψ ε day τ count) |>.map value).sum +
+        (trades.map (locallyGatedSecondLeg ψ ε day τ count) |>.map value).sum =
+      (locallyGatedConditionalContractTrades ψ ε day τ count trades
+        |>.map value).sum := by
+    induction trades with
+    | nil => simp [locallyGatedConditionalContractTrades]
+    | cons p rest ih =>
+        simp only [List.map_cons, List.sum_cons, locallyGatedConditionalContractTrades,
+          List.flatMap_cons, List.map_append, List.sum_append]
+        calc
+          value (locallyGatedFirstLeg ψ ε day τ count p) +
+                (rest.map (locallyGatedFirstLeg ψ ε day τ count) |>.map value).sum +
+              (value (locallyGatedSecondLeg ψ ε day τ count p) +
+                (rest.map (locallyGatedSecondLeg ψ ε day τ count) |>.map value).sum) =
+            value (locallyGatedFirstLeg ψ ε day τ count p) +
+              value (locallyGatedSecondLeg ψ ε day τ count p) +
+              ((rest.map (locallyGatedFirstLeg ψ ε day τ count) |>.map value).sum +
+                (rest.map (locallyGatedSecondLeg ψ ε day τ count) |>.map value).sum) := by
+                  ring
+          _ = value (locallyGatedFirstLeg ψ ε day τ count p) +
+              value (locallyGatedSecondLeg ψ ε day τ count p) +
+              (locallyGatedConditionalContractTrades ψ ε day τ count rest
+                |>.map value).sum := by rw [ih]
+          _ = _ := by
+            have hp : (p.1.retainedConditionPrices ψ ε).denote P =
+                (p.1.conditionPrices ψ ε).denote P := by
+              rw [p.1.retainedConditionPrices_denote P ψ hε hden,
+                p.1.conditionPrices_denote P ψ hε hden]
+            change (p.1.retainedConditionPrices ψ ε).denoteWith [] P =
+              (p.1.conditionPrices ψ ε).denoteWith [] P at hp
+            simp only [locallyGatedFirstLeg, locallyGatedSecondLeg, value,
+              EF.denote, EF.denoteWith_letE]
+            rw [hp]
+            simp [locallyGatedFirstLeg, locallyGatedSecondLeg,
+              locallyGatedConditionalContractTrades, value, EF.denote,
+              EF.denoteWith, EF.conditioningCapGate, EF.conditioningTolerance,
+              EF.absVal, EF.conditionalRatioEF, EF.lowerSafeRecip, efMin,
+              clip01, List.getD, hp]
+  simpa only [Strategy.value, separatedLocallyGatedConditionalContract,
+    locallyGatedConditionalContract, List.map_append, List.sum_append, List.map_map,
+    Function.comp_apply] using hsum T.trades.length T.trades
+
+private theorem locallyGatedConditionalPair_lower
+    {day count : ℕ} (p : EF × Sentence)
+    (P : History) (ψ : ℕ → Sentence) {ε τ : ℚ}
+    (hε : 0 < (ε : ℝ))
+    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d))
+    (hτ : 0 < (τ : ℝ)) (hcount : 0 < count)
+    (v : PCWorld) (hψ : v.Holds (ψ day)) :
+    p.1.denote (conditionedHistory P ψ) *
+        (v.payout p.2 - conditionedHistory P ψ day p.2) -
+      (localConditioningBudget τ count : ℝ) ≤
+      let α := p.1.conditionPrices ψ ε
+      let ratio := EF.conditionalRatioEF (ψ day) ε p.2 day
+      let magnitude := EF.absVal α
+      let gate := EF.conditioningCapGate ratio magnitude
+        (localConditioningBudget τ count)
+      let β := efMin α (EF.mul α gate)
+      β.denote P * (v.payout (p.2 ⋏ ψ day) - P day (p.2 ⋏ ψ day)) +
+        (EF.mul (EF.const (-1)) (EF.mul β ratio)).denote P *
+          (v.payout (ψ day) - P day (ψ day)) := by
+  let α := p.1.conditionPrices ψ ε
+  let magnitude := EF.absVal α
+  let positionBudget := localConditioningBudget τ count
+  have hposition : 0 < (positionBudget : ℝ) := by
+    simp only [positionBudget, localConditioningBudget]
+    push_cast
+    exact div_pos hτ (by positivity)
+  have hpair := gatedConditionalPair_lower p P ψ hε hden hposition magnitude v hψ
+  have hα : α.denote P = p.1.denote (conditionedHistory P ψ) :=
+    p.1.conditionPrices_denote P ψ hε hden
+  have hmag : magnitude.denote P =
+      |p.1.denote (conditionedHistory P ψ)| := by
+    simp [magnitude, EF.absVal_denote, hα]
+  have hmaxPos : (0 : ℝ) < Max.max 1 (magnitude.denote P) :=
+    lt_of_lt_of_le (by norm_num) (le_max_left _ _)
+  have hratio : magnitude.denote P / Max.max 1 (magnitude.denote P) ≤ 1 :=
+    (div_le_one hmaxPos).2 (le_max_right _ _)
+  have hratio' : |p.1.denote (conditionedHistory P ψ)| /
+      Max.max 1 |p.1.denote (conditionedHistory P ψ)| ≤ 1 := by
+    simpa only [hmag] using hratio
+  have hmagnitude :
+      |p.1.denote (conditionedHistory P ψ)| *
+          (EF.conditioningTolerance magnitude positionBudget).denote P ≤
+        (positionBudget : ℝ) := by
+    rw [EF.conditioningTolerance_denote, hmag]
+    calc
+      |p.1.denote (conditionedHistory P ψ)| *
+          ((positionBudget : ℝ) /
+            Max.max 1 |p.1.denote (conditionedHistory P ψ)|) =
+          (positionBudget : ℝ) *
+            (|p.1.denote (conditionedHistory P ψ)| /
+              Max.max 1 |p.1.denote (conditionedHistory P ψ)|) := by ring
+      _ ≤ (positionBudget : ℝ) * 1 :=
+        mul_le_mul_of_nonneg_left hratio' hposition.le
+      _ = (positionBudget : ℝ) := mul_one _
+  dsimp only [α, magnitude, positionBudget] at hpair ⊢
+  exact (sub_le_sub_left hmagnitude _).trans hpair
+
+private theorem locallyGatedConditionalContractTrades_value_lower
+    {day count : ℕ} (trades : List (EF × Sentence))
+    (P : History) (ψ : ℕ → Sentence) {ε τ : ℚ}
+    (hε : 0 < (ε : ℝ))
+    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d))
+    (hτ : 0 < (τ : ℝ)) (hcount : 0 < count)
+    (v : PCWorld) (hψ : v.Holds (ψ day)) :
+    (trades.map (fun p ↦ p.1.denote (conditionedHistory P ψ) *
+        (v.payout p.2 - conditionedHistory P ψ day p.2))).sum -
+      trades.length * (localConditioningBudget τ count : ℝ) ≤
+      ((locallyGatedConditionalContractTrades ψ ε day τ count trades).map
+        (fun p ↦ p.1.denote P * (v.payout p.2 - P day p.2))).sum := by
+  induction trades with
+  | nil => simp [locallyGatedConditionalContractTrades]
+  | cons p rest ih =>
+      have hp := locallyGatedConditionalPair_lower p P ψ hε hden hτ hcount v hψ
+      rw [locallyGatedConditionalContractTrades] at ih
+      rw [locallyGatedConditionalContractTrades, List.flatMap_cons,
+        List.map_append, List.sum_append]
+      simp only [List.map_cons, List.sum_cons, List.map_nil, List.sum_nil,
+        List.length_cons, Nat.cast_add, Nat.cast_one, add_zero]
+      nlinarith
+
+theorem locallyGatedConditionalContract_value_lower
+    {day : ℕ} (T : Strategy day)
+    (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
+    (hε : 0 < (ε : ℝ))
+    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d))
+    (v : PCWorld) (hψ : v.Holds (ψ day)) :
+    T.value (conditionedHistory P ψ) v.payout -
+        (conditioningBudget day : ℝ) ≤
+      (T.locallyGatedConditionalContract ψ ε (conditioningBudget day)).value P
+        v.payout := by
+  by_cases hempty : T.trades = []
+  · have hτ0 : 0 ≤ (conditioningBudget day : ℝ) :=
+      (conditioningBudget_pos day).le
+    simp [Strategy.value, locallyGatedConditionalContract,
+      locallyGatedConditionalContractTrades, hempty, hτ0]
+  · have hcount : 0 < T.trades.length := List.length_pos_iff.mpr hempty
+    have hτ : 0 < (conditioningBudget day : ℝ) := conditioningBudget_pos day
+    have hlist := locallyGatedConditionalContractTrades_value_lower T.trades P ψ
+      hε hden hτ hcount v hψ
+    have hcancel : (T.trades.length : ℝ) *
+        (localConditioningBudget (conditioningBudget day) T.trades.length : ℝ) =
+          (conditioningBudget day : ℝ) := by
+      simp only [localConditioningBudget]
+      push_cast
+      field_simp
+    change
+      (T.trades.map (fun p ↦ p.1.denote (conditionedHistory P ψ) *
+        (v.payout p.2 - conditionedHistory P ψ day p.2))).sum -
+          (conditioningBudget day : ℝ) ≤
+        ((locallyGatedConditionalContractTrades ψ ε day (conditioningBudget day)
+          T.trades.length T.trades).map
+            (fun p ↦ p.1.denote P * (v.payout p.2 - P day p.2))).sum
+    rw [← hcancel]
+    exact hlist
+
+private theorem locallyGatedConditionalContractTrades_value_zero
+    {day count : ℕ} (trades : List (EF × Sentence))
+    (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
+    (hε : 0 < (ε : ℝ))
+    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d))
+    (τ : ℚ) (v : PCWorld) (hψ : ¬v.Holds (ψ day)) :
+    ((locallyGatedConditionalContractTrades ψ ε day τ count trades).map
+      (fun p ↦ p.1.denote P * (v.payout p.2 - P day p.2))).sum = 0 := by
+  induction trades with
+  | nil => simp [locallyGatedConditionalContractTrades]
+  | cons p rest ih =>
+      have hdenPos : 0 < P day (ψ day) := hε.trans_le (hden day)
+      have hratio := EF.conditionalRatioEF_denote P (ψ day) hε (hden day) p.2
+      have hpayoutψ : v.payout (ψ day) = 0 := by
+        simp [PCWorld.payout, hψ]
+      have hpayoutAnd : v.payout (p.2 ⋏ ψ day) = 0 := by
+        simp [PCWorld.payout, PCWorld.holds_and, hψ]
+      rw [locallyGatedConditionalContractTrades] at ih
+      rw [locallyGatedConditionalContractTrades, List.flatMap_cons,
+        List.map_append, List.sum_append]
+      simp only [List.map_cons, List.sum_cons, List.map_nil, List.sum_nil,
+        add_zero, EF.denote_mul, EF.denote_const, Pi.mul_apply]
+      rw [ih, hpayoutψ, hpayoutAnd, hratio]
+      push_cast
+      field_simp [ne_of_gt hdenPos]
+      ring
+
+theorem locallyGatedConditionalContract_value_eq_zero_of_not_holds
+    {day : ℕ} (T : Strategy day)
+    (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
+    (hε : 0 < (ε : ℝ))
+    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d))
+    (τ : ℚ) (v : PCWorld) (hψ : ¬v.Holds (ψ day)) :
+    (T.locallyGatedConditionalContract ψ ε τ).value P v.payout = 0 := by
+  exact locallyGatedConditionalContractTrades_value_zero T.trades P ψ hε hden τ v hψ
+
 /-- Replace one conditional-market position by the literal two-stock conditional
 contract against the base market. -/
 def conditionalContractTrades
@@ -718,7 +1081,8 @@ namespace Trader
 
 /-- Pointwise gated translation of a conditional-market trader. -/
 def conditionedTranslation (ψ : ℕ → Sentence) (ε : ℚ) (T : Trader) : Trader where
-  strat n := (T.strat n).gatedConditionalContract ψ ε (conditioningBudget n)
+  strat n := (T.strat n).separatedLocallyGatedConditionalContract
+    ψ ε (conditioningBudget n)
 
 /-- Summing the day estimates costs at most one in every world satisfying all conditions
 through the assessment day. -/
@@ -735,7 +1099,13 @@ theorem conditionedTranslation_netWorth_lower
           (conditioningBudget i : ℝ) ≤
         ((T.conditionedTranslation ψ ε).strat i).value P v.payout := by
     intro i hi
-    apply Strategy.gatedConditionalContract_value_lower
+    change (T.strat i).value (conditionedHistory P ψ) v.payout -
+        (conditioningBudget i : ℝ) ≤
+      ((T.strat i).separatedLocallyGatedConditionalContract ψ ε
+        (conditioningBudget i)).value P v.payout
+    rw [Strategy.separatedLocallyGatedConditionalContract_value
+      ψ ε (conditioningBudget i) (T.strat i) P v.payout hε hden]
+    apply Strategy.locallyGatedConditionalContract_value_lower
       (T.strat i) P ψ hε hden v
     exact hψ i (by simp only [Finset.mem_range] at hi; omega)
   have hsum := Finset.sum_le_sum hday
@@ -753,7 +1123,7 @@ theorem conditionedTranslation_netWorth_lower
           (conditioningBudget i : ℝ)) := by
       rw [Finset.sum_sub_distrib]
     _ ≤ ∑ i ∈ Finset.range (n + 1),
-        ((T.strat i).gatedConditionalContract ψ ε
+        ((T.strat i).separatedLocallyGatedConditionalContract ψ ε
           (conditioningBudget i)).value P v.payout := hsum
 
 end Trader
@@ -863,7 +1233,11 @@ theorem ConditioningPresentation.conditionedTranslation_netWorth_eq_before_failu
   apply Finset.sum_subset (Finset.range_mono (by omega))
   intro i hin hirange
   simp only [Finset.mem_range] at hin hirange
-  apply Strategy.gatedConditionalContract_value_eq_zero_of_not_holds
+  change ((T.strat i).separatedLocallyGatedConditionalContract C.condition ε
+    (conditioningBudget i)).value P v.payout = 0
+  rw [Strategy.separatedLocallyGatedConditionalContract_value
+    C.condition ε (conditioningBudget i) (T.strat i) P v.payout hε hden]
+  apply Strategy.locallyGatedConditionalContract_value_eq_zero_of_not_holds
     (T.strat i) P C.condition hε hden (conditioningBudget i) v
   exact C.not_holds_condition_of_le v (by omega) hm
 

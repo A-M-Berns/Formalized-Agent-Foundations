@@ -2836,7 +2836,8 @@ private theorem freezeNextNat_eq (state : EF.FreezeTokenState) (token : ℕ) :
           simp [EF.freezeTokenNext]
           rfl
 
-private theorem polyFueled_ifZero {ct c₀ c₁ : Nat.Partrec.Code}
+/-- Closure of polynomial fuel under a zero-test branch. -/
+theorem polyFueled_ifZero {ct c₀ c₁ : Nat.Partrec.Code}
     {test f₀ f₁ : ℕ → ℕ} (ht : PolyFueled ct test)
     (h₀ : PolyFueled c₀ f₀) (h₁ : PolyFueled c₁ f₁) :
     ∃ c, PolyFueled c (fun z => if test z = 0 then f₀ z else f₁ z) := by
@@ -2919,7 +2920,8 @@ def freezeControlNat (tokenFn : ℕ → ℕ) (z : ℕ) : ℕ :=
   let state := EF.freezeTokenControlAt tokenFn z.unpair.1 z.unpair.2
   Nat.pair state.1 state.2
 
-private theorem freezeControlNat_polyFueled {ct : Nat.Partrec.Code} {tokenFn : ℕ → ℕ}
+/-- The parser control before a token of a polynomial stream is itself polynomially fueled. -/
+theorem freezeControlNat_polyFueled {ct : Nat.Partrec.Code} {tokenFn : ℕ → ℕ}
     (htoken : PolyFueled ct tokenFn) :
     ∃ c, PolyFueled c (freezeControlNat tokenFn) := by
   obtain ⟨cnext, hnext⟩ := freezeNextNat_polyFueled

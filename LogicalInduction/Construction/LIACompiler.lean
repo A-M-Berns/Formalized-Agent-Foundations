@@ -815,7 +815,8 @@ private theorem intDivNat_prim : Primrec₂ fun z : ℤ => fun d : ℕ => z / (d
 private theorem ratNumNatAbs_prim : Primrec fun q : ℚ => q.num.natAbs :=
   intNatAbs_prim.comp ratNum_prim
 
-private theorem ratLE_prim : PrimrecRel fun q r : ℚ => q ≤ r := by
+/-- Rational comparison is primitive recursive in the repository's canonical encoding. -/
+theorem ratLE_prim : PrimrecRel fun q r : ℚ => q ≤ r := by
   have hleft : Primrec₂ fun q r : ℚ => q.num * (r.den : ℤ) :=
     intMul_prim.comp₂ (ratNum_prim.comp₂ Primrec₂.left)
       ((intOfNat_prim.comp ratDen_prim).comp₂ Primrec₂.right)
@@ -915,7 +916,8 @@ private theorem ratInv_prim : Primrec fun q : ℚ => q⁻¹ := by
   exact hpair.of_eq fun q => by
     simp [encode_rat_eq, Rat.num_inv, Rat.den_inv]
 
-private theorem ratDiv_prim : Primrec₂ fun q r : ℚ => q / r := by
+/-- Exact rational division is primitive recursive in the canonical encoding. -/
+theorem ratDiv_prim : Primrec₂ fun q r : ℚ => q / r := by
   exact (ratMul_prim.comp₂ Primrec₂.left
     (ratInv_prim.comp₂ Primrec₂.right)).of_eq fun q r => by simp [div_eq_mul_inv]
 
@@ -3591,7 +3593,8 @@ private theorem efRatLetValueStep_prim :
     rcases p with ⟨⟨payload, rho⟩, commands, values⟩
     cases values <;> rfl
 
-private theorem ratMax_prim : Primrec₂ fun q r : ℚ => max q r := by
+/-- Rational maximum is primitive recursive in the canonical encoding. -/
+theorem ratMax_prim : Primrec₂ fun q r : ℚ => max q r := by
   exact (Primrec.ite ratLE_prim Primrec₂.right Primrec₂.left).to₂.of_eq fun q r => by
     simp [max_def]
 
