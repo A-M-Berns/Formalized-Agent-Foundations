@@ -1,6 +1,31 @@
 # Logical Induction — current construction handoff
 
-_Last updated: 2026-07-18. Branch: `logical-induction`._
+_Last updated: 2026-07-19. Branch: `logical-induction`._
+
+## Consolidation phase — pass 1 complete (2026-07-19)
+
+The project is in step (2) of the sequencing override (consolidation/API/style; see
+`notes/consolidation.md`). Pass 1 landed the mechanical guards and first cleanups:
+
+- **`LogicalInduction/AxiomAudit.lean`** is the checked endpoint inventory (guards 1+3):
+  104 public endpoints (existence pair, the full `lic_*` tail, the M7 constructors and
+  their direct consumers) each pass `#assert_axioms_clean`, which fails the build on any
+  axiom beyond `propext`/`Classical.choice`/`Quot.sound` or a vanished endpoint. It is
+  imported from the root roll-up, so `lake build` runs it. A declaration not listed there
+  is internal and free to rename/move; a listed one is frozen surface.
+- **README refreshed**: `M7-LUV-SYNTAX` corrected to constructed (12/15), the
+  repository-wide `dd:fuel` fuel-clocked efficiency model is now disclosed at the top
+  level, and the cleanliness claims cite `AxiomAudit.lean`.
+- **Trick reduction**: 11 of 19 `set_option maxHeartbeats` raises replaced by one-line
+  `attribute [local irreducible] Nat.sqrt in` at default heartbeats. The survivors are
+  genuinely needed (ConditioningCompiler's six parser proofs — `Nat.sqrt` is already
+  irreducible file-wide there; `priorBudgetBreachData_prim`; Brouwer's file-level option).
+- **Duplication probe**: no cross-file duplicate declaration names in `Construction/`;
+  no private limit vocabulary outside `Asymptotics` (`dd:asymp` holds); no
+  `native_decide`/`unsafe`/`nolint` escape hatches. A statement-shape (not name) audit
+  across the seven compiler files remains open for pass 2.
+
+Full build green after each commit; no semantic change to any statement.
 
 This is the authoritative execution handoff. The M7 table in `README.md` is the public
 inventory of what is concrete today; this file records the stronger active construction
