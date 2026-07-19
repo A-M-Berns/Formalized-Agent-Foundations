@@ -22,7 +22,7 @@ than a stop instruction.
 | 5 | `M7-QUOTE-AFFINE` | **constructed** | Keep; `QuotationAffine.lean` arithmetic codes, affine constructors, and eight direct consumers |
 | 6 | `M7-PREFIX-MACHINE` | disclosed | **keep disclosed**; optional post-target Kraft/prefix-machine stretch |
 | 7 | `M7-FEEDBACK-EMIT` | **constructed** | Keep; `FeedbackEmission.feedbackTraderEmissionSigns` |
-| 8 | `M7-FEEDBACK-TRUTH` | disclosed | **construct**, attempt 5 |
+| 8 | `M7-FEEDBACK-TRUTH` | **constructed** | Keep; `FeedbackTruth.feedbackTruthSequence` and three computation-based consumers |
 | 9 | `M7-DUS-PREFIX-SYNTAX` | **constructed** | Keep; `bitPrefixSentencesOfIndependentAtoms`, `lic_domination_universalSemimeasure_ofIndependentAtoms` |
 | 10 | `M7-SCON-COMPILER` | disclosed | **construct**, attempt 6 |
 | 11 | `M7-SCON-PRESENTATION` | **constructed** | Keep; `conditioningPresentationOfComputations`, `lic_conditioned_gated_ofComputations` |
@@ -31,8 +31,8 @@ than a stop instruction.
 | 14 | `M7-STRICT-SEPARATORS` | disclosed | Leave disclosed unless Anson reopens it |
 | 15 | `M7-COMP-SYNTAX` | **constructed** | Keep; `ComputationClaim`, three boundary constructors, and six direct consumers in `Construction/ComputationSyntax.lean` |
 
-Current count: **9/15 constructed**. Target count: **12/15 constructed**. The three remaining
-constructions are `M7-FEEDBACK-TRUTH`, `M7-SCON-COMPILER`, and `M7-LUV-SYNTAX`.
+Current count: **10/15 constructed**. Target count: **12/15 constructed**. The two remaining
+constructions are `M7-SCON-COMPILER` and `M7-LUV-SYNTAX`.
 `M7-PREFIX-MACHINE`, `M7-DUS-APPROX`, and `M7-STRICT-SEPARATORS` are the three intentional
 disclosures at the target.
 
@@ -93,6 +93,23 @@ construction slate is complete.
   `lic_paradox_resistance_ofDiagonal`, `lic_expectations_of_probabilities_ofCode`,
   `lic_iterated_expectations_ofCode`, and the four deferred `..._ofRepresentation`
   consumers for `cee`, `ceu`, `ccee`, and `st`.
+- `M7-FEEDBACK-TRUTH` is complete in
+  `LogicalInduction/Construction/FeedbackTruth.lean` and imported from
+  `LogicalInduction/Construction.lean`.
+- `FeedbackTruthComputation` is the paper-faithful residual input: one rational value
+  program on feedback index `k`, a canonical-code result by the explicit
+  `ecClock a degree (f (k+1))` deadline, and equality with the semantic truth stream at
+  `f k`. It contains no market prices, delayed accuracy, bias, convergence, or LI result.
+- The compiler recognizes only positive deferral-image indices, recovers `f k` through the
+  bounded scheduled evaluator, and emits the literal centered affine member on day
+  `f(k+1)` and literal zero elsewhere. `feedbackTruthSequence` proves polynomial syntax,
+  uniform bounded prices, unit magnitude, completed-world value zero, and the exact delayed
+  price identity from separate ordinary normalization/market inputs.
+- The public endpoints `lic_wubaff_ofComputation`,
+  `boundedCombination_wubaff_ofComputation`, and `luv_wubexp_ofComputation` discharge both
+  feedback boundaries. They take the explicit truth computation rather than an opaque
+  preassembled `FeedbackTruthSequence`; delayed accuracy remains derived by affine
+  provability induction.
 - The Foundation audit found the required fixed-point theorem in
   `Foundation/FirstOrder/Bootstrapping/FixedPoint.lean`; no public propositional adapter
   existed, so `QuotationTheoryPresentation` remains the explicit proof-to-market seam.
@@ -113,10 +130,11 @@ construction slate is complete.
 - Derived consumers with the emission boundary discharged are
   `lic_wubaff_ofFeedbackTruth`, `boundedCombination_wubaff_ofFeedbackTruth`, and
   `luv_wubexp_ofFeedbackTruth`.
-- The focused construction/property/integration roll-up built **2,572 jobs**; the full
-  project built **2,685 jobs**.
+- The focused construction/property/integration roll-up built **2,573 jobs**; the full
+  project built **2,686 jobs**.
 - The quotation reports, computation-syntax reports, six public prefix-syntax axiom reports,
-  five public conditioning-presentation reports, and four public feedback-emission reports
+  five public conditioning-presentation reports, four public feedback-emission reports, and
+  four public feedback-truth reports
   contain only `propext`, `Classical.choice`, and `Quot.sound` (some prefix reports need a
   strict subset).
 - The last verified tree was green and contained no executable proof holes.
@@ -150,8 +168,8 @@ three broader operational compilers.
 | 2 | `M7-DUS-PREFIX-SYNTAX` | **Complete**; Boolean-prefix syntax, enumeration, semantics, and finite realizability landed |
 | 3 | `M7-COMP-SYNTAX` | **Complete**; FFL arithmetic schemas, compact Gödel names, representation constructors, and direct consumers landed |
 | 4 | `M7-QUOTE-AFFINE` | **Complete**; FFL quotation/diagonalization and concrete same-day/deferred affine packages landed |
-| 5 | `M7-FEEDBACK-TRUTH` | **Next**; bounded delayed truth compiler with the scoped boundary correction |
-| 6 | `M7-SCON-COMPILER` | Market-dependent denominator patch plus arbitrary token-stream translation |
+| 5 | `M7-FEEDBACK-TRUTH` | **Complete**; bounded delayed truth compiler and direct consumers landed |
+| 6 | `M7-SCON-COMPILER` | **Next**; market-dependent denominator patch plus arbitrary token-stream translation |
 | 7 | `M7-LUV-SYNTAX` | Broadest Tier 2 package: thresholds, exact-theory semantics, meshes, and softmax emission |
 
 “Attempt” is intentional. Before implementing each witness, audit whether its current
@@ -249,24 +267,49 @@ quotation boundaries:
 - Eight direct paper-facing consumers discharge the constructed packages. Their axiom
   reports contain only `propext`, `Classical.choice`, and `Quot.sound`.
 
-## START HERE — attempt 5, `M7-FEEDBACK-TRUTH`
+## Completed attempt 5 — `M7-FEEDBACK-TRUTH`
 
-Preserve this scoped design:
+`LogicalInduction/Construction/FeedbackTruth.lean` closes the former
+`FeedbackTruthSequence` boundary:
 
-- `DeterminedViaTheory As P DP truth` is semantic and cannot make `truth : ℕ → ℝ`
-  computable. Introduce a conclusion-free operational certificate (working name
-  `FeedbackTruthComputation`) supplying rational values at the required `f k` indices, their
-  semantic equality, one uniform program, and halting within
+- `DeterminedViaTheory As P DP truth` remains semantic and is never used as a computation
+  oracle. `FeedbackTruthComputation` supplies rational values at the required `f k` indices,
+  their semantic equality, one uniform program, and halting within
   `ecClock a degree (f (k + 1))`.
-- Reuse `codeEvalnNat_polyFueled`, `scheduledMatch`, and `scheduledDeferral` to recognize the
-  unique scheduled `k` without computing an unbounded inverse of `f`.
-- Emit literal centered syntax `A (f k) - truthRat (f k)`, else zero, with polynomial term,
-  coefficient, sentence, and constant serialization.
-- Prove `PolySequence`, bounded prices, magnitude, completed-world value zero, and the exact
-  delayed `feedback_price` identity. Keep normalization data outside the computation
+- The compiler reuses `codeEvalnNat_polyFueled`, `scheduledMatch`, and `scheduledDeferral`
+  to recognize the unique scheduled `k` without computing an unbounded inverse of `f`.
+- It emits literal centered syntax `A (f k) - truthRat (f k)`, else zero, with polynomial
+  term, coefficient, sentence, and constant serialization.
+- It proves `PolySequence`, bounded prices, magnitude, completed-world value zero, and the
+  exact delayed `feedback_price` identity. Normalization data stays outside the computation
   certificate.
-- Add public `wubaff`/`wubexp` entry points taking the computation premise instead of an
-  opaque preassembled `FeedbackTruthSequence`. Accuracy remains derived, never assumed.
+- The three public `..._ofComputation` entry points take the computation premise instead of
+  an opaque preassembled `FeedbackTruthSequence`. Accuracy remains derived, never assumed.
+
+Provenance: `FeedbackTruthComputation.value/code/computes/agrees` are the explicit paper
+operational premise, not a derived market conclusion. The deferral schedule, raw
+rational-code emission, affine syntax, semantic zero-value law, bounds, and consumers are
+proved composition (`C`) from those inputs and existing project compilers. The only type-(c)
+modeling substitution remains the repository-wide disclosed `dd:fuel` clock model.
+
+## START HERE — attempt 6, `M7-SCON-COMPILER`
+
+Construct `GatedConditioningOperationalWitness` in
+`LogicalInduction/Properties/Conditioning.lean`. Keep the boundary split already enforced by
+the property file: `ConditioningPresentation` supplies the real stage conjunction and union
+process, while the new operational constructor must supply only a positive rational
+denominator floor, computation of the actual conditional market, and token-level efficient
+translation of every `EfficientlyComputableTok` trader through
+`Trader.conditionedTranslation`.
+
+Audit the interface at the intended generality before coding. The denominator patch is
+market-dependent, so expose whatever concrete base-market computation and finite-prefix
+minimum program are genuinely required; do not infer computability from the semantic
+`History`. The translated trader has an arbitrary polynomial-length token stream, so compile
+the literal gated conditional contract stream rather than assuming a fixed extensional
+length. Economic tracking, first-failure downside control, exploitation transport, and the
+LI conclusion are already proved in `Conditioning.lean` and must not enter the operational
+certificate.
 
 ## Deliberately disclosed boundaries
 
