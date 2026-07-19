@@ -18,7 +18,8 @@ the M7 representation boundaries listed below. Their only reported axioms are Le
 Mathlib's standard `propext`, `Classical.choice`, and `Quot.sound`.
 
 The M3–M5 property theorems are genuine but conditional: their paper-facing declarations
-take `[IsLogicalInductor P DP]`. Some additionally take an explicitly disclosed
+are named `lic_<node>` after the paper node they mirror (`lic_provind` ↔ `thm:provind`)
+and take `[IsLogicalInductor P DP]`. Some additionally take an explicitly disclosed
 representation or compiler interface. Twelve of the fifteen M7 witness boundaries have been
 constructed in Lean. Thus the public endpoint is **unconditional existence plus a
 conditional, disclosed property tail**, not a claim that all of the paper's first-order
