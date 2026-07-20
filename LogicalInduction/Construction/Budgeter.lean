@@ -9,7 +9,7 @@ is load-bearing because the bankruptcy test is discontinuous in past prices.
 -/
 import LogicalInduction.Construction.MarketMaker
 import LogicalInduction.Construction.TraderEnumeration
-import LogicalInduction.ROI
+import LogicalInduction.Framework.ROI
 
 namespace LogicalInduction
 

@@ -93,14 +93,14 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 
 /-! ## Constructed M7 witnesses and their direct criterion consumers -/
 
--- Construction/M7Witnesses.lean (`M7-HIST-EVALN`, `M7-CE-REPETITION`,
+-- Construction/Witnesses/M7Witnesses.lean (`M7-HIST-EVALN`, `M7-CE-REPETITION`,
 -- `M7-PATIENT-CLOCK`, `M7-PREFIX-PATCH`)
 #assert_axioms_clean
   codeEvalnNat_polyFueled boundedEvalnCompiler EfficientRepeatedEnumeration.ofCE
   SettlementChecker.ofComputations PatientSettlementClock.ofComputations
   liaEfficientPrefixPatch
 
--- Construction/QuotationAffine.lean (`M7-QUOTE-AFFINE`)
+-- Construction/Witnesses/QuotationAffine.lean (`M7-QUOTE-AFFINE`)
 #assert_axioms_clean
   lic_introspection_ofCode lic_paradox_resistance_ofDiagonal
   lic_expectations_of_probabilities_ofCode lic_iterated_expectations_ofCode
@@ -108,34 +108,34 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_no_expected_net_update_ofRepresentation
   lic_no_expected_net_update_conditional_ofRepresentation
 
--- Construction/FeedbackEmission.lean (`M7-FEEDBACK-EMIT`)
+-- Construction/Witnesses/FeedbackEmission.lean (`M7-FEEDBACK-EMIT`)
 #assert_axioms_clean
   feedbackTraderEmissionSigns lic_wubaff_ofFeedbackTruth
   boundedCombination_wubaff_ofFeedbackTruth luv_wubexp_ofFeedbackTruth
 
--- Construction/FeedbackTruth.lean (`M7-FEEDBACK-TRUTH`)
+-- Construction/Witnesses/FeedbackTruth.lean (`M7-FEEDBACK-TRUTH`)
 #assert_axioms_clean
   feedbackTruthSequence lic_wubaff_ofComputation boundedCombination_wubaff_ofComputation
   luv_wubexp_ofComputation
 
--- Construction/BitPrefixSyntax.lean (`M7-DUS-PREFIX-SYNTAX`)
+-- Construction/Witnesses/BitPrefixSyntax.lean (`M7-DUS-PREFIX-SYNTAX`)
 #assert_axioms_clean
   bitPrefixSentencesOfIndependentAtoms lic_domination_universalSemimeasure_ofIndependentAtoms
 
--- Construction/ConditioningPresentation.lean (`M7-SCON-PRESENTATION`)
+-- Construction/Witnesses/ConditioningPresentation.lean (`M7-SCON-PRESENTATION`)
 #assert_axioms_clean
   conditioningPresentationOfComputations lic_conditioned_gated_ofComputations
 
--- Construction/ConditioningCompiler.lean (`M7-SCON-COMPILER`)
+-- Construction/Witnesses/ConditioningCompiler.lean (`M7-SCON-COMPILER`)
 #assert_axioms_clean
   conditionedTranslation_preserves_ec gatedConditioningOperationalWitness
   denominatorPatchedGatedConditioningOperationalWitness
   lic_conditioned_gated_ofMarketComputation lic_conditioned_gated_ofComputationsAndMarket
 
--- Construction/LUVSyntax.lean (`M7-LUV-SYNTAX`)
+-- Construction/Witnesses/LUVSyntax.lean (`M7-LUV-SYNTAX`)
 #assert_axioms_clean LUVCombinationSyntax.meshSoftmaxOperationalWitness
 
--- Construction/ComputationSyntax.lean (`M7-COMP-SYNTAX`)
+-- Construction/Witnesses/ComputationSyntax.lean (`M7-COMP-SYNTAX`)
 #assert_axioms_clean
   representedSemidecidableClaimsOfComputation representedDecidableClaimsOfComputation
   inconsistentTheoryClaimsOfComputation

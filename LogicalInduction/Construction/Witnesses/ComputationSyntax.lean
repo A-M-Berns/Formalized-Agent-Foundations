@@ -1,4 +1,4 @@
-import LogicalInduction.Construction.M7Witnesses
+import LogicalInduction.Construction.Witnesses.M7Witnesses
 import LogicalInduction.Properties.MetaLearning
 import Foundation.FirstOrder.Arithmetic.R0.Representation
 import Foundation.FirstOrder.Bootstrapping.Syntax.Theory

@@ -7,7 +7,7 @@ rational market maker.  The analytic layer below deliberately works with the act
 aggregates all positions in a sentence before the price-adjustment map is formed.
 -/
 import LogicalInduction.Construction.Brouwer
-import LogicalInduction.Engine
+import LogicalInduction.Framework.Engine
 
 namespace LogicalInduction
 

@@ -1,4 +1,4 @@
-import LogicalInduction.Construction.QuotationAffine
+import LogicalInduction.Construction.Witnesses.QuotationAffine
 
 /-!
 # Concrete delayed feedback truth (`M7-FEEDBACK-TRUTH`)

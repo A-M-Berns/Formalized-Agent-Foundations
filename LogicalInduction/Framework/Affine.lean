@@ -7,8 +7,8 @@ cash term `-Pₙ(c + Σ eᵢ φᵢ)`, so the explicit affine constant cancels.  
 combination as syntax is nevertheless essential: its price and its value in a world are the
 objects compared by affine provability/preemptive learning.
 -/
-import LogicalInduction.Engine
-import LogicalInduction.Computable
+import LogicalInduction.Framework.Engine
+import LogicalInduction.Framework.Computable
 
 namespace LogicalInduction
 

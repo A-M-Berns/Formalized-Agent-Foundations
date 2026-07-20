@@ -5,9 +5,9 @@ This file constructs the rational conditional-market program used by `thm:scon` 
 actual base-market computation and the polynomial condition-code program.  The finite
 denominator patch and the flat token transducer are developed below this core computation.
 -/
-import LogicalInduction.Construction.ConditioningPresentation
+import LogicalInduction.Construction.Witnesses.ConditioningPresentation
 import LogicalInduction.Construction.LIACompiler
-import LogicalInduction.Construction.M7Witnesses
+import LogicalInduction.Construction.Witnesses.M7Witnesses
 
 namespace LogicalInduction
 

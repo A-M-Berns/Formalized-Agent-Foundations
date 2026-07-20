@@ -24,7 +24,7 @@ The feature-generic signal/state layer (`buyIndF`/`sellIndF`/`hystChain`) mirror
 concrete lemmas are untouched.
 -/
 import LogicalInduction.Properties.Convergence
-import LogicalInduction.Expectations
+import LogicalInduction.Framework.Expectations
 
 namespace LogicalInduction
 

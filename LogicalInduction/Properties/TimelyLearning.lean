@@ -7,7 +7,7 @@ certificate that `thm:tbo` consumes, so the paper's efficient-sequence premise i
 silently widened to an arbitrary Lean function.
 -/
 import LogicalInduction.Properties.AffinePersistence
-import LogicalInduction.Expectations
+import LogicalInduction.Framework.Expectations
 
 namespace LogicalInduction
 

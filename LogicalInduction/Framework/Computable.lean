@@ -14,7 +14,7 @@ falls out. Composing const/pair over a fixed template gives a bound polynomial i
 exactly `EfficientlyComputable`. Faithfulness is untouched: this is the paper's poly-time
 `def:ec`, only now with a tractable membership proof.
 -/
-import LogicalInduction.Criterion
+import LogicalInduction.Framework.Criterion
 
 /-! ## Outputs of the clocked interpreter can exceed their fuel
 

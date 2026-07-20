@@ -6,8 +6,8 @@ constructs an efficiently emulatable family of affine round trips and proves the
 `NoPreemptive*` conditions below via repeatable ROI.  Once those conditions are available,
 the paper's two liminf/limsup equalities are purely generic filter arguments.
 -/
-import LogicalInduction.Affine
-import LogicalInduction.ROI
+import LogicalInduction.Framework.Affine
+import LogicalInduction.Framework.ROI
 import LogicalInduction.Properties.ExpectationConvergence
 import Mathlib.Topology.Order.LiminfLimsup
 

@@ -24,7 +24,7 @@ Status (M1): the `def:tf` keystone is landed below (`EF`, `denote`, `cost`, `ran
 remaining Part-I criterion nodes (`ValuationFeature`, `TradingStrategy`, `Trader`,
 `Exploits`, `IsLogicalInductor`) are still TODO in this milestone.
 -/
-import LogicalInduction.Foundations
+import LogicalInduction.Framework.Foundations
 import Mathlib.Topology.Algebra.GroupWithZero
 import Mathlib.Topology.Order.OrderClosed
 import Mathlib.Algebra.Ring.Subring.Basic

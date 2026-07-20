@@ -1,4 +1,4 @@
-import LogicalInduction.Construction.QuotationAffine
+import LogicalInduction.Construction.Witnesses.QuotationAffine
 import LogicalInduction.Properties.ExpectationProperties
 
 /-!

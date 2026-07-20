@@ -19,8 +19,8 @@ Sentence`. The paper's well-definedness (`Θ` proves a unique value) becomes mon
 coherence conditions on that family; we carry only what a given theorem needs, as explicit
 hypotheses, rather than reconstructing the first-order syntax.
 -/
-import LogicalInduction.Computable
-import LogicalInduction.Asymptotics
+import LogicalInduction.Framework.Computable
+import LogicalInduction.Framework.Asymptotics
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
 namespace LogicalInduction

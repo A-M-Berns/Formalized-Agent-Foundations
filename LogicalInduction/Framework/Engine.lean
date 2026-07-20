@@ -19,8 +19,8 @@ defined here, with the magnitude bound on a trade's value proved. The **ROI lemm
 (ε-ROI + boundedness ⇒ exploitation) and `def:emulatabletraders` are the reusable hubs the
 affine/expectation families need; they are M4 work and are not yet stated.
 -/
-import LogicalInduction.Criterion
-import LogicalInduction.Asymptotics
+import LogicalInduction.Framework.Criterion
+import LogicalInduction.Framework.Asymptotics
 import Mathlib.Topology.Algebra.InfiniteSum.Basic
 
 namespace LogicalInduction

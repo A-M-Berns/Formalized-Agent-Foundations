@@ -5,12 +5,12 @@ Spec: `notes/logical-induction-roadmap.md`. Standards: `CLAUDE.md`.
 
 This roll-up imports the project's Parts, mirroring the roadmap:
 
-* `Asymptotics`  — the single limit vocabulary (`dd:asymp`).
-* `Foundations` — language, worlds, markets, deductive process, efficient computability.
-* `Criterion`   — expressible features (`def:tf` keystone), traders, the LI criterion.
-* `Engine`      — ROI, the affine master theorem, the LUV expectation bridge.
-* `Properties`  — the property tail, all conditioned on `[IsLogicalInductor P]`.
-* `Construction`— Brouwer fixed point, market maker, budgeter, `LIA`, existence.
+* `Framework`   — §2–3 substrate and shared machinery: `Asymptotics` (`dd:asymp`),
+  `Foundations`, `Computable` (`def:ec`/`dd:fuel`), `Criterion`, `Affine`, `ROI`,
+  `Expectations` (`def:luv`).
+* `Properties`  — the §4 property tail, all conditioned on `[IsLogicalInductor P DP]`.
+* `Construction`— the §5 spine (Brouwer, market maker, budgeter, `LIA`, existence) and
+  `Construction/Witnesses/`, the M7 boundary-discharging compilers.
 
 ## Reading the repository against the paper
 
@@ -38,15 +38,8 @@ take `[IsLogicalInductor P DP]` as a hypothesis. `..._ofComputation` / `..._ofCo
 boundary interface discharged by a concrete construction. The checked inventory of all
 public endpoints is `LogicalInduction/AxiomAudit.lean`.
 -/
-import LogicalInduction.Asymptotics
-import LogicalInduction.Foundations
-import LogicalInduction.Criterion
-import LogicalInduction.Computable
-import LogicalInduction.Engine
-import LogicalInduction.ROI
-import LogicalInduction.Affine
+import LogicalInduction.Framework
 import LogicalInduction.Properties
-import LogicalInduction.Expectations
 import LogicalInduction.Construction
 import LogicalInduction.IntegrationTest
 import LogicalInduction.AxiomAudit

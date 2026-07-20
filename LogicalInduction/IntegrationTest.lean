@@ -27,7 +27,7 @@ results; `thm:cee` explicitly requires its fixed-portfolio quote certificate, an
 does not pretend convergence alone constructs that quotation interface.
 -/
 import LogicalInduction.Properties
-import LogicalInduction.Expectations
+import LogicalInduction.Framework.Expectations
 
 namespace LogicalInduction.IntegrationTest
 

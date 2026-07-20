@@ -6,7 +6,7 @@ emulator whose index contains both the exact serialized-length program and the t
 program.  This file starts that construction and proves the coverage half: every
 `EfficientlyComputableTok` trader is reproduced extensionally by one emulator program.
 -/
-import LogicalInduction.Computable
+import LogicalInduction.Framework.Computable
 
 namespace LogicalInduction
 

@@ -1,5 +1,5 @@
-import LogicalInduction.Construction.ComputationSyntax
-import LogicalInduction.Construction.FeedbackEmission
+import LogicalInduction.Construction.Witnesses.ComputationSyntax
+import LogicalInduction.Construction.Witnesses.FeedbackEmission
 import LogicalInduction.Properties.Introspection
 import Foundation.FirstOrder.Bootstrapping.FixedPoint
 

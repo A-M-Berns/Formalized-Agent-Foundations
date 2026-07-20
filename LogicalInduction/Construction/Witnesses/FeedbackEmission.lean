@@ -1,4 +1,4 @@
-import LogicalInduction.Construction.M7Witnesses
+import LogicalInduction.Construction.Witnesses.M7Witnesses
 
 /-!
 # Concrete feedback-trader emission (`M7-FEEDBACK-EMIT`)

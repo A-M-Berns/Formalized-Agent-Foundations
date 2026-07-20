@@ -5,9 +5,9 @@ World/payout boolean lemmas and the two exploitation engines (`exploits_of_nonne
 for world-neutral traders, `exploits_of_ge_partialSums` for world-dependent ones bounded below
 by a world-independent quantity). Every family file below builds on these.
 -/
-import LogicalInduction.Criterion
-import LogicalInduction.Asymptotics
-import LogicalInduction.Computable
+import LogicalInduction.Framework.Criterion
+import LogicalInduction.Framework.Asymptotics
+import LogicalInduction.Framework.Computable
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 import Mathlib.Order.Filter.AtTopBot.Basic
 import Mathlib.Topology.Order.LiminfLimsup
