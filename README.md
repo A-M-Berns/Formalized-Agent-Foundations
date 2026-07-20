@@ -46,7 +46,7 @@ standard dependencies, not project-specific postulates. The remaining assumption
 ordinary hypotheses on the conditional property theorems. They are isolated below rather
 than being confused with the unconditional existence result.
 
-These cleanliness claims are checked by the build: `LogicalInduction/AxiomAudit.lean`
+These cleanliness claims are checked by the build: `AxiomAudit.lean` (a standalone build target)
 enumerates every public endpoint and fails compilation if any of them acquires an axiom
 beyond the three named above or ceases to exist.
 

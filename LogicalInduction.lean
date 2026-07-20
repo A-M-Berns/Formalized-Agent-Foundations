@@ -36,10 +36,9 @@ named in its docstring (e.g. `lic_provind` ↔ `thm:provind`); the consequence t
 take `[IsLogicalInductor P DP]` as a hypothesis. `..._ofComputation` / `..._ofCode` /
 `..._ofRepresentation` variants are the same statements with a formerly assumed
 boundary interface discharged by a concrete construction. The checked inventory of all
-public endpoints is `LogicalInduction/AxiomAudit.lean`.
+public endpoints is `AxiomAudit.lean`.
 -/
 import LogicalInduction.Framework
 import LogicalInduction.Properties
 import LogicalInduction.Construction
 import LogicalInduction.IntegrationTest
-import LogicalInduction.AxiomAudit

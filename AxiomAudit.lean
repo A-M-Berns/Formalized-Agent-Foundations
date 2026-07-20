@@ -1,8 +1,9 @@
 /-
 # Axiom audit — the checked public-surface inventory
 
-Mechanical guard 1 of the consolidation phase (`notes/consolidation.md`). This file is
-the endpoint inventory: every declaration listed below is public trust surface — the
+Mechanical guard 1 of the consolidation phase (`notes/consolidation.md`). A standalone
+build target, deliberately outside the `LogicalInduction` library: the library carries
+the mathematics, this target carries the check. This file is the endpoint inventory: every declaration listed below is public trust surface — the
 table of contents for the deferred human read-through. Anything *not* listed here is
 internal and may be renamed, moved, or inlined freely; changes to a listed statement are
 surface changes and must be flagged.
