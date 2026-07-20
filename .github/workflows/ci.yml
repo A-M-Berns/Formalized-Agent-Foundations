@@ -16,11 +16,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Advisory until the theorem/lemma sweep lands (notes/consolidation.md,
-      # "Declaration keywords" rule 3); then drop continue-on-error.
+      # Blocking: the theorem/lemma sweep has landed and the linter is clean
+      # (notes/consolidation.md, "Declaration keywords" rule 3). Every `theorem` in
+      # LogicalInduction/ must carry a paper label and no `private theorem` may occur.
       - name: Lint paper labels
-        continue-on-error: true
-        run: python3 scripts/lint_paper_labels.py | tail -1
+        run: python3 scripts/lint_paper_labels.py
+
+      # Blocking: every `Paper node:` label must resolve to a `\label` in the paper
+      # source, and every audited inventory member must carry one (endpoint-inventory.md).
+      - name: Check paper-node annotations
+        run: ./scripts/check-paper-nodes.sh
 
       - name: Free runner disk space
         run: |
