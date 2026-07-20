@@ -8,7 +8,7 @@ retains the original price leaf, and proves its rank, size, semantic, net-worth,
 exploitation laws.  Retaining the leaf is what makes the flat rewrite parser-transparent
 even on malformed raw trader programs.
 
-## PAPER ERRATUM — the appendix proof of `thm:ifp` has a gap (see PROGRESS.md "Paper errata")
+## PAPER ERRATUM — the appendix proof of `thm:ifp` has a gap
 
 This is **not** a modeling artifact of our substrate.  The paper's proof (`app:ifp`)
 transports the trader by hard-coding the old prices, and justifies efficiency thus:
@@ -704,8 +704,8 @@ theorem Trader.Exploits.of_boundedDifference
 freeze above preserves token-indexed polynomial emission.  It contains no semantic market
 claim and no exploitation or convergence conclusion.
 
-**This is a paper erratum, not a modeling substitution** (see the file header and
-PROGRESS.md "Paper errata").  `app:ifp` asserts this closure is immediate because "only
+**This is a paper erratum, not a modeling substitution** (see the file header).
+`app:ifp` asserts this closure is immediate because "only
 finitely many constants are needed"; that is false — finitely many *days*, but unboundedly
 many sentences.  This structure is **not inhabited for every `ComputableMarket P`**: a
 market with huge-encoding day-`0` quotes admits no such patch at all.  Do not read it as a

@@ -1,7 +1,7 @@
 /-
 # Brouwer fixed-point theorem (`lem:fpl` dependency)
 
-Mathlib has no Brouwer/Kakutani fixed-point theorem (PROGRESS.md, OPEN RISK 2), so this
+Mathlib has no Brouwer/Kakutani fixed-point theorem, so this
 file proves it from scratch: Sperner's lemma over the Freudenthal/Kuhn triangulation of
 the standard simplex (`BrouwerProof.Sperner`), lifted to an arbitrary nonempty compact
 convex `K ⊆ EuclideanSpace ℝ (Fin d)` (`BrouwerProof`), concluding in
