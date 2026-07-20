@@ -27,6 +27,17 @@ The project is in step (2) of the sequencing override (consolidation/API/style; 
 
 Full build green after each commit; no semantic change to any statement.
 
+**Pass 2 (same day):** the statement-shape audit across the compiler files found no
+same-fact duplicates — `segLocate`/`segPrefix`, the `PolyFueled` combinators, `evaln`
+bounds, and the conjunction-code layer are each single-sourced, and the per-file
+member/offset wrappers differ genuinely in their length-function shapes. Legibility work
+landed instead: every boundary structure's docstring now names its paper node; the root
+`LogicalInduction.lean` docstring carries the repo-name → paper-name glossary and the
+`lic_` naming convention; stale in-references (`PROGRESS.md` pointer, redundant root
+import) removed. Remaining for pass 3, pending Anson's rules in `notes/consolidation.md`:
+any renames toward paper conventions, file/namespace reorganization, and statement
+flattening — those are surface changes and need the drafted rules first.
+
 This is the authoritative execution handoff. The M7 table in `README.md` is the public
 inventory of what is concrete today; this file records the stronger active construction
 target and what to build next. Historical plans remain available in Git history. There is
