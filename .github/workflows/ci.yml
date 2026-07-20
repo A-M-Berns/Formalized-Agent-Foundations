@@ -16,6 +16,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Advisory until the theorem/lemma sweep lands (notes/consolidation.md,
+      # "Declaration keywords" rule 3); then drop continue-on-error.
+      - name: Lint paper labels
+        continue-on-error: true
+        run: python3 scripts/lint_paper_labels.py | tail -1
+
       - name: Free runner disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL

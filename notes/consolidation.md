@@ -64,6 +64,38 @@ Corollaries:
 - **Docstring provenance.** Provenance annotations written at proof time stay; this phase
   may reformat them for consistency but never reconstructs them retroactively.
 
+## Declaration keywords, labels, and witnesses (agreed 2026-07-19)
+
+1. **`theorem` ⇔ the statement exists in the paper.** A declaration is `theorem` iff it
+   mirrors a labeled paper node (`thm:`, `lem:`, `cor:` — the paper's own lemmas count:
+   `lem:mm`, `lem:budgeter`, `lem:tfdom` are the construction spine). Everything else —
+   glue, wrappers, compiler internals — is `lemma`. `private theorem` is banned; private
+   things are by definition not paper statements. After the sweep, `grep '^theorem'` *is*
+   the paper-facing surface.
+2. **Every `theorem` docstring names its paper label.** The label (`thm:x` / `lem:x` /
+   `App. x`) appears in the docstring, not just a nearby comment. This is what makes rule
+   1 checkable and keeps the label-mirroring convention from rotting.
+3. **Lint:** `scripts/lint_paper_labels.py` enforces rules 1–2 textually (every
+   `theorem` has a label-bearing docstring; no `private theorem`). Wired into CI as an
+   advisory step until the theorem/lemma sweep lands, then flipped to blocking.
+4. **`example` is for uncited, axiom-irrelevant demonstrations only** (the
+   `IntegrationTest.lean` composition checks). The moment something needs to be cited,
+   audited, or `#print axioms`ed, it gets a name. In particular:
+5. **Non-vacuity (`N±`) witnesses stay named** (`*_nonempty` lemmas, or concrete defs
+   like `ordinaryIndependentBitAtoms`), live in `AxiomAudit.lean` so the build vouches
+   for them, and are **deleted** where an M7 construction now discharges the same
+   interface — the audit then cites the construction instead of a stand-in.
+
+## Linters (decision)
+
+Conform to the **Lean core linters** (unused variables, unused simp args): fix existing
+warnings so the build is quiet, and keep it quiet — a noisy build hides real signal.
+Do **not** chase Mathlib's `#lint` env linters or its style linter: this library is not
+bound for Mathlib upstream, the docBlame/simpNF classes would generate thousands of
+findings against proof-body internals the read-through deliberately ignores, and the
+trust-surface lints we actually need (axiom audit, paper labels) are project-specific
+and already checked. Upstream package warnings (Foundation's) are not ours to fix.
+
 ## Style baseline
 
 - Mathlib naming and style conventions (`lean4-theorem-proving` skill references) are the
