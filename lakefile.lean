@@ -21,6 +21,6 @@ lean_lib Scratchpad where
 -- `Matrix.*` decls that shadow Mathlib names (`map`, `forall_iff`, `exists_iff`) renamed
 -- (`vecMap`, `vecForall_iff`, `vecExists_iff`) so Foundation co-imports with Mathlib
 -- matrix/analysis theory (Bochner integration; EuclideanSpace via InnerProductSpace.PiL2,
--- needed by the Brouwer construction). Upstreamed as PR #835. See PROGRESS.md, OPEN RISK 1.
+-- needed by the Brouwer construction). Upstreamed as PR #835; see notes/next-session.md for current status.
 require Foundation from git
   "https://github.com/A-M-Berns/Foundation" @ "aada66ef517064ce4fe025bb6c9072dacdf83991"

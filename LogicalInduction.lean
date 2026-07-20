@@ -45,7 +45,6 @@ import LogicalInduction.Computable
 import LogicalInduction.Engine
 import LogicalInduction.ROI
 import LogicalInduction.Affine
-import LogicalInduction.Properties.AffinePreemptiveLearning
 import LogicalInduction.Properties
 import LogicalInduction.Expectations
 import LogicalInduction.Construction
