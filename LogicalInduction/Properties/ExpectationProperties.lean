@@ -1208,7 +1208,7 @@ private lemma abs_sSup_sub_sSup_le_of_mutually_near
 
 /-- Bounded real sequences with a vanishing pointwise difference have the same lower
 and upper limits.  This is the analytic transfer used after Appendix `lem:mesh`. -/
-private theorem liminf_limsup_eq_of_abs_sub_tendsto_zero
+private lemma liminf_limsup_eq_of_abs_sub_tendsto_zero
     (f g : ℕ → ℝ)
     (hglo : IsBoundedUnder (· ≥ ·) atTop g)
     (hghi : IsBoundedUnder (· ≤ ·) atTop g)

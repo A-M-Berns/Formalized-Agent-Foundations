@@ -16,10 +16,29 @@ from pathlib import Path
 LABEL = re.compile(r"(thm|lem|cor|def|app):[a-zA-Z]+|App\.\s|§")
 DECL = re.compile(r"^\s*(?P<private>private\s+)?(?:protected\s+)?theorem\s+(?P<name>[\w.]+)")
 
+def block_depth_after(line, depth):
+    """Nestable-comment depth after scanning `line`, given `depth` at its start."""
+    k = 0
+    while k < len(line):
+        if line[k:k + 2] == "/-":
+            depth += 1
+            k += 2
+        elif line[k:k + 2] == "-/":
+            depth = max(0, depth - 1)
+            k += 2
+        else:
+            k += 1
+    return depth
+
 violations = []
 for path in sorted(Path("LogicalInduction").rglob("*.lean")):
     lines = path.read_text().splitlines()
+    depth = 0
     for i, line in enumerate(lines):
+        at_start = depth
+        depth = block_depth_after(line, depth)
+        if at_start > 0:  # line begins inside a block comment / docstring — prose, not a decl
+            continue
         m = DECL.match(line)
         if not m:
             continue
