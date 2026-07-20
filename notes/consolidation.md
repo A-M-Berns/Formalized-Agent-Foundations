@@ -96,6 +96,38 @@ findings against proof-body internals the read-through deliberately ignores, and
 trust-surface lints we actually need (axiom audit, paper labels) are project-specific
 and already checked. Upstream package warnings (Foundation's) are not ours to fix.
 
+## File layout (agreed 2026-07-19, execute in pass 3)
+
+Goal: a paper-reader navigates by paper structure; few top-level files; no in-reference
+names. `Foo.lean` next to `Foo/` is the standard Lake roll-up idiom (the file re-exports
+the directory so `import LogicalInduction.Foo` works) — keep it, one roll-up per folder.
+
+1. **Kill `Engine.lean`** (in-reference name): merge its 196 lines into `Affine.lean`,
+   which already imports it.
+2. **Merge tiny Properties files into their paper-subsection homes:**
+   `Convergence.lean` + `Basic.lean` → `Coherence.lean` (paper §4.1 "Convergence and
+   Coherence"); `StrictSemimeasure.lean` → `UniversalSemimeasure.lean`. Labels move with
+   their theorems.
+3. **Top-level folders by paper role.** Target layout:
+
+   ```
+   LogicalInduction.lean          — root roll-up, glossary, naming conventions
+   LogicalInduction/
+     AxiomAudit.lean              — checked endpoint inventory (stays top-level)
+     IntegrationTest.lean         — composition checks (stays top-level)
+     Framework.lean + Framework/  — Asymptotics, Foundations, Computable, Criterion,
+                                    Affine (with Engine folded in), ROI, Expectations
+     Properties.lean + Properties/
+     Construction.lean + Construction/
+   ```
+
+   `Framework/` = everything the paper's §2–3 criterion statement and the shared proof
+   machinery need, upstream of both Properties and Construction. Module renames churn
+   every import; do this as one dedicated commit with no other changes.
+4. **Lean core linters go to zero and stay there** (unused variables/simp args). Fix
+   existing warnings in the same pass; new warnings are treated as regressions. Upstream
+   package warnings (Foundation) are exempt.
+
 ## Style baseline
 
 - Mathlib naming and style conventions (`lean4-theorem-proving` skill references) are the
