@@ -38,7 +38,7 @@ def sentenceBool (u : ℕ → Bool) : Sentence → Bool
 /-- Regard a Boolean atom table as a propositionally consistent world. -/
 def boolPCWorld (u : ℕ → Bool) : PCWorld := fun a => u a = true
 
-theorem sentenceBool_eq_true_iff (u : ℕ → Bool) (φ : Sentence) :
+lemma sentenceBool_eq_true_iff (u : ℕ → Bool) (φ : Sentence) :
     sentenceBool u φ = true ↔ (boolPCWorld u).Holds φ := by
   induction φ with
   | atom a => rfl
@@ -51,7 +51,7 @@ theorem sentenceBool_eq_true_iff (u : ℕ → Bool) (φ : Sentence) :
       cases hφ : sentenceBool u φ <;> cases hψ : sentenceBool u ψ <;>
         simp_all [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
 
-theorem sentenceBool_congr_of_atoms {u v : ℕ → Bool} {φ : Sentence}
+lemma sentenceBool_congr_of_atoms {u v : ℕ → Bool} {φ : Sentence}
     (h : ∀ a ∈ φ.atoms, u a = v a) : sentenceBool u φ = sentenceBool v φ := by
   induction φ with
   | atom a => exact h a (by simp [Sentence.atoms])
@@ -77,7 +77,7 @@ def sentenceAtoms {n : ℕ} (T : Strategy n) : Finset ℕ :=
 
 end Strategy
 
-theorem DeductiveProcess.mono_le (DP : DeductiveProcess) {m n : ℕ} (h : m ≤ n) :
+lemma DeductiveProcess.mono_le (DP : DeductiveProcess) {m n : ℕ} (h : m ≤ n) :
     DP.D m ⊆ DP.D n := by
   show DP.D m ≤ DP.D n
   exact (monotone_nat_of_le_succ (fun i => show DP.D i ≤ DP.D (i + 1) from DP.mono i)) h
@@ -88,7 +88,7 @@ def budgetAtoms (DP : DeductiveProcess) (Tr : Trader) (n : ℕ) : Finset ℕ :=
   (DP.D n).biUnion Sentence.atoms ∪
     (Finset.range (n + 1)).biUnion fun i => (Tr.strat i).sentenceAtoms
 
-theorem deductive_atoms_subset_budgetAtoms (DP : DeductiveProcess) (Tr : Trader)
+lemma deductive_atoms_subset_budgetAtoms (DP : DeductiveProcess) (Tr : Trader)
     {m n : ℕ} (hmn : m ≤ n) {φ : Sentence} (hφ : φ ∈ DP.D m) :
     φ.atoms ⊆ budgetAtoms DP Tr n := by
   intro a ha
@@ -97,7 +97,7 @@ theorem deductive_atoms_subset_budgetAtoms (DP : DeductiveProcess) (Tr : Trader)
   apply Finset.mem_biUnion.mpr
   exact ⟨φ, DP.mono_le hmn hφ, ha⟩
 
-theorem trade_atoms_subset_budgetAtoms (DP : DeductiveProcess) (Tr : Trader)
+lemma trade_atoms_subset_budgetAtoms (DP : DeductiveProcess) (Tr : Trader)
     {i n : ℕ} (hin : i ≤ n) {p : EF × Sentence} (hp : p ∈ (Tr.strat i).trades) :
     p.2.atoms ⊆ budgetAtoms DP Tr n := by
   intro a ha
@@ -114,7 +114,7 @@ def finiteAtomTable (A : Finset ℕ) (bits : A → Bool) : ℕ → Bool := fun a
   if h : a ∈ A then bits ⟨a, h⟩ else false
 
 /-- Every world has a representative finite bit assignment that agrees on `A`. -/
-theorem exists_finiteAtomTable_agrees (A : Finset ℕ) (v : PCWorld) :
+lemma exists_finiteAtomTable_agrees (A : Finset ℕ) (v : PCWorld) :
     ∃ bits : A → Bool, ∀ a ∈ A, finiteAtomTable A bits a = decide (v a) := by
   let bits : A → Bool := fun a => decide (v a.1)
   refine ⟨bits, ?_⟩
@@ -137,14 +137,14 @@ data avoids placing the value-dependent function type `A → Bool` at the compil
 def finiteAtomTableFromList (A : Finset ℕ) (xs : List Bool) : ℕ → Bool := fun a =>
   if a ∈ A then xs.getD ((A.sort (· ≤ ·)).idxOf a) false else false
 
-theorem finiteAtomTable_atomAssignmentOfList (A : Finset ℕ) (xs : List Bool) :
+lemma finiteAtomTable_atomAssignmentOfList (A : Finset ℕ) (xs : List Bool) :
     finiteAtomTable A (atomAssignmentOfList A xs) = finiteAtomTableFromList A xs := by
   funext a
   by_cases ha : a ∈ A
   · simp [finiteAtomTable, finiteAtomTableFromList, atomAssignmentOfList, ha]
   · simp [finiteAtomTable, finiteAtomTableFromList, ha]
 
-theorem exists_mem_finiteAtomAssignments_agrees (A : Finset ℕ) (bits : A → Bool) :
+lemma exists_mem_finiteAtomAssignments_agrees (A : Finset ℕ) (bits : A → Bool) :
     ∃ bits' ∈ finiteAtomAssignments A, bits' = bits := by
   let s := A.sort (· ≤ ·)
   let xs := s.map fun a => if h : a ∈ A then bits ⟨a, h⟩ else false
@@ -168,18 +168,18 @@ theorem exists_mem_finiteAtomAssignments_agrees (A : Finset ℕ) (bits : A → B
 noncomputable def restrictedAssignment (A : Finset ℕ) (v : PCWorld) : A → Bool :=
   fun a => decide (v a.1)
 
-theorem restrictedAssignment_mem (A : Finset ℕ) (v : PCWorld) :
+lemma restrictedAssignment_mem (A : Finset ℕ) (v : PCWorld) :
     restrictedAssignment A v ∈ finiteAtomAssignments A := by
   obtain ⟨bits, hbits, heq⟩ :=
     exists_mem_finiteAtomAssignments_agrees A (restrictedAssignment A v)
   simpa [heq] using hbits
 
-theorem finiteAtomTable_restricted (A : Finset ℕ) (v : PCWorld) {a : ℕ}
+lemma finiteAtomTable_restricted (A : Finset ℕ) (v : PCWorld) {a : ℕ}
     (ha : a ∈ A) :
     finiteAtomTable A (restrictedAssignment A v) a = decide (v a) := by
   simp [finiteAtomTable, restrictedAssignment, ha]
 
-theorem sentenceBool_decide_world (v : PCWorld) (φ : Sentence) :
+lemma sentenceBool_decide_world (v : PCWorld) (φ : Sentence) :
     sentenceBool (fun a => decide (v a)) φ = true ↔ v.Holds φ := by
   induction φ with
   | atom a => simp [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
@@ -193,7 +193,7 @@ theorem sentenceBool_decide_world (v : PCWorld) (φ : Sentence) :
         cases hψ : sentenceBool (fun a => decide (v a)) ψ <;>
         simp_all [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
 
-theorem sentenceBool_restricted_world (A : Finset ℕ) (v : PCWorld) (φ : Sentence)
+lemma sentenceBool_restricted_world (A : Finset ℕ) (v : PCWorld) (φ : Sentence)
     (hφ : φ.atoms ⊆ A) :
     sentenceBool (finiteAtomTable A (restrictedAssignment A v)) φ = true ↔ v.Holds φ := by
   have heq := sentenceBool_congr_of_atoms
@@ -203,7 +203,7 @@ theorem sentenceBool_restricted_world (A : Finset ℕ) (v : PCWorld) (φ : Sente
   rw [heq]
   exact sentenceBool_decide_world v φ
 
-theorem restricted_payout_eq (A : Finset ℕ) (v : PCWorld) (φ : Sentence)
+lemma restricted_payout_eq (A : Finset ℕ) (v : PCWorld) (φ : Sentence)
     (hφ : φ.atoms ⊆ A) :
     (boolPCWorld (finiteAtomTable A (restrictedAssignment A v))).payout φ = v.payout φ := by
   have hholds :
@@ -216,7 +216,7 @@ theorem restricted_payout_eq (A : Finset ℕ) (v : PCWorld) (φ : Sentence)
 def boolPayoutRat (u : ℕ → Bool) (φ : Sentence) : ℚ :=
   if sentenceBool u φ then 1 else 0
 
-theorem boolPCWorld_payout_eq (u : ℕ → Bool) (φ : Sentence) :
+lemma boolPCWorld_payout_eq (u : ℕ → Bool) (φ : Sentence) :
     (boolPCWorld u).payout φ = (boolPayoutRat u φ : ℝ) := by
   rw [PCWorld.payout]
   by_cases h : sentenceBool u φ = true
@@ -229,7 +229,7 @@ theorem boolPCWorld_payout_eq (u : ℕ → Bool) (φ : Sentence) :
 def tableConsistent (u : ℕ → Bool) (D : Finset Sentence) : Bool :=
   decide (∀ φ ∈ D, sentenceBool u φ = true)
 
-theorem tableConsistent_eq_true_iff (u : ℕ → Bool) (D : Finset Sentence) :
+lemma tableConsistent_eq_true_iff (u : ℕ → Bool) (D : Finset Sentence) :
     tableConsistent u D = true ↔ (boolPCWorld u).ConsistentWith D := by
   simp only [tableConsistent, decide_eq_true_eq, PCWorld.ConsistentWith]
   constructor
@@ -253,10 +253,10 @@ def min (a b : EF) : EF := neg (.max (neg a) (neg b))
     (min a b).rank = Nat.max a.rank b.rank := by
   simp [min, neg, EF.rank]
 
-theorem denote_neg (e : EF) (P : History) : e.neg.denote P = -e.denote P := by
+lemma denote_neg (e : EF) (P : History) : e.neg.denote P = -e.denote P := by
   simp [neg]
 
-theorem denote_min (a b : EF) (P : History) :
+lemma denote_min (a b : EF) (P : History) :
     (min a b).denote P = Min.min (a.denote P) (b.denote P) := by
   simp only [min, denote_neg, denote_max]
   rcases le_total (a.denote P) (b.denote P) with h | h
@@ -269,7 +269,7 @@ theorem denote_min (a b : EF) (P : History) :
 world (in which case the relevant floor theorem is vacuous). -/
 def listMin : List EF → EF := List.foldr min (.const 1)
 
-theorem listMin_rank_le (es : List EF) (n : ℕ)
+lemma listMin_rank_le (es : List EF) (n : ℕ)
     (h : ∀ e ∈ es, e.rank ≤ n) : (listMin es).rank ≤ n := by
   induction es with
   | nil => simp [listMin]
@@ -277,7 +277,7 @@ theorem listMin_rank_le (es : List EF) (n : ℕ)
       simp only [listMin, List.foldr_cons, rank_min]
       exact Nat.max_le.mpr ⟨h e (by simp), ih (fun x hx => h x (by simp [hx]))⟩
 
-theorem listMin_denote_le_of_mem (es : List EF) {e : EF} (he : e ∈ es) (P : History) :
+lemma listMin_denote_le_of_mem (es : List EF) {e : EF} (he : e ∈ es) (P : History) :
     (listMin es).denote P ≤ e.denote P := by
   induction es with
   | nil => simp at he
@@ -287,7 +287,7 @@ theorem listMin_denote_le_of_mem (es : List EF) {e : EF} (he : e ∈ es) (P : Hi
       · exact min_le_left _ _
       · exact (min_le_right _ _).trans (ih he)
 
-theorem listMin_denote_eq_one (es : List EF) (P : History)
+lemma listMin_denote_eq_one (es : List EF) (P : History)
     (h : ∀ e ∈ es, e.denote P = 1) : (listMin es).denote P = 1 := by
   induction es with
   | nil => simp [listMin]
@@ -297,7 +297,7 @@ theorem listMin_denote_eq_one (es : List EF) (P : History)
       rw [h e (by simp), ih (fun x hx => h x (by simp [hx]))]
       simp
 
-theorem listMin_denote_pos (es : List EF) (P : History)
+lemma listMin_denote_pos (es : List EF) (P : History)
     (h : ∀ e ∈ es, 0 < e.denote P) : 0 < (listMin es).denote P := by
   induction es with
   | nil => simp [listMin]
@@ -306,7 +306,7 @@ theorem listMin_denote_pos (es : List EF) (P : History)
       change 0 < Min.min (e.denote P) ((listMin es).denote P)
       exact lt_min (h e (by simp)) (ih (fun x hx => h x (by simp [hx])))
 
-theorem listMin_denote_le_one (es : List EF) (P : History) :
+lemma listMin_denote_le_one (es : List EF) (P : History) :
     (listMin es).denote P ≤ 1 := by
   induction es with
   | nil => simp [listMin]
@@ -337,7 +337,7 @@ def tradeListWorldValueFeature (trades : List (EF × Sentence)) (n : ℕ)
     tradeListWorldValueFeature T.trades n u = T.worldValueFeature u := by
   rfl
 
-theorem worldValueFeature_rank_le {n : ℕ} (T : Strategy n) (u : ℕ → Bool) :
+lemma worldValueFeature_rank_le {n : ℕ} (T : Strategy n) (u : ℕ → Bool) :
     (T.worldValueFeature u).rank ≤ n := by
   apply ROIBudget.sumFeatures_rank_le
   intro e he
@@ -346,7 +346,7 @@ theorem worldValueFeature_rank_le {n : ℕ} (T : Strategy n) (u : ℕ → Bool) 
   simp only [EF.rank_mul, EF.rank_add, EF.rank_const, EF.rank_price]
   exact max_le (T.rank_le p hp) (max_le (by omega) (max_le (by omega) (by omega)))
 
-theorem worldValueFeature_denote {n : ℕ} (T : Strategy n) (u : ℕ → Bool)
+lemma worldValueFeature_denote {n : ℕ} (T : Strategy n) (u : ℕ → Bool)
     (P : History) :
     (T.worldValueFeature u).denote P = T.value P (boolPCWorld u).payout := by
   rw [worldValueFeature, ROIBudget.sumFeatures_denote]
@@ -362,7 +362,7 @@ theorem worldValueFeature_denote {n : ℕ} (T : Strategy n) (u : ℕ → Bool)
   rw [hneg]
   ring
 
-theorem value_congr_payout {n : ℕ} (T : Strategy n) (P : History)
+lemma value_congr_payout {n : ℕ} (T : Strategy n) (P : History)
     {w w' : Sentence → ℝ}
     (h : ∀ p ∈ T.trades, w p.2 = w' p.2) :
     T.value P w = T.value P w' := by
@@ -373,7 +373,7 @@ theorem value_congr_payout {n : ℕ} (T : Strategy n) (P : History)
   rw [h p hp]
 
 /-- Rational expressible-feature evaluation is prefix-local at its syntactic rank. -/
-theorem denoteRatWith_eq_of_eqUpTo (e : EF) (rho sigma : List ℚ)
+lemma denoteRatWith_eq_of_eqUpTo (e : EF) (rho sigma : List ℚ)
     (Q R : ℕ → Sentence → ℚ) (n : ℕ)
     (hrank : e.rank ≤ n)
     (hrho : ∀ i, rho.getD i 0 = sigma.getD i 0)
@@ -408,14 +408,14 @@ theorem denoteRatWith_eq_of_eqUpTo (e : EF) (rho sigma : List ℚ)
       | zero => simpa using hx
       | succ i => simpa using hrho i
 
-theorem denoteRat_eq_of_eqUpTo (e : EF)
+lemma denoteRat_eq_of_eqUpTo (e : EF)
     (Q R : ℕ → Sentence → ℚ) (n : ℕ)
     (hrank : e.rank ≤ n)
     (hQR : ∀ day, day ≤ n → ∀ φ, Q day φ = R day φ) :
     e.denoteRat Q = e.denoteRat R := by
   exact denoteRatWith_eq_of_eqUpTo e [] [] Q R n hrank (by simp) hQR
 
-theorem marketValueRat_eq_of_eqUpTo {n : ℕ} (T : Strategy n)
+lemma marketValueRat_eq_of_eqUpTo {n : ℕ} (T : Strategy n)
     (Q R : ℕ → Sentence → ℚ) (w : Sentence → ℚ)
     (hQR : ∀ day, day ≤ n → ∀ φ, Q day φ = R day φ) :
     T.marketValueRat Q w = T.marketValueRat R w := by
@@ -460,7 +460,7 @@ def rawWorthRatTradeLists (tradesAt : ℕ → List (EF × Sentence))
       rawWorthRat Tr Q u m := by
   rfl
 
-theorem rawPriorWorthRat_eq_of_eq_prefix (Tr : Trader)
+lemma rawPriorWorthRat_eq_of_eq_prefix (Tr : Trader)
     (Q R : ℕ → Sentence → ℚ) (u : ℕ → Bool) (n : ℕ)
     (hQR : ∀ day, day < n → ∀ φ, Q day φ = R day φ) :
     rawPriorWorthRat Tr Q u n = rawPriorWorthRat Tr R u n := by
@@ -471,7 +471,7 @@ theorem rawPriorWorthRat_eq_of_eq_prefix (Tr : Trader)
   intro day hday φ
   exact hQR day (lt_of_le_of_lt hday (Finset.mem_range.mp hi)) φ
 
-theorem rawWorthRat_eq_of_eq_prefix (Tr : Trader)
+lemma rawWorthRat_eq_of_eq_prefix (Tr : Trader)
     (Q R : ℕ → Sentence → ℚ) (u : ℕ → Bool) (m : ℕ)
     (hQR : ∀ day, day ≤ m → ∀ φ, Q day φ = R day φ) :
     rawWorthRat Tr Q u m = rawWorthRat Tr R u m := by
@@ -479,7 +479,7 @@ theorem rawWorthRat_eq_of_eq_prefix (Tr : Trader)
   intro day hday φ
   exact hQR day (by omega) φ
 
-theorem rawPriorWorthRat_cast (Tr : Trader) (P : History)
+lemma rawPriorWorthRat_cast (Tr : Trader) (P : History)
     (Q : ℕ → Sentence → ℚ) (hQ : ∀ day φ, P day φ = (Q day φ : ℝ))
     (u : ℕ → Bool) (n : ℕ) :
     (rawPriorWorthRat Tr Q u n : ℝ) =
@@ -492,7 +492,7 @@ theorem rawPriorWorthRat_cast (Tr : Trader) (P : History)
   exact (Tr.strat i).value_eq_marketRatCast P Q hQ
     (boolPCWorld u).payout (boolPayoutRat u) (boolPCWorld_payout_eq u)
 
-theorem rawWorthRat_cast (Tr : Trader) (P : History)
+lemma rawWorthRat_cast (Tr : Trader) (P : History)
     (Q : ℕ → Sentence → ℚ) (hQ : ∀ day φ, P day φ = (Q day φ : ℝ))
     (u : ℕ → Bool) (m : ℕ) :
     (rawWorthRat Tr Q u m : ℝ) = Tr.netWorth P (boolPCWorld u) m := by
@@ -501,7 +501,7 @@ theorem rawWorthRat_cast (Tr : Trader) (P : History)
 
 /-- Prefix-local form used by adaptive constructions: raw prior wealth through `n-1`
 does not require a rational quote for the still-variable day `n`. -/
-theorem rawPriorWorthRat_cast_of_prefix (Tr : Trader) (P : History)
+lemma rawPriorWorthRat_cast_of_prefix (Tr : Trader) (P : History)
     (Q : ℕ → Sentence → ℚ) (n : ℕ)
     (hQ : ∀ day, day < n → ∀ φ, P day φ = (Q day φ : ℝ))
     (u : ℕ → Bool) :
@@ -527,7 +527,7 @@ theorem rawPriorWorthRat_cast_of_prefix (Tr : Trader) (P : History)
       exact hQ day (lt_of_le_of_lt hday hin) φ
 
 /-- Prefix-local form for raw wealth through `m`. -/
-theorem rawWorthRat_cast_of_prefix (Tr : Trader) (P : History)
+lemma rawWorthRat_cast_of_prefix (Tr : Trader) (P : History)
     (Q : ℕ → Sentence → ℚ) (m : ℕ)
     (hQ : ∀ day, day ≤ m → ∀ φ, P day φ = (Q day φ : ℝ))
     (u : ℕ → Bool) :
@@ -542,12 +542,12 @@ noncomputable def Trader.priorNetWorth (Tr : Trader) (P : History)
     (v : PCWorld) (n : ℕ) : ℝ :=
   ∑ i ∈ Finset.range n, (Tr.strat i).value P v.payout
 
-theorem Trader.netWorth_eq_prior_add (Tr : Trader) (P : History)
+lemma Trader.netWorth_eq_prior_add (Tr : Trader) (P : History)
     (v : PCWorld) (n : ℕ) :
     Tr.netWorth P v n = Tr.priorNetWorth P v n + (Tr.strat n).value P v.payout := by
   rw [Trader.netWorth, Trader.priorNetWorth, Finset.sum_range_succ]
 
-theorem rawPriorWorthRat_restricted_cast (DP : DeductiveProcess) (Tr : Trader)
+lemma rawPriorWorthRat_restricted_cast (DP : DeductiveProcess) (Tr : Trader)
     (P : History) (Q : ℕ → Sentence → ℚ)
     (hQ : ∀ day φ, P day φ = (Q day φ : ℝ))
     (v : PCWorld) (n : ℕ) :
@@ -566,7 +566,7 @@ theorem rawPriorWorthRat_restricted_cast (DP : DeductiveProcess) (Tr : Trader)
   exact restricted_payout_eq A v p.2
     (trade_atoms_subset_budgetAtoms DP Tr (by simp at hi; omega) hp)
 
-theorem rawWorthRat_restricted_cast (DP : DeductiveProcess) (Tr : Trader)
+lemma rawWorthRat_restricted_cast (DP : DeductiveProcess) (Tr : Trader)
     (P : History) (Q : ℕ → Sentence → ℚ)
     (hQ : ∀ day φ, P day φ = (Q day φ : ℝ))
     (v : PCWorld) {m n : ℕ} (hmn : m ≤ n) :
@@ -585,7 +585,7 @@ theorem rawWorthRat_restricted_cast (DP : DeductiveProcess) (Tr : Trader)
   exact restricted_payout_eq A v p.2
     (trade_atoms_subset_budgetAtoms DP Tr (by simp at hi; omega) hp)
 
-theorem tableConsistent_restricted_iff (DP : DeductiveProcess) (Tr : Trader)
+lemma tableConsistent_restricted_iff (DP : DeductiveProcess) (Tr : Trader)
     (v : PCWorld) {m n : ℕ} (hmn : m ≤ n) :
     tableConsistent
       (finiteAtomTable (budgetAtoms DP Tr n)
@@ -612,7 +612,7 @@ def priorBudgetBreach (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
       tableConsistent (finiteAtomTable A bits) (DP.D m) &&
         decide (rawWorthRat Tr Q (finiteAtomTable A bits) m ≤ -(b : ℚ))
 
-theorem priorBudgetBreach_eq_of_eq_prefix
+lemma priorBudgetBreach_eq_of_eq_prefix
     (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (Q R : ℕ → Sentence → ℚ) (n : ℕ)
     (hQR : ∀ day, day < n → ∀ φ, Q day φ = R day φ) :
@@ -635,7 +635,7 @@ theorem priorBudgetBreach_eq_of_eq_prefix
 
 /-- Prefix-local soundness direction for the breach scan.  This is the interface needed
 when day `n` is still a symbolic price vector inside MarketMaker. -/
-theorem priorBudgetBreach_eq_false_of_safe_prefix
+lemma priorBudgetBreach_eq_false_of_safe_prefix
     (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (P : History) (Q : ℕ → Sentence → ℚ) (n : ℕ)
     (hQ : ∀ day, day < n → ∀ φ, P day φ = (Q day φ : ℝ))
@@ -668,7 +668,7 @@ theorem priorBudgetBreach_eq_false_of_safe_prefix
   simp [hinner]
 
 /-- The executable breach scan is exactly the paper's semantic past-loss test. -/
-theorem priorBudgetBreach_eq_false_iff (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
+lemma priorBudgetBreach_eq_false_iff (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (P : History) (Q : ℕ → Sentence → ℚ)
     (hQ : ∀ day φ, P day φ = (Q day φ : ℝ)) (n : ℕ) :
     priorBudgetBreach DP Tr b Q n = false ↔
@@ -746,14 +746,14 @@ def budgetScaleFeature (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     tableConsistent (finiteAtomTable A bits) (DP.D n)).map fun bits =>
       budgetWorldScale Tr b Q (finiteAtomTable A bits) n)
 
-theorem budgetWorldScale_eq_of_eq_prefix (Tr : Trader) (b : ℕ)
+lemma budgetWorldScale_eq_of_eq_prefix (Tr : Trader) (b : ℕ)
     (Q R : ℕ → Sentence → ℚ) (u : ℕ → Bool) (n : ℕ)
     (hQR : ∀ day, day < n → ∀ φ, Q day φ = R day φ) :
     budgetWorldScale Tr b Q u n = budgetWorldScale Tr b R u n := by
   unfold budgetWorldScale
   rw [rawPriorWorthRat_eq_of_eq_prefix Tr Q R u n hQR]
 
-theorem budgetScaleFeature_eq_of_eq_prefix
+lemma budgetScaleFeature_eq_of_eq_prefix
     (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (Q R : ℕ → Sentence → ℚ) (n : ℕ)
     (hQR : ∀ day, day < n → ∀ φ, Q day φ = R day φ) :
@@ -765,13 +765,13 @@ theorem budgetScaleFeature_eq_of_eq_prefix
   exact budgetWorldScale_eq_of_eq_prefix Tr b Q R
     (finiteAtomTable (budgetAtoms DP Tr n) bits) n hQR
 
-theorem budgetWorldScale_rank_le {n : ℕ} (Tr : Trader) (b : ℕ)
+lemma budgetWorldScale_rank_le {n : ℕ} (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (u : ℕ → Bool) :
     (budgetWorldScale Tr b Q u n).rank ≤ n := by
   simp [budgetWorldScale, EF.neg]
   exact Strategy.worldValueFeature_rank_le (Tr.strat n) u
 
-theorem budgetWorldScale_denote (Tr : Trader) (b : ℕ)
+lemma budgetWorldScale_denote (Tr : Trader) (b : ℕ)
     (P : History) (Q : ℕ → Sentence → ℚ)
     (u : ℕ → Bool) (n : ℕ) :
     (budgetWorldScale Tr b Q u n).denote P =
@@ -790,20 +790,20 @@ theorem budgetWorldScale_denote (Tr : Trader) (b : ℕ)
 noncomputable def lossCap (available current : ℝ) : ℝ :=
   (max 1 (-current / available))⁻¹
 
-theorem lossCap_pos (available current : ℝ) : 0 < lossCap available current := by
+lemma lossCap_pos (available current : ℝ) : 0 < lossCap available current := by
   unfold lossCap
   exact inv_pos.mpr (lt_of_lt_of_le zero_lt_one (le_max_left _ _))
 
-theorem lossCap_le_one (available current : ℝ) : lossCap available current ≤ 1 := by
+lemma lossCap_le_one (available current : ℝ) : lossCap available current ≤ 1 := by
   unfold lossCap
   exact (inv_le_one₀ (lt_of_lt_of_le zero_lt_one (le_max_left _ _))).mpr
     (le_max_left _ _)
 
-theorem lossCap_eq_one_of_ratio_le {available current : ℝ}
+lemma lossCap_eq_one_of_ratio_le {available current : ℝ}
     (h : -current / available ≤ 1) : lossCap available current = 1 := by
   simp [lossCap, max_eq_left h]
 
-theorem lossCap_floor {available current : ℝ} (ha : 0 < available) :
+lemma lossCap_floor {available current : ℝ} (ha : 0 < available) :
     -available ≤ current * lossCap available current := by
   by_cases hratio : -current / available ≤ 1
   · rw [lossCap_eq_one_of_ratio_le hratio]
@@ -822,7 +822,7 @@ theorem lossCap_floor {available current : ℝ} (ha : 0 < available) :
     field_simp [hxne, hane]
     norm_num
 
-theorem budgetScaleFeature_rank_le (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
+lemma budgetScaleFeature_rank_le (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) :
     (budgetScaleFeature DP Tr b Q n).rank ≤ n := by
   unfold budgetScaleFeature
@@ -832,7 +832,7 @@ theorem budgetScaleFeature_rank_le (DP : DeductiveProcess) (Tr : Trader) (b : �
   obtain ⟨bits, _, rfl⟩ := he
   exact budgetWorldScale_rank_le Tr b Q _
 
-theorem budgetScaleFeature_denote_pos (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
+lemma budgetScaleFeature_denote_pos (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (P : History) (Q : ℕ → Sentence → ℚ)
     (_hQ : ∀ day φ, P day φ = (Q day φ : ℝ)) (n : ℕ) :
     0 < (budgetScaleFeature DP Tr b Q n).denote P := by
@@ -844,7 +844,7 @@ theorem budgetScaleFeature_denote_pos (DP : DeductiveProcess) (Tr : Trader) (b :
   rw [budgetWorldScale_denote Tr b P Q]
   exact lossCap_pos _ _
 
-theorem budgetScaleFeature_denote_le_one (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
+lemma budgetScaleFeature_denote_le_one (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (P : History) (Q : ℕ → Sentence → ℚ)
     (_hQ : ∀ day φ, P day φ = (Q day φ : ℝ)) (n : ℕ) :
     (budgetScaleFeature DP Tr b Q n).denote P ≤ 1 := by
@@ -852,7 +852,7 @@ theorem budgetScaleFeature_denote_le_one (DP : DeductiveProcess) (Tr : Trader) (
   exact EF.listMin_denote_le_one _ P
 
 /-- The global scale is no larger than the clause for any supplied plausible world. -/
-theorem budgetScaleFeature_denote_le_world (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
+lemma budgetScaleFeature_denote_le_world (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (P : History) (Q : ℕ → Sentence → ℚ) (n : ℕ)
     (bits : budgetAtoms DP Tr n → Bool)
     (hbits : bits ∈ finiteAtomAssignments (budgetAtoms DP Tr n))
@@ -866,7 +866,7 @@ theorem budgetScaleFeature_denote_le_world (DP : DeductiveProcess) (Tr : Trader)
 
 /-- Prefix-local form of exact scale preservation.  Only prices before day `n` occur in
 the available-capital denominator; the current price remains symbolic in the feature. -/
-theorem budgetScaleFeature_denote_eq_one_of_safe_prefix
+lemma budgetScaleFeature_denote_eq_one_of_safe_prefix
     (DP : DeductiveProcess) (Tr : Trader) (b : ℕ) (hb : 0 < b)
     (P : History) (Q : ℕ → Sentence → ℚ)
     (n : ℕ) (hQ : ∀ day, day < n → ∀ φ, P day φ = (Q day φ : ℝ))
@@ -910,7 +910,7 @@ theorem budgetScaleFeature_denote_eq_one_of_safe_prefix
 
 /-- If the raw trader has stayed strictly within budget through day `n`, every
 world-specific cap and therefore their finite infimum evaluates to one. -/
-theorem budgetScaleFeature_denote_eq_one_of_safe
+lemma budgetScaleFeature_denote_eq_one_of_safe
     (DP : DeductiveProcess) (Tr : Trader) (b : ℕ) (hb : 0 < b)
     (P : History) (Q : ℕ → Sentence → ℚ)
     (hQ : ∀ day φ, P day φ = (Q day φ : ℝ)) (n : ℕ)
@@ -972,7 +972,7 @@ def priorBudgetBreachFromStageLists (D : ℕ → Finset Sentence) (Tr : Trader) 
       tableConsistent (finiteAtomTableFromList A xs) (D m) &&
         decide (rawWorthRat Tr Q (finiteAtomTableFromList A xs) m ≤ -(b : ℚ))
 
-theorem priorBudgetBreachFromStageLists_eq (D : ℕ → Finset Sentence)
+lemma priorBudgetBreachFromStageLists_eq (D : ℕ → Finset Sentence)
     (Tr : Trader) (b : ℕ) (Q : ℕ → Sentence → ℚ) (n : ℕ) :
     priorBudgetBreachFromStageLists D Tr b Q n =
       priorBudgetBreachFromStages D Tr b Q n := by
@@ -997,7 +997,7 @@ def budgetScaleFeatureFromStageLists (D : ℕ → Finset Sentence) (Tr : Trader)
     tableConsistent (finiteAtomTableFromList A xs) (D n)).map fun xs =>
       budgetWorldScale Tr b Q (finiteAtomTableFromList A xs) n)
 
-theorem budgetScaleFeatureFromStageLists_eq (D : ℕ → Finset Sentence)
+lemma budgetScaleFeatureFromStageLists_eq (D : ℕ → Finset Sentence)
     (Tr : Trader) (b : ℕ) (Q : ℕ → Sentence → ℚ) (n : ℕ) :
     budgetScaleFeatureFromStageLists D Tr b Q n =
       budgetScaleFeatureFromStages D Tr b Q n := by
@@ -1005,7 +1005,7 @@ theorem budgetScaleFeatureFromStageLists_eq (D : ℕ → Finset Sentence)
   simp only [finiteAtomAssignments, List.filter_map, List.map_map, Function.comp_def,
     finiteAtomTable_atomAssignmentOfList]
 
-theorem budgetScaleFeatureFromStages_rank_le (D : ℕ → Finset Sentence)
+lemma budgetScaleFeatureFromStages_rank_le (D : ℕ → Finset Sentence)
     (Tr : Trader) (b : ℕ) (Q : ℕ → Sentence → ℚ) (n : ℕ) :
     (budgetScaleFeatureFromStages D Tr b Q n).rank ≤ n := by
   unfold budgetScaleFeatureFromStages
@@ -1015,7 +1015,7 @@ theorem budgetScaleFeatureFromStages_rank_le (D : ℕ → Finset Sentence)
   obtain ⟨bits, _, rfl⟩ := he
   exact budgetWorldScale_rank_le Tr b Q _
 
-theorem budgetScaleFeatureFromStageLists_rank_le (D : ℕ → Finset Sentence)
+lemma budgetScaleFeatureFromStageLists_rank_le (D : ℕ → Finset Sentence)
     (Tr : Trader) (b : ℕ) (Q : ℕ → Sentence → ℚ) (n : ℕ) :
     (budgetScaleFeatureFromStageLists D Tr b Q n).rank ≤ n := by
   rw [budgetScaleFeatureFromStageLists_eq]
@@ -1037,7 +1037,7 @@ def BudgeterAtFromStageLists (D : ℕ → Finset Sentence) (Tr : Trader) (b : �
     (Tr.strat n).scaleBy (budgetScaleFeatureFromStageLists D Tr b Q n)
       (budgetScaleFeatureFromStageLists_rank_le D Tr b Q n)
 
-theorem BudgeterAtFromStageLists_eq (D : ℕ → Finset Sentence) (Tr : Trader)
+lemma BudgeterAtFromStageLists_eq (D : ℕ → Finset Sentence) (Tr : Trader)
     (b : ℕ) (Q : ℕ → Sentence → ℚ) (n : ℕ) :
     BudgeterAtFromStageLists D Tr b Q n = BudgeterAtFromStages D Tr b Q n := by
   unfold BudgeterAtFromStageLists BudgeterAtFromStages
@@ -1084,14 +1084,14 @@ def budgeterTradesFromStageTradeLists (D : ℕ → Finset Sentence)
     (tradesAt n).map fun p =>
       (.mul (budgetScaleFeatureFromStageTradeLists D tradesAt b Q n) p.1, p.2)
 
-theorem priorBudgetBreachFromStageTradeLists_trader
+lemma priorBudgetBreachFromStageTradeLists_trader
     (D : ℕ → Finset Sentence) (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) :
     priorBudgetBreachFromStageTradeLists D (fun i => (Tr.strat i).trades) b Q n =
       priorBudgetBreachFromStageLists D Tr b Q n := by
   rfl
 
-theorem budgetWorldScaleTradeLists_trader (Tr : Trader) (b : ℕ)
+lemma budgetWorldScaleTradeLists_trader (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (u : ℕ → Bool) (n : ℕ) :
     budgetWorldScaleTradeLists (fun i => (Tr.strat i).trades) b Q u n =
       budgetWorldScale Tr b Q u n := by
@@ -1099,7 +1099,7 @@ theorem budgetWorldScaleTradeLists_trader (Tr : Trader) (b : ℕ)
   rw [rawPriorWorthRatTradeLists_trader,
     Strategy.tradeListWorldValueFeature_strategy]
 
-theorem budgetScaleFeatureFromStageTradeLists_trader
+lemma budgetScaleFeatureFromStageTradeLists_trader
     (D : ℕ → Finset Sentence) (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) :
     budgetScaleFeatureFromStageTradeLists D (fun i => (Tr.strat i).trades) b Q n =
@@ -1111,7 +1111,7 @@ theorem budgetScaleFeatureFromStageTradeLists_trader
   intro xs hxs
   exact budgetWorldScaleTradeLists_trader Tr b Q _ n
 
-theorem budgeterTradesFromStageTradeLists_trader
+lemma budgeterTradesFromStageTradeLists_trader
     (D : ℕ → Finset Sentence) (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) :
     budgeterTradesFromStageTradeLists D (fun i => (Tr.strat i).trades) b Q n =
@@ -1123,7 +1123,7 @@ theorem budgeterTradesFromStageTradeLists_trader
   · unfold Strategy.scaleBy
     rw [budgetScaleFeatureFromStageTradeLists_trader]
 
-theorem BudgeterAtFromStages_eq (DP : DeductiveProcess)
+lemma BudgeterAtFromStages_eq (DP : DeductiveProcess)
     (D : ℕ → Finset Sentence) (hD : D = DP.D) (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) :
     BudgeterAtFromStages D Tr b Q n = BudgeterAt DP Tr b Q n := by
@@ -1136,14 +1136,14 @@ theorem BudgeterAtFromStages_eq (DP : DeductiveProcess)
   · unfold Strategy.scaleBy
     congr
 
-theorem budgetAtomsFromStages_eq_of_eq_prefix (DP : DeductiveProcess)
+lemma budgetAtomsFromStages_eq_of_eq_prefix (DP : DeductiveProcess)
     (D : ℕ → Finset Sentence) (Tr : Trader) (n : ℕ)
     (hD : ∀ m, m ≤ n → D m = DP.D m) :
     budgetAtomsFromStages D Tr n = budgetAtoms DP Tr n := by
   unfold budgetAtomsFromStages budgetAtoms
   rw [hD n le_rfl]
 
-theorem priorBudgetBreachFromStages_eq_of_eq_prefix (DP : DeductiveProcess)
+lemma priorBudgetBreachFromStages_eq_of_eq_prefix (DP : DeductiveProcess)
     (D : ℕ → Finset Sentence) (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ)
     (hD : ∀ m, m ≤ n → D m = DP.D m) :
@@ -1165,7 +1165,7 @@ theorem priorBudgetBreachFromStages_eq_of_eq_prefix (DP : DeductiveProcess)
       simp only [List.any_cons]
       rw [hD m hm, ih hrest]
 
-theorem budgetScaleFeatureFromStages_eq_of_eq_prefix (DP : DeductiveProcess)
+lemma budgetScaleFeatureFromStages_eq_of_eq_prefix (DP : DeductiveProcess)
     (D : ℕ → Finset Sentence) (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ)
     (hD : ∀ m, m ≤ n → D m = DP.D m) :
@@ -1176,7 +1176,7 @@ theorem budgetScaleFeatureFromStages_eq_of_eq_prefix (DP : DeductiveProcess)
 
 /-- Finite-prefix exactness: the day-`n` operational Budgeter agrees with the semantic one
 as soon as decoded deductive stages `0,…,n` are exact. -/
-theorem BudgeterAtFromStages_eq_of_eq_prefix (DP : DeductiveProcess)
+lemma BudgeterAtFromStages_eq_of_eq_prefix (DP : DeductiveProcess)
     (D : ℕ → Finset Sentence) (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ)
     (hD : ∀ m, m ≤ n → D m = DP.D m) :
@@ -1191,7 +1191,7 @@ theorem BudgeterAtFromStages_eq_of_eq_prefix (DP : DeductiveProcess)
     congr 1
     rw [hscale]
 
-theorem BudgeterAt_eq_of_eq_prefix
+lemma BudgeterAt_eq_of_eq_prefix
     (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (Q R : ℕ → Sentence → ℚ) (n : ℕ)
     (hQR : ∀ day, day < n → ∀ φ, Q day φ = R day φ) :
@@ -1227,7 +1227,7 @@ theorem BudgeterAt_value_eq_of_safe
     budgetScaleFeature_denote_eq_one_of_safe DP Tr b hb P Q hQ n hsafe, one_mul]
 
 /-- Adaptive/prefix form of Budgeter preservation, with no current-price oracle. -/
-theorem BudgeterAt_value_eq_of_safe_prefix
+lemma BudgeterAt_value_eq_of_safe_prefix
     (DP : DeductiveProcess) (Tr : Trader) (b : ℕ) (hb : 0 < b)
     (P : History) (Q : ℕ → Sentence → ℚ) (n : ℕ)
     (hQ : ∀ day, day < n → ∀ φ, P day φ = (Q day φ : ℝ))
@@ -1242,7 +1242,7 @@ theorem BudgeterAt_value_eq_of_safe_prefix
     budgetScaleFeature_denote_eq_one_of_safe_prefix DP Tr b hb P Q n hQ hsafe,
     one_mul]
 
-theorem budgetScaleFeature_denote_le_lossCap
+lemma budgetScaleFeature_denote_le_lossCap
     (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (P : History) (Q : ℕ → Sentence → ℚ)
     (hQ : ∀ day φ, P day φ = (Q day φ : ℝ)) (n : ℕ)
@@ -1271,7 +1271,7 @@ theorem budgetScaleFeature_denote_le_lossCap
 
 /-- On a non-bankrupt day, the Budgeter cannot lose more than the capital available at
 the start of that day in any currently plausible world. -/
-theorem BudgeterAt_value_ge_neg_available
+lemma BudgeterAt_value_ge_neg_available
     (DP : DeductiveProcess) (Tr : Trader) (b : ℕ) (hb : 0 < b)
     (P : History) (Q : ℕ → Sentence → ℚ)
     (hQ : ∀ day φ, P day φ = (Q day φ : ℝ)) (n : ℕ)
@@ -1437,7 +1437,7 @@ noncomputable def BudgeterFromComputation {DP : DeductiveProcess}
   Budgeter process.computedProcess Tr b
 
 /-- The operational process-backed Budgeter is exactly the semantic Budgeter. -/
-theorem BudgeterFromComputation_eq {DP : DeductiveProcess}
+lemma BudgeterFromComputation_eq {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) (Tr : Trader) (b : ℕ) :
     BudgeterFromComputation process Tr b = Budgeter DP Tr b := by
   unfold BudgeterFromComputation

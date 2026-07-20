@@ -36,7 +36,7 @@ in the fuel rather than the fuel itself, and Mathlib's `evaln_bound` — which b
 Kernel-checked (`simp` on the equation lemmas) rather than `decide`/`native_decide`:
 `evaln`'s well-founded recursion does not reduce in the kernel, and `native_decide` would
 trust the compiler and drag in `Lean.ofReduceBool`. -/
-theorem evaln_output_can_exceed_fuel :
+lemma evaln_output_can_exceed_fuel :
     ∃ (c : Nat.Partrec.Code) (k n x : ℕ), x ∈ evaln k c n ∧ k < x :=
   ⟨.pair .succ .succ, 20, 5, 48, by simp [evaln, Seq.seq, Nat.pair], by norm_num⟩
 
@@ -52,36 +52,36 @@ open Nat.Partrec.Code
 def Fueled (c : Nat.Partrec.Code) (f : ℕ → ℕ) (b : ℕ → ℕ) : Prop :=
   ∀ n, evaln (b n) c n = some (f n)
 
-theorem Fueled.mono {c : Nat.Partrec.Code} {f b b' : ℕ → ℕ}
+lemma Fueled.mono {c : Nat.Partrec.Code} {f b b' : ℕ → ℕ}
     (h : Fueled c f b) (hb : ∀ n, b n ≤ b' n) : Fueled c f b' :=
   fun n => evaln_mono (hb n) (h n)
 
 /-- Constant: `Code.const K` outputs `K` within `n + K + 1` fuel. -/
-theorem fueled_const (K : ℕ) :
+lemma fueled_const (K : ℕ) :
     Fueled (Nat.Partrec.Code.const K) (fun _ => K) (fun n => n + K + 1) :=
   fun n => evaln_const_self K n
 
 /-- Left projection `n ↦ (unpair n).1`. -/
-theorem fueled_left :
+lemma fueled_left :
     Fueled Nat.Partrec.Code.left (fun n => n.unpair.1) (fun n => n + 1) := by
   intro n; show evaln (n + 1) Nat.Partrec.Code.left n = some n.unpair.1
   simp [evaln]
 
 /-- Right projection `n ↦ (unpair n).2`. -/
-theorem fueled_right :
+lemma fueled_right :
     Fueled Nat.Partrec.Code.right (fun n => n.unpair.2) (fun n => n + 1) := by
   intro n; show evaln (n + 1) Nat.Partrec.Code.right n = some n.unpair.2
   simp [evaln]
 
 /-- Successor `n ↦ n + 1`. -/
-theorem fueled_succ :
+lemma fueled_succ :
     Fueled Nat.Partrec.Code.succ (fun n => n + 1) (fun n => n + 1) := by
   intro n; show evaln (n + 1) Nat.Partrec.Code.succ n = some (n + 1)
   simp [evaln]
 
 /-- Pairing: `Code.pair` computes `Nat.pair (f n) (g n)` (a primitive — no `prec`, no fuel
 decrement), so a shared budget `max (bf n) (bg n)` suffices. -/
-theorem fueled_pair {cf cg : Nat.Partrec.Code} {f g bf bg : ℕ → ℕ}
+lemma fueled_pair {cf cg : Nat.Partrec.Code} {f g bf bg : ℕ → ℕ}
     (hf : Fueled cf f bf) (hg : Fueled cg g bg) :
     Fueled (cf.pair cg) (fun n => Nat.pair (f n) (g n)) (fun n => max (bf n) (bg n)) := by
   intro n
@@ -100,7 +100,7 @@ theorem fueled_pair {cf cg : Nat.Partrec.Code} {f g bf bg : ℕ → ℕ}
 
 /-- Composition: `Code.comp cf cg` computes `f ∘ g`. The intermediate value `g n` is fed to
 `cf`, so the budget is `max (bg n) (bf (g n))`. -/
-theorem fueled_comp {cf cg : Nat.Partrec.Code} {f g bf bg : ℕ → ℕ}
+lemma fueled_comp {cf cg : Nat.Partrec.Code} {f g bf bg : ℕ → ℕ}
     (hf : Fueled cf f bf) (hg : Fueled cg g bg) :
     Fueled (cf.comp cg) (fun n => f (g n)) (fun n => max (bg n) (bf (g n))) := by
   intro n
@@ -119,7 +119,7 @@ theorem fueled_comp {cf cg : Nat.Partrec.Code} {f g bf bg : ℕ → ℕ}
   omega
 
 /-- Identity `n ↦ n`, built from `pair left right` (`Nat.pair (unpair n).1 (unpair n).2 = n`). -/
-theorem fueled_id :
+lemma fueled_id :
     Fueled (Nat.Partrec.Code.left.pair Nat.Partrec.Code.right) (fun n => n) (fun n => n + 1) := by
   have h := fueled_pair fueled_left fueled_right
   simpa [Nat.pair_unpair] using h.mono (fun n => by simp)
@@ -134,14 +134,14 @@ function into `def:ec`. -/
 /-- `b` is bounded by a polynomial (in the `a·(n+1)ᵏ + a` normal form used by `def:ec`). -/
 def IsPolyBounded (b : ℕ → ℕ) : Prop := ∃ a k : ℕ, ∀ n, b n ≤ a * (n + 1) ^ k + a
 
-theorem IsPolyBounded.of_le {b b' : ℕ → ℕ} (h : IsPolyBounded b') (hb : ∀ n, b n ≤ b' n) :
+lemma IsPolyBounded.of_le {b b' : ℕ → ℕ} (h : IsPolyBounded b') (hb : ∀ n, b n ≤ b' n) :
     IsPolyBounded b := by
   obtain ⟨a, k, hk⟩ := h; exact ⟨a, k, fun n => (hb n).trans (hk n)⟩
 
-theorem IsPolyBounded.linear (c : ℕ) : IsPolyBounded (fun n => n + c) :=
+lemma IsPolyBounded.linear (c : ℕ) : IsPolyBounded (fun n => n + c) :=
   ⟨c + 1, 1, fun n => by simp only [pow_one]; nlinarith⟩
 
-theorem IsPolyBounded.max {b₁ b₂ : ℕ → ℕ} (h₁ : IsPolyBounded b₁) (h₂ : IsPolyBounded b₂) :
+lemma IsPolyBounded.max {b₁ b₂ : ℕ → ℕ} (h₁ : IsPolyBounded b₁) (h₂ : IsPolyBounded b₂) :
     IsPolyBounded (fun n => max (b₁ n) (b₂ n)) := by
   obtain ⟨a₁, k₁, hk₁⟩ := h₁
   obtain ⟨a₂, k₂, hk₂⟩ := h₂
@@ -150,10 +150,10 @@ theorem IsPolyBounded.max {b₁ b₂ : ℕ → ℕ} (h₁ : IsPolyBounded b₁) 
   · gcongr <;> omega
 
 /-- Degree-2 growth of `Nat.pair`: `Nat.pair m n < (m + n + 1)²`. -/
-theorem pair_lt_sq (m n : ℕ) : Nat.pair m n < (m + n + 1) ^ 2 :=
+lemma pair_lt_sq (m n : ℕ) : Nat.pair m n < (m + n + 1) ^ 2 :=
   (Nat.pair_lt_max_add_one_sq m n).trans_le (by gcongr; omega)
 
-theorem IsPolyBounded.add_one {b : ℕ → ℕ} (h : IsPolyBounded b) :
+lemma IsPolyBounded.add_one {b : ℕ → ℕ} (h : IsPolyBounded b) :
     IsPolyBounded (fun n => b n + 1) := by
   obtain ⟨a, k, hk⟩ := h
   exact ⟨a + 1, k, fun n => by have := hk n; nlinarith [Nat.one_le_pow k (n + 1) (by omega)]⟩
@@ -161,7 +161,7 @@ theorem IsPolyBounded.add_one {b : ℕ → ℕ} (h : IsPolyBounded b) :
 /-- Degree-2 growth: `Nat.pair` of two poly-bounded functions is poly-bounded (degree
 doubles). This is what makes a strategy-encoding function — a tree of `Nat.pair`s over `n`
 and constants — polynomial. -/
-theorem IsPolyBounded.pair {f g : ℕ → ℕ} (hf : IsPolyBounded f) (hg : IsPolyBounded g) :
+lemma IsPolyBounded.pair {f g : ℕ → ℕ} (hf : IsPolyBounded f) (hg : IsPolyBounded g) :
     IsPolyBounded (fun n => Nat.pair (f n) (g n)) := by
   obtain ⟨a₁, k₁, hk₁⟩ := hf
   obtain ⟨a₂, k₂, hk₂⟩ := hg
@@ -183,7 +183,7 @@ theorem IsPolyBounded.pair {f g : ℕ → ℕ} (hf : IsPolyBounded f) (hg : IsPo
 
 /-- **The bridge.** A poly-bounded `Fueled` fact for a trader's strategy-encoding function is
 exactly efficient computability (`def:ec`). -/
-theorem EfficientlyComputable.of_fueled {Tr : Trader} {code : Nat.Partrec.Code} {b : ℕ → ℕ}
+lemma EfficientlyComputable.of_fueled {Tr : Trader} {code : Nat.Partrec.Code} {b : ℕ → ℕ}
     (h : Fueled code (fun n => Encodable.encode (Tr.strat n).trades) b)
     (hb : IsPolyBounded b) : EfficientlyComputable Tr := by
   obtain ⟨a, k, hk⟩ := hb
@@ -202,7 +202,7 @@ def PolyFueled (c : Nat.Partrec.Code) (f : ℕ → ℕ) : Prop :=
 
 /-- A polynomially fueled function is primitive recursive.  Run its code at the explicit
 polynomial majorant of the bundled fuel bound; `Code.evaln` is itself primitive recursive. -/
-theorem PolyFueled.primrec {c : Nat.Partrec.Code} {f : ℕ → ℕ}
+lemma PolyFueled.primrec {c : Nat.Partrec.Code} {f : ℕ → ℕ}
     (h : PolyFueled c f) : Primrec f := by
   obtain ⟨b, hrun, -, a, k, hbound⟩ := h
   have hpow₂ : Primrec₂ ((· ^ ·) : ℕ → ℕ → ℕ) :=
@@ -222,14 +222,14 @@ theorem PolyFueled.primrec {c : Nat.Partrec.Code} {f : ℕ → ℕ}
     rw [(hrun.mono hbound) n]
     rfl
 
-theorem PolyFueled.const (K : ℕ) : PolyFueled (Nat.Partrec.Code.const K) (fun _ => K) :=
+lemma PolyFueled.const (K : ℕ) : PolyFueled (Nat.Partrec.Code.const K) (fun _ => K) :=
   ⟨fun n => n + K + 1, fueled_const K, ⟨K, 0, fun n => by simp⟩, IsPolyBounded.linear (K + 1)⟩
 
-theorem PolyFueled.id :
+lemma PolyFueled.id :
     PolyFueled (Nat.Partrec.Code.left.pair Nat.Partrec.Code.right) (fun n => n) :=
   ⟨fun n => n + 1, fueled_id, IsPolyBounded.linear 0, IsPolyBounded.linear 1⟩
 
-theorem PolyFueled.pair {cf cg : Nat.Partrec.Code} {f g : ℕ → ℕ}
+lemma PolyFueled.pair {cf cg : Nat.Partrec.Code} {f g : ℕ → ℕ}
     (hf : PolyFueled cf f) (hg : PolyFueled cg g) :
     PolyFueled (cf.pair cg) (fun n => Nat.pair (f n) (g n)) := by
   obtain ⟨bf, hff, hpff, hpbf⟩ := hf
@@ -238,13 +238,13 @@ theorem PolyFueled.pair {cf cg : Nat.Partrec.Code} {f g : ℕ → ℕ}
 
 /-- Composition with `succ` (`n ↦ f n + 1`) — the only `comp` a single-sentence trader's
 encoding needs (the outer `succ` of the `List` cons). -/
-theorem PolyFueled.succ_comp {cg : Nat.Partrec.Code} {g : ℕ → ℕ} (hg : PolyFueled cg g) :
+lemma PolyFueled.succ_comp {cg : Nat.Partrec.Code} {g : ℕ → ℕ} (hg : PolyFueled cg g) :
     PolyFueled (Nat.Partrec.Code.succ.comp cg) (fun n => g n + 1) := by
   obtain ⟨bg, hfg, hpfg, hpbg⟩ := hg
   exact ⟨fun n => max (bg n) (g n + 1), fueled_comp fueled_succ hfg, hpfg.add_one,
     hpbg.max hpfg.add_one⟩
 
-theorem EfficientlyComputable.of_polyFueled {Tr : Trader} {code : Nat.Partrec.Code}
+lemma EfficientlyComputable.of_polyFueled {Tr : Trader} {code : Nat.Partrec.Code}
     (h : PolyFueled code (fun n => Encodable.encode (Tr.strat n).trades)) :
     EfficientlyComputable Tr := by
   obtain ⟨b, hf, _, hpb⟩ := h
@@ -274,35 +274,35 @@ single-sentence responsive trader's efficient computability drops out via `ec_of
 /-- The per-day code of the template `t` is efficiently computable. -/
 def PolyEF (t : ℕ → EF) : Prop := ∃ c, PolyFueled c (fun n => (t n).toNat)
 
-theorem PolyEF.const (q : ℚ) : PolyEF (fun _ => EF.const q) :=
+lemma PolyEF.const (q : ℚ) : PolyEF (fun _ => EF.const q) :=
   ⟨_, PolyFueled.const (Nat.pair 0 (Encodable.encode q))⟩
 
-theorem PolyEF.price (φ : Sentence) : PolyEF (fun n => EF.price φ n) :=
+lemma PolyEF.price (φ : Sentence) : PolyEF (fun n => EF.price φ n) :=
   ⟨_, (PolyFueled.const 1).pair ((PolyFueled.const (Encodable.encode φ)).pair PolyFueled.id)⟩
 
-theorem PolyEF.add {a b : ℕ → EF} (ha : PolyEF a) (hb : PolyEF b) :
+lemma PolyEF.add {a b : ℕ → EF} (ha : PolyEF a) (hb : PolyEF b) :
     PolyEF (fun n => EF.add (a n) (b n)) := by
   obtain ⟨_, hca⟩ := ha; obtain ⟨_, hcb⟩ := hb
   exact ⟨_, (PolyFueled.const 2).pair (hca.pair hcb)⟩
 
-theorem PolyEF.mul {a b : ℕ → EF} (ha : PolyEF a) (hb : PolyEF b) :
+lemma PolyEF.mul {a b : ℕ → EF} (ha : PolyEF a) (hb : PolyEF b) :
     PolyEF (fun n => EF.mul (a n) (b n)) := by
   obtain ⟨_, hca⟩ := ha; obtain ⟨_, hcb⟩ := hb
   exact ⟨_, (PolyFueled.const 3).pair (hca.pair hcb)⟩
 
-theorem PolyEF.max {a b : ℕ → EF} (ha : PolyEF a) (hb : PolyEF b) :
+lemma PolyEF.max {a b : ℕ → EF} (ha : PolyEF a) (hb : PolyEF b) :
     PolyEF (fun n => EF.max (a n) (b n)) := by
   obtain ⟨_, hca⟩ := ha; obtain ⟨_, hcb⟩ := hb
   exact ⟨_, (PolyFueled.const 4).pair (hca.pair hcb)⟩
 
-theorem PolyEF.safeRecip {a : ℕ → EF} (ha : PolyEF a) :
+lemma PolyEF.safeRecip {a : ℕ → EF} (ha : PolyEF a) :
     PolyEF (fun n => EF.safeRecip (a n)) := by
   obtain ⟨_, hca⟩ := ha
   exact ⟨_, (PolyFueled.const 5).pair hca⟩
 
 /-- A single-sentence responsive trader `[(t n, φ)]` with a `PolyEF` coefficient is
 efficiently computable. -/
-theorem ec_of_polyEF {t : ℕ → EF} (φ : Sentence) (ht : PolyEF t) {Tr : Trader}
+lemma ec_of_polyEF {t : ℕ → EF} (φ : Sentence) (ht : PolyEF t) {Tr : Trader}
     (hTr : ∀ n, (Tr.strat n).trades = [(t n, φ)]) : EfficientlyComputable Tr := by
   obtain ⟨_, hct⟩ := ht
   have hpf := PolyFueled.succ_comp
@@ -312,14 +312,14 @@ theorem ec_of_polyEF {t : ℕ → EF} (φ : Sentence) (ht : PolyEF t) {Tr : Trad
   rw [heq] at hpf
   exact EfficientlyComputable.of_polyFueled hpf
 
-theorem priceTrader_ec (φ : Sentence) : EfficientlyComputable (priceTrader φ) :=
+lemma priceTrader_ec (φ : Sentence) : EfficientlyComputable (priceTrader φ) :=
   ec_of_polyEF φ (PolyEF.price φ) (fun _ => rfl)
 
 /-- A single-trade trader `[(t n, φ n)]` whose **sentence also varies** with `n` is efficiently
 computable, given that the sentence sequence's codes are poly-fueled (an *efficiently
 computable sequence of sentences*, the paper's `𝓔𝓒`-sequence). This is what lets the
 *sequence* form of Provability Induction certify its trader. -/
-theorem ec_of_polyEF_seq {t : ℕ → EF} {φ : ℕ → Sentence} {cφ : Nat.Partrec.Code}
+lemma ec_of_polyEF_seq {t : ℕ → EF} {φ : ℕ → Sentence} {cφ : Nat.Partrec.Code}
     (ht : PolyEF t) (hφ : PolyFueled cφ (fun n => Encodable.encode (φ n))) {Tr : Trader}
     (hTr : ∀ n, (Tr.strat n).trades = [(t n, φ n)]) : EfficientlyComputable Tr := by
   obtain ⟨_, hct⟩ := ht
@@ -357,7 +357,7 @@ def predAux : Nat.Partrec.Code := prec zero (comp left right)
 
 /-- One unrolling of the `prec` recursion for `predAux` at `pair 0 (m+1)`, given the recursive
 value `i` and the two guard bounds it produces. -/
-theorem predAux_step (k m i : ℕ) (hg : Nat.pair 0 (m+1) ≤ k)
+lemma predAux_step (k m i : ℕ) (hg : Nat.pair 0 (m+1) ≤ k)
     (hrec : evaln k predAux (Nat.pair 0 m) = some i)
     (hg2 : Nat.pair 0 (Nat.pair m i) ≤ k) :
     evaln (k+1) predAux (Nat.pair 0 (m+1)) = some m := by
@@ -371,7 +371,7 @@ theorem predAux_step (k m i : ℕ) (hg : Nat.pair 0 (m+1) ≤ k)
 /-- `predAux` computes `m ↦ pred m` on `pair 0 m` within a degree-4 fuel budget. The recursion
 depth is `m` (each `prec` level decrements `evaln`'s fuel by one), and the dominant guard is the
 `comp` call on `pair 0 (pair m (m-1))` — of size `≈ (2m)⁴` — hence the `32·(m+1)⁴` bound. -/
-theorem predAux_evaln : ∀ (m F : ℕ), 32 * (m+1)^4 < F →
+lemma predAux_evaln : ∀ (m F : ℕ), 32 * (m+1)^4 < F →
     evaln F predAux (Nat.pair 0 m) = some (m - 1) := by
   intro m
   induction m with
@@ -413,7 +413,7 @@ theorem predAux_evaln : ∀ (m F : ℕ), 32 * (m+1)^4 < F →
 def predc : Nat.Partrec.Code :=
   comp predAux (pair (Nat.Partrec.Code.const 0) (left.pair right))
 
-theorem predc_fueled : Fueled predc Nat.pred (fun n => 32*(n+1)^4 + n + 1) := by
+lemma predc_fueled : Fueled predc Nat.pred (fun n => 32*(n+1)^4 + n + 1) := by
   intro n
   have hgn : evaln (32*(n+1)^4+n+1) (pair (Nat.Partrec.Code.const 0) (left.pair right)) n
       = some (Nat.pair 0 n) :=
@@ -429,7 +429,7 @@ theorem predc_fueled : Fueled predc Nat.pred (fun n => 32*(n+1)^4 + n + 1) := by
 
 /-- **The predecessor combinator.** `predc` computes `Nat.pred` with polynomial (degree-4) fuel
 — the reusable e.c. primitive for day-`(n-1)` price references. -/
-theorem predc_polyFueled : PolyFueled predc Nat.pred := by
+lemma predc_polyFueled : PolyFueled predc Nat.pred := by
   refine ⟨fun n => 32*(n+1)^4 + n + 1, predc_fueled,
     ⟨1, 1, fun n => by simp only [pow_one, one_mul, Nat.pred_eq_sub_one]; omega⟩,
     ⟨33, 4, fun n => ?_⟩⟩
@@ -439,7 +439,7 @@ theorem predc_polyFueled : PolyFueled predc Nat.pred := by
 
 /-- The **previous-day** price feature `φ*⁽ⁿ⁻¹⁾` is an efficiently-computable template — the
 piece the convergence arbitrage trader needs beyond the single-day `PolyEF.price`. -/
-theorem PolyEF.pricePred (φ : Sentence) : PolyEF (fun n => EF.price φ (n-1)) := by
+lemma PolyEF.pricePred (φ : Sentence) : PolyEF (fun n => EF.price φ (n-1)) := by
   have h := (PolyFueled.const 1).pair
     ((PolyFueled.const (Encodable.encode φ)).pair predc_polyFueled)
   have heq : (fun n => Nat.pair 1 (Nat.pair (Encodable.encode φ) (Nat.pred n)))
@@ -479,20 +479,20 @@ def tupleEnc : List ℕ → ℕ
   | v :: vs => Nat.pair v (tupleEnc vs)
 
 /-- Iterating `right` once more on `pair v T'` peels the head: `right^{i+1}(pair v T') = right^i T'`. -/
-theorem rightIterFn_pair (v T' : ℕ) : ∀ i, rightIterFn (Nat.pair v T') (i + 1) = rightIterFn T' i := by
+lemma rightIterFn_pair (v T' : ℕ) : ∀ i, rightIterFn (Nat.pair v T') (i + 1) = rightIterFn T' i := by
   intro i
   induction i with
   | zero => simp [rightIterFn, Nat.unpair_pair]
   | succ i ih => rw [rightIterFn, ih]; rw [rightIterFn]
 
 /-- `right^i` on the all-zero tuple stays `0` (`unpair 0 = (0,0)`). -/
-theorem rightIterFn_zero (i : ℕ) : rightIterFn 0 i = 0 := by
+lemma rightIterFn_zero (i : ℕ) : rightIterFn 0 i = 0 := by
   induction i with
   | zero => rfl
   | succ i ih => rw [rightIterFn, ih]; rfl
 
 /-- **Selection correctness (pure spec).** `selFn (tupleEnc vs) i = vs.getD i 0`. -/
-theorem selFn_tupleEnc (vs : List ℕ) (i : ℕ) : selFn (tupleEnc vs) i = vs.getD i 0 := by
+lemma selFn_tupleEnc (vs : List ℕ) (i : ℕ) : selFn (tupleEnc vs) i = vs.getD i 0 := by
   induction vs generalizing i with
   | nil => simp only [tupleEnc, selFn, rightIterFn_zero, List.getD_nil]; rfl
   | cons v vs ih =>
@@ -509,25 +509,25 @@ def iterRight : Nat.Partrec.Code :=
 /-- Index selection code: `sel (pair T i) = left (right^i T) = selFn T i`. -/
 def sel : Nat.Partrec.Code := comp left iterRight
 
-theorem rightIterFn_le (T i : ℕ) : rightIterFn T i ≤ T := by
+lemma rightIterFn_le (T i : ℕ) : rightIterFn T i ≤ T := by
   induction i with
   | zero => exact le_rfl
   | succ i ih => exact le_trans (Nat.unpair_right_le _) ih
 
-theorem pair_le_pair_right' (a : ℕ) {b₁ b₂ : ℕ} (h : b₁ ≤ b₂) :
+lemma pair_le_pair_right' (a : ℕ) {b₁ b₂ : ℕ} (h : b₁ ≤ b₂) :
     Nat.pair a b₁ ≤ Nat.pair a b₂ := by
   rcases eq_or_lt_of_le h with rfl | h
   · exact le_rfl
   · exact le_of_lt (Nat.pair_lt_pair_right a h)
 
-theorem pair_le_pair_left' (b : ℕ) {a₁ a₂ : ℕ} (h : a₁ ≤ a₂) :
+lemma pair_le_pair_left' (b : ℕ) {a₁ a₂ : ℕ} (h : a₁ ≤ a₂) :
     Nat.pair a₁ b ≤ Nat.pair a₂ b := by
   rcases eq_or_lt_of_le h with rfl | h
   · exact le_rfl
   · exact le_of_lt (Nat.pair_lt_pair_left b h)
 
 /-- One unrolling of the `prec` recursion for `iterRight`. -/
-theorem iterRight_step (T i r k : ℕ)
+lemma iterRight_step (T i r k : ℕ)
     (hrec : evaln k iterRight (Nat.pair T i) = some r)
     (hg1 : Nat.pair T (i + 1) ≤ k) (hg2 : Nat.pair T (Nat.pair i r) ≤ k) :
     evaln (k + 1) iterRight (Nat.pair T (i + 1)) = some r.unpair.2 := by
@@ -542,7 +542,7 @@ theorem iterRight_step (T i r k : ℕ)
 /-- **`iterRight` computes `right^i` with a polynomial fuel budget** (one genuine `prec`
 recursion through the clocked interpreter; mirrors `predAux_evaln`). The dominant guard is
 `pair T (pair i T)`, and the recursion depth is `i`, so the budget is degree-2 in `pair T i`. -/
-theorem iterRight_evaln : ∀ (T i F : ℕ), Nat.pair T (Nat.pair i T) + i + 1 < F →
+lemma iterRight_evaln : ∀ (T i F : ℕ), Nat.pair T (Nat.pair i T) + i + 1 < F →
     evaln F iterRight (Nat.pair T i) = some (rightIterFn T i) := by
   intro T i
   induction i with
@@ -581,7 +581,7 @@ theorem iterRight_evaln : ∀ (T i F : ℕ), Nat.pair T (Nat.pair i T) + i + 1 <
 
 /-! ### `sel` as a poly-fueled function, and `IsPolyBounded` closure under `+`. -/
 
-theorem IsPolyBounded.add {b₁ b₂ : ℕ → ℕ} (h₁ : IsPolyBounded b₁) (h₂ : IsPolyBounded b₂) :
+lemma IsPolyBounded.add {b₁ b₂ : ℕ → ℕ} (h₁ : IsPolyBounded b₁) (h₂ : IsPolyBounded b₂) :
     IsPolyBounded (fun n => b₁ n + b₂ n) := by
   obtain ⟨a₁, k₁, hk₁⟩ := h₁; obtain ⟨a₂, k₂, hk₂⟩ := h₂
   refine ⟨a₁ + a₂, Max.max k₁ k₂, fun n => ?_⟩
@@ -592,14 +592,14 @@ theorem IsPolyBounded.add {b₁ b₂ : ℕ → ℕ} (h₁ : IsPolyBounded b₁) 
   have := hk₁ n; have := hk₂ n; nlinarith [e₁, e₂]
 
 /-- `m.unpair.1` is poly-bounded (it is `≤ m`). -/
-theorem isPolyBounded_fst : IsPolyBounded (fun m => m.unpair.1) :=
+lemma isPolyBounded_fst : IsPolyBounded (fun m => m.unpair.1) :=
   (IsPolyBounded.linear 0).of_le (fun m => by simpa using Nat.unpair_left_le m)
 
-theorem isPolyBounded_snd : IsPolyBounded (fun m => m.unpair.2) :=
+lemma isPolyBounded_snd : IsPolyBounded (fun m => m.unpair.2) :=
   (IsPolyBounded.linear 0).of_le (fun m => by simpa using Nat.unpair_right_le m)
 
 /-- `iterRight` as a `Fueled` fact on arbitrary input `m` (read as `pair m.1 m.2`). -/
-theorem iterRight_fueled :
+lemma iterRight_fueled :
     Fueled iterRight (fun m => rightIterFn m.unpair.1 m.unpair.2)
       (fun m => Nat.pair m.unpair.1 (Nat.pair m.unpair.2 m.unpair.1) + m.unpair.2 + 2) := by
   intro m
@@ -610,20 +610,20 @@ theorem iterRight_fueled :
   rw [← hm]
   exact iterRight_evaln T i _ (by omega)
 
-theorem isPolyBounded_iterRight_fuel :
+lemma isPolyBounded_iterRight_fuel :
     IsPolyBounded (fun m => Nat.pair m.unpair.1 (Nat.pair m.unpair.2 m.unpair.1) + m.unpair.2 + 2) :=
   ((isPolyBounded_fst.pair (isPolyBounded_snd.pair isPolyBounded_fst)).add
     isPolyBounded_snd).add (IsPolyBounded.linear 2 |>.of_le (fun _ => by omega))
 
 /-- **`sel` computes `selFn` with polynomial fuel.** `sel = comp left iterRight`, so its output
 is `(right^i T).unpair.1 = selFn T i` and its fuel is the `iterRight` budget plus one. -/
-theorem sel_fueled :
+lemma sel_fueled :
     Fueled sel (fun m => selFn m.unpair.1 m.unpair.2)
       (fun m => Max.max (Nat.pair m.unpair.1 (Nat.pair m.unpair.2 m.unpair.1) + m.unpair.2 + 2)
         (rightIterFn m.unpair.1 m.unpair.2 + 1)) :=
   fueled_comp fueled_left iterRight_fueled
 
-theorem isPolyBounded_sel_fuel :
+lemma isPolyBounded_sel_fuel :
     IsPolyBounded (fun m => Max.max
       (Nat.pair m.unpair.1 (Nat.pair m.unpair.2 m.unpair.1) + m.unpair.2 + 2)
       (rightIterFn m.unpair.1 m.unpair.2 + 1)) :=
@@ -632,7 +632,7 @@ theorem isPolyBounded_sel_fuel :
 
 /-- Composition of poly-bounded functions is poly-bounded — the missing closure needed to
 compose `sel` with the tuple code. -/
-theorem IsPolyBounded.comp {b g : ℕ → ℕ} (hb : IsPolyBounded b) (hg : IsPolyBounded g) :
+lemma IsPolyBounded.comp {b g : ℕ → ℕ} (hb : IsPolyBounded b) (hg : IsPolyBounded g) :
     IsPolyBounded (fun n => b (g n)) := by
   obtain ⟨a, k, hk⟩ := hb
   obtain ⟨a', k', hk'⟩ := hg
@@ -649,15 +649,15 @@ theorem IsPolyBounded.comp {b g : ℕ → ℕ} (hb : IsPolyBounded b) (hg : IsPo
     _ ≤ a * (2 * (a' + 1)) ^ k * (n + 1) ^ (k * k') + a * (2 * (a' + 1)) ^ k := by
         gcongr; exact Nat.le_mul_of_pos_right a hpow
 
-theorem PolyFueled.left : PolyFueled Nat.Partrec.Code.left (fun m => m.unpair.1) :=
+lemma PolyFueled.left : PolyFueled Nat.Partrec.Code.left (fun m => m.unpair.1) :=
   ⟨fun n => n + 1, fueled_left, isPolyBounded_fst, IsPolyBounded.linear 1⟩
 
-theorem PolyFueled.right : PolyFueled Nat.Partrec.Code.right (fun m => m.unpair.2) :=
+lemma PolyFueled.right : PolyFueled Nat.Partrec.Code.right (fun m => m.unpair.2) :=
   ⟨fun n => n + 1, fueled_right, isPolyBounded_snd, IsPolyBounded.linear 1⟩
 
 /-- **`PolyFueled` is closed under composition.** Needs `IsPolyBounded.comp` for both the
 output size `f ∘ g` and the fuel `bf ∘ g`. -/
-theorem PolyFueled.comp {cf cg : Nat.Partrec.Code} {f g : ℕ → ℕ}
+lemma PolyFueled.comp {cf cg : Nat.Partrec.Code} {f g : ℕ → ℕ}
     (hf : PolyFueled cf f) (hg : PolyFueled cg g) :
     PolyFueled (cf.comp cg) (fun n => f (g n)) := by
   obtain ⟨bf, hff, hpff, hpbf⟩ := hf
@@ -666,7 +666,7 @@ theorem PolyFueled.comp {cf cg : Nat.Partrec.Code} {f g : ℕ → ℕ}
     hpff.comp hpfg, hpbg.max (hpbf.comp hpfg)⟩
 
 /-- `sel` bundled as `PolyFueled`. -/
-theorem sel_polyFueled : PolyFueled sel (fun m => selFn m.unpair.1 m.unpair.2) :=
+lemma sel_polyFueled : PolyFueled sel (fun m => selFn m.unpair.1 m.unpair.2) :=
   ⟨_, sel_fueled, (isPolyBounded_fst.of_le (fun _ => le_trans (Nat.unpair_left_le _)
     (rightIterFn_le _ _))), isPolyBounded_sel_fuel⟩
 
@@ -683,14 +683,14 @@ def ifzSel : Nat.Partrec.Code := Nat.Partrec.Code.prec left (comp right left)
 /-- Spec of `ifzSel`: pick `T.unpair.1` (`i = 0`) or `T.unpair.2` (`i > 0`). -/
 def ifzSelFn (T i : ℕ) : ℕ := if i = 0 then T.unpair.1 else T.unpair.2
 
-theorem ifzSelFn_le (T i : ℕ) : ifzSelFn T i ≤ T := by
+lemma ifzSelFn_le (T i : ℕ) : ifzSelFn T i ≤ T := by
   rw [ifzSelFn]; split
   · exact Nat.unpair_left_le T
   · exact Nat.unpair_right_le T
 
 /-- One unrolling of the `prec` recursion for `ifzSel` (the `succ` step returns `T.unpair.2`
 regardless of the recursive value — `cg = comp right left` ignores it). -/
-theorem ifzSel_step (T i r k : ℕ)
+lemma ifzSel_step (T i r k : ℕ)
     (hrec : evaln k ifzSel (Nat.pair T i) = some r)
     (hg1 : Nat.pair T (i + 1) ≤ k) (hg2 : Nat.pair T (Nat.pair i r) ≤ k) :
     evaln (k + 1) ifzSel (Nat.pair T (i + 1)) = some T.unpair.2 := by
@@ -703,7 +703,7 @@ theorem ifzSel_step (T i r k : ℕ)
 
 /-- **`ifzSel` computes the zero-test selection with polynomial fuel** (mirrors
 `iterRight_evaln`: same `prec`-with-projections shape, same degree-2 budget). -/
-theorem ifzSel_evaln : ∀ (T i F : ℕ), Nat.pair T (Nat.pair i T) + i + 1 < F →
+lemma ifzSel_evaln : ∀ (T i F : ℕ), Nat.pair T (Nat.pair i T) + i + 1 < F →
     evaln F ifzSel (Nat.pair T i) = some (ifzSelFn T i) := by
   intro T i
   induction i with
@@ -738,7 +738,7 @@ theorem ifzSel_evaln : ∀ (T i F : ℕ), Nat.pair T (Nat.pair i T) + i + 1 < F 
           pair_le_pair_right' T hp
         omega
 
-theorem ifzSel_fueled :
+lemma ifzSel_fueled :
     Fueled ifzSel (fun m => ifzSelFn m.unpair.1 m.unpair.2)
       (fun m => Nat.pair m.unpair.1 (Nat.pair m.unpair.2 m.unpair.1) + m.unpair.2 + 2) := by
   intro m
@@ -749,7 +749,7 @@ theorem ifzSel_fueled :
   rw [← hm]
   exact ifzSel_evaln T i _ (by omega)
 
-theorem ifzSel_polyFueled : PolyFueled ifzSel (fun m => ifzSelFn m.unpair.1 m.unpair.2) :=
+lemma ifzSel_polyFueled : PolyFueled ifzSel (fun m => ifzSelFn m.unpair.1 m.unpair.2) :=
   ⟨_, ifzSel_fueled,
     isPolyBounded_fst.of_le (fun m => ifzSelFn_le m.unpair.1 m.unpair.2),
     isPolyBounded_iterRight_fuel⟩
@@ -764,10 +764,10 @@ on `⟨n, i⟩` it builds the tuple `⟨t₀ n, …⟩` (`cV`), then selects ind
 def PolyFueledTuple (ts : List (ℕ → ℕ)) : Prop :=
   ∃ c, PolyFueled c (fun n => tupleEnc (ts.map (fun t => t n)))
 
-theorem PolyFueledTuple.nil : PolyFueledTuple [] :=
+lemma PolyFueledTuple.nil : PolyFueledTuple [] :=
   ⟨Nat.Partrec.Code.const 0, by simpa [tupleEnc] using PolyFueled.const 0⟩
 
-theorem PolyFueledTuple.cons {t : ℕ → ℕ} {ts : List (ℕ → ℕ)} {ct : Nat.Partrec.Code}
+lemma PolyFueledTuple.cons {t : ℕ → ℕ} {ts : List (ℕ → ℕ)} {ct : Nat.Partrec.Code}
     (ht : PolyFueled ct t) (hts : PolyFueledTuple ts) : PolyFueledTuple (t :: ts) := by
   obtain ⟨cs, hcs⟩ := hts
   refine ⟨ct.pair cs, ?_⟩
@@ -778,7 +778,7 @@ theorem PolyFueledTuple.cons {t : ℕ → ℕ} {ts : List (ℕ → ℕ)} {ct : N
 
 /-- Exact canonical token emitters instantiate the bounded-emulator definition of efficient
 computability.  This is the bridge used by all concrete trader compilers below. -/
-theorem ecTok_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
+lemma ecTok_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
     (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
     (hlength : ∀ n, evaln (a * (n + 1) ^ k + a) lengthCode n =
       some (raw n).length)
@@ -813,7 +813,7 @@ theorem ecTok_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
 /-- Exact canonical token emitters instantiate the bounded-emulator definition of efficient
 computability.  This specialization additionally proves that canonical decoding recovers the
 supplied trader. -/
-theorem ecTok_of_exactEmission (Tr : Trader)
+lemma ecTok_of_exactEmission (Tr : Trader)
     (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
     (hlength : ∀ n, evaln (a * (n + 1) ^ k + a) lengthCode n =
       some (serializeTrades (Tr.strat n).trades).length)
@@ -855,7 +855,7 @@ theorem ecTok_of_exactEmission (Tr : Trader)
 
 /-- **The token-emission re-certification lemma.** If the day-`n` strategy serializes to a
 fixed-length list `ts.map (· n)` of poly-fueled tokens, the trader is `EfficientlyComputableTok`. -/
-theorem ecTok_of_tokenList (Tr : Trader) (ts : List (ℕ → ℕ)) (hts : PolyFueledTuple ts)
+lemma ecTok_of_tokenList (Tr : Trader) (ts : List (ℕ → ℕ)) (hts : PolyFueledTuple ts)
     (hTr : ∀ n, serializeTrades (Tr.strat n).trades = ts.map (fun t => t n)) :
     EfficientlyComputableTok Tr := by
   obtain ⟨cV, hV⟩ := hts
@@ -933,7 +933,7 @@ theorem ecTok_of_tokenList (Tr : Trader) (ts : List (ℕ → ℕ)) (hts : PolyFu
 responsive trader `priceTrader φ` — whose day-`n` stream `[0, ⌜φ⌝, n, 6, ⌜φ⌝]` contains the
 *varying* day-index token `n` — is `EfficientlyComputableTok`. The `n` token is `PolyFueled.id`;
 the rest are constants. This is the template the property-file re-certifications follow. -/
-theorem priceTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (priceTrader φ) := by
+lemma priceTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (priceTrader φ) := by
   refine ecTok_of_tokenList _ [fun _ => 0, fun _ => Encodable.encode φ, fun n => n,
     fun _ => 6, fun _ => Encodable.encode φ] ?_ ?_
   · exact PolyFueledTuple.cons (PolyFueled.const 0)
@@ -954,7 +954,7 @@ re-certification mirrors the trader's `serialize` tree via combinators, never a 
 def PolyTokenStream (s : ℕ → List ℕ) : Prop :=
   ∃ ts : List (ℕ → ℕ), (∀ n, s n = ts.map (fun t => t n)) ∧ (∀ t ∈ ts, ∃ c, PolyFueled c t)
 
-theorem PolyFueledTuple.of_forall {ts : List (ℕ → ℕ)} (h : ∀ t ∈ ts, ∃ c, PolyFueled c t) :
+lemma PolyFueledTuple.of_forall {ts : List (ℕ → ℕ)} (h : ∀ t ∈ ts, ∃ c, PolyFueled c t) :
     PolyFueledTuple ts := by
   induction ts with
   | nil => exact PolyFueledTuple.nil
@@ -962,10 +962,10 @@ theorem PolyFueledTuple.of_forall {ts : List (ℕ → ℕ)} (h : ∀ t ∈ ts, �
       obtain ⟨ct, hct⟩ := h t (List.mem_cons_self)
       exact PolyFueledTuple.cons hct (ih (fun t' ht' => h t' (List.mem_cons_of_mem _ ht')))
 
-theorem PolyTokenStream.nil : PolyTokenStream (fun _ => []) :=
+lemma PolyTokenStream.nil : PolyTokenStream (fun _ => []) :=
   ⟨[], fun _ => rfl, fun _ h => absurd h (List.not_mem_nil)⟩
 
-theorem PolyTokenStream.append {a b : ℕ → List ℕ} (ha : PolyTokenStream a)
+lemma PolyTokenStream.append {a b : ℕ → List ℕ} (ha : PolyTokenStream a)
     (hb : PolyTokenStream b) : PolyTokenStream (fun n => a n ++ b n) := by
   obtain ⟨tsa, hmapa, hpfa⟩ := ha
   obtain ⟨tsb, hmapb, hpfb⟩ := hb
@@ -976,21 +976,21 @@ theorem PolyTokenStream.append {a b : ℕ → List ℕ} (ha : PolyTokenStream a)
     · exact hpfa t h
     · exact hpfb t h
 
-theorem PolyTokenStream.const (k : ℕ) : PolyTokenStream (fun _ => [k]) := by
+lemma PolyTokenStream.const (k : ℕ) : PolyTokenStream (fun _ => [k]) := by
   refine ⟨[fun _ => k], fun _ => rfl, fun t ht => ?_⟩
   simp only [List.mem_singleton] at ht; subst ht; exact ⟨_, PolyFueled.const k⟩
 
-theorem PolyTokenStream.idTok : PolyTokenStream (fun n => [n]) := by
+lemma PolyTokenStream.idTok : PolyTokenStream (fun n => [n]) := by
   refine ⟨[fun n => n], fun _ => rfl, fun t ht => ?_⟩
   simp only [List.mem_singleton] at ht; subst ht; exact ⟨_, PolyFueled.id⟩
 
-theorem PolyTokenStream.polyTok {c : Nat.Partrec.Code} {f : ℕ → ℕ} (h : PolyFueled c f) :
+lemma PolyTokenStream.polyTok {c : Nat.Partrec.Code} {f : ℕ → ℕ} (h : PolyFueled c f) :
     PolyTokenStream (fun n => [f n]) := by
   refine ⟨[f], fun _ => rfl, fun t ht => ?_⟩
   simp only [List.mem_singleton] at ht; subst ht; exact ⟨c, h⟩
 
 /-- Efficient computability from a compositional stream proof. -/
-theorem ecTok_of_stream (Tr : Trader)
+lemma ecTok_of_stream (Tr : Trader)
     (h : PolyTokenStream (fun n => serializeTrades (Tr.strat n).trades)) :
     EfficientlyComputableTok Tr := by
   obtain ⟨ts, hmap, hpf⟩ := h
@@ -998,7 +998,7 @@ theorem ecTok_of_stream (Tr : Trader)
 
 /-! #### Per-constructor `serialize` stream lemmas (family level). -/
 
-theorem PolyTokenStream.serialize_const (q : ℚ) :
+lemma PolyTokenStream.serialize_const (q : ℚ) :
     PolyTokenStream (fun _ => (EF.const q).serialize) := by
   have : (fun _ : ℕ => (EF.const q).serialize) = (fun _ => [1] ++ [Encodable.encode q]) := by
     funext n; simp [EF.serialize]
@@ -1015,20 +1015,20 @@ these values as poly-fueled arithmetic in `j` (`dd:fuel`). -/
 theorem encode_rat_eq (q : ℚ) :
     Encodable.encode q = Nat.pair (Encodable.encode q.num) q.den := rfl
 
-theorem encode_int_natCast (n : ℕ) : Encodable.encode ((n : ℤ)) = 2 * n := rfl
+lemma encode_int_natCast (n : ℕ) : Encodable.encode ((n : ℤ)) = 2 * n := rfl
 
-theorem encode_rat_natCast (n : ℕ) :
+lemma encode_rat_natCast (n : ℕ) :
     Encodable.encode ((n : ℚ)) = Nat.pair (2 * n) 1 := by
   rw [encode_rat_eq, Rat.num_natCast, Rat.den_natCast, encode_int_natCast]
 
-theorem encode_rat_inv_natCast {n : ℕ} (hn : 0 < n) :
+lemma encode_rat_inv_natCast {n : ℕ} (hn : 0 < n) :
     Encodable.encode ((n : ℚ)⁻¹) = Nat.pair 2 n := by
   rw [encode_rat_eq, Rat.inv_natCast_num_of_pos hn, Rat.inv_natCast_den_of_pos hn]
   rfl
 
 /-- Token stream of a **varying**-constant family: `[1, ⌜q(m)⌝]` with the encoded
 value poly-fueled. The fixed-constant `serialize_const` is the special case. -/
-theorem PolyTokenStream.serialize_const_comp {qf : ℕ → ℚ}
+lemma PolyTokenStream.serialize_const_comp {qf : ℕ → ℚ}
     (h : ∃ c, PolyFueled c (fun m => Encodable.encode (qf m))) :
     PolyTokenStream (fun m => (EF.const (qf m)).serialize) := by
   obtain ⟨c, hc⟩ := h
@@ -1038,14 +1038,14 @@ theorem PolyTokenStream.serialize_const_comp {qf : ℕ → ℚ}
   rw [heq]
   exact (PolyTokenStream.const 1).append (PolyTokenStream.polyTok hc)
 
-theorem PolyTokenStream.serialize_price (φ : Sentence) :
+lemma PolyTokenStream.serialize_price (φ : Sentence) :
     PolyTokenStream (fun n => (EF.price φ n).serialize) := by
   have : (fun n => (EF.price φ n).serialize)
       = (fun n => [0] ++ ([Encodable.encode φ] ++ [n])) := by funext n; simp [EF.serialize]
   rw [this]
   exact (PolyTokenStream.const 0).append ((PolyTokenStream.const _).append PolyTokenStream.idTok)
 
-theorem PolyTokenStream.serialize_add {A B : ℕ → EF}
+lemma PolyTokenStream.serialize_add {A B : ℕ → EF}
     (hA : PolyTokenStream (fun n => (A n).serialize))
     (hB : PolyTokenStream (fun n => (B n).serialize)) :
     PolyTokenStream (fun n => (EF.add (A n) (B n)).serialize) := by
@@ -1053,7 +1053,7 @@ theorem PolyTokenStream.serialize_add {A B : ℕ → EF}
       = (fun n => ((A n).serialize ++ (B n).serialize) ++ [2]) := by funext n; simp [EF.serialize]
   rw [this]; exact (hA.append hB).append (PolyTokenStream.const 2)
 
-theorem PolyTokenStream.serialize_mul {A B : ℕ → EF}
+lemma PolyTokenStream.serialize_mul {A B : ℕ → EF}
     (hA : PolyTokenStream (fun n => (A n).serialize))
     (hB : PolyTokenStream (fun n => (B n).serialize)) :
     PolyTokenStream (fun n => (EF.mul (A n) (B n)).serialize) := by
@@ -1061,7 +1061,7 @@ theorem PolyTokenStream.serialize_mul {A B : ℕ → EF}
       = (fun n => ((A n).serialize ++ (B n).serialize) ++ [3]) := by funext n; simp [EF.serialize]
   rw [this]; exact (hA.append hB).append (PolyTokenStream.const 3)
 
-theorem PolyTokenStream.serialize_max {A B : ℕ → EF}
+lemma PolyTokenStream.serialize_max {A B : ℕ → EF}
     (hA : PolyTokenStream (fun n => (A n).serialize))
     (hB : PolyTokenStream (fun n => (B n).serialize)) :
     PolyTokenStream (fun n => (EF.max (A n) (B n)).serialize) := by
@@ -1072,7 +1072,7 @@ theorem PolyTokenStream.serialize_max {A B : ℕ → EF}
 /-- The trade frame: `serializeTrades ((e,φ)::rest) = e.serialize ++ [6] ++ [⌜φ⌝] ++ …`. The
 sentence code is supplied as a poly-fueled token (constant for fixed `φ`, `PolyFueled`-bounded
 for a varying `φ n`). -/
-theorem PolyTokenStream.trades_cons {e : ℕ → EF} {φ : ℕ → Sentence}
+lemma PolyTokenStream.trades_cons {e : ℕ → EF} {φ : ℕ → Sentence}
     {rest : ℕ → List (EF × Sentence)} {cφ : Nat.Partrec.Code}
     (he : PolyTokenStream (fun n => (e n).serialize))
     (hφ : PolyFueled cφ (fun n => Encodable.encode (φ n)))
@@ -1084,7 +1084,7 @@ theorem PolyTokenStream.trades_cons {e : ℕ → EF} {φ : ℕ → Sentence}
   rw [this]
   exact ((he.append (PolyTokenStream.const 6)).append (PolyTokenStream.polyTok hφ)).append hrest
 
-theorem PolyTokenStream.trades_nil : PolyTokenStream (fun _ => serializeTrades []) := by
+lemma PolyTokenStream.trades_nil : PolyTokenStream (fun _ => serializeTrades []) := by
   simpa [serializeTrades] using PolyTokenStream.nil
 
 /-! ### `subc` — truncated subtraction with polynomial fuel.
@@ -1100,7 +1100,7 @@ def subAux : Nat.Partrec.Code :=
 
 /-- The `comp predc (comp right right)` recursive step evaluates to `pred prev` when the fuel
 covers `predc`'s degree-4 budget on `prev`. -/
-theorem subAux_cg_eval (a b prev k : ℕ) (hg2 : Nat.pair a (Nat.pair b prev) ≤ k)
+lemma subAux_cg_eval (a b prev k : ℕ) (hg2 : Nat.pair a (Nat.pair b prev) ≤ k)
     (hpc : 32 * (prev + 1) ^ 4 + prev + 1 ≤ k) :
     evaln (k + 1) (comp predc (comp right right)) (Nat.pair a (Nat.pair b prev))
       = some (Nat.pred prev) := by
@@ -1112,7 +1112,7 @@ theorem subAux_cg_eval (a b prev k : ℕ) (hg2 : Nat.pair a (Nat.pair b prev) �
   exact evaln_mono (by omega) key
 
 /-- One unrolling of the `prec` recursion for `subAux`. -/
-theorem subAux_step (a b prev k : ℕ)
+lemma subAux_step (a b prev k : ℕ)
     (hg1 : Nat.pair a (b + 1) ≤ k)
     (hrec : evaln k subAux (Nat.pair a b) = some prev)
     (hcg : evaln (k + 1) (comp predc (comp right right))
@@ -1125,7 +1125,7 @@ theorem subAux_step (a b prev k : ℕ)
 /-- **`subc` computes truncated subtraction with a polynomial fuel budget.** Degree-4 (from
 `predc`) times the recursion depth `b`; the explicit bound `32(a+1)⁴ + pair a (pair b a) + a +
 b + 8` dominates every level's `predc` call and guard. -/
-theorem subAux_evaln : ∀ (a b F : ℕ),
+lemma subAux_evaln : ∀ (a b F : ℕ),
     32 * (a + 1) ^ 4 + Nat.pair a (Nat.pair b a) + a + b + 8 < F →
     evaln F subAux (Nat.pair a b) = some (a - b) := by
   intro a b
@@ -1169,7 +1169,7 @@ theorem subAux_evaln : ∀ (a b F : ℕ),
 /-- The one-argument-pair truncated subtraction code and its `Fueled`/`PolyFueled` bundle. -/
 def subc : Nat.Partrec.Code := subAux
 
-theorem subc_fueled :
+lemma subc_fueled :
     Fueled subc (fun m => m.unpair.1 - m.unpair.2)
       (fun m => 32 * (m.unpair.1 + 1) ^ 4 +
         Nat.pair m.unpair.1 (Nat.pair m.unpair.2 m.unpair.1) + m.unpair.1 + m.unpair.2 + 9) := by
@@ -1181,7 +1181,7 @@ theorem subc_fueled :
   rw [← hm, subc]
   exact subAux_evaln a b _ (by omega)
 
-theorem subc_polyFueled : PolyFueled subc (fun m => m.unpair.1 - m.unpair.2) := by
+lemma subc_polyFueled : PolyFueled subc (fun m => m.unpair.1 - m.unpair.2) := by
   refine ⟨_, subc_fueled, isPolyBounded_fst.of_le (fun m => Nat.sub_le _ _), ?_⟩
   have h4 : IsPolyBounded (fun m => 32 * (m.unpair.1 + 1) ^ 4) :=
     (show IsPolyBounded (fun x => 32 * (x + 1) ^ 4) from ⟨32, 4, fun _ => Nat.le_add_right _ _⟩).comp
@@ -1203,19 +1203,19 @@ bounded. Every further primitive-recursive combinator (`addc`, `mulc`, `divmodc`
 corollary, with no new `evaln` reasoning. -/
 
 /-- Transport a `PolyFueled` fact along a pointwise-equal spec. -/
-theorem PolyFueled.of_eq {c : Nat.Partrec.Code} {f f' : ℕ → ℕ}
+lemma PolyFueled.of_eq {c : Nat.Partrec.Code} {f f' : ℕ → ℕ}
     (h : PolyFueled c f) (he : ∀ n, f n = f' n) : PolyFueled c f' := by
   rwa [funext he] at h
 
 /-- Base unrolling of `evaln`'s `prec` clause. -/
-theorem evaln_prec_zero {cf cg : Nat.Partrec.Code} {k a v : ℕ}
+lemma evaln_prec_zero {cf cg : Nat.Partrec.Code} {k a v : ℕ}
     (hg : Nat.pair a 0 ≤ k) (hcf : evaln (k + 1) cf a = some v) :
     evaln (k + 1) (Nat.Partrec.Code.prec cf cg) (Nat.pair a 0) = some v := by
   rw [evaln]
   simp [Nat.unpaired, hg, hcf]
 
 /-- Step unrolling of `evaln`'s `prec` clause. -/
-theorem evaln_prec_succ {cf cg : Nat.Partrec.Code} {k a m prev v : ℕ}
+lemma evaln_prec_succ {cf cg : Nat.Partrec.Code} {k a m prev v : ℕ}
     (hg1 : Nat.pair a (m + 1) ≤ k)
     (hrec : evaln k (Nat.Partrec.Code.prec cf cg) (Nat.pair a m) = some prev)
     (hcg : evaln (k + 1) cg (Nat.pair a (Nat.pair m prev)) = some v) :
@@ -1228,7 +1228,7 @@ primitive recursion `st a 0 = f a`, `st a (j+1) = g ⟨a, j, st a j⟩`, then `p
 computes `st a i` within any fuel exceeding `B + i`, where `B` dominates the base budget,
 every level's step budget, and the input (each level costs one fuel decrement plus its
 step-code budget, all of which `B` majorizes). -/
-theorem evaln_prec {cf cg : Nat.Partrec.Code} {f g bf bg : ℕ → ℕ}
+lemma evaln_prec {cf cg : Nat.Partrec.Code} {f g bf bg : ℕ → ℕ}
     (hf : Fueled cf f bf) (hg : Fueled cg g bg)
     {st : ℕ → ℕ → ℕ} (h0 : ∀ a, st a 0 = f a)
     (hS : ∀ a j, st a (j + 1) = g (Nat.pair a (Nat.pair j (st a j))))
@@ -1255,14 +1255,14 @@ theorem evaln_prec {cf cg : Nat.Partrec.Code} {f g bf bg : ℕ → ℕ}
       exact evaln_prec_succ (by omega) hrec hcg
 
 /-- Monotonicity of the `def:ec` polynomial normal form. -/
-private theorem poly_mono {a k x y : ℕ} (h : x ≤ y) :
+private lemma poly_mono {a k x y : ℕ} (h : x ≤ y) :
     a * (x + 1) ^ k + a ≤ a * (y + 1) ^ k + a := by
   gcongr
 
 /-- **`PolyFueled` is closed under `Code.prec`** whenever the iterated state is polynomially
 bounded in the input `⟨a, i⟩`. The budget dominates every level `j ≤ i` at once, by
 monotonicity of `Nat.pair` and of the polynomial bounds. -/
-theorem PolyFueled.prec {cf cg : Nat.Partrec.Code} {f g : ℕ → ℕ}
+lemma PolyFueled.prec {cf cg : Nat.Partrec.Code} {f g : ℕ → ℕ}
     (hf : PolyFueled cf f) (hg : PolyFueled cg g)
     {st : ℕ → ℕ → ℕ} (h0 : ∀ a, st a 0 = f a)
     (hS : ∀ a j, st a (j + 1) = g (Nat.pair a (Nat.pair j (st a j))))
@@ -1321,27 +1321,27 @@ The `prec` closure makes the arithmetic combinators the block-emission tooling n
 each is a primitive recursion with a polynomially-bounded state. -/
 
 /-- Addition: `addc ⟨a, b⟩ = a + b`, as the `prec` iterate of `succ`. -/
-theorem addc_polyFueled : ∃ c, PolyFueled c (fun m => m.unpair.1 + m.unpair.2) :=
+lemma addc_polyFueled : ∃ c, PolyFueled c (fun m => m.unpair.1 + m.unpair.2) :=
   ⟨_, PolyFueled.prec PolyFueled.id ((PolyFueled.right.comp PolyFueled.right).succ_comp)
     (st := fun a j => a + j) (fun _ => rfl)
     (fun a j => by simp only [Nat.unpair_pair]; omega)
     (isPolyBounded_fst.add isPolyBounded_snd)⟩
 
 /-- Adding a constant: `n ↦ f n + K`, a fixed `succ` chain over `c`. -/
-theorem PolyFueled.addConst {c : Nat.Partrec.Code} {f : ℕ → ℕ} (h : PolyFueled c f) :
+lemma PolyFueled.addConst {c : Nat.Partrec.Code} {f : ℕ → ℕ} (h : PolyFueled c f) :
     ∀ K : ℕ, ∃ c', PolyFueled c' (fun n => f n + K)
   | 0 => ⟨c, h⟩
   | (K + 1) => by
       obtain ⟨c', h'⟩ := h.addConst K
       exact ⟨_, h'.succ_comp.of_eq (fun n => by omega)⟩
 
-theorem isPolyBounded_mul_const (W : ℕ) : IsPolyBounded (fun x => x * W) :=
+lemma isPolyBounded_mul_const (W : ℕ) : IsPolyBounded (fun x => x * W) :=
   ⟨W, 1, fun n => by
     show n * W ≤ W * (n + 1) ^ 1 + W
     rw [pow_one, Nat.mul_add, Nat.mul_comm W n]; omega⟩
 
 /-- Multiplication by a constant: `n ↦ n * W`, as the `prec` iterate of `+ W`. -/
-theorem mulc_polyFueled (W : ℕ) : ∃ c, PolyFueled c (fun n => n * W) := by
+lemma mulc_polyFueled (W : ℕ) : ∃ c, PolyFueled c (fun n => n * W) := by
   obtain ⟨ca, hca⟩ := (PolyFueled.right.comp PolyFueled.right).addConst W
   have hstW : IsPolyBounded (fun m => m.unpair.2 * W) :=
     (isPolyBounded_mul_const W).comp isPolyBounded_snd
@@ -1352,7 +1352,7 @@ theorem mulc_polyFueled (W : ℕ) : ∃ c, PolyFueled c (fun n => n * W) := by
     (fun n => by simp only [Nat.unpair_pair])⟩
 
 /-- Uniqueness of division with remainder, in rewrite-ready form. -/
-private theorem div_mod_of_decomp {w q s x : ℕ} (hw : 0 < w) (hx : x = w * q + s)
+private lemma div_mod_of_decomp {w q s x : ℕ} (hw : 0 < w) (hx : x = w * q + s)
     (hs : s < w) : x / w = q ∧ x % w = s := by
   subst hx
   exact ⟨by rw [Nat.mul_add_div hw, Nat.div_eq_of_lt hs, Nat.add_zero],
@@ -1363,7 +1363,7 @@ private theorem div_mod_of_decomp {w q s x : ℕ} (hw : 0 < w) (hx : x = w * q +
 (`⟨q+1, 0⟩`) when the remainder is about to reach `w`, else increments the remainder —
 the wrap test is `(w-1) − r` via `subc`, dispatched by `ifzSel`. This is the block-index /
 block-offset primitive for repeating-block token emission (`def:ec`). -/
-theorem divmodc_polyFueled (w : ℕ) (hw : 0 < w) :
+lemma divmodc_polyFueled (w : ℕ) (hw : 0 < w) :
     ∃ c, PolyFueled c (fun n => Nat.pair (n / w) (n % w)) := by
   -- Step pieces, on the `prec` state `x = ⟨a, j, ⟨q, r⟩⟩`.
   have prevPF := PolyFueled.right.comp PolyFueled.right
@@ -1402,7 +1402,7 @@ theorem divmodc_polyFueled (w : ℕ) (hw : 0 < w) :
 /-- **Runtime multiplication**: `⟨a, b⟩ ↦ a · b`, the `prec` iterate of `+ a`. (`mulc`
 multiplies by a baked-in constant; the ladder/bundle stream lengths are runtime
 products `cnt n · width n`.) -/
-theorem mul_polyFueled : ∃ c, PolyFueled c (fun m => m.unpair.1 * m.unpair.2) := by
+lemma mul_polyFueled : ∃ c, PolyFueled c (fun m => m.unpair.1 * m.unpair.2) := by
   obtain ⟨cad, had⟩ := addc_polyFueled
   have gPF := had.comp ((PolyFueled.right.comp PolyFueled.right).pair PolyFueled.left)
   have hst : IsPolyBounded (fun m => m.unpair.1 * m.unpair.2) :=
@@ -1418,7 +1418,7 @@ theorem mul_polyFueled : ∃ c, PolyFueled c (fun m => m.unpair.1 * m.unpair.2) 
 `w + 1`, so the spec is total with no division-by-zero case; callers pass `w := W − 1`
 for a positive runtime width `W`. Mirrors `divmodc` with the divisor read from the
 input: the wrap test is `w − r` via `subc`, dispatched by `ifzSel`. -/
-theorem divmod1_polyFueled :
+lemma divmod1_polyFueled :
     ∃ c, PolyFueled c (fun m =>
       Nat.pair (m.unpair.2 / (m.unpair.1 + 1)) (m.unpair.2 % (m.unpair.1 + 1))) := by
   have prevPF := PolyFueled.right.comp PolyFueled.right
@@ -1462,7 +1462,7 @@ Generalizes `ecTok_of_tokenList` (fixed length) to **growing** streams: a trader
 `i`-th token of `serializeTrades (strat n)` from `⟨n, i⟩`, and the stream length is polynomial.
 This is what deep (size-`Θ(n)`) traders need — their `i`-th token is a fixed arithmetic
 expression in `⟨n,i⟩` (built from `ifzSel`/`predc`/`subc`), not a lookup in a fixed list. -/
-theorem ecTok_of_tokenFn (Tr : Trader) {tokenFn : ℕ → ℕ} {c : Nat.Partrec.Code}
+lemma ecTok_of_tokenFn (Tr : Trader) {tokenFn : ℕ → ℕ} {c : Nat.Partrec.Code}
     (hpf : PolyFueled c tokenFn)
     (hlen : ∃ lengthCode : Nat.Partrec.Code, PolyFueled lengthCode
       (fun n => (serializeTrades (Tr.strat n).trades).length))
@@ -1498,7 +1498,7 @@ theorem ecTok_of_tokenFn (Tr : Trader) {tokenFn : ℕ → ℕ} {c : Nat.Partrec.
 /-- Raw-stream counterpart of `ecTok_of_tokenFn`.  The stream need not be a canonical
 serialization: it may be malformed, provided validation of the emitted stream is exactly the
 target strategy.  This is the closure principle needed by parser-transparent transducers. -/
-theorem ecTok_of_rawTokenFn (Tr : Trader) (raw : ℕ → List ℕ)
+lemma ecTok_of_rawTokenFn (Tr : Trader) (raw : ℕ → List ℕ)
     {tokenFn : ℕ → ℕ} {c : Nat.Partrec.Code}
     (hpf : PolyFueled c tokenFn)
     (hlen : ∃ lengthCode : Nat.Partrec.Code, PolyFueled lengthCode
@@ -1547,7 +1547,7 @@ def srChain : ℕ → EF
   | 0 => EF.const 1
   | (k + 1) => EF.safeRecip (srChain k)
 
-theorem srChain_rank (n : ℕ) : (srChain n).rank = 0 := by
+lemma srChain_rank (n : ℕ) : (srChain n).rank = 0 := by
   induction n with
   | zero => rfl
   | succ k ih => rw [srChain, EF.rank_safeRecip, ih]
@@ -1559,7 +1559,7 @@ def deepTrader (φ : Sentence) : Trader where
                              subst hp; rw [srChain_rank]; exact Nat.zero_le _ }
 
 /-- `serialize (srChain n) = [1, ⌜1⌝] ++ replicate n 5` — a growing stream. -/
-theorem serialize_srChain (n : ℕ) :
+lemma serialize_srChain (n : ℕ) :
     (srChain n).serialize = [1, Encodable.encode (1 : ℚ)] ++ List.replicate n 5 := by
   induction n with
   | zero => rfl
@@ -1568,7 +1568,7 @@ theorem serialize_srChain (n : ℕ) :
       simp
 
 /-- The day-`n` token stream and its length `n + 4`. -/
-theorem serializeTrades_deepTrader (φ : Sentence) (n : ℕ) :
+lemma serializeTrades_deepTrader (φ : Sentence) (n : ℕ) :
     serializeTrades ((deepTrader φ).strat n).trades
       = [1, Encodable.encode (1 : ℚ)] ++ List.replicate n 5
         ++ [6, Encodable.encode φ] := by
@@ -1576,14 +1576,14 @@ theorem serializeTrades_deepTrader (φ : Sentence) (n : ℕ) :
   rw [serializeTrades, serialize_srChain]
   simp [serializeTrades]
 
-theorem length_serializeTrades_deepTrader (φ : Sentence) (n : ℕ) :
+lemma length_serializeTrades_deepTrader (φ : Sentence) (n : ℕ) :
     (serializeTrades ((deepTrader φ).strat n).trades).length = n + 4 := by
   rw [serializeTrades_deepTrader]
   simp only [List.length_append, List.length_replicate, List.length_cons, List.length_nil]
   omega
 
 /-- The `i`-th token of the deep stream, by region. -/
-theorem deepStream_getD (n i eφ : ℕ) (hi : i < n + 4) :
+lemma deepStream_getD (n i eφ : ℕ) (hi : i < n + 4) :
     ([1, Encodable.encode (1 : ℚ)] ++ List.replicate n 5 ++ [6, eφ]).getD i 0
       = if i = 0 then 1 else if i = 1 then Encodable.encode (1 : ℚ)
         else if i ≤ n + 1 then 5 else if i = n + 2 then 6 else eφ := by
@@ -1622,7 +1622,7 @@ theorem deepStream_getD (n i eφ : ℕ) (hi : i < n + 4) :
 day-`n` token stream *grows* with `n` — is `EfficientlyComputableTok`. The old whole-number
 `def:ec` could not certify it; the new one does. The `i`-th token is a fixed nesting of
 `ifzSel` over `predc`/`subc`-shifted indices. -/
-theorem deepTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (deepTrader φ) := by
+lemma deepTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (deepTrader φ) := by
   have nPlus3 : PolyFueled _ (fun m => m.unpair.1 + 1 + 1 + 1) :=
     PolyFueled.left.succ_comp.succ_comp.succ_comp
   have rSel := subc_polyFueled.comp (nPlus3.pair PolyFueled.right)
@@ -1660,7 +1660,7 @@ poly-fueled per-region tokens: the emitter dispatches on the region (`subc` comp
 fixed tuple (`sel`). -/
 
 /-- Length of a flat concatenation of constant-width blocks. -/
-theorem length_flatMap_const_width {α : Type _} (f : ℕ → List α) (W : ℕ) :
+lemma length_flatMap_const_width {α : Type _} (f : ℕ → List α) (W : ℕ) :
     ∀ c, (∀ j < c, (f j).length = W) → ((List.range c).flatMap f).length = c * W := by
   intro c
   induction c with
@@ -1673,7 +1673,7 @@ theorem length_flatMap_const_width {α : Type _} (f : ℕ → List α) (W : ℕ)
 
 /-- Indexing into a flat concatenation of constant-width blocks: token `d` sits in block
 `d / W` at offset `d % W`. -/
-theorem getD_flatMap_const_width (f : ℕ → List ℕ) (W : ℕ) (hW0 : 0 < W) :
+lemma getD_flatMap_const_width (f : ℕ → List ℕ) (W : ℕ) (hW0 : 0 < W) :
     ∀ c d, (∀ j < c, (f j).length = W) → d < c * W →
     ((List.range c).flatMap f).getD d 0 = (f (d / W)).getD (d % W) 0 := by
   intro c
@@ -1699,7 +1699,7 @@ theorem getD_flatMap_const_width (f : ℕ → List ℕ) (W : ℕ) (hW0 : 0 < W) 
 stream is `head.map (· n) ++ (range (cnt n)).flatMap (fun j => bs.map (· ⟨n, j⟩)) ++
 tail.map (· n)` — fixed head/tail, `cnt n` fixed-width blocks of poly-fueled tokens of
 `⟨n, j⟩`, `cnt` poly-fueled — is `EfficientlyComputableTok`. -/
-theorem ecTok_of_blockStream (Tr : Trader) (head bs tail : List (ℕ → ℕ))
+lemma ecTok_of_blockStream (Tr : Trader) (head bs tail : List (ℕ → ℕ))
     {ccnt : Nat.Partrec.Code} {cnt : ℕ → ℕ} (hcnt : PolyFueled ccnt cnt)
     (hhead : ∀ t ∈ head, ∃ c, PolyFueled c t)
     (hbs : ∀ b ∈ bs, ∃ c, PolyFueled c b)
@@ -1791,7 +1791,7 @@ def histSum (φ : Sentence) : ℕ → EF
   | 0 => EF.const 0
   | (n + 1) => EF.add (histSum φ n) (EF.price φ n)
 
-theorem histSum_rank (φ : Sentence) : ∀ n, (histSum φ n).rank ≤ n
+lemma histSum_rank (φ : Sentence) : ∀ n, (histSum φ n).rank ≤ n
   | 0 => Nat.le_refl 0
   | (n + 1) => by
       rw [histSum, EF.rank_add]
@@ -1803,7 +1803,7 @@ def histTrader (φ : Sentence) : Trader where
                rank_le := by intro p hp; simp only [List.mem_singleton] at hp
                              subst hp; exact histSum_rank φ n }
 
-theorem serialize_histSum (φ : Sentence) : ∀ n,
+lemma serialize_histSum (φ : Sentence) : ∀ n,
     (histSum φ n).serialize
       = [1, Encodable.encode (0 : ℚ)]
         ++ (List.range n).flatMap (fun k => [0, Encodable.encode φ, k, 2])
@@ -1814,7 +1814,7 @@ theorem serialize_histSum (φ : Sentence) : ∀ n,
 
 /-- **Validation of `ecTok_of_blockStream`**: the size-`Θ(n)` `histTrader φ`, whose day-`n`
 stream has `n` width-4 blocks each containing the day index, is `EfficientlyComputableTok`. -/
-theorem histTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (histTrader φ) := by
+lemma histTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (histTrader φ) := by
   refine ecTok_of_blockStream _
     [fun _ => 1, fun _ => Encodable.encode (0 : ℚ)]
     [fun _ => 0, fun _ => Encodable.encode φ, fun x => x.unpair.2, fun _ => 2]
@@ -1858,7 +1858,7 @@ def PolySegStream (s : ℕ → List ℕ) : Prop :=
 /-- A polynomial segment stream is primitive recursive as a whole list.  Its length and
 per-token programs are primitive recursive by `PolyFueled.primrec`; mapping the token
 program over the emitted range reconstructs the original list extensionally. -/
-theorem PolySegStream.primrec {s : ℕ → List ℕ} (h : PolySegStream s) : Primrec s := by
+lemma PolySegStream.primrec {s : ℕ → List ℕ} (h : PolySegStream s) : Primrec s := by
   obtain ⟨ct, cl, tokenFn, lenFn, htoken, hlen, hslen, hget⟩ := h
   have htokenPrim : Primrec tokenFn := htoken.primrec
   have hlenPrim : Primrec lenFn := hlen.primrec
@@ -1881,7 +1881,7 @@ theorem PolySegStream.primrec {s : ℕ → List ℕ} (h : PolySegStream s) : Pri
 /-- A polynomial raw segment stream certifies any trader obtained by validating that stream.
 Unlike canonical serialization bridges, this remains valid for parser-transparent rewrites of
 malformed source programs. -/
-theorem PolySegStream.ecTok {s : ℕ → List ℕ} (h : PolySegStream s) (Tr : Trader)
+lemma PolySegStream.ecTok {s : ℕ → List ℕ} (h : PolySegStream s) (Tr : Trader)
     (hstrategy : ∀ n, strategyOfTokens n (s n) = Tr.strat n) :
     EfficientlyComputableTok Tr := by
   obtain ⟨ct, cl, tokenFn, lenFn, htoken, hlen, hslen, hget⟩ := h
@@ -1889,12 +1889,12 @@ theorem PolySegStream.ecTok {s : ℕ → List ℕ} (h : PolySegStream s) (Tr : T
     (fun n i hi => hget n i (by rwa [← hslen n]))
   exact hstrategy
 
-theorem PolySegStream.of_eq {s s' : ℕ → List ℕ} (h : PolySegStream s)
+lemma PolySegStream.of_eq {s s' : ℕ → List ℕ} (h : PolySegStream s)
     (he : ∀ n, s n = s' n) : PolySegStream s' := by
   rwa [funext he] at h
 
 /-- Base case: a fixed-length stream of poly-fueled tokens (tuple-select emitter). -/
-theorem PolySegStream.ofTokenStream {s : ℕ → List ℕ} (h : PolyTokenStream s) :
+lemma PolySegStream.ofTokenStream {s : ℕ → List ℕ} (h : PolyTokenStream s) :
     PolySegStream s := by
   obtain ⟨ts, hmap, hpf⟩ := h
   obtain ⟨cV, hV⟩ := PolyFueledTuple.of_forall hpf
@@ -1906,7 +1906,7 @@ theorem PolySegStream.ofTokenStream {s : ℕ → List ℕ} (h : PolyTokenStream 
   rw [hmap n]
 
 /-- Closure under append: dispatch on the runtime boundary `lenFn₁ n`. -/
-theorem PolySegStream.append {s₁ s₂ : ℕ → List ℕ} (h₁ : PolySegStream s₁)
+lemma PolySegStream.append {s₁ s₂ : ℕ → List ℕ} (h₁ : PolySegStream s₁)
     (h₂ : PolySegStream s₂) : PolySegStream (fun n => s₁ n ++ s₂ n) := by
   obtain ⟨ct₁, cl₁, t₁, l₁, ht₁, hl₁, hlen₁, htok₁⟩ := h₁
   obtain ⟨ct₂, cl₂, t₂, l₂, ht₂, hl₂, hlen₂, htok₂⟩ := h₂
@@ -1931,7 +1931,7 @@ theorem PolySegStream.append {s₁ s₂ : ℕ → List ℕ} (h₁ : PolySegStrea
 /-- Conditional segment selection with a polynomially fueled Boolean-as-natural test.
 `test n = 0` selects `s₀`; every nonzero value selects `s₁`. Both token and runtime-length
 emitters dispatch through the same `ifzSel` primitive. -/
-theorem PolySegStream.ifZero {s₀ s₁ : ℕ → List ℕ} (h₀ : PolySegStream s₀)
+lemma PolySegStream.ifZero {s₀ s₁ : ℕ → List ℕ} (h₀ : PolySegStream s₀)
     (h₁ : PolySegStream s₁) {ctest : Nat.Partrec.Code} {test : ℕ → ℕ}
     (htest : PolyFueled ctest test) :
     PolySegStream (fun n => if test n = 0 then s₀ n else s₁ n) := by
@@ -1954,7 +1954,7 @@ theorem PolySegStream.ifZero {s₀ s₁ : ℕ → List ℕ} (h₀ : PolySegStrea
       exact htok₁ n i (by simpa [ifzSelFn, h, hlen₁ n] using hi)
 
 /-- Reindex a segment stream along a polynomially fueled input function. -/
-theorem PolySegStream.comp {s : ℕ → List ℕ} (hs : PolySegStream s)
+lemma PolySegStream.comp {s : ℕ → List ℕ} (hs : PolySegStream s)
     {cf : Nat.Partrec.Code} {f : ℕ → ℕ} (hf : PolyFueled cf f) :
     PolySegStream (fun n => s (f n)) := by
   obtain ⟨ct, cl, t, l, ht, hl, hlen, htok⟩ := hs
@@ -1965,7 +1965,7 @@ theorem PolySegStream.comp {s : ℕ → List ℕ} (hs : PolySegStream s)
   exact htok (f n) i hi
 
 /-- Segment-level serialization closure for `EF.add`. -/
-theorem PolySegStream.serialize_add {A B : ℕ → EF}
+lemma PolySegStream.serialize_add {A B : ℕ → EF}
     (hA : PolySegStream (fun n => (A n).serialize))
     (hB : PolySegStream (fun n => (B n).serialize)) :
     PolySegStream (fun n => (EF.add (A n) (B n)).serialize) := by
@@ -1974,7 +1974,7 @@ theorem PolySegStream.serialize_add {A B : ℕ → EF}
   intro n; simp [EF.serialize, List.append_assoc]
 
 /-- Segment-level serialization closure for `EF.mul`. -/
-theorem PolySegStream.serialize_mul {A B : ℕ → EF}
+lemma PolySegStream.serialize_mul {A B : ℕ → EF}
     (hA : PolySegStream (fun n => (A n).serialize))
     (hB : PolySegStream (fun n => (B n).serialize)) :
     PolySegStream (fun n => (EF.mul (A n) (B n)).serialize) := by
@@ -1983,7 +1983,7 @@ theorem PolySegStream.serialize_mul {A B : ℕ → EF}
   intro n; simp [EF.serialize, List.append_assoc]
 
 /-- Segment-level serialization closure for `EF.max`. -/
-theorem PolySegStream.serialize_max {A B : ℕ → EF}
+lemma PolySegStream.serialize_max {A B : ℕ → EF}
     (hA : PolySegStream (fun n => (A n).serialize))
     (hB : PolySegStream (fun n => (B n).serialize)) :
     PolySegStream (fun n => (EF.max (A n) (B n)).serialize) := by
@@ -1992,7 +1992,7 @@ theorem PolySegStream.serialize_max {A B : ℕ → EF}
   intro n; simp [EF.serialize, List.append_assoc]
 
 /-- Segment-level serialization of a variable reference `[7, i]`. -/
-theorem PolySegStream.serialize_var {f : ℕ → ℕ} {cf : Nat.Partrec.Code}
+lemma PolySegStream.serialize_var {f : ℕ → ℕ} {cf : Nat.Partrec.Code}
     (hf : PolyFueled cf f) :
     PolySegStream (fun n => (EF.var (f n)).serialize) := by
   have hs := (PolyTokenStream.const 7).append (PolyTokenStream.polyTok hf)
@@ -2003,7 +2003,7 @@ theorem PolySegStream.serialize_var {f : ℕ → ℕ} {cf : Nat.Partrec.Code}
   exact PolySegStream.ofTokenStream hs
 
 /-- Segment-level serialization of a shared binding. -/
-theorem PolySegStream.serialize_letE {X Body : ℕ → EF}
+lemma PolySegStream.serialize_letE {X Body : ℕ → EF}
     (hX : PolySegStream (fun n => (X n).serialize))
     (hBody : PolySegStream (fun n => (Body n).serialize)) :
     PolySegStream (fun n => (EF.letE (X n) (Body n)).serialize) := by
@@ -2014,7 +2014,7 @@ theorem PolySegStream.serialize_letE {X Body : ℕ → EF}
 
 /-- Base case: `cnt n` repetitions of a fixed-width block of poly-fueled tokens of
 `⟨n, j⟩` (`divmodc` emitter). -/
-theorem PolySegStream.blocks {blk : ℕ → List ℕ} (hblk : PolyTokenStream blk)
+lemma PolySegStream.blocks {blk : ℕ → List ℕ} (hblk : PolyTokenStream blk)
     (W : ℕ) (hW : ∀ m, (blk m).length = W) (hW0 : 0 < W)
     {ccnt : Nat.Partrec.Code} {cnt : ℕ → ℕ} (hcnt : PolyFueled ccnt cnt) :
     PolySegStream (fun n => (List.range (cnt n)).flatMap (fun j => blk (Nat.pair n j))) := by
@@ -2035,7 +2035,7 @@ theorem PolySegStream.blocks {blk : ℕ → List ℕ} (hblk : PolyTokenStream bl
   rw [getD_flatMap_const_width _ W hW0 (cnt n) i (fun j _ => hW _) hi, hmap]
 
 /-- A polynomially many repetition of one fixed tag. -/
-theorem PolySegStream.repeatTag (tag : ℕ) {ccnt : Nat.Partrec.Code} {cnt : ℕ → ℕ}
+lemma PolySegStream.repeatTag (tag : ℕ) {ccnt : Nat.Partrec.Code} {cnt : ℕ → ℕ}
     (hcnt : PolyFueled ccnt cnt) :
     PolySegStream (fun n => List.replicate (cnt n) tag) := by
   have hb : PolyTokenStream (fun _ => [tag]) := PolyTokenStream.const tag
@@ -2113,7 +2113,7 @@ def segPrefix (lenFn : ℕ → ℕ) (n : ℕ) : ℕ → ℕ
 @[simp] theorem segPrefix_succ (lenFn : ℕ → ℕ) (n k : ℕ) :
     segPrefix lenFn n (k + 1) = segPrefix lenFn n k + lenFn (Nat.pair n k) := rfl
 
-theorem segPrefix_mono (lenFn : ℕ → ℕ) (n : ℕ) : Monotone (segPrefix lenFn n) := by
+lemma segPrefix_mono (lenFn : ℕ → ℕ) (n : ℕ) : Monotone (segPrefix lenFn n) := by
   intro a b hab
   induction b with
   | zero => simp at hab; subst a; exact le_rfl
@@ -2127,7 +2127,7 @@ def segLocate (lenFn : ℕ → ℕ) (n i : ℕ) : ℕ → ℕ
   | 0 => 0
   | k + 1 => if segPrefix lenFn n (k + 1) ≤ i then k + 1 else segLocate lenFn n i k
 
-theorem segLocate_le (lenFn : ℕ → ℕ) (n i : ℕ) : ∀ k,
+lemma segLocate_le (lenFn : ℕ → ℕ) (n i : ℕ) : ∀ k,
     segLocate lenFn n i k ≤ k
   | 0 => by simp [segLocate]
   | k + 1 => by
@@ -2136,7 +2136,7 @@ theorem segLocate_le (lenFn : ℕ → ℕ) (n i : ℕ) : ∀ k,
       · exact le_rfl
       · exact (segLocate_le lenFn n i k).trans (Nat.le_succ k)
 
-theorem segLocate_spec (lenFn : ℕ → ℕ) (n i : ℕ) : ∀ k,
+lemma segLocate_spec (lenFn : ℕ → ℕ) (n i : ℕ) : ∀ k,
     segPrefix lenFn n (segLocate lenFn n i k) ≤ i ∧
       (∀ j, j ≤ k → segPrefix lenFn n j ≤ i → j ≤ segLocate lenFn n i k)
   | 0 => by simp [segLocate]
@@ -2151,7 +2151,7 @@ theorem segLocate_spec (lenFn : ℕ → ℕ) (n i : ℕ) : ∀ k,
         · exact hmax j (by omega) hji
 
 /-- Prefix length agrees with the length of the corresponding `flatMap`. -/
-theorem length_flatMap_eq_segPrefix (seg : ℕ → List ℕ) (lenFn : ℕ → ℕ)
+lemma length_flatMap_eq_segPrefix (seg : ℕ → List ℕ) (lenFn : ℕ → ℕ)
     (n : ℕ) (hlen : ∀ j, (seg (Nat.pair n j)).length = lenFn (Nat.pair n j)) : ∀ k,
     ((List.range k).flatMap (fun j => seg (Nat.pair n j))).length = segPrefix lenFn n k
   | 0 => by simp
@@ -2160,7 +2160,7 @@ theorem length_flatMap_eq_segPrefix (seg : ℕ → List ℕ) (lenFn : ℕ → �
         length_flatMap_eq_segPrefix seg lenFn n hlen k, hlen, segPrefix_succ]
 
 /-- Index a variable-width `flatMap` from the enclosing prefix interval. -/
-theorem getD_flatMap_of_prefix (seg : ℕ → List ℕ) (lenFn : ℕ → ℕ)
+lemma getD_flatMap_of_prefix (seg : ℕ → List ℕ) (lenFn : ℕ → ℕ)
     (n cnt i j : ℕ) (hlen : ∀ k, (seg (Nat.pair n k)).length = lenFn (Nat.pair n k))
     (hj : j < cnt) (hlo : segPrefix lenFn n j ≤ i)
     (hhi : i < segPrefix lenFn n (j + 1)) :
@@ -2181,7 +2181,7 @@ theorem getD_flatMap_of_prefix (seg : ℕ → List ℕ) (lenFn : ℕ → ℕ)
           exact lt_of_lt_of_le hhi (segPrefix_mono lenFn n (by omega))
 
 /-- Runtime prefix sums of polynomially fueled segment lengths are polynomially fueled. -/
-theorem segPrefix_polyFueled {cl : Nat.Partrec.Code} {lenFn : ℕ → ℕ}
+lemma segPrefix_polyFueled {cl : Nat.Partrec.Code} {lenFn : ℕ → ℕ}
     (hlen : PolyFueled cl lenFn) :
     ∃ c, PolyFueled c (fun m => segPrefix lenFn m.unpair.1 m.unpair.2) := by
   obtain ⟨cad, had⟩ := addc_polyFueled
@@ -2230,7 +2230,7 @@ theorem segPrefix_polyFueled {cl : Nat.Partrec.Code} {lenFn : ℕ → ℕ}
     (fun a j => by simp only [Nat.unpair_pair, segPrefix_succ]) hst⟩
 
 /-- The prefix-scan block locator is polynomially fueled. -/
-theorem segLocate_polyFueled {cl : Nat.Partrec.Code} {lenFn : ℕ → ℕ}
+lemma segLocate_polyFueled {cl : Nat.Partrec.Code} {lenFn : ℕ → ℕ}
     (hlen : PolyFueled cl lenFn) :
     ∃ c, PolyFueled c (fun m =>
       segLocate lenFn m.unpair.1.unpair.1 m.unpair.1.unpair.2 m.unpair.2) := by
@@ -2258,7 +2258,7 @@ theorem segLocate_polyFueled {cl : Nat.Partrec.Code} {lenFn : ℕ → ℕ}
 /-- **Variable-width segment concatenation**: concatenate `cnt n` polynomially emitted
 segments whose individual lengths may depend on both `n` and the segment index.  A
 primitive-recursive prefix scan locates the enclosing segment for each output token. -/
-theorem PolySegStream.concatVar {seg : ℕ → List ℕ} (hseg : PolySegStream seg)
+lemma PolySegStream.concatVar {seg : ℕ → List ℕ} (hseg : PolySegStream seg)
     {ccnt : Nat.Partrec.Code} {cnt : ℕ → ℕ} (hcnt : PolyFueled ccnt cnt) :
     PolySegStream (fun n => (List.range (cnt n)).flatMap (fun j => seg (Nat.pair n j))) := by
   obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hlens, hspec⟩ := hseg
@@ -2298,7 +2298,7 @@ theorem PolySegStream.concatVar {seg : ℕ → List ℕ} (hseg : PolySegStream s
 
 /-- **The segment-emission capstone**: a trader whose day-`n` stream is a
 `PolySegStream` is `EfficientlyComputableTok`. -/
-theorem ecTok_of_segStream (Tr : Trader)
+lemma ecTok_of_segStream (Tr : Trader)
     (h : PolySegStream (fun n => serializeTrades (Tr.strat n).trades)) :
     EfficientlyComputableTok Tr := by
   obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hlens, hspec⟩ := h
@@ -2308,7 +2308,7 @@ theorem ecTok_of_segStream (Tr : Trader)
     exact hspec n i (by rw [← hlens n]; exact hi)
 
 /-- `price φ (f m)` streams for a poly-fueled index `f` — the day-index-in-block case. -/
-theorem PolyTokenStream.serialize_price_comp {f : ℕ → ℕ} {c : Nat.Partrec.Code}
+lemma PolyTokenStream.serialize_price_comp {f : ℕ → ℕ} {c : Nat.Partrec.Code}
     (hf : PolyFueled c f) (φ : Sentence) :
     PolyTokenStream (fun m => (EF.price φ (f m)).serialize) := by
   have heq : (fun m => (EF.price φ (f m)).serialize)
@@ -2330,13 +2330,13 @@ lemma performs that scan with one `Code.prec`, retaining a Boolean state through
 def boundedAny (p : ℕ → ℕ → Bool) (i k : ℕ) : Bool :=
   decide (∃ m ≤ k, p i m = true)
 
-theorem boundedAny_eq_true_iff (p : ℕ → ℕ → Bool) (i k : ℕ) :
+lemma boundedAny_eq_true_iff (p : ℕ → ℕ → Bool) (i k : ℕ) :
     boundedAny p i k = true ↔ ∃ m ≤ k, p i m = true := by
   simp [boundedAny]
 
 /-- Polynomial Boolean tables are closed under bounded existential search.  Inputs use
 `⟨i,k⟩`; the result is normalized to the natural numbers `0` and `1`. -/
-theorem polyFueled_boundedAny (p : ℕ → ℕ → Bool)
+lemma polyFueled_boundedAny (p : ℕ → ℕ → Bool)
     (hp : ∃ c, PolyFueled c
       (fun z => if p z.unpair.1 z.unpair.2 then 1 else 0)) :
     ∃ c, PolyFueled c
@@ -2400,7 +2400,7 @@ theorem polyFueled_boundedAny (p : ℕ → ℕ → Bool)
 def boundedNone (p : ℕ → ℕ → Bool) (i k : ℕ) : Bool :=
   Bool.not (boundedAny p i k)
 
-theorem boundedNone_eq_true_iff (p : ℕ → ℕ → Bool) (i k : ℕ) :
+lemma boundedNone_eq_true_iff (p : ℕ → ℕ → Bool) (i k : ℕ) :
     boundedNone p i k = true ↔ ∀ m ≤ k, p i m = false := by
   change Bool.not (boundedAny p i k) = true ↔ _
   constructor
@@ -2424,7 +2424,7 @@ theorem boundedNone_eq_true_iff (p : ℕ → ℕ → Bool) (i k : ℕ) :
     rfl
 
 /-- Polynomial Boolean tables are also closed under bounded universal failure. -/
-theorem polyFueled_boundedNone (p : ℕ → ℕ → Bool)
+lemma polyFueled_boundedNone (p : ℕ → ℕ → Bool)
     (hp : ∃ c, PolyFueled c
       (fun z => if p z.unpair.1 z.unpair.2 then 1 else 0)) :
     ∃ c, PolyFueled c

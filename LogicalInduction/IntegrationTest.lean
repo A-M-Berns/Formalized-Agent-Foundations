@@ -69,7 +69,7 @@ def ProvindHypothesis (P : History) (φ : Sentence) : Prop :=
 
 /-- Our convergence theorem produces the named hypothesis exactly (`ConvergesTo … 1` is
 `≈ₙ` against the constant `1`, by `convergesTo_iff_asympEq_const`). -/
-theorem provind_hypothesis_discharged (P : History) (DP : DeductiveProcess)
+lemma provind_hypothesis_discharged (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : Sentence) (hded : ∀ n, φ ∈ DP.D n)
     (hP1 : ∀ n, P n φ ≤ 1) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ProvindHypothesis P φ :=
@@ -81,7 +81,7 @@ def ProvindSequenceHypothesis (P : History) (φ ψ : ℕ → Sentence) : Prop :=
   ((fun n => P n (φ n)) ≈ₙ fun _ => 1) ∧
     ((fun n => P n (ψ n)) ≈ₙ fun _ => 0)
 
-theorem provind_sequence_hypothesis_discharged
+lemma provind_sequence_hypothesis_discharged
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ ψ : ℕ → Sentence)
     (hφ : PolySentenceCodes φ) (hψ : PolySentenceCodes ψ)
@@ -160,7 +160,7 @@ def PseudorandomExpectationHypothesis
     (As : ℕ → LUVCombination) (P : History) : Prop :=
   (fun n => (As n).expect P n) ≳ₙ (fun _ => 0)
 
-theorem prandexp_hypothesis_discharged
+lemma prandexp_hypothesis_discharged
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
@@ -213,7 +213,7 @@ theorem arbitrary_bcs_recunbiasedaff_discharged
       (fun i => (As i).price P i) truth) 0 :=
   h.recunbiasedaff hWgen hdet hWdiv hworld hP hverify hverifyNeg
 
-theorem arbitrary_bcs_wubaff_discharged
+lemma arbitrary_bcs_wubaff_discharged
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : AffineCombination.BoundedCombinationSequence As P)
@@ -233,7 +233,7 @@ theorem arbitrary_bcs_wubaff_discharged
       (fun i => (As i).price P i) truth ≈ₙ (fun _ => 0) :=
   h.wubaff hW hdet hstrict hsupport emit bridge hWdiv hP hworld
 
-theorem arbitrary_bcs_prandaff_discharged
+lemma arbitrary_bcs_prandaff_discharged
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : AffineCombination.BoundedCombinationSequence As P)

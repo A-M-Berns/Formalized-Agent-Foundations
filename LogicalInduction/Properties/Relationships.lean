@@ -17,7 +17,7 @@ equivalence the payouts are equal (`payout_eq_of_iff`), so the day value is the 
 difference `σ·(Pφ−Pψ)`, and the same buy-signal + reusable exploitation engine apply. -/
 
 /-- If both `∼φ⋎ψ` and `∼ψ⋎φ` hold (i.e. `φ ↔ ψ`), the payouts coincide. -/
-theorem PCWorld.payout_eq_of_iff (v : PCWorld) (φ ψ : Sentence)
+lemma PCWorld.payout_eq_of_iff (v : PCWorld) (φ ψ : Sentence)
     (h1 : v.Holds (∼φ ⋎ ψ)) (h2 : v.Holds (∼ψ ⋎ φ)) : v.payout φ = v.payout ψ := by
   rw [PCWorld.holds_or, PCWorld.holds_neg] at h1 h2
   simp only [PCWorld.payout]
@@ -34,13 +34,13 @@ noncomputable def sig2EF (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : EF :=
   buySignal (.mul (.const σ) (gap2EF φ ψ n)) ε
 
 
-theorem gap2EF_denote (φ ψ : Sentence) (P : History) (n : ℕ) :
+lemma gap2EF_denote (φ ψ : Sentence) (P : History) (n : ℕ) :
     (gap2EF φ ψ n).denote P = P n φ - P n ψ := by
   simp only [gap2EF, EF.denote_add, EF.denote_mul, EF.denote_const, EF.denote_price,
     Pi.add_apply, Pi.mul_apply]; push_cast; ring
 
 
-theorem sig2EF_denote (φ ψ : Sentence) (σ ε : ℚ) (P : History) (n : ℕ) :
+lemma sig2EF_denote (φ ψ : Sentence) (σ ε : ℚ) (P : History) (n : ℕ) :
     (sig2EF φ ψ σ ε n).denote P = max 0 ((σ:ℝ) * (gap2EF φ ψ n).denote P + (-(ε:ℝ)/2)) := by
   simp only [sig2EF, buySignal_denote, EF.denote_mul, EF.denote_const, Pi.mul_apply]
 
@@ -62,7 +62,7 @@ noncomputable def eqW (P : History) (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) :
   (sig2EF φ ψ σ ε n).denote P * ((σ : ℝ) * (gap2EF φ ψ n).denote P)
 
 
-theorem eqTr_value (φ ψ : Sentence) (σ ε : ℚ) (P : History) (v : PCWorld) (n : ℕ)
+lemma eqTr_value (φ ψ : Sentence) (σ ε : ℚ) (P : History) (v : PCWorld) (n : ℕ)
     (h1 : v.Holds (∼φ ⋎ ψ)) (h2 : v.Holds (∼ψ ⋎ φ)) :
     ((eqTr φ ψ σ ε).strat n).value P v.payout = eqW P φ ψ σ ε n := by
   have hpay : v.payout φ = v.payout ψ := PCWorld.payout_eq_of_iff v φ ψ h1 h2
@@ -72,7 +72,7 @@ theorem eqTr_value (φ ψ : Sentence) (σ ε : ℚ) (P : History) (v : PCWorld) 
   rw [hpay]; push_cast; ring
 
 
-theorem eqW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε) (n : ℕ) :
+lemma eqW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε) (n : ℕ) :
     0 ≤ eqW P φ ψ σ ε n := by
   rw [eqW, sig2EF_denote]
   set G := (σ:ℝ) * (gap2EF φ ψ n).denote P with hG
@@ -83,21 +83,21 @@ theorem eqW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε)
     exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
 
 
-theorem sig2EF_polyEF (φ ψ : Sentence) (σ ε : ℚ) : PolyEF (sig2EF φ ψ σ ε) := by
+lemma sig2EF_polyEF (φ ψ : Sentence) (σ ε : ℚ) : PolyEF (sig2EF φ ψ σ ε) := by
   have hgap : PolyEF (gap2EF φ ψ) :=
     (PolyEF.price φ).add ((PolyEF.const (-1)).mul (PolyEF.price ψ))
   exact buySignal_polyEF ((PolyEF.const σ).mul hgap) ε
 
 
 /-- The token stream of `gap2EF = φ*ⁿ − ψ*ⁿ` (an `add`/`mul`/`price`/`const` tree). -/
-theorem gap2EF_stream (φ ψ : Sentence) : PolyTokenStream (fun n => (gap2EF φ ψ n).serialize) := by
+lemma gap2EF_stream (φ ψ : Sentence) : PolyTokenStream (fun n => (gap2EF φ ψ n).serialize) := by
   simp only [gap2EF]
   exact PolyTokenStream.serialize_add (PolyTokenStream.serialize_price φ)
     (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const _)
       (PolyTokenStream.serialize_price ψ))
 
 /-- The token stream of `sig2EF = max(0, σ·(φ*−ψ*) − ε/2)`. -/
-theorem sig2EF_stream (φ ψ : Sentence) (σ ε : ℚ) :
+lemma sig2EF_stream (φ ψ : Sentence) (σ ε : ℚ) :
     PolyTokenStream (fun n => (sig2EF φ ψ σ ε n).serialize) := by
   simp only [sig2EF, buySignal]
   exact PolyTokenStream.serialize_max (PolyTokenStream.serialize_const _)
@@ -105,7 +105,7 @@ theorem sig2EF_stream (φ ψ : Sentence) (σ ε : ℚ) :
       (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const _) (gap2EF_stream φ ψ))
       (PolyTokenStream.serialize_const _))
 
-theorem eqTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputableTok (eqTr φ ψ σ ε) := by
+lemma eqTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputableTok (eqTr φ ψ σ ε) := by
   refine ecTok_of_stream _ ?_
   have h : ∀ n, ((eqTr φ ψ σ ε).strat n).trades =
       [(.mul (sig2EF φ ψ σ ε n) (.const (-σ)), φ), (.mul (sig2EF φ ψ σ ε n) (.const σ), ψ)] :=
@@ -120,7 +120,7 @@ theorem eqTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputableTok (eqT
     PolyTokenStream.trades_nil)
 
 
-theorem eqTr_exploits (P : History) (DP : DeductiveProcess) (φ ψ : Sentence) (σ ε : ℚ)
+lemma eqTr_exploits (P : History) (DP : DeductiveProcess) (φ ψ : Sentence) (σ ε : ℚ)
     (hε : 0 < ε) (himp1 : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n) (himp2 : ∀ n, (∼ψ ⋎ φ) ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hfreq : ∃ᶠ n in atTop, (ε:ℝ) ≤ (σ:ℝ) * (gap2EF φ ψ n).denote P) :
@@ -165,7 +165,7 @@ theorem lic_lex_tendsto_zero (P : History) (DP : DeductiveProcess)
 
 
 /-- `∼φ⋎ψ` (i.e. `φ→ψ`) makes `φ`'s payout `≤ ψ`'s. -/
-theorem PCWorld.payout_le_of_imp (v : PCWorld) (φ ψ : Sentence)
+lemma PCWorld.payout_le_of_imp (v : PCWorld) (φ ψ : Sentence)
     (h : v.Holds (∼φ ⋎ ψ)) : v.payout φ ≤ v.payout ψ := by
   rw [PCWorld.holds_or, PCWorld.holds_neg] at h
   simp only [PCWorld.payout]
@@ -177,7 +177,7 @@ noncomputable def impSig (φ ψ : Sentence) (ε : ℚ) (n : ℕ) : EF :=
   buySignal (gap2EF φ ψ n) ε
 
 
-theorem impSig_denote (φ ψ : Sentence) (ε : ℚ) (P : History) (n : ℕ) :
+lemma impSig_denote (φ ψ : Sentence) (ε : ℚ) (P : History) (n : ℕ) :
     (impSig φ ψ ε n).denote P = max 0 ((gap2EF φ ψ n).denote P + (-(ε:ℝ)/2)) := by
   simp only [impSig, buySignal_denote]
 
@@ -201,7 +201,7 @@ noncomputable def impW (P : History) (φ ψ : Sentence) (ε : ℚ) (n : ℕ) : �
   (impSig φ ψ ε n).denote P * ((gap2EF φ ψ n).denote P)
 
 
-theorem impTr_value_ge (φ ψ : Sentence) (ε : ℚ) (P : History) (v : PCWorld) (n : ℕ)
+lemma impTr_value_ge (φ ψ : Sentence) (ε : ℚ) (P : History) (v : PCWorld) (n : ℕ)
     (himp : v.Holds (∼φ ⋎ ψ)) :
     impW P φ ψ ε n ≤ ((impTr φ ψ ε).strat n).value P v.payout := by
   have hpay : v.payout φ ≤ v.payout ψ := PCWorld.payout_le_of_imp v φ ψ himp
@@ -220,7 +220,7 @@ theorem impTr_value_ge (φ ψ : Sentence) (ε : ℚ) (P : History) (v : PCWorld)
   simpa [gap2EF, EF.denote_add, EF.denote_mul, EF.denote_const, EF.denote_price] using hgap
 
 
-theorem impW_nonneg (P : History) (φ ψ : Sentence) (ε : ℚ) (hε : 0 < ε) (n : ℕ) :
+lemma impW_nonneg (P : History) (φ ψ : Sentence) (ε : ℚ) (hε : 0 < ε) (n : ℕ) :
     0 ≤ impW P φ ψ ε n := by
   rw [impW, impSig_denote]
   set G := (gap2EF φ ψ n).denote P
@@ -231,20 +231,20 @@ theorem impW_nonneg (P : History) (φ ψ : Sentence) (ε : ℚ) (hε : 0 < ε) (
     exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
 
 
-theorem impSig_polyEF (φ ψ : Sentence) (ε : ℚ) : PolyEF (impSig φ ψ ε) := by
+lemma impSig_polyEF (φ ψ : Sentence) (ε : ℚ) : PolyEF (impSig φ ψ ε) := by
   have hgap : PolyEF (gap2EF φ ψ) :=
     (PolyEF.price φ).add ((PolyEF.const (-1)).mul (PolyEF.price ψ))
   exact buySignal_polyEF hgap ε
 
 
 /-- The token stream of `impSig = max(0, (φ*−ψ*) − ε/2)`. -/
-theorem impSig_stream (φ ψ : Sentence) (ε : ℚ) :
+lemma impSig_stream (φ ψ : Sentence) (ε : ℚ) :
     PolyTokenStream (fun n => (impSig φ ψ ε n).serialize) := by
   simp only [impSig, buySignal]
   exact PolyTokenStream.serialize_max (PolyTokenStream.serialize_const _)
     (PolyTokenStream.serialize_add (gap2EF_stream φ ψ) (PolyTokenStream.serialize_const _))
 
-theorem impTr_ec (φ ψ : Sentence) (ε : ℚ) : EfficientlyComputableTok (impTr φ ψ ε) := by
+lemma impTr_ec (φ ψ : Sentence) (ε : ℚ) : EfficientlyComputableTok (impTr φ ψ ε) := by
   refine ecTok_of_stream _ ?_
   have h : ∀ n, ((impTr φ ψ ε).strat n).trades =
       [(.mul (impSig φ ψ ε n) (.const (-1)), φ), (impSig φ ψ ε n, ψ)] := fun _ => rfl
@@ -286,7 +286,7 @@ theorem lic_imp_eventually_le (P : History) (DP : DeductiveProcess)
 
 /-- A finite list of independently polynomial sentence streams can be evaluated as one
 polynomial tuple.  This is the uniformity step needed by the paper's fixed-`k` family. -/
-theorem polyFueledTuple_of_sentenceCodes
+lemma polyFueledTuple_of_sentenceCodes
     (φs : List (ℕ → Sentence))
     (hφs : ∀ φ ∈ φs, PolySentenceCodes φ) :
     PolyFueledTuple (φs.map (fun φ n => Encodable.encode (φ n))) := by
@@ -368,7 +368,7 @@ noncomputable def exclusiveExhaustive_polySequence
     coefficient_closed := by intro z ρ V; simp [EF.denoteWith]
   }
 
-theorem exclusiveExhaustiveAffine_price
+lemma exclusiveExhaustiveAffine_price
     (k : ℕ) (_hk : 0 < k) (φ : ℕ → ℕ → Sentence)
     (P : History) (n m : ℕ) :
     (exclusiveExhaustiveAffine k φ n).price P m =
@@ -380,7 +380,7 @@ theorem exclusiveExhaustiveAffine_price
   push_cast
   ring
 
-theorem exclusiveExhaustiveAffine_magnitude
+lemma exclusiveExhaustiveAffine_magnitude
     (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
     (P : History) (n : ℕ) :
     (exclusiveExhaustiveAffine k φ n).magnitude P = 1 := by

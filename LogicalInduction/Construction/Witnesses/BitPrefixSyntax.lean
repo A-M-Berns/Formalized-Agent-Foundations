@@ -64,7 +64,7 @@ def bitPrefixSentence (atom : ℕ → Sentence) (σ : List Bool) : Sentence :=
 def bitStringEnumeration (i : ℕ) : List Bool :=
   (Encodable.decode (α := List Bool) i).getD []
 
-theorem bitStringEnumeration_covers (σ : List Bool) :
+lemma bitStringEnumeration_covers (σ : List Bool) :
     ∃ i, bitStringEnumeration i = σ := by
   refine ⟨Encodable.encode σ, ?_⟩
   simp [bitStringEnumeration, Encodable.encodek]
@@ -97,14 +97,15 @@ def ordinaryIndependentBitAtoms : IndependentBitAtoms emptyBitDeductiveProcess w
       · intro hbit
         exact ⟨k.2, hbit⟩
 
-theorem independentBitAtoms_nonempty :
+lemma independentBitAtoms_nonempty :
     ∃ DP : DeductiveProcess, Nonempty (IndependentBitAtoms DP) :=
   ⟨emptyBitDeductiveProcess, ⟨ordinaryIndependentBitAtoms⟩⟩
 
 /-! ### Operational certificate and public constructor -/
 
 /-- Compact operational input for polynomial naming of the concrete prefix conjunction.
-The program is indexed by the same enumeration index consumed by the DUS trader.  Paper node: `thm:dus` (App. `dus`); the prefix language is reused by `thm:strict`. -/
+The program is indexed by the same enumeration index consumed by the DUS trader.
+Paper node: `thm:dus` (App. `dus`); the prefix language is reused by `thm:strict`. -/
 structure BitPrefixCodeComputation {DP : DeductiveProcess}
     (I : IndependentBitAtoms DP) where
   code : Nat.Partrec.Code
@@ -126,7 +127,7 @@ def bitPrefixSentencesOfIndependentAtoms
 
 /-- Domination of the universal semimeasure with the opaque `BitPrefixSentences` argument
 discharged by the concrete Boolean-prefix constructor.  The approximation and threshold
-emission premises remain explicit (`M7-DUS-APPROX`). -/
+emission premises remain explicit (`M7-DUS-APPROX`).  Paper node: `thm:dus` (App. `dus`). -/
 theorem lic_domination_universalSemimeasure_ofIndependentAtoms
     {DP : DeductiveProcess}
     (I : IndependentBitAtoms DP) (C : BitPrefixCodeComputation I)

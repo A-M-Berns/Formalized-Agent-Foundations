@@ -19,7 +19,7 @@ def allBoolLists : ℕ → List (List Bool)
   | n + 1 =>
       (allBoolLists n).map (false :: ·) ++ (allBoolLists n).map (true :: ·)
 
-theorem mem_allBoolLists_iff : ∀ {n : ℕ} {xs : List Bool},
+lemma mem_allBoolLists_iff : ∀ {n : ℕ} {xs : List Bool},
     xs ∈ allBoolLists n ↔ xs.length = n := by
   intro n
   induction n with
@@ -32,7 +32,7 @@ theorem mem_allBoolLists_iff : ∀ {n : ℕ} {xs : List Bool},
 
 namespace Strategy
 
-private theorem sum_map_eq_fin {α : Type*} (l : List α) (f : α → ℝ) :
+private lemma sum_map_eq_fin {α : Type*} (l : List α) (f : α → ℝ) :
     (l.map f).sum = ∑ i : Fin l.length, f (l.get i) := by
   induction l with
   | nil => simp
@@ -44,7 +44,7 @@ private theorem sum_map_eq_fin {α : Type*} (l : List α) (f : α → ℝ) :
 def support {n : ℕ} (T : Strategy n) : Finset Sentence :=
   T.trades.toFinset.image Prod.snd
 
-theorem snd_mem_support {n : ℕ} (T : Strategy n) {p : EF × Sentence}
+lemma snd_mem_support {n : ℕ} (T : Strategy n) {p : EF × Sentence}
     (hp : p ∈ T.trades) : p.2 ∈ T.support := by
   simp only [support, Finset.mem_image]
   exact ⟨p, by simpa using hp, rfl⟩
@@ -62,7 +62,7 @@ noncomputable def shares {n : ℕ} (T : Strategy n) (V : History) (φ : Sentence
   ∑ i : Fin T.trades.length with (T.trades.get i).2 = φ, (T.trades.get i).1.denote V
 
 /-- Regroup the occurrence-list semantics of a strategy by its finite sentence support. -/
-theorem value_eq_sum_support {n : ℕ} (T : Strategy n) (V : History)
+lemma value_eq_sum_support {n : ℕ} (T : Strategy n) (V : History)
     (w : Sentence → ℝ) :
     T.value V w = ∑ φ ∈ T.support, T.shares V φ * (w φ - V n φ) := by
   let term : Fin T.trades.length → ℝ := fun i =>
@@ -111,13 +111,13 @@ noncomputable def strategyValuation {n : ℕ} (T : Strategy n)
     (x : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support))) : Valuation := fun φ =>
   if h : φ ∈ T.support then x (Fintype.equivFin (↥T.support) ⟨φ, h⟩) else 0
 
-theorem strategyValuation_of_mem {n : ℕ} (T : Strategy n)
+lemma strategyValuation_of_mem {n : ℕ} (T : Strategy n)
     (x : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support)))
     {φ : Sentence} (hφ : φ ∈ T.support) :
     strategyValuation T x φ = x (Fintype.equivFin (↥T.support) ⟨φ, hφ⟩) := by
   simp [strategyValuation, hφ]
 
-theorem strategyValuation_not_mem {n : ℕ} (T : Strategy n)
+lemma strategyValuation_not_mem {n : ℕ} (T : Strategy n)
     (x : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support)))
     {φ : Sentence} (hφ : φ ∉ T.support) :
     strategyValuation T x φ = 0 := by
@@ -139,12 +139,12 @@ noncomputable def strategyHistory {n : ℕ} (T : Strategy n) (prior : History)
     (x : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support))) : History :=
   Function.update prior n (strategyValuation T x)
 
-theorem strategyHistory_current {n : ℕ} (T : Strategy n) (prior : History)
+lemma strategyHistory_current {n : ℕ} (T : Strategy n) (prior : History)
     (x : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support))) :
     strategyHistory T prior x n = strategyValuation T x := by
   simp [strategyHistory]
 
-theorem continuous_strategyValuation {n : ℕ} (T : Strategy n) :
+lemma continuous_strategyValuation {n : ℕ} (T : Strategy n) :
     Continuous (strategyValuation T) := by
   apply continuous_pi
   intro φ
@@ -158,7 +158,7 @@ theorem continuous_strategyValuation {n : ℕ} (T : Strategy n) :
       (continuous_const : Continuous
         (fun _ : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support)) => (0 : ℝ)))
 
-theorem continuous_strategyHistory {n : ℕ} (T : Strategy n) (prior : History) :
+lemma continuous_strategyHistory {n : ℕ} (T : Strategy n) (prior : History) :
     Continuous (strategyHistory T prior) := by
   apply continuous_pi
   intro day
@@ -172,7 +172,7 @@ theorem continuous_strategyHistory {n : ℕ} (T : Strategy n) (prior : History) 
       (continuous_const : Continuous
         (fun _ : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support)) => prior day φ))
 
-theorem continuous_strategyShares {n : ℕ} (T : Strategy n) (prior : History)
+lemma continuous_strategyShares {n : ℕ} (T : Strategy n) (prior : History)
     (φ : Sentence) :
     Continuous (fun x : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support)) =>
       T.shares (strategyHistory T prior x) φ) := by
@@ -187,7 +187,7 @@ noncomputable def strategyWorldValue {n : ℕ} (T : Strategy n) (prior : History
     (w : Sentence → ℝ) (x : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support))) : ℝ :=
   T.value (strategyHistory T prior x) w
 
-theorem continuous_strategyWorldValue {n : ℕ} (T : Strategy n) (prior : History)
+lemma continuous_strategyWorldValue {n : ℕ} (T : Strategy n) (prior : History)
     (w : Sentence → ℝ) : Continuous (strategyWorldValue T prior w) := by
   unfold strategyWorldValue
   simp_rw [Strategy.value_eq_sum_support]
@@ -205,7 +205,7 @@ def supportBitWorld {n : ℕ} (T : Strategy n) (b : ↥T.support → Bool) :
     Sentence → ℝ := fun φ =>
   if hφ : φ ∈ T.support then if b ⟨φ, hφ⟩ then 1 else 0 else 0
 
-theorem supportBitWorld_mem_Icc {n : ℕ} (T : Strategy n)
+lemma supportBitWorld_mem_Icc {n : ℕ} (T : Strategy n)
     (b : ↥T.support → Bool) (φ : Sentence) :
     0 ≤ supportBitWorld T b φ ∧ supportBitWorld T b φ ≤ 1 := by
   by_cases hφ : φ ∈ T.support
@@ -225,7 +225,7 @@ noncomputable def priceAdjustment {n : ℕ} (T : Strategy n) (prior : History)
   (EuclideanSpace.equiv (Fin (Fintype.card ↥T.support)) ℝ).symm (fun i =>
     max 0 (min 1 (x i + T.shares (strategyHistory T prior x) (T.coordinateSentence i))))
 
-theorem continuous_priceAdjustment {n : ℕ} (T : Strategy n) (prior : History) :
+lemma continuous_priceAdjustment {n : ℕ} (T : Strategy n) (prior : History) :
     Continuous (priceAdjustment T prior) := by
   apply (EuclideanSpace.equiv (Fin (Fintype.card ↥T.support)) ℝ).symm.continuous.comp
   apply continuous_pi
@@ -234,7 +234,7 @@ theorem continuous_priceAdjustment {n : ℕ} (T : Strategy n) (prior : History) 
     ((EuclideanSpace.proj (𝕜 := ℝ) i).continuous.add
       (continuous_strategyShares T prior (T.coordinateSentence i))))
 
-theorem priceAdjustment_mapsTo {n : ℕ} (T : Strategy n) (prior : History) :
+lemma priceAdjustment_mapsTo {n : ℕ} (T : Strategy n) (prior : History) :
     MapsTo (priceAdjustment T prior) (strategyCube T) (strategyCube T) := by
   intro x hx
   refine ⟨fun i => max 0 (min 1
@@ -243,7 +243,7 @@ theorem priceAdjustment_mapsTo {n : ℕ} (T : Strategy n) (prior : History) :
   · exact le_max_left _ _
   · exact max_le (by norm_num) (min_le_left _ _)
 
-theorem mem_strategyCube_iff {n : ℕ} (T : Strategy n)
+lemma mem_strategyCube_iff {n : ℕ} (T : Strategy n)
     (x : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support))) :
     x ∈ strategyCube T ↔ ∀ i, 0 ≤ x i ∧ x i ≤ 1 := by
   let E := EuclideanSpace.equiv (Fin (Fintype.card ↥T.support)) ℝ
@@ -254,17 +254,17 @@ theorem mem_strategyCube_iff {n : ℕ} (T : Strategy n)
     refine ⟨E x, ?_, E.symm_apply_apply x⟩
     exact ⟨fun i => (hx i).1, fun i => (hx i).2⟩
 
-theorem isCompact_strategyCube {n : ℕ} (T : Strategy n) :
+lemma isCompact_strategyCube {n : ℕ} (T : Strategy n) :
     IsCompact (strategyCube T) := by
   exact isCompact_Icc.image
     (EuclideanSpace.equiv (Fin (Fintype.card ↥T.support)) ℝ).symm.continuous
 
-theorem convex_strategyCube {n : ℕ} (T : Strategy n) :
+lemma convex_strategyCube {n : ℕ} (T : Strategy n) :
     Convex ℝ (strategyCube T) := by
   exact (convex_Icc (0 : Fin (Fintype.card ↥T.support) → ℝ) 1).linear_image
     (EuclideanSpace.equiv (Fin (Fintype.card ↥T.support)) ℝ).symm.toLinearMap
 
-theorem strategyCube_nonempty {n : ℕ} (T : Strategy n) :
+lemma strategyCube_nonempty {n : ℕ} (T : Strategy n) :
     (strategyCube T).Nonempty := by
   let E := EuclideanSpace.equiv (Fin (Fintype.card ↥T.support)) ℝ
   refine ⟨E.symm 0, 0, ?_, rfl⟩
@@ -279,7 +279,7 @@ noncomputable def clipPriceVector {n : ℕ} (T : Strategy n)
   (EuclideanSpace.equiv (Fin (Fintype.card ↥T.support)) ℝ).symm
     (fun i => max 0 (min 1 (x i)))
 
-theorem continuous_clipPriceVector {n : ℕ} (T : Strategy n) :
+lemma continuous_clipPriceVector {n : ℕ} (T : Strategy n) :
     Continuous (clipPriceVector T) := by
   apply (EuclideanSpace.equiv (Fin (Fintype.card ↥T.support)) ℝ).symm.continuous.comp
   apply continuous_pi
@@ -287,7 +287,7 @@ theorem continuous_clipPriceVector {n : ℕ} (T : Strategy n) :
   exact continuous_const.max (continuous_const.min
     (EuclideanSpace.proj (𝕜 := ℝ) i).continuous)
 
-theorem clipPriceVector_eq_self {n : ℕ} (T : Strategy n)
+lemma clipPriceVector_eq_self {n : ℕ} (T : Strategy n)
     {x : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support))}
     (hx : x ∈ strategyCube T) : clipPriceVector T x = x := by
   apply PiLp.ext
@@ -309,14 +309,14 @@ noncomputable def rationalPriceVector {n : ℕ} (T : Strategy n)
   (EuclideanSpace.equiv (Fin (Fintype.card ↥T.support)) ℝ).symm
     (fun i => ((max 0 (min 1 (q i)) : ℚ) : ℝ))
 
-theorem rationalPriceVector_eq_clip {n : ℕ} (T : Strategy n)
+lemma rationalPriceVector_eq_clip {n : ℕ} (T : Strategy n)
     (q : Fin (Fintype.card ↥T.support) → ℚ) :
     rationalPriceVector T q = clipPriceVector T (rawRationalPriceVector T q) := by
   apply PiLp.ext
   intro i
   simp [rationalPriceVector, clipPriceVector, rawRationalPriceVector]
 
-theorem rationalPriceVector_mem_cube {n : ℕ} (T : Strategy n)
+lemma rationalPriceVector_mem_cube {n : ℕ} (T : Strategy n)
     (q : Fin (Fintype.card ↥T.support) → ℚ) :
     rationalPriceVector T q ∈ strategyCube T := by
   rw [mem_strategyCube_iff]
@@ -333,7 +333,7 @@ noncomputable def priceVectorOfValuation {n : ℕ} (T : Strategy n) (V : Valuati
   (EuclideanSpace.equiv (Fin (Fintype.card ↥T.support)) ℝ).symm
     (fun i => V (T.coordinateSentence i))
 
-theorem strategyValuation_priceVectorOfValuation {n : ℕ} (T : Strategy n)
+lemma strategyValuation_priceVectorOfValuation {n : ℕ} (T : Strategy n)
     (V : Valuation) (hsupp : ∀ φ, φ ∉ T.support → V φ = 0) :
     strategyValuation T (priceVectorOfValuation T V) = V := by
   funext φ
@@ -346,14 +346,14 @@ theorem strategyValuation_priceVectorOfValuation {n : ℕ} (T : Strategy n)
     simp [Strategy.coordinateSentence, i]
   · rw [strategyValuation_not_mem T _ hφ, hsupp φ hφ]
 
-theorem priceVectorOfValuation_mem_cube {n : ℕ} (T : Strategy n) (V : Valuation)
+lemma priceVectorOfValuation_mem_cube {n : ℕ} (T : Strategy n) (V : Valuation)
     (hV : ∀ φ, 0 ≤ V φ ∧ V φ ≤ 1) :
     priceVectorOfValuation T V ∈ strategyCube T := by
   rw [mem_strategyCube_iff]
   intro i
   simpa [priceVectorOfValuation] using hV (T.coordinateSentence i)
 
-private theorem eq_one_of_clamp_add_eq {x s : ℝ} (hx0 : 0 ≤ x) (hx1 : x ≤ 1)
+private lemma eq_one_of_clamp_add_eq {x s : ℝ} (hx0 : 0 ≤ x) (hx1 : x ≤ 1)
     (hs : 0 < s) (hfix : max 0 (min 1 (x + s)) = x) : x = 1 := by
   by_contra hne
   have hxlt : x < 1 := lt_of_le_of_ne hx1 hne
@@ -365,7 +365,7 @@ private theorem eq_one_of_clamp_add_eq {x s : ℝ} (hx0 : 0 ≤ x) (hx1 : x ≤ 
   · rw [min_eq_left (le_of_not_ge hsum1)] at hfix
     linarith
 
-private theorem eq_zero_of_clamp_add_eq {x s : ℝ} (hx0 : 0 ≤ x) (hx1 : x ≤ 1)
+private lemma eq_zero_of_clamp_add_eq {x s : ℝ} (hx0 : 0 ≤ x) (hx1 : x ≤ 1)
     (hs : s < 0) (hfix : max 0 (min 1 (x + s)) = x) : x = 0 := by
   by_contra hne
   have hxpos : 0 < x := lt_of_le_of_ne hx0 (Ne.symm hne)
@@ -383,7 +383,7 @@ private theorem eq_zero_of_clamp_add_eq {x s : ℝ} (hx0 : 0 ≤ x) (hx1 : x ≤
 sentence pays in `[0,1]`, so it applies even to Boolean tables which are not restrictions of
 one globally propositionally consistent world.  This stronger internal form is what makes
 the MarketMaker acceptance test a finite decidable search over all support bit tables. -/
-theorem fixed_point_lemma_bounded {n : ℕ} (T : Strategy n) (prior : History) :
+lemma fixed_point_lemma_bounded {n : ℕ} (T : Strategy n) (prior : History) :
     ∃ V : Valuation,
       (∀ φ, 0 ≤ V φ ∧ V φ ≤ 1) ∧
       (∀ φ, φ ∉ T.support → V φ = 0) ∧
@@ -431,7 +431,7 @@ theorem fixed_point_lemma_bounded {n : ℕ} (T : Strategy n) (prior : History) :
 
 /-- Rational cube points are dense enough for all finitely many Boolean support worlds at
 once.  This is the analytic termination theorem behind MarketMaker's brute-force search. -/
-theorem exists_rationalPriceVector_good {n : ℕ} (T : Strategy n) (prior : History)
+lemma exists_rationalPriceVector_good {n : ℕ} (T : Strategy n) (prior : History)
     {ε : ℝ} (hε : 0 < ε) :
     ∃ q : Fin (Fintype.card ↥T.support) → ℚ,
       ∀ b : ↥T.support → Bool,
@@ -498,7 +498,7 @@ def quoteFromEntries : List (Sentence × ℚ) → Sentence → ℚ
     quoteFromEntries ((ψ, q) :: rest) φ =
       if φ = ψ then q else quoteFromEntries rest φ := rfl
 
-private theorem quoteFromEntries_map_eq {l : List Sentence} (hl : l.Nodup)
+private lemma quoteFromEntries_map_eq {l : List Sentence} (hl : l.Nodup)
     (f : Sentence → ℚ) {φ : Sentence} (hφ : φ ∈ l) :
     quoteFromEntries (l.map fun ψ => (ψ, f ψ)) φ = f φ := by
   induction l with
@@ -511,7 +511,7 @@ private theorem quoteFromEntries_map_eq {l : List Sentence} (hl : l.Nodup)
       · have hne : φ ≠ ψ := fun h => hl.1 (h ▸ hφ)
         simp [hne, ih hl.2 hφ]
 
-private theorem quoteFromEntries_map_eq_zero {l : List Sentence} (f : Sentence → ℚ)
+private lemma quoteFromEntries_map_eq_zero {l : List Sentence} (f : Sentence → ℚ)
     {φ : Sentence} (hφ : φ ∉ l) :
     quoteFromEntries (l.map fun ψ => (ψ, f ψ)) φ = 0 := by
   induction l with
@@ -520,7 +520,7 @@ private theorem quoteFromEntries_map_eq_zero {l : List Sentence} (f : Sentence �
       simp only [List.mem_cons, not_or] at hφ
       simp [hφ.1, ih hφ.2]
 
-private theorem quoteFromEntries_eq_zero {entries : List (Sentence × ℚ)} {φ : Sentence}
+private lemma quoteFromEntries_eq_zero {entries : List (Sentence × ℚ)} {φ : Sentence}
     (hφ : φ ∉ entries.map Prod.fst) : quoteFromEntries entries φ = 0 := by
   induction entries with
   | nil => rfl
@@ -553,14 +553,14 @@ def toValuation (B : RationalBeliefState) : Valuation := fun φ => (B.quote φ :
 def support (B : RationalBeliefState) : Finset Sentence :=
   (B.entries.map Prod.fst).toFinset
 
-theorem quote_eq_zero_of_not_mem (B : RationalBeliefState) {φ : Sentence}
+lemma quote_eq_zero_of_not_mem (B : RationalBeliefState) {φ : Sentence}
     (hφ : φ ∉ B.support) : B.quote φ = 0 := by
   unfold quote
   unfold support at hφ
   have hlist : φ ∉ B.entries.map Prod.fst := by simpa using hφ
   exact quoteFromEntries_eq_zero hlist
 
-theorem quote_mem_Icc (B : RationalBeliefState) (φ : Sentence) :
+lemma quote_mem_Icc (B : RationalBeliefState) (φ : Sentence) :
     0 ≤ B.quote φ ∧ B.quote φ ≤ 1 := by
   unfold quote
   have hb : ∀ p ∈ B.entries, 0 ≤ p.2 ∧ p.2 ≤ 1 := B.bounded
@@ -573,7 +573,7 @@ theorem quote_mem_Icc (B : RationalBeliefState) (φ : Sentence) :
       · exact hb p (by simp)
       · exact ih (fun p hp => hb p (by simp [hp]))
 
-theorem toValuation_mem_Icc (B : RationalBeliefState) (φ : Sentence) :
+lemma toValuation_mem_Icc (B : RationalBeliefState) (φ : Sentence) :
     0 ≤ B.toValuation φ ∧ B.toValuation φ ≤ 1 := by
   unfold toValuation
   constructor
@@ -611,13 +611,13 @@ noncomputable def ofStrategyVector {n : ℕ} (T : Strategy n)
     · exact le_max_left _ _
     · exact max_le (by norm_num) (min_le_left _ _)
 
-theorem ofStrategyVector_support {n : ℕ} (T : Strategy n)
+lemma ofStrategyVector_support {n : ℕ} (T : Strategy n)
     (q : Fin (Fintype.card ↥T.support) → ℚ) :
     (ofStrategyVector T q).support = T.support := by
   ext φ
   simp [ofStrategyVector, support]
 
-theorem ofStrategyVector_quote {n : ℕ} (T : Strategy n)
+lemma ofStrategyVector_quote {n : ℕ} (T : Strategy n)
     (q : Fin (Fintype.card ↥T.support) → ℚ) {φ : Sentence} (hφ : φ ∈ T.support) :
     (ofStrategyVector T q).quote φ =
       max 0 (min 1 (q (Fintype.equivFin (↥T.support) ⟨φ, hφ⟩))) := by
@@ -627,7 +627,7 @@ theorem ofStrategyVector_quote {n : ℕ} (T : Strategy n)
     (Finset.mem_toList.mpr hφ)]
   simp [clippedCoordinateQuote, hφ]
 
-theorem ofStrategyVector_toValuation {n : ℕ} (T : Strategy n)
+lemma ofStrategyVector_toValuation {n : ℕ} (T : Strategy n)
     (q : Fin (Fintype.card ↥T.support) → ℚ) :
     (ofStrategyVector T q).toValuation = strategyValuation T (rationalPriceVector T q) := by
   funext φ
@@ -651,7 +651,7 @@ def rationalHistory (past : List RationalBeliefState) : ℕ → Sentence → ℚ
 def beliefHistory (past : List RationalBeliefState) : History :=
   fun day φ => (rationalHistory past day φ : ℝ)
 
-theorem beliefHistory_eq_ratCast (past : List RationalBeliefState) (day : ℕ)
+lemma beliefHistory_eq_ratCast (past : List RationalBeliefState) (day : ℕ)
     (φ : Sentence) : beliefHistory past day φ = (rationalHistory past day φ : ℝ) := rfl
 
 /-- Replace day `n` of a rational history by a candidate belief state. -/
@@ -659,7 +659,7 @@ def candidateRationalHistory (past : List RationalBeliefState) (n : ℕ)
     (B : RationalBeliefState) : ℕ → Sentence → ℚ :=
   Function.update (rationalHistory past) n B.quote
 
-theorem candidateHistory_cast (past : List RationalBeliefState) (n : ℕ)
+lemma candidateHistory_cast (past : List RationalBeliefState) (n : ℕ)
     (B : RationalBeliefState) :
     (fun day φ => (candidateRationalHistory past n B day φ : ℝ)) =
       Function.update (beliefHistory past) n B.toValuation := by
@@ -674,7 +674,7 @@ def marketValueRat {n : ℕ} (T : Strategy n) (Q : ℕ → Sentence → ℚ)
     (w : Sentence → ℚ) : ℚ :=
   (T.trades.map fun p => p.1.denoteRat Q * (w p.2 - Q n p.2)).sum
 
-theorem value_eq_marketRatCast {n : ℕ} (T : Strategy n) (P : History)
+lemma value_eq_marketRatCast {n : ℕ} (T : Strategy n) (P : History)
     (Q : ℕ → Sentence → ℚ) (hQ : ∀ day φ, P day φ = (Q day φ : ℝ))
     (wR : Sentence → ℝ) (wQ : Sentence → ℚ)
     (hw : ∀ φ, wR φ = (wQ φ : ℝ)) :
@@ -733,7 +733,7 @@ def tradeListSupportBitWorldRatFromList (trades : List (EF × Sentence))
       supportBitWorldRatFromList T xs := by
   rfl
 
-theorem supportBitWorldRatFromList_eq {n : ℕ} (T : Strategy n) (xs : List Bool) :
+lemma supportBitWorldRatFromList_eq {n : ℕ} (T : Strategy n) (xs : List Bool) :
     supportBitWorldRatFromList T xs =
       supportBitWorldRat T (supportAssignmentOfList T.support xs) := by
   funext φ
@@ -749,7 +749,7 @@ def supportAssignmentList (S : Finset Sentence) (b : S → Bool) : List Bool :=
     (supportAssignmentList S b).length = S.card := by
   simp [supportAssignmentList, supportSentenceList]
 
-theorem supportAssignmentOfList_supportAssignmentList (S : Finset Sentence)
+lemma supportAssignmentOfList_supportAssignmentList (S : Finset Sentence)
     (b : S → Bool) :
     supportAssignmentOfList S (supportAssignmentList S b) = b := by
   funext φ
@@ -762,7 +762,7 @@ theorem supportAssignmentOfList_supportAssignmentList (S : Finset Sentence)
     List.getElem_idxOf hidx]
   simp [φ.2]
 
-theorem supportBitWorld_eq_ratCast {n : ℕ} (T : Strategy n)
+lemma supportBitWorld_eq_ratCast {n : ℕ} (T : Strategy n)
     (b : ↥T.support → Bool) (φ : Sentence) :
     supportBitWorld T b φ = (supportBitWorldRat T b φ : ℝ) := by
   by_cases hφ : φ ∈ T.support
@@ -805,7 +805,7 @@ instance MarketMakerAcceptsTradeList.instDecidable (trades : List (EF × Sentenc
   unfold MarketMakerAcceptsTradeList
   infer_instance
 
-theorem marketMakerAcceptsTradeList_iff {n : ℕ} (T : Strategy n)
+lemma marketMakerAcceptsTradeList_iff {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (B : RationalBeliefState) :
     MarketMakerAcceptsTradeList T.trades n past ε B ↔
       MarketMakerAcceptsFromLists T past ε B := by
@@ -817,7 +817,7 @@ instance MarketMakerAcceptsFromLists.instDecidable {n : ℕ} (T : Strategy n)
   unfold MarketMakerAcceptsFromLists
   infer_instance
 
-theorem marketMakerAcceptsFromLists_iff {n : ℕ} (T : Strategy n)
+lemma marketMakerAcceptsFromLists_iff {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (B : RationalBeliefState) :
     MarketMakerAcceptsFromLists T past ε B ↔ MarketMakerAccepts T past ε B := by
   constructor
@@ -838,7 +838,7 @@ theorem marketMakerAcceptsFromLists_iff {n : ℕ} (T : Strategy n)
     exact h.2 (supportAssignmentOfList T.support xs)
 
 /-- The acceptance predicate is semantically sound for all Boolean support tables. -/
-theorem MarketMakerAccepts.worldValue_le {n : ℕ} {T : Strategy n}
+lemma MarketMakerAccepts.worldValue_le {n : ℕ} {T : Strategy n}
     {past : List RationalBeliefState} {ε : ℚ} {B : RationalBeliefState}
     (h : MarketMakerAccepts T past ε B) (b : ↥T.support → Bool) :
     T.value (Function.update (beliefHistory past) n B.toValuation)
@@ -855,7 +855,7 @@ theorem MarketMakerAccepts.worldValue_le {n : ℕ} {T : Strategy n}
   exact_mod_cast h.2 b
 
 /-- Every MarketMaker search instance has an accepted finite rational candidate. -/
-theorem exists_marketMakerAccepts {n : ℕ} (T : Strategy n)
+lemma exists_marketMakerAccepts {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) {ε : ℚ} (hε : 0 < ε) :
     ∃ B : RationalBeliefState, MarketMakerAccepts T past ε B := by
   obtain ⟨q, hq⟩ := exists_rationalPriceVector_good T (beliefHistory past)
@@ -896,7 +896,7 @@ def ofEntries? (entries : List (Sentence × ℚ)) : Option RationalBeliefState :
     else none
   else none
 
-theorem ofEntries?_self (B : RationalBeliefState) : ofEntries? B.entries = some B := by
+lemma ofEntries?_self (B : RationalBeliefState) : ofEntries? B.entries = some B := by
   simp only [ofEntries?, dif_pos B.keys_nodup, dif_pos B.bounded]
 
 end RationalBeliefState
@@ -907,7 +907,7 @@ def marketMakerCandidate (k : ℕ) : Option RationalBeliefState :=
   (Encodable.decode (α := List (Sentence × ℚ)) k).bind
     RationalBeliefState.ofEntries?
 
-theorem marketMakerCandidate_encode (B : RationalBeliefState) :
+lemma marketMakerCandidate_encode (B : RationalBeliefState) :
     marketMakerCandidate (Encodable.encode B.entries) = some B := by
   simp [marketMakerCandidate, Encodable.encodek, RationalBeliefState.ofEntries?_self]
 
@@ -971,7 +971,7 @@ instance MarketMakerCandidateAcceptsFromLists.instDecidable {n : ℕ}
           cases hB'
           exact h)
 
-theorem marketMakerCandidateAcceptsFromLists_iff {n : ℕ} (T : Strategy n)
+lemma marketMakerCandidateAcceptsFromLists_iff {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (k : ℕ) :
     MarketMakerCandidateAcceptsFromLists T past ε k ↔
       MarketMakerCandidateAccepts T past ε k := by
@@ -982,7 +982,7 @@ theorem marketMakerCandidateAcceptsFromLists_iff {n : ℕ} (T : Strategy n)
   · rintro ⟨B, hB, h⟩
     exact ⟨B, hB, (marketMakerAcceptsFromLists_iff T past ε B).mpr h⟩
 
-theorem marketMakerCandidateAcceptsTradeList_iff {n : ℕ} (T : Strategy n)
+lemma marketMakerCandidateAcceptsTradeList_iff {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (k : ℕ) :
     MarketMakerCandidateAcceptsTradeList T.trades n past ε k ↔
       MarketMakerCandidateAcceptsFromLists T past ε k := by
@@ -993,7 +993,7 @@ theorem marketMakerCandidateAcceptsTradeList_iff {n : ℕ} (T : Strategy n)
   · rintro ⟨B, hB, h⟩
     exact ⟨B, hB, (marketMakerAcceptsTradeList_iff T past ε B).mpr h⟩
 
-theorem exists_marketMakerCandidateAccepts {n : ℕ} (T : Strategy n)
+lemma exists_marketMakerCandidateAccepts {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) {ε : ℚ} (hε : 0 < ε) :
     ∃ k, MarketMakerCandidateAccepts T past ε k := by
   obtain ⟨B, hB⟩ := exists_marketMakerAccepts T past hε
@@ -1004,7 +1004,7 @@ noncomputable def marketMakerIndex {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) : ℕ :=
   Nat.find (exists_marketMakerCandidateAccepts T past hε)
 
-theorem marketMakerIndex_spec {n : ℕ} (T : Strategy n)
+lemma marketMakerIndex_spec {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) :
     MarketMakerCandidateAccepts T past ε (marketMakerIndex T past ε hε) :=
   Nat.find_spec (exists_marketMakerCandidateAccepts T past hε)
@@ -1041,7 +1041,7 @@ def marketMakerSearchIndexUpToTradeList (trades : List (EF × Sentence)) (n : �
             some fuel
           else none
 
-theorem marketMakerSearchIndexUpToTradeList_eq {n : ℕ} (T : Strategy n)
+lemma marketMakerSearchIndexUpToTradeList_eq {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (fuel : ℕ) :
     marketMakerSearchIndexUpToTradeList T.trades n past ε fuel =
       marketMakerSearchIndexUpToFromLists T past ε fuel := by
@@ -1062,7 +1062,7 @@ theorem marketMakerSearchIndexUpToTradeList_eq {n : ℕ} (T : Strategy n)
                 ((marketMakerCandidateAcceptsTradeList_iff T past ε fuel).mpr h')
             simp [h, h']
 
-theorem marketMakerSearchIndexUpToFromLists_eq {n : ℕ} (T : Strategy n)
+lemma marketMakerSearchIndexUpToFromLists_eq {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (fuel : ℕ) :
     marketMakerSearchIndexUpToFromLists T past ε fuel =
       marketMakerSearchIndexUpTo T past ε fuel := by
@@ -1082,7 +1082,7 @@ theorem marketMakerSearchIndexUpToFromLists_eq {n : ℕ} (T : Strategy n)
                 ((marketMakerCandidateAcceptsFromLists_iff T past ε fuel).mpr h')
             simp [h, h']
 
-theorem marketMakerSearchIndexUpTo_eq_none_iff {n : ℕ} (T : Strategy n)
+lemma marketMakerSearchIndexUpTo_eq_none_iff {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (fuel : ℕ) :
     marketMakerSearchIndexUpTo T past ε fuel = none ↔
       ∀ k, k < fuel → ¬ MarketMakerCandidateAccepts T past ε k := by
@@ -1132,21 +1132,21 @@ def marketMakerSearchUpToTradeList (trades : List (EF × Sentence)) (n : ℕ)
     Option RationalBeliefState :=
   (marketMakerSearchIndexUpToTradeList trades n past ε fuel).bind marketMakerCandidate
 
-theorem marketMakerSearchUpToTradeList_eq {n : ℕ} (T : Strategy n)
+lemma marketMakerSearchUpToTradeList_eq {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (fuel : ℕ) :
     marketMakerSearchUpToTradeList T.trades n past ε fuel =
       marketMakerSearchUpToFromLists T past ε fuel := by
   unfold marketMakerSearchUpToTradeList marketMakerSearchUpToFromLists
   rw [marketMakerSearchIndexUpToTradeList_eq]
 
-theorem marketMakerSearchUpToFromLists_eq {n : ℕ} (T : Strategy n)
+lemma marketMakerSearchUpToFromLists_eq {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (fuel : ℕ) :
     marketMakerSearchUpToFromLists T past ε fuel =
       marketMakerSearchUpTo T past ε fuel := by
   unfold marketMakerSearchUpToFromLists marketMakerSearchUpTo
   rw [marketMakerSearchIndexUpToFromLists_eq]
 
-theorem marketMakerSearchIndexUpTo_mono_success {n : ℕ} (T : Strategy n)
+lemma marketMakerSearchIndexUpTo_mono_success {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) {fuel fuel' k : ℕ}
     (hff : fuel ≤ fuel')
     (h : marketMakerSearchIndexUpTo T past ε fuel = some k) :
@@ -1156,7 +1156,7 @@ theorem marketMakerSearchIndexUpTo_mono_success {n : ℕ} (T : Strategy n)
   | succ fuel' _ ih =>
       simp [marketMakerSearchIndexUpTo, ih]
 
-theorem marketMakerSearchUpTo_mono_success {n : ℕ} (T : Strategy n)
+lemma marketMakerSearchUpTo_mono_success {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) {fuel fuel' : ℕ}
     {B : RationalBeliefState} (hff : fuel ≤ fuel')
     (h : marketMakerSearchUpTo T past ε fuel = some B) :
@@ -1169,7 +1169,7 @@ theorem marketMakerSearchUpTo_mono_success {n : ℕ} (T : Strategy n)
       rw [marketMakerSearchIndexUpTo_mono_success T past ε hff hs]
       exact h
 
-private theorem marketMakerCandidate_index_isSome {n : ℕ} (T : Strategy n)
+private lemma marketMakerCandidate_index_isSome {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) :
     (marketMakerCandidate (marketMakerIndex T past ε hε)).isSome = true := by
   obtain ⟨B, hB, _⟩ := marketMakerIndex_spec T past ε hε
@@ -1184,13 +1184,13 @@ noncomputable def MarketMaker {n : ℕ} (T : Strategy n)
   (marketMakerCandidate (marketMakerIndex T past ε hε)).get
     (marketMakerCandidate_index_isSome T past ε hε)
 
-theorem MarketMaker_candidate {n : ℕ} (T : Strategy n)
+lemma MarketMaker_candidate {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) :
     marketMakerCandidate (marketMakerIndex T past ε hε) =
       some (MarketMaker T past ε hε) :=
   (Option.some_get (marketMakerCandidate_index_isSome T past ε hε)).symm
 
-theorem MarketMaker_accepts {n : ℕ} (T : Strategy n)
+lemma MarketMaker_accepts {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) :
     MarketMakerAccepts T past ε (MarketMaker T past ε hε) := by
   obtain ⟨B, hB, haccepts⟩ := marketMakerIndex_spec T past ε hε
@@ -1198,7 +1198,7 @@ theorem MarketMaker_accepts {n : ℕ} (T : Strategy n)
   cases hB
   exact haccepts
 
-theorem MarketMaker_search_clock {n : ℕ} (T : Strategy n)
+lemma MarketMaker_search_clock {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) :
     marketMakerSearchUpTo T past ε (marketMakerIndex T past ε hε + 1) =
       some (MarketMaker T past ε hε) := by
@@ -1210,7 +1210,7 @@ theorem MarketMaker_search_clock {n : ℕ} (T : Strategy n)
   simp [marketMakerSearchUpTo, marketMakerSearchIndexUpTo, hnone, haccepts,
     MarketMaker_candidate T past ε hε]
 
-theorem MarketMaker_search_of_clock_le {n : ℕ} (T : Strategy n)
+lemma MarketMaker_search_of_clock_le {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) {fuel : ℕ}
     (hclock : marketMakerIndex T past ε hε + 1 ≤ fuel) :
     marketMakerSearchUpTo T past ε fuel = some (MarketMaker T past ε hε) :=
@@ -1219,7 +1219,7 @@ theorem MarketMaker_search_of_clock_le {n : ℕ} (T : Strategy n)
 
 /-- Any successful bounded search already returns the canonical first accepted candidate;
 the fuel bound affects termination only, never the result. -/
-theorem MarketMaker_searchUpTo_sound {n : ℕ} (T : Strategy n)
+lemma MarketMaker_searchUpTo_sound {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε)
     {fuel : ℕ} {B : RationalBeliefState}
     (h : marketMakerSearchUpTo T past ε fuel = some B) :
@@ -1235,21 +1235,21 @@ theorem MarketMaker_searchUpTo_sound {n : ℕ} (T : Strategy n)
 /-- The paper's 0-based error allowance: day `n` corresponds to paper day `n+1`. -/
 def marketMakerError (n : ℕ) : ℚ := 1 / (2 : ℚ) ^ (n + 1)
 
-theorem marketMakerError_pos (n : ℕ) : 0 < marketMakerError n := by
+lemma marketMakerError_pos (n : ℕ) : 0 < marketMakerError n := by
   unfold marketMakerError
   exact div_pos (by norm_num) (pow_pos (by norm_num) _)
 
-theorem MarketMaker_support {n : ℕ} (T : Strategy n)
+lemma MarketMaker_support {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) :
     (MarketMaker T past ε hε).support ⊆ T.support :=
   (MarketMaker_accepts T past ε hε).1
 
-theorem MarketMaker_range {n : ℕ} (T : Strategy n)
+lemma MarketMaker_range {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) (φ : Sentence) :
     (MarketMaker T past ε hε).toValuation φ ∈ Set.Icc (0 : ℝ) 1 :=
   (MarketMaker T past ε hε).toValuation_mem_Icc φ
 
-theorem MarketMaker_zero_of_not_support {n : ℕ} (T : Strategy n)
+lemma MarketMaker_zero_of_not_support {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε)
     {φ : Sentence} (hφ : φ ∉ T.support) :
     (MarketMaker T past ε hε).toValuation φ = 0 := by
@@ -1259,7 +1259,7 @@ theorem MarketMaker_zero_of_not_support {n : ℕ} (T : Strategy n)
     RationalBeliefState.quote_eq_zero_of_not_mem _ hnot]
   norm_num
 
-theorem MarketMaker_worldValue_le {n : ℕ} (T : Strategy n)
+lemma MarketMaker_worldValue_le {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε)
     (b : ↥T.support → Bool) :
     T.value (Function.update (beliefHistory past) n
@@ -1272,7 +1272,7 @@ namespace EF
 
 /-- An expressible feature cannot distinguish histories which agree through a day above
 its rank.  The environment form handles shared `letE` bindings without expanding them. -/
-theorem denoteWith_eq_of_eqUpTo (e : EF) (ρ σ : List ℝ) (V W : History) (n : ℕ)
+lemma denoteWith_eq_of_eqUpTo (e : EF) (ρ σ : List ℝ) (V W : History) (n : ℕ)
     (hrank : e.rank ≤ n)
     (hρ : ∀ i, ρ.getD i 0 = σ.getD i 0)
     (hVW : ∀ day, day ≤ n → ∀ φ, V day φ = W day φ) :
@@ -1304,7 +1304,7 @@ theorem denoteWith_eq_of_eqUpTo (e : EF) (ρ σ : List ℝ) (V W : History) (n :
         | zero => simpa using hx
         | succ i => simpa using hρ i
 
-theorem denote_eq_of_eqUpTo (e : EF) (V W : History) (n : ℕ)
+lemma denote_eq_of_eqUpTo (e : EF) (V W : History) (n : ℕ)
     (hrank : e.rank ≤ n)
     (hVW : ∀ day, day ≤ n → ∀ φ, V day φ = W day φ) :
     e.denote V = e.denote W := by
@@ -1315,7 +1315,7 @@ end EF
 namespace Strategy
 
 /-- A legal day-`n` strategy only depends on prices through day `n`. -/
-theorem value_eq_of_eqUpTo {n : ℕ} (T : Strategy n) (V W : History)
+lemma value_eq_of_eqUpTo {n : ℕ} (T : Strategy n) (V W : History)
     (w : Sentence → ℝ) (hVW : ∀ day, day ≤ n → ∀ φ, V day φ = W day φ) :
     T.value V w = T.value W w := by
   unfold Strategy.value
@@ -1326,7 +1326,7 @@ theorem value_eq_of_eqUpTo {n : ℕ} (T : Strategy n) (V W : History)
     hVW n le_rfl p.2]
 
 /-- A payout table only matters on the strategy's syntactic support. -/
-theorem value_eq_of_world_eqOn_support {n : ℕ} (T : Strategy n) (V : History)
+lemma value_eq_of_world_eqOn_support {n : ℕ} (T : Strategy n) (V : History)
     (w z : Sentence → ℝ) (hwz : ∀ φ ∈ T.support, w φ = z φ) :
     T.value V w = T.value V z := by
   rw [T.value_eq_sum_support, T.value_eq_sum_support]
@@ -1353,14 +1353,14 @@ decreasing_by exact i.isLt
 noncomputable def marketMakerHistory (Tr : Trader) : History :=
   fun n => (marketMakerStates Tr n).toValuation
 
-theorem beliefHistory_marketMakerPast {Tr : Trader} {n day : ℕ} (hday : day < n) :
+lemma beliefHistory_marketMakerPast {Tr : Trader} {n day : ℕ} (hday : day < n) :
     beliefHistory (marketMakerPast Tr (marketMakerStates Tr) n) day =
       marketMakerHistory Tr day := by
   funext φ
   simp [beliefHistory, rationalHistory, marketMakerPast, marketMakerHistory,
     RationalBeliefState.toValuation, hday]
 
-theorem candidate_marketMakerHistory_eq_upTo (Tr : Trader) (n day : ℕ)
+lemma candidate_marketMakerHistory_eq_upTo (Tr : Trader) (n day : ℕ)
     (hday : day ≤ n) :
     Function.update
       (beliefHistory (marketMakerPast Tr (marketMakerStates Tr) n)) n
@@ -1371,13 +1371,13 @@ theorem candidate_marketMakerHistory_eq_upTo (Tr : Trader) (n day : ℕ)
   · have hlt : day < n := lt_of_le_of_ne hday hdn
     simp [Function.update, hdn, beliefHistory_marketMakerPast hlt]
 
-theorem supportBitWorld_pcWorld_eq {n : ℕ} (T : Strategy n) (v : PCWorld)
+lemma supportBitWorld_pcWorld_eq {n : ℕ} (T : Strategy n) (v : PCWorld)
     (φ : Sentence) (hφ : φ ∈ T.support) :
     supportBitWorld T (fun ψ => decide (v.Holds ψ)) φ = v.payout φ := by
   by_cases hv : v.Holds φ <;> simp [supportBitWorld, PCWorld.payout, hφ, hv]
 
 /-- One-day MarketMaker bound against every propositionally consistent world. -/
-theorem marketMaker_day_value_le (Tr : Trader) (n : ℕ) (v : PCWorld) :
+lemma marketMaker_day_value_le (Tr : Trader) (n : ℕ) (v : PCWorld) :
     (Tr.strat n).value (marketMakerHistory Tr) v.payout ≤
       (marketMakerError n : ℝ) := by
   let past := marketMakerPast Tr (marketMakerStates Tr) n
@@ -1408,11 +1408,11 @@ theorem marketMaker_day_value_le (Tr : Trader) (n : ℕ) (v : PCWorld) :
   rw [hhistory] at hmm
   exact hmm
 
-theorem marketMakerError_cast (n : ℕ) :
+lemma marketMakerError_cast (n : ℕ) :
     (marketMakerError n : ℝ) = (1 / 2 : ℝ) ^ (n + 1) := by
   norm_num [marketMakerError, div_pow]
 
-theorem sum_marketMakerError (n : ℕ) :
+lemma sum_marketMakerError (n : ℕ) :
     ∑ i ∈ Finset.range (n + 1), (marketMakerError i : ℝ) =
       1 - (1 / 2 : ℝ) ^ (n + 1) := by
   induction n with
@@ -1422,14 +1422,14 @@ theorem sum_marketMakerError (n : ℕ) :
       rw [pow_succ]
       ring
 
-theorem sum_marketMakerError_lt_one (n : ℕ) :
+lemma sum_marketMakerError_lt_one (n : ℕ) :
     ∑ i ∈ Finset.range (n + 1), (marketMakerError i : ℝ) < 1 := by
   rw [sum_marketMakerError]
   have hpow : 0 < (1 / 2 : ℝ) ^ (n + 1) := pow_pos (by norm_num) _
   linarith
 
 /-- Every finite-horizon plausible assessment of the MarketMaker history is below one. -/
-theorem marketMaker_netWorth_lt_one (Tr : Trader) (v : PCWorld) (n : ℕ) :
+lemma marketMaker_netWorth_lt_one (Tr : Trader) (v : PCWorld) (n : ℕ) :
     Tr.netWorth (marketMakerHistory Tr) v n < 1 := by
   unfold Trader.netWorth
   calc

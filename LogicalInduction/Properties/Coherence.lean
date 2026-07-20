@@ -22,7 +22,7 @@ constant-trader, same already-certified efficient computability — only the sig
 
 /-- In a world consistent with a set containing `∼φ`, `φ` is false (Foundation Boolean
 semantics: `∼φ = φ 🡒 ⊥`, so `Holds (∼φ) ↔ ¬ Holds φ`). -/
-theorem PCWorld.payout_of_disprovable (v : PCWorld) (φ : Sentence) (h : v.Holds (∼φ)) :
+lemma PCWorld.payout_of_disprovable (v : PCWorld) (φ : Sentence) (h : v.Holds (∼φ)) :
     v.payout φ = 0 := by
   have : ¬ v.Holds φ := by
     simpa [PCWorld.Holds, LO.Propositional.Formula.Boolean.val,
@@ -37,14 +37,14 @@ def sellDaily (φ : Sentence) : Trader where
                              subst hp; exact Nat.zero_le _ }
 
 
-theorem sellDaily_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) :
+lemma sellDaily_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) :
     (sellDaily φ).netWorth V v m = ∑ i ∈ Finset.range (m + 1), (V i φ - v.payout φ) := by
   simp only [Trader.netWorth, sellDaily, Strategy.value]
   refine Finset.sum_congr rfl (fun i _ => ?_)
   simp [EF.denote]
 
 
-theorem sellDaily_ec (φ : Sentence) : EfficientlyComputableTok (sellDaily φ) := by
+lemma sellDaily_ec (φ : Sentence) : EfficientlyComputableTok (sellDaily φ) := by
   refine ecTok_of_stream _ ?_
   have h : ∀ n, ((sellDaily φ).strat n).trades = [(EF.const (-1), φ)] := fun _ => rfl
   simp only [h]
@@ -54,7 +54,7 @@ theorem sellDaily_ec (φ : Sentence) : EfficientlyComputableTok (sellDaily φ) :
 
 /-- Exploitation of the sell trader under infinitely-often *overpricing* of a disprovable
 `φ`: net worth `∑ Pᵢ(φ) ≥ 0` (prices `≥ 0`), unbounded along the overpriced subsequence. -/
-theorem sellDaily_exploits_freq (P : History) (DP : DeductiveProcess) (φ : Sentence) (ε : ℝ)
+lemma sellDaily_exploits_freq (P : History) (DP : DeductiveProcess) (φ : Sentence) (ε : ℝ)
     (hε : 0 < ε) (hdis : ∀ n, (∼φ) ∈ DP.D n) (hP0 : ∀ n, 0 ≤ P n φ)
     (hfreq : ∃ᶠ n in atTop, ε ≤ P n φ)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -96,7 +96,7 @@ theorem sellDaily_exploits_freq (P : History) (DP : DeductiveProcess) (φ : Sent
 /-- **Finite additivity of payout under exclusion.** If `∼(φ∧ψ)` holds (the disjuncts are
 mutually exclusive), the payout of `φ∨ψ` is the sum of the payouts — the world-level identity
 behind coherent finite additivity. -/
-theorem PCWorld.payout_or_of_excl (v : PCWorld) (φ ψ : Sentence)
+lemma PCWorld.payout_or_of_excl (v : PCWorld) (φ ψ : Sentence)
     (h : v.Holds (∼(φ ⋏ ψ))) : v.payout (φ ⋎ ψ) = v.payout φ + v.payout ψ := by
   rw [PCWorld.holds_neg, PCWorld.holds_and] at h
   simp only [PCWorld.payout]
@@ -165,10 +165,10 @@ noncomputable def sigEF (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : EF :=
   buySignal (.mul (.const σ) (gapEF φ ψ n)) ε
 
 
-theorem gapEF_rank (φ ψ : Sentence) (n : ℕ) : (gapEF φ ψ n).rank ≤ n := by
+lemma gapEF_rank (φ ψ : Sentence) (n : ℕ) : (gapEF φ ψ n).rank ≤ n := by
   simp [gapEF, EF.rank]
 
-theorem sigEF_rank (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : (sigEF φ ψ σ ε n).rank ≤ n := by
+lemma sigEF_rank (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : (sigEF φ ψ σ ε n).rank ≤ n := by
   simp [sigEF, EF.rank, gapEF]
 
 
@@ -191,7 +191,7 @@ noncomputable def exclW (P : History) (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ)
   (sigEF φ ψ σ ε n).denote P * ((σ : ℝ) * (gapEF φ ψ n).denote P)
 
 
-theorem exclTr_value (φ ψ : Sentence) (σ ε : ℚ) (P : History) (v : PCWorld) (n : ℕ)
+lemma exclTr_value (φ ψ : Sentence) (σ ε : ℚ) (P : History) (v : PCWorld) (n : ℕ)
     (hv : v.Holds (∼(φ ⋏ ψ))) :
     ((exclTr φ ψ σ ε).strat n).value P v.payout = exclW P φ ψ σ ε n := by
   have hpay : v.payout (φ ⋎ ψ) = v.payout φ + v.payout ψ := PCWorld.payout_or_of_excl v φ ψ hv
@@ -202,13 +202,13 @@ theorem exclTr_value (φ ψ : Sentence) (σ ε : ℚ) (P : History) (v : PCWorld
 
 
 /-- Denotation of the buy-signal: `max(0, σ·gap − ε/2)`. -/
-theorem sigEF_denote (φ ψ : Sentence) (σ ε : ℚ) (P : History) (n : ℕ) :
+lemma sigEF_denote (φ ψ : Sentence) (σ ε : ℚ) (P : History) (n : ℕ) :
     (sigEF φ ψ σ ε n).denote P = max 0 ((σ:ℝ) * (gapEF φ ψ n).denote P + (-(ε:ℝ)/2)) := by
   simp only [sigEF, buySignal_denote, EF.denote_mul, EF.denote_const, Pi.mul_apply]
 
 
 /-- `exclW` is nonnegative (needs `ε > 0`): when the signal fires, `σ·gap ≥ ε/2 > 0`. -/
-theorem exclW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε) (n : ℕ) :
+lemma exclW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε) (n : ℕ) :
     0 ≤ exclW P φ ψ σ ε n := by
   rw [exclW, sigEF_denote]
   set G := (σ:ℝ) * (gapEF φ ψ n).denote P with hG
@@ -219,7 +219,7 @@ theorem exclW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < �
     exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
 
 
-theorem exclTr_netWorth (φ ψ : Sentence) (σ ε : ℚ) (P : History) (DP : DeductiveProcess)
+lemma exclTr_netWorth (φ ψ : Sentence) (σ ε : ℚ) (P : History) (DP : DeductiveProcess)
     (hexcl : ∀ n, (∼(φ ⋏ ψ)) ∈ DP.D n) (n : ℕ) (v : PCWorld) (hv : v.ConsistentWith (DP.D n)) :
     (exclTr φ ψ σ ε).netWorth P v n = ∑ i ∈ Finset.range (n+1), exclW P φ ψ σ ε i := by
   simp only [Trader.netWorth]
@@ -229,14 +229,14 @@ theorem exclTr_netWorth (φ ψ : Sentence) (σ ε : ℚ) (P : History) (DP : Ded
 
 
 /-- The real price-gap equals the `gapEF` denotation. -/
-theorem gapEF_denote (φ ψ : Sentence) (P : History) (n : ℕ) :
+lemma gapEF_denote (φ ψ : Sentence) (P : History) (n : ℕ) :
     (gapEF φ ψ n).denote P = P n (φ ⋎ ψ) - P n φ - P n ψ := by
   simp only [gapEF, EF.denote_add, EF.denote_mul, EF.denote_const, EF.denote_price,
     Pi.add_apply, Pi.mul_apply]; push_cast; ring
 
 
 /-- The signal template is efficiently computable. -/
-theorem sigEF_polyEF (φ ψ : Sentence) (σ ε : ℚ) : PolyEF (sigEF φ ψ σ ε) := by
+lemma sigEF_polyEF (φ ψ : Sentence) (σ ε : ℚ) : PolyEF (sigEF φ ψ σ ε) := by
   have hgap : PolyEF (gapEF φ ψ) :=
     (PolyEF.price (φ ⋎ ψ)).add
       (((PolyEF.const (-1)).mul (PolyEF.price φ)).add ((PolyEF.const (-1)).mul (PolyEF.price ψ)))
@@ -244,7 +244,7 @@ theorem sigEF_polyEF (φ ψ : Sentence) (σ ε : ℚ) : PolyEF (sigEF φ ψ σ �
 
 
 /-- The token stream of `gapEF` is compositional (an `add`/`mul`/`price`/`const` tree). -/
-theorem gapEF_stream (φ ψ : Sentence) : PolyTokenStream (fun n => (gapEF φ ψ n).serialize) := by
+lemma gapEF_stream (φ ψ : Sentence) : PolyTokenStream (fun n => (gapEF φ ψ n).serialize) := by
   simp only [gapEF]
   exact PolyTokenStream.serialize_add (PolyTokenStream.serialize_price (φ ⋎ ψ))
     (PolyTokenStream.serialize_add
@@ -254,7 +254,7 @@ theorem gapEF_stream (φ ψ : Sentence) : PolyTokenStream (fun n => (gapEF φ ψ
         (PolyTokenStream.serialize_price ψ)))
 
 /-- The token stream of the buy-signal `sigEF = max(0, σ·gap − ε/2)`. -/
-theorem sigEF_stream (φ ψ : Sentence) (σ ε : ℚ) :
+lemma sigEF_stream (φ ψ : Sentence) (σ ε : ℚ) :
     PolyTokenStream (fun n => (sigEF φ ψ σ ε n).serialize) := by
   simp only [sigEF, buySignal]
   exact PolyTokenStream.serialize_max (PolyTokenStream.serialize_const _)
@@ -262,7 +262,7 @@ theorem sigEF_stream (φ ψ : Sentence) (σ ε : ℚ) :
       (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const _) (gapEF_stream φ ψ))
       (PolyTokenStream.serialize_const _))
 
-theorem exclTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputableTok (exclTr φ ψ σ ε) := by
+lemma exclTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputableTok (exclTr φ ψ σ ε) := by
   refine ecTok_of_stream _ ?_
   have h : ∀ n, ((exclTr φ ψ σ ε).strat n).trades =
       [(.mul (sigEF φ ψ σ ε n) (.const (-σ)), φ ⋎ ψ),
@@ -285,7 +285,7 @@ theorem exclTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputableTok (e
 exclusion-arbitrage trader (direction `σ`, rational threshold `ε > 0`) exploits — contradicting
 `def:lic`. Its net worth is `Σ exclW`, each term nonnegative (world-neutral by exclusivity), and
 `≥ ε²/2` on the frequently-underpriced days. -/
-theorem exclTr_exploits (P : History) (DP : DeductiveProcess) (φ ψ : Sentence) (σ ε : ℚ)
+lemma exclTr_exploits (P : History) (DP : DeductiveProcess) (φ ψ : Sentence) (σ ε : ℚ)
     (hε : 0 < ε) (hexcl : ∀ n, (∼(φ ⋏ ψ)) ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hfreq : ∃ᶠ n in atTop, (ε:ℝ) ≤ (σ:ℝ) * (gapEF φ ψ n).denote P) :
@@ -397,7 +397,7 @@ Efficient computability is discharged through the clocked interpreter via the fi
 `PolySegStream` emission (`hystTrader_ecTok`) — this is exactly the deep (linear-depth)
 exploiter the poly-size `EfficientlyComputableTok` redefinition of `def:ec` was built to
 admit (OPEN RISK 4). -/
-theorem oscillation_exploitable (P : History) (DP : DeductiveProcess) (φ : Sentence)
+lemma oscillation_exploitable (P : History) (DP : DeductiveProcess) (φ : Sentence)
     (a b : ℚ) (hab : (a : ℝ) < b) (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hA : ∃ᶠ n in atTop, P n φ < (a : ℝ)) (hB : ∃ᶠ n in atTop, (b : ℝ) < P n φ) :

@@ -15,7 +15,8 @@ open Filter Topology
 
 /-- A uniformly emitted sentence family representing a semidecidable predicate.  When the
 external computation is true, its representing sentence eventually occurs in the deductive
-process.  This is the exact propositional boundary used for halting and inconsistency.  Paper nodes: the §2.1 representation premises for `thm:pac`–`thm:dontwait`. -/
+process.  This is the exact propositional boundary used for halting and inconsistency.
+Paper nodes: the §2.1 representation premises for `thm:pac`–`thm:dontwait`. -/
 structure RepresentedSemidecidableClaims (DP : DeductiveProcess) (truth : ℕ → Prop) where
   sentence : ℕ → Sentence
   sentence_poly : PolySentenceCodes sentence
@@ -23,7 +24,8 @@ structure RepresentedSemidecidableClaims (DP : DeductiveProcess) (truth : ℕ �
 
 /-- A uniformly emitted sentence family representing a decidable computation.  In addition
 to positive representation, a false computation eventually yields the negated sentence.
-Finite proof searches and bounded machine simulations have this form.  Paper nodes: the §2.1 representation premises for `thm:pac`–`thm:dontwait`. -/
+Finite proof searches and bounded machine simulations have this form.
+Paper nodes: the §2.1 representation premises for `thm:pac`–`thm:dontwait`. -/
 structure RepresentedDecidableClaims (DP : DeductiveProcess) (truth : ℕ → Prop)
     extends RepresentedSemidecidableClaims DP truth where
   disprovable_of_false : ∀ n, ¬truth n → ∃ k, (∼sentence n) ∈ DP.D k

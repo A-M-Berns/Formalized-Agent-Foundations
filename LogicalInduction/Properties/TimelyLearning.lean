@@ -48,7 +48,7 @@ noncomputable def sentenceAffine_polySequence (φ : ℕ → Sentence) (hφ : Pol
     coefficient_closed := by intro z ρ V; simp [EF.denoteWith]
   }
 
-theorem sentenceAffine_bounded (φ : ℕ → Sentence) (P : History)
+lemma sentenceAffine_bounded (φ : ℕ → Sentence) (P : History)
     (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1) :
     BoundedAffinePrices (sentenceAffine φ) P := by
   refine ⟨1, zero_le_one, fun n m => ?_⟩
@@ -110,7 +110,7 @@ noncomputable def sentenceMinusProbability_polySequence
     coefficient_closed := by intro z ρ V; simp [EF.denoteWith]
   }
 
-theorem sentenceMinusProbability_bounded (φ : ℕ → Sentence) (p : ℕ → ℚ)
+lemma sentenceMinusProbability_bounded (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (P : History) (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hp : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1) :
     BoundedAffinePrices (sentenceMinusProbability φ p) P := by
@@ -139,7 +139,7 @@ noncomputable def knowledgeFutureDeviation
 
 /-- The operational overpricing condition upgrades an asymptotic upper bound on its
 benchmark to the same upper bound on the guarded sequence. -/
-theorem noPreemptiveOverpricing_asympLE_zero {current future : ℕ → ℝ}
+lemma noPreemptiveOverpricing_asympLE_zero {current future : ℕ → ℝ}
     (hgap : NoPreemptiveOverpricing current future)
     (hfuture : future ≲ₙ fun _ => 0) :
     current ≲ₙ fun _ => 0 := by
@@ -154,7 +154,7 @@ theorem noPreemptiveOverpricing_asympLE_zero {current future : ℕ → ℝ}
   simpa only [Pi.zero_apply, zero_add] using (show current n ≤ ε by linarith)
 
 /-- Dual upgrade for the operational underpricing condition. -/
-theorem noPreemptiveUnderpricing_asympGE_zero {current future : ℕ → ℝ}
+lemma noPreemptiveUnderpricing_asympGE_zero {current future : ℕ → ℝ}
     (hgap : NoPreemptiveUnderpricing current future)
     (hfuture : (fun _ => 0) ≲ₙ future) :
     (fun _ => 0) ≲ₙ current := by
@@ -170,7 +170,7 @@ theorem noPreemptiveUnderpricing_asympGE_zero {current future : ℕ → ℝ}
 
 /-- Centered operational form of Persistence of Knowledge. If the limiting centered
 prices are asymptotically zero from one side, every future centered price is controlled
-uniformly from that side. -/
+uniformly from that side.  Paper node: `thm:perkno` (App. `perkno`). -/
 theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (hφ : PolySentenceCodes φ) (hp : PolyRatCodes p)
@@ -259,7 +259,7 @@ theorem lic_persistence_of_knowledge_lower (P : History) (DP : DeductiveProcess)
   linarith
 
 /-- Two one-sided uniform tail bounds force the future absolute deviation to vanish. -/
-theorem knowledgeFutureDeviation_asympEq_zero (P : History)
+lemma knowledgeFutureDeviation_asympEq_zero (P : History)
     (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)

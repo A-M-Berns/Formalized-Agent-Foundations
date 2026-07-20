@@ -27,7 +27,8 @@ open LO.FirstOrder LO.FirstOrder.Arithmetic
 
 /-! ## Dual arithmetic decisions -/
 
-/-- Positive and complementary arithmetic representations of a decidable predicate.  Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
+/-- Positive and complementary arithmetic representations of a decidable predicate.
+Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
 structure ArithmeticDecision (T : ArithmeticTheory) (truth : ℕ → Prop) where
   positive : ArithmeticSemisentence 1
   negative : ArithmeticSemisentence 1
@@ -67,7 +68,7 @@ def quotationClaimSentence (positive negative : ArithmeticSemisentence 1)
     (input : ℕ) : Sentence :=
   LO.Propositional.Formula.atom (quotationClaimCode positive negative input)
 
-theorem quotationClaimCode_injective :
+lemma quotationClaimCode_injective :
     Function.Injective (fun p : ArithmeticSemisentence 1 ×
       ArithmeticSemisentence 1 × ℕ => quotationClaimCode p.1 p.2.1 p.2.2) := by
   rintro ⟨p₁, n₁, z₁⟩ ⟨p₂, n₂, z₂⟩ h
@@ -79,14 +80,14 @@ theorem quotationClaimCode_injective :
   cases h.2.2.2
   rfl
 
-theorem quotationClaimSentence_injective :
+lemma quotationClaimSentence_injective :
     Function.Injective (fun p : ArithmeticSemisentence 1 ×
       ArithmeticSemisentence 1 × ℕ => quotationClaimSentence p.1 p.2.1 p.2.2) := by
   intro a b h
   apply quotationClaimCode_injective
   injection h
 
-theorem quotationClaimSentence_poly
+lemma quotationClaimSentence_poly
     (positive negative : ArithmeticSemisentence 1)
     {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
     PolySentenceCodes (fun n => quotationClaimSentence positive negative (input n)) := by
@@ -97,7 +98,8 @@ theorem quotationClaimSentence_poly
 
 /-- A first-order arithmetic background and one generic proof-to-public-language
 translation.  Unlike the old quote packages this object contains no sentence family,
-LUV, price, affine combination, or asymptotic field.  Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
+LUV, price, affine combination, or asymptotic field.
+Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
 structure QuotationTheoryPresentation
     (DP : DeductiveProcess) (T : ArithmeticTheory)
     extends ComputationTheoryPresentation DP T where
@@ -113,7 +115,8 @@ structure QuotationTheoryPresentation
 
 /-! ## Boolean quote families -/
 
-/-- A uniformly named Boolean quote backed by a dual arithmetic decision.  Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
+/-- A uniformly named Boolean quote backed by a dual arithmetic decision.
+Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
 structure BooleanQuoteCode (T : ArithmeticTheory) (truth : ℕ → Prop) where
   decision : ArithmeticDecision T truth
 
@@ -123,12 +126,12 @@ noncomputable def sentence {T : ArithmeticTheory} {truth : ℕ → Prop}
     (q : BooleanQuoteCode T truth) (n : ℕ) : Sentence :=
   quotationClaimSentence q.decision.positive q.decision.negative n
 
-theorem sentence_poly {T : ArithmeticTheory} {truth : ℕ → Prop}
+lemma sentence_poly {T : ArithmeticTheory} {truth : ℕ → Prop}
     (q : BooleanQuoteCode T truth) : PolySentenceCodes q.sentence :=
   quotationClaimSentence_poly _ _ ⟨_, PolyFueled.id⟩
 
 /-- Completed-theory worlds satisfy exactly the represented Boolean decision. -/
-theorem reflected
+lemma reflected
     {DP : DeductiveProcess} {T : ArithmeticTheory} {truth : ℕ → Prop}
     (Q : QuotationTheoryPresentation DP T) (q : BooleanQuoteCode T truth)
     (n : ℕ) (v : PCWorld) (hv : v.ConsistentWithTheory DP) :
@@ -166,7 +169,8 @@ noncomputable def arithmeticThresholdLUV
     (Nat.pair n (Encodable.encode r))
 
 /-- A rational-valued computation together with dual FFL threshold schemas and an honest
-polynomial emitter for the resulting threshold syntax.  Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
+polynomial emitter for the resulting threshold syntax.
+Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
 structure RationalQuoteCode (T : ArithmeticTheory) (value : ℕ → ℚ) where
   decision : ArithmeticDecision T (fun z =>
     decodedQuotationRat z.unpair.2 < value z.unpair.1)
@@ -180,12 +184,12 @@ noncomputable def luv {T : ArithmeticTheory} {value : ℕ → ℚ}
     (q : RationalQuoteCode T value) (n : ℕ) : LUV :=
   arithmeticThresholdLUV q.decision.positive q.decision.negative n
 
-theorem poly {T : ArithmeticTheory} {value : ℕ → ℚ}
+lemma poly {T : ArithmeticTheory} {value : ℕ → ℚ}
     (q : RationalQuoteCode T value) : LUV.PolyThresholdCodeSeq q.luv :=
   q.threshold_poly
 
 /-- Every completed-theory world values the threshold family at the represented rational. -/
-theorem reflected
+lemma reflected
     {DP : DeductiveProcess} {T : ArithmeticTheory} {value : ℕ → ℚ}
     (Q : QuotationTheoryPresentation DP T) (q : RationalQuoteCode T value)
     (n : ℕ) (v : PCWorld) (hv : v.ConsistentWithTheory DP) :
@@ -225,16 +229,16 @@ namespace LUV
 def expectAffineSeq (X : ℕ → LUV) (n : ℕ) : AffineCombination :=
   (X n).expectAffine n
 
-theorem expectAffineSeq_price (X : ℕ → LUV) (P : History) (n : ℕ) :
+lemma expectAffineSeq_price (X : ℕ → LUV) (P : History) (n : ℕ) :
     (expectAffineSeq X n).price P n = (X n).expect P n :=
   (X n).expectAffine_price P n
 
-theorem expectAffineSeq_value (X : ℕ → LUV) (P : History)
+lemma expectAffineSeq_value (X : ℕ → LUV) (P : History)
     (w : Valuation) (n : ℕ) :
     (expectAffineSeq X n).value P w = (X n).expectApprox w n :=
   (X n).expectAffine_value P w n
 
-theorem expectAffineSeq_magnitude_le_one (X : ℕ → LUV)
+lemma expectAffineSeq_magnitude_le_one (X : ℕ → LUV)
     (P : History) (n : ℕ) :
     (expectAffineSeq X n).magnitude P ≤ 1 :=
   (X n).expectAffine_magnitude_le_one P n
@@ -277,7 +281,8 @@ noncomputable def expectAffineSeq_polySequence (X : ℕ → LUV)
 
 end LUV
 
-/-- A closed polynomial feature carrying the represented numeric target.  Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
+/-- A closed polynomial feature carrying the represented numeric target.
+Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
 structure NumericQuoteTarget (P : History) (target : ℕ → ℝ) where
   feature : ℕ → EF
   generated : PGenerableWeighting feature
@@ -292,7 +297,7 @@ def numericQuoteAffine (H : ℕ → EF) (Y : ℕ → LUV) (n : ℕ) :
   terms := ((Y n).expectAffine n).terms.map fun p ↦
     (EF.mul (EF.const (-1)) p.1, p.2)
 
-theorem numericQuoteAffine_value (H : ℕ → EF) (Y : ℕ → LUV)
+lemma numericQuoteAffine_value (H : ℕ → EF) (Y : ℕ → LUV)
     (P : History) (w : Valuation) (n : ℕ) :
     (numericQuoteAffine H Y n).value P w =
       (H n).denote P - (Y n).expectApprox w n := by
@@ -321,20 +326,20 @@ theorem numericQuoteAffine_value (H : ℕ → EF) (Y : ℕ → LUV)
   rw [hsum, hbase]
   ring
 
-theorem numericQuoteAffine_price (H : ℕ → EF) (Y : ℕ → LUV)
+lemma numericQuoteAffine_price (H : ℕ → EF) (Y : ℕ → LUV)
     (P : History) (n : ℕ) :
     (numericQuoteAffine H Y n).price P n =
       (H n).denote P - (Y n).expect P n := by
   rw [AffineCombination.price, numericQuoteAffine_value]
   rfl
 
-theorem numericQuoteAffine_priceAt (H : ℕ → EF) (Y : ℕ → LUV)
+lemma numericQuoteAffine_priceAt (H : ℕ → EF) (Y : ℕ → LUV)
     (P : History) (n m : ℕ) :
     (numericQuoteAffine H Y n).price P m =
       (H n).denote P - (Y n).expectApprox (P m) n := by
   rw [AffineCombination.price, numericQuoteAffine_value]
 
-theorem numericQuoteAffine_magnitude (H : ℕ → EF) (Y : ℕ → LUV)
+lemma numericQuoteAffine_magnitude (H : ℕ → EF) (Y : ℕ → LUV)
     (P : History) (n : ℕ) :
     (numericQuoteAffine H Y n).magnitude P =
       ((Y n).expectAffine n).magnitude P := by
@@ -433,7 +438,7 @@ noncomputable def completedNumericQuote
 def currentPriceFeature (φ : ℕ → Sentence) (n : ℕ) : EF :=
   EF.price (φ n) n
 
-theorem currentPriceFeature_generated (φ : ℕ → Sentence)
+lemma currentPriceFeature_generated (φ : ℕ → Sentence)
     (hφ : PolySentenceCodes φ) :
     PGenerableWeighting (currentPriceFeature φ) := by
   obtain ⟨cφ, hcφ⟩ := hφ
@@ -486,7 +491,7 @@ noncomputable def currentPriceExpectationQuoteOfCode
 def currentExpectationFeature (X : ℕ → LUV) (n : ℕ) : EF :=
   (LUV.expectAffineSeq X n).priceFeature n
 
-theorem currentExpectationFeature_generated (X : ℕ → LUV)
+lemma currentExpectationFeature_generated (X : ℕ → LUV)
     (hX : LUV.PolyThresholdCodeSeq X) :
     PGenerableWeighting (currentExpectationFeature X) := by
   let hmesh := LUV.expectAffineSeq_polySequence X hX
@@ -505,7 +510,7 @@ theorem currentExpectationFeature_generated (X : ℕ → LUV)
       exact hmesh.priceFeature_closed n n ρ V
   }
 
-theorem currentExpectationFeature_denote (X : ℕ → LUV)
+lemma currentExpectationFeature_denote (X : ℕ → LUV)
     (P : History) (n : ℕ) :
     (currentExpectationFeature X n).denote P = (X n).expect P n := by
   rw [currentExpectationFeature, AffineCombination.priceFeature_denote,
@@ -748,7 +753,7 @@ noncomputable def completedGatedAffirmativeQuote
 
 namespace PGenerableWeighting
 
-theorem mul {A B : ℕ → EF} (hA : PGenerableWeighting A)
+lemma mul {A B : ℕ → EF} (hA : PGenerableWeighting A)
     (hB : PGenerableWeighting B) :
     PGenerableWeighting (fun n ↦ EF.mul (A n) (B n)) where
   polySeg := PolySegStream.serialize_mul hA.polySeg hB.polySeg
@@ -761,7 +766,7 @@ theorem mul {A B : ℕ → EF} (hA : PGenerableWeighting A)
     simp only [EF.denoteWith, EF.denote_mul, Pi.mul_apply]
     rw [hA.closed n ρ V, hB.closed n ρ V]
 
-theorem add {A B : ℕ → EF} (hA : PGenerableWeighting A)
+lemma add {A B : ℕ → EF} (hA : PGenerableWeighting A)
     (hB : PGenerableWeighting B) :
     PGenerableWeighting (fun n ↦ EF.add (A n) (B n)) where
   polySeg := PolySegStream.serialize_add hA.polySeg hB.polySeg
@@ -776,7 +781,7 @@ theorem add {A B : ℕ → EF} (hA : PGenerableWeighting A)
 
 end PGenerableWeighting
 
-theorem GeneratedRatFeature.toWeighting
+lemma GeneratedRatFeature.toWeighting
     {P : History} {q : ℕ → ℚ} {feature : ℕ → EF}
     (h : GeneratedRatFeature P q feature) : PGenerableWeighting feature where
   polySeg := PolySegStream.ofTokenStream h.polyTok
@@ -787,7 +792,7 @@ theorem GeneratedRatFeature.toWeighting
 def ratCodeFeature (q : ℕ → ℚ) (n : ℕ) : EF :=
   EF.const (q n)
 
-theorem ratCodeFeature_generated (P : History) (q : ℕ → ℚ)
+lemma ratCodeFeature_generated (P : History) (q : ℕ → ℚ)
     (hq : PolyRatCodes q) : GeneratedRatFeature P q (ratCodeFeature q) where
   rank_le := by intro n; simp [ratCodeFeature]
   polyTok := PolyTokenStream.serialize_const_comp hq
@@ -795,7 +800,7 @@ theorem ratCodeFeature_generated (P : History) (q : ℕ → ℚ)
   denote := by intro n; simp [ratCodeFeature]
 
 /-- Polynomial rational codes remain polynomial after a polynomially fueled reindexing. -/
-theorem PolyRatCodes.reindex {q : ℕ → ℚ} (hq : PolyRatCodes q)
+lemma PolyRatCodes.reindex {q : ℕ → ℚ} (hq : PolyRatCodes q)
     {index : ℕ → ℕ} (hindex : ∃ c, PolyFueled c index) :
     PolyRatCodes (fun n ↦ q (index n)) := by
   obtain ⟨cq, hq⟩ := hq
@@ -808,7 +813,7 @@ def ctsIndFeature (δ : ℕ → ℚ) (x y : ℕ → EF) (n : ℕ) : EF :=
     (EF.add (x n) (EF.mul (EF.const (-1)) (y n)))
     (EF.const (1 / δ n)))
 
-theorem ctsIndFeature_generated (δ : ℕ → ℚ) (x y : ℕ → EF)
+lemma ctsIndFeature_generated (δ : ℕ → ℚ) (x y : ℕ → EF)
     (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
     (hx : PGenerableWeighting x) (hy : PGenerableWeighting y) :
     PGenerableWeighting (ctsIndFeature δ x y) := by
@@ -831,7 +836,7 @@ theorem ctsIndFeature_generated (δ : ℕ → ℚ) (x y : ℕ → EF)
         hx.closed n ρ V, hy.closed n ρ V]
   }
 
-theorem ctsIndFeature_denote (δ : ℕ → ℚ) (x y : ℕ → EF)
+lemma ctsIndFeature_denote (δ : ℕ → ℚ) (x y : ℕ → EF)
     (hδ : ∀ n, 0 < δ n) (P : History) (n : ℕ) :
     (ctsIndFeature δ x y n).denote P =
       ctsInd (δ n) ((x n).denote P) ((y n).denote P) := by
@@ -846,7 +851,7 @@ theorem ctsIndFeature_denote (δ : ℕ → ℚ) (x y : ℕ → EF)
   field_simp
   ring
 
-theorem ctsInd_eq_zero_of_le (δ : ℚ) (x y : ℝ) (hδ : 0 < δ)
+lemma ctsInd_eq_zero_of_le (δ : ℚ) (x y : ℝ) (hδ : 0 < δ)
     (hxy : x ≤ y) : ctsInd δ x y = 0 := by
   have hδR : (0 : ℝ) < δ := by exact_mod_cast hδ
   unfold ctsInd
@@ -871,14 +876,14 @@ def deferralPreimage (f : DeferralFunction) (a degree m : ℕ) : ℕ :=
 def deferralImageFlag (f : DeferralFunction) (a degree m : ℕ) : ℕ :=
   if deferralMatchCount f a degree m = 0 then 0 else 1
 
-theorem deferralMatchCount_polyFueled (f : DeferralFunction) (a degree : ℕ) :
+lemma deferralMatchCount_polyFueled (f : DeferralFunction) (a degree : ℕ) :
     ∃ c, PolyFueled c (deferralMatchCount f a degree) := by
   obtain ⟨cmatch, hmatch⟩ := FeedbackEmission.scheduledMatch_polyFueled f a degree
   obtain ⟨cprefix, hprefix⟩ := segPrefix_polyFueled hmatch
   exact ⟨_, (hprefix.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun m => by
     simp [deferralMatchCount])⟩
 
-theorem deferralPreimage_polyFueled (f : DeferralFunction) (a degree : ℕ) :
+lemma deferralPreimage_polyFueled (f : DeferralFunction) (a degree : ℕ) :
     ∃ c, PolyFueled c (deferralPreimage f a degree) := by
   obtain ⟨cmatch, hmatch⟩ := FeedbackEmission.scheduledMatch_polyFueled f a degree
   obtain ⟨cmul, hmul⟩ := mul_polyFueled
@@ -887,19 +892,19 @@ theorem deferralPreimage_polyFueled (f : DeferralFunction) (a degree : ℕ) :
   exact ⟨_, (hprefix.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun m => by
     simp [deferralPreimage])⟩
 
-theorem deferralImageFlag_polyFueled (f : DeferralFunction) (a degree : ℕ) :
+lemma deferralImageFlag_polyFueled (f : DeferralFunction) (a degree : ℕ) :
     ∃ c, PolyFueled c (deferralImageFlag f a degree) := by
   obtain ⟨ccount, hcount⟩ := deferralMatchCount_polyFueled f a degree
   exact ⟨_, (ifzSel_polyFueled.comp
     (((PolyFueled.const 0).pair (PolyFueled.const 1)).pair hcount)).of_eq
       (fun m => by simp [deferralImageFlag, ifzSelFn])⟩
 
-theorem deferralImageFlag_zero_or_one (f : DeferralFunction) (a degree m : ℕ) :
+lemma deferralImageFlag_zero_or_one (f : DeferralFunction) (a degree m : ℕ) :
     deferralImageFlag f a degree m = 0 ∨ deferralImageFlag f a degree m = 1 := by
   simp only [deferralImageFlag]
   split <;> simp
 
-theorem deferralMatchCount_at
+lemma deferralMatchCount_at
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln
@@ -929,7 +934,7 @@ theorem deferralMatchCount_at
   rw [deferralMatchCount, hscan (f n) le_rfl]
   simp [f.lt n]
 
-theorem deferralPreimage_at
+lemma deferralPreimage_at
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln
@@ -959,7 +964,7 @@ theorem deferralPreimage_at
   rw [deferralPreimage, hscan (f n) le_rfl]
   simp [f.lt n]
 
-theorem deferralImageFlag_at
+lemma deferralImageFlag_at
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln
@@ -969,7 +974,7 @@ theorem deferralImageFlag_at
   rw [deferralImageFlag, deferralMatchCount_at f hstrict hspec n]
   simp
 
-theorem deferralMatchCount_pos_iff
+lemma deferralMatchCount_pos_iff
     (f : DeferralFunction) {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln
       (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
@@ -1012,7 +1017,7 @@ theorem deferralMatchCount_pos_iff
     exact ⟨k, hk,
       (FeedbackEmission.scheduledMatch_eq_one_iff f hspec m k).2 hfk⟩
 
-theorem deferralImageFlag_eq_one_iff
+lemma deferralImageFlag_eq_one_iff
     (f : DeferralFunction) {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln
       (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
@@ -1034,7 +1039,7 @@ theorem deferralImageFlag_eq_one_iff
     · intro _
       rfl
 
-theorem deferralPreimage_spec
+lemma deferralPreimage_spec
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln
@@ -1053,7 +1058,7 @@ theorem deferralPreimage_spec
 def deferralImageFeature (f : DeferralFunction) (a degree m : ℕ) : EF :=
   EF.const (deferralImageFlag f a degree m : ℚ)
 
-theorem deferralImageFeature_generated (f : DeferralFunction) (a degree : ℕ) :
+lemma deferralImageFeature_generated (f : DeferralFunction) (a degree : ℕ) :
     PGenerableWeighting (deferralImageFeature f a degree) := by
   obtain ⟨cflag, hflag⟩ := deferralImageFlag_polyFueled f a degree
   have hcodes := ratNatCast_codes_of_polyFueled hflag
@@ -1072,7 +1077,7 @@ theorem deferralImageFeature_generated (f : DeferralFunction) (a degree : ℕ) :
 
 /-! ### Reindexed threshold syntax and cross-precision meshes -/
 
-theorem LUV.PolyThresholdCodeSeq.reindex
+lemma LUV.PolyThresholdCodeSeq.reindex
     {X : ℕ → LUV} (hX : LUV.PolyThresholdCodeSeq X)
     {index : ℕ → ℕ} (hindex : ∃ c, PolyFueled c index) :
     LUV.PolyThresholdCodeSeq (fun n ↦ X (index n)) := by
@@ -1343,7 +1348,7 @@ noncomputable def LUV.crossPrecisionAffine_polySequence
         simp [hlt, EF.denoteWith]
   }
 
-theorem LUV.crossPrecisionAffine_value
+lemma LUV.crossPrecisionAffine_value
     (X : ℕ → LUV) (low high : ℕ → ℕ)
     (P : History) (w : Valuation) (n : ℕ) :
     (LUV.crossPrecisionAffine X low high n).value P w =
@@ -1379,7 +1384,7 @@ theorem LUV.crossPrecisionAffine_value
   rw [hneg, hlo', hhi']
   ring
 
-theorem LUV.crossPrecisionAffine_price
+lemma LUV.crossPrecisionAffine_price
     (X : ℕ → LUV) (low high : ℕ → ℕ)
     (P : History) (n m : ℕ) :
     (LUV.crossPrecisionAffine X low high n).price P m =
@@ -1387,7 +1392,7 @@ theorem LUV.crossPrecisionAffine_price
         (X n).expectApprox (P m) (high n) := by
   rw [AffineCombination.price, LUV.crossPrecisionAffine_value]
 
-theorem LUV.crossPrecisionAffine_magnitude_le_two
+lemma LUV.crossPrecisionAffine_magnitude_le_two
     (X : ℕ → LUV) (low high : ℕ → ℕ) (P : History) (n : ℕ) :
     (LUV.crossPrecisionAffine X low high n).magnitude P ≤ 2 := by
   have hlo := (X n).expectAffine_magnitude_le_one P (low n)
@@ -1624,7 +1629,7 @@ noncomputable def LUV.expectDifferenceAffine_polySequence
   (LUV.expectAffineSeq_polySequence X hX).add
     (LUV.expectAffineSeq_polySequence Y hY).neg
 
-theorem LUV.expectDifferenceAffine_priceAt
+lemma LUV.expectDifferenceAffine_priceAt
     (X Y : ℕ → LUV) (P : History) (n m : ℕ) :
     (LUV.expectDifferenceAffine X Y n).price P m =
       (X n).expectApprox (P m) n - (Y n).expectApprox (P m) n := by
@@ -1635,7 +1640,7 @@ theorem LUV.expectDifferenceAffine_priceAt
     LUV.expectAffine_priceAt]
   ring
 
-theorem LUV.expectDifferenceAffine_magnitude_le_two
+lemma LUV.expectDifferenceAffine_magnitude_le_two
     (X Y : ℕ → LUV) (P : History) (n : ℕ) :
     (LUV.expectDifferenceAffine X Y n).magnitude P ≤ 2 := by
   rw [LUV.expectDifferenceAffine, AffineCombination.add_magnitude,
@@ -2226,7 +2231,8 @@ noncomputable def introspectionIntervalQuoteOfCode
 
 /-- A Boolean quote family whose positive schema is FFL's actual parameterized fixed
 point.  The decision completeness fields connect that fixed point and its complementary
-schema to the intended public truth predicate.  Paper node: the diagonal family realizing `thm:lp` (App. `lp`). -/
+schema to the intended public truth predicate.
+Paper node: the diagonal family realizing `thm:lp` (App. `lp`). -/
 structure ParameterizedDiagonalQuoteCode
     (T : ArithmeticTheory) (truth : ℕ → Prop)
     extends BooleanQuoteCode T truth where
@@ -2235,7 +2241,7 @@ structure ParameterizedDiagonalQuoteCode
 
 /-- The fixed schema in a diagonal quote satisfies FFL's uniform diagonal law inside the
 presented arithmetic theory. -/
-theorem ParameterizedDiagonalQuoteCode.diagonal_law
+lemma ParameterizedDiagonalQuoteCode.diagonal_law
     {DP : DeductiveProcess} {T : ArithmeticTheory} {truth : ℕ → Prop}
     (Q : QuotationTheoryPresentation DP T)
     (q : ParameterizedDiagonalQuoteCode T truth) :
@@ -2333,7 +2339,7 @@ same polynomial affine portfolio on every later deferral day.  This is the missi
 bridge between arithmetic quotation and `AffineQuoteEq`: affine coherence first pins
 the limiting value to zero, affine persistence pins both future extrema to zero, and
 the actual day-`f n` price lies between those extrema. -/
-theorem CompletedAffineQuoteApprox.future_price_tendsto_zero
+lemma CompletedAffineQuoteApprox.future_price_tendsto_zero
     {P : History} {DP : DeductiveProcess} {gap : ℕ → ℝ}
     (q : CompletedAffineQuoteApprox P DP gap) [IsLogicalInductor P DP]
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
@@ -2461,7 +2467,7 @@ noncomputable def CompletedAffineQuoteApprox.toAffineQuoteEq
 
 /-- Strict deferral tends to infinity even when it grows too quickly to be polynomial in
 its source index. -/
-theorem DeferralFunction.tendsto_atTop (f : DeferralFunction) :
+lemma DeferralFunction.tendsto_atTop (f : DeferralFunction) :
     Tendsto f atTop atTop := by
   apply tendsto_atTop_atTop.2
   intro N
@@ -3297,7 +3303,7 @@ noncomputable def falseBooleanQuoteCode
   ⟨ArithmeticDecision.ofComputable (ComputablePred.const False)⟩
 
 /-- `N+`: the positive arithmetic quotation schema reaches the public process. -/
-theorem quotationRepresentation_positive_path
+lemma quotationRepresentation_positive_path
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (Q : QuotationTheoryPresentation DP T) (n : ℕ) :
@@ -3308,7 +3314,7 @@ theorem quotationRepresentation_positive_path
 
 /-- `N+`: the complementary arithmetic schema reaches the public process as a negated
 literal, exercising the separate negative quotation path. -/
-theorem quotationRepresentation_negative_path
+lemma quotationRepresentation_negative_path
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (Q : QuotationTheoryPresentation DP T) (n : ℕ) :

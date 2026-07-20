@@ -32,7 +32,7 @@ def UniversalCodeHalts (z : ℕ) : Prop :=
   ((Denumerable.ofNat Nat.Partrec.Code z.unpair.1).eval z.unpair.2).Dom
 
 /-- The universal unbounded halting predicate is recursively enumerable. -/
-theorem universalCodeHalts_re : REPred UniversalCodeHalts := by
+lemma universalCodeHalts_re : REPred UniversalCodeHalts := by
   apply Partrec.dom_re
   exact Nat.Partrec.Code.eval_part.comp
     ((Computable.ofNat Nat.Partrec.Code).comp
@@ -46,7 +46,7 @@ def UniversalCodeHaltsWithin (z : ℕ) : Prop :=
     z.unpair.2.unpair.1).isSome = true
 
 /-- Bounded universal halting is a computable predicate. -/
-theorem universalCodeHaltsWithin_computable : ComputablePred UniversalCodeHaltsWithin := by
+lemma universalCodeHaltsWithin_computable : ComputablePred UniversalCodeHaltsWithin := by
   apply ComputablePred.computable_iff.mpr
   refine ⟨fun z => (Nat.Partrec.Code.evaln z.unpair.2.unpair.2
     (Denumerable.ofNat Nat.Partrec.Code z.unpair.1)
@@ -61,10 +61,10 @@ theorem universalCodeHaltsWithin_computable : ComputablePred UniversalCodeHaltsW
     Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))
   exact Nat.Partrec.Code.primrec_evaln.comp ((hsteps.pair hcode).pair hinput)
 
-theorem universalCodeHaltsWithin_re : REPred UniversalCodeHaltsWithin :=
+lemma universalCodeHaltsWithin_re : REPred UniversalCodeHaltsWithin :=
   universalCodeHaltsWithin_computable.to_re
 
-theorem universalCodeHaltsWithinFailure_re :
+lemma universalCodeHaltsWithinFailure_re :
     REPred (fun z => ¬UniversalCodeHaltsWithin z) :=
   universalCodeHaltsWithin_computable.not.to_re
 
@@ -81,27 +81,27 @@ noncomputable def universalBoundedFailureSchema : ArithmeticSemisentence 1 :=
   codeOfREPred (fun z => ¬UniversalCodeHaltsWithin z)
 
 /-- The unbounded schema has exactly the intended standard-model meaning. -/
-theorem universalHaltingSchema_spec (z : ℕ) :
+lemma universalHaltingSchema_spec (z : ℕ) :
     ℕ ⊧ₘ universalHaltingSchema/[↑z] ↔ UniversalCodeHalts z := by
   simpa [universalHaltingSchema, models_iff, Semiformula.eval_substs,
     Matrix.constant_eq_singleton] using
       (codeOfREPred_spec universalCodeHalts_re (x := z))
 
 /-- The bounded schema has exactly the intended standard-model meaning. -/
-theorem universalBoundedHaltingSchema_spec (z : ℕ) :
+lemma universalBoundedHaltingSchema_spec (z : ℕ) :
     ℕ ⊧ₘ universalBoundedHaltingSchema/[↑z] ↔ UniversalCodeHaltsWithin z := by
   simpa [universalBoundedHaltingSchema, models_iff, Semiformula.eval_substs,
     Matrix.constant_eq_singleton] using
       (codeOfREPred_spec universalCodeHaltsWithin_re (x := z))
 
 /-- The failure schema is the exact standard-model complement of bounded halting. -/
-theorem universalBoundedFailureSchema_spec (z : ℕ) :
+lemma universalBoundedFailureSchema_spec (z : ℕ) :
     ℕ ⊧ₘ universalBoundedFailureSchema/[↑z] ↔ ¬UniversalCodeHaltsWithin z := by
   simpa [universalBoundedFailureSchema, models_iff, Semiformula.eval_substs,
     Matrix.constant_eq_singleton] using
       (codeOfREPred_spec universalCodeHaltsWithinFailure_re (x := z))
 
-theorem universalBoundedSchemas_complementary (z : ℕ) :
+lemma universalBoundedSchemas_complementary (z : ℕ) :
     (ℕ ⊧ₘ universalBoundedHaltingSchema/[↑z]) ↔
       ¬(ℕ ⊧ₘ universalBoundedFailureSchema/[↑z]) := by
   rw [universalBoundedHaltingSchema_spec, universalBoundedFailureSchema_spec]
@@ -117,7 +117,9 @@ inductive ComputationClaimKind
   | consistency
   deriving DecidableEq
 
-/-- A concrete quoted first-order claim: its role, arithmetic schema, and compact input.  Paper node: the §2.1 computation-representation convention serving `thm:pac`–`thm:dontwait` (Apps. `pac`–`dontwait`). -/
+/-- A concrete quoted first-order claim: its role, arithmetic schema, and compact input.
+Paper node: the §2.1 computation-representation convention serving `thm:pac`–`thm:dontwait`
+(Apps. `pac`–`dontwait`). -/
 structure ComputationClaim where
   kind : ComputationClaimKind
   schema : ArithmeticSemisentence 1
@@ -129,7 +131,7 @@ def ComputationClaimKind.godelCode : ComputationClaimKind → ℕ
   | .inconsistency => 2
   | .consistency => 3
 
-theorem ComputationClaimKind.godelCode_injective :
+lemma ComputationClaimKind.godelCode_injective :
     Function.Injective ComputationClaimKind.godelCode := by
   intro a b h
   cases a <;> cases b <;> simp_all [ComputationClaimKind.godelCode]
@@ -139,7 +141,7 @@ def ComputationClaim.godelCode (claim : ComputationClaim) : ℕ :=
   Nat.pair claim.kind.godelCode
     (Nat.pair (Encodable.encode claim.schema) claim.input)
 
-theorem ComputationClaim.godelCode_injective :
+lemma ComputationClaim.godelCode_injective :
     Function.Injective ComputationClaim.godelCode := by
   rintro ⟨ka, sa, ia⟩ ⟨kb, sb, ib⟩ h
   simp only [ComputationClaim.godelCode, Nat.pair_eq_pair] at h
@@ -154,7 +156,7 @@ theorem ComputationClaim.godelCode_injective :
 def computationClaimSentence (claim : ComputationClaim) : Sentence :=
   LO.Propositional.Formula.atom claim.godelCode
 
-theorem computationClaimSentence_injective :
+lemma computationClaimSentence_injective :
     Function.Injective computationClaimSentence := by
   intro a b h
   apply ComputationClaim.godelCode_injective
@@ -215,7 +217,7 @@ structure PolyNatCodes (values : ℕ → ℕ) where
   code : Nat.Partrec.Code
   code_poly : PolyFueled code values
 
-theorem computationClaimSentence_poly
+lemma computationClaimSentence_poly
     (kind : ComputationClaimKind) (schema : ArithmeticSemisentence 1)
     {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
     PolySentenceCodes (fun n => computationClaimSentence ⟨kind, schema, input n⟩) := by
@@ -236,19 +238,19 @@ def boundedHaltingClaimInput_poly
     PolyNatCodes (fun n => boundedHaltingClaimInput (machines n) (inputs n) (steps n)) :=
   ⟨_, (hm.code_poly.pair (hi.code_poly.pair hs.code_poly)).of_eq (fun _ => rfl)⟩
 
-theorem haltingClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
+lemma haltingClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
     PolySentenceCodes (fun n => haltingClaimSentence (input n)) :=
   computationClaimSentence_poly .halting universalHaltingSchema hinput
 
-theorem boundedHaltingClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
+lemma boundedHaltingClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
     PolySentenceCodes (fun n => boundedHaltingClaimSentence (input n)) :=
   computationClaimSentence_poly .boundedHalting universalBoundedHaltingSchema hinput
 
-theorem inconsistencyClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
+lemma inconsistencyClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
     PolySentenceCodes (fun n => inconsistencyClaimSentence (input n)) :=
   computationClaimSentence_poly .inconsistency universalHaltingSchema hinput
 
-theorem consistencyClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
+lemma consistencyClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
     PolySentenceCodes (fun n => consistencyClaimSentence (input n)) :=
   computationClaimSentence_poly .consistency (∼universalHaltingSchema) hinput
 
@@ -258,7 +260,8 @@ theorem consistencyClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCod
 computation schemas are translated into the corresponding public propositional literals.
 
 The separate bounded-failure field is necessary because FFL supplies weak positive
-representation of r.e. predicates, not strong refutation of false r.e. formulas.  Paper nodes: `thm:pac`–`thm:dontwait` (Apps. `pac`–`dontwait`). -/
+representation of r.e. predicates, not strong refutation of false r.e. formulas.
+Paper nodes: `thm:pac`–`thm:dontwait` (Apps. `pac`–`dontwait`). -/
 structure ComputationTheoryPresentation
     (DP : DeductiveProcess) (T : ArithmeticTheory) where
   theory_deltaOne : LO.FirstOrder.Theory.Δ₁ T
@@ -292,7 +295,8 @@ structure SemidecidableComputation (truth : ℕ → Prop) where
   input_poly : PolyNatCodes input
   truth_iff : ∀ n, truth n ↔ CodeHalts machine (input n)
 
-/-- A decidable predicate reduced to a bounded run of one fixed repository machine.  Paper nodes: the §2.1 representation premises for `thm:pac`–`thm:dontwait`. -/
+/-- A decidable predicate reduced to a bounded run of one fixed repository machine.
+Paper nodes: the §2.1 representation premises for `thm:pac`–`thm:dontwait`. -/
 structure BoundedComputation (truth : ℕ → Prop) where
   machine : Nat.Partrec.Code
   input : ℕ → ℕ
@@ -421,6 +425,7 @@ theorem lic_belief_finitistic_consistency_ofComputation
   lic_belief_finitistic_consistency P DP consistentWithin
     (representedDecidableClaimsOfComputation Q C) hconsistent hP hworld
 
+/-- Paper node: `thm:pazfc` (App. `pazfc`). -/
 theorem lic_belief_stronger_theory_consistency_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -436,6 +441,7 @@ theorem lic_belief_stronger_theory_consistency_ofComputation
   lic_belief_stronger_theory_consistency P DP strongerConsistentWithin
     (representedDecidableClaimsOfComputation Q C) hconsistent hP hworld
 
+/-- Paper node: `thm:incons` (App. `incons`). -/
 theorem lic_disbelief_inconsistent_theories_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -452,6 +458,7 @@ theorem lic_disbelief_inconsistent_theories_ofComputation
   lic_disbelief_inconsistent_theories P DP inconsistent
     (inconsistentTheoryClaimsOfComputation Q C) hall hP hworld
 
+/-- Paper node: `thm:halts` (App. `halts`). -/
 theorem lic_learns_halting_patterns_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -467,6 +474,7 @@ theorem lic_learns_halting_patterns_ofComputation
   lic_learns_halting_patterns P DP machines inputs
     (representedHaltingClaims Q machines inputs hm hi) hhalts hP hworld
 
+/-- Paper node: `thm:loops` (App. `loops`). -/
 theorem lic_learns_provable_nonhalting_patterns_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -484,6 +492,7 @@ theorem lic_learns_provable_nonhalting_patterns_ofComputation
     (representedHaltingClaims Q machines inputs hm hi)
     (fun n => Q.halting_refutes _ (hloops n)) hP hworld
 
+/-- Paper node: `thm:dontwait` (App. `dontwait`). -/
 theorem lic_does_not_anticipate_halting_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -505,7 +514,7 @@ theorem lic_does_not_anticipate_halting_ofComputation
 /-! ## Positive and negative path witnesses -/
 
 /-- `N+`: the positive path fires for the repository's everywhere-zero program. -/
-theorem computationRepresentation_positive_path
+lemma computationRepresentation_positive_path
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (Q : ComputationTheoryPresentation DP T) :
@@ -520,7 +529,7 @@ theorem computationRepresentation_positive_path
 
 /-- `N+`: zero interpreter fuel supplies a concrete false bounded claim and exercises the
 separate complementary-schema/refutation path. -/
-theorem computationRepresentation_negative_path
+lemma computationRepresentation_negative_path
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (Q : ComputationTheoryPresentation DP T) :

@@ -66,7 +66,7 @@ def enumeratedTrader (j : ℕ) : Trader := (traderProgramAt j).trader
 
 /-- Coverage half of the paper's redundant enumeration: every e.c. trader occurs as the
 exact extensional output of one concrete program tuple. -/
-theorem exists_traderProgram_eq (Tr : Trader) (hTr : EfficientlyComputableTok Tr) :
+lemma exists_traderProgram_eq (Tr : Trader) (hTr : EfficientlyComputableTok Tr) :
     ∃ p : TraderProgram, p.trader = Tr := by
   obtain ⟨lengthCode, tokenCode, a, k, h⟩ := hTr
   let p : TraderProgram := ⟨lengthCode, tokenCode, a, k⟩
@@ -76,14 +76,14 @@ theorem exists_traderProgram_eq (Tr : Trader) (hTr : EfficientlyComputableTok Tr
 
 /-- Every entry in the enumeration is e.c.; total bounded emulation is part of the
 definition, not an unproved compiler assumption. -/
-theorem enumeratedTrader_ecTok (j : ℕ) : EfficientlyComputableTok (enumeratedTrader j) := by
+lemma enumeratedTrader_ecTok (j : ℕ) : EfficientlyComputableTok (enumeratedTrader j) := by
   let p := traderProgramAt j
   refine ⟨p.lengthCode, p.tokenCode, p.coefficient, p.degree, ?_⟩
   rfl
 
 /-- `prop:enumeration`, coverage clause: every efficiently computable trader occurs in the
 concrete natural-indexed sequence. -/
-theorem exists_enumeratedTrader_eq (Tr : Trader) (hTr : EfficientlyComputableTok Tr) :
+lemma exists_enumeratedTrader_eq (Tr : Trader) (hTr : EfficientlyComputableTok Tr) :
     ∃ j : ℕ, enumeratedTrader j = Tr := by
   obtain ⟨p, hp⟩ := exists_traderProgram_eq Tr hTr
   exact ⟨p.index, by simpa [enumeratedTrader] using hp⟩

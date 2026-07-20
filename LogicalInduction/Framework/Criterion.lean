@@ -112,7 +112,7 @@ def denoteRat (e : EF) (V : ℕ → Sentence → ℚ) : ℚ := e.denoteRatWith [
 
 /-- Rational and real feature semantics agree under pointwise-related variable
 environments and price tables. -/
-theorem denoteWith_eq_ratCast (e : EF) (P : History) (Q : ℕ → Sentence → ℚ)
+lemma denoteWith_eq_ratCast (e : EF) (P : History) (Q : ℕ → Sentence → ℚ)
     (hQ : ∀ n φ, P n φ = (Q n φ : ℝ)) :
     ∀ (ρR : List ℝ) (ρQ : List ℚ),
       (∀ i, ρR.getD i 0 = (ρQ.getD i 0 : ℝ)) →
@@ -136,7 +136,7 @@ theorem denoteWith_eq_ratCast (e : EF) (P : History) (Q : ℕ → Sentence → �
 
 /-- Rational and real feature semantics agree when the real history is the coercion of the
 rational price table. -/
-theorem denote_eq_ratCast (e : EF) (P : History) (Q : ℕ → Sentence → ℚ)
+lemma denote_eq_ratCast (e : EF) (P : History) (Q : ℕ → Sentence → ℚ)
     (hQ : ∀ n φ, P n φ = (Q n φ : ℝ)) :
     e.denote P = (e.denoteRat Q : ℝ) := by
   exact denoteWith_eq_ratCast e P Q hQ [] [] (by simp)
@@ -211,7 +211,7 @@ constraint — this is what breaks the price/trade circularity the paper needs f
 Safe reciprocation is the only nontrivial case: `max 1 x ≥ 1 > 0`, so the reciprocal is
 continuous with no removable singularity. -/
 
-private theorem continuous_env_getD (ρ : List (History → ℝ))
+private lemma continuous_env_getD (ρ : List (History → ℝ))
     (hρ : ∀ f ∈ ρ, Continuous f) (i : ℕ) :
     Continuous (fun V => (ρ.map (fun f => f V)).getD i 0) := by
   induction ρ generalizing i with
@@ -223,7 +223,7 @@ private theorem continuous_env_getD (ρ : List (History → ℝ))
           simp only [List.map_cons, List.getD_cons_succ]
           exact ih (fun g hg => hρ g (by simp [hg])) i
 
-theorem continuous_denoteWith (e : EF) : ∀ (ρ : List (History → ℝ)),
+lemma continuous_denoteWith (e : EF) : ∀ (ρ : List (History → ℝ)),
     (∀ f ∈ ρ, Continuous f) →
     Continuous (fun V => e.denoteWith (ρ.map (fun f => f V)) V) := by
   induction e with
@@ -250,7 +250,7 @@ theorem continuous_denoteWith (e : EF) : ∀ (ρ : List (History → ℝ)),
           · exact hx ρ hρ
           · exact hρ f hf)
 
-theorem continuous_denote (e : EF) : Continuous e.denote := by
+lemma continuous_denote (e : EF) : Continuous e.denote := by
   simpa [denote] using continuous_denoteWith e [] (by simp)
 
 /-! ### `EF_n` is a commutative ring (`def:tf`).
@@ -285,7 +285,7 @@ abbrev EFn (n : ℕ) : Subring (History → ℝ) := ExpressibleRankLE n
 ring via the subring structure. -/
 example (n : ℕ) : CommRing (EFn n) := inferInstance
 
-theorem denote_mem_EFn (e : EF) : e.denote ∈ EFn e.rank := ⟨e, le_rfl, rfl⟩
+lemma denote_mem_EFn (e : EF) : e.denote ∈ EFn e.rank := ⟨e, le_rfl, rfl⟩
 
 /-! ### Non-vacuity witnesses (`def:tf`).  Concrete features with computed denotations,
 so the DSL is not an empty shell. -/
@@ -368,10 +368,10 @@ def ofNatAux : ℕ → ℕ → Option EF
 def ofNat (m : ℕ) : Option EF := ofNatAux (m + 1) m
 
 /-- `Nat.pair t X > X` when the tag `t ≥ 1` — the strict decrease making children smaller. -/
-private theorem lt_pair_tag (t X : ℕ) (ht : 0 < t) : X < Nat.pair t X :=
+private lemma lt_pair_tag (t X : ℕ) (ht : 0 < t) : X < Nat.pair t X :=
   lt_of_le_of_lt (Nat.right_le_pair 0 X) (Nat.pair_lt_pair_left X ht)
 
-theorem ofNatAux_toNat : ∀ (fuel : ℕ) (e : EF), e.toNat < fuel → ofNatAux fuel e.toNat = some e := by
+lemma ofNatAux_toNat : ∀ (fuel : ℕ) (e : EF), e.toNat < fuel → ofNatAux fuel e.toNat = some e := by
   intro fuel
   induction fuel with
   | zero => intro e he; omega
@@ -414,7 +414,7 @@ theorem ofNatAux_toNat : ∀ (fuel : ℕ) (e : EF), e.toNat < fuel → ofNatAux 
           simp only [ofNatAux, Nat.unpair_pair, ih x (by omega), ih body (by omega),
             Option.bind_some, Option.map_some]
 
-theorem ofNat_toNat (e : EF) : ofNat e.toNat = some e :=
+lemma ofNat_toNat (e : EF) : ofNat e.toNat = some e :=
   ofNatAux_toNat _ e (Nat.lt_succ_self _)
 
 instance : Encodable EF := ⟨toNat, ofNat, ofNat_toNat⟩
@@ -449,7 +449,7 @@ def serialize : EF → List ℕ
 /-- `serialize`'s length is bounded by `3 · cost` — linear in the node count. This is the
 whole point: poly-*size* (poly-`cost`) features have poly-*length* serializations, so
 `EfficientlyComputableTok` admits them (unlike `toNat`, whose *value* is exponential). -/
-theorem serialize_length_le_cost (e : EF) : (serialize e).length ≤ 3 * e.cost := by
+lemma serialize_length_le_cost (e : EF) : (serialize e).length ≤ 3 * e.cost := by
   induction e with
   | price φ n => simp [serialize, cost]
   | const q => simp [serialize, cost]
@@ -505,7 +505,7 @@ def readM : List ℕ → List EF → List (EF × Sentence) → Option (List EF �
 
 /-- Reading a feature's serialization pushes exactly that feature (for any stack/trade state).
 The single roundtrip induction both `serialize` and `serializeTrades` injectivity rest on. -/
-theorem readM_serialize (e : EF) : ∀ (rest : List ℕ) (efst : List EF)
+lemma readM_serialize (e : EF) : ∀ (rest : List ℕ) (efst : List EF)
     (tr : List (EF × Sentence)), readM (e.serialize ++ rest) efst tr = readM rest (e :: efst) tr := by
   induction e with
   | price φ n => intro rest efst tr; simp [serialize, readM, Encodable.encodek]
@@ -538,13 +538,13 @@ def deserialize (toks : List ℕ) : Option EF :=
   | some ([e], []) => some e
   | _ => none
 
-theorem deserialize_serialize (e : EF) : deserialize e.serialize = some e := by
+lemma deserialize_serialize (e : EF) : deserialize e.serialize = some e := by
   unfold deserialize
   rw [← List.append_nil e.serialize, readM_serialize]
   simp only [readM]
 
 /-- **`serialize` is injective** — the token stream determines the feature. -/
-theorem serialize_injective : Function.Injective serialize := by
+lemma serialize_injective : Function.Injective serialize := by
   intro a b h
   have ha := deserialize_serialize a
   rw [h, deserialize_serialize] at ha
@@ -633,7 +633,7 @@ def EF.streamReadFrom (tokens : List ℕ) (state : Option EF.StreamState) :
   simp [EF.streamReadFrom, List.foldl_append]
 
 /-- Reading one canonical feature serialization pushes exactly that feature. -/
-theorem EF.streamReadFrom_serialize_self (e : EF) (efst : List EF)
+lemma EF.streamReadFrom_serialize_self (e : EF) (efst : List EF)
     (trades : List (EF × Sentence)) :
     EF.streamReadFrom e.serialize (some ((0, none), (efst, trades))) =
       some ((0, none), (e :: efst, trades)) := by
@@ -662,7 +662,7 @@ theorem EF.streamReadFrom_serialize_self (e : EF) (efst : List EF)
       rw [EF.streamReadFrom_append, ihx, EF.streamReadFrom_append, ihbody]
       simp [EF.streamReadFrom, EF.streamStep]
 
-theorem EF.streamReadFrom_serialize (e : EF) (rest : List ℕ) (efst : List EF)
+lemma EF.streamReadFrom_serialize (e : EF) (rest : List ℕ) (efst : List EF)
     (trades : List (EF × Sentence)) :
     EF.streamReadFrom (e.serialize ++ rest)
       (some ((0, none), (efst, trades))) =
@@ -670,7 +670,7 @@ theorem EF.streamReadFrom_serialize (e : EF) (rest : List ℕ) (efst : List EF)
   rw [EF.streamReadFrom_append, EF.streamReadFrom_serialize_self]
 
 /-- Reading a canonical strategy serialization records exactly its trades. -/
-theorem EF.streamReadFrom_serializeTrades_self (l : List (EF × Sentence))
+lemma EF.streamReadFrom_serializeTrades_self (l : List (EF × Sentence))
     (efst : List EF) (trades : List (EF × Sentence)) :
     EF.streamReadFrom (serializeTrades l)
       (some ((0, none), (efst, trades))) =
@@ -692,7 +692,7 @@ theorem EF.streamReadFrom_serializeTrades_self (l : List (EF × Sentence))
       simp [List.append_assoc]
 
 /-- Reading a strategy's serialization records exactly its trades (onto any state). -/
-theorem readM_serializeTrades (l : List (EF × Sentence)) : ∀ (rest : List ℕ) (efst : List EF)
+lemma readM_serializeTrades (l : List (EF × Sentence)) : ∀ (rest : List ℕ) (efst : List EF)
     (tr : List (EF × Sentence)),
     EF.readM (serializeTrades l ++ rest) efst tr = EF.readM rest efst (tr ++ l) := by
   induction l with
@@ -713,14 +713,14 @@ def deserializeTrades (toks : List ℕ) : Option (List (EF × Sentence)) :=
   | some ((0, none), ([], l)) => some l
   | _ => none
 
-theorem deserializeTrades_serializeTrades (l : List (EF × Sentence)) :
+lemma deserializeTrades_serializeTrades (l : List (EF × Sentence)) :
     deserializeTrades (serializeTrades l) = some l := by
   unfold deserializeTrades EF.streamInitial
   rw [EF.streamReadFrom_serializeTrades_self]
   rfl
 
 /-- **`serializeTrades` is injective** — the token stream determines the strategy. -/
-theorem serializeTrades_injective : Function.Injective serializeTrades := by
+lemma serializeTrades_injective : Function.Injective serializeTrades := by
   intro a b h
   have ha := deserializeTrades_serializeTrades a
   rw [h, deserializeTrades_serializeTrades] at ha
@@ -795,13 +795,13 @@ structure DeductiveProcessComputation (DP : DeductiveProcess) where
   code : Nat.Partrec.Code
   code_spec : ∀ n, Encodable.encode (DP.D n) ∈ code.eval n
 
-theorem ComputableDeductiveProcess.nonemptyComputation
+lemma ComputableDeductiveProcess.nonemptyComputation
     {DP : DeductiveProcess} (h : ComputableDeductiveProcess DP) :
     Nonempty (DeductiveProcessComputation DP) := by
   obtain ⟨code, hcode⟩ := h
   exact ⟨⟨code, hcode⟩⟩
 
-theorem DeductiveProcessComputation.toComputable
+lemma DeductiveProcessComputation.toComputable
     {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) :
     ComputableDeductiveProcess DP :=
   ⟨c.code, c.code_spec⟩
@@ -809,7 +809,7 @@ theorem DeductiveProcessComputation.toComputable
 /-- Any terminating clocked output of the certified deductive-process program is the
 unique encoding of the claimed finite stage.  This is the soundness bridge used by a
 bounded dovetailer. -/
-theorem DeductiveProcessComputation.evaln_eq_stage
+lemma DeductiveProcessComputation.evaln_eq_stage
     {DP : DeductiveProcess} (c : DeductiveProcessComputation DP)
     {n fuel out : ℕ}
     (h : out ∈ Nat.Partrec.Code.evaln fuel c.code n) :
@@ -817,7 +817,7 @@ theorem DeductiveProcessComputation.evaln_eq_stage
   exact Part.mem_unique (Nat.Partrec.Code.evaln_sound h) (c.code_spec n)
 
 /-- Every certified deductive stage eventually appears at some finite clock. -/
-theorem DeductiveProcessComputation.exists_evaln_stage
+lemma DeductiveProcessComputation.exists_evaln_stage
     {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) (n : ℕ) :
     ∃ fuel, Encodable.encode (DP.D n) ∈
       Nat.Partrec.Code.evaln fuel c.code n :=
@@ -831,7 +831,7 @@ def DeductiveProcessComputation.stageAtFuel
   (Nat.Partrec.Code.evaln fuel c.code n).bind
     (Encodable.decode (α := Finset Sentence))
 
-theorem DeductiveProcessComputation.stageAtFuel_sound
+lemma DeductiveProcessComputation.stageAtFuel_sound
     {DP : DeductiveProcess} (c : DeductiveProcessComputation DP)
     {fuel n : ℕ} {stage : Finset Sentence}
     (h : c.stageAtFuel fuel n = some stage) :
@@ -843,7 +843,7 @@ theorem DeductiveProcessComputation.stageAtFuel_sound
   subst out
   simpa using hdecode.symm
 
-theorem DeductiveProcessComputation.stageAtFuel_complete
+lemma DeductiveProcessComputation.stageAtFuel_complete
     {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) (n : ℕ) :
     ∃ fuel, c.stageAtFuel fuel n = some (DP.D n) := by
   obtain ⟨fuel, hfuel⟩ := c.exists_evaln_stage n
@@ -855,7 +855,7 @@ theorem DeductiveProcessComputation.stageAtFuel_complete
   simp
 
 /-- A decoded deductive stage, once available, remains available at every larger clock. -/
-theorem DeductiveProcessComputation.stageAtFuel_mono
+lemma DeductiveProcessComputation.stageAtFuel_mono
     {DP : DeductiveProcess} (c : DeductiveProcessComputation DP)
     {fuel fuel' n : ℕ} {stage : Finset Sentence}
     (hff : fuel ≤ fuel') (h : c.stageAtFuel fuel n = some stage) :
@@ -879,7 +879,7 @@ def DeductiveProcessComputation.stageSearchUpTo
 
 /-- Every successful bounded stage search returns the certified semantic stage; malformed
 outputs and timeouts can never manufacture a different finite theory. -/
-theorem DeductiveProcessComputation.stageSearchUpTo_sound
+lemma DeductiveProcessComputation.stageSearchUpTo_sound
     {DP : DeductiveProcess} (c : DeductiveProcessComputation DP)
     {n fuel : ℕ} {stage : Finset Sentence}
     (h : c.stageSearchUpTo n fuel = some stage) :
@@ -898,7 +898,7 @@ theorem DeductiveProcessComputation.stageSearchUpTo_sound
           exact c.stageAtFuel_sound h
 
 /-- The bounded deductive-stage dovetail reaches the exact stage at a finite clock. -/
-theorem DeductiveProcessComputation.exists_stageSearchUpTo
+lemma DeductiveProcessComputation.exists_stageSearchUpTo
     {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) (n : ℕ) :
     ∃ clock, c.stageSearchUpTo n clock = some (DP.D n) := by
   obtain ⟨fuel, hfuel⟩ := c.stageAtFuel_complete n
@@ -918,7 +918,7 @@ noncomputable def DeductiveProcessComputation.stageSearchClock
     {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) (n : ℕ) : ℕ :=
   Nat.find (c.exists_stageSearchUpTo n)
 
-theorem DeductiveProcessComputation.stageSearch_clock
+lemma DeductiveProcessComputation.stageSearch_clock
     {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) (n : ℕ) :
     c.stageSearchUpTo n (c.stageSearchClock n) = some (DP.D n) :=
   Nat.find_spec (c.exists_stageSearchUpTo n)
@@ -930,7 +930,7 @@ noncomputable def DeductiveProcessComputation.computedStage
   (c.stageSearchUpTo n (c.stageSearchClock n)).get
     (by rw [c.stageSearch_clock n]; rfl)
 
-theorem DeductiveProcessComputation.computedStage_eq
+lemma DeductiveProcessComputation.computedStage_eq
     {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) (n : ℕ) :
     c.computedStage n = DP.D n := by
   apply Option.some.inj
@@ -949,7 +949,7 @@ noncomputable def DeductiveProcessComputation.computedProcess
     rw [c.computedStage_eq n, c.computedStage_eq (n + 1)]
     exact DP.mono n
 
-theorem DeductiveProcessComputation.computedProcess_eq
+lemma DeductiveProcessComputation.computedProcess_eq
     {DP : DeductiveProcess} (c : DeductiveProcessComputation DP) :
     c.computedProcess = DP := by
   unfold computedProcess
@@ -971,39 +971,40 @@ def ComputableMarket (P : History) : Prop :=
 
 /-- A named exact rational program presenting a computable market.  The existential
 paper-facing predicate above is convenient in theorem statements; this structure is the
-operational form consumed by finite clocked certificate checkers.  Paper node: the operational form of `def:ec` for markets. -/
+operational form consumed by finite clocked certificate checkers.
+Paper node: the operational form of `def:ec` for markets. -/
 structure MarketComputation (P : History) where
   quote : ℕ → ℕ → ℚ
   code : Nat.Partrec.Code
   quote_exact : ∀ n φ, P n φ = (quote n (Encodable.encode φ) : ℝ)
   code_spec : ∀ z, Encodable.encode (quote z.unpair.1 z.unpair.2) ∈ code.eval z
 
-theorem ComputableMarket.nonemptyComputation
+lemma ComputableMarket.nonemptyComputation
     {P : History} (h : ComputableMarket P) : Nonempty (MarketComputation P) := by
   obtain ⟨quote, code, hexact, hcode⟩ := h
   exact ⟨⟨quote, code, hexact, hcode⟩⟩
 
-theorem MarketComputation.toComputable
+lemma MarketComputation.toComputable
     {P : History} (c : MarketComputation P) : ComputableMarket P :=
   ⟨c.quote, c.code, c.quote_exact, c.code_spec⟩
 
 /-- Any terminating clocked output of the certified market program is the unique exact
 rational quote for that paired input. -/
-theorem MarketComputation.evaln_eq_quote
+lemma MarketComputation.evaln_eq_quote
     {P : History} (c : MarketComputation P) {z fuel out : ℕ}
     (h : out ∈ Nat.Partrec.Code.evaln fuel c.code z) :
     out = Encodable.encode (c.quote z.unpair.1 z.unpair.2) := by
   exact Part.mem_unique (Nat.Partrec.Code.evaln_sound h) (c.code_spec z)
 
 /-- Decoded rational form of `MarketComputation.evaln_eq_quote`. -/
-theorem MarketComputation.evaln_quote_eq
+lemma MarketComputation.evaln_quote_eq
     {P : History} (c : MarketComputation P) {z fuel : ℕ} {q : ℚ}
     (h : Encodable.encode q ∈ Nat.Partrec.Code.evaln fuel c.code z) :
     q = c.quote z.unpair.1 z.unpair.2 := by
   exact Encodable.encode_injective (c.evaln_eq_quote h)
 
 /-- Every exact rational market quote eventually appears at some finite clock. -/
-theorem MarketComputation.exists_evaln_quote
+lemma MarketComputation.exists_evaln_quote
     {P : History} (c : MarketComputation P) (z : ℕ) :
     ∃ fuel, Encodable.encode (c.quote z.unpair.1 z.unpair.2) ∈
       Nat.Partrec.Code.evaln fuel c.code z :=
@@ -1017,7 +1018,7 @@ def MarketComputation.quoteAtFuel
   (Nat.Partrec.Code.evaln fuel c.code
     (Nat.pair day (Encodable.encode φ))).bind (Encodable.decode (α := ℚ))
 
-theorem MarketComputation.quoteAtFuel_sound
+lemma MarketComputation.quoteAtFuel_sound
     {P : History} (c : MarketComputation P)
     {fuel day : ℕ} {φ : Sentence} {q : ℚ}
     (h : c.quoteAtFuel fuel day φ = some q) :
@@ -1030,7 +1031,7 @@ theorem MarketComputation.quoteAtFuel_sound
   subst out
   simpa using hdecode.symm
 
-theorem MarketComputation.quoteAtFuel_complete
+lemma MarketComputation.quoteAtFuel_complete
     {P : History} (c : MarketComputation P) (day : ℕ) (φ : Sentence) :
     ∃ fuel, c.quoteAtFuel fuel day φ =
       some (c.quote day (Encodable.encode φ)) := by
@@ -1045,7 +1046,7 @@ theorem MarketComputation.quoteAtFuel_complete
   simp
 
 /-- A decoded market quote, once available, remains available at every larger clock. -/
-theorem MarketComputation.quoteAtFuel_mono
+lemma MarketComputation.quoteAtFuel_mono
     {P : History} (c : MarketComputation P)
     {fuel fuel' day : ℕ} {φ : Sentence} {q : ℚ}
     (hff : fuel ≤ fuel') (h : c.quoteAtFuel fuel day φ = some q) :
@@ -1057,7 +1058,7 @@ theorem MarketComputation.quoteAtFuel_mono
 
 /-- One finite clock simultaneously recovers every quote in a finite query list.  This is
 the compactness step used to evaluate a whole finite strategy prefix at one fuel value. -/
-theorem MarketComputation.exists_fuel_quoteAtFuel_list
+lemma MarketComputation.exists_fuel_quoteAtFuel_list
     {P : History} (c : MarketComputation P)
     (queries : List (ℕ × Sentence)) :
     ∃ fuel, ∀ query ∈ queries,
@@ -1118,7 +1119,7 @@ def denoteRatWithAtFuel {P : History} (market : MarketComputation P) (fuel : ℕ
 /-- Every successful bounded evaluation is semantically exact.  In particular, malformed
 decoded outputs cannot make a finite certificate checker accept: quote soundness fixes each
 price leaf, and the remaining computation is exact rational arithmetic. -/
-theorem denoteRatWithAtFuel_sound
+lemma denoteRatWithAtFuel_sound
     {P : History} (market : MarketComputation P) (fuel : ℕ) (e : EF) (ρ : List ℚ)
     {q : ℚ} (h : e.denoteRatWithAtFuel market fuel ρ = some q) :
     q = e.denoteRatWith ρ
@@ -1181,7 +1182,7 @@ theorem denoteRatWithAtFuel_sound
       simpa only [denoteRatWith, hv] using hb
 
 /-- Successful bounded feature evaluation is monotone in the interpreter clock. -/
-theorem denoteRatWithAtFuel_mono
+lemma denoteRatWithAtFuel_mono
     {P : History} (market : MarketComputation P) {fuel fuel' : ℕ} (e : EF)
     (ρ : List ℚ) {q : ℚ} (hff : fuel ≤ fuel')
     (h : e.denoteRatWithAtFuel market fuel ρ = some q) :
@@ -1229,7 +1230,7 @@ theorem denoteRatWithAtFuel_mono
 
 /-- With every syntactically requested quote ready at the shared clock, bounded evaluation
 returns exactly the total rational semantics. -/
-theorem denoteRatWithAtFuel_complete
+lemma denoteRatWithAtFuel_complete
     {P : History} (market : MarketComputation P) (fuel : ℕ) (e : EF) (ρ : List ℚ)
     (hready : ∀ query ∈ e.priceQueries,
       market.quoteAtFuel fuel query.1 query.2 =
@@ -1282,7 +1283,7 @@ theorem denoteRatWithAtFuel_complete
 
 /-- Every finite expressible feature eventually evaluates exactly under the certified
 market program, at one shared clock for all of its price queries. -/
-theorem exists_fuel_denoteRatWithAtFuel
+lemma exists_fuel_denoteRatWithAtFuel
     {P : History} (market : MarketComputation P) (e : EF) (ρ : List ℚ) :
     ∃ fuel, e.denoteRatWithAtFuel market fuel ρ =
       some (e.denoteRatWith ρ
@@ -1353,7 +1354,7 @@ end Trader
 within `n + K + 1` steps of the clocked interpreter. (`comp` layers share fuel in `evaln`,
 so the budget is just the input length `n` plus the `K` successor steps.) A reusable tool
 for certifying that constant-strategy traders are efficiently computable. -/
-theorem evaln_const_self : ∀ (K n : ℕ),
+lemma evaln_const_self : ∀ (K n : ℕ),
     K ∈ Nat.Partrec.Code.evaln (n + K + 1) (Nat.Partrec.Code.const K) n := by
   intro K
   induction K with
@@ -1471,7 +1472,7 @@ def Trader.zero : Trader := ⟨fun _ => ⟨[], by simp⟩⟩
 
 /-- The do-nothing trader exploits nothing: `Exploits` is refutable, so the criterion is
 not vacuous. -/
-theorem Trader.zero_not_exploits (V : History) (DP : DeductiveProcess) :
+lemma Trader.zero_not_exploits (V : History) (DP : DeductiveProcess) :
     ¬ Trader.zero.Exploits V DP := by
   rintro ⟨_, hnab⟩
   refine hnab ⟨0, ?_⟩

@@ -79,7 +79,7 @@ def bitsPayoutRat (l : List Bool) (φ : Sentence) : ℚ :=
 /-- Evaluation of a bounded-support sentence is unchanged by finite restriction and
 extension.  Consequently every universal payout check over finitely many sentences can
 be reduced to the finite type `FiniteWorld B`. -/
-theorem eval_toBoolPCWorld_restrict (v : BoolPCWorld) (B : ℕ) (φ : Sentence)
+lemma eval_toBoolPCWorld_restrict (v : BoolPCWorld) (B : ℕ) (φ : Sentence)
     (hφ : atomBound φ ≤ B) :
     eval ((FiniteWorld.restrict v B).toBoolPCWorld) φ = eval v φ := by
   induction φ with
@@ -117,7 +117,7 @@ def FiniteWorld.payoutRat {B : ℕ} (u : FiniteWorld B) (φ : Sentence) : ℚ :=
 
 /-- The executable finite-world payout is the exact rational payout of its extended
 proposition-valued world. -/
-theorem FiniteWorld.payoutRat_eq_toPCWorld {B : ℕ} (u : FiniteWorld B)
+lemma FiniteWorld.payoutRat_eq_toPCWorld {B : ℕ} (u : FiniteWorld B)
     (φ : Sentence) :
     u.payoutRat φ = u.toBoolPCWorld.toPCWorld.payoutRat φ := by
   classical
@@ -127,7 +127,7 @@ theorem FiniteWorld.payoutRat_eq_toPCWorld {B : ℕ} (u : FiniteWorld B)
 
 /-- On every sentence inside the support bound, the finite rational payout obtained by
 restricting a world is exactly that world's rational payout. -/
-theorem FiniteWorld.payoutRat_restrict_ofPCWorld (v : PCWorld) (B : ℕ)
+lemma FiniteWorld.payoutRat_restrict_ofPCWorld (v : PCWorld) (B : ℕ)
     (φ : Sentence) (hφ : atomBound φ ≤ B) :
     payoutRat (restrict (ofPCWorld v) B) φ = v.payoutRat φ := by
   classical
@@ -144,7 +144,7 @@ theorem FiniteWorld.payoutRat_restrict_ofPCWorld (v : PCWorld) (B : ℕ)
     simp [this, PCWorld.payoutRat, hh]
 
 /-- Sentence evaluation depends continuously on its finitely many atoms. -/
-theorem continuous_eval (φ : Sentence) : Continuous (fun v : BoolPCWorld => eval v φ) := by
+lemma continuous_eval (φ : Sentence) : Continuous (fun v : BoolPCWorld => eval v φ) := by
   induction φ with
   | atom a => exact continuous_apply a
   | falsum => exact continuous_const
@@ -159,7 +159,7 @@ theorem continuous_eval (φ : Sentence) : Continuous (fun v : BoolPCWorld => eva
         (fun z : Bool × Bool => z.1 || z.2)).comp (ihφ.prodMk ihψ)
 
 /-- The model set of one sentence is clopen in the Boolean product space. -/
-theorem isClopen_holds (φ : Sentence) :
+lemma isClopen_holds (φ : Sentence) :
     IsClopen {v : BoolPCWorld | v.toPCWorld.Holds φ} := by
   have heq : {v : BoolPCWorld | v.toPCWorld.Holds φ} =
       (fun v => eval v φ) ⁻¹' {true} := by
@@ -177,7 +177,7 @@ theorem isClopen_holds (φ : Sentence) :
   · rw [if_neg h, if_neg (fun hh => h ((eval_eq_true_iff_holds v φ).mpr hh))]
 
 /-- The real payout of a fixed sentence is continuous on Boolean worlds. -/
-theorem continuous_payout (φ : Sentence) :
+lemma continuous_payout (φ : Sentence) :
     Continuous (fun v : BoolPCWorld => v.toPCWorld.payout φ) := by
   rw [show (fun v : BoolPCWorld => v.toPCWorld.payout φ) =
       (fun b : Bool => if b = true then (1 : ℝ) else 0) ∘ (fun v => eval v φ) by
@@ -187,7 +187,7 @@ theorem continuous_payout (φ : Sentence) :
     (fun b : Bool => if b = true then (1 : ℝ) else 0)).comp (continuous_eval φ)
 
 /-- A fixed affine combination's value is continuous as its Boolean world varies. -/
-theorem continuous_affineValue (A : AffineCombination) (P : History) :
+lemma continuous_affineValue (A : AffineCombination) (P : History) :
     Continuous (fun v : BoolPCWorld => A.value P v.toPCWorld.payout) := by
   have hterms : ∀ l : List (EF × Sentence), Continuous (fun v : BoolPCWorld =>
       (l.map (fun p => p.1.denote P * v.toPCWorld.payout p.2)).sum) := by
@@ -199,7 +199,7 @@ theorem continuous_affineValue (A : AffineCombination) (P : History) :
   exact continuous_const.add (hterms A.terms)
 
 /-- Boolean worlds plausible at one finite deductive stage form a closed set. -/
-theorem isClosed_consistentWith (DP : DeductiveProcess) (n : ℕ) :
+lemma isClosed_consistentWith (DP : DeductiveProcess) (n : ℕ) :
     IsClosed {v : BoolPCWorld | v.toPCWorld.ConsistentWith (DP.D n)} := by
   have heq : {v : BoolPCWorld | v.toPCWorld.ConsistentWith (DP.D n)} =
       ⋂ φ : {φ // φ ∈ DP.D n}, {v : BoolPCWorld | v.toPCWorld.Holds φ.1} := by
@@ -209,7 +209,7 @@ theorem isClosed_consistentWith (DP : DeductiveProcess) (n : ℕ) :
   exact isClosed_iInter (fun φ => (isClopen_holds φ.1).1)
 
 /-- A fixed affine sublevel set is closed. -/
-theorem isClosed_affineValue_le (A : AffineCombination) (P : History) (q : ℝ) :
+lemma isClosed_affineValue_le (A : AffineCombination) (P : History) (q : ℝ) :
     IsClosed {v : BoolPCWorld | A.value P v.toPCWorld.payout ≤ q} := by
   exact isClosed_Iic.preimage (continuous_affineValue A P)
 
@@ -222,7 +222,7 @@ def affineCompactConstraint (DP : DeductiveProcess) (A : AffineCombination)
   | none => {v | A.value P v.toPCWorld.payout ≤ q}
   | some n => {v | v.toPCWorld.ConsistentWith (DP.D n)}
 
-theorem affineCompactConstraint_isClosed (DP : DeductiveProcess) (A : AffineCombination)
+lemma affineCompactConstraint_isClosed (DP : DeductiveProcess) (A : AffineCombination)
     (P : History) (q : ℝ) (i : Option ℕ) :
     IsClosed (affineCompactConstraint DP A P q i) := by
   cases i with
@@ -289,7 +289,7 @@ theorem eventually_affineValue_gt_of_theory
 
 /-- Nonempty finite-stage plausible sets have a world in their nested intersection, i.e.
 a world consistent with the completed theory. -/
-theorem exists_consistentWithTheory (DP : DeductiveProcess)
+lemma exists_consistentWithTheory (DP : DeductiveProcess)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ v : PCWorld, v.ConsistentWithTheory DP := by
   have hfip : ∀ u : Finset ℕ,
@@ -321,7 +321,7 @@ def completedAffineValues (DP : DeductiveProcess) (A : AffineCombination)
   {x | ∃ v : PCWorld, v.ConsistentWithTheory DP ∧ x = A.value P v.payout}
 
 /-- Completed-theory affine values are nonempty when every finite stage is plausible. -/
-theorem completedAffineValues_nonempty (DP : DeductiveProcess) (A : AffineCombination)
+lemma completedAffineValues_nonempty (DP : DeductiveProcess) (A : AffineCombination)
     (P : History) (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (completedAffineValues DP A P).Nonempty := by
   obtain ⟨v, hv⟩ := exists_consistentWithTheory DP hworld
@@ -346,7 +346,7 @@ def eventualMember (As : ℕ → AffineCombination) (i n : ℕ) : AffineCombinat
     (h : ¬i ≤ n) : eventualMember As i n = empty := by simp [eventualMember, h]
 
 /-- A fixed threshold between two fixed natural outputs is polynomially fueled. -/
-theorem polyFueled_if_lt_const (i a b : ℕ) :
+lemma polyFueled_if_lt_const (i a b : ℕ) :
     ∃ c, PolyFueled c (fun n => if n < i then a else b) := by
   have htest := subc_polyFueled.comp ((PolyFueled.const i).pair PolyFueled.id)
   have hpick := ifzSel_polyFueled.comp
@@ -419,7 +419,7 @@ noncomputable def PolySequence.eventualMember {As : ℕ → AffineCombination}
 
 /-- Completed-theory values of a normalized bounded affine family have uniform real
 bounds. -/
-theorem PolySequence.completedAffineValues_bdd {As : ℕ → AffineCombination}
+lemma PolySequence.completedAffineValues_bdd {As : ℕ → AffineCombination}
     (h : PolySequence As) (P : History) (DP : DeductiveProcess)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∃ C : ℝ, ∀ n, (As n).magnitude P ≤ C)
@@ -452,7 +452,7 @@ theorem PolySequence.completedAffineValues_bdd {As : ℕ → AffineCombination}
 
 /-- Pointwise first bridge of affine coherence: the infimum over completed-theory worlds
 is no greater than the limiting-belief value of each fixed member. -/
-theorem PolySequence.completedTheoryLow_le_limitingValue
+lemma PolySequence.completedTheoryLow_le_limitingValue
     {As : ℕ → AffineCombination} (h : PolySequence As)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
@@ -504,7 +504,7 @@ theorem PolySequence.completedTheoryLow_le_limitingValue
   linarith
 
 /-- Negating an affine combination negates its completed-theory value set. -/
-theorem completedAffineValues_neg (DP : DeductiveProcess) (A : AffineCombination)
+lemma completedAffineValues_neg (DP : DeductiveProcess) (A : AffineCombination)
     (P : History) :
     completedAffineValues DP A.neg P = -(completedAffineValues DP A P) := by
   ext x
@@ -517,7 +517,7 @@ theorem completedAffineValues_neg (DP : DeductiveProcess) (A : AffineCombination
 
 /-- Pointwise upper bridge, by applying the lower bridge to the uniformly emitted
 negated progression. -/
-theorem PolySequence.limitingValue_le_completedTheoryHigh
+lemma PolySequence.limitingValue_le_completedTheoryHigh
     {As : ℕ → AffineCombination} (h : PolySequence As)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
@@ -552,7 +552,7 @@ noncomputable def completedAffineHigh (As : ℕ → AffineCombination)
 namespace AffineCombination
 
 /-- Uniform bounds on the completed-theory extrema of a normalized bounded family. -/
-theorem PolySequence.completedAffineExtrema_filterBounds
+lemma PolySequence.completedAffineExtrema_filterBounds
     {As : ℕ → AffineCombination} (h : PolySequence As)
     (P : History) (DP : DeductiveProcess)
     (hbounded : BoundedAffinePrices As P)
@@ -702,7 +702,7 @@ theorem PolySequence.affine_provind_theory_ge
   linarith
 
 /-- Upper form of paper-facing affine provability induction. -/
-theorem PolySequence.affine_provind_theory_le
+lemma PolySequence.affine_provind_theory_le
     {As : ℕ → AffineCombination} (h : PolySequence As)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
@@ -728,7 +728,7 @@ theorem PolySequence.affine_provind_theory_le
   linarith
 
 /-- Equality form of paper-facing affine provability induction. -/
-theorem PolySequence.affine_provind_theory_eq
+lemma PolySequence.affine_provind_theory_eq
     {As : ℕ → AffineCombination} (h : PolySequence As)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
@@ -749,7 +749,7 @@ theorem PolySequence.affine_provind_theory_eq
 needed by quoted `[0,1]` values: the finite threshold sum approximates its represented real
 value within `O(1/n)`, so completed-theory values tend uniformly to zero rather than being
 definitionally zero on every index. -/
-theorem PolySequence.affine_provind_theory_tendsto_zero
+lemma PolySequence.affine_provind_theory_tendsto_zero
     {As : ℕ → AffineCombination} (h : PolySequence As)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
@@ -807,7 +807,7 @@ end AffineCombination
 
 /-- One-sided paper-facing provability induction for an efficiently codeable sequence of
 completed-theory theorems. Individual proofs may appear arbitrarily later than their
-sequence indices. -/
+sequence indices.  Paper node: `thm:affprovind` (App. `affprovind`). -/
 theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
     (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
@@ -825,7 +825,7 @@ theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInducto
   simpa using hφeq
 
 /-- One-sided paper-facing provability induction for an efficiently codeable sequence
-whose negations are completed-theory theorems. -/
+whose negations are completed-theory theorems.  Paper node: `thm:affprovind` (App. `affprovind`). -/
 theorem lic_provind_false (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ)
     (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)

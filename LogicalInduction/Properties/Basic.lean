@@ -36,16 +36,16 @@ noncomputable def buySignal (feat : EF) (ε : ℚ) : EF :=
 @[simp] theorem buySignal_rank (feat : EF) (ε : ℚ) : (buySignal feat ε).rank = feat.rank := by
   simp [buySignal]
 
-theorem buySignal_polyEF {t : ℕ → EF} (ht : PolyEF t) (ε : ℚ) :
+lemma buySignal_polyEF {t : ℕ → EF} (ht : PolyEF t) (ε : ℚ) :
     PolyEF (fun n => buySignal (t n) ε) :=
   (PolyEF.const 0).max (ht.add (PolyEF.const (-ε/2)))
 
 /-- `0 ≤ buySignal feat ε`. -/
-theorem buySignal_nonneg (feat : EF) (ε : ℚ) (P : History) :
+lemma buySignal_nonneg (feat : EF) (ε : ℚ) (P : History) :
     0 ≤ (buySignal feat ε).denote P := by rw [buySignal_denote]; exact le_max_left _ _
 
 /-- When the signal fires (`feat > ε/2 ≥ 0`), its value equals `feat − ε/2`. -/
-theorem buySignal_eq_of_pos (feat : EF) (ε : ℚ) (P : History)
+lemma buySignal_eq_of_pos (feat : EF) (ε : ℚ) (P : History)
     (h : (0:ℝ) ≤ feat.denote P + (-(ε:ℝ)/2)) :
     (buySignal feat ε).denote P = feat.denote P + (-(ε:ℝ)/2) := by
   rw [buySignal_denote, max_eq_right h]
@@ -60,15 +60,15 @@ on (additivity uses `payout_or_of_excl`; `thm:lex` uses `payout_eq_of_iff` / `pa
 which live in their family files). -/
 
 /-- `∼χ`-worlds falsify `χ` (Foundation: `∼χ = χ 🡒 ⊥`). -/
-theorem PCWorld.holds_neg (v : PCWorld) (χ : Sentence) : v.Holds (∼χ) ↔ ¬ v.Holds χ := by
+lemma PCWorld.holds_neg (v : PCWorld) (χ : Sentence) : v.Holds (∼χ) ↔ ¬ v.Holds χ := by
   simp [PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
 
 
-theorem PCWorld.holds_or (v : PCWorld) (φ ψ : Sentence) :
+lemma PCWorld.holds_or (v : PCWorld) (φ ψ : Sentence) :
     v.Holds (φ ⋎ ψ) ↔ v.Holds φ ∨ v.Holds ψ := Iff.rfl
 
 
-theorem PCWorld.holds_and (v : PCWorld) (φ ψ : Sentence) :
+lemma PCWorld.holds_and (v : PCWorld) (φ ψ : Sentence) :
     v.Holds (φ ⋏ ψ) ↔ v.Holds φ ∧ v.Holds ψ := Iff.rfl
 
 
@@ -82,7 +82,7 @@ frequently `≥ ε` forces unbounded upside off bounded (`≥ 0`) downside. -/
 
 /-- Reusable exploitation: a trader whose day-`i` value in every plausible world equals a fixed
 nonnegative sequence `w i`, with `w n ≥ ε` frequently, exploits. -/
-theorem exploits_of_nonneg_partialSums (Tr : Trader) (P : History) (DP : DeductiveProcess)
+lemma exploits_of_nonneg_partialSums (Tr : Trader) (P : History) (DP : DeductiveProcess)
     (w : ℕ → ℝ) (ε : ℝ) (hε : 0 < ε) (hnonneg : ∀ i, 0 ≤ w i)
     (hval : ∀ (n : ℕ) (v : PCWorld), v.ConsistentWith (DP.D n) →
       Tr.netWorth P v n = ∑ i ∈ Finset.range (n+1), w i)
@@ -119,7 +119,7 @@ theorem exploits_of_nonneg_partialSums (Tr : Trader) (P : History) (DP : Deducti
 /-- Generalized exploitation: if each plausible-world net worth is **at least** the partial sum
 of a nonnegative sequence `w` that is `≥ ε` frequently, the trader exploits. (Covers
 world-dependent traders whose value is only bounded below by a world-independent quantity.) -/
-theorem exploits_of_ge_partialSums (Tr : Trader) (P : History) (DP : DeductiveProcess)
+lemma exploits_of_ge_partialSums (Tr : Trader) (P : History) (DP : DeductiveProcess)
     (w : ℕ → ℝ) (ε : ℝ) (hε : 0 < ε) (hnonneg : ∀ i, 0 ≤ w i)
     (hge : ∀ (n : ℕ) (v : PCWorld), v.ConsistentWith (DP.D n) →
       ∑ i ∈ Finset.range (n+1), w i ≤ Tr.netWorth P v n)
@@ -159,7 +159,7 @@ everywhere, unbounded along some witness family. -/
 
 /-- Definitional exploitation: plausible assessments bounded below by `−C` and reaching
 above every bound. -/
-theorem exploits_of_bddBelow_of_unbounded (Tr : Trader) (P : History) (DP : DeductiveProcess)
+lemma exploits_of_bddBelow_of_unbounded (Tr : Trader) (P : History) (DP : DeductiveProcess)
     (C : ℝ) (h1 : ∀ x ∈ Tr.plausibleAssessments P DP, -C ≤ x)
     (h2 : ∀ B : ℝ, ∃ x ∈ Tr.plausibleAssessments P DP, B < x) :
     Tr.Exploits P DP := by

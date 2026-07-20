@@ -67,7 +67,7 @@ def meshSentence {As : ℕ → LUVCombination}
   (S.luv (Nat.pair z.unpair.1 (S.meshMember z))).gt
     ((S.meshOffset z : ℚ) / (z.unpair.1 : ℚ))
 
-theorem meshTermCount_poly {As : ℕ → LUVCombination}
+lemma meshTermCount_poly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) :
     ∃ c, PolyFueled c S.meshTermCount := by
   obtain ⟨cmul, hmul⟩ := mul_polyFueled
@@ -77,7 +77,7 @@ theorem meshTermCount_poly {As : ℕ → LUVCombination}
       simp [meshTermCount])⟩
 
 attribute [local irreducible] Nat.sqrt in
-private theorem meshDivMod_poly {As : ℕ → LUVCombination}
+private lemma meshDivMod_poly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) :
     ∃ c, PolyFueled c (fun z ↦ Nat.pair (S.meshMember z) (S.meshOffset z)) := by
   obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
@@ -89,21 +89,21 @@ private theorem meshDivMod_poly {As : ℕ → LUVCombination}
   refine ⟨cdm.comp _, (hdm.comp hinput).of_eq (fun z ↦ ?_)⟩
   simp [meshMember, meshOffset]
 
-theorem meshMember_poly {As : ℕ → LUVCombination}
+lemma meshMember_poly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) :
     ∃ c, PolyFueled c S.meshMember := by
   obtain ⟨c, h⟩ := S.meshDivMod_poly
   exact ⟨Nat.Partrec.Code.left.comp c,
     (PolyFueled.left.comp h).of_eq (fun z ↦ by simp)⟩
 
-theorem meshOffset_poly {As : ℕ → LUVCombination}
+lemma meshOffset_poly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) :
     ∃ c, PolyFueled c S.meshOffset := by
   obtain ⟨c, h⟩ := S.meshDivMod_poly
   exact ⟨Nat.Partrec.Code.right.comp c,
     (PolyFueled.right.comp h).of_eq (fun z ↦ by simp)⟩
 
-theorem getD_flatMap_const_width_any {α : Type*} (f : ℕ → List α)
+lemma getD_flatMap_const_width_any {α : Type*} (f : ℕ → List α)
     (d : α) (W : ℕ) (hW0 : 0 < W) :
     ∀ c i, (∀ j < c, (f j).length = W) → i < c * W →
       ((List.range c).flatMap f).getD i d = (f (i / W)).getD (i % W) d := by
@@ -131,7 +131,7 @@ theorem getD_flatMap_const_width_any {α : Type*} (f : ℕ → List α)
           simpa [hic, Nat.mul_comm] using hqr
         omega
 
-theorem flatMap_threshold_terms (l : List (EF × LUV)) (n : ℕ) :
+lemma flatMap_threshold_terms (l : List (EF × LUV)) (n : ℕ) :
     l.flatMap (fun p ↦ ((p.2.expectAffine n).scale p.1).terms) =
       (List.range (l.length * n)).map (fun t ↦
         let p := l.getD (t / n) (EF.const 0, (⟨fun _ ↦ ⊤⟩ : LUV))
@@ -280,7 +280,8 @@ noncomputable def polySequence {As : ℕ → LUVCombination}
 /-! ## Exact represented semantics -/
 
 /-- Stagewise and completed-theory truth laws for the threshold families named by a
-compact syntax presentation.  These are representation facts only.  Paper node: stage/completed-theory semantics for `def:luv`. -/
+compact syntax presentation.  These are representation facts only.
+Paper node: stage/completed-theory semantics for `def:luv`. -/
 structure TheorySemantics {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (DP : DeductiveProcess) where
   value : ℕ → LUV → ℝ
@@ -296,7 +297,7 @@ structure TheorySemantics {As : ℕ → LUVCombination}
       v.Holds ((S.luv (Nat.pair n j)).gt r) ↔
         (r : ℝ) < value n (S.luv (Nat.pair n j))
 
-theorem threshold_code {As : ℕ → LUVCombination}
+lemma threshold_code {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (n : ℕ) (p : EF × LUV)
     (hp : p ∈ (As n).terms) : p.2.PolyThresholdCodes := by
   rw [S.terms_eq] at hp
@@ -362,7 +363,7 @@ def triangularIndex (m i : ℕ) : ℕ := Nat.pair m (i + 1)
 def triangularGaps (G : ℕ → AffineCombination) (m : ℕ) : List AffineCombination :=
   (List.range m).map (fun i ↦ G (triangularIndex m i))
 
-private theorem triangularGaps_take (G : ℕ → AffineCombination) (m i : ℕ)
+private lemma triangularGaps_take (G : ℕ → AffineCombination) (m i : ℕ)
     (hi : i ≤ m) :
     (triangularGaps G m).take i =
       (List.range i).map (fun j ↦ G (triangularIndex m j)) := by
@@ -391,7 +392,7 @@ def triangularWeight (G : ℕ → AffineCombination) (m i : ℕ)
   .mul (triangularRemainder G m i threshold pad)
     (triangularSignal G m i threshold pad)
 
-private theorem softmaxRemainder_take_succ
+private lemma softmaxRemainder_take_succ
     (gaps : List AffineCombination) (day i : ℕ) (threshold pad : ℚ)
     (remaining : EF) (hi : i < gaps.length) :
     softmaxRemainder (gaps.take (i + 1)) day threshold pad remaining =
@@ -412,7 +413,7 @@ private theorem softmaxRemainder_take_succ
             (oneMinus (sellIndF (A.priceFeature day) threshold pad))) hi']
           rfl
 
-private theorem foldr_congr_mem {α β : Type*} (l : List α)
+private lemma foldr_congr_mem {α β : Type*} (l : List α)
     (f g : α → β → β) (init : β)
     (h : ∀ x ∈ l, ∀ acc, f x acc = g x acc) :
     l.foldr f init = l.foldr g init := by
@@ -425,14 +426,14 @@ private theorem foldr_congr_mem {α β : Type*} (l : List α)
       · intro y hy acc
         exact h y (by simp [hy]) acc
 
-theorem triangularRemainder_succ (G : ℕ → AffineCombination)
+lemma triangularRemainder_succ (G : ℕ → AffineCombination)
     (m i : ℕ) (threshold pad : ℚ) (_hi : i < m) :
     triangularRemainder G m (i + 1) threshold pad =
       .mul (triangularRemainder G m i threshold pad)
         (oneMinus (triangularSignal G m i threshold pad)) := by
   rfl
 
-private theorem softmaxRemainder_append
+private lemma softmaxRemainder_append
     (xs ys : List AffineCombination) (day : ℕ) (threshold pad : ℚ)
     (remaining : EF) :
     softmaxRemainder (xs ++ ys) day threshold pad remaining =
@@ -457,7 +458,7 @@ private theorem softmaxRemainder_append
       rw [ih]
       rfl
 
-private theorem softmaxAffine_terms_eq_flatten
+private lemma softmaxAffine_terms_eq_flatten
     (gaps : List AffineCombination) (day : ℕ) (threshold pad : ℚ)
     (remaining : EF) :
     (softmaxAffine gaps day threshold pad remaining).terms =
@@ -479,7 +480,7 @@ private theorem softmaxAffine_terms_eq_flatten
       simp only [List.mem_range] at hi
       simp [hi, List.take_succ_cons, softmaxRemainder, Nat.succ_eq_add_one]
 
-private theorem softmaxAffine_const_eq_fold
+private lemma softmaxAffine_const_eq_fold
     (gaps : List AffineCombination) (day : ℕ) (threshold pad : ℚ)
     (remaining : EF) :
     (softmaxAffine gaps day threshold pad remaining).const =
@@ -503,7 +504,7 @@ private theorem softmaxAffine_const_eq_fold
       simp only [List.mem_range] at hi
       simp [hi, List.take_succ_cons, softmaxRemainder, Nat.succ_eq_add_one]
 
-theorem softmaxAffine_triangular_terms (G : ℕ → AffineCombination)
+lemma softmaxAffine_triangular_terms (G : ℕ → AffineCombination)
     (m : ℕ) (threshold pad : ℚ) :
     (softmaxAffine (triangularGaps G m) m threshold pad (.const 1)).terms =
       (List.range m).flatMap (fun i ↦
@@ -516,7 +517,7 @@ theorem softmaxAffine_triangular_terms (G : ℕ → AffineCombination)
   simp only [List.mem_range] at hi
   simp [triangularWeight, triangularSignal, hi, Nat.le_of_lt hi]
 
-theorem softmaxAffine_triangular_const (G : ℕ → AffineCombination)
+lemma softmaxAffine_triangular_const (G : ℕ → AffineCombination)
     (m : ℕ) (threshold pad : ℚ) :
     (softmaxAffine (triangularGaps G m) m threshold pad (.const 1)).const =
       (List.range m).foldr (fun i acc ↦
@@ -559,7 +560,7 @@ def triangularSentence {G : ℕ → AffineCombination}
   hG.sentence (Nat.pair
     (triangularIndex z.unpair.1 (triangularMember hG z)) (triangularOffset hG z))
 
-private theorem triangularMemberLength_poly {G : ℕ → AffineCombination}
+private lemma triangularMemberLength_poly {G : ℕ → AffineCombination}
     (hG : PolySequence G) :
     ∃ c, PolyFueled c (triangularMemberLength hG) := by
   obtain ⟨c, hc⟩ := hG.termCount_poly
@@ -568,7 +569,7 @@ private theorem triangularMemberLength_poly {G : ℕ → AffineCombination}
       simp [triangularIndex])
   exact ⟨c.comp _, hc.comp hindex⟩
 
-private theorem triangularTermCount_poly {G : ℕ → AffineCombination}
+private lemma triangularTermCount_poly {G : ℕ → AffineCombination}
     (hG : PolySequence G) :
     ∃ c, PolyFueled c (triangularTermCount hG) := by
   obtain ⟨_, hlen⟩ := triangularMemberLength_poly hG
@@ -576,7 +577,7 @@ private theorem triangularTermCount_poly {G : ℕ → AffineCombination}
   exact ⟨c.comp _, (hc.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun m ↦ by
     simp [triangularTermCount])⟩
 
-private theorem triangularMember_poly {G : ℕ → AffineCombination}
+private lemma triangularMember_poly {G : ℕ → AffineCombination}
     (hG : PolySequence G) :
     ∃ c, PolyFueled c (triangularMember hG) := by
   obtain ⟨_, hlen⟩ := triangularMemberLength_poly hG
@@ -584,7 +585,7 @@ private theorem triangularMember_poly {G : ℕ → AffineCombination}
   exact ⟨c.comp _, (hc.comp (PolyFueled.id.pair PolyFueled.left)).of_eq (fun z ↦ by
     simp [triangularMember])⟩
 
-private theorem triangularOffset_poly {G : ℕ → AffineCombination}
+private lemma triangularOffset_poly {G : ℕ → AffineCombination}
     (hG : PolySequence G) :
     ∃ c, PolyFueled c (triangularOffset hG) := by
   obtain ⟨_, hlen⟩ := triangularMemberLength_poly hG
@@ -594,7 +595,7 @@ private theorem triangularOffset_poly {G : ℕ → AffineCombination}
   exact ⟨_, (subc_polyFueled.comp (PolyFueled.right.pair hp)).of_eq (fun z ↦ by
     simp [triangularOffset])⟩
 
-private theorem triangularRemainder_serialize (G : ℕ → AffineCombination)
+private lemma triangularRemainder_serialize (G : ℕ → AffineCombination)
     (m i : ℕ) (threshold pad : ℚ) :
     (triangularRemainder G m i threshold pad).serialize =
       (EF.const 1).serialize ++ (List.range i).flatMap (fun k ↦
@@ -606,7 +607,7 @@ private theorem triangularRemainder_serialize (G : ℕ → AffineCombination)
         List.flatMap_append, List.flatMap_singleton, ih]
       simp [triangularSignal, List.append_assoc]
 
-private theorem foldr_add_serialize { α : Type* } (l : List α) (f : α → EF) :
+private lemma foldr_add_serialize { α : Type* } (l : List α) (f : α → EF) :
     (l.foldr (fun i acc ↦ EF.add (f i) acc) (EF.const 0)).serialize =
       l.flatMap (fun i ↦ (f i).serialize) ++
         (EF.const 0).serialize ++ List.replicate l.length 2 := by
@@ -617,7 +618,7 @@ private theorem foldr_add_serialize { α : Type* } (l : List α) (f : α → EF)
         List.length_cons, List.replicate_succ']
       simp [List.append_assoc]
 
-private theorem triangularFold_serialize (G : ℕ → AffineCombination)
+private lemma triangularFold_serialize (G : ℕ → AffineCombination)
     (m : ℕ) (threshold pad : ℚ) :
     ((List.range m).foldr (fun i acc ↦
       EF.add (EF.mul (triangularWeight G m i threshold pad)
@@ -629,7 +630,7 @@ private theorem triangularFold_serialize (G : ℕ → AffineCombination)
   simpa using foldr_add_serialize (List.range m) (fun i ↦
     EF.mul (triangularWeight G m i threshold pad) (G (triangularIndex m i)).const)
 
-private theorem triangularSignal_polySeg {G : ℕ → AffineCombination}
+private lemma triangularSignal_polySeg {G : ℕ → AffineCombination}
     (hG : PolySequence G) (threshold pad : ℚ) :
     PolySegStream (fun z ↦
       (triangularSignal G z.unpair.1 z.unpair.2 threshold pad).serialize) := by
@@ -643,7 +644,7 @@ private theorem triangularSignal_polySeg {G : ℕ → AffineCombination}
   intro z
   simp [triangularSignal]
 
-private theorem triangularRemainder_polySeg {G : ℕ → AffineCombination}
+private lemma triangularRemainder_polySeg {G : ℕ → AffineCombination}
     (hG : PolySequence G) (threshold pad : ℚ) :
     PolySegStream (fun z ↦
       (triangularRemainder G z.unpair.1 z.unpair.2 threshold pad).serialize) := by
@@ -665,14 +666,14 @@ private theorem triangularRemainder_polySeg {G : ℕ → AffineCombination}
   rw [triangularRemainder_serialize]
   simp [oneMinus]
 
-private theorem triangularWeight_polySeg {G : ℕ → AffineCombination}
+private lemma triangularWeight_polySeg {G : ℕ → AffineCombination}
     (hG : PolySequence G) (threshold pad : ℚ) :
     PolySegStream (fun z ↦
       (triangularWeight G z.unpair.1 z.unpair.2 threshold pad).serialize) :=
   PolySegStream.serialize_mul (triangularRemainder_polySeg hG threshold pad)
     (triangularSignal_polySeg hG threshold pad)
 
-private theorem triangularMember_lt {G : ℕ → AffineCombination}
+private lemma triangularMember_lt {G : ℕ → AffineCombination}
     (hG : PolySequence G) {m j : ℕ} (hj : j < triangularTermCount hG m) :
     triangularMember hG (Nat.pair m j) < m := by
   let lenFn := triangularMemberLength hG
@@ -687,7 +688,7 @@ private theorem triangularMember_lt {G : ℕ → AffineCombination}
     exact absurd hlo (by simpa [triangularTermCount, lenFn] using hj)
   · exact hi
 
-private theorem triangularOffset_lt {G : ℕ → AffineCombination}
+private lemma triangularOffset_lt {G : ℕ → AffineCombination}
     (hG : PolySequence G) {m j : ℕ} (hj : j < triangularTermCount hG m) :
     triangularOffset hG (Nat.pair m j) <
       hG.termCount (triangularIndex m (triangularMember hG (Nat.pair m j))) := by
@@ -712,7 +713,7 @@ private theorem triangularOffset_lt {G : ℕ → AffineCombination}
   have hoff : j - segPrefix lenFn m i < lenFn (Nat.pair m i) := by omega
   simpa [triangularOffset, i, lenFn, triangularMemberLength] using hoff
 
-private theorem triangularRemainder_rank_le (G : ℕ → AffineCombination)
+private lemma triangularRemainder_rank_le (G : ℕ → AffineCombination)
     (m i : ℕ) (threshold pad : ℚ)
     (hconst : ∀ k, k < i → (G (triangularIndex m k)).const.rank ≤ m)
     (hterms : ∀ k, k < i → ∀ p ∈ (G (triangularIndex m k)).terms,
@@ -729,7 +730,7 @@ private theorem triangularRemainder_rank_le (G : ℕ → AffineCombination)
       · exact (G (triangularIndex m i)).priceFeature_rank le_rfl
           (hconst i (by omega)) (hterms i (by omega))
 
-private theorem triangularWeight_rank_le (G : ℕ → AffineCombination)
+private lemma triangularWeight_rank_le (G : ℕ → AffineCombination)
     (m i : ℕ) (threshold pad : ℚ)
     (hconst : ∀ k, k ≤ i → (G (triangularIndex m k)).const.rank ≤ m)
     (hterms : ∀ k, k ≤ i → ∀ p ∈ (G (triangularIndex m k)).terms,
@@ -742,7 +743,7 @@ private theorem triangularWeight_rank_le (G : ℕ → AffineCombination)
     (G (triangularIndex m i)).priceFeature_rank le_rfl
       (hconst i le_rfl) (hterms i le_rfl)⟩
 
-private theorem triangularRemainder_closed {G : ℕ → AffineCombination}
+private lemma triangularRemainder_closed {G : ℕ → AffineCombination}
     (hG : PolySequence G) (m i : ℕ) (threshold pad : ℚ) (ρ : List ℝ)
     (V : History) :
     (triangularRemainder G m i threshold pad).denoteWith ρ V =
@@ -756,7 +757,7 @@ private theorem triangularRemainder_closed {G : ℕ → AffineCombination}
         (oneMinus_closed (sellIndF_closed threshold pad
           (hG.priceFeature_closed (triangularIndex m i) m ρ V)))
 
-private theorem triangularWeight_closed {G : ℕ → AffineCombination}
+private lemma triangularWeight_closed {G : ℕ → AffineCombination}
     (hG : PolySequence G) (m i : ℕ) (threshold pad : ℚ) (ρ : List ℝ)
     (V : History) :
     (triangularWeight G m i threshold pad).denoteWith ρ V =
@@ -1106,7 +1107,7 @@ private def lowerGapFamily (As : ℕ → LUVCombination) (b : ℚ) (q : ℕ) :
     AffineCombination :=
   (As q.unpair.2).meshGapLower q.unpair.2 q.unpair.1 b
 
-private theorem meshAffine_terms_rank_of_syntax {As : ℕ → LUVCombination}
+private lemma meshAffine_terms_rank_of_syntax {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) {n k m : ℕ} (hnm : n ≤ m) :
     ∀ p ∈ (As n).meshAffine k |>.terms, p.1.rank ≤ m := by
   intro p hp
@@ -1123,7 +1124,7 @@ private theorem meshAffine_terms_rank_of_syntax {As : ℕ → LUVCombination}
       obtain ⟨r, hr, rfl⟩ := hq
       simp [EF.rank]) p hp
 
-private theorem upperGap_rank_legal {As : ℕ → LUVCombination}
+private lemma upperGap_rank_legal {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (b : ℚ) (m i : ℕ) (hi : i < m) :
     (upperGapFamily As b (AffineCombination.triangularIndex m i)).const.rank ≤ m ∧
       ∀ p ∈ (upperGapFamily As b
@@ -1144,7 +1145,7 @@ private theorem upperGap_rank_legal {As : ℕ → LUVCombination}
     · exact AffineCombination.neg_terms_rank_le _
         (meshAffine_terms_rank_of_syntax S hn) p hp
 
-private theorem lowerGap_rank_legal {As : ℕ → LUVCombination}
+private lemma lowerGap_rank_legal {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (b : ℚ) (m i : ℕ) (hi : i < m) :
     (lowerGapFamily As b (AffineCombination.triangularIndex m i)).const.rank ≤ m ∧
       ∀ p ∈ (lowerGapFamily As b

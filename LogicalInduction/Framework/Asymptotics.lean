@@ -50,7 +50,7 @@ abbrev ConvergesTo (f : ℕ → ℝ) (x : ℝ) : Prop :=
 
 /-! ## The ε-characterization -/
 
-theorem asympEq_iff_eventuallyWithin {f g : ℕ → ℝ} :
+lemma asympEq_iff_eventuallyWithin {f g : ℕ → ℝ} :
     f ≈ₙ g ↔ ∀ ε > 0, EventuallyWithin ε f g := by
   unfold AsympEq
   rw [Metric.tendsto_atTop]
@@ -70,18 +70,18 @@ theorem asympEq_iff_eventuallyWithin {f g : ℕ → ℝ} :
 /-! ## `≈ₙ` is an equivalence -/
 
 @[refl]
-theorem AsympEq.refl (f : ℕ → ℝ) : f ≈ₙ f := by
+lemma AsympEq.refl (f : ℕ → ℝ) : f ≈ₙ f := by
   show Tendsto (fun n => f n - f n) atTop (𝓝 0)
   simp [sub_self]
 
 @[symm]
-theorem AsympEq.symm {f g : ℕ → ℝ} (h : f ≈ₙ g) : g ≈ₙ f := by
+lemma AsympEq.symm {f g : ℕ → ℝ} (h : f ≈ₙ g) : g ≈ₙ f := by
   have h' : Tendsto (fun n => f n - g n) atTop (𝓝 0) := h
   show Tendsto (fun n => g n - f n) atTop (𝓝 0)
   simpa [neg_sub] using h'.neg
 
 @[trans]
-theorem AsympEq.trans {f g h : ℕ → ℝ} (hfg : f ≈ₙ g) (hgh : g ≈ₙ h) : f ≈ₙ h := by
+lemma AsympEq.trans {f g h : ℕ → ℝ} (hfg : f ≈ₙ g) (hgh : g ≈ₙ h) : f ≈ₙ h := by
   have h₁ : Tendsto (fun n => f n - g n) atTop (𝓝 0) := hfg
   have h₂ : Tendsto (fun n => g n - h n) atTop (𝓝 0) := hgh
   show Tendsto (fun n => f n - h n) atTop (𝓝 0)
@@ -89,23 +89,23 @@ theorem AsympEq.trans {f g h : ℕ → ℝ} (hfg : f ≈ₙ g) (hgh : g ≈ₙ h
 
 /-! ## Splitting `≈ₙ` into the one-sided bounds -/
 
-theorem AsympEq.asympLE {f g : ℕ → ℝ} (h : f ≈ₙ g) : f ≲ₙ g := by
+lemma AsympEq.asympLE {f g : ℕ → ℝ} (h : f ≈ₙ g) : f ≲ₙ g := by
   intro ε hε
   filter_upwards [asympEq_iff_eventuallyWithin.1 h ε hε] with n hn
   have := (abs_sub_le_iff.1 hn).1
   linarith
 
-theorem AsympEq.asympGE {f g : ℕ → ℝ} (h : f ≈ₙ g) : f ≳ₙ g :=
+lemma AsympEq.asympGE {f g : ℕ → ℝ} (h : f ≈ₙ g) : f ≳ₙ g :=
   h.symm.asympLE
 
 /-- `≲ₙ` is transitive. -/
-theorem AsympLE.trans {f g h : ℕ → ℝ} (h₁ : f ≲ₙ g) (h₂ : g ≲ₙ h) : f ≲ₙ h := by
+lemma AsympLE.trans {f g h : ℕ → ℝ} (h₁ : f ≲ₙ g) (h₂ : g ≲ₙ h) : f ≲ₙ h := by
   intro ε hε
   filter_upwards [h₁ (ε / 2) (by linarith), h₂ (ε / 2) (by linarith)] with n hn₁ hn₂
   linarith
 
 /-- `f ≲ₙ g` followed by `g ≈ₙ h` gives `f ≲ₙ h`. -/
-theorem AsympLE.trans_asympEq {f g h : ℕ → ℝ} (h₁ : f ≲ₙ g) (h₂ : g ≈ₙ h) : f ≲ₙ h :=
+lemma AsympLE.trans_asympEq {f g h : ℕ → ℝ} (h₁ : f ≲ₙ g) (h₂ : g ≈ₙ h) : f ≲ₙ h :=
   h₁.trans h₂.asympLE
 
 /-- Finite sums respect `≈ₙ` (this is the additivity `thm:loe` supplies over a finite
@@ -116,7 +116,7 @@ theorem AsympEq.finsetSum {J : Type*} [Fintype J] {f g : J → ℕ → ℝ}
     tendsto_finset_sum _ (fun j _ => h j)
   simpa [AsympEq, Finset.sum_sub_distrib] using key
 
-theorem asympEq_iff_asympLE_asympGE {f g : ℕ → ℝ} :
+lemma asympEq_iff_asympLE_asympGE {f g : ℕ → ℝ} :
     f ≈ₙ g ↔ f ≲ₙ g ∧ f ≳ₙ g := by
   refine ⟨fun h => ⟨h.asympLE, h.asympGE⟩, fun ⟨h₁, h₂⟩ => ?_⟩
   rw [asympEq_iff_eventuallyWithin]

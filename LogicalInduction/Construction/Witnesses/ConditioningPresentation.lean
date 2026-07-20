@@ -48,7 +48,7 @@ def sentenceFinsetUnionNorm (z : ℕ) : ℕ :=
   Encodable.encode <|
     (sentenceDedup (left ++ right)).insertionSort sentenceCodeLE
 
-theorem sentenceFinsetUnionNorm_prim : Primrec sentenceFinsetUnionNorm := by
+lemma sentenceFinsetUnionNorm_prim : Primrec sentenceFinsetUnionNorm := by
   have hleft : Primrec fun z : ℕ ↦
       (Encodable.decode (α := List Sentence) z.unpair.1).getD [] :=
     Primrec.option_getD.comp
@@ -65,7 +65,7 @@ theorem sentenceFinsetUnionNorm_prim : Primrec sentenceFinsetUnionNorm := by
     (sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp happend))).of_eq
       fun z ↦ by rfl
 
-theorem sentenceFinsetUnionNorm_spec (left right : Finset Sentence) :
+lemma sentenceFinsetUnionNorm_spec (left right : Finset Sentence) :
     sentenceFinsetUnionNorm
         (Nat.pair (Encodable.encode left) (Encodable.encode right)) =
       Encodable.encode (left ∪ right) := by
@@ -96,7 +96,7 @@ theorem sentenceFinsetUnionNorm_spec (left right : Finset Sentence) :
 
 /-- One fixed partial-recursive program normalizes a pair of encoded stages to their
 encoded union. -/
-theorem exists_sentenceFinsetUnionCode :
+lemma exists_sentenceFinsetUnionCode :
     ∃ code : Nat.Partrec.Code, ∀ left right : Finset Sentence,
       Encodable.encode (left ∪ right) ∈
         code.eval (Nat.pair (Encodable.encode left) (Encodable.encode right)) := by
@@ -126,7 +126,7 @@ noncomputable def DeductiveProcessComputation.union
     Part.eq_some_iff.mpr (hunion (DP.D n) (extra.D n))
   simp [Nat.Partrec.Code.eval, hbase, hmore, hnormalized, Seq.seq]
 
-theorem DeductiveProcessComputation.union_toComputable
+lemma DeductiveProcessComputation.union_toComputable
     {DP extra : DeductiveProcess}
     (base : DeductiveProcessComputation DP)
     (more : DeductiveProcessComputation extra) :
@@ -151,7 +151,7 @@ structure CompactConditioningProcessComputation (extra : DeductiveProcess)
 /-- `N+` witness: the compact operational interface is inhabited by the constantly empty
 deductive process.  Its stage program and empty-conjunction program are both literal
 constant programs. -/
-theorem compactConditioningProcessComputation_nonempty :
+lemma compactConditioningProcessComputation_nonempty :
     ∃ extra : DeductiveProcess,
       Nonempty (CompactConditioningProcessComputation extra) := by
   let extra : DeductiveProcess :=
@@ -179,7 +179,7 @@ noncomputable def conditioningPresentationOfComputations
   combined_computable := base.union_toComputable more.toDeductiveProcessComputation
 
 /-- Closure under conditioning with the presentation argument discharged by the concrete
-finite-conjunction and union construction above. -/
+finite-conjunction and union construction above.  Paper node: `thm:scon` (App. `scon`). -/
 theorem lic_conditioned_gated_ofComputations
     (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
     (base : DeductiveProcessComputation DP)

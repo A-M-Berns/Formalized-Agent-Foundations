@@ -18,7 +18,7 @@ def expectAffine (X : LUV) (n : ℕ) : AffineCombination where
   terms := (List.range n).map (fun (i : ℕ) =>
     (.const (1 / (n : ℚ)), X.gt ((i : ℚ) / (n : ℚ))))
 
-theorem expectAffine_price (X : LUV) (P : History) (n : ℕ) :
+lemma expectAffine_price (X : LUV) (P : History) (n : ℕ) :
     (X.expectAffine n).price P n = X.expect P n := by
   rw [expectAffine, AffineCombination.price, AffineCombination.value,
     LUV.expect, LUV.expectApprox]
@@ -27,7 +27,7 @@ theorem expectAffine_price (X : LUV) (P : History) (n : ℕ) :
   rw [zero_add, List.sum_map_mul_left, one_div]
   congr 1
 
-theorem expectAffine_value (X : LUV) (P : History) (w : Valuation) (n : ℕ) :
+lemma expectAffine_value (X : LUV) (P : History) (w : Valuation) (n : ℕ) :
     (X.expectAffine n).value P w = X.expectApprox w n := by
   rw [expectAffine, AffineCombination.value, LUV.expectApprox]
   simp only [EF.denote, EF.denoteWith, List.map_map, Function.comp_def]
@@ -56,7 +56,7 @@ def expectAffine_polySequence (X : LUV) (hcode : X.PolyThresholdCodes) :
   coefficient_closed := by intro z ρ V; simp [EF.denoteWith]
   }
 
-theorem expectAffine_magnitude_le_one (X : LUV) (P : History) (n : ℕ) :
+lemma expectAffine_magnitude_le_one (X : LUV) (P : History) (n : ℕ) :
     (X.expectAffine n).magnitude P ≤ 1 := by
   rcases Nat.eq_zero_or_pos n with rfl | hn
   · simp [expectAffine, AffineCombination.magnitude]
@@ -128,7 +128,7 @@ noncomputable def indicatorAffine_polySequence (Y : LUV) (φ : Sentence)
     coefficient_closed := by intro z ρ V; split <;> simp [EF.denoteWith]
   }
 
-theorem indicatorAffine_terms (Y : LUV) (φ : Sentence) (n : ℕ) :
+lemma indicatorAffine_terms (Y : LUV) (φ : Sentence) (n : ℕ) :
     (Y.indicatorAffine φ n).terms =
       (Y.expectAffine n).terms ++ [(EF.const (-1), φ)] := by
   simp only [indicatorAffine, expectAffine]
@@ -140,7 +140,7 @@ theorem indicatorAffine_terms (Y : LUV) (φ : Sentence) (n : ℕ) :
     simp [hj]
   · simp
 
-theorem indicatorAffine_price (Y : LUV) (φ : Sentence) (P : History) (n : ℕ) :
+lemma indicatorAffine_price (Y : LUV) (φ : Sentence) (P : History) (n : ℕ) :
     (Y.indicatorAffine φ n).price P n = Y.expect P n - P n φ := by
   rw [AffineCombination.price, AffineCombination.value, indicatorAffine_terms,
     List.map_append, List.map_singleton, List.sum_append]
@@ -150,7 +150,7 @@ theorem indicatorAffine_price (Y : LUV) (φ : Sentence) (P : History) (n : ℕ) 
     Rat.cast_neg, Rat.cast_one] at hbase ⊢
   linarith
 
-theorem indicatorAffine_value (Y : LUV) (φ : Sentence) (P : History)
+lemma indicatorAffine_value (Y : LUV) (φ : Sentence) (P : History)
     (w : Valuation) (n : ℕ) :
     (Y.indicatorAffine φ n).value P w = Y.expectApprox w n - w φ := by
   rw [AffineCombination.value, indicatorAffine_terms, List.map_append,
@@ -283,7 +283,7 @@ noncomputable def linearityAffine_polySequence (a b : ℚ) (X Y Z : LUV)
           simp [h1, h2, EF.denote, EF.denoteWith]
   }
 
-theorem linearityAffine_terms (a b : ℚ) (X Y Z : LUV) (n : ℕ) :
+lemma linearityAffine_terms (a b : ℚ) (X Y Z : LUV) (n : ℕ) :
     (linearityAffine a b X Y Z n).terms =
       ((X.expectAffine n).terms.map (fun p => (.mul (.const a) p.1, p.2))) ++
       ((Y.expectAffine n).terms.map (fun p => (.mul (.const b) p.1, p.2))) ++
@@ -318,7 +318,7 @@ theorem linearityAffine_terms (a b : ℚ) (X Y Z : LUV) (n : ℕ) :
       rw [if_neg h1, if_neg h2]
       simp
 
-theorem linearityAffine_price (a b : ℚ) (X Y Z : LUV) (P : History) (n : ℕ) :
+lemma linearityAffine_price (a b : ℚ) (X Y Z : LUV) (P : History) (n : ℕ) :
     (linearityAffine a b X Y Z n).price P n =
       (a : ℝ) * X.expect P n + (b : ℝ) * Y.expect P n - Z.expect P n := by
   rw [AffineCombination.price, AffineCombination.value, linearityAffine_terms]
@@ -336,7 +336,7 @@ theorem linearityAffine_price (a b : ℚ) (X Y Z : LUV) (P : History) (n : ℕ) 
   rw [hX, hY, hZ]
   ring
 
-theorem linearityAffine_value (a b : ℚ) (X Y Z : LUV) (P : History)
+lemma linearityAffine_value (a b : ℚ) (X Y Z : LUV) (P : History)
     (w : Valuation) (n : ℕ) :
     (linearityAffine a b X Y Z n).value P w =
       (a : ℝ) * X.expectApprox w n + (b : ℝ) * Y.expectApprox w n -

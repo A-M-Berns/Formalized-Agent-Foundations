@@ -26,7 +26,7 @@ structure CompletedAffineQuoteEq (P : History) (DP : DeductiveProcess)
 namespace CompletedAffineQuoteEq
 
 /-- A completed-theory quotation identity is learned on the market diagonal. -/
-theorem gap_asympEq_zero {P : History} {DP : DeductiveProcess} {gap : ℕ → ℝ}
+lemma gap_asympEq_zero {P : History} {DP : DeductiveProcess} {gap : ℕ → ℝ}
     (q : CompletedAffineQuoteEq P DP gap) [IsLogicalInductor P DP]
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -47,7 +47,8 @@ end CompletedAffineQuoteEq
 /-- A same-day quotation whose completed-theory value vanishes uniformly.  Numeric LUV
 quotes naturally have this form: their finite threshold bundle differs from the represented
 real by at most the mesh width, while Boolean quotation identities use the exact
-`CompletedAffineQuoteEq` specialization above.  Paper nodes: deferred quotation for `thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` (Apps. `cee`–`st`). -/
+`CompletedAffineQuoteEq` specialization above.
+Paper nodes: deferred quotation for `thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` (Apps. `cee`–`st`). -/
 structure CompletedAffineQuoteApprox (P : History) (DP : DeductiveProcess)
     (gap : ℕ → ℝ) extends AffineQuotePortfolio P gap where
   theory_coherent : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld,
@@ -57,7 +58,7 @@ namespace CompletedAffineQuoteApprox
 
 /-- A uniformly vanishing completed-theory quotation error is learned on the market
 diagonal. -/
-theorem gap_asympEq_zero {P : History} {DP : DeductiveProcess} {gap : ℕ → ℝ}
+lemma gap_asympEq_zero {P : History} {DP : DeductiveProcess} {gap : ℕ → ℝ}
     (q : CompletedAffineQuoteApprox P DP gap) [IsLogicalInductor P DP]
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -123,7 +124,7 @@ theorem lic_iterated_expectations
 /-! ## Interval introspection -/
 
 /-- The continuous threshold gate always lies in `[0,1]` when its width is positive. -/
-theorem ctsInd_mem_Icc (δ : ℚ) (x y : ℝ) :
+lemma ctsInd_mem_Icc (δ : ℚ) (x y : ℝ) :
     ctsInd δ x y ∈ Set.Icc (0 : ℝ) 1 := by
   constructor
   · exact le_min zero_le_one (le_max_left _ _)
@@ -131,7 +132,7 @@ theorem ctsInd_mem_Icc (δ : ℚ) (x y : ℝ) :
 
 /-- The continuous threshold gate is fully on once its first argument exceeds the second
 by at least the positive rational width. -/
-theorem ctsInd_eq_one_of_le_sub (δ : ℚ) (x y : ℝ) (hδ : 0 < δ)
+lemma ctsInd_eq_one_of_le_sub (δ : ℚ) (x y : ℝ) (hδ : 0 < δ)
     (hgap : (δ : ℝ) ≤ x - y) : ctsInd δ x y = 1 := by
   have hδR : (0 : ℝ) < δ := by exact_mod_cast hδ
   have hratio : 1 ≤ (x - y) / (δ : ℝ) := (le_div_iff₀ hδR).2 (by linarith)
@@ -170,13 +171,13 @@ structure IntrospectionIntervalQuote (P : History) (DP : DeductiveProcess)
       ctsInd (δ n) (P n (φ n)) (b n : ℝ)) *
       P n (quote n))
 
-theorem IntrospectionIntervalQuote.lower_pgenerable
+lemma IntrospectionIntervalQuote.lower_pgenerable
     {P : History} {DP : DeductiveProcess} {φ : ℕ → Sentence}
     {a b δ : ℕ → ℚ} (q : IntrospectionIntervalQuote P DP φ a b δ) :
     PGenerableRat P a :=
   ⟨q.lower_feature, q.lower_generated⟩
 
-theorem IntrospectionIntervalQuote.upper_pgenerable
+lemma IntrospectionIntervalQuote.upper_pgenerable
     {P : History} {DP : DeductiveProcess} {φ : ℕ → Sentence}
     {a b δ : ℕ → ℚ} (q : IntrospectionIntervalQuote P DP φ a b δ) :
     PGenerableRat P b :=

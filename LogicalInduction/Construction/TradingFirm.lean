@@ -38,7 +38,7 @@ def absBoundWith : EF → (ℕ → ℚ) → ℚ
 /-- Closed-feature absolute bound. -/
 def absBound (e : EF) : ℚ := e.absBoundWith (fun _ => 0)
 
-theorem absBoundWith_nonneg (e : EF) (rho : ℕ → ℚ)
+lemma absBoundWith_nonneg (e : EF) (rho : ℕ → ℚ)
     (hrho : ∀ i, 0 ≤ rho i) : 0 ≤ e.absBoundWith rho := by
   induction e generalizing rho with
   | price => norm_num [absBoundWith]
@@ -58,13 +58,13 @@ theorem absBoundWith_nonneg (e : EF) (rho : ℕ → ℚ)
       | zero => simpa [pushBound] using ihx rho hrho
       | succ i => simpa [pushBound] using hrho i
 
-theorem absBound_nonneg (e : EF) : 0 ≤ e.absBound := by
+lemma absBound_nonneg (e : EF) : 0 ≤ e.absBound := by
   apply e.absBoundWith_nonneg
   simp
 
 /-- Soundness of the syntactic bound.  The statement is environment-parametric so the
 `letE` case does not expand shared syntax. -/
-theorem abs_denoteWith_le (e : EF) (rhoR : List ℝ) (rhoB : ℕ → ℚ)
+lemma abs_denoteWith_le (e : EF) (rhoR : List ℝ) (rhoB : ℕ → ℚ)
     (P : History)
     (hP : ∀ day phi, |P day phi| ≤ 1)
     (hrho : ∀ i, |rhoR.getD i 0| ≤ (rhoB i : ℝ))
@@ -127,7 +127,7 @@ theorem abs_denoteWith_le (e : EF) (rhoR : List ℝ) (rhoB : ℕ → ℚ)
         | zero => simpa [pushBound] using x.absBoundWith_nonneg rhoB hrho0
         | succ i => simpa [pushBound] using hrho0 i
 
-theorem abs_denote_le (e : EF) (P : History)
+lemma abs_denote_le (e : EF) (P : History)
     (hP : ∀ day phi, |P day phi| ≤ 1) :
     |e.denote P| ≤ (e.absBound : ℝ) := by
   apply e.abs_denoteWith_le [] (fun _ => 0) P hP
@@ -138,7 +138,7 @@ end EF
 
 namespace Strategy
 
-private theorem cast_map_sum {α : Type*} (xs : List α) (f : α → ℚ) :
+private lemma cast_map_sum {α : Type*} (xs : List α) (f : α → ℚ) :
     (((xs.map f).sum : ℚ) : ℝ) = (xs.map fun x => (f x : ℝ)).sum := by
   induction xs with
   | nil => simp
@@ -156,14 +156,14 @@ def tradeListAbsBound (trades : List (EF × Sentence)) : ℚ :=
     tradeListAbsBound T.trades = T.absBound := by
   rfl
 
-theorem absBound_nonneg {n : ℕ} (T : Strategy n) : 0 ≤ T.absBound := by
+lemma absBound_nonneg {n : ℕ} (T : Strategy n) : 0 ≤ T.absBound := by
   unfold absBound
   exact List.sum_nonneg (fun q hq => by
     simp only [List.mem_map] at hq
     obtain ⟨p, _hp, rfl⟩ := hq
     exact p.1.absBound_nonneg)
 
-theorem abs_value_le {n : ℕ} (T : Strategy n) (P : History)
+lemma abs_value_le {n : ℕ} (T : Strategy n) (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     (w : Sentence → ℝ) (hw : ∀ phi, 0 ≤ w phi ∧ w phi ≤ 1) :
     |T.value P w| ≤ (T.absBound : ℝ) := by
@@ -203,7 +203,7 @@ theorem abs_value_le {n : ℕ} (T : Strategy n) (P : History)
 def scaleConst {n : ℕ} (q : ℚ) (T : Strategy n) : Strategy n :=
   T.scaleBy (.const q) (by simp [EF.rank])
 
-theorem scaleConst_value {n : ℕ} (q : ℚ) (T : Strategy n)
+lemma scaleConst_value {n : ℕ} (q : ℚ) (T : Strategy n)
     (P : History) (w : Valuation) :
     (T.scaleConst q).value P w = (q : ℝ) * T.value P w := by
   simp [scaleConst, Strategy.scaleBy_value]
@@ -224,7 +224,7 @@ def gate (start : ℕ) (Tr : Trader) : Trader where
   simp [gate, Nat.not_le_of_lt h]
 
 /-- Uniform finite-prefix bound between a trader and its launch gate. -/
-theorem gate_netWorth_difference_le (Tr : Trader) (P : History)
+lemma gate_netWorth_difference_le (Tr : Trader) (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     (start : ℕ) (v : PCWorld) (n : ℕ) :
     |Tr.netWorth P v n - (Tr.gate start).netWorth P v n| ≤
@@ -264,7 +264,7 @@ theorem gate_netWorth_difference_le (Tr : Trader) (P : History)
     _ = (∑ i ∈ Finset.range start, (Tr.strat i).absBound : ℚ) := by
       norm_cast
 
-theorem Exploits.gate (Tr : Trader) (P : History) (DP : DeductiveProcess)
+lemma Exploits.gate (Tr : Trader) (P : History) (DP : DeductiveProcess)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     (hEx : Tr.Exploits P DP) (start : ℕ) :
     (Tr.gate start).Exploits P DP := by
@@ -305,7 +305,7 @@ def tradingFirmCutoffTradeLists (n : ℕ) : ℕ :=
     tradingFirmCutoffTradeLists n = tradingFirmCutoff n := by
   rfl
 
-theorem tradingFirmTotalBound_nonneg (n : ℕ) : 0 ≤ tradingFirmTotalBound n := by
+lemma tradingFirmTotalBound_nonneg (n : ℕ) : 0 ≤ tradingFirmTotalBound n := by
   unfold tradingFirmTotalBound
   apply Finset.sum_nonneg
   intro j hj
@@ -313,7 +313,7 @@ theorem tradingFirmTotalBound_nonneg (n : ℕ) : 0 ≤ tradingFirmTotalBound n :
   intro i hi
   exact Strategy.absBound_nonneg _
 
-theorem tradingFirmTotalBound_lt_cutoff (n : ℕ) :
+lemma tradingFirmTotalBound_lt_cutoff (n : ℕ) :
     tradingFirmTotalBound n < (tradingFirmCutoff n : ℚ) := by
   unfold tradingFirmCutoff
   have hceil := Nat.le_ceil (tradingFirmTotalBound n)
@@ -325,16 +325,16 @@ corresponds to paper index `k=j+1`, while budgets remain positive integers. -/
 def tradingFirmWeight (j b : ℕ) : ℚ :=
   1 / (2 : ℚ) ^ (j + 1 + b)
 
-theorem tradingFirmWeight_pos (j b : ℕ) : 0 < tradingFirmWeight j b := by
+lemma tradingFirmWeight_pos (j b : ℕ) : 0 < tradingFirmWeight j b := by
   unfold tradingFirmWeight
   positivity
 
-theorem tradingFirmWeight_cast (j b : ℕ) :
+lemma tradingFirmWeight_cast (j b : ℕ) :
     (tradingFirmWeight j b : ℝ) = (1 / 2 : ℝ) ^ (j + 1 + b) := by
   norm_num [tradingFirmWeight, div_pow]
 
 /-- Exact closed form of the high-budget geometric tail. -/
-theorem tradingFirmWeight_tail_hasSum (j C : ℕ) :
+lemma tradingFirmWeight_tail_hasSum (j C : ℕ) :
     HasSum (fun r : ℕ => (tradingFirmWeight j (C + 1 + r) : ℝ))
       (tradingFirmWeight j C : ℝ) := by
   have hg := hasSum_geometric_of_abs_lt_one (r := (1 / 2 : ℝ)) (by norm_num)
@@ -350,7 +350,7 @@ theorem tradingFirmWeight_tail_hasSum (j C : ℕ) :
     ring
 
 /-- Exact downside mass assigned to all positive budgets for enumeration index `j`. -/
-theorem tradingFirmBudgetCost_hasSum (j : ℕ) :
+lemma tradingFirmBudgetCost_hasSum (j : ℕ) :
     HasSum (fun r : ℕ =>
       (tradingFirmWeight j (r + 1) : ℝ) * (r + 1 : ℝ))
       ((1 / 2 : ℝ) ^ j) := by
@@ -369,7 +369,7 @@ theorem tradingFirmBudgetCost_hasSum (j : ℕ) :
     norm_num
     ring
 
-theorem strategyBound_le_total {j i n : ℕ} (hj : j ≤ n) (hi : i ≤ n) :
+lemma strategyBound_le_total {j i n : ℕ} (hj : j ≤ n) (hi : i ≤ n) :
     ((firmRawTrader j).strat i).absBound ≤ tradingFirmTotalBound n := by
   have hiMem : i ∈ Finset.range (n + 1) := by simp; omega
   have hjMem : j ∈ Finset.range (n + 1) := by simp; omega
@@ -384,7 +384,7 @@ theorem strategyBound_le_total {j i n : ℕ} (hj : j ≤ n) (hi : i ≤ n) :
       Strategy.absBound_nonneg ((firmRawTrader k).strat d))) hjMem
   exact hinner.trans houter
 
-theorem firmRaw_netWorth_abs_lt_cutoff (P : History)
+lemma firmRaw_netWorth_abs_lt_cutoff (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     {j m n : ℕ} (hj : j ≤ n) (hm : m ≤ n) (v : PCWorld) :
     |(firmRawTrader j).netWorth P v m| < (tradingFirmCutoff n : ℝ) := by
@@ -455,7 +455,7 @@ def tradingFirmComponentAtFromStages (D : ℕ → Finset Sentence)
     [((firmRawTrader j).strat n).scaleConst
       (tradingFirmWeight j (tradingFirmCutoff n))])
 
-theorem tradingFirmBudgetComponents_eq_of_eq_prefix
+lemma tradingFirmBudgetComponents_eq_of_eq_prefix
     (DP : DeductiveProcess) (Q R : ℕ → Sentence → ℚ) (n j : ℕ)
     (hQR : ∀ day, day < n → ∀ phi, Q day phi = R day phi) :
     tradingFirmBudgetComponents DP Q n j =
@@ -465,7 +465,7 @@ theorem tradingFirmBudgetComponents_eq_of_eq_prefix
   intro r _hr
   rw [BudgeterAt_eq_of_eq_prefix DP (firmRawTrader j) (r + 1) Q R n hQR]
 
-theorem tradingFirmComponentAt_eq_of_eq_prefix
+lemma tradingFirmComponentAt_eq_of_eq_prefix
     (DP : DeductiveProcess) (Q R : ℕ → Sentence → ℚ) (n j : ℕ)
     (hQR : ∀ day, day < n → ∀ phi, Q day phi = R day phi) :
     tradingFirmComponentAt DP Q n j = tradingFirmComponentAt DP R n j := by
@@ -524,11 +524,11 @@ def tradingFirmTradesFromStageTradeLists
   (List.range (n + 1)).flatMap fun j =>
     tradingFirmComponentTradesFromStageTradeLists D Q n j
 
-theorem scaleConstTradeList_strategy {n : ℕ} (q : ℚ) (T : Strategy n) :
+lemma scaleConstTradeList_strategy {n : ℕ} (q : ℚ) (T : Strategy n) :
     scaleConstTradeList q T.trades = (T.scaleConst q).trades := by
   rfl
 
-theorem tradingFirmComponentTradesFromStageTradeLists_eq
+lemma tradingFirmComponentTradesFromStageTradeLists_eq
     (D : ℕ → Finset Sentence) (Q : ℕ → Sentence → ℚ)
     (n j : ℕ) :
     tradingFirmComponentTradesFromStageTradeLists D Q n j =
@@ -544,7 +544,7 @@ theorem tradingFirmComponentTradesFromStageTradeLists_eq
     intro r hr
     rw [budgeterTradesFromStageTradeLists_trader, scaleConstTradeList_strategy]
 
-theorem tradingFirmTradesFromStageTradeLists_eq
+lemma tradingFirmTradesFromStageTradeLists_eq
     (D : ℕ → Finset Sentence) (Q : ℕ → Sentence → ℚ) (n : ℕ) :
     tradingFirmTradesFromStageTradeLists D Q n =
       (TradingFirmAtFromStageLists D Q n).trades := by
@@ -560,7 +560,7 @@ theorem tradingFirmTradesFromStageTradeLists_eq
   intro j hj
   exact tradingFirmComponentTradesFromStageTradeLists_eq D Q n j
 
-theorem tradingFirmBudgetComponentsFromStageLists_eq
+lemma tradingFirmBudgetComponentsFromStageLists_eq
     (D : ℕ → Finset Sentence) (Q : ℕ → Sentence → ℚ) (n j : ℕ) :
     tradingFirmBudgetComponentsFromStageLists D Q n j =
       tradingFirmBudgetComponentsFromStages D Q n j := by
@@ -569,14 +569,14 @@ theorem tradingFirmBudgetComponentsFromStageLists_eq
   intro r hr
   rw [BudgeterAtFromStageLists_eq]
 
-theorem tradingFirmComponentAtFromStageLists_eq
+lemma tradingFirmComponentAtFromStageLists_eq
     (D : ℕ → Finset Sentence) (Q : ℕ → Sentence → ℚ) (n j : ℕ) :
     tradingFirmComponentAtFromStageLists D Q n j =
       tradingFirmComponentAtFromStages D Q n j := by
   unfold tradingFirmComponentAtFromStageLists tradingFirmComponentAtFromStages
   rw [tradingFirmBudgetComponentsFromStageLists_eq]
 
-theorem TradingFirmAtFromStageLists_eq (D : ℕ → Finset Sentence)
+lemma TradingFirmAtFromStageLists_eq (D : ℕ → Finset Sentence)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) :
     TradingFirmAtFromStageLists D Q n = TradingFirmAtFromStages D Q n := by
   unfold TradingFirmAtFromStageLists TradingFirmAtFromStages
@@ -585,7 +585,7 @@ theorem TradingFirmAtFromStageLists_eq (D : ℕ → Finset Sentence)
   intro j hj
   exact tradingFirmComponentAtFromStageLists_eq D Q n j
 
-theorem tradingFirmBudgetComponentsFromStages_eq_of_eq_prefix
+lemma tradingFirmBudgetComponentsFromStages_eq_of_eq_prefix
     (DP : DeductiveProcess) (D : ℕ → Finset Sentence)
     (Q : ℕ → Sentence → ℚ) (n j : ℕ)
     (hD : ∀ m, m ≤ n → D m = DP.D m) :
@@ -597,7 +597,7 @@ theorem tradingFirmBudgetComponentsFromStages_eq_of_eq_prefix
   rw [BudgeterAtFromStages_eq_of_eq_prefix DP D (firmRawTrader j)
     (r + 1) Q n hD]
 
-theorem tradingFirmComponentAtFromStages_eq_of_eq_prefix
+lemma tradingFirmComponentAtFromStages_eq_of_eq_prefix
     (DP : DeductiveProcess) (D : ℕ → Finset Sentence)
     (Q : ℕ → Sentence → ℚ) (n j : ℕ)
     (hD : ∀ m, m ≤ n → D m = DP.D m) :
@@ -606,7 +606,7 @@ theorem tradingFirmComponentAtFromStages_eq_of_eq_prefix
   unfold tradingFirmComponentAtFromStages tradingFirmComponentAt
   rw [tradingFirmBudgetComponentsFromStages_eq_of_eq_prefix DP D Q n j hD]
 
-theorem TradingFirmAtFromStages_eq_of_eq_prefix
+lemma TradingFirmAtFromStages_eq_of_eq_prefix
     (DP : DeductiveProcess) (D : ℕ → Finset Sentence)
     (Q : ℕ → Sentence → ℚ) (n : ℕ)
     (hD : ∀ m, m ≤ n → D m = DP.D m) :
@@ -617,7 +617,7 @@ theorem TradingFirmAtFromStages_eq_of_eq_prefix
   intro j _hj
   exact tradingFirmComponentAtFromStages_eq_of_eq_prefix DP D Q n j hD
 
-theorem TradingFirmAt_eq_of_eq_prefix
+lemma TradingFirmAt_eq_of_eq_prefix
     (DP : DeductiveProcess) (Q R : ℕ → Sentence → ℚ) (n : ℕ)
     (hQR : ∀ day, day < n → ∀ phi, Q day phi = R day phi) :
     TradingFirmAt DP Q n = TradingFirmAt DP R n := by
@@ -641,7 +641,7 @@ def tradingFirmComponentTrader (DP : DeductiveProcess)
     (Q : ℕ → Sentence → ℚ) (j : ℕ) : Trader where
   strat n := if j ≤ n then tradingFirmComponentAt DP Q n j else Trader.zero.strat n
 
-theorem TradingFirmAt_value_eq_sum (DP : DeductiveProcess)
+lemma TradingFirmAt_value_eq_sum (DP : DeductiveProcess)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) (P : History) (w : Sentence → ℝ) :
     (TradingFirmAt DP Q n).value P w =
       ∑ j ∈ Finset.range (n + 1),
@@ -650,7 +650,7 @@ theorem TradingFirmAt_value_eq_sum (DP : DeductiveProcess)
   simp only [List.map_map, Function.comp_def]
   congr 1
 
-theorem tradingFirmTrader_netWorth_eq_component_sum
+lemma tradingFirmTrader_netWorth_eq_component_sum
     (DP : DeductiveProcess) (Q : ℕ → Sentence → ℚ)
     (P : History) (v : PCWorld) (n : ℕ) :
     (tradingFirmTrader DP Q).netWorth P v n =
@@ -693,7 +693,7 @@ theorem tradingFirmTrader_netWorth_eq_component_sum
 /-- Above the uniform cutoff, every budgeted component is exactly its raw gated action,
 uniformly over the still-variable current price vector.  This is the key fact justifying
 the closed-form tail in `tradingFirmComponentAt`. -/
-theorem BudgeterAt_firmRaw_value_eq_of_cutoff
+lemma BudgeterAt_firmRaw_value_eq_of_cutoff
     (DP : DeductiveProcess) (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     (Q : ℕ → Sentence → ℚ) (n j b : ℕ)
@@ -710,7 +710,7 @@ theorem BudgeterAt_firmRaw_value_eq_of_cutoff
   have hlow := neg_abs_le ((firmRawTrader j).netWorth P v m)
   linarith
 
-theorem firmRaw_netWorth_eq_zero_of_lt (P : History) (v : PCWorld)
+lemma firmRaw_netWorth_eq_zero_of_lt (P : History) (v : PCWorld)
     {j m : ℕ} (hmj : m < j) :
     (firmRawTrader j).netWorth P v m = 0 := by
   unfold Trader.netWorth
@@ -723,7 +723,7 @@ theorem firmRaw_netWorth_eq_zero_of_lt (P : History) (v : PCWorld)
   simp [Trader.zero, Strategy.value]
 
 /-- Before gate `j` opens, every one of its budgeted components has zero value. -/
-theorem BudgeterAt_firmRaw_value_eq_zero_of_lt
+lemma BudgeterAt_firmRaw_value_eq_zero_of_lt
     (DP : DeductiveProcess) (P : History) (Q : ℕ → Sentence → ℚ)
     (n j b : ℕ) (hb : 0 < b) (hnj : n < j)
     (hQ : ∀ day, day < n → ∀ phi, P day phi = (Q day phi : ℝ))
@@ -738,7 +738,7 @@ theorem BudgeterAt_firmRaw_value_eq_zero_of_lt
 
 /-- For one open enumeration index, the finite component has exactly the value of the
 paper's infinite sum over all positive budgets. -/
-theorem tradingFirmComponentAt_value_hasSum
+lemma tradingFirmComponentAt_value_hasSum
     (DP : DeductiveProcess) (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     (Q : ℕ → Sentence → ℚ) (n j : ℕ)
@@ -782,7 +782,7 @@ theorem tradingFirmComponentAt_value_hasSum
 
 /-- Net-worth form of the exact component identity.  The finite time sum commutes with
 the absolutely geometric budget series via `hasSum_sum`. -/
-theorem tradingFirmComponentTrader_netWorth_hasSum
+lemma tradingFirmComponentTrader_netWorth_hasSum
     (DP : DeductiveProcess) (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     (Q : ℕ → Sentence → ℚ)
@@ -820,7 +820,7 @@ theorem tradingFirmComponentTrader_netWorth_hasSum
 
 /-- Each fixed enumerated-trader component has downside at most its total geometric
 budget mass `2^{-j}`. -/
-theorem tradingFirmComponentTrader_netWorth_floor
+lemma tradingFirmComponentTrader_netWorth_floor
     (DP : DeductiveProcess) (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     (Q : ℕ → Sentence → ℚ)
@@ -851,7 +851,7 @@ theorem tradingFirmComponentTrader_netWorth_floor
   have hsum0 := (hactual.add hcost).nonneg hnonneg
   linarith
 
-theorem finite_half_pow_sum_lt_two (n : ℕ) :
+lemma finite_half_pow_sum_lt_two (n : ℕ) :
     (∑ j ∈ Finset.range (n + 1), (1 / 2 : ℝ) ^ j) < 2 := by
   rw [geom_sum_eq (by norm_num : (1 / 2 : ℝ) ≠ 1)]
   norm_num
@@ -859,7 +859,7 @@ theorem finite_half_pow_sum_lt_two (n : ℕ) :
   linarith
 
 /-- The whole firm has the paper's uniform downside bound `-2`. -/
-theorem tradingFirmTrader_netWorth_floor
+lemma tradingFirmTrader_netWorth_floor
     (DP : DeductiveProcess) (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     (Q : ℕ → Sentence → ℚ)
@@ -880,7 +880,7 @@ theorem tradingFirmTrader_netWorth_floor
 
 /-- Removing any one positive-budget component leaves the corresponding enumerated
 component with the same coarse geometric floor. -/
-theorem tradingFirmComponentTrader_residual_floor
+lemma tradingFirmComponentTrader_residual_floor
     (DP : DeductiveProcess) (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     (Q : ℕ → Sentence → ℚ)
@@ -927,7 +927,7 @@ theorem tradingFirmComponentTrader_residual_floor
   dsimp [actual, cost] at hsum0 ⊢
   linarith
 
-theorem budgetedFirmRaw_netWorth_eq_zero_of_lt
+lemma budgetedFirmRaw_netWorth_eq_zero_of_lt
     (DP : DeductiveProcess) (P : History)
     (Q : ℕ → Sentence → ℚ)
     (hQ : ∀ day phi, P day phi = (Q day phi : ℝ))
@@ -942,7 +942,7 @@ theorem budgetedFirmRaw_netWorth_eq_zero_of_lt
 
 /-- Uniform downside of the firm after removing any one weighted positive-budget
 component.  This is the quantitative engine of Trading Firm Dominance. -/
-theorem tradingFirmTrader_residual_floor
+lemma tradingFirmTrader_residual_floor
     (DP : DeductiveProcess) (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     (Q : ℕ → Sentence → ℚ)

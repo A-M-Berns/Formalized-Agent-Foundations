@@ -24,7 +24,8 @@ open scoped BigOperators
 
 /-- A sequence of expressible features generated uniformly in polynomial time and legal
 on its own day.  Its denotation may depend continuously on the market prefix, exactly as
-in the paper's notion “generable from `P`”.  Paper node: `def:ece` (generable from `P`), over `def:fuz` divergent weightings. -/
+in the paper's notion “generable from `P`”.
+Paper node: `def:ece` (generable from `P`), over `def:fuz` divergent weightings. -/
 structure PGenerableWeighting (W : ℕ → EF) : Prop where
   polySeg : PolySegStream (fun n => (W n).serialize)
   rank_le : ∀ n, (W n).rank ≤ n
@@ -55,7 +56,7 @@ def calibrationIndicator (φ : ℕ → Sentence) (a b : ℚ)
     (δ : ℕ → ℚ) (n : ℕ) : EF :=
   efMin (calibrationLower φ a δ n) (calibrationUpper φ b δ n)
 
-theorem calibrationIndicator_pgenerable
+lemma calibrationIndicator_pgenerable
     (φ : ℕ → Sentence) (a b : ℚ) (δ : ℕ → ℚ)
     (hφ : PolySentenceCodes φ) (hδ : PolyPositiveWidths δ) :
     PGenerableWeighting (calibrationIndicator φ a b δ) := by
@@ -88,7 +89,7 @@ theorem calibrationIndicator_pgenerable
     simp [calibrationIndicator, calibrationLower, calibrationUpper, clip01, efMin,
       EF.denoteWith, EF.denote]
 
-theorem calibrationIndicator_mem (φ : ℕ → Sentence) (a b : ℚ)
+lemma calibrationIndicator_mem (φ : ℕ → Sentence) (a b : ℚ)
     (δ : ℕ → ℚ) (P : History) (n : ℕ) :
     0 ≤ (calibrationIndicator φ a b δ n).denote P ∧
       (calibrationIndicator φ a b δ n).denote P ≤ 1 := by
@@ -102,7 +103,7 @@ theorem calibrationIndicator_mem (φ : ℕ → Sentence) (a b : ℚ)
 
 /-- The calibration selector has no false positives: positive weight implies the quoted
 probability lies strictly inside the requested interval. -/
-theorem calibrationIndicator_pos_imp
+lemma calibrationIndicator_pos_imp
     (φ : ℕ → Sentence) (a b : ℚ) (δ : ℕ → ℚ)
     (hδ : ∀ n, 0 < (δ n : ℝ)) (P : History) (n : ℕ)
     (hpos : 0 < (calibrationIndicator φ a b δ n).denote P) :
@@ -139,14 +140,14 @@ noncomputable def prefixSum (x : ℕ → ℝ) (n : ℕ) : ℝ :=
 @[simp] theorem prefixSum_zero (x : ℕ → ℝ) : prefixSum x 0 = x 0 := by
   simp [prefixSum]
 
-theorem prefixSum_succ (x : ℕ → ℝ) (n : ℕ) :
+lemma prefixSum_succ (x : ℕ → ℝ) (n : ℕ) :
     prefixSum x (n + 1) = prefixSum x n + x (n + 1) := by
   simp [prefixSum, Finset.sum_range_succ]
 
 /-- Removing a fixed finite prefix and scaling by a positive constant preserves
 divergence of inclusive prefix sums.  The explicit identity is useful for launched
 trader families, whose `k`th member must be syntactically empty before day `k`. -/
-theorem prefixSum_gate_mul_eq (x : ℕ → ℝ) (c : ℝ) (k n : ℕ) (hkn : k ≤ n) :
+lemma prefixSum_gate_mul_eq (x : ℕ → ℝ) (c : ℝ) (k n : ℕ) (hkn : k ≤ n) :
     prefixSum (fun i => if k ≤ i then c * x i else 0) n =
       c * (prefixSum x n - ∑ i ∈ Finset.range k, x i) := by
   induction n, hkn using Nat.le_induction with
@@ -164,7 +165,7 @@ theorem prefixSum_gate_mul_eq (x : ℕ → ℝ) (c : ℝ) (k n : ℕ) (hkn : k �
         if_pos (hkn.trans (Nat.le_succ n))]
       ring
 
-theorem prefixSum_gate_mul_tendsto_atTop (x : ℕ → ℝ) (c : ℝ) (hc : 0 < c)
+lemma prefixSum_gate_mul_tendsto_atTop (x : ℕ → ℝ) (c : ℝ) (hc : 0 < c)
     (hdiv : Tendsto (prefixSum x) atTop atTop) (k : ℕ) :
     Tendsto (prefixSum (fun i => if k ≤ i then c * x i else 0)) atTop atTop := by
   let C : ℝ := ∑ i ∈ Finset.range k, x i
@@ -179,7 +180,7 @@ theorem prefixSum_gate_mul_tendsto_atTop (x : ℕ → ℝ) (c : ℝ) (hc : 0 < c
   ring
 
 /-- Finite Abel summation in inclusive-prefix notation. -/
-theorem prefixSum_mul_eq_abel (β y : ℕ → ℝ) (n : ℕ) :
+lemma prefixSum_mul_eq_abel (β y : ℕ → ℝ) (n : ℕ) :
     prefixSum (fun i => β i * y i) n =
       β n * prefixSum y n +
         ∑ i ∈ Finset.range n, (β i - β (i + 1)) * prefixSum y i := by
@@ -189,7 +190,7 @@ theorem prefixSum_mul_eq_abel (β y : ℕ → ℝ) (n : ℕ) :
       rw [prefixSum_succ, prefixSum_succ, Finset.sum_range_succ, ih]
       ring
 
-theorem abel_coefficients_sum (β : ℕ → ℝ) (n : ℕ) :
+lemma abel_coefficients_sum (β : ℕ → ℝ) (n : ℕ) :
     β n + ∑ i ∈ Finset.range n, (β i - β (i + 1)) = β 0 := by
   induction n with
   | zero => simp
@@ -200,7 +201,7 @@ theorem abel_coefficients_sum (β : ℕ → ℝ) (n : ℕ) :
 /-- A nonnegative decreasing cap cannot turn a stream whose every cumulative sum is at
 least `-δ` into weighted cumulative loss below `-δ · β₀`.  This is the Abel/Cesàro bridge
 needed by the continuous fractional cap. -/
-theorem prefixSum_mul_lower_of_prefixSum_lower
+lemma prefixSum_mul_lower_of_prefixSum_lower
     (β y : ℕ → ℝ) (δ : ℝ)
     (hβ0 : ∀ n, 0 ≤ β n) (hβanti : Antitone β)
     (hy : ∀ n, -δ ≤ prefixSum y n) (n : ℕ) :
@@ -231,7 +232,7 @@ def DivergentWeighting (W : ℕ → EF) (P : History) : Prop :=
   (∀ n, 0 ≤ (W n).denote P ∧ (W n).denote P ≤ 1) ∧
     Tendsto (prefixSum (fun n => (W n).denote P)) atTop atTop
 
-theorem DivergentWeighting.eventually_prefixSum_pos {W : ℕ → EF} {P : History}
+lemma DivergentWeighting.eventually_prefixSum_pos {W : ℕ → EF} {P : History}
     (h : DivergentWeighting W P) :
     ∀ᶠ n in atTop, 0 < prefixSum (fun i => (W i).denote P) n :=
   h.2.eventually (eventually_gt_atTop 0)
@@ -244,21 +245,21 @@ noncomputable def weightedAverage (w x : ℕ → ℝ) (n : ℕ) : ℝ :=
   if prefixSum w n = 0 then 0
   else prefixSum (fun i => w i * x i) n / prefixSum w n
 
-theorem weightedAverage_eq_div {w x : ℕ → ℝ} {n : ℕ}
+lemma weightedAverage_eq_div {w x : ℕ → ℝ} {n : ℕ}
     (hden : prefixSum w n ≠ 0) :
     weightedAverage w x n =
       prefixSum (fun i => w i * x i) n / prefixSum w n := by
   simp [weightedAverage, hden]
 
-theorem prefixSum_add (x y : ℕ → ℝ) (n : ℕ) :
+lemma prefixSum_add (x y : ℕ → ℝ) (n : ℕ) :
     prefixSum (fun i => x i + y i) n = prefixSum x n + prefixSum y n := by
   simp only [prefixSum, Finset.sum_add_distrib]
 
-theorem prefixSum_sub (x y : ℕ → ℝ) (n : ℕ) :
+lemma prefixSum_sub (x y : ℕ → ℝ) (n : ℕ) :
     prefixSum (fun i => x i - y i) n = prefixSum x n - prefixSum y n := by
   simp only [prefixSum, Finset.sum_sub_distrib]
 
-theorem weightedAverage_sub (w x y : ℕ → ℝ) {n : ℕ}
+lemma weightedAverage_sub (w x y : ℕ → ℝ) {n : ℕ}
     (hden : prefixSum w n ≠ 0) :
     weightedAverage w (fun i => x i - y i) n =
       weightedAverage w x n - weightedAverage w y n := by
@@ -271,7 +272,7 @@ theorem weightedAverage_sub (w x y : ℕ → ℝ) {n : ℕ}
     ring]
   field_simp
 
-theorem weightedAverage_add (w x y : ℕ → ℝ) {n : ℕ}
+lemma weightedAverage_add (w x y : ℕ → ℝ) {n : ℕ}
     (hden : prefixSum w n ≠ 0) :
     weightedAverage w (fun i => x i + y i) n =
       weightedAverage w x n + weightedAverage w y n := by
@@ -286,7 +287,7 @@ theorem weightedAverage_add (w x y : ℕ → ℝ) {n : ℕ}
 
 /-- Fixed scalar multiplication commutes with the repository's total weighted average,
 including its zero-denominator branch. -/
-theorem weightedAverage_const_mul (w x : ℕ → ℝ) (c : ℝ) (n : ℕ) :
+lemma weightedAverage_const_mul (w x : ℕ → ℝ) (c : ℝ) (n : ℕ) :
     weightedAverage w (fun i => c * x i) n = c * weightedAverage w x n := by
   by_cases hden : prefixSum w n = 0
   · simp [weightedAverage, hden]
@@ -300,7 +301,7 @@ theorem weightedAverage_const_mul (w x : ℕ → ℝ) (c : ℝ) (n : ℕ) :
     rw [hnum]
     ring
 
-theorem weightedAverage_mem_Icc {w x : ℕ → ℝ} {a b : ℝ} {n : ℕ}
+lemma weightedAverage_mem_Icc {w x : ℕ → ℝ} {a b : ℝ} {n : ℕ}
     (hw : ∀ i, 0 ≤ w i) (hx : ∀ i, x i ∈ Icc a b)
     (hden : 0 < prefixSum w n) :
     weightedAverage w x n ∈ Icc a b := by
@@ -332,7 +333,7 @@ theorem weightedAverage_mem_Icc {w x : ℕ → ℝ} {a b : ℝ} {n : ℕ}
 /-- Weighted averages only need the value bound on the support of the weighting.  This is
 the form calibration uses: the continuous indicator is zero whenever the quoted price is
 outside the target interval. -/
-theorem weightedAverage_mem_Icc_of_support {w x : ℕ → ℝ} {a b : ℝ} {n : ℕ}
+lemma weightedAverage_mem_Icc_of_support {w x : ℕ → ℝ} {a b : ℝ} {n : ℕ}
     (hw : ∀ i, 0 ≤ w i)
     (hsupport : ∀ i, 0 < w i → x i ∈ Icc a b)
     (hden : 0 < prefixSum w n) :
@@ -372,7 +373,7 @@ theorem weightedAverage_mem_Icc_of_support {w x : ℕ → ℝ} {a b : ℝ} {n : 
 noncomputable def weightedBias (w market truth : ℕ → ℝ) (n : ℕ) : ℝ :=
   weightedAverage w (fun i => market i - truth i) n
 
-theorem weightedBias_eq_market_sub_truth (w market truth : ℕ → ℝ) {n : ℕ}
+lemma weightedBias_eq_market_sub_truth (w market truth : ℕ → ℝ) {n : ℕ}
     (hden : prefixSum w n ≠ 0) :
     weightedBias w market truth n =
       weightedAverage w market n - weightedAverage w truth n := by
@@ -380,7 +381,7 @@ theorem weightedBias_eq_market_sub_truth (w market truth : ℕ → ℝ) {n : ℕ
 
 /-- Negating both the affine price and its determined value negates normalized bias,
 including the harmless zero-denominator branch. -/
-theorem weightedBias_neg (w market truth : ℕ → ℝ) (n : ℕ) :
+lemma weightedBias_neg (w market truth : ℕ → ℝ) (n : ℕ) :
     weightedBias w (fun i => -market i) (fun i => -truth i) n =
       -weightedBias w market truth n := by
   simp only [weightedBias, weightedAverage]
@@ -397,7 +398,7 @@ theorem weightedBias_neg (w market truth : ℕ → ℝ) (n : ℕ) :
     ring
 
 /-- Scaling both market assessment and determined truth scales normalized bias exactly. -/
-theorem weightedBias_const_mul (w market truth : ℕ → ℝ) (c : ℝ) (n : ℕ) :
+lemma weightedBias_const_mul (w market truth : ℕ → ℝ) (c : ℝ) (n : ℕ) :
     weightedBias w (fun i => c * market i) (fun i => c * truth i) n =
       c * weightedBias w market truth n := by
   unfold weightedBias
@@ -409,7 +410,7 @@ theorem weightedBias_const_mul (w market truth : ℕ → ℝ) (c : ℝ) (n : ℕ
 the nonnegative weights have divergent total mass.  This discharges the analytic premise
 used by the recurring-unbiasedness crossing argument; it is not assumed as a regularity
 condition on the bias. -/
-theorem weightedAverage_step_tendsto_zero
+lemma weightedAverage_step_tendsto_zero
     (w x : ℕ → ℝ) (C : ℝ)
     (hw0 : ∀ n, 0 ≤ w n) (hw1 : ∀ n, w n ≤ 1)
     (hx : ∀ n, |x n| ≤ C)
@@ -469,7 +470,7 @@ abbrev HasLimitPoint (f : ℕ → ℝ) (x : ℝ) : Prop :=
   MapClusterPt x atTop f
 
 /-- A nonzero fixed scale does not change whether zero is a subsequential limit. -/
-theorem hasLimitPoint_zero_of_const_mul
+lemma hasLimitPoint_zero_of_const_mul
     {f : ℕ → ℝ} {c : ℝ} (hc : c ≠ 0)
     (h : HasLimitPoint (fun n => c * f n) 0) : HasLimitPoint f 0 := by
   let g : ℝ → ℝ := fun x => x / c
@@ -485,16 +486,16 @@ theorem hasLimitPoint_zero_of_const_mul
 def HasLimitPointIn (f : ℕ → ℝ) (s : Set ℝ) : Prop :=
   ∃ x ∈ s, HasLimitPoint f x
 
-theorem HasLimitPoint.exists_subseq {f : ℕ → ℝ} {x : ℝ}
+lemma HasLimitPoint.exists_subseq {f : ℕ → ℝ} {x : ℝ}
     (h : HasLimitPoint f x) :
     ∃ ψ : ℕ → ℕ, StrictMono ψ ∧ Tendsto (f ∘ ψ) atTop (𝓝 x) :=
   TopologicalSpace.FirstCountableTopology.tendsto_subseq h
 
-theorem hasLimitPoint_of_convergesTo {f : ℕ → ℝ} {x : ℝ}
+lemma hasLimitPoint_of_convergesTo {f : ℕ → ℝ} {x : ℝ}
     (h : ConvergesTo f x) : HasLimitPoint f x :=
   h.mapClusterPt
 
-theorem convergesTo_eq_of_hasLimitPoint {f : ℕ → ℝ} {x y : ℝ}
+lemma convergesTo_eq_of_hasLimitPoint {f : ℕ → ℝ} {x y : ℝ}
     (hy : ConvergesTo f y) (hx : HasLimitPoint f x) : x = y := by
   obtain ⟨ψ, hψ, hψx⟩ := hx.exists_subseq
   have hψy : Tendsto (f ∘ ψ) atTop (𝓝 y) :=
@@ -504,7 +505,7 @@ theorem convergesTo_eq_of_hasLimitPoint {f : ℕ → ℝ} {x y : ℝ}
 /-- If a real sequence returns arbitrarily late to both sides of zero and its adjacent
 jumps vanish, it has zero as a limit point.  This is the exact crossing argument used in
 the paper after the two one-sided recurring-unbiasedness trader contradictions. -/
-theorem hasLimitPoint_zero_of_two_sided_recurring (f : ℕ → ℝ)
+lemma hasLimitPoint_zero_of_two_sided_recurring (f : ℕ → ℝ)
     (hstep : Tendsto (fun n => f (n + 1) - f n) atTop (𝓝 0))
     (hlower : ∀ ε > 0, ∃ᶠ n in atTop, -ε < f n)
     (hupper : ∀ ε > 0, ∃ᶠ n in atTop, f n < ε) :
@@ -653,7 +654,7 @@ theorem calibration_limitPoint_transfer
 
 /-- Convergent half of the same transfer: if weighted truth frequency converges, its
 limit lies in the calibration interval. -/
-theorem calibration_convergent_limit_mem
+lemma calibration_convergent_limit_mem
     (w market truth : ℕ → ℝ) (a b x : ℝ)
     (hden : ∀ᶠ n in atTop, prefixSum w n ≠ 0)
     (hmarket : ∀ᶠ n in atTop,
@@ -730,7 +731,7 @@ theorem simcal_of_recurring_unbiasedness
 the exposure dominates the pointwise truth-minus-market payoff.  This is the quantitative
 heart of the recurring-unbiasedness trader: it converts a normalized statistical failure
 into unbounded attempted affine risk without making any settlement assumption. -/
-theorem weightedExposure_tendsto_atTop_of_eventually_negative_bias
+lemma weightedExposure_tendsto_atTop_of_eventually_negative_bias
     (w market truth exposure : ℕ → ℝ) (ε : ℝ)
     (hw0 : ∀ n, 0 ≤ w n)
     (hdom : ∀ n, truth n - market n ≤ exposure n)
@@ -790,7 +791,7 @@ def AffineCombination.DeterminedViaTheory
 determination over all sufficiently late finite-stage plausible worlds.  This compactness
 bridge is what turns a finite capped run of weighted affine purchases into an actual ROI
 component; no settlement schedule is assumed. -/
-theorem AffineCombination.DeterminedViaTheory.eventually_close
+lemma AffineCombination.DeterminedViaTheory.eventually_close
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth : ℕ → ℝ}
     (h : AffineCombination.DeterminedViaTheory As P DP truth)
@@ -821,7 +822,7 @@ smallest nonzero gap to `truth i` and approximate determination becomes exact. -
 open Classical in
 /-- The payout-sum of a fixed term list ranges over a finite set of reals: each term
 contributes one of two values (`0`, or its coefficient). -/
-private theorem AffineCombination.exists_termsSum_finset (P : History) :
+private lemma AffineCombination.exists_termsSum_finset (P : History) :
     ∀ terms : List (EF × Sentence),
       ∃ S : Finset ℝ, ∀ v : PCWorld,
         (terms.map (fun p => p.1.denote P * v.payout p.2)).sum ∈ S
@@ -839,7 +840,7 @@ private theorem AffineCombination.exists_termsSum_finset (P : History) :
 /-- An affine combination's value ranges over a finite set of reals, uniformly in the
 world.  Finiteness of `terms` is what makes this true — it is the fact that upgrades
 approximate determination to exact settlement. -/
-theorem AffineCombination.exists_valueSet (A : AffineCombination) (P : History) :
+lemma AffineCombination.exists_valueSet (A : AffineCombination) (P : History) :
     ∃ S : Finset ℝ, ∀ v : PCWorld, A.value P v.payout ∈ S := by
   classical
   obtain ⟨S, hS⟩ := AffineCombination.exists_termsSum_finset P A.terms
@@ -851,7 +852,7 @@ some finite stage already pins its value to `truth i` in *every* plausible world
 This is the realizability core of `PatientSettlementClock.eventually_inactive`: it is what
 guarantees the settlement checker eventually fires, so the clock can be sound (inactive ⇒
 settled) and still eventually go inactive.  Purely semantic — no computability claim. -/
-theorem AffineCombination.DeterminedViaTheory.exists_settled_stage
+lemma AffineCombination.DeterminedViaTheory.exists_settled_stage
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth : ℕ → ℝ}
     (h : AffineCombination.DeterminedViaTheory As P DP truth) (i : ℕ) :
@@ -886,7 +887,7 @@ over the completed theory), but it *can* test agreement across the finitely many
 assignments.  The forward direction is trivial; the reverse leans on completed-theory
 worlds being a nonempty subset of the stage-`m` plausible worlds, which is exactly where
 consistency (`hworld`) is used. -/
-theorem AffineCombination.DeterminedViaTheory.settled_iff_agree
+lemma AffineCombination.DeterminedViaTheory.settled_iff_agree
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth : ℕ → ℝ}
     (h : AffineCombination.DeterminedViaTheory As P DP truth)
@@ -922,7 +923,7 @@ def AffineCombination.valueRat (A : AffineCombination) (Q : ℕ → Sentence →
     (w : Sentence → ℚ) : ℚ :=
   A.const.denoteRat Q + (A.terms.map (fun p => p.1.denoteRat Q * w p.2)).sum
 
-private theorem AffineCombination.termsSum_eq_ratCast
+private lemma AffineCombination.termsSum_eq_ratCast
     (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
     (wR : Sentence → ℝ) (wQ : Sentence → ℚ) (hw : ∀ φ, wR φ = (wQ φ : ℝ)) :
     ∀ terms : List (EF × Sentence),
@@ -936,7 +937,7 @@ private theorem AffineCombination.termsSum_eq_ratCast
 
 /-- Rational affine value agrees exactly with the real semantics of an exact rational
 market whenever the payout tables agree pointwise. -/
-theorem AffineCombination.value_eq_ratCast (A : AffineCombination)
+lemma AffineCombination.value_eq_ratCast (A : AffineCombination)
     (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
     (wR : Sentence → ℝ) (wQ : Sentence → ℚ) (hw : ∀ φ, wR φ = (wQ φ : ℝ)) :
     A.value P wR = (A.valueRat Q wQ : ℝ) := by
@@ -944,7 +945,7 @@ theorem AffineCombination.value_eq_ratCast (A : AffineCombination)
   rw [Rat.cast_add, EF.denote_eq_ratCast A.const P Q hQ,
     AffineCombination.termsSum_eq_ratCast P Q hQ wR wQ hw A.terms]
 
-private theorem AffineCombination.termsSum_congr (Q : ℕ → Sentence → ℚ)
+private lemma AffineCombination.termsSum_congr (Q : ℕ → Sentence → ℚ)
     (w w' : Sentence → ℚ) :
     ∀ terms : List (EF × Sentence), (∀ p ∈ terms, w p.2 = w' p.2) →
       (terms.map (fun p => p.1.denoteRat Q * w p.2)).sum
@@ -957,7 +958,7 @@ private theorem AffineCombination.termsSum_congr (Q : ℕ → Sentence → ℚ)
           (fun q hq => h q (List.mem_cons_of_mem _ hq))]
 
 /-- The rational value only inspects the payouts of the combination's own sentences. -/
-theorem AffineCombination.valueRat_congr (A : AffineCombination) (Q : ℕ → Sentence → ℚ)
+lemma AffineCombination.valueRat_congr (A : AffineCombination) (Q : ℕ → Sentence → ℚ)
     (w w' : Sentence → ℚ) (h : ∀ p ∈ A.terms, w p.2 = w' p.2) :
     A.valueRat Q w = A.valueRat Q w' := by
   unfold AffineCombination.valueRat
@@ -971,7 +972,7 @@ def AffineCombination.settlementAtomLimit (A : AffineCombination)
   stage.sum BoolPCWorld.atomBound +
     (A.terms.map (fun p => BoolPCWorld.atomBound p.2)).sum
 
-theorem AffineCombination.settlementAtomLimit_stage_bounded (A : AffineCombination)
+lemma AffineCombination.settlementAtomLimit_stage_bounded (A : AffineCombination)
     (stage : Finset Sentence) : ∀ φ ∈ stage,
       BoolPCWorld.atomBound φ ≤ A.settlementAtomLimit stage := by
   intro φ hφ
@@ -980,7 +981,7 @@ theorem AffineCombination.settlementAtomLimit_stage_bounded (A : AffineCombinati
   unfold AffineCombination.settlementAtomLimit
   omega
 
-theorem AffineCombination.settlementAtomLimit_terms_bounded (A : AffineCombination)
+lemma AffineCombination.settlementAtomLimit_terms_bounded (A : AffineCombination)
     (stage : Finset Sentence) : ∀ p ∈ A.terms,
       BoolPCWorld.atomBound p.2 ≤ A.settlementAtomLimit stage := by
   intro p hp
@@ -991,7 +992,7 @@ theorem AffineCombination.settlementAtomLimit_terms_bounded (A : AffineCombinati
   omega
 
 /-- Restricting a plausible world to the settlement support keeps it plausible. -/
-private theorem AffineCombination.restrict_plausible (A : AffineCombination)
+private lemma AffineCombination.restrict_plausible (A : AffineCombination)
     (stage : Finset Sentence) (v : PCWorld) (hv : v.ConsistentWith stage) :
     ∀ φ ∈ stage, BoolPCWorld.eval
       (BoolPCWorld.FiniteWorld.restrict (BoolPCWorld.ofPCWorld v)
@@ -1012,7 +1013,7 @@ The finite quantifier on the left is over `BoolPCWorld.FiniteWorld B = Fin B →
 test.  This is the step that needs `P` rational, and it is the whole reason
 `PatientSettlementClock` is realizable at `liaHistory` but not at an arbitrary
 `History`. -/
-theorem AffineCombination.agree_of_finiteWorlds_agree (A : AffineCombination)
+lemma AffineCombination.agree_of_finiteWorlds_agree (A : AffineCombination)
     (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
     (stage : Finset Sentence)
     (h : ∀ u u' : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage),
@@ -1039,7 +1040,7 @@ theorem AffineCombination.agree_of_finiteWorlds_agree (A : AffineCombination)
 agreement.  Every plausible *finite* world extends to a genuine plausible `PCWorld` with
 the same payouts, so the finite test cannot be stricter than the real condition.  This is
 what makes the concrete test **complete**, not merely sound. -/
-theorem AffineCombination.finiteWorlds_agree_of_agree (A : AffineCombination)
+lemma AffineCombination.finiteWorlds_agree_of_agree (A : AffineCombination)
     (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
     (stage : Finset Sentence)
     (h : ∀ v w : PCWorld, v.ConsistentWith stage → w.ConsistentWith stage →
@@ -1101,7 +1102,7 @@ def allBitLists : ℕ → List (List Bool)
   | 0 => [[]]
   | n + 1 => (allBitLists n).flatMap (fun l => [false :: l, true :: l])
 
-theorem mem_allBitLists : ∀ (n : ℕ) (l : List Bool), l ∈ allBitLists n ↔ l.length = n
+lemma mem_allBitLists : ∀ (n : ℕ) (l : List Bool), l ∈ allBitLists n ↔ l.length = n
   | 0, l => by
       simp only [allBitLists, List.mem_singleton]
       exact ⟨fun h => by rw [h]; rfl, fun h => List.length_eq_zero_iff.mp h⟩
@@ -1131,7 +1132,7 @@ def bitsToFin (B : ℕ) (l : List Bool) : BoolPCWorld.FiniteWorld B := fun a => 
 `FiniteWorld B`) or non-dependently (through `BoolPCWorld.bitsWorld`).  Past the end of the
 list both read `false`: `toBoolPCWorld` by its `dif_neg` branch, `bitsWorld` because
 `getD` is out of range.  This is what lets the compiled test avoid `Fin B` entirely. -/
-theorem toBoolPCWorld_bitsToFin {B : ℕ} {l : List Bool} (hl : l.length = B) :
+lemma toBoolPCWorld_bitsToFin {B : ℕ} {l : List Bool} (hl : l.length = B) :
     (bitsToFin B l).toBoolPCWorld = BoolPCWorld.bitsWorld l := by
   funext a
   rw [BoolPCWorld.FiniteWorld.toBoolPCWorld, BoolPCWorld.bitsWorld]
@@ -1139,19 +1140,19 @@ theorem toBoolPCWorld_bitsToFin {B : ℕ} {l : List Bool} (hl : l.length = B) :
   · simp [h, bitsToFin]
   · rw [dif_neg h, List.getD_eq_default _ _ (by omega)]
 
-theorem payoutRat_bitsToFin {B : ℕ} {l : List Bool} (hl : l.length = B) :
+lemma payoutRat_bitsToFin {B : ℕ} {l : List Bool} (hl : l.length = B) :
     (bitsToFin B l).payoutRat = BoolPCWorld.bitsPayoutRat l := by
   funext φ
   rw [BoolPCWorld.FiniteWorld.payoutRat, BoolPCWorld.bitsPayoutRat,
     toBoolPCWorld_bitsToFin hl]
 
-theorem bitsWorld_ofFn {B : ℕ} (u : BoolPCWorld.FiniteWorld B) :
+lemma bitsWorld_ofFn {B : ℕ} (u : BoolPCWorld.FiniteWorld B) :
     BoolPCWorld.bitsWorld (List.ofFn u) = u.toBoolPCWorld := by
   have h := toBoolPCWorld_bitsToFin (B := B) (l := List.ofFn u) (by simp)
   rw [bitsToFin_ofFn] at h
   exact h.symm
 
-theorem bitsPayoutRat_ofFn {B : ℕ} (u : BoolPCWorld.FiniteWorld B) :
+lemma bitsPayoutRat_ofFn {B : ℕ} (u : BoolPCWorld.FiniteWorld B) :
     BoolPCWorld.bitsPayoutRat (List.ofFn u) = u.payoutRat := by
   have h := payoutRat_bitsToFin (B := B) (l := List.ofFn u) (by simp)
   rw [bitsToFin_ofFn] at h
@@ -1188,12 +1189,12 @@ and not the latter. -/
 def stageSatBits (stage : Finset Sentence) (l : List Bool) : Bool :=
   (stageSort stage).all fun φ => BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ
 
-theorem stageSatBits_eq_true_iff (stage : Finset Sentence) (l : List Bool) :
+lemma stageSatBits_eq_true_iff (stage : Finset Sentence) (l : List Bool) :
     stageSatBits stage l = true ↔
       ∀ φ ∈ stage, BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ = true := by
   simp [stageSatBits, List.all_eq_true]
 
-private theorem orNot_orNot_eq_true_iff (a b c : Bool) :
+private lemma orNot_orNot_eq_true_iff (a b c : Bool) :
     ((!a) || (!b) || c) = true ↔ (a = true → b = true → c = true) := by
   cases a <;> cases b <;> cases c <;> simp
 
@@ -1214,7 +1215,7 @@ def AffineCombination.SettlementTestBool (A : AffineCombination) (Q : ℕ → Se
 
 /-- The `List Bool` presentation is the same test.  Surjectivity of `bitsToFin` onto
 `FiniteWorld B` (via `List.ofFn`) is what makes it complete, not merely sound. -/
-theorem AffineCombination.settlementTestBool_iff (A : AffineCombination)
+lemma AffineCombination.settlementTestBool_iff (A : AffineCombination)
     (Q : ℕ → Sentence → ℚ) (stage : Finset Sentence) :
     A.SettlementTestBool Q stage = true ↔ A.SettlementTest Q stage := by
   simp only [AffineCombination.SettlementTestBool, AffineCombination.SettlementTest,
@@ -1238,7 +1239,7 @@ theorem AffineCombination.settlementTestBool_iff (A : AffineCombination)
 implies every plausible world values `As i` at `truth i`) and complete (settlement implies
 the test passes).  Consistency (`hworld`) and rationality of the market (`hQ`) are the two
 hypotheses that carry it; neither is dispensable. -/
-theorem AffineCombination.DeterminedViaTheory.settlementTest_iff_settled
+lemma AffineCombination.DeterminedViaTheory.settlementTest_iff_settled
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
     (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
@@ -1250,7 +1251,7 @@ theorem AffineCombination.DeterminedViaTheory.settlementTest_iff_settled
       (As i).agree_of_finiteWorlds_agree P Q hQ (DP.D j) htest v w hv hw,
     fun hagree => (As i).finiteWorlds_agree_of_agree P Q hQ (DP.D j) hagree⟩
 
-theorem AffineCombination.DeterminedViaTheory.unique
+lemma AffineCombination.DeterminedViaTheory.unique
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {x y : ℕ → ℝ}
     (hx : AffineCombination.DeterminedViaTheory As P DP x)
@@ -1262,7 +1263,7 @@ theorem AffineCombination.DeterminedViaTheory.unique
   rw [← hx n v hv, hy n v hv]
 
 /-- Completed-theory determination is closed under pointwise affine negation. -/
-theorem AffineCombination.DeterminedViaTheory.neg
+lemma AffineCombination.DeterminedViaTheory.neg
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth : ℕ → ℝ}
     (h : AffineCombination.DeterminedViaTheory As P DP truth) :
@@ -1281,24 +1282,24 @@ index while remaining exactly rational and polynomially codeable. -/
 def biasRunRate (scale k : ℕ) : ℚ :=
   1 / (((scale + 1) * (k + 1) : ℕ) : ℚ)
 
-theorem biasRunRate_codes (scale : ℕ) : PolyRatCodes (biasRunRate scale) := by
+lemma biasRunRate_codes (scale : ℕ) : PolyRatCodes (biasRunRate scale) := by
   obtain ⟨cinv, hinv⟩ := encode_inv_nat_polyFueled
   obtain ⟨cmul, hmul⟩ := mulc_polyFueled (scale + 1)
   have harg := hmul.comp PolyFueled.id.succ_comp
   refine ⟨_, (hinv.comp harg).of_eq (fun n => ?_)⟩
   simp [biasRunRate, Nat.mul_comm]
 
-theorem biasRunRate_pos (scale k : ℕ) : 0 < (biasRunRate scale k : ℝ) := by
+lemma biasRunRate_pos (scale k : ℕ) : 0 < (biasRunRate scale k : ℝ) := by
   simp [biasRunRate]
   positivity
 
-theorem biasRunRate_le_one (scale k : ℕ) : (biasRunRate scale k : ℝ) ≤ 1 := by
+lemma biasRunRate_le_one (scale k : ℕ) : (biasRunRate scale k : ℝ) ≤ 1 := by
   simp only [biasRunRate, Rat.cast_div, Rat.cast_one, Rat.cast_natCast]
   have hden : (1 : ℝ) ≤ (((scale + 1) * (k + 1) : ℕ) : ℝ) := by
     exact_mod_cast Nat.one_le_iff_ne_zero.mpr (Nat.mul_ne_zero (by omega) (by omega))
   exact (div_le_one (zero_lt_one.trans_le hden)).2 hden
 
-theorem biasRunRate_mul_index_le (scale k : ℕ) :
+lemma biasRunRate_mul_index_le (scale k : ℕ) :
     (biasRunRate scale k : ℝ) * k ≤ 1 / (scale + 1 : ℝ) := by
   simp only [biasRunRate, Rat.cast_div, Rat.cast_one,
     Nat.cast_mul, Nat.cast_add, Nat.cast_one]
@@ -1311,7 +1312,7 @@ theorem biasRunRate_mul_index_le (scale k : ℕ) :
 /-- Family-uniform version of the audited fractional-weight emitter.  The existing ROI
 lemma emits one recurrence with a fixed attempted-weight stream; here the family index is
 carried through every recurrence body, yielding one program for all pairs `⟨k,n⟩`. -/
-theorem fractionalFamilyFeatureWeight_polySeg
+lemma fractionalFamilyFeatureWeight_polySeg
     (occupancy : ℕ → ℕ → EF) (α : ℕ → ℕ → EF)
     (hα : PolySegStream (fun z => (α z.unpair.1 z.unpair.2).serialize))
     (hocc : PolySegStream (fun z =>
@@ -1404,7 +1405,7 @@ then `rateₖ · Wₙ`. -/
 def biasRunAttempt (W : ℕ → EF) (rate : ℕ → ℚ) (k n : ℕ) : EF :=
   if k ≤ n then EF.mul (EF.const (rate k)) (W n) else EF.const 0
 
-theorem biasRunAttempt_family_polySeg {W : ℕ → EF}
+lemma biasRunAttempt_family_polySeg {W : ℕ → EF}
     (hW : PGenerableWeighting W) (rate : ℕ → ℚ) (hrate : PolyRatCodes rate) :
     PolySegStream (fun z =>
       (biasRunAttempt W rate z.unpair.1 z.unpair.2).serialize) := by
@@ -1447,7 +1448,7 @@ def biasRunCoefficient (As : ℕ → AffineCombination) (W : ℕ → EF)
       (biasRunAttempt W rate k) n)
     (biasRunAttempt W rate k n)
 
-theorem biasRunCoefficient_family_polySeg {As : ℕ → AffineCombination}
+lemma biasRunCoefficient_family_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (hrate : PolyRatCodes rate) :
     PolySegStream (fun z =>
@@ -1468,14 +1469,14 @@ noncomputable def biasRunGamma (As : ℕ → AffineCombination) (W : ℕ → EF)
       (biasRunAttemptValue W rate P k) n *
     biasRunAttemptValue W rate P k n
 
-theorem biasRunAttempt_rank_le {W : ℕ → EF} (hW : PGenerableWeighting W)
+lemma biasRunAttempt_rank_le {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (k n : ℕ) :
     (biasRunAttempt W rate k n).rank ≤ n := by
   by_cases hkn : k ≤ n
   · simp [biasRunAttempt, hkn, EF.rank, hW.rank_le n]
   · simp [biasRunAttempt, hkn]
 
-theorem biasRunAttempt_closed {W : ℕ → EF} (hW : PGenerableWeighting W)
+lemma biasRunAttempt_closed {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (k n : ℕ) (ρ : List ℝ) (P : History) :
     (biasRunAttempt W rate k n).denoteWith ρ P =
       (biasRunAttempt W rate k n).denote P := by
@@ -1485,18 +1486,18 @@ theorem biasRunAttempt_closed {W : ℕ → EF} (hW : PGenerableWeighting W)
     rw [hW.closed n ρ P]
   · simp [biasRunAttempt, hkn, EF.denote]
 
-theorem biasRunOccupancy_rank_le {As : ℕ → AffineCombination}
+lemma biasRunOccupancy_rank_le {As : ℕ → AffineCombination}
     (h : PolySequence As) (i n : ℕ) (hin : i ≤ n) :
     (biasRunOccupancy As i n).rank ≤ n := by
   exact ((As i).magnitudeFeature_rank_le (h.terms_rank i)).trans hin
 
-theorem biasRunOccupancy_closed {As : ℕ → AffineCombination}
+lemma biasRunOccupancy_closed {As : ℕ → AffineCombination}
     (h : PolySequence As) (i n : ℕ) (ρ : List ℝ) (P : History) :
     (biasRunOccupancy As i n).denoteWith ρ P =
       (biasRunOccupancy As i n).denote P :=
   h.magnitudeFeature_closed i ρ P
 
-theorem biasRunCoefficient_rank_le {As : ℕ → AffineCombination}
+lemma biasRunCoefficient_rank_le {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (k n : ℕ) :
     (biasRunCoefficient As W rate k n).rank ≤ n := by
@@ -1509,7 +1510,7 @@ theorem biasRunCoefficient_rank_le {As : ℕ → AffineCombination}
       (fun i d hid => biasRunOccupancy_rank_le h i d hid) n
   · exact biasRunAttempt_rank_le hW rate k n
 
-theorem biasRunCoefficient_denote {As : ℕ → AffineCombination}
+lemma biasRunCoefficient_denote {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (P : History) (k n : ℕ) :
     (biasRunCoefficient As W rate k n).denote P =
@@ -1522,7 +1523,7 @@ theorem biasRunCoefficient_denote {As : ℕ → AffineCombination}
   simp only [biasRunGamma, biasRunOccupancy, magnitudeFeature_denote]
   congr 2
 
-theorem biasRunAttemptValue_nonneg
+lemma biasRunAttemptValue_nonneg
     {W : ℕ → EF} {P : History} (hW : DivergentWeighting W P)
     (rate : ℕ → ℚ) (hrate0 : ∀ k, 0 ≤ (rate k : ℝ)) (k n : ℕ) :
     0 ≤ biasRunAttemptValue W rate P k n := by
@@ -1531,7 +1532,7 @@ theorem biasRunAttemptValue_nonneg
       mul_nonneg (hrate0 k) (hW.1 n).1]
   · simp [biasRunAttemptValue, biasRunAttempt, hkn, EF.denote]
 
-theorem biasRunAttemptValue_le_one
+lemma biasRunAttemptValue_le_one
     {W : ℕ → EF} {P : History} (hW : DivergentWeighting W P)
     (rate : ℕ → ℚ) (hrate1 : ∀ k, (rate k : ℝ) ≤ 1) (k n : ℕ) :
     biasRunAttemptValue W rate P k n ≤ 1 := by
@@ -1546,7 +1547,7 @@ theorem biasRunAttemptValue_le_one
 
 /-- Launching at a finite family index and multiplying by a positive run rate preserves
 divergence of weighted affine magnitude. -/
-theorem biasRunAttemptedRisk_tendsto_atTop
+lemma biasRunAttemptedRisk_tendsto_atTop
     (As : ℕ → AffineCombination) {W : ℕ → EF} (rate : ℕ → ℚ)
     (P : History) (k : ℕ) (hrate : 0 < (rate k : ℝ))
     (hdiv : Tendsto
@@ -1567,7 +1568,7 @@ theorem biasRunAttemptedRisk_tendsto_atTop
 
 /-- The capped run never commits more than one unit of share magnitude through any day.
 This is a non-vacuous capital bound derived from the actual fractional recurrence. -/
-theorem biasRun_magnitudePrefix_le_one
+lemma biasRun_magnitudePrefix_le_one
     {As : ℕ → AffineCombination} {W : ℕ → EF} {P : History}
     (hW : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
@@ -1610,7 +1611,7 @@ theorem biasRun_magnitudePrefix_le_one
     _ ≤ 1 := by
       simpa [ROIBudget.fractionalOutstanding] using hbudget
 
-theorem biasRunGamma_nonneg
+lemma biasRunGamma_nonneg
     {As : ℕ → AffineCombination} {W : ℕ → EF} {P : History}
     (hW : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
@@ -1629,7 +1630,7 @@ theorem biasRunGamma_nonneg
       (fun i => biasRunAttemptValue_le_one hW rate hrate1 k i) n)
     (biasRunAttemptValue_nonneg hW rate hrate0 k n)
 
-theorem biasRunGamma_le_one
+lemma biasRunGamma_le_one
     {As : ℕ → AffineCombination} {W : ℕ → EF} {P : History}
     (hW : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
@@ -1654,7 +1655,7 @@ theorem biasRunGamma_le_one
       mul_le_mul hβ1 (hα1 n) (hα0 n) zero_le_one
     _ = 1 := one_mul _
 
-theorem biasRun_magnitudePrefix_eq_one_sub_weight
+lemma biasRun_magnitudePrefix_eq_one_sub_weight
     (As : ℕ → AffineCombination) (W : ℕ → EF) (rate : ℕ → ℚ)
     (P : History) (k n : ℕ) :
     prefixSum (fun i => biasRunGamma As W rate P k i * (As i).magnitude P) n =
@@ -1668,7 +1669,7 @@ theorem biasRun_magnitudePrefix_eq_one_sub_weight
   intro i _
   simp [biasRunGamma, mul_assoc]
 
-theorem biasRun_weight_succ
+lemma biasRun_weight_succ
     (As : ℕ → AffineCombination) (W : ℕ → EF) (rate : ℕ → ℚ)
     (P : History) (k n : ℕ) :
     ROIBudget.fractionalWeight
@@ -1702,7 +1703,7 @@ theorem biasRun_weight_succ
 /-- Abel lower bound for the realized truth payoff of the fractional cap.  If every
 uncapped cumulative surplus above rate `ρ` is at least `-δ`, then the capped run loses at
 most `δ` relative to `ρ` times its realized share magnitude. -/
-theorem biasRun_truthProfitPrefix_lower_of_surplus
+lemma biasRun_truthProfitPrefix_lower_of_surplus
     {As : ℕ → AffineCombination} {W : ℕ → EF} {P : History}
     (hW : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
@@ -1769,7 +1770,7 @@ theorem biasRun_truthProfitPrefix_lower_of_surplus
 uses its entire unit budget: actual run magnitude tends to one.  The proof is elementary:
 the remaining budget is antitone; if it stayed above `ε`, actual allocation would dominate
 `ε` times a divergent attempted-risk sum, contradicting the unit cap. -/
-theorem biasRun_magnitudePrefix_tendsto_one
+lemma biasRun_magnitudePrefix_tendsto_one
     {As : ℕ → AffineCombination} {W : ℕ → EF} {P : History}
     (hW : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
@@ -1877,7 +1878,7 @@ def biasRunTradeSentence {As : ℕ → AffineCombination}
     (h : PolySequence As) (z : ℕ) : Sentence :=
   h.sentence (Nat.pair z.unpair.1.unpair.2 z.unpair.2)
 
-theorem biasRunTradeCount_poly {As : ℕ → AffineCombination}
+lemma biasRunTradeCount_poly {As : ℕ → AffineCombination}
     (h : PolySequence As) : ∃ c, PolyFueled c (biasRunTradeCount h) := by
   obtain ⟨ccount, hcount⟩ := h.termCount_poly
   have htest := subc_polyFueled.comp
@@ -1890,7 +1891,7 @@ theorem biasRunTradeCount_poly {As : ℕ → AffineCombination}
   · rw [if_pos hkn, if_neg (by omega)]
   · rw [if_neg hkn, if_pos (by omega)]
 
-theorem biasRunTradeCoefficient_polySeg {As : ℕ → AffineCombination}
+lemma biasRunTradeCoefficient_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (hrate : PolyRatCodes rate) :
     PolySegStream (fun z =>
@@ -1909,7 +1910,7 @@ theorem biasRunTradeCoefficient_polySeg {As : ℕ → AffineCombination}
   simpa only [biasRunTradeCoefficient] using
     PolySegStream.serialize_mul hrun hbase
 
-theorem biasRunTradeSentence_poly {As : ℕ → AffineCombination}
+lemma biasRunTradeSentence_poly {As : ℕ → AffineCombination}
     (h : PolySequence As) :
     ∃ c, PolyFueled c (fun z => Encodable.encode (biasRunTradeSentence h z)) := by
   obtain ⟨cs, hs⟩ := h.sentence_poly
@@ -1917,7 +1918,7 @@ theorem biasRunTradeSentence_poly {As : ℕ → AffineCombination}
   have hj := PolyFueled.right
   exact ⟨_, (hs.comp (hn.pair hj)).of_eq (fun _ => rfl)⟩
 
-theorem biasRunTrader_trades_eq {As : ℕ → AffineCombination}
+lemma biasRunTrader_trades_eq {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (k n : ℕ) :
     ((biasRunTrader h hW rate k).strat n).trades =
@@ -1978,7 +1979,7 @@ noncomputable def biasRunTrader_polyTrade {As : ℕ → AffineCombination}
     ((biasRunTrader h hW rate k).strat n).trades = [] := by
   simp [biasRunTrader, Nat.not_le.mpr hnk]
 
-theorem biasRunTrader_value {As : ℕ → AffineCombination}
+lemma biasRunTrader_value {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (P : History) (w : Valuation)
     (k n : ℕ) (hkn : k ≤ n) :
@@ -1991,7 +1992,7 @@ theorem biasRunTrader_value {As : ℕ → AffineCombination}
     biasRunCoefficient_denote h hW]
   ring
 
-theorem biasRunTrader_netWorth {As : ℕ → AffineCombination}
+lemma biasRunTrader_netWorth {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     (rate : ℕ → ℚ) (P : History) (v : PCWorld) (k n : ℕ) :
     (biasRunTrader h hWgen rate k).netWorth P v n =
@@ -2009,7 +2010,7 @@ theorem biasRunTrader_netWorth {As : ℕ → AffineCombination}
       rw [ha, mul_zero]
     simp [biasRunTrader, hki, Strategy.value, hgamma]
 
-theorem biasRunTrader_dayMagnitude {As : ℕ → AffineCombination}
+lemma biasRunTrader_dayMagnitude {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
@@ -2033,7 +2034,7 @@ theorem biasRunTrader_dayMagnitude {As : ℕ → AffineCombination}
 
 /-- Every capped run has genuinely summable day magnitudes and total magnitude at most
 one.  This rules out the `tsum = 0` non-summability loophole before ROI is discussed. -/
-theorem biasRunTrader_summable_and_magnitude_le_one
+lemma biasRunTrader_summable_and_magnitude_le_one
     {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} (hWdiv : DivergentWeighting W P)
@@ -2065,7 +2066,7 @@ theorem biasRunTrader_summable_and_magnitude_le_one
   refine ⟨hsummable, ?_⟩
   exact Real.tsum_le_of_sum_range_le hterm0 hpartial
 
-theorem biasRunTrader_magnitude_eq_one_of_attemptedRisk
+lemma biasRunTrader_magnitude_eq_one_of_attemptedRisk
     {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} (hWdiv : DivergentWeighting W P)
@@ -2100,7 +2101,7 @@ theorem biasRunTrader_magnitude_eq_one_of_attemptedRisk
 /-- A determined affine value differs from its diagonal market price by at most its share
 magnitude.  The completed-theory world needed for this comparison is obtained by the
 compactness theorem, not assumed separately for each member. -/
-theorem DeterminedViaTheory.abs_truth_sub_price_le_magnitude
+lemma DeterminedViaTheory.abs_truth_sub_price_le_magnitude
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     (hdet : DeterminedViaTheory As P DP truth)
@@ -2119,7 +2120,7 @@ theorem DeterminedViaTheory.abs_truth_sub_price_le_magnitude
 used only for the finitely many large early positions; the summable risk tail is controlled
 uniformly by magnitude.  Thus no effective settlement oracle is hidden in this semantic
 step. -/
-theorem DeterminedViaTheory.biasRunTrader_hasROI_of_surplus
+lemma DeterminedViaTheory.biasRunTrader_hasROI_of_surplus
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
@@ -2307,7 +2308,7 @@ theorem DeterminedViaTheory.biasRunTrader_hasROI_of_surplus
 /-- A persistent negative affine bias forces divergent `W`-weighted share magnitude.
 This is the exact specialization of the statistical forcing estimate to affine values
 determined by the completed deductive theory. -/
-theorem DeterminedViaTheory.weightedMagnitude_tendsto_atTop_of_negative_bias
+lemma DeterminedViaTheory.weightedMagnitude_tendsto_atTop_of_negative_bias
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     (hdet : DeterminedViaTheory As P DP truth)
@@ -2335,7 +2336,7 @@ theorem DeterminedViaTheory.weightedMagnitude_tendsto_atTop_of_negative_bias
 /-- Eventually, every sufficiently late launched run has a uniform Abel-prefix surplus
 bound.  The only loss is its finite pre-launch prefix, at most `rateₖ · k`; the persistent
 global bias pays for every later prefix. -/
-theorem DeterminedViaTheory.biasRun_surplus_eventually
+lemma DeterminedViaTheory.biasRun_surplus_eventually
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     (hdet : DeterminedViaTheory As P DP truth)
@@ -2446,7 +2447,7 @@ theorem DeterminedViaTheory.biasRun_surplus_eventually
 bias, every positive-rate launched component has total share magnitude exactly one.  This
 is deliberately weaker than ROI—the latter additionally needs its plausible-world payoff
 lower bound—but it closes all normalization, finite-prefix, and summability obligations. -/
-theorem DeterminedViaTheory.biasRunTrader_magnitude_eq_one_of_negative_bias
+lemma DeterminedViaTheory.biasRunTrader_magnitude_eq_one_of_negative_bias
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
@@ -2472,7 +2473,7 @@ theorem DeterminedViaTheory.biasRunTrader_magnitude_eq_one_of_negative_bias
 /-- Persistent negative bias yields a uniformly positive-ROI tail of the canonical capped
 run family.  The scale is chosen once from the alleged bias gap; every sufficiently late
 member then has `ε/4` ROI and total magnitude one. -/
-theorem DeterminedViaTheory.eventually_biasRunTrader_hasROI
+lemma DeterminedViaTheory.eventually_biasRunTrader_hasROI
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
@@ -2525,15 +2526,15 @@ def roiToleranceRat (i : ℕ) : ℚ := ((1 : ℚ) / 2) ^ (i + 1)
 /-- Canonical summable tolerance budget for the repeatable-ROI maturity verifier. -/
 noncomputable def roiTolerance (i : ℕ) : ℝ := (roiToleranceRat i : ℝ)
 
-theorem roiTolerance_eq (i : ℕ) :
+lemma roiTolerance_eq (i : ℕ) :
     roiTolerance i = ((1 : ℝ) / 2) ^ (i + 1) := by
   simp [roiTolerance, roiToleranceRat]
 
-theorem roiTolerance_nonneg (i : ℕ) : 0 ≤ roiTolerance i := by
+lemma roiTolerance_nonneg (i : ℕ) : 0 ≤ roiTolerance i := by
   rw [roiTolerance_eq]
   positivity
 
-theorem roiTolerance_summable : Summable roiTolerance := by
+lemma roiTolerance_summable : Summable roiTolerance := by
   apply (summable_geometric_two.mul_right ((1 : ℝ) / 2)).congr
   intro i
   rw [roiTolerance_eq, pow_succ]
@@ -2641,7 +2642,7 @@ def unitMaturityCheckAtFuel
                   (maturityAtomLimitFromStage Tr stage m),
                 unitMaturityWorldProperty Tr P market ε η m fuel stage u)
 
-theorem maturityAtomLimit_deduction_bounded
+lemma maturityAtomLimit_deduction_bounded
     (Tr : Trader) (DP : DeductiveProcess) (m : ℕ) :
     ∀ φ ∈ DP.D m, BoolPCWorld.atomBound φ ≤ maturityAtomLimit Tr DP m := by
   intro φ hφ
@@ -2651,7 +2652,7 @@ theorem maturityAtomLimit_deduction_bounded
   unfold maturityAtomLimit
   omega
 
-theorem maturityAtomLimit_trades_bounded
+lemma maturityAtomLimit_trades_bounded
     (Tr : Trader) (DP : DeductiveProcess) (m : ℕ) :
     ∀ d ≤ m, ∀ p ∈ (Tr.strat d).trades,
       BoolPCWorld.atomBound p.2 ≤ maturityAtomLimit Tr DP m := by
@@ -2720,7 +2721,7 @@ def unitMaturityCheckAtFuel_certificate
 /-- Soundness of the finite rational/Boolean maturity certificate.  This theorem closes
 the semantic core of the checker: exhaustive finite assignments really imply the
 universal real-valued plausible-world payoff condition in `Trader.Matured`. -/
-theorem UnitMaturitySemanticCertificate.sound
+lemma UnitMaturitySemanticCertificate.sound
     {Tr : Trader} {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) {ε η : ℚ} {m : ℕ}
     (c : UnitMaturitySemanticCertificate Tr P DP market ε η m)
@@ -2761,7 +2762,7 @@ theorem UnitMaturitySemanticCertificate.sound
 
 /-- A `true` bounded check is a genuine maturity witness for a unit-magnitude trader.
 This is the central no-false-positive theorem for the executable checker. -/
-theorem unitMaturityCheckAtFuel_sound
+lemma unitMaturityCheckAtFuel_sound
     {Tr : Trader} {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) (process : DeductiveProcessComputation DP)
     {ε η : ℚ} {m fuel : ℕ}
@@ -2836,7 +2837,7 @@ def UnitMaturitySemanticCertificate.ofMatured
 
 /-- Exact two-way semantic characterization of unit-trader maturity by the finite
 rational/Boolean certificate core. -/
-theorem UnitMaturitySemanticCertificate.nonempty_iff_matured
+lemma UnitMaturitySemanticCertificate.nonempty_iff_matured
     {Tr : Trader} {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) {ε η : ℚ} {m : ℕ}
     (hmag : Tr.magnitude P = 1) :
@@ -2851,7 +2852,7 @@ theorem UnitMaturitySemanticCertificate.nonempty_iff_matured
 /-- No genuine unit-trader maturity witness is missed forever: one finite interpreter
 clock simultaneously recovers the deductive stage and every exact rational market quote
 needed by the trader prefix, after which the exhaustive Boolean checker accepts. -/
-theorem unitMaturityCheckAtFuel_eventually_complete
+lemma unitMaturityCheckAtFuel_eventually_complete
     {Tr : Trader} {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) (process : DeductiveProcessComputation DP)
     {ε η : ℚ} {m : ℕ}
@@ -2934,7 +2935,7 @@ This theorem intentionally exposes the historical verifier as a hypothesis and i
 paper-facing capstone.  Its purpose is to isolate the remaining obligation precisely: the
 next theorem must construct `hverify` from `IsLogicalInductor.marketComputable` and
 `.processComputable`, rather than assuming a semantic closing day. -/
-theorem DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
+lemma DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
@@ -3021,7 +3022,7 @@ theorem DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
 
 /-- One-sided affine recurring unbiasedness from the isolated historical-verification
 interface.  This is the exact `limsup ≥ 0` half of the paper proof. -/
-theorem DeterminedViaTheory.not_eventually_weightedBias_lt
+lemma DeterminedViaTheory.not_eventually_weightedBias_lt
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
@@ -3051,7 +3052,7 @@ theorem DeterminedViaTheory.not_eventually_weightedBias_lt
 historical-verification representation boundary for the sequence and its negation.  The
 analytic crossing, both economic contradictions, and negation transport are all proved
 here; no limit-point or bias conclusion occurs in either verifier hypothesis. -/
-theorem DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
+lemma DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
@@ -3167,7 +3168,7 @@ def TheoryTruth (φ : ℕ → Sentence) (DP : DeductiveProcess)
   ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.payout (φ n) = truth n
 
-theorem TheoryTruth.isBoolean {φ : ℕ → Sentence} {DP : DeductiveProcess}
+lemma TheoryTruth.isBoolean {φ : ℕ → Sentence} {DP : DeductiveProcess}
     {truth : ℕ → ℝ} (h : TheoryTruth φ DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (n : ℕ) :
     truth n = 0 ∨ truth n = 1 := by
@@ -3181,7 +3182,7 @@ theorem TheoryTruth.isBoolean {φ : ℕ → Sentence} {DP : DeductiveProcess}
 
 /-- Ordinary recurring unbiasedness as the one-share specialization of affine recurring
 unbiasedness, retaining the same explicit historical-verification boundary. -/
-theorem recurringunbiasedness_of_historicalVerifiers
+lemma recurringunbiasedness_of_historicalVerifiers
     (φ : ℕ → Sentence) (hpoly : PolySequence (sentenceAffine φ))
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
@@ -3210,7 +3211,7 @@ theorem recurringunbiasedness_of_historicalVerifiers
 the divergent-case limit point and convergent-case interval guarantee are the exact
 paper conclusions; the only remaining representation premise is the named historical
 verifier for the sentence family and its negation. -/
-theorem simcal_of_historicalVerifiers
+lemma simcal_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (truth : ℕ → ℝ)
     (a b : ℚ) (δ : ℕ → ℚ)

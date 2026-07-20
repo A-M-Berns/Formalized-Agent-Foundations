@@ -31,7 +31,7 @@ def NoPreemptiveOverpricing (current future : ℕ → ℝ) : Prop :=
 
 /-- Generic liminf half of preemptive learning.  The first inequality is pointwise; the
 reverse is precisely `NoPreemptiveUnderpricing`. -/
-theorem liminf_eq_of_noPreemptiveUnderpricing
+lemma liminf_eq_of_noPreemptiveUnderpricing
     (current future : ℕ → ℝ)
     (hcurrentBelow : IsBoundedUnder (· ≥ ·) atTop current)
     (hcurrentAbove : IsBoundedUnder (· ≤ ·) atTop current)
@@ -54,7 +54,7 @@ theorem liminf_eq_of_noPreemptiveUnderpricing
     exact hgap a b hab hfuture hcurrent
 
 /-- Generic limsup half, dual to `liminf_eq_of_noPreemptiveUnderpricing`. -/
-theorem limsup_eq_of_noPreemptiveOverpricing
+lemma limsup_eq_of_noPreemptiveOverpricing
     (current future : ℕ → ℝ)
     (hcurrentBelow : IsBoundedUnder (· ≥ ·) atTop current)
     (hcurrentAbove : IsBoundedUnder (· ≤ ·) atTop current)
@@ -94,7 +94,7 @@ def BoundedAffinePrices (As : ℕ → AffineCombination) (V : History) : Prop :=
 
 /-- A paper `BCS` supplies the cross-time price bound consumed by the analytic liminf/
 limsup layer whenever market prices lie in `[0,1]`. -/
-theorem AffineCombination.BoundedCombinationSequence.boundedPrices
+lemma AffineCombination.BoundedCombinationSequence.boundedPrices
     {As : ℕ → AffineCombination} {V : History}
     (h : BoundedCombinationSequence As V)
     (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1) :
@@ -144,7 +144,7 @@ noncomputable def AffineCombination.BoundedCombinationSequence.unitNormalization
   simpa [q, div_eq_mul_inv, mul_comm] using hdiv
 
 /-- A fixed rational rescaling preserves uniform cross-time boundedness. -/
-theorem BoundedAffinePrices.scaleRat
+lemma BoundedAffinePrices.scaleRat
     {As : ℕ → AffineCombination} {V : History}
     (h : BoundedAffinePrices As V) (q : ℚ) :
     BoundedAffinePrices (fun n => (As n).scale (.const q)) V := by
@@ -155,7 +155,7 @@ theorem BoundedAffinePrices.scaleRat
   exact mul_le_mul_of_nonneg_left (hB n m) (abs_nonneg (q : ℝ))
 
 /-- Negation preserves uniform cross-time boundedness. -/
-theorem BoundedAffinePrices.neg
+lemma BoundedAffinePrices.neg
     {As : ℕ → AffineCombination} {V : History}
     (h : BoundedAffinePrices As V) :
     BoundedAffinePrices (fun n => (As n).neg) V := by
@@ -165,7 +165,7 @@ theorem BoundedAffinePrices.neg
   rw [AffineCombination.neg_price, abs_neg]
   exact hB n m
 
-theorem BoundedAffinePrices.diagonal_le_futureHigh
+lemma BoundedAffinePrices.diagonal_le_futureHigh
     {As : ℕ → AffineCombination} {V : History} (h : BoundedAffinePrices As V) (n : ℕ) :
     (As n).price V n ≤ affineFutureHigh As V n := by
   obtain ⟨B, _, hB⟩ := h
@@ -175,7 +175,7 @@ theorem BoundedAffinePrices.diagonal_le_futureHigh
     exact (le_abs_self _).trans (hB n (n + j))
   · exact ⟨0, by simp⟩
 
-theorem BoundedAffinePrices.futureLow_le_diagonal
+lemma BoundedAffinePrices.futureLow_le_diagonal
     {As : ℕ → AffineCombination} {V : History} (h : BoundedAffinePrices As V) (n : ℕ) :
     affineFutureLow As V n ≤ (As n).price V n := by
   obtain ⟨B, _, hB⟩ := h
@@ -186,7 +186,7 @@ theorem BoundedAffinePrices.futureLow_le_diagonal
     linarith [hB n (n + j)]
   · exact ⟨0, by simp⟩
 
-theorem BoundedAffinePrices.filterBounds
+lemma BoundedAffinePrices.filterBounds
     {As : ℕ → AffineCombination} {V : History} (h : BoundedAffinePrices As V) :
     IsBoundedUnder (· ≥ ·) atTop (fun n => (As n).price V n) ∧
     IsBoundedUnder (· ≤ ·) atTop (fun n => (As n).price V n) ∧
@@ -256,14 +256,14 @@ previous state once, so its feature syntax grows linearly rather than exponentia
 
 namespace AffineCombination
 
-theorem oneMinus_closed {e : EF} {ρ : List ℝ} {V : History}
+lemma oneMinus_closed {e : EF} {ρ : List ℝ} {V : History}
     (he : e.denoteWith ρ V = e.denote V) :
     (oneMinus e).denoteWith ρ V = (oneMinus e).denote V := by
   simp only [oneMinus, EF.denoteWith, EF.denote_add, EF.denote_mul, EF.denote_const,
     Pi.add_apply, Pi.mul_apply]
   rw [he]
 
-theorem sellIndF_closed {e : EF} {ρ : List ℝ} {V : History} (high δ : ℚ)
+lemma sellIndF_closed {e : EF} {ρ : List ℝ} {V : History} (high δ : ℚ)
     (he : e.denoteWith ρ V = e.denote V) :
     (sellIndF e high δ).denoteWith ρ V = (sellIndF e high δ).denote V := by
   simp only [sellIndF, clip01, efMin, EF.denoteWith, EF.denote_max, EF.denote_mul,
@@ -271,7 +271,7 @@ theorem sellIndF_closed {e : EF} {ρ : List ℝ} {V : History} (high δ : ℚ)
   rw [he]
 
 /-- Segment-level closure for the feature-generic sell ramp. -/
-theorem PolySegStream.serialize_sellIndF {e : ℕ → EF}
+lemma PolySegStream.serialize_sellIndF {e : ℕ → EF}
     (he : PolySegStream (fun n => (e n).serialize)) (high δ : ℚ) :
     PolySegStream (fun n => (sellIndF (e n) high δ).serialize) :=
   PolySegStream.serialize_clip01
@@ -281,7 +281,7 @@ theorem PolySegStream.serialize_sellIndF {e : ℕ → EF}
       (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (1 / δ))))
 
 /-- Segment-level closure for the feature-generic buy ramp. -/
-theorem PolySegStream.serialize_buyIndF {e : ℕ → EF}
+lemma PolySegStream.serialize_buyIndF {e : ℕ → EF}
     (he : PolySegStream (fun n => (e n).serialize)) (low δ : ℚ) :
     PolySegStream (fun n => (buyIndF (e n) low δ).serialize) :=
   PolySegStream.serialize_clip01
@@ -296,7 +296,7 @@ theorem PolySegStream.serialize_buyIndF {e : ℕ → EF}
 def gradualEntry (As : ℕ → AffineCombination) (low δ : ℚ) (n : ℕ) : EF :=
   buyIndF ((As n).priceFeature n) low δ
 
-theorem PolySequence.gradualEntry_polySeg {As : ℕ → AffineCombination}
+lemma PolySequence.gradualEntry_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) (low δ : ℚ) :
     PolySegStream (fun n => (gradualEntry As low δ n).serialize) := by
   have hdiag : PolySegStream (fun n => ((As n).priceFeature n).serialize) := by
@@ -305,13 +305,13 @@ theorem PolySequence.gradualEntry_polySeg {As : ℕ → AffineCombination}
     simp only [Nat.unpair_pair]
   exact PolySegStream.serialize_buyIndF hdiag low δ
 
-theorem PolySequence.gradualEntry_rank_le {As : ℕ → AffineCombination}
+lemma PolySequence.gradualEntry_rank_le {As : ℕ → AffineCombination}
     (h : PolySequence As) (low δ : ℚ) (n : ℕ) :
     (gradualEntry As low δ n).rank ≤ n := by
   simp only [gradualEntry, buyIndF_rank]
   exact (As n).priceFeature_rank le_rfl (h.const_rank n) (h.terms_rank n)
 
-theorem PolySequence.gradualEntry_closed {As : ℕ → AffineCombination}
+lemma PolySequence.gradualEntry_closed {As : ℕ → AffineCombination}
     (h : PolySequence As) (low δ : ℚ) (n : ℕ) (ρ : List ℝ) (V : History) :
     (gradualEntry As low δ n).denoteWith ρ V =
       (gradualEntry As low δ n).denote V := by
@@ -331,7 +331,7 @@ def gradualSellFraction (A : AffineCombination) (buyDay : ℕ) (high δ : ℚ)
 
 /-- The recursive occupancy feature serializes as its initial `1` followed by one update
 block for every elapsed day. -/
-theorem gradualRemaining_serialize (A : AffineCombination) (buyDay : ℕ)
+lemma gradualRemaining_serialize (A : AffineCombination) (buyDay : ℕ)
     (high δ : ℚ) (t : ℕ) :
     (A.gradualRemaining buyDay high δ t).serialize =
       (EF.const 1).serialize ++
@@ -347,7 +347,7 @@ theorem gradualRemaining_serialize (A : AffineCombination) (buyDay : ℕ)
 
 /-- Uniform emission of the two-index gradual occupancy family.  Input `z = ⟨i,t⟩`
 denotes member `Aᵢ`, opened on day `i`, after `t` gradual-sale updates. -/
-theorem PolySequence.gradualRemaining_polySeg {As : ℕ → AffineCombination}
+lemma PolySequence.gradualRemaining_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) (high δ : ℚ) :
     PolySegStream (fun z =>
       ((As z.unpair.1).gradualRemaining z.unpair.1 high δ z.unpair.2).serialize) := by
@@ -380,7 +380,7 @@ theorem PolySequence.gradualRemaining_polySeg {As : ℕ → AffineCombination}
   rw [gradualRemaining_serialize]
   simp only [Nat.unpair_pair]
 
-theorem PolySequence.gradualSellFraction_polySeg {As : ℕ → AffineCombination}
+lemma PolySequence.gradualSellFraction_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) (high δ : ℚ) :
     PolySegStream (fun z =>
       ((As z.unpair.1).gradualSellFraction z.unpair.1 high δ z.unpair.2).serialize) := by
@@ -415,7 +415,7 @@ def gateFeature (start : ℕ) (f : ℕ → EF) (i : ℕ) : EF :=
 def gateOccupancy (start : ℕ) (f : ℕ → ℕ → EF) (i n : ℕ) : EF :=
   if start ≤ i then f i n else EF.const 0
 
-theorem PolySegStream.gateFeature {f : ℕ → EF}
+lemma PolySegStream.gateFeature {f : ℕ → EF}
     (hf : PolySegStream (fun i => (f i).serialize)) (start : ℕ) :
     PolySegStream (fun i => (gateFeature start f i).serialize) := by
   have hzero : PolySegStream (fun _ => (EF.const 0).serialize) :=
@@ -436,7 +436,7 @@ theorem PolySegStream.gateFeature {f : ℕ → EF}
   · rw [if_neg (by omega), AffineCombination.gateFeature, if_pos hs]
   · rw [if_pos (by omega), AffineCombination.gateFeature, if_neg hs]
 
-theorem PolySegStream.gateOccupancy {f : ℕ → ℕ → EF}
+lemma PolySegStream.gateOccupancy {f : ℕ → ℕ → EF}
     (hf : PolySegStream (fun z => (f z.unpair.2 z.unpair.1).serialize)) (start : ℕ) :
     PolySegStream (fun z => (gateOccupancy start f z.unpair.2 z.unpair.1).serialize) := by
   have hzero : PolySegStream (fun _ => (EF.const 0).serialize) :=
@@ -456,18 +456,18 @@ theorem PolySegStream.gateOccupancy {f : ℕ → ℕ → EF}
   · rw [if_neg (by omega), AffineCombination.gateOccupancy, if_pos hs]
   · rw [if_pos (by omega), AffineCombination.gateOccupancy, if_neg hs]
 
-theorem PolySequence.gradualRisk_polySeg {As : ℕ → AffineCombination}
+lemma PolySequence.gradualRisk_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) (low δ : ℚ) :
     PolySegStream (fun i => (gradualRisk As low δ i).serialize) :=
   h.riskFeature_polySeg (h.gradualEntry_polySeg low δ)
 
-theorem PolySequence.gradualRisk_rank_le {As : ℕ → AffineCombination}
+lemma PolySequence.gradualRisk_rank_le {As : ℕ → AffineCombination}
     (h : PolySequence As) (low δ : ℚ) (i : ℕ) :
     (gradualRisk As low δ i).rank ≤ i :=
   (As i).riskFeature_rank_le (gradualEntry As low δ i)
     (h.gradualEntry_rank_le low δ i) (h.terms_rank i)
 
-theorem PolySequence.gradualRisk_closed {As : ℕ → AffineCombination}
+lemma PolySequence.gradualRisk_closed {As : ℕ → AffineCombination}
     (h : PolySequence As) (low δ : ℚ) (i : ℕ) (ρ : List ℝ) (V : History) :
     (gradualRisk As low δ i).denoteWith ρ V = (gradualRisk As low δ i).denote V :=
   h.riskFeature_closed (h.gradualEntry_closed low δ) i ρ V
@@ -492,7 +492,7 @@ def gradualCoefficient {As : ℕ → AffineCombination} (h : PolySequence As)
 def gradualSentence {As : ℕ → AffineCombination} (h : PolySequence As) (z : ℕ) : Sentence :=
   h.sentence (Nat.pair z.unpair.1.unpair.1 z.unpair.2)
 
-theorem PolySequence.gradualOccupancy_polySeg {As : ℕ → AffineCombination}
+lemma PolySequence.gradualOccupancy_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) (high δ : ℚ) :
     PolySegStream (fun z =>
       (gradualOccupancy As high δ z.unpair.2 z.unpair.1).serialize) := by
@@ -511,21 +511,21 @@ theorem PolySequence.gradualOccupancy_polySeg {As : ℕ → AffineCombination}
       .mul (A.gradualRemaining buyDay high δ t)
         (oneMinus (sellIndF (A.priceFeature (buyDay + t + 1)) high δ)) := rfl
 
-theorem gradualRemaining_denote_succ (A : AffineCombination) (V : History)
+lemma gradualRemaining_denote_succ (A : AffineCombination) (V : History)
     (buyDay : ℕ) (high δ : ℚ) (t : ℕ) :
     (A.gradualRemaining buyDay high δ (t + 1)).denote V =
       (A.gradualRemaining buyDay high δ t).denote V *
         (1 - (sellIndF (A.priceFeature (buyDay + t + 1)) high δ).denote V) := by
   simp [gradualRemaining]
 
-theorem gradualSellFraction_denote (A : AffineCombination) (V : History)
+lemma gradualSellFraction_denote (A : AffineCombination) (V : History)
     (buyDay : ℕ) (high δ : ℚ) (t : ℕ) :
     (A.gradualSellFraction buyDay high δ t).denote V =
       (A.gradualRemaining buyDay high δ t).denote V *
         (sellIndF (A.priceFeature (buyDay + t + 1)) high δ).denote V := by
   simp [gradualSellFraction]
 
-theorem gradualRemaining_mem (A : AffineCombination) (V : History)
+lemma gradualRemaining_mem (A : AffineCombination) (V : History)
     (buyDay : ℕ) (high δ : ℚ) : ∀ t,
     0 ≤ (A.gradualRemaining buyDay high δ t).denote V ∧
       (A.gradualRemaining buyDay high δ t).denote V ≤ 1 := by
@@ -546,7 +546,7 @@ theorem gradualRemaining_mem (A : AffineCombination) (V : History)
             mul_le_mul_of_nonneg_right ih.2 (sub_nonneg.mpr hs1)
           _ ≤ 1 := by linarith
 
-theorem gradualRemaining_denote_antitone (A : AffineCombination) (V : History)
+lemma gradualRemaining_denote_antitone (A : AffineCombination) (V : History)
     (buyDay : ℕ) (high δ : ℚ) (t : ℕ) :
     (A.gradualRemaining buyDay high δ (t + 1)).denote V ≤
       (A.gradualRemaining buyDay high δ t).denote V := by
@@ -556,7 +556,7 @@ theorem gradualRemaining_denote_antitone (A : AffineCombination) (V : History)
     sellIndF_mem (A.priceFeature (buyDay + t + 1)) high δ V
   nlinarith
 
-theorem gradualSellFraction_nonneg (A : AffineCombination) (V : History)
+lemma gradualSellFraction_nonneg (A : AffineCombination) (V : History)
     (buyDay : ℕ) (high δ : ℚ) (t : ℕ) :
     0 ≤ (A.gradualSellFraction buyDay high δ t).denote V := by
   rw [gradualSellFraction_denote]
@@ -564,7 +564,7 @@ theorem gradualSellFraction_nonneg (A : AffineCombination) (V : History)
     (sellIndF_mem (A.priceFeature (buyDay + t + 1)) high δ V).1
 
 /-- One day's sold fraction is exactly the decrease in the remaining fraction. -/
-theorem gradualRemaining_succ_eq_sub_sell (A : AffineCombination) (V : History)
+lemma gradualRemaining_succ_eq_sub_sell (A : AffineCombination) (V : History)
     (buyDay : ℕ) (high δ : ℚ) (t : ℕ) :
     (A.gradualRemaining buyDay high δ (t + 1)).denote V =
       (A.gradualRemaining buyDay high δ t).denote V -
@@ -574,7 +574,7 @@ theorem gradualRemaining_succ_eq_sub_sell (A : AffineCombination) (V : History)
 
 /-- Sale fractions telescope: total sold through the first `t` future days is
 `1 - remaining t`. -/
-theorem sum_gradualSellFraction (A : AffineCombination) (V : History)
+lemma sum_gradualSellFraction (A : AffineCombination) (V : History)
     (buyDay : ℕ) (high δ : ℚ) (t : ℕ) :
     ∑ j ∈ Finset.range t, (A.gradualSellFraction buyDay high δ j).denote V =
       1 - (A.gradualRemaining buyDay high δ t).denote V := by
@@ -585,14 +585,14 @@ theorem sum_gradualSellFraction (A : AffineCombination) (V : History)
       ring
 
 /-- A full sell signal liquidates all remaining shares on that day. -/
-theorem gradualRemaining_eq_zero_of_full_signal (A : AffineCombination) (V : History)
+lemma gradualRemaining_eq_zero_of_full_signal (A : AffineCombination) (V : History)
     (buyDay : ℕ) (high δ : ℚ) (t : ℕ)
     (hfull : (sellIndF (A.priceFeature (buyDay + t + 1)) high δ).denote V = 1) :
     (A.gradualRemaining buyDay high δ (t + 1)).denote V = 0 := by
   rw [gradualRemaining_denote_succ, hfull]
   ring
 
-theorem gradualRemaining_rank_le (A : AffineCombination) (buyDay : ℕ)
+lemma gradualRemaining_rank_le (A : AffineCombination) (buyDay : ℕ)
     (high δ : ℚ) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) : ∀ t,
     (A.gradualRemaining buyDay high δ t).rank ≤ buyDay + t := by
@@ -606,7 +606,7 @@ theorem gradualRemaining_rank_le (A : AffineCombination) (buyDay : ℕ)
       · exact ih.trans (by omega)
       · exact A.priceFeature_rank (by omega) hconst hterms
 
-theorem gradualSellFraction_rank_le (A : AffineCombination) (buyDay : ℕ)
+lemma gradualSellFraction_rank_le (A : AffineCombination) (buyDay : ℕ)
     (high δ : ℚ) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (t : ℕ) :
     (A.gradualSellFraction buyDay high δ t).rank ≤ buyDay + t + 1 := by
@@ -614,7 +614,7 @@ theorem gradualSellFraction_rank_le (A : AffineCombination) (buyDay : ℕ)
   exact Nat.max_le.mpr ⟨(A.gradualRemaining_rank_le buyDay high δ hconst hterms t).trans
     (by omega), A.priceFeature_rank (by omega) hconst hterms⟩
 
-theorem PolySequence.gradualRemaining_closed {As : ℕ → AffineCombination}
+lemma PolySequence.gradualRemaining_closed {As : ℕ → AffineCombination}
     (h : PolySequence As) (i : ℕ) (high δ : ℚ) (ρ : List ℝ) (V : History) : ∀ t,
     ((As i).gradualRemaining i high δ t).denoteWith ρ V =
       ((As i).gradualRemaining i high δ t).denote V := by
@@ -627,13 +627,13 @@ theorem PolySequence.gradualRemaining_closed {As : ℕ → AffineCombination}
       rw [oneMinus_closed (sellIndF_closed high δ
         (h.priceFeature_closed i (i + t + 1) ρ V))]
 
-theorem PolySequence.gradualOccupancy_closed {As : ℕ → AffineCombination}
+lemma PolySequence.gradualOccupancy_closed {As : ℕ → AffineCombination}
     (h : PolySequence As) (high δ : ℚ) (i n : ℕ) (ρ : List ℝ) (V : History) :
     (gradualOccupancy As high δ i n).denoteWith ρ V =
       (gradualOccupancy As high δ i n).denote V :=
   h.gradualRemaining_closed i high δ ρ V (n - i)
 
-theorem PolySequence.gradualOccupancy_rank_le {As : ℕ → AffineCombination}
+lemma PolySequence.gradualOccupancy_rank_le {As : ℕ → AffineCombination}
     (h : PolySequence As) (high δ : ℚ) (i n : ℕ) (hin : i ≤ n) :
     (gradualOccupancy As high δ i n).rank ≤ n := by
   rw [gradualOccupancy]
@@ -641,7 +641,7 @@ theorem PolySequence.gradualOccupancy_rank_le {As : ℕ → AffineCombination}
     (h.terms_rank i) (n - i)
   exact hr.trans (by omega)
 
-theorem gradualOccupancy_decreasing (As : ℕ → AffineCombination) (V : History)
+lemma gradualOccupancy_decreasing (As : ℕ → AffineCombination) (V : History)
     (high δ : ℚ) :
     ROIBudget.DecreasingOccupancy (fun i n => (gradualOccupancy As high δ i n).denote V) := by
   constructor
@@ -658,7 +658,7 @@ theorem gradualOccupancy_decreasing (As : ℕ → AffineCombination) (V : Histor
       simp [gradualOccupancy, Nat.sub_eq_zero_of_le hni,
         Nat.sub_eq_zero_of_le (Nat.le_of_lt (by omega : n < i))]
 
-theorem gradualOccupancy_eventually_zero (As : ℕ → AffineCombination) (V : History)
+lemma gradualOccupancy_eventually_zero (As : ℕ → AffineCombination) (V : History)
     (high δ : ℚ)
     (hfull : ∀ i, ∃ t,
       (sellIndF ((As i).priceFeature (i + t + 1)) high δ).denote V = 1) :
@@ -707,7 +707,7 @@ def gradualFamily (As : ℕ → AffineCombination) (low high δ : ℚ)
   (As i).gradualTrader (gradualEntry As low δ i) i high δ
     (h.gradualEntry_rank_le low δ i) (h.const_rank i) (h.terms_rank i)
 
-theorem PolySequence.gradualTradeCount_poly {As : ℕ → AffineCombination}
+lemma PolySequence.gradualTradeCount_poly {As : ℕ → AffineCombination}
     (h : PolySequence As) : ∃ c, PolyFueled c (gradualTradeCount h) := by
   obtain ⟨ccount, hcount⟩ := h.termCount_poly
   have htest := subc_polyFueled.comp
@@ -721,7 +721,7 @@ theorem PolySequence.gradualTradeCount_poly {As : ℕ → AffineCombination}
   · rw [if_pos hle, if_neg (by omega)]
   · rw [if_neg hle, if_pos (by omega)]
 
-theorem PolySequence.gradualCoefficient_polySeg {As : ℕ → AffineCombination}
+lemma PolySequence.gradualCoefficient_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) (low high δ : ℚ) :
     PolySegStream (fun z => (gradualCoefficient h low high δ z).serialize) := by
   obtain ⟨cadd, hadd⟩ := addc_polyFueled
@@ -772,7 +772,7 @@ theorem PolySequence.gradualCoefficient_polySeg {As : ℕ → AffineCombination}
         (z.unpair.1.unpair.1 - z.unpair.1.unpair.2) ≠ 0 := by omega
     rw [if_neg htest, if_neg heq]
 
-theorem PolySequence.gradualFamily_trades_eq {As : ℕ → AffineCombination}
+lemma PolySequence.gradualFamily_trades_eq {As : ℕ → AffineCombination}
     (h : PolySequence As) (low high δ : ℚ) (k n : ℕ) :
     (((gradualFamily As low high δ h) k).strat n).trades =
       (List.range (gradualTradeCount h (Nat.pair k n))).map (fun j =>
@@ -852,7 +852,7 @@ noncomputable def PolySequence.gradualFamilyPolyTrade {As : ℕ → AffineCombin
       (A.scale entry).buy buyDay (A.scale_terms_rank_le entry hentry hterms) := by
   simp [gradualTrader]
 
-theorem gradualTrader_strat_before (A : AffineCombination) (entry : EF)
+lemma gradualTrader_strat_before (A : AffineCombination) (entry : EF)
     (buyDay n : ℕ) (high δ : ℚ) (hentry : entry.rank ≤ buyDay)
     (hconst : A.const.rank ≤ buyDay) (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay)
     (hn : n < buyDay) :
@@ -860,7 +860,7 @@ theorem gradualTrader_strat_before (A : AffineCombination) (entry : EF)
       emptyStrategy n := by
   simp [gradualTrader, ne_of_lt hn, Nat.not_lt.mpr (Nat.le_of_lt hn)]
 
-theorem gradualTrader_value_buyDay (A : AffineCombination) (entry : EF)
+lemma gradualTrader_value_buyDay (A : AffineCombination) (entry : EF)
     (V : History) (w : Valuation) (buyDay : ℕ) (high δ : ℚ)
     (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
@@ -869,7 +869,7 @@ theorem gradualTrader_value_buyDay (A : AffineCombination) (entry : EF)
   rw [gradualTrader_strat_buyDay, AffineCombination.buy_value, scale_value, scale_price]
   ring
 
-theorem gradualTrader_value_future (A : AffineCombination) (entry : EF)
+lemma gradualTrader_value_future (A : AffineCombination) (entry : EF)
     (V : History) (w : Valuation) (buyDay t : ℕ) (high δ : ℚ)
     (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
@@ -887,7 +887,7 @@ theorem gradualTrader_value_future (A : AffineCombination) (entry : EF)
   push_cast
   ring
 
-theorem gradualTrader_netWorth_buyDay (A : AffineCombination) (entry : EF)
+lemma gradualTrader_netWorth_buyDay (A : AffineCombination) (entry : EF)
     (V : History) (v : PCWorld) (buyDay : ℕ) (high δ : ℚ)
     (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
@@ -912,7 +912,7 @@ noncomputable def gradualSaleProceeds (A : AffineCombination) (V : History)
     A.price V (buyDay + j + 1)
 
 /-- Exact holdings/cash decomposition after `t` gradual-sale days. -/
-theorem gradualTrader_netWorth (A : AffineCombination) (entry : EF)
+lemma gradualTrader_netWorth (A : AffineCombination) (entry : EF)
     (V : History) (v : PCWorld) (buyDay : ℕ) (high δ : ℚ)
     (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) : ∀ t,
@@ -935,7 +935,7 @@ theorem gradualTrader_netWorth (A : AffineCombination) (entry : EF)
       simp only [gradualSaleProceeds, Finset.sum_range_succ]
       ring
 
-theorem gradualSellFraction_pos_imp_price (A : AffineCombination) (V : History)
+lemma gradualSellFraction_pos_imp_price (A : AffineCombination) (V : History)
     (buyDay : ℕ) (high δ : ℚ) (hδ : 0 < (δ : ℝ)) (t : ℕ)
     (hpos : 0 < (A.gradualSellFraction buyDay high δ t).denote V) :
     (high : ℝ) - δ < A.price V (buyDay + t + 1) := by
@@ -948,7 +948,7 @@ theorem gradualSellFraction_pos_imp_price (A : AffineCombination) (V : History)
   rwa [A.priceFeature_denote] at this
 
 /-- Every partial sale is executed above the protected threshold `high - δ`. -/
-theorem gradualSaleProceeds_lower (A : AffineCombination) (V : History)
+lemma gradualSaleProceeds_lower (A : AffineCombination) (V : History)
     (buyDay : ℕ) (high δ : ℚ) (hδ : 0 < (δ : ℝ)) (t : ℕ) :
     ((high : ℝ) - δ) *
         (1 - (A.gradualRemaining buyDay high δ t).denote V) ≤
@@ -972,7 +972,7 @@ theorem gradualSaleProceeds_lower (A : AffineCombination) (V : History)
           (le_of_lt (A.gradualSellFraction_pos_imp_price V buyDay high δ hδ j hfp)) hf0
 
 /-- If a full signal has occurred, all shares are sold at prices at least `high - δ`. -/
-theorem gradualSaleProceeds_lower_of_full_signal (A : AffineCombination) (V : History)
+lemma gradualSaleProceeds_lower_of_full_signal (A : AffineCombination) (V : History)
     (buyDay : ℕ) (high δ : ℚ) (hδ : 0 < (δ : ℝ)) (t : ℕ)
     (hfull : (sellIndF (A.priceFeature (buyDay + t + 1)) high δ).denote V = 1) :
     (high : ℝ) - δ ≤ A.gradualSaleProceeds V buyDay high δ (t + 1) := by
@@ -983,7 +983,7 @@ theorem gradualSaleProceeds_lower_of_full_signal (A : AffineCombination) (V : Hi
 /-- At every intermediate day, realized protected spread pays for the sold fraction; only
 the remaining fraction can still carry affine world risk. This is the economic invariant
 needed by an online, feature-driven capital budgeter. -/
-theorem gradualTrader_netWorth_lower_partial (A : AffineCombination) (entry : EF)
+lemma gradualTrader_netWorth_lower_partial (A : AffineCombination) (entry : EF)
     (V : History) (v : PCWorld) (buyDay : ℕ) (high δ : ℚ)
     (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay)
@@ -1020,7 +1020,7 @@ theorem gradualTrader_netWorth_lower_partial (A : AffineCombination) (entry : EF
 /-- Continuous-budget capstone for the gradual affine family.  If every component
 eventually receives a full high-price signal and the protected opening spread pays a fixed
 rate on its affine share risk, logical induction forces the launch-risk sizes to vanish. -/
-theorem PolySequence.gradualRisk_converges {As : ℕ → AffineCombination}
+lemma PolySequence.gradualRisk_converges {As : ℕ → AffineCombination}
     (h : PolySequence As) (V : History) (DP : DeductiveProcess)
     [IsLogicalInductor V DP] (start : ℕ) (low high δ : ℚ) (ε : ℝ)
     (hε : 0 < ε) (hδ : 0 < (δ : ℝ))
@@ -1170,7 +1170,7 @@ theorem PolySequence.gradualRisk_converges {As : ℕ → AffineCombination}
 eventually separated future supremum.  Only components with a nonzero buy signal require
 liquidation; for those components, the current low price ensures the supremum witness is
 strictly in the future. -/
-theorem PolySequence.noPreemptiveUnderpricing {As : ℕ → AffineCombination}
+lemma PolySequence.noPreemptiveUnderpricing {As : ℕ → AffineCombination}
     (h : PolySequence As) (V : History) (DP : DeductiveProcess)
     [IsLogicalInductor V DP]
     (hmag : ∀ i, (As i).magnitude V ≤ 1)
@@ -1250,7 +1250,7 @@ theorem PolySequence.noPreemptiveUnderpricing {As : ℕ → AffineCombination}
   obtain ⟨i, hirisk, hir⟩ := (hrisk.and_eventually hevent).exists
   exact (not_lt_of_ge hirisk) hir
 
-theorem affineFutureHigh_neg (As : ℕ → AffineCombination) (V : History) (n : ℕ) :
+lemma affineFutureHigh_neg (As : ℕ → AffineCombination) (V : History) (n : ℕ) :
     affineFutureHigh (fun i => (As i).neg) V n = -affineFutureLow As V n := by
   simp only [affineFutureHigh, affineFutureLow, neg_price]
   rw [show Set.range (fun j => -(As n).price V (n + j)) =
@@ -1266,7 +1266,7 @@ theorem affineFutureHigh_neg (As : ℕ → AffineCombination) (V : History) (n :
 /-- Positive rational rescaling transports a strict tail-supremum lower bound.  This is
 the only supremum fact needed to normalize an arbitrary bounded affine family; it avoids
 silently replacing the paper's tail convention by a different index set. -/
-theorem BoundedAffinePrices.mul_lt_scaledFutureHigh
+lemma BoundedAffinePrices.mul_lt_scaledFutureHigh
     {As : ℕ → AffineCombination} {V : History}
     (h : BoundedAffinePrices As V) (q : ℚ) (hq : 0 < (q : ℝ))
     (n : ℕ) {b : ℝ} (hb : b < affineFutureHigh As V n) :
@@ -1291,7 +1291,7 @@ theorem BoundedAffinePrices.mul_lt_scaledFutureHigh
 /-- The paper permits any uniformly bounded BCS.  Normalize by a single positive rational
 larger than the magnitude bound, invoke the unit-risk economic construction, and transport
 its operational no-underpricing conclusion back to the original prices. -/
-theorem PolySequence.noPreemptiveUnderpricing_of_boundedMagnitude
+lemma PolySequence.noPreemptiveUnderpricing_of_boundedMagnitude
     {As : ℕ → AffineCombination}
     (h : PolySequence As) (V : History) (DP : DeductiveProcess)
     [IsLogicalInductor V DP]
@@ -1332,7 +1332,7 @@ theorem PolySequence.noPreemptiveUnderpricing_of_boundedMagnitude
 
 /-- The overpricing half is the underpricing construction applied to the uniformly
 emittable pointwise negation of the affine family. -/
-theorem PolySequence.noPreemptiveOverpricing {As : ℕ → AffineCombination}
+lemma PolySequence.noPreemptiveOverpricing {As : ℕ → AffineCombination}
     (h : PolySequence As) (V : History) (DP : DeductiveProcess)
     [IsLogicalInductor V DP]
     (hmag : ∀ i, (As i).magnitude V ≤ 1)
@@ -1354,7 +1354,7 @@ theorem PolySequence.noPreemptiveOverpricing {As : ℕ → AffineCombination}
 
 /-- Arbitrary bounded-magnitude overpricing, obtained from the preceding normalized
 underpricing transport applied to the uniformly emitted negated family. -/
-theorem PolySequence.noPreemptiveOverpricing_of_boundedMagnitude
+lemma PolySequence.noPreemptiveOverpricing_of_boundedMagnitude
     {As : ℕ → AffineCombination}
     (h : PolySequence As) (V : History) (DP : DeductiveProcess)
     [IsLogicalInductor V DP]
@@ -1381,7 +1381,7 @@ theorem PolySequence.noPreemptiveOverpricing_of_boundedMagnitude
 
 /-- Operational affine preemptive learning, obtained from the two gradual-return
 constructions. -/
-theorem PolySequence.noPreemptiveGaps {As : ℕ → AffineCombination}
+lemma PolySequence.noPreemptiveGaps {As : ℕ → AffineCombination}
     (h : PolySequence As) (V : History) (DP : DeductiveProcess)
     [IsLogicalInductor V DP]
     (hmag : ∀ i, (As i).magnitude V ≤ 1)
@@ -1393,7 +1393,7 @@ theorem PolySequence.noPreemptiveGaps {As : ℕ → AffineCombination}
 
 /-- Operational affine preemptive learning for the paper's arbitrary uniformly bounded
 combination sequences. -/
-theorem PolySequence.noPreemptiveGaps_of_boundedMagnitude
+lemma PolySequence.noPreemptiveGaps_of_boundedMagnitude
     {As : ℕ → AffineCombination}
     (h : PolySequence As) (V : History) (DP : DeductiveProcess)
     [IsLogicalInductor V DP]
@@ -1410,7 +1410,7 @@ affine families.  `hmag` is the share-coefficient part of the paper's BCS `L¹` 
 `hbounded` records its constant-coefficient consequence for cross-time prices.  The proof
 chooses its normalization internally, exactly as the paper's “without loss of generality”
 step requires. -/
-theorem PolySequence.affpolymax {As : ℕ → AffineCombination}
+lemma PolySequence.affpolymax {As : ℕ → AffineCombination}
     (h : PolySequence As) (V : History) (DP : DeductiveProcess)
     [IsLogicalInductor V DP]
     (hbounded : BoundedAffinePrices As V)
@@ -1439,7 +1439,7 @@ theorem BoundedCombinationSequence.affpolymax
 
 /-- Once fully liquidated, the component's net worth is world-independent and bounded by
 the entry weight times the guaranteed price spread. -/
-theorem gradualTrader_netWorth_lower_of_full_signal (A : AffineCombination) (entry : EF)
+lemma gradualTrader_netWorth_lower_of_full_signal (A : AffineCombination) (entry : EF)
     (V : History) (v : PCWorld) (buyDay : ℕ) (high δ : ℚ)
     (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay)
@@ -1454,7 +1454,7 @@ theorem gradualTrader_netWorth_lower_of_full_signal (A : AffineCombination) (ent
   have hp := A.gradualSaleProceeds_lower_of_full_signal V buyDay high δ hδ t hfull
   nlinarith
 
-theorem gradualRemaining_zero_mono (A : AffineCombination) (V : History)
+lemma gradualRemaining_zero_mono (A : AffineCombination) (V : History)
     (buyDay : ℕ) (high δ : ℚ) {t : ℕ}
     (hz : (A.gradualRemaining buyDay high δ t).denote V = 0) :
     ∀ s, t ≤ s → (A.gradualRemaining buyDay high δ s).denote V = 0 := by
@@ -1463,13 +1463,13 @@ theorem gradualRemaining_zero_mono (A : AffineCombination) (V : History)
   | base => exact hz
   | succ s _ ih => rw [gradualRemaining_denote_succ, ih, zero_mul]
 
-theorem gradualSellFraction_eq_zero_of_remaining_zero (A : AffineCombination) (V : History)
+lemma gradualSellFraction_eq_zero_of_remaining_zero (A : AffineCombination) (V : History)
     (buyDay : ℕ) (high δ : ℚ) {t : ℕ}
     (hz : (A.gradualRemaining buyDay high δ t).denote V = 0) :
     (A.gradualSellFraction buyDay high δ t).denote V = 0 := by
   rw [gradualSellFraction_denote, hz, zero_mul]
 
-theorem gradualTrader_magnitude_buyDay (A : AffineCombination) (entry : EF)
+lemma gradualTrader_magnitude_buyDay (A : AffineCombination) (entry : EF)
     (V : History) (buyDay : ℕ) (high δ : ℚ)
     (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (hentry0 : 0 ≤ entry.denote V) :
@@ -1478,7 +1478,7 @@ theorem gradualTrader_magnitude_buyDay (A : AffineCombination) (entry : EF)
   rw [gradualTrader_strat_buyDay, AffineCombination.buy_magnitude, scale_magnitude,
     abs_of_nonneg hentry0]
 
-theorem gradualTrader_magnitude_future (A : AffineCombination) (entry : EF)
+lemma gradualTrader_magnitude_future (A : AffineCombination) (entry : EF)
     (V : History) (buyDay t : ℕ) (high δ : ℚ)
     (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (hentry0 : 0 ≤ entry.denote V) :
@@ -1500,7 +1500,7 @@ theorem gradualTrader_magnitude_future (A : AffineCombination) (entry : EF)
   · ring
   · nlinarith [mul_nonneg hentry0 hf0]
 
-theorem gradualTrader_partial_magnitude (A : AffineCombination) (entry : EF)
+lemma gradualTrader_partial_magnitude (A : AffineCombination) (entry : EF)
     (V : History) (buyDay : ℕ) (high δ : ℚ)
     (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (hentry0 : 0 ≤ entry.denote V) : ∀ t,
@@ -1533,7 +1533,7 @@ theorem gradualTrader_partial_magnitude (A : AffineCombination) (entry : EF)
       rw [Finset.sum_range_succ]
       ring
 
-theorem gradualTrader_summable_of_full_signal (A : AffineCombination) (entry : EF)
+lemma gradualTrader_summable_of_full_signal (A : AffineCombination) (entry : EF)
     (V : History) (buyDay : ℕ) (high δ : ℚ)
     (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (hentry0 : 0 ≤ entry.denote V)
@@ -1560,7 +1560,7 @@ theorem gradualTrader_summable_of_full_signal (A : AffineCombination) (entry : E
 
 /-- A fully liquidated gradual component has the same exact `2 · entry · |A|` magnitude as
 the finite round-trip kernel. -/
-theorem gradualTrader_magnitude_of_full_signal (A : AffineCombination) (entry : EF)
+lemma gradualTrader_magnitude_of_full_signal (A : AffineCombination) (entry : EF)
     (V : History) (buyDay : ℕ) (high δ : ℚ)
     (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (hentry0 : 0 ≤ entry.denote V)
@@ -1589,7 +1589,7 @@ theorem gradualTrader_magnitude_of_full_signal (A : AffineCombination) (entry : 
     rw [hday, A.gradualTrader_magnitude_future entry V buyDay s high δ hentry hconst
       hterms hentry0, hfzero, mul_zero, zero_mul]
 
-theorem gradualTrader_netWorth_stable_of_full_signal (A : AffineCombination) (entry : EF)
+lemma gradualTrader_netWorth_stable_of_full_signal (A : AffineCombination) (entry : EF)
     (V : History) (v : PCWorld) (buyDay : ℕ) (high δ : ℚ)
     (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (t : ℕ)
@@ -1614,7 +1614,7 @@ theorem gradualTrader_netWorth_stable_of_full_signal (A : AffineCombination) (en
       ring
 
 /-- Semantic ROI theorem for the continuous gradual-sale component. -/
-theorem gradualTrader_hasROI_of_full_signal (A : AffineCombination) (entry : EF)
+lemma gradualTrader_hasROI_of_full_signal (A : AffineCombination) (entry : EF)
     (V : History) (DP : DeductiveProcess) (buyDay : ℕ) (high δ : ℚ)
     (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (hentry0 : 0 ≤ entry.denote V)
@@ -1647,7 +1647,7 @@ theorem gradualTrader_hasROI_of_full_signal (A : AffineCombination) (entry : EF)
 /-- A concrete low-to-high price gap gives positive ROI to the gradual affine component.
 The entry feature is the continuous buy indicator at the opening price, while a later
 price strictly above `high` supplies the full liquidation signal. -/
-theorem gradualTrader_hasROI_of_price_gap (A : AffineCombination) (entry : EF)
+lemma gradualTrader_hasROI_of_price_gap (A : AffineCombination) (entry : EF)
     (V : History) (DP : DeductiveProcess) (buyDay : ℕ) (low high δ : ℚ)
     (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay)

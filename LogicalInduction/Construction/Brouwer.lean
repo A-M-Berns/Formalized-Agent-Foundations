@@ -58,7 +58,7 @@ def cellVert {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n))
   P j + ∑ l : Fin n, (if (l.castSucc : Fin (n+1)) < k then
       ((if (σ l).castSucc = j then (1:ℤ) else 0) - (if (σ l).succ = j then 1 else 0)) else 0)
 
-theorem cellVert_zero {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n)) :
+lemma cellVert_zero {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n)) :
     cellVert P σ 0 = P := by
   exact funext fun x => by unfold cellVert; aesop;
 
@@ -84,7 +84,7 @@ noncomputable def cellFin (n : ℕ) (m : ℤ) :
 /-
 Every valid cell lies in `cellFin`.
 -/
-theorem mem_cellFin {n : ℕ} {m : ℤ} {P : Fin (n+1) → ℤ} {σ : Equiv.Perm (Fin n)}
+lemma mem_cellFin {n : ℕ} {m : ℤ} {P : Fin (n+1) → ℤ} {σ : Equiv.Perm (Fin n)}
     (hv : ValidCell m P σ) : (P, σ) ∈ cellFin n m := by
   unfold cellFin;
   have := hv 0;
@@ -96,7 +96,7 @@ theorem mem_cellFin {n : ℕ} {m : ℤ} {P : Fin (n+1) → ℤ} {σ : Equiv.Perm
 the number of vertices whose removal leaves exactly the labels `≠ last` (each once) is
 odd iff `g` is surjective (i.e. the cell is fully labeled).
 -/
-theorem doorIdx_card_odd_iff {N : ℕ} (g : Fin (N+1) → Fin (N+1)) :
+lemma doorIdx_card_odd_iff {N : ℕ} (g : Fin (N+1) → Fin (N+1)) :
     Odd ((Finset.univ.filter (fun k0 =>
       (Finset.univ.erase k0).image g = Finset.univ.erase (Fin.last N))).card)
       ↔ Surjective g := by
@@ -176,7 +176,7 @@ noncomputable def halfDoors (n : ℕ) (m : ℤ) (l : (Fin (n+1) → ℤ) → Fin
 **Cell-side count.** The number of half-doors has the same parity as the number of
 fully-labeled valid cells.
 -/
-theorem halfDoors_card_modEq {n : ℕ} {m : ℤ}
+lemma halfDoors_card_modEq {n : ℕ} {m : ℤ}
     (l : (Fin (n+1) → ℤ) → Fin (n+1)) :
     (halfDoors n m l).card ≡ ((cellFin n m).filter (fun pσ => IsFull l pσ.1 pσ.2)).card [MOD 2] := by
   -- For a cell `pσ = (P,σ)`, let `D pσ := (univ.filter (fun k0 => (univ.erase k0).image (fun k => l (cellVert P σ k)) = univ.erase (Fin.last n)))`, the door-index set. Because `halfDoors` is the filter of the product `cellFin ×ˢ univ` by a predicate depending on `(cell, k0)`, its cardinality is the sum over cells in `cellFin` of `(D pσ).card`:
@@ -195,7 +195,7 @@ theorem halfDoors_card_modEq {n : ℕ} {m : ℤ}
 Parity from an involution: a self-inverse map on a finset has cardinality congruent
 mod 2 to the number of its fixed points.
 -/
-theorem card_modEq_card_fixed {α : Type*} [DecidableEq α] (s : Finset α) (τ : α → α)
+lemma card_modEq_card_fixed {α : Type*} [DecidableEq α] (s : Finset α) (τ : α → α)
     (hmap : ∀ a ∈ s, τ a ∈ s) (hinv : ∀ a ∈ s, τ (τ a) = a) :
     s.card ≡ (s.filter (fun a => τ a = a)).card [MOD 2] := by
   have h_even_T : Even (Finset.card (s.filter (fun a => τ a ≠ a))) := by
@@ -215,7 +215,7 @@ theorem card_modEq_card_fixed {α : Type*} [DecidableEq α] (s : Finset α) (τ 
 Base case of Sperner's parity: in dimension `0` there is exactly one valid cell and it
 is fully labeled.
 -/
-theorem sperner_card_odd_zero {m : ℤ} (hm : 1 ≤ m)
+lemma sperner_card_odd_zero {m : ℤ} (hm : 1 ≤ m)
     (l : (Fin 1 → ℤ) → Fin 1)
     (_hadm : ∀ p : Fin 1 → ℤ, IsLat m p → p (l p) ≠ 0) :
     Odd ((cellFin 0 m).filter (fun pσ => IsFull l pσ.1 pσ.2)).card := by
@@ -238,7 +238,7 @@ noncomputable def faceLabel {n : ℕ} (l : (Fin (n+2) → ℤ) → Fin (n+2)) :
 /-
 The induced face labeling is admissible.
 -/
-theorem faceLabel_admissible {n : ℕ} {m : ℤ}
+lemma faceLabel_admissible {n : ℕ} {m : ℤ}
     (l : (Fin (n+2) → ℤ) → Fin (n+2))
     (hadm : ∀ p, IsLat m p → p (l p) ≠ 0) :
     ∀ q : Fin (n+1) → ℤ, IsLat m q → q (faceLabel l q) ≠ 0 := by
@@ -264,7 +264,7 @@ def pivot {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (k0 : 
 /-
 The pivot is an involution.
 -/
-theorem pivot_pivot {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (k0 : Fin (n+2)) :
+lemma pivot_pivot {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (k0 : Fin (n+2)) :
     pivot (pivot P σ k0).1.1 (pivot P σ k0).1.2 (pivot P σ k0).2 = ((P, σ), k0) := by
   unfold pivot;
   by_cases h : k0 = 0 <;> by_cases h' : k0 = Fin.last ( n + 1 ) <;> simp +decide [ h, h' ];
@@ -281,7 +281,7 @@ theorem pivot_pivot {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1
 Swapping two edges `a, b` of `σ` that are both before or both after `k` leaves vertex
 `k` unchanged.
 -/
-theorem cellVert_swap_eq {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
+lemma cellVert_swap_eq {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
     (a b : Fin (n+1)) (k : Fin (n+2)) (h : (a.castSucc < k) ↔ (b.castSucc < k)) :
     cellVert P ((Equiv.swap a b).trans σ) k = cellVert P σ k := by
   ext j; simp [cellVert] ;
@@ -292,7 +292,7 @@ theorem cellVert_swap_eq {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin
 Vertex correspondence for the `k0 = 0` pivot: the partner's vertex `k.castSucc` equals
 the original vertex `k.succ`.
 -/
-theorem cellVert_pivot_zero {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
+lemma cellVert_pivot_zero {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
     (k : Fin (n+1)) :
     cellVert (cellVert P σ 1) ((finRotate (n+1)).trans σ) k.castSucc = cellVert P σ k.succ := by
   ext j;
@@ -326,7 +326,7 @@ theorem cellVert_pivot_zero {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (
 Vertex correspondence for the `k0 = last` pivot: the partner's vertex `k.succ` equals
 the original vertex `k.castSucc`.
 -/
-theorem cellVert_pivot_last {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
+lemma cellVert_pivot_last {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
     (k : Fin (n+1)) :
     cellVert (fun i => P i - edgeVec (σ (Fin.last n)) i) ((finRotate (n+1)).symm.trans σ) k.succ
       = cellVert P σ k.castSucc := by
@@ -344,7 +344,7 @@ theorem cellVert_pivot_last {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (
 /-
 The pivot preserves the facet (the set of vertices other than the omitted one).
 -/
-theorem pivot_facet {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (k0 : Fin (n+2)) :
+lemma pivot_facet {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (k0 : Fin (n+2)) :
     (Finset.univ.erase (pivot P σ k0).2).image
         (fun k => cellVert (pivot P σ k0).1.1 (pivot P σ k0).1.2 k)
       = (Finset.univ.erase k0).image (fun k => cellVert P σ k) := by
@@ -366,7 +366,7 @@ theorem pivot_facet {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1
 /-
 The pivot strictly changes the half-door.
 -/
-theorem pivot_ne {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (k0 : Fin (n+2)) :
+lemma pivot_ne {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (k0 : Fin (n+2)) :
     pivot P σ k0 ≠ ((P, σ), k0) := by
   by_contra h;
   unfold pivot at h;
@@ -384,7 +384,7 @@ noncomputable def boundaryDoors (n : ℕ) (m : ℤ) (l : (Fin (n+2) → ℤ) →
 The pivot involution pairs up interior half-doors, so the number of half-doors has the
 same parity as the number of boundary half-doors.
 -/
-theorem halfDoors_card_modEq_boundary {n : ℕ} {m : ℤ}
+lemma halfDoors_card_modEq_boundary {n : ℕ} {m : ℤ}
     (l : (Fin (n+2) → ℤ) → Fin (n+2)) :
     (halfDoors (n+1) m l).card ≡ (boundaryDoors n m l).card [MOD 2] := by
   -- Define the involution τ
@@ -409,7 +409,7 @@ theorem halfDoors_card_modEq_boundary {n : ℕ} {m : ℤ}
 The last coordinate of a vertex: it drops by `1` once the edge pointing at the last
 vertex (`σ.symm (Fin.last n)`) has been crossed.
 -/
-theorem cellVert_last_coord {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
+lemma cellVert_last_coord {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
     (k : Fin (n+2)) :
     cellVert P σ k (Fin.last (n+1))
       = P (Fin.last (n+1)) - (if (σ.symm (Fin.last n)).castSucc < k then 1 else 0) := by
@@ -430,14 +430,14 @@ def liftBase {n : ℕ} (Pb : Fin (n+1) → ℤ) : Fin (n+2) → ℤ :=
 /-
 `liftPerm` sends `0` to `Fin.last n`.
 -/
-theorem liftPerm_zero {n : ℕ} (s : Equiv.Perm (Fin n)) : liftPerm s 0 = Fin.last n := by
+lemma liftPerm_zero {n : ℕ} (s : Equiv.Perm (Fin n)) : liftPerm s 0 = Fin.last n := by
   unfold liftPerm;
   simp +decide [ finSuccEquiv, finSuccEquiv' ]
 
 /-
 `liftPerm` sends `j.succ` to `(s j).castSucc`.
 -/
-theorem liftPerm_succ {n : ℕ} (s : Equiv.Perm (Fin n)) (j : Fin n) :
+lemma liftPerm_succ {n : ℕ} (s : Equiv.Perm (Fin n)) (j : Fin n) :
     liftPerm s j.succ = (s j).castSucc := by
   unfold liftPerm;
   simp +decide [ finSuccEquiv, finSuccEquiv' ]
@@ -445,7 +445,7 @@ theorem liftPerm_succ {n : ℕ} (s : Equiv.Perm (Fin n)) (j : Fin n) :
 /-
 The on-face vertices of the lifted cell project to the vertices of the face cell.
 -/
-theorem cellVert_lift {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin n))
+lemma cellVert_lift {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin n))
     (k i : Fin (n+1)) :
     cellVert (liftBase Pb) (liftPerm s) k.succ i.castSucc = cellVert Pb s k i := by
   unfold cellVert liftBase liftPerm;
@@ -456,7 +456,7 @@ theorem cellVert_lift {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin n)
 An on-face vertex of the lifted cell is the corresponding face vertex with a `0`
 appended in the last coordinate.
 -/
-theorem cellVert_lift_snoc {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin n))
+lemma cellVert_lift_snoc {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin n))
     (k : Fin (n+1)) :
     cellVert (liftBase Pb) (liftPerm s) k.succ = Fin.snoc (cellVert Pb s k) 0 := by
   convert funext _;
@@ -471,7 +471,7 @@ theorem cellVert_lift_snoc {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (F
 A valid face cell has its last-coordinate base `≥ 1` (its bottom vertex on that
 coordinate is `Pb (Fin.last n) - 1 ≥ 0`).
 -/
-theorem face_last_ge {n : ℕ} {m : ℤ} {Pb : Fin (n+1) → ℤ} {s : Equiv.Perm (Fin n)}
+lemma face_last_ge {n : ℕ} {m : ℤ} {Pb : Fin (n+1) → ℤ} {s : Equiv.Perm (Fin n)}
     (hm : 1 ≤ m) (hv : ValidCell m Pb s) : 1 ≤ Pb (Fin.last n) := by
   -- By definition of `ValidCell`, we know that `cellVert Pb s (Fin.last n) (Fin.last n) ≥ 0`.
   have h_last_coord : cellVert Pb s (Fin.last n) (Fin.last n) ≥ 0 := by
@@ -482,7 +482,7 @@ theorem face_last_ge {n : ℕ} {m : ℤ} {Pb : Fin (n+1) → ℤ} {s : Equiv.Per
 /-
 The lift of a valid face cell is a valid cell.
 -/
-theorem liftCell_valid {n : ℕ} {m : ℤ} {Pb : Fin (n+1) → ℤ} {s : Equiv.Perm (Fin n)}
+lemma liftCell_valid {n : ℕ} {m : ℤ} {Pb : Fin (n+1) → ℤ} {s : Equiv.Perm (Fin n)}
     (hm : 1 ≤ m) (hv : ValidCell m Pb s) : ValidCell m (liftBase Pb) (liftPerm s) := by
   intro k;
   induction' k using Fin.inductionOn with k ih;
@@ -500,7 +500,7 @@ theorem liftCell_valid {n : ℕ} {m : ℤ} {Pb : Fin (n+1) → ℤ} {s : Equiv.P
 /-
 The base point recovered from a lifted cell is the original face base.
 -/
-theorem liftBase_proj {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin n)) (i : Fin (n+1)) :
+lemma liftBase_proj {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin n)) (i : Fin (n+1)) :
     cellVert (liftBase Pb) (liftPerm s) 1 i.castSucc = Pb i := by
   convert cellVert_lift Pb s 0 i using 1;
   unfold cellVert; aesop;
@@ -508,7 +508,7 @@ theorem liftBase_proj {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin n)
 /-
 The label of an on-face point lifts to the face label via `castSucc`.
 -/
-theorem faceLabel_castSucc {n : ℕ} {m : ℤ} (l : (Fin (n+2) → ℤ) → Fin (n+2))
+lemma faceLabel_castSucc {n : ℕ} {m : ℤ} (l : (Fin (n+2) → ℤ) → Fin (n+2))
     (hadm : ∀ p, IsLat m p → p (l p) ≠ 0) {q : Fin (n+1) → ℤ}
     (hq : IsLat m (Fin.snoc q 0)) :
     (faceLabel l q).castSucc = l (Fin.snoc q 0) := by
@@ -518,7 +518,7 @@ theorem faceLabel_castSucc {n : ℕ} {m : ℤ} (l : (Fin (n+2) → ℤ) → Fin 
 /-
 A permutation fixing `0 ↦ Fin.last n` is in the image of `liftPerm`.
 -/
-theorem exists_facePerm {n : ℕ} {σ : Equiv.Perm (Fin (n+1))} (h0 : σ 0 = Fin.last n) :
+lemma exists_facePerm {n : ℕ} {σ : Equiv.Perm (Fin (n+1))} (h0 : σ 0 = Fin.last n) :
     ∃ s : Equiv.Perm (Fin n), liftPerm s = σ := by
   by_contra h_contra;
   -- By definition of `liftPerm`, we know that `liftPerm s = σ` if and only if `s` is the permutation of `Fin n` induced by `σ ∘ Fin.succ`.
@@ -542,7 +542,7 @@ noncomputable def liftCell {n : ℕ} (c : (Fin (n+1) → ℤ) × Equiv.Perm (Fin
 /-
 The lift of a fully-labeled face cell is a boundary half-door.
 -/
-theorem liftCell_mem {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ) → Fin (n+2))
+lemma liftCell_mem {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ) → Fin (n+2))
     (hadm : ∀ p, IsLat m p → p (l p) ≠ 0) {c : (Fin (n+1) → ℤ) × Equiv.Perm (Fin n)}
     (hc : c ∈ (cellFin n m).filter (fun pσ => IsFull (faceLabel l) pσ.1 pσ.2)) :
     liftCell c ∈ boundaryDoors n m l := by
@@ -576,7 +576,7 @@ theorem liftCell_mem {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ)
 /-
 The `j`-th coordinate of vertex `k` as a difference of edge-counts.
 -/
-theorem cellVert_coord {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n))
+lemma cellVert_coord {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n))
     (k : Fin (n+1)) (j : Fin (n+1)) :
     cellVert P σ k j = P j
       + ((Finset.univ.filter (fun l => l.castSucc < k ∧ (σ l).castSucc = j)).card : ℤ)
@@ -588,7 +588,7 @@ theorem cellVert_coord {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n
 Indicator form of the coordinate (each fiber has at most one element since `σ` is
 injective).
 -/
-theorem cellVert_coord_ind {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n))
+lemma cellVert_coord_ind {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n))
     (k : Fin (n+1)) (j : Fin (n+1)) :
     cellVert P σ k j = P j
       + (if ∃ l, l.castSucc < k ∧ (σ l).castSucc = j then (1:ℤ) else 0)
@@ -607,7 +607,7 @@ theorem cellVert_coord_ind {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (F
 /-- **Propagation.** For a valid cell with `P j = 0`, if at every vertex other than `k0` an
 incoming edge for `j` before that vertex is matched by an outgoing edge for `j` before it,
 then that vertex has coordinate `0` at `j`. -/
-theorem facet_coord_zero {n : ℕ} {m : ℤ} {P : Fin (n+1) → ℤ} {σ : Equiv.Perm (Fin n)}
+lemma facet_coord_zero {n : ℕ} {m : ℤ} {P : Fin (n+1) → ℤ} {σ : Equiv.Perm (Fin n)}
     (hv : ValidCell m P σ) {j : Fin (n+1)} {k0 : Fin (n+1)} (hP : P j = 0)
     (h : ∀ k, k ≠ k0 → (∃ l, l.castSucc < k ∧ (σ l).castSucc = j)
       → (∃ l, l.castSucc < k ∧ (σ l).succ = j)) :
@@ -627,7 +627,7 @@ Coordinate formula for the top vertex `Fin.last (n+1)` of a cell: every edge is 
 so the correction is `+1` at every coordinate except `Fin.last (n+1)` and `-1` at every
 coordinate except `0`.
 -/
-theorem cellVert_last_all {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (j : Fin (n+2)) :
+lemma cellVert_last_all {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (j : Fin (n+2)) :
     cellVert P σ (Fin.last (n+1)) j
       = P j + (if j = Fin.last (n+1) then 0 else 1) - (if j = 0 then 0 else 1) := by
   by_cases h : j = Fin.last ( n + 1 ) <;> simp_all +decide [ cellVert ];
@@ -644,7 +644,7 @@ theorem cellVert_last_all {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fi
 /-
 Coordinate formula for vertex `1` of a cell: only the first edge `σ 0` is included.
 -/
-theorem cellVert_one_all {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (j : Fin (n+2)) :
+lemma cellVert_one_all {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (j : Fin (n+2)) :
     cellVert P σ 1 j
       = P j + (if (σ 0).castSucc = j then 1 else 0) - (if (σ 0).succ = j then 1 else 0) := by
   unfold cellVert; simp +decide [ Fin.sum_univ_succ ] ;
@@ -655,7 +655,7 @@ The vertex `k0` of the interior-swapped cell differs from the original vertex `k
 removing edge `σ a` and adding edge `σ b`, where `a, b` are the swapped positions
 (`a.val = k0.val - 1`, `b.val = k0.val`).
 -/
-theorem cellVert_swap_pivot_vertex {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
+lemma cellVert_swap_pivot_vertex {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
     {k0 : Fin (n+2)} (a b : Fin (n+1)) (ha : a.val = k0.val - 1) (hb : b.val = k0.val)
     (h0 : k0 ≠ 0) (j : Fin (n+2)) :
     cellVert P ((Equiv.swap a b).trans σ) k0 j
@@ -675,7 +675,7 @@ theorem cellVert_swap_pivot_vertex {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv
 /-
 Consecutive vertices of a cell differ by one edge vector.
 -/
-theorem cellVert_consecutive {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
+lemma cellVert_consecutive {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
     (k : Fin (n+1)) (j : Fin (n+2)) :
     cellVert P σ k.succ j = cellVert P σ k.castSucc j + edgeVec (σ k) j := by
   unfold cellVert edgeVec;
@@ -688,7 +688,7 @@ theorem cellVert_consecutive {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm 
 The vertex `k0` of the interior-swapped cell equals the (valid) vertex `a.castSucc`
 immediately below `k0` plus the edge `σ b`.
 -/
-theorem cellVert_swap_pivot_vertex_below {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
+lemma cellVert_swap_pivot_vertex_below {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
     {k0 : Fin (n+2)} (a b : Fin (n+1)) (ha : a.val = k0.val - 1) (hb : b.val = k0.val)
     (h0 : k0 ≠ 0) (j : Fin (n+2)) :
     cellVert P ((Equiv.swap a b).trans σ) k0 j = cellVert P σ a.castSucc j + edgeVec (σ b) j := by
@@ -702,7 +702,7 @@ theorem cellVert_swap_pivot_vertex_below {n : ℕ} (P : Fin (n+2) → ℤ) (σ :
 The components of an interior pivot (`k0 ≠ 0`, `k0 ≠ Fin.last (n+1)`): same base `P`,
 the permutation with the two adjacent positions `a, b` swapped, and same omitted vertex.
 -/
-theorem pivot_interior_components {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
+lemma pivot_interior_components {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
     {k0 : Fin (n+2)} (h0 : k0 ≠ 0) (hlast : k0 ≠ Fin.last (n+1))
     (a b : Fin (n+1)) (ha : a.val = k0.val - 1) (hb : b.val = k0.val) :
     (pivot P σ k0).1.1 = P ∧ (pivot P σ k0).1.2 = (Equiv.swap a b).trans σ := by
@@ -712,7 +712,7 @@ theorem pivot_interior_components {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.
 /-
 The `k0 = 0` endpoint case of `pivot_invalid_facet`.
 -/
-theorem pivot_invalid_facet_zero {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ} {σ : Equiv.Perm (Fin (n+1))}
+lemma pivot_invalid_facet_zero {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ} {σ : Equiv.Perm (Fin (n+1))}
     (hv : ValidCell m P σ)
     (hinv : ¬ ValidCell m (pivot P σ 0).1.1 (pivot P σ 0).1.2) :
     ∃ j, ∀ k, k ≠ 0 → cellVert P σ k j = 0 := by
@@ -749,7 +749,7 @@ theorem pivot_invalid_facet_zero {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ} {σ
 /-
 The interior case (`k0 ≠ 0` and `k0 ≠ Fin.last (n+1)`) of `pivot_invalid_facet`.
 -/
-theorem pivot_invalid_facet_interior {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ}
+lemma pivot_invalid_facet_interior {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ}
     {σ : Equiv.Perm (Fin (n+1))} {k0 : Fin (n+2)} (h0 : k0 ≠ 0) (hlast : k0 ≠ Fin.last (n+1))
     (hv : ValidCell m P σ)
     (hinv : ¬ ValidCell m (pivot P σ k0).1.1 (pivot P σ k0).1.2) :
@@ -794,7 +794,7 @@ theorem pivot_invalid_facet_interior {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ}
 
 /-- **Pivot invalidity implies a boundary facet.** If the pivot of a valid cell at `k0` is
 invalid, then all the facet vertices (those `≠ k0`) lie on a common coordinate hyperplane. -/
-theorem pivot_invalid_facet {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ} {σ : Equiv.Perm (Fin (n+1))}
+lemma pivot_invalid_facet {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ} {σ : Equiv.Perm (Fin (n+1))}
     {k0 : Fin (n+2)} (hv : ValidCell m P σ)
     (hinv : ¬ ValidCell m (pivot P σ k0).1.1 (pivot P σ k0).1.2) :
     ∃ j, ∀ k, k ≠ k0 → cellVert P σ k j = 0 := by
@@ -856,7 +856,7 @@ theorem pivot_invalid_facet {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ} {σ : Eq
 /-- Structure of a boundary half-door: the omitted vertex is the base (`k0 = 0`), the first
 edge points at the last coordinate (`σ 0 = Fin.last n`), and the last coordinate of the base
 is `1`. -/
-theorem boundary_door_struct {n : ℕ} {m : ℤ} (_hm : 1 ≤ m) (l : (Fin (n+2) → ℤ) → Fin (n+2))
+lemma boundary_door_struct {n : ℕ} {m : ℤ} (_hm : 1 ≤ m) (l : (Fin (n+2) → ℤ) → Fin (n+2))
     (hadm : ∀ p, IsLat m p → p (l p) ≠ 0) {x : ((Fin (n+2) → ℤ) × Equiv.Perm (Fin (n+1))) × Fin (n+2)}
     (hx : x ∈ boundaryDoors n m l) :
     x.2 = 0 ∧ x.1.2 0 = Fin.last n ∧ x.1.1 (Fin.last (n+1)) = 1 := by
@@ -913,7 +913,7 @@ theorem boundary_door_struct {n : ℕ} {m : ℤ} (_hm : 1 ≤ m) (l : (Fin (n+2)
 /-
 Every boundary half-door is the lift of a fully-labeled face cell.
 -/
-theorem boundary_isLift {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ) → Fin (n+2))
+lemma boundary_isLift {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ) → Fin (n+2))
     (hadm : ∀ p, IsLat m p → p (l p) ≠ 0) {x : ((Fin (n+2) → ℤ) × Equiv.Perm (Fin (n+1))) × Fin (n+2)}
     (hx : x ∈ boundaryDoors n m l) :
     ∃ c ∈ (cellFin n m).filter (fun pσ => IsFull (faceLabel l) pσ.1 pσ.2), x = liftCell c := by
@@ -941,7 +941,7 @@ theorem boundary_isLift {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → �
 /-
 The lift map is injective.
 -/
-theorem liftCell_inj {n : ℕ} : Function.Injective (liftCell (n := n)) := by
+lemma liftCell_inj {n : ℕ} : Function.Injective (liftCell (n := n)) := by
   -- To prove injectivity, we show that if `liftCell c₁ = liftCell c₂`, then `c₁` must equal `c₂`.
   intro c₁ c₂ h_eq
   simp [liftCell] at h_eq;
@@ -954,7 +954,7 @@ theorem liftCell_inj {n : ℕ} : Function.Injective (liftCell (n := n)) := by
   exact Prod.ext ( funext fun i => by induction i using Fin.inductionOn <;> aesop ) ( Equiv.ext fun i => h_eq i )
 
 /-- The boundary half-doors biject with the fully-labeled cells of the `x_last = 0` face. -/
-theorem boundaryDoors_card_eq {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
+lemma boundaryDoors_card_eq {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
     (l : (Fin (n+2) → ℤ) → Fin (n+2))
     (hadm : ∀ p, IsLat m p → p (l p) ≠ 0) :
     (boundaryDoors n m l).card
@@ -972,7 +972,7 @@ theorem boundaryDoors_card_eq {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
 
 /-- **Facet-side parity.** The number of half-doors (dimension `n+1`) has the same parity
 as the number of fully-labeled cells of the `x_last = 0` face (dimension `n`). -/
-theorem halfDoors_card_modEq_face {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
+lemma halfDoors_card_modEq_face {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
     (l : (Fin (n+2) → ℤ) → Fin (n+2))
     (hadm : ∀ p, IsLat m p → p (l p) ≠ 0) :
     (halfDoors (n+1) m l).card
@@ -983,7 +983,7 @@ theorem halfDoors_card_modEq_face {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
 
 /-- **Inductive step (facet side).** Given Sperner's parity in dimension `n`, it holds in
 dimension `n+1`. -/
-theorem sperner_step {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
+lemma sperner_step {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
     (ih : ∀ (l : (Fin (n+1) → ℤ) → Fin (n+1)),
         (∀ p, IsLat m p → p (l p) ≠ 0) →
         Odd ((cellFin n m).filter (fun pσ => IsFull l pσ.1 pσ.2)).card)
@@ -999,7 +999,7 @@ theorem sperner_step {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
   omega
 
 /-- **Sperner parity**: the number of valid fully-labeled cells is odd. -/
-theorem sperner_card_odd {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
+lemma sperner_card_odd {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
     (l : (Fin (n+1) → ℤ) → Fin (n+1))
     (hadm : ∀ p : Fin (n+1) → ℤ, IsLat m p → p (l p) ≠ 0) :
     Odd ((cellFin n m).filter (fun pσ => IsFull l pσ.1 pσ.2)).card := by
@@ -1009,7 +1009,7 @@ theorem sperner_card_odd {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
 
 /-- **Sperner's lemma** (existence form): an admissible labeling of the lattice has a
 fully-labeled (panchromatic) cell. -/
-theorem sperner {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
+lemma sperner {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
     (l : (Fin (n+1) → ℤ) → Fin (n+1))
     (hadm : ∀ p : Fin (n+1) → ℤ, IsLat m p → p (l p) ≠ 0) :
     ∃ (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n)),
@@ -1029,7 +1029,7 @@ The base vertex (`k = 0`) of a cell is its base point.
 /-
 Each coordinate of every vertex of a cell is within `n` of the base point.
 -/
-theorem cellVert_coord_dist {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n))
+lemma cellVert_coord_dist {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n))
     (k j : Fin (n+1)) : |cellVert P σ k j - P j| ≤ (n : ℤ) := by
   unfold cellVert;
   simp +zetaDelta at *;
@@ -1038,7 +1038,7 @@ theorem cellVert_coord_dist {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (
 /-
 On the simplex, there is always a coordinate that is positive and not increased by `f`.
 -/
-theorem exists_label {n : ℕ} (x fx : Fin n → ℝ)
+lemma exists_label {n : ℕ} (x fx : Fin n → ℝ)
     (hx : x ∈ stdSimplex ℝ (Fin n)) (hfx : fx ∈ stdSimplex ℝ (Fin n)) :
     ∃ i, 0 < x i ∧ fx i ≤ x i := by
   by_contra! h_contra;
@@ -1055,7 +1055,7 @@ noncomputable def ptOf {n : ℕ} (m : ℕ) (p : Fin (n+1) → ℤ) : Fin (n+1) �
 /-
 Approximate fixed point at resolution `m`, via Sperner's lemma.
 -/
-theorem simplex_approx {n : ℕ}
+lemma simplex_approx {n : ℕ}
     (f : (Fin (n+1) → ℝ) → (Fin (n+1) → ℝ))
     (hmaps : MapsTo f (stdSimplex ℝ (Fin (n+1))) (stdSimplex ℝ (Fin (n+1))))
     (m : ℕ) (hm : 1 ≤ m) :
@@ -1085,7 +1085,7 @@ theorem simplex_approx {n : ℕ}
 /-
 Brouwer's fixed point theorem for the standard simplex (deep combinatorial core).
 -/
-theorem simplex_brouwer {n : ℕ} (hn : 0 < n)
+lemma simplex_brouwer {n : ℕ} (hn : 0 < n)
     (f : (Fin n → ℝ) → (Fin n → ℝ))
     (hf : ContinuousOn f (stdSimplex ℝ (Fin n)))
     (hmaps : MapsTo f (stdSimplex ℝ (Fin n)) (stdSimplex ℝ (Fin n))) :
@@ -1141,7 +1141,7 @@ def HasFPP {V : Type*} [TopologicalSpace V] (s : Set V) : Prop :=
 /-
 The fixed point property transfers along a homeomorphism of subspaces.
 -/
-theorem HasFPP.congr {V W : Type*} [TopologicalSpace V] [TopologicalSpace W]
+lemma HasFPP.congr {V W : Type*} [TopologicalSpace V] [TopologicalSpace W]
     {s : Set V} {t : Set W} (e : s ≃ₜ t) (hs : HasFPP s) : HasFPP t := by
   intro g hg;
   obtain ⟨ x, hx ⟩ := hs ( fun x => e.symm ( g ( e x ) ) ) ( e.symm.continuous.comp ( hg.comp e.continuous ) );
@@ -1151,7 +1151,7 @@ theorem HasFPP.congr {V W : Type*} [TopologicalSpace V] [TopologicalSpace W]
 If `s ⊆ t`, `r : t → s` is a continuous retraction (identity on `s`), and `t`
 has the fixed point property, then so does `s`.
 -/
-theorem HasFPP.of_retract {V : Type*} [TopologicalSpace V] {s t : Set V} (hst : s ⊆ t)
+lemma HasFPP.of_retract {V : Type*} [TopologicalSpace V] {s t : Set V} (hst : s ⊆ t)
     (r : t → s) (hr : Continuous r) (hid : ∀ x : s, (r ⟨(x : V), hst x.2⟩ : V) = (x : V))
     (ht : HasFPP t) : HasFPP s := by
   intro g hg;
@@ -1164,7 +1164,7 @@ theorem HasFPP.of_retract {V : Type*} [TopologicalSpace V] {s t : Set V} (hst : 
 /-
 The fixed point property, in terms of `ContinuousOn`/`MapsTo`.
 -/
-theorem fixed_of_hasFPP {V : Type*} [TopologicalSpace V] {s : Set V} (hs : HasFPP s)
+lemma fixed_of_hasFPP {V : Type*} [TopologicalSpace V] {s : Set V} (hs : HasFPP s)
     {f : V → V} (hf : ContinuousOn f s) (hmap : MapsTo f s s) : ∃ x ∈ s, f x = x := by
   obtain ⟨x, hx⟩ : ∃ x : s, (fun x : s => ⟨f x, hmap x.2⟩ : s → s) x = x := by
     apply hs;
@@ -1175,7 +1175,7 @@ theorem fixed_of_hasFPP {V : Type*} [TopologicalSpace V] {s : Set V} (hs : HasFP
 The nearest-point projection onto a closed convex nonempty set is a continuous
 retraction.
 -/
-theorem exists_continuous_retraction {d : ℕ} {K : Set (EuclideanSpace ℝ (Fin d))}
+lemma exists_continuous_retraction {d : ℕ} {K : Set (EuclideanSpace ℝ (Fin d))}
     (hK_closed : IsClosed K) (hK_convex : Convex ℝ K) (hK_nonempty : K.Nonempty) :
     ∃ r : EuclideanSpace ℝ (Fin d) → EuclideanSpace ℝ (Fin d),
       Continuous r ∧ (∀ x, r x ∈ K) ∧ (∀ x ∈ K, r x = x) := by
@@ -1201,7 +1201,7 @@ theorem exists_continuous_retraction {d : ℕ} {K : Set (EuclideanSpace ℝ (Fin
 
 /-- A nonempty compact convex set contained in a set with FPP also has FPP
 (via the nearest-point retraction). -/
-theorem hasFPP_of_subset {d : ℕ} {K T : Set (EuclideanSpace ℝ (Fin d))}
+lemma hasFPP_of_subset {d : ℕ} {K T : Set (EuclideanSpace ℝ (Fin d))}
     (hK_compact : IsCompact K) (hK_convex : Convex ℝ K) (hK_nonempty : K.Nonempty)
     (hKT : K ⊆ T) (hT : HasFPP T) : HasFPP K := by
   obtain ⟨r, hr_cont, hr_mem, hr_id⟩ :=
@@ -1223,7 +1223,7 @@ def cornerSimplex (d : ℕ) : Set (EuclideanSpace ℝ (Fin d)) :=
 /-
 The standard simplex is closed.
 -/
-theorem euclSimplex_isClosed (n : ℕ) : IsClosed (euclSimplex n) := by
+lemma euclSimplex_isClosed (n : ℕ) : IsClosed (euclSimplex n) := by
   unfold euclSimplex;
   simp +decide only [setOf_and, setOf_forall];
   refine' IsClosed.inter ( isClosed_iInter fun i => isClosed_le continuous_const <| _ ) ( isClosed_eq _ _ ); all_goals fun_prop
@@ -1231,7 +1231,7 @@ theorem euclSimplex_isClosed (n : ℕ) : IsClosed (euclSimplex n) := by
 /-
 The standard simplex is compact.
 -/
-theorem euclSimplex_isCompact (n : ℕ) : IsCompact (euclSimplex n) := by
+lemma euclSimplex_isCompact (n : ℕ) : IsCompact (euclSimplex n) := by
   refine' Metric.isCompact_iff_isClosed_bounded.mpr ⟨ euclSimplex_isClosed n, _ ⟩;
   refine' isBounded_iff_forall_norm_le.mpr ⟨ 1, _ ⟩;
   simp +decide [ EuclideanSpace.norm_eq, euclSimplex ];
@@ -1240,7 +1240,7 @@ theorem euclSimplex_isCompact (n : ℕ) : IsCompact (euclSimplex n) := by
 /-
 The standard simplex is nonempty (for `n ≥ 1`).
 -/
-theorem euclSimplex_nonempty {n : ℕ} (hn : 0 < n) : (euclSimplex n).Nonempty := by
+lemma euclSimplex_nonempty {n : ℕ} (hn : 0 < n) : (euclSimplex n).Nonempty := by
   refine' ⟨ EuclideanSpace.single ⟨ 0, hn ⟩ 1, _, _ ⟩ <;> norm_num;
   exact fun i => by split_ifs <;> norm_num;
 
@@ -1248,7 +1248,7 @@ theorem euclSimplex_nonempty {n : ℕ} (hn : 0 < n) : (euclSimplex n).Nonempty :
 If every continuous self-map (as a `ContinuousOn`/`MapsTo` pair) of `s` has a fixed
 point, then `s` has the fixed point property.
 -/
-theorem hasFPP_of_continuousOn {V : Type*} [TopologicalSpace V] {s : Set V}
+lemma hasFPP_of_continuousOn {V : Type*} [TopologicalSpace V] {s : Set V}
     (h : ∀ f : V → V, ContinuousOn f s → MapsTo f s s → ∃ x ∈ s, f x = x) : HasFPP s := by
   intro g hg;
   convert h ( fun x => if hx : x ∈ s then g ⟨ x, hx ⟩ else x ) _ _ using 1;
@@ -1260,19 +1260,19 @@ theorem hasFPP_of_continuousOn {V : Type*} [TopologicalSpace V] {s : Set V}
   · intro x hx; aesop;
 
 /-- `HasFPP` for the standard simplex in `Fin n → ℝ`, from the Sperner core. -/
-theorem stdSimplex_hasFPP {n : ℕ} (hn : 0 < n) : HasFPP (stdSimplex ℝ (Fin n)) :=
+lemma stdSimplex_hasFPP {n : ℕ} (hn : 0 < n) : HasFPP (stdSimplex ℝ (Fin n)) :=
   hasFPP_of_continuousOn (fun f hf hmaps => Sperner.simplex_brouwer hn f hf hmaps)
 
 /-
 The continuous-linear equivalence `EuclideanSpace ℝ (Fin n) ≃ (Fin n → ℝ)` maps the
 Euclidean simplex onto the standard simplex.
 -/
-theorem image_equiv_euclSimplex (n : ℕ) :
+lemma image_equiv_euclSimplex (n : ℕ) :
     (EuclideanSpace.equiv (Fin n) ℝ) '' euclSimplex n = stdSimplex ℝ (Fin n) := by
   aesop
 
 /-- **Brouwer for the standard simplex**, transferred from `Sperner.simplex_brouwer`. -/
-theorem euclSimplex_hasFPP {n : ℕ} (hn : 0 < n) : HasFPP (euclSimplex n) := by
+lemma euclSimplex_hasFPP {n : ℕ} (hn : 0 < n) : HasFPP (euclSimplex n) := by
   have e : (euclSimplex n) ≃ₜ (stdSimplex ℝ (Fin n)) :=
     ((EuclideanSpace.equiv (Fin n) ℝ).toHomeomorph.image (euclSimplex n)).trans
       (Homeomorph.setCongr (image_equiv_euclSimplex n))
@@ -1281,7 +1281,7 @@ theorem euclSimplex_hasFPP {n : ℕ} (hn : 0 < n) : HasFPP (euclSimplex n) := by
 /-
 The corner simplex has the fixed point property (transferred from `euclSimplex (d+1)`).
 -/
-theorem cornerSimplex_hasFPP (d : ℕ) : HasFPP (cornerSimplex d) := by
+lemma cornerSimplex_hasFPP (d : ℕ) : HasFPP (cornerSimplex d) := by
   convert euclSimplex_hasFPP ( Nat.succ_pos d ) |> HasFPP.congr ( ?_ ) using 1;
   -- Define the map $\phi : \text{euclSimplex } (d+1) \to \text{cornerSimplex } d$ by dropping the last coordinate.
   set phi : (EuclideanSpace ℝ (Fin (d + 1))) → (EuclideanSpace ℝ (Fin d)) := fun a => (EuclideanSpace.equiv (Fin d) ℝ).symm (fun i => a (i.castSucc));
@@ -1327,7 +1327,7 @@ theorem cornerSimplex_hasFPP (d : ℕ) : HasFPP (cornerSimplex d) := by
 /-
 Any nonempty compact set `K` is contained in some set with the fixed point property.
 -/
-theorem exists_container {d : ℕ} {K : Set (EuclideanSpace ℝ (Fin d))}
+lemma exists_container {d : ℕ} {K : Set (EuclideanSpace ℝ (Fin d))}
     (hK_compact : IsCompact K) (hK_nonempty : K.Nonempty) :
     ∃ T : Set (EuclideanSpace ℝ (Fin d)), K ⊆ T ∧ HasFPP T := by
   revert hK_compact hK_nonempty K;
@@ -1354,7 +1354,7 @@ theorem exists_container {d : ℕ} {K : Set (EuclideanSpace ℝ (Fin d))}
   · convert HasFPP.congr ( Homeomorph.image e ( cornerSimplex d ) ) ( cornerSimplex_hasFPP d ) using 1
 
 /-- Every nonempty compact convex set has the fixed point property. -/
-theorem convexCompact_hasFPP {d : ℕ} {K : Set (EuclideanSpace ℝ (Fin d))}
+lemma convexCompact_hasFPP {d : ℕ} {K : Set (EuclideanSpace ℝ (Fin d))}
     (hK_compact : IsCompact K) (hK_convex : Convex ℝ K) (hK_nonempty : K.Nonempty) :
     HasFPP K := by
   obtain ⟨T, hKT, hT⟩ := exists_container hK_compact hK_nonempty
@@ -1363,7 +1363,7 @@ theorem convexCompact_hasFPP {d : ℕ} {K : Set (EuclideanSpace ℝ (Fin d))}
 end BrouwerProof
 
 open Set Function BrouwerProof in
-theorem brouwer_fixed_point {d : ℕ}
+lemma brouwer_fixed_point {d : ℕ}
     {K : Set (EuclideanSpace ℝ (Fin d))}
     (_hK_compact : IsCompact K) (_hK_convex : Convex ℝ K)
     (_hK_nonempty : K.Nonempty)

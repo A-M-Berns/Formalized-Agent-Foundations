@@ -69,18 +69,18 @@ def clip01 (e : EF) : EF := .max (.const 0) (efMin (.const 1) e)
 
 /-! ### Real-side clip facts -/
 
-theorem clipVal_nonneg (x : ℝ) : 0 ≤ max 0 (min 1 x) := le_max_left _ _
+lemma clipVal_nonneg (x : ℝ) : 0 ≤ max 0 (min 1 x) := le_max_left _ _
 
-theorem clipVal_le_one (x : ℝ) : max 0 (min 1 x) ≤ 1 :=
+lemma clipVal_le_one (x : ℝ) : max 0 (min 1 x) ≤ 1 :=
   max_le (by norm_num) (min_le_left _ _)
 
-theorem clipVal_eq_one {x : ℝ} (h : 1 ≤ x) : max 0 (min 1 x) = 1 := by
+lemma clipVal_eq_one {x : ℝ} (h : 1 ≤ x) : max 0 (min 1 x) = 1 := by
   rw [min_eq_left h, max_eq_right (by norm_num)]
 
-theorem clipVal_eq_zero {x : ℝ} (h : x ≤ 0) : max 0 (min 1 x) = 0 :=
+lemma clipVal_eq_zero {x : ℝ} (h : x ≤ 0) : max 0 (min 1 x) = 0 :=
   max_eq_left ((min_le_right 1 x).trans h)
 
-theorem clipVal_pos_imp {x : ℝ} (h : 0 < max 0 (min 1 x)) : 0 < x := by
+lemma clipVal_pos_imp {x : ℝ} (h : 0 < max 0 (min 1 x)) : 0 < x := by
   by_contra hx
   push_neg at hx
   rw [clipVal_eq_zero hx] at h
@@ -96,14 +96,14 @@ def buyIndEF (φ : Sentence) (a δ : ℚ) (n : ℕ) : EF :=
 def sellIndEF (φ : Sentence) (b δ : ℚ) (n : ℕ) : EF :=
   clip01 (.mul (.add (.price φ n) (.const (δ - b))) (.const (1/δ)))
 
-theorem buyIndEF_denote (φ : Sentence) (a δ : ℚ) (n : ℕ) (V : History) :
+lemma buyIndEF_denote (φ : Sentence) (a δ : ℚ) (n : ℕ) (V : History) :
     (buyIndEF φ a δ n).denote V
       = max 0 (min 1 (((a : ℝ) + δ - V n φ) * (1/(δ : ℝ)))) := by
   simp only [buyIndEF, clip01_denote, EF.denote_mul, EF.denote_add, EF.denote_const,
     EF.denote_price, Pi.mul_apply, Pi.add_apply]
   push_cast; ring_nf
 
-theorem sellIndEF_denote (φ : Sentence) (b δ : ℚ) (n : ℕ) (V : History) :
+lemma sellIndEF_denote (φ : Sentence) (b δ : ℚ) (n : ℕ) (V : History) :
     (sellIndEF φ b δ n).denote V
       = max 0 (min 1 ((V n φ - ((b : ℝ) - δ)) * (1/(δ : ℝ)))) := by
   simp only [sellIndEF, clip01_denote, EF.denote_mul, EF.denote_add, EF.denote_const,
@@ -122,21 +122,21 @@ section Signals
 
 variable {φ : Sentence} {a b δ : ℚ} {P : History} {n : ℕ}
 
-theorem buyInd_mem (φ a δ n) (P : History) :
+lemma buyInd_mem (φ a δ n) (P : History) :
     0 ≤ (buyIndEF φ a δ n).denote P ∧ (buyIndEF φ a δ n).denote P ≤ 1 := by
   rw [buyIndEF_denote]; exact ⟨clipVal_nonneg _, clipVal_le_one _⟩
 
-theorem sellInd_mem (φ b δ n) (P : History) :
+lemma sellInd_mem (φ b δ n) (P : History) :
     0 ≤ (sellIndEF φ b δ n).denote P ∧ (sellIndEF φ b δ n).denote P ≤ 1 := by
   rw [sellIndEF_denote]; exact ⟨clipVal_nonneg _, clipVal_le_one _⟩
 
-theorem buyInd_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (buyIndEF φ a δ n).denote P) :
+lemma buyInd_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (buyIndEF φ a δ n).denote P) :
     P n φ < (a : ℝ) + δ := by
   rw [buyIndEF_denote] at h
   have := clipVal_pos_imp h
   nlinarith [mul_pos (show (0:ℝ) < 1/(δ:ℝ) by positivity) hδ]
 
-theorem buyInd_eq_one (hδ : 0 < (δ : ℝ)) (h : P n φ < (a : ℝ)) :
+lemma buyInd_eq_one (hδ : 0 < (δ : ℝ)) (h : P n φ < (a : ℝ)) :
     (buyIndEF φ a δ n).denote P = 1 := by
   rw [buyIndEF_denote]
   refine clipVal_eq_one ?_
@@ -145,7 +145,7 @@ theorem buyInd_eq_one (hδ : 0 < (δ : ℝ)) (h : P n φ < (a : ℝ)) :
     _ ≤ ((a:ℝ) + δ - P n φ) * (1/(δ:ℝ)) := by
         apply mul_le_mul_of_nonneg_right h1; positivity
 
-theorem buyInd_eq_zero (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ)
+lemma buyInd_eq_zero (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ)
     (h : (b : ℝ) < P n φ) : (buyIndEF φ a δ n).denote P = 0 := by
   rw [buyIndEF_denote]
   refine clipVal_eq_zero ?_
@@ -154,13 +154,13 @@ theorem buyInd_eq_zero (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ
   have h1δ : (0:ℝ) ≤ 1/(δ:ℝ) := by positivity
   nlinarith
 
-theorem sellInd_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (sellIndEF φ b δ n).denote P) :
+lemma sellInd_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (sellIndEF φ b δ n).denote P) :
     (b : ℝ) - δ < P n φ := by
   rw [sellIndEF_denote] at h
   have := clipVal_pos_imp h
   nlinarith [mul_pos (show (0:ℝ) < 1/(δ:ℝ) by positivity) hδ]
 
-theorem sellInd_eq_one (hδ : 0 < (δ : ℝ)) (h : (b : ℝ) < P n φ) :
+lemma sellInd_eq_one (hδ : 0 < (δ : ℝ)) (h : (b : ℝ) < P n φ) :
     (sellIndEF φ b δ n).denote P = 1 := by
   rw [sellIndEF_denote]
   refine clipVal_eq_one ?_
@@ -186,10 +186,10 @@ def hystN (φ : Sentence) (a b δ : ℚ) : ℕ → EF
 noncomputable def hystH (φ : Sentence) (a b δ : ℚ) (P : History) (k : ℕ) : ℝ :=
   (hystN φ a b δ k).denote P
 
-theorem hystH_zero (φ a b δ) (P : History) : hystH φ a b δ P 0 = 0 := by
+lemma hystH_zero (φ a b δ) (P : History) : hystH φ a b δ P 0 = 0 := by
   simp [hystH, hystN]
 
-theorem hystH_succ (φ a b δ) (P : History) (k : ℕ) :
+lemma hystH_succ (φ a b δ) (P : History) (k : ℕ) :
     hystH φ a b δ P (k + 1)
       = max (hystH φ a b δ P k * (1 - (sellIndEF φ b δ k).denote P))
           ((buyIndEF φ a δ k).denote P) := by
@@ -197,7 +197,7 @@ theorem hystH_succ (φ a b δ) (P : History) (k : ℕ) :
     oneMinus_denote]
 
 /-- `hystN k` references only days `< k`: rank ≤ `k − 1`. -/
-theorem hystN_rank (φ a b δ) : ∀ k, (hystN φ a b δ k).rank ≤ k - 1
+lemma hystN_rank (φ a b δ) : ∀ k, (hystN φ a b δ k).rank ≤ k - 1
   | 0 => by simp [hystN]
   | (k + 1) => by
       have ih := hystN_rank φ a b δ k
@@ -208,7 +208,7 @@ section State
 
 variable (φ : Sentence) (a b δ : ℚ) (P : History)
 
-theorem hystH_mem : ∀ k, 0 ≤ hystH φ a b δ P k ∧ hystH φ a b δ P k ≤ 1
+lemma hystH_mem : ∀ k, 0 ≤ hystH φ a b δ P k ∧ hystH φ a b δ P k ≤ 1
   | 0 => by rw [hystH_zero]; norm_num
   | (k + 1) => by
       obtain ⟨ih0, ih1⟩ := hystH_mem k
@@ -222,7 +222,7 @@ theorem hystH_mem : ∀ k, 0 ≤ hystH φ a b δ P k ∧ hystH φ a b δ P k ≤
 variable {φ a b δ P}
 
 /-- Fact 1: a net buy at day `k` means the buy signal fired, so `Pₖφ < a + δ`. -/
-theorem hystH_incr_imp (hδ : 0 < (δ : ℝ)) {k : ℕ}
+lemma hystH_incr_imp (hδ : 0 < (δ : ℝ)) {k : ℕ}
     (h : hystH φ a b δ P k < hystH φ a b δ P (k + 1)) : P k φ < (a : ℝ) + δ := by
   refine buyInd_pos_imp hδ ?_
   by_contra hb
@@ -239,7 +239,7 @@ theorem hystH_incr_imp (hδ : 0 < (δ : ℝ)) {k : ℕ}
   linarith
 
 /-- Fact 2: a net sell at day `k` means the sell signal fired, so `b − δ < Pₖφ`. -/
-theorem hystH_decr_imp (hδ : 0 < (δ : ℝ)) {k : ℕ}
+lemma hystH_decr_imp (hδ : 0 < (δ : ℝ)) {k : ℕ}
     (h : hystH φ a b δ P (k + 1) < hystH φ a b δ P k) : (b : ℝ) - δ < P k φ := by
   refine sellInd_pos_imp hδ ?_
   by_contra hs
@@ -253,7 +253,7 @@ theorem hystH_decr_imp (hδ : 0 < (δ : ℝ)) {k : ℕ}
   linarith
 
 /-- Fact 3 (buy side): a dip below `a` forces full holdings, `h (k+1) = 1`. -/
-theorem hystH_eq_one (hδ : 0 < (δ : ℝ)) {k : ℕ} (h : P k φ < (a : ℝ)) :
+lemma hystH_eq_one (hδ : 0 < (δ : ℝ)) {k : ℕ} (h : P k φ < (a : ℝ)) :
     hystH φ a b δ P (k + 1) = 1 := by
   obtain ⟨ih0, ih1⟩ := hystH_mem φ a b δ P k
   obtain ⟨hs0, hs1⟩ := sellInd_mem φ b δ k P
@@ -261,7 +261,7 @@ theorem hystH_eq_one (hδ : 0 < (δ : ℝ)) {k : ℕ} (h : P k φ < (a : ℝ)) :
   exact max_eq_right (by nlinarith)
 
 /-- Fact 3 (sell side): a spike above `b` forces empty holdings, `h (k+1) = 0`. -/
-theorem hystH_eq_zero (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ) {k : ℕ}
+lemma hystH_eq_zero (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ) {k : ℕ}
     (h : (b : ℝ) < P k φ) : hystH φ a b δ P (k + 1) = 0 := by
   rw [hystH_succ, buyInd_eq_zero hδ hab h, sellInd_eq_one hδ h]
   simp
@@ -274,7 +274,7 @@ end State
 def hystTradeEF (φ : Sentence) (a b δ : ℚ) (n : ℕ) : EF :=
   .add (hystN φ a b δ (n + 1)) (.mul (.const (-1)) (hystN φ a b δ n))
 
-theorem hystTradeEF_rank (φ a b δ) (n : ℕ) : (hystTradeEF φ a b δ n).rank ≤ n := by
+lemma hystTradeEF_rank (φ a b δ) (n : ℕ) : (hystTradeEF φ a b δ n).rank ≤ n := by
   have h1 := hystN_rank φ a b δ (n + 1)
   have h2 := hystN_rank φ a b δ n
   simp only [hystTradeEF, EF.rank, max_le_iff]
@@ -296,7 +296,7 @@ noncomputable def hystDelta (φ : Sentence) (a b δ : ℚ) (P : History) (i : �
     Pi.mul_apply, hystDelta, hystH]
   push_cast; ring
 
-theorem hystTrader_netWorth (φ a b δ) (P : History) (v : PCWorld) (n : ℕ) :
+lemma hystTrader_netWorth (φ a b δ) (P : History) (v : PCWorld) (n : ℕ) :
     (hystTrader φ a b δ).netWorth P v n
       = ∑ i ∈ Finset.range (n + 1), hystDelta φ a b δ P i * (v.payout φ - P i φ) := by
   simp [Trader.netWorth, hystTrader, Strategy.value]
@@ -311,18 +311,18 @@ noncomputable def hystBpos (φ : Sentence) (a b δ : ℚ) (P : History) (n : ℕ
 noncomputable def hystBneg (φ : Sentence) (a b δ : ℚ) (P : History) (n : ℕ) : ℝ :=
   ∑ i ∈ Finset.range (n + 1), max (-(hystDelta φ a b δ P i)) 0
 
-private theorem max_sub_max_neg (x : ℝ) : max x 0 - max (-x) 0 = x := by
+private lemma max_sub_max_neg (x : ℝ) : max x 0 - max (-x) 0 = x := by
   rcases le_total x 0 with h | h
   · rw [max_eq_right h, max_eq_left (by linarith : (0:ℝ) ≤ -x)]; ring
   · rw [max_eq_left h, max_eq_right (by linarith : -x ≤ (0:ℝ))]; ring
 
-theorem hystDelta_sum (φ a b δ) (P : History) (n : ℕ) :
+lemma hystDelta_sum (φ a b δ) (P : History) (n : ℕ) :
     ∑ i ∈ Finset.range (n + 1), hystDelta φ a b δ P i = hystH φ a b δ P (n + 1) := by
   rw [show (∑ i ∈ Finset.range (n + 1), hystDelta φ a b δ P i)
       = ∑ i ∈ Finset.range (n + 1), (hystH φ a b δ P (i + 1) - hystH φ a b δ P i) from rfl,
     Finset.sum_range_sub (fun i => hystH φ a b δ P i), hystH_zero, sub_zero]
 
-theorem hystBpos_eq (φ a b δ) (P : History) (n : ℕ) :
+lemma hystBpos_eq (φ a b δ) (P : History) (n : ℕ) :
     hystBpos φ a b δ P n = hystBneg φ a b δ P n + hystH φ a b δ P (n + 1) := by
   have : hystBpos φ a b δ P n - hystBneg φ a b δ P n
       = ∑ i ∈ Finset.range (n + 1), hystDelta φ a b δ P i := by
@@ -331,12 +331,12 @@ theorem hystBpos_eq (φ a b δ) (P : History) (n : ℕ) :
   rw [hystDelta_sum] at this
   linarith
 
-theorem hystBneg_nonneg (φ a b δ) (P : History) (n : ℕ) : 0 ≤ hystBneg φ a b δ P n :=
+lemma hystBneg_nonneg (φ a b δ) (P : History) (n : ℕ) : 0 ≤ hystBneg φ a b δ P n :=
   Finset.sum_nonneg (fun _ _ => le_max_right _ _)
 
 /-- **The C2 master bound**: in *every* world, the net worth is at least
 `(b−δ−(a+δ))·B₋ − (a+δ)`. Bounded below outright; unbounded once `B₋ → ∞`. -/
-theorem hystTrader_netWorth_ge (φ : Sentence) (a b δ : ℚ) (P : History)
+lemma hystTrader_netWorth_ge (φ : Sentence) (a b δ : ℚ) (P : History)
     (hδ : 0 < (δ : ℝ)) (ha : 0 ≤ (a : ℝ) + δ) (v : PCWorld) (n : ℕ) :
     ((b : ℝ) - δ - ((a : ℝ) + δ)) * hystBneg φ a b δ P n - ((a : ℝ) + δ)
       ≤ (hystTrader φ a b δ).netWorth P v n := by
@@ -385,13 +385,13 @@ section Unbounded
 
 variable {φ : Sentence} {a b δ : ℚ} {P : History}
 
-theorem hystBneg_mono (φ a b δ) (P : History) {n m : ℕ} (h : n ≤ m) :
+lemma hystBneg_mono (φ a b δ) (P : History) {n m : ℕ} (h : n ≤ m) :
     hystBneg φ a b δ P n ≤ hystBneg φ a b δ P m :=
   Finset.sum_le_sum_of_subset_of_nonneg
     (Finset.range_subset_range.mpr (Nat.add_le_add_right h 1)) (fun _ _ _ => le_max_right _ _)
 
 /-- The negative variation accumulated on `(n, m]` covers any drop in holdings. -/
-theorem hystBneg_swing (φ a b δ) (P : History) {n m : ℕ} (h : n ≤ m) :
+lemma hystBneg_swing (φ a b δ) (P : History) {n m : ℕ} (h : n ≤ m) :
     hystH φ a b δ P (n + 1) - hystH φ a b δ P (m + 1)
       ≤ hystBneg φ a b δ P m - hystBneg φ a b δ P n := by
   have hsub : hystBneg φ a b δ P m - hystBneg φ a b δ P n
@@ -411,7 +411,7 @@ theorem hystBneg_swing (φ a b δ) (P : History) {n m : ℕ} (h : n ≤ m) :
 
 /-- **C3**: under two-sided oscillation, the negative variation is unbounded — each full
 swing (dip below `a`, then spike above `b`) adds at least `1`. -/
-theorem hystBneg_unbounded (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ)
+lemma hystBneg_unbounded (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ)
     (hA : ∃ᶠ n in atTop, P n φ < (a : ℝ)) (hB : ∃ᶠ n in atTop, (b : ℝ) < P n φ) :
     ∀ K : ℕ, ∃ n, (K : ℝ) ≤ hystBneg φ a b δ P n := by
   intro K
@@ -435,7 +435,7 @@ end Unbounded
 /-! ### Exploitation -/
 
 /-- **The hysteresis trader exploits an oscillating market.** -/
-theorem hystTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
+lemma hystTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
     {a b δ : ℚ} (hδ : 0 < (δ : ℝ)) (ha : 0 ≤ (a : ℝ) + δ)
     (hab : (a : ℝ) + δ < (b : ℝ) - δ)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -465,14 +465,14 @@ fixed-width blocks (the `H (n+1)` chain), fixed mid `[1,⌜−1⌝,1,⌜0⌝]`, 
 (`PolySegStream`, `Computable.lean`). -/
 
 /-- Token streams of `oneMinus` families. -/
-theorem PolyTokenStream.serialize_oneMinus {e : ℕ → EF}
+lemma PolyTokenStream.serialize_oneMinus {e : ℕ → EF}
     (he : PolyTokenStream (fun m => (e m).serialize)) :
     PolyTokenStream (fun m => (oneMinus (e m)).serialize) :=
   PolyTokenStream.serialize_add (PolyTokenStream.serialize_const 1)
     (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const (-1)) he)
 
 /-- Token streams of `efMin` families. -/
-theorem PolyTokenStream.serialize_efMin {e f : ℕ → EF}
+lemma PolyTokenStream.serialize_efMin {e f : ℕ → EF}
     (he : PolyTokenStream (fun m => (e m).serialize))
     (hf : PolyTokenStream (fun m => (f m).serialize)) :
     PolyTokenStream (fun m => (efMin (e m) (f m)).serialize) :=
@@ -482,13 +482,13 @@ theorem PolyTokenStream.serialize_efMin {e f : ℕ → EF}
       (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const (-1)) hf))
 
 /-- Token streams of `clip01` families. -/
-theorem PolyTokenStream.serialize_clip01 {e : ℕ → EF}
+lemma PolyTokenStream.serialize_clip01 {e : ℕ → EF}
     (he : PolyTokenStream (fun m => (e m).serialize)) :
     PolyTokenStream (fun m => (clip01 (e m)).serialize) :=
   PolyTokenStream.serialize_max (PolyTokenStream.serialize_const 0)
     (PolyTokenStream.serialize_efMin (PolyTokenStream.serialize_const 1) he)
 
-theorem buyIndEF_tokenStream {f : ℕ → ℕ} {c : Nat.Partrec.Code} (hf : PolyFueled c f)
+lemma buyIndEF_tokenStream {f : ℕ → ℕ} {c : Nat.Partrec.Code} (hf : PolyFueled c f)
     (φ : Sentence) (a δ : ℚ) :
     PolyTokenStream (fun m => (buyIndEF φ a δ (f m)).serialize) :=
   PolyTokenStream.serialize_clip01 (PolyTokenStream.serialize_mul
@@ -499,7 +499,7 @@ theorem buyIndEF_tokenStream {f : ℕ → ℕ} {c : Nat.Partrec.Code} (hf : Poly
 
 /-- `buyIndEF` streams with **rung-varying constants**: the threshold and slope encodes
 are poly-fueled functions of the input (the parametric-ladder case). -/
-theorem buyIndEF_tokenStream_comp {af δf : ℕ → ℚ} {cj : Nat.Partrec.Code} {jf : ℕ → ℕ}
+lemma buyIndEF_tokenStream_comp {af δf : ℕ → ℚ} {cj : Nat.Partrec.Code} {jf : ℕ → ℕ}
     (hj : PolyFueled cj jf) (φ : Sentence)
     (ha : ∃ c, PolyFueled c (fun m => Encodable.encode (af m + δf m)))
     (hd : ∃ c, PolyFueled c (fun m => Encodable.encode (1 / δf m))) :
@@ -511,7 +511,7 @@ theorem buyIndEF_tokenStream_comp {af δf : ℕ → ℚ} {cj : Nat.Partrec.Code}
     (PolyTokenStream.serialize_const_comp hd))
 
 /-- `sellIndEF` streams with rung-varying constants. -/
-theorem sellIndEF_tokenStream_comp {bf δf : ℕ → ℚ} {cj : Nat.Partrec.Code} {jf : ℕ → ℕ}
+lemma sellIndEF_tokenStream_comp {bf δf : ℕ → ℚ} {cj : Nat.Partrec.Code} {jf : ℕ → ℕ}
     (hj : PolyFueled cj jf) (φ : Sentence)
     (hb : ∃ c, PolyFueled c (fun m => Encodable.encode (δf m - bf m)))
     (hd : ∃ c, PolyFueled c (fun m => Encodable.encode (1 / δf m))) :
@@ -521,7 +521,7 @@ theorem sellIndEF_tokenStream_comp {bf δf : ℕ → ℚ} {cj : Nat.Partrec.Code
       (PolyTokenStream.serialize_const_comp hb))
     (PolyTokenStream.serialize_const_comp hd))
 
-theorem sellIndEF_tokenStream {f : ℕ → ℕ} {c : Nat.Partrec.Code} (hf : PolyFueled c f)
+lemma sellIndEF_tokenStream {f : ℕ → ℕ} {c : Nat.Partrec.Code} (hf : PolyFueled c f)
     (φ : Sentence) (b δ : ℚ) :
     PolyTokenStream (fun m => (sellIndEF φ b δ (f m)).serialize) :=
   PolyTokenStream.serialize_clip01 (PolyTokenStream.serialize_mul
@@ -533,7 +533,7 @@ theorem sellIndEF_tokenStream {f : ℕ → ℕ} {c : Nat.Partrec.Code} (hf : Pol
 def hystBlk (φ : Sentence) (a b δ : ℚ) (j : ℕ) : List ℕ :=
   (oneMinus (sellIndEF φ b δ j)).serialize ++ [3] ++ (buyIndEF φ a δ j).serialize ++ [4]
 
-theorem hystBlk_tokenStream (φ : Sentence) (a b δ : ℚ) :
+lemma hystBlk_tokenStream (φ : Sentence) (a b δ : ℚ) :
     PolyTokenStream (fun m => hystBlk φ a b δ m.unpair.2) := by
   show PolyTokenStream (fun m =>
     (oneMinus (sellIndEF φ b δ m.unpair.2)).serialize ++ [3]
@@ -544,11 +544,11 @@ theorem hystBlk_tokenStream (φ : Sentence) (a b δ : ℚ) :
     (buyIndEF_tokenStream PolyFueled.right φ a δ)).append (PolyTokenStream.const 4)
 
 /-- Block width is day-independent (only the leaf day-index token varies). -/
-theorem hystBlk_length (φ : Sentence) (a b δ : ℚ) (j : ℕ) :
+lemma hystBlk_length (φ : Sentence) (a b δ : ℚ) (j : ℕ) :
     (hystBlk φ a b δ j).length = (hystBlk φ a b δ 0).length := by
   simp [hystBlk, buyIndEF, sellIndEF, oneMinus, clip01, efMin, EF.serialize]
 
-theorem serialize_hystN (φ : Sentence) (a b δ : ℚ) : ∀ k,
+lemma serialize_hystN (φ : Sentence) (a b δ : ℚ) : ∀ k,
     (hystN φ a b δ k).serialize
       = [1, Encodable.encode (0:ℚ)] ++ (List.range k).flatMap (hystBlk φ a b δ)
   | 0 => by simp [hystN, EF.serialize]
@@ -560,7 +560,7 @@ theorem serialize_hystN (φ : Sentence) (a b δ : ℚ) : ∀ k,
       simp [List.append_assoc]
 
 /-- **C4: the hysteresis trader is efficiently computable** — five-segment emission. -/
-theorem hystTrader_ecTok (φ : Sentence) (a b δ : ℚ) :
+lemma hystTrader_ecTok (φ : Sentence) (a b δ : ℚ) :
     EfficientlyComputableTok (hystTrader φ a b δ) := by
   have hW : ∀ m : ℕ, (hystBlk φ a b δ m.unpair.2).length = (hystBlk φ a b δ 0).length :=
     fun m => hystBlk_length φ a b δ _
@@ -594,7 +594,7 @@ theorem hystTrader_ecTok (φ : Sentence) (a b δ : ℚ) :
 
 /-- **The oscillation-arbitrage package** (`app:con`): the trader witnessing
 `oscillation_exploitable`. `δ := (b−a)/4`. -/
-theorem oscillation_exploitable_hyst (P : History) (DP : DeductiveProcess) (φ : Sentence)
+lemma oscillation_exploitable_hyst (P : History) (DP : DeductiveProcess) (φ : Sentence)
     (a b : ℚ) (hab : (a : ℝ) < b) (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hA : ∃ᶠ n in atTop, P n φ < (a : ℝ)) (hB : ∃ᶠ n in atTop, (b : ℝ) < P n φ) :

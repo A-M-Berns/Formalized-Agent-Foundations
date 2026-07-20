@@ -24,7 +24,7 @@ def buyDaily (φ : Sentence) : Trader where
   simp [buyDaily, Strategy.value]
 
 
-theorem buyDaily_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) :
+lemma buyDaily_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) :
     (buyDaily φ).netWorth V v m = ∑ i ∈ Finset.range (m + 1), (v.payout φ - V i φ) := by
   simp [Trader.netWorth]
 
@@ -36,7 +36,7 @@ program that computes it is `Code.const K`, where `K` is that list's code. It ha
 `n + K + 1` fuel (`evaln_const_self`), which is affine in `n`, hence within the polynomial
 budget the faithful `EfficientlyComputable` requires. This certifies e.c. through the
 genuine `dd:fuel` model — a single program producing the strategies under a poly clock. -/
-theorem buyDaily_ec (φ : Sentence) : EfficientlyComputableTok (buyDaily φ) := by
+lemma buyDaily_ec (φ : Sentence) : EfficientlyComputableTok (buyDaily φ) := by
   refine ecTok_of_stream _ ?_
   have h : ∀ n, ((buyDaily φ).strat n).trades = [(EF.const 1, φ)] := fun _ => rfl
   simp only [h]
@@ -50,7 +50,7 @@ theorem buyDaily_ec (φ : Sentence) : EfficientlyComputableTok (buyDaily φ) := 
 do-buy-daily trader exploits: bounded below (net worth `≥ 0` in every plausible world,
 since every world consistent with `Dₘ ∋ φ` values `φ` at 1) yet unbounded above (net worth
 `≥ (m+1)·ε → ∞`). -/
-theorem buyDaily_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence) (ε : ℝ)
+lemma buyDaily_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence) (ε : ℝ)
     (hε : 0 < ε) (hded : ∀ n, φ ∈ DP.D n) (hunder : ∀ n, P n φ ≤ 1 - ε)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (buyDaily φ).Exploits P DP := by
@@ -115,7 +115,7 @@ the milestone notes.) -/
 /-- Exploitation under *infinitely-often* underpricing (the accumulation argument). With
 prices bounded by `1`, every plausible assessment is `≥ 0` (bounded below); and along the
 subsequence of underpriced days the net worth grows without bound. -/
-theorem buyDaily_exploits_freq (P : History) (DP : DeductiveProcess) (φ : Sentence) (ε : ℝ)
+lemma buyDaily_exploits_freq (P : History) (DP : DeductiveProcess) (φ : Sentence) (ε : ℝ)
     (hε : 0 < ε) (hded : ∀ n, φ ∈ DP.D n) (hP1 : ∀ n, P n φ ≤ 1)
     (hfreq : ∃ᶠ n in atTop, P n φ ≤ 1 - ε)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -205,7 +205,7 @@ noncomputable def buySeq (φ : ℕ → Sentence) : Trader where
                              simp [EF.rank] }
 
 
-theorem buySeq_value (φ : ℕ → Sentence) (V : History) (v : PCWorld) (n : ℕ)
+lemma buySeq_value (φ : ℕ → Sentence) (V : History) (v : PCWorld) (n : ℕ)
     (hpay : v.payout (φ n) = 1) :
     ((buySeq φ).strat n).value V v.payout = 1 - V n (φ n) := by
   simp only [buySeq, Strategy.value, List.map_cons, List.map_nil, List.sum_cons, List.sum_nil,
@@ -213,7 +213,7 @@ theorem buySeq_value (φ : ℕ → Sentence) (V : History) (v : PCWorld) (n : �
   rw [hpay]; push_cast; ring
 
 
-theorem buySeq_ec (φ : ℕ → Sentence) {cφ : Nat.Partrec.Code}
+lemma buySeq_ec (φ : ℕ → Sentence) {cφ : Nat.Partrec.Code}
     (hφ : PolyFueled cφ (fun n => Encodable.encode (φ n))) :
     EfficientlyComputableTok (buySeq φ) := by
   refine ecTok_of_stream _ ?_

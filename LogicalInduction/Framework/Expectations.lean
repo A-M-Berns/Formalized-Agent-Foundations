@@ -98,11 +98,11 @@ noncomputable def expectSeq (P : History) (X : LUV) : ℕ → ℝ := fun n => X.
 
 /-! ### Basic bounds — `𝔼` inherits `[0,1]` from the prices. -/
 
-theorem expectApprox_nonneg (V : Valuation) (k : ℕ) (X : LUV)
+lemma expectApprox_nonneg (V : Valuation) (k : ℕ) (X : LUV)
     (hV : ∀ s, 0 ≤ V s) : 0 ≤ X.expectApprox V k := by
   refine mul_nonneg (by positivity) (Finset.sum_nonneg (fun i _ => hV _))
 
-theorem expectApprox_le_one (V : Valuation) (k : ℕ) (X : LUV)
+lemma expectApprox_le_one (V : Valuation) (k : ℕ) (X : LUV)
     (hV : ∀ s, V s ≤ 1) : X.expectApprox V k ≤ 1 := by
   rcases Nat.eq_zero_or_pos k with hk | hk
   · simp [expectApprox, hk]
@@ -113,7 +113,7 @@ theorem expectApprox_le_one (V : Valuation) (k : ℕ) (X : LUV)
     rw [expectApprox, inv_mul_le_iff₀ (by exact_mod_cast hk)]
     simpa using hsum
 
-theorem expect_mem_Icc (P : History) (n : ℕ) (X : LUV)
+lemma expect_mem_Icc (P : History) (n : ℕ) (X : LUV)
     (hP : ∀ s, 0 ≤ P n s ∧ P n s ≤ 1) : 0 ≤ X.expect P n ∧ X.expect P n ≤ 1 :=
   ⟨X.expectApprox_nonneg (P n) n (fun s => (hP s).1),
    X.expectApprox_le_one (P n) n (fun s => (hP s).2)⟩
@@ -266,7 +266,7 @@ def LUV.IsIndicator (Y : LUV) (φ : Sentence) (DP : DeductiveProcess) : Prop :=
 
 /-- The relational indicator hypotheses really assign the indicator its intended world value:
 `1` in `φ`-worlds and `0` otherwise. This is the world-side input to the M4 LUV lift. -/
-theorem LUV.IsIndicator.valuesAt {Y : LUV} {φ : Sentence} {DP : DeductiveProcess}
+lemma LUV.IsIndicator.valuesAt {Y : LUV} {φ : Sentence} {DP : DeductiveProcess}
     (hY : Y.IsIndicator φ DP) {n : ℕ} {v : PCWorld}
     (hv : v.ConsistentWith (DP.D n)) : v.ValuesAt Y (v.payout φ) := by
   have hlink := hY n v hv

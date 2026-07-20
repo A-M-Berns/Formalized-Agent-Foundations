@@ -27,7 +27,7 @@ def codeEvalBound : Nat.Partrec.Code → ℕ → ℕ
   | .prec cf cg, k => max (codeEvalBound cf k) (codeEvalBound cg k)
   | .rfind' _, k => k
 
-private theorem natPair_mono {a b c d : ℕ} (hab : a ≤ b) (hcd : c ≤ d) :
+private lemma natPair_mono {a b c d : ℕ} (hab : a ≤ b) (hcd : c ≤ d) :
     Nat.pair a c ≤ Nat.pair b d := by
   calc
     Nat.pair a c ≤ Nat.pair b c := by
@@ -39,7 +39,7 @@ private theorem natPair_mono {a b c d : ℕ} (hab : a ≤ b) (hcd : c ≤ d) :
       · rw [h]
       · exact (Nat.pair_lt_pair_right b h).le
 
-theorem codeEvalBound_mono (code : Nat.Partrec.Code) :
+lemma codeEvalBound_mono (code : Nat.Partrec.Code) :
     Monotone (codeEvalBound code) := by
   induction code with
   | zero => exact monotone_const
@@ -55,7 +55,7 @@ theorem codeEvalBound_mono (code : Nat.Partrec.Code) :
       exact max_le_max (ihf hab) (ihg hab)
   | rfind' cf _ => exact monotone_id
 
-theorem codeEvalBound_poly (code : Nat.Partrec.Code) :
+lemma codeEvalBound_poly (code : Nat.Partrec.Code) :
     IsPolyBounded (codeEvalBound code) := by
   induction code with
   | zero =>
@@ -72,7 +72,7 @@ theorem codeEvalBound_poly (code : Nat.Partrec.Code) :
 
 /-- Every successful bounded interpreter result is bounded by a fixed polynomial whose
 degree depends only on the simulated program. -/
-theorem codeEvaln_result_le (code : Nat.Partrec.Code) :
+lemma codeEvaln_result_le (code : Nat.Partrec.Code) :
     ∀ {k n x}, x ∈ Nat.Partrec.Code.evaln k code n →
       x ≤ codeEvalBound code k := by
   intro k n x h
@@ -170,7 +170,7 @@ def codeEvalnNat (code : Nat.Partrec.Code) (z : ℕ) : ℕ :=
   | none => 0
   | some out => out + 1
 
-theorem codeEvalnNat_le (code : Nat.Partrec.Code) (z : ℕ) :
+lemma codeEvalnNat_le (code : Nat.Partrec.Code) (z : ℕ) :
     codeEvalnNat code z ≤ codeEvalBound code z.unpair.1 + 1 := by
   unfold codeEvalnNat
   cases h : Nat.Partrec.Code.evaln z.unpair.1 code z.unpair.2 with
@@ -178,7 +178,7 @@ theorem codeEvalnNat_le (code : Nat.Partrec.Code) (z : ℕ) :
   | some out =>
       simpa using Nat.add_le_add_right (codeEvaln_result_le code h) 1
 
-theorem codeEvalnNat_output_poly (code : Nat.Partrec.Code) :
+lemma codeEvalnNat_output_poly (code : Nat.Partrec.Code) :
     IsPolyBounded (codeEvalnNat code) := by
   have hclock : IsPolyBounded fun z => codeEvalBound code z.unpair.1 :=
     (codeEvalBound_poly code).comp isPolyBounded_fst
@@ -208,7 +208,7 @@ def precEvalState (cf cg : Nat.Partrec.Code) (clock a total : ℕ) :
         Nat.Partrec.Code.evaln fuel cg (Nat.pair a (Nat.pair j prior))
       else none
 
-theorem precEvalState_eq_evaln (cf cg : Nat.Partrec.Code)
+lemma precEvalState_eq_evaln (cf cg : Nat.Partrec.Code)
     {clock a total j : ℕ} (_htotal : total ≤ clock) (hj : j ≤ total) :
     precEvalState cf cg clock a total j =
       Nat.Partrec.Code.evaln (clock - total + j) (.prec cf cg)
@@ -256,7 +256,7 @@ theorem precEvalState_eq_evaln (cf cg : Nat.Partrec.Code)
             rw [hprev]
             simp [Nat.Partrec.Code.evaln, hnle]
 
-theorem precEvalState_final (cf cg : Nat.Partrec.Code)
+lemma precEvalState_final (cf cg : Nat.Partrec.Code)
     {clock a total : ℕ} :
     (if Nat.pair a total < clock then
         precEvalState cf cg clock a total total else none) =
@@ -287,7 +287,7 @@ cases pure combinations of the sub-code compilers, while only `prec`/`rfind'` re
 genuine fuel-decrement iteration. -/
 
 /-- The interpreter returns `none` once the input exceeds the clock. -/
-theorem evaln_eq_none_of_gt {k : ℕ} (c : Nat.Partrec.Code) {n : ℕ} (h : k ≤ n) :
+lemma evaln_eq_none_of_gt {k : ℕ} (c : Nat.Partrec.Code) {n : ℕ} (h : k ≤ n) :
     Nat.Partrec.Code.evaln k c n = none := by
   rcases hx : Nat.Partrec.Code.evaln k c n with _ | x
   · rfl
@@ -297,7 +297,7 @@ open Nat.Partrec.Code in
 /-- Base-code interpreters `zero/succ/left/right` share the shape
 `if z.1 ≤ z.2 then 0 else rawValue + 1`: the guard fails exactly when `z.1 ≤ z.2`
 (`z.2 ≥ fuel`, incl. `fuel = 0`). Compiles via one `ifzSel` over `subc` (`z.1 - z.2`). -/
-theorem polyFueled_baseGuard {bv : ℕ → ℕ} {c : Nat.Partrec.Code} (h : PolyFueled c bv) :
+lemma polyFueled_baseGuard {bv : ℕ → ℕ} {c : Nat.Partrec.Code} (h : PolyFueled c bv) :
     ∃ prog, PolyFueled prog (fun z => if z.unpair.1 ≤ z.unpair.2 then 0 else bv z + 1) := by
   refine ⟨_, (ifzSel_polyFueled.comp
     (((PolyFueled.const 0).pair h.succ_comp).pair subc_polyFueled)).of_eq (fun z => ?_)⟩
@@ -306,7 +306,7 @@ theorem polyFueled_baseGuard {bv : ℕ → ℕ} {c : Nat.Partrec.Code} (h : Poly
   · rw [if_pos hle, if_pos (Nat.sub_eq_zero_of_le hle)]
   · rw [if_neg hle, if_neg (by omega : ¬ z.unpair.1 - z.unpair.2 = 0)]
 
-theorem codeEvalnNat_zero_eq (z : ℕ) :
+lemma codeEvalnNat_zero_eq (z : ℕ) :
     codeEvalnNat .zero z = if z.unpair.1 ≤ z.unpair.2 then 0 else 0 + 1 := by
   rw [codeEvalnNat]
   cases hk : z.unpair.1 with
@@ -316,7 +316,7 @@ theorem codeEvalnNat_zero_eq (z : ℕ) :
     · simp [Nat.Partrec.Code.evaln, hle]
     · simp [Nat.Partrec.Code.evaln, hle, (by omega : k + 1 ≤ z.unpair.2)]
 
-theorem codeEvalnNat_succ_eq (z : ℕ) :
+lemma codeEvalnNat_succ_eq (z : ℕ) :
     codeEvalnNat .succ z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2 + 1 + 1 := by
   rw [codeEvalnNat]
   cases hk : z.unpair.1 with
@@ -326,7 +326,7 @@ theorem codeEvalnNat_succ_eq (z : ℕ) :
     · simp [Nat.Partrec.Code.evaln, hle]
     · simp [Nat.Partrec.Code.evaln, hle, (by omega : k + 1 ≤ z.unpair.2)]
 
-theorem codeEvalnNat_left_eq (z : ℕ) :
+lemma codeEvalnNat_left_eq (z : ℕ) :
     codeEvalnNat .left z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2.unpair.1 + 1 := by
   rw [codeEvalnNat]
   cases hk : z.unpair.1 with
@@ -336,7 +336,7 @@ theorem codeEvalnNat_left_eq (z : ℕ) :
     · simp [Nat.Partrec.Code.evaln, hle]
     · simp [Nat.Partrec.Code.evaln, hle, (by omega : k + 1 ≤ z.unpair.2)]
 
-theorem codeEvalnNat_right_eq (z : ℕ) :
+lemma codeEvalnNat_right_eq (z : ℕ) :
     codeEvalnNat .right z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2.unpair.2 + 1 := by
   rw [codeEvalnNat]
   cases hk : z.unpair.1 with
@@ -349,7 +349,7 @@ theorem codeEvalnNat_right_eq (z : ℕ) :
 /-- `pair`: with both sub-code interpreters at the *same* fuel/input `z`, the whole clause is
 `none` iff either sub-result is (the guard-fail case is subsumed, since a failed guard sends
 each sub-interpreter to `0`). -/
-theorem codeEvalnNat_pair_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
+lemma codeEvalnNat_pair_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
     codeEvalnNat (.pair cf cg) z =
       if codeEvalnNat cf z = 0 ∨ codeEvalnNat cg z = 0 then 0
       else Nat.pair (codeEvalnNat cf z - 1) (codeEvalnNat cg z - 1) + 1 := by
@@ -370,7 +370,7 @@ theorem codeEvalnNat_pair_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
       simp [Nat.Partrec.Code.evaln, hle, hf, Seq.seq]
 
 /-- `comp`: the outer interpreter feeds `cf` the *output* of `cg`, at the same fuel `z.1`. -/
-theorem codeEvalnNat_comp_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
+lemma codeEvalnNat_comp_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
     codeEvalnNat (.comp cf cg) z =
       if codeEvalnNat cg z = 0 then 0
       else codeEvalnNat cf (Nat.pair z.unpair.1 (codeEvalnNat cg z - 1)) := by
@@ -387,7 +387,7 @@ theorem codeEvalnNat_comp_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
         evaln_eq_none_of_gt cg (by omega)
       simp [Nat.Partrec.Code.evaln, hle, hg]
 
-theorem codeEvalnNat_pair_polyFueled {cf cg : Nat.Partrec.Code}
+lemma codeEvalnNat_pair_polyFueled {cf cg : Nat.Partrec.Code}
     (hf : ∃ prog, PolyFueled prog (codeEvalnNat cf))
     (hg : ∃ prog, PolyFueled prog (codeEvalnNat cg)) :
     ∃ prog, PolyFueled prog (codeEvalnNat (.pair cf cg)) := by
@@ -410,7 +410,7 @@ theorem codeEvalnNat_pair_polyFueled {cf cg : Nat.Partrec.Code}
     · rw [if_neg h0g, if_neg (by tauto : ¬(codeEvalnNat cf z = 0 ∨ codeEvalnNat cg z = 0))]
       simp only [Nat.pred_eq_sub_one]
 
-theorem codeEvalnNat_comp_polyFueled {cf cg : Nat.Partrec.Code}
+lemma codeEvalnNat_comp_polyFueled {cf cg : Nat.Partrec.Code}
     (hf : ∃ prog, PolyFueled prog (codeEvalnNat cf))
     (hg : ∃ prog, PolyFueled prog (codeEvalnNat cg)) :
     ∃ prog, PolyFueled prog (codeEvalnNat (.comp cf cg)) := by
@@ -432,10 +432,10 @@ def optNat : Option ℕ → ℕ
   | none => 0
   | some x => x + 1
 
-theorem codeEvalnNat_eq_optNat (c : Nat.Partrec.Code) (z : ℕ) :
+lemma codeEvalnNat_eq_optNat (c : Nat.Partrec.Code) (z : ℕ) :
     codeEvalnNat c z = optNat (Nat.Partrec.Code.evaln z.unpair.1 c z.unpair.2) := rfl
 
-theorem optNat_if {P : Prop} [Decidable P] (o : Option ℕ) :
+lemma optNat_if {P : Prop} [Decidable P] (o : Option ℕ) :
     optNat (if P then o else none) = if P then optNat o else 0 := by
   by_cases h : P <;> simp [h, optNat]
 
@@ -455,7 +455,7 @@ def precNat (cf cg : Nat.Partrec.Code) (A : ℕ) : ℕ → ℕ
           (Nat.pair A.unpair.2.unpair.1 (Nat.pair j (precNat cf cg A j - 1))))
       else 0
 
-theorem precNat_eq (cf cg : Nat.Partrec.Code) (A : ℕ) :
+lemma precNat_eq (cf cg : Nat.Partrec.Code) (A : ℕ) :
     ∀ j, precNat cf cg A j =
       optNat (precEvalState cf cg A.unpair.1 A.unpair.2.unpair.1 A.unpair.2.unpair.2 j) := by
   intro j
@@ -479,7 +479,7 @@ theorem precNat_eq (cf cg : Nat.Partrec.Code) (A : ℕ) :
           simp [optNat]
 
 /-- `prec`: the fuel-decrement recursion, packaged as the guarded final value of `precNat`. -/
-theorem codeEvalnNat_prec_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
+lemma codeEvalnNat_prec_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
     codeEvalnNat (.prec cf cg) z =
       if z.unpair.2 < z.unpair.1 then precNat cf cg z z.unpair.2.unpair.2 else 0 := by
   rw [codeEvalnNat_eq_optNat, precNat_eq]
@@ -498,7 +498,7 @@ def rfindNat (cf : Nat.Partrec.Code) (A : ℕ) : ℕ → ℕ
       let cfval := codeEvalnNat cf (Nat.pair (j + 1) (Nat.pair A.unpair.2.unpair.1 m))
       if cfval = 0 then 0 else if cfval = 1 then m + 1 else rfindNat cf A j
 
-theorem rfindNat_eq (cf : Nat.Partrec.Code) (A : ℕ) :
+lemma rfindNat_eq (cf : Nat.Partrec.Code) (A : ℕ) :
     ∀ j, j ≤ A.unpair.1 →
       rfindNat cf A j =
         optNat (Nat.Partrec.Code.evaln j (.rfind' cf)
@@ -534,13 +534,13 @@ theorem rfindNat_eq (cf : Nat.Partrec.Code) (A : ℕ) :
             hM1, hIH]
 
 /-- `rfind'`: normalized bounded minimization is the final search state at `j = clock`. -/
-theorem codeEvalnNat_rfind_eq (cf : Nat.Partrec.Code) (z : ℕ) :
+lemma codeEvalnNat_rfind_eq (cf : Nat.Partrec.Code) (z : ℕ) :
     codeEvalnNat (.rfind' cf) z = rfindNat cf z z.unpair.1 := by
   rw [rfindNat_eq cf z z.unpair.1 le_rfl, codeEvalnNat_eq_optNat]
   simp only [Nat.sub_self, Nat.add_zero, Nat.pair_unpair]
 
 /-- Every `rfindNat` value is `0` or a returned search position `≤ m0 + clock`. -/
-theorem rfindNat_le (cf : Nat.Partrec.Code) (A : ℕ) :
+lemma rfindNat_le (cf : Nat.Partrec.Code) (A : ℕ) :
     ∀ j, rfindNat cf A j ≤ A.unpair.2.unpair.2 + A.unpair.1 + 1 := by
   intro j
   induction j with
@@ -558,7 +558,7 @@ attribute [local irreducible] Nat.sqrt
 /-- Compile the `prec` case: `precNat` is a primitive recursion whose base/step call the
 sub-code compilers, so `PolyFueled.prec` applies; a poly bound on the state comes from
 `codeEvalnNat_le` (each value is `0`, a `cf`-call, or a `cg`-call). -/
-theorem codeEvalnNat_prec_polyFueled {cf cg : Nat.Partrec.Code}
+lemma codeEvalnNat_prec_polyFueled {cf cg : Nat.Partrec.Code}
     (hf : ∃ prog, PolyFueled prog (codeEvalnNat cf))
     (hg : ∃ prog, PolyFueled prog (codeEvalnNat cg)) :
     ∃ prog, PolyFueled prog (codeEvalnNat (.prec cf cg)) := by
@@ -667,7 +667,7 @@ section RfindCompile
 attribute [local irreducible] Nat.sqrt
 
 /-- Compile the `rfind'` case via `PolyFueled.prec` over `rfindNat`. -/
-theorem codeEvalnNat_rfind_polyFueled {cf : Nat.Partrec.Code}
+lemma codeEvalnNat_rfind_polyFueled {cf : Nat.Partrec.Code}
     (hf : ∃ prog, PolyFueled prog (codeEvalnNat cf)) :
     ∃ prog, PolyFueled prog (codeEvalnNat (.rfind' cf)) := by
   obtain ⟨_, hf⟩ := hf
@@ -726,7 +726,7 @@ end RfindCompile
 
 /-- **Universal bounded simulator (`M7-HIST-EVALN`).** For every fixed `simulated`, the total
 normalized bounded interpreter is computable in the project polynomial-fuel model. -/
-theorem codeEvalnNat_polyFueled :
+lemma codeEvalnNat_polyFueled :
     ∀ c : Nat.Partrec.Code, ∃ prog, PolyFueled prog (codeEvalnNat c)
   | .zero =>
     (polyFueled_baseGuard (PolyFueled.const 0)).imp fun _ h =>
@@ -784,7 +784,7 @@ private def dovetailStep (c : Nat.Partrec.Code) (z j : ℕ) : Bool :=
 def dovetailFound (c : Nat.Partrec.Code) (i n : ℕ) : Bool :=
   boundedAny (dovetailStep c) (Nat.pair i n) n
 
-theorem dovetailFound_eq_true_iff (c : Nat.Partrec.Code) (i n : ℕ) :
+lemma dovetailFound_eq_true_iff (c : Nat.Partrec.Code) (i n : ℕ) :
     dovetailFound c i n = true ↔ ∃ j ≤ n, acceptsWithin c n (Nat.pair i j) = true := by
   simp [dovetailFound, boundedAny_eq_true_iff, dovetailStep]
 
@@ -795,7 +795,7 @@ section
 attribute [local irreducible] Nat.sqrt
 
 /-- Equality against a fixed natural constant as a polynomial `0`/`1` table. -/
-theorem polyFueled_eqConst {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
+lemma polyFueled_eqConst {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
     (hf : PolyFueled cf f) (K : ℕ) :
     ∃ c, PolyFueled c (fun z => if f z = K then 1 else 0) := by
   obtain ⟨cad, had⟩ := addc_polyFueled
@@ -821,7 +821,7 @@ Boolean table in `⟨i,n⟩`.
 
 This is the paper's first bullet ("`DefinitelySettled(n,m)` can be decided in time
 polynomial in `m`") discharged. -/
-theorem polyFueled_dovetailFound (c : Nat.Partrec.Code) :
+lemma polyFueled_dovetailFound (c : Nat.Partrec.Code) :
     ∃ prog, PolyFueled prog
       (fun z => if dovetailFound c z.unpair.1 z.unpair.2 then 1 else 0) := by
   obtain ⟨sim, hsim⟩ := codeEvalnNat_polyFueled c
@@ -842,7 +842,7 @@ theorem polyFueled_dovetailFound (c : Nat.Partrec.Code) :
   simp [dovetailFound, Nat.unpair_pair]
 
 /-- Select between two constants on a zero test. -/
-theorem polyFueled_selectConst {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
+lemma polyFueled_selectConst {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
     (hf : PolyFueled cf f) (A B : ℕ) :
     ∃ c, PolyFueled c (fun z => if f z = 0 then A else B) := by
   refine ⟨_, (ifzSel_polyFueled.comp
@@ -869,7 +869,7 @@ def deadlineRun (f : DeferralFunction) (n k : ℕ) : ℕ :=
   codeEvalnNat f.code (Nat.pair n k)
 
 /-- A halting clocked run of a deferral code returns exactly `f k`. -/
-theorem deadlineRun_eq (f : DeferralFunction) {n k : ℕ} (h : 0 < deadlineRun f n k) :
+lemma deadlineRun_eq (f : DeferralFunction) {n k : ℕ} (h : 0 < deadlineRun f n k) :
     deadlineRun f n k = f.f k + 1 := by
   obtain ⟨a, kk, hspec⟩ := f.fueled
   cases hev : Nat.Partrec.Code.evaln n f.code k with
@@ -882,7 +882,7 @@ theorem deadlineRun_eq (f : DeferralFunction) {n k : ℕ} (h : 0 < deadlineRun f
       simp [deadlineRun, codeEvalnNat, hev, Part.mem_unique h1 h2]
 
 /-- A halting clocked run is unchanged by a larger budget. -/
-theorem deadlineRun_mono (f : DeferralFunction) {n m k : ℕ} (hm : n ≤ m)
+lemma deadlineRun_mono (f : DeferralFunction) {n m k : ℕ} (hm : n ≤ m)
     (h : 0 < deadlineRun f n k) : deadlineRun f m k = deadlineRun f n k := by
   cases hev : Nat.Partrec.Code.evaln n f.code k with
   | none => simp [deadlineRun, codeEvalnNat, hev] at h
@@ -900,7 +900,7 @@ def deadlineStep (f : DeferralFunction) (z k : ℕ) : Bool :=
 def deadlinePassed (f : DeferralFunction) (i n : ℕ) : Bool :=
   boundedNone (deadlineStep f) (Nat.pair i n) i
 
-theorem deadlinePassed_eq_true_iff (f : DeferralFunction) (i n : ℕ) :
+lemma deadlinePassed_eq_true_iff (f : DeferralFunction) (i n : ℕ) :
     deadlinePassed f i n = true ↔
       ∀ k ≤ i, 0 < deadlineRun f n k ∧ deadlineRun f n k ≤ n := by
   rw [deadlinePassed, boundedNone_eq_true_iff]
@@ -909,7 +909,7 @@ theorem deadlinePassed_eq_true_iff (f : DeferralFunction) (i n : ℕ) :
   · intro h k hk; have := h k hk; omega
   · intro h k hk; have := h k hk; omega
 
-theorem deferralEnvelope_lt_of_forall (f : DeferralFunction) (i n : ℕ)
+lemma deferralEnvelope_lt_of_forall (f : DeferralFunction) (i n : ℕ)
     (h : ∀ k ≤ i, f.f k < n) : deferralEnvelope f i < n := by
   induction i with
   | zero => simpa [deferralEnvelope] using h 0 le_rfl
@@ -918,7 +918,7 @@ theorem deferralEnvelope_lt_of_forall (f : DeferralFunction) (i n : ℕ)
       exact ⟨ih (fun k hk => h k (by omega)), h (i + 1) le_rfl⟩
 
 /-- **Soundness**: certification implies the deadline really has passed. -/
-theorem deadlinePassed_sound (f : DeferralFunction) {i n : ℕ}
+lemma deadlinePassed_sound (f : DeferralFunction) {i n : ℕ}
     (h : deadlinePassed f i n = true) : deferralEnvelope f i < n := by
   refine deferralEnvelope_lt_of_forall f i n (fun k hk => ?_)
   obtain ⟨hpos, hle⟩ := (deadlinePassed_eq_true_iff f i n).1 h k hk
@@ -926,7 +926,7 @@ theorem deadlinePassed_sound (f : DeferralFunction) {i n : ℕ}
   omega
 
 /-- **Monotone**: a larger budget preserves certification. -/
-theorem deadlinePassed_mono (f : DeferralFunction) {i n : ℕ}
+lemma deadlinePassed_mono (f : DeferralFunction) {i n : ℕ}
     (h : deadlinePassed f i n = true) : deadlinePassed f i (n + 1) = true := by
   rw [deadlinePassed_eq_true_iff] at h ⊢
   intro k hk
@@ -935,7 +935,7 @@ theorem deadlinePassed_mono (f : DeferralFunction) {i n : ℕ}
   exact ⟨hpos, by omega⟩
 
 /-- **Eventual completion**: every component's deadline is eventually certified. -/
-theorem deadlinePassed_eventually (f : DeferralFunction) (i : ℕ) :
+lemma deadlinePassed_eventually (f : DeferralFunction) (i : ℕ) :
     ∃ N, ∀ n, N ≤ n → deadlinePassed f i n = true := by
   obtain ⟨a, kk, hspec⟩ := f.fueled
   refine ⟨(Finset.range (i + 1)).sup
@@ -953,7 +953,7 @@ theorem deadlinePassed_eventually (f : DeferralFunction) (i : ℕ) :
   omega
 
 /-- The deadline under-approximation is a polynomial Boolean table. -/
-theorem polyFueled_deadlinePassed (f : DeferralFunction) :
+lemma polyFueled_deadlinePassed (f : DeferralFunction) :
     ∃ prog, PolyFueled prog
       (fun z => if deadlinePassed f z.unpair.1 z.unpair.2 then 1 else 0) := by
   obtain ⟨sim, hsim⟩ := codeEvalnNat_polyFueled f.code
@@ -998,7 +998,7 @@ settlement.  That is isolated as `SettlementSemiDecider` — a pure computabilit
 obligation with no market, economic or limit content — and the clock is constructed from
 it.  The remaining M7 work for `M7-PATIENT-CLOCK` is exactly to inhabit that structure. -/
 
-theorem acceptsWithin_mono (c : Nat.Partrec.Code) {F F' x : ℕ} (h : F ≤ F')
+lemma acceptsWithin_mono (c : Nat.Partrec.Code) {F F' x : ℕ} (h : F ≤ F')
     (ha : acceptsWithin c F x = true) : acceptsWithin c F' x = true := by
   cases hev : Nat.Partrec.Code.evaln F c x with
   | none => simp [acceptsWithin, codeEvalnNat, hev] at ha
@@ -1008,7 +1008,7 @@ theorem acceptsWithin_mono (c : Nat.Partrec.Code) {F F' x : ℕ} (h : F ≤ F')
       simp only [acceptsWithin, codeEvalnNat, Nat.unpair_pair, hev, decide_eq_true_iff] at ha
       simp [acceptsWithin, codeEvalnNat, hm, ha]
 
-theorem dovetailFound_mono (c : Nat.Partrec.Code) {i n : ℕ}
+lemma dovetailFound_mono (c : Nat.Partrec.Code) {i n : ℕ}
     (h : dovetailFound c i n = true) : dovetailFound c i (n + 1) = true := by
   rw [dovetailFound_eq_true_iff] at h ⊢
   obtain ⟨j, hj, ha⟩ := h
@@ -1031,7 +1031,7 @@ structure SettlementSemiDecider (As : ℕ → AffineCombination) (P : History)
       (As i).value P v.payout = truth i) →
     ∃ F, acceptsWithin code F (Nat.pair i j) = true
 
-private theorem orNot_eq_false_iff (a b : Bool) :
+private lemma orNot_eq_false_iff (a b : Bool) :
     ((!a) || (!b)) = false ↔ a = true ∧ b = true := by
   cases a <;> cases b <;> simp
 
@@ -1165,14 +1165,14 @@ coordinate is pure padding, so every source index occurs arbitrarily late. -/
 def triangularRepeat (source : ℕ → Sentence) (n : ℕ) : Sentence :=
   source n.unpair.1
 
-theorem triangularRepeat_codes (source : ℕ → Sentence)
+lemma triangularRepeat_codes (source : ℕ → Sentence)
     (hsource : PolySentenceCodes source) :
     PolySentenceCodes (triangularRepeat source) := by
   obtain ⟨code, hcode⟩ := hsource
   exact ⟨code.comp Nat.Partrec.Code.left,
     hcode.comp PolyFueled.left⟩
 
-theorem triangularRepeat_repeats (source : ℕ → Sentence) :
+lemma triangularRepeat_repeats (source : ℕ → Sentence) :
     RepeatsEveryMember (triangularRepeat source) := by
   intro i N
   refine ⟨Nat.pair i.unpair.1 N, Nat.right_le_pair _ _, ?_⟩
@@ -1201,7 +1201,7 @@ on `⟨i, fuel⟩` we run the enumerator on `i` for `fuel` steps (the bounded in
 itself is. -/
 
 /-- The result at fuel `fuel` is stable under larger fuel (bounded interpreter monotonicity). -/
-theorem codeEvalnNat_pair_mono {code : Nat.Partrec.Code} {i fuel fuel' v : ℕ}
+lemma codeEvalnNat_pair_mono {code : Nat.Partrec.Code} {i fuel fuel' v : ℕ}
     (hle : fuel ≤ fuel')
     (hv : codeEvalnNat code (Nat.pair fuel i) = v + 1) :
     codeEvalnNat code (Nat.pair fuel' i) = v + 1 := by
@@ -1230,14 +1230,14 @@ noncomputable def ceRepeatSeq {source : ℕ → Sentence} (h : CEEnumeration sou
   let r := codeEvalnNat h.code (Nat.pair n.unpair.2 n.unpair.1)
   if r = 0 then source 0 else (Encodable.decode (r - 1)).getD (source 0)
 
-theorem ceRepeatSeq_eq_source {source : ℕ → Sentence} (h : CEEnumeration source)
+lemma ceRepeatSeq_eq_source {source : ℕ → Sentence} (h : CEEnumeration source)
     {n i : ℕ} (hr : codeEvalnNat h.code (Nat.pair n.unpair.2 n.unpair.1)
       = Encodable.encode (source i) + 1) :
     ceRepeatSeq h n = source i := by
   simp only [ceRepeatSeq, hr, Nat.add_sub_cancel, Encodable.encodek, Option.getD_some,
     Nat.add_one_ne_zero, if_false]
 
-theorem ceRepeatSeq_encode {source : ℕ → Sentence} (h : CEEnumeration source) (n : ℕ) :
+lemma ceRepeatSeq_encode {source : ℕ → Sentence} (h : CEEnumeration source) (n : ℕ) :
     Encodable.encode (ceRepeatSeq h n) =
       if codeEvalnNat h.code (Nat.pair n.unpair.2 n.unpair.1) = 0 then
         Encodable.encode (source 0)
@@ -1247,7 +1247,7 @@ theorem ceRepeatSeq_encode {source : ℕ → Sentence} (h : CEEnumeration source
   · obtain ⟨i, hi⟩ := h.outputs_sound _ hz
     rw [ceRepeatSeq_eq_source h hi, if_neg hz, hi, Nat.add_sub_cancel]
 
-theorem ceRepeatSeq_codes {source : ℕ → Sentence} (h : CEEnumeration source) :
+lemma ceRepeatSeq_codes {source : ℕ → Sentence} (h : CEEnumeration source) :
     PolySentenceCodes (ceRepeatSeq h) := by
   obtain ⟨prog, hprog⟩ := codeEvalnNat_polyFueled h.code
   have rP := hprog.comp (PolyFueled.right.pair PolyFueled.left)
@@ -1324,7 +1324,7 @@ private def atomBoundBinary (prior : List ℕ) (children : ℕ) : ℕ :=
   if left = 0 ∨ right = 0 then 0
   else max (left - 1) (right - 1) + 1
 
-private theorem atomBoundBinary_prim : Primrec₂ atomBoundBinary := by
+private lemma atomBoundBinary_prim : Primrec₂ atomBoundBinary := by
   let childLeft : List ℕ × ℕ → ℕ := fun p => p.1.getD p.2.unpair.1 0
   let childRight : List ℕ × ℕ → ℕ := fun p => p.1.getD p.2.unpair.2 0
   have hleft : Primrec childLeft :=
@@ -1357,7 +1357,7 @@ private def atomBoundSucc (prior : List ℕ) (e : ℕ) : ℕ :=
   else if tag = 4 then atomBoundBinary prior payload
   else 0
 
-private theorem atomBoundSucc_prim : Primrec₂ atomBoundSucc := by
+private lemma atomBoundSucc_prim : Primrec₂ atomBoundSucc := by
   let tag : List ℕ × ℕ → ℕ := fun p => p.2.unpair.1
   let payload : List ℕ × ℕ → ℕ := fun p => p.2.unpair.2
   have htag : Primrec tag := Primrec.fst.comp (Primrec.unpair.comp Primrec.snd)
@@ -1378,21 +1378,21 @@ private theorem atomBoundSucc_prim : Primrec₂ atomBoundSucc := by
 private def atomBoundList (prior : List ℕ) : ℕ :=
   prior.length.casesOn 0 (atomBoundSucc prior)
 
-private theorem atomBoundList_prim : Primrec atomBoundList :=
+private lemma atomBoundList_prim : Primrec atomBoundList :=
   (Primrec.nat_casesOn Primrec.list_length (Primrec.const 0)
     atomBoundSucc_prim).of_eq fun prior => by simp only [atomBoundList]
 
-private theorem atomBoundNorm_zero : atomBoundNorm 0 = 0 := by
+private lemma atomBoundNorm_zero : atomBoundNorm 0 = 0 := by
   simp [atomBoundNorm, LO.Propositional.Formula.ofNat]
 
-private theorem atomBoundHistory_getD {n k : ℕ} (hk : k < n) :
+private lemma atomBoundHistory_getD {n k : ℕ} (hk : k < n) :
     ((List.range n).map atomBoundNorm).getD k 0 = atomBoundNorm k := by
   rw [← atomBoundNorm_zero, List.getD_map]
   simp [hk]
 
 /-- The binary step reads both children out of the history correctly.  Shared by all three
 connectives: `atomBound` maxes its children regardless of which one it is. -/
-private theorem atomBoundBinary_history (payload n : ℕ)
+private lemma atomBoundBinary_history (payload n : ℕ)
     (hleft : payload.unpair.1 < n) (hright : payload.unpair.2 < n) :
     atomBoundBinary ((List.range n).map atomBoundNorm) payload =
       match (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.1 : Option Sentence),
@@ -1407,7 +1407,7 @@ private theorem atomBoundBinary_history (payload n : ℕ)
       payload.unpair.2 : Option Sentence) <;>
     simp [atomBoundNorm, hL, hR]
 
-private theorem atomBoundList_history (n : ℕ) :
+private lemma atomBoundList_history (n : ℕ) :
     atomBoundList ((List.range n).map atomBoundNorm) = atomBoundNorm n := by
   cases n with
   | zero => simp [atomBoundList, atomBoundNorm, LO.Propositional.Formula.ofNat]
@@ -1460,7 +1460,7 @@ private theorem atomBoundList_history (n : ℕ) :
         simp [atomBoundList, atomBoundSucc, atomBoundNorm,
           LO.Propositional.Formula.ofNat, h0, h1, h2, h3, h4]
 
-private theorem atomBoundNorm_prim : Primrec atomBoundNorm := by
+private lemma atomBoundNorm_prim : Primrec atomBoundNorm := by
   have hstep : Primrec₂ (fun (_ : Unit) (prior : List ℕ) =>
       some (atomBoundList prior)) :=
     Primrec₂.option_some_iff.mpr (atomBoundList_prim.comp Primrec₂.right)
@@ -1470,7 +1470,7 @@ private theorem atomBoundNorm_prim : Primrec atomBoundNorm := by
 
 /-- **`atomBound` is primitive recursive.**  The first of the two `Sentence` recursions the
 settlement test needs; `evalBits_prim` below is the other. -/
-theorem atomBound_prim : Primrec BoolPCWorld.atomBound := by
+lemma atomBound_prim : Primrec BoolPCWorld.atomBound := by
   have h : Primrec fun φ : Sentence => atomBoundNorm (Encodable.encode φ) - 1 :=
     Primrec.nat_sub.comp (atomBoundNorm_prim.comp Primrec.encode) (Primrec.const 1)
   exact h.of_eq fun φ => by
@@ -1510,7 +1510,7 @@ private def evalBinary (tag : ℕ) (prior : List ℕ) (children : ℕ) : ℕ :=
   if left = 0 ∨ right = 0 then 0
   else if evalOp tag (decide (left = 2)) (decide (right = 2)) then 2 else 1
 
-private theorem evalBinary_prim (tag : ℕ) : Primrec₂ (evalBinary tag) := by
+private lemma evalBinary_prim (tag : ℕ) : Primrec₂ (evalBinary tag) := by
   let childLeft : List ℕ × ℕ → ℕ := fun p => p.1.getD p.2.unpair.1 0
   let childRight : List ℕ × ℕ → ℕ := fun p => p.1.getD p.2.unpair.2 0
   have hleft : Primrec childLeft :=
@@ -1550,7 +1550,7 @@ private def evalSucc (l : List Bool) (prior : List ℕ) (e : ℕ) : ℕ :=
   else if tag = 4 then evalBinary 4 prior payload
   else 0
 
-private theorem evalSucc_prim :
+private lemma evalSucc_prim :
     Primrec fun p : List Bool × List ℕ × ℕ => evalSucc p.1 p.2.1 p.2.2 := by
   let tag : List Bool × List ℕ × ℕ → ℕ := fun p => p.2.2.unpair.1
   let payload : List Bool × List ℕ × ℕ → ℕ := fun p => p.2.2.unpair.2
@@ -1586,7 +1586,7 @@ private theorem evalSucc_prim :
 private def evalList (l : List Bool) (prior : List ℕ) : ℕ :=
   prior.length.casesOn 0 (evalSucc l prior)
 
-private theorem evalList_prim :
+private lemma evalList_prim :
     Primrec fun p : List Bool × List ℕ => evalList p.1 p.2 := by
   have h := Primrec.nat_casesOn (Primrec.list_length.comp Primrec.snd)
     (Primrec.const 0)
@@ -1595,15 +1595,15 @@ private theorem evalList_prim :
         ((Primrec.snd.comp Primrec.fst).pair Primrec.snd))).to₂
   exact h.of_eq fun p => by simp only [evalList]
 
-private theorem evalNorm_zero (l : List Bool) : evalNorm l 0 = 0 := by
+private lemma evalNorm_zero (l : List Bool) : evalNorm l 0 = 0 := by
   simp [evalNorm, LO.Propositional.Formula.ofNat]
 
-private theorem evalHistory_getD (l : List Bool) {n k : ℕ} (hk : k < n) :
+private lemma evalHistory_getD (l : List Bool) {n k : ℕ} (hk : k < n) :
     ((List.range n).map (evalNorm l)).getD k 0 = evalNorm l k := by
   rw [← evalNorm_zero l, List.getD_map]
   simp [hk]
 
-private theorem evalBinary_history (tag : ℕ) (l : List Bool) (payload n : ℕ)
+private lemma evalBinary_history (tag : ℕ) (l : List Bool) (payload n : ℕ)
     (hleft : payload.unpair.1 < n) (hright : payload.unpair.2 < n) :
     evalBinary tag ((List.range n).map (evalNorm l)) payload =
       match (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.1 : Option Sentence),
@@ -1624,7 +1624,7 @@ private theorem evalBinary_history (tag : ℕ) (l : List Bool) (payload n : ℕ)
         cases BoolPCWorld.eval (BoolPCWorld.bitsWorld l) _ <;> simp)] <;>
     simp
 
-private theorem evalList_history (l : List Bool) (n : ℕ) :
+private lemma evalList_history (l : List Bool) (n : ℕ) :
     evalList l ((List.range n).map (evalNorm l)) = evalNorm l n := by
   cases n with
   | zero => simp [evalList, evalNorm, LO.Propositional.Formula.ofNat]
@@ -1673,7 +1673,7 @@ private theorem evalList_history (l : List Bool) (n : ℕ) :
         simp [evalList, evalSucc, evalNorm,
           LO.Propositional.Formula.ofNat, h0, h1, h2, h3, h4]
 
-private theorem evalNorm_prim : Primrec₂ evalNorm := by
+private lemma evalNorm_prim : Primrec₂ evalNorm := by
   have hstep : Primrec₂ (fun (l : List Bool) (prior : List ℕ) =>
       some (evalList l prior)) :=
     Primrec₂.option_some_iff.mpr evalList_prim.to₂
@@ -1684,7 +1684,7 @@ private theorem evalNorm_prim : Primrec₂ evalNorm := by
 and the sentence.  The world never appears as an argument — `bitsWorld` is applied and
 beta-reduced in place — which is what makes the statement well-typed at all: `BoolPCWorld`
 is `ℕ → Bool` and has no `Primcodable` instance. -/
-theorem evalBits_prim : Primrec₂ fun (l : List Bool) (φ : Sentence) =>
+lemma evalBits_prim : Primrec₂ fun (l : List Bool) (φ : Sentence) =>
     BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ := by
   have h : Primrec fun p : List Bool × Sentence =>
       decide (evalNorm p.1 (Encodable.encode p.2) = 2) :=
@@ -1708,17 +1708,17 @@ None of this is semantic: `mem_stageSort` pins `stageSatBits` to `∀ φ ∈ sta
 of the order, so the choice buys compilability only. -/
 
 /-- A stage's Gödel code is exactly the code of its sorted sentence list. -/
-theorem encode_eq_encode_stageSort (stage : Finset Sentence) :
+lemma encode_eq_encode_stageSort (stage : Finset Sentence) :
     Encodable.encode stage = Encodable.encode (stageSort stage) := rfl
 
-theorem stageSort_prim : Primrec stageSort := by
+lemma stageSort_prim : Primrec stageSort := by
   have h : Primrec fun stage : Finset Sentence =>
       (Encodable.decode (α := List Sentence) (Encodable.encode stage)).getD [] :=
     Primrec.option_getD.comp (Primrec.decode.comp Primrec.encode) (Primrec.const [])
   exact h.of_eq fun stage => by
     rw [encode_eq_encode_stageSort, Encodable.encodek, Option.getD_some]
 
-private theorem list_all_eq_foldr {α : Type} (l : List α) (p : α → Bool) :
+private lemma list_all_eq_foldr {α : Type} (l : List α) (p : α → Bool) :
     l.all p = l.foldr (fun a r => p a && r) true := by
   induction l with
   | nil => rfl
@@ -1726,7 +1726,7 @@ private theorem list_all_eq_foldr {α : Type} (l : List α) (p : α → Bool) :
 
 /-- **The stage quantifier is primitive recursive.**  Closes `evalBits_prim` over the
 stage's sentence list. -/
-theorem stageSatBits_prim : Primrec₂ stageSatBits := by
+lemma stageSatBits_prim : Primrec₂ stageSatBits := by
   have hstep : Primrec₂ fun (p : Finset Sentence × List Bool) (x : Sentence × Bool) =>
       BoolPCWorld.eval (BoolPCWorld.bitsWorld p.2) x.1 && x.2 :=
     (Primrec.and.comp
@@ -1743,7 +1743,7 @@ theorem stageSatBits_prim : Primrec₂ stageSatBits := by
 
 /-- **The bit-list enumeration is primitive recursive.**  A plain `Nat.rec` — this is the
 one leaf that needed no `Sentence` machinery at all. -/
-theorem allBitLists_prim : Primrec allBitLists := by
+lemma allBitLists_prim : Primrec allBitLists := by
   have hstep : Primrec₂ fun (_ : ℕ) (prev : List (List Bool)) =>
       prev.flatMap (fun l => [false :: l, true :: l]) := by
     have hg : Primrec₂ fun (_ : ℕ × List (List Bool)) (l : List Bool) =>
@@ -1775,12 +1775,12 @@ def affineEquiv : AffineCombination ≃ EF × List (EF × Sentence) where
 instance affineCombinationPrimcodable : Primcodable AffineCombination :=
   Primcodable.ofEquiv _ affineEquiv
 
-theorem affineEquiv_prim : Primrec affineEquiv := Primrec.of_equiv
+lemma affineEquiv_prim : Primrec affineEquiv := Primrec.of_equiv
 
-theorem affineConst_prim : Primrec AffineCombination.const :=
+lemma affineConst_prim : Primrec AffineCombination.const :=
   Primrec.fst.comp affineEquiv_prim
 
-theorem affineTerms_prim : Primrec AffineCombination.terms :=
+lemma affineTerms_prim : Primrec AffineCombination.terms :=
   Primrec.snd.comp affineEquiv_prim
 
 /-! ### Polynomial affine sequences are primitive recursive
@@ -1800,7 +1800,7 @@ def efFromSerializedTokens (tokens : List ℕ) : EF :=
   | some ((e, _) :: _) => e
   | _ => EF.const 0
 
-theorem efFromSerializedTokens_prim : Primrec efFromSerializedTokens := by
+lemma efFromSerializedTokens_prim : Primrec efFromSerializedTokens := by
   have hframe : Primrec fun tokens : List ℕ =>
       tokens ++ [6, Encodable.encode serializationMarkerSentence] :=
     Primrec.list_append.comp Primrec.id
@@ -1823,7 +1823,7 @@ theorem efFromSerializedTokens_prim : Primrec efFromSerializedTokens := by
       | none => rfl
       | some trades => cases trades <;> rfl
 
-theorem efFromSerializedTokens_serialize (e : EF) :
+lemma efFromSerializedTokens_serialize (e : EF) :
     efFromSerializedTokens e.serialize = e := by
   unfold efFromSerializedTokens
   rw [show e.serialize ++ [6, Encodable.encode serializationMarkerSentence] =
@@ -1834,7 +1834,7 @@ theorem efFromSerializedTokens_serialize (e : EF) :
 /-- The operational polynomial interface on an affine family entails ordinary primitive
 recursiveness of the family.  This closes the representation bridge needed by concrete
 settlement and maturity checkers. -/
-theorem AffineCombination.PolySequence.primrec {As : ℕ → AffineCombination}
+lemma AffineCombination.PolySequence.primrec {As : ℕ → AffineCombination}
     (h : PolySequence As) : Primrec As := by
   have hcount : Primrec h.termCount := by
     obtain ⟨c, hc⟩ := h.termCount_poly
@@ -1876,14 +1876,14 @@ theorem AffineCombination.PolySequence.primrec {As : ℕ → AffineCombination}
 
 /-- A `Finset` sum is the sum over `stageSort`: `Finset.sort_eq` says the sorted list is a
 list representation of the underlying multiset, so no reordering argument is needed. -/
-theorem finset_sum_eq_stageSort_sum (stage : Finset Sentence) (f : Sentence → ℕ) :
+lemma finset_sum_eq_stageSort_sum (stage : Finset Sentence) (f : Sentence → ℕ) :
     stage.sum f = ((stageSort stage).map f).sum := by
   have h : (stageSort stage : Multiset Sentence) = stage.val := Finset.sort_eq _ _
   rw [Finset.sum_eq_multiset_sum, ← h]
   simp
 
 /-- `settlementAtomLimit` over the sorted stage list rather than the `Finset`. -/
-theorem settlementAtomLimit_eq_stageSort (A : AffineCombination) (stage : Finset Sentence) :
+lemma settlementAtomLimit_eq_stageSort (A : AffineCombination) (stage : Finset Sentence) :
     A.settlementAtomLimit stage =
       ((stageSort stage).map BoolPCWorld.atomBound).sum +
         (A.terms.map (fun p => BoolPCWorld.atomBound p.2)).sum := by
@@ -1891,7 +1891,7 @@ theorem settlementAtomLimit_eq_stageSort (A : AffineCombination) (stage : Finset
     finset_sum_eq_stageSort_sum stage BoolPCWorld.atomBound]
 
 /-- Mathlib's `Primrec` API has no `list_sum`; `List.sum` is a `foldr`. -/
-private theorem list_sum_prim : Primrec (fun l : List ℕ => l.sum) := by
+private lemma list_sum_prim : Primrec (fun l : List ℕ => l.sum) := by
   have h := Primrec.list_foldr (f := fun l : List ℕ => l) (g := fun _ : List ℕ => 0)
     Primrec.id (Primrec.const 0)
     (Primrec.nat_add.comp (Primrec.fst.comp Primrec.snd)
@@ -1902,7 +1902,7 @@ private theorem list_sum_prim : Primrec (fun l : List ℕ => l.sum) := by
     | cons a t ih => simp [List.sum_cons, ← ih]
 
 /-- **The support bound is primitive recursive.** -/
-theorem settlementAtomLimit_prim :
+lemma settlementAtomLimit_prim :
     Primrec₂ AffineCombination.settlementAtomLimit := by
   have hstage : Primrec fun p : AffineCombination × Finset Sentence =>
       ((stageSort p.2).map BoolPCWorld.atomBound).sum :=
@@ -1943,7 +1943,7 @@ could spuriously agree at `0` and certify a false settlement test.  This is why
 `efPriceQueries_prim` (`LIACompiler.lean`) is load-bearing, not bookkeeping. -/
 
 /-- Congruence: `denoteRatWith` depends on the price table only at its own price queries. -/
-theorem EF.denoteRatWith_congr (e : EF) (ρ : List ℚ) (V₁ V₂ : ℕ → Sentence → ℚ)
+lemma EF.denoteRatWith_congr (e : EF) (ρ : List ℚ) (V₁ V₂ : ℕ → Sentence → ℚ)
     (h : ∀ q ∈ e.priceQueries, V₁ q.1 q.2 = V₂ q.1 q.2) :
     e.denoteRatWith ρ V₁ = e.denoteRatWith ρ V₂ := by
   induction e generalizing ρ with
@@ -1980,7 +1980,7 @@ theorem EF.denoteRatWith_congr (e : EF) (ρ : List ℚ) (V₁ V₂ : ℕ → Sen
       rw [hbody, hvalue]
 
 /-- Success of bounded evaluation implies every price query terminated at that clock. -/
-theorem EF.denoteRatWithAtFuel_isSome_of_some {P : History}
+lemma EF.denoteRatWithAtFuel_isSome_of_some {P : History}
     (market : MarketComputation P) (fuel : ℕ) (e : EF) (ρ : List ℚ) {q : ℚ}
     (h : e.denoteRatWithAtFuel market fuel ρ = some q) :
     ∀ query ∈ e.priceQueries, (market.quoteAtFuel fuel query.1 query.2).isSome := by
@@ -2063,7 +2063,7 @@ def MarketComputation.denoteRatComp {P : History} (market : MarketComputation P)
 
 /-- **The bridge.**  The gated total machine computes exactly the partial bounded semantics
 (at `ρ = []`). -/
-theorem MarketComputation.denoteRatComp_eq {P : History} (market : MarketComputation P)
+lemma MarketComputation.denoteRatComp_eq {P : History} (market : MarketComputation P)
     (fuel : ℕ) (e : EF) :
     market.denoteRatComp fuel e = e.denoteRatWithAtFuel market fuel [] := by
   unfold MarketComputation.denoteRatComp
@@ -2096,7 +2096,7 @@ theorem MarketComputation.denoteRatComp_eq {P : History} (market : MarketComputa
           e.denoteRatWithAtFuel_isSome_of_some market fuel [] hd query hq) hready
 
 /-- `readyAtFuel` is primitive recursive in `(fuel, e)` for a fixed market. -/
-theorem MarketComputation.readyAtFuel_prim {P : History} (market : MarketComputation P) :
+lemma MarketComputation.readyAtFuel_prim {P : History} (market : MarketComputation P) :
     Primrec₂ fun fuel e => market.readyAtFuel fuel e := by
   have hstep : Primrec₂ fun (p : ℕ × EF) (x : (ℕ × Sentence) × Bool) =>
       (market.quoteAtFuel p.1 x.1.1 x.1.2).isSome && x.2 :=
@@ -2113,7 +2113,7 @@ theorem MarketComputation.readyAtFuel_prim {P : History} (market : MarketComputa
     simp only [MarketComputation.readyAtFuel, list_all_eq_foldr]
 
 /-- `denoteRatComp` is primitive recursive in `(fuel, e)` for a fixed market. -/
-theorem MarketComputation.denoteRatComp_prim {P : History} (market : MarketComputation P) :
+lemma MarketComputation.denoteRatComp_prim {P : History} (market : MarketComputation P) :
     Primrec₂ fun fuel e => market.denoteRatComp fuel e := by
   have hV : Primrec fun p : ℕ × (ℕ × Sentence) =>
       market.totalQuote p.1 p.2.1 p.2.2 :=
@@ -2148,7 +2148,7 @@ def AffineCombination.valueRatAtFuel (A : AffineCombination)
   let ts ← affineTermsRatAtFuel market fuel w A.terms
   pure (c + ts)
 
-theorem affineTermsRatAtFuel_sound {P : History} (market : MarketComputation P)
+lemma affineTermsRatAtFuel_sound {P : History} (market : MarketComputation P)
     (fuel : ℕ) (w : Sentence → ℚ) (terms : List (EF × Sentence)) {q : ℚ}
     (h : affineTermsRatAtFuel market fuel w terms = some q) :
     q = (terms.map (fun p =>
@@ -2168,7 +2168,7 @@ theorem affineTermsRatAtFuel_sound {P : History} (market : MarketComputation P)
       rw [p.1.denoteRatWithAtFuel_sound market fuel [] hcoefficient, ih htail]
       rfl
 
-theorem affineTermsRatAtFuel_mono {P : History} (market : MarketComputation P)
+lemma affineTermsRatAtFuel_mono {P : History} (market : MarketComputation P)
     {fuel fuel' : ℕ} (w : Sentence → ℚ) (terms : List (EF × Sentence)) {q : ℚ}
     (hff : fuel ≤ fuel')
     (h : affineTermsRatAtFuel market fuel w terms = some q) :
@@ -2184,7 +2184,7 @@ theorem affineTermsRatAtFuel_mono {P : History} (market : MarketComputation P)
       rw [p.1.denoteRatWithAtFuel_mono market [] hff hcoefficient, Option.bind_eq_some_iff]
       exact ⟨coefficient, rfl, by rw [ih htail, Option.bind_eq_some_iff]; exact ⟨tail, rfl, hq⟩⟩
 
-theorem exists_fuel_affineTermsRatAtFuel {P : History} (market : MarketComputation P)
+lemma exists_fuel_affineTermsRatAtFuel {P : History} (market : MarketComputation P)
     (w : Sentence → ℚ) (terms : List (EF × Sentence)) :
     ∃ fuel, affineTermsRatAtFuel market fuel w terms = some ((terms.map (fun p =>
       p.1.denoteRat (fun d φ => market.quote d (Encodable.encode φ)) * w p.2)).sum) := by
@@ -2202,7 +2202,7 @@ theorem exists_fuel_affineTermsRatAtFuel {P : History} (market : MarketComputati
         Option.bind_eq_some_iff]
       exact ⟨_, rfl, by simp [EF.denoteRat]⟩
 
-theorem AffineCombination.valueRatAtFuel_sound (A : AffineCombination) {P : History}
+lemma AffineCombination.valueRatAtFuel_sound (A : AffineCombination) {P : History}
     (market : MarketComputation P) (fuel : ℕ) (w : Sentence → ℚ) {q : ℚ}
     (h : A.valueRatAtFuel market fuel w = some q) :
     q = A.valueRat (fun d φ => market.quote d (Encodable.encode φ)) w := by
@@ -2218,7 +2218,7 @@ theorem AffineCombination.valueRatAtFuel_sound (A : AffineCombination) {P : Hist
     A.const.denoteRatWithAtFuel_sound market fuel [] hc,
     affineTermsRatAtFuel_sound market fuel w A.terms hts]
 
-theorem AffineCombination.valueRatAtFuel_mono (A : AffineCombination) {P : History}
+lemma AffineCombination.valueRatAtFuel_mono (A : AffineCombination) {P : History}
     (market : MarketComputation P) {fuel fuel' : ℕ} (w : Sentence → ℚ) {q : ℚ}
     (hff : fuel ≤ fuel') (h : A.valueRatAtFuel market fuel w = some q) :
     A.valueRatAtFuel market fuel' w = some q := by
@@ -2232,7 +2232,7 @@ theorem AffineCombination.valueRatAtFuel_mono (A : AffineCombination) {P : Histo
     rw [affineTermsRatAtFuel_mono market w A.terms hff hts, Option.bind_eq_some_iff]
     exact ⟨ts, rfl, hq⟩⟩
 
-theorem AffineCombination.exists_fuel_valueRatAtFuel (A : AffineCombination) {P : History}
+lemma AffineCombination.exists_fuel_valueRatAtFuel (A : AffineCombination) {P : History}
     (market : MarketComputation P) (w : Sentence → ℚ) :
     ∃ fuel, A.valueRatAtFuel market fuel w =
       some (A.valueRat (fun d φ => market.quote d (Encodable.encode φ)) w) := by
@@ -2248,7 +2248,7 @@ theorem AffineCombination.exists_fuel_valueRatAtFuel (A : AffineCombination) {P 
   exact ⟨_, rfl, by simp [AffineCombination.valueRat, EF.denoteRat]⟩
 
 /-- A single fuel serving finitely many payout tables at once. -/
-theorem AffineCombination.exists_fuel_valueRatAtFuel_list (A : AffineCombination)
+lemma AffineCombination.exists_fuel_valueRatAtFuel_list (A : AffineCombination)
     {P : History} (market : MarketComputation P) (ws : List (Sentence → ℚ)) :
     ∃ fuel, ∀ w ∈ ws, A.valueRatAtFuel market fuel w =
       some (A.valueRat (fun d φ => market.quote d (Encodable.encode φ)) w) := by
@@ -2269,7 +2269,7 @@ enumerated worlds `l`.  These recast that quantity through the computable `denot
 (so the whole check is primitive recursive), with a proved equality back to the original. -/
 
 /-- `bitsPayoutRat` is primitive recursive. -/
-theorem bitsPayoutRat_prim :
+lemma bitsPayoutRat_prim :
     Primrec₂ fun (l : List Bool) (φ : Sentence) => BoolPCWorld.bitsPayoutRat l φ := by
   have heval : PrimrecPred fun p : List Bool × Sentence =>
       BoolPCWorld.eval (BoolPCWorld.bitsWorld p.1) p.2 = true :=
@@ -2285,7 +2285,7 @@ def affineTermsRatComp {P : History} (market : MarketComputation P) (fuel : ℕ)
     (market.denoteRatComp fuel p.1).bind fun cf =>
       acc.map fun t => cf * BoolPCWorld.bitsPayoutRat l p.2 + t) (some 0)
 
-theorem affineTermsRatComp_eq {P : History} (market : MarketComputation P) (fuel : ℕ)
+lemma affineTermsRatComp_eq {P : History} (market : MarketComputation P) (fuel : ℕ)
     (l : List Bool) (terms : List (EF × Sentence)) :
     affineTermsRatComp market fuel l terms =
       affineTermsRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l) terms := by
@@ -2305,7 +2305,7 @@ def valueRatCompAt {P : History} (A : AffineCombination) (market : MarketComputa
   (market.denoteRatComp fuel A.const).bind fun c =>
     (affineTermsRatComp market fuel l A.terms).map fun ts => c + ts
 
-theorem valueRatCompAt_eq {P : History} (A : AffineCombination)
+lemma valueRatCompAt_eq {P : History} (A : AffineCombination)
     (market : MarketComputation P) (fuel : ℕ) (l : List Bool) :
     valueRatCompAt A market fuel l =
       A.valueRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l) := by
@@ -2320,7 +2320,7 @@ section
 attribute [local irreducible] Nat.sqrt
 
 /-- The affine term fold is primitive recursive in `((A, fuel), l)`. -/
-theorem affineTermsRatComp_prim {P : History} (market : MarketComputation P) :
+lemma affineTermsRatComp_prim {P : History} (market : MarketComputation P) :
     Primrec fun q : (AffineCombination × ℕ) × List Bool =>
       affineTermsRatComp market q.1.2 q.2 q.1.1.terms := by
   have hcf : Primrec fun z : ((AffineCombination × ℕ) × List Bool) ×
@@ -2351,7 +2351,7 @@ theorem affineTermsRatComp_prim {P : History} (market : MarketComputation P) :
     (Primrec.const (some 0)) hstep
 
 /-- `valueRatCompAt` is primitive recursive in `((A, fuel), l)`. -/
-theorem valueRatCompAt_prim {P : History} (market : MarketComputation P) :
+lemma valueRatCompAt_prim {P : History} (market : MarketComputation P) :
     Primrec fun q : (AffineCombination × ℕ) × List Bool =>
       valueRatCompAt q.1.1 market q.1.2 q.2 := by
   have hconst : Primrec fun q : (AffineCombination × ℕ) × List Bool =>
@@ -2397,7 +2397,7 @@ attribute [local irreducible] Nat.sqrt
 /-- The bounded settlement check is primitive recursive in `(A, j, fuel)` for fixed
 market and deductive-process computations.  The unbounded search for a successful fuel is
 kept outside this function and is supplied by `Partrec.rfindOpt` below. -/
-theorem AffineCombination.settlementCheckAtFuel_prim
+lemma AffineCombination.settlementCheckAtFuel_prim
     {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) (process : DeductiveProcessComputation DP) :
     Primrec fun q : AffineCombination × ℕ × ℕ =>
@@ -2518,7 +2518,7 @@ theorem AffineCombination.settlementCheckAtFuel_prim
 
 end
 
-theorem AffineCombination.settlementCheckAtFuel_sound (A : AffineCombination)
+lemma AffineCombination.settlementCheckAtFuel_sound (A : AffineCombination)
     {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) (process : DeductiveProcessComputation DP)
     {j fuel : ℕ}
@@ -2556,7 +2556,7 @@ theorem AffineCombination.settlementCheckAtFuel_sound (A : AffineCombination)
                 ← A.valueRatAtFuel_sound market fuel _ hv']
               exact hb
 
-theorem AffineCombination.settlementCheckAtFuel_complete (A : AffineCombination)
+lemma AffineCombination.settlementCheckAtFuel_complete (A : AffineCombination)
     {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) (process : DeductiveProcessComputation DP)
     (j : ℕ)
@@ -2696,7 +2696,7 @@ attribute [local irreducible] Nat.sqrt
 def ecClock (a k n : ℕ) : ℕ := a * (n + 1) ^ k + a
 
 /-- The standard polynomial evaluator clock is itself polynomially emitted. -/
-theorem ecClock_polyFueled (a k : ℕ) :
+lemma ecClock_polyFueled (a k : ℕ) :
     ∃ c, PolyFueled c (ecClock a k) := by
   obtain ⟨cmul, hmul⟩ := mul_polyFueled
   obtain ⟨cadd, hadd⟩ := addc_polyFueled
@@ -2723,7 +2723,7 @@ def clockedRawToken (tokenCode : Nat.Partrec.Code) (a k z : ℕ) : ℕ :=
   Nat.pred (codeEvalnNat tokenCode
     (Nat.pair (ecClock a k z.unpair.1) z))
 
-private theorem clockedRawLength_polyFueled
+private lemma clockedRawLength_polyFueled
     (lengthCode : Nat.Partrec.Code) (a k : ℕ) :
     ∃ c, PolyFueled c (clockedRawLength lengthCode a k) := by
   obtain ⟨csim, hsim⟩ := codeEvalnNat_polyFueled lengthCode
@@ -2742,7 +2742,7 @@ private theorem clockedRawLength_polyFueled
   · have h' : clock ≤ requested := Nat.le_of_lt (Nat.lt_of_not_ge h)
     rw [Nat.sub_sub_self h', min_eq_right h']
 
-private theorem clockedRawToken_polyFueled
+private lemma clockedRawToken_polyFueled
     (tokenCode : Nat.Partrec.Code) (a k : ℕ) :
     ∃ c, PolyFueled c (clockedRawToken tokenCode a k) := by
   obtain ⟨csim, hsim⟩ := codeEvalnNat_polyFueled tokenCode
@@ -2751,7 +2751,7 @@ private theorem clockedRawToken_polyFueled
     (hsim.comp ((hclock.comp PolyFueled.left).pair PolyFueled.id))).of_eq (fun z => ?_)⟩
   simp [clockedRawToken]
 
-theorem clockedRawLength_eq (lengthCode tokenCode : Nat.Partrec.Code)
+lemma clockedRawLength_eq (lengthCode tokenCode : Nat.Partrec.Code)
     (a k n : ℕ) :
     (clockedTokens lengthCode tokenCode (ecClock a k n) n).length =
       clockedRawLength lengthCode a k n := by
@@ -2759,7 +2759,7 @@ theorem clockedRawLength_eq (lengthCode tokenCode : Nat.Partrec.Code)
   simp only [Nat.unpair_pair]
   cases h : Nat.Partrec.Code.evaln (ecClock a k n) lengthCode n <;> simp
 
-theorem clockedRawToken_eq (lengthCode tokenCode : Nat.Partrec.Code)
+lemma clockedRawToken_eq (lengthCode tokenCode : Nat.Partrec.Code)
     (a k n i : ℕ)
     (hi : i < (clockedTokens lengthCode tokenCode (ecClock a k n) n).length) :
     clockedRawToken tokenCode a k (Nat.pair n i) =
@@ -2786,7 +2786,7 @@ theorem clockedRawToken_eq (lengthCode tokenCode : Nat.Partrec.Code)
         simp
 
 /-- Every raw clocked token list is itself a polynomial segment stream. -/
-theorem clockedTokens_polySegStream (lengthCode tokenCode : Nat.Partrec.Code)
+lemma clockedTokens_polySegStream (lengthCode tokenCode : Nat.Partrec.Code)
     (a k : ℕ) :
     PolySegStream (fun n => clockedTokens lengthCode tokenCode (ecClock a k n) n) := by
   obtain ⟨ct, ht⟩ := clockedRawToken_polyFueled tokenCode a k
@@ -2811,7 +2811,7 @@ def freezeNextNat (z : ℕ) : ℕ :=
   else if mode = 1 then Nat.pair 2 token
   else 0
 
-private theorem freezeNextNat_eq (state : EF.FreezeTokenState) (token : ℕ) :
+private lemma freezeNextNat_eq (state : EF.FreezeTokenState) (token : ℕ) :
     freezeNextNat (Nat.pair (Nat.pair state.1 state.2) token) =
       Nat.pair (EF.freezeTokenNext state token).1 (EF.freezeTokenNext state token).2 := by
   rcases state with ⟨mode, pending⟩
@@ -2837,14 +2837,14 @@ private theorem freezeNextNat_eq (state : EF.FreezeTokenState) (token : ℕ) :
           rfl
 
 /-- Closure of polynomial fuel under a zero-test branch. -/
-theorem polyFueled_ifZero {ct c₀ c₁ : Nat.Partrec.Code}
+lemma polyFueled_ifZero {ct c₀ c₁ : Nat.Partrec.Code}
     {test f₀ f₁ : ℕ → ℕ} (ht : PolyFueled ct test)
     (h₀ : PolyFueled c₀ f₀) (h₁ : PolyFueled c₁ f₁) :
     ∃ c, PolyFueled c (fun z => if test z = 0 then f₀ z else f₁ z) := by
   exact ⟨_, (ifzSel_polyFueled.comp ((h₀.pair h₁).pair ht)).of_eq (fun z => by
     simp only [ifzSelFn, Nat.unpair_pair])⟩
 
-private theorem freezeNextNat_polyFueled : ∃ c, PolyFueled c freezeNextNat := by
+private lemma freezeNextNat_polyFueled : ∃ c, PolyFueled c freezeNextNat := by
   have hmode := PolyFueled.left.comp PolyFueled.left
   have htoken := PolyFueled.right
   obtain ⟨eq0, heq0⟩ := polyFueled_eqConst htoken 0
@@ -2872,7 +2872,7 @@ private theorem freezeNextNat_polyFueled : ∃ c, PolyFueled c freezeNextNat := 
   · simp [hm0]
   · by_cases hm1 : z.unpair.1.unpair.1 = 1 <;> simp [hm0, hm1]
 
-private theorem freezeTokenNext_mode_le (state : EF.FreezeTokenState) (token : ℕ) :
+private lemma freezeTokenNext_mode_le (state : EF.FreezeTokenState) (token : ℕ) :
     (EF.freezeTokenNext state token).1 ≤ 5 := by
   rcases state with ⟨mode, pending⟩
   cases mode with
@@ -2883,7 +2883,7 @@ private theorem freezeTokenNext_mode_le (state : EF.FreezeTokenState) (token : �
   | succ mode =>
       cases mode <;> simp [EF.freezeTokenNext]
 
-private theorem freezeTokenNext_pending (state : EF.FreezeTokenState) (token : ℕ) :
+private lemma freezeTokenNext_pending (state : EF.FreezeTokenState) (token : ℕ) :
     (EF.freezeTokenNext state token).2 = 0 ∨
       (EF.freezeTokenNext state token).2 = token := by
   rcases state with ⟨mode, pending⟩
@@ -2895,7 +2895,7 @@ private theorem freezeTokenNext_pending (state : EF.FreezeTokenState) (token : �
   | succ mode =>
       cases mode <;> simp [EF.freezeTokenNext]
 
-private theorem freezeTokenControlAt_mode_le (tokenFn : ℕ → ℕ) (n j : ℕ) :
+private lemma freezeTokenControlAt_mode_le (tokenFn : ℕ → ℕ) (n j : ℕ) :
     (EF.freezeTokenControlAt tokenFn n j).1 ≤ 5 := by
   cases j with
   | zero => simp [EF.freezeTokenControlAt]
@@ -2903,7 +2903,7 @@ private theorem freezeTokenControlAt_mode_le (tokenFn : ℕ → ℕ) (n j : ℕ)
       simp only [EF.freezeTokenControlAt]
       exact freezeTokenNext_mode_le _ _
 
-private theorem freezeTokenControlAt_pending (tokenFn : ℕ → ℕ) (n j : ℕ) :
+private lemma freezeTokenControlAt_pending (tokenFn : ℕ → ℕ) (n j : ℕ) :
     (EF.freezeTokenControlAt tokenFn n j).2 = 0 ∨
       ∃ i < j, (EF.freezeTokenControlAt tokenFn n j).2 = tokenFn (Nat.pair n i) := by
   cases j with
@@ -2921,7 +2921,7 @@ def freezeControlNat (tokenFn : ℕ → ℕ) (z : ℕ) : ℕ :=
   Nat.pair state.1 state.2
 
 /-- The parser control before a token of a polynomial stream is itself polynomially fueled. -/
-theorem freezeControlNat_polyFueled {ct : Nat.Partrec.Code} {tokenFn : ℕ → ℕ}
+lemma freezeControlNat_polyFueled {ct : Nat.Partrec.Code} {tokenFn : ℕ → ℕ}
     (htoken : PolyFueled ct tokenFn) :
     ∃ c, PolyFueled c (freezeControlNat tokenFn) := by
   obtain ⟨cnext, hnext⟩ := freezeNextNat_polyFueled
@@ -2969,7 +2969,7 @@ theorem freezeControlNat_polyFueled {ct : Nat.Partrec.Code} {tokenFn : ℕ → �
 
 /-- A polynomial quote-code lookup makes the parser-transparent prefix rewrite polynomial on
 every polynomial raw source stream. -/
-theorem freezeTokenRun_polySegStream {source : ℕ → List ℕ}
+lemma freezeTokenRun_polySegStream {source : ℕ → List ℕ}
     (hsource : PolySegStream source) (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
     {cq : Nat.Partrec.Code}
     (hquote : PolyFueled cq (fun z => quoteCode z.unpair.1 z.unpair.2)) :
@@ -3038,7 +3038,7 @@ theorem freezeTokenRun_polySegStream {source : ℕ → List ℕ}
 
 /-- Generic compiler theorem behind the concrete prefix patch: a polynomial encoded quote
 lookup closes the administrative freeze under `EfficientlyComputableTok`. -/
-theorem freezeBefore_preserves_ec
+lemma freezeBefore_preserves_ec
     (quote : ℕ → Sentence → ℚ) (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
     (hquoteExact : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
       quoteCode day code = Encodable.encode (quote day φ))
@@ -3110,7 +3110,7 @@ def sentenceMatches : Sentence → ℕ → ℕ
           sentenceMatches ψ code.pred.unpair.2.unpair.2
       else 0
 
-theorem sentenceMatches_eq_one_iff (target : Sentence) (code : ℕ) :
+lemma sentenceMatches_eq_one_iff (target : Sentence) (code : ℕ) :
     sentenceMatches target code = 1 ↔
       Encodable.decode (α := Sentence) code = some target := by
   induction target using LO.Propositional.Formula.rec' generalizing code with
@@ -3203,7 +3203,7 @@ theorem sentenceMatches_eq_one_iff (target : Sentence) (code : ℕ) :
           · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
               LO.Propositional.Formula.ofNat, htag]
 
-private theorem sentenceMatches_polyFueled (target : Sentence) :
+private lemma sentenceMatches_polyFueled (target : Sentence) :
     ∃ c, PolyFueled c (sentenceMatches target) := by
   obtain ⟨cmul, hmul⟩ := mul_polyFueled
   induction target using LO.Propositional.Formula.rec' with
@@ -3274,7 +3274,7 @@ private theorem sentenceMatches_polyFueled (target : Sentence) :
       obtain ⟨c, hc⟩ := polyFueled_ifZero PolyFueled.id (PolyFueled.const 0) hbody
       exact ⟨c, hc.of_eq (fun code => by simp [sentenceMatches])⟩
 
-private theorem sentenceMatches_le_one (target : Sentence) (code : ℕ) :
+private lemma sentenceMatches_le_one (target : Sentence) (code : ℕ) :
     sentenceMatches target code ≤ 1 := by
   induction target using LO.Propositional.Formula.rec' generalizing code with
   | hfalsum =>
@@ -3319,7 +3319,7 @@ private theorem sentenceMatches_le_one (target : Sentence) (code : ℕ) :
             nlinarith [ihφ e.unpair.2.unpair.1, ihψ e.unpair.2.unpair.2]
           · simp [htag]
 
-private theorem sentenceMatches_eq_zero_iff (target : Sentence) (code : ℕ) :
+private lemma sentenceMatches_eq_zero_iff (target : Sentence) (code : ℕ) :
     sentenceMatches target code = 0 ↔
       Encodable.decode (α := Sentence) code ≠ some target := by
   constructor
@@ -3339,7 +3339,7 @@ def encodedQuoteFromEntries : List (Sentence × ℚ) → ℕ → ℕ
       if sentenceMatches target code = 0 then encodedQuoteFromEntries entries code
       else Encodable.encode q
 
-private theorem encodedQuoteFromEntries_exact
+private lemma encodedQuoteFromEntries_exact
     (entries : List (Sentence × ℚ)) (code : ℕ) (target : Sentence)
     (hdecode : Encodable.decode (α := Sentence) code = some target) :
     encodedQuoteFromEntries entries code =
@@ -3358,7 +3358,7 @@ private theorem encodedQuoteFromEntries_exact
         have hzero := (sentenceMatches_eq_zero_iff ψ code).mpr hdecNe
         simp [encodedQuoteFromEntries, quoteFromEntries, htarget, hzero, ih]
 
-private theorem encodedQuoteFromEntries_polyFueled
+private lemma encodedQuoteFromEntries_polyFueled
     (entries : List (Sentence × ℚ)) :
     ∃ c, PolyFueled c (encodedQuoteFromEntries entries) := by
   induction entries with
@@ -3385,7 +3385,7 @@ def encodedPrefixQuoteFromStates : List RationalBeliefState → ℕ → ℕ → 
   | state :: _, 0, code => encodedQuoteFromEntries state.entries code
   | _ :: states, day + 1, code => encodedPrefixQuoteFromStates states day code
 
-theorem encodedPrefixQuoteFromStates_exact
+lemma encodedPrefixQuoteFromStates_exact
     (states : List RationalBeliefState) (day code : ℕ) (φ : Sentence)
     (hdecode : Encodable.decode (α := Sentence) code = some φ) :
     encodedPrefixQuoteFromStates states day code =
@@ -3401,7 +3401,7 @@ theorem encodedPrefixQuoteFromStates_exact
       | succ day =>
           simpa [encodedPrefixQuoteFromStates, prefixQuoteFromStates] using ih day
 
-theorem encodedPrefixQuoteFromStates_polyFueled
+lemma encodedPrefixQuoteFromStates_polyFueled
     (states : List RationalBeliefState) :
     ∃ c, PolyFueled c (fun z =>
       encodedPrefixQuoteFromStates states z.unpair.1 z.unpair.2) := by
@@ -3421,7 +3421,7 @@ theorem encodedPrefixQuoteFromStates_polyFueled
       | succ day =>
           simp [encodedPrefixQuoteFromStates]
 
-private theorem prefixQuoteFromStates_eq_getD
+private lemma prefixQuoteFromStates_eq_getD
     (states : List RationalBeliefState) (fallback : RationalBeliefState)
     {day : ℕ} (hday : day < states.length) (φ : Sentence) :
     prefixQuoteFromStates states day φ = (states.getD day fallback).quote φ := by
@@ -3444,7 +3444,7 @@ noncomputable def liaPrefixQuoteCode (DP : DeductiveProcess) (cutoff : ℕ) :
     ℕ → ℕ → ℕ :=
   encodedPrefixQuoteFromStates (liaStatePrefix DP cutoff)
 
-theorem liaPrefixQuote_exact (DP : DeductiveProcess) (cutoff : ℕ)
+lemma liaPrefixQuote_exact (DP : DeductiveProcess) (cutoff : ℕ)
     (day : ℕ) (hday : day < cutoff) (φ : Sentence) :
     liaHistory DP day φ = (liaPrefixQuote DP cutoff day φ : ℝ) := by
   have hprefix :
@@ -3455,13 +3455,13 @@ theorem liaPrefixQuote_exact (DP : DeductiveProcess) (cutoff : ℕ)
       liaStatePrefix_getD DP hday]
   simp [liaHistory, RationalBeliefState.toValuation, hprefix]
 
-theorem liaPrefixQuoteCode_exact (DP : DeductiveProcess) (cutoff day code : ℕ)
+lemma liaPrefixQuoteCode_exact (DP : DeductiveProcess) (cutoff day code : ℕ)
     (φ : Sentence) (hdecode : Encodable.decode (α := Sentence) code = some φ) :
     liaPrefixQuoteCode DP cutoff day code =
       Encodable.encode (liaPrefixQuote DP cutoff day φ) := by
   exact encodedPrefixQuoteFromStates_exact (liaStatePrefix DP cutoff) day code φ hdecode
 
-theorem liaPrefixQuoteCode_polyFueled (DP : DeductiveProcess) (cutoff : ℕ) :
+lemma liaPrefixQuoteCode_polyFueled (DP : DeductiveProcess) (cutoff : ℕ) :
     ∃ c, PolyFueled c (fun z =>
       liaPrefixQuoteCode DP cutoff z.unpair.1 z.unpair.2) :=
   encodedPrefixQuoteFromStates_polyFueled (liaStatePrefix DP cutoff)

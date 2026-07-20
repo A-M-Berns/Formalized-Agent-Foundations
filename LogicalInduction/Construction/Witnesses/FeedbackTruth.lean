@@ -25,7 +25,8 @@ attribute [local irreducible] Nat.sqrt
 
 /-- The paper's delayed truth computation premise.  Input `k` names the value of
 `A_{f k}`; the program must return its canonical rational code by day `f(k+1)`.
-The equality with the semantic real stream is recorded only on those required indices.  Paper node: `thm:wubaff` (App. `wubaff`), reused by `thm:wubexp`. -/
+The equality with the semantic real stream is recorded only on those required indices.
+Paper node: `thm:wubaff` (App. `wubaff`), reused by `thm:wubexp`. -/
 structure FeedbackTruthComputation (truth : ℕ → ℝ) (f : DeferralFunction) where
   value : ℕ → ℚ
   code : Nat.Partrec.Code
@@ -47,13 +48,13 @@ def feedbackFlag (f : DeferralFunction) (a degree m : ℕ) : ℕ :=
   if deferralImageFlag f a degree m = 0 then 0
   else if deferralPreimage f a degree m = 0 then 0 else 1
 
-theorem feedbackIndex_polyFueled (f : DeferralFunction) (a degree : ℕ) :
+lemma feedbackIndex_polyFueled (f : DeferralFunction) (a degree : ℕ) :
     ∃ c, PolyFueled c (feedbackIndex f a degree) := by
   obtain ⟨cpre, hpre⟩ := deferralPreimage_polyFueled f a degree
   exact ⟨_, (predc_polyFueled.comp hpre).of_eq (fun m => by
     simp [feedbackIndex, Nat.pred_eq_sub_one])⟩
 
-theorem feedbackFlag_polyFueled (f : DeferralFunction) (a degree : ℕ) :
+lemma feedbackFlag_polyFueled (f : DeferralFunction) (a degree : ℕ) :
     ∃ c, PolyFueled c (feedbackFlag f a degree) := by
   obtain ⟨cflag, hflag⟩ := deferralImageFlag_polyFueled f a degree
   obtain ⟨cpre, hpre⟩ := deferralPreimage_polyFueled f a degree
@@ -64,7 +65,7 @@ theorem feedbackFlag_polyFueled (f : DeferralFunction) (a degree : ℕ) :
       simp only [ifzSelFn]
       simp [feedbackFlag])⟩
 
-theorem feedbackFlag_zero_or_one (f : DeferralFunction) (a degree m : ℕ) :
+lemma feedbackFlag_zero_or_one (f : DeferralFunction) (a degree m : ℕ) :
     feedbackFlag f a degree m = 0 ∨ feedbackFlag f a degree m = 1 := by
   unfold feedbackFlag
   by_cases hi : deferralImageFlag f a degree m = 0
@@ -73,7 +74,7 @@ theorem feedbackFlag_zero_or_one (f : DeferralFunction) (a degree m : ℕ) :
     · simp [hi, hp]
     · simp [hi, hp]
 
-theorem feedbackFlag_at
+lemma feedbackFlag_at
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
@@ -83,7 +84,7 @@ theorem feedbackFlag_at
     deferralPreimage_at f hstrict hspec (k + 1)]
   simp
 
-theorem feedbackIndex_at
+lemma feedbackIndex_at
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
@@ -92,7 +93,7 @@ theorem feedbackIndex_at
   omega
 
 /-- On every active day, the shifted schedule really names a unique feedback component. -/
-theorem feedbackFlag_spec
+lemma feedbackFlag_spec
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
@@ -120,7 +121,7 @@ the feedback-trader emitter; no unbounded inverse of `f` is evaluated. -/
 def sourceIndex (f : DeferralFunction) (a degree m : ℕ) : ℕ :=
   FeedbackEmission.scheduledDeferral f a degree m (feedbackIndex f a degree m)
 
-theorem sourceIndex_polyFueled (f : DeferralFunction) (a degree : ℕ) :
+lemma sourceIndex_polyFueled (f : DeferralFunction) (a degree : ℕ) :
     ∃ c, PolyFueled c (sourceIndex f a degree) := by
   obtain ⟨cvalue, hvalue⟩ := FeedbackEmission.scheduledValue_polyFueled f a degree
   obtain ⟨cindex, hindex⟩ := feedbackIndex_polyFueled f a degree
@@ -129,7 +130,7 @@ theorem sourceIndex_polyFueled (f : DeferralFunction) (a degree : ℕ) :
   exact ⟨_, (hvalue.comp hquery).of_eq (fun m => by
     simp [sourceIndex, FeedbackEmission.scheduledDeferral])⟩
 
-theorem sourceIndex_at
+lemma sourceIndex_at
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
@@ -138,7 +139,7 @@ theorem sourceIndex_at
   apply FeedbackEmission.scheduledDeferral_eq f hspec
   exact (hstrict (Nat.lt_succ_self k)).le
 
-theorem sourceIndex_le_of_flag
+lemma sourceIndex_le_of_flag
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
@@ -157,7 +158,7 @@ theorem sourceIndex_le_of_flag
     _ < f (feedbackIndex f a degree m + 1) := hstrict (Nat.lt_succ_self _)
     _ = m := hdeadline
 
-theorem sourceIndex_eq_of_flag
+lemma sourceIndex_eq_of_flag
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
@@ -177,7 +178,7 @@ def truthCodeAt {truth : ℕ → ℝ} {f : DeferralFunction}
     (C : FeedbackTruthComputation truth f) (fa fd m : ℕ) : ℕ :=
   codeEvalnNat C.code (Nat.pair (ecClock C.a C.degree m) (feedbackIndex f fa fd m)) - 1
 
-theorem truthCodeAt_polyFueled {truth : ℕ → ℝ} {f : DeferralFunction}
+lemma truthCodeAt_polyFueled {truth : ℕ → ℝ} {f : DeferralFunction}
     (C : FeedbackTruthComputation truth f) (fa fd : ℕ) :
     ∃ c, PolyFueled c (truthCodeAt C fa fd) := by
   obtain ⟨csim, hsim⟩ := codeEvalnNat_polyFueled C.code
@@ -187,7 +188,7 @@ theorem truthCodeAt_polyFueled {truth : ℕ → ℝ} {f : DeferralFunction}
   exact ⟨_, (predc_polyFueled.comp (hsim.comp hquery)).of_eq (fun m => by
     simp [truthCodeAt, Nat.pred_eq_sub_one])⟩
 
-theorem truthCodeAt_eq_of_flag
+lemma truthCodeAt_eq_of_flag
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
@@ -216,7 +217,7 @@ def sequence {truth : ℕ → ℝ} {f : DeferralFunction}
         (EF.mul (EF.const (-1)) (EF.const (C.value (feedbackIndex f fa fd m)))),
       (As (sourceIndex f fa fd m)).terms⟩
 
-theorem sequence_eq_at
+lemma sequence_eq_at
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (As : ℕ → AffineCombination) (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
@@ -370,7 +371,7 @@ noncomputable def sequencePoly
 
 /-! ## Semantic package -/
 
-theorem sequence_value_zero
+lemma sequence_value_zero
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (hdet : DeterminedViaTheory As P DP truth)
@@ -398,7 +399,7 @@ theorem sequence_value_zero
     rw [heq, hsource, hdet _ v hv, C.agrees]
     ring
 
-theorem sequence_bounded
+lemma sequence_bounded
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (hpoly : PolySequence As)
@@ -517,7 +518,7 @@ theorem lic_wubaff_ofComputation
 
 /-- Paper-facing affine endpoint for an arbitrary BCS.  Its canonical normalization stays
 outside `FeedbackTruthComputation`; the supplied program computes the normalized truth
-stream that the actual unit-risk trader consumes. -/
+stream that the actual unit-risk trader consumes.  Paper node: `thm:wubaff` (App. `wubaff`). -/
 theorem boundedCombination_wubaff_ofComputation
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]

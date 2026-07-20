@@ -69,7 +69,7 @@ structure BitPrefixSentences (DP : DeductiveProcess) where
     v.ConsistentWith (DP.D n) ∧
       ∀ k : Fin σ.length, (v.Holds (atom k) ↔ σ.get k = true)
 
-theorem BitPrefixSentences.prefix_possible
+lemma BitPrefixSentences.prefix_possible
     {DP : DeductiveProcess} (B : BitPrefixSentences DP) (σ : List Bool) :
     ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ v.Holds (B.prefixSentence σ) := by
@@ -99,7 +99,7 @@ noncomputable def prefixPurchaseMax (w : List Bool → ℝ)
         (prefixPurchaseMax w (σ ++ [false]) depth)
         (prefixPurchaseMax w (σ ++ [true]) depth)
 
-theorem prefixPurchaseMax_nonneg
+lemma prefixPurchaseMax_nonneg
     {w : List Bool → ℝ} (hw : ∀ σ, 0 ≤ w σ) :
     ∀ σ depth, 0 ≤ prefixPurchaseMax w σ depth
   | σ, 0 => by simp [prefixPurchaseMax, hw]
@@ -115,7 +115,7 @@ def bitTreeNodes (σ : List Bool) : ℕ → List (List Bool)
       σ :: (bitTreeNodes (σ ++ [false]) depth ++
         bitTreeNodes (σ ++ [true]) depth)
 
-theorem semimeasureMean_eq_bitTree_sum
+lemma semimeasureMean_eq_bitTree_sum
     (M : ContinuousSemimeasure) (w : List Bool → ℝ) :
     ∀ σ depth, semimeasureMean M w σ depth =
       ((bitTreeNodes σ depth).map (fun τ ↦ M.mass τ * w τ)).sum
@@ -128,7 +128,7 @@ theorem semimeasureMean_eq_bitTree_sum
       ring
 
 /-- Every extension by at most `depth` bits occurs in the corresponding finite tree. -/
-theorem append_mem_bitTreeNodes (σ ρ : List Bool) :
+lemma append_mem_bitTreeNodes (σ ρ : List Bool) :
     ∀ {depth}, ρ.length ≤ depth → σ ++ ρ ∈ bitTreeNodes σ depth := by
   intro depth hlen
   induction depth generalizing σ ρ with
@@ -160,7 +160,7 @@ def prefixPathNodes (σ : List Bool) : List Bool → List (List Bool)
   | [] => [σ]
   | b :: bits => σ :: prefixPathNodes (σ ++ [b]) bits
 
-theorem prefixPathPayout_eq_sum (w : List Bool → ℝ) (σ bits : List Bool) :
+lemma prefixPathPayout_eq_sum (w : List Bool → ℝ) (σ bits : List Bool) :
     prefixPathPayout w σ bits =
       ((prefixPathNodes σ bits).map w).sum := by
   induction bits generalizing σ with
@@ -169,7 +169,7 @@ theorem prefixPathPayout_eq_sum (w : List Bool → ℝ) (σ bits : List Bool) :
       simp only [prefixPathPayout, prefixPathNodes, List.map_cons, List.sum_cons]
       rw [ih]
 
-theorem prefixPathNodes_length_ge {σ bits τ : List Bool}
+lemma prefixPathNodes_length_ge {σ bits τ : List Bool}
     (hτ : τ ∈ prefixPathNodes σ bits) : σ.length ≤ τ.length := by
   induction bits generalizing σ with
   | nil =>
@@ -182,7 +182,7 @@ theorem prefixPathNodes_length_ge {σ bits τ : List Bool}
       · exact le_rfl
       · exact (by simp : σ.length ≤ (σ ++ [b]).length) |>.trans (ih hτ)
 
-theorem prefixPathNodes_nodup (σ bits : List Bool) :
+lemma prefixPathNodes_nodup (σ bits : List Bool) :
     (prefixPathNodes σ bits).Nodup := by
   induction bits generalizing σ with
   | nil => simp [prefixPathNodes]
@@ -195,7 +195,7 @@ theorem prefixPathNodes_nodup (σ bits : List Bool) :
       · exact ih (σ ++ [b])
 
 /-- Every path node is a prefix of the terminal string. -/
-theorem prefixPathNode_isPrefix {σ bits τ : List Bool}
+lemma prefixPathNode_isPrefix {σ bits τ : List Bool}
     (hτ : τ ∈ prefixPathNodes σ bits) :
     ∃ rest, σ ++ bits = τ ++ rest := by
   induction bits generalizing σ with
@@ -212,7 +212,7 @@ theorem prefixPathNode_isPrefix {σ bits τ : List Bool}
         simpa [List.append_assoc] using hrest
 
 /-- The recursive maximum is attained by an explicit branch of the advertised depth. -/
-theorem exists_prefixPathPayout_eq_max (w : List Bool → ℝ) :
+lemma exists_prefixPathPayout_eq_max (w : List Bool → ℝ) :
     ∀ σ depth, ∃ bits, bits.length = depth ∧
       prefixPathPayout w σ bits = prefixPurchaseMax w σ depth
   | σ, 0 => ⟨[], rfl, by simp [prefixPathPayout, prefixPurchaseMax]⟩
@@ -234,7 +234,7 @@ theorem exists_prefixPathPayout_eq_max (w : List Bool → ℝ) :
         rw [hmax1, max_eq_right h']
 
 /-- Finite Fubini for a list/finset rectangle. -/
-theorem list_sum_finset_comm {α ι : Type*} [DecidableEq ι]
+lemma list_sum_finset_comm {α ι : Type*} [DecidableEq ι]
     (nodes : List α) (s : Finset ι) (c : α → ι → ℝ) :
     ((nodes.map (fun x ↦ ∑ i ∈ s, c x i)).sum) =
       ∑ i ∈ s, (nodes.map (fun x ↦ c x i)).sum := by
@@ -245,7 +245,7 @@ theorem list_sum_finset_comm {α ι : Type*} [DecidableEq ι]
       rw [← Finset.sum_add_distrib]
 
 /-- In a duplicate-free node list, matching one key contributes at most one copy. -/
-theorem sum_match_eq_if_mem {α : Type*} [DecidableEq α]
+lemma sum_match_eq_if_mem {α : Type*} [DecidableEq α]
     (nodes : List α) (hnodes : nodes.Nodup) (key : α) (a : ℝ) :
     ((nodes.map (fun x ↦ if key = x then a else 0)).sum) =
       if key ∈ nodes then a else 0 := by
@@ -262,7 +262,7 @@ theorem sum_match_eq_if_mem {α : Type*} [DecidableEq α]
 /-- The paper's `MeanPayout ≤ MaxPayout` fact, proved by finite-tree induction directly
 from the semimeasure split inequality. Leaked mass is exactly the option to stop at an
 internal node. -/
-theorem semimeasureMean_le_mass_mul_max
+lemma semimeasureMean_le_mass_mul_max
     (M : ContinuousSemimeasure) {w : List Bool → ℝ}
     (hw : ∀ σ, 0 ≤ w σ) : ∀ σ depth,
     semimeasureMean M w σ depth ≤
@@ -302,7 +302,7 @@ theorem semimeasureMean_le_mass_mul_max
         _ ≤ M.mass σ * w σ + M.mass σ * max m0 m1 := by linarith
         _ = M.mass σ * (w σ + max m0 m1) := by ring
 
-theorem semimeasureMean_root_le_max
+lemma semimeasureMean_root_le_max
     (M : ContinuousSemimeasure) {w : List Bool → ℝ}
     (hw : ∀ σ, 0 ≤ w σ) (depth : ℕ) :
     semimeasureMean M w [] depth ≤ prefixPurchaseMax w [] depth := by
@@ -324,7 +324,8 @@ That compiler fact is kept separate from the mathematical semimeasure presentati
 structure contains only the rational table and its syntax-level polynomial certificate,
 and no prices, purchases, or domination conclusion. -/
 
-/-- Polynomially emitted from-below approximation used by the DUS trader.  Paper node: `thm:dus` (App. `dus`). -/
+/-- Polynomially emitted from-below approximation used by the DUS trader.
+Paper node: `thm:dus` (App. `dus`). -/
 structure DUSApproximationPresentation {DP : DeductiveProcess}
     (M : LowerSemicomputableContinuousSemimeasure)
     (B : BitPrefixSentences DP) where
@@ -362,7 +363,8 @@ def dusEmitBase {DP : DeductiveProcess}
   dusBase A z.unpair.1 z.unpair.2
 
 /-- Derived rational tokens used by the continuous low-price gate. This is a
-syntax-only compiler boundary: it contains neither market data nor a domination claim.  Paper node: `thm:dus` (App. `dus`). -/
+syntax-only compiler boundary: it contains neither market data nor a domination claim.
+Paper node: `thm:dus` (App. `dus`). -/
 structure DUSThresholdEmission {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B) : Prop where
@@ -378,7 +380,7 @@ def dusSignal {DP : DeductiveProcess}
   if n < k then .const 0
   else buyIndEF (dusSentence B n) (dusBase A k n) (dusBase A k n) n
 
-theorem dusSignal_rank_le {DP : DeductiveProcess}
+lemma dusSignal_rank_le {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (k n : ℕ) :
@@ -387,7 +389,7 @@ theorem dusSignal_rank_le {DP : DeductiveProcess}
   · simp [dusSignal, h]
   · simp [dusSignal, h]
 
-theorem dusSignal_mem {DP : DeductiveProcess}
+lemma dusSignal_mem {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (P : History) (k n : ℕ) :
@@ -398,7 +400,7 @@ theorem dusSignal_mem {DP : DeductiveProcess}
   · simpa [dusSignal, h] using
       buyInd_mem (dusSentence B n) (dusBase A k n) (dusBase A k n) n P
 
-theorem dusBase_cast {DP : DeductiveProcess}
+lemma dusBase_cast {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (k n : ℕ) :
@@ -409,7 +411,7 @@ theorem dusBase_cast {DP : DeductiveProcess}
   push_cast
   ring
 
-theorem dusBase_nonneg {DP : DeductiveProcess}
+lemma dusBase_nonneg {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (k n : ℕ) :
@@ -419,7 +421,7 @@ theorem dusBase_nonneg {DP : DeductiveProcess}
     exact_mod_cast A.nonneg n n.unpair.2
   positivity
 
-theorem dusBase_pos {DP : DeductiveProcess}
+lemma dusBase_pos {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     {k n : ℕ} (ha : 0 < A.approximation n n.unpair.2) :
@@ -430,7 +432,7 @@ theorem dusBase_pos {DP : DeductiveProcess}
   positivity
 
 /-- A positive signal certifies the paper's price-to-semimeasure ratio bound. -/
-theorem dusSignal_pos_imp_price_lt_mass {DP : DeductiveProcess}
+lemma dusSignal_pos_imp_price_lt_mass {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (P : History) {k n : ℕ}
@@ -480,7 +482,7 @@ theorem dusSignal_pos_imp_price_lt_mass {DP : DeductiveProcess}
       exact div_le_div_of_nonneg_right (by simpa [dusPrefix] using happ) hkpos.le
 
 /-- A strict quarter-threshold dip spends the entire remaining budget. -/
-theorem dusSignal_eq_one {DP : DeductiveProcess}
+lemma dusSignal_eq_one {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (P : History) {k n : ℕ} (hlive : k ≤ n)
@@ -490,7 +492,7 @@ theorem dusSignal_eq_one {DP : DeductiveProcess}
   rw [dusSignal, if_neg (by omega)]
   exact buyInd_eq_one (dusBase_pos A ha) hprice
 
-theorem dusSignal_closed {DP : DeductiveProcess}
+lemma dusSignal_closed {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (k n : ℕ) (ρ : List ℝ) (P : History) :
@@ -507,7 +509,7 @@ def dusCostEF {DP : DeductiveProcess}
     (k n : ℕ) : EF :=
   .mul (dusSignal A k n) (.price (dusSentence B n) n)
 
-theorem dusCostEF_rank_le {DP : DeductiveProcess}
+lemma dusCostEF_rank_le {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (k n : ℕ) :
@@ -515,7 +517,7 @@ theorem dusCostEF_rank_le {DP : DeductiveProcess}
   simp only [dusCostEF, EF.rank_mul, EF.rank_price, max_le_iff]
   exact ⟨dusSignal_rank_le A k n, le_rfl⟩
 
-theorem dusCostEF_closed {DP : DeductiveProcess}
+lemma dusCostEF_closed {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (k n : ℕ) (ρ : List ℝ) (P : History) :
@@ -526,7 +528,7 @@ theorem dusCostEF_closed {DP : DeductiveProcess}
 /-! ### Uniform syntax emission for the purchase inputs -/
 
 /-- Literal segment emission for the padded, scale-varying DUS signal. -/
-theorem dusSignal_polySegStream
+lemma dusSignal_polySegStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -580,7 +582,7 @@ theorem dusSignal_polySegStream
     simp [ht, dusSignal, hpad]
 
 /-- Uniform emission of the per-event spent-fraction feature. -/
-theorem dusCostEF_polySegStream
+lemma dusCostEF_polySegStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -596,7 +598,7 @@ theorem dusCostEF_polySegStream
 /-- All earlier purchases remain charged to the one unit of cash. -/
 def dusActive (_ _ : ℕ) : Bool := true
 
-theorem dusActive_closing : ROIBudget.ClosingSchedule dusActive := by
+lemma dusActive_closing : ROIBudget.ClosingSchedule dusActive := by
   intro i n h
   rfl
 
@@ -616,7 +618,7 @@ def dusSharesEF {DP : DeductiveProcess}
 
 /- Uniform emission of the all-open budget-recurrence body for input `⟨k,j⟩`. -/
 attribute [local irreducible] Nat.sqrt in
-theorem dusWeightBody_polySegStream
+lemma dusWeightBody_polySegStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -684,7 +686,7 @@ theorem dusWeightBody_polySegStream
 
 /-- The shared remaining-budget feature is uniformly polynomial across both scale and
 day; previous recurrence values are referenced by `EF.var`, not duplicated. -/
-theorem dusRemainingEF_polySegStream
+lemma dusRemainingEF_polySegStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -712,7 +714,7 @@ theorem dusRemainingEF_polySegStream
     ROIBudget.sharedWeights_serialize, List.range_eq_range']
 
 /-- Uniform emission of the actual share coefficient. -/
-theorem dusSharesEF_polySegStream
+lemma dusSharesEF_polySegStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -721,7 +723,7 @@ theorem dusSharesEF_polySegStream
   PolySegStream.serialize_mul (dusRemainingEF_polySegStream A emit)
     (dusSignal_polySegStream A emit PolyFueled.left PolyFueled.right)
 
-theorem dusRemainingEF_rank_le {DP : DeductiveProcess}
+lemma dusRemainingEF_rank_le {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (k n : ℕ) :
@@ -729,7 +731,7 @@ theorem dusRemainingEF_rank_le {DP : DeductiveProcess}
   exact ROIBudget.sharedFeatureWeight_rank_le dusActive (dusCostEF A k)
     (dusCostEF_rank_le A k) n
 
-theorem dusSharesEF_rank_le {DP : DeductiveProcess}
+lemma dusSharesEF_rank_le {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (k n : ℕ) :
@@ -744,7 +746,7 @@ noncomputable def dusShares {DP : DeductiveProcess}
     (P : History) (k n : ℕ) : ℝ :=
   (dusSharesEF A k n).denote P
 
-theorem dusRemainingEF_denote {DP : DeductiveProcess}
+lemma dusRemainingEF_denote {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (P : History) (k n : ℕ) :
@@ -753,7 +755,7 @@ theorem dusRemainingEF_denote {DP : DeductiveProcess}
   exact ROIBudget.sharedFeatureWeight_denote dusActive (dusCostEF A k)
     (fun i ρ V ↦ dusCostEF_closed A k i ρ V) P n
 
-theorem dusShares_eq {DP : DeductiveProcess}
+lemma dusShares_eq {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (P : History) (k n : ℕ) :
@@ -763,7 +765,7 @@ theorem dusShares_eq {DP : DeductiveProcess}
   rw [dusShares, dusSharesEF, EF.denote_mul, Pi.mul_apply,
     dusRemainingEF_denote]
 
-theorem dusCostEF_denote {DP : DeductiveProcess}
+lemma dusCostEF_denote {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (P : History) (k n : ℕ) :
@@ -771,7 +773,7 @@ theorem dusCostEF_denote {DP : DeductiveProcess}
       (dusSignal A k n).denote P * P n (dusSentence B n) := by
   simp [dusCostEF]
 
-theorem dusCostEF_mem
+lemma dusCostEF_mem
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -790,7 +792,7 @@ theorem dusCostEF_mem
       mul_nonneg (by linarith) (by linarith)
     nlinarith
 
-theorem dusShares_nonneg
+lemma dusShares_nonneg
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -835,7 +837,7 @@ noncomputable def dusPurchaseWeight
   ∑ i ∈ Finset.range (n + 1),
     if dusPrefix B i = σ then dusShares A P k i else 0
 
-theorem dusPurchaseWeight_nonneg
+lemma dusPurchaseWeight_nonneg
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -847,7 +849,7 @@ theorem dusPurchaseWeight_nonneg
     · exact dusShares_nonneg A P hP k i
     · exact le_rfl)
 
-theorem dusPrefix_length_le_purchaseDepth
+lemma dusPrefix_length_le_purchaseDepth
     {DP : DeductiveProcess} (B : BitPrefixSentences DP)
     {i n : ℕ} (hi : i ≤ n) :
     (dusPrefix B i).length ≤ dusPurchaseDepth B n := by
@@ -858,7 +860,7 @@ theorem dusPrefix_length_le_purchaseDepth
 
 /-- The event-list mean is contained in the explicit finite binary-tree mean after
 aggregating repeated visits by prefix. -/
-theorem dusMeanPayoutThrough_le_semimeasureMean
+lemma dusMeanPayoutThrough_le_semimeasureMean
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -916,7 +918,7 @@ theorem dusMeanPayoutThrough_le_semimeasureMean
     · simp [c, h]
   · exact List.mem_map.mpr ⟨dusPrefix B i, hmem, by simp [c]⟩
 
-theorem dusMeanPayoutThrough_le_prefixPurchaseMax
+lemma dusMeanPayoutThrough_le_prefixPurchaseMax
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -930,7 +932,7 @@ theorem dusMeanPayoutThrough_le_prefixPurchaseMax
       (dusPurchaseWeight_nonneg A P hP k n) (dusPurchaseDepth B n))
 
 /-- A world satisfying a longer bit prefix satisfies every shorter initial segment. -/
-theorem BitPrefixSentences.holds_prefix_of_append
+lemma BitPrefixSentences.holds_prefix_of_append
     {DP : DeductiveProcess} (B : BitPrefixSentences DP)
     (v : PCWorld) (σ rest : List Bool)
     (h : v.Holds (B.prefixSentence (σ ++ rest))) :
@@ -941,7 +943,7 @@ theorem BitPrefixSentences.holds_prefix_of_append
   have hfull := h ⟨k, hk⟩
   simpa using hfull
 
-theorem BitPrefixSentences.holds_prefix_of_pathNode
+lemma BitPrefixSentences.holds_prefix_of_pathNode
     {DP : DeductiveProcess} (B : BitPrefixSentences DP)
     (v : PCWorld) {bits τ : List Bool}
     (hbits : v.Holds (B.prefixSentence bits))
@@ -963,7 +965,7 @@ noncomputable def dusGrossPayoutThrough
 
 /-- If a world realizes the terminal bits of a path, its gross payout dominates all
 aggregated purchases along that path. -/
-theorem prefixPathPayout_dusPurchaseWeight_le_gross
+lemma prefixPathPayout_dusPurchaseWeight_le_gross
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -995,7 +997,7 @@ theorem prefixPathPayout_dusPurchaseWeight_le_gross
 
 /-- The semimeasure mean through any finite day is attained or exceeded as gross payout
 in a world consistent with that day's deductive state. -/
-theorem exists_consistent_dusGrossPayout_ge_mean
+lemma exists_consistent_dusGrossPayout_ge_mean
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1017,7 +1019,7 @@ theorem exists_consistent_dusGrossPayout_ge_mean
       prefixPathPayout_dusPurchaseWeight_le_gross A P hP v k n bits hbits
 
 /-- Prefix form of the paper's cost-to-mean-payout inequality. -/
-theorem dusSpendPrefix_mul_le_meanPrefix
+lemma dusSpendPrefix_mul_le_meanPrefix
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1053,7 +1055,7 @@ theorem dusSpendPrefix_mul_le_meanPrefix
 
 /-- Every dollar spent increases semimeasure-weighted payout by at least the paper's
 factor `2(k+1)`. -/
-theorem dusSpend_mul_le_meanPayout
+lemma dusSpend_mul_le_meanPayout
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1064,7 +1066,7 @@ theorem dusSpend_mul_le_meanPayout
   simpa [dusSpendThrough, dusMeanPayoutThrough] using
     dusSpendPrefix_mul_le_meanPrefix A P hP k (n + 1)
 
-theorem dusSpendThrough_eq
+lemma dusSpendThrough_eq
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1089,7 +1091,7 @@ theorem dusSpendThrough_eq
     ring
 
 /-- The reified recurrence is exactly one minus all earlier purchase costs. -/
-theorem dusRemainingEF_denote_eq_one_sub_spendBefore
+lemma dusRemainingEF_denote_eq_one_sub_spendBefore
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1108,7 +1110,7 @@ theorem dusRemainingEF_denote_eq_one_sub_spendBefore
 
 /-- If mean payout before a purchase is still below `k+1`, more than half of the unit
 budget remains. This is the quantitative hinge in the paper's divergence argument. -/
-theorem dusRemainingEF_denote_gt_half_of_meanPrefix_lt
+lemma dusRemainingEF_denote_gt_half_of_meanPrefix_lt
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1122,7 +1124,7 @@ theorem dusRemainingEF_denote_gt_half_of_meanPrefix_lt
   rw [dusRemainingEF_denote_eq_one_sub_spendBefore]
   nlinarith
 
-theorem dusShares_gt_half_of_signal_eq_one
+lemma dusShares_gt_half_of_signal_eq_one
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1147,7 +1149,7 @@ theorem dusShares_gt_half_of_signal_eq_one
   simp [dusSentence]
 
 /-- The one-prefix-per-day schedule revisits every enumeration index cofinally. -/
-theorem tendsto_pair_left_atTop (i : ℕ) :
+lemma tendsto_pair_left_atTop (i : ℕ) :
     Tendsto (fun m ↦ Nat.pair m i) atTop atTop := by
   apply tendsto_atTop.2
   intro N
@@ -1156,7 +1158,7 @@ theorem tendsto_pair_left_atTop (i : ℕ) :
 
 /-- A prefix violating the scale-`k` domination bound eventually fires at full strength
 on every sufficiently late revisit. -/
-theorem eventually_dusSignal_eq_one_of_low_limit
+lemma eventually_dusSignal_eq_one_of_low_limit
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1239,7 +1241,7 @@ theorem eventually_dusSignal_eq_one_of_low_limit
 /-- Failed domination at one prefix forces the scale member's mean payout to reach
 `k+1`. The proof counts the cofinal full-strength revisits; while the target has not yet
 been reached, each buys more than half a share. -/
-theorem exists_dusMeanPayout_ge_of_low_limit
+lemma exists_dusMeanPayout_ge_of_low_limit
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1344,7 +1346,7 @@ theorem exists_dusMeanPayout_ge_of_low_limit
   linarith [hreach (g L)]
 
 /-- The family member spends at most one dollar in total. -/
-theorem dusSpendThrough_le_one
+lemma dusSpendThrough_le_one
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1371,7 +1373,7 @@ def dusScaleTrader
       subst p
       exact dusSharesEF_rank_le A k n }
 
-theorem dusScaleTrader_zero_before
+lemma dusScaleTrader_zero_before
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1380,7 +1382,7 @@ theorem dusScaleTrader_zero_before
   simp [dusScaleTrader, h]
 
 /-- Uniform token stream for the entire scale family. -/
-theorem dusScaleTrader_family_polySegStream
+lemma dusScaleTrader_family_polySegStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1420,7 +1422,7 @@ theorem dusScaleTrader_family_polySegStream
     simp [ht, dusScaleTrader, hpad]
 
 /-- The family is genuinely uniformly emulatable; no whole-strategy oracle is used. -/
-theorem dusScaleTrader_emulatable
+lemma dusScaleTrader_emulatable
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1431,7 +1433,7 @@ theorem dusScaleTrader_emulatable
     (dusScaleTrader_family_polySegStream A emit)
 
 /-- Every fixed scale member has a real token-indexed polynomial certificate. -/
-theorem dusScaleTrader_ecTok
+lemma dusScaleTrader_ecTok
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1447,7 +1449,7 @@ theorem dusScaleTrader_ecTok
     rw [Nat.unpair_pair k n]
   exact ecTok_of_segStream _ hseg
 
-theorem dusScaleTrader_value
+lemma dusScaleTrader_value
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1461,7 +1463,7 @@ theorem dusScaleTrader_value
     simp [dusScaleTrader, h, hshares, Strategy.value]
   · simp [dusScaleTrader, h, Strategy.value, dusShares]
 
-theorem dusScaleTrader_netWorth
+lemma dusScaleTrader_netWorth
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1472,7 +1474,7 @@ theorem dusScaleTrader_netWorth
           (v.payout (dusSentence B i) - P i (dusSentence B i)) := by
   simp only [Trader.netWorth, dusScaleTrader_value]
 
-theorem dusScaleTrader_netWorth_eq_gross_sub_spend
+lemma dusScaleTrader_netWorth_eq_gross_sub_spend
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1487,7 +1489,7 @@ theorem dusScaleTrader_netWorth_eq_gross_sub_spend
 
 /-- Every finite semimeasure mean has a same-day plausible net-worth witness, losing at
 most the member's one-dollar budget to purchase costs. -/
-theorem exists_consistent_dusScaleTrader_netWorth_ge_mean_sub_one
+lemma exists_consistent_dusScaleTrader_netWorth_ge_mean_sub_one
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1504,7 +1506,7 @@ theorem exists_consistent_dusScaleTrader_netWorth_ge_mean_sub_one
 
 /-- If the domination constant for scale `k` fails at one prefix, that scale member has
 a plausible world with net worth at least `k`. -/
-theorem exists_consistent_dusScaleTrader_netWorth_ge_of_low_limit
+lemma exists_consistent_dusScaleTrader_netWorth_ge_of_low_limit
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1526,7 +1528,7 @@ theorem exists_consistent_dusScaleTrader_netWorth_ge_of_low_limit
 
 /-- Bounded downside is literal: nonnegative prefix shares can lose only their purchase
 cost, and cumulative purchase cost is at most one. -/
-theorem dusScaleTrader_netWorth_ge_neg_one
+lemma dusScaleTrader_netWorth_ge_neg_one
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1565,14 +1567,14 @@ def dusDiagonalScale (j : ℕ) : ℕ := (j + 1) ^ 4
 def dusDiagonalWeight (j : ℕ) : ℚ :=
   1 / ((((j + 1) ^ 2 : ℕ) : ℚ))
 
-theorem dusDiagonalWeight_cast (j : ℕ) :
+lemma dusDiagonalWeight_cast (j : ℕ) :
     ((dusDiagonalWeight j : ℚ) : ℝ) =
       1 / (((j + 1 : ℕ) : ℝ) ^ 2) := by
   rw [dusDiagonalWeight]
   push_cast
   rfl
 
-theorem dusDiagonalScale_gt (j : ℕ) : j < dusDiagonalScale j := by
+lemma dusDiagonalScale_gt (j : ℕ) : j < dusDiagonalScale j := by
   have hpow : j + 1 ≤ (j + 1) ^ 4 := Nat.le_pow (by norm_num)
   dsimp [dusDiagonalScale]
   omega
@@ -1586,7 +1588,7 @@ def dusTrader
     Strategy.scaleBy (.const (dusDiagonalWeight j)) (by simp [EF.rank])
       ((dusScaleTrader A (dusDiagonalScale j)).strat n)))
 
-private theorem dus_list_range_map_sum (g : ℕ → ℝ) : ∀ n,
+private lemma dus_list_range_map_sum (g : ℕ → ℝ) : ∀ n,
     ((List.range n).map g).sum = ∑ j ∈ Finset.range n, g j
   | 0 => by simp
   | n + 1 => by
@@ -1594,7 +1596,7 @@ private theorem dus_list_range_map_sum (g : ℕ → ℝ) : ∀ n,
         Finset.sum_range_succ, dus_list_range_map_sum g n]
       simp
 
-theorem dusTrader_strat_value
+lemma dusTrader_strat_value
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1610,7 +1612,7 @@ theorem dusTrader_strat_value
   simp only [Function.comp_apply]
   rw [Strategy.scaleBy_value, EF.denote_const, dusDiagonalWeight_cast]
 
-theorem dusDiagonalComponent_value_zero_of_day_lt_index
+lemma dusDiagonalComponent_value_zero_of_day_lt_index
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1620,7 +1622,7 @@ theorem dusDiagonalComponent_value_zero_of_day_lt_index
     (hnj.trans (dusDiagonalScale_gt j))]
   simp
 
-theorem dusTrader_strat_value_full_prefix
+lemma dusTrader_strat_value_full_prefix
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1637,7 +1639,7 @@ theorem dusTrader_strat_value_full_prefix
 
 /-- Exact finite accounting: the joined trader's wealth is the weighted sum of its
 component traders' actual wealth in the same world. -/
-theorem dusTrader_netWorth
+lemma dusTrader_netWorth
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1668,7 +1670,7 @@ theorem dusTrader_netWorth
       rw [Trader.netWorth, Finset.mul_sum]
 
 /-- The inverse-square diagonal preserves a literal uniform downside bound. -/
-theorem dusTrader_netWorth_ge_neg_two
+lemma dusTrader_netWorth_ge_neg_two
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1696,7 +1698,7 @@ theorem dusTrader_netWorth_ge_neg_two
       rw [Finset.sum_neg_distrib]
     _ ≤ _ := Finset.sum_le_sum hterm
 
-theorem dusScaleTrader_netWorth_zero_before
+lemma dusScaleTrader_netWorth_zero_before
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1712,7 +1714,7 @@ theorem dusScaleTrader_netWorth_zero_before
 
 /-- The high-wealth witness produced by a failed positive scale occurs after that scale
 has launched. -/
-theorem exists_live_consistent_dusScaleTrader_netWorth_ge_of_low_limit
+lemma exists_live_consistent_dusScaleTrader_netWorth_ge_of_low_limit
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1738,7 +1740,7 @@ theorem exists_live_consistent_dusScaleTrader_netWorth_ge_of_low_limit
 /-- Failure of every polynomially spaced domination scale makes the concrete diagonal
 trader exploit: rung `j` contributes at least `(j+1)²`, while all rungs together can
 lose at most two dollars. -/
-theorem dusTrader_exploits_of_failed_scales
+lemma dusTrader_exploits_of_failed_scales
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1818,7 +1820,7 @@ theorem dusTrader_exploits_of_failed_scales
 
 /-! ### Uniform token emission for the diagonal -/
 
-theorem dusDiagonalSquare_polyFueled
+lemma dusDiagonalSquare_polyFueled
     {cj : Nat.Partrec.Code} {jf : ℕ → ℕ} (hj : PolyFueled cj jf) :
     ∃ c, PolyFueled c (fun x ↦ (jf x + 1) ^ 2) := by
   obtain ⟨cmul, hmul⟩ := mul_polyFueled
@@ -1827,7 +1829,7 @@ theorem dusDiagonalSquare_polyFueled
     simp only [Nat.unpair_pair]
     ring)⟩
 
-theorem dusDiagonalScale_polyFueled
+lemma dusDiagonalScale_polyFueled
     {cj : Nat.Partrec.Code} {jf : ℕ → ℕ} (hj : PolyFueled cj jf) :
     ∃ c, PolyFueled c (fun x ↦ dusDiagonalScale (jf x)) := by
   obtain ⟨csq, hsq⟩ := dusDiagonalSquare_polyFueled hj
@@ -1837,14 +1839,14 @@ theorem dusDiagonalScale_polyFueled
     simp [dusDiagonalScale]
     ring)⟩
 
-theorem encode_dusDiagonalWeight (j : ℕ) :
+lemma encode_dusDiagonalWeight (j : ℕ) :
     Encodable.encode (dusDiagonalWeight j) = Nat.pair 2 ((j + 1) ^ 2) := by
   have hpos : 0 < (j + 1) ^ 2 := by positivity
   have heq : dusDiagonalWeight j = ((((j + 1) ^ 2 : ℕ) : ℚ))⁻¹ := by
     rw [dusDiagonalWeight, one_div]
   rw [heq, encode_rat_inv_natCast hpos]
 
-theorem dusDiagonalWeight_polyRatCodes
+lemma dusDiagonalWeight_polyRatCodes
     {cj : Nat.Partrec.Code} {jf : ℕ → ℕ} (hj : PolyFueled cj jf) :
     PolyRatCodes (fun x ↦ dusDiagonalWeight (jf x)) := by
   obtain ⟨csq, hsq⟩ := dusDiagonalSquare_polyFueled hj
@@ -1852,7 +1854,7 @@ theorem dusDiagonalWeight_polyRatCodes
   rw [encode_dusDiagonalWeight]
 
 /-- Literal polynomial segment emitter for the actual inverse-square diagonal trader. -/
-theorem dusTrader_polySegStream
+lemma dusTrader_polySegStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -1930,7 +1932,7 @@ theorem dusTrader_polySegStream
   simp
 
 /-- The paper-facing DUS diagonal has a genuine token-indexed polynomial certificate. -/
-theorem dusTrader_ecTok
+lemma dusTrader_ecTok
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
@@ -2027,7 +2029,7 @@ structure StrictSeparatorPresentation
 /-- General market half of the strict-domination proof. A uniformly possible prefix
 theory whose semimeasure mass vanishes has limiting probability bounded below by Uniform
 Non-Dogmatism, hence beats every fixed multiple of that semimeasure somewhere. -/
-theorem strict_domination_of_null_prefix_theory
+lemma strict_domination_of_null_prefix_theory
     {DP : DeductiveProcess}
     {M : UniversalContinuousSemimeasure}
     {B : BitPrefixSentences DP}

@@ -45,14 +45,14 @@ def buyIndF (e : EF) (a δ : ℚ) : EF :=
 def sellIndF (e : EF) (b δ : ℚ) : EF :=
   clip01 (.mul (.add e (.const (δ - b))) (.const (1/δ)))
 
-theorem buyIndF_denote (e : EF) (a δ : ℚ) (V : History) :
+lemma buyIndF_denote (e : EF) (a δ : ℚ) (V : History) :
     (buyIndF e a δ).denote V
       = max 0 (min 1 (((a : ℝ) + δ - e.denote V) * (1/(δ : ℝ)))) := by
   simp only [buyIndF, clip01_denote, EF.denote_mul, EF.denote_add, EF.denote_const,
     Pi.mul_apply, Pi.add_apply]
   push_cast; ring_nf
 
-theorem sellIndF_denote (e : EF) (b δ : ℚ) (V : History) :
+lemma sellIndF_denote (e : EF) (b δ : ℚ) (V : History) :
     (sellIndF e b δ).denote V
       = max 0 (min 1 ((e.denote V - ((b : ℝ) - δ)) * (1/(δ : ℝ)))) := by
   simp only [sellIndF, clip01_denote, EF.denote_mul, EF.denote_add, EF.denote_const,
@@ -69,21 +69,21 @@ section SignalFacts
 
 variable {e : EF} {a b δ : ℚ} {V : History}
 
-theorem buyIndF_mem (e : EF) (a δ : ℚ) (V : History) :
+lemma buyIndF_mem (e : EF) (a δ : ℚ) (V : History) :
     0 ≤ (buyIndF e a δ).denote V ∧ (buyIndF e a δ).denote V ≤ 1 := by
   rw [buyIndF_denote]; exact ⟨clipVal_nonneg _, clipVal_le_one _⟩
 
-theorem sellIndF_mem (e : EF) (b δ : ℚ) (V : History) :
+lemma sellIndF_mem (e : EF) (b δ : ℚ) (V : History) :
     0 ≤ (sellIndF e b δ).denote V ∧ (sellIndF e b δ).denote V ≤ 1 := by
   rw [sellIndF_denote]; exact ⟨clipVal_nonneg _, clipVal_le_one _⟩
 
-theorem buyIndF_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (buyIndF e a δ).denote V) :
+lemma buyIndF_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (buyIndF e a δ).denote V) :
     e.denote V < (a : ℝ) + δ := by
   rw [buyIndF_denote] at h
   have := clipVal_pos_imp h
   nlinarith [mul_pos (show (0:ℝ) < 1/(δ:ℝ) by positivity) hδ]
 
-theorem buyIndF_eq_one (hδ : 0 < (δ : ℝ)) (h : e.denote V < (a : ℝ)) :
+lemma buyIndF_eq_one (hδ : 0 < (δ : ℝ)) (h : e.denote V < (a : ℝ)) :
     (buyIndF e a δ).denote V = 1 := by
   rw [buyIndF_denote]
   refine clipVal_eq_one ?_
@@ -92,7 +92,7 @@ theorem buyIndF_eq_one (hδ : 0 < (δ : ℝ)) (h : e.denote V < (a : ℝ)) :
     _ ≤ ((a:ℝ) + δ - e.denote V) * (1/(δ:ℝ)) := by
         apply mul_le_mul_of_nonneg_right h1; positivity
 
-theorem buyIndF_eq_zero (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ)
+lemma buyIndF_eq_zero (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ)
     (h : (b : ℝ) < e.denote V) : (buyIndF e a δ).denote V = 0 := by
   rw [buyIndF_denote]
   refine clipVal_eq_zero ?_
@@ -101,13 +101,13 @@ theorem buyIndF_eq_zero (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : �
   have h1δ : (0:ℝ) ≤ 1/(δ:ℝ) := by positivity
   nlinarith
 
-theorem sellIndF_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (sellIndF e b δ).denote V) :
+lemma sellIndF_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (sellIndF e b δ).denote V) :
     (b : ℝ) - δ < e.denote V := by
   rw [sellIndF_denote] at h
   have := clipVal_pos_imp h
   nlinarith [mul_pos (show (0:ℝ) < 1/(δ:ℝ) by positivity) hδ]
 
-theorem sellIndF_eq_one (hδ : 0 < (δ : ℝ)) (h : (b : ℝ) < e.denote V) :
+lemma sellIndF_eq_one (hδ : 0 < (δ : ℝ)) (h : (b : ℝ) < e.denote V) :
     (sellIndF e b δ).denote V = 1 := by
   rw [sellIndF_denote]
   refine clipVal_eq_one ?_
@@ -117,13 +117,13 @@ theorem sellIndF_eq_one (hδ : 0 < (δ : ℝ)) (h : (b : ℝ) < e.denote V) :
         apply mul_le_mul_of_nonneg_right h1; positivity
 
 /-- The `δ = 0` degenerate buy signal is identically `0` — the gate padding. -/
-theorem buyIndF_denote_zero_delta (e : EF) (a : ℚ) (V : History) :
+lemma buyIndF_denote_zero_delta (e : EF) (a : ℚ) (V : History) :
     (buyIndF e a 0).denote V = 0 := by
   rw [buyIndF_denote]
   norm_num
 
 /-- The `δ = 0` degenerate sell signal is identically `0` — the gate padding. -/
-theorem sellIndF_denote_zero_delta (e : EF) (b : ℚ) (V : History) :
+lemma sellIndF_denote_zero_delta (e : EF) (b : ℚ) (V : History) :
     (sellIndF e b 0).denote V = 0 := by
   rw [sellIndF_denote]
   norm_num
@@ -141,16 +141,16 @@ def hystChain (buy sell : ℕ → EF) : ℕ → EF
   | 0 => .const 0
   | (k + 1) => .max (.mul (hystChain buy sell k) (oneMinus (sell k))) (buy k)
 
-theorem hystChain_denote_zero (buy sell : ℕ → EF) (V : History) :
+lemma hystChain_denote_zero (buy sell : ℕ → EF) (V : History) :
     (hystChain buy sell 0).denote V = 0 := by simp [hystChain]
 
-theorem hystChain_denote_succ (buy sell : ℕ → EF) (V : History) (k : ℕ) :
+lemma hystChain_denote_succ (buy sell : ℕ → EF) (V : History) (k : ℕ) :
     (hystChain buy sell (k + 1)).denote V
       = max ((hystChain buy sell k).denote V * (1 - (sell k).denote V))
           ((buy k).denote V) := by
   simp [hystChain, EF.denote_max, EF.denote_mul, Pi.mul_apply, oneMinus_denote]
 
-theorem hystChain_rank (buy sell : ℕ → EF)
+lemma hystChain_rank (buy sell : ℕ → EF)
     (hb : ∀ i, (buy i).rank ≤ i) (hs : ∀ i, (sell i).rank ≤ i) :
     ∀ k, (hystChain buy sell k).rank ≤ k - 1
   | 0 => by simp [hystChain]
@@ -165,7 +165,7 @@ section ChainFacts
 
 variable {buy sell : ℕ → EF} {V : History}
 
-theorem hystChain_mem (hb : ∀ i, 0 ≤ (buy i).denote V ∧ (buy i).denote V ≤ 1)
+lemma hystChain_mem (hb : ∀ i, 0 ≤ (buy i).denote V ∧ (buy i).denote V ≤ 1)
     (hs : ∀ i, 0 ≤ (sell i).denote V ∧ (sell i).denote V ≤ 1) :
     ∀ k, 0 ≤ (hystChain buy sell k).denote V ∧ (hystChain buy sell k).denote V ≤ 1
   | 0 => by rw [hystChain_denote_zero]; norm_num
@@ -177,7 +177,7 @@ theorem hystChain_mem (hb : ∀ i, 0 ≤ (buy i).denote V ∧ (buy i).denote V �
       exact ⟨le_max_of_le_right hb0, max_le (by nlinarith) hb1⟩
 
 /-- Fact 1, generic: a net buy at day `k` means the buy signal fired. -/
-theorem hystChain_incr_imp (hb : ∀ i, 0 ≤ (buy i).denote V ∧ (buy i).denote V ≤ 1)
+lemma hystChain_incr_imp (hb : ∀ i, 0 ≤ (buy i).denote V ∧ (buy i).denote V ≤ 1)
     (hs : ∀ i, 0 ≤ (sell i).denote V ∧ (sell i).denote V ≤ 1) {k : ℕ}
     (h : (hystChain buy sell k).denote V < (hystChain buy sell (k + 1)).denote V) :
     0 < (buy k).denote V := by
@@ -195,7 +195,7 @@ theorem hystChain_incr_imp (hb : ∀ i, 0 ≤ (buy i).denote V ∧ (buy i).denot
   linarith
 
 /-- Fact 2, generic: a net sell at day `k` means the sell signal fired. -/
-theorem hystChain_decr_imp (hs : ∀ i, 0 ≤ (sell i).denote V ∧ (sell i).denote V ≤ 1)
+lemma hystChain_decr_imp (hs : ∀ i, 0 ≤ (sell i).denote V ∧ (sell i).denote V ≤ 1)
     {k : ℕ}
     (h : (hystChain buy sell (k + 1)).denote V < (hystChain buy sell k).denote V) :
     0 < (sell k).denote V := by
@@ -210,7 +210,7 @@ theorem hystChain_decr_imp (hs : ∀ i, 0 ≤ (sell i).denote V ∧ (sell i).den
   linarith
 
 /-- Fact 3 (buy side), generic: a fully-fired buy signal forces full holdings. -/
-theorem hystChain_eq_one (hb : ∀ i, 0 ≤ (buy i).denote V ∧ (buy i).denote V ≤ 1)
+lemma hystChain_eq_one (hb : ∀ i, 0 ≤ (buy i).denote V ∧ (buy i).denote V ≤ 1)
     (hs : ∀ i, 0 ≤ (sell i).denote V ∧ (sell i).denote V ≤ 1) {k : ℕ}
     (h : (buy k).denote V = 1) : (hystChain buy sell (k + 1)).denote V = 1 := by
   obtain ⟨ih0, ih1⟩ := hystChain_mem hb hs k
@@ -220,7 +220,7 @@ theorem hystChain_eq_one (hb : ∀ i, 0 ≤ (buy i).denote V ∧ (buy i).denote 
 
 /-- Fact 3 (sell side), generic: a dead buy and a fully-fired sell force empty
 holdings. -/
-theorem hystChain_eq_zero {k : ℕ} (hbz : (buy k).denote V = 0)
+lemma hystChain_eq_zero {k : ℕ} (hbz : (buy k).denote V = 0)
     (hsz : (sell k).denote V = 1) : (hystChain buy sell (k + 1)).denote V = 0 := by
   rw [hystChain_denote_succ, hbz, hsz]
   simp
@@ -241,17 +241,17 @@ noncomputable def hcBpos (buy sell : ℕ → EF) (V : History) (n : ℕ) : ℝ :
 noncomputable def hcBneg (buy sell : ℕ → EF) (V : History) (n : ℕ) : ℝ :=
   ∑ i ∈ Finset.range (n + 1), max (-(hcDelta buy sell V i)) 0
 
-private theorem max_sub_max_neg (x : ℝ) : max x 0 - max (-x) 0 = x := by
+private lemma max_sub_max_neg (x : ℝ) : max x 0 - max (-x) 0 = x := by
   rcases le_total x 0 with h | h
   · rw [max_eq_right h, max_eq_left (by linarith : (0:ℝ) ≤ -x)]; ring
   · rw [max_eq_left h, max_eq_right (by linarith : -x ≤ (0:ℝ))]; ring
 
-private theorem abs_eq_max_add_max_neg (x : ℝ) : |x| = max x 0 + max (-x) 0 := by
+private lemma abs_eq_max_add_max_neg (x : ℝ) : |x| = max x 0 + max (-x) 0 := by
   rcases le_total x 0 with h | h
   · rw [abs_of_nonpos h, max_eq_right h, max_eq_left (by linarith : (0:ℝ) ≤ -x)]; ring
   · rw [abs_of_nonneg h, max_eq_left h, max_eq_right (by linarith : -x ≤ (0:ℝ))]; ring
 
-theorem hcDelta_sum (buy sell : ℕ → EF) (V : History) (n : ℕ) :
+lemma hcDelta_sum (buy sell : ℕ → EF) (V : History) (n : ℕ) :
     ∑ i ∈ Finset.range (n + 1), hcDelta buy sell V i
       = (hystChain buy sell (n + 1)).denote V := by
   rw [show (∑ i ∈ Finset.range (n + 1), hcDelta buy sell V i)
@@ -260,7 +260,7 @@ theorem hcDelta_sum (buy sell : ℕ → EF) (V : History) (n : ℕ) :
     Finset.sum_range_sub (fun i => (hystChain buy sell i).denote V),
     hystChain_denote_zero, sub_zero]
 
-theorem hcBpos_eq (buy sell : ℕ → EF) (V : History) (n : ℕ) :
+lemma hcBpos_eq (buy sell : ℕ → EF) (V : History) (n : ℕ) :
     hcBpos buy sell V n
       = hcBneg buy sell V n + (hystChain buy sell (n + 1)).denote V := by
   have h : hcBpos buy sell V n - hcBneg buy sell V n
@@ -270,18 +270,18 @@ theorem hcBpos_eq (buy sell : ℕ → EF) (V : History) (n : ℕ) :
   rw [hcDelta_sum] at h
   linarith
 
-theorem hcBneg_nonneg (buy sell : ℕ → EF) (V : History) (n : ℕ) :
+lemma hcBneg_nonneg (buy sell : ℕ → EF) (V : History) (n : ℕ) :
     0 ≤ hcBneg buy sell V n :=
   Finset.sum_nonneg (fun _ _ => le_max_right _ _)
 
-theorem hcBneg_mono (buy sell : ℕ → EF) (V : History) {n m : ℕ} (h : n ≤ m) :
+lemma hcBneg_mono (buy sell : ℕ → EF) (V : History) {n m : ℕ} (h : n ≤ m) :
     hcBneg buy sell V n ≤ hcBneg buy sell V m :=
   Finset.sum_le_sum_of_subset_of_nonneg
     (Finset.range_subset_range.mpr (Nat.add_le_add_right h 1))
     (fun _ _ _ => le_max_right _ _)
 
 /-- The negative variation accumulated on `(n, m]` covers any drop in holdings. -/
-theorem hcBneg_swing (buy sell : ℕ → EF) (V : History) {n m : ℕ} (h : n ≤ m) :
+lemma hcBneg_swing (buy sell : ℕ → EF) (V : History) {n m : ℕ} (h : n ≤ m) :
     (hystChain buy sell (n + 1)).denote V - (hystChain buy sell (m + 1)).denote V
       ≤ hcBneg buy sell V m - hcBneg buy sell V n := by
   have hsub : hcBneg buy sell V m - hcBneg buy sell V n
@@ -302,7 +302,7 @@ theorem hcBneg_swing (buy sell : ℕ → EF) (V : History) {n m : ℕ} (h : n �
 
 /-- **C3, generic**: if the chain frequently reaches `1` and frequently reaches `0`, the
 negative variation is unbounded — each full swing adds at least `1`. -/
-theorem hcBneg_unbounded {buy sell : ℕ → EF} {V : History}
+lemma hcBneg_unbounded {buy sell : ℕ → EF} {V : History}
     (h1 : ∃ᶠ n in atTop, (hystChain buy sell (n + 1)).denote V = 1)
     (h0 : ∃ᶠ n in atTop, (hystChain buy sell (n + 1)).denote V = 0) :
     ∀ K : ℕ, ∃ n, (K : ℝ) ≤ hcBneg buy sell V n := by
@@ -334,7 +334,7 @@ def LUV.thresholdSumEF (X : LUV) (n : ℕ) : ℕ → EF
 def LUV.expectEF (X : LUV) (n : ℕ) : EF :=
   .mul (.const (1/(n : ℚ))) (X.thresholdSumEF n n)
 
-theorem LUV.thresholdSumEF_denote (X : LUV) (n : ℕ) (P : History) : ∀ m,
+lemma LUV.thresholdSumEF_denote (X : LUV) (n : ℕ) (P : History) : ∀ m,
     (X.thresholdSumEF n m).denote P
       = ∑ i ∈ Finset.range m, P n (X.gt ((i : ℚ) / (n : ℚ)))
   | 0 => by simp [thresholdSumEF]
@@ -343,7 +343,7 @@ theorem LUV.thresholdSumEF_denote (X : LUV) (n : ℕ) (P : History) : ∀ m,
       simp only [EF.denote_add, Pi.add_apply, EF.denote_price]
       rw [thresholdSumEF_denote X n P m, Finset.sum_range_succ]
 
-theorem LUV.expectEF_denote (X : LUV) (n : ℕ) (P : History) :
+lemma LUV.expectEF_denote (X : LUV) (n : ℕ) (P : History) :
     (X.expectEF n).denote P = X.expect P n := by
   rw [expectEF]
   simp only [EF.denote_mul, Pi.mul_apply, EF.denote_const, thresholdSumEF_denote]
@@ -351,14 +351,14 @@ theorem LUV.expectEF_denote (X : LUV) (n : ℕ) (P : History) :
   push_cast
   rw [one_div]
 
-theorem LUV.thresholdSumEF_rank (X : LUV) (n : ℕ) : ∀ m, (X.thresholdSumEF n m).rank ≤ n
+lemma LUV.thresholdSumEF_rank (X : LUV) (n : ℕ) : ∀ m, (X.thresholdSumEF n m).rank ≤ n
   | 0 => by simp [thresholdSumEF]
   | (m + 1) => by
       have ih := thresholdSumEF_rank X n m
       simp only [thresholdSumEF, EF.rank, max_le_iff]
       omega
 
-theorem LUV.expectEF_rank (X : LUV) (n : ℕ) : (X.expectEF n).rank ≤ n := by
+lemma LUV.expectEF_rank (X : LUV) (n : ℕ) : (X.expectEF n).rank ≤ n := by
   have := X.thresholdSumEF_rank n n
   simp only [expectEF, EF.rank, max_le_iff]
   omega
@@ -381,23 +381,23 @@ section GatedSignals
 
 variable {X : LUV} {a b δ : ℚ} {n₀ n : ℕ} {P : History}
 
-theorem excBuy_mem (X : LUV) (a δ : ℚ) (n₀ n : ℕ) (P : History) :
+lemma excBuy_mem (X : LUV) (a δ : ℚ) (n₀ n : ℕ) (P : History) :
     0 ≤ (excBuy X a δ n₀ n).denote P ∧ (excBuy X a δ n₀ n).denote P ≤ 1 :=
   buyIndF_mem _ _ _ P
 
-theorem excSell_mem (X : LUV) (b δ : ℚ) (n₀ n : ℕ) (P : History) :
+lemma excSell_mem (X : LUV) (b δ : ℚ) (n₀ n : ℕ) (P : History) :
     0 ≤ (excSell X b δ n₀ n).denote P ∧ (excSell X b δ n₀ n).denote P ≤ 1 :=
   sellIndF_mem _ _ _ P
 
-theorem excBuy_live (h : n₀ ≤ n) :
+lemma excBuy_live (h : n₀ ≤ n) :
     excBuy X a δ n₀ n = buyIndF (X.expectEF n) a δ := by
   rw [excBuy, excPad, if_neg (by omega)]
 
-theorem excSell_live (h : n₀ ≤ n) :
+lemma excSell_live (h : n₀ ≤ n) :
     excSell X b δ n₀ n = sellIndF (X.expectEF n) b δ := by
   rw [excSell, excPad, if_neg (by omega)]
 
-theorem excBuy_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (excBuy X a δ n₀ n).denote P) :
+lemma excBuy_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (excBuy X a δ n₀ n).denote P) :
     n₀ ≤ n ∧ X.expect P n < (a : ℝ) + δ := by
   rcases lt_or_ge n n₀ with hn | hn
   · rw [excBuy, excPad, if_pos hn, buyIndF_denote_zero_delta] at h
@@ -405,7 +405,7 @@ theorem excBuy_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (excBuy X a δ n₀ n).de
   · rw [excBuy_live hn] at h
     exact ⟨hn, X.expectEF_denote n P ▸ buyIndF_pos_imp hδ h⟩
 
-theorem excSell_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (excSell X b δ n₀ n).denote P) :
+lemma excSell_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (excSell X b δ n₀ n).denote P) :
     n₀ ≤ n ∧ (b : ℝ) - δ < X.expect P n := by
   rcases lt_or_ge n n₀ with hn | hn
   · rw [excSell, excPad, if_pos hn, sellIndF_denote_zero_delta] at h
@@ -413,26 +413,26 @@ theorem excSell_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (excSell X b δ n₀ n).
   · rw [excSell_live hn] at h
     exact ⟨hn, X.expectEF_denote n P ▸ sellIndF_pos_imp hδ h⟩
 
-theorem excBuy_eq_one (hδ : 0 < (δ : ℝ)) (hn : n₀ ≤ n)
+lemma excBuy_eq_one (hδ : 0 < (δ : ℝ)) (hn : n₀ ≤ n)
     (h : X.expect P n < (a : ℝ)) : (excBuy X a δ n₀ n).denote P = 1 := by
   rw [excBuy_live hn]
   exact buyIndF_eq_one hδ (by rw [X.expectEF_denote n P]; exact h)
 
-theorem excBuy_eq_zero (hδ : 0 < (δ : ℝ)) (hn : n₀ ≤ n)
+lemma excBuy_eq_zero (hδ : 0 < (δ : ℝ)) (hn : n₀ ≤ n)
     (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ) (h : (b : ℝ) < X.expect P n) :
     (excBuy X a δ n₀ n).denote P = 0 := by
   rw [excBuy_live hn]
   exact buyIndF_eq_zero hδ hab (by rw [X.expectEF_denote n P]; exact h)
 
-theorem excSell_eq_one (hδ : 0 < (δ : ℝ)) (hn : n₀ ≤ n)
+lemma excSell_eq_one (hδ : 0 < (δ : ℝ)) (hn : n₀ ≤ n)
     (h : (b : ℝ) < X.expect P n) : (excSell X b δ n₀ n).denote P = 1 := by
   rw [excSell_live hn]
   exact sellIndF_eq_one hδ (by rw [X.expectEF_denote n P]; exact h)
 
-theorem excBuy_rank (X : LUV) (a δ : ℚ) (n₀ n : ℕ) : (excBuy X a δ n₀ n).rank ≤ n := by
+lemma excBuy_rank (X : LUV) (a δ : ℚ) (n₀ n : ℕ) : (excBuy X a δ n₀ n).rank ≤ n := by
   rw [excBuy, buyIndF_rank]; exact X.expectEF_rank n
 
-theorem excSell_rank (X : LUV) (b δ : ℚ) (n₀ n : ℕ) : (excSell X b δ n₀ n).rank ≤ n := by
+lemma excSell_rank (X : LUV) (b δ : ℚ) (n₀ n : ℕ) : (excSell X b δ n₀ n).rank ≤ n := by
   rw [excSell, sellIndF_rank]; exact X.expectEF_rank n
 
 end GatedSignals
@@ -449,7 +449,7 @@ day-`n` bundle `{(1/n)·⌜X > i/n⌝}_{i<n}`. -/
 def excCoef (X : LUV) (a b δ : ℚ) (n₀ n : ℕ) : EF :=
   .mul (.const (1/(n : ℚ))) (excDeltaEF X a b δ n₀ n)
 
-theorem excDeltaEF_rank (X : LUV) (a b δ : ℚ) (n₀ n : ℕ) :
+lemma excDeltaEF_rank (X : LUV) (a b δ : ℚ) (n₀ n : ℕ) :
     (excDeltaEF X a b δ n₀ n).rank ≤ n := by
   have h1 := hystChain_rank _ _ (excBuy_rank X a δ n₀) (excSell_rank X b δ n₀) (n + 1)
   have h2 := hystChain_rank _ _ (excBuy_rank X a δ n₀) (excSell_rank X b δ n₀) n
@@ -477,7 +477,7 @@ def excTrader (X : LUV) (a b δ : ℚ) (n₀ : ℕ) : Trader where
         simp only [excCoef, EF.rank, max_le_iff]
         omega }
 
-private theorem list_range_map_sum (f : ℕ → ℝ) : ∀ n,
+private lemma list_range_map_sum (f : ℕ → ℝ) : ∀ n,
     ((List.range n).map f).sum = ∑ i ∈ Finset.range n, f i
   | 0 => by simp
   | (n + 1) => by
@@ -487,7 +487,7 @@ private theorem list_range_map_sum (f : ℕ → ℝ) : ∀ n,
 
 /-- The day-`n` strategy value: `Δₙ · (bundle payout − bundle cost)`, i.e.
 `Δₙ · (𝔼ⁿ_w(X) − 𝔼ₙ(X))`. -/
-theorem excTrader_value (X : LUV) (a b δ : ℚ) (n₀ : ℕ) (V : History)
+lemma excTrader_value (X : LUV) (a b δ : ℚ) (n₀ : ℕ) (V : History)
     (w : Sentence → ℝ) (n : ℕ) :
     ((excTrader X a b δ n₀).strat n).value V w
       = hcDelta (excBuy X a δ n₀) (excSell X b δ n₀) V n
@@ -507,7 +507,7 @@ theorem excTrader_value (X : LUV) (a b δ : ℚ) (n₀ : ℕ) (V : History)
   ring
 
 /-- Net worth: `Σ_{n ≤ N} Δₙ · (𝔼ⁿ_{v}(X) − 𝔼ₙ(X))`. -/
-theorem excTrader_netWorth (X : LUV) (a b δ : ℚ) (n₀ : ℕ) (P : History) (v : PCWorld)
+lemma excTrader_netWorth (X : LUV) (a b δ : ℚ) (n₀ : ℕ) (P : History) (v : PCWorld)
     (N : ℕ) : (excTrader X a b δ n₀).netWorth P v N
       = ∑ n ∈ Finset.range (N + 1),
           hcDelta (excBuy X a δ n₀) (excSell X b δ n₀) P n
@@ -673,7 +673,7 @@ theorem excTrader_netWorth_ge (hδ : 0 < (δ : ℝ)) (ha : 0 ≤ (a : ℝ) + δ)
 
 /-- **C3 for the expectation feature**: oscillation of `𝔼(X)` across `[a, b]` drives the
 gated chain through full swings, so `B₋ → ∞`. -/
-theorem excBneg_unbounded (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ)
+lemma excBneg_unbounded (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ)
     (hA : ∃ᶠ n in atTop, X.expect P n < (a : ℝ))
     (hB : ∃ᶠ n in atTop, (b : ℝ) < X.expect P n) :
     ∀ K : ℕ, ∃ n, (K : ℝ) ≤ hcBneg (excBuy X a δ n₀) (excSell X b δ n₀) P n := by
@@ -693,7 +693,7 @@ end Accounting
 
 /-- **The bundle trader exploits an oscillating expectation.** Gate condition
 `2/n₀ ≤ γ/2` (γ the hysteresis margin) absorbs the bundle-payout error. -/
-theorem excTrader_exploits (P : History) (DP : DeductiveProcess) (X : LUV)
+lemma excTrader_exploits (P : History) (DP : DeductiveProcess) (X : LUV)
     {a b δ : ℚ} {n₀ : ℕ}
     (hδ : 0 < (δ : ℝ)) (ha : 0 ≤ (a : ℝ) + δ) (hab : (a : ℝ) + δ < (b : ℝ) - δ)
     (hn₀ : 1 ≤ n₀)
@@ -748,7 +748,7 @@ theorem excTrader_exploits (P : History) (DP : DeductiveProcess) (X : LUV)
 
 /-! ### Efficient emission of the expectation feature and variable-width chain -/
 
-theorem encode_inv_nat_polyFueled :
+lemma encode_inv_nat_polyFueled :
     ∃ c, PolyFueled c (fun n => Encodable.encode (1 / (n : ℚ))) := by
   have livePF := (PolyFueled.const 2).pair PolyFueled.id
   have pickPF := ifzSel_polyFueled.comp
@@ -760,7 +760,7 @@ theorem encode_inv_nat_polyFueled :
   · simp only [Nat.succ_ne_zero, if_false, one_div]
     simpa using (encode_rat_inv_natCast (Nat.succ_pos n)).symm
 
-theorem encode_if_lt_const_polyFueled (n₀ : ℕ) (q₀ q₁ : ℚ) :
+lemma encode_if_lt_const_polyFueled (n₀ : ℕ) (q₀ q₁ : ℚ) :
     ∃ c, PolyFueled c (fun n => Encodable.encode (if n < n₀ then q₀ else q₁)) := by
   have testPF := subc_polyFueled.comp
     ((PolyFueled.const n₀).pair PolyFueled.id)
@@ -777,7 +777,7 @@ theorem encode_if_lt_const_polyFueled (n₀ : ℕ) (q₀ q₁ : ℚ) :
 def excThresholdBlk (X : LUV) (n i : ℕ) : List ℕ :=
   (EF.price (X.gt ((i : ℚ) / (n : ℚ))) n).serialize ++ [2]
 
-theorem excThresholdBlk_tokenStream (X : LUV) (hcode : X.PolyThresholdCodes) :
+lemma excThresholdBlk_tokenStream (X : LUV) (hcode : X.PolyThresholdCodes) :
     PolyTokenStream (fun m => excThresholdBlk X m.unpair.1 m.unpair.2) := by
   obtain ⟨cX, hX⟩ := hcode
   show PolyTokenStream (fun m =>
@@ -786,11 +786,11 @@ theorem excThresholdBlk_tokenStream (X : LUV) (hcode : X.PolyThresholdCodes) :
   exact (((PolyTokenStream.const 0).append (PolyTokenStream.polyTok hX)).append
     (PolyTokenStream.polyTok PolyFueled.left)).append (PolyTokenStream.const 2)
 
-theorem excThresholdBlk_length (X : LUV) (n i : ℕ) :
+lemma excThresholdBlk_length (X : LUV) (n i : ℕ) :
     (excThresholdBlk X n i).length = 4 := by
   simp [excThresholdBlk, EF.serialize]
 
-theorem serialize_thresholdSumEF (X : LUV) (n : ℕ) : ∀ m,
+lemma serialize_thresholdSumEF (X : LUV) (n : ℕ) : ∀ m,
     (X.thresholdSumEF n m).serialize =
       [1, Encodable.encode (0 : ℚ)] ++
         (List.range m).flatMap (fun i => excThresholdBlk X n i)
@@ -800,7 +800,7 @@ theorem serialize_thresholdSumEF (X : LUV) (n : ℕ) : ∀ m,
         List.range_succ, List.flatMap_append, List.flatMap_singleton]
       simp [excThresholdBlk, EF.serialize, List.append_assoc]
 
-theorem expectEF_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes) :
+lemma expectEF_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes) :
     PolySegStream (fun n => (X.expectEF n).serialize) := by
   have head : PolySegStream (fun n => (EF.const (1 / (n : ℚ))).serialize) :=
     PolySegStream.ofTokenStream
@@ -819,7 +819,7 @@ theorem expectEF_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes) :
   rw [serialize_thresholdSumEF]
   simp
 
-theorem PolySegStream.serialize_oneMinus {e : ℕ → EF}
+lemma PolySegStream.serialize_oneMinus {e : ℕ → EF}
     (he : PolySegStream (fun n => (e n).serialize)) :
     PolySegStream (fun n => (oneMinus (e n)).serialize) :=
   PolySegStream.serialize_add
@@ -827,7 +827,7 @@ theorem PolySegStream.serialize_oneMinus {e : ℕ → EF}
     (PolySegStream.serialize_mul
       (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) he)
 
-theorem PolySegStream.serialize_efMin {e f : ℕ → EF}
+lemma PolySegStream.serialize_efMin {e f : ℕ → EF}
     (he : PolySegStream (fun n => (e n).serialize))
     (hf : PolySegStream (fun n => (f n).serialize)) :
     PolySegStream (fun n => (efMin (e n) (f n)).serialize) :=
@@ -839,7 +839,7 @@ theorem PolySegStream.serialize_efMin {e f : ℕ → EF}
       (PolySegStream.serialize_mul
         (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) hf))
 
-theorem PolySegStream.serialize_clip01 {e : ℕ → EF}
+lemma PolySegStream.serialize_clip01 {e : ℕ → EF}
     (he : PolySegStream (fun n => (e n).serialize)) :
     PolySegStream (fun n => (clip01 (e n)).serialize) :=
   PolySegStream.serialize_max
@@ -847,7 +847,7 @@ theorem PolySegStream.serialize_clip01 {e : ℕ → EF}
     (PolySegStream.serialize_efMin
       (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)) he)
 
-theorem excBuy_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
+lemma excBuy_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
     (a δ : ℚ) (n₀ : ℕ) :
     PolySegStream (fun n => (excBuy X a δ n₀ n).serialize) := by
   have he := expectEF_polySegStream X hcode
@@ -868,7 +868,7 @@ theorem excBuy_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
     (PolySegStream.serialize_add hc (PolySegStream.serialize_mul
       (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) he)) hs)
 
-theorem excSell_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
+lemma excSell_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
     (b δ : ℚ) (n₀ : ℕ) :
     PolySegStream (fun n => (excSell X b δ n₀ n).serialize) := by
   have he := expectEF_polySegStream X hcode
@@ -895,7 +895,7 @@ def excHystBlk (X : LUV) (a b δ : ℚ) (n₀ k : ℕ) : List ℕ :=
   (oneMinus (excSell X b δ n₀ k)).serialize ++ [3] ++
     (excBuy X a δ n₀ k).serialize ++ [4]
 
-theorem excHystBlk_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
+lemma excHystBlk_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
     (a b δ : ℚ) (n₀ : ℕ) :
     PolySegStream (fun k => excHystBlk X a b δ n₀ k) := by
   exact (((PolySegStream.serialize_oneMinus (excSell_polySegStream X hcode b δ n₀)).append
@@ -903,7 +903,7 @@ theorem excHystBlk_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
     (excBuy_polySegStream X hcode a δ n₀)).append
     (PolySegStream.ofTokenStream (PolyTokenStream.const 4))
 
-theorem serialize_excHystChain (X : LUV) (a b δ : ℚ) (n₀ : ℕ) : ∀ k,
+lemma serialize_excHystChain (X : LUV) (a b δ : ℚ) (n₀ : ℕ) : ∀ k,
     (hystChain (excBuy X a δ n₀) (excSell X b δ n₀) k).serialize =
       [1, Encodable.encode (0 : ℚ)] ++
         (List.range k).flatMap (fun j => excHystBlk X a b δ n₀ j)
@@ -915,7 +915,7 @@ theorem serialize_excHystChain (X : LUV) (a b δ : ℚ) (n₀ : ℕ) : ∀ k,
         List.range_succ, List.flatMap_append, List.flatMap_singleton]
       simp [excHystBlk, List.append_assoc]
 
-theorem excCoef_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
+lemma excCoef_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
     (a b δ : ℚ) (n₀ : ℕ) :
     PolySegStream (fun n => (excCoef X a b δ n₀ n).serialize) := by
   have blk := excHystBlk_polySegStream X hcode a b δ n₀
@@ -940,7 +940,7 @@ theorem excCoef_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
   intro n
   rw [excCoef, excDeltaEF]
 
-private theorem serializeTrades_map_same (e : EF) (f : ℕ → Sentence) : ∀ l : List ℕ,
+private lemma serializeTrades_map_same (e : EF) (f : ℕ → Sentence) : ∀ l : List ℕ,
     serializeTrades (l.map (fun i => (e, f i))) =
       l.flatMap (fun i => e.serialize ++ [6, Encodable.encode (f i)])
   | [] => by simp [serializeTrades]
@@ -948,7 +948,7 @@ private theorem serializeTrades_map_same (e : EF) (f : ℕ → Sentence) : ∀ l
       rw [List.map_cons, List.flatMap_cons, serializeTrades, serializeTrades_map_same]
       simp [List.append_assoc]
 
-private theorem serializeTrades_excTrader (X : LUV) (a b δ : ℚ) (n₀ n : ℕ) :
+private lemma serializeTrades_excTrader (X : LUV) (a b δ : ℚ) (n₀ n : ℕ) :
     serializeTrades ((excTrader X a b δ n₀).strat n).trades =
       (List.range n).flatMap (fun i : ℕ =>
         (excCoef X a b δ n₀ n).serialize ++
@@ -963,7 +963,7 @@ coefficient serializations (each `Θ(n²)`: the two hysteresis chains contain hi
 day-`k` blocks carrying the `Θ(k)` expectation feature) with distinct threshold sentences.
 `PolySegStream.concatVar` emits the variable-width chains; the outer bundle is uniform-width.
 `hcode` supplies the compact sentence-code interface for `⌜X > i/n⌝`. -/
-theorem excTrader_ecTok (X : LUV) (hcode : X.PolyThresholdCodes)
+lemma excTrader_ecTok (X : LUV) (hcode : X.PolyThresholdCodes)
     (a b δ : ℚ) (n₀ : ℕ) :
     EfficientlyComputableTok (excTrader X a b δ n₀) := by
   have hcode' := hcode

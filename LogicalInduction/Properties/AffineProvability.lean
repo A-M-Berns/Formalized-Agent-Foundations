@@ -25,7 +25,7 @@ noncomputable def PolySequence.buyBelowTrader {As : ℕ → AffineCombination}
         · simpa [entry, gateFeature, hs] using h.gradualEntry_rank_le low δ n
         · simp [entry, gateFeature, hs]) (h.terms_rank n))
 
-theorem PolySequence.buyBelowTrader_trades {As : ℕ → AffineCombination}
+lemma PolySequence.buyBelowTrader_trades {As : ℕ → AffineCombination}
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) (n : ℕ) :
     ((h.buyBelowTrader start low δ).strat n).trades =
       (List.range (h.termCount n)).map (fun j =>
@@ -35,7 +35,7 @@ theorem PolySequence.buyBelowTrader_trades {As : ℕ → AffineCombination}
     AffineCombination.scale, h.terms_eq]
   simp [List.map_map, Function.comp_def]
 
-theorem PolySequence.buyBelowTrader_ec {As : ℕ → AffineCombination}
+lemma PolySequence.buyBelowTrader_ec {As : ℕ → AffineCombination}
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
     EfficientlyComputableTok (h.buyBelowTrader start low δ) := by
   have hentry : PolySegStream (fun n =>
@@ -62,7 +62,7 @@ theorem PolySequence.buyBelowTrader_ec {As : ℕ → AffineCombination}
   rw [h.buyBelowTrader_trades start low δ, serializeTrades_map_singleton]
   simp only [Nat.unpair_pair]
 
-theorem PolySequence.buyBelowTrader_value {As : ℕ → AffineCombination}
+lemma PolySequence.buyBelowTrader_value {As : ℕ → AffineCombination}
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) (V : History)
     (w : Valuation) (n : ℕ) :
     ((h.buyBelowTrader start low δ).strat n).value V w =
@@ -74,7 +74,7 @@ theorem PolySequence.buyBelowTrader_value {As : ℕ → AffineCombination}
 
 /-- **Affine Provability Induction.**  An eventually uniform plausible-world lower bound
 on a normalized polynomial affine family is learned on the diagonal. -/
-theorem PolySequence.affine_provind {As : ℕ → AffineCombination}
+lemma PolySequence.affine_provind {As : ℕ → AffineCombination}
     (h : PolySequence As) (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP]
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -143,7 +143,7 @@ theorem PolySequence.affine_provind {As : ℕ → AffineCombination}
 
 /-- Two-sided affine provability: if every late plausible world values the family
 uniformly near zero, then its diagonal market price converges to zero. -/
-theorem PolySequence.affine_tendsto_zero {As : ℕ → AffineCombination}
+lemma PolySequence.affine_tendsto_zero {As : ℕ → AffineCombination}
     (h : PolySequence As) (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP]
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))

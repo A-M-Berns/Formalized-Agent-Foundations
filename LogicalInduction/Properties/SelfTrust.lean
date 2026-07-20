@@ -164,7 +164,7 @@ structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
 
 namespace AffineQuotePortfolio
 
-private theorem price_le_futureHigh {P : History} {gap : ℕ → ℝ}
+private lemma price_le_futureHigh {P : History} {gap : ℕ → ℝ}
     (q : AffineQuotePortfolio P gap) {n m : ℕ}
     (hnm : n ≤ m) :
     (q.family n).price P m ≤ affineFutureHigh q.family P n := by
@@ -176,7 +176,7 @@ private theorem price_le_futureHigh {P : History} {gap : ℕ → ℝ}
   · refine ⟨m - n, ?_⟩
     simpa using congrArg (fun k => (q.family n).price P k) (Nat.add_sub_of_le hnm)
 
-private theorem futureLow_le_price {P : History} {gap : ℕ → ℝ}
+private lemma futureLow_le_price {P : History} {gap : ℕ → ℝ}
     (q : AffineQuotePortfolio P gap) {n m : ℕ}
     (hnm : n ≤ m) :
     affineFutureLow q.family P n ≤ (q.family n).price P m := by
@@ -228,7 +228,7 @@ theorem preemptive_asympEq_zero {P : History} {gap : ℕ → ℝ}
     linarith
 
 /-- Remove the positive normalization from a two-sided fixed-portfolio certificate. -/
-theorem gap_asympEq_zero {P : History} {gap : ℕ → ℝ}
+lemma gap_asympEq_zero {P : History} {gap : ℕ → ℝ}
     (q : AffineQuotePortfolio P gap)
     (DP : DeductiveProcess) [IsLogicalInductor P DP] (f : DeferralFunction)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
@@ -246,7 +246,7 @@ theorem gap_asympEq_zero {P : History} {gap : ℕ → ℝ}
   simpa only [sub_zero] using (mul_le_mul_iff_of_pos_left hs).mp hn
 
 /-- One-sided version of the preemptive transport. -/
-theorem preemptive_asympGE_zero {P : History} {gap : ℕ → ℝ}
+lemma preemptive_asympGE_zero {P : History} {gap : ℕ → ℝ}
     (q : AffineQuotePortfolio P gap)
     (DP : DeductiveProcess) [IsLogicalInductor P DP] (f : DeferralFunction)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
@@ -266,7 +266,7 @@ theorem preemptive_asympGE_zero {P : History} {gap : ℕ → ℝ}
   linarith
 
 /-- Remove the positive normalization from a one-sided fixed-portfolio certificate. -/
-theorem gap_asympGE_zero {P : History} {gap : ℕ → ℝ}
+lemma gap_asympGE_zero {P : History} {gap : ℕ → ℝ}
     (q : AffineQuotePortfolio P gap)
     (DP : DeductiveProcess) [IsLogicalInductor P DP] (f : DeferralFunction)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)

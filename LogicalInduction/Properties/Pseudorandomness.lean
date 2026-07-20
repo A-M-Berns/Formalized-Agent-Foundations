@@ -27,7 +27,7 @@ Unlike an arbitrary rational sequence, this feature is visibly market-generable:
 syntax is one closed constant token and its denotation is independent of the market. -/
 def constantRatFeature (q : ℚ) (_n : ℕ) : EF := EF.const q
 
-theorem constantRatFeature_generated (P : History) (q : ℚ) :
+lemma constantRatFeature_generated (P : History) (q : ℚ) :
     GeneratedRatFeature P (fun _ ↦ q) (constantRatFeature q) where
   rank_le := by intro n; simp [constantRatFeature]
   polyTok := PolyTokenStream.serialize_const q
@@ -91,7 +91,7 @@ noncomputable def sentenceMinusFeature_polySequence
     coefficient_closed := by intro z ρ V; simp [EF.denoteWith]
   }
 
-theorem sentenceMinusFeature_bounded
+lemma sentenceMinusFeature_bounded
     (φ : ℕ → Sentence) (pFeature : ℕ → EF)
     {P : History} {p : ℕ → ℚ} (hp : GeneratedRatFeature P p pFeature)
     (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
@@ -124,11 +124,11 @@ def WeightingSupportedOnDeferralImage
     (W : ℕ → EF) (P : History) (f : DeferralFunction) : Prop :=
   ∀ n, (W n).denote P ≠ 0 → ∃ k, f k = n
 
-theorem StrictlyIncreasingDeferral.injective {f : DeferralFunction}
+lemma StrictlyIncreasingDeferral.injective {f : DeferralFunction}
     (h : StrictlyIncreasingDeferral f) : Function.Injective f :=
   StrictMono.injective h
 
-theorem weightedAverage_neg (w x : ℕ → ℝ) {n : ℕ}
+lemma weightedAverage_neg (w x : ℕ → ℝ) {n : ℕ}
     (hden : prefixSum w n ≠ 0) :
     weightedAverage w (fun i ↦ -x i) n = -weightedAverage w x n := by
   have hnum : prefixSum (fun i ↦ w i * -x i) n =
@@ -142,7 +142,7 @@ theorem weightedAverage_neg (w x : ℕ → ℝ) {n : ℕ}
   rw [weightedAverage_eq_div hden, weightedAverage_eq_div hden, hnum]
   ring
 
-theorem weightedAverage_const (w : ℕ → ℝ) (c : ℝ) {n : ℕ}
+lemma weightedAverage_const (w : ℕ → ℝ) (c : ℝ) {n : ℕ}
     (hden : prefixSum w n ≠ 0) :
     weightedAverage w (fun _ ↦ c) n = c := by
   rw [weightedAverage_eq_div hden]
@@ -170,7 +170,7 @@ def Pseudorandom (truth : ℕ → ℝ) (f : DeferralFunction) (P : History) : Pr
   PseudorandomAbove truth f P ∧ PseudorandomBelow truth f P
 
 /-- Positive rescaling preserves pseudorandom nonnegativity. -/
-theorem PseudorandomAbove.const_mul_pos
+lemma PseudorandomAbove.const_mul_pos
     {truth : ℕ → ℝ} {f : DeferralFunction} {P : History}
     (h : PseudorandomAbove truth f P) {c : ℝ} (hc : 0 < c) :
     PseudorandomAbove (fun n => c * truth n) f P := by
@@ -183,7 +183,7 @@ theorem PseudorandomAbove.const_mul_pos
   exact hm
 
 /-- Positive rescaling preserves pseudorandom nonpositivity. -/
-theorem PseudorandomBelow.const_mul_pos
+lemma PseudorandomBelow.const_mul_pos
     {truth : ℕ → ℝ} {f : DeferralFunction} {P : History}
     (h : PseudorandomBelow truth f P) {c : ℝ} (hc : 0 < c) :
     PseudorandomBelow (fun n => c * truth n) f P := by
@@ -196,7 +196,7 @@ theorem PseudorandomBelow.const_mul_pos
   exact hm
 
 /-- Cancel a positive fixed scale from asymptotic nonnegativity. -/
-theorem asympGE_zero_of_const_mul_pos
+lemma asympGE_zero_of_const_mul_pos
     {x : ℕ → ℝ} {c : ℝ} (hc : 0 < c)
     (h : (fun n => c * x n) ≳ₙ (fun _ => 0)) :
     x ≳ₙ (fun _ => 0) := by
@@ -208,7 +208,7 @@ theorem asympGE_zero_of_const_mul_pos
   exact (mul_nonneg_iff_of_pos_left hc).mp hm
 
 /-- Cancel a positive fixed scale from asymptotic nonpositivity. -/
-theorem asympLE_zero_of_const_mul_pos
+lemma asympLE_zero_of_const_mul_pos
     {x : ℕ → ℝ} {c : ℝ} (hc : 0 < c)
     (h : (fun n => c * x n) ≲ₙ (fun _ => 0)) :
     x ≲ₙ (fun _ => 0) := by
@@ -220,7 +220,7 @@ theorem asympLE_zero_of_const_mul_pos
   simpa only [zero_add] using (mul_le_mul_iff_of_pos_left hc).mp hm
 
 /-- Cancel a positive fixed scale from asymptotic equality to zero. -/
-theorem asympEq_zero_of_const_mul_pos
+lemma asympEq_zero_of_const_mul_pos
     {x : ℕ → ℝ} {c : ℝ} (hc : 0 < c)
     (h : (fun n => c * x n) ≈ₙ (fun _ => 0)) :
     x ≈ₙ (fun _ => 0) := by
@@ -252,7 +252,7 @@ def VariedPseudorandom (truth : ℕ → ℝ) (p : ℕ → ℚ)
     (f : DeferralFunction) (P : History) : Prop :=
   Pseudorandom (fun n ↦ truth n - (p n : ℝ)) f P
 
-theorem PseudorandomFrequency.variedAbove_of_lt
+lemma PseudorandomFrequency.variedAbove_of_lt
     {truth : ℕ → ℝ} {p : ℝ} {f : DeferralFunction} {P : History}
     (h : PseudorandomFrequency truth p f P) (q : ℚ) (hq : (q : ℝ) < p) :
     VariedPseudorandomAbove truth (fun _ ↦ q) f P := by
@@ -264,7 +264,7 @@ theorem PseudorandomFrequency.variedAbove_of_lt
     weightedAverage_const _ _ (ne_of_gt hden)]
   linarith
 
-theorem PseudorandomFrequency.variedBelow_of_lt
+lemma PseudorandomFrequency.variedBelow_of_lt
     {truth : ℕ → ℝ} {p : ℝ} {f : DeferralFunction} {P : History}
     (h : PseudorandomFrequency truth p f P) (q : ℚ) (hq : p < (q : ℝ)) :
     VariedPseudorandomBelow truth (fun _ ↦ q) f P := by
@@ -276,7 +276,7 @@ theorem PseudorandomFrequency.variedBelow_of_lt
     weightedAverage_const _ _ (ne_of_gt hden)]
   linarith
 
-theorem PseudorandomBelow.neg {truth : ℕ → ℝ} {f : DeferralFunction}
+lemma PseudorandomBelow.neg {truth : ℕ → ℝ} {f : DeferralFunction}
     {P : History} (h : PseudorandomBelow truth f P) :
     PseudorandomAbove (fun n ↦ -truth n) f P := by
   intro W hWgen hWdiv hpatient
@@ -298,7 +298,7 @@ noncomputable def feedbackWealth (δ : ℝ) (w r : ℕ → ℝ) (k : ℕ) : ℝ 
 /-- Elementary logarithmic estimate used by the Kelly argument.  The slightly coarser
 factor `2` (instead of the paper's informal factor `1`) follows directly from
 `1 - x⁻¹ ≤ log x` and is sufficient for the same convergence contradiction. -/
-theorem sub_two_mul_sq_le_log_one_add {x : ℝ}
+lemma sub_two_mul_sq_le_log_one_add {x : ℝ}
     (hlo : -(1 / 2 : ℝ) ≤ x) (_hhi : x ≤ 1 / 2) :
     x - 2 * x ^ 2 ≤ Real.log (1 + x) := by
   have hpos : 0 < 1 + x := by linarith
@@ -314,7 +314,7 @@ theorem sub_two_mul_sq_le_log_one_add {x : ℝ}
     nlinarith [sq_nonneg x, mul_nonneg (sq_nonneg x) (by linarith : 0 ≤ 1 + 2 * x)]
   exact hpoly.trans hlog
 
-theorem feedbackBet_mem_Icc {δ w r : ℝ}
+lemma feedbackBet_mem_Icc {δ w r : ℝ}
     (hδ0 : 0 ≤ δ) (hδ : δ ≤ 1 / 2)
     (hw : w ∈ Set.Icc (0 : ℝ) 1) (hr : r ∈ Set.Icc (-1 : ℝ) 1) :
     δ * w * r ∈ Set.Icc (-(1 / 2 : ℝ)) (1 / 2 : ℝ) := by
@@ -327,7 +327,7 @@ theorem feedbackBet_mem_Icc {δ w r : ℝ}
   · nlinarith [mul_le_mul_of_nonneg_left hr.1 hδw0]
   · nlinarith [mul_le_mul_of_nonneg_left hr.2 hδw0]
 
-theorem feedbackWealth_pos {δ : ℝ} {w r : ℕ → ℝ}
+lemma feedbackWealth_pos {δ : ℝ} {w r : ℕ → ℝ}
     (hδ0 : 0 ≤ δ) (hδ : δ ≤ 1 / 2)
     (hw : ∀ i, w i ∈ Set.Icc (0 : ℝ) 1)
     (hr : ∀ i, r i ∈ Set.Icc (-1 : ℝ) 1) (k : ℕ) :
@@ -338,7 +338,7 @@ theorem feedbackWealth_pos {δ : ℝ} {w r : ℕ → ℝ}
   linarith [hbet.1]
 
 /-- Exact product recurrence for feedback wealth. -/
-theorem feedbackWealth_succ (δ : ℝ) (w r : ℕ → ℝ) (k : ℕ) :
+lemma feedbackWealth_succ (δ : ℝ) (w r : ℕ → ℝ) (k : ℕ) :
     feedbackWealth δ w r (k + 1) =
       feedbackWealth δ w r k * (1 + δ * w k * r k) := by
   simp [feedbackWealth, Finset.prod_range_succ]
@@ -346,7 +346,7 @@ theorem feedbackWealth_succ (δ : ℝ) (w r : ℕ → ℝ) (k : ℕ) :
 /-- The paper's load-bearing Kelly lower bound.  Bounded weights and normalized returns
 ensure every factor stays positive, while log wealth dominates weighted cumulative return
 minus a quadratic risk charge. -/
-theorem feedbackWealth_log_lower {δ : ℝ} {w r : ℕ → ℝ}
+lemma feedbackWealth_log_lower {δ : ℝ} {w r : ℕ → ℝ}
     (hδ0 : 0 ≤ δ) (hδ : δ ≤ 1 / 2)
     (hw : ∀ i, w i ∈ Set.Icc (0 : ℝ) 1)
     (hr : ∀ i, r i ∈ Set.Icc (-1 : ℝ) 1) (k : ℕ) :
@@ -397,7 +397,7 @@ theorem feedbackWealth_log_lower {δ : ℝ} {w r : ℕ → ℝ}
 unbounded.  This is the non-vacuous upside half of the `wubaff` economic argument; the
 later market theorem must still realize these returns with an efficiently computable
 round-trip trader and prove its world-uniform downside bound. -/
-theorem feedbackWealth_not_bddAbove_of_frequently_positive_return
+lemma feedbackWealth_not_bddAbove_of_frequently_positive_return
     {δ γ : ℝ} {w r : ℕ → ℝ}
     (hδ0 : 0 < δ) (hδ : δ ≤ 1 / 2) (hgap : 2 * δ < γ)
     (hw : ∀ i, w i ∈ Set.Icc (0 : ℝ) 1)
@@ -444,7 +444,7 @@ opaque recursive certificate. -/
 def prodFeatures : List EF → EF :=
   List.foldr EF.mul (EF.const 1)
 
-theorem serialize_prodFeatures (es : List EF) :
+lemma serialize_prodFeatures (es : List EF) :
     (prodFeatures es).serialize = es.flatMap EF.serialize ++
       (EF.const 1).serialize ++ List.replicate es.length 3 := by
   induction es with
@@ -456,7 +456,7 @@ theorem serialize_prodFeatures (es : List EF) :
       rw [List.replicate_succ']
       simp only [List.append_assoc]
 
-theorem prodFeatures_denote (es : List EF) (V : History) :
+lemma prodFeatures_denote (es : List EF) (V : History) :
     (prodFeatures es).denote V = (es.map (fun e ↦ e.denote V)).prod := by
   induction es with
   | nil => simp [prodFeatures]
@@ -464,7 +464,7 @@ theorem prodFeatures_denote (es : List EF) (V : History) :
       change e.denote V * (prodFeatures es).denote V = _
       simp [ih]
 
-theorem prodFeatures_denoteWith (es : List EF) (ρ : List ℝ) (V : History) :
+lemma prodFeatures_denoteWith (es : List EF) (ρ : List ℝ) (V : History) :
     (prodFeatures es).denoteWith ρ V =
       (es.map (fun e ↦ e.denoteWith ρ V)).prod := by
   induction es with
@@ -473,7 +473,7 @@ theorem prodFeatures_denoteWith (es : List EF) (ρ : List ℝ) (V : History) :
       change e.denoteWith ρ V * (prodFeatures es).denoteWith ρ V = _
       simp [ih]
 
-theorem prodFeatures_rank_le (es : List EF) (n : ℕ)
+lemma prodFeatures_rank_le (es : List EF) (n : ℕ)
     (h : ∀ e ∈ es, e.rank ≤ n) : (prodFeatures es).rank ≤ n := by
   induction es with
   | nil => change 0 ≤ n; omega
@@ -517,7 +517,7 @@ def feedbackBetaFeature (As : ℕ → AffineCombination) (W : ℕ → EF)
     (f : DeferralFunction) (δ : ℚ) (k : ℕ) : EF :=
   EF.mul (EF.mul (EF.const δ) (feedbackWealthFeature As W f δ k)) (W (f k))
 
-theorem feedbackReturnFeature_rank_le {As : ℕ → AffineCombination}
+lemma feedbackReturnFeature_rank_le {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) {j k : ℕ} (hjk : j < k) :
     (feedbackReturnFeature As f j).rank ≤ f k := by
@@ -532,7 +532,7 @@ theorem feedbackReturnFeature_rank_le {As : ℕ → AffineCombination}
   exact Nat.max_le.mpr ⟨hfuture.trans hsucc,
     Nat.max_le.mpr ⟨by omega, hcur.trans hfj⟩⟩
 
-theorem feedbackFactorFeature_rank_le {As : ℕ → AffineCombination}
+lemma feedbackFactorFeature_rank_le {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (δ : ℚ) {j k : ℕ} (hjk : j < k) :
@@ -544,7 +544,7 @@ theorem feedbackFactorFeature_rank_le {As : ℕ → AffineCombination}
     Nat.max_le.mpr ⟨Nat.max_le.mpr ⟨by omega, hWrank⟩,
       feedbackReturnFeature_rank_le hpoly hstrict hjk⟩⟩
 
-theorem feedbackWealthFeature_rank_le {As : ℕ → AffineCombination}
+lemma feedbackWealthFeature_rank_le {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (δ : ℚ) (k : ℕ) :
@@ -555,7 +555,7 @@ theorem feedbackWealthFeature_rank_le {As : ℕ → AffineCombination}
   obtain ⟨j, hj, rfl⟩ := he
   exact feedbackFactorFeature_rank_le hpoly hW hstrict δ hj
 
-theorem feedbackBetaFeature_rank_le {As : ℕ → AffineCombination}
+lemma feedbackBetaFeature_rank_le {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (δ : ℚ) (k : ℕ) :
@@ -564,7 +564,7 @@ theorem feedbackBetaFeature_rank_le {As : ℕ → AffineCombination}
   exact Nat.max_le.mpr ⟨Nat.max_le.mpr ⟨by omega,
     feedbackWealthFeature_rank_le hpoly hW hstrict δ k⟩, hW.rank_le (f k)⟩
 
-theorem feedbackReturnFeature_closed {As : ℕ → AffineCombination}
+lemma feedbackReturnFeature_closed {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) (f : DeferralFunction) (k : ℕ)
     (ρ : List ℝ) (P : History) :
     (feedbackReturnFeature As f k).denoteWith ρ P =
@@ -574,7 +574,7 @@ theorem feedbackReturnFeature_closed {As : ℕ → AffineCombination}
   rw [hpoly.priceFeature_closed (f k) (f (k + 1)) ρ P,
     hpoly.priceFeature_closed (f k) (f k) ρ P]
 
-theorem feedbackFactorFeature_closed {As : ℕ → AffineCombination}
+lemma feedbackFactorFeature_closed {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (f : DeferralFunction) (δ : ℚ) (k : ℕ) (ρ : List ℝ) (P : History) :
     (feedbackFactorFeature As W f δ k).denoteWith ρ P =
@@ -583,7 +583,7 @@ theorem feedbackFactorFeature_closed {As : ℕ → AffineCombination}
     Pi.add_apply, Pi.mul_apply, EF.denote_const]
   rw [hW.closed (f k) ρ P, feedbackReturnFeature_closed hpoly f k ρ P]
 
-theorem feedbackWealthFeature_closed {As : ℕ → AffineCombination}
+lemma feedbackWealthFeature_closed {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (f : DeferralFunction) (δ : ℚ) (k : ℕ) (ρ : List ℝ) (P : History) :
     (feedbackWealthFeature As W f δ k).denoteWith ρ P =
@@ -597,7 +597,7 @@ theorem feedbackWealthFeature_closed {As : ℕ → AffineCombination}
   obtain ⟨j, hj, rfl⟩ := he
   exact feedbackFactorFeature_closed hpoly hW f δ j ρ P
 
-theorem feedbackBetaFeature_closed {As : ℕ → AffineCombination}
+lemma feedbackBetaFeature_closed {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (f : DeferralFunction) (δ : ℚ) (k : ℕ) (ρ : List ℝ) (P : History) :
     (feedbackBetaFeature As W f δ k).denoteWith ρ P =
@@ -614,7 +614,7 @@ theorem feedbackBetaFeature_closed {As : ℕ → AffineCombination}
         ((As (f k)).price P (f (k + 1)) - (As (f k)).price P (f k)) := by
   simp [feedbackFactorFeature, feedbackReturnFeature_denote]
 
-theorem feedbackWealthFeature_denote
+lemma feedbackWealthFeature_denote
     (As : ℕ → AffineCombination) (W : ℕ → EF) (f : DeferralFunction)
     (δ : ℚ) (P : History) (k : ℕ) :
     (feedbackWealthFeature As W f δ k).denote P =
@@ -632,7 +632,7 @@ theorem feedbackWealthFeature_denote
           (feedbackFactorFeature As W f δ k).denote P = _
       rw [ih, feedbackFactorFeature_denote, feedbackWealth_succ]
 
-theorem feedbackBetaFeature_denote
+lemma feedbackBetaFeature_denote
     (As : ℕ → AffineCombination) (W : ℕ → EF) (f : DeferralFunction)
     (δ : ℚ) (P : History) (k : ℕ) :
     (feedbackBetaFeature As W f δ k).denote P =
@@ -651,7 +651,7 @@ def feedbackPosition (As : ℕ → AffineCombination) (W : ℕ → EF)
     (f : DeferralFunction) (δ : ℚ) (k : ℕ) : AffineCombination :=
   (As (f k)).scale (feedbackBetaFeature As W f δ k)
 
-theorem feedbackPosition_terms_rank_le {As : ℕ → AffineCombination}
+lemma feedbackPosition_terms_rank_le {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (δ : ℚ) (k : ℕ) :
@@ -671,7 +671,7 @@ def feedbackRoundTrip {As : ℕ → AffineCombination} (hpoly : PolySequence As)
 
 /-- Once component `k` has closed, its world-independent profit is exactly the increment
 of the explicit feedback wealth recurrence. -/
-theorem feedbackRoundTrip_netWorth_close {As : ℕ → AffineCombination}
+lemma feedbackRoundTrip_netWorth_close {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (δ : ℚ) (P : History) (v : PCWorld) (k n : ℕ) (hn : f (k + 1) ≤ n) :
@@ -689,7 +689,7 @@ theorem feedbackRoundTrip_netWorth_close {As : ℕ → AffineCombination}
   rw [feedbackWealth_succ]
   ring
 
-theorem feedbackRoundTrip_netWorth_before_open {As : ℕ → AffineCombination}
+lemma feedbackRoundTrip_netWorth_before_open {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (δ : ℚ) (P : History) (v : PCWorld) (k n : ℕ) (hn : n < f k) :
@@ -705,7 +705,7 @@ theorem feedbackRoundTrip_netWorth_before_open {As : ℕ → AffineCombination}
     simp only [Finset.mem_range] at hi
     omega
 
-theorem feedbackRoundTrip_netWorth_open {As : ℕ → AffineCombination}
+lemma feedbackRoundTrip_netWorth_open {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (δ : ℚ) (P : History) (v : PCWorld) (k : ℕ) :
@@ -726,7 +726,7 @@ theorem feedbackRoundTrip_netWorth_open {As : ℕ → AffineCombination}
   · intro hnot
     simp at hnot
 
-theorem feedbackRoundTrip_netWorth_during_open {As : ℕ → AffineCombination}
+lemma feedbackRoundTrip_netWorth_during_open {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (δ : ℚ) (P : History) (v : PCWorld) (k n : ℕ)
@@ -750,7 +750,7 @@ theorem feedbackRoundTrip_netWorth_during_open {As : ℕ → AffineCombination}
 
 /-- All components strictly before feedback index `k` have closed by day `f k`, and
 their realized profits telescope to `Wealth_k - 1`. -/
-theorem feedbackRoundTrip_closed_sum {As : ℕ → AffineCombination}
+lemma feedbackRoundTrip_closed_sum {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (δ : ℚ) (P : History) (v : PCWorld) (k n : ℕ) (hn : f k ≤ n) :
@@ -801,7 +801,7 @@ def feedbackRoundTripTrades (As : ℕ → AffineCombination) (W : ℕ → EF)
   else []
 
 /-- The proof-bearing round-trip trader has exactly the proof-erased trade list above. -/
-theorem feedbackRoundTrip_trades
+lemma feedbackRoundTrip_trades
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ) (k n : ℕ) :
@@ -824,7 +824,7 @@ def feedbackTraderTrades (As : ℕ → AffineCombination) (W : ℕ → EF)
   (List.range (n + 1)).flatMap fun k ↦ feedbackRoundTripTrades As W f δ k n
 
 /-- `feedbackTraderTrades` is literal list equality with the existing economic trader. -/
-theorem feedbackTrader_trades
+lemma feedbackTrader_trades
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ) (n : ℕ) :
@@ -840,7 +840,8 @@ the exact trade count, each coefficient feature, and each sentence code; `trades
 requires these fields to reconstruct the trader's real day strategy.  It contains no
 prices, worlds, wealth bounds, bias premise, exploitation claim, or logical-induction
 conclusion.  Constructing it uniformly from a deferral program is the ledgered
-`M7-FEEDBACK-EMIT` bounded-dovetail obligation.  Paper node: `thm:wubaff` (App. `wubaff`), reused by `thm:wubexp`. -/
+`M7-FEEDBACK-EMIT` bounded-dovetail obligation.
+Paper node: `thm:wubaff` (App. `wubaff`), reused by `thm:wubexp`. -/
 structure FeedbackTraderEmission
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -859,7 +860,8 @@ structure FeedbackTraderEmission
 /-- Uniform emission boundary for every sufficiently small rational Kelly fraction.
 The feedback proof selects the fraction only after receiving an analytic error tolerance,
 so a single preselected trader is not enough for the paper's quantified convergence
-claim.  Each member is still the exact, conclusion-free `FeedbackTraderEmission` above.  Paper node: `thm:wubaff` (App. `wubaff`). -/
+claim.  Each member is still the exact, conclusion-free `FeedbackTraderEmission` above.
+Paper node: `thm:wubaff` (App. `wubaff`). -/
 structure FeedbackTraderEmissionFamily
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -869,7 +871,8 @@ structure FeedbackTraderEmissionFamily
 
 /-- The two sign orientations required for an equality conclusion.  The negative family
 emits the same concrete Kelly construction applied to the explicitly negated affine
-sequence; no bias or convergence claim is stored in this boundary.  Paper node: `thm:wubaff` (App. `wubaff`). -/
+sequence; no bias or convergence claim is stored in this boundary.
+Paper node: `thm:wubaff` (App. `wubaff`). -/
 structure FeedbackTraderEmissionSigns
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -879,7 +882,7 @@ structure FeedbackTraderEmissionSigns
 
 /-- A structured feedback emitter yields a real token-indexed efficient-computability
 certificate for the actual joined trader. -/
-theorem feedbackTrader_ecTok
+lemma feedbackTrader_ecTok
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ)
@@ -902,7 +905,7 @@ theorem feedbackTrader_ecTok
   intro n
   rw [emit.trades_eq, serializeTrades_map_singleton]
 
-private theorem feedback_list_range_map_sum (g : ℕ → ℝ) : ∀ n,
+private lemma feedback_list_range_map_sum (g : ℕ → ℝ) : ∀ n,
     ((List.range n).map g).sum = ∑ k ∈ Finset.range n, g k
   | 0 => by simp
   | n + 1 => by
@@ -910,7 +913,7 @@ private theorem feedback_list_range_map_sum (g : ℕ → ℝ) : ∀ n,
         Finset.sum_range_succ, feedback_list_range_map_sum g n]
       simp
 
-theorem feedbackTrader_strat_value {As : ℕ → AffineCombination}
+lemma feedbackTrader_strat_value {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (δ : ℚ) (P : History) (w : Valuation) (n : ℕ) :
@@ -921,7 +924,7 @@ theorem feedbackTrader_strat_value {As : ℕ → AffineCombination}
   simpa [Function.comp_def] using feedback_list_range_map_sum
     (fun k ↦ ((feedbackRoundTrip hpoly hW hstrict δ k).strat n).value P w) (n + 1)
 
-theorem feedbackRoundTrip_value_zero_of_day_lt_index
+lemma feedbackRoundTrip_value_zero_of_day_lt_index
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ)
@@ -936,7 +939,7 @@ theorem feedbackRoundTrip_value_zero_of_day_lt_index
     have hk := f.lt (k + 1)
     omega
 
-theorem feedbackTrader_strat_value_full_prefix
+lemma feedbackTrader_strat_value_full_prefix
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ)
@@ -953,7 +956,7 @@ theorem feedbackTrader_strat_value_full_prefix
 /-- Finite-prefix accounting for the joined trader.  This theorem is deliberately about
 the concrete `Trader.netWorth`, not an abstract wealth certificate: it reorders the
 actual finite sum of emitted day strategies into the sum of component round trips. -/
-theorem feedbackTrader_netWorth_eq_component_sum
+lemma feedbackTrader_netWorth_eq_component_sum
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ)
@@ -985,14 +988,14 @@ The search bound is complete because every deferral satisfies `k < f k`. -/
 def feedbackStage (f : DeferralFunction) (n : ℕ) : ℕ :=
   Nat.findGreatest (fun k ↦ f k ≤ n) n
 
-theorem feedbackStage_le (f : DeferralFunction) (n : ℕ) : feedbackStage f n ≤ n :=
+lemma feedbackStage_le (f : DeferralFunction) (n : ℕ) : feedbackStage f n ≤ n :=
   Nat.findGreatest_le n
 
-theorem feedbackStage_open {f : DeferralFunction} {n : ℕ} (h0 : f 0 ≤ n) :
+lemma feedbackStage_open {f : DeferralFunction} {n : ℕ} (h0 : f 0 ≤ n) :
     f (feedbackStage f n) ≤ n := by
   exact Nat.findGreatest_spec (P := fun k ↦ f k ≤ n) (zero_le n) h0
 
-theorem feedbackStage_before_next {f : DeferralFunction} {n : ℕ} :
+lemma feedbackStage_before_next {f : DeferralFunction} {n : ℕ} :
     n < f (feedbackStage f n + 1) := by
   by_contra hnot
   have hpred : f (feedbackStage f n + 1) ≤ n := by omega
@@ -1002,7 +1005,7 @@ theorem feedbackStage_before_next {f : DeferralFunction} {n : ℕ} :
     exact Nat.le_findGreatest (P := fun k ↦ f k ≤ n) hidx hpred
   omega
 
-theorem feedbackTrader_netWorth_before_first
+lemma feedbackTrader_netWorth_before_first
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ)
@@ -1017,7 +1020,7 @@ theorem feedbackTrader_netWorth_before_first
 /-- Exact arbitrary-day accounting after the first opening.  The bounded search stage
 identifies the sole live component without becoming part of the trader definition or its
 computability certificate. -/
-theorem feedbackTrader_netWorth_at_stage
+lemma feedbackTrader_netWorth_at_stage
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ)
@@ -1052,7 +1055,7 @@ theorem feedbackTrader_netWorth_at_stage
 the assessment world and day: normalized affine magnitude bounds the sole live position,
 while positivity of the explicit multiplicative wealth makes all completed gains absorb
 that risk. -/
-theorem feedbackTrader_netWorth_lower
+lemma feedbackTrader_netWorth_lower
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ)
@@ -1115,7 +1118,7 @@ theorem feedbackTrader_netWorth_lower
     rw [feedbackTrader_netWorth_before_first hpoly hW hstrict δ P v hn]
     norm_num
 
-theorem feedbackTrader_plausible_bddBelow
+lemma feedbackTrader_plausible_bddBelow
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ)
@@ -1132,7 +1135,7 @@ theorem feedbackTrader_plausible_bddBelow
 /-- Quantitative form of the live-position Kelly invariant.  At most half of positive
 wealth is at risk, so even the worst normalized world value leaves at least half of that
 wealth. -/
-theorem half_wealth_sub_one_le_with_live_position
+lemma half_wealth_sub_one_le_with_live_position
     {δ wealth w d : ℝ} (hδ0 : 0 ≤ δ) (hδ : δ ≤ 1 / 2)
     (hwealth : 0 ≤ wealth) (hw : w ∈ Set.Icc (0 : ℝ) 1) (hd : -1 ≤ d) :
     wealth / 2 - 1 ≤ wealth - 1 + δ * wealth * w * d := by
@@ -1152,7 +1155,7 @@ theorem half_wealth_sub_one_le_with_live_position
 /-- Exact accounting on a feedback day: all earlier components telescope to
 `Wealth_k - 1`, component `k` is the sole live position, and every later component is
 still unopened. -/
-theorem feedbackTrader_netWorth_at_feedback
+lemma feedbackTrader_netWorth_at_feedback
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ)
@@ -1181,7 +1184,7 @@ theorem feedbackTrader_netWorth_at_feedback
 /-- On each feedback day every plausible world values the concrete trader at least
 `Wealth_k/2 - 1`.  Hence unbounded explicit feedback wealth produces genuine unbounded
 trader upside, rather than merely an unbounded auxiliary sequence. -/
-theorem feedbackTrader_netWorth_at_feedback_lower
+lemma feedbackTrader_netWorth_at_feedback_lower
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ)
@@ -1226,7 +1229,7 @@ theorem feedbackTrader_netWorth_at_feedback_lower
         ((As (f k)).value P v.payout - (As (f k)).price P (f k))
   exact half_wealth_sub_one_le_with_live_position hδ0 hδ hwealth (hw k) hdiff
 
-theorem feedbackTrader_plausible_not_bddAbove_of_wealth
+lemma feedbackTrader_plausible_not_bddAbove_of_wealth
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ)
@@ -1253,7 +1256,7 @@ theorem feedbackTrader_plausible_not_bddAbove_of_wealth
 /-- The completed economic kernel: genuinely unbounded feedback wealth makes the
 explicit sparse round-trip trader exploit the market, with the downside and upside both
 proved from its emitted strategies.  Efficient computability is attached separately. -/
-theorem feedbackTrader_exploits_of_wealth_unbounded
+lemma feedbackTrader_exploits_of_wealth_unbounded
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ)
@@ -1275,7 +1278,7 @@ theorem feedbackTrader_exploits_of_wealth_unbounded
 /-- Non-vacuous end-to-end Kelly exploitation theorem.  A recurrent positive return
 margin and divergent supported mass force the explicit trader's plausible assessments
 unbounded above while its global loss remains bounded by one. -/
-theorem feedbackTrader_exploits_of_frequently_positive_return
+lemma feedbackTrader_exploits_of_frequently_positive_return
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ) (γ : ℝ)
@@ -1309,7 +1312,8 @@ theorem feedbackTrader_exploits_of_frequently_positive_return
     hδ0 hδ hgap hw hr hmass hfreq
 
 /-- Logical induction rules out the recurrent positive-return condition once the
-structured syntax emitter has supplied the feedback trader's real token certificate. -/
+structured syntax emitter has supplied the feedback trader's real token certificate.
+Paper node: a step of `thm:wubaff` (App. `wubaff`). -/
 theorem lic_not_frequently_positive_feedback_return
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -1342,7 +1346,7 @@ def DeferralFeedbackAccurate (As : ℕ → AffineCombination) (truth : ℕ → �
 
 /-- Delayed feedback accuracy is invariant under simultaneous negation of the affine
 sequence and its determined value stream. -/
-theorem DeferralFeedbackAccurate.neg
+lemma DeferralFeedbackAccurate.neg
     {As : ℕ → AffineCombination} {truth : ℕ → ℝ}
     {P : History} {f : DeferralFunction}
     (h : DeferralFeedbackAccurate As truth P f) :
@@ -1373,7 +1377,7 @@ noncomputable def feedbackWeightedAverage (w x : ℕ → ℝ) (k : ℕ) : ℝ :=
 
 /-- Linearity of the feedback-clock weighted average.  The statement includes the
 zero-mass branch, which is useful before divergence has supplied eventual positivity. -/
-theorem feedbackWeightedAverage_sub (w x y : ℕ → ℝ) (k : ℕ) :
+lemma feedbackWeightedAverage_sub (w x y : ℕ → ℝ) (k : ℕ) :
     feedbackWeightedAverage w (fun i ↦ x i - y i) k =
       feedbackWeightedAverage w x k - feedbackWeightedAverage w y k := by
   unfold feedbackWeightedAverage
@@ -1392,7 +1396,7 @@ theorem feedbackWeightedAverage_sub (w x y : ℕ → ℝ) (k : ℕ) :
     field_simp
 
 /-- Negation commutes with the feedback-clock weighted average, including at zero mass. -/
-theorem feedbackWeightedAverage_neg (w x : ℕ → ℝ) (k : ℕ) :
+lemma feedbackWeightedAverage_neg (w x : ℕ → ℝ) (k : ℕ) :
     feedbackWeightedAverage w (fun i ↦ -x i) k =
       -feedbackWeightedAverage w x k := by
   unfold feedbackWeightedAverage
@@ -1411,7 +1415,7 @@ theorem feedbackWeightedAverage_neg (w x : ℕ → ℝ) (k : ℕ) :
 /-- Reindex an all-day prefix along a strictly increasing feedback schedule.  Terms
 outside the schedule image vanish by `hsupport`; `sum_bij_ne_zero` makes that fact
 explicit instead of introducing a noncomputable global inverse for `f`. -/
-theorem prefixSum_at_deferral_eq_feedbackPrefixSum
+lemma prefixSum_at_deferral_eq_feedbackPrefixSum
     {w : ℕ → ℝ} {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f)
     (hsupport : ∀ n, w n ≠ 0 → ∃ j, f j = n) (k : ℕ) :
@@ -1449,7 +1453,7 @@ theorem prefixSum_at_deferral_eq_feedbackPrefixSum
 
 /-- Divergent all-day mass remains divergent after reindexing onto the feedback clock,
 provided every nonzero weight lies in the schedule image. -/
-theorem feedbackPrefixSum_tendsto_atTop
+lemma feedbackPrefixSum_tendsto_atTop
     {W : ℕ → EF} {P : History} {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f)
     (hWdiv : DivergentWeighting W P)
@@ -1476,7 +1480,7 @@ theorem feedbackPrefixSum_tendsto_atTop
 
 /-- Exact support transfer at an arbitrary day after the first feedback opening.  The
 all-day prefix is constant between consecutive image points of the strict schedule. -/
-theorem prefixSum_eq_feedbackPrefixSum_stage
+lemma prefixSum_eq_feedbackPrefixSum_stage
     {w : ℕ → ℝ} {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f)
     (hsupport : ∀ n, w n ≠ 0 → ∃ j, f j = n)
@@ -1507,7 +1511,7 @@ theorem prefixSum_eq_feedbackPrefixSum_stage
 
 /-- Convergence on the sparse feedback clock transfers back to the paper's all-day
 weighted average when the weighting has no mass off the schedule image. -/
-theorem weightedAverage_supported_asympEq_zero_of_feedback
+lemma weightedAverage_supported_asympEq_zero_of_feedback
     {w x : ℕ → ℝ} {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f)
     (hsupport : ∀ n, w n ≠ 0 → ∃ j, f j = n)
@@ -1547,7 +1551,7 @@ theorem weightedAverage_supported_asympEq_zero_of_feedback
 /-- Weighted Cesàro transfer on the feedback clock: nonnegative divergent mass sends
 every vanishing error stream to a vanishing weighted average.  This is the analytic step
 which absorbs the finitely many early delayed-quote errors in Appendix `app:wubaff`. -/
-theorem feedbackWeightedAverage_asympEq_zero
+lemma feedbackWeightedAverage_asympEq_zero
     {w e : ℕ → ℝ} (hw0 : ∀ i, 0 ≤ w i)
     (hmass : Tendsto (feedbackPrefixSum w) atTop atTop)
     (he : e ≈ₙ (fun _ ↦ 0)) :
@@ -1622,7 +1626,7 @@ theorem feedbackWeightedAverage_asympEq_zero
 future-price error vanish.  If the current weighted bias were recurrently negative,
 their difference would give the explicit Kelly trader a recurrent positive return,
 contradicting logical induction. -/
-theorem feedbackWeightedBias_asympGE_zero
+lemma feedbackWeightedBias_asympGE_zero
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f)
@@ -1702,7 +1706,7 @@ theorem feedbackWeightedBias_asympGE_zero
 /-- Two-sided sparse feedback unbiasedness.  The upper bound is the proved lower-bound
 theorem applied to the explicit negated affine sequence, then transported back using
 linearity of the feedback weighted average. -/
-theorem feedbackWeightedBias_asympEq_zero
+lemma feedbackWeightedBias_asympEq_zero
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f)
@@ -1754,7 +1758,8 @@ theorem feedbackWeightedBias_asympEq_zero
 provability induction.  At day `f(k+1)` its diagonal price is exactly the delayed quote
 error for `A_{f k}`; every completed-theory world values it at zero.  The polynomial
 sequence and normalization data are the ledgered `M7-FEEDBACK-TRUTH` witness corresponding
-to the paper's premise that `ThmValue(A_{f k})` is computable within `poly(f(k+1))`.  Paper node: `thm:wubaff` (App. `wubaff`), reused by `thm:wubexp`. -/
+to the paper's premise that `ThmValue(A_{f k})` is computable within `poly(f(k+1))`.
+Paper node: `thm:wubaff` (App. `wubaff`), reused by `thm:wubexp`. -/
 structure FeedbackTruthSequence
     (As : ℕ → AffineCombination) (truth : ℕ → ℝ)
     (P : History) (DP : DeductiveProcess) (f : DeferralFunction) where
@@ -1771,7 +1776,7 @@ structure FeedbackTruthSequence
 
 /-- Affine provability induction converts the explicit sparse zero-valued sequence into
 the delayed truth-price bridge needed by the feedback trader. -/
-theorem FeedbackTruthSequence.accurate
+lemma FeedbackTruthSequence.accurate
     {As : ℕ → AffineCombination} {truth : ℕ → ℝ}
     {P : History} {DP : DeductiveProcess} {f : DeferralFunction}
     [IsLogicalInductor P DP]
@@ -1929,23 +1934,23 @@ def deferralEnvelope (f : DeferralFunction) : ℕ → ℕ
   | 0 => f 0
   | n + 1 => max (deferralEnvelope f n) (f (n + 1))
 
-theorem deferral_le_envelope (f : DeferralFunction) (n : ℕ) :
+lemma deferral_le_envelope (f : DeferralFunction) (n : ℕ) :
     f n ≤ deferralEnvelope f n := by
   cases n with
   | zero => exact le_rfl
   | succ n => exact le_max_right _ _
 
-theorem deferralEnvelope_mono (f : DeferralFunction) :
+lemma deferralEnvelope_mono (f : DeferralFunction) :
     Monotone (deferralEnvelope f) := by
   apply monotone_nat_of_le_succ
   intro n
   exact le_max_left _ _
 
-theorem deferral_le_envelope_of_le (f : DeferralFunction) {i j : ℕ} (hij : i ≤ j) :
+lemma deferral_le_envelope_of_le (f : DeferralFunction) {i j : ℕ} (hij : i ≤ j) :
     f i ≤ deferralEnvelope f j :=
   (deferral_le_envelope f i).trans (deferralEnvelope_mono f hij)
 
-theorem lt_deferralEnvelope (f : DeferralFunction) (n : ℕ) :
+lemma lt_deferralEnvelope (f : DeferralFunction) (n : ℕ) :
     n < deferralEnvelope f n :=
   (f.lt n).trans_le (deferral_le_envelope f n)
 
@@ -2011,7 +2016,7 @@ def patientUnderpriceWeight {As : ℕ → AffineCombination} {P : History}
       (patientUnderpriceAttempt As low width) n)
     (patientUnderpriceAttempt As low width n)
 
-theorem PatientSettlementClock.occupancy_polySeg
+lemma PatientSettlementClock.occupancy_polySeg
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (clock : PatientSettlementClock As P DP truth f) :
@@ -2020,12 +2025,12 @@ theorem PatientSettlementClock.occupancy_polySeg
   exact PolySegStream.ofTokenStream
     (PolyTokenStream.serialize_const_comp clock.active_codes)
 
-theorem patientUnderpriceAttempt_polySeg {As : ℕ → AffineCombination}
+lemma patientUnderpriceAttempt_polySeg {As : ℕ → AffineCombination}
     (hpoly : AffineCombination.PolySequence As) (low width : ℚ) :
     PolySegStream (fun n ↦ (patientUnderpriceAttempt As low width n).serialize) :=
   hpoly.gradualEntry_polySeg low width
 
-theorem patientUnderpriceWeight_polySeg
+lemma patientUnderpriceWeight_polySeg
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
     {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
@@ -2046,7 +2051,7 @@ theorem patientUnderpriceWeight_polySeg
   simp only [patientOccupancy, EF.denote_const]
   split <;> norm_num
 
-theorem PatientSettlementClock.occupancy_decreasing
+lemma PatientSettlementClock.occupancy_decreasing
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (clock : PatientSettlementClock As P DP truth f) (V : History) :
@@ -2066,19 +2071,19 @@ theorem PatientSettlementClock.occupancy_decreasing
     · rw [if_neg hnext]
       positivity
 
-theorem patientUnderpriceAttempt_rank_le {As : ℕ → AffineCombination}
+lemma patientUnderpriceAttempt_rank_le {As : ℕ → AffineCombination}
     (hpoly : AffineCombination.PolySequence As) (low width : ℚ) (n : ℕ) :
     (patientUnderpriceAttempt As low width n).rank ≤ n :=
   hpoly.gradualEntry_rank_le low width n
 
-theorem patientOccupancy_rank_le
+lemma patientOccupancy_rank_le
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (clock : PatientSettlementClock As P DP truth f) (i n : ℕ) :
     (patientOccupancy clock i n).rank ≤ n := by
   simp [patientOccupancy]
 
-theorem patientUnderpriceWeight_rank_le
+lemma patientUnderpriceWeight_rank_le
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
     {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
@@ -2092,14 +2097,14 @@ theorem patientUnderpriceWeight_rank_le
       (fun i n _hin ↦ patientOccupancy_rank_le clock i n) n,
     patientUnderpriceAttempt_rank_le hpoly low width n⟩
 
-theorem patientUnderpriceAttempt_closed {As : ℕ → AffineCombination}
+lemma patientUnderpriceAttempt_closed {As : ℕ → AffineCombination}
     (hpoly : AffineCombination.PolySequence As) (low width : ℚ)
     (n : ℕ) (ρ : List ℝ) (V : History) :
     (patientUnderpriceAttempt As low width n).denoteWith ρ V =
       (patientUnderpriceAttempt As low width n).denote V :=
   hpoly.gradualEntry_closed low width n ρ V
 
-theorem patientOccupancy_closed
+lemma patientOccupancy_closed
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (clock : PatientSettlementClock As P DP truth f)
@@ -2109,7 +2114,7 @@ theorem patientOccupancy_closed
   simp [patientOccupancy, EF.denote]
 
 /-- Exact semantic form of the concrete selector weight. -/
-theorem patientUnderpriceWeight_denote
+lemma patientUnderpriceWeight_denote
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
     {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
@@ -2125,7 +2130,7 @@ theorem patientUnderpriceWeight_denote
     (patientUnderpriceAttempt_closed hpoly low width)
     (patientOccupancy_closed clock)]
 
-theorem patientUnderpriceAttempt_mem (As : ℕ → AffineCombination)
+lemma patientUnderpriceAttempt_mem (As : ℕ → AffineCombination)
     (low width : ℚ) (V : History) (n : ℕ) :
     0 ≤ (patientUnderpriceAttempt As low width n).denote V ∧
       (patientUnderpriceAttempt As low width n).denote V ≤ 1 := by
@@ -2133,7 +2138,7 @@ theorem patientUnderpriceAttempt_mem (As : ℕ → AffineCombination)
     buyIndF_mem ((As n).priceFeature n) low width V
 
 /-- Every realized selector value lies in the weighting interval `[0,1]`. -/
-theorem patientUnderpriceWeight_mem
+lemma patientUnderpriceWeight_mem
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
     {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
@@ -2156,7 +2161,7 @@ theorem patientUnderpriceWeight_mem
   · exact mul_nonneg hβ0 (hα0 n)
   · nlinarith [hα0 n, hα1 n]
 
-theorem patientUnderpriceWeight_pos_imp_price_lt
+lemma patientUnderpriceWeight_pos_imp_price_lt
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
     {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
@@ -2181,7 +2186,7 @@ theorem patientUnderpriceWeight_pos_imp_price_lt
 
 /-- The patient selector is a genuinely market-generated weighting with a uniform
 polynomial segment emitter, legal rank, and closed semantics. -/
-theorem patientUnderpriceWeight_pgenerable
+lemma patientUnderpriceWeight_pgenerable
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
     {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
@@ -2204,7 +2209,7 @@ theorem patientUnderpriceWeight_pgenerable
 function.  The proof uses the explicit monotone envelope: all launches in
 `[n, f n]` are simultaneously charged at day `f n`, so the fractional capital
 invariant bounds the whole window by one. -/
-theorem patientUnderpriceWeight_deferralPatient
+lemma patientUnderpriceWeight_deferralPatient
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
     {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
@@ -2237,7 +2242,7 @@ theorem patientUnderpriceWeight_deferralPatient
       (Finset.Icc n (f n)) (f n)
       (fun _ hi ↦ (Finset.mem_Icc.mp hi).2) hfull
 
-theorem patientUnderpriceWeight_prefixSum_eq_fractionalAllocationPrefix
+lemma patientUnderpriceWeight_prefixSum_eq_fractionalAllocationPrefix
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
     {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
@@ -2257,7 +2262,7 @@ theorem patientUnderpriceWeight_prefixSum_eq_fractionalAllocationPrefix
 This is the Appendix recycling argument: every old occupancy eventually vanishes, while
 the audited fractional recurrence forces unbounded cumulative allocation whenever the
 attempt stream is frequently one. -/
-theorem patientUnderpriceWeight_divergent
+lemma patientUnderpriceWeight_divergent
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
     {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
@@ -2312,7 +2317,7 @@ theorem patientUnderpriceWeight_divergent
   obtain ⟨y, ⟨n, rfl⟩, hby⟩ := (not_bddAbove_iff.mp hunbounded) b
   exact ⟨n, (le_of_lt hby).trans_eq (hsEq n).symm⟩
 
-theorem DeferralPatient.mono_bound {f : DeferralFunction} {W : ℕ → EF} {P : History}
+lemma DeferralPatient.mono_bound {f : DeferralFunction} {W : ℕ → EF} {P : History}
     (h : DeferralPatient f W P) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ n,
       ∑ i ∈ Finset.Icc n (f n), (W i).denote P ≤ C := by
@@ -2326,7 +2331,7 @@ average cannot remain below any fixed negative margin.
 
 This theorem proves the crossing/limit argument explicitly.  Its hypotheses contain no
 diagonal market conclusion and no selector weighting. -/
-theorem not_eventually_weightedAverage_lt_of_limitPoint_bias
+lemma not_eventually_weightedAverage_lt_of_limitPoint_bias
     (w market truth : ℕ → ℝ)
     (hden : ∀ᶠ n in atTop, 0 < prefixSum w n)
     (hbias : HasLimitPoint (weightedBias w market truth) 0)
@@ -2365,7 +2370,7 @@ theorem not_eventually_weightedAverage_lt_of_limitPoint_bias
 
 /-- Dual analytic contradiction: a nonpositive truth average and a zero bias limit point
 rule out a persistently positive market average. -/
-theorem not_eventually_weightedAverage_gt_of_limitPoint_bias
+lemma not_eventually_weightedAverage_gt_of_limitPoint_bias
     (w market truth : ℕ → ℝ)
     (hden : ∀ᶠ n in atTop, 0 < prefixSum w n)
     (hbias : HasLimitPoint (weightedBias w market truth) 0)

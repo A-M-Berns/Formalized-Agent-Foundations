@@ -25,21 +25,21 @@ def obuBuySig (φ : ℕ → Sentence) (j i : ℕ) : EF :=
 @[simp] theorem obuBuySig_rank (φ : ℕ → Sentence) (j i : ℕ) :
     (obuBuySig φ j i).rank = i := ndBuySig_rank (φ i) j i
 
-theorem obuBuySig_denote_pad (φ : ℕ → Sentence) (P : History)
+lemma obuBuySig_denote_pad (φ : ℕ → Sentence) (P : History)
     {j i : ℕ} (h : i < j) :
     (obuBuySig φ j i).denote P = 0 :=
   ndBuySig_denote_pad (φ i) P h
 
-theorem obuBuySig_mem (φ : ℕ → Sentence) (P : History) (j i : ℕ) :
+lemma obuBuySig_mem (φ : ℕ → Sentence) (P : History) (j i : ℕ) :
     0 ≤ (obuBuySig φ j i).denote P ∧ (obuBuySig φ j i).denote P ≤ 1 :=
   ndBuySig_mem (φ i) P j i
 
-theorem obuBuySig_pos_imp (φ : ℕ → Sentence) (P : History)
+lemma obuBuySig_pos_imp (φ : ℕ → Sentence) (P : History)
     {j i : ℕ} (hj : 1 ≤ j) (h : 0 < (obuBuySig φ j i).denote P) :
     P i (φ i) < 1 / (j : ℝ) ^ 3 :=
   ndBuySig_pos_imp (φ i) P hj h
 
-theorem obuBuySig_eq_one (φ : ℕ → Sentence) (P : History)
+lemma obuBuySig_eq_one (φ : ℕ → Sentence) (P : History)
     {j i : ℕ} (hj : 1 ≤ j) (hlive : j ≤ i)
     (h : P i (φ i) < ((ndThr j : ℚ) : ℝ)) :
     (obuBuySig φ j i).denote P = 1 :=
@@ -49,19 +49,19 @@ theorem obuBuySig_eq_one (φ : ℕ → Sentence) (P : History)
 noncomputable def obuShares (φ : ℕ → Sentence) (P : History) (j n : ℕ) : ℝ :=
   (armChain (obuBuySig φ j) n).denote P * (obuBuySig φ j n).denote P
 
-theorem obuShares_nonneg (φ : ℕ → Sentence) (P : History) (j n : ℕ) :
+lemma obuShares_nonneg (φ : ℕ → Sentence) (P : History) (j n : ℕ) :
     0 ≤ obuShares φ P j n :=
   mul_nonneg (armChain_mem _ P (fun i ↦ obuBuySig_mem φ P j i) n).1
     (obuBuySig_mem φ P j n).1
 
-theorem obuShares_pos_sig {φ : ℕ → Sentence} {P : History} {j n : ℕ}
+lemma obuShares_pos_sig {φ : ℕ → Sentence} {P : History} {j n : ℕ}
     (h : 0 < obuShares φ P j n) : 0 < (obuBuySig φ j n).denote P := by
   rcases (obuBuySig_mem φ P j n).1.lt_or_eq with hs | hs
   · exact hs
   · rw [obuShares, ← hs, mul_zero] at h
     exact absurd h (lt_irrefl 0)
 
-theorem obuShares_sum (φ : ℕ → Sentence) (P : History)
+lemma obuShares_sum (φ : ℕ → Sentence) (P : History)
     {j N : ℕ} (h : j ≤ N) :
     ∑ n ∈ Finset.Ico j N, obuShares φ P j n =
       1 - (armChain (obuBuySig φ j) N).denote P := by
@@ -70,7 +70,7 @@ theorem obuShares_sum (φ : ℕ → Sentence) (P : History)
     armChain_denote_of_le (obuBuySig φ j) P
       (fun i hi ↦ obuBuySig_denote_pad φ P hi) j le_rfl]
 
-theorem obuShares_sum_le_one (φ : ℕ → Sentence) (P : History)
+lemma obuShares_sum_le_one (φ : ℕ → Sentence) (P : History)
     {j N : ℕ} (h : j ≤ N) :
     ∑ n ∈ Finset.Ico j N, obuShares φ P j n ≤ 1 := by
   rw [obuShares_sum φ P h]
@@ -83,13 +83,13 @@ def obuCoef (φ : ℕ → Sentence) (j n : ℕ) : EF :=
   .mul (.const (j : ℚ))
     (.mul (armChain (obuBuySig φ j) n) (obuBuySig φ j n))
 
-theorem obuCoef_denote (φ : ℕ → Sentence) (P : History) (j n : ℕ) :
+lemma obuCoef_denote (φ : ℕ → Sentence) (P : History) (j n : ℕ) :
     (obuCoef φ j n).denote P = (j : ℝ) * obuShares φ P j n := by
   simp only [obuCoef, EF.denote_mul, EF.denote_const, Pi.mul_apply, obuShares]
   push_cast
   ring
 
-theorem obuCoef_rank (φ : ℕ → Sentence) (j n : ℕ) :
+lemma obuCoef_rank (φ : ℕ → Sentence) (j n : ℕ) :
     (obuCoef φ j n).rank ≤ n := by
   have h1 := armChain_rank (obuBuySig φ j)
     (fun i ↦ (obuBuySig_rank φ j i).le) n
@@ -102,7 +102,7 @@ def obuLadderEF (φ : ℕ → Sentence) (n : ℕ) : ℕ → EF
   | 0 => .const 0
   | (m + 1) => .add (obuLadderEF φ n m) (obuCoef φ (m + 1) n)
 
-theorem obuLadderEF_denote (φ : ℕ → Sentence) (P : History) (n : ℕ) : ∀ m,
+lemma obuLadderEF_denote (φ : ℕ → Sentence) (P : History) (n : ℕ) : ∀ m,
     (obuLadderEF φ n m).denote P =
       ∑ k ∈ Finset.range m, ((k + 1 : ℕ) : ℝ) * obuShares φ P (k + 1) n
   | 0 => by simp [obuLadderEF]
@@ -111,7 +111,7 @@ theorem obuLadderEF_denote (φ : ℕ → Sentence) (P : History) (n : ℕ) : ∀
       simp only [EF.denote_add, Pi.add_apply]
       rw [obuLadderEF_denote φ P n m, Finset.sum_range_succ, obuCoef_denote]
 
-theorem obuLadderEF_rank (φ : ℕ → Sentence) (n : ℕ) : ∀ m,
+lemma obuLadderEF_rank (φ : ℕ → Sentence) (n : ℕ) : ∀ m,
     (obuLadderEF φ n m).rank ≤ n
   | 0 => by simp [obuLadderEF]
   | (m + 1) => by
@@ -136,7 +136,7 @@ def obuTrader (φ : ℕ → Sentence) : Trader where
       (obuLadderEF φ n n).denote P * (w (φ n) - P n (φ n)) := by
   simp [obuTrader, Strategy.value]
 
-theorem obuTrader_netWorth (φ : ℕ → Sentence) (P : History)
+lemma obuTrader_netWorth (φ : ℕ → Sentence) (P : History)
     (v : PCWorld) (m : ℕ) :
     (obuTrader φ).netWorth P v m =
       ∑ n ∈ Finset.range (m + 1), ∑ k ∈ Finset.range n,
@@ -145,13 +145,13 @@ theorem obuTrader_netWorth (φ : ℕ → Sentence) (P : History)
   simp only [Trader.netWorth, obuTrader_value, obuLadderEF_denote, Finset.sum_mul]
 
 /-- Swap the day/rung triangle in the ladder's finite accounting sum. -/
-private theorem obu_sum_range_triangle_comm (f : ℕ → ℕ → ℝ) (N : ℕ) :
+private lemma obu_sum_range_triangle_comm (f : ℕ → ℕ → ℝ) (N : ℕ) :
     ∑ n ∈ Finset.range N, ∑ k ∈ Finset.range n, f k n =
       ∑ k ∈ Finset.range N, ∑ n ∈ Finset.Ico (k + 1) N, f k n := by
   simp only [Finset.range_eq_Ico]
   exact (Finset.sum_Ico_Ico_comm' 0 N (fun k n ↦ f k n)).symm
 
-theorem obuTerm_ge (φ : ℕ → Sentence) (P : History) (v : PCWorld)
+lemma obuTerm_ge (φ : ℕ → Sentence) (P : History) (v : PCWorld)
     {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
     -(obuShares φ P j n * (1 / (j : ℝ) ^ 2)) ≤
       (j : ℝ) * obuShares φ P j n * (v.payout (φ n) - P n (φ n)) := by
@@ -171,7 +171,7 @@ theorem obuTerm_ge (φ : ℕ → Sentence) (P : History) (v : PCWorld)
   · rw [← hb']
     norm_num
 
-theorem obuTerm_nonneg (φ : ℕ → Sentence) (P : History) (v : PCWorld)
+lemma obuTerm_nonneg (φ : ℕ → Sentence) (P : History) (v : PCWorld)
     (hv : ∀ i, v.Holds (φ i)) {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
     0 ≤ (j : ℝ) * obuShares φ P j n * (v.payout (φ n) - P n (φ n)) := by
   have hb := obuShares_nonneg φ P j n
@@ -185,7 +185,7 @@ theorem obuTerm_nonneg (φ : ℕ → Sentence) (P : History) (v : PCWorld)
   · rw [← hb']
     norm_num
 
-theorem obuTerm_profit (φ : ℕ → Sentence) (P : History) (v : PCWorld)
+lemma obuTerm_profit (φ : ℕ → Sentence) (P : History) (v : PCWorld)
     (hv : ∀ i, v.Holds (φ i)) {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
     (j : ℝ) * obuShares φ P j n * (1 - 1 / (j : ℝ) ^ 3) ≤
       (j : ℝ) * obuShares φ P j n * (v.payout (φ n) - P n (φ n)) := by
@@ -202,7 +202,7 @@ theorem obuTerm_profit (φ : ℕ → Sentence) (P : History) (v : PCWorld)
 
 /-- The varying ladder genuinely exploits if every rung receives one full trigger and
 every finite deductive stage has a world satisfying the whole enumerated theory. -/
-theorem obuTrader_exploits
+lemma obuTrader_exploits
     (P : History) (DP : DeductiveProcess) (φ : ℕ → Sentence)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (φ i))
@@ -301,7 +301,7 @@ theorem obuTrader_exploits
 
 /-- A varying sentence/day price leaf is a polynomial token stream whenever the shared
 index and sentence-code progression are polynomially fueled. -/
-theorem PolyTokenStream.serialize_price_sequence_comp
+lemma PolyTokenStream.serialize_price_sequence_comp
     {φ : ℕ → Sentence} (hφ : PolySentenceCodes φ)
     {f : ℕ → ℕ} {cf : Nat.Partrec.Code} (hf : PolyFueled cf f) :
     PolyTokenStream (fun m ↦ (EF.price (φ (f m)) (f m)).serialize) := by
@@ -316,7 +316,7 @@ theorem PolyTokenStream.serialize_price_sequence_comp
     ((PolyTokenStream.polyTok hcode).append (PolyTokenStream.polyTok hf))
 
 /-- Varying-sentence version of the parametric buy-signal emitter. -/
-theorem obuBuySig_tokenStream_comp
+lemma obuBuySig_tokenStream_comp
     {φ : ℕ → Sentence} (hφ : PolySentenceCodes φ)
     {af δf : ℕ → ℚ} {cj : Nat.Partrec.Code} {jf : ℕ → ℕ}
     (hj : PolyFueled cj jf)
@@ -334,7 +334,7 @@ theorem obuBuySig_tokenStream_comp
 def obuArmBlock (φ : ℕ → Sentence) (j i : ℕ) : List ℕ :=
   (oneMinus (obuBuySig φ j i)).serialize ++ [3]
 
-theorem obuArmBlock_tokenStream (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
+lemma obuArmBlock_tokenStream (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
     PolyTokenStream
       (fun x ↦ obuArmBlock φ (x.unpair.1.unpair.2 + 1) x.unpair.2) := by
   have hbuy : PolyTokenStream (fun x ↦
@@ -351,16 +351,16 @@ theorem obuArmBlock_tokenStream (φ : ℕ → Sentence) (hφ : PolySentenceCodes
   exact (PolyTokenStream.serialize_oneMinus hbuy).append
     (PolyTokenStream.const 3)
 
-theorem obuArmBlock_length (φ : ℕ → Sentence) (j i : ℕ) :
+lemma obuArmBlock_length (φ : ℕ → Sentence) (j i : ℕ) :
     (obuArmBlock φ j i).length = (obuArmBlock φ 1 0).length := by
   simp [obuArmBlock, obuBuySig, ndBuySig, buyIndEF, oneMinus, clip01, efMin,
     EF.serialize]
 
-theorem serialize_obuBuySig_length (φ : ℕ → Sentence) (j i : ℕ) :
+lemma serialize_obuBuySig_length (φ : ℕ → Sentence) (j i : ℕ) :
     (obuBuySig φ j i).serialize.length = (obuBuySig φ 1 0).serialize.length := by
   simp [obuBuySig, ndBuySig, buyIndEF, clip01, efMin, EF.serialize]
 
-theorem serialize_armChain_obuBuy (φ : ℕ → Sentence) (j : ℕ) : ∀ n,
+lemma serialize_armChain_obuBuy (φ : ℕ → Sentence) (j : ℕ) : ∀ n,
     (armChain (obuBuySig φ j) n).serialize =
       [1, Encodable.encode ((1 : ℚ))] ++
         (List.range n).flatMap (fun i ↦ obuArmBlock φ j i)
@@ -372,14 +372,14 @@ theorem serialize_armChain_obuBuy (φ : ℕ → Sentence) (j : ℕ) : ∀ n,
         List.flatMap_append, List.flatMap_singleton, obuArmBlock]
       simp [List.append_assoc]
 
-theorem serialize_obuCoef (φ : ℕ → Sentence) (j n : ℕ) :
+lemma serialize_obuCoef (φ : ℕ → Sentence) (j n : ℕ) :
     (obuCoef φ j n).serialize =
       [1, Encodable.encode ((j : ℚ))] ++
         (armChain (obuBuySig φ j) n).serialize ++
         (obuBuySig φ j n).serialize ++ [3, 3] := by
   simp [obuCoef, EF.serialize, List.append_assoc]
 
-theorem serialize_obuLadderEF (φ : ℕ → Sentence) (n : ℕ) : ∀ m,
+lemma serialize_obuLadderEF (φ : ℕ → Sentence) (n : ℕ) : ∀ m,
     (obuLadderEF φ n m).serialize =
       [1, Encodable.encode ((0 : ℚ))] ++
         (List.range m).flatMap
@@ -392,7 +392,7 @@ theorem serialize_obuLadderEF (φ : ℕ → Sentence) (n : ℕ) : ∀ m,
         List.flatMap_append, List.flatMap_singleton]
       simp [List.append_assoc]
 
-theorem obuChunkSeg_polySegStream
+lemma obuChunkSeg_polySegStream
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
     PolySegStream (fun m ↦
       (obuCoef φ (m.unpair.2 + 1) m.unpair.1).serialize ++ [2]) := by
@@ -428,7 +428,7 @@ theorem obuChunkSeg_polySegStream
   simp [EF.serialize, Nat.unpair_pair, List.append_assoc]
 
 /-- The actual varying-sentence scale ladder has a token-indexed polynomial emitter. -/
-theorem obuTrader_ecTok (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
+lemma obuTrader_ecTok (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
     EfficientlyComputableTok (obuTrader φ) := by
   have hunif : ∀ n j,
       ((obuCoef φ ((Nat.pair n j).unpair.2 + 1)
@@ -472,7 +472,7 @@ theorem obuTrader_ecTok (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
 threshold, then that rung eventually receives a full trigger on a day when the same member
 is enumerated.  This is the analytic link between fixed-sentence convergence and the
 varying-sentence ladder. -/
-theorem exists_obu_fire_of_low_limit
+lemma exists_obu_fire_of_low_limit
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hrepeat : RepeatsEveryMember φ)
     (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
@@ -492,7 +492,8 @@ theorem exists_obu_fire_of_low_limit
 
 /-- Uniform Non-Dogmatism for the efficiently padded, infinitely repeating enumeration
 used in the paper's proof.  Joint consistency means that every finite deductive stage has
-a propositional world satisfying the entire enumerated theory. -/
+a propositional world satisfying the entire enumerated theory.
+Paper node: `thm:obu` (App. `obu`). -/
 theorem lic_uniform_nonDogmatism_repeating
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
@@ -525,7 +526,8 @@ theorem lic_uniform_nonDogmatism_repeating
 /-- A concrete witness for the paper's preprocessing of a c.e. sentence stream into an
 efficiently emitted stream in which every member repeats infinitely often.  `sound` and
 `covers` say that preprocessing changes only order and multiplicity.  This structure is
-purely syntactic: it contains neither prices nor a non-dogmatism conclusion.  Paper node: `thm:obu` (App. `obu`). -/
+purely syntactic: it contains neither prices nor a non-dogmatism conclusion.
+Paper node: `thm:obu` (App. `obu`). -/
 structure EfficientRepeatedEnumeration (source : ℕ → Sentence) where
   sequence : ℕ → Sentence
   sequence_poly : PolySentenceCodes sequence
@@ -535,7 +537,7 @@ structure EfficientRepeatedEnumeration (source : ℕ → Sentence) where
 
 /-- Paper-facing Uniform Non-Dogmatism.  Given the explicit efficient-repetition witness
 for the source c.e. stream, every member of a jointly consistent theory receives one
-common positive limiting-probability lower bound. -/
+common positive limiting-probability lower bound.  Paper node: `thm:obu` (App. `obu`). -/
 theorem lic_uniform_nonDogmatism
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (source : ℕ → Sentence) (rep : EfficientRepeatedEnumeration source)

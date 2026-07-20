@@ -21,17 +21,17 @@ noncomputable def conditionalQuote (V : Valuation) (φ ψ : Sentence) : ℝ :=
 noncomputable def conditionedHistory (P : History) (ψ : ℕ → Sentence) : History :=
   fun n φ ↦ conditionalQuote (P n) φ (ψ n)
 
-theorem conditionalQuote_eq_div {V : Valuation} {φ ψ : Sentence}
+lemma conditionalQuote_eq_div {V : Valuation} {φ ψ : Sentence}
     (h : V (φ ⋏ ψ) < V ψ) :
     conditionalQuote V φ ψ = V (φ ⋏ ψ) / V ψ := by
   simp [conditionalQuote, h]
 
-theorem conditionalQuote_eq_one {V : Valuation} {φ ψ : Sentence}
+lemma conditionalQuote_eq_one {V : Valuation} {φ ψ : Sentence}
     (h : V ψ ≤ V (φ ⋏ ψ)) :
     conditionalQuote V φ ψ = 1 := by
   simp [conditionalQuote, not_lt.mpr h]
 
-theorem conditionalQuote_eq_div_of_le
+lemma conditionalQuote_eq_div_of_le
     {V : Valuation} {φ ψ : Sentence} (hden : 0 < V ψ)
     (h : V (φ ⋏ ψ) ≤ V ψ) :
     conditionalQuote V φ ψ = V (φ ⋏ ψ) / V ψ := by
@@ -42,7 +42,7 @@ theorem conditionalQuote_eq_div_of_le
 
 /-- Capping really produces a probability whenever the underlying market cells lie in
 `[0,1]`; no coherence relation between conjunction and condition is assumed. -/
-theorem conditionalQuote_mem_Icc
+lemma conditionalQuote_mem_Icc
     (V : Valuation) (hV : ∀ χ, 0 ≤ V χ ∧ V χ ≤ 1)
     (φ ψ : Sentence) :
     0 ≤ conditionalQuote V φ ψ ∧ conditionalQuote V φ ψ ≤ 1 := by
@@ -54,7 +54,7 @@ theorem conditionalQuote_mem_Icc
   · rw [conditionalQuote_eq_one (le_of_not_gt h)]
     exact ⟨by norm_num, by norm_num⟩
 
-theorem conditionedHistory_mem_Icc
+lemma conditionedHistory_mem_Icc
     (P : History) (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (ψ : ℕ → Sentence) (n : ℕ) (φ : Sentence) :
     0 ≤ conditionedHistory P ψ n φ ∧ conditionedHistory P ψ n φ ≤ 1 :=
@@ -72,13 +72,13 @@ mass at most one—while retaining polynomial-size rational syntax. -/
 def conditioningBudget (n : ℕ) : ℚ :=
   1 / (((n + 1 : ℕ) : ℚ) * ((n + 2 : ℕ) : ℚ))
 
-theorem conditioningBudget_pos (n : ℕ) :
+lemma conditioningBudget_pos (n : ℕ) :
     0 < (conditioningBudget n : ℝ) := by
   simp only [conditioningBudget]
   push_cast
   positivity
 
-theorem sum_conditioningBudget (n : ℕ) :
+lemma sum_conditioningBudget (n : ℕ) :
     (∑ i ∈ Finset.range (n + 1), (conditioningBudget i : ℝ)) =
       1 - 1 / (n + 2 : ℝ) := by
   induction n with
@@ -93,7 +93,7 @@ theorem sum_conditioningBudget (n : ℕ) :
       field_simp [ne_of_gt hn1, ne_of_gt hn2, ne_of_gt hn3]
       ring
 
-theorem sum_conditioningBudget_le_one (n : ℕ) :
+lemma sum_conditioningBudget_le_one (n : ℕ) :
     (∑ i ∈ Finset.range (n + 1), (conditioningBudget i : ℝ)) ≤ 1 := by
   rw [sum_conditioningBudget]
   have : 0 ≤ 1 / (n + 2 : ℝ) := by positivity
@@ -104,15 +104,15 @@ conditional ratio crosses the cap at one. -/
 noncomputable def conditioningGateVal (δ r : ℝ) : ℝ :=
   max 0 (min 1 ((1 + δ - r) / δ))
 
-theorem conditioningGateVal_nonneg (δ r : ℝ) :
+lemma conditioningGateVal_nonneg (δ r : ℝ) :
     0 ≤ conditioningGateVal δ r :=
   le_max_left _ _
 
-theorem conditioningGateVal_le_one (δ r : ℝ) :
+lemma conditioningGateVal_le_one (δ r : ℝ) :
     conditioningGateVal δ r ≤ 1 :=
   max_le (by norm_num) (min_le_left _ _)
 
-theorem conditioningGateVal_eq_one {δ r : ℝ} (hδ : 0 < δ) (hr : r ≤ 1) :
+lemma conditioningGateVal_eq_one {δ r : ℝ} (hδ : 0 < δ) (hr : r ≤ 1) :
     conditioningGateVal δ r = 1 := by
   apply clipVal_eq_one
   rw [le_div_iff₀ hδ]
@@ -120,7 +120,7 @@ theorem conditioningGateVal_eq_one {δ r : ℝ} (hδ : 0 < δ) (hr : r ≤ 1) :
 
 /-- The gate can only retain a cap-violating buy when its excess ratio is small enough;
 this is the scalar estimate that pays for the translation error. -/
-theorem conditioningGateVal_mul_excess_le
+lemma conditioningGateVal_mul_excess_le
     {δ r : ℝ} (hδ : 0 < δ) :
     conditioningGateVal δ r * (r - 1) ≤ δ := by
   by_cases hsmall : r - 1 ≤ δ
@@ -136,7 +136,7 @@ theorem conditioningGateVal_mul_excess_le
 
 /-- Per-position economic inequality for the capped conditional contract.  Negative
 positions are never attenuated; positive positions lose at most `|a| * δ`. -/
-theorem gatedConditionalPosition_lower
+lemma gatedConditionalPosition_lower
     {a δ r w : ℝ} (hδ : 0 < δ) (hw : w = 0 ∨ w = 1) :
     let g := conditioningGateVal δ r
     let b := min a (a * g)
@@ -167,7 +167,7 @@ namespace EF
 def lowerSafeRecip (e : EF) (ε : ℚ) : EF :=
   .mul (.const (1 / ε)) (.safeRecip (.mul (.const (1 / ε)) e))
 
-theorem lowerSafeRecip_denote
+lemma lowerSafeRecip_denote
     (e : EF) (P : History) {ε : ℚ} (hε : 0 < (ε : ℝ))
     (he : (ε : ℝ) ≤ e.denote P) :
     (lowerSafeRecip e ε).denote P = (e.denote P)⁻¹ := by
@@ -184,7 +184,7 @@ theorem lowerSafeRecip_denote
 def conditionalRatioEF (ψ : Sentence) (ε : ℚ) (φ : Sentence) (day : ℕ) : EF :=
   .mul (.price (φ ⋏ ψ) day) (lowerSafeRecip (.price ψ day) ε)
 
-theorem conditionalRatioEF_denote
+lemma conditionalRatioEF_denote
     {day : ℕ} (P : History) (ψ : Sentence) {ε : ℚ} (hε : 0 < (ε : ℝ))
     (hden : (ε : ℝ) ≤ P day ψ) (φ : Sentence) :
     (conditionalRatioEF ψ ε φ day).denote P =
@@ -199,7 +199,7 @@ below by `ε`. -/
 def conditionalPriceEF (ψ : Sentence) (ε : ℚ) (φ : Sentence) (day : ℕ) : EF :=
   efMin (.const 1) (conditionalRatioEF ψ ε φ day)
 
-theorem conditionalPriceEF_denote
+lemma conditionalPriceEF_denote
     {day : ℕ} (P : History) (ψ : Sentence) {ε : ℚ} (hε : 0 < (ε : ℝ))
     (hden : (ε : ℝ) ≤ P day ψ) (φ : Sentence) :
     (conditionalPriceEF ψ ε φ day).denote P =
@@ -227,12 +227,12 @@ def conditionPrices (ψ : ℕ → Sentence) (ε : ℚ) : EF → EF
   | .letE value body =>
       .letE (value.conditionPrices ψ ε) (body.conditionPrices ψ ε)
 
-theorem conditionalPriceEF_rank (ψ : Sentence) (ε : ℚ)
+lemma conditionalPriceEF_rank (ψ : Sentence) (ε : ℚ)
     (φ : Sentence) (day : ℕ) :
     (conditionalPriceEF ψ ε φ day).rank = day := by
   simp [conditionalPriceEF, conditionalRatioEF, lowerSafeRecip, EF.rank]
 
-theorem conditionPrices_rank (e : EF) (ψ : ℕ → Sentence) (ε : ℚ) :
+lemma conditionPrices_rank (e : EF) (ψ : ℕ → Sentence) (ε : ℚ) :
     (e.conditionPrices ψ ε).rank = e.rank := by
   induction e with
   | price φ day => exact conditionalPriceEF_rank (ψ day) ε φ day
@@ -244,7 +244,7 @@ theorem conditionPrices_rank (e : EF) (ψ : ℕ → Sentence) (ε : ℚ) :
   | var i => rfl
   | letE value body ihv ihb => simp [conditionPrices, EF.rank, ihv, ihb]
 
-theorem conditionPrices_denoteWith
+lemma conditionPrices_denoteWith
     (e : EF) (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
     (hε : 0 < (ε : ℝ))
     (hden : ∀ day, (ε : ℝ) ≤ P day (ψ day)) :
@@ -266,7 +266,7 @@ theorem conditionPrices_denoteWith
       simp only [conditionPrices, EF.denoteWith_letE]
       rw [ihv ρ, ihb]
 
-theorem conditionPrices_denote
+lemma conditionPrices_denote
     (e : EF) (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
     (hε : 0 < (ε : ℝ))
     (hden : ∀ day, (ε : ℝ) ≤ P day (ψ day)) :
@@ -300,7 +300,7 @@ def retainedConditionPrices (ψ : ℕ → Sentence) (ε : ℚ) : EF → EF
   | var i => rfl
   | letE x body ihx ihbody => simp [retainedConditionPrices, ihx, ihbody]
 
-theorem retainedConditionPrices_denoteWith (e : EF) (P : History)
+lemma retainedConditionPrices_denoteWith (e : EF) (P : History)
     (ψ : ℕ → Sentence) {ε : ℚ} (hε : 0 < (ε : ℝ))
     (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d)) :
     ∀ ρ : List ℝ, (e.retainedConditionPrices ψ ε).denoteWith ρ P =
@@ -321,7 +321,7 @@ theorem retainedConditionPrices_denoteWith (e : EF) (P : History)
       simp only [retainedConditionPrices, denoteWith_letE]
       rw [ihx ρ, ihbody]
 
-theorem retainedConditionPrices_denote (e : EF) (P : History)
+lemma retainedConditionPrices_denote (e : EF) (P : History)
     (ψ : ℕ → Sentence) {ε : ℚ} (hε : 0 < (ε : ℝ))
     (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d)) :
     (e.retainedConditionPrices ψ ε).denote P =
@@ -332,7 +332,7 @@ theorem retainedConditionPrices_denote (e : EF) (P : History)
 def absVal (e : EF) : EF :=
   .max e (.mul (.const (-1)) e)
 
-theorem absVal_denote (e : EF) (P : History) :
+lemma absVal_denote (e : EF) (P : History) :
     (absVal e).denote P = |e.denote P| := by
   simp only [absVal, EF.denote_max, EF.denote_mul, EF.denote_const, Pi.mul_apply]
   push_cast
@@ -346,7 +346,7 @@ theorem absVal_denote (e : EF) (P : History) :
 def conditioningTolerance (magnitude : EF) (τ : ℚ) : EF :=
   .mul (.const τ) (.safeRecip magnitude)
 
-theorem conditioningTolerance_denote
+lemma conditioningTolerance_denote
     (magnitude : EF) (τ : ℚ) (P : History) :
     (conditioningTolerance magnitude τ).denote P =
       (τ : ℝ) / Max.max 1 (magnitude.denote P) := by
@@ -367,7 +367,7 @@ def conditioningCapGate (ratio magnitude : EF) (τ : ℚ) : EF :=
     (.add (.add (.const 1) δ) (.mul (.const (-1)) ratio))
     (.mul (.const (1 / τ)) maxMag))
 
-theorem conditioningCapGate_denote
+lemma conditioningCapGate_denote
     (ratio magnitude : EF) (τ : ℚ) (P : History) :
     (conditioningCapGate ratio magnitude τ).denote P =
       conditioningGateVal ((τ : ℝ) / Max.max 1 (magnitude.denote P))
@@ -388,7 +388,7 @@ theorem conditioningCapGate_denote
       Nat.max ratio.rank magnitude.rank := by
   simp [conditioningCapGate, EF.rank, Nat.max_comm]
 
-theorem conditioningTolerance_pos
+lemma conditioningTolerance_pos
     (magnitude : EF) {τ : ℚ} (P : History) (hτ : 0 < (τ : ℝ)) :
     0 < (conditioningTolerance magnitude τ).denote P := by
   rw [conditioningTolerance_denote]
@@ -405,7 +405,7 @@ def conditionedMagnitudeFeature
     (fun p acc => EF.add (EF.absVal (p.1.conditionPrices ψ ε)) acc)
     (EF.const 0)
 
-theorem conditionedMagnitudeFeature_denote
+lemma conditionedMagnitudeFeature_denote
     {day : ℕ} (T : Strategy day) (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
     (hε : 0 < (ε : ℝ))
     (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d)) :
@@ -419,7 +419,7 @@ theorem conditionedMagnitudeFeature_denote
         List.map_cons, List.sum_cons, Pi.add_apply]
       rw [p.1.conditionPrices_denote P ψ hε hden, ih]
 
-theorem conditionedMagnitudeFeature_rank_le
+lemma conditionedMagnitudeFeature_rank_le
     {day : ℕ} (T : Strategy day) (ψ : ℕ → Sentence) (ε : ℚ) :
     (T.conditionedMagnitudeFeature ψ ε).rank ≤ day := by
   have aux : ∀ trades : List (EF × Sentence),
@@ -488,7 +488,7 @@ def gatedConditionalContract {day : ℕ} (ψ : ℕ → Sentence) (ε τ : ℚ)
     · simp only [EF.rank_mul, EF.rank_const, Nat.zero_max]
       exact Nat.max_le.mpr ⟨hβ, hratio⟩
 
-private theorem gatedConditionalPair_lower
+private lemma gatedConditionalPair_lower
     {day : ℕ} (p : EF × Sentence)
     (P : History) (ψ : ℕ → Sentence) {ε τ : ℚ}
     (hε : 0 < (ε : ℝ))
@@ -561,7 +561,7 @@ private theorem gatedConditionalPair_lower
     rw [← hrden]
     ring)
 
-private theorem gatedConditionalContractTrades_value_lower
+private lemma gatedConditionalContractTrades_value_lower
     {day : ℕ} (trades : List (EF × Sentence))
     (P : History) (ψ : ℕ → Sentence) {ε τ : ℚ}
     (hε : 0 < (ε : ℝ))
@@ -587,7 +587,7 @@ private theorem gatedConditionalContractTrades_value_lower
 
 /-- The concrete gated day translation tracks the conditional-market strategy from
 below, losing at most the polynomially writable summable budget for that day. -/
-theorem gatedConditionalContract_value_lower
+lemma gatedConditionalContract_value_lower
     {day : ℕ} (T : Strategy day)
     (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
     (hε : 0 < (ε : ℝ))
@@ -644,7 +644,7 @@ theorem gatedConditionalContract_value_lower
       rfl
     _ ≤ _ := hlist
 
-private theorem gatedConditionalContractTrades_value_zero
+private lemma gatedConditionalContractTrades_value_zero
     {day : ℕ} (trades : List (EF × Sentence))
     (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
     (hε : 0 < (ε : ℝ))
@@ -674,7 +674,7 @@ private theorem gatedConditionalContractTrades_value_zero
 
 /-- Once the growing condition is false in a world, every gated conditional contract on
 that day has exactly zero value there—including its cash term. -/
-theorem gatedConditionalContract_value_eq_zero_of_not_holds
+lemma gatedConditionalContract_value_eq_zero_of_not_holds
     {day : ℕ} (T : Strategy day)
     (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
     (hε : 0 < (ε : ℝ))
@@ -794,7 +794,7 @@ def separatedLocallyGatedConditionalContract {day : ℕ}
       simpa [locallyGatedSecondLeg, EF.rank, EF.conditioningCapGate_rank, hα, hr]
         using T.rank_le p hp
 
-theorem separatedLocallyGatedConditionalContract_value
+lemma separatedLocallyGatedConditionalContract_value
     {day : ℕ} (ψ : ℕ → Sentence) (ε τ : ℚ) (T : Strategy day)
     (P : History) (w : Valuation) (hε : 0 < (ε : ℝ))
     (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d)) :
@@ -845,7 +845,7 @@ theorem separatedLocallyGatedConditionalContract_value
     locallyGatedConditionalContract, List.map_append, List.sum_append, List.map_map,
     Function.comp_apply] using hsum T.trades.length T.trades
 
-private theorem locallyGatedConditionalPair_lower
+private lemma locallyGatedConditionalPair_lower
     {day count : ℕ} (p : EF × Sentence)
     (P : History) (ψ : ℕ → Sentence) {ε τ : ℚ}
     (hε : 0 < (ε : ℝ))
@@ -902,7 +902,7 @@ private theorem locallyGatedConditionalPair_lower
   dsimp only [α, magnitude, positionBudget] at hpair ⊢
   exact (sub_le_sub_left hmagnitude _).trans hpair
 
-private theorem locallyGatedConditionalContractTrades_value_lower
+private lemma locallyGatedConditionalContractTrades_value_lower
     {day count : ℕ} (trades : List (EF × Sentence))
     (P : History) (ψ : ℕ → Sentence) {ε τ : ℚ}
     (hε : 0 < (ε : ℝ))
@@ -925,7 +925,7 @@ private theorem locallyGatedConditionalContractTrades_value_lower
         List.length_cons, Nat.cast_add, Nat.cast_one, add_zero]
       nlinarith
 
-theorem locallyGatedConditionalContract_value_lower
+lemma locallyGatedConditionalContract_value_lower
     {day : ℕ} (T : Strategy day)
     (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
     (hε : 0 < (ε : ℝ))
@@ -960,7 +960,7 @@ theorem locallyGatedConditionalContract_value_lower
     rw [← hcancel]
     exact hlist
 
-private theorem locallyGatedConditionalContractTrades_value_zero
+private lemma locallyGatedConditionalContractTrades_value_zero
     {day count : ℕ} (trades : List (EF × Sentence))
     (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
     (hε : 0 < (ε : ℝ))
@@ -987,7 +987,7 @@ private theorem locallyGatedConditionalContractTrades_value_zero
       field_simp [ne_of_gt hdenPos]
       ring
 
-theorem locallyGatedConditionalContract_value_eq_zero_of_not_holds
+lemma locallyGatedConditionalContract_value_eq_zero_of_not_holds
     {day : ℕ} (T : Strategy day)
     (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
     (hε : 0 < (ε : ℝ))
@@ -1026,7 +1026,7 @@ def conditionalContract {day : ℕ} (ψ : ℕ → Sentence) (ε : ℚ)
       exact max_le (T.rank_le q hq) (by
         simp [EF.conditionalRatioEF, EF.lowerSafeRecip, EF.rank])
 
-private theorem conditionalContractTrades_value
+private lemma conditionalContractTrades_value
     {day : ℕ} (trades : List (EF × Sentence))
     (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
     (hε : 0 < (ε : ℝ))
@@ -1066,7 +1066,7 @@ private theorem conditionalContractTrades_value
 /-- In a world satisfying the day condition, and outside the cap-violation case, the
 literal conditional-contract strategy has exactly the original strategy's value against
 the capped conditional market. -/
-theorem conditionalContract_value
+lemma conditionalContract_value
     {day : ℕ} (T : Strategy day)
     (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
     (hε : 0 < (ε : ℝ))
@@ -1089,7 +1089,7 @@ def conditionedTranslation (ψ : ℕ → Sentence) (ε : ℚ) (T : Trader) : Tra
 
 /-- Summing the day estimates costs at most one in every world satisfying all conditions
 through the assessment day. -/
-theorem conditionedTranslation_netWorth_lower
+lemma conditionedTranslation_netWorth_lower
     (T : Trader) (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
     (hε : 0 < (ε : ℝ))
     (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d))
@@ -1147,7 +1147,7 @@ def union (DP extra : DeductiveProcess) : DeductiveProcess where
 
 end DeductiveProcess
 
-theorem PCWorld.consistentWith_union_iff
+lemma PCWorld.consistentWith_union_iff
     (v : PCWorld) (DP extra : DeductiveProcess) (n : ℕ) :
     v.ConsistentWith ((DP.union extra).D n) ↔
       v.ConsistentWith (DP.D n) ∧ v.ConsistentWith (extra.D n) := by
@@ -1172,14 +1172,14 @@ structure ConditioningPresentation (DP extra : DeductiveProcess) where
     v.Holds (condition n) ↔ v.ConsistentWith (extra.D n)
   combined_computable : ComputableDeductiveProcess (DP.union extra)
 
-theorem ConditioningPresentation.consistent_combined_iff
+lemma ConditioningPresentation.consistent_combined_iff
     {DP extra : DeductiveProcess} (C : ConditioningPresentation DP extra)
     (v : PCWorld) (n : ℕ) :
     v.ConsistentWith ((DP.union extra).D n) ↔
       v.ConsistentWith (DP.D n) ∧ v.Holds (C.condition n) := by
   rw [PCWorld.consistentWith_union_iff, C.holds_condition]
 
-theorem ConditioningPresentation.holds_condition_of_le
+lemma ConditioningPresentation.holds_condition_of_le
     {DP extra : DeductiveProcess} (C : ConditioningPresentation DP extra)
     (v : PCWorld) {i n : ℕ} (hin : i ≤ n)
     (hv : v.ConsistentWith ((DP.union extra).D n)) :
@@ -1193,7 +1193,7 @@ theorem ConditioningPresentation.holds_condition_of_le
   intro φ hφ
   exact hextraN φ (hsub hφ)
 
-theorem ConditioningPresentation.not_holds_condition_of_le
+lemma ConditioningPresentation.not_holds_condition_of_le
     {DP extra : DeductiveProcess} (C : ConditioningPresentation DP extra)
     (v : PCWorld) {i j : ℕ} (hij : i ≤ j)
     (hi : ¬v.Holds (C.condition i)) :
@@ -1210,7 +1210,7 @@ theorem ConditioningPresentation.not_holds_condition_of_le
   exact hextraJ φ (hsub hφ)
 
 /-- The concrete translation realizes the compiler's same-world tracking field. -/
-theorem ConditioningPresentation.conditionedTranslation_tracks
+lemma ConditioningPresentation.conditionedTranslation_tracks
     {DP extra : DeductiveProcess} (C : ConditioningPresentation DP extra)
     (P : History) {ε : ℚ} (hε : 0 < (ε : ℝ))
     (hden : ∀ d, (ε : ℝ) ≤ P d (C.condition d))
@@ -1222,7 +1222,7 @@ theorem ConditioningPresentation.conditionedTranslation_tracks
     (fun i hi => C.holds_condition_of_le v hi hv)
   linarith
 
-theorem ConditioningPresentation.conditionedTranslation_netWorth_eq_before_failure
+lemma ConditioningPresentation.conditionedTranslation_netWorth_eq_before_failure
     {DP extra : DeductiveProcess} (C : ConditioningPresentation DP extra)
     (P : History) {ε : ℚ} (hε : 0 < (ε : ℝ))
     (hden : ∀ d, (ε : ℝ) ≤ P d (C.condition d))
@@ -1247,7 +1247,7 @@ theorem ConditioningPresentation.conditionedTranslation_netWorth_eq_before_failu
 /-- The paper's first-falsified-condition argument for the concrete translator.  A base
 world either satisfies every condition through `n`, where the summable tracking bound
 applies, or has a least failure, after which every translated trade is exactly zero. -/
-theorem ConditioningPresentation.conditionedTranslation_preserves_floor
+lemma ConditioningPresentation.conditionedTranslation_preserves_floor
     {DP extra : DeductiveProcess} (C : ConditioningPresentation DP extra)
     (P : History) {ε : ℚ} (hε : 0 < (ε : ℝ))
     (hden : ∀ d, (ε : ℝ) ≤ P d (C.condition d))
@@ -1323,7 +1323,8 @@ theorem ConditioningPresentation.conditionedTranslation_preserves_floor
 is the actual base-market trader compiled from a conditional-market trader `T`.
 `tracks_on_condition` is the paper's summable-error estimate, while `preserves_floor`
 records the separate analysis of worlds that first falsify the growing condition. The
-interface contains no exploitation or logical-induction conclusion.  Paper node: `thm:scon` (App. `scon`). -/
+interface contains no exploitation or logical-induction conclusion.
+Paper node: `thm:scon` (App. `scon`). -/
 structure ConditioningTraderCompiler
     (P : History) (DP extra : DeductiveProcess)
     (C : ConditioningPresentation DP extra) where
@@ -1343,7 +1344,8 @@ structure ConditioningTraderCompiler
 /-- The remaining operational boundary after the gated translator's economic proof.  It
 contains only the patched positive denominator, computability of the rational conditional
 market, and a token-level implementation of the concrete syntax transformation.  In
-particular it contains no wealth, boundedness, exploitation, or logical-inductor field.  Paper node: `thm:scon` (App. `scon`). -/
+particular it contains no wealth, boundedness, exploitation, or logical-inductor field.
+Paper node: `thm:scon` (App. `scon`). -/
 structure GatedConditioningOperationalWitness
     (P : History) (DP extra : DeductiveProcess)
     (C : ConditioningPresentation DP extra) (ε : ℚ) where
@@ -1372,7 +1374,7 @@ def GatedConditioningOperationalWitness.toCompiler
 /-- The explicit compiler contract transports a genuine conditional-market exploit to a
 genuine exploit of the base market. The unboundedness proof uses actual same-world wealth
 tracking; no abstract exploit certificate is stored in the compiler. -/
-theorem ConditioningTraderCompiler.exploits_base
+lemma ConditioningTraderCompiler.exploits_base
     {P : History} {DP extra : DeductiveProcess}
     {C : ConditioningPresentation DP extra}
     (compiler : ConditioningTraderCompiler P DP extra C)
@@ -1394,7 +1396,7 @@ theorem ConditioningTraderCompiler.exploits_base
 
 /-- Criterion-level Closure Under Conditioning, conditional only on the concrete Appendix
 trader compiler above. This statement covers both fixed conditions and growing finite
-conjunctions through `ConditioningPresentation`. -/
+conjunctions through `ConditioningPresentation`.  Paper node: `thm:scon` (App. `scon`). -/
 theorem lic_conditioned
     (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
     (C : ConditioningPresentation DP extra)
@@ -1409,7 +1411,7 @@ theorem lic_conditioned
 
 /-- Closure under conditioning through the concrete gated translator.  The remaining
 premise is operational only; the summable tracking and first-failure downside arguments
-are no longer assumed through an opaque compiler field. -/
+are no longer assumed through an opaque compiler field.  Paper node: `thm:scon` (App. `scon`). -/
 theorem lic_conditioned_gated
     (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
     (C : ConditioningPresentation DP extra) {ε : ℚ}

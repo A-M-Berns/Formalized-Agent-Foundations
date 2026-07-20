@@ -20,7 +20,7 @@ private def formulaBinaryNorm (tag : ℕ) (prior : List ℕ) (children : ℕ) : 
   if left = 0 ∨ right = 0 then 0
   else Nat.pair tag (Nat.pair (left - 1) (right - 1)) + 2
 
-private theorem formulaBinaryNorm_prim (tag : ℕ) :
+private lemma formulaBinaryNorm_prim (tag : ℕ) :
     Primrec₂ (formulaBinaryNorm tag) := by
   let childLeft : List ℕ × ℕ → ℕ := fun p => p.1.getD p.2.unpair.1 0
   let childRight : List ℕ × ℕ → ℕ := fun p => p.1.getD p.2.unpair.2 0
@@ -60,7 +60,7 @@ private def formulaNormSucc (prior : List ℕ) (e : ℕ) : ℕ :=
   else if tag = 4 then formulaBinaryNorm 4 prior payload
   else 0
 
-private theorem formulaNormSucc_prim : Primrec₂ formulaNormSucc := by
+private lemma formulaNormSucc_prim : Primrec₂ formulaNormSucc := by
   let tag : List ℕ × ℕ → ℕ := fun p => p.2.unpair.1
   let payload : List ℕ × ℕ → ℕ := fun p => p.2.unpair.2
   have htag : Primrec tag := Primrec.fst.comp (Primrec.unpair.comp Primrec.snd)
@@ -97,7 +97,7 @@ private theorem formulaNormSucc_prim : Primrec₂ formulaNormSucc := by
 private def formulaNormList (prior : List ℕ) : ℕ :=
   prior.length.casesOn 0 (formulaNormSucc prior)
 
-private theorem formulaNormList_prim : Primrec formulaNormList := by
+private lemma formulaNormList_prim : Primrec formulaNormList := by
   exact (Primrec.nat_casesOn Primrec.list_length (Primrec.const 0)
     formulaNormSucc_prim).of_eq fun prior => by
       simp only [formulaNormList]
@@ -107,7 +107,7 @@ private def sentenceDecodeNorm (n : ℕ) : ℕ :=
   | none => 0
   | some phi => LO.Propositional.Formula.toNat phi + 1
 
-private theorem formulaHistory_getD {n k : ℕ} (hk : k < n) :
+private lemma formulaHistory_getD {n k : ℕ} (hk : k < n) :
     ((List.range n).map fun m =>
       sentenceDecodeNorm m).getD k 0 = sentenceDecodeNorm k := by
   have hzero : sentenceDecodeNorm 0 = 0 := by
@@ -115,7 +115,7 @@ private theorem formulaHistory_getD {n k : ℕ} (hk : k < n) :
   rw [← hzero, List.getD_map]
   simp [hk]
 
-private theorem formulaBinaryNorm_history (tag payload n : ℕ)
+private lemma formulaBinaryNorm_history (tag payload n : ℕ)
     (hleft : payload.unpair.1 < n) (hright : payload.unpair.2 < n) :
     formulaBinaryNorm tag ((List.range n).map sentenceDecodeNorm) payload =
       match (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.1 : Option Sentence),
@@ -130,7 +130,7 @@ private theorem formulaBinaryNorm_history (tag payload n : ℕ)
       payload.unpair.2 : Option Sentence) <;>
     simp [sentenceDecodeNorm, hL, hR]
 
-private theorem formulaNormList_history (n : ℕ) :
+private lemma formulaNormList_history (n : ℕ) :
     formulaNormList ((List.range n).map fun k =>
       sentenceDecodeNorm k) = sentenceDecodeNorm n := by
   cases n with
@@ -219,14 +219,14 @@ instance sentencePrimcodable : Primcodable Sentence where
 private def intCodeNatAbs (n : ℕ) : ℕ :=
   if n.bodd then n.div2 + 1 else n.div2
 
-private theorem intCodeNatAbs_prim : Primrec intCodeNatAbs := by
+private lemma intCodeNatAbs_prim : Primrec intCodeNatAbs := by
   exact (Primrec.cond Primrec.nat_bodd
     (Primrec.nat_add.comp Primrec.nat_div2 (Primrec.const 1))
     Primrec.nat_div2).of_eq fun n => by
       simp only [intCodeNatAbs]
       cases n.bodd <;> rfl
 
-private theorem intCodeNatAbs_eq_decode (n : ℕ) :
+private lemma intCodeNatAbs_eq_decode (n : ℕ) :
     intCodeNatAbs n =
       ((@Encodable.decode ℤ Int.encodable n).getD 0).natAbs := by
   have hof : Denumerable.ofNat ℤ n = Equiv.intEquivNat.symm n := by
@@ -251,7 +251,7 @@ private instance coprimeBoundedDecidable : DecidableRel coprimeBounded :=
     dsimp [coprimeBounded]
     infer_instance
 
-private theorem coprimeBounded_iff (a b : ℕ) : coprimeBounded a b ↔ a.Coprime b := by
+private lemma coprimeBounded_iff (a b : ℕ) : coprimeBounded a b ↔ a.Coprime b := by
   constructor
   · intro h
     rw [Nat.coprime_iff_isRelPrime]
@@ -271,7 +271,7 @@ private theorem coprimeBounded_iff (a b : ℕ) : coprimeBounded a b ↔ a.Coprim
   · intro h k _ hka hkb
     exact Nat.eq_one_of_dvd_coprimes h hka hkb
 
-private theorem coprimeBounded_prim : PrimrecRel coprimeBounded := by
+private lemma coprimeBounded_prim : PrimrecRel coprimeBounded := by
   have hdvd : PrimrecRel fun k a : ℕ => k ∣ a := by
     apply PrimrecPred.of_eq
       (Primrec.eq.comp
@@ -304,7 +304,7 @@ private theorem coprimeBounded_prim : PrimrecRel coprimeBounded := by
   exact (hall.comp (hbound.comp hpair) hpair).of_eq fun p => by
     simp only [Nat.unpair_pair, coprimeBounded]
 
-private theorem natDvd_prim : PrimrecRel fun k a : ℕ => k ∣ a := by
+private lemma natDvd_prim : PrimrecRel fun k a : ℕ => k ∣ a := by
   apply PrimrecPred.of_eq
     (Primrec.eq.comp
       (Primrec.nat_mod.comp (Primrec.snd : Primrec fun p : ℕ × ℕ => p.2)
@@ -316,7 +316,7 @@ private theorem natDvd_prim : PrimrecRel fun k a : ℕ => k ∣ a := by
 
 /-- Euclid's gcd, compiled as the greatest common divisor below the explicit `a+b`
 bound.  This avoids relying on the kernel implementation of Euclid's recursion. -/
-private theorem natGCD_prim : Primrec₂ Nat.gcd := by
+private lemma natGCD_prim : Primrec₂ Nat.gcd := by
   let common : ℕ × ℕ → ℕ → Prop := fun p k => k ∣ p.1 ∧ k ∣ p.2
   have hcommon : PrimrecRel common := by
     exact (natDvd_prim.comp₂ Primrec₂.right (Primrec.fst.comp₂ Primrec₂.left)).and
@@ -369,7 +369,7 @@ private instance ratCodeValidDecidable : DecidablePred ratCodeValid :=
     dsimp [ratCodeValid]
     infer_instance
 
-private theorem ratCodeValid_prim : PrimrecPred ratCodeValid := by
+private lemma ratCodeValid_prim : PrimrecPred ratCodeValid := by
   have hden : Primrec fun n : ℕ => n.unpair.2 :=
     Primrec.snd.comp Primrec.unpair
   have hnum : Primrec fun n : ℕ => intCodeNatAbs n.unpair.1 :=
@@ -384,12 +384,12 @@ private theorem ratCodeValid_prim : PrimrecPred ratCodeValid := by
 private def ratDecodeNorm (n : ℕ) : ℕ :=
   if ratCodeValid n then n + 1 else 0
 
-private theorem ratDecodeNorm_prim : Primrec ratDecodeNorm := by
+private lemma ratDecodeNorm_prim : Primrec ratDecodeNorm := by
   exact (Primrec.ite ratCodeValid_prim
     (Primrec.nat_add.comp Primrec.id (Primrec.const 1))
     (Primrec.const 0)).of_eq fun n => by simp only [ratDecodeNorm, id_eq]
 
-private theorem ratDecodeNorm_eq (n : ℕ) :
+private lemma ratDecodeNorm_eq (n : ℕ) :
     ratDecodeNorm n = Encodable.encode (@Encodable.decode ℚ inferInstance n) := by
   have hvalid : ratCodeValid n ↔
       0 < n.unpair.2 ∧
@@ -418,16 +418,16 @@ used by `EF.const` and by all external rational quote codes. -/
 instance ratPrimcodable : Primcodable ℚ where
   prim := Primrec.nat_iff.mp (ratDecodeNorm_prim.of_eq ratDecodeNorm_eq)
 
-private theorem ratNum_prim : Primrec Rat.num := by
+private lemma ratNum_prim : Primrec Rat.num := by
   apply Primrec.encode_iff.mp
   exact (Primrec.fst.comp (Primrec.unpair.comp Primrec.encode)).of_eq fun q => by
     simp only [encode_rat_eq, Nat.unpair_pair]
 
-private theorem ratDen_prim : Primrec Rat.den := by
+private lemma ratDen_prim : Primrec Rat.den := by
   exact (Primrec.snd.comp (Primrec.unpair.comp Primrec.encode)).of_eq fun q => by
     simp only [encode_rat_eq, Nat.unpair_pair]
 
-private theorem intCodeNatAbs_encode (z : ℤ) :
+private lemma intCodeNatAbs_encode (z : ℤ) :
     intCodeNatAbs (Encodable.encode z) = z.natAbs := by
   cases z with
   | ofNat n => simp [intCodeNatAbs, encode_int_natCast]
@@ -436,7 +436,7 @@ private theorem intCodeNatAbs_encode (z : ℤ) :
       rw [hencode]
       simp [intCodeNatAbs]
 
-private theorem intNatAbs_prim : Primrec Int.natAbs :=
+private lemma intNatAbs_prim : Primrec Int.natAbs :=
   (intCodeNatAbs_prim.comp Primrec.encode).of_eq intCodeNatAbs_encode
 
 /-! The concrete integer encoding alternates nonnegative and negative values.  Working at
@@ -445,7 +445,7 @@ the code level keeps the rational compiler independent of any opaque arithmetic 
 private def intCodeNeg (n : ℕ) : ℕ :=
   if n = 0 then 0 else bif n.bodd then n + 1 else n - 1
 
-private theorem intCodeNeg_prim : Primrec intCodeNeg := by
+private lemma intCodeNeg_prim : Primrec intCodeNeg := by
   have hzero : PrimrecPred fun n : ℕ => n = 0 :=
     Primrec.eq.comp Primrec.id (Primrec.const 0)
   have hodd : Primrec fun n : ℕ => bif n.bodd then n + 1 else n - 1 :=
@@ -455,7 +455,7 @@ private theorem intCodeNeg_prim : Primrec intCodeNeg := by
   exact (Primrec.ite hzero (Primrec.const 0) hodd).of_eq fun n => by
     simp only [intCodeNeg]
 
-private theorem intCodeNeg_encode (z : ℤ) :
+private lemma intCodeNeg_encode (z : ℤ) :
     intCodeNeg (Encodable.encode z) = Encodable.encode (-z) := by
   cases z with
   | ofNat n =>
@@ -472,13 +472,13 @@ private theorem intCodeNeg_encode (z : ℤ) :
       simp [intCodeNeg, Nat.bodd_mul]
       omega
 
-private theorem encodeIntNegNat {n : ℕ} (hn : 0 < n) :
+private lemma encodeIntNegNat {n : ℕ} (hn : 0 < n) :
     Encodable.encode (-((n : ℤ))) = 2 * n - 1 := by
   have h : -((n : ℤ)) = Int.negSucc (n - 1) := by omega
   rw [h, show Encodable.encode (Int.negSucc (n - 1)) = 2 * (n - 1) + 1 from rfl]
   omega
 
-private theorem intNeg_prim : Primrec fun z : ℤ => -z :=
+private lemma intNeg_prim : Primrec fun z : ℤ => -z :=
   Primrec.encode_iff.mp <|
     (intCodeNeg_prim.comp Primrec.encode).of_eq intCodeNeg_encode
 
@@ -487,7 +487,7 @@ private def intCodeSubNat (positive negative : ℕ) : ℕ :=
   if negative ≤ positive then 2 * (positive - negative)
   else 2 * (negative - positive) - 1
 
-private theorem intCodeSubNat_prim : Primrec₂ intCodeSubNat := by
+private lemma intCodeSubNat_prim : Primrec₂ intCodeSubNat := by
   have hpos : Primrec fun p : ℕ × ℕ => 2 * (p.1 - p.2) :=
     Primrec.nat_mul.comp (Primrec.const 2)
       (Primrec.nat_sub.comp Primrec.fst Primrec.snd)
@@ -500,7 +500,7 @@ private theorem intCodeSubNat_prim : Primrec₂ intCodeSubNat := by
     hpos hneg).to₂.of_eq fun positive negative => by
       simp only [intCodeSubNat]
 
-private theorem intCodeSubNat_eq (positive negative : ℕ) :
+private lemma intCodeSubNat_eq (positive negative : ℕ) :
     intCodeSubNat positive negative =
       Encodable.encode ((positive : ℤ) - (negative : ℤ)) := by
   by_cases h : negative ≤ positive
@@ -521,7 +521,7 @@ private def intCodeAdd (a b : ℕ) : ℕ :=
   else bif b.bodd then intCodeSubNat a.div2 (b.div2 + 1)
   else a + b
 
-private theorem intCodeAdd_prim : Primrec₂ intCodeAdd := by
+private lemma intCodeAdd_prim : Primrec₂ intCodeAdd := by
   have ha : Primrec fun p : ℕ × ℕ => p.1.bodd :=
     Primrec.nat_bodd.comp Primrec.fst
   have hb : Primrec fun p : ℕ × ℕ => p.2.bodd :=
@@ -547,7 +547,7 @@ private theorem intCodeAdd_prim : Primrec₂ intCodeAdd := by
     (Primrec.cond hb hposNeg hbothPos)).to₂.of_eq fun a b => by
       simp only [intCodeAdd]
 
-private theorem intCodeAdd_encode (a b : ℤ) :
+private lemma intCodeAdd_encode (a b : ℤ) :
     intCodeAdd (Encodable.encode a) (Encodable.encode b) =
       Encodable.encode (a + b) := by
   cases a with
@@ -576,7 +576,7 @@ private theorem intCodeAdd_encode (a b : ℤ) :
           simp [intCodeAdd, Nat.bodd_mul]
           omega
 
-private theorem intAdd_prim : Primrec₂ fun a b : ℤ => a + b := by
+private lemma intAdd_prim : Primrec₂ fun a b : ℤ => a + b := by
   apply Primrec₂.encode_iff.mp
   exact (intCodeAdd_prim.comp₂ (Primrec.encode.comp₂ Primrec₂.left)
     (Primrec.encode.comp₂ Primrec₂.right)).of_eq fun a b => intCodeAdd_encode a b
@@ -586,7 +586,7 @@ private def intCodeMul (a b : ℕ) : ℕ :=
   if magnitude = 0 then 0
   else if a.bodd = b.bodd then 2 * magnitude else 2 * magnitude - 1
 
-private theorem intCodeMul_prim : Primrec₂ intCodeMul := by
+private lemma intCodeMul_prim : Primrec₂ intCodeMul := by
   let magnitude : ℕ × ℕ → ℕ := fun p =>
     intCodeNatAbs p.1 * intCodeNatAbs p.2
   have hmag : Primrec magnitude :=
@@ -605,7 +605,7 @@ private theorem intCodeMul_prim : Primrec₂ intCodeMul := by
     (Primrec.ite hsame hpos hneg)).to₂.of_eq fun a b => by
       simp only [intCodeMul, magnitude]
 
-private theorem intCodeMul_encode (a b : ℤ) :
+private lemma intCodeMul_encode (a b : ℤ) :
     intCodeMul (Encodable.encode a) (Encodable.encode b) =
       Encodable.encode (a * b) := by
   cases a with
@@ -655,12 +655,12 @@ private theorem intCodeMul_encode (a b : ℤ) :
             2 * ((a + 1) * (b + 1))
           simp [intCodeMul, intCodeNatAbs, Nat.bodd_mul]
 
-private theorem intMul_prim : Primrec₂ fun a b : ℤ => a * b := by
+private lemma intMul_prim : Primrec₂ fun a b : ℤ => a * b := by
   apply Primrec₂.encode_iff.mp
   exact (intCodeMul_prim.comp₂ (Primrec.encode.comp₂ Primrec₂.left)
     (Primrec.encode.comp₂ Primrec₂.right)).of_eq fun a b => intCodeMul_encode a b
 
-private theorem intOfNat_prim : Primrec fun n : ℕ => (n : ℤ) := by
+private lemma intOfNat_prim : Primrec fun n : ℕ => (n : ℤ) := by
   apply Primrec.encode_iff.mp
   exact (Primrec.nat_mul.comp (Primrec.const 2) Primrec.id).of_eq fun n => by
     simp only [encode_int_natCast, id_eq]
@@ -673,7 +673,7 @@ private def intCodeLE (a b : ℕ) : Prop :=
 private instance intCodeLEDecidable : DecidableRel intCodeLE :=
   fun a b => by dsimp [intCodeLE]; infer_instance
 
-private theorem intCodeLE_prim : PrimrecRel intCodeLE := by
+private lemma intCodeLE_prim : PrimrecRel intCodeLE := by
   have ha : PrimrecRel fun (a : ℕ) (_ : ℕ) => a.bodd = true :=
     Primrec.eq.comp₂ (Primrec.nat_bodd.comp₂ Primrec₂.left)
       (Primrec₂.const true)
@@ -694,7 +694,7 @@ private theorem intCodeLE_prim : PrimrecRel intCodeLE := by
     simp only [intCodeLE]
     cases a.bodd <;> cases b.bodd <;> simp
 
-private theorem intCodeLE_encode (a b : ℤ) :
+private lemma intCodeLE_encode (a b : ℤ) :
     intCodeLE (Encodable.encode a) (Encodable.encode b) ↔ a ≤ b := by
   cases a with
   | ofNat a =>
@@ -718,14 +718,14 @@ private theorem intCodeLE_encode (a b : ℤ) :
           simp [intCodeLE, Nat.bodd_mul]
           omega
 
-private theorem intLE_prim : PrimrecRel fun a b : ℤ => a ≤ b := by
+private lemma intLE_prim : PrimrecRel fun a b : ℤ => a ≤ b := by
   exact (intCodeLE_prim.comp₂ (Primrec.encode.comp₂ Primrec₂.left)
     (Primrec.encode.comp₂ Primrec₂.right)).of_eq intCodeLE_encode
 
 private def intCodeSign (zCode : ℕ) : ℕ :=
   if zCode = 0 then 0 else if zCode.bodd then 1 else 2
 
-private theorem intCodeSign_prim : Primrec intCodeSign := by
+private lemma intCodeSign_prim : Primrec intCodeSign := by
   have hz : PrimrecPred fun n : ℕ => n = 0 :=
     Primrec.eq.comp Primrec.id (Primrec.const 0)
   have hodd : PrimrecPred fun n : ℕ => n.bodd = true :=
@@ -734,7 +734,7 @@ private theorem intCodeSign_prim : Primrec intCodeSign := by
     (Primrec.ite hodd (Primrec.const 1) (Primrec.const 2))).of_eq fun n => by
       simp only [intCodeSign]
 
-private theorem intCodeSign_encode (z : ℤ) :
+private lemma intCodeSign_encode (z : ℤ) :
     intCodeSign (Encodable.encode z) = Encodable.encode z.sign := by
   cases z with
   | ofNat n =>
@@ -749,7 +749,7 @@ private theorem intCodeSign_encode (z : ℤ) :
       change intCodeSign (2 * n + 1) = 1
       simp [intCodeSign, Nat.bodd_mul]
 
-private theorem intSign_prim : Primrec Int.sign := by
+private lemma intSign_prim : Primrec Int.sign := by
   apply Primrec.encode_iff.mp
   exact (intCodeSign_prim.comp Primrec.encode).of_eq intCodeSign_encode
 
@@ -758,7 +758,7 @@ private def intCodeDivNat (zCode d : ℕ) : ℕ :=
   else if zCode.bodd then 2 * (zCode.div2 / d) + 1
   else 2 * (zCode.div2 / d)
 
-private theorem intCodeDivNat_prim : Primrec₂ intCodeDivNat := by
+private lemma intCodeDivNat_prim : Primrec₂ intCodeDivNat := by
   have hd0 : PrimrecPred fun p : ℕ × ℕ => p.2 = 0 :=
     Primrec.eq.comp Primrec.snd (Primrec.const 0)
   have hodd : PrimrecPred fun p : ℕ × ℕ => p.1.bodd = true :=
@@ -773,7 +773,7 @@ private theorem intCodeDivNat_prim : Primrec₂ intCodeDivNat := by
   exact (Primrec.ite hd0 (Primrec.const 0) (Primrec.ite hodd hneg hpos)).to₂.of_eq
     fun zCode d => by simp only [intCodeDivNat]
 
-private theorem intCodeDivNat_encode (z : ℤ) (d : ℕ) :
+private lemma intCodeDivNat_encode (z : ℤ) (d : ℕ) :
     intCodeDivNat (Encodable.encode z) d = Encodable.encode (z / (d : ℤ)) := by
   cases z with
   | ofNat n =>
@@ -804,16 +804,16 @@ private theorem intCodeDivNat_encode (z : ℤ) (d : ℕ) :
             2 * (n / (d + 1)) + 1 from rfl]
           simp [intCodeDivNat, Nat.bodd_mul]
 
-private theorem intDivNat_prim : Primrec₂ fun z : ℤ => fun d : ℕ => z / (d : ℤ) := by
+private lemma intDivNat_prim : Primrec₂ fun z : ℤ => fun d : ℕ => z / (d : ℤ) := by
   apply Primrec₂.encode_iff.mp
   exact (intCodeDivNat_prim.comp₂ (Primrec.encode.comp₂ Primrec₂.left)
     Primrec₂.right).of_eq intCodeDivNat_encode
 
-private theorem ratNumNatAbs_prim : Primrec fun q : ℚ => q.num.natAbs :=
+private lemma ratNumNatAbs_prim : Primrec fun q : ℚ => q.num.natAbs :=
   intNatAbs_prim.comp ratNum_prim
 
 /-- Rational comparison is primitive recursive in the repository's canonical encoding. -/
-theorem ratLE_prim : PrimrecRel fun q r : ℚ => q ≤ r := by
+lemma ratLE_prim : PrimrecRel fun q r : ℚ => q ≤ r := by
   have hleft : Primrec₂ fun q r : ℚ => q.num * (r.den : ℤ) :=
     intMul_prim.comp₂ (ratNum_prim.comp₂ Primrec₂.left)
       ((intOfNat_prim.comp ratDen_prim).comp₂ Primrec₂.right)
@@ -829,7 +829,7 @@ private def ratMkCode (z : ℤ) (d : ℕ) : ℕ :=
     let g := Nat.gcd z.natAbs d
     Nat.pair (Encodable.encode (z / (g : ℤ))) (d / g)
 
-private theorem ratMkCode_prim : Primrec₂ ratMkCode := by
+private lemma ratMkCode_prim : Primrec₂ ratMkCode := by
   have hd0 : PrimrecPred fun p : ℤ × ℕ => p.2 = 0 :=
     Primrec.eq.comp Primrec.snd (Primrec.const 0)
   let g : ℤ × ℕ → ℕ := fun p => Nat.gcd p.1.natAbs p.2
@@ -846,7 +846,7 @@ private theorem ratMkCode_prim : Primrec₂ ratMkCode := by
   exact (Primrec.ite hd0 (Primrec.const (Nat.pair 0 1)) hpair).to₂.of_eq
     fun z d => by simp only [ratMkCode]
 
-private theorem ratMkCode_eq (z : ℤ) (d : ℕ) :
+private lemma ratMkCode_eq (z : ℤ) (d : ℕ) :
     ratMkCode z d = Encodable.encode (mkRat z d) := by
   by_cases hd : d = 0
   · subst d
@@ -856,11 +856,11 @@ private theorem ratMkCode_eq (z : ℤ) (d : ℕ) :
   · rw [encode_rat_eq, Rat.num_mkRat, Rat.den_mkRat]
     simp [ratMkCode, hd, Nat.gcd_comm]
 
-private theorem ratMk_prim : Primrec₂ mkRat := by
+private lemma ratMk_prim : Primrec₂ mkRat := by
   apply Primrec₂.encode_iff.mp
   exact ratMkCode_prim.of_eq ratMkCode_eq
 
-private theorem ratNeg_prim : Primrec fun q : ℚ => -q := by
+private lemma ratNeg_prim : Primrec fun q : ℚ => -q := by
   apply Primrec.encode_iff.mp
   have hpair : Primrec fun q : ℚ =>
       Nat.pair (Encodable.encode (-q.num)) q.den :=
@@ -869,7 +869,7 @@ private theorem ratNeg_prim : Primrec fun q : ℚ => -q := by
   exact hpair.of_eq fun q => by
     simp [encode_rat_eq, Rat.neg_num, Rat.neg_den]
 
-theorem ratAdd_prim : Primrec₂ fun q r : ℚ => q + r := by
+lemma ratAdd_prim : Primrec₂ fun q r : ℚ => q + r := by
   have hqd : Primrec₂ fun q r : ℚ => q.num * (r.den : ℤ) :=
     intMul_prim.comp₂ (ratNum_prim.comp₂ Primrec₂.left)
       ((intOfNat_prim.comp ratDen_prim).comp₂ Primrec₂.right)
@@ -883,7 +883,7 @@ theorem ratAdd_prim : Primrec₂ fun q r : ℚ => q + r := by
       (ratDen_prim.comp₂ Primrec₂.right)
   exact (ratMk_prim.comp₂ hnum hden).of_eq fun q r => (Rat.add_def' q r).symm
 
-theorem ratMul_prim : Primrec₂ fun q r : ℚ => q * r := by
+lemma ratMul_prim : Primrec₂ fun q r : ℚ => q * r := by
   have hnum : Primrec₂ fun q r : ℚ => q.num * r.num :=
     intMul_prim.comp₂ (ratNum_prim.comp₂ Primrec₂.left)
       (ratNum_prim.comp₂ Primrec₂.right)
@@ -892,11 +892,11 @@ theorem ratMul_prim : Primrec₂ fun q r : ℚ => q * r := by
       (ratDen_prim.comp₂ Primrec₂.right)
   exact (ratMk_prim.comp₂ hnum hden).of_eq fun q r => (Rat.mul_def' q r).symm
 
-private theorem ratSub_prim : Primrec₂ fun q r : ℚ => q - r := by
+private lemma ratSub_prim : Primrec₂ fun q r : ℚ => q - r := by
   exact (ratAdd_prim.comp₂ Primrec₂.left
     (ratNeg_prim.comp₂ Primrec₂.right)).of_eq fun q r => by simp [sub_eq_add_neg]
 
-private theorem ratInv_prim : Primrec fun q : ℚ => q⁻¹ := by
+private lemma ratInv_prim : Primrec fun q : ℚ => q⁻¹ := by
   have hsign : Primrec fun q : ℚ => q.num.sign := intSign_prim.comp ratNum_prim
   have hdenInt : Primrec fun q : ℚ => (q.den : ℤ) := intOfNat_prim.comp ratDen_prim
   have hnum : Primrec fun q : ℚ => q.num.sign * (q.den : ℤ) :=
@@ -914,11 +914,11 @@ private theorem ratInv_prim : Primrec fun q : ℚ => q⁻¹ := by
     simp [encode_rat_eq, Rat.num_inv, Rat.den_inv]
 
 /-- Exact rational division is primitive recursive in the canonical encoding. -/
-theorem ratDiv_prim : Primrec₂ fun q r : ℚ => q / r := by
+lemma ratDiv_prim : Primrec₂ fun q r : ℚ => q / r := by
   exact (ratMul_prim.comp₂ Primrec₂.left
     (ratInv_prim.comp₂ Primrec₂.right)).of_eq fun q r => by simp [div_eq_mul_inv]
 
-private theorem ratPow_prim : Primrec₂ fun q : ℚ => fun n : ℕ => q ^ n := by
+private lemma ratPow_prim : Primrec₂ fun q : ℚ => fun n : ℕ => q ^ n := by
   have hstep : Primrec₂ fun (p : ℚ × ℕ) (ni : ℕ × ℚ) => ni.2 * p.1 :=
     ratMul_prim.comp₂ (Primrec.snd.comp₂ Primrec₂.right)
       (Primrec.fst.comp₂ Primrec₂.left)
@@ -933,7 +933,7 @@ private theorem ratPow_prim : Primrec₂ fun q : ℚ => fun n : ℕ => q ^ n := 
 
 /-! ## Proof-erased finite rational belief states -/
 
-private theorem sentenceListNodup_prim :
+private lemma sentenceListNodup_prim :
     PrimrecPred fun l : List Sentence => l.Nodup := by
   have hfilter : Primrec₂ fun (l : List Sentence) (φ : Sentence) =>
       l.filter (fun ψ => ψ = φ) := by
@@ -966,12 +966,12 @@ private theorem sentenceListNodup_prim :
       simpa only [List.count_eq_length_filter] using
         (List.nodup_iff_count_eq_one.mp h φ hφ)
 
-private theorem beliefEntryListKeys_prim :
+private lemma beliefEntryListKeys_prim :
     Primrec fun entries : List (Sentence × ℚ) => entries.map Prod.fst := by
   exact Primrec.list_map Primrec.id
     (Primrec.fst.comp₂ Primrec₂.right)
 
-private theorem beliefEntryBounded_prim :
+private lemma beliefEntryBounded_prim :
     PrimrecPred fun p : Sentence × ℚ => 0 ≤ p.2 ∧ p.2 ≤ 1 := by
   have hlo : PrimrecPred fun p : Sentence × ℚ => 0 ≤ p.2 :=
     ratLE_prim.comp (Primrec.const 0) Primrec.snd
@@ -979,12 +979,12 @@ private theorem beliefEntryBounded_prim :
     ratLE_prim.comp Primrec.snd (Primrec.const 1)
   exact hlo.and hhi
 
-private theorem beliefEntriesBounded_prim :
+private lemma beliefEntriesBounded_prim :
     PrimrecPred fun entries : List (Sentence × ℚ) =>
       ∀ p ∈ entries, 0 ≤ p.2 ∧ p.2 ≤ 1 :=
   beliefEntryBounded_prim.forall_mem_list
 
-private theorem beliefEntriesValid_prim :
+private lemma beliefEntriesValid_prim :
     PrimrecPred fun entries : List (Sentence × ℚ) =>
       (entries.map Prod.fst).Nodup ∧
         ∀ p ∈ entries, 0 ≤ p.2 ∧ p.2 ≤ 1 :=
@@ -996,7 +996,7 @@ private def beliefEntriesNorm (entries : List (Sentence × ℚ)) : ℕ :=
     Encodable.encode entries + 1
   else 0
 
-private theorem beliefEntriesNorm_prim : Primrec beliefEntriesNorm := by
+private lemma beliefEntriesNorm_prim : Primrec beliefEntriesNorm := by
   exact (Primrec.ite beliefEntriesValid_prim
     (Primrec.nat_add.comp Primrec.encode (Primrec.const 1))
     (Primrec.const 0)).of_eq fun entries => by simp only [beliefEntriesNorm]
@@ -1007,7 +1007,7 @@ instance rationalBeliefStateEncodable : Encodable RationalBeliefState :=
   Encodable.ofLeftInjection RationalBeliefState.entries
     RationalBeliefState.ofEntries? RationalBeliefState.ofEntries?_self
 
-private theorem beliefEntriesNorm_eq (entries : List (Sentence × ℚ)) :
+private lemma beliefEntriesNorm_eq (entries : List (Sentence × ℚ)) :
     beliefEntriesNorm entries =
       Encodable.encode (RationalBeliefState.ofEntries? entries) := by
   by_cases hn : (entries.map Prod.fst).Nodup
@@ -1033,7 +1033,7 @@ private def beliefStateDecodeNorm (n : ℕ) : ℕ :=
   | none => 0
   | some entries => beliefEntriesNorm entries
 
-private theorem beliefStateDecodeNorm_prim : Primrec beliefStateDecodeNorm := by
+private lemma beliefStateDecodeNorm_prim : Primrec beliefStateDecodeNorm := by
   exact (Primrec.option_casesOn
     (Primrec.decode : Primrec fun n : ℕ =>
       Encodable.decode (α := List (Sentence × ℚ)) n)
@@ -1042,7 +1042,7 @@ private theorem beliefStateDecodeNorm_prim : Primrec beliefStateDecodeNorm := by
       cases h : Encodable.decode (α := List (Sentence × ℚ)) n <;>
         simp [beliefStateDecodeNorm, h]
 
-private theorem beliefStateDecodeNorm_eq (n : ℕ) :
+private lemma beliefStateDecodeNorm_eq (n : ℕ) :
     beliefStateDecodeNorm n =
       Encodable.encode
         (@Encodable.decode RationalBeliefState rationalBeliefStateEncodable n) := by
@@ -1059,7 +1059,7 @@ instance rationalBeliefStatePrimcodable : Primcodable RationalBeliefState where
   prim := Primrec.nat_iff.mp
     (beliefStateDecodeNorm_prim.of_eq beliefStateDecodeNorm_eq)
 
-private theorem sentenceDecodeNorm_prim : Primrec sentenceDecodeNorm := by
+private lemma sentenceDecodeNorm_prim : Primrec sentenceDecodeNorm := by
   apply Primrec.nat_iff.mpr
   exact (Primcodable.prim Sentence).of_eq fun n => by
     change Encodable.encode
@@ -1072,7 +1072,7 @@ private theorem sentenceDecodeNorm_prim : Primrec sentenceDecodeNorm := by
 private def efUnaryNorm (tag childNorm : ℕ) : ℕ :=
   if childNorm = 0 then 0 else Nat.pair tag (childNorm - 1) + 1
 
-private theorem efUnaryNorm_prim (tag : ℕ) : Primrec (efUnaryNorm tag) := by
+private lemma efUnaryNorm_prim (tag : ℕ) : Primrec (efUnaryNorm tag) := by
   have hzero : PrimrecPred fun n : ℕ => n = 0 :=
     Primrec.eq.comp Primrec.id (Primrec.const 0)
   have hresult : Primrec fun n : ℕ => Nat.pair tag (n - 1) + 1 :=
@@ -1088,7 +1088,7 @@ private def efBinaryNorm (tag leftNorm rightNorm : ℕ) : ℕ :=
   if leftNorm = 0 ∨ rightNorm = 0 then 0
   else Nat.pair tag (Nat.pair (leftNorm - 1) (rightNorm - 1)) + 1
 
-private theorem efBinaryNorm_prim (tag : ℕ) : Primrec₂ (efBinaryNorm tag) := by
+private lemma efBinaryNorm_prim (tag : ℕ) : Primrec₂ (efBinaryNorm tag) := by
   have hbad : PrimrecPred fun p : ℕ × ℕ => p.1 = 0 ∨ p.2 = 0 :=
     (Primrec.eq.comp Primrec.fst (Primrec.const 0)).or
       (Primrec.eq.comp Primrec.snd (Primrec.const 0))
@@ -1110,7 +1110,7 @@ private def efPriceNorm (sentenceNorm day : ℕ) : ℕ :=
   if sentenceNorm = 0 then 0
   else Nat.pair 1 (Nat.pair (sentenceNorm - 1) day) + 1
 
-private theorem efPriceNorm_prim : Primrec₂ efPriceNorm := by
+private lemma efPriceNorm_prim : Primrec₂ efPriceNorm := by
   have hbad : PrimrecPred fun p : ℕ × ℕ => p.1 = 0 :=
     Primrec.eq.comp Primrec.fst (Primrec.const 0)
   have hresult : Primrec fun p : ℕ × ℕ =>
@@ -1128,7 +1128,7 @@ recursion index is the length of `prior`. -/
 private def efPriorNorm (prior : List ℕ) (child : ℕ) : ℕ :=
   prior.getD (Nat.pair child (prior.length.unpair.2 - 1)) 0
 
-private theorem efPriorNorm_prim : Primrec₂ efPriorNorm := by
+private lemma efPriorNorm_prim : Primrec₂ efPriorNorm := by
   have hfuel : Primrec fun prior : List ℕ => prior.length.unpair.2 - 1 :=
     Primrec.nat_sub.comp
       (Primrec.snd.comp (Primrec.unpair.comp Primrec.list_length))
@@ -1166,7 +1166,7 @@ private def efDecodeNormStep (prior : List ℕ) : ℕ :=
         (efPriorNorm prior payload.unpair.2)
     else 0
 
-private theorem efDecodeNormStep_prim : Primrec efDecodeNormStep := by
+private lemma efDecodeNormStep_prim : Primrec efDecodeNormStep := by
   let code : List ℕ → ℕ := fun prior => prior.length.unpair.1
   let fuel : List ℕ → ℕ := fun prior => prior.length.unpair.2
   let tag : List ℕ → ℕ := fun prior => (code prior).unpair.1
@@ -1306,14 +1306,14 @@ private theorem efDecodeNormStep_prim : Primrec efDecodeNormStep := by
 private def efAuxNormIndex (n : ℕ) : ℕ :=
   Encodable.encode (EF.ofNatAux n.unpair.2 n.unpair.1)
 
-private theorem efHistory_getD {n k : ℕ} (hk : k < n) :
+private lemma efHistory_getD {n k : ℕ} (hk : k < n) :
     ((List.range n).map efAuxNormIndex).getD k 0 = efAuxNormIndex k := by
   have hzero : efAuxNormIndex 0 = 0 := by
     simp [efAuxNormIndex, EF.ofNatAux]
   rw [← hzero, List.getD_map]
   simp [hk]
 
-theorem efChildPair_lt (child code fuel : ℕ) (hchild : child ≤ code) :
+lemma efChildPair_lt (child code fuel : ℕ) (hchild : child ≤ code) :
     Nat.pair child fuel < Nat.pair code (fuel + 1) := by
   rcases hchild.eq_or_lt with heq | hlt
   · subst code
@@ -1321,7 +1321,7 @@ theorem efChildPair_lt (child code fuel : ℕ) (hchild : child ≤ code) :
   · exact (Nat.pair_lt_pair_left fuel hlt).trans
       (Nat.pair_lt_pair_right code (by omega))
 
-private theorem efDecodeNormStep_history (n : ℕ) :
+private lemma efDecodeNormStep_history (n : ℕ) :
     efDecodeNormStep ((List.range n).map efAuxNormIndex) = efAuxNormIndex n := by
   rcases hpair : n.unpair with ⟨code, fuel⟩
   have hn : Nat.pair code fuel = n := by
@@ -1388,7 +1388,7 @@ private theorem efDecodeNormStep_history (n : ℕ) :
                           EF.instEncodable, EF.toNat, hL, hR]
                     · simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag]
 
-private theorem efAuxNormIndex_prim : Primrec efAuxNormIndex := by
+private lemma efAuxNormIndex_prim : Primrec efAuxNormIndex := by
   have hstep : Primrec₂ (fun (_ : Unit) (prior : List ℕ) =>
       some (efDecodeNormStep prior)) :=
     Primrec₂.option_some_iff.mpr (efDecodeNormStep_prim.comp Primrec₂.right)
@@ -1413,7 +1413,7 @@ instance efPrimcodable : Primcodable EF where
 private def efRankBinaryNorm (left right : ℕ) : ℕ :=
   if left = 0 ∨ right = 0 then 0 else Nat.max left right
 
-private theorem efRankBinaryNorm_prim : Primrec₂ efRankBinaryNorm := by
+private lemma efRankBinaryNorm_prim : Primrec₂ efRankBinaryNorm := by
   have hbad : PrimrecPred fun p : ℕ × ℕ => p.1 = 0 ∨ p.2 = 0 :=
     (Primrec.eq.comp Primrec.fst (Primrec.const 0)).or
       (Primrec.eq.comp Primrec.snd (Primrec.const 0))
@@ -1451,7 +1451,7 @@ private def efRankNormStep (prior : List ℕ) : ℕ :=
         (efPriorNorm prior payload.unpair.2)
     else 0
 
-private theorem efRankNormStep_prim : Primrec efRankNormStep := by
+private lemma efRankNormStep_prim : Primrec efRankNormStep := by
   let code : List ℕ → ℕ := fun prior => prior.length.unpair.1
   let fuel : List ℕ → ℕ := fun prior => prior.length.unpair.2
   let tag : List ℕ → ℕ := fun prior => (code prior).unpair.1
@@ -1598,14 +1598,14 @@ private def efAuxRankNormIndex (n : ℕ) : ℕ :=
   | none => 0
   | some e => e.rank + 1
 
-private theorem efRankHistory_getD {n k : ℕ} (hk : k < n) :
+private lemma efRankHistory_getD {n k : ℕ} (hk : k < n) :
     ((List.range n).map efAuxRankNormIndex).getD k 0 = efAuxRankNormIndex k := by
   have hzero : efAuxRankNormIndex 0 = 0 := by
     simp [efAuxRankNormIndex, EF.ofNatAux]
   rw [← hzero, List.getD_map]
   simp [hk]
 
-private theorem efRankNormStep_history (n : ℕ) :
+private lemma efRankNormStep_history (n : ℕ) :
     efRankNormStep ((List.range n).map efAuxRankNormIndex) = efAuxRankNormIndex n := by
   rcases hpair : n.unpair with ⟨code, fuel⟩
   have hn : Nat.pair code fuel = n := by
@@ -1664,7 +1664,7 @@ private theorem efRankNormStep_history (n : ℕ) :
                           hprior _ hleft, hprior _ hright, efRankBinaryNorm, hL, hR]
                     · simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux, htag]
 
-private theorem efAuxRankNormIndex_prim : Primrec efAuxRankNormIndex := by
+private lemma efAuxRankNormIndex_prim : Primrec efAuxRankNormIndex := by
   have hstep : Primrec₂ (fun (_ : Unit) (prior : List ℕ) =>
       some (efRankNormStep prior)) :=
     Primrec₂.option_some_iff.mpr (efRankNormStep_prim.comp Primrec₂.right)
@@ -1673,7 +1673,7 @@ private theorem efAuxRankNormIndex_prim : Primrec efAuxRankNormIndex := by
     hstep (fun _ n => by simpa using congrArg some (efRankNormStep_history n))
   exact hrec.comp (Primrec.const ()) Primrec.id
 
-private theorem efRank_prim : Primrec EF.rank := by
+private lemma efRank_prim : Primrec EF.rank := by
   have hindex : Primrec fun e : EF => Nat.pair (Encodable.encode e)
       (Encodable.encode e + 1) :=
     Primrec₂.natPair.comp Primrec.encode
@@ -1699,7 +1699,7 @@ private abbrev EFQueryList := List (ℕ × Sentence)
 private def efQueriesAppend (left right : Option EFQueryList) : Option EFQueryList :=
   left.bind fun a => right.map fun b => a ++ b
 
-private theorem efQueriesAppend_prim : Primrec₂ efQueriesAppend := by
+private lemma efQueriesAppend_prim : Primrec₂ efQueriesAppend := by
   have hg : Primrec₂ fun (z : (Option EFQueryList × Option EFQueryList) × EFQueryList)
       (b : EFQueryList) => z.2 ++ b :=
     Primrec.list_append.comp (Primrec.snd.comp Primrec.fst) Primrec.snd
@@ -1714,7 +1714,7 @@ private def efPriorQueries (prior : List (Option EFQueryList)) (child : ℕ) :
     Option EFQueryList :=
   prior.getD (Nat.pair child (prior.length.unpair.2 - 1)) none
 
-private theorem efPriorQueries_prim : Primrec₂ efPriorQueries := by
+private lemma efPriorQueries_prim : Primrec₂ efPriorQueries := by
   have hfuel : Primrec fun prior : List (Option EFQueryList) =>
       prior.length.unpair.2 - 1 :=
     Primrec.nat_sub.comp
@@ -1753,7 +1753,7 @@ private def efQueriesNormVal (prior : List (Option EFQueryList)) : Option EFQuer
       (efPriorQueries prior payload.unpair.2)
   else none
 
-private theorem efQueriesNormVal_prim : Primrec efQueriesNormVal := by
+private lemma efQueriesNormVal_prim : Primrec efQueriesNormVal := by
   let code : List (Option EFQueryList) → ℕ := fun prior => prior.length.unpair.1
   let fuel : List (Option EFQueryList) → ℕ := fun prior => prior.length.unpair.2
   let tag : List (Option EFQueryList) → ℕ := fun prior => (code prior).unpair.1
@@ -1809,15 +1809,15 @@ private theorem efQueriesNormVal_prim : Primrec efQueriesNormVal := by
 private def efAuxQueriesVal (n : ℕ) : Option EFQueryList :=
   (EF.ofNatAux n.unpair.2 n.unpair.1).map EF.priceQueries
 
-private theorem efAuxQueriesVal_zero : efAuxQueriesVal 0 = none := by
+private lemma efAuxQueriesVal_zero : efAuxQueriesVal 0 = none := by
   simp [efAuxQueriesVal, EF.ofNatAux]
 
-private theorem efQueriesHistory_getD {n k : ℕ} (hk : k < n) :
+private lemma efQueriesHistory_getD {n k : ℕ} (hk : k < n) :
     ((List.range n).map efAuxQueriesVal).getD k none = efAuxQueriesVal k := by
   rw [← efAuxQueriesVal_zero, List.getD_map]
   simp [hk]
 
-private theorem efQueriesNormVal_history (n : ℕ) :
+private lemma efQueriesNormVal_history (n : ℕ) :
     efQueriesNormVal ((List.range n).map efAuxQueriesVal) = efAuxQueriesVal n := by
   rcases hpair : n.unpair with ⟨code, fuel⟩
   have hn : Nat.pair code fuel = n := by
@@ -1878,7 +1878,7 @@ private theorem efQueriesNormVal_history (n : ℕ) :
                           EF.priceQueries, hL, hR]
                     · simp [efQueriesNormVal, EF.ofNatAux, htag]
 
-private theorem efAuxQueriesVal_prim : Primrec efAuxQueriesVal := by
+private lemma efAuxQueriesVal_prim : Primrec efAuxQueriesVal := by
   have hstep : Primrec₂ (fun (_ : Unit) (prior : List (Option EFQueryList)) =>
       some (efQueriesNormVal prior)) :=
     Primrec₂.option_some_iff.mpr (efQueriesNormVal_prim.comp Primrec₂.right)
@@ -1890,7 +1890,7 @@ private theorem efAuxQueriesVal_prim : Primrec efAuxQueriesVal := by
 /-- `EF.priceQueries` is primitive recursive.  The guard behind the settlement checker's
 soundness: only when every listed query is answered does the total quote table stand in
 for the real market. -/
-theorem efPriceQueries_prim : Primrec EF.priceQueries := by
+lemma efPriceQueries_prim : Primrec EF.priceQueries := by
   have hindex : Primrec fun e : EF => Nat.pair (Encodable.encode e)
       (Encodable.encode e + 1) :=
     Primrec₂.natPair.comp Primrec.encode
@@ -1903,7 +1903,7 @@ private def strategyOfTrades? (n : ℕ) (trades : List (EF × Sentence)) :
     Option (Strategy n) :=
   if h : ∀ p ∈ trades, p.1.rank ≤ n then some ⟨trades, h⟩ else none
 
-private theorem strategyOfTrades?_self {n : ℕ} (T : Strategy n) :
+private lemma strategyOfTrades?_self {n : ℕ} (T : Strategy n) :
     strategyOfTrades? n T.trades = some T := by
   simp only [strategyOfTrades?, dif_pos T.rank_le]
 
@@ -1913,7 +1913,7 @@ instance strategyEncodable (n : ℕ) : Encodable (Strategy n) :=
   Encodable.ofLeftInjection Strategy.trades (strategyOfTrades? n)
     strategyOfTrades?_self
 
-private theorem strategyTradesValid_prim (n : ℕ) :
+private lemma strategyTradesValid_prim (n : ℕ) :
     PrimrecPred fun trades : List (EF × Sentence) =>
       ∀ p ∈ trades, p.1.rank ≤ n := by
   have hp : PrimrecPred fun p : EF × Sentence => p.1.rank ≤ n :=
@@ -1923,13 +1923,13 @@ private theorem strategyTradesValid_prim (n : ℕ) :
 private def strategyTradesNorm (n : ℕ) (trades : List (EF × Sentence)) : ℕ :=
   if ∀ p ∈ trades, p.1.rank ≤ n then Encodable.encode trades + 1 else 0
 
-private theorem strategyTradesNorm_prim (n : ℕ) :
+private lemma strategyTradesNorm_prim (n : ℕ) :
     Primrec (strategyTradesNorm n) := by
   exact (Primrec.ite (strategyTradesValid_prim n)
     (Primrec.nat_add.comp Primrec.encode (Primrec.const 1))
     (Primrec.const 0)).of_eq fun trades => by simp only [strategyTradesNorm]
 
-private theorem strategyTradesNorm_eq (n : ℕ) (trades : List (EF × Sentence)) :
+private lemma strategyTradesNorm_eq (n : ℕ) (trades : List (EF × Sentence)) :
     strategyTradesNorm n trades = Encodable.encode (strategyOfTrades? n trades) := by
   by_cases h : ∀ p ∈ trades, p.1.rank ≤ n
   · let T : Strategy n := ⟨trades, h⟩
@@ -1947,7 +1947,7 @@ private def strategyDecodeNorm (n code : ℕ) : ℕ :=
   | none => 0
   | some trades => strategyTradesNorm n trades
 
-private theorem strategyDecodeNorm_prim (n : ℕ) :
+private lemma strategyDecodeNorm_prim (n : ℕ) :
     Primrec (strategyDecodeNorm n) := by
   exact (Primrec.option_casesOn
     (Primrec.decode : Primrec fun code : ℕ =>
@@ -1957,7 +1957,7 @@ private theorem strategyDecodeNorm_prim (n : ℕ) :
       cases h : Encodable.decode (α := List (EF × Sentence)) code <;>
         simp [strategyDecodeNorm, h]
 
-private theorem strategyDecodeNorm_eq (n code : ℕ) :
+private lemma strategyDecodeNorm_eq (n code : ℕ) :
     strategyDecodeNorm n code =
       Encodable.encode (@Encodable.decode (Strategy n) (strategyEncodable n) code) := by
   change strategyDecodeNorm n code = Encodable.encode
@@ -1977,7 +1977,7 @@ instance strategyPrimcodable (n : ℕ) : Primcodable (Strategy n) where
 
 /-- Association-list quotation is primitive recursive.  `List.lookup` has exactly the
 first-key-wins behavior used by `quoteFromEntries`. -/
-private theorem quoteFromEntries_prim : Primrec₂ quoteFromEntries := by
+private lemma quoteFromEntries_prim : Primrec₂ quoteFromEntries := by
   have hlookup : Primrec₂ fun entries : List (Sentence × ℚ) => fun φ =>
       entries.lookup φ := Primrec₂.swap Primrec.listLookup
   exact (Primrec.option_getD.comp₂ hlookup (Primrec₂.const 0)).of_eq fun entries φ => by
@@ -1989,13 +1989,13 @@ private theorem quoteFromEntries_prim : Primrec₂ quoteFromEntries := by
         split <;> simp_all
 
 /-- Quoting a proof-erased rational belief state is primitive recursive. -/
-private theorem rationalBeliefStateEntries_prim :
+private lemma rationalBeliefStateEntries_prim :
     Primrec RationalBeliefState.entries := by
   apply Primrec.encode_iff.mp
   exact (Primrec.encode : Primrec fun B : RationalBeliefState =>
     Encodable.encode B).of_eq fun B => by rfl
 
-private theorem rationalBeliefStateQuote_prim :
+private lemma rationalBeliefStateQuote_prim :
     Primrec₂ RationalBeliefState.quote := by
   exact (quoteFromEntries_prim.comp₂
     (rationalBeliefStateEntries_prim.comp₂ Primrec₂.left)
@@ -2004,7 +2004,7 @@ private theorem rationalBeliefStateQuote_prim :
 
 /-- The finite chronological rational history is primitive recursive in the state list,
 day, and queried sentence. -/
-private theorem rationalHistory_prim :
+private lemma rationalHistory_prim :
     Primrec fun p : (List RationalBeliefState × ℕ) × Sentence =>
       rationalHistory p.1.1 p.1.2 p.2 := by
   let stateAt : (List RationalBeliefState × ℕ) × Sentence →
@@ -2025,21 +2025,21 @@ private theorem rationalHistory_prim :
 
 /-- The candidate enumeration searched by MarketMaker is precisely the decoder of the
 proof-erased belief-state representation, hence primitive recursive. -/
-private theorem marketMakerCandidate_prim : Primrec marketMakerCandidate := by
+private lemma marketMakerCandidate_prim : Primrec marketMakerCandidate := by
   exact (Primrec.decode : Primrec fun k : ℕ =>
     Encodable.decode (α := RationalBeliefState) k).of_eq fun k => by rfl
 
 /-! ## Exact finite-sentence-set encoding -/
 
 /-- Comparison of sentence Gödel codes is primitive recursive. -/
-theorem sentenceCodeLE_prim :
+lemma sentenceCodeLE_prim :
     PrimrecRel fun φ ψ : Sentence => Encodable.encode φ ≤ Encodable.encode ψ :=
   Primrec.nat_le.comp₂
     (Primrec.encode.comp₂ Primrec₂.left)
     (Primrec.encode.comp₂ Primrec₂.right)
 
 /-- Insertion into the code-sorted sentence list is primitive recursive. -/
-theorem sentenceOrderedInsert_prim :
+lemma sentenceOrderedInsert_prim :
     Primrec₂ (List.orderedInsert
       (fun φ ψ : Sentence => Encodable.encode φ ≤ Encodable.encode ψ)) := by
   let r : Sentence → Sentence → Prop := fun φ ψ =>
@@ -2088,7 +2088,7 @@ theorem sentenceOrderedInsert_prim :
     | cons ψ l ih => simp [List.orderedInsert, ih]
 
 /-- The canonical insertion sort used below is primitive recursive. -/
-theorem sentenceInsertionSort_prim :
+lemma sentenceInsertionSort_prim :
     Primrec (List.insertionSort
       (fun φ ψ : Sentence => Encodable.encode φ ≤ Encodable.encode ψ)) := by
   exact (Primrec.list_foldr Primrec.id (Primrec.const [])
@@ -2106,7 +2106,7 @@ private def sentenceFinsetDecodeNorm (n : ℕ) : ℕ :=
           (fun φ ψ : Sentence => Encodable.encode φ ≤ Encodable.encode ψ)) + 1
       else 0
 
-private theorem sentenceFinsetDecodeNorm_prim :
+private lemma sentenceFinsetDecodeNorm_prim :
     Primrec sentenceFinsetDecodeNorm := by
   have hsorted : Primrec fun l : List Sentence => Encodable.encode
       (l.insertionSort
@@ -2128,7 +2128,7 @@ private theorem sentenceFinsetDecodeNorm_prim :
       cases h : Encodable.decode (α := List Sentence) n <;>
         simp [sentenceFinsetDecodeNorm, h]
 
-private theorem sentenceMultisetDecode_eq (n : ℕ) :
+private lemma sentenceMultisetDecode_eq (n : ℕ) :
     @Encodable.decode (Multiset Sentence) Multiset.encodable n =
       (Encodable.decode (α := List Sentence) n).map
         (fun l => (l : Multiset Sentence)) := by
@@ -2136,12 +2136,12 @@ private theorem sentenceMultisetDecode_eq (n : ℕ) :
   unfold decodeMultiset
   cases h : Encodable.decode (α := List Sentence) n <;> simp [h]
 
-private theorem sentenceFinsetEncode_eq (s : Finset Sentence) :
+private lemma sentenceFinsetEncode_eq (s : Finset Sentence) :
     @Encodable.encode (Finset Sentence) Finset.encodable s =
       encodeMultiset s.1 := by
   rfl
 
-private theorem sentenceFinsetDecodeNorm_eq (n : ℕ) :
+private lemma sentenceFinsetDecodeNorm_eq (n : ℕ) :
     sentenceFinsetDecodeNorm n =
       @Encodable.encode (Option (Finset Sentence)) Option.encodable
         (@Encodable.decode (Finset Sentence) Finset.encodable n) := by
@@ -2187,7 +2187,7 @@ instance sentenceFinsetPrimcodable : Primcodable (Finset Sentence) where
 
 /-- A fixed deductive-process program, run for a supplied clock, is primitive recursive in
 the clock and requested day, including exact decoding of its finite sentence set. -/
-theorem processStageAtFuel_prim {DP : DeductiveProcess}
+lemma processStageAtFuel_prim {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) :
     Primrec₂ fun fuel n => process.stageAtFuel fuel n := by
   have heval : Primrec fun p : ℕ × ℕ =>
@@ -2202,7 +2202,7 @@ theorem processStageAtFuel_prim {DP : DeductiveProcess}
 
 /-- A fixed market program, run for a supplied clock, is primitive recursive in the clock,
 day and sentence, including exact decoding of its rational output. -/
-theorem quoteAtFuel_prim {P : History} (market : MarketComputation P) :
+lemma quoteAtFuel_prim {P : History} (market : MarketComputation P) :
     Primrec fun p : ℕ × ℕ × Sentence => market.quoteAtFuel p.1 p.2.1 p.2.2 := by
   have hz : Primrec fun p : ℕ × ℕ × Sentence =>
       Nat.pair p.2.1 (Encodable.encode p.2.2) :=
@@ -2220,7 +2220,7 @@ theorem quoteAtFuel_prim {P : History} (market : MarketComputation P) :
 
 /-- Decoding the entire finite deductive-stage prefix under one common clock is primitive
 recursive. -/
-private theorem processStagePrefixAtFuel_prim {DP : DeductiveProcess}
+private lemma processStagePrefixAtFuel_prim {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) :
     Primrec₂ fun fuel n => processStagePrefixAtFuel process fuel n := by
   have hbase : Primrec fun _fuel : ℕ =>
@@ -2257,7 +2257,7 @@ private theorem processStagePrefixAtFuel_prim {DP : DeductiveProcess}
 
 /-- Lookup in a successfully decoded stage prefix, with the empty theory as the
 out-of-range default, is primitive recursive. -/
-private theorem decodedStageTable_prim : Primrec₂ decodedStageTable := by
+private lemma decodedStageTable_prim : Primrec₂ decodedStageTable := by
   exact (Primrec.list_getD (∅ : Finset Sentence)).of_eq fun stages n => by
     rfl
 
@@ -2267,46 +2267,46 @@ private theorem decodedStageTable_prim : Primrec₂ decodedStageTable := by
 constructor facts separately keeps the parser proof about its control flow rather than the
 details of the exact `EF.toNat` representation. -/
 
-private theorem efConst_prim : Primrec EF.const := by
+private lemma efConst_prim : Primrec EF.const := by
   apply Primrec.encode_iff.mp
   exact (Primrec₂.natPair.comp (Primrec.const 0) Primrec.encode).of_eq fun q => by
     rfl
 
-private theorem efPrice_prim : Primrec₂ EF.price := by
+private lemma efPrice_prim : Primrec₂ EF.price := by
   apply Primrec₂.encode_iff.mp
   exact ((Primrec₂.natPair.comp (Primrec.const 1)
     (Primrec₂.natPair.comp (Primrec.encode.comp Primrec.fst) Primrec.snd)).to₂).of_eq
       fun φ n => by rfl
 
-private theorem efAdd_prim : Primrec₂ EF.add := by
+private lemma efAdd_prim : Primrec₂ EF.add := by
   apply Primrec₂.encode_iff.mp
   exact ((Primrec₂.natPair.comp (Primrec.const 2)
     (Primrec₂.natPair.comp (Primrec.encode.comp Primrec.fst)
       (Primrec.encode.comp Primrec.snd))).to₂).of_eq fun a b => by rfl
 
-private theorem efMul_prim : Primrec₂ EF.mul := by
+private lemma efMul_prim : Primrec₂ EF.mul := by
   apply Primrec₂.encode_iff.mp
   exact ((Primrec₂.natPair.comp (Primrec.const 3)
     (Primrec₂.natPair.comp (Primrec.encode.comp Primrec.fst)
       (Primrec.encode.comp Primrec.snd))).to₂).of_eq fun a b => by rfl
 
-private theorem efMax_prim : Primrec₂ EF.max := by
+private lemma efMax_prim : Primrec₂ EF.max := by
   apply Primrec₂.encode_iff.mp
   exact ((Primrec₂.natPair.comp (Primrec.const 4)
     (Primrec₂.natPair.comp (Primrec.encode.comp Primrec.fst)
       (Primrec.encode.comp Primrec.snd))).to₂).of_eq fun a b => by rfl
 
-private theorem efSafeRecip_prim : Primrec EF.safeRecip := by
+private lemma efSafeRecip_prim : Primrec EF.safeRecip := by
   apply Primrec.encode_iff.mp
   exact (Primrec₂.natPair.comp (Primrec.const 5) Primrec.encode).of_eq fun a => by
     rfl
 
-private theorem efVar_prim : Primrec EF.var := by
+private lemma efVar_prim : Primrec EF.var := by
   apply Primrec.encode_iff.mp
   exact (Primrec₂.natPair.comp (Primrec.const 6) Primrec.id).of_eq fun i => by
     rfl
 
-private theorem efLet_prim : Primrec₂ EF.letE := by
+private lemma efLet_prim : Primrec₂ EF.letE := by
   apply Primrec₂.encode_iff.mp
   exact ((Primrec₂.natPair.comp (Primrec.const 7)
     (Primrec₂.natPair.comp (Primrec.encode.comp Primrec.fst)
@@ -2318,7 +2318,7 @@ private def efStreamBinary (op : EF → EF → EF)
   | b :: a :: rest => some ((0, none), (op a b :: rest, data.2))
   | _ => none
 
-private theorem efStreamBinary_prim (op : EF → EF → EF) (hop : Primrec₂ op) :
+private lemma efStreamBinary_prim (op : EF → EF → EF) (hop : Primrec₂ op) :
     Primrec (efStreamBinary op) := by
   let S := List EF × List (EF × Sentence)
   let Y := S × (EF × List EF)
@@ -2367,7 +2367,7 @@ private def efStreamUnary (op : EF → EF)
   | a :: rest => some ((0, none), (op a :: rest, data.2))
   | [] => none
 
-private theorem efStreamUnary_prim (op : EF → EF) (hop : Primrec op) :
+private lemma efStreamUnary_prim (op : EF → EF) (hop : Primrec op) :
     Primrec (efStreamUnary op) := by
   let S := List EF × List (EF × Sentence)
   have hresult : Primrec₂ fun (data : S) (ar : EF × List EF) =>
@@ -2391,7 +2391,7 @@ private def efStreamMode (mode : ℕ)
     (data : List EF × List (EF × Sentence)) : Option EF.StreamState :=
   some ((mode, none), data)
 
-private theorem efStreamMode_prim (mode : ℕ) : Primrec (efStreamMode mode) := by
+private lemma efStreamMode_prim (mode : ℕ) : Primrec (efStreamMode mode) := by
   exact Primrec.option_some_iff.mpr
     ((Primrec.const (mode, (none : Option Sentence))).pair Primrec.id)
 
@@ -2400,7 +2400,7 @@ private def efStreamSentence
     Option EF.StreamState :=
   (Encodable.decode (α := Sentence) token).map fun φ => ((2, some φ), data)
 
-private theorem efStreamSentence_prim : Primrec₂ efStreamSentence := by
+private lemma efStreamSentence_prim : Primrec₂ efStreamSentence := by
   let S := List EF × List (EF × Sentence)
   let P := S × ℕ
   have hdecode : Primrec fun p : P => Encodable.decode (α := Sentence) p.2 :=
@@ -2422,7 +2422,7 @@ private def efStreamConst
   (Encodable.decode (α := ℚ) token).map fun q =>
     ((0, none), (EF.const q :: data.1, data.2))
 
-private theorem efStreamConst_prim : Primrec₂ efStreamConst := by
+private lemma efStreamConst_prim : Primrec₂ efStreamConst := by
   let S := List EF × List (EF × Sentence)
   let P := S × ℕ
   have hdecode : Primrec fun p : P => Encodable.decode (α := ℚ) p.2 :=
@@ -2445,7 +2445,7 @@ private def efStreamVar
     Option EF.StreamState :=
   some ((0, none), (EF.var token :: data.1, data.2))
 
-private theorem efStreamVar_prim : Primrec₂ efStreamVar := by
+private lemma efStreamVar_prim : Primrec₂ efStreamVar := by
   let S := List EF × List (EF × Sentence)
   let P := S × ℕ
   have hfeature : Primrec fun p : P => EF.var p.2 := efVar_prim.comp Primrec.snd
@@ -2463,7 +2463,7 @@ private def efStreamPrice
   input.1.1.map fun φ =>
     ((0, none), (EF.price φ input.2 :: input.1.2.1, input.1.2.2))
 
-private theorem efStreamPrice_prim : Primrec efStreamPrice := by
+private lemma efStreamPrice_prim : Primrec efStreamPrice := by
   let S := List EF × List (EF × Sentence)
   let P := (Option Sentence × S) × ℕ
   have hpending : Primrec fun p : P => p.1.1 :=
@@ -2490,7 +2490,7 @@ private def efStreamTrade
       ((0, none), (rest, input.1.2 ++ [(e, φ)]))
   | [] => none
 
-private theorem efStreamTrade_prim : Primrec efStreamTrade := by
+private lemma efStreamTrade_prim : Primrec efStreamTrade := by
   let S := List EF × List (EF × Sentence)
   let P := S × ℕ
   let Y := P × (EF × List EF)
@@ -2518,7 +2518,7 @@ private theorem efStreamTrade_prim : Primrec efStreamTrade := by
       rcases input with ⟨⟨stack, trades⟩, token⟩
       cases stack <;> rfl
 
-private theorem efStreamStepState_prim : Primrec fun
+private lemma efStreamStepState_prim : Primrec fun
     input : EF.StreamState × ℕ => EF.streamStep (some input.1) input.2 := by
   let S := List EF × List (EF × Sentence)
   let P := EF.StreamState × ℕ
@@ -2663,7 +2663,7 @@ private theorem efStreamStepState_prim : Primrec fun
       norm_num
     simp [h0, h1, h2, h3, h4, h5]
 
-private theorem efStreamStep_prim : Primrec₂ EF.streamStep := by
+private lemma efStreamStep_prim : Primrec₂ EF.streamStep := by
   let P := Option EF.StreamState × ℕ
   have hsome : Primrec₂ fun (p : P) (state : EF.StreamState) =>
       EF.streamStep (some state) p.2 := by
@@ -2674,7 +2674,7 @@ private theorem efStreamStep_prim : Primrec₂ EF.streamStep := by
     (Primrec.const (none : Option EF.StreamState)) hsome).to₂).of_eq fun state token => by
       cases state <;> rfl
 
-private theorem efStreamReadFrom_prim : Primrec₂ EF.streamReadFrom := by
+private lemma efStreamReadFrom_prim : Primrec₂ EF.streamReadFrom := by
   let P := List ℕ × Option EF.StreamState
   have hstep : Primrec₂ fun (_p : P) (st : Option EF.StreamState × ℕ) =>
       EF.streamStep st.1 st.2 := by
@@ -2692,7 +2692,7 @@ private def efStreamFinish (state : Option EF.StreamState) :
   | some ((0, none), ([], trades)) => some trades
   | _ => none
 
-private theorem efStreamFinish_prim : Primrec efStreamFinish := by
+private lemma efStreamFinish_prim : Primrec efStreamFinish := by
   have hsome : Primrec₂ fun (_state : Option EF.StreamState) (s : EF.StreamState) =>
       if s.1.1 = 0 then
         match s.1.2 with
@@ -2746,7 +2746,7 @@ private theorem efStreamFinish_prim : Primrec efStreamFinish := by
             | zero => exact (hm rfl).elim
             | succ mode => rfl
 
-theorem deserializeTrades_prim : Primrec deserializeTrades := by
+lemma deserializeTrades_prim : Primrec deserializeTrades := by
   have hread : Primrec fun tokens : List ℕ =>
       EF.streamReadFrom tokens (some EF.streamInitial) :=
     efStreamReadFrom_prim.comp Primrec.id (Primrec.const (some EF.streamInitial))
@@ -2758,7 +2758,7 @@ theorem deserializeTrades_prim : Primrec deserializeTrades := by
         rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
         cases mode <;> cases pending <;> cases stack <;> rfl
 
-private theorem strategyTradesValid_prim₂ :
+private lemma strategyTradesValid_prim₂ :
     PrimrecRel fun (trades : List (EF × Sentence)) n =>
       ∀ p ∈ trades, p.1.rank ≤ n := by
   have hp : PrimrecRel fun (p : EF × Sentence) n => p.1.rank ≤ n :=
@@ -2767,7 +2767,7 @@ private theorem strategyTradesValid_prim₂ :
       Primrec₂.right
   exact hp.forall_mem_list
 
-private theorem strategyOfTokensTrades_prim : Primrec₂ fun n tokens =>
+private lemma strategyOfTokensTrades_prim : Primrec₂ fun n tokens =>
     (strategyOfTokens n tokens).trades := by
   let P := ℕ × List ℕ
   have hdecode : Primrec fun p : P => deserializeTrades p.2 :=
@@ -2789,7 +2789,7 @@ private theorem strategyOfTokensTrades_prim : Primrec₂ fun n tokens =>
 
 /-- The token-indexed bounded emulator is primitive recursive uniformly in its two programs,
 clock, and day. -/
-private theorem clockedTokens_prim : Primrec fun
+private lemma clockedTokens_prim : Primrec fun
     p : ((Nat.Partrec.Code × Nat.Partrec.Code) × ℕ) × ℕ =>
       clockedTokens p.1.1.1 p.1.1.2 p.1.2 p.2 := by
   let P := ((Nat.Partrec.Code × Nat.Partrec.Code) × ℕ) × ℕ
@@ -2837,11 +2837,11 @@ private theorem clockedTokens_prim : Primrec fun
         · intro i hi₁ hi₂
           simp only [List.getElem_map, List.getElem_range, List.getElem_ofFn]
 
-private theorem codeAt_prim : Primrec codeAt := by
+private lemma codeAt_prim : Primrec codeAt := by
   exact (Primrec.option_getD.comp Primrec.decode
     (Primrec.const Nat.Partrec.Code.zero)).of_eq fun i => by rfl
 
-private theorem traderProgramLengthCode_prim : Primrec fun j =>
+private lemma traderProgramLengthCode_prim : Primrec fun j =>
     (traderProgramAt j).lengthCode := by
   have houter : Primrec Nat.unpair := Primrec.unpair
   have hmiddle : Primrec fun j : ℕ => j.unpair.1.unpair :=
@@ -2851,7 +2851,7 @@ private theorem traderProgramLengthCode_prim : Primrec fun j =>
   exact (codeAt_prim.comp (Primrec.fst.comp hinner)).of_eq fun j => by
     rfl
 
-private theorem traderProgramTokenCode_prim : Primrec fun j =>
+private lemma traderProgramTokenCode_prim : Primrec fun j =>
     (traderProgramAt j).tokenCode := by
   have houter : Primrec Nat.unpair := Primrec.unpair
   have hmiddle : Primrec fun j : ℕ => j.unpair.1.unpair :=
@@ -2861,18 +2861,18 @@ private theorem traderProgramTokenCode_prim : Primrec fun j =>
   exact (codeAt_prim.comp (Primrec.snd.comp hinner)).of_eq fun j => by
     rfl
 
-private theorem traderProgramCoefficient_prim : Primrec fun j =>
+private lemma traderProgramCoefficient_prim : Primrec fun j =>
     (traderProgramAt j).coefficient := by
   have houter : Primrec Nat.unpair := Primrec.unpair
   have hmiddle : Primrec fun j : ℕ => j.unpair.1.unpair :=
     Primrec.unpair.comp (Primrec.fst.comp houter)
   exact (Primrec.snd.comp hmiddle).of_eq fun j => by rfl
 
-private theorem traderProgramDegree_prim : Primrec fun j =>
+private lemma traderProgramDegree_prim : Primrec fun j =>
     (traderProgramAt j).degree := by
   exact (Primrec.snd.comp Primrec.unpair).of_eq fun j => by rfl
 
-private theorem traderProgramClock_prim : Primrec₂ fun j n =>
+private lemma traderProgramClock_prim : Primrec₂ fun j n =>
     (traderProgramAt j).clock n := by
   let P := ℕ × ℕ
   have hcoefficient : Primrec fun p : P => (traderProgramAt p.1).coefficient :=
@@ -2892,7 +2892,7 @@ private theorem traderProgramClock_prim : Primrec₂ fun j n =>
   exact (Primrec.nat_add.comp hmul hcoefficient).to₂.of_eq fun j n => by
     rfl
 
-private theorem enumeratedTraderTrades_prim : Primrec₂ fun j n =>
+private lemma enumeratedTraderTrades_prim : Primrec₂ fun j n =>
     ((enumeratedTrader j).strat n).trades := by
   let P := ℕ × ℕ
   have hj : Primrec fun p : P => p.1 := Primrec.fst
@@ -2912,7 +2912,7 @@ private theorem enumeratedTraderTrades_prim : Primrec₂ fun j n =>
   exact (strategyOfTokensTrades_prim.comp hn htoks).to₂.of_eq fun j n => by
     rfl
 
-private theorem firmRawTraderTrades_prim : Primrec₂ fun j n =>
+private lemma firmRawTraderTrades_prim : Primrec₂ fun j n =>
     ((firmRawTrader j).strat n).trades := by
   have hbefore : PrimrecRel fun j n => n < j :=
     PrimrecRel.comp₂ Primrec.nat_lt Primrec₂.right Primrec₂.left
@@ -2928,7 +2928,7 @@ private theorem firmRawTraderTrades_prim : Primrec₂ fun j n =>
 
 /-! ## First-order finite-operation compiler -/
 
-private theorem allBoolLists_prim : Primrec allBoolLists := by
+private lemma allBoolLists_prim : Primrec allBoolLists := by
   have hprepend (b : Bool) : Primrec fun xs : List (List Bool) =>
       xs.map (List.cons b) :=
     Primrec.list_map Primrec.id
@@ -2946,31 +2946,31 @@ private theorem allBoolLists_prim : Primrec allBoolLists := by
       | succ n ih => simp [allBoolLists, ih]
   exact hrec.comp (Primrec.const ()) Primrec.id
 
-private theorem efNeg_prim : Primrec EF.neg := by
+private lemma efNeg_prim : Primrec EF.neg := by
   exact (efMul_prim.comp
     (efConst_prim.comp (Primrec.const (-1 : ℚ))) Primrec.id).of_eq fun e => by
       rfl
 
-private theorem efMin_prim : Primrec₂ EF.min := by
+private lemma efMin_prim : Primrec₂ EF.min := by
   have hinner : Primrec₂ fun a b : EF => EF.max (EF.neg a) (EF.neg b) :=
     efMax_prim.comp (efNeg_prim.comp Primrec.fst) (efNeg_prim.comp Primrec.snd)
   exact (efNeg_prim.comp hinner).to₂.of_eq fun a b => by rfl
 
-private theorem efListMin_prim : Primrec EF.listMin := by
+private lemma efListMin_prim : Primrec EF.listMin := by
   exact (Primrec.list_foldr Primrec.id (Primrec.const (EF.const 1))
     (efMin_prim.comp₂
       (Primrec.fst.comp₂ Primrec₂.right)
       (Primrec.snd.comp₂ Primrec₂.right))).of_eq fun es => by
         rfl
 
-private theorem sumFeatures_prim : Primrec ROIBudget.sumFeatures := by
+private lemma sumFeatures_prim : Primrec ROIBudget.sumFeatures := by
   exact (Primrec.list_foldr Primrec.id (Primrec.const (EF.const 0))
     (efAdd_prim.comp₂
       (Primrec.fst.comp₂ Primrec₂.right)
       (Primrec.snd.comp₂ Primrec₂.right))).of_eq fun es => by
         rfl
 
-private theorem scaleConstTradeList_prim : Primrec₂ scaleConstTradeList := by
+private lemma scaleConstTradeList_prim : Primrec₂ scaleConstTradeList := by
   let P := ℚ × List (EF × Sentence)
   have htrade : Primrec₂ fun (p : P) (trade : EF × Sentence) =>
       (EF.mul (EF.const p.1) trade.1, trade.2) :=
@@ -2981,7 +2981,7 @@ private theorem scaleConstTradeList_prim : Primrec₂ scaleConstTradeList := by
   exact (Primrec.list_map Primrec.snd htrade).to₂.of_eq fun q trades => by
     rfl
 
-private theorem tradingFirmWeight_prim : Primrec₂ tradingFirmWeight := by
+private lemma tradingFirmWeight_prim : Primrec₂ tradingFirmWeight := by
   let P := ℕ × ℕ
   have hexponent : Primrec fun p : P => p.1 + 1 + p.2 :=
     Primrec.nat_add.comp
@@ -3021,7 +3021,7 @@ def sentenceDedup (l : List Sentence) : List Sentence :=
       · have hal : a ∉ l := fun hal => h ((ih a).mpr hal)
         simp [sentenceDedup_cons, h, ih φ]
 
-theorem sentenceDedup_nodup (l : List Sentence) :
+lemma sentenceDedup_nodup (l : List Sentence) :
     (sentenceDedup l).Nodup := by
   induction l with
   | nil => simp
@@ -3030,7 +3030,7 @@ theorem sentenceDedup_nodup (l : List Sentence) :
       · simpa [sentenceDedup_cons, h] using ih
       · simp [sentenceDedup_cons, h, ih]
 
-theorem sentenceDedup_prim : Primrec sentenceDedup := by
+lemma sentenceDedup_prim : Primrec sentenceDedup := by
   have hmem : PrimrecRel fun (tail : List Sentence) (φ : Sentence) => φ ∈ tail :=
     (Primrec.eq.exists_mem_list).of_eq fun tail φ => by
       simp
@@ -3047,7 +3047,7 @@ theorem sentenceDedup_prim : Primrec sentenceDedup := by
   exact (Primrec.list_foldr Primrec.id (Primrec.const []) hstep).of_eq fun l => by
     rfl
 
-private theorem tradeListSupportSentenceList_prim :
+private lemma tradeListSupportSentenceList_prim :
     Primrec fun trades : List (EF × Sentence) =>
       supportSentenceList (tradeListSupport trades) := by
   let r : Sentence → Sentence → Prop := fun φ ψ =>
@@ -3078,31 +3078,31 @@ private theorem tradeListSupportSentenceList_prim :
       exact (List.toFinset_sort (r := r) hnodup).mpr hsorted
     simpa [supportSentenceList, r] using hsort.symm
 
-private theorem sentenceFinsetEncode_eq_supportSentenceList
+private lemma sentenceFinsetEncode_eq_supportSentenceList
     (S : Finset Sentence) :
     Encodable.encode S = Encodable.encode (supportSentenceList S) := by
   rw [sentenceFinsetEncode_eq]
   rfl
 
-private theorem tradeListSupport_prim : Primrec tradeListSupport := by
+private lemma tradeListSupport_prim : Primrec tradeListSupport := by
   apply Primrec.encode_iff.mp
   exact (Primrec.encode.comp tradeListSupportSentenceList_prim).of_eq fun trades => by
     rw [sentenceFinsetEncode_eq_supportSentenceList]
 
-private theorem tradeListSupportCard_prim :
+private lemma tradeListSupportCard_prim :
     Primrec fun trades : List (EF × Sentence) => (tradeListSupport trades).card := by
   exact (Primrec.list_length.comp tradeListSupportSentenceList_prim).of_eq fun trades => by
     simp [supportSentenceList]
 
 /-- The canonical code-sorted presentation of an arbitrary finite sentence set is
 primitive recursive in the proof-erased finite-set encoding. -/
-private theorem supportSentenceList_prim : Primrec supportSentenceList := by
+private lemma supportSentenceList_prim : Primrec supportSentenceList := by
   apply Primrec.encode_iff.mp
   exact (Primrec.encode : Primrec fun S : Finset Sentence => Encodable.encode S).of_eq
     fun S => by
       rw [sentenceFinsetEncode_eq_supportSentenceList]
 
-private theorem sentenceMemSupport_prim :
+private lemma sentenceMemSupport_prim :
     PrimrecRel fun (S : Finset Sentence) (φ : Sentence) => φ ∈ S := by
   have hmem : PrimrecRel fun (l : List Sentence) (φ : Sentence) => φ ∈ l :=
     (Primrec.eq.exists_mem_list).of_eq fun l φ => by simp
@@ -3110,7 +3110,7 @@ private theorem sentenceMemSupport_prim :
     (supportSentenceList_prim.comp₂ Primrec₂.left) Primrec₂.right).of_eq fun S φ => by
     simp [supportSentenceList]
 
-private theorem sentenceMemTradeListSupport_prim :
+private lemma sentenceMemTradeListSupport_prim :
     PrimrecRel fun (trades : List (EF × Sentence)) (φ : Sentence) =>
       φ ∈ tradeListSupport trades := by
   exact sentenceMemSupport_prim.comp₂
@@ -3118,7 +3118,7 @@ private theorem sentenceMemTradeListSupport_prim :
 
 /-- The support side-condition in first-order MarketMaker acceptance is an exact
 primitive-recursive predicate on the raw trades and candidate entries. -/
-private theorem rationalBeliefStateSupportSubsetTradeList_prim :
+private lemma rationalBeliefStateSupportSubsetTradeList_prim :
     PrimrecPred fun p : List (EF × Sentence) × RationalBeliefState =>
       p.2.support ⊆ tradeListSupport p.1 := by
   have hentry : PrimrecRel
@@ -3146,7 +3146,7 @@ private theorem rationalBeliefStateSupportSubsetTradeList_prim :
 
 /-- Exact quotation from the candidate-updated rational history is primitive recursive
 when all five inputs are packed as first-order data. -/
-private theorem candidateRationalHistoryQuote_prim :
+private lemma candidateRationalHistoryQuote_prim :
     Primrec fun p :
       ((((List RationalBeliefState × ℕ) × RationalBeliefState) × ℕ) × Sentence) =>
         candidateRationalHistory p.1.1.1.1 p.1.1.1.2 p.1.1.2 p.1.2 p.2 := by
@@ -3180,7 +3180,7 @@ private theorem candidateRationalHistoryQuote_prim :
 
 /-- The raw support-world lookup used by first-order MarketMaker acceptance is
 primitive recursive in the trade list, Boolean table, and queried sentence. -/
-private theorem tradeListSupportBitWorldRatFromList_prim :
+private lemma tradeListSupportBitWorldRatFromList_prim :
     Primrec fun p : ((List (EF × Sentence) × List Bool) × Sentence) =>
       tradeListSupportBitWorldRatFromList p.1.1 p.1.2 p.2 := by
   let P := ((List (EF × Sentence) × List Bool) × Sentence)
@@ -3306,7 +3306,7 @@ private def efRatMachineSteps : EF → ℕ
   | .var _ => 1
   | .letE x body => efRatMachineSteps x + efRatMachineSteps body + 2
 
-private theorem efRatMachineSteps_le (e : EF) :
+private lemma efRatMachineSteps_le (e : EF) :
     efRatMachineSteps e ≤ 2 * e.cost := by
   induction e with
   | price => simp [efRatMachineSteps, EF.cost]
@@ -3318,13 +3318,13 @@ private theorem efRatMachineSteps_le (e : EF) :
   | var => simp [efRatMachineSteps, EF.cost]
   | letE x body ihx ihbody => simp only [efRatMachineSteps, EF.cost]; omega
 
-private theorem iterate_add_forward {α : Type*} (f : α → α) (m n : ℕ) (x : α) :
+private lemma iterate_add_forward {α : Type*} (f : α → α) (m n : ℕ) (x : α) :
     f^[m + n] x = f^[n] (f^[m] x) := by
   rw [Nat.add_comm, Function.iterate_add_apply]
 
 /-- Running exactly the structural instruction count evaluates one feature and preserves
 the surrounding continuation/value stack. -/
-private theorem efRatMachine_correct {C : Type*} (V : C → ℕ → Sentence → ℚ)
+private lemma efRatMachine_correct {C : Type*} (V : C → ℕ → Sentence → ℚ)
     (ctx : C) (e : EF) (rho : List ℚ) (commands : List EFRatCommand)
     (values : List ℚ) :
     (efRatMachineStep V ctx)^[efRatMachineSteps e]
@@ -3497,7 +3497,7 @@ private def efRatBinaryValueStep (op : ℚ → ℚ → ℚ) :
   | (commands, b :: a :: rest) => (commands, op a b :: rest)
   | state => state
 
-private theorem efRatBinaryValueStep_prim (op : ℚ → ℚ → ℚ) (hop : Primrec₂ op) :
+private lemma efRatBinaryValueStep_prim (op : ℚ → ℚ → ℚ) (hop : Primrec₂ op) :
     Primrec (efRatBinaryValueStep op) := by
   let S := EFRatMachineState
   let Y := S × (ℚ × List ℚ)
@@ -3535,7 +3535,7 @@ private def efRatUnaryValueStep (op : ℚ → ℚ) :
   | (commands, a :: rest) => (commands, op a :: rest)
   | state => state
 
-private theorem efRatUnaryValueStep_prim (op : ℚ → ℚ) (hop : Primrec op) :
+private lemma efRatUnaryValueStep_prim (op : ℚ → ℚ) (hop : Primrec op) :
     Primrec (efRatUnaryValueStep op) := by
   have hresult : Primrec₂ fun (state : EFRatMachineState) (ar : ℚ × List ℚ) =>
       (state.1, op ar.1 :: ar.2) := by
@@ -3559,7 +3559,7 @@ private def efRatLetValueStep (payload : ℕ) (rho : List ℚ) :
       (efRatRawEvalCommand payload (q :: rho) :: commands, rest)
   | state => state
 
-private theorem efRatLetValueStep_prim :
+private lemma efRatLetValueStep_prim :
     Primrec fun p : (ℕ × List ℚ) × EFRatMachineState =>
       efRatLetValueStep p.1.1 p.1.2 p.2 := by
   let P := (ℕ × List ℚ) × EFRatMachineState
@@ -3591,11 +3591,11 @@ private theorem efRatLetValueStep_prim :
     cases values <;> rfl
 
 /-- Rational maximum is primitive recursive in the canonical encoding. -/
-theorem ratMax_prim : Primrec₂ fun q r : ℚ => max q r := by
+lemma ratMax_prim : Primrec₂ fun q r : ℚ => max q r := by
   exact (Primrec.ite ratLE_prim Primrec₂.right Primrec₂.left).to₂.of_eq fun q r => by
     simp [max_def]
 
-private theorem efRatSafeRecip_prim : Primrec fun q : ℚ => (max 1 q)⁻¹ := by
+private lemma efRatSafeRecip_prim : Primrec fun q : ℚ => (max 1 q)⁻¹ := by
   have hmax : Primrec fun q : ℚ => max 1 q :=
     ratMax_prim.comp (Primrec.const 1) Primrec.id
   exact ratInv_prim.comp hmax
@@ -3641,7 +3641,7 @@ private def efRatRawStep {C : Type*} (V : C → ℕ → Sentence → ℚ)
   else
     (commands, 0 :: values)
 
-private theorem efRatRawStep_prim {C : Type*} [Primcodable C]
+private lemma efRatRawStep_prim {C : Type*} [Primcodable C]
     (V : C → ℕ → Sentence → ℚ)
     (hV : Primrec fun p : C × (ℕ × Sentence) => V p.1 p.2.1 p.2.2) :
     Primrec (efRatRawStep V) := by
@@ -3798,7 +3798,7 @@ private def efRatCommandStep {C : Type*} (V : C → ℕ → Sentence → ℚ)
   else
     state
 
-private theorem efRatCommandStep_prim {C : Type*} [Primcodable C]
+private lemma efRatCommandStep_prim {C : Type*} [Primcodable C]
     (V : C → ℕ → Sentence → ℚ)
     (hV : Primrec fun p : C × (ℕ × Sentence) => V p.1 p.2.1 p.2.2) :
     Primrec (efRatCommandStep V) := by
@@ -3842,7 +3842,7 @@ private theorem efRatCommandStep_prim {C : Type*} [Primcodable C]
             (Primrec.ite (hkindEq 5) hcase5 hstate)))))).of_eq fun p => by
     rfl
 
-private theorem efRatMachineStep_packed_prim {C : Type*} [Primcodable C]
+private lemma efRatMachineStep_packed_prim {C : Type*} [Primcodable C]
     (V : C → ℕ → Sentence → ℚ)
     (hV : Primrec fun p : C × (ℕ × Sentence) => V p.1 p.2.1 p.2.2) :
     Primrec fun p : C × EFRatMachineState => efRatMachineStep V p.1 p.2 := by
@@ -3912,7 +3912,7 @@ private theorem efRatMachineStep_packed_prim {C : Type*} [Primcodable C]
                   cases values <;> rfl
                 · simp [h0, h1, h2, h3, h4, h5, efRatMachineStep]
 
-private theorem efCost_le_toNat_succ (e : EF) : e.cost ≤ e.toNat + 1 := by
+private lemma efCost_le_toNat_succ (e : EF) : e.cost ≤ e.toNat + 1 := by
   induction e with
   | const q => simp [EF.cost, EF.toNat]
   | price φ day => simp [EF.cost, EF.toNat]
@@ -3944,16 +3944,16 @@ private theorem efCost_le_toNat_succ (e : EF) : e.cost ≤ e.toNat + 1 := by
 
 private def efRatMachineFuel (e : EF) : ℕ := 2 * (e.toNat + 1)
 
-private theorem efRatMachineSteps_le_fuel (e : EF) :
+private lemma efRatMachineSteps_le_fuel (e : EF) :
     efRatMachineSteps e ≤ efRatMachineFuel e := by
   exact (efRatMachineSteps_le e).trans
     (Nat.mul_le_mul_left 2 (efCost_le_toNat_succ e))
 
-private theorem efRatMachine_terminal {C : Type*}
+private lemma efRatMachine_terminal {C : Type*}
     (V : C → ℕ → Sentence → ℚ) (ctx : C) (values : List ℚ) :
     efRatMachineStep V ctx ([], values) = ([], values) := rfl
 
-private theorem efRatMachine_fuel_correct {C : Type*}
+private lemma efRatMachine_fuel_correct {C : Type*}
     (V : C → ℕ → Sentence → ℚ) (ctx : C) (e : EF) :
     (efRatMachineStep V ctx)^[efRatMachineFuel e]
         ([efRatEvalCommand e []], []) = ([], [e.denoteRat (V ctx)]) := by
@@ -3967,13 +3967,13 @@ def efRatCompiledEval {C : Type*} (V : C → ℕ → Sentence → ℚ)
   (((efRatMachineStep V ctx)^[efRatMachineFuel e]
       ([efRatEvalCommand e []], [])).2).getD 0 0
 
-theorem efRatCompiledEval_eq {C : Type*}
+lemma efRatCompiledEval_eq {C : Type*}
     (V : C → ℕ → Sentence → ℚ) (ctx : C) (e : EF) :
     efRatCompiledEval V ctx e = e.denoteRat (V ctx) := by
   rw [efRatCompiledEval, efRatMachine_fuel_correct]
   rfl
 
-theorem efRatCompiledEval_prim {C : Type*} [Primcodable C]
+lemma efRatCompiledEval_prim {C : Type*} [Primcodable C]
     (V : C → ℕ → Sentence → ℚ)
     (hV : Primrec fun p : C × (ℕ × Sentence) => V p.1 p.2.1 p.2.2) :
     Primrec fun p : C × EF => efRatCompiledEval V p.1 p.2 := by
@@ -4015,7 +4015,7 @@ private def candidateQuote (ctx : CandidateQuoteContext)
     (day : ℕ) (φ : Sentence) : ℚ :=
   candidateRationalHistory ctx.1.1 ctx.1.2 ctx.2 day φ
 
-private theorem candidateQuote_prim :
+private lemma candidateQuote_prim :
     Primrec fun p : CandidateQuoteContext × (ℕ × Sentence) =>
       candidateQuote p.1 p.2.1 p.2.2 := by
   have hpack : Primrec fun p : CandidateQuoteContext × (ℕ × Sentence) =>
@@ -4031,12 +4031,12 @@ private theorem candidateQuote_prim :
 private def candidateCompiledEFValue (ctx : CandidateQuoteContext) (e : EF) : ℚ :=
   efRatCompiledEval candidateQuote ctx e
 
-private theorem candidateCompiledEFValue_eq (ctx : CandidateQuoteContext) (e : EF) :
+private lemma candidateCompiledEFValue_eq (ctx : CandidateQuoteContext) (e : EF) :
     candidateCompiledEFValue ctx e =
       e.denoteRat (candidateRationalHistory ctx.1.1 ctx.1.2 ctx.2) := by
   exact efRatCompiledEval_eq candidateQuote ctx e
 
-private theorem candidateCompiledEFValue_prim :
+private lemma candidateCompiledEFValue_prim :
     Primrec fun p : CandidateQuoteContext × EF =>
       candidateCompiledEFValue p.1 p.2 :=
   efRatCompiledEval_prim candidateQuote candidateQuote_prim
@@ -4045,7 +4045,7 @@ attribute [local irreducible] Nat.sqrt in
 /-- A generic exact compiler for rational market value.  The context supplies both the
 history quotation and the finite world's payout; the trade list itself remains ordinary
 first-order data. -/
-private theorem tradeListMarketValueRat_prim {C : Type*} [Primcodable C]
+private lemma tradeListMarketValueRat_prim {C : Type*} [Primcodable C]
     (V : C → ℕ → Sentence → ℚ) (W : C → Sentence → ℚ)
     (hV : Primrec fun p : C × (ℕ × Sentence) => V p.1 p.2.1 p.2.2)
     (hW : Primrec fun p : C × Sentence => W p.1 p.2) :
@@ -4093,7 +4093,7 @@ private def marketValueHistory (ctx : MarketValueContext)
 private def marketValueWorld (ctx : MarketValueContext) (φ : Sentence) : ℚ :=
   tradeListSupportBitWorldRatFromList ctx.2.1 ctx.2.2 φ
 
-private theorem marketValueHistory_prim :
+private lemma marketValueHistory_prim :
     Primrec fun p : MarketValueContext × (ℕ × Sentence) =>
       marketValueHistory p.1 p.2.1 p.2.2 := by
   have hinput : Primrec fun p : MarketValueContext × (ℕ × Sentence) =>
@@ -4101,7 +4101,7 @@ private theorem marketValueHistory_prim :
     (Primrec.fst.comp Primrec.fst).pair Primrec.snd
   exact (candidateQuote_prim.comp hinput).of_eq fun p => rfl
 
-private theorem marketValueWorld_prim :
+private lemma marketValueWorld_prim :
     Primrec fun p : MarketValueContext × Sentence =>
       marketValueWorld p.1 p.2 := by
   have hinput : Primrec fun p : MarketValueContext × Sentence =>
@@ -4120,7 +4120,7 @@ private def marketMakerWorldValue (p : MarketMakerWorldInput) : ℚ :=
     (tradeListSupportBitWorldRatFromList p.1.1.1.1 p.2)
 
 attribute [local irreducible] Nat.sqrt in
-private theorem marketMakerWorldValue_prim :
+private lemma marketMakerWorldValue_prim :
     Primrec marketMakerWorldValue := by
   have htrades : Primrec fun p : MarketMakerWorldInput => p.1.1.1.1 :=
     Primrec.fst.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
@@ -4154,12 +4154,12 @@ private def marketMakerAcceptsData (p : MarketMakerAcceptInput) : Prop :=
     ∀ xs ∈ allBoolLists (tradeListSupport p.1.1.1.1).card,
       marketMakerWorldValue (p.1, xs) ≤ p.2
 
-private theorem marketMakerAcceptsData_iff (p : MarketMakerAcceptInput) :
+private lemma marketMakerAcceptsData_iff (p : MarketMakerAcceptInput) :
     marketMakerAcceptsData p ↔
       MarketMakerAcceptsTradeList p.1.1.1.1 p.1.1.1.2 p.1.1.2 p.2 p.1.2 := by
   rfl
 
-private theorem marketMakerAcceptsData_prim :
+private lemma marketMakerAcceptsData_prim :
     PrimrecPred marketMakerAcceptsData := by
   have htrades : Primrec fun p : MarketMakerAcceptInput => p.1.1.1.1 :=
     Primrec.fst.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
@@ -4202,7 +4202,7 @@ private def marketMakerCandidateAcceptsData
   | none => False
   | some B => marketMakerAcceptsData ((p.1.1, B), p.1.2)
 
-private theorem marketMakerCandidateAcceptsData_iff
+private lemma marketMakerCandidateAcceptsData_iff
     (p : MarketMakerSearchInput × ℕ) :
     marketMakerCandidateAcceptsData p ↔
       MarketMakerCandidateAcceptsTradeList p.1.1.1.1 p.1.1.1.2
@@ -4224,7 +4224,7 @@ private instance marketMakerCandidateAcceptsDataDecidable
     (marketMakerCandidateAcceptsData_iff p).symm
 
 attribute [local irreducible] Nat.sqrt in
-private theorem marketMakerCandidateAcceptsData_prim :
+private lemma marketMakerCandidateAcceptsData_prim :
     PrimrecPred marketMakerCandidateAcceptsData := by
   letI : DecidablePred marketMakerAcceptsData :=
     marketMakerAcceptsData_prim.choose
@@ -4268,7 +4268,7 @@ private def marketMakerSearchIndexData (ctx : MarketMakerSearchInput) :
       marketMakerSearchStepData ctx
         (fuel, marketMakerSearchIndexData ctx fuel)
 
-private theorem marketMakerSearchIndexData_eq
+private lemma marketMakerSearchIndexData_eq
     (ctx : MarketMakerSearchInput) (fuel : ℕ) :
     marketMakerSearchIndexData ctx fuel =
       marketMakerSearchIndexUpToTradeList ctx.1.1.1 ctx.1.1.2
@@ -4293,7 +4293,7 @@ private theorem marketMakerSearchIndexData_eq
             simp [h, h']
 
 attribute [local irreducible] Nat.sqrt in
-private theorem marketMakerSearchStepData_prim :
+private lemma marketMakerSearchStepData_prim :
     Primrec₂ marketMakerSearchStepData := by
   let X := MarketMakerSearchInput × (ℕ × Option ℕ)
   have hfuel : Primrec fun x : X => x.2.1 :=
@@ -4320,7 +4320,7 @@ private theorem marketMakerSearchStepData_prim :
         cases h : x.2.2 <;> simp [marketMakerSearchStepData, h]
   exact hstepPacked.to₂
 
-private theorem marketMakerSearchIndexData_prim :
+private lemma marketMakerSearchIndexData_prim :
     Primrec fun p : MarketMakerSearchInput × ℕ =>
       marketMakerSearchIndexData p.1 p.2 := by
   have hrec : Primrec₂ fun (ctx : MarketMakerSearchInput) fuel =>
@@ -4334,7 +4334,7 @@ private theorem marketMakerSearchIndexData_prim :
 
 /-- The actual raw-trade-list MarketMaker search is primitive recursive, with no appeal
 to the semantic fixed-point witness or to unbounded minimization. -/
-private theorem marketMakerSearchIndexUpToTradeList_prim :
+private lemma marketMakerSearchIndexUpToTradeList_prim :
     Primrec fun p : MarketMakerSearchInput × ℕ =>
       marketMakerSearchIndexUpToTradeList p.1.1.1.1 p.1.1.1.2
         p.1.1.2 p.1.2 p.2 :=
@@ -4342,7 +4342,7 @@ private theorem marketMakerSearchIndexUpToTradeList_prim :
     marketMakerSearchIndexData_eq p.1 p.2
 
 /-- Decoding the successful bounded-search index is primitive recursive as well. -/
-private theorem marketMakerSearchUpToTradeList_prim :
+private lemma marketMakerSearchUpToTradeList_prim :
     Primrec fun p : MarketMakerSearchInput × ℕ =>
       marketMakerSearchUpToTradeList p.1.1.1.1 p.1.1.1.2
         p.1.1.2 p.1.2 p.2 := by
@@ -4372,7 +4372,7 @@ private def formulaAtomOccurrencesBinary
   let right ← prior.getD children.unpair.2 none
   some (left ++ right)
 
-private theorem formulaAtomOccurrencesBinary_prim :
+private lemma formulaAtomOccurrencesBinary_prim :
     Primrec₂ formulaAtomOccurrencesBinary := by
   let X := List (Option (List ℕ)) × ℕ
   have hleftIndex : Primrec fun p : X => p.2.unpair.1 :=
@@ -4410,7 +4410,7 @@ private def formulaAtomOccurrencesSucc
   else if tag = 4 then formulaAtomOccurrencesBinary prior payload
   else none
 
-private theorem formulaAtomOccurrencesSucc_prim :
+private lemma formulaAtomOccurrencesSucc_prim :
     Primrec₂ formulaAtomOccurrencesSucc := by
   let tag : List (Option (List ℕ)) × ℕ → ℕ := fun p => p.2.unpair.1
   let payload : List (Option (List ℕ)) × ℕ → ℕ := fun p => p.2.unpair.2
@@ -4451,7 +4451,7 @@ private def formulaAtomOccurrencesStep
     (prior : List (Option (List ℕ))) : Option (List ℕ) :=
   prior.length.casesOn none (formulaAtomOccurrencesSucc prior)
 
-private theorem formulaAtomOccurrencesStep_prim :
+private lemma formulaAtomOccurrencesStep_prim :
     Primrec formulaAtomOccurrencesStep := by
   exact (Primrec.nat_casesOn Primrec.list_length (Primrec.const none)
     formulaAtomOccurrencesSucc_prim).of_eq fun prior => by
@@ -4460,7 +4460,7 @@ private theorem formulaAtomOccurrencesStep_prim :
 private def formulaAtomOccurrencesDecoded (n : ℕ) : Option (List ℕ) :=
   (LO.Propositional.Formula.ofNat (α := ℕ) n).map sentenceAtomOccurrences
 
-private theorem formulaAtomOccurrencesHistory_getD {n k : ℕ} (hk : k < n) :
+private lemma formulaAtomOccurrencesHistory_getD {n k : ℕ} (hk : k < n) :
     ((List.range n).map formulaAtomOccurrencesDecoded).getD k none =
       formulaAtomOccurrencesDecoded k := by
   have hzero : formulaAtomOccurrencesDecoded 0 = none := by
@@ -4468,7 +4468,7 @@ private theorem formulaAtomOccurrencesHistory_getD {n k : ℕ} (hk : k < n) :
   rw [← hzero, List.getD_map]
   simp [hk]
 
-private theorem formulaAtomOccurrencesBinary_history
+private lemma formulaAtomOccurrencesBinary_history
     (payload n : ℕ) (hleft : payload.unpair.1 < n)
     (hright : payload.unpair.2 < n) :
     formulaAtomOccurrencesBinary
@@ -4483,7 +4483,7 @@ private theorem formulaAtomOccurrencesBinary_history
     cases hR : LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
     simp [formulaAtomOccurrencesDecoded, hL, hR]
 
-private theorem formulaAtomOccurrencesStep_history (n : ℕ) :
+private lemma formulaAtomOccurrencesStep_history (n : ℕ) :
     formulaAtomOccurrencesStep
         ((List.range n).map formulaAtomOccurrencesDecoded) =
       formulaAtomOccurrencesDecoded n := by
@@ -4548,7 +4548,7 @@ private theorem formulaAtomOccurrencesStep_history (n : ℕ) :
           formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat,
           tag, h0, h1, h2, h3, h4]
 
-private theorem formulaAtomOccurrencesDecoded_prim :
+private lemma formulaAtomOccurrencesDecoded_prim :
     Primrec formulaAtomOccurrencesDecoded := by
   have hstep : Primrec₂ fun (_ : Unit) (prior : List (Option (List ℕ))) =>
       some (formulaAtomOccurrencesStep prior) :=
@@ -4560,7 +4560,7 @@ private theorem formulaAtomOccurrencesDecoded_prim :
       simpa using congrArg some (formulaAtomOccurrencesStep_history n))
   exact hrec.comp (Primrec.const ()) Primrec.id
 
-private theorem sentenceAtomOccurrences_prim :
+private lemma sentenceAtomOccurrences_prim :
     Primrec sentenceAtomOccurrences := by
   have hdecoded : Primrec fun φ : Sentence =>
       formulaAtomOccurrencesDecoded (Encodable.encode φ) :=
@@ -4626,7 +4626,7 @@ private def natDedup (l : List ℕ) : List ℕ :=
       · have hbl : b ∉ l := fun hbl => h ((ih b).mpr hbl)
         simp [natDedup_cons, h, ih]
 
-private theorem natDedup_nodup (l : List ℕ) : (natDedup l).Nodup := by
+private lemma natDedup_nodup (l : List ℕ) : (natDedup l).Nodup := by
   induction l with
   | nil => simp
   | cons a l ih =>
@@ -4634,7 +4634,7 @@ private theorem natDedup_nodup (l : List ℕ) : (natDedup l).Nodup := by
       · simpa [natDedup_cons, h] using ih
       · simp [natDedup_cons, h, ih]
 
-private theorem natDedup_prim : Primrec natDedup := by
+private lemma natDedup_prim : Primrec natDedup := by
   have hmem : PrimrecRel fun (tail : List ℕ) (a : ℕ) => a ∈ tail :=
     (Primrec.eq.exists_mem_list).of_eq fun tail a => by simp
   have hstep : Primrec₂ fun (_ : List ℕ) (p : ℕ × List ℕ) =>
@@ -4649,7 +4649,7 @@ private theorem natDedup_prim : Primrec natDedup := by
   exact (Primrec.list_foldr Primrec.id (Primrec.const []) hstep).of_eq fun l => by
     rfl
 
-private theorem natOrderedInsert_prim :
+private lemma natOrderedInsert_prim :
     Primrec₂ (List.orderedInsert (fun a b : ℕ => a ≤ b)) := by
   let base : ℕ × List ℕ → List ℕ := fun p => [p.1]
   let step : (ℕ × List ℕ) → (ℕ × List ℕ × List ℕ) → List ℕ :=
@@ -4685,7 +4685,7 @@ private theorem natOrderedInsert_prim :
     | nil => rfl
     | cons b l ih => simp [List.orderedInsert, ih]
 
-private theorem natInsertionSort_prim :
+private lemma natInsertionSort_prim :
     Primrec (List.insertionSort (fun a b : ℕ => a ≤ b)) := by
   exact (Primrec.list_foldr Primrec.id (Primrec.const [])
     (natOrderedInsert_prim.comp₂
@@ -4695,10 +4695,10 @@ private theorem natInsertionSort_prim :
 private def canonicalNatList (l : List ℕ) : List ℕ :=
   (natDedup l).insertionSort (fun a b => a ≤ b)
 
-private theorem canonicalNatList_prim : Primrec canonicalNatList :=
+private lemma canonicalNatList_prim : Primrec canonicalNatList :=
   natInsertionSort_prim.comp natDedup_prim
 
-private theorem canonicalNatList_eq_sort (l : List ℕ) :
+private lemma canonicalNatList_eq_sort (l : List ℕ) :
     canonicalNatList l = l.toFinset.sort (fun a b => a ≤ b) := by
   let r : ℕ → ℕ → Prop := fun a b => a ≤ b
   let canonical := canonicalNatList l
@@ -4716,7 +4716,7 @@ private theorem canonicalNatList_eq_sort (l : List ℕ) :
 private def sentenceListAtomOccurrences (sentences : List Sentence) : List ℕ :=
   sentences.flatMap sentenceAtomOccurrences
 
-private theorem sentenceListAtomOccurrences_prim :
+private lemma sentenceListAtomOccurrences_prim :
     Primrec sentenceListAtomOccurrences := by
   exact Primrec.list_flatMap Primrec.id
     (sentenceAtomOccurrences_prim.comp₂ Primrec₂.right)
@@ -4730,7 +4730,7 @@ private theorem sentenceListAtomOccurrences_prim :
 private def tradeListAtomOccurrences (trades : List (EF × Sentence)) : List ℕ :=
   trades.flatMap fun trade => sentenceAtomOccurrences trade.2
 
-private theorem tradeListAtomOccurrences_prim :
+private lemma tradeListAtomOccurrences_prim :
     Primrec tradeListAtomOccurrences := by
   exact Primrec.list_flatMap Primrec.id
     (sentenceAtomOccurrences_prim.comp₂
@@ -4754,7 +4754,7 @@ private def stageAtomOccurrences
   sentenceListAtomOccurrences
     (supportSentenceList (decodedStageTable stages n))
 
-private theorem stageAtomOccurrences_prim : Primrec₂ stageAtomOccurrences := by
+private lemma stageAtomOccurrences_prim : Primrec₂ stageAtomOccurrences := by
   exact (sentenceListAtomOccurrences_prim.comp
     (supportSentenceList_prim.comp
       (decodedStageTable_prim.comp Primrec.fst Primrec.snd))).to₂
@@ -4769,7 +4769,7 @@ private def firmPrefixAtomOccurrences (j n : ℕ) : List ℕ :=
   (List.range (n + 1)).flatMap fun i =>
     tradeListAtomOccurrences ((firmRawTrader j).strat i).trades
 
-private theorem firmPrefixAtomOccurrences_prim :
+private lemma firmPrefixAtomOccurrences_prim :
     Primrec₂ firmPrefixAtomOccurrences := by
   let P := ℕ × ℕ
   have hrange : Primrec fun p : P => List.range (p.2 + 1) :=
@@ -4793,7 +4793,7 @@ private def budgetAtomList
   canonicalNatList
     (stageAtomOccurrences stages n ++ firmPrefixAtomOccurrences j n)
 
-private theorem budgetAtomList_prim : Primrec fun p :
+private lemma budgetAtomList_prim : Primrec fun p :
     (List (Finset Sentence) × ℕ) × ℕ => budgetAtomList p.1.1 p.1.2 p.2 := by
   have hraw : Primrec fun p : (List (Finset Sentence) × ℕ) × ℕ =>
       stageAtomOccurrences p.1.1 p.2 ++ firmPrefixAtomOccurrences p.1.2 p.2 :=
@@ -4804,7 +4804,7 @@ private theorem budgetAtomList_prim : Primrec fun p :
         (Primrec.snd.comp Primrec.fst) Primrec.snd)
   exact canonicalNatList_prim.comp hraw
 
-private theorem budgetAtomList_eq (stages : List (Finset Sentence)) (j n : ℕ) :
+private lemma budgetAtomList_eq (stages : List (Finset Sentence)) (j n : ℕ) :
     budgetAtomList stages j n =
       (budgetAtomsFromStageTradeLists (decodedStageTable stages)
         (fun i => ((firmRawTrader j).strat i).trades) n).sort
@@ -4817,7 +4817,7 @@ private theorem budgetAtomList_eq (stages : List (Finset Sentence)) (j n : ℕ) 
 private def atomListTable (atoms : List ℕ) (xs : List Bool) (a : ℕ) : Bool :=
   if a ∈ atoms then xs.getD (atoms.idxOf a) false else false
 
-private theorem atomListTable_prim : Primrec fun p :
+private lemma atomListTable_prim : Primrec fun p :
     (List ℕ × List Bool) × ℕ => atomListTable p.1.1 p.1.2 p.2 := by
   have hmemList : PrimrecRel fun (atoms : List ℕ) (a : ℕ) => a ∈ atoms :=
     (Primrec.eq.exists_mem_list).of_eq fun atoms a => by simp
@@ -4835,7 +4835,7 @@ private theorem atomListTable_prim : Primrec fun p :
   exact (Primrec.ite hmem hbit (Primrec.const false)).of_eq fun p => by
     rfl
 
-private theorem atomListTable_sort_eq (A : Finset ℕ) (xs : List Bool) :
+private lemma atomListTable_sort_eq (A : Finset ℕ) (xs : List Bool) :
     atomListTable (A.sort (fun a b => a ≤ b)) xs =
       finiteAtomTableFromList A xs := by
   funext a
@@ -4851,7 +4851,7 @@ private def formulaBoolBinary (op : Bool → Bool → Bool)
   let right ← prior.getD children.unpair.2 none
   some (op left right)
 
-private theorem formulaBoolBinary_prim (op : Bool → Bool → Bool) :
+private lemma formulaBoolBinary_prim (op : Bool → Bool → Bool) :
     Primrec₂ (formulaBoolBinary op) := by
   let X := List (Option Bool) × ℕ
   have hleftIndex : Primrec fun p : X => p.2.unpair.1 :=
@@ -4890,7 +4890,7 @@ private def formulaBoolSucc
   else if tag = 4 then formulaBoolBinary (· || ·) prior payload
   else none
 
-private theorem formulaBoolSucc_prim : Primrec₂ fun
+private lemma formulaBoolSucc_prim : Primrec₂ fun
     (p : (List ℕ × List Bool) × List (Option Bool)) (e : ℕ) =>
       formulaBoolSucc p.1 p.2 e := by
   let X := ((List ℕ × List Bool) × List (Option Bool)) × ℕ
@@ -4947,7 +4947,7 @@ private def formulaBoolStep
     (env : List ℕ × List Bool) (prior : List (Option Bool)) : Option Bool :=
   prior.length.casesOn none (formulaBoolSucc env prior)
 
-private theorem formulaBoolStep_prim : Primrec₂ formulaBoolStep := by
+private lemma formulaBoolStep_prim : Primrec₂ formulaBoolStep := by
   have hsucc : Primrec₂ fun
       (p : (List ℕ × List Bool) × List (Option Bool)) (e : ℕ) =>
         formulaBoolSucc p.1 p.2 e := formulaBoolSucc_prim
@@ -4961,7 +4961,7 @@ private def formulaBoolDecoded
   (LO.Propositional.Formula.ofNat (α := ℕ) n).map
     (sentenceBoolFromAtomList env.1 env.2)
 
-private theorem formulaBoolHistory_getD
+private lemma formulaBoolHistory_getD
     (env : List ℕ × List Bool) {n k : ℕ} (hk : k < n) :
     ((List.range n).map (formulaBoolDecoded env)).getD k none =
       formulaBoolDecoded env k := by
@@ -4970,7 +4970,7 @@ private theorem formulaBoolHistory_getD
   rw [← hzero, List.getD_map]
   simp [hk]
 
-private theorem formulaBoolBinary_history (op : Bool → Bool → Bool)
+private lemma formulaBoolBinary_history (op : Bool → Bool → Bool)
     (env : List ℕ × List Bool) (payload n : ℕ)
     (hleft : payload.unpair.1 < n) (hright : payload.unpair.2 < n) :
     formulaBoolBinary op ((List.range n).map (formulaBoolDecoded env)) payload =
@@ -4984,7 +4984,7 @@ private theorem formulaBoolBinary_history (op : Bool → Bool → Bool)
     cases hR : LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
     simp [formulaBoolDecoded, hL, hR]
 
-private theorem formulaBoolStep_history
+private lemma formulaBoolStep_history
     (env : List ℕ × List Bool) (n : ℕ) :
     formulaBoolStep env ((List.range n).map (formulaBoolDecoded env)) =
       formulaBoolDecoded env n := by
@@ -5052,14 +5052,14 @@ private theorem formulaBoolStep_history
         simp [formulaBoolStep, formulaBoolSucc, formulaBoolDecoded,
           LO.Propositional.Formula.ofNat, tag, h0, h1, h2, h3, h4]
 
-private theorem formulaBoolDecoded_prim : Primrec₂ formulaBoolDecoded := by
+private lemma formulaBoolDecoded_prim : Primrec₂ formulaBoolDecoded := by
   have hstep : Primrec₂ fun (env : List ℕ × List Bool)
       (prior : List (Option Bool)) => some (formulaBoolStep env prior) :=
     Primrec₂.option_some_iff.mpr formulaBoolStep_prim
   exact Primrec.nat_strong_rec formulaBoolDecoded hstep
     (fun env n => by simpa using congrArg some (formulaBoolStep_history env n))
 
-private theorem sentenceBoolFromAtomList_prim : Primrec fun p :
+private lemma sentenceBoolFromAtomList_prim : Primrec fun p :
     (List ℕ × List Bool) × Sentence =>
       sentenceBoolFromAtomList p.1.1 p.1.2 p.2 := by
   have hdecoded : Primrec fun p : (List ℕ × List Bool) × Sentence =>
@@ -5080,7 +5080,7 @@ private def tableConsistentFromAtomList
   (supportSentenceList D).foldr (fun φ ok =>
     sentenceBoolFromAtomList atoms xs φ && ok) true
 
-private theorem tableConsistentFromAtomList_prim : Primrec fun p :
+private lemma tableConsistentFromAtomList_prim : Primrec fun p :
     (List ℕ × List Bool) × Finset Sentence =>
       tableConsistentFromAtomList p.1.1 p.1.2 p.2 := by
   let P := (List ℕ × List Bool) × Finset Sentence
@@ -5099,7 +5099,7 @@ private theorem tableConsistentFromAtomList_prim : Primrec fun p :
   exact (Primrec.list_foldr hsentences (Primrec.const true) hstep).of_eq
     fun p => by rfl
 
-private theorem tableConsistentFromAtomList_sort_eq
+private lemma tableConsistentFromAtomList_sort_eq
     (A : Finset ℕ) (xs : List Bool) (D : Finset Sentence) :
     tableConsistentFromAtomList (A.sort (fun a b => a ≤ b)) xs D =
       tableConsistent (finiteAtomTableFromList A xs) D := by
@@ -5129,7 +5129,7 @@ private def budgetWorldPayout (ctx : BudgetWorldContext)
     (φ : Sentence) : ℚ :=
   boolPayoutRat (atomListTable ctx.2.1 ctx.2.2) φ
 
-private theorem budgetWorldHistory_prim : Primrec fun p :
+private lemma budgetWorldHistory_prim : Primrec fun p :
     BudgetWorldContext × (ℕ × Sentence) =>
       budgetWorldHistory p.1 p.2.1 p.2.2 := by
   have hinput : Primrec fun p : BudgetWorldContext × (ℕ × Sentence) =>
@@ -5139,7 +5139,7 @@ private theorem budgetWorldHistory_prim : Primrec fun p :
         (Primrec.snd.comp Primrec.snd)
   exact (rationalHistory_prim.comp hinput).of_eq fun p => by rfl
 
-private theorem budgetWorldPayout_prim : Primrec fun p :
+private lemma budgetWorldPayout_prim : Primrec fun p :
     BudgetWorldContext × Sentence => budgetWorldPayout p.1 p.2 := by
   have heval : Primrec fun p : BudgetWorldContext × Sentence =>
       sentenceBoolFromAtomList p.1.2.1 p.1.2.2 p.2 :=
@@ -5158,7 +5158,7 @@ private def firmDayMarketValueData
     (budgetWorldHistory ctx) (budgetWorldPayout ctx)
 
 attribute [local irreducible] Nat.sqrt in
-private theorem firmDayMarketValueData_prim : Primrec fun p :
+private lemma firmDayMarketValueData_prim : Primrec fun p :
     (BudgetWorldContext × ℕ) × ℕ =>
       firmDayMarketValueData p.1.1 p.1.2 p.2 := by
   have htrades : Primrec fun p : (BudgetWorldContext × ℕ) × ℕ =>
@@ -5177,7 +5177,7 @@ private def firmRawPriorWorthData
   ((List.range n).map fun i => firmDayMarketValueData ctx j i).sum
 
 attribute [local irreducible] Nat.sqrt in
-private theorem firmRawPriorWorthData_prim : Primrec fun p :
+private lemma firmRawPriorWorthData_prim : Primrec fun p :
     (BudgetWorldContext × ℕ) × ℕ =>
       firmRawPriorWorthData p.1.1 p.1.2 p.2 := by
   let P := (BudgetWorldContext × ℕ) × ℕ
@@ -5197,7 +5197,7 @@ private theorem firmRawPriorWorthData_prim : Primrec fun p :
   exact (Primrec.list_foldr hvalues (Primrec.const 0) hstep).of_eq
     fun p => by rfl
 
-private theorem firmRawPriorWorthData_eq
+private lemma firmRawPriorWorthData_eq
     (past : List RationalBeliefState) (atoms : List ℕ) (xs : List Bool)
     (j n : ℕ) :
     firmRawPriorWorthData (past, atoms, xs) j n =
@@ -5211,7 +5211,7 @@ private theorem firmRawPriorWorthData_eq
       rw [List.sum_range_succ, Finset.sum_range_succ, ih]
       rfl
 
-private theorem natCastRat_prim : Primrec fun n : ℕ => (n : ℚ) := by
+private lemma natCastRat_prim : Primrec fun n : ℕ => (n : ℚ) := by
   exact (ratMk_prim.comp (intOfNat_prim.comp Primrec.id)
     (Primrec.const 1)).of_eq fun n => by
       rw [Rat.mkRat_eq_divInt]
@@ -5225,7 +5225,7 @@ private def budgetConsistentAtDayData
     (stages : List (Finset Sentence)) (m : ℕ) : Bool :=
   tableConsistentFromAtomList atoms xs (decodedStageTable stages m)
 
-private theorem budgetConsistentAtDayData_prim : Primrec fun p :
+private lemma budgetConsistentAtDayData_prim : Primrec fun p :
     ((List ℕ × List Bool) × List (Finset Sentence)) × ℕ =>
       budgetConsistentAtDayData p.1.1.1 p.1.1.2 p.1.2 p.2 := by
   have hstage : Primrec fun p :
@@ -5242,7 +5242,7 @@ private def budgetWorthBreachedData
   decide (firmRawPriorWorthData ctx j (m + 1) ≤ -(b : ℚ))
 
 attribute [local irreducible] Nat.sqrt in
-private theorem budgetWorthBreachedData_prim : Primrec fun p :
+private lemma budgetWorthBreachedData_prim : Primrec fun p :
     ((BudgetWorldContext × ℕ) × ℕ) × ℕ =>
       budgetWorthBreachedData p.1.1.1 p.1.1.2 p.1.2 p.2 := by
   have hctx : Primrec fun p : ((BudgetWorldContext × ℕ) × ℕ) × ℕ =>
@@ -5290,7 +5290,7 @@ section
 attribute [local irreducible] Nat.sqrt budgetConsistentAtDayData budgetWorthBreachedData
   budgetAtomList firmRawPriorWorthData decodedStageTable tableConsistentFromAtomList
 
-private theorem firmBudgetBreachAtDayData_prim : Primrec fun p :
+private lemma firmBudgetBreachAtDayData_prim : Primrec fun p :
     (BudgetCoreInput × List Bool) × ℕ =>
       firmBudgetBreachAtDayData p.1.1 p.1.2 p.2 := by
   let P := (BudgetCoreInput × List Bool) × ℕ
@@ -5342,7 +5342,7 @@ The firm cutoff uses `EF.absBound`, whose operations differ slightly from ordina
 rational denotation.  We reuse the verified rational machine's command format and
 continuation discipline, changing only constants, prices, `max`, and `safeRecip`. -/
 
-private theorem ratAbs_prim : Primrec fun q : ℚ => |q| := by
+private lemma ratAbs_prim : Primrec fun q : ℚ => |q| := by
   exact (ratMax_prim.comp Primrec.id (ratNeg_prim.comp Primrec.id)).of_eq
     fun q => by simp [abs_eq_max_neg]
 
@@ -5364,7 +5364,7 @@ private def efBoundRawStep
     efRatRawStep (fun (_ : Unit) (_ : ℕ) (_ : Sentence) => 0)
       ((), code, rho, state)
 
-private theorem efBoundRawStep_prim : Primrec efBoundRawStep := by
+private lemma efBoundRawStep_prim : Primrec efBoundRawStep := by
   let P := ℕ × (List ℚ × EFRatMachineState)
   have hcode : Primrec fun p : P => p.1 := Primrec.fst
   have hrho : Primrec fun p : P => p.2.1 :=
@@ -5431,7 +5431,7 @@ private def efBoundCommandStep
   else efRatCommandStep (fun (_ : Unit) (_ : ℕ) (_ : Sentence) => 0)
     ((), p.1, state)
 
-private theorem efBoundCommandStep_prim : Primrec efBoundCommandStep := by
+private lemma efBoundCommandStep_prim : Primrec efBoundCommandStep := by
   let P := EFRatCommand × EFRatMachineState
   have hkind : Primrec fun p : P => p.1.1 :=
     Primrec.fst.comp Primrec.fst
@@ -5468,7 +5468,7 @@ private def efBoundMachineStep : EFRatMachineState → EFRatMachineState
   | (command :: commands, values) =>
       efBoundCommandStep (command, commands, values)
 
-private theorem efBoundMachineStep_prim : Primrec efBoundMachineStep := by
+private lemma efBoundMachineStep_prim : Primrec efBoundMachineStep := by
   have hcommands : Primrec fun state : EFRatMachineState => state.1 :=
     Primrec.fst
   have hcons : Primrec₂ fun (state : EFRatMachineState)
@@ -5485,7 +5485,7 @@ private theorem efBoundMachineStep_prim : Primrec efBoundMachineStep := by
     rcases state with ⟨commands, values⟩
     cases commands <;> rfl
 
-private theorem efBoundMachineStep_add (a b : EF) (rho : List ℚ)
+private lemma efBoundMachineStep_add (a b : EF) (rho : List ℚ)
     (commands : List EFRatCommand) (values : List ℚ) :
     efBoundMachineStep
         (efRatEvalCommand (EF.add a b) rho :: commands, values) =
@@ -5495,7 +5495,7 @@ private theorem efBoundMachineStep_add (a b : EF) (rho : List ℚ)
     efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
     EF.toNat]
 
-private theorem efBoundMachineStep_mul (a b : EF) (rho : List ℚ)
+private lemma efBoundMachineStep_mul (a b : EF) (rho : List ℚ)
     (commands : List EFRatCommand) (values : List ℚ) :
     efBoundMachineStep
         (efRatEvalCommand (EF.mul a b) rho :: commands, values) =
@@ -5505,7 +5505,7 @@ private theorem efBoundMachineStep_mul (a b : EF) (rho : List ℚ)
     efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
     EF.toNat]
 
-private theorem efBoundMachineStep_max (a b : EF) (rho : List ℚ)
+private lemma efBoundMachineStep_max (a b : EF) (rho : List ℚ)
     (commands : List EFRatCommand) (values : List ℚ) :
     efBoundMachineStep
         (efRatEvalCommand (EF.max a b) rho :: commands, values) =
@@ -5515,7 +5515,7 @@ private theorem efBoundMachineStep_max (a b : EF) (rho : List ℚ)
     efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
     EF.toNat]
 
-private theorem efBoundMachineStep_safeRecip (a : EF) (rho : List ℚ)
+private lemma efBoundMachineStep_safeRecip (a : EF) (rho : List ℚ)
     (commands : List EFRatCommand) (values : List ℚ) :
     efBoundMachineStep
         (efRatEvalCommand (EF.safeRecip a) rho :: commands, values) =
@@ -5524,7 +5524,7 @@ private theorem efBoundMachineStep_safeRecip (a : EF) (rho : List ℚ)
     efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
     EF.toNat]
 
-private theorem efBoundMachineStep_letE (x body : EF) (rho : List ℚ)
+private lemma efBoundMachineStep_letE (x body : EF) (rho : List ℚ)
     (commands : List EFRatCommand) (values : List ℚ) :
     efBoundMachineStep
         (efRatEvalCommand (EF.letE x body) rho :: commands, values) =
@@ -5534,7 +5534,7 @@ private theorem efBoundMachineStep_letE (x body : EF) (rho : List ℚ)
     efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
     EF.toNat]
 
-private theorem efBoundMachineStep_letBody (payload : ℕ) (rho : List ℚ)
+private lemma efBoundMachineStep_letBody (payload : ℕ) (rho : List ℚ)
     (q : ℚ) (commands : List EFRatCommand) (values : List ℚ) :
     efBoundMachineStep
         (efRatLetBodyCommand payload rho :: commands, q :: values) =
@@ -5542,7 +5542,7 @@ private theorem efBoundMachineStep_letBody (payload : ℕ) (rho : List ℚ)
   simp [efBoundMachineStep, efBoundCommandStep, efRatCommandStep,
     efRatLetBodyCommand, efRatLetValueStep]
 
-private theorem efBoundMachine_correct (e : EF) (rho : List ℚ)
+private lemma efBoundMachine_correct (e : EF) (rho : List ℚ)
     (commands : List EFRatCommand) (values : List ℚ) :
     efBoundMachineStep^[efRatMachineSteps e]
         (efRatEvalCommand e rho :: commands, values) =
@@ -5745,10 +5745,10 @@ private theorem efBoundMachine_correct (e : EF) (rho : List ℚ)
       funext i
       cases i <;> rfl
 
-private theorem efBoundMachine_terminal (values : List ℚ) :
+private lemma efBoundMachine_terminal (values : List ℚ) :
     efBoundMachineStep ([], values) = ([], values) := rfl
 
-private theorem efBoundMachine_fuel_correct (e : EF) :
+private lemma efBoundMachine_fuel_correct (e : EF) :
     efBoundMachineStep^[efRatMachineFuel e]
         ([efRatEvalCommand e []], []) = ([], [e.absBound]) := by
   obtain ⟨extra, hextra⟩ := Nat.exists_eq_add_of_le
@@ -5763,12 +5763,12 @@ private def efCompiledAbsBound (e : EF) : ℚ :=
   ((efBoundMachineStep^[efRatMachineFuel e]
     ([efRatEvalCommand e []], [])).2).getD 0 0
 
-private theorem efCompiledAbsBound_eq (e : EF) :
+private lemma efCompiledAbsBound_eq (e : EF) :
     efCompiledAbsBound e = e.absBound := by
   rw [efCompiledAbsBound, efBoundMachine_fuel_correct]
   rfl
 
-private theorem efCompiledAbsBound_prim : Primrec efCompiledAbsBound := by
+private lemma efCompiledAbsBound_prim : Primrec efCompiledAbsBound := by
   have hcode : Primrec fun e : EF => e.toNat := by
     exact Primrec.encode.of_eq fun e => rfl
   have hfuel : Primrec fun e : EF => efRatMachineFuel e := by
@@ -5793,10 +5793,10 @@ private theorem efCompiledAbsBound_prim : Primrec efCompiledAbsBound := by
   exact (Primrec.list_getD 0).comp (Primrec.snd.comp hrun)
     (Primrec.const 0)
 
-private theorem efAbsBound_prim : Primrec EF.absBound :=
+private lemma efAbsBound_prim : Primrec EF.absBound :=
   efCompiledAbsBound_prim.of_eq efCompiledAbsBound_eq
 
-private theorem tradeListAbsBound_prim :
+private lemma tradeListAbsBound_prim :
     Primrec Strategy.tradeListAbsBound := by
   have hbounds : Primrec fun trades : List (EF × Sentence) =>
       trades.map fun trade => trade.1.absBound :=
@@ -5813,7 +5813,7 @@ private theorem tradeListAbsBound_prim :
 private def firmDayAbsBoundData (j i : ℕ) : ℚ :=
   Strategy.tradeListAbsBound ((firmRawTrader j).strat i).trades
 
-private theorem firmDayAbsBoundData_prim :
+private lemma firmDayAbsBoundData_prim :
     Primrec₂ firmDayAbsBoundData := by
   exact (tradeListAbsBound_prim.comp
     (firmRawTraderTrades_prim.comp Primrec.fst Primrec.snd)).to₂
@@ -5821,7 +5821,7 @@ private theorem firmDayAbsBoundData_prim :
 private def firmPrefixTotalBoundData (n j : ℕ) : ℚ :=
   ((List.range (n + 1)).map fun i => firmDayAbsBoundData j i).sum
 
-private theorem firmPrefixTotalBoundData_prim :
+private lemma firmPrefixTotalBoundData_prim :
     Primrec₂ firmPrefixTotalBoundData := by
   let P := ℕ × ℕ
   have hrange : Primrec fun p : P => List.range (p.1 + 1) :=
@@ -5841,7 +5841,7 @@ private theorem firmPrefixTotalBoundData_prim :
   exact (Primrec.list_foldr hvalues (Primrec.const 0) hstep).to₂.of_eq
     fun n j => by rfl
 
-private theorem firmPrefixTotalBoundData_eq (n j : ℕ) :
+private lemma firmPrefixTotalBoundData_eq (n j : ℕ) :
     firmPrefixTotalBoundData n j =
       ∑ i ∈ Finset.range (n + 1),
         Strategy.tradeListAbsBound ((firmRawTrader j).strat i).trades := by
@@ -5861,7 +5861,7 @@ private theorem firmPrefixTotalBoundData_eq (n j : ℕ) :
 private def firmTotalBoundData (n : ℕ) : ℚ :=
   ((List.range (n + 1)).map fun j => firmPrefixTotalBoundData n j).sum
 
-private theorem firmTotalBoundData_prim : Primrec firmTotalBoundData := by
+private lemma firmTotalBoundData_prim : Primrec firmTotalBoundData := by
   have hrange : Primrec fun n : ℕ => List.range (n + 1) :=
     Primrec.list_range.comp
       (Primrec.nat_add.comp Primrec.id (Primrec.const 1))
@@ -5877,7 +5877,7 @@ private theorem firmTotalBoundData_prim : Primrec firmTotalBoundData := by
   exact (Primrec.list_foldr hvalues (Primrec.const 0) hstep).of_eq
     fun n => by rfl
 
-private theorem firmTotalBoundData_eq (n : ℕ) :
+private lemma firmTotalBoundData_eq (n : ℕ) :
     firmTotalBoundData n = tradingFirmTotalBoundTradeLists n := by
   unfold firmTotalBoundData tradingFirmTotalBoundTradeLists
   have hsum : ∀ k : ℕ,
@@ -5896,13 +5896,13 @@ private theorem firmTotalBoundData_eq (n : ℕ) :
 private def ratNatCeilData (q : ℚ) : ℕ :=
   (-((-q.num) / (q.den : ℤ))).natAbs
 
-private theorem ratNatCeilData_prim : Primrec ratNatCeilData := by
+private lemma ratNatCeilData_prim : Primrec ratNatCeilData := by
   exact (intNatAbs_prim.comp
     (intNeg_prim.comp
       (intDivNat_prim.comp (intNeg_prim.comp ratNum_prim)
         ratDen_prim))).of_eq fun q => by rfl
 
-private theorem ratNatCeilData_eq (q : ℚ) (hq : 0 ≤ q) :
+private lemma ratNatCeilData_eq (q : ℚ) (hq : 0 ≤ q) :
     ratNatCeilData q = ⌈q⌉₊ := by
   have hceil : (0 : ℤ) ≤ ⌈q⌉ := Int.ceil_nonneg hq
   change (-((-q.num) / (q.den : ℤ))).natAbs = Int.toNat ⌈q⌉
@@ -5910,11 +5910,11 @@ private theorem ratNatCeilData_eq (q : ℚ) (hq : 0 ≤ q) :
   apply Int.ofNat_inj.mp
   rw [Int.natAbs_of_nonneg hceil, Int.toNat_of_nonneg hceil]
 
-private theorem tradingFirmTotalBoundTradeLists_prim :
+private lemma tradingFirmTotalBoundTradeLists_prim :
     Primrec tradingFirmTotalBoundTradeLists :=
   firmTotalBoundData_prim.of_eq firmTotalBoundData_eq
 
-private theorem tradingFirmCutoffTradeLists_prim :
+private lemma tradingFirmCutoffTradeLists_prim :
     Primrec tradingFirmCutoffTradeLists := by
   have hcompiled : Primrec fun n =>
       ratNatCeilData (tradingFirmTotalBoundTradeLists n) + 1 :=
@@ -5931,7 +5931,7 @@ private def firmBudgetAssignmentBreachesData
     (core : BudgetCoreInput) (xs : List Bool) : Bool :=
   (List.range core.2).any fun m => firmBudgetBreachAtDayData core xs m
 
-private theorem firmBudgetAssignmentBreachesData_prim : Primrec fun p :
+private lemma firmBudgetAssignmentBreachesData_prim : Primrec fun p :
     BudgetCoreInput × List Bool =>
       firmBudgetAssignmentBreachesData p.1 p.2 := by
   let P := BudgetCoreInput × List Bool
@@ -5960,7 +5960,7 @@ private def priorBudgetBreachData (core : BudgetCoreInput) : Bool :=
     firmBudgetAssignmentBreachesData core xs
 
 set_option maxHeartbeats 1600000 in
-private theorem priorBudgetBreachData_prim : Primrec priorBudgetBreachData := by
+private lemma priorBudgetBreachData_prim : Primrec priorBudgetBreachData := by
   have hstages : Primrec fun core : BudgetCoreInput => core.1.1.1.1 :=
     Primrec.fst.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
   have hj : Primrec fun core : BudgetCoreInput => core.1.1.2 :=
@@ -6013,7 +6013,7 @@ section
 attribute [local irreducible] Nat.sqrt sentenceBoolFromAtomList
   tradeListWorldValueFeatureData
 
-private theorem tradeListWorldValueFeatureData_prim : Primrec fun p :
+private lemma tradeListWorldValueFeatureData_prim : Primrec fun p :
     ((List ℕ × List Bool) × List (EF × Sentence)) × ℕ =>
       tradeListWorldValueFeatureData p.1.1.1 p.1.1.2 p.1.2 p.2 := by
   let P := ((List ℕ × List Bool) × List (EF × Sentence)) × ℕ
@@ -6058,7 +6058,7 @@ private theorem tradeListWorldValueFeatureData_prim : Primrec fun p :
 
 end
 
-private theorem tradeListWorldValueFeatureData_eq
+private lemma tradeListWorldValueFeatureData_eq
     (atoms : List ℕ) (xs : List Bool) (trades : List (EF × Sentence))
     (n : ℕ) :
     tradeListWorldValueFeatureData atoms xs trades n =
@@ -6087,7 +6087,7 @@ section
 attribute [local irreducible] Nat.sqrt budgetWorldScaleData budgetAtomList
   firmRawPriorWorthData tradeListWorldValueFeatureData
 
-private theorem budgetWorldScaleData_prim : Primrec fun p :
+private lemma budgetWorldScaleData_prim : Primrec fun p :
     BudgetCoreInput × List Bool => budgetWorldScaleData p.1 p.2 := by
   let P := BudgetCoreInput × List Bool
   have hstages : Primrec fun p : P => p.1.1.1.1.1 :=
@@ -6140,7 +6140,7 @@ private theorem budgetWorldScaleData_prim : Primrec fun p :
 
 end
 
-private theorem budgetWorldScaleData_eq
+private lemma budgetWorldScaleData_eq
     (stages : List (Finset Sentence)) (past : List RationalBeliefState)
     (j b n : ℕ) (xs : List Bool) :
     budgetWorldScaleData ((((stages, past), j), b), n) xs =
@@ -6179,7 +6179,7 @@ attribute [local irreducible] Nat.sqrt budgetScaleFeaturesData
   budgetScaleFeatureData budgetConsistentAtDayData budgetWorldScaleData
   budgetAtomList decodedStageTable tableConsistentFromAtomList
 
-private theorem budgetScaleFeaturesData_prim :
+private lemma budgetScaleFeaturesData_prim :
     Primrec budgetScaleFeaturesData := by
   have hstages : Primrec fun core : BudgetCoreInput => core.1.1.1.1 :=
     Primrec.fst.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
@@ -6225,7 +6225,7 @@ private theorem budgetScaleFeaturesData_prim :
       unfold budgetScaleFeaturesData
       rfl
 
-private theorem budgetScaleFeatureData_prim :
+private lemma budgetScaleFeatureData_prim :
     Primrec budgetScaleFeatureData := by
   exact (efListMin_prim.comp budgetScaleFeaturesData_prim).of_eq fun core => by
     unfold budgetScaleFeatureData
@@ -6233,7 +6233,7 @@ private theorem budgetScaleFeatureData_prim :
 
 end
 
-private theorem firmBudgetBreachAtDayData_eq
+private lemma firmBudgetBreachAtDayData_eq
     (stages : List (Finset Sentence)) (past : List RationalBeliefState)
     (j b n : ℕ) (xs : List Bool) (m : ℕ) :
     firmBudgetBreachAtDayData ((((stages, past), j), b), n) xs m =
@@ -6266,7 +6266,7 @@ private theorem firmBudgetBreachAtDayData_eq
     atomListTable_sort_eq]
   rfl
 
-private theorem firmBudgetAssignmentBreachesData_eq
+private lemma firmBudgetAssignmentBreachesData_eq
     (stages : List (Finset Sentence)) (past : List RationalBeliefState)
     (j b n : ℕ) (xs : List Bool) :
     firmBudgetAssignmentBreachesData ((((stages, past), j), b), n) xs =
@@ -6288,7 +6288,7 @@ private theorem firmBudgetAssignmentBreachesData_eq
   intro m
   exact firmBudgetBreachAtDayData_eq stages past j b n xs m
 
-private theorem priorBudgetBreachData_eq
+private lemma priorBudgetBreachData_eq
     (stages : List (Finset Sentence)) (past : List RationalBeliefState)
     (j b n : ℕ) :
     priorBudgetBreachData ((((stages, past), j), b), n) =
@@ -6302,7 +6302,7 @@ private theorem priorBudgetBreachData_eq
   intro xs
   exact firmBudgetAssignmentBreachesData_eq stages past j b n xs
 
-private theorem budgetScaleFeatureData_eq
+private lemma budgetScaleFeatureData_eq
     (stages : List (Finset Sentence)) (past : List RationalBeliefState)
     (j b n : ℕ) :
     budgetScaleFeatureData ((((stages, past), j), b), n) =
@@ -6349,7 +6349,7 @@ section
 attribute [local irreducible] Nat.sqrt priorBudgetBreachData
   budgetScaleFeatureData
 
-private theorem budgeterTradesFromStageTradeLists_prim : Primrec fun core :
+private lemma budgeterTradesFromStageTradeLists_prim : Primrec fun core :
     BudgetCoreInput =>
       budgeterTradesFromStageTradeLists
         (decodedStageTable core.1.1.1.1)
@@ -6395,7 +6395,7 @@ section
 attribute [local irreducible] Nat.sqrt tradingFirmCutoffTradeLists
   budgeterTradesFromStageTradeLists
 
-private theorem tradingFirmComponentTradesFromStageTradeLists_prim :
+private lemma tradingFirmComponentTradesFromStageTradeLists_prim :
     Primrec fun p : TradingFirmComponentInput =>
       tradingFirmComponentTradesFromStageTradeLists
         (decodedStageTable p.1.1.1) (rationalHistory p.1.1.2)
@@ -6478,7 +6478,7 @@ section
 attribute [local irreducible] Nat.sqrt
   tradingFirmComponentTradesFromStageTradeLists
 
-private theorem tradingFirmTradesFromStageTradeLists_prim :
+private lemma tradingFirmTradesFromStageTradeLists_prim :
     Primrec fun p : TradingFirmInput =>
       tradingFirmTradesFromStageTradeLists
         (decodedStageTable p.1.1) (rationalHistory p.1.2) p.2 := by
@@ -6502,7 +6502,7 @@ private theorem tradingFirmTradesFromStageTradeLists_prim :
 
 end
 
-private theorem marketMakerError_prim : Primrec marketMakerError := by
+private lemma marketMakerError_prim : Primrec marketMakerError := by
   have hexponent : Primrec fun n : ℕ => n + 1 :=
     Primrec.nat_add.comp Primrec.id (Primrec.const 1)
   have hpow : Primrec fun n : ℕ => (2 : ℚ) ^ (n + 1) :=
@@ -6514,7 +6514,7 @@ section
 attribute [local irreducible] Nat.sqrt liaPrefixFromTradeListsAtFuel
   tradingFirmTradesFromStageTradeLists marketMakerSearchUpToTradeList
 
-private theorem liaPrefixFromTradeListsAtFuel_prim : Primrec fun p :
+private lemma liaPrefixFromTradeListsAtFuel_prim : Primrec fun p :
     (List (Finset Sentence) × ℕ) × ℕ =>
       liaPrefixFromTradeListsAtFuel
         (decodedStageTable p.1.1) p.1.2 p.2 := by
@@ -6598,7 +6598,7 @@ end
 
 /-- The proof-carrying finite-stage recurrence has the same primitive-recursive
 first-order implementation as its fully erased trade-list presentation. -/
-private theorem liaPrefixFromStagesAtFuel_prim : Primrec fun p :
+private lemma liaPrefixFromStagesAtFuel_prim : Primrec fun p :
     (List (Finset Sentence) × ℕ) × ℕ =>
       liaPrefixFromStagesAtFuel
         (decodedStageTable p.1.1) p.1.2 p.2 := by
@@ -6607,7 +6607,7 @@ private theorem liaPrefixFromStagesAtFuel_prim : Primrec fun p :
       liaPrefixFromStageListsAtFuel_eq]
 
 /-- The complete common-clock LIA state-prefix evaluator is primitive recursive. -/
-private theorem liaPrefixAtFuel_prim {DP : DeductiveProcess}
+private lemma liaPrefixAtFuel_prim {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) :
     Primrec₂ fun fuel n => liaPrefixAtFuel process fuel n := by
   let X := ℕ × ℕ
@@ -6632,7 +6632,7 @@ attribute [local irreducible] Nat.sqrt liaEncodedQuoteAtFuel
 
 /-- The bounded exact rational quote evaluator is primitive recursive in its common
 clock, day, and external sentence code. -/
-private theorem liaEncodedQuoteAtFuel_prim {DP : DeductiveProcess}
+private lemma liaEncodedQuoteAtFuel_prim {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) : Primrec fun p :
     (ℕ × ℕ) × ℕ =>
       liaEncodedQuoteAtFuel process p.1.1 p.1.2 p.2 := by
@@ -6694,7 +6694,7 @@ attribute [local irreducible] Nat.sqrt liaEncodedQuoteNatAtFuel
 
 /-- The natural-coded bounded evaluator is primitive recursive in the paired
 day/sentence input and its common fuel clock. -/
-private theorem liaEncodedQuoteNatAtFuel_prim {DP : DeductiveProcess}
+private lemma liaEncodedQuoteNatAtFuel_prim {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) :
     Primrec₂ (liaEncodedQuoteNatAtFuel process) := by
   let X := ℕ × ℕ
@@ -6720,7 +6720,7 @@ end
 
 /-- Concrete computability certificate for the sole bounded-evaluator boundary in the
 core LIA construction. -/
-theorem liaEncodedQuoteNatAtFuel_computable {DP : DeductiveProcess}
+lemma liaEncodedQuoteNatAtFuel_computable {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) :
     Computable₂ (liaEncodedQuoteNatAtFuel process) :=
   (liaEncodedQuoteNatAtFuel_prim process).to_comp

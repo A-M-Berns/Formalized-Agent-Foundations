@@ -94,12 +94,12 @@ def freezeBefore (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) : EF → EF
   | var i => simp [freezeBefore]
   | letE value body ihv ihb => simp [freezeBefore, ihv, ihb]
 
-theorem freezeBefore_rank_le (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
+lemma freezeBefore_rank_le (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
     (e.freezeBefore quote cutoff).rank ≤ e.rank := by
   rw [freezeBefore_rank]
 
 /-- The administrative binding makes the literal rewrite at most three times larger. -/
-theorem freezeBefore_cost_le (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
+lemma freezeBefore_cost_le (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
     (e.freezeBefore quote cutoff).cost ≤ 3 * e.cost := by
   induction e with
   | price φ day => simp only [freezeBefore]; split <;> simp [cost]
@@ -158,7 +158,7 @@ def freezeTokenControlAt (tokenFn : ℕ → ℕ) (n : ℕ) : ℕ → FreezeToken
     (state : FreezeTokenState) :
     freezeTokenRun quoteCode cutoff state [] = (state, []) := rfl
 
-theorem freezeTokenRun_append (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+lemma freezeTokenRun_append (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
     (state : FreezeTokenState) (xs ys : List ℕ) :
     freezeTokenRun quoteCode cutoff state (xs ++ ys) =
       let first := freezeTokenRun quoteCode cutoff state xs
@@ -171,7 +171,7 @@ theorem freezeTokenRun_append (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
       rw [ih]
       simp [List.append_assoc]
 
-theorem freezeTokenRun_range (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+lemma freezeTokenRun_range (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
     (tokenFn : ℕ → ℕ) (n count : ℕ) :
     freezeTokenRun quoteCode cutoff (0, 0)
         ((List.range count).map fun j => tokenFn (Nat.pair n j)) =
@@ -188,7 +188,7 @@ theorem freezeTokenRun_range (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
 
 /-- On a canonical feature serialization the streaming rewrite is exactly
 `EF.freezeBefore`. -/
-theorem freezeTokenRun_serialize (quote : ℕ → Sentence → ℚ)
+lemma freezeTokenRun_serialize (quote : ℕ → Sentence → ℚ)
     (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
     (hquote : ∀ day φ, quoteCode day (Encodable.encode φ) =
       Encodable.encode (quote day φ)) (e : EF) :
@@ -223,7 +223,7 @@ theorem freezeTokenRun_serialize (quote : ℕ → Sentence → ℚ)
       rw [ihv, ihb]
       simp [freezeTokenRun, freezeTokenNext, freezeTokenEmit, List.append_assoc]
 
-theorem freezeTokenRun_serializeTrades (quote : ℕ → Sentence → ℚ)
+lemma freezeTokenRun_serializeTrades (quote : ℕ → Sentence → ℚ)
     (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
     (hquote : ∀ day φ, quoteCode day (Encodable.encode φ) =
       Encodable.encode (quote day φ)) (trades : List (EF × Sentence)) :
@@ -253,14 +253,14 @@ def FreezeTokenState.Matches (control : FreezeTokenState) (state : EF.StreamStat
     (state.1.1 = 2 → ∃ φ, state.1.2 = some φ ∧
       Encodable.decode (α := Sentence) control.2 = some φ)
 
-theorem freezeToken_initial_matches :
+lemma freezeToken_initial_matches :
     FreezeTokenState.Matches (0, 0) EF.streamInitial := by
   simp [FreezeTokenState.Matches, EF.streamInitial]
 
 /-- One source token and the bounded suffix emitted for it commute with the actual streaming
 decoder.  This includes malformed inputs: the copied offending token fails before an inserted
 suffix could repair it. -/
-theorem streamReadFrom_freezeTokenEmit
+lemma streamReadFrom_freezeTokenEmit
     (quote : ℕ → Sentence → ℚ) (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
     (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
       quoteCode day code = Encodable.encode (quote day φ))
@@ -393,7 +393,7 @@ theorem streamReadFrom_freezeTokenEmit
       simp only [EF.streamReadFrom, List.foldl_cons, EF.streamStep]
       simpa [EF.streamReadFrom] using ih
 
-theorem streamReadFrom_freezeTokenRun
+lemma streamReadFrom_freezeTokenRun
     (quote : ℕ → Sentence → ℚ) (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
     (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
       quoteCode day code = Encodable.encode (quote day φ))
@@ -441,7 +441,7 @@ theorem streamReadFrom_freezeTokenRun
             apply hfinal final
             simpa [EF.streamReadFrom, hs] using hfinalSource
 
-theorem deserializeTrades_freezeTokenRun
+lemma deserializeTrades_freezeTokenRun
     (quote : ℕ → Sentence → ℚ) (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
     (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
       quoteCode day code = Encodable.encode (quote day φ)) (tokens : List ℕ) :
@@ -467,7 +467,7 @@ private def validatedTrades (n : ℕ) (trades : List (EF × Sentence)) :
     List (EF × Sentence) :=
   if ∀ trade ∈ trades, trade.1.rank ≤ n then trades else []
 
-private theorem strategyOfTokens_trades_eq (n : ℕ) (tokens : List ℕ) :
+private lemma strategyOfTokens_trades_eq (n : ℕ) (tokens : List ℕ) :
     (strategyOfTokens n tokens).trades =
       match deserializeTrades tokens with
       | none => []
@@ -477,7 +477,7 @@ private theorem strategyOfTokens_trades_eq (n : ℕ) (tokens : List ℕ) :
   · simp [hdecode]
   · split <;> simp_all
 
-theorem strategyOfTokens_freezeTokenRun_trades
+lemma strategyOfTokens_freezeTokenRun_trades
     (quote : ℕ → Sentence → ℚ) (quoteCode : ℕ → ℕ → ℕ) (cutoff n : ℕ)
     (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
       quoteCode day code = Encodable.encode (quote day φ)) (tokens : List ℕ) :
@@ -520,7 +520,7 @@ theorem strategyOfTokens_freezeTokenRun_trades
 
 /-- If `quote` is the old prefix of `P` and `P'` agrees with `P` after the cutoff,
 the frozen feature sees exactly what the original feature saw against `P`. -/
-theorem freezeBefore_denoteWith
+lemma freezeBefore_denoteWith
     (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) (P P' : History)
     (hprefix : ∀ day < cutoff, ∀ φ, P day φ = (quote day φ : ℝ))
     (htail : ∀ day, cutoff ≤ day → ∀ φ, P day φ = P' day φ) :
@@ -544,7 +544,7 @@ theorem freezeBefore_denoteWith
       simp only [freezeBefore, denoteWith_letE]
       rw [ihv ρ, ihb]
 
-theorem freezeBefore_denote
+lemma freezeBefore_denote
     (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) (P P' : History)
     (hprefix : ∀ day < cutoff, ∀ φ, P day φ = (quote day φ : ℝ))
     (htail : ∀ day, cutoff ≤ day → ∀ φ, P day φ = P' day φ) :
@@ -567,7 +567,7 @@ def freezeBefore {day : ℕ} (quote : ℕ → Sentence → ℚ) (cutoff : ℕ)
 
 /-- On an unchanged tail day, a frozen strategy against `P'` has exactly the value of the
 original strategy against `P`. -/
-theorem freezeBefore_value
+lemma freezeBefore_value
     {day : ℕ} (T : Strategy day) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ)
     (P P' : History) (w : Valuation)
     (hprefix : ∀ d < cutoff, ∀ φ, P d φ = (quote d φ : ℝ))
@@ -590,7 +590,7 @@ namespace Trader
 def freezeBefore (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) (Tr : Trader) : Trader where
   strat day := (Tr.strat day).freezeBefore quote cutoff
 
-theorem freezeBefore_value_tail
+lemma freezeBefore_value_tail
     (Tr : Trader) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ)
     (P P' : History) (w : Valuation)
     (hprefix : ∀ d < cutoff, ∀ φ, P d φ = (quote d φ : ℝ))
@@ -611,7 +611,7 @@ noncomputable def freezeBeforeErrorBound
 /-- The original and frozen traders' net worths differ by at most the explicit finite
 prefix bound.  Every tail summand cancels exactly; the only estimate is the standard
 `|strategy value| ≤ magnitude` bound on the finitely many early days. -/
-theorem freezeBefore_netWorth_difference_le
+lemma freezeBefore_netWorth_difference_le
     (Tr : Trader) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ)
     (P P' : History)
     (hprefix : ∀ d < cutoff, ∀ φ, P d φ = (quote d φ : ℝ))

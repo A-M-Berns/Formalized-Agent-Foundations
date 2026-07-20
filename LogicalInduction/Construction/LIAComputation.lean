@@ -25,7 +25,7 @@ def processStagePrefixAtFuel {DP : DeductiveProcess}
 def decodedStageTable (stages : List (Finset Sentence)) : ℕ → Finset Sentence :=
   fun n => stages.getD n ∅
 
-theorem processStagePrefixAtFuel_sound {DP : DeductiveProcess}
+lemma processStagePrefixAtFuel_sound {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) (fuel n : ℕ)
     {stages : List (Finset Sentence)}
     (h : processStagePrefixAtFuel process fuel n = some stages) :
@@ -60,7 +60,7 @@ theorem processStagePrefixAtFuel_sound {DP : DeductiveProcess}
           subst m
           simp [decodedStageTable, hp.1]
 
-theorem processStagePrefixAtFuel_mono_success {DP : DeductiveProcess}
+lemma processStagePrefixAtFuel_mono_success {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) (n : ℕ)
     {fuel fuel' : ℕ} {stages : List (Finset Sentence)}
     (hff : fuel ≤ fuel')
@@ -85,7 +85,7 @@ theorem processStagePrefixAtFuel_mono_success {DP : DeductiveProcess}
       rw [process.stageAtFuel_mono hff hstage]
       rfl
 
-theorem exists_processStagePrefixAtFuel {DP : DeductiveProcess}
+lemma exists_processStagePrefixAtFuel {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) (n : ℕ) :
     ∃ fuel stages, processStagePrefixAtFuel process fuel n = some stages := by
   induction n with
@@ -124,7 +124,7 @@ def liaPrefixFromStageListsAtFuel (D : ℕ → Finset Sentence) (fuel : ℕ) :
         (marketMakerError n) fuel
       some (past ++ [state])
 
-theorem liaPrefixFromStageListsAtFuel_eq (D : ℕ → Finset Sentence)
+lemma liaPrefixFromStageListsAtFuel_eq (D : ℕ → Finset Sentence)
     (fuel n : ℕ) :
     liaPrefixFromStageListsAtFuel D fuel n = liaPrefixFromStagesAtFuel D fuel n := by
   induction n with
@@ -147,7 +147,7 @@ def liaPrefixFromTradeListsAtFuel (D : ℕ → Finset Sentence) (fuel : ℕ) :
         (marketMakerError n) fuel
       some (past ++ [state])
 
-theorem liaPrefixFromTradeListsAtFuel_eq (D : ℕ → Finset Sentence)
+lemma liaPrefixFromTradeListsAtFuel_eq (D : ℕ → Finset Sentence)
     (fuel n : ℕ) :
     liaPrefixFromTradeListsAtFuel D fuel n =
       liaPrefixFromStageListsAtFuel D fuel n := by
@@ -172,7 +172,7 @@ noncomputable def liaStatePrefix (DP : DeductiveProcess) :
   | zero => rfl
   | succ n ih => simp [liaStatePrefix, ih]
 
-theorem liaStatePrefix_getD (DP : DeductiveProcess) {n m : ℕ}
+lemma liaStatePrefix_getD (DP : DeductiveProcess) {n m : ℕ}
     (hm : m < n) :
     (liaStatePrefix DP n).getD m (liaStates DP 0) = liaStates DP m := by
   induction n with
@@ -186,7 +186,7 @@ theorem liaStatePrefix_getD (DP : DeductiveProcess) {n m : ℕ}
         subst m
         simp [liaStatePrefix_length]
 
-theorem liaStatePrefix_eq_ofFn (DP : DeductiveProcess) (n : ℕ) :
+lemma liaStatePrefix_eq_ofFn (DP : DeductiveProcess) (n : ℕ) :
     liaStatePrefix DP n = List.ofFn fun i : Fin n => liaStates DP i := by
   apply List.ext_getElem
   · simp [liaStatePrefix_length]
@@ -196,7 +196,7 @@ theorem liaStatePrefix_eq_ofFn (DP : DeductiveProcess) (n : ℕ) :
     apply liaStatePrefix_getD DP
     simpa [liaStatePrefix_length] using hi₁
 
-theorem liaPrefixFromStagesAtFuel_mono_success
+lemma liaPrefixFromStagesAtFuel_mono_success
     (D : ℕ → Finset Sentence) (n : ℕ)
     {fuel fuel' : ℕ} {states : List RationalBeliefState}
     (hff : fuel ≤ fuel')
@@ -228,7 +228,7 @@ theorem liaPrefixFromStagesAtFuel_mono_success
       rw [marketMakerSearchUpTo_mono_success _ _ _ hff hstate]
       rfl
 
-theorem exists_liaPrefixFromStagesAtFuel
+lemma exists_liaPrefixFromStagesAtFuel
     (D : ℕ → Finset Sentence) (n : ℕ) :
     ∃ fuel states, liaPrefixFromStagesAtFuel D fuel n = some states := by
   induction n with
@@ -257,7 +257,7 @@ theorem exists_liaPrefixFromStagesAtFuel
       rfl
 
 /-- Every successful bounded state-prefix computation is the unique semantic LIA prefix. -/
-theorem liaPrefixFromStagesAtFuel_sound (DP : DeductiveProcess)
+lemma liaPrefixFromStagesAtFuel_sound (DP : DeductiveProcess)
     (D : ℕ → Finset Sentence) (fuel n : ℕ)
     (hD : ∀ m, m < n → D m = DP.D m)
     {states : List RationalBeliefState}
@@ -308,7 +308,7 @@ def liaPrefixAtFuel {DP : DeductiveProcess}
   let stages ← processStagePrefixAtFuel process fuel n
   liaPrefixFromStagesAtFuel (decodedStageTable stages) fuel n
 
-theorem liaPrefixAtFuel_mono_success {DP : DeductiveProcess}
+lemma liaPrefixAtFuel_mono_success {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) (n : ℕ)
     {fuel fuel' : ℕ} {states : List RationalBeliefState}
     (hff : fuel ≤ fuel') (h : liaPrefixAtFuel process fuel n = some states) :
@@ -326,7 +326,7 @@ theorem liaPrefixAtFuel_mono_success {DP : DeductiveProcess}
   exact liaPrefixFromStagesAtFuel_mono_success
     (decodedStageTable stages) n hff hstates
 
-theorem liaPrefixAtFuel_sound {DP : DeductiveProcess}
+lemma liaPrefixAtFuel_sound {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) (fuel n : ℕ)
     {states : List RationalBeliefState}
     (h : liaPrefixAtFuel process fuel n = some states) :
@@ -341,7 +341,7 @@ theorem liaPrefixAtFuel_sound {DP : DeductiveProcess}
   exact liaPrefixFromStagesAtFuel_sound DP (decodedStageTable stages) fuel n
     hstageSound.2 hstates
 
-theorem exists_liaPrefixAtFuel {DP : DeductiveProcess}
+lemma exists_liaPrefixAtFuel {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) (n : ℕ) :
     ∃ fuel states, liaPrefixAtFuel process fuel n = some states := by
   obtain ⟨fuel₁, stages, hstages⟩ := exists_processStagePrefixAtFuel process n
@@ -377,7 +377,7 @@ def liaEncodedQuoteAtFuel {DP : DeductiveProcess}
     | some phi => state.quote phi
     | none => 0
 
-theorem liaEncodedQuoteAtFuel_sound {DP : DeductiveProcess}
+lemma liaEncodedQuoteAtFuel_sound {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) {fuel day sentenceCode : ℕ} {q : ℚ}
     (h : liaEncodedQuoteAtFuel process fuel day sentenceCode = some q) :
     q = liaEncodedQuote DP day sentenceCode := by
@@ -398,7 +398,7 @@ theorem liaEncodedQuoteAtFuel_sound {DP : DeductiveProcess}
   | some phi =>
       simpa [liaEncodedQuote, liaQuote, hdecode] using h.symm
 
-theorem exists_liaEncodedQuoteAtFuel {DP : DeductiveProcess}
+lemma exists_liaEncodedQuoteAtFuel {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) (day sentenceCode : ℕ) :
     ∃ fuel, liaEncodedQuoteAtFuel process fuel day sentenceCode =
       some (liaEncodedQuote DP day sentenceCode) := by
@@ -431,7 +431,7 @@ noncomputable def liaEncodedQuoteClock {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) (day sentenceCode : ℕ) : ℕ :=
   Nat.find (exists_liaEncodedQuoteAtFuel process day sentenceCode)
 
-theorem liaEncodedQuote_clock {DP : DeductiveProcess}
+lemma liaEncodedQuote_clock {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) (day sentenceCode : ℕ) :
     liaEncodedQuoteAtFuel process
       (liaEncodedQuoteClock process day sentenceCode) day sentenceCode =
@@ -451,7 +451,7 @@ structure LIABoundedEvaluatorCompiler {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) where
   computable : Computable₂ (liaEncodedQuoteNatAtFuel process)
 
-theorem liaEncodedQuoteNatAtFuel_sound {DP : DeductiveProcess}
+lemma liaEncodedQuoteNatAtFuel_sound {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) {z fuel out : ℕ}
     (h : liaEncodedQuoteNatAtFuel process z fuel = some out) :
     out = Encodable.encode (liaEncodedQuote DP z.unpair.1 z.unpair.2) := by
@@ -460,7 +460,7 @@ theorem liaEncodedQuoteNatAtFuel_sound {DP : DeductiveProcess}
   obtain ⟨q, hq, rfl⟩ := h
   rw [liaEncodedQuoteAtFuel_sound process hq]
 
-theorem exists_liaEncodedQuoteNatAtFuel {DP : DeductiveProcess}
+lemma exists_liaEncodedQuoteNatAtFuel {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) (z : ℕ) :
     ∃ fuel, liaEncodedQuoteNatAtFuel process z fuel =
       some (Encodable.encode (liaEncodedQuote DP z.unpair.1 z.unpair.2)) := by
@@ -473,7 +473,7 @@ theorem exists_liaEncodedQuoteNatAtFuel {DP : DeductiveProcess}
 
 /-- Generic minimization turns a compiler for the bounded evaluator into one total
 partial-recursive exact quote function. -/
-theorem LIABoundedEvaluatorCompiler.quote_computable
+lemma LIABoundedEvaluatorCompiler.quote_computable
     {DP : DeductiveProcess} {process : DeductiveProcessComputation DP}
     (compiler : LIABoundedEvaluatorCompiler process) :
     Computable (fun z : ℕ =>
@@ -495,7 +495,7 @@ theorem LIABoundedEvaluatorCompiler.quote_computable
   exact hout
 
 /-- Extract the actual partial-recursive quote program promised by `ComputableMarket`. -/
-theorem LIABoundedEvaluatorCompiler.exists_quote_code
+lemma LIABoundedEvaluatorCompiler.exists_quote_code
     {DP : DeductiveProcess} {process : DeductiveProcessComputation DP}
     (compiler : LIABoundedEvaluatorCompiler process) :
     ∃ code : Nat.Partrec.Code, ∀ z : ℕ,
@@ -512,7 +512,7 @@ theorem LIABoundedEvaluatorCompiler.exists_quote_code
 
 /-- Once the bounded evaluator compiler is instantiated, the recursive LIA history has
 the exact paper-facing rational market program. -/
-theorem LIABoundedEvaluatorCompiler.toComputableMarket
+lemma LIABoundedEvaluatorCompiler.toComputableMarket
     {DP : DeductiveProcess} {process : DeductiveProcessComputation DP}
     (compiler : LIABoundedEvaluatorCompiler process) :
     ComputableMarket (liaHistory DP) := by
@@ -526,7 +526,7 @@ theorem LIABoundedEvaluatorCompiler.toComputableMarket
 /-- Exact criterion assembly from the bounded evaluator compiler.  The final M7 theorem
 will instantiate `compiler`; this lemma makes clear that no further semantic premise is
 missing. -/
-theorem lia_isLogicalInductor_of_compiler
+lemma lia_isLogicalInductor_of_compiler
     {DP : DeductiveProcess} (process : DeductiveProcessComputation DP)
     (compiler : LIABoundedEvaluatorCompiler process) :
     IsLogicalInductor (liaHistory DP) DP :=

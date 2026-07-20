@@ -33,7 +33,7 @@ volume `∑ᵢ |eᵢ(𝓥)|`. (For a strategy in which a sentence occurs once, t
 noncomputable def magnitude {n : ℕ} (T : Strategy n) (V : History) : ℝ :=
   (T.trades.map (fun p => |p.1.denote V|)).sum
 
-theorem magnitude_nonneg {n : ℕ} (T : Strategy n) (V : History) : 0 ≤ T.magnitude V :=
+lemma magnitude_nonneg {n : ℕ} (T : Strategy n) (V : History) : 0 ≤ T.magnitude V :=
   List.sum_nonneg (fun x hx => by
     simp only [List.mem_map] at hx; obtain ⟨p, _, rfl⟩ := hx; exact abs_nonneg _)
 
@@ -41,7 +41,7 @@ end Strategy
 
 /-- Triangle-inequality bound for a `List.sum` of mapped terms: if `|f x| ≤ g x` pointwise,
 then `|∑ f| ≤ ∑ g`. -/
-private theorem abs_map_sum_le {α : Type*} (l : List α) (f g : α → ℝ)
+private lemma abs_map_sum_le {α : Type*} (l : List α) (f g : α → ℝ)
     (h : ∀ x ∈ l, |f x| ≤ g x) : |(l.map f).sum| ≤ (l.map g).sum := by
   induction l with
   | nil => simp
@@ -56,7 +56,7 @@ private theorem abs_map_sum_le {α : Type*} (l : List α) (f g : α → ℝ)
 value in any `{0,1}`-world is bounded by its magnitude: a share is worth at most 1 and costs
 at least 0, so `|value| ≤ Σ|shares| = magnitude`. The basic tool behind return-on-investment
 estimates. -/
-theorem Strategy.abs_value_le_magnitude {n : ℕ} (T : Strategy n) (V : History)
+lemma Strategy.abs_value_le_magnitude {n : ℕ} (T : Strategy n) (V : History)
     (w : Sentence → ℝ) (hw : ∀ φ, w φ = 0 ∨ w φ = 1)
     (hV : ∀ φ, 0 ≤ V n φ ∧ V n φ ≤ 1) :
     |T.value V w| ≤ T.magnitude V := by
@@ -96,19 +96,19 @@ series is defined as `0`; omitting summability would therefore let an infinite-r
 claim zero magnitude. The following lemmas turn genuine finite magnitude into the uniform
 lower bound required by `Exploits`. -/
 
-theorem Trader.partial_magnitude_le (Tr : Trader) (V : History)
+lemma Trader.partial_magnitude_le (Tr : Trader) (V : History)
     (hmag : Summable (fun n => (Tr.strat n).magnitude V)) (n : ℕ) :
     ∑ i ∈ Finset.range (n + 1), (Tr.strat i).magnitude V ≤ Tr.magnitude V := by
   exact hmag.sum_le_tsum _ (fun i _ => Strategy.magnitude_nonneg (Tr.strat i) V)
 
 /-- Magnitude is nonnegative (including Mathlib's zero value for a divergent nonnegative
 series; finiteness is still required everywhere that magnitude represents actual risk). -/
-theorem Trader.magnitude_nonneg (Tr : Trader) (V : History) : 0 ≤ Tr.magnitude V := by
+lemma Trader.magnitude_nonneg (Tr : Trader) (V : History) : 0 ≤ Tr.magnitude V := by
   exact tsum_nonneg (fun n => Strategy.magnitude_nonneg (Tr.strat n) V)
 
 /-- Partial magnitudes eventually contain any prescribed `(1-η)` fraction of the total
 magnitude. -/
-theorem Trader.eventually_partial_magnitude_ge (Tr : Trader) (V : History)
+lemma Trader.eventually_partial_magnitude_ge (Tr : Trader) (V : History)
     (hmag : Summable (fun n => (Tr.strat n).magnitude V)) {η : ℝ} (hη : 0 < η) :
     ∃ N, ∀ n, N ≤ n →
       (1 - η) * Tr.magnitude V ≤
@@ -144,7 +144,7 @@ def Trader.Matured (Tr : Trader) (V : History) (DP : DeductiveProcess)
       (ε - η) * Tr.magnitude V ≤ Tr.netWorth V v m
 
 /-- Every positive-ROI trader matures at some finite stage, for any positive tolerance. -/
-theorem HasROI.exists_matured {Tr : Trader} {V : History} {DP : DeductiveProcess}
+lemma HasROI.exists_matured {Tr : Trader} {V : History} {DP : DeductiveProcess}
     {ε η : ℝ} (hroi : HasROI Tr V DP ε) (hη : 0 < η) :
     ∃ m, Tr.Matured V DP ε η m := by
   obtain ⟨hmag, hprofit⟩ := hroi
@@ -155,7 +155,7 @@ theorem HasROI.exists_matured {Tr : Trader} {V : History} {DP : DeductiveProcess
 
 /-- At every finite day, a finite-magnitude trader's net worth in any Boolean world is
 bounded in absolute value by its total magnitude. -/
-theorem Trader.abs_netWorth_le_magnitude (Tr : Trader) (V : History) (v : PCWorld)
+lemma Trader.abs_netWorth_le_magnitude (Tr : Trader) (V : History) (v : PCWorld)
     (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hmag : Summable (fun n => (Tr.strat n).magnitude V)) (n : ℕ) :
     |Tr.netWorth V v n| ≤ Tr.magnitude V := by
@@ -175,7 +175,7 @@ theorem Trader.abs_netWorth_le_magnitude (Tr : Trader) (V : History) (v : PCWorl
 
 /-- Finite total magnitude supplies the bounded-downside half of exploitation uniformly
 over all plausible worlds. -/
-theorem Trader.bddBelow_plausible_of_finiteMagnitude (Tr : Trader) (V : History)
+lemma Trader.bddBelow_plausible_of_finiteMagnitude (Tr : Trader) (V : History)
     (DP : DeductiveProcess) (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hmag : Summable (fun n => (Tr.strat n).magnitude V)) :
     BddBelow (Tr.plausibleAssessments V DP) := by
@@ -222,7 +222,7 @@ structure PolySequence (As : ℕ → AffineCombination) where
   coefficient_closed : ∀ z ρ V,
     (coefficient z).denoteWith ρ V = (coefficient z).denote V
 
-theorem PolySequence.terms_rank {As : ℕ → AffineCombination} (h : PolySequence As)
+lemma PolySequence.terms_rank {As : ℕ → AffineCombination} (h : PolySequence As)
     (n : ℕ) : ∀ p ∈ (As n).terms, p.1.rank ≤ n := by
   intro p hp
   rw [h.terms_eq] at hp
@@ -230,7 +230,7 @@ theorem PolySequence.terms_rank {As : ℕ → AffineCombination} (h : PolySequen
   obtain ⟨j, hj, rfl⟩ := hp
   exact h.coefficient_rank n j hj
 
-theorem PolySequence.term_closed {As : ℕ → AffineCombination} (h : PolySequence As)
+lemma PolySequence.term_closed {As : ℕ → AffineCombination} (h : PolySequence As)
     (n : ℕ) : ∀ p ∈ (As n).terms, ∀ ρ V,
       p.1.denoteWith ρ V = p.1.denote V := by
   intro p hp ρ V
@@ -249,7 +249,7 @@ def priceFeature (A : AffineCombination) (n : ℕ) : EF :=
 
 /-- Serialization of an affine price feature as its constant prefix followed by one
 coefficient/price/multiply/add block per term. -/
-theorem priceFeature_serialize (A : AffineCombination) (n : ℕ) :
+lemma priceFeature_serialize (A : AffineCombination) (n : ℕ) :
     (A.priceFeature n).serialize = A.const.serialize ++
       A.terms.flatMap (fun p =>
         p.1.serialize ++ (EF.price p.2 n).serialize ++ [3, 2]) := by
@@ -270,7 +270,7 @@ theorem priceFeature_serialize (A : AffineCombination) (n : ℕ) :
 
 /-- A polynomial affine sequence has a uniform segment emitter for every cross-time price
 feature.  Input `z = ⟨n,m⟩` denotes the feature pricing `Aₙ` on market day `m`. -/
-theorem PolySequence.priceFeature_polySeg {As : ℕ → AffineCombination}
+lemma PolySequence.priceFeature_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) :
     PolySegStream (fun z => ((As z.unpair.1).priceFeature z.unpair.2).serialize) := by
   obtain ⟨ccount, hcount⟩ := h.termCount_poly
@@ -314,7 +314,7 @@ theorem PolySequence.priceFeature_polySeg {As : ℕ → AffineCombination}
   rw [priceFeature_serialize, h.terms_eq]
   simp only [List.flatMap_map, Nat.unpair_pair]
 
-theorem priceFeature_denote (A : AffineCombination) (V : History) (n : ℕ) :
+lemma priceFeature_denote (A : AffineCombination) (V : History) (n : ℕ) :
     (A.priceFeature n).denote V = A.price V n := by
   rw [price, value, priceFeature]
   have aux : ∀ (l : List (EF × Sentence)) (c : EF),
@@ -332,7 +332,7 @@ theorem priceFeature_denote (A : AffineCombination) (V : History) (n : ℕ) :
         ring
   exact aux A.terms A.const
 
-theorem PolySequence.priceFeature_closed {As : ℕ → AffineCombination}
+lemma PolySequence.priceFeature_closed {As : ℕ → AffineCombination}
     (h : PolySequence As) (n m : ℕ) (ρ : List ℝ) (V : History) :
     ((As n).priceFeature m).denoteWith ρ V = ((As n).priceFeature m).denote V := by
   rw [priceFeature]
@@ -356,7 +356,7 @@ theorem PolySequence.priceFeature_closed {As : ℕ → AffineCombination}
   exact aux (As n).terms (As n).const (h.const_closed n ρ V)
     (fun p hp => h.term_closed n p hp ρ V)
 
-theorem priceFeature_rank (A : AffineCombination) {k n : ℕ} (hkn : k ≤ n)
+lemma priceFeature_rank (A : AffineCombination) {k n : ℕ} (hkn : k ≤ n)
     (hc : A.const.rank ≤ k) (ht : ∀ p ∈ A.terms, p.1.rank ≤ k) :
     (A.priceFeature n).rank ≤ n := by
   rw [priceFeature]
@@ -385,20 +385,20 @@ noncomputable def magnitude (A : AffineCombination) (V : History) : ℝ :=
 noncomputable def l1Norm (A : AffineCombination) (V : History) : ℝ :=
   |A.const.denote V| + A.magnitude V
 
-theorem magnitude_nonneg (A : AffineCombination) (V : History) :
+lemma magnitude_nonneg (A : AffineCombination) (V : History) :
     0 ≤ A.magnitude V :=
   List.sum_nonneg (fun x hx => by
     simp only [List.mem_map] at hx
     obtain ⟨p, _, rfl⟩ := hx
     exact abs_nonneg _)
 
-theorem magnitude_le_l1Norm (A : AffineCombination) (V : History) :
+lemma magnitude_le_l1Norm (A : AffineCombination) (V : History) :
     A.magnitude V ≤ A.l1Norm V := by
   simp only [l1Norm]
   exact le_add_of_nonneg_left (abs_nonneg _)
 
 /-- Market prices in `[0,1]` evaluate an affine combination within its paper `L¹` norm. -/
-theorem abs_price_le_l1Norm (A : AffineCombination) (V : History) (n : ℕ)
+lemma abs_price_le_l1Norm (A : AffineCombination) (V : History) (n : ℕ)
     (hP : ∀ φ, 0 ≤ V n φ ∧ V n φ ≤ 1) :
     |A.price V n| ≤ A.l1Norm V := by
   have hsum :
@@ -435,7 +435,7 @@ structure BoundedCombinationSequence (As : ℕ → AffineCombination) (V : Histo
   poly : PolySequence As
   bounded : ∃ B : ℝ, ∀ n, (As n).l1Norm V ≤ B
 
-theorem BoundedCombinationSequence.magnitudeBounded
+lemma BoundedCombinationSequence.magnitudeBounded
     {As : ℕ → AffineCombination} {V : History}
     (h : BoundedCombinationSequence As V) :
     ∃ B : ℝ, ∀ n, (As n).magnitude V ≤ B := by
@@ -444,7 +444,7 @@ theorem BoundedCombinationSequence.magnitudeBounded
 
 /-- Two market assessments of the same affine combination differ by at most its share
 magnitude.  The affine constant again cancels. -/
-theorem abs_price_sub_price_le_magnitude (A : AffineCombination) (V : History) (m n : ℕ)
+lemma abs_price_sub_price_le_magnitude (A : AffineCombination) (V : History) (m n : ℕ)
     (hm : ∀ φ, 0 ≤ V m φ ∧ V m φ ≤ 1)
     (hn : ∀ φ, 0 ≤ V n φ ∧ V n φ ≤ 1) :
     |A.price V m - A.price V n| ≤ A.magnitude V := by
@@ -476,12 +476,12 @@ theorem abs_price_sub_price_le_magnitude (A : AffineCombination) (V : History) (
 def absFeature (e : EF) : EF :=
   .max e (.mul (.const (-1)) e)
 
-theorem absFeature_serialize (e : EF) :
+lemma absFeature_serialize (e : EF) :
     (absFeature e).serialize =
       e.serialize ++ (EF.const (-1)).serialize ++ e.serialize ++ [3, 4] := by
   simp [absFeature, EF.serialize, List.append_assoc]
 
-theorem absFeature_denoteWith (e : EF) (V : History) (ρ : List ℝ) :
+lemma absFeature_denoteWith (e : EF) (V : History) (ρ : List ℝ) :
     (absFeature e).denoteWith ρ V = |e.denoteWith ρ V| := by
   simp only [absFeature, EF.denoteWith, Rat.cast_neg, Rat.cast_one, neg_mul, one_mul]
   rw [abs_eq_max_neg]
@@ -493,7 +493,7 @@ theorem absFeature_denoteWith (e : EF) (V : History) (ρ : List ℝ) :
 def magnitudeFeature (A : AffineCombination) : EF :=
   A.terms.foldr (fun p acc => EF.add (absFeature p.1) acc) (EF.const 0)
 
-theorem magnitudeFeature_serialize (A : AffineCombination) :
+lemma magnitudeFeature_serialize (A : AffineCombination) :
     A.magnitudeFeature.serialize =
       A.terms.flatMap (fun p => (absFeature p.1).serialize) ++
         (EF.const 0).serialize ++ List.replicate A.terms.length 2 := by
@@ -511,7 +511,7 @@ theorem magnitudeFeature_serialize (A : AffineCombination) :
       simp [List.replicate_succ', List.append_assoc]
 
 /-- Uniform emission of the reified share magnitude for a polynomial affine sequence. -/
-theorem PolySequence.magnitudeFeature_polySeg {As : ℕ → AffineCombination}
+lemma PolySequence.magnitudeFeature_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) :
     PolySegStream (fun n => (As n).magnitudeFeature.serialize) := by
   obtain ⟨ccount, hcount⟩ := h.termCount_poly
@@ -537,7 +537,7 @@ theorem PolySequence.magnitudeFeature_polySeg {As : ℕ → AffineCombination}
   rw [magnitudeFeature_serialize, h.terms_eq]
   simp only [List.flatMap_map, List.length_map, List.length_range]
 
-theorem magnitudeFeature_denoteWith (A : AffineCombination) (V : History) (ρ : List ℝ) :
+lemma magnitudeFeature_denoteWith (A : AffineCombination) (V : History) (ρ : List ℝ) :
     (A.magnitudeFeature).denoteWith ρ V =
       (A.terms.map (fun p => |p.1.denoteWith ρ V|)).sum := by
   have aux : ∀ l : List (EF × Sentence),
@@ -551,12 +551,12 @@ theorem magnitudeFeature_denoteWith (A : AffineCombination) (V : History) (ρ : 
           List.map_cons, List.sum_cons, ih]
   exact aux A.terms
 
-theorem magnitudeFeature_denote (A : AffineCombination) (V : History) :
+lemma magnitudeFeature_denote (A : AffineCombination) (V : History) :
     A.magnitudeFeature.denote V = A.magnitude V := by
   rw [EF.denote, magnitudeFeature_denoteWith]
   rfl
 
-theorem PolySequence.magnitudeFeature_closed {As : ℕ → AffineCombination}
+lemma PolySequence.magnitudeFeature_closed {As : ℕ → AffineCombination}
     (h : PolySequence As) (n : ℕ) (ρ : List ℝ) (V : History) :
     (As n).magnitudeFeature.denoteWith ρ V = (As n).magnitudeFeature.denote V := by
   rw [magnitudeFeature_denoteWith, magnitudeFeature_denote, magnitude]
@@ -565,7 +565,7 @@ theorem PolySequence.magnitudeFeature_closed {As : ℕ → AffineCombination}
   intro p hp
   rw [h.term_closed n p hp ρ V]
 
-theorem magnitudeFeature_rank_le (A : AffineCombination) {n : ℕ}
+lemma magnitudeFeature_rank_le (A : AffineCombination) {n : ℕ}
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ n) : A.magnitudeFeature.rank ≤ n := by
   have aux : ∀ l : List (EF × Sentence),
       (∀ p ∈ l, p.1.rank ≤ n) →
@@ -583,11 +583,11 @@ theorem magnitudeFeature_rank_le (A : AffineCombination) {n : ℕ}
 def riskFeature (A : AffineCombination) (entry : EF) : EF :=
   EF.mul entry A.magnitudeFeature
 
-theorem riskFeature_denote (A : AffineCombination) (entry : EF) (V : History) :
+lemma riskFeature_denote (A : AffineCombination) (entry : EF) (V : History) :
     (A.riskFeature entry).denote V = entry.denote V * A.magnitude V := by
   simp [riskFeature, EF.denote_mul, magnitudeFeature_denote]
 
-theorem PolySequence.riskFeature_closed {As : ℕ → AffineCombination}
+lemma PolySequence.riskFeature_closed {As : ℕ → AffineCombination}
     (h : PolySequence As) {entry : ℕ → EF}
     (hentry : ∀ n ρ V, (entry n).denoteWith ρ V = (entry n).denote V)
     (n : ℕ) (ρ : List ℝ) (V : History) :
@@ -596,14 +596,14 @@ theorem PolySequence.riskFeature_closed {As : ℕ → AffineCombination}
   simp only [riskFeature, EF.denoteWith, EF.denote_mul, Pi.mul_apply]
   rw [hentry n ρ V, h.magnitudeFeature_closed n ρ V]
 
-theorem riskFeature_rank_le (A : AffineCombination) (entry : EF) {n : ℕ}
+lemma riskFeature_rank_le (A : AffineCombination) (entry : EF) {n : ℕ}
     (hentry : entry.rank ≤ n) (hterms : ∀ p ∈ A.terms, p.1.rank ≤ n) :
     (A.riskFeature entry).rank ≤ n := by
   simp only [riskFeature, EF.rank]
   exact Nat.max_le.mpr ⟨hentry, A.magnitudeFeature_rank_le hterms⟩
 
 /-- Uniform launch-risk emission once the entry feature is uniformly emitted. -/
-theorem PolySequence.riskFeature_polySeg {As : ℕ → AffineCombination}
+lemma PolySequence.riskFeature_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) {entry : ℕ → EF}
     (hentry : PolySegStream (fun n => (entry n).serialize)) :
     PolySegStream (fun n => ((As n).riskFeature (entry n)).serialize) :=
@@ -621,7 +621,7 @@ def buy (A : AffineCombination) (n : ℕ)
     (A.buy n hrank).trades = A.terms := rfl
 
 /-- The value of buying an affine combination is its world value minus its current price. -/
-theorem buy_value (A : AffineCombination) (V : History) (w : Valuation) (n : ℕ)
+lemma buy_value (A : AffineCombination) (V : History) (w : Valuation) (n : ℕ)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ n) :
     (A.buy n hrank).value V w = A.value V w - A.price V n := by
   simp only [Strategy.value, buy, value, price]
@@ -634,13 +634,13 @@ theorem buy_value (A : AffineCombination) (V : History) (w : Valuation) (n : ℕ
 
 /-- The magnitude of the buy strategy is exactly the affine combination's share
 magnitude. -/
-theorem buy_magnitude (A : AffineCombination) (V : History) (n : ℕ)
+lemma buy_magnitude (A : AffineCombination) (V : History) (n : ℕ)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ n) :
     (A.buy n hrank).magnitude V = A.magnitude V := rfl
 
 /-- An affine combination's world value differs from its market price by at most its
 share magnitude. The affine constant cancels, so it contributes no risk. -/
-theorem abs_value_sub_price_le_magnitude (A : AffineCombination) (V : History)
+lemma abs_value_sub_price_le_magnitude (A : AffineCombination) (V : History)
     (w : Valuation) (n : ℕ) (hrank : ∀ p ∈ A.terms, p.1.rank ≤ n)
     (hw : ∀ φ, w φ = 0 ∨ w φ = 1) (hV : ∀ φ, 0 ≤ V n φ ∧ V n φ ≤ 1) :
     |A.value V w - A.price V n| ≤ A.magnitude V := by
@@ -652,7 +652,7 @@ def scale (e : EF) (A : AffineCombination) : AffineCombination where
   const := .mul e A.const
   terms := A.terms.map (fun p => (.mul e p.1, p.2))
 
-theorem scale_value (e : EF) (A : AffineCombination) (V : History) (w : Valuation) :
+lemma scale_value (e : EF) (A : AffineCombination) (V : History) (w : Valuation) :
     (A.scale e).value V w = e.denote V * A.value V w := by
   simp only [scale, value, EF.denote_mul, Pi.mul_apply, List.map_map]
   have hsum :
@@ -669,11 +669,11 @@ theorem scale_value (e : EF) (A : AffineCombination) (V : History) (w : Valuatio
   rw [hsum]
   ring
 
-theorem scale_price (e : EF) (A : AffineCombination) (V : History) (n : ℕ) :
+lemma scale_price (e : EF) (A : AffineCombination) (V : History) (n : ℕ) :
     (A.scale e).price V n = e.denote V * A.price V n := by
   simp [price, scale_value]
 
-theorem scale_magnitude (e : EF) (A : AffineCombination) (V : History) :
+lemma scale_magnitude (e : EF) (A : AffineCombination) (V : History) :
     (A.scale e).magnitude V = |e.denote V| * A.magnitude V := by
   simp only [scale, magnitude, List.map_map]
   induction A.terms with
@@ -720,7 +720,7 @@ def PolySequence.scaleRat {As : ℕ → AffineCombination} (h : PolySequence As)
     simp only [EF.denoteWith, EF.denote_mul, EF.denote_const, Pi.mul_apply]
     rw [h.coefficient_closed z ρ V]
 
-theorem scale_terms_rank_le (e : EF) (A : AffineCombination) {n : ℕ}
+lemma scale_terms_rank_le (e : EF) (A : AffineCombination) {n : ℕ}
     (he : e.rank ≤ n) (hA : ∀ p ∈ A.terms, p.1.rank ≤ n) :
     ∀ p ∈ (A.scale e).terms, p.1.rank ≤ n := by
   intro p hp
@@ -732,15 +732,15 @@ theorem scale_terms_rank_le (e : EF) (A : AffineCombination) {n : ℕ}
 /-- Negation of an affine combination. -/
 def neg (A : AffineCombination) : AffineCombination := A.scale (.const (-1))
 
-theorem neg_value (A : AffineCombination) (V : History) (w : Valuation) :
+lemma neg_value (A : AffineCombination) (V : History) (w : Valuation) :
     A.neg.value V w = -A.value V w := by
   simp [neg, scale_value]
 
-theorem neg_price (A : AffineCombination) (V : History) (n : ℕ) :
+lemma neg_price (A : AffineCombination) (V : History) (n : ℕ) :
     A.neg.price V n = -A.price V n := by
   simp [neg, scale_price]
 
-theorem neg_magnitude (A : AffineCombination) (V : History) :
+lemma neg_magnitude (A : AffineCombination) (V : History) :
     A.neg.magnitude V = A.magnitude V := by
   simp only [neg, scale, magnitude, List.map_map]
   induction A.terms with
@@ -793,7 +793,7 @@ trips.  The lemmas below isolate their world-independent payoff; later construct
 have to choose their opening weights and verified closing days.
 -/
 
-theorem neg_terms_rank_le (A : AffineCombination) {n : ℕ}
+lemma neg_terms_rank_le (A : AffineCombination) {n : ℕ}
     (h : ∀ p ∈ A.terms, p.1.rank ≤ n) :
     ∀ p ∈ A.neg.terms, p.1.rank ≤ n := by
   intro p hp
@@ -826,20 +826,20 @@ def roundTrip (A : AffineCombination) (buyDay sellDay : ℕ) (hopen : buyDay < s
     (A.roundTrip buyDay sellDay hopen hrank).strat buyDay = A.buy buyDay hrank := by
   simp [roundTrip]
 
-theorem roundTrip_strat_close (A : AffineCombination) (buyDay sellDay : ℕ)
+lemma roundTrip_strat_close (A : AffineCombination) (buyDay sellDay : ℕ)
     (hopen : buyDay < sellDay) (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
     (A.roundTrip buyDay sellDay hopen hrank).strat sellDay =
       A.neg.buy sellDay (A.neg_terms_rank_le
         (fun p hp => (hrank p hp).trans (Nat.le_of_lt hopen))) := by
   simp [roundTrip, ne_of_gt hopen]
 
-theorem roundTrip_strat_other (A : AffineCombination) (buyDay sellDay n : ℕ)
+lemma roundTrip_strat_other (A : AffineCombination) (buyDay sellDay n : ℕ)
     (hopen : buyDay < sellDay) (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay)
     (ho : n ≠ buyDay) (hc : n ≠ sellDay) :
     (A.roundTrip buyDay sellDay hopen hrank).strat n = emptyStrategy n := by
   simp [roundTrip, ho, hc]
 
-theorem roundTrip_value_open (A : AffineCombination) (V : History) (w : Valuation)
+lemma roundTrip_value_open (A : AffineCombination) (V : History) (w : Valuation)
     (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
     ((A.roundTrip buyDay sellDay hopen hrank).strat buyDay).value V w =
@@ -847,7 +847,7 @@ theorem roundTrip_value_open (A : AffineCombination) (V : History) (w : Valuatio
   rw [roundTrip_strat_open]
   exact A.buy_value V w buyDay hrank
 
-theorem roundTrip_value_close (A : AffineCombination) (V : History) (w : Valuation)
+lemma roundTrip_value_close (A : AffineCombination) (V : History) (w : Valuation)
     (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
     ((A.roundTrip buyDay sellDay hopen hrank).strat sellDay).value V w =
@@ -857,7 +857,7 @@ theorem roundTrip_value_close (A : AffineCombination) (V : History) (w : Valuati
   rw [neg_value, neg_price]
   ring
 
-theorem roundTrip_value_other (A : AffineCombination) (V : History) (w : Valuation)
+lemma roundTrip_value_other (A : AffineCombination) (V : History) (w : Valuation)
     (buyDay sellDay n : ℕ) (hopen : buyDay < sellDay)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay)
     (ho : n ≠ buyDay) (hc : n ≠ sellDay) :
@@ -865,7 +865,7 @@ theorem roundTrip_value_other (A : AffineCombination) (V : History) (w : Valuati
   rw [roundTrip_strat_other A buyDay sellDay n hopen hrank ho hc]
   simp [emptyStrategy, Strategy.value]
 
-theorem roundTrip_magnitude_open (A : AffineCombination) (V : History)
+lemma roundTrip_magnitude_open (A : AffineCombination) (V : History)
     (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
     ((A.roundTrip buyDay sellDay hopen hrank).strat buyDay).magnitude V =
@@ -873,7 +873,7 @@ theorem roundTrip_magnitude_open (A : AffineCombination) (V : History)
   rw [roundTrip_strat_open]
   exact A.buy_magnitude V buyDay hrank
 
-theorem roundTrip_magnitude_close (A : AffineCombination) (V : History)
+lemma roundTrip_magnitude_close (A : AffineCombination) (V : History)
     (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
     ((A.roundTrip buyDay sellDay hopen hrank).strat sellDay).magnitude V =
@@ -881,7 +881,7 @@ theorem roundTrip_magnitude_close (A : AffineCombination) (V : History)
   rw [roundTrip_strat_close]
   rw [A.neg.buy_magnitude, neg_magnitude]
 
-theorem roundTrip_magnitude_other (A : AffineCombination) (V : History)
+lemma roundTrip_magnitude_other (A : AffineCombination) (V : History)
     (buyDay sellDay n : ℕ) (hopen : buyDay < sellDay)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay)
     (ho : n ≠ buyDay) (hc : n ≠ sellDay) :
@@ -889,7 +889,7 @@ theorem roundTrip_magnitude_other (A : AffineCombination) (V : History)
   rw [roundTrip_strat_other A buyDay sellDay n hopen hrank ho hc]
   simp [emptyStrategy, Strategy.magnitude]
 
-theorem roundTrip_summable (A : AffineCombination) (V : History)
+lemma roundTrip_summable (A : AffineCombination) (V : History)
     (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
     Summable (fun n =>
@@ -904,7 +904,7 @@ theorem roundTrip_summable (A : AffineCombination) (V : History)
   exact hn (roundTrip_magnitude_other A V buyDay sellDay n hopen hrank hdays.1 hdays.2)
 
 /-- A round trip moves exactly two copies of the affine share magnitude. -/
-theorem roundTrip_magnitude (A : AffineCombination) (V : History)
+lemma roundTrip_magnitude (A : AffineCombination) (V : History)
     (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
     (A.roundTrip buyDay sellDay hopen hrank).magnitude V = 2 * A.magnitude V := by
@@ -939,7 +939,7 @@ theorem roundTrip_magnitude (A : AffineCombination) (V : History)
 
 /-- After the closing day, every world assigns the round trip exactly the realized price
 difference.  All sentence holdings cancel. -/
-theorem roundTrip_netWorth (A : AffineCombination) (V : History) (v : PCWorld)
+lemma roundTrip_netWorth (A : AffineCombination) (V : History) (v : PCWorld)
     (buyDay sellDay n : ℕ) (hopen : buyDay < sellDay)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (hn : sellDay ≤ n) :
     (A.roundTrip buyDay sellDay hopen hrank).netWorth V v n =
@@ -966,7 +966,7 @@ theorem roundTrip_netWorth (A : AffineCombination) (V : History) (v : PCWorld)
 
 /-- Any realized price gain that covers `rate` times the two-sided share volume gives a
 `rate`-ROI witness, uniformly over all plausible worlds. -/
-theorem roundTrip_hasROI (A : AffineCombination) (V : History) (DP : DeductiveProcess)
+lemma roundTrip_hasROI (A : AffineCombination) (V : History) (DP : DeductiveProcess)
     (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (rate : ℝ)
     (hprofit : rate * (2 * A.magnitude V) ≤

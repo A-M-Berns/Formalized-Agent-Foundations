@@ -18,7 +18,7 @@ open Filter Topology
 noncomputable def prefixWeight (κ : Sentence → ℕ) (φ : Sentence) : ℝ :=
   1 / (2 : ℝ) ^ κ φ
 
-theorem prefixWeight_pos (κ : Sentence → ℕ) (φ : Sentence) :
+lemma prefixWeight_pos (κ : Sentence → ℕ) (φ : Sentence) :
     0 < prefixWeight κ φ := by
   simp only [prefixWeight]
   positivity
@@ -67,20 +67,22 @@ def obEmitBase {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
 
 This is a syntax-only representation boundary: it says that rational arithmetic on the
 prefix approximation can emit the gate's threshold-sum and reciprocal-width tokens in
-polynomial fuel. It contains no market prices, worlds, exploitation, or limiting bound.  Paper node: `thm:ob` (App. `ob`). -/
+polynomial fuel. It contains no market prices, worlds, exploitation, or limiting bound.
+Paper node: `thm:ob` (App. `ob`). -/
 structure OccamThresholdEmission {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) : Prop where
   threshold_sum_codes : PolyRatCodes (fun z ↦ obEmitBase U z + obEmitBase U z)
   inverse_width_codes : PolyRatCodes (fun z ↦ 1 / obEmitBase U z)
 
 /-- A fixed prefix program that negates the decoded sentence. The sole semantic content is
-the standard additive complexity overhead; it contains no prices or Occam conclusion.  Paper node: `thm:ob` (App. `ob`). -/
+the standard additive complexity overhead; it contains no prices or Occam conclusion.
+Paper node: `thm:ob` (App. `ob`). -/
 structure PrefixNegationCompiler (κ : Sentence → ℕ) where
   overhead : ℕ
   complexity_neg_le : ∀ φ, κ (∼φ) ≤ κ φ + overhead
 
 /-- Negation loses at most the compiler's fixed multiplicative Kraft factor. -/
-theorem PrefixNegationCompiler.weight_div_le_neg
+lemma PrefixNegationCompiler.weight_div_le_neg
     {κ : Sentence → ℕ} (neg : PrefixNegationCompiler κ) (φ : Sentence) :
     prefixWeight κ φ / (2 : ℝ) ^ neg.overhead ≤
       prefixWeight κ (∼φ) := by
@@ -96,7 +98,8 @@ theorem PrefixNegationCompiler.weight_div_le_neg
     _ ≤ 1 / (2 : ℝ) ^ κ (∼φ) := one_div_le_one_div_of_le hpos hpow
 
 /-- Limit coherence for a sentence and its propositional negation, obtained from the
-audited exclusive–exhaustive theorem rather than assumed as a valuation identity. -/
+audited exclusive–exhaustive lemma rather than assumed as a valuation identity.
+Paper node: `thm:lc` (App. `coherenceproofs`). -/
 theorem lic_limitingBelief_add_neg
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
@@ -145,20 +148,20 @@ def obBuySig {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
   if n < obStart j i then .const 0
   else buyIndEF (U.sentence i) (obBase U j n i) (obBase U j n i) n
 
-theorem obBuySig_denote_pad {κ : Sentence → ℕ}
+lemma obBuySig_denote_pad {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) {j i n : ℕ}
     (h : n < obStart j i) :
     (obBuySig U j i n).denote P = 0 := by
   simp [obBuySig, h]
 
-theorem obBuySig_live {κ : Sentence → ℕ}
+lemma obBuySig_live {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) {j i n : ℕ}
     (h : obStart j i ≤ n) :
     obBuySig U j i n =
       buyIndEF (U.sentence i) (obBase U j n i) (obBase U j n i) n := by
   rw [obBuySig, if_neg (by omega)]
 
-theorem obBuySig_mem {κ : Sentence → ℕ}
+lemma obBuySig_mem {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (j i n : ℕ) :
     0 ≤ (obBuySig U j i n).denote P ∧
       (obBuySig U j i n).denote P ≤ 1 := by
@@ -167,7 +170,7 @@ theorem obBuySig_mem {κ : Sentence → ℕ}
   · rw [obBuySig, if_neg h]
     exact buyInd_mem _ _ _ _ P
 
-theorem obBuySig_rank_le {κ : Sentence → ℕ}
+lemma obBuySig_rank_le {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (j i n : ℕ) :
     (obBuySig U j i n).rank ≤ n := by
   by_cases h : n < obStart j i
@@ -176,7 +179,7 @@ theorem obBuySig_rank_le {κ : Sentence → ℕ}
 
 /-- A varying sentence index and a separately varying quotation day still form a
 polynomial segment stream when both selectors and the sentence progression are fueled. -/
-theorem PolySegStream.serialize_price_sequence_at_comp
+lemma PolySegStream.serialize_price_sequence_at_comp
     {φ : ℕ → Sentence} (hφ : PolySentenceCodes φ)
     {cs cd : Nat.Partrec.Code} {sf df : ℕ → ℕ}
     (hs : PolyFueled cs sf) (hd : PolyFueled cd df) :
@@ -191,7 +194,7 @@ theorem PolySegStream.serialize_price_sequence_at_comp
     simp [EF.serialize])
 
 /-- Literal polynomial segment emission for the padded Occam buy gate. -/
-theorem obBuySig_polySegStream {κ : Sentence → ℕ}
+lemma obBuySig_polySegStream {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (emit : OccamThresholdEmission U)
     {cj ci cn : Nat.Partrec.Code} {jf if_ nf : ℕ → ℕ}
     (hj : PolyFueled cj jf) (hi : PolyFueled ci if_) (hn : PolyFueled cn nf) :
@@ -252,7 +255,7 @@ theorem obBuySig_polySegStream {κ : Sentence → ℕ}
   · have ht : nf x + 1 - obStart (jf x + 1) (if_ x) ≠ 0 := by omega
     simp [ht, obBuySig, hpad]
 
-theorem obBase_cast {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
+lemma obBase_cast {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
     (j n i : ℕ) :
     ((obBase U j n i : ℚ) : ℝ) =
       ((U.approximation n i : ℚ) : ℝ) / (2 * (j : ℝ) ^ 4) := by
@@ -260,7 +263,7 @@ theorem obBase_cast {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
   push_cast
   ring
 
-theorem obBase_pos {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
+lemma obBase_pos {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
     {j n i : ℕ} (hj : 1 ≤ j) (ha : 0 < U.approximation n i) :
     0 < ((obBase U j n i : ℚ) : ℝ) := by
   rw [obBase_cast]
@@ -274,13 +277,13 @@ noncomputable def obShares {κ : Sentence → ℕ}
     (j i n : ℕ) : ℝ :=
   (armChain (obBuySig U j i) n).denote P * (obBuySig U j i n).denote P
 
-theorem obShares_nonneg {κ : Sentence → ℕ}
+lemma obShares_nonneg {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (j i n : ℕ) :
     0 ≤ obShares U P j i n :=
   mul_nonneg (armChain_mem _ P (fun m ↦ obBuySig_mem U P j i m) n).1
     (obBuySig_mem U P j i n).1
 
-theorem obShares_pos_sig {κ : Sentence → ℕ}
+lemma obShares_pos_sig {κ : Sentence → ℕ}
     {U : PrefixMachinePresentation κ} {P : History} {j i n : ℕ}
     (h : 0 < obShares U P j i n) :
     0 < (obBuySig U j i n).denote P := by
@@ -291,7 +294,7 @@ theorem obShares_pos_sig {κ : Sentence → ℕ}
 
 /-- Positive purchases occur only below the from-below Kraft approximation divided by
 the rung capacity `j⁴`. -/
-theorem obBuySig_pos_imp {κ : Sentence → ℕ}
+lemma obBuySig_pos_imp {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History)
     {j i n : ℕ} (hj : 1 ≤ j)
     (h : 0 < (obBuySig U j i n).denote P) :
@@ -324,7 +327,7 @@ theorem obBuySig_pos_imp {κ : Sentence → ℕ}
       ring
 
 /-- A strict dip below the half-threshold purchases the entire remaining capacity. -/
-theorem obBuySig_eq_one {κ : Sentence → ℕ}
+lemma obBuySig_eq_one {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History)
     {j i n : ℕ} (hj : 1 ≤ j) (hlive : obStart j i ≤ n)
     (ha : 0 < U.approximation n i)
@@ -333,7 +336,7 @@ theorem obBuySig_eq_one {κ : Sentence → ℕ}
   rw [obBuySig_live U hlive]
   exact buyInd_eq_one (obBase_pos U hj ha) hprice
 
-theorem obShares_sum {κ : Sentence → ℕ}
+lemma obShares_sum {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History)
     {j i N : ℕ} (h : obStart j i ≤ N) :
     ∑ n ∈ Finset.Ico (obStart j i) N, obShares U P j i n =
@@ -343,7 +346,7 @@ theorem obShares_sum {κ : Sentence → ℕ}
     armChain_denote_of_le (obBuySig U j i) P
       (fun n hn ↦ obBuySig_denote_pad U P hn) (obStart j i) le_rfl]
 
-theorem obShares_sum_le_one {κ : Sentence → ℕ}
+lemma obShares_sum_le_one {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History)
     {j i N : ℕ} (h : obStart j i ≤ N) :
     ∑ n ∈ Finset.Ico (obStart j i) N, obShares U P j i n ≤ 1 := by
@@ -358,14 +361,14 @@ def obCoef {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
   .mul (.const ((j ^ 2 : ℕ) : ℚ))
     (.mul (armChain (obBuySig U j i) n) (obBuySig U j i n))
 
-theorem obCoef_denote {κ : Sentence → ℕ}
+lemma obCoef_denote {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (j i n : ℕ) :
     (obCoef U j i n).denote P = (j : ℝ) ^ 2 * obShares U P j i n := by
   simp only [obCoef, EF.denote_mul, EF.denote_const, Pi.mul_apply, obShares]
   push_cast
   norm_num
 
-theorem obCoef_rank_le {κ : Sentence → ℕ}
+lemma obCoef_rank_le {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (j i n : ℕ) :
     (obCoef U j i n).rank ≤ n := by
   have hchain := armChain_rank (obBuySig U j i)
@@ -380,7 +383,7 @@ def obSentenceEF {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
   | 0 => .const 0
   | (m + 1) => .add (obSentenceEF U n i m) (obCoef U (m + 1) i n)
 
-theorem obSentenceEF_denote {κ : Sentence → ℕ}
+lemma obSentenceEF_denote {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (n i : ℕ) : ∀ m,
     (obSentenceEF U n i m).denote P =
       ∑ k ∈ Finset.range m,
@@ -392,7 +395,7 @@ theorem obSentenceEF_denote {κ : Sentence → ℕ}
       rw [obSentenceEF_denote U P n i m, Finset.sum_range_succ,
         obCoef_denote]
 
-theorem obSentenceEF_rank_le {κ : Sentence → ℕ}
+lemma obSentenceEF_rank_le {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (n i : ℕ) : ∀ m,
     (obSentenceEF U n i m).rank ≤ n
   | 0 => by simp [obSentenceEF]
@@ -405,7 +408,7 @@ theorem obSentenceEF_rank_le {κ : Sentence → ℕ}
 /-! ## Literal token emission -/
 
 /-- Any polynomially fueled natural stream has polynomially fueled rational-cast tokens. -/
-theorem ratNatCast_codes_of_polyFueled {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
+lemma ratNatCast_codes_of_polyFueled {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
     (hf : PolyFueled cf f) : PolyRatCodes (fun x ↦ ((f x : ℕ) : ℚ)) := by
   obtain ⟨cadd, hadd⟩ := addc_polyFueled
   have hdouble := hadd.comp (hf.pair hf)
@@ -420,7 +423,7 @@ def obArmBlock {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
     (j i d : ℕ) : List ℕ :=
   (oneMinus (obBuySig U j i d)).serialize ++ [3]
 
-theorem serialize_armChain_obBuy {κ : Sentence → ℕ}
+lemma serialize_armChain_obBuy {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (j i : ℕ) : ∀ n,
     (armChain (obBuySig U j i) n).serialize =
       [1, Encodable.encode ((1 : ℚ))] ++
@@ -433,7 +436,7 @@ theorem serialize_armChain_obBuy {κ : Sentence → ℕ}
         List.flatMap_append, List.flatMap_singleton, obArmBlock]
       simp [List.append_assoc]
 
-theorem serialize_obCoef {κ : Sentence → ℕ}
+lemma serialize_obCoef {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (j i n : ℕ) :
     (obCoef U j i n).serialize =
       [1, Encodable.encode (((j ^ 2 : ℕ) : ℚ))] ++
@@ -441,7 +444,7 @@ theorem serialize_obCoef {κ : Sentence → ℕ}
         (obBuySig U j i n).serialize ++ [3, 3] := by
   simp [obCoef, EF.serialize, List.append_assoc]
 
-theorem serialize_obSentenceEF {κ : Sentence → ℕ}
+lemma serialize_obSentenceEF {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (n i : ℕ) : ∀ m,
     (obSentenceEF U n i m).serialize =
       [1, Encodable.encode ((0 : ℚ))] ++
@@ -457,7 +460,7 @@ theorem serialize_obSentenceEF {κ : Sentence → ℕ}
 
 /-- Segment emitter for the variable-width padded historical arm block. The input is
 `⟨⟨⟨n,i⟩,j'⟩,d⟩`; only `i`, `j'`, and historical day `d` enter the block. -/
-theorem obArmBlock_polySegStream {κ : Sentence → ℕ}
+lemma obArmBlock_polySegStream {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (emit : OccamThresholdEmission U) :
     PolySegStream (fun x ↦ obArmBlock U
       (x.unpair.1.unpair.2 + 1)
@@ -475,7 +478,7 @@ theorem obArmBlock_polySegStream {κ : Sentence → ℕ}
 
 /-- Segment emitter for one rung chunk of one sentence trade. The input is
 `⟨⟨n,i⟩,j'⟩`. -/
-theorem obRungChunk_polySegStream {κ : Sentence → ℕ}
+lemma obRungChunk_polySegStream {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (emit : OccamThresholdEmission U) :
     PolySegStream (fun m ↦
       (obCoef U (m.unpair.2 + 1) m.unpair.1.unpair.2
@@ -512,7 +515,7 @@ theorem obRungChunk_polySegStream {κ : Sentence → ℕ}
     List.append_assoc]
 
 /-- One fully framed sentence trade `⟨coefficient, sentence⟩`, indexed by `⟨n,i⟩`. -/
-theorem obTradeChunk_polySegStream {κ : Sentence → ℕ}
+lemma obTradeChunk_polySegStream {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (emit : OccamThresholdEmission U) :
     PolySegStream (fun z ↦ serializeTrades
       [(obSentenceEF U z.unpair.1 z.unpair.2 z.unpair.1,
@@ -547,7 +550,7 @@ def obTrader {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ) : Trader
 /-- The actual Occam trader has a token-indexed polynomial emitter. Both nested triangular
 runs use the repository's proved variable-width prefix scanner, so padding branches and
 varying rational tokens are handled literally rather than by a whole-strategy oracle. -/
-theorem obTrader_ecTok {κ : Sentence → ℕ}
+lemma obTrader_ecTok {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (emit : OccamThresholdEmission U) :
     EfficientlyComputableTok (obTrader U) := by
   have chunks := PolySegStream.concatVar
@@ -563,7 +566,7 @@ theorem obTrader_ecTok {κ : Sentence → ℕ}
 
 #print axioms obTrader_ecTok
 
-theorem obTrader_value {κ : Sentence → ℕ}
+lemma obTrader_value {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (v : Valuation) (n : ℕ) :
     ((obTrader U).strat n).value P v =
       ∑ i ∈ Finset.range n, ∑ k ∈ Finset.range n,
@@ -573,7 +576,7 @@ theorem obTrader_value {κ : Sentence → ℕ}
     obSentenceEF_denote, Finset.sum_mul]
   rfl
 
-theorem obTrader_netWorth {κ : Sentence → ℕ}
+lemma obTrader_netWorth {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (v : PCWorld) (m : ℕ) :
     (obTrader U).netWorth P v m =
       ∑ n ∈ Finset.range (m + 1),
@@ -582,7 +585,7 @@ theorem obTrader_netWorth {κ : Sentence → ℕ}
             (v.payout (U.sentence i) - P n (U.sentence i)) := by
   simp only [Trader.netWorth, obTrader_value]
 
-theorem PrefixMachinePresentation.weight_le_one {κ : Sentence → ℕ}
+lemma PrefixMachinePresentation.weight_le_one {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (i : ℕ) :
     prefixWeight κ (U.sentence i) ≤ 1 := by
   have hmem : i ∈ Finset.range (i + 1) := Finset.mem_range.mpr (by omega)
@@ -593,7 +596,7 @@ theorem PrefixMachinePresentation.weight_le_one {κ : Sentence → ℕ}
   exact hsingle.trans (U.kraft (i + 1))
 
 /-- Any-world loss of one Occam position is bounded by its allocated Kraft risk. -/
-theorem obTerm_ge {κ : Sentence → ℕ}
+lemma obTerm_ge {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (v : PCWorld)
     {j i : ℕ} (hj : 1 ≤ j) (n : ℕ) :
     -(obShares U P j i n *
@@ -629,7 +632,7 @@ theorem obTerm_ge {κ : Sentence → ℕ}
 
 /-- In a world satisfying the selected sentence, its Occam position earns the remaining
 capacity minus its Kraft-priced acquisition cost. -/
-theorem obTerm_profit {κ : Sentence → ℕ}
+lemma obTerm_profit {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (v : PCWorld)
     {j i : ℕ} (hv : v.Holds (U.sentence i)) (hj : 1 ≤ j) (n : ℕ) :
     (j : ℝ) ^ 2 * obShares U P j i n *
@@ -653,7 +656,7 @@ theorem obTerm_profit {κ : Sentence → ℕ}
   · rw [← hs0]
     norm_num
 
-theorem obShares_sum_range_le_one {κ : Sentence → ℕ}
+lemma obShares_sum_range_le_one {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (j i N : ℕ) :
     ∑ n ∈ Finset.range N, obShares U P j i n ≤ 1 := by
   by_cases hstart : obStart j i ≤ N
@@ -674,7 +677,7 @@ theorem obShares_sum_range_le_one {κ : Sentence → ℕ}
     rw [Finset.sum_eq_zero hall]
     norm_num
 
-theorem obShares_sum_range_eq_one_of_fire {κ : Sentence → ℕ}
+lemma obShares_sum_range_eq_one_of_fire {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History)
     {j i n : ℕ} (hj : 1 ≤ j) (hlive : obStart j i ≤ n)
     (ha : 0 < U.approximation n i)
@@ -697,7 +700,7 @@ theorem obShares_sum_range_eq_one_of_fire {κ : Sentence → ℕ}
 
 /-- A limiting belief below one quarter of rung `j`'s capacity-adjusted Kraft mass forces
 one later full continuous-gate trigger. -/
-theorem exists_ob_fire_of_low_limit
+lemma exists_ob_fire_of_low_limit
     {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
@@ -760,7 +763,7 @@ noncomputable def obCumulativeRisk {κ : Sentence → ℕ}
       (prefixWeight κ (U.sentence i) / ((k + 1 : ℕ) : ℝ) ^ 2)
 
 /-- The Occam ladder risks at most `Σ_j 1/j² ≤ 2` over its entire history. -/
-theorem obCumulativeRisk_le_two {κ : Sentence → ℕ}
+lemma obCumulativeRisk_le_two {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (N : ℕ) :
     obCumulativeRisk U P N ≤ 2 := by
   have hnonneg : ∀ j i n,
@@ -858,7 +861,7 @@ theorem obCumulativeRisk_le_two {κ : Sentence → ℕ}
     _ ≤ 2 := sum_inv_sq_le_two N
 
 /-- Every plausible-world assessment of the Occam ladder is bounded below by `-2`. -/
-theorem obTrader_netWorth_ge_neg_two {κ : Sentence → ℕ}
+lemma obTrader_netWorth_ge_neg_two {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (v : PCWorld) (m : ℕ) :
     -2 ≤ (obTrader U).netWorth P v m := by
   rw [obTrader_netWorth]
@@ -888,14 +891,14 @@ noncomputable def obAdjustedTerm {κ : Sentence → ℕ}
     obShares U P j i n *
       (prefixWeight κ (U.sentence i) / (j : ℝ) ^ 2)
 
-theorem obAdjustedTerm_nonneg {κ : Sentence → ℕ}
+lemma obAdjustedTerm_nonneg {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (v : PCWorld)
     {j : ℕ} (hj : 1 ≤ j) (i n : ℕ) :
     0 ≤ obAdjustedTerm U P v j i n := by
   dsimp [obAdjustedTerm]
   linarith [obTerm_ge U P v (j := j) (i := i) hj n]
 
-theorem obTargetAdjusted_sum_ge {κ : Sentence → ℕ}
+lemma obTargetAdjusted_sum_ge {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (v : PCWorld)
     {j i n : ℕ} (hj : 1 ≤ j) (hv : v.Holds (U.sentence i))
     (hlive : obStart j i ≤ n) (ha : 0 < U.approximation n i)
@@ -930,7 +933,7 @@ theorem obTargetAdjusted_sum_ge {κ : Sentence → ℕ}
 
 /-- The selected target's adjusted lifetime value is contained in the full triangular
 portfolio sum. -/
-theorem obTargetAdjusted_le_triangle {κ : Sentence → ℕ}
+lemma obTargetAdjusted_le_triangle {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (v : PCWorld)
     {j i n : ℕ} (hj : 1 ≤ j) :
     ∑ d ∈ Finset.range (n + 1), obAdjustedTerm U P v j i d ≤
@@ -972,7 +975,7 @@ theorem obTargetAdjusted_le_triangle {κ : Sentence → ℕ}
     exact Finset.sum_nonneg (fun r _ ↦ Finset.sum_nonneg
       (fun k _ ↦ obAdjustedTerm_nonneg U P v (by omega) r d))
 
-theorem obNetWorth_add_risk {κ : Sentence → ℕ}
+lemma obNetWorth_add_risk {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (v : PCWorld) (m : ℕ) :
     (obTrader U).netWorth P v m + obCumulativeRisk U P (m + 1) =
       ∑ n ∈ Finset.range (m + 1), ∑ i ∈ Finset.range n,
@@ -991,7 +994,7 @@ theorem obNetWorth_add_risk {κ : Sentence → ℕ}
 
 /-- The Occam ladder genuinely exploits whenever every rung finds one sufficiently
 underpriced sentence that remains propositionally possible. -/
-theorem obTrader_exploits {κ : Sentence → ℕ}
+lemma obTrader_exploits {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (DP : DeductiveProcess)
     (hfire : ∀ j, 1 ≤ j → ∃ i n, ∃ v : PCWorld,
       obStart j i ≤ n ∧ 0 < U.approximation n i ∧

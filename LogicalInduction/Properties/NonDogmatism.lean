@@ -46,7 +46,7 @@ def twoPowChain : ℕ → EF
   | 0 => rfl
   | (k + 1) => by rw [twoPowChain, EF.rank, twoPowChain_rank k]; rfl
 
-theorem serialize_twoPowChain : ∀ k,
+lemma serialize_twoPowChain : ∀ k,
     (twoPowChain k).serialize
       = [1, Encodable.encode (2 : ℚ)]
         ++ (List.range k).flatMap (fun _ => [1, Encodable.encode (2 : ℚ), 3])
@@ -63,13 +63,13 @@ def ndBeta (φ : Sentence) (n : ℕ) : EF :=
   .max (.const 0)
     (.add (.const 1) (.mul (.const (-1)) (.mul (twoPowChain n) (.price φ n))))
 
-theorem ndBeta_denote (φ : Sentence) (P : History) (n : ℕ) :
+lemma ndBeta_denote (φ : Sentence) (P : History) (n : ℕ) :
     (ndBeta φ n).denote P = max 0 (1 - 2 ^ (n + 1) * P n φ) := by
   simp only [ndBeta, EF.denote_max, EF.denote_add, EF.denote_mul, EF.denote_const,
     EF.denote_price, twoPowChain_denote, Pi.add_apply, Pi.mul_apply]
   norm_num [sub_eq_add_neg, neg_mul]
 
-theorem ndBeta_rank (φ : Sentence) (n : ℕ) : (ndBeta φ n).rank ≤ n := by
+lemma ndBeta_rank (φ : Sentence) (n : ℕ) : (ndBeta φ n).rank ≤ n := by
   simp [ndBeta, EF.rank]
 
 /-- The non-dogmatism trader: `β n` shares of `φ` daily. -/
@@ -82,20 +82,20 @@ def ndTrader (φ : Sentence) : Trader where
     ((ndTrader φ).strat n).value V w = (ndBeta φ n).denote V * (w φ - V n φ) := by
   simp [ndTrader, Strategy.value]
 
-theorem ndTrader_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) :
+lemma ndTrader_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) :
     (ndTrader φ).netWorth V v m
       = ∑ i ∈ Finset.range (m + 1), (ndBeta φ i).denote V * (v.payout φ - V i φ) := by
   simp [Trader.netWorth]
 
 /-! ### The economics -/
 
-theorem ndBeta_nonneg (φ : Sentence) (P : History) (n : ℕ) :
+lemma ndBeta_nonneg (φ : Sentence) (P : History) (n : ℕ) :
     0 ≤ (ndBeta φ n).denote P := by
   rw [ndBeta_denote]; exact le_max_left _ _
 
 /-- Day-`n` spend bound: `β n · Pₙφ ≤ 2^{-(n+1)}` (support of the signal is
 `Pₙφ < 2^{-(n+1)}` and `β ≤ 1` there). -/
-theorem ndBeta_mul_price_le (φ : Sentence) (P : History) (n : ℕ) (hP0 : 0 ≤ P n φ) :
+lemma ndBeta_mul_price_le (φ : Sentence) (P : History) (n : ℕ) (hP0 : 0 ≤ P n φ) :
     (ndBeta φ n).denote P * P n φ ≤ 1 / 2 ^ (n + 1) := by
   rw [ndBeta_denote]
   have h2 : (0:ℝ) < 2 ^ (n + 1) := by positivity
@@ -110,7 +110,7 @@ theorem ndBeta_mul_price_le (φ : Sentence) (P : History) (n : ℕ) (hP0 : 0 ≤
       _ ≤ 1 / 2 ^ (n + 1) := hP
 
 /-- `∑_{i<m} 2^{-(i+1)} ≤ 1` — the total spend bound. -/
-theorem sum_inv_twoPow_le_one (m : ℕ) :
+lemma sum_inv_twoPow_le_one (m : ℕ) :
     ∑ i ∈ Finset.range m, (1:ℝ) / 2 ^ (i + 1) ≤ 1 := by
   have key : ∀ k, ∑ i ∈ Finset.range k, (1:ℝ) / 2 ^ (i + 1) = 1 - 1 / 2 ^ k := by
     intro k
@@ -127,7 +127,7 @@ theorem sum_inv_twoPow_le_one (m : ℕ) :
 
 /-- On a dip day (`Pₙφ < 2^{-(n+2)}`), the `φ`-world term banks at least `1/4`:
 the signal is ≥ `1/2` and the share pays `1 − Pₙφ ≥ 1/2`. -/
-theorem ndBeta_trigger (φ : Sentence) (P : History) (n : ℕ)
+lemma ndBeta_trigger (φ : Sentence) (P : History) (n : ℕ)
     (hP0 : 0 ≤ P n φ) (htrig : P n φ < 1 / 2 ^ (n + 2)) :
     (1:ℝ)/4 ≤ (ndBeta φ n).denote P * (1 - P n φ) := by
   rw [ndBeta_denote]
@@ -212,7 +212,7 @@ theorem serialize_ndBeta (φ : Sentence) (n : ℕ) :
 
 /-- `ndTrader φ` is efficiently computable: its stream is 8 head tokens, `n` homogeneous
 width-3 blocks (the pow-chain), and a 9-token tail carrying the day index. -/
-theorem ndTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (ndTrader φ) := by
+lemma ndTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (ndTrader φ) := by
   refine ecTok_of_blockStream _
     [fun _ => 1, fun _ => Encodable.encode (0:ℚ), fun _ => 1, fun _ => Encodable.encode (1:ℚ),
      fun _ => 1, fun _ => Encodable.encode (-1:ℚ), fun _ => 1, fun _ => Encodable.encode (2:ℚ)]
@@ -306,15 +306,15 @@ def armChain (sig : ℕ → EF) : ℕ → EF
   | 0 => .const 1
   | (n + 1) => .mul (armChain sig n) (oneMinus (sig n))
 
-theorem armChain_denote_zero (sig : ℕ → EF) (P : History) :
+lemma armChain_denote_zero (sig : ℕ → EF) (P : History) :
     (armChain sig 0).denote P = 1 := by simp [armChain]
 
-theorem armChain_denote_succ (sig : ℕ → EF) (P : History) (n : ℕ) :
+lemma armChain_denote_succ (sig : ℕ → EF) (P : History) (n : ℕ) :
     (armChain sig (n + 1)).denote P
       = (armChain sig n).denote P * (1 - (sig n).denote P) := by
   simp [armChain, EF.denote_mul, Pi.mul_apply, oneMinus_denote]
 
-theorem armChain_mem (sig : ℕ → EF) (P : History)
+lemma armChain_mem (sig : ℕ → EF) (P : History)
     (hs : ∀ i, 0 ≤ (sig i).denote P ∧ (sig i).denote P ≤ 1) :
     ∀ n, 0 ≤ (armChain sig n).denote P ∧ (armChain sig n).denote P ≤ 1
   | 0 => by rw [armChain_denote_zero]; norm_num
@@ -327,7 +327,7 @@ theorem armChain_mem (sig : ℕ → EF) (P : History)
       · nlinarith
 
 /-- Padded-start rungs stay fully armed until their start day. -/
-theorem armChain_denote_of_le (sig : ℕ → EF) (P : History) {j : ℕ}
+lemma armChain_denote_of_le (sig : ℕ → EF) (P : History) {j : ℕ}
     (hpad : ∀ i < j, (sig i).denote P = 0) :
     ∀ n, n ≤ j → (armChain sig n).denote P = 1 := by
   intro n
@@ -339,7 +339,7 @@ theorem armChain_denote_of_le (sig : ℕ → EF) (P : History) {j : ℕ}
       ring
 
 /-- The shares telescope: `Σ_{n ∈ [j, N)} armChain·sig = armChain j − armChain N`. -/
-theorem armChain_shares_sum (sig : ℕ → EF) (P : History) {j N : ℕ} (h : j ≤ N) :
+lemma armChain_shares_sum (sig : ℕ → EF) (P : History) {j N : ℕ} (h : j ≤ N) :
     ∑ n ∈ Finset.Ico j N, (armChain sig n).denote P * (sig n).denote P
       = (armChain sig j).denote P - (armChain sig N).denote P := by
   induction N, h using Nat.le_induction with
@@ -348,7 +348,7 @@ theorem armChain_shares_sum (sig : ℕ → EF) (P : History) {j N : ℕ} (h : j 
       rw [Finset.sum_Ico_succ_top hN, ih, armChain_denote_succ]
       ring
 
-theorem armChain_rank (sig : ℕ → EF) (hs : ∀ i, (sig i).rank ≤ i) :
+lemma armChain_rank (sig : ℕ → EF) (hs : ∀ i, (sig i).rank ≤ i) :
     ∀ n, (armChain sig n).rank ≤ n - 1
   | 0 => by simp [armChain]
   | (n + 1) => by
@@ -368,16 +368,16 @@ def ndThr (j : ℕ) : ℚ := 1 / (2 * (j : ℚ) ^ 3)
 `ctsind` that is identically `0`, since `1/0 = 0` in `ℚ`), `ndThr j` from day `j` on. -/
 def ndPadThr (j n : ℕ) : ℚ := if n < j then 0 else ndThr j
 
-theorem ndThr_cast (j : ℕ) : ((ndThr j : ℚ) : ℝ) = 1 / (2 * (j : ℝ) ^ 3) := by
+lemma ndThr_cast (j : ℕ) : ((ndThr j : ℚ) : ℝ) = 1 / (2 * (j : ℝ) ^ 3) := by
   rw [ndThr]; push_cast; ring
 
-theorem ndThr_pos {j : ℕ} (hj : 1 ≤ j) : 0 < ((ndThr j : ℚ) : ℝ) := by
+lemma ndThr_pos {j : ℕ} (hj : 1 ≤ j) : 0 < ((ndThr j : ℚ) : ℝ) := by
   rw [ndThr_cast]
   have h1 : (1 : ℝ) ≤ (j : ℝ) := by exact_mod_cast hj
   have h0 : (0 : ℝ) < (j : ℝ) := lt_of_lt_of_le one_pos h1
   exact div_pos one_pos (by nlinarith [pow_pos h0 3])
 
-theorem ndThr_double {j : ℕ} (hj : 1 ≤ j) :
+lemma ndThr_double {j : ℕ} (hj : 1 ≤ j) :
     ((ndThr j : ℚ) : ℝ) + ((ndThr j : ℚ) : ℝ) = 1 / (j : ℝ) ^ 3 := by
   rw [ndThr_cast]
   have h1 : (1 : ℝ) ≤ (j : ℝ) := by exact_mod_cast hj
@@ -386,13 +386,13 @@ theorem ndThr_double {j : ℕ} (hj : 1 ≤ j) :
   field_simp
   ring
 
-theorem ndCube_le_one {j : ℕ} (hj : 1 ≤ j) : 1 / (j : ℝ) ^ 3 ≤ 1 := by
+lemma ndCube_le_one {j : ℕ} (hj : 1 ≤ j) : 1 / (j : ℝ) ^ 3 ≤ 1 := by
   have h1 : (1 : ℝ) ≤ (j : ℝ) := by exact_mod_cast hj
   have h0 : (0 : ℝ) < (j : ℝ) := lt_of_lt_of_le one_pos h1
   rw [div_le_one (pow_pos h0 3)]
   exact one_le_pow₀ h1
 
-theorem ndWeight_mul {j : ℕ} (hj : 1 ≤ j) :
+lemma ndWeight_mul {j : ℕ} (hj : 1 ≤ j) :
     (j : ℝ) * (1 / (j : ℝ) ^ 3) = 1 / (j : ℝ) ^ 2 := by
   have h1 : (1 : ℝ) ≤ (j : ℝ) := by exact_mod_cast hj
   have h0 : (j : ℝ) ≠ 0 := ne_of_gt (lt_of_lt_of_le one_pos h1)
@@ -404,20 +404,20 @@ theorem ndWeight_mul {j : ℕ} (hj : 1 ≤ j) :
 `0` before (the `δ = 0` padding). -/
 def ndBuySig (φ : Sentence) (j i : ℕ) : EF := buyIndEF φ (ndThr j) (ndPadThr j i) i
 
-theorem ndBuySig_live (φ : Sentence) {j i : ℕ} (h : j ≤ i) :
+lemma ndBuySig_live (φ : Sentence) {j i : ℕ} (h : j ≤ i) :
     ndBuySig φ j i = buyIndEF φ (ndThr j) (ndThr j) i := by
   rw [ndBuySig, ndPadThr, if_neg (by omega)]
 
-theorem ndBuySig_denote_pad (φ : Sentence) (P : History) {j i : ℕ} (h : i < j) :
+lemma ndBuySig_denote_pad (φ : Sentence) (P : History) {j i : ℕ} (h : i < j) :
     (ndBuySig φ j i).denote P = 0 := by
   rw [ndBuySig, ndPadThr, if_pos h, buyIndEF_denote]
   norm_num
 
-theorem ndBuySig_mem (φ : Sentence) (P : History) (j i : ℕ) :
+lemma ndBuySig_mem (φ : Sentence) (P : History) (j i : ℕ) :
     0 ≤ (ndBuySig φ j i).denote P ∧ (ndBuySig φ j i).denote P ≤ 1 :=
   buyInd_mem φ _ _ i P
 
-theorem ndBuySig_pos_imp (φ : Sentence) (P : History) {j i : ℕ} (hj : 1 ≤ j)
+lemma ndBuySig_pos_imp (φ : Sentence) (P : History) {j i : ℕ} (hj : 1 ≤ j)
     (h : 0 < (ndBuySig φ j i).denote P) : P i φ < 1 / (j : ℝ) ^ 3 := by
   rcases lt_or_ge i j with hij | hij
   · rw [ndBuySig_denote_pad φ P hij] at h
@@ -426,12 +426,12 @@ theorem ndBuySig_pos_imp (φ : Sentence) (P : History) {j i : ℕ} (hj : 1 ≤ j
     have hlt := buyInd_pos_imp (ndThr_pos hj) h
     rwa [ndThr_double hj] at hlt
 
-theorem ndBuySig_eq_one (φ : Sentence) (P : History) {j i : ℕ} (hj : 1 ≤ j) (hlive : j ≤ i)
+lemma ndBuySig_eq_one (φ : Sentence) (P : History) {j i : ℕ} (hj : 1 ≤ j) (hlive : j ≤ i)
     (h : P i φ < ((ndThr j : ℚ) : ℝ)) : (ndBuySig φ j i).denote P = 1 := by
   rw [ndBuySig_live φ hlive]
   exact buyInd_eq_one (ndThr_pos hj) h
 
-theorem ndBuySig_rank (φ : Sentence) (j i : ℕ) : (ndBuySig φ j i).rank = i :=
+lemma ndBuySig_rank (φ : Sentence) (j i : ℕ) : (ndBuySig φ j i).rank = i :=
   buyIndEF_rank φ _ _ i
 
 /-- Day-`n` shares bought by rung `j` (per unit of the coefficient constant `j`):
@@ -439,11 +439,11 @@ theorem ndBuySig_rank (φ : Sentence) (j i : ℕ) : (ndBuySig φ j i).rank = i :
 noncomputable def ndShares (φ : Sentence) (P : History) (j n : ℕ) : ℝ :=
   (armChain (ndBuySig φ j) n).denote P * (ndBuySig φ j n).denote P
 
-theorem ndShares_nonneg (φ : Sentence) (P : History) (j n : ℕ) : 0 ≤ ndShares φ P j n :=
+lemma ndShares_nonneg (φ : Sentence) (P : History) (j n : ℕ) : 0 ≤ ndShares φ P j n :=
   mul_nonneg (armChain_mem _ P (fun i => ndBuySig_mem φ P j i) n).1
     (ndBuySig_mem φ P j n).1
 
-theorem ndShares_pos_sig {φ : Sentence} {P : History} {j n : ℕ}
+lemma ndShares_pos_sig {φ : Sentence} {P : History} {j n : ℕ}
     (h : 0 < ndShares φ P j n) : 0 < (ndBuySig φ j n).denote P := by
   rcases (ndBuySig_mem φ P j n).1.lt_or_eq with hs | hs
   · exact hs
@@ -451,7 +451,7 @@ theorem ndShares_pos_sig {φ : Sentence} {P : History} {j n : ℕ}
     exact absurd h (lt_irrefl 0)
 
 /-- Rung-`j` lifetime shares by day `N`: exactly the arming drop, hence `≤ 1`. -/
-theorem ndShares_sum (φ : Sentence) (P : History) {j N : ℕ} (h : j ≤ N) :
+lemma ndShares_sum (φ : Sentence) (P : History) {j N : ℕ} (h : j ≤ N) :
     ∑ n ∈ Finset.Ico j N, ndShares φ P j n
       = 1 - (armChain (ndBuySig φ j) N).denote P := by
   simp only [ndShares]
@@ -459,7 +459,7 @@ theorem ndShares_sum (φ : Sentence) (P : History) {j N : ℕ} (h : j ≤ N) :
     armChain_denote_of_le (ndBuySig φ j) P
       (fun i hi => ndBuySig_denote_pad φ P hi) j le_rfl]
 
-theorem ndShares_sum_le_one (φ : Sentence) (P : History) {j N : ℕ} (h : j ≤ N) :
+lemma ndShares_sum_le_one (φ : Sentence) (P : History) {j N : ℕ} (h : j ≤ N) :
     ∑ n ∈ Finset.Ico j N, ndShares φ P j n ≤ 1 := by
   rw [ndShares_sum φ P h]
   have := (armChain_mem (ndBuySig φ j) P (fun i => ndBuySig_mem φ P j i) N).1
@@ -470,13 +470,13 @@ weight `1/j²` each, i.e. coefficient constant `j³/j² = j`. -/
 def ndCoef (φ : Sentence) (j n : ℕ) : EF :=
   .mul (.const (j : ℚ)) (.mul (armChain (ndBuySig φ j) n) (ndBuySig φ j n))
 
-theorem ndCoef_denote (φ : Sentence) (P : History) (j n : ℕ) :
+lemma ndCoef_denote (φ : Sentence) (P : History) (j n : ℕ) :
     (ndCoef φ j n).denote P = (j : ℝ) * ndShares φ P j n := by
   simp only [ndCoef, EF.denote_mul, EF.denote_const, Pi.mul_apply, ndShares]
   push_cast
   ring
 
-theorem ndCoef_rank (φ : Sentence) (j n : ℕ) : (ndCoef φ j n).rank ≤ n := by
+lemma ndCoef_rank (φ : Sentence) (j n : ℕ) : (ndCoef φ j n).rank ≤ n := by
   have h1 := armChain_rank (ndBuySig φ j) (fun i => (ndBuySig_rank φ j i).le) n
   have h2 := (ndBuySig_rank φ j n).le
   simp only [ndCoef, EF.rank, max_le_iff]
@@ -489,7 +489,7 @@ def ndLadderEF (φ : Sentence) (n : ℕ) : ℕ → EF
   | 0 => .const 0
   | (m + 1) => .add (ndLadderEF φ n m) (ndCoef φ (m + 1) n)
 
-theorem ndLadderEF_denote (φ : Sentence) (P : History) (n : ℕ) : ∀ m,
+lemma ndLadderEF_denote (φ : Sentence) (P : History) (n : ℕ) : ∀ m,
     (ndLadderEF φ n m).denote P
       = ∑ k ∈ Finset.range m, ((k + 1 : ℕ) : ℝ) * ndShares φ P (k + 1) n
   | 0 => by simp [ndLadderEF]
@@ -498,7 +498,7 @@ theorem ndLadderEF_denote (φ : Sentence) (P : History) (n : ℕ) : ∀ m,
       simp only [EF.denote_add, Pi.add_apply]
       rw [ndLadderEF_denote φ P n m, Finset.sum_range_succ, ndCoef_denote]
 
-theorem ndLadderEF_rank (φ : Sentence) (n : ℕ) : ∀ m, (ndLadderEF φ n m).rank ≤ n
+lemma ndLadderEF_rank (φ : Sentence) (n : ℕ) : ∀ m, (ndLadderEF φ n m).rank ≤ n
   | 0 => by simp [ndLadderEF]
   | (m + 1) => by
       have h1 := ndLadderEF_rank φ n m
@@ -521,7 +521,7 @@ def ndLadderTrader (φ : Sentence) : Trader where
       = (ndLadderEF φ n n).denote V * (w φ - V n φ) := by
   simp [ndLadderTrader, Strategy.value]
 
-theorem ndLadderTrader_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) :
+lemma ndLadderTrader_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) :
     (ndLadderTrader φ).netWorth V v m
       = ∑ n ∈ Finset.range (m + 1), ∑ k ∈ Finset.range n,
           ((k + 1 : ℕ) : ℝ) * ndShares φ V (k + 1) n * (v.payout φ - V n φ) := by
@@ -530,14 +530,14 @@ theorem ndLadderTrader_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m :
 /-! ### The economics -/
 
 /-- Triangle swap for the ladder's double sums. -/
-private theorem sum_range_triangle_comm (f : ℕ → ℕ → ℝ) (N : ℕ) :
+private lemma sum_range_triangle_comm (f : ℕ → ℕ → ℝ) (N : ℕ) :
     ∑ n ∈ Finset.range N, ∑ k ∈ Finset.range n, f k n
       = ∑ k ∈ Finset.range N, ∑ n ∈ Finset.Ico (k + 1) N, f k n := by
   simp only [Finset.range_eq_Ico]
   exact (Finset.sum_Ico_Ico_comm' 0 N (fun k n => f k n)).symm
 
 /-- `Σ_{k<M} 1/(k+1)² ≤ 2` — the ladder's total-spend bound. -/
-theorem sum_inv_sq_le_two (M : ℕ) :
+lemma sum_inv_sq_le_two (M : ℕ) :
     ∑ k ∈ Finset.range M, (1 : ℝ) / ((k + 1 : ℕ) : ℝ) ^ 2 ≤ 2 := by
   have key : ∀ N : ℕ, 1 ≤ N →
       ∑ k ∈ Finset.range N, (1 : ℝ) / ((k + 1 : ℕ) : ℝ) ^ 2 ≤ 2 - 1 / (N : ℝ) := by
@@ -563,7 +563,7 @@ theorem sum_inv_sq_le_two (M : ℕ) :
 
 /-- In **any** world, the rung-`j` day-`n` value term loses at most `shares/j²`
 (spend happens only below the price `1/j³`, and `j·(1/j³) = 1/j²`). -/
-theorem ndTerm_ge (φ : Sentence) (P : History) (v : PCWorld) {j : ℕ} (hj : 1 ≤ j)
+lemma ndTerm_ge (φ : Sentence) (P : History) (v : PCWorld) {j : ℕ} (hj : 1 ≤ j)
     (n : ℕ) : -(ndShares φ P j n * (1 / (j : ℝ) ^ 2))
       ≤ (j : ℝ) * ndShares φ P j n * (v.payout φ - P n φ) := by
   have hb := ndShares_nonneg φ P j n
@@ -582,7 +582,7 @@ theorem ndTerm_ge (φ : Sentence) (P : History) (v : PCWorld) {j : ℕ} (hj : 1 
     norm_num
 
 /-- In a `φ`-world every rung's term is a gain: shares are bought below `1/j³ ≤ 1`. -/
-theorem ndTerm_nonneg (φ : Sentence) (P : History) (v : PCWorld) (hv : v.Holds φ)
+lemma ndTerm_nonneg (φ : Sentence) (P : History) (v : PCWorld) (hv : v.Holds φ)
     {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
     0 ≤ (j : ℝ) * ndShares φ P j n * (v.payout φ - P n φ) := by
   have hb := ndShares_nonneg φ P j n
@@ -597,7 +597,7 @@ theorem ndTerm_nonneg (φ : Sentence) (P : History) (v : PCWorld) (hv : v.Holds 
     norm_num
 
 /-- In a `φ`-world the rung-`j` term banks at least `j·shares·(1 − 1/j³)`. -/
-theorem ndTerm_profit (φ : Sentence) (P : History) (v : PCWorld) (hv : v.Holds φ)
+lemma ndTerm_profit (φ : Sentence) (P : History) (v : PCWorld) (hv : v.Holds φ)
     {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
     (j : ℝ) * ndShares φ P j n * (1 - 1 / (j : ℝ) ^ 3)
       ≤ (j : ℝ) * ndShares φ P j n * (v.payout φ - P n φ) := by
@@ -708,18 +708,18 @@ poly-fueled arithmetic for the rung-varying encoded constants
 
 theorem encode_rat_zero : Encodable.encode ((0 : ℚ)) = 1 := rfl
 
-theorem ndThr_eq_inv (j : ℕ) : ndThr j = ((2 * j ^ 3 : ℕ) : ℚ)⁻¹ := by
+lemma ndThr_eq_inv (j : ℕ) : ndThr j = ((2 * j ^ 3 : ℕ) : ℚ)⁻¹ := by
   rw [ndThr, one_div]
   norm_cast
 
-theorem encode_ndThr {j : ℕ} (hj : 1 ≤ j) :
+lemma encode_ndThr {j : ℕ} (hj : 1 ≤ j) :
     Encodable.encode (ndThr j) = Nat.pair 2 (2 * j ^ 3) := by
   have h3 : 0 < 2 * j ^ 3 := by
     have := pow_pos (show 0 < j by omega) 3
     omega
   rw [ndThr_eq_inv, encode_rat_inv_natCast h3]
 
-theorem encode_ndThr_double {j : ℕ} (hj : 1 ≤ j) :
+lemma encode_ndThr_double {j : ℕ} (hj : 1 ≤ j) :
     Encodable.encode (ndThr j + ndThr j) = Nat.pair 2 (j ^ 3) := by
   have h3 : 0 < j ^ 3 := pow_pos (show 0 < j by omega) 3
   have heq : ndThr j + ndThr j = ((j ^ 3 : ℕ) : ℚ)⁻¹ := by
@@ -732,7 +732,7 @@ theorem encode_ndThr_double {j : ℕ} (hj : 1 ≤ j) :
     ring
   rw [heq, encode_rat_inv_natCast h3]
 
-theorem encode_ndThr_recip {j : ℕ} (_hj : 1 ≤ j) :
+lemma encode_ndThr_recip {j : ℕ} (_hj : 1 ≤ j) :
     Encodable.encode (1 / ndThr j) = Nat.pair (4 * j ^ 3) 1 := by
   have heq : (1 : ℚ) / ndThr j = ((2 * j ^ 3 : ℕ) : ℚ) := by
     rw [ndThr, one_div_one_div]
@@ -741,7 +741,7 @@ theorem encode_ndThr_recip {j : ℕ} (_hj : 1 ≤ j) :
   rw [heq, encode_rat_natCast, show 2 * (2 * j ^ 3) = 4 * j ^ 3 from by ring]
 
 /-- Poly-fueled cube `(j' + 1)³` from a poly-fueled extractor. -/
-theorem cube_succ_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ}
+lemma cube_succ_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ}
     (hj : PolyFueled cj j'f) : ∃ c, PolyFueled c (fun m => (j'f m + 1) ^ 3) := by
   obtain ⟨cmul, hmul⟩ := mul_polyFueled
   have hj1 := hj.succ_comp
@@ -754,7 +754,7 @@ theorem cube_succ_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ}
 
 /-- Poly-fueled emission of the padded threshold-sum token
 `⌜ndThr (j'+1) + ndPadThr (j'+1) i⌝` (pad below the rung's start day, live after). -/
-theorem encode_thrSum_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → ℕ}
+lemma encode_thrSum_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → ℕ}
     (hj : PolyFueled cj j'f) (hi : PolyFueled ci if_) :
     ∃ c, PolyFueled c (fun m =>
       Encodable.encode (ndThr (j'f m + 1) + ndPadThr (j'f m + 1) (if_ m))) := by
@@ -776,7 +776,7 @@ theorem encode_thrSum_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → �
 
 /-- Poly-fueled emission of the padded slope token `⌜1 / ndPadThr (j'+1) i⌝`
 (`⌜0⌝ = 1` in the pad region, `⌜2(j'+1)³⌝` live). -/
-theorem encode_thrRecip_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → ℕ}
+lemma encode_thrRecip_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → ℕ}
     (hj : PolyFueled cj j'f) (hi : PolyFueled ci if_) :
     ∃ c, PolyFueled c (fun m =>
       Encodable.encode (1 / ndPadThr (j'f m + 1) (if_ m))) := by
@@ -799,7 +799,7 @@ theorem encode_thrRecip_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ →
       encode_ndThr_recip (by omega : 1 ≤ j'f m + 1)]
 
 /-- Poly-fueled emission of the rung-weight token `⌜((j'+1 : ℕ) : ℚ)⌝`. -/
-theorem encode_ratCast_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ}
+lemma encode_ratCast_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ}
     (hj : PolyFueled cj j'f) :
     ∃ c, PolyFueled c (fun m => Encodable.encode (((j'f m + 1 : ℕ) : ℚ))) := by
   obtain ⟨cad, had⟩ := addc_polyFueled
@@ -814,7 +814,7 @@ theorem encode_ratCast_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ}
 def ndArmBlock (φ : Sentence) (j i : ℕ) : List ℕ :=
   (oneMinus (ndBuySig φ j i)).serialize ++ [3]
 
-theorem ndArmBlock_tokenStream (φ : Sentence) :
+lemma ndArmBlock_tokenStream (φ : Sentence) :
     PolyTokenStream (fun x => ndArmBlock φ (x.unpair.1.unpair.2 + 1) x.unpair.2) := by
   have hbuy : PolyTokenStream (fun x =>
       (ndBuySig φ (x.unpair.1.unpair.2 + 1) x.unpair.2).serialize) :=
@@ -827,15 +827,15 @@ theorem ndArmBlock_tokenStream (φ : Sentence) :
   exact (PolyTokenStream.serialize_oneMinus hbuy).append (PolyTokenStream.const 3)
 
 /-- Arm blocks have rung- and day-independent width (only token values vary). -/
-theorem ndArmBlock_length (φ : Sentence) (j i : ℕ) :
+lemma ndArmBlock_length (φ : Sentence) (j i : ℕ) :
     (ndArmBlock φ j i).length = (ndArmBlock φ 1 0).length := by
   simp [ndArmBlock, ndBuySig, buyIndEF, oneMinus, clip01, efMin, EF.serialize]
 
-theorem serialize_ndBuySig_length (φ : Sentence) (j i : ℕ) :
+lemma serialize_ndBuySig_length (φ : Sentence) (j i : ℕ) :
     (ndBuySig φ j i).serialize.length = (ndBuySig φ 1 0).serialize.length := by
   simp [ndBuySig, buyIndEF, clip01, efMin, EF.serialize]
 
-theorem serialize_armChain_ndBuy (φ : Sentence) (j : ℕ) : ∀ n,
+lemma serialize_armChain_ndBuy (φ : Sentence) (j : ℕ) : ∀ n,
     (armChain (ndBuySig φ j) n).serialize
       = [1, Encodable.encode ((1 : ℚ))]
         ++ (List.range n).flatMap (fun i => ndArmBlock φ j i)
@@ -847,14 +847,14 @@ theorem serialize_armChain_ndBuy (φ : Sentence) (j : ℕ) : ∀ n,
         List.flatMap_singleton, ndArmBlock]
       simp [List.append_assoc]
 
-theorem serialize_ndCoef (φ : Sentence) (j n : ℕ) :
+lemma serialize_ndCoef (φ : Sentence) (j n : ℕ) :
     (ndCoef φ j n).serialize
       = [1, Encodable.encode ((j : ℚ))]
         ++ (armChain (ndBuySig φ j) n).serialize
         ++ (ndBuySig φ j n).serialize ++ [3, 3] := by
   simp [ndCoef, EF.serialize, List.append_assoc]
 
-theorem serialize_ndLadderEF (φ : Sentence) (n : ℕ) : ∀ m,
+lemma serialize_ndLadderEF (φ : Sentence) (n : ℕ) : ∀ m,
     (ndLadderEF φ n m).serialize
       = [1, Encodable.encode ((0 : ℚ))]
         ++ (List.range m).flatMap (fun j' => (ndCoef φ (j' + 1) n).serialize ++ [2])
@@ -868,7 +868,7 @@ theorem serialize_ndLadderEF (φ : Sentence) (n : ℕ) : ∀ m,
 
 /-- The rung chunk (coefficient serialization plus the ladder's `add` tag), as a
 `PolySegStream` over the paired input `⟨n, j'⟩`. -/
-theorem ndChunkSeg_polySegStream (φ : Sentence) :
+lemma ndChunkSeg_polySegStream (φ : Sentence) :
     PolySegStream (fun m =>
       (ndCoef φ (m.unpair.2 + 1) m.unpair.1).serialize ++ [2]) := by
   have hW0 : 0 < (ndArmBlock φ 1 0).length := by
@@ -904,7 +904,7 @@ emission cert: head `[1, ⌜0⌝]`, then `n` rung chunks of uniform runtime widt
 `PolySegStream.blocks`, the day-`n` signal, closers), then the trade tail. The
 rung-varying `ℚ`-constant tokens are emitted as poly-fueled arithmetic through the
 closed encoding forms (`encode_ndThr` etc.). -/
-theorem ndLadderTrader_ecTok (φ : Sentence) :
+lemma ndLadderTrader_ecTok (φ : Sentence) :
     EfficientlyComputableTok (ndLadderTrader φ) := by
   have hunif : ∀ n j,
       ((ndCoef φ ((Nat.pair n j).unpair.2 + 1) (Nat.pair n j).unpair.1).serialize
@@ -975,20 +975,20 @@ identically `0` before (the same `δ = 0` padding). -/
 def ndSellSig (φ : Sentence) (j i : ℕ) : EF :=
   sellIndEF φ (1 - ndThr j) (ndPadThr j i) i
 
-theorem ndSellSig_live (φ : Sentence) {j i : ℕ} (h : j ≤ i) :
+lemma ndSellSig_live (φ : Sentence) {j i : ℕ} (h : j ≤ i) :
     ndSellSig φ j i = sellIndEF φ (1 - ndThr j) (ndThr j) i := by
   rw [ndSellSig, ndPadThr, if_neg (by omega)]
 
-theorem ndSellSig_denote_pad (φ : Sentence) (P : History) {j i : ℕ} (h : i < j) :
+lemma ndSellSig_denote_pad (φ : Sentence) (P : History) {j i : ℕ} (h : i < j) :
     (ndSellSig φ j i).denote P = 0 := by
   rw [ndSellSig, ndPadThr, if_pos h, sellIndEF_denote]
   norm_num
 
-theorem ndSellSig_mem (φ : Sentence) (P : History) (j i : ℕ) :
+lemma ndSellSig_mem (φ : Sentence) (P : History) (j i : ℕ) :
     0 ≤ (ndSellSig φ j i).denote P ∧ (ndSellSig φ j i).denote P ≤ 1 :=
   sellInd_mem φ _ _ i P
 
-theorem ndSellSig_pos_imp (φ : Sentence) (P : History) {j i : ℕ} (hj : 1 ≤ j)
+lemma ndSellSig_pos_imp (φ : Sentence) (P : History) {j i : ℕ} (hj : 1 ≤ j)
     (h : 0 < (ndSellSig φ j i).denote P) : 1 - 1 / (j : ℝ) ^ 3 < P i φ := by
   rcases lt_or_ge i j with hij | hij
   · rw [ndSellSig_denote_pad φ P hij] at h
@@ -999,7 +999,7 @@ theorem ndSellSig_pos_imp (φ : Sentence) (P : History) {j i : ℕ} (hj : 1 ≤ 
     push_cast at hlt
     linarith
 
-theorem ndSellSig_eq_one (φ : Sentence) (P : History) {j i : ℕ} (hj : 1 ≤ j)
+lemma ndSellSig_eq_one (φ : Sentence) (P : History) {j i : ℕ} (hj : 1 ≤ j)
     (hlive : j ≤ i) (h : 1 - ((ndThr j : ℚ) : ℝ) < P i φ) :
     (ndSellSig φ j i).denote P = 1 := by
   rw [ndSellSig_live φ hlive]
@@ -1007,26 +1007,26 @@ theorem ndSellSig_eq_one (φ : Sentence) (P : History) {j i : ℕ} (hj : 1 ≤ j
   push_cast
   linarith
 
-theorem ndSellSig_rank (φ : Sentence) (j i : ℕ) : (ndSellSig φ j i).rank = i :=
+lemma ndSellSig_rank (φ : Sentence) (j i : ℕ) : (ndSellSig φ j i).rank = i :=
   sellIndEF_rank φ _ _ i
 
 /-- Day-`n` shares sold by rung `j` (per unit of the coefficient constant `j`). -/
 noncomputable def ndSellShares (φ : Sentence) (P : History) (j n : ℕ) : ℝ :=
   (armChain (ndSellSig φ j) n).denote P * (ndSellSig φ j n).denote P
 
-theorem ndSellShares_nonneg (φ : Sentence) (P : History) (j n : ℕ) :
+lemma ndSellShares_nonneg (φ : Sentence) (P : History) (j n : ℕ) :
     0 ≤ ndSellShares φ P j n :=
   mul_nonneg (armChain_mem _ P (fun i => ndSellSig_mem φ P j i) n).1
     (ndSellSig_mem φ P j n).1
 
-theorem ndSellShares_pos_sig {φ : Sentence} {P : History} {j n : ℕ}
+lemma ndSellShares_pos_sig {φ : Sentence} {P : History} {j n : ℕ}
     (h : 0 < ndSellShares φ P j n) : 0 < (ndSellSig φ j n).denote P := by
   rcases (ndSellSig_mem φ P j n).1.lt_or_eq with hs | hs
   · exact hs
   · rw [ndSellShares, ← hs, mul_zero] at h
     exact absurd h (lt_irrefl 0)
 
-theorem ndSellShares_sum (φ : Sentence) (P : History) {j N : ℕ} (h : j ≤ N) :
+lemma ndSellShares_sum (φ : Sentence) (P : History) {j N : ℕ} (h : j ≤ N) :
     ∑ n ∈ Finset.Ico j N, ndSellShares φ P j n
       = 1 - (armChain (ndSellSig φ j) N).denote P := by
   simp only [ndSellShares]
@@ -1034,7 +1034,7 @@ theorem ndSellShares_sum (φ : Sentence) (P : History) {j N : ℕ} (h : j ≤ N)
     armChain_denote_of_le (ndSellSig φ j) P
       (fun i hi => ndSellSig_denote_pad φ P hi) j le_rfl]
 
-theorem ndSellShares_sum_le_one (φ : Sentence) (P : History) {j N : ℕ} (h : j ≤ N) :
+lemma ndSellShares_sum_le_one (φ : Sentence) (P : History) {j N : ℕ} (h : j ≤ N) :
     ∑ n ∈ Finset.Ico j N, ndSellShares φ P j n ≤ 1 := by
   rw [ndSellShares_sum φ P h]
   have := (armChain_mem (ndSellSig φ j) P (fun i => ndSellSig_mem φ P j i) N).1
@@ -1044,13 +1044,13 @@ theorem ndSellShares_sum_le_one (φ : Sentence) (P : History) {j N : ℕ} (h : j
 def ndSellCoef (φ : Sentence) (j n : ℕ) : EF :=
   .mul (.const (-(j : ℚ))) (.mul (armChain (ndSellSig φ j) n) (ndSellSig φ j n))
 
-theorem ndSellCoef_denote (φ : Sentence) (P : History) (j n : ℕ) :
+lemma ndSellCoef_denote (φ : Sentence) (P : History) (j n : ℕ) :
     (ndSellCoef φ j n).denote P = -((j : ℝ) * ndSellShares φ P j n) := by
   simp only [ndSellCoef, EF.denote_mul, EF.denote_const, Pi.mul_apply, ndSellShares]
   push_cast
   ring
 
-theorem ndSellCoef_rank (φ : Sentence) (j n : ℕ) : (ndSellCoef φ j n).rank ≤ n := by
+lemma ndSellCoef_rank (φ : Sentence) (j n : ℕ) : (ndSellCoef φ j n).rank ≤ n := by
   have h1 := armChain_rank (ndSellSig φ j) (fun i => (ndSellSig_rank φ j i).le) n
   have h2 := (ndSellSig_rank φ j n).le
   simp only [ndSellCoef, EF.rank, max_le_iff]
@@ -1061,7 +1061,7 @@ def ndSellLadderEF (φ : Sentence) (n : ℕ) : ℕ → EF
   | 0 => .const 0
   | (m + 1) => .add (ndSellLadderEF φ n m) (ndSellCoef φ (m + 1) n)
 
-theorem ndSellLadderEF_denote (φ : Sentence) (P : History) (n : ℕ) : ∀ m,
+lemma ndSellLadderEF_denote (φ : Sentence) (P : History) (n : ℕ) : ∀ m,
     (ndSellLadderEF φ n m).denote P
       = ∑ k ∈ Finset.range m, -(((k + 1 : ℕ) : ℝ) * ndSellShares φ P (k + 1) n)
   | 0 => by simp [ndSellLadderEF]
@@ -1070,7 +1070,7 @@ theorem ndSellLadderEF_denote (φ : Sentence) (P : History) (n : ℕ) : ∀ m,
       simp only [EF.denote_add, Pi.add_apply]
       rw [ndSellLadderEF_denote φ P n m, Finset.sum_range_succ, ndSellCoef_denote]
 
-theorem ndSellLadderEF_rank (φ : Sentence) (n : ℕ) : ∀ m,
+lemma ndSellLadderEF_rank (φ : Sentence) (n : ℕ) : ∀ m,
     (ndSellLadderEF φ n m).rank ≤ n
   | 0 => by simp [ndSellLadderEF]
   | (m + 1) => by
@@ -1095,7 +1095,7 @@ def ndSellLadderTrader (φ : Sentence) : Trader where
   simp [ndSellLadderTrader, Strategy.value]
 
 /-- Net worth with the sign folded in: each term is `j · shares · (price − payout)`. -/
-theorem ndSellLadderTrader_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) :
+lemma ndSellLadderTrader_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) :
     (ndSellLadderTrader φ).netWorth V v m
       = ∑ n ∈ Finset.range (m + 1), ∑ k ∈ Finset.range n,
           ((k + 1 : ℕ) : ℝ) * ndSellShares φ V (k + 1) n * (V n φ - v.payout φ) := by
@@ -1105,7 +1105,7 @@ theorem ndSellLadderTrader_netWorth (φ : Sentence) (V : History) (v : PCWorld) 
 
 /-- In **any** world, the rung-`j` day-`n` sell term loses at most `shares/j²`
 (sales happen only above the price `1 − 1/j³`, and the payout is at most `1`). -/
-theorem ndSellTerm_ge (φ : Sentence) (P : History) (v : PCWorld) {j : ℕ} (hj : 1 ≤ j)
+lemma ndSellTerm_ge (φ : Sentence) (P : History) (v : PCWorld) {j : ℕ} (hj : 1 ≤ j)
     (n : ℕ) : -(ndSellShares φ P j n * (1 / (j : ℝ) ^ 2))
       ≤ (j : ℝ) * ndSellShares φ P j n * (P n φ - v.payout φ) := by
   have hb := ndSellShares_nonneg φ P j n
@@ -1125,7 +1125,7 @@ theorem ndSellTerm_ge (φ : Sentence) (P : History) (v : PCWorld) {j : ℕ} (hj 
 
 /-- In a `¬φ`-world every rung's sell term is a gain: sales happen above
 `1 − 1/j³ ≥ 0` and the payout is `0`. -/
-theorem ndSellTerm_nonneg (φ : Sentence) (P : History) (v : PCWorld) (hv : ¬ v.Holds φ)
+lemma ndSellTerm_nonneg (φ : Sentence) (P : History) (v : PCWorld) (hv : ¬ v.Holds φ)
     {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
     0 ≤ (j : ℝ) * ndSellShares φ P j n * (P n φ - v.payout φ) := by
   have hb := ndSellShares_nonneg φ P j n
@@ -1140,7 +1140,7 @@ theorem ndSellTerm_nonneg (φ : Sentence) (P : History) (v : PCWorld) (hv : ¬ v
     norm_num
 
 /-- In a `¬φ`-world the rung-`j` sell term banks at least `j·shares·(1 − 1/j³)`. -/
-theorem ndSellTerm_profit (φ : Sentence) (P : History) (v : PCWorld) (hv : ¬ v.Holds φ)
+lemma ndSellTerm_profit (φ : Sentence) (P : History) (v : PCWorld) (hv : ¬ v.Holds φ)
     {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
     (j : ℝ) * ndSellShares φ P j n * (1 - 1 / (j : ℝ) ^ 3)
       ≤ (j : ℝ) * ndSellShares φ P j n * (P n φ - v.payout φ) := by
@@ -1250,13 +1250,13 @@ theorem encode_int_neg_natCast {n : ℕ} (hn : 0 < n) :
   rw [h, show Encodable.encode (Int.negSucc (n - 1)) = 2 * (n - 1) + 1 from rfl]
   omega
 
-theorem encode_rat_neg_natCast {n : ℕ} (hn : 0 < n) :
+lemma encode_rat_neg_natCast {n : ℕ} (hn : 0 < n) :
     Encodable.encode (-((n : ℚ))) = Nat.pair (2 * n - 1) 1 := by
   rw [encode_rat_eq, Rat.neg_num, Rat.neg_den, Rat.num_natCast, Rat.den_natCast,
     encode_int_neg_natCast hn]
 
 /-- Encoding a normalized negative fraction: `⌜−(a/b)⌝ = pair (2(a−1)+1) b`. -/
-theorem encode_rat_neg_div {a b : ℕ} (ha : 0 < a) (hab : a < b) (hcop : a.Coprime b) :
+lemma encode_rat_neg_div {a b : ℕ} (ha : 0 < a) (hab : a < b) (hcop : a.Coprime b) :
     Encodable.encode (-((a : ℚ) / (b : ℚ))) = Nat.pair (2 * (a - 1) + 1) b := by
   have hb : b ≠ 0 := by omega
   have hnat : (Int.negSucc (a - 1)).natAbs = a := by
@@ -1276,7 +1276,7 @@ theorem encode_rat_neg_div {a b : ℕ} (ha : 0 < a) (hab : a < b) (hcop : a.Copr
   rw [heq, encode_rat_eq]
   rfl
 
-theorem encode_sellB_pad {j : ℕ} (hj : 1 ≤ j) :
+lemma encode_sellB_pad {j : ℕ} (hj : 1 ≤ j) :
     Encodable.encode ((0 : ℚ) - (1 - ndThr j))
       = Nat.pair (2 * (2 * j ^ 3 - 1 - 1) + 1) (2 * j ^ 3) := by
   have h3 : 0 < j ^ 3 := pow_pos (by omega) 3
@@ -1298,7 +1298,7 @@ theorem encode_sellB_pad {j : ℕ} (hj : 1 ≤ j) :
     exact Nat.coprime_self_add_right.mpr (Nat.coprime_one_right _)
   rw [heq, encode_rat_neg_div (by omega) (by omega) hcop]
 
-theorem encode_sellB_live {j : ℕ} (hj : 2 ≤ j) :
+lemma encode_sellB_live {j : ℕ} (hj : 2 ≤ j) :
     Encodable.encode (ndThr j - (1 - ndThr j))
       = Nat.pair (2 * (j ^ 3 - 1 - 1) + 1) (j ^ 3) := by
   have h8 : 8 ≤ j ^ 3 := by
@@ -1321,13 +1321,13 @@ theorem encode_sellB_live {j : ℕ} (hj : 2 ≤ j) :
     exact Nat.coprime_self_add_right.mpr (Nat.coprime_one_right _)
   rw [heq, encode_rat_neg_div (by omega) (by omega) hcop]
 
-theorem encode_sellB_live_one : Encodable.encode (ndThr 1 - (1 - ndThr 1)) = 1 := by
+lemma encode_sellB_live_one : Encodable.encode (ndThr 1 - (1 - ndThr 1)) = 1 := by
   have h : ndThr 1 - (1 - ndThr 1) = 0 := by norm_num [ndThr]
   rw [h, encode_rat_zero]
 
 /-- Poly-fueled emission of the padded sell-band token
 `⌜ndPadThr (j'+1) i − (1 − ndThr (j'+1))⌝` (pad / rung-1 live / general live). -/
-theorem encode_sellB_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → ℕ}
+lemma encode_sellB_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → ℕ}
     (hj : PolyFueled cj j'f) (hi : PolyFueled ci if_) :
     ∃ c, PolyFueled c (fun m =>
       Encodable.encode (ndPadThr (j'f m + 1) (if_ m) - (1 - ndThr (j'f m + 1)))) := by
@@ -1368,7 +1368,7 @@ theorem encode_sellB_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → �
         encode_sellB_live (by omega : 2 ≤ j'f m + 1)]
 
 /-- Poly-fueled emission of the sell rung-weight token `⌜−((j'+1 : ℕ) : ℚ)⌝`. -/
-theorem encode_neg_ratCast_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ}
+lemma encode_neg_ratCast_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ}
     (hj : PolyFueled cj j'f) :
     ∃ c, PolyFueled c (fun m => Encodable.encode (-((j'f m + 1 : ℕ) : ℚ))) := by
   obtain ⟨cad, had⟩ := addc_polyFueled
@@ -1382,7 +1382,7 @@ theorem encode_neg_ratCast_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ
 def ndSellArmBlock (φ : Sentence) (j i : ℕ) : List ℕ :=
   (oneMinus (ndSellSig φ j i)).serialize ++ [3]
 
-theorem ndSellArmBlock_tokenStream (φ : Sentence) :
+lemma ndSellArmBlock_tokenStream (φ : Sentence) :
     PolyTokenStream (fun x => ndSellArmBlock φ (x.unpair.1.unpair.2 + 1) x.unpair.2) := by
   have hsell : PolyTokenStream (fun x =>
       (ndSellSig φ (x.unpair.1.unpair.2 + 1) x.unpair.2).serialize) :=
@@ -1394,15 +1394,15 @@ theorem ndSellArmBlock_tokenStream (φ : Sentence) :
       (encode_thrRecip_polyFueled (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
   exact (PolyTokenStream.serialize_oneMinus hsell).append (PolyTokenStream.const 3)
 
-theorem ndSellArmBlock_length (φ : Sentence) (j i : ℕ) :
+lemma ndSellArmBlock_length (φ : Sentence) (j i : ℕ) :
     (ndSellArmBlock φ j i).length = (ndSellArmBlock φ 1 0).length := by
   simp [ndSellArmBlock, ndSellSig, sellIndEF, oneMinus, clip01, efMin, EF.serialize]
 
-theorem serialize_ndSellSig_length (φ : Sentence) (j i : ℕ) :
+lemma serialize_ndSellSig_length (φ : Sentence) (j i : ℕ) :
     (ndSellSig φ j i).serialize.length = (ndSellSig φ 1 0).serialize.length := by
   simp [ndSellSig, sellIndEF, clip01, efMin, EF.serialize]
 
-theorem serialize_armChain_ndSell (φ : Sentence) (j : ℕ) : ∀ n,
+lemma serialize_armChain_ndSell (φ : Sentence) (j : ℕ) : ∀ n,
     (armChain (ndSellSig φ j) n).serialize
       = [1, Encodable.encode ((1 : ℚ))]
         ++ (List.range n).flatMap (fun i => ndSellArmBlock φ j i)
@@ -1414,14 +1414,14 @@ theorem serialize_armChain_ndSell (φ : Sentence) (j : ℕ) : ∀ n,
         List.flatMap_singleton, ndSellArmBlock]
       simp [List.append_assoc]
 
-theorem serialize_ndSellCoef (φ : Sentence) (j n : ℕ) :
+lemma serialize_ndSellCoef (φ : Sentence) (j n : ℕ) :
     (ndSellCoef φ j n).serialize
       = [1, Encodable.encode (-((j : ℚ)))]
         ++ (armChain (ndSellSig φ j) n).serialize
         ++ (ndSellSig φ j n).serialize ++ [3, 3] := by
   simp [ndSellCoef, EF.serialize, List.append_assoc]
 
-theorem serialize_ndSellLadderEF (φ : Sentence) (n : ℕ) : ∀ m,
+lemma serialize_ndSellLadderEF (φ : Sentence) (n : ℕ) : ∀ m,
     (ndSellLadderEF φ n m).serialize
       = [1, Encodable.encode ((0 : ℚ))]
         ++ (List.range m).flatMap (fun j' => (ndSellCoef φ (j' + 1) n).serialize ++ [2])
@@ -1434,7 +1434,7 @@ theorem serialize_ndSellLadderEF (φ : Sentence) (n : ℕ) : ∀ m,
       simp [List.append_assoc]
 
 /-- The sell-rung chunk as a `PolySegStream` over the paired input `⟨n, j'⟩`. -/
-theorem ndSellChunkSeg_polySegStream (φ : Sentence) :
+lemma ndSellChunkSeg_polySegStream (φ : Sentence) :
     PolySegStream (fun m =>
       (ndSellCoef φ (m.unpair.2 + 1) m.unpair.1).serialize ++ [2]) := by
   have hW0 : 0 < (ndSellArmBlock φ 1 0).length := by
@@ -1468,7 +1468,7 @@ theorem ndSellChunkSeg_polySegStream (φ : Sentence) :
 /-- **The sell ladder is efficiently computable** — the mirror of
 `ndLadderTrader_ecTok`, with the negative-numerator band constants emitted through
 `encode_sellB_polyFueled`. -/
-theorem ndSellLadderTrader_ecTok (φ : Sentence) :
+lemma ndSellLadderTrader_ecTok (φ : Sentence) :
     EfficientlyComputableTok (ndSellLadderTrader φ) := by
   have hunif : ∀ n j,
       ((ndSellCoef φ ((Nat.pair n j).unpair.2 + 1) (Nat.pair n j).unpair.1).serialize
