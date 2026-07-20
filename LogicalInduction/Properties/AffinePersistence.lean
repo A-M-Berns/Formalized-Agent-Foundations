@@ -9,7 +9,7 @@ certificate and reduces the economic contradiction to the already verified affin
 round-trip/ROI hub.
 -/
 import LogicalInduction.Properties.AffinePreemptiveLearning
-import LogicalInduction.Properties.Convergence
+import LogicalInduction.Properties.Coherence
 
 namespace LogicalInduction
 

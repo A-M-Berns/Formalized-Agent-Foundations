@@ -15,7 +15,7 @@ File layout (promoted from a single file once it grew past ~1000 lines):
   and `buySeq` (`𝓔𝓒`-sequence form).
 * `Properties.Coherence` — `thm:lc`: bullet 2 (disprovable → 0, `sellDaily`) and bullet 3
   (finite additivity + the limit identity, world-neutral portfolio `exclTr`).
-* `Properties.Convergence` — `thm:con`: the non-convergence ⇒ rational-oscillation reduction,
+* `Properties.Coherence` (§4.1, includes former `Convergence`) — `thm:con`: the non-convergence ⇒ rational-oscillation reduction,
   and `oscillation_exploitable`, discharged by the hysteresis trader.
 * `Properties.Hysteresis` — the `thm:con` arbitrage core: the size-`Θ(n)` hysteresis
   holdings state, the sign-decomposition accounting, and its five-segment e.c. emission.
@@ -33,7 +33,7 @@ File layout (promoted from a single file once it grew past ~1000 lines):
   `MeanPayout ≤ MaxPayout` analytic core and the direct unit-budget scale trader with
   maximizing-world extraction, the summable scale diagonal and its literal token emitter,
   global downside/unbounded-upside proof, and the exact fixed-constant capstone.
-* `Properties.StrictSemimeasure` — `thm:strict` from Uniform Non-Dogmatism and the
+* `Properties.UniversalSemimeasure` (includes former `StrictSemimeasure`) — `thm:strict` from Uniform Non-Dogmatism and the
   explicit recursively-inseparable null-prefix-class representation boundary.
 * `Properties.Conditioning` — exact capped conditional markets and stagewise combined
   deductive-process semantics for the fixed and growing-prefix forms of `thm:scon`.
@@ -75,13 +75,11 @@ See `notes/logical-induction-roadmap.md` for the paper-node map and
 import LogicalInduction.Properties.Basic
 import LogicalInduction.Properties.ProvabilityInduction
 import LogicalInduction.Properties.Coherence
-import LogicalInduction.Properties.Convergence
 import LogicalInduction.Properties.Hysteresis
 import LogicalInduction.Properties.NonDogmatism
 import LogicalInduction.Properties.UniformNonDogmatism
 import LogicalInduction.Properties.OccamBounds
 import LogicalInduction.Properties.UniversalSemimeasure
-import LogicalInduction.Properties.StrictSemimeasure
 import LogicalInduction.Properties.Conditioning
 import LogicalInduction.Properties.ExpectationConvergence
 import LogicalInduction.Properties.Relationships

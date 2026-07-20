@@ -6,7 +6,7 @@ combined deductive process.  The trader compiler is kept separate: it must trans
 arbitrary token-emitted trader through conditional contracts while controlling the cap
 case by the paper's summable gate.
 -/
-import LogicalInduction.Properties.StrictSemimeasure
+import LogicalInduction.Properties.UniversalSemimeasure
 import LogicalInduction.Properties.FinitePerturbations
 import LogicalInduction.Properties.TimelyLearning
 

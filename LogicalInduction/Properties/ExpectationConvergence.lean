@@ -23,7 +23,7 @@ The feature-generic signal/state layer (`buyIndF`/`sellIndF`/`hystChain`) mirror
 `Hysteresis.lean` with `.price φ n` abstracted to an arbitrary feature `EF`; `thm:con`'s
 concrete lemmas are untouched.
 -/
-import LogicalInduction.Properties.Convergence
+import LogicalInduction.Properties.Coherence
 import LogicalInduction.Framework.Expectations
 
 namespace LogicalInduction

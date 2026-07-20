@@ -36,7 +36,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 
 /-! ## Property tail, conditional on `[IsLogicalInductor P DP]` (M3–M5) -/
 
--- Properties/Coherence.lean, Properties/Convergence.lean
+-- Properties/Coherence.lean
 #assert_axioms_clean
   lic_disprovable_tendsto_zero lic_excl_gap_tendsto_zero lic_limit_additive
   lic_price_convergesTo
@@ -56,8 +56,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_nonDogmatism lic_nonDogmatism_dual lic_nonDogmatism_weak lic_limit_pos
   lic_limit_lt_one lic_uniform_nonDogmatism lic_uniform_nonDogmatism_repeating
 
--- Properties/OccamBounds.lean, Properties/UniversalSemimeasure.lean,
--- Properties/StrictSemimeasure.lean
+-- Properties/OccamBounds.lean, Properties/UniversalSemimeasure.lean
 #assert_axioms_clean
   lic_occamBounds lic_occam_lower lic_limitingBelief_add_neg
   lic_domination_universalSemimeasure lic_strict_domination_universalSemimeasure

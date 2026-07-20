@@ -51,7 +51,7 @@ the patch is a hardcodable finite lookup and `liaEfficientPrefixPatch` discharge
 `M7-PREFIX-PATCH` — but the restriction must be stated whenever this theorem is cited as
 the paper's.
 -/
-import LogicalInduction.Framework.Engine
+import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.Computable
 
 namespace LogicalInduction

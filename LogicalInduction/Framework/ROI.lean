@@ -6,7 +6,7 @@ lemma.  `open i n` records that the `i`th component trader is still tying up cap
 day `n`.  The recursively chosen weight is exactly the capital not tied up by earlier
 components on that day.
 -/
-import LogicalInduction.Framework.Engine
+import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.Computable
 import Mathlib.Algebra.BigOperators.Fin
 
