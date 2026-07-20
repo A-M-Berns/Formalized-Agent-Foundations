@@ -64,7 +64,7 @@ lemma EfficientlyEmulatable.netWorth_launch {Ts : ℕ → Trader}
 fields expose polynomially computable trade boundaries, coefficient segments, and sentence
 codes. That boundary data is exactly what a uniform syntax transformation (such as scaling
 every trade by a generated feature) needs. Indices are
-`z = ⟨⟨k,n⟩,j⟩`: family member, day, then trade number.  Paper node: App. `emulatable`. -/
+`z = ⟨⟨k,n⟩,j⟩`: family member, day, then trade number. -/
 structure PolyTradeEmulatable (Ts : ℕ → Trader) where
   emulatable : EfficientlyEmulatable Ts
   tradeCount : ℕ → ℕ

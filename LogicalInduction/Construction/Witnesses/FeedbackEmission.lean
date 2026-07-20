@@ -717,7 +717,8 @@ noncomputable def feedbackTraderEmissionFamily
   emit δ _ _ := feedbackTraderEmission hpoly hW hstrict δ
 
 /-- The construction is stable under the existing polynomial affine negation compiler,
-so both sign orientations are concrete. -/
+so both sign orientations are concrete.
+Paper node: `thm:wubaff` -/
 noncomputable def feedbackTraderEmissionSigns
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W)
@@ -726,9 +727,11 @@ noncomputable def feedbackTraderEmissionSigns
   positive := feedbackTraderEmissionFamily hpoly hW hstrict
   negative := feedbackTraderEmissionFamily hpoly.neg hW hstrict
 
-/-! ### Consumers with the emission boundary discharged
-Paper node: `thm:wubaff` (App. `wubaff`). -/
+/-! ### Consumers with the emission boundary discharged -/
 
+/-- Affine unbiasedness, with the feedback-emission boundary discharged by a concrete
+feedback-truth sequence.
+Paper node: `thm:wubaff` -/
 theorem lic_wubaff_ofFeedbackTruth
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W)
@@ -746,7 +749,8 @@ theorem lic_wubaff_ofFeedbackTruth
   AffineCombination.lic_wubaff hpoly hW hstrict hsupport
     (feedbackTraderEmissionSigns hpoly hW hstrict) bridge hWdiv hmag hP hworld
 
-/-- Paper node: `thm:wubaff` (App. `wubaff`). -/
+/--
+Paper node: `thm:wubaff` -/
 theorem boundedCombination_wubaff_ofFeedbackTruth
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
@@ -768,7 +772,8 @@ theorem boundedCombination_wubaff_ofFeedbackTruth
       (h.poly.scaleRat h.unitNormalization.scale) hW hstrict)
     bridge hWdiv hP hworld
 
-/-- Paper node: `thm:wubexp` (App. `wubexp`). -/
+/--
+Paper node: `thm:wubexp` -/
 theorem luv_wubexp_ofFeedbackTruth
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]

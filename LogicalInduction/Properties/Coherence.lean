@@ -108,7 +108,8 @@ lemma PCWorld.payout_or_of_excl (v : PCWorld) (φ ψ : Sentence)
 
 
 /-- **Limit Coherence, bullet (2)** (`thm:lc`): the price of a disprovable sentence
-converges to `0` under a logical inductor. -/
+converges to `0` under a logical inductor.
+Paper node: `thm:lc` -/
 theorem lic_disprovable_tendsto_zero (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence) (hdis : ∀ n, (∼φ) ∈ DP.D n)
     (hP0 : ∀ n, 0 ≤ P n φ) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -306,7 +307,8 @@ lemma exclTr_exploits (P : History) (DP : DeductiveProcess) (φ ψ : Sentence) (
 `Pₙ(φ∨ψ) − Pₙ(φ) − Pₙ(ψ)` converges to `0` under a logical inductor. Hence
 `P∞(φ∨ψ) = P∞(φ) + P∞(ψ)` wherever the limits exist (`thm:con`). Both over- and under-pricing
 are killed by the world-neutral portfolio `σ·[(-1,φ∨ψ),(1,φ),(1,ψ)]` (`σ = ±1`), whose value is
-world-independent by exclusivity. -/
+world-independent by exclusivity.
+Paper node: `thm:lc` -/
 theorem lic_excl_gap_tendsto_zero (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ ψ : Sentence) (hexcl : ∀ n, (∼(φ ⋏ ψ)) ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -337,7 +339,8 @@ theorem lic_excl_gap_tendsto_zero (P : History) (DP : DeductiveProcess)
 prices converge (guaranteed by `thm:con`), an exclusive disjunction's limiting price is the sum
 `P∞(φ∨ψ) = P∞(φ) + P∞(ψ)`. Immediate from `lic_excl_gap_tendsto_zero` and uniqueness of limits.
 Stated with the convergences as explicit hypotheses so it is self-contained (and `thm:con`,
-now proved, discharges them). -/
+now proved, discharges them).
+Paper node: `thm:lc` -/
 theorem lic_limit_additive (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ ψ : Sentence) (hexcl : ∀ n, (∼(φ ⋏ ψ)) ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -412,7 +415,8 @@ converges. Proof: if not, the price oscillates across a rational gap
 
 Hypotheses (both honest, both matching the rest of this file): prices lie in `[0,1]`, and each
 day admits a plausible world (`hcons`; without it the market is vacuously unexploitable and
-nothing constrains the price). -/
+nothing constrains the price).
+Paper node: `thm:con` -/
 theorem lic_price_convergesTo (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence)
     (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)

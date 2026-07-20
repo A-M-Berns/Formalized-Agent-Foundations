@@ -1164,7 +1164,8 @@ lemma PCWorld.consistentWith_union_iff
 
 /-- Syntax/semantics presentation of the finite conjunction of the extra deductive stage.
 This is the shared input for both the fixed-condition and growing-prefix forms of
-`thm:scon`. It carries no prices or logical-inductor conclusion. -/
+`thm:scon`. It carries no prices or logical-inductor conclusion.
+Paper node: `thm:scon` -/
 structure ConditioningPresentation (DP extra : DeductiveProcess) where
   condition : ℕ → Sentence
   condition_codes : PolySentenceCodes condition
@@ -1324,7 +1325,7 @@ is the actual base-market trader compiled from a conditional-market trader `T`.
 `tracks_on_condition` is the paper's summable-error estimate, while `preserves_floor`
 records the separate analysis of worlds that first falsify the growing condition. The
 interface contains no exploitation or logical-induction conclusion.
-Paper node: `thm:scon` (App. `scon`). -/
+Paper node: `thm:scon` -/
 structure ConditioningTraderCompiler
     (P : History) (DP extra : DeductiveProcess)
     (C : ConditioningPresentation DP extra) where
@@ -1345,7 +1346,7 @@ structure ConditioningTraderCompiler
 contains only the patched positive denominator, computability of the rational conditional
 market, and a token-level implementation of the concrete syntax transformation.  In
 particular it contains no wealth, boundedness, exploitation, or logical-inductor field.
-Paper node: `thm:scon` (App. `scon`). -/
+Paper node: `thm:scon` -/
 structure GatedConditioningOperationalWitness
     (P : History) (DP extra : DeductiveProcess)
     (C : ConditioningPresentation DP extra) (ε : ℚ) where
@@ -1396,7 +1397,8 @@ lemma ConditioningTraderCompiler.exploits_base
 
 /-- Criterion-level Closure Under Conditioning, conditional only on the concrete Appendix
 trader compiler above. This statement covers both fixed conditions and growing finite
-conjunctions through `ConditioningPresentation`.  Paper node: `thm:scon` (App. `scon`). -/
+conjunctions through `ConditioningPresentation`.
+Paper node: `thm:scon` -/
 theorem lic_conditioned
     (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
     (C : ConditioningPresentation DP extra)
@@ -1411,7 +1413,8 @@ theorem lic_conditioned
 
 /-- Closure under conditioning through the concrete gated translator.  The remaining
 premise is operational only; the summable tracking and first-failure downside arguments
-are no longer assumed through an opaque compiler field.  Paper node: `thm:scon` (App. `scon`). -/
+are no longer assumed through an opaque compiler field.
+Paper node: `thm:scon` -/
 theorem lic_conditioned_gated
     (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
     (C : ConditioningPresentation DP extra) {ε : ℚ}

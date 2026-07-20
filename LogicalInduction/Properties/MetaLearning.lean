@@ -16,7 +16,7 @@ open Filter Topology
 /-- A uniformly emitted sentence family representing a semidecidable predicate.  When the
 external computation is true, its representing sentence eventually occurs in the deductive
 process.  This is the exact propositional boundary used for halting and inconsistency.
-Paper nodes: the §2.1 representation premises for `thm:pac`–`thm:dontwait`. -/
+Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 structure RepresentedSemidecidableClaims (DP : DeductiveProcess) (truth : ℕ → Prop) where
   sentence : ℕ → Sentence
   sentence_poly : PolySentenceCodes sentence
@@ -25,7 +25,7 @@ structure RepresentedSemidecidableClaims (DP : DeductiveProcess) (truth : ℕ �
 /-- A uniformly emitted sentence family representing a decidable computation.  In addition
 to positive representation, a false computation eventually yields the negated sentence.
 Finite proof searches and bounded machine simulations have this form.
-Paper nodes: the §2.1 representation premises for `thm:pac`–`thm:dontwait`. -/
+Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 structure RepresentedDecidableClaims (DP : DeductiveProcess) (truth : ℕ → Prop)
     extends RepresentedSemidecidableClaims DP truth where
   disprovable_of_false : ∀ n, ¬truth n → ∃ k, (∼sentence n) ∈ DP.D k
@@ -42,7 +42,8 @@ def CodeHaltsWithin (machine : Nat.Partrec.Code) (input steps : ℕ) : Prop :=
 /-- The two separately emitted sentences used for an inconsistent theory: “inconsistent”
 is eventually proved when the finite contradiction search succeeds, while “consistent” is
 then refuted.  Keeping both sequences explicit avoids assuming a syntactic-negation law that
-the repository's abstract `Sentence` representation does not provide. -/
+the repository's abstract `Sentence` representation does not provide.
+Paper node: `thm:incons` -/
 structure InconsistentTheoryClaims (DP : DeductiveProcess) (inconsistent : ℕ → Prop) where
   inconsistencySentence : ℕ → Sentence
   consistencySentence : ℕ → Sentence
@@ -56,7 +57,8 @@ structure InconsistentTheoryClaims (DP : DeductiveProcess) (inconsistent : ℕ �
 /-- **Belief in Finitistic Consistency** (`thm:pac`), at the propositional computation-
 representation boundary.  `consistentWithin n` is the truth of the finite proof search
 named on day `n`; its representing syntax may compactly contain a fixed arbitrary
-computable function rather than evaluating that function in polynomial time. -/
+computable function rather than evaluating that function in polynomial time.
+Paper node: `thm:pac` -/
 theorem lic_belief_finitistic_consistency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (consistentWithin : ℕ → Prop)
@@ -70,7 +72,8 @@ theorem lic_belief_finitistic_consistency
 
 /-- **Belief in the Consistency of a Stronger Theory** (`thm:pazfc`).  The logical-
 induction argument is identical to `thm:pac`; the distinction is carried by the supplied
-finite-consistency predicate and its concrete representation witness. -/
+finite-consistency predicate and its concrete representation witness.
+Paper node: `thm:pazfc` -/
 theorem lic_belief_stronger_theory_consistency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (strongerConsistentWithin : ℕ → Prop)
@@ -83,7 +86,8 @@ theorem lic_belief_stronger_theory_consistency
     (fun n => R.provable_of_true n (hconsistent n)) hP hworld
 
 /-- **Disbelief in Inconsistent Theories** (`thm:incons`): timely belief in each emitted
-inconsistency sentence and timely disbelief in its separately emitted consistency sentence. -/
+inconsistency sentence and timely disbelief in its separately emitted consistency sentence.
+Paper node: `thm:incons` -/
 theorem lic_disbelief_inconsistent_theories
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (inconsistent : ℕ → Prop) (R : InconsistentTheoryClaims DP inconsistent)
@@ -99,7 +103,8 @@ theorem lic_disbelief_inconsistent_theories
 
 /-- **Learning of Halting Patterns** (`thm:halts`) for polynomially named repository
 machine/input sequences.  Machine runtime is unrestricted: only the representing sentence
-sequence must be polynomially emitted. -/
+sequence must be polynomially emitted.
+Paper node: `thm:halts` -/
 theorem lic_learns_halting_patterns
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
@@ -114,7 +119,8 @@ theorem lic_learns_halting_patterns
 
 /-- **Learning of Provable Non-Halting Patterns** (`thm:loops`).  “Provably fails to
 halt” is rendered directly as eventual occurrence of the negated represented halting
-sentence; no semantic completeness assumption for arbitrary non-halting machines is used. -/
+sentence; no semantic completeness assumption for arbitrary non-halting machines is used.
+Paper node: `thm:loops` -/
 theorem lic_learns_provable_nonhalting_patterns
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
@@ -129,7 +135,8 @@ theorem lic_learns_provable_nonhalting_patterns
 /-- **Learning not to Anticipate Halting** (`thm:dontwait`).  The compact sentence may
 refer to a fixed arbitrary computable horizon program; its day-indexed syntax is what the
 polynomial code field certifies.  Actual non-halting makes every bounded claim false, and
-decidable computation representation supplies its eventual refutation. -/
+decidable computation representation supplies its eventual refutation.
+Paper node: `thm:dontwait` -/
 theorem lic_does_not_anticipate_halting
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)

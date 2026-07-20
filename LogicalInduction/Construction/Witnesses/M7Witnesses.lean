@@ -187,7 +187,8 @@ lemma codeEvalnNat_output_poly (code : Nat.Partrec.Code) :
 /-- Shared M7 compiler hub: a polynomial-clock program for the total bounded interpreter.
 It stores only exact finite simulation and complexity data.  The construction of this
 object is the common operational core of `M7-HIST-EVALN`, `M7-CE-REPETITION`,
-`M7-DUS-APPROX`, and the computation-syntax witnesses. -/
+`M7-DUS-APPROX`, and the computation-syntax witnesses.
+Paper node: `def:ec` -/
 structure BoundedEvalnCompiler (simulated : Nat.Partrec.Code) where
   code : Nat.Partrec.Code
   poly : PolyFueled code (codeEvalnNat simulated)
@@ -725,7 +726,8 @@ lemma codeEvalnNat_rfind_polyFueled {cf : Nat.Partrec.Code}
 end RfindCompile
 
 /-- **Universal bounded simulator (`M7-HIST-EVALN`).** For every fixed `simulated`, the total
-normalized bounded interpreter is computable in the project polynomial-fuel model. -/
+normalized bounded interpreter is computable in the project polynomial-fuel model.
+Paper node: `def:ec` -/
 lemma codeEvalnNat_polyFueled :
     ∀ c : Nat.Partrec.Code, ∃ prog, PolyFueled prog (codeEvalnNat c)
   | .zero =>
@@ -749,7 +751,8 @@ lemma codeEvalnNat_polyFueled :
   | .rfind' cf =>
     codeEvalnNat_rfind_polyFueled (codeEvalnNat_polyFueled cf)
 
-/-- The `M7-HIST-EVALN` hub is inhabited for every simulated code. -/
+/-- The `M7-HIST-EVALN` hub is inhabited for every simulated code.
+Paper node: `def:ec` -/
 noncomputable def boundedEvalnCompiler (simulated : Nat.Partrec.Code) :
     BoundedEvalnCompiler simulated :=
   ⟨_, (codeEvalnNat_polyFueled simulated).choose_spec⟩
@@ -1120,7 +1123,8 @@ non-dependent `Primcodable` type; `settlementTestBool_iff` bridges them.
 Inhabiting this is the sole remaining obligation of `M7-PATIENT-CLOCK`: exhibit a
 `Nat.Partrec.Code` for a non-dependent decidable function, i.e. `Computable` plumbing
 through `MarketComputation.quoteAtFuel`, `DeductiveProcessComputation.stageAtFuel` and
-`PolySequence`. -/
+`PolySequence`.
+Paper node: `def:ec` -/
 structure SettlementChecker (As : ℕ → AffineCombination) (Q : ℕ → Sentence → ℚ)
     (DP : DeductiveProcess) where
   code : Nat.Partrec.Code
@@ -1215,7 +1219,8 @@ lemma codeEvalnNat_pair_mono {code : Nat.Partrec.Code} {i fuel fuel' v : ℕ}
       rw [h2]; omega
 
 /-- A code-enumerable ("c.e.") sentence source: a program that halts on every index `i`
-returning `⌜source i⌝`, and whose every output lies in `source`'s range. -/
+returning `⌜source i⌝`, and whose every output lies in `source`'s range.
+Paper node: `def:ec` -/
 structure CEEnumeration (source : ℕ → Sentence) where
   code : Nat.Partrec.Code
   halts : ∀ i, ∃ fuel,
@@ -1258,7 +1263,8 @@ lemma ceRepeatSeq_codes {source : ℕ → Sentence} (h : CEEnumeration source) :
   simp only [Nat.unpair_pair, ifzSelFn, Nat.pred_eq_sub_one]
 
 /-- **General efficient repetition (`M7-CE-REPETITION`).** Every code-enumerable source has an
-efficient-repetition witness — no polynomial-clock assumption on the source itself. -/
+efficient-repetition witness — no polynomial-clock assumption on the source itself.
+Paper node: `def:ec` -/
 noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
     (h : CEEnumeration source) : EfficientRepeatedEnumeration source where
   sequence := ceRepeatSeq h
@@ -2589,7 +2595,8 @@ lemma AffineCombination.settlementCheckAtFuel_complete (A : AffineCombination)
 
 /-- Market and deductive-process computations determine a concrete code semi-deciding the
 named settlement predicate for every polynomial affine family.  The only unbounded operation
-is `rfindOpt` over fuel; soundness and completeness come from the bounded check above. -/
+is `rfindOpt` over fuel; soundness and completeness come from the bounded check above.
+Paper node: `def:ec` -/
 noncomputable def SettlementChecker.ofComputations
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     (hpoly : AffineCombination.PolySequence As)
@@ -2671,7 +2678,8 @@ noncomputable def SettlementChecker.ofComputations
     simp [acceptsWithin, codeEvalnNat, hevaln]
 
 /-- The patient settlement clock with its checker constructed from the supplied market and
-deductive-process programs.  No computability bridge or checker remains as a hypothesis. -/
+deductive-process programs.  No computability bridge or checker remains as a hypothesis.
+Paper node: `def:ec` -/
 noncomputable def PatientSettlementClock.ofComputations
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     (hpoly : AffineCombination.PolySequence As)
@@ -3470,7 +3478,8 @@ end PrefixPatchCompile
 
 /-- **Concrete finite-prefix compiler (`M7-PREFIX-PATCH`).**  The LIA's first `cutoff`
 rational belief states form a fixed finite table.  Exhaustive raw sentence matching and the
-flat administrative freeze transducer compile that table into a polynomial token emitter. -/
+flat administrative freeze transducer compile that table into a polynomial token emitter.
+Paper node: `def:lia` -/
 noncomputable def liaEfficientPrefixPatch (DP : DeductiveProcess) (cutoff : ℕ) :
     EfficientPrefixPatch (liaHistory DP) cutoff where
   quote := PrefixPatchCompile.liaPrefixQuote DP cutoff

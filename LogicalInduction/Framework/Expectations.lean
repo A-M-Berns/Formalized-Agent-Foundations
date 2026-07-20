@@ -45,7 +45,8 @@ def PolyRatCodes (q : ℕ → ℚ) : Prop :=
 /-- A rational sequence generated continuously from the market by a polynomial-size,
 closed feature progression. This is the propositional/token-model rendering of the
 paper's `def:pgen` for rational sequences. Closure is load-bearing: internal `EF.var`
-nodes are legal only underneath the shared `letE` emitter and cannot be free inputs. -/
+nodes are legal only underneath the shared `letE` emitter and cannot be free inputs.
+Paper node: `def:ece` -/
 structure GeneratedRatFeature (P : History) (q : ℕ → ℚ)
     (feature : ℕ → EF) : Prop where
   rank_le : ∀ n, (feature n).rank ≤ n
@@ -58,7 +59,8 @@ def PGenerableRat (P : History) (q : ℕ → ℚ) : Prop :=
 
 /-- `def:luv` (abstracted). A `[0,1]`-logically-uncertain variable, presented by its
 threshold sentences: `X.gt r = ⌜X > r⌝`. This is the LUV's entire observable content for a
-market, which prices those sentences. -/
+market, which prices those sentences.
+Paper node: `def:luv` -/
 structure LUV where
   /-- The sentence `⌜X > r⌝`, for a rational threshold `r`. -/
   gt : ℚ → Sentence

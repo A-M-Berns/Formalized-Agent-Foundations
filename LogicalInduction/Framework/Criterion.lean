@@ -768,7 +768,8 @@ interpreted as the theorems revealed by day `n`.
 
 Computability is packaged separately below, so the bare order-theoretic object remains
 convenient in semantic lemmas while logical-inductor instances carry the paper-required
-certificate. -/
+certificate.
+Paper node: `def:dedproc` -/
 structure DeductiveProcess where
   /-- The sentences revealed by day `n`. -/
   D : ℕ → Finset Sentence
@@ -790,7 +791,8 @@ def ComputableDeductiveProcess (DP : DeductiveProcess) : Prop :=
 
 /-- A named presentation of a computable deductive process.  This is equivalent to
 `ComputableDeductiveProcess`, but keeps the program and its semantic specification
-available to finite certificate checkers. -/
+available to finite certificate checkers.
+Paper node: `def:dedproc` -/
 structure DeductiveProcessComputation (DP : DeductiveProcess) where
   code : Nat.Partrec.Code
   code_spec : ∀ n, Encodable.encode (DP.D n) ∈ code.eval n
@@ -972,7 +974,7 @@ def ComputableMarket (P : History) : Prop :=
 /-- A named exact rational program presenting a computable market.  The existential
 paper-facing predicate above is convenient in theorem statements; this structure is the
 operational form consumed by finite clocked certificate checkers.
-Paper node: the operational form of `def:ec` for markets. -/
+Paper node: `def:ec` -/
 structure MarketComputation (P : History) where
   quote : ℕ → ℕ → ℚ
   code : Nat.Partrec.Code
@@ -1300,7 +1302,8 @@ An `n`-strategy (`def:tradestrat`) is the paper's canonical encoding: a finite l
 `≤ n`. It denotes `∑ᵢ eᵢ · (φᵢ − φᵢ*ⁿ)` — "buy `eᵢ(𝓥)` shares of `φᵢ` at the day-`n`
 price", the cash term being determined by the pairs. -/
 
-/-- `def:tradestrat`. A trading strategy for day `n`. -/
+/-- `def:tradestrat`. A trading strategy for day `n`.
+Paper node: `def:tradestrat` -/
 structure Strategy (n : ℕ) where
   /-- The `(expressible-feature coefficient, sentence)` pairs `(eᵢ, φᵢ)`. -/
   trades : List (EF × Sentence)
@@ -1322,7 +1325,8 @@ def cost {n : ℕ} (T : Strategy n) : ℕ :=
 
 end Strategy
 
-/-- `def:trader`. A sequence of trading strategies, one per day. -/
+/-- `def:trader`. A sequence of trading strategies, one per day.
+Paper node: `def:trader` -/
 structure Trader where
   /-- The strategy the trader plays on day `n`. -/
   strat : (n : ℕ) → Strategy n
@@ -1447,7 +1451,8 @@ property tail is conditioned on (`[IsLogicalInductor P DP]`). With the faithful
 `EfficientlyComputableTok` above (the poly-*size*, token-indexed model — OPEN RISK 4
 resolved), this is the paper's `def:lic` on the nose, and it now admits deep poly-size
 exploiters (hysteresis, purchase counters) that the whole-number `EfficientlyComputable`
-excluded. -/
+excluded.
+Paper node: `def:lic` -/
 class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
   /-- Markets are computable rational pricing sequences in the paper's definition. -/
   marketComputable : ComputableMarket P

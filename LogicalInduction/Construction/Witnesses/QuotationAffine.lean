@@ -28,7 +28,7 @@ open LO.FirstOrder LO.FirstOrder.Arithmetic
 /-! ## Dual arithmetic decisions -/
 
 /-- Positive and complementary arithmetic representations of a decidable predicate.
-Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
+Paper node: `thm:ref`, `thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` -/
 structure ArithmeticDecision (T : ArithmeticTheory) (truth : ℕ → Prop) where
   positive : ArithmeticSemisentence 1
   negative : ArithmeticSemisentence 1
@@ -99,7 +99,7 @@ lemma quotationClaimSentence_poly
 /-- A first-order arithmetic background and one generic proof-to-public-language
 translation.  Unlike the old quote packages this object contains no sentence family,
 LUV, price, affine combination, or asymptotic field.
-Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
+Paper node: `thm:ref`, `thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` -/
 structure QuotationTheoryPresentation
     (DP : DeductiveProcess) (T : ArithmeticTheory)
     extends ComputationTheoryPresentation DP T where
@@ -116,7 +116,7 @@ structure QuotationTheoryPresentation
 /-! ## Boolean quote families -/
 
 /-- A uniformly named Boolean quote backed by a dual arithmetic decision.
-Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
+Paper node: `thm:ref`, `thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` -/
 structure BooleanQuoteCode (T : ArithmeticTheory) (truth : ℕ → Prop) where
   decision : ArithmeticDecision T truth
 
@@ -170,7 +170,7 @@ noncomputable def arithmeticThresholdLUV
 
 /-- A rational-valued computation together with dual FFL threshold schemas and an honest
 polynomial emitter for the resulting threshold syntax.
-Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
+Paper node: `thm:ref`, `thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` -/
 structure RationalQuoteCode (T : ArithmeticTheory) (value : ℕ → ℚ) where
   decision : ArithmeticDecision T (fun z =>
     decodedQuotationRat z.unpair.2 < value z.unpair.1)
@@ -281,8 +281,7 @@ noncomputable def expectAffineSeq_polySequence (X : ℕ → LUV)
 
 end LUV
 
-/-- A closed polynomial feature carrying the represented numeric target.
-Paper nodes: the quotation layer for `thm:ref`–`thm:st` (Apps. `ref`–`st`). -/
+/-- A closed polynomial feature carrying the represented numeric target. -/
 structure NumericQuoteTarget (P : History) (target : ℕ → ℝ) where
   feature : ℕ → EF
   generated : PGenerableWeighting feature
@@ -2232,7 +2231,7 @@ noncomputable def introspectionIntervalQuoteOfCode
 /-- A Boolean quote family whose positive schema is FFL's actual parameterized fixed
 point.  The decision completeness fields connect that fixed point and its complementary
 schema to the intended public truth predicate.
-Paper node: the diagonal family realizing `thm:lp` (App. `lp`). -/
+Paper node: `thm:lp` -/
 structure ParameterizedDiagonalQuoteCode
     (T : ArithmeticTheory) (truth : ℕ → Prop)
     extends BooleanQuoteCode T truth where
@@ -3118,7 +3117,8 @@ noncomputable def selfTrustQuoteOfRepresentation
 
 /-! ## Direct deferred consumers -/
 
-/-- Paper-facing `thm:cee` entry point from completed-world representation data. -/
+/-- Paper-facing `thm:cee` entry point from completed-world representation data.
+Paper node: `thm:cee` -/
 theorem lic_expected_future_expectations_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
@@ -3135,7 +3135,8 @@ theorem lic_expected_future_expectations_ofRepresentation
     (expectedFutureExpectationQuoteOfRepresentation f hstrict X Y hX hY
       source_valued reflected hP hworld)
 
-/-- Paper-facing `thm:ceu` entry point from completed-world representation data. -/
+/-- Paper-facing `thm:ceu` entry point from completed-world representation data.
+Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
@@ -3149,7 +3150,8 @@ theorem lic_no_expected_net_update_ofRepresentation
   lic_no_expected_net_update P DP f φ Y hP hworld
     (futurePriceQuoteOfRepresentation f hstrict φ Y hφ hY reflected hP hworld)
 
-/-- Paper-facing `thm:ccee` entry point from completed-world product representations. -/
+/-- Paper-facing `thm:ccee` entry point from completed-world product representations.
+Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
@@ -3174,7 +3176,8 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation
       right_reflected hP hworld)
 
 /-- Paper-facing `thm:st` entry point from completed-world confidence/product
-representations. -/
+representations.
+Paper node: `thm:st` -/
 theorem lic_self_trust_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
@@ -3204,7 +3207,8 @@ theorem lic_self_trust_ofRepresentation
 
 /-! ## Direct same-day consumers -/
 
-/-- Paper-facing `thm:epr` entry point from concrete arithmetic quotation code. -/
+/-- Paper-facing `thm:epr` entry point from concrete arithmetic quotation code.
+Paper node: `thm:epr` -/
 theorem lic_expectations_of_probabilities_ofCode
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     (Q : QuotationTheoryPresentation DP T)
@@ -3218,7 +3222,8 @@ theorem lic_expectations_of_probabilities_ofCode
   lic_expectations_of_probabilities P DP φ q.luv hP hworld
     (currentPriceExpectationQuoteOfCode Q φ hφ q hexact hP)
 
-/-- Paper-facing `thm:er` entry point from concrete arithmetic quotation code. -/
+/-- Paper-facing `thm:er` entry point from concrete arithmetic quotation code.
+Paper node: `thm:er` -/
 theorem lic_iterated_expectations_ofCode
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     (Q : QuotationTheoryPresentation DP T)
@@ -3234,7 +3239,8 @@ theorem lic_iterated_expectations_ofCode
     (currentExpectationQuoteOfCode Q X hX q hexact hP)
 
 /-- Paper-facing `thm:ref` entry point from generated endpoint features and the
-arithmetically reflected interval decision. -/
+arithmetically reflected interval decision.
+Paper node: `thm:ref` -/
 theorem lic_introspection_ofCode
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     (Q : QuotationTheoryPresentation DP T)
@@ -3267,7 +3273,8 @@ theorem lic_introspection_ofCode
     lowerFeature hlower upperFeature hupper hδ hδinv hδpos hδzero hab q hP
   simpa only using lic_introspection P DP φ a b δ package hP hworld
 
-/-- Paper-facing `thm:lp` entry point from the genuine parameterized fixed point. -/
+/-- Paper-facing `thm:lp` entry point from the genuine parameterized fixed point.
+Paper node: `thm:lp` -/
 theorem lic_paradox_resistance_ofDiagonal
     {DP : DeductiveProcess} {T : ArithmeticTheory} {truth : ℕ → Prop}
     (Q : QuotationTheoryPresentation DP T)

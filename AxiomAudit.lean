@@ -26,6 +26,20 @@ elab "#assert_axioms_clean " ids:ident+ : command => do
     unless bad.isEmpty do
       throwErrorAt id "'{name}' depends on disallowed axioms: {bad.toList}"
 
+open Lean Elab Command in
+/-- Fail elaboration unless `struct` is a structure whose field-name set is exactly the
+listed idents. Freezes the hypothesis surface of a boundary structure: adding or removing
+a field fails the build. Order-insensitive. -/
+elab "#assert_fields " struct:ident fields:ident* : command => do
+  let name ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo struct
+  unless Lean.isStructure (← getEnv) name do
+    throwErrorAt struct "'{name}' is not a structure"
+  let actual := ((Lean.getStructureFields (← getEnv) name).map (·.toString)).qsort (· < ·)
+  let expected := (fields.map (·.getId.toString)).qsort (· < ·)
+  unless actual.toList == expected.toList do
+    throwErrorAt struct
+      "'{name}' fields changed.\n  expected: {expected.toList}\n  actual:   {actual.toList}"
+
 namespace LogicalInduction
 
 open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
@@ -145,5 +159,164 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_learns_halting_patterns_ofComputation
   lic_learns_provable_nonhalting_patterns_ofComputation
   lic_does_not_anticipate_halting_ofComputation
+
+
+open AffineCombination LUVCombination in
+/-! ## Tier-2 boundary structures — field (hypothesis) surface
+
+Each structure below appears in the *type* of a Tier-1 endpoint (directly, or
+transitively through structure fields), so its fields are hypotheses the deferred
+read-through must audit. `#assert_fields` freezes that field set: adding or removing
+a field — smuggling a premise in or out of a boundary — fails the build. The set is
+order-insensitive. Regenerate with `SurfaceProbe`/`FieldProbe` if the surface changes
+deliberately. -/
+
+#assert_fields AffineCombination
+  const terms
+#assert_fields AffineCombination.BoundedCombinationSequence
+  poly bounded
+#assert_fields AffineCombination.FeedbackTraderEmission
+  tradeCount coefficient sentence tradeCount_poly coefficient_poly sentence_poly trades_eq
+#assert_fields AffineCombination.FeedbackTraderEmissionFamily
+  emit
+#assert_fields AffineCombination.FeedbackTraderEmissionSigns
+  positive negative
+#assert_fields AffineCombination.FeedbackTruthSequence
+  determined sequence poly bounded magnitude zero_value feedback_price
+#assert_fields AffineCombination.PolySequence
+  termCount coefficient sentence termCount_poly const_poly coefficient_poly sentence_poly terms_eq const_rank coefficient_rank const_closed coefficient_closed
+#assert_fields AffineQuoteEq
+  toAffineQuotePortfolio future_coherent
+#assert_fields AffineQuoteGE
+  toAffineQuotePortfolio future_coherent
+#assert_fields AffineQuotePortfolio
+  family poly scale scale_pos current_price bounded magnitude_le_one
+#assert_fields ArithmeticDecision
+  positive negative positive_complete negative_complete positive_standard negative_standard
+#assert_fields BitPrefixCodeComputation
+  code code_poly
+#assert_fields BitPrefixSentences
+  atom prefixSentence enumeration enumeration_covers prefix_codes holds_prefix finite_realizable
+#assert_fields BooleanQuoteCode
+  decision
+#assert_fields BoundedComputation
+  machine input steps input_poly steps_poly truth_iff
+#assert_fields BoundedEvalnCompiler
+  code poly
+#assert_fields CEEnumeration
+  code halts outputs_sound
+#assert_fields CompactConditioningProcessComputation
+  toDeductiveProcessComputation condition_code condition_code_poly
+#assert_fields CompletedAffineQuoteApprox
+  toAffineQuotePortfolio theory_coherent
+#assert_fields CompletedAffineQuoteEq
+  toAffineQuotePortfolio theory_coherent
+#assert_fields ComputationTheoryPresentation
+  theory_deltaOne process halting_enters halting_refutes boundedHalting_enters boundedFailure_refutes inconsistency_enters inconsistency_refutesConsistency
+#assert_fields ConditionalExpectationQuote
+  weight_mem weight_generable source_codes left_codes right_codes source_valued left_reflected right_reflected affine
+#assert_fields ConditioningPresentation
+  condition condition_codes holds_condition combined_computable
+#assert_fields ConditioningTraderCompiler
+  conditioned_computable translate translate_ec tracks_on_condition preserves_floor
+#assert_fields ContinuousSemimeasure
+  mass nonneg root_le_one children_le
+#assert_fields CurrentExpectationQuote
+  source_codes quote_codes reflected affine
+#assert_fields CurrentPriceExpectationQuote
+  sentence_codes quote_codes reflected affine
+#assert_fields DUSApproximationPresentation
+  approximation approximation_codes nonneg le_mass tendsto
+#assert_fields DUSThresholdEmission
+  threshold_sum_codes inverse_width_codes
+#assert_fields DeductiveProcess
+  D mono
+#assert_fields DeductiveProcessComputation
+  code code_spec
+#assert_fields DeferralFunction
+  f lt code fueled
+#assert_fields EfficientPrefixPatch
+  quote quote_exact preserves_ec
+#assert_fields EfficientRepeatedEnumeration
+  sequence sequence_poly repeats sound covers
+#assert_fields ExpectedFutureExpectationQuote
+  source_codes quote_codes reflected affine
+#assert_fields FeedbackTruth.FeedbackTruthComputation
+  value code a degree computes agrees
+#assert_fields FuturePriceQuote
+  sentence_codes quote_codes reflected affine
+#assert_fields GatedConditioningOperationalWitness
+  epsilon_pos denominator_floor conditioned_computable translation_ec
+#assert_fields GeneratedRatFeature
+  rank_le polyTok closed denote
+#assert_fields InconsistentTheoryClaims
+  inconsistencySentence consistencySentence inconsistency_poly consistency_poly inconsistency_provable consistency_disprovable
+#assert_fields IndependentBitAtoms
+  atom finite_realizable
+#assert_fields IntrospectionIntervalQuote
+  source_codes lower_feature lower_generated upper_feature upper_generated width_codes inverse_width_codes width_pos width_tendsto_zero probability_bounds quote quote_codes reflected inside_affine outside_affine
+#assert_fields IsLogicalInductor
+  marketComputable processComputable noExploit
+#assert_fields LUV
+  gt
+#assert_fields LUVCombination
+  const terms
+#assert_fields LUVCombination.BoundedSequence
+  poly bounded
+#assert_fields LUVCombination.ExactTheoryPresentation
+  value value_mem threshold_iff
+#assert_fields LUVCombination.MeshSoftmaxOperationalWitness
+  poly bounded magnitude lower_poly lower_bounded lower_magnitude
+#assert_fields LUVCombination.PolySequence
+  mesh_poly
+#assert_fields LUVCombinationSyntax
+  termCount coefficient luv termCount_poly const_poly coefficient_poly threshold_poly terms_eq const_rank coefficient_rank const_closed coefficient_closed
+#assert_fields LowerSemicomputableContinuousSemimeasure
+  toContinuousSemimeasure approximation approximation_code approximation_computes approximation_nonneg approximation_mono approximation_le approximation_tendsto
+#assert_fields MarketComputation
+  quote code quote_exact code_spec
+#assert_fields OccamThresholdEmission
+  threshold_sum_codes inverse_width_codes
+#assert_fields PGenerableWeighting
+  polySeg rank_le closed
+#assert_fields ParadoxResistanceQuote
+  sentence sentence_codes width width_codes width_pos width_tendsto_zero diagonal_reflected lower_affine upper_affine
+#assert_fields ParameterizedDiagonalQuoteCode
+  toBooleanQuoteCode body positive_fixedpoint
+#assert_fields PatientSettlementClock
+  active active_codes antitone active_through_envelope eventually_inactive settled_of_inactive
+#assert_fields PolyMachineCodes
+  code code_poly
+#assert_fields PolyNatCodes
+  code code_poly
+#assert_fields PrefixMachinePresentation
+  sentence sentence_codes approximation approximation_codes approximation_nonneg approximation_le approximation_tendsto kraft covers
+#assert_fields PrefixNegationCompiler
+  overhead complexity_neg_le
+#assert_fields PseudorandomFrequencyInfrastructure
+  clock verify verifyNeg verifyNegNeg
+#assert_fields QuotationTheoryPresentation
+  toComputationTheoryPresentation theory_sigmaOne quote_positive_enters quote_negative_refutes
+#assert_fields RationalQuoteCode
+  decision value_mem threshold_poly
+#assert_fields RepresentedDecidableClaims
+  toRepresentedSemidecidableClaims disprovable_of_false
+#assert_fields RepresentedSemidecidableClaims
+  sentence sentence_poly provable_of_true
+#assert_fields SelfTrustQuote
+  delta_pos probability_mem sentence_codes delta_codes probability_codes product_codes confidence_codes confidence_reflected product_reflected affine
+#assert_fields SemidecidableComputation
+  machine input input_poly truth_iff
+#assert_fields SettlementChecker
+  code spec
+#assert_fields Strategy
+  trades rank_le
+#assert_fields StrictSeparatorPresentation
+  prefixes nested length_tendsto_atTop repetition jointly_possible mass_tendsto_zero
+#assert_fields Trader
+  strat
+#assert_fields UniversalContinuousSemimeasure
+  toLowerSemicomputableContinuousSemimeasure universal
+
 
 end LogicalInduction

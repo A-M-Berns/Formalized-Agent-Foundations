@@ -117,9 +117,7 @@ inductive ComputationClaimKind
   | consistency
   deriving DecidableEq
 
-/-- A concrete quoted first-order claim: its role, arithmetic schema, and compact input.
-Paper node: the §2.1 computation-representation convention serving `thm:pac`–`thm:dontwait`
-(Apps. `pac`–`dontwait`). -/
+/-- A concrete quoted first-order claim: its role, arithmetic schema, and compact input. -/
 structure ComputationClaim where
   kind : ComputationClaimKind
   schema : ArithmeticSemisentence 1
@@ -207,12 +205,14 @@ def boundedHaltingClaimInput (machine : Nat.Partrec.Code) (input steps : ℕ) : 
 
 /-! ## Honest polynomial naming -/
 
-/-- Polynomial code for a sequence of repository machines. -/
+/-- Polynomial code for a sequence of repository machines.
+Paper node: `def:ec` -/
 structure PolyMachineCodes (machines : ℕ → Nat.Partrec.Code) where
   code : Nat.Partrec.Code
   code_poly : PolyFueled code (fun n => Encodable.encode (machines n))
 
-/-- Polynomial code for a natural-number sequence. -/
+/-- Polynomial code for a natural-number sequence.
+Paper node: `def:ec` -/
 structure PolyNatCodes (values : ℕ → ℕ) where
   code : Nat.Partrec.Code
   code_poly : PolyFueled code values
@@ -261,7 +261,7 @@ computation schemas are translated into the corresponding public propositional l
 
 The separate bounded-failure field is necessary because FFL supplies weak positive
 representation of r.e. predicates, not strong refutation of false r.e. formulas.
-Paper nodes: `thm:pac`–`thm:dontwait` (Apps. `pac`–`dontwait`). -/
+Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 structure ComputationTheoryPresentation
     (DP : DeductiveProcess) (T : ArithmeticTheory) where
   theory_deltaOne : LO.FirstOrder.Theory.Δ₁ T
@@ -288,7 +288,8 @@ structure ComputationTheoryPresentation
 /-! ## Operational predicate presentations -/
 
 /-- A semidecidable predicate reduced to one fixed repository machine on polynomially
-named inputs.  Paper nodes: the §2.1 representation premises for `thm:pac`–`thm:dontwait`. -/
+named inputs.
+Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 structure SemidecidableComputation (truth : ℕ → Prop) where
   machine : Nat.Partrec.Code
   input : ℕ → ℕ
@@ -296,7 +297,7 @@ structure SemidecidableComputation (truth : ℕ → Prop) where
   truth_iff : ∀ n, truth n ↔ CodeHalts machine (input n)
 
 /-- A decidable predicate reduced to a bounded run of one fixed repository machine.
-Paper nodes: the §2.1 representation premises for `thm:pac`–`thm:dontwait`. -/
+Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 structure BoundedComputation (truth : ℕ → Prop) where
   machine : Nat.Partrec.Code
   input : ℕ → ℕ
@@ -307,6 +308,8 @@ structure BoundedComputation (truth : ℕ → Prop) where
 
 /-! ## Constructors for the three MetaLearning boundaries -/
 
+/-- Constructor for the semidecidable-claims boundary from a concrete computation.
+Paper node: `thm:pac` -/
 noncomputable def representedSemidecidableClaimsOfComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -322,6 +325,8 @@ noncomputable def representedSemidecidableClaimsOfComputation
     apply (re_complete (T := T) universalCodeHalts_re).mp
     simpa using (C.truth_iff n).mp hn
 
+/-- Constructor for the decidable-claims boundary from a concrete computation.
+Paper node: `thm:pac` -/
 noncomputable def representedDecidableClaimsOfComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -345,6 +350,8 @@ noncomputable def representedDecidableClaimsOfComputation
     apply (C.truth_iff n).mpr
     exact (universalCodeHaltsWithin_claimInput C.machine (C.input n) (C.steps n)).mp hb
 
+/-- Constructor for the inconsistent-theory-claims boundary from a concrete computation.
+Paper node: `thm:incons` -/
 noncomputable def inconsistentTheoryClaimsOfComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -411,6 +418,9 @@ noncomputable def representedBoundedHaltingClaims
 
 /-! ## Direct paper-facing consumers -/
 
+/-- Finitistic-consistency belief, with the representation boundary discharged by a
+concrete computation.
+Paper node: `thm:pac` -/
 theorem lic_belief_finitistic_consistency_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -425,7 +435,8 @@ theorem lic_belief_finitistic_consistency_ofComputation
   lic_belief_finitistic_consistency P DP consistentWithin
     (representedDecidableClaimsOfComputation Q C) hconsistent hP hworld
 
-/-- Paper node: `thm:pazfc` (App. `pazfc`). -/
+/--
+Paper node: `thm:pazfc` -/
 theorem lic_belief_stronger_theory_consistency_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -441,7 +452,8 @@ theorem lic_belief_stronger_theory_consistency_ofComputation
   lic_belief_stronger_theory_consistency P DP strongerConsistentWithin
     (representedDecidableClaimsOfComputation Q C) hconsistent hP hworld
 
-/-- Paper node: `thm:incons` (App. `incons`). -/
+/--
+Paper node: `thm:incons` -/
 theorem lic_disbelief_inconsistent_theories_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -458,7 +470,8 @@ theorem lic_disbelief_inconsistent_theories_ofComputation
   lic_disbelief_inconsistent_theories P DP inconsistent
     (inconsistentTheoryClaimsOfComputation Q C) hall hP hworld
 
-/-- Paper node: `thm:halts` (App. `halts`). -/
+/--
+Paper node: `thm:halts` -/
 theorem lic_learns_halting_patterns_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -474,7 +487,8 @@ theorem lic_learns_halting_patterns_ofComputation
   lic_learns_halting_patterns P DP machines inputs
     (representedHaltingClaims Q machines inputs hm hi) hhalts hP hworld
 
-/-- Paper node: `thm:loops` (App. `loops`). -/
+/--
+Paper node: `thm:loops` -/
 theorem lic_learns_provable_nonhalting_patterns_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -492,7 +506,8 @@ theorem lic_learns_provable_nonhalting_patterns_ofComputation
     (representedHaltingClaims Q machines inputs hm hi)
     (fun n => Q.halting_refutes _ (hloops n)) hP hworld
 
-/-- Paper node: `thm:dontwait` (App. `dontwait`). -/
+/--
+Paper node: `thm:dontwait` -/
 theorem lic_does_not_anticipate_halting_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]

@@ -1,7 +1,6 @@
 # Consolidation & style phase — intentions and best practices
 
-_Started 2026-07-19. Branch: `logical-induction`. Status: **drafting** — Anson will add
-rules/suggestions below; this is the opening framing._
+_Started 2026-07-19. Branch: `logical-induction`._
 
 This is step (2) of the fixed order of operations (see CLAUDE.md sequencing override):
 the conditional+disclosed endpoint is green, so the work now is consolidation, API

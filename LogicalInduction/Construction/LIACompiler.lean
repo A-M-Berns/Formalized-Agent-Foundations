@@ -6733,7 +6733,8 @@ def liaBoundedEvaluatorCompiler {DP : DeductiveProcess}
   computable := liaEncodedQuoteNatAtFuel_computable process
 
 /-- `thm:lia`: the recursively constructed rational LIA market is a logical inductor
-over every computable deductive process. -/
+over every computable deductive process.
+Paper node: `thm:lia` -/
 theorem LIA_is_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
     IsLogicalInductor (liaHistory DP) DP := by
@@ -6741,7 +6742,8 @@ theorem LIA_is_logical_inductor (DP : DeductiveProcess)
   exact lia_isLogicalInductor_of_compiler process
     (liaBoundedEvaluatorCompiler process)
 
-/-- `thm:li`: every computable deductive process admits a logical inductor. -/
+/-- `thm:li`: every computable deductive process admits a logical inductor.
+Paper node: `thm:li` -/
 theorem exists_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
     ∃ P : History, IsLogicalInductor P DP :=

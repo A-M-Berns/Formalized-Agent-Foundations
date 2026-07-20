@@ -713,7 +713,8 @@ routine obligation awaiting labor; instantiating it is a real claim about `P`.
 
 For `LIA` it *is* inhabitable — each day's quote table is a finite `RationalBeliefState`
 entry list, so the freeze is a hardcodable finite lookup with constant-size tokens.  That
-is `M7-PREFIX-PATCH`. -/
+is `M7-PREFIX-PATCH`.
+Paper node: `app:ifp` -/
 structure EfficientPrefixPatch (P : History) (cutoff : ℕ) where
   quote : ℕ → Sentence → ℚ
   quote_exact : ∀ day < cutoff, ∀ φ, P day φ = (quote day φ : ℝ)
@@ -723,7 +724,8 @@ structure EfficientPrefixPatch (P : History) (cutoff : ℕ) where
 /-- **Closure under Finite Perturbations** (`thm:ifp`), with the exact computational
 qualification forced by this repository's clocked model.  The two histories agree from
 `cutoff` onward, and each finite prefix supplies the concrete efficient-freeze certificate
-above.  The conclusion is the paper's biconditional, not merely one direction. -/
+above.  The conclusion is the paper's biconditional, not merely one direction.
+Paper node: `thm:ifp` -/
 theorem lic_iff_of_finitePerturbation
     (P P' : History) (DP : DeductiveProcess) (cutoff : ℕ)
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')

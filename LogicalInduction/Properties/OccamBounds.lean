@@ -28,7 +28,8 @@ lemma prefixWeight_pos (κ : Sentence → ℕ) (φ : Sentence) :
 `sentence` is an efficient enumeration of all sentences. `approximation n i` is the
 paper's polynomial-time, rational, from-below approximation to `2^{-κ(sentence i)}`.
 The finite Kraft bound is stated on this enumeration, so duplicates cannot silently spend
-the same code weight twice.  This structure contains no market prices or Occam conclusion. -/
+the same code weight twice.  This structure contains no market prices or Occam conclusion.
+Paper node: `thm:ob` -/
 structure PrefixMachinePresentation (κ : Sentence → ℕ) where
   sentence : ℕ → Sentence
   sentence_codes : PolySentenceCodes sentence
@@ -68,7 +69,7 @@ def obEmitBase {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
 This is a syntax-only representation boundary: it says that rational arithmetic on the
 prefix approximation can emit the gate's threshold-sum and reciprocal-width tokens in
 polynomial fuel. It contains no market prices, worlds, exploitation, or limiting bound.
-Paper node: `thm:ob` (App. `ob`). -/
+Paper node: `thm:ob` -/
 structure OccamThresholdEmission {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) : Prop where
   threshold_sum_codes : PolyRatCodes (fun z ↦ obEmitBase U z + obEmitBase U z)
@@ -76,7 +77,7 @@ structure OccamThresholdEmission {κ : Sentence → ℕ}
 
 /-- A fixed prefix program that negates the decoded sentence. The sole semantic content is
 the standard additive complexity overhead; it contains no prices or Occam conclusion.
-Paper node: `thm:ob` (App. `ob`). -/
+Paper node: `thm:ob` -/
 structure PrefixNegationCompiler (κ : Sentence → ℕ) where
   overhead : ℕ
   complexity_neg_le : ∀ φ, κ (∼φ) ≤ κ φ + overhead
@@ -99,7 +100,7 @@ lemma PrefixNegationCompiler.weight_div_le_neg
 
 /-- Limit coherence for a sentence and its propositional negation, obtained from the
 audited exclusive–exhaustive lemma rather than assumed as a valuation identity.
-Paper node: `thm:lc` (App. `coherenceproofs`). -/
+Paper node: `thm:lc` -/
 theorem lic_limitingBelief_add_neg
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
@@ -1045,7 +1046,8 @@ lemma obTrader_exploits {κ : Sentence → ℕ}
 /-! ## Paper-facing Occam bounds -/
 
 /-- Lower half of `thm:ob`: one fixed constant works for every sentence that remains
-propositionally possible at every deductive stage. -/
+propositionally possible at every deductive stage.
+Paper node: `thm:ob` -/
 theorem lic_occam_lower
     {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
     (emit : OccamThresholdEmission U)
@@ -1099,7 +1101,8 @@ theorem lic_occam_lower
 /-- `thm:ob` (Occam Bounds). One fixed positive constant simultaneously supplies the
 lower bound for every unrefutable sentence and the upper bound for every unprovable
 sentence. The upper half uses only the fixed syntax overhead for negation and the already
-verified exclusive–exhaustive limit law. -/
+verified exclusive–exhaustive limit law.
+Paper node: `thm:ob` -/
 theorem lic_occamBounds
     {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
     (emit : OccamThresholdEmission U) (neg : PrefixNegationCompiler κ)

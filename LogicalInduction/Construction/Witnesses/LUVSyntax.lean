@@ -20,7 +20,8 @@ namespace LogicalInduction
 /-! ## Compact combination syntax -/
 
 /-- Operational syntax for a sequence of LUV combinations.  The LUV and coefficient at
-`z = ⟨n,j⟩` are the `j`th term of member `n`.  Paper node: compact syntax for `def:luv`. -/
+`z = ⟨n,j⟩` are the `j`th term of member `n`.
+Paper node: `def:luv` -/
 structure LUVCombinationSyntax (As : ℕ → LUVCombination) where
   termCount : ℕ → ℕ
   coefficient : ℕ → EF
@@ -280,8 +281,7 @@ noncomputable def polySequence {As : ℕ → LUVCombination}
 /-! ## Exact represented semantics -/
 
 /-- Stagewise and completed-theory truth laws for the threshold families named by a
-compact syntax presentation.  These are representation facts only.
-Paper node: stage/completed-theory semantics for `def:luv`. -/
+compact syntax presentation.  These are representation facts only. -/
 structure TheorySemantics {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (DP : DeductiveProcess) where
   value : ℕ → LUV → ℝ
@@ -1238,7 +1238,8 @@ noncomputable def meshSoftmaxLowerPoly {As : ℕ → LUVCombination}
     AffineCombination.triangularIndex] using h
 
 /-- Compact LUV syntax and the sequence's stated `L¹` bound discharge the final
-operational boundary used by the mesh lemma. -/
+operational boundary used by the mesh lemma.
+Paper node: `lem:mesh`, `thm:wubexp` -/
 noncomputable def meshSoftmaxOperationalWitness
     {As : ℕ → LUVCombination} {P : History}
     (S : LUVCombinationSyntax As) (h : LUVCombination.BoundedSequence As P)

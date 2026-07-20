@@ -26,7 +26,7 @@ attribute [local irreducible] Nat.sqrt
 /-- The paper's delayed truth computation premise.  Input `k` names the value of
 `A_{f k}`; the program must return its canonical rational code by day `f(k+1)`.
 The equality with the semantic real stream is recorded only on those required indices.
-Paper node: `thm:wubaff` (App. `wubaff`), reused by `thm:wubexp`. -/
+Paper node: `thm:wubaff`, `thm:wubexp` -/
 structure FeedbackTruthComputation (truth : ℕ → ℝ) (f : DeferralFunction) where
   value : ℕ → ℚ
   code : Nat.Partrec.Code
@@ -456,7 +456,8 @@ lemma sequence_bounded
 
 /-- Public constructor for the formerly opaque `FeedbackTruthSequence` boundary.
 Normalization is deliberately external: `hA`, `hP`, and `hworld` provide the ordinary
-paper BCS/market premises, while `C` contains only the delayed computation. -/
+paper BCS/market premises, while `C` contains only the delayed computation.
+Paper node: `thm:wubaff` -/
 noncomputable def feedbackTruthSequence
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth : ℕ → ℝ} {f : DeferralFunction}
@@ -494,7 +495,8 @@ noncomputable def feedbackTruthSequence
 
 /-- Low-level `thm:wubaff` endpoint: the token emitter and delayed truth sequence are
 both constructed, leaving only the paper's operational truth program and ordinary
-normalization/market premises. -/
+normalization/market premises.
+Paper node: `thm:wubaff` -/
 theorem lic_wubaff_ofComputation
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W)
@@ -518,7 +520,8 @@ theorem lic_wubaff_ofComputation
 
 /-- Paper-facing affine endpoint for an arbitrary BCS.  Its canonical normalization stays
 outside `FeedbackTruthComputation`; the supplied program computes the normalized truth
-stream that the actual unit-risk trader consumes.  Paper node: `thm:wubaff` (App. `wubaff`). -/
+stream that the actual unit-risk trader consumes.
+Paper node: `thm:wubaff` -/
 theorem boundedCombination_wubaff_ofComputation
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
@@ -549,7 +552,8 @@ theorem boundedCombination_wubaff_ofComputation
     hsupport bridge hWdiv hP hworld
 
 /-- `thm:wubexp` with the normalized threshold mesh's delayed truth computation exposed
-directly.  The threshold mesh, feedback traders, and sparse truth sequence are all concrete. -/
+directly.  The threshold mesh, feedback traders, and sparse truth sequence are all concrete.
+Paper node: `thm:wubexp` -/
 theorem luv_wubexp_ofComputation
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]

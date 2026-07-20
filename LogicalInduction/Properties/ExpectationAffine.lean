@@ -358,7 +358,8 @@ lemma linearityAffine_value (a b : ℚ) (X Y Z : LUV) (P : History)
 
 end LUV
 
-/-- **Expectations of indicators** (`thm:ei`). -/
+/-- **Expectations of indicators** (`thm:ei`).
+Paper node: `thm:ei` -/
 theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : Sentence) (Y : LUV) (hcode : Y.PolyThresholdCodes)
     (_hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
@@ -388,7 +389,8 @@ theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
 
 #print axioms lic_expectation_indicator
 
-/-- **Linearity of expectation** (`thm:loe`, fixed `X, Y, Z` form). -/
+/-- **Linearity of expectation** (`thm:loe`, fixed `X, Y, Z` form).
+Paper node: `thm:loe` -/
 theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (a b : ℚ) (X Y Z : LUV)
     (hcodeX : X.PolyThresholdCodes) (hcodeY : Y.PolyThresholdCodes)
@@ -454,7 +456,8 @@ theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
 
 #print axioms lic_linearity_of_expectation
 
-/-- **Expectation Provability Induction** (`thm:expprovind`). -/
+/-- **Expectation Provability Induction** (`thm:expprovind`).
+Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
     (_hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)

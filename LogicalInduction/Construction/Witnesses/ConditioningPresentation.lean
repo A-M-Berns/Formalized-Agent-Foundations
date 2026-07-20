@@ -141,7 +141,8 @@ the code of the *actual* finite conjunction within polynomial fuel; it assumes n
 trades, wealth bound, exploitation fact, or logical-inductor conclusion.
 
 This strengthening is necessary: `ComputableDeductiveProcess` alone promises termination
-but no polynomial runtime or output-size bound.  Paper node: `thm:scon` (App. `scon`). -/
+but no polynomial runtime or output-size bound.
+Paper node: `thm:scon` -/
 structure CompactConditioningProcessComputation (extra : DeductiveProcess)
     extends DeductiveProcessComputation extra where
   condition_code : Nat.Partrec.Code
@@ -167,7 +168,8 @@ lemma compactConditioningProcessComputation_nonempty :
         (fun n ↦ by simp [extra]) }⟩⟩
 
 /-- Construct the exact syntax/semantics presentation used by `thm:scon` from operational
-programs for the base process and the compact extra process. -/
+programs for the base process and the compact extra process.
+Paper node: `thm:scon` -/
 noncomputable def conditioningPresentationOfComputations
     {DP extra : DeductiveProcess}
     (base : DeductiveProcessComputation DP)
@@ -179,7 +181,8 @@ noncomputable def conditioningPresentationOfComputations
   combined_computable := base.union_toComputable more.toDeductiveProcessComputation
 
 /-- Closure under conditioning with the presentation argument discharged by the concrete
-finite-conjunction and union construction above.  Paper node: `thm:scon` (App. `scon`). -/
+finite-conjunction and union construction above.
+Paper node: `thm:scon` -/
 theorem lic_conditioned_gated_ofComputations
     (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
     (base : DeductiveProcessComputation DP)

@@ -13,7 +13,8 @@ namespace LogicalInduction
 open Filter Topology
 
 /-- A continuous semimeasure on finite bitstrings. Mass can disappear but cannot be
-created when a node is split into its two children. -/
+created when a node is split into its two children.
+Paper node: `thm:dus` -/
 structure ContinuousSemimeasure where
   mass : List Bool → ℝ
   nonneg : ∀ σ, 0 ≤ mass σ
@@ -22,7 +23,8 @@ structure ContinuousSemimeasure where
     mass (σ ++ [false]) + mass (σ ++ [true]) ≤ mass σ
 
 /-- A lower-semicomputable continuous semimeasure, presented by rational approximations
-from below. No polynomial clock is required by this mathematical definition. -/
+from below. No polynomial clock is required by this mathematical definition.
+Paper node: `thm:dus` -/
 structure LowerSemicomputableContinuousSemimeasure extends ContinuousSemimeasure where
   approximation : ℕ → List Bool → ℚ
   approximation_code : Nat.Partrec.Code
@@ -37,7 +39,8 @@ structure LowerSemicomputableContinuousSemimeasure extends ContinuousSemimeasure
     Tendsto (fun n ↦ ((approximation n σ : ℚ) : ℝ)) atTop (𝓝 (mass σ))
 
 /-- Universality is the usual multiplicative domination of every lower-semicomputable
-continuous semimeasure.  Paper node: `thm:dus` (App. `dus`). -/
+continuous semimeasure.
+Paper node: `thm:dus` -/
 structure UniversalContinuousSemimeasure extends
     LowerSemicomputableContinuousSemimeasure where
   universal : ∀ ν : LowerSemicomputableContinuousSemimeasure,
@@ -46,7 +49,8 @@ structure UniversalContinuousSemimeasure extends
 /-- The genuine semantic premise behind the independent zero-arity predicates used in
 `thm:dus`: every finite Boolean assignment to the atoms remains compatible with every
 finite deductive stage.  It contains no preassembled prefix sentence, syntax semantics,
-market data, or domination conclusion. -/
+market data, or domination conclusion.
+Paper node: `thm:dus` -/
 structure IndependentBitAtoms (DP : DeductiveProcess) where
   atom : ℕ → Sentence
   finite_realizable : ∀ (n : ℕ) (σ : List Bool), ∃ v : PCWorld,
@@ -56,7 +60,8 @@ structure IndependentBitAtoms (DP : DeductiveProcess) where
 /-- Propositional syntax for the independent zero-arity predicates and their finite-prefix
 conjunctions from `thm:dus`. `holds_prefix` fixes the exact Boolean semantics, while
 `finite_realizable` records compatibility with each finite deductive stage.  The
-enumeration/code fields record the paper's efficient list of all finite strings. -/
+enumeration/code fields record the paper's efficient list of all finite strings.
+Paper node: `thm:dus` -/
 structure BitPrefixSentences (DP : DeductiveProcess) where
   atom : ℕ → Sentence
   prefixSentence : List Bool → Sentence
@@ -325,7 +330,7 @@ structure contains only the rational table and its syntax-level polynomial certi
 and no prices, purchases, or domination conclusion. -/
 
 /-- Polynomially emitted from-below approximation used by the DUS trader.
-Paper node: `thm:dus` (App. `dus`). -/
+Paper node: `thm:dus` -/
 structure DUSApproximationPresentation {DP : DeductiveProcess}
     (M : LowerSemicomputableContinuousSemimeasure)
     (B : BitPrefixSentences DP) where
@@ -364,7 +369,7 @@ def dusEmitBase {DP : DeductiveProcess}
 
 /-- Derived rational tokens used by the continuous low-price gate. This is a
 syntax-only compiler boundary: it contains neither market data nor a domination claim.
-Paper node: `thm:dus` (App. `dus`). -/
+Paper node: `thm:dus` -/
 structure DUSThresholdEmission {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B) : Prop where
@@ -1944,7 +1949,8 @@ lemma dusTrader_ecTok
 
 /-- **Domination of the Universal Semimeasure** (`thm:dus`). One positive constant
 simultaneously lower-bounds the limiting probability of every finite bit prefix by its
-continuous-semimeasure mass. -/
+continuous-semimeasure mass.
+Paper node: `thm:dus` -/
 theorem lic_domination_universalSemimeasure
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -2012,7 +2018,8 @@ open Filter Topology
 /-- Concrete interface to the recursively-inseparable separator class used in the paper's
 proof of Strict Domination.  `mass_tendsto_zero` is the precise computability-theory fact
 to be instantiated from disjoint c.e. sets with no computable separator; the remaining
-fields expose the finite prefix theory and its legal syntax preprocessing. -/
+fields expose the finite prefix theory and its legal syntax preprocessing.
+Paper node: `thm:strict` -/
 structure StrictSeparatorPresentation
     (M : UniversalContinuousSemimeasure) {DP : DeductiveProcess}
     (B : BitPrefixSentences DP) where
@@ -2051,7 +2058,8 @@ lemma strict_domination_of_null_prefix_theory
   exact ⟨N, (hN N le_rfl).trans_le (hlower N)⟩
 
 /-- **Strict Domination of the Universal Semimeasure** (`thm:strict`). The universal
-continuous semimeasure does not dominate the logical inductor's limiting prefix beliefs. -/
+continuous semimeasure does not dominate the logical inductor's limiting prefix beliefs.
+Paper node: `thm:strict` -/
 theorem lic_strict_domination_universalSemimeasure
     {DP : DeductiveProcess}
     {M : UniversalContinuousSemimeasure}

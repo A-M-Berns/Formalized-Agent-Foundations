@@ -31,7 +31,8 @@ lemma expectAffine_priceAt (X : LUV) (P : History) (k m : ℕ) :
 end LUV
 
 /-- An affine combination of `[0,1]`-LUVs with expressible-feature coefficients.  This is
-the direct propositional rendering of the paper's LUV combinations.  Paper node: `def:luv`. -/
+the direct propositional rendering of the paper's LUV combinations.
+Paper node: `def:luv` -/
 structure LUVCombination where
   const : EF
   terms : List (EF × LUV)
@@ -106,7 +107,7 @@ the strict-threshold truth of each LUV in a sequence member, relative to one can
 value assignment for that member.  Unlike `WorldValued`, this records that the represented
 computations are individually determined, which is exactly what the statistical lifts
 need in order to apply affine determined-sequence theorems to the threshold mesh.
-Paper node: completed-theory values for `def:luv`. -/
+Paper node: `def:luv` -/
 structure ExactTheoryPresentation (As : ℕ → LUVCombination)
     (DP : DeductiveProcess) where
   value : ℕ → LUV → ℝ
@@ -852,7 +853,7 @@ lemma meshSoftmaxLower_detects_gap
 /-- Narrow operational boundary for the concrete softmax syntax.  It certifies only
 uniform emission and structural boundedness of `meshSoftmax`; all completed-world
 semantics, gap detection, and market conclusions are proved outside this structure.
-Paper node: the finite soft-max mesh of App. `mesh`, serving `thm:wubexp`. -/
+Paper node: `thm:wubexp` -/
 structure MeshSoftmaxOperationalWitness
     (As : ℕ → LUVCombination) (P : History) where
   poly : ∀ b ε : ℚ,
@@ -946,12 +947,13 @@ theorem mesh_close_eventually
 /-- Operational certificate for a polynomial LUV-combination sequence.  The field is
 the exact compiled threshold mesh consumed by the affine theorems; it contains no market,
 world-value, convergence, or learning conclusion.
-Paper node: a `def:ec`-style polynomial certificate for a `def:luv` sequence. -/
+Paper node: `def:ec`, `def:luv` -/
 structure PolySequence (As : ℕ → LUVCombination) where
   mesh_poly : AffineCombination.PolySequence (fun n => (As n).meshAffine n)
 
 /-- `def:blcp`: a polynomially generated LUV-combination sequence with one uniform full
-coefficient `L¹` bound. -/
+coefficient `L¹` bound.
+Paper node: `def:blcp` -/
 structure BoundedSequence (As : ℕ → LUVCombination) (P : History) where
   poly : PolySequence As
   bounded : ∃ B : ℝ, ∀ n, (As n).l1Norm P ≤ B

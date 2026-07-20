@@ -17,7 +17,8 @@ open Filter Topology
 
 /-- A same-day affine quotation identity.  The inherited object exposes the exact
 portfolio, uniform emitter, normalization, bounded prices, and bounded magnitude;
-`theory_coherent` is the first-order quotation law translated to completed-theory worlds. -/
+`theory_coherent` is the first-order quotation law translated to completed-theory worlds.
+Paper node: `thm:er` -/
 structure CompletedAffineQuoteEq (P : History) (DP : DeductiveProcess)
     (gap : ℕ → ℝ) extends AffineQuotePortfolio P gap where
   theory_coherent : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
@@ -48,7 +49,7 @@ end CompletedAffineQuoteEq
 quotes naturally have this form: their finite threshold bundle differs from the represented
 real by at most the mesh width, while Boolean quotation identities use the exact
 `CompletedAffineQuoteEq` specialization above.
-Paper nodes: deferred quotation for `thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` (Apps. `cee`–`st`). -/
+Paper node: `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` -/
 structure CompletedAffineQuoteApprox (P : History) (DP : DeductiveProcess)
     (gap : ℕ → ℝ) extends AffineQuotePortfolio P gap where
   theory_coherent : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld,
@@ -78,7 +79,8 @@ end CompletedAffineQuoteApprox
 
 /-- Operational quotation package for `thm:epr`. `Y n` is the LUV expressing the actual
 day-`n` price of `φ n`. The delayed/world field records the intended first-order semantics;
-the affine field is the concrete same-day portfolio consumed by the proof. -/
+the affine field is the concrete same-day portfolio consumed by the proof.
+Paper node: `thm:epr` -/
 structure CurrentPriceExpectationQuote (P : History) (DP : DeductiveProcess)
     (φ : ℕ → Sentence) (Y : ℕ → LUV) where
   sentence_codes : PolySentenceCodes φ
@@ -89,7 +91,8 @@ structure CurrentPriceExpectationQuote (P : History) (DP : DeductiveProcess)
     (fun n => P n (φ n) - (Y n).expect P n)
 
 /-- Operational quotation package for `thm:er`. `Y n` expresses the actual day-`n`
-expectation of `X n`. -/
+expectation of `X n`.
+Paper node: `thm:er` -/
 structure CurrentExpectationQuote (P : History) (DP : DeductiveProcess)
     (X Y : ℕ → LUV) where
   source_codes : LUV.PolyThresholdCodeSeq X
@@ -100,7 +103,8 @@ structure CurrentExpectationQuote (P : History) (DP : DeductiveProcess)
     (fun n => (X n).expect P n - (Y n).expect P n)
 
 /-- **Expectations of Probabilities** (`thm:epr`): the price of `φ n` agrees
-asymptotically with the expectation of its represented current-price LUV. -/
+asymptotically with the expectation of its represented current-price LUV.
+Paper node: `thm:epr` -/
 theorem lic_expectations_of_probabilities
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
@@ -111,7 +115,8 @@ theorem lic_expectations_of_probabilities
   simpa only [AsympEq, sub_zero] using q.affine.gap_asympEq_zero hP hworld
 
 /-- **Iterated Expectations** (`thm:er`): the current expectation of `X n` agrees
-asymptotically with the current expectation of the LUV representing that expectation. -/
+asymptotically with the current expectation of the LUV representing that expectation.
+Paper node: `thm:er` -/
 theorem lic_iterated_expectations
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (X Y : ℕ → LUV)
@@ -144,7 +149,8 @@ lemma ctsInd_eq_one_of_le_sub (δ : ℚ) (x y : ℝ) (hδ : 0 < δ)
 saying that the actual day-`n` price of `φ n` lies strictly between `a n` and `b n`.
 The two inherited affine objects are exactly the paper's inside and outside continuous
 products.  They expose concrete polynomial portfolios and completed-world identities;
-neither object assumes the error bounds proved below. -/
+neither object assumes the error bounds proved below.
+Paper node: `thm:ref` -/
 structure IntrospectionIntervalQuote (P : History) (DP : DeductiveProcess)
     (φ : ℕ → Sentence) (a b δ : ℕ → ℚ) where
   source_codes : PolySentenceCodes φ
@@ -187,7 +193,8 @@ lemma IntrospectionIntervalQuote.upper_pgenerable
 to zero which controls both the shrunken-interval belief and expanded-interval disbelief
 claims on every day.  The rational sequence is selected strictly between the maximum
 absolute learned affine gap plus `1/(n+1)` and the same gap plus `2/(n+1)`; thus the
-rational-valued conclusion is not hidden in the quotation package. -/
+rational-valued conclusion is not hidden in the quotation package.
+Paper node: `thm:ref` -/
 theorem lic_introspection
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (a b δ : ℕ → ℚ)
@@ -302,7 +309,8 @@ theorem lic_introspection
 /-- Operational diagonal-quotation package for `thm:lp`. `sentence n` is the paradoxical
 claim saying that its own day-`n` price is below `p`. The two affine certificates are the
 paper's lower- and upper-side continuous products; their completed-world values are zero,
-but no market convergence is included in the package. -/
+but no market convergence is included in the package.
+Paper node: `thm:lp` -/
 structure ParadoxResistanceQuote (P : History) (DP : DeductiveProcess)
     (p : ℚ) where
   sentence : ℕ → Sentence
@@ -321,7 +329,8 @@ structure ParadoxResistanceQuote (P : History) (DP : DeductiveProcess)
 /-- **Paradox Resistance** (`thm:lp`): a diagonal sentence true exactly when its own
 current price is below `p ∈ (0,1)` receives price asymptotic to `p`. The proof separately
 rules out prices bounded below and above `p`; the vanishing continuous width absorbs the
-boundary where the diagonal comparison is undecidable. -/
+boundary where the diagonal comparison is undecidable.
+Paper node: `thm:lp` -/
 theorem lic_paradox_resistance
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)

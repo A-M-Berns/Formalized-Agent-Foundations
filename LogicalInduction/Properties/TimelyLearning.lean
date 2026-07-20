@@ -170,7 +170,8 @@ lemma noPreemptiveUnderpricing_asympGE_zero {current future : ℕ → ℝ}
 
 /-- Centered operational form of Persistence of Knowledge. If the limiting centered
 prices are asymptotically zero from one side, every future centered price is controlled
-uniformly from that side.  Paper node: `thm:perkno` (App. `perkno`). -/
+uniformly from that side.
+Paper node: `thm:perkno` -/
 theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (hφ : PolySentenceCodes φ) (hp : PolyRatCodes p)
@@ -198,7 +199,8 @@ theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
     apply noPreemptiveUnderpricing_asympGE_zero hgap.underpriced
     simpa [As] using hlim
 
-/-- Upper one-sided clause of `thm:perkno`. -/
+/-- Upper one-sided clause of `thm:perkno`.
+Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge_upper (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (hφ : PolySentenceCodes φ) (hp : PolyRatCodes p)
@@ -227,7 +229,8 @@ theorem lic_persistence_of_knowledge_upper (P : History) (DP : DeductiveProcess)
     rw [AffineCombination.sentenceMinusProbability_price] at hprice
     linarith
 
-/-- Lower one-sided clause of `thm:perkno`. -/
+/-- Lower one-sided clause of `thm:perkno`.
+Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge_lower (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (hφ : PolySentenceCodes φ) (hp : PolyRatCodes p)
@@ -310,7 +313,8 @@ uniform future supremum/infimum comparison.
 
 The centered affine family `φ n - p n` is essential here. Applying affine persistence to
 `φ n` alone would compare only separate limsups/liminfs and would not control a varying
-target sequence pointwise. -/
+target sequence pointwise.
+Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (hφ : PolySentenceCodes φ) (hp : PolyRatCodes p)
@@ -340,7 +344,8 @@ the same limsup as their future infima.
 
 The explicit price/world hypotheses are fields of the paper's market/deductive-process
 interfaces; this repository currently carries them theorem-by-theorem because `History`
-and `DeductiveProcess` are deliberately thin substrate types. -/
+and `DeductiveProcess` are deliberately thin substrate types.
+Paper node: `thm:tbo` -/
 theorem lic_preemptive_learning (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
     (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)

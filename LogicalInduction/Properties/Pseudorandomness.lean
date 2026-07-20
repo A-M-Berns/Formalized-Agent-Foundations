@@ -841,7 +841,7 @@ requires these fields to reconstruct the trader's real day strategy.  It contain
 prices, worlds, wealth bounds, bias premise, exploitation claim, or logical-induction
 conclusion.  Constructing it uniformly from a deferral program is the ledgered
 `M7-FEEDBACK-EMIT` bounded-dovetail obligation.
-Paper node: `thm:wubaff` (App. `wubaff`), reused by `thm:wubexp`. -/
+Paper node: `thm:wubaff`, `thm:wubexp` -/
 structure FeedbackTraderEmission
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -861,7 +861,7 @@ structure FeedbackTraderEmission
 The feedback proof selects the fraction only after receiving an analytic error tolerance,
 so a single preselected trader is not enough for the paper's quantified convergence
 claim.  Each member is still the exact, conclusion-free `FeedbackTraderEmission` above.
-Paper node: `thm:wubaff` (App. `wubaff`). -/
+Paper node: `thm:wubaff` -/
 structure FeedbackTraderEmissionFamily
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -872,7 +872,7 @@ structure FeedbackTraderEmissionFamily
 /-- The two sign orientations required for an equality conclusion.  The negative family
 emits the same concrete Kelly construction applied to the explicitly negated affine
 sequence; no bias or convergence claim is stored in this boundary.
-Paper node: `thm:wubaff` (App. `wubaff`). -/
+Paper node: `thm:wubaff` -/
 structure FeedbackTraderEmissionSigns
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -1313,7 +1313,7 @@ lemma feedbackTrader_exploits_of_frequently_positive_return
 
 /-- Logical induction rules out the recurrent positive-return condition once the
 structured syntax emitter has supplied the feedback trader's real token certificate.
-Paper node: a step of `thm:wubaff` (App. `wubaff`). -/
+Paper node: `thm:wubaff` -/
 theorem lic_not_frequently_positive_feedback_return
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -1759,7 +1759,7 @@ provability induction.  At day `f(k+1)` its diagonal price is exactly the delaye
 error for `A_{f k}`; every completed-theory world values it at zero.  The polynomial
 sequence and normalization data are the ledgered `M7-FEEDBACK-TRUTH` witness corresponding
 to the paper's premise that `ThmValue(A_{f k})` is computable within `poly(f(k+1))`.
-Paper node: `thm:wubaff` (App. `wubaff`), reused by `thm:wubexp`. -/
+Paper node: `thm:wubaff`, `thm:wubexp` -/
 structure FeedbackTruthSequence
     (As : ℕ → AffineCombination) (truth : ℕ → ℝ)
     (P : History) (DP : DeductiveProcess) (f : DeferralFunction) where
@@ -1808,7 +1808,8 @@ token certificates for the concrete Kelly traders in both sign orientations, whi
 `bridge` supplies the conclusion-free sparse zero-valued affine sequence whose delayed
 accuracy follows from affine provability induction.  These are precisely the ledgered
 `M7-FEEDBACK-EMIT` and `M7-FEEDBACK-TRUTH` constructors; all economic, analytic,
-support-reindexing, and sign-transfer arguments are proved here. -/
+support-reindexing, and sign-transfer arguments are proved here.
+Paper node: `thm:wubaff` -/
 theorem lic_wubaff
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W)
@@ -1895,7 +1896,8 @@ theorem BoundedCombinationSequence.wubaff
 /-- Exact conditional `thm:wub`, obtained by the paper's one-share specialization of
 `thm:wubaff`.  `TheoryTruth` states that `truth` is the completed-theory truth stream;
 the two feedback representation arguments are the same narrowly ledgered computational
-constructors as in the affine theorem, specialized to `sentenceAffine φ`. -/
+constructors as in the affine theorem, specialized to `sentenceAffine φ`.
+Paper node: `thm:wub` -/
 theorem lic_wub
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
@@ -1963,7 +1965,8 @@ bit is polynomially codeable; activity only decreases; every component is active
 its deadline and eventually becomes inactive; and inactivity certifies both deadline
 passage and exact finite-stage settlement.  It contains no prices, weighting divergence,
 bias, or pseudorandom-learning conclusion.  The concrete bounded universal evaluator and
-finite-world checker which instantiate it are the ledgered `M7-PATIENT-CLOCK` witness. -/
+finite-world checker which instantiate it are the ledgered `M7-PATIENT-CLOCK` witness.
+Paper node: `app:prandaff` -/
 structure PatientSettlementClock (As : ℕ → AffineCombination) (P : History)
     (DP : DeductiveProcess) (truth : ℕ → ℝ) (f : DeferralFunction) where
   active : ℕ → ℕ → Bool
@@ -2670,7 +2673,8 @@ theorem AffineCombination.TheoryTruth.sentenceMinusFeature_determined
   intro n v hv
   rw [AffineCombination.sentenceMinusFeature_value, hp.denote n, htruth n v hv]
 
-/-- `thm:prand`, varied-pseudorandom-above branch. -/
+/-- `thm:prand`, varied-pseudorandom-above branch.
+Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_above
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
@@ -2705,7 +2709,8 @@ theorem lic_learning_varied_pseudorandom_above
   rw [AffineCombination.sentenceMinusFeature_price, hp.denote n] at hn
   linarith
 
-/-- `thm:prand`, varied-pseudorandom-below branch. -/
+/-- `thm:prand`, varied-pseudorandom-below branch.
+Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_below
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
@@ -2740,7 +2745,8 @@ theorem lic_learning_varied_pseudorandom_below
   rw [AffineCombination.sentenceMinusFeature_price, hp.denote n] at hn
   linarith
 
-/-- Exact two-sided `thm:prand`. -/
+/-- Exact two-sided `thm:prand`.
+Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
@@ -2788,7 +2794,8 @@ This is an explicit type-(c) representation boundary, not a learning certificate
 fields provide only settlement clocks and executable historical verifiers for the
 centered affine family and its two negations.  In particular, it contains no price bound,
 pseudorandomness premise, convergence statement, or conclusion of `thm:benford`.
-`M7-HIST-EVALN` and `M7-PATIENT-CLOCK` are the ledgered concrete witnesses. -/
+`M7-HIST-EVALN` and `M7-PATIENT-CLOCK` are the ledgered concrete witnesses.
+Paper node: `thm:benford` -/
 structure PseudorandomFrequencyInfrastructure
     (P : History) (DP : DeductiveProcess) (φ : ℕ → Sentence)
     (hφ : PolySentenceCodes φ) (truth : ℕ → ℝ) (f : DeferralFunction) where
@@ -2827,7 +2834,8 @@ structure PseudorandomFrequencyInfrastructure
 
 /-- Lower half of `thm:benford`.  The target frequency `p` remains real.  At `p = 0`
 the market's pointwise probability lower bound suffices; otherwise a rational
-`max(0, p-ε/2) < q < p` is learned via `prand`. -/
+`max(0, p-ε/2) < q < p` is learned via `prand`.
+Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_above
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
@@ -2864,7 +2872,8 @@ theorem lic_learning_pseudorandom_frequency_above
 
 /-- Upper half of `thm:benford`.  At `p = 1` the market's pointwise probability upper
 bound suffices; otherwise the proof learns a rational
-`p < q < min(1, p+ε/2)` via the below branch of `prand`. -/
+`p < q < min(1, p+ε/2)` via the below branch of `prand`.
+Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_below
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
@@ -2901,7 +2910,8 @@ theorem lic_learning_pseudorandom_frequency_below
 
 /-- Exact `thm:benford`: an efficiently emittable sentence sequence whose completed-
 theory truth stream is pseudorandom with real frequency `p` is learned at frequency `p`.
-The proof is the paper's rational squeeze, with explicit endpoint cases. -/
+The proof is the paper's rational squeeze, with explicit endpoint cases.
+Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)

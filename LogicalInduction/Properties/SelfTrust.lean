@@ -40,7 +40,8 @@ open Filter Topology
 /-- `def:deferralfunc`. A **deferral function**: `f n > n`, and `f` is computable within
 fuel polynomial **in `f n`** (the paper's "time polynomial in `f(n)`" — deliberately
 weaker than poly-in-`n`, since `f` may grow fast), rendered through the clocked
-interpreter (`dd:fuel`). -/
+interpreter (`dd:fuel`).
+Paper node: `def:deferralfunc` -/
 structure DeferralFunction where
   /-- The underlying function. -/
   f : ℕ → ℕ
@@ -71,7 +72,8 @@ gap.  Coherence is imposed only at the later market day, so it does not give `D 
 oracle access to future prices.
 -/
 
-/-- A polynomial, normalized fixed-portfolio presentation of a real-valued gap. -/
+/-- A polynomial, normalized fixed-portfolio presentation of a real-valued gap.
+Paper node: `thm:er` -/
 structure AffineQuotePortfolio (P : History) (gap : ℕ → ℝ) where
   /-- The portfolio fixed on day `n` and retained unchanged when priced later. -/
   family : ℕ → AffineCombination
@@ -90,21 +92,24 @@ structure AffineQuotePortfolio (P : History) (gap : ℕ → ℝ) where
 /-- Two-sided quote coherence: the fixed portfolio's actual deferred-day price tends to
 zero.  This is the propositional interface for the paper's quoted-expectation reasoning
 (`thm:er`/`thm:epr` plus encoding coherence), and is the obligation that M7's concrete
-quotation mechanism must discharge. -/
+quotation mechanism must discharge.
+Paper node: `thm:er` -/
 structure AffineQuoteEq (P : History) (f : DeferralFunction) (gap : ℕ → ℝ)
     extends AffineQuotePortfolio P gap where
   future_coherent :
     AsympEq (fun n => (family n).price P (f n)) (fun _ => 0)
 
 /-- One-sided quote coherence, used by `thm:st`: the fixed portfolio's deferred-day
-price is asymptotically nonnegative. -/
+price is asymptotically nonnegative.
+Paper node: `thm:st` -/
 structure AffineQuoteGE (P : History) (f : DeferralFunction) (gap : ℕ → ℝ)
     extends AffineQuotePortfolio P gap where
   future_coherent :
     AsympGE (fun n => (family n).price P (f n)) (fun _ => 0)
 
 /-- Complete quote certificate for `thm:cee`: compact source/quote syntax, delayed
-world semantics, and the fixed-portfolio cross-grid law are one explicit trust object. -/
+world semantics, and the fixed-portfolio cross-grid law are one explicit trust object.
+Paper node: `thm:cee` -/
 structure ExpectedFutureExpectationQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (X Y : ℕ → LUV) where
   source_codes : LUV.PolyThresholdCodeSeq X
@@ -113,7 +118,8 @@ structure ExpectedFutureExpectationQuote (P : History) (DP : DeductiveProcess)
     v.ValuesAt (Y n) ((X n).expect P (f n))
   affine : AffineQuoteEq P f (fun n => (X n).expect P n - (Y n).expect P n)
 
-/-- Complete quote certificate for `thm:ceu`. -/
+/-- Complete quote certificate for `thm:ceu`.
+Paper node: `thm:ceu` -/
 structure FuturePriceQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (φ : ℕ → Sentence) (Y : ℕ → LUV) where
   sentence_codes : PolySentenceCodes φ
@@ -122,7 +128,8 @@ structure FuturePriceQuote (P : History) (DP : DeductiveProcess)
     v.ValuesAt (Y n) (P (f n) (φ n))
   affine : AffineQuoteEq P f (fun n => P n (φ n) - (Y n).expect P n)
 
-/-- Complete weighted-product quote certificate for `thm:ccee`. -/
+/-- Complete weighted-product quote certificate for `thm:ccee`.
+Paper node: `thm:ccee` -/
 structure ConditionalExpectationQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (X Z Z' : ℕ → LUV) (w : ℕ → ℚ) where
   weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1
@@ -141,7 +148,8 @@ structure ConditionalExpectationQuote (P : History) (DP : DeductiveProcess)
   affine : AffineQuoteEq P f
     (fun n => (Z n).expect P n - (Z' n).expect P n)
 
-/-- Complete confidence/product quote certificate for `thm:st`. -/
+/-- Complete confidence/product quote certificate for `thm:st`.
+Paper node: `thm:st` -/
 structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
     (A B : ℕ → LUV) where
@@ -292,7 +300,8 @@ cross-grid `thm:exppolymax` obligation. -/
 
 /-- **Expected Future Expectations** (`thm:cee`): `𝔼ₙ(Xₙ) ≈ₙ 𝔼ₙ(⌜𝔼_{f(n)}(Xₙ)⌝)`.
 `Y n` is the quoted future expectation: every completed-theory world values it
-at the actual day-`f n` expectation of `X n`. -/
+at the actual day-`f n` expectation of `X n`.
+Paper node: `thm:cee` -/
 theorem lic_expected_future_expectations (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (X Y : ℕ → LUV)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
@@ -305,7 +314,8 @@ theorem lic_expected_future_expectations (P : History) (DP : DeductiveProcess)
 
 /-- **No Expected Net Update** (`thm:ceu`): `Pₙ(φₙ) ≈ₙ 𝔼ₙ(⌜P_{f(n)}(φₙ)⌝)`.
 `Y n` is the quoted future price: every world consistent with `D (r n)` values it at the
-actual day-`f n` price of `φ n`. (Deference-corpus name: "cee".) -/
+actual day-`f n` price of `φ n`. (Deference-corpus name: "cee".)
+Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (φ : ℕ → Sentence)
     (Y : ℕ → LUV)
@@ -324,7 +334,8 @@ theorem lic_no_expected_net_update (P : History) (DP : DeductiveProcess)
 the (world-independent) `𝔼_{f n}(Xₙ) · w (f n)`.
 
 The bundled certificate records both `[0,1]` membership and paper-side P-generability
-(`def:pgen`) of `w`. -/
+(`def:pgen`) of `w`.
+Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (X Z Z' : ℕ → LUV)
     (w : ℕ → ℚ)
@@ -345,7 +356,8 @@ self will be confident in `φₙ`, is at least `pₙ` times its expectation of t
 world at the actual `ctsind` of the day-`f n` price against threshold `p n` — and `A n`
 the quoted product `1(φₙ)·B n`, valued at `payout(φₙ)` times that indicator (the value of
 `1(φ)` in `v` **is** `v`'s payout on `φ`, which is what makes the conclusion genuinely
-world-dependent). -/
+world-dependent).
+Paper node: `thm:st` -/
 theorem lic_self_trust (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (φ : ℕ → Sentence)
     (δ p : ℕ → ℚ) (A B : ℕ → LUV)

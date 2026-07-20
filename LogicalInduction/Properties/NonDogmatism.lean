@@ -250,7 +250,8 @@ lemma ndTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (ndTrader φ) :=
 in `[0,1]`, if `φ`-satisfying plausible worlds keep existing (the per-day semantic
 rendering of `Θ ⊬ ¬φ`), the price is eventually at least `2^{-(n+2)}`. Weaker than the
 paper's `thm:nd` (the bound decays with `n`); the liminf form is the budget-halving
-trader's job (Phase B2). -/
+trader's job (Phase B2).
+Paper node: `thm:nd` -/
 theorem lic_nonDogmatism_weak (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence)
     (hP0 : ∀ n, 0 ≤ P n φ) (hP1 : ∀ n, P n φ ≤ 1)
@@ -944,7 +945,8 @@ lemma ndLadderTrader_ecTok (φ : Sentence) :
 the ladder's economics localize to its trigger bands.
 
 The scale-ladder trader, its exploitation proof, and its variable-width token-emission
-certificate are all discharged. -/
+certificate are all discharged.
+Paper node: `thm:nd` -/
 theorem lic_nonDogmatism (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence)
     (hφ : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds φ) :
@@ -1508,7 +1510,8 @@ lemma ndSellLadderTrader_ecTok (φ : Sentence) :
 `Θ ⊬ φ`), the price is eventually bounded away from `1`.
 
 The mirrored sell-ladder trader, its exploitation proof, and its variable-width
-token-emission certificate are all discharged. -/
+token-emission certificate are all discharged.
+Paper node: `thm:nd` -/
 theorem lic_nonDogmatism_dual (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence)
     (hφ : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ ¬ v.Holds φ) :
@@ -1528,7 +1531,8 @@ theorem lic_nonDogmatism_dual (P : History) (DP : DeductiveProcess)
 
 /-- `thm:nd`, limit form, positive direction: with the price convergent (from `thm:con`,
 `lic_price_convergesTo`), `P∞(φ) > 0`. Convergence is an explicit hypothesis, in the
-style of `lic_limit_additive`. -/
+style of `lic_limit_additive`.
+Paper node: `thm:nd` -/
 theorem lic_limit_pos (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : Sentence) {L : ℝ}
     (hL : ConvergesTo (fun n => P n φ) L)
@@ -1538,7 +1542,8 @@ theorem lic_limit_pos (P : History) (DP : DeductiveProcess)
   have := ge_of_tendsto hL hev
   linarith
 
-/-- `thm:nd`, limit form, dual direction: with the price convergent, `P∞(φ) < 1`. -/
+/-- `thm:nd`, limit form, dual direction: with the price convergent, `P∞(φ) < 1`.
+Paper node: `thm:nd` -/
 theorem lic_limit_lt_one (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : Sentence) {L : ℝ}
     (hL : ConvergesTo (fun n => P n φ) L)

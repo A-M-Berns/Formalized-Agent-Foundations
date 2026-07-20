@@ -188,7 +188,8 @@ lemma Trader.bddBelow_plausible_of_finiteMagnitude (Tr : Trader) (V : History)
 
 /-- `def:affcomsen`. An affine combination `c + Σ eᵢ φᵢ` with expressible-feature
 coefficients. Repeated sentences are allowed, matching `Strategy`; normalization is not
-needed for the value and magnitude arguments. -/
+needed for the value and magnitude arguments.
+Paper node: `def:affcomsen` -/
 structure AffineCombination where
   const : EF
   terms : List (EF × Sentence)
@@ -204,7 +205,8 @@ noncomputable def value (A : AffineCombination) (V : History) (w : Valuation) : 
 combinations.  The paired index for a term is `⟨n,j⟩`: sequence member, then term number.
 This is the affine analogue of `PolyTradeEmulatable`; it exposes syntax boundaries so
 uniform transformations can emit coefficients and sentence codes without decoding an
-opaque serialized value. -/
+opaque serialized value.
+Paper node: `def:ec` -/
 structure PolySequence (As : ℕ → AffineCombination) where
   termCount : ℕ → ℕ
   coefficient : ℕ → EF
@@ -430,7 +432,8 @@ lemma abs_price_le_l1Norm (A : AffineCombination) (V : History) (n : ℕ)
         add_le_add_right hsum |A.const.denote V|
 
 /-- `def:bap` / the paper's `BCS`: a uniformly polynomially generated affine sequence
-whose full coefficient `L¹` norm (including the trailing constant) has one uniform bound. -/
+whose full coefficient `L¹` norm (including the trailing constant) has one uniform bound.
+Paper node: `def:bap` -/
 structure BoundedCombinationSequence (As : ℕ → AffineCombination) (V : History) where
   poly : PolySequence As
   bounded : ∃ B : ℝ, ∀ n, (As n).l1Norm V ≤ B

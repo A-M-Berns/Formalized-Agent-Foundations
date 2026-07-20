@@ -105,7 +105,7 @@ lemma independentBitAtoms_nonempty :
 
 /-- Compact operational input for polynomial naming of the concrete prefix conjunction.
 The program is indexed by the same enumeration index consumed by the DUS trader.
-Paper node: `thm:dus` (App. `dus`); the prefix language is reused by `thm:strict`. -/
+Paper node: `thm:dus`, `thm:strict` -/
 structure BitPrefixCodeComputation {DP : DeductiveProcess}
     (I : IndependentBitAtoms DP) where
   code : Nat.Partrec.Code
@@ -113,7 +113,8 @@ structure BitPrefixCodeComputation {DP : DeductiveProcess}
     Encodable.encode (bitPrefixSentence I.atom (bitStringEnumeration i)))
 
 /-- Construct the complete prefix presentation from independent atoms and a compact
-program for the actual literal conjunction code. -/
+program for the actual literal conjunction code.
+Paper node: `thm:dus` -/
 def bitPrefixSentencesOfIndependentAtoms
     {DP : DeductiveProcess} (I : IndependentBitAtoms DP)
     (C : BitPrefixCodeComputation I) : BitPrefixSentences DP where
@@ -127,7 +128,8 @@ def bitPrefixSentencesOfIndependentAtoms
 
 /-- Domination of the universal semimeasure with the opaque `BitPrefixSentences` argument
 discharged by the concrete Boolean-prefix constructor.  The approximation and threshold
-emission premises remain explicit (`M7-DUS-APPROX`).  Paper node: `thm:dus` (App. `dus`). -/
+emission premises remain explicit (`M7-DUS-APPROX`).
+Paper node: `thm:dus` -/
 theorem lic_domination_universalSemimeasure_ofIndependentAtoms
     {DP : DeductiveProcess}
     (I : IndependentBitAtoms DP) (C : BitPrefixCodeComputation I)

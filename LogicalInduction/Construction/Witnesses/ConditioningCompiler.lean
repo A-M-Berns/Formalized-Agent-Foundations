@@ -2545,7 +2545,8 @@ lemma deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
       simp at hne
 
 /-- The concrete price rewrite, trade-count scan, and two guarded frame passes preserve
-token-indexed efficient computability of the gated conditioning translation. -/
+token-indexed efficient computability of the gated conditioning translation.
+Paper node: `thm:scon` -/
 lemma conditionedTranslation_preserves_ec
     (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) (ε : ℚ)
     (T : Trader) (hT : EfficientlyComputableTok T) :
@@ -2652,7 +2653,8 @@ lemma conditionedTranslation_preserves_ec
 /-! ### Public operational witness constructors -/
 
 /-- Construct the complete gated-conditioning operational witness from a named rational
-base-market computation and an actual positive denominator floor. -/
+base-market computation and an actual positive denominator floor.
+Paper node: `thm:scon` -/
 noncomputable def gatedConditioningOperationalWitness
     {P : History} {DP extra : DeductiveProcess}
     (C : ConditioningPresentation DP extra) (market : MarketComputation P)
@@ -2669,7 +2671,8 @@ noncomputable def gatedConditioningOperationalWitness
 /-- The paper's finite-prefix denominator repair supplies the floor and the exact rational
 market computation required by the operational witness.  Transporting logical induction
 from `P` to this patched history remains correctly isolated behind the qualified finite-
-perturbation theorem and its two `EfficientPrefixPatch` certificates. -/
+perturbation theorem and its two `EfficientPrefixPatch` certificates.
+Paper node: `thm:scon` -/
 noncomputable def denominatorPatchedGatedConditioningOperationalWitness
     {P : History} {DP extra : DeductiveProcess}
     (C : ConditioningPresentation DP extra) (market : MarketComputation P)
@@ -2682,7 +2685,8 @@ noncomputable def denominatorPatchedGatedConditioningOperationalWitness
     ε hε (denominatorPatchedHistory_floor P C.condition cutoff hεone htail)
 
 /-- Criterion-level conditioning closure with every compiler field discharged by the
-concrete construction.  Paper node: `thm:scon` (App. `scon`). -/
+concrete construction.
+Paper node: `thm:scon` -/
 theorem lic_conditioned_gated_ofMarketComputation
     (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
     (C : ConditioningPresentation DP extra) (market : MarketComputation P)
@@ -2694,7 +2698,7 @@ theorem lic_conditioned_gated_ofMarketComputation
 
 /-- Paper-facing SCON constructor: the canonical finite-stage presentation and the complete
 market/trader compiler are both assembled from their named computations.
-Paper node: `thm:scon` (App. `scon`). -/
+Paper node: `thm:scon` -/
 theorem lic_conditioned_gated_ofComputationsAndMarket
     (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
     (base : DeductiveProcessComputation DP)

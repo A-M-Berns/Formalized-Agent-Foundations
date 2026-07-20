@@ -22,7 +22,7 @@ noncomputable def limitingBelief (P : History) : Valuation :=
   fun φ => limsup (fun n => P n φ) atTop
 
 /-- Every sentence price converges to its coordinate in `limitingBelief`.
-Paper node: `thm:con` (App. `convergenceproofs`). -/
+Paper node: `thm:con` -/
 theorem lic_limitingBelief_tendsto (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP]
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)

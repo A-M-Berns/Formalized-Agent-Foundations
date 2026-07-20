@@ -90,7 +90,8 @@ lemma buyDaily_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence) (�
 
 /-- **Base case of Provability Induction** (`thm:provind`), stated against `def:lic`: a
 logical inductor cannot hold an always-deducible sentence uniformly below price 1. For
-every `ε > 0` the price rises above `1 − ε` at some day. -/
+every `ε > 0` the price rises above `1 − ε` at some day.
+Paper node: `thm:provind` -/
 theorem lic_deducible_price_near_one (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence) (ε : ℝ) (hε : 0 < ε)
     (hded : ∀ n, φ ∈ DP.D n) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -160,7 +161,8 @@ lemma buyDaily_exploits_freq (P : History) (DP : DeductiveProcess) (φ : Sentenc
 
 /-- **Provability Induction, limiting form, for a fixed sentence** (`thm:provind`): under a
 logical inductor, an always-deducible `φ` with prices in `(-∞, 1]` has `Pₙ(φ)` eventually
-within any `ε` of `1`. This is the criterion output — `¬(underpriced infinitely often)`. -/
+within any `ε` of `1`. This is the criterion output — `¬(underpriced infinitely often)`.
+Paper node: `thm:provind` -/
 theorem lic_deducible_eventually_ge (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence) (hded : ∀ n, φ ∈ DP.D n)
     (hP1 : ∀ n, P n φ ≤ 1) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -175,7 +177,8 @@ theorem lic_deducible_eventually_ge (P : History) (DP : DeductiveProcess)
 
 /-- **Provability Induction, convergence form** (`thm:provind`): the price of an
 always-deducible sentence converges to `1`. Packages `lic_deducible_eventually_ge` with the
-upper bound `Pₙ(φ) ≤ 1` into `ConvergesTo` (`dd:asymp`). -/
+upper bound `Pₙ(φ) ≤ 1` into `ConvergesTo` (`dd:asymp`).
+Paper node: `thm:provind` -/
 theorem lic_deducible_tendsto_one (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : Sentence) (hded : ∀ n, φ ∈ DP.D n)
     (hP1 : ∀ n, P n φ ≤ 1) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -226,7 +229,8 @@ lemma buySeq_ec (φ : ℕ → Sentence) {cφ : Nat.Partrec.Code}
 /-- **Provability Induction, sequence form** (`thm:provind`): for an efficiently computable
 sequence of sentences `φₙ`, each deducible by its own day, the price `Pₙ(φₙ) → 1`. Same
 constant buy trader as the fixed case, now indexed by the sequence; e.c. via `ec_of_polyEF_seq`
-and the `𝓔𝓒`-sequence hypothesis. -/
+and the `𝓔𝓒`-sequence hypothesis.
+Paper node: `thm:provind` -/
 theorem lic_provind_seq (P : History) (DP : DeductiveProcess) [hLI : IsLogicalInductor P DP]
     (φ : ℕ → Sentence) {cφ : Nat.Partrec.Code}
     (hφ : PolyFueled cφ (fun n => Encodable.encode (φ n)))

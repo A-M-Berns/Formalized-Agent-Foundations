@@ -493,7 +493,7 @@ lemma exists_obu_fire_of_low_limit
 /-- Uniform Non-Dogmatism for the efficiently padded, infinitely repeating enumeration
 used in the paper's proof.  Joint consistency means that every finite deductive stage has
 a propositional world satisfying the entire enumerated theory.
-Paper node: `thm:obu` (App. `obu`). -/
+Paper node: `thm:obu` -/
 theorem lic_uniform_nonDogmatism_repeating
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
@@ -527,7 +527,7 @@ theorem lic_uniform_nonDogmatism_repeating
 efficiently emitted stream in which every member repeats infinitely often.  `sound` and
 `covers` say that preprocessing changes only order and multiplicity.  This structure is
 purely syntactic: it contains neither prices nor a non-dogmatism conclusion.
-Paper node: `thm:obu` (App. `obu`). -/
+Paper node: `thm:obu` -/
 structure EfficientRepeatedEnumeration (source : ℕ → Sentence) where
   sequence : ℕ → Sentence
   sequence_poly : PolySentenceCodes sequence
@@ -537,7 +537,8 @@ structure EfficientRepeatedEnumeration (source : ℕ → Sentence) where
 
 /-- Paper-facing Uniform Non-Dogmatism.  Given the explicit efficient-repetition witness
 for the source c.e. stream, every member of a jointly consistent theory receives one
-common positive limiting-probability lower bound.  Paper node: `thm:obu` (App. `obu`). -/
+common positive limiting-probability lower bound.
+Paper node: `thm:obu` -/
 theorem lic_uniform_nonDogmatism
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (source : ℕ → Sentence) (rep : EfficientRepeatedEnumeration source)

@@ -141,7 +141,8 @@ lemma eqTr_exploits (P : History) (DP : DeductiveProcess) (φ ψ : Sentence) (σ
 
 /-- **Learning of logical equivalence** (`thm:lex`, finite-stage form): if `⊢ φ ↔ ψ` (both
 implications revealed by the deductive process), the price difference `Pₙφ − Pₙψ → 0` under a
-logical inductor. World-neutral 2-sentence portfolio (payouts equal by equivalence). -/
+logical inductor. World-neutral 2-sentence portfolio (payouts equal by equivalence).
+Paper node: `thm:lex` -/
 theorem lic_lex_tendsto_zero (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ ψ : Sentence) (himp1 : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n)
     (himp2 : ∀ n, (∼ψ ⋎ φ) ∈ DP.D n) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -258,7 +259,8 @@ lemma impTr_ec (φ ψ : Sentence) (ε : ℚ) : EfficientlyComputableTok (impTr �
 
 /-- **Learning logical implication** (`thm:lex` family): if `⊢ φ → ψ` (revealed as `∼φ⋎ψ`),
 then a logical inductor eventually stops overpricing `φ` relative to `ψ`: for every `ε > 0`,
-eventually `Pₙφ ≤ Pₙψ + ε`. -/
+eventually `Pₙφ ≤ Pₙψ + ε`.
+Paper node: `thm:lex` -/
 theorem lic_imp_eventually_le (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ ψ : Sentence) (himp : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (ε : ℝ) (hε : 0 < ε) :
@@ -397,7 +399,8 @@ lemma exclusiveExhaustiveAffine_magnitude
 
 /-- **Learning Exclusive–Exhaustive Relationships** (`thm:lex`).  The semantic premise is
 the completed-theory rendering of the paper's statement that `Theory` proves exactly one
-member of each fixed finite tuple. -/
+member of each fixed finite tuple.
+Paper node: `thm:lex` -/
 theorem lic_learning_exclusive_exhaustive
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)

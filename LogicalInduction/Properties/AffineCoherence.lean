@@ -807,7 +807,8 @@ end AffineCombination
 
 /-- One-sided paper-facing provability induction for an efficiently codeable sequence of
 completed-theory theorems. Individual proofs may appear arbitrarily later than their
-sequence indices.  Paper node: `thm:affprovind` (App. `affprovind`). -/
+sequence indices.
+Paper node: `thm:affprovind` -/
 theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
     (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
@@ -825,7 +826,8 @@ theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInducto
   simpa using hφeq
 
 /-- One-sided paper-facing provability induction for an efficiently codeable sequence
-whose negations are completed-theory theorems.  Paper node: `thm:affprovind` (App. `affprovind`). -/
+whose negations are completed-theory theorems.
+Paper node: `thm:affprovind` -/
 theorem lic_provind_false (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ)
     (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
@@ -845,7 +847,8 @@ theorem lic_provind_false (P : History) (DP : DeductiveProcess) [IsLogicalInduct
 
 /-- Faithful paper-facing **Provability Induction** (`thm:provind`). Efficient theorem
 and disprovable-sentence sequences need only appear somewhere in the completed deductive
-process; they need not be present by their own index. -/
+process; they need not be present by their own index.
+Paper node: `thm:provind` -/
 theorem lic_provind (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ ψ : ℕ → Sentence)
     (hφ : PolySentenceCodes φ) (hψ : PolySentenceCodes ψ)
