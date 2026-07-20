@@ -598,7 +598,7 @@ theorem gradualRemaining_rank_le (A : AffineCombination) (buyDay : ℕ)
     (A.gradualRemaining buyDay high δ t).rank ≤ buyDay + t := by
   intro t
   induction t with
-  | zero => simp [gradualRemaining, EF.rank]
+  | zero => simp [gradualRemaining]
   | succ t ih =>
       simp only [gradualRemaining, EF.rank, oneMinus_rank, sellIndF_rank]
       apply Nat.max_le.mpr
@@ -716,7 +716,7 @@ theorem PolySequence.gradualTradeCount_poly {As : ℕ → AffineCombination}
     (((PolyFueled.const 0).pair (hcount.comp PolyFueled.left)).pair htest)
   refine ⟨_, PolyFueled.of_eq hraw ?_⟩
   intro z
-  simp only [Function.comp_apply, Nat.unpair_pair, ifzSelFn, gradualTradeCount]
+  simp only [Nat.unpair_pair, ifzSelFn, gradualTradeCount]
   by_cases hle : z.unpair.1 ≤ z.unpair.2
   · rw [if_pos hle, if_neg (by omega)]
   · rw [if_neg hle, if_pos (by omega)]
@@ -740,7 +740,7 @@ theorem PolySequence.gradualCoefficient_polySeg {As : ℕ → AffineCombination}
       z.unpair.1.unpair.2 - z.unpair.1.unpair.1 - 1) := by
     apply PolyFueled.of_eq helapsedRaw
     intro z
-    simp only [Function.comp_apply, Nat.unpair_pair, Nat.pred_eq_sub_one]
+    simp only [Nat.unpair_pair, Nat.pred_eq_sub_one]
   have hsellFraction := (h.gradualSellFraction_polySeg high δ).comp (hk.pair helapsed)
   have hneg : PolySegStream (fun _ => (EF.const (-1)).serialize) :=
     PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))
@@ -762,10 +762,10 @@ theorem PolySequence.gradualCoefficient_polySeg {As : ℕ → AffineCombination}
         (z.unpair.1.unpair.1 - z.unpair.1.unpair.2)) := by
     apply PolyFueled.of_eq heqtestRaw
     intro z
-    simp only [Function.comp_apply, Nat.unpair_pair]
+    simp only [Nat.unpair_pair]
   refine PolySegStream.of_eq (PolySegStream.ifZero hbuy hsell heqtest) ?_
   intro z
-  simp only [gradualCoefficient, Function.comp_apply, Nat.unpair_pair, ifzSelFn]
+  simp only [gradualCoefficient, Nat.unpair_pair]
   by_cases heq : z.unpair.1.unpair.2 = z.unpair.1.unpair.1
   · simp [heq]
   · have htest : z.unpair.1.unpair.2 - z.unpair.1.unpair.1 +
@@ -964,7 +964,7 @@ theorem gradualSaleProceeds_lower (A : AffineCombination) (V : History)
       apply Finset.sum_le_sum
       intro j hj
       by_cases hz : (A.gradualSellFraction buyDay high δ j).denote V = 0
-      · simp [hz, gradualSaleProceeds]
+      · simp [hz]
       · have hf0 := A.gradualSellFraction_nonneg V buyDay high δ j
         have hfp : 0 < (A.gradualSellFraction buyDay high δ j).denote V :=
           lt_of_le_of_ne hf0 (Ne.symm hz)
@@ -1126,23 +1126,23 @@ theorem PolySequence.gradualRisk_converges {As : ℕ → AffineCombination}
     (fun i => by
       by_cases hs : start ≤ i
       · simpa [α, gateFeature, hs, baseα] using h.gradualRisk_rank_le low δ i
-      · simp [α, gateFeature, hs, EF.rank])
+      · simp [α, gateFeature, hs])
     (fun i n hin => by
       by_cases hs : start ≤ i
       · simpa [occupancy, gateOccupancy, hs, baseOccupancy] using
           h.gradualOccupancy_rank_le high δ i n hin
-      · simp [occupancy, gateOccupancy, hs, EF.rank])
+      · simp [occupancy, gateOccupancy, hs])
     (PolySegStream.gateFeature (h.gradualRisk_polySeg low δ) start)
     (PolySegStream.gateOccupancy (h.gradualOccupancy_polySeg high δ) start)
     (fun i ρ W => by
       by_cases hs : start ≤ i
       · simpa [α, gateFeature, hs, baseα] using h.gradualRisk_closed low δ i ρ W
-      · simp [α, gateFeature, hs, EF.denoteWith])
+      · simp [α, gateFeature, hs])
     (fun i n ρ W => by
       by_cases hs : start ≤ i
       · simpa [occupancy, gateOccupancy, hs, baseOccupancy] using
           h.gradualOccupancy_closed high δ i n ρ W
-      · simp [occupancy, gateOccupancy, hs, EF.denoteWith])
+      · simp [occupancy, gateOccupancy, hs])
     (by
       constructor
       · intro i n

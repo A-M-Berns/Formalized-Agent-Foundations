@@ -153,7 +153,7 @@ theorem hystChain_denote_succ (buy sell : ℕ → EF) (V : History) (k : ℕ) :
 theorem hystChain_rank (buy sell : ℕ → EF)
     (hb : ∀ i, (buy i).rank ≤ i) (hs : ∀ i, (sell i).rank ≤ i) :
     ∀ k, (hystChain buy sell k).rank ≤ k - 1
-  | 0 => by simp [hystChain, EF.rank]
+  | 0 => by simp [hystChain]
   | (k + 1) => by
       have ih := hystChain_rank buy sell hb hs k
       have h1 := hb k
@@ -352,7 +352,7 @@ theorem LUV.expectEF_denote (X : LUV) (n : ℕ) (P : History) :
   rw [one_div]
 
 theorem LUV.thresholdSumEF_rank (X : LUV) (n : ℕ) : ∀ m, (X.thresholdSumEF n m).rank ≤ n
-  | 0 => by simp [thresholdSumEF, EF.rank]
+  | 0 => by simp [thresholdSumEF]
   | (m + 1) => by
       have ih := thresholdSumEF_rank X n m
       simp only [thresholdSumEF, EF.rank, max_le_iff]

@@ -47,12 +47,12 @@ def meshTermCount {As : ℕ → LUVCombination}
 
 /-- Source term containing a flattened diagonal-mesh term. -/
 def meshMember {As : ℕ → LUVCombination}
-    (S : LUVCombinationSyntax As) (z : ℕ) : ℕ :=
+    (_S : LUVCombinationSyntax As) (z : ℕ) : ℕ :=
   z.unpair.2 / (z.unpair.1 - 1 + 1)
 
 /-- Threshold numerator within a flattened diagonal-mesh term. -/
 def meshOffset {As : ℕ → LUVCombination}
-    (S : LUVCombinationSyntax As) (z : ℕ) : ℕ :=
+    (_S : LUVCombinationSyntax As) (z : ℕ) : ℕ :=
   z.unpair.2 % (z.unpair.1 - 1 + 1)
 
 /-- Literal coefficient `a_j / n` of a flattened threshold share. -/
@@ -426,7 +426,7 @@ private theorem foldr_congr_mem {α β : Type*} (l : List α)
         exact h y (by simp [hy]) acc
 
 theorem triangularRemainder_succ (G : ℕ → AffineCombination)
-    (m i : ℕ) (threshold pad : ℚ) (hi : i < m) :
+    (m i : ℕ) (threshold pad : ℚ) (_hi : i < m) :
     triangularRemainder G m (i + 1) threshold pad =
       .mul (triangularRemainder G m i threshold pad)
         (oneMinus (triangularSignal G m i threshold pad)) := by
@@ -470,7 +470,7 @@ private theorem softmaxAffine_terms_eq_flatten
   | cons A rest ih =>
       simp only [softmaxAffine, AffineCombination.add, List.length_cons]
       rw [List.range_succ_eq_map, List.flatMap_cons]
-      simp only [List.get_cons_zero, List.take_zero, softmaxRemainder]
+      simp only [List.take_zero, softmaxRemainder]
       congr 1
       rw [ih]
       rw [List.flatMap_map]
@@ -494,7 +494,7 @@ private theorem softmaxAffine_const_eq_fold
       simp only [softmaxAffine, AffineCombination.add, AffineCombination.scale,
         List.length_cons]
       rw [List.range_succ_eq_map, List.foldr_cons]
-      simp only [List.get_cons_zero, List.take_zero, softmaxRemainder]
+      simp only [List.take_zero, softmaxRemainder]
       congr 1
       rw [ih]
       rw [List.foldr_map]
@@ -882,8 +882,7 @@ noncomputable def triangularSoftmaxPoly {G : ℕ → AffineCombination}
           (EF.mul (triangularWeight G m i threshold pad)
             (hG.coefficient (Nat.pair (triangularIndex m i) r)),
             hG.sentence (Nat.pair (triangularIndex m i) r)) by
-        simp only [seg, Nat.unpair_pair, AffineCombination.scale, hG.terms_eq,
-          List.getD_map]
+        simp only [seg, Nat.unpair_pair, AffineCombination.scale, hG.terms_eq]
         rw [List.getD_eq_getElem]
         · rw [List.getElem_map, List.getElem_map, List.getElem_range]
         · simpa using hrlt]

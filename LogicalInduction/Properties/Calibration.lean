@@ -385,7 +385,7 @@ theorem weightedBias_neg (w market truth : ℕ → ℝ) (n : ℕ) :
       -weightedBias w market truth n := by
   simp only [weightedBias, weightedAverage]
   split <;> rename_i hden
-  · simp [hden]
+  · simp
   · have hnum :
         prefixSum (fun i => w i * (-market i - -truth i)) n =
           -prefixSum (fun i => w i * (market i - truth i)) n := by
@@ -1106,7 +1106,7 @@ theorem mem_allBitLists : ∀ (n : ℕ) (l : List Bool), l ∈ allBitLists n ↔
       simp only [allBitLists, List.mem_singleton]
       exact ⟨fun h => by rw [h]; rfl, fun h => List.length_eq_zero_iff.mp h⟩
   | n + 1, l => by
-      simp only [allBitLists, List.mem_flatMap, List.mem_cons, List.mem_singleton,
+      simp only [allBitLists, List.mem_flatMap, List.mem_cons,
         List.not_mem_nil, or_false]
       constructor
       · rintro ⟨t, ht, rfl | rfl⟩ <;>
@@ -2517,7 +2517,7 @@ theorem DeterminedViaTheory.eventually_biasRunTrader_hasROI
     (biasRunRate_pos scale k) hweighted
   convert hdet.biasRunTrader_hasROI_of_surplus hpoly hWgen hWdiv hmag
     hworld hP (biasRunRate scale) hrate0 hrate1 (ε / 2) (ε / 4)
-      (by linarith) k hsurplus hrisk using 1 <;> ring
+      (by linarith) k hsurplus hrisk using 1 ; ring
 
 /-- Exact rational code for the canonical repeatable-ROI tolerance budget. -/
 def roiToleranceRat (i : ℕ) : ℚ := ((1 : ℚ) / 2) ^ (i + 1)
@@ -2978,14 +2978,14 @@ theorem DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
     simpa [Ts, baseTs] using hbasePoly.gateBefore N
   have hαrank : ∀ i, (α i).rank ≤ i := by
     intro i
-    by_cases hi : N ≤ i <;> simp [α, gateFeature, hi, EF.rank]
+    by_cases hi : N ≤ i <;> simp [α, gateFeature, hi]
   have hαseg : PolySegStream (fun i => (α i).serialize) := by
     apply PolySegStream.gateFeature
       (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)) N
   have hαclosed : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V := by
     intro i ρ V
     by_cases hi : N ≤ i <;>
-      simp [α, gateFeature, hi, EF.denoteWith, EF.denote]
+      simp [α, gateFeature, hi, EF.denote]
   have hαmag : ∀ i, (α i).denote P = (Ts i).magnitude P := by
     intro i
     by_cases hi : N ≤ i

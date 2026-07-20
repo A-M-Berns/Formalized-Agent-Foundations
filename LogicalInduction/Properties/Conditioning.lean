@@ -836,11 +836,11 @@ theorem separatedLocallyGatedConditionalContract_value
             simp only [locallyGatedFirstLeg, locallyGatedSecondLeg, value,
               EF.denote, EF.denoteWith_letE]
             rw [hp]
-            simp [locallyGatedFirstLeg, locallyGatedSecondLeg,
-              locallyGatedConditionalContractTrades, value, EF.denote,
+            simp [
+              locallyGatedConditionalContractTrades,
               EF.denoteWith, EF.conditioningCapGate, EF.conditioningTolerance,
               EF.absVal, EF.conditionalRatioEF, EF.lowerSafeRecip, efMin,
-              clip01, List.getD, hp]
+              clip01, List.getD]
   simpa only [Strategy.value, separatedLocallyGatedConditionalContract,
     locallyGatedConditionalContract, List.map_append, List.sum_append, List.map_map,
     Function.comp_apply] using hsum T.trades.length T.trades

@@ -55,7 +55,7 @@ theorem EfficientlyEmulatable.netWorth_launch {Ts : ℕ → Trader}
       omega
     rw [Strategy.value]
     rw [show ((Ts k).strat i).trades = [] from h.zero_before hil]
-    simp [Strategy.value]
+    simp
   · intro hk
     simp at hk
 
@@ -155,7 +155,7 @@ theorem EfficientlyEmulatable.of_polySeg {Ts : ℕ → Trader}
         _ ≤ fuelBound n := by dsimp only [fuelBound]; gcongr
         _ ≤ A * (n + 1) ^ K + A := (le_max_right _ _).trans (hAK n)
     have key := hfc (Nat.pair k (Nat.pair n i))
-    simp only [Function.comp_apply, Nat.unpair_pair] at key
+    simp only [Nat.unpair_pair] at key
     have hspec' : tokenFn (Nat.pair (Nat.pair k n) i) =
         (serializeTrades ((Ts k).strat n).trades).getD i 0 := by
       have raw := hspec (Nat.pair k n) i (by rw [← hstreamLen]; exact hi)
@@ -715,7 +715,7 @@ noncomputable def PolyTradeEmulatable.gateBefore {Ts : ℕ → Trader}
   have hcountGate : PolyFueled countCode count := by
     apply PolyFueled.of_eq hcountRaw
     intro z
-    simp only [Function.comp_apply, Nat.unpair_pair, ifzSelFn, count]
+    simp only [Nat.unpair_pair, ifzSelFn, count]
     by_cases hs : start ≤ z.unpair.1
     · rw [if_pos hs, if_neg (by omega)]
     · rw [if_neg hs, if_pos (by omega)]
@@ -729,13 +729,13 @@ noncomputable def PolyTradeEmulatable.gateBefore {Ts : ℕ → Trader}
       (fun z => z.unpair.1 + 1 - start) := by
     apply PolyFueled.of_eq hmemberTestRaw
     intro z
-    simp only [Function.comp_apply, Nat.unpair_pair]
+    simp only [Nat.unpair_pair]
   have hstream : PolySegStream (fun z => serializeTrades
       (((gateTraderFamily start Ts) z.unpair.1).strat z.unpair.2).trades) := by
     refine PolySegStream.of_eq
       (PolySegStream.ifZero hzeroSeg h.polySeg hmemberTest) ?_
     intro z
-    simp only [gateTraderFamily, ifzSelFn]
+    simp only [gateTraderFamily]
     by_cases hs : start ≤ z.unpair.1
     · rw [if_pos hs, if_neg (by omega)]
     · rw [if_neg hs, if_pos (by omega)]
@@ -870,7 +870,7 @@ theorem sumFeatures_denoteWith (es : List EF) (ρ : List ℝ) (V : History) :
     (sumFeatures es).denoteWith ρ V =
       (es.map (fun e => e.denoteWith ρ V)).sum := by
   induction es with
-  | nil => simp [sumFeatures, EF.denoteWith]
+  | nil => simp [sumFeatures]
   | cons e es ih =>
       change e.denoteWith ρ V + (sumFeatures es).denoteWith ρ V =
         e.denoteWith ρ V + (es.map (fun e => e.denoteWith ρ V)).sum
@@ -1130,7 +1130,7 @@ private theorem featureWeightBody_denoteWith (active : ℕ → ℕ → Bool) (α
     · simp only [hop, if_true, EF.denoteWith]
       rw [hρ i]
       rw [hαc i ρ V]
-    · simp [hop, EF.denoteWith]
+    · simp [hop]
   rw [hsum]
   ring
 
@@ -1156,7 +1156,7 @@ private theorem sharedWeights_denoteWith (active : ℕ → ℕ → Bool) (α : �
       if count = 0 then ρ.getD 0 0
       else weight active (fun j => (α j).denote V) (k + count - 1) := by
   induction count generalizing k ρ with
-  | zero => simp [sharedWeights, EF.denoteWith]
+  | zero => simp [sharedWeights]
   | succ count ih =>
       rw [sharedWeights, EF.denoteWith,
         featureWeightBody_denoteWith active α hαc V k ρ hρ]
@@ -1258,23 +1258,23 @@ private theorem featureWeightBody_rank_le (active : ℕ → ℕ → Bool) (α : 
       obtain ⟨i, rfl⟩ := he
       split
       · exact Nat.max_le.mpr ⟨by simp, (hα i).trans (Nat.le_of_lt i.isLt)⟩
-      · simpa using Nat.zero_le k
+      · simp
 
 private theorem sharedWeights_rank_le (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hα : ∀ i, (α i).rank ≤ i) (k count : ℕ) :
     (sharedWeights active α k count).rank ≤
       if count = 0 then 0 else k + count - 1 := by
   induction count generalizing k with
-  | zero => simp [sharedWeights, EF.rank]
+  | zero => simp [sharedWeights]
   | succ count ih =>
       rw [sharedWeights, EF.rank]
       apply Nat.max_le.mpr
       constructor
       · exact (featureWeightBody_rank_le active α hα k).trans (by
-          cases count <;> simp <;> omega)
+          cases count <;> simp)
       · have H := ih (k + 1)
         cases count with
-        | zero => simpa [sharedWeights, EF.rank] using H
+        | zero => simp [sharedWeights]
         | succ count =>
             simpa [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using H
 
@@ -1691,7 +1691,7 @@ theorem fractional_allocations_finset_le_one
       apply Finset.sum_congr rfl
       intro i _
       have hin : (i : ℕ) ≠ n := by omega
-      simp [r, q, β, hin]
+      simp [hin]
     _ ≤ 1 := hbudget
 
 /-! #### Shared expressible-feature representation -/
@@ -1858,7 +1858,7 @@ private theorem fractionalSharedWeights_denoteWith
       else fractionalWeight (fun i n => (occupancy i n).denote V)
         (fun i => (α i).denote V) (k + count - 1) := by
   induction count generalizing k ρ with
-  | zero => simp [fractionalSharedWeights, EF.denoteWith]
+  | zero => simp [fractionalSharedWeights]
   | succ count ih =>
       rw [fractionalSharedWeights, EF.denoteWith,
         fractionalWeightBody_denoteWith occupancy α hαc hoccc V k ρ hρ]
@@ -1931,16 +1931,16 @@ private theorem fractionalSharedWeights_rank_le
     (fractionalSharedWeights occupancy α k count).rank ≤
       if count = 0 then 0 else k + count - 1 := by
   induction count generalizing k with
-  | zero => simp [fractionalSharedWeights, EF.rank]
+  | zero => simp [fractionalSharedWeights]
   | succ count ih =>
       rw [fractionalSharedWeights, EF.rank]
       apply Nat.max_le.mpr
       constructor
       · exact (fractionalWeightBody_rank_le occupancy α hα hocc k).trans (by
-          cases count <;> simp <;> omega)
+          cases count <;> simp)
       · have H := ih (k + 1)
         cases count with
-        | zero => simpa [fractionalSharedWeights, EF.rank] using H
+        | zero => simp [fractionalSharedWeights]
         | succ count =>
             simpa [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using H
 
@@ -2389,7 +2389,7 @@ theorem activeAllocation_le_one (active : ℕ → ℕ → Bool) (α : ℕ → �
     rw [outstanding]
     apply Finset.sum_congr rfl
     intro i hi
-    simp only [Fin.coe_castSucc, allocation]
+    simp only [Fin.val_castSucc, allocation]
   rw [hprior]
   simp only [Fin.val_last]
   by_cases h : active n n = true
@@ -2699,7 +2699,7 @@ theorem VerifiedMaturitySchedule.polyActive
   obtain ⟨c, hc⟩ := polyFueled_boundedNone h.check h.check_poly
   have hswap := hc.comp (PolyFueled.right.pair PolyFueled.left)
   refine ⟨_, hswap.of_eq (fun z => ?_)⟩
-  simp only [Function.comp_apply, Nat.unpair_pair]
+  simp only [Nat.unpair_pair]
   rw [h.boundedNone_eq_activeUntil]
 
 theorem VerifiedMaturitySchedule.maturity
@@ -2783,7 +2783,7 @@ theorem sharedBudgetedTrader_netWorth_lower
       rw [← hmag i] at hnw
       have hscaled := mul_le_mul_of_nonneg_left hnw (hβ0 i)
       have hfalse : active i n = false := Bool.eq_false_of_not_eq_true hop
-      simp only [hfalse, if_false]
+      simp only [hfalse]
       calc
         ε * allocation active M i - (ε + 1) * 0 -
               2 * (η i * allocation active M i) =

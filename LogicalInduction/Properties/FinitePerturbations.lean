@@ -216,7 +216,7 @@ theorem freezeTokenRun_serialize (quote : ℕ → Sentence → ℚ)
   | safeRecip a iha =>
       simp only [serialize, freezeBefore, freezeTokenRun_append]
       rw [iha]
-      simp [freezeTokenRun, freezeTokenNext, freezeTokenEmit, List.append_assoc]
+      simp [freezeTokenRun, freezeTokenNext, freezeTokenEmit]
   | var i => simp [serialize, freezeTokenRun, freezeTokenNext, freezeTokenEmit, freezeBefore]
   | letE value body ihv ihb =>
       simp only [serialize, freezeBefore, freezeTokenRun_append]
@@ -236,7 +236,7 @@ theorem freezeTokenRun_serializeTrades (quote : ℕ → Sentence → ℚ)
       rcases trade with ⟨e, φ⟩
       simp only [serializeTrades, List.map_cons, freezeTokenRun_append]
       rw [freezeTokenRun_serialize quote quoteCode cutoff hquote e]
-      simp [freezeTokenRun, freezeTokenNext, freezeTokenEmit, ih, List.append_assoc]
+      simp [freezeTokenRun, freezeTokenNext, freezeTokenEmit, ih]
 
 /-- Apply the feature freeze to every feature currently held by the streaming decoder. -/
 def freezeStreamState (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
@@ -358,10 +358,10 @@ theorem streamReadFrom_freezeTokenEmit
               subst pending
               by_cases hday : token < cutoff
               · simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
-                  EF.streamReadFrom, EF.streamStep, hday, hdecode,
+                  EF.streamReadFrom, EF.streamStep, hday,
                   hquote token code φ hdecode, freezeBefore]
               · simp [freezeTokenEmit, freezeTokenNext, freezeStreamState,
-                  EF.streamReadFrom, EF.streamStep, hday, hdecode, freezeBefore]
+                  EF.streamReadFrom, EF.streamStep, hday, freezeBefore]
           | succ mode =>
               cases mode with
               | zero =>

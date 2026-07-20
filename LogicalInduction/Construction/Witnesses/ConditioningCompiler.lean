@@ -415,7 +415,7 @@ def rawLocallyGatedBetaBodyTokens
 def rawLocallyGatedSecondBodyTokens
     (sentenceCode conditionCode day budgetCode inverseBudgetCode : ℕ)
     (ε : ℚ) : List ℕ :=
-  let beta := rawLocallyGatedBetaBodyTokens
+  let _beta := rawLocallyGatedBetaBodyTokens
     sentenceCode conditionCode day budgetCode inverseBudgetCode ε
   -- Replace the inner beta body by the corresponding second-leg body under the same
   -- leading ratio binding.
@@ -496,7 +496,7 @@ theorem rawConditionalPriceTokens_exact (φ ψ : Sentence) (day : ℕ) (ε : ℚ
   simp [rawConditionalPriceTokens, rawPriceTokens, rawConstTokens, rawMulTokens,
     rawMaxTokens, rawSafeRecipTokens, rawMinTokens, rawLowerSafeRecipTokens,
     EF.conditionalPriceEF, EF.conditionalRatioEF, EF.lowerSafeRecip, efMin,
-    EF.serialize, conjunctionCode_exact, List.append_assoc]
+    EF.serialize, conjunctionCode_exact]
 
 theorem rawConditionalPriceTokens_poly
     {phi psi day : ℕ → ℕ} {cφ cψ cd : Nat.Partrec.Code}
@@ -537,8 +537,7 @@ theorem rawConditionalPriceTokens_poly
   have hmin := hmul (hconst (-1)) (hmax hnegLeft hnegRight)
   exact PolySegStream.of_eq (PolySegStream.ofTokenStream hmin) fun z => by
     simp [rawConditionalPriceTokens, rawMinTokens, rawMulTokens, rawMaxTokens,
-      rawLowerSafeRecipTokens, rawSafeRecipTokens, rawPriceTokens, rawConstTokens,
-      List.append_assoc]
+      rawLowerSafeRecipTokens, rawSafeRecipTokens, rawPriceTokens, rawConstTokens]
 
 /-- One source-token segment of the parser-transparent price rewrite. -/
 def conditionPriceTokenSegment (tokenFn : ℕ → ℕ) (ψCode : ℕ → ℕ)
@@ -631,8 +630,7 @@ theorem conditionPriceTokenRun_serialize (ψ : ℕ → Sentence)
   | safeRecip a iha =>
       simp only [EF.serialize, EF.retainedConditionPrices, conditionPriceTokenRun_append]
       rw [iha]
-      simp [conditionPriceTokenRun, conditionPriceTokenEmit, EF.freezeTokenNext,
-        List.append_assoc]
+      simp [conditionPriceTokenRun, conditionPriceTokenEmit, EF.freezeTokenNext]
   | var i => simp [EF.serialize, conditionPriceTokenRun, conditionPriceTokenEmit,
       EF.freezeTokenNext, EF.retainedConditionPrices]
   | letE x body ihx ihbody =>
@@ -656,7 +654,7 @@ theorem streamReadFrom_rawConditionalPriceSuffix
     rawMaxTokens, rawSafeRecipTokens, rawMinTokens, rawLowerSafeRecipTokens,
     EF.streamReadFrom, EF.streamStep, conjunctionCode_decode hφ,
     Encodable.encodek, EF.retainedConditionPrices, EF.conditionalPriceEF,
-    EF.conditionalRatioEF, EF.lowerSafeRecip, efMin, EF.serialize]
+    EF.conditionalRatioEF, EF.lowerSafeRecip, efMin]
 
 def retainedConditionStreamState (ψ : ℕ → Sentence) (ε : ℚ) :
     EF.StreamState → EF.StreamState
@@ -782,13 +780,13 @@ theorem streamReadFrom_conditionPriceTokenEmit
                         trades.map fun trade =>
                           (trade.1.retainedConditionPrices ψ ε, trade.2))) := by
                   simp [retainedConditionStreamState, EF.streamReadFrom,
-                    EF.streamStep, hdecode]
+                    EF.streamStep]
                 rw [hday, streamReadFrom_rawConditionalPriceSuffix hdecode]
                 rfl
               · intro next hnext
                 simp [EF.streamStep] at hnext
                 subst next
-                simp [EF.freezeTokenNext, EF.FreezeTokenState.Matches]
+                simp [EF.freezeTokenNext]
           | succ mode =>
               cases mode with
               | zero =>
@@ -955,7 +953,7 @@ theorem frameInverseBudgetCode_exact (day count : ℕ) :
       simp [frameBudgetDenominator]
       positivity
     simp [frameInverseBudgetCode, frameBudget, hzero,
-      encode_rat_natCast, ne_of_gt hpos]
+      encode_rat_natCast]
 
 theorem frameBudgetCodes_polyFueled
     {day count : ℕ → ℕ} {cd cc : Nat.Partrec.Code}
@@ -995,7 +993,7 @@ theorem frameBudget_eq (day count : ℕ) (hcount : 0 < count) :
   have hden : (frameBudgetDenominator day count : ℚ) ≠ 0 := by
     exact_mod_cast Nat.ne_of_gt hpos
   simp [frameBudget, frameBudgetDenominator, Strategy.localConditioningBudget,
-    conditioningBudget, Nat.ne_of_gt hcount, hden, div_eq_mul_inv]
+    conditioningBudget, Nat.ne_of_gt hcount, div_eq_mul_inv]
   ring
 
 def conditioningFrameTokenEmit (second : Bool) (ψCode : ℕ)
@@ -1090,12 +1088,12 @@ theorem streamReadFrom_rawSecondFrame
         (some ((0, none), (e :: stack, trades))) =
       some ((0, none), (stack,
         trades ++ [(EF.letE e (secondFrameBody ψ ε q day φ), ψ)])) := by
-  simp [rawLocallyGatedSecondBodyTokens, rawLocallyGatedBetaBodyTokens,
+  simp [rawLocallyGatedSecondBodyTokens,
     rawConditioningRatioTokens, rawConditioningGateTokens, rawAbsTokens,
     rawClip01Tokens, rawPriceTokens, rawConstTokens, rawAddTokens, rawMulTokens,
     rawMaxTokens, rawSafeRecipTokens, rawMinTokens, rawLowerSafeRecipTokens,
     EF.streamReadFrom, EF.streamStep, conjunctionCode_decode hφ,
-    Encodable.encodek, firstFrameBody, secondFrameBody,
+    Encodable.encodek, secondFrameBody,
     EF.conditioningCapGate, EF.conditioningTolerance, EF.absVal,
     EF.conditionalRatioEF, EF.lowerSafeRecip, clip01, efMin]
 
@@ -1161,7 +1159,7 @@ theorem streamRead_rawFrame_empty (second : Bool) (sentenceCode : ℕ)
           rawConditioningRatioTokens, rawConditioningGateTokens, rawAbsTokens,
           rawClip01Tokens, rawPriceTokens, rawConstTokens, rawAddTokens,
           rawMulTokens, rawMaxTokens, rawSafeRecipTokens, rawMinTokens,
-          rawLowerSafeRecipTokens, EF.streamReadFrom, EF.streamStep, hdecode,
+          rawLowerSafeRecipTokens, EF.streamReadFrom, EF.streamStep,
           conjunctionCode_decode hdecode, Encodable.encodek]
 
 theorem streamRead_rawFrame_invalid (second : Bool) {sentenceCode : ℕ}
@@ -1286,7 +1284,7 @@ theorem streamReadFrom_conditioningFrameTokenEmit
               obtain ⟨φ, hpendingEq, hdecode⟩ := hpending rfl
               subst pending
               simp [conditioningFrameTokenEmit, EF.freezeTokenNext, frameStreamState,
-                EF.streamReadFrom, EF.streamStep, hdecode]
+                EF.streamReadFrom, EF.streamStep]
           | succ mode =>
               cases mode with
               | zero =>
@@ -1312,7 +1310,7 @@ theorem streamReadFrom_conditioningFrameTokenEmit
                                     streamRead_rawFrame_empty true token ψ day ε q
                                       (trades.map (frameLeg true ψ ε q day))
                             · intro next hnext
-                              simp [EF.streamStep, hdecode] at hnext
+                              simp [EF.streamStep] at hnext
                           · constructor
                             · cases second with
                               | false =>
@@ -1326,7 +1324,7 @@ theorem streamReadFrom_conditioningFrameTokenEmit
                                     streamRead_rawFrame_empty true token ψ day ε q
                                       (trades.map (frameLeg true ψ ε q day))
                             · intro next hnext
-                              simp [EF.streamStep, hdecode] at hnext
+                              simp [EF.streamStep] at hnext
                       | cons e stack =>
                           cases hdecode : Encodable.decode (α := Sentence) token with
                           | none =>
@@ -1488,7 +1486,7 @@ theorem deserializeTrades_conditioningFrameTokenRun
   simp only [conditioningFrameTokenOutput, EF.streamReadFrom_append]
   rw [hrun]
   cases hread : EF.streamReadFrom tokens (some EF.streamInitial) with
-  | none => simp [hread, EF.streamReadFrom_none]
+  | none => simp [EF.streamReadFrom_none]
   | some state =>
       have hinv := streamReadFrom_readyPendingInvariant tokens state hread
       have hcontrol := hmatches state hread
@@ -1497,7 +1495,7 @@ theorem deserializeTrades_conditioningFrameTokenRun
       | zero =>
           cases pending <;> cases stack <;>
             simp_all [frameStreamState, readyPendingInvariant,
-              EF.FreezeTokenState.Matches, EF.streamReadFrom, EF.streamStep]
+              EF.FreezeTokenState.Matches, EF.streamReadFrom]
       | succ mode =>
           cases pending <;> cases stack <;>
             (by_cases hfour : mode = 3) <;>
@@ -1510,7 +1508,7 @@ theorem frameLeg_rank_le_iff (second : Bool) (ψ : Sentence) (ε q : ℚ)
   cases second <;>
     simp [frameLeg, firstFrameBody, secondFrameBody,
       EF.conditioningCapGate_rank, EF.conditionalRatioEF,
-      EF.lowerSafeRecip, EF.absVal, clip01, efMin, EF.rank]
+      EF.lowerSafeRecip, EF.absVal, efMin, EF.rank]
 
 theorem strategyOfTokens_conditioningFrameTokenOutput_trades
     (second : Bool) (ψ : Sentence) (ε q : ℚ) (day : ℕ) (tokens : List ℕ) :
@@ -1568,55 +1566,55 @@ theorem streamStep_prependStreamTrades (prior : List (EF × Sentence))
     by_cases ht0 : token = 0
     · simp [ht0, prependStreamTrades]
     by_cases ht1 : token = 1
-    · simp [ht0, ht1, prependStreamTrades]
+    · simp [ht1, prependStreamTrades]
     by_cases ht2 : token = 2
     · rcases stack with _ | ⟨a, stack⟩
-      · simp [ht0, ht1, ht2]
+      · simp [ht2]
       · rcases stack with _ | ⟨b, rest⟩ <;>
-          simp [ht0, ht1, ht2, prependStreamTrades]
+          simp [ht2, prependStreamTrades]
     by_cases ht3 : token = 3
     · rcases stack with _ | ⟨a, stack⟩
-      · simp [ht0, ht1, ht2, ht3]
+      · simp [ht3]
       · rcases stack with _ | ⟨b, rest⟩ <;>
-          simp [ht0, ht1, ht2, ht3, prependStreamTrades]
+          simp [ht3, prependStreamTrades]
     by_cases ht4 : token = 4
     · rcases stack with _ | ⟨a, stack⟩
-      · simp [ht0, ht1, ht2, ht3, ht4]
+      · simp [ht4]
       · rcases stack with _ | ⟨b, rest⟩ <;>
-          simp [ht0, ht1, ht2, ht3, ht4, prependStreamTrades]
+          simp [ht4, prependStreamTrades]
     by_cases ht5 : token = 5
     · rcases stack with _ | ⟨a, rest⟩ <;>
-        simp [ht0, ht1, ht2, ht3, ht4, ht5, prependStreamTrades]
+        simp [ht5, prependStreamTrades]
     by_cases ht6 : token = 6
-    · simp [ht0, ht1, ht2, ht3, ht4, ht5, ht6, prependStreamTrades]
+    · simp [ht6, prependStreamTrades]
     by_cases ht7 : token = 7
-    · simp [ht0, ht1, ht2, ht3, ht4, ht5, ht6, ht7,
+    · simp [ht7,
         prependStreamTrades]
     by_cases ht8 : token = 8
     · rcases stack with _ | ⟨a, stack⟩
-      · simp [ht0, ht1, ht2, ht3, ht4, ht5, ht6, ht7, ht8]
+      · simp [ht8]
       · rcases stack with _ | ⟨b, rest⟩ <;>
-          simp [ht0, ht1, ht2, ht3, ht4, ht5, ht6, ht7, ht8,
+          simp [ht8,
             prependStreamTrades]
     simp [ht0, ht1, ht2, ht3, ht4, ht5, ht6, ht7, ht8]
   · by_cases h1 : mode = 1
     · cases hdecode : Encodable.decode (α := Sentence) token <;>
-        simp [EF.streamStep, h0, h1, hdecode, prependStreamTrades]
+        simp [EF.streamStep, h1, hdecode, prependStreamTrades]
     by_cases h2 : mode = 2
     · cases pending <;>
-        simp [EF.streamStep, h0, h1, h2, prependStreamTrades]
+        simp [EF.streamStep, h2, prependStreamTrades]
     by_cases h3 : mode = 3
     · cases hdecode : Encodable.decode (α := ℚ) token <;>
-        simp [EF.streamStep, h0, h1, h2, h3, hdecode,
+        simp [EF.streamStep, h3, hdecode,
           prependStreamTrades]
     by_cases h4 : mode = 4
     · rcases stack with _ | ⟨a, rest⟩
-      · simp [EF.streamStep, h0, h1, h2, h3, h4, prependStreamTrades]
+      · simp [EF.streamStep, h4, prependStreamTrades]
       · cases hdecode : Encodable.decode (α := Sentence) token <;>
-          simp [EF.streamStep, h0, h1, h2, h3, h4, hdecode,
+          simp [EF.streamStep, h4, hdecode,
             prependStreamTrades, List.append_assoc]
     by_cases h5 : mode = 5
-    · simp [EF.streamStep, h0, h1, h2, h3, h4, h5,
+    · simp [EF.streamStep, h5,
         prependStreamTrades]
     simp [EF.streamStep, h0, h1, h2, h3, h4, h5, prependStreamTrades]
 
@@ -1848,14 +1846,12 @@ theorem rawConditioningFrameTokens_poly
       simp [rawLocallyGatedBetaBodyTokens, rawConditioningRatioTokens,
         rawConditioningGateTokens, rawAbsTokens, rawClip01Tokens,
         rawLowerSafeRecipTokens, rawPriceTokens, rawConstTokens, rawAddTokens,
-        rawMulTokens, rawMaxTokens, rawSafeRecipTokens, rawMinTokens,
-        ratio, boundRatio, bound, gate, betaCore, List.append_assoc]
+        rawMulTokens, rawMaxTokens, rawSafeRecipTokens, rawMinTokens]
   · exact PolySegStream.of_eq (PolySegStream.ofTokenStream hsecond) fun z => by
       simp [rawLocallyGatedSecondBodyTokens, rawConditioningRatioTokens,
         rawConditioningGateTokens, rawAbsTokens, rawClip01Tokens,
         rawLowerSafeRecipTokens, rawPriceTokens, rawConstTokens, rawAddTokens,
-        rawMulTokens, rawMaxTokens, rawSafeRecipTokens, rawMinTokens,
-        ratio, boundRatio, bound, gate, betaCore, List.append_assoc]
+        rawMulTokens, rawMaxTokens, rawSafeRecipTokens, rawMinTokens]
 
 def conditioningFrameTokenSegment (second : Bool) (tokenFn : ℕ → ℕ)
     (ψCode day budgetCode inverseBudgetCode : ℕ) (ε : ℚ)
@@ -1920,7 +1916,7 @@ theorem tradeScanAt_count_eq_of_read (tokenFn : ℕ → ℕ) (n j : ℕ)
       simp [tradeScanAt, EF.streamReadFrom, EF.streamInitial,
         EF.freezeTokenControlAt, EF.FreezeTokenState.Matches] at hread ⊢
       subst state
-      simp [EF.streamInitial, EF.FreezeTokenState.Matches]
+      simp
   | succ j ih =>
       rw [List.range_succ, List.map_append, EF.streamReadFrom_append] at hread
       cases hprev : EF.streamReadFrom
@@ -2301,7 +2297,7 @@ theorem deserializeTrades_safeSeparatedFrameTokenOutput
       rw [hsource] at hfirst hsecond
       simp only [Option.map_some] at hfirst hsecond
       unfold safeSeparatedFrameTokenOutput
-      simp only [haccept, if_false]
+      simp only [haccept]
       exact deserializeTrades_append_of_some first second _ _ hfirst hsecond
   | none =>
       rw [hsource] at hfirst hsecond

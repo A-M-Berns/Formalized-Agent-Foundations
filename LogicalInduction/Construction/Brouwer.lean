@@ -26,6 +26,11 @@ import Mathlib.Data.Real.StarOrdered
 import Mathlib.Algebra.Order.Ring.Star
 import Mathlib.Topology.Algebra.Module.Cardinality
 
+-- The Sperner interior below is Aristotle-generated (see README); we do not hand-edit
+-- generated proof bodies, so the unused-simp-arg/variable linters are silenced here.
+set_option linter.unusedSimpArgs false
+set_option linter.unusedVariables false
+
 set_option maxHeartbeats 1000000
 
 namespace LogicalInduction
@@ -212,12 +217,12 @@ is fully labeled.
 -/
 theorem sperner_card_odd_zero {m : ℤ} (hm : 1 ≤ m)
     (l : (Fin 1 → ℤ) → Fin 1)
-    (hadm : ∀ p : Fin 1 → ℤ, IsLat m p → p (l p) ≠ 0) :
+    (_hadm : ∀ p : Fin 1 → ℤ, IsLat m p → p (l p) ≠ 0) :
     Odd ((cellFin 0 m).filter (fun pσ => IsFull l pσ.1 pσ.2)).card := by
   refine' ⟨ 0, _ ⟩;
   refine' Finset.card_eq_one.mpr _;
-  refine' ⟨ ⟨ fun _ => m, 1 ⟩, _ ⟩ ; ext ; simp +decide [ IsFull, IsLat ];
-  constructor <;> intro h <;> simp_all +decide [ cellFin, ValidCell, cellVert ];
+  refine' ⟨ ⟨ fun _ => m, 1 ⟩, _ ⟩ ; ext ; simp +decide [ IsFull ];
+  constructor <;> intro h <;> simp_all +decide [ cellFin, ValidCell ];
   · rename_i x; rcases h with ⟨ ⟨ ⟨ a, ⟨ ha₁, ha₂ ⟩, rfl ⟩, ha₃ ⟩, ha₄ ⟩ ; simp_all +decide [ IsLat, cellVert ] ;
     exact funext fun x => by fin_cases x; exact ha₃;
   · unfold IsLat cellVert; simp_all +decide [ Fin.eq_zero ] ;
@@ -294,7 +299,7 @@ theorem cellVert_pivot_zero {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (
   unfold cellVert; simp +decide [ Finset.sum_ite ] ;
   rw [ show ( Finset.filter ( fun x => x ≤ k ) Finset.univ : Finset ( Fin ( n + 1 ) ) ) = Finset.image ( fun x : Fin ( n + 1 ) => x + 1 ) ( Finset.filter ( fun x => x < k ) Finset.univ ) ∪ { 0 } from ?_, Finset.card_filter, Finset.card_filter, Finset.card_filter, Finset.card_filter ];
   · rw [ Finset.sum_union, Finset.sum_union ] <;> norm_num;
-    · rw [ Finset.preimage ] ; simp +decide [ Finset.filter_singleton, Finset.filter_insert ] ; ring;
+    · rw [ Finset.preimage ] ; simp +decide [ Finset.filter_singleton ] ; ring;
       split_ifs <;> simp_all +decide [ Finset.filter_image ] ; ring;
       · grind;
       · rw [ show ( Finset.filter ( fun x => x + -1 < k ) Finset.univ : Finset ( Fin ( n + 1 ) ) ) = Finset.image ( fun x : Fin ( n + 1 ) => x + 1 ) ( Finset.filter ( fun x => x < k ) Finset.univ ) from ?_, Finset.card_filter, Finset.card_filter, Finset.card_filter, Finset.card_filter ];
@@ -312,7 +317,7 @@ theorem cellVert_pivot_zero {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (
     · convert Nat.le_of_lt_succ _;
       convert k.2 using 1;
       norm_num [ Fin.ext_iff, Fin.val_add, Fin.val_one ];
-  · ext x; simp [Finset.mem_union, Finset.mem_image];
+  · ext x; simp [Finset.mem_union];
     rcases x with ⟨ _ | x, hx ⟩ <;> norm_num [ Fin.add_def, Fin.lt_def ];
     norm_num [ ( by ring : x + 1 + n = n + 1 + x ), Nat.mod_eq_of_lt hx ];
     rw [ Nat.mod_eq_of_lt ( by linarith ) ] ; exact ⟨ fun h => Nat.lt_of_succ_le h, fun h => Nat.succ_le_of_lt h ⟩ ;
@@ -352,7 +357,7 @@ theorem pivot_facet {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1
   · rw [ show ( Finset.univ.erase 0 : Finset ( Fin ( n + 2 ) ) ) = Finset.image ( fun k : Fin ( n + 1 ) => Fin.succ k ) Finset.univ from ?_, show ( Finset.univ.erase ( Fin.last ( n + 1 ) ) : Finset ( Fin ( n + 2 ) ) ) = Finset.image ( fun k : Fin ( n + 1 ) => Fin.castSucc k ) Finset.univ from ?_ ];
     · rw [ Finset.image_image, Finset.image_image ];
       exact Finset.image_congr fun x hx => cellVert_pivot_last P σ x;
-    · ext i; simp [Finset.mem_erase, Finset.mem_image];
+    · ext i; simp [Finset.mem_erase];
     · ext ( _ | i ) <;> simp +decide [ Fin.ext_iff ];
   · refine' Finset.image_congr fun x hx => _;
     apply cellVert_swap_eq;
@@ -482,7 +487,7 @@ theorem liftCell_valid {n : ℕ} {m : ℤ} {Pb : Fin (n+1) → ℤ} {s : Equiv.P
   intro k;
   induction' k using Fin.inductionOn with k ih;
   · have := hv 0;
-    unfold cellVert at this ⊢; simp_all +decide [ Fin.sum_univ_castSucc, Fin.snoc ] ;
+    unfold cellVert at this ⊢; simp_all +decide [ Fin.sum_univ_castSucc ] ;
     constructor <;> simp_all +decide [ IsLat, liftBase ];
     · intro i; unfold edgeVec; simp +decide [ Fin.snoc ] ;
       grind +suggestions;
@@ -549,7 +554,7 @@ theorem liftCell_mem {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ)
       grind +suggestions;
     · rw [ show ( Finset.univ.erase 0 : Finset ( Fin ( n + 2 ) ) ) = Finset.image ( fun k : Fin ( n + 1 ) => Fin.succ k ) Finset.univ from ?_, Finset.image_image ];
       · convert congr_arg ( Finset.image Fin.castSucc ) ( show Finset.image ( fun k => faceLabel l ( cellVert c.1 c.2 k ) ) Finset.univ = Finset.univ from ?_ ) using 1;
-        · ext; simp [cellVert_lift_snoc, faceLabel_castSucc];
+        · ext; simp [cellVert_lift_snoc];
           constructor <;> rintro ⟨ a, rfl ⟩ <;> use a;
           · apply faceLabel_castSucc;
             exact hadm;
@@ -559,11 +564,11 @@ theorem liftCell_mem {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ)
             exact hadm;
             unfold cellFin at hc; simp_all +decide [ ValidCell, IsLat ] ;
             intro i; induction i using Fin.lastCases <;> simp +decide [ * ] ;
-        · ext i; simp [Finset.mem_erase, Finset.mem_image];
+        · ext i; simp [Finset.mem_erase];
         · unfold IsFull at hc; aesop;
       · ext ( _ | i ) <;> simp +decide [ Fin.ext_iff ];
-  · intro h; have := h ( Fin.last _ ) ; simp_all +decide [ IsLat, cellVert_last_coord ] ;
-    convert this.1 ( Fin.last _ ) using 1 ; simp +decide [ cellVert_last_coord, liftPerm_zero, finRotate_last ];
+  · intro h; have := h ( Fin.last _ ) ; simp_all +decide [ IsLat ] ;
+    convert this.1 ( Fin.last _ ) using 1 ; simp +decide [ cellVert_last_coord ];
     rw [ if_pos ];
     · unfold liftBase; simp +decide [ edgeVec ] ;
     · exact Equiv.symm_apply_eq _ |>.2 ( by simp +decide [ liftPerm_zero ] )
@@ -592,7 +597,7 @@ theorem cellVert_coord_ind {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (F
   split_ifs <;> norm_num [ Finset.Nonempty ];
   · rw [ Finset.card_eq_one.mpr, Finset.card_eq_one.mpr ];
     · norm_num;
-    · obtain ⟨ l, hl₁, hl₂ ⟩ := ‹∃ l, l.castSucc < k ∧ ( σ l ).succ = j›; use l; ext x; simp +decide [ hl₁, hl₂ ] ;
+    · obtain ⟨ l, hl₁, hl₂ ⟩ := ‹∃ l, l.castSucc < k ∧ ( σ l ).succ = j›; use l; ext x; simp +decide [ hl₁ ] ;
       constructor <;> intro h <;> aesop;
     · obtain ⟨ l, hl₁, hl₂ ⟩ := ‹∃ l, l.castSucc < k ∧ ( σ l ).castSucc = j›; use l; ext; aesop;
   · rw [ Finset.card_eq_one.mpr, Finset.card_eq_zero.mpr ] <;> aesop;
@@ -627,7 +632,7 @@ theorem cellVert_last_all {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fi
       = P j + (if j = Fin.last (n+1) then 0 else 1) - (if j = 0 then 0 else 1) := by
   by_cases h : j = Fin.last ( n + 1 ) <;> simp_all +decide [ cellVert ];
   · rw [ show ( Finset.univ.filter fun x : Fin ( n + 1 ) => σ x = Fin.last n ) = { σ.symm ( Fin.last n ) } from Finset.eq_singleton_iff_unique_mem.mpr ⟨ by aesop, fun x hx => σ.injective <| by aesop ⟩ ] ; aesop;
-  · split_ifs <;> simp_all +decide [ Finset.filter_eq', Finset.filter_ne' ];
+  · split_ifs <;> simp_all +decide [ Finset.filter_eq' ];
     · rw [ Finset.card_eq_one ];
       exact ⟨ σ.symm 0, by ext; simp +decide [ Equiv.eq_symm_apply ] ⟩;
     · rw [ Finset.card_eq_one.mpr, Finset.card_eq_one.mpr ];
@@ -658,8 +663,8 @@ theorem cellVert_swap_pivot_vertex {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv
   unfold cellVert edgeVec;
   simp +decide [ Finset.sum_ite, Equiv.swap_apply_def ];
   rw [ show ( Finset.filter ( fun x => x.castSucc < k0 ) Finset.univ : Finset ( Fin ( n + 1 ) ) ) = Finset.filter ( fun x => x.castSucc < k0 ∧ x ≠ a ∧ x ≠ b ) Finset.univ ∪ { a } from ?_, Finset.filter_union ];
-  · rw [ Finset.filter_union, Finset.filter_singleton ] ; simp +decide [ Finset.filter_union, Finset.filter_singleton ] ; ring;
-    split_ifs <;> simp_all +decide [ Finset.filter_insert, Finset.filter_singleton ] <;> ring;
+  · rw [ Finset.filter_union, Finset.filter_singleton ] ; simp +decide [ Finset.filter_singleton ] ; ring;
+    split_ifs <;> simp_all +decide [ Finset.filter_insert ] <;> ring;
     all_goals congr! 2;
     all_goals congr! 2; ext x; aesop;
   · ext x; by_cases hx : x = a <;> by_cases hx' : x = b <;> simp +decide [ * ] ;
@@ -676,7 +681,7 @@ theorem cellVert_consecutive {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm 
   unfold cellVert edgeVec;
   rw [ Finset.sum_eq_add_sum_diff_singleton ( Finset.mem_univ k ) ];
   rw [ Finset.sum_eq_add_sum_diff_singleton ( Finset.mem_univ k ) ];
-  simp +decide [ Finset.sum_ite, Finset.filter_lt_eq_Ioi ];
+  simp +decide [ Finset.sum_ite ];
   rw [ show ( Finset.filter ( fun x => x ≤ k ) ( Finset.univ \ { k } ) ) = Finset.filter ( fun x => x < k ) ( Finset.univ \ { k } ) from Finset.filter_congr fun x hx => by rw [ le_iff_lt_or_eq, or_iff_left ( by aesop ) ] ] ; ring
 
 /-
@@ -701,7 +706,7 @@ theorem pivot_interior_components {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.
     {k0 : Fin (n+2)} (h0 : k0 ≠ 0) (hlast : k0 ≠ Fin.last (n+1))
     (a b : Fin (n+1)) (ha : a.val = k0.val - 1) (hb : b.val = k0.val) :
     (pivot P σ k0).1.1 = P ∧ (pivot P σ k0).1.2 = (Equiv.swap a b).trans σ := by
-  unfold pivot; simp +decide [ *, Equiv.swap_apply_def ] ;
+  unfold pivot; simp +decide [ * ] ;
   congr 2 <;> aesop
 
 /-
@@ -728,7 +733,7 @@ theorem pivot_invalid_facet_zero {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ} {σ
               exact ⟨ fun hx => σ.injective <| by aesop, fun hx => ⟨ by subst hx; exact Fin.pos_iff_ne_zero.mpr hk₁, by subst hx; aesop ⟩ ⟩;
           · have := hv ( Fin.last _ ) ; simp_all +decide [ IsLat ] ;
             have := hv ( Fin.last _ ) ; simp_all +decide [ cellVert ] ;
-            have := this.1 ( Fin.last _ ) ; simp_all +decide [ Finset.filter_eq', Finset.filter_ne' ] ;
+            have := this.1 ( Fin.last _ ) ; simp_all +decide [ Finset.filter_eq' ] ;
             exact le_trans ( mod_cast Finset.card_pos.mpr ⟨ σ.symm ( Fin.last n ), by aesop ⟩ ) this;
         · have := hv 0; simp_all +decide [ IsLat ] ;
           unfold cellVert at this; simp_all +decide [ Fin.sum_univ_succ ] ;
@@ -815,7 +820,7 @@ theorem pivot_invalid_facet {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ} {σ : Eq
           rcases eq_or_ne ((σ (Fin.last n)).castSucc) i with rfl | hi
           · have hge : 0 ≤ P ((σ (Fin.last n)).castSucc) := (hv 0).1 _ |>.trans_eq (by rw [cellVert_zero])
             have hne : (σ (Fin.last n)).succ ≠ (σ (Fin.last n)).castSucc := by
-              simp [Fin.ext_iff, Fin.val_succ, Fin.coe_castSucc]
+              simp [Fin.ext_iff, Fin.val_succ]
             rw [if_pos rfl, if_neg hne]; omega
           · rcases eq_or_ne ((σ (Fin.last n)).succ) i with rfl | hi2
             · rw [if_neg hi, if_pos rfl]
@@ -843,7 +848,7 @@ theorem pivot_invalid_facet {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ} {σ : Eq
     exfalso
     apply hk
     have hkv : (Fin.last n).castSucc < k := hl1
-    rw [Fin.lt_def, Fin.coe_castSucc, Fin.val_last] at hkv
+    rw [Fin.lt_def, Fin.val_castSucc, Fin.val_last] at hkv
     have : k.val = n + 1 := by omega
     exact Fin.ext (by rw [this, Fin.val_last])
   · exact pivot_invalid_facet_interior h0 hlast hv hinv
@@ -851,7 +856,7 @@ theorem pivot_invalid_facet {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ} {σ : Eq
 /-- Structure of a boundary half-door: the omitted vertex is the base (`k0 = 0`), the first
 edge points at the last coordinate (`σ 0 = Fin.last n`), and the last coordinate of the base
 is `1`. -/
-theorem boundary_door_struct {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ) → Fin (n+2))
+theorem boundary_door_struct {n : ℕ} {m : ℤ} (_hm : 1 ≤ m) (l : (Fin (n+2) → ℤ) → Fin (n+2))
     (hadm : ∀ p, IsLat m p → p (l p) ≠ 0) {x : ((Fin (n+2) → ℤ) × Equiv.Perm (Fin (n+1))) × Fin (n+2)}
     (hx : x ∈ boundaryDoors n m l) :
     x.2 = 0 ∧ x.1.2 0 = Fin.last n ∧ x.1.1 (Fin.last (n+1)) = 1 := by
@@ -897,7 +902,7 @@ theorem boundary_door_struct {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) 
   have hsig : x.1.2 0 = Fin.last n := by
     have hlt : (x.1.2.symm (Fin.last n)).val < 1 := by
       have h := hposlt
-      simp only [Fin.lt_def, Fin.coe_castSucc, Fin.val_one] at h
+      simp only [Fin.lt_def, Fin.val_castSucc, Fin.val_one] at h
       omega
     have hpos0 : x.1.2.symm (Fin.last n) = 0 := Fin.ext (by simp only [Fin.val_zero]; omega)
     have h2 := congrArg x.1.2 hpos0
@@ -919,7 +924,7 @@ theorem boundary_isLift {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → �
       exact boundary_door_struct hm l hadm hx |>.2.2;
     have := boundary_door_struct hm l hadm hx; obtain ⟨s, hs⟩ := exists_facePerm (by
     exact this.2.1 : x.1.2 0 = Fin.last n); use (c, s); aesop;
-  unfold liftCell at *; simp_all +decide [ boundaryDoors, halfDoors, cellVert_lift_snoc, faceLabel_castSucc ] ;
+  unfold liftCell at *; simp_all +decide [ boundaryDoors, halfDoors ] ;
   refine' ⟨ c.1, c.2, ⟨ _, _ ⟩, hc.symm ⟩;
   · convert mem_cellFin ?_;
     unfold cellFin at hx; simp_all +decide [ ValidCell, IsLat ] ;
@@ -929,7 +934,7 @@ theorem boundary_isLift {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → �
   · subst hc; simp_all +decide [ IsFull ] ;
     rw [ show ( Finset.univ.erase 0 : Finset ( Fin ( n + 2 ) ) ) = Finset.image ( fun k : Fin ( n + 1 ) => Fin.succ k ) Finset.univ from ?_, Finset.image_image ] at hx;
     · intro i; replace hx := Finset.ext_iff.mp hx.1.2 ( i.castSucc ) ; simp_all +decide [ Finset.mem_image ] ;
-      obtain ⟨ a, ha ⟩ := hx; use a; rw [ ← Fin.castSucc_inj ] ; simp_all +decide [ cellVert_lift_snoc, faceLabel_castSucc ] ;
+      obtain ⟨ a, ha ⟩ := hx; use a; rw [ ← Fin.castSucc_inj ] ; simp_all +decide [ cellVert_lift_snoc ] ;
       unfold faceLabel; simp_all +decide [ Fin.snoc ] ;
     · ext ( _ | i ) <;> simp +decide [ Fin.ext_iff ]
 
@@ -1344,7 +1349,7 @@ theorem exists_container {d : ℕ} {K : Set (EuclideanSpace ℝ (Fin d))}
     · exact fun i => mul_nonneg ( inv_nonneg.2 ha_pos.le ) ( by linarith [ abs_le.mp ( hM.2 x hx i ) ] );
     · refine' le_trans ( Finset.sum_le_sum fun i _ => show ( 2 * d * M + 1 ) ⁻¹ * ( x.ofLp i + M ) ≤ ( 2 * d * M + 1 ) ⁻¹ * ( M + M ) from mul_le_mul_of_nonneg_left ( by linarith [ abs_le.mp ( hM.2 x hx i ) ] ) ( by positivity ) ) _ ; norm_num [ ← Finset.mul_sum _ _ _, ha_pos.ne' ];
       rw [ inv_mul_le_iff₀ ] <;> nlinarith [ show ( d : ℝ ) * M ≥ 0 by exact mul_nonneg ( Nat.cast_nonneg _ ) hM.1 ];
-    · ext i; simp +decide [ ha_pos.ne', mul_assoc, mul_left_comm ] ;
+    · ext i; simp +decide [ mul_assoc, mul_left_comm ] ;
       grind;
   · convert HasFPP.congr ( Homeomorph.image e ( cornerSimplex d ) ) ( cornerSimplex_hasFPP d ) using 1
 

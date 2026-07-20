@@ -113,7 +113,7 @@ theorem obuLadderEF_denote (φ : ℕ → Sentence) (P : History) (n : ℕ) : ∀
 
 theorem obuLadderEF_rank (φ : ℕ → Sentence) (n : ℕ) : ∀ m,
     (obuLadderEF φ n m).rank ≤ n
-  | 0 => by simp [obuLadderEF, EF.rank]
+  | 0 => by simp [obuLadderEF]
   | (m + 1) => by
       have h1 := obuLadderEF_rank φ n m
       have h2 := obuCoef_rank φ (m + 1) n
@@ -462,7 +462,7 @@ theorem obuTrader_ecTok (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
   show _ = serializeTrades ((obuTrader φ).strat n).trades
   rw [show ((obuTrader φ).strat n).trades = [(obuLadderEF φ n n, φ n)] from rfl,
     serializeTrades, serializeTrades, serialize_obuLadderEF]
-  simp [Nat.unpair_pair, List.append_assoc]
+  simp [Nat.unpair_pair]
 
 #print axioms obuTrader_ecTok
 

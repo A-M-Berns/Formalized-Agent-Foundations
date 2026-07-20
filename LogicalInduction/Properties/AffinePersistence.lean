@@ -232,7 +232,7 @@ theorem persistenceEntry_serialize (As : ℕ → AffineCombination)
     (PolyFueled.right.pair (PolyFueled.const start))
   refine PolySegStream.of_eq (PolySegStream.ifZero hzero hbuy htest) ?_
   intro z
-  simp only [Function.comp_apply, Nat.unpair_pair]
+  simp only [Nat.unpair_pair]
   by_cases hs : start < z.unpair.2
   · rw [if_neg (by omega), persistenceEntry, if_pos hs]
   · rw [if_pos (by omega), persistenceEntry, if_neg hs]
@@ -436,7 +436,7 @@ theorem PolySequence.persistenceEntry_rank {As : ℕ → AffineCombination}
   by_cases hs : start < n
   · simp only [persistenceEntry, hs, if_true, buyIndF_rank]
     exact (As n).priceFeature_rank hn (h.const_rank n) (h.terms_rank n)
-  · simp [persistenceEntry, hs, EF.rank]
+  · simp [persistenceEntry, hs]
 
 theorem PolySequence.persistenceEntry_closed {As : ℕ → AffineCombination}
     (h : PolySequence As)
@@ -448,7 +448,7 @@ theorem PolySequence.persistenceEntry_closed {As : ℕ → AffineCombination}
       EF.denoteWith, EF.denote_max, EF.denote_mul, EF.denote_add, EF.denote_const,
       Pi.mul_apply, Pi.add_apply]
     rw [h.priceFeature_closed n k ρ V]
-  · simp [persistenceEntry, hs, EF.denoteWith]
+  · simp [persistenceEntry, hs]
 
 theorem PolySequence.persistenceEntrySum_rank {As : ℕ → AffineCombination}
     (h : PolySequence As)
@@ -460,7 +460,7 @@ theorem PolySequence.persistenceEntrySum_rank {As : ℕ → AffineCombination}
         (EF.const 0)).rank ≤ k := by
     intro l hl
     induction l with
-    | nil => simp [EF.rank]
+    | nil => simp
     | cons n l ih =>
         simp only [List.foldr_cons, EF.rank]
         exact Nat.max_le.mpr ⟨h.persistenceEntry_rank start low δ (hl n (by simp)),
@@ -478,7 +478,7 @@ theorem PolySequence.persistenceRawConst_rank {As : ℕ → AffineCombination}
         (EF.const 0)).rank ≤ k := by
     intro l hl
     induction l with
-    | nil => simp [EF.rank]
+    | nil => simp
     | cons n l ih =>
         simp only [List.foldr_cons, EF.rank]
         exact Nat.max_le.mpr ⟨Nat.max_le.mpr
@@ -562,15 +562,14 @@ noncomputable def PolySequence.persistencePortfolioPoly {As : ℕ → AffineComb
   · simpa [persistenceCoefficient] using hcoefficient
   · simpa [persistenceSentence] using hsentencePF
   · intro k
-    simp only [persistencePortfolio, EF.rank, persistenceNorm, EF.rank_safeRecip]
+    simp only [persistencePortfolio, EF.rank, persistenceNorm]
     exact Nat.max_le.mpr ⟨h.persistenceEntrySum_rank start low δ k,
       h.persistenceRawConst_rank start low δ k⟩
   · intro k j hj
     have hnlt := h.persistenceMember_lt hj
     have hn : persistenceMember h k j ≤ k := by omega
     have hr := h.persistenceOffset_lt hj
-    simp only [persistenceCoefficient, Nat.unpair_pair, EF.rank, persistenceNorm,
-      EF.rank_safeRecip]
+    simp only [persistenceCoefficient, Nat.unpair_pair, EF.rank, persistenceNorm]
     exact Nat.max_le.mpr ⟨h.persistenceEntrySum_rank start low δ k,
       Nat.max_le.mpr ⟨h.persistenceEntry_rank start low δ hn,
         (h.coefficient_rank (persistenceMember h k j) (persistenceOffset h k j) hr).trans hn⟩⟩
@@ -685,7 +684,7 @@ theorem persistencePortfolio_terms_flatMap {As : ℕ → AffineCombination}
           (EF.mul (persistenceEntry As start low δ k n)
             (h.coefficient (Nat.pair n r))),
           h.sentence (Nat.pair n r)) by
-      simp only [seg, Nat.unpair_pair, h.terms_eq, List.getD_map]
+      simp only [seg, Nat.unpair_pair, h.terms_eq]
       rw [List.getD_eq_getElem]
       · simp
       · simpa using hrlt]
@@ -1006,7 +1005,7 @@ theorem persistencePortfolio_bounded {As : ℕ → AffineCombination}
         B * (l.map e).sum := by
     intro l
     induction l with
-    | nil => simp [hB0]
+    | nil => simp
     | cons n l ih =>
         simp only [List.map_cons, List.sum_cons]
         calc

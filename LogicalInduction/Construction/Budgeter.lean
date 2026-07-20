@@ -154,7 +154,7 @@ theorem exists_mem_finiteAtomAssignments_agrees (A : Finset ℕ) (bits : A → B
   · exact List.mem_map.mpr ⟨xs, hmem, rfl⟩
   · funext a
     unfold atomAssignmentOfList
-    have haS : a.1 ∈ A.sort (· ≤ ·) := by simpa using a.2
+    have haS : a.1 ∈ A.sort (· ≤ ·) := by simp
     have hidx : (A.sort (· ≤ ·)).idxOf a.1 < (A.sort (· ≤ ·)).length :=
       List.idxOf_lt_length_of_mem haS
     have hidx' : (A.sort (· ≤ ·)).idxOf a.1 < xs.length := by
@@ -728,7 +728,7 @@ theorem priorBudgetBreach_eq_false_iff (DP : DeductiveProcess) (Tr : Trader) (b 
       · change ¬(tableConsistent u (DP.D m) &&
           decide (rawWorthRat Tr Q u m ≤ -(b : ℚ))) = true
         simp [hcons]
-    simpa [hinner]
+    simp [hinner]
 
 /-- One world-specific reciprocal loss cap from `def:budgeter`. -/
 def budgetWorldScale (Tr : Trader) (b : ℕ)
@@ -834,7 +834,7 @@ theorem budgetScaleFeature_rank_le (DP : DeductiveProcess) (Tr : Trader) (b : �
 
 theorem budgetScaleFeature_denote_pos (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (P : History) (Q : ℕ → Sentence → ℚ)
-    (hQ : ∀ day φ, P day φ = (Q day φ : ℝ)) (n : ℕ) :
+    (_hQ : ∀ day φ, P day φ = (Q day φ : ℝ)) (n : ℕ) :
     0 < (budgetScaleFeature DP Tr b Q n).denote P := by
   unfold budgetScaleFeature
   apply EF.listMin_denote_pos

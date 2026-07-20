@@ -198,7 +198,7 @@ theorem hystH_succ (φ a b δ) (P : History) (k : ℕ) :
 
 /-- `hystN k` references only days `< k`: rank ≤ `k − 1`. -/
 theorem hystN_rank (φ a b δ) : ∀ k, (hystN φ a b δ k).rank ≤ k - 1
-  | 0 => by simp [hystN, EF.rank]
+  | 0 => by simp [hystN]
   | (k + 1) => by
       have ih := hystN_rank φ a b δ k
       simp only [hystN, EF.rank, oneMinus_rank, sellIndEF_rank, buyIndEF_rank, max_le_iff]

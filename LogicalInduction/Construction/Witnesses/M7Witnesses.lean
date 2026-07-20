@@ -209,7 +209,7 @@ def precEvalState (cf cg : Nat.Partrec.Code) (clock a total : ℕ) :
       else none
 
 theorem precEvalState_eq_evaln (cf cg : Nat.Partrec.Code)
-    {clock a total j : ℕ} (htotal : total ≤ clock) (hj : j ≤ total) :
+    {clock a total j : ℕ} (_htotal : total ≤ clock) (hj : j ≤ total) :
     precEvalState cf cg clock a total j =
       Nat.Partrec.Code.evaln (clock - total + j) (.prec cf cg)
         (Nat.pair a j) := by
@@ -243,7 +243,7 @@ theorem precEvalState_eq_evaln (cf cg : Nat.Partrec.Code)
             rw [hprev]
             simp [Nat.Partrec.Code.evaln, hle]
       · cases hf : fuel with
-        | zero => simp [Nat.Partrec.Code.evaln, hguard, hf]
+        | zero => simp [Nat.Partrec.Code.evaln]
         | succ k =>
             have hprev : clock - total + j = k := by
               unfold fuel at hf
@@ -254,7 +254,7 @@ theorem precEvalState_eq_evaln (cf cg : Nat.Partrec.Code)
               rw [hf]
               exact Nat.lt_succ_of_le hle
             rw [hprev]
-            simp [Nat.Partrec.Code.evaln, hguard, hnle]
+            simp [Nat.Partrec.Code.evaln, hnle]
 
 theorem precEvalState_final (cf cg : Nat.Partrec.Code)
     {clock a total : ℕ} :
@@ -313,8 +313,8 @@ theorem codeEvalnNat_zero_eq (z : ℕ) :
   | zero => simp [Nat.Partrec.Code.evaln]
   | succ k =>
     by_cases hle : z.unpair.2 ≤ k
-    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : ¬ k + 1 ≤ z.unpair.2)]
-    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : k + 1 ≤ z.unpair.2)]
+    · simp [Nat.Partrec.Code.evaln, hle]
+    · simp [Nat.Partrec.Code.evaln, hle, (by omega : k + 1 ≤ z.unpair.2)]
 
 theorem codeEvalnNat_succ_eq (z : ℕ) :
     codeEvalnNat .succ z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2 + 1 + 1 := by
@@ -323,8 +323,8 @@ theorem codeEvalnNat_succ_eq (z : ℕ) :
   | zero => simp [Nat.Partrec.Code.evaln]
   | succ k =>
     by_cases hle : z.unpair.2 ≤ k
-    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : ¬ k + 1 ≤ z.unpair.2)]
-    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : k + 1 ≤ z.unpair.2)]
+    · simp [Nat.Partrec.Code.evaln, hle]
+    · simp [Nat.Partrec.Code.evaln, hle, (by omega : k + 1 ≤ z.unpair.2)]
 
 theorem codeEvalnNat_left_eq (z : ℕ) :
     codeEvalnNat .left z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2.unpair.1 + 1 := by
@@ -333,8 +333,8 @@ theorem codeEvalnNat_left_eq (z : ℕ) :
   | zero => simp [Nat.Partrec.Code.evaln]
   | succ k =>
     by_cases hle : z.unpair.2 ≤ k
-    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : ¬ k + 1 ≤ z.unpair.2)]
-    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : k + 1 ≤ z.unpair.2)]
+    · simp [Nat.Partrec.Code.evaln, hle]
+    · simp [Nat.Partrec.Code.evaln, hle, (by omega : k + 1 ≤ z.unpair.2)]
 
 theorem codeEvalnNat_right_eq (z : ℕ) :
     codeEvalnNat .right z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2.unpair.2 + 1 := by
@@ -343,8 +343,8 @@ theorem codeEvalnNat_right_eq (z : ℕ) :
   | zero => simp [Nat.Partrec.Code.evaln]
   | succ k =>
     by_cases hle : z.unpair.2 ≤ k
-    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : ¬ k + 1 ≤ z.unpair.2)]
-    · simp [Nat.Partrec.Code.evaln, hle, Option.guard, (by omega : k + 1 ≤ z.unpair.2)]
+    · simp [Nat.Partrec.Code.evaln, hle]
+    · simp [Nat.Partrec.Code.evaln, hle, (by omega : k + 1 ≤ z.unpair.2)]
 
 /-- `pair`: with both sub-code interpreters at the *same* fuel/input `z`, the whole clause is
 `none` iff either sub-result is (the guard-fail case is subsumed, since a failed guard sends
@@ -359,15 +359,15 @@ theorem codeEvalnNat_pair_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
   | succ k =>
     by_cases hle : z.unpair.2 ≤ k
     · cases hf : Nat.Partrec.Code.evaln (k + 1) cf z.unpair.2 with
-      | none => simp [Nat.Partrec.Code.evaln, hle, Option.guard, hf, Seq.seq]
+      | none => simp [Nat.Partrec.Code.evaln, hle, hf, Seq.seq]
       | some vf =>
         cases hg : Nat.Partrec.Code.evaln (k + 1) cg z.unpair.2 with
-        | none => simp [Nat.Partrec.Code.evaln, hle, Option.guard, hf, hg, Seq.seq]
+        | none => simp [Nat.Partrec.Code.evaln, hle, hf, hg, Seq.seq]
         | some vg =>
-          simp [Nat.Partrec.Code.evaln, hle, Option.guard, hf, hg, Seq.seq]
+          simp [Nat.Partrec.Code.evaln, hle, hf, hg, Seq.seq]
     · have hf : Nat.Partrec.Code.evaln (k + 1) cf z.unpair.2 = none :=
         evaln_eq_none_of_gt cf (by omega)
-      simp [Nat.Partrec.Code.evaln, hle, Option.guard, hf, Seq.seq]
+      simp [Nat.Partrec.Code.evaln, hle, hf, Seq.seq]
 
 /-- `comp`: the outer interpreter feeds `cf` the *output* of `cg`, at the same fuel `z.1`. -/
 theorem codeEvalnNat_comp_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
@@ -380,12 +380,12 @@ theorem codeEvalnNat_comp_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
   | succ k =>
     by_cases hle : z.unpair.2 ≤ k
     · cases hg : Nat.Partrec.Code.evaln (k + 1) cg z.unpair.2 with
-      | none => simp [Nat.Partrec.Code.evaln, hle, Option.guard, hg]
+      | none => simp [Nat.Partrec.Code.evaln, hle, hg]
       | some vg =>
-        simp [Nat.Partrec.Code.evaln, hle, Option.guard, hg, Nat.add_sub_cancel]
+        simp [Nat.Partrec.Code.evaln, hle, hg]
     · have hg : Nat.Partrec.Code.evaln (k + 1) cg z.unpair.2 = none :=
         evaln_eq_none_of_gt cg (by omega)
-      simp [Nat.Partrec.Code.evaln, hle, Option.guard, hg]
+      simp [Nat.Partrec.Code.evaln, hle, hg]
 
 theorem codeEvalnNat_pair_polyFueled {cf cg : Nat.Partrec.Code}
     (hf : ∃ prog, PolyFueled prog (codeEvalnNat cf))
@@ -468,13 +468,13 @@ theorem precNat_eq (cf cg : Nat.Partrec.Code) (A : ℕ) :
         with _ | p
       · have hp0 : precNat cf cg A j = 0 := by rw [ih, hp]; rfl
         rw [if_neg (by simp [hp0]), optNat_if]
-        simp [hp, optNat]
+        simp [optNat]
       · have hp1 : precNat cf cg A j = p + 1 := by rw [ih, hp]; rfl
         by_cases hguard : Nat.pair A.unpair.2.unpair.1 (j + 1) <
             A.unpair.1 - A.unpair.2.unpair.2 + j + 1
         · rw [if_pos ⟨hguard, by simp [hp1]⟩, if_pos hguard, hp1,
             Nat.add_sub_cancel, codeEvalnNat_eq_optNat, Nat.unpair_pair]
-          simp [hp]
+          simp
         · rw [if_neg (by tauto), if_neg hguard]
           simp [optNat]
 
@@ -519,7 +519,7 @@ theorem rfindNat_eq (cf : Nat.Partrec.Code) (A : ℕ) :
             (A.unpair.2.unpair.2 + (A.unpair.1 - (j + 1))))) = 0 := by
           simp only [codeEvalnNat, Nat.unpair_pair, hx]
         rw [hcf0, if_pos rfl, Nat.Partrec.Code.evaln]
-        simp [Nat.unpaired, Nat.unpair_pair, hx, optNat, Option.guard]
+        simp [Nat.unpaired, Nat.unpair_pair, hx, optNat]
       · have hguard : Nat.pair A.unpair.2.unpair.1
             (A.unpair.2.unpair.2 + (A.unpair.1 - (j + 1))) ≤ j := by
           have := Nat.Partrec.Code.evaln_bound hx; omega
@@ -528,10 +528,10 @@ theorem rfindNat_eq (cf : Nat.Partrec.Code) (A : ℕ) :
           simp only [codeEvalnNat, Nat.unpair_pair, hx]
         rw [hcfv, Nat.Partrec.Code.evaln]
         rcases x with _ | y
-        · simp [Nat.unpaired, Nat.unpair_pair, hx, hguard, optNat, Option.guard]
+        · simp [Nat.unpaired, Nat.unpair_pair, hx, hguard, optNat]
         · rw [if_neg (by omega : y + 1 + 1 ≠ 0), if_neg (by omega : y + 1 + 1 ≠ 1)]
-          simp [Nat.unpaired, Nat.unpair_pair, hx, hguard, optNat, Option.guard,
-            Nat.succ_ne_zero, hM1, hIH]
+          simp [Nat.unpaired, Nat.unpair_pair, hx, hguard, optNat,
+            hM1, hIH]
 
 /-- `rfind'`: normalized bounded minimization is the final search state at `j = clock`. -/
 theorem codeEvalnNat_rfind_eq (cf : Nat.Partrec.Code) (z : ℕ) :
@@ -1388,7 +1388,7 @@ private theorem atomBoundNorm_zero : atomBoundNorm 0 = 0 := by
 private theorem atomBoundHistory_getD {n k : ℕ} (hk : k < n) :
     ((List.range n).map atomBoundNorm).getD k 0 = atomBoundNorm k := by
   rw [← atomBoundNorm_zero, List.getD_map]
-  simp [List.getD_eq_getElem, hk]
+  simp [hk]
 
 /-- The binary step reads both children out of the history correctly.  Shared by all three
 connectives: `atomBound` maxes its children regardless of which one it is. -/
@@ -1424,11 +1424,11 @@ private theorem atomBoundList_history (n : ℕ) :
           LO.Propositional.Formula.ofNat, h0]
       by_cases h1 : e.unpair.1 = 1
       · simp [atomBoundList, atomBoundSucc, atomBoundNorm, BoolPCWorld.atomBound,
-          LO.Propositional.Formula.ofNat, h0, h1]
+          LO.Propositional.Formula.ofNat, h1]
       -- The three binary tags: identical modulo the constructor `ofNat` rebuilds.
       by_cases h2 : e.unpair.1 = 2
       · simp only [atomBoundList, List.length_map, List.length_range, atomBoundSucc,
-          h0, h1, h2, ↓reduceIte]
+          h2, ↓reduceIte]
         rw [hbin]
         simp only [atomBoundNorm, LO.Propositional.Formula.ofNat, h2]
         cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
@@ -1438,7 +1438,7 @@ private theorem atomBoundList_history (n : ℕ) :
           simp [BoolPCWorld.atomBound]
       by_cases h3 : e.unpair.1 = 3
       · simp only [atomBoundList, List.length_map, List.length_range, atomBoundSucc,
-          h0, h1, h2, h3, ↓reduceIte]
+          h3, ↓reduceIte]
         rw [hbin]
         simp only [atomBoundNorm, LO.Propositional.Formula.ofNat, h3]
         cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
@@ -1448,7 +1448,7 @@ private theorem atomBoundList_history (n : ℕ) :
           simp [BoolPCWorld.atomBound]
       by_cases h4 : e.unpair.1 = 4
       · simp only [atomBoundList, List.length_map, List.length_range, atomBoundSucc,
-          h0, h1, h2, h3, h4, ↓reduceIte]
+          h4, ↓reduceIte]
         rw [hbin]
         simp only [atomBoundNorm, LO.Propositional.Formula.ofNat, h4]
         cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
@@ -1458,7 +1458,7 @@ private theorem atomBoundList_history (n : ℕ) :
           simp [BoolPCWorld.atomBound]
       · have htag : 5 ≤ e.unpair.1 := by omega
         simp [atomBoundList, atomBoundSucc, atomBoundNorm,
-          LO.Propositional.Formula.ofNat, h0, h1, h2, h3, h4, htag]
+          LO.Propositional.Formula.ofNat, h0, h1, h2, h3, h4]
 
 private theorem atomBoundNorm_prim : Primrec atomBoundNorm := by
   have hstep : Primrec₂ (fun (_ : Unit) (prior : List ℕ) =>
@@ -1601,7 +1601,7 @@ private theorem evalNorm_zero (l : List Bool) : evalNorm l 0 = 0 := by
 private theorem evalHistory_getD (l : List Bool) {n k : ℕ} (hk : k < n) :
     ((List.range n).map (evalNorm l)).getD k 0 = evalNorm l k := by
   rw [← evalNorm_zero l, List.getD_map]
-  simp [List.getD_eq_getElem, hk]
+  simp [hk]
 
 private theorem evalBinary_history (tag : ℕ) (l : List Bool) (payload n : ℕ)
     (hleft : payload.unpair.1 < n) (hright : payload.unpair.2 < n) :
@@ -1638,10 +1638,10 @@ private theorem evalList_history (l : List Bool) (n : ℕ) :
           LO.Propositional.Formula.ofNat, h0]
       by_cases h1 : e.unpair.1 = 1
       · simp [evalList, evalSucc, evalNorm, BoolPCWorld.eval, BoolPCWorld.bitsWorld,
-          LO.Propositional.Formula.ofNat, h0, h1]
+          LO.Propositional.Formula.ofNat, h1]
       by_cases h2 : e.unpair.1 = 2
       · simp only [evalList, List.length_map, List.length_range, evalSucc,
-          h0, h1, h2, ↓reduceIte]
+          h2, ↓reduceIte]
         rw [evalBinary_history 2 l e.unpair.2 (e + 1) hleft hright]
         simp only [evalNorm, LO.Propositional.Formula.ofNat, h2]
         cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
@@ -1651,7 +1651,7 @@ private theorem evalList_history (l : List Bool) (n : ℕ) :
           simp [BoolPCWorld.eval, evalOp]
       by_cases h3 : e.unpair.1 = 3
       · simp only [evalList, List.length_map, List.length_range, evalSucc,
-          h0, h1, h2, h3, ↓reduceIte]
+          h3, ↓reduceIte]
         rw [evalBinary_history 3 l e.unpair.2 (e + 1) hleft hright]
         simp only [evalNorm, LO.Propositional.Formula.ofNat, h3]
         cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
@@ -1661,7 +1661,7 @@ private theorem evalList_history (l : List Bool) (n : ℕ) :
           simp [BoolPCWorld.eval, evalOp]
       by_cases h4 : e.unpair.1 = 4
       · simp only [evalList, List.length_map, List.length_range, evalSucc,
-          h0, h1, h2, h3, h4, ↓reduceIte]
+          h4, ↓reduceIte]
         rw [evalBinary_history 4 l e.unpair.2 (e + 1) hleft hright]
         simp only [evalNorm, LO.Propositional.Formula.ofNat, h4]
         cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
@@ -1671,7 +1671,7 @@ private theorem evalList_history (l : List Bool) (n : ℕ) :
           simp [BoolPCWorld.eval, evalOp]
       · have htag : 5 ≤ e.unpair.1 := by omega
         simp [evalList, evalSucc, evalNorm,
-          LO.Propositional.Formula.ofNat, h0, h1, h2, h3, h4, htag]
+          LO.Propositional.Formula.ofNat, h0, h1, h2, h3, h4]
 
 private theorem evalNorm_prim : Primrec₂ evalNorm := by
   have hstep : Primrec₂ (fun (l : List Bool) (prior : List ℕ) =>
@@ -2538,9 +2538,9 @@ theorem AffineCombination.settlementCheckAtFuel_sound (A : AffineCombination)
       have hb := List.all_eq_true.mp (h l hl) l' hl'
       -- Both worlds satisfy the stage, or the disjunction is already discharged.
       cases ha : stageSatBits (DP.D j) l
-      · simp [ha]
+      · simp
       cases ha' : stageSatBits (DP.D j) l'
-      · simp [ha']
+      · simp
       rw [ha, ha'] at hb
       simp only [Bool.not_true, Bool.false_or] at hb ⊢
       -- The check's match certifies both market evaluations terminated and agreed.
@@ -2732,7 +2732,7 @@ private theorem clockedRawLength_polyFueled
   have hrequested := predc_polyFueled.comp hrun
   have hgap := subc_polyFueled.comp (hrequested.pair hclock)
   refine ⟨_, (subc_polyFueled.comp (hrequested.pair hgap)).of_eq (fun n => ?_)⟩
-  simp only [Function.comp_apply, Nat.unpair_pair, Nat.pred_eq_sub_one]
+  simp only [Nat.unpair_pair, Nat.pred_eq_sub_one]
   unfold clockedRawLength
   let requested := codeEvalnNat lengthCode (Nat.pair (ecClock a k n) n) - 1
   let clock := ecClock a k n
@@ -2757,7 +2757,7 @@ theorem clockedRawLength_eq (lengthCode tokenCode : Nat.Partrec.Code)
       clockedRawLength lengthCode a k n := by
   unfold clockedTokens clockedRawLength codeEvalnNat
   simp only [Nat.unpair_pair]
-  cases h : Nat.Partrec.Code.evaln (ecClock a k n) lengthCode n <;> simp [h]
+  cases h : Nat.Partrec.Code.evaln (ecClock a k n) lengthCode n <;> simp
 
 theorem clockedRawToken_eq (lengthCode tokenCode : Nat.Partrec.Code)
     (a k n i : ℕ)
@@ -2768,7 +2768,7 @@ theorem clockedRawToken_eq (lengthCode tokenCode : Nat.Partrec.Code)
   simp only [Nat.unpair_pair]
   cases hl : Nat.Partrec.Code.evaln (ecClock a k n) lengthCode n with
   | none =>
-      have hi' : i < 0 := by simpa [clockedTokens, hl] using hi
+      have hi' : i < 0 := by simp [clockedTokens, hl] at hi
       omega
   | some length =>
       have hi' : i < min length (ecClock a k n) := by
@@ -2783,7 +2783,7 @@ theorem clockedRawToken_eq (lengthCode tokenCode : Nat.Partrec.Code)
       unfold codeEvalnNat
       simp only [Nat.unpair_pair]
       cases ht : Nat.Partrec.Code.evaln (ecClock a k n) tokenCode (Nat.pair n i) <;>
-        simp [ht]
+        simp
 
 /-- Every raw clocked token list is itself a polynomial segment stream. -/
 theorem clockedTokens_polySegStream (lengthCode tokenCode : Nat.Partrec.Code)
@@ -2822,11 +2822,11 @@ private theorem freezeNextNat_eq (state : EF.FreezeTokenState) (token : ℕ) :
       by_cases h0 : token = 0
       · simp [h0]
       by_cases h1 : token = 1
-      · simp [h0, h1]
+      · simp [h1]
       by_cases h6 : token = 6
-      · simp [h0, h1, h6]
+      · simp [h6]
       by_cases h7 : token = 7
-      · simp [h0, h1, h6, h7]
+      · simp [h7]
       · simp [h0, h1, h6, h7]
         rfl
   | succ mode =>
@@ -3154,7 +3154,7 @@ theorem sentenceMatches_eq_one_iff (target : Sentence) (code : ℕ) :
             cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
               cases hright : LO.Propositional.Formula.ofNat (α := ℕ)
                 e.unpair.2.unpair.2 <;>
-              simp [hleft, hright, LO.Propositional.Formula.imp_inj]
+              simp [LO.Propositional.Formula.imp_inj]
           · rcases tag with _ | _ | tag <;>
               simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
                 LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
@@ -3176,7 +3176,7 @@ theorem sentenceMatches_eq_one_iff (target : Sentence) (code : ℕ) :
             cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
               cases hright : LO.Propositional.Formula.ofNat (α := ℕ)
                 e.unpair.2.unpair.2 <;>
-              simp [hleft, hright, LO.Propositional.Formula.and_inj]
+              simp [LO.Propositional.Formula.and_inj]
           · rcases tag with _ | tag <;>
               simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
                 LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
@@ -3199,9 +3199,9 @@ theorem sentenceMatches_eq_one_iff (target : Sentence) (code : ℕ) :
             cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
               cases hright : LO.Propositional.Formula.ofNat (α := ℕ)
                 e.unpair.2.unpair.2 <;>
-              simp [hleft, hright, LO.Propositional.Formula.or_inj]
+              simp [LO.Propositional.Formula.or_inj]
           · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
-              LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+              LO.Propositional.Formula.ofNat, htag]
 
 private theorem sentenceMatches_polyFueled (target : Sentence) :
     ∃ c, PolyFueled c (sentenceMatches target) := by

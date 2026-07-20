@@ -243,7 +243,7 @@ theorem lic_introspection
       (hεbounds n).1)
   have hupperBound0 : Tendsto
       (fun n ↦ raw n + 2 * ((1 : ℝ) / (n + 1))) atTop (𝓝 0) := by
-    convert hraw0.add (hsmall0.const_mul 2) using 1 <;> simp
+    convert hraw0.add (hsmall0.const_mul 2) using 1 ; simp
   have hε0 : Tendsto (fun n ↦ (ε n : ℝ)) atTop (𝓝 0) :=
     squeeze_zero (fun n ↦ (le_of_lt (by exact_mod_cast hεpos n)))
       (fun n ↦ (hεbounds n).2.le) hupperBound0

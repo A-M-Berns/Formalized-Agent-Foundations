@@ -365,7 +365,7 @@ theorem predAux_step (k m i : ℕ) (hg : Nat.pair 0 (m+1) ≤ k)
   conv_lhs => rw [predAux, evaln]
   simp only [Nat.unpaired, Nat.unpair_pair, predAux] at hrec ⊢
   rw [hrec]
-  simp only [evaln, Option.guard, Nat.unpair_pair]
+  simp only [evaln, Nat.unpair_pair]
   simp [hg, hg2, hmi]
 
 /-- `predAux` computes `m ↦ pred m` on `pair 0 m` within a degree-4 fuel budget. The recursion
@@ -388,7 +388,7 @@ theorem predAux_evaln : ∀ (m F : ℕ), 32 * (m+1)^4 < F →
         rw [this] at hF; omega
       have hIH : evaln k predAux (Nat.pair 0 m) = some (m - 1) := by
         refine ih k ?_
-        have h4 : (m+1)^4 < (m+2)^4 := by gcongr <;> omega
+        have h4 : (m+1)^4 < (m+2)^4 := by gcongr ; omega
         omega
       refine predAux_step k m (m-1) ?hg hIH ?hg2
       case hg =>
@@ -398,14 +398,14 @@ theorem predAux_evaln : ∀ (m F : ℕ), 32 * (m+1)^4 < F →
       case hg2 =>
         have h1 : Nat.pair m (m-1) < (2*m+1)^2 := by
           calc Nat.pair m (m-1) < (m+(m-1)+1)^2 := pair_lt_sq m (m-1)
-            _ ≤ (2*m+1)^2 := by gcongr <;> omega
+            _ ≤ (2*m+1)^2 := by gcongr ; omega
         have h2 : Nat.pair 0 (Nat.pair m (m-1)) < ((2*m+1)^2)^2 := by
           calc Nat.pair 0 (Nat.pair m (m-1)) < (Nat.pair m (m-1) + 1)^2 := by
                 simpa using pair_lt_sq 0 (Nat.pair m (m-1))
             _ ≤ ((2*m+1)^2)^2 := by gcongr; omega
         have h3 : ((2*m+1)^2)^2 ≤ 16 * (m+2)^4 := by
           have : ((2*m+1)^2)^2 = (2*m+1)^4 := by ring
-          rw [this]; calc (2*m+1)^4 ≤ (2*m+4)^4 := by gcongr <;> omega
+          rw [this]; calc (2*m+1)^4 ≤ (2*m+4)^4 := by gcongr ; omega
             _ = 16 * (m+2)^4 := by ring
         omega
 
@@ -425,7 +425,7 @@ theorem predc_fueled : Fueled predc Nat.pred (fun n => 32*(n+1)^4 + n + 1) := by
   rw [predc]
   generalize predAux = pa at hfn ⊢
   generalize (pair (Nat.Partrec.Code.const 0) (left.pair right)) = cg at hgn ⊢
-  simp [evaln, Option.guard_eq_some', hgn, hfn, Option.bind_eq_some_iff]
+  simp [evaln, hgn, hfn]
 
 /-- **The predecessor combinator.** `predc` computes `Nat.pred` with polynomial (degree-4) fuel
 — the reusable e.c. primitive for day-`(n-1)` price references. -/
@@ -717,7 +717,7 @@ theorem ifzSel_evaln : ∀ (T i F : ℕ), Nat.pair T (Nat.pair i T) + i + 1 < F 
       have hTk : T ≤ k := le_trans (Nat.left_le_pair T 0) hg
       show evaln (k + 1) ifzSel (Nat.pair T 0) = some (ifzSelFn T 0)
       rw [ifzSel, evaln]
-      simp only [Nat.unpaired, Nat.unpair_pair, Nat.rec_zero, ifzSelFn, if_pos rfl]
+      simp only [Nat.unpaired, Nat.unpair_pair, Nat.rec_zero, ifzSelFn]
       simp [hg, hTk, evaln]
   | succ i ih =>
       intro F hF
@@ -1412,7 +1412,7 @@ theorem mul_polyFueled : ∃ c, PolyFueled c (fun m => m.unpair.1 * m.unpair.2) 
       nlinarith⟩
   exact ⟨_, PolyFueled.prec (PolyFueled.const 0) gPF
     (st := fun a j => a * j) (fun a => by simp)
-    (fun a j => by simp only [Function.comp_apply, Nat.unpair_pair]; ring) hst⟩
+    (fun a j => by simp only [Nat.unpair_pair]; ring) hst⟩
 
 /-- **Runtime-divisor division**: `⟨w, x⟩ ↦ ⟨x / (w+1), x % (w+1)⟩`. The divisor is
 `w + 1`, so the spec is total with no division-by-zero case; callers pass `w := W − 1`
@@ -1444,7 +1444,7 @@ theorem divmod1_polyFueled :
       have hqr := Nat.div_add_mod j (w + 1)
       have hrlt := Nat.mod_lt j hw
       show Nat.pair ((j + 1) / (w + 1)) ((j + 1) % (w + 1)) = _
-      simp only [Function.comp_apply, Nat.unpair_pair, ifzSelFn]
+      simp only [Nat.unpair_pair, ifzSelFn]
       by_cases hcase : w - j % (w + 1) = 0
       · have h1 : j + 1 = (w + 1) * (j / (w + 1) + 1) + 0 := by rw [Nat.mul_succ]; omega
         obtain ⟨hd, hm⟩ := div_mod_of_decomp hw h1 hw
@@ -1565,7 +1565,7 @@ theorem serialize_srChain (n : ℕ) :
   | zero => rfl
   | succ k ih =>
       rw [srChain, EF.serialize, ih, List.replicate_succ']
-      simp [List.append_assoc]
+      simp
 
 /-- The day-`n` token stream and its length `n + 4`. -/
 theorem serializeTrades_deepTrader (φ : Sentence) (n : ℕ) :
@@ -1748,7 +1748,7 @@ theorem ecTok_of_blockStream (Tr : Trader) (head bs tail : List (ℕ → ℕ))
     have hHplus := had.comp ((PolyFueled.const H).pair hcntW)
     have htotal := had.comp (hHplus.pair (PolyFueled.const T))
     exact ⟨_, htotal.of_eq (fun n => by
-      simp only [Function.comp_apply, Nat.unpair_pair]
+      simp only [Nat.unpair_pair]
       rw [hlen' n])⟩
   · intro n i hi
     rw [hlen' n] at hi
@@ -1950,7 +1950,7 @@ theorem PolySegStream.ifZero {s₀ s₁ : ℕ → List ℕ} (h₀ : PolySegStrea
     by_cases h : test n = 0
     · simp only [h, if_pos]
       exact htok₀ n i (by simpa [ifzSelFn, h, hlen₀ n] using hi)
-    · simp only [h, if_neg]
+    · simp only [h]
       exact htok₁ n i (by simpa [ifzSelFn, h, hlen₁ n] using hi)
 
 /-- Reindex a segment stream along a polynomially fueled input function. -/
@@ -1961,7 +1961,7 @@ theorem PolySegStream.comp {s : ℕ → List ℕ} (hs : PolySegStream s)
   refine ⟨_, _, _, _, ht.comp ((hf.comp PolyFueled.left).pair PolyFueled.right), hl.comp hf,
     fun n => hlen (f n), ?_⟩
   intro n i hi
-  simp only [Function.comp_apply, Nat.unpair_pair]
+  simp only [Nat.unpair_pair]
   exact htok (f n) i hi
 
 /-- Segment-level serialization closure for `EF.add`. -/
@@ -2067,7 +2067,7 @@ theorem PolySegStream.concat {seg : ℕ → List ℕ} (hseg : PolySegStream seg)
   -- stream length: cnt n · L n
   have lenPF := (hmul.comp (hcnt.pair hL)).of_eq
     (f' := fun n => cnt n * lenFn (Nat.pair n 0))
-    (fun n => by simp only [Function.comp_apply, Nat.unpair_pair])
+    (fun n => by simp only [Nat.unpair_pair])
   -- block index / offset: divmod1 ⟨L n − 1, i⟩ on input m = ⟨n, i⟩
   have hLm := hL.comp PolyFueled.left
   have hLpred := predc_polyFueled.comp hLm
@@ -2090,7 +2090,7 @@ theorem PolySegStream.concat {seg : ℕ → List ℕ} (hseg : PolySegStream seg)
     have hpred : (lenFn (Nat.pair n 0)).pred + 1 = lenFn (Nat.pair n 0) := by
       rw [Nat.pred_eq_sub_one]
       omega
-    simp only [Function.comp_apply, Nat.unpair_pair]
+    simp only [Nat.unpair_pair]
     rw [getD_flatMap_const_width _ (lenFn (Nat.pair n 0)) hW0 (cnt n) i
       (fun j _ => by rw [hlens, hlf]) hi, hpred]
     exact hspec (Nat.pair n (i / lenFn (Nat.pair n 0))) (i % lenFn (Nat.pair n 0))
@@ -2249,7 +2249,7 @@ theorem segLocate_polyFueled {cl : Nat.Partrec.Code} {lenFn : ℕ → ℕ}
   refine ⟨_, PolyFueled.prec (PolyFueled.const 0) stepPF
     (st := fun a k => segLocate lenFn a.unpair.1 a.unpair.2 k)
     (fun _ => rfl) (fun a j => ?_) hst⟩
-  simp only [Nat.unpair_pair, Function.comp_apply, ifzSelFn]
+  simp only [Nat.unpair_pair, ifzSelFn]
   rw [segLocate]
   by_cases h : segPrefix lenFn a.unpair.1 (j + 1) ≤ a.unpair.2
   · rw [if_pos h, if_neg (by omega)]
@@ -2273,9 +2273,9 @@ theorem PolySegStream.concatVar {seg : ℕ → List ℕ} (hseg : PolySegStream s
   refine ⟨_, _, _, _, tokPF, lenPF, ?_, ?_⟩
   · intro n
     rw [length_flatMap_eq_segPrefix seg lenFn n (fun j => hlens _)]
-    simp only [Function.comp_apply, Nat.unpair_pair]
+    simp only [Nat.unpair_pair]
   · intro n i hi
-    simp only [Function.comp_apply, Nat.unpair_pair]
+    simp only [Nat.unpair_pair]
     set j := segLocate lenFn n i (cnt n) with hjdef
     obtain ⟨hlo, hmax⟩ := segLocate_spec lenFn n i (cnt n)
     rw [← hjdef] at hlo hmax
@@ -2354,18 +2354,18 @@ theorem polyFueled_boundedAny (p : ℕ → ℕ → Bool)
   have scanPF : ∃ c, PolyFueled c (fun z => st z.unpair.1 z.unpair.2) := by
     refine ⟨_, PolyFueled.prec (PolyFueled.const 0) stepPF
       (st := st) (fun i => by simp [st]) (fun i j => ?_) hst⟩
-    simp only [Nat.unpair_pair, Function.comp_apply]
+    simp only [Nat.unpair_pair]
     by_cases hold : ∃ m < j, p i m = true
     · have hsucc : ∃ m < j + 1, p i m = true :=
         ⟨hold.choose, Nat.lt_succ_of_lt hold.choose_spec.1, hold.choose_spec.2⟩
       have hle : ∃ m ≤ j, p i m = true :=
         ⟨hold.choose, Nat.le_of_lt hold.choose_spec.1, hold.choose_spec.2⟩
-      simp [st, hold, hsucc, hle, ifzSelFn]
+      simp [st, hold, hle, ifzSelFn]
     · have hprev : st i j = 0 := by simp [st, hold]
       by_cases hpj : p i j = true
       · have hsucc : ∃ m < j + 1, p i m = true := ⟨j, Nat.lt_succ_self _, hpj⟩
         have hle : ∃ m ≤ j, p i m = true := ⟨j, le_rfl, hpj⟩
-        simp [st, hold, hpj, hsucc, hle, ifzSelFn]
+        simp [st, hold, hpj, hle, ifzSelFn]
       · have hsucc : ¬ ∃ m < j + 1, p i m = true := by
           rintro ⟨m, hm, hpm⟩
           rcases Nat.lt_or_eq_of_le (Nat.le_of_lt_succ hm) with hlt | rfl
@@ -2378,12 +2378,12 @@ theorem polyFueled_boundedAny (p : ℕ → ℕ → Bool)
           rcases Nat.lt_or_eq_of_le hm with hlt | rfl
           · exact hold ⟨m, hlt, hpm⟩
           · exact hpj hpm
-        simp [st, hold, hpj, hsucc, hnle, ifzSelFn]
+        simp [st, hold, hpj, ifzSelFn]
         exact hnle
   obtain ⟨cscan, hscan⟩ := scanPF
   have inputPF := PolyFueled.left.pair PolyFueled.right.succ_comp
   refine ⟨_, (hscan.comp inputPF).of_eq (fun z => ?_)⟩
-  simp only [Function.comp_apply, Nat.unpair_pair, st]
+  simp only [Nat.unpair_pair, st]
   by_cases h : ∃ m ≤ z.unpair.2, p z.unpair.1 m = true
   · have hs : ∃ m < z.unpair.2 + 1, p z.unpair.1 m = true := by
       obtain ⟨m, hm, hpm⟩ := h
@@ -2433,13 +2433,13 @@ theorem polyFueled_boundedNone (p : ℕ → ℕ → Bool)
   have hneg := ifzSel_polyFueled.comp
     (((PolyFueled.const 1).pair (PolyFueled.const 0)).pair ha)
   exact ⟨_, hneg.of_eq (fun z => by
-    simp only [Function.comp_apply, ifzSelFn, Nat.unpair_pair, boundedNone]
+    simp only [ifzSelFn, Nat.unpair_pair, boundedNone]
     by_cases h : boundedAny p z.unpair.1 z.unpair.2 = true
     · simp only [h, if_pos, Bool.not_true, Bool.false_eq_true, if_false]
       norm_num
     · have hf : boundedAny p z.unpair.1 z.unpair.2 = false :=
         Bool.eq_false_of_not_eq_true h
-      simp only [h, hf, if_false, Bool.not_false, if_pos]
+      simp only [h, Bool.not_false, if_pos]
       norm_num)⟩
 
 #print axioms polyFueled_boundedAny

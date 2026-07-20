@@ -312,7 +312,7 @@ theorem PolySequence.priceFeature_polySeg {As : ℕ → AffineCombination}
   refine PolySegStream.of_eq (hconst.append hblocks) ?_
   intro z
   rw [priceFeature_serialize, h.terms_eq]
-  simp only [List.flatMap_map, Nat.unpair_pair, Function.comp_apply]
+  simp only [List.flatMap_map, Nat.unpair_pair]
 
 theorem priceFeature_denote (A : AffineCombination) (V : History) (n : ℕ) :
     (A.priceFeature n).denote V = A.price V n := by
@@ -535,8 +535,7 @@ theorem PolySequence.magnitudeFeature_polySeg {As : ℕ → AffineCombination}
   refine PolySegStream.of_eq ((hterms.append hzero).append htags) ?_
   intro n
   rw [magnitudeFeature_serialize, h.terms_eq]
-  simp only [List.flatMap_map, Nat.unpair_pair, List.length_map, List.length_range,
-    Function.comp_apply]
+  simp only [List.flatMap_map, List.length_map, List.length_range]
 
 theorem magnitudeFeature_denoteWith (A : AffineCombination) (V : History) (ρ : List ℝ) :
     (A.magnitudeFeature).denoteWith ρ V =
@@ -546,7 +545,7 @@ theorem magnitudeFeature_denoteWith (A : AffineCombination) (V : History) (ρ : 
         (l.map (fun p => |p.1.denoteWith ρ V|)).sum := by
     intro l
     induction l with
-    | nil => simp [EF.denoteWith]
+    | nil => simp
     | cons p ps ih =>
         simp only [List.foldr_cons, EF.denoteWith, absFeature_denoteWith,
           List.map_cons, List.sum_cons, ih]
@@ -573,7 +572,7 @@ theorem magnitudeFeature_rank_le (A : AffineCombination) {n : ℕ}
       (l.foldr (fun p acc => EF.add (absFeature p.1) acc) (EF.const 0)).rank ≤ n := by
     intro l
     induction l with
-    | nil => intro _; simp [EF.rank]
+    | nil => intro _; simp
     | cons p ps ih =>
         intro h
         simp only [List.foldr_cons, EF.rank, absFeature_rank]
@@ -934,7 +933,7 @@ theorem roundTrip_magnitude (A : AffineCombination) (V : History)
               · rw [if_neg hb, if_neg hs]
                 exact roundTrip_magnitude_other A V buyDay sellDay n hopen hrank hb hs
       _ = A.magnitude V := by
-        simpa using tsum_ite_eq sellDay (fun _ : ℕ => A.magnitude V)
+        simp
   rw [hrest]
   ring
 

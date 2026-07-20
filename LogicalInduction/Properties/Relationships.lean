@@ -22,7 +22,7 @@ theorem PCWorld.payout_eq_of_iff (v : PCWorld) (φ ψ : Sentence)
   rw [PCWorld.holds_or, PCWorld.holds_neg] at h1 h2
   simp only [PCWorld.payout]
   by_cases hφ : v.Holds φ <;> by_cases hψ : v.Holds ψ <;>
-    simp_all [hφ, hψ]
+    simp_all
 
 
 /-- Price difference `Pₙφ − Pₙψ` as an `EF`. -/
@@ -277,8 +277,8 @@ theorem lic_imp_eventually_le (P : History) (DP : DeductiveProcess)
       rw [impW, impSig_denote]
       set g := (gap2EF φ ψ n).denote P with hgdef
       have hqr : (0:ℝ) < (q:ℝ) := by exact_mod_cast hq0'
-      rw [max_eq_right (by push_cast; linarith)]
-      push_cast; nlinarith [hn, hqr]
+      rw [max_eq_right (by linarith)]
+      nlinarith [hn, hqr]
   filter_upwards [hmain] with n hn
   rw [gap2EF_denote] at hn; linarith
 
@@ -337,7 +337,7 @@ noncomputable def exclusiveExhaustive_polySequence
     have hsel := sel_polyFueled.comp ((hct.comp PolyFueled.left).pair hrem)
     convert hsel using 1
     funext z
-    simp only [Function.comp_apply, Nat.unpair_pair]
+    simp only [Nat.unpair_pair]
     rw [selFn_tupleEnc]
     have hr : z.unpair.2 % k <
         (streams.map (fun t => t z.unpair.1)).length := by
@@ -364,12 +364,12 @@ noncomputable def exclusiveExhaustive_polySequence
       rw [Nat.mod_eq_of_lt (List.mem_range.mp ha)]
     const_rank := by intro n; simp [exclusiveExhaustiveAffine]
     coefficient_rank := by intro n j hj; simp [EF.rank]
-    const_closed := by intro n ρ V; simp [exclusiveExhaustiveAffine, EF.denoteWith]
+    const_closed := by intro n ρ V; simp [exclusiveExhaustiveAffine]
     coefficient_closed := by intro z ρ V; simp [EF.denoteWith]
   }
 
 theorem exclusiveExhaustiveAffine_price
-    (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
+    (k : ℕ) (_hk : 0 < k) (φ : ℕ → ℕ → Sentence)
     (P : History) (n m : ℕ) :
     (exclusiveExhaustiveAffine k φ n).price P m =
       ((List.range k).map (fun j => P m (φ j n))).sum / k - 1 / k := by
@@ -443,7 +443,7 @@ theorem lic_learning_exclusive_exhaustive
   unfold AsympEq at hzero ⊢
   convert hzero.const_mul (k : ℝ) using 1
   · funext n
-    simp only [Pi.zero_apply]
+    simp only []
     field_simp
     ring
   · simp

@@ -209,7 +209,7 @@ theorem buySeq_value (φ : ℕ → Sentence) (V : History) (v : PCWorld) (n : �
     (hpay : v.payout (φ n) = 1) :
     ((buySeq φ).strat n).value V v.payout = 1 - V n (φ n) := by
   simp only [buySeq, Strategy.value, List.map_cons, List.map_nil, List.sum_cons, List.sum_nil,
-    EF.denote_const, Pi.zero_apply]
+    EF.denote_const]
   rw [hpay]; push_cast; ring
 
 

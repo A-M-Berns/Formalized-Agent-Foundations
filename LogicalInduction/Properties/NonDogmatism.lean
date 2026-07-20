@@ -350,7 +350,7 @@ theorem armChain_shares_sum (sig : ℕ → EF) (P : History) {j N : ℕ} (h : j 
 
 theorem armChain_rank (sig : ℕ → EF) (hs : ∀ i, (sig i).rank ≤ i) :
     ∀ n, (armChain sig n).rank ≤ n - 1
-  | 0 => by simp [armChain, EF.rank]
+  | 0 => by simp [armChain]
   | (n + 1) => by
       have ih := armChain_rank sig hs n
       have hn := hs n
@@ -499,7 +499,7 @@ theorem ndLadderEF_denote (φ : Sentence) (P : History) (n : ℕ) : ∀ m,
       rw [ndLadderEF_denote φ P n m, Finset.sum_range_succ, ndCoef_denote]
 
 theorem ndLadderEF_rank (φ : Sentence) (n : ℕ) : ∀ m, (ndLadderEF φ n m).rank ≤ n
-  | 0 => by simp [ndLadderEF, EF.rank]
+  | 0 => by simp [ndLadderEF]
   | (m + 1) => by
       have h1 := ndLadderEF_rank φ n m
       have h2 := ndCoef_rank φ (m + 1) n
@@ -732,7 +732,7 @@ theorem encode_ndThr_double {j : ℕ} (hj : 1 ≤ j) :
     ring
   rw [heq, encode_rat_inv_natCast h3]
 
-theorem encode_ndThr_recip {j : ℕ} (hj : 1 ≤ j) :
+theorem encode_ndThr_recip {j : ℕ} (_hj : 1 ≤ j) :
     Encodable.encode (1 / ndThr j) = Nat.pair (4 * j ^ 3) 1 := by
   have heq : (1 : ℚ) / ndThr j = ((2 * j ^ 3 : ℕ) : ℚ) := by
     rw [ndThr, one_div_one_div]
@@ -747,9 +747,9 @@ theorem cube_succ_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ}
   have hj1 := hj.succ_comp
   have hsq := (hmul.comp (hj1.pair hj1)).of_eq
     (f' := fun m => (j'f m + 1) * (j'f m + 1))
-    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair])
+    (fun m => by simp only [Nat.unpair_pair])
   exact ⟨_, (hmul.comp (hsq.pair hj1)).of_eq (fun m => by
-    simp only [Function.comp_apply, Nat.unpair_pair]
+    simp only [Nat.unpair_pair]
     ring)⟩
 
 /-- Poly-fueled emission of the padded threshold-sum token
@@ -762,12 +762,12 @@ theorem encode_thrSum_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → �
   obtain ⟨cad, had⟩ := addc_polyFueled
   have h2cube := (had.comp (h3.pair h3)).of_eq
     (f' := fun m => 2 * (j'f m + 1) ^ 3)
-    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; ring)
+    (fun m => by simp only [Nat.unpair_pair]; ring)
   have padv := (PolyFueled.const 2).pair h2cube
   have livev := (PolyFueled.const 2).pair h3
   have test := subc_polyFueled.comp (hi.pair hj)
   refine ⟨_, (ifzSel_polyFueled.comp ((padv.pair livev).pair test)).of_eq (fun m => ?_)⟩
-  simp only [Function.comp_apply, Nat.unpair_pair, ifzSelFn]
+  simp only [Nat.unpair_pair, ifzSelFn]
   rcases Nat.lt_or_ge (if_ m) (j'f m + 1) with hcase | hcase
   · rw [if_pos (by omega), ndPadThr, if_pos hcase, add_zero,
       encode_ndThr (by omega : 1 ≤ j'f m + 1)]
@@ -784,15 +784,15 @@ theorem encode_thrRecip_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ →
   obtain ⟨cad, had⟩ := addc_polyFueled
   have h2cube := (had.comp (h3.pair h3)).of_eq
     (f' := fun m => 2 * (j'f m + 1) ^ 3)
-    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; ring)
+    (fun m => by simp only [Nat.unpair_pair]; ring)
   have h4cube := (had.comp (h2cube.pair h2cube)).of_eq
     (f' := fun m => 4 * (j'f m + 1) ^ 3)
-    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; ring)
+    (fun m => by simp only [Nat.unpair_pair]; ring)
   have padv := PolyFueled.const 1
   have livev := h4cube.pair (PolyFueled.const 1)
   have test := subc_polyFueled.comp (hi.pair hj)
   refine ⟨_, (ifzSel_polyFueled.comp ((padv.pair livev).pair test)).of_eq (fun m => ?_)⟩
-  simp only [Function.comp_apply, Nat.unpair_pair, ifzSelFn]
+  simp only [Nat.unpair_pair, ifzSelFn]
   rcases Nat.lt_or_ge (if_ m) (j'f m + 1) with hcase | hcase
   · rw [if_pos (by omega), ndPadThr, if_pos hcase, div_zero, encode_rat_zero]
   · rw [if_neg (by omega), ndPadThr, if_neg (by omega),
@@ -806,7 +806,7 @@ theorem encode_ratCast_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ}
   have hj1 := hj.succ_comp
   have h2j := (had.comp (hj1.pair hj1)).of_eq
     (f' := fun m => 2 * (j'f m + 1))
-    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; ring)
+    (fun m => by simp only [Nat.unpair_pair]; ring)
   exact ⟨_, (h2j.pair (PolyFueled.const 1)).of_eq
     (fun m => (encode_rat_natCast _).symm)⟩
 
@@ -934,7 +934,7 @@ theorem ndLadderTrader_ecTok (φ : Sentence) :
   show _ = serializeTrades ((ndLadderTrader φ).strat n).trades
   rw [show ((ndLadderTrader φ).strat n).trades = [(ndLadderEF φ n n, φ)] from rfl,
     serializeTrades, serializeTrades, serialize_ndLadderEF]
-  simp [Nat.unpair_pair, List.append_assoc]
+  simp [Nat.unpair_pair]
 
 #print axioms ndLadderTrader_ecTok
 
@@ -1072,7 +1072,7 @@ theorem ndSellLadderEF_denote (φ : Sentence) (P : History) (n : ℕ) : ∀ m,
 
 theorem ndSellLadderEF_rank (φ : Sentence) (n : ℕ) : ∀ m,
     (ndSellLadderEF φ n m).rank ≤ n
-  | 0 => by simp [ndSellLadderEF, EF.rank]
+  | 0 => by simp [ndSellLadderEF]
   | (m + 1) => by
       have h1 := ndSellLadderEF_rank φ n m
       have h2 := ndSellCoef_rank φ (m + 1) n
@@ -1335,29 +1335,29 @@ theorem encode_sellB_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → �
   obtain ⟨cad, had⟩ := addc_polyFueled
   have h2cube := (had.comp (h3.pair h3)).of_eq
     (f' := fun m => 2 * (j'f m + 1) ^ 3)
-    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; ring)
+    (fun m => by simp only [Nat.unpair_pair]; ring)
   have h4cube := (had.comp (h2cube.pair h2cube)).of_eq
     (f' := fun m => 4 * (j'f m + 1) ^ 3)
-    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; ring)
+    (fun m => by simp only [Nat.unpair_pair]; ring)
   have hpadnum := (subc_polyFueled.comp (h4cube.pair (PolyFueled.const 3))).of_eq
     (f' := fun m => 2 * (2 * (j'f m + 1) ^ 3 - 1 - 1) + 1)
     (fun m => by
-      simp only [Function.comp_apply, Nat.unpair_pair]
+      simp only [Nat.unpair_pair]
       have := pow_pos (show 0 < j'f m + 1 by omega) 3
       omega)
   have hpadv := hpadnum.pair h2cube
   have hsub2 := (subc_polyFueled.comp (h3.pair (PolyFueled.const 2))).of_eq
     (f' := fun m => (j'f m + 1) ^ 3 - 2)
-    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair])
+    (fun m => by simp only [Nat.unpair_pair])
   have hlivenum := ((had.comp (hsub2.pair hsub2)).succ_comp).of_eq
     (f' := fun m => 2 * ((j'f m + 1) ^ 3 - 1 - 1) + 1)
-    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; omega)
+    (fun m => by simp only [Nat.unpair_pair]; omega)
   have hlivev := hlivenum.pair h3
   have hinner := ifzSel_polyFueled.comp (((PolyFueled.const 1).pair hlivev).pair hj)
   have houter := ifzSel_polyFueled.comp
     ((hpadv.pair hinner).pair (subc_polyFueled.comp (hi.pair hj)))
   refine ⟨_, houter.of_eq (fun m => ?_)⟩
-  simp only [Function.comp_apply, Nat.unpair_pair, ifzSelFn]
+  simp only [Nat.unpair_pair, ifzSelFn]
   rcases Nat.lt_or_ge (if_ m) (j'f m + 1) with hcase | hcase
   · rw [if_pos (by omega), ndPadThr, if_pos hcase,
       encode_sellB_pad (by omega : 1 ≤ j'f m + 1)]
@@ -1374,7 +1374,7 @@ theorem encode_neg_ratCast_polyFueled {cj : Nat.Partrec.Code} {j'f : ℕ → ℕ
   obtain ⟨cad, had⟩ := addc_polyFueled
   have h2j1 := ((had.comp (hj.pair hj)).succ_comp).of_eq
     (f' := fun m => 2 * (j'f m + 1) - 1)
-    (fun m => by simp only [Function.comp_apply, Nat.unpair_pair]; omega)
+    (fun m => by simp only [Nat.unpair_pair]; omega)
   exact ⟨_, (h2j1.pair (PolyFueled.const 1)).of_eq
     (fun m => (encode_rat_neg_natCast (Nat.succ_pos _)).symm)⟩
 
@@ -1499,7 +1499,7 @@ theorem ndSellLadderTrader_ecTok (φ : Sentence) :
   show _ = serializeTrades ((ndSellLadderTrader φ).strat n).trades
   rw [show ((ndSellLadderTrader φ).strat n).trades = [(ndSellLadderEF φ n n, φ)] from rfl,
     serializeTrades, serializeTrades, serialize_ndSellLadderEF]
-  simp [Nat.unpair_pair, List.append_assoc]
+  simp [Nat.unpair_pair]
 
 #print axioms ndSellLadderTrader_ecTok
 

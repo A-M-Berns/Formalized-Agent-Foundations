@@ -113,7 +113,7 @@ private theorem formulaHistory_getD {n k : ℕ} (hk : k < n) :
   have hzero : sentenceDecodeNorm 0 = 0 := by
     simp [sentenceDecodeNorm, LO.Propositional.Formula.ofNat]
   rw [← hzero, List.getD_map]
-  simp [List.getD_eq_getElem, hk]
+  simp [hk]
 
 private theorem formulaBinaryNorm_history (tag payload n : ℕ)
     (hleft : payload.unpair.1 < n) (hright : payload.unpair.2 < n) :
@@ -149,19 +149,19 @@ private theorem formulaNormList_history (n : ℕ) :
       by_cases h0 : tag = 0
       · simp [sentenceDecodeNorm, formulaNormList, formulaNormSucc, LO.Propositional.Formula.ofNat,
           LO.Propositional.Formula.toNat,
-          Nat.pair, tag, payload, h0]
+          Nat.pair, tag, h0]
       by_cases h1 : tag = 1
       · simp [sentenceDecodeNorm, formulaNormList, formulaNormSucc, LO.Propositional.Formula.ofNat,
           LO.Propositional.Formula.toNat,
-          Nat.pair, tag, payload, h0, h1]
+          Nat.pair, tag, h1]
       by_cases h2 : tag = 2
       · subst tag
         have hb := formulaBinaryNorm_history 2 payload (e + 1) hleft hright
         simp only [formulaNormList, List.length_map, List.length_range,
-          formulaNormSucc, h0, h1, h2, ↓reduceIte]
+          formulaNormSucc, h2, ↓reduceIte]
         rw [hb]
         unfold sentenceDecodeNorm
-        simp only [LO.Propositional.Formula.ofNat, h2, ↓reduceIte]
+        simp only [LO.Propositional.Formula.ofNat, h2]
         cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
             payload.unpair.1 : Option Sentence) <;>
           cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
@@ -171,10 +171,10 @@ private theorem formulaNormList_history (n : ℕ) :
       · subst tag
         have hb := formulaBinaryNorm_history 3 payload (e + 1) hleft hright
         simp only [formulaNormList, List.length_map, List.length_range,
-          formulaNormSucc, h0, h1, h2, h3, ↓reduceIte]
+          formulaNormSucc, h3, ↓reduceIte]
         rw [hb]
         unfold sentenceDecodeNorm
-        simp only [LO.Propositional.Formula.ofNat, h3, ↓reduceIte]
+        simp only [LO.Propositional.Formula.ofNat, h3]
         cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
             payload.unpair.1 : Option Sentence) <;>
           cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
@@ -184,10 +184,10 @@ private theorem formulaNormList_history (n : ℕ) :
       · subst tag
         have hb := formulaBinaryNorm_history 4 payload (e + 1) hleft hright
         simp only [formulaNormList, List.length_map, List.length_range,
-          formulaNormSucc, h0, h1, h2, h3, h4, ↓reduceIte]
+          formulaNormSucc, h4, ↓reduceIte]
         rw [hb]
         unfold sentenceDecodeNorm
-        simp only [LO.Propositional.Formula.ofNat, h4, ↓reduceIte]
+        simp only [LO.Propositional.Formula.ofNat, h4]
         cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
             payload.unpair.1 : Option Sentence) <;>
           cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
@@ -195,8 +195,8 @@ private theorem formulaNormList_history (n : ℕ) :
           simp [LO.Propositional.Formula.toNat]
       · have htag : 5 ≤ tag := by omega
         simp [sentenceDecodeNorm, formulaNormList, formulaNormSucc, LO.Propositional.Formula.ofNat,
-          LO.Propositional.Formula.toNat,
-          tag, payload, h0, h1, h2, h3, h4, htag]
+
+          tag, h0, h1, h2, h3, h4]
 
 /-- Foundation's concrete Gödel encoding of propositional sentences is primitive-recursive.
 This is an encoding theorem only; it contains no semantic or logical-inductor premise. -/
@@ -212,8 +212,7 @@ instance sentencePrimcodable : Primcodable Sentence where
       change sentenceDecodeNorm n = Encodable.encode
         ((@LO.Propositional.Formula.ofNat ℕ inferInstance n) : Option Sentence)
       cases h : (@LO.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) <;>
-        simp [sentenceDecodeNorm, h, LO.Propositional.Formula.instEncodable,
-          LO.Propositional.Formula.toNat])
+        simp [sentenceDecodeNorm, h, LO.Propositional.Formula.instEncodable])
 
 /-! ## Primitive-recursive normalization of the concrete `EF` decoder -/
 
@@ -268,7 +267,7 @@ private theorem coprimeBounded_iff (a b : ℕ) : coprimeBounded a b ↔ a.Coprim
         omega
       · have hkb' : k ≤ b := Nat.le_of_dvd (Nat.pos_of_ne_zero hb) hkb
         omega
-    simpa [h k hklt hka hkb]
+    simp [h k hklt hka hkb]
   · intro h k _ hka hkb
     exact Nat.eq_one_of_dvd_coprimes h hka hkb
 
@@ -402,11 +401,10 @@ private theorem ratDecodeNorm_eq (n : ℕ) :
   by_cases h : ratCodeValid n
   · have hc := hvalid.mp h
     simp [ratDecodeNorm, h, Rat.instEncodable, Encodable.decode_ofEquiv,
-      Encodable.decode_sigma_val, Encodable.decodeSubtype, Subtype.encodable, hc.1, hc.2,
-      Encodable.Subtype.encode_eq, Nat.pair_unpair]
+      Encodable.decode_sigma_val, Encodable.decodeSubtype, Subtype.encodable, hc.1]
     rw [dif_pos hc.2]
-    simp [Rat.instEncodable, Encodable.encode_ofEquiv,
-      Encodable.encode_sigma_val, Encodable.Subtype.encode_eq, Nat.pair_unpair]
+    simp [Encodable.encode_ofEquiv,
+      Encodable.encode_sigma_val]
     rw [hencodeInt]
     change n = Nat.pair n.unpair.1 n.unpair.2
     exact (Nat.pair_unpair n).symm
@@ -471,7 +469,7 @@ private theorem intCodeNeg_encode (z : ℤ) :
           omega
   | negSucc n =>
       change intCodeNeg (2 * n + 1) = 2 * (n + 1)
-      simp [intCodeNeg, Nat.bodd_add, Nat.bodd_mul]
+      simp [intCodeNeg, Nat.bodd_mul]
       omega
 
 private theorem encodeIntNegNat {n : ℕ} (hn : 0 < n) :
@@ -562,8 +560,8 @@ private theorem intCodeAdd_encode (a b : ℤ) :
       | negSucc b =>
           change intCodeAdd (2 * a) (2 * b + 1) =
             Encodable.encode ((a : ℤ) - (b + 1 : ℕ))
-          simp [intCodeAdd, intCodeSubNat_eq, Nat.bodd_add, Nat.bodd_mul,
-            Nat.div2_bit0, Nat.div2_bit1]
+          simp [intCodeAdd, intCodeSubNat_eq, Nat.bodd_mul,
+            Nat.div2_bit0]
   | negSucc a =>
       cases b with
       | ofNat b =>
@@ -572,10 +570,10 @@ private theorem intCodeAdd_encode (a b : ℤ) :
           change intCodeAdd (2 * a + 1) (2 * b) =
             Encodable.encode ((b : ℤ) - (a + 1 : ℕ))
           simp [intCodeAdd, intCodeSubNat_eq, add_comm, Nat.bodd_add,
-            Nat.bodd_mul, Nat.div2_bit0, Nat.div2_bit1, hdiv]
+            Nat.bodd_mul, Nat.div2_bit0, hdiv]
       | negSucc b =>
           change intCodeAdd (2 * a + 1) (2 * b + 1) = 2 * (a + b + 1) + 1
-          simp [intCodeAdd, Nat.bodd_add, Nat.bodd_mul]
+          simp [intCodeAdd, Nat.bodd_mul]
           omega
 
 private theorem intAdd_prim : Primrec₂ fun a b : ℤ => a + b := by
@@ -631,8 +629,8 @@ private theorem intCodeMul_encode (a b : ℤ) :
                   simp [Int.negSucc_eq]
                   ring]
               rw [encodeIntNegNat (Nat.mul_pos (by omega) (by omega))]
-              simp [intCodeMul, intCodeNatAbs, Nat.bodd_add, Nat.bodd_mul,
-                Nat.div2_bit0, Nat.div2_bit1]
+              simp [intCodeMul, intCodeNatAbs, Nat.bodd_mul,
+                Nat.div2_bit0]
   | negSucc a =>
       cases b with
       | ofNat b =>
@@ -649,14 +647,13 @@ private theorem intCodeMul_encode (a b : ℤ) :
                   simp [Int.negSucc_eq]
                   ring]
               rw [encodeIntNegNat (Nat.mul_pos (by omega) (by omega))]
-              simp [intCodeMul, intCodeNatAbs, Nat.bodd_add, Nat.bodd_mul,
-                Nat.div2_bit0, Nat.div2_bit1]
+              simp [intCodeMul, intCodeNatAbs, Nat.bodd_mul,
+                Nat.div2_bit0]
       | negSucc b =>
           rw [Int.negSucc_mul_negSucc]
           change intCodeMul (2 * a + 1) (2 * b + 1) =
             2 * ((a + 1) * (b + 1))
-          simp [intCodeMul, intCodeNatAbs, Nat.bodd_add, Nat.bodd_mul,
-            Nat.div2_bit1]
+          simp [intCodeMul, intCodeNatAbs, Nat.bodd_mul]
 
 private theorem intMul_prim : Primrec₂ fun a b : ℤ => a * b := by
   apply Primrec₂.encode_iff.mp
@@ -707,18 +704,18 @@ private theorem intCodeLE_encode (a b : ℤ) :
           simp [intCodeLE, Nat.bodd_mul, Nat.div2_bit0]
       | negSucc b =>
           change intCodeLE (2 * a) (2 * b + 1) ↔ Int.ofNat a ≤ Int.negSucc b
-          simp [intCodeLE, Nat.bodd_add, Nat.bodd_mul]
+          simp [intCodeLE, Nat.bodd_mul]
           omega
   | negSucc a =>
       cases b with
       | ofNat b =>
           change intCodeLE (2 * a + 1) (2 * b) ↔ Int.negSucc a ≤ Int.ofNat b
-          simp [intCodeLE, Nat.bodd_add, Nat.bodd_mul]
+          simp [intCodeLE, Nat.bodd_mul]
           omega
       | negSucc b =>
           change intCodeLE (2 * a + 1) (2 * b + 1) ↔
             Int.negSucc a ≤ Int.negSucc b
-          simp [intCodeLE, Nat.bodd_add, Nat.bodd_mul, Nat.div2_bit1]
+          simp [intCodeLE, Nat.bodd_mul]
           omega
 
 private theorem intLE_prim : PrimrecRel fun a b : ℤ => a ≤ b := by
@@ -750,7 +747,7 @@ private theorem intCodeSign_encode (z : ℤ) :
           simp [intCodeSign, Nat.bodd_mul]
   | negSucc n =>
       change intCodeSign (2 * n + 1) = 1
-      simp [intCodeSign, Nat.bodd_add, Nat.bodd_mul]
+      simp [intCodeSign, Nat.bodd_mul]
 
 private theorem intSign_prim : Primrec Int.sign := by
   apply Primrec.encode_iff.mp
@@ -805,7 +802,7 @@ private theorem intCodeDivNat_encode (z : ℤ) (d : ℕ) :
             Encodable.encode (Int.negSucc (n / (d + 1)))
           rw [show Encodable.encode (Int.negSucc (n / (d + 1))) =
             2 * (n / (d + 1)) + 1 from rfl]
-          simp [intCodeDivNat, Nat.bodd_add, Nat.bodd_mul, Nat.div2_bit1]
+          simp [intCodeDivNat, Nat.bodd_mul]
 
 private theorem intDivNat_prim : Primrec₂ fun z : ℤ => fun d : ℕ => z / (d : ℤ) := by
   apply Primrec₂.encode_iff.mp
@@ -847,7 +844,7 @@ private theorem ratMkCode_prim : Primrec₂ ratMkCode := by
         (p.2 / Nat.gcd p.1.natAbs p.2) :=
     Primrec₂.natPair.comp hnum hden
   exact (Primrec.ite hd0 (Primrec.const (Nat.pair 0 1)) hpair).to₂.of_eq
-    fun z d => by simp only [ratMkCode, g]
+    fun z d => by simp only [ratMkCode]
 
 private theorem ratMkCode_eq (z : ℤ) (d : ℕ) :
     ratMkCode z d = Encodable.encode (mkRat z d) := by
@@ -2784,7 +2781,7 @@ private theorem strategyOfTokensTrades_prim : Primrec₂ fun n tokens =>
     exact (Primrec.ite hvalid Primrec.snd (Primrec.const [])).to₂
   exact ((Primrec.option_casesOn hdecode (Primrec.const []) hsome).to₂).of_eq
     fun n tokens => by
-      simp only [Prod.snd]
+      simp only []
       unfold strategyOfTokens
       split
       · simp_all
@@ -2832,9 +2829,9 @@ private theorem clockedTokens_prim : Primrec fun
   exact (Primrec.option_casesOn hLengthEval (Primrec.const []) hSome).of_eq fun p => by
     unfold clockedTokens
     cases h : Nat.Partrec.Code.evaln p.1.2 p.1.1.1 p.2 with
-    | none => simp [h]
+    | none => simp
     | some length =>
-        simp only [h]
+        simp only []
         apply List.ext_getElem
         · simp
         · intro i hi₁ hi₂
@@ -2927,7 +2924,7 @@ private theorem firmRawTraderTrades_prim : Primrec₂ fun j n =>
       · have hle : ¬j ≤ n := by omega
         simp [h, hle, Trader.zero]
       · have hle : j ≤ n := by omega
-        simp [h, hle, Trader.zero]
+        simp [h, hle]
 
 /-! ## First-order finite-operation compiler -/
 
@@ -3022,7 +3019,7 @@ def sentenceDedup (l : List Sentence) : List Sentence :=
           · exact hal
           · exact hφ
       · have hal : a ∉ l := fun hal => h ((ih a).mpr hal)
-        simp [sentenceDedup_cons, h, ih φ, hal]
+        simp [sentenceDedup_cons, h, ih φ]
 
 theorem sentenceDedup_nodup (l : List Sentence) :
     (sentenceDedup l).Nodup := by
@@ -3036,7 +3033,7 @@ theorem sentenceDedup_nodup (l : List Sentence) :
 theorem sentenceDedup_prim : Primrec sentenceDedup := by
   have hmem : PrimrecRel fun (tail : List Sentence) (φ : Sentence) => φ ∈ tail :=
     (Primrec.eq.exists_mem_list).of_eq fun tail φ => by
-      simp [eq_comm]
+      simp
   have hstep : Primrec₂ fun (_ : List Sentence)
       (p : Sentence × List Sentence) =>
       if p.1 ∈ p.2 then p.2 else p.1 :: p.2 :=
@@ -3108,7 +3105,7 @@ private theorem supportSentenceList_prim : Primrec supportSentenceList := by
 private theorem sentenceMemSupport_prim :
     PrimrecRel fun (S : Finset Sentence) (φ : Sentence) => φ ∈ S := by
   have hmem : PrimrecRel fun (l : List Sentence) (φ : Sentence) => φ ∈ l :=
-    (Primrec.eq.exists_mem_list).of_eq fun l φ => by simp [eq_comm]
+    (Primrec.eq.exists_mem_list).of_eq fun l φ => by simp
   exact (hmem.comp₂
     (supportSentenceList_prim.comp₂ Primrec₂.left) Primrec₂.right).of_eq fun S φ => by
     simp [supportSentenceList]
@@ -3725,7 +3722,7 @@ private theorem efRatRawStep_prim {C : Type*} [Primcodable C]
         | none => 0 :=
       (Primrec.option_casesOn hs (Primrec.const 0) hsome).of_eq fun p => by
         cases h : Encodable.decode (α := Sentence) p.2.1.unpair.2.unpair.1 <;>
-          simp [h]
+          simp
     exact hcommands.pair (Primrec.list_cons.comp hq hvalues)
   have hcommandCase {first second third : P → EFRatCommand}
       (hfirst : Primrec first) (hsecond : Primrec second) (hthird : Primrec third) :
@@ -4469,7 +4466,7 @@ private theorem formulaAtomOccurrencesHistory_getD {n k : ℕ} (hk : k < n) :
   have hzero : formulaAtomOccurrencesDecoded 0 = none := by
     simp [formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat]
   rw [← hzero, List.getD_map]
-  simp [List.getD_eq_getElem, hk]
+  simp [hk]
 
 private theorem formulaAtomOccurrencesBinary_history
     (payload n : ℕ) (hleft : payload.unpair.1 < n)
@@ -4508,19 +4505,19 @@ private theorem formulaAtomOccurrencesStep_history (n : ℕ) :
       by_cases h0 : tag = 0
       · simp [formulaAtomOccurrencesStep, formulaAtomOccurrencesSucc,
           formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat,
-          tag, payload, h0, sentenceAtomOccurrences]
+          tag, h0, sentenceAtomOccurrences]
       by_cases h1 : tag = 1
       · simp [formulaAtomOccurrencesStep, formulaAtomOccurrencesSucc,
           formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat,
-          tag, payload, h0, h1, sentenceAtomOccurrences]
+          tag, h1, sentenceAtomOccurrences]
       by_cases h2 : tag = 2
       · subst tag
         have hb := formulaAtomOccurrencesBinary_history payload (e + 1) hleft hright
         simp only [formulaAtomOccurrencesStep, List.length_map, List.length_range,
-          formulaAtomOccurrencesSucc, h0, h1, h2, ↓reduceIte]
+          formulaAtomOccurrencesSucc, h2, ↓reduceIte]
         rw [hb]
         simp only [formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat,
-          h2, ↓reduceIte]
+          h2]
         cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
           cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
           rfl
@@ -4528,10 +4525,10 @@ private theorem formulaAtomOccurrencesStep_history (n : ℕ) :
       · subst tag
         have hb := formulaAtomOccurrencesBinary_history payload (e + 1) hleft hright
         simp only [formulaAtomOccurrencesStep, List.length_map, List.length_range,
-          formulaAtomOccurrencesSucc, h0, h1, h2, h3, ↓reduceIte]
+          formulaAtomOccurrencesSucc, h3, ↓reduceIte]
         rw [hb]
         simp only [formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat,
-          h3, ↓reduceIte]
+          h3]
         cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
           cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
           rfl
@@ -4539,17 +4536,17 @@ private theorem formulaAtomOccurrencesStep_history (n : ℕ) :
       · subst tag
         have hb := formulaAtomOccurrencesBinary_history payload (e + 1) hleft hright
         simp only [formulaAtomOccurrencesStep, List.length_map, List.length_range,
-          formulaAtomOccurrencesSucc, h0, h1, h2, h3, h4, ↓reduceIte]
+          formulaAtomOccurrencesSucc, h4, ↓reduceIte]
         rw [hb]
         simp only [formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat,
-          h4, ↓reduceIte]
+          h4]
         cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
           cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
           rfl
       · have htag : 5 ≤ tag := by omega
         simp [formulaAtomOccurrencesStep, formulaAtomOccurrencesSucc,
           formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat,
-          tag, payload, h0, h1, h2, h3, h4, htag]
+          tag, h0, h1, h2, h3, h4]
 
 private theorem formulaAtomOccurrencesDecoded_prim :
     Primrec formulaAtomOccurrencesDecoded := by
@@ -4627,7 +4624,7 @@ private def natDedup (l : List ℕ) : List ℕ :=
           · simpa [hab] using hbl
           · exact ha
       · have hbl : b ∉ l := fun hbl => h ((ih b).mpr hbl)
-        simp [natDedup_cons, h, ih, hbl]
+        simp [natDedup_cons, h, ih]
 
 private theorem natDedup_nodup (l : List ℕ) : (natDedup l).Nodup := by
   induction l with
@@ -4639,7 +4636,7 @@ private theorem natDedup_nodup (l : List ℕ) : (natDedup l).Nodup := by
 
 private theorem natDedup_prim : Primrec natDedup := by
   have hmem : PrimrecRel fun (tail : List ℕ) (a : ℕ) => a ∈ tail :=
-    (Primrec.eq.exists_mem_list).of_eq fun tail a => by simp [eq_comm]
+    (Primrec.eq.exists_mem_list).of_eq fun tail a => by simp
   have hstep : Primrec₂ fun (_ : List ℕ) (p : ℕ × List ℕ) =>
       if p.1 ∈ p.2 then p.2 else p.1 :: p.2 :=
     Primrec.ite
@@ -4823,7 +4820,7 @@ private def atomListTable (atoms : List ℕ) (xs : List Bool) (a : ℕ) : Bool :
 private theorem atomListTable_prim : Primrec fun p :
     (List ℕ × List Bool) × ℕ => atomListTable p.1.1 p.1.2 p.2 := by
   have hmemList : PrimrecRel fun (atoms : List ℕ) (a : ℕ) => a ∈ atoms :=
-    (Primrec.eq.exists_mem_list).of_eq fun atoms a => by simp [eq_comm]
+    (Primrec.eq.exists_mem_list).of_eq fun atoms a => by simp
   have hmem : PrimrecPred fun p : (List ℕ × List Bool) × ℕ =>
       p.2 ∈ p.1.1 :=
     hmemList.comp (Primrec.fst.comp Primrec.fst) Primrec.snd
@@ -4971,7 +4968,7 @@ private theorem formulaBoolHistory_getD
   have hzero : formulaBoolDecoded env 0 = none := by
     simp [formulaBoolDecoded, LO.Propositional.Formula.ofNat]
   rw [← hzero, List.getD_map]
-  simp [List.getD_eq_getElem, hk]
+  simp [hk]
 
 private theorem formulaBoolBinary_history (op : Bool → Bool → Bool)
     (env : List ℕ × List Bool) (payload n : ℕ)
@@ -5008,11 +5005,11 @@ private theorem formulaBoolStep_history
           le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _)
       by_cases h0 : tag = 0
       · simp [formulaBoolStep, formulaBoolSucc, formulaBoolDecoded,
-          LO.Propositional.Formula.ofNat, tag, payload, h0,
+          LO.Propositional.Formula.ofNat, tag, h0,
           sentenceBoolFromAtomList, sentenceBool]
       by_cases h1 : tag = 1
       · simp [formulaBoolStep, formulaBoolSucc, formulaBoolDecoded,
-          LO.Propositional.Formula.ofNat, tag, payload, h0, h1,
+          LO.Propositional.Formula.ofNat, tag, h1,
           sentenceBoolFromAtomList, sentenceBool]
       by_cases h2 : tag = 2
       · subst tag
@@ -5020,10 +5017,10 @@ private theorem formulaBoolStep_history
           env payload (e + 1)
           hleft hright
         simp only [formulaBoolStep, List.length_map, List.length_range,
-          formulaBoolSucc, h0, h1, h2, ↓reduceIte]
+          formulaBoolSucc, h2, ↓reduceIte]
         rw [hb]
         simp only [formulaBoolDecoded, LO.Propositional.Formula.ofNat,
-          h2, ↓reduceIte]
+          h2]
         cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
           cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
           rfl
@@ -5032,10 +5029,10 @@ private theorem formulaBoolStep_history
         have hb := formulaBoolBinary_history (· && ·) env payload (e + 1)
           hleft hright
         simp only [formulaBoolStep, List.length_map, List.length_range,
-          formulaBoolSucc, h0, h1, h2, h3, ↓reduceIte]
+          formulaBoolSucc, h3, ↓reduceIte]
         rw [hb]
         simp only [formulaBoolDecoded, LO.Propositional.Formula.ofNat,
-          h3, ↓reduceIte]
+          h3]
         cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
           cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
           rfl
@@ -5044,17 +5041,16 @@ private theorem formulaBoolStep_history
         have hb := formulaBoolBinary_history (· || ·) env payload (e + 1)
           hleft hright
         simp only [formulaBoolStep, List.length_map, List.length_range,
-          formulaBoolSucc, h0, h1, h2, h3, h4, ↓reduceIte]
+          formulaBoolSucc, h4, ↓reduceIte]
         rw [hb]
         simp only [formulaBoolDecoded, LO.Propositional.Formula.ofNat,
-          h4, ↓reduceIte]
+          h4]
         cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
           cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
           rfl
       · have htag : 5 ≤ tag := by omega
         simp [formulaBoolStep, formulaBoolSucc, formulaBoolDecoded,
-          LO.Propositional.Formula.ofNat, tag, payload, h0, h1, h2, h3, h4,
-          htag]
+          LO.Propositional.Formula.ofNat, tag, h0, h1, h2, h3, h4]
 
 private theorem formulaBoolDecoded_prim : Primrec₂ formulaBoolDecoded := by
   have hstep : Primrec₂ fun (env : List ℕ × List Bool)
@@ -5496,7 +5492,7 @@ private theorem efBoundMachineStep_add (a b : EF) (rho : List ℚ)
       (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
         efRatOpCommand 1 :: commands, values) := by
   simp [efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
-    efRatCommandStep, efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
+    efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
     EF.toNat]
 
 private theorem efBoundMachineStep_mul (a b : EF) (rho : List ℚ)
@@ -5506,7 +5502,7 @@ private theorem efBoundMachineStep_mul (a b : EF) (rho : List ℚ)
       (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
         efRatOpCommand 2 :: commands, values) := by
   simp [efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
-    efRatCommandStep, efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
+    efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
     EF.toNat]
 
 private theorem efBoundMachineStep_max (a b : EF) (rho : List ℚ)
@@ -5516,7 +5512,7 @@ private theorem efBoundMachineStep_max (a b : EF) (rho : List ℚ)
       (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
         efRatOpCommand 1 :: commands, values) := by
   simp [efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
-    efRatCommandStep, efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
+    efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
     EF.toNat]
 
 private theorem efBoundMachineStep_safeRecip (a : EF) (rho : List ℚ)
@@ -5525,7 +5521,7 @@ private theorem efBoundMachineStep_safeRecip (a : EF) (rho : List ℚ)
         (efRatEvalCommand (EF.safeRecip a) rho :: commands, values) =
       (efRatEvalCommand a rho :: efRatOpCommand 4 :: commands, values) := by
   simp [efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
-    efRatCommandStep, efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
+    efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
     EF.toNat]
 
 private theorem efBoundMachineStep_letE (x body : EF) (rho : List ℚ)
@@ -5535,7 +5531,7 @@ private theorem efBoundMachineStep_letE (x body : EF) (rho : List ℚ)
       (efRatEvalCommand x rho :: efRatLetBodyCommand body.toNat rho :: commands,
         values) := by
   simp [efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
-    efRatCommandStep, efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
+    efRatRawStep, efRatEvalCommand, efRatRawEvalCommand,
     EF.toNat]
 
 private theorem efBoundMachineStep_letBody (payload : ℕ) (rho : List ℚ)
@@ -5563,7 +5559,7 @@ private theorem efBoundMachine_correct (e : EF) (rho : List ℚ)
   | var i =>
       simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
         efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
-        efRatCommandStep, efRatRawStep, EF.toNat, EF.absBoundWith]
+        efRatRawStep, EF.toNat, EF.absBoundWith]
   | add a b iha ihb =>
       let f := efBoundMachineStep
       rw [show efRatMachineSteps (EF.add a b) =

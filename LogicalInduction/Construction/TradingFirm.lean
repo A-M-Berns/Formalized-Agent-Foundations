@@ -675,7 +675,7 @@ theorem tradingFirmTrader_netWorth_eq_component_sum
         omega
       · intro j hj
         simp only [Finset.mem_filter] at hj
-        simp [hj.2]
+        simp
     _ = ∑ j ∈ Finset.range (n + 1), ∑ d ∈ Finset.range (n + 1),
           if j ≤ d then (tradingFirmComponentAt DP Q d j).value P v.payout else 0 := by
       rw [Finset.sum_comm]
@@ -906,7 +906,7 @@ theorem tradingFirmComponentTrader_residual_floor
     by_cases hsr : s = r
     · subst s
       simp
-    · simp only [Function.update, hsr, if_false]
+    · simp only [Function.update, hsr]
       have hfloor := budgetedTrader_netWorth_floor DP (firmRawTrader j) (s + 1)
         (by omega) P Q hQ n v hv
       have hw0 : 0 ≤ (tradingFirmWeight j (s + 1) : ℝ) := by
