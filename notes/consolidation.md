@@ -105,15 +105,19 @@ the directory so `import LogicalInduction.Foo` works) — keep it, one roll-up p
 1. **Kill `Engine.lean`** (in-reference name): merge its 196 lines into `Affine.lean`,
    which already imports it.
 2. **Merge tiny Properties files into their paper-subsection homes:**
-   `Convergence.lean` + `Basic.lean` → `Coherence.lean` (paper §4.1 "Convergence and
-   Coherence"); `StrictSemimeasure.lean` → `UniversalSemimeasure.lean`. Labels move with
-   their theorems.
+   `Convergence.lean` → `Coherence.lean` (paper §4.1 "Convergence and Coherence");
+   `StrictSemimeasure.lean` → `UniversalSemimeasure.lean`. Labels move with their
+   theorems. (`Basic.lean` stays: `Convergence` needs `Hysteresis`, which needs `Basic`,
+   so folding `Basic` into `Coherence` would cycle — and `Basic.lean` is standard Mathlib
+   idiom anyway.)
 3. **Top-level folders by paper role.** Target layout:
 
    ```
+   AxiomAudit.lean                — checked endpoint inventory; its own build target,
+                                    outside the library (Anson: audit scaffolding does
+                                    not belong in the library import graph)
    LogicalInduction.lean          — root roll-up, glossary, naming conventions
    LogicalInduction/
-     AxiomAudit.lean              — checked endpoint inventory (stays top-level)
      IntegrationTest.lean         — composition checks (stays top-level)
      Framework.lean + Framework/  — Asymptotics, Foundations, Computable, Criterion,
                                     Affine (with Engine folded in), ROI, Expectations
@@ -122,8 +126,10 @@ the directory so `import LogicalInduction.Foo` works) — keep it, one roll-up p
    ```
 
    `Framework/` = everything the paper's §2–3 criterion statement and the shared proof
-   machinery need, upstream of both Properties and Construction. Module renames churn
-   every import; do this as one dedicated commit with no other changes.
+   machinery need, upstream of both Properties and Construction. Inside `Construction/`,
+   the nine M7 witness compilers live in `Construction/Witnesses/`, separated from the
+   §5 spine that proves existence. Module renames churn every import; done as one
+   dedicated commit with no other changes.
 4. **Lean core linters go to zero and stay there** (unused variables/simp args). Fix
    existing warnings in the same pass; new warnings are treated as regressions. Upstream
    package warnings (Foundation) are exempt.

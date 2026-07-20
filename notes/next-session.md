@@ -38,6 +38,26 @@ import) removed. Remaining for pass 3, pending Anson's rules in `notes/consolida
 any renames toward paper conventions, file/namespace reorganization, and statement
 flattening — those are surface changes and need the drafted rules first.
 
+**Pass 3 (2026-07-19/20), rules agreed with Anson in `notes/consolidation.md`:**
+
+- **Layout**: top level is now `Framework/` (Asymptotics, Foundations, Computable,
+  Criterion, Affine, ROI, Expectations), `Properties/`, `Construction/` with the nine M7
+  witness compilers under `Construction/Witnesses/`, plus `IntegrationTest.lean`. The
+  axiom audit moved out of the library to repo-root `AxiomAudit.lean`, its own default
+  build target. All moves were import-only commits.
+- **Merges**: `Engine.lean` → `Framework/Affine.lean` (in-reference name gone);
+  `Properties/Convergence.lean` → `Coherence.lean` (paper §4.1); `StrictSemimeasure.lean`
+  → `UniversalSemimeasure.lean`. `Basic.lean` stays (Hysteresis cycle; Mathlib idiom).
+- **Linters**: repository warnings zeroed (~450 unused simp args/variables plus the
+  suggested simpa/omega/push_cast/deprecation fixes). Brouwer's Aristotle-generated
+  Sperner interior is exempted via file-level `set_option linter.unused* false` rather
+  than hand-edited. Keep the build warning-free; new warnings are regressions.
+- **Adopted conventions (not yet executed)**: theorem ⇔ paper node with label-bearing
+  docstring, lemma otherwise; `example` only for uncited demos; N± witnesses named,
+  audited, deleted where a construction discharges them. `scripts/lint_paper_labels.py`
+  enforces the docstring rule (CI-advisory; ~2,280 pre-sweep violations = the sweep
+  worklist). **The theorem/lemma sweep itself is the next pass.**
+
 This is the authoritative execution handoff. The M7 table in `README.md` is the public
 inventory of what is concrete today; this file records the stronger active construction
 target and what to build next. Historical plans remain available in Git history. There is
