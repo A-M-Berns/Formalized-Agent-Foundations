@@ -241,10 +241,8 @@ noncomputable def hcBpos (buy sell : ℕ → EF) (V : History) (n : ℕ) : ℝ :
 noncomputable def hcBneg (buy sell : ℕ → EF) (V : History) (n : ℕ) : ℝ :=
   ∑ i ∈ Finset.range (n + 1), max (-(hcDelta buy sell V i)) 0
 
-private lemma max_sub_max_neg (x : ℝ) : max x 0 - max (-x) 0 = x := by
-  rcases le_total x 0 with h | h
-  · rw [max_eq_right h, max_eq_left (by linarith : (0:ℝ) ≤ -x)]; ring
-  · rw [max_eq_left h, max_eq_right (by linarith : -x ≤ (0:ℝ))]; ring
+-- `max_sub_max_neg` lives in `Properties/Hysteresis.lean` (imported transitively via
+-- `Coherence`); the duplicate definition here was removed in the consolidation pass.
 
 private lemma abs_eq_max_add_max_neg (x : ℝ) : |x| = max x 0 + max (-x) 0 := by
   rcases le_total x 0 with h | h

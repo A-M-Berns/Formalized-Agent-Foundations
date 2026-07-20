@@ -311,7 +311,10 @@ noncomputable def hystBpos (φ : Sentence) (a b δ : ℚ) (P : History) (n : ℕ
 noncomputable def hystBneg (φ : Sentence) (a b δ : ℚ) (P : History) (n : ℕ) : ℝ :=
   ∑ i ∈ Finset.range (n + 1), max (-(hystDelta φ a b δ P i)) 0
 
-private lemma max_sub_max_neg (x : ℝ) : max x 0 - max (-x) 0 = x := by
+/-- `x⁺ - x⁻ = x` in the `max`-form used by the affine serialization proofs here and in
+`ExpectationConvergence`. (Mathlib's `posPart_sub_negPart` is the same fact in `⁺`/`⁻`
+notation.) -/
+lemma max_sub_max_neg (x : ℝ) : max x 0 - max (-x) 0 = x := by
   rcases le_total x 0 with h | h
   · rw [max_eq_right h, max_eq_left (by linarith : (0:ℝ) ≤ -x)]; ring
   · rw [max_eq_left h, max_eq_right (by linarith : -x ≤ (0:ℝ))]; ring

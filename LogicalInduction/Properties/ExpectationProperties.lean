@@ -501,10 +501,9 @@ noncomputable def softmaxMass (gaps : List AffineCombination) (P : History)
       remaining.denote P * signal.denote P +
         softmaxMass rest P day threshold pad (.mul remaining (oneMinus signal))
 
-lemma oneMinus_denote (e : EF) (P : History) :
-    (oneMinus e).denote P = 1 - e.denote P := by
-  simp [oneMinus, EF.denote_add, EF.denote_mul]
-  ring
+-- `oneMinus_denote` is the `@[simp]` lemma in `Properties/Hysteresis.lean` (in scope here
+-- via `oneMinus`); the duplicate in this namespace was removed in the consolidation pass.
+-- The `simp only [… oneMinus_denote]` calls below resolve to that root lemma.
 
 lemma softmax_mass_add_remainder
     (gaps : List AffineCombination) (P : History) (day : ℕ)
