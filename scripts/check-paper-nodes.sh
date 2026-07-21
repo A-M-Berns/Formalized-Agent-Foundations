@@ -34,8 +34,12 @@ done < /tmp/_pn_used
 # Short names on the surface. `#assert_axioms_clean` blocks: every ident (the head line
 # plus 2-space continuation lines) is an endpoint. `#assert_fields` lines: only the first
 # ident (the structure) — the rest are its field names, not surface members themselves.
+# Only the `LogicalInduction` section participates in the Garrabrant paper-node convention;
+# the `Barasz/` section (after `end LogicalInduction`) mirrors a different paper and is
+# axiom-checked by AxiomAudit's build, not by this label convention — so stop there.
 awk '
-  /^#assert_axioms_clean/ { mode="ax"; sub(/^#assert_axioms_clean/,""); print; next }
+  /^end LogicalInduction/ { exit }
+  /^#assert_axioms_clean/ { mode="ax"; sub(/^#assert_axioms_clean(_except)?/,""); print; next }
   /^#assert_fields/       { mode="fl"; sub(/^#assert_fields[ \t]+/,"");
                             n=split($0,a,/[ \t]+/); if(n>0)print a[1]; next }
   /^  [A-Za-z]/           { if(mode=="ax") print; next }
