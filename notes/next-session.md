@@ -195,6 +195,32 @@ Shape:
 
 M7-scale (multi-session); tractable and unblocked. Deferred by Anson 2026-07-21 (record only).
 
+**Spike done 2026-07-21 — verdict GO (no Foundation wall).** The one go/no-go risk was
+whether Foundation exposes provability-in-`T` as a meta-level r.e./computable object (needed
+because `quote_positive_enters` is ∀-quantified over all provable instances, so the DP must
+enumerate them). It is not pre-packaged as `REPred (T ⊢ ·)`, and `Derivation` is a
+proof-relevant `Type _` (not `Encodable`) — but the r.e. enumeration is **assemblable** from
+ingredients Foundation already uses in its own incompleteness proofs
+(`FirstOrder/Incompleteness/Halting.lean:25-27` is the template):
+- `Provable.defined`/`Provable.definable` + the `definability` tactic: internal `T.Provable`
+  is `𝚺₁-Predicate` (`Bootstrapping/Syntax/Proof/Basic.lean`).
+- `re_iff_sigma1 : REPred P ↔ 𝚺₁-Predicate P` (`Incompleteness/First.lean`).
+- internal-provability ↔ `⊢` bridge (`Theory.Provable.sound`; the `□`/provability iff used
+  across Solovay/Jeroslow/Yablo).
+- `Bootstrapping.subst`/`.neg`/`⌜⌝`/`numeral` are primrec, so the formula-as-argument coding
+  (`⌜positive⌝` as a computable function of `positive`'s code) is supported.
+
+So the labor is: (1) assemble `REPred {(pos,neg,i) | T ⊢ pos/[i]}` following the Halting.lean
+pattern; (2) turn that semi-decider into a growing computable `Finset Sentence` stage program
+(dovetail — repo has the `Nat.rfindOpt`/`evaln` patterns in `LIAComputation.lean` and
+`DeductiveProcessComputation.union` for stage assembly), coding each provable instance as its
+`quotationClaimSentence` atom; (3) prove `enters`/`refutes` from enumeration coverage; (4)
+pick `T` for `theory_sigmaOne`/`theory_deltaOne`; (5) instantiate the corollary over LIA. The
+one delicate boundary is the atom-coding alignment (the stage program must emit exactly
+`quotationClaimSentence`/`quotationClaimCode` — the "preserve literal token equalities" caveat).
+MVP for most of the demonstrative payoff: DP + `QuotationTheoryPresentation` + one flagship
+unconditional corollary (e.g. paradox resistance over LIA), not the full endpoint tail.
+
 ## Verification and commit discipline
 
 Before any commit, smallest relevant build first, then:
