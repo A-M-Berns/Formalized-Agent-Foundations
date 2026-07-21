@@ -8,7 +8,7 @@ The active major effort is a full Lean 4 formalization of **Logical Induction**
 — read it before touching `LogicalInduction/`. Every node carries the paper's real
 `\label`; mirror those labels in comments so status maps back to the dependency graph.
 
-The finished `Barasz/` formalization is the model for disclosure discipline: a clean
+The finished `ModalAgents/` formalization is the model for disclosure discipline: a clean
 proof with its two unproved facts named, cited, and isolated in the README's "Axioms"
 section. Do the same kind of honest accounting everywhere.
 

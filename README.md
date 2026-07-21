@@ -107,7 +107,7 @@ not claim that stronger scope.
 
 ## Barasz et al. (2014) *Robust Cooperation in the Prisoner's Dilemma via Provability Logic*.
 
-The Barasz folder contains a formalization of this paper at the level of Gödel-Löb provability logic. It covers:
+The ModalAgents folder contains a formalization of this paper at the level of Gödel-Löb provability logic. It covers:
 
 * the modal agent definition from §4;
 * CooperateBot, DefectBot, FairBot, and PrudentBot;
@@ -135,11 +135,11 @@ and Löb's rule; its axiom report contains only `propext`, `Classical.choice`, a
 
 ### Files
 
-* `Barasz/GL.lean` — GL lemmas used by the agent proofs.
-* `Barasz/ModalAgent.lean` — modal agents and the four concrete agents.
-* `Barasz/FixedPoint.lean` — fixed-point assumptions and substitution congruence.
-* `Barasz/Cooperation.lean` — outcomes, cooperation/defection, and the main cooperation theorems.
-* `Barasz/Behavioral.lean` — behavioral equivalence for modal agents.
+* `ModalAgents/GL.lean` — GL lemmas used by the agent proofs.
+* `ModalAgents/ModalAgent.lean` — modal agents and the four concrete agents.
+* `ModalAgents/FixedPoint.lean` — fixed-point assumptions and substitution congruence.
+* `ModalAgents/Cooperation.lean` — outcomes, cooperation/defection, and the main cooperation theorems.
+* `ModalAgents/Behavioral.lean` — behavioral equivalence for modal agents.
 
 ### Scope
 

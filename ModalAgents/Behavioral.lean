@@ -6,7 +6,7 @@
     formalized as a GL-level equivalence of outcome formulas.
 -/
 
-import Barasz.Cooperation
+import ModalAgents.Cooperation
 
 open LO LO.Modal
 open LO.Entailment LO.Modal.Entailment

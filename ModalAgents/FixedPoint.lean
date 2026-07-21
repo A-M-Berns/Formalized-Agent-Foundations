@@ -13,7 +13,7 @@
   The substitution congruence below is the GL-level counterpart of §4, Lemma 4.5.
 -/
 
-import Barasz.ModalAgent
+import ModalAgents.ModalAgent
 
 open LO LO.Modal
 open LO.Entailment LO.Modal.Entailment

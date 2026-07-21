@@ -24,9 +24,9 @@ on top of the construction handoff (now in git history):
   `notes/1609.03543v5-main.tex`. Enforced by `scripts/check-paper-nodes.sh` (every cited
   label exists; every member carries one). `scripts/lint_paper_labels.py` is now blocking
   (every `theorem` ⇔ a paper node; no `private theorem`).
-- **Whole-repo axiom audit.** `AxiomAudit.lean` now also covers `Barasz/`, with the one
+- **Whole-repo axiom audit.** `AxiomAudit.lean` now also covers `ModalAgents/`, with the one
   intentional axiom `glFixedPoint_thm42` scoped precisely to the endpoints that use it via
-  `#assert_axioms_clean_except`. Barász endpoints that don't need it are asserted strictly
+  `#assert_axioms_clean_except`. ModalAgents endpoints that don't need it are asserted strictly
   clean.
 - **Duplication sweep.** Removed two genuine duplicate helper lemmas (`max_sub_max_neg`,
   `oneMinus_denote`). Construction/ has no duplicate *facts* — its parallel shapes
@@ -75,7 +75,7 @@ source and the paper.**
 
 The audit target is the audited inventory, already enumerated for you:
 
-- **`AxiomAudit.lean`** — Tier 1 (103 `#assert_axioms_clean` endpoints, incl. `Barasz`) and
+- **`AxiomAudit.lean`** — Tier 1 (103 `#assert_axioms_clean` endpoints, incl. `ModalAgents`) and
   Tier 2 (the `#assert_fields` boundary structures). This *is* the list of top-level
   theorems + the hypothesis-bearing structures.
 - **`notes/endpoint-inventory.md`** — the tiers' rationale and the judgment calls made
@@ -137,12 +137,12 @@ Two jobs testing whether Aristotle can discharge remaining hard pieces. **Job ID
 here now — a fresh context needs them to poll.** Trust rule: a returned proof is trusted
 only after it compiles in *this* repo; the kernel is the gate, never Aristotle's word.
 
-- **GL fixed-point axiom** (`glFixedPoint_thm42`, the one intentional Barász axiom).
+- **GL fixed-point axiom** (`glFixedPoint_thm42`, the one intentional ModalAgents axiom).
   Project id **`9226321a-32f8-414b-9d30-6ef06093b7f0`** (name `gl-fixedpoint`), submitted
   2026-07-20, `RUNNING` at last check (~50 min). Poll: `aristotle list` /
   `aristotle show 9226321a-32f8-414b-9d30-6ef06093b7f0`. Odds low (Foundation-dependent;
   toolchain one patch off; hard modal metatheorem). If it returns a proof, drop it into
-  `Barasz/FixedPoint.lean` replacing the `axiom`, rebuild, and re-run AxiomAudit — the
+  `ModalAgents/FixedPoint.lean` replacing the `axiom`, rebuild, and re-run AxiomAudit — the
   `#assert_axioms_clean_except glFixedPoint_thm42` block should then move to strict
   `#assert_axioms_clean`.
 - **Kraft inequality** (`kraft_inequality`, the Mathlib-only core of `M7-PREFIX-MACHINE`).
@@ -152,7 +152,7 @@ only after it compiles in *this* repo; the kernel is the gate, never Aristotle's
 **Scratchpad projects may be ephemeral** (session-specific dir):
 `…/scratchpad/gl-fixedpoint/` and `…/scratchpad/kraft/`. Both are tiny and reconstructible —
 the Kraft statement is in the scope note; the GL project is `require Foundation @ aada66ef…`
-+ the `Modalized`/`diag` defs + the axiom-as-`sorry` (see `Barasz/FixedPoint.lean:45`). If
++ the `Modalized`/`diag` defs + the axiom-as-`sorry` (see `ModalAgents/FixedPoint.lean:45`). If
 resubmitting, use `scripts/aristotle-prove.sh <project-dir> "<prompt>"`.
 
 ## Deliberately disclosed boundaries
@@ -172,14 +172,14 @@ Before any commit, smallest relevant build first, then:
 
 ```sh
 lake build
-rg -n '(^|[[:space:]])(sorry|admit)([[:space:]]|$)' LogicalInduction Barasz --glob '*.lean'
+rg -n '(^|[[:space:]])(sorry|admit)([[:space:]]|$)' LogicalInduction ModalAgents --glob '*.lean'
 ./scripts/check-paper-nodes.sh
 python3 scripts/lint_paper_labels.py
 git diff --check && git status --short
 ```
 
 Axiom reports of any new public endpoint must contain only `propext`, `Classical.choice`,
-`Quot.sound` (plus `glFixedPoint_thm42` for the Barász cooperation endpoints). Keep
+`Quot.sound` (plus `glFixedPoint_thm42` for the ModalAgents cooperation endpoints). Keep
 historical detail in git rather than appending superseded plans below the active handoff.
 
 ## Aristotle usage

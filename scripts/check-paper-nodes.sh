@@ -35,7 +35,7 @@ done < /tmp/_pn_used
 # plus 2-space continuation lines) is an endpoint. `#assert_fields` lines: only the first
 # ident (the structure) — the rest are its field names, not surface members themselves.
 # Only the `LogicalInduction` section participates in the Garrabrant paper-node convention;
-# the `Barasz/` section (after `end LogicalInduction`) mirrors a different paper and is
+# the `ModalAgents/` section (after `end LogicalInduction`) mirrors a different paper and is
 # axiom-checked by AxiomAudit's build, not by this label convention — so stop there.
 awk '
   /^end LogicalInduction/ { exit }

@@ -11,7 +11,7 @@
   The concrete agents are CooperateBot, DefectBot, FairBot, and PrudentBot.
 -/
 
-import Barasz.GL
+import ModalAgents.GL
 
 open LO LO.Modal
 

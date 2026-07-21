@@ -58,7 +58,7 @@ Corollaries:
   Prefer fewer, flatter, self-contained statements at the top level.
 - **Disclosure inventory.** The three intentional disclosures (`M7-PREFIX-MACHINE`,
   `M7-DUS-APPROX`, `M7-STRICT-SEPARATORS`) and every type-`(c)` substitution (including
-  `dd:fuel`) end up named, cited, and isolated Barasz-style in the README's honest
+  `dd:fuel`) end up named, cited, and isolated ModalAgents-style in the README's honest
   accounting — discoverable from the top, not from `notes/`.
 - **Docstring provenance.** Provenance annotations written at proof time stay; this phase
   may reformat them for consistency but never reconstructs them retroactively.

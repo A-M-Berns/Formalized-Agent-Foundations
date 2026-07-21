@@ -7,7 +7,7 @@
   arithmetical soundness theorem for GL.
 -/
 
-import Barasz.FixedPoint
+import ModalAgents.FixedPoint
 import Foundation.ProvabilityLogic.GL.Soundness
 
 open LO LO.Modal

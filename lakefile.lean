@@ -5,7 +5,7 @@ package agentFoundations where
   leanOptions := #[⟨`autoImplicit, false⟩]
 
 @[default_target]
-lean_lib Barasz where
+lean_lib ModalAgents where
   srcDir := "."
 
 @[default_target]

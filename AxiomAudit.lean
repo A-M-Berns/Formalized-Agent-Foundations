@@ -11,18 +11,18 @@ surface changes and must be flagged.
 The build fails if any listed endpoint acquires an axiom beyond `propext`,
 `Classical.choice`, `Quot.sound` (in particular `sorryAx`), or ceases to exist.
 
-Scope is the whole repository. The `Barasz/` section additionally permits the single
+Scope is the whole repository. The `ModalAgents/` section additionally permits the single
 intentional axiom `glFixedPoint_thm42` (GL fixed-point existence, not yet in Foundation;
-see `Barasz/FixedPoint.lean` and the README) on exactly the endpoints that rest on it,
-via `#assert_axioms_clean_except`; the Barasz endpoints that do not need it are asserted
+see `ModalAgents/FixedPoint.lean` and the README) on exactly the endpoints that rest on it,
+via `#assert_axioms_clean_except`; the ModalAgents endpoints that do not need it are asserted
 strictly clean.
 -/
 import Lean.Util.CollectAxioms
 import LogicalInduction.Properties
 import LogicalInduction.Construction
-import Barasz.Cooperation
-import Barasz.Behavioral
-import Barasz.FixedPoint
+import ModalAgents.Cooperation
+import ModalAgents.Behavioral
+import ModalAgents.FixedPoint
 
 open Lean Elab Command in
 /-- Fail elaboration unless every named declaration exists and depends on no axioms
@@ -37,7 +37,7 @@ elab "#assert_axioms_clean " ids:ident+ : command => do
 
 open Lean Elab Command in
 /-- Like `#assert_axioms_clean`, but additionally permits the one named axiom `extra`
-(for the intentionally axiomatized `Barasz/` fixed-point fact). Still fails on `sorryAx`
+(for the intentionally axiomatized `ModalAgents/` fixed-point fact). Still fails on `sorryAx`
 or any other axiom. -/
 elab "#assert_axioms_clean_except " extra:ident ids:ident+ : command => do
   let extraName ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo extra
@@ -344,14 +344,14 @@ deliberately. -/
 
 end LogicalInduction
 
-/-! ## Barasz — modal open-source game theory (Barász et al.)
+/-! ## ModalAgents — modal open-source game theory (Barász et al.)
 
 Endpoints that do not use GL fixed-point *existence* are strictly clean. -/
 
 #assert_axioms_clean subst_congr glFixedPoint_uniqueness
 
 /-! Endpoints resting on the sole intentional axiom `glFixedPoint_thm42` (GL fixed-point
-existence; see `Barasz/FixedPoint.lean` and the README "Axioms" section). The check still
+existence; see `ModalAgents/FixedPoint.lean` and the README "Axioms" section). The check still
 fails on `sorryAx` or any other axiom. -/
 
 #assert_axioms_clean_except glFixedPoint_thm42
