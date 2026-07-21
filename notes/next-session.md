@@ -2,16 +2,30 @@
 
 _Last updated: 2026-07-21. Branch: `logical-induction`._
 
-The active next task is the **fresh-context M7-ERRATA-AUDIT** (below). If you are a fresh
-context reading this: that is the whole point — you are the independent auditor. This
-handoff was written by an involved party; treat its framing and every docstring/provenance
-claim as *to be verified*, not trusted.
+The active next task is the **M7-QUOTE-DP meta-learning MVP** — the first genuinely
+*unconditional* epistemic result over the constructed `LIA` inductor. Full brief in "THE NEXT
+TASK" below; design, effort, and the go/no-go spike are in the `M7-QUOTE-DP` section further
+down. **Scope discipline for the MVP: build the *computation* (meta-learning) side only.**
+The *quotation* (introspection/self-trust/paradox) side is separately blocked by a vacuity
+obstruction (see below) and needs a frozen-boundary redesign — do **not** attempt it in the MVP.
 
-## Where things stand (end of consolidation)
+## Where things stand (audit + GL discharge + QUOTE-DP spike done, 2026-07-21)
 
-The **12/15 conditional+disclosed green endpoint is complete** and the consolidation phase
-(step 2 of the sequencing override in `CLAUDE.md`) is essentially done. This session landed,
-on top of the construction handoff (now in git history):
+The **12/15 conditional+disclosed green endpoint is complete**; consolidation (step 2 of the
+`CLAUDE.md` sequencing override) is done. Recent landings (older consolidation detail is in
+git history):
+
+- **`M7-ERRATA-AUDIT` complete** (`notes/m7-errata-audit.md`). No soundness defects on the
+  critical path. One disclosure-scope finding **F1** (introspection/self-trust/meta-learning
+  family conditional on an arithmetic-representability substrate no in-repo object inhabits),
+  **now upgraded** to a concrete **vacuity finding** on the quotation side (below).
+- **GL fixed-point axiom discharged** — the whole repo is now strictly axiom-free. Via the
+  vendored autoformalized `ProvabilityLogic/` sequent calculus (Aristotle); notations
+  `scoped` to avoid Foundation collisions. See the Aristotle section.
+- **`M7-QUOTE-DP` spike done — verdict GO.** Provability-in-`T` r.e. is assemblable (no
+  Foundation wall); details + recipe in the `M7-QUOTE-DP` section.
+
+Earlier consolidation landings (still true, now background):
 
 - **Paper-node inventory, two tiers, build-enforced.** `AxiomAudit.lean` (a
   `@[default_target]`, so `lake build`/CI runs it) is the endpoint inventory: Tier 1 = 103
@@ -38,99 +52,68 @@ on top of the construction handoff (now in git history):
   deleted; the comments are now self-contained). Includes a live `thm:ifp` paper-erratum
   note in `FinitePerturbations.lean` — see the errata-audit brief.
 
-**State:** working tree clean; full `lake build` green (2689 jobs); AxiomAudit clean.
-**8 commits on `logical-induction` are unpushed** (top is `bdb9e28`). Nothing pushed this
-session, per Anson's workflow.
+**State:** working tree clean; full `lake build` green (2720 jobs); AxiomAudit strictly clean
+(no intentional axioms anywhere). Several commits on `logical-induction` unpushed (per Anson's
+workflow, nothing is pushed without asking).
 
-## What remains after this (not just documentation)
+## What remains, in order
 
-Per the roadmap endpoint list: surface freeze ✓, consolidation/API/style ✓ (this session).
-Still open, in order:
-
-1. **This task — fresh-context M7-ERRATA-AUDIT** (below).
-2. **Human statement read-through** — Anson reads every top-level statement + definition
-   over the frozen surface. A verification gate, only Anson. Not started.
-3. **Paper comparison** — fidelity of each statement to Garrabrant et al. The paper-node
-   annotations are its scaffolding. Not started.
-4. **Optional construction** — the two Aristotle experiments in flight (below), and behind
-   Kraft the rest of `M7-PREFIX-MACHINE` for a 13/15 stretch (`notes/m7-prefix-machine-scope.md`).
-
----
-
-# THE NEXT TASK — M7-ERRATA-AUDIT (fresh-context adversarial audit)
-
-Mandated by `CLAUDE.md` ("Scheduled adversarial audit") as a **separate, fresh-context**
-statement-level pass, run **last** in the sequencing override. Clearing context and running
-it here satisfies the fresh-context requirement.
-
-## Mandate
-
-A kernel-clean build certifies each *body* matches its *statement*. It says nothing about
-whether the statement is the one we meant. Audit the **trust surface** — the top-level
-statements, their hypotheses, their conclusions, and the definitions they rest on — for the
-ways a statement can be green yet hollow. **Do not trust docstrings, provenance labels
-(`Def`/`P`/`C`/`S`/`T`/`N±`, `(a)`/`(b)`/`(c)`), or this handoff; verify against the Lean
-source and the paper.**
-
-## Scope (precisely defined — use it)
-
-The audit target is the audited inventory, already enumerated for you:
-
-- **`AxiomAudit.lean`** — Tier 1 (103 `#assert_axioms_clean` endpoints, incl. `ModalAgents`) and
-  Tier 2 (the `#assert_fields` boundary structures). This *is* the list of top-level
-  theorems + the hypothesis-bearing structures.
-- **`notes/endpoint-inventory.md`** — the tiers' rationale and the judgment calls made
-  building them (those calls are themselves fair game).
-- Paper source for fidelity: `notes/1609.03543v5-main.tex` (labels resolve via
-  `\label{...}`), PDF alongside.
-
-## The six failure modes to hunt (from CLAUDE.md)
-
-1. **Vacuous theorems** — hypotheses unsatisfiable or unrealizable, so the theorem is
-   about nothing. Especially: boundary structures whose field set (frozen in
-   `#assert_fields`) is not inhabitable for the intended objects.
-2. **Conclusion-in-hypothesis squeezes** — the conclusion is ≡ a hypothesis, or a
-   hypothesis does the work the proof should. (Docstrings self-flag these as kind `S`;
-   confirm each is honest, and find the unflagged ones.)
-3. **Oversold stubs** — a `T`/trivial or arithmetic proof standing in for real content;
-   most dangerous where an *exploiting trader* or an *e.c. certificate* should be the work
-   (`CLAUDE.md` load-bearing rule 1).
-4. **Type-`(c)` substitutions** — a weaker/different object stands in for the intended one.
-   `dd:fuel` (efficiency = fuel-clocked interpreter, not a complexity class) is the
-   repo-wide one and is disclosed; hunt for *undisclosed* local ones.
-5. **Degenerate non-vacuity** — a "non-empty"/existence witness that is a constant sequence
-   or otherwise trivial, so it proves inhabitation without proving anything real. Where
-   possible the non-vacuity guard should be discharged **by the M7 construction**, not a
-   stand-in witness — check that the constructors actually inhabit the boundaries their
-   consumers assume.
-6. **Off-loaded steps** — a hand-computation where a Mathlib/Foundation lemma should carry
-   it (a correctness-and-legibility smell, not necessarily a soundness bug).
-
-## Method
-
-- Start from the paper. For each Tier-1 endpoint, read its statement against its
-  `Paper node:` label in `main.tex`: does the Lean statement say what the paper's node
-  claims, with the same strength, or has a hypothesis been added / a conclusion weakened?
-- For each `_ofComputation` / `_ofRepresentation` / `_ofFeedbackTruth` construction-
-  discharged endpoint, verify the constructor genuinely inhabits the boundary (mode 5) and
-  that the discharged version is not weaker than the abstract one it replaces.
-- Cross-check the disclosed boundaries (below) are *only* the three intended, and that no
-  additional boundary is silently assumed inside a "constructed" witness.
-- The `thm:ifp` **paper erratum** in `Properties/FinitePerturbations.lean` (the appendix
-  proof's efficiency claim is false — finitely many *days* but unboundedly many sentences)
-  is a known live disclosure. Confirm the Lean statement handles it honestly (the
-  perturbation structure is *not* inhabited for every `ComputableMarket`) and is not sold
-  as more than it is. This item likely belongs in the README's disclosures too — flag if so.
-
-## Deliverable
-
-Write `notes/m7-errata-audit.md`: findings ranked most-severe first, each with the failure
-mode, the exact endpoint/file:line, the evidence, and a proposed disposition. An empty or
-near-empty report is a legitimate and good outcome — but only if genuinely verified, stated
-as such, with the method shown. **Fix nothing during the audit**; report, then let Anson
-triage. Green the build is not the goal here; honest findings are.
+1. **This task — M7-QUOTE-DP meta-learning MVP** (below): a concrete Σ₁ deductive process +
+   `ComputationTheoryPresentation`, proved consistent, discharging one meta-learning endpoint
+   over `LIA` unconditionally. Computation side only.
+2. **Confirm the quotation vacuity in Lean** (cheap, ~½ session) — a standalone audit
+   correction; can be done first or folded into (1). See the vacuity finding below.
+3. **Quotation-side redesign** — restrict `QuotationTheoryPresentation` to complementary
+   decisions (frozen-boundary change → re-freeze `#assert_fields` + re-run the audit), then
+   build the quotation DP + a paradox-resistance corollary over LIA. Bigger; touches frozen
+   surface. Not the MVP.
+4. **Human statement read-through** (Anson only) + **paper comparison** — the deferred
+   verification gates over the frozen surface.
+5. **Optional** — Kraft / `M7-PREFIX-MACHINE` for a 13/15 stretch (`notes/m7-prefix-machine-scope.md`).
 
 ---
+
+# THE NEXT TASK — M7-QUOTE-DP meta-learning MVP
+
+**Goal.** Produce the project's first *unconditional* epistemic theorem over the constructed
+`LIA` inductor: "there is a concrete computable deductive process `DP` such that `LIA` over
+`DP` provably learns provable halting patterns" (or a sibling meta-learning endpoint), with
+**no remaining hypotheses** — in particular the market non-vacuity `hworld` is *proved*, not
+assumed. This turns one `_ofComputation` endpoint from conditional-on-assumed-substrate into
+constructed-over-LIA. Read the `M7-QUOTE-DP` section below first (spike verdict + recipe).
+
+**Scope — computation side ONLY.** Build `ComputationTheoryPresentation DP T` (fixed schemas:
+`universalHaltingSchema`, …). Do **not** touch `QuotationTheoryPresentation` — it is blocked
+by the vacuity obstruction (below) and needs a frozen-boundary redesign, which is a separate,
+larger task. The computation presentation is consistently inhabitable; the quotation one is not.
+
+**Plan (est. ~4–5 focused sessions; tall poles flagged):**
+1. Fix `T := 𝗜𝚺₁`; gather instances (`Theory.Δ₁`, `𝗜𝚺₁ ⪯ T`, `SoundOnHierarchy 𝚺 1`,
+   `𝗥₀ ⪯ T`). ~½ session; risk = FFL instance resolution.
+2. **[tall pole A]** Assemble `REPred {z | T ⊢ universalHaltingSchema/[z]}` (and the refutes
+   duals) following `Foundation/FirstOrder/Incompleteness/Halting.lean:25-27`:
+   `Provable.definable` (Σ₁ via `definability`) + `re_iff_sigma1` + `Theory.Provable.sound`.
+   ~1 session; risk = Bootstrapping coding (`subst`/`⌜⌝`/`numeral`).
+3. **[tall pole B]** Wrap the r.e. semi-decider into a monotone `Finset Sentence` stage
+   function `D n` and prove `ComputableDeductiveProcess DP`. Reuse the proven dovetail infra
+   — `dovetailFound` / `polyFueled_dovetailFound` / `dovetailFound_mono`
+   (`Construction/Witnesses/M7Witnesses.lean:787+`). No "r.e. set → DP" helper exists yet, so
+   this glue is new but built on proven primitives. ~1 session; **residual risk = Primrec over
+   `Finset` (see [[li-primrec-natsqrt-blowup]] — scope `irreducible Nat.sqrt`).**
+4. Prove `enters`/`refutes` from enumeration coverage, and **`hworld`** (each stage
+   consistent, from `T`-consistency + fixed complementary schemas). ~1 session.
+5. Assemble `ComputationTheoryPresentation` and instantiate one meta-learning corollary over
+   `LIA` (consumer already exists in `Construction/Witnesses/ComputationSyntax.lean`). ~½ session.
+
+**Derisking move (recommended first sitting):** do tall pole B in isolation on a trivial
+predicate — build the computable `Finset`-stage program from `dovetailFound` and prove
+`ComputableDeductiveProcess`. If Primrec-over-`Finset` behaves, the ~week estimate is solid;
+if it fights back you learn it in one session, not a week. The spike cleared "provability is
+r.e."; it did **not** clear this piece.
+
+**The atom-coding caveat.** The stage program must emit *exactly* `haltingClaimSentence z`
+(and its negation) — the frozen coding. Preserve literal token/list equalities at the
+representation boundary; semantic equality is not enough for the witness (a repeated lesson).
 
 ## Aristotle experiments in flight (external state — survives context, IDs do not)
 
@@ -179,10 +162,34 @@ that family to the constructed `LIA`. Not a soundness bug (disclosed per-boundar
 README), but a disclosure-scope gap: "12/15 constructed" reads as if these results reach the
 constructed inductor; they do not.
 
+### Vacuity obstruction — computation side OK, quotation side blocked (traced 2026-07-21)
+
+Attempting the construction surfaced what the statement-level audit missed. The two
+presentations behave differently under the market non-vacuity hypothesis
+`hworld : ∀ n, ∃ v, v.ConsistentWith (DP.D n)` (`ConsistentWith v D := ∀ φ ∈ D, v.Holds φ`, so a
+stage containing both `X` and `∼X` has no consistent world):
+
+- **`ComputationTheoryPresentation` — consistently inhabitable.** Its enters/refutes fields
+  quantify over inputs `z` for **fixed** schemas. `T` consistent ⟹ never proves both
+  `haltingSchema/[z]` and `∼haltingSchema/[z]` ⟹ `haltingClaim z` and `∼haltingClaim z` never
+  co-occur. **This is the MVP target.**
+- **`QuotationTheoryPresentation` — NOT inhabitable alongside `hworld`.** `quote_positive_enters`/
+  `quote_negative_refutes` quantify over **arbitrary** `positive negative : ArithmeticSemisentence 1`.
+  Take `positive = negative = ⊤` (or `#0 = #0`): `T ⊢ ⊤/[i]` trivially, so `enters` forces the
+  atom `X = quotationClaimSentence ⊤ ⊤ i` into `DP` **and** `refutes` forces `∼X` in — an
+  inconsistent stage, so `hworld` is false. Hence **any** `Q : QuotationTheoryPresentation ⟹ ¬hworld`,
+  so the conjunction `(Q ∧ hworld)` in `lic_introspection_ofCode` / `lic_paradox_resistance_ofDiagonal`
+  / the `_ofCode`/`_ofRepresentation` endpoints is **unsatisfiable → those Tier-1 endpoints are
+  vacuously true**. This *upgrades* audit finding F1 from disclosure-scope to a genuine mode-1
+  vacuity, and is why the quotation side needs a frozen-boundary redesign (restrict the quote
+  fields to complementary decisions), not just a DP. **Confirm in Lean before acting** (derive
+  `False` from `Q + hworld`; ~½ session) — traced carefully but not yet kernel-checked.
+  See [[quotation-presentation-vacuity]].
+
 The fix is a genuine construction, and — unlike Brouwer/GL — **not blocked by any missing
 Foundation lemma**; the FFL pieces are already used by `M7-COMP-SYNTAX`/`M7-QUOTE-AFFINE`
 (`codeOfREPred`, `re_complete`, `DeductiveProcessComputation.union`, `deductiveStageCondition`).
-Shape:
+Shape (full family; the MVP does only step 1's computation half + a computation corollary):
 1. Build a concrete deductive process enumerating the theorems of a fixed Σ₁-sound theory
    `T` (e.g. `𝗜𝚺₁`), reusing the SCON stage/union machinery.
 2. Discharge `QuotationTheoryPresentation`/`ComputationTheoryPresentation` for it:
@@ -218,8 +225,10 @@ pattern; (2) turn that semi-decider into a growing computable `Finset Sentence` 
 pick `T` for `theory_sigmaOne`/`theory_deltaOne`; (5) instantiate the corollary over LIA. The
 one delicate boundary is the atom-coding alignment (the stage program must emit exactly
 `quotationClaimSentence`/`quotationClaimCode` — the "preserve literal token equalities" caveat).
-MVP for most of the demonstrative payoff: DP + `QuotationTheoryPresentation` + one flagship
-unconditional corollary (e.g. paradox resistance over LIA), not the full endpoint tail.
+**MVP (the active next task): the *computation* half only** — DP + `ComputationTheoryPresentation`
++ `hworld` + one meta-learning corollary over LIA (e.g. learns provable halting patterns). The
+quotation flagships (paradox resistance, self-trust) are the blocked side — see the vacuity
+obstruction above; they need the boundary redesign first, not this MVP.
 
 ## Verification and commit discipline
 

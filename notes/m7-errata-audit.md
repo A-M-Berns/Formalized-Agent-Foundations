@@ -27,6 +27,38 @@ read-through can start from a narrower surface.
 
 ## Findings (ranked)
 
+> **Post-audit upgrade (2026-07-21, F1 → F0).** A follow-up construction spike (recorded in
+> `notes/next-session.md`, `M7-QUOTE-DP`) upgraded F1 from a disclosure-scope note to a
+> **genuine mode-1 vacuity** on the quotation side. F1 below stands as originally written;
+> read F0 first.
+
+### F0 — MEDIUM / vacuity (mode 1). `QuotationTheoryPresentation` is unsatisfiable alongside the market non-vacuity hypothesis `hworld`, so the `_ofCode`/`_ofDiagonal`/`_ofRepresentation` endpoints are vacuously true.
+
+**Where.** `lic_introspection_ofCode`, `lic_paradox_resistance_ofDiagonal`, and the other
+`_ofCode`/`_ofRepresentation` endpoints (`Construction/Witnesses/QuotationAffine.lean`), each
+of which takes both `Q : QuotationTheoryPresentation DP T` and
+`hworld : ∀ n, ∃ v, v.ConsistentWith (DP.D n)`.
+
+**Failure scenario.** `PCWorld.ConsistentWith v D := ∀ φ ∈ D, v.Holds φ`, so a stage `D n`
+containing both `X` and `∼X` has no consistent world. `quote_positive_enters` /
+`quote_negative_refutes` (`QuotationAffine.lean:107-114`) quantify over **arbitrary**
+`positive negative : ArithmeticSemisentence 1`. Take `positive = negative = ⊤` (or `#0 = #0`):
+`T ⊢ ⊤/[i]` trivially, so `enters` forces `X = quotationClaimSentence ⊤ ⊤ i` into `DP` and
+`refutes` forces `∼X` in; by `mono` both land in one stage → that stage is inconsistent →
+`hworld` is false. Hence any `Q` implies `¬hworld`, the hypothesis conjunction is
+unsatisfiable, and the endpoints are vacuously true. Contrast the **fixed-schema**
+`ComputationTheoryPresentation` (`ComputationSyntax.lean:265`), which *is* consistently
+inhabitable (`T` consistent ⟹ never both `haltingSchema/[z]` and its negation).
+
+**Status.** Traced against the definitions, **not yet kernel-confirmed**; the honest next step
+is to derive `False` from `Q + hworld` in Lean (~½ session). Not a soundness bug (the theorems
+are true), but the quotation-substrate endpoints prove nothing until the boundary is fixed.
+
+**Disposition.** Restrict `quote_positive_enters`/`quote_negative_refutes` to complementary
+decisions (quantify over an `ArithmeticDecision`/`BooleanQuoteCode`, or add a complementarity
+hypothesis). This is a frozen-boundary change (`#assert_fields`) → re-freeze + re-run this
+audit, and it reworks the `reflected`/affine consumers. See `M7-QUOTE-DP` in the handoff.
+
 ### F1 — LOW / disclosure-framing. The introspection/self-trust/meta-learning span is conditional on an assumed representability substrate that no in-repo object inhabits, and never touches the constructed inductor.
 
 **Where.** `Construction/Witnesses/QuotationAffine.lean` (`lic_introspection_ofCode:3244`,
