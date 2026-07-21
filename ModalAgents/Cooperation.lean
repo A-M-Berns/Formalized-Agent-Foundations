@@ -15,15 +15,15 @@ open LO.Entailment LO.Modal.Entailment
 
 /-- Substitute atom 0 ↦ `β`, atoms 1,…,m ↦ `refs 0,…,refs (m-1)`;
 atoms > m unchanged. -/
-abbrev substFull (β : Formula ℕ) {m : ℕ} (refs : Fin m → Formula ℕ) : Substitution ℕ :=
+abbrev substFull (β : Modal.Formula ℕ) {m : ℕ} (refs : Fin m → Modal.Formula ℕ) : Modal.Substitution ℕ :=
   fun k => match k with
     | 0 => β
     | j + 1 => if h : j < m then refs ⟨j, h⟩ else .atom (j + 1)
 
 /-- For `k ≠ 0`, `substFull β refs k` is modalized in atom 0 whenever each
 `refs j` omits atom 0. -/
-lemma substFull_modalized_step {m : ℕ} (β : Formula ℕ)
-    (refs : Fin m → Formula ℕ) (hrefs : ∀ j, 0 ∉ (refs j).atoms)
+lemma substFull_modalized_step {m : ℕ} (β : Modal.Formula ℕ)
+    (refs : Fin m → Modal.Formula ℕ) (hrefs : ∀ j, 0 ∉ (refs j).atoms)
     {k : ℕ} (hk : k ≠ 0) : Modalized 0 (substFull β refs k) := by
   obtain ⟨k, rfl⟩ := Nat.exists_eq_succ_of_ne_zero hk
   show Modalized 0 (if h : k < m then refs ⟨k, h⟩ else .atom (k+1))
@@ -36,8 +36,8 @@ lemma substFull_modalized_step {m : ℕ} (β : Formula ℕ)
 
 /-- `X.formula⟦substFull β refs⟧` is modalized in atom 0 whenever each
 `refs i` omits atom 0. -/
-lemma modalized_substFull (X : ModalAgent) (β : Formula ℕ)
-    (refs : Fin X.arity → Formula ℕ) (hrefs : ∀ i, 0 ∉ (refs i).atoms) :
+lemma modalized_substFull (X : ModalAgent) (β : Modal.Formula ℕ)
+    (refs : Fin X.arity → Modal.Formula ℕ) (hrefs : ∀ i, 0 ∉ (refs i).atoms) :
     Modalized 0 (X.formula⟦substFull β refs⟧) :=
   modalized_subst (fun _ hk => substFull_modalized_step β refs hrefs hk)
     (X.modalized 0 (Nat.zero_le _))
@@ -45,7 +45,7 @@ lemma modalized_substFull (X : ModalAgent) (β : Formula ℕ)
 /-! ## Outcomes -/
 
 /-- GL formula corresponding to the paper's `ψ_{[X(Y)]}` (Barasz, §4). -/
-noncomputable def outcome (X Y : ModalAgent) : Formula ℕ :=
+noncomputable def outcome (X Y : ModalAgent) : Modal.Formula ℕ :=
   glFixedPoint 0
     (X.formula⟦substFull
       (Y.formula⟦substFull (.atom 0)
@@ -59,7 +59,7 @@ decreasing_by
 
 /-- Two-level operator. `F_of X Y (.atom 0)` is the formula whose
 GL fixed point is `outcome X Y`. -/
-noncomputable def F_of (X Y : ModalAgent) (p : Formula ℕ) : Formula ℕ :=
+noncomputable def F_of (X Y : ModalAgent) (p : Modal.Formula ℕ) : Modal.Formula ℕ :=
   X.formula⟦substFull
     (Y.formula⟦substFull p (fun j : Fin Y.arity => outcome X (Y.references j))⟧)
     (fun i : Fin X.arity => outcome Y (X.references i))⟧
@@ -81,16 +81,16 @@ decreasing_by have h := ModalAgent.rank_ref_lt X i; omega
 
 /-- `F_of X Y p` is modalized in atom 0 for any `p`: X.formula's atom-0
 occurrences are already under boxes, and the outer references omit atom 0. -/
-lemma F_of_modalized (X Y : ModalAgent) (p : Formula ℕ) : Modalized 0 (F_of X Y p) :=
+lemma F_of_modalized (X Y : ModalAgent) (p : Modal.Formula ℕ) : Modalized 0 (F_of X Y p) :=
   modalized_substFull X _ _ (fun _ => outcome_atoms_notMem _ _)
 
-/-! ## Substitution lemmas -/
+/-! ## Modal.Substitution lemmas -/
 
-/-- Substitution composition: `substFull β refs` post-composed with
+/-- Modal.Substitution composition: `substFull β refs` post-composed with
 `diag 0 χ` equals `substFull (β⟦diag 0 χ⟧) refs`, provided each `refs j`
 doesn't mention atom 0. -/
-lemma substFull_comp_diag_of_notMem (β χ : Formula ℕ) {m : ℕ}
-    (refs : Fin m → Formula ℕ) (hrefs : ∀ j, 0 ∉ (refs j).atoms) :
+lemma substFull_comp_diag_of_notMem (β χ : Modal.Formula ℕ) {m : ℕ}
+    (refs : Fin m → Modal.Formula ℕ) (hrefs : ∀ j, 0 ∉ (refs j).atoms) :
     (substFull β refs) ∘ (diag 0 χ) = substFull (β⟦diag 0 χ⟧) refs := by
   funext k
   show ((substFull β refs) k)⟦diag 0 χ⟧ = (substFull (β⟦diag 0 χ⟧) refs) k
@@ -106,20 +106,20 @@ lemma substFull_comp_diag_of_notMem (β χ : Formula ℕ) {m : ℕ}
       show diag 0 χ (j+1) = .atom (j+1)
       simp [diag]
 
-/-- Substitution identity: `F_of X Y (.atom 0)` with atom 0 instantiated
+/-- Modal.Substitution identity: `F_of X Y (.atom 0)` with atom 0 instantiated
 to `ψ` equals `F_of X Y ψ`. -/
-lemma F_of_subst (X Y : ModalAgent) (ψ : Formula ℕ) :
+lemma F_of_subst (X Y : ModalAgent) (ψ : Modal.Formula ℕ) :
     (F_of X Y (.atom 0))⟦diag 0 ψ⟧ = F_of X Y ψ := by
   unfold F_of
-  rw [← Formula.subst.def_comp,
+  rw [← Modal.Formula.subst.def_comp,
       substFull_comp_diag_of_notMem _ _ _ (fun _ => outcome_atoms_notMem _ _),
-      ← Formula.subst.def_comp,
+      ← Modal.Formula.subst.def_comp,
       substFull_comp_diag_of_notMem _ _ _ (fun _ => outcome_atoms_notMem _ _)]
   rfl
 
 /-- For zero-reference substitutions, changing the atom-0 replacement is the
 only nontrivial substitution case. -/
-lemma substFull_zero_congr (φ β γ : Formula ℕ) (refs : Fin 0 → Formula ℕ)
+lemma substFull_zero_congr (φ β γ : Modal.Formula ℕ) (refs : Fin 0 → Modal.Formula ℕ)
     (h : Modal.GL ⊢ β 🡘 γ) :
     Modal.GL ⊢ φ⟦substFull β refs⟧ 🡘 φ⟦substFull γ refs⟧ := by
   apply subst_congr
@@ -169,19 +169,19 @@ theorem outcome_fixed_point (X Y : ModalAgent) :
 /-! ## Concrete-agent formula reductions -/
 
 @[simp] lemma cooperateBot_formula_substFull
-    (β : Formula ℕ) {m : ℕ} (refs : Fin m → Formula ℕ) :
-    cooperateBot.formula⟦substFull β refs⟧ = (⊤ : Formula ℕ) := rfl
+    (β : Modal.Formula ℕ) {m : ℕ} (refs : Fin m → Modal.Formula ℕ) :
+    cooperateBot.formula⟦substFull β refs⟧ = (⊤ : Modal.Formula ℕ) := rfl
 
 @[simp] lemma defectBot_formula_substFull
-    (β : Formula ℕ) {m : ℕ} (refs : Fin m → Formula ℕ) :
-    defectBot.formula⟦substFull β refs⟧ = (⊥ : Formula ℕ) := rfl
+    (β : Modal.Formula ℕ) {m : ℕ} (refs : Fin m → Modal.Formula ℕ) :
+    defectBot.formula⟦substFull β refs⟧ = (⊥ : Modal.Formula ℕ) := rfl
 
 @[simp] lemma fairBot_formula_substFull
-    (β : Formula ℕ) {m : ℕ} (refs : Fin m → Formula ℕ) :
+    (β : Modal.Formula ℕ) {m : ℕ} (refs : Fin m → Modal.Formula ℕ) :
     fairBot.formula⟦substFull β refs⟧ = □β := rfl
 
 @[simp] lemma prudentBot_formula_substFull
-    (β : Formula ℕ) (refs : Fin 1 → Formula ℕ) :
+    (β : Modal.Formula ℕ) (refs : Fin 1 → Modal.Formula ℕ) :
     prudentBot.formula⟦substFull β refs⟧ = □β ⋏ □(∼□⊥ 🡒 ∼(refs 0)) := rfl
 
 /-! ## Cooperation predicates -/
@@ -274,26 +274,26 @@ theorem rank0_fairBot_implies_cooperateBot (X : ModalAgent) (h_rank : X.rank = 0
         φ⟦substFull (□(outcome X fairBot))
           (fun j : Fin 0 => outcome fairBot (X.references j))⟧ := by
       exact and₁ ⨀ h_to_box.some ⨀ (and₁ ⨀ hXFB_fp.some ⨀ hXF_proof)
-    have h_box_top : Modal.GL ⊢ □(outcome X fairBot) 🡘 (⊤ : Formula ℕ) := by
+    have h_box_top : Modal.GL ⊢ □(outcome X fairBot) 🡘 (⊤ : Modal.Formula ℕ) := by
       exact ⟨E_intro (C_of_conseq verum) (C_of_conseq (nec hXF_proof))⟩
     have h_to_top : Modal.GL ⊢
         φ⟦substFull (□(outcome X fairBot))
           (fun j : Fin 0 => outcome fairBot (X.references j))⟧ 🡘
-        φ⟦substFull (⊤ : Formula ℕ)
+        φ⟦substFull (⊤ : Modal.Formula ℕ)
           (fun j : Fin 0 => outcome fairBot (X.references j))⟧ :=
-      substFull_zero_congr φ (□(outcome X fairBot)) (⊤ : Formula ℕ)
+      substFull_zero_congr φ (□(outcome X fairBot)) (⊤ : Modal.Formula ℕ)
         (fun j : Fin 0 => outcome fairBot (X.references j)) h_box_top
     have h_phi_top : Modal.GL ⊢!
-        φ⟦substFull (⊤ : Formula ℕ)
+        φ⟦substFull (⊤ : Modal.Formula ℕ)
           (fun j : Fin 0 => outcome fairBot (X.references j))⟧ := by
       exact and₁ ⨀ h_to_top.some ⨀ h_phi_box
     have hCBX := outcome_cooperateBot X
     have h_to_cb : Modal.GL ⊢
         φ⟦substFull (outcome cooperateBot X)
           (fun j : Fin 0 => outcome cooperateBot (X.references j))⟧ 🡘
-        φ⟦substFull (⊤ : Formula ℕ)
+        φ⟦substFull (⊤ : Modal.Formula ℕ)
           (fun j : Fin 0 => outcome cooperateBot (X.references j))⟧ :=
-      substFull_zero_congr φ (outcome cooperateBot X) (⊤ : Formula ℕ)
+      substFull_zero_congr φ (outcome cooperateBot X) (⊤ : Modal.Formula ℕ)
         (fun j : Fin 0 => outcome cooperateBot (X.references j)) hCBX
     have hXCB_fp := outcome_fixed_point X cooperateBot
     have h_rhs_cb : Modal.GL ⊢!
@@ -311,7 +311,7 @@ theorem fairBot_vs_defectBot :
   intro ⟨ha⟩
   have h_box : Modal.GL ⊢! □(outcome defectBot fairBot) := and₁ ⨀ hα ⨀ ha
   have h_imp : Modal.GL ⊢! outcome defectBot fairBot 🡒 ⊥ := and₁ ⨀ hβ
-  have : Modal.GL ⊢! □(⊥ : Formula ℕ) := axiomK' (nec h_imp) ⨀ h_box
+  have : Modal.GL ⊢! □(⊥ : Modal.Formula ℕ) := axiomK' (nec h_imp) ⨀ h_box
   exact unprovable_box_bot ⟨this⟩
 
 /-- PrudentBot and FairBot mutually cooperate (Barasz, §3, Thm 3.2). -/
@@ -321,9 +321,9 @@ theorem prudentBot_vs_fairBot :
   have ⟨hFBvsPB⟩ := outcome_fairBot prudentBot
   have ⟨hFBvsDB⟩ := outcome_fairBot defectBot
   have ⟨hDBvsFB⟩ := outcome_defectBot fairBot
-  have h_FBvsDB_to_boxbot : Modal.GL ⊢! outcome fairBot defectBot 🡒 □(⊥ : Formula ℕ) :=
+  have h_FBvsDB_to_boxbot : Modal.GL ⊢! outcome fairBot defectBot 🡒 □(⊥ : Modal.Formula ℕ) :=
     C_trans (and₁ ⨀ hFBvsDB) (axiomK' (nec (and₁ ⨀ hDBvsFB)))
-  have h_consist : Modal.GL ⊢! □(∼□(⊥ : Formula ℕ) 🡒 ∼(outcome fairBot defectBot)) :=
+  have h_consist : Modal.GL ⊢! □(∼□(⊥ : Modal.Formula ℕ) 🡒 ∼(outcome fairBot defectBot)) :=
     nec (contra h_FBvsDB_to_boxbot)
   have h : Modal.GL ⊢! outcome prudentBot fairBot ⋏ outcome fairBot prudentBot :=
     lobian_circle (and₂ ⨀ hFBvsPB)
@@ -348,12 +348,12 @@ theorem prudentBot_vs_cooperateBot :
   have ⟨hα⟩ := outcome_prudentBot cooperateBot
   refine ⟨?_, cooperateBot_cooperates prudentBot⟩
   intro ⟨ha⟩
-  have h_right : Modal.GL ⊢! □(∼□(⊥:Formula ℕ) 🡒 ∼(outcome cooperateBot defectBot)) :=
+  have h_right : Modal.GL ⊢! □(∼□(⊥:Modal.Formula ℕ) 🡒 ∼(outcome cooperateBot defectBot)) :=
     and₂ ⨀ (and₁ ⨀ hα ⨀ ha)
   have ⟨h_cbdb⟩ := cooperateBot_cooperates defectBot
-  have h_flip : Modal.GL ⊢! □(outcome cooperateBot defectBot 🡒 □(⊥ : Formula ℕ)) :=
+  have h_flip : Modal.GL ⊢! □(outcome cooperateBot defectBot 🡒 □(⊥ : Modal.Formula ℕ)) :=
     axiomK' (nec CCNNC) ⨀ h_right
-  have h_boxbox : Modal.GL ⊢! □(□(⊥ : Formula ℕ)) :=
+  have h_boxbox : Modal.GL ⊢! □(□(⊥ : Modal.Formula ℕ)) :=
     axiomK' h_flip ⨀ (nec h_cbdb)
   exact unprovable_box_box_bot ⟨h_boxbox⟩
 
@@ -362,13 +362,13 @@ theorem prudentBot_vs_prudentBot : Cooperates prudentBot prudentBot := by
   have ⟨hα⟩ := outcome_prudentBot prudentBot
   have ⟨hg⟩ := outcome_prudentBot defectBot
   have ⟨hβ⟩ := outcome_defectBot prudentBot
-  have h_g_to_boxbot : Modal.GL ⊢! outcome prudentBot defectBot 🡒 □(⊥ : Formula ℕ) :=
+  have h_g_to_boxbot : Modal.GL ⊢! outcome prudentBot defectBot 🡒 □(⊥ : Modal.Formula ℕ) :=
     C_trans (C_trans (and₁ ⨀ hg) and₁) (axiomK' (nec (and₁ ⨀ hβ)))
-  have h_consist : Modal.GL ⊢! □(∼□(⊥:Formula ℕ) 🡒 ∼(outcome prudentBot defectBot)) :=
+  have h_consist : Modal.GL ⊢! □(∼□(⊥:Modal.Formula ℕ) 🡒 ∼(outcome prudentBot defectBot)) :=
     nec (contra h_g_to_boxbot)
   have h₁ : Modal.GL ⊢! □(outcome prudentBot prudentBot) 🡒
       □(outcome prudentBot prudentBot) ⋏
-      □(∼□(⊥:Formula ℕ) 🡒 ∼(outcome prudentBot defectBot)) :=
+      □(∼□(⊥:Modal.Formula ℕ) 🡒 ∼(outcome prudentBot defectBot)) :=
     CK_of_C_of_C C_id (C_of_conseq h_consist)
   exact ⟨lob_rule (C_trans h₁ (and₂ ⨀ hα))⟩
 

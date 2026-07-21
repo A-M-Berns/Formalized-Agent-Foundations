@@ -23,6 +23,16 @@ lean_lib AxiomAudit where
 lean_lib Scratchpad where
   srcDir := "."
 
+-- Autoformalized (Harmonic Aristotle) sequent-calculus development of the GL fixed-point
+-- theorem, discharging the former `glFixedPoint_thm42` axiom in `ModalAgents/FixedPoint.lean`.
+-- Kernel-gated like the Brouwer construction: its interior has not had a human line-by-line
+-- read-through. Its `Formula`-level notations are `scoped` so they do not collide with
+-- Foundation's modal notation in `ModalAgents`.
+lean_lib ProvabilityLogic where
+  srcDir := "."
+  globs := #[.submodules `ProvabilityLogic]
+  leanOptions := #[⟨`autoImplicit, true⟩]
+
 -- Fork of FormalizedFormalLogic/Foundation @ 83d98a36 with one patch class: three
 -- `Matrix.*` decls that shadow Mathlib names (`map`, `forall_iff`, `exists_iff`) renamed
 -- (`vecMap`, `vecForall_iff`, `vecExists_iff`) so Foundation co-imports with Mathlib

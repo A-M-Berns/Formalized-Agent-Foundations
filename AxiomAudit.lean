@@ -11,11 +11,12 @@ surface changes and must be flagged.
 The build fails if any listed endpoint acquires an axiom beyond `propext`,
 `Classical.choice`, `Quot.sound` (in particular `sorryAx`), or ceases to exist.
 
-Scope is the whole repository. The `ModalAgents/` section additionally permits the single
-intentional axiom `glFixedPoint_thm42` (GL fixed-point existence, not yet in Foundation;
-see `ModalAgents/FixedPoint.lean` and the README) on exactly the endpoints that rest on it,
-via `#assert_axioms_clean_except`; the ModalAgents endpoints that do not need it are asserted
-strictly clean.
+Scope is the whole repository, and it is now **strictly clean throughout**: the former
+sole intentional axiom `glFixedPoint_thm42` (GL fixed-point existence) has been discharged
+by the autoformalized `ProvabilityLogic/` sequent calculus (see `ModalAgents/FixedPoint.lean`),
+so every ModalAgents endpoint — including the cooperation results that rest on the GL fixed
+point — is asserted under `#assert_axioms_clean`. (`#assert_axioms_clean_except` is retained
+as a reusable tool but is no longer needed.)
 -/
 import Lean.Util.CollectAxioms
 import LogicalInduction.Properties
@@ -346,15 +347,14 @@ end LogicalInduction
 
 /-! ## ModalAgents — modal open-source game theory (Barász et al.)
 
-Endpoints that do not use GL fixed-point *existence* are strictly clean. -/
+Every ModalAgents endpoint is now strictly clean. The former sole intentional axiom
+`glFixedPoint_thm42` (GL fixed-point existence) is discharged by the autoformalized
+`ProvabilityLogic/` sequent calculus (see `ModalAgents/FixedPoint.lean`); `glFixedPoint_thm42`
+is a proved theorem, so the cooperation endpoints that rest on it are asserted strictly
+clean below rather than via `#assert_axioms_clean_except`. -/
 
-#assert_axioms_clean subst_congr glFixedPoint_uniqueness
-
-/-! Endpoints resting on the sole intentional axiom `glFixedPoint_thm42` (GL fixed-point
-existence; see `ModalAgents/FixedPoint.lean` and the README "Axioms" section). The check still
-fails on `sorryAx` or any other axiom. -/
-
-#assert_axioms_clean_except glFixedPoint_thm42
+#assert_axioms_clean
+  subst_congr glFixedPoint_uniqueness glFixedPoint_thm42
   glFixedPoint_spec outcome_fixed_point
   defectBot_defects cooperateBot_cooperates
   fairBot_vs_fairBot fairBot_vs_cooperateBot rank0_fairBot_implies_cooperateBot

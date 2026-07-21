@@ -120,24 +120,31 @@ The ModalAgents folder contains a formalization of this paper at the level of G�
 
 ### Axioms
 
-One standard GL fixed-point fact is currently axiomatized because it is not yet available in Foundation:
+**None.** Every ModalAgents endpoint reports only `propext`, `Classical.choice`, and
+`Quot.sound` (checked by `AxiomAudit.lean`).
 
-* `glFixedPoint_thm42`: fixed-point existence, in the single-variable form used by Barasz §4, Thm 4.2.
-
-This is the de Jongh-Sambin-Bernardi modal fixed-point theorem. It is prior to the modal
-agent framework, and Barasz et al do not provide a proof; they cite Lindström (1996) Thm 11
-as a reference (full citation in `FixedPoint.lean`).
+The one standard GL fact previously axiomatized — `glFixedPoint_thm42`, the de
+Jongh–Sambin–Bernardi modal fixed-point existence theorem (single-variable form; Barasz
+§4, Thm 4.2, which they state without proof, citing Lindström (1996) Thm 11) — is now
+**proved**. It is discharged through `ProvabilityLogic/`, an autoformalized (Harmonic
+Aristotle) sequent-calculus development: a de Jongh–Sambin construction via Maehara
+interpolation and Löb's rule, transported to Foundation's `Modal.GL` through finite Kripke
+completeness, with the `GlFixedPointBridge` translation in `FixedPoint.lean`. Like the
+Brouwer construction, it is **kernel-gated**: its statement and axiom report are audited,
+but its roughly 9,500-line generated `ProvabilityLogic/` interior has not received a human
+line-by-line read-through. `ProvabilityLogic`'s `Formula`-level notations are `scoped` so
+they do not collide with Foundation's modal notation.
 
 Fixed-point *uniqueness* (Barasz §4, Thm 4.3; Lindström Thm 12) is proved in
 `FixedPoint.lean` as `glFixedPoint_uniqueness`, via a boxed-equivalence substitution lemma
-and Löb's rule; its axiom report contains only `propext`, `Classical.choice`, and
-`Quot.sound`.
+and Löb's rule.
 
 ### Files
 
 * `ModalAgents/GL.lean` — GL lemmas used by the agent proofs.
 * `ModalAgents/ModalAgent.lean` — modal agents and the four concrete agents.
-* `ModalAgents/FixedPoint.lean` — fixed-point assumptions and substitution congruence.
+* `ModalAgents/FixedPoint.lean` — GL fixed-point existence/uniqueness theorems, the `ProvabilityLogic/` bridge, and substitution congruence.
+* `ProvabilityLogic/` — autoformalized sequent-calculus development discharging GL fixed-point existence (kernel-gated).
 * `ModalAgents/Cooperation.lean` — outcomes, cooperation/defection, and the main cooperation theorems.
 * `ModalAgents/Behavioral.lean` — behavioral equivalence for modal agents.
 
