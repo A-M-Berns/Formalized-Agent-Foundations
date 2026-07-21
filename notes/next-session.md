@@ -24,10 +24,11 @@ on top of the construction handoff (now in git history):
   `notes/1609.03543v5-main.tex`. Enforced by `scripts/check-paper-nodes.sh` (every cited
   label exists; every member carries one). `scripts/lint_paper_labels.py` is now blocking
   (every `theorem` ⇔ a paper node; no `private theorem`).
-- **Whole-repo axiom audit.** `AxiomAudit.lean` now also covers `ModalAgents/`, with the one
-  intentional axiom `glFixedPoint_thm42` scoped precisely to the endpoints that use it via
-  `#assert_axioms_clean_except`. ModalAgents endpoints that don't need it are asserted strictly
-  clean.
+- **Whole-repo axiom audit, now strictly clean throughout.** `AxiomAudit.lean` covers
+  `ModalAgents/` too. The former sole intentional axiom `glFixedPoint_thm42` has been
+  **discharged** (2026-07-21) via the autoformalized `ProvabilityLogic/` sequent calculus
+  (Aristotle job `9226321a…`, validated in-repo, notations scoped to avoid Foundation
+  collisions); every ModalAgents endpoint is now under strict `#assert_axioms_clean`.
 - **Duplication sweep.** Removed two genuine duplicate helper lemmas (`max_sub_max_neg`,
   `oneMinus_denote`). Construction/ has no duplicate *facts* — its parallel shapes
   (`*FromStages`/`*FromStageLists`, triangular/gap/frame families) are by-design over
@@ -137,14 +138,16 @@ Two jobs testing whether Aristotle can discharge remaining hard pieces. **Job ID
 here now — a fresh context needs them to poll.** Trust rule: a returned proof is trusted
 only after it compiles in *this* repo; the kernel is the gate, never Aristotle's word.
 
-- **GL fixed-point axiom** (`glFixedPoint_thm42`, the one intentional ModalAgents axiom).
-  Project id **`9226321a-32f8-414b-9d30-6ef06093b7f0`** (name `gl-fixedpoint`), submitted
-  2026-07-20, `RUNNING` at last check (~50 min). Poll: `aristotle list` /
-  `aristotle show 9226321a-32f8-414b-9d30-6ef06093b7f0`. Odds low (Foundation-dependent;
-  toolchain one patch off; hard modal metatheorem). If it returns a proof, drop it into
-  `ModalAgents/FixedPoint.lean` replacing the `axiom`, rebuild, and re-run AxiomAudit — the
-  `#assert_axioms_clean_except glFixedPoint_thm42` block should then move to strict
-  `#assert_axioms_clean`.
+- **GL fixed-point axiom** (`glFixedPoint_thm42`) — **DONE, integrated 2026-07-21.**
+  Aristotle job `9226321a-32f8-414b-9d30-6ef06093b7f0` returned a complete sorry-free proof.
+  Its ~9.5k-line `ProvabilityLogic/` sequent calculus was vendored into the repo (a
+  `lean_lib` in `lakefile.lean`), validated to build against our Foundation @ aada66ef
+  (868 jobs), and its `Formula`-level notations were made `scoped` to stop them colliding
+  with Foundation's modal notation in `ModalAgents`. The `axiom` in `FixedPoint.lean` is
+  replaced by a proved `theorem` via the `GlFixedPointBridge` translation; AxiomAudit now
+  asserts the cooperation endpoints strictly clean. Kernel-gated (interior not human-read),
+  disclosed in the README like Brouwer. Original download kept at
+  `…/scratchpad/gl-result/gl-fixedpoint_aristotle/`.
 - **Kraft inequality** (`kraft_inequality`, the Mathlib-only core of `M7-PREFIX-MACHINE`).
   **Prepared, not submitted** (awaiting Anson's go). Statement in
   `notes/m7-prefix-machine-scope.md`; Mathlib-only, validated to elaborate in-repo.
@@ -166,6 +169,32 @@ resubmitting, use `scripts/aristotle-prove.sh <project-dir> "<prompt>"`.
 These three are the only intentional disclosures at the 12/15 target. The audit should
 confirm no fourth boundary is assumed anywhere it isn't named.
 
+## Recorded future tranche — `M7-QUOTE-DP` (arithmetic-representability substrate)
+
+Surfaced by `M7-ERRATA-AUDIT` finding F1 (`notes/m7-errata-audit.md`). The
+introspection / self-trust / expectation-representation / meta-learning / paradox-resistance
+family is conditional on `QuotationTheoryPresentation` / `ComputationTheoryPresentation`
+(and the diagonal codes), which **no in-repo construction inhabits** — and nothing connects
+that family to the constructed `LIA`. Not a soundness bug (disclosed per-boundary in the
+README), but a disclosure-scope gap: "12/15 constructed" reads as if these results reach the
+constructed inductor; they do not.
+
+The fix is a genuine construction, and — unlike Brouwer/GL — **not blocked by any missing
+Foundation lemma**; the FFL pieces are already used by `M7-COMP-SYNTAX`/`M7-QUOTE-AFFINE`
+(`codeOfREPred`, `re_complete`, `DeductiveProcessComputation.union`, `deductiveStageCondition`).
+Shape:
+1. Build a concrete deductive process enumerating the theorems of a fixed Σ₁-sound theory
+   `T` (e.g. `𝗜𝚺₁`), reusing the SCON stage/union machinery.
+2. Discharge `QuotationTheoryPresentation`/`ComputationTheoryPresentation` for it:
+   `theory_sigmaOne`/`theory_deltaOne` from `T`'s strength; `quote_positive_enters` /
+   `quote_negative_refutes` from FFL provable-⇒-enumerated representability.
+3. Add a corollary instantiating the `_ofCode`/`_ofDiagonal`/`_ofRepresentation`/
+   `_ofComputation` endpoints over `LIA` on that DP — turning the family from
+   conditional-on-assumed-substrate into unconditional-over-a-concrete-inductor.
+   Would let the "12/15 constructed" headline honestly cover the self-reference span.
+
+M7-scale (multi-session); tractable and unblocked. Deferred by Anson 2026-07-21 (record only).
+
 ## Verification and commit discipline
 
 Before any commit, smallest relevant build first, then:
@@ -179,8 +208,9 @@ git diff --check && git status --short
 ```
 
 Axiom reports of any new public endpoint must contain only `propext`, `Classical.choice`,
-`Quot.sound` (plus `glFixedPoint_thm42` for the ModalAgents cooperation endpoints). Keep
-historical detail in git rather than appending superseded plans below the active handoff.
+`Quot.sound` — the whole repo (LogicalInduction and ModalAgents) is now strictly clean, with
+no intentional axioms. Keep historical detail in git rather than appending superseded plans
+below the active handoff.
 
 ## Aristotle usage
 
