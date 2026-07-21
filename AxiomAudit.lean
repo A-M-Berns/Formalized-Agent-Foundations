@@ -10,10 +10,19 @@ surface changes and must be flagged.
 
 The build fails if any listed endpoint acquires an axiom beyond `propext`,
 `Classical.choice`, `Quot.sound` (in particular `sorryAx`), or ceases to exist.
+
+Scope is the whole repository. The `Barasz/` section additionally permits the single
+intentional axiom `glFixedPoint_thm42` (GL fixed-point existence, not yet in Foundation;
+see `Barasz/FixedPoint.lean` and the README) on exactly the endpoints that rest on it,
+via `#assert_axioms_clean_except`; the Barasz endpoints that do not need it are asserted
+strictly clean.
 -/
 import Lean.Util.CollectAxioms
 import LogicalInduction.Properties
 import LogicalInduction.Construction
+import Barasz.Cooperation
+import Barasz.Behavioral
+import Barasz.FixedPoint
 
 open Lean Elab Command in
 /-- Fail elaboration unless every named declaration exists and depends on no axioms
@@ -23,6 +32,20 @@ elab "#assert_axioms_clean " ids:ident+ : command => do
     let name ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo id
     let axioms ← Lean.collectAxioms name
     let bad := axioms.filter (! [``propext, ``Classical.choice, ``Quot.sound].contains ·)
+    unless bad.isEmpty do
+      throwErrorAt id "'{name}' depends on disallowed axioms: {bad.toList}"
+
+open Lean Elab Command in
+/-- Like `#assert_axioms_clean`, but additionally permits the one named axiom `extra`
+(for the intentionally axiomatized `Barasz/` fixed-point fact). Still fails on `sorryAx`
+or any other axiom. -/
+elab "#assert_axioms_clean_except " extra:ident ids:ident+ : command => do
+  let extraName ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo extra
+  for id in ids do
+    let name ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo id
+    let axioms ← Lean.collectAxioms name
+    let allowed := [``propext, ``Classical.choice, ``Quot.sound, extraName]
+    let bad := axioms.filter (! allowed.contains ·)
     unless bad.isEmpty do
       throwErrorAt id "'{name}' depends on disallowed axioms: {bad.toList}"
 
@@ -320,3 +343,21 @@ deliberately. -/
 
 
 end LogicalInduction
+
+/-! ## Barasz — modal open-source game theory (Barász et al.)
+
+Endpoints that do not use GL fixed-point *existence* are strictly clean. -/
+
+#assert_axioms_clean subst_congr glFixedPoint_uniqueness
+
+/-! Endpoints resting on the sole intentional axiom `glFixedPoint_thm42` (GL fixed-point
+existence; see `Barasz/FixedPoint.lean` and the README "Axioms" section). The check still
+fails on `sorryAx` or any other axiom. -/
+
+#assert_axioms_clean_except glFixedPoint_thm42
+  glFixedPoint_spec outcome_fixed_point
+  defectBot_defects cooperateBot_cooperates
+  fairBot_vs_fairBot fairBot_vs_cooperateBot rank0_fairBot_implies_cooperateBot
+  fairBot_vs_defectBot prudentBot_vs_fairBot prudentBot_vs_defectBot
+  prudentBot_vs_cooperateBot prudentBot_vs_prudentBot
+  Cooperates.arithmeticLift modalAgent_behavioral
