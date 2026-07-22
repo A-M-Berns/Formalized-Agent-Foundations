@@ -1,5 +1,6 @@
 import LogicalInduction.Construction.Witnesses.ComputationSyntax
 import LogicalInduction.Construction.Witnesses.ConditioningPresentation
+import LogicalInduction.Construction.Witnesses.QuotationAffine
 import LogicalInduction.Construction.LIACompiler
 import Foundation.FirstOrder.Incompleteness.Halting
 
@@ -14,9 +15,15 @@ the market non-vacuity hypothesis `hworld`, which is *proved* here from `T`-cons
 than assumed.  Feeding it to the constructed `LIA` inductor yields the project's first
 **unconditional** epistemic theorem over `LIA` (`lia_learns_halting_patterns_unconditional`).
 
-Scope: the *computation* side only (`ComputationTheoryPresentation`), which is consistently
-inhabitable.  The *quotation* side is separately blocked by a vacuity obstruction and is not
-attempted here (see `notes/next-session.md`).
+The **same** computable process also inhabits the redesigned code-indexed
+`QuotationTheoryPresentation` (event tags 6/7 enumerate the quotation atoms), so
+`quotationPresentation` + `theoremDP_hworld` jointly certify that `Q ∧ hworld` is
+satisfiable (`quotation_presentation_nonvacuous`) — the fix for the old free-schema
+quotation vacuity.  Because quotation folds a decidable-decision selector into the numeral
+of *fixed* universal schemas (`universalQuotePos`/`universalQuoteNeg`), its instances are
+enumerable by the very same `provable_instances_re`; the positive/negative fibers are the
+value-1/value-0 fibers of one deterministic computation, hence mutually exclusive, which is
+what keeps `hworld` consistent (tags 6/7).
 
 The result is unconditional and strictly axiom-clean: tall pole A (provability of schema
 instances is r.e.), the representation coverage, the non-vacuity world `hworld`, and tall
@@ -54,9 +61,10 @@ lemma provable_instances_re (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
 
 /-! ## The combined event stream
 
-An *event* is a code `e = ⟨tag, z⟩` with `tag ∈ {0,…,5}` selecting one of the six
-enters/refutes obligations and `z` its input.  A single r.e. predicate `Fires` and a single
-atom map `atom` capture all six; the deductive process enumerates the fired atoms. -/
+An *event* is a code `e = ⟨tag, z⟩` with `tag ∈ {0,…,7}` selecting one of the eight
+enters/refutes obligations (six computation tags 0–5, two quotation tags 6–7) and `z` its
+input (for quotation, `z = ⟨code, input⟩`).  A single r.e. predicate `Fires` and a single
+atom map `atom` capture all eight; the deductive process enumerates the fired atoms. -/
 
 variable (T : ArithmeticTheory)
 
@@ -69,6 +77,8 @@ noncomputable def eventAtom (e : ℕ) : Sentence :=
   | 3 => ∼boundedHaltingClaimSentence e.unpair.2
   | 4 => inconsistencyClaimSentence e.unpair.2
   | 5 => ∼consistencyClaimSentence e.unpair.2
+  | 6 => quoteAtom e.unpair.2
+  | 7 => ∼quoteAtom e.unpair.2
   | _ => ⊤
 
 /-- The provability obligation an event fires on. -/
@@ -80,6 +90,8 @@ def eventFires (e : ℕ) : Prop :=
   | 3 => T ⊢ universalBoundedFailureSchema/[↑e.unpair.2]
   | 4 => T ⊢ universalHaltingSchema/[↑e.unpair.2]
   | 5 => T ⊢ universalHaltingSchema/[↑e.unpair.2]
+  | 6 => T ⊢ universalQuotePos/[↑e.unpair.2]
+  | 7 => T ⊢ universalQuoteNeg/[↑e.unpair.2]
   | _ => False
 
 /-- Substitution commutes with negation, so the tag-1 obligation is provability of a schema
@@ -92,9 +104,11 @@ lemma eventFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
       (e.unpair.1 = 2 ∧ T ⊢ universalBoundedHaltingSchema/[↑e.unpair.2]) ∨
       (e.unpair.1 = 3 ∧ T ⊢ universalBoundedFailureSchema/[↑e.unpair.2]) ∨
       (e.unpair.1 = 4 ∧ T ⊢ universalHaltingSchema/[↑e.unpair.2]) ∨
-      (e.unpair.1 = 5 ∧ T ⊢ universalHaltingSchema/[↑e.unpair.2]) := by
+      (e.unpair.1 = 5 ∧ T ⊢ universalHaltingSchema/[↑e.unpair.2]) ∨
+      (e.unpair.1 = 6 ∧ T ⊢ universalQuotePos/[↑e.unpair.2]) ∨
+      (e.unpair.1 = 7 ∧ T ⊢ universalQuoteNeg/[↑e.unpair.2]) := by
     funext e
-    rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | n <;>
+    rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | _ | _ | n <;>
       simp [eventFires, h]
   rw [key]
   -- Each conjunct is (computable tag-equality) ∧ (r.e. provability of a schema instance).
@@ -113,7 +127,8 @@ lemma eventFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
     exact h
   refine ((htag 0).and (hsub _)).or (((htag 1).and hnegsub).or
     (((htag 2).and (hsub _)).or (((htag 3).and (hsub _)).or
-      (((htag 4).and (hsub _)).or ((htag 5).and (hsub _))))))
+      (((htag 4).and (hsub _)).or (((htag 5).and (hsub _)).or
+        (((htag 6).and (hsub _)).or ((htag 7).and (hsub _))))))))
 
 /-- A partial-recursive semi-decider for `eventFires`: `code.eval e` halts iff `e` fires. -/
 lemma exists_eventCode [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
@@ -187,6 +202,9 @@ noncomputable def provabilityWorld : PCWorld := fun m =>
     T ⊢ universalBoundedHaltingSchema/[↑m.unpair.2.unpair.2]
   else if m.unpair.1 = ComputationClaimKind.inconsistency.godelCode then
     T ⊢ universalHaltingSchema/[↑m.unpair.2.unpair.2]
+  else if m.unpair.1 = 4 then
+    -- quotation atoms (tag 4): believe iff the positive folded universal schema is provable
+    T ⊢ universalQuotePos/[↑m.unpair.2.unpair.2.unpair.2]
   else False
 
 @[simp] lemma holds_atom (v : PCWorld) (m : ℕ) :
@@ -219,6 +237,11 @@ noncomputable def provabilityWorld : PCWorld := fun m =>
   simp [provabilityWorld, consistencyClaim, ComputationClaim.godelCode,
     ComputationClaimKind.godelCode, Nat.unpair_pair]
 
+@[simp] lemma provabilityWorld_quote (w : ℕ) :
+    (provabilityWorld T) (quotationClaimCode universalQuotePos universalQuoteNeg w) ↔
+      T ⊢ universalQuotePos/[↑w] := by
+  simp [provabilityWorld, quotationClaimCode, ComputationClaimKind.godelCode, Nat.unpair_pair]
+
 /-- **Non-vacuity (`hworld`).** The provability world is consistent with every stage. -/
 lemma theoremDP_hworld [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (n : ℕ) :
     (provabilityWorld T).ConsistentWith ((theoremDP T).D n) := by
@@ -232,7 +255,7 @@ lemma theoremDP_hworld [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     exact ((exists_eventCode T).choose_spec e).mp
       (Part.dom_iff_mem.mpr ⟨out, Nat.Partrec.Code.evaln_sound hout⟩)
   -- Case on the event tag.
-  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | m
+  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | _ | _ | m
   · -- tag 0: positive halting
     simp only [eventFires, h] at hfires
     simpa only [eventAtom, h, haltingClaimSentence, computationClaimSentence, holds_atom,
@@ -263,6 +286,20 @@ lemma theoremDP_hworld [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
       provabilityWorld_inconsistency] using hfires
   · -- tag 5: ∼consistency, always disbelieved
     simp [eventAtom, h, consistencyClaimSentence, computationClaimSentence]
+  · -- tag 6: positive quotation
+    simp only [eventFires, h] at hfires
+    simpa only [eventAtom, h, quoteAtom, quotationClaimSentence, holds_atom,
+      provabilityWorld_quote] using hfires
+  · -- tag 7: ∼quotation, ruled out by determinism (positive/negative fibers are exclusive)
+    simp only [eventFires, h] at hfires
+    simp only [eventAtom, h, quoteAtom, quotationClaimSentence, holds_not,
+      holds_atom, provabilityWorld_quote]
+    intro hpos
+    have hp : quotePos e.unpair.2.unpair.1 e.unpair.2.unpair.2 :=
+      (re_complete (T := T) universalQuotePos_re (x := e.unpair.2)).mpr (by simpa using hpos)
+    have hn : quoteNeg e.unpair.2.unpair.1 e.unpair.2.unpair.2 :=
+      (re_complete (T := T) universalQuoteNeg_re (x := e.unpair.2)).mpr (by simpa using hfires)
+    exact quotePos_quoteNeg_exclusive _ _ ⟨hp, hn⟩
   · -- default tag: atom is ⊤, always held
     simp only [eventAtom, h]
     show LO.Propositional.Formula.Boolean.val (provabilityWorld T) ⊤
@@ -315,9 +352,16 @@ lemma eventAtom_prim : Primrec (fun e : ℕ => eventAtom e) := by
   set KH := Encodable.encode universalHaltingSchema with hKH
   set KBH := Encodable.encode universalBoundedHaltingSchema with hKBH
   set KnH := Encodable.encode (∼universalHaltingSchema : ArithmeticSemisentence 1) with hKnH
+  set KQP := Encodable.encode universalQuotePos with hKQP
+  set KQN := Encodable.encode universalQuoteNeg with hKQN
   -- Gödel-code builders `Nat.pair kind (Nat.pair schema z)`.
   have gc : ∀ k S : ℕ, Primrec (fun e : ℕ => Nat.pair k (Nat.pair S e.unpair.2)) := fun k S =>
     Primrec₂.natPair.comp (Primrec.const k) (Primrec₂.natPair.comp (Primrec.const S) hz)
+  -- Quotation Gödel-code builder `Nat.pair 4 (Nat.pair Kpos (Nat.pair Kneg z))`.
+  have gcQuote : Primrec (fun e : ℕ => Nat.pair 4 (Nat.pair KQP (Nat.pair KQN e.unpair.2))) :=
+    Primrec₂.natPair.comp (Primrec.const 4)
+      (Primrec₂.natPair.comp (Primrec.const KQP)
+        (Primrec₂.natPair.comp (Primrec.const KQN) hz))
   -- Positive/negated atom encoders from a Gödel-code function.
   have encA : ∀ {g : ℕ → ℕ}, Primrec g → Primrec (fun e => Nat.pair 1 (g e) + 1) :=
     fun hg => Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1) hg)
@@ -335,10 +379,12 @@ lemma eventAtom_prim : Primrec (fun e : ℕ => eventAtom e) := by
     (Primrec.ite (tagEq 3) (encN (gc 1 KBH))
     (Primrec.ite (tagEq 4) (encA (gc 2 KH))
     (Primrec.ite (tagEq 5) (encN (gc 3 KnH))
+    (Primrec.ite (tagEq 6) (encA gcQuote)
+    (Primrec.ite (tagEq 7) (encN gcQuote)
     (Primrec.const
-      (Nat.pair 2 (Nat.pair (Nat.pair 0 0 + 1) (Nat.pair 0 0 + 1)) + 1)))))))).of_eq ?_
+      (Nat.pair 2 (Nat.pair (Nat.pair 0 0 + 1) (Nat.pair 0 0 + 1)) + 1)))))))))).of_eq ?_
   intro e
-  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | m
+  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | _ | _ | m
   · simp [h, eventAtom, haltingClaimSentence, computationClaimSentence, haltingClaim,
       ComputationClaim.godelCode, ComputationClaimKind.godelCode, encode_atom, hKH]
   · simp [h, eventAtom, haltingClaimSentence, computationClaimSentence, haltingClaim,
@@ -353,8 +399,12 @@ lemma eventAtom_prim : Primrec (fun e : ℕ => eventAtom e) := by
       ComputationClaim.godelCode, ComputationClaimKind.godelCode, encode_atom, hKH]
   · simp [h, eventAtom, consistencyClaimSentence, computationClaimSentence, consistencyClaim,
       ComputationClaim.godelCode, ComputationClaimKind.godelCode, encode_negAtom, hKnH]
+  · simp [h, eventAtom, quoteAtom, quotationClaimSentence, quotationClaimCode,
+      encode_atom, hKQP, hKQN]
+  · simp [h, eventAtom, quoteAtom, quotationClaimSentence, quotationClaimCode,
+      encode_negAtom, hKQP, hKQN]
   · rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
-      if_neg (by omega), if_neg (by omega)]
+      if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega)]
     simp [eventAtom, h, encode_top]
 
 /-! ### Assembling the computation -/
@@ -451,6 +501,44 @@ noncomputable def theoremPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHi
     obtain ⟨k, hk⟩ := theoremDP_covers T this
     exact ⟨k, by simpa only [eventAtom, Nat.unpair_pair] using hk⟩
 
+/-- **The constructed quotation presentation — certifies the vacuity fix.**  The very same
+computable provability process `theoremDP` (whose stages also enumerate the code-indexed
+quotation atoms, tags 6/7) inhabits `QuotationTheoryPresentation`.  Its existence, together
+with the *proved* `theoremDP_hworld`, demonstrates that `Q ∧ hworld` is satisfiable — so the
+introspection / self-trust / expectation / paradox-resistance endpoints keyed on
+`QuotationTheoryPresentation` are **no longer vacuous**.
+Paper node: `thm:ref` -/
+noncomputable def quotationPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    QuotationTheoryPresentation (theoremDP T) T where
+  toComputationTheoryPresentation := theoremPresentation T
+  theory_sigmaOne := inferInstance
+  quote_positive_enters code input h := by
+    have : eventFires T (Nat.pair 6 (Nat.pair code input)) := by
+      simp only [eventFires, Nat.unpair_pair]; exact h
+    obtain ⟨k, hk⟩ := theoremDP_covers T this
+    exact ⟨k, by simpa only [eventAtom, Nat.unpair_pair] using hk⟩
+  quote_negative_refutes code input h := by
+    have : eventFires T (Nat.pair 7 (Nat.pair code input)) := by
+      simp only [eventFires, Nat.unpair_pair]; exact h
+    obtain ⟨k, hk⟩ := theoremDP_covers T this
+    exact ⟨k, by simpa only [eventAtom, Nat.unpair_pair] using hk⟩
+
+/-- **Quotation non-vacuity certificate (`N+`).**  For a Σ₁-sound `T ⊇ 𝗜𝚺₁` there is a
+deductive process carrying *both* a `QuotationTheoryPresentation` *and* the market
+non-vacuity hypothesis `hworld`.  So the conjunction `Q ∧ hworld` that every introspection /
+self-trust / expectation / paradox-resistance `_ofCode`/`_ofDiagonal`/`_ofRepresentation`
+endpoint consumes is **satisfiable** — those endpoints are no longer vacuously true, which
+the old free-schema `QuotationTheoryPresentation` made impossible (`positive = negative = ⊤`
+forced an inconsistent stage).  The code-indexed redesign (fixed universal schemas, selector
+folded into the numeral) is what makes this witness exist.
+Paper node: `thm:ref` -/
+theorem quotation_presentation_nonvacuous
+    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    ∃ (DP : DeductiveProcess) (_ : QuotationTheoryPresentation DP T),
+      ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) :=
+  ⟨theoremDP T, quotationPresentation T,
+    fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩⟩
+
 /-- **The MVP.** For a Σ₁-sound theory `T ⊇ 𝗜𝚺₁`, the constructed `LIA` inductor over the
 constructed provability deductive process learns every provably-halting pattern —
 **unconditionally**: the deductive process is constructed and proved computable, and the
@@ -475,6 +563,8 @@ theorem lia_learns_halting_patterns_unconditional
 #print axioms theoremDP_covers
 #print axioms theoremDP_hworld
 #print axioms theoremPresentation
+#print axioms quotationPresentation
+#print axioms quotation_presentation_nonvacuous
 #print axioms lia_learns_halting_patterns_unconditional
 
 end LogicalInduction

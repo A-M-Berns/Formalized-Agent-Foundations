@@ -31,15 +31,57 @@ blocked by the vacuity obstruction (below) and still needs a frozen-boundary red
 
 ---
 
-# 🎯 THE NEXT FOCUS — quotation / self-reference non-vacuity rescue
+# ✅ QUOTATION NON-VACUITY RESCUE — steps 1–2 DONE (2026-07-22)
+
+The quotation-side vacuity is **fixed and certified** (`logical-induction`, full build green,
+2720 jobs, strictly axiom-clean). What landed:
+
+- **Redesign (code-indexed), step 1.** `QuotationTheoryPresentation`'s two quote fields no
+  longer quantify over free schema pairs. They are now keyed by a selector `code : ℕ` and
+  `input`, with two **fixed** universal schemas `universalQuotePos`/`universalQuoteNeg`
+  (`= codeOfREPred` of the value-1 / value-0 fibers of the universal computation, folded pair
+  `⟨code,input⟩`). The `⊤,⊤` attack can no longer be phrased (schemas fixed & complementary).
+  Field **names unchanged** ⇒ `#assert_fields QuotationTheoryPresentation` still frozen; the
+  disclosed change is in field **types**. `BooleanQuoteCode`/`RationalQuoteCode`/
+  `ParameterizedDiagonalQuoteCode` re-shaped to carry `code` (+ completeness data);
+  `#assert_fields` for those three re-frozen in `AxiomAudit.lean`. `ArithmeticDecision`
+  (now dead) removed. Diagonal decoupled per plan (`represents_fixedpoint` faithfulness cert;
+  `diagonal_law` restated about `parameterizedFixedpoint body` directly).
+- **Construction + `hworld` (certify the fix), step 2.** The **same** computable `theoremDP`
+  (`ComputationDP.lean`) now also enumerates the quotation atoms (event tags 6/7), so it
+  inhabits the redesigned `QuotationTheoryPresentation` (`quotationPresentation`) **and**
+  `theoremDP_hworld` covers tags 6/7 (positive: coverage; negative: determinism/fiber
+  exclusivity via `re_complete`). `quotation_presentation_nonvacuous` is the explicit `N+`
+  certificate: `∃ DP, ∃ (_ : QuotationTheoryPresentation DP T), ∀ n, ∃ v, v.ConsistentWith
+  (DP.D n)` — i.e. `Q ∧ hworld` is satisfiable. Vacuity gone.
+
+**Disclosure owed & recorded (type-`(c)`-adjacent narrowing, `dd:quote-code`):** quotation now
+only quotes **computable/decidable decisions of the market state** (selector `code` decodes to
+a total `{0,1}` decider; positive = value-1 fiber, negative = value-0 fiber). This is *not* a
+new semantic restriction — the paper's dual-schema `ArithmeticDecision` already required dual
+weak representation (= decidability). It *is* a real modeling commitment on the presentation.
+The interface stays general over any `DP`/`T`; only the quotable-decision class is fixed. See
+docstrings in `QuotationAffine.lean` (`universalQuotePos`/`BooleanQuoteCode`) and
+`ComputationDP.lean` (`quotationPresentation`).
+
+**Remaining (step 3, follow-on):** instantiate the `_ofCode`/`_ofDiagonal`/`_ofRepresentation`
+endpoints over `liaHistory (theoremDP T)` — `_unconditional` corollaries for introspection /
+self-trust / expectations / paradox resistance. This is now unblocked (a real `Q ∧ hworld`
+exists over the constructed LIA DP); it is corollary plumbing, not a construction. Note the
+diagonal instantiation still *uses* the fixed point to build `truth_spec` (breaking the
+`truth n ↔ price(atom n) < p` circularity), per the resolved diagonal wrinkle below.
+
+---
+
+# 🎯 (superseded) THE NEXT FOCUS — quotation / self-reference non-vacuity rescue
 
 Anson's next focus (2026-07-22). The introspection / self-trust / expectation-representation /
 paradox-resistance family (`M7-QUOTE-AFFINE`, endpoints `lic_introspection_ofCode`,
 `lic_paradox_resistance_ofDiagonal`, `lic_self_trust_ofRepresentation`,
 `lic_expectations_of_probabilities_ofCode`, `lic_iterated_expectations_ofCode`, the
-`_ofRepresentation` net-update endpoints) is **currently vacuous** and must be rescued before
-it can be made unconditional over `LIA`. Full design analysis is in this session's transcript;
-the actionable distillation follows.
+`_ofRepresentation` net-update endpoints) was **vacuous** and needed rescue before
+it can be made unconditional over `LIA`. **Steps 1–2 are now DONE (see the section above);**
+this analysis is retained for the step-3 instantiation and the diagonal handling.
 
 ### The exact obstruction
 
@@ -186,7 +228,7 @@ by any missing Foundation lemma (`codeOfREPred`/`re_complete`/FFL fixed points a
 | **Conditioning** (`M7-SCON-*`) | Empty extra-DP; a *transformation* result (`IsLogicalInductor` of the conditioned history), `hworld` barely applies | Instantiate the union DP over LIA | **~½ session** |
 | **LUV combinations** (`M7-LUV-SYNTAX`) | Operational witness exists | Fold into the feedback instantiation | **~½ session** |
 | **Feedback / pseudorandomness** (`wub`, `M7-FEEDBACK-TRUTH/EMIT`) | Fully generic DP + `hworld` **assumed**; no concrete DP built | Build a concrete feedback DP + prove `hworld` + instantiate. May collapse to an independent-atom DP (free `hworld`) — **verify**; if not, a real construction | **~1–2 sessions** |
-| **Quotation / self-reference** (`M7-QUOTE-AFFINE`) | **Blocked & vacuous** (see THE NEXT FOCUS above) | Frozen-boundary redesign → build quotation DP + `hworld` (inhabiting `Q` certifies the fix) → instantiate; resolve diagonal | **~2–4 sessions**, touches frozen surface — the single largest/riskiest chunk |
+| **Quotation / self-reference** (`M7-QUOTE-AFFINE`) | **Vacuity FIXED & certified** (2026-07-22): code-indexed redesign done, `#assert_fields` re-frozen, `quotationPresentation` + `theoremDP_hworld` inhabit `Q ∧ hworld` (`quotation_presentation_nonvacuous`) | Step 3 only: instantiate `_ofCode`/`_ofDiagonal`/`_ofRepresentation` over `liaHistory (theoremDP T)` (corollary plumbing; diagonal `truth_spec` uses the fixed point) | **~1 session** |
 
 **Bottom line:** ~5–8 focused sessions, lopsided. The intellectual crux (r.e. provability
 substrate + proved `hworld`) is solved and reusable; ~4 families are near-trivial finishes

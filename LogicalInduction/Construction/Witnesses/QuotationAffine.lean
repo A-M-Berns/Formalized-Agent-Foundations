@@ -25,37 +25,6 @@ namespace LogicalInduction
 open Filter Topology
 open LO.FirstOrder LO.FirstOrder.Arithmetic
 
-/-! ## Dual arithmetic decisions -/
-
-/-- Positive and complementary arithmetic representations of a decidable predicate.
-Paper node: `thm:ref`, `thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` -/
-structure ArithmeticDecision (T : ArithmeticTheory) (truth : ℕ → Prop) where
-  positive : ArithmeticSemisentence 1
-  negative : ArithmeticSemisentence 1
-  positive_complete : ∀ (z : ℕ), truth z → T ⊢ positive/[↑z]
-  negative_complete : ∀ (z : ℕ), ¬truth z → T ⊢ negative/[↑z]
-  positive_standard : ∀ (z : ℕ), (ℕ ⊧ₘ positive/[↑z]) ↔ truth z
-  negative_standard : ∀ (z : ℕ), (ℕ ⊧ₘ negative/[↑z]) ↔ ¬truth z
-
-/-- FFL weak representation applied separately to a computable predicate and its
-complement gives the dual decision object needed by propositional quotation. -/
-noncomputable def ArithmeticDecision.ofComputable
-    {T : ArithmeticTheory} [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
-    {truth : ℕ → Prop} (htruth : ComputablePred truth) :
-    ArithmeticDecision T truth where
-  positive := codeOfREPred truth
-  negative := codeOfREPred (fun z => ¬truth z)
-  positive_complete z hz :=
-    (re_complete (T := T) htruth.to_re).mp hz
-  negative_complete z hz :=
-    (re_complete (T := T) htruth.not.to_re).mp hz
-  positive_standard z := by
-    simpa [models_iff, Semiformula.eval_substs, Matrix.constant_eq_singleton] using
-      (codeOfREPred_spec htruth.to_re (x := z))
-  negative_standard z := by
-    simpa [models_iff, Semiformula.eval_substs, Matrix.constant_eq_singleton] using
-      (codeOfREPred_spec htruth.not.to_re (x := z))
-
 /-! ## Compact public names and the proof bridge -/
 
 /-- Injective atom payload for a dual-schema arithmetic decision at one input.  Tag `4`
@@ -96,39 +65,132 @@ lemma quotationClaimSentence_poly
       ((PolyFueled.const (Encodable.encode negative)).pair hinput.code_poly))
   refine ⟨_, (((PolyFueled.const 1).pair hpayload).succ_comp).of_eq (fun _ => rfl)⟩
 
+/-! ## Universal computable quotation predicates
+
+The old quotation fields quantified over two *independent, arbitrary* schemas
+`positive negative : ArithmeticSemisentence 1`, keyed only by an `input`.  That freedom is
+what made the interface **vacuous** alongside the market non-vacuity hypothesis `hworld`:
+taking `positive = negative = ⊤` forces an atom and its negation into a common stage, so no
+world is consistent with it.  It also makes the deductive process **non-computable** (there
+is no uniform enumeration of provable instances over all schemas).
+
+The redesign folds a *decidable-decision selector* `code : ℕ` into the numeral of two
+**fixed** universal schemas, mirroring the computation side (`ComputationSyntax`), whose
+fixed complementary schemas are exactly what keep it non-vacuous *and* computably
+enumerable.  The positive and negative fibers of one partial-recursive computation are
+mutually exclusive by determinism, so the provability world can believe the positive
+literal without ever being forced into a contradiction, and the schema is a fixed constant
+so its instances are enumerable via `provable_instances_re`. -/
+
+/-- The partial-recursive computation named by `code`. -/
+noncomputable def decodedComputation (code : ℕ) : ℕ →. ℕ :=
+  Nat.Partrec.Code.eval (Denumerable.ofNat Nat.Partrec.Code code)
+
+/-- The positive fiber: computation `code` outputs `1` on `input`. -/
+def quotePos (code input : ℕ) : Prop := 1 ∈ decodedComputation code input
+/-- The negative fiber: computation `code` outputs `0` on `input`. -/
+def quoteNeg (code input : ℕ) : Prop := 0 ∈ decodedComputation code input
+
+/-- Positive and negative fibers of one deterministic computation never coincide. -/
+lemma quotePos_quoteNeg_exclusive (code input : ℕ) :
+    ¬ (quotePos code input ∧ quoteNeg code input) := by
+  rintro ⟨h1, h0⟩
+  exact absurd (Part.mem_unique h1 h0) (by decide)
+
+lemma decodedComputation_partrec (code : ℕ) : Nat.Partrec (decodedComputation code) :=
+  Nat.Partrec.Code.exists_code.mpr ⟨_, rfl⟩
+
+/-- For a partial-recursive `f`, the value-`v` fiber `{a | v ∈ f a}` is r.e. -/
+lemma repred_mem {f : ℕ →. ℕ} (hf : Nat.Partrec f) (v : ℕ) :
+    REPred (fun a => v ∈ f a) := by
+  have hf' : Partrec f := Partrec.nat_iff.mpr hf
+  have hassert : Partrec (fun p : ℕ × ℕ =>
+      Part.assert (p.2 = v) fun _ => Part.some ()) := by
+    have hce : Primrec (fun p : ℕ × ℕ => decide (p.2 = v)) :=
+      (Primrec.eq.comp Primrec.snd (Primrec.const v)).decide
+    refine (Partrec.cond hce.to_comp (Computable.const ()) Partrec.none).of_eq (fun p => ?_)
+    by_cases h : p.2 = v
+    · rw [Part.assert_pos h]; simp [h]
+    · rw [Part.assert_neg h]; simp [h]
+  have hg : Partrec (fun a => (f a).bind fun r => Part.assert (r = v) fun _ => Part.some ()) :=
+    hf'.bind hassert
+  refine hg.dom_re.of_eq (fun a => ?_)
+  simp [Part.dom_iff_mem, Part.mem_bind_iff, Part.mem_assert_iff, eq_comm]
+
+lemma quotePos_re (code : ℕ) : REPred (quotePos code) :=
+  repred_mem (decodedComputation_partrec code) 1
+lemma quoteNeg_re (code : ℕ) : REPred (quoteNeg code) :=
+  repred_mem (decodedComputation_partrec code) 0
+
+/-- The universal computation: run computation `z.unpair.1` on input `z.unpair.2`. -/
+noncomputable def universalComputation : ℕ →. ℕ :=
+  fun z => decodedComputation z.unpair.1 z.unpair.2
+
+lemma universalComputation_partrec : Nat.Partrec universalComputation := by
+  refine Partrec.nat_iff.mp ?_
+  exact (Nat.Partrec.Code.eval_part.comp
+    ((Computable.ofNat Nat.Partrec.Code).comp (Primrec.fst.comp Primrec.unpair).to_comp)
+    (Primrec.snd.comp Primrec.unpair).to_comp)
+
+/-- The fixed positive universal quotation schema; the selector `code` is folded into the
+numeral `⟨code, input⟩`. -/
+noncomputable def universalQuotePos : ArithmeticSemisentence 1 :=
+  codeOfREPred (fun z => quotePos z.unpair.1 z.unpair.2)
+/-- The fixed negative universal quotation schema. -/
+noncomputable def universalQuoteNeg : ArithmeticSemisentence 1 :=
+  codeOfREPred (fun z => quoteNeg z.unpair.1 z.unpair.2)
+
+lemma universalQuotePos_re : REPred (fun z : ℕ => quotePos z.unpair.1 z.unpair.2) :=
+  REPred.of_eq (repred_mem universalComputation_partrec 1) (fun _ => Iff.rfl)
+lemma universalQuoteNeg_re : REPred (fun z : ℕ => quoteNeg z.unpair.1 z.unpair.2) :=
+  REPred.of_eq (repred_mem universalComputation_partrec 0) (fun _ => Iff.rfl)
+
+/-- The public quotation literal for a folded selector/input pair `w = ⟨code, input⟩`. -/
+noncomputable def quoteAtom (w : ℕ) : Sentence :=
+  quotationClaimSentence universalQuotePos universalQuoteNeg w
+
 /-- A first-order arithmetic background and one generic proof-to-public-language
 translation.  Unlike the old quote packages this object contains no sentence family,
 LUV, price, affine combination, or asymptotic field.
+
+The quotation fields are **code-indexed** (`dd:quote-code`): a selector `code : ℕ` naming
+a decidable decision, folded into the numeral of the two fixed universal schemas
+`universalQuotePos`/`universalQuoteNeg`.  This kills the old `⊤,⊤` vacuity (the schemas are
+fixed and complementary) and makes the process computably enumerable.
 Paper node: `thm:ref`, `thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` -/
 structure QuotationTheoryPresentation
     (DP : DeductiveProcess) (T : ArithmeticTheory)
     extends ComputationTheoryPresentation DP T where
   theory_sigmaOne : 𝗜𝚺₁ ⪯ T
-  quote_positive_enters : ∀ (positive negative : ArithmeticSemisentence 1)
-      (input : ℕ),
-    T ⊢ positive/[↑input] →
-      ∃ k, quotationClaimSentence positive negative input ∈ DP.D k
-  quote_negative_refutes : ∀ (positive negative : ArithmeticSemisentence 1)
-      (input : ℕ),
-    T ⊢ negative/[↑input] →
-      ∃ k, (∼quotationClaimSentence positive negative input) ∈ DP.D k
+  quote_positive_enters : ∀ (code input : ℕ),
+    T ⊢ universalQuotePos/[↑(Nat.pair code input)] →
+      ∃ k, quoteAtom (Nat.pair code input) ∈ DP.D k
+  quote_negative_refutes : ∀ (code input : ℕ),
+    T ⊢ universalQuoteNeg/[↑(Nat.pair code input)] →
+      ∃ k, (∼quoteAtom (Nat.pair code input)) ∈ DP.D k
 
 /-! ## Boolean quote families -/
 
-/-- A uniformly named Boolean quote backed by a dual arithmetic decision.
+/-- A uniformly named Boolean quote backed by a code-indexed decidable decision.  The
+selector `code : ℕ` names a total decider; the two completeness fields translate the
+public truth predicate into provability of the folded universal schemas.
 Paper node: `thm:ref`, `thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` -/
 structure BooleanQuoteCode (T : ArithmeticTheory) (truth : ℕ → Prop) where
-  decision : ArithmeticDecision T truth
+  code : ℕ
+  pos_complete : ∀ input, truth input →
+    T ⊢ universalQuotePos/[↑(Nat.pair code input)]
+  neg_complete : ∀ input, ¬ truth input →
+    T ⊢ universalQuoteNeg/[↑(Nat.pair code input)]
 
 namespace BooleanQuoteCode
 
 noncomputable def sentence {T : ArithmeticTheory} {truth : ℕ → Prop}
     (q : BooleanQuoteCode T truth) (n : ℕ) : Sentence :=
-  quotationClaimSentence q.decision.positive q.decision.negative n
+  quoteAtom (Nat.pair q.code n)
 
 lemma sentence_poly {T : ArithmeticTheory} {truth : ℕ → Prop}
     (q : BooleanQuoteCode T truth) : PolySentenceCodes q.sentence :=
-  quotationClaimSentence_poly _ _ ⟨_, PolyFueled.id⟩
+  quotationClaimSentence_poly _ _ ⟨_, (PolyFueled.const q.code).pair PolyFueled.id⟩
 
 /-- Completed-theory worlds satisfy exactly the represented Boolean decision. -/
 lemma reflected
@@ -139,16 +201,45 @@ lemma reflected
   constructor
   · intro hholds
     by_contra hfalse
-    obtain ⟨k, hk⟩ := Q.quote_negative_refutes
-      q.decision.positive q.decision.negative n
-      (q.decision.negative_complete n hfalse)
+    obtain ⟨k, hk⟩ := Q.quote_negative_refutes q.code n (q.neg_complete n hfalse)
     have hneg := hv k (∼q.sentence n) hk
     exact (PCWorld.holds_neg v (q.sentence n)).mp hneg hholds
   · intro htrue
-    obtain ⟨k, hk⟩ := Q.quote_positive_enters
-      q.decision.positive q.decision.negative n
-      (q.decision.positive_complete n htrue)
+    obtain ⟨k, hk⟩ := Q.quote_positive_enters q.code n (q.pos_complete n htrue)
     exact hv k (q.sentence n) hk
+
+/-- Build a Boolean quote code from any decidable predicate: pick a total `{0,1}`-valued
+decider, name it by its `Code`, and discharge completeness from FFL weak representation of
+the folded universal fibers. -/
+noncomputable def ofComputable {T : ArithmeticTheory} [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    {truth : ℕ → Prop} (htruth : ComputablePred truth) : BooleanQuoteCode T truth := by
+  classical
+  -- `.choose` (not `obtain`) since the goal is data: `∃` cannot eliminate into `Type`.
+  have hcw := ComputablePred.computable_iff.1 htruth
+  set f : ℕ → Bool := hcw.choose with hfdef
+  have hf : Computable f := hcw.choose_spec.1
+  have htr : truth = fun a => (f a : Prop) := hcw.choose_spec.2
+  have hcode := Nat.Partrec.Code.exists_code.mp
+    (Partrec.nat_iff.mp (hf.cond (Computable.const (1 : ℕ)) (Computable.const (0 : ℕ))))
+  set c : Nat.Partrec.Code := hcode.choose with hcdef
+  have hc : Nat.Partrec.Code.eval c = fun a => Part.some (cond (f a) 1 0) := hcode.choose_spec
+  have hval : ∀ input, decodedComputation (Encodable.encode c) input =
+      Part.some (cond (f input) 1 0) := by
+    intro input
+    simp only [decodedComputation, Denumerable.ofNat_encode, hc]
+  have hpos : ∀ input, quotePos (Encodable.encode c) input ↔ truth input := by
+    intro input
+    simp only [quotePos, hval, Part.mem_some_iff, htr]
+    cases f input <;> simp
+  have hneg : ∀ input, quoteNeg (Encodable.encode c) input ↔ ¬ truth input := by
+    intro input
+    simp only [quoteNeg, hval, Part.mem_some_iff, htr]
+    cases f input <;> simp
+  refine ⟨Encodable.encode c, fun input htrue => ?_, fun input hfalse => ?_⟩
+  · refine (re_complete (T := T) universalQuotePos_re (x := Nat.pair (Encodable.encode c) input)).mp ?_
+    simpa [Nat.unpair_pair] using (hpos input).mpr htrue
+  · refine (re_complete (T := T) universalQuoteNeg_re (x := Nat.pair (Encodable.encode c) input)).mp ?_
+    simpa [Nat.unpair_pair] using (hneg input).mpr hfalse
 
 end BooleanQuoteCode
 
@@ -162,27 +253,28 @@ def decodedQuotationRat (z : ℕ) : ℚ :=
     decodedQuotationRat (Encodable.encode r) = r := by
   simp [decodedQuotationRat]
 
-/-- Threshold LUV determined only by its two fixed arithmetic schemas. -/
-noncomputable def arithmeticThresholdLUV
-    (positive negative : ArithmeticSemisentence 1) (n : ℕ) : LUV where
-  gt r := quotationClaimSentence positive negative
-    (Nat.pair n (Encodable.encode r))
+/-- Threshold LUV determined by a code selector, with the threshold rational folded into
+the universal-schema numeral alongside the code. -/
+noncomputable def arithmeticThresholdLUV (code n : ℕ) : LUV where
+  gt r := quoteAtom (Nat.pair code (Nat.pair n (Encodable.encode r)))
 
-/-- A rational-valued computation together with dual FFL threshold schemas and an honest
-polynomial emitter for the resulting threshold syntax.
+/-- A rational-valued computation together with a code-indexed decidable threshold decision
+and an honest polynomial emitter for the resulting threshold syntax.
 Paper node: `thm:ref`, `thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` -/
 structure RationalQuoteCode (T : ArithmeticTheory) (value : ℕ → ℚ) where
-  decision : ArithmeticDecision T (fun z =>
-    decodedQuotationRat z.unpair.2 < value z.unpair.1)
+  code : ℕ
   value_mem : ∀ n, 0 ≤ value n ∧ value n ≤ 1
-  threshold_poly : LUV.PolyThresholdCodeSeq (fun n =>
-    arithmeticThresholdLUV decision.positive decision.negative n)
+  pos_complete : ∀ (n : ℕ) (r : ℚ), r < value n →
+    T ⊢ universalQuotePos/[↑(Nat.pair code (Nat.pair n (Encodable.encode r)))]
+  neg_complete : ∀ (n : ℕ) (r : ℚ), value n < r →
+    T ⊢ universalQuoteNeg/[↑(Nat.pair code (Nat.pair n (Encodable.encode r)))]
+  threshold_poly : LUV.PolyThresholdCodeSeq (fun n => arithmeticThresholdLUV code n)
 
 namespace RationalQuoteCode
 
 noncomputable def luv {T : ArithmeticTheory} {value : ℕ → ℚ}
     (q : RationalQuoteCode T value) (n : ℕ) : LUV :=
-  arithmeticThresholdLUV q.decision.positive q.decision.negative n
+  arithmeticThresholdLUV q.code n
 
 lemma poly {T : ArithmeticTheory} {value : ℕ → ℚ}
     (q : RationalQuoteCode T value) : LUV.PolyThresholdCodeSeq q.luv :=
@@ -200,22 +292,13 @@ lemma reflected
   constructor
   · intro hr
     have hrQ : r < value n := by exact_mod_cast hr
-    obtain ⟨k, hk⟩ := Q.quote_positive_enters
-      q.decision.positive q.decision.negative
-      (Nat.pair n (Encodable.encode r))
-      (q.decision.positive_complete _ (by simpa using hrQ))
+    obtain ⟨k, hk⟩ := Q.quote_positive_enters q.code
+      (Nat.pair n (Encodable.encode r)) (q.pos_complete n r hrQ)
     exact hv k ((q.luv n).gt r) hk
   · intro hr
     have hrQ : value n < r := by exact_mod_cast hr
-    have hnot : ¬decodedQuotationRat
-        (Nat.pair n (Encodable.encode r)).unpair.2 <
-          value (Nat.pair n (Encodable.encode r)).unpair.1 := by
-      simp only [Nat.unpair_pair, decodedQuotationRat_encode]
-      linarith
-    obtain ⟨k, hk⟩ := Q.quote_negative_refutes
-      q.decision.positive q.decision.negative
-      (Nat.pair n (Encodable.encode r))
-      (q.decision.negative_complete _ hnot)
+    obtain ⟨k, hk⟩ := Q.quote_negative_refutes q.code
+      (Nat.pair n (Encodable.encode r)) (q.neg_complete n r hrQ)
     have hneg := hv k (∼(q.luv n).gt r) hk
     exact (PCWorld.holds_neg v ((q.luv n).gt r)).mp hneg
 
@@ -2228,26 +2311,29 @@ noncomputable def introspectionIntervalQuoteOfCode
 
 /-! ## Genuine parameterized diagonal syntax -/
 
-/-- A Boolean quote family whose positive schema is FFL's actual parameterized fixed
-point.  The decision completeness fields connect that fixed point and its complementary
-schema to the intended public truth predicate.
+/-- A Boolean quote family carrying an actual FFL parameterized fixed point `body` as a
+standalone faithfulness certificate: `represents_fixedpoint` says the fixed point
+standard-represents the same public truth predicate the code-indexed decision quotes.  The
+atom itself rides the universal code-indexed schema (so the deductive process stays
+computable); the fixed point is not the atom's schema, but a witness that a genuine
+self-referential arithmetic definition of `truth` exists.
 Paper node: `thm:lp` -/
 structure ParameterizedDiagonalQuoteCode
     (T : ArithmeticTheory) (truth : ℕ → Prop)
     extends BooleanQuoteCode T truth where
   body : ArithmeticSemisentence 2
-  positive_fixedpoint : decision.positive = parameterizedFixedpoint body
+  represents_fixedpoint : ∀ (z : ℕ), (ℕ ⊧ₘ (parameterizedFixedpoint body)/[↑z]) ↔ truth z
 
-/-- The fixed schema in a diagonal quote satisfies FFL's uniform diagonal law inside the
-presented arithmetic theory. -/
+/-- The genuine parameterized fixed point carried by a diagonal quote satisfies FFL's
+uniform diagonal law inside the presented arithmetic theory — a standalone honesty
+artifact that a real self-referential arithmetic sentence backs the quoted decision. -/
 lemma ParameterizedDiagonalQuoteCode.diagonal_law
     {DP : DeductiveProcess} {T : ArithmeticTheory} {truth : ℕ → Prop}
     (Q : QuotationTheoryPresentation DP T)
     (q : ParameterizedDiagonalQuoteCode T truth) :
-    T ⊢ ∀⁰ (q.decision.positive 🡘
-      q.body/[⌜q.decision.positive⌝, #0]) := by
+    T ⊢ ∀⁰ (parameterizedFixedpoint q.body 🡘
+      q.body/[⌜parameterizedFixedpoint q.body⌝, #0]) := by
   letI : 𝗜𝚺₁ ⪯ T := Q.theory_sigmaOne
-  rw [q.positive_fixedpoint]
   simpa using parameterized_diagonal₁ (T := T) q.body
 
 /-! ## Paradox-resistance quotation package -/
@@ -3301,13 +3387,13 @@ theorem lic_paradox_resistance_ofDiagonal
 noncomputable def trueBooleanQuoteCode
     (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
     BooleanQuoteCode T (fun _ ↦ True) :=
-  ⟨ArithmeticDecision.ofComputable (ComputablePred.const True)⟩
+  BooleanQuoteCode.ofComputable (ComputablePred.const True)
 
 /-- A concrete FFL-backed Boolean quote whose represented predicate is always false. -/
 noncomputable def falseBooleanQuoteCode
     (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
     BooleanQuoteCode T (fun _ ↦ False) :=
-  ⟨ArithmeticDecision.ofComputable (ComputablePred.const False)⟩
+  BooleanQuoteCode.ofComputable (ComputablePred.const False)
 
 /-- `N+`: the positive arithmetic quotation schema reaches the public process. -/
 lemma quotationRepresentation_positive_path
@@ -3316,8 +3402,7 @@ lemma quotationRepresentation_positive_path
     (Q : QuotationTheoryPresentation DP T) (n : ℕ) :
     ∃ k, (trueBooleanQuoteCode T).sentence n ∈ DP.D k := by
   let q := trueBooleanQuoteCode T
-  apply Q.quote_positive_enters q.decision.positive q.decision.negative n
-  exact q.decision.positive_complete n trivial
+  exact Q.quote_positive_enters q.code n (q.pos_complete n trivial)
 
 /-- `N+`: the complementary arithmetic schema reaches the public process as a negated
 literal, exercising the separate negative quotation path. -/
@@ -3327,10 +3412,8 @@ lemma quotationRepresentation_negative_path
     (Q : QuotationTheoryPresentation DP T) (n : ℕ) :
     ∃ k, (∼(falseBooleanQuoteCode T).sentence n) ∈ DP.D k := by
   let q := falseBooleanQuoteCode T
-  apply Q.quote_negative_refutes q.decision.positive q.decision.negative n
-  exact q.decision.negative_complete n (by simp)
+  exact Q.quote_negative_refutes q.code n (q.neg_complete n not_false)
 
-#print axioms ArithmeticDecision.ofComputable
 #print axioms quotationClaimCode_injective
 #print axioms quotationClaimSentence_poly
 #print axioms BooleanQuoteCode.reflected

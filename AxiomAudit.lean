@@ -215,14 +215,12 @@ deliberately. -/
   toAffineQuotePortfolio future_coherent
 #assert_fields AffineQuotePortfolio
   family poly scale scale_pos current_price bounded magnitude_le_one
-#assert_fields ArithmeticDecision
-  positive negative positive_complete negative_complete positive_standard negative_standard
 #assert_fields BitPrefixCodeComputation
   code code_poly
 #assert_fields BitPrefixSentences
   atom prefixSentence enumeration enumeration_covers prefix_codes holds_prefix finite_realizable
 #assert_fields BooleanQuoteCode
-  decision
+  code pos_complete neg_complete
 #assert_fields BoundedComputation
   machine input steps input_poly steps_poly truth_iff
 #assert_fields BoundedEvalnCompiler
@@ -306,7 +304,7 @@ deliberately. -/
 #assert_fields ParadoxResistanceQuote
   sentence sentence_codes width width_codes width_pos width_tendsto_zero diagonal_reflected lower_affine upper_affine
 #assert_fields ParameterizedDiagonalQuoteCode
-  toBooleanQuoteCode body positive_fixedpoint
+  toBooleanQuoteCode body represents_fixedpoint
 #assert_fields PatientSettlementClock
   active active_codes antitone active_through_envelope eventually_inactive settled_of_inactive
 #assert_fields PolyMachineCodes
@@ -322,7 +320,7 @@ deliberately. -/
 #assert_fields QuotationTheoryPresentation
   toComputationTheoryPresentation theory_sigmaOne quote_positive_enters quote_negative_refutes
 #assert_fields RationalQuoteCode
-  decision value_mem threshold_poly
+  code value_mem pos_complete neg_complete threshold_poly
 #assert_fields RepresentedDecidableClaims
   toRepresentedSemidecidableClaims disprovable_of_false
 #assert_fields RepresentedSemidecidableClaims
