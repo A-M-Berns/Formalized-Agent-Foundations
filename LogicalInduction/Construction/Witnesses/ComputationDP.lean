@@ -18,10 +18,9 @@ Scope: the *computation* side only (`ComputationTheoryPresentation`), which is c
 inhabitable.  The *quotation* side is separately blocked by a vacuity obstruction and is not
 attempted here (see `notes/next-session.md`).
 
-The single mechanical obligation left open is the primitive-recursiveness of the stage
-enumerator (`theoremStreamComputable`, tall pole B) — a fuel-clocked dovetailer over the
-provability semi-decider.  Everything the endpoints actually depend on epistemically — the
-representation coverage and the non-vacuity world — is proved.
+The result is unconditional and strictly axiom-clean: tall pole A (provability of schema
+instances is r.e.), the representation coverage, the non-vacuity world `hworld`, and tall
+pole B (the fuel-clocked enumerator is primitive recursive) are all discharged.
 -/
 
 namespace LogicalInduction
@@ -275,14 +274,149 @@ The stage function is a total fuel-clocked computation; its encoding is primitiv
 in the stage index.  Isolating this mechanical obligation keeps the epistemic content above
 fully proved. -/
 
-/-- TODO(blueprint:M7-QUOTE-DP tall-pole-B): the fuel-clocked dovetailer `theoremStage` has a
-primitive-recursive encoding in the stage index.  Requires Primrec support for
-`Finset.image`/`filter`/`range` and `evaln` over the sentence encoding (see
-[[li-primrec-natsqrt-blowup]]).  Mechanical; the epistemic endpoints do not depend on *how*
-it is computed, only that it is. -/
+/-- A finite sentence set given as a list's `toFinset` has the code of the canonical
+sorted, duplicate-free list — the reusable core of `sentenceFinsetUnionNorm_spec`. -/
+lemma encode_toFinset_eq (l : List Sentence) :
+    Encodable.encode l.toFinset =
+      Encodable.encode ((sentenceDedup l).insertionSort sentenceCodeLE) := by
+  classical
+  let canonical := (sentenceDedup l).insertionSort sentenceCodeLE
+  have hnodup : canonical.Nodup :=
+    (List.perm_insertionSort sentenceCodeLE _).nodup_iff.mpr (sentenceDedup_nodup l)
+  have hsorted : canonical.Pairwise sentenceCodeLE :=
+    List.pairwise_insertionSort sentenceCodeLE _
+  have htoFinset : canonical.toFinset = l.toFinset := by
+    ext φ; simp [canonical, mem_sentenceDedup]
+  have hsort : l.toFinset.sort sentenceCodeLE = canonical := by
+    rw [← htoFinset]
+    exact (List.toFinset_sort (r := sentenceCodeLE) hnodup).mpr hsorted
+  rw [encode_eq_encode_stageSort l.toFinset]
+  exact congrArg Encodable.encode hsort
+
+/-! ### The atom encoder is primitive recursive -/
+
+lemma encode_atom (m : ℕ) :
+    Encodable.encode (Formula.atom m : Sentence) = Nat.pair 1 m + 1 := rfl
+
+lemma encode_negAtom (m : ℕ) :
+    Encodable.encode (∼(Formula.atom m) : Sentence) =
+      Nat.pair 2 (Nat.pair (Nat.pair 1 m + 1) (Nat.pair 0 0 + 1)) + 1 := rfl
+
+lemma encode_top :
+    Encodable.encode (⊤ : Sentence) =
+      Nat.pair 2 (Nat.pair (Nat.pair 0 0 + 1) (Nat.pair 0 0 + 1)) + 1 := rfl
+
+/-- `eventAtom` is primitive recursive (its Gödel code is a bounded case split over the tag
+into fixed pairings of the fixed schema constants). -/
+lemma eventAtom_prim : Primrec (fun e : ℕ => eventAtom e) := by
+  apply Primrec.encode_iff.mp
+  have hz : Primrec (fun e : ℕ => e.unpair.2) := Primrec.snd.comp Primrec.unpair
+  have htag : Primrec (fun e : ℕ => e.unpair.1) := Primrec.fst.comp Primrec.unpair
+  set KH := Encodable.encode universalHaltingSchema with hKH
+  set KBH := Encodable.encode universalBoundedHaltingSchema with hKBH
+  set KnH := Encodable.encode (∼universalHaltingSchema : ArithmeticSemisentence 1) with hKnH
+  -- Gödel-code builders `Nat.pair kind (Nat.pair schema z)`.
+  have gc : ∀ k S : ℕ, Primrec (fun e : ℕ => Nat.pair k (Nat.pair S e.unpair.2)) := fun k S =>
+    Primrec₂.natPair.comp (Primrec.const k) (Primrec₂.natPair.comp (Primrec.const S) hz)
+  -- Positive/negated atom encoders from a Gödel-code function.
+  have encA : ∀ {g : ℕ → ℕ}, Primrec g → Primrec (fun e => Nat.pair 1 (g e) + 1) :=
+    fun hg => Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1) hg)
+  have encN : ∀ {g : ℕ → ℕ}, Primrec g →
+      Primrec (fun e => Nat.pair 2 (Nat.pair (Nat.pair 1 (g e) + 1) (Nat.pair 0 0 + 1)) + 1) :=
+    fun hg => Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
+      (Primrec₂.natPair.comp
+        (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1) hg))
+        (Primrec.const (Nat.pair 0 0 + 1))))
+  have tagEq : ∀ k : ℕ, PrimrecPred (fun e : ℕ => e.unpair.1 = k) := fun k =>
+    Primrec.eq.comp htag (Primrec.const k)
+  refine (Primrec.ite (tagEq 0) (encA (gc 0 KH))
+    (Primrec.ite (tagEq 1) (encN (gc 0 KH))
+    (Primrec.ite (tagEq 2) (encA (gc 1 KBH))
+    (Primrec.ite (tagEq 3) (encN (gc 1 KBH))
+    (Primrec.ite (tagEq 4) (encA (gc 2 KH))
+    (Primrec.ite (tagEq 5) (encN (gc 3 KnH))
+    (Primrec.const
+      (Nat.pair 2 (Nat.pair (Nat.pair 0 0 + 1) (Nat.pair 0 0 + 1)) + 1)))))))).of_eq ?_
+  intro e
+  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | m
+  · simp [h, eventAtom, haltingClaimSentence, computationClaimSentence, haltingClaim,
+      ComputationClaim.godelCode, ComputationClaimKind.godelCode, encode_atom, hKH]
+  · simp [h, eventAtom, haltingClaimSentence, computationClaimSentence, haltingClaim,
+      ComputationClaim.godelCode, ComputationClaimKind.godelCode, encode_negAtom, hKH]
+  · simp [h, eventAtom, boundedHaltingClaimSentence, computationClaimSentence,
+      boundedHaltingClaim, ComputationClaim.godelCode, ComputationClaimKind.godelCode,
+      encode_atom, hKBH]
+  · simp [h, eventAtom, boundedHaltingClaimSentence, computationClaimSentence,
+      boundedHaltingClaim, ComputationClaim.godelCode, ComputationClaimKind.godelCode,
+      encode_negAtom, hKBH]
+  · simp [h, eventAtom, inconsistencyClaimSentence, computationClaimSentence, inconsistencyClaim,
+      ComputationClaim.godelCode, ComputationClaimKind.godelCode, encode_atom, hKH]
+  · simp [h, eventAtom, consistencyClaimSentence, computationClaimSentence, consistencyClaim,
+      ComputationClaim.godelCode, ComputationClaimKind.godelCode, encode_negAtom, hKnH]
+  · rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
+      if_neg (by omega), if_neg (by omega)]
+    simp [eventAtom, h, encode_top]
+
+/-! ### Assembling the computation -/
+
+lemma theoremStage_eq_toFinset (c : Nat.Partrec.Code) (n : ℕ) :
+    theoremStage c n =
+      ((List.range (n + 1)).filterMap
+        (fun e => if (Nat.Partrec.Code.evaln n c e).isSome = true then some (eventAtom e)
+          else none)).toFinset := by
+  classical
+  ext φ
+  simp only [theoremStage, Finset.mem_image, Finset.mem_filter, Finset.mem_range,
+    List.mem_toFinset, List.mem_filterMap, List.mem_range]
+  constructor
+  · rintro ⟨e, ⟨he, hsome⟩, rfl⟩
+    exact ⟨e, he, by rw [if_pos hsome]⟩
+  · rintro ⟨e, he, hcond⟩
+    by_cases hs : (Nat.Partrec.Code.evaln n c e).isSome = true
+    · rw [if_pos hs] at hcond
+      exact ⟨e, ⟨he, hs⟩, Option.some_inj.mp hcond⟩
+    · rw [if_neg hs] at hcond; exact absurd hcond (by simp)
+
+lemma theoremStage_encode_prim (c : Nat.Partrec.Code) :
+    Primrec (fun n => Encodable.encode (theoremStage c n)) := by
+  -- The fuel-clocked dovetail list is primrec.
+  have hevaln : Primrec (fun p : ℕ × ℕ =>
+      (Nat.Partrec.Code.evaln p.1 c p.2).isSome) :=
+    Primrec.option_isSome.comp
+      (Nat.Partrec.Code.primrec_evaln.comp
+        ((Primrec.fst.pair (Primrec.const c)).pair Primrec.snd))
+  have hguncur : Primrec (fun p : ℕ × ℕ =>
+      if (Nat.Partrec.Code.evaln p.1 c p.2).isSome = true then some (eventAtom p.2)
+        else (none : Option Sentence)) := by
+    have hb : Primrec (fun p : ℕ × ℕ =>
+        bif (Nat.Partrec.Code.evaln p.1 c p.2).isSome then some (eventAtom p.2)
+          else (none : Option Sentence)) :=
+      Primrec.cond hevaln (Primrec.option_some.comp (eventAtom_prim.comp Primrec.snd))
+        (Primrec.const (none : Option Sentence))
+    exact hb.of_eq (fun p => by
+      cases hbb : (Nat.Partrec.Code.evaln p.1 c p.2).isSome <;> simp [hbb])
+  have hlist : Primrec (fun n : ℕ => (List.range (n + 1)).filterMap
+      (fun e => if (Nat.Partrec.Code.evaln n c e).isSome = true then some (eventAtom e)
+        else none)) :=
+    Primrec.listFilterMap (Primrec.list_range.comp Primrec.succ) hguncur.to₂
+  have hkey : (fun n => Encodable.encode (theoremStage c n)) =
+      (fun n => Encodable.encode
+        ((sentenceDedup ((List.range (n + 1)).filterMap
+          (fun e => if (Nat.Partrec.Code.evaln n c e).isSome = true then some (eventAtom e)
+            else none))).insertionSort sentenceCodeLE)) := by
+    funext n; rw [theoremStage_eq_toFinset, encode_toFinset_eq]
+  rw [hkey]
+  exact Primrec.encode.comp (sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp hlist))
+
+/-- **Tall pole B discharged.**  The provability deductive process is computable: one fixed
+partial-recursive program emits the encoded stage `D n` on input `n`. -/
 lemma theoremDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
     ComputableDeductiveProcess (theoremDP T) := by
-  sorry
+  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
+    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp (theoremStage_encode_prim (exists_eventCode T).choose)))
+  refine ⟨code, fun n => ?_⟩
+  rw [hcode]
+  exact Part.mem_some _
 
 /-! ## The presentation and the unconditional LIA endpoint -/
 
@@ -319,8 +453,9 @@ noncomputable def theoremPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHi
 
 /-- **The MVP.** For a Σ₁-sound theory `T ⊇ 𝗜𝚺₁`, the constructed `LIA` inductor over the
 constructed provability deductive process learns every provably-halting pattern —
-**unconditionally**: the market non-vacuity `hworld` is proved, not assumed.  (The single
-remaining obligation is the mechanical `theoremDP_computable`, tall pole B.)
+**unconditionally**: the deductive process is constructed and proved computable, and the
+market non-vacuity `hworld` is proved, not assumed.  No hypotheses remain beyond the theory
+instances and the (true) hypothesis that the machines provably halt.
 Paper node: `thm:halts` -/
 theorem lia_learns_halting_patterns_unconditional
     (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
