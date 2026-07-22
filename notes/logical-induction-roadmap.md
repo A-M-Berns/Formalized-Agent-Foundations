@@ -33,6 +33,27 @@ These are settled. If one fights Lean's type system, **surface it in the session
 
 - **`dd:fuel` — Efficiency is a fuel-clocked interpreter, not a complexity class.** `def:ec` (paper §3.3) is "computable in time polynomial in `n` (unary)," and the paper is explicitly *not wedded* to poly-time (§7.3 / `sec:bounds`); the load-bearing requirement is computable enumerability *with a clock*. The construction enumerates `(machine, integer-polynomial)` pairs and clips execution. **Never formalize `P` as a complexity class.** The reason total computable traders can't simply be quantified over is that they are not computably enumerable — the clock is what restores enumerability.
 
+  **Owed before "fully done" — the unit-cost seam (2026-07-22).** `PolyFueled c f`
+  (`Framework/Computable.lean:200`) bounds the fuel *and* the output value polynomially, and
+  is assembled only through a **loop-free** algebra (`const/id/pair/comp-succ`, no
+  `prec`/`rfind`), so every witness the repo builds has fixed-depth-bounded intermediate
+  values and is genuinely poly-time in the bit-cost sense. But the **class** `PolyFueled` is
+  broader than poly-bit-time: its definition admits codes with iterated `pair`/`prec`
+  squaring whose intermediate values are exponential-bit while output+fuel stay polynomial
+  (cost is counted as unit-cost `evaln` recursion steps, not bit operations). So the class
+  ⊋ poly-time, and the fuel model ↔ poly-time "equivalence" is *appealed to, not proved* —
+  and is in fact false as a class equivalence (only `poly-time ⊆ PolyFueled` is the true,
+  useful direction). This is currently disclosed, not eliminated. **Before the formalization
+  is *fully* done, a certainty-hardening pass is necessary** — the proportionate form
+  ("option A"): augment the `PolyFueled` capstone with a polynomial bound on the maximum
+  intermediate value's bit-size (a genuine bit-cost step count) and re-prove the ~4 loop-free
+  closure lemmas carrying it, so every exhibited trader/DP is certified genuinely poly-time
+  rather than merely poly-fuel. (Stronger alt: bake the bound into the `def:ec` definition —
+  a frozen-boundary change. Disproportionate alt: a resource-annotated TM↔partrec bridge,
+  which Mathlib lacks.) This is a consolidation-phase task over `Framework/Computable.lean`,
+  orthogonal to the property tail; until it lands, `dd:fuel` remains a live type-`(c)`
+  disclosure and "efficient" means "poly-fuel with poly output," not proved poly-bit-time.
+
 - **`dd:dsl` — Expressible features are a reified DSL with two semantics.** The paper (`def:tf`) defines an expressible feature as an algebraic expression over price features `pf φ`, rationals, `+`, `×`, `max(·,·)`, and safe reciprocation `max(1,·)⁻¹`; the footnote states the three properties that actually matter: features must be **(1) continuous, (2) compactly specifiable in poly time, (3) expressive enough**. So:
   - `EF.denote : EF → (History → ℝ)` — the continuous real-valued semantics. Feeds Brouwer (continuity is what breaks the price/trade circularity, §3.5 of the paper).
   - `EF.cost : EF → ℕ` — a syntactic size/complexity measure. Certifies efficient computability, both in the construction *and in every property proof's exploiting trader*.
