@@ -31,10 +31,24 @@ blocked by the vacuity obstruction (below) and still needs a frozen-boundary red
 
 ---
 
-# ✅ QUOTATION NON-VACUITY RESCUE — steps 1–2 DONE (2026-07-22)
+# ✅ QUOTATION RESCUE — COMPLETE, all 3 steps (2026-07-22)
 
-The quotation-side vacuity is **fixed and certified** (`logical-induction`, full build green,
-2720 jobs, strictly axiom-clean). What landed:
+The quotation family is **fully unconditional over the constructed `LIA`** — vacuity fixed,
+certified, and all eight endpoints instantiated (`logical-induction`, full build green, 2720
+jobs, strictly axiom-clean). **Step 3 done:** `lic_introspection_ofCode_unconditional`,
+`lic_paradox_resistance_ofDiagonal_unconditional`, `lic_expectations_of_probabilities_ofCode_unconditional`,
+`lic_iterated_expectations_ofCode_unconditional`, `lic_self_trust_ofRepresentation_unconditional`,
+`lic_expected_future_expectations_ofRepresentation_unconditional`,
+`lic_no_expected_net_update_ofRepresentation_unconditional`,
+`lic_no_expected_net_update_conditional_ofRepresentation_unconditional` (all in
+`ComputationDP.lean`) discharge market / `IsLogicalInductor` / `Q` / `hworld` via
+`quotationPresentation` + `theoremDP_hworld` + `LIA_is_logical_inductor` + `liaHistory_range`;
+only the caller's quoted decision + reflection data remain. Steps 1–2 detail below.
+
+## Steps 1–2 (redesign + certify) — DONE
+
+The quotation-side vacuity is **fixed and certified** (full build green, strictly axiom-clean).
+What landed:
 
 - **Redesign (code-indexed), step 1.** `QuotationTheoryPresentation`'s two quote fields no
   longer quantify over free schema pairs. They are now keyed by a selector `code : ℕ` and
@@ -228,7 +242,7 @@ by any missing Foundation lemma (`codeOfREPred`/`re_complete`/FFL fixed points a
 | **Conditioning** (`M7-SCON-*`) | Empty extra-DP; a *transformation* result (`IsLogicalInductor` of the conditioned history), `hworld` barely applies | Instantiate the union DP over LIA | **~½ session** |
 | **LUV combinations** (`M7-LUV-SYNTAX`) | Operational witness exists | Fold into the feedback instantiation | **~½ session** |
 | **Feedback / pseudorandomness** (`wub`, `M7-FEEDBACK-TRUTH/EMIT`) | Fully generic DP + `hworld` **assumed**; no concrete DP built | Build a concrete feedback DP + prove `hworld` + instantiate. May collapse to an independent-atom DP (free `hworld`) — **verify**; if not, a real construction | **~1–2 sessions** |
-| **Quotation / self-reference** (`M7-QUOTE-AFFINE`) | **Vacuity FIXED & certified** (2026-07-22): code-indexed redesign done, `#assert_fields` re-frozen, `quotationPresentation` + `theoremDP_hworld` inhabit `Q ∧ hworld` (`quotation_presentation_nonvacuous`) | Step 3 only: instantiate `_ofCode`/`_ofDiagonal`/`_ofRepresentation` over `liaHistory (theoremDP T)` (corollary plumbing; diagonal `truth_spec` uses the fixed point) | **~1 session** |
+| **Quotation / self-reference** (`M7-QUOTE-AFFINE`) | **COMPLETE** (2026-07-22): redesign + certify + all 8 endpoints unconditional over `LIA` | — (done) | **0** |
 
 **Bottom line:** ~5–8 focused sessions, lopsided. The intellectual crux (r.e. provability
 substrate + proved `hworld`) is solved and reusable; ~4 families are near-trivial finishes
@@ -362,8 +376,12 @@ only after it compiles in *this* repo; the kernel is the gate, never Aristotle's
   disclosed in the README like Brouwer. Original download kept at
   `…/scratchpad/gl-result/gl-fixedpoint_aristotle/`.
 - **Kraft inequality** (`kraft_inequality`, the Mathlib-only core of `M7-PREFIX-MACHINE`).
-  **Prepared, not submitted** (awaiting Anson's go). Statement in
-  `notes/m7-prefix-machine-scope.md`; Mathlib-only, validated to elaborate in-repo.
+  **Submitted 2026-07-22, FAILED.** Aristotle job `bc2df18a-a33d-4c0f-a5ec-e048986d85df`
+  completed but returned the file with the `sorry` unchanged (no proof produced). Options:
+  resubmit with a sharper hint (the counting argument needs an explicit length-`L` block
+  enumeration Mathlib doesn't hand you), or prove it manually. Statement in
+  `notes/m7-prefix-machine-scope.md`; Mathlib-only, validated to elaborate in-repo. Note even
+  a proof only removes step 1 of 5 for `M7-PREFIX-MACHINE` (a disclosed boundary).
 
 **Scratchpad projects may be ephemeral** (session-specific dir):
 `…/scratchpad/gl-fixedpoint/` and `…/scratchpad/kraft/`. Both are tiny and reconstructible —
