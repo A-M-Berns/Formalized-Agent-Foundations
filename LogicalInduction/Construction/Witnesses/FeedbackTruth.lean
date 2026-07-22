@@ -518,6 +518,32 @@ theorem lic_wubaff_ofComputation
     (FeedbackEmission.feedbackTraderEmissionSigns hpoly hW hstrict)
     bridge hWdiv hmag hP hworld
 
+/-- `thm:wub`, with both feedback boundaries discharged by the concrete trader emitter and
+delayed-truth compiler.  This is the one-share specialization of
+`lic_wubaff_ofComputation`; the caller supplies only the paper's sentence sequence,
+completed-theory truth stream, weighting, schedule, and deadline-bounded truth program.
+Paper node: `thm:wub` -/
+theorem lic_wub_ofComputation
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
+    (truth : ℕ → ℝ) (htruth : TheoryTruth φ DP truth)
+    (W : ℕ → EF) (hW : PGenerableWeighting W)
+    (hWdiv : DivergentWeighting W P)
+    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (C : FeedbackTruthComputation truth f)
+    (hsupport : WeightingSupportedOnDeferralImage W P f)
+    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    weightedBias (fun i ↦ (W i).denote P) (fun i ↦ P i (φ i)) truth ≈ₙ
+      (fun _ ↦ 0) := by
+  have hdet : DeterminedViaTheory (sentenceAffine φ) P DP truth := by
+    intro n v hv
+    simpa [sentenceAffine, AffineCombination.value] using htruth n v hv
+  have h := lic_wubaff_ofComputation (sentenceAffine_polySequence φ hφ) hW hdet C
+    hstrict hsupport hWdiv (sentenceAffine_bounded φ P hP)
+    (fun i => by simp) hP hworld
+  simpa only [sentenceAffine_price] using h
+
 /-- Paper-facing affine endpoint for an arbitrary BCS.  Its canonical normalization stays
 outside `FeedbackTruthComputation`; the supplied program computes the normalized truth
 stream that the actual unit-risk trader consumes.
@@ -587,6 +613,7 @@ theorem luv_wubexp_ofComputation
 
 #print axioms feedbackTruthSequence
 #print axioms lic_wubaff_ofComputation
+#print axioms lic_wub_ofComputation
 #print axioms boundedCombination_wubaff_ofComputation
 #print axioms luv_wubexp_ofComputation
 

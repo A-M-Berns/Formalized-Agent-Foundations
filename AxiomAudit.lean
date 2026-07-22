@@ -153,8 +153,11 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 
 -- Construction/Witnesses/FeedbackTruth.lean (`M7-FEEDBACK-TRUTH`)
 #assert_axioms_clean
-  feedbackTruthSequence lic_wubaff_ofComputation boundedCombination_wubaff_ofComputation
-  luv_wubexp_ofComputation
+  feedbackTruthSequence lic_wubaff_ofComputation lic_wub_ofComputation
+  boundedCombination_wubaff_ofComputation luv_wubexp_ofComputation
+  lic_wub_ofComputation_unconditional lic_wubaff_ofComputation_unconditional
+  boundedCombination_wubaff_ofComputation_unconditional
+  luv_wubexp_ofComputation_unconditional
 
 -- Construction/Witnesses/BitPrefixSyntax.lean (`M7-DUS-PREFIX-SYNTAX`)
 #assert_axioms_clean

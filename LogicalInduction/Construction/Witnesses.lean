@@ -15,4 +15,5 @@ import LogicalInduction.Construction.Witnesses.BitPrefixSyntax
 import LogicalInduction.Construction.Witnesses.ComputationSyntax
 import LogicalInduction.Construction.Witnesses.QuotationAffine
 import LogicalInduction.Construction.Witnesses.FeedbackTruth
+import LogicalInduction.Construction.Witnesses.FeedbackUnconditional
 import LogicalInduction.Construction.Witnesses.LUVSyntax

@@ -1,6 +1,35 @@
 # Logical Induction — handoff
 
-_Last updated: 2026-07-22 (session 2). Branch: `logical-induction`._
+_Last updated: 2026-07-22 (session 3). Branch: `logical-induction`._
+
+## ✅ Session 3 summary (2026-07-22) — feedback and LUV complete over constructed LIA
+
+The last property-tail instantiation is complete. `FeedbackUnconditional.lean` adds four
+strictly axiom-clean endpoints over `liaHistory (theoremDP T)`:
+
+- `lic_wub_ofComputation_unconditional` (`thm:wub`);
+- `lic_wubaff_ofComputation_unconditional` and
+  `boundedCombination_wubaff_ofComputation_unconditional` (`thm:wubaff`); and
+- `luv_wubexp_ofComputation_unconditional` (`thm:wubexp`, completing the deferred LUV path).
+
+The spike resolved in the cheap direction: **no feedback-specific deductive process is
+needed.** `FeedbackTruthComputation` is the paper's explicit deadline-bounded program for
+completed-theory values, not a presentation of literals that a DP must enumerate. The existing
+`theoremDP` therefore discharges every missing market-side premise: it is computable,
+`LIA_is_logical_inductor` supplies the inductor, `liaHistory_range` supplies probability bounds,
+and `theoremDP_hworld` supplies finite-stage plausible worlds. The caller appropriately retains
+the paper's substantive affine/LUV determination, weighting, deferral, and delayed-value program
+premises.
+
+The ordinary-sentence specialization was also closed: `FeedbackTruth.lic_wub_ofComputation`
+now constructs both feedback boundaries for `thm:wub`, matching the existing affine and LUV
+consumers. All eight generic/unconditional feedback consumers are in `AxiomAudit.lean`.
+Full build green (2723 jobs); `AxiomAudit`, paper-node validation, theorem-label lint, and
+`git diff --check` all pass.
+
+**Next focus:** verification phase — full build and repository gates, then the deferred human
+statement read-through / fresh `M7-ERRATA-AUDIT` pass. After that, the orthogonal `dd:fuel`
+hardening remains before the stronger “fully done” claim.
 
 ## ⏱ Session 2 summary (2026-07-22) — property tail largely unconditional over LIA
 
@@ -23,12 +52,10 @@ satisfiable `ComputableDeductiveProcess DP`, discharged concretely by `theoremDP
 There is *no* remaining proof-engineering gap in the criterion theorem; what's left there is
 trust-surface work (read-through fidelity to Def 4.1.2 + the `dd:fuel` seam), not proving.
 
-**Remaining proof engineering:** essentially just **feedback** (the last real construction;
-LUV folds into it — but check the `_ofComputation` path first, see the table). Then the
-verification phase (read-through + `M7-ERRATA-AUDIT` incl. a fresh pass over the changed
-quotation surface), then the `dd:fuel` hardening. **Est. to a fully-unconditional property
-tail (bracketing the 3 disclosed boundaries): ~½–2 sessions**, dominated by feedback's
-uncertainty (a 1-hr spike collapses it).
+**Remaining proof engineering:** feedback and LUV are now complete (session 3); the entire
+property tail is instantiated over constructed `LIA` processes, bracketing the three disclosed
+boundaries. Next comes the verification phase (read-through + `M7-ERRATA-AUDIT`, including a
+fresh pass over the changed quotation surface), then the orthogonal `dd:fuel` hardening.
 
 **External:** Kraft Aristotle — first attempt (`bc2df18a…`) FAILED (returned `sorry`); resubmit
 `65eaafaa-2ba0-4501-8002-8e9e2043f4d8` RUNNING at handoff (poller task `b7q730kzu`). Even a
@@ -278,17 +305,15 @@ by any missing Foundation lemma (`codeOfREPred`/`re_complete`/FFL fixed points a
 | **Meta-learning** (halting/consistency, `M7-COMP-SYNTAX`) | **COMPLETE** (2026-07-22): all 6 endpoints unconditional over `LIA` (`*_unconditional` in `ComputationDP.lean`) | — (done) | **0** |
 | **Universal semimeasure** (`M7-DUS-PREFIX-SYNTAX`) | **DONE** (2026-07-22): `lic_domination_universalSemimeasure_unconditional` over LIA on the proved-computable empty process (`UnconditionalOverLIA.lean`); `hworld` trivial | Only the *disclosed* `M7-DUS-APPROX` approximation `A`/`emit` remains an input (bracketed); full Occam bound also needs disclosed Kraft | **~0 (disclosed remainder)** |
 | **Conditioning** (`M7-SCON-*`) | **DONE** (2026-07-22): `lic_conditioned_unconditional` — the constructed inductor conditioned on a computable event is again an inductor over the union process (`UnconditionalOverLIA.lean`) | — (`C`/compiler stay caller inputs by design) | **0** |
-| **LUV combinations** (`M7-LUV-SYNTAX`) | Not yet instantiated (deferred to after feedback) | Fold into feedback. **NOTE:** `FeedbackTruth.lean` has `_ofComputation` variants (`lic_wubaff_ofComputation`, `luv_wubexp_ofComputation`, `boundedCombination_wubaff_ofComputation`) that route through a `FeedbackTruthComputation`/`[IsLogicalInductor]` — check whether these can be instantiated over `theoremDP` (via `theoremPresentation` + `theoremDP_hworld`) *without* a new feedback DP, which would finish LUV cheaply and independently | **~½ session** |
-| **Feedback / pseudorandomness** (`wub`, `M7-FEEDBACK-TRUTH/EMIT`) | Generic DP + `hworld` **assumed**; no concrete DP built — **the last real construction** | 1-hr spike first: are feedback atoms mutually independent ⇒ free `hworld` (independent-atom DP)? Also check the `_ofComputation` path over `theoremDP` (see LUV note). Then build/instantiate | **~½–2 sessions** |
+| **LUV combinations** (`M7-LUV-SYNTAX`) | **COMPLETE** (2026-07-22): `luv_wubexp_ofComputation_unconditional` over `liaHistory (theoremDP T)` | — (caller retains the paper's exact-theory presentation and delayed-value program) | **0** |
+| **Feedback / pseudorandomness** (`wub`, `M7-FEEDBACK-TRUTH/EMIT`) | **COMPLETE** (2026-07-22): all four computation-backed consumers instantiated over constructed `LIA`; ordinary `thm:wub` specialization added | — (no new DP was needed; `theoremDP_computable` + `theoremDP_hworld` discharge the market side) | **0** |
 | **Quotation / self-reference** (`M7-QUOTE-AFFINE`) | **COMPLETE** (2026-07-22): redesign + certify + all 8 endpoints unconditional over `LIA` | — (done) | **0** |
 
-**Bottom line:** ~5–8 focused sessions, lopsided. The intellectual crux (r.e. provability
-substrate + proved `hworld`) is solved and reusable; ~4 families are near-trivial finishes
-(free/empty-DP `hworld` or the established corollary pattern). The real remaining mass is two
-constructions: **feedback** (moderate) and **quotation** (the flagship, the only one needing a
-frozen-boundary redesign and carrying real uncertainty). Uncertainty flags: feedback *might*
-collapse to a free-`hworld` DP; quotation *might* balloon if the redesign fights the
-`#assert_fields` freeze or the diagonal won't decouple.
+**Bottom line:** proof engineering for the property tail is complete, including quotation,
+feedback, and LUV. The feedback uncertainty collapsed because its `_ofComputation` boundary is
+operational data rather than a DP presentation, so the established `theoremDP`/`hworld`
+corollary pattern applies directly. Remaining work is verification/read-through and the
+separately disclosed `dd:fuel` hardening, not another property construction.
 
 **Verification still owed (not proof engineering, but part of "done"):** the deferred **human
 statement read-through** (Anson) over the frozen surface, then the final `M7-ERRATA-AUDIT` pass —
