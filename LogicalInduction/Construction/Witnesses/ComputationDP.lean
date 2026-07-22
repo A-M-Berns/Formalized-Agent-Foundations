@@ -727,6 +727,86 @@ theorem lic_self_trust_ofRepresentation_unconditional
     (fun n s => liaHistory_range (theoremDP T) n s)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
+/-! ## Unconditional meta-learning siblings over the constructed `LIA`
+
+The other five `_ofComputation` meta-learning endpoints instantiate over `liaHistory
+(theoremDP T)` exactly like `lia_learns_halting_patterns_unconditional`, reusing
+`theoremPresentation` + `theoremDP_hworld`. Only the caller's concrete computation and the
+(true) hypothesis about it remain. -/
+
+/-- `thm:pac`, unconditional over `LIA`. -/
+theorem lic_belief_finitistic_consistency_unconditional [𝗥₀ ⪯ T]
+    (consistentWithin : ℕ → Prop) (C : BoundedComputation consistentWithin)
+    (hconsistent : ∀ n, consistentWithin n) :
+    (fun n => liaHistory (theoremDP T) n
+      ((representedDecidableClaimsOfComputation (theoremPresentation T) C).sentence n))
+        ≈ₙ fun _ => 1 :=
+  haveI := theoremLIA T
+  lic_belief_finitistic_consistency_ofComputation (theoremPresentation T)
+    (liaHistory (theoremDP T)) consistentWithin C hconsistent
+    (fun n χ => liaHistory_range (theoremDP T) n χ)
+    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+
+/-- `thm:pazfc`, unconditional over `LIA`. -/
+theorem lic_belief_stronger_theory_consistency_unconditional [𝗥₀ ⪯ T]
+    (strongerConsistentWithin : ℕ → Prop)
+    (C : BoundedComputation strongerConsistentWithin)
+    (hconsistent : ∀ n, strongerConsistentWithin n) :
+    (fun n => liaHistory (theoremDP T) n
+      ((representedDecidableClaimsOfComputation (theoremPresentation T) C).sentence n))
+        ≈ₙ fun _ => 1 :=
+  haveI := theoremLIA T
+  lic_belief_stronger_theory_consistency_ofComputation (theoremPresentation T)
+    (liaHistory (theoremDP T)) strongerConsistentWithin C hconsistent
+    (fun n χ => liaHistory_range (theoremDP T) n χ)
+    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+
+/-- `thm:incons`, unconditional over `LIA`. -/
+theorem lic_disbelief_inconsistent_theories_unconditional [𝗥₀ ⪯ T]
+    (inconsistent : ℕ → Prop) (C : SemidecidableComputation inconsistent)
+    (hall : ∀ n, inconsistent n) :
+    ((fun n => liaHistory (theoremDP T) n
+        ((inconsistentTheoryClaimsOfComputation (theoremPresentation T) C).inconsistencySentence n))
+          ≈ₙ fun _ => 1) ∧
+      ((fun n => liaHistory (theoremDP T) n
+        ((inconsistentTheoryClaimsOfComputation (theoremPresentation T) C).consistencySentence n))
+          ≈ₙ fun _ => 0) :=
+  haveI := theoremLIA T
+  lic_disbelief_inconsistent_theories_ofComputation (theoremPresentation T)
+    (liaHistory (theoremDP T)) inconsistent C hall
+    (fun n χ => liaHistory_range (theoremDP T) n χ)
+    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+
+/-- `thm:loops`, unconditional over `LIA`. -/
+theorem lic_learns_provable_nonhalting_patterns_unconditional [𝗥₀ ⪯ T]
+    (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
+    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
+    (hloops : ∀ n, T ⊢ ∼(universalHaltingSchema/[
+      ↑(haltingClaimInput (machines n) (inputs n))])) :
+    (fun n => liaHistory (theoremDP T) n
+      ((representedHaltingClaims (theoremPresentation T) machines inputs hm hi).sentence n))
+        ≈ₙ fun _ => 0 :=
+  haveI := theoremLIA T
+  lic_learns_provable_nonhalting_patterns_ofComputation (theoremPresentation T)
+    (liaHistory (theoremDP T)) machines inputs hm hi hloops
+    (fun n χ => liaHistory_range (theoremDP T) n χ)
+    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+
+/-- `thm:dontwait`, unconditional over `LIA`. -/
+theorem lic_does_not_anticipate_halting_unconditional [𝗥₀ ⪯ T]
+    (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
+    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
+    (hh : PolyNatCodes horizons)
+    (hnever : ∀ n, ¬CodeHalts (machines n) (inputs n)) :
+    (fun n => liaHistory (theoremDP T) n
+      ((representedBoundedHaltingClaims (theoremPresentation T) machines inputs horizons hm hi hh).sentence n))
+        ≈ₙ fun _ => 0 :=
+  haveI := theoremLIA T
+  lic_does_not_anticipate_halting_ofComputation (theoremPresentation T)
+    (liaHistory (theoremDP T)) machines inputs horizons hm hi hh hnever
+    (fun n χ => liaHistory_range (theoremDP T) n χ)
+    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+
 #print axioms provable_instances_re
 #print axioms theoremDP_covers
 #print axioms theoremDP_hworld
