@@ -133,6 +133,18 @@ the directory so `import LogicalInduction.Foo` works) — keep it, one roll-up p
    existing warnings in the same pass; new warnings are treated as regressions. Upstream
    package warnings (Foundation) are exempt.
 
+## Pre-publication cleanup
+
+- **Delete `LogicalInduction/IntegrationTest.lean` before the repo is published** (Anson,
+  2026-07-22). It is the roadmap's M3 integration test — a build-enforced regression guard
+  that our `Asymptotics`/`Expectations` vocabulary is a definitional drop-in for the
+  downstream deference / dose-response corpus, and that the property-tail facts discharge
+  that corpus's named hypotheses end-to-end. Valuable *during development* (it catches
+  interface regressions), but it references the external corpus by name and is scaffolding,
+  not part of the paper formalization's trust surface — so it should not ship. Keep it until
+  the consolidation/read-through is otherwise done, then remove it (and drop it from any
+  `default_target`/build wiring) as one of the last pre-publish steps.
+
 ## Style baseline
 
 - Mathlib naming and style conventions (`lean4-theorem-proving` skill references) are the
