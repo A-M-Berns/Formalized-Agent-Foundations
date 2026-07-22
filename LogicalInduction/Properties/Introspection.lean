@@ -29,11 +29,10 @@ namespace CompletedAffineQuoteEq
 /-- A completed-theory quotation identity is learned on the market diagonal. -/
 lemma gap_asympEq_zero {P : History} {DP : DeductiveProcess} {gap : ℕ → ℝ}
     (q : CompletedAffineQuoteEq P DP gap) [IsLogicalInductor P DP]
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     gap ≈ₙ fun _ => 0 := by
   have hprice := q.poly.affine_provind_theory_eq P DP q.bounded
-    ⟨1, q.magnitude_le_one⟩ hP hworld 0 q.theory_coherent
+    ⟨1, q.magnitude_le_one⟩ hworld 0 q.theory_coherent
   rw [asympEq_iff_eventuallyWithin]
   intro ε hε
   have hs : (0 : ℝ) < q.scale := by exact_mod_cast q.scale_pos
@@ -61,11 +60,10 @@ namespace CompletedAffineQuoteApprox
 diagonal. -/
 lemma gap_asympEq_zero {P : History} {DP : DeductiveProcess} {gap : ℕ → ℝ}
     (q : CompletedAffineQuoteApprox P DP gap) [IsLogicalInductor P DP]
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     gap ≈ₙ fun _ => 0 := by
   have hprice := q.poly.affine_provind_theory_tendsto_zero P DP q.bounded
-    ⟨1, q.magnitude_le_one⟩ hP hworld q.theory_coherent
+    ⟨1, q.magnitude_le_one⟩ hworld q.theory_coherent
   rw [asympEq_iff_eventuallyWithin]
   intro ε hε
   have hs : (0 : ℝ) < q.scale := by exact_mod_cast q.scale_pos
@@ -108,11 +106,10 @@ Paper node: `thm:epr` -/
 theorem lic_expectations_of_probabilities
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (q : CurrentPriceExpectationQuote P DP φ Y) :
     (fun n => P n (φ n)) ≈ₙ fun n => (Y n).expect P n := by
-  simpa only [AsympEq, sub_zero] using q.affine.gap_asympEq_zero hP hworld
+  simpa only [AsympEq, sub_zero] using q.affine.gap_asympEq_zero hworld
 
 /-- **Iterated Expectations** (`thm:er`): the current expectation of `X n` agrees
 asymptotically with the current expectation of the LUV representing that expectation.
@@ -120,11 +117,10 @@ Paper node: `thm:er` -/
 theorem lic_iterated_expectations
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (X Y : ℕ → LUV)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (q : CurrentExpectationQuote P DP X Y) :
     (fun n => (X n).expect P n) ≈ₙ fun n => (Y n).expect P n := by
-  simpa only [AsympEq, sub_zero] using q.affine.gap_asympEq_zero hP hworld
+  simpa only [AsympEq, sub_zero] using q.affine.gap_asympEq_zero hworld
 
 /-! ## Interval introspection -/
 
@@ -220,8 +216,8 @@ theorem lic_introspection
       ctsInd (δ n) (P n (φ n)) (b n : ℝ)) *
       P n (q.quote n)
   let raw : ℕ → ℝ := fun n ↦ max |lowerGap n| |upperGap n|
-  have hlower := q.inside_affine.gap_asympEq_zero hP hworld
-  have hupper := q.outside_affine.gap_asympEq_zero hP hworld
+  have hlower := q.inside_affine.gap_asympEq_zero hworld
+  have hupper := q.outside_affine.gap_asympEq_zero hworld
   have hlower0 : Tendsto lowerGap atTop (𝓝 0) := by
     simpa [lowerGap, AsympEq] using hlower
   have hupper0 : Tendsto upperGap atTop (𝓝 0) := by
@@ -342,8 +338,8 @@ theorem lic_paradox_resistance
   have hp1R : (p : ℝ) < 1 := by exact_mod_cast hp1
   let μ : ℝ := min (p : ℝ) (1 - p)
   have hμ : 0 < μ := lt_min hp0R (sub_pos.mpr hp1R)
-  have hlower := q.lower_affine.gap_asympEq_zero hP hworld
-  have hupper := q.upper_affine.gap_asympEq_zero hP hworld
+  have hlower := q.lower_affine.gap_asympEq_zero hworld
+  have hupper := q.upper_affine.gap_asympEq_zero hworld
   rw [asympEq_iff_eventuallyWithin]
   intro ε hε
   have hwidth : ∀ᶠ n in atTop, (q.width n : ℝ) < ε :=

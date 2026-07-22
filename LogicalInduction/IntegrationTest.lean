@@ -87,10 +87,9 @@ lemma provind_sequence_hypothesis_discharged
     (hφ : PolySentenceCodes φ) (hψ : PolySentenceCodes ψ)
     (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
     (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ProvindSequenceHypothesis P φ ψ :=
-  lic_provind P DP φ ψ hφ hψ hthm hdis hP hcons
+  lic_provind P DP φ ψ hφ hψ hthm hdis hcons
 
 /-- End-to-end wiring: a deference-style consumer that, *given* the provind hypothesis, draws
 a conclusion (here the trivial `≲ₙ`-reflexivity stand-in for whatever it actually derives) —

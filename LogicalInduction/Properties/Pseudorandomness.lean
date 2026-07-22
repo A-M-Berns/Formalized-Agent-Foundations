@@ -1781,11 +1781,10 @@ lemma FeedbackTruthSequence.accurate
     {P : History} {DP : DeductiveProcess} {f : DeferralFunction}
     [IsLogicalInductor P DP]
     (bridge : FeedbackTruthSequence As truth P DP f)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     DeferralFeedbackAccurate As truth P f := by
   have hlearn := bridge.poly.affine_provind_theory_eq P DP bridge.bounded
-    ⟨1, bridge.magnitude⟩ hP hworld 0 bridge.zero_value
+    ⟨1, bridge.magnitude⟩ hworld 0 bridge.zero_value
   apply asympEq_iff_eventuallyWithin.2
   intro ε hε
   have hevent := asympEq_iff_eventuallyWithin.1 hlearn ε hε
@@ -1831,7 +1830,7 @@ theorem lic_wubaff
       (feedbackPrefixSum (fun k ↦ (W (f k)).denote P)) atTop atTop :=
     feedbackPrefixSum_tendsto_atTop hstrict hWdiv hsupport
   have hacc : DeferralFeedbackAccurate As truth P f :=
-    bridge.accurate hP hworld
+    bridge.accurate hworld
   have hsparse : feedbackWeightedAverage (fun k ↦ w (f k))
       (fun k ↦ bias (f k)) ≈ₙ (fun _ ↦ 0) := by
     simpa only [w, bias] using feedbackWeightedBias_asympEq_zero

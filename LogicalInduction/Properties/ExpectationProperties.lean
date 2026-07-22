@@ -877,13 +877,12 @@ theorem mesh_upper_eventually
     (ops : MeshSoftmaxOperationalWitness As P)
     (hvalued : WorldValued As DP) (b ε : ℚ) (hε : 0 < (ε : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∀ᶠ m in atTop, ∀ n, 0 < n → n ≤ m →
       (As n).expectAt P n m - (As n).expectAt P m m ≤
         2 * (b : ℝ) / n + (ε : ℝ) := by
   have hlearn := (ops.poly b ε).affine_provind_theory_le P DP
-    (ops.bounded b ε) (ops.magnitude b ε) hP hworld 0
+    (ops.bounded b ε) (ops.magnitude b ε) hworld 0
     (fun m v hv => meshSoftmax_value_nonpos hvalued hshare m v hv)
   have hevent := hlearn ((ε : ℝ) / 8) (by positivity)
   filter_upwards [hevent] with m hm
@@ -903,13 +902,12 @@ lemma mesh_lower_eventually
     (ops : MeshSoftmaxOperationalWitness As P)
     (hvalued : WorldValued As DP) (b ε : ℚ) (hε : 0 < (ε : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∀ᶠ m in atTop, ∀ n, 0 < n → n ≤ m →
       (As n).expectAt P m m - (As n).expectAt P n m ≤
         2 * (b : ℝ) / n + (ε : ℝ) := by
   have hlearn := (ops.lower_poly b ε).affine_provind_theory_le P DP
-    (ops.lower_bounded b ε) (ops.lower_magnitude b ε) hP hworld 0
+    (ops.lower_bounded b ε) (ops.lower_magnitude b ε) hworld 0
     (fun m v hv => meshSoftmaxLower_value_nonpos hvalued hshare m v hv)
   have hevent := hlearn ((ε : ℝ) / 8) (by positivity)
   filter_upwards [hevent] with m hm
@@ -930,13 +928,12 @@ theorem mesh_close_eventually
     (ops : MeshSoftmaxOperationalWitness As P)
     (hvalued : WorldValued As DP) (b ε : ℚ) (hε : 0 < (ε : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∀ᶠ m in atTop, ∀ n, 0 < n → n ≤ m →
       |(As n).expectAt P n m - (As n).expectAt P m m| ≤
         2 * (b : ℝ) / n + (ε : ℝ) := by
-  filter_upwards [mesh_upper_eventually ops hvalued b ε hε hshare hP hworld,
-    mesh_lower_eventually ops hvalued b ε hε hshare hP hworld] with m hu hl
+  filter_upwards [mesh_upper_eventually ops hvalued b ε hε hshare hworld,
+    mesh_lower_eventually ops hvalued b ε hε hshare hworld] with m hu hl
   intro n hn hnm
   rw [abs_le]
   constructor
@@ -1358,16 +1355,16 @@ theorem BoundedSequence.mesh_independence
     (hvalued : WorldValued As DP)
     (b : ℚ) (hb : 0 ≤ (b : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     Tendsto (meshTailError As P) atTop (𝓝 0) := by
+  have hP := IsLogicalInductor.price_mem_Icc (P := P) (DP := DP)
   apply Metric.tendsto_atTop.2
   intro δ hδ
   obtain ⟨ε, hε0, hεδ⟩ : ∃ ε : ℚ,
       (0 : ℝ) < ε ∧ (ε : ℝ) < δ / 2 := exists_rat_btwn (half_pos hδ)
   obtain ⟨N, hN⟩ := exists_nat_gt (4 * (b : ℝ) / δ)
   obtain ⟨M, hM⟩ := eventually_atTop.1
-    (mesh_close_eventually ops hvalued b ε hε0 hshare hP hworld)
+    (mesh_close_eventually ops hvalued b ε hε0 hshare hworld)
   refine ⟨max 1 (max N M), fun n hn => ?_⟩
   have hn0 : 0 < n := by omega
   have hnR : (0 : ℝ) < n := by exact_mod_cast hn0
@@ -1544,7 +1541,7 @@ theorem BoundedSequence.mesh_limitingValue_near_expectInf
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (n : ℕ) :
     |((As n).meshAffine n).value P (limitingBelief P) - (As n).expectInf P| ≤
       meshTailError As P n := by
-  have hmeshLim := ((As n).meshAffine n).price_tendsto_limitingValue P DP hP hworld
+  have hmeshLim := ((As n).meshAffine n).price_tendsto_limitingValue P DP hworld
   have hexpectLim := hc.expect_tendsto_expectInf hP hworld n
   have hdiffLim := (hmeshLim.sub hexpectLim).abs
   apply le_of_tendsto hdiffLim
@@ -1575,7 +1572,7 @@ theorem BoundedSequence.limexpapprox
       atTop (𝓝 0) := by
   exact squeeze_zero (fun n => abs_nonneg _)
     (fun n => h.mesh_limitingValue_near_expectInf hc hP hworld n)
-    (h.mesh_independence ops hvalued b hb hshare hP hworld)
+    (h.mesh_independence ops hvalued b hb hshare hworld)
 
 /-- A LUV-combination sequence is determined when every completed-theory world and every
 coherent assignment to its LUVs gives the same advertised value. -/
@@ -1853,14 +1850,13 @@ theorem BoundedSequence.mesh_affpolymax
     {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P) (DP : DeductiveProcess)
     [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (fun n => (As n).expect P n) atTop =
         liminf (affineFutureHigh (fun n => (As n).meshAffine n) P) atTop ∧
       limsup (fun n => (As n).expect P n) atTop =
         limsup (affineFutureLow (fun n => (As n).meshAffine n) P) atTop := by
   simpa only [meshAffine_price_diagonal] using
-    h.affineBCS.affpolymax DP hP hworld
+    h.affineBCS.affpolymax DP hworld
 
 /-- `thm:exppolymax`: the market's diagonal expectation has the same lower/upper
 limits as the corresponding future-day expectation extrema.  The only operational
@@ -1879,7 +1875,7 @@ theorem BoundedSequence.exppolymax
         liminf (futureHigh As P) atTop ∧
       limsup (fun n => (As n).expect P n) atTop =
         limsup (futureLow As P) atTop := by
-  have hmesh := h.mesh_independence ops hvalued b hb hshare hP hworld
+  have hmesh := h.mesh_independence ops hvalued b hb hshare hworld
   have hhighNear : Tendsto (fun n =>
       |affineFutureHigh (fun i => (As i).meshAffine i) P n - futureHigh As P n|)
       atTop (𝓝 0) :=
@@ -1897,7 +1893,7 @@ theorem BoundedSequence.exppolymax
   have hlowLimits := liminf_limsup_eq_of_abs_sub_tendsto_zero
     (affineFutureLow (fun i => (As i).meshAffine i) P)
     (futureLow As P) hllo hlhi hlowNear
-  have haff := h.mesh_affpolymax DP hP hworld
+  have haff := h.mesh_affpolymax DP hworld
   exact ⟨haff.1.trans hhighLimits.1, haff.2.trans hlowLimits.2⟩
 
 lemma BoundedSequence.mesh_peraffkno
@@ -1911,7 +1907,7 @@ lemma BoundedSequence.mesh_peraffkno
       limsup (affineFutureHigh (fun n => (As n).meshAffine n) P) atTop =
         limsup (fun n => ((As n).meshAffine n).value P (limitingBelief P)) atTop :=
   h.poly.mesh_poly.peraffkno P DP (h.mesh_boundedPrices hP) h.mesh_magnitudeBounded
-    hP hworld
+    hworld
 
 /-- `thm:perexpkno`: persistence of expectation knowledge for represented bounded
 LUV-combination sequences. -/
@@ -1932,7 +1928,7 @@ theorem BoundedSequence.perexpkno
         limsup (fun n => (As n).expectInf P) atTop := by
   let Ms : ℕ → AffineCombination := fun n => (As n).meshAffine n
   let Mlim : ℕ → ℝ := fun n => (Ms n).value P (limitingBelief P)
-  have hmesh := h.mesh_independence ops hvalued b hb hshare hP hworld
+  have hmesh := h.mesh_independence ops hvalued b hb hshare hworld
   have hlowNear : Tendsto (fun n =>
       |futureLow As P n - affineFutureLow Ms P n|) atTop (𝓝 0) := by
     simpa only [abs_sub_comm] using squeeze_zero (fun n => abs_nonneg _)
@@ -1952,7 +1948,7 @@ theorem BoundedSequence.perexpkno
       h.limexpapprox ops hvalued hc b hb hshare hP hworld
   obtain ⟨hmlLo, hmlHi⟩ :=
     AffineCombination.BoundedAffinePrices.limitingValue_filterBounds
-      (h.mesh_boundedPrices hP) DP hP hworld
+      (h.mesh_boundedPrices hP) DP hworld
   have hlimLimits := liminf_limsup_eq_of_abs_sub_tendsto_zero
     (fun n => (As n).expectInf P) Mlim hmlLo hmlHi hlimNear
   have hper := h.mesh_peraffkno DP hP hworld
@@ -1979,7 +1975,7 @@ lemma BoundedSequence.mesh_affcoh
           limsup (completedAffineHigh (fun n => (As n).meshAffine n) P DP) atTop) := by
   simpa only [meshAffine_price_diagonal] using
     h.poly.mesh_poly.affcoh P DP (h.mesh_boundedPrices hP) h.mesh_magnitudeBounded
-      hP hworld
+      hworld
 
 /-- `thm:expcoh`: exact completed-world LUV values bound the true limiting expectation,
 which in turn coheres with the market's diagonal expectations. -/
@@ -2020,7 +2016,7 @@ theorem BoundedSequence.expcoh
       h.limexpapprox ops hvalued hc b hb hshare hP hworld
   obtain ⟨hmlLo, hmlHi⟩ :=
     AffineCombination.BoundedAffinePrices.limitingValue_filterBounds
-      (h.mesh_boundedPrices hP) DP hP hworld
+      (h.mesh_boundedPrices hP) DP hworld
   have hlimLimits := liminf_limsup_eq_of_abs_sub_tendsto_zero
     (fun n => (As n).expectInf P) Mlim hmlLo hmlHi hlimNear
   have haff := h.mesh_affcoh DP hP hworld

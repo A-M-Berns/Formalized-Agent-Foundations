@@ -429,7 +429,7 @@ theorem lic_learning_exclusive_exhaustive
       exact le_of_eq (add_comm _ _)⟩
   }
   have hzero := hpoly.affine_provind_theory_eq P DP
-    (hbcs.boundedPrices hP) ⟨1, hmag⟩ hP hworld 0 (fun n v hv => by
+    (hbcs.boundedPrices hP) ⟨1, hmag⟩ hworld 0 (fun n v hv => by
       rw [show (As n).value P v.payout =
           (((List.range k).map (fun j => v.payout (φ j n))).sum - 1) / k by
         change (exclusiveExhaustiveAffine k φ n).value P v.payout = _

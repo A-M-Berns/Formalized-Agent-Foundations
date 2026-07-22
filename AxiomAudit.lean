@@ -299,7 +299,7 @@ deliberately. -/
 #assert_fields LowerSemicomputableContinuousSemimeasure
   toContinuousSemimeasure approximation approximation_code approximation_computes approximation_nonneg approximation_mono approximation_le approximation_tendsto
 #assert_fields MarketComputation
-  quote code quote_exact code_spec
+  quote code quote_exact code_spec price_mem_Icc
 #assert_fields OccamThresholdEmission
   threshold_sum_codes inverse_width_codes
 #assert_fields PGenerableWeighting

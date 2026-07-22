@@ -1415,13 +1415,14 @@ lemma PolySequence.affpolymax {As : ℕ → AffineCombination}
     [IsLogicalInductor V DP]
     (hbounded : BoundedAffinePrices As V)
     (hmag : ∃ B : ℝ, ∀ i, (As i).magnitude V ≤ B)
-    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (fun n => (As n).price V n) atTop =
         liminf (affineFutureHigh As V) atTop ∧
       limsup (fun n => (As n).price V n) atTop =
-        limsup (affineFutureLow As V) atTop :=
-  affpolymax_of_noPreemptiveGaps As V hbounded
+      limsup (affineFutureLow As V) atTop := by
+  let hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := V) (DP := DP) n φ
+  exact affpolymax_of_noPreemptiveGaps As V hbounded
     (h.noPreemptiveGaps_of_boundedMagnitude V DP hbounded hmag hP hworld)
 
 /-- Exact `thm:affpolymax` over the paper's `BCS` interface. -/
@@ -1429,13 +1430,14 @@ theorem BoundedCombinationSequence.affpolymax
     {As : ℕ → AffineCombination} {V : History}
     (h : BoundedCombinationSequence As V) (DP : DeductiveProcess)
     [IsLogicalInductor V DP]
-    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (fun n => (As n).price V n) atTop =
         liminf (affineFutureHigh As V) atTop ∧
       limsup (fun n => (As n).price V n) atTop =
-        limsup (affineFutureLow As V) atTop :=
-  h.poly.affpolymax V DP (h.boundedPrices hP) h.magnitudeBounded hP hworld
+      limsup (affineFutureLow As V) atTop := by
+  let hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := V) (DP := DP) n φ
+  exact h.poly.affpolymax V DP (h.boundedPrices hP) h.magnitudeBounded hworld
 
 /-- Once fully liquidated, the component's net worth is world-independent and bounded by
 the entry weight times the guaranteed price spread. -/

@@ -729,12 +729,12 @@ Paper node: `thm:ifp` -/
 theorem lic_iff_of_finitePerturbation
     (P P' : History) (DP : DeductiveProcess) (cutoff : ℕ)
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
-    (hP : ∀ day φ, 0 ≤ P day φ ∧ P day φ ≤ 1)
-    (hP' : ∀ day φ, 0 ≤ P' day φ ∧ P' day φ ≤ 1)
     (htail : ∀ day, cutoff ≤ day → ∀ φ, P day φ = P' day φ)
     (patchP : EfficientPrefixPatch P cutoff)
     (patchP' : EfficientPrefixPatch P' cutoff) :
     IsLogicalInductor P DP ↔ IsLogicalInductor P' DP := by
+  have hP : ∀ day φ, 0 ≤ P day φ ∧ P day φ ≤ 1 := hPcomp.price_mem_Icc
+  have hP' : ∀ day φ, 0 ≤ P' day φ ∧ P' day φ ≤ 1 := hP'comp.price_mem_Icc
   constructor
   · intro hLI
     exact {

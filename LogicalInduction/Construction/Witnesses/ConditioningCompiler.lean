@@ -202,6 +202,7 @@ market has a named computation and the condition has polynomial (hence recursive
 noncomputable def conditionedMarketComputation {P : History}
     (market : MarketComputation P) (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) :
     MarketComputation (conditionedHistory P ψ) where
+  price_mem_Icc := conditionedHistory_mem_Icc P market.price_mem_Icc ψ
   quote := conditionedQuoteTable market ψ
   code := conditionedQuoteCode market ψ hψ
   quote_exact := conditionedQuoteTable_exact market ψ
@@ -353,6 +354,7 @@ noncomputable def denominatorPatchedMarketComputation {P : History}
     (market : MarketComputation P) (ψ : ℕ → Sentence)
     (hψ : PolySentenceCodes ψ) (cutoff : ℕ) :
     MarketComputation (denominatorPatchedHistory P ψ cutoff) where
+  price_mem_Icc := denominatorPatchedHistory_mem_Icc P ψ cutoff market.price_mem_Icc
   quote := denominatorPatchedQuoteTable market ψ cutoff
   code := denominatorPatchedQuoteCode market ψ hψ cutoff
   quote_exact := denominatorPatchedQuoteTable_exact market ψ cutoff

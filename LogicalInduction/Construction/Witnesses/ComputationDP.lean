@@ -557,7 +557,7 @@ theorem lia_learns_halting_patterns_unconditional
   haveI : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
     LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
   lic_learns_halting_patterns_ofComputation (theoremPresentation T) (liaHistory (theoremDP T))
-    machines inputs hm hi hhalts (fun n χ => liaHistory_range (theoremDP T) n χ)
+    machines inputs hm hi hhalts
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-! ## Unconditional self-reference / quotation endpoints over the constructed `LIA`
@@ -744,7 +744,6 @@ theorem lic_belief_finitistic_consistency_unconditional [𝗥₀ ⪯ T]
   haveI := theoremLIA T
   lic_belief_finitistic_consistency_ofComputation (theoremPresentation T)
     (liaHistory (theoremDP T)) consistentWithin C hconsistent
-    (fun n χ => liaHistory_range (theoremDP T) n χ)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:pazfc`, unconditional over `LIA`. -/
@@ -758,7 +757,6 @@ theorem lic_belief_stronger_theory_consistency_unconditional [𝗥₀ ⪯ T]
   haveI := theoremLIA T
   lic_belief_stronger_theory_consistency_ofComputation (theoremPresentation T)
     (liaHistory (theoremDP T)) strongerConsistentWithin C hconsistent
-    (fun n χ => liaHistory_range (theoremDP T) n χ)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:incons`, unconditional over `LIA`. -/
@@ -774,7 +772,6 @@ theorem lic_disbelief_inconsistent_theories_unconditional [𝗥₀ ⪯ T]
   haveI := theoremLIA T
   lic_disbelief_inconsistent_theories_ofComputation (theoremPresentation T)
     (liaHistory (theoremDP T)) inconsistent C hall
-    (fun n χ => liaHistory_range (theoremDP T) n χ)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:loops`, unconditional over `LIA`. -/
@@ -789,7 +786,6 @@ theorem lic_learns_provable_nonhalting_patterns_unconditional [𝗥₀ ⪯ T]
   haveI := theoremLIA T
   lic_learns_provable_nonhalting_patterns_ofComputation (theoremPresentation T)
     (liaHistory (theoremDP T)) machines inputs hm hi hloops
-    (fun n χ => liaHistory_range (theoremDP T) n χ)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:dontwait`, unconditional over `LIA`. -/
@@ -804,7 +800,6 @@ theorem lic_does_not_anticipate_halting_unconditional [𝗥₀ ⪯ T]
   haveI := theoremLIA T
   lic_does_not_anticipate_halting_ofComputation (theoremPresentation T)
     (liaHistory (theoremDP T)) machines inputs horizons hm hi hh hnever
-    (fun n χ => liaHistory_range (theoremDP T) n χ)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 #print axioms provable_instances_re

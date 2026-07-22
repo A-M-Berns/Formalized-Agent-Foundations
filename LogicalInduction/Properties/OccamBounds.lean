@@ -137,8 +137,8 @@ theorem lic_limitingBelief_add_neg
   have hlex : (fun n ↦ P n φ + P n (∼φ)) ≈ₙ (fun _ ↦ (1 : ℝ)) := by
     have hrange : List.range 2 = [0, 1] := by decide
     simpa [hrange, pair] using hlex0
-  have hsum := (lic_limitingBelief_tendsto P DP hP hworld φ).add
-    (lic_limitingBelief_tendsto P DP hP hworld (∼φ))
+  have hsum := (lic_limitingBelief_tendsto P DP hworld φ).add
+    (lic_limitingBelief_tendsto P DP hworld (∼φ))
   have hone : ConvergesTo (fun n ↦ P n φ + P n (∼φ)) 1 :=
     convergesTo_iff_asympEq_const.mpr hlex
   exact tendsto_nhds_unique hsum hone
@@ -704,7 +704,6 @@ one later full continuous-gate trigger. -/
 lemma exists_ob_fire_of_low_limit
     {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     {j i : ℕ} (hj : 1 ≤ j)
     (hlow : limitingBelief P (U.sentence i) <
@@ -712,7 +711,7 @@ lemma exists_ob_fire_of_low_limit
     ∃ n, obStart j i ≤ n ∧ 0 < U.approximation n i ∧
       P n (U.sentence i) < ((obBase U j n i : ℚ) : ℝ) := by
   have hjR : 0 < (j : ℝ) := by exact_mod_cast (show 0 < j by omega)
-  have hconv := lic_limitingBelief_tendsto P DP hP hworld (U.sentence i)
+  have hconv := lic_limitingBelief_tendsto P DP hworld (U.sentence i)
   have happ := U.approximation_tendsto i
   have hscale : Tendsto
       (fun n ↦ (1 / (2 * (j : ℝ) ^ 4)) *
@@ -1052,7 +1051,6 @@ theorem lic_occam_lower
     {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
     (emit : OccamThresholdEmission U)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ C : ℝ, 0 < C ∧ ∀ φ,
       (∀ n, ∃ v : PCWorld,
@@ -1089,7 +1087,7 @@ theorem lic_occam_lower
           prefixWeight κ (U.sentence i) / (4 * (j : ℝ) ^ 4) := by
         simpa only [hi] using hlow
       obtain ⟨n, hlive, ha, hprice⟩ :=
-        exists_ob_fire_of_low_limit U P DP hP hworld hj hlowi
+        exists_ob_fire_of_low_limit U P DP hworld hj hlowi
       obtain ⟨v, hvcons, hv⟩ := hpossible n
       exact ⟨i, n, v, hlive, ha, hprice, hvcons, by simpa only [hi] using hv⟩
     exact IsLogicalInductor.noExploit (P := P) (DP := DP)
@@ -1118,7 +1116,7 @@ theorem lic_occamBounds
         (∀ n, ∃ v : PCWorld,
           v.ConsistentWith (DP.D n) ∧ ¬ v.Holds φ) →
         limitingBelief P φ ≤ 1 - C * prefixWeight κ φ) := by
-  obtain ⟨C₀, hC₀, hlower⟩ := lic_occam_lower U emit P DP hP hworld
+  obtain ⟨C₀, hC₀, hlower⟩ := lic_occam_lower U emit P DP hworld
   let d : ℝ := (2 : ℝ) ^ neg.overhead
   have hdpos : 0 < d := by dsimp [d]; positivity
   have hdone : 1 ≤ d := by

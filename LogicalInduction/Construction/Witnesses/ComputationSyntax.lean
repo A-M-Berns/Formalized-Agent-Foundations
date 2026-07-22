@@ -428,12 +428,11 @@ theorem lic_belief_finitistic_consistency_ofComputation
     (P : History) [IsLogicalInductor P DP]
     (consistentWithin : ℕ → Prop) (C : BoundedComputation consistentWithin)
     (hconsistent : ∀ n, consistentWithin n)
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n ((representedDecidableClaimsOfComputation Q C).sentence n)) ≈ₙ
       fun _ => 1 :=
   lic_belief_finitistic_consistency P DP consistentWithin
-    (representedDecidableClaimsOfComputation Q C) hconsistent hP hworld
+    (representedDecidableClaimsOfComputation Q C) hconsistent hworld
 
 /--
 Paper node: `thm:pazfc` -/
@@ -445,12 +444,11 @@ theorem lic_belief_stronger_theory_consistency_ofComputation
     (strongerConsistentWithin : ℕ → Prop)
     (C : BoundedComputation strongerConsistentWithin)
     (hconsistent : ∀ n, strongerConsistentWithin n)
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n ((representedDecidableClaimsOfComputation Q C).sentence n)) ≈ₙ
       fun _ => 1 :=
   lic_belief_stronger_theory_consistency P DP strongerConsistentWithin
-    (representedDecidableClaimsOfComputation Q C) hconsistent hP hworld
+    (representedDecidableClaimsOfComputation Q C) hconsistent hworld
 
 /--
 Paper node: `thm:incons` -/
@@ -461,14 +459,13 @@ theorem lic_disbelief_inconsistent_theories_ofComputation
     (P : History) [IsLogicalInductor P DP]
     (inconsistent : ℕ → Prop) (C : SemidecidableComputation inconsistent)
     (hall : ∀ n, inconsistent n)
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ((fun n => P n ((inconsistentTheoryClaimsOfComputation Q C).inconsistencySentence n))
         ≈ₙ fun _ => 1) ∧
       ((fun n => P n ((inconsistentTheoryClaimsOfComputation Q C).consistencySentence n))
         ≈ₙ fun _ => 0) :=
   lic_disbelief_inconsistent_theories P DP inconsistent
-    (inconsistentTheoryClaimsOfComputation Q C) hall hP hworld
+    (inconsistentTheoryClaimsOfComputation Q C) hall hworld
 
 /--
 Paper node: `thm:halts` -/
@@ -480,12 +477,11 @@ theorem lic_learns_halting_patterns_ofComputation
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
     (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
     (hhalts : ∀ n, CodeHalts (machines n) (inputs n))
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n ((representedHaltingClaims Q machines inputs hm hi).sentence n)) ≈ₙ
       fun _ => 1 :=
   lic_learns_halting_patterns P DP machines inputs
-    (representedHaltingClaims Q machines inputs hm hi) hhalts hP hworld
+    (representedHaltingClaims Q machines inputs hm hi) hhalts hworld
 
 /--
 Paper node: `thm:loops` -/
@@ -498,13 +494,12 @@ theorem lic_learns_provable_nonhalting_patterns_ofComputation
     (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
     (hloops : ∀ n, T ⊢ ∼(universalHaltingSchema/[
       ↑(haltingClaimInput (machines n) (inputs n))]))
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n ((representedHaltingClaims Q machines inputs hm hi).sentence n)) ≈ₙ
       fun _ => 0 :=
   lic_learns_provable_nonhalting_patterns P DP machines inputs
     (representedHaltingClaims Q machines inputs hm hi)
-    (fun n => Q.halting_refutes _ (hloops n)) hP hworld
+    (fun n => Q.halting_refutes _ (hloops n)) hworld
 
 /--
 Paper node: `thm:dontwait` -/
@@ -517,14 +512,13 @@ theorem lic_does_not_anticipate_halting_ofComputation
     (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
     (hh : PolyNatCodes horizons)
     (hnever : ∀ n, ¬CodeHalts (machines n) (inputs n))
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n
       ((representedBoundedHaltingClaims Q machines inputs horizons hm hi hh).sentence n))
         ≈ₙ fun _ => 0 :=
   lic_does_not_anticipate_halting P DP machines inputs horizons
     (representedBoundedHaltingClaims Q machines inputs horizons hm hi hh)
-    hnever hP hworld
+    hnever hworld
 
 /-! ## Positive and negative path witnesses -/
 

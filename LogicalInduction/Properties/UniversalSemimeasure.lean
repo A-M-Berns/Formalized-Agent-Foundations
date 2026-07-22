@@ -1177,7 +1177,7 @@ lemma eventually_dusSignal_eq_one_of_low_limit
       (dusSignal A k (Nat.pair m i)).denote P = 1 := by
   let φ := B.prefixSentence (B.enumeration i)
   have hvisit := tendsto_pair_left_atTop i
-  have hconv0 := lic_limitingBelief_tendsto P DP hP hworld φ
+  have hconv0 := lic_limitingBelief_tendsto P DP hworld φ
   have hconv : Tendsto (fun m ↦ P (Nat.pair m i) φ) atTop
       (𝓝 (limitingBelief P φ)) := hconv0.comp hvisit
   have happ : Tendsto
@@ -1261,7 +1261,7 @@ lemma exists_dusMeanPayout_ge_of_low_limit
   obtain ⟨N, hN⟩ := Filter.eventually_atTop.1 hevent
   have hmass : 0 < M.mass (B.enumeration i) := by
     let φ := B.prefixSentence (B.enumeration i)
-    have hconv := lic_limitingBelief_tendsto P DP hP hworld φ
+    have hconv := lic_limitingBelief_tendsto P DP hworld φ
     have hlim0 : 0 ≤ limitingBelief P φ :=
       ge_of_tendsto hconv (Filter.Eventually.of_forall (fun n ↦ (hP n φ).1))
     have hlow' : limitingBelief P φ < M.mass (B.enumeration i) /
@@ -2041,14 +2041,13 @@ lemma strict_domination_of_null_prefix_theory
     {M : UniversalContinuousSemimeasure}
     {B : BitPrefixSentences DP}
     (P : History) [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (S : StrictSeparatorPresentation M B) :
     ∀ C : ℝ, 0 < C → ∃ i,
       C * M.mass (S.prefixes i) <
         limitingBelief P (B.prefixSentence (S.prefixes i)) := by
   obtain ⟨ε, hε, hlower⟩ := lic_uniform_nonDogmatism P DP
     (fun i ↦ B.prefixSentence (S.prefixes i)) S.repetition
-    S.jointly_possible hP
+    S.jointly_possible
   intro C hC
   have hscaled : Tendsto (fun i ↦ C * M.mass (S.prefixes i)) atTop (𝓝 0) := by
     simpa using S.mass_tendsto_zero.const_mul C
@@ -2065,12 +2064,11 @@ theorem lic_strict_domination_universalSemimeasure
     {M : UniversalContinuousSemimeasure}
     {B : BitPrefixSentences DP}
     (P : History) [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (S : StrictSeparatorPresentation M B) :
     ∀ C : ℝ, 0 < C → ∃ σ : List Bool,
       limitingBelief P (B.prefixSentence σ) > C * M.mass σ := by
   intro C hC
-  obtain ⟨i, hi⟩ := strict_domination_of_null_prefix_theory P hP S C hC
+  obtain ⟨i, hi⟩ := strict_domination_of_null_prefix_theory P S C hC
   exact ⟨S.prefixes i, hi⟩
 
 #print axioms strict_domination_of_null_prefix_theory

@@ -484,7 +484,7 @@ lemma PolySequence.completedTheoryLow_le_limitingValue
   let ε := (q - L) / 4
   have hε : 0 < ε := by dsimp [ε, L]; linarith
   have hprovNear := hprov ε hε
-  have htend := (As i).price_tendsto_limitingValue P DP hP hworld
+  have htend := (As i).price_tendsto_limitingValue P DP hworld
   obtain ⟨N, hN⟩ := Metric.tendsto_atTop.mp htend ε hε
   have hpriceNear : ∀ᶠ n in atTop, |(As i).price P n - L| < ε :=
     Filter.eventually_atTop.mpr ⟨N, fun n hn => by
@@ -617,7 +617,6 @@ theorem PolySequence.affcoh {As : ℕ → AffineCombination} (h : PolySequence A
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∃ C : ℝ, ∀ n, (As n).magnitude P ≤ C)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (liminf (completedAffineLow As P DP) atTop ≤
         liminf (fun n => (As n).value P (limitingBelief P)) atTop ∧
@@ -627,13 +626,15 @@ theorem PolySequence.affcoh {As : ℕ → AffineCombination} (h : PolySequence A
           limsup (fun n => (As n).value P (limitingBelief P)) atTop ∧
         limsup (fun n => (As n).value P (limitingBelief P)) atTop ≤
           limsup (completedAffineHigh As P DP) atTop) := by
+  let hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨hdlo, hdhi, hhlo, hhhi, hllo, hlhi⟩ := hbounded.filterBounds
   obtain ⟨hlimlo, hlimhi⟩ :=
     AffineCombination.BoundedAffinePrices.limitingValue_filterBounds
-      hbounded DP hP hworld
+      hbounded DP hworld
   obtain ⟨htllo, htlhi, hthlo, hthhi⟩ :=
     h.completedAffineExtrema_filterBounds P DP hbounded hmag hP hworld
-  have hper := h.peraffkno P DP hbounded hmag hP hworld
+  have hper := h.peraffkno P DP hbounded hmag hworld
   have htheoryLow : ∀ n, completedAffineLow As P DP n ≤
       (As n).value P (limitingBelief P) :=
     fun n => h.completedTheoryLow_le_limitingValue P DP hbounded hmag hP hworld n
@@ -673,12 +674,13 @@ theorem PolySequence.affine_provind_theory_ge
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∃ C : ℝ, ∀ n, (As n).magnitude P ≤ C)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (b : ℝ)
     (hval : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       b ≤ (As n).value P v.payout) :
     (fun n => (As n).price P n) ≳ₙ fun _ => b := by
+  let hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨_, hdhi, _, _, _, _⟩ := hbounded.filterBounds
   obtain ⟨_, htlhi, _, _⟩ :=
     h.completedAffineExtrema_filterBounds P DP hbounded hmag hP hworld
@@ -687,7 +689,7 @@ theorem PolySequence.affine_provind_theory_ge
     apply le_csInf (completedAffineValues_nonempty DP (As n) P hworld)
     rintro x ⟨v, hv, rfl⟩
     exact hval n v hv
-  have hcoh := h.affcoh P DP hbounded hmag hP hworld
+  have hcoh := h.affcoh P DP hbounded hmag hworld
   have hbTheory : b ≤ liminf (completedAffineLow As P DP) atTop :=
     le_liminf_of_le htlhi.isCobounded_flip (Eventually.of_forall hlow)
   have hbDiag : b ≤ liminf (fun n => (As n).price P n) atTop :=
@@ -707,7 +709,6 @@ lemma PolySequence.affine_provind_theory_le
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∃ C : ℝ, ∀ n, (As n).magnitude P ≤ C)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (b : ℝ)
     (hval : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
@@ -720,7 +721,7 @@ lemma PolySequence.affine_provind_theory_le
     obtain ⟨C, hC⟩ := hmag
     exact ⟨C, fun n => by simpa [neg_magnitude] using hC n⟩
   have hneg := h.neg.affine_provind_theory_ge P DP hnegBound
-    hnegMag hP hworld (-b)
+    hnegMag hworld (-b)
     (fun n v hv => by rw [neg_value]; linarith [hval n v hv])
   intro ε hε
   filter_upwards [hneg ε hε] with n hn
@@ -733,16 +734,15 @@ lemma PolySequence.affine_provind_theory_eq
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∃ C : ℝ, ∀ n, (As n).magnitude P ≤ C)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (b : ℝ)
     (hval : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       (As n).value P v.payout = b) :
     (fun n => (As n).price P n) ≈ₙ fun _ => b := by
   rw [asympEq_iff_asympLE_asympGE]
-  exact ⟨h.affine_provind_theory_le P DP hbounded hmag hP hworld b
+  exact ⟨h.affine_provind_theory_le P DP hbounded hmag hworld b
       (fun n v hv => (hval n v hv).le),
-    h.affine_provind_theory_ge P DP hbounded hmag hP hworld b
+    h.affine_provind_theory_ge P DP hbounded hmag hworld b
       (fun n v hv => (hval n v hv).ge)⟩
 
 /-- Vanishing-error form of paper-facing affine provability induction.  This is the form
@@ -754,17 +754,18 @@ lemma PolySequence.affine_provind_theory_tendsto_zero
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∃ C : ℝ, ∀ n, (As n).magnitude P ≤ C)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld,
       v.ConsistentWithTheory DP → |(As n).value P v.payout| ≤ ε) :
     (fun n => (As n).price P n) ≈ₙ fun _ => 0 := by
+  let hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   rw [asympEq_iff_eventuallyWithin]
   intro ε hε
   obtain ⟨hdlo, hdhi, _, _, _, _⟩ := hbounded.filterBounds
   obtain ⟨_, htlhi, hthlo, _⟩ :=
     h.completedAffineExtrema_filterBounds P DP hbounded hmag hP hworld
-  have hcoh := h.affcoh P DP hbounded hmag hP hworld
+  have hcoh := h.affcoh P DP hbounded hmag hworld
   have hnear := hval (ε / 2) (by linarith)
   have hlow : ∀ᶠ n in atTop, -ε / 2 ≤ completedAffineLow As P DP n := by
     filter_upwards [hnear] with n hn
@@ -812,13 +813,14 @@ Paper node: `thm:affprovind` -/
 theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
     (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (φ n)) ≈ₙ fun _ => 1 := by
+  let hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1 :=
+    fun n χ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n χ
   have hφpoly := AffineCombination.sentenceAffine_polySequence φ hφ
   have hφeq := hφpoly.affine_provind_theory_eq P DP
     (AffineCombination.sentenceAffine_bounded φ P hP)
-    ⟨1, fun n => by simp⟩ hP hworld 1 (fun n v hv => by
+    ⟨1, fun n => by simp⟩ hworld 1 (fun n v hv => by
       obtain ⟨k, hk⟩ := hthm n
       have hholds := hv k (φ n) hk
       simp [AffineCombination.sentenceAffine, AffineCombination.value,
@@ -831,13 +833,14 @@ Paper node: `thm:affprovind` -/
 theorem lic_provind_false (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ)
     (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (ψ n)) ≈ₙ fun _ => 0 := by
+  let hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1 :=
+    fun n χ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n χ
   have hψpoly := AffineCombination.sentenceAffine_polySequence ψ hψ
   have hψeq := hψpoly.affine_provind_theory_eq P DP
     (AffineCombination.sentenceAffine_bounded ψ P hP)
-    ⟨1, fun n => by simp⟩ hP hworld 0 (fun n v hv => by
+    ⟨1, fun n => by simp⟩ hworld 0 (fun n v hv => by
       obtain ⟨k, hk⟩ := hdis n
       have hneg := hv k (∼ψ n) hk
       have hfalse : ¬v.Holds (ψ n) := (PCWorld.holds_neg v (ψ n)).mp hneg
@@ -854,12 +857,11 @@ theorem lic_provind (P : History) (DP : DeductiveProcess) [IsLogicalInductor P D
     (hφ : PolySentenceCodes φ) (hψ : PolySentenceCodes ψ)
     (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
     (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ((fun n => P n (φ n)) ≈ₙ fun _ => 1) ∧
       ((fun n => P n (ψ n)) ≈ₙ fun _ => 0) := by
-  exact ⟨lic_provind_true P DP φ hφ hthm hP hworld,
-    lic_provind_false P DP ψ hψ hdis hP hworld⟩
+  exact ⟨lic_provind_true P DP φ hφ hthm hworld,
+    lic_provind_false P DP ψ hψ hdis hworld⟩
 
 #print axioms lic_provind_true
 #print axioms lic_provind_false

@@ -475,13 +475,12 @@ varying-sentence ladder. -/
 lemma exists_obu_fire_of_low_limit
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hrepeat : RepeatsEveryMember φ)
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     {j : ℕ}
     (hlow : ∃ i, limitingBelief P (φ i) < ((ndThr j : ℚ) : ℝ)) :
     ∃ n, j ≤ n ∧ P n (φ n) < ((ndThr j : ℚ) : ℝ) := by
   obtain ⟨i, hi⟩ := hlow
-  have hconv := lic_limitingBelief_tendsto P DP hP hworld (φ i)
+  have hconv := lic_limitingBelief_tendsto P DP hworld (φ i)
   have hevent : ∀ᶠ n in atTop, P n (φ i) < ((ndThr j : ℚ) : ℝ) :=
     (tendsto_order.1 hconv).2 _ hi
   obtain ⟨N, hN⟩ := Filter.eventually_atTop.1 hevent
@@ -499,8 +498,7 @@ theorem lic_uniform_nonDogmatism_repeating
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
     (hrepeat : RepeatsEveryMember φ)
     (hjoint : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (φ i))
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1) :
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (φ i)) :
     ∃ ε : ℝ, 0 < ε ∧ ∀ i, ε ≤ limitingBelief P (φ i) := by
   have hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) := by
     intro n
@@ -517,7 +515,7 @@ theorem lic_uniform_nonDogmatism_repeating
   have hfire : ∀ j, 1 ≤ j →
       ∃ n, j ≤ n ∧ P n (φ n) < ((ndThr j : ℚ) : ℝ) := by
     intro j hj
-    exact exists_obu_fire_of_low_limit P DP φ hrepeat hP hworld
+    exact exists_obu_fire_of_low_limit P DP φ hrepeat hworld
       (hlow _ (ndThr_pos hj))
   exact IsLogicalInductor.noExploit (P := P) (DP := DP)
     (obuTrader φ) (obuTrader_ecTok φ hφ)
@@ -543,8 +541,7 @@ theorem lic_uniform_nonDogmatism
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (source : ℕ → Sentence) (rep : EfficientRepeatedEnumeration source)
     (hjoint : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (source i))
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1) :
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (source i)) :
     ∃ ε : ℝ, 0 < ε ∧ ∀ i, ε ≤ limitingBelief P (source i) := by
   have hjointRep : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ j, v.Holds (rep.sequence j) := by
@@ -555,7 +552,7 @@ theorem lic_uniform_nonDogmatism
     rw [hi]
     exact hvsource i
   obtain ⟨ε, hε, hrep⟩ := lic_uniform_nonDogmatism_repeating
-    P DP rep.sequence rep.sequence_poly rep.repeats hjointRep hP
+    P DP rep.sequence rep.sequence_poly rep.repeats hjointRep
   refine ⟨ε, hε, fun i ↦ ?_⟩
   obtain ⟨j, hj⟩ := rep.covers i
   simpa only [hj] using hrep j

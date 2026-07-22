@@ -967,6 +967,7 @@ required of the market itself.
 The extra values of `quote` on naturals that do not encode a sentence are harmless and make
 the computational interface total. -/
 def ComputableMarket (P : History) : Prop :=
+  (∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) ∧
   ∃ (quote : ℕ → ℕ → ℚ) (code : Nat.Partrec.Code),
     (∀ n φ, P n φ = (quote n (Encodable.encode φ) : ℝ)) ∧
     ∀ z, Encodable.encode (quote z.unpair.1 z.unpair.2) ∈ code.eval z
@@ -976,6 +977,7 @@ paper-facing predicate above is convenient in theorem statements; this structure
 operational form consumed by finite clocked certificate checkers.
 Paper node: `def:ec` -/
 structure MarketComputation (P : History) where
+  price_mem_Icc : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1
   quote : ℕ → ℕ → ℚ
   code : Nat.Partrec.Code
   quote_exact : ∀ n φ, P n φ = (quote n (Encodable.encode φ) : ℝ)
@@ -983,12 +985,18 @@ structure MarketComputation (P : History) where
 
 lemma ComputableMarket.nonemptyComputation
     {P : History} (h : ComputableMarket P) : Nonempty (MarketComputation P) := by
-  obtain ⟨quote, code, hexact, hcode⟩ := h
-  exact ⟨⟨quote, code, hexact, hcode⟩⟩
+  obtain ⟨hrange, quote, code, hexact, hcode⟩ := h
+  exact ⟨⟨hrange, quote, code, hexact, hcode⟩⟩
+
+/-- Every computable market is a sequence of `[0,1]`-valued pricings. -/
+lemma ComputableMarket.price_mem_Icc
+    {P : History} (h : ComputableMarket P) (n : ℕ) (φ : Sentence) :
+    0 ≤ P n φ ∧ P n φ ≤ 1 :=
+  h.1 n φ
 
 lemma MarketComputation.toComputable
     {P : History} (c : MarketComputation P) : ComputableMarket P :=
-  ⟨c.quote, c.code, c.quote_exact, c.code_spec⟩
+  ⟨c.price_mem_Icc, c.quote, c.code, c.quote_exact, c.code_spec⟩
 
 /-- Any terminating clocked output of the certified market program is the unique exact
 rational quote for that paired input. -/
@@ -1461,6 +1469,13 @@ class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
   processComputable : ComputableDeductiveProcess DP
   /-- No efficiently computable trader exploits `P`. -/
   noExploit : ∀ Tr : Trader, EfficientlyComputableTok Tr → ¬ Tr.Exploits P DP
+
+/-- The pricing range carried by every logical inductor's computable-market certificate. -/
+lemma IsLogicalInductor.price_mem_Icc
+    {P : History} {DP : DeductiveProcess} [hLI : IsLogicalInductor P DP]
+    (n : ℕ) (φ : Sentence) :
+    0 ≤ P n φ ∧ P n φ ≤ 1 :=
+  hLI.marketComputable.price_mem_Icc n φ
 
 /-! ### Sanity / non-vacuity for the criterion machinery.
 

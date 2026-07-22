@@ -25,10 +25,9 @@ noncomputable def limitingBelief (P : History) : Valuation :=
 Paper node: `thm:con` -/
 theorem lic_limitingBelief_tendsto (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (φ : Sentence) :
     ConvergesTo (fun n => P n φ) (limitingBelief P φ) := by
-  obtain ⟨L, hL⟩ := lic_price_convergesTo P DP φ (fun n => hP n φ) hworld
+  obtain ⟨L, hL⟩ := lic_price_convergesTo P DP φ hworld
   have hlim : limitingBelief P φ = L := by
     exact hL.limsup_eq
   rwa [hlim]
@@ -40,7 +39,6 @@ its cross-day market prices converge to its value under `P∞`. Feature coeffici
 evaluated against the fixed full history `P`, exactly as in `AffineCombination.price`. -/
 lemma price_tendsto_limitingValue (A : AffineCombination)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConvergesTo (fun m => A.price P m) (A.value P (limitingBelief P)) := by
   have hterms : ∀ l : List (EF × Sentence),
@@ -50,7 +48,7 @@ lemma price_tendsto_limitingValue (A : AffineCombination)
     induction l with
     | nil => simp
     | cons p ps ih =>
-        have hp := lic_limitingBelief_tendsto P DP hP hworld p.2
+        have hp := lic_limitingBelief_tendsto P DP hworld p.2
         have hmul : Tendsto (fun m => p.1.denote P * P m p.2) atTop
             (𝓝 (p.1.denote P * limitingBelief P p.2)) :=
           hp.const_mul (p.1.denote P)
@@ -96,11 +94,10 @@ lemma BoundedAffinePrices.price_le_futureHigh
 lemma futureLow_le_limitingValue_le_futureHigh
     (As : ℕ → AffineCombination) (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (hbounded : BoundedAffinePrices As P)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (n : ℕ) :
     affineFutureLow As P n ≤ (As n).value P (limitingBelief P) ∧
       (As n).value P (limitingBelief P) ≤ affineFutureHigh As P n := by
-  have ht := (As n).price_tendsto_limitingValue P DP hP hworld
+  have ht := (As n).price_tendsto_limitingValue P DP hworld
   constructor
   · exact ge_of_tendsto ht (Filter.eventually_atTop.mpr
       ⟨n, fun m hm =>
@@ -113,19 +110,18 @@ lemma futureLow_le_limitingValue_le_futureHigh
 lemma BoundedAffinePrices.limitingValue_filterBounds
     {As : ℕ → AffineCombination} {P : History} (hbounded : BoundedAffinePrices As P)
     (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     IsBoundedUnder (· ≥ ·) atTop (fun n => (As n).value P (limitingBelief P)) ∧
       IsBoundedUnder (· ≤ ·) atTop (fun n => (As n).value P (limitingBelief P)) := by
   obtain ⟨B, _, hB⟩ := hbounded
   have hlo : ∀ n, -B ≤ (As n).value P (limitingBelief P) := by
     intro n
-    exact ge_of_tendsto ((As n).price_tendsto_limitingValue P DP hP hworld)
+    exact ge_of_tendsto ((As n).price_tendsto_limitingValue P DP hworld)
       (Eventually.of_forall (fun m => by
         linarith [neg_abs_le ((As n).price P m), hB n m]))
   have hhi : ∀ n, (As n).value P (limitingBelief P) ≤ B := by
     intro n
-    exact le_of_tendsto ((As n).price_tendsto_limitingValue P DP hP hworld)
+    exact le_of_tendsto ((As n).price_tendsto_limitingValue P DP hworld)
       (Eventually.of_forall (fun m => (le_abs_self _).trans (hB n m)))
   exact ⟨isBoundedUnder_of_eventually_ge (Eventually.of_forall hlo),
     isBoundedUnder_of_eventually_le (Eventually.of_forall hhi)⟩
@@ -1157,7 +1153,7 @@ lemma PolySequence.noPersistenceUnderpricing {As : ℕ → AffineCombination}
       simpa [portfolios] using
         persistencePortfolio_limitingValue_nonneg hshift start lowShift δ P k hshiftLim
     have hbetween := futureLow_le_limitingValue_le_futureHigh
-      portfolios P DP hportBound hP hworld k
+      portfolios P DP hportBound hworld k
     exact hlim0.trans hbetween.2
   have hnogap := hport.noPreemptiveUnderpricing P DP hportMag hP hworld
   let q : ℝ := (lowShift : ℝ) + δ
@@ -1367,7 +1363,6 @@ liminf/limsup order theory and fixed-combination convergence. -/
 theorem peraffkno_of_noPersistenceGaps
     (As : ℕ → AffineCombination) (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (hbounded : BoundedAffinePrices As P)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hgap : AffineNoPersistenceGaps As P) :
     liminf (affineFutureLow As P) atTop =
@@ -1377,12 +1372,12 @@ theorem peraffkno_of_noPersistenceGaps
   obtain ⟨_hdlo, _hdhi, hhlo, hhhi, hllo, hlhi⟩ := hbounded.filterBounds
   obtain ⟨hlimlo, hlimhi⟩ :=
     AffineCombination.BoundedAffinePrices.limitingValue_filterBounds
-      hbounded DP hP hworld
+      hbounded DP hworld
   have hbetween : ∀ n,
       affineFutureLow As P n ≤ (As n).value P (limitingBelief P) ∧
         (As n).value P (limitingBelief P) ≤ affineFutureHigh As P n :=
     fun n => AffineCombination.futureLow_le_limitingValue_le_futureHigh
-      As P DP hbounded hP hworld n
+      As P DP hbounded hworld n
   constructor
   · exact liminf_eq_of_noPreemptiveUnderpricing _ _ hllo hlhi hlimlo hlimhi
       (fun n => (hbetween n).1) hgap.underpriced
@@ -1396,14 +1391,14 @@ theorem AffineCombination.PolySequence.peraffkno
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∃ B : ℝ, ∀ n, (As n).magnitude P ≤ B)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (affineFutureLow As P) atTop =
         liminf (fun n => (As n).value P (limitingBelief P)) atTop ∧
       limsup (affineFutureHigh As P) atTop =
         limsup (fun n => (As n).value P (limitingBelief P)) atTop :=
-  peraffkno_of_noPersistenceGaps As P DP hbounded hP hworld
-    (h.noPersistenceGaps_of_boundedMagnitude P DP hbounded hmag hP hworld)
+  peraffkno_of_noPersistenceGaps As P DP hbounded hworld
+    (h.noPersistenceGaps_of_boundedMagnitude P DP hbounded hmag
+      (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ) hworld)
 
 #print axioms lic_limitingBelief_tendsto
 #print axioms AffineCombination.price_tendsto_limitingValue

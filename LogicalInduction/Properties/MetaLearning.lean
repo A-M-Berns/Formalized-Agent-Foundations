@@ -64,11 +64,10 @@ theorem lic_belief_finitistic_consistency
     (consistentWithin : ℕ → Prop)
     (R : RepresentedDecidableClaims DP consistentWithin)
     (hconsistent : ∀ n, consistentWithin n)
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (R.sentence n)) ≈ₙ fun _ => 1 :=
   lic_provind_true P DP R.sentence R.sentence_poly
-    (fun n => R.provable_of_true n (hconsistent n)) hP hworld
+    (fun n => R.provable_of_true n (hconsistent n)) hworld
 
 /-- **Belief in the Consistency of a Stronger Theory** (`thm:pazfc`).  The logical-
 induction argument is identical to `thm:pac`; the distinction is carried by the supplied
@@ -79,11 +78,10 @@ theorem lic_belief_stronger_theory_consistency
     (strongerConsistentWithin : ℕ → Prop)
     (R : RepresentedDecidableClaims DP strongerConsistentWithin)
     (hconsistent : ∀ n, strongerConsistentWithin n)
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (R.sentence n)) ≈ₙ fun _ => 1 :=
   lic_provind_true P DP R.sentence R.sentence_poly
-    (fun n => R.provable_of_true n (hconsistent n)) hP hworld
+    (fun n => R.provable_of_true n (hconsistent n)) hworld
 
 /-- **Disbelief in Inconsistent Theories** (`thm:incons`): timely belief in each emitted
 inconsistency sentence and timely disbelief in its separately emitted consistency sentence.
@@ -92,14 +90,13 @@ theorem lic_disbelief_inconsistent_theories
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (inconsistent : ℕ → Prop) (R : InconsistentTheoryClaims DP inconsistent)
     (hall : ∀ n, inconsistent n)
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ((fun n => P n (R.inconsistencySentence n)) ≈ₙ fun _ => 1) ∧
       ((fun n => P n (R.consistencySentence n)) ≈ₙ fun _ => 0) :=
   ⟨lic_provind_true P DP R.inconsistencySentence R.inconsistency_poly
-      (fun n => R.inconsistency_provable n (hall n)) hP hworld,
+      (fun n => R.inconsistency_provable n (hall n)) hworld,
     lic_provind_false P DP R.consistencySentence R.consistency_poly
-      (fun n => R.consistency_disprovable n (hall n)) hP hworld⟩
+      (fun n => R.consistency_disprovable n (hall n)) hworld⟩
 
 /-- **Learning of Halting Patterns** (`thm:halts`) for polynomially named repository
 machine/input sequences.  Machine runtime is unrestricted: only the representing sentence
@@ -111,11 +108,10 @@ theorem lic_learns_halting_patterns
     (R : RepresentedSemidecidableClaims DP
       (fun n => CodeHalts (machines n) (inputs n)))
     (hhalts : ∀ n, CodeHalts (machines n) (inputs n))
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (R.sentence n)) ≈ₙ fun _ => 1 :=
   lic_provind_true P DP R.sentence R.sentence_poly
-    (fun n => R.provable_of_true n (hhalts n)) hP hworld
+    (fun n => R.provable_of_true n (hhalts n)) hworld
 
 /-- **Learning of Provable Non-Halting Patterns** (`thm:loops`).  “Provably fails to
 halt” is rendered directly as eventual occurrence of the negated represented halting
@@ -127,10 +123,9 @@ theorem lic_learns_provable_nonhalting_patterns
     (R : RepresentedSemidecidableClaims DP
       (fun n => CodeHalts (machines n) (inputs n)))
     (hloops : ∀ n, ∃ k, (∼R.sentence n) ∈ DP.D k)
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (R.sentence n)) ≈ₙ fun _ => 0 :=
-  lic_provind_false P DP R.sentence R.sentence_poly hloops hP hworld
+  lic_provind_false P DP R.sentence R.sentence_poly hloops hworld
 
 /-- **Learning not to Anticipate Halting** (`thm:dontwait`).  The compact sentence may
 refer to a fixed arbitrary computable horizon program; its day-indexed syntax is what the
@@ -143,10 +138,9 @@ theorem lic_does_not_anticipate_halting
     (R : RepresentedDecidableClaims DP
       (fun n => CodeHaltsWithin (machines n) (inputs n) (horizons n)))
     (hnever : ∀ n, ¬CodeHalts (machines n) (inputs n))
-    (hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (R.sentence n)) ≈ₙ fun _ => 0 := by
-  apply lic_provind_false P DP R.sentence R.sentence_poly _ hP hworld
+  apply lic_provind_false P DP R.sentence R.sentence_poly _ hworld
   intro n
   apply R.disprovable_of_false n
   intro hbounded

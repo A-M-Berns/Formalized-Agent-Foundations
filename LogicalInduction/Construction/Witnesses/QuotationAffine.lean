@@ -2490,22 +2490,22 @@ lemma CompletedAffineQuoteApprox.future_price_tendsto_zero
     constructor <;> linarith
   have hlimBounds :=
     AffineCombination.BoundedAffinePrices.limitingValue_filterBounds
-      q.bounded DP hP hworld
-  have hcoh := q.poly.affcoh P DP q.bounded hmag hP hworld
+      q.bounded DP hworld
+  have hcoh := q.poly.affcoh P DP q.bounded hmag hworld
   have hlv : Tendsto lv atTop (𝓝 0) := by
     apply tendsto_of_le_liminf_of_limsup_le
     · simpa only [lv, As, htheoryLow.liminf_eq] using hcoh.1.1
     · simpa only [lv, As, htheoryHigh.limsup_eq] using hcoh.2.2
     · simpa only [lv, As] using hlimBounds.2
     · simpa only [lv, As] using hlimBounds.1
-  have hper := q.poly.peraffkno P DP q.bounded hmag hP hworld
+  have hper := q.poly.peraffkno P DP q.bounded hmag hworld
   obtain ⟨_htdocs, _, hhlo, hhhi, hllo, hlhi⟩ := q.bounded.filterBounds
   have hbetween : ∀ n,
       affineFutureLow As P n ≤ lv n ∧ lv n ≤ affineFutureHigh As P n := by
     intro n
     simpa only [As, lv] using
       AffineCombination.futureLow_le_limitingValue_le_futureHigh
-        q.family P DP q.bounded hP hworld n
+        q.family P DP q.bounded hworld n
   have hfutureHigh : Tendsto (affineFutureHigh As P) atTop (𝓝 0) := by
     apply tendsto_of_le_liminf_of_limsup_le
     · calc
@@ -2623,13 +2623,13 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
   have hhigh0 : Tendsto highGap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, high, highGap, flagN, X', Y', H,
       index, currentExpectationFeature_denote] using
-      high.gap_asympEq_zero hP hworld
+      high.gap_asympEq_zero hworld
   have hcrossX0 : Tendsto crossXGap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, crossX, crossXGap, flagN, index,
-      LUV.expect] using crossX.gap_asympEq_zero hP hworld
+      LUV.expect] using crossX.gap_asympEq_zero hworld
   have hcrossY0 : Tendsto crossYGap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, crossY, crossYGap, flagN, index,
-      LUV.expect] using crossY.gap_asympEq_zero hP hworld
+      LUV.expect] using crossY.gap_asympEq_zero hworld
   let raw := LUV.expectDifferenceAffine X Y
   let family : ℕ → AffineCombination := fun n ↦
     (raw n).scale (EF.const (1 / 2))
@@ -2742,10 +2742,10 @@ noncomputable def futurePriceQuoteOfRepresentation
       (Y (index m)).expect P m)
   have hhigh0 : Tendsto highGap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, high, highGap, flagN, Y', H,
-      φ', index, currentPriceFeature] using high.gap_asympEq_zero hP hworld
+      φ', index, currentPriceFeature] using high.gap_asympEq_zero hworld
   have hcrossY0 : Tendsto crossYGap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, crossY, crossYGap, flagN, index,
-      LUV.expect] using crossY.gap_asympEq_zero hP hworld
+      LUV.expect] using crossY.gap_asympEq_zero hworld
   let sentenceFamily := AffineCombination.sentenceAffine φ
   let quoteFamily := LUV.expectAffineSeq Y
   let raw : ℕ → AffineCombination := fun n ↦
@@ -2888,13 +2888,13 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
       (Z' (index m)).expect P m)
   have hhigh0 : Tendsto highGap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, high, highGap, flagN, Xr, Zr,
-      Zr', index] using high.gap_asympEq_zero hP hworld
+      Zr', index] using high.gap_asympEq_zero hworld
   have hcrossZ0 : Tendsto crossZGap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, crossZ, crossZGap, flagN, index,
-      LUV.expect] using crossZ.gap_asympEq_zero hP hworld
+      LUV.expect] using crossZ.gap_asympEq_zero hworld
   have hcrossZ'0 : Tendsto crossZ'Gap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, crossZ', crossZ'Gap, flagN, index,
-      LUV.expect] using crossZ'.gap_asympEq_zero hP hworld
+      LUV.expect] using crossZ'.gap_asympEq_zero hworld
   let raw := LUV.expectDifferenceAffine Z Z'
   let family : ℕ → AffineCombination := fun n ↦
     (raw n).scale (EF.const (1 / 2))
@@ -3068,13 +3068,13 @@ noncomputable def selfTrustQuoteOfRepresentation
       (B (index m)).expect P m)
   have hhigh0 : Tendsto highGap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, high, highGap, flagN, Ar, Br,
-      φr, pr, index] using high.gap_asympEq_zero hP hworld
+      φr, pr, index] using high.gap_asympEq_zero hworld
   have hcrossA0 : Tendsto crossAGap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, crossA, crossAGap, flagN, index,
-      LUV.expect] using crossA.gap_asympEq_zero hP hworld
+      LUV.expect] using crossA.gap_asympEq_zero hworld
   have hcrossB0 : Tendsto crossBGap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, crossB, crossBGap, flagN, index,
-      LUV.expect] using crossB.gap_asympEq_zero hP hworld
+      LUV.expect] using crossB.gap_asympEq_zero hworld
   have hpCrossB0 : Tendsto (fun m ↦ (p (index m) : ℝ) * crossBGap m)
       atTop (𝓝 0) := by
     apply bdd_le_mul_tendsto_zero
@@ -3305,7 +3305,7 @@ theorem lic_expectations_of_probabilities_ofCode
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (φ n)) ≈ₙ fun n => (q.luv n).expect P n :=
-  lic_expectations_of_probabilities P DP φ q.luv hP hworld
+  lic_expectations_of_probabilities P DP φ q.luv hworld
     (currentPriceExpectationQuoteOfCode Q φ hφ q hexact hP)
 
 /-- Paper-facing `thm:er` entry point from concrete arithmetic quotation code.
@@ -3321,7 +3321,7 @@ theorem lic_iterated_expectations_ofCode
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (X n).expect P n) ≈ₙ fun n => (q.luv n).expect P n :=
-  lic_iterated_expectations P DP X q.luv hP hworld
+  lic_iterated_expectations P DP X q.luv hworld
     (currentExpectationQuoteOfCode Q X hX q hexact hP)
 
 /-- Paper-facing `thm:ref` entry point from generated endpoint features and the

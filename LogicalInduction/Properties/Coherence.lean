@@ -112,8 +112,9 @@ converges to `0` under a logical inductor.
 Paper node: `thm:lc` -/
 theorem lic_disprovable_tendsto_zero (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence) (hdis : ∀ n, (∼φ) ∈ DP.D n)
-    (hP0 : ∀ n, 0 ≤ P n φ) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConvergesTo (fun n => P n φ) 0 := by
+  have hP0 : ∀ n, 0 ≤ P n φ := fun n => (hLI.price_mem_Icc n φ).1
   refine Metric.tendsto_atTop.mpr (fun ε hε => ?_)
   have hev : ∀ᶠ n in atTop, P n φ < ε := by
     by_contra h
@@ -413,15 +414,15 @@ converges. Proof: if not, the price oscillates across a rational gap
 (`exists_rat_oscillation_of_not_convergesTo`), and that oscillation is exploitable
 (`oscillation_exploitable`) by an e.c. trader — contradicting `def:lic`.
 
-Hypotheses (both honest, both matching the rest of this file): prices lie in `[0,1]`, and each
-day admits a plausible world (`hcons`; without it the market is vacuously unexploitable and
-nothing constrains the price).
+The market range is part of `IsLogicalInductor`; the remaining hypothesis says that each day
+admits a plausible world (`hcons`; without it the market is vacuously unexploitable and nothing
+constrains the price).
 Paper node: `thm:con` -/
 theorem lic_price_convergesTo (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence)
-    (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ L, ConvergesTo (fun n => P n φ) L := by
+  have hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1 := fun n => hLI.price_mem_Icc n φ
   by_contra hnc
   obtain ⟨a, b, hab, hA, hB⟩ := exists_rat_oscillation_of_not_convergesTo P φ hb hnc
   obtain ⟨Tr, hec, hexp⟩ := oscillation_exploitable P DP φ a b hab hb hcons hA hB

@@ -517,7 +517,7 @@ lemma LIABoundedEvaluatorCompiler.toComputableMarket
     (compiler : LIABoundedEvaluatorCompiler process) :
     ComputableMarket (liaHistory DP) := by
   obtain ⟨code, hcode⟩ := compiler.exists_quote_code
-  refine ⟨liaEncodedQuote DP, code, ?_, ?_⟩
+  refine ⟨liaHistory_range DP, liaEncodedQuote DP, code, ?_, ?_⟩
   · intro n phi
     simp [liaHistory, liaEncodedQuote, liaQuote,
       RationalBeliefState.toValuation]

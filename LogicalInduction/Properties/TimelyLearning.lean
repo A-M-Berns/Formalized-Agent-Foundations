@@ -342,20 +342,18 @@ theorem lic_persistence_of_knowledge (P : History) (DP : DeductiveProcess)
 sentences, the diagonal prices have exactly the same liminf as their future suprema and
 the same limsup as their future infima.
 
-The explicit price/world hypotheses are fields of the paper's market/deductive-process
-interfaces; this repository currently carries them theorem-by-theorem because `History`
-and `DeductiveProcess` are deliberately thin substrate types.
+The price range is carried by `IsLogicalInductor`; plausible-world existence remains an
+explicit deductive-process hypothesis.
 Paper node: `thm:tbo` -/
 theorem lic_preemptive_learning (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (fun n => P n (φ n)) atTop =
         liminf (fun n => sSup (Set.range (fun j => P (n + j) (φ n)))) atTop ∧
       limsup (fun n => P n (φ n)) atTop =
         limsup (fun n => sInf (Set.range (fun j => P (n + j) (φ n)))) atTop := by
   have hbcs := AffineCombination.sentenceAffine_bcs φ hφ P
-  have h := hbcs.affpolymax DP hP hworld
+  have h := hbcs.affpolymax DP hworld
   have hhigh : affineFutureHigh (AffineCombination.sentenceAffine φ) P =
       fun n => sSup (Set.range (fun j => P (n + j) (φ n))) :=
     funext (AffineCombination.sentenceAffine_futureHigh φ P)
