@@ -29,17 +29,165 @@ What landed (all axiom-clean — `propext`/`Classical.choice`/`Quot.sound` only)
 **Scope note carried out as planned:** computation side only. The *quotation* side remains
 blocked by the vacuity obstruction (below) and still needs a frozen-boundary redesign.
 
-## What's next (was the MVP; now the follow-ons)
+---
 
-1. **Confirm the quotation vacuity in Lean** (cheap, ~½ session) — derive `False` from
-   `Q : QuotationTheoryPresentation` + `hworld` (positive=negative=⊤). See the vacuity finding
-   below and [[quotation-presentation-vacuity]]. Standalone audit correction.
-2. **Quotation-side redesign** — restrict `QuotationTheoryPresentation` to complementary
-   decisions (frozen-boundary change → re-freeze `#assert_fields` + re-run the audit), then
-   build the quotation DP + a paradox-resistance corollary over `LIA`, mirroring the now-done
-   computation MVP. Bigger; touches frozen surface.
-3. **Human statement read-through** (Anson) + paper comparison — deferred verification gates.
-4. **Optional** — Kraft / `M7-PREFIX-MACHINE` for a 13/15 stretch.
+# 🎯 THE NEXT FOCUS — quotation / self-reference non-vacuity rescue
+
+Anson's next focus (2026-07-22). The introspection / self-trust / expectation-representation /
+paradox-resistance family (`M7-QUOTE-AFFINE`, endpoints `lic_introspection_ofCode`,
+`lic_paradox_resistance_ofDiagonal`, `lic_self_trust_ofRepresentation`,
+`lic_expectations_of_probabilities_ofCode`, `lic_iterated_expectations_ofCode`, the
+`_ofRepresentation` net-update endpoints) is **currently vacuous** and must be rescued before
+it can be made unconditional over `LIA`. Full design analysis is in this session's transcript;
+the actionable distillation follows.
+
+### The exact obstruction
+
+`QuotationTheoryPresentation` (`QuotationAffine.lean:103–114`) has two fields quantifying over
+**two independent, arbitrary schemas**:
+
+```lean
+quote_positive_enters : ∀ (positive negative : ArithmeticSemisentence 1) (input : ℕ),
+    T ⊢ positive/[↑input] → ∃ k, quotationClaimSentence positive negative input ∈ DP.D k
+quote_negative_refutes : ∀ (positive negative : ArithmeticSemisentence 1) (input : ℕ),
+    T ⊢ negative/[↑input] → ∃ k, (∼quotationClaimSentence positive negative input) ∈ DP.D k
+```
+
+The atom is keyed on **both** schemas; the positive literal fires from `T ⊢ positive/[i]`, the
+`∼` of the *same atom* from `T ⊢ negative/[i]`, and nothing ties the two schemas together. Take
+`positive = negative = ⊤`: `T ⊢ ⊤/[i]` is trivial, so both fire on `X = quotationClaimSentence
+⊤ ⊤ i`, forcing `X` and `∼X` into a common stage (by `mono`) ⇒ no consistent world ⇒
+`Q ⟹ ¬hworld`. So `(Q ∧ hworld)` is unsatisfiable and every consuming endpoint is vacuously
+true. (Computation escapes this: its enters/refutes quantify over the **input only**, with
+**fixed** complementary schemas, so both-firing means `T` proves a Σ₁ statement and its
+standard-model complement — killed by Σ₁-soundness. Quotation lost that guardrail by freeing
+the pair.) Note the consumers **never use** the freedom: every call site passes
+`q.decision.positive, q.decision.negative` from an `ArithmeticDecision`, which already bundles
+complementarity (`positive_standard`/`negative_standard`). The bad field simply promises more
+than any consumer needs. See [[quotation-presentation-vacuity]].
+
+### The rescue = two coupled moves (need both)
+
+- **(A) Boundary redesign** kills the *vacuity* (makes `Q ∧ hworld` satisfiable).
+- **(B) Construction** builds a concrete quotation DP, proves its `hworld`, inhabits the
+  redesigned `Q`, and instantiates over `liaHistory` — making the endpoints *unconditional*.
+
+### Recommended redesign — mirror the MVP (index by predicate code)
+
+Make quotation structurally identical to computation: **fix the schema-former to
+`codeOfREPred` and index enters/refutes by a predicate code + input**, not arbitrary schemas.
+
+```lean
+-- pos code = codeOfREPred (decode code); neg code = codeOfREPred (¬ decode code)
+quote_positive_enters : ∀ (code input : ℕ),
+    T ⊢ (quoteSchemaPos code)/[↑input] →
+      ∃ k, quotationClaimSentence (quoteSchemaPos code) (quoteSchemaNeg code) input ∈ DP.D k
+quote_negative_refutes : ∀ (code input : ℕ),
+    T ⊢ (quoteSchemaNeg code)/[↑input] →
+      ∃ k, (∼quotationClaimSentence (quoteSchemaPos code) (quoteSchemaNeg code) input) ∈ DP.D k
+```
+
+- **Vacuity gone:** the `⊤,⊤` attack needs `⊤ = codeOfREPred truth` *and* `⊤ = codeOfREPred
+  (¬truth)` at once — impossible.
+- **`hworld` provable verbatim from the MVP:** world believes the atom iff `T ⊢ (pos code)/[i]`;
+  both literals ⟹ `T ⊢ pos/[i]` and `T ⊢ neg/[i]` ⟹ (Σ₁-soundness + `codeOfREPred_spec`)
+  `truth i ∧ ¬truth i`, contradiction. This is `theoremDP_hworld`'s tag-3 argument.
+- **DP = the MVP construction with the schema as a decoded argument.** Fires-predicate is
+  `T ⊢ codeOfREPred(decode code)/[i]` — provability where the *formula is a computable function
+  of `code`*. The M7-QUOTE-DP spike already cleared this (`Bootstrapping.subst`/`⌜⌝`/`numeral`
+  primrec ⇒ `⌜codeOfREPred(decode code)⌝` computable in `code`). This is the **one genuinely new
+  piece** over the MVP; everything else reuses [[quote-dp-mvp-computable-recipe]].
+- Consumers barely change: `BooleanQuoteCode`/`RationalQuoteCode` gain a `code : ℕ` field with
+  `decision = ArithmeticDecision.ofComputable (decode code)`; `.reflected` proofs pass `code`.
+
+_Lighter variant of (A):_ quantify the fields over `ArithmeticDecision T truth` directly. Kills
+the vacuity with a smaller diff, but gives **no** computable enumeration for (B) (can't decode
+an `ArithmeticDecision` from ℕ). Use it only to unblock the audit fast; go code-indexed for the
+construction.
+
+### The one real wrinkle — the diagonal (paradox resistance)
+
+`ParameterizedDiagonalQuoteCode` (`QuotationAffine.lean:2235`) forces
+`decision.positive = parameterizedFixedpoint body` — the atom must name the genuine
+self-referential schema, not `codeOfREPred truth`, so it doesn't slot into the code-indexed DP
+as-is. **Decide this first when you open the family** (it's the residual uncertainty):
+
+- *Preferred — decouple.* The diagonal's `truth n ↔ P n (sentence n) < p` **is computable**
+  (rational-price comparison), so it has an `ofComputable` decision. Represent the atom with
+  `codeOfREPred truth` (rides the same DP + `hworld`); keep `parameterizedFixedpoint body` only
+  in `diagonal_law` / `truth_spec` where the self-reference is actually used. The two schemas
+  are `T`-provably equivalent (diagonal law + `re_complete`), so the reflection/price argument
+  transfers. Keeps one universal DP. Open question: does paradox resistance really need the
+  *atom* to carry the fixed-point schema, or only the fixed-point *law* to hold for the
+  represented truth? Answer this before building.
+- *Fallback — dedicated field.* Add a `diagonal_enters/refutes` pair for the finitely-many
+  fixed-point schemas a result needs, with its own `hworld` clause from the diagonal law (the
+  fixed point represents a computable truth ⇒ Σ₁ schema, exclusive with its negation).
+
+### Order of operations (frozen-surface aware)
+
+1. **Confirm the vacuity in Lean** (~½ session) — prove
+   `∀ (Q : QuotationTheoryPresentation DP T), (∀ n, ∃ v, v.ConsistentWith (DP.D n)) → False`
+   via the `⊤,⊤` witness. Keep it as a **permanent regression theorem** so the boundary can
+   never silently regress to the vacuous shape.
+2. **Redesign the fields** (code-indexed), **re-freeze** `#assert_fields QuotationTheoryPresentation`
+   (Tier-2 audited surface — this is the *disclosed* frozen-boundary change), fix the ≤6 consumer
+   proofs, **re-run `M7-ERRATA-AUDIT`** over the changed surface. (~1 session; the frozen-surface
+   care lives here.)
+3. **Build the quotation DP** = the MVP recipe with the schema as a decoded argument, prove
+   `hworld`, inhabit `Q`, add `_unconditional` corollaries over `liaHistory` for introspection /
+   self-trust / expectations, resolve the diagonal per above. (~1–2 sessions; a known pattern
+   except the formula-as-argument enumeration and the diagonal decoupling.)
+
+**Disclosure owed when this lands:** narrowing quotation to `ofComputable` (code-indexed)
+decisions asserts *the market only quotes computable decisions of its own state* — true of the
+paper's reflection/expectation/self-trust constructions, but a real modeling commitment. Record
+it in the ledger as a type-`(c)`-adjacent narrowing, don't let an auditor find it. Not blocked
+by any missing Foundation lemma (`codeOfREPred`/`re_complete`/FFL fixed points already used here).
+
+---
+
+# Remaining proof engineering — full accounting (2026-07-22)
+
+**Framing.** Two layers stand between the corpus and a *fully unconditional* formalization
+(bracketing the 3 disclosed witnesses):
+
+- **Layer 1 — the inductor exists. DONE.** `LIA_is_logical_inductor : ComputableDeductiveProcess
+  DP → IsLogicalInductor (liaHistory DP) DP`, strictly axiom-clean. So the `[IsLogicalInductor P
+  DP]` hypothesis on the whole property tail is **not a real gap** — instantiate `P := liaHistory
+  DP` (one line). The criterion, trading-firm dominance, and efficient-computability plumbing all
+  landed clean.
+- **Layer 2 — discharge the boundary witnesses + `hworld`, per family.** Each property theorem
+  also assumes (a) a boundary/representation structure and (b) `hworld : ∀ n, ∃ v, v.ConsistentWith
+  (DP.D n)`. There are ~166 sites threading `hworld`; before the MVP it was discharged in **zero**.
+  "Unconditional" = per family: construct a concrete DP, **prove** `hworld`, **inhabit** the
+  boundary structure, instantiate over `liaHistory`. The MVP is the first (and only) endpoint that
+  does all four; it also makes the hard part (r.e.-provability substrate + a *proved* `hworld`) a
+  reusable template ([[quote-dp-mvp-computable-recipe]]).
+
+**Per-family status and remaining work** (bracketing the 3 disclosed):
+
+| Family (paper cluster) | State | Remaining | Est. |
+|---|---|---|---|
+| **Meta-learning** (halting/consistency, `M7-COMP-SYNTAX`) | 1 of 6 endpoints unconditional (the MVP — the hard substrate) | Other 5 (`lic_belief_finitistic_consistency`, `_stronger_theory_consistency`, `lic_disbelief_inconsistent_theories`, `lic_learns_provable_nonhalting_patterns`, `lic_does_not_anticipate_halting`) reuse `theoremPresentation` + `theoremDP_hworld` — ~10-line corollaries each | **~½ session** |
+| **Universal semimeasure / Occam** (`M7-DUS-PREFIX-SYNTAX`) | Uses `emptyBitDeductiveProcess` (`D := ∅`) | `hworld` **trivial** over ∅ stages; just instantiate `_ofIndependentAtoms` over LIA. (Full Occam bound needs the *disclosed* Kraft/`M7-PREFIX-MACHINE` — bracketed.) | **~½ session** |
+| **Conditioning** (`M7-SCON-*`) | Empty extra-DP; a *transformation* result (`IsLogicalInductor` of the conditioned history), `hworld` barely applies | Instantiate the union DP over LIA | **~½ session** |
+| **LUV combinations** (`M7-LUV-SYNTAX`) | Operational witness exists | Fold into the feedback instantiation | **~½ session** |
+| **Feedback / pseudorandomness** (`wub`, `M7-FEEDBACK-TRUTH/EMIT`) | Fully generic DP + `hworld` **assumed**; no concrete DP built | Build a concrete feedback DP + prove `hworld` + instantiate. May collapse to an independent-atom DP (free `hworld`) — **verify**; if not, a real construction | **~1–2 sessions** |
+| **Quotation / self-reference** (`M7-QUOTE-AFFINE`) | **Blocked & vacuous** (see THE NEXT FOCUS above) | Confirm vacuity → frozen-boundary redesign → build quotation DP + `hworld` + instantiate; resolve diagonal | **~2–4 sessions**, touches frozen surface — the single largest/riskiest chunk |
+
+**Bottom line:** ~5–8 focused sessions, lopsided. The intellectual crux (r.e. provability
+substrate + proved `hworld`) is solved and reusable; ~4 families are near-trivial finishes
+(free/empty-DP `hworld` or the established corollary pattern). The real remaining mass is two
+constructions: **feedback** (moderate) and **quotation** (the flagship, the only one needing a
+frozen-boundary redesign and carrying real uncertainty). Uncertainty flags: feedback *might*
+collapse to a free-`hworld` DP; quotation *might* balloon if the redesign fights the
+`#assert_fields` freeze or the diagonal won't decouple.
+
+**Verification still owed (not proof engineering, but part of "done"):** the deferred **human
+statement read-through** (Anson) over the frozen surface, then the final `M7-ERRATA-AUDIT` pass —
+the steps that certify the statements are the paper's. Sequencing override in `CLAUDE.md` still
+governs.
 
 _Original MVP brief retained below for the quotation-side redesign, which reuses the same shape._
 
@@ -92,19 +240,12 @@ workflow, nothing is pushed without asking).
 
 ## What remains, in order
 
-1. ~~M7-QUOTE-DP meta-learning MVP~~ — **DONE 2026-07-22** (see the top of this file).
-   `ComputationDP.lean`: constructed Σ₁ provability DP + `ComputationTheoryPresentation`,
-   `hworld` proved, `theoremDP_computable` proved, one meta-learning endpoint over `LIA`
-   unconditional and axiom-clean. Computation side only, as scoped.
-2. **Confirm the quotation vacuity in Lean** (cheap, ~½ session) — a standalone audit
-   correction. See the vacuity finding below.
-3. **Quotation-side redesign** — restrict `QuotationTheoryPresentation` to complementary
-   decisions (frozen-boundary change → re-freeze `#assert_fields` + re-run the audit), then
-   build the quotation DP + a paradox-resistance corollary over LIA. Bigger; touches frozen
-   surface. Not the MVP.
-4. **Human statement read-through** (Anson only) + **paper comparison** — the deferred
-   verification gates over the frozen surface.
-5. **Optional** — Kraft / `M7-PREFIX-MACHINE` for a 13/15 stretch (`notes/m7-prefix-machine-scope.md`).
+> Superseded by **"Remaining proof engineering — full accounting"** and **"THE NEXT FOCUS —
+> quotation non-vacuity rescue"** at the top of this file (2026-07-22). Kept as a one-line index:
+> (1) ~~M7-QUOTE-DP MVP~~ DONE · (2) quotation non-vacuity rescue — **the next focus** · (3) the
+> four near-trivial family finishes (meta-learning siblings, universal-semimeasure, conditioning,
+> LUV) · (4) feedback/pseudorandomness DP · (5) human read-through + paper comparison · (6)
+> optional Kraft/`M7-PREFIX-MACHINE`.
 
 ---
 
