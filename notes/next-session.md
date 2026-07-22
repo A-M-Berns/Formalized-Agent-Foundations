@@ -136,18 +136,20 @@ structurally cannot see the fixed-point fields). So the fixed-point schema is a 
 
 ### Order of operations (frozen-surface aware)
 
-1. **Confirm the vacuity in Lean** (~½ session) — prove
-   `∀ (Q : QuotationTheoryPresentation DP T), (∀ n, ∃ v, v.ConsistentWith (DP.D n)) → False`
-   via the `⊤,⊤` witness. Keep it as a **permanent regression theorem** so the boundary can
-   never silently regress to the vacuous shape.
-2. **Redesign the fields** (code-indexed), **re-freeze** `#assert_fields QuotationTheoryPresentation`
+The `⊤,⊤` vacuity argument is taken as an established (traced, not kernel-checked) premise —
+we redesign to make it inapplicable rather than first proving it. The redesign is only truly
+"fixed" once an inhabitant of `Q ∧ hworld` exists (step 2), which is what certifies satisfiability.
+
+1. **Redesign the fields** (code-indexed), **re-freeze** `#assert_fields QuotationTheoryPresentation`
    (Tier-2 audited surface — this is the *disclosed* frozen-boundary change), fix the ≤6 consumer
    proofs, **re-run `M7-ERRATA-AUDIT`** over the changed surface. (~1 session; the frozen-surface
-   care lives here.)
-3. **Build the quotation DP** = the MVP recipe with the schema as a decoded argument, prove
-   `hworld`, inhabit `Q`, add `_unconditional` corollaries over `liaHistory` for introspection /
-   self-trust / expectations, resolve the diagonal per above. (~1–2 sessions; a known pattern
-   except the formula-as-argument enumeration and the diagonal decoupling.)
+   care lives here.) This re-shapes the boundary but does **not** by itself certify non-vacuity.
+2. **Build the quotation DP + `hworld` = certify the fix.** The MVP recipe with the schema as a
+   decoded argument: construct the DP, prove `hworld`, **inhabit `Q`** (this is the step that
+   *demonstrates* `Q ∧ hworld` is satisfiable — the real "vacuity is fixed" milestone). (~1–2
+   sessions; a known pattern except the formula-as-argument enumeration and the diagonal decoupling.)
+3. **Instantiate over `liaHistory`** — add `_unconditional` corollaries for introspection /
+   self-trust / expectations / paradox resistance, resolving the diagonal per above. (Follow-on.)
 
 **Disclosure owed when this lands:** narrowing quotation to `ofComputable` (code-indexed)
 decisions asserts *the market only quotes computable decisions of its own state* — true of the
@@ -184,7 +186,7 @@ by any missing Foundation lemma (`codeOfREPred`/`re_complete`/FFL fixed points a
 | **Conditioning** (`M7-SCON-*`) | Empty extra-DP; a *transformation* result (`IsLogicalInductor` of the conditioned history), `hworld` barely applies | Instantiate the union DP over LIA | **~½ session** |
 | **LUV combinations** (`M7-LUV-SYNTAX`) | Operational witness exists | Fold into the feedback instantiation | **~½ session** |
 | **Feedback / pseudorandomness** (`wub`, `M7-FEEDBACK-TRUTH/EMIT`) | Fully generic DP + `hworld` **assumed**; no concrete DP built | Build a concrete feedback DP + prove `hworld` + instantiate. May collapse to an independent-atom DP (free `hworld`) — **verify**; if not, a real construction | **~1–2 sessions** |
-| **Quotation / self-reference** (`M7-QUOTE-AFFINE`) | **Blocked & vacuous** (see THE NEXT FOCUS above) | Confirm vacuity → frozen-boundary redesign → build quotation DP + `hworld` + instantiate; resolve diagonal | **~2–4 sessions**, touches frozen surface — the single largest/riskiest chunk |
+| **Quotation / self-reference** (`M7-QUOTE-AFFINE`) | **Blocked & vacuous** (see THE NEXT FOCUS above) | Frozen-boundary redesign → build quotation DP + `hworld` (inhabiting `Q` certifies the fix) → instantiate; resolve diagonal | **~2–4 sessions**, touches frozen surface — the single largest/riskiest chunk |
 
 **Bottom line:** ~5–8 focused sessions, lopsided. The intellectual crux (r.e. provability
 substrate + proved `hworld`) is solved and reusable; ~4 families are near-trivial finishes
@@ -368,9 +370,10 @@ stage containing both `X` and `∼X` has no consistent world):
   / the `_ofCode`/`_ofRepresentation` endpoints is **unsatisfiable → those Tier-1 endpoints are
   vacuously true**. This *upgrades* audit finding F1 from disclosure-scope to a genuine mode-1
   vacuity, and is why the quotation side needs a frozen-boundary redesign (restrict the quote
-  fields to complementary decisions), not just a DP. **Confirm in Lean before acting** (derive
-  `False` from `Q + hworld`; ~½ session) — traced carefully but not yet kernel-checked.
-  See [[quotation-presentation-vacuity]].
+  fields to complementary decisions), not just a DP. The `⊤,⊤` argument is traced but not
+  kernel-checked; the plan is to redesign so it no longer applies (not to first prove it), and to
+  certify the fix by inhabiting `Q ∧ hworld`. See THE NEXT FOCUS above and
+  [[quotation-presentation-vacuity]].
 
 The fix is a genuine construction, and — unlike Brouwer/GL — **not blocked by any missing
 Foundation lemma**; the FFL pieces are already used by `M7-COMP-SYNTAX`/`M7-QUOTE-AFFINE`
