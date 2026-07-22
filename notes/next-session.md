@@ -1,6 +1,44 @@
 # Logical Induction — handoff
 
-_Last updated: 2026-07-22. Branch: `logical-induction`._
+_Last updated: 2026-07-22 (session 2). Branch: `logical-induction`._
+
+## ⏱ Session 2 summary (2026-07-22) — property tail largely unconditional over LIA
+
+Full build green throughout (2720 jobs), strictly axiom-clean, all label/node gates pass.
+Landed this session (commits `f79807d`…`1d24ad1`):
+
+- **Quotation / self-reference — DONE, all 3 steps.** Code-indexed redesign kills the vacuity;
+  `quotation_presentation_nonvacuous` certifies `Q ∧ hworld`; all **8** endpoints unconditional
+  over `LIA` (`*_unconditional` in `ComputationDP.lean`).
+- **Meta-learning — DONE, 6/6.** The 5 siblings joined the halting MVP (`ComputationDP.lean`).
+- **Universal semimeasure — DONE** and **Conditioning — DONE** over `LIA`
+  (`UnconditionalOverLIA.lean`; empty process proved computable, `hworld` trivial).
+- **`dd:fuel`** unit-cost seam recorded in the roadmap: an option-A bit-cost hardening over
+  `Framework/Computable.lean` is **owed before "fully done"** (poly-fuel ⊋ poly-time; the
+  equivalence is appealed to, not proved). Consolidation-phase, orthogonal to the tail.
+
+**Key reframe established this session:** the central `LIA_is_logical_inductor` (Layer 1) is
+**already proved, unconditional, strictly axiom-clean, build-enforced** — only needs the
+satisfiable `ComputableDeductiveProcess DP`, discharged concretely by `theoremDP`/`emptyBit`.
+There is *no* remaining proof-engineering gap in the criterion theorem; what's left there is
+trust-surface work (read-through fidelity to Def 4.1.2 + the `dd:fuel` seam), not proving.
+
+**Remaining proof engineering:** essentially just **feedback** (the last real construction;
+LUV folds into it — but check the `_ofComputation` path first, see the table). Then the
+verification phase (read-through + `M7-ERRATA-AUDIT` incl. a fresh pass over the changed
+quotation surface), then the `dd:fuel` hardening. **Est. to a fully-unconditional property
+tail (bracketing the 3 disclosed boundaries): ~½–2 sessions**, dominated by feedback's
+uncertainty (a 1-hr spike collapses it).
+
+**External:** Kraft Aristotle — first attempt (`bc2df18a…`) FAILED (returned `sorry`); resubmit
+`65eaafaa-2ba0-4501-8002-8e9e2043f4d8` RUNNING at handoff (poller task `b7q730kzu`). Even a
+proof only removes step 1 of 5 for the *disclosed* `M7-PREFIX-MACHINE`.
+
+**Pre-publish:** delete `LogicalInduction/IntegrationTest.lean` before publication (Anson;
+recorded in `notes/consolidation.md`). It is the M3 deference-corpus integration/regression
+guard — keep it until then.
+
+---
 
 ## ✅ M7-QUOTE-DP meta-learning MVP — DONE (2026-07-22)
 
@@ -237,11 +275,11 @@ by any missing Foundation lemma (`codeOfREPred`/`re_complete`/FFL fixed points a
 
 | Family (paper cluster) | State | Remaining | Est. |
 |---|---|---|---|
-| **Meta-learning** (halting/consistency, `M7-COMP-SYNTAX`) | 1 of 6 endpoints unconditional (the MVP — the hard substrate) | Other 5 (`lic_belief_finitistic_consistency`, `_stronger_theory_consistency`, `lic_disbelief_inconsistent_theories`, `lic_learns_provable_nonhalting_patterns`, `lic_does_not_anticipate_halting`) reuse `theoremPresentation` + `theoremDP_hworld` — ~10-line corollaries each | **~½ session** |
-| **Universal semimeasure / Occam** (`M7-DUS-PREFIX-SYNTAX`) | Uses `emptyBitDeductiveProcess` (`D := ∅`) | `hworld` **trivial** over ∅ stages; just instantiate `_ofIndependentAtoms` over LIA. (Full Occam bound needs the *disclosed* Kraft/`M7-PREFIX-MACHINE` — bracketed.) | **~½ session** |
-| **Conditioning** (`M7-SCON-*`) | Empty extra-DP; a *transformation* result (`IsLogicalInductor` of the conditioned history), `hworld` barely applies | Instantiate the union DP over LIA | **~½ session** |
-| **LUV combinations** (`M7-LUV-SYNTAX`) | Operational witness exists | Fold into the feedback instantiation | **~½ session** |
-| **Feedback / pseudorandomness** (`wub`, `M7-FEEDBACK-TRUTH/EMIT`) | Fully generic DP + `hworld` **assumed**; no concrete DP built | Build a concrete feedback DP + prove `hworld` + instantiate. May collapse to an independent-atom DP (free `hworld`) — **verify**; if not, a real construction | **~1–2 sessions** |
+| **Meta-learning** (halting/consistency, `M7-COMP-SYNTAX`) | **COMPLETE** (2026-07-22): all 6 endpoints unconditional over `LIA` (`*_unconditional` in `ComputationDP.lean`) | — (done) | **0** |
+| **Universal semimeasure** (`M7-DUS-PREFIX-SYNTAX`) | **DONE** (2026-07-22): `lic_domination_universalSemimeasure_unconditional` over LIA on the proved-computable empty process (`UnconditionalOverLIA.lean`); `hworld` trivial | Only the *disclosed* `M7-DUS-APPROX` approximation `A`/`emit` remains an input (bracketed); full Occam bound also needs disclosed Kraft | **~0 (disclosed remainder)** |
+| **Conditioning** (`M7-SCON-*`) | **DONE** (2026-07-22): `lic_conditioned_unconditional` — the constructed inductor conditioned on a computable event is again an inductor over the union process (`UnconditionalOverLIA.lean`) | — (`C`/compiler stay caller inputs by design) | **0** |
+| **LUV combinations** (`M7-LUV-SYNTAX`) | Not yet instantiated (deferred to after feedback) | Fold into feedback. **NOTE:** `FeedbackTruth.lean` has `_ofComputation` variants (`lic_wubaff_ofComputation`, `luv_wubexp_ofComputation`, `boundedCombination_wubaff_ofComputation`) that route through a `FeedbackTruthComputation`/`[IsLogicalInductor]` — check whether these can be instantiated over `theoremDP` (via `theoremPresentation` + `theoremDP_hworld`) *without* a new feedback DP, which would finish LUV cheaply and independently | **~½ session** |
+| **Feedback / pseudorandomness** (`wub`, `M7-FEEDBACK-TRUTH/EMIT`) | Generic DP + `hworld` **assumed**; no concrete DP built — **the last real construction** | 1-hr spike first: are feedback atoms mutually independent ⇒ free `hworld` (independent-atom DP)? Also check the `_ofComputation` path over `theoremDP` (see LUV note). Then build/instantiate | **~½–2 sessions** |
 | **Quotation / self-reference** (`M7-QUOTE-AFFINE`) | **COMPLETE** (2026-07-22): redesign + certify + all 8 endpoints unconditional over `LIA` | — (done) | **0** |
 
 **Bottom line:** ~5–8 focused sessions, lopsided. The intellectual crux (r.e. provability
