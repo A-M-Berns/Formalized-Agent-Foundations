@@ -34,6 +34,7 @@ namespace LogicalInduction
 
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 open LO.Propositional
+open Filter Topology
 
 /-! ## Tall pole A — provability of schema instances is r.e. -/
 
@@ -559,6 +560,173 @@ theorem lia_learns_halting_patterns_unconditional
     machines inputs hm hi hhalts (fun n χ => liaHistory_range (theoremDP T) n χ)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
+/-! ## Unconditional self-reference / quotation endpoints over the constructed `LIA`
+
+Step 3 of the quotation rescue.  Because `quotationPresentation` inhabits the redesigned
+`QuotationTheoryPresentation` over the constructed computable `theoremDP`, and
+`theoremDP_hworld` discharges the market non-vacuity, every `_ofCode`/`_ofDiagonal`/
+`_ofRepresentation` self-reference endpoint instantiates over `liaHistory (theoremDP T)` with
+**no** market / inductor / `Q` / `hworld` hypotheses remaining — only the caller's own quoted
+decision and its reflection data.  This turns the introspection / expectation / self-trust /
+paradox-resistance family from *conditional on an assumed presentation* into *unconditional
+over a concrete constructed inductor*, the same status the meta-learning MVP reached. -/
+
+variable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+
+/-- The constructed inductor instance for the provability process, reused (inlined) by every
+unconditional quotation endpoint below. -/
+private noncomputable abbrev theoremLIA : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
+  LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
+
+/-- `thm:epr`, unconditional over `LIA`. -/
+theorem lic_expectations_of_probabilities_ofCode_unconditional
+    {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
+    (q : RationalQuoteCode T value)
+    (hexact : ∀ n, liaHistory (theoremDP T) n (φ n) = (value n : ℝ)) :
+    (fun n => liaHistory (theoremDP T) n (φ n)) ≈ₙ
+      fun n => (q.luv n).expect (liaHistory (theoremDP T)) n :=
+  haveI := theoremLIA T
+  lic_expectations_of_probabilities_ofCode (quotationPresentation T)
+    (liaHistory (theoremDP T)) φ hφ q hexact
+    (fun n s => liaHistory_range (theoremDP T) n s)
+    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+
+/-- `thm:er`, unconditional over `LIA`. -/
+theorem lic_iterated_expectations_ofCode_unconditional
+    {value : ℕ → ℚ} (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X)
+    (q : RationalQuoteCode T value)
+    (hexact : ∀ n, (X n).expect (liaHistory (theoremDP T)) n = (value n : ℝ)) :
+    (fun n => (X n).expect (liaHistory (theoremDP T)) n) ≈ₙ
+      fun n => (q.luv n).expect (liaHistory (theoremDP T)) n :=
+  haveI := theoremLIA T
+  lic_iterated_expectations_ofCode (quotationPresentation T)
+    (liaHistory (theoremDP T)) X hX q hexact
+    (fun n s => liaHistory_range (theoremDP T) n s)
+    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+
+/-- `thm:ref` (introspection), unconditional over `LIA`. -/
+theorem lic_introspection_ofCode_unconditional
+    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) (a b δ : ℕ → ℚ)
+    (lowerFeature : ℕ → EF)
+    (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
+    (upperFeature : ℕ → EF)
+    (hupper : GeneratedRatFeature (liaHistory (theoremDP T)) b upperFeature)
+    (hδ : PolyRatCodes δ) (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
+    (hδpos : ∀ n, 0 < δ n)
+    (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
+    (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1)
+    (q : BooleanQuoteCode T (fun n ↦
+      (a n : ℝ) < liaHistory (theoremDP T) n (φ n) ∧
+        liaHistory (theoremDP T) n (φ n) < (b n : ℝ))) :
+    ∃ ε : ℕ → ℚ, (∀ n, 0 < ε n) ∧ Tendsto (fun n ↦ (ε n : ℝ)) atTop (𝓝 0) ∧
+      ∀ n,
+        (((a n : ℝ) + δ n < liaHistory (theoremDP T) n (φ n) ∧
+            liaHistory (theoremDP T) n (φ n) < (b n : ℝ) - δ n) →
+          1 - (ε n : ℝ) < liaHistory (theoremDP T) n (q.sentence n)) ∧
+        ((¬ ((a n : ℝ) - δ n < liaHistory (theoremDP T) n (φ n) ∧
+              liaHistory (theoremDP T) n (φ n) < (b n : ℝ) + δ n)) →
+          liaHistory (theoremDP T) n (q.sentence n) < (ε n : ℝ)) :=
+  haveI := theoremLIA T
+  lic_introspection_ofCode (quotationPresentation T) (liaHistory (theoremDP T))
+    φ hφ a b δ lowerFeature hlower upperFeature hupper hδ hδinv hδpos hδzero hab q
+    (fun n s => liaHistory_range (theoremDP T) n s)
+    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+
+/-- `thm:lp` (paradox resistance), unconditional over `LIA`.  The parameterized fixed point
+carried by `q` is what breaks the circularity in `truth_spec`. -/
+theorem lic_paradox_resistance_ofDiagonal_unconditional
+    {truth : ℕ → Prop} (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
+    (width : ℕ → ℚ) (hwidth : PolyRatCodes width)
+    (hwidthInv : PolyRatCodes (fun n ↦ 1 / width n))
+    (hwidthPos : ∀ n, 0 < width n)
+    (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0))
+    (q : ParameterizedDiagonalQuoteCode T truth)
+    (truth_spec : ∀ n, truth n ↔
+      liaHistory (theoremDP T) n (q.toBooleanQuoteCode.sentence n) < (p : ℝ)) :
+    (fun n => liaHistory (theoremDP T) n (q.toBooleanQuoteCode.sentence n)) ≈ₙ
+      fun _ => (p : ℝ) :=
+  haveI := theoremLIA T
+  lic_paradox_resistance_ofDiagonal (quotationPresentation T) (liaHistory (theoremDP T))
+    p hp0 hp1 width hwidth hwidthInv hwidthPos hwidthZero q truth_spec
+    (fun n s => liaHistory_range (theoremDP T) n s)
+    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+
+/-- `thm:cee` (expected future expectations), unconditional over `LIA`. -/
+theorem lic_expected_future_expectations_ofRepresentation_unconditional
+    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (X Y : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X) (hY : LUV.PolyThresholdCodeSeq Y)
+    (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      ∃ x, v.ValuesAt (X n) x)
+    (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      v.ValuesAt (Y n) ((X n).expect (liaHistory (theoremDP T)) (f n))) :
+    (fun n ↦ (X n).expect (liaHistory (theoremDP T)) n) ≈ₙ
+      fun n ↦ (Y n).expect (liaHistory (theoremDP T)) n :=
+  haveI := theoremLIA T
+  lic_expected_future_expectations_ofRepresentation (P := liaHistory (theoremDP T))
+    (DP := theoremDP T) f hstrict X Y hX hY source_valued reflected
+    (fun n s => liaHistory_range (theoremDP T) n s)
+    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+
+/-- `thm:ceu` (no expected net update), unconditional over `LIA`. -/
+theorem lic_no_expected_net_update_ofRepresentation_unconditional
+    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (φ : ℕ → Sentence) (Y : ℕ → LUV)
+    (hφ : PolySentenceCodes φ) (hY : LUV.PolyThresholdCodeSeq Y)
+    (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      v.ValuesAt (Y n) (liaHistory (theoremDP T) (f n) (φ n))) :
+    (fun n ↦ liaHistory (theoremDP T) n (φ n)) ≈ₙ
+      fun n ↦ (Y n).expect (liaHistory (theoremDP T)) n :=
+  haveI := theoremLIA T
+  lic_no_expected_net_update_ofRepresentation (P := liaHistory (theoremDP T))
+    (DP := theoremDP T) f hstrict φ Y hφ hY reflected
+    (fun n s => liaHistory_range (theoremDP T) n s)
+    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+
+/-- `thm:ccee` (conditional no expected net update), unconditional over `LIA`. -/
+theorem lic_no_expected_net_update_conditional_ofRepresentation_unconditional
+    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (X Z Z' : ℕ → LUV) (w : ℕ → ℚ)
+    (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
+    (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w)
+    (hX : LUV.PolyThresholdCodeSeq X) (hZ : LUV.PolyThresholdCodeSeq Z)
+    (hZ' : LUV.PolyThresholdCodeSeq Z')
+    (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      ∃ x, v.ValuesAt (X n) x)
+    (left_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      ∀ x, v.ValuesAt (X n) x → v.ValuesAt (Z n) (x * w (f n)))
+    (right_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      v.ValuesAt (Z' n) ((X n).expect (liaHistory (theoremDP T)) (f n) * w (f n))) :
+    (fun n ↦ (Z n).expect (liaHistory (theoremDP T)) n) ≈ₙ
+      fun n ↦ (Z' n).expect (liaHistory (theoremDP T)) n :=
+  haveI := theoremLIA T
+  lic_no_expected_net_update_conditional_ofRepresentation (P := liaHistory (theoremDP T))
+    (DP := theoremDP T) f hstrict X Z Z' w weight_mem weight_generable hX hZ hZ'
+    source_valued left_reflected right_reflected
+    (fun n s => liaHistory_range (theoremDP T) n s)
+    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+
+/-- `thm:st` (self-trust), unconditional over `LIA`. -/
+theorem lic_self_trust_ofRepresentation_unconditional
+    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
+    (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
+    (hφ : PolySentenceCodes φ) (hδ : PolyRatCodes δ)
+    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n)) (hp : PolyRatCodes p)
+    (hA : LUV.PolyThresholdCodeSeq A) (hB : LUV.PolyThresholdCodeSeq B)
+    (confidence_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      v.ValuesAt (B n) (ctsInd (δ n) (liaHistory (theoremDP T) (f n) (φ n)) (p n)))
+    (product_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      v.ValuesAt (A n)
+        (v.payout (φ n) * ctsInd (δ n) (liaHistory (theoremDP T) (f n) (φ n)) (p n))) :
+    (fun n ↦ (A n).expect (liaHistory (theoremDP T)) n) ≳ₙ
+      fun n ↦ (p n : ℝ) * (B n).expect (liaHistory (theoremDP T)) n :=
+  haveI := theoremLIA T
+  lic_self_trust_ofRepresentation (P := liaHistory (theoremDP T)) (DP := theoremDP T)
+    f hstrict φ δ p A B delta_pos probability_mem hφ hδ hδinv hp hA hB
+    confidence_reflected product_reflected
+    (fun n s => liaHistory_range (theoremDP T) n s)
+    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+
 #print axioms provable_instances_re
 #print axioms theoremDP_covers
 #print axioms theoremDP_hworld
@@ -566,5 +734,9 @@ theorem lia_learns_halting_patterns_unconditional
 #print axioms quotationPresentation
 #print axioms quotation_presentation_nonvacuous
 #print axioms lia_learns_halting_patterns_unconditional
+#print axioms lic_introspection_ofCode_unconditional
+#print axioms lic_paradox_resistance_ofDiagonal_unconditional
+#print axioms lic_self_trust_ofRepresentation_unconditional
+#print axioms lic_expectations_of_probabilities_ofCode_unconditional
 
 end LogicalInduction
