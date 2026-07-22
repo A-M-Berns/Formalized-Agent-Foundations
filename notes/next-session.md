@@ -1,13 +1,47 @@
 # Logical Induction — handoff
 
-_Last updated: 2026-07-21. Branch: `logical-induction`._
+_Last updated: 2026-07-22. Branch: `logical-induction`._
 
-The active next task is the **M7-QUOTE-DP meta-learning MVP** — the first genuinely
-*unconditional* epistemic result over the constructed `LIA` inductor. Full brief in "THE NEXT
-TASK" below; design, effort, and the go/no-go spike are in the `M7-QUOTE-DP` section further
-down. **Scope discipline for the MVP: build the *computation* (meta-learning) side only.**
-The *quotation* (introspection/self-trust/paradox) side is separately blocked by a vacuity
-obstruction (see below) and needs a frozen-boundary redesign — do **not** attempt it in the MVP.
+## ✅ M7-QUOTE-DP meta-learning MVP — DONE (2026-07-22)
+
+The **M7-QUOTE-DP meta-learning MVP is complete** and merged (commits `ad80bd3`, `671f8c1`,
+unpushed). `LogicalInduction/Construction/Witnesses/ComputationDP.lean` delivers the
+project's first genuinely **unconditional, strictly axiom-clean** epistemic result over the
+constructed `LIA` inductor:
+
+> `lia_learns_halting_patterns_unconditional` (Paper node `thm:halts`) — for a Σ₁-sound
+> `T ⊇ 𝗜𝚺₁`, the constructed `LIA` over a **constructed, proved-computable** provability
+> deductive process learns every provably-halting pattern, with **no** market/price/`hworld`
+> hypotheses remaining. `hworld` is *proved* (from `T`-consistency + Σ₁-soundness), not assumed.
+
+What landed (all axiom-clean — `propext`/`Classical.choice`/`Quot.sound` only):
+- **Tall pole A** `provable_instances_re`: `REPred (fun z => T ⊢ φ/[z])` from FFL's
+  `Halting.lean` template (`definability` + `re_iff_sigma1` + `Theory.Provable.sound` +
+  `internalize_provability`).
+- A single combined event stream (tags 0–5), r.e. via `provable_instances_re` + `REPred`
+  closure; `theoremDP` enumerates fired atoms with a fuel-clocked dovetailer.
+- `theoremDP_covers` (coverage → all six enters/refutes fields) and `theoremDP_hworld`
+  (the non-vacuity heart: one provability world consistent with every stage).
+- **Tall pole B** `theoremDP_computable`: the enumerator is primitive recursive
+  (`encode_toFinset_eq` + `eventAtom_prim` 6-way encoder + `listFilterMap`/`primrec_evaln`
+  + `sentenceDedup_prim`/`sentenceInsertionSort_prim`). Full build green (2720 jobs).
+
+**Scope note carried out as planned:** computation side only. The *quotation* side remains
+blocked by the vacuity obstruction (below) and still needs a frozen-boundary redesign.
+
+## What's next (was the MVP; now the follow-ons)
+
+1. **Confirm the quotation vacuity in Lean** (cheap, ~½ session) — derive `False` from
+   `Q : QuotationTheoryPresentation` + `hworld` (positive=negative=⊤). See the vacuity finding
+   below and [[quotation-presentation-vacuity]]. Standalone audit correction.
+2. **Quotation-side redesign** — restrict `QuotationTheoryPresentation` to complementary
+   decisions (frozen-boundary change → re-freeze `#assert_fields` + re-run the audit), then
+   build the quotation DP + a paradox-resistance corollary over `LIA`, mirroring the now-done
+   computation MVP. Bigger; touches frozen surface.
+3. **Human statement read-through** (Anson) + paper comparison — deferred verification gates.
+4. **Optional** — Kraft / `M7-PREFIX-MACHINE` for a 13/15 stretch.
+
+_Original MVP brief retained below for the quotation-side redesign, which reuses the same shape._
 
 ## Where things stand (audit + GL discharge + QUOTE-DP spike done, 2026-07-21)
 
@@ -58,11 +92,12 @@ workflow, nothing is pushed without asking).
 
 ## What remains, in order
 
-1. **This task — M7-QUOTE-DP meta-learning MVP** (below): a concrete Σ₁ deductive process +
-   `ComputationTheoryPresentation`, proved consistent, discharging one meta-learning endpoint
-   over `LIA` unconditionally. Computation side only.
+1. ~~M7-QUOTE-DP meta-learning MVP~~ — **DONE 2026-07-22** (see the top of this file).
+   `ComputationDP.lean`: constructed Σ₁ provability DP + `ComputationTheoryPresentation`,
+   `hworld` proved, `theoremDP_computable` proved, one meta-learning endpoint over `LIA`
+   unconditional and axiom-clean. Computation side only, as scoped.
 2. **Confirm the quotation vacuity in Lean** (cheap, ~½ session) — a standalone audit
-   correction; can be done first or folded into (1). See the vacuity finding below.
+   correction. See the vacuity finding below.
 3. **Quotation-side redesign** — restrict `QuotationTheoryPresentation` to complementary
    decisions (frozen-boundary change → re-freeze `#assert_fields` + re-run the audit), then
    build the quotation DP + a paradox-resistance corollary over LIA. Bigger; touches frozen
