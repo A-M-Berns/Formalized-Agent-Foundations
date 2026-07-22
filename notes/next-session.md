@@ -105,24 +105,34 @@ the vacuity with a smaller diff, but gives **no** computable enumeration for (B)
 an `ArithmeticDecision` from ℕ). Use it only to unblock the audit fast; go code-indexed for the
 construction.
 
-### The one real wrinkle — the diagonal (paradox resistance)
+### The diagonal wrinkle — RESOLVED (2026-07-22): decouple, cheap, low-risk
 
-`ParameterizedDiagonalQuoteCode` (`QuotationAffine.lean:2235`) forces
-`decision.positive = parameterizedFixedpoint body` — the atom must name the genuine
-self-referential schema, not `codeOfREPred truth`, so it doesn't slot into the code-indexed DP
-as-is. **Decide this first when you open the family** (it's the residual uncertainty):
+The question "does paradox resistance need the *atom* to carry the fixed-point schema, or only
+the fixed-point *law*?" is **resolved: neither.** Evidence (grepped whole `LogicalInduction/`):
+`positive_fixedpoint`/`body`/`parameterizedFixedpoint` are used **only** inside the standalone
+`ParameterizedDiagonalQuoteCode.diagonal_law` (`QuotationAffine.lean:2243`); `diagonal_law` is
+consumed by **nothing**; and `paradoxResistanceQuoteOfDiagonal` (2259) + `lic_paradox_resistance_ofDiagonal`
+(3278) use **only** `q.toBooleanQuoteCode` + `truth_spec` (they go through `reflected` /
+`completedGated{Complement,Affirmative}Quote`, all of which take a bare `BooleanQuoteCode` and
+structurally cannot see the fixed-point fields). So the fixed-point schema is a pure
+**faithfulness certificate**, not a proof ingredient of any endpoint.
 
-- *Preferred — decouple.* The diagonal's `truth n ↔ P n (sentence n) < p` **is computable**
-  (rational-price comparison), so it has an `ofComputable` decision. Represent the atom with
-  `codeOfREPred truth` (rides the same DP + `hworld`); keep `parameterizedFixedpoint body` only
-  in `diagonal_law` / `truth_spec` where the self-reference is actually used. The two schemas
-  are `T`-provably equivalent (diagonal law + `re_complete`), so the reflection/price argument
-  transfers. Keeps one universal DP. Open question: does paradox resistance really need the
-  *atom* to carry the fixed-point schema, or only the fixed-point *law* to hold for the
-  represented truth? Answer this before building.
-- *Fallback — dedicated field.* Add a `diagonal_enters/refutes` pair for the finitely-many
-  fixed-point schemas a result needs, with its own `hworld` clause from the diagonal law (the
-  fixed point represents a computable truth ⇒ Σ₁ schema, exclusive with its negation).
+**Consequence — the diagonal rides the universal code-indexed DP with no special-casing:**
+
+- Atom uses `codeOfREPred truth` (`truth n ↔ P n (atom n) < p` is computable — LIA prices are
+  rational/computable). Same DP, same tag-3 `hworld` argument. **No dedicated `diagonal_enters/refutes`
+  field. No paradox-resistance proof changes.**
+- Keep `diagonal_law` as a **standalone honesty artifact** (a genuine `parameterizedFixedpoint body`
+  representing the same `truth` exists + satisfies the diagonal equation). Optionally add a one-line
+  bridge `T ⊢ codeOfREPred truth 🡘 parameterizedFixedpoint body` (both represent `truth`) so the
+  atom's schema *is* the fixed point up to `T`-provable equivalence.
+- **Honest nuance (instantiation, not boundary):** the fixed point is still *essential* to
+  **construct `truth_spec`** when instantiating paradox resistance over LIA — exhibiting `truth`
+  with `truth n ↔ price(atom n) < p` is circular, and `parameterizedFixedpoint` is what breaks the
+  circularity. So the fixed point moves *out* of the atom's schema (→ `codeOfREPred`, for the
+  DP/`hworld`) and *stays* where it does real work: defining the self-referential `truth` in the
+  instantiation, plus the faithfulness cert. This keeps the quotation family at the **low end** of
+  the ~2–4 session estimate — one universal DP, no boundary special-casing.
 
 ### Order of operations (frozen-surface aware)
 
