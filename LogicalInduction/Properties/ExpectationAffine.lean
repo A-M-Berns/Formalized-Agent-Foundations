@@ -389,7 +389,13 @@ theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
 
 #print axioms lic_expectation_indicator
 
-/-- **Linearity of expectation** (`thm:loe`, fixed `X, Y, Z` form).
+/-- **Linearity of expectation** (`thm:loe`, fixed `X, Y, Z` form), finite-precision hypothesis.
+
+The world hypothesis is the **finite-precision agreement** the trader argument actually consumes:
+in every day-`n` plausible world, `X`, `Y`, `Z` have exact values `x, y, z` with `z = a x + b y`,
+and the day-`n` approximate expectations sit within `1/n` of them.  This is *satisfiable* at a
+finite stage (unlike the full `PCWorld.ValuesAt` cut, which pins infinitely many thresholds); the
+`…_ofValuesAt` corollary recovers the `ValuesAt` form via `expectApprox_near`.
 Paper node: `thm:loe` -/
 theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (a b : ℚ) (X Y Z : LUV)
@@ -397,10 +403,11 @@ theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
     (hcodeZ : Z.PolyThresholdCodes)
     (_hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hvals : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) →
-      ∃ x y z, v.ValuesAt X x ∧ v.ValuesAt Y y ∧ v.ValuesAt Z z)
-    (hlin : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∀ x y z,
-      v.ValuesAt X x → v.ValuesAt Y y → v.ValuesAt Z z → z = a * x + b * y) :
+    (hvals : ∀ n (v : PCWorld), 0 < n → v.ConsistentWith (DP.D n) →
+      ∃ x y z : ℝ, z = (a : ℝ) * x + (b : ℝ) * y ∧
+        |X.expectApprox v.payout n - x| ≤ 1 / n ∧
+        |Y.expectApprox v.payout n - y| ≤ 1 / n ∧
+        |Z.expectApprox v.payout n - z| ≤ 1 / n) :
     AsympEq (fun n => (a : ℝ) * X.expect P n + (b : ℝ) * Y.expect P n)
       (Z.expectSeq P) := by
   let C : ℝ := |(a : ℝ)| + |(b : ℝ)| + 1
@@ -420,11 +427,7 @@ theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
       calc
         C * (1 / (n : ℝ)) = C / (n : ℝ) := by ring
         _ < ε := (div_lt_iff₀ hnR).2 (by nlinarith)
-    obtain ⟨x, y, z, hx, hy, hz⟩ := hvals n v hv
-    have hnearX := hx.expectApprox_near hn
-    have hnearY := hy.expectApprox_near hn
-    have hnearZ := hz.expectApprox_near hn
-    have hrelation := hlin n v hv x y z hx hy hz
+    obtain ⟨x, y, z, hrelation, hnearX, hnearY, hnearZ⟩ := hvals n v hn hv
     rw [LUV.linearityAffine_value]
     have hrearrange :
         (a : ℝ) * X.expectApprox v.payout n + (b : ℝ) * Y.expectApprox v.payout n -
@@ -456,14 +459,43 @@ theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
 
 #print axioms lic_linearity_of_expectation
 
-/-- **Expectation Provability Induction** (`thm:expprovind`).
+/-- **Linearity of expectation** (`thm:loe`), full `PCWorld.ValuesAt` form.  Recovers the
+original statement as a corollary of the finite-precision form: `ValuesAt` implies the day-`n`
+approximation bound via `expectApprox_near`, and the world's linear relation on exact values
+supplies `z = a x + b y`.
+Paper node: `thm:loe` -/
+theorem lic_linearity_of_expectation_ofValuesAt (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP] (a b : ℚ) (X Y Z : LUV)
+    (hcodeX : X.PolyThresholdCodes) (hcodeY : Y.PolyThresholdCodes)
+    (hcodeZ : Z.PolyThresholdCodes)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hvals : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) →
+      ∃ x y z, v.ValuesAt X x ∧ v.ValuesAt Y y ∧ v.ValuesAt Z z)
+    (hlin : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∀ x y z,
+      v.ValuesAt X x → v.ValuesAt Y y → v.ValuesAt Z z → z = a * x + b * y) :
+    AsympEq (fun n => (a : ℝ) * X.expect P n + (b : ℝ) * Y.expect P n)
+      (Z.expectSeq P) :=
+  lic_linearity_of_expectation P DP a b X Y Z hcodeX hcodeY hcodeZ hP hcons
+    (fun n v hn hv => by
+      obtain ⟨x, y, z, hx, hy, hz⟩ := hvals n v hv
+      exact ⟨x, y, z, hlin n v hv x y z hx hy hz,
+        hx.expectApprox_near hn, hy.expectApprox_near hn, hz.expectApprox_near hn⟩)
+
+#print axioms lic_linearity_of_expectation_ofValuesAt
+
+/-- **Expectation Provability Induction** (`thm:expprovind`), finite-precision form.
+
+The world hypothesis is the day-`n` approximation bound `|𝔼_n^v(X) − x| ≤ 1/n` with `c ≤ x` — the
+satisfiable, finite-stage content the trader argument consumes.  The `…_ofValuesAt` corollary
+recovers the full `PCWorld.ValuesAt` statement.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
     (_hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
-    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) →
-      ∃ x, c ≤ x ∧ v.ValuesAt X x) :
+    (hval : ∀ n (v : PCWorld), 0 < n → v.ConsistentWith (DP.D n) →
+      ∃ x : ℝ, c ≤ x ∧ |X.expectApprox v.payout n - x| ≤ 1 / n) :
     AsympGE (X.expectSeq P) (fun _ => c) := by
   intro ε hε
   obtain ⟨N, hN⟩ := exists_nat_gt (2 / ε)
@@ -479,8 +511,7 @@ theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
       rw [div_lt_iff₀ hε] at hNn
       rw [div_lt_iff₀ hnR]
       nlinarith
-    obtain ⟨x, hcx, hx⟩ := hval n v hv
-    have hnear := hx.expectApprox_near hn
+    obtain ⟨x, hcx, hnear⟩ := hval n v hn hv
     rw [LUV.expectAffine_value]
     rw [abs_le] at hnear
     linarith
@@ -492,5 +523,20 @@ theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
   simpa [LUV.expectSeq] using (show c ≤ X.expect P n + ε by linarith)
 
 #print axioms lic_expectation_provind
+
+/-- **Expectation Provability Induction** (`thm:expprovind`), full `PCWorld.ValuesAt` form. -/
+theorem lic_expectation_provind_ofValuesAt (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
+    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) →
+      ∃ x, c ≤ x ∧ v.ValuesAt X x) :
+    AsympGE (X.expectSeq P) (fun _ => c) :=
+  lic_expectation_provind P DP X hcode hP hcons c
+    (fun n v hn hv => by
+      obtain ⟨x, hcx, hx⟩ := hval n v hv
+      exact ⟨x, hcx, hx.expectApprox_near hn⟩)
+
+#print axioms lic_expectation_provind_ofValuesAt
 
 end LogicalInduction
