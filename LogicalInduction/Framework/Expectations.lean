@@ -153,23 +153,25 @@ Counting argument: thresholds `i/n` strictly below `x` pay `1` (there are at lea
 one possible threshold *equal* to `x` is the `+1` slack. Hence
 `x ≤ 𝔼ₙ ≤ x + 1/n` — one-sided, which `|·|` weakens. The combination (`b/n`) form for
 affine LUV combinations waits for M4's affine layer. -/
-theorem PCWorld.ValuesAt.expectApprox_near {v : PCWorld} {X : LUV} {x : ℝ}
-    (hval : v.ValuesAt X x) {n : ℕ} (hn : 0 < n) :
+theorem PCWorld.expectApprox_near_ofGrid {v : PCWorld} {X : LUV} {x : ℝ}
+    (hx0 : 0 ≤ x) (hx1 : x ≤ 1) {n : ℕ} (hn : 0 < n)
+    (hgrid : ∀ i : ℕ, i < n →
+      (((i : ℝ) / n < x → v.Holds (X.gt ((i : ℚ) / (n : ℚ)))) ∧
+        (x < (i : ℝ) / n → ¬ v.Holds (X.gt ((i : ℚ) / (n : ℚ)))))) :
     |X.expectApprox v.payout n - x| ≤ 1 / n := by
-  obtain ⟨hx0, hx1, hthr⟩ := hval
   have hnR : (0 : ℝ) < n := by exact_mod_cast hn
   have hcast : ∀ i : ℕ, (((i : ℚ) / (n : ℚ) : ℚ) : ℝ) = (i : ℝ) / (n : ℝ) := by
     intro i; push_cast; ring
   have hmem : ∀ i : ℕ, 0 ≤ v.payout (X.gt ((i : ℚ) / (n : ℚ)))
       ∧ v.payout (X.gt ((i : ℚ) / (n : ℚ))) ≤ 1 := by
     intro i; rw [PCWorld.payout]; split <;> norm_num
-  have hone : ∀ i : ℕ, (i : ℝ) / n < x → v.payout (X.gt ((i : ℚ) / (n : ℚ))) = 1 := by
-    intro i hi
-    have h := (hthr ((i : ℚ) / (n : ℚ))).1 (by rw [hcast]; exact hi)
+  have hone : ∀ i : ℕ, i < n → (i : ℝ) / n < x → v.payout (X.gt ((i : ℚ) / (n : ℚ))) = 1 := by
+    intro i hin hi
+    have h := (hgrid i hin).1 hi
     rw [PCWorld.payout, if_pos h]
-  have hzero : ∀ i : ℕ, x < (i : ℝ) / n → v.payout (X.gt ((i : ℚ) / (n : ℚ))) = 0 := by
-    intro i hi
-    have h := (hthr ((i : ℚ) / (n : ℚ))).2 (by rw [hcast]; exact hi)
+  have hzero : ∀ i : ℕ, i < n → x < (i : ℝ) / n → v.payout (X.gt ((i : ℚ) / (n : ℚ))) = 0 := by
+    intro i hin hi
+    have h := (hgrid i hin).2 hi
     rw [PCWorld.payout, if_neg h]
   -- Lower bound: the first `min n ⌈nx⌉` thresholds all pay 1, and `min n ⌈nx⌉ ≥ nx`.
   have hsum_lo : (n : ℝ) * x
@@ -185,7 +187,8 @@ theorem PCWorld.ValuesAt.expectApprox_near {v : PCWorld} {X : LUV} {x : ℝ}
           rw [Finset.sum_congr rfl (fun i hi => ?_), Finset.sum_const, Finset.card_range,
             nsmul_eq_mul, mul_one]
           rw [Finset.mem_range] at hi
-          refine hone i ?_
+          have hin : i < n := lt_of_lt_of_le hi (min_le_left _ _)
+          refine hone i hin ?_
           have hic : (i : ℝ) < (n : ℝ) * x :=
             Nat.lt_ceil.mp (lt_of_lt_of_le hi (min_le_right _ _))
           rw [div_lt_iff₀ hnR]
@@ -214,7 +217,7 @@ theorem PCWorld.ValuesAt.expectApprox_near {v : PCWorld} {X : LUV} {x : ℝ}
         · rwa [hc', min_eq_right h] at hi1
         · rw [hc', min_eq_left h] at hi1
           omega
-      refine hzero i ?_
+      refine hzero i hi2 ?_
       have h1 : (n : ℝ) * x < (⌊(n : ℝ) * x⌋₊ : ℝ) + 1 := Nat.lt_floor_add_one _
       have h2 : ((⌊(n : ℝ) * x⌋₊ : ℝ) + 1) ≤ (i : ℝ) := by exact_mod_cast hiM
       rw [lt_div_iff₀ hnR]
@@ -241,6 +244,15 @@ theorem PCWorld.ValuesAt.expectApprox_near {v : PCWorld} {X : LUV} {x : ℝ}
           ≤ (n : ℝ) * x + 1 := hsum_hi
         _ = (n : ℝ) * (x + 1 / n) := by field_simp
     linarith
+
+theorem PCWorld.ValuesAt.expectApprox_near {v : PCWorld} {X : LUV} {x : ℝ}
+    (hval : v.ValuesAt X x) {n : ℕ} (hn : 0 < n) :
+    |X.expectApprox v.payout n - x| ≤ 1 / n := by
+  obtain ⟨hx0, hx1, hthr⟩ := hval
+  refine PCWorld.expectApprox_near_ofGrid hx0 hx1 hn (fun i _ => ?_)
+  have hcast : (((i : ℚ) / (n : ℚ) : ℚ) : ℝ) = (i : ℝ) / (n : ℝ) := by push_cast; ring
+  exact ⟨fun hi => (hthr ((i : ℚ) / (n : ℚ))).1 (by rw [hcast]; exact hi),
+    fun hi => (hthr ((i : ℚ) / (n : ℚ))).2 (by rw [hcast]; exact hi)⟩
 
 #print axioms PCWorld.ValuesAt.expectApprox_near
 
