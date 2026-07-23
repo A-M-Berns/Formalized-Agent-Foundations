@@ -83,3 +83,55 @@ Until one of these alternatives is formalized, documentation should use the prec
 > The published proof of unrestricted finite-perturbation closure is invalid; the
 > unrestricted theorem is unresolved, and the repository proves the efficiently patchable
 > case.
+
+## PE2 — Swapped good-feedback hypothesis in the expectation unbiasedness pair (`thm:recurringunbiasednessexp`, `thm:wubexp`)
+
+**Status:** confirmed statement-level erratum in arXiv v5, not a soundness defect. The
+repository's formalization independently carries the corrected hypotheses. Reported here for
+disclosure; worth forwarding to the authors.
+
+### The defect
+
+The two expectation-level unbiasedness theorems in §4.8 have the good-feedback hypothesis
+attached to the wrong member of the pair, mirroring the correctly-stated affine pair
+(`thm:recunbiasedaff` / `thm:wubaff`) incorrectly.
+
+- **Expectation Recurring Unbiasedness, Thm 4.8.15** (`main.tex:1812–1820`,
+  `\label{thm:recurringunbiasednessexp}`) states its weighting as "a `\pgenable` divergent
+  weighting **weighting** such that the support of `w` is contained in the image of `f`."
+  This carries a **spurious** good-feedback clause: (i) it references a deferral function `f`
+  the statement never introduces, and (ii) its correctly-stated affine analogue Affine
+  Recurring Unbiasedness (`thm:recunbiasedaff`, `main.tex:1469–1478`) has **no** such clause.
+  The doubled word "weighting weighting" is a second typo in the same line.
+
+- **Expectation Unbiasedness From Feedback, Thm 4.8.16** (`main.tex:1822–1832`,
+  `\label{thm:wubexp}`) states only "a `\pgenable` divergent weighting" and **lacks** the
+  "support ⊆ image of `f`" clause — even though its affine analogue Affine Unbiasedness from
+  Feedback (`thm:wubaff`, `main.tex:1480–1490`) **does** carry it. Its timely-computability
+  clause also writes `\thmval(\aff_n)` where the theorem's sequence is `\affluv`.
+
+So the "support of `w` contained in the image of `f`" good-feedback hypothesis has been
+swapped: it belongs on the feedback theorem (4.8.16) and is absent there, while appearing
+spuriously on the recurring theorem (4.8.15).
+
+### Why it is a transcription error, not a mathematical one
+
+The paper's own appendix proofs use the intended (correct) hypotheses. Expectation Recurring
+Unbiasedness is proved by reduction to the clause-free affine 4.5.9, and Expectation
+Unbiasedness From Feedback by reduction to the clause-bearing affine 4.5.10. The theorems are
+therefore true as intended; only the printed §4.8 statements (restated verbatim at v5
+pp. 112–113) are garbled. The correct statements are: 4.8.15 with a bare generable divergent
+weighting concluding a limit point at 0; 4.8.16 with the deferral function, timely value
+computability, and support ⊆ image of `f`, concluding `\eqsim_n 0`.
+
+### Repository status
+
+The Lean development independently places the hypotheses correctly, so it does not inherit the
+bug. `recurringunbiasednessexp` (`Construction/Witnesses/HistoricalMaturity.lean`) takes a
+generable divergent weighting with no deferral/image-of-`f` hypothesis and concludes a limit
+point; the pseudorandom/feedback capstones (`prandaff` and the `wubexp` route) carry the
+deferral function, `PatientSettlementClock`, and pseudorandomness data and conclude a full
+limit. This is forced by construction: the full-limit conclusion is not provable without the
+deferral clause, and the limit-point conclusion does not need it, so building the actual
+proofs disciplined the statements into the corrected shape. The discrepancy was not previously
+recorded as a paper erratum.
