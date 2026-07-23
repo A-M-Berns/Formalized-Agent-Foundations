@@ -118,17 +118,24 @@ Files (all green, axiom-clean `propext/Classical.choice/Quot.sound`, in `Logical
   disclosed operational boundaries.
 - All in `AxiomAudit`; paper-node + coverage checks pass (61 labels).
 
+**Combination provind in all three forms at any constant `c` (done):**
+- `PolySequence.affine_provind_theory_le_const` / `_ge_const` (AffineCoherence) — one-sided
+  affine provability induction with **vanishing error**, the one-sided analogue of
+  `affine_provind_theory_tendsto_zero`, absorbing the mesh's `O(1/n)` slack on one side.
+- `lic_expect_combination_provind_le` / `_ge` / `_eq` — expectation provability induction for an
+  arbitrary bounded LUV-combination sequence determined `≤`/`≥`/`= c` (any `c`), all via the mesh
+  + Phase B. `..._zero` is now the `c = 0` corollary of `_eq`. This is the audit's explicit
+  item-5 ask ("expprovind for arbitrary bounded LUV-combination sequences in each of the paper's
+  three comparison forms"), complete.
+
 **Remaining:**
 1. **`perexpkno` / `expcoh`** (liminf/limsup coherence, F9-coverage-table items — *not* on the
    audit's explicit item-5 repair list) — take `ConvergencePresentation`, whose `daily_value` is
-   *per-stage full `ValuesAt`*, consumed through the **core M4 `LUV.expect_converges`** trader.
-   Certifying needs that whole convergence chain restructured to finite precision (the item-5a
-   move, but on an audited core result) — deferred as high-risk; not attempted.
-2. **One-sided / arbitrary-constant combination provind** (`E(combination determined ≤/≥/= c) ≲/≳/≈ c`
-   for `c ≠ 0`) — the `= 0` case is done (`lic_expect_combination_provind_zero`); the one-sided
-   forms need a *one-sided-vanishing-error* affine provind (the mesh's `O(1/n)` error is currently
-   absorbed only by the two-sided `tendsto_zero` form). Single-LUV `≤/≥/=` are all done.
-3. **Efficiency certificates** — `PolyThresholdCodes (toLUV i)` and computable `gridDP`/
+   *per-stage full `ValuesAt`*, consumed through the **core M4 `LUV.expect_converges`** trader
+   (`hval` funnels into `excTrader_exploits`). Certifying needs that whole convergence chain
+   restructured to finite precision (the item-5a move, but on an audited core result) — deferred
+   as high-risk to the milestone's existing guarantees; not attempted.
+2. **Efficiency certificates** — `PolyThresholdCodes (toLUV i)` and computable `gridDP`/
    `luvThresholdDP`. The disclosed `dd:fuel`/inductor-existence boundary the **entire property
    tail** rests on; explicitly out of scope per Anson (2026-07-23). The certified endpoints are
    conditional on it exactly as every other property endpoint is.
