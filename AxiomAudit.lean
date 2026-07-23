@@ -79,6 +79,9 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_disprovable_tendsto_zero lic_excl_gap_tendsto_zero lic_limit_additive
   lic_price_convergesTo
 
+-- Properties/LimitCoherence.lean
+#assert_axioms_clean lic_limitCoherence
+
 -- Properties/ProvabilityInduction.lean, Properties/AffineCoherence.lean
 #assert_axioms_clean
   lic_deducible_eventually_ge lic_deducible_price_near_one lic_deducible_tendsto_one

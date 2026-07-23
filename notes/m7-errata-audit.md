@@ -100,6 +100,15 @@ eventual theoremhood, so some missing components may be recoverable, but the lab
 **Required repair.** Package convergence, theorem/refutation limits, and finite additivity
 under the paper's completed-theory hypotheses, then prove the measure-existence conclusion.
 
+**Repair status (2026-07-22): resolved.** `Properties/LimitCoherence.lean` now derives the
+finite Gaifman conditions from the logical-inductor laws, constructs a projective family of
+finite Boolean laws, proves its cylinder content countably additive by compactness, and
+extends it to a probability measure on `PCWorld`. The paper-facing `lic_limitCoherence`
+theorem identifies every sentence-event probability with `limitingBelief` and proves the
+measure is almost-everywhere concentrated on worlds consistent with the completed deductive
+process. Its theorem/refutation lemmas accept membership at an arbitrary finite stage. The
+endpoint is exported and guarded by `#assert_axioms_clean`.
+
 ### F2 — HIGH / unconstructed boundary: recurring unbiasedness and statistical learning
 
 The recurring-unbiasedness proof introduces

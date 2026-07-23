@@ -43,6 +43,9 @@ File layout (promoted from a single file once it grew past ~1000 lines):
 * `Properties.Relationships` — `thm:lex`: the paper's finite exclusive/exhaustive family
   theorem, plus fixed-equivalence (`eqTr`) and implication/price-monotonicity (`impTr`)
   consequences.
+* `Properties.LimitCoherence` — `thm:lc`: the Gaifman conditions for limiting beliefs,
+  completed-theory theorem/refutation limits, and the countably additive probability measure
+  on `PCWorld` concentrated on worlds consistent with the completed deductive process.
 * `Properties.FinitePerturbations` — `thm:ifp`: the literal old-price syntax freeze,
   finite net-worth error accounting, exploitation transport, and exact conditional
   logical-inductor biconditional over the disclosed efficient-prefix compiler boundary.
@@ -83,6 +86,7 @@ import LogicalInduction.Properties.UniversalSemimeasure
 import LogicalInduction.Properties.Conditioning
 import LogicalInduction.Properties.ExpectationConvergence
 import LogicalInduction.Properties.Relationships
+import LogicalInduction.Properties.LimitCoherence
 import LogicalInduction.Properties.FinitePerturbations
 import LogicalInduction.Properties.AffineProvability
 import LogicalInduction.Properties.ExpectationAffine
