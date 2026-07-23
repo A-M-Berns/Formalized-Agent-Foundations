@@ -11,6 +11,16 @@ surface changes and must be flagged.
 The build fails if any listed endpoint acquires an axiom beyond `propext`,
 `Classical.choice`, `Quot.sound` (in particular `sorryAx`), or ceases to exist.
 
+Two independent claims, checked separately — do not conflate them:
+  * **axiom cleanliness** (this build): every *listed* endpoint is `sorry`-free and uses no
+    stray axioms. It says nothing about whether the list is complete.
+  * **surface completeness** (`scripts/check_endpoint_coverage.py`): every paper `\label`
+    cited in a `Paper node:` annotation has at least one endpoint *in this list*. It says
+    nothing about axioms, nor about whether the listed endpoint is the strongest form of
+    the theorem (that is the deferred human read-through's job — see below).
+Green here + green there = "the enumerated surface is clean and covers every annotated
+paper node", not "the formalization is faithful". Faithfulness is the read-through.
+
 Scope is the whole repository, and it is now **strictly clean throughout**: the former
 sole intentional axiom `glFixedPoint_thm42` (GL fixed-point existence) has been discharged
 by the autoformalized `ProvabilityLogic/` sequent calculus (see `ModalAgents/FixedPoint.lean`),
@@ -219,6 +229,12 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_learns_halting_patterns_ofComputation
   lic_learns_provable_nonhalting_patterns_ofComputation
   lic_does_not_anticipate_halting_ofComputation
+
+-- Construction/Witnesses/ComputationDP.lean — unconditional-over-LIA capstones
+-- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above)
+#assert_axioms_clean
+  lia_learns_halting_patterns_unconditional
+  lic_expectations_of_probabilities_ofCode_unconditional
 
 
 open AffineCombination LUVCombination in

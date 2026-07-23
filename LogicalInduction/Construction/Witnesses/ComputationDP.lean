@@ -592,7 +592,8 @@ noncomputable def theoremDiagonalQuoteCode (p : ℚ) :
       (diagonalPriceTruth (theoremMarketComputation T) p) :=
   parameterizedDiagonalQuoteCodeOfMarket (theoremMarketComputation T) T p
 
-/-- `thm:epr`, unconditional over `LIA`. -/
+/-- `thm:epr`, unconditional over `LIA`.
+Paper node: `thm:epr` -/
 theorem lic_expectations_of_probabilities_ofCode_unconditional
     {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
     (q : RationalQuoteCode T value)

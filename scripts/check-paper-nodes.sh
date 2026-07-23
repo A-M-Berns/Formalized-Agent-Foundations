@@ -61,7 +61,14 @@ while read -r nm; do
   fi
 done < /tmp/_pn_inv
 
+# --- 3. reverse coverage: every annotated label has an inventory endpoint ----------
+# Checks 1-2 above verify inventory -> paper (listed endpoints cite real, annotated
+# labels). This verifies paper -> inventory (every annotated label has a listed endpoint).
+if ! python3 scripts/check_endpoint_coverage.py; then
+  fail=1
+fi
+
 if [ "$fail" -eq 0 ]; then
-  echo "paper-node check: OK ($(wc -l < /tmp/_pn_used | tr -d ' ') distinct labels, all valid; inventory covered)"
+  echo "paper-node check: OK ($(wc -l < /tmp/_pn_used | tr -d ' ') distinct labels, all valid; inventory covered both directions)"
 fi
 exit $fail

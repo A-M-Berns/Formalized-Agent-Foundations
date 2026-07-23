@@ -76,6 +76,16 @@ strong, even though the constructed `liaHistory` separately satisfies `liaHistor
 `IsLogicalInductor`, then remove the redundant downstream hypotheses. A compatibility layer
 could retain unrestricted `History` for expressible-feature semantics.
 
+**Repair status (2026-07-23): core resolved; cosmetic residual recorded.** The range law now
+lives in the `ComputableMarket` certificate (`MarketComputation.price_mem_Icc`) and is exposed
+as `IsLogicalInductor.price_mem_Icc` (`Framework/Criterion.lean`), so `IsLogicalInductor`
+bundles the `[0,1]` range and is no longer strictly broader than the paper's markets. The
+second half of the repair — removing the now-redundant downstream `hP : ∀ n φ, 0 ≤ P n φ ∧
+P n φ ≤ 1` hypotheses (120 endpoints across 14 files) — is a purely cosmetic legibility pass,
+recorded as a consolidation-phase tranche with a mechanical recipe in `notes/next-session.md`
+("RECORDED TRANCHE — redundant-`hP` cleanup"). It is to land before the frozen-surface
+read-through.
+
 ### F1 — HIGH / incomplete theorem: Limit Coherence does not construct the paper's measure
 
 **Paper.** `thm:lc` says that `P∞` gives rise to a probability measure on the worlds
