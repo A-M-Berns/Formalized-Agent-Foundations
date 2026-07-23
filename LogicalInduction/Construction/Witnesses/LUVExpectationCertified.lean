@@ -126,6 +126,26 @@ theorem lic_expectation_provind_arith (P : History) [IsLogicalInductor P (L.grid
       ⟨(L.value i : ℝ), hc,
         L.expectApprox_near_gridDP (by omega) hv (by omega)⟩))
 
+/-- **F7 item 5, certified linearity of expectation.**  Linearity for `dd:luv-arith` LUVs `Xᵢ`,
+`Xⱼ`, `Xₖ`, with the world-value and linear-relation hypotheses discharged from arithmetic: the
+sole content is the plain rational identity `valueₖ = a·valueᵢ + b·valueⱼ`.
+Paper node: `thm:loe` -/
+theorem lic_linearity_of_expectation_arith (P : History) [IsLogicalInductor P (L.gridDP)]
+    (a b : ℚ) (i j k : ℕ)
+    (hcodeI : (toLUV i).PolyThresholdCodes) (hcodeJ : (toLUV j).PolyThresholdCodes)
+    (hcodeK : (toLUV k).PolyThresholdCodes)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hlin : L.value k = a * L.value i + b * L.value j) :
+    AsympEq (fun n => (a : ℝ) * (toLUV i).expect P n + (b : ℝ) * (toLUV j).expect P n)
+      ((toLUV k).expectSeq P) :=
+  lic_linearity_of_expectation P (L.gridDP) a b (toLUV i) (toLUV j) (toLUV k)
+    hcodeI hcodeJ hcodeK hP L.gridDP_hcons
+    ((Filter.eventually_ge_atTop (max 1 (max i (max j k)))).mono (fun n hin v hv =>
+      ⟨(L.value i : ℝ), (L.value j : ℝ), (L.value k : ℝ), by exact_mod_cast hlin,
+        L.expectApprox_near_gridDP (by omega) hv (by omega),
+        L.expectApprox_near_gridDP (by omega) hv (by omega),
+        L.expectApprox_near_gridDP (by omega) hv (by omega)⟩))
+
 end ComputableLUV
 
 end LogicalInduction

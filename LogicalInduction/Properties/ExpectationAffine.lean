@@ -403,7 +403,7 @@ theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
     (hcodeZ : Z.PolyThresholdCodes)
     (_hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hvals : ∀ n (v : PCWorld), 0 < n → v.ConsistentWith (DP.D n) →
+    (hvals : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
       ∃ x y z : ℝ, z = (a : ℝ) * x + (b : ℝ) * y ∧
         |X.expectApprox v.payout n - x| ≤ 1 / n ∧
         |Y.expectApprox v.payout n - y| ≤ 1 / n ∧
@@ -417,7 +417,7 @@ theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
         |(LUV.linearityAffine a b X Y Z n).value P v.payout| ≤ ε := by
     intro ε hε
     obtain ⟨N, hN⟩ := exists_nat_gt (C / ε)
-    refine Filter.eventually_atTop.mpr ⟨max 1 N, fun n hnlarge v hv => ?_⟩
+    filter_upwards [hvals, Filter.eventually_ge_atTop (max 1 N)] with n hvals_n hnlarge v hv
     have hn : 0 < n := by omega
     have hnR : (0 : ℝ) < n := by exact_mod_cast hn
     have hNn : C / ε < (n : ℝ) :=
@@ -427,7 +427,7 @@ theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
       calc
         C * (1 / (n : ℝ)) = C / (n : ℝ) := by ring
         _ < ε := (div_lt_iff₀ hnR).2 (by nlinarith)
-    obtain ⟨x, y, z, hrelation, hnearX, hnearY, hnearZ⟩ := hvals n v hn hv
+    obtain ⟨x, y, z, hrelation, hnearX, hnearY, hnearZ⟩ := hvals_n v hv
     rw [LUV.linearityAffine_value]
     have hrearrange :
         (a : ℝ) * X.expectApprox v.payout n + (b : ℝ) * Y.expectApprox v.payout n -
@@ -477,10 +477,10 @@ theorem lic_linearity_of_expectation_ofValuesAt (P : History) (DP : DeductivePro
     AsympEq (fun n => (a : ℝ) * X.expect P n + (b : ℝ) * Y.expect P n)
       (Z.expectSeq P) :=
   lic_linearity_of_expectation P DP a b X Y Z hcodeX hcodeY hcodeZ hP hcons
-    (fun n v hn hv => by
+    ((Filter.eventually_gt_atTop 0).mono (fun n hn v hv => by
       obtain ⟨x, y, z, hx, hy, hz⟩ := hvals n v hv
       exact ⟨x, y, z, hlin n v hv x y z hx hy hz,
-        hx.expectApprox_near hn, hy.expectApprox_near hn, hz.expectApprox_near hn⟩)
+        hx.expectApprox_near hn, hy.expectApprox_near hn, hz.expectApprox_near hn⟩))
 
 #print axioms lic_linearity_of_expectation_ofValuesAt
 
@@ -494,7 +494,7 @@ theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
     (_hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
-    (hval : ∀ n (v : PCWorld), 0 < n → v.ConsistentWith (DP.D n) →
+    (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
       ∃ x : ℝ, c ≤ x ∧ |X.expectApprox v.payout n - x| ≤ 1 / n) :
     AsympGE (X.expectSeq P) (fun _ => c) := by
   intro ε hε
@@ -502,7 +502,7 @@ theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
   have hsemantic : ∀ᶠ n in atTop, ∀ v : PCWorld,
       v.ConsistentWith (DP.D n) →
         c - ε / 2 ≤ (X.expectAffine n).value P v.payout := by
-    refine Filter.eventually_atTop.mpr ⟨max 1 N, fun n hnlarge v hv => ?_⟩
+    filter_upwards [hval, Filter.eventually_ge_atTop (max 1 N)] with n hval_n hnlarge v hv
     have hn : 0 < n := by omega
     have hNn : (2 : ℝ) / ε < (n : ℝ) :=
       hN.trans_le (by exact_mod_cast (le_trans (le_max_right 1 N) hnlarge))
@@ -511,7 +511,7 @@ theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
       rw [div_lt_iff₀ hε] at hNn
       rw [div_lt_iff₀ hnR]
       nlinarith
-    obtain ⟨x, hcx, hnear⟩ := hval n v hn hv
+    obtain ⟨x, hcx, hnear⟩ := hval_n v hv
     rw [LUV.expectAffine_value]
     rw [abs_le] at hnear
     linarith
@@ -524,7 +524,8 @@ theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
 
 #print axioms lic_expectation_provind
 
-/-- **Expectation Provability Induction** (`thm:expprovind`), full `PCWorld.ValuesAt` form. -/
+/-- **Expectation Provability Induction** (`thm:expprovind`), full `PCWorld.ValuesAt` form.
+Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_ofValuesAt (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
@@ -533,9 +534,9 @@ theorem lic_expectation_provind_ofValuesAt (P : History) (DP : DeductiveProcess)
       ∃ x, c ≤ x ∧ v.ValuesAt X x) :
     AsympGE (X.expectSeq P) (fun _ => c) :=
   lic_expectation_provind P DP X hcode hP hcons c
-    (fun n v hn hv => by
+    ((Filter.eventually_gt_atTop 0).mono (fun n hn v hv => by
       obtain ⟨x, hcx, hx⟩ := hval n v hv
-      exact ⟨x, hcx, hx.expectApprox_near hn⟩)
+      exact ⟨x, hcx, hx.expectApprox_near hn⟩))
 
 #print axioms lic_expectation_provind_ofValuesAt
 

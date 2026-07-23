@@ -138,8 +138,18 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 -- Properties/SelfTrust.lean
 #assert_axioms_clean
   lic_linearity_of_expectation lic_expectation_indicator lic_expectation_provind
+  lic_linearity_of_expectation_ofValuesAt lic_expectation_provind_ofValuesAt
   lic_introspection lic_paradox_resistance lic_expectations_of_probabilities
   lic_iterated_expectations lic_self_trust lic_expected_future_expectations
+
+-- Construction/Witnesses/LUVExpectationCertified.lean (F7 `dd:luv-arith`): the
+-- expectation endpoints whose world-value hypotheses are discharged from arithmetic
+-- (`thm:loe`, `thm:expprovind`).  The certified LUV, its derived world-value
+-- interfaces (`threshold_holds_iff`, `exactTheoryPresentation_ofArithmetic`), and the
+-- process realizing them (`luvArithmeticPresentation`) are internal infrastructure.
+#assert_axioms_clean
+  ComputableLUV.lic_expectation_provind_arith
+  ComputableLUV.lic_linearity_of_expectation_arith
   lic_no_expected_net_update lic_no_expected_net_update_conditional
   LUVCombination.BoundedSequence.recurringunbiasednessexp
   LUVCombination.BoundedSequence.prandexp
