@@ -2910,8 +2910,8 @@ oracle, the returned object exposes its checker, polynomial clock, soundness, an
 eventual-completeness fields through `HistoricalVerifiedMaturitySchedule`.
 
 The paper derives this interface by dovetailing the computable rational market and
-deductive-process computations.  Constructing that dovetailer in the repository's
-clocked token model is the remaining representation obligation. -/
+deductive-process computations.  `Construction.Witnesses.HistoricalMaturity` implements
+that dovetailer; this predicate remains as the low-level compatibility interface. -/
 def BiasRunHistoricallyVerifiable
     (As : ℕ → AffineCombination) (hpoly : PolySequence As)
     (W : ℕ → EF) (hWgen : PGenerableWeighting W)
@@ -2925,16 +2925,15 @@ def BiasRunHistoricallyVerifiable
         (biasRunTrader hpoly hWgen (biasRunRate scale)))
       P DP ((ε : ℝ) / 4) roiTolerance)
 
-/-- Operational consumer for the missing computability edge of affine recurring
+/-- Operational consumer for the historical-maturity interface of affine recurring
 unbiasedness.  A persistent negative bias produces a tail of unit-magnitude positive-ROI
 run traders.  If finite historical maturity claims for that tail have the paper's bounded
 verifier, `noRepeatableROI` forces the corresponding `0/1` magnitude progression to tend
 to zero, contradicting its eventual value one.
 
 This theorem intentionally exposes the historical verifier as a hypothesis and is not the
-paper-facing capstone.  Its purpose is to isolate the remaining obligation precisely: the
-next theorem must construct `hverify` from `IsLogicalInductor.marketComputable` and
-`.processComputable`, rather than assuming a semantic closing day. -/
+paper-facing capstone.  The construction layer discharges it from
+`IsLogicalInductor.marketComputable` and `.processComputable`. -/
 lemma DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
@@ -3114,7 +3113,7 @@ lemma DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
 The economic hub above is stated at unit magnitude; this wrapper performs one canonical
 positive rational normalization, asks the operational verifier only for that concrete
 normalized family, and cancels the scale from the exact zero-limit-point conclusion. -/
-theorem BoundedCombinationSequence.recunbiasedaff
+theorem BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedCombinationSequence As P)
@@ -3288,7 +3287,7 @@ end AffineCombination
 #print axioms AffineCombination.UnitMaturitySemanticCertificate.nonempty_iff_matured
 #print axioms AffineCombination.DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
 #print axioms AffineCombination.DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
-#print axioms AffineCombination.BoundedCombinationSequence.recunbiasedaff
+#print axioms AffineCombination.BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers
 #print axioms AffineCombination.recurringunbiasedness_of_historicalVerifiers
 #print axioms AffineCombination.simcal_of_historicalVerifiers
 

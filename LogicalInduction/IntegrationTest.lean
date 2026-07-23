@@ -28,6 +28,7 @@ does not pretend convergence alone constructs that quotation interface.
 -/
 import LogicalInduction.Properties
 import LogicalInduction.Framework.Expectations
+import LogicalInduction.Construction.Witnesses.HistoricalMaturity
 
 namespace LogicalInduction.IntegrationTest
 
@@ -172,17 +173,9 @@ lemma prandexp_hypothesis_discharged
     (f : DeferralFunction)
     (clock : PatientSettlementClock (LUVCombination.normalizedMesh As b) P DP
       (LUVCombination.normalizedMeshTruth As P DP hworld b) f)
-    (hpseudo : PseudorandomAbove truth f P)
-    (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
-        (LUVCombination.normalizedMesh As b) (h.normalizedMesh_poly b)
-        W hWgen P DP)
-    (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
-        (fun n => (LUVCombination.normalizedMesh As b n).neg)
-        (h.normalizedMesh_poly b).neg W hWgen P DP) :
+    (hpseudo : PseudorandomAbove truth f P) :
     PseudorandomExpectationHypothesis As P :=
-  h.prandexp hexact hdet b hshare hP hworld f clock hpseudo hverify hverifyNeg
+  h.prandexp hexact hdet b hshare hP hworld f clock hpseudo
 
 #print axioms divergent_weighted_null_error_discharged
 #print axioms prandexp_hypothesis_discharged
@@ -201,16 +194,10 @@ theorem arbitrary_bcs_recunbiasedaff_discharged
     {truth : ℕ → ℝ} (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
     (hWdiv : DivergentWeighting W P)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
-    (hverify : AffineCombination.BiasRunHistoricallyVerifiable
-      (fun n => (As n).scale (.const h.unitNormalization.scale))
-      (h.poly.scaleRat h.unitNormalization.scale) W hWgen P DP)
-    (hverifyNeg : AffineCombination.BiasRunHistoricallyVerifiable
-      (fun n => ((As n).scale (.const h.unitNormalization.scale)).neg)
-      (h.poly.scaleRat h.unitNormalization.scale).neg W hWgen P DP) :
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) :
     HasLimitPoint (weightedBias (fun i => (W i).denote P)
       (fun i => (As i).price P i) truth) 0 :=
-  h.recunbiasedaff hWgen hdet hWdiv hworld hP hverify hverifyNeg
+  h.recunbiasedaff hWgen hdet hWdiv hworld hP
 
 lemma arbitrary_bcs_wubaff_discharged
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
@@ -243,21 +230,9 @@ lemma arbitrary_bcs_prandaff_discharged
     (clock : PatientSettlementClock
       (fun n => (As n).scale (.const h.unitNormalization.scale)) P DP
       (fun n => (h.unitNormalization.scale : ℝ) * truth n) f)
-    (hpseudo : Pseudorandom truth f P)
-    (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
-        (fun n => (As n).scale (.const h.unitNormalization.scale))
-        (h.poly.scaleRat h.unitNormalization.scale) W hWgen P DP)
-    (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
-        (fun n => ((As n).scale (.const h.unitNormalization.scale)).neg)
-        (h.poly.scaleRat h.unitNormalization.scale).neg W hWgen P DP)
-    (hverifyNegNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
-        (fun n => (((As n).scale (.const h.unitNormalization.scale)).neg).neg)
-        (h.poly.scaleRat h.unitNormalization.scale).neg.neg W hWgen P DP) :
+    (hpseudo : Pseudorandom truth f P) :
     (fun n => (As n).price P n) ≈ₙ (fun _ => 0) :=
-  h.prandaff hdet hworld hP f clock hpseudo hverify hverifyNeg hverifyNegNeg
+  h.prandaff hdet hworld hP f clock hpseudo
 
 #print axioms arbitrary_bcs_recunbiasedaff_discharged
 #print axioms arbitrary_bcs_wubaff_discharged

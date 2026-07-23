@@ -109,43 +109,24 @@ measure is almost-everywhere concentrated on worlds consistent with the complete
 process. Its theorem/refutation lemmas accept membership at an arbitrary finite stage. The
 endpoint is exported and guarded by `#assert_axioms_clean`.
 
-### F2 — HIGH / unconstructed boundary: recurring unbiasedness and statistical learning
+### F2 — RESOLVED: recurring unbiasedness and statistical learning
 
-The recurring-unbiasedness proof introduces
-`AffineCombination.BiasRunHistoricallyVerifiable`
-(`Properties/Calibration.lean:2915`). Its docstring says:
+**Repair status (2026-07-22): resolved.**
+`Construction/Witnesses/HistoricalMaturity.lean` compiles the semantic finite-world
+maturity test into a primitive-recursive, non-dependent Boolean checker. It flattens each
+uniformly emulatable trader family's dated trades, computes exact rational magnitude and
+world value from `IsLogicalInductor.marketComputable` and `.processComputable`, semidecides
+successful maturity checks, and uses the shared bounded dovetail to construct a
+`HistoricalVerifiedMaturitySchedule`. Soundness and eventual completeness are proved by an
+equivalence with the existing semantic `unitMaturityCheckAtFuel`.
 
-> Constructing that dovetailer in the repository's clocked token model is the remaining
-> representation obligation.
-
-The nominal paper-facing capstones require this predicate for the sequence and its negation:
-
-- `BoundedCombinationSequence.recunbiasedaff` (`Calibration.lean:3117–3131`);
-- `recurringunbiasedness_of_historicalVerifiers` (`Calibration.lean:3185`);
-- `simcal_of_historicalVerifiers` (`Calibration.lean:3214`);
-- `BoundedSequence.recurringunbiasednessexp`
-  (`ExpectationProperties.lean:2145–2164`); and
-- the affine, sentence, and expectation pseudorandom-learning paths in
-  `Properties/Pseudorandomness.lean` and `ExpectationProperties.lean`.
-
-For example, `lic_learning_varied_pseudorandom_above`
-(`Pseudorandomness.lean:2678–2700`) asks for historical verifiers for every represented
-weighting. The fixed-frequency theorem hides the same assumptions inside
-`PseudorandomFrequencyInfrastructure`. The integration tests also take the verifier as a
-hypothesis (`IntegrationTest.lean:197–214`, `236–261`); they do not construct it.
-
-README marks `M7-HIST-EVALN` as constructed, but the bounded evaluator constructed under that
-name is not the complete `BiasRunHistoricallyVerifiable` witness consumed by these theorems.
-
-**Consequence.** The paper's `thm:simcal`, `thm:recurringunbiasedness`, much of `thm:prand`
-and `thm:benford`, and their affine/LUV analogues remain conditional on an extra operational
-premise. This is an additional live boundary beyond the three prominent disclosed M7
-remainders.
-
-**Required repair.** Construct the historical verified-maturity schedule uniformly from
-`IsLogicalInductor.marketComputable`, `.processComputable`, and the relevant polynomial
-streams, and make the paper-facing capstones consume that constructor rather than an
-`hverify` hypothesis.
+The constructor is consumed internally by the one-sided recurring-bias contradiction and
+therefore by the exact paper-facing `recunbiasedaff`, `recurringunbiasedness`, and `simcal`
+endpoints. The same unconditional route now feeds affine, sentence, and expectation
+pseudorandom learning. `PseudorandomFrequencyInfrastructure` carries settlement clocks
+only; the old verifier-bearing interface and the old conditional capstones remain available
+under explicit `..._of_historicalVerifiers` names. Integration tests no longer accept an
+`hverify` premise for recurring unbiasedness, `prandaff`, or `prandexp`.
 
 ### F3 — HIGH / self-reference gap: Paradox Resistance assumes the crucial diagonal relation
 
@@ -309,21 +290,20 @@ should make this mainly a statement/packaging task.
 README says `AxiomAudit.lean` enumerates every public endpoint. Its Tier-1 list omits several
 declarations identified elsewhere as paper-facing, including:
 
-- `AffineCombination.simcal_of_historicalVerifiers`;
-- `AffineCombination.recurringunbiasedness_of_historicalVerifiers`;
-- `BoundedCombinationSequence.recunbiasedaff`;
 - `PolySequence.affcoh`, `affpolymax`, and `peraffkno`;
 - the theory-valued affine provability wrappers;
 - `BoundedSequence.expcoh`, `exppolymax`, and `perexpkno`;
-- `BoundedSequence.recurringunbiasednessexp`, `wubexp`, and `prandexp` variants; and
+- `BoundedSequence.wubexp`; and
 - newer `_unconditional` endpoints in `Construction/Witnesses/ComputationDP.lean` and
   `UnconditionalOverLIA.lean`, including paradox resistance and conditioning.
 
+The F2 repair added the recurring-unbiasedness, calibration, affine pseudorandomness,
+expectation recurring-unbiasedness, and expectation pseudorandomness endpoints to the
+inventory, but the unrelated omissions above remain.
+
 The paper-node checker establishes that annotations on inventory members cite real labels;
 it does not prove that all paper-facing declarations are inventory members, nor that every
-paper theorem has a full-strength endpoint. The exact paper label
-`thm:recurringunbiasedness` is not cited by the Lean annotations, despite the existence of a
-similarly named conditional lemma.
+paper theorem has a full-strength endpoint.
 
 `#assert_fields` usefully freezes selected structure field sets, but it cannot detect a
 missing semantic relation between existing fields, as in F3.
@@ -375,9 +355,9 @@ F3.
 | Limit Coherence | Only component identities; no probability measure theorem |
 | Provability induction and timely learning | Strongest wrappers use eventual completed-theory proof appearance and are close to the paper |
 | Affine coherence/persistence | Substantial, but several paper-facing capstones are outside `AxiomAudit` |
-| Calibration and recurring unbiasedness | Incomplete due to `BiasRunHistoricallyVerifiable` |
+| Calibration and recurring unbiasedness | Historical maturity is compiled and dovetailed; paper-facing endpoints construct it internally |
 | Feedback unbiasedness (`wub`) | Significant compiler construction; unconditional-over-LIA variants still take the paper's semantic/operational data |
-| Pseudorandom learning | Economic core present; headline theorems retain historical-verifier infrastructure |
+| Pseudorandom learning | Affine, sentence, expectation, and fixed-frequency endpoints construct historical maturity internally |
 | Logical relationships | Substantial propositional rendering |
 | Non-dogmatism / uniform non-dogmatism | Substantial; relies on explicit global theory/world and range hypotheses |
 | Finite perturbation | Correctly qualified and strictly weaker than the paper under this efficiency model |
@@ -446,8 +426,8 @@ git status --short
 
 Results:
 
-- full build passed: **2723 jobs**;
-- paper-node validation passed: **54 distinct referenced labels**;
+- full build passed: **2786 jobs**;
+- paper-node validation passed: **60 distinct referenced labels**;
 - theorem-label lint passed;
 - no executable `sorry`, `admit`, or `axiom` declaration was found in `LogicalInduction/`;
 - checked axiom reports contained only `propext`, `Classical.choice`, and `Quot.sound`; and
@@ -458,19 +438,15 @@ the statement-faithfulness findings above.
 
 ## Recommended order of repair
 
-1. Add `[0,1]` pricing to the logical-inductor market bundle.
-2. Add the full Limit Coherence probability-measure theorem.
-3. Construct `BiasRunHistoricallyVerifiable` and expose all statistical capstones to
-   `AxiomAudit`.
-4. Connect `ParameterizedDiagonalQuoteCode`'s actual fixed point to its public quoted atom,
+1. Connect `ParameterizedDiagonalQuoteCode`'s actual fixed point to its public quoted atom,
    eliminating `truth_spec` from Paradox Resistance.
-5. Close the finite-prefix transport needed by Conditioning.
-6. Package `thm:li` as existence of a computable finite-support belief sequence.
-7. Expand the endpoint inventory and distinguish “complete,” “conditional,” “qualified,” and
+2. Close the finite-prefix transport needed by Conditioning.
+3. Package `thm:li` as existence of a computable finite-support belief sequence.
+4. Expand the endpoint inventory and distinguish “complete,” “conditional,” “qualified,” and
    “interface only” coverage per paper node.
-8. Only after those repairs, revisit the three deliberately disclosed classical-computability
+5. Only after those repairs, revisit the three deliberately disclosed classical-computability
    boundaries and the token/fuel equivalence question.
 
-Until at least items 1–7 are addressed, the repository should continue to describe the
+Until at least items 1–4 are addressed, the repository should continue to describe the
 Logical Induction development as **in progress**, with unconditional central construction and
 a conditional/qualified property tail.

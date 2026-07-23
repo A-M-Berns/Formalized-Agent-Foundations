@@ -2550,10 +2550,11 @@ theorem AffineCombination.DeterminedViaTheory.lic_prandaff_of_historicalVerifier
     hdet.lic_prandaff_above_of_historicalVerifiers hpoly hbounded hmag hworld hP
       f clock hpseudo.1 hverify hverifyNeg⟩
 
-/-- Paper-facing nonnegative branch of `thm:prandaff` for an arbitrary `BCS`.
+/-- Conditional compatibility form of the nonnegative `thm:prandaff` branch for an arbitrary
+`BCS`.
 The patient clock and historical verifiers are formulated for the canonical normalized
 family, and positive-scale cancellation restores the original diagonal prices. -/
-theorem AffineCombination.BoundedCombinationSequence.prandaff_above
+theorem AffineCombination.BoundedCombinationSequence.prandaff_above_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : AffineCombination.BoundedCombinationSequence As P)
@@ -2590,8 +2591,8 @@ theorem AffineCombination.BoundedCombinationSequence.prandaff_above
     simpa only [q, AffineCombination.scale_price, EF.denote_const] using hs
   exact asympGE_zero_of_const_mul_pos hq hscaled
 
-/-- Paper-facing nonpositive branch of `thm:prandaff` for an arbitrary `BCS`. -/
-theorem AffineCombination.BoundedCombinationSequence.prandaff_below
+/-- Conditional compatibility form of the nonpositive `thm:prandaff` branch. -/
+theorem AffineCombination.BoundedCombinationSequence.prandaff_below_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : AffineCombination.BoundedCombinationSequence As P)
@@ -2628,8 +2629,8 @@ theorem AffineCombination.BoundedCombinationSequence.prandaff_below
     simpa only [q, AffineCombination.scale_price, EF.denote_const] using hs
   exact asympLE_zero_of_const_mul_pos hq hscaled
 
-/-- Exact two-sided paper `thm:prandaff` for every bounded-combination sequence. -/
-theorem AffineCombination.BoundedCombinationSequence.prandaff
+/-- Conditional two-sided compatibility form of `thm:prandaff`. -/
+theorem AffineCombination.BoundedCombinationSequence.prandaff_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : AffineCombination.BoundedCombinationSequence As P)
@@ -2656,8 +2657,10 @@ theorem AffineCombination.BoundedCombinationSequence.prandaff
         (h.poly.scaleRat h.unitNormalization.scale).neg.neg W hWgen P DP) :
     (fun n => (As n).price P n) ≈ₙ (fun _ => 0) := by
   rw [asympEq_iff_asympLE_asympGE]
-  exact ⟨h.prandaff_below hdet hworld hP f clock hpseudo.2 hverifyNeg hverifyNegNeg,
-    h.prandaff_above hdet hworld hP f clock hpseudo.1 hverify hverifyNeg⟩
+  exact ⟨h.prandaff_below_of_historicalVerifiers hdet hworld hP f clock hpseudo.2
+      hverifyNeg hverifyNegNeg,
+    h.prandaff_above_of_historicalVerifiers hdet hworld hP f clock hpseudo.1
+      hverify hverifyNeg⟩
 
 /-! ## Sentence-frequency specializations -/
 
@@ -2674,7 +2677,7 @@ theorem AffineCombination.TheoryTruth.sentenceMinusFeature_determined
 
 /-- `thm:prand`, varied-pseudorandom-above branch.
 Paper node: `thm:prand` -/
-theorem lic_learning_varied_pseudorandom_above
+theorem lic_learning_varied_pseudorandom_above_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
     (hφ : PolySentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
@@ -2710,7 +2713,7 @@ theorem lic_learning_varied_pseudorandom_above
 
 /-- `thm:prand`, varied-pseudorandom-below branch.
 Paper node: `thm:prand` -/
-theorem lic_learning_varied_pseudorandom_below
+theorem lic_learning_varied_pseudorandom_below_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
     (hφ : PolySentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
@@ -2746,7 +2749,7 @@ theorem lic_learning_varied_pseudorandom_below
 
 /-- Exact two-sided `thm:prand`.
 Paper node: `thm:prand` -/
-theorem lic_learning_varied_pseudorandom
+theorem lic_learning_varied_pseudorandom_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
     (hφ : PolySentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
@@ -2786,16 +2789,17 @@ theorem lic_learning_varied_pseudorandom
 
 /-! ## Fixed-frequency rational squeeze -/
 
-/-- The operational evidence needed to apply the rational-target `prand` theorem at
+/-- The legacy operational evidence needed to apply the conditional rational-target
+`prand` theorem at
 every rational `q ∈ [0,1]` used by the `thm:benford` squeeze.
 
 This is an explicit type-(c) representation boundary, not a learning certificate.  Its
-fields provide only settlement clocks and executable historical verifiers for the
+fields provide settlement clocks and executable historical verifiers for the
 centered affine family and its two negations.  In particular, it contains no price bound,
 pseudorandomness premise, convergence statement, or conclusion of `thm:benford`.
 `M7-HIST-EVALN` and `M7-PATIENT-CLOCK` are the ledgered concrete witnesses.
 Paper node: `thm:benford` -/
-structure PseudorandomFrequencyInfrastructure
+structure PseudorandomFrequencyInfrastructureWithHistoricalVerifiers
     (P : History) (DP : DeductiveProcess) (φ : ℕ → Sentence)
     (hφ : PolySentenceCodes φ) (truth : ℕ → ℝ) (f : DeferralFunction) where
   clock : ∀ (q : ℚ), 0 ≤ (q : ℝ) → (q : ℝ) ≤ 1 →
@@ -2835,7 +2839,7 @@ structure PseudorandomFrequencyInfrastructure
 the market's pointwise probability lower bound suffices; otherwise a rational
 `max(0, p-ε/2) < q < p` is learned via `prand`.
 Paper node: `thm:benford` -/
-theorem lic_learning_pseudorandom_frequency_above
+theorem lic_learning_pseudorandom_frequency_above_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
@@ -2843,7 +2847,8 @@ theorem lic_learning_pseudorandom_frequency_above
     (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) (hpseudo : PseudorandomFrequency truth p f P)
-    (hinfra : PseudorandomFrequencyInfrastructure P DP φ hφ truth f) :
+    (hinfra : PseudorandomFrequencyInfrastructureWithHistoricalVerifiers
+      P DP φ hφ truth f) :
     (fun n ↦ P n (φ n)) ≳ₙ (fun _ ↦ p) := by
   intro ε hε
   by_cases hp0 : p = 0
@@ -2858,7 +2863,7 @@ theorem lic_learning_pseudorandom_frequency_above
     have hq0 : 0 ≤ (q : ℝ) :=
       (le_max_left 0 (p - ε / 2)).trans hqlow.le
     have hq1 : (q : ℝ) ≤ 1 := hqhigh.le.trans hp.2
-    have hlearn := lic_learning_varied_pseudorandom_above
+    have hlearn := lic_learning_varied_pseudorandom_above_of_historicalVerifiers
       P DP φ (fun _ ↦ q) (AffineCombination.constantRatFeature q)
       hφ (AffineCombination.constantRatFeature_generated P q)
       truth htruth hP (fun _ ↦ ⟨hq0, hq1⟩) hworld f
@@ -2873,7 +2878,7 @@ theorem lic_learning_pseudorandom_frequency_above
 bound suffices; otherwise the proof learns a rational
 `p < q < min(1, p+ε/2)` via the below branch of `prand`.
 Paper node: `thm:benford` -/
-theorem lic_learning_pseudorandom_frequency_below
+theorem lic_learning_pseudorandom_frequency_below_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
@@ -2881,7 +2886,8 @@ theorem lic_learning_pseudorandom_frequency_below
     (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) (hpseudo : PseudorandomFrequency truth p f P)
-    (hinfra : PseudorandomFrequencyInfrastructure P DP φ hφ truth f) :
+    (hinfra : PseudorandomFrequencyInfrastructureWithHistoricalVerifiers
+      P DP φ hφ truth f) :
     (fun n ↦ P n (φ n)) ≲ₙ (fun _ ↦ p) := by
   intro ε hε
   by_cases hp1 : p = 1
@@ -2896,7 +2902,7 @@ theorem lic_learning_pseudorandom_frequency_below
     have hq0 : 0 ≤ (q : ℝ) := hp.1.trans hqlow.le
     have hq1 : (q : ℝ) ≤ 1 :=
       hqhigh.le.trans (min_le_left 1 (p + ε / 2))
-    have hlearn := lic_learning_varied_pseudorandom_below
+    have hlearn := lic_learning_varied_pseudorandom_below_of_historicalVerifiers
       P DP φ (fun _ ↦ q) (AffineCombination.constantRatFeature q)
       hφ (AffineCombination.constantRatFeature_generated P q)
       truth htruth hP (fun _ ↦ ⟨hq0, hq1⟩) hworld f
@@ -2911,7 +2917,7 @@ theorem lic_learning_pseudorandom_frequency_below
 theory truth stream is pseudorandom with real frequency `p` is learned at frequency `p`.
 The proof is the paper's rational squeeze, with explicit endpoint cases.
 Paper node: `thm:benford` -/
-theorem lic_learning_pseudorandom_frequency
+theorem lic_learning_pseudorandom_frequency_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
@@ -2919,13 +2925,16 @@ theorem lic_learning_pseudorandom_frequency
     (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) (hpseudo : PseudorandomFrequency truth p f P)
-    (hinfra : PseudorandomFrequencyInfrastructure P DP φ hφ truth f) :
+    (hinfra : PseudorandomFrequencyInfrastructureWithHistoricalVerifiers
+      P DP φ hφ truth f) :
     (fun n ↦ P n (φ n)) ≈ₙ (fun _ ↦ p) := by
   rw [asympEq_iff_asympLE_asympGE]
   exact ⟨
-    lic_learning_pseudorandom_frequency_below P DP φ hφ truth htruth p hp hP hworld
+    lic_learning_pseudorandom_frequency_below_of_historicalVerifiers
+      P DP φ hφ truth htruth p hp hP hworld
       f hpseudo hinfra,
-    lic_learning_pseudorandom_frequency_above P DP φ hφ truth htruth p hp hP hworld
+    lic_learning_pseudorandom_frequency_above_of_historicalVerifiers
+      P DP φ hφ truth htruth p hp hP hworld
       f hpseudo hinfra⟩
 
 #print axioms not_eventually_weightedAverage_lt_of_limitPoint_bias
@@ -2938,12 +2947,12 @@ theorem lic_learning_pseudorandom_frequency
 #print axioms AffineCombination.DeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
 #print axioms AffineCombination.DeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
 #print axioms AffineCombination.DeterminedViaTheory.lic_prandaff_of_historicalVerifiers
-#print axioms AffineCombination.BoundedCombinationSequence.prandaff_above
-#print axioms AffineCombination.BoundedCombinationSequence.prandaff_below
-#print axioms AffineCombination.BoundedCombinationSequence.prandaff
-#print axioms lic_learning_varied_pseudorandom_above
-#print axioms lic_learning_varied_pseudorandom_below
-#print axioms lic_learning_varied_pseudorandom
+#print axioms AffineCombination.BoundedCombinationSequence.prandaff_above_of_historicalVerifiers
+#print axioms AffineCombination.BoundedCombinationSequence.prandaff_below_of_historicalVerifiers
+#print axioms AffineCombination.BoundedCombinationSequence.prandaff_of_historicalVerifiers
+#print axioms lic_learning_varied_pseudorandom_above_of_historicalVerifiers
+#print axioms lic_learning_varied_pseudorandom_below_of_historicalVerifiers
+#print axioms lic_learning_varied_pseudorandom_of_historicalVerifiers
 #print axioms AffineCombination.constantRatFeature_generated
 #print axioms PseudorandomFrequency.variedAbove_of_lt
 #print axioms PseudorandomFrequency.variedBelow_of_lt
@@ -2966,8 +2975,8 @@ theorem lic_learning_pseudorandom_frequency
 #print axioms AffineCombination.lic_wubaff
 #print axioms AffineCombination.BoundedCombinationSequence.wubaff
 #print axioms AffineCombination.lic_wub
-#print axioms lic_learning_pseudorandom_frequency_above
-#print axioms lic_learning_pseudorandom_frequency_below
-#print axioms lic_learning_pseudorandom_frequency
+#print axioms lic_learning_pseudorandom_frequency_above_of_historicalVerifiers
+#print axioms lic_learning_pseudorandom_frequency_below_of_historicalVerifiers
+#print axioms lic_learning_pseudorandom_frequency_of_historicalVerifiers
 
 end LogicalInduction

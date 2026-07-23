@@ -1,6 +1,23 @@
 # Logical Induction — handoff
 
-_Last updated: 2026-07-22 (session 3). Branch: `logical-induction`._
+_Last updated: 2026-07-22 (session 4). Branch: `logical-induction`._
+
+## ✅ Session 4 summary (2026-07-22) — F2 historical maturity constructed
+
+The adversarial audit's F2 finding is resolved. `HistoricalMaturity.lean` compiles the
+finite-world maturity predicate for every uniformly emulatable trader family, proves the
+compiled checker equivalent to the semantic checker, semidecides it with a single program,
+and builds the required polynomial historical schedule by bounded dovetailing the logical
+inductor's market and deductive-process computations.
+
+Recurring unbiasedness, calibration, and the affine/sentence/expectation/fixed-frequency
+pseudorandom capstones now construct this schedule internally. Their paper-facing APIs no
+longer accept historical-verifier premises; the old conditional declarations remain under
+explicit `_of_historicalVerifiers` names. The fixed-frequency infrastructure now contains
+settlement clocks only, and the integration tests exercise the unconditional APIs.
+
+**Next focus:** continue the adversarial audit at F3 (the remaining paradox-resistance
+self-reference gap), with the F2 endpoints frozen in `AxiomAudit.lean`.
 
 ## ✅ Session 3 summary (2026-07-22) — feedback and LUV complete over constructed LIA
 

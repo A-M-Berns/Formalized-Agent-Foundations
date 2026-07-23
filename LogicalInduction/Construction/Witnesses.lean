@@ -8,6 +8,7 @@ existence result — lives one level up; a reader auditing `exists_logical_induc
 never needs this folder.
 -/
 import LogicalInduction.Construction.Witnesses.M7Witnesses
+import LogicalInduction.Construction.Witnesses.HistoricalMaturity
 import LogicalInduction.Construction.Witnesses.FeedbackEmission
 import LogicalInduction.Construction.Witnesses.ConditioningPresentation
 import LogicalInduction.Construction.Witnesses.ConditioningCompiler

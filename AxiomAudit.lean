@@ -111,6 +111,11 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_learning_pseudorandom_frequency lic_learning_pseudorandom_frequency_above
   lic_learning_pseudorandom_frequency_below lic_learning_varied_pseudorandom
   lic_learning_varied_pseudorandom_above lic_learning_varied_pseudorandom_below
+  AffineCombination.BoundedCombinationSequence.recunbiasedaff
+  AffineCombination.BoundedCombinationSequence.prandaff
+  AffineCombination.BoundedCombinationSequence.prandaff_above
+  AffineCombination.BoundedCombinationSequence.prandaff_below
+  AffineCombination.recurringunbiasedness AffineCombination.simcal
   AffineCombination.lic_not_frequently_positive_feedback_return
   AffineCombination.lic_wub AffineCombination.lic_wubaff
 
@@ -125,6 +130,10 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_introspection lic_paradox_resistance lic_expectations_of_probabilities
   lic_iterated_expectations lic_self_trust lic_expected_future_expectations
   lic_no_expected_net_update lic_no_expected_net_update_conditional
+  LUVCombination.BoundedSequence.recurringunbiasednessexp
+  LUVCombination.BoundedSequence.prandexp
+  LUVCombination.BoundedSequence.prandexp_below
+  LUVCombination.BoundedSequence.prandexp_eq
 
 -- Properties/MetaLearning.lean
 #assert_axioms_clean
@@ -322,7 +331,7 @@ deliberately. -/
 #assert_fields PrefixNegationCompiler
   overhead complexity_neg_le
 #assert_fields PseudorandomFrequencyInfrastructure
-  clock verify verifyNeg verifyNegNeg
+  clock
 #assert_fields QuotationTheoryPresentation
   toComputationTheoryPresentation theory_sigmaOne quote_positive_enters quote_negative_refutes
 #assert_fields RationalQuoteCode

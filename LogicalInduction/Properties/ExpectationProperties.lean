@@ -2142,7 +2142,7 @@ lemma ExactTheoryPresentation.normalizedMeshTruth_pseudorandomBelow
 unbiased under every represented divergent weighting.  The two verifier premises are
 the same conclusion-free historical-maturity boundaries exposed by `recunbiasedaff`,
 instantiated on the concretely normalized threshold mesh. -/
-theorem BoundedSequence.recurringunbiasednessexp
+theorem BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
@@ -2272,10 +2272,11 @@ theorem BoundedSequence.wubexp
     ring
   simpa only [AsympEq, sub_zero, w, market] using hfinal
 
-/-- `thm:prandexp`, paper-facing nonnegative branch.  Pseudorandom exact LUV truth is
+/-- Conditional compatibility form of the nonnegative `thm:prandexp` branch.  Pseudorandom
+exact LUV truth is
 transferred through the vanishing threshold-mesh error, the affine `prandaff` theorem is
 applied to the normalized mesh, and its positive normalization is cancelled. -/
-theorem BoundedSequence.prandexp
+theorem BoundedSequence.prandexp_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
@@ -2312,7 +2313,7 @@ theorem BoundedSequence.prandexp
   exact asympGE_zero_of_const_mul_pos hq hscaled
 
 /-- The nonpositive comparison direction of `thm:prandexp`. -/
-theorem BoundedSequence.prandexp_below
+theorem BoundedSequence.prandexp_below_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
@@ -2350,7 +2351,7 @@ theorem BoundedSequence.prandexp_below
   exact asympLE_zero_of_const_mul_pos hq hscaled
 
 /-- The equality direction mentioned in the paper immediately after `thm:prandexp`. -/
-theorem BoundedSequence.prandexp_eq
+theorem BoundedSequence.prandexp_eq_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
@@ -2377,9 +2378,9 @@ theorem BoundedSequence.prandexp_eq
     (fun n => (As n).expect P n) ≈ₙ (fun _ => 0) := by
   rw [asympEq_iff_asympLE_asympGE]
   exact ⟨
-    h.prandexp_below hexact hdet b hshare hP hworld f clock hpseudo.2
+    h.prandexp_below_of_historicalVerifiers hexact hdet b hshare hP hworld f clock hpseudo.2
       hverifyNeg hverifyNegNeg,
-    h.prandexp hexact hdet b hshare hP hworld f clock hpseudo.1
+    h.prandexp_of_historicalVerifiers hexact hdet b hshare hP hworld f clock hpseudo.1
       hverify hverifyNeg⟩
 
 #print axioms LUV.expectAffine_priceAt
@@ -2394,11 +2395,11 @@ theorem BoundedSequence.prandexp_eq
 #print axioms BoundedSequence.perexpkno
 #print axioms BoundedSequence.mesh_affcoh
 #print axioms BoundedSequence.expcoh
-#print axioms BoundedSequence.recurringunbiasednessexp
+#print axioms BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
 #print axioms BoundedSequence.wubexp
-#print axioms BoundedSequence.prandexp
-#print axioms BoundedSequence.prandexp_below
-#print axioms BoundedSequence.prandexp_eq
+#print axioms BoundedSequence.prandexp_of_historicalVerifiers
+#print axioms BoundedSequence.prandexp_below_of_historicalVerifiers
+#print axioms BoundedSequence.prandexp_eq_of_historicalVerifiers
 
 end LUVCombination
 
