@@ -23,6 +23,90 @@ namespace LogicalInduction
 
 open LO.FirstOrder LO.FirstOrder.Arithmetic Filter Topology
 
+/-- **Combination-level expectation provability induction** (`thm:loe` substrate).  A bounded
+LUV-combination sequence that the completed theory determines to have value `0` in every
+consistent world has diagonal expectation `≈ₙ 0`.  This is the paper's own route to linearity
+(`app:loe`): apply `thm:expprovind` to the combination `aX+bY−Z` (valued `0` because
+`Θ ⊢ Z = aX+bY`).  It runs on the combination's mesh via `affine_provind_theory_tendsto_zero`,
+whose `ConsistentWithTheory` hypothesis is exactly what `ExactTheoryPresentation` (F7 Phase B)
+supplies.
+Paper node: `thm:loe` -/
+theorem lic_expect_combination_provind_zero
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    (h : LUVCombination.BoundedSequence As P)
+    (hexact : LUVCombination.ExactTheoryPresentation As DP)
+    (hdet0 : ∀ n, (As n).value P (hexact.value n) = 0)
+    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    (fun n => (As n).expect P n) ≈ₙ (fun _ => 0) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
+  obtain ⟨B, hB⟩ := h.bounded
+  have hbounded : BoundedAffinePrices (fun n => (As n).meshAffine n) P :=
+    ⟨max B 0, le_max_right _ _, fun n m =>
+      le_trans (le_trans ((((As n).meshAffine n).abs_price_le_l1Norm P m (fun φ => hP m φ)).trans
+        ((As n).meshAffine_l1Norm_le P n)) (hB n)) (le_max_left _ _)⟩
+  have hmag : ∃ C : ℝ, ∀ n, ((As n).meshAffine n).magnitude P ≤ C :=
+    ⟨(b : ℝ), fun n => ((As n).meshAffine_magnitude_le_shareNorm P n).trans (hshare n)⟩
+  have hval : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWithTheory DP →
+      |((As n).meshAffine n).value P v.payout| ≤ ε := by
+    intro ε hε
+    obtain ⟨N, hN⟩ := exists_nat_gt ((b : ℝ) / ε)
+    filter_upwards [Filter.eventually_ge_atTop (max 1 N)] with n hn v hv
+    have hn0 : 0 < n := by omega
+    have hnR : (0 : ℝ) < n := by exact_mod_cast hn0
+    have hvals := hexact.valuesAt n v hv
+    have hnear := (As n).meshAffine_value_near P v (hexact.value n) hn0 hvals
+    rw [hdet0 n, _root_.sub_zero] at hnear
+    have hb0 : 0 ≤ (b : ℝ) := le_trans ((As n).shareNorm_nonneg P) (hshare n)
+    have hbound : (As n).shareNorm P * (1 / n) ≤ (b : ℝ) * (1 / n) :=
+      mul_le_mul_of_nonneg_right (hshare n) (by positivity)
+    have hlt : (b : ℝ) / ε < n :=
+      hN.trans_le (by exact_mod_cast le_trans (le_max_right 1 N) hn)
+    have hsmall : (b : ℝ) * (1 / n) ≤ ε := by
+      rw [mul_one_div, div_le_iff₀ hnR]; nlinarith [(div_lt_iff₀ hε).mp hlt]
+    linarith [hnear, hbound, hsmall]
+  have hmesh := (h.poly.mesh_poly).affine_provind_theory_tendsto_zero P DP hbounded hmag hworld hval
+  simpa only [LUVCombination.meshAffine_price_diagonal] using hmesh
+
+/-- The paper's linearity LUV-combination `aₙXₙ + bₙYₙ − Zₙ`. -/
+def linearityLUVComb (a b : ℕ → ℚ) (X Y Z : ℕ → LUV) (n : ℕ) : LUVCombination where
+  const := .const 0
+  terms := [(.const (a n), X n), (.const (b n), Y n), (.const (-1), Z n)]
+
+lemma linearityLUVComb_expect (a b : ℕ → ℚ) (X Y Z : ℕ → LUV) (P : History) (n : ℕ) :
+    (linearityLUVComb a b X Y Z n).expect P n
+      = (a n : ℝ) * (X n).expect P n + (b n : ℝ) * (Y n).expect P n - (Z n).expect P n := by
+  simp only [linearityLUVComb, LUVCombination.expect, LUVCombination.expectAt, LUV.expect,
+    EF.denote_const, List.map_cons, List.map_nil, List.sum_cons, List.sum_nil]
+  push_cast; ring
+
+/-- **Linearity of Expectation** (`thm:loe`), the paper's varying-sequence statement.  For
+efficiently generated bounded rational sequences `a, b` and ec sequences of `[0,1]`-LUVs `X, Y, Z`
+with `Θ ⊢ Zₙ = aₙXₙ + bₙYₙ` (encoded as the combination being valued `0`), the diagonal
+expectations are asymptotically linear.  Derived, as in the paper's own proof (`app:loe`), from
+`thm:expprovind` for the LUV-combination `aX+bY−Z`.  Efficiency (`BoundedSequence`) and
+representation (`ExactTheoryPresentation`, F7-derivable) enter as the disclosed hypotheses.
+Paper node: `thm:loe` -/
+theorem lic_linearity_of_expectation_seq
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    (a b : ℕ → ℚ) (X Y Z : ℕ → LUV)
+    (h : LUVCombination.BoundedSequence (linearityLUVComb a b X Y Z) P)
+    (hexact : LUVCombination.ExactTheoryPresentation (linearityLUVComb a b X Y Z) DP)
+    (hdet0 : ∀ n, (linearityLUVComb a b X Y Z n).value P (hexact.value n) = 0)
+    (bnd : ℚ)
+    (hshare : ∀ n, (linearityLUVComb a b X Y Z n).shareNorm P ≤ (bnd : ℝ))
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    AsympEq (fun n => (a n : ℝ) * (X n).expect P n + (b n : ℝ) * (Y n).expect P n)
+      (fun n => (Z n).expect P n) := by
+  have hzero := lic_expect_combination_provind_zero h hexact hdet0 bnd hshare hworld
+  unfold AsympEq at hzero ⊢
+  have hfun : (fun n => (a n : ℝ) * (X n).expect P n + (b n : ℝ) * (Y n).expect P n
+      - (Z n).expect P n)
+      = (fun n => (linearityLUVComb a b X Y Z n).expect P n - 0) := by
+    funext n; rw [linearityLUVComb_expect]; ring
+  rw [hfun]; exact hzero
+
 namespace ComputableLUV
 
 variable (L : ComputableLUV)
