@@ -13,11 +13,13 @@ has one injective, polynomially emitted propositional name.  A quoted rational v
 the same dual-schema mechanism at every rational threshold.  Consequently a world
 consistent with the completed deductive theory values the resulting LUV correctly.
 
-`ParameterizedDiagonalQuoteCode` records an actual FFL parameterized fixed point, not a
-fresh atom merely described as self-referential.  `QuotationTheoryPresentation` is the
-remaining language bridge: it translates arithmetic proofs of arbitrary positive or
-complementary quote schemas into the corresponding public literal.  It assumes no market
-price, affine portfolio, asymptotic coherence, or logical-inductor conclusion.
+`ParameterizedDiagonalQuoteCode` records an actual FFL parameterized fixed point.  For
+paradox resistance, `parameterizedDiagonalQuoteCodeOfMarket` uses Kleene's second recursion
+theorem to construct the public selector that prices its own atom and then represents that
+same predicate with the FFL fixed point; no self-reference law is supplied by the caller.
+`QuotationTheoryPresentation` is the remaining language bridge: it translates arithmetic
+proofs of positive or complementary quote schemas into the corresponding public literal.
+It assumes no affine portfolio, asymptotic coherence, or logical-inductor conclusion.
 -/
 
 namespace LogicalInduction
@@ -252,6 +254,9 @@ def decodedQuotationRat (z : ℕ) : ℚ :=
 @[simp] theorem decodedQuotationRat_encode (r : ℚ) :
     decodedQuotationRat (Encodable.encode r) = r := by
   simp [decodedQuotationRat]
+
+lemma decodedQuotationRat_prim : Primrec decodedQuotationRat := by
+  exact Primrec.option_getD.comp Primrec.decode (Primrec.const 0)
 
 /-- Threshold LUV determined by a code selector, with the threshold rational folded into
 the universal-schema numeral alongside the code. -/
@@ -2311,12 +2316,11 @@ noncomputable def introspectionIntervalQuoteOfCode
 
 /-! ## Genuine parameterized diagonal syntax -/
 
-/-- A Boolean quote family carrying an actual FFL parameterized fixed point `body` as a
-standalone faithfulness certificate: `represents_fixedpoint` says the fixed point
-standard-represents the same public truth predicate the code-indexed decision quotes.  The
-atom itself rides the universal code-indexed schema (so the deductive process stays
-computable); the fixed point is not the atom's schema, but a witness that a genuine
-self-referential arithmetic definition of `truth` exists.
+/-- A Boolean quote family carrying an actual FFL parameterized fixed point `body`.
+`represents_fixedpoint` identifies its standard-model predicate with the decision quoted by
+the inherited public atom.  The paper-facing constructor
+`parameterizedDiagonalQuoteCodeOfMarket` below derives both pieces from the same
+self-referential market computation; callers do not supply the semantic diagonal relation.
 Paper node: `thm:lp` -/
 structure ParameterizedDiagonalQuoteCode
     (T : ArithmeticTheory) (truth : ℕ → Prop)
@@ -2336,25 +2340,294 @@ lemma ParameterizedDiagonalQuoteCode.diagonal_law
   letI : 𝗜𝚺₁ ⪯ T := Q.theory_sigmaOne
   simpa using parameterized_diagonal₁ (T := T) q.body
 
+/-! ## A public diagonal atom derived from the computable market -/
+
+/-- Given a candidate selector program `c`, run the market on the public atom selected by
+`c` and output `1` exactly when that same-day price is below `p`.  Kleene's second recursion
+theorem will choose a selector whose behavior is this very computation at its own code. -/
+noncomputable def diagonalPriceDecisionPart
+    {P : History} (market : MarketComputation P) (p : ℚ)
+    (c : Nat.Partrec.Code) (n : ℕ) : Part ℕ :=
+  (market.code.eval
+    (Nat.pair n
+      (Encodable.encode
+        (quoteAtom (Nat.pair (Encodable.encode c) n))))).map fun out =>
+          if decodedQuotationRat out < p then 1 else 0
+
+/-- The market-relative diagonal decision is a partial-recursive binary program.
+Paper node: `thm:lp` -/
+lemma diagonalPriceDecisionPart_partrec
+    {P : History} (market : MarketComputation P) (p : ℚ) :
+    Partrec₂ (diagonalPriceDecisionPart market p) := by
+  let input : Nat.Partrec.Code × ℕ → ℕ := fun z =>
+    Nat.pair z.2
+      (Encodable.encode
+        (quoteAtom (Nat.pair (Encodable.encode z.1) z.2)))
+  have hcode : Primrec fun z : Nat.Partrec.Code × ℕ => Encodable.encode z.1 :=
+    Primrec.encode.comp Primrec.fst
+  have hselector : Primrec fun z : Nat.Partrec.Code × ℕ =>
+      Nat.pair (Encodable.encode z.1) z.2 :=
+    Primrec₂.natPair.comp hcode Primrec.snd
+  have hpayload : Primrec fun z : Nat.Partrec.Code × ℕ =>
+      quotationClaimCode universalQuotePos universalQuoteNeg
+        (Nat.pair (Encodable.encode z.1) z.2) :=
+    Primrec₂.natPair.comp (Primrec.const 4)
+      (Primrec₂.natPair.comp (Primrec.const (Encodable.encode universalQuotePos))
+        (Primrec₂.natPair.comp (Primrec.const (Encodable.encode universalQuoteNeg))
+          hselector))
+  have hsentence : Primrec fun z : Nat.Partrec.Code × ℕ =>
+      Encodable.encode
+        (quoteAtom (Nat.pair (Encodable.encode z.1) z.2)) :=
+    (Primrec.succ.comp
+      (Primrec₂.natPair.comp (Primrec.const 1) hpayload)).of_eq fun _ => rfl
+  have hinput : Computable input :=
+    (Primrec.snd.pair hsentence).to_comp
+  have heval : Partrec fun z : Nat.Partrec.Code × ℕ =>
+      market.code.eval (input z) :=
+    Nat.Partrec.Code.eval_part.comp (Computable.const market.code) hinput
+  have hrat : Primrec fun out : ℕ => decodedQuotationRat out :=
+    decodedQuotationRat_prim
+  have hlt : PrimrecPred fun out : ℕ => decodedQuotationRat out < p :=
+    ((ratLE_prim.comp (Primrec.const p) hrat).not).of_eq fun _ => not_le
+  have hdecision : Computable fun out : ℕ =>
+      if decodedQuotationRat out < p then 1 else 0 :=
+    (Primrec.ite hlt (Primrec.const 1) (Primrec.const 0)).to_comp
+  exact (heval.map ((hdecision.comp Computable.snd).to₂)).to₂
+
+/-- The actual program fixed point behind the public paradox-resistance atom. -/
+noncomputable def diagonalPriceDecisionCode
+    {P : History} (market : MarketComputation P) (p : ℚ) :
+    Nat.Partrec.Code :=
+  Classical.choose
+    (Nat.Partrec.Code.fixed_point₂ (diagonalPriceDecisionPart_partrec market p))
+
+lemma diagonalPriceDecisionCode_spec
+    {P : History} (market : MarketComputation P) (p : ℚ) :
+    (diagonalPriceDecisionCode market p).eval =
+      diagonalPriceDecisionPart market p (diagonalPriceDecisionCode market p) :=
+  Classical.choose_spec
+    (Nat.Partrec.Code.fixed_point₂ (diagonalPriceDecisionPart_partrec market p))
+
+/-- The semantic predicate decided by the self-referential selector: its own public atom
+has same-day market price below `p`. -/
+def diagonalPriceTruth
+    {P : History} (market : MarketComputation P) (p : ℚ) (n : ℕ) : Prop :=
+  market.quote n
+    (Encodable.encode
+      (quoteAtom
+        (Nat.pair (Encodable.encode (diagonalPriceDecisionCode market p)) n))) < p
+
+/-- The Kleene fixed selector computes the threshold decision for its own public atom.
+Paper node: `thm:lp` -/
+lemma diagonalPriceDecisionCode_eval
+    {P : History} (market : MarketComputation P) (p : ℚ) (n : ℕ) :
+    (diagonalPriceDecisionCode market p).eval n =
+      Part.some (if market.quote n
+        (Encodable.encode
+          (quoteAtom
+            (Nat.pair (Encodable.encode (diagonalPriceDecisionCode market p)) n))) < p
+        then 1 else 0) := by
+  classical
+  rw [diagonalPriceDecisionCode_spec]
+  unfold diagonalPriceDecisionPart
+  let input := Nat.pair n
+    (Encodable.encode
+      (quoteAtom
+        (Nat.pair (Encodable.encode (diagonalPriceDecisionCode market p)) n)))
+  have hmarket := market.code_spec input
+  have hmarketEq : market.code.eval input =
+      Part.some (Encodable.encode
+        (market.quote input.unpair.1 input.unpair.2)) :=
+    Part.eq_some_iff.mpr hmarket
+  rw [show Nat.pair n
+      (Encodable.encode
+        (quoteAtom
+          (Nat.pair (Encodable.encode (diagonalPriceDecisionCode market p)) n))) =
+        input from rfl, hmarketEq]
+  simp [input, decodedQuotationRat]
+
+/-- The fixed selector's positive quote is exactly the market-derived diagonal predicate.
+Paper node: `thm:lp` -/
+lemma diagonalPriceQuotePos_iff
+    {P : History} (market : MarketComputation P) (p : ℚ) (n : ℕ) :
+    quotePos (Encodable.encode (diagonalPriceDecisionCode market p)) n ↔
+      diagonalPriceTruth market p n := by
+  classical
+  rw [quotePos]
+  simp only [decodedComputation, Denumerable.ofNat_encode]
+  rw [diagonalPriceDecisionCode_eval]
+  change
+    (1 ∈ Part.some (if market.quote n
+      (Encodable.encode
+        (quoteAtom
+          (Nat.pair (Encodable.encode (diagonalPriceDecisionCode market p)) n))) < p
+      then 1 else 0)) ↔
+    market.quote n
+      (Encodable.encode
+        (quoteAtom
+          (Nat.pair (Encodable.encode (diagonalPriceDecisionCode market p)) n))) < p
+  by_cases h : market.quote n
+      (Encodable.encode
+        (quoteAtom
+          (Nat.pair (Encodable.encode (diagonalPriceDecisionCode market p)) n))) < p <;>
+    simp [h]
+
+/-- The fixed selector's negative quote is exactly the complement of its diagonal predicate.
+Paper node: `thm:lp` -/
+lemma diagonalPriceQuoteNeg_iff
+    {P : History} (market : MarketComputation P) (p : ℚ) (n : ℕ) :
+    quoteNeg (Encodable.encode (diagonalPriceDecisionCode market p)) n ↔
+      ¬diagonalPriceTruth market p n := by
+  classical
+  rw [quoteNeg]
+  simp only [decodedComputation, Denumerable.ofNat_encode]
+  rw [diagonalPriceDecisionCode_eval]
+  change
+    (0 ∈ Part.some (if market.quote n
+      (Encodable.encode
+        (quoteAtom
+          (Nat.pair (Encodable.encode (diagonalPriceDecisionCode market p)) n))) < p
+      then 1 else 0)) ↔
+    ¬market.quote n
+      (Encodable.encode
+        (quoteAtom
+          (Nat.pair (Encodable.encode (diagonalPriceDecisionCode market p)) n))) < p
+  by_cases h : market.quote n
+      (Encodable.encode
+        (quoteAtom
+          (Nat.pair (Encodable.encode (diagonalPriceDecisionCode market p)) n))) < p <;>
+    simp [h]
+
+lemma diagonalPriceTruth_re
+    {P : History} (market : MarketComputation P) (p : ℚ) :
+    REPred (diagonalPriceTruth market p) :=
+  REPred.of_eq
+    (quotePos_re (Encodable.encode (diagonalPriceDecisionCode market p)))
+    (diagonalPriceQuotePos_iff market p)
+
+/-- An FFL binary body whose second parameter is precisely the public diagonal predicate.
+The first parameter is reserved for parameterized diagonalization. -/
+noncomputable def diagonalPriceBody
+    {P : History} (market : MarketComputation P) (p : ℚ) :
+    ArithmeticSemisentence 2 :=
+  (Rew.subst ![#1]) ▹
+    codeOfREPred (diagonalPriceTruth market p)
+
+lemma diagonalPriceBody_spec
+    {P : History} (market : MarketComputation P) (p : ℚ) (x n : ℕ) :
+    (ℕ ⊧ₘ (diagonalPriceBody market p)/[↑x, ↑n]) ↔
+      diagonalPriceTruth market p n := by
+  simpa [diagonalPriceBody, models_iff, Semiformula.eval_substs,
+    Matrix.constant_eq_singleton] using
+      (codeOfREPred_spec (diagonalPriceTruth_re market p) (x := n))
+
+/-- The FFL parameterized fixed point represents the same predicate as the public selector.
+Paper node: `thm:lp` -/
+lemma diagonalPriceFixedpoint_spec
+    {P : History} (market : MarketComputation P) (p : ℚ) (n : ℕ) :
+    (ℕ ⊧ₘ (parameterizedFixedpoint (diagonalPriceBody market p))/[↑n]) ↔
+      diagonalPriceTruth market p n := by
+  have hall : ℕ ⊧ₘ ∀⁰
+      (parameterizedFixedpoint (diagonalPriceBody market p) 🡘
+        (diagonalPriceBody market p)/[
+          ⌜parameterizedFixedpoint (diagonalPriceBody market p)⌝, #0]) :=
+    models_of_provable (T := 𝗜𝚺₁) inferInstance
+      (parameterized_diagonal₁ (T := 𝗜𝚺₁) (diagonalPriceBody market p))
+  have hdiag : ∀ n : ℕ,
+      (ℕ ⊧ₘ (parameterizedFixedpoint (diagonalPriceBody market p))/[↑n]) ↔
+        (ℕ ⊧ₘ (diagonalPriceBody market p)/[
+          ⌜parameterizedFixedpoint (diagonalPriceBody market p)⌝, ↑n]) := by
+    simpa [models_iff, Matrix.comp_vecCons', Matrix.constant_eq_singleton] using hall
+  exact (hdiag n).trans (diagonalPriceBody_spec market p _ n)
+
+/-- Construct the public Boolean diagonal quote from the market computation itself.
+The selector is obtained by Kleene recursion, while `body` is its matching FFL
+parameterized fixed point.  No caller-supplied truth relation occurs in this constructor.
+Paper node: `thm:lp` -/
+noncomputable def parameterizedDiagonalQuoteCodeOfMarket
+    {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
+    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) :
+    ParameterizedDiagonalQuoteCode T (diagonalPriceTruth market p) where
+  toBooleanQuoteCode := {
+    code := Encodable.encode (diagonalPriceDecisionCode market p)
+    pos_complete := fun n hn =>
+      (re_complete universalQuotePos_re).mp <| by
+        simpa [Nat.unpair_pair] using (diagonalPriceQuotePos_iff market p n).mpr hn
+    neg_complete := fun n hn =>
+      (re_complete universalQuoteNeg_re).mp <| by
+        simpa [Nat.unpair_pair] using (diagonalPriceQuoteNeg_iff market p n).mpr hn
+  }
+  body := diagonalPriceBody market p
+  represents_fixedpoint := diagonalPriceFixedpoint_spec market p
+
+lemma parameterizedDiagonalQuoteCodeOfMarket_sentence
+    {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
+    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) (n : ℕ) :
+    (parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n =
+      quoteAtom
+        (Nat.pair (Encodable.encode (diagonalPriceDecisionCode market p)) n) :=
+  rfl
+
+/-- The constructor's represented arithmetic fixed point is exactly the same-day price
+comparison for its inherited public atom.  This is the semantic edge formerly supplied as
+an external premise.
+Paper node: `thm:lp` -/
+lemma parameterizedDiagonalQuoteCodeOfMarket_public_fixedpoint
+    {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
+    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) (n : ℕ) :
+    (ℕ ⊧ₘ
+        (parameterizedFixedpoint
+          (parameterizedDiagonalQuoteCodeOfMarket market T p).body)/[↑n]) ↔
+      P n
+        ((parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n) <
+          (p : ℝ) := by
+  rw [(parameterizedDiagonalQuoteCodeOfMarket market T p).represents_fixedpoint n,
+    market.quote_exact]
+  change market.quote n
+      (Encodable.encode
+        ((parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n)) <
+        p ↔
+    (market.quote n
+      (Encodable.encode
+        ((parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n)) :
+          ℝ) < (p : ℝ)
+  norm_cast
+
+lemma parameterizedDiagonalQuoteCodeOfMarket_public_price_iff
+    {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
+    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) (n : ℕ) :
+    diagonalPriceTruth market p n ↔
+      P n
+        ((parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n) <
+          (p : ℝ) := by
+  rw [market.quote_exact]
+  change market.quote n
+      (Encodable.encode
+        ((parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n)) <
+        p ↔
+    (market.quote n
+      (Encodable.encode
+        ((parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n)) :
+          ℝ) < (p : ℝ)
+  norm_cast
+
 /-! ## Paradox-resistance quotation package -/
 
-/-- Construct paradox resistance from an actual FFL parameterized fixed point.  The
-`truth_spec` premise identifies the standard truth predicate represented by the fixed
-schema with its intended price comparison; the schema itself is not a fresh public atom,
-because `q.positive_fixedpoint` fixes its positive arithmetic definition. -/
+/-- Construct paradox resistance directly from a named computable market.  The public atom,
+its decision code, and its FFL fixed point are all built internally, so there is no
+caller-supplied self-reference premise. -/
 noncomputable def paradoxResistanceQuoteOfDiagonal
     {P : History} {DP : DeductiveProcess} {T : ArithmeticTheory}
-    {truth : ℕ → Prop} (Q : QuotationTheoryPresentation DP T)
+    [T.SoundOnHierarchy 𝚺 1] (Q : QuotationTheoryPresentation DP T)
+    (market : MarketComputation P)
     (p : ℚ) (width : ℕ → ℚ)
     (hwidth : PolyRatCodes width)
     (hwidthInv : PolyRatCodes (fun n ↦ 1 / width n))
     (hwidthPos : ∀ n, 0 < width n)
-    (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0))
-    (q : ParameterizedDiagonalQuoteCode T truth)
-    (truth_spec : ∀ n, truth n ↔
-      P n (q.toBooleanQuoteCode.sentence n) < (p : ℝ))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
+    (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0)) :
     ParadoxResistanceQuote P DP p := by
+  letI : 𝗜𝚺₁ ⪯ T := Q.theory_sigmaOne
+  let q := parameterizedDiagonalQuoteCodeOfMarket market T p
   let quote := q.toBooleanQuoteCode
   let price : ℕ → EF := currentPriceFeature quote.sentence
   let pFeature : ℕ → EF := AffineCombination.constantRatFeature p
@@ -2393,7 +2666,8 @@ noncomputable def paradoxResistanceQuoteOfDiagonal
     width_tendsto_zero := hwidthZero
     diagonal_reflected := by
       intro n v hv
-      exact (quote.reflected Q n v hv).trans (truth_spec n)
+      exact (quote.reflected Q n v hv).trans
+        (parameterizedDiagonalQuoteCodeOfMarket_public_price_iff market T p n)
     lower_affine := ?_
     upper_affine := ?_
   }
@@ -2404,9 +2678,10 @@ noncomputable def paradoxResistanceQuoteOfDiagonal
       (fun n hn ↦ by
         rw [hlowerDenote]
         have hge : (p : ℝ) ≤ P n (quote.sentence n) := by
-          exact le_of_not_gt (fun hlt ↦ hn ((truth_spec n).2 hlt))
+          exact le_of_not_gt (fun hlt ↦ hn
+            ((parameterizedDiagonalQuoteCodeOfMarket_public_price_iff market T p n).2 hlt))
         exact ctsInd_eq_zero_of_le (width n) _ _ (hwidthPos n) hge)
-      hP
+      market.price_mem_Icc
   · simpa only [hupperDenote] using completedGatedAffirmativeQuote Q quote upper
       hupper 1 (by norm_num)
       (fun n ↦ by rw [hupperDenote]; exact (ctsInd_mem_Icc _ _ _).1)
@@ -2414,8 +2689,9 @@ noncomputable def paradoxResistanceQuoteOfDiagonal
       (fun n hn ↦ by
         rw [hupperDenote]
         exact ctsInd_eq_zero_of_le (width n) _ _ (hwidthPos n)
-          (le_of_lt ((truth_spec n).1 hn)))
-      hP
+          (le_of_lt
+            ((parameterizedDiagonalQuoteCodeOfMarket_public_price_iff market T p n).1 hn)))
+      market.price_mem_Icc
 
 /-! ## Completed-theory semantics imply deferred fixed-portfolio coherence -/
 
@@ -3359,27 +3635,28 @@ theorem lic_introspection_ofCode
     lowerFeature hlower upperFeature hupper hδ hδinv hδpos hδzero hab q hP
   simpa only using lic_introspection P DP φ a b δ package hP hworld
 
-/-- Paper-facing `thm:lp` entry point from the genuine parameterized fixed point.
+/-- Paper-facing `thm:lp` entry point.  Its genuine parameterized fixed point and public
+diagonal atom are constructed from `market`; no semantic diagonal premise is accepted.
 Paper node: `thm:lp` -/
 theorem lic_paradox_resistance_ofDiagonal
-    {DP : DeductiveProcess} {T : ArithmeticTheory} {truth : ℕ → Prop}
+    {DP : DeductiveProcess} {T : ArithmeticTheory}
+    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (Q : QuotationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
+    (market : MarketComputation P)
     (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
     (width : ℕ → ℚ) (hwidth : PolyRatCodes width)
     (hwidthInv : PolyRatCodes (fun n ↦ 1 / width n))
     (hwidthPos : ∀ n, 0 < width n)
     (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0))
-    (q : ParameterizedDiagonalQuoteCode T truth)
-    (truth_spec : ∀ n, truth n ↔
-      P n (q.toBooleanQuoteCode.sentence n) < (p : ℝ))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    (fun n => P n (q.toBooleanQuoteCode.sentence n)) ≈ₙ
+    (fun n => P n
+      ((parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n)) ≈ₙ
       fun _ => (p : ℝ) := by
-  let package := paradoxResistanceQuoteOfDiagonal Q p width hwidth hwidthInv
-    hwidthPos hwidthZero q truth_spec hP
-  simpa only using lic_paradox_resistance P DP p hp0 hp1 package hP hworld
+  let package := paradoxResistanceQuoteOfDiagonal Q market p width hwidth hwidthInv
+    hwidthPos hwidthZero
+  simpa only using
+    lic_paradox_resistance P DP p hp0 hp1 package market.price_mem_Icc hworld
 
 /-! ## Positive and complementary quotation paths -/
 
@@ -3419,6 +3696,9 @@ lemma quotationRepresentation_negative_path
 #print axioms BooleanQuoteCode.reflected
 #print axioms RationalQuoteCode.reflected
 #print axioms ParameterizedDiagonalQuoteCode.diagonal_law
+#print axioms diagonalPriceDecisionPart_partrec
+#print axioms diagonalPriceDecisionCode_eval
+#print axioms parameterizedDiagonalQuoteCodeOfMarket_public_fixedpoint
 #print axioms CompletedAffineQuoteApprox.future_price_tendsto_zero
 #print axioms CompletedAffineQuoteApprox.toAffineQuoteEq
 #print axioms expectedFutureExpectationQuoteOfRepresentation

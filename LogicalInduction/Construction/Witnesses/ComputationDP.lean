@@ -578,6 +578,20 @@ unconditional quotation endpoint below. -/
 private noncomputable abbrev theoremLIA : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
   LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
 
+/-- A named exact market program for the constructed `LIA`, used to derive its canonical
+paradox-resistance diagonal without any caller-supplied semantic relation.
+Paper node: `thm:lp` -/
+noncomputable def theoremMarketComputation :
+    MarketComputation (liaHistory (theoremDP T)) :=
+  (theoremLIA T).marketComputable.nonemptyComputation.some
+
+/-- The canonical public diagonal quote for the constructed `LIA` at threshold `p`.
+Paper node: `thm:lp` -/
+noncomputable def theoremDiagonalQuoteCode (p : ℚ) :
+    ParameterizedDiagonalQuoteCode T
+      (diagonalPriceTruth (theoremMarketComputation T) p) :=
+  parameterizedDiagonalQuoteCodeOfMarket (theoremMarketComputation T) T p
+
 /-- `thm:epr`, unconditional over `LIA`. -/
 theorem lic_expectations_of_probabilities_ofCode_unconditional
     {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
@@ -632,23 +646,22 @@ theorem lic_introspection_ofCode_unconditional
     (fun n s => liaHistory_range (theoremDP T) n s)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:lp` (paradox resistance), unconditional over `LIA`.  The parameterized fixed point
-carried by `q` is what breaks the circularity in `truth_spec`. -/
+/-- `thm:lp` (paradox resistance), unconditional over `LIA`.  The named market program,
+its self-referential public atom, and the matching FFL parameterized fixed point are all
+constructed internally.
+Paper node: `thm:lp` -/
 theorem lic_paradox_resistance_ofDiagonal_unconditional
-    {truth : ℕ → Prop} (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
+    (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
     (width : ℕ → ℚ) (hwidth : PolyRatCodes width)
     (hwidthInv : PolyRatCodes (fun n ↦ 1 / width n))
     (hwidthPos : ∀ n, 0 < width n)
-    (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0))
-    (q : ParameterizedDiagonalQuoteCode T truth)
-    (truth_spec : ∀ n, truth n ↔
-      liaHistory (theoremDP T) n (q.toBooleanQuoteCode.sentence n) < (p : ℝ)) :
-    (fun n => liaHistory (theoremDP T) n (q.toBooleanQuoteCode.sentence n)) ≈ₙ
+    (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0)) :
+    (fun n => liaHistory (theoremDP T) n
+      ((theoremDiagonalQuoteCode T p).toBooleanQuoteCode.sentence n)) ≈ₙ
       fun _ => (p : ℝ) :=
   haveI := theoremLIA T
   lic_paradox_resistance_ofDiagonal (quotationPresentation T) (liaHistory (theoremDP T))
-    p hp0 hp1 width hwidth hwidthInv hwidthPos hwidthZero q truth_spec
-    (fun n s => liaHistory_range (theoremDP T) n s)
+    (theoremMarketComputation T) p hp0 hp1 width hwidth hwidthInv hwidthPos hwidthZero
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:cee` (expected future expectations), unconditional over `LIA`. -/

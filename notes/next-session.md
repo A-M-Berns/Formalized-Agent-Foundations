@@ -1,6 +1,25 @@
 # Logical Induction — handoff
 
-_Last updated: 2026-07-22 (session 4). Branch: `logical-induction`._
+_Last updated: 2026-07-22 (session 5). Branch: `logical-induction`._
+
+## ✅ Session 5 summary (2026-07-22) — F3 public diagonal constructed
+
+The adversarial audit's F3 finding is resolved. `QuotationAffine.lean` now applies Kleene's
+second recursion theorem to the named exact market program, producing a selector that prices
+its own public quotation atom and decides whether that same-day price is below `p`. Its
+positive and negative fibers build the `BooleanQuoteCode`; a matching FFL
+`parameterizedFixedpoint` represents the same predicate, and the public bridge theorem proves
+that the fixed point is equivalent to the market-price comparison for the inherited sentence.
+
+`paradoxResistanceQuoteOfDiagonal` and `lic_paradox_resistance_ofDiagonal` construct this
+artifact internally. The constructed-LIA wrapper now exposes `theoremMarketComputation` and
+`theoremDiagonalQuoteCode` and accepts no caller-supplied `truth`, quote package, or
+`truth_spec`. The affected quotation and computation modules build with only the repository's
+standard `propext`/`Classical.choice`/`Quot.sound` dependencies.
+
+**Next focus:** continue the adversarial audit at F4 (finite-prefix transport for Closure
+Under Conditioning), with the F3 fixed-program and public-fixed-point bridge frozen in
+`AxiomAudit.lean`.
 
 ## ✅ Session 4 summary (2026-07-22) — F2 historical maturity constructed
 
@@ -16,8 +35,7 @@ longer accept historical-verifier premises; the old conditional declarations rem
 explicit `_of_historicalVerifiers` names. The fixed-frequency infrastructure now contains
 settlement clocks only, and the integration tests exercise the unconditional APIs.
 
-**Next focus:** continue the adversarial audit at F3 (the remaining paradox-resistance
-self-reference gap), with the F2 endpoints frozen in `AxiomAudit.lean`.
+**Next focus at that handoff:** F3, now completed in session 5.
 
 ## ✅ Session 3 summary (2026-07-22) — feedback and LUV complete over constructed LIA
 
@@ -116,8 +134,8 @@ blocked by the vacuity obstruction (below) and still needs a frozen-boundary red
 # ✅ QUOTATION RESCUE — COMPLETE, all 3 steps (2026-07-22)
 
 The quotation family is **fully unconditional over the constructed `LIA`** — vacuity fixed,
-certified, and all eight endpoints instantiated (`logical-induction`, full build green, 2720
-jobs, strictly axiom-clean). **Step 3 done:** `lic_introspection_ofCode_unconditional`,
+certified, and all eight endpoints instantiated (`logical-induction`, full build green,
+strictly axiom-clean). **Step 3 done:** `lic_introspection_ofCode_unconditional`,
 `lic_paradox_resistance_ofDiagonal_unconditional`, `lic_expectations_of_probabilities_ofCode_unconditional`,
 `lic_iterated_expectations_ofCode_unconditional`, `lic_self_trust_ofRepresentation_unconditional`,
 `lic_expected_future_expectations_ofRepresentation_unconditional`,
@@ -125,7 +143,8 @@ jobs, strictly axiom-clean). **Step 3 done:** `lic_introspection_ofCode_uncondit
 `lic_no_expected_net_update_conditional_ofRepresentation_unconditional` (all in
 `ComputationDP.lean`) discharge market / `IsLogicalInductor` / `Q` / `hworld` via
 `quotationPresentation` + `theoremDP_hworld` + `LIA_is_logical_inductor` + `liaHistory_range`;
-only the caller's quoted decision + reflection data remain. Steps 1–2 detail below.
+the paradox-resistance endpoint additionally constructs its own self-referential quoted
+decision from `theoremMarketComputation`. Steps 1–2 detail below.
 
 ## Steps 1–2 (redesign + certify) — DONE
 
@@ -160,12 +179,10 @@ The interface stays general over any `DP`/`T`; only the quotable-decision class 
 docstrings in `QuotationAffine.lean` (`universalQuotePos`/`BooleanQuoteCode`) and
 `ComputationDP.lean` (`quotationPresentation`).
 
-**Remaining (step 3, follow-on):** instantiate the `_ofCode`/`_ofDiagonal`/`_ofRepresentation`
-endpoints over `liaHistory (theoremDP T)` — `_unconditional` corollaries for introspection /
-self-trust / expectations / paradox resistance. This is now unblocked (a real `Q ∧ hworld`
-exists over the constructed LIA DP); it is corollary plumbing, not a construction. Note the
-diagonal instantiation still *uses* the fixed point to build `truth_spec` (breaking the
-`truth n ↔ price(atom n) < p` circularity), per the resolved diagonal wrinkle below.
+**F3 follow-on (session 5): complete.** The old `truth_spec` input has been removed from the
+generic and unconditional paradox-resistance endpoints. A Kleene-fixed selector prices its
+own public atom, and `diagonalPriceBody` plus FFL parameterized diagonalization represent that
+same predicate arithmetically.
 
 ---
 
@@ -243,7 +260,7 @@ the vacuity with a smaller diff, but gives **no** computable enumeration for (B)
 an `ArithmeticDecision` from ℕ). Use it only to unblock the audit fast; go code-indexed for the
 construction.
 
-### The diagonal wrinkle — RESOLVED (2026-07-22): decouple, cheap, low-risk
+### Historical diagonal analysis — superseded by the session 5 F3 repair
 
 The question "does paradox resistance need the *atom* to carry the fixed-point schema, or only
 the fixed-point *law*?" is **resolved: neither.** Evidence (grepped whole `LogicalInduction/`):

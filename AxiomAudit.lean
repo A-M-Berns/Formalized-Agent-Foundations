@@ -152,11 +152,17 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 
 -- Construction/Witnesses/QuotationAffine.lean (`M7-QUOTE-AFFINE`)
 #assert_axioms_clean
+  diagonalPriceDecisionPart_partrec diagonalPriceDecisionCode_eval
+  diagonalPriceQuotePos_iff diagonalPriceQuoteNeg_iff diagonalPriceFixedpoint_spec
+  parameterizedDiagonalQuoteCodeOfMarket
+  parameterizedDiagonalQuoteCodeOfMarket_public_fixedpoint
   lic_introspection_ofCode lic_paradox_resistance_ofDiagonal
   lic_expectations_of_probabilities_ofCode lic_iterated_expectations_ofCode
   lic_self_trust_ofRepresentation lic_expected_future_expectations_ofRepresentation
   lic_no_expected_net_update_ofRepresentation
   lic_no_expected_net_update_conditional_ofRepresentation
+  theoremMarketComputation theoremDiagonalQuoteCode
+  lic_paradox_resistance_ofDiagonal_unconditional
 
 -- Construction/Witnesses/FeedbackEmission.lean (`M7-FEEDBACK-EMIT`)
 #assert_axioms_clean

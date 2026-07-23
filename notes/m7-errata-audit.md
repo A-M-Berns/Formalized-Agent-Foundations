@@ -128,43 +128,29 @@ only; the old verifier-bearing interface and the old conditional capstones remai
 under explicit `..._of_historicalVerifiers` names. Integration tests no longer accept an
 `hverify` premise for recurring unbiasedness, `prandaff`, or `prandexp`.
 
-### F3 — HIGH / self-reference gap: Paradox Resistance assumes the crucial diagonal relation
+### F3 — RESOLVED: Paradox Resistance derives its public diagonal
 
-The old quotation-presentation inconsistency has been fixed; see “Retired finding” below.
-The remaining issue is different.
+**Repair status (2026-07-22): resolved.**
+`Construction/Witnesses/QuotationAffine.lean` now constructs the diagonal from a named
+`MarketComputation`. `diagonalPriceDecisionPart` runs the market on the public atom selected
+by a candidate program and returns `1` exactly when that atom's same-day price is below `p`;
+Mathlib's formalized Kleene second recursion theorem supplies
+`diagonalPriceDecisionCode`, whose evaluation is proved equal to that computation.
 
-`ParameterizedDiagonalQuoteCode` (`Construction/Witnesses/QuotationAffine.lean:2321–2325`)
-contains:
+The value-`1` and value-`0` fibers of this actual fixed program supply both sides of the
+inherited `BooleanQuoteCode`. `diagonalPriceBody` represents the same predicate in FFL
+arithmetic, `diagonalPriceFixedpoint_spec` connects its genuine
+`parameterizedFixedpoint` to the program predicate, and
+`parameterizedDiagonalQuoteCodeOfMarket_public_fixedpoint` proves that this represented
+fixed point is exactly the same-day price comparison for the inherited public sentence.
+Together with `ParameterizedDiagonalQuoteCode.diagonal_law`, this gives both the internal
+arithmetic diagonal equation and its public market semantics.
 
-- a `BooleanQuoteCode T truth`;
-- an arithmetic `body`; and
-- `represents_fixedpoint`, saying that the standard model's parameterized fixed point of
-  `body` represents `truth`.
-
-`diagonal_law` proves the ordinary syntactic fixed-point theorem for `body`. However, no field
-or theorem connects that fixed-point formula to the **public quoted atom** emitted by the
-inherited `BooleanQuoteCode`.
-
-The actual paradox-resistance constructor instead assumes
-
-```lean
-truth_spec : ∀ n, truth n ↔
-  P n (q.toBooleanQuoteCode.sentence n) < p
-```
-
-(`QuotationAffine.lean:2353–2356`, `3364–3379`). The wrapper named
-`lic_paradox_resistance_ofDiagonal_unconditional`
-(`Construction/Witnesses/ComputationDP.lean:637–650`) still requires the same premise.
-
-**Consequence.** `truth_spec` is the central self-referential semantic relation that the
-paper derives by applying the diagonal lemma to the market-price predicate. The fixed-point
-artifact carried by `q` does not derive it or establish a proof-theoretic equivalence between
-the public sentence and the price comparison. “Unconditional” here means only that `P`, `DP`,
-the LI instance, quotation presentation, bounds, and plausible worlds are instantiated.
-
-**Required repair.** Construct the public Boolean quote code from the parameterized fixed
-point itself, and prove in the represented theory that its sentence is equivalent to the
-same-day price comparison. The consumer should no longer accept `truth_spec` as a premise.
+`paradoxResistanceQuoteOfDiagonal` and `lic_paradox_resistance_ofDiagonal` now take the
+named market computation and construct the quote internally. They accept no `truth`,
+`ParameterizedDiagonalQuoteCode`, or semantic self-reference premise. The constructed-LIA
+wrapper names `theoremMarketComputation` and `theoremDiagonalQuoteCode`; its public signature
+contains only `p`, the ordinary vanishing-width data, and the bounds on `p`.
 
 ### F4 — HIGH / weakened theorem: Closure Under Conditioning does not reach `thm:scon`
 
@@ -306,7 +292,8 @@ it does not prove that all paper-facing declarations are inventory members, nor 
 paper theorem has a full-strength endpoint.
 
 `#assert_fields` usefully freezes selected structure field sets, but it cannot detect a
-missing semantic relation between existing fields, as in F3.
+missing semantic relation between existing fields. F3 required separate theorem-level
+inventory checks for precisely that reason.
 
 **Required repair.** Generate the Tier-1 seed mechanically from all declarations carrying a
 `Paper node:` annotation (with a small explicit exclusion list for internal lemmas), add the
@@ -340,8 +327,8 @@ universal schemas indexed by a code. `Construction/Witnesses/ComputationDP.lean`
 existence of a deductive process, a quotation presentation, and a plausible world at every
 finite stage.
 
-This repairs the old mode-1 vacuity. It does not repair the distinct diagonal-link problem in
-F3.
+This repairs the old mode-1 vacuity. The distinct diagonal-link problem recorded in F3 is now
+also repaired by the market-derived fixed program and its FFL representation.
 
 ## Coverage assessment by paper section
 
@@ -366,7 +353,7 @@ F3.
 | Expectations | Threshold-interface abstraction; basic convergence is genuine, later theorems retain semantic/compiler presentations |
 | Consistency and halting | Generic represented-claim interfaces are sound; concrete end-to-end instantiation uses stronger arithmetic assumptions such as Σ₁ soundness |
 | Introspection and self-trust | Many affine consumers and quotation paths are real, but representation/reflection data remain explicit inputs |
-| Paradox resistance | Conclusion follows from a supplied self-reference law; the law is not derived from the carried diagonal object |
+| Paradox resistance | Public diagonal program, quoted atom, and FFL fixed point are constructed from the computable market; no semantic self-reference premise remains |
 
 ## Positive verification
 
@@ -438,15 +425,13 @@ the statement-faithfulness findings above.
 
 ## Recommended order of repair
 
-1. Connect `ParameterizedDiagonalQuoteCode`'s actual fixed point to its public quoted atom,
-   eliminating `truth_spec` from Paradox Resistance.
-2. Close the finite-prefix transport needed by Conditioning.
-3. Package `thm:li` as existence of a computable finite-support belief sequence.
-4. Expand the endpoint inventory and distinguish “complete,” “conditional,” “qualified,” and
+1. Close the finite-prefix transport needed by Conditioning.
+2. Package `thm:li` as existence of a computable finite-support belief sequence.
+3. Expand the endpoint inventory and distinguish “complete,” “conditional,” “qualified,” and
    “interface only” coverage per paper node.
-5. Only after those repairs, revisit the three deliberately disclosed classical-computability
+4. Only after those repairs, revisit the three deliberately disclosed classical-computability
    boundaries and the token/fuel equivalence question.
 
-Until at least items 1–4 are addressed, the repository should continue to describe the
+Until at least items 1–3 are addressed, the repository should continue to describe the
 Logical Induction development as **in progress**, with unconditional central construction and
 a conditional/qualified property tail.
