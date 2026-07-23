@@ -189,6 +189,35 @@ theorem exppolymax_arith {As : ℕ → LUVCombination} {P : History} {T : Arithm
   h.exppolymax ops (L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
     b hb hshare hP (L.luvThresholdDP_hworld T)
 
+/-- **F7 item 5, certified `thm:wubexp`.**  Weighted-unbiasedness of exact-value expectation for a
+`dd:luv-arith` LUV-combination sequence, with the `ExactTheoryPresentation` *representation*
+hypothesis discharged from arithmetic (Phase B, over `luvThresholdDP`).  The residual feedback
+witnesses (`M7-FEEDBACK-EMIT`/`M7-FEEDBACK-TRUTH`) and determinacy datum are the disclosed
+operational boundaries the paper's own construction supplies.
+Paper node: `thm:wubexp` -/
+theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : ArithmeticTheory}
+    [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [IsLogicalInductor P (L.luvThresholdDP T)]
+    (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
+    (h : LUVCombination.BoundedSequence As P)
+    {truth : ℕ → ℝ}
+    (hdet : LUVCombination.DeterminedViaTheory As P (L.luvThresholdDP T) truth)
+    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
+    {W : ℕ → EF} (hWgen : PGenerableWeighting W) (hWdiv : DivergentWeighting W P)
+    {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
+    (hsupport : WeightingSupportedOnDeferralImage W P f)
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
+    (emit : AffineCombination.FeedbackTraderEmissionSigns
+      (h.normalizedMesh_poly b) hWgen hstrict)
+    (bridge : AffineCombination.FeedbackTruthSequence
+      (LUVCombination.normalizedMesh As b)
+      (LUVCombination.normalizedMeshTruth As P (L.luvThresholdDP T)
+        (L.luvThresholdDP_hworld T) b) P (L.luvThresholdDP T) f) :
+    weightedBias (fun i => (W i).denote P)
+      (fun i => (As i).expect P i) truth ≈ₙ (fun _ => 0) :=
+  h.wubexp (L.exactTheoryPresentation_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
+    hdet b hshare hWgen hWdiv hstrict hsupport hP (L.luvThresholdDP_hworld T) emit bridge
+
 end ComputableLUV
 
 end LogicalInduction
