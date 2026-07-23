@@ -218,15 +218,16 @@ lemma gridDP_hcons (n : ℕ) : ∃ v : PCWorld, v.ConsistentWith ((L.gridDP).D n
   ⟨L.luvWorld, L.luvWorld_consistent_gridStage n⟩
 
 attribute [local irreducible] Nat.sqrt in
-/-- **Grid coherence from stage membership.**  A world consistent with stage `n` reads each
-grid literal's polarity, so `⌜Xᵢ > j/n⌝` holds exactly when the threshold predicate does. -/
-lemma holds_thresholdSentence_iff {v : PCWorld} {n : ℕ}
-    (hv : v.ConsistentWith ((L.gridDP).D n)) {i j : ℕ} (hi : i ≤ n) (hj : j < n) :
+/-- **Grid coherence from stage membership.**  A world consistent with stage `m` reads each grid
+literal's polarity for every index `i ≤ m` and precision `n ≤ m`, so `⌜Xᵢ > j/n⌝` holds exactly
+when the threshold predicate does. -/
+lemma holds_thresholdSentence_iff {v : PCWorld} {m n : ℕ}
+    (hv : v.ConsistentWith ((L.gridDP).D m)) {i j : ℕ} (hi : i ≤ m) (hnm : n ≤ m) (hj : j < n) :
     v.Holds (thresholdSentence i ((j : ℚ) / (n : ℚ)))
       ↔ L.ThresholdPred (thresholdCode i ((j : ℚ) / (n : ℚ))) := by
-  have hmem : L.gridLiteral i j n ∈ (L.gridDP).D n := by
-    rw [show (L.gridDP).D n = L.gridStage n from rfl, mem_gridStage]
-    exact ⟨i, n, j, hi, le_rfl, hj, rfl⟩
+  have hmem : L.gridLiteral i j n ∈ (L.gridDP).D m := by
+    rw [show (L.gridDP).D m = L.gridStage m from rfl, mem_gridStage]
+    exact ⟨i, n, j, hi, hnm, hj, rfl⟩
   have hholds : v.Holds (L.gridLiteral i j n) := hv _ hmem
   unfold gridLiteral at hholds
   by_cases hp : L.ThresholdPred (thresholdCode i ((j : ℚ) / (n : ℚ)))
@@ -235,15 +236,15 @@ lemma holds_thresholdSentence_iff {v : PCWorld} {n : ℕ}
   · rw [if_neg hp, holds_not] at hholds
     exact ⟨fun h => absurd h hholds, fun h => absurd h hp⟩
 
-/-- **The value-agreement discharge.**  For a world consistent with scheduled stage `n` and any
-LUV index `i ≤ n`, the day-`n` approximate expectation of `Xᵢ` is within `1/n` of its standard
-rational value — with no world-value hypothesis. -/
-lemma expectApprox_near_gridDP {v : PCWorld} {n : ℕ} (hn : 0 < n)
-    (hv : v.ConsistentWith ((L.gridDP).D n)) {i : ℕ} (hi : i ≤ n) :
+/-- **The value-agreement discharge.**  For a world consistent with scheduled stage `m`, any LUV
+index `i ≤ m`, and any precision `0 < n ≤ m`, the day-`n` approximate expectation of `Xᵢ` is within
+`1/n` of its standard rational value — with no world-value hypothesis. -/
+lemma expectApprox_near_gridDP {v : PCWorld} {m n : ℕ} (hn : 0 < n)
+    (hv : v.ConsistentWith ((L.gridDP).D m)) {i : ℕ} (hi : i ≤ m) (hnm : n ≤ m) :
     |(toLUV i).expectApprox v.payout n - (L.value i : ℝ)| ≤ 1 / n := by
   refine PCWorld.expectApprox_near_ofGrid (by exact_mod_cast L.value_nonneg i)
     (by exact_mod_cast L.value_le_one i) hn (fun j hj => ?_)
-  have hiff := L.holds_thresholdSentence_iff hv hi hj
+  have hiff := L.holds_thresholdSentence_iff hv hi hnm hj
   have hpred := L.thresholdPred_code_iff i ((j : ℚ) / (n : ℚ))
   have hc : (((j : ℚ) / (n : ℚ) : ℚ) : ℝ) = (j : ℝ) / (n : ℝ) := by push_cast; ring
   rw [toLUV_gt]
@@ -267,7 +268,7 @@ theorem lic_expectation_provind_arith (P : History) [IsLogicalInductor P (L.grid
   lic_expectation_provind P (L.gridDP) (toLUV i) hcode hP L.gridDP_hcons c
     ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
       ⟨(L.value i : ℝ), hc,
-        L.expectApprox_near_gridDP (by omega) hv (by omega)⟩))
+        L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl⟩))
 
 /-- Certified expectation provability induction, upper (`≤`) form.
 Paper node: `thm:expprovind` -/
@@ -278,7 +279,7 @@ theorem lic_expectation_provind_le_arith (P : History) [IsLogicalInductor P (L.g
     AsympLE ((toLUV i).expectSeq P) (fun _ => c) :=
   lic_expectation_provind_le P (L.gridDP) (toLUV i) hcode hP L.gridDP_hcons c
     ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
-      ⟨(L.value i : ℝ), hc, L.expectApprox_near_gridDP (by omega) hv (by omega)⟩))
+      ⟨(L.value i : ℝ), hc, L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl⟩))
 
 /-- Certified expectation provability induction, equality (`=`) form: a determined
 `dd:luv-arith` value forces the expectation sequence to it.
@@ -290,7 +291,7 @@ theorem lic_expectation_provind_eq_arith (P : History) [IsLogicalInductor P (L.g
     AsympEq ((toLUV i).expectSeq P) (fun _ => c) :=
   lic_expectation_provind_eq P (L.gridDP) (toLUV i) hcode hP L.gridDP_hcons c
     ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
-      hc ▸ L.expectApprox_near_gridDP (by omega) hv (by omega)))
+      hc ▸ L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl))
 
 /-- **F7 item 5, certified linearity of expectation.**  Linearity for `dd:luv-arith` LUVs `Xᵢ`,
 `Xⱼ`, `Xₖ`, with the world-value and linear-relation hypotheses discharged from arithmetic: the
@@ -308,9 +309,9 @@ theorem lic_linearity_of_expectation_arith (P : History) [IsLogicalInductor P (L
     hcodeI hcodeJ hcodeK hP L.gridDP_hcons
     ((Filter.eventually_ge_atTop (max 1 (max i (max j k)))).mono (fun n hin v hv =>
       ⟨(L.value i : ℝ), (L.value j : ℝ), (L.value k : ℝ), by exact_mod_cast hlin,
-        L.expectApprox_near_gridDP (by omega) hv (by omega),
-        L.expectApprox_near_gridDP (by omega) hv (by omega),
-        L.expectApprox_near_gridDP (by omega) hv (by omega)⟩))
+        L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl,
+        L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl,
+        L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl⟩))
 
 /-- **F7 item 5, certified `thm:exppolymax`.**  The sequence-level polynomial-max expectation
 identity for a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation*
