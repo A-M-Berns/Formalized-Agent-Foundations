@@ -104,7 +104,8 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 
 -- Properties/Conditioning.lean, Properties/FinitePerturbations.lean
 #assert_axioms_clean
-  lic_conditioned lic_conditioned_gated lic_iff_of_finitePerturbation
+  lic_conditioned lic_conditioned_gated lic_conditioned_eventual
+  lic_iff_of_finitePerturbation
 
 -- Properties/Pseudorandomness.lean
 #assert_axioms_clean
@@ -183,13 +184,27 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 
 -- Construction/Witnesses/ConditioningPresentation.lean (`M7-SCON-PRESENTATION`)
 #assert_axioms_clean
-  conditioningPresentationOfComputations lic_conditioned_gated_ofComputations
+  conditioningPresentationOfComputations fixedConditioningPresentation
+  lic_conditioned_gated_ofComputations
 
 -- Construction/Witnesses/ConditioningCompiler.lean (`M7-SCON-COMPILER`)
 #assert_axioms_clean
-  conditionedTranslation_preserves_ec gatedConditioningOperationalWitness
+  conditionedTranslation_preserves_ec eventualConditionedTranslation_preserves_ec
+  exists_eventual_condition_price_floor
+  eventualConditioningOperationalWitness
+  lic_conditioned_eventual_ofMarketComputation
+  lic_conditioned_fixed_ofComputationAndMarket
+  lic_conditioned_growing_ofComputationsAndMarket
+  gatedConditioningOperationalWitness
   denominatorPatchedGatedConditioningOperationalWitness
   lic_conditioned_gated_ofMarketComputation lic_conditioned_gated_ofComputationsAndMarket
+
+-- Construction/Witnesses/UnconditionalOverLIA.lean
+#assert_axioms_clean
+  lic_domination_universalSemimeasure_unconditional
+  lic_conditioned_ofCompiler_unconditional
+  lic_conditioned_fixed_unconditional
+  lic_conditioned_growing_unconditional
 
 -- Construction/Witnesses/LUVSyntax.lean (`M7-LUV-SYNTAX`)
 #assert_axioms_clean LUVCombinationSyntax.meshSoftmaxOperationalWitness
@@ -282,6 +297,10 @@ deliberately. -/
   quote quote_exact preserves_ec
 #assert_fields EfficientRepeatedEnumeration
   sequence sequence_poly repeats sound covers
+#assert_fields EventualConditioningFloor
+  cutoff zeroDays zeroDays_lt epsilon epsilon_pos zero_exact positive_floor
+#assert_fields EventualConditioningOperationalWitness
+  floor conditioned_computable translation_ec
 #assert_fields ExpectedFutureExpectationQuote
   source_codes quote_codes reflected affine
 #assert_fields FeedbackTruth.FeedbackTruthComputation

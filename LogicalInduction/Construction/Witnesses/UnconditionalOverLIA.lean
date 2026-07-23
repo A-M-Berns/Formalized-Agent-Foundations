@@ -1,6 +1,6 @@
 import LogicalInduction.Construction.Witnesses.ComputationDP
 import LogicalInduction.Construction.Witnesses.BitPrefixSyntax
-import LogicalInduction.Properties.Conditioning
+import LogicalInduction.Construction.Witnesses.ConditioningCompiler
 
 /-!
 # Unconditional instantiations over the constructed `LIA` — semimeasure & conditioning
@@ -61,14 +61,12 @@ theorem lic_domination_universalSemimeasure_unconditional
     (fun n φ => liaHistory_range emptyBitDeductiveProcess n φ)
     emptyBitDeductiveProcess_hworld
 
-/-! ## Conditioning, unconditional over `LIA` -/
+/-! ## Conditioning over the constructed `LIA` -/
 
-/-- `thm:scon`, unconditional over `LIA`: the constructed provability inductor, conditioned
-on a computable event, is again a logical inductor over the union deductive process.  The
-base `[IsLogicalInductor]` hypothesis is discharged by the constructed `LIA`; the
-conditioning presentation and its operational compiler remain caller inputs.
+/-- Compatibility wrapper for a caller-supplied conditioning compiler.  The paper-facing
+fixed and growing forms below construct the repaired compiler internally.
 Paper node: `thm:scon` -/
-theorem lic_conditioned_unconditional
+theorem lic_conditioned_ofCompiler_unconditional
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (extra : DeductiveProcess)
     (C : ConditioningPresentation (theoremDP T) extra)
@@ -79,7 +77,51 @@ theorem lic_conditioned_unconditional
     LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
   lic_conditioned (liaHistory (theoremDP T)) (theoremDP T) extra C compiler
 
+/-- Fixed-sentence `thm:scon` over the constructed `LIA`.  Only the paper's joint
+consistency premise remains.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_fixed_unconditional
+    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    (ψ : Sentence)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith ((theoremDP T).D n) ∧ v.Holds ψ) :
+    IsLogicalInductor
+      (conditionedHistory (liaHistory (theoremDP T)) (fun _ => ψ))
+      ((theoremDP T).adjoinSentence ψ) := by
+  let base : DeductiveProcessComputation (theoremDP T) :=
+    (theoremDP_computable T).nonemptyComputation.some
+  haveI : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
+    LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
+  exact ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket
+    (liaHistory (theoremDP T)) (theoremDP T)
+    base (theoremMarketComputation T) ψ hjoint
+
+/-- Growing finite-prefix `thm:scon` over the constructed `LIA`.  The extra process supplies
+its compact condition-code computation, and the remaining semantic premise is exactly joint
+consistency of the base stages with the full growing condition theory.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_growing_unconditional
+    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    (extra : DeductiveProcess)
+    (more : CompactConditioningProcessComputation extra)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith ((theoremDP T).D n) ∧
+        ∀ i, v.ConsistentWith (extra.D i)) :
+    IsLogicalInductor
+      (conditionedHistory (liaHistory (theoremDP T))
+        (fun n => deductiveStageCondition (extra.D n)))
+      ((theoremDP T).union extra) := by
+  let base : DeductiveProcessComputation (theoremDP T) :=
+    (theoremDP_computable T).nonemptyComputation.some
+  haveI : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
+    LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
+  exact ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket
+    (liaHistory (theoremDP T)) (theoremDP T) extra
+    base more (theoremMarketComputation T) hjoint
+
 #print axioms lic_domination_universalSemimeasure_unconditional
-#print axioms lic_conditioned_unconditional
+#print axioms lic_conditioned_ofCompiler_unconditional
+#print axioms lic_conditioned_fixed_unconditional
+#print axioms lic_conditioned_growing_unconditional
 
 end LogicalInduction

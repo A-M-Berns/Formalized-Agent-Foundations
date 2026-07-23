@@ -180,6 +180,40 @@ noncomputable def conditioningPresentationOfComputations
   holds_condition n v := v.holds_deductiveStageCondition (extra.D n)
   combined_computable := base.union_toComputable more.toDeductiveProcessComputation
 
+/-! ### Fixed-condition presentation -/
+
+/-- The constant deductive process containing one fixed conditioning sentence. -/
+def fixedConditionProcess (ψ : Sentence) : DeductiveProcess where
+  D := fun _ => {ψ}
+  mono := fun _ _ hφ => hφ
+
+/-- Adjoin one fixed sentence to every stage of a deductive process. -/
+def DeductiveProcess.adjoinSentence (DP : DeductiveProcess) (ψ : Sentence) :
+    DeductiveProcess :=
+  DP.union (fixedConditionProcess ψ)
+
+/-- Exact constant-time computation of the one-sentence deductive process. -/
+def fixedConditionProcessComputation (ψ : Sentence) :
+    DeductiveProcessComputation (fixedConditionProcess ψ) where
+  code := Nat.Partrec.Code.const (Encodable.encode ({ψ} : Finset Sentence))
+  code_spec := fun _ => by simp [fixedConditionProcess]
+
+/-- The fixed-condition instance of the shared `thm:scon` presentation.
+Paper node: `thm:scon` -/
+noncomputable def fixedConditioningPresentation
+    {DP : DeductiveProcess} (base : DeductiveProcessComputation DP)
+    (ψ : Sentence) :
+    ConditioningPresentation DP (fixedConditionProcess ψ) where
+  condition := fun _ => ψ
+  condition_codes :=
+    ⟨Nat.Partrec.Code.const (Encodable.encode ψ),
+      (PolyFueled.const (Encodable.encode ψ)).of_eq (fun _ => rfl)⟩
+  holds_condition := by
+    intro n v
+    simp [fixedConditionProcess, PCWorld.ConsistentWith]
+  combined_computable :=
+    base.union_toComputable (fixedConditionProcessComputation ψ)
+
 /-- Closure under conditioning with the presentation argument discharged by the concrete
 finite-conjunction and union construction above.
 Paper node: `thm:scon` -/
@@ -199,6 +233,7 @@ theorem lic_conditioned_gated_ofComputations
 #print axioms DeductiveProcessComputation.union
 #print axioms compactConditioningProcessComputation_nonempty
 #print axioms conditioningPresentationOfComputations
+#print axioms fixedConditioningPresentation
 #print axioms lic_conditioned_gated_ofComputations
 
 end LogicalInduction

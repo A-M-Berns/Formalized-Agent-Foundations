@@ -158,35 +158,30 @@ named market computation and construct the quote internally. They accept no `tru
 wrapper names `theoremMarketComputation` and `theoremDiagonalQuoteCode`; its public signature
 contains only `p`, the ordinary vanishing-width data, and the bounds on `p`.
 
-### F4 — HIGH / weakened theorem: Closure Under Conditioning does not reach `thm:scon`
+### F4 — RESOLVED: Closure Under Conditioning reaches `thm:scon`
 
-The capped conditional-price definition and the gated-trader economics are substantive.
-The missing edge is the passage from a consistent fixed/growing condition to a concrete
-conditioning compiler for the original market.
+**Repair status (2026-07-23): resolved.**
+`Properties/Conditioning.lean` and
+`Construction/Witnesses/ConditioningCompiler.lean` now implement a direct finite-prefix
+repair which stays on the original market and therefore does not use the paper's disputed
+unrestricted finite-perturbation theorem.
 
-`gatedConditioningOperationalWitness`
-(`Construction/Witnesses/ConditioningCompiler.lean:2658–2665`) requires a uniform floor
+Uniform Non-Dogmatism and Preemptive Learning derive an eventual positive rational floor
+from joint consistency. The exact rational market computation shrinks that floor across all
+positive prices in the finite prefix and records exactly the remaining zero-denominator
+days. On such a day the capped conditional quote is identically `1`, so the compiler
+rewrites only those historical price leaves to a dead-bound original price followed by the
+constant `1`. It launches the translated trader after the finite cutoff; a proved finite
+magnitude bound shows that discarding the prefix preserves exploitation.
 
-```lean
-∀ d, ε ≤ P d (C.condition d)
-```
-
-for every day. The paper obtains eventual positivity from consistency/non-dogmatism and
-repairs the finite prefix. Lean constructs `denominatorPatchedGatedConditioningOperationalWitness`,
-but its docstring explicitly says transport back to the original history remains behind the
-qualified finite-perturbation theorem (`ConditioningCompiler.lean:2671–2685`).
-
-`lic_conditioned_gated_ofComputationsAndMarket` still assumes the all-days floor
-(`ConditioningCompiler.lean:2702–2713`). `lic_conditioned_unconditional`
-(`Construction/Witnesses/UnconditionalOverLIA.lean:71–80`) still takes the entire
-`ConditioningPresentation` and `ConditioningTraderCompiler` as caller inputs.
-
-**Consequence.** The paper theorem for arbitrary fixed consistent conditions and arbitrary
-efficiently computable growing condition sequences is not obtained.
-
-**Required repair.** Complete finite-prefix transport for the conditioned construction or
-prove a direct prefix-insensitive compiler theorem adequate for this use. Then expose fixed
-and growing-condition corollaries with only the paper's consistency/computability premises.
+`EventualConditioningOperationalWitness` packages this construction, and
+`lic_conditioned_eventual` transports any conditional-market exploit back to the base
+market. The paper-facing
+`lic_conditioned_fixed_ofComputationAndMarket` and
+`lic_conditioned_growing_ofComputationsAndMarket` expose respectively the fixed and growing
+forms with only joint consistency and the ordinary market/process computation premises.
+Their `..._unconditional` corollaries instantiate the constructed `LIA` and construct the
+base market/process inputs internally. All endpoints are included in `AxiomAudit.lean`.
 
 ### F7 — MEDIUM / abstraction boundary: Lean LUVs do not encode unique definability
 
@@ -402,7 +397,7 @@ git status --short
 
 Results:
 
-- full build passed: **2786 jobs**;
+- full build passed: **2787 jobs**;
 - paper-node validation passed: **60 distinct referenced labels**;
 - theorem-label lint passed;
 - no executable `sorry`, `admit`, or `axiom` declaration was found in `LogicalInduction/`;
@@ -414,13 +409,12 @@ the statement-faithfulness findings above.
 
 ## Recommended order of repair
 
-1. Close the finite-prefix transport needed by Conditioning.
-2. Package `thm:li` as existence of a computable finite-support belief sequence.
-3. Expand the endpoint inventory and distinguish “complete,” “conditional,” “qualified,” and
+1. Package `thm:li` as existence of a computable finite-support belief sequence.
+2. Expand the endpoint inventory and distinguish “complete,” “conditional,” “qualified,” and
    “interface only” coverage per paper node.
-4. Only after those repairs, revisit the three deliberately disclosed classical-computability
+3. Only after those repairs, revisit the three deliberately disclosed classical-computability
    boundaries and the token/fuel equivalence question.
 
-Until at least items 1–3 are addressed, the repository should continue to describe the
+Until at least items 1–2 are addressed, the repository should continue to describe the
 Logical Induction development as **in progress**, with unconditional central construction and
 a conditional/qualified property tail.

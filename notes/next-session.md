@@ -3,19 +3,27 @@
 _Last updated: 2026-07-23 (paper-errata reclassification after session 5).
 Branch: `logical-induction`._
 
-## Paper errata boundary (2026-07-23)
+## Paper errata boundary and F4 repair (2026-07-23)
 
 The former audit F5 is not a repository-faithfulness defect: the unrestricted
 finite-perturbation theorem has a genuine gap in the paper's proof. It has been removed from
 `m7-errata-audit.md` and moved to the durable
 [`logical-induction-paper-errata.md`](logical-induction-paper-errata.md) ledger. That ledger
 also records the research stretch goal of formalizing either the unrestricted theorem or,
-more likely, a counterexample to it. F4 remains the next repository repair.
+more likely, a counterexample to it.
 
 The former F6 was also removed from the finding list: its prefix-machine, DUS-approximation,
 and strict-separator boundaries were already accurately disclosed, so it did not belong in
 an errata audit. F7 now records the full scope of replacing the disclosed propositional LUV
 abstraction with a paper-faithful first-order construction.
+
+F4 is now resolved by a conditioning-specific finite-prefix construction that does not use
+unrestricted finite-perturbation closure. Uniform Non-Dogmatism plus Preemptive Learning
+produce the eventual condition-price floor; the exact rational market program shrinks it
+over the finite prefix and records the zero-denominator days. A zero-aware token compiler
+replaces only those historical conditional-price leaves by the capped value `1` and launches
+after the finite cutoff. Fixed and growing paper-facing corollaries, plus constructed-LIA
+instantiations, now take only the expected consistency/computability premises.
 
 ## ✅ Session 5 summary (2026-07-22) — F3 public diagonal constructed
 
@@ -32,9 +40,8 @@ artifact internally. The constructed-LIA wrapper now exposes `theoremMarketCompu
 `truth_spec`. The affected quotation and computation modules build with only the repository's
 standard `propext`/`Classical.choice`/`Quot.sound` dependencies.
 
-**Next focus:** continue the adversarial audit at F4 (finite-prefix transport for Closure
-Under Conditioning), with the F3 fixed-program and public-fixed-point bridge frozen in
-`AxiomAudit.lean`.
+**Next focus:** continue the adversarial audit at F8 after the F4 verification/commit, with
+the F3 and F4 public endpoints frozen in `AxiomAudit.lean`.
 
 ## ✅ Session 4 summary (2026-07-22) — F2 historical maturity constructed
 
@@ -353,7 +360,7 @@ by any missing Foundation lemma (`codeOfREPred`/`re_complete`/FFL fixed points a
 |---|---|---|---|
 | **Meta-learning** (halting/consistency, `M7-COMP-SYNTAX`) | **COMPLETE** (2026-07-22): all 6 endpoints unconditional over `LIA` (`*_unconditional` in `ComputationDP.lean`) | — (done) | **0** |
 | **Universal semimeasure** (`M7-DUS-PREFIX-SYNTAX`) | **DONE** (2026-07-22): `lic_domination_universalSemimeasure_unconditional` over LIA on the proved-computable empty process (`UnconditionalOverLIA.lean`); `hworld` trivial | Only the *disclosed* `M7-DUS-APPROX` approximation `A`/`emit` remains an input (bracketed); full Occam bound also needs disclosed Kraft | **~0 (disclosed remainder)** |
-| **Conditioning** (`M7-SCON-*`) | **DONE** (2026-07-22): `lic_conditioned_unconditional` — the constructed inductor conditioned on a computable event is again an inductor over the union process (`UnconditionalOverLIA.lean`) | — (`C`/compiler stay caller inputs by design) | **0** |
+| **Conditioning** (`M7-SCON-*`) | **COMPLETE** (2026-07-23): the direct finite-zero compiler proves fixed and growing `thm:scon`; `lic_conditioned_fixed_unconditional` and `lic_conditioned_growing_unconditional` instantiate the constructed `LIA` (`ConditioningCompiler.lean`, `UnconditionalOverLIA.lean`) | — (only joint consistency and ordinary condition/process computation remain) | **0** |
 | **LUV combinations** (`M7-LUV-SYNTAX`) | **COMPLETE** (2026-07-22): `luv_wubexp_ofComputation_unconditional` over `liaHistory (theoremDP T)` | — (caller retains the paper's exact-theory presentation and delayed-value program) | **0** |
 | **Feedback / pseudorandomness** (`wub`, `M7-FEEDBACK-TRUTH/EMIT`) | **COMPLETE** (2026-07-22): all four computation-backed consumers instantiated over constructed `LIA`; ordinary `thm:wub` specialization added | — (no new DP was needed; `theoremDP_computable` + `theoremDP_hworld` discharge the market side) | **0** |
 | **Quotation / self-reference** (`M7-QUOTE-AFFINE`) | **COMPLETE** (2026-07-22): redesign + certify + all 8 endpoints unconditional over `LIA` | — (done) | **0** |

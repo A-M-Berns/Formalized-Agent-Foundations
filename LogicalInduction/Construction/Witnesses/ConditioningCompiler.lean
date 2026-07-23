@@ -13,6 +13,8 @@ namespace LogicalInduction
 
 namespace ConditioningCompile
 
+open Filter
+
 -- Deep polynomial token compositions carry nested `Primcodable` products.  Keep the
 -- implementation of pairing opaque during elaboration (the standard `dd:fuel` safeguard).
 attribute [local irreducible] Nat.sqrt
@@ -921,6 +923,451 @@ lemma strategyOfTokens_conditionPriceTokenRun_trades
         rw [dif_neg hinvalid, dif_neg hvalid]
         rfl
 
+/-! ### Price rewrite with exact finite zero-denominator exceptions -/
+
+/-- One source-token segment of the prefix-safe rewrite.  A completed price leaf dated on
+one of `zeroDays` is bound to the constant `1`; every other price leaf receives the ordinary
+conditional-price body. -/
+def zeroAwareConditionPriceTokenSegment
+    (zeroDays : Finset ℕ) (tokenFn : ℕ → ℕ) (ψCode : ℕ → ℕ)
+    (ε : ℚ) (z : ℕ) : List ℕ :=
+  let control := PrefixPatchCompile.freezeControlNat tokenFn z
+  let mode := control.unpair.1
+  let pending := control.unpair.2
+  let token := tokenFn z
+  if mode = 0 then
+    [token]
+  else if mode = 1 then [token]
+  else if mode = 2 then
+    if token ∈ zeroDays then [token, 1, Encodable.encode (1 : ℚ), 8]
+    else [token] ++
+      rawConditionalPriceTokens pending (ψCode token) token ε ++ [8]
+  else [token]
+
+def zeroAwareConditionPriceTokenEmit
+    (zeroDays : Finset ℕ) (ψCode : ℕ → ℕ) (ε : ℚ)
+    (state : EF.FreezeTokenState) (token : ℕ) : List ℕ :=
+  if state.1 = 2 then
+    if token ∈ zeroDays then [token, 1, Encodable.encode (1 : ℚ), 8]
+    else [token] ++ rawConditionalPriceTokens state.2 (ψCode token) token ε ++ [8]
+  else [token]
+
+def zeroAwareConditionPriceTokenRun
+    (zeroDays : Finset ℕ) (ψCode : ℕ → ℕ) (ε : ℚ) :
+    EF.FreezeTokenState → List ℕ → EF.FreezeTokenState × List ℕ
+  | state, [] => (state, [])
+  | state, token :: tokens =>
+      let rest := zeroAwareConditionPriceTokenRun zeroDays ψCode ε
+        (EF.freezeTokenNext state token) tokens
+      (rest.1,
+        zeroAwareConditionPriceTokenEmit zeroDays ψCode ε state token ++ rest.2)
+
+lemma zeroAwareConditionPriceTokenRun_append
+    (zeroDays : Finset ℕ) (ψCode : ℕ → ℕ) (ε : ℚ)
+    (state : EF.FreezeTokenState) (xs ys : List ℕ) :
+    zeroAwareConditionPriceTokenRun zeroDays ψCode ε state (xs ++ ys) =
+      let first := zeroAwareConditionPriceTokenRun zeroDays ψCode ε state xs
+      let second :=
+        zeroAwareConditionPriceTokenRun zeroDays ψCode ε first.1 ys
+      (second.1, first.2 ++ second.2) := by
+  induction xs generalizing state with
+  | nil => rfl
+  | cons token tokens ih =>
+      simp only [List.cons_append, zeroAwareConditionPriceTokenRun]
+      rw [ih]
+      simp [List.append_assoc]
+
+lemma zeroAwareConditionPriceTokenRun_range
+    (zeroDays : Finset ℕ) (tokenFn : ℕ → ℕ) (ψCode : ℕ → ℕ)
+    (ε : ℚ) (n count : ℕ) :
+    zeroAwareConditionPriceTokenRun zeroDays ψCode ε (0, 0)
+        ((List.range count).map fun j => tokenFn (Nat.pair n j)) =
+      (EF.freezeTokenControlAt tokenFn n count,
+        (List.range count).flatMap fun j =>
+          zeroAwareConditionPriceTokenSegment
+            zeroDays tokenFn ψCode ε (Nat.pair n j)) := by
+  induction count with
+  | zero => rfl
+  | succ count ih =>
+      rw [List.range_succ, List.map_append,
+        zeroAwareConditionPriceTokenRun_append, ih]
+      simp [zeroAwareConditionPriceTokenRun,
+        zeroAwareConditionPriceTokenSegment,
+        zeroAwareConditionPriceTokenEmit,
+        PrefixPatchCompile.freezeControlNat, EF.freezeTokenControlAt]
+      by_cases hm0 : (EF.freezeTokenControlAt tokenFn n count).1 = 0 <;>
+        by_cases hm1 : (EF.freezeTokenControlAt tokenFn n count).1 = 1 <;>
+        by_cases hm2 : (EF.freezeTokenControlAt tokenFn n count).1 = 2 <;>
+        by_cases hz : tokenFn (Nat.pair n count) ∈ zeroDays <;>
+        simp [hm0, hm1, hm2, hz]
+
+lemma streamReadFrom_rawConstantOneSuffix
+    {φ : Sentence} (day : ℕ) (stack : List EF)
+    (trades : List (EF × Sentence)) :
+    EF.streamReadFrom [1, Encodable.encode (1 : ℚ), 8]
+        (some ((0, none), (EF.price φ day :: stack, trades))) =
+      some ((0, none),
+        (EF.letE (EF.price φ day) (EF.const 1) :: stack, trades)) := by
+  simp [EF.streamReadFrom, EF.streamStep, Encodable.encodek]
+
+lemma streamReadFrom_rawConditionalPriceSuffix_exceptZero
+    {phiCode : ℕ} {φ ψ : Sentence}
+    (hφ : Encodable.decode (α := Sentence) phiCode = some φ)
+    (zeroDays : Finset ℕ) {day : ℕ} (hday : day ∉ zeroDays)
+    (ε : ℚ) (stack : List EF) (trades : List (EF × Sentence)) :
+    EF.streamReadFrom
+        (rawConditionalPriceTokens phiCode (Encodable.encode ψ) day ε ++ [8])
+        (some ((0, none), (EF.price φ day :: stack, trades))) =
+      some ((0, none),
+        (EF.retainedConditionPricesExceptZero
+            zeroDays (fun _ => ψ) ε (EF.price φ day) ::
+          stack, trades)) := by
+  simpa [EF.retainedConditionPricesExceptZero, hday,
+    EF.retainedConditionPrices] using
+    (streamReadFrom_rawConditionalPriceSuffix hφ day ε stack trades)
+
+def retainedConditionExceptZeroStreamState
+    (zeroDays : Finset ℕ) (ψ : ℕ → Sentence) (ε : ℚ) :
+    EF.StreamState → EF.StreamState
+  | (control, stack, trades) =>
+      (control,
+        stack.map fun e =>
+          e.retainedConditionPricesExceptZero zeroDays ψ ε,
+        trades.map fun trade =>
+          (trade.1.retainedConditionPricesExceptZero zeroDays ψ ε, trade.2))
+
+set_option maxHeartbeats 800000 in
+lemma streamReadFrom_zeroAwareConditionPriceTokenEmit
+    (zeroDays : Finset ℕ) (ψ : ℕ → Sentence) (ε : ℚ)
+    (control : EF.FreezeTokenState) (state : EF.StreamState) (token : ℕ)
+    (hmatch : control.Matches state) :
+    EF.streamReadFrom
+        (zeroAwareConditionPriceTokenEmit zeroDays
+          (fun day => Encodable.encode (ψ day)) ε control token)
+        (some (retainedConditionExceptZeroStreamState zeroDays ψ ε state)) =
+      (EF.streamStep (some state) token).map
+        (retainedConditionExceptZeroStreamState zeroDays ψ ε) ∧
+    ∀ next, EF.streamStep (some state) token = some next →
+      (EF.freezeTokenNext control token).Matches next := by
+  rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
+  simp only [EF.FreezeTokenState.Matches] at hmatch ⊢
+  rcases hmatch with ⟨hmode, hpending⟩
+  rcases control with ⟨controlMode, code⟩
+  simp only at hmode
+  subst controlMode
+  cases mode with
+  | zero =>
+      by_cases h0 : token = 0
+      · subst token
+        simp [zeroAwareConditionPriceTokenEmit, EF.freezeTokenNext,
+          retainedConditionExceptZeroStreamState,
+          EF.streamReadFrom, EF.streamStep]
+      by_cases h1 : token = 1
+      · subst token
+        simp [zeroAwareConditionPriceTokenEmit, EF.freezeTokenNext,
+          retainedConditionExceptZeroStreamState,
+          EF.streamReadFrom, EF.streamStep]
+      by_cases h2 : token = 2
+      · subst token
+        cases stack with
+        | nil => simp [zeroAwareConditionPriceTokenEmit, EF.freezeTokenNext,
+            retainedConditionExceptZeroStreamState,
+            EF.streamReadFrom, EF.streamStep]
+        | cons a stack =>
+          cases stack with
+          | nil => simp [zeroAwareConditionPriceTokenEmit, EF.freezeTokenNext,
+              retainedConditionExceptZeroStreamState,
+              EF.streamReadFrom, EF.streamStep]
+          | cons b stack => simp [zeroAwareConditionPriceTokenEmit,
+              EF.freezeTokenNext, retainedConditionExceptZeroStreamState,
+              EF.streamReadFrom, EF.streamStep,
+              EF.retainedConditionPricesExceptZero]
+      by_cases h3 : token = 3
+      · subst token
+        cases stack with
+        | nil => simp [zeroAwareConditionPriceTokenEmit, EF.freezeTokenNext,
+            retainedConditionExceptZeroStreamState,
+            EF.streamReadFrom, EF.streamStep]
+        | cons a stack =>
+          cases stack with
+          | nil => simp [zeroAwareConditionPriceTokenEmit, EF.freezeTokenNext,
+              retainedConditionExceptZeroStreamState,
+              EF.streamReadFrom, EF.streamStep]
+          | cons b stack => simp [zeroAwareConditionPriceTokenEmit,
+              EF.freezeTokenNext, retainedConditionExceptZeroStreamState,
+              EF.streamReadFrom, EF.streamStep,
+              EF.retainedConditionPricesExceptZero]
+      by_cases h4 : token = 4
+      · subst token
+        cases stack with
+        | nil => simp [zeroAwareConditionPriceTokenEmit, EF.freezeTokenNext,
+            retainedConditionExceptZeroStreamState,
+            EF.streamReadFrom, EF.streamStep]
+        | cons a stack =>
+          cases stack with
+          | nil => simp [zeroAwareConditionPriceTokenEmit, EF.freezeTokenNext,
+              retainedConditionExceptZeroStreamState,
+              EF.streamReadFrom, EF.streamStep]
+          | cons b stack => simp [zeroAwareConditionPriceTokenEmit,
+              EF.freezeTokenNext, retainedConditionExceptZeroStreamState,
+              EF.streamReadFrom, EF.streamStep,
+              EF.retainedConditionPricesExceptZero]
+      by_cases h5 : token = 5
+      · subst token
+        cases stack <;> simp [zeroAwareConditionPriceTokenEmit,
+          EF.freezeTokenNext, retainedConditionExceptZeroStreamState,
+          EF.streamReadFrom, EF.streamStep,
+          EF.retainedConditionPricesExceptZero]
+      by_cases h6 : token = 6
+      · subst token
+        simp [zeroAwareConditionPriceTokenEmit, EF.freezeTokenNext,
+          retainedConditionExceptZeroStreamState,
+          EF.streamReadFrom, EF.streamStep]
+      by_cases h7 : token = 7
+      · subst token
+        simp [zeroAwareConditionPriceTokenEmit, EF.freezeTokenNext,
+          retainedConditionExceptZeroStreamState,
+          EF.streamReadFrom, EF.streamStep]
+      by_cases h8 : token = 8
+      · subst token
+        cases stack with
+        | nil => simp [zeroAwareConditionPriceTokenEmit, EF.freezeTokenNext,
+            retainedConditionExceptZeroStreamState,
+            EF.streamReadFrom, EF.streamStep]
+        | cons a stack =>
+          cases stack with
+          | nil => simp [zeroAwareConditionPriceTokenEmit, EF.freezeTokenNext,
+              retainedConditionExceptZeroStreamState,
+              EF.streamReadFrom, EF.streamStep]
+          | cons b stack => simp [zeroAwareConditionPriceTokenEmit,
+              EF.freezeTokenNext, retainedConditionExceptZeroStreamState,
+              EF.streamReadFrom, EF.streamStep,
+              EF.retainedConditionPricesExceptZero]
+      · simp [zeroAwareConditionPriceTokenEmit, EF.freezeTokenNext,
+          retainedConditionExceptZeroStreamState,
+          EF.streamReadFrom, EF.streamStep,
+          h0, h1, h2, h3, h4, h5, h6, h7, h8]
+  | succ mode =>
+      cases mode with
+      | zero =>
+          cases hdecode : Encodable.decode (α := Sentence) token <;>
+            simp [zeroAwareConditionPriceTokenEmit, EF.freezeTokenNext,
+              retainedConditionExceptZeroStreamState,
+              EF.streamReadFrom, EF.streamStep, hdecode]
+      | succ mode =>
+          cases mode with
+          | zero =>
+              obtain ⟨φ, hpendingEq, hdecode⟩ := hpending rfl
+              subst pending
+              constructor
+              · by_cases hzero : token ∈ zeroDays
+                · rw [show zeroAwareConditionPriceTokenEmit zeroDays
+                      (fun day => Encodable.encode (ψ day)) ε
+                      (2, code) token =
+                      [token] ++ [1, Encodable.encode (1 : ℚ), 8] by
+                        simp [zeroAwareConditionPriceTokenEmit, hzero]]
+                  rw [EF.streamReadFrom_append]
+                  have hday : EF.streamReadFrom [token]
+                      (some (retainedConditionExceptZeroStreamState
+                        zeroDays ψ ε
+                        ((2, some φ), (stack, trades)))) =
+                      some ((0, none),
+                        (EF.price φ token ::
+                            stack.map (fun e =>
+                              e.retainedConditionPricesExceptZero
+                                zeroDays ψ ε),
+                          trades.map fun trade =>
+                            (trade.1.retainedConditionPricesExceptZero
+                              zeroDays ψ ε, trade.2))) := by
+                    simp [retainedConditionExceptZeroStreamState,
+                      EF.streamReadFrom, EF.streamStep]
+                  rw [hday, streamReadFrom_rawConstantOneSuffix]
+                  simp [retainedConditionExceptZeroStreamState,
+                    EF.retainedConditionPricesExceptZero, EF.streamStep, hzero]
+                · rw [show zeroAwareConditionPriceTokenEmit zeroDays
+                      (fun day => Encodable.encode (ψ day)) ε
+                      (2, code) token =
+                      [token] ++
+                        (rawConditionalPriceTokens code
+                          (Encodable.encode (ψ token)) token ε ++ [8]) by
+                        simp [zeroAwareConditionPriceTokenEmit, hzero]]
+                  rw [EF.streamReadFrom_append]
+                  have hday : EF.streamReadFrom [token]
+                      (some (retainedConditionExceptZeroStreamState
+                        zeroDays ψ ε
+                        ((2, some φ), (stack, trades)))) =
+                      some ((0, none),
+                        (EF.price φ token ::
+                            stack.map (fun e =>
+                              e.retainedConditionPricesExceptZero
+                                zeroDays ψ ε),
+                          trades.map fun trade =>
+                            (trade.1.retainedConditionPricesExceptZero
+                              zeroDays ψ ε, trade.2))) := by
+                    simp [retainedConditionExceptZeroStreamState,
+                      EF.streamReadFrom, EF.streamStep]
+                  rw [hday,
+                    streamReadFrom_rawConditionalPriceSuffix_exceptZero
+                      hdecode zeroDays hzero]
+                  rfl
+              · intro next hnext
+                simp [EF.streamStep] at hnext
+                subst next
+                simp [EF.freezeTokenNext]
+          | succ mode =>
+              cases mode with
+              | zero =>
+                  cases hdecode : Encodable.decode (α := ℚ) token <;>
+                    simp [zeroAwareConditionPriceTokenEmit,
+                      EF.freezeTokenNext,
+                      retainedConditionExceptZeroStreamState,
+                      EF.streamReadFrom, EF.streamStep, hdecode,
+                      EF.retainedConditionPricesExceptZero]
+              | succ mode =>
+                  cases mode with
+                  | zero =>
+                      cases stack with
+                      | nil => simp [zeroAwareConditionPriceTokenEmit,
+                          EF.freezeTokenNext,
+                          retainedConditionExceptZeroStreamState,
+                          EF.streamReadFrom, EF.streamStep]
+                      | cons e stack =>
+                        cases hdecode :
+                            Encodable.decode (α := Sentence) token <;>
+                          simp [zeroAwareConditionPriceTokenEmit,
+                            EF.freezeTokenNext,
+                            retainedConditionExceptZeroStreamState,
+                            EF.streamReadFrom, EF.streamStep, hdecode]
+                  | succ mode =>
+                      cases mode with
+                      | zero => simp [zeroAwareConditionPriceTokenEmit,
+                          EF.freezeTokenNext,
+                          retainedConditionExceptZeroStreamState,
+                          EF.streamReadFrom, EF.streamStep,
+                          EF.retainedConditionPricesExceptZero]
+                      | succ mode => simp [zeroAwareConditionPriceTokenEmit,
+                          EF.freezeTokenNext,
+                          retainedConditionExceptZeroStreamState,
+                          EF.streamReadFrom, EF.streamStep]
+
+lemma streamReadFrom_zeroAwareConditionPriceTokenRun
+    (zeroDays : Finset ℕ) (ψ : ℕ → Sentence) (ε : ℚ)
+    (control : EF.FreezeTokenState) (state : EF.StreamState)
+    (tokens : List ℕ) (hmatch : control.Matches state) :
+    let run := zeroAwareConditionPriceTokenRun zeroDays
+      (fun day => Encodable.encode (ψ day)) ε control tokens
+    EF.streamReadFrom run.2
+        (some (retainedConditionExceptZeroStreamState zeroDays ψ ε state)) =
+      (EF.streamReadFrom tokens (some state)).map
+        (retainedConditionExceptZeroStreamState zeroDays ψ ε) ∧
+      ∀ next, EF.streamReadFrom tokens (some state) = some next →
+        run.1.Matches next := by
+  induction tokens generalizing control state with
+  | nil => simp [zeroAwareConditionPriceTokenRun,
+      EF.streamReadFrom, hmatch]
+  | cons token tokens ih =>
+      simp only [zeroAwareConditionPriceTokenRun]
+      have hstep := streamReadFrom_zeroAwareConditionPriceTokenEmit
+        zeroDays ψ ε control state token hmatch
+      rcases hstep with ⟨hstep, hnext⟩
+      cases hs : EF.streamStep (some state) token with
+      | none =>
+          constructor
+          · rw [EF.streamReadFrom_append, hstep, hs]
+            simp only [Option.map_none]
+            rw [EF.streamReadFrom_none]
+            change none = (EF.streamReadFrom tokens
+              (EF.streamStep (some state) token)).map
+                (retainedConditionExceptZeroStreamState zeroDays ψ ε)
+            rw [hs, EF.streamReadFrom_none]
+            rfl
+          · intro final hfinal
+            change EF.streamReadFrom tokens
+              (EF.streamStep (some state) token) = some final at hfinal
+            rw [hs, EF.streamReadFrom_none] at hfinal
+            contradiction
+      | some next =>
+          have hmatches := hnext next hs
+          have hrest := ih (EF.freezeTokenNext control token) next hmatches
+          simp only at hrest
+          rcases hrest with ⟨hrest, hfinal⟩
+          constructor
+          · rw [EF.streamReadFrom_append, hstep, hs]
+            simp only [Option.map_some]
+            rw [hrest]
+            simp [EF.streamReadFrom, hs]
+          · intro final hfinalSource
+            apply hfinal final
+            simpa [EF.streamReadFrom, hs] using hfinalSource
+
+lemma deserializeTrades_zeroAwareConditionPriceTokenRun
+    (zeroDays : Finset ℕ) (ψ : ℕ → Sentence) (ε : ℚ)
+    (tokens : List ℕ) :
+    let run := zeroAwareConditionPriceTokenRun zeroDays
+      (fun day => Encodable.encode (ψ day)) ε (0, 0) tokens
+    deserializeTrades run.2 =
+      (deserializeTrades tokens).map fun trades =>
+        trades.map fun trade =>
+          (trade.1.retainedConditionPricesExceptZero zeroDays ψ ε, trade.2) := by
+  have hrun := (streamReadFrom_zeroAwareConditionPriceTokenRun
+    zeroDays ψ ε (0, 0) EF.streamInitial tokens
+    EF.freezeToken_initial_matches).1
+  simp only at hrun ⊢
+  have hinitial :
+      retainedConditionExceptZeroStreamState zeroDays ψ ε EF.streamInitial =
+        EF.streamInitial := rfl
+  rw [hinitial] at hrun
+  unfold deserializeTrades
+  rw [hrun]
+  cases hread : EF.streamReadFrom tokens (some EF.streamInitial) with
+  | none => rfl
+  | some state =>
+      rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
+      cases mode <;> cases pending <;> cases stack <;>
+        simp [retainedConditionExceptZeroStreamState]
+
+lemma strategyOfTokens_zeroAwareConditionPriceTokenRun_trades
+    (zeroDays : Finset ℕ) (ψ : ℕ → Sentence) (ε : ℚ)
+    (day : ℕ) (tokens : List ℕ) :
+    (strategyOfTokens day
+      (zeroAwareConditionPriceTokenRun zeroDays
+        (fun d => Encodable.encode (ψ d)) ε (0, 0) tokens).2).trades =
+      (strategyOfTokens day tokens).trades.map fun trade =>
+        (trade.1.retainedConditionPricesExceptZero zeroDays ψ ε, trade.2) := by
+  have hdecode :=
+    deserializeTrades_zeroAwareConditionPriceTokenRun zeroDays ψ ε tokens
+  unfold strategyOfTokens
+  simp only at hdecode
+  rw [hdecode]
+  cases hs : deserializeTrades tokens with
+  | none => simp
+  | some trades =>
+      simp only [Option.map_some]
+      have hrank :
+          (∀ trade ∈ trades.map (fun trade =>
+              (trade.1.retainedConditionPricesExceptZero
+                zeroDays ψ ε, trade.2)),
+              trade.1.rank ≤ day) ↔
+            ∀ trade ∈ trades, trade.1.rank ≤ day := by
+        constructor
+        · intro h trade hmem
+          simpa using h
+            (trade.1.retainedConditionPricesExceptZero
+              zeroDays ψ ε, trade.2)
+            (List.mem_map_of_mem hmem)
+        · intro h trade hmem
+          simp only [List.mem_map] at hmem
+          obtain ⟨source, hsource, rfl⟩ := hmem
+          simpa using h source hsource
+      by_cases hvalid : ∀ trade ∈ trades, trade.1.rank ≤ day
+      · rw [dif_pos (hrank.mpr hvalid), dif_pos hvalid]
+      · have hinvalid : ¬∀ trade ∈ trades.map (fun trade =>
+            (trade.1.retainedConditionPricesExceptZero
+              zeroDays ψ ε, trade.2)),
+            trade.1.rank ≤ day := fun h => hvalid (hrank.mp h)
+        rw [dif_neg hinvalid, dif_neg hvalid]
+        rfl
+
 /-! ### Two parser-transparent trade-frame passes -/
 
 def frameBudgetDenominator (day count : ℕ) : ℕ :=
@@ -1746,6 +2193,122 @@ lemma conditionPriceTokenRun_polySegStream
     (fun day => Encodable.encode (ψ day)) ε n (lenFn n))
   simpa using hrun.symm
 
+/-- Membership in a fixed finite set is polynomial for every polynomial natural-valued
+input.  The generated program is a fixed nest of equality tests, one per set element. -/
+lemma finsetMembership_polyFueled
+    {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
+    (hf : PolyFueled cf f) (s : Finset ℕ) :
+    ∃ c, PolyFueled c (fun z => if f z ∈ s then 1 else 0) := by
+  classical
+  induction s using Finset.induction with
+  | empty =>
+      exact ⟨_, (PolyFueled.const 0).of_eq fun z => by simp⟩
+  | @insert a s ha ih =>
+      obtain ⟨ceq, heq⟩ := polyFueled_eqConst hf a
+      obtain ⟨cmem, hmem⟩ := ih
+      obtain ⟨cout, hout⟩ :=
+        PrefixPatchCompile.polyFueled_ifZero
+          heq hmem (PolyFueled.const 1)
+      refine ⟨cout, hout.of_eq fun z => ?_⟩
+      by_cases hfa : f z = a
+      · simp [hfa]
+      · simp [hfa, Finset.mem_insert]
+
+/-- Polynomial stream certificate for the finite-zero-aware price-leaf rewrite. -/
+lemma zeroAwareConditionPriceTokenSegments_poly
+    (zeroDays : Finset ℕ)
+    {tokenFn lenFn : ℕ → ℕ} {ct cl : Nat.Partrec.Code}
+    (htoken : PolyFueled ct tokenFn) (hlen : PolyFueled cl lenFn)
+    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) (ε : ℚ) :
+    PolySegStream (fun n => (List.range (lenFn n)).flatMap fun j =>
+      zeroAwareConditionPriceTokenSegment zeroDays tokenFn
+        (fun day => Encodable.encode (ψ day)) ε (Nat.pair n j)) := by
+  let control : ℕ → ℕ := PrefixPatchCompile.freezeControlNat tokenFn
+  let mode : ℕ → ℕ := fun z => (control z).unpair.1
+  let pending : ℕ → ℕ := fun z => (control z).unpair.2
+  let token : ℕ → ℕ := tokenFn
+  let condition : ℕ → ℕ := fun z => Encodable.encode (ψ (token z))
+  obtain ⟨ccontrol, hcontrol⟩ :=
+    PrefixPatchCompile.freezeControlNat_polyFueled htoken
+  have hmode : PolyFueled _ mode := PolyFueled.left.comp hcontrol
+  have hpending : PolyFueled _ pending := PolyFueled.right.comp hcontrol
+  obtain ⟨cψ, hψPoly⟩ := hψ
+  have hcondition : PolyFueled _ condition := hψPoly.comp htoken
+  have hlong : PolySegStream (fun z =>
+      rawConditionalPriceTokens (pending z) (condition z) (token z) ε) :=
+    rawConditionalPriceTokens_poly hpending hcondition htoken ε
+  have hcopy : PolySegStream (fun z => [token z]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.polyTok htoken)
+  have hzeroSuffix : PolySegStream (fun z =>
+      [token z, 1, Encodable.encode (1 : ℚ), 8]) := by
+    exact (((hcopy.append
+      (PolySegStream.ofTokenStream (PolyTokenStream.const 1))).append
+      (PolySegStream.ofTokenStream
+        (PolyTokenStream.const (Encodable.encode (1 : ℚ))))).append
+      (PolySegStream.ofTokenStream (PolyTokenStream.const 8))).of_eq
+        fun z => by simp
+  have hlongSuffix : PolySegStream (fun z =>
+      [token z] ++ rawConditionalPriceTokens
+        (pending z) (condition z) (token z) ε ++ [8]) :=
+    (hcopy.append hlong).append
+      (PolySegStream.ofTokenStream (PolyTokenStream.const 8))
+  obtain ⟨cmember, hmember⟩ :=
+    finsetMembership_polyFueled htoken zeroDays
+  have hzeroBranch : PolySegStream (fun z =>
+      if (if token z ∈ zeroDays then 1 else 0) = 0 then
+        [token z] ++ rawConditionalPriceTokens
+          (pending z) (condition z) (token z) ε ++ [8]
+      else [token z, 1, Encodable.encode (1 : ℚ), 8]) :=
+    hlongSuffix.ifZero hzeroSuffix hmember
+  obtain ⟨cmode2, hmode2⟩ := polyFueled_eqConst hmode 2
+  have hmode2Branch : PolySegStream (fun z =>
+      if (if mode z = 2 then 1 else 0) = 0 then [token z]
+      else if (if token z ∈ zeroDays then 1 else 0) = 0 then
+        [token z] ++ rawConditionalPriceTokens
+          (pending z) (condition z) (token z) ε ++ [8]
+      else [token z, 1, Encodable.encode (1 : ℚ), 8]) :=
+    hcopy.ifZero hzeroBranch hmode2
+  have hsegment : PolySegStream (fun z =>
+      zeroAwareConditionPriceTokenSegment zeroDays tokenFn
+        (fun day => Encodable.encode (ψ day)) ε z) :=
+    hmode2Branch.of_eq fun z => by
+      simp only [zeroAwareConditionPriceTokenSegment]
+      by_cases hm0 : mode z = 0 <;> by_cases hm1 : mode z = 1 <;>
+        by_cases hm2 : mode z = 2 <;>
+        by_cases hz : token z ∈ zeroDays <;>
+        simp [mode, token, pending, condition, control, hm0, hm1, hm2, hz]
+  exact hsegment.concatVar hlen
+
+lemma zeroAwareConditionPriceTokenRun_polySegStream
+    (zeroDays : Finset ℕ)
+    {source : ℕ → List ℕ} {tokenFn lenFn : ℕ → ℕ}
+    {ct cl : Nat.Partrec.Code}
+    (htoken : PolyFueled ct tokenFn) (hlen : PolyFueled cl lenFn)
+    (hslen : ∀ n, (source n).length = lenFn n)
+    (hget : ∀ n i, i < lenFn n →
+      tokenFn (Nat.pair n i) = (source n).getD i 0)
+    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) (ε : ℚ) :
+    PolySegStream (fun n =>
+      (zeroAwareConditionPriceTokenRun zeroDays
+        (fun day => Encodable.encode (ψ day)) ε (0, 0) (source n)).2) := by
+  have hsegments :=
+    zeroAwareConditionPriceTokenSegments_poly zeroDays htoken hlen ψ hψ ε
+  refine hsegments.of_eq fun n => ?_
+  have hsourceEq : source n =
+      (List.range (lenFn n)).map (fun j => tokenFn (Nat.pair n j)) := by
+    apply List.ext_getElem
+    · simp [hslen n]
+    · intro i hleft hright
+      rw [List.getElem_map]
+      simp only [List.getElem_range]
+      rw [hget n i (by simpa [hslen n] using hleft)]
+      exact (List.getD_eq_getElem (l := source n) (d := 0) hleft).symm
+  rw [hsourceEq]
+  have hrun := congrArg Prod.snd
+    (zeroAwareConditionPriceTokenRun_range zeroDays tokenFn
+      (fun day => Encodable.encode (ψ day)) ε n (lenFn n))
+  simpa using hrun.symm
+
 /-- The long segment emitted at a completed trade frame is a fixed-width polynomial token
 stream in its five varying numeric fields. -/
 lemma rawConditioningFrameTokens_poly
@@ -2390,6 +2953,26 @@ lemma frameLeg_retained_eq_locallyGatedSecondLeg
       Strategy.locallyGatedSecondLeg ψ ε day τ count p := by
   simp [frameLeg, secondFrameBody, Strategy.locallyGatedSecondLeg]
 
+lemma frameLeg_exceptZero_eq_locallyGatedFirstLeg
+    (zeroDays : Finset ℕ) (ψ : ℕ → Sentence)
+    (ε τ : ℚ) (day count : ℕ) (p : EF × Sentence) :
+    frameLeg false (ψ day) ε (Strategy.localConditioningBudget τ count) day
+        (p.1.retainedConditionPricesExceptZero zeroDays ψ ε, p.2) =
+      Strategy.exceptZeroLocallyGatedFirstLeg
+        zeroDays ψ ε day τ count p := by
+  simp [frameLeg, firstFrameBody,
+    Strategy.exceptZeroLocallyGatedFirstLeg]
+
+lemma frameLeg_exceptZero_eq_locallyGatedSecondLeg
+    (zeroDays : Finset ℕ) (ψ : ℕ → Sentence)
+    (ε τ : ℚ) (day count : ℕ) (p : EF × Sentence) :
+    frameLeg true (ψ day) ε (Strategy.localConditioningBudget τ count) day
+        (p.1.retainedConditionPricesExceptZero zeroDays ψ ε, p.2) =
+      Strategy.exceptZeroLocallyGatedSecondLeg
+        zeroDays ψ ε day τ count p := by
+  simp [frameLeg, secondFrameBody,
+    Strategy.exceptZeroLocallyGatedSecondLeg]
+
 
 lemma conditioningFrameTokenOutput_polySegStream
     {source : ℕ → List ℕ} {tokenFn lenFn : ℕ → ℕ}
@@ -2652,7 +3235,437 @@ lemma conditionedTranslation_preserves_ec
           simp only [hleft, hright, target, Strategy.mk.injEq] at htrades ⊢
           exact htrades
 
+/-- The finite-zero rewrite, the ordinary two-leg frame compiler, and a fixed launch-day
+gate preserve token-indexed efficient computability of the prefix-safe translator.
+Paper node: `thm:scon` -/
+lemma eventualConditionedTranslation_preserves_ec
+    {P : History} {ψ : ℕ → Sentence}
+    (F : EventualConditioningFloor P ψ) (hψ : PolySentenceCodes ψ)
+    (T : Trader) (hT : EfficientlyComputableTok T) :
+    EfficientlyComputableTok (T.eventualConditionedTranslation F) := by
+  obtain ⟨lengthCode, tokenCode, a, k, hcert⟩ := hT
+  let source : ℕ → List ℕ := fun n =>
+    clockedTokens lengthCode tokenCode (PrefixPatchCompile.ecClock a k n) n
+  have hsource : PolySegStream source :=
+    PrefixPatchCompile.clockedTokens_polySegStream lengthCode tokenCode a k
+  obtain ⟨cst, csl, sourceToken, sourceLen,
+    hst, hsl, hslen, hsget⟩ := hsource
+  let priced : ℕ → List ℕ := fun n =>
+    (zeroAwareConditionPriceTokenRun F.zeroDays
+      (fun day => Encodable.encode (ψ day)) F.epsilon
+      (0, 0) (source n)).2
+  have hpriced : PolySegStream priced := by
+    exact zeroAwareConditionPriceTokenRun_polySegStream
+      F.zeroDays hst hsl hslen hsget ψ hψ F.epsilon
+  obtain ⟨cpt, cpl, priceToken, priceLen,
+    hpt, hpl, hplen, hpget⟩ := hpriced
+  let framed : ℕ → List ℕ := fun n =>
+    let count := frameTradeCount priceToken priceLen n
+    safeSeparatedFrameTokenOutput priceToken priceLen (ψ n) F.epsilon
+      (frameBudget n count) n (priced n)
+  have hframed : PolySegStream framed := by
+    exact safeSeparatedFrameTokenOutput_polySegStream
+      hpt hpl hplen hpget ψ hψ F.epsilon
+  let output : ℕ → List ℕ := fun n =>
+    if F.cutoff ≤ n then framed n else []
+  have hlaunchRaw := subc_polyFueled.comp
+    (PolyFueled.id.succ_comp.pair (PolyFueled.const F.cutoff))
+  have hlaunch : PolyFueled
+      (subc.comp ((Nat.Partrec.Code.succ.comp
+        (Nat.Partrec.Code.left.pair Nat.Partrec.Code.right)).pair
+          (Nat.Partrec.Code.const F.cutoff)))
+      (fun n => n + 1 - F.cutoff) := by
+    apply PolyFueled.of_eq hlaunchRaw
+    intro n
+    simp only [Nat.unpair_pair]
+  have hemptyStream : PolySegStream (fun _ : ℕ => []) :=
+    PolySegStream.ofTokenStream PolyTokenStream.nil
+  have houtput : PolySegStream output := by
+    refine (PolySegStream.ifZero hemptyStream hframed hlaunch).of_eq fun n => ?_
+    simp only [output]
+    by_cases hn : F.cutoff ≤ n
+    · rw [if_pos hn, if_neg (by omega)]
+    · rw [if_neg hn, if_pos (by omega)]
+  apply houtput.ecTok (T.eventualConditionedTranslation F)
+  intro n
+  by_cases hn : n < F.cutoff
+  · have hout : output n = [] := by
+      simp [output, Nat.not_le_of_lt hn]
+    rw [hout, T.eventualConditionedTranslation_strat_of_lt F hn]
+    simp [strategyOfTokens, deserializeTrades,
+      EF.streamReadFrom, EF.streamInitial, Trader.zero]
+  · have hcn : F.cutoff ≤ n := Nat.le_of_not_gt hn
+    have horig : strategyOfTokens n (source n) = T.strat n := by
+      exact congrFun (congrArg Trader.strat hcert) n
+    have hpricedEq : priced n =
+        (List.range (priceLen n)).map
+          fun i => priceToken (Nat.pair n i) := by
+      apply List.ext_getElem
+      · simp [hplen n]
+      · intro i hleft hright
+        rw [List.getElem_map]
+        simp only [List.getElem_range]
+        rw [hpget n i (by simpa [hplen n] using hleft)]
+        exact (List.getD_eq_getElem (l := priced n) (d := 0) hleft).symm
+    have hframes := strategyOfTokens_safeSeparatedFrameTokenOutput_trades
+      priceToken priceLen (ψ n) F.epsilon
+        (frameBudget n (frameTradeCount priceToken priceLen n))
+        n (priced n) hpricedEq
+    have hprice :=
+      strategyOfTokens_zeroAwareConditionPriceTokenRun_trades
+        F.zeroDays ψ F.epsilon n (source n)
+    change (strategyOfTokens n (priced n)).trades = _ at hprice
+    rw [congrArg Strategy.trades horig] at hprice
+    let target := (T.eventualConditionedTranslation F).strat n
+    have hout : output n = framed n := by simp [output, hcn]
+    have htrades : (strategyOfTokens n (output n)).trades =
+        target.trades := by
+      rw [hout]
+      change (strategyOfTokens n
+        (safeSeparatedFrameTokenOutput priceToken priceLen
+          (ψ n) F.epsilon
+          (frameBudget n (frameTradeCount priceToken priceLen n))
+          n (priced n))).trades = target.trades
+      rw [hframes]
+      by_cases hempty : (T.strat n).trades = []
+      · rw [hprice, hempty]
+        simp [target, hcn,
+          Strategy.separatedExceptZeroConditionalContract]
+        exact hempty
+      · have hpricedNe :
+            (strategyOfTokens n (priced n)).trades ≠ [] := by
+          rw [hprice]
+          simpa using hempty
+        have hdecodePriced :=
+          deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
+            n (priced n) hpricedNe
+        have hreadyPriced :=
+          streamReadFrom_eq_ready_of_deserializeTrades_eq_some
+            (priced n) (strategyOfTokens n (priced n)).trades hdecodePriced
+        have hreadyPricedTokens :
+            EF.streamReadFrom
+                ((List.range (priceLen n)).map
+                  fun i => priceToken (Nat.pair n i))
+                (some EF.streamInitial) =
+              some ((0, none),
+                ([], (strategyOfTokens n (priced n)).trades)) := by
+          rw [← hpricedEq]
+          exact hreadyPriced
+        have hcount : frameTradeCount priceToken priceLen n =
+            (T.strat n).trades.length := by
+          calc
+            frameTradeCount priceToken priceLen n =
+                (strategyOfTokens n (priced n)).trades.length :=
+              frameTradeCount_eq_length_of_read priceToken priceLen n
+                ((0, none),
+                  ([], (strategyOfTokens n (priced n)).trades))
+                hreadyPricedTokens
+            _ = (T.strat n).trades.length := by
+              rw [hprice, List.length_map]
+        have hpos : 0 < (T.strat n).trades.length :=
+          List.length_pos_iff.mpr hempty
+        rw [hprice, hcount,
+          frameBudget_eq n (T.strat n).trades.length hpos]
+        simp only [List.map_map]
+        change
+          ((T.strat n).trades.map fun p =>
+            frameLeg false (ψ n) F.epsilon
+              (Strategy.localConditioningBudget (conditioningBudget n)
+                (T.strat n).trades.length) n
+              (p.1.retainedConditionPricesExceptZero
+                F.zeroDays ψ F.epsilon, p.2)) ++
+            ((T.strat n).trades.map fun p =>
+              frameLeg true (ψ n) F.epsilon
+                (Strategy.localConditioningBudget (conditioningBudget n)
+                  (T.strat n).trades.length) n
+                (p.1.retainedConditionPricesExceptZero
+                  F.zeroDays ψ F.epsilon, p.2)) = target.trades
+        simp only [frameLeg_exceptZero_eq_locallyGatedFirstLeg,
+          frameLeg_exceptZero_eq_locallyGatedSecondLeg]
+        rw [show target =
+            (T.strat n).separatedExceptZeroConditionalContract
+              F.zeroDays ψ F.epsilon (conditioningBudget n) by
+          exact T.eventualConditionedTranslation_strat_of_le F hcn]
+        rfl
+    cases hleft : strategyOfTokens n (output n) with
+    | mk leftTrades leftRank =>
+        cases hright : (T.eventualConditionedTranslation F).strat n with
+        | mk rightTrades rightRank =>
+            simp only [hleft, hright, target, Strategy.mk.injEq] at htrades ⊢
+            exact htrades
+
+/-! ### Constructing the finite-prefix floor -/
+
+/-- A finite family of positive rational numbers and one further positive rational have
+one common positive rational lower bound.  This is the elementary finite-prefix step in
+the direct repair of `thm:scon`. -/
+lemma exists_positive_rational_lower_finset
+    (s : Finset ℕ) (f : ℕ → ℚ) (q : ℚ)
+    (hf : ∀ x ∈ s, 0 < f x) (hq : 0 < q) :
+    ∃ ε : ℚ, 0 < ε ∧ ε ≤ q ∧ ∀ x ∈ s, ε ≤ f x := by
+  induction s using Finset.induction_on with
+  | empty =>
+      exact ⟨q, hq, le_rfl, by simp⟩
+  | @insert a s ha ih =>
+      have hfa : 0 < f a := hf a (by simp)
+      have hfs : ∀ x ∈ s, 0 < f x := by
+        intro x hx
+        exact hf x (Finset.mem_insert_of_mem hx)
+      obtain ⟨ε, hε, hεq, hεs⟩ := ih hfs
+      refine ⟨min ε (f a), lt_min hε hfa,
+        (min_le_left _ _).trans hεq, ?_⟩
+      intro x hx
+      rw [Finset.mem_insert] at hx
+      rcases hx with rfl | hx
+      · exact min_le_right _ _
+      · exact (min_le_left _ _).trans (hεs x hx)
+
+/-- An eventual positive rational floor can be shrunk across the finite prefix of an
+exact rational market.  The only omitted prefix days are exactly the days on which the
+condition price is zero. -/
+lemma eventualConditioningFloor_nonempty_of_tail
+    {P : History} (market : MarketComputation P) (ψ : ℕ → Sentence)
+    (cutoff : ℕ) (tailε : ℚ) (htailε : 0 < (tailε : ℝ))
+    (htail : ∀ d, cutoff ≤ d → (tailε : ℝ) ≤ P d (ψ d)) :
+    Nonempty (EventualConditioningFloor P ψ) := by
+  let zeroDays : Finset ℕ :=
+    (Finset.range cutoff).filter fun d =>
+      market.quote d (Encodable.encode (ψ d)) = 0
+  let positiveDays : Finset ℕ :=
+    (Finset.range cutoff).filter fun d =>
+      market.quote d (Encodable.encode (ψ d)) ≠ 0
+  have htailεRat : 0 < tailε := by
+    exact_mod_cast htailε
+  have hpositive : ∀ d ∈ positiveDays,
+      0 < market.quote d (Encodable.encode (ψ d)) := by
+    intro d hd
+    have hne : market.quote d (Encodable.encode (ψ d)) ≠ 0 := by
+      exact (Finset.mem_filter.mp hd).2
+    have hnonneg : (0 : ℚ) ≤
+        market.quote d (Encodable.encode (ψ d)) := by
+      have hp := (market.price_mem_Icc d (ψ d)).1
+      rw [market.quote_exact d (ψ d)] at hp
+      exact_mod_cast hp
+    exact lt_of_le_of_ne hnonneg (Ne.symm hne)
+  obtain ⟨ε, hε, hεtail, hεprefix⟩ :=
+    exists_positive_rational_lower_finset positiveDays
+      (fun d => market.quote d (Encodable.encode (ψ d)))
+      tailε hpositive htailεRat
+  refine ⟨{
+    cutoff := cutoff
+    zeroDays := zeroDays
+    zeroDays_lt := ?_
+    epsilon := ε
+    epsilon_pos := ?_
+    zero_exact := ?_
+    positive_floor := ?_
+  }⟩
+  · intro d hd
+    exact Finset.mem_range.mp (Finset.mem_filter.mp hd).1
+  · exact_mod_cast hε
+  · intro d hd
+    have hquote :
+        market.quote d (Encodable.encode (ψ d)) = 0 :=
+      (Finset.mem_filter.mp hd).2
+    rw [market.quote_exact d (ψ d), hquote]
+    norm_num
+  · intro d hd
+    by_cases hdc : d < cutoff
+    · have hquote :
+          market.quote d (Encodable.encode (ψ d)) ≠ 0 := by
+        intro hzero
+        apply hd
+        exact Finset.mem_filter.mpr ⟨Finset.mem_range.mpr hdc, hzero⟩
+      have hmem : d ∈ positiveDays :=
+        Finset.mem_filter.mpr ⟨Finset.mem_range.mpr hdc, hquote⟩
+      rw [market.quote_exact d (ψ d)]
+      exact_mod_cast hεprefix d hmem
+    · have hcast : (ε : ℝ) ≤ (tailε : ℝ) := by
+        exact_mod_cast hεtail
+      exact hcast.trans (htail d (Nat.le_of_not_gt hdc))
+
+/-- Named floor selected from the finite-prefix construction.  Its only nonconstructive
+choice is the minimum of finitely many already-computable rational quotes. -/
+noncomputable def eventualConditioningFloorOfTail
+    {P : History} (market : MarketComputation P) (ψ : ℕ → Sentence)
+    (cutoff : ℕ) (tailε : ℚ) (htailε : 0 < (tailε : ℝ))
+    (htail : ∀ d, cutoff ≤ d → (tailε : ℝ) ≤ P d (ψ d)) :
+    EventualConditioningFloor P ψ :=
+  (eventualConditioningFloor_nonempty_of_tail
+    market ψ cutoff tailε htailε htail).some
+
+/-! ### Deriving the tail floor from the paper hypotheses -/
+
+/-- Uniform Non-Dogmatism followed by Preemptive Learning gives an eventual positive
+rational floor on the diagonal prices of any efficiently codeable jointly consistent
+condition sequence.  This is the analytic step used by the repaired proof of
+`thm:scon`.
+Paper node: `thm:scon` -/
+lemma exists_eventual_condition_price_floor
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (ψ i)) :
+    ∃ cutoff : ℕ, ∃ ε : ℚ, 0 < (ε : ℝ) ∧
+      ∀ d, cutoff ≤ d → (ε : ℝ) ≤ P d (ψ d) := by
+  let rep : EfficientRepeatedEnumeration ψ :=
+    EfficientRepeatedEnumeration.ofPoly ψ hψ
+  obtain ⟨lower, hlower, hlowerLimiting⟩ :=
+    lic_uniform_nonDogmatism P DP ψ rep hjoint
+  have hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) := by
+    intro n
+    obtain ⟨v, hv, _⟩ := hjoint n
+    exact ⟨v, hv⟩
+  let bounded :=
+    AffineCombination.sentenceAffine_bounded ψ P
+      (fun n φ => IsLogicalInductor.price_mem_Icc
+        (P := P) (DP := DP) n φ)
+  have hfuture : ∀ n, lower ≤
+      affineFutureHigh (AffineCombination.sentenceAffine ψ) P n := by
+    intro n
+    have hbetween :=
+      AffineCombination.futureLow_le_limitingValue_le_futureHigh
+        (AffineCombination.sentenceAffine ψ) P DP bounded hworld n
+    have hlimit : limitingBelief P (ψ n) ≤
+        affineFutureHigh (AffineCombination.sentenceAffine ψ) P n := by
+      simpa [AffineCombination.sentenceAffine,
+        AffineCombination.value] using hbetween.2
+    exact (hlowerLimiting n).trans hlimit
+  obtain ⟨hdiagBelow, _, _, hfutureAbove, _, _⟩ := bounded.filterBounds
+  have hfutureLiminfAffine : lower ≤
+      liminf (affineFutureHigh
+        (AffineCombination.sentenceAffine ψ) P) atTop :=
+    le_liminf_of_le hfutureAbove.isCobounded_flip
+      (Filter.Eventually.of_forall hfuture)
+  have hfutureLiminf : lower ≤
+      liminf (fun n => sSup
+        (Set.range (fun j => P (n + j) (ψ n)))) atTop := by
+    have hfutureEq :
+        affineFutureHigh (AffineCombination.sentenceAffine ψ) P =
+          fun n => sSup (Set.range (fun j => P (n + j) (ψ n))) :=
+      funext (AffineCombination.sentenceAffine_futureHigh ψ P)
+    rw [hfutureEq] at hfutureLiminfAffine
+    exact hfutureLiminfAffine
+  have hpreemptive := lic_preemptive_learning P DP ψ hψ hworld
+  have hdiagLiminf : lower ≤ liminf (fun n => P n (ψ n)) atTop := by
+    rw [hpreemptive.1]
+    exact hfutureLiminf
+  obtain ⟨ε, hε, hεlower⟩ :
+      ∃ ε : ℚ, (0 : ℝ) < ε ∧ (ε : ℝ) < lower :=
+    exists_rat_btwn hlower
+  have hdiagBelow' :
+      IsBoundedUnder (· ≥ ·) atTop (fun n => P n (ψ n)) := by
+    simpa only [AffineCombination.sentenceAffine_price] using hdiagBelow
+  have hevent : ∀ᶠ d in Filter.atTop, (ε : ℝ) < P d (ψ d) :=
+    eventually_lt_of_lt_liminf
+      (hεlower.trans_le hdiagLiminf) hdiagBelow'
+  obtain ⟨cutoff, hcutoff⟩ := Filter.eventually_atTop.mp hevent
+  exact ⟨cutoff, ε, hε, fun d hd => (hcutoff d hd).le⟩
+
+/-- The paper assumptions therefore produce the exact finite-zero floor certificate
+consumed by the repaired conditioning compiler. -/
+lemma eventualConditioningFloor_nonempty_of_jointConsistency
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (market : MarketComputation P)
+    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (ψ i)) :
+    Nonempty (EventualConditioningFloor P ψ) := by
+  obtain ⟨cutoff, ε, hε, htail⟩ :=
+    exists_eventual_condition_price_floor P DP ψ hψ hjoint
+  exact eventualConditioningFloor_nonempty_of_tail
+    market ψ cutoff ε hε htail
+
+noncomputable def eventualConditioningFloorOfJointConsistency
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (market : MarketComputation P)
+    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (ψ i)) :
+    EventualConditioningFloor P ψ :=
+  (eventualConditioningFloor_nonempty_of_jointConsistency
+    P DP market ψ hψ hjoint).some
+
 /-! ### Public operational witness constructors -/
+
+/-- Construct the complete prefix-safe operational witness from an exact rational market
+and a finite-zero floor certificate.
+Paper node: `thm:scon` -/
+noncomputable def eventualConditioningOperationalWitness
+    {P : History} {DP extra : DeductiveProcess}
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (floor : EventualConditioningFloor P C.condition) :
+    EventualConditioningOperationalWitness P DP extra C where
+  floor := floor
+  conditioned_computable :=
+    (conditionedMarketComputation market C.condition C.condition_codes).toComputable
+  translation_ec := fun T hT =>
+    eventualConditionedTranslation_preserves_ec
+      floor C.condition_codes T hT
+
+/-- Closure under conditioning from the paper's joint-consistency hypothesis and concrete
+computability data.  The proof stays on the original market: the finite exceptional prefix
+is handled by the zero-aware compiler.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_eventual_ofMarketComputation
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i)) :
+    IsLogicalInductor (conditionedHistory P C.condition) (DP.union extra) := by
+  let floor : EventualConditioningFloor P C.condition :=
+    eventualConditioningFloorOfJointConsistency
+      P DP market C.condition C.condition_codes hjoint
+  exact lic_conditioned_eventual P DP extra C
+    (eventualConditioningOperationalWitness C market floor)
+
+/-- Fixed-sentence form of Closure Under Conditioning.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_fixed_ofComputationAndMarket
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (base : DeductiveProcessComputation DP) (market : MarketComputation P)
+    (ψ : Sentence)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ v.Holds ψ) :
+    IsLogicalInductor
+      (conditionedHistory P (fun _ => ψ)) (DP.adjoinSentence ψ) := by
+  let C := fixedConditioningPresentation base ψ
+  have hjointC : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
+    intro n
+    obtain ⟨v, hv, hψ⟩ := hjoint n
+    exact ⟨v, hv, fun _ => hψ⟩
+  have hresult :=
+    lic_conditioned_eventual_ofMarketComputation
+      P DP (fixedConditionProcess ψ) C market hjointC
+  simpa [C, fixedConditioningPresentation,
+    DeductiveProcess.adjoinSentence] using hresult
+
+/-- Growing finite-prefix form of Closure Under Conditioning.  Joint consistency means
+that, alongside each base stage, one world satisfies every finite stage of the extra
+deductive process.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_growing_ofComputationsAndMarket
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
+    (base : DeductiveProcessComputation DP)
+    (more : CompactConditioningProcessComputation extra)
+    (market : MarketComputation P)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧
+        ∀ i, v.ConsistentWith (extra.D i)) :
+    IsLogicalInductor
+      (conditionedHistory P
+        (fun n => deductiveStageCondition (extra.D n)))
+      (DP.union extra) := by
+  let C := conditioningPresentationOfComputations base more
+  have hjointC : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
+    intro n
+    obtain ⟨v, hv, hextra⟩ := hjoint n
+    refine ⟨v, hv, fun i => ?_⟩
+    exact (v.holds_deductiveStageCondition (extra.D i)).2 (hextra i)
+  exact lic_conditioned_eventual_ofMarketComputation
+    P DP extra C market hjointC
 
 /-- Construct the complete gated-conditioning operational witness from a named rational
 base-market computation and an actual positive denominator floor.
@@ -2715,6 +3728,11 @@ theorem lic_conditioned_gated_ofComputationsAndMarket
     (conditioningPresentationOfComputations base more) market ε hε hfloor
 
 #print axioms conditionedTranslation_preserves_ec
+#print axioms eventualConditionedTranslation_preserves_ec
+#print axioms eventualConditioningOperationalWitness
+#print axioms lic_conditioned_eventual_ofMarketComputation
+#print axioms lic_conditioned_fixed_ofComputationAndMarket
+#print axioms lic_conditioned_growing_ofComputationsAndMarket
 #print axioms gatedConditioningOperationalWitness
 #print axioms denominatorPatchedGatedConditioningOperationalWitness
 #print axioms lic_conditioned_gated_ofMarketComputation

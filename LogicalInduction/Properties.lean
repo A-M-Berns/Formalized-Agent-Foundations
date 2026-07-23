@@ -35,8 +35,9 @@ File layout (promoted from a single file once it grew past ~1000 lines):
   global downside/unbounded-upside proof, and the exact fixed-constant capstone.
 * `Properties.UniversalSemimeasure` (includes former `StrictSemimeasure`) — `thm:strict` from Uniform Non-Dogmatism and the
   explicit recursively-inseparable null-prefix-class representation boundary.
-* `Properties.Conditioning` — exact capped conditional markets and stagewise combined
-  deductive-process semantics for the fixed and growing-prefix forms of `thm:scon`.
+* `Properties.Conditioning` — exact capped conditional markets, a direct finite-zero
+  prefix repair on the original market, and stagewise combined deductive-process semantics
+  for the fixed and growing-prefix forms of `thm:scon`.
 * `Properties.ExpectationConvergence` — `thm:ec`: the feature-generic hysteresis layer
   (`buyIndF`/`sellIndF`/`hystChain`) and the bundle trader `excTrader` on the
   expectation feature `𝔼(X)`, gated to absorb the `lem:conluvapprox` payout error.
