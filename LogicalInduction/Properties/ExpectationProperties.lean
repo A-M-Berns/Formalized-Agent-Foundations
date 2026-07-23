@@ -960,7 +960,7 @@ daily world valuation; it does not assume convergence or any expectation theorem
 structure ConvergencePresentation (As : ℕ → LUVCombination)
     (DP : DeductiveProcess) where
   threshold_code : ∀ n p, p ∈ (As n).terms → p.2.PolyThresholdCodes
-  daily_value : ∀ n p, p ∈ (As n).terms → ∀ m (v : PCWorld),
+  daily_value : ∀ n p, p ∈ (As n).terms → ∀ᶠ m in atTop, ∀ (v : PCWorld),
     v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo p.2 x m
 
 /-- The paper's future expectation extrema use each future day's own mesh. -/
@@ -1490,7 +1490,7 @@ private lemma expectTerms_converge
     (hcode : ∀ p ∈ l, p.2.PolyThresholdCodes)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hval : ∀ p ∈ l, ∀ m (v : PCWorld),
+    (hval : ∀ p ∈ l, ∀ᶠ m in atTop, ∀ (v : PCWorld),
       v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo p.2 x m) :
     ∃ L : ℝ, Tendsto (fun m =>
       (l.map (fun p => p.1.denote P * p.2.expect P m)).sum) atTop (𝓝 L) := by
@@ -1498,14 +1498,14 @@ private lemma expectTerms_converge
   | nil => exact ⟨0, by simp⟩
   | cons p rest ih =>
       obtain ⟨LX, hLX⟩ := p.2.expect_converges P DP (hcode p (by simp)) hP hworld
-        (fun m v hv => hval p (by simp) m v hv)
+        (hval p (by simp))
       have hcodeRest : ∀ q ∈ rest, q.2.PolyThresholdCodes := by
         intro q hq
         exact hcode q (by simp [hq])
-      have hvalRest : ∀ q ∈ rest, ∀ m (v : PCWorld),
+      have hvalRest : ∀ q ∈ rest, ∀ᶠ m in atTop, ∀ (v : PCWorld),
           v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo q.2 x m := by
-        intro q hq m v hv
-        exact hval q (by simp [hq]) m v hv
+        intro q hq
+        exact hval q (by simp [hq])
       obtain ⟨LR, hLR⟩ := ih hcodeRest hvalRest
       refine ⟨p.1.denote P * LX + LR, ?_⟩
       simpa only [List.map_cons, List.sum_cons] using

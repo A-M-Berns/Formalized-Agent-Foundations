@@ -24,6 +24,7 @@ The feature-generic signal/state layer (`buyIndF`/`sellIndF`/`hystChain`) mirror
 concrete lemmas are untouched.
 -/
 import LogicalInduction.Properties.Coherence
+import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.Expectations
 
 namespace LogicalInduction
@@ -697,7 +698,9 @@ lemma excTrader_exploits (P : History) (DP : DeductiveProcess) (X : LUV)
     (hn₀ : 1 ≤ n₀)
     (hgap : 2 / (n₀ : ℝ) ≤ ((b : ℝ) - δ - ((a : ℝ) + δ)) / 2)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ApproxValuesUpTo X x n)
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
+    (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld),
+      v.ConsistentWith (DP.D n) → ∃ x, v.ApproxValuesUpTo X x n)
     (hA : ∃ᶠ n in atTop, X.expect P n < (a : ℝ))
     (hB : ∃ᶠ n in atTop, (b : ℝ) < X.expect P n) :
     (excTrader X a b δ n₀).Exploits P DP := by
@@ -707,14 +710,16 @@ lemma excTrader_exploits (P : History) (DP : DeductiveProcess) (X : LUV)
   have hg : (2 : ℝ) ≤ ((b : ℝ) - δ - ((a : ℝ) + δ)) / 2 * n₀ := by
     rw [div_le_iff₀ hn₀pos] at hgap
     linarith
-  -- the simplified master bound: netWorth ≥ (γ/2)·B₋ − (a+δ) − 1
-  have hmaster : ∀ (N : ℕ) (v : PCWorld), v.ConsistentWith (DP.D N) →
+  obtain ⟨N₀, hN₀⟩ := Filter.eventually_atTop.mp hval
+  -- the simplified master bound (for stages `≥ N₀`, where `hval` holds):
+  -- netWorth ≥ (γ/2)·B₋ − (a+δ) − 1
+  have hmaster : ∀ (N : ℕ), N₀ ≤ N → ∀ (v : PCWorld), v.ConsistentWith (DP.D N) →
       ((b : ℝ) - δ - ((a : ℝ) + δ)) / 2
             * hcBneg (excBuy X a δ n₀) (excSell X b δ n₀) P N
           - ((a : ℝ) + δ) - 1
         ≤ (excTrader X a b δ n₀).netWorth P v N := by
-    intro N v hv
-    obtain ⟨x, hx⟩ := hval N v hv
+    intro N hN v hv
+    obtain ⟨x, hx⟩ := hN₀ N hN v hv
     have h := excTrader_netWorth_ge (b := b) (P := P) hδ ha hn₀ v N hx
     have hB0 : 0 ≤ hcBneg (excBuy X a δ n₀) (excSell X b δ n₀) P N :=
       hcBneg_nonneg _ _ _ _
@@ -724,19 +729,42 @@ lemma excTrader_exploits (P : History) (DP : DeductiveProcess) (X : LUV)
       rw [div_le_iff₀ hn₀pos]
       nlinarith [mul_le_mul_of_nonneg_left hg hB0]
     nlinarith
-  refine exploits_of_bddBelow_of_unbounded _ _ _ ((a : ℝ) + δ + 1) ?_ ?_
-  · rintro y ⟨N, v, hv, rfl⟩
-    have h := hmaster N v hv
-    have hB0 : 0 ≤ hcBneg (excBuy X a δ n₀) (excSell X b δ n₀) P N :=
-      hcBneg_nonneg _ _ _ _
-    nlinarith
-  · intro y
+  set Cearly : ℝ :=
+    ∑ i ∈ Finset.range N₀, ((excTrader X a b δ n₀).strat i).magnitude P with hCe
+  have hCe0 : 0 ≤ Cearly :=
+    Finset.sum_nonneg (fun i _ => Strategy.magnitude_nonneg _ _)
+  refine ⟨⟨-(max ((a : ℝ) + δ + 1) Cearly), ?_⟩, ?_⟩
+  · -- BddBelow: eventual master bound past `N₀`; finitely many early stages by partial magnitude
+    rintro y ⟨N, v, hv, rfl⟩
+    by_cases hN : N₀ ≤ N
+    · have h := hmaster N hN v hv
+      have hB0 : 0 ≤ hcBneg (excBuy X a δ n₀) (excSell X b δ n₀) P N :=
+        hcBneg_nonneg _ _ _ _
+      have : -((a : ℝ) + δ + 1) ≤ (excTrader X a b δ n₀).netWorth P v N := by nlinarith
+      linarith [le_max_left ((a : ℝ) + δ + 1) Cearly]
+    · push_neg at hN
+      have h := (excTrader X a b δ n₀).abs_netWorth_le_partialMagnitude P v hP N
+      have hle : N + 1 ≤ N₀ := hN
+      have hmono : ∑ i ∈ Finset.range (N + 1),
+            ((excTrader X a b δ n₀).strat i).magnitude P ≤ Cearly := by
+        rw [hCe]
+        refine Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_subset_range.mpr hle)
+          (fun i _ _ => Strategy.magnitude_nonneg _ _)
+      have hlow : -Cearly ≤ (excTrader X a b δ n₀).netWorth P v N := by
+        have := neg_le_of_abs_le h; linarith
+      linarith [le_max_right ((a : ℝ) + δ + 1) Cearly]
+  · -- ¬BddAbove: push each `excBneg_unbounded` witness past `N₀` via monotonicity of `B₋`
+    rw [not_bddAbove_iff]
+    intro y
     obtain ⟨K, hK⟩ := exists_nat_gt ((y + ((a : ℝ) + δ) + 1)
       / (((b : ℝ) - δ - ((a : ℝ) + δ)) / 2))
-    obtain ⟨n, hn⟩ := excBneg_unbounded (n₀ := n₀) hδ hab.le hA hB K
-    obtain ⟨v, hv⟩ := hcons n
-    refine ⟨(excTrader X a b δ n₀).netWorth P v n, ⟨n, v, hv, rfl⟩, ?_⟩
-    have h := hmaster n v hv
+    obtain ⟨n', hn'⟩ := excBneg_unbounded (n₀ := n₀) hδ hab.le hA hB K
+    have hnN₀ : N₀ ≤ max n' N₀ := le_max_right _ _
+    have hn : (K : ℝ) ≤ hcBneg (excBuy X a δ n₀) (excSell X b δ n₀) P (max n' N₀) :=
+      hn'.trans (hcBneg_mono _ _ _ (le_max_left _ _))
+    obtain ⟨v, hv⟩ := hcons (max n' N₀)
+    refine ⟨(excTrader X a b δ n₀).netWorth P v (max n' N₀), ⟨max n' N₀, v, hv, rfl⟩, ?_⟩
+    have h := hmaster (max n' N₀) hnN₀ v hv
     rw [div_lt_iff₀ (by linarith : (0:ℝ) < ((b : ℝ) - δ - ((a : ℝ) + δ)) / 2)] at hK
     have hKB := mul_le_mul_of_nonneg_left hn
       (by linarith : (0:ℝ) ≤ ((b : ℝ) - δ - ((a : ℝ) + δ)) / 2)
@@ -992,7 +1020,8 @@ theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
     (hcode : X.PolyThresholdCodes)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ApproxValuesUpTo X x n) :
+    (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld),
+      v.ConsistentWith (DP.D n) → ∃ x, v.ApproxValuesUpTo X x n) :
     ∃ L : ℝ, ConvergesTo (X.expectSeq P) L := by
   by_contra hnc
   obtain ⟨a, b, hab, hA, hB⟩ := exists_rat_oscillation_of_not_exists_convergesTo
@@ -1025,7 +1054,7 @@ theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
     rw [div_le_iff₀ hγ0] at hn₀R
     nlinarith
   exact hLI.noExploit (excTrader X a b δ n₀) (excTrader_ecTok X hcode a b δ n₀)
-    (excTrader_exploits P DP X hδ ha hgapab hn₀ hgap hcons hval hA hB)
+    (excTrader_exploits P DP X hδ ha hgapab hn₀ hgap hcons hP hval hA hB)
 
 #print axioms LUV.expect_converges
 
@@ -1036,6 +1065,6 @@ noncomputable def LUV.expectInf (P : History) (DP : DeductiveProcess)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ApproxValuesUpTo X x n) : ℝ :=
-  (X.expect_converges P DP hcode hP hcons hval).choose
+  (X.expect_converges P DP hcode hP hcons (Filter.Eventually.of_forall hval)).choose
 
 end LogicalInduction

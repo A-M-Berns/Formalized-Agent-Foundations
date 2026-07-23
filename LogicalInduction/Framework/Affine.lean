@@ -153,6 +153,25 @@ lemma HasROI.exists_matured {Tr : Trader} {V : History} {DP : DeductiveProcess}
   refine ⟨max Nmag Nprofit, hNmag _ (le_max_left _ _), ?_⟩
   exact hNprofit _ (le_max_right _ _)
 
+/-- At every finite day, a trader's net worth is bounded in absolute value by the *partial*
+sum of its strategy magnitudes up to that day — no summability needed.  Used to bound the
+finitely many early stages when the value hypothesis holds only eventually. -/
+lemma Trader.abs_netWorth_le_partialMagnitude (Tr : Trader) (V : History) (v : PCWorld)
+    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1) (n : ℕ) :
+    |Tr.netWorth V v n| ≤ ∑ i ∈ Finset.range (n + 1), (Tr.strat i).magnitude V := by
+  calc
+    |Tr.netWorth V v n|
+        ≤ ∑ i ∈ Finset.range (n + 1), |(Tr.strat i).value V v.payout| := by
+          simpa [Trader.netWorth] using
+            (Finset.abs_sum_le_sum_abs (s := Finset.range (n + 1))
+              (f := fun i => (Tr.strat i).value V v.payout))
+    _ ≤ ∑ i ∈ Finset.range (n + 1), (Tr.strat i).magnitude V :=
+          Finset.sum_le_sum (fun i _ => Strategy.abs_value_le_magnitude
+            (Tr.strat i) V v.payout (fun φ => by
+              by_cases hφ : v.Holds φ
+              · exact Or.inr (by simp [PCWorld.payout, hφ])
+              · exact Or.inl (by simp [PCWorld.payout, hφ])) (hP i))
+
 /-- At every finite day, a finite-magnitude trader's net worth in any Boolean world is
 bounded in absolute value by its total magnitude. -/
 lemma Trader.abs_netWorth_le_magnitude (Tr : Trader) (V : History) (v : PCWorld)
