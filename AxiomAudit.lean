@@ -157,6 +157,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   ComputableLUV.lic_expectation_provind_eq_arith
   ComputableLUV.lic_linearity_of_expectation_arith
   ComputableLUV.exppolymax_arith ComputableLUV.wubexp_arith
+  ComputableLUV.expcoh_arith ComputableLUV.perexpkno_arith
   lic_no_expected_net_update lic_no_expected_net_update_conditional
   LUVCombination.BoundedSequence.recurringunbiasednessexp
   LUVCombination.BoundedSequence.prandexp

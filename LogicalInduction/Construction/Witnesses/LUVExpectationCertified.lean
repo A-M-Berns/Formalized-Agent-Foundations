@@ -362,6 +362,100 @@ theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : Arithmetic
   h.wubexp (L.exactTheoryPresentation_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
     hdet b hshare hWgen hWdiv hstrict hsupport hP (L.luvThresholdDP_hworld T) emit bridge
 
+/-! ## Certified liminf/limsup coherence (`thm:expcoh`, `thm:perexpkno`)
+
+`expcoh`/`perexpkno` need both the **completed-world** values (`WorldValued`, all thresholds) and
+the **daily** finite-precision values (`ConvergencePresentation`).  No single scheduled process
+gives both, so we run them over `combinedDP`, the union of the scheduled grid process (for daily
+values) and the full provability enumerator `luvThresholdDP` (for completed-world values). -/
+section Combined
+variable (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+
+/-- The scheduled grid process unioned with the full provability enumerator. -/
+noncomputable def combinedDP : DeductiveProcess where
+  D m := L.gridStage m ∪ (L.luvThresholdDP T).D m
+  mono m := Finset.union_subset_union (L.gridStage_mono m) ((L.luvThresholdDP T).mono m)
+
+lemma combinedDP_consistent_grid {v : PCWorld} {m : ℕ}
+    (hv : v.ConsistentWith ((L.combinedDP T).D m)) : v.ConsistentWith (L.gridStage m) :=
+  fun φ hφ => hv φ (Finset.mem_union_left _ hφ)
+
+lemma combinedDP_consistentWithTheory_luv {v : PCWorld}
+    (hv : v.ConsistentWithTheory (L.combinedDP T)) :
+    v.ConsistentWithTheory (L.luvThresholdDP T) :=
+  fun k φ hφ => hv k φ (Finset.mem_union_right _ hφ)
+
+lemma combinedDP_hworld (m : ℕ) : ∃ v : PCWorld, v.ConsistentWith ((L.combinedDP T).D m) :=
+  ⟨L.luvWorld, fun φ hφ => (Finset.mem_union.mp hφ).elim
+    (L.luvWorld_consistent_gridStage m φ) (L.luvWorld_consistent T m φ)⟩
+
+/-- `WorldValued` over `combinedDP`, from Phase B (over the ⊆ provability enumerator). -/
+lemma worldValued_combinedDP {As : ℕ → LUVCombination}
+    (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i) :
+    LUVCombination.WorldValued As (L.combinedDP T) :=
+  fun n v hv => L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs n v
+    (L.combinedDP_consistentWithTheory_luv T hv)
+
+/-- `ConvergencePresentation` over `combinedDP`: the daily finite-precision values come from the
+scheduled grid (eventually, once the stage reaches the LUV index); the threshold-code efficiency
+certificate is the disclosed `dd:fuel` hypothesis. -/
+noncomputable def convergencePresentation_combinedDP {As : ℕ → LUVCombination}
+    (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.PolyThresholdCodes) :
+    LUVCombination.ConvergencePresentation As (L.combinedDP T) where
+  threshold_code := hcode
+  daily_value := by
+    intro n p hp
+    obtain ⟨i, hie⟩ := hAs n p hp
+    filter_upwards [Filter.eventually_ge_atTop i] with m hmi v hv
+    rw [hie]
+    exact ⟨(L.value i : ℝ), by exact_mod_cast L.value_nonneg i, fun k hk hkm =>
+      L.expectApprox_near_gridDP hk (L.combinedDP_consistent_grid T hv) hmi hkm⟩
+
+/-- **F7 item 5, certified `thm:expcoh`.**  Completed/limiting/diagonal expectation coherence for
+a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` and `ConvergencePresentation`
+representation hypotheses discharged from arithmetic; only the disclosed mesh-softmax operational
+witness and threshold-code efficiency remain.
+Paper node: `thm:expcoh` -/
+theorem expcoh_arith {As : ℕ → LUVCombination} {P : History}
+    [IsLogicalInductor P (L.combinedDP T)]
+    (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
+    (h : LUVCombination.BoundedSequence As P)
+    (ops : LUVCombination.MeshSoftmaxOperationalWitness As P)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.PolyThresholdCodes)
+    (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) :
+    (liminf (LUVCombination.completedLow As P (L.combinedDP T)) atTop ≤
+        liminf (fun n => (As n).expectInf P) atTop ∧
+      liminf (fun n => (As n).expectInf P) atTop ≤
+        liminf (fun n => (As n).expect P n) atTop) ∧
+      (limsup (fun n => (As n).expect P n) atTop ≤
+          limsup (fun n => (As n).expectInf P) atTop ∧
+        limsup (fun n => (As n).expectInf P) atTop ≤
+          limsup (LUVCombination.completedHigh As P (L.combinedDP T)) atTop) :=
+  h.expcoh ops (L.worldValued_combinedDP T hAs)
+    (L.convergencePresentation_combinedDP T hAs hcode) b hb hshare hP (L.combinedDP_hworld T)
+
+/-- **F7 item 5, certified `thm:perexpkno`.**  Persistence of expectation knowledge, with the
+representation hypotheses discharged from arithmetic as in `expcoh_arith`.
+Paper node: `thm:perexpkno` -/
+theorem perexpkno_arith {As : ℕ → LUVCombination} {P : History}
+    [IsLogicalInductor P (L.combinedDP T)]
+    (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
+    (h : LUVCombination.BoundedSequence As P)
+    (ops : LUVCombination.MeshSoftmaxOperationalWitness As P)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.PolyThresholdCodes)
+    (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) :
+    liminf (LUVCombination.futureLow As P) atTop =
+        liminf (fun n => (As n).expectInf P) atTop ∧
+      limsup (LUVCombination.futureHigh As P) atTop =
+        limsup (fun n => (As n).expectInf P) atTop :=
+  h.perexpkno ops (L.worldValued_combinedDP T hAs)
+    (L.convergencePresentation_combinedDP T hAs hcode) b hb hshare hP (L.combinedDP_hworld T)
+
+end Combined
+
 end ComputableLUV
 
 end LogicalInduction
