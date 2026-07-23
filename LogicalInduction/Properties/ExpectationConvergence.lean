@@ -524,7 +524,7 @@ the net worth is at least `γ·B₋ − (a+δ) − (2B₋ + 1)/n₀`, where `γ 
 The `(2B₋+1)/n₀` term is the bundle-payout mismatch (`lem:conluvapprox` at each traded
 day, all of which are `≥ n₀` by the gate). -/
 theorem excTrader_netWorth_ge (hδ : 0 < (δ : ℝ)) (ha : 0 ≤ (a : ℝ) + δ)
-    (hn₀ : 1 ≤ n₀) (v : PCWorld) {x : ℝ} (hx : v.ValuesAt X x) (N : ℕ) :
+    (hn₀ : 1 ≤ n₀) (v : PCWorld) {x : ℝ} (N : ℕ) (hx : v.ApproxValuesUpTo X x N) :
     ((b : ℝ) - δ - ((a : ℝ) + δ)) * hcBneg (excBuy X a δ n₀) (excSell X b δ n₀) P N
         - ((a : ℝ) + δ)
         - (2 * hcBneg (excBuy X a δ n₀) (excSell X b δ n₀) P N + 1) / n₀
@@ -602,13 +602,13 @@ theorem excTrader_netWorth_ge (hδ : 0 < (δ : ℝ)) (ha : 0 ≤ (a : ℝ) + δ)
           hcDelta (excBuy X a δ n₀) (excSell X b δ n₀) P n
             * (X.expectApprox v.payout n - x) := by
     have hn₀R : (1 : ℝ) ≤ (n₀ : ℝ) := by exact_mod_cast hn₀
-    have hpt : ∀ n : ℕ,
+    have hpt : ∀ n : ℕ, n ≤ N →
         -((max (hcDelta (excBuy X a δ n₀) (excSell X b δ n₀) P n) 0
             + max (-(hcDelta (excBuy X a δ n₀) (excSell X b δ n₀) P n)) 0)
               * (1 / (n₀ : ℝ)))
           ≤ hcDelta (excBuy X a δ n₀) (excSell X b δ n₀) P n
               * (X.expectApprox v.payout n - x) := by
-      intro n
+      intro n hnN
       rcases eq_or_ne (hcDelta (excBuy X a δ n₀) (excSell X b δ n₀) P n) 0 with h | h
       · rw [h]; simp
       · have hn : n₀ ≤ n := by
@@ -625,7 +625,7 @@ theorem excTrader_netWorth_ge (hδ : 0 < (δ : ℝ)) (ha : 0 ≤ (a : ℝ) + δ)
                   - (hystChain (excBuy X a δ n₀) (excSell X b δ n₀) n).denote P := h'
               linarith
             exact (excBuy_pos_imp hδ (hystChain_incr_imp hbmem hsmem hlt)).1
-        have hnear := hx.expectApprox_near (n := n) (by omega)
+        have hnear := hx.2 n (by omega) hnN
         have hle : |X.expectApprox v.payout n - x| ≤ 1 / (n₀ : ℝ) := by
           refine hnear.trans ?_
           have h1 : (n₀ : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
@@ -666,7 +666,7 @@ theorem excTrader_netWorth_ge (hδ : 0 < (δ : ℝ)) (ha : 0 ≤ (a : ℝ) + δ)
                 * (1 / (n₀ : ℝ))) := by
           rw [hcBpos, hcBneg, ← Finset.sum_add_distrib, Finset.sum_mul,
             ← Finset.sum_neg_distrib]
-      _ ≤ _ := Finset.sum_le_sum (fun n _ => hpt n)
+      _ ≤ _ := Finset.sum_le_sum (fun n hn => hpt n (Nat.lt_succ_iff.mp (Finset.mem_range.mp hn)))
   linarith
 
 /-- **C3 for the expectation feature**: oscillation of `𝔼(X)` across `[a, b]` drives the
@@ -697,7 +697,7 @@ lemma excTrader_exploits (P : History) (DP : DeductiveProcess) (X : LUV)
     (hn₀ : 1 ≤ n₀)
     (hgap : 2 / (n₀ : ℝ) ≤ ((b : ℝ) - δ - ((a : ℝ) + δ)) / 2)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x)
+    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ApproxValuesUpTo X x n)
     (hA : ∃ᶠ n in atTop, X.expect P n < (a : ℝ))
     (hB : ∃ᶠ n in atTop, (b : ℝ) < X.expect P n) :
     (excTrader X a b δ n₀).Exploits P DP := by
@@ -715,7 +715,7 @@ lemma excTrader_exploits (P : History) (DP : DeductiveProcess) (X : LUV)
         ≤ (excTrader X a b δ n₀).netWorth P v N := by
     intro N v hv
     obtain ⟨x, hx⟩ := hval N v hv
-    have h := excTrader_netWorth_ge (b := b) (P := P) hδ ha hn₀ v hx N
+    have h := excTrader_netWorth_ge (b := b) (P := P) hδ ha hn₀ v N hx
     have hB0 : 0 ≤ hcBneg (excBuy X a δ n₀) (excSell X b δ n₀) P N :=
       hcBneg_nonneg _ _ _ _
     have herr : (2 * hcBneg (excBuy X a δ n₀) (excSell X b δ n₀) P N + 1) / n₀
@@ -992,7 +992,7 @@ theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
     (hcode : X.PolyThresholdCodes)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x) :
+    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ApproxValuesUpTo X x n) :
     ∃ L : ℝ, ConvergesTo (X.expectSeq P) L := by
   by_contra hnc
   obtain ⟨a, b, hab, hA, hB⟩ := exists_rat_oscillation_of_not_exists_convergesTo
@@ -1035,7 +1035,7 @@ noncomputable def LUV.expectInf (P : History) (DP : DeductiveProcess)
     (hcode : X.PolyThresholdCodes)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x) : ℝ :=
+    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ApproxValuesUpTo X x n) : ℝ :=
   (X.expect_converges P DP hcode hP hcons hval).choose
 
 end LogicalInduction

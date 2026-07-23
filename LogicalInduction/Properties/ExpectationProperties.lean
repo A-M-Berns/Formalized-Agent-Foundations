@@ -961,7 +961,7 @@ structure ConvergencePresentation (As : ℕ → LUVCombination)
     (DP : DeductiveProcess) where
   threshold_code : ∀ n p, p ∈ (As n).terms → p.2.PolyThresholdCodes
   daily_value : ∀ n p, p ∈ (As n).terms → ∀ m (v : PCWorld),
-    v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ValuesAt p.2 x
+    v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo p.2 x m
 
 /-- The paper's future expectation extrema use each future day's own mesh. -/
 noncomputable def futureLow (As : ℕ → LUVCombination)
@@ -1491,7 +1491,7 @@ private lemma expectTerms_converge
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ p ∈ l, ∀ m (v : PCWorld),
-      v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ValuesAt p.2 x) :
+      v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo p.2 x m) :
     ∃ L : ℝ, Tendsto (fun m =>
       (l.map (fun p => p.1.denote P * p.2.expect P m)).sum) atTop (𝓝 L) := by
   induction l with
@@ -1503,7 +1503,7 @@ private lemma expectTerms_converge
         intro q hq
         exact hcode q (by simp [hq])
       have hvalRest : ∀ q ∈ rest, ∀ m (v : PCWorld),
-          v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ValuesAt q.2 x := by
+          v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo q.2 x m := by
         intro q hq m v hv
         exact hval q (by simp [hq]) m v hv
       obtain ⟨LR, hLR⟩ := ih hcodeRest hvalRest

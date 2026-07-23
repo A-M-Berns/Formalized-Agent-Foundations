@@ -318,7 +318,7 @@ def convergencePresentation {As : ℕ → LUVCombination}
     rw [S.terms_eq] at hp
     simp only [List.mem_map, List.mem_range] at hp
     obtain ⟨j, hj, rfl⟩ := hp
-    exact ⟨H.value n (S.luv (Nat.pair n j)), H.stage_values n j hj m v hv⟩
+    exact ⟨H.value n (S.luv (Nat.pair n j)), (H.stage_values n j hj m v hv).approxValuesUpTo m⟩
 
 /-- Compact syntax plus completed-theory representation discharges the exact presentation. -/
 def exactTheoryPresentation {As : ℕ → LUVCombination}

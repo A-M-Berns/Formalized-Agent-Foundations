@@ -256,6 +256,20 @@ theorem PCWorld.ValuesAt.expectApprox_near {v : PCWorld} {X : LUV} {x : ℝ}
 
 #print axioms PCWorld.ValuesAt.expectApprox_near
 
+/-- Finite-precision world–value agreement up to precision `N`: the day-`n` approximate
+expectation (for `0 < n ≤ N`) sits within `1/n` of `x`, with `x` nonneg.  Unlike the full
+`PCWorld.ValuesAt` cut, this is realizable by a world that has only seen the grid thresholds up
+to precision `N` — exactly what a finite deductive-process stage reveals.  It is the hypothesis
+the expectation-convergence trader actually consumes (it uses `expectApprox_near` only at
+precisions `≤ N`). -/
+def PCWorld.ApproxValuesUpTo (v : PCWorld) (X : LUV) (x : ℝ) (N : ℕ) : Prop :=
+  0 ≤ x ∧ ∀ n, 0 < n → n ≤ N → |X.expectApprox v.payout n - x| ≤ 1 / n
+
+/-- Full `ValuesAt` implies the finite-precision agreement at every `N`. -/
+lemma PCWorld.ValuesAt.approxValuesUpTo {v : PCWorld} {X : LUV} {x : ℝ}
+    (hx : v.ValuesAt X x) (N : ℕ) : v.ApproxValuesUpTo X x N :=
+  ⟨hx.1, fun n hn _ => hx.expectApprox_near hn⟩
+
 /-! ### Relational expectation-family substrate
 
 The definitions live here because expectation convergence consumes them. The M4 theorems
