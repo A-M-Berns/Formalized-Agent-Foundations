@@ -540,4 +540,62 @@ theorem lic_expectation_provind_ofValuesAt (P : History) (DP : DeductiveProcess)
 
 #print axioms lic_expectation_provind_ofValuesAt
 
+/-- **Expectation Provability Induction** (`thm:expprovind`), upper (`≤`) form.  Dual of the
+lower form through the negated affine mesh.
+Paper node: `thm:expprovind` -/
+theorem lic_expectation_provind_le (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
+    (_hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
+    (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
+      ∃ x : ℝ, x ≤ c ∧ |X.expectApprox v.payout n - x| ≤ 1 / n) :
+    AsympLE (X.expectSeq P) (fun _ => c) := by
+  intro ε hε
+  obtain ⟨N, hN⟩ := exists_nat_gt (2 / ε)
+  have hsemantic : ∀ᶠ n in atTop, ∀ v : PCWorld,
+      v.ConsistentWith (DP.D n) →
+        -c - ε / 2 ≤ ((X.expectAffine n).neg).value P v.payout := by
+    filter_upwards [hval, Filter.eventually_ge_atTop (max 1 N)] with n hval_n hnlarge v hv
+    have hn : 0 < n := by omega
+    have hNn : (2 : ℝ) / ε < (n : ℝ) :=
+      hN.trans_le (by exact_mod_cast (le_trans (le_max_right 1 N) hnlarge))
+    have hnR : (0 : ℝ) < n := by exact_mod_cast hn
+    have hsmall : 1 / (n : ℝ) < ε / 2 := by
+      rw [div_lt_iff₀ hε] at hNn; rw [div_lt_iff₀ hnR]; nlinarith
+    obtain ⟨x, hxc, hnear⟩ := hval_n v hv
+    rw [AffineCombination.neg_value, LUV.expectAffine_value]
+    rw [abs_le] at hnear
+    linarith
+  have hprov := (X.expectAffine_polySequence hcode).neg.affine_provind P DP hcons
+    (-c - ε / 2) hsemantic
+  have hevent := hprov (ε / 2) (by linarith)
+  filter_upwards [hevent] with n hn
+  rw [AffineCombination.neg_price, LUV.expectAffine_price] at hn
+  simpa [LUV.expectSeq] using (show X.expect P n ≤ c + ε by linarith)
+
+#print axioms lic_expectation_provind_le
+
+/-- **Expectation Provability Induction** (`thm:expprovind`), equality (`=`) form.  Combines the
+lower and upper forms: a determined LUV value forces the expectation sequence to it.
+Paper node: `thm:expprovind` -/
+theorem lic_expectation_provind_eq (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
+    (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
+      |X.expectApprox v.payout n - c| ≤ 1 / n) :
+    AsympEq (X.expectSeq P) (fun _ => c) := by
+  have hge : AsympGE (X.expectSeq P) (fun _ => c) :=
+    lic_expectation_provind P DP X hcode hP hcons c
+      (hval.mono (fun n hn v hv => ⟨c, le_rfl, hn v hv⟩))
+  have hle : AsympLE (X.expectSeq P) (fun _ => c) :=
+    lic_expectation_provind_le P DP X hcode hP hcons c
+      (hval.mono (fun n hn v hv => ⟨c, le_rfl, hn v hv⟩))
+  rw [asympEq_iff_eventuallyWithin]
+  intro ε hε
+  filter_upwards [hle ε hε, hge ε hε] with n hnle hnge
+  rw [abs_le]; constructor <;> [linarith; linarith]
+
+#print axioms lic_expectation_provind_eq
+
 end LogicalInduction

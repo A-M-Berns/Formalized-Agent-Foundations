@@ -126,6 +126,29 @@ theorem lic_expectation_provind_arith (P : History) [IsLogicalInductor P (L.grid
       ⟨(L.value i : ℝ), hc,
         L.expectApprox_near_gridDP (by omega) hv (by omega)⟩))
 
+/-- Certified expectation provability induction, upper (`≤`) form.
+Paper node: `thm:expprovind` -/
+theorem lic_expectation_provind_le_arith (P : History) [IsLogicalInductor P (L.gridDP)]
+    (i : ℕ) (hcode : (toLUV i).PolyThresholdCodes)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (c : ℝ) (hc : (L.value i : ℝ) ≤ c) :
+    AsympLE ((toLUV i).expectSeq P) (fun _ => c) :=
+  lic_expectation_provind_le P (L.gridDP) (toLUV i) hcode hP L.gridDP_hcons c
+    ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
+      ⟨(L.value i : ℝ), hc, L.expectApprox_near_gridDP (by omega) hv (by omega)⟩))
+
+/-- Certified expectation provability induction, equality (`=`) form: a determined
+`dd:luv-arith` value forces the expectation sequence to it.
+Paper node: `thm:expprovind` -/
+theorem lic_expectation_provind_eq_arith (P : History) [IsLogicalInductor P (L.gridDP)]
+    (i : ℕ) (hcode : (toLUV i).PolyThresholdCodes)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
+    (c : ℝ) (hc : (L.value i : ℝ) = c) :
+    AsympEq ((toLUV i).expectSeq P) (fun _ => c) :=
+  lic_expectation_provind_eq P (L.gridDP) (toLUV i) hcode hP L.gridDP_hcons c
+    ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
+      hc ▸ L.expectApprox_near_gridDP (by omega) hv (by omega)))
+
 /-- **F7 item 5, certified linearity of expectation.**  Linearity for `dd:luv-arith` LUVs `Xᵢ`,
 `Xⱼ`, `Xₖ`, with the world-value and linear-relation hypotheses discharged from arithmetic: the
 sole content is the plain rational identity `valueₖ = a·valueᵢ + b·valueⱼ`.
@@ -145,6 +168,26 @@ theorem lic_linearity_of_expectation_arith (P : History) [IsLogicalInductor P (L
         L.expectApprox_near_gridDP (by omega) hv (by omega),
         L.expectApprox_near_gridDP (by omega) hv (by omega),
         L.expectApprox_near_gridDP (by omega) hv (by omega)⟩))
+
+/-- **F7 item 5, certified `thm:exppolymax`.**  The sequence-level polynomial-max expectation
+identity for a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation*
+hypothesis discharged from arithmetic (Phase B, over `luvThresholdDP` which reveals every provable
+threshold).  The residual `MeshSoftmaxOperationalWitness` is the disclosed operational/efficiency
+boundary the paper's own construction supplies.
+Paper node: `thm:exppolymax` -/
+theorem exppolymax_arith {As : ℕ → LUVCombination} {P : History} {T : ArithmeticTheory}
+    [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [IsLogicalInductor P (L.luvThresholdDP T)]
+    (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
+    (h : LUVCombination.BoundedSequence As P) (ops : LUVCombination.MeshSoftmaxOperationalWitness As P)
+    (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) :
+    liminf (fun n => (As n).expect P n) atTop =
+        liminf (LUVCombination.futureHigh As P) atTop ∧
+      limsup (fun n => (As n).expect P n) atTop =
+        limsup (LUVCombination.futureLow As P) atTop :=
+  h.exppolymax ops (L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
+    b hb hshare hP (L.luvThresholdDP_hworld T)
 
 end ComputableLUV
 

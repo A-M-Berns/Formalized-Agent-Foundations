@@ -139,6 +139,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 #assert_axioms_clean
   lic_linearity_of_expectation lic_expectation_indicator lic_expectation_provind
   lic_linearity_of_expectation_ofValuesAt lic_expectation_provind_ofValuesAt
+  lic_expectation_provind_le lic_expectation_provind_eq
   lic_introspection lic_paradox_resistance lic_expectations_of_probabilities
   lic_iterated_expectations lic_self_trust lic_expected_future_expectations
 
@@ -149,7 +150,10 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 -- process realizing them (`luvArithmeticPresentation`) are internal infrastructure.
 #assert_axioms_clean
   ComputableLUV.lic_expectation_provind_arith
+  ComputableLUV.lic_expectation_provind_le_arith
+  ComputableLUV.lic_expectation_provind_eq_arith
   ComputableLUV.lic_linearity_of_expectation_arith
+  ComputableLUV.exppolymax_arith
   lic_no_expected_net_update lic_no_expected_net_update_conditional
   LUVCombination.BoundedSequence.recurringunbiasednessexp
   LUVCombination.BoundedSequence.prandexp
