@@ -19,3 +19,4 @@ import LogicalInduction.Construction.Witnesses.FeedbackTruth
 import LogicalInduction.Construction.Witnesses.FeedbackUnconditional
 import LogicalInduction.Construction.Witnesses.UnconditionalOverLIA
 import LogicalInduction.Construction.Witnesses.LUVSyntax
+import LogicalInduction.Construction.Witnesses.LUVArithmetic

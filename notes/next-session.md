@@ -75,6 +75,117 @@ Regenerate with the same `check_endpoint_coverage.py` helpers (`inventory_member
 equivalent per-decl scan. Watch the `[[li-primrec-natsqrt-blowup]]` files if any touched proof
 goes near `Finset`/`Nat.sqrt`.
 
+## 🔎 F7 full-scope plan — first-order LUV reconstruction (2026-07-23, scoped after repo+Foundation survey)
+
+**Question that prompted this:** how much work is *full-scope* F7 (replacing the disclosed
+propositional-threshold LUV abstraction with a certified first-order arithmetic LUV)?
+
+**Headline: not a Brouwer-class blocker.** My first-pass worry was that F7 item 2 ("worlds
+whose encoded model may be nonstandard") needed arithmetized satisfaction Foundation doesn't
+expose. **That worry is wrong.** Foundation ships the whole toolkit, and the repo already uses
+it for the computation/halting tail. The infrastructure exists; F7 is a substantial *replication
++ refactor*, not a missing dependency.
+
+### What the survey found (so the next session doesn't re-derive it)
+
+**Foundation has everything item 2 needs:**
+- Tarski semantics over an *arbitrary* carrier `M` — `Structure L M`, `Semiformula.Eval`,
+  `Models`, `⊧ₘ` (`.lake/packages/foundation/Foundation/FirstOrder/Basic/Semantics/Semantics.lean`).
+  Nonstandard models are just non-`ℕ` choices of `M`; nothing special is required to talk about them.
+- Absoluteness across models — `Foundation/FirstOrder/Arithmetic/Definability/Absoluteness.lean`:
+  `shigmaZero_absolute` (Δ₀/Σ₀ absolute), `sigmaOne_upward_absolute`, `piOne_downward_absolute`,
+  `deltaOne_absolute`, `models_iff_of_Delta1`, `models_iff_provable_of_Delta1_param`. **These are
+  the tools that discharge the standard↔nonstandard agreement** — a Δ₁-defined threshold predicate
+  agrees across every `V ⊧ₘ* T`. This is exactly how the paper's "Θ represents computations"
+  clause is meant to be cashed.
+- `Definability/{Definable,BoundedDefinable,Hierarchy}.lean` for the Σ/Π/Δ classification and
+  `DefinedFunction` graph-definability.
+
+**The repo already does this pattern — for computations, not LUVs.** `Construction/Witnesses/
+ComputationSyntax.lean` (572 lines) is the template to copy:
+- `ArithmeticSemisentence 1` one-free-var schemas (`universalHaltingSchema`, etc.);
+- agreement proofs `ℕ ⊧ₘ schema/[↑z] ↔ <recursion-theoretic predicate>` via `models_iff`,
+  `Semiformula.eval_substs`;
+- `computationClaimSentence : ComputationClaim → Sentence` erasing an arithmetic claim to a
+  **propositional** atom (the repo's `Sentence = LO.Propositional.Formula ℕ`, `Framework/
+  Foundations.lean:34` — the market language is propositional; FFL lives only in the Witnesses layer);
+- `ComputationTheoryPresentation` carrying `Theory.Δ₁ T`, and the represented-claim interfaces
+  that already lean on Σ₁ soundness for the nonstandard-world direction.
+
+So F7's "new" content is: **redo ComputationSyntax's arithmetic→atom→agreement pattern for a
+value-defining formula and rational thresholds**, then derive the existing presentation
+interfaces from it instead of assuming them.
+
+**Where the current abstraction sits (item 3/4 refactor surface):**
+- `Framework/Expectations.lean` — `structure LUV where gt : ℚ → Sentence` (line 64) is a
+  Dedekind-cut-of-threshold-atoms; `PCWorld.ValuesAt v X x` (line 143) is the world↔value
+  coherence condition; `expectApprox`/`expect` (89–94) and the proven `ValuesAt.expectApprox_near`
+  counting lemma are all *value-level* and stay as-is.
+- The four caller-supplied interfaces to be *derived* rather than *assumed*: `ValuesAt`,
+  `WorldValued`, `ExactTheoryPresentation`, `ConvergencePresentation`. Usage counts:
+  `ExpectationProperties.lean` **63**, `QuotationAffine.lean` 35, `ComputationDP.lean` 8,
+  `SelfTrust.lean` 8, plus ~10 more files — **~130 use-sites total across 14 files.**
+- `Construction/Witnesses/LUVSyntax.lean` (1340 lines) already builds the **varying-sequence**
+  triangular-mesh threshold-code machinery (`meshSentence`, `triangularWeight`, uniform code
+  generators) and its own `convergencePresentation`/`exactTheoryPresentation`/`worldValued`
+  defs — but **propositionally** (it does *not* import FirstOrder). Item 5's varying-sequence
+  scaffolding is here; what's missing underneath is the arithmetic certification.
+
+**The two named weakened endpoints (item 5):**
+- `lic_linearity_of_expectation` — fixed `a,b,X,Y,Z`; paper wants an efficiently-generated
+  *varying sequence*. Sequence-level cousins already exist (`BoundedSequence.exppolymax/perexpkno/
+  expcoh/wubexp`, `ExpectationProperties.lean:1861/1912/1980/2204`) but carry the presentation
+  interfaces and aren't all in `AxiomAudit`.
+- `lic_expectation_provind` — one LUV lower bound; paper wants arbitrary bounded LUV-combination
+  sequence in all three comparison forms.
+
+### Scoped plan, in dependency order (each step green before the next)
+
+1. **`LUVArithmetic.lean` (new Witness, ~ComputationSyntax-sized, 400–600 ln).** Define a
+   one-free-variable arithmetic LUV: a `Semisentence ℒₒᵣ 1` (or a `DefinedFunction` graph) with
+   proofs the theory proves unique existence and `[0,1]`-valuedness. Build the rational threshold
+   `Semisentence`s `⌜X > q⌝` and prove `ℕ ⊧ₘ thresh q ↔ (definedValue > q)`. **Copy
+   ComputationSyntax's `models_iff`/`eval_substs` idiom.** *Risk here is not availability but
+   arithmetization labor* — expressing "unique real in [0,1] via its rational cuts" as a Δ₁
+   predicate and proving properness (`ProperOn ℕ`, `ProperOn V`). Budget the most uncertainty here.
+2. **Nonstandard-world agreement (the item-2 core).** Prove the threshold predicate is Δ₁ and
+   apply `deltaOne_absolute` / `models_iff_of_Delta1` so `V ⊧ₘ thresh q ↔ ...` for every
+   `V ⊧ₘ* T`, matching against the uniquely-defined value in the (possibly nonstandard) `V`.
+   This is where the paper's "consistent worlds assign the true value" clause is actually earned.
+   **If a step needs full satisfaction of an unbounded formula in a nonstandard model** (not just
+   Δ₁ absoluteness) that is the one place to stop-and-report — but the computation tail suggests
+   Σ₁-soundness + Δ₁ absoluteness suffices.
+3. **Erasure to the propositional interface + derive the four presentations.** Map the certified
+   arithmetic LUV to `Framework.LUV` via `computationClaimSentence`-style erasure, then *prove*
+   `ExactTheoryPresentation`/`WorldValued`/`ValuesAt`/`ConvergencePresentation` (currently
+   hypotheses) as lemmas about the erased object. Provide the uniform polynomial threshold-code
+   generators the trader compilers consume (LUVSyntax's mesh generators are the propositional
+   half; wire them to the arithmetic source). This is the wide, mostly-mechanical refactor across
+   the ~130 sites — but done by *supplying* the instances, so most call sites shrink rather than
+   change shape.
+4. **Finish the paper-strength sequence endpoints (item 5).** Promote `lic_linearity_of_expectation`
+   to the efficiently-generated varying sequence (consume LUVSyntax's triangular mesh), and
+   `lic_expectation_provind` to arbitrary bounded LUV-combination sequences in all three comparison
+   forms. Add these + their constructed-LIA instantiations to `AxiomAudit.lean` and the coverage
+   checker.
+
+### Effort estimate & recommendation
+
+- **If Σ₁-soundness + Δ₁ absoluteness suffices for step 2 (my expectation):** roughly the size of
+  **F1 (LimitCoherence) + F4 (Conditioning) combined** — call it 3–4 focused sessions, dominated by
+  step 1's arithmetization and step 3's breadth. Bounded and tractable.
+- **If step 2 hits a genuine full-satisfaction-in-nonstandard-models wall:** that sub-step blocks
+  and F7 stays disclosed; steps 1/3/4 are still independently worth landing.
+
+**Recommendation unchanged from the survey:** full-scope F7 is *off* the critical path to the
+conditional+disclosed green endpoint, and the audit's own Disposition allows it to remain a
+disclosed propositional abstraction provided public claims say the expectation tail is relative
+to threshold/world-value presentation interfaces (not a first-order `def:luv` reconstruction).
+The cheap honest win is **step 4 alone** — finish the sequence-level capstones on the *existing*
+propositional bridge and inventory them — which closes the "weakened conclusion" half of F7
+without the arithmetization. Open steps 1–3 only as a deliberate, separately-scoped spike.
+See [`m7-errata-audit.md`](m7-errata-audit.md) F7 for the paper-faithfulness framing.
+
 ## ✅ Session 5 summary (2026-07-22) — F3 public diagonal constructed
 
 The adversarial audit's F3 finding is resolved. `QuotationAffine.lean` now applies Kleene's
