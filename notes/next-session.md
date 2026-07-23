@@ -128,17 +128,29 @@ Files (all green, axiom-clean `propext/Classical.choice/Quot.sound`, in `Logical
   item-5 ask ("expprovind for arbitrary bounded LUV-combination sequences in each of the paper's
   three comparison forms"), complete.
 
+**`perexpkno` / `expcoh` certified (done):**
+- Two restructures of the **core M4 convergence chain** made this possible, both green and
+  behaviour-preserving (the trader math is untouched):
+  - **`ValuesAt → ApproxValuesUpTo`**: `excTrader_netWorth_ge` only ever used `expectApprox_near`
+    at precisions `≤ N`, so the chain (`excTrader_exploits` / `expect_converges` /
+    `expectTerms_converge` / `ConvergencePresentation.daily_value`) now takes finite-precision
+    world agreement; `ValuesAt.approxValuesUpTo` keeps every prior caller working.
+  - **`∀ → ∀ᶠ`**: `BddBelow` comes from trader boundedness (`abs_netWorth_le_partialMagnitude`,
+    new) not the value hypothesis, and the unbounded direction uses only the arbitrarily-large
+    `excBneg_unbounded` stages — so the value agreement need hold only *eventually*. This is
+    exactly what a scheduled-reveal DP provides (no finite stage reveals LUV `i`'s grid before
+    stage `i`; every stage `≥ i` does).
+- `combinedDP = gridStage ∪ luvThresholdDP` supplies both `WorldValued` (completed-world values,
+  all thresholds, from the provability enumerator) and `ConvergencePresentation` (eventual daily
+  finite-precision values, from the scheduled grid).  `expcoh_arith` / `perexpkno_arith` discharge
+  both representation hypotheses from arithmetic; only the disclosed mesh-softmax operational
+  witness and threshold-code efficiency remain.  In `AxiomAudit` (63 labels); checks pass.
+
 **Remaining:**
-1. **`perexpkno` / `expcoh`** (liminf/limsup coherence, F9-coverage-table items — *not* on the
-   audit's explicit item-5 repair list) — take `ConvergencePresentation`, whose `daily_value` is
-   *per-stage full `ValuesAt`*, consumed through the **core M4 `LUV.expect_converges`** trader
-   (`hval` funnels into `excTrader_exploits`). Certifying needs that whole convergence chain
-   restructured to finite precision (the item-5a move, but on an audited core result) — deferred
-   as high-risk to the milestone's existing guarantees; not attempted.
-2. **Efficiency certificates** — `PolyThresholdCodes (toLUV i)` and computable `gridDP`/
-   `luvThresholdDP`. The disclosed `dd:fuel`/inductor-existence boundary the **entire property
-   tail** rests on; explicitly out of scope per Anson (2026-07-23). The certified endpoints are
-   conditional on it exactly as every other property endpoint is.
+1. **Efficiency certificates** — `PolyThresholdCodes (toLUV i)` and computable `gridDP`/
+   `luvThresholdDP`/`combinedDP`. The disclosed `dd:fuel`/inductor-existence boundary the **entire
+   property tail** rests on; explicitly out of scope per Anson (2026-07-23). The certified endpoints
+   are conditional on it exactly as every other property endpoint is.
 
 **Net:** F7 items 1, 2, 3 complete and non-vacuous. Item 5's explicit repair list — varying-sequence
 linearity and expectation provability induction (single-LUV in all three comparison forms, plus the
