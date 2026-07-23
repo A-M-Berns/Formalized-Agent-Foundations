@@ -75,6 +75,66 @@ Regenerate with the same `check_endpoint_coverage.py` helpers (`inventory_member
 equivalent per-decl scan. Watch the `[[li-primrec-natsqrt-blowup]]` files if any touched proof
 goes near `Finset`/`Nat.sqrt`.
 
+## 🚧 F7 IMPLEMENTATION STATUS (2026-07-23) — Phases A/B/C landed green; D blocked on endpoint restructure
+
+Three new axiom-clean, sorry-free files (built into `LogicalInduction`, 2658 jobs green):
+
+- **Phase A — `Construction/Witnesses/LUVArithmetic.lean`** (`dd:luv-arith`, item 1+2).
+  `ComputableLUV` = the paper's computable-`[0,1]`-valued-function LUV (`def:luv`'s own worked
+  example): value `num i / den i`. Threshold queries arithmetized as `codeOfREPred` of a
+  **decidable ℕ cross-multiplication** predicate (ℚ/ℤ have no `Primrec` in this Mathlib, so the
+  sign+magnitude are folded into a single `<` over ℕ). `thresholdPred_code_iff` proves the ℕ
+  predicate matches `r < value`; `threshold_provable`/`threshold_refutable` give, via
+  `re_complete`, that `Θ` **proves** every true threshold and **refutes** every false one.
+  Watch: the `Nat.unpair`→`Nat.sqrt` whnf blowup ([[li-primrec-natsqrt-blowup]]) hits the
+  computability proof — fixed with `attribute [local irreducible] Nat.sqrt in`.
+
+- **Phase B — `Construction/Witnesses/LUVPresentation.lean`** (item 3, the core payoff).
+  `ArithmeticLUVPresentation L DP T` (DP reveals the `Θ`-provable threshold literals — the exact
+  analogue of `ComputationTheoryPresentation`). `threshold_holds_iff`: **every world consistent
+  with the process holds `⌜Xᵢ > r⌝` iff `r < numᵢ/denᵢ`**, no nonstandard slack (the decidable
+  collapse of `def:luv`'s sup). From it, `exactTheoryPresentation_ofArithmetic`,
+  `worldValued_ofArithmetic`, `valuesAt_ofArithmetic` — the presentation interfaces are now
+  **theorems**, not raw hypotheses, for the `dd:luv-arith` class.
+
+- **Phase C — `Construction/Witnesses/LUVDeductiveProcess.lean`** (non-vacuity / satisfiability).
+  `luvThresholdDP` (two-tag provability-enumerator mirroring `theoremDP`) + `luvArithmeticPresentation`
+  proving the Phase-B premise **satisfiable**; `luvWorld` (standard truth) is consistent with every
+  stage → `luvThresholdDP_hworld`. Meets the `CLAUDE.md` satisfiability bar for Phase B.
+
+**What is NOT done (F7 is not fully finished):**
+
+1. **Efficient-computability certificate for `luvThresholdDP`** — the `theoremDP_computable`
+   analogue (~200 lines primrec encoding, natsqrt hazard). Needed to compile the process into an
+   actual `LIA` via the generic `LIA_is_logical_inductor (DP) (ComputableDeductiveProcess DP)` and
+   get *fully unconditional* endpoints. Deferred; mechanical copy of `ComputationDP`'s tail.
+
+2. **`PolyThresholdCodes (toLUV i)`** — the efficiency certificate the affine/expectation traders
+   consume (`ConvergencePresentation.threshold_code`). `toLUV`'s codes are primrec but proving
+   `PolyFueled` needs the `EF.cost` machinery; not built.
+
+3. **Item 5 (the two weakened endpoints) — BLOCKED on an architectural obstruction I hit.**
+   `lic_linearity_of_expectation` / `lic_expectation_provind` (`Properties/ExpectationAffine.lean:394,461`)
+   take `hvals : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x` — quantified
+   over worlds consistent with a **single finite stage** `DP.D n`. But `PCWorld.ValuesAt` demands
+   cut-coherence for **all** `r : ℚ`, which no finite stage can pin. Phase B's derivation only
+   yields `ValuesAt` for **fully** `ConsistentWithTheory` worlds (all stages). So the certified
+   discharge of these endpoints requires **restructuring them to quantify over theory-consistent
+   worlds** (or reformulating `hvals` to per-stage-finite-precision) — a change to the pre-existing
+   `ExpectationAffine`/`ExpectationProperties` surface, not a bolt-on wrapper. This is the real
+   remaining content of item 5 and was not attempted (it risks the green invariant on a large,
+   already-audited surface). The varying-sequence linearity and 3-form bounded-combination provind
+   sit on top of that restructure.
+
+4. **AxiomAudit wiring** for any new capstones (pending item 5).
+
+**Assessment:** items 1, 2, and 3 (for theory-consistent worlds) are done and green; the world-value
+interfaces are genuinely derived-from-arithmetic rather than assumed, and the premise is proved
+satisfiable. Item 5 and the unconditional instantiation remain, gated respectively on the endpoint
+restructure and the efficiency certificate. The `dd:luv-arith` boundary (computable-function LUVs,
+not arbitrary value-defining formulas) is disclosed in `LUVArithmetic.lean`'s header and must appear
+in any public claim.
+
 ## 🔎 F7 full-scope plan — first-order LUV reconstruction (2026-07-23, scoped after repo+Foundation survey)
 
 **Question that prompted this:** how much work is *full-scope* F7 (replacing the disclosed
