@@ -797,6 +797,69 @@ lemma PolySequence.affine_provind_theory_tendsto_zero
   rw [sub_zero, abs_le]
   exact ⟨hnlo.le, hnhi.le⟩
 
+/-- One-sided (`≤`) paper-facing affine provability induction with **vanishing error**: if the
+completed-theory value stays below `c` up to a vanishing slack, the diagonal price is `≲ₙ c`.
+This is the one-sided analogue of `affine_provind_theory_tendsto_zero`, needed by the mesh of a
+LUV-combination whose value is determined only up to the mesh's `O(1/n)` error. -/
+lemma PolySequence.affine_provind_theory_le_const
+    {As : ℕ → AffineCombination} (h : PolySequence As)
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (hbounded : BoundedAffinePrices As P)
+    (hmag : ∃ C : ℝ, ∀ n, (As n).magnitude P ≤ C)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (c : ℝ)
+    (hval : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld,
+      v.ConsistentWithTheory DP → (As n).value P v.payout ≤ c + ε) :
+    (fun n => (As n).price P n) ≲ₙ fun _ => c := by
+  let hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
+  intro ε hε
+  obtain ⟨_, hdhi, _, _, _, _⟩ := hbounded.filterBounds
+  obtain ⟨_, _, hthlo, _⟩ :=
+    h.completedAffineExtrema_filterBounds P DP hbounded hmag hP hworld
+  have hcoh := h.affcoh P DP hbounded hmag hworld
+  have hnear := hval (ε / 2) (by linarith)
+  have hhigh : ∀ᶠ n in atTop, completedAffineHigh As P DP n ≤ c + ε / 2 := by
+    filter_upwards [hnear] with n hn
+    apply csSup_le (completedAffineValues_nonempty DP (As n) P hworld)
+    rintro x ⟨v, hv, rfl⟩
+    exact hn v hv
+  have hlimsupHigh : limsup (completedAffineHigh As P DP) atTop ≤ c + ε / 2 :=
+    limsup_le_of_le hthlo.isCobounded_flip hhigh
+  have hlimsupPrice : limsup (fun n => (As n).price P n) atTop ≤ c + ε / 2 :=
+    (hcoh.2.1.trans hcoh.2.2).trans hlimsupHigh
+  have hupper : ∀ᶠ n in atTop, (As n).price P n < c + ε :=
+    eventually_lt_of_limsup_lt (by linarith) hdhi
+  filter_upwards [hupper] with n hnhi
+  linarith [hnhi]
+
+/-- One-sided (`≥`) vanishing-error affine provability induction, dual to
+`affine_provind_theory_le_const` through the negated sequence. -/
+lemma PolySequence.affine_provind_theory_ge_const
+    {As : ℕ → AffineCombination} (h : PolySequence As)
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (hbounded : BoundedAffinePrices As P)
+    (hmag : ∃ C : ℝ, ∀ n, (As n).magnitude P ≤ C)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (c : ℝ)
+    (hval : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld,
+      v.ConsistentWithTheory DP → c - ε ≤ (As n).value P v.payout) :
+    (fun n => (As n).price P n) ≳ₙ fun _ => c := by
+  have hnegBound : BoundedAffinePrices (fun n => (As n).neg) P := by
+    obtain ⟨B, hB0, hB⟩ := hbounded
+    exact ⟨B, hB0, fun n m => by simpa [neg_price] using hB n m⟩
+  have hnegMag : ∃ C : ℝ, ∀ n, ((As n).neg).magnitude P ≤ C := by
+    obtain ⟨C, hC⟩ := hmag
+    exact ⟨C, fun n => by simpa [neg_magnitude] using hC n⟩
+  have hneg := h.neg.affine_provind_theory_le_const P DP hnegBound hnegMag hworld (-c)
+    (fun ε hε => by
+      filter_upwards [hval ε hε] with n hn v hv
+      rw [neg_value]; linarith [hn v hv])
+  intro ε hε
+  filter_upwards [hneg ε hε] with n hn
+  rw [neg_price] at hn
+  linarith
+
 #print axioms eventually_affineValue_gt_of_theory
 #print axioms AffineCombination.PolySequence.eventualMember
 #print axioms AffineCombination.PolySequence.completedTheoryLow_le_limitingValue
