@@ -100,20 +100,39 @@ Files (all green, axiom-clean `propext/Classical.choice/Quot.sound`, in `Logical
   discharges", resolved end-to-end. **(item 5c)** Wired into `AxiomAudit.lean`; paper-node +
   endpoint-coverage checks pass.
 
-**Remaining (extensions + disclosed boundaries, not blockers):**
-1. **Varying-sequence** linearity (efficiently-generated `(aₙ,bₙ,Xₙ,Yₙ,Zₙ)`) and the **≤ / =**
-   comparison forms of provind — the certified `_arith` endpoints cover the fixed-arity `≥` case
-   (the heart of the audit complaint); the sequence/3-form variants are additional endpoints on the
-   same machinery.
-2. **Efficient-computability certificates** — `gridDP`/`luvThresholdDP` computable (the
-   `theoremDP_computable` analogue) to discharge `[IsLogicalInductor P (gridDP L)]` unconditionally,
-   and `PolyThresholdCodes (toLUV i)`. These are the disclosed `dd:fuel`/inductor-existence
-   boundaries; the certified endpoints remain conditional on them, exactly as the rest of the
-   property tail is conditional on inductor existence (risk posture).
+**Item 5 — three comparison forms + a certified sequence capstone (later same day):**
+- `lic_expectation_provind_le` / `_eq` (ExpectationAffine, via neg-duality of the affine mesh) —
+  completes the paper's **three comparison forms** (`≥`,`≤`,`=`); certified `_arith` versions in
+  `LUVExpectationCertified.lean`.
+- `ComputableLUV.exppolymax_arith` — the **sequence-level** `thm:exppolymax` for an arbitrary
+  `dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation* hypothesis
+  discharged from arithmetic via Phase B (over `luvThresholdDP`). The residual
+  `MeshSoftmaxOperationalWitness` is the disclosed operational boundary. All in `AxiomAudit`; checks
+  pass (61 labels).
 
-**Net:** F7 items 1, 2, 3 are complete and non-vacuous; item 5's two named endpoints are certified
-against arithmetic for the fixed-arity case. The `dd:luv-arith` boundary (computable-function LUVs,
-not arbitrary value-defining formulas) is disclosed in `LUVArithmetic.lean`'s header.
+**Remaining (extensions + disclosed boundaries, not blockers):**
+1. **Varying-sequence linearity** (`(aₙ,bₙ,Xₙ,Yₙ,Zₙ)`) — needs a `PolySequence` of the varying
+   `linearityAffine`; new construction, not a wrapper. The fixed-arity certified `_arith` linearity
+   is done.
+2. **`wubexp` sequence capstone** — certifiable by the same Phase-B pattern as `exppolymax` (it
+   takes `ExactTheoryPresentation`, which Phase B derives) plus its feedback witnesses; not yet
+   written.
+3. **`perexpkno` / `expcoh`** — these take `ConvergencePresentation`, whose `daily_value` field is
+   *per-stage full `ValuesAt`* — the same finite-stage/infinite-cut unsatisfiability the endpoints
+   had. Certifying them needs `ConvergencePresentation` restructured to finite precision (the same
+   move as item 5a), a deeper change.
+4. **Efficiency certificates** — `PolyThresholdCodes (toLUV i)` and `gridDP`/`luvThresholdDP`
+   computable (the `theoremDP_computable` analogue → discharges `[IsLogicalInductor P (gridDP L)]`
+   unconditionally). These are the disclosed `dd:fuel`/inductor-existence boundaries that the
+   **entire property tail** rests on — no endpoint in the repo discharges them; the certified F7
+   endpoints are conditional on them exactly as every other property endpoint is (risk posture).
+
+**Net:** F7 items 1, 2, 3 complete and non-vacuous. Item 5: both named endpoints certified against
+arithmetic, all three comparison forms present, one sequence capstone (`exppolymax`) certified via
+Phase B. What the certified endpoints still *assume* is exactly the project-wide disclosed set
+(inductor existence + efficiency codes), never a LUV-specific world-value hypothesis. The
+`dd:luv-arith` boundary (computable-function LUVs, not arbitrary value-defining formulas) is
+disclosed in `LUVArithmetic.lean`'s header.
 
 ## 🗄 (superseded, kept for history) F7 Phases A/B/C landed green; D blocked on endpoint restructure
 
