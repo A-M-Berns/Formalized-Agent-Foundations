@@ -100,39 +100,46 @@ Files (all green, axiom-clean `propext/Classical.choice/Quot.sound`, in `Logical
   discharges", resolved end-to-end. **(item 5c)** Wired into `AxiomAudit.lean`; paper-node +
   endpoint-coverage checks pass.
 
-**Item 5 — three comparison forms + a certified sequence capstone (later same day):**
+**Item 5 — three comparison forms, varying-sequence linearity, three sequence capstones:**
 - `lic_expectation_provind_le` / `_eq` (ExpectationAffine, via neg-duality of the affine mesh) —
-  completes the paper's **three comparison forms** (`≥`,`≤`,`=`); certified `_arith` versions in
+  the paper's **three comparison forms** (`≥`,`≤`,`=`); certified `_arith` versions in
   `LUVExpectationCertified.lean`.
-- `ComputableLUV.exppolymax_arith` — the **sequence-level** `thm:exppolymax` for an arbitrary
-  `dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation* hypothesis
-  discharged from arithmetic via Phase B (over `luvThresholdDP`). The residual
-  `MeshSoftmaxOperationalWitness` is the disclosed operational boundary. All in `AxiomAudit`; checks
-  pass (61 labels).
+- `lic_expect_combination_provind_zero` — **combination-level** expectation provability induction
+  (`E` of a determined-at-0 bounded LUV-combination sequence `≈ₙ 0`), assembled from the
+  combination mesh via `affine_provind_theory_tendsto_zero` (whose `ConsistentWithTheory`
+  hypothesis Phase B's `ExactTheoryPresentation` supplies — no fresh polySequence needed).
+- `lic_linearity_of_expectation_seq` — the paper's genuine **varying-sequence** Linearity of
+  Expectation (`aₙEₙ(Xₙ)+bₙEₙ(Yₙ) ≈ Eₙ(Zₙ)`), derived exactly as the paper does (`app:loe`) from
+  the combination provind on `aX+bY−Z`.
+- `ComputableLUV.exppolymax_arith` and `wubexp_arith` — the **sequence-level** `thm:exppolymax`
+  and `thm:wubexp` for arbitrary `dd:luv-arith` LUV-combination sequences, with the
+  `WorldValued` / `ExactTheoryPresentation` *representation* hypotheses discharged from arithmetic
+  via Phase B (over `luvThresholdDP`). Residual mesh-softmax / feedback witnesses are the
+  disclosed operational boundaries.
+- All in `AxiomAudit`; paper-node + coverage checks pass (61 labels).
 
-**Remaining (extensions + disclosed boundaries, not blockers):**
-1. **Varying-sequence linearity** (`(aₙ,bₙ,Xₙ,Yₙ,Zₙ)`) — needs a `PolySequence` of the varying
-   `linearityAffine`; new construction, not a wrapper. The fixed-arity certified `_arith` linearity
-   is done.
-2. **`wubexp` sequence capstone** — certifiable by the same Phase-B pattern as `exppolymax` (it
-   takes `ExactTheoryPresentation`, which Phase B derives) plus its feedback witnesses; not yet
-   written.
-3. **`perexpkno` / `expcoh`** — these take `ConvergencePresentation`, whose `daily_value` field is
-   *per-stage full `ValuesAt`* — the same finite-stage/infinite-cut unsatisfiability the endpoints
-   had. Certifying them needs `ConvergencePresentation` restructured to finite precision (the same
-   move as item 5a), a deeper change.
-4. **Efficiency certificates** — `PolyThresholdCodes (toLUV i)` and `gridDP`/`luvThresholdDP`
-   computable (the `theoremDP_computable` analogue → discharges `[IsLogicalInductor P (gridDP L)]`
-   unconditionally). These are the disclosed `dd:fuel`/inductor-existence boundaries that the
-   **entire property tail** rests on — no endpoint in the repo discharges them; the certified F7
-   endpoints are conditional on them exactly as every other property endpoint is (risk posture).
+**Remaining:**
+1. **`perexpkno` / `expcoh`** (liminf/limsup coherence, F9-coverage-table items — *not* on the
+   audit's explicit item-5 repair list) — take `ConvergencePresentation`, whose `daily_value` is
+   *per-stage full `ValuesAt`*, consumed through the **core M4 `LUV.expect_converges`** trader.
+   Certifying needs that whole convergence chain restructured to finite precision (the item-5a
+   move, but on an audited core result) — deferred as high-risk; not attempted.
+2. **One-sided / arbitrary-constant combination provind** (`E(combination determined ≤/≥/= c) ≲/≳/≈ c`
+   for `c ≠ 0`) — the `= 0` case is done (`lic_expect_combination_provind_zero`); the one-sided
+   forms need a *one-sided-vanishing-error* affine provind (the mesh's `O(1/n)` error is currently
+   absorbed only by the two-sided `tendsto_zero` form). Single-LUV `≤/≥/=` are all done.
+3. **Efficiency certificates** — `PolyThresholdCodes (toLUV i)` and computable `gridDP`/
+   `luvThresholdDP`. The disclosed `dd:fuel`/inductor-existence boundary the **entire property
+   tail** rests on; explicitly out of scope per Anson (2026-07-23). The certified endpoints are
+   conditional on it exactly as every other property endpoint is.
 
-**Net:** F7 items 1, 2, 3 complete and non-vacuous. Item 5: both named endpoints certified against
-arithmetic, all three comparison forms present, one sequence capstone (`exppolymax`) certified via
-Phase B. What the certified endpoints still *assume* is exactly the project-wide disclosed set
-(inductor existence + efficiency codes), never a LUV-specific world-value hypothesis. The
-`dd:luv-arith` boundary (computable-function LUVs, not arbitrary value-defining formulas) is
-disclosed in `LUVArithmetic.lean`'s header.
+**Net:** F7 items 1, 2, 3 complete and non-vacuous. Item 5's explicit repair list — varying-sequence
+linearity and expectation provability induction (single-LUV in all three comparison forms, plus the
+combination-level `= 0` form the paper uses) — is done and certified against arithmetic, together
+with two sequence-level capstones. What the certified endpoints still *assume* is exactly the
+project-wide disclosed set (inductor existence + efficiency codes), never a LUV-specific world-value
+hypothesis. The `dd:luv-arith` boundary (computable-function LUVs, not arbitrary value-defining
+formulas) is disclosed in `LUVArithmetic.lean`'s header.
 
 ## 🗄 (superseded, kept for history) F7 Phases A/B/C landed green; D blocked on endpoint restructure
 
