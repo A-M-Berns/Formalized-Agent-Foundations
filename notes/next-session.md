@@ -1,6 +1,21 @@
 # Logical Induction — handoff
 
-_Last updated: 2026-07-22 (session 5). Branch: `logical-induction`._
+_Last updated: 2026-07-23 (paper-errata reclassification after session 5).
+Branch: `logical-induction`._
+
+## Paper errata boundary (2026-07-23)
+
+The former audit F5 is not a repository-faithfulness defect: the unrestricted
+finite-perturbation theorem has a genuine gap in the paper's proof. It has been removed from
+`m7-errata-audit.md` and moved to the durable
+[`logical-induction-paper-errata.md`](logical-induction-paper-errata.md) ledger. That ledger
+also records the research stretch goal of formalizing either the unrestricted theorem or,
+more likely, a counterexample to it. F4 remains the next repository repair.
+
+The former F6 was also removed from the finding list: its prefix-machine, DUS-approximation,
+and strict-separator boundaries were already accurately disclosed, so it did not belong in
+an errata audit. F7 now records the full scope of replacing the disclosed propositional LUV
+abstraction with a paper-faithful first-order construction.
 
 ## ✅ Session 5 summary (2026-07-22) — F3 public diagonal constructed
 
@@ -397,7 +412,8 @@ Earlier consolidation landings (still true, now background):
 - **Stale-reference repair.** Fixed a merged-away README path (`StrictSemimeasure.lean` →
   `UniversalSemimeasure.lean`) and three dead `PROGRESS.md` pointers (that ledger was
   deleted; the comments are now self-contained). Includes a live `thm:ifp` paper-erratum
-  note in `FinitePerturbations.lean` — see the errata-audit brief.
+  note in `FinitePerturbations.lean`; the durable paper-level record and stretch goal now
+  live in `notes/logical-induction-paper-errata.md`.
 
 **State:** working tree clean; full `lake build` green (2720 jobs); AxiomAudit strictly clean
 (no intentional axioms anywhere). Several commits on `logical-induction` unpushed (per Anson's

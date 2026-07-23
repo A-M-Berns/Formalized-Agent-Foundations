@@ -10,6 +10,9 @@ even on malformed raw trader programs.
 
 ## PAPER ERRATUM — the appendix proof of `thm:ifp` has a gap
 
+The durable paper-level record, including the unrestricted-theorem-or-counterexample stretch
+goal, is `notes/logical-induction-paper-errata.md`.
+
 This is **not** a modeling artifact of our substrate.  The paper's proof (`app:ifp`)
 transports the trader by hard-coding the old prices, and justifies efficiency thus:
 
@@ -29,10 +32,13 @@ proof does not go through for the class of markets it quantifies over.
 The gap is real, not merely pedantic.  Let `P'` agree with `LIA` from day 1 on, with
 `P' 0 phi = 1 - 1/2^(2^(encode phi))` — a legal market by `def:marketprocess`.  A trader
 whose day-`n` strategy prices a sentence of code `~n` at day 0 freezes to a `.const` whose
-numeral is `~2^(2^n)`, which no polynomial clock can emit.  For such a `P'`,
+numeral is `~2^(2^n)`, which no polynomial clock can emit (`codeEvaln_result_le` and
+`codeEvalBound_poly` give the relevant fixed-code polynomial output bound, not an
+output-`≤`-fuel bound).  For such a `P'`,
 `EfficientPrefixPatch P' 1` is **uninhabited** — the hypothesis is not merely unproved but
-unsatisfiable.  (This argument is *not* formalized; see the "Paper errata" entry for the
-one unformalized fact it rests on, and for what remains open.)
+unsatisfiable.  (This argument is *not* formalized; see
+`notes/logical-induction-paper-errata.md` for the one unformalized fact it rests on and for
+what remains open.)
 
 Note the paper is aware `LIA` itself has finite support per day (`sec:construct`, remark
 following the belief-sequence definition) and *deliberately* generalizes the property tail
@@ -704,7 +710,8 @@ theorem Trader.Exploits.of_boundedDifference
 freeze above preserves token-indexed polynomial emission.  It contains no semantic market
 claim and no exploitation or convergence conclusion.
 
-**This is a paper erratum, not a modeling substitution** (see the file header).
+**This is a paper erratum, not a modeling substitution** (see the file header and
+`notes/logical-induction-paper-errata.md`).
 `app:ifp` asserts this closure is immediate because "only
 finitely many constants are needed"; that is false — finitely many *days*, but unboundedly
 many sentences.  This structure is **not inhabited for every `ComputableMarket P`**: a

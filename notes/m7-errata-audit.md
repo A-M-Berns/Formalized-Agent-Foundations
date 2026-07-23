@@ -2,10 +2,16 @@ Anson: keep in mind that this was written by an adversarial instance! take these
 
 # M7-ERRATA-AUDIT — adversarial audit for faithfulness to *Logical Induction*
 
-_Run 2026-07-22 against the current workspace. This report supersedes the 2026-07-21
-version of this file. The audit compared the Lean statements and boundary structures with
+_Run 2026-07-22 against the current workspace and reclassified 2026-07-23 to separate paper
+errata from repository findings. This report supersedes the 2026-07-21 version of this file.
+The audit compared the Lean statements and boundary structures with
 `notes/1609.03543v5-main.tex`, rather than treating theorem names, `Paper node:` annotations,
 README claims, or successful compilation as evidence of statement fidelity._
+
+Paper-level defects found during that comparison are maintained separately in
+[`logical-induction-paper-errata.md`](logical-induction-paper-errata.md) and are outside this
+repository audit's findings. Finding identifiers remain stable when an item leaves scope, so
+later identifiers are not renumbered.
 
 ## Verdict
 
@@ -182,39 +188,6 @@ efficiently computable growing condition sequences is not obtained.
 prove a direct prefix-insensitive compiler theorem adequate for this use. Then expose fixed
 and growing-condition corollaries with only the paper's consistency/computability premises.
 
-### F5 — MEDIUM / intentional qualification: finite perturbation is weaker than `thm:ifp`
-
-`lic_iff_of_finitePerturbation` requires an `EfficientPrefixPatch` for each market
-(`Properties/FinitePerturbations.lean:718–737`). The source correctly documents that such a
-patch is **not** inhabited for every `ComputableMarket` in the repository's clocked token
-model: finitely many days can still contain quote tables with unbounded sentence-indexed
-encoding cost.
-
-For `liaHistory`, the patch is constructed because each day is a finite
-`RationalBeliefState`. Thus the theorem is useful for LIA, but it is strictly weaker than the
-paper's market-general statement.
-
-**Disposition.** Keep the qualification unless the efficiency model changes. Public
-coverage tables should mark `thm:ifp` as “qualified/strictly weaker,” not simply implemented.
-
-### F6 — MEDIUM / disclosed but incomplete: Occam, DUS, and strict domination
-
-The following boundaries remain substantive caller hypotheses:
-
-- `M7-PREFIX-MACHINE`: universal prefix-machine presentation, approximation, Kraft law,
-  coverage, and fixed-overhead negation;
-- `M7-DUS-APPROX`: from-below universal-semimeasure approximation and polynomial threshold
-  emission; and
-- `M7-STRICT-SEPARATORS`: separator construction and the `mass_tendsto_zero` result.
-
-README accurately lists these three as disclosed (`README.md:91`, `98–99`). Their consumers
-contain real market/trader arguments, but `thm:ob`, `thm:dus`, and `thm:strict` are not
-end-to-end formalizations of the paper theorems.
-
-The theorem named `lic_domination_universalSemimeasure_unconditional` is unconditional only
-over a constructed LIA/empty process; it still accepts the approximation presentation and
-emission witness.
-
 ### F7 — MEDIUM / abstraction boundary: Lean LUVs do not encode unique definability
 
 The paper's `def:luv` is a formula that the theory proves defines a unique `[0,1]` value
@@ -241,6 +214,28 @@ In addition:
 
 Closer sequence-level capstones exist in `ExpectationProperties.lean`, but carry the
 presentation/compiler interfaces above and are not all in the main endpoint audit.
+
+**Full repair scope.** Fixing this rather than merely disclosing the abstraction would require
+all of the following:
+
+1. Define a first-order arithmetic LUV as a one-free-variable formula together with proofs
+   that the background theory proves unique existence and that the unique value lies in
+   `[0,1]`.
+2. Construct the rational threshold sentences used by the market from that formula, and
+   prove that their truth in standard and completed-theory worlds agrees with comparison
+   against the uniquely defined value. This includes the paper's treatment of worlds whose
+   encoded model may be nonstandard.
+3. Derive the current `ValuesAt`, `WorldValued`, `ExactTheoryPresentation`, and
+   `ConvergencePresentation` interfaces from this certified syntax, rather than accepting
+   them as independent caller hypotheses. The derivation must also provide the uniform
+   polynomial threshold-code generators consumed by the trader compilers.
+4. Refactor the LUV-combination and expectation development to consume the certified object
+   directly, or give a verified erasure from a paper-faithful first-order LUV into the
+   current propositional threshold interface.
+5. Finish the paper-strength sequence endpoints on top of that bridge: linearity for
+   efficiently generated varying LUV sequences, and expectation provability induction for
+   arbitrary bounded LUV-combination sequences in each of the paper's three comparison
+   forms. Add those endpoints and their constructed-LIA instantiations to `AxiomAudit.lean`.
 
 **Disposition.** This can remain an explicit propositional abstraction, but public claims
 must say that `def:luv` and the expectation tail are formalized relative to threshold and
@@ -347,8 +342,6 @@ also repaired by the market-derived fixed program and its FFL representation.
 | Pseudorandom learning | Affine, sentence, expectation, and fixed-frequency endpoints construct historical maturity internally |
 | Logical relationships | Substantial propositional rendering |
 | Non-dogmatism / uniform non-dogmatism | Substantial; relies on explicit global theory/world and range hypotheses |
-| Finite perturbation | Correctly qualified and strictly weaker than the paper under this efficiency model |
-| Occam / universal semimeasure / strict domination | Conditional on the three disclosed unbuilt boundaries |
 | Conditioning | Compiler and economics present; full fixed/growing closure theorem not reached |
 | Expectations | Threshold-interface abstraction; basic convergence is genuine, later theorems retain semantic/compiler presentations |
 | Consistency and halting | Generic represented-claim interfaces are sound; concrete end-to-end instantiation uses stronger arithmetic assumptions such as Σ₁ soundness |
@@ -392,12 +385,8 @@ Logical Induction development.
 README accurately discloses:
 
 - the token/fuel efficiency model;
-- the three unconstructed prefix-machine/DUS/strict boundaries;
 - that the property tail is conditional; and
 - that the autoformalized Brouwer interior has not received a human line-by-line review.
-
-The finite-perturbation source is especially candid that its theorem is strictly weaker than
-the paper under the current model.
 
 ## Mechanical checks run
 

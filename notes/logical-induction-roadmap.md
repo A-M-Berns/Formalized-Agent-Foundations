@@ -11,6 +11,9 @@ This document supersedes the earlier `logical-induction-blueprint.tex` skeleton 
 - The **node ledger (§3)** is the spec. Every theorem/definition has the paper's exact label, a proposed Lean name under the `LogicalInduction` namespace, and two discipline columns (*kind*, *provenance*) that exist to stop the project from accumulating dressed-up tautologies.
 - The **milestone sequence (§4)** is deliberately *property-tail-first, construction-last*. Rationale in §4 and §6.
 - The **standing rules + audit protocol (§5)** are non-negotiable; they are what makes "kernel-checked" mean something.
+- Paper-level defects discovered by formalization are recorded separately in
+  [`logical-induction-paper-errata.md`](logical-induction-paper-errata.md), including open
+  theorem-versus-counterexample stretch goals.
 - The **session-1 kickoff prompt (§7)** is ready to paste into Claude Code.
 
 ---

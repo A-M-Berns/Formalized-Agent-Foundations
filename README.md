@@ -8,7 +8,9 @@ theory, built on the
 
 `LogicalInduction/` formalizes [arXiv:1609.03543v5](https://arxiv.org/abs/1609.03543).
 The spec is `notes/logical-induction-roadmap.md`; the active construction scope and handoff
-are in `notes/next-session.md`.
+are in `notes/next-session.md`. Defects found in the source paper, as distinct from
+repository-faithfulness findings, are tracked in
+[`notes/logical-induction-paper-errata.md`](notes/logical-induction-paper-errata.md).
 
 The central construction is complete. For every computable deductive process,
 `LogicalInduction.exists_logical_inductor` constructs a logical inductor, and
