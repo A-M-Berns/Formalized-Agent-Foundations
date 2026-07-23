@@ -75,7 +75,47 @@ Regenerate with the same `check_endpoint_coverage.py` helpers (`inventory_member
 equivalent per-decl scan. Watch the `[[li-primrec-natsqrt-blowup]]` files if any touched proof
 goes near `Finset`/`Nat.sqrt`.
 
-## 🚧 F7 IMPLEMENTATION STATUS (2026-07-23) — Phases A/B/C landed green; D blocked on endpoint restructure
+## ✅ F7 IMPLEMENTATION STATUS (2026-07-23) — items 1/2/3 done; item 5 endpoints certified
+
+**Update (later same day):** the "D blocked" note below was resolved. The blocker — endpoints
+requiring full `ValuesAt` at a single finite stage — was fixed by (a) restructuring the endpoints
+to the *satisfiable finite-precision* hypothesis they actually consume, and (b) building a
+scheduled-reveal process that discharges that hypothesis from arithmetic. Both named weak
+endpoints now have certified `_arith` forms.
+
+Files (all green, axiom-clean `propext/Classical.choice/Quot.sound`, in `LogicalInduction`):
+
+- `Framework/Expectations.lean` — `PCWorld.expectApprox_near_ofGrid`: the day-`n` precision bound
+  from **grid** coherence (the `n` points `i/n`) only, not the infinite cut. `expectApprox_near`
+  is now its wrapper. **(item 5b)**
+- `Properties/ExpectationAffine.lean` — `lic_linearity_of_expectation` and
+  `lic_expectation_provind` restructured to the **finite-precision, eventual** (`∀ᶠ n`) world
+  hypothesis `|𝔼_n^v(X) − x| ≤ 1/n` — satisfiable at a finite stage (the old `ValuesAt`-at-stage-`n`
+  hypothesis was not). Original `ValuesAt` statements kept as `_ofValuesAt` corollaries. **(item 5a)**
+- `Construction/Witnesses/LUVExpectationCertified.lean` — `gridDP` (scheduled-reveal process, stage
+  `n` holds the `Θ`-decided grid literals for `i ≤ n`, `j/n`), and
+  `lic_expectation_provind_arith` / `lic_linearity_of_expectation_arith`: the paper's endpoints
+  with the **world-value hypothesis replaced by arithmetic** (`c ≤ numᵢ/denᵢ`, resp.
+  `valueₖ = a·valueᵢ + b·valueⱼ`). This is the audit's "operational hypotheses the paper
+  discharges", resolved end-to-end. **(item 5c)** Wired into `AxiomAudit.lean`; paper-node +
+  endpoint-coverage checks pass.
+
+**Remaining (extensions + disclosed boundaries, not blockers):**
+1. **Varying-sequence** linearity (efficiently-generated `(aₙ,bₙ,Xₙ,Yₙ,Zₙ)`) and the **≤ / =**
+   comparison forms of provind — the certified `_arith` endpoints cover the fixed-arity `≥` case
+   (the heart of the audit complaint); the sequence/3-form variants are additional endpoints on the
+   same machinery.
+2. **Efficient-computability certificates** — `gridDP`/`luvThresholdDP` computable (the
+   `theoremDP_computable` analogue) to discharge `[IsLogicalInductor P (gridDP L)]` unconditionally,
+   and `PolyThresholdCodes (toLUV i)`. These are the disclosed `dd:fuel`/inductor-existence
+   boundaries; the certified endpoints remain conditional on them, exactly as the rest of the
+   property tail is conditional on inductor existence (risk posture).
+
+**Net:** F7 items 1, 2, 3 are complete and non-vacuous; item 5's two named endpoints are certified
+against arithmetic for the fixed-arity case. The `dd:luv-arith` boundary (computable-function LUVs,
+not arbitrary value-defining formulas) is disclosed in `LUVArithmetic.lean`'s header.
+
+## 🗄 (superseded, kept for history) F7 Phases A/B/C landed green; D blocked on endpoint restructure
 
 Three new axiom-clean, sorry-free files (built into `LogicalInduction`, 2658 jobs green):
 
