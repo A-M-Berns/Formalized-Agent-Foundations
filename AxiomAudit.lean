@@ -174,6 +174,16 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   ComputableLUV.lic_linearity_of_expectation_arith
   ComputableLUV.exppolymax_arith ComputableLUV.wubexp_arith
   ComputableLUV.expcoh_arith ComputableLUV.perexpkno_arith
+
+-- dd:fuel discharged for dd:luv-arith: the threshold-code and process-computability
+-- certificates are proved (gcdc_polyFueled/toLUV_polyThresholdCodes/gridDP_computable),
+-- so these endpoints are FULLY unconditional over the constructed LIA — the sole
+-- hypothesis is the rational bound/identity on the LUV values.
+#assert_axioms_clean
+  ComputableLUV.lic_expectation_provind_arith_unconditional
+  ComputableLUV.lic_expectation_provind_le_arith_unconditional
+  ComputableLUV.lic_expectation_provind_eq_arith_unconditional
+  ComputableLUV.lic_linearity_of_expectation_arith_unconditional
   lic_no_expected_net_update lic_no_expected_net_update_conditional
   LUVCombination.BoundedSequence.recurringunbiasednessexp
   LUVCombination.BoundedSequence.prandexp

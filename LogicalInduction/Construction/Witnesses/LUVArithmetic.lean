@@ -264,7 +264,7 @@ by two `divmod1` divisions and the fixed pairing shell — with an `ifzSel` fall
 the everywhere-zero `k = 0` query. -/
 
 /-- Reduced numerator of a natural-cast quotient: `((b : ℚ) / k).num = b / gcd b k`. -/
-private lemma natCast_div_num {b k : ℕ} (hk : k ≠ 0) :
+lemma natCast_div_num {b k : ℕ} (hk : k ≠ 0) :
     ((b : ℚ) / (k : ℚ)).num = (b / Nat.gcd b k : ℕ) := by
   have hg : 0 < Nat.gcd b k := Nat.gcd_pos_of_pos_right b (Nat.pos_of_ne_zero hk)
   have hb' : (b / Nat.gcd b k) * Nat.gcd b k = b := Nat.div_mul_cancel (Nat.gcd_dvd_left b k)
@@ -284,7 +284,7 @@ private lemma natCast_div_num {b k : ℕ} (hk : k ≠ 0) :
     (by simpa using Nat.coprime_div_gcd_div_gcd hg)]
 
 /-- Reduced denominator of a natural-cast quotient: `((b : ℚ) / k).den = k / gcd b k`. -/
-private lemma natCast_div_den {b k : ℕ} (hk : k ≠ 0) :
+lemma natCast_div_den {b k : ℕ} (hk : k ≠ 0) :
     ((b : ℚ) / (k : ℚ)).den = k / Nat.gcd b k := by
   have hg : 0 < Nat.gcd b k := Nat.gcd_pos_of_pos_right b (Nat.pos_of_ne_zero hk)
   have hb' : (b / Nat.gcd b k) * Nat.gcd b k = b := Nat.div_mul_cancel (Nat.gcd_dvd_left b k)
@@ -307,6 +307,59 @@ private lemma natCast_div_den {b k : ℕ} (hk : k ≠ 0) :
 
 private lemma encode_thresholdSentence (i : ℕ) (r : ℚ) :
     Encodable.encode (thresholdSentence i r) = Nat.pair 1 (thresholdCode i r) + 1 := rfl
+
+/-- Runtime gcd is primitive recursive (extracted from the fuel certificate). -/
+lemma nat_gcd_primrec : Primrec₂ Nat.gcd := by
+  obtain ⟨c, hc⟩ := gcdc_polyFueled
+  exact Primrec₂.unpaired'.mp ((Primrec.nat_iff.mp hc.primrec).of_eq (fun n => rfl))
+
+/-- `thresholdCode` of a natural quotient query, in purely `ℕ` terms: the reduced pair via
+`gcd`, with the `0/1` fallback at denominator zero. -/
+def thresholdCodeNat (i j m : ℕ) : ℕ :=
+  Nat.pair i (Nat.pair 0
+    (if m = 0 then Nat.pair 0 1
+     else Nat.pair (j / Nat.gcd j m) (m / Nat.gcd j m)))
+
+lemma thresholdCodeNat_eq (i j m : ℕ) :
+    thresholdCodeNat i j m = thresholdCode i ((j : ℚ) / (m : ℚ)) := by
+  unfold thresholdCodeNat thresholdCode
+  have hsign : (if 0 ≤ (j : ℚ) / (m : ℚ) then (0 : ℕ) else 1) = 0 :=
+    if_pos (div_nonneg (Nat.cast_nonneg j) (Nat.cast_nonneg m))
+  rw [hsign]
+  by_cases hm : m = 0
+  · subst hm
+    norm_num
+  · rw [if_neg hm]
+    have hnum : ((j : ℚ) / (m : ℚ)).num.natAbs = j / Nat.gcd j m := by
+      rw [natCast_div_num hm]; exact Int.natAbs_natCast _
+    have hden : ((j : ℚ) / (m : ℚ)).den = m / Nat.gcd j m := natCast_div_den hm
+    rw [hnum, hden]
+
+/-- The `ℕ`-level threshold code is primitive recursive in the packed query
+`⟨i, ⟨m, j⟩⟩`. -/
+lemma thresholdCodeNat_primrec :
+    Primrec (fun e : ℕ => thresholdCodeNat e.unpair.1 e.unpair.2.unpair.2 e.unpair.2.unpair.1) := by
+  have hi : Primrec (fun e : ℕ => e.unpair.1) := Primrec.fst.comp Primrec.unpair
+  have hm : Primrec (fun e : ℕ => e.unpair.2.unpair.1) :=
+    Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))
+  have hj : Primrec (fun e : ℕ => e.unpair.2.unpair.2) :=
+    Primrec.snd.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))
+  have hg : Primrec (fun e : ℕ => Nat.gcd e.unpair.2.unpair.2 e.unpair.2.unpair.1) :=
+    nat_gcd_primrec.comp hj hm
+  have hnum : Primrec (fun e : ℕ => e.unpair.2.unpair.2
+      / Nat.gcd e.unpair.2.unpair.2 e.unpair.2.unpair.1) :=
+    Primrec.nat_div.comp hj hg
+  have hden : Primrec (fun e : ℕ => e.unpair.2.unpair.1
+      / Nat.gcd e.unpair.2.unpair.2 e.unpair.2.unpair.1) :=
+    Primrec.nat_div.comp hm hg
+  have hred : Primrec (fun e : ℕ =>
+      if e.unpair.2.unpair.1 = 0 then Nat.pair 0 1
+      else Nat.pair (e.unpair.2.unpair.2 / Nat.gcd e.unpair.2.unpair.2 e.unpair.2.unpair.1)
+        (e.unpair.2.unpair.1 / Nat.gcd e.unpair.2.unpair.2 e.unpair.2.unpair.1)) :=
+    Primrec.ite (Primrec.eq.comp hm (Primrec.const 0))
+      (Primrec.const (Nat.pair 0 1)) (Primrec₂.natPair.comp hnum hden)
+  exact Primrec₂.natPair.comp hi
+    (Primrec₂.natPair.comp (Primrec.const 0) hred)
 
 attribute [local irreducible] Nat.sqrt in
 /-- **`dd:fuel` discharged for `dd:luv-arith` thresholds.**  The threshold presentation of every

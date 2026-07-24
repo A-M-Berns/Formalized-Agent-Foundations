@@ -456,6 +456,206 @@ theorem perexpkno_arith {As : ℕ → LUVCombination} {P : History}
 
 end Combined
 
+/-! ## Efficient computability of the scheduled processes
+
+The scheduled grid process (and hence the combined process) is computable: stage `n` is the
+`toFinset` of a total, computably generated literal list — the in-range grid literals plus a
+harmless in-range default for out-of-range event codes (deduplicated by `toFinset`).  The literal
+polarity runs `L.num`/`L.den`, so this layer works with `Computable` rather than `Primrec`. -/
+
+/-- Total per-event literal emitter for stage `n`: decode `e = ⟨i, ⟨m, j⟩⟩` and emit the grid
+literal when in range, else the fixed in-range literal `⌜X₀ > 0/1⌝` (deduplicated away). -/
+private noncomputable def gridEmit (n e : ℕ) : Sentence :=
+  if e.unpair.1 ≤ n ∧ e.unpair.2.unpair.1 ≤ n ∧ e.unpair.2.unpair.2 < e.unpair.2.unpair.1
+  then L.gridLiteral e.unpair.1 e.unpair.2.unpair.2 e.unpair.2.unpair.1
+  else L.gridLiteral 0 0 1
+
+attribute [local irreducible] Nat.sqrt in
+private lemma gridEmit_computable : Computable₂ (L.gridEmit) := by
+  have hatom : Primrec (fun c : ℕ => (LO.Propositional.Formula.atom c : Sentence)) :=
+    Primrec.encode_iff.mp
+      ((Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1) Primrec.id)).of_eq
+        (fun c => (encode_atom c).symm))
+  have hneg : Primrec (fun c : ℕ => (∼(LO.Propositional.Formula.atom c) : Sentence)) :=
+    Primrec.encode_iff.mp
+      ((Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
+        (Primrec₂.natPair.comp
+          (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1) Primrec.id))
+          (Primrec.const (Nat.pair 0 0 + 1))))).of_eq
+        (fun c => (encode_negAtom c).symm))
+  -- the grid literal on a packed code `e = ⟨i, ⟨m, j⟩⟩`
+  have hlit : Computable (fun e : ℕ =>
+      L.gridLiteral e.unpair.1 e.unpair.2.unpair.2 e.unpair.2.unpair.1) := by
+    have htc := thresholdCodeNat_primrec
+    have hd : Computable (fun e : ℕ => decide (L.ThresholdPred
+        (thresholdCodeNat e.unpair.1 e.unpair.2.unpair.2 e.unpair.2.unpair.1))) :=
+      L.thresholdPred_computable.decide.comp htc.to_comp
+    have hpos := (hatom.comp htc).to_comp
+    have hng := (hneg.comp htc).to_comp
+    refine (Computable.cond hd hpos hng).of_eq (fun e => ?_)
+    unfold gridLiteral
+    rw [← thresholdCodeNat_eq]
+    by_cases h : L.ThresholdPred
+        (thresholdCodeNat e.unpair.1 e.unpair.2.unpair.2 e.unpair.2.unpair.1)
+    · simp [h, thresholdSentence, thresholdCodeNat_eq]
+    · simp [h, thresholdSentence, thresholdCodeNat_eq]
+  -- the range test is primitive recursive on the pair `(n, e)`
+  have hc : Computable (fun p : ℕ × ℕ => decide (p.2.unpair.1 ≤ p.1
+      ∧ p.2.unpair.2.unpair.1 ≤ p.1 ∧ p.2.unpair.2.unpair.2 < p.2.unpair.2.unpair.1)) := by
+    have hi : Primrec (fun p : ℕ × ℕ => p.2.unpair.1) :=
+      Primrec.fst.comp (Primrec.unpair.comp Primrec.snd)
+    have hm : Primrec (fun p : ℕ × ℕ => p.2.unpair.2.unpair.1) :=
+      Primrec.fst.comp (Primrec.unpair.comp
+        (Primrec.snd.comp (Primrec.unpair.comp Primrec.snd)))
+    have hj : Primrec (fun p : ℕ × ℕ => p.2.unpair.2.unpair.2) :=
+      Primrec.snd.comp (Primrec.unpair.comp
+        (Primrec.snd.comp (Primrec.unpair.comp Primrec.snd)))
+    exact (PrimrecPred.decide (PrimrecPred.and (Primrec.nat_le.comp hi Primrec.fst)
+      (PrimrecPred.and (Primrec.nat_le.comp hm Primrec.fst)
+        (Primrec.nat_lt.comp hj hm)))).to_comp
+  exact (Computable.cond hc (hlit.comp Computable.snd)
+    (Computable.const (L.gridLiteral 0 0 1))).of_eq (fun p => by
+      unfold gridEmit
+      by_cases h : p.2.unpair.1 ≤ p.1 ∧ p.2.unpair.2.unpair.1 ≤ p.1
+          ∧ p.2.unpair.2.unpair.2 < p.2.unpair.2.unpair.1
+      · simp [h]
+      · simp [h])
+
+/-- The stage-`n` literal list is computable (built by `Nat.rec` over the event bound). -/
+private lemma gridList_computable :
+    Computable (fun n => (List.range (Nat.pair n (Nat.pair n n) + 1)).map (L.gridEmit n)) := by
+  have hB : Computable (fun n : ℕ => Nat.pair n (Nat.pair n n) + 1) :=
+    (Primrec.succ.comp (Primrec₂.natPair.comp Primrec.id
+      (Primrec₂.natPair.comp Primrec.id Primrec.id))).to_comp
+  have hh : Computable₂ (fun (n : ℕ) (p : ℕ × List Sentence) => p.2 ++ [L.gridEmit n p.1]) :=
+    (Computable.list_concat.comp (Computable.snd.comp Computable.snd)
+      (L.gridEmit_computable.comp Computable.fst (Computable.fst.comp Computable.snd))).to₂
+  have h := Computable.nat_rec hB (Computable.const ([] : List Sentence)) hh
+  refine h.of_eq (fun n => ?_)
+  generalize Nat.pair n (Nat.pair n n) + 1 = N
+  induction N with
+  | zero => simp
+  | succ N ih => simp [List.range_succ, ih]
+
+private lemma gridStage_zero : L.gridStage 0 = ∅ := by
+  ext φ
+  simp only [Finset.notMem_empty, iff_false]
+  rw [mem_gridStage]
+  rintro ⟨i, m, j, _, hm, hj, _⟩
+  omega
+
+private lemma gridStage_eq_list_toFinset {n : ℕ} (hn : 1 ≤ n) :
+    L.gridStage n
+      = ((List.range (Nat.pair n (Nat.pair n n) + 1)).map (L.gridEmit n)).toFinset := by
+  ext φ
+  rw [mem_gridStage]
+  simp only [List.mem_toFinset, List.mem_map, List.mem_range]
+  constructor
+  · rintro ⟨i, m, j, hi, hm, hj, rfl⟩
+    refine ⟨Nat.pair i (Nat.pair m j), ?_, ?_⟩
+    · have hbound : Nat.pair i (Nat.pair m j) ≤ Nat.pair n (Nat.pair n n) :=
+        le_trans (pair_le_pair_right' _
+          (le_trans (pair_le_pair_right' _ (by omega)) (pair_le_pair_left' _ hm)))
+          (pair_le_pair_left' _ hi)
+      omega
+    · unfold gridEmit
+      simp only [Nat.unpair_pair]
+      rw [if_pos ⟨hi, hm, hj⟩]
+  · rintro ⟨e, _, rfl⟩
+    unfold gridEmit
+    by_cases hc : e.unpair.1 ≤ n ∧ e.unpair.2.unpair.1 ≤ n
+        ∧ e.unpair.2.unpair.2 < e.unpair.2.unpair.1
+    · rw [if_pos hc]
+      exact ⟨e.unpair.1, e.unpair.2.unpair.1, e.unpair.2.unpair.2, hc.1, hc.2.1, hc.2.2, rfl⟩
+    · rw [if_neg hc]
+      exact ⟨0, 1, 0, Nat.zero_le n, hn, Nat.zero_lt_one, rfl⟩
+
+/-- **The scheduled grid process is computable.** -/
+lemma gridDP_computable : ComputableDeductiveProcess (L.gridDP) := by
+  have hsorted : Computable (fun n =>
+      Encodable.encode ((sentenceDedup ((List.range (Nat.pair n (Nat.pair n n) + 1)).map
+        (L.gridEmit n))).insertionSort sentenceCodeLE)) :=
+    Computable.encode.comp (sentenceInsertionSort_prim.to_comp.comp
+      (sentenceDedup_prim.to_comp.comp (L.gridList_computable)))
+  have henc : Computable (fun n => Encodable.encode ((L.gridDP).D n)) := by
+    refine (Computable.nat_casesOn Computable.id
+      (Computable.const (Encodable.encode (∅ : Finset Sentence)))
+      (hsorted.comp Computable.fst).to₂).of_eq (fun n => ?_)
+    cases n with
+    | zero =>
+        show Encodable.encode (∅ : Finset Sentence) = Encodable.encode (L.gridStage 0)
+        rw [L.gridStage_zero]
+    | succ k =>
+        show Encodable.encode ((sentenceDedup _).insertionSort sentenceCodeLE)
+          = Encodable.encode (L.gridStage (k + 1))
+        rw [L.gridStage_eq_list_toFinset (Nat.succ_le_succ (Nat.zero_le k)),
+          encode_toFinset_eq]
+  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp (Partrec.nat_iff.mp henc.partrec)
+  refine ⟨code, fun n => ?_⟩
+  rw [hcode]
+  exact Part.mem_some _
+
+section CombinedComputable
+variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+
+/-- **The combined process is computable** (union of the two computable stages). -/
+lemma combinedDP_computable : ComputableDeductiveProcess (L.combinedDP T) := by
+  have hgrid := (L.gridDP_computable).nonemptyComputation.some
+  have hluv := (L.luvThresholdDP_computable T).nonemptyComputation.some
+  exact (hgrid.union hluv).toComputable
+
+end CombinedComputable
+
+/-! ## Fully unconditional certified endpoints
+
+With the scheduled grid process proved computable and the threshold codes proved poly-fueled,
+the certified expectation endpoints need **no** hypotheses beyond the plain rational bound: the
+logical inductor is the constructed `LIA` over `gridDP`, its price range comes from the criterion
+class, and the efficiency certificate is `toLUV_polyThresholdCodes`. -/
+
+/-- **Fully unconditional certified expectation provability induction (`≥`).**
+Paper node: `thm:expprovind` -/
+theorem lic_expectation_provind_arith_unconditional (i : ℕ) (c : ℝ)
+    (hc : c ≤ (L.value i : ℝ)) :
+    AsympGE ((toLUV i).expectSeq (liaHistory (L.gridDP))) (fun _ => c) := by
+  haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
+  exact L.lic_expectation_provind_arith (liaHistory (L.gridDP)) i
+    (toLUV_polyThresholdCodes i)
+    (fun n s => IsLogicalInductor.price_mem_Icc (P := liaHistory (L.gridDP)) (DP := L.gridDP) n s) c hc
+
+/-- **Fully unconditional certified expectation provability induction (`≤`).**
+Paper node: `thm:expprovind` -/
+theorem lic_expectation_provind_le_arith_unconditional (i : ℕ) (c : ℝ)
+    (hc : (L.value i : ℝ) ≤ c) :
+    AsympLE ((toLUV i).expectSeq (liaHistory (L.gridDP))) (fun _ => c) := by
+  haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
+  exact L.lic_expectation_provind_le_arith (liaHistory (L.gridDP)) i
+    (toLUV_polyThresholdCodes i)
+    (fun n s => IsLogicalInductor.price_mem_Icc (P := liaHistory (L.gridDP)) (DP := L.gridDP) n s) c hc
+
+/-- **Fully unconditional certified expectation provability induction (`=`).**
+Paper node: `thm:expprovind` -/
+theorem lic_expectation_provind_eq_arith_unconditional (i : ℕ) (c : ℝ)
+    (hc : (L.value i : ℝ) = c) :
+    AsympEq ((toLUV i).expectSeq (liaHistory (L.gridDP))) (fun _ => c) := by
+  haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
+  exact L.lic_expectation_provind_eq_arith (liaHistory (L.gridDP)) i
+    (toLUV_polyThresholdCodes i)
+    (fun n s => IsLogicalInductor.price_mem_Icc (P := liaHistory (L.gridDP)) (DP := L.gridDP) n s) c hc
+
+/-- **Fully unconditional certified linearity of expectation.**  The sole hypothesis is the
+rational identity `valueₖ = a·valueᵢ + b·valueⱼ`.
+Paper node: `thm:loe` -/
+theorem lic_linearity_of_expectation_arith_unconditional (a b : ℚ) (i j k : ℕ)
+    (hlin : L.value k = a * L.value i + b * L.value j) :
+    AsympEq (fun n => (a : ℝ) * (toLUV i).expect (liaHistory (L.gridDP)) n
+        + (b : ℝ) * (toLUV j).expect (liaHistory (L.gridDP)) n)
+      ((toLUV k).expectSeq (liaHistory (L.gridDP))) := by
+  haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
+  exact L.lic_linearity_of_expectation_arith (liaHistory (L.gridDP)) a b i j k
+    (toLUV_polyThresholdCodes i) (toLUV_polyThresholdCodes j) (toLUV_polyThresholdCodes k)
+    (fun n s => IsLogicalInductor.price_mem_Icc (P := liaHistory (L.gridDP)) (DP := L.gridDP) n s) hlin
+
 end ComputableLUV
 
 end LogicalInduction
