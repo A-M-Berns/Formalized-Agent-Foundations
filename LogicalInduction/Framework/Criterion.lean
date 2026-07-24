@@ -1640,6 +1640,25 @@ def EfficientlyComputableTok₂ (Tr : Trader) : Prop :=
   ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
     clockedTrader₂ lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
 
+/-- `def:lic` over the **digit-metered** e.c. class — the paper-faithful criterion.
+Extends `IsLogicalInductor` with `noExploit₂`, no-exploitation against every
+`EfficientlyComputableTok₂` trader.  The parent's token-model `noExploit` is exactly the
+restriction of `noExploit₂` along the inclusion `EfficientlyComputableTok.toTok₂`
+(proved downstream in `Construction/Witnesses/M7Witnesses.lean` — the universal-machine
+machinery it needs lives there — which is why the parent field is retained rather than
+derived here; instance constructors discharge it from `noExploit₂` via the inclusion).
+
+Layering disclosure: the constructed `LIA` satisfies this class
+(`LIA_is_logical_inductor₂`); the conditioning transformations (`thm:scon`) currently
+produce only the parent class, because their trader-translation compilers carry
+token-model emission certificates — a digit-model translation certificate is the
+recorded residual that would let the two classes collapse into one.
+Paper node: `def:lic` -/
+class IsLogicalInductor₂ (P : History) (DP : DeductiveProcess) : Prop
+    extends IsLogicalInductor P DP where
+  /-- No digit-model efficiently computable trader exploits `P`. -/
+  noExploit₂ : ∀ Tr : Trader, EfficientlyComputableTok₂ Tr → ¬ Tr.Exploits P DP
+
 /-! ### Sanity / non-vacuity for the criterion machinery.
 
 `Exploits` must be a genuinely refutable condition, not vacuously true — otherwise `def:lic`

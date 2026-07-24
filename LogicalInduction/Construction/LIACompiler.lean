@@ -2892,25 +2892,73 @@ private lemma traderProgramClock_prim : Primrec₂ fun j n =>
   exact (Primrec.nat_add.comp hmul hcoefficient).to₂.of_eq fun j n => by
     rfl
 
+/-- The one-digit undigitizer transition is primitive recursive. -/
+private lemma undigitizeStep_prim : Primrec₂ undigitizeStep := by
+  let S := List ℕ × ℕ × ℕ
+  have hout : Primrec fun z : S × ℕ => z.1.1 := Primrec.fst.comp Primrec.fst
+  have hacc : Primrec fun z : S × ℕ => z.1.2.1 :=
+    Primrec.fst.comp (Primrec.snd.comp Primrec.fst)
+  have hpow : Primrec fun z : S × ℕ => z.1.2.2 :=
+    Primrec.snd.comp (Primrec.snd.comp Primrec.fst)
+  have hd : Primrec fun z : S × ℕ => z.2 := Primrec.snd
+  have hlt : PrimrecPred fun z : S × ℕ => z.2 < 4 :=
+    PrimrecRel.comp Primrec.nat_lt hd (Primrec.const 4)
+  have hthen : Primrec fun z : S × ℕ =>
+      ((z.1.1, z.1.2.1 + z.2 * z.1.2.2, 4 * z.1.2.2) : S) :=
+    hout.pair ((Primrec.nat_add.comp hacc (Primrec.nat_mul.comp hd hpow)).pair
+      (Primrec.nat_mul.comp (Primrec.const 4) hpow))
+  have helse : Primrec fun z : S × ℕ => ((z.1.1 ++ [z.1.2.1], 0, 1) : S) :=
+    (Primrec.list_append.comp hout
+      (Primrec.list_cons.comp hacc (Primrec.const []))).pair
+      ((Primrec.const 0).pair (Primrec.const 1))
+  exact (Primrec.ite hlt hthen helse).to₂.of_eq fun s d => by
+    rcases s with ⟨out, acc, pow⟩
+    unfold undigitizeStep
+    by_cases h : d < 4 <;> simp [h]
+
+/-- The streaming undigitizer is primitive recursive. -/
+private lemma undigitize_prim : Primrec undigitize := by
+  have hstep : Primrec₂ fun (_ : List ℕ) (p : (List ℕ × ℕ × ℕ) × ℕ) =>
+      undigitizeStep p.1 p.2 :=
+    (undigitizeStep_prim.comp (Primrec.fst.comp Primrec.snd)
+      (Primrec.snd.comp Primrec.snd)).to₂
+  exact (Primrec.fst.comp (Primrec.list_foldl Primrec.id
+    (Primrec.const (([], 0, 1) : List ℕ × ℕ × ℕ)) hstep)).of_eq fun ds => by rfl
+
 private lemma enumeratedTraderTrades_prim : Primrec₂ fun j n =>
     ((enumeratedTrader j).strat n).trades := by
   let P := ℕ × ℕ
   have hj : Primrec fun p : P => p.1 := Primrec.fst
   have hn : Primrec fun p : P => p.2 := Primrec.snd
-  have hlengthCode : Primrec fun p : P => (traderProgramAt p.1).lengthCode :=
-    traderProgramLengthCode_prim.comp hj
-  have htokenCode : Primrec fun p : P => (traderProgramAt p.1).tokenCode :=
-    traderProgramTokenCode_prim.comp hj
-  have hclock : Primrec fun p : P => (traderProgramAt p.1).clock p.2 :=
-    traderProgramClock_prim.comp hj hn
+  have hhalf : Primrec fun p : P => p.1 / 2 :=
+    Primrec.nat_div.comp hj (Primrec.const 2)
+  have hlengthCode : Primrec fun p : P => (traderProgramAt (p.1 / 2)).lengthCode :=
+    traderProgramLengthCode_prim.comp hhalf
+  have htokenCode : Primrec fun p : P => (traderProgramAt (p.1 / 2)).tokenCode :=
+    traderProgramTokenCode_prim.comp hhalf
+  have hclock : Primrec fun p : P => (traderProgramAt (p.1 / 2)).clock p.2 :=
+    traderProgramClock_prim.comp hhalf hn
   have hinput : Primrec fun p : P =>
-      ((((traderProgramAt p.1).lengthCode, (traderProgramAt p.1).tokenCode),
-        (traderProgramAt p.1).clock p.2), p.2) :=
+      ((((traderProgramAt (p.1 / 2)).lengthCode,
+        (traderProgramAt (p.1 / 2)).tokenCode),
+        (traderProgramAt (p.1 / 2)).clock p.2), p.2) :=
     ((hlengthCode.pair htokenCode).pair hclock).pair hn
-  have htoks : Primrec fun p : P => (traderProgramAt p.1).tokens p.2 :=
+  have htoks : Primrec fun p : P => (traderProgramAt (p.1 / 2)).tokens p.2 :=
     (clockedTokens_prim.comp hinput).of_eq fun p => by rfl
-  exact (strategyOfTokensTrades_prim.comp hn htoks).to₂.of_eq fun j n => by
-    rfl
+  have htr : Primrec fun p : P =>
+      (strategyOfTokens p.2 ((traderProgramAt (p.1 / 2)).tokens p.2)).trades :=
+    strategyOfTokensTrades_prim.comp hn htoks
+  have htr₂ : Primrec fun p : P =>
+      (strategyOfTokens p.2
+        (undigitize ((traderProgramAt (p.1 / 2)).tokens p.2))).trades :=
+    strategyOfTokensTrades_prim.comp hn (undigitize_prim.comp htoks)
+  have hodd : PrimrecPred fun p : P => p.1 % 2 = 1 :=
+    PrimrecRel.comp Primrec.eq
+      (Primrec.nat_mod.comp hj (Primrec.const 2)) (Primrec.const 1)
+  exact (Primrec.ite hodd htr₂ htr).to₂.of_eq fun j n => by
+    unfold enumeratedTrader
+    by_cases h : j % 2 = 1 <;>
+      simp [h, TraderProgram.trader, TraderProgram.trader₂]
 
 private lemma firmRawTraderTrades_prim : Primrec₂ fun j n =>
     ((firmRawTrader j).strat n).trades := by
@@ -6742,12 +6790,32 @@ theorem LIA_is_logical_inductor (DP : DeductiveProcess)
   exact lia_isLogicalInductor_of_compiler process
     (liaBoundedEvaluatorCompiler process)
 
+/-- `thm:lia` in the **digit-metered** (paper-faithful) e.c. model: the constructed
+rational LIA market also defeats every `EfficientlyComputableTok₂` trader — per-day large
+rational literals and deep/large sentence codes included.  This is the strengthened form
+the Tranche-2 flip targets; the token-model `LIA_is_logical_inductor` above is its
+restriction.
+Paper node: `thm:lia` -/
+theorem LIA_is_logical_inductor₂ (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP) :
+    IsLogicalInductor₂ (liaHistory DP) DP where
+  toIsLogicalInductor := LIA_is_logical_inductor DP hDP
+  noExploit₂ := lia_no_efficient_trader_exploits₂ DP
+
 /-- `thm:li`: every computable deductive process admits a logical inductor.
 Paper node: `thm:li` -/
 theorem exists_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
     ∃ P : History, IsLogicalInductor P DP :=
   ⟨liaHistory DP, LIA_is_logical_inductor DP hDP⟩
+
+/-- `thm:li` in the digit-metered model: every computable deductive process admits a
+logical inductor in the paper-faithful e.c. class.
+Paper node: `thm:li` -/
+theorem exists_logical_inductor₂ (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP) :
+    ∃ P : History, IsLogicalInductor₂ P DP :=
+  ⟨liaHistory DP, LIA_is_logical_inductor₂ DP hDP⟩
 
 /-- **`thm:li`, full belief-sequence form.**  The paper's main theorem concludes existence of a
 *computable belief sequence* whose daily belief states have finite support and `[0,1]` values, and
@@ -6780,7 +6848,9 @@ theorem exists_computable_beliefSequence_logical_inductor (DP : DeductiveProcess
 
 #print axioms liaEncodedQuoteNatAtFuel_computable
 #print axioms LIA_is_logical_inductor
+#print axioms LIA_is_logical_inductor₂
 #print axioms exists_logical_inductor
+#print axioms exists_logical_inductor₂
 #print axioms exists_computable_beliefSequence_logical_inductor
 
 end LogicalInduction

@@ -110,6 +110,19 @@ lemma lia_no_efficient_trader_exploits (DP : DeductiveProcess)
   rw [tradingFirmTrader_liaQuote_eq_liaTrader] at hfirm
   exact liaTrader_not_exploited DP hfirm
 
+/-- Digit-model semantic capstone: no digit-metered (`EfficientlyComputableTok₂`)
+trader exploits the recursive rational market either — the firm's odd indices cover the
+wider class (`trading_firm_dominance₂`), and the MarketMaker bound is class-agnostic. -/
+lemma lia_no_efficient_trader_exploits₂ (DP : DeductiveProcess)
+    (Tr : Trader) (hTr : EfficientlyComputableTok₂ Tr) :
+    ¬ Tr.Exploits (liaHistory DP) DP := by
+  intro hEx
+  have hfirm := trading_firm_dominance₂ DP (liaHistory DP)
+    (liaHistory_range DP) (liaQuote DP) (liaHistory_eq_quote_cast DP)
+    Tr hTr hEx
+  rw [tradingFirmTrader_liaQuote_eq_liaTrader] at hfirm
+  exact liaTrader_not_exploited DP hfirm
+
 /-- Assembly lemma isolating the one remaining construction obligation: once the exact
 partial-recursive presentation of `liaHistory` is supplied, all semantic fields of the
 logical-inductor criterion are already discharged.  This is deliberately not named the
@@ -123,10 +136,20 @@ lemma lia_isLogicalInductor_of_computableMarket (DP : DeductiveProcess)
   processComputable := hDP
   noExploit := lia_no_efficient_trader_exploits DP
 
+/-- Digit-model assembly: the same, for the paper-faithful `IsLogicalInductor₂`. -/
+lemma lia_isLogicalInductor₂_of_computableMarket (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP)
+    (hmarket : ComputableMarket (liaHistory DP)) :
+    IsLogicalInductor₂ (liaHistory DP) DP where
+  toIsLogicalInductor := lia_isLogicalInductor_of_computableMarket DP hDP hmarket
+  noExploit₂ := lia_no_efficient_trader_exploits₂ DP
+
 #print axioms liaStates_eq_marketMakerStates
 #print axioms tradingFirmTrader_liaQuote_eq_liaTrader
 #print axioms liaTrader_not_exploited
 #print axioms lia_no_efficient_trader_exploits
+#print axioms lia_no_efficient_trader_exploits₂
 #print axioms lia_isLogicalInductor_of_computableMarket
+#print axioms lia_isLogicalInductor₂_of_computableMarket
 
 end LogicalInduction

@@ -57,15 +57,25 @@ def TraderProgram.clock (p : TraderProgram) (n : ℕ) : ℕ :=
 def TraderProgram.tokens (p : TraderProgram) (n : ℕ) : List ℕ :=
   clockedTokens p.lengthCode p.tokenCode (p.clock n) n
 
-/-- The total trader emulated by one clock/program tuple. -/
+/-- The total trader emulated by one clock/program tuple (token-model decode). -/
 def TraderProgram.trader (p : TraderProgram) : Trader where
   strat n := strategyOfTokens n (p.tokens n)
 
-/-- The concrete natural-indexed trader enumeration. -/
-def enumeratedTrader (j : ℕ) : Trader := (traderProgramAt j).trader
+/-- The total trader emulated by one clock/program tuple, read through the digit layer
+(digit-model decode). -/
+def TraderProgram.trader₂ (p : TraderProgram) : Trader where
+  strat n := strategyOfTokens n (undigitize (p.tokens n))
 
-/-- Coverage half of the paper's redundant enumeration: every e.c. trader occurs as the
-exact extensional output of one concrete program tuple. -/
+/-- The concrete natural-indexed trader enumeration, covering **both** emission models:
+even indices decode the token model, odd indices the digit model.  This is what lets one
+firm dominate the digit-metered class while every token-model certificate still indexes
+in unchanged. -/
+def enumeratedTrader (j : ℕ) : Trader :=
+  if j % 2 = 1 then (traderProgramAt (j / 2)).trader₂
+  else (traderProgramAt (j / 2)).trader
+
+/-- Coverage half of the paper's redundant enumeration: every token-model e.c. trader
+occurs as the exact extensional output of one concrete program tuple. -/
 lemma exists_traderProgram_eq (Tr : Trader) (hTr : EfficientlyComputableTok Tr) :
     ∃ p : TraderProgram, p.trader = Tr := by
   obtain ⟨lengthCode, tokenCode, a, k, h⟩ := hTr
@@ -74,18 +84,51 @@ lemma exists_traderProgram_eq (Tr : Trader) (hTr : EfficientlyComputableTok Tr) 
   simpa [TraderProgram.trader, TraderProgram.tokens, TraderProgram.clock,
     clockedTrader] using h
 
-/-- Every entry in the enumeration is e.c.; total bounded emulation is part of the
+/-- Digit-model coverage: every digit-model e.c. trader occurs as the digit decode of one
+concrete program tuple. -/
+lemma exists_traderProgram₂_eq (Tr : Trader) (hTr : EfficientlyComputableTok₂ Tr) :
+    ∃ p : TraderProgram, p.trader₂ = Tr := by
+  obtain ⟨lengthCode, tokenCode, a, k, h⟩ := hTr
+  let p : TraderProgram := ⟨lengthCode, tokenCode, a, k⟩
+  refine ⟨p, ?_⟩
+  simpa [TraderProgram.trader₂, TraderProgram.tokens, TraderProgram.clock,
+    clockedTrader₂] using h
+
+/-- Every even entry is token-model e.c.; total bounded emulation is part of the
 definition, not an unproved compiler assumption. -/
-lemma enumeratedTrader_ecTok (j : ℕ) : EfficientlyComputableTok (enumeratedTrader j) := by
+lemma enumeratedTrader_even_ecTok (j : ℕ) :
+    EfficientlyComputableTok (enumeratedTrader (2 * j)) := by
   let p := traderProgramAt j
   refine ⟨p.lengthCode, p.tokenCode, p.coefficient, p.degree, ?_⟩
+  rw [enumeratedTrader, if_neg (by omega), Nat.mul_div_cancel_left j (by norm_num)]
   rfl
 
-/-- `prop:enumeration`, coverage clause: every efficiently computable trader occurs in the
-concrete natural-indexed sequence. -/
+/-- Every odd entry is digit-model e.c. -/
+lemma enumeratedTrader_odd_ecTok₂ (j : ℕ) :
+    EfficientlyComputableTok₂ (enumeratedTrader (2 * j + 1)) := by
+  let p := traderProgramAt j
+  refine ⟨p.lengthCode, p.tokenCode, p.coefficient, p.degree, ?_⟩
+  rw [enumeratedTrader, if_pos (by omega), show (2 * j + 1) / 2 = j by omega]
+  rfl
+
+/-- `prop:enumeration`, coverage clause: every token-model efficiently computable trader
+occurs in the concrete natural-indexed sequence (at an even index). -/
 lemma exists_enumeratedTrader_eq (Tr : Trader) (hTr : EfficientlyComputableTok Tr) :
     ∃ j : ℕ, enumeratedTrader j = Tr := by
   obtain ⟨p, hp⟩ := exists_traderProgram_eq Tr hTr
-  exact ⟨p.index, by simpa [enumeratedTrader] using hp⟩
+  refine ⟨2 * p.index, ?_⟩
+  rw [enumeratedTrader, if_neg (by omega),
+    Nat.mul_div_cancel_left p.index (by norm_num), traderProgramAt_index]
+  exact hp
+
+/-- `prop:enumeration`, digit-model coverage clause: every digit-model efficiently
+computable trader occurs in the concrete natural-indexed sequence (at an odd index). -/
+lemma exists_enumeratedTrader₂_eq (Tr : Trader) (hTr : EfficientlyComputableTok₂ Tr) :
+    ∃ j : ℕ, enumeratedTrader j = Tr := by
+  obtain ⟨p, hp⟩ := exists_traderProgram₂_eq Tr hTr
+  refine ⟨2 * p.index + 1, ?_⟩
+  rw [enumeratedTrader, if_pos (by omega),
+    show (2 * p.index + 1) / 2 = p.index by omega, traderProgramAt_index]
+  exact hp
 
 end LogicalInduction

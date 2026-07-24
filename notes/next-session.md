@@ -157,10 +157,41 @@ the build gate between construction files.
 > Nat.sqrt` in a section (but NOT nested twice — hard error); `set_option … in` precedes
 > the docstring.
 >
-> **Step 4 (the criterion flip) after step 3 lands**: change `IsLogicalInductor.noExploit`
-> field to quantify over `Tok₂`; re-expose a lemma named `noExploit` with the old
-> signature via `toTok₂` so no property file changes; mirror `TraderEnumeration` with the
-> digit decode; rebuild `TradingFirm` coverage; re-close `LIA_is_logical_inductor`.
+> **Status 2026-07-24 (later still): step 4 DONE, as a layered class** (not a field
+> rewrite — see design note).  Landed:
+> * `IsLogicalInductor₂ extends IsLogicalInductor` (Criterion.lean) with `noExploit₂`
+>   over `EfficientlyComputableTok₂`, layering disclosed in the docstring;
+> * `enumeratedTrader` redefined as the tagged two-model enumeration (even = token
+>   decode, odd = digit decode; `TraderProgram.trader₂`), with coverage lemmas for both
+>   classes (`exists_enumeratedTrader_eq` / `_₂_eq`) and per-parity ec lemmas;
+> * `trading_firm_dominance_of_covered` (the factored `lem:tfdom` core) + both
+>   emission-model instances, incl. `trading_firm_dominance₂`;
+> * `undigitize_prim`/`undigitizeStep_prim` + the parity dispatch in
+>   `enumeratedTraderTrades_prim` (the compiler's ONLY decode coupling — everything
+>   downstream consumes `firmRawTraderTrades_prim` opaquely);
+> * `lia_no_efficient_trader_exploits₂`, `lia_isLogicalInductor₂_of_computableMarket`,
+>   **`LIA_is_logical_inductor₂`**, `exists_logical_inductor₂` — `thm:lia`/`thm:li` in
+>   the digit-metered (paper-faithful) e.c. class, unconditional over any computable DP;
+> * AxiomAudit: new endpoints asserted + `#assert_fields IsLogicalInductor₂`;
+>   `lem:tfdom` classified complete in coverage-classification.md.
+>
+> **Design note (why layered, not flipped in place).**  Every theorem *constructing* an
+> `IsLogicalInductor` instance must defeat the class it claims.  The LIA construction now
+> defeats `Tok₂`; but the conditioning transformations (`thm:scon`) construct instances
+> for the *conditioned* market by translating an exploiting trader back to the base
+> market, and their translation compilers (`ConditioningCompiler`) carry token-model
+> emission certificates only.  Flipping the single field would silently break (or force
+> a rushed re-engineering of) that whole family.  The layered class keeps everything
+> green and makes the residual explicit:
+>
+> **RESIDUAL (recorded tranche): digit-model conditioning translation.**  Extend
+> `conditionedTranslation_preserves_ec` (and the gated/eventual variants) to
+> `Tok₂ → Tok₂` — undigitize → token transducer → redigitize, each stage poly — so
+> `lic_conditioned*` can produce `IsLogicalInductor₂` and the two classes can collapse
+> into one field (renaming `noExploit` to quantify over `Tok₂`, with the token-model
+> lemma derived via `toTok₂`).  Until then, property-tail results conditional on
+> `[IsLogicalInductor P DP]` are discharged by `LIA_is_logical_inductor₂.to…` as before,
+> and the paper-facing existence statement should cite `LIA_is_logical_inductor₂`.
 
 ## Tranche 3 — ctsInd-composed quotes + indicator product: witness-free `thm:st` (and cee/ceu)
 

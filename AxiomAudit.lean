@@ -83,6 +83,12 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 #assert_axioms_clean exists_logical_inductor LIA_is_logical_inductor
   exists_computable_beliefSequence_logical_inductor
 
+-- Digit-metered (paper-faithful) forms (Tranche 2 step 4): the same LIA defeats the
+-- wider `EfficientlyComputableTok₂` class — the enumeration's odd indices cover it.
+#assert_axioms_clean
+  LIA_is_logical_inductor₂ exists_logical_inductor₂
+  trading_firm_dominance₂ exists_enumeratedTrader₂_eq
+
 /-! ## Property tail, conditional on `[IsLogicalInductor P DP]` (M3–M5) -/
 
 -- Properties/Coherence.lean
@@ -432,6 +438,8 @@ deliberately. -/
   source_codes lower_feature lower_generated upper_feature upper_generated width_codes inverse_width_codes width_pos width_tendsto_zero probability_bounds quote quote_codes reflected inside_affine outside_affine
 #assert_fields IsLogicalInductor
   marketComputable processComputable noExploit
+#assert_fields IsLogicalInductor₂
+  toIsLogicalInductor noExploit₂
 #assert_fields LUV
   gt
 #assert_fields LUVCombination

@@ -62,6 +62,7 @@ or a conventional complexity class.  A row marked *complete* claims the paper st
 | thm:incons | complete | unconditional over `LIA` (Σ₁-sound `Θ ⊇ IΣ₁`) |
 | thm:lc | conditional | probability measure on completed worlds constructed (F1) over `[IsLogicalInductor]` |
 | thm:lex | conditional | propositional rendering over `[IsLogicalInductor]` |
+| lem:tfdom | complete | covered-index core + both emission-model instances (`trading_firm_dominance`, `_₂`) |
 | thm:li | complete | computable finite-support belief-sequence form (F8) |
 | thm:lia | complete | the central construction, kernel-clean |
 | thm:loe | qualified | varying-sequence linearity via combination provind (+ exact-theory presentation); fully unconditional for `dd:luv-arith` fixed indices |
