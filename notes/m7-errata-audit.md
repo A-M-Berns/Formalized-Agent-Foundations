@@ -212,7 +212,11 @@ constructed processes (`theoremDP_hworld`, `emptyBitDeductiveProcess_hworld`).
    the five meta-learning `_unconditional` siblings) are **not listed in
    `AxiomAudit.lean`**, so they are outside the axiom-cleanliness and surface-freeze
    guards even though they are the strongest forms of their theorems. Add them to the
-   audit surface. NOT YET FIXED — see the shoring-up plan discussion.
+   audit surface.
+   **FIXED** (Tranche 0 of the shoring plan, same day): all 11 missing `_unconditional`
+   endpoints added to the ComputationDP capstones block in `AxiomAudit.lean`, with a
+   comment naming the residual reflection-data hypotheses; `lake build AxiomAudit` and
+   the coverage script both green.
 
 ## 4. What this audit did **not** cover in depth
 

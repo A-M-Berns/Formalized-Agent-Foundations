@@ -293,10 +293,24 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_does_not_anticipate_halting_ofComputation
 
 -- Construction/Witnesses/ComputationDP.lean — unconditional-over-LIA capstones
--- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above)
+-- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above).
+-- The quotation family below discharges market/inductor/presentation/hworld; the
+-- reflection data (`RationalQuoteCode`, `*_reflected`) remains a caller hypothesis until
+-- the Tranche-1/3 `*OfMarket` constructors land (see next-session.md ACTIVE PLAN).
 #assert_axioms_clean
   lia_learns_halting_patterns_unconditional
   lic_expectations_of_probabilities_ofCode_unconditional
+  lic_iterated_expectations_ofCode_unconditional
+  lic_introspection_ofCode_unconditional
+  lic_expected_future_expectations_ofRepresentation_unconditional
+  lic_no_expected_net_update_ofRepresentation_unconditional
+  lic_no_expected_net_update_conditional_ofRepresentation_unconditional
+  lic_self_trust_ofRepresentation_unconditional
+  lic_belief_finitistic_consistency_unconditional
+  lic_belief_stronger_theory_consistency_unconditional
+  lic_disbelief_inconsistent_theories_unconditional
+  lic_learns_provable_nonhalting_patterns_unconditional
+  lic_does_not_anticipate_halting_unconditional
 
 
 open AffineCombination LUVCombination in
