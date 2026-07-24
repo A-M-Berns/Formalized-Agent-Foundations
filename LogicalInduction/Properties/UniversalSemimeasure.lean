@@ -1168,13 +1168,14 @@ lemma eventually_dusSignal_eq_one_of_low_limit
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (P : History) [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (k i : ℕ)
     (hlow : limitingBelief P (B.prefixSentence (B.enumeration i)) <
       M.mass (B.enumeration i) / (8 * ((k + 1 : ℕ) : ℝ))) :
     ∀ᶠ m in atTop,
       (dusSignal A k (Nat.pair m i)).denote P = 1 := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let φ := B.prefixSentence (B.enumeration i)
   have hvisit := tendsto_pair_left_atTop i
   have hconv0 := lic_limitingBelief_tendsto P DP hworld φ
@@ -1251,13 +1252,14 @@ lemma exists_dusMeanPayout_ge_of_low_limit
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (P : History) [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (k i : ℕ)
     (hlow : limitingBelief P (B.prefixSentence (B.enumeration i)) <
       M.mass (B.enumeration i) / (8 * ((k + 1 : ℕ) : ℝ))) :
     ∃ n, (k + 1 : ℕ) ≤ dusMeanPayoutThrough A P k n := by
-  have hevent := eventually_dusSignal_eq_one_of_low_limit A P hP hworld k i hlow
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
+  have hevent := eventually_dusSignal_eq_one_of_low_limit A P hworld k i hlow
   obtain ⟨N, hN⟩ := Filter.eventually_atTop.1 hevent
   have hmass : 0 < M.mass (B.enumeration i) := by
     let φ := B.prefixSentence (B.enumeration i)
@@ -1516,15 +1518,16 @@ lemma exists_consistent_dusScaleTrader_netWorth_ge_of_low_limit
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (P : History) [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (k i : ℕ)
     (hlow : limitingBelief P (B.prefixSentence (B.enumeration i)) <
       M.mass (B.enumeration i) / (8 * ((k + 1 : ℕ) : ℝ))) :
     ∃ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧
       (k : ℝ) ≤ (dusScaleTrader A k).netWorth P v n := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨n, hmean⟩ :=
-    exists_dusMeanPayout_ge_of_low_limit A P hP hworld k i hlow
+    exists_dusMeanPayout_ge_of_low_limit A P hworld k i hlow
   obtain ⟨v, hv, hnet⟩ :=
     exists_consistent_dusScaleTrader_netWorth_ge_mean_sub_one A P hP k n
   refine ⟨n, v, hv, ?_⟩
@@ -1724,16 +1727,17 @@ lemma exists_live_consistent_dusScaleTrader_netWorth_ge_of_low_limit
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (P : History) [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     {k i : ℕ} (hk : 0 < k)
     (hlow : limitingBelief P (B.prefixSentence (B.enumeration i)) <
       M.mass (B.enumeration i) / (8 * ((k + 1 : ℕ) : ℝ))) :
     ∃ n, ∃ v : PCWorld, k ≤ n ∧ v.ConsistentWith (DP.D n) ∧
       (k : ℝ) ≤ (dusScaleTrader A k).netWorth P v n := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨n, v, hv, hnet⟩ :=
     exists_consistent_dusScaleTrader_netWorth_ge_of_low_limit
-      A P hP hworld k i hlow
+      A P hworld k i hlow
   have hkn : k ≤ n := by
     by_contra h
     have hzero := dusScaleTrader_netWorth_zero_before A P v
@@ -1750,13 +1754,14 @@ lemma dusTrader_exploits_of_failed_scales
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (P : History) [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hfail : ∀ j, ∃ i,
       limitingBelief P (B.prefixSentence (B.enumeration i)) <
         M.mass (B.enumeration i) /
           (8 * ((dusDiagonalScale j + 1 : ℕ) : ℝ))) :
     (dusTrader A).Exploits P DP := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   refine exploits_of_bddBelow_of_unbounded _ _ _ 2 ?_ ?_
   · rintro x ⟨N, v, hv, rfl⟩
     exact dusTrader_netWorth_ge_neg_two A P hP v N
@@ -1767,7 +1772,7 @@ lemma dusTrader_exploits_of_failed_scales
       exact (Nat.zero_le j).trans_lt (dusDiagonalScale_gt j)
     obtain ⟨N, v, hscaleN, hv, htargetNet⟩ :=
       exists_live_consistent_dusScaleTrader_netWorth_ge_of_low_limit
-        A P hP hworld hscalePos hlow
+        A P hworld hscalePos hlow
     refine ⟨(dusTrader A).netWorth P v N, ⟨N, v, hv, rfl⟩, ?_⟩
     let weight : ℕ → ℝ := fun r ↦
       1 / (((r + 1 : ℕ) : ℝ) ^ 2)
@@ -1957,10 +1962,11 @@ theorem lic_domination_universalSemimeasure
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A)
     (P : History) [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ C : ℝ, 0 < C ∧ ∀ σ,
       C * M.mass σ ≤ limitingBelief P (B.prefixSentence σ) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   by_cases hscale : ∃ j : ℕ, ∀ σ,
       M.mass σ / (8 * ((dusDiagonalScale j + 1 : ℕ) : ℝ)) ≤
         limitingBelief P (B.prefixSentence σ)
@@ -1991,7 +1997,7 @@ theorem lic_domination_universalSemimeasure
       simpa only [hi] using hlow
     exact IsLogicalInductor.noExploit (P := P) (DP := DP)
       (dusTrader A) (dusTrader_ecTok A emit)
-      (dusTrader_exploits_of_failed_scales A P hP hworld hfail)
+      (dusTrader_exploits_of_failed_scales A P hworld hfail)
 
 
 #print axioms semimeasureMean_root_le_max

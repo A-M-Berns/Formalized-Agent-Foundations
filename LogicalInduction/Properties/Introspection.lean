@@ -195,7 +195,6 @@ theorem lic_introspection
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (a b δ : ℕ → ℚ)
     (q : IntrospectionIntervalQuote P DP φ a b δ)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ ε : ℕ → ℚ,
       (∀ n, 0 < ε n) ∧
@@ -207,6 +206,8 @@ theorem lic_introspection
         ((¬ ((a n : ℝ) - δ n < P n (φ n) ∧
               P n (φ n) < (b n : ℝ) + δ n)) →
           P n (q.quote n) < (ε n : ℝ)) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   let lowerGap : ℕ → ℝ := fun n ↦
     (ctsInd (δ n) (P n (φ n)) (a n : ℝ) *
       ctsInd (δ n) (b n : ℝ) (P n (φ n))) *
@@ -331,9 +332,10 @@ theorem lic_paradox_resistance
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
     (q : ParadoxResistanceQuote P DP p)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (q.sentence n)) ≈ₙ fun _ => (p : ℝ) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   have hp0R : (0 : ℝ) < p := by exact_mod_cast hp0
   have hp1R : (p : ℝ) < 1 := by exact_mod_cast hp1
   let μ : ℝ := min (p : ℝ) (1 - p)

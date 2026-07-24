@@ -362,7 +362,6 @@ end LUV
 Paper node: `thm:ei` -/
 theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : Sentence) (Y : LUV) (hcode : Y.PolyThresholdCodes)
-    (_hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hY : Y.IsIndicator φ DP) :
     AsympEq (Y.expectSeq P) (fun n => P n φ) := by
@@ -401,7 +400,6 @@ theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (a b : ℚ) (X Y Z : LUV)
     (hcodeX : X.PolyThresholdCodes) (hcodeY : Y.PolyThresholdCodes)
     (hcodeZ : Z.PolyThresholdCodes)
-    (_hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hvals : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
       ∃ x y z : ℝ, z = (a : ℝ) * x + (b : ℝ) * y ∧
@@ -468,7 +466,6 @@ theorem lic_linearity_of_expectation_ofValuesAt (P : History) (DP : DeductivePro
     [IsLogicalInductor P DP] (a b : ℚ) (X Y Z : LUV)
     (hcodeX : X.PolyThresholdCodes) (hcodeY : Y.PolyThresholdCodes)
     (hcodeZ : Z.PolyThresholdCodes)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hvals : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) →
       ∃ x y z, v.ValuesAt X x ∧ v.ValuesAt Y y ∧ v.ValuesAt Z z)
@@ -476,7 +473,7 @@ theorem lic_linearity_of_expectation_ofValuesAt (P : History) (DP : DeductivePro
       v.ValuesAt X x → v.ValuesAt Y y → v.ValuesAt Z z → z = a * x + b * y) :
     AsympEq (fun n => (a : ℝ) * X.expect P n + (b : ℝ) * Y.expect P n)
       (Z.expectSeq P) :=
-  lic_linearity_of_expectation P DP a b X Y Z hcodeX hcodeY hcodeZ hP hcons
+  lic_linearity_of_expectation P DP a b X Y Z hcodeX hcodeY hcodeZ hcons
     ((Filter.eventually_gt_atTop 0).mono (fun n hn v hv => by
       obtain ⟨x, y, z, hx, hy, hz⟩ := hvals n v hv
       exact ⟨x, y, z, hlin n v hv x y z hx hy hz,
@@ -492,7 +489,6 @@ recovers the full `PCWorld.ValuesAt` statement.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
-    (_hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
     (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
       ∃ x : ℝ, c ≤ x ∧ |X.expectApprox v.payout n - x| ≤ 1 / n) :
@@ -528,12 +524,11 @@ theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_ofValuesAt (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
     (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) →
       ∃ x, c ≤ x ∧ v.ValuesAt X x) :
     AsympGE (X.expectSeq P) (fun _ => c) :=
-  lic_expectation_provind P DP X hcode hP hcons c
+  lic_expectation_provind P DP X hcode hcons c
     ((Filter.eventually_gt_atTop 0).mono (fun n hn v hv => by
       obtain ⟨x, hcx, hx⟩ := hval n v hv
       exact ⟨x, hcx, hx.expectApprox_near hn⟩))
@@ -545,7 +540,6 @@ lower form through the negated affine mesh.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_le (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
-    (_hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
     (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
       ∃ x : ℝ, x ≤ c ∧ |X.expectApprox v.payout n - x| ≤ 1 / n) :
@@ -580,16 +574,17 @@ lower and upper forms: a determined LUV value forces the expectation sequence to
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_eq (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
     (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
       |X.expectApprox v.payout n - c| ≤ 1 / n) :
     AsympEq (X.expectSeq P) (fun _ => c) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   have hge : AsympGE (X.expectSeq P) (fun _ => c) :=
-    lic_expectation_provind P DP X hcode hP hcons c
+    lic_expectation_provind P DP X hcode hcons c
       (hval.mono (fun n hn v hv => ⟨c, le_rfl, hn v hv⟩))
   have hle : AsympLE (X.expectSeq P) (fun _ => c) :=
-    lic_expectation_provind_le P DP X hcode hP hcons c
+    lic_expectation_provind_le P DP X hcode hcons c
       (hval.mono (fun n hn v hv => ⟨c, le_rfl, hn v hv⟩))
   rw [asympEq_iff_eventuallyWithin]
   intro ε hε

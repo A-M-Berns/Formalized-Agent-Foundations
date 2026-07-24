@@ -405,11 +405,12 @@ theorem lic_learning_exclusive_exhaustive
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
     (hφ : ∀ j < k, PolySentenceCodes (φ j))
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hexclusiveExhaustive : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ((List.range k).map (fun j => v.payout (φ j n))).sum = 1) :
     (fun n => ((List.range k).map (fun j => P n (φ j n))).sum) ≈ₙ fun _ => 1 := by
+  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
+    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   let As := exclusiveExhaustiveAffine k φ
   have hpoly := exclusiveExhaustive_polySequence k hk φ hφ
   have hmag : ∀ n, (As n).magnitude P ≤ 1 := fun n => by

@@ -202,12 +202,13 @@ already asymptotically zero. -/
 theorem preemptive_asympEq_zero {P : History} {gap : ℕ → ℝ}
     (q : AffineQuotePortfolio P gap)
     (DP : DeductiveProcess) [IsLogicalInductor P DP] (f : DeferralFunction)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hfuture : AsympEq (fun n => (q.family n).price P (f n)) (fun _ => 0)) :
     AsympEq (fun n => (q.family n).price P n) (fun _ => 0) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   rw [asympEq_iff_asympLE_asympGE]
-  have hgaps := q.poly.noPreemptiveGaps P DP q.magnitude_le_one hP hcons
+  have hgaps := q.poly.noPreemptiveGaps P DP q.magnitude_le_one hcons
   constructor
   · intro ε hε
     have hnear := asympEq_iff_eventuallyWithin.1 hfuture (ε / 4) (by linarith)
@@ -239,15 +240,16 @@ theorem preemptive_asympEq_zero {P : History} {gap : ℕ → ℝ}
 lemma gap_asympEq_zero {P : History} {gap : ℕ → ℝ}
     (q : AffineQuotePortfolio P gap)
     (DP : DeductiveProcess) [IsLogicalInductor P DP] (f : DeferralFunction)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hfuture : AsympEq (fun n => (q.family n).price P (f n)) (fun _ => 0)) :
     AsympEq gap (fun _ => 0) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   rw [asympEq_iff_eventuallyWithin]
   intro ε hε
   have hs : (0 : ℝ) < q.scale := by exact_mod_cast q.scale_pos
   have hzero := asympEq_iff_eventuallyWithin.1
-    (q.preemptive_asympEq_zero DP f hP hcons hfuture)
+    (q.preemptive_asympEq_zero DP f hcons hfuture)
     ((q.scale : ℝ) * ε) (mul_pos hs hε)
   filter_upwards [hzero] with n hn
   rw [q.current_price, sub_zero, abs_mul, abs_of_pos hs] at hn
@@ -257,12 +259,13 @@ lemma gap_asympEq_zero {P : History} {gap : ℕ → ℝ}
 lemma preemptive_asympGE_zero {P : History} {gap : ℕ → ℝ}
     (q : AffineQuotePortfolio P gap)
     (DP : DeductiveProcess) [IsLogicalInductor P DP] (f : DeferralFunction)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hfuture : AsympGE (fun n => (q.family n).price P (f n)) (fun _ => 0)) :
     AsympGE (fun n => (q.family n).price P n) (fun _ => 0) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   intro ε hε
-  have hgaps := q.poly.noPreemptiveGaps P DP q.magnitude_le_one hP hcons
+  have hgaps := q.poly.noPreemptiveGaps P DP q.magnitude_le_one hcons
   have hfutureHigh : ∀ᶠ n in atTop, -ε / 2 < affineFutureHigh q.family P n := by
     filter_upwards [hfuture (ε / 4) (by linarith)] with n hn
     have hhi := q.price_le_futureHigh (f.lt n).le
@@ -277,13 +280,14 @@ lemma preemptive_asympGE_zero {P : History} {gap : ℕ → ℝ}
 lemma gap_asympGE_zero {P : History} {gap : ℕ → ℝ}
     (q : AffineQuotePortfolio P gap)
     (DP : DeductiveProcess) [IsLogicalInductor P DP] (f : DeferralFunction)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hfuture : AsympGE (fun n => (q.family n).price P (f n)) (fun _ => 0)) :
     AsympGE gap (fun _ => 0) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   intro ε hε
   have hs : (0 : ℝ) < q.scale := by exact_mod_cast q.scale_pos
-  have hzero := q.preemptive_asympGE_zero DP f hP hcons hfuture
+  have hzero := q.preemptive_asympGE_zero DP f hcons hfuture
     ((q.scale : ℝ) * ε) (mul_pos hs hε)
   filter_upwards [hzero] with n hn
   rw [q.current_price] at hn
@@ -304,12 +308,13 @@ at the actual day-`f n` expectation of `X n`.
 Paper node: `thm:cee` -/
 theorem lic_expected_future_expectations (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (X Y : ℕ → LUV)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hquote : ExpectedFutureExpectationQuote P DP f X Y) :
     AsympEq (fun n => (X n).expect P n) (fun n => (Y n).expect P n) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   simpa only [AsympEq, sub_zero] using
-    hquote.affine.toAffineQuotePortfolio.gap_asympEq_zero DP f hP hcons
+    hquote.affine.toAffineQuotePortfolio.gap_asympEq_zero DP f hcons
       hquote.affine.future_coherent
 
 /-- **No Expected Net Update** (`thm:ceu`): `Pₙ(φₙ) ≈ₙ 𝔼ₙ(⌜P_{f(n)}(φₙ)⌝)`.
@@ -319,12 +324,13 @@ Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (φ : ℕ → Sentence)
     (Y : ℕ → LUV)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hquote : FuturePriceQuote P DP f φ Y) :
     AsympEq (fun n => P n (φ n)) (fun n => (Y n).expect P n) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   simpa only [AsympEq, sub_zero] using
-    hquote.affine.toAffineQuotePortfolio.gap_asympEq_zero DP f hP hcons
+    hquote.affine.toAffineQuotePortfolio.gap_asympEq_zero DP f hcons
       hquote.affine.future_coherent
 
 /-- **No Expected Net Update under Conditionals** (`thm:ccee`):
@@ -339,12 +345,13 @@ Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (X Z Z' : ℕ → LUV)
     (w : ℕ → ℚ)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hquote : ConditionalExpectationQuote P DP f X Z Z' w) :
     AsympEq (fun n => (Z n).expect P n) (fun n => (Z' n).expect P n) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   simpa only [AsympEq, sub_zero] using
-    hquote.affine.toAffineQuotePortfolio.gap_asympEq_zero DP f hP hcons
+    hquote.affine.toAffineQuotePortfolio.gap_asympEq_zero DP f hcons
       hquote.affine.future_coherent
 
 /-- **Self-Trust** (`thm:st`):
@@ -361,11 +368,12 @@ Paper node: `thm:st` -/
 theorem lic_self_trust (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (φ : ℕ → Sentence)
     (δ p : ℕ → ℚ) (A B : ℕ → LUV)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hquote : SelfTrustQuote P DP f φ δ p A B) :
     AsympGE (fun n => (A n).expect P n) (fun n => (p n : ℝ) * (B n).expect P n) := by
-  have hgap := hquote.affine.toAffineQuotePortfolio.gap_asympGE_zero DP f hP hcons
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
+  have hgap := hquote.affine.toAffineQuotePortfolio.gap_asympGE_zero DP f hcons
     hquote.affine.future_coherent
   intro ε hε
   filter_upwards [hgap ε hε] with n hn

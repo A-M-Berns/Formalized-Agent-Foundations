@@ -1488,16 +1488,17 @@ private lemma expectTerms_converge
     (l : List (EF × LUV)) (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP]
     (hcode : ∀ p ∈ l, p.2.PolyThresholdCodes)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ p ∈ l, ∀ᶠ m in atTop, ∀ (v : PCWorld),
       v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo p.2 x m) :
     ∃ L : ℝ, Tendsto (fun m =>
       (l.map (fun p => p.1.denote P * p.2.expect P m)).sum) atTop (𝓝 L) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   induction l with
   | nil => exact ⟨0, by simp⟩
   | cons p rest ih =>
-      obtain ⟨LX, hLX⟩ := p.2.expect_converges P DP (hcode p (by simp)) hP hworld
+      obtain ⟨LX, hLX⟩ := p.2.expect_converges P DP (hcode p (by simp)) hworld
         (hval p (by simp))
       have hcodeRest : ∀ q ∈ rest, q.2.PolyThresholdCodes := by
         intro q hq
@@ -1517,11 +1518,12 @@ lemma ConvergencePresentation.expect_tendsto_expectInf
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (hc : ConvergencePresentation As DP)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (n : ℕ) :
     Tendsto (fun m => (As n).expect P m) atTop (𝓝 ((As n).expectInf P)) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   obtain ⟨L, hL⟩ := expectTerms_converge (As n).terms P DP
-    (hc.threshold_code n) hP hworld (hc.daily_value n)
+    (hc.threshold_code n) hworld (hc.daily_value n)
   have hfull : Tendsto (fun m => (As n).expect P m) atTop
       (𝓝 ((As n).const.denote P + L)) := by
     simpa only [expect, expectAt] using tendsto_const_nhds.add hL
@@ -1537,12 +1539,13 @@ theorem BoundedSequence.mesh_limitingValue_near_expectInf
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
     (hc : ConvergencePresentation As DP)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (n : ℕ) :
     |((As n).meshAffine n).value P (limitingBelief P) - (As n).expectInf P| ≤
       meshTailError As P n := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   have hmeshLim := ((As n).meshAffine n).price_tendsto_limitingValue P DP hworld
-  have hexpectLim := hc.expect_tendsto_expectInf hP hworld n
+  have hexpectLim := hc.expect_tendsto_expectInf (P := P) hworld n
   have hdiffLim := (hmeshLim.sub hexpectLim).abs
   apply le_of_tendsto hdiffLim
   apply eventually_atTop.2
@@ -1565,13 +1568,14 @@ theorem BoundedSequence.limexpapprox
     (hc : ConvergencePresentation As DP)
     (b : ℚ) (hb : 0 ≤ (b : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     Tendsto (fun n =>
       |((As n).meshAffine n).value P (limitingBelief P) - (As n).expectInf P|)
       atTop (𝓝 0) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   exact squeeze_zero (fun n => abs_nonneg _)
-    (fun n => h.mesh_limitingValue_near_expectInf hc hP hworld n)
+    (fun n => h.mesh_limitingValue_near_expectInf hc hworld n)
     (h.mesh_independence ops hvalued b hb hshare hworld)
 
 /-- A LUV-combination sequence is determined when every completed-theory world and every
@@ -1870,12 +1874,13 @@ theorem BoundedSequence.exppolymax
     (hvalued : WorldValued As DP)
     (b : ℚ) (hb : 0 ≤ (b : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (fun n => (As n).expect P n) atTop =
         liminf (futureHigh As P) atTop ∧
       limsup (fun n => (As n).expect P n) atTop =
         limsup (futureLow As P) atTop := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   have hmesh := h.mesh_independence ops hvalued b hb hshare hworld
   have hhighNear : Tendsto (fun n =>
       |affineFutureHigh (fun i => (As i).meshAffine i) P n - futureHigh As P n|)
@@ -1901,14 +1906,15 @@ lemma BoundedSequence.mesh_peraffkno
     {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P) (DP : DeductiveProcess)
     [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (affineFutureLow (fun n => (As n).meshAffine n) P) atTop =
         liminf (fun n => ((As n).meshAffine n).value P (limitingBelief P)) atTop ∧
       limsup (affineFutureHigh (fun n => (As n).meshAffine n) P) atTop =
         limsup (fun n => ((As n).meshAffine n).value P (limitingBelief P)) atTop :=
-  h.poly.mesh_poly.peraffkno P DP (h.mesh_boundedPrices hP) h.mesh_magnitudeBounded
-    hworld
+  h.poly.mesh_poly.peraffkno P DP
+    (h.mesh_boundedPrices
+      (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
+    h.mesh_magnitudeBounded hworld
 
 /-- `thm:perexpkno`: persistence of expectation knowledge for represented bounded
 LUV-combination sequences.
@@ -1922,12 +1928,13 @@ theorem BoundedSequence.perexpkno
     (hc : ConvergencePresentation As DP)
     (b : ℚ) (hb : 0 ≤ (b : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (futureLow As P) atTop =
         liminf (fun n => (As n).expectInf P) atTop ∧
       limsup (futureHigh As P) atTop =
         limsup (fun n => (As n).expectInf P) atTop := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let Ms : ℕ → AffineCombination := fun n => (As n).meshAffine n
   let Mlim : ℕ → ℝ := fun n => (Ms n).value P (limitingBelief P)
   have hmesh := h.mesh_independence ops hvalued b hb hshare hworld
@@ -1947,13 +1954,13 @@ theorem BoundedSequence.perexpkno
   have hlimNear : Tendsto (fun n => |(As n).expectInf P - Mlim n|)
       atTop (𝓝 0) := by
     simpa only [Mlim, Ms, abs_sub_comm] using
-      h.limexpapprox ops hvalued hc b hb hshare hP hworld
+      h.limexpapprox ops hvalued hc b hb hshare hworld
   obtain ⟨hmlLo, hmlHi⟩ :=
     AffineCombination.BoundedAffinePrices.limitingValue_filterBounds
       (h.mesh_boundedPrices hP) DP hworld
   have hlimLimits := liminf_limsup_eq_of_abs_sub_tendsto_zero
     (fun n => (As n).expectInf P) Mlim hmlLo hmlHi hlimNear
-  have hper := h.mesh_peraffkno DP hP hworld
+  have hper := h.mesh_peraffkno DP hworld
   change liminf (futureLow As P) atTop =
       liminf (fun n => (As n).expectInf P) atTop ∧
     limsup (futureHigh As P) atTop =
@@ -1965,7 +1972,6 @@ lemma BoundedSequence.mesh_affcoh
     {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P) (DP : DeductiveProcess)
     [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (liminf (completedAffineLow (fun n => (As n).meshAffine n) P DP) atTop ≤
         liminf (fun n => ((As n).meshAffine n).value P (limitingBelief P)) atTop ∧
@@ -1975,6 +1981,8 @@ lemma BoundedSequence.mesh_affcoh
           limsup (fun n => ((As n).meshAffine n).value P (limitingBelief P)) atTop ∧
         limsup (fun n => ((As n).meshAffine n).value P (limitingBelief P)) atTop ≤
           limsup (completedAffineHigh (fun n => (As n).meshAffine n) P DP) atTop) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   simpa only [meshAffine_price_diagonal] using
     h.poly.mesh_poly.affcoh P DP (h.mesh_boundedPrices hP) h.mesh_magnitudeBounded
       hworld
@@ -1991,7 +1999,6 @@ theorem BoundedSequence.expcoh
     (hc : ConvergencePresentation As DP)
     (b : ℚ) (hb : 0 ≤ (b : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (liminf (completedLow As P DP) atTop ≤
         liminf (fun n => (As n).expectInf P) atTop ∧
@@ -2001,6 +2008,8 @@ theorem BoundedSequence.expcoh
           limsup (fun n => (As n).expectInf P) atTop ∧
         limsup (fun n => (As n).expectInf P) atTop ≤
           limsup (completedHigh As P DP) atTop) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let Ms : ℕ → AffineCombination := fun n => (As n).meshAffine n
   let Mlim : ℕ → ℝ := fun n => (Ms n).value P (limitingBelief P)
   have hcompNear := h.completedExtrema_mesh_tendsto hvalued b hshare hP hworld
@@ -2016,13 +2025,13 @@ theorem BoundedSequence.expcoh
   have hlimNear : Tendsto (fun n => |(As n).expectInf P - Mlim n|)
       atTop (𝓝 0) := by
     simpa only [Mlim, Ms, abs_sub_comm] using
-      h.limexpapprox ops hvalued hc b hb hshare hP hworld
+      h.limexpapprox ops hvalued hc b hb hshare hworld
   obtain ⟨hmlLo, hmlHi⟩ :=
     AffineCombination.BoundedAffinePrices.limitingValue_filterBounds
       (h.mesh_boundedPrices hP) DP hworld
   have hlimLimits := liminf_limsup_eq_of_abs_sub_tendsto_zero
     (fun n => (As n).expectInf P) Mlim hmlLo hmlHi hlimNear
-  have haff := h.mesh_affcoh DP hP hworld
+  have haff := h.mesh_affcoh DP hworld
   change (liminf (completedLow As P DP) atTop ≤
       liminf (fun n => (As n).expectInf P) atTop ∧
     liminf (fun n => (As n).expectInf P) atTop ≤
@@ -2154,7 +2163,6 @@ theorem BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     (hWdiv : DivergentWeighting W P)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hverify : AffineCombination.BiasRunHistoricallyVerifiable
       (normalizedMesh As b) (h.normalizedMesh_poly b) W hWgen P DP)
@@ -2164,6 +2172,8 @@ theorem BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
     HasLimitPoint
       (weightedBias (fun i => (W i).denote P)
         (fun i => (As i).expect P i) truth) 0 := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let w : ℕ → ℝ := fun i => (W i).denote P
   let market : ℕ → ℝ := fun i => (As i).expect P i
   let meshTruth : ℕ → ℝ := meshTheoryTruth As P DP hworld
@@ -2171,7 +2181,7 @@ theorem BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
   have hq : q ≠ 0 := ne_of_gt (meshNormScale_pos b)
   have haff := (hexact.normalizedMesh_determined hworld b).recunbiasedaff_of_historicalVerifiers
     (h.normalizedMesh_poly b) hWgen hWdiv
-      (normalizedMesh_magnitude_le_one b hshare) hworld hP hverify hverifyNeg
+      (normalizedMesh_magnitude_le_one b hshare) hworld hverify hverifyNeg
   have hscaled : HasLimitPoint
       (fun n => q * weightedBias w market meshTruth n) 0 := by
     have haff' : HasLimitPoint
@@ -2221,7 +2231,6 @@ theorem BoundedSequence.wubexp
     (hWdiv : DivergentWeighting W P)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (hsupport : WeightingSupportedOnDeferralImage W P f)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (emit : AffineCombination.FeedbackTraderEmissionSigns
       (h.normalizedMesh_poly b) hWgen hstrict)
@@ -2229,6 +2238,8 @@ theorem BoundedSequence.wubexp
       (normalizedMesh As b) (normalizedMeshTruth As P DP hworld b) P DP f) :
     weightedBias (fun i => (W i).denote P)
       (fun i => (As i).expect P i) truth ≈ₙ (fun _ => 0) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let w : ℕ → ℝ := fun i => (W i).denote P
   let market : ℕ → ℝ := fun i => (As i).expect P i
   let meshTruth : ℕ → ℝ := meshTheoryTruth As P DP hworld
@@ -2236,7 +2247,7 @@ theorem BoundedSequence.wubexp
   have hq : q ≠ 0 := ne_of_gt (meshNormScale_pos b)
   have haff := AffineCombination.lic_wubaff
     (h.normalizedMesh_poly b) hWgen hstrict hsupport emit bridge hWdiv
-      (normalizedMesh_magnitude_le_one b hshare) hP hworld
+      (normalizedMesh_magnitude_le_one b hshare) hworld
   have hscaled : (fun n => q * weightedBias w market meshTruth n) ≈ₙ
       (fun _ => 0) := by
     have haff' : weightedBias w (fun i => q * market i) (fun i => q * meshTruth i) ≈ₙ
@@ -2287,7 +2298,6 @@ theorem BoundedSequence.prandexp_of_historicalVerifiers
     (hexact : ExactTheoryPresentation As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
     (clock : PatientSettlementClock (normalizedMesh As b) P DP
@@ -2301,6 +2311,8 @@ theorem BoundedSequence.prandexp_of_historicalVerifiers
         (fun n => (normalizedMesh As b n).neg)
         (h.normalizedMesh_poly b).neg W hWgen P DP) :
     (fun n => (As n).expect P n) ≳ₙ (fun _ => 0) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : 0 < q := meshNormScale_pos b
   have hpseudoMesh := hexact.normalizedMeshTruth_pseudorandomAbove
@@ -2309,7 +2321,7 @@ theorem BoundedSequence.prandexp_of_historicalVerifiers
     AffineCombination.DeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
       (h.normalizedMesh_poly b) (hexact.normalizedMesh_determined hworld b)
       (h.normalizedMesh_boundedPrices b hP)
-      (normalizedMesh_magnitude_le_one b hshare) hworld hP f clock
+      (normalizedMesh_magnitude_le_one b hshare) hworld f clock
       hpseudoMesh hverify hverifyNeg
   have hscaled : (fun n => q * (As n).expect P n) ≳ₙ (fun _ => 0) := by
     simpa only [q, normalizedMesh, AffineCombination.scale_price, EF.denote_const,
@@ -2324,7 +2336,6 @@ theorem BoundedSequence.prandexp_below_of_historicalVerifiers
     (hexact : ExactTheoryPresentation As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
     (clock : PatientSettlementClock (normalizedMesh As b) P DP
@@ -2339,6 +2350,8 @@ theorem BoundedSequence.prandexp_below_of_historicalVerifiers
         (fun n => ((normalizedMesh As b n).neg).neg)
         (h.normalizedMesh_poly b).neg.neg W hWgen P DP) :
     (fun n => (As n).expect P n) ≲ₙ (fun _ => 0) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : 0 < q := meshNormScale_pos b
   have hpseudoMesh := hexact.normalizedMeshTruth_pseudorandomBelow
@@ -2347,7 +2360,7 @@ theorem BoundedSequence.prandexp_below_of_historicalVerifiers
     AffineCombination.DeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
       (h.normalizedMesh_poly b) (hexact.normalizedMesh_determined hworld b)
       (h.normalizedMesh_boundedPrices b hP)
-      (normalizedMesh_magnitude_le_one b hshare) hworld hP f clock
+      (normalizedMesh_magnitude_le_one b hshare) hworld f clock
       hpseudoMesh hverifyNeg hverifyNegNeg
   have hscaled : (fun n => q * (As n).expect P n) ≲ₙ (fun _ => 0) := by
     simpa only [q, normalizedMesh, AffineCombination.scale_price, EF.denote_const,
@@ -2362,7 +2375,6 @@ theorem BoundedSequence.prandexp_eq_of_historicalVerifiers
     (hexact : ExactTheoryPresentation As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
     (clock : PatientSettlementClock (normalizedMesh As b) P DP
@@ -2380,11 +2392,13 @@ theorem BoundedSequence.prandexp_eq_of_historicalVerifiers
         (fun n => ((normalizedMesh As b n).neg).neg)
         (h.normalizedMesh_poly b).neg.neg W hWgen P DP) :
     (fun n => (As n).expect P n) ≈ₙ (fun _ => 0) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   rw [asympEq_iff_asympLE_asympGE]
   exact ⟨
-    h.prandexp_below_of_historicalVerifiers hexact hdet b hshare hP hworld f clock hpseudo.2
+    h.prandexp_below_of_historicalVerifiers hexact hdet b hshare hworld f clock hpseudo.2
       hverifyNeg hverifyNegNeg,
-    h.prandexp_of_historicalVerifiers hexact hdet b hshare hP hworld f clock hpseudo.1
+    h.prandexp_of_historicalVerifiers hexact hdet b hshare hworld f clock hpseudo.1
       hverify hverifyNeg⟩
 
 #print axioms LUV.expectAffine_priceAt

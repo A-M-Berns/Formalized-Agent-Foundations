@@ -147,7 +147,6 @@ lemma lic_limitingBelief_exactlyOne
     intro n v hv
     simpa [family] using hexact v hv
   have hlex := lic_learning_exclusive_exhaustive P DP k hk family hcodes
-    (fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ)
     hworld hsem
   have hsum : ∀ l : List ℕ,
       ConvergesTo (fun n => (l.map (fun j => P n (family j n))).sum)

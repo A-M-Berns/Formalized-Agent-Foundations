@@ -51,7 +51,6 @@ theorem lic_wub_ofComputation_unconditional
   haveI := feedbackLIA T
   exact lic_wub_ofComputation (liaHistory (theoremDP T)) (theoremDP T)
     φ hφ truth htruth W hW hWdiv f hstrict C hsupport
-    (fun n ψ => liaHistory_range (theoremDP T) n ψ)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:wubaff`, unconditional over the constructed `LIA`: the market, deductive process,
@@ -74,7 +73,6 @@ theorem lic_wubaff_ofComputation_unconditional
       (fun i ↦ (As i).price (liaHistory (theoremDP T)) i) truth ≈ₙ (fun _ ↦ 0) := by
   haveI := feedbackLIA T
   exact lic_wubaff_ofComputation hpoly hW hdet C hstrict hsupport hWdiv hbounded hmag
-    (fun n φ => liaHistory_range (theoremDP T) n φ)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- Paper-facing `thm:wubaff`, unconditional over the constructed `LIA`, for an arbitrary
@@ -96,7 +94,6 @@ theorem boundedCombination_wubaff_ofComputation_unconditional
       (fun i ↦ (As i).price (liaHistory (theoremDP T)) i) truth ≈ₙ (fun _ ↦ 0) := by
   haveI := feedbackLIA T
   exact boundedCombination_wubaff_ofComputation h hW hdet hstrict C hsupport hWdiv
-    (fun n φ => liaHistory_range (theoremDP T) n φ)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:wubexp`, unconditional over the constructed `LIA`: the concrete normalized threshold
@@ -123,7 +120,6 @@ theorem luv_wubexp_ofComputation_unconditional
       (fun i ↦ (As i).expect (liaHistory (theoremDP T)) i) truth ≈ₙ (fun _ ↦ 0) := by
   haveI := feedbackLIA T
   exact luv_wubexp_ofComputation h hexact hdet b hshare hW hWdiv hstrict
-    (fun n φ => liaHistory_range (theoremDP T) n φ)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩) C hsupport
 
 #print axioms lic_wubaff_ofComputation_unconditional

@@ -175,7 +175,6 @@ Paper node: `thm:perkno` -/
 theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (hφ : PolySentenceCodes φ) (hp : PolyRatCodes p)
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (((fun n => limitingBelief P (φ n) - (p n : ℝ)) ≲ₙ
@@ -186,11 +185,13 @@ theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
           (fun n => limitingBelief P (φ n) - (p n : ℝ))) →
         (fun _ : ℕ => (0 : ℝ)) ≲ₙ
           affineFutureLow (AffineCombination.sentenceMinusProbability φ p) P) := by
+  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
+    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   let As := AffineCombination.sentenceMinusProbability φ p
   have hpoly := AffineCombination.sentenceMinusProbability_polySequence φ p hφ hp
   have hbounded := AffineCombination.sentenceMinusProbability_bounded φ p P hP hpProb
   have hgap := hpoly.noPersistenceGaps P DP hbounded
-    (fun n => by simp) hP hworld
+    (fun n => by simp) hworld
   constructor
   · intro hlim
     apply noPreemptiveOverpricing_asympLE_zero hgap.overpriced
@@ -204,18 +205,19 @@ Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge_upper (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (hφ : PolySentenceCodes φ) (hp : PolyRatCodes p)
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hlim : (fun n => limitingBelief P (φ n)) ≲ₙ fun n => (p n : ℝ)) :
     (fun n => sSup (Set.range (fun j => P (n + j) (φ n)))) ≲ₙ
       fun n => (p n : ℝ) := by
+  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
+    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hcenterLim : (fun n => limitingBelief P (φ n) - (p n : ℝ)) ≲ₙ
       fun _ => 0 := by
     intro ε hε
     filter_upwards [hlim ε hε] with n hn
     linarith
-  have hcenter := (lic_centered_persistence P DP φ p hφ hp hP hpProb hworld).1
+  have hcenter := (lic_centered_persistence P DP φ p hφ hp hpProb hworld).1
     hcenterLim
   intro ε hε
   have hnear := hcenter ε hε
@@ -234,18 +236,19 @@ Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge_lower (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (hφ : PolySentenceCodes φ) (hp : PolyRatCodes p)
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hlim : (fun n => limitingBelief P (φ n)) ≳ₙ fun n => (p n : ℝ)) :
     (fun n => sInf (Set.range (fun j => P (n + j) (φ n)))) ≳ₙ
       fun n => (p n : ℝ) := by
+  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
+    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hcenterLim : (fun _ => 0) ≲ₙ
       fun n => limitingBelief P (φ n) - (p n : ℝ) := by
     intro ε hε
     filter_upwards [hlim ε hε] with n hn
     linarith
-  have hcenter := (lic_centered_persistence P DP φ p hφ hp hP hpProb hworld).2
+  have hcenter := (lic_centered_persistence P DP φ p hφ hp hpProb hworld).2
     hcenterLim
   intro ε hε
   have hnear := hcenter ε hε
@@ -318,7 +321,6 @@ Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (hφ : PolySentenceCodes φ) (hp : PolyRatCodes p)
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (((fun n => limitingBelief P (φ n)) ≈ₙ fun n => (p n : ℝ)) →
@@ -329,10 +331,12 @@ theorem lic_persistence_of_knowledge (P : History) (DP : DeductiveProcess)
       (((fun n => limitingBelief P (φ n)) ≳ₙ fun n => (p n : ℝ)) →
         (fun n => sInf (Set.range (fun j => P (n + j) (φ n)))) ≳ₙ
           fun n => (p n : ℝ)) := by
+  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
+    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hupper := lic_persistence_of_knowledge_upper
-    P DP φ p hφ hp hP hpProb hworld
+    P DP φ p hφ hp hpProb hworld
   have hlower := lic_persistence_of_knowledge_lower
-    P DP φ p hφ hp hP hpProb hworld
+    P DP φ p hφ hp hpProb hworld
   refine ⟨?_, hupper, hlower⟩
   intro hlim
   exact knowledgeFutureDeviation_asympEq_zero P φ p hP hpProb

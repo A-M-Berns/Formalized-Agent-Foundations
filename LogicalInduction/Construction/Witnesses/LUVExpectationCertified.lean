@@ -262,10 +262,9 @@ efficiency codes, the price range, and a logical inductor over the scheduled pro
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_arith (P : History) [IsLogicalInductor P (L.gridDP)]
     (i : ℕ) (hcode : (toLUV i).PolyThresholdCodes)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (c : ℝ) (hc : c ≤ (L.value i : ℝ)) :
     AsympGE ((toLUV i).expectSeq P) (fun _ => c) :=
-  lic_expectation_provind P (L.gridDP) (toLUV i) hcode hP L.gridDP_hcons c
+  lic_expectation_provind P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
     ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
       ⟨(L.value i : ℝ), hc,
         L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl⟩))
@@ -274,10 +273,9 @@ theorem lic_expectation_provind_arith (P : History) [IsLogicalInductor P (L.grid
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_le_arith (P : History) [IsLogicalInductor P (L.gridDP)]
     (i : ℕ) (hcode : (toLUV i).PolyThresholdCodes)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (c : ℝ) (hc : (L.value i : ℝ) ≤ c) :
     AsympLE ((toLUV i).expectSeq P) (fun _ => c) :=
-  lic_expectation_provind_le P (L.gridDP) (toLUV i) hcode hP L.gridDP_hcons c
+  lic_expectation_provind_le P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
     ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
       ⟨(L.value i : ℝ), hc, L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl⟩))
 
@@ -286,10 +284,9 @@ theorem lic_expectation_provind_le_arith (P : History) [IsLogicalInductor P (L.g
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_eq_arith (P : History) [IsLogicalInductor P (L.gridDP)]
     (i : ℕ) (hcode : (toLUV i).PolyThresholdCodes)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (c : ℝ) (hc : (L.value i : ℝ) = c) :
     AsympEq ((toLUV i).expectSeq P) (fun _ => c) :=
-  lic_expectation_provind_eq P (L.gridDP) (toLUV i) hcode hP L.gridDP_hcons c
+  lic_expectation_provind_eq P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
     ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
       hc ▸ L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl))
 
@@ -301,12 +298,11 @@ theorem lic_linearity_of_expectation_arith (P : History) [IsLogicalInductor P (L
     (a b : ℚ) (i j k : ℕ)
     (hcodeI : (toLUV i).PolyThresholdCodes) (hcodeJ : (toLUV j).PolyThresholdCodes)
     (hcodeK : (toLUV k).PolyThresholdCodes)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hlin : L.value k = a * L.value i + b * L.value j) :
     AsympEq (fun n => (a : ℝ) * (toLUV i).expect P n + (b : ℝ) * (toLUV j).expect P n)
       ((toLUV k).expectSeq P) :=
   lic_linearity_of_expectation P (L.gridDP) a b (toLUV i) (toLUV j) (toLUV k)
-    hcodeI hcodeJ hcodeK hP L.gridDP_hcons
+    hcodeI hcodeJ hcodeK L.gridDP_hcons
     ((Filter.eventually_ge_atTop (max 1 (max i (max j k)))).mono (fun n hin v hv =>
       ⟨(L.value i : ℝ), (L.value j : ℝ), (L.value k : ℝ), by exact_mod_cast hlin,
         L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl,
@@ -325,13 +321,13 @@ theorem exppolymax_arith {As : ℕ → LUVCombination} {P : History} {T : Arithm
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
     (h : LUVCombination.BoundedSequence As P) (ops : LUVCombination.MeshSoftmaxOperationalWitness As P)
     (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) :
+     :
     liminf (fun n => (As n).expect P n) atTop =
         liminf (LUVCombination.futureHigh As P) atTop ∧
       limsup (fun n => (As n).expect P n) atTop =
         limsup (LUVCombination.futureLow As P) atTop :=
   h.exppolymax ops (L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
-    b hb hshare hP (L.luvThresholdDP_hworld T)
+    b hb hshare (L.luvThresholdDP_hworld T)
 
 /-- **F7 item 5, certified `thm:wubexp`.**  Weighted-unbiasedness of exact-value expectation for a
 `dd:luv-arith` LUV-combination sequence, with the `ExactTheoryPresentation` *representation*
@@ -350,7 +346,6 @@ theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : Arithmetic
     {W : ℕ → EF} (hWgen : PGenerableWeighting W) (hWdiv : DivergentWeighting W P)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (hsupport : WeightingSupportedOnDeferralImage W P f)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (emit : AffineCombination.FeedbackTraderEmissionSigns
       (h.normalizedMesh_poly b) hWgen hstrict)
     (bridge : AffineCombination.FeedbackTruthSequence
@@ -360,7 +355,7 @@ theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : Arithmetic
     weightedBias (fun i => (W i).denote P)
       (fun i => (As i).expect P i) truth ≈ₙ (fun _ => 0) :=
   h.wubexp (L.exactTheoryPresentation_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
-    hdet b hshare hWgen hWdiv hstrict hsupport hP (L.luvThresholdDP_hworld T) emit bridge
+    hdet b hshare hWgen hWdiv hstrict hsupport (L.luvThresholdDP_hworld T) emit bridge
 
 /-! ## Certified liminf/limsup coherence (`thm:expcoh`, `thm:perexpkno`)
 
@@ -424,7 +419,7 @@ theorem expcoh_arith {As : ℕ → LUVCombination} {P : History}
     (ops : LUVCombination.MeshSoftmaxOperationalWitness As P)
     (hcode : ∀ n p, p ∈ (As n).terms → p.2.PolyThresholdCodes)
     (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) :
+     :
     (liminf (LUVCombination.completedLow As P (L.combinedDP T)) atTop ≤
         liminf (fun n => (As n).expectInf P) atTop ∧
       liminf (fun n => (As n).expectInf P) atTop ≤
@@ -434,7 +429,7 @@ theorem expcoh_arith {As : ℕ → LUVCombination} {P : History}
         limsup (fun n => (As n).expectInf P) atTop ≤
           limsup (LUVCombination.completedHigh As P (L.combinedDP T)) atTop) :=
   h.expcoh ops (L.worldValued_combinedDP T hAs)
-    (L.convergencePresentation_combinedDP T hAs hcode) b hb hshare hP (L.combinedDP_hworld T)
+    (L.convergencePresentation_combinedDP T hAs hcode) b hb hshare (L.combinedDP_hworld T)
 
 /-- **F7 item 5, certified `thm:perexpkno`.**  Persistence of expectation knowledge, with the
 representation hypotheses discharged from arithmetic as in `expcoh_arith`.
@@ -446,13 +441,13 @@ theorem perexpkno_arith {As : ℕ → LUVCombination} {P : History}
     (ops : LUVCombination.MeshSoftmaxOperationalWitness As P)
     (hcode : ∀ n p, p ∈ (As n).terms → p.2.PolyThresholdCodes)
     (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) :
+     :
     liminf (LUVCombination.futureLow As P) atTop =
         liminf (fun n => (As n).expectInf P) atTop ∧
       limsup (LUVCombination.futureHigh As P) atTop =
         limsup (fun n => (As n).expectInf P) atTop :=
   h.perexpkno ops (L.worldValued_combinedDP T hAs)
-    (L.convergencePresentation_combinedDP T hAs hcode) b hb hshare hP (L.combinedDP_hworld T)
+    (L.convergencePresentation_combinedDP T hAs hcode) b hb hshare (L.combinedDP_hworld T)
 
 end Combined
 
@@ -621,7 +616,7 @@ theorem lic_expectation_provind_arith_unconditional (i : ℕ) (c : ℝ)
   haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
   exact L.lic_expectation_provind_arith (liaHistory (L.gridDP)) i
     (toLUV_polyThresholdCodes i)
-    (fun n s => IsLogicalInductor.price_mem_Icc (P := liaHistory (L.gridDP)) (DP := L.gridDP) n s) c hc
+    c hc
 
 /-- **Fully unconditional certified expectation provability induction (`≤`).**
 Paper node: `thm:expprovind` -/
@@ -631,7 +626,7 @@ theorem lic_expectation_provind_le_arith_unconditional (i : ℕ) (c : ℝ)
   haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
   exact L.lic_expectation_provind_le_arith (liaHistory (L.gridDP)) i
     (toLUV_polyThresholdCodes i)
-    (fun n s => IsLogicalInductor.price_mem_Icc (P := liaHistory (L.gridDP)) (DP := L.gridDP) n s) c hc
+    c hc
 
 /-- **Fully unconditional certified expectation provability induction (`=`).**
 Paper node: `thm:expprovind` -/
@@ -641,7 +636,7 @@ theorem lic_expectation_provind_eq_arith_unconditional (i : ℕ) (c : ℝ)
   haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
   exact L.lic_expectation_provind_eq_arith (liaHistory (L.gridDP)) i
     (toLUV_polyThresholdCodes i)
-    (fun n s => IsLogicalInductor.price_mem_Icc (P := liaHistory (L.gridDP)) (DP := L.gridDP) n s) c hc
+    c hc
 
 /-- **Fully unconditional certified linearity of expectation.**  The sole hypothesis is the
 rational identity `valueₖ = a·valueᵢ + b·valueⱼ`.
@@ -654,7 +649,7 @@ theorem lic_linearity_of_expectation_arith_unconditional (a b : ℚ) (i j k : �
   haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
   exact L.lic_linearity_of_expectation_arith (liaHistory (L.gridDP)) a b i j k
     (toLUV_polyThresholdCodes i) (toLUV_polyThresholdCodes j) (toLUV_polyThresholdCodes k)
-    (fun n s => IsLogicalInductor.price_mem_Icc (P := liaHistory (L.gridDP)) (DP := L.gridDP) n s) hlin
+    hlin
 
 end ComputableLUV
 

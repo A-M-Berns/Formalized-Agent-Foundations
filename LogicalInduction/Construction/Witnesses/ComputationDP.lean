@@ -603,7 +603,6 @@ theorem lic_expectations_of_probabilities_ofCode_unconditional
   haveI := theoremLIA T
   lic_expectations_of_probabilities_ofCode (quotationPresentation T)
     (liaHistory (theoremDP T)) φ hφ q hexact
-    (fun n s => liaHistory_range (theoremDP T) n s)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:er`, unconditional over `LIA`. -/
@@ -616,7 +615,6 @@ theorem lic_iterated_expectations_ofCode_unconditional
   haveI := theoremLIA T
   lic_iterated_expectations_ofCode (quotationPresentation T)
     (liaHistory (theoremDP T)) X hX q hexact
-    (fun n s => liaHistory_range (theoremDP T) n s)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:ref` (introspection), unconditional over `LIA`. -/
@@ -644,7 +642,6 @@ theorem lic_introspection_ofCode_unconditional
   haveI := theoremLIA T
   lic_introspection_ofCode (quotationPresentation T) (liaHistory (theoremDP T))
     φ hφ a b δ lowerFeature hlower upperFeature hupper hδ hδinv hδpos hδzero hab q
-    (fun n s => liaHistory_range (theoremDP T) n s)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:lp` (paradox resistance), unconditional over `LIA`.  The named market program,
@@ -678,7 +675,6 @@ theorem lic_expected_future_expectations_ofRepresentation_unconditional
   haveI := theoremLIA T
   lic_expected_future_expectations_ofRepresentation (P := liaHistory (theoremDP T))
     (DP := theoremDP T) f hstrict X Y hX hY source_valued reflected
-    (fun n s => liaHistory_range (theoremDP T) n s)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:ceu` (no expected net update), unconditional over `LIA`. -/
@@ -693,7 +689,6 @@ theorem lic_no_expected_net_update_ofRepresentation_unconditional
   haveI := theoremLIA T
   lic_no_expected_net_update_ofRepresentation (P := liaHistory (theoremDP T))
     (DP := theoremDP T) f hstrict φ Y hφ hY reflected
-    (fun n s => liaHistory_range (theoremDP T) n s)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:ccee` (conditional no expected net update), unconditional over `LIA`. -/
@@ -716,7 +711,6 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation_unconditional
   lic_no_expected_net_update_conditional_ofRepresentation (P := liaHistory (theoremDP T))
     (DP := theoremDP T) f hstrict X Z Z' w weight_mem weight_generable hX hZ hZ'
     source_valued left_reflected right_reflected
-    (fun n s => liaHistory_range (theoremDP T) n s)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:st` (self-trust), unconditional over `LIA`. -/
@@ -738,7 +732,6 @@ theorem lic_self_trust_ofRepresentation_unconditional
   lic_self_trust_ofRepresentation (P := liaHistory (theoremDP T)) (DP := theoremDP T)
     f hstrict φ δ p A B delta_pos probability_mem hφ hδ hδinv hp hA hB
     confidence_reflected product_reflected
-    (fun n s => liaHistory_range (theoremDP T) n s)
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-! ## Unconditional meta-learning siblings over the constructed `LIA`

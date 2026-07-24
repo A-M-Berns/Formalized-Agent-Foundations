@@ -138,12 +138,11 @@ theorem lic_domination_universalSemimeasure_ofIndependentAtoms
       (bitPrefixSentencesOfIndependentAtoms I C))
     (emit : DUSThresholdEmission A)
     (P : History) [IsLogicalInductor P DP]
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ K : ℝ, 0 < K ∧ ∀ σ,
       K * M.mass σ ≤ limitingBelief P
         (bitPrefixSentence I.atom σ) :=
-  lic_domination_universalSemimeasure A emit P hP hworld
+  lic_domination_universalSemimeasure A emit P hworld
 
 #print axioms PCWorld.holds_bitPrefixSentence
 #print axioms bitStringEnumeration_covers

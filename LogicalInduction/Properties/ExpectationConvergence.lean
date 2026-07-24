@@ -1019,11 +1019,12 @@ Paper node: `thm:ec` -/
 theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (X : LUV)
     (hcode : X.PolyThresholdCodes)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld),
       v.ConsistentWith (DP.D n) → ∃ x, v.ApproxValuesUpTo X x n) :
     ∃ L : ℝ, ConvergesTo (X.expectSeq P) L := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   by_contra hnc
   obtain ⟨a, b, hab, hA, hB⟩ := exists_rat_oscillation_of_not_exists_convergesTo
     (X.expectSeq P) (fun n => X.expect_mem_Icc P n (fun s => hP n s)) hnc
@@ -1063,9 +1064,8 @@ theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
 noncomputable def LUV.expectInf (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV)
     (hcode : X.PolyThresholdCodes)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ApproxValuesUpTo X x n) : ℝ :=
-  (X.expect_converges P DP hcode hP hcons (Filter.Eventually.of_forall hval)).choose
+  (X.expect_converges P DP hcode hcons (Filter.Eventually.of_forall hval)).choose
 
 end LogicalInduction

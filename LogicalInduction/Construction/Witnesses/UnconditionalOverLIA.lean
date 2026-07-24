@@ -58,7 +58,6 @@ theorem lic_domination_universalSemimeasure_unconditional
     LIA_is_logical_inductor emptyBitDeductiveProcess emptyBitDeductiveProcess_computable
   lic_domination_universalSemimeasure_ofIndependentAtoms ordinaryIndependentBitAtoms C A emit
     (liaHistory emptyBitDeductiveProcess)
-    (fun n φ => liaHistory_range emptyBitDeductiveProcess n φ)
     emptyBitDeductiveProcess_hworld
 
 /-! ## Conditioning over the constructed `LIA` -/

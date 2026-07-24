@@ -2703,10 +2703,11 @@ the actual day-`f n` price lies between those extrema. -/
 lemma CompletedAffineQuoteApprox.future_price_tendsto_zero
     {P : History} {DP : DeductiveProcess} {gap : ℕ → ℝ}
     (q : CompletedAffineQuoteApprox P DP gap) [IsLogicalInductor P DP]
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) :
     Tendsto (fun n ↦ (q.family n).price P (f n)) atTop (𝓝 0) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   let As : ℕ → AffineCombination := q.family
   let lv : ℕ → ℝ := fun n ↦ (As n).value P (limitingBelief P)
   have hmag : ∃ C : ℝ, ∀ n, (As n).magnitude P ≤ C :=
@@ -2816,13 +2817,12 @@ lemma CompletedAffineQuoteApprox.future_price_tendsto_zero
 noncomputable def CompletedAffineQuoteApprox.toAffineQuoteEq
     {P : History} {DP : DeductiveProcess} {gap : ℕ → ℝ}
     (q : CompletedAffineQuoteApprox P DP gap) [IsLogicalInductor P DP]
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) : AffineQuoteEq P f gap where
   toAffineQuotePortfolio := q.toAffineQuotePortfolio
   future_coherent := by
     simpa only [AsympEq, _root_.sub_zero] using
-      q.future_price_tendsto_zero hP hworld f
+      q.future_price_tendsto_zero hworld f
 
 /-! ## Concrete deferred expectation quotation -/
 
@@ -2846,10 +2846,11 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
       ∃ x, v.ValuesAt (X n) x)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       v.ValuesAt (Y n) ((X n).expect P (f n)))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ExpectedFutureExpectationQuote P DP f X Y := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   let a := Classical.choose f.fueled
   let degree := Classical.choose (Classical.choose_spec f.fueled)
   have hspec : ∀ k, Nat.Partrec.Code.evaln
@@ -2970,10 +2971,11 @@ noncomputable def futurePriceQuoteOfRepresentation
     (hφ : PolySentenceCodes φ) (hY : LUV.PolyThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       v.ValuesAt (Y n) (P (f n) (φ n)))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     FuturePriceQuote P DP f φ Y := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   let a := Classical.choose f.fueled
   let degree := Classical.choose (Classical.choose_spec f.fueled)
   have hspec : ∀ k, Nat.Partrec.Code.evaln
@@ -3107,10 +3109,11 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
       ∀ x, v.ValuesAt (X n) x → v.ValuesAt (Z n) (x * w (f n)))
     (right_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       v.ValuesAt (Z' n) ((X n).expect P (f n) * w (f n)))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConditionalExpectationQuote P DP f X Z Z' w := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   let a := Classical.choose f.fueled
   let degree := Classical.choose (Classical.choose_spec f.fueled)
   have hspec : ∀ k, Nat.Partrec.Code.evaln
@@ -3255,10 +3258,11 @@ noncomputable def selfTrustQuoteOfRepresentation
       v.ConsistentWithTheory DP →
         v.ValuesAt (A n)
           (v.payout (φ n) * ctsInd (δ n) (P (f n) (φ n)) (p n)))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     SelfTrustQuote P DP f φ δ p A B := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   let a := Classical.choose f.fueled
   let degree := Classical.choose (Classical.choose_spec f.fueled)
   have hspec : ∀ k, Nat.Partrec.Code.evaln
@@ -3490,12 +3494,11 @@ theorem lic_expected_future_expectations_ofRepresentation
       ∃ x, v.ValuesAt (X n) x)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       v.ValuesAt (Y n) ((X n).expect P (f n)))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n ↦ (X n).expect P n) ≈ₙ fun n ↦ (Y n).expect P n :=
-  lic_expected_future_expectations P DP f X Y hP hworld
+  lic_expected_future_expectations P DP f X Y hworld
     (expectedFutureExpectationQuoteOfRepresentation f hstrict X Y hX hY
-      source_valued reflected hP hworld)
+      source_valued reflected hworld)
 
 /-- Paper-facing `thm:ceu` entry point from completed-world representation data.
 Paper node: `thm:ceu` -/
@@ -3506,11 +3509,10 @@ theorem lic_no_expected_net_update_ofRepresentation
     (hφ : PolySentenceCodes φ) (hY : LUV.PolyThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       v.ValuesAt (Y n) (P (f n) (φ n)))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n ↦ P n (φ n)) ≈ₙ fun n ↦ (Y n).expect P n :=
-  lic_no_expected_net_update P DP f φ Y hP hworld
-    (futurePriceQuoteOfRepresentation f hstrict φ Y hφ hY reflected hP hworld)
+  lic_no_expected_net_update P DP f φ Y hworld
+    (futurePriceQuoteOfRepresentation f hstrict φ Y hφ hY reflected hworld)
 
 /-- Paper-facing `thm:ccee` entry point from completed-world product representations.
 Paper node: `thm:ccee` -/
@@ -3529,13 +3531,12 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation
       ∀ x, v.ValuesAt (X n) x → v.ValuesAt (Z n) (x * w (f n)))
     (right_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       v.ValuesAt (Z' n) ((X n).expect P (f n) * w (f n)))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n ↦ (Z n).expect P n) ≈ₙ fun n ↦ (Z' n).expect P n :=
-  lic_no_expected_net_update_conditional P DP f X Z Z' w hP hworld
+  lic_no_expected_net_update_conditional P DP f X Z Z' w hworld
     (conditionalExpectationQuoteOfRepresentation f hstrict X Z Z' w
       weight_mem weight_generable hX hZ hZ' source_valued left_reflected
-      right_reflected hP hworld)
+      right_reflected hworld)
 
 /-- Paper-facing `thm:st` entry point from completed-world confidence/product
 representations.
@@ -3558,14 +3559,13 @@ theorem lic_self_trust_ofRepresentation
       v.ConsistentWithTheory DP →
         v.ValuesAt (A n)
           (v.payout (φ n) * ctsInd (δ n) (P (f n) (φ n)) (p n)))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n ↦ (A n).expect P n) ≳ₙ
       fun n ↦ (p n : ℝ) * (B n).expect P n :=
-  lic_self_trust P DP f φ δ p A B hP hworld
+  lic_self_trust P DP f φ δ p A B hworld
     (selfTrustQuoteOfRepresentation f hstrict φ δ p A B delta_pos
       probability_mem hφ hδ hδinv hp hA hB confidence_reflected
-      product_reflected hP hworld)
+      product_reflected hworld)
 
 /-! ## Direct same-day consumers -/
 
@@ -3578,11 +3578,11 @@ theorem lic_expectations_of_probabilities_ofCode
     {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, P n (φ n) = (value n : ℝ))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (φ n)) ≈ₙ fun n => (q.luv n).expect P n :=
   lic_expectations_of_probabilities P DP φ q.luv hworld
-    (currentPriceExpectationQuoteOfCode Q φ hφ q hexact hP)
+    (currentPriceExpectationQuoteOfCode Q φ hφ q hexact
+      (fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s))
 
 /-- Paper-facing `thm:er` entry point from concrete arithmetic quotation code.
 Paper node: `thm:er` -/
@@ -3594,11 +3594,11 @@ theorem lic_iterated_expectations_ofCode
     (hX : LUV.PolyThresholdCodeSeq X)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, (X n).expect P n = (value n : ℝ))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (X n).expect P n) ≈ₙ fun n => (q.luv n).expect P n :=
   lic_iterated_expectations P DP X q.luv hworld
-    (currentExpectationQuoteOfCode Q X hX q hexact hP)
+    (currentExpectationQuoteOfCode Q X hX q hexact
+      (fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s))
 
 /-- Paper-facing `thm:ref` entry point from generated endpoint features and the
 arithmetically reflected interval decision.
@@ -3619,7 +3619,6 @@ theorem lic_introspection_ofCode
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1)
     (q : BooleanQuoteCode T (fun n ↦
       (a n : ℝ) < P n (φ n) ∧ P n (φ n) < (b n : ℝ)))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ ε : ℕ → ℚ,
       (∀ n, 0 < ε n) ∧
@@ -3631,9 +3630,11 @@ theorem lic_introspection_ofCode
         ((¬ ((a n : ℝ) - δ n < P n (φ n) ∧
               P n (φ n) < (b n : ℝ) + δ n)) →
           P n (q.sentence n) < (ε n : ℝ)) := by
+  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
+    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   let package := introspectionIntervalQuoteOfCode Q φ hφ a b δ
     lowerFeature hlower upperFeature hupper hδ hδinv hδpos hδzero hab q hP
-  simpa only using lic_introspection P DP φ a b δ package hP hworld
+  simpa only using lic_introspection P DP φ a b δ package hworld
 
 /-- Paper-facing `thm:lp` entry point.  Its genuine parameterized fixed point and public
 diagonal atom are constructed from `market`; no semantic diagonal premise is accepted.
@@ -3656,7 +3657,7 @@ theorem lic_paradox_resistance_ofDiagonal
   let package := paradoxResistanceQuoteOfDiagonal Q market p width hwidth hwidthInv
     hwidthPos hwidthZero
   simpa only using
-    lic_paradox_resistance P DP p hp0 hp1 package market.price_mem_Icc hworld
+    lic_paradox_resistance P DP p hp0 hp1 package hworld
 
 /-! ## Positive and complementary quotation paths -/
 

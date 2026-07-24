@@ -122,11 +122,10 @@ The compact threshold-code and world-value hypotheses are the explicit interface
 the propositional model represents the paper's Θ-definable LUV. -/
 theorem expectation_convergence_discharged (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x) :
     ∃ L, ConvergesTo (X.expectSeq P) L :=
-  X.expect_converges P DP hcode hP hcons
+  X.expect_converges P DP hcode hcons
     (Filter.Eventually.of_forall (fun n v hv => (hval n v hv).imp (fun _ hx => hx.approxValuesUpTo n)))
 
 #print axioms expectation_convergence_discharged
@@ -169,14 +168,13 @@ lemma prandexp_hypothesis_discharged
     {truth : ℕ → ℝ}
     (hdet : LUVCombination.DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
     (clock : PatientSettlementClock (LUVCombination.normalizedMesh As b) P DP
       (LUVCombination.normalizedMeshTruth As P DP hworld b) f)
     (hpseudo : PseudorandomAbove truth f P) :
     PseudorandomExpectationHypothesis As P :=
-  h.prandexp hexact hdet b hshare hP hworld f clock hpseudo
+  h.prandexp hexact hdet b hshare hworld f clock hpseudo
 
 #print axioms divergent_weighted_null_error_discharged
 #print axioms prandexp_hypothesis_discharged
@@ -195,10 +193,10 @@ theorem arbitrary_bcs_recunbiasedaff_discharged
     {truth : ℕ → ℝ} (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
     (hWdiv : DivergentWeighting W P)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) :
+     :
     HasLimitPoint (weightedBias (fun i => (W i).denote P)
       (fun i => (As i).price P i) truth) 0 :=
-  h.recunbiasedaff hWgen hdet hWdiv hworld hP
+  h.recunbiasedaff hWgen hdet hWdiv hworld
 
 lemma arbitrary_bcs_wubaff_discharged
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
@@ -214,11 +212,10 @@ lemma arbitrary_bcs_wubaff_discharged
       (fun n => (As n).scale (.const h.unitNormalization.scale))
       (fun n => (h.unitNormalization.scale : ℝ) * truth n) P DP f)
     (hWdiv : DivergentWeighting W P)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     weightedBias (fun i => (W i).denote P)
       (fun i => (As i).price P i) truth ≈ₙ (fun _ => 0) :=
-  h.wubaff hW hdet hstrict hsupport emit bridge hWdiv hP hworld
+  h.wubaff hW hdet hstrict hsupport emit bridge hWdiv hworld
 
 lemma arbitrary_bcs_prandaff_discharged
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
@@ -226,14 +223,13 @@ lemma arbitrary_bcs_prandaff_discharged
     (h : AffineCombination.BoundedCombinationSequence As P)
     {truth : ℕ → ℝ} (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (f : DeferralFunction)
     (clock : PatientSettlementClock
       (fun n => (As n).scale (.const h.unitNormalization.scale)) P DP
       (fun n => (h.unitNormalization.scale : ℝ) * truth n) f)
     (hpseudo : Pseudorandom truth f P) :
     (fun n => (As n).price P n) ≈ₙ (fun _ => 0) :=
-  h.prandaff hdet hworld hP f clock hpseudo
+  h.prandaff hdet hworld f clock hpseudo
 
 #print axioms arbitrary_bcs_recunbiasedaff_discharged
 #print axioms arbitrary_bcs_wubaff_discharged

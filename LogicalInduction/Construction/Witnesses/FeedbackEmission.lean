@@ -742,12 +742,11 @@ theorem lic_wubaff_ofFeedbackTruth
     (bridge : FeedbackTruthSequence As truth P DP f)
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     weightedBias (fun i ↦ (W i).denote P)
       (fun i ↦ (As i).price P i) truth ≈ₙ (fun _ ↦ 0) :=
   AffineCombination.lic_wubaff hpoly hW hstrict hsupport
-    (feedbackTraderEmissionSigns hpoly hW hstrict) bridge hWdiv hmag hP hworld
+    (feedbackTraderEmissionSigns hpoly hW hstrict) bridge hWdiv hmag hworld
 
 /--
 Paper node: `thm:wubaff` -/
@@ -763,14 +762,13 @@ theorem boundedCombination_wubaff_ofFeedbackTruth
       (fun n ↦ (As n).scale (.const h.unitNormalization.scale))
       (fun n ↦ (h.unitNormalization.scale : ℝ) * truth n) P DP f)
     (hWdiv : DivergentWeighting W P)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     weightedBias (fun i ↦ (W i).denote P)
       (fun i ↦ (As i).price P i) truth ≈ₙ (fun _ ↦ 0) :=
   h.wubaff hW hdet hstrict hsupport
     (feedbackTraderEmissionSigns
       (h.poly.scaleRat h.unitNormalization.scale) hW hstrict)
-    bridge hWdiv hP hworld
+    bridge hWdiv hworld
 
 /--
 Paper node: `thm:wubexp` -/
@@ -785,14 +783,13 @@ theorem luv_wubexp_ofFeedbackTruth
     (hWdiv : DivergentWeighting W P)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (hsupport : WeightingSupportedOnDeferralImage W P f)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (bridge : FeedbackTruthSequence
       (LUVCombination.normalizedMesh As b)
       (LUVCombination.normalizedMeshTruth As P DP hworld b) P DP f) :
     weightedBias (fun i ↦ (W i).denote P)
       (fun i ↦ (As i).expect P i) truth ≈ₙ (fun _ ↦ 0) :=
-  h.wubexp hexact hdet b hshare hW hWdiv hstrict hsupport hP hworld
+  h.wubexp hexact hdet b hshare hW hWdiv hstrict hsupport hworld
     (feedbackTraderEmissionSigns (h.normalizedMesh_poly b) hW hstrict) bridge
 
 #print axioms feedbackTraderEmissionSigns

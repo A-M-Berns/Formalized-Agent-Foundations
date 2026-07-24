@@ -103,10 +103,11 @@ audited exclusive–exhaustive lemma rather than assumed as a valuation identity
 Paper node: `thm:lc` -/
 theorem lic_limitingBelief_add_neg
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (φ : Sentence) :
     limitingBelief P φ + limitingBelief P (∼φ) = 1 := by
+  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
+    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   let pair : ℕ → ℕ → Sentence := fun j _ ↦ if j = 0 then φ else ∼φ
   have hcodes : ∀ j < 2, PolySentenceCodes (pair j) := by
     intro j hj
@@ -133,7 +134,7 @@ theorem lic_limitingBelief_add_neg
       rw [PCWorld.payout, if_neg hφ, PCWorld.payout, if_pos hn]
       norm_num
   have hlex0 := lic_learning_exclusive_exhaustive P DP 2 (by omega)
-    pair hcodes hP hworld hsemantic
+    pair hcodes hworld hsemantic
   have hlex : (fun n ↦ P n φ + P n (∼φ)) ≈ₙ (fun _ ↦ (1 : ℝ)) := by
     have hrange : List.range 2 = [0, 1] := by decide
     simpa [hrange, pair] using hlex0
@@ -1105,7 +1106,6 @@ theorem lic_occamBounds
     {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
     (emit : OccamThresholdEmission U) (neg : PrefixNegationCompiler κ)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ C : ℝ, 0 < C ∧
       (∀ φ,
@@ -1116,6 +1116,8 @@ theorem lic_occamBounds
         (∀ n, ∃ v : PCWorld,
           v.ConsistentWith (DP.D n) ∧ ¬ v.Holds φ) →
         limitingBelief P φ ≤ 1 - C * prefixWeight κ φ) := by
+  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
+    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   obtain ⟨C₀, hC₀, hlower⟩ := lic_occam_lower U emit P DP hworld
   let d : ℝ := (2 : ℝ) ^ neg.overhead
   have hdpos : 0 < d := by dsimp [d]; positivity
@@ -1136,7 +1138,7 @@ theorem lic_occamBounds
     have hnegLower := hlower (∼φ) hpossibleNeg
     have hweight := neg.weight_div_le_neg φ
     have hscaled := mul_le_mul_of_nonneg_left hweight hC₀.le
-    have hcomplement := lic_limitingBelief_add_neg P DP hP hworld φ
+    have hcomplement := lic_limitingBelief_add_neg P DP hworld φ
     have hfactor : (C₀ / d) * prefixWeight κ φ =
         C₀ * (prefixWeight κ φ / (2 : ℝ) ^ neg.overhead) := by
       dsimp [d]

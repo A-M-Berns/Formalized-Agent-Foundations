@@ -1110,10 +1110,11 @@ lemma PolySequence.noPersistenceUnderpricing {As : ℕ → AffineCombination}
     [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ n, (As n).magnitude P ≤ 1)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     NoPreemptiveUnderpricing
       (affineFutureLow As P) (fun n => (As n).value P (limitingBelief P)) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   intro a b hab hfuture hcurrent
   obtain ⟨low, halow, hlowb⟩ := exists_rat_btwn hab
   obtain ⟨anchor, hlowanchor, hanchorb⟩ := exists_rat_btwn hlowb
@@ -1155,7 +1156,7 @@ lemma PolySequence.noPersistenceUnderpricing {As : ℕ → AffineCombination}
     have hbetween := futureLow_le_limitingValue_le_futureHigh
       portfolios P DP hportBound hworld k
     exact hlim0.trans hbetween.2
-  have hnogap := hport.noPreemptiveUnderpricing P DP hportMag hP hworld
+  have hnogap := hport.noPreemptiveUnderpricing P DP hportMag hworld
   let q : ℝ := (lowShift : ℝ) + δ
   have hq0 : q < 0 := by
     dsimp only [q, lowShift]
@@ -1237,10 +1238,11 @@ lemma PolySequence.noPersistenceUnderpricing_of_boundedMagnitude
     [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∃ B : ℝ, ∀ n, (As n).magnitude P ≤ B)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     NoPreemptiveUnderpricing
       (affineFutureLow As P) (fun n => (As n).value P (limitingBelief P)) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨B, hB⟩ := hmag
   obtain ⟨C, hC⟩ := exists_rat_gt (max B 0)
   have hC0 : 0 < (C : ℝ) := lt_of_le_of_lt (le_max_right B 0) hC
@@ -1259,7 +1261,7 @@ lemma PolySequence.noPersistenceUnderpricing_of_boundedMagnitude
       (div_le_one hC0).mpr hn.le
     simpa [q, div_eq_mul_inv, mul_comm] using hdiv
   have hscaled := (h.scaleRat q).noPersistenceUnderpricing P DP
-    (hbounded.scaleRat q) hscaledMag hP hworld
+    (hbounded.scaleRat q) hscaledMag hworld
   intro a b hab hfuture hcurrent
   apply hscaled ((q : ℝ) * a) ((q : ℝ) * b)
   · exact mul_lt_mul_of_pos_left hab hq0
@@ -1277,15 +1279,16 @@ lemma PolySequence.noPersistenceOverpricing {As : ℕ → AffineCombination}
     [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ n, (As n).magnitude P ≤ 1)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     NoPreemptiveOverpricing
       (affineFutureHigh As P) (fun n => (As n).value P (limitingBelief P)) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   have hnegBound : BoundedAffinePrices (fun n => (As n).neg) P := by
     obtain ⟨B, hB0, hB⟩ := hbounded
     exact ⟨B, hB0, fun n m => by simpa [neg_price] using hB n m⟩
   have hneg := h.neg.noPersistenceUnderpricing P DP hnegBound
-    (fun n => by simpa [neg_magnitude] using hmag n) hP hworld
+    (fun n => by simpa [neg_magnitude] using hmag n) hworld
   intro a b hab hfuture hcurrent
   apply hneg (-b) (-a) (by linarith)
   · filter_upwards [hfuture] with n hn
@@ -1303,15 +1306,16 @@ lemma PolySequence.noPersistenceOverpricing_of_boundedMagnitude
     [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∃ B : ℝ, ∀ n, (As n).magnitude P ≤ B)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     NoPreemptiveOverpricing
       (affineFutureHigh As P) (fun n => (As n).value P (limitingBelief P)) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   have hnegMag : ∃ B : ℝ, ∀ n, ((As n).neg).magnitude P ≤ B := by
     obtain ⟨B, hB⟩ := hmag
     exact ⟨B, fun n => by simpa only [neg_magnitude] using hB n⟩
   have hneg := h.neg.noPersistenceUnderpricing_of_boundedMagnitude P DP
-    hbounded.neg hnegMag hP hworld
+    hbounded.neg hnegMag hworld
   intro a b hab hfuture hcurrent
   apply hneg (-b) (-a) (by linarith)
   · filter_upwards [hfuture] with n hn
@@ -1339,11 +1343,10 @@ lemma AffineCombination.PolySequence.noPersistenceGaps
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ n, (As n).magnitude P ≤ 1)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     AffineNoPersistenceGaps As P :=
-  ⟨h.noPersistenceUnderpricing P DP hbounded hmag hP hworld,
-    h.noPersistenceOverpricing P DP hbounded hmag hP hworld⟩
+  ⟨h.noPersistenceUnderpricing P DP hbounded hmag hworld,
+    h.noPersistenceOverpricing P DP hbounded hmag hworld⟩
 
 /-- Operational persistence for an arbitrary uniformly bounded affine family. -/
 lemma AffineCombination.PolySequence.noPersistenceGaps_of_boundedMagnitude
@@ -1351,11 +1354,10 @@ lemma AffineCombination.PolySequence.noPersistenceGaps_of_boundedMagnitude
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∃ B : ℝ, ∀ n, (As n).magnitude P ≤ B)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     AffineNoPersistenceGaps As P :=
-  ⟨h.noPersistenceUnderpricing_of_boundedMagnitude P DP hbounded hmag hP hworld,
-    h.noPersistenceOverpricing_of_boundedMagnitude P DP hbounded hmag hP hworld⟩
+  ⟨h.noPersistenceUnderpricing_of_boundedMagnitude P DP hbounded hmag hworld,
+    h.noPersistenceOverpricing_of_boundedMagnitude P DP hbounded hmag hworld⟩
 
 /-- Analytic capstone for **Persistence of Affine Knowledge** (`thm:peraffkno`). Once the
 operational no-gap result is supplied, the two exact paper equalities follow from generic
@@ -1398,8 +1400,7 @@ theorem AffineCombination.PolySequence.peraffkno
       limsup (affineFutureHigh As P) atTop =
         limsup (fun n => (As n).value P (limitingBelief P)) atTop :=
   peraffkno_of_noPersistenceGaps As P DP hbounded hworld
-    (h.noPersistenceGaps_of_boundedMagnitude P DP hbounded hmag
-      (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ) hworld)
+    (h.noPersistenceGaps_of_boundedMagnitude P DP hbounded hmag hworld)
 
 #print axioms lic_limitingBelief_tendsto
 #print axioms AffineCombination.price_tendsto_limitingValue

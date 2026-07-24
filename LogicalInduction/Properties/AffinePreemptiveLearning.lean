@@ -1032,9 +1032,10 @@ lemma PolySequence.gradualRisk_converges {As : ℕ → AffineCombination}
     (hfuture : ∀ i, start ≤ i →
       0 < (gradualEntry As low δ i).denote V →
         ∃ t, (high : ℝ) < (As i).price V (i + t + 1))
-    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConvergesTo (fun i => (gradualRisk As low δ i).denote V) 0 := by
+  have hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := V) (DP := DP) n φ
   let entry := gradualEntry As low δ
   let baseOccupancy := gradualOccupancy As high δ
   let occupancy := gateOccupancy start baseOccupancy
@@ -1174,10 +1175,11 @@ lemma PolySequence.noPreemptiveUnderpricing {As : ℕ → AffineCombination}
     (h : PolySequence As) (V : History) (DP : DeductiveProcess)
     [IsLogicalInductor V DP]
     (hmag : ∀ i, (As i).magnitude V ≤ 1)
-    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     NoPreemptiveUnderpricing
       (fun n => (As n).price V n) (affineFutureHigh As V) := by
+  have hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := V) (DP := DP) n φ
   intro a b hab hfuture hcurrent
   obtain ⟨low, halow, hlowb⟩ := exists_rat_btwn hab
   obtain ⟨high, hlowhigh, hhighb⟩ := exists_rat_btwn hlowb
@@ -1218,7 +1220,7 @@ lemma PolySequence.noPreemptiveUnderpricing {As : ℕ → AffineCombination}
     | zero => simp only [Nat.add_zero] at hj; linarith
     | succ t => exact ⟨t, by simpa [Nat.add_assoc] using hj⟩
   have hconv := h.gradualRisk_converges V DP start low high δ ε hε hδ
-    hmag hspread hfutureActive hP hworld
+    hmag hspread hfutureActive hworld
   let r : ℝ := (high : ℝ) - low
   have hr : 0 < r := by dsimp only [r]; linarith
   have hrisk : ∃ᶠ i in Filter.atTop,
@@ -1297,10 +1299,11 @@ lemma PolySequence.noPreemptiveUnderpricing_of_boundedMagnitude
     [IsLogicalInductor V DP]
     (hbounded : BoundedAffinePrices As V)
     (hmag : ∃ B : ℝ, ∀ i, (As i).magnitude V ≤ B)
-    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     NoPreemptiveUnderpricing
       (fun n => (As n).price V n) (affineFutureHigh As V) := by
+  have hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := V) (DP := DP) n φ
   obtain ⟨B, hB⟩ := hmag
   obtain ⟨C, hC⟩ := exists_rat_gt (max B 0)
   have hC0 : 0 < (C : ℝ) := lt_of_le_of_lt (le_max_right B 0) hC
@@ -1319,7 +1322,7 @@ lemma PolySequence.noPreemptiveUnderpricing_of_boundedMagnitude
       (div_le_one hC0).mpr (le_of_lt hi)
     simpa [q, div_eq_mul_inv, mul_comm] using hdiv
   have hscaled := (h.scaleRat q).noPreemptiveUnderpricing V DP
-    hscaledMag hP hworld
+    hscaledMag hworld
   intro a b hab hfuture hcurrent
   apply hscaled ((q : ℝ) * a) ((q : ℝ) * b)
   · exact mul_lt_mul_of_pos_left hab hq0
@@ -1336,13 +1339,14 @@ lemma PolySequence.noPreemptiveOverpricing {As : ℕ → AffineCombination}
     (h : PolySequence As) (V : History) (DP : DeductiveProcess)
     [IsLogicalInductor V DP]
     (hmag : ∀ i, (As i).magnitude V ≤ 1)
-    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     NoPreemptiveOverpricing
       (fun n => (As n).price V n) (affineFutureLow As V) := by
+  have hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := V) (DP := DP) n φ
   intro a b hab hfuture hcurrent
   have hneg := h.neg.noPreemptiveUnderpricing V DP
-    (fun i => by simpa only [neg_magnitude] using hmag i) hP hworld
+    (fun i => by simpa only [neg_magnitude] using hmag i) hworld
   apply hneg (-b) (-a) (by linarith)
   · filter_upwards [hfuture] with n hn
     rw [affineFutureHigh_neg]
@@ -1360,15 +1364,16 @@ lemma PolySequence.noPreemptiveOverpricing_of_boundedMagnitude
     [IsLogicalInductor V DP]
     (hbounded : BoundedAffinePrices As V)
     (hmag : ∃ B : ℝ, ∀ i, (As i).magnitude V ≤ B)
-    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     NoPreemptiveOverpricing
       (fun n => (As n).price V n) (affineFutureLow As V) := by
+  have hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := V) (DP := DP) n φ
   have hnegMag : ∃ B : ℝ, ∀ i, ((As i).neg).magnitude V ≤ B := by
     obtain ⟨B, hB⟩ := hmag
     exact ⟨B, fun i => by simpa only [neg_magnitude] using hB i⟩
   have hneg := h.neg.noPreemptiveUnderpricing_of_boundedMagnitude V DP
-    hbounded.neg hnegMag hP hworld
+    hbounded.neg hnegMag hworld
   intro a b hab hfuture hcurrent
   apply hneg (-b) (-a) (by linarith)
   · filter_upwards [hfuture] with n hn
@@ -1385,11 +1390,10 @@ lemma PolySequence.noPreemptiveGaps {As : ℕ → AffineCombination}
     (h : PolySequence As) (V : History) (DP : DeductiveProcess)
     [IsLogicalInductor V DP]
     (hmag : ∀ i, (As i).magnitude V ≤ 1)
-    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     AffineNoPreemptiveGaps As V :=
-  ⟨h.noPreemptiveUnderpricing V DP hmag hP hworld,
-    h.noPreemptiveOverpricing V DP hmag hP hworld⟩
+  ⟨h.noPreemptiveUnderpricing V DP hmag hworld,
+    h.noPreemptiveOverpricing V DP hmag hworld⟩
 
 /-- Operational affine preemptive learning for the paper's arbitrary uniformly bounded
 combination sequences. -/
@@ -1399,11 +1403,10 @@ lemma PolySequence.noPreemptiveGaps_of_boundedMagnitude
     [IsLogicalInductor V DP]
     (hbounded : BoundedAffinePrices As V)
     (hmag : ∃ B : ℝ, ∀ i, (As i).magnitude V ≤ B)
-    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     AffineNoPreemptiveGaps As V :=
-  ⟨h.noPreemptiveUnderpricing_of_boundedMagnitude V DP hbounded hmag hP hworld,
-    h.noPreemptiveOverpricing_of_boundedMagnitude V DP hbounded hmag hP hworld⟩
+  ⟨h.noPreemptiveUnderpricing_of_boundedMagnitude V DP hbounded hmag hworld,
+    h.noPreemptiveOverpricing_of_boundedMagnitude V DP hbounded hmag hworld⟩
 
 /-- Paper-facing affine preemptive-learning capstone for arbitrary bounded polynomial
 affine families.  `hmag` is the share-coefficient part of the paper's BCS `L¹` bound;
@@ -1423,7 +1426,7 @@ lemma PolySequence.affpolymax {As : ℕ → AffineCombination}
   let hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := V) (DP := DP) n φ
   exact affpolymax_of_noPreemptiveGaps As V hbounded
-    (h.noPreemptiveGaps_of_boundedMagnitude V DP hbounded hmag hP hworld)
+    (h.noPreemptiveGaps_of_boundedMagnitude V DP hbounded hmag hworld)
 
 /-- Exact `thm:affpolymax` over the paper's `BCS` interface.
 Paper node: `thm:affpolymax` -/

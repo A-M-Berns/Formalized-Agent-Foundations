@@ -509,14 +509,15 @@ theorem lic_wubaff_ofComputation
     (hWdiv : DivergentWeighting W P)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     weightedBias (fun i ↦ (W i).denote P)
       (fun i ↦ (As i).price P i) truth ≈ₙ (fun _ ↦ 0) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let bridge := feedbackTruthSequence hpoly hbounded hdet C hstrict hmag hP hworld
   exact AffineCombination.lic_wubaff hpoly hW hstrict hsupport
     (FeedbackEmission.feedbackTraderEmissionSigns hpoly hW hstrict)
-    bridge hWdiv hmag hP hworld
+    bridge hWdiv hmag hworld
 
 /-- `thm:wub`, with both feedback boundaries discharged by the concrete trader emitter and
 delayed-truth compiler.  This is the one-share specialization of
@@ -532,16 +533,17 @@ theorem lic_wub_ofComputation
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     (C : FeedbackTruthComputation truth f)
     (hsupport : WeightingSupportedOnDeferralImage W P f)
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     weightedBias (fun i ↦ (W i).denote P) (fun i ↦ P i (φ i)) truth ≈ₙ
       (fun _ ↦ 0) := by
+  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
+    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hdet : DeterminedViaTheory (sentenceAffine φ) P DP truth := by
     intro n v hv
     simpa [sentenceAffine, AffineCombination.value] using htruth n v hv
   have h := lic_wubaff_ofComputation (sentenceAffine_polySequence φ hφ) hW hdet C
     hstrict hsupport hWdiv (sentenceAffine_bounded φ P hP)
-    (fun i => by simp) hP hworld
+    (fun i => by simp) hworld
   simpa only [sentenceAffine_price] using h
 
 /-- Paper-facing affine endpoint for an arbitrary BCS.  Its canonical normalization stays
@@ -559,10 +561,11 @@ theorem boundedCombination_wubaff_ofComputation
       (fun n ↦ (h.unitNormalization.scale : ℝ) * truth n) f)
     (hsupport : WeightingSupportedOnDeferralImage W P f)
     (hWdiv : DivergentWeighting W P)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     weightedBias (fun i ↦ (W i).denote P)
       (fun i ↦ (As i).price P i) truth ≈ₙ (fun _ ↦ 0) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℚ := h.unitNormalization.scale
   have hdetScaled : DeterminedViaTheory
       (fun n ↦ (As n).scale (.const q)) P DP
@@ -575,7 +578,7 @@ theorem boundedCombination_wubaff_ofComputation
   let bridge := feedbackTruthSequence (h.poly.scaleRat q) hboundedScaled
     hdetScaled C hstrict h.unitNormalization.magnitude_le_one hP hworld
   exact FeedbackEmission.boundedCombination_wubaff_ofFeedbackTruth h hW hdet hstrict
-    hsupport bridge hWdiv hP hworld
+    hsupport bridge hWdiv hworld
 
 /-- `thm:wubexp` with the normalized threshold mesh's delayed truth computation exposed
 directly.  The threshold mesh, feedback traders, and sparse truth sequence are all concrete.
@@ -590,7 +593,6 @@ theorem luv_wubexp_ofComputation
     {W : ℕ → EF} (hW : PGenerableWeighting W)
     (hWdiv : DivergentWeighting W P)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (C : FeedbackTruthComputation
       (LUVCombination.normalizedMeshTruth As P DP hworld b) f)
@@ -598,6 +600,8 @@ theorem luv_wubexp_ofComputation
     :
     weightedBias (fun i ↦ (W i).denote P)
       (fun i ↦ (As i).expect P i) truth ≈ₙ (fun _ ↦ 0) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let meshTruth := LUVCombination.normalizedMeshTruth As P DP hworld b
   have C' : FeedbackTruthComputation meshTruth f := by
     simpa only [meshTruth] using C
@@ -609,7 +613,7 @@ theorem luv_wubexp_ofComputation
     (h.normalizedMesh_boundedPrices b hP) hmeshDet C' hstrict
     (LUVCombination.normalizedMesh_magnitude_le_one b hshare) hP hworld
   exact FeedbackEmission.luv_wubexp_ofFeedbackTruth h hexact hdet b hshare hW hWdiv
-    hstrict hsupport hP hworld bridge
+    hstrict hsupport hworld bridge
 
 #print axioms feedbackTruthSequence
 #print axioms lic_wubaff_ofComputation

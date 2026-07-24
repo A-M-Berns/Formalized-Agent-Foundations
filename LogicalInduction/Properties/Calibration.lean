@@ -2943,7 +2943,6 @@ lemma DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (ε : ℝ) (hε : 0 < ε)
     (η : ℕ → ℝ) (hη0 : ∀ i, 0 ≤ η i) (hηsum : Summable η)
     (hverify : ∀ scale N,
@@ -2957,6 +2956,8 @@ lemma DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
     ¬ ∀ᶠ n in atTop,
       weightedBias (fun i => (W i).denote P)
         (fun i => (As i).price P i) truth n < -ε := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   intro hbias
   obtain ⟨scale, N, hroiTail⟩ := hdet.eventually_biasRunTrader_hasROI
     hpoly hWgen hWdiv hmag hworld hP ε hε hbias
@@ -3030,16 +3031,17 @@ lemma DeterminedViaTheory.not_eventually_weightedBias_lt
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hverify : BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
     (ε : ℝ) (hε : 0 < ε) :
     ¬ ∀ᶠ n in atTop,
       weightedBias (fun i => (W i).denote P)
         (fun i => (As i).price P i) truth n < -ε := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨q, hq0, hqε⟩ : ∃ q : ℚ, (0 : ℝ) < q ∧ (q : ℝ) < ε :=
     exists_rat_btwn hε
   have hnotq := hdet.not_eventually_weightedBias_lt_of_historicalVerifier
-    hpoly hWgen hWdiv hmag hworld hP (q : ℝ) hq0 roiTolerance
+    hpoly hWgen hWdiv hmag hworld (q : ℝ) hq0 roiTolerance
       roiTolerance_nonneg roiTolerance_summable
       (fun scale N hroi => (hverify q hq0 scale N hroi).some)
   intro hbad
@@ -3060,13 +3062,14 @@ lemma DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hverify : BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
     (hverifyNeg : BiasRunHistoricallyVerifiable (fun n => (As n).neg)
       hpoly.neg W hWgen P DP) :
     HasLimitPoint
       (weightedBias (fun i => (W i).denote P)
         (fun i => (As i).price P i) truth) 0 := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let w : ℕ → ℝ := fun i => (W i).denote P
   let market : ℕ → ℝ := fun i => (As i).price P i
   let f : ℕ → ℝ := weightedBias w market truth
@@ -3083,7 +3086,7 @@ lemma DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
   have hlower : ∀ ε > 0, ∃ᶠ n in atTop, -ε < f n := by
     intro ε hε
     have hnot := hdet.not_eventually_weightedBias_lt hpoly hWgen hWdiv
-      hmag hworld hP hverify (ε / 2) (by linarith)
+      hmag hworld hverify (ε / 2) (by linarith)
     rw [Filter.not_eventually] at hnot
     exact hnot.mono (fun n hn => by
       simp only [not_lt] at hn
@@ -3097,7 +3100,7 @@ lemma DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
   have hupper : ∀ ε > 0, ∃ᶠ n in atTop, f n < ε := by
     intro ε hε
     have hnot := hdetNeg.not_eventually_weightedBias_lt hpoly.neg hWgen hWdiv
-      hmagNeg hworld hP hverifyNeg (ε / 2) (by linarith)
+      hmagNeg hworld hverifyNeg (ε / 2) (by linarith)
     rw [Filter.not_eventually] at hnot
     exact hnot.mono (fun n hn => by
       simp only [not_lt] at hn
@@ -3121,7 +3124,6 @@ theorem BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (hWdiv : DivergentWeighting W P)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hverify : BiasRunHistoricallyVerifiable
       (fun n => (As n).scale (.const h.unitNormalization.scale))
       (h.poly.scaleRat h.unitNormalization.scale) W hWgen P DP)
@@ -3131,6 +3133,8 @@ theorem BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers
     HasLimitPoint
       (weightedBias (fun i => (W i).denote P)
         (fun i => (As i).price P i) truth) 0 := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℚ := h.unitNormalization.scale
   have hq : 0 < (q : ℝ) := h.unitNormalization.scale_pos
   have hdetScaled : DeterminedViaTheory
@@ -3140,7 +3144,7 @@ theorem BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers
     rw [AffineCombination.scale_value, EF.denote_const, hdet n v hv]
   have hs := hdetScaled.recunbiasedaff_of_historicalVerifiers
     (h.poly.scaleRat q) hWgen hWdiv h.unitNormalization.magnitude_le_one
-      hworld hP hverify hverifyNeg
+      hworld hverify hverifyNeg
   have hscaled : HasLimitPoint
       (fun n => (q : ℝ) * weightedBias (fun i => (W i).denote P)
         (fun i => (As i).price P i) truth n) 0 := by
@@ -3188,7 +3192,6 @@ lemma recurringunbiasedness_of_historicalVerifiers
     {truth : ℕ → ℝ} (htruth : TheoryTruth φ DP truth)
     (hWdiv : DivergentWeighting W P)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hverify : BiasRunHistoricallyVerifiable (sentenceAffine φ)
       hpoly W hWgen P DP)
     (hverifyNeg : BiasRunHistoricallyVerifiable
@@ -3196,6 +3199,8 @@ lemma recurringunbiasedness_of_historicalVerifiers
     HasLimitPoint
       (weightedBias (fun i => (W i).denote P)
         (fun i => P i (φ i)) truth) 0 := by
+  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
+    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hdet : DeterminedViaTheory (sentenceAffine φ) P DP truth := by
     intro n v hv
     simpa [sentenceAffine, AffineCombination.value] using htruth n v hv
@@ -3203,7 +3208,7 @@ lemma recurringunbiasedness_of_historicalVerifiers
     intro i
     simp
   have h := hdet.recunbiasedaff_of_historicalVerifiers hpoly hWgen hWdiv
-    hmag hworld hP hverify hverifyNeg
+    hmag hworld hverify hverifyNeg
   simpa using h
 
 /-- Recurring calibration from the ordinary recurring-unbiasedness specialization.  Both
@@ -3220,7 +3225,6 @@ lemma simcal_of_historicalVerifiers
     (hWgen : PGenerableWeighting (calibrationIndicator φ a b δ))
     (hdiv : DivergentWeighting (calibrationIndicator φ a b δ) P)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1)
     (hverify : BiasRunHistoricallyVerifiable (sentenceAffine φ) hpoly
       (calibrationIndicator φ a b δ) hWgen P DP)
     (hverifyNeg : BiasRunHistoricallyVerifiable
@@ -3234,8 +3238,10 @@ lemma simcal_of_historicalVerifiers
           (weightedAverage
             (fun n => (calibrationIndicator φ a b δ n).denote P) truth) x →
         x ∈ Icc (a : ℝ) (b : ℝ) := by
+  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
+    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hbias := recurringunbiasedness_of_historicalVerifiers φ hpoly hWgen
-    htruth hdiv hworld hP hverify hverifyNeg
+    htruth hdiv hworld hverify hverifyNeg
   exact simcal_of_recurring_unbiasedness P φ truth a b δ hδ
     (fun n => htruth.isBoolean hworld n) hdiv hbias
 

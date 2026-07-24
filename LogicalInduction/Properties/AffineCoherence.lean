@@ -457,10 +457,11 @@ lemma PolySequence.completedTheoryLow_le_limitingValue
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∃ C : ℝ, ∀ n, (As n).magnitude P ≤ C)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (i : ℕ) :
     sInf (completedAffineValues DP (As i) P) ≤
       (As i).value P (limitingBelief P) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   by_contra hnot
   have hlt : (As i).value P (limitingBelief P) <
       sInf (completedAffineValues DP (As i) P) := lt_of_not_ge hnot
@@ -522,10 +523,11 @@ lemma PolySequence.limitingValue_le_completedTheoryHigh
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∃ C : ℝ, ∀ n, (As n).magnitude P ≤ C)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (i : ℕ) :
     (As i).value P (limitingBelief P) ≤
       sSup (completedAffineValues DP (As i) P) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   have hnegBound : BoundedAffinePrices (fun n => (As n).neg) P := by
     obtain ⟨B, hB0, hB⟩ := hbounded
     exact ⟨B, hB0, fun n m => by simpa [neg_price] using hB n m⟩
@@ -533,7 +535,7 @@ lemma PolySequence.limitingValue_le_completedTheoryHigh
     obtain ⟨C, hC⟩ := hmag
     exact ⟨C, fun n => by simpa [neg_magnitude] using hC n⟩
   have hneg := h.neg.completedTheoryLow_le_limitingValue P DP hnegBound
-    hnegMag hP hworld i
+    hnegMag hworld i
   rw [completedAffineValues_neg, Real.sInf_neg, neg_value] at hneg
   linarith
 
@@ -638,10 +640,10 @@ theorem PolySequence.affcoh {As : ℕ → AffineCombination} (h : PolySequence A
   have hper := h.peraffkno P DP hbounded hmag hworld
   have htheoryLow : ∀ n, completedAffineLow As P DP n ≤
       (As n).value P (limitingBelief P) :=
-    fun n => h.completedTheoryLow_le_limitingValue P DP hbounded hmag hP hworld n
+    fun n => h.completedTheoryLow_le_limitingValue P DP hbounded hmag hworld n
   have htheoryHigh : ∀ n, (As n).value P (limitingBelief P) ≤
       completedAffineHigh As P DP n :=
-    fun n => h.limitingValue_le_completedTheoryHigh P DP hbounded hmag hP hworld n
+    fun n => h.limitingValue_le_completedTheoryHigh P DP hbounded hmag hworld n
   have hfutureLowDiag : ∀ n,
       affineFutureLow As P n ≤ (As n).price P n :=
     hbounded.futureLow_le_diagonal
