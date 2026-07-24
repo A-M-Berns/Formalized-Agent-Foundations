@@ -1,7 +1,115 @@
 # Logical Induction — handoff
 
-_Last updated: 2026-07-23 (paper-errata reclassification after session 5).
+_Last updated: 2026-07-24 (fresh errata audit + boundary-shoring plan).
 Branch: `logical-induction`._
+
+# 🎯 ACTIVE PLAN — boundary shoring (2026-07-24, after fresh errata audit)
+
+Context: the 2026-07-24 fresh code-level audit (`m7-errata-audit.md`, commits
+`c162dbc`..`631d743`) found no load-bearing errata; its §3 minor errata are fixed. Two
+disclosed boundaries remain worth *shrinking* rather than just disclosing: the `dd:fuel`
+poly-token-value residual and the caller-supplied reflection data on the quotation
+endpoints. Tranches below in execution order (value-to-effort descending). Keep the build
+green between tranches; commit per tranche.
+
+## Tranche 0 — AxiomAudit surface additions (guard-only, small)  ✅ when committed
+
+Audit §3.6: the `_unconditional` quotation + meta-learning endpoints in
+`Construction/Witnesses/ComputationDP.lean:595–735` are the strongest forms of their
+theorems but are **absent from `AxiomAudit.lean`**, hence outside the axiom guard and the
+surface freeze. Add to `#assert_axioms_clean`:
+`lic_iterated_expectations_ofCode_unconditional`, `lic_introspection_ofCode_unconditional`,
+`lic_self_trust_ofRepresentation_unconditional`,
+`lic_expected_future_expectations_ofRepresentation_unconditional`,
+`lic_no_expected_net_update_ofRepresentation_unconditional`,
+`lic_no_expected_net_update_conditional_ofRepresentation_unconditional`, and the five
+meta-learning `_unconditional` siblings (`lic_belief_finitistic_consistency_unconditional`
+etc. — enumerate from the file, don't trust this list). Check `RationalQuoteCode` /
+`ParameterizedDiagonalQuoteCode` field freezes already exist (`#assert_fields`) — they do.
+Then mark audit §3.6 FIXED.
+
+## Tranche 1 — `rationalQuoteCodeOfMarket`: witness-free `thm:epr`/`thm:er`
+
+**Goal.** Discharge the reflection data for epr/er the way `thm:lp` already does:
+`parameterizedDiagonalQuoteCodeOfMarket` derives its quote object from
+`theoremMarketComputation` with *no caller-supplied semantic relation*. Build the analog
+for straight (non-diagonal) quotes:
+
+* `rationalQuoteCodeOfMarket (c : MarketComputation P) (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) : RationalQuoteCode T (fun n => c.quote n ⌜φ n⌝)`
+  — the value program runs the certified market code; `pos_complete`/`neg_complete` come
+  from T ⊢ each exact-output Σ₁ instance (T ⊇ 𝗜𝚺₁, Σ₁-complete). Threshold codes:
+  code-indexed quotation atoms over the *program*, never running the market at
+  strategy-emission time (`threshold_poly` from the fixed program code + numeral inputs).
+* Same composed with the finite expectation sum for er: `value n = (X n).expect P n`
+  is a rational sum over the same program; one summation-code layer on top.
+
+**Payoff endpoints** (new, put on the audit surface in the same commit):
+`lic_expectations_of_probabilities_unconditional_closed` and
+`lic_iterated_expectations_unconditional_closed` (naming: `_closed` = no reflection
+hypotheses; only `φ`/`X` + poly-codes remain) over `liaHistory (theoremDP T)` — the
+paper's §4.11 statements witness-free. `hexact` becomes definitional
+(`liaHistory = cast of liaQuote`).
+
+**Where the pieces live.** `QuotationAffine.lean` (RationalQuoteCode, the `_ofCode`
+constructors, `diagonalPriceDecisionPart_partrec` toolkit), `ComputationDP.lean`
+(quotationPresentation, theoremMarketComputation, Σ₁-instance lemmas),
+`Criterion.lean` (MarketComputation.quoteAtFuel bounded evaluator). Search before
+proving: the Σ₁-completeness instance lemmas likely already exist for the diagonal case —
+reuse, don't re-derive.
+
+## Tranche 2 — ℚ-constant sub-tokenization (dd:fuel, isolated)
+
+`EF.serialize`'s `const q` case emits the single token `Encodable.encode q`, whose
+*value* is exponential in the constant's bit-length — the clocked emitter can't produce
+per-day literals like `2^{-n}` (worked around compositionally today). Fix: emit the
+rational as a bounded-digit stream (tag, sign, numerator digits, denominator digits,
+end-marker); extend `readM` + `streamStep` with a digit-accumulating mode; redo
+round-trip/injectivity. Then prove the **inclusion lemma**: old-token e.c. ⟹ new-token
+e.c. (generic re-emitter, slightly larger polynomial clock) — this transfers every
+existing `_ecTok` certificate without touching it. Update `strategyOfTokens` and the
+`TraderEnumeration` decode; the (lengthCode, tokenCode, clock) enumeration itself is
+decode-agnostic. Direction check (why this is safe): the e.c. class widens ⟹
+`IsLogicalInductor` strengthens toward the paper's LIC ⟹ `LIA_is_logical_inductor`
+must beat more traders — and does, since the firm enumerates the same triples; property
+exploiters transfer by inclusion.
+
+## Tranche 3 — ctsInd-composed quotes + indicator product: witness-free `thm:st` (and cee/ceu)
+
+Two constructions on top of Tranche 1:
+* **Composed quote compiler**: rational-continuous-function-of-a-quote → quote code with
+  pos/neg completeness. Target: `B n` valued at `ctsInd (δ n) (P (f n) (φ n)) (p n)` —
+  comparisons against ctsInd outputs reduce to comparisons against the underlying
+  (T-provably exact) future quote. Future day `f n` is fine: the atom quotes the
+  *program*, not the run.
+* **Indicator-product LUV** for `A n` valued at `payout(φ n) · ctsInd(…)`: thresholds
+  `A.gt r := φ n ⋏ Atom⟨ctsInd-code, n, r⟩`; `product_reflected` from
+  `quote_positive_enters`/`quote_negative_refutes` + Boolean `⋏` semantics. Poly-value
+  codes: conjunction of two poly-value formula codes is poly-value.
+
+Payoff: `lic_self_trust_unconditional_closed` (+ cee/ceu/ccee closures). Hardest
+assembly of the quotation tranches; do after 1 proves out the recipe.
+
+## Tranche 4 — sentence-code sub-tokenization (dd:fuel, the long pole)
+
+Same move as Tranche 2 one level down: `price φ n` / trade frames emit an RPN stream
+over Foundation's `Formula ℕ` constructors (atom-index, ⊤, ⊥, ∼, ⋏, ⋎, →; check the
+actual constructor set — `NegAbbrev`?), atom indices digit-split. Migrate
+`PolySentenceCodes`-shaped hypotheses to a stream predicate via an inclusion lemma
+(poly-value code ⟹ poly stream) so all current instantiations transfer. This is the
+tranche that finally admits deep poly-size sentence sequences and closes audit §2.1's
+concrete narrowing.
+
+## Terminal (not a tranche — document, don't build)
+
+After 2+4 the only dd:fuel residual is fuel-model vs TM-time equivalence. **Blocked in
+principle**: Mathlib has no time-bounded computability/complexity theory (no poly-time
+TM class; `Turing.PartrecToTM2` is unbounded). Per CLAUDE.md rule 6 this is a
+stop-and-report boundary: keep the model-card calibrations (`PolyFueled.primrec`,
+`not_polyFueled_two_pow`, closure ops) and one disclosure sentence. Likewise the last
+quotation type-(c) — code-indexed atoms *mean* their arithmetic instances via
+`theoremDP`'s enter/refute clauses — is closed by an intended-semantics bridge lemma
+(Σ₁-soundness ⟹ truth-in-ℕ for entering atoms) if one is missing, **not** by replacing
+the propositional substrate.
 
 ## Paper errata boundary and F4 repair (2026-07-23)
 
