@@ -30,21 +30,22 @@ Then mark audit §3.6 FIXED.
 
 ## Tranche 1 — `rationalQuoteCodeOfMarket`: witness-free `thm:epr`/`thm:er`
 
-> **Status 2026-07-24: epr half DONE** (`Witnesses/QuoteCodeOfMarket.lean`, on the audit
-> surface, axiom-clean). Landed: `arithmeticThresholdLUV_polyThresholdCodeSeq` (first-ever
-> `threshold_poly` discharge — kind `P`, provenance `(a)` via `gcdc`/`divmod1`/`ifzSel` +
-> `(b)` `natCast_div_num/den`), `RationalQuoteCode.ofComputable` (kind `C` over
-> `BooleanQuoteCode.ofComputable`), `theoremPriceQuoteCode`, and
-> `lic_expectations_of_probabilities_closed` — `thm:epr` over constructed LIA with **zero
-> reflection hypotheses** (only `φ` + `PolySentenceCodes φ` remain).
-> Lean gotchas hit: the `(… : _)` ascription on `hleB.to_comp.comp (h2.pair h1)` is
-> load-bearing (whnf unification loop otherwise, NOT fixed by irreducible `Nat.sqrt` or
-> heartbeats); `set_option maxHeartbeats` must precede the docstring.
-> **Remaining: the er half** — a computable program for the rational day-`n` expectation
-> `(n:ℚ)⁻¹ · Σ_{i<n} quote(n, ⌜(X n).gt (i/n)⌝)` (bounded sum over the market program;
-> `ratAdd_prim`/`ratDiv_prim` are public in LIACompiler), then
-> `lic_iterated_expectations_closed` via `RationalQuoteCode.ofComputable` + `hexact` by
-> `push_cast` over `quote_exact`.
+> **Status 2026-07-24: DONE, both halves** (`Witnesses/QuoteCodeOfMarket.lean`, on the
+> audit surface, axiom-clean). Landed:
+> * `arithmeticThresholdLUV_polyThresholdCodeSeq` — first-ever `threshold_poly` discharge
+>   (kind `P`, provenance `(a)` via `gcdc`/`divmod1`/`ifzSel` + `(b)` `natCast_div_num/den`);
+> * `RationalQuoteCode.ofComputable` (kind `C` over `BooleanQuoteCode.ofComputable`);
+> * `MarketComputation.expectQuote` + `_cast`/`_mem_Icc`/`_computable` — the exact
+>   rational day-`n` expectation program (bounded `Nat.rec` sum over the market program,
+>   `ratAdd_prim`/`ratDiv_prim`);
+> * `theoremPriceQuoteCode` / `theoremExpectationQuoteCode`, and the two closed endpoints
+>   `lic_expectations_of_probabilities_closed` (`thm:epr`) and
+>   `lic_iterated_expectations_closed` (`thm:er`) — over the constructed LIA with **zero
+>   reflection hypotheses** (only the sequence + its poly codes remain).
+> Lean gotchas: the `(… : _)` ascription on Computable compositions over ℚ-product types
+> is load-bearing (whnf unification loop otherwise; NOT fixed by irreducible `Nat.sqrt`
+> or heartbeats); `set_option … in` must precede the docstring; `Computable₂.comp` takes
+> its two component functions separately, not paired.
 
 **Goal.** Discharge the reflection data for epr/er the way `thm:lp` already does:
 `parameterizedDiagonalQuoteCodeOfMarket` derives its quote object from

@@ -299,8 +299,10 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 #assert_axioms_clean
   arithmeticThresholdLUV_polyThresholdCodeSeq
   RationalQuoteCode.ofComputable
-  theoremPriceQuoteCode
+  MarketComputation.expectQuote_computable
+  theoremPriceQuoteCode theoremExpectationQuoteCode
   lic_expectations_of_probabilities_closed
+  lic_iterated_expectations_closed
 
 -- Construction/Witnesses/ComputationDP.lean — unconditional-over-LIA capstones
 -- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above).
