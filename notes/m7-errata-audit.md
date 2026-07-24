@@ -156,30 +156,39 @@ constructed processes (`theoremDP_hworld`, `emptyBitDeductiveProcess_hworld`).
 
 ## 3. Errata (things to fix or watch — none load-bearing)
 
+> **Fix status (2026-07-24, same session, follow-up commit):** items 1–4 are FIXED as
+> described below; item 5 needed no action. Build green (`lake build LogicalInduction
+> AxiomAudit`) after the fixes; only pre-existing linter warnings remain.
+
 1. **Leftover redundant price-range hypotheses.** Commit `c4f2392` ("remove redundant hP
-   from all criterion endpoints") missed several: `lic_deducible_eventually_ge`
-   (`ProvabilityInduction.lean:168`), `lic_deducible_tendsto_one` (`:184`),
-   `lic_provind_seq` (`:237`), `lic_nonDogmatism_weak` (`NonDogmatism.lean:257`) still
-   take `hP1`/`hP0` derivable from `IsLogicalInductor.price_mem_Icc`. Harmless
-   (callers can always discharge them) but the commit message overstates, and the
-   endpoints are on the audit surface — clean them or note them.
+   from all criterion endpoints") missed several: `lic_deducible_eventually_ge`,
+   `lic_deducible_tendsto_one`, `lic_provind_seq` (`ProvabilityInduction.lean`),
+   `lic_nonDogmatism_weak` (`NonDogmatism.lean`) still took `hP1`/`hP0` derivable from
+   `IsLogicalInductor.price_mem_Icc`.
+   **FIXED:** all four now derive the price range internally from
+   `hLI.price_mem_Icc`; the `IntegrationTest.lean` Part-B callers
+   (`provind_hypothesis_discharged` and the end-to-end `example`) were updated to match.
 2. **Stepping-stone forms sit beside faithful forms on the same audit surface.**
    `AxiomAudit.lean` lists both `lic_deducible_tendsto_one` (needs `φ ∈ D n` for *all*
    `n`) and the faithful `lic_provind`; both `lic_nonDogmatism_weak` and
-   `lic_nonDogmatism`. The docstrings label the weak ones correctly, but the flat
-   endpoint list doesn't distinguish "paper statement" from "fragment kept for its
-   pedagogical shape". A one-word tier tag in `AxiomAudit.lean` comments (already partly
-   present) would prevent a reader from crediting the weak form as `thm:provind`.
-3. **`lic_provind_seq`'s docstring oversells slightly.** It cites `thm:provind`
-   ("sequence form") but its `hded : ∀ n, φ n ∈ DP.D n` makes it a *timely-membership*
-   statement, not provability induction (the paper's point is precisely that `φ n` need
-   not be in `D n`). The genuine sequence form is `lic_provind`. Suggest the docstring
-   say so explicitly and point there.
+   `lic_nonDogmatism`, without distinguishing "paper statement" from "retained fragment".
+   **FIXED:** tier notes added to the two relevant `#assert_axioms_clean` blocks in
+   `AxiomAudit.lean`, naming which endpoints are paper-facing and which are fragments
+   not to be credited as the paper theorem.
+3. **`lic_provind_seq`'s docstring oversold.** It cited `thm:provind` ("sequence form")
+   but its `hded : ∀ n, φ n ∈ DP.D n` makes it a *timely-membership* statement, not
+   provability induction (the paper's point is precisely that `φ n` need not be in
+   `D n`).
+   **FIXED:** docstring rewritten to say it is not the paper's `thm:provind` and to
+   point to `lic_provind` (`AffineCoherence.lean`) as the faithful sequence form.
 4. **`letE`/`var` in `EF`** is an extension of the paper's feature grammar (sharing).
    Denotationally conservative and needed for poly-size deep features, but it changes
-   `cost` relative to the paper's expression size; worth one disclosure line in the
-   `EF` docstring (currently only the serialization comments discuss it).
-5. **`ComputableMarket` totalizes quotes on non-sentence codes** (`Criterion.lean:990`,
+   `cost` relative to the paper's expression size; was only discussed in the
+   serialization comments.
+   **FIXED:** disclosure paragraph added to the `EF` docstring
+   (`Framework/Criterion.lean`): the extension is denotationally conservative, and
+   sharing is load-bearing for polynomial `cost` of deep features.
+5. **`ComputableMarket` totalizes quotes on non-sentence codes** (`Criterion.lean`,
    "extra values … are harmless"). Verified harmless: `quote_exact` pins every real
    sentence's price. No action; recording that it was checked.
 

@@ -246,17 +246,18 @@ lemma ndTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (ndTrader φ) :=
 
 /-! ### The criterion application -/
 
-/-- **Non-Dogmatism, weak fragment** (`thm:nd`): under a logical inductor with `φ`-prices
-in `[0,1]`, if `φ`-satisfying plausible worlds keep existing (the per-day semantic
-rendering of `Θ ⊬ ¬φ`), the price is eventually at least `2^{-(n+2)}`. Weaker than the
-paper's `thm:nd` (the bound decays with `n`); the liminf form is the budget-halving
-trader's job (Phase B2).
+/-- **Non-Dogmatism, weak fragment** (`thm:nd`): under a logical inductor, if
+`φ`-satisfying plausible worlds keep existing (the per-day semantic rendering of
+`Θ ⊬ ¬φ`), the price is eventually at least `2^{-(n+2)}`. Weaker than the paper's
+`thm:nd` (the bound decays with `n`); the faithful eventual-lower-bound form is
+`lic_nonDogmatism` below. The price range is carried by `IsLogicalInductor`.
 Paper node: `thm:nd` -/
 theorem lic_nonDogmatism_weak (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence)
-    (hP0 : ∀ n, 0 ≤ P n φ) (hP1 : ∀ n, P n φ ≤ 1)
     (hφ : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds φ) :
     ∀ᶠ n in atTop, 1 / 2 ^ (n + 2) ≤ P n φ := by
+  have hP0 : ∀ n, 0 ≤ P n φ := fun n => (hLI.price_mem_Icc n φ).1
+  have hP1 : ∀ n, P n φ ≤ 1 := fun n => (hLI.price_mem_Icc n φ).2
   by_contra h
   rw [not_eventually] at h
   have hfreq : ∃ᶠ n in atTop, P n φ < 1 / 2 ^ (n + 2) :=

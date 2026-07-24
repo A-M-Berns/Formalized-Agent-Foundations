@@ -160,14 +160,16 @@ lemma buyDaily_exploits_freq (P : History) (DP : DeductiveProcess) (φ : Sentenc
 
 
 /-- **Provability Induction, limiting form, for a fixed sentence** (`thm:provind`): under a
-logical inductor, an always-deducible `φ` with prices in `(-∞, 1]` has `Pₙ(φ)` eventually
-within any `ε` of `1`. This is the criterion output — `¬(underpriced infinitely often)`.
+logical inductor, an always-deducible `φ` has `Pₙ(φ)` eventually within any `ε` of `1`.
+This is the criterion output — `¬(underpriced infinitely often)`. The price range is
+carried by `IsLogicalInductor`.
 Paper node: `thm:provind` -/
 theorem lic_deducible_eventually_ge (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence) (hded : ∀ n, φ ∈ DP.D n)
-    (hP1 : ∀ n, P n φ ≤ 1) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (ε : ℝ) (hε : 0 < ε) :
     ∀ᶠ n in atTop, 1 - ε < P n φ := by
+  have hP1 : ∀ n, P n φ ≤ 1 := fun n => (hLI.price_mem_Icc n φ).2
   by_contra h
   rw [not_eventually] at h
   simp only [not_lt] at h
@@ -177,14 +179,16 @@ theorem lic_deducible_eventually_ge (P : History) (DP : DeductiveProcess)
 
 /-- **Provability Induction, convergence form** (`thm:provind`): the price of an
 always-deducible sentence converges to `1`. Packages `lic_deducible_eventually_ge` with the
-upper bound `Pₙ(φ) ≤ 1` into `ConvergesTo` (`dd:asymp`).
+upper bound `Pₙ(φ) ≤ 1` (from the inductor's market certificate) into `ConvergesTo`
+(`dd:asymp`).
 Paper node: `thm:provind` -/
 theorem lic_deducible_tendsto_one (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (φ : Sentence) (hded : ∀ n, φ ∈ DP.D n)
-    (hP1 : ∀ n, P n φ ≤ 1) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    [hLI : IsLogicalInductor P DP] (φ : Sentence) (hded : ∀ n, φ ∈ DP.D n)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConvergesTo (fun n => P n φ) 1 := by
+  have hP1 : ∀ n, P n φ ≤ 1 := fun n => (hLI.price_mem_Icc n φ).2
   refine Metric.tendsto_atTop.mpr (fun ε hε => ?_)
-  obtain ⟨N, hN⟩ := eventually_atTop.mp (lic_deducible_eventually_ge P DP φ hded hP1 hcons ε hε)
+  obtain ⟨N, hN⟩ := eventually_atTop.mp (lic_deducible_eventually_ge P DP φ hded hcons ε hε)
   refine ⟨N, fun n hn => ?_⟩
   rw [Real.dist_eq, abs_lt]
   have h1 := hN n hn
@@ -226,17 +230,23 @@ lemma buySeq_ec (φ : ℕ → Sentence) {cφ : Nat.Partrec.Code}
     PolyTokenStream.trades_nil
 
 
-/-- **Provability Induction, sequence form** (`thm:provind`): for an efficiently computable
-sequence of sentences `φₙ`, each deducible by its own day, the price `Pₙ(φₙ) → 1`. Same
-constant buy trader as the fixed case, now indexed by the sequence; e.c. via `ec_of_polyEF_seq`
-and the `𝓔𝓒`-sequence hypothesis.
+/-- **Timely-membership form of the sequence statement**: for an efficiently computable
+sequence of sentences `φₙ`, *each already deduced by its own day* (`hded : φ n ∈ D n`),
+the price `Pₙ(φₙ) → 1`. Same constant buy trader as the fixed case, now indexed by the
+sequence; e.c. via `ec_of_polyEF_seq` and the `𝓔𝓒`-sequence hypothesis.
+
+**This is not the paper's `thm:provind`**, whose content is precisely that `φ n` need
+*not* be in `D n` — theorems may be proved arbitrarily later than their indices. The
+faithful sequence form is `lic_provind` (`AffineCoherence.lean`), which assumes only
+`∀ n, ∃ k, φ n ∈ D k`. This fragment is retained for its simpler trader and hypotheses.
 Paper node: `thm:provind` -/
 theorem lic_provind_seq (P : History) (DP : DeductiveProcess) [hLI : IsLogicalInductor P DP]
     (φ : ℕ → Sentence) {cφ : Nat.Partrec.Code}
     (hφ : PolyFueled cφ (fun n => Encodable.encode (φ n)))
-    (hded : ∀ n, φ n ∈ DP.D n) (hP1 : ∀ n, P n (φ n) ≤ 1)
+    (hded : ∀ n, φ n ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConvergesTo (fun n => P n (φ n)) 1 := by
+  have hP1 : ∀ n, P n (φ n) ≤ 1 := fun n => (hLI.price_mem_Icc n (φ n)).2
   refine Metric.tendsto_atTop.mpr (fun ε hε => ?_)
   have hev : ∀ᶠ n in atTop, 1 - ε < P n (φ n) := by
     by_contra h

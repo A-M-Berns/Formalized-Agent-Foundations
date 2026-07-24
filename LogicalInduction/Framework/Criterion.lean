@@ -43,7 +43,15 @@ A reified DSL (`dd:dsl`) with two semantics. The *syntax* `EF` is the object tha
 `EF.denote` is the continuous ℝ-valued feature the paper's algebra lives on. -/
 
 /-- `def:tf` (Expressible Feature), as syntax. Built from price features `pf φ n`,
-rational constants, `+`, `×`, `max(·,·)`, and the safe reciprocation `max(1,·)⁻¹`. -/
+rational constants, `+`, `×`, `max(·,·)`, and the safe reciprocation `max(1,·)⁻¹`.
+
+The `var`/`letE` constructors are a **disclosed extension** of the paper's feature grammar:
+straight-line sharing (evaluate once, reference many times). Denotationally conservative —
+every `letE` term denotes the same function as its (possibly exponentially larger)
+substitution-expanded form — but load-bearing for `cost`: sharing is what keeps deep
+features (hysteresis chains, purchase counters) at polynomial *syntactic size*, which is
+the quantity `def:ec`'s token-emission model meters. A free `var` denotes `0`, keeping all
+raw syntax total. -/
 inductive EF : Type where
   /-- The price feature `φ^{*n}`: the value of `φ` on day `n`. -/
   | price (φ : Sentence) (n : ℕ) : EF

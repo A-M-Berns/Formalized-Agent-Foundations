@@ -72,9 +72,9 @@ def ProvindHypothesis (P : History) (φ : Sentence) : Prop :=
 `≈ₙ` against the constant `1`, by `convergesTo_iff_asympEq_const`). -/
 lemma provind_hypothesis_discharged (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : Sentence) (hded : ∀ n, φ ∈ DP.D n)
-    (hP1 : ∀ n, P n φ ≤ 1) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ProvindHypothesis P φ :=
-  convergesTo_iff_asympEq_const.mp (lic_deducible_tendsto_one P DP φ hded hP1 hcons)
+  convergesTo_iff_asympEq_const.mp (lic_deducible_tendsto_one P DP φ hded hcons)
 
 /-- The faithful sequence-level `thm:provind` consumer shape. Unlike the older direct
 support lemma, deductions may arrive at arbitrary later stages. -/
@@ -97,11 +97,11 @@ a conclusion (here the trivial `≲ₙ`-reflexivity stand-in for whatever it act
 composed with the discharge above, so under `[IsLogicalInductor P DP]` the consumer's LI
 hypothesis is supplied entirely from our side. -/
 example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] (φ : Sentence)
-    (hded : ∀ n, φ ∈ DP.D n) (hP1 : ∀ n, P n φ ≤ 1)
+    (hded : ∀ n, φ ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (consumer : ProvindHypothesis P φ → (fun n => P n φ) ≲ₙ (fun _ => 1)) :
     (fun n => P n φ) ≲ₙ (fun _ => (1 : ℝ)) :=
-  consumer (provind_hypothesis_discharged P DP φ hded hP1 hcons)
+  consumer (provind_hypothesis_discharged P DP φ hded hcons)
 
 /-! ## Part C — closing the level gap: expectation-level interface
 

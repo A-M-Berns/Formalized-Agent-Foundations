@@ -94,6 +94,11 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 #assert_axioms_clean lic_limitCoherence
 
 -- Properties/ProvabilityInduction.lean, Properties/AffineCoherence.lean
+-- Tier note: `lic_provind` / `lic_provind_true` / `lic_provind_false` are the
+-- paper-facing `thm:provind` (theorems may appear arbitrarily late in the process).
+-- `lic_deducible_*` and `lic_provind_seq` are retained FRAGMENTS whose membership
+-- hypotheses (`φ ∈ D n` at every / its own index) are stronger than the paper's —
+-- do not credit them as `thm:provind`.
 #assert_axioms_clean
   lic_deducible_eventually_ge lic_deducible_price_near_one lic_deducible_tendsto_one
   lic_provind_seq lic_provind lic_provind_true lic_provind_false
@@ -111,6 +116,8 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   AffineCombination.PolySequence.peraffkno
 
 -- Properties/NonDogmatism.lean, Properties/UniformNonDogmatism.lean
+-- Tier note: `lic_nonDogmatism` / `lic_nonDogmatism_dual` are the paper-facing `thm:nd`;
+-- `lic_nonDogmatism_weak` is a retained FRAGMENT (its lower bound decays with `n`).
 #assert_axioms_clean
   lic_nonDogmatism lic_nonDogmatism_dual lic_nonDogmatism_weak lic_limit_pos
   lic_limit_lt_one lic_uniform_nonDogmatism lic_uniform_nonDogmatism_repeating
