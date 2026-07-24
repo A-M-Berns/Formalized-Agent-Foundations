@@ -612,7 +612,8 @@ lemma PolySequence.completedAffineExtrema_filterBounds
 
 /-- Paper-facing **Affine Coherence** (`thm:affcoh`). The limiting affine value lies
 between completed-theory extrema in liminf/limsup, and persistence transports it to the
-main diagonal. -/
+main diagonal.
+Paper node: `thm:affcoh` -/
 theorem PolySequence.affcoh {As : ℕ → AffineCombination} (h : PolySequence As)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)

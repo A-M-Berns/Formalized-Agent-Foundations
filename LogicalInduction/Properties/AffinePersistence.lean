@@ -1385,7 +1385,8 @@ theorem peraffkno_of_noPersistenceGaps
       (fun n => (hbetween n).2) hgap.overpriced
 
 /-- Paper-facing **Persistence of Affine Knowledge** (`thm:peraffkno`). This is the exact
-pair of future-tail/limiting-belief equalities for a normalized polynomial affine family. -/
+pair of future-tail/limiting-belief equalities for a normalized polynomial affine family.
+Paper node: `thm:peraffkno` -/
 theorem AffineCombination.PolySequence.peraffkno
     {As : ℕ → AffineCombination} (h : AffineCombination.PolySequence As)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]

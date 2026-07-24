@@ -1425,7 +1425,8 @@ lemma PolySequence.affpolymax {As : ℕ → AffineCombination}
   exact affpolymax_of_noPreemptiveGaps As V hbounded
     (h.noPreemptiveGaps_of_boundedMagnitude V DP hbounded hmag hP hworld)
 
-/-- Exact `thm:affpolymax` over the paper's `BCS` interface. -/
+/-- Exact `thm:affpolymax` over the paper's `BCS` interface.
+Paper node: `thm:affpolymax` -/
 theorem BoundedCombinationSequence.affpolymax
     {As : ℕ → AffineCombination} {V : History}
     (h : BoundedCombinationSequence As V) (DP : DeductiveProcess)

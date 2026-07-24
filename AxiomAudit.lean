@@ -102,6 +102,13 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_preemptive_learning lic_persistence_of_knowledge lic_persistence_of_knowledge_lower
   lic_persistence_of_knowledge_upper lic_centered_persistence lic_limitingBelief_tendsto
 
+-- Properties/AffineCoherence.lean, AffinePreemptiveLearning.lean, AffinePersistence.lean:
+-- the paper-facing analytic affine capstones (`thm:affcoh`, `thm:affpolymax`, `thm:peraffkno`).
+#assert_axioms_clean
+  AffineCombination.PolySequence.affcoh
+  AffineCombination.BoundedCombinationSequence.affpolymax
+  AffineCombination.PolySequence.peraffkno
+
 -- Properties/NonDogmatism.lean, Properties/UniformNonDogmatism.lean
 #assert_axioms_clean
   lic_nonDogmatism lic_nonDogmatism_dual lic_nonDogmatism_weak lic_limit_pos
@@ -145,6 +152,14 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_linearity_of_expectation_seq
   lic_introspection lic_paradox_resistance lic_expectations_of_probabilities
   lic_iterated_expectations lic_self_trust lic_expected_future_expectations
+
+-- Properties/ExpectationProperties.lean: the paper-facing LUV-combination sequence
+-- capstones (`thm:exppolymax`, `thm:expcoh`, `thm:perexpkno`, `thm:wubexp`).
+#assert_axioms_clean
+  LUVCombination.BoundedSequence.exppolymax
+  LUVCombination.BoundedSequence.expcoh
+  LUVCombination.BoundedSequence.perexpkno
+  LUVCombination.BoundedSequence.wubexp
 
 -- Construction/Witnesses/LUVExpectationCertified.lean (F7 `dd:luv-arith`): the
 -- expectation endpoints whose world-value hypotheses are discharged from arithmetic

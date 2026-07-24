@@ -245,6 +245,9 @@ theorem PCWorld.expectApprox_near_ofGrid {v : PCWorld} {X : LUV} {x : ℝ}
         _ = (n : ℝ) * (x + 1 / n) := by field_simp
     linarith
 
+/-- **`lem:conluvapprox`, single-LUV form.**  A world that values `X` at `x` assesses the
+precision-`n` approximate expectation within `1/n` of `x` — the full-`ValuesAt` specialization of
+`expectApprox_near_ofGrid` (the counting argument only ever needs grid-point coherence). -/
 theorem PCWorld.ValuesAt.expectApprox_near {v : PCWorld} {X : LUV} {x : ℝ}
     (hval : v.ValuesAt X x) {n : ℕ} (hn : 0 < n) :
     |X.expectApprox v.payout n - x| ≤ 1 / n := by

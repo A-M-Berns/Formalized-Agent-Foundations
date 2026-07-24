@@ -1860,7 +1860,8 @@ theorem BoundedSequence.mesh_affpolymax
 
 /-- `thm:exppolymax`: the market's diagonal expectation has the same lower/upper
 limits as the corresponding future-day expectation extrema.  The only operational
-boundary is the concrete mesh-softmax compiler certificate used by `lem:mesh`. -/
+boundary is the concrete mesh-softmax compiler certificate used by `lem:mesh`.
+Paper node: `thm:exppolymax` -/
 theorem BoundedSequence.exppolymax
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
@@ -1910,7 +1911,8 @@ lemma BoundedSequence.mesh_peraffkno
     hworld
 
 /-- `thm:perexpkno`: persistence of expectation knowledge for represented bounded
-LUV-combination sequences. -/
+LUV-combination sequences.
+Paper node: `thm:perexpkno` -/
 theorem BoundedSequence.perexpkno
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
@@ -1978,7 +1980,8 @@ lemma BoundedSequence.mesh_affcoh
       hworld
 
 /-- `thm:expcoh`: exact completed-world LUV values bound the true limiting expectation,
-which in turn coheres with the market's diagonal expectations. -/
+which in turn coheres with the market's diagonal expectations.
+Paper node: `thm:expcoh` -/
 theorem BoundedSequence.expcoh
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
@@ -2205,7 +2208,8 @@ theorem BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
 every represented divergent weighting supported on a strictly increasing feedback
 schedule.  The feedback emitter and delayed-truth bridge are the same conclusion-free
 `M7-FEEDBACK-EMIT` and `M7-FEEDBACK-TRUTH` boundaries as in `wubaff`, instantiated on
-the concretely normalized threshold mesh. -/
+the concretely normalized threshold mesh.
+Paper node: `thm:wubexp` -/
 theorem BoundedSequence.wubexp
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
