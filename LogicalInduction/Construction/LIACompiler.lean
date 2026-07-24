@@ -6749,8 +6749,38 @@ theorem exists_logical_inductor (DP : DeductiveProcess)
     ∃ P : History, IsLogicalInductor P DP :=
   ⟨liaHistory DP, LIA_is_logical_inductor DP hDP⟩
 
+/-- **`thm:li`, full belief-sequence form.**  The paper's main theorem concludes existence of a
+*computable belief sequence* whose daily belief states have finite support and `[0,1]` values, and
+whose induced pricing satisfies the criterion.  This states exactly that: the witness is the
+recursive rational belief sequence `liaStates DP : ℕ → RationalBeliefState`, and
+
+* `IsLogicalInductor (fun n => (𝔹 n).toValuation) DP` — the induced real pricing is a logical
+  inductor.  This class bundles the paper's *computable exact-rational market* certificate
+  (`marketComputable : ComputableMarket` — one fixed program computes the rational quote table),
+  the computable deductive process, and the no-exploitation criterion, so **computability, exact
+  rational pricing, and the `[0,1]` range are all carried here**;
+* each day's belief state has **finite support** — only the finitely many sentences in
+  `(𝔹 n).support` are priced nonzero;
+* each priced value is an **exact rational in `[0,1]`**; and
+* the induced real pricing is the rational quote cast to `ℝ`.
+
+`exists_logical_inductor` above is the projection to the bare existence statement.
+Paper node: `thm:li` -/
+theorem exists_computable_beliefSequence_logical_inductor (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP) :
+    ∃ 𝔹 : ℕ → RationalBeliefState,
+      IsLogicalInductor (fun n => (𝔹 n).toValuation) DP ∧
+        (∀ n φ, φ ∉ (𝔹 n).support → (𝔹 n).quote φ = 0) ∧
+        (∀ n φ, 0 ≤ (𝔹 n).quote φ ∧ (𝔹 n).quote φ ≤ 1) ∧
+        (∀ n φ, (𝔹 n).toValuation φ = ((𝔹 n).quote φ : ℝ)) :=
+  ⟨liaStates DP, LIA_is_logical_inductor DP hDP,
+    fun n φ h => (liaStates DP n).quote_eq_zero_of_not_mem h,
+    fun n φ => (liaStates DP n).quote_mem_Icc φ,
+    fun _ _ => rfl⟩
+
 #print axioms liaEncodedQuoteNatAtFuel_computable
 #print axioms LIA_is_logical_inductor
 #print axioms exists_logical_inductor
+#print axioms exists_computable_beliefSequence_logical_inductor
 
 end LogicalInduction
