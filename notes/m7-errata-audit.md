@@ -109,6 +109,20 @@ they quantify over poly-*code-value* sequences, a proper subclass of the paper's
 `𝓔𝓒`-sequences. Disclosed at `Criterion.lean:1467–1472` ("formula-level sub-tokenization
 would remove even this"); still open.
 
+**Update (Tranche 2, same day, commits `bbaebdb`..`9d215eb`): the criterion/construction
+half of this finding is closed.** A digit layer over the untouched token stream
+(`digitize`, round-trip and injectivity proved) defines the digit-metered class
+`EfficientlyComputableTok₂` — poly digit-stream length = poly *bit* size, the paper's
+accounting — with the inclusion `EfficientlyComputableTok.toTok₂` proved, and the
+constructed LIA now defeats the wider class: **`LIA_is_logical_inductor₂`** (via the
+tagged two-model enumeration and `trading_firm_dominance₂`), packaged as
+`IsLogicalInductor₂ extends IsLogicalInductor`. Still open, recorded in next-session:
+(a) the conditioning transformations produce only the parent class (their translation
+compilers carry token-model certificates — the digit-model translation is the residual
+that would collapse the two classes into one field); (b) the `𝓔𝓒`-*sequence* hypotheses
+on property-tail theorems still use poly-value codes, not digit streams — migrating them
+is the remaining half of this finding.
+
 ### 2.2 Propositional substrate (`def:lang`)
 
 `Sentence = LO.Propositional.Formula ℕ`. The criterion layer is unaffected (the paper's
