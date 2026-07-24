@@ -108,6 +108,46 @@ Sequencing within the tranche: (1)+(2)+(3) are green-standalone (no criterion ch
 land and commit them first; (4) is the breaking flip — do it in one focused pass with
 the build gate between construction files.
 
+> **Status 2026-07-24: steps 1–2 DONE** (commit `bbaebdb`): `natDigits4`/`tokenBlock`/
+> `digitize` with proved round-trip (`undigitize_digitize`) and injectivity, plus
+> `clockedTrader₂`/`EfficientlyComputableTok₂`, all in `Framework/Criterion.lean`;
+> purely additive, build green.
+>
+> **Step 3 implementation plan (scoped in-session; all reuse points verified to exist):**
+> the inclusion `EfficientlyComputableTok → EfficientlyComputableTok₂` composes as
+> `PrefixPatchCompile.clockedTokens_polySegStream` (M7Witnesses — old clocked stream IS a
+> `PolySegStream`, already proved) → new digit transformer → new `₂` realization bridge.
+> New pieces, in build order:
+> 1. **`len4`/`digitAt` fuel loops** (Computable.lean, next to `gcdc_polyFueled` and in
+>    its style): `len4 t = (natDigits4 t).length` and `digitAt j t = (t div 4^j) % 4`,
+>    both by `PolyFueled.prec` iterating `(·/4)` with pair state (`divmod1_polyFueled` +
+>    `ifzSel_polyFueled`); crude bounds suffice (`len4 t ≤ t`, `digitAt ≤ 3`, state ≤
+>    input — no log accounting needed).
+> 2. **Block stream**: `PolySegStream (fun m => tokenBlock (tokenFn m))` given
+>    `PolyFueled tokenFn` — length `len4 ∘ tokenFn + 1`; token `⟨m,j⟩ ↦ if j < len4 then
+>    digitAt j else 4`.
+> 3. **Digit transformer**: `PolySegStream s → PolySegStream (digitize ∘ s)` =
+>    `PolySegStream.concatVar` (exists, Computable.lean:2478) applied to the block
+>    stream with `cnt := lenFn`, plus the list identity
+>    `digitize (s n) = (range (lenFn n)).flatMap (tokenBlock ∘ tokenFn ⟨n,·⟩)`
+>    (from the seg spec by `List.ext`).
+> 4. **`₂` bridge**: mirror `ecTok_of_rawEmission` → `ecTok₂_of_rawEmission` (same
+>    realization `clockedTokens = raw n`; conclusion via `clockedTrader₂` +
+>    `undigitize_digitize`), then mirror `ecTok_of_rawTokenFn`'s clock-max juggling
+>    verbatim (Computable.lean:1707–1740) for `ecTok₂_of_rawSegStream`.
+> 5. **`EfficientlyComputableTok.toTok₂`**: destructure the certificate, apply 3 to
+>    `clockedTokens_polySegStream`, close with `undigitize_digitize` (`hstrategy` is
+>    definitional: both sides are `strategyOfTokens n (old stream)`).
+> Gotchas already learned this session: `(… : _)` ascription on Computable/PolyFueled
+> compositions over product types (whnf loop otherwise); `attribute [local irreducible]
+> Nat.sqrt` in a section (but NOT nested twice — hard error); `set_option … in` precedes
+> the docstring.
+>
+> **Step 4 (the criterion flip) after step 3 lands**: change `IsLogicalInductor.noExploit`
+> field to quantify over `Tok₂`; re-expose a lemma named `noExploit` with the old
+> signature via `toTok₂` so no property file changes; mirror `TraderEnumeration` with the
+> digit decode; rebuild `TradingFirm` coverage; re-close `LIA_is_logical_inductor`.
+
 ## Tranche 3 — ctsInd-composed quotes + indicator product: witness-free `thm:st` (and cee/ceu)
 
 Two constructions on top of Tranche 1:
