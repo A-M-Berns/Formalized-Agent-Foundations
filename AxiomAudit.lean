@@ -154,6 +154,9 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_introspection lic_paradox_resistance lic_expectations_of_probabilities
   lic_iterated_expectations lic_self_trust lic_expected_future_expectations
 
+-- Properties/ExpectationConvergence.lean: Expectations Converge (`thm:ec`).
+#assert_axioms_clean LUV.expect_converges
+
 -- Properties/ExpectationProperties.lean: the paper-facing LUV-combination sequence
 -- capstones (`thm:exppolymax`, `thm:expcoh`, `thm:perexpkno`, `thm:wubexp`).
 #assert_axioms_clean

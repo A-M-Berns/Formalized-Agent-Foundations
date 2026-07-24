@@ -27,6 +27,8 @@ from pathlib import Path
 
 LIB = Path("LogicalInduction")
 AUDIT = Path("AxiomAudit.lean")
+CLASSIFICATION = Path("notes/coverage-classification.md")
+TIERS = {"complete", "conditional", "qualified", "interface"}
 
 # Labels that legitimately have no standalone endpoint of their own:
 #   app:*  — appendix *proof* references, always attached to a `thm:`/`lem:` whose own
@@ -127,11 +129,36 @@ def main() -> int:
         print("  is genuinely internal, add it to EXCLUDE_LABELS with a justification.")
         return 1
 
+    # --- 3. per-label strength classification (F9, second half) ---------------
+    # notes/coverage-classification.md must classify exactly the non-excluded labels,
+    # each with a valid tier — no unclassified label, no stale row, no invented tier.
+    classified: dict[str, str] = {}
+    row = re.compile(r"^\|\s*([a-z]+:[a-zA-Z0-9_-]+)\s*\|\s*(\w+)\s*\|")
+    for line in CLASSIFICATION.read_text().splitlines():
+        m = row.match(line)
+        if m:
+            classified[m.group(1)] = m.group(2)
+    tracked = {lab for lab in used if not excluded(lab)}
+    missing = sorted(tracked - classified.keys())
+    stale = sorted(classified.keys() - tracked)
+    badtier = sorted((lab, t) for lab, t in classified.items() if t not in TIERS)
+    if missing or stale or badtier:
+        print("endpoint-coverage check: FAIL (strength classification)")
+        for lab in missing:
+            print(f"  unclassified label: {lab} (add a row to {CLASSIFICATION})")
+        for lab in stale:
+            print(f"  stale classification row: {lab} (no longer annotated)")
+        for lab, t in badtier:
+            print(f"  invalid tier '{t}' for {lab} (allowed: {sorted(TIERS)})")
+        return 1
+
     n_excl = len({lab for lab in used if excluded(lab)})
+    counts = {t: sum(1 for v in classified.values() if v == t) for t in sorted(TIERS)}
     print(
         f"endpoint-coverage check: OK "
         f"({len(covered)} labels have an inventory endpoint; "
-        f"{n_excl} excluded appendix/internal; 0 uncovered)"
+        f"{n_excl} excluded appendix/internal; 0 uncovered; "
+        f"strength: {', '.join(f'{k}={v}' for k, v in counts.items())})"
     )
     return 0
 

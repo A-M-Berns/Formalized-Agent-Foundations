@@ -1014,7 +1014,8 @@ type-`(c)`: it imports "Θ represents computations" as a hypothesis).
 
 The compact threshold-code hypothesis is the `def:ec` interface for the paper's
 Θ-definable LUV syntax. The bundle trader, its exploitation proof, and its variable-width
-emission certificate are all discharged. -/
+emission certificate are all discharged.
+Paper node: `thm:ec` -/
 theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (X : LUV)
     (hcode : X.PolyThresholdCodes)
