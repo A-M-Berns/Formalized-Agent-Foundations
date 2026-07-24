@@ -271,6 +271,16 @@ But `exists_logical_inductor` concludes only
 with finite support, range, exact rational computation, and the LIC. The existing `liaStates`
 should make this mainly a statement/packaging task.
 
+**Repair status (2026-07-23): resolved.** `exists_computable_beliefSequence_logical_inductor`
+(`Construction/LIACompiler.lean`) states `thm:li` in full: the witness is exposed as the belief
+sequence `liaStates DP : ℕ → RationalBeliefState`, and the conclusion is the conjunction of
+(1) `IsLogicalInductor (fun n => (𝔹 n).toValuation) DP` — whose class bundles the computable
+exact-rational market certificate (`ComputableMarket`/`MarketComputation`: one fixed program
+computes the rational quote table) and the `[0,1]` range, so computability and exact rational
+pricing are carried there; (2) finite support of each day's state; (3) exact rational `[0,1]`
+values; and (4) the induced real pricing being the rational quote cast.  `exists_logical_inductor`
+is retained as the bare-existence projection.  The endpoint is axiom-clean and in `AxiomAudit.lean`.
+
 ### F9 — MEDIUM / audit-process defect: `AxiomAudit.lean` is not the full public surface
 
 README says `AxiomAudit.lean` enumerates every public endpoint. Its Tier-1 list omits several
