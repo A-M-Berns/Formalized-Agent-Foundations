@@ -44,7 +44,10 @@ normalized to the `Paper node:` convention) — both build axiom-clean. Added a 
 are sorry/axiom-free) vs surface completeness (the list covers every annotated label); neither
 implies faithfulness, which is the read-through's job.
 
-### 🔧 RECORDED TRANCHE — redundant-`hP` cleanup (F0 residual, consolidation-phase)
+### ✅ DONE (2026-07-24) — redundant-`hP` cleanup (F0 residual, consolidation-phase)
+
+**Executed in full**: 137 endpoints across 21 files (regenerated fresh, per the caution below);
+all callers repaired; build/AxiomAudit/coverage/lint green. Original tranche record kept below.
 
 **What.** 120 paper-facing endpoints across 14 files still carry a redundant
 `(hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)` even though they have `[IsLogicalInductor P DP]` in
