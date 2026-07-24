@@ -292,6 +292,16 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_learns_provable_nonhalting_patterns_ofComputation
   lic_does_not_anticipate_halting_ofComputation
 
+-- Construction/Witnesses/QuoteCodeOfMarket.lean — constructed rational quote codes
+-- (Tranche 1 of the boundary-shoring plan): the first *discharge* of the
+-- `RationalQuoteCode` reflection data.  `lic_expectations_of_probabilities_closed` is
+-- `thm:epr` over the constructed LIA with no reflection hypotheses at all.
+#assert_axioms_clean
+  arithmeticThresholdLUV_polyThresholdCodeSeq
+  RationalQuoteCode.ofComputable
+  theoremPriceQuoteCode
+  lic_expectations_of_probabilities_closed
+
 -- Construction/Witnesses/ComputationDP.lean — unconditional-over-LIA capstones
 -- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above).
 -- The quotation family below discharges market/inductor/presentation/hworld; the

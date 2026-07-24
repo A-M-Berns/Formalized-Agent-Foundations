@@ -30,6 +30,22 @@ Then mark audit §3.6 FIXED.
 
 ## Tranche 1 — `rationalQuoteCodeOfMarket`: witness-free `thm:epr`/`thm:er`
 
+> **Status 2026-07-24: epr half DONE** (`Witnesses/QuoteCodeOfMarket.lean`, on the audit
+> surface, axiom-clean). Landed: `arithmeticThresholdLUV_polyThresholdCodeSeq` (first-ever
+> `threshold_poly` discharge — kind `P`, provenance `(a)` via `gcdc`/`divmod1`/`ifzSel` +
+> `(b)` `natCast_div_num/den`), `RationalQuoteCode.ofComputable` (kind `C` over
+> `BooleanQuoteCode.ofComputable`), `theoremPriceQuoteCode`, and
+> `lic_expectations_of_probabilities_closed` — `thm:epr` over constructed LIA with **zero
+> reflection hypotheses** (only `φ` + `PolySentenceCodes φ` remain).
+> Lean gotchas hit: the `(… : _)` ascription on `hleB.to_comp.comp (h2.pair h1)` is
+> load-bearing (whnf unification loop otherwise, NOT fixed by irreducible `Nat.sqrt` or
+> heartbeats); `set_option maxHeartbeats` must precede the docstring.
+> **Remaining: the er half** — a computable program for the rational day-`n` expectation
+> `(n:ℚ)⁻¹ · Σ_{i<n} quote(n, ⌜(X n).gt (i/n)⌝)` (bounded sum over the market program;
+> `ratAdd_prim`/`ratDiv_prim` are public in LIACompiler), then
+> `lic_iterated_expectations_closed` via `RationalQuoteCode.ofComputable` + `hexact` by
+> `push_cast` over `quote_exact`.
+
 **Goal.** Discharge the reflection data for epr/er the way `thm:lp` already does:
 `parameterizedDiagonalQuoteCodeOfMarket` derives its quote object from
 `theoremMarketComputation` with *no caller-supplied semantic relation*. Build the analog
