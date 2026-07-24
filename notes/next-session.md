@@ -74,21 +74,39 @@ constructors, `diagonalPriceDecisionPart_partrec` toolkit), `ComputationDP.lean`
 proving: the Σ₁-completeness instance lemmas likely already exist for the diagonal case —
 reuse, don't re-derive.
 
-## Tranche 2 — ℚ-constant sub-tokenization (dd:fuel, isolated)
+## Tranche 2 — token sub-digitization (dd:fuel) — **design revised 2026-07-24**
 
-`EF.serialize`'s `const q` case emits the single token `Encodable.encode q`, whose
-*value* is exponential in the constant's bit-length — the clocked emitter can't produce
-per-day literals like `2^{-n}` (worked around compositionally today). Fix: emit the
-rational as a bounded-digit stream (tag, sign, numerator digits, denominator digits,
-end-marker); extend `readM` + `streamStep` with a digit-accumulating mode; redo
-round-trip/injectivity. Then prove the **inclusion lemma**: old-token e.c. ⟹ new-token
-e.c. (generic re-emitter, slightly larger polynomial clock) — this transfers every
-existing `_ecTok` certificate without touching it. Update `strategyOfTokens` and the
-`TraderEnumeration` decode; the (lengthCode, tokenCode, clock) enumeration itself is
-decode-agnostic. Direction check (why this is safe): the e.c. class widens ⟹
-`IsLogicalInductor` strengthens toward the paper's LIC ⟹ `LIA_is_logical_inductor`
-must beat more traders — and does, since the firm enumerates the same triples; property
-exploiters transfer by inclusion.
+Original idea (rewrite `EF.serialize`'s `const` case to a digit stream) is **wrong**: it
+breaks the two-sided seam `serialize_length ≤ 3·cost` (a constant's digit count is not
+bounded by `cost (const q) = 1`) and ripples into every cost bound. Revised design — a
+**digit layer on top of the untouched token stream** — which also subsumes Tranche 4
+(sentence codes get digitized for free, since *every* token is digitized):
+
+1. `digitize : List ℕ → List ℕ` — each token becomes a self-delimiting base-4 digit
+   block (digits `0..3`, terminator `4`); prove roundtrip + injectivity. `serialize`,
+   `readM`, `streamStep`, `EF.cost`, and every seam lemma stay untouched.
+2. `EfficientlyComputableTok₂` := two programs under one poly clock emit
+   `digitize (serializeTrades …)` token-by-token (mirror `clockedTokens` /
+   `strategyOfTokens` with an undigitize front end).
+3. **Inclusion lemma** `EfficientlyComputableTok → EfficientlyComputableTok₂`: an old
+   poly-value token has an `O(log n)` digit block; the digit emitter runs the old token
+   program and extracts a digit — poly overhead. Transfers every existing `_ecTok`
+   certificate unchanged.
+4. Criterion flip: `IsLogicalInductor.noExploit` field quantifies over `Tok₂`; keep a
+   *lemma* named `noExploit` with the old signature (field + inclusion) so no property
+   file changes. Construction side: mirror `TraderEnumeration` (digit decode), rebuild
+   `TradingFirm` coverage over the new enumeration, re-close `LIA`.
+   Direction check (why this is safe): the e.c. class widens ⟹ `IsLogicalInductor`
+   strengthens toward the paper's LIC ⟹ `LIA_is_logical_inductor` must beat more
+   traders — and does, since the firm enumerates the same (length, token, clock)
+   triples; property exploiters transfer by inclusion.
+5. Faithfulness payoff: per-day rational literals (`2^{-n}`) and deep/large sentence
+   codes become emittable — audit §2.1's concrete narrowing closes; the residual
+   dd:fuel disclosure reduces to the fuel-vs-TM-time model sentence (see Terminal).
+
+Sequencing within the tranche: (1)+(2)+(3) are green-standalone (no criterion change) —
+land and commit them first; (4) is the breaking flip — do it in one focused pass with
+the build gate between construction files.
 
 ## Tranche 3 — ctsInd-composed quotes + indicator product: witness-free `thm:st` (and cee/ceu)
 
