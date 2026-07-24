@@ -154,6 +154,91 @@ noncomputable def luvArithmeticPresentation [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺�
     refine ⟨k, ?_⟩
     simpa [luvEventAtom, thresholdSentence] using hk
 
+/-! ## Efficient computability of the threshold process -/
+
+/-- `luvEventAtom` is primitive recursive: a two-way tag split into fixed atom/negated-atom
+Gödel-code pairings. -/
+lemma luvEventAtom_prim : Primrec (fun e : ℕ => luvEventAtom e) := by
+  apply Primrec.encode_iff.mp
+  have hz : Primrec (fun e : ℕ => e.unpair.2) := Primrec.snd.comp Primrec.unpair
+  have htag : Primrec (fun e : ℕ => e.unpair.1) := Primrec.fst.comp Primrec.unpair
+  have encA : Primrec (fun e : ℕ => Nat.pair 1 e.unpair.2 + 1) :=
+    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1) hz)
+  have encN : Primrec (fun e : ℕ =>
+      Nat.pair 2 (Nat.pair (Nat.pair 1 e.unpair.2 + 1) (Nat.pair 0 0 + 1)) + 1) :=
+    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
+      (Primrec₂.natPair.comp
+        (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1) hz))
+        (Primrec.const (Nat.pair 0 0 + 1))))
+  refine (Primrec.ite (Primrec.eq.comp htag (Primrec.const 0)) encA encN).of_eq ?_
+  intro e
+  by_cases h : e.unpair.1 = 0
+  · simp [luvEventAtom, h, encode_atom]
+  · simp [luvEventAtom, h, encode_negAtom]
+
+lemma luvStage_eq_toFinset [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    (c : Nat.Partrec.Code) (k : ℕ) :
+    ((Finset.range (k + 1)).filter
+        (fun e => (Nat.Partrec.Code.evaln k c e).isSome = true)).image luvEventAtom =
+      ((List.range (k + 1)).filterMap
+        (fun e => if (Nat.Partrec.Code.evaln k c e).isSome = true then some (luvEventAtom e)
+          else none)).toFinset := by
+  classical
+  ext φ
+  simp only [Finset.mem_image, Finset.mem_filter, Finset.mem_range,
+    List.mem_toFinset, List.mem_filterMap, List.mem_range]
+  constructor
+  · rintro ⟨e, ⟨he, hsome⟩, rfl⟩
+    exact ⟨e, he, by rw [if_pos hsome]⟩
+  · rintro ⟨e, he, hcond⟩
+    by_cases hs : (Nat.Partrec.Code.evaln k c e).isSome = true
+    · rw [if_pos hs] at hcond
+      exact ⟨e, ⟨he, hs⟩, Option.some_inj.mp hcond⟩
+    · rw [if_neg hs] at hcond; exact absurd hcond (by simp)
+
+lemma luvStage_encode_prim [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    Primrec (fun k => Encodable.encode (L.luvStage T k)) := by
+  set c := (L.exists_luvEventCode T).choose with hc
+  have hevaln : Primrec (fun p : ℕ × ℕ => (Nat.Partrec.Code.evaln p.1 c p.2).isSome) :=
+    Primrec.option_isSome.comp
+      (Nat.Partrec.Code.primrec_evaln.comp
+        ((Primrec.fst.pair (Primrec.const c)).pair Primrec.snd))
+  have hguncur : Primrec (fun p : ℕ × ℕ =>
+      if (Nat.Partrec.Code.evaln p.1 c p.2).isSome = true then some (luvEventAtom p.2)
+        else (none : Option Sentence)) := by
+    have hb : Primrec (fun p : ℕ × ℕ =>
+        bif (Nat.Partrec.Code.evaln p.1 c p.2).isSome then some (luvEventAtom p.2)
+          else (none : Option Sentence)) :=
+      Primrec.cond hevaln (Primrec.option_some.comp (luvEventAtom_prim.comp Primrec.snd))
+        (Primrec.const (none : Option Sentence))
+    exact hb.of_eq (fun p => by
+      cases hbb : (Nat.Partrec.Code.evaln p.1 c p.2).isSome <;> simp [hbb])
+  have hlist : Primrec (fun k : ℕ => (List.range (k + 1)).filterMap
+      (fun e => if (Nat.Partrec.Code.evaln k c e).isSome = true then some (luvEventAtom e)
+        else none)) :=
+    Primrec.listFilterMap (Primrec.list_range.comp Primrec.succ) hguncur.to₂
+  have hkey : (fun k => Encodable.encode (L.luvStage T k)) =
+      (fun k => Encodable.encode
+        ((sentenceDedup ((List.range (k + 1)).filterMap
+          (fun e => if (Nat.Partrec.Code.evaln k c e).isSome = true then some (luvEventAtom e)
+            else none))).insertionSort sentenceCodeLE)) := by
+    funext k
+    rw [show L.luvStage T k = ((Finset.range (k + 1)).filter
+        (fun e => (Nat.Partrec.Code.evaln k c e).isSome = true)).image luvEventAtom from rfl,
+      luvStage_eq_toFinset T c k, encode_toFinset_eq]
+  rw [hkey]
+  exact Primrec.encode.comp (sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp hlist))
+
+/-- **The scheduled provability process is computable.**  One fixed partial-recursive program
+emits the encoded stage `D k` on input `k`. -/
+lemma luvThresholdDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    ComputableDeductiveProcess (L.luvThresholdDP T) := by
+  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
+    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp (L.luvStage_encode_prim T)))
+  refine ⟨code, fun k => ?_⟩
+  rw [hcode]
+  exact Part.mem_some _
+
 end ComputableLUV
 
 end LogicalInduction
