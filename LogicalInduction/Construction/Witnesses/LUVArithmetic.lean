@@ -255,6 +255,104 @@ def toLUV (i : ℕ) : LUV where
 
 @[simp] lemma toLUV_gt (i : ℕ) (r : ℚ) : (toLUV i).gt r = thresholdSentence i r := rfl
 
+/-! ### The threshold-code efficiency certificate (`dd:fuel` discharged for `dd:luv-arith`)
+
+`PolyThresholdCodes` asks for one poly-fueled program emitting the encoded threshold sentence
+`⌜Xᵢ > b/k⌝` from the query `⟨k, b⟩`.  The sentence's atom code carries the *reduced*
+numerator/denominator of `b/k`, so the program is `gcdc` (the runtime Euclid iteration) followed
+by two `divmod1` divisions and the fixed pairing shell — with an `ifzSel` fallback to `0/1` for
+the everywhere-zero `k = 0` query. -/
+
+/-- Reduced numerator of a natural-cast quotient: `((b : ℚ) / k).num = b / gcd b k`. -/
+private lemma natCast_div_num {b k : ℕ} (hk : k ≠ 0) :
+    ((b : ℚ) / (k : ℚ)).num = (b / Nat.gcd b k : ℕ) := by
+  have hg : 0 < Nat.gcd b k := Nat.gcd_pos_of_pos_right b (Nat.pos_of_ne_zero hk)
+  have hb' : (b / Nat.gcd b k) * Nat.gcd b k = b := Nat.div_mul_cancel (Nat.gcd_dvd_left b k)
+  have hk' : (k / Nat.gcd b k) * Nat.gcd b k = k := Nat.div_mul_cancel (Nat.gcd_dvd_right b k)
+  have hkg : 0 < k / Nat.gcd b k :=
+    Nat.div_pos (Nat.le_of_dvd (Nat.pos_of_ne_zero hk) (Nat.gcd_dvd_right b k)) hg
+  have hgQ : (Nat.gcd b k : ℚ) ≠ 0 := by exact_mod_cast hg.ne'
+  have hbQ : (b : ℚ) = ((b / Nat.gcd b k : ℕ) : ℚ) * (Nat.gcd b k : ℚ) := by
+    exact_mod_cast congrArg (Nat.cast : ℕ → ℚ) hb'.symm
+  have hkQ : (k : ℚ) = ((k / Nat.gcd b k : ℕ) : ℚ) * (Nat.gcd b k : ℚ) := by
+    exact_mod_cast congrArg (Nat.cast : ℕ → ℚ) hk'.symm
+  have heq : (b : ℚ) / (k : ℚ)
+      = (((b / Nat.gcd b k : ℕ) : ℤ) : ℚ) / (((k / Nat.gcd b k : ℕ) : ℤ) : ℚ) := by
+    rw [hbQ, hkQ, mul_div_mul_right _ _ hgQ, Int.cast_natCast, Int.cast_natCast]
+  rw [heq, Rat.num_div_eq_of_coprime (a := ((b / Nat.gcd b k : ℕ) : ℤ))
+    (b := ((k / Nat.gcd b k : ℕ) : ℤ)) (by exact_mod_cast hkg)
+    (by simpa using Nat.coprime_div_gcd_div_gcd hg)]
+
+/-- Reduced denominator of a natural-cast quotient: `((b : ℚ) / k).den = k / gcd b k`. -/
+private lemma natCast_div_den {b k : ℕ} (hk : k ≠ 0) :
+    ((b : ℚ) / (k : ℚ)).den = k / Nat.gcd b k := by
+  have hg : 0 < Nat.gcd b k := Nat.gcd_pos_of_pos_right b (Nat.pos_of_ne_zero hk)
+  have hb' : (b / Nat.gcd b k) * Nat.gcd b k = b := Nat.div_mul_cancel (Nat.gcd_dvd_left b k)
+  have hk' : (k / Nat.gcd b k) * Nat.gcd b k = k := Nat.div_mul_cancel (Nat.gcd_dvd_right b k)
+  have hkg : 0 < k / Nat.gcd b k :=
+    Nat.div_pos (Nat.le_of_dvd (Nat.pos_of_ne_zero hk) (Nat.gcd_dvd_right b k)) hg
+  have hgQ : (Nat.gcd b k : ℚ) ≠ 0 := by exact_mod_cast hg.ne'
+  have hbQ : (b : ℚ) = ((b / Nat.gcd b k : ℕ) : ℚ) * (Nat.gcd b k : ℚ) := by
+    exact_mod_cast congrArg (Nat.cast : ℕ → ℚ) hb'.symm
+  have hkQ : (k : ℚ) = ((k / Nat.gcd b k : ℕ) : ℚ) * (Nat.gcd b k : ℚ) := by
+    exact_mod_cast congrArg (Nat.cast : ℕ → ℚ) hk'.symm
+  have heq : (b : ℚ) / (k : ℚ)
+      = (((b / Nat.gcd b k : ℕ) : ℤ) : ℚ) / (((k / Nat.gcd b k : ℕ) : ℤ) : ℚ) := by
+    rw [hbQ, hkQ, mul_div_mul_right _ _ hgQ, Int.cast_natCast, Int.cast_natCast]
+  have hden := Rat.den_div_eq_of_coprime (a := ((b / Nat.gcd b k : ℕ) : ℤ))
+    (b := ((k / Nat.gcd b k : ℕ) : ℤ))
+    (by exact_mod_cast hkg) (by simpa using Nat.coprime_div_gcd_div_gcd hg)
+  rw [heq]
+  exact_mod_cast hden
+
+private lemma encode_thresholdSentence (i : ℕ) (r : ℚ) :
+    Encodable.encode (thresholdSentence i r) = Nat.pair 1 (thresholdCode i r) + 1 := rfl
+
+attribute [local irreducible] Nat.sqrt in
+/-- **`dd:fuel` discharged for `dd:luv-arith` thresholds.**  The threshold presentation of every
+`toLUV i` is polynomially codeable: one poly-fueled program — the runtime Euclid `gcdc`, two
+`divmod1` reductions, an `ifzSel` zero-denominator fallback, and the fixed atom shell — emits
+the encoded sentence `⌜Xᵢ > b/k⌝` from `⟨k, b⟩`.  This is the first `PolyThresholdCodes`
+certificate *proved* rather than assumed in the repository.
+Paper node: `def:ec` -/
+theorem toLUV_polyThresholdCodes (i : ℕ) : (toLUV i).PolyThresholdCodes := by
+  obtain ⟨cg, hgcd⟩ := gcdc_polyFueled
+  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
+  -- Query `m = ⟨k, b⟩`: denominator `k = m.unpair.1`, numerator `b = m.unpair.2`.
+  have gPF := hgcd.comp (PolyFueled.right.pair PolyFueled.left)
+  have pgPF := predc_polyFueled.comp gPF
+  have numPF := PolyFueled.left.comp (hdm.comp (pgPF.pair PolyFueled.right))
+  have denPF := PolyFueled.left.comp (hdm.comp (pgPF.pair PolyFueled.left))
+  have selPF := ifzSel_polyFueled.comp
+    (((PolyFueled.const (Nat.pair 0 1)).pair (numPF.pair denPF)).pair PolyFueled.left)
+  have fullPF := ((PolyFueled.const 1).pair
+    ((PolyFueled.const i).pair ((PolyFueled.const 0).pair selPF))).succ_comp
+  refine ⟨_, fullPF.of_eq (fun m => ?_)⟩
+  rw [toLUV_gt, encode_thresholdSentence]
+  simp only [Nat.unpair_pair, ifzSelFn]
+  set k := m.unpair.1 with hkdef
+  set b := m.unpair.2 with hbdef
+  set r := (b : ℚ) / (k : ℚ) with hr
+  have hsign : (if 0 ≤ r then (0 : ℕ) else 1) = 0 :=
+    if_pos (div_nonneg (Nat.cast_nonneg b) (Nat.cast_nonneg k))
+  unfold thresholdCode
+  rw [hsign]
+  by_cases hk : k = 0
+  · rw [if_pos hk]
+    have hr0 : r = 0 := by rw [hr, hk]; simp
+    rw [hr0]
+    norm_num
+  · rw [if_neg hk]
+    have hg : 0 < Nat.gcd b k := Nat.gcd_pos_of_pos_right b (Nat.pos_of_ne_zero hk)
+    have h1 : Nat.pred (Nat.gcd b k) + 1 = Nat.gcd b k :=
+      Nat.succ_pred_eq_of_pos hg
+    rw [h1]
+    have hnum : r.num.natAbs = b / Nat.gcd b k := by
+      rw [hr, natCast_div_num hk]; exact Int.natAbs_natCast _
+    have hden : r.den = k / Nat.gcd b k := by
+      rw [hr]; exact natCast_div_den hk
+    rw [hnum, hden]
+
 end ComputableLUV
 
 end LogicalInduction

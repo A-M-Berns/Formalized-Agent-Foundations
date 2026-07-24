@@ -1455,6 +1455,127 @@ lemma divmod1_polyFueled :
     hst
   exact ⟨_, hprec⟩
 
+/-! ### `gcdc` — runtime gcd via the Euclid iteration (`dd:fuel`)
+
+The reduced numerator/denominator of a runtime rational needs `gcd` of two runtime values.
+One Euclid step is `divmod1` + `ifzSel`; the first state component strictly decreases while
+nonzero, so `prec`-iterating the step `n` times reaches the fixed point, whose second
+component is the gcd. -/
+
+/-- One Euclid step on a packed state `⟨x, y⟩`: replace by `⟨y % x, x⟩` while `x ≠ 0`;
+`x = 0` is the fixed point, whose `y` component holds the gcd. -/
+private def euclidStep (s : ℕ) : ℕ :=
+  if s.unpair.1 = 0 then s else Nat.pair (s.unpair.2 % s.unpair.1) s.unpair.1
+
+/-- Both components of every Euclid iterate are bounded by the packed start. -/
+private lemma euclidStep_iterate_le (a : ℕ) : ∀ j,
+    (euclidStep^[j] a).unpair.1 ≤ a ∧ (euclidStep^[j] a).unpair.2 ≤ a := by
+  intro j
+  induction j with
+  | zero => exact ⟨Nat.unpair_left_le a, Nat.unpair_right_le a⟩
+  | succ j ih =>
+      rw [Function.iterate_succ_apply']
+      set s := euclidStep^[j] a with hs
+      unfold euclidStep
+      by_cases hx : s.unpair.1 = 0
+      · rw [if_pos hx]; exact ih
+      · rw [if_neg hx]
+        simp only [Nat.unpair_pair]
+        exact ⟨le_trans (Nat.mod_le _ _) ih.2, ih.1⟩
+
+/-- The gcd of the state components is invariant along the Euclid iteration. -/
+private lemma euclidStep_iterate_gcd (a : ℕ) : ∀ j,
+    Nat.gcd (euclidStep^[j] a).unpair.1 (euclidStep^[j] a).unpair.2
+      = Nat.gcd a.unpair.1 a.unpair.2 := by
+  intro j
+  induction j with
+  | zero => rfl
+  | succ j ih =>
+      rw [Function.iterate_succ_apply']
+      set s := euclidStep^[j] a with hs
+      unfold euclidStep
+      by_cases hx : s.unpair.1 = 0
+      · rw [if_pos hx]; exact ih
+      · rw [if_neg hx]
+        simp only [Nat.unpair_pair]
+        rw [← ih]
+        exact (Nat.gcd_rec s.unpair.1 s.unpair.2).symm
+
+/-- The first component reaches `0` after at most its initial value many steps. -/
+private lemma euclidStep_iterate_fst_zero (a : ℕ) {j : ℕ} (hj : a.unpair.1 ≤ j) :
+    (euclidStep^[j] a).unpair.1 = 0 := by
+  have key : ∀ k, (euclidStep^[k] a).unpair.1 = 0 ∨
+      (euclidStep^[k] a).unpair.1 + k ≤ a.unpair.1 := by
+    intro k
+    induction k with
+    | zero => exact Or.inr (by rw [Function.iterate_zero_apply]; omega)
+    | succ k ih =>
+        rw [Function.iterate_succ_apply']
+        set s := euclidStep^[k] a with hs
+        unfold euclidStep
+        by_cases hx : s.unpair.1 = 0
+        · rw [if_pos hx]; exact Or.inl hx
+        · rw [if_neg hx]
+          simp only [Nat.unpair_pair]
+          have hlt : s.unpair.2 % s.unpair.1 < s.unpair.1 :=
+            Nat.mod_lt _ (Nat.pos_of_ne_zero hx)
+          rcases ih with h0 | hle
+          · exact absurd h0 hx
+          · exact Or.inr (by omega)
+  rcases key j with h0 | hle
+  · exact h0
+  · omega
+
+/-- **Runtime gcd** (`dd:fuel`): `⟨x, y⟩ ↦ Nat.gcd x y`.  `prec`-iterates the Euclid step
+`n` times from `⟨x, y⟩`; since `x ≤ n` the fixed point is reached, and its second component
+is the gcd. -/
+lemma gcdc_polyFueled : ∃ c, PolyFueled c (fun m => Nat.gcd m.unpair.1 m.unpair.2) := by
+  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
+  -- Step pieces on the `prec` input `z = ⟨a, ⟨j, s⟩⟩`.
+  have sPF := PolyFueled.right.comp PolyFueled.right
+  have xPF := PolyFueled.left.comp sPF
+  have yPF := PolyFueled.right.comp sPF
+  have pxPF := predc_polyFueled.comp xPF
+  have dmPF := hdm.comp (pxPF.pair yPF)
+  have modPF := PolyFueled.right.comp dmPF
+  have stepPF := modPF.pair xPF
+  have gPF := ifzSel_polyFueled.comp ((sPF.pair stepPF).pair xPF)
+  have hst : IsPolyBounded (fun m => euclidStep^[m.unpair.2] m.unpair.1) := by
+    refine ⟨4, 2, fun m => ?_⟩
+    obtain ⟨hx, hy⟩ := euclidStep_iterate_le m.unpair.1 m.unpair.2
+    set s := euclidStep^[m.unpair.2] m.unpair.1 with hsdef
+    have hs : s ≤ Nat.pair m.unpair.1 m.unpair.1 :=
+      calc s = Nat.pair s.unpair.1 s.unpair.2 := (Nat.pair_unpair s).symm
+        _ ≤ Nat.pair m.unpair.1 s.unpair.2 := pair_le_pair_left' _ hx
+        _ ≤ Nat.pair m.unpair.1 m.unpair.1 := pair_le_pair_right' _ hy
+    have hsq : Nat.pair m.unpair.1 m.unpair.1
+        < (m.unpair.1 + m.unpair.1 + 1) ^ 2 := pair_lt_sq _ _
+    have hm := Nat.unpair_left_le m
+    nlinarith
+  have hprec := PolyFueled.prec PolyFueled.id gPF
+    (st := fun a j => euclidStep^[j] a)
+    (fun a => Function.iterate_zero_apply _ _)
+    (fun a j => by
+      show euclidStep^[j + 1] a = _
+      rw [Function.iterate_succ_apply']
+      simp only [Nat.unpair_pair, ifzSelFn]
+      set s := euclidStep^[j] a with hs
+      unfold euclidStep
+      by_cases hx : s.unpair.1 = 0
+      · rw [if_pos hx, if_pos hx]
+      · rw [if_neg hx, if_neg hx]
+        have h1 : Nat.pred s.unpair.1 + 1 = s.unpair.1 :=
+          Nat.succ_pred_eq_of_pos (Nat.pos_of_ne_zero hx)
+        rw [h1])
+    hst
+  have hrun := hprec.comp (PolyFueled.id.pair PolyFueled.id)
+  refine ⟨_, (PolyFueled.right.comp hrun).of_eq (fun n => ?_)⟩
+  simp only [Nat.unpair_pair]
+  have h0 := euclidStep_iterate_fst_zero n (Nat.unpair_left_le n)
+  have hg := euclidStep_iterate_gcd n n
+  rw [h0, Nat.gcd_zero_left] at hg
+  exact hg
+
 /-! ### `ecTok_of_tokenFn` — the varying-length emission workhorse.
 
 Generalizes `ecTok_of_tokenList` (fixed length) to **growing** streams: a trader is
