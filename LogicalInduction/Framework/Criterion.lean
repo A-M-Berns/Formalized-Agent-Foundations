@@ -1528,6 +1528,118 @@ lemma IsLogicalInductor.price_mem_Icc
     0 ≤ P n φ ∧ P n φ ≤ 1 :=
   hLI.marketComputable.price_mem_Icc n φ
 
+/-! ### The digit layer (`dd:fuel` refinement — Tranche 2 of the boundary-shoring plan)
+
+`EfficientlyComputableTok` above emits the flat token stream one token per program call,
+so each *token value* must be polynomial in the day — which excludes per-day rational
+literals (`2^{-n}`) and deep/large sentence codes, though the paper's poly-*time* `def:ec`
+admits them (the residual disclosed above). The digit layer removes that residual without
+touching `serialize`/`readM`/`cost`: every token is re-emitted as a **self-delimiting
+base-4 digit block** (digits `0..3`, terminator `4`), so a `B`-bit token becomes `O(B)`
+bounded-value digits. `EfficientlyComputableTok₂` meters the digitized stream; poly
+digit-stream length ⇔ poly *bit* size — the paper's accounting. -/
+
+/-- Little-endian base-4 digits of `n` (empty for `0`). -/
+def natDigits4 : ℕ → List ℕ
+  | 0 => []
+  | n + 1 => (n + 1) % 4 :: natDigits4 ((n + 1) / 4)
+decreasing_by exact Nat.div_lt_self (Nat.succ_pos n) (by norm_num)
+
+/-- Every emitted digit is `< 4` (the terminator `4` never occurs inside a block). -/
+lemma natDigits4_lt (n : ℕ) : ∀ d ∈ natDigits4 n, d < 4 := by
+  induction n using Nat.strong_induction_on with
+  | _ n ih =>
+      cases n with
+      | zero => simp [natDigits4]
+      | succ m =>
+          rw [natDigits4]
+          intro d hd
+          rcases List.mem_cons.mp hd with rfl | hd
+          · exact Nat.mod_lt _ (by norm_num)
+          · exact ih ((m + 1) / 4) (Nat.div_lt_self (Nat.succ_pos m) (by norm_num)) d hd
+
+/-- One self-delimiting token block: the token's digits, then the terminator `4`. -/
+def tokenBlock (t : ℕ) : List ℕ := natDigits4 t ++ [4]
+
+/-- The digit stream of a token stream. -/
+def digitize (ts : List ℕ) : List ℕ := ts.flatMap tokenBlock
+
+/-- Streaming inverse state step: `(finished tokens, block accumulator, place value)`.
+Digits `< 4` accumulate little-endian; anything else closes the current block. -/
+def undigitizeStep : List ℕ × ℕ × ℕ → ℕ → List ℕ × ℕ × ℕ
+  | (out, acc, pow), d =>
+      if d < 4 then (out, acc + d * pow, 4 * pow) else (out ++ [acc], 0, 1)
+
+/-- Recover the token stream from a digit stream (complete blocks only). -/
+def undigitize (ds : List ℕ) : List ℕ :=
+  (ds.foldl undigitizeStep ([], 0, 1)).1
+
+/-- Folding one digit list accumulates exactly its value at the current place. -/
+lemma foldl_undigitizeStep_natDigits4 (n : ℕ) : ∀ (out : List ℕ) (acc pow : ℕ),
+    List.foldl undigitizeStep (out, acc, pow) (natDigits4 n) =
+      (out, acc + n * pow, 4 ^ (natDigits4 n).length * pow) := by
+  induction n using Nat.strong_induction_on with
+  | _ n ih =>
+      cases n with
+      | zero => intro out acc pow; simp [natDigits4]
+      | succ m =>
+          intro out acc pow
+          rw [natDigits4]
+          simp only [List.foldl_cons, List.length_cons]
+          rw [show undigitizeStep (out, acc, pow) ((m + 1) % 4) =
+              (out, acc + (m + 1) % 4 * pow, 4 * pow) from
+            if_pos (Nat.mod_lt _ (by norm_num)),
+            ih ((m + 1) / 4) (Nat.div_lt_self (Nat.succ_pos m) (by norm_num))]
+          simp only [Prod.mk.injEq]
+          set r := (m + 1) % 4
+          set q := (m + 1) / 4
+          have h4 : r + 4 * q = m + 1 := Nat.mod_add_div (m + 1) 4
+          exact ⟨trivial, by rw [← h4]; ring, by rw [pow_succ]; ring⟩
+
+/-- Folding one complete token block appends exactly that token. -/
+lemma foldl_undigitizeStep_tokenBlock (out : List ℕ) (t : ℕ) :
+    List.foldl undigitizeStep (out, 0, 1) (tokenBlock t) = (out ++ [t], 0, 1) := by
+  rw [tokenBlock, List.foldl_append, foldl_undigitizeStep_natDigits4]
+  simp [undigitizeStep]
+
+/-- **Digitization round-trips**: the digit stream determines the token stream. -/
+lemma undigitize_digitize (ts : List ℕ) : undigitize (digitize ts) = ts := by
+  suffices h : ∀ out, (List.foldl undigitizeStep (out, 0, 1) (digitize ts)).1 = out ++ ts by
+    simpa using h []
+  induction ts with
+  | nil => intro out; simp [digitize]
+  | cons t rest ih =>
+      intro out
+      rw [digitize, List.flatMap_cons, List.foldl_append,
+        foldl_undigitizeStep_tokenBlock]
+      rw [show (rest.flatMap tokenBlock) = digitize rest from rfl, ih]
+      simp
+
+/-- `digitize` is injective. -/
+lemma digitize_injective : Function.Injective digitize := by
+  intro a b h
+  have := undigitize_digitize a
+  rw [h, undigitize_digitize] at this
+  exact this.symm
+
+/-- The total trader denoted by two digit-emission programs and a day-dependent clock:
+as `clockedTrader`, but the emitted stream is read through the digit layer. -/
+def clockedTrader₂ (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ) : Trader where
+  strat n :=
+    strategyOfTokens n (undigitize (clockedTokens lengthCode tokenCode (clock n) n))
+
+/-- `def:ec` (`dd:fuel`) — **digit-metered emission**. A trader is efficiently computable
+in the digit model if one program emits the *digit-stream* length of the day-`n` strategy
+and a second emits that stream one digit at a time, both under one polynomial clock.
+Since every digit is `≤ 4`, the emitted-value constraint of the token model disappears:
+poly digit-stream length is exactly poly *bit* size, the paper's `def:ec` accounting.
+This class strictly contains `EfficientlyComputableTok` (inclusion lemma: Tranche 2
+step 3) and additionally admits per-day large rational literals and deep sentence codes.
+Paper node: `def:ec` -/
+def EfficientlyComputableTok₂ (Tr : Trader) : Prop :=
+  ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
+    clockedTrader₂ lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
+
 /-! ### Sanity / non-vacuity for the criterion machinery.
 
 `Exploits` must be a genuinely refutable condition, not vacuously true — otherwise `def:lic`
