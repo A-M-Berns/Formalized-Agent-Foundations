@@ -146,11 +146,30 @@ Files (all green, axiom-clean `propext/Classical.choice/Quot.sound`, in `Logical
   both representation hypotheses from arithmetic; only the disclosed mesh-softmax operational
   witness and threshold-code efficiency remain.  In `AxiomAudit` (63 labels); checks pass.
 
-**Remaining:**
-1. **Efficiency certificates** — `PolyThresholdCodes (toLUV i)` and computable `gridDP`/
-   `luvThresholdDP`/`combinedDP`. The disclosed `dd:fuel`/inductor-existence boundary the **entire
-   property tail** rests on; explicitly out of scope per Anson (2026-07-23). The certified endpoints
-   are conditional on it exactly as every other property endpoint is.
+**Efficiency certificates — DONE (2026-07-23, Anson-requested reversal of the earlier scope-out):**
+- **`gcdc_polyFueled`** (`Framework/Computable.lean`): runtime gcd in the fuel model, by
+  `PolyFueled.prec`-iterating the Euclid step (`divmod1` + `ifzSel` + `predc`) — the toolkit's
+  `prec`/varying-divisor `divmod1` combinators (which I'd earlier wrongly believed absent) make
+  this bounded engineering, not a model extension.
+- **`toLUV_polyThresholdCodes`** (`LUVArithmetic.lean`): the **first `PolyThresholdCodes`
+  certificate proved rather than assumed in the repo** — gcd + two `divmod1` reductions + `ifzSel`
+  `k=0` fallback + fixed atom shell emit the encoded `⌜Xᵢ > b/k⌝` from `⟨k,b⟩`; `ℚ` lemmas
+  (`natCast_div_num/den`) identify `((b:ℚ)/k).num/.den` with the gcd-reduced pair;
+  `thresholdCodeNat` + `_eq` + `_primrec` expose the ℕ-level code.
+- **`luvThresholdDP_computable`** (mirrors `theoremDP_computable`), **`gridDP_computable`**
+  (total `gridEmit` + `Computable.nat_rec`-built range map — the literal polarity runs
+  `L.num`/`L.den`, so this layer is `Computable`, not `Primrec`), **`combinedDP_computable`**
+  (via `DeductiveProcessComputation.union`).
+- **Payoff — first fully unconditional expectation endpoints in the repository**
+  (`LUVExpectationCertified.lean`): `lic_expectation_provind_{,le_,eq_}arith_unconditional` and
+  `lic_linearity_of_expectation_arith_unconditional`, over the constructed LIA on the computable
+  scheduled process with proved threshold codes. **Sole hypothesis: the rational bound/identity on
+  the LUV values.** In `AxiomAudit`; all gates pass.
+
+**Remaining (dd:fuel-adjacent, disclosed):** the sequence capstones' operational witnesses
+(`MeshSoftmaxOperationalWitness`, feedback emission/truth, `BoundedSequence.poly` for *arbitrary*
+combination sequences) are still caller data — they are per-sequence constructions the paper also
+treats as given. F10's fuel↔poly-time equivalence question stays a permanent disclosure.
 
 **Net:** F7 items 1, 2, 3 complete and non-vacuous. Item 5's explicit repair list — varying-sequence
 linearity and expectation provability induction (single-LUV in all three comparison forms, plus the
