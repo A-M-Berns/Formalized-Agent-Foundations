@@ -193,6 +193,15 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   EF.cost_le_serialize_length EF.serialize_length_le_cost
   Strategy.serializeTrades_length_le_cost
 
+-- dd:fuel digit layer (`def:ec`, Tranche 2): the digit stream determines the token
+-- stream (round-trip + injectivity), and every token-model certificate transfers into
+-- the digit-metered class (the inclusion capstone, M7Witnesses).  `Tok₂` becomes the
+-- criterion class in the Tranche-2 step-4 flip.
+#assert_axioms_clean
+  undigitize_digitize digitize_injective
+  PolySegStream.digitizeStream
+  EfficientlyComputableTok.toTok₂
+
 -- dd:fuel discharged for dd:luv-arith: the threshold-code and process-computability
 -- certificates are proved (gcdc_polyFueled/toLUV_polyThresholdCodes/gridDP_computable),
 -- so these endpoints are FULLY unconditional over the constructed LIA — the sole

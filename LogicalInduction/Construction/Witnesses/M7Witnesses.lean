@@ -3476,6 +3476,26 @@ lemma liaPrefixQuoteCode_polyFueled (DP : DeductiveProcess) (cutoff : ℕ) :
 
 end PrefixPatchCompile
 
+/-! ### The digit-model inclusion (`dd:fuel`, Tranche 2 step 3 capstone) -/
+
+/-- **Every token-model certificate is a digit-model certificate.**  The old clocked
+token stream is a `PolySegStream` (`clockedTokens_polySegStream`), its digit stream is
+again one (`PolySegStream.digitizeStream`), and any `PolySegStream` realizes a
+`₂`-certificate whose undigitized decode is the same trader
+(`ecTok₂_of_rawSegStream` + `undigitize_digitize`).  This transfers every existing
+`_ecTok` certificate into the wider digit-metered class without touching it.
+Paper node: `def:ec` -/
+theorem EfficientlyComputableTok.toTok₂ {Tr : Trader}
+    (h : EfficientlyComputableTok Tr) : EfficientlyComputableTok₂ Tr := by
+  obtain ⟨lc, tc, a, k, hTr⟩ := h
+  have hdig := PolySegStream.digitizeStream
+    (PrefixPatchCompile.clockedTokens_polySegStream lc tc a k)
+  refine ecTok₂_of_rawSegStream Tr hdig (fun n => ?_)
+  rw [undigitize_digitize, ← hTr]
+  rfl
+
+#print axioms EfficientlyComputableTok.toTok₂
+
 /-- **Concrete finite-prefix compiler (`M7-PREFIX-PATCH`).**  The LIA's first `cutoff`
 rational belief states form a fixed finite table.  Exhaustive raw sentence matching and the
 flat administrative freeze transducer compile that table into a polynomial token emitter.

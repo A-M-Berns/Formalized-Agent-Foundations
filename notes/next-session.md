@@ -113,6 +113,20 @@ the build gate between construction files.
 > `clockedTrader₂`/`EfficientlyComputableTok₂`, all in `Framework/Criterion.lean`;
 > purely additive, build green.
 >
+> **Status 2026-07-24 (later): step 3 DONE** — `divPow4`/`digitAt`/`len4` fuel loops,
+> `PolySegStream.block`, `PolySegStream.digitizeStream`, `ecTok₂_of_rawEmission` /
+> `ecTok₂_of_rawSegStream` (Framework/Computable.lean), and the capstone
+> **`EfficientlyComputableTok.toTok₂`** (M7Witnesses, after `end PrefixPatchCompile`);
+> all on the AxiomAudit surface, axiom-clean, build+coverage green.  One rule-2b catch:
+> `PolySegStream.of_eq` already existed (Computable.lean:2098) — reuse, don't re-prove.
+> Remaining: **step 4, the criterion flip** (see plan below).  Note for step 4: the
+> `noExploit`-compat lemma must live where `toTok₂` is visible — either move
+> `codeEvalnNat`(+`_polyFueled`) and the `clockedTokens_polySegStream` block upstream
+> from M7Witnesses into Framework/Computable.lean so `toTok₂` can live in Framework and
+> `IsLogicalInductor` can re-expose the old-signature `noExploit` lemma directly, or
+> keep the class field `noExploit₂` in Criterion and derive the old-named lemma
+> downstream (worse: property files import only Framework).
+>
 > **Step 3 implementation plan (scoped in-session; all reuse points verified to exist):**
 > the inclusion `EfficientlyComputableTok → EfficientlyComputableTok₂` composes as
 > `PrefixPatchCompile.clockedTokens_polySegStream` (M7Witnesses — old clocked stream IS a

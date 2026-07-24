@@ -2513,6 +2513,251 @@ lemma ecTok_of_segStream (Tr : Trader)
   · intro n i hi
     exact hspec n i (by rw [← hlens n]; exact hi)
 
+/-! ### The digit layer is poly-fueled (`dd:fuel`, Tranche 2 step 3)
+
+The inclusion `EfficientlyComputableTok → EfficientlyComputableTok₂` factors through
+`PolySegStream`: an old certificate's clocked token stream is a `PolySegStream`
+(`PrefixPatchCompile.clockedTokens_polySegStream`, M7Witnesses), the digit stream of any
+`PolySegStream` is again one (`PolySegStream.digitizeStream` below, via `concatVar`), and
+any `PolySegStream` realizes a `₂`-certificate (`ecTok₂_of_rawSegStream`).  The final
+composition lives in M7Witnesses next to its last ingredient. -/
+
+/-- Iterated division `t / 4^j` is poly-fueled in `⟨t, j⟩` (state stays `≤ t`). -/
+lemma divPow4_polyFueled :
+    ∃ c, PolyFueled c (fun m => m.unpair.1 / 4 ^ m.unpair.2) := by
+  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  have stepPF := PolyFueled.left.comp (hdm.comp ((PolyFueled.const 3).pair prevPF))
+  have hst : IsPolyBounded (fun m => m.unpair.1 / 4 ^ m.unpair.2) :=
+    isPolyBounded_fst.of_le (fun m => Nat.div_le_self _ _)
+  refine ⟨_, PolyFueled.prec PolyFueled.id stepPF
+    (st := fun a j => a / 4 ^ j) (fun a => by simp) (fun a j => ?_) hst⟩
+  simp only [Nat.unpair_pair]
+  rw [Nat.div_div_eq_div_mul, ← pow_succ]
+
+/-- The `j`-th base-4 digit `(t / 4^j) % 4` is poly-fueled in `⟨t, j⟩`. -/
+lemma digitAt_polyFueled :
+    ∃ c, PolyFueled c (fun m => m.unpair.1 / 4 ^ m.unpair.2 % 4) := by
+  obtain ⟨cdp, hdp⟩ := divPow4_polyFueled
+  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
+  exact ⟨_, (PolyFueled.right.comp (hdm.comp ((PolyFueled.const 3).pair hdp))).of_eq
+    (fun m => by simp)⟩
+
+/-- The base-4 digit count of a token. -/
+def len4 (t : ℕ) : ℕ := (natDigits4 t).length
+
+@[simp] lemma len4_zero : len4 0 = 0 := by simp [len4, natDigits4]
+
+lemma len4_succ (m : ℕ) : len4 (m + 1) = len4 ((m + 1) / 4) + 1 := by
+  rw [len4, natDigits4]; rfl
+
+/-- Digit positions are exactly the powers not exceeding the token. -/
+lemma lt_len4_iff (t : ℕ) : ∀ j, j < len4 t ↔ 4 ^ j ≤ t := by
+  induction t using Nat.strong_induction_on with
+  | _ t ih =>
+      cases t with
+      | zero => intro j; simp [len4_zero]
+      | succ m =>
+          intro j
+          cases j with
+          | zero =>
+              simp only [pow_zero, len4_succ]
+              omega
+          | succ i =>
+              rw [len4_succ, Nat.succ_lt_succ_iff,
+                ih ((m + 1) / 4) (Nat.div_lt_self (Nat.succ_pos m) (by norm_num)) i,
+                Nat.le_div_iff_mul_le (by norm_num), ← pow_succ]
+
+lemma len4_le (t : ℕ) : len4 t ≤ t := by
+  by_contra h
+  have h4 : 4 ^ t ≤ t := (lt_len4_iff t t).mp (by omega)
+  have hlt : t < 4 ^ t := Nat.lt_pow_self (by norm_num)
+  omega
+
+/-- The digit-count function is poly-fueled: a counting scan over the (crudely bounded)
+digit positions. -/
+lemma len4_polyFueled : ∃ c, PolyFueled c len4 := by
+  obtain ⟨cdp, hdp⟩ := divPow4_polyFueled
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have aPF := PolyFueled.left
+  have jPF := PolyFueled.left.comp PolyFueled.right
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  have xPF := hdp.comp (aPF.pair jPF)
+  have indPF := ifzSel_polyFueled.comp ((PolyFueled.const (Nat.pair 0 1)).pair xPF)
+  have stepPF := had.comp (prevPF.pair indPF)
+  have hst : IsPolyBounded (fun m => min (len4 m.unpair.1) m.unpair.2) :=
+    isPolyBounded_snd.of_le (fun m => Nat.min_le_right _ _)
+  have hscan := PolyFueled.prec (PolyFueled.const 0) stepPF
+    (st := fun a j => min (len4 a) j) (fun a => by simp)
+    (fun a j => by
+      simp only [Nat.unpair_pair, ifzSelFn]
+      have hiff := lt_len4_iff a j
+      have hz : a / 4 ^ j = 0 ↔ a < 4 ^ j := by
+        rw [Nat.div_eq_zero_iff]
+        have : (0:ℕ) < 4 ^ j := Nat.pow_pos (by norm_num)
+        omega
+      by_cases h : a / 4 ^ j = 0
+      · rw [if_pos h]
+        have : ¬ j < len4 a := by rw [hiff]; omega
+        omega
+      · rw [if_neg h]
+        have : j < len4 a := by rw [hiff]; omega
+        omega) hst
+  refine ⟨_, (hscan.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun t => ?_)⟩
+  simp only [Nat.unpair_pair]
+  exact min_eq_left (len4_le t)
+
+/-- The `j`-th stored digit is the arithmetic digit. -/
+lemma natDigits4_getD (t : ℕ) : ∀ j, j < len4 t →
+    (natDigits4 t).getD j 0 = t / 4 ^ j % 4 := by
+  induction t using Nat.strong_induction_on with
+  | _ t ih =>
+      cases t with
+      | zero => intro j hj; simp [len4_zero] at hj
+      | succ m =>
+          intro j hj
+          rw [natDigits4]
+          cases j with
+          | zero => simp
+          | succ i =>
+              rw [len4_succ, Nat.succ_lt_succ_iff] at hj
+              rw [List.getD_cons_succ,
+                ih ((m + 1) / 4) (Nat.div_lt_self (Nat.succ_pos m) (by norm_num)) i hj,
+                Nat.div_div_eq_div_mul, ← pow_succ']
+
+lemma tokenBlock_length (t : ℕ) : (tokenBlock t).length = len4 t + 1 := by
+  simp [tokenBlock, len4]
+
+lemma tokenBlock_getD (t j : ℕ) :
+    (tokenBlock t).getD j 0 = if j < len4 t then t / 4 ^ j % 4 else if j = len4 t then 4 else 0 := by
+  by_cases h : j < len4 t
+  · rw [if_pos h, tokenBlock, List.getD_append _ _ _ _ h, natDigits4_getD t j h]
+  · rw [if_neg h, tokenBlock, List.getD_append_right _ _ _ _ (by
+      simpa [len4] using not_lt.mp h)]
+    by_cases he : j = len4 t
+    · rw [if_pos he]
+      have : j - (natDigits4 t).length = 0 := by simp [len4] at he ⊢; omega
+      simp [this]
+    · rw [if_neg he]
+      have : 1 ≤ j - (natDigits4 t).length := by
+        have h1 : len4 t < j := by omega
+        simp only [len4] at h1
+        omega
+      rw [List.getD_eq_default]
+      simpa using this
+
+/-- The self-delimiting block family of a poly-fueled token function is a
+`PolySegStream` over the paired index. -/
+lemma PolySegStream.block {ctok : Nat.Partrec.Code} {tokenFn : ℕ → ℕ}
+    (htok : PolyFueled ctok tokenFn) :
+    PolySegStream (fun m => tokenBlock (tokenFn m)) := by
+  obtain ⟨cl4, hl4⟩ := len4_polyFueled
+  obtain ⟨cd, hd⟩ := digitAt_polyFueled
+  have lenPF := (hl4.comp htok).succ_comp
+  have mPF := PolyFueled.left
+  have jPF := PolyFueled.right
+  have tPF := htok.comp mPF
+  have l4PF := hl4.comp tPF
+  have digPF := hd.comp (tPF.pair jPF)
+  have testPF := subc_polyFueled.comp (jPF.succ_comp.pair l4PF)
+  have tokPF := ifzSel_polyFueled.comp ((digPF.pair (PolyFueled.const 4)).pair testPF)
+  refine ⟨_, _, _, _, tokPF, lenPF, fun m => tokenBlock_length _, fun m j hj => ?_⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  rw [tokenBlock_getD]
+  by_cases h : j < len4 (tokenFn m)
+  · rw [if_pos h, if_pos (by omega : j + 1 - len4 (tokenFn m) = 0)]
+  · have hje : j = len4 (tokenFn m) := by omega
+    rw [if_neg h, if_pos hje, if_neg (by omega : ¬ j + 1 - len4 (tokenFn m) = 0)]
+
+/-- **The digit transformer**: the digit stream of a `PolySegStream` is a
+`PolySegStream` — the block family concatenated by the runtime prefix scan. -/
+lemma PolySegStream.digitizeStream {s : ℕ → List ℕ} (h : PolySegStream s) :
+    PolySegStream (fun n => digitize (s n)) := by
+  obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hlens, hspec⟩ := h
+  refine (PolySegStream.concatVar (PolySegStream.block htok) hlen).of_eq (fun n => ?_)
+  have hs : s n = (List.range (lenFn n)).map (fun j => tokenFn (Nat.pair n j)) := by
+    apply List.ext_getElem
+    · simp [hlens n]
+    · intro i h1 h2
+      simp only [List.getElem_map, List.getElem_range]
+      rw [← List.getD_eq_getElem (s n) 0 h1]
+      exact (hspec n i (by simpa using h2)).symm
+  rw [digitize, hs]
+  clear hs
+  induction (List.range (lenFn n)) with
+  | nil => simp
+  | cons j rest ihr => simp_all [List.flatMap_cons]
+
+/-! ### The `₂`-model realization bridges (mirrors of `ecTok_of_rawEmission` /
+`ecTok_of_rawTokenFn`, with the decode routed through `undigitize`). -/
+
+/-- Exact digit emitters instantiate the digit-metered bounded-emulator definition. -/
+lemma ecTok₂_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
+    (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
+    (hlength : ∀ n, evaln (a * (n + 1) ^ k + a) lengthCode n =
+      some (raw n).length)
+    (hsize : ∀ n, (raw n).length ≤ a * (n + 1) ^ k + a)
+    (htoken : ∀ n i, i < (raw n).length →
+      evaln (a * (n + 1) ^ k + a) tokenCode (Nat.pair n i) =
+        some ((raw n).getD i 0))
+    (hstrategy : ∀ n, strategyOfTokens n (undigitize (raw n)) = Tr.strat n) :
+    EfficientlyComputableTok₂ Tr := by
+  refine ⟨lengthCode, tokenCode, a, k, ?_⟩
+  have hstrat :
+      (clockedTrader₂ lengthCode tokenCode (fun n => a * (n + 1) ^ k + a)).strat =
+        Tr.strat := by
+    funext n
+    change strategyOfTokens n (undigitize
+      (clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n)) = Tr.strat n
+    have htoks :
+        clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n = raw n := by
+      unfold clockedTokens
+      rw [hlength n]
+      simp only
+      rw [min_eq_left (hsize n)]
+      apply List.ext_getElem
+      · simp
+      · intro i hleft hright
+        simp only [List.getElem_ofFn]
+        rw [htoken n i hright, Option.getD_some]
+        exact List.getD_eq_get (raw n) 0 ⟨i, hright⟩
+    rw [htoks]
+    exact hstrategy n
+  exact congrArg Trader.mk hstrat
+
+/-- Any `PolySegStream` whose undigitized decode is the target trader realizes a
+`₂`-certificate (the clock-max juggling of `ecTok_of_rawTokenFn`, verbatim). -/
+lemma ecTok₂_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
+    (h : PolySegStream raw)
+    (hstrategy : ∀ n, strategyOfTokens n (undigitize (raw n)) = Tr.strat n) :
+    EfficientlyComputableTok₂ Tr := by
+  obtain ⟨ct, cl, tokenFn, lenFn, htokf, hlenf, hlens, hspec⟩ := h
+  have hlenRaw : PolyFueled cl (fun n => (raw n).length) :=
+    hlenf.of_eq (fun n => (hlens n).symm)
+  obtain ⟨bc, hfc, _, a₀, k₀, hk₀⟩ := htokf
+  obtain ⟨bl, hfl, hlenBounded, hblBounded⟩ := hlenRaw
+  set len := fun n => (raw n).length with hlendef
+  have hbcbound : IsPolyBounded (fun n => a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀) :=
+    (show IsPolyBounded (fun x => a₀ * (x + 1) ^ k₀ + a₀) from
+      ⟨a₀, k₀, fun _ => le_rfl⟩).comp
+      ((IsPolyBounded.linear 0).pair hlenBounded)
+  obtain ⟨A, K, hAK⟩ := (hblBounded.max hbcbound).max hlenBounded
+  refine ecTok₂_of_rawEmission Tr raw cl ct A K (fun n => ?_) (fun n => ?_)
+    (fun n i hi => ?_) hstrategy
+  · exact evaln_mono
+      ((le_max_left _ _).trans ((le_max_left _ _).trans (hAK n))) (hfl n)
+  · exact (le_max_right _ _).trans (hAK n)
+  · have hple : Nat.pair n i ≤ Nat.pair n (len n) :=
+      pair_le_pair_right' n (le_of_lt hi)
+    have hbc : bc (Nat.pair n i) ≤ A * (n + 1) ^ K + A := by
+      calc bc (Nat.pair n i) ≤ a₀ * (Nat.pair n i + 1) ^ k₀ + a₀ := hk₀ _
+        _ ≤ a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀ := by gcongr
+        _ ≤ A * (n + 1) ^ K + A :=
+          (le_max_right _ _).trans ((le_max_left _ _).trans (hAK n))
+    have key := hfc (Nat.pair n i)
+    rw [hspec n i (by rw [← hlens n]; exact hi)] at key
+    exact evaln_mono hbc key
+
 /-- `price φ (f m)` streams for a poly-fueled index `f` — the day-index-in-block case. -/
 lemma PolyTokenStream.serialize_price_comp {f : ℕ → ℕ} {c : Nat.Partrec.Code}
     (hf : PolyFueled c f) (φ : Sentence) :
