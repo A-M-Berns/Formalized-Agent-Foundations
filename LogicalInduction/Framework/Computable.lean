@@ -15,6 +15,7 @@ exactly `EfficientlyComputable`. Faithfulness is untouched: this is the paper's 
 `def:ec`, only now with a tractable membership proof.
 -/
 import LogicalInduction.Framework.Criterion
+import Mathlib.Analysis.SpecificLimits.Normed
 
 /-! ## Outputs of the clocked interpreter can exceed their fuel
 
@@ -201,7 +202,8 @@ def PolyFueled (c : Nat.Partrec.Code) (f : ℕ → ℕ) : Prop :=
   ∃ b, Fueled c f b ∧ IsPolyBounded f ∧ IsPolyBounded b
 
 /-- A polynomially fueled function is primitive recursive.  Run its code at the explicit
-polynomial majorant of the bundled fuel bound; `Code.evaln` is itself primitive recursive. -/
+polynomial majorant of the bundled fuel bound; `Code.evaln` is itself primitive recursive.
+Paper node: `def:ec` -/
 lemma PolyFueled.primrec {c : Nat.Partrec.Code} {f : ℕ → ℕ}
     (h : PolyFueled c f) : Primrec f := by
   obtain ⟨b, hrun, -, a, k, hbound⟩ := h
@@ -1528,7 +1530,8 @@ private lemma euclidStep_iterate_fst_zero (a : ℕ) {j : ℕ} (hj : a.unpair.1 �
 
 /-- **Runtime gcd** (`dd:fuel`): `⟨x, y⟩ ↦ Nat.gcd x y`.  `prec`-iterates the Euclid step
 `n` times from `⟨x, y⟩`; since `x ≤ n` the fixed point is reached, and its second component
-is the gcd. -/
+is the gcd.
+Paper node: `def:ec` -/
 lemma gcdc_polyFueled : ∃ c, PolyFueled c (fun m => Nat.gcd m.unpair.1 m.unpair.2) := by
   obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
   -- Step pieces on the `prec` input `z = ⟨a, ⟨j, s⟩⟩`.
@@ -1575,6 +1578,88 @@ lemma gcdc_polyFueled : ∃ c, PolyFueled c (fun m => Nat.gcd m.unpair.1 m.unpai
   have hg := euclidStep_iterate_gcd n n
   rw [h0, Nat.gcd_zero_left] at hg
   exact hg
+
+/-! ### `dd:fuel` model card — calibration and separation
+
+The fuel model's trust surface, in one place.  Its cost anchor is Mathlib's standard clocked
+interpreter `Nat.Partrec.Code.evaln`; the calibration facts an auditor should check are:
+
+* **Upper calibration** — everything in the class is primitive recursive: `PolyFueled.primrec`.
+* **Closure** — `const`/`id`/`pair`/`comp`/`succ` (`PolyFueled.*`) and bounded primitive
+  recursion (`PolyFueled.prec`).
+* **Inhabitation by real algorithms** — runtime multiplication (`mul_polyFueled`), runtime
+  division (`divmodc_polyFueled`, `divmod1_polyFueled`), and the Euclid iteration
+  (`gcdc_polyFueled`).
+* **Separation** — the class provably excludes exponential-*output* functions
+  (`not_polyFueled_two_pow` below).  This is a size-based separation only: a time-based lower
+  bound (small output, provably superpolynomial fuel) and any equivalence with machine-model
+  polynomial time are *not* claimed (F10, permanently disclosed).
+* **Interpreter subtlety** — `evaln` outputs can exceed the fuel
+  (`Nat.Partrec.Code.evaln_output_can_exceed_fuel`), which is why `PolyFueled` carries a
+  polynomial bound on the *output* separately from the fuel. -/
+
+/-- Polynomials do not majorize `2 ^ n`: the fuel model's size bound genuinely bites
+(`def:ec` separation substrate). -/
+theorem not_isPolyBounded_two_pow : ¬ IsPolyBounded (fun n => 2 ^ n) := by
+  rintro ⟨a, k, h⟩
+  -- `(n+1)^k` is little-o of `2 ^ n` over ℝ.
+  have h1 : (fun n : ℕ => ((n : ℝ)) ^ k) =o[Filter.atTop] (fun n : ℕ => (2 : ℝ) ^ n) :=
+    isLittleO_pow_const_const_pow_of_one_lt (R := ℝ) k (by norm_num)
+  have hshift : (fun n : ℕ => ((n : ℝ) + 1) ^ k) =o[Filter.atTop]
+      (fun n : ℕ => (2 : ℝ) ^ (n + 1)) := by
+    have := h1.comp_tendsto (Filter.tendsto_add_atTop_nat 1)
+    refine this.congr' ?_ (by rfl)
+    filter_upwards with n
+    simp only [Function.comp_apply]
+    push_cast
+    ring
+  have hbig : (fun n : ℕ => (2 : ℝ) ^ (n + 1)) =O[Filter.atTop]
+      (fun n : ℕ => (2 : ℝ) ^ n) := by
+    refine Asymptotics.IsBigO.of_bound 2 ?_
+    filter_upwards with n
+    rw [Real.norm_of_nonneg (by positivity), Real.norm_of_nonneg (by positivity), pow_succ]
+    ring_nf
+    exact le_rfl
+  have hlo := hshift.trans_isBigO hbig
+  -- pick `n` where the little-o bound and `2 (a+1) < 2 ^ n` both hold
+  have hev1 := hlo.def (c := 1 / (2 * ((a : ℝ) + 1))) (by positivity)
+  have hev2 : ∀ᶠ n : ℕ in Filter.atTop, 2 * ((a : ℝ) + 1) < 2 ^ n := by
+    have htend : Filter.Tendsto (fun n : ℕ => (2 : ℝ) ^ n) Filter.atTop Filter.atTop :=
+      tendsto_pow_atTop_atTop_of_one_lt (by norm_num)
+    exact htend.eventually_gt_atTop _
+  obtain ⟨n, hn1, hn2⟩ := (hev1.and hev2).exists
+  rw [Real.norm_of_nonneg (by positivity), Real.norm_of_nonneg (by positivity)] at hn1
+  -- cast the assumed polynomial majorization to ℝ and contradict
+  have hcast : (2 : ℝ) ^ n ≤ (a : ℝ) * ((n : ℝ) + 1) ^ k + a := by
+    have := h n
+    push_cast at this ⊢
+    exact_mod_cast this
+  have hden : (0 : ℝ) < 2 * ((a : ℝ) + 1) := by positivity
+  have hstep : (a : ℝ) * ((n : ℝ) + 1) ^ k ≤ (2 : ℝ) ^ n / 2 := by
+    calc (a : ℝ) * ((n : ℝ) + 1) ^ k
+        ≤ (a : ℝ) * (1 / (2 * ((a : ℝ) + 1)) * 2 ^ n) := by
+          exact mul_le_mul_of_nonneg_left hn1 (Nat.cast_nonneg a)
+      _ ≤ (2 : ℝ) ^ n / 2 := by
+          rw [div_eq_mul_inv]
+          have haa : (a : ℝ) / (2 * ((a : ℝ) + 1)) ≤ 1 / 2 := by
+            rw [div_le_div_iff₀ hden (by norm_num)]
+            nlinarith [Nat.cast_nonneg (α := ℝ) a]
+          calc (a : ℝ) * (1 / (2 * ((a : ℝ) + 1)) * 2 ^ n)
+              = ((a : ℝ) / (2 * ((a : ℝ) + 1))) * 2 ^ n := by ring
+            _ ≤ (1 / 2) * 2 ^ n :=
+                mul_le_mul_of_nonneg_right haa (by positivity)
+            _ = 2 ^ n * 2⁻¹ := by ring
+  have hafin : (a : ℝ) < (2 : ℝ) ^ n / 2 := by
+    rw [lt_div_iff₀ (by norm_num : (0:ℝ) < 2)]
+    nlinarith
+  nlinarith [hcast, hstep, hafin]
+
+/-- **Separation witness for `dd:fuel`**: no fuel certificate admits `2 ^ n` — its output
+size violates the polynomial bound.
+Paper node: `def:ec` -/
+theorem not_polyFueled_two_pow (c : Nat.Partrec.Code) :
+    ¬ PolyFueled c (fun n => 2 ^ n) :=
+  fun ⟨_, _, hf, _⟩ => not_isPolyBounded_two_pow hf
 
 /-! ### `ecTok_of_tokenFn` — the varying-length emission workhorse.
 

@@ -448,8 +448,31 @@ def serialize : EF → List ℕ
 
 /-- `serialize`'s length is bounded by `3 · cost` — linear in the node count. This is the
 whole point: poly-*size* (poly-`cost`) features have poly-*length* serializations, so
-`EfficientlyComputableTok` admits them (unlike `toNat`, whose *value* is exponential). -/
+`EfficientlyComputableTok` admits them (unlike `toNat`, whose *value* is exponential).
+Paper node: `def:ec` -/
 lemma serialize_length_le_cost (e : EF) : (serialize e).length ≤ 3 * e.cost := by
+  induction e with
+  | price φ n => simp [serialize, cost]
+  | const q => simp [serialize, cost]
+  | add a b iha ihb => simp only [serialize, cost, List.length_append, List.length_cons,
+      List.length_nil]; omega
+  | mul a b iha ihb => simp only [serialize, cost, List.length_append, List.length_cons,
+      List.length_nil]; omega
+  | max a b iha ihb => simp only [serialize, cost, List.length_append, List.length_cons,
+      List.length_nil]; omega
+  | safeRecip a iha => simp only [serialize, cost, List.length_append, List.length_cons,
+      List.length_nil]; omega
+  | var i => simp [serialize, cost]
+  | letE x body ihx ihbody => simp only [serialize, cost, List.length_append,
+      List.length_cons, List.length_nil]; omega
+
+/-- Converse calibration: the node count is bounded by the token count, so `cost` and the
+serialized length agree up to the fixed factor `3`.  Together with `serialize_length_le_cost`
+this closes the seam between the two cost vocabularies: `EF.cost` (the syntactic size the
+strategy-level bounds are stated in) is an honest two-sided proxy for the token-stream length
+that `def:ec`'s emission model actually meters.
+Paper node: `def:ec` -/
+lemma cost_le_serialize_length (e : EF) : e.cost ≤ (serialize e).length := by
   induction e with
   | price φ n => simp [serialize, cost]
   | const q => simp [serialize, cost]
@@ -1330,6 +1353,26 @@ noncomputable def value {n : ℕ} (T : Strategy n) (V : History) (w : Sentence �
 efficient-computability bound (`dd:fuel`). -/
 def cost {n : ℕ} (T : Strategy n) : ℕ :=
   (T.trades.map (fun p => p.1.cost)).sum + T.trades.length + 1
+
+/-- Strategy-level seam: the emitted token stream of a whole strategy is linearly bounded by
+its syntactic `cost`, so a poly-`cost` strategy sequence has poly-length serializations — the
+quantity `EfficientlyComputableTok` meters.
+Paper node: `def:ec` -/
+lemma serializeTrades_length_le_cost {n : ℕ} (T : Strategy n) :
+    (serializeTrades T.trades).length ≤ 3 * T.cost := by
+  have key : ∀ l : List (EF × Sentence),
+      (serializeTrades l).length ≤ 3 * ((l.map (fun p => p.1.cost)).sum + l.length) := by
+    intro l
+    induction l with
+    | nil => simp [serializeTrades]
+    | cons p rest ih =>
+        have hser := EF.serialize_length_le_cost p.1
+        simp only [serializeTrades, List.length_append, List.length_cons, List.map_cons,
+          List.sum_cons]
+        omega
+  calc (serializeTrades T.trades).length
+      ≤ 3 * ((T.trades.map (fun p => p.1.cost)).sum + T.trades.length) := key T.trades
+    _ ≤ 3 * T.cost := by unfold cost; omega
 
 end Strategy
 

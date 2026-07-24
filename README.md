@@ -32,7 +32,19 @@ One modeling substitution is repository-wide rather than local to a boundary: ef
 computability (`EfficientlyComputable`, `PolyFueled`, and every "polynomial" certificate)
 is defined relative to a fuel-clocked interpreter over `Nat.Partrec.Code`, not an abstract
 complexity class (`dd:fuel` in the roadmap). Every efficiency claim below is correct
-relative to that model.
+relative to that model. The model's cost anchor is Mathlib's standard clocked interpreter
+`Nat.Partrec.Code.evaln`, and its trust facts are proved and audited as a model card
+(`Framework/Computable.lean`, "`dd:fuel` model card"): every poly-fueled function is
+primitive recursive (`PolyFueled.primrec`); the class is closed under composition, pairing,
+and bounded primitive recursion and contains runtime multiplication, division, and gcd
+(`gcdc_polyFueled`); it provably excludes exponential-output functions
+(`not_polyFueled_two_pow`) — a size-based separation only, since time-based lower bounds
+and any equivalence with machine-model polynomial time remain unproved; and the syntactic
+`EF.cost` measure agrees two-sidedly with serialized token length up to a factor of 3
+(`serialize_length_le_cost` / `cost_le_serialize_length`). One interpreter subtlety is
+load-bearing: `evaln` outputs can genuinely exceed the fuel
+(`evaln_output_can_exceed_fuel`), which is why `PolyFueled` carries a polynomial bound on
+output size separately from the fuel bound.
 
 `LogicalInduction.brouwer_fixed_point`, used by the construction, was proved from scratch
 via Sperner's lemma because Mathlib has no suitable Brouwer theorem. Its proof body was
