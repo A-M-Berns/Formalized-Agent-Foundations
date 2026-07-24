@@ -127,14 +127,28 @@ Introspection, self-trust, and the expectation reflection theorems take quotatio
 packages (`CurrentPriceExpectationQuote`, `SelfTrustQuote`, …) whose `reflected` /
 `theory_coherent` fields assert the intended first-order semantics of the quoted
 sentences. This is the project's declared conditional seam, and the field surfaces are
-frozen by `#assert_fields`. Status by endpoint, checked against `AxiomAudit.lean`:
-paradox resistance, expectations-of-probabilities, halting-pattern learning, wub/feedback,
-conditioning, and DUS all have `_unconditional`-over-LIA instantiations;
-**`lic_self_trust`, `lic_iterated_expectations`, and `lic_introspection` do not** —
-their strongest forms remain `_ofRepresentation`/`_ofCode`, conditional on the quotation
-package (satisfiable, per 2.2, but not yet instantiated over the constructed LIA).
-This matches the "conditional+disclosed" endpoint definition; it is the honest residual
-gap between the repo and the paper's §4.11–4.12 as unconditional theorems.
+frozen by `#assert_fields`.
+
+**Correction (2026-07-24, follow-up pass):** the first version of this section claimed
+`lic_self_trust`, `lic_iterated_expectations`, and `lic_introspection` lack
+`_unconditional`-over-LIA instantiations. That is wrong — they exist
+(`ComputationDP.lean:595–735`: `lic_iterated_expectations_ofCode_unconditional`,
+`lic_introspection_ofCode_unconditional`, `lic_self_trust_ofRepresentation_unconditional`,
+plus the ccee/cee family), alongside the previously noted paradox-resistance and
+expectations-of-probabilities ones. The error arose from checking only
+`AxiomAudit.lean`'s endpoint list, **where these `_unconditional` variants are missing**
+— that omission is the actual erratum (see §3 item 6).
+
+The true residual: in every one of these `_unconditional` endpoints the market, the
+inductor instance, the presentation `Q`, and `hworld` are discharged, but the
+**reflection data remains a caller hypothesis** — `q : RationalQuoteCode T value` with
+`hexact` (epr/er), `confidence_reflected`/`product_reflected` (st), the interval quote
+(ref). I.e., "some LUV is valued at the market's actual price/expectation in every
+completed-theory world" is assumed, not constructed. What thm:lp's
+`parameterizedDiagonalQuoteCodeOfMarket` achieves — deriving the quote object from the
+market computation with no caller-supplied semantic relation — has not yet been done for
+the epr/er/st/ref quote objects. That construction is the remaining gap between the repo
+and the paper's §4.11–4.12 as genuinely witness-free theorems.
 
 ### 2.4 Remaining caller inputs on `thm:dus`
 
@@ -191,6 +205,14 @@ constructed processes (`theoremDP_hworld`, `emptyBitDeductiveProcess_hworld`).
 5. **`ComputableMarket` totalizes quotes on non-sentence codes** (`Criterion.lean`,
    "extra values … are harmless"). Verified harmless: `quote_exact` pins every real
    sentence's price. No action; recording that it was checked.
+6. **(found in follow-up pass)** The `_unconditional` quotation endpoints in
+   `ComputationDP.lean:595–735` (`lic_iterated_expectations_ofCode_unconditional`,
+   `lic_introspection_ofCode_unconditional`,
+   `lic_self_trust_ofRepresentation_unconditional`, the ccee/expected-future family, and
+   the five meta-learning `_unconditional` siblings) are **not listed in
+   `AxiomAudit.lean`**, so they are outside the axiom-cleanliness and surface-freeze
+   guards even though they are the strongest forms of their theorems. Add them to the
+   audit surface. NOT YET FIXED — see the shoring-up plan discussion.
 
 ## 4. What this audit did **not** cover in depth
 
