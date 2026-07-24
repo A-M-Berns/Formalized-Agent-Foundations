@@ -1,440 +1,195 @@
-Anson: keep in mind that this was written by an adversarial instance! take these criticisms seriously but check them against your own judgment.
-
-# M7-ERRATA-AUDIT — adversarial audit for faithfulness to *Logical Induction*
-
-_Run 2026-07-22 against the current workspace and reclassified 2026-07-23 to separate paper
-errata from repository findings. This report supersedes the 2026-07-21 version of this file.
-The audit compared the Lean statements and boundary structures with
-`notes/1609.03543v5-main.tex`, rather than treating theorem names, `Paper node:` annotations,
-README claims, or successful compilation as evidence of statement fidelity._
-
-Paper-level defects found during that comparison are maintained separately in
-[`logical-induction-paper-errata.md`](logical-induction-paper-errata.md) and are outside this
-repository audit's findings. Finding identifiers remain stable when an item leaves scope, so
-later identifiers are not renumbered.
-
-## Verdict
-
-The development is kernel-clean and contains a substantial, non-vacuous construction of an
-LIA-like market. It is **not yet a faithful full formalization of the paper**.
-
-The strongest defensible description is:
-
-> A sound formalization of the central construction and many of the paper's economic
-> arguments, relative to a repository-specific efficiency model, together with a partly
-> conditional and sometimes weakened formalization of the property theorems.
-
-No Lean soundness failure was found. The discrepancies are statement-level:
-
-1. the Lean Logical Induction Criterion applies to a broader class than the paper's markets;
-2. some named paper theorems are represented only by components or strict special cases;
-3. several property families retain operational or representation hypotheses that the paper
-   discharges;
-4. some advertised “unconditional” wrappers discharge only the base market/inductor, while
-   retaining the main theorem-specific construction as a caller hypothesis; and
-5. the build-enforced endpoint inventory does not cover the full paper-facing surface.
-
-The central LIA construction itself held up well: it reaches `noExploit` through the actual
-TradingFirm-dominance and MarketMaker argument, not through a stub or conclusion-bearing
-interface.
-
-## Findings, ranked
-
-### F0 — HIGH / definition mismatch: `IsLogicalInductor` does not require prices in `[0,1]`
-
-**Paper.** `def:market`, `def:pricing`, and `def:marketprocess` make `[0,1]` part of the
-definition of valuations, pricings, and markets (`main.tex:670–691`). The Logical Induction
-Criterion is a predicate on those markets.
-
-**Lean.** `Framework/Foundations.lean:40–53` defines
-
-```lean
-Valuation := Sentence → ℝ
-History   := ℕ → Valuation
-```
-
-and says the range restriction will be imposed downstream. It is not imposed in
-`ComputableMarket` (`Framework/Criterion.lean:962–972`) or `IsLogicalInductor`
-(`Criterion.lean:1448–1463`). The latter stores only:
-
-```lean
-marketComputable
-processComputable
-noExploit
-```
-
-Most property theorems therefore take an additional
-`hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1`; for example, `lic_price_convergesTo`
-(`Properties/Coherence.lean:411–428`).
-
-**Consequence.** `IsLogicalInductor P DP` is strictly broader than “`P` is a market satisfying
-the LIC” in the paper. A computable rational history with out-of-range prices is eligible for
-the Lean class. This makes the docstring's claim that the class is `def:lic` “on the nose” too
-strong, even though the constructed `liaHistory` separately satisfies `liaHistory_range`.
-
-**Required repair.** Put the range law into `ComputableMarket`, `MarketComputation`, or
-`IsLogicalInductor`, then remove the redundant downstream hypotheses. A compatibility layer
-could retain unrestricted `History` for expressible-feature semantics.
-
-**Repair status (2026-07-23): core resolved; cosmetic residual recorded.** The range law now
-lives in the `ComputableMarket` certificate (`MarketComputation.price_mem_Icc`) and is exposed
-as `IsLogicalInductor.price_mem_Icc` (`Framework/Criterion.lean`), so `IsLogicalInductor`
-bundles the `[0,1]` range and is no longer strictly broader than the paper's markets. The
-second half of the repair — removing the now-redundant downstream `hP : ∀ n φ, 0 ≤ P n φ ∧
-P n φ ≤ 1` hypotheses (120 endpoints across 14 files) — is a purely cosmetic legibility pass,
-recorded as a consolidation-phase tranche with a mechanical recipe in `notes/next-session.md`
-("RECORDED TRANCHE — redundant-`hP` cleanup"). It is to land before the frozen-surface
-read-through.
-
-### F1 — HIGH / incomplete theorem: Limit Coherence does not construct the paper's measure
-
-**Paper.** `thm:lc` says that `P∞` gives rise to a probability measure on the worlds
-consistent with the theory (`main.tex:1015–1021`). The proof invokes the three Gaifman
-conditions and then obtains the measure.
-
-**Lean.** `Properties/Coherence.lean` proves component identities:
-
-- `lic_disprovable_tendsto_zero`;
-- `lic_excl_gap_tendsto_zero`; and
-- `lic_limit_additive`.
-
-There is no construction or existence theorem for a probability measure on completed worlds,
-and no formalized Gaifman extension step.
-
-Two components also use stronger hypotheses than the paper:
-
-```lean
-hdis  : ∀ n, (∼φ) ∈ DP.D n
-hexcl : ∀ n, (∼(φ ⋏ ψ)) ∈ DP.D n
-```
-
-(`Coherence.lean:113–116`, `312–315`). A theorem of the completed theory need only appear at
-some finite stage. Later `lic_provind_true` / `lic_provind_false` wrappers correctly accept
-eventual theoremhood, so some missing components may be recoverable, but the labeled
-`thm:lc` surface is not the paper theorem.
-
-**Required repair.** Package convergence, theorem/refutation limits, and finite additivity
-under the paper's completed-theory hypotheses, then prove the measure-existence conclusion.
-
-**Repair status (2026-07-22): resolved.** `Properties/LimitCoherence.lean` now derives the
-finite Gaifman conditions from the logical-inductor laws, constructs a projective family of
-finite Boolean laws, proves its cylinder content countably additive by compactness, and
-extends it to a probability measure on `PCWorld`. The paper-facing `lic_limitCoherence`
-theorem identifies every sentence-event probability with `limitingBelief` and proves the
-measure is almost-everywhere concentrated on worlds consistent with the completed deductive
-process. Its theorem/refutation lemmas accept membership at an arbitrary finite stage. The
-endpoint is exported and guarded by `#assert_axioms_clean`.
-
-### F2 — RESOLVED: recurring unbiasedness and statistical learning
-
-**Repair status (2026-07-22): resolved.**
-`Construction/Witnesses/HistoricalMaturity.lean` compiles the semantic finite-world
-maturity test into a primitive-recursive, non-dependent Boolean checker. It flattens each
-uniformly emulatable trader family's dated trades, computes exact rational magnitude and
-world value from `IsLogicalInductor.marketComputable` and `.processComputable`, semidecides
-successful maturity checks, and uses the shared bounded dovetail to construct a
-`HistoricalVerifiedMaturitySchedule`. Soundness and eventual completeness are proved by an
-equivalence with the existing semantic `unitMaturityCheckAtFuel`.
-
-The constructor is consumed internally by the one-sided recurring-bias contradiction and
-therefore by the exact paper-facing `recunbiasedaff`, `recurringunbiasedness`, and `simcal`
-endpoints. The same unconditional route now feeds affine, sentence, and expectation
-pseudorandom learning. `PseudorandomFrequencyInfrastructure` carries settlement clocks
-only; the old verifier-bearing interface and the old conditional capstones remain available
-under explicit `..._of_historicalVerifiers` names. Integration tests no longer accept an
-`hverify` premise for recurring unbiasedness, `prandaff`, or `prandexp`.
-
-### F3 — RESOLVED: Paradox Resistance derives its public diagonal
-
-**Repair status (2026-07-22): resolved.**
-`Construction/Witnesses/QuotationAffine.lean` now constructs the diagonal from a named
-`MarketComputation`. `diagonalPriceDecisionPart` runs the market on the public atom selected
-by a candidate program and returns `1` exactly when that atom's same-day price is below `p`;
-Mathlib's formalized Kleene second recursion theorem supplies
-`diagonalPriceDecisionCode`, whose evaluation is proved equal to that computation.
-
-The value-`1` and value-`0` fibers of this actual fixed program supply both sides of the
-inherited `BooleanQuoteCode`. `diagonalPriceBody` represents the same predicate in FFL
-arithmetic, `diagonalPriceFixedpoint_spec` connects its genuine
-`parameterizedFixedpoint` to the program predicate, and
-`parameterizedDiagonalQuoteCodeOfMarket_public_fixedpoint` proves that this represented
-fixed point is exactly the same-day price comparison for the inherited public sentence.
-Together with `ParameterizedDiagonalQuoteCode.diagonal_law`, this gives both the internal
-arithmetic diagonal equation and its public market semantics.
-
-`paradoxResistanceQuoteOfDiagonal` and `lic_paradox_resistance_ofDiagonal` now take the
-named market computation and construct the quote internally. They accept no `truth`,
-`ParameterizedDiagonalQuoteCode`, or semantic self-reference premise. The constructed-LIA
-wrapper names `theoremMarketComputation` and `theoremDiagonalQuoteCode`; its public signature
-contains only `p`, the ordinary vanishing-width data, and the bounds on `p`.
-
-### F4 — RESOLVED: Closure Under Conditioning reaches `thm:scon`
-
-**Repair status (2026-07-23): resolved.**
-`Properties/Conditioning.lean` and
-`Construction/Witnesses/ConditioningCompiler.lean` now implement a direct finite-prefix
-repair which stays on the original market and therefore does not use the paper's disputed
-unrestricted finite-perturbation theorem.
-
-Uniform Non-Dogmatism and Preemptive Learning derive an eventual positive rational floor
-from joint consistency. The exact rational market computation shrinks that floor across all
-positive prices in the finite prefix and records exactly the remaining zero-denominator
-days. On such a day the capped conditional quote is identically `1`, so the compiler
-rewrites only those historical price leaves to a dead-bound original price followed by the
-constant `1`. It launches the translated trader after the finite cutoff; a proved finite
-magnitude bound shows that discarding the prefix preserves exploitation.
-
-`EventualConditioningOperationalWitness` packages this construction, and
-`lic_conditioned_eventual` transports any conditional-market exploit back to the base
-market. The paper-facing
-`lic_conditioned_fixed_ofComputationAndMarket` and
-`lic_conditioned_growing_ofComputationsAndMarket` expose respectively the fixed and growing
-forms with only joint consistency and the ordinary market/process computation premises.
-Their `..._unconditional` corollaries instantiate the constructed `LIA` and construct the
-base market/process inputs internally. All endpoints are included in `AxiomAudit.lean`.
-
-### F7 — MEDIUM / abstraction boundary: Lean LUVs do not encode unique definability
-
-The paper's `def:luv` is a formula that the theory proves defines a unique `[0,1]` value
-(`main.tex:1635–1661`). Lean's core type is only
-
-```lean
-structure LUV where
-  gt : ℚ → Sentence
-```
-
-(`Framework/Expectations.lean:59–66`). Unique existence, `[0,1]`-valuedness, and agreement of
-thresholds with a world value are supplied through `ValuesAt`, `WorldValued`,
-`ExactTheoryPresentation`, `ConvergencePresentation`, or theorem-local hypotheses.
-
-`LUV.expect_converges`, for example, assumes that every finite-stage plausible world assigns
-the LUV some coherent value (`Properties/ExpectationConvergence.lean:990–996`).
-
-In addition:
-
-- `lic_linearity_of_expectation` is a fixed `a,b,X,Y,Z` theorem, while the paper states a
-  varying efficiently generated sequence result; and
-- `lic_expectation_provind` treats one LUV lower bound, while the paper's theorem is for an
-  arbitrary bounded LUV-combination sequence with all three comparison forms.
-
-Closer sequence-level capstones exist in `ExpectationProperties.lean`, but carry the
-presentation/compiler interfaces above and are not all in the main endpoint audit.
-
-**Full repair scope.** Fixing this rather than merely disclosing the abstraction would require
-all of the following:
-
-1. Define a first-order arithmetic LUV as a one-free-variable formula together with proofs
-   that the background theory proves unique existence and that the unique value lies in
-   `[0,1]`.
-2. Construct the rational threshold sentences used by the market from that formula, and
-   prove that their truth in standard and completed-theory worlds agrees with comparison
-   against the uniquely defined value. This includes the paper's treatment of worlds whose
-   encoded model may be nonstandard.
-3. Derive the current `ValuesAt`, `WorldValued`, `ExactTheoryPresentation`, and
-   `ConvergencePresentation` interfaces from this certified syntax, rather than accepting
-   them as independent caller hypotheses. The derivation must also provide the uniform
-   polynomial threshold-code generators consumed by the trader compilers.
-4. Refactor the LUV-combination and expectation development to consume the certified object
-   directly, or give a verified erasure from a paper-faithful first-order LUV into the
-   current propositional threshold interface.
-5. Finish the paper-strength sequence endpoints on top of that bridge: linearity for
-   efficiently generated varying LUV sequences, and expectation provability induction for
-   arbitrary bounded LUV-combination sequences in each of the paper's three comparison
-   forms. Add those endpoints and their constructed-LIA instantiations to `AxiomAudit.lean`.
-
-**Disposition.** This can remain an explicit propositional abstraction, but public claims
-must say that `def:luv` and the expectation tail are formalized relative to threshold and
-world-value presentation interfaces, not that the paper's first-order LUV definition itself
-has been reconstructed.
-
-### F8 — MEDIUM / weakened public conclusion: `thm:li` omits finite support
-
-The paper's main theorem concludes existence of a **computable belief sequence**, whose daily
-belief states have finite support (`main.tex:926–929`; definitions at `670–719`).
-
-The Lean construction internally has the stronger data:
-
-- `liaStates DP n : RationalBeliefState` (`Construction/LIA.lean:15–20`);
-- rational `[0,1]` entries with finite support (`Construction/MarketMaker.lean:537–565`);
-  and
-- an exact computable quote table.
-
-But `exists_logical_inductor` concludes only
-
-```lean
-∃ P : History, IsLogicalInductor P DP
-```
-
-(`Construction/LIACompiler.lean:6745–6750`).
-
-**Required repair.** Define/package a computable belief sequence and state the main theorem
-with finite support, range, exact rational computation, and the LIC. The existing `liaStates`
-should make this mainly a statement/packaging task.
-
-**Repair status (2026-07-23): resolved.** `exists_computable_beliefSequence_logical_inductor`
-(`Construction/LIACompiler.lean`) states `thm:li` in full: the witness is exposed as the belief
-sequence `liaStates DP : ℕ → RationalBeliefState`, and the conclusion is the conjunction of
-(1) `IsLogicalInductor (fun n => (𝔹 n).toValuation) DP` — whose class bundles the computable
-exact-rational market certificate (`ComputableMarket`/`MarketComputation`: one fixed program
-computes the rational quote table) and the `[0,1]` range, so computability and exact rational
-pricing are carried there; (2) finite support of each day's state; (3) exact rational `[0,1]`
-values; and (4) the induced real pricing being the rational quote cast.  `exists_logical_inductor`
-is retained as the bare-existence projection.  The endpoint is axiom-clean and in `AxiomAudit.lean`.
-
-### F9 — MEDIUM / audit-process defect: `AxiomAudit.lean` is not the full public surface
-
-README says `AxiomAudit.lean` enumerates every public endpoint. Its Tier-1 list omits several
-declarations identified elsewhere as paper-facing, including:
-
-- `PolySequence.affcoh`, `affpolymax`, and `peraffkno`;
-- the theory-valued affine provability wrappers;
-- `BoundedSequence.expcoh`, `exppolymax`, and `perexpkno`;
-- `BoundedSequence.wubexp`; and
-- newer `_unconditional` endpoints in `Construction/Witnesses/ComputationDP.lean` and
-  `UnconditionalOverLIA.lean`, including paradox resistance and conditioning.
-
-The F2 repair added the recurring-unbiasedness, calibration, affine pseudorandomness,
-expectation recurring-unbiasedness, and expectation pseudorandomness endpoints to the
-inventory, but the unrelated omissions above remain.
-
-The paper-node checker establishes that annotations on inventory members cite real labels;
-it does not prove that all paper-facing declarations are inventory members, nor that every
-paper theorem has a full-strength endpoint.
-
-`#assert_fields` usefully freezes selected structure field sets, but it cannot detect a
-missing semantic relation between existing fields. F3 required separate theorem-level
-inventory checks for precisely that reason.
-
-**Required repair.** Generate the Tier-1 seed mechanically from all declarations carrying a
-`Paper node:` annotation (with a small explicit exclusion list for internal lemmas), add the
-omitted capstones, and add a coverage check from paper theorem labels to reviewed endpoint
-statements. Axiom cleanliness and statement faithfulness should be recorded separately.
-
-### F10 — MEDIUM / disclosed modeling substitution: efficiency is repository-relative
-
-The paper uses ordinary polynomial-time generation in unary `n`. The repository uses
-`Nat.Partrec.Code` under explicit polynomial fuel, with token-indexed length and element
-programs (`EfficientlyComputableTok`, `Criterion.lean:1392–1446`). This fixes a real defect in
-the earlier whole-number serializer and supports deep polynomial-size strategies.
-
-However, no equivalence theorem relates this class to a conventional Turing-machine or RAM
-polynomial-time class. The model also retains a per-token value restriction, particularly on
-varying sentence codes. README discloses this at `README.md:29–33`.
-
-**Consequence.** The construction and all efficiency-sensitive properties are correct
-relative to the token/fuel model. Claims of literal faithfulness to the paper's complexity
-class remain unproved.
-
-## Retired finding: the old quotation-presentation vacuity is fixed
-
-The previous version of this audit reported that a free-schema
-`QuotationTheoryPresentation` forced both a sentence and its negation into the deductive
-process by choosing identical positive and negative schemas.
-
-That finding is **obsolete in the current tree**. Quotation now uses fixed complementary
-universal schemas indexed by a code. `Construction/Witnesses/ComputationDP.lean` constructs
-`quotationPresentation`, and `quotation_presentation_nonvacuous` (`:536–541`) proves the
-existence of a deductive process, a quotation presentation, and a plausible world at every
-finite stage.
-
-This repairs the old mode-1 vacuity. The distinct diagonal-link problem recorded in F3 is now
-also repaired by the market-derived fixed program and its FFL representation.
-
-## Coverage assessment by paper section
-
-| Paper area | Current assessment |
-|---|---|
-| Markets, worlds, traders, exploitation | Substantial and mostly faithful; market range is missing from the LIC bundle |
-| Efficient computability | Coherent repository model, but only a disclosed substitution for paper polynomial time |
-| LIA construction and `thm:lia` | Strong, non-vacuous, kernel-clean relative to the repository criterion |
-| Main existence `thm:li` | Constructed object has finite support, but public conclusion omits it |
-| Convergence | Genuine trader proof, conditional on separately supplied market bounds and plausible worlds |
-| Limit Coherence | Only component identities; no probability measure theorem |
-| Provability induction and timely learning | Strongest wrappers use eventual completed-theory proof appearance and are close to the paper |
-| Affine coherence/persistence | Substantial, but several paper-facing capstones are outside `AxiomAudit` |
-| Calibration and recurring unbiasedness | Historical maturity is compiled and dovetailed; paper-facing endpoints construct it internally |
-| Feedback unbiasedness (`wub`) | Significant compiler construction; unconditional-over-LIA variants still take the paper's semantic/operational data |
-| Pseudorandom learning | Affine, sentence, expectation, and fixed-frequency endpoints construct historical maturity internally |
-| Logical relationships | Substantial propositional rendering |
-| Non-dogmatism / uniform non-dogmatism | Substantial; relies on explicit global theory/world and range hypotheses |
-| Conditioning | Compiler and economics present; full fixed/growing closure theorem not reached |
-| Expectations | Threshold-interface abstraction; basic convergence is genuine, later theorems retain semantic/compiler presentations |
-| Consistency and halting | Generic represented-claim interfaces are sound; concrete end-to-end instantiation uses stronger arithmetic assumptions such as Σ₁ soundness |
-| Introspection and self-trust | Many affine consumers and quotation paths are real, but representation/reflection data remain explicit inputs |
-| Paradox resistance | Public diagonal program, quoted atom, and FFL fixed point are constructed from the computable market; no semantic self-reference premise remains |
-
-## Positive verification
-
-### Central construction
-
-`LIA_is_logical_inductor` and `exists_logical_inductor`
-(`Construction/LIACompiler.lean:6735–6750`) reduce to the actual recursive quote compiler and
-the semantic theorem `lia_no_efficient_trader_exploits`. The latter uses
-`trading_firm_dominance`, identifies the adaptive firm with the realized LIA trader, and
-contradicts `marketMaker_not_exploited` (`Construction/LIA.lean:95–124`). No exploitation
-conclusion is assumed through an operational witness.
-
-### Exploitation and worlds
-
-`Trader.Exploits` is `BddBelow ∧ ¬ BddAbove` over all finite-stage plausible assessments
-(`Framework/Criterion.lean:1341–1351`), matching the paper's bounded-downside/unbounded-upside
-criterion. `PCWorld` is a Boolean valuation over the countable atom language, so Boolean
-consistency is built into the world object rather than assumed.
-
-### Constructed market quality
-
-Although the criterion omits the range law, `liaHistory_range` proves the constructed LIA's
-prices lie in `[0,1]` (`Construction/LIA.lean:87–89`). `RationalBeliefState` provides finite
-support and rational values, so the actual construction is closer to the paper than the
-headline type indicates.
-
-### Non-vacuity and trust
-
-The current quotation presentation is inhabited together with finite-stage plausible worlds.
-The construction and the checked property endpoints report only Lean/Mathlib's standard
-`propext`, `Classical.choice`, and `Quot.sound`; there is no project-specific axiom in the
-Logical Induction development.
-
-### Disclosures that are accurate
-
-README accurately discloses:
-
-- the token/fuel efficiency model;
-- that the property tail is conditional; and
-- that the autoformalized Brouwer interior has not received a human line-by-line review.
-
-## Mechanical checks run
-
-The following checks were rerun during this audit:
-
-```text
-lake build
-scripts/check-paper-nodes.sh
-python3 scripts/lint_paper_labels.py
-rg scan for executable sorry/admit and axiom declarations
-git status --short
-```
-
-Results:
-
-- full build passed: **2787 jobs**;
-- paper-node validation passed: **60 distinct referenced labels**;
-- theorem-label lint passed;
-- no executable `sorry`, `admit`, or `axiom` declaration was found in `LogicalInduction/`;
-- checked axiom reports contained only `propext`, `Classical.choice`, and `Quot.sound`; and
-- the worktree was clean before this report replaced its predecessor.
-
-These checks establish kernel cleanliness and annotation consistency. They do not discharge
-the statement-faithfulness findings above.
-
-## Recommended order of repair
-
-1. Package `thm:li` as existence of a computable finite-support belief sequence.
-2. Expand the endpoint inventory and distinguish “complete,” “conditional,” “qualified,” and
-   “interface only” coverage per paper node.
-3. Only after those repairs, revisit the three deliberately disclosed classical-computability
-   boundaries and the token/fuel equivalence question.
-
-Until at least items 1–2 are addressed, the repository should continue to describe the
-Logical Induction development as **in progress**, with unconditional central construction and
-a conditional/qualified property tail.
+# Errata audit — faithfulness of the LI formalization (fresh pass, 2026-07-24)
+
+Fresh-context statement-level audit of `LogicalInduction/` against Garrabrant et al.,
+*Logical Induction* (arXiv:1609.03543v5, tex in `notes/`). Method: read the code, not the
+documentation — every core framework definition was read in full; construction endpoints
+and a broad sample of property-tail theorem statements were read against the paper's
+statements; selected proof bodies (`buyDaily_exploits_freq`, `trading_firm_dominance`,
+`marketMaker_not_exploited`, `lic_nonDogmatism`, the Criterion serialization layer) were
+read end to end. The previous audit file was deleted before starting; nothing below is
+carried over from it.
+
+Mechanical state at audit time: build artifacts fresh (same day as HEAD `f060abb`);
+**zero `sorry` in `LogicalInduction/`** (the single grep hit, `Properties/Coherence.lean:143`,
+is the word inside a docstring); **zero `axiom` declarations**; no `native_decide`,
+`unsafe`, `partial def`, or `@[implemented_by]` anywhere in the library.
+`AxiomAudit.lean` is a checked build target asserting every listed endpoint clean of
+everything beyond `propext`/`Classical.choice`/`Quot.sound`, and freezing the field sets
+of every boundary structure. `scripts/check_endpoint_coverage.py` passes:
+67 paper labels covered, 0 uncovered.
+
+---
+
+## 1. Verified faithful (read line-by-line against the paper)
+
+* **`def:tf` / `def:tradestrat` / `def:trader`** (`Framework/Criterion.lean`). `EF` is
+  the paper's feature language on the nose: price features `φ*ⁿ`, rational constants,
+  `+`, `×`, `max`, safe reciprocation `max(1,·)⁻¹` (plus `letE`/`var` sharing, a
+  conservative addition — its denotation is definable without it). `Strategy.value`
+  is exactly `∑ eᵢ(𝓥)·(W(φᵢ) − 𝓥ₙ(φᵢ))`, i.e. the paper's affine trade with the cash
+  term determined by the pairs. Rank discipline `rank ≤ n` matches the paper's
+  visibility constraint (day-`n` strategy may read prices through day `n`; the 0-based
+  day indexing is disclosed at `Foundations.lean:50`).
+* **`def:exploitation` / `def:lic`** (`Criterion.lean:1395–1514`).
+  `plausibleAssessments = {netWorth V v n : v ⊨ D n}`, `Exploits = BddBelow ∧ ¬BddAbove`
+  — the paper's Definition verbatim, including the edge behavior on empty world sets.
+  `IsLogicalInductor` bundles exactly the paper's three ingredients: computable rational
+  market, computable deductive process, no e.c. trader exploits.
+* **`def:world` + p.c.** `PCWorld` = Boolean atom valuation read through Foundation's
+  classical semantics = "determined by Boolean algebra from prime sentences". The paper
+  itself uses only *propositionally* consistent worlds, so this is not a weakening.
+* **`dd:asymp`** (`Framework/Asymptotics.lean`): `≈ₙ`, `≲ₙ`, `≳ₙ` match the paper's §2
+  notation exactly (checked against the ε-characterizations).
+* **`def:luv` / `def:e`** (`Framework/Expectations.lean:89–94`):
+  `expect P n X = n⁻¹ ∑_{i<n} Pₙ(⌜X > i/n⌝)` — the paper's Riemann-sum expectation with
+  precision tied to the day.
+* **`def:condp`** (`Properties/Conditioning.lean:17–22`): capped conditional quote
+  `min(1, P(φ∧ψ)/P(ψ))`, 1 on zero denominator — the paper's definition.
+* **The construction spine** (M6/M7). `fixed_point_lemma` (Brouwer on the aggregate
+  share demand — aggregation over repeated sentences is handled, a real trap avoided),
+  `marketMaker_not_exploited` (geometric error budget `2^{-(n+1)}`, all plausible
+  assessments `< 1`), `exists_budgetedTrader_exploits` (budget preservation),
+  `trading_firm_dominance` (gate → budget → weight, exactly `lem:tfdom`'s shape),
+  `TraderEnumeration` (total redundant enumeration of length/token program pairs with
+  polynomial clocks — `prop:enumeration`), and `LIA.lean` closing the recursive
+  fixed-point loop. Endpoints `LIA_is_logical_inductor` /
+  `exists_computable_beliefSequence_logical_inductor` (`LIACompiler.lean:6738–6779`) are
+  **unconditional over any computable deductive process**, with the finite-support,
+  `[0,1]`, exact-rational belief-state clauses stated explicitly — this is `thm:lia` /
+  `thm:li` including the computability half, not just the semantic half.
+* **Brouwer** (`Construction/Brouwer.lean`): genuinely proved from scratch
+  (Sperner over the Freudenthal/Kuhn triangulation, lifted to compact convex sets);
+  Aristotle-autoformalized provenance disclosed in the header; axiom-checked.
+* **Paper-faithful "late theorem" forms exist.** The `∀ n, φ ∈ D n` hypotheses on
+  `lic_deducible_*` are stepping stones; the paper-facing `lic_provind`
+  (`AffineCoherence.lean:921`) needs only `∀ n, ∃ k, φ n ∈ D k` — theorems may be proved
+  arbitrarily later than their indices, which is the actual content of `thm:provind`
+  ("outpacing deduction"). Likewise `lic_nonDogmatism` (`NonDogmatism.lean:950`) has no
+  price-range or decaying-bound weakening (the `_weak` variant is superseded and labeled
+  as such), `lic_preemptive_learning` and `lic_persistence_of_knowledge` match the
+  paper's sup/inf-over-futures forms, and `lic_occamBounds` gives the paper's single
+  constant `C` for both directions.
+* **Uniform non-dogmatism's enumeration witness is discharged**:
+  `EfficientRepeatedEnumeration.ofCE` (`M7Witnesses.lean`, in the audit surface) builds
+  the required repeated enumeration from a bare c.e. enumeration, so `thm:obu` does not
+  quietly demand more of the caller than the paper does.
+
+## 2. Disclosed substitutions, verified real in the code (type-`(c)` ledger)
+
+These are already flagged in-code; the audit confirms each disclosure matches what the
+code actually does, and sharpens where each one bites.
+
+### 2.1 `dd:fuel` — the poly-*value* token residual (the one that genuinely narrows scope)
+
+`EfficientlyComputableTok` (`Criterion.lean:1495`) is the token-emission model: two
+programs under one polynomial `evaln` clock emit the strategy's flat token stream. The
+stream length is `Θ(EF.cost)` (both directions proved: `serialize_length_le_cost`,
+`cost_le_serialize_length`), which correctly repairs the whole-number model's
+exponential-value wall (the superseded `EfficientlyComputable` is honestly labeled at
+`Criterion.lean:1429`). **But each individual token is still a clocked-program output,
+hence `poly(n)`-value.** Tokens include `Encodable.encode φ` for traded sentences and
+`Encodable.encode q` for rational constants. Consequences, confirmed by reading the
+serializer:
+
+* a trader whose day-`n` strategy trades a sentence whose *code value* grows
+  super-polynomially (deep formulas: pairing-based `Encodable` codes are exponential in
+  formula depth even at polynomial formula *size*) is not `EfficientlyComputableTok`,
+  though it is e.c. in the paper's poly-*time* sense;
+* likewise a per-day rational constant like `2^{-n}` as a *literal* (the in-repo traders
+  avoid this by building such constants compositionally — e.g. the non-dogmatism ladder's
+  poly-value band constants — which is why their `_ecTok` certificates go through).
+
+Direction analysis (worth keeping straight in any writeup): the formal e.c. class is a
+**subclass** of the paper's. So `IsLogicalInductor` is a *weaker* hypothesis than the
+paper's LIC — every property theorem had to construct its exploiter *inside* the narrower
+class (harder; done), while `LIA_is_logical_inductor` proves the market defeats *fewer*
+traders than the paper's `thm:lia` claims. The same residual propagates into every
+`PolySentenceCodes` / `PolyRatCodes` / `*_codes` hypothesis on sequence-form theorems:
+they quantify over poly-*code-value* sequences, a proper subclass of the paper's
+`𝓔𝓒`-sequences. Disclosed at `Criterion.lean:1467–1472` ("formula-level sub-tokenization
+would remove even this"); still open.
+
+### 2.2 Propositional substrate (`def:lang`)
+
+`Sentence = LO.Propositional.Formula ℕ`. The criterion layer is unaffected (the paper's
+worlds are propositionally consistent too), but everything in the paper that needs "Θ
+represents computations" (§4.8–4.12) is rendered through presentation structures whose
+atoms are code-indexed schema instances (`ComputationTheoryPresentation`,
+`QuotationTheoryPresentation`), constructed for Σ₁-sound `T ⊇ 𝗜𝚺₁` in
+`Witnesses/ComputationDP.lean`. The old vacuity failure is fixed and *certified*:
+`quotation_presentation_nonvacuous` (`ComputationDP.lean:536`) proves the quotation
+presentation and the `hworld` hypothesis jointly satisfiable, so the `_ofCode` /
+`_ofRepresentation` endpoints are not vacuously true.
+
+### 2.3 Quotation-conditioned endpoints (`thm:epr/er/cee/ceu/ccee/st/ref/lp`)
+
+Introspection, self-trust, and the expectation reflection theorems take quotation
+packages (`CurrentPriceExpectationQuote`, `SelfTrustQuote`, …) whose `reflected` /
+`theory_coherent` fields assert the intended first-order semantics of the quoted
+sentences. This is the project's declared conditional seam, and the field surfaces are
+frozen by `#assert_fields`. Status by endpoint, checked against `AxiomAudit.lean`:
+paradox resistance, expectations-of-probabilities, halting-pattern learning, wub/feedback,
+conditioning, and DUS all have `_unconditional`-over-LIA instantiations;
+**`lic_self_trust`, `lic_iterated_expectations`, and `lic_introspection` do not** —
+their strongest forms remain `_ofRepresentation`/`_ofCode`, conditional on the quotation
+package (satisfiable, per 2.2, but not yet instantiated over the constructed LIA).
+This matches the "conditional+disclosed" endpoint definition; it is the honest residual
+gap between the repo and the paper's §4.11–4.12 as unconditional theorems.
+
+### 2.4 Remaining caller inputs on `thm:dus`
+
+`lic_domination_universalSemimeasure_unconditional` (`UnconditionalOverLIA.lean:48`)
+discharges the inductor, the deductive process (empty — legitimate, since bit-prefix
+sentences are Boolean combinations of independent atoms, so all coherence constraints are
+propositional), and `hworld`. Still caller-supplied: `DUSApproximationPresentation` +
+`DUSThresholdEmission` (`M7-DUS-APPROX`) — poly-code emission of the semimeasure's
+from-below approximation, i.e. the 2.1 residual again, applied to `M`'s approximants.
+The paper needs only lower-semicomputability here.
+
+### 2.5 `hworld` consistency hypotheses
+
+Most property endpoints carry `hworld : ∀ n, ∃ v, v.ConsistentWith (DP.D n)`. The paper
+states its §4 results for a deductive process over a consistent theory, so this is the
+faithful propositional rendering (per-stage finite satisfiability ≡ `Θ ⊬ ⊥` by
+compactness), not an added assumption — and it is *proved*, not assumed, for the
+constructed processes (`theoremDP_hworld`, `emptyBitDeductiveProcess_hworld`).
+
+## 3. Errata (things to fix or watch — none load-bearing)
+
+1. **Leftover redundant price-range hypotheses.** Commit `c4f2392` ("remove redundant hP
+   from all criterion endpoints") missed several: `lic_deducible_eventually_ge`
+   (`ProvabilityInduction.lean:168`), `lic_deducible_tendsto_one` (`:184`),
+   `lic_provind_seq` (`:237`), `lic_nonDogmatism_weak` (`NonDogmatism.lean:257`) still
+   take `hP1`/`hP0` derivable from `IsLogicalInductor.price_mem_Icc`. Harmless
+   (callers can always discharge them) but the commit message overstates, and the
+   endpoints are on the audit surface — clean them or note them.
+2. **Stepping-stone forms sit beside faithful forms on the same audit surface.**
+   `AxiomAudit.lean` lists both `lic_deducible_tendsto_one` (needs `φ ∈ D n` for *all*
+   `n`) and the faithful `lic_provind`; both `lic_nonDogmatism_weak` and
+   `lic_nonDogmatism`. The docstrings label the weak ones correctly, but the flat
+   endpoint list doesn't distinguish "paper statement" from "fragment kept for its
+   pedagogical shape". A one-word tier tag in `AxiomAudit.lean` comments (already partly
+   present) would prevent a reader from crediting the weak form as `thm:provind`.
+3. **`lic_provind_seq`'s docstring oversells slightly.** It cites `thm:provind`
+   ("sequence form") but its `hded : ∀ n, φ n ∈ DP.D n` makes it a *timely-membership*
+   statement, not provability induction (the paper's point is precisely that `φ n` need
+   not be in `D n`). The genuine sequence form is `lic_provind`. Suggest the docstring
+   say so explicitly and point there.
+4. **`letE`/`var` in `EF`** is an extension of the paper's feature grammar (sharing).
+   Denotationally conservative and needed for poly-size deep features, but it changes
+   `cost` relative to the paper's expression size; worth one disclosure line in the
+   `EF` docstring (currently only the serialization comments discuss it).
+5. **`ComputableMarket` totalizes quotes on non-sentence codes** (`Criterion.lean:990`,
+   "extra values … are harmless"). Verified harmless: `quote_exact` pins every real
+   sentence's price. No action; recording that it was checked.
+
+## 4. What this audit did **not** cover in depth
+
+Statement-level reading covered every file; proof-body reading was sampled. Not read line
+by line: the interiors of `Framework/ROI.lean`, `Framework/Computable.lean` (beyond
+`PolyFueled` and the emission layer), `Calibration.lean` / `Pseudorandomness.lean`
+analytic interiors, `LIACompiler.lean:1–6690`, and the `QuotationAffine.lean` diagonal
+fixed-point plumbing. These are kernel-checked and their *statements* were audited, but a
+future pass hunting for off-loaded steps (rule: "hand-computation where a Mathlib lemma
+should carry it") would start there. The deferred human read-through of the frozen
+surface (`AxiomAudit.lean` is its table of contents) remains the final faithfulness gate.
