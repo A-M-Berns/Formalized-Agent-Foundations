@@ -169,6 +169,12 @@ Files (all green, axiom-clean `propext/Classical.choice/Quot.sound`, in `Logical
   scheduled process with proved threshold codes. **Sole hypothesis: the rational bound/identity on
   the LUV values.** In `AxiomAudit`; all gates pass.
 
+**dd:fuel hardening slate — DONE (2026-07-24):** separation witness (`not_polyFueled_two_pow`,
+size-based only), model card section in `Framework/Computable.lean` with six trust facts in
+`AxiomAudit` under `def:ec`, two-sided `EF.cost` ↔ token-length seam
+(`cost_le_serialize_length` + `Strategy.serializeTrades_length_le_cost`), and the README
+disclosure now names the `evaln` anchor and output-exceeds-fuel subtlety.
+
 **Remaining (dd:fuel-adjacent, disclosed):** the sequence capstones' operational witnesses
 (`MeshSoftmaxOperationalWitness`, feedback emission/truth, `BoundedSequence.poly` for *arbitrary*
 combination sequences) are still caller data — they are per-sequence constructions the paper also
