@@ -164,6 +164,20 @@ market computation with no caller-supplied semantic relation — has not yet bee
 the epr/er/st/ref quote objects. That construction is the remaining gap between the repo
 and the paper's §4.11–4.12 as genuinely witness-free theorems.
 
+**Update (Tranches 1 and 3, 2026-07-24/25, commits `2ad54c2`..`fdea64c`): this residual
+is closed for epr, er, ceu, cee, st, and ref.** `Witnesses/QuoteCodeOfMarket.lean`
+constructs the quote objects from the market program itself —
+`RationalQuoteCode.ofComputable` over the exact quote / deferred quote / expectation /
+ctsInd-confidence values, the `indicatorProductLUV` with its proved product law, and the
+Boolean interval decider — yielding the `_closed` endpoint family
+(`lic_expectations_of_probabilities_closed`, `lic_iterated_expectations_closed`,
+`lic_no_expected_net_update_closed`, `lic_expected_future_expectations_closed`,
+`lic_self_trust_closed`, `lic_introspection_closed`), all on the audit surface,
+axiom-clean. Remaining conditional in this family: **ccee only** (its scaled LUVs need
+threshold codes at non-mesh rationals — a caller-interface design question recorded in
+next-session), plus the caller-data hypotheses that are the paper's own premises
+(`source_valued`, the `GeneratedRatFeature` bound presentations, sequence poly codes).
+
 ### 2.4 Remaining caller inputs on `thm:dus`
 
 `lic_domination_universalSemimeasure_unconditional` (`UnconditionalOverLIA.lean:48`)
