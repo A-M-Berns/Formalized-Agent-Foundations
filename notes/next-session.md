@@ -186,12 +186,27 @@ the build gate between construction files.
 >
 > **RESIDUAL (recorded tranche): digit-model conditioning translation.**  Extend
 > `conditionedTranslation_preserves_ec` (and the gated/eventual variants) to
-> `Tok₂ → Tok₂` — undigitize → token transducer → redigitize, each stage poly — so
-> `lic_conditioned*` can produce `IsLogicalInductor₂` and the two classes can collapse
-> into one field (renaming `noExploit` to quantify over `Tok₂`, with the token-model
-> lemma derived via `toTok₂`).  Until then, property-tail results conditional on
-> `[IsLogicalInductor P DP]` are discharged by `LIA_is_logical_inductor₂.to…` as before,
-> and the paper-facing existence statement should cite `LIA_is_logical_inductor₂`.
+> `Tok₂ → Tok₂` so `lic_conditioned*` can produce `IsLogicalInductor₂` and the two
+> classes can collapse into one field (renaming `noExploit` to quantify over `Tok₂`,
+> with the token-model lemma derived via `toTok₂`).  Until then, property-tail results
+> conditional on `[IsLogicalInductor P DP]` are discharged by
+> `LIA_is_logical_inductor₂.to…` as before, and the paper-facing existence statement
+> should cite `LIA_is_logical_inductor₂`.
+>
+> ⚠️ **Scoping correction (2026-07-24, discovered while closing step 4): this residual
+> is NOT the quick "undigitize → transduce → redigitize" wrapper the first draft
+> suggested.**  The conditioning transducer rewrites price leaves `[0, ⌜φ⌝, day]` into
+> conditional-price expressions whose sentence codes are *derived* from the input's
+> (`⌜φ ⋏ ψ⌝` from `⌜φ⌝` — a `Nat.pair`-shell computation).  In the digit model, `⌜φ⌝`
+> may have exponential *value*, held only as a digit stream; the clocked machine cannot
+> materialize it as a number (evaln values are fuel-bounded).  Deriving the output
+> block therefore needs **big-number arithmetic on digit streams** (`Nat.pair` = square
+> + add at exponential values ⇒ schoolbook multiplication as a poly digit emitter).
+> That is a bignum-emitter library at the `evaln` level — a genuine sub-project, not a
+> wrapper.  Same wall applies to migrating `𝓔𝓒`-sequence hypotheses for any theorem
+> whose trader *computes* on sentence codes (rather than copying them verbatim into
+> trade frames, which is digit-copyable and fine).  Plan accordingly: the class
+> layering is the honest steady state until someone wants the bignum layer.
 
 ## Tranche 3 — ctsInd-composed quotes + indicator product: witness-free `thm:st` (and cee/ceu)
 
