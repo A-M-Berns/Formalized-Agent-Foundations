@@ -1278,6 +1278,101 @@ lemma blkDig_polyFueled {ct : Code} {tokenFn : ℕ → ℕ}
     exact le_trans (pair_le_pair_right' _ (le_trans (pair_le_pair_right' _ h3)
       (pair_le_pair_left' _ h2))) (pair_le_pair_left' _ h1)
 
+lemma getD_map_digitVal (bl : List (List ℕ)) (j : ℕ) :
+    (bl.map digitVal).getD j 0 = digitVal (bl.getD j []) := by
+  by_cases hj : j < bl.length
+  · rw [List.getD_eq_getElem _ _ (by simpa using hj), List.getElem_map,
+      List.getD_eq_getElem _ _ hj]
+  · rw [List.getD_eq_default _ _ (by simpa using hj),
+      List.getD_eq_default _ _ (by omega)]
+    rfl
+
+/-- Digits of a possibly-out-of-range block are `< 4` (vacuously for `[]`). -/
+lemma blockSplit_getD_digits_lt (ds : List ℕ) (j : ℕ) :
+    ∀ d ∈ (blockSplit ds).1.getD j [], d < 4 := by
+  by_cases hj : j < (blockSplit ds).1.length
+  · intro d hd
+    rw [List.getD_eq_getElem _ _ hj] at hd
+    exact (blockSplit_digits_lt ds).1 _ (List.getElem_mem hj) d hd
+  · rw [List.getD_eq_default _ _ (by omega)]
+    intro d hd
+    simp at hd
+
+/-- **The undigitize view**: any digit `PolySegStream` gives a poly-fueled token count
+and `BigDigits` access to the tokens of its undigitized stream (indexed by `⟨n, j⟩`).
+This is the read-side interface the digit-model transducers consume: token *values* may
+be exponential, but their digit counts and digits are poly-fueled. -/
+lemma PolySegStream.undigitizeTokens {s : ℕ → List ℕ} (h : PolySegStream s) :
+    (∃ c, PolyFueled c (fun n => (undigitize (s n)).length)) ∧
+      BigDigits (fun z => (undigitize (s z.unpair.1)).getD z.unpair.2 0) := by
+  obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hslen, hget⟩ := h
+  have hvs : ∀ n, vpre tokenFn n (lenFn n) = s n := vpre_eq_stream hslen hget
+  have hcountS : ∀ n, (undigitize (s n)).length = (blockSplit (s n)).1.length := by
+    intro n
+    rw [undigitize_eq_blockSplit, List.length_map]
+  have htokS : ∀ n j, (undigitize (s n)).getD j 0 =
+      digitVal ((blockSplit (s n)).1.getD j []) := by
+    intro n j
+    rw [undigitize_eq_blockSplit, getD_map_digitVal]
+  obtain ⟨cc, hcc⟩ := blockCount_polyFueled htok
+  obtain ⟨ctr, htr⟩ := blkTrackLen_polyFueled htok
+  obtain ⟨cdg, hdg⟩ := blkDig_polyFueled htok
+  -- Token count.
+  have hcount : ∃ c, PolyFueled c (fun n => (undigitize (s n)).length) := by
+    refine ⟨_, (hcc.comp (PolyFueled.id.pair hlen)).of_eq (fun n => ?_)⟩
+    simp only [Nat.unpair_pair]
+    rw [hvs n, hcountS n]
+  -- Per-token digit access.  Input `w = ⟨⟨n,j⟩,k⟩`; run the digit scan to the end of
+  -- the stream and select `0` for the unclosed/out-of-range blocks.
+  have hnW := PolyFueled.left.comp PolyFueled.left
+  have hjW := PolyFueled.right.comp PolyFueled.left
+  have hscan := hdg.comp (PolyFueled.id.pair (hlen.comp hnW))
+  have hcountW := PolyFueled.left.comp hscan
+  have hansW := PolyFueled.right.comp (PolyFueled.right.comp hscan)
+  have htest := subc_polyFueled.comp (hjW.succ_comp.pair hcountW)
+  have hdig : PolyFueled _ (fun w => dig4
+      ((undigitize (s w.unpair.1.unpair.1)).getD w.unpair.1.unpair.2 0)
+      w.unpair.2) :=
+    (ifzSel_polyFueled.comp ((hansW.pair (PolyFueled.const 0)).pair htest)).of_eq
+      (fun w => by
+        simp only [Nat.unpair_pair, ifzSelFn]
+        rw [hvs, htokS]
+        rw [dig4_digitVal _ (blockSplit_getD_digits_lt (s w.unpair.1.unpair.1)
+          w.unpair.1.unpair.2)]
+        by_cases hj : w.unpair.1.unpair.2 <
+            (blockSplit (s w.unpair.1.unpair.1)).1.length
+        · rw [if_pos (by omega :
+            w.unpair.1.unpair.2 + 1 -
+              (blockSplit (s w.unpair.1.unpair.1)).1.length = 0)]
+          rw [blkTrack_closed _ hj]
+        · rw [if_neg (by omega :
+            ¬ w.unpair.1.unpair.2 + 1 -
+              (blockSplit (s w.unpair.1.unpair.1)).1.length = 0)]
+          rw [List.getD_eq_default (l := (blockSplit
+            (s w.unpair.1.unpair.1)).1) _ (by omega)]
+          simp)
+  -- Token digit count, from the generic scanner under the closed-block-length bound.
+  have hscan2 := htr.comp (PolyFueled.id.pair (hlen.comp PolyFueled.left))
+  have hcount2 := PolyFueled.left.comp hscan2
+  have htl2 := PolyFueled.right.comp hscan2
+  have htest2 := subc_polyFueled.comp (PolyFueled.right.succ_comp.pair hcount2)
+  have hB := ifzSel_polyFueled.comp ((htl2.pair (PolyFueled.const 0)).pair htest2)
+  obtain ⟨clen, hlenTok⟩ := BigDigits.len_of_digits
+    (s := fun m => (undigitize (s m.unpair.1)).getD m.unpair.2 0) hdig hB (fun m => by
+    simp only [Nat.unpair_pair, ifzSelFn]
+    rw [hvs, htokS]
+    by_cases hj : m.unpair.2 < (blockSplit (s m.unpair.1)).1.length
+    · rw [if_pos (by omega :
+        m.unpair.2 + 1 - (blockSplit (s m.unpair.1)).1.length = 0),
+        blkTrack_closed _ hj]
+      exact len4_digitVal_le _ (blockSplit_getD_digits_lt (s m.unpair.1) m.unpair.2)
+    · rw [if_neg (by omega :
+        ¬ m.unpair.2 + 1 - (blockSplit (s m.unpair.1)).1.length = 0),
+        List.getD_eq_default (l := (blockSplit (s m.unpair.1)).1) _ (by omega)]
+      simp [len4_zero])
+  exact ⟨hcount, _, _, hlenTok, hdig⟩
+
+#print axioms PolySegStream.undigitizeTokens
 #print axioms BigDigits.add
 #print axioms BigDigits.mul
 #print axioms BigDigits.natPair
