@@ -330,6 +330,17 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_self_trust_closed
   theoremIntervalQuoteCode lic_introspection_closed
 
+-- Tranche 3 (ccee): the weighted conditional, indicator-source closed form.  The
+-- deferred-weight quote code names the `w ∘ f` program (deferral costs nothing at
+-- emission), and `PCWorld.ValuesAt.eq` links the caller's relational source value to
+-- the payout.  Fully general caller sources are impossible in the token model (the
+-- scaled threshold would need `w (f n)` computed at emission time); see Part F header.
+#assert_axioms_clean
+  PCWorld.ValuesAt.eq
+  theoremDeferredWeightQuoteCode
+  theoremConditionalExpectationQuoteCode
+  lic_no_expected_net_update_conditional_closed
+
 -- Construction/Witnesses/ComputationDP.lean — unconditional-over-LIA capstones
 -- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above).
 -- The quotation family below discharges market/inductor/presentation/hworld; the

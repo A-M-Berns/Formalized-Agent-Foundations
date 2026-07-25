@@ -144,6 +144,17 @@ def PCWorld.ValuesAt (v : PCWorld) (X : LUV) (x : ℝ) : Prop :=
   0 ≤ x ∧ x ≤ 1 ∧
     ∀ r : ℚ, ((r : ℝ) < x → v.Holds (X.gt r)) ∧ (x < (r : ℝ) → ¬ v.Holds (X.gt r))
 
+/-- A world values a LUV at most one real: distinct candidates are separated by a rational
+threshold the world would have to both affirm and deny. -/
+lemma PCWorld.ValuesAt.eq {v : PCWorld} {X : LUV} {x y : ℝ}
+    (hx : v.ValuesAt X x) (hy : v.ValuesAt X y) : x = y := by
+  by_contra hne
+  rcases lt_or_gt_of_ne hne with h | h
+  · obtain ⟨r, hr1, hr2⟩ := exists_rat_btwn h
+    exact (hx.2.2 r).2 hr1 ((hy.2.2 r).1 hr2)
+  · obtain ⟨r, hr1, hr2⟩ := exists_rat_btwn h
+    exact (hy.2.2 r).2 hr1 ((hx.2.2 r).1 hr2)
+
 /-- **`lem:conluvapprox`, single-LUV form (D1)** (paper `main.tex` 4982): a world that
 values `X` at `x` assesses the precision-`n` approximate expectation within `1/n` of `x`.
 

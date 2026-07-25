@@ -230,13 +230,25 @@ the build gate between construction files.
 > caller data (the repo's operational rendering of the paper's e.c. bounds — qualified
 > tier, unchanged).
 >
-> Remaining in this family: **ccee only** (weighted conditional).  ⚠️ Scoped: the naive
-> scaled LUV `Z.gt r := X.gt (r / w)` does NOT discharge poly codes — the caller's
-> `PolyThresholdCodeSeq X` provides threshold codes at **mesh rationals `i/k` only**,
-> and `r / w` is generally not mesh-shaped.  Closing ccee needs either a stronger
-> caller interface (poly codes at arbitrary encoded rationals — a
-> `PolyThresholdCodes`-style predicate over `⌜q⌝` payloads) or a constructed source
-> LUV.  Design question; record, don't force.
+> **2026-07-25 (later): ccee CLOSED — indicator-source form** (`QuoteCodeOfMarket.lean`
+> Part F, on the audit surface, axiom-clean).  The design question resolved as follows:
+> the general-caller obstruction is **impossibility, not missing engineering** — a finite
+> Boolean combination of `X`-thresholds only jumps at thresholds it uses, so the scaled
+> LUV's mesh threshold must contain `X.gt (r / w (f n))`, whose emitter would have to
+> *compute* `w (f n)` in poly-`n` fuel; `def:deferralfunc` (and the paper) withhold
+> exactly that.  (The note's "option A" — arbitrary-rational caller codes — founders the
+> same way and would also demand *more* than the paper.)  The honest closure is the
+> paper's motivating conditional-probability instance: source = caller **relational
+> indicator family** (`IsIndicator`, D3-compliant), `Z` = `indicatorProductLUV` over
+> `theoremDeferredWeightQuoteCode` (a quote code *naming* the `w ∘ f` program — deferral
+> costs nothing at emission), `Z'` = `theoremConditionalExpectationQuoteCode`
+> (`expectQuoteAt X n (f n) · w (f n)` via `ofComputable`).  New small lemma
+> `PCWorld.ValuesAt.eq` (uniqueness, Framework/Expectations.lean) links the caller's
+> arbitrary source value to the payout.  Endpoint:
+> **`lic_no_expected_net_update_conditional_closed`** (kind `C`; provenance `(a)`
+> throughout, caller keeps only the paper's own premises: φ+codes, indicator linkage,
+> weight `[0,1]`+codes+P-generability, deferral).  Quotation family §4.11–4.12 is now
+> fully witness-free over LIA: epr/er/ceu/cee/ccee/st/ref/lp.
 
 Two constructions on top of Tranche 1:
 * **Composed quote compiler**: rational-continuous-function-of-a-quote → quote code with
