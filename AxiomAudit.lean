@@ -328,6 +328,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_no_expected_net_update_closed
   lic_expected_future_expectations_closed
   lic_self_trust_closed
+  theoremIntervalQuoteCode lic_introspection_closed
 
 -- Construction/Witnesses/ComputationDP.lean — unconditional-over-LIA capstones
 -- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above).

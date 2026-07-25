@@ -223,13 +223,20 @@ the build gate between construction files.
 >   (`quoteAtom_mesh_encode_polyFueled` factored out of Part A) +
 >   **`lic_self_trust_closed`** (`thm:st`) — both quoted LUVs constructed, zero
 >   reflection hypotheses.
-> Remaining in this family: **ref** (introspection — needs a
-> `BooleanQuoteCode.ofComputable` over the rational interval predicate; add
-> `PolyRatCodes a b` as the honest e.c. hypothesis and bridge casts via `quote_exact`;
-> the `GeneratedRatFeature` bound hypotheses remain caller data) and **ccee** (weighted
-> conditional — needs scaled/product LUVs for `Z, Z'`; the `w`-weighting is a rational
-> constant multiple, so an `indicatorProductLUV`-style scaled LUV should work; watch
-> `w = 0`).
+> **2026-07-25 (later): ref also CLOSED** — `theoremIntervalQuoteCode`
+> (`BooleanQuoteCode.ofComputable` over the rational interval predicate, with
+> `PolyRatCodes a b` as the honest e.c. hypothesis and casts bridged by `quote_exact`)
+> + `lic_introspection_closed`.  The `GeneratedRatFeature` bound presentations remain
+> caller data (the repo's operational rendering of the paper's e.c. bounds — qualified
+> tier, unchanged).
+>
+> Remaining in this family: **ccee only** (weighted conditional).  ⚠️ Scoped: the naive
+> scaled LUV `Z.gt r := X.gt (r / w)` does NOT discharge poly codes — the caller's
+> `PolyThresholdCodeSeq X` provides threshold codes at **mesh rationals `i/k` only**,
+> and `r / w` is generally not mesh-shaped.  Closing ccee needs either a stronger
+> caller interface (poly codes at arbitrary encoded rationals — a
+> `PolyThresholdCodes`-style predicate over `⌜q⌝` payloads) or a constructed source
+> LUV.  Design question; record, don't force.
 
 Two constructions on top of Tranche 1:
 * **Composed quote compiler**: rational-continuous-function-of-a-quote → quote code with

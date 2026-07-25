@@ -26,6 +26,7 @@ namespace LogicalInduction
 
 open Nat.Partrec (Code)
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+open Filter Topology
 
 /-! ## Part A — the threshold emitter for code-indexed quotation LUVs -/
 
@@ -605,6 +606,71 @@ lemma theoremConfidence_value_cast (f : DeferralFunction) (φ : ℕ → Sentence
       ((ratCtsInd (δ n) ((theoremMarketComputation T).quote (f n)
         (Encodable.encode (φ n))) (p n) : ℚ) : ℝ) := by
   rw [(theoremMarketComputation T).quote_exact (f n) (φ n), ratCtsInd_cast]
+
+set_option maxHeartbeats 1000000 in
+/-- The interval quote code for `thm:ref`: one Boolean decider names the fact
+`a n < Pₙ(φ n) < b n`, computed from the market program's exact rational quote.  This is
+the introspection target sentence, constructed with no caller-supplied truth relation.
+Paper node: `thm:ref` -/
+noncomputable def theoremIntervalQuoteCode (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
+    (a b : ℕ → ℚ) (ha : PolyRatCodes a) (hb : PolyRatCodes b) :
+    BooleanQuoteCode T (fun n ↦
+      (a n : ℝ) < liaHistory (theoremDP T) n (φ n) ∧
+        liaHistory (theoremDP T) n (φ n) < (b n : ℝ)) := by
+  refine BooleanQuoteCode.ofComputable ?_
+  rw [ComputablePred.computable_iff]
+  refine ⟨fun n =>
+    (!(decide ((theoremMarketComputation T).quote n (Encodable.encode (φ n)) ≤ a n))) &&
+      (!(decide (b n ≤ (theoremMarketComputation T).quote n (Encodable.encode (φ n))))),
+    ?_, ?_⟩
+  · have hq : Computable fun n =>
+        (theoremMarketComputation T).quote n (Encodable.encode (φ n)) :=
+      ((theoremMarketComputation T).quote_comp_computable Computable.id
+        hφ.choose_spec.primrec.to_comp : _)
+    have hleB : Primrec fun z : ℚ × ℚ => decide (z.1 ≤ z.2) := ratLE_prim.decide
+    have h1 : Computable fun n => decide
+        ((theoremMarketComputation T).quote n (Encodable.encode (φ n)) ≤ a n) :=
+      (hleB.to_comp.comp (hq.pair ha.computable) : _)
+    have h2 : Computable fun n => decide
+        (b n ≤ (theoremMarketComputation T).quote n (Encodable.encode (φ n))) :=
+      (hleB.to_comp.comp (hb.computable.pair hq) : _)
+    have hn1 := (Primrec.dom_bool Bool.not).to_comp.comp h1
+    have hn2 := (Primrec.dom_bool Bool.not).to_comp.comp h2
+    exact ((Primrec.dom_bool₂ Bool.and).to_comp.comp hn1 hn2 : _)
+  · funext n
+    rw [(theoremMarketComputation T).quote_exact n (φ n)]
+    simp only [eq_iff_iff, Bool.and_eq_true, Bool.not_eq_true',
+      decide_eq_false_iff_not, not_le, Rat.cast_lt]
+
+/-- **`thm:ref` (introspection), closed form over the constructed `LIA`** — the interval
+quote is constructed from the market program; the remaining hypotheses are the paper's
+own (`a`/`b` e.c. interval bounds and their market-generated feature presentations, the
+vanishing width, and the range side conditions).
+Paper node: `thm:ref` -/
+theorem lic_introspection_closed
+    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) (a b δ : ℕ → ℚ)
+    (ha : PolyRatCodes a) (hb : PolyRatCodes b)
+    (lowerFeature : ℕ → EF)
+    (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
+    (upperFeature : ℕ → EF)
+    (hupper : GeneratedRatFeature (liaHistory (theoremDP T)) b upperFeature)
+    (hδ : PolyRatCodes δ) (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
+    (hδpos : ∀ n, 0 < δ n)
+    (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
+    (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1) :
+    ∃ ε : ℕ → ℚ, (∀ n, 0 < ε n) ∧ Tendsto (fun n ↦ (ε n : ℝ)) atTop (𝓝 0) ∧
+      ∀ n,
+        (((a n : ℝ) + δ n < liaHistory (theoremDP T) n (φ n) ∧
+            liaHistory (theoremDP T) n (φ n) < (b n : ℝ) - δ n) →
+          1 - (ε n : ℝ) < liaHistory (theoremDP T) n
+            ((theoremIntervalQuoteCode T φ hφ a b ha hb).sentence n)) ∧
+        ((¬ ((a n : ℝ) - δ n < liaHistory (theoremDP T) n (φ n) ∧
+              liaHistory (theoremDP T) n (φ n) < (b n : ℝ) + δ n)) →
+          liaHistory (theoremDP T) n
+            ((theoremIntervalQuoteCode T φ hφ a b ha hb).sentence n) < (ε n : ℝ)) :=
+  lic_introspection_ofCode_unconditional (T := T) φ hφ a b δ lowerFeature hlower
+    upperFeature hupper hδ hδinv hδpos hδzero hab
+    (theoremIntervalQuoteCode T φ hφ a b ha hb)
 
 /-- **`thm:st` (self-trust), closed form over the constructed `LIA`** — no reflection
 hypotheses.  Both quoted LUVs are constructed: `B` is the confidence quote code of the
