@@ -949,6 +949,133 @@ lemma frameMid_polyTokenStream (second : Bool)
       intro z
       simp [frameMidSecond]
 
+/-- The token-model frame segment through the digit-side control view. -/
+lemma conditioningFrameTokenSegment_eq (second : Bool) (tf : ℕ → ℕ)
+    (ψc day bc ibc : ℕ) (ε : ℚ) (z : ℕ) :
+    conditioningFrameTokenSegment second tf ψc day bc ibc ε z =
+      if freezeMode4 (vpre tf z.unpair.1 z.unpair.2) = 0 ∧ tf z = 6 then []
+      else if freezeMode4 (vpre tf z.unpair.1 z.unpair.2) = 4 then
+        (if second then
+          rawLocallyGatedSecondBodyTokens (tf z) ψc day bc ibc ε ++ [8, 6, ψc]
+        else
+          rawLocallyGatedBetaBodyTokens (tf z) ψc day bc ibc ε ++
+            [8, 6, conjunctionCode (tf z) ψc])
+      else [tf z] := by
+  have hfst : (PrefixPatchCompile.freezeControlNat tf z).unpair.1 =
+      freezeMode4 (vpre tf z.unpair.1 z.unpair.2) := by
+    rw [PrefixPatchCompile.freezeControlNat]
+    simp only [Nat.unpair_pair]
+    exact freezeTokenControlAt_fst tf z.unpair.1 z.unpair.2
+  simp only [conditioningFrameTokenSegment, conditioningFrameTokenEmit, hfst]
+
+/-- The digitized frame-leg segment stream over any digit `PolySegStream`, with poly
+per-day condition-code and budget-code emitters. -/
+lemma frameLegEmit_polySegStream (second : Bool) {src : ℕ → List ℕ}
+    (hsrc : PolySegStream src)
+    {cψ cb ci : Code} {ψcF bcF ibcF : ℕ → ℕ}
+    (hψcF : PolyFueled cψ ψcF) (hbcF : PolyFueled cb bcF)
+    (hibcF : PolyFueled ci ibcF) (ε : ℚ) :
+    PolySegStream (fun z => digitize
+      (conditioningFrameTokenSegment second
+        (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+        (ψcF z.unpair.1) z.unpair.1 (bcF z.unpair.1) (ibcF z.unpair.1) ε z)) := by
+  obtain ⟨hcount, hbig⟩ := hsrc.undigitizeTokens
+  obtain ⟨cm, hmode⟩ := hsrc.freezeModeScan
+  obtain ⟨ctc, htagclamp⟩ := hbig.clampVal (PolyFueled.const 8)
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have hψz := hψcF.comp PolyFueled.left
+  have hbz := hbcF.comp PolyFueled.left
+  have hiz := hibcF.comp PolyFueled.left
+  -- The conjunction shell of the (possibly huge) trade sentence code.
+  have hconj : BigDigits (fun z => conjunctionCode
+      ((undigitize (src z.unpair.1)).getD z.unpair.2 0) (ψcF z.unpair.1)) := by
+    have hshell := ((BigDigits.const 3).natPair
+      (hbig.natPair (BigDigits.of_polyFueled hψz))).succ
+    exact hshell.of_eq fun z => by simp only [conjunctionCode, Nat.unpair_pair]
+  have hmid := frameMid_polyTokenStream second hψz PolyFueled.left hbz hiz ε
+  have hblock0 := PolySegStream.block (PolyFueled.const 0)
+  have hconjSeg := hconj.blockSeg
+  have hmidSeg := (PolySegStream.ofTokenStream hmid).digitizeStream
+  have hcopy := hbig.blockSeg
+  have hempty : PolySegStream (fun _ : ℕ => ([] : List ℕ)) :=
+    PolySegStream.ofTokenStream PolyTokenStream.nil
+  have heq6 := had.comp ((subc_polyFueled.comp (htagclamp.pair
+    (PolyFueled.const 6))).pair
+    (subc_polyFueled.comp ((PolyFueled.const 6).pair htagclamp)))
+  have hsel1 := had.comp (hmode.pair heq6)
+  have heq4 := had.comp ((subc_polyFueled.comp (hmode.pair
+    (PolyFueled.const 4))).pair
+    (subc_polyFueled.comp ((PolyFueled.const 4).pair hmode)))
+  -- Clamp faithfulness of the tag-6 test.
+  have hclampSix : ∀ z : ℕ, (min ((undigitize (src z.unpair.1)).getD z.unpair.2 0) 9
+      = 6 ↔ (undigitize (src z.unpair.1)).getD z.unpair.2 0 = 6) := by
+    intro z
+    by_cases h9 : (undigitize (src z.unpair.1)).getD z.unpair.2 0 ≤ 9
+    · rw [Nat.min_eq_left h9]
+    · rw [Nat.min_eq_right (by omega : 9 ≤ _)]
+      constructor
+      · intro h; omega
+      · intro h; omega
+  cases second with
+  | false =>
+      have hlong := ((hblock0.append hconjSeg).append hmidSeg).append hconjSeg
+      refine (hempty.ifZero (hlong.ifZero hcopy heq4) hsel1).of_eq fun z => ?_
+      rw [conditioningFrameTokenSegment_eq]
+      simp only [Nat.unpair_pair, Nat.reduceAdd, reduceIte]
+      by_cases hc1 : freezeMode4 (vpre
+          (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+          z.unpair.1 z.unpair.2) = 0 ∧
+          (undigitize (src z.unpair.1)).getD z.unpair.2 0 = 6
+      · rw [if_pos (by
+          rcases hc1 with ⟨hm0, ht6⟩
+          rw [hm0, ht6]
+          norm_num), if_pos hc1]
+        simp [digitize]
+      · rw [if_neg (by
+          intro hz0
+          apply hc1
+          have h1 : freezeMode4 (vpre
+              (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+              z.unpair.1 z.unpair.2) = 0 := by omega
+          have h2 : min ((undigitize (src z.unpair.1)).getD z.unpair.2 0) 9 = 6 := by
+            omega
+          exact ⟨h1, (hclampSix z).mp h2⟩), if_neg hc1]
+        by_cases hm4 : freezeMode4 (vpre
+            (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+            z.unpair.1 z.unpair.2) = 4
+        · rw [if_pos (by omega), if_pos hm4, frameBody_split_beta]
+          simp [digitize, List.append_assoc]
+        · rw [if_neg (by omega), if_neg hm4, digitize_singleton]
+  | true =>
+      have hlong := (hblock0.append hconjSeg).append hmidSeg
+      refine (hempty.ifZero (hlong.ifZero hcopy heq4) hsel1).of_eq fun z => ?_
+      rw [conditioningFrameTokenSegment_eq]
+      simp only [Nat.unpair_pair, Nat.reduceAdd, reduceIte]
+      by_cases hc1 : freezeMode4 (vpre
+          (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+          z.unpair.1 z.unpair.2) = 0 ∧
+          (undigitize (src z.unpair.1)).getD z.unpair.2 0 = 6
+      · rw [if_pos (by
+          rcases hc1 with ⟨hm0, ht6⟩
+          rw [hm0, ht6]
+          norm_num), if_pos hc1]
+        simp [digitize]
+      · rw [if_neg (by
+          intro hz0
+          apply hc1
+          have h1 : freezeMode4 (vpre
+              (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+              z.unpair.1 z.unpair.2) = 0 := by omega
+          have h2 : min ((undigitize (src z.unpair.1)).getD z.unpair.2 0) 9 = 6 := by
+            omega
+          exact ⟨h1, (hclampSix z).mp h2⟩), if_neg hc1]
+        by_cases hm4 : freezeMode4 (vpre
+            (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+            z.unpair.1 z.unpair.2) = 4
+        · rw [if_pos (by omega), if_pos hm4, frameBody_split_second]
+          simp [digitize, List.append_assoc]
+        · rw [if_neg (by omega), if_neg hm4, digitize_singleton]
+
 #print axioms strategyOfTokens_trades_eq_nil_of_bigDay
 #print axioms guardedConditionRun_polySegStream
 #print axioms PolySegStream.tradeCountScan
