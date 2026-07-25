@@ -207,6 +207,62 @@ the build gate between construction files.
 > whose trader *computes* on sentence codes (rather than copying them verbatim into
 > trade frames, which is digit-copyable and fine).  Plan accordingly: the class
 > layering is the honest steady state until someone wants the bignum layer.
+>
+> **Status 2026-07-25: bignum layer STARTED — B0 (the bignum emitter core) DONE**
+> (`Framework/DigitArith.lean`, registered in `Framework.lean`, green, axiom-clean).
+> * Spec layer: `dig4`/`len4` laws (`len4_eq_iff`, `mod_pow_succ4`, `dig4_mod_pow`,
+>   `len4_mod_pow_succ`), addition carries (`addCarry4_succ`, `dig4_add`),
+>   **schoolbook column multiplication** (`conv4`/`mulCarry4`/`colSum4`;
+>   `colSum4_decomp` is the loop invariant — partial column sums = poly-bounded carry +
+>   product truncation, via the triangle/complement split of the digit double sum —
+>   and `dig4_mul` the digit formula), and the MSB comparison flag (`ltFlag4_succ/_spec`).
+> * Implementation: `BigDigits x` (poly-fueled len4 + per-digit access to families with
+>   possibly exponential values), closed under `add` (ripple carry), `mul` (nested
+>   `PolyFueled.prec`: inner column convolution, outer carry — states poly-bounded,
+>   values never materialized), `ltNat` (flag), **`natPair`** (branch on flag between
+>   the two square-and-add arms — the `⌜φ⋏ψ⌝`-shell prerequisite), `succ`, `comp`,
+>   `of_polyFueled`, and the generic length scanner `len_of_digits`.  Delivery
+>   interface back to emission: `BigDigits.blockSeg` (digit block family is a
+>   `PolySegStream`).
+> * Gotcha log: `Nat.max` vs `max` breaks omega/rw — state bounds additively;
+>   `PolyFueled.of_eq` targets need type ascription or the metavar sticks; beta-reduce
+>   (`simp only []`) before omega in `IsPolyBounded` side goals.
+>
+> **Remaining plan (B1–B3), scoped 2026-07-25:**
+> * **B1 — digit transducer for the price rewrite.**  Input: a `Tok₂` certificate's
+>   clocked digit stream (a `PolySegStream`, possibly *not* `digitize` of anything, and
+>   with possibly-huge token values).  Key scoping facts settled this session:
+>   (a) the token-model transducer spec is *not implementable* verbatim in the digit
+>   model — `ψCode token` at a huge day token needs fuel poly in the *value* — so the
+>   digit transducer must **guard**: a scan (small control state: freeze mode ≤ 5 +
+>   pending *position*, not value) checks every mode-2 (price-day) token against `n` by
+>   digit comparison (`ltFlag4` against `natDigits4 n`); oversized day ⟹ emit `[]`.
+>   (b) Honesty obligation for the guard branch: day-token > n ⟹ `rank > n` ⟹
+>   `strategyOfTokens n` of BOTH source and rewritten stream is the empty strategy
+>   (`rank_price` = the day; validation is `∀ trade, rank ≤ n`), so `[]` realizes the
+>   translation.  Needs a token-level lemma "decoded stream's mode-2 tokens are price
+>   days of decoded trades" (fuel-free; prove by the `serializeTrades` induction that
+>   the existing `_serialize` lemmas use).
+>   (c) Good path: per-source-token digit segments assembled by
+>   `PolySegStream.concatVar`; copied tokens are digit-copies via a **BlockView** (poly
+>   locate of the `j`-th terminator, per-block digit access = a `BigDigits` family);
+>   the ONLY bignum token is `conjunctionCode pending ψc` =
+>   `(BigDigits.natPair pendingView (of_polyFueled ψcode)).natPair (const 3) |>.succ`
+>   (shell order: `pair 3 (pair φ ψ) + 1`) rendered by `blockSeg`.
+> * **B2 — digit frame passes** (`safeSeparatedFrameTokenOutput` analogue): budgets are
+>   poly (day, trade count); trade bodies are digit-copied twice; needs the same
+>   BlockView + a digit-level `frameTradeCount`/`parserStructurallyAccepts` — check
+>   their state sizes first (if the structural parser state embeds token *values*, use
+>   position-indexed state like the freeze scan).  Then
+>   `conditionedTranslation_preserves_ec₂` + `eventualConditionedTranslation_…₂`
+>   (zero-day membership test needs day materialized — same ≤ n guard).
+> * **B3 — criterion collapse**: `lic_conditioned*` produce `IsLogicalInductor₂`;
+>   then either collapse the two classes into one field or record the (now much
+>   smaller) residual.
+> * Effort note: B1+B2 mirror ~2000 lines of ConditioningCompiler proofs; expect
+>   multiple sessions.  B0 is committed independently — it is the reusable part
+>   (any future digit-model computation on sentence codes needs exactly these
+>   emitters).
 
 ## Tranche 3 — ctsInd-composed quotes + indicator product: witness-free `thm:st` (and cee/ceu)
 

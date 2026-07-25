@@ -7,6 +7,7 @@ substrate and the shared proof machinery.
 * `Asymptotics`  — the single limit vocabulary (`dd:asymp`).
 * `Foundations`  — language, worlds, markets, deductive processes (`def:lang`–`def:worlds`).
 * `Computable`   — the fuel-clocked computability model (`def:ec`, `dd:fuel`).
+* `DigitArith`   — bignum arithmetic on digit streams (`dd:fuel`, digit model).
 * `Criterion`    — expressible features (`def:tf`), traders, the LI criterion (`def:lic`).
 * `Affine`       — trade magnitude/net-worth bounds and affine combinations (buy orders).
 * `ROI`          — the return-on-investment lemma (App. `roi`) and the affine master theorem.
@@ -15,6 +16,7 @@ substrate and the shared proof machinery.
 import LogicalInduction.Framework.Asymptotics
 import LogicalInduction.Framework.Foundations
 import LogicalInduction.Framework.Computable
+import LogicalInduction.Framework.DigitArith
 import LogicalInduction.Framework.Criterion
 import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.ROI
