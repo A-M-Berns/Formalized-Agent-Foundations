@@ -704,8 +704,137 @@ lemma guardedConditionRun_polySegStream {s : ℕ → List ℕ} (h : PolySegStrea
       if_neg (fun hguard => hflagn (hguardIff.mpr hguard))]
     simp [digitize]
 
+/-! ## Digit-side frame scans
+
+The frame pass needs three more shallow scans over the (possibly huge-token) priced
+stream: the completed-trade count, the parser stack depth, and the structural
+acceptance test.  All three have small position-indexed states, and their token tests
+are tag tests (`≤ 8`), so they factor through the digit clamp exactly like the
+freeze-mode scan. -/
+
+lemma freezeControlNat_fst (tf : ℕ → ℕ) (n j : ℕ) :
+    (PrefixPatchCompile.freezeControlNat tf (Nat.pair n j)).unpair.1 =
+      freezeMode4 (vpre tf n j) := by
+  rw [PrefixPatchCompile.freezeControlNat]
+  simp only [Nat.unpair_pair]
+  exact freezeTokenControlAt_fst tf n j
+
+/-- The completed-trade count is poly-fueled over any digit `PolySegStream`. -/
+lemma PolySegStream.tradeCountScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+    ∃ c, PolyFueled c (fun z =>
+      (tradeScanAt (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
+        z.unpair.1 z.unpair.2).2) := by
+  obtain ⟨cm, hmode⟩ := h.freezeModeScan
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have hn := PolyFueled.left
+  have hj := PolyFueled.left.comp PolyFueled.right
+  have hprev := PolyFueled.right.comp PolyFueled.right
+  have hmz := hmode.comp (hn.pair hj)
+  have heq4 := had.comp ((subc_polyFueled.comp (hmz.pair (PolyFueled.const 4))).pair
+    (subc_polyFueled.comp ((PolyFueled.const 4).pair hmz)))
+  have hstep := ifzSel_polyFueled.comp ((hprev.succ_comp.pair hprev).pair heq4)
+  refine ⟨_, PolyFueled.prec (PolyFueled.const 0) hstep
+    (st := fun n j => (tradeScanAt
+      (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0) n j).2)
+    (fun n => rfl)
+    (fun n j => ?_)
+    ((IsPolyBounded.linear 0).of_le fun z =>
+      le_trans (tradeScanAt_snd_le _ _ _) (Nat.unpair_right_le z))⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  simp only [tradeScanAt, freezeControlNat_fst]
+  by_cases hm : freezeMode4 (vpre
+      (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0) n j) = 4
+  · rw [if_pos hm, if_pos (by omega)]
+  · rw [if_neg hm, if_neg (by omega)]
+
+lemma parserDepthNext_clamp (m t d : ℕ) :
+    parserDepthNext m (min t 9) d = parserDepthNext m t d := by
+  by_cases h : t ≤ 9
+  · rw [Nat.min_eq_left h]
+  · rw [Nat.min_eq_right (by omega : 9 ≤ t)]
+    rw [parserDepthNext, parserDepthNext]
+    split_ifs <;> omega
+
+/-- The shallow parser-depth scan is poly-fueled over any digit `PolySegStream`. -/
+lemma PolySegStream.depthScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+    ∃ c, PolyFueled c (fun z =>
+      parserDepthScanAt (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
+        z.unpair.1 z.unpair.2) := by
+  obtain ⟨hcount, hbig⟩ := h.undigitizeTokens
+  obtain ⟨cm, hmode⟩ := h.freezeModeScan
+  obtain ⟨ctc, htagclamp⟩ := hbig.clampVal (PolyFueled.const 8)
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have hn := PolyFueled.left
+  have hj := PolyFueled.left.comp PolyFueled.right
+  have hprev := PolyFueled.right.comp PolyFueled.right
+  have hmz := hmode.comp (hn.pair hj)
+  have htz := htagclamp.comp (hn.pair hj)
+  have heq (K : ℕ) {cf : Code} {f : ℕ → ℕ} (hf : PolyFueled cf f) :
+      ∃ c, PolyFueled c (fun z => f z - K + (K - f z)) :=
+    ⟨_, (had.comp ((subc_polyFueled.comp (hf.pair (PolyFueled.const K))).pair
+      (subc_polyFueled.comp ((PolyFueled.const K).pair hf)))).of_eq
+      (fun z => by simp only [Nat.unpair_pair])⟩
+  obtain ⟨c2, ht2⟩ := heq 2 htz
+  obtain ⟨c3, ht3⟩ := heq 3 htz
+  obtain ⟨c4t, ht4⟩ := heq 4 htz
+  obtain ⟨c8, ht8⟩ := heq 8 htz
+  obtain ⟨cm2, hm2⟩ := heq 2 hmz
+  obtain ⟨cm3, hm3⟩ := heq 3 hmz
+  obtain ⟨cm4, hm4⟩ := heq 4 hmz
+  obtain ⟨cm5, hm5⟩ := heq 5 hmz
+  have hpred := subc_polyFueled.comp (hprev.pair (PolyFueled.const 1))
+  -- Mode-0 branch: tag tests `2/3/4/8` all pop.
+  have hA := ifzSel_polyFueled.comp ((hpred.pair
+    (ifzSel_polyFueled.comp ((hpred.pair
+      (ifzSel_polyFueled.comp ((hpred.pair
+        (ifzSel_polyFueled.comp ((hpred.pair hprev).pair ht8))).pair ht4))).pair
+      ht3))).pair ht2)
+  -- Other modes: `2/3/5` push, `4` pops, rest holds.
+  have hC3 := ifzSel_polyFueled.comp ((hprev.succ_comp.pair hprev).pair hm5)
+  have hC2 := ifzSel_polyFueled.comp ((hpred.pair hC3).pair hm4)
+  have hC1 := ifzSel_polyFueled.comp ((hprev.succ_comp.pair hC2).pair hm3)
+  have hB := ifzSel_polyFueled.comp ((hprev.succ_comp.pair hC1).pair hm2)
+  have hstep := ifzSel_polyFueled.comp ((hA.pair hB).pair hmz)
+  refine ⟨_, PolyFueled.prec (PolyFueled.const 0) hstep
+    (st := fun n j => parserDepthScanAt
+      (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0) n j)
+    (fun n => rfl)
+    (fun n j => ?_)
+    ((IsPolyBounded.linear 0).of_le fun z =>
+      le_trans (parserDepthScanAt_le _ _ _) (Nat.unpair_right_le z))⟩
+  simp only [Nat.unpair_pair, ifzSelFn, Nat.reduceAdd]
+  simp only [parserDepthScanAt, freezeControlNat_fst]
+  rw [← parserDepthNext_clamp]
+  simp only [Nat.unpair_pair]
+  rw [parserDepthNext]
+  simp only [Nat.pred_eq_sub_one]
+  split_ifs <;> omega
+
+/-- The structural-acceptance test is poly-fueled over any digit `PolySegStream`
+(with its own undigitized token count as the length function). -/
+lemma PolySegStream.acceptsScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+    ∃ c, PolyFueled c (fun n => parserStructurallyAccepts
+      (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
+      (fun m => (undigitize (s m)).length) n) := by
+  obtain ⟨⟨cc, hcnt⟩, -⟩ := h.undigitizeTokens
+  obtain ⟨cm, hmode⟩ := h.freezeModeScan
+  obtain ⟨cdp, hdepth⟩ := PolySegStream.depthScan h
+  have hend := PolyFueled.id.pair hcnt
+  have hmodeEnd := hmode.comp hend
+  have hdepthEnd := hdepth.comp hend
+  have hstep := ifzSel_polyFueled.comp
+    (((ifzSel_polyFueled.comp (((PolyFueled.const 1).pair
+      (PolyFueled.const 0)).pair hdepthEnd)).pair (PolyFueled.const 0)).pair hmodeEnd)
+  refine ⟨_, hstep.of_eq fun n => ?_⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  rw [parserStructurallyAccepts, parserDepthScanNat]
+  simp only [Nat.unpair_pair, freezeControlNat_fst]
+
 #print axioms strategyOfTokens_trades_eq_nil_of_bigDay
 #print axioms guardedConditionRun_polySegStream
+#print axioms PolySegStream.tradeCountScan
+#print axioms PolySegStream.depthScan
+#print axioms PolySegStream.acceptsScan
 
 end ConditioningCompile
 
