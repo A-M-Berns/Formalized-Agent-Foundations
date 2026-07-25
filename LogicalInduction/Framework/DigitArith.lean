@@ -754,6 +754,92 @@ lemma natPair {x y : ℕ → ℕ} (hx : BigDigits x) (hy : BigDigits y) :
 lemma succ {x : ℕ → ℕ} (hx : BigDigits x) : BigDigits (fun m => x m + 1) :=
   hx.add (const 1)
 
+/-- One clamped accumulation step: clamping accumulator and place value at `M` loses
+nothing about the clamped total. -/
+lemma min_clamp_step (a p d M : ℕ) :
+    min (a + d * p) M = min (min a M + d * min p M) M := by
+  by_cases ha : a ≤ M
+  · rw [Nat.min_eq_left ha]
+    by_cases hp : p ≤ M
+    · rw [Nat.min_eq_left hp]
+    · rw [show min p M = M from Nat.min_eq_right (by omega)]
+      rcases Nat.eq_zero_or_pos d with rfl | hd
+      · simp
+      · have hdp : p ≤ d * p := Nat.le_mul_of_pos_left p hd
+        have hdM : M ≤ d * M := Nat.le_mul_of_pos_left M hd
+        rw [show min (a + d * p) M = M from Nat.min_eq_right (by omega),
+          show min (a + d * M) M = M from Nat.min_eq_right (by omega)]
+  · rw [show min a M = M from Nat.min_eq_right (by omega)]
+    have h1 : M ≤ a + d * p := by omega
+    have h2 : M ≤ M + d * min p M := by omega
+    rw [show min (a + d * p) M = M from Nat.min_eq_right h1,
+      show min (M + d * min p M) M = M from Nat.min_eq_right h2]
+
+lemma min_clamp_pow (p M : ℕ) :
+    min (4 * p) M = min (4 * min p M) M := by
+  by_cases hp : p ≤ M
+  · rw [Nat.min_eq_left hp]
+  · rw [show min p M = M from Nat.min_eq_right (by omega),
+      show min (4 * p) M = M from Nat.min_eq_right (by omega),
+      show min (4 * M) M = M from Nat.min_eq_right (by omega)]
+
+/-- **Bounded materialization**: the clamp `min x (B+1)` of a big value against a
+poly-fueled bound is poly-fueled — exact when `x ≤ B`, the sentinel `B+1` otherwise.
+This is how digit-model transducers decide smallness (tags, day indices) without ever
+holding a large value. -/
+lemma clampVal {x : ℕ → ℕ} (hx : BigDigits x) {cB : Code} {B : ℕ → ℕ}
+    (hB : PolyFueled cB B) :
+    ∃ c, PolyFueled c (fun m => min (x m) (B m + 1)) := by
+  obtain ⟨clx, cdx, hlx, hdx⟩ := hx
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  obtain ⟨cml, hml⟩ := mul_polyFueled
+  -- `minc ⟨a,b⟩ = a - (a - b) = min a b`.
+  have hminc : PolyFueled _ (fun z => min z.unpair.1 z.unpair.2) :=
+    (subc_polyFueled.comp (PolyFueled.left.pair
+      (subc_polyFueled.comp (PolyFueled.left.pair PolyFueled.right)))).of_eq
+      (fun z => by simp only [Nat.unpair_pair]; omega)
+  -- Step at `⟨m, ⟨i, prev⟩⟩` with `prev = ⟨acc', pow'⟩`.
+  have hm := PolyFueled.left
+  have hii := PolyFueled.left.comp PolyFueled.right
+  have hprev := PolyFueled.right.comp PolyFueled.right
+  have hacc := PolyFueled.left.comp hprev
+  have hpow := PolyFueled.right.comp hprev
+  have hM := (hB.comp hm).succ_comp
+  have hd := hdx.comp (hm.pair hii)
+  have haccNew := hminc.comp ((had.comp (hacc.pair (hml.comp (hd.pair hpow)))).pair hM)
+  have hpowNew := hminc.comp ((hml.comp ((PolyFueled.const 4).pair hpow)).pair hM)
+  have hstep := haccNew.pair hpowNew
+  have hvalB : IsPolyBounded B := by
+    obtain ⟨_, _, h, _⟩ := hB
+    exact h
+  have hstBound : IsPolyBounded (fun z =>
+      Nat.pair (min (x z.unpair.1 % 4 ^ z.unpair.2) (B z.unpair.1 + 1))
+        (min (4 ^ z.unpair.2) (B z.unpair.1 + 1))) := by
+    have hBz : IsPolyBounded (fun z : ℕ => B z.unpair.1 + 1) :=
+      (hvalB.comp isPolyBounded_fst).add_one
+    exact (hBz.pair hBz).of_le (fun z => by
+      exact le_trans (pair_le_pair_left' _ (min_le_right _ _))
+        (pair_le_pair_right' _ (min_le_right _ _)))
+  have hscan := PolyFueled.prec
+    (PolyFueled.const (Nat.pair 0 1))
+    hstep
+    (st := fun m i =>
+      Nat.pair (min (x m % 4 ^ i) (B m + 1)) (min (4 ^ i) (B m + 1)))
+    (fun m => by
+      simp only [pow_zero, Nat.mod_one]
+      rw [Nat.min_eq_left (by omega), Nat.min_eq_left (by omega)])
+    (fun m i => by
+      simp only [Nat.unpair_pair]
+      rw [mod_pow_succ4, pow_succ]
+      rw [show x m % 4 ^ i + 4 ^ i * dig4 (x m) i =
+        x m % 4 ^ i + dig4 (x m) i * 4 ^ i by ring]
+      rw [min_clamp_step, show (4:ℕ) ^ i * 4 = 4 * 4 ^ i by ring, min_clamp_pow])
+    hstBound
+  refine ⟨_, (PolyFueled.left.comp
+    (hscan.comp (PolyFueled.id.pair hlx))).of_eq (fun m => ?_)⟩
+  simp only [Nat.unpair_pair]
+  rw [Nat.mod_eq_of_lt (lt_four_pow_len4 (x m))]
+
 /-- The self-delimiting digit block family of a big value family is a `PolySegStream` —
 the digit-access analogue of `PolySegStream.block`, and the delivery interface from
 bignum arithmetic back to digit-stream emission. -/

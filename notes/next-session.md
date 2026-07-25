@@ -228,6 +228,23 @@ the build gate between construction files.
 >   `PolyFueled.of_eq` targets need type ascription or the metavar sticks; beta-reduce
 >   (`simp only []`) before omega in `IsPolyBounded` side goals.
 >
+> **Status 2026-07-25 (later): B1a (undigitize block view) also DONE** (same file,
+> green, axiom-clean, committed `265cc93`/`183ad57`/`9179693`):
+> * list spec: `blockSplit`/`digitVal` re-expression of `undigitize`
+>   (`undigitize_eq_blockSplit`), `blkTrack` (mid-fold block view) with its
+>   `blockStep` recurrence, digit/length/getD facts;
+> * fueled scans: `blockCount_polyFueled`, `blkTrackLen_polyFueled`,
+>   `blkDig_polyFueled` — `PolyFueled.prec` over the *virtual prefix*
+>   (`vpre`, so step equations hold on garbage inputs too), small packed states;
+> * capstone **`PolySegStream.undigitizeTokens`**: any digit `PolySegStream` gives
+>   poly-fueled token count + `BigDigits` token access (never materializing values).
+> * Gotchas added to the log: `rw [if_pos (by …)]` with anonymous/untyped proofs
+>   binds the *first* `if` in the goal — always `show`/type-ascribe the condition;
+>   identical if-conditions rewrite all copies at once (don't repeat the rw);
+>   `List.getD_eq_default` needs `(l := …)` when nested getDs both match;
+>   higher-order `len_of_digits`-style applications need the family given
+>   explicitly (`(s := …)`) or the bound-proof goal keeps a metavariable.
+>
 > **Remaining plan (B1–B3), scoped 2026-07-25:**
 > * **B1 — digit transducer for the price rewrite.**  Input: a `Tok₂` certificate's
 >   clocked digit stream (a `PolySegStream`, possibly *not* `digitize` of anything, and
