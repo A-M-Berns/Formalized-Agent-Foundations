@@ -351,6 +351,116 @@ lemma strategyOfTokens_trades_eq_nil_of_bigDay (n : ℕ) (ts : List ℕ) (j : �
           · simp at he
           · exact absurd (hval tr htr) (by omega)
 
+/-! ## The day-guard flag
+
+`1` iff some mode-2 position below the cursor carries a day token exceeding `n`.  The
+digit transducer emits nothing on flagged days; guard honesty (above) shows the empty
+emission still realizes the translation there. -/
+
+/-- Guard flag over the virtual token stream. -/
+def bigDayFlagAt (tf : ℕ → ℕ) (n : ℕ) : ℕ → ℕ
+  | 0 => 0
+  | j + 1 =>
+      if freezeMode4 (vpre tf n j) = 2 ∧ n < tf (Nat.pair n j) then 1
+      else bigDayFlagAt tf n j
+
+lemma bigDayFlagAt_le_one (tf : ℕ → ℕ) (n : ℕ) : ∀ j, bigDayFlagAt tf n j ≤ 1
+  | 0 => by simp [bigDayFlagAt]
+  | j + 1 => by
+      rw [bigDayFlagAt]
+      split
+      · exact le_refl 1
+      · exact bigDayFlagAt_le_one tf n j
+
+lemma bigDayFlagAt_eq_zero_iff (tf : ℕ → ℕ) (n J : ℕ) :
+    bigDayFlagAt tf n J = 0 ↔
+      ∀ j < J, freezeMode4 (vpre tf n j) = 2 → tf (Nat.pair n j) ≤ n := by
+  induction J with
+  | zero => simp [bigDayFlagAt]
+  | succ J ih =>
+      rw [bigDayFlagAt]
+      by_cases hc : freezeMode4 (vpre tf n J) = 2 ∧ n < tf (Nat.pair n J)
+      · rw [if_pos hc]
+        constructor
+        · omega
+        · intro hall
+          exact absurd (hall J (by omega) hc.1) (by omega)
+      · rw [if_neg hc, ih]
+        constructor
+        · intro hall j hj hm
+          rcases Nat.lt_or_ge j J with h | h
+          · exact hall j h hm
+          · have hjJ : j = J := by omega
+            subst hjJ
+            by_contra hlt
+            exact hc ⟨hm, by omega⟩
+        · intro hall j hj hm
+          exact hall j (by omega) hm
+
+/-- The virtual prefix of a list's `getD` view is its `take`. -/
+lemma vpre_eq_take {ts : List ℕ} {tf : ℕ → ℕ} {n : ℕ}
+    (hget : ∀ i, i < ts.length → tf (Nat.pair n i) = ts.getD i 0)
+    {j : ℕ} (hj : j ≤ ts.length) :
+    vpre tf n j = ts.take j := by
+  apply List.ext_getElem
+  · simp only [vpre, List.length_map, List.length_range, List.length_take]
+    omega
+  · intro i h1 h2
+    simp only [vpre, List.getElem_map, List.getElem_range, List.getElem_take]
+    have hi : i < j := by
+      simpa only [vpre, List.length_map, List.length_range] using h1
+    rw [hget i (by omega)]
+    exact List.getD_eq_getElem ts 0 (by omega)
+
+/-- The guard flag is poly-fueled over any digit `PolySegStream` (input `⟨n, j⟩`):
+the mode comes from the freeze scan and the day comparison from the bounded clamp. -/
+lemma PolySegStream.bigDayFlagScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+    ∃ c, PolyFueled c (fun z =>
+      bigDayFlagAt (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
+        z.unpair.1 z.unpair.2) := by
+  obtain ⟨cm, hmode⟩ := h.freezeModeScan
+  obtain ⟨cd, hclamp⟩ := h.dayClampTokens
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  -- Step input `⟨n, ⟨j, prev⟩⟩`.
+  have hn := PolyFueled.left
+  have hj := PolyFueled.left.comp PolyFueled.right
+  have hprev := PolyFueled.right.comp PolyFueled.right
+  have hmz := hmode.comp (hn.pair hj)
+  have hdz := hclamp.comp (hn.pair hj)
+  have heq2 := had.comp ((subc_polyFueled.comp (hmz.pair (PolyFueled.const 2))).pair
+    (subc_polyFueled.comp ((PolyFueled.const 2).pair hmz)))
+  have hexcess := subc_polyFueled.comp (hdz.pair hn)
+  have hinner := ifzSel_polyFueled.comp ((hexcess.pair (PolyFueled.const 0)).pair heq2)
+  have hstep := ifzSel_polyFueled.comp ((hprev.pair (PolyFueled.const 1)).pair hinner)
+  refine ⟨_, PolyFueled.prec (PolyFueled.const 0) hstep
+    (st := fun n j => bigDayFlagAt
+      (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0) n j)
+    (fun n => rfl)
+    (fun n j => ?_)
+    ((IsPolyBounded.linear 1).of_le fun z =>
+      le_trans (bigDayFlagAt_le_one _ _ _) (by omega))⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  rw [bigDayFlagAt]
+  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
+  have htfj : tf (Nat.pair n j) = (undigitize (s n)).getD j 0 := by
+    rw [htf]
+    simp only [Nat.unpair_pair]
+  rw [← htfj]
+  by_cases hm : freezeMode4 (vpre tf n j) = 2
+  · have heq2z : freezeMode4 (vpre tf n j) - 2 + (2 - freezeMode4 (vpre tf n j)) = 0 := by
+      omega
+    rw [if_pos heq2z]
+    by_cases hd : n < tf (Nat.pair n j)
+    · rw [if_pos ⟨hm, hd⟩, Nat.min_eq_right (by omega : n + 1 ≤ tf (Nat.pair n j)),
+        if_neg (by omega : ¬ n + 1 - n = 0)]
+    · rw [if_neg (by tauto : ¬ (freezeMode4 (vpre tf n j) = 2 ∧ n < tf (Nat.pair n j))),
+        Nat.min_eq_left (by omega : tf (Nat.pair n j) ≤ n + 1),
+        if_pos (by omega : tf (Nat.pair n j) - n = 0)]
+  · rw [if_neg (by tauto : ¬ (freezeMode4 (vpre tf n j) = 2 ∧ n < tf (Nat.pair n j))),
+      if_neg (by omega : ¬ freezeMode4 (vpre tf n j) - 2 +
+        (2 - freezeMode4 (vpre tf n j)) = 0),
+      if_pos rfl]
+
 end ConditioningCompile
 
 end LogicalInduction
