@@ -977,6 +977,307 @@ lemma blockStep_fst_length (s : List (List ℕ) × List ℕ) (d : ℕ) :
   rw [blockStep]
   by_cases h : d < 4 <;> simp [h]
 
+lemma blockSplit_fst_length_le (ds : List ℕ) :
+    (blockSplit ds).1.length ≤ ds.length := by
+  suffices h : ∀ init : List (List ℕ) × List ℕ,
+      (List.foldl blockStep init ds).1.length ≤ init.1.length + ds.length by
+    simpa [blockSplit] using h ([], [])
+  induction ds with
+  | nil => intro init; simp
+  | cons d rest ih =>
+      intro init
+      rw [List.foldl_cons, List.length_cons]
+      refine le_trans (ih (blockStep init d)) ?_
+      rw [blockStep_fst_length]
+      split <;> omega
+
+/-- Snoc access: appending one element shifts `getD` in the expected way. -/
+lemma getD_snoc (l : List ℕ) (d k : ℕ) :
+    (l ++ [d]).getD k 0 = if l.length = k then d else l.getD k 0 := by
+  rcases Nat.lt_trichotomy k l.length with h | h | h
+  · rw [if_neg (by omega), List.getD_append _ _ _ _ h]
+  · subst h
+    rw [if_pos rfl, List.getD_append_right _ _ _ _ (le_refl _)]
+    simp
+  · rw [if_neg (by omega),
+      List.getD_eq_default _ _ (show (l ++ [d]).length ≤ k by
+        simp only [List.length_append, List.length_cons, List.length_nil]; omega),
+      List.getD_eq_default _ _ (by omega : l.length ≤ k)]
+
+/-! ### The fueled block scans
+
+Each scan iterates `PolyFueled.prec` over the digit index of an emitted stream, with a
+small packed state.  The specs are phrased over the *virtual prefix* — the digits the
+emitter itself produces — so the `prec` step equations hold unconditionally, and the
+final evaluation at the emitted length rewrites to the actual stream. -/
+
+/-- The first `i` digits the emitter produces for day `n`. -/
+def vpre (tokenFn : ℕ → ℕ) (n i : ℕ) : List ℕ :=
+  (List.range i).map fun k => tokenFn (Nat.pair n k)
+
+lemma vpre_succ (tokenFn : ℕ → ℕ) (n i : ℕ) :
+    vpre tokenFn n (i + 1) = vpre tokenFn n i ++ [tokenFn (Nat.pair n i)] := by
+  rw [vpre, List.range_succ, List.map_append, vpre]
+  rfl
+
+lemma vpre_eq_stream {s : ℕ → List ℕ} {tokenFn lenFn : ℕ → ℕ}
+    (hslen : ∀ n, (s n).length = lenFn n)
+    (hget : ∀ n i, i < lenFn n → tokenFn (Nat.pair n i) = (s n).getD i 0) (n : ℕ) :
+    vpre tokenFn n (lenFn n) = s n := by
+  apply List.ext_getElem
+  · simp [vpre, hslen n]
+  · intro i h1 h2
+    simp only [vpre, List.getElem_map, List.getElem_range]
+    rw [hget n i (by simpa [vpre] using h1)]
+    exact List.getD_eq_getElem (s n) 0 h2
+
+/-- The completed-block count of the virtual prefix is poly-fueled. -/
+lemma blockCount_polyFueled {ct : Code} {tokenFn : ℕ → ℕ}
+    (htok : PolyFueled ct tokenFn) :
+    ∃ c, PolyFueled c (fun z =>
+      (blockSplit (vpre tokenFn z.unpair.1 z.unpair.2)).1.length) := by
+  -- Step on `⟨n, ⟨i, prev⟩⟩`: bump on terminator digits.
+  have hd := htok.comp (PolyFueled.left.pair (PolyFueled.left.comp PolyFueled.right))
+  have hprev := PolyFueled.right.comp PolyFueled.right
+  have htest := subc_polyFueled.comp (hd.pair (PolyFueled.const 3))
+  have hstep := ifzSel_polyFueled.comp ((hprev.pair hprev.succ_comp).pair htest)
+  refine ⟨_, PolyFueled.prec (PolyFueled.const 0) hstep
+    (st := fun n i => (blockSplit (vpre tokenFn n i)).1.length)
+    (fun n => by simp [vpre, blockSplit])
+    (fun n i => ?_)
+    (⟨1, 1, fun z => ?_⟩)⟩
+  · simp only [Nat.unpair_pair, ifzSelFn]
+    rw [vpre_succ, blockSplit_snoc, blockStep_fst_length]
+    by_cases h : tokenFn (Nat.pair n i) < 4
+    · rw [if_pos h, if_pos (by omega : tokenFn (Nat.pair n i) - 3 = 0)]
+    · rw [if_neg h, if_neg (by omega : ¬ tokenFn (Nat.pair n i) - 3 = 0)]
+  · simp only []
+    have h1 := blockSplit_fst_length_le (vpre tokenFn z.unpair.1 z.unpair.2)
+    have h2 : (vpre tokenFn z.unpair.1 z.unpair.2).length = z.unpair.2 := by
+      simp [vpre]
+    have h3 := Nat.unpair_right_le z
+    rw [pow_one]
+    omega
+
+lemma pair_le_one_add_sq (z : ℕ) : Nat.pair z z ≤ 1 * (z + 1) ^ 2 + 1 := by
+  have hp : Nat.pair z z = z * z + z + z := by
+    rw [Nat.pair, if_neg (lt_irrefl z)]
+  have hsq : (z + 1) ^ 2 = z * z + 2 * z + 1 := by ring
+  omega
+
+lemma blockSplit_track_length_le (ds : List ℕ) (j : ℕ) :
+    (blkTrack (blockSplit ds) j).length ≤ ds.length := by
+  suffices h : ∀ init : List (List ℕ) × List ℕ,
+      (blkTrack (List.foldl blockStep init ds) j).length ≤
+        (blkTrack init j).length + ds.length by
+    simpa [blockSplit, blkTrack] using h ([], [])
+  induction ds with
+  | nil => intro init; simp
+  | cons d rest ih =>
+      intro init
+      rw [List.foldl_cons, List.length_cons]
+      refine le_trans (ih (blockStep init d)) ?_
+      rw [blkTrack_blockStep]
+      split
+      · simp only [List.length_append, List.length_cons, List.length_nil]
+        omega
+      · omega
+
+lemma blkTrack_digits_lt (ds : List ℕ) (j : ℕ) :
+    ∀ d ∈ blkTrack (blockSplit ds) j, d < 4 := by
+  intro d hd
+  rw [blkTrack] at hd
+  by_cases hj : j < ((blockSplit ds).1 ++ [(blockSplit ds).2]).length
+  · have hget := List.getD_eq_getElem ((blockSplit ds).1 ++ [(blockSplit ds).2]) [] hj
+    rw [hget] at hd
+    have hmem := List.getElem_mem (l := (blockSplit ds).1 ++ [(blockSplit ds).2]) hj
+    rcases List.mem_append.mp hmem with hb | hb
+    · exact (blockSplit_digits_lt ds).1 _ hb d hd
+    · rw [List.mem_singleton] at hb
+      exact (blockSplit_digits_lt ds).2 d (hb ▸ hd)
+  · rw [List.getD_eq_default _ _ (by omega)] at hd
+    simp at hd
+
+/-- The `blkTrack` length scan: state `⟨count, trackLen⟩` at `⟨⟨n,j⟩, i⟩`. -/
+lemma blkTrackLen_polyFueled {ct : Code} {tokenFn : ℕ → ℕ}
+    (htok : PolyFueled ct tokenFn) :
+    ∃ c, PolyFueled c (fun z =>
+      Nat.pair
+        (blockSplit (vpre tokenFn z.unpair.1.unpair.1 z.unpair.2)).1.length
+        (blkTrack (blockSplit (vpre tokenFn z.unpair.1.unpair.1 z.unpair.2))
+          z.unpair.1.unpair.2).length) := by
+  -- `z = ⟨⟨n,j⟩, ⟨i, prev⟩⟩` in the step.
+  have hn := PolyFueled.left.comp PolyFueled.left
+  have hj := PolyFueled.right.comp PolyFueled.left
+  have hi := PolyFueled.left.comp PolyFueled.right
+  have hprev := PolyFueled.right.comp PolyFueled.right
+  have hcount := PolyFueled.left.comp hprev
+  have htl := PolyFueled.right.comp hprev
+  have hd := htok.comp (hn.pair hi)
+  have ht1 := subc_polyFueled.comp (hd.pair (PolyFueled.const 3))
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have ht2 := had.comp ((subc_polyFueled.comp (hcount.pair hj)).pair
+    (subc_polyFueled.comp (hj.pair hcount)))
+  have hcount' := ifzSel_polyFueled.comp ((hcount.pair hcount.succ_comp).pair ht1)
+  have htlInner := ifzSel_polyFueled.comp ((htl.succ_comp.pair htl).pair ht2)
+  have htl' := ifzSel_polyFueled.comp ((htlInner.pair htl).pair ht1)
+  have hstep := hcount'.pair htl'
+  refine ⟨_, PolyFueled.prec (PolyFueled.const (Nat.pair 0 0)) hstep
+    (st := fun a i => Nat.pair
+      (blockSplit (vpre tokenFn a.unpair.1 i)).1.length
+      (blkTrack (blockSplit (vpre tokenFn a.unpair.1 i)) a.unpair.2).length)
+    (fun a => by simp [vpre, blockSplit, blkTrack])
+    (fun a i => ?_)
+    (⟨1, 2, fun z => ?_⟩)⟩
+  · simp only [Nat.unpair_pair, ifzSelFn]
+    rw [vpre_succ, blockSplit_snoc, blockStep_fst_length, blkTrack_blockStep]
+    set C := (blockSplit (vpre tokenFn a.unpair.1 i)).1.length with hC
+    by_cases h1 : tokenFn (Nat.pair a.unpair.1 i) < 4
+    · have hd0 : tokenFn (Nat.pair a.unpair.1 i) - 3 = 0 := by omega
+      by_cases h2 : C = a.unpair.2
+      · have ht20 : C - a.unpair.2 + (a.unpair.2 - C) = 0 := by omega
+        rw [if_pos h1, if_pos ⟨h1, h2⟩, if_pos hd0, if_pos ht20, if_pos hd0]
+        simp [List.length_append]
+      · have ht2n : ¬ C - a.unpair.2 + (a.unpair.2 - C) = 0 := by omega
+        have hcn : ¬ (tokenFn (Nat.pair a.unpair.1 i) < 4 ∧ C = a.unpair.2) := by
+          tauto
+        rw [if_pos h1, if_neg hcn, if_pos hd0, if_neg ht2n, if_pos hd0]
+    · have hdn : ¬ tokenFn (Nat.pair a.unpair.1 i) - 3 = 0 := by omega
+      have hcn : ¬ (tokenFn (Nat.pair a.unpair.1 i) < 4 ∧ C = a.unpair.2) := by
+        tauto
+      rw [if_neg h1, if_neg hcn, if_neg hdn, if_neg hdn]
+  · simp only []
+    have hpre : (vpre tokenFn z.unpair.1.unpair.1 z.unpair.2).length = z.unpair.2 := by
+      simp [vpre]
+    have h1 : (blockSplit (vpre tokenFn z.unpair.1.unpair.1 z.unpair.2)).1.length ≤ z := by
+      have := blockSplit_fst_length_le (vpre tokenFn z.unpair.1.unpair.1 z.unpair.2)
+      have := Nat.unpair_right_le z
+      omega
+    have h2 : (blkTrack (blockSplit (vpre tokenFn z.unpair.1.unpair.1 z.unpair.2))
+        z.unpair.1.unpair.2).length ≤ z := by
+      have := blockSplit_track_length_le (vpre tokenFn z.unpair.1.unpair.1 z.unpair.2)
+        z.unpair.1.unpair.2
+      have := Nat.unpair_right_le z
+      omega
+    exact le_trans (le_trans (pair_le_pair_left' _ h1) (pair_le_pair_right' _ h2))
+      (pair_le_one_add_sq z)
+
+/-- The block digit scan: state `⟨count, ⟨trackLen, ans⟩⟩` at `⟨⟨⟨n,j⟩,k⟩, i⟩`, where
+`ans` is digit `k` of block `j` seen so far (digits stored are `< 4`, so the whole
+state stays small). -/
+lemma blkDig_polyFueled {ct : Code} {tokenFn : ℕ → ℕ}
+    (htok : PolyFueled ct tokenFn) :
+    ∃ c, PolyFueled c (fun z =>
+      Nat.pair
+        (blockSplit (vpre tokenFn z.unpair.1.unpair.1.unpair.1 z.unpair.2)).1.length
+        (Nat.pair
+          (blkTrack (blockSplit (vpre tokenFn z.unpair.1.unpair.1.unpair.1 z.unpair.2))
+            z.unpair.1.unpair.1.unpair.2).length
+          ((blkTrack (blockSplit (vpre tokenFn z.unpair.1.unpair.1.unpair.1 z.unpair.2))
+            z.unpair.1.unpair.1.unpair.2).getD z.unpair.1.unpair.2 0))) := by
+  -- Step input `⟨a, ⟨i, prev⟩⟩` with `a = ⟨⟨n,j⟩,k⟩`.
+  have hn := PolyFueled.left.comp (PolyFueled.left.comp PolyFueled.left)
+  have hj := PolyFueled.right.comp (PolyFueled.left.comp PolyFueled.left)
+  have hk := PolyFueled.right.comp PolyFueled.left
+  have hi := PolyFueled.left.comp PolyFueled.right
+  have hprev := PolyFueled.right.comp PolyFueled.right
+  have hcount := PolyFueled.left.comp hprev
+  have htl := PolyFueled.left.comp (PolyFueled.right.comp hprev)
+  have hans := PolyFueled.right.comp (PolyFueled.right.comp hprev)
+  have hd := htok.comp (hn.pair hi)
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have ht1 := subc_polyFueled.comp (hd.pair (PolyFueled.const 3))
+  have ht2 := had.comp ((subc_polyFueled.comp (hcount.pair hj)).pair
+    (subc_polyFueled.comp (hj.pair hcount)))
+  have ht3 := had.comp ((subc_polyFueled.comp (htl.pair hk)).pair
+    (subc_polyFueled.comp (hk.pair htl)))
+  have hcount' := ifzSel_polyFueled.comp ((hcount.pair hcount.succ_comp).pair ht1)
+  have htlInner := ifzSel_polyFueled.comp ((htl.succ_comp.pair htl).pair ht2)
+  have htl' := ifzSel_polyFueled.comp ((htlInner.pair htl).pair ht1)
+  have hans3 := ifzSel_polyFueled.comp ((hd.pair hans).pair ht3)
+  have hans2 := ifzSel_polyFueled.comp ((hans3.pair hans).pair ht2)
+  have hans' := ifzSel_polyFueled.comp ((hans2.pair hans).pair ht1)
+  have hstep := hcount'.pair (htl'.pair hans')
+  have hBpoly : IsPolyBounded (fun z : ℕ => Nat.pair z (Nat.pair z (z + 3))) :=
+    (IsPolyBounded.linear 0).pair ((IsPolyBounded.linear 0).pair
+      (IsPolyBounded.linear 3))
+  refine ⟨_, PolyFueled.prec (PolyFueled.const (Nat.pair 0 (Nat.pair 0 0))) hstep
+    (st := fun a i => Nat.pair
+      (blockSplit (vpre tokenFn a.unpair.1.unpair.1 i)).1.length
+      (Nat.pair
+        (blkTrack (blockSplit (vpre tokenFn a.unpair.1.unpair.1 i))
+          a.unpair.1.unpair.2).length
+        ((blkTrack (blockSplit (vpre tokenFn a.unpair.1.unpair.1 i))
+          a.unpair.1.unpair.2).getD a.unpair.2 0)))
+    (fun a => by simp [vpre, blockSplit, blkTrack])
+    (fun a i => ?_)
+    (hBpoly.of_le (fun z => ?_))⟩
+  · simp only [Nat.unpair_pair, ifzSelFn]
+    rw [vpre_succ, blockSplit_snoc, blockStep_fst_length, blkTrack_blockStep]
+    set D := tokenFn (Nat.pair a.unpair.1.unpair.1 i) with hD
+    set C := (blockSplit (vpre tokenFn a.unpair.1.unpair.1 i)).1.length with hC
+    set TR := blkTrack (blockSplit (vpre tokenFn a.unpair.1.unpair.1 i))
+      a.unpair.1.unpair.2 with hTR
+    set J := a.unpair.1.unpair.2 with hJ
+    set K := a.unpair.2 with hK
+    congr 1
+    · by_cases h1 : D < 4
+      · rw [if_pos h1, if_pos (by omega : D - 3 = 0)]
+      · rw [if_neg h1, if_neg (by omega : ¬ D - 3 = 0)]
+    congr 1
+    · by_cases h1 : D < 4
+      · by_cases h2 : C = J
+        · rw [if_pos (show D < 4 ∧ C = J from ⟨h1, h2⟩),
+            if_pos (by omega : D - 3 = 0), if_pos (by omega : C - J + (J - C) = 0)]
+          simp [List.length_append]
+        · rw [if_neg (show ¬ (D < 4 ∧ C = J) by tauto),
+            if_pos (by omega : D - 3 = 0), if_neg (by omega : ¬ C - J + (J - C) = 0)]
+      · rw [if_neg (show ¬ (D < 4 ∧ C = J) by tauto),
+          if_neg (by omega : ¬ D - 3 = 0)]
+    · by_cases h1 : D < 4
+      · by_cases h2 : C = J
+        · rw [if_pos (show D < 4 ∧ C = J from ⟨h1, h2⟩), getD_snoc,
+            if_pos (by omega : D - 3 = 0), if_pos (by omega : C - J + (J - C) = 0)]
+          by_cases h3 : TR.length = K
+          · rw [if_pos h3, if_pos (by omega : TR.length - K + (K - TR.length) = 0)]
+          · rw [if_neg h3, if_neg (by omega : ¬ TR.length - K + (K - TR.length) = 0)]
+        · rw [if_neg (show ¬ (D < 4 ∧ C = J) by tauto),
+            if_pos (by omega : D - 3 = 0), if_neg (by omega : ¬ C - J + (J - C) = 0)]
+      · rw [if_neg (show ¬ (D < 4 ∧ C = J) by tauto),
+          if_neg (by omega : ¬ D - 3 = 0)]
+  · simp only []
+    have hpre : (vpre tokenFn z.unpair.1.unpair.1.unpair.1 z.unpair.2).length
+        = z.unpair.2 := by simp [vpre]
+    have h1 : (blockSplit (vpre tokenFn z.unpair.1.unpair.1.unpair.1
+        z.unpair.2)).1.length ≤ z := by
+      have := blockSplit_fst_length_le
+        (vpre tokenFn z.unpair.1.unpair.1.unpair.1 z.unpair.2)
+      have := Nat.unpair_right_le z
+      omega
+    have h2 : (blkTrack (blockSplit (vpre tokenFn z.unpair.1.unpair.1.unpair.1
+        z.unpair.2)) z.unpair.1.unpair.1.unpair.2).length ≤ z := by
+      have := blockSplit_track_length_le
+        (vpre tokenFn z.unpair.1.unpair.1.unpair.1 z.unpair.2)
+        z.unpair.1.unpair.1.unpair.2
+      have := Nat.unpair_right_le z
+      omega
+    have h3 : (blkTrack (blockSplit (vpre tokenFn z.unpair.1.unpair.1.unpair.1
+        z.unpair.2)) z.unpair.1.unpair.1.unpair.2).getD z.unpair.1.unpair.2 0
+        ≤ z + 3 := by
+      set TR := blkTrack (blockSplit (vpre tokenFn z.unpair.1.unpair.1.unpair.1
+        z.unpair.2)) z.unpair.1.unpair.1.unpair.2 with hTR
+      by_cases hkk : z.unpair.1.unpair.2 < TR.length
+      · have hget := List.getD_eq_getElem TR 0 hkk
+        rw [hget]
+        have hmem := List.getElem_mem (l := TR) hkk
+        have := blkTrack_digits_lt (vpre tokenFn z.unpair.1.unpair.1.unpair.1
+          z.unpair.2) z.unpair.1.unpair.1.unpair.2 _ hmem
+        omega
+      · rw [List.getD_eq_default _ _ (by omega)]
+        omega
+    exact le_trans (pair_le_pair_right' _ (le_trans (pair_le_pair_right' _ h3)
+      (pair_le_pair_left' _ h2))) (pair_le_pair_left' _ h1)
+
 #print axioms BigDigits.add
 #print axioms BigDigits.mul
 #print axioms BigDigits.natPair
