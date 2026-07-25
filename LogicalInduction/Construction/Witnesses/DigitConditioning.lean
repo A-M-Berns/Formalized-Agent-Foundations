@@ -1182,6 +1182,158 @@ lemma safeSeparatedFrameDigitOutput_polySegStream {src : ℕ → List ℕ}
   · rw [if_pos hacc, if_pos hacc]
   · rw [if_neg hacc, if_neg hacc, digitize_append]
 
+/-- Strategies with equal trade lists are equal (the rank certificate is proof
+irrelevant). -/
+lemma strategy_ext_trades {n : ℕ} {S S' : Strategy n} (h : S.trades = S'.trades) :
+    S = S' := by
+  cases S
+  cases S'
+  simpa using h
+
+/-- **The conditioning translation preserves digit-metered efficient computability**
+(`EfficientlyComputableTok₂ → EfficientlyComputableTok₂`), via the guarded digit
+compiler: price days are materialized by clamp, the conjunction shells are rendered
+from digit access, and on guarded days (an oversized price-day token) both the source
+strategy and its translation are empty, so the empty emission is exact.
+Paper node: `thm:scon` -/
+lemma conditionedTranslation_preserves_ec₂
+    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) (ε : ℚ)
+    (T : Trader) (hT : EfficientlyComputableTok₂ T) :
+    EfficientlyComputableTok₂ (T.conditionedTranslation ψ ε) := by
+  obtain ⟨lengthCode, tokenCode, a, k, hcert⟩ := hT
+  let source : ℕ → List ℕ := fun n =>
+    clockedTokens lengthCode tokenCode (PrefixPatchCompile.ecClock a k n) n
+  have hsource : PolySegStream source :=
+    PrefixPatchCompile.clockedTokens_polySegStream lengthCode tokenCode a k
+  let priced : ℕ → List ℕ := fun n =>
+    digitize (guardedConditionTokens (fun d => Encodable.encode (ψ d)) ε n
+      (undigitize (source n)))
+  have hpriced : PolySegStream priced :=
+    guardedConditionRun_polySegStream hsource ψ hψ ε
+  let tfP : ℕ → ℕ := fun w => (undigitize (priced w.unpair.1)).getD w.unpair.2 0
+  let lenP : ℕ → ℕ := fun m => (undigitize (priced m)).length
+  let framed : ℕ → List ℕ := fun n =>
+    digitize (safeSeparatedFrameTokenOutput tfP lenP (ψ n) ε
+      (frameBudget n (frameTradeCount tfP lenP n)) n (undigitize (priced n)))
+  have hframed : PolySegStream framed :=
+    safeSeparatedFrameDigitOutput_polySegStream hpriced ψ hψ ε
+  apply ecTok₂_of_rawSegStream (T.conditionedTranslation ψ ε) hframed
+  intro n
+  have horig : strategyOfTokens n (undigitize (source n)) = T.strat n :=
+    congrFun (congrArg Trader.strat hcert) n
+  have hundig : undigitize (framed n) =
+      safeSeparatedFrameTokenOutput tfP lenP (ψ n) ε
+        (frameBudget n (frameTradeCount tfP lenP n)) n (undigitize (priced n)) :=
+    undigitize_digitize _
+  rw [hundig]
+  by_cases hguard : ∀ j < (undigitize (source n)).length,
+      freezeMode4 ((undigitize (source n)).take j) = 2 →
+        (undigitize (source n)).getD j 0 ≤ n
+  · -- Good path: the priced digit stream decodes to the token-model rewrite.
+    have hpricedTok : undigitize (priced n) =
+        (conditionPriceTokenRun (fun d => Encodable.encode (ψ d)) ε (0, 0)
+          (undigitize (source n))).2 := by
+      show undigitize (digitize _) = _
+      rw [undigitize_digitize, guardedConditionTokens, if_pos hguard]
+    have hpricedEq : undigitize (priced n) =
+        (List.range (lenP n)).map fun i => tfP (Nat.pair n i) := by
+      conv_lhs => rw [list_eq_rangeMap_getD (undigitize (priced n))]
+      refine List.map_congr_left fun j _ => ?_
+      show (undigitize (priced n)).getD j 0 =
+        (undigitize (priced (Nat.pair n j).unpair.1)).getD (Nat.pair n j).unpair.2 0
+      simp only [Nat.unpair_pair]
+    have hframes := strategyOfTokens_safeSeparatedFrameTokenOutput_trades
+      tfP lenP (ψ n) ε (frameBudget n (frameTradeCount tfP lenP n)) n
+      (undigitize (priced n)) hpricedEq
+    have hprice := strategyOfTokens_conditionPriceTokenRun_trades ψ ε n
+      (undigitize (source n))
+    rw [← hpricedTok] at hprice
+    rw [congrArg Strategy.trades horig] at hprice
+    refine strategy_ext_trades ?_
+    rw [hframes]
+    by_cases hempty : (T.strat n).trades = []
+    · rw [hprice, hempty]
+      simp [Trader.conditionedTranslation,
+        Strategy.separatedLocallyGatedConditionalContract]
+      exact hempty
+    · have hpricedNe : (strategyOfTokens n (undigitize (priced n))).trades ≠ [] := by
+        rw [hprice]
+        simpa using hempty
+      have hdecodePriced :=
+        deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
+          n (undigitize (priced n)) hpricedNe
+      have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
+        (undigitize (priced n)) (strategyOfTokens n (undigitize (priced n))).trades
+        hdecodePriced
+      have hreadyPricedTokens :
+          EF.streamReadFrom
+              ((List.range (lenP n)).map fun i => tfP (Nat.pair n i))
+              (some EF.streamInitial) =
+            some ((0, none),
+              ([], (strategyOfTokens n (undigitize (priced n))).trades)) := by
+        rw [← hpricedEq]
+        exact hreadyPriced
+      have hcount : frameTradeCount tfP lenP n = (T.strat n).trades.length := by
+        calc
+          frameTradeCount tfP lenP n =
+              (strategyOfTokens n (undigitize (priced n))).trades.length :=
+            frameTradeCount_eq_length_of_read tfP lenP n
+              ((0, none), ([], (strategyOfTokens n (undigitize (priced n))).trades))
+              hreadyPricedTokens
+          _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
+      have hpos : 0 < (T.strat n).trades.length :=
+        List.length_pos_iff.mpr hempty
+      rw [hprice, hcount, frameBudget_eq n (T.strat n).trades.length hpos]
+      simp only [List.map_map]
+      change
+        ((T.strat n).trades.map fun p =>
+          frameLeg false (ψ n) ε
+            (Strategy.localConditioningBudget (conditioningBudget n)
+              (T.strat n).trades.length) n
+            (p.1.retainedConditionPrices ψ ε, p.2)) ++
+          ((T.strat n).trades.map fun p =>
+            frameLeg true (ψ n) ε
+              (Strategy.localConditioningBudget (conditioningBudget n)
+                (T.strat n).trades.length) n
+              (p.1.retainedConditionPrices ψ ε, p.2)) =
+          ((T.conditionedTranslation ψ ε).strat n).trades
+      simp only [frameLeg_retained_eq_locallyGatedFirstLeg,
+        frameLeg_retained_eq_locallyGatedSecondLeg]
+      rfl
+  · -- Guarded path: an oversized price-day token empties both sides.
+    push_neg at hguard
+    obtain ⟨j, hj, hm, hday⟩ := hguard
+    have hTempty : (T.strat n).trades = [] := by
+      rw [← horig]
+      exact strategyOfTokens_trades_eq_nil_of_bigDay n (undigitize (source n))
+        j hj hm hday
+    have hpricedNil : undigitize (priced n) = [] := by
+      show undigitize (digitize _) = _
+      rw [undigitize_digitize, guardedConditionTokens,
+        if_neg (fun hall => absurd (hall j hj hm) (by omega))]
+    rw [hpricedNil]
+    have hframedNil : safeSeparatedFrameTokenOutput tfP lenP (ψ n) ε
+        (frameBudget n (frameTradeCount tfP lenP n)) n [] = [] := by
+      simp [safeSeparatedFrameTokenOutput, conditioningFrameTokenOutput,
+        conditioningFrameTokenRun]
+    rw [hframedNil]
+    refine strategy_ext_trades ?_
+    have hnil : (strategyOfTokens n ([] : List ℕ)).trades = [] := by
+      have : deserializeTrades ([] : List ℕ) = some [] := rfl
+      unfold strategyOfTokens
+      split
+      · rfl
+      · next trades hdecode =>
+          rw [this] at hdecode
+          obtain rfl := Option.some.inj hdecode
+          simp
+    rw [hnil]
+    show ([] : List (EF × Sentence)) =
+      ((T.strat n).separatedLocallyGatedConditionalContract ψ ε
+        (conditioningBudget n)).trades
+    simp [Strategy.separatedLocallyGatedConditionalContract, hTempty]
+
+#print axioms conditionedTranslation_preserves_ec₂
 #print axioms strategyOfTokens_trades_eq_nil_of_bigDay
 #print axioms guardedConditionRun_polySegStream
 #print axioms PolySegStream.tradeCountScan
