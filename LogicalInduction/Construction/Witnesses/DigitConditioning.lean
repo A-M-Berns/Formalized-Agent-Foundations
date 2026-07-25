@@ -830,6 +830,125 @@ lemma PolySegStream.acceptsScan {s : ℕ → List ℕ} (h : PolySegStream s) :
   rw [parserStructurallyAccepts, parserDepthScanNat]
   simp only [Nat.unpair_pair, freezeControlNat_fst]
 
+/-! ## Digit-model frame emitters
+
+The frame pass emits, at each trade-sentence position (`mode = 4`, token = the trade's
+sentence code `φc`, possibly huge), a fixed template whose only huge tokens are `φc`'s
+conjunction shell `conjunctionCode φc ψc` — once inside the ratio, and (first leg only)
+once as the frame sentence.  Everything between is a poly token list. -/
+
+lemma _root_.LogicalInduction.PolyTokenStream.of_eq {s s' : ℕ → List ℕ}
+    (h : PolyTokenStream s) (he : ∀ n, s n = s' n) : PolyTokenStream s' := by
+  rwa [funext he] at h
+
+/-- The all-poly middle of the first (β) frame leg emission. -/
+def frameMidBeta (ψc day bc ibc : ℕ) (ε : ℚ) : List ℕ :=
+  [day] ++ rawLowerSafeRecipTokens (rawPriceTokens ψc day) ε ++ [3] ++
+    rawMinTokens [7, 1] (rawMulTokens [7, 1]
+      (rawConditioningGateTokens [7, 0] (rawAbsTokens [7, 1]) bc ibc)) ++ [8, 8, 6]
+
+/-- The all-poly middle-plus-tail of the second frame leg emission. -/
+def frameMidSecond (ψc day bc ibc : ℕ) (ε : ℚ) : List ℕ :=
+  [day] ++ rawLowerSafeRecipTokens (rawPriceTokens ψc day) ε ++ [3] ++
+    rawMulTokens (rawConstTokens (Encodable.encode (-1 : ℚ)))
+      (rawMulTokens (rawMinTokens [7, 1] (rawMulTokens [7, 1]
+        (rawConditioningGateTokens [7, 0] (rawAbsTokens [7, 1]) bc ibc))) [7, 0]) ++
+    [8, 8, 6, ψc]
+
+lemma frameBody_split_beta (φc ψc day bc ibc : ℕ) (ε : ℚ) :
+    rawLocallyGatedBetaBodyTokens φc ψc day bc ibc ε ++
+        [8, 6, conjunctionCode φc ψc] =
+      ([0] ++ [conjunctionCode φc ψc]) ++ frameMidBeta ψc day bc ibc ε ++
+        [conjunctionCode φc ψc] := by
+  simp [rawLocallyGatedBetaBodyTokens, rawConditioningRatioTokens, frameMidBeta,
+    rawPriceTokens, rawMulTokens, rawLowerSafeRecipTokens, rawConstTokens,
+    rawSafeRecipTokens]
+
+lemma frameBody_split_second (φc ψc day bc ibc : ℕ) (ε : ℚ) :
+    rawLocallyGatedSecondBodyTokens φc ψc day bc ibc ε ++ [8, 6, ψc] =
+      ([0] ++ [conjunctionCode φc ψc]) ++ frameMidSecond ψc day bc ibc ε := by
+  simp [rawLocallyGatedSecondBodyTokens, rawConditioningRatioTokens, frameMidSecond,
+    rawPriceTokens, rawMulTokens, rawLowerSafeRecipTokens, rawConstTokens,
+    rawSafeRecipTokens]
+
+/-- Both frame middles are poly token streams of their (poly) parameter emitters. -/
+lemma frameMid_polyTokenStream (second : Bool)
+    {cψ cD cb ci : Code} {ψc day bc ibc : ℕ → ℕ}
+    (hψc : PolyFueled cψ ψc) (hday : PolyFueled cD day)
+    (hbc : PolyFueled cb bc) (hibc : PolyFueled ci ibc) (ε : ℚ) :
+    PolyTokenStream (fun z =>
+      if second then frameMidSecond (ψc z) (day z) (bc z) (ibc z) ε
+      else frameMidBeta (ψc z) (day z) (bc z) (ibc z) ε) := by
+  have hRCc : ∀ k : ℕ, PolyTokenStream (fun _ : ℕ => rawConstTokens k) := fun k =>
+    (PolyTokenStream.const 1).append (PolyTokenStream.const k)
+  have hRCq : ∀ q : ℚ, PolyTokenStream (fun _ : ℕ =>
+      rawConstTokens (Encodable.encode q)) := fun q => hRCc _
+  have hmul : ∀ {a b : ℕ → List ℕ}, PolyTokenStream a → PolyTokenStream b →
+      PolyTokenStream (fun z => rawMulTokens (a z) (b z)) := fun ha hb =>
+    (ha.append hb).append (PolyTokenStream.const 3)
+  have hadd : ∀ {a b : ℕ → List ℕ}, PolyTokenStream a → PolyTokenStream b →
+      PolyTokenStream (fun z => rawAddTokens (a z) (b z)) := fun ha hb =>
+    (ha.append hb).append (PolyTokenStream.const 2)
+  have hmax : ∀ {a b : ℕ → List ℕ}, PolyTokenStream a → PolyTokenStream b →
+      PolyTokenStream (fun z => rawMaxTokens (a z) (b z)) := fun ha hb =>
+    (ha.append hb).append (PolyTokenStream.const 4)
+  have hsafe : ∀ {a : ℕ → List ℕ}, PolyTokenStream a →
+      PolyTokenStream (fun z => rawSafeRecipTokens (a z)) := fun ha =>
+    ha.append (PolyTokenStream.const 5)
+  have hmin : ∀ {a b : ℕ → List ℕ}, PolyTokenStream a → PolyTokenStream b →
+      PolyTokenStream (fun z => rawMinTokens (a z) (b z)) := fun ha hb =>
+    hmul (hRCq (-1)) (hmax (hmul (hRCq (-1)) ha) (hmul (hRCq (-1)) hb))
+  have hclip : ∀ {a : ℕ → List ℕ}, PolyTokenStream a →
+      PolyTokenStream (fun z => rawClip01Tokens (a z)) := fun ha =>
+    hmax (hRCq 0) (hmin (hRCq 1) ha)
+  have habs : ∀ {a : ℕ → List ℕ}, PolyTokenStream a →
+      PolyTokenStream (fun z => rawAbsTokens (a z)) := fun ha =>
+    hmax ha (hmul (hRCq (-1)) ha)
+  have h70 : PolyTokenStream (fun _ : ℕ => ([7, 0] : List ℕ)) :=
+    (PolyTokenStream.const 7).append (PolyTokenStream.const 0)
+  have h71 : PolyTokenStream (fun _ : ℕ => ([7, 1] : List ℕ)) :=
+    (PolyTokenStream.const 7).append (PolyTokenStream.const 1)
+  have hRCbc : PolyTokenStream (fun z => rawConstTokens (bc z)) :=
+    (PolyTokenStream.const 1).append (PolyTokenStream.polyTok hbc)
+  have hRCibc : PolyTokenStream (fun z => rawConstTokens (ibc z)) :=
+    (PolyTokenStream.const 1).append (PolyTokenStream.polyTok hibc)
+  have hgate : PolyTokenStream (fun z => rawConditioningGateTokens
+      [7, 0] (rawAbsTokens [7, 1]) (bc z) (ibc z)) := by
+    have hmag : PolyTokenStream (fun _ : ℕ => rawAbsTokens [7, 1]) := habs h71
+    have htol : PolyTokenStream (fun z => rawMulTokens (rawConstTokens (bc z))
+        (rawSafeRecipTokens (rawAbsTokens [7, 1]))) := hmul hRCbc (hsafe hmag)
+    have hmaxMag : PolyTokenStream (fun _ : ℕ => rawMaxTokens
+        (rawConstTokens (Encodable.encode (1 : ℚ))) (rawAbsTokens [7, 1])) :=
+      hmax (hRCq 1) hmag
+    exact hclip (hmul
+      (hadd (hadd (hRCq 1) htol) (hmul (hRCq (-1)) h70))
+      (hmul hRCibc hmaxMag))
+  have hlower : PolyTokenStream (fun z => rawLowerSafeRecipTokens
+      (rawPriceTokens (ψc z) (day z)) ε) := by
+    have hden : PolyTokenStream (fun z => rawPriceTokens (ψc z) (day z)) :=
+      ((PolyTokenStream.const 0).append (PolyTokenStream.polyTok hψc)).append
+        (PolyTokenStream.polyTok hday)
+    exact hmul (hRCq (1 / ε)) (hsafe (hmul (hRCq (1 / ε)) hden))
+  have hcore : PolyTokenStream (fun z => rawMinTokens [7, 1] (rawMulTokens [7, 1]
+      (rawConditioningGateTokens [7, 0] (rawAbsTokens [7, 1]) (bc z) (ibc z)))) :=
+    hmin h71 (hmul h71 hgate)
+  cases second with
+  | false =>
+      refine (((((PolyTokenStream.polyTok hday).append hlower).append
+        (PolyTokenStream.const 3)).append hcore).append
+        (((PolyTokenStream.const 8).append (PolyTokenStream.const 8)).append
+          (PolyTokenStream.const 6))).of_eq ?_
+      intro z
+      simp [frameMidBeta]
+  | true =>
+      refine (((((PolyTokenStream.polyTok hday).append hlower).append
+        (PolyTokenStream.const 3)).append
+          (hmul (hRCq (-1)) (hmul hcore h70))).append
+        ((((PolyTokenStream.const 8).append (PolyTokenStream.const 8)).append
+          (PolyTokenStream.const 6)).append (PolyTokenStream.polyTok hψc))).of_eq ?_
+      intro z
+      simp [frameMidSecond]
+
 #print axioms strategyOfTokens_trades_eq_nil_of_bigDay
 #print axioms guardedConditionRun_polySegStream
 #print axioms PolySegStream.tradeCountScan
