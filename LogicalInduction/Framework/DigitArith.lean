@@ -1458,6 +1458,112 @@ lemma PolySegStream.undigitizeTokens {s : ℕ → List ℕ} (h : PolySegStream s
       simp [len4_zero])
   exact ⟨hcount, _, _, hlenTok, hdig⟩
 
+/-! ## The digit-level freeze-mode scan
+
+The conditioning transducer's parser control (`EF.freezeTokenNext`, Properties layer)
+tracks a mode `≤ 5` plus the pending sentence code.  In the digit model the pending
+code may be exponential, so the scan tracks the mode only — the pending code is
+recovered *by position* (it is always the immediately preceding token).  The mode
+transitions test the token against the small serializer tags `0/1/6/7`, so they factor
+through the clamp `min token 9`; that is what makes the scan poly-fueled over tokens
+whose values are held only as digit blocks. -/
+
+/-- Mode component of the freeze automaton (mirror of `EF.freezeTokenNext`'s first
+component; the pending payload is dropped). -/
+def freezeMode4Step (m t : ℕ) : ℕ :=
+  if m = 0 then
+    if t = 0 then 1
+    else if t = 1 then 3
+    else if t = 6 then 4
+    else if t = 7 then 5
+    else 0
+  else if m = 1 then 2
+  else 0
+
+/-- Mode after consuming a token prefix. -/
+def freezeMode4 (ts : List ℕ) : ℕ := ts.foldl freezeMode4Step 0
+
+lemma freezeMode4Step_le (m t : ℕ) : freezeMode4Step m t ≤ 5 := by
+  rw [freezeMode4Step]
+  split_ifs <;> omega
+
+lemma foldl_freezeMode4Step_le (ts : List ℕ) : ∀ {m}, m ≤ 5 →
+    ts.foldl freezeMode4Step m ≤ 5 := by
+  induction ts with
+  | nil => intro m hm; exact hm
+  | cons t rest ih => intro m _; exact ih (freezeMode4Step_le m t)
+
+lemma freezeMode4_le (ts : List ℕ) : freezeMode4 ts ≤ 5 :=
+  foldl_freezeMode4Step_le ts (by norm_num)
+
+lemma freezeMode4_snoc (ts : List ℕ) (t : ℕ) :
+    freezeMode4 (ts ++ [t]) = freezeMode4Step (freezeMode4 ts) t := by
+  rw [freezeMode4, List.foldl_append, List.foldl_cons, List.foldl_nil, freezeMode4]
+
+/-- The mode transitions only test the small tags, so they factor through the clamp. -/
+lemma freezeMode4Step_clamp (m t : ℕ) :
+    freezeMode4Step m (min t 9) = freezeMode4Step m t := by
+  by_cases h : t ≤ 9
+  · rw [Nat.min_eq_left h]
+  · rw [Nat.min_eq_right (by omega : 9 ≤ t)]
+    rw [freezeMode4Step, freezeMode4Step]
+    split_ifs <;> omega
+
+/-- **The freeze-mode scan**: over any digit `PolySegStream`, the freeze mode at each
+token position of the undigitized stream is poly-fueled (input `⟨n, j⟩`; the mode is
+taken over the virtual token prefix `vpre`, which agrees with the actual token stream
+at every `j ≤` token count). -/
+lemma PolySegStream.freezeModeScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+    ∃ c, PolyFueled c (fun z =>
+      freezeMode4 (vpre (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
+        z.unpair.1 z.unpair.2)) := by
+  obtain ⟨-, hbig⟩ := h.undigitizeTokens
+  obtain ⟨ctc, htc⟩ := hbig.clampVal (PolyFueled.const 8)
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  -- Step input `⟨n, ⟨j, prev⟩⟩`.
+  have hn := PolyFueled.left
+  have hj := PolyFueled.left.comp PolyFueled.right
+  have hprev := PolyFueled.right.comp PolyFueled.right
+  have htok := htc.comp (hn.pair hj)
+  have heq1 := had.comp ((subc_polyFueled.comp (htok.pair (PolyFueled.const 1))).pair
+    (subc_polyFueled.comp ((PolyFueled.const 1).pair htok)))
+  have heq6 := had.comp ((subc_polyFueled.comp (htok.pair (PolyFueled.const 6))).pair
+    (subc_polyFueled.comp ((PolyFueled.const 6).pair htok)))
+  have heq7 := had.comp ((subc_polyFueled.comp (htok.pair (PolyFueled.const 7))).pair
+    (subc_polyFueled.comp ((PolyFueled.const 7).pair htok)))
+  have hA3 := ifzSel_polyFueled.comp
+    (((PolyFueled.const 5).pair (PolyFueled.const 0)).pair heq7)
+  have hA2 := ifzSel_polyFueled.comp (((PolyFueled.const 4).pair hA3).pair heq6)
+  have hA1 := ifzSel_polyFueled.comp (((PolyFueled.const 3).pair hA2).pair heq1)
+  have hA0 := ifzSel_polyFueled.comp (((PolyFueled.const 1).pair hA1).pair htok)
+  have hM1 := ifzSel_polyFueled.comp
+    (((PolyFueled.const 2).pair (PolyFueled.const 0)).pair
+      (subc_polyFueled.comp (hprev.pair (PolyFueled.const 1))))
+  have hstep := ifzSel_polyFueled.comp ((hA0.pair hM1).pair hprev)
+  refine ⟨_, PolyFueled.prec (PolyFueled.const 0) hstep
+    (st := fun n j =>
+      freezeMode4 (vpre (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0) n j))
+    (fun n => by simp [vpre, freezeMode4])
+    (fun n j => ?_)
+    ((IsPolyBounded.linear 5).of_le fun z =>
+      le_trans (freezeMode4_le _) (by omega))⟩
+  simp only []
+  rw [vpre_succ, freezeMode4_snoc, ← freezeMode4Step_clamp]
+  simp only [freezeMode4Step, Nat.unpair_pair, ifzSelFn, Nat.reduceAdd]
+  split_ifs <;> omega
+
+/-- **Bounded day materialization**: `min token (n+1)` at each token position — exact
+when the token (a price day, at mode-2 positions) is `≤ n`, the sentinel `n+1`
+otherwise.  This is the day-sanity test of the digit transducer: an in-range day is
+recovered exactly, an oversized day is detected without ever materializing it. -/
+lemma PolySegStream.dayClampTokens {s : ℕ → List ℕ} (h : PolySegStream s) :
+    ∃ c, PolyFueled c (fun z =>
+      min ((undigitize (s z.unpair.1)).getD z.unpair.2 0) (z.unpair.1 + 1)) :=
+  h.undigitizeTokens.2.clampVal PolyFueled.left
+
+#print axioms PolySegStream.freezeModeScan
+#print axioms PolySegStream.dayClampTokens
+
 #print axioms PolySegStream.undigitizeTokens
 #print axioms BigDigits.add
 #print axioms BigDigits.mul
