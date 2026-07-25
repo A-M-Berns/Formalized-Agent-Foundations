@@ -237,7 +237,16 @@ the build gate between construction files.
 >   `blkDig_polyFueled` — `PolyFueled.prec` over the *virtual prefix*
 >   (`vpre`, so step equations hold on garbage inputs too), small packed states;
 > * capstone **`PolySegStream.undigitizeTokens`**: any digit `PolySegStream` gives
->   poly-fueled token count + `BigDigits` token access (never materializing values).
+>   poly-fueled token count + `BigDigits` token access (never materializing values);
+> * **`BigDigits.clampVal`** (`min x (B+1)` poly-fueled — exact below the bound,
+>   sentinel above): the smallness decision for tags and day-vs-rank tests.
+> **The B1 read-side toolkit is complete.**  Next concrete step (B1b): the digit-level
+> freeze-mode scan — mirror `EF.freezeTokenNext`'s mode transitions over
+> `undigitizeTokens` + `clampVal 8` tag tests, with pending tracked by *position*
+> (`j-1`), plus the day-sanity flag (`clampVal n` at mode-2 positions); then the
+> concatVar output assembly with the `conjunctionCode` block =
+> `((pendingView.natPair ψview).natPair (const 3)).succ` rendered by
+> `BigDigits.blockSeg`.
 > * Gotchas added to the log: `rw [if_pos (by …)]` with anonymous/untyped proofs
 >   binds the *first* `if` in the goal — always `show`/type-ascribe the condition;
 >   identical if-conditions rewrite all copies at once (don't repeat the rw);
