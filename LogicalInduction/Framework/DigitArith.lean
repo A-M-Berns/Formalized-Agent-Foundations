@@ -775,6 +775,208 @@ lemma blockSeg {x : ℕ → ℕ} (hx : BigDigits x) :
 
 end BigDigits
 
+/-! ## The undigitize block view — list-level spec
+
+`undigitize` (Criterion.lean) reads a digit stream as blocks separated by terminator
+digits (`≥ 4`), dropping the trailing partial block.  The digit-model transducers need
+random access to that block structure.  `blockSplit` re-expresses the same fold with
+the block *digit lists* kept intact, so every fueled scan downstream has a clean
+per-prefix invariant. -/
+
+/-- One step of the block split: digits `< 4` extend the current block, anything else
+closes it. -/
+def blockStep (s : List (List ℕ) × List ℕ) (d : ℕ) : List (List ℕ) × List ℕ :=
+  if d < 4 then (s.1, s.2 ++ [d]) else (s.1 ++ [s.2], [])
+
+/-- Split a digit stream at terminators: completed blocks and the trailing partial. -/
+def blockSplit (ds : List ℕ) : List (List ℕ) × List ℕ :=
+  ds.foldl blockStep ([], [])
+
+/-- Little-endian base-4 value of a digit block. -/
+def digitVal : List ℕ → ℕ
+  | [] => 0
+  | d :: b => d + 4 * digitVal b
+
+@[simp] lemma digitVal_nil : digitVal [] = 0 := rfl
+
+lemma digitVal_append_singleton (b : List ℕ) (d : ℕ) :
+    digitVal (b ++ [d]) = digitVal b + d * 4 ^ b.length := by
+  induction b with
+  | nil => simp [digitVal]
+  | cons d' b ih =>
+      simp only [List.cons_append, digitVal, ih, List.length_cons]
+      ring
+
+lemma blockSplit_snoc (ds : List ℕ) (d : ℕ) :
+    blockSplit (ds ++ [d]) = blockStep (blockSplit ds) d := by
+  rw [blockSplit, List.foldl_append, List.foldl_cons, List.foldl_nil, blockSplit]
+
+/-- The undigitize fold tracks the block split: accumulator = value of the current
+block, place = `4 ^` its digit count. -/
+lemma foldl_undigitizeStep_blockStep (ds : List ℕ) : ∀ (bs : List (List ℕ)) (cur : List ℕ),
+    List.foldl undigitizeStep (bs.map digitVal, digitVal cur, 4 ^ cur.length) ds =
+      ((List.foldl blockStep (bs, cur) ds).1.map digitVal,
+        digitVal (List.foldl blockStep (bs, cur) ds).2,
+        4 ^ (List.foldl blockStep (bs, cur) ds).2.length) := by
+  induction ds with
+  | nil => intros; rfl
+  | cons d rest ih =>
+      intro bs cur
+      simp only [List.foldl_cons]
+      by_cases h : d < 4
+      · rw [show undigitizeStep (bs.map digitVal, digitVal cur, 4 ^ cur.length) d =
+            (bs.map digitVal, digitVal cur + d * 4 ^ cur.length, 4 * 4 ^ cur.length) from
+              if_pos h,
+          show blockStep (bs, cur) d = (bs, cur ++ [d]) from if_pos h]
+        have hval := (digitVal_append_singleton cur d).symm
+        have hlen : 4 * (4:ℕ) ^ cur.length = 4 ^ (cur ++ [d]).length := by
+          rw [List.length_append, List.length_cons, List.length_nil, pow_succ]
+          ring
+        rw [hval, hlen]
+        exact ih bs (cur ++ [d])
+      · rw [show undigitizeStep (bs.map digitVal, digitVal cur, 4 ^ cur.length) d =
+            (bs.map digitVal ++ [digitVal cur], 0, 1) from if_neg h,
+          show blockStep (bs, cur) d = (bs ++ [cur], []) from if_neg h]
+        have hmap : bs.map digitVal ++ [digitVal cur] = (bs ++ [cur]).map digitVal := by
+          rw [List.map_append, List.map_cons, List.map_nil]
+        rw [hmap, show (0:ℕ) = digitVal [] from rfl, show (1:ℕ) = 4 ^ ([] : List ℕ).length by simp]
+        exact ih (bs ++ [cur]) []
+
+/-- **`undigitize` through the block split**: the token stream is the block values. -/
+lemma undigitize_eq_blockSplit (ds : List ℕ) :
+    undigitize ds = (blockSplit ds).1.map digitVal := by
+  have h := foldl_undigitizeStep_blockStep ds [] []
+  rw [undigitize, blockSplit]
+  rw [show (([], 0, 1) : List ℕ × ℕ × ℕ) = (List.map digitVal [], digitVal [], 4 ^ ([] : List ℕ).length) by simp]
+  rw [h]
+
+/-- Every completed block consists of digits `< 4`. -/
+lemma blockSplit_digits_lt (ds : List ℕ) :
+    (∀ b ∈ (blockSplit ds).1, ∀ d ∈ b, d < 4) ∧ (∀ d ∈ (blockSplit ds).2, d < 4) := by
+  rw [blockSplit]
+  generalize hinit : (([], []) : List (List ℕ) × List ℕ) = init
+  have hbase : (∀ b ∈ init.1, ∀ d ∈ b, d < 4) ∧ (∀ d ∈ init.2, d < 4) := by
+    rw [← hinit]; simp
+  clear hinit
+  induction ds generalizing init with
+  | nil => exact hbase
+  | cons d rest ih =>
+      rw [List.foldl_cons]
+      refine ih _ ?_
+      rw [blockStep]
+      by_cases h : d < 4
+      · rw [if_pos h]
+        refine ⟨hbase.1, ?_⟩
+        intro d' hd'
+        rcases List.mem_append.mp hd' with h' | h'
+        · exact hbase.2 d' h'
+        · rw [List.mem_singleton] at h'
+          omega
+      · rw [if_neg h]
+        refine ⟨?_, by simp⟩
+        intro b hb
+        rcases List.mem_append.mp hb with h' | h'
+        · exact hbase.1 b h'
+        · rw [List.mem_singleton] at h'
+          subst h'
+          exact hbase.2
+
+/-- A block of digits `< 4` has value below `4 ^ length`. -/
+lemma digitVal_lt (b : List ℕ) (hb : ∀ d ∈ b, d < 4) : digitVal b < 4 ^ b.length := by
+  induction b with
+  | nil => simp [digitVal]
+  | cons d rest ih =>
+      have hd : d < 4 := hb d (List.mem_cons_self ..)
+      have hr : digitVal rest < 4 ^ rest.length :=
+        ih (fun d' hd' => hb d' (List.mem_cons_of_mem _ hd'))
+      simp only [digitVal, List.length_cons, pow_succ]
+      omega
+
+/-- The base-4 digits of a block value are the block digits (with implicit zeros
+beyond the block). -/
+lemma dig4_digitVal (b : List ℕ) (hb : ∀ d ∈ b, d < 4) :
+    ∀ k, dig4 (digitVal b) k = b.getD k 0 := by
+  induction b with
+  | nil => intro k; simp [digitVal, dig4]
+  | cons d rest ih =>
+      intro k
+      have hd : d < 4 := hb d (List.mem_cons_self ..)
+      have hrest : ∀ d' ∈ rest, d' < 4 := fun d' hd' => hb d' (List.mem_cons_of_mem _ hd')
+      cases k with
+      | zero =>
+          simp only [digitVal, dig4, pow_zero, Nat.div_one, List.getD_cons_zero]
+          omega
+      | succ k =>
+          simp only [digitVal, List.getD_cons_succ]
+          rw [← ih hrest k, dig4, dig4, pow_succ]
+          rw [Nat.mul_comm (4 ^ k) 4, ← Nat.div_div_eq_div_mul]
+          congr 2
+          omega
+
+lemma len4_digitVal_le (b : List ℕ) (hb : ∀ d ∈ b, d < 4) :
+    len4 (digitVal b) ≤ b.length := by
+  rw [len4_le_iff]
+  exact digitVal_lt b hb
+
+/-! ### Per-block tracking (the scan invariants)
+
+`blkTrack s j` is block `j` as seen mid-fold — a completed block, the current partial
+(when `j` is the next index), or `[]`.  Its step recurrence is what the fueled scans
+iterate; the final-select lemma discharges the closed/unclosed distinction. -/
+
+/-- Block `j` of the running split, counting the trailing partial as next block. -/
+def blkTrack (s : List (List ℕ) × List ℕ) (j : ℕ) : List ℕ := (s.1 ++ [s.2]).getD j []
+
+lemma blkTrack_blockStep (s : List (List ℕ) × List ℕ) (d j : ℕ) :
+    blkTrack (blockStep s d) j =
+      if d < 4 ∧ s.1.length = j then blkTrack s j ++ [d] else blkTrack s j := by
+  obtain ⟨bs, cur⟩ := s
+  rw [blockStep]
+  by_cases hd : d < 4
+  · rw [if_pos hd]
+    simp only
+    rcases Nat.lt_trichotomy j bs.length with hj | hj | hj
+    · rw [if_neg (by simp only [not_and]; intro; omega), blkTrack, blkTrack]
+      simp only
+      rw [List.getD_append _ _ _ _ hj, List.getD_append _ _ _ _ hj]
+    · subst hj
+      rw [if_pos ⟨hd, rfl⟩, blkTrack, blkTrack]
+      simp only
+      rw [List.getD_append_right _ _ _ _ (le_refl _),
+        List.getD_append_right _ _ _ _ (le_refl _)]
+      simp
+    · rw [if_neg (by simp only [not_and]; intro; omega), blkTrack, blkTrack]
+      simp only
+      rw [List.getD_eq_default _ _ (by simp only [List.length_append,
+          List.length_cons, List.length_nil]; omega),
+        List.getD_eq_default _ _ (by simp only [List.length_append,
+          List.length_cons, List.length_nil]; omega)]
+  · rw [if_neg hd, if_neg (by simp only [not_and]; intro; omega)]
+    rw [blkTrack, blkTrack]
+    simp only
+    by_cases hj : j < bs.length + 1
+    · rw [List.getD_append _ _ _ _ (by simp only [List.length_append,
+        List.length_cons, List.length_nil]; omega)]
+    · have hge : (bs ++ [cur]).length ≤ j := by
+        simp only [List.length_append, List.length_cons, List.length_nil]
+        omega
+      have hRHS : (bs ++ [cur]).getD j [] = [] := List.getD_eq_default _ _ hge
+      have hLHS : ((bs ++ [cur]) ++ [([] : List ℕ)]).getD j [] = [] := by
+        rw [List.getD_append_right _ _ _ _ hge]
+        generalize j - (bs ++ [cur]).length = k
+        cases k <;> simp
+      rw [hLHS, hRHS]
+
+lemma blkTrack_closed (s : List (List ℕ) × List ℕ) {j : ℕ} (hj : j < s.1.length) :
+    blkTrack s j = s.1.getD j [] := by
+  rw [blkTrack, List.getD_append _ _ _ _ hj]
+
+lemma blockStep_fst_length (s : List (List ℕ) × List ℕ) (d : ℕ) :
+    (blockStep s d).1.length =
+      if d < 4 then s.1.length else s.1.length + 1 := by
+  rw [blockStep]
+  by_cases h : d < 4 <;> simp [h]
+
 #print axioms BigDigits.add
 #print axioms BigDigits.mul
 #print axioms BigDigits.natPair
