@@ -1076,6 +1076,112 @@ lemma frameLegEmit_polySegStream (second : Bool) {src : ℕ → List ℕ}
           simp [digitize, List.append_assoc]
         · rw [if_neg (by omega), if_neg hm4, digitize_singleton]
 
+/-- Any list is the range-map of its own `getD` view. -/
+lemma list_eq_rangeMap_getD (l : List ℕ) :
+    l = (List.range l.length).map fun j => l.getD j 0 := by
+  apply List.ext_getElem
+  · simp
+  · intro i h1 h2
+    simp only [List.getElem_map, List.getElem_range]
+    exact (List.getD_eq_getElem l 0 (by simpa using h2)).symm
+
+/-- The digitized full frame-leg output (segments plus end-of-stream flush) over any
+digit `PolySegStream`. -/
+lemma frameLegOutput_polySegStream (second : Bool) {src : ℕ → List ℕ}
+    (hsrc : PolySegStream src)
+    {cψ cb ci : Code} {ψcF bcF ibcF : ℕ → ℕ}
+    (hψcF : PolyFueled cψ ψcF) (hbcF : PolyFueled cb bcF)
+    (hibcF : PolyFueled ci ibcF) (ε : ℚ) :
+    PolySegStream (fun n => digitize
+      (conditioningFrameTokenOutput second (ψcF n) n ε (bcF n) (ibcF n)
+        (undigitize (src n)))) := by
+  obtain ⟨⟨cc, hcnt⟩, -⟩ := hsrc.undigitizeTokens
+  obtain ⟨cm, hmode⟩ := hsrc.freezeModeScan
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have hseg := frameLegEmit_polySegStream second hsrc hψcF hbcF hibcF ε
+  have hassembled := hseg.concatVar hcnt
+  -- End-of-stream flush: re-emit a withheld trade tag.
+  have hmodeEnd := hmode.comp (PolyFueled.id.pair hcnt)
+  have heq4End := had.comp ((subc_polyFueled.comp (hmodeEnd.pair
+    (PolyFueled.const 4))).pair
+    (subc_polyFueled.comp ((PolyFueled.const 4).pair hmodeEnd)))
+  have hblock6 : PolySegStream (fun _ : ℕ => tokenBlock 6) :=
+    PolySegStream.block (PolyFueled.const 6)
+  have hempty : PolySegStream (fun _ : ℕ => ([] : List ℕ)) :=
+    PolySegStream.ofTokenStream PolyTokenStream.nil
+  have hflush := hblock6.ifZero hempty heq4End
+  refine (hassembled.append hflush).of_eq fun n => ?_
+  simp only [Nat.unpair_pair]
+  have hts := list_eq_rangeMap_getD (undigitize (src n))
+  have htf : ∀ j, (undigitize (src n)).getD j 0 =
+      (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0) (Nat.pair n j) :=
+    fun j => by simp only [Nat.unpair_pair]
+  have hts' : undigitize (src n) =
+      (List.range (undigitize (src n)).length).map fun j =>
+        (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0) (Nat.pair n j) := by
+    conv_lhs => rw [hts]
+    exact List.map_congr_left fun j _ => htf j
+  have hrunEq : conditioningFrameTokenRun second (ψcF n) n ε (bcF n) (ibcF n) (0, 0)
+      (undigitize (src n)) =
+      (EF.freezeTokenControlAt
+        (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0) n
+        (undigitize (src n)).length,
+        (List.range (undigitize (src n)).length).flatMap fun j =>
+          conditioningFrameTokenSegment second
+            (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+            (ψcF n) n (bcF n) (ibcF n) ε (Nat.pair n j)) := by
+    conv_lhs => rw [hts']
+    exact conditioningFrameTokenRun_range second
+      (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+      (ψcF n) n (bcF n) (ibcF n) ε n ((undigitize (src n)).length)
+  simp only [conditioningFrameTokenOutput]
+  rw [hrunEq]
+  simp only [digitize_append, digitize_flatMap]
+  refine congrArg₂ (· ++ ·) ?_ ?_
+  · exact List.flatMap_congr fun j hj => by simp only [Nat.unpair_pair]
+  · rw [freezeTokenControlAt_fst]
+    by_cases hm4 : freezeMode4 (vpre
+        (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0) n
+        ((undigitize (src n)).length)) = 4
+    · rw [if_pos (by omega), if_pos hm4]
+      simp [digitize]
+    · rw [if_neg (by omega), if_neg hm4]
+      simp [digitize]
+
+/-- **The digitized safe two-leg frame join** over any digit `PolySegStream`: the
+digit-model analogue of `safeSeparatedFrameTokenOutput_polySegStream`. -/
+lemma safeSeparatedFrameDigitOutput_polySegStream {src : ℕ → List ℕ}
+    (hsrc : PolySegStream src) (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ)
+    (ε : ℚ) :
+    PolySegStream (fun n =>
+      digitize (safeSeparatedFrameTokenOutput
+        (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+        (fun m => (undigitize (src m)).length) (ψ n) ε
+        (frameBudget n (frameTradeCount
+          (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+          (fun m => (undigitize (src m)).length) n)) n (undigitize (src n)))) := by
+  obtain ⟨cψc, hψPoly⟩ := hψ
+  obtain ⟨ctcnt, htcnt⟩ := PolySegStream.tradeCountScan hsrc
+  obtain ⟨⟨cc, hcnt⟩, -⟩ := hsrc.undigitizeTokens
+  have hcountF : PolyFueled _ (fun n => frameTradeCount
+      (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+      (fun m => (undigitize (src m)).length) n) :=
+    (htcnt.comp (PolyFueled.id.pair hcnt)).of_eq fun n => by
+      simp only [Nat.unpair_pair, frameTradeCount, tradeScanNat]
+  obtain ⟨⟨cb, hbF⟩, ⟨ci, hiF⟩⟩ :=
+    frameBudgetCodes_polyFueled PolyFueled.id hcountF
+  have hfirst := frameLegOutput_polySegStream false hsrc hψPoly hbF hiF ε
+  have hsecond := frameLegOutput_polySegStream true hsrc hψPoly hbF hiF ε
+  obtain ⟨caccept, haccept⟩ := PolySegStream.acceptsScan hsrc
+  refine (hfirst.ifZero (hfirst.append hsecond) haccept).of_eq fun n => ?_
+  simp only [safeSeparatedFrameTokenOutput]
+  rw [frameBudgetCode_exact, frameInverseBudgetCode_exact]
+  by_cases hacc : parserStructurallyAccepts
+      (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+      (fun m => (undigitize (src m)).length) n = 0
+  · rw [if_pos hacc, if_pos hacc]
+  · rw [if_neg hacc, if_neg hacc, digitize_append]
+
 #print axioms strategyOfTokens_trades_eq_nil_of_bigDay
 #print axioms guardedConditionRun_polySegStream
 #print axioms PolySegStream.tradeCountScan
