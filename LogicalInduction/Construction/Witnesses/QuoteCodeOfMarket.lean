@@ -53,15 +53,16 @@ lemma encode_rat_natCast_div {i k : ℕ} (hk : k ≠ 0) :
   rw [encode_rat_eq, hnum, hden, encode_int_natCast]
 
 attribute [local irreducible] Nat.sqrt in
-/-- **`threshold_poly` discharged for the universal quotation schema.**  One poly-fueled
-program emits the encoded threshold sentence of `arithmeticThresholdLUV code n` at mesh
-threshold `i/k` from the packed query `⟨n,⟨k,i⟩⟩`: runtime `gcdc` reduction of the mesh
-rational, an `ifzSel` zero-denominator fallback, and the fixed atom shell around the
-selector constant.  This is the obligation every `RationalQuoteCode` carries; it had never
-before been discharged.
-Paper node: `def:ec`, `thm:epr`, `thm:er` -/
-lemma arithmeticThresholdLUV_polyThresholdCodeSeq (code : ℕ) :
-    LUV.PolyThresholdCodeSeq (fun n => arithmeticThresholdLUV code n) := by
+/-- One poly-fueled program emits the encoded quotation atom of selector `code` at day
+`m.unpair.1` and mesh threshold `i/k` from the packed query `⟨n,⟨k,i⟩⟩`: runtime `gcdc`
+reduction of the mesh rational, an `ifzSel` zero-denominator fallback, and the fixed atom
+shell around the selector constant.  Factored so both the plain threshold LUV and the
+indicator-product LUV (`thm:st`) can share it.
+Paper node: `def:ec`, `thm:epr`, `thm:er`, `thm:st` -/
+lemma quoteAtom_mesh_encode_polyFueled (code : ℕ) :
+    ∃ c, PolyFueled c (fun m => Encodable.encode (quoteAtom (Nat.pair code
+      (Nat.pair m.unpair.1 (Encodable.encode
+        ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))))))) := by
   obtain ⟨cg, hgcd⟩ := gcdc_polyFueled
   obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
   obtain ⟨cad, had⟩ := addc_polyFueled
@@ -85,7 +86,7 @@ lemma arithmeticThresholdLUV_polyThresholdCodeSeq (code : ℕ) :
         ((PolyFueled.const (Encodable.encode universalQuoteNeg)).pair
           ((PolyFueled.const code).pair (hn.pair meshPF)))))).succ_comp
   refine ⟨_, fullPF.of_eq (fun m => ?_)⟩
-  rw [arithmeticThresholdLUV_gt, encode_quoteAtom]
+  rw [encode_quoteAtom]
   simp only [Nat.unpair_pair, ifzSelFn]
   by_cases hk0 : m.unpair.2.unpair.1 = 0
   · rw [if_pos hk0, hk0]
@@ -98,6 +99,14 @@ lemma arithmeticThresholdLUV_polyThresholdCodeSeq (code : ℕ) :
         = Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
       Nat.succ_pred_eq_of_pos hg
     rw [hg1, encode_rat_natCast_div hk0, two_mul]
+
+/-- **`threshold_poly` discharged for the universal quotation schema.**  The obligation
+every `RationalQuoteCode` carries; it had never before been discharged.
+Paper node: `def:ec`, `thm:epr`, `thm:er` -/
+lemma arithmeticThresholdLUV_polyThresholdCodeSeq (code : ℕ) :
+    LUV.PolyThresholdCodeSeq (fun n => arithmeticThresholdLUV code n) := by
+  obtain ⟨c, hc⟩ := quoteAtom_mesh_encode_polyFueled code
+  exact ⟨c, hc.of_eq (fun m => by rw [arithmeticThresholdLUV_gt])⟩
 
 /-! ## Part B — a quote code for any total computable rational sequence -/
 
@@ -178,45 +187,64 @@ lemma MarketComputation.quote_mem_Icc {P : History} (market : MarketComputation 
 
 /-! ## Part D — the market's own expectations are also such a sequence -/
 
-/-- Exact rational day-`n` expectation of a varying LUV under a certified market: the
-rational value whose cast is `(X n).expect P n` (`def:e` computed through the market
-program's exact quotes). -/
+/-- Exact rational expectation of the LUV `X idx` at market day `day` (quote day and
+mesh both `day`): the rational value whose cast is `(X idx).expect P day` (`def:e`
+computed through the market program's exact quotes).  The two indices separate the LUV
+selector from the evaluation day, which is what the deferred-day theorems
+(`thm:cee`/`thm:st`) need. -/
+def MarketComputation.expectQuoteAt {P : History} (market : MarketComputation P)
+    (X : ℕ → LUV) (idx day : ℕ) : ℚ :=
+  (∑ i ∈ Finset.range day,
+    market.quote day (Encodable.encode ((X idx).gt ((i : ℚ) / (day : ℚ))))) / (day : ℚ)
+
+/-- Exact rational day-`n` expectation of a varying LUV — the diagonal case. -/
 def MarketComputation.expectQuote {P : History} (market : MarketComputation P)
     (X : ℕ → LUV) (n : ℕ) : ℚ :=
-  (∑ i ∈ Finset.range n,
-    market.quote n (Encodable.encode ((X n).gt ((i : ℚ) / (n : ℚ))))) / (n : ℚ)
+  market.expectQuoteAt X n n
 
-/-- `expectQuote` is exactly the real expectation sequence, through the market
-certificate's `quote_exact`. -/
-lemma MarketComputation.expectQuote_cast {P : History} (market : MarketComputation P)
-    (X : ℕ → LUV) (n : ℕ) :
-    (X n).expect P n = (market.expectQuote X n : ℝ) := by
-  have hq : ∀ i : ℕ, P n ((X n).gt ((i : ℚ) / (n : ℚ))) =
-      ((market.quote n (Encodable.encode ((X n).gt ((i : ℚ) / (n : ℚ)))) : ℚ) : ℝ) :=
-    fun i => market.quote_exact n _
-  simp only [LUV.expect, LUV.expectApprox, MarketComputation.expectQuote, hq]
+/-- `expectQuoteAt` is exactly the real expectation, through the market certificate's
+`quote_exact`. -/
+lemma MarketComputation.expectQuoteAt_cast {P : History} (market : MarketComputation P)
+    (X : ℕ → LUV) (idx day : ℕ) :
+    (X idx).expect P day = (market.expectQuoteAt X idx day : ℝ) := by
+  have hq : ∀ i : ℕ, P day ((X idx).gt ((i : ℚ) / (day : ℚ))) =
+      ((market.quote day
+        (Encodable.encode ((X idx).gt ((i : ℚ) / (day : ℚ)))) : ℚ) : ℝ) :=
+    fun i => market.quote_exact day _
+  simp only [LUV.expect, LUV.expectApprox, MarketComputation.expectQuoteAt, hq]
   push_cast
   ring
 
-/-- `expectQuote` lands in `[0,1]`: an average of `[0,1]` quotes. -/
-lemma MarketComputation.expectQuote_mem_Icc {P : History} (market : MarketComputation P)
+lemma MarketComputation.expectQuote_cast {P : History} (market : MarketComputation P)
     (X : ℕ → LUV) (n : ℕ) :
-    0 ≤ market.expectQuote X n ∧ market.expectQuote X n ≤ 1 := by
-  unfold MarketComputation.expectQuote
-  have hterm : ∀ i ∈ Finset.range n,
-      (0 : ℚ) ≤ market.quote n (Encodable.encode ((X n).gt ((i : ℚ) / (n : ℚ)))) ∧
-        market.quote n (Encodable.encode ((X n).gt ((i : ℚ) / (n : ℚ)))) ≤ 1 :=
-    fun i _ => market.quote_mem_Icc n _
+    (X n).expect P n = (market.expectQuote X n : ℝ) :=
+  market.expectQuoteAt_cast X n n
+
+/-- `expectQuoteAt` lands in `[0,1]`: an average of `[0,1]` quotes. -/
+lemma MarketComputation.expectQuoteAt_mem_Icc {P : History} (market : MarketComputation P)
+    (X : ℕ → LUV) (idx day : ℕ) :
+    0 ≤ market.expectQuoteAt X idx day ∧ market.expectQuoteAt X idx day ≤ 1 := by
+  unfold MarketComputation.expectQuoteAt
+  have hterm : ∀ i ∈ Finset.range day,
+      (0 : ℚ) ≤ market.quote day
+          (Encodable.encode ((X idx).gt ((i : ℚ) / (day : ℚ)))) ∧
+        market.quote day (Encodable.encode ((X idx).gt ((i : ℚ) / (day : ℚ)))) ≤ 1 :=
+    fun i _ => market.quote_mem_Icc day _
   constructor
-  · exact div_nonneg (Finset.sum_nonneg fun i hi => (hterm i hi).1) (Nat.cast_nonneg n)
-  · rcases Nat.eq_zero_or_pos n with hn | hn
+  · exact div_nonneg (Finset.sum_nonneg fun i hi => (hterm i hi).1) (Nat.cast_nonneg day)
+  · rcases Nat.eq_zero_or_pos day with hn | hn
     · simp [hn]
     · rw [div_le_one (by exact_mod_cast hn)]
-      calc (∑ i ∈ Finset.range n,
-            market.quote n (Encodable.encode ((X n).gt ((i : ℚ) / (n : ℚ)))))
-          ≤ ∑ _i ∈ Finset.range n, (1 : ℚ) :=
+      calc (∑ i ∈ Finset.range day,
+            market.quote day (Encodable.encode ((X idx).gt ((i : ℚ) / (day : ℚ)))))
+          ≤ ∑ _i ∈ Finset.range day, (1 : ℚ) :=
             Finset.sum_le_sum fun i hi => (hterm i hi).2
-        _ = (n : ℚ) := by simp
+        _ = (day : ℚ) := by simp
+
+lemma MarketComputation.expectQuote_mem_Icc {P : History} (market : MarketComputation P)
+    (X : ℕ → LUV) (n : ℕ) :
+    0 ≤ market.expectQuote X n ∧ market.expectQuote X n ≤ 1 :=
+  market.expectQuoteAt_mem_Icc X n n
 
 /-- The natural-cast rational sequence is primitive recursive (closed encode form
 `⌜(n:ℚ)⌝ = pair (n+n) 1`). -/
@@ -227,51 +255,209 @@ lemma ratNatCast_prim : Primrec fun n : ℕ => (n : ℚ) := by
   exact h.of_eq fun n => by rw [encode_rat_natCast, two_mul]
 
 set_option maxHeartbeats 1000000 in
-/-- **`expectQuote` is computable.**  Threshold codes come from the LUV sequence's poly
-emitter, each cell quote from the market program, the bounded sum by `Nat.rec`, and the
-final average by `ratDiv_prim`. -/
-lemma MarketComputation.expectQuote_computable {P : History} (market : MarketComputation P)
+/-- **`expectQuoteAt` is computable** (uncurried over `⟨idx, day⟩`).  Threshold codes
+come from the LUV sequence's poly emitter, each cell quote from the market program, the
+bounded sum by `Nat.rec` on the day, and the final average by `ratDiv_prim`. -/
+lemma MarketComputation.expectQuoteAt_computable {P : History}
+    (market : MarketComputation P)
     {X : ℕ → LUV} (hX : LUV.PolyThresholdCodeSeq X) :
-    Computable (market.expectQuote X) := by
+    Computable fun a : ℕ × ℕ => market.expectQuoteAt X a.1 a.2 := by
   obtain ⟨cX, hcX⟩ := hX
-  -- The threshold-code function of `⟨day, index⟩`.
-  have hpack : Computable fun p : ℕ × ℕ => Nat.pair p.1 (Nat.pair p.1 p.2) :=
-    Primrec₂.natPair.to_comp.comp Computable.fst
-      (Primrec₂.natPair.to_comp.comp Computable.fst Computable.snd)
-  have hgt : Computable fun p : ℕ × ℕ =>
-      Encodable.encode ((X p.1).gt ((p.2 : ℚ) / (p.1 : ℚ))) :=
-    (hcX.primrec.to_comp.comp hpack).of_eq fun p => by simp [Nat.unpair_pair]
+  -- The threshold-code function of `⟨⟨idx, day⟩, i⟩`.
+  have hpack : Computable fun z : (ℕ × ℕ) × ℕ =>
+      Nat.pair z.1.1 (Nat.pair z.1.2 z.2) :=
+    Primrec₂.natPair.to_comp.comp (Computable.fst.comp Computable.fst)
+      (Primrec₂.natPair.to_comp.comp (Computable.snd.comp Computable.fst)
+        Computable.snd)
+  have hgt : Computable fun z : (ℕ × ℕ) × ℕ =>
+      Encodable.encode ((X z.1.1).gt ((z.2 : ℚ) / (z.1.2 : ℚ))) :=
+    (hcX.primrec.to_comp.comp hpack).of_eq fun z => by simp [Nat.unpair_pair]
   -- The per-cell exact quote.
-  have hcell : Computable fun p : ℕ × ℕ =>
-      market.quote p.1 (Encodable.encode ((X p.1).gt ((p.2 : ℚ) / (p.1 : ℚ)))) :=
-    (market.quote_comp_computable Computable.fst hgt : _)
+  have hcell : Computable fun z : (ℕ × ℕ) × ℕ =>
+      market.quote z.1.2
+        (Encodable.encode ((X z.1.1).gt ((z.2 : ℚ) / (z.1.2 : ℚ)))) :=
+    (market.quote_comp_computable (Computable.snd.comp Computable.fst) hgt : _)
   -- The bounded sum, by primitive recursion on the day.
-  have hstepC : Computable fun q : ℕ × (ℕ × ℚ) =>
-      q.2.2 + market.quote q.1
-        (Encodable.encode ((X q.1).gt ((q.2.1 : ℚ) / (q.1 : ℚ)))) := by
+  have hstepC : Computable fun q : (ℕ × ℕ) × (ℕ × ℚ) =>
+      q.2.2 + market.quote q.1.2
+        (Encodable.encode ((X q.1.1).gt ((q.2.1 : ℚ) / (q.1.2 : ℚ)))) := by
     -- `( … : _)` ascriptions here and on `hcell` are load-bearing (see Part B note).
-    have hc : Computable fun q : ℕ × (ℕ × ℚ) =>
-        market.quote q.1
-          (Encodable.encode ((X q.1).gt ((q.2.1 : ℚ) / (q.1 : ℚ)))) :=
+    have hc : Computable fun q : (ℕ × ℕ) × (ℕ × ℚ) =>
+        market.quote q.1.2
+          (Encodable.encode ((X q.1.1).gt ((q.2.1 : ℚ) / (q.1.2 : ℚ)))) :=
       (hcell.comp (Computable.fst.pair (Computable.fst.comp Computable.snd)) : _)
     exact (ratAdd_prim.to_comp.comp (Computable.snd.comp Computable.snd) hc : _)
-  have hsum : Computable fun n : ℕ => ∑ i ∈ Finset.range n,
-      market.quote n (Encodable.encode ((X n).gt ((i : ℚ) / (n : ℚ)))) := by
-    have hrec := Computable.nat_rec Computable.id (Computable.const (0 : ℚ)) hstepC.to₂
-    refine hrec.of_eq fun n => ?_
+  have hsum : Computable fun a : ℕ × ℕ => ∑ i ∈ Finset.range a.2,
+      market.quote a.2 (Encodable.encode ((X a.1).gt ((i : ℚ) / (a.2 : ℚ)))) := by
+    have hrec := Computable.nat_rec Computable.snd (Computable.const (0 : ℚ)) hstepC.to₂
+    refine hrec.of_eq fun a => ?_
     have key : ∀ m : ℕ, (Nat.rec (motive := fun _ => ℚ) 0
-        (fun i s => s + market.quote n
-          (Encodable.encode ((X n).gt ((i : ℚ) / (n : ℚ))))) m) =
+        (fun i s => s + market.quote a.2
+          (Encodable.encode ((X a.1).gt ((i : ℚ) / (a.2 : ℚ))))) m) =
         ∑ i ∈ Finset.range m,
-          market.quote n (Encodable.encode ((X n).gt ((i : ℚ) / (n : ℚ)))) := by
+          market.quote a.2 (Encodable.encode ((X a.1).gt ((i : ℚ) / (a.2 : ℚ)))) := by
       intro m
       induction m with
       | zero => simp
       | succ m ih => rw [Finset.sum_range_succ, ← ih]
-    exact key n
+    exact key a.2
   -- The final average.
-  exact ((ratDiv_prim.to_comp.comp hsum ratNatCast_prim.to_comp : _) :
-    Computable (market.expectQuote X))
+  exact ((ratDiv_prim.to_comp.comp hsum
+    (ratNatCast_prim.to_comp.comp Computable.snd) : _) :
+    Computable fun a : ℕ × ℕ => market.expectQuoteAt X a.1 a.2)
+
+/-- Diagonal corollary: the day-`n` expectation sequence is computable. -/
+lemma MarketComputation.expectQuote_computable {P : History}
+    (market : MarketComputation P)
+    {X : ℕ → LUV} (hX : LUV.PolyThresholdCodeSeq X) :
+    Computable (market.expectQuote X) :=
+  ((market.expectQuoteAt_computable hX).comp
+    (Computable.id.pair Computable.id)).of_eq fun n => rfl
+
+/-! ## Part E — the ctsInd-composed confidence value and the indicator product
+(`thm:st`'s reflection data, constructed) -/
+
+/-- Rational continuous threshold indicator: the exact value whose cast is
+`ctsInd δ (q:ℝ) (p:ℝ)`. -/
+def ratCtsInd (δ q p : ℚ) : ℚ := min 1 (max 0 ((q - p) / δ))
+
+lemma ratCtsInd_cast (δ q p : ℚ) :
+    ctsInd δ (q : ℝ) (p : ℝ) = (ratCtsInd δ q p : ℝ) := by
+  unfold ctsInd ratCtsInd
+  push_cast
+  rfl
+
+lemma ratCtsInd_mem_Icc (δ q p : ℚ) : 0 ≤ ratCtsInd δ q p ∧ ratCtsInd δ q p ≤ 1 :=
+  ⟨le_min zero_le_one (le_max_left 0 _), min_le_left _ _⟩
+
+/-- A poly-coded rational sequence is computable (decode the emitted code). -/
+lemma PolyRatCodes.computable {q : ℕ → ℚ} (h : PolyRatCodes q) : Computable q := by
+  obtain ⟨c, hc⟩ := h
+  exact (Computable.option_getD (Computable.decode.comp hc.primrec.to_comp)
+    (Computable.const 0)).of_eq fun n => by simp
+
+/-- `ratCtsInd` is computable in its packed arguments, from the public rational
+primitives (`min a b = a + b - max a b` avoids any Boolean branch). -/
+lemma ratCtsInd_computable :
+    Computable fun z : ℚ × ℚ × ℚ => ratCtsInd z.1 z.2.1 z.2.2 := by
+  have hδ : Computable fun z : ℚ × ℚ × ℚ => z.1 := Computable.fst
+  have hq : Computable fun z : ℚ × ℚ × ℚ => z.2.1 :=
+    Computable.fst.comp Computable.snd
+  have hp : Computable fun z : ℚ × ℚ × ℚ => z.2.2 :=
+    Computable.snd.comp Computable.snd
+  have hsub : Computable fun z : ℚ × ℚ × ℚ => z.2.1 + (-1) * z.2.2 :=
+    (ratAdd_prim.to_comp.comp hq
+      (ratMul_prim.to_comp.comp (Computable.const (-1)) hp) : _)
+  have hdiv : Computable fun z : ℚ × ℚ × ℚ => (z.2.1 + (-1) * z.2.2) / z.1 :=
+    (ratDiv_prim.to_comp.comp hsub hδ : _)
+  have hmax : Computable fun z : ℚ × ℚ × ℚ =>
+      max 0 ((z.2.1 + (-1) * z.2.2) / z.1) :=
+    (ratMax_prim.to_comp.comp (Computable.const 0) hdiv : _)
+  have hmaxTop : Computable fun z : ℚ × ℚ × ℚ =>
+      max 1 (max 0 ((z.2.1 + (-1) * z.2.2) / z.1)) :=
+    (ratMax_prim.to_comp.comp (Computable.const 1) hmax : _)
+  have hsum : Computable fun z : ℚ × ℚ × ℚ =>
+      1 + max 0 ((z.2.1 + (-1) * z.2.2) / z.1) :=
+    (ratAdd_prim.to_comp.comp (Computable.const 1) hmax : _)
+  have hfin : Computable fun z : ℚ × ℚ × ℚ =>
+      (1 + max 0 ((z.2.1 + (-1) * z.2.2) / z.1)) +
+        (-1) * max 1 (max 0 ((z.2.1 + (-1) * z.2.2) / z.1)) :=
+    (ratAdd_prim.to_comp.comp hsum
+      (ratMul_prim.to_comp.comp (Computable.const (-1)) hmaxTop) : _)
+  refine hfin.of_eq fun z => ?_
+  unfold ratCtsInd
+  have hmm := min_add_max (1 : ℚ) (max 0 ((z.2.1 - z.2.2) / z.1))
+  have harg : z.2.1 + (-1) * z.2.2 = z.2.1 - z.2.2 := by ring
+  rw [harg]
+  linarith
+
+/-- The indicator-product LUV `1(φ n) · value`: thresholds are `⊤` below zero and the
+conjunction `φ n ⋏ ⌜value > r⌝` at nonnegative `r`.  Its completed-theory value is the
+world's payout on `φ n` times the represented rational — the quoted product `thm:st`
+needs. -/
+noncomputable def indicatorProductLUV {T : ArithmeticTheory} {value : ℕ → ℚ}
+    (q : RationalQuoteCode T value) (φ : ℕ → Sentence) (n : ℕ) : LUV where
+  gt r := if r < 0 then ⊤ else (φ n ⋏ (q.luv n).gt r)
+
+@[simp] lemma indicatorProductLUV_gt {T : ArithmeticTheory} {value : ℕ → ℚ}
+    (q : RationalQuoteCode T value) (φ : ℕ → Sentence) (n : ℕ) (r : ℚ) :
+    (indicatorProductLUV q φ n).gt r =
+      if r < 0 then ⊤ else (φ n ⋏ (q.luv n).gt r) := rfl
+
+/-- Every p.c. world holds `⊤` (`⊤ = ⊥ 🡒 ⊥` and Boolean semantics is structural). -/
+lemma PCWorld.holds_top (v : PCWorld) : v.Holds (⊤ : Sentence) := fun h => h
+
+/-- **The product law**: completed-theory worlds value the indicator product at exactly
+`payout(φ n) · value n`. -/
+lemma indicatorProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory}
+    {value : ℕ → ℚ} (Q : QuotationTheoryPresentation DP T)
+    (q : RationalQuoteCode T value) (φ : ℕ → Sentence) (n : ℕ)
+    (v : PCWorld) (hv : v.ConsistentWithTheory DP) :
+    v.ValuesAt (indicatorProductLUV q φ n) (v.payout (φ n) * (value n : ℝ)) := by
+  obtain ⟨h0, h1, hthr⟩ := RationalQuoteCode.reflected Q q n v hv
+  by_cases hφv : v.Holds (φ n)
+  · have hpay : v.payout (φ n) = 1 := if_pos hφv
+    rw [hpay, one_mul]
+    refine ⟨h0, h1, fun r => ⟨?_, ?_⟩⟩
+    · intro hr
+      rw [indicatorProductLUV_gt]
+      by_cases hr0 : r < 0
+      · rw [if_pos hr0]; exact PCWorld.holds_top v
+      · rw [if_neg hr0]
+        exact (PCWorld.holds_and v _ _).mpr ⟨hφv, (hthr r).1 hr⟩
+    · intro hr
+      rw [indicatorProductLUV_gt]
+      have hr0 : ¬ r < 0 := by
+        have hrR : (0 : ℝ) < (r : ℝ) := lt_of_le_of_lt h0 hr
+        have : (0 : ℚ) < r := by exact_mod_cast hrR
+        exact not_lt.mpr this.le
+      rw [if_neg hr0]
+      intro hcon
+      exact (hthr r).2 hr ((PCWorld.holds_and v _ _).mp hcon).2
+  · have hpay : v.payout (φ n) = 0 := if_neg hφv
+    rw [hpay, zero_mul]
+    refine ⟨le_refl 0, zero_le_one, fun r => ⟨?_, ?_⟩⟩
+    · intro hr
+      rw [indicatorProductLUV_gt, if_pos (by exact_mod_cast hr : r < 0)]
+      exact PCWorld.holds_top v
+    · intro hr
+      have hr0 : ¬ r < 0 := by
+        have : (0 : ℚ) < r := by exact_mod_cast hr
+        exact not_lt.mpr this.le
+      rw [indicatorProductLUV_gt, if_neg hr0]
+      intro hcon
+      exact hφv ((PCWorld.holds_and v _ _).mp hcon).1
+
+/-- The encoded `⋏`-node shell of Foundation's propositional formulas. -/
+lemma encode_and (p q : Sentence) :
+    Encodable.encode (p ⋏ q) =
+      Nat.pair 3 (Nat.pair (Encodable.encode p) (Encodable.encode q)) + 1 := rfl
+
+/-- The indicator product's threshold family is polynomially codeable: the fixed
+`⋏`-shell around the sentence's poly code and the shared quotation-atom emitter (mesh
+thresholds are nonnegative, so the `⊤` branch is never emitted).
+Paper node: `def:ec`, `thm:st` -/
+lemma indicatorProductLUV_polyThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ → ℚ}
+    (q : RationalQuoteCode T value) {φ : ℕ → Sentence} (hφ : PolySentenceCodes φ) :
+    LUV.PolyThresholdCodeSeq (fun n => indicatorProductLUV q φ n) := by
+  obtain ⟨cφ, hcφ⟩ := hφ
+  obtain ⟨ca, hca⟩ := quoteAtom_mesh_encode_polyFueled q.code
+  have hφAt := hcφ.comp PolyFueled.left
+  have fullPF := ((PolyFueled.const 3).pair (hφAt.pair hca)).succ_comp
+  refine ⟨_, fullPF.of_eq (fun m => ?_)⟩
+  have hmesh0 : ¬ ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)) < 0 :=
+    not_lt.mpr (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _))
+  rw [indicatorProductLUV_gt, if_neg hmesh0, encode_and]
+  rfl
+
+/-- A deferral function is (unclamped) computable: its certificate's clocked runs are
+sound for the unbounded semantics. -/
+lemma DeferralFunction.computable (f : DeferralFunction) : Computable f.f := by
+  obtain ⟨a, k, hf⟩ := f.fueled
+  have hpart : Partrec fun n => f.code.eval n :=
+    Nat.Partrec.Code.eval_part.comp (Computable.const f.code) Computable.id
+  exact hpart.of_eq fun n => Part.eq_some_iff.mpr
+    (Nat.Partrec.Code.evaln_sound (Option.mem_def.mpr (hf n)))
 
 section
 variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -313,6 +499,73 @@ noncomputable def theoremExpectationQuoteCode (X : ℕ → LUV)
     ((theoremMarketComputation T).expectQuote_computable hX)
     ((theoremMarketComputation T).expectQuote_mem_Icc X)
 
+/-- The future-quote code: `value n = quote (f n) ⌜φ n⌝`, the market's own deferred-day
+price of the day-`n` sentence.  No caller-supplied semantic relation.
+Paper node: `thm:ceu` -/
+noncomputable def theoremFutureQuoteCode (f : DeferralFunction)
+    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
+    RationalQuoteCode T (fun n =>
+      (theoremMarketComputation T).quote (f.f n) (Encodable.encode (φ n))) :=
+  RationalQuoteCode.ofComputable T
+    ((theoremMarketComputation T).quote_comp_computable f.computable
+      hφ.choose_spec.primrec.to_comp)
+    (fun n => (theoremMarketComputation T).quote_mem_Icc (f.f n) (φ n))
+
+/-- **`thm:ceu` (no expected net update), closed form over the constructed `LIA`** — no
+reflection hypotheses.  The quoted future-price LUV is constructed from the market
+program itself; only the sentence sequence, its poly codes, and the deferral function
+remain.
+Paper node: `thm:ceu` -/
+theorem lic_no_expected_net_update_closed
+    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
+    (fun n ↦ liaHistory (theoremDP T) n (φ n)) ≈ₙ
+      fun n ↦ ((theoremFutureQuoteCode T f φ hφ).luv n).expect
+        (liaHistory (theoremDP T)) n :=
+  lic_no_expected_net_update_ofRepresentation_unconditional (T := T) f hstrict φ
+    ((theoremFutureQuoteCode T f φ hφ).luv)
+    hφ (theoremFutureQuoteCode T f φ hφ).poly
+    (fun n v hv => by
+      have h := RationalQuoteCode.reflected (quotationPresentation T)
+        (theoremFutureQuoteCode T f φ hφ) n v hv
+      rwa [← (theoremMarketComputation T).quote_exact (f.f n) (φ n)] at h)
+
+/-- The deferred-expectation quote code: `value n = expectQuoteAt X n (f n)`, the
+market's own day-`f n` expectation of the day-`n` LUV.
+Paper node: `thm:cee` -/
+noncomputable def theoremDeferredExpectationQuoteCode (f : DeferralFunction)
+    (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X) :
+    RationalQuoteCode T (fun n =>
+      (theoremMarketComputation T).expectQuoteAt X n (f.f n)) :=
+  -- The `( … : _)` ascription is load-bearing (see the Part B note).
+  have hcomp : Computable fun n =>
+      (theoremMarketComputation T).expectQuoteAt X n (f.f n) :=
+    (((theoremMarketComputation T).expectQuoteAt_computable hX).comp
+      (Computable.id.pair f.computable) : _)
+  RationalQuoteCode.ofComputable T hcomp
+    (fun n => (theoremMarketComputation T).expectQuoteAt_mem_Icc X n (f.f n))
+
+/-- **`thm:cee` (expected future expectations), closed form over the constructed `LIA`**
+— the reflection data is constructed from the market program; only the source LUV
+sequence, its poly codes, its own theory-valuedness (`source_valued`, the paper's premise
+that `X` is a genuine LUV of the theory), and the deferral function remain.
+Paper node: `thm:cee` -/
+theorem lic_expected_future_expectations_closed
+    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X)
+    (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      ∃ x, v.ValuesAt (X n) x) :
+    (fun n ↦ (X n).expect (liaHistory (theoremDP T)) n) ≈ₙ
+      fun n ↦ ((theoremDeferredExpectationQuoteCode T f X hX).luv n).expect
+        (liaHistory (theoremDP T)) n :=
+  lic_expected_future_expectations_ofRepresentation_unconditional (T := T) f hstrict X
+    ((theoremDeferredExpectationQuoteCode T f X hX).luv)
+    hX (theoremDeferredExpectationQuoteCode T f X hX).poly source_valued
+    (fun n v hv => by
+      have h := RationalQuoteCode.reflected (quotationPresentation T)
+        (theoremDeferredExpectationQuoteCode T f X hX) n v hv
+      rwa [← (theoremMarketComputation T).expectQuoteAt_cast X n (f.f n)] at h)
+
 /-- **`thm:er`, closed form over the constructed `LIA`** — no reflection hypotheses.
 For every efficiently codeable LUV sequence, the market's expectation agrees
 asymptotically with its expectation of the *constructed* quoted-expectation LUV.  Only
@@ -326,6 +579,62 @@ theorem lic_iterated_expectations_closed
   lic_iterated_expectations_ofCode_unconditional (T := T) X hX
     (theoremExpectationQuoteCode T X hX)
     ((theoremMarketComputation T).expectQuote_cast X)
+
+/-- The confidence quote code for `thm:st`: the market's own continuous indicator of its
+deferred-day price against the target probability,
+`value n = ratCtsInd (δ n) (quote (f n) ⌜φ n⌝) (p n)`.
+Paper node: `thm:st` -/
+noncomputable def theoremConfidenceQuoteCode (f : DeferralFunction)
+    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) (δ p : ℕ → ℚ)
+    (hδ : PolyRatCodes δ) (hp : PolyRatCodes p) :
+    RationalQuoteCode T (fun n => ratCtsInd (δ n)
+      ((theoremMarketComputation T).quote (f n) (Encodable.encode (φ n))) (p n)) :=
+  have hquote : Computable fun n =>
+      (theoremMarketComputation T).quote (f n) (Encodable.encode (φ n)) :=
+    ((theoremMarketComputation T).quote_comp_computable f.computable
+      hφ.choose_spec.primrec.to_comp : _)
+  have hval : Computable fun n => ratCtsInd (δ n)
+      ((theoremMarketComputation T).quote (f n) (Encodable.encode (φ n))) (p n) :=
+    (ratCtsInd_computable.comp (hδ.computable.pair (hquote.pair hp.computable)) : _)
+  RationalQuoteCode.ofComputable T hval (fun n => ratCtsInd_mem_Icc _ _ _)
+
+/-- Cast identity for the confidence value against the real market. -/
+lemma theoremConfidence_value_cast (f : DeferralFunction) (φ : ℕ → Sentence)
+    (δ p : ℕ → ℚ) (n : ℕ) :
+    ctsInd (δ n) (liaHistory (theoremDP T) (f n) (φ n)) ((p n : ℝ)) =
+      ((ratCtsInd (δ n) ((theoremMarketComputation T).quote (f n)
+        (Encodable.encode (φ n))) (p n) : ℚ) : ℝ) := by
+  rw [(theoremMarketComputation T).quote_exact (f n) (φ n), ratCtsInd_cast]
+
+/-- **`thm:st` (self-trust), closed form over the constructed `LIA`** — no reflection
+hypotheses.  Both quoted LUVs are constructed: `B` is the confidence quote code of the
+market's own deferred-day price, and `A` is its indicator product with `φ n`.  Only the
+sentence sequence, the deferral function, the thresholds, and their poly codes remain.
+Paper node: `thm:st` -/
+theorem lic_self_trust_closed
+    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
+    (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
+    (hφ : PolySentenceCodes φ) (hδ : PolyRatCodes δ)
+    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n)) (hp : PolyRatCodes p) :
+    (fun n ↦ (indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n).expect
+        (liaHistory (theoremDP T)) n) ≳ₙ
+      fun n ↦ (p n : ℝ) *
+        ((theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).luv n).expect
+          (liaHistory (theoremDP T)) n := by
+  refine lic_self_trust_ofRepresentation_unconditional (T := T) f hstrict φ δ p
+    (fun n => indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n)
+    (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).luv
+    delta_pos probability_mem hφ hδ hδinv hp
+    (indicatorProductLUV_polyThresholdCodeSeq _ hφ)
+    (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).poly
+    (fun n v hv => ?_) (fun n v hv => ?_)
+  · have h := RationalQuoteCode.reflected (quotationPresentation T)
+      (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) n v hv
+    rwa [← theoremConfidence_value_cast T f φ δ p n] at h
+  · have h := indicatorProductLUV_valuesAt (quotationPresentation T)
+      (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n v hv
+    rwa [← theoremConfidence_value_cast T f φ δ p n] at h
 
 end
 

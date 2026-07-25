@@ -210,6 +210,27 @@ the build gate between construction files.
 
 ## Tranche 3 — ctsInd-composed quotes + indicator product: witness-free `thm:st` (and cee/ceu)
 
+> **Status 2026-07-25: ceu, cee, st CLOSED** (`Witnesses/QuoteCodeOfMarket.lean`, on the
+> audit surface, axiom-clean, build+coverage green):
+> * `theoremFutureQuoteCode` + `lic_no_expected_net_update_closed` (`thm:ceu`);
+> * `expectQuoteAt` (two-index expectation program; `expectQuote` refactored to its
+>   diagonal) + `theoremDeferredExpectationQuoteCode` +
+>   `lic_expected_future_expectations_closed` (`thm:cee`; `source_valued` remains — it
+>   is the paper's own premise about the caller's `X`);
+> * `ratCtsInd` (+cast/range/computability via the min = a+b−max trick, no Boolean
+>   branch) + `theoremConfidenceQuoteCode`, and `indicatorProductLUV` with its product
+>   law `indicatorProductLUV_valuesAt` and shared-emitter poly certificate
+>   (`quoteAtom_mesh_encode_polyFueled` factored out of Part A) +
+>   **`lic_self_trust_closed`** (`thm:st`) — both quoted LUVs constructed, zero
+>   reflection hypotheses.
+> Remaining in this family: **ref** (introspection — needs a
+> `BooleanQuoteCode.ofComputable` over the rational interval predicate; add
+> `PolyRatCodes a b` as the honest e.c. hypothesis and bridge casts via `quote_exact`;
+> the `GeneratedRatFeature` bound hypotheses remain caller data) and **ccee** (weighted
+> conditional — needs scaled/product LUVs for `Z, Z'`; the `w`-weighting is a rational
+> constant multiple, so an `indicatorProductLUV`-style scaled LUV should work; watch
+> `w = 0`).
+
 Two constructions on top of Tranche 1:
 * **Composed quote compiler**: rational-continuous-function-of-a-quote → quote code with
   pos/neg completeness. Target: `B n` valued at `ctsInd (δ n) (P (f n) (φ n)) (p n)` —

@@ -319,6 +319,16 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_expectations_of_probabilities_closed
   lic_iterated_expectations_closed
 
+-- Tranche 3: the deferred-day / self-trust reflection data constructed from the market
+-- program.  `indicatorProductLUV_valuesAt` is the product law behind `thm:st`'s `A`.
+#assert_axioms_clean
+  theoremFutureQuoteCode theoremDeferredExpectationQuoteCode
+  theoremConfidenceQuoteCode
+  indicatorProductLUV_valuesAt indicatorProductLUV_polyThresholdCodeSeq
+  lic_no_expected_net_update_closed
+  lic_expected_future_expectations_closed
+  lic_self_trust_closed
+
 -- Construction/Witnesses/ComputationDP.lean — unconditional-over-LIA capstones
 -- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above).
 -- The quotation family below discharges market/inductor/presentation/hworld; the
