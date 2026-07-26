@@ -147,6 +147,30 @@ REMAINING (the per-family march):
          Calibration 1459, QuotationAffine 589, LUVSyntax 643, FeedbackEmission
          262-263, Affine 632, and the ROI budgeted/fractional composites
          (`PolyTradeEmulatable` ~683, `EfficientlyEmulatable` RPN mirror).
+       * IN-FLIGHT STATE (tree mid-flip when this was written; finish before any
+         other work): Affine.lean fields FLIPPED and green (priceFeature/
+         magnitudeFeature/riskFeature `_polySeg` now produce `RpnSpliceStream`;
+         scaleRat/neg use mirror combinators).  Derived ramp mirrors added:
+         ExpectationConvergence (`RpnSpliceStream.serialize_oneMinus/efMin/clip01`),
+         AffinePreemptiveLearning (`serialize_sellIndF/buyIndF`); APL's gradual*
+         `_polySeg` chain flipped through `gradualOccupancy_polySeg`.  REMAINING
+         COMPILER ERRORS (work down the file, then the build's next wave):
+         `gradualCoefficient_polySeg` (mechanical mirror flip),
+         `gradualFamilyPolyTrade` (needs the ROI decision below), endpoint ~1155,
+         then ROI, then the other consumer files.
+       * ROI-MIRROR DESIGN INTEL: `EfficientlyEmulatable` (ROI:25) is the family
+         universal-program TOKEN emission; its consumers split into (i) economic
+         lemmas (`zero_before`, `netWorth_launch`, triangular sums at 1396/2057/2255)
+         that likely need only the pre-launch-zero clause — check whether they can
+         take `hzero` directly — and (ii) the metering role, which in the collapsed
+         world is: assemble the composite (fractional/shared budgeted) trader's
+         SPLICED serialize stream from `PolyTradeEmulatable`'s flipped fields
+         (budget/gate arithmetic segments are payload/transparent, mirror 1-for-1)
+         and realize via `RpnSpliceStream.ec`, replacing the final
+         `hLI.noExploitTok _ hec` calls (ROI ~2353/2985) with `hLI.noExploit`.
+         Flip `PolyTradeEmulatable.sentence_poly : RpnSentenceCodes sentence` and
+         `coefficient_poly : RpnSpliceStream …`; its `.polySeg` (679) becomes the
+         spliced family stream via `tradeSlot`; `.gateBefore` (702) mirrors.
        * Keep the interim compat (`noExploitTok`) callers green until each chain is
          flipped; flip `hLI.noExploitTok → hLI.noExploit` per chain as its cert
          lands in the collapsed class.: survey 2026-07-26 confirms thm:tl/perkno, thm:lex
