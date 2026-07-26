@@ -1642,6 +1642,94 @@ def EfficientlyComputableTok₂ (Tr : Trader) : Prop :=
   ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
     clockedTrader₂ lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
 
+/-! ### The Polish-notation (`Tok₃`) serialization layer
+
+Sentence slots of the flat strategy stream may carry Polish-notation symbol runs
+instead of single pair-code tokens (one token per formula symbol, escape tag `1` for
+a literal pair code).  The grammar defs live here beside the serializers; the lemma
+corpus is `Framework/RpnSentence.lean`. -/
+
+section
+open LO.Propositional
+
+/-- Polish-notation symbol run of a sentence (no escapes: the canonical form). -/
+def rpn : Sentence → List ℕ
+  | Formula.atom a => [a + 5]
+  | Formula.falsum => [0]
+  | Formula.and φ ψ => 3 :: (rpn φ ++ rpn ψ)
+  | Formula.or φ ψ => 4 :: (rpn φ ++ rpn ψ)
+  | Formula.imp φ ψ => 2 :: (rpn φ ++ rpn ψ)
+
+/-- `parseRpn fuel ts` reads one sentence block from the front of `ts`, returning the
+parsed sentence and the unread suffix.  Any `fuel ≥ ts.length` is enough. -/
+def parseRpn : ℕ → List ℕ → Option (Sentence × List ℕ)
+  | 0, _ => none
+  | _ + 1, [] => none
+  | fuel + 1, t :: rest =>
+      if t = 0 then some (Formula.falsum, rest)
+      else if t = 1 then
+        rest.head?.bind fun c =>
+          (Encodable.decode (α := Sentence) c).map fun φ => (φ, rest.tail)
+      else if t = 2 then
+        (parseRpn fuel rest).bind fun p =>
+          (parseRpn fuel p.2).bind fun q => some (Formula.imp p.1 q.1, q.2)
+      else if t = 3 then
+        (parseRpn fuel rest).bind fun p =>
+          (parseRpn fuel p.2).bind fun q => some (Formula.and p.1 q.1, q.2)
+      else if t = 4 then
+        (parseRpn fuel rest).bind fun p =>
+          (parseRpn fuel p.2).bind fun q => some (Formula.or p.1 q.1, q.2)
+      else some (Formula.atom (t - 5), rest)
+
+/-- Grammar-driven stream contraction: walk the flat strategy grammar and contract
+each sentence block back to a single pair-code token; a failed block parse emits the
+undecodable code `0` and stops, preserving rejection. -/
+def unRpnTokens : ℕ → List ℕ → List ℕ
+  | _, [] => []
+  | 0, _ => []
+  | fuel + 1, t :: rest =>
+      if t = 0 then
+        match parseRpn rest.length rest with
+        | none => [0, 0]
+        | some (φ, r1) =>
+            match r1 with
+            | [] => [0, Encodable.encode φ]
+            | d :: r2 => 0 :: Encodable.encode φ :: d :: unRpnTokens fuel r2
+      else if t = 6 then
+        match parseRpn rest.length rest with
+        | none => [6, 0]
+        | some (φ, r1) => 6 :: Encodable.encode φ :: unRpnTokens fuel r1
+      else if t = 1 then
+        match rest with
+        | [] => [1]
+        | c :: r => 1 :: c :: unRpnTokens fuel r
+      else if t = 7 then
+        match rest with
+        | [] => [7]
+        | c :: r => 7 :: c :: unRpnTokens fuel r
+      else t :: unRpnTokens fuel rest
+
+/-- Contract every sentence block of a flat strategy stream to its pair code. -/
+def unRpn (ts : List ℕ) : List ℕ := unRpnTokens ts.length ts
+
+/-- The total trader denoted by two digit-emission programs under a day clock, with
+Polish sentence blocks contracted before validation.
+Paper node: `def:trader`, `def:ec` -/
+def clockedTrader₃ (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ) :
+    Trader where
+  strat n := strategyOfTokens n (unRpn (undigitize
+    (clockedTokens lengthCode tokenCode (clock n) n)))
+
+/-- **The symbol-metered efficient-computability class** (`def:ec`, `Tok₃`): two
+programs under one polynomial clock emit the digit stream of an RPN-expanded strategy
+serialization.
+Paper node: `def:ec` -/
+def EfficientlyComputableTok₃ (Tr : Trader) : Prop :=
+  ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
+    clockedTrader₃ lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
+
+end
+
 /-- `def:lic` over the **digit-metered** e.c. class — the paper-faithful criterion.
 Extends `IsLogicalInductor` with `noExploit₂`, no-exploitation against every
 `EfficientlyComputableTok₂` trader.  The parent's token-model `noExploit` is exactly the
