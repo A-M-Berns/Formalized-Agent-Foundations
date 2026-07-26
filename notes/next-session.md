@@ -115,9 +115,17 @@ REMAINING (the per-family march):
        (arm blocks lose fixed length once slots vary); also migrate
        `EfficientRepeatedEnumeration.sequence_poly` (constructors adapt via
        `.ofPolySentenceCodes`, triangular reindex via `.comp`);
-   (c) thm:tl/perkno chain: migrate `PolySequence.sentence_poly` (Affine) — deep,
-       drags the ROI family layer (`PolyTradeEmulatable`, `EfficientlyEmulatable`
-       need RPN mirrors before the budgeted composites certify directly).
+   (c) the `PolySequence.sentence_poly` (Affine) migration — **the EC-SEQ critical
+       path**: survey 2026-07-26 confirms thm:tl/perkno, thm:lex
+       (`exclusiveExhaustive_polySequence`), pseudorandomness, and the presentation
+       structures (SelfTrust/Introspection/MetaLearning `sentence_codes` fields) all
+       route through PolySequence or PolySentenceCodes-field interfaces, so per-family
+       splices don't reach them; the field flip + the ROI family layer
+       (`PolyTradeEmulatable`, `EfficientlyEmulatable` RPN mirrors) unlocks them all
+       at once.  Construction sites adapt via `.ofPolySentenceCodes`/`.comp`;
+       consumers re-assemble their `serializeTrades` streams with block slots
+       (engine: `priceSlotSeg`, `UnRpnContractsTo`, `unRpn_tradeBlocks`) and realize
+       through `ec_of_rawSegStream`.
 
 Gotchas: Mathlib names are `Option.bind_some`/`bind_none`; `rcases h : e`
 substitutes `e` in the GOAL too; suffixed lemmas inside a namespace break
