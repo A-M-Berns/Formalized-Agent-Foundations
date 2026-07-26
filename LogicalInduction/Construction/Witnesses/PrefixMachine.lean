@@ -1298,6 +1298,162 @@ lemma sizec_polyFueled : ∃ c, PolyFueled c Nat.size := by
 
 end RuntimeArith
 
+/-! ### The packed level transform
+
+A level is packed as a base-`B` number, least-significant slot first (`Nat.ofDigits`).
+`innerOut` is the arithmetic level transform: extract slot `k`, emit its two children
+into the two least-significant base-`B'` positions, shifting the accumulator up.  The
+clamped variant `innerOutC` is the actual `prec` state (the clamp is what keeps the
+off-diagonal state polynomial); `innerOutC_eq_innerOut` discharges it on-diagonal, and
+`innerOut_bridge` ties the arithmetic to the `levelStep` list specification. -/
+
+/-- Unclamped packed level transform (specification). -/
+def innerOut (B B' P : ℕ) : ℕ → ℕ
+  | 0 => 0
+  | k + 1 => innerOut B B' P k * (B' * B') +
+      (chL (P / B ^ k % B) + B' * chR (P / B ^ k % B))
+
+/-- Clamped packed level transform (the `prec` state). -/
+def innerOutC (B B' CAP P : ℕ) : ℕ → ℕ
+  | 0 => 0
+  | k + 1 => min (innerOutC B B' CAP P k * (B' * B') +
+      (chL (P / B ^ k % B) + B' * chR (P / B ^ k % B))) CAP
+
+lemma innerOutC_le_cap (B B' CAP P : ℕ) : ∀ k, innerOutC B B' CAP P k ≤ CAP
+  | 0 => Nat.zero_le _
+  | k + 1 => Nat.min_le_right _ _
+
+lemma innerOut_mono (B B' P : ℕ) (hB' : 0 < B') (k : ℕ) :
+    innerOut B B' P k ≤ innerOut B B' P (k + 1) := by
+  rw [innerOut]
+  have h1 : 1 ≤ B' * B' := Nat.one_le_iff_ne_zero.mpr (by positivity)
+  calc innerOut B B' P k = innerOut B B' P k * 1 := (Nat.mul_one _).symm
+    _ ≤ innerOut B B' P k * (B' * B') := Nat.mul_le_mul_left _ h1
+    _ ≤ _ := Nat.le_add_right _ _
+
+lemma innerOutC_eq_innerOut (B B' CAP P : ℕ) (hB' : 0 < B') :
+    ∀ k, innerOut B B' P k ≤ CAP → innerOutC B B' CAP P k = innerOut B B' P k := by
+  intro k
+  induction k with
+  | zero => intro _; rfl
+  | succ k ih =>
+      intro h
+      rw [innerOutC, innerOut,
+        ih (le_trans (innerOut_mono B B' P hB' k) h)]
+      exact Nat.min_eq_left (by rw [innerOut] at h; exact h)
+
+/-- Size bound: if every emitted child is `< B'`, the transform stays below
+`B'^(2k)` (stated additively to avoid truncated subtraction). -/
+lemma innerOut_add_one_le (B B' P : ℕ) :
+    ∀ k, (∀ j < k, chL (P / B ^ j % B) < B' ∧ chR (P / B ^ j % B) < B') →
+      innerOut B B' P k + 1 ≤ B' ^ (2 * k) := by
+  intro k
+  induction k with
+  | zero => intro _; simp [innerOut]
+  | succ k ih =>
+      intro hch
+      obtain ⟨ha, hb⟩ := hch k (Nat.lt_succ_self k)
+      have hB' : 0 < B' := by omega
+      have IH := ih (fun j hj => hch j (by omega))
+      rw [innerOut]
+      calc innerOut B B' P k * (B' * B') +
+            (chL (P / B ^ k % B) + B' * chR (P / B ^ k % B)) + 1
+          ≤ innerOut B B' P k * (B' * B') + B' * B' := by
+            have h1 : B' * (chR (P / B ^ k % B) + 1) ≤ B' * B' :=
+              Nat.mul_le_mul_left _ (by omega)
+            have h2 : B' * (chR (P / B ^ k % B) + 1) =
+                B' * chR (P / B ^ k % B) + B' := by ring
+            omega
+        _ = (innerOut B B' P k + 1) * (B' * B') := by ring
+        _ ≤ B' ^ (2 * k) * (B' * B') := Nat.mul_le_mul_right _ IH
+        _ = B' ^ (2 * (k + 1)) := by ring
+
+/-- **The packed transform computes `levelStep`** (with the per-level reversal). -/
+lemma innerOut_bridge (B B' : ℕ) (hB : 0 < B) (L : List ℕ) (hd : ∀ v ∈ L, v < B) :
+    ∀ k, k ≤ L.length → innerOut B B' (Nat.ofDigits B L) k =
+      Nat.ofDigits B' (levelStep ((L.take k).reverse)) := by
+  intro k
+  induction k with
+  | zero => simp [innerOut, levelStep]
+  | succ k ih =>
+      intro hk
+      have hklt : k < L.length := by omega
+      have hdig : (Nat.ofDigits B L : ℕ) / B ^ k % B = L[k] := by
+        rw [Nat.ofDigits_div_pow_eq_ofDigits_drop k hB L hd,
+          List.drop_eq_getElem_cons hklt, Nat.ofDigits_cons]
+        have : (L[k] : ℕ) + B * Nat.ofDigits B (L.drop (k + 1)) =
+            L[k] + Nat.ofDigits B (L.drop (k + 1)) * B := by ring
+        rw [this, Nat.add_mul_mod_self_right,
+          Nat.mod_eq_of_lt (hd _ (L.getElem_mem hklt))]
+      have htake : (L.take (k + 1)).reverse = L[k] :: (L.take k).reverse := by
+        rw [List.take_add_one, List.getElem?_eq_getElem hklt]
+        simp
+      rw [innerOut, ih (by omega), hdig, htake, levelStep,
+        Nat.ofDigits_cons, Nat.ofDigits_cons]
+      ring
+
+/-! ### Runtime slot children -/
+
+lemma chL_polyFueled : ∃ c, PolyFueled c chL := by
+  have ePF : PolyFueled _ (fun m => m - 1) :=
+    predc_polyFueled.of_eq (fun m => Nat.pred_eq_sub_one)
+  have idxPF := PolyFueled.left.comp ePF
+  have cPF := PolyFueled.right.comp ePF
+  have c1PF := PolyFueled.left.comp cPF
+  have A0 := ifzSel_polyFueled.comp ((PolyFueled.const (Nat.pair 1 0)).pair cPF)
+  have A3 := ifzSel_polyFueled.comp ((c1PF.pair (PolyFueled.const 0)).pair
+    (subc_polyFueled.comp (idxPF.pair (PolyFueled.const 4))))
+  have A2 := ifzSel_polyFueled.comp (((PolyFueled.const 1).pair A3).pair
+    (subc_polyFueled.comp (idxPF.pair (PolyFueled.const 1))))
+  have A1 := ifzSel_polyFueled.comp ((A0.pair A2).pair idxPF)
+  have top := ifzSel_polyFueled.comp
+    ((((PolyFueled.const 0).pair A1)).pair PolyFueled.id)
+  refine ⟨_, top.of_eq (fun m => ?_)⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  rw [chL]
+  by_cases h0 : m = 0
+  · rw [if_pos h0, if_pos h0]
+  · rw [if_neg h0, if_neg h0]
+    by_cases h1 : (m - 1).unpair.1 = 0
+    · rw [if_pos h1, if_pos h1]
+    · rw [if_neg h1, if_neg h1]
+      by_cases h2 : (m - 1).unpair.1 = 1
+      · rw [if_pos (by omega : (m - 1).unpair.1 - 1 = 0), if_pos h2]
+      · rw [if_neg (by omega : ¬ (m - 1).unpair.1 - 1 = 0), if_neg h2]
+        by_cases h4 : (m - 1).unpair.1 ≤ 4
+        · rw [if_pos (by omega : (m - 1).unpair.1 - 4 = 0), if_pos h4]
+        · rw [if_neg (by omega : ¬ (m - 1).unpair.1 - 4 = 0), if_neg h4]
+
+lemma chR_polyFueled : ∃ c, PolyFueled c chR := by
+  have ePF : PolyFueled _ (fun m => m - 1) :=
+    predc_polyFueled.of_eq (fun m => Nat.pred_eq_sub_one)
+  have idxPF := PolyFueled.left.comp ePF
+  have cPF := PolyFueled.right.comp ePF
+  have c2PF := PolyFueled.right.comp cPF
+  have A0 := ifzSel_polyFueled.comp ((PolyFueled.const (Nat.pair 1 0)).pair cPF)
+  have A3 := ifzSel_polyFueled.comp ((c2PF.pair (PolyFueled.const 0)).pair
+    (subc_polyFueled.comp (idxPF.pair (PolyFueled.const 4))))
+  have A2 := ifzSel_polyFueled.comp (((PolyFueled.const 1).pair A3).pair
+    (subc_polyFueled.comp (idxPF.pair (PolyFueled.const 1))))
+  have A1 := ifzSel_polyFueled.comp ((A0.pair A2).pair idxPF)
+  have top := ifzSel_polyFueled.comp
+    ((((PolyFueled.const 0).pair A1)).pair PolyFueled.id)
+  refine ⟨_, top.of_eq (fun m => ?_)⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  rw [chR]
+  by_cases h0 : m = 0
+  · rw [if_pos h0, if_pos h0]
+  · rw [if_neg h0, if_neg h0]
+    by_cases h1 : (m - 1).unpair.1 = 0
+    · rw [if_pos h1, if_pos h1]
+    · rw [if_neg h1, if_neg h1]
+      by_cases h2 : (m - 1).unpair.1 = 1
+      · rw [if_pos (by omega : (m - 1).unpair.1 - 1 = 0), if_pos h2]
+      · rw [if_neg (by omega : ¬ (m - 1).unpair.1 - 1 = 0), if_neg h2]
+        by_cases h4 : (m - 1).unpair.1 ≤ 4
+        · rw [if_pos (by omega : (m - 1).unpair.1 - 4 = 0), if_pos h4]
+        · rw [if_neg (by omega : ¬ (m - 1).unpair.1 - 4 = 0), if_neg h4]
+
 /-! ## Residual operational input and the assembled boundary -/
 
 /-- Compact operational input for the concrete prefix machine: the single fuel-model
