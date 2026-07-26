@@ -332,21 +332,115 @@ def prefixEmitBase (z : ℕ) : ℚ :=
   prefixApprox z.unpair.2.unpair.2 /
     (2 * ((z.unpair.1 + 1 : ℕ) : ℚ) ^ 4)
 
+/-! ## Deriving the gate emissions from the weight emission
+
+Both `OccamThresholdEmission` token streams are rational arithmetic on the exact weight:
+with `D i = 2^{κ(sentenceᵢ)}` the threshold sum at rung `j'+1` is `1 / (D i · (j'+1)⁴)`
+and the inverse width is `2 · D i · (j'+1)⁴`, so both encodings are `mulc`-assembled
+pairings of the weight denominator — no separate emission programs are needed. -/
+
+/-- Denominator of the `i`-th exact weight. -/
+def prefixDen (i : ℕ) : ℕ := 2 ^ prefixKappa (prefixSentenceEnum i)
+
+lemma prefixDen_pos (i : ℕ) : 0 < prefixDen i := by
+  rw [prefixDen]
+  positivity
+
+lemma prefixApprox_eq_inv (i : ℕ) : prefixApprox i = ((prefixDen i : ℕ) : ℚ)⁻¹ := by
+  rw [prefixApprox, prefixDen, one_div]
+  norm_cast
+
+lemma encode_prefixApprox (i : ℕ) :
+    Encodable.encode (prefixApprox i) = Nat.pair 2 (prefixDen i) := by
+  rw [prefixApprox_eq_inv, encode_rat_inv_natCast (prefixDen_pos i)]
+
+/-- The weight denominator stream extracted from the weight emission. -/
+lemma prefixDen_polyFueled (h : PolyRatCodes prefixApprox) :
+    ∃ c, PolyFueled c prefixDen := by
+  obtain ⟨c, hc⟩ := h
+  exact ⟨_, (PolyFueled.right.comp hc).of_eq (fun i => by
+    rw [encode_prefixApprox, Nat.unpair_pair])⟩
+
+lemma prefixEmit_sum_eq (z : ℕ) :
+    prefixEmitBase z + prefixEmitBase z =
+      ((prefixDen z.unpair.2.unpair.2 * (z.unpair.1 + 1) ^ 4 : ℕ) : ℚ)⁻¹ := by
+  have hD : (0 : ℚ) < ((prefixDen z.unpair.2.unpair.2 : ℕ) : ℚ) := by
+    exact_mod_cast prefixDen_pos z.unpair.2.unpair.2
+  have hj : (0 : ℚ) < (((z.unpair.1 + 1 : ℕ) : ℚ)) := by positivity
+  rw [prefixEmitBase, prefixApprox_eq_inv]
+  push_cast
+  field_simp
+  ring
+
+lemma prefixEmit_inv_eq (z : ℕ) :
+    1 / prefixEmitBase z =
+      ((2 * prefixDen z.unpair.2.unpair.2 * (z.unpair.1 + 1) ^ 4 : ℕ) : ℚ) := by
+  have hD : (0 : ℚ) < ((prefixDen z.unpair.2.unpair.2 : ℕ) : ℚ) := by
+    exact_mod_cast prefixDen_pos z.unpair.2.unpair.2
+  have hj : (0 : ℚ) < (((z.unpair.1 + 1 : ℕ) : ℚ)) := by positivity
+  rw [prefixEmitBase, prefixApprox_eq_inv]
+  push_cast
+  field_simp
+
+/-- Common `mulc` assembly: the poly-fueled stream `z ↦ D(i(z)) · (j'(z)+1)⁴`. -/
+lemma prefixGateDen_polyFueled (h : PolyRatCodes prefixApprox) :
+    ∃ c, PolyFueled c
+      (fun z => prefixDen z.unpair.2.unpair.2 * (z.unpair.1 + 1) ^ 4) := by
+  obtain ⟨cD, hD⟩ := prefixDen_polyFueled h
+  obtain ⟨cm, hm⟩ := mul_polyFueled
+  have hj := PolyFueled.left.succ_comp
+  have hj2 : PolyFueled ((Nat.Partrec.Code.succ.comp Nat.Partrec.Code.left).pair
+        (Nat.Partrec.Code.succ.comp Nat.Partrec.Code.left) |> cm.comp)
+      (fun z => (z.unpair.1 + 1) * (z.unpair.1 + 1)) :=
+    (hm.comp (hj.pair hj)).of_eq (fun z => by simp only [Nat.unpair_pair])
+  have hj4 := (hm.comp (hj2.pair hj2)).of_eq
+    (f' := fun z => (z.unpair.1 + 1) ^ 4)
+    (fun z => by simp only [Nat.unpair_pair]; ring)
+  have hi : PolyFueled (Nat.Partrec.Code.right.comp Nat.Partrec.Code.right)
+      (fun z => z.unpair.2.unpair.2) :=
+    PolyFueled.right.comp PolyFueled.right
+  have hDi := hD.comp hi
+  exact ⟨_, (hm.comp (hDi.pair hj4)).of_eq
+    (fun z => by simp only [Nat.unpair_pair])⟩
+
+/-- The threshold-sum token stream, derived from the weight emission. -/
+lemma prefixThresholdSum_polyRat (h : PolyRatCodes prefixApprox) :
+    PolyRatCodes (fun z => prefixEmitBase z + prefixEmitBase z) := by
+  obtain ⟨cg, hg⟩ := prefixGateDen_polyFueled h
+  refine ⟨_, ((PolyFueled.const 2).pair hg).of_eq (fun z => ?_)⟩
+  have hpos : 0 < prefixDen z.unpair.2.unpair.2 * (z.unpair.1 + 1) ^ 4 :=
+    Nat.mul_pos (prefixDen_pos _) (by positivity)
+  show _ = Encodable.encode (prefixEmitBase z + prefixEmitBase z)
+  rw [prefixEmit_sum_eq, encode_rat_inv_natCast hpos]
+
+/-- The inverse-width token stream, derived from the weight emission. -/
+lemma prefixInverseWidth_polyRat (h : PolyRatCodes prefixApprox) :
+    PolyRatCodes (fun z => 1 / prefixEmitBase z) := by
+  obtain ⟨cg, hg⟩ := prefixGateDen_polyFueled h
+  obtain ⟨cm, hm⟩ := mul_polyFueled
+  have hquad : PolyFueled _ (fun z =>
+      4 * (prefixDen z.unpair.2.unpair.2 * (z.unpair.1 + 1) ^ 4)) :=
+    (hm.comp ((PolyFueled.const 4).pair hg)).of_eq (fun z => by rw [Nat.unpair_pair])
+  refine ⟨_, (hquad.pair (PolyFueled.const 1)).of_eq (fun z => ?_)⟩
+  show _ = Encodable.encode (1 / prefixEmitBase z)
+  rw [prefixEmit_inv_eq, encode_rat_natCast]
+  congr 1
+  ring
+
 /-! ## Residual operational input and the assembled boundary -/
 
-/-- Compact operational input for the concrete prefix machine: the fuel-model programs
-emitting the enumerated sentence codes, the exact rational weights, and the two derived
-gate token streams.  These are the only fields of the Occam boundary not discharged by
-this file; they are conclusion-free emission certificates in the style of
-`BitPrefixCodeComputation`, and the corresponding values are polynomially bounded (the
-weights' denominators are `2^κ ≤ poly(i)`), so the obligation is interpreter
-programming, not a size obstruction.
+/-- Compact operational input for the concrete prefix machine: the two fuel-model
+programs emitting the enumerated sentence codes and the exact rational weights.  These
+are the only fields of the Occam boundary not discharged by this file; they are
+conclusion-free emission certificates in the style of `BitPrefixCodeComputation`, and
+the corresponding values are polynomially bounded (the weights' denominators are
+`2^κ ≤ poly(i)`), so the obligation is interpreter programming, not a size obstruction.
+The two gate token streams of `OccamThresholdEmission` are *derived* from `approx_poly`
+(`prefixThresholdSum_polyRat`, `prefixInverseWidth_polyRat`), not assumed.
 Paper node: `thm:ob` -/
 structure PrefixMachineComputation where
   sentence_poly : PolySentenceCodes prefixSentenceEnum
   approx_poly : PolyRatCodes prefixApprox
-  threshold_sum_poly : PolyRatCodes (fun z => prefixEmitBase z + prefixEmitBase z)
-  inverse_width_poly : PolyRatCodes (fun z => 1 / prefixEmitBase z)
 
 /-- The concrete prefix machine presentation: every mathematical field is discharged
 here (`kraft` via `kraft_inequality`, coverage, exactness and convergence of the
@@ -375,12 +469,12 @@ Paper node: `thm:ob` -/
 def prefixThresholdEmission (C : PrefixMachineComputation) :
     OccamThresholdEmission (prefixMachinePresentation C) where
   threshold_sum_codes := by
-    obtain ⟨c, hc⟩ := C.threshold_sum_poly
+    obtain ⟨c, hc⟩ := prefixThresholdSum_polyRat C.approx_poly
     exact ⟨_, hc.of_eq (fun z => by
       simp [prefixEmitBase, obEmitBase, obBase, obCapacity,
         prefixMachinePresentation])⟩
   inverse_width_codes := by
-    obtain ⟨c, hc⟩ := C.inverse_width_poly
+    obtain ⟨c, hc⟩ := prefixInverseWidth_polyRat C.approx_poly
     exact ⟨_, hc.of_eq (fun z => by
       simp [prefixEmitBase, obEmitBase, obBase, obCapacity,
         prefixMachinePresentation])⟩

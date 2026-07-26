@@ -525,7 +525,7 @@ deliberately. -/
 #assert_fields PolyNatCodes
   code code_poly
 #assert_fields PrefixMachineComputation
-  sentence_poly approx_poly threshold_sum_poly inverse_width_poly
+  sentence_poly approx_poly
 #assert_fields PrefixMachinePresentation
   sentence sentence_codes approximation approximation_codes approximation_nonneg approximation_le approximation_tendsto kraft covers
 #assert_fields PrefixNegationCompiler
