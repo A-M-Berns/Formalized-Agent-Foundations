@@ -103,11 +103,10 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 #assert_axioms_clean exists_logical_inductor LIA_is_logical_inductor
   exists_computable_beliefSequence_logical_inductor
 
--- Digit-metered (paper-faithful) forms (Tranche 2 step 4): the same LIA defeats the
--- wider `EfficientlyComputableTok₂` class — the enumeration's odd indices cover it.
+-- Single-class collapse: `EfficientlyComputable` is the symbol-metered `def:ec`;
+-- the enumeration's single RPN decode covers the whole class.
 #assert_axioms_clean
-  LIA_is_logical_inductor₂ exists_logical_inductor₂
-  trading_firm_dominance₂ exists_enumeratedTrader₂_eq
+  trading_firm_dominance exists_enumeratedTrader_eq enumeratedTrader_ec
 
 /-! ## Property tail, conditional on `[IsLogicalInductor P DP]` (M3–M5) -/
 
@@ -267,7 +266,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 #assert_axioms_clean
   codeEvalnNat_polyFueled boundedEvalnCompiler EfficientRepeatedEnumeration.ofCE
   SettlementChecker.ofComputations PatientSettlementClock.ofComputations
-  liaEfficientPrefixPatch
+  liaFreezeBefore_preserves_ecTok
 
 -- Construction/Witnesses/QuotationAffine.lean (`M7-QUOTE-AFFINE`)
 #assert_axioms_clean
@@ -309,17 +308,13 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 #assert_axioms_clean
   conditionedTranslation_preserves_ec eventualConditionedTranslation_preserves_ec
   exists_eventual_condition_price_floor
-  eventualConditioningOperationalWitness
-  lic_conditioned_eventual_ofMarketComputation
-  lic_conditioned_fixed_ofComputationAndMarket
-  lic_conditioned_growing_ofComputationsAndMarket
-  gatedConditioningOperationalWitness
-  denominatorPatchedGatedConditioningOperationalWitness
-  lic_conditioned_gated_ofMarketComputation lic_conditioned_gated_ofComputationsAndMarket
+  eventualConditioningFloorOfJointConsistency
 
 -- Construction/Witnesses/DigitConditioning.lean (`M7-SCON-COMPILER`, digit model —
 -- Tranche 2 B1–B3): the guarded digit compilers, guard honesty, the `Tok₂ → Tok₂`
--- translation preservations, and conditioning closure inside `IsLogicalInductor₂`.
+-- translation preservations, and the interim `thm:scon` transfer endpoints
+-- (digit-class no-exploitation of the conditioned market; class-instance closure
+-- returns with the RPN conditioning compiler, RPN-5).
 #assert_axioms_clean
   ConditioningCompile.strategyOfTokens_trades_eq_nil_of_bigDay
   ConditioningCompile.guardedConditionRun_polySegStream
@@ -327,12 +322,12 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   ConditioningCompile.safeSeparatedFrameDigitOutput_polySegStream
   ConditioningCompile.conditionedTranslation_preserves_ec₂
   ConditioningCompile.eventualConditionedTranslation_preserves_ec₂
-  ConditioningCompile.lic_conditioned_gated₂
-  ConditioningCompile.lic_conditioned_eventual₂
-  ConditioningCompile.lic_conditioned_eventual_ofMarketComputation₂
-  ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket₂
-  ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket₂
-  ConditioningCompile.lic_conditioned_gated_ofMarketComputation₂
+  ConditioningCompile.lic_conditioned_gated
+  ConditioningCompile.lic_conditioned_eventual
+  ConditioningCompile.lic_conditioned_eventual_ofMarketComputation
+  ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket
+  ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket
+  ConditioningCompile.lic_conditioned_gated_ofMarketComputation
 
 -- Construction/Witnesses/UnconditionalOverLIA.lean
 #assert_axioms_clean
@@ -340,8 +335,6 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_conditioned_ofCompiler_unconditional
   lic_conditioned_fixed_unconditional
   lic_conditioned_growing_unconditional
-  lic_conditioned_fixed_unconditional₂
-  lic_conditioned_growing_unconditional₂
 
 -- Construction/Witnesses/LUVSyntax.lean (`M7-LUV-SYNTAX`)
 #assert_axioms_clean LUVCombinationSyntax.meshSoftmaxOperationalWitness
@@ -510,8 +503,6 @@ deliberately. -/
   source_codes lower_feature lower_generated upper_feature upper_generated width_codes inverse_width_codes width_pos width_tendsto_zero probability_bounds quote quote_codes reflected inside_affine outside_affine
 #assert_fields IsLogicalInductor
   marketComputable processComputable noExploit
-#assert_fields IsLogicalInductor₂
-  toIsLogicalInductor noExploit₂
 #assert_fields LUV
   gt
 #assert_fields LUVCombination

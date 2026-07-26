@@ -978,9 +978,8 @@ lemma tradingFirmTrader_residual_floor
 /-- **Trading Firm Dominance, covered-index core** (`lem:tfdom`).  On any rational
 `[0,1]` market, if a trader *occurring in the enumeration* exploits the market, the
 concrete finite TradingFirm also exploits it.  The proof selects the trader's enumerated
-gate and one exploiting Budgeter, then uses the residual `-2` bound above.  Both
-emission-model dominance theorems below are instances of this via their coverage
-clauses. -/
+gate and one exploiting Budgeter, then uses the residual `-2` bound above.  The dominance
+theorem below is an instance of this via the coverage clause. -/
 theorem trading_firm_dominance_of_covered
     (DP : DeductiveProcess) (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
@@ -1014,38 +1013,23 @@ theorem trading_firm_dominance_of_covered
     apply (le_div_iff₀ hweight).2
     linarith
 
-/-- **Trading Firm Dominance** (`lem:tfdom`), token model: an exploiting
-`EfficientlyComputableTok` trader makes the firm exploit. -/
+/-- **Trading Firm Dominance** (`lem:tfdom`): an exploiting efficiently computable
+trader makes the firm exploit — the enumeration covers the whole class.
+Paper node: `lem:tfdom` -/
 theorem trading_firm_dominance
     (DP : DeductiveProcess) (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     (Q : ℕ → Sentence → ℚ)
     (hQ : ∀ day phi, P day phi = (Q day phi : ℝ))
-    (Tr : Trader) (hTr : EfficientlyComputableTok Tr)
+    (Tr : Trader) (hTr : EfficientlyComputable Tr)
     (hEx : Tr.Exploits P DP) :
     (tradingFirmTrader DP Q).Exploits P DP :=
   trading_firm_dominance_of_covered DP P hP Q hQ Tr
     (exists_enumeratedTrader_eq Tr hTr) hEx
 
-/-- **Trading Firm Dominance** (`lem:tfdom`), digit model: an exploiting
-`EfficientlyComputableTok₂` trader makes the same firm exploit — the enumeration's odd
-indices cover the digit-metered class.
-Paper node: `lem:tfdom` -/
-theorem trading_firm_dominance₂
-    (DP : DeductiveProcess) (P : History)
-    (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
-    (Q : ℕ → Sentence → ℚ)
-    (hQ : ∀ day phi, P day phi = (Q day phi : ℝ))
-    (Tr : Trader) (hTr : EfficientlyComputableTok₂ Tr)
-    (hEx : Tr.Exploits P DP) :
-    (tradingFirmTrader DP Q).Exploits P DP :=
-  trading_firm_dominance_of_covered DP P hP Q hQ Tr
-    (exists_enumeratedTrader₂_eq Tr hTr) hEx
-
 #print axioms tradingFirmWeight_tail_hasSum
 #print axioms tradingFirmComponentAt_value_hasSum
 #print axioms tradingFirmTrader_residual_floor
 #print axioms trading_firm_dominance
-#print axioms trading_firm_dominance₂
 
 end LogicalInduction

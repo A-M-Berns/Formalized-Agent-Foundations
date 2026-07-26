@@ -152,11 +152,11 @@ theorem lic_lex_tendsto_zero (P : History) (DP : DeductiveProcess)
   have hq0' : 0 < q := by exact_mod_cast hq0
   have h1 : ∀ᶠ n in atTop, (gap2EF φ ψ n).denote P < (q:ℝ) := by
     by_contra hc; rw [not_eventually] at hc; simp only [not_lt] at hc
-    exact hLI.noExploit _ (eqTr_ec φ ψ 1 q)
+    exact hLI.noExploitTok _ (eqTr_ec φ ψ 1 q)
       (eqTr_exploits P DP φ ψ 1 q hq0' himp1 himp2 hcons (by simpa using hc))
   have h2 : ∀ᶠ n in atTop, -(q:ℝ) < (gap2EF φ ψ n).denote P := by
     by_contra hc; rw [not_eventually] at hc; simp only [not_lt] at hc
-    refine hLI.noExploit _ (eqTr_ec φ ψ (-1) q)
+    refine hLI.noExploitTok _ (eqTr_ec φ ψ (-1) q)
       (eqTr_exploits P DP φ ψ (-1) q hq0' himp1 himp2 hcons ?_)
     refine hc.mono (fun n hn => ?_); push_cast; nlinarith [hn]
   have hfin : ∀ᶠ n in atTop, dist (P n φ - P n ψ) 0 < ε := by
@@ -269,7 +269,7 @@ theorem lic_imp_eventually_le (P : History) (DP : DeductiveProcess)
   have hq0' : 0 < q := by exact_mod_cast hq0
   have hmain : ∀ᶠ n in atTop, (gap2EF φ ψ n).denote P < (q:ℝ) := by
     by_contra hc; rw [not_eventually] at hc; simp only [not_lt] at hc
-    refine hLI.noExploit _ (impTr_ec φ ψ q) ?_
+    refine hLI.noExploitTok _ (impTr_ec φ ψ q) ?_
     refine exploits_of_ge_partialSums (impTr φ ψ q) P DP (impW P φ ψ q) ((q:ℝ)^2/2)
       (by positivity) (fun i => impW_nonneg P φ ψ q hq0' i) ?_ ?_ hcons
     · intro n v hv

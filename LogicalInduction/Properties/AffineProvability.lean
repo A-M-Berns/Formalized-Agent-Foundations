@@ -138,7 +138,7 @@ lemma PolySequence.affine_provind {As : ℕ → AffineCombination}
     exact mul_le_mul_of_nonneg_left (sub_le_sub_right hvi _) (by
       simpa [gateFeature, his] using
         (buyIndF_mem ((As i).priceFeature i) low δ P).1)
-  exact hLI.noExploit _ (h.buyBelowTrader_ec start low δ)
+  exact hLI.noExploitTok _ (h.buyBelowTrader_ec start low δ)
     (exploits_of_ge_partialSums _ P DP w ε hε hnonneg hnet hfreqW hcons)
 
 /-- Two-sided affine provability: if every late plausible world values the family

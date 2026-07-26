@@ -1055,7 +1055,7 @@ theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
     rw [div_le_div_iff₀ hn₀pos (by norm_num : (0:ℝ) < 2)]
     rw [div_le_iff₀ hγ0] at hn₀R
     nlinarith
-  exact hLI.noExploit (excTrader X a b δ n₀) (excTrader_ecTok X hcode a b δ n₀)
+  exact hLI.noExploitTok (excTrader X a b δ n₀) (excTrader_ecTok X hcode a b δ n₀)
     (excTrader_exploits P DP X hδ ha hgapab hn₀ hgap hcons hP hval hA hB)
 
 #print axioms LUV.expect_converges

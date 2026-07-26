@@ -77,17 +77,18 @@ theorem lic_conditioned_ofCompiler_unconditional
     LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
   lic_conditioned (liaHistory (theoremDP T)) (theoremDP T) extra C compiler
 
-/-- Fixed-sentence `thm:scon` over the constructed `LIA`.  Only the paper's joint
-consistency premise remains.
+/-- Fixed-sentence `thm:scon` transfer over the constructed `LIA`: only the paper's joint
+consistency premise remains.  Interim (pending RPN-5): the conclusion is digit-class
+no-exploitation of the conditioned market rather than a class instance.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_fixed_unconditional
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (ψ : Sentence)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith ((theoremDP T).D n) ∧ v.Holds ψ) :
-    IsLogicalInductor
-      (conditionedHistory (liaHistory (theoremDP T)) (fun _ => ψ))
-      ((theoremDP T).adjoinSentence ψ) := by
+    ∀ Tr : Trader, EfficientlyComputableTok₂ Tr →
+      ¬ Tr.Exploits (conditionedHistory (liaHistory (theoremDP T)) (fun _ => ψ))
+        ((theoremDP T).adjoinSentence ψ) := by
   let base : DeductiveProcessComputation (theoremDP T) :=
     (theoremDP_computable T).nonemptyComputation.some
   haveI : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
@@ -96,9 +97,10 @@ theorem lic_conditioned_fixed_unconditional
     (liaHistory (theoremDP T)) (theoremDP T)
     base (theoremMarketComputation T) ψ hjoint
 
-/-- Growing finite-prefix `thm:scon` over the constructed `LIA`.  The extra process supplies
-its compact condition-code computation, and the remaining semantic premise is exactly joint
-consistency of the base stages with the full growing condition theory.
+/-- Growing finite-prefix `thm:scon` transfer over the constructed `LIA`.  The extra process
+supplies its compact condition-code computation, and the remaining semantic premise is exactly
+joint consistency of the base stages with the full growing condition theory.  Interim (pending
+RPN-5): digit-class no-exploitation conclusion.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_growing_unconditional
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -107,10 +109,11 @@ theorem lic_conditioned_growing_unconditional
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith ((theoremDP T).D n) ∧
         ∀ i, v.ConsistentWith (extra.D i)) :
-    IsLogicalInductor
-      (conditionedHistory (liaHistory (theoremDP T))
-        (fun n => deductiveStageCondition (extra.D n)))
-      ((theoremDP T).union extra) := by
+    ∀ Tr : Trader, EfficientlyComputableTok₂ Tr →
+      ¬ Tr.Exploits
+        (conditionedHistory (liaHistory (theoremDP T))
+          (fun n => deductiveStageCondition (extra.D n)))
+        ((theoremDP T).union extra) := by
   let base : DeductiveProcessComputation (theoremDP T) :=
     (theoremDP_computable T).nonemptyComputation.some
   haveI : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
@@ -119,49 +122,6 @@ theorem lic_conditioned_growing_unconditional
     (liaHistory (theoremDP T)) (theoremDP T) extra
     base more (theoremMarketComputation T) hjoint
 
-/-- Fixed-sentence `thm:scon` over the constructed `LIA`, in the digit-metered class:
-the conditioned inductor again defeats every `EfficientlyComputableTok₂` trader.
-Paper node: `thm:scon` -/
-theorem lic_conditioned_fixed_unconditional₂
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
-    (ψ : Sentence)
-    (hjoint : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith ((theoremDP T).D n) ∧ v.Holds ψ) :
-    IsLogicalInductor₂
-      (conditionedHistory (liaHistory (theoremDP T)) (fun _ => ψ))
-      ((theoremDP T).adjoinSentence ψ) := by
-  let base : DeductiveProcessComputation (theoremDP T) :=
-    (theoremDP_computable T).nonemptyComputation.some
-  haveI : IsLogicalInductor₂ (liaHistory (theoremDP T)) (theoremDP T) :=
-    LIA_is_logical_inductor₂ (theoremDP T) (theoremDP_computable T)
-  exact ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket₂
-    (liaHistory (theoremDP T)) (theoremDP T)
-    base (theoremMarketComputation T) ψ hjoint
-
-/-- Growing finite-prefix `thm:scon` over the constructed `LIA`, in the digit-metered
-class.
-Paper node: `thm:scon` -/
-theorem lic_conditioned_growing_unconditional₂
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
-    (extra : DeductiveProcess)
-    (more : CompactConditioningProcessComputation extra)
-    (hjoint : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith ((theoremDP T).D n) ∧
-        ∀ i, v.ConsistentWith (extra.D i)) :
-    IsLogicalInductor₂
-      (conditionedHistory (liaHistory (theoremDP T))
-        (fun n => deductiveStageCondition (extra.D n)))
-      ((theoremDP T).union extra) := by
-  let base : DeductiveProcessComputation (theoremDP T) :=
-    (theoremDP_computable T).nonemptyComputation.some
-  haveI : IsLogicalInductor₂ (liaHistory (theoremDP T)) (theoremDP T) :=
-    LIA_is_logical_inductor₂ (theoremDP T) (theoremDP_computable T)
-  exact ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket₂
-    (liaHistory (theoremDP T)) (theoremDP T) extra
-    base more (theoremMarketComputation T) hjoint
-
-#print axioms lic_conditioned_fixed_unconditional₂
-#print axioms lic_conditioned_growing_unconditional₂
 #print axioms lic_domination_universalSemimeasure_unconditional
 #print axioms lic_conditioned_ofCompiler_unconditional
 #print axioms lic_conditioned_fixed_unconditional

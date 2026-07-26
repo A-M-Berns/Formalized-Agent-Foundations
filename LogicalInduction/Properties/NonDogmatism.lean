@@ -262,7 +262,7 @@ theorem lic_nonDogmatism_weak (P : History) (DP : DeductiveProcess)
   rw [not_eventually] at h
   have hfreq : ∃ᶠ n in atTop, P n φ < 1 / 2 ^ (n + 2) :=
     h.mono (fun n hn => not_le.mp hn)
-  exact hLI.noExploit (ndTrader φ) (ndTrader_ecTok φ)
+  exact hLI.noExploitTok (ndTrader φ) (ndTrader_ecTok φ)
     (ndTrader_exploits P DP φ hP0 hP1 hφ hfreq)
 
 #print axioms lic_nonDogmatism_weak
@@ -958,7 +958,7 @@ theorem lic_nonDogmatism (P : History) (DP : DeductiveProcess)
     by_contra h'
     rw [Filter.not_frequently] at h'
     exact h ⟨ε, hε, h'.mono (fun n hn => le_of_not_gt hn)⟩
-  exact hLI.noExploit (ndLadderTrader φ) (ndLadderTrader_ecTok φ)
+  exact hLI.noExploitTok (ndLadderTrader φ) (ndLadderTrader_ecTok φ)
     (ndLadderTrader_exploits P DP φ hφ hfreq)
 
 #print axioms lic_nonDogmatism
@@ -1523,7 +1523,7 @@ theorem lic_nonDogmatism_dual (P : History) (DP : DeductiveProcess)
     by_contra h'
     rw [Filter.not_frequently] at h'
     exact h ⟨ε, hε, h'.mono (fun n hn => le_of_not_gt hn)⟩
-  exact hLI.noExploit (ndSellLadderTrader φ) (ndSellLadderTrader_ecTok φ)
+  exact hLI.noExploitTok (ndSellLadderTrader φ) (ndSellLadderTrader_ecTok φ)
     (ndSellLadderTrader_exploits P DP φ hφ hfreq)
 
 #print axioms lic_nonDogmatism_dual

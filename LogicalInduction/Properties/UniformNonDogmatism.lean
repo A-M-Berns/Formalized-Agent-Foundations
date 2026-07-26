@@ -517,7 +517,7 @@ theorem lic_uniform_nonDogmatism_repeating
     intro j hj
     exact exists_obu_fire_of_low_limit P DP φ hrepeat hworld
       (hlow _ (ndThr_pos hj))
-  exact IsLogicalInductor.noExploit (P := P) (DP := DP)
+  exact IsLogicalInductor.noExploitTok (P := P) (DP := DP)
     (obuTrader φ) (obuTrader_ecTok φ hφ)
     (obuTrader_exploits P DP φ hjoint hfire)
 

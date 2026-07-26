@@ -3576,6 +3576,8 @@ lemma eventualConditioningFloor_nonempty_of_jointConsistency
   exact eventualConditioningFloor_nonempty_of_tail
     market ψ cutoff ε hε htail
 
+/-- The chosen finite-zero floor certificate produced by the joint-consistency argument.
+Paper node: `thm:scon` -/
 noncomputable def eventualConditioningFloorOfJointConsistency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (market : MarketComputation P)
@@ -3586,157 +3588,19 @@ noncomputable def eventualConditioningFloorOfJointConsistency
   (eventualConditioningFloor_nonempty_of_jointConsistency
     P DP market ψ hψ hjoint).some
 
-/-! ### Public operational witness constructors -/
+/-! ### Endpoint status (interim, collapse flip)
 
-/-- Construct the complete prefix-safe operational witness from an exact rational market
-and a finite-zero floor certificate.
-Paper node: `thm:scon` -/
-noncomputable def eventualConditioningOperationalWitness
-    {P : History} {DP extra : DeductiveProcess}
-    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
-    (floor : EventualConditioningFloor P C.condition) :
-    EventualConditioningOperationalWitness P DP extra C where
-  floor := floor
-  conditioned_computable :=
-    (conditionedMarketComputation market C.condition C.condition_codes).toComputable
-  translation_ec := fun T hT =>
-    eventualConditionedTranslation_preserves_ec
-      floor C.condition_codes T hT
-
-/-- Closure under conditioning from the paper's joint-consistency hypothesis and concrete
-computability data.  The proof stays on the original market: the finite exceptional prefix
-is handled by the zero-aware compiler.
-Paper node: `thm:scon` -/
-theorem lic_conditioned_eventual_ofMarketComputation
-    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
-    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
-    (hjoint : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i)) :
-    IsLogicalInductor (conditionedHistory P C.condition) (DP.union extra) := by
-  let floor : EventualConditioningFloor P C.condition :=
-    eventualConditioningFloorOfJointConsistency
-      P DP market C.condition C.condition_codes hjoint
-  exact lic_conditioned_eventual P DP extra C
-    (eventualConditioningOperationalWitness C market floor)
-
-/-- Fixed-sentence form of Closure Under Conditioning.
-Paper node: `thm:scon` -/
-theorem lic_conditioned_fixed_ofComputationAndMarket
-    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (base : DeductiveProcessComputation DP) (market : MarketComputation P)
-    (ψ : Sentence)
-    (hjoint : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧ v.Holds ψ) :
-    IsLogicalInductor
-      (conditionedHistory P (fun _ => ψ)) (DP.adjoinSentence ψ) := by
-  let C := fixedConditioningPresentation base ψ
-  have hjointC : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
-    intro n
-    obtain ⟨v, hv, hψ⟩ := hjoint n
-    exact ⟨v, hv, fun _ => hψ⟩
-  have hresult :=
-    lic_conditioned_eventual_ofMarketComputation
-      P DP (fixedConditionProcess ψ) C market hjointC
-  simpa [C, fixedConditioningPresentation,
-    DeductiveProcess.adjoinSentence] using hresult
-
-/-- Growing finite-prefix form of Closure Under Conditioning.  Joint consistency means
-that, alongside each base stage, one world satisfies every finite stage of the extra
-deductive process.
-Paper node: `thm:scon` -/
-theorem lic_conditioned_growing_ofComputationsAndMarket
-    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
-    (base : DeductiveProcessComputation DP)
-    (more : CompactConditioningProcessComputation extra)
-    (market : MarketComputation P)
-    (hjoint : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧
-        ∀ i, v.ConsistentWith (extra.D i)) :
-    IsLogicalInductor
-      (conditionedHistory P
-        (fun n => deductiveStageCondition (extra.D n)))
-      (DP.union extra) := by
-  let C := conditioningPresentationOfComputations base more
-  have hjointC : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
-    intro n
-    obtain ⟨v, hv, hextra⟩ := hjoint n
-    refine ⟨v, hv, fun i => ?_⟩
-    exact (v.holds_deductiveStageCondition (extra.D i)).2 (hextra i)
-  exact lic_conditioned_eventual_ofMarketComputation
-    P DP extra C market hjointC
-
-/-- Construct the complete gated-conditioning operational witness from a named rational
-base-market computation and an actual positive denominator floor.
-Paper node: `thm:scon` -/
-noncomputable def gatedConditioningOperationalWitness
-    {P : History} {DP extra : DeductiveProcess}
-    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
-    (ε : ℚ) (hε : 0 < (ε : ℝ))
-    (hfloor : ∀ d, (ε : ℝ) ≤ P d (C.condition d)) :
-    GatedConditioningOperationalWitness P DP extra C ε where
-  epsilon_pos := hε
-  denominator_floor := hfloor
-  conditioned_computable :=
-    (conditionedMarketComputation market C.condition C.condition_codes).toComputable
-  translation_ec := fun T hT =>
-    conditionedTranslation_preserves_ec C.condition C.condition_codes ε T hT
-
-/-- The paper's finite-prefix denominator repair supplies the floor and the exact rational
-market computation required by the operational witness.  Transporting logical induction
-from `P` to this patched history remains correctly isolated behind the qualified finite-
-perturbation theorem and its two `EfficientPrefixPatch` certificates.
-Paper node: `thm:scon` -/
-noncomputable def denominatorPatchedGatedConditioningOperationalWitness
-    {P : History} {DP extra : DeductiveProcess}
-    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
-    (cutoff : ℕ) (ε : ℚ) (hε : 0 < (ε : ℝ)) (hεone : (ε : ℝ) ≤ 1)
-    (htail : ∀ day, cutoff ≤ day → (ε : ℝ) ≤ P day (C.condition day)) :
-    GatedConditioningOperationalWitness
-      (denominatorPatchedHistory P C.condition cutoff) DP extra C ε :=
-  gatedConditioningOperationalWitness C
-    (denominatorPatchedMarketComputation market C.condition C.condition_codes cutoff)
-    ε hε (denominatorPatchedHistory_floor P C.condition cutoff hεone htail)
-
-/-- Criterion-level conditioning closure with every compiler field discharged by the
-concrete construction.
-Paper node: `thm:scon` -/
-theorem lic_conditioned_gated_ofMarketComputation
-    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
-    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
-    (ε : ℚ) (hε : 0 < (ε : ℝ))
-    (hfloor : ∀ d, (ε : ℝ) ≤ P d (C.condition d)) :
-    IsLogicalInductor (conditionedHistory P C.condition) (DP.union extra) :=
-  lic_conditioned_gated P DP extra C
-    (gatedConditioningOperationalWitness C market ε hε hfloor)
-
-/-- Paper-facing SCON constructor: the canonical finite-stage presentation and the complete
-market/trader compiler are both assembled from their named computations.
-Paper node: `thm:scon` -/
-theorem lic_conditioned_gated_ofComputationsAndMarket
-    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
-    (base : DeductiveProcessComputation DP)
-    (more : CompactConditioningProcessComputation extra)
-    (market : MarketComputation P) (ε : ℚ) (hε : 0 < (ε : ℝ))
-    (hfloor : ∀ d, (ε : ℝ) ≤
-      P d (deductiveStageCondition (extra.D d))) :
-    IsLogicalInductor
-      (conditionedHistory P (fun n => deductiveStageCondition (extra.D n)))
-      (DP.union extra) :=
-  lic_conditioned_gated_ofMarketComputation P DP extra
-    (conditioningPresentationOfComputations base more) market ε hε hfloor
+The public operational-witness constructors and the criterion-level closure endpoints
+formerly here required `translation_ec` in the **token** model; after the single-class
+collapse the witness structures ask for symbol-metered (`EfficientlyComputable`)
+translation certificates, which await the RPN-level conditioning compiler (RPN-5 —
+in RPN, conjunction of sentence blocks is concatenation).  The interim paper-facing
+`thm:scon` endpoints live in `DigitConditioning.lean`, stated as digit-class
+no-exploitation transfer over `[IsLogicalInductor P DP]`.  Every economic and
+computability ingredient is unchanged above/below; only the packaging awaits RPN-5. -/
 
 #print axioms conditionedTranslation_preserves_ec
 #print axioms eventualConditionedTranslation_preserves_ec
-#print axioms eventualConditioningOperationalWitness
-#print axioms lic_conditioned_eventual_ofMarketComputation
-#print axioms lic_conditioned_fixed_ofComputationAndMarket
-#print axioms lic_conditioned_growing_ofComputationsAndMarket
-#print axioms gatedConditioningOperationalWitness
-#print axioms denominatorPatchedGatedConditioningOperationalWitness
-#print axioms lic_conditioned_gated_ofMarketComputation
-#print axioms lic_conditioned_gated_ofComputationsAndMarket
 
 end ConditioningCompile
 

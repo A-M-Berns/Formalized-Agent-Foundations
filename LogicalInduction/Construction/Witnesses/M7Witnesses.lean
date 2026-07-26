@@ -2595,23 +2595,29 @@ lemma liaPrefixQuoteCode_polyFueled (DP : DeductiveProcess) (cutoff : ℕ) :
 end PrefixPatchCompile
 
 
-/-- **Concrete finite-prefix compiler (`M7-PREFIX-PATCH`).**  The LIA's first `cutoff`
-rational belief states form a fixed finite table.  Exhaustive raw sentence matching and the
-flat administrative freeze transducer compile that table into a polynomial token emitter.
+/-- **Concrete finite-prefix compiler (`M7-PREFIX-PATCH`), token-level content.**  The
+LIA's first `cutoff` rational belief states form a fixed finite table; exhaustive raw
+sentence matching and the flat administrative freeze transducer compile that table into a
+polynomial token emitter, preserving token-model efficient computability.
+
+Interim (pending the RPN-level freeze transducer): the collapsed
+`EfficientPrefixPatch.preserves_ec` asks for symbol-metered preservation, so this
+token-model fact no longer packages into that structure — the RPN freeze (copying
+Polish sentence runs symbol-by-symbol through the parser control) is the recorded
+residual that will restore the `liaEfficientPrefixPatch` inhabitant.
 Paper node: `def:lia` -/
-noncomputable def liaEfficientPrefixPatch (DP : DeductiveProcess) (cutoff : ℕ) :
-    EfficientPrefixPatch (liaHistory DP) cutoff where
-  quote := PrefixPatchCompile.liaPrefixQuote DP cutoff
-  quote_exact := PrefixPatchCompile.liaPrefixQuote_exact DP cutoff
-  preserves_ec := by
-    intro Tr hTr
-    obtain ⟨cq, hquotePoly⟩ :=
-      PrefixPatchCompile.liaPrefixQuoteCode_polyFueled DP cutoff
-    exact PrefixPatchCompile.freezeBefore_preserves_ec
-      (PrefixPatchCompile.liaPrefixQuote DP cutoff)
-      (PrefixPatchCompile.liaPrefixQuoteCode DP cutoff) cutoff
-      (PrefixPatchCompile.liaPrefixQuoteCode_exact DP cutoff)
-      hquotePoly Tr hTr
+theorem liaFreezeBefore_preserves_ecTok (DP : DeductiveProcess) (cutoff : ℕ) :
+    ∀ Tr : Trader, EfficientlyComputableTok Tr →
+      EfficientlyComputableTok
+        (Tr.freezeBefore (PrefixPatchCompile.liaPrefixQuote DP cutoff) cutoff) := by
+  intro Tr hTr
+  obtain ⟨cq, hquotePoly⟩ :=
+    PrefixPatchCompile.liaPrefixQuoteCode_polyFueled DP cutoff
+  exact PrefixPatchCompile.freezeBefore_preserves_ec
+    (PrefixPatchCompile.liaPrefixQuote DP cutoff)
+    (PrefixPatchCompile.liaPrefixQuoteCode DP cutoff) cutoff
+    (PrefixPatchCompile.liaPrefixQuoteCode_exact DP cutoff)
+    hquotePoly Tr hTr
 
 #print axioms polyFueled_dovetailFound
 #print axioms polyFueled_deadlinePassed
@@ -2637,6 +2643,6 @@ noncomputable def liaEfficientPrefixPatch (DP : DeductiveProcess) (cutoff : ℕ)
 #print axioms EfficientRepeatedEnumeration.ofPoly
 #print axioms EfficientRepeatedEnumeration.ofCE
 #print axioms PrefixPatchCompile.freezeBefore_preserves_ec
-#print axioms liaEfficientPrefixPatch
+#print axioms liaFreezeBefore_preserves_ecTok
 
 end LogicalInduction

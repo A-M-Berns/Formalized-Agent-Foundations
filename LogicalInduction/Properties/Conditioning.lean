@@ -2096,8 +2096,8 @@ structure ConditioningTraderCompiler
     (C : ConditioningPresentation DP extra) where
   conditioned_computable : ComputableMarket (conditionedHistory P C.condition)
   translate : Trader → Trader
-  translate_ec : ∀ T, EfficientlyComputableTok T →
-    EfficientlyComputableTok (translate T)
+  translate_ec : ∀ T, EfficientlyComputable T →
+    EfficientlyComputable (translate T)
   tracks_on_condition : ∀ T n (v : PCWorld),
     v.ConsistentWith ((DP.union extra).D n) →
       T.netWorth (conditionedHistory P C.condition) v n ≤
@@ -2118,8 +2118,8 @@ structure GatedConditioningOperationalWitness
   epsilon_pos : 0 < (ε : ℝ)
   denominator_floor : ∀ d, (ε : ℝ) ≤ P d (C.condition d)
   conditioned_computable : ComputableMarket (conditionedHistory P C.condition)
-  translation_ec : ∀ T, EfficientlyComputableTok T →
-    EfficientlyComputableTok (T.conditionedTranslation C.condition ε)
+  translation_ec : ∀ T, EfficientlyComputable T →
+    EfficientlyComputable (T.conditionedTranslation C.condition ε)
 
 /-- Operational target for conditioning directly against the original market once only an
 eventual denominator floor is known.  `floor.zeroDays` records the exact finite zero-price
@@ -2131,8 +2131,8 @@ structure EventualConditioningOperationalWitness
     (C : ConditioningPresentation DP extra) where
   floor : EventualConditioningFloor P C.condition
   conditioned_computable : ComputableMarket (conditionedHistory P C.condition)
-  translation_ec : ∀ T, EfficientlyComputableTok T →
-    EfficientlyComputableTok (T.eventualConditionedTranslation floor)
+  translation_ec : ∀ T, EfficientlyComputable T →
+    EfficientlyComputable (T.eventualConditionedTranslation floor)
 
 /-- Assemble the old compiler contract from the concrete gated translator.  Both economic
 fields are theorems above; only executable representation data remains in the witness. -/
@@ -2149,6 +2149,66 @@ def GatedConditioningOperationalWitness.toCompiler
   preserves_floor := fun T hfloor =>
     C.conditionedTranslation_preserves_floor P W.epsilon_pos
       W.denominator_floor T hfloor
+
+/-- Witness-free gated transport: a conditional-market exploit compiled through the
+gated translator exploits the base market, from the denominator floor alone.
+Paper node: `thm:scon` -/
+lemma Trader.conditionedTranslation_exploits_base
+    {P : History} {DP extra : DeductiveProcess}
+    {C : ConditioningPresentation DP extra} {ε : ℚ}
+    (hε : 0 < (ε : ℝ)) (hfloor : ∀ d, (ε : ℝ) ≤ P d (C.condition d))
+    {T : Trader}
+    (hT : T.Exploits (conditionedHistory P C.condition) (DP.union extra)) :
+    (T.conditionedTranslation C.condition ε).Exploits P DP := by
+  refine ⟨C.conditionedTranslation_preserves_floor P hε hfloor T hT.1, ?_⟩
+  intro hupper
+  apply hT.2
+  obtain ⟨U, hU⟩ := hupper
+  refine ⟨U + 1, ?_⟩
+  intro x hx
+  obtain ⟨n, v, hv, rfl⟩ := hx
+  have hvBase : v.ConsistentWith (DP.D n) :=
+    (PCWorld.consistentWith_union_iff v DP extra n).mp hv |>.1
+  have htranslated : (T.conditionedTranslation C.condition ε).netWorth P v n ≤ U :=
+    hU ⟨n, v, hvBase, rfl⟩
+  exact (C.conditionedTranslation_tracks P hε hfloor T n v hv).trans (by linarith)
+
+/-- Witness-free eventual transport: the finite-zero exception path, from the floor
+structure alone.
+Paper node: `thm:scon` -/
+lemma Trader.eventualConditionedTranslation_exploits_base
+    {P : History} {DP extra : DeductiveProcess} [IsLogicalInductor P DP]
+    {C : ConditioningPresentation DP extra}
+    (floor : EventualConditioningFloor P C.condition)
+    {T : Trader}
+    (hT : T.Exploits (conditionedHistory P C.condition) (DP.union extra)) :
+    (T.eventualConditionedTranslation floor).Exploits P DP := by
+  let hP : ∀ d φ, 0 ≤ P d φ ∧ P d φ ≤ 1 :=
+    fun d φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) d φ
+  let hconditioned : ∀ d φ,
+      0 ≤ conditionedHistory P C.condition d φ ∧
+        conditionedHistory P C.condition d φ ≤ 1 :=
+    conditionedHistory_mem_Icc P hP C.condition
+  have hAfter :
+      (T.after floor.cutoff).Exploits
+        (conditionedHistory P C.condition) (DP.union extra) :=
+    Trader.Exploits.after T (conditionedHistory P C.condition)
+      (DP.union extra) hconditioned hT floor.cutoff
+  refine ⟨C.eventualConditionedTranslation_preserves_floor
+    P floor T (fun d φ => (hP d φ).1) hAfter.1, ?_⟩
+  intro hupper
+  apply hAfter.2
+  obtain ⟨U, hU⟩ := hupper
+  refine ⟨U + 1, ?_⟩
+  intro x hx
+  obtain ⟨n, v, hv, rfl⟩ := hx
+  have hvBase : v.ConsistentWith (DP.D n) :=
+    (PCWorld.consistentWith_union_iff v DP extra n).mp hv |>.1
+  have htranslated :
+      (T.eventualConditionedTranslation floor).netWorth P v n ≤ U :=
+    hU ⟨n, v, hvBase, rfl⟩
+  exact (C.eventualConditionedTranslation_tracks
+    P floor T (fun d φ => (hP d φ).1) n v hv).trans (by linarith)
 
 /-- The explicit compiler contract transports a genuine conditional-market exploit to a
 genuine exploit of the base market. The unboundedness proof uses actual same-world wealth

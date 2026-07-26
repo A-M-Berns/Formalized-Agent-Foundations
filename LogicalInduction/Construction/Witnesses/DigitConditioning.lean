@@ -1652,64 +1652,69 @@ lemma eventualConditionedTranslation_preserves_ec₂
           F.zeroDays ψ F.epsilon (conditioningBudget n)).trades
       simp [Strategy.separatedExceptZeroConditionalContract, hTempty]
 
-/-! ## Criterion closure in the digit-metered class
+/-! ## Interim `thm:scon` endpoints (digit-class transfer, pending RPN-5)
 
-With both translation compilers proved `Tok₂ → Tok₂`, closure under conditioning holds
-inside `IsLogicalInductor₂` itself: the class layering introduced by the Tranche-2
-criterion flip no longer leaks through `thm:scon`. -/
+With both translation compilers proved `Tok₂ → Tok₂`, conditioning transfers
+no-exploitation for every digit-metered trader of the conditioned market back to the
+base inductor.  **Interim disclosure (collapse flip):** the collapsed criterion meters
+the full symbol class, and the RPN-level conditioning compiler (RPN-5 — sentence-block
+conjunction is concatenation in Polish coding) is what will upgrade these to
+class-instance closure (`IsLogicalInductor` of the conditioned market).  Until then the
+conclusions below quantify over `EfficientlyComputableTok₂` (which contains every
+token-model trader via `EfficientlyComputableTok.toTok₂`). -/
 
-/-- Gated closure under conditioning in the digit-metered class.
+/-- Gated closure transfer under conditioning, digit class.
 Paper node: `thm:scon` -/
-theorem lic_conditioned_gated₂
-    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor₂ P DP]
-    (C : ConditioningPresentation DP extra) {ε : ℚ}
-    (W : GatedConditioningOperationalWitness P DP extra C ε) :
-    IsLogicalInductor₂ (conditionedHistory P C.condition) (DP.union extra) where
-  toIsLogicalInductor := lic_conditioned_gated P DP extra C W
-  noExploit₂ T hTec₂ hTexp :=
-    IsLogicalInductor₂.noExploit₂ (P := P) (DP := DP)
+theorem lic_conditioned_gated
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
+    (C : ConditioningPresentation DP extra) (ε : ℚ) (hε : 0 < (ε : ℝ))
+    (hfloor : ∀ d, (ε : ℝ) ≤ P d (C.condition d)) :
+    ∀ T : Trader, EfficientlyComputableTok₂ T →
+      ¬ T.Exploits (conditionedHistory P C.condition) (DP.union extra) :=
+  fun T hTec₂ hTexp =>
+    IsLogicalInductor.noExploitDigit (P := P) (DP := DP)
       (T.conditionedTranslation C.condition ε)
       (conditionedTranslation_preserves_ec₂ C.condition C.condition_codes ε T hTec₂)
-      (W.toCompiler.exploits_base hTexp)
+      (Trader.conditionedTranslation_exploits_base hε hfloor hTexp)
 
-/-- Prefix-safe (finite-zero) closure under conditioning in the digit-metered class.
+/-- Prefix-safe (finite-zero) closure transfer under conditioning, digit class.
 Paper node: `thm:scon` -/
-theorem lic_conditioned_eventual₂
-    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor₂ P DP]
+theorem lic_conditioned_eventual
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
     (C : ConditioningPresentation DP extra)
-    (W : EventualConditioningOperationalWitness P DP extra C) :
-    IsLogicalInductor₂ (conditionedHistory P C.condition) (DP.union extra) where
-  toIsLogicalInductor := lic_conditioned_eventual P DP extra C W
-  noExploit₂ T hTec₂ hTexp :=
-    IsLogicalInductor₂.noExploit₂ (P := P) (DP := DP)
-      (T.eventualConditionedTranslation W.floor)
-      (eventualConditionedTranslation_preserves_ec₂ W.floor C.condition_codes T hTec₂)
-      (W.exploits_base hTexp)
+    (floor : EventualConditioningFloor P C.condition) :
+    ∀ T : Trader, EfficientlyComputableTok₂ T →
+      ¬ T.Exploits (conditionedHistory P C.condition) (DP.union extra) :=
+  fun T hTec₂ hTexp =>
+    IsLogicalInductor.noExploitDigit (P := P) (DP := DP)
+      (T.eventualConditionedTranslation floor)
+      (eventualConditionedTranslation_preserves_ec₂ floor C.condition_codes T hTec₂)
+      (Trader.eventualConditionedTranslation_exploits_base floor hTexp)
 
-/-- Digit-metered `thm:scon` from joint consistency and concrete computability data.
+/-- `thm:scon` transfer from joint consistency and concrete computability data.
 Paper node: `thm:scon` -/
-theorem lic_conditioned_eventual_ofMarketComputation₂
-    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor₂ P DP]
+theorem lic_conditioned_eventual_ofMarketComputation
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
     (C : ConditioningPresentation DP extra) (market : MarketComputation P)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i)) :
-    IsLogicalInductor₂ (conditionedHistory P C.condition) (DP.union extra) := by
-  let floor : EventualConditioningFloor P C.condition :=
-    eventualConditioningFloorOfJointConsistency
-      P DP market C.condition C.condition_codes hjoint
-  exact lic_conditioned_eventual₂ P DP extra C
-    (eventualConditioningOperationalWitness C market floor)
+    ∀ T : Trader, EfficientlyComputableTok₂ T →
+      ¬ T.Exploits (conditionedHistory P C.condition) (DP.union extra) :=
+  lic_conditioned_eventual P DP extra C
+    (eventualConditioningFloorOfJointConsistency
+      P DP market C.condition C.condition_codes hjoint)
 
-/-- Fixed-sentence digit-metered `thm:scon`.
+/-- Fixed-sentence `thm:scon` transfer.
 Paper node: `thm:scon` -/
-theorem lic_conditioned_fixed_ofComputationAndMarket₂
-    (P : History) (DP : DeductiveProcess) [IsLogicalInductor₂ P DP]
+theorem lic_conditioned_fixed_ofComputationAndMarket
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (base : DeductiveProcessComputation DP) (market : MarketComputation P)
     (ψ : Sentence)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ v.Holds ψ) :
-    IsLogicalInductor₂
-      (conditionedHistory P (fun _ => ψ)) (DP.adjoinSentence ψ) := by
+    ∀ T : Trader, EfficientlyComputableTok₂ T →
+      ¬ T.Exploits (conditionedHistory P (fun _ => ψ))
+        (DP.adjoinSentence ψ) := by
   let C := fixedConditioningPresentation base ψ
   have hjointC : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
@@ -1717,25 +1722,25 @@ theorem lic_conditioned_fixed_ofComputationAndMarket₂
     obtain ⟨v, hv, hψ⟩ := hjoint n
     exact ⟨v, hv, fun _ => hψ⟩
   have hresult :=
-    lic_conditioned_eventual_ofMarketComputation₂
+    lic_conditioned_eventual_ofMarketComputation
       P DP (fixedConditionProcess ψ) C market hjointC
   simpa [C, fixedConditioningPresentation,
     DeductiveProcess.adjoinSentence] using hresult
 
-/-- Growing finite-prefix digit-metered `thm:scon`.
+/-- Growing finite-prefix `thm:scon` transfer.
 Paper node: `thm:scon` -/
-theorem lic_conditioned_growing_ofComputationsAndMarket₂
-    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor₂ P DP]
+theorem lic_conditioned_growing_ofComputationsAndMarket
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
     (base : DeductiveProcessComputation DP)
     (more : CompactConditioningProcessComputation extra)
     (market : MarketComputation P)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧
         ∀ i, v.ConsistentWith (extra.D i)) :
-    IsLogicalInductor₂
-      (conditionedHistory P
-        (fun n => deductiveStageCondition (extra.D n)))
-      (DP.union extra) := by
+    ∀ T : Trader, EfficientlyComputableTok₂ T →
+      ¬ T.Exploits
+        (conditionedHistory P (fun n => deductiveStageCondition (extra.D n)))
+        (DP.union extra) := by
   let C := conditioningPresentationOfComputations base more
   have hjointC : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
@@ -1743,26 +1748,26 @@ theorem lic_conditioned_growing_ofComputationsAndMarket₂
     obtain ⟨v, hv, hextra⟩ := hjoint n
     refine ⟨v, hv, fun i => ?_⟩
     exact (v.holds_deductiveStageCondition (extra.D i)).2 (hextra i)
-  exact lic_conditioned_eventual_ofMarketComputation₂
+  exact lic_conditioned_eventual_ofMarketComputation
     P DP extra C market hjointC
 
-/-- Gated digit-metered `thm:scon` with all compiler fields discharged.
+/-- Gated `thm:scon` transfer with concrete market data.
 Paper node: `thm:scon` -/
-theorem lic_conditioned_gated_ofMarketComputation₂
-    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor₂ P DP]
-    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+theorem lic_conditioned_gated_ofMarketComputation
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
+    (C : ConditioningPresentation DP extra) (_market : MarketComputation P)
     (ε : ℚ) (hε : 0 < (ε : ℝ))
     (hfloor : ∀ d, (ε : ℝ) ≤ P d (C.condition d)) :
-    IsLogicalInductor₂ (conditionedHistory P C.condition) (DP.union extra) :=
-  lic_conditioned_gated₂ P DP extra C
-    (gatedConditioningOperationalWitness C market ε hε hfloor)
+    ∀ T : Trader, EfficientlyComputableTok₂ T →
+      ¬ T.Exploits (conditionedHistory P C.condition) (DP.union extra) :=
+  lic_conditioned_gated P DP extra C ε hε hfloor
 
-#print axioms lic_conditioned_gated₂
-#print axioms lic_conditioned_eventual₂
-#print axioms lic_conditioned_eventual_ofMarketComputation₂
-#print axioms lic_conditioned_fixed_ofComputationAndMarket₂
-#print axioms lic_conditioned_growing_ofComputationsAndMarket₂
-#print axioms lic_conditioned_gated_ofMarketComputation₂
+#print axioms lic_conditioned_gated
+#print axioms lic_conditioned_eventual
+#print axioms lic_conditioned_eventual_ofMarketComputation
+#print axioms lic_conditioned_fixed_ofComputationAndMarket
+#print axioms lic_conditioned_growing_ofComputationsAndMarket
+#print axioms lic_conditioned_gated_ofMarketComputation
 
 #print axioms eventualConditionedTranslation_preserves_ec₂
 #print axioms conditionedTranslation_preserves_ec₂

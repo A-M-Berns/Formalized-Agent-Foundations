@@ -125,12 +125,11 @@ lemma fueled_id :
   have h := fueled_pair fueled_left fueled_right
   simpa [Nat.pair_unpair] using h.mono (fun n => by simp)
 
-/-! ## Polynomial fuel bounds — the bridge to `EfficientlyComputable`
+/-! ## Polynomial fuel bounds
 
 A `Fueled` bound built from the combinators over a fixed trader template is a fixed
-composition, hence bounded by a polynomial in `n`. `IsPolyBounded` packages that, and
-`EfficientlyComputable.of_fueled` turns a poly-bounded `Fueled` fact for the strategy-encoding
-function into `def:ec`. -/
+composition, hence bounded by a polynomial in `n`. `IsPolyBounded` packages that; the
+emission certificates of `def:ec` are stated over it. -/
 
 /-- `b` is bounded by a polynomial (in the `a·(n+1)ᵏ + a` normal form used by `def:ec`). -/
 def IsPolyBounded (b : ℕ → ℕ) : Prop := ∃ a k : ℕ, ∀ n, b n ≤ a * (n + 1) ^ k + a
@@ -181,14 +180,6 @@ lemma IsPolyBounded.pair {f g : ℕ → ℕ} (hf : IsPolyBounded f) (hg : IsPoly
     _ = 4 * (a₁ + a₂ + 1) ^ 2 * X ^ 2 := by ring
     _ ≤ 4 * (a₁ + a₂ + 1) ^ 2 * (n + 1) ^ (2 * Max.max k₁ k₂) + 4 * (a₁ + a₂ + 1) ^ 2 := by
         rw [hsq]; exact Nat.le_add_right _ _
-
-/-- **The bridge.** A poly-bounded `Fueled` fact for a trader's strategy-encoding function is
-exactly efficient computability (`def:ec`). -/
-lemma EfficientlyComputable.of_fueled {Tr : Trader} {code : Nat.Partrec.Code} {b : ℕ → ℕ}
-    (h : Fueled code (fun n => Encodable.encode (Tr.strat n).trades) b)
-    (hb : IsPolyBounded b) : EfficientlyComputable Tr := by
-  obtain ⟨a, k, hk⟩ := hb
-  exact ⟨code, a, k, fun n => h.mono hk n⟩
 
 /-! ## `PolyFueled` — the composable capstone
 
@@ -246,32 +237,12 @@ lemma PolyFueled.succ_comp {cg : Nat.Partrec.Code} {g : ℕ → ℕ} (hg : PolyF
   exact ⟨fun n => max (bg n) (g n + 1), fueled_comp fueled_succ hfg, hpfg.add_one,
     hpbg.max hpfg.add_one⟩
 
-lemma EfficientlyComputable.of_polyFueled {Tr : Trader} {code : Nat.Partrec.Code}
-    (h : PolyFueled code (fun n => Encodable.encode (Tr.strat n).trades)) :
-    EfficientlyComputable Tr := by
-  obtain ⟨b, hf, _, hpb⟩ := h
-  exact EfficientlyComputable.of_fueled hf hpb
-
-/-! ### A worked responsive trader: efficient computability, end to end.
-
-`priceTrader φ` plays `[(φ*ⁿ, φ)]` on day `n` — its coefficient is the *price feature*
-`price φ n`, so the strategy genuinely varies with `n` (unlike the constant `buyDaily`). We
-assemble the code computing `n ↦ encode [(price φ n, φ)]` from `PolyFueled` primitives and
-read off efficient computability — the first responsive trader certified under the faithful
-`def:ec`, validating the whole pipeline. -/
-
-/-- The trader playing the price feature `φ*ⁿ` on `φ` each day (a responsive trade). -/
-def priceTrader (φ : Sentence) : Trader where
-  strat n := { trades := [(EF.price φ n, φ)]
-               rank_le := by intro p hp; simp only [List.mem_singleton] at hp
-                             subst hp; simp }
-
 /-! ### `PolyEF` — day-indexed feature templates with e.c. codes.
 
 `PolyEF t` says the per-day code `n ↦ (t n).toNat` is poly-fueled. It is closed under the
 `EF` constructors (leaves `const`/`price φ n`), so *any* feature template a property proof
 builds — e.g. the responsive `max(0, c − φ*ⁿ)` buy-signal — is e.c. for free, and a
-single-sentence responsive trader's efficient computability drops out via `ec_of_polyEF`. -/
+single-sentence responsive trader's feature codes assemble for free. -/
 
 /-- The per-day code of the template `t` is efficiently computable. -/
 def PolyEF (t : ℕ → EF) : Prop := ∃ c, PolyFueled c (fun n => (t n).toNat)
@@ -302,38 +273,8 @@ lemma PolyEF.safeRecip {a : ℕ → EF} (ha : PolyEF a) :
   obtain ⟨_, hca⟩ := ha
   exact ⟨_, (PolyFueled.const 5).pair hca⟩
 
-/-- A single-sentence responsive trader `[(t n, φ)]` with a `PolyEF` coefficient is
-efficiently computable. -/
-lemma ec_of_polyEF {t : ℕ → EF} (φ : Sentence) (ht : PolyEF t) {Tr : Trader}
-    (hTr : ∀ n, (Tr.strat n).trades = [(t n, φ)]) : EfficientlyComputable Tr := by
-  obtain ⟨_, hct⟩ := ht
-  have hpf := PolyFueled.succ_comp
-    ((hct.pair (PolyFueled.const (Encodable.encode φ))).pair (PolyFueled.const 0))
-  have heq : (fun n => Nat.pair (Nat.pair (t n).toNat (Encodable.encode φ)) 0 + 1)
-      = (fun n => Encodable.encode (Tr.strat n).trades) := by funext n; rw [hTr n]; rfl
-  rw [heq] at hpf
-  exact EfficientlyComputable.of_polyFueled hpf
-
-lemma priceTrader_ec (φ : Sentence) : EfficientlyComputable (priceTrader φ) :=
-  ec_of_polyEF φ (PolyEF.price φ) (fun _ => rfl)
-
-/-- A single-trade trader `[(t n, φ n)]` whose **sentence also varies** with `n` is efficiently
-computable, given that the sentence sequence's codes are poly-fueled (an *efficiently
-computable sequence of sentences*, the paper's `𝓔𝓒`-sequence). This is what lets the
-*sequence* form of Provability Induction certify its trader. -/
-lemma ec_of_polyEF_seq {t : ℕ → EF} {φ : ℕ → Sentence} {cφ : Nat.Partrec.Code}
-    (ht : PolyEF t) (hφ : PolyFueled cφ (fun n => Encodable.encode (φ n))) {Tr : Trader}
-    (hTr : ∀ n, (Tr.strat n).trades = [(t n, φ n)]) : EfficientlyComputable Tr := by
-  obtain ⟨_, hct⟩ := ht
-  have hpf := PolyFueled.succ_comp ((hct.pair hφ).pair (PolyFueled.const 0))
-  have heq : (fun n => Nat.pair (Nat.pair (t n).toNat (Encodable.encode (φ n))) 0 + 1)
-      = (fun n => Encodable.encode (Tr.strat n).trades) := by funext n; rw [hTr n]; rfl
-  rw [heq] at hpf
-  exact EfficientlyComputable.of_polyFueled hpf
-
 /-- Payoff: the responsive **buy-signal** coefficient `max(0, c − φ*ⁿ)` — the actual shape
-the convergence / provability-induction property proofs use — is `PolyEF` in one line, so
-any trader built from it is efficiently computable via `ec_of_polyEF`. -/
+the convergence / provability-induction property proofs use — is `PolyEF` in one line. -/
 example (φ : Sentence) (c : ℚ) :
     PolyEF (fun n => EF.max (EF.const 0) (EF.add (EF.const c) (EF.mul (EF.const (-1))
       (EF.price φ n)))) :=
@@ -792,7 +733,7 @@ lemma ecTok_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
     EfficientlyComputableTok Tr := by
   refine ⟨lengthCode, tokenCode, a, k, ?_⟩
   have hstrat :
-      (clockedTrader lengthCode tokenCode (fun n => a * (n + 1) ^ k + a)).strat =
+      (clockedTraderTok lengthCode tokenCode (fun n => a * (n + 1) ^ k + a)).strat =
         Tr.strat := by
     funext n
     change strategyOfTokens n
@@ -827,7 +768,7 @@ lemma ecTok_of_exactEmission (Tr : Trader)
     EfficientlyComputableTok Tr := by
   refine ⟨lengthCode, tokenCode, a, k, ?_⟩
   have hstrat :
-      (clockedTrader lengthCode tokenCode (fun n => a * (n + 1) ^ k + a)).strat =
+      (clockedTraderTok lengthCode tokenCode (fun n => a * (n + 1) ^ k + a)).strat =
         Tr.strat := by
     funext n
     change strategyOfTokens n
@@ -931,9 +872,15 @@ lemma ecTok_of_tokenList (Tr : Trader) (ts : List (ℕ → ℕ)) (hts : PolyFuel
     rw [hout] at key
     exact evaln_mono hbc key
 
-/-- **Validation of the pipeline** (the `def:ec`-Tok analogue of `priceTrader_ec`): the
-responsive trader `priceTrader φ` — whose day-`n` stream `[0, ⌜φ⌝, n, 6, ⌜φ⌝]` contains the
-*varying* day-index token `n` — is `EfficientlyComputableTok`. The `n` token is `PolyFueled.id`;
+/-- The trader playing the price feature `φ*ⁿ` on `φ` each day (a responsive trade). -/
+def priceTrader (φ : Sentence) : Trader where
+  strat n := { trades := [(EF.price φ n, φ)]
+               rank_le := by intro p hp; simp only [List.mem_singleton] at hp
+                             subst hp; simp }
+
+/-- **Validation of the pipeline**: the responsive trader `priceTrader φ` — whose day-`n`
+stream `[0, ⌜φ⌝, n, 6, ⌜φ⌝]` contains the *varying* day-index token `n` — is
+`EfficientlyComputableTok`. The `n` token is `PolyFueled.id`;
 the rest are constants. This is the template the property-file re-certifications follow. -/
 lemma priceTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (priceTrader φ) := by
   refine ecTok_of_tokenList _ [fun _ => 0, fun _ => Encodable.encode φ, fun n => n,
@@ -2705,7 +2652,7 @@ lemma ecTok₂_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
     EfficientlyComputableTok₂ Tr := by
   refine ⟨lengthCode, tokenCode, a, k, ?_⟩
   have hstrat :
-      (clockedTrader₂ lengthCode tokenCode (fun n => a * (n + 1) ^ k + a)).strat =
+      (clockedTraderDigit lengthCode tokenCode (fun n => a * (n + 1) ^ k + a)).strat =
         Tr.strat := by
     funext n
     change strategyOfTokens n (undigitize

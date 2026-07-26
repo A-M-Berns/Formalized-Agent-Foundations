@@ -1336,7 +1336,7 @@ theorem lic_not_frequently_positive_feedback_return
   intro hfreq
   have hexploit := feedbackTrader_exploits_of_frequently_positive_return
     hpoly hW hstrict δ γ hWdiv hmag hP hδ0 hδ hgap hmass hfreq hworld
-  exact IsLogicalInductor.noExploit (P := P) (DP := DP)
+  exact IsLogicalInductor.noExploitTok (P := P) (DP := DP)
     (feedbackTrader hpoly hW hstrict δ)
     (feedbackTrader_ecTok hpoly hW hstrict δ emit) hexploit
 

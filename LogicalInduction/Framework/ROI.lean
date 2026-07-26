@@ -7,6 +7,7 @@ day `n`.  The recursively chosen weight is exactly the capital not tied up by ea
 components on that day.
 -/
 import LogicalInduction.Framework.Affine
+import LogicalInduction.Framework.RpnEmission
 import LogicalInduction.Framework.Computable
 import Mathlib.Algebra.BigOperators.Fin
 
@@ -2350,7 +2351,7 @@ lemma noFractionalRepeatableReturn
     have hex := fractionalBudgetedTrader_exploits Ts V DP ε hε occupancy α
       hαrank hoccRank hαc hoccc hocc hzero hα0 hα1 hδ hfreq hTs.emulatable
       hworth hworld
-    exact hLI.noExploit _ hec hex
+    exact hLI.noExploitTok _ hec hex
   rw [Filter.not_frequently] at hnotfreq
   obtain ⟨N, hN⟩ := Filter.eventually_atTop.mp hnotfreq
   refine ⟨N, fun n hn => ?_⟩
@@ -2982,7 +2983,7 @@ theorem noRepeatableROI
     intro hfreq
     obtain ⟨hec, hex⟩ := repeatableROI_of_frequently Ts V DP ε hε η close α hαrank
       hαseg hαc hmag hα0 hα1 hδ hfreq hP hTs hactive hroi hη0 hηsum hmature hworld
-    exact hLI.noExploit _ hec hex
+    exact hLI.noExploitTok _ hec hex
   rw [Filter.not_frequently] at hnotfreq
   obtain ⟨N, hN⟩ := Filter.eventually_atTop.mp hnotfreq
   refine ⟨N, fun n hn => ?_⟩

@@ -101,7 +101,7 @@ lemma PolySegStream.escModeScan {s : ℕ → List ℕ} (h : PolySegStream s) :
 /-! ## The `₃`-model realization bridges -/
 
 /-- Exact digit emitters instantiate the symbol-metered bounded-emulator definition. -/
-lemma ecTok₃_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
+lemma ec_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
     (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
     (hlength : ∀ n, evaln (a * (n + 1) ^ k + a) lengthCode n =
       some (raw n).length)
@@ -110,10 +110,10 @@ lemma ecTok₃_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
       evaln (a * (n + 1) ^ k + a) tokenCode (Nat.pair n i) =
         some ((raw n).getD i 0))
     (hstrategy : ∀ n, strategyOfTokens n (unRpn (undigitize (raw n))) = Tr.strat n) :
-    EfficientlyComputableTok₃ Tr := by
+    EfficientlyComputable Tr := by
   refine ⟨lengthCode, tokenCode, a, k, ?_⟩
   have hstrat :
-      (clockedTrader₃ lengthCode tokenCode (fun n => a * (n + 1) ^ k + a)).strat =
+      (clockedTrader lengthCode tokenCode (fun n => a * (n + 1) ^ k + a)).strat =
         Tr.strat := by
     funext n
     change strategyOfTokens n (unRpn (undigitize
@@ -136,10 +136,10 @@ lemma ecTok₃_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
 
 /-- Any `PolySegStream` whose contracted undigitized decode is the target trader
 realizes a `₃`-certificate. -/
-lemma ecTok₃_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
+lemma ec_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
     (h : PolySegStream raw)
     (hstrategy : ∀ n, strategyOfTokens n (unRpn (undigitize (raw n))) = Tr.strat n) :
-    EfficientlyComputableTok₃ Tr := by
+    EfficientlyComputable Tr := by
   obtain ⟨ct, cl, tokenFn, lenFn, htokf, hlenf, hlens, hspec⟩ := h
   have hlenRaw : PolyFueled cl (fun n => (raw n).length) :=
     hlenf.of_eq (fun n => (hlens n).symm)
@@ -151,7 +151,7 @@ lemma ecTok₃_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
       ⟨a₀, k₀, fun _ => le_rfl⟩).comp
       ((IsPolyBounded.linear 0).pair hlenBounded)
   obtain ⟨A, K, hAK⟩ := (hblBounded.max hbcbound).max hlenBounded
-  refine ecTok₃_of_rawEmission Tr raw cl ct A K (fun n => ?_) (fun n => ?_)
+  refine ec_of_rawEmission Tr raw cl ct A K (fun n => ?_) (fun n => ?_)
     (fun n i hi => ?_) hstrategy
   · exact evaln_mono
       ((le_max_left _ _).trans ((le_max_left _ _).trans (hAK n))) (hfl n)
@@ -169,7 +169,7 @@ lemma ecTok₃_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
 
 #print axioms escExpand_eq_flatMap
 #print axioms PolySegStream.escModeScan
-#print axioms ecTok₃_of_rawSegStream
+#print axioms ec_of_rawSegStream
 
 /-! ## The model inclusions
 
@@ -178,11 +178,12 @@ the escape splice — every sentence-slot token is prefixed by the escape tag, a
 digit-level rewrite whose contracted decode is the original strategy
 (`strategyOfTokens_unRpn_escExpand`). -/
 
-/-- **Digit-metered certificates are symbol-metered** (`Tok₂ ⊆ Tok₃`): the escape
-splice transfers the certificate verbatim.
+/-- **The digit-emitter constructor**: a digit-metered certificate
+(`EfficientlyComputableTok₂`, internal) is efficiently computable — the escape splice
+transfers the certificate verbatim.
 Paper node: `def:ec` -/
-theorem EfficientlyComputableTok₂.toTok₃ {Tr : Trader}
-    (h : EfficientlyComputableTok₂ Tr) : EfficientlyComputableTok₃ Tr := by
+theorem EfficientlyComputable.ofDigitEmitter {Tr : Trader}
+    (h : EfficientlyComputableTok₂ Tr) : EfficientlyComputable Tr := by
   obtain ⟨lc, tc, a, k, hTr⟩ := h
   let ds : ℕ → List ℕ := fun n =>
     clockedTokens lc tc (PrefixPatchCompile.ecClock a k n) n
@@ -226,19 +227,37 @@ theorem EfficientlyComputableTok₂.toTok₃ {Tr : Trader}
         simp only [Nat.mul_eq_zero]
         omega), if_neg hm]
       simp [digitize]
-  apply ecTok₃_of_rawSegStream Tr hclean
+  apply ec_of_rawSegStream Tr hclean
   intro n
   rw [undigitize_digitize, strategyOfTokens_unRpn_escExpand]
   exact congrFun (congrArg Trader.strat hTr) n
 
-/-- **Token-model certificates are symbol-metered** (`Tok ⊆ Tok₃`), through the digit
-inclusion.
+/-- **The token-emitter constructor**: a token-metered certificate
+(`EfficientlyComputableTok`, internal) is efficiently computable, through the digit
+emitter.
 Paper node: `def:ec` -/
-theorem EfficientlyComputableTok.toTok₃ {Tr : Trader}
-    (h : EfficientlyComputableTok Tr) : EfficientlyComputableTok₃ Tr :=
-  h.toTok₂.toTok₃
+theorem EfficientlyComputable.ofTokenEmitter {Tr : Trader}
+    (h : EfficientlyComputableTok Tr) : EfficientlyComputable Tr :=
+  EfficientlyComputable.ofDigitEmitter h.toTok₂
 
-#print axioms EfficientlyComputableTok₂.toTok₃
-#print axioms EfficientlyComputableTok.toTok₃
+/-- Token-model no-exploitation, through the emission constructor: the compat form the
+property proofs invoke for their concretely constructed exploiting traders.
+Paper node: `def:lic` -/
+lemma IsLogicalInductor.noExploitTok {P : History} {DP : DeductiveProcess}
+    [hLI : IsLogicalInductor P DP] :
+    ∀ Tr : Trader, EfficientlyComputableTok Tr → ¬ Tr.Exploits P DP :=
+  fun Tr h => hLI.noExploit Tr (EfficientlyComputable.ofTokenEmitter h)
+
+/-- Digit-model no-exploitation, through the emission constructor.
+Paper node: `def:lic` -/
+lemma IsLogicalInductor.noExploitDigit {P : History} {DP : DeductiveProcess}
+    [hLI : IsLogicalInductor P DP] :
+    ∀ Tr : Trader, EfficientlyComputableTok₂ Tr → ¬ Tr.Exploits P DP :=
+  fun Tr h => hLI.noExploit Tr (EfficientlyComputable.ofDigitEmitter h)
+
+#print axioms EfficientlyComputable.ofDigitEmitter
+#print axioms EfficientlyComputable.ofTokenEmitter
+#print axioms IsLogicalInductor.noExploitTok
+#print axioms IsLogicalInductor.noExploitDigit
 
 end LogicalInduction

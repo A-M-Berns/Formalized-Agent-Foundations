@@ -1091,7 +1091,7 @@ theorem lic_occam_lower
         exists_ob_fire_of_low_limit U P DP hworld hj hlowi
       obtain ⟨v, hvcons, hv⟩ := hpossible n
       exact ⟨i, n, v, hlive, ha, hprice, hvcons, by simpa only [hi] using hv⟩
-    exact IsLogicalInductor.noExploit (P := P) (DP := DP)
+    exact IsLogicalInductor.noExploitTok (P := P) (DP := DP)
       (obTrader U) (obTrader_ecTok U emit)
       (obTrader_exploits U P DP hfire)
 

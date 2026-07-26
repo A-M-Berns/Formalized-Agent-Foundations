@@ -98,7 +98,7 @@ theorem lic_deducible_price_near_one (P : History) (DP : DeductiveProcess)
     ∃ n, 1 - ε < P n φ := by
   by_contra h
   push_neg at h
-  exact hLI.noExploit (buyDaily φ) (buyDaily_ec φ) (buyDaily_exploits P DP φ ε hε hded h hcons)
+  exact hLI.noExploitTok (buyDaily φ) (buyDaily_ec φ) (buyDaily_exploits P DP φ ε hε hded h hcons)
 
 
 /-! ## M3 — Provability Induction in the limit (fixed sentence), via accumulation
@@ -173,7 +173,7 @@ theorem lic_deducible_eventually_ge (P : History) (DP : DeductiveProcess)
   by_contra h
   rw [not_eventually] at h
   simp only [not_lt] at h
-  exact hLI.noExploit (buyDaily φ) (buyDaily_ec φ)
+  exact hLI.noExploitTok (buyDaily φ) (buyDaily_ec φ)
     (buyDaily_exploits_freq P DP φ ε hε hded hP1 h hcons)
 
 
@@ -251,7 +251,7 @@ theorem lic_provind_seq (P : History) (DP : DeductiveProcess) [hLI : IsLogicalIn
   have hev : ∀ᶠ n in atTop, 1 - ε < P n (φ n) := by
     by_contra h
     rw [not_eventually] at h; simp only [not_lt] at h
-    refine hLI.noExploit (buySeq φ) (buySeq_ec φ hφ) ?_
+    refine hLI.noExploitTok (buySeq φ) (buySeq_ec φ hφ) ?_
     refine exploits_of_nonneg_partialSums (buySeq φ) P DP (fun i => 1 - P i (φ i)) ε hε
       (fun i => by have := hP1 i; linarith) ?_ ?_ hcons
     · intro n v hv

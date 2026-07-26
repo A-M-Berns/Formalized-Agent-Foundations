@@ -120,7 +120,7 @@ theorem lic_disprovable_tendsto_zero (P : History) (DP : DeductiveProcess)
     by_contra h
     rw [not_eventually] at h
     simp only [not_lt] at h
-    exact hLI.noExploit (sellDaily φ) (sellDaily_ec φ)
+    exact hLI.noExploitTok (sellDaily φ) (sellDaily_ec φ)
       (sellDaily_exploits_freq P DP φ ε hε hdis hP0 h hcons)
   obtain ⟨N, hN⟩ := eventually_atTop.mp hev
   refine ⟨N, fun n hn => ?_⟩
@@ -320,12 +320,12 @@ theorem lic_excl_gap_tendsto_zero (P : History) (DP : DeductiveProcess)
   -- upper: gap eventually < q
   have h1 : ∀ᶠ n in atTop, (gapEF φ ψ n).denote P < (q:ℝ) := by
     by_contra hc; rw [not_eventually] at hc; simp only [not_lt] at hc
-    exact hLI.noExploit _ (exclTr_ec φ ψ 1 q)
+    exact hLI.noExploitTok _ (exclTr_ec φ ψ 1 q)
       (exclTr_exploits P DP φ ψ 1 q hq0' hexcl hcons (by simpa using hc))
   -- lower: gap eventually > -q
   have h2 : ∀ᶠ n in atTop, -(q:ℝ) < (gapEF φ ψ n).denote P := by
     by_contra hc; rw [not_eventually] at hc; simp only [not_lt] at hc
-    refine hLI.noExploit _ (exclTr_ec φ ψ (-1) q)
+    refine hLI.noExploitTok _ (exclTr_ec φ ψ (-1) q)
       (exclTr_exploits P DP φ ψ (-1) q hq0' hexcl hcons ?_)
     refine hc.mono (fun n hn => ?_)
     push_cast; nlinarith [hn]
@@ -426,6 +426,6 @@ theorem lic_price_convergesTo (P : History) (DP : DeductiveProcess)
   by_contra hnc
   obtain ⟨a, b, hab, hA, hB⟩ := exists_rat_oscillation_of_not_convergesTo P φ hb hnc
   obtain ⟨Tr, hec, hexp⟩ := oscillation_exploitable P DP φ a b hab hb hcons hA hB
-  exact hLI.noExploit Tr hec hexp
+  exact hLI.noExploitTok Tr hec hexp
 
 end LogicalInduction

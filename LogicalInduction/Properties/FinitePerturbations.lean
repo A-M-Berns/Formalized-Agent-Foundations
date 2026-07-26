@@ -725,8 +725,8 @@ Paper node: `app:ifp` -/
 structure EfficientPrefixPatch (P : History) (cutoff : ℕ) where
   quote : ℕ → Sentence → ℚ
   quote_exact : ∀ day < cutoff, ∀ φ, P day φ = (quote day φ : ℝ)
-  preserves_ec : ∀ Tr : Trader, EfficientlyComputableTok Tr →
-    EfficientlyComputableTok (Tr.freezeBefore quote cutoff)
+  preserves_ec : ∀ Tr : Trader, EfficientlyComputable Tr →
+    EfficientlyComputable (Tr.freezeBefore quote cutoff)
 
 /-- **Closure under Finite Perturbations** (`thm:ifp`), with the exact computational
 qualification forced by this repository's clocked model.  The two histories agree from
@@ -750,7 +750,7 @@ theorem lic_iff_of_finitePerturbation
       noExploit := by
         intro Tr hTr hExploits
         let frozen := Tr.freezeBefore patchP'.quote cutoff
-        have hfrozenEC : EfficientlyComputableTok frozen :=
+        have hfrozenEC : EfficientlyComputable frozen :=
           patchP'.preserves_ec Tr hTr
         have hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
             |Tr.netWorth P' v n - frozen.netWorth P v n| ≤
@@ -771,7 +771,7 @@ theorem lic_iff_of_finitePerturbation
       noExploit := by
         intro Tr hTr hExploits
         let frozen := Tr.freezeBefore patchP.quote cutoff
-        have hfrozenEC : EfficientlyComputableTok frozen :=
+        have hfrozenEC : EfficientlyComputable frozen :=
           patchP.preserves_ec Tr hTr
         have hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
             |Tr.netWorth P v n - frozen.netWorth P' v n| ≤

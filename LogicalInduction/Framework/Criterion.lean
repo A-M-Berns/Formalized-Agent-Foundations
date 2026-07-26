@@ -1434,20 +1434,6 @@ lemma evaln_const_self : ∀ (K n : ℕ),
       simp [Nat.Partrec.Code.evaln, hxe, Option.bind_eq_some_iff, Option.guard_eq_some']
       omega
 
-/-- `def:ec` (`dd:fuel`) — **whole-number clocked model. SUPERSEDED by
-`EfficientlyComputableTok`** (below); no longer the definition `IsLogicalInductor` uses. Kept
-because its statement is true and its certification pipeline (`EfficientlyComputable.of_fueled`,
-`ec_of_polyEF`, …) is sound — but it is **faithful only for bounded-depth traders**: it asks a
-program to output the day-`n` strategy's `Encodable.encode` *as one number*, and that number's
-value is `2^{poly n}` for a deep poly-size feature, unemittable in `evaln (poly n)`. That is
-OPEN RISK 4; the fix is the token-indexed `EfficientlyComputableTok`. A trader is (Val-)e.c. if a
-program `c`, run on input `n` for a *polynomial* fuel budget `a·(n+1)ᵏ + a`, outputs the encoded
-day-`n` strategy. -/
-def EfficientlyComputable (Tr : Trader) : Prop :=
-  ∃ (c : Nat.Partrec.Code) (a k : ℕ),
-    ∀ n, Nat.Partrec.Code.evaln (a * (n + 1) ^ k + a) c n
-        = some (Encodable.encode (Tr.strat n).trades)
-
 /-! `def:ec` (`dd:fuel`) — **token-indexed emission, the poly-*size* model**. A trader is
 **efficiently computable** if one program emits the length of the day-`n` strategy's flat
 token stream and a second program emits that stream **one token at a time**.  Both programs
@@ -1497,36 +1483,12 @@ def strategyOfTokens (n : ℕ) (tokens : List ℕ) : Strategy n :=
       if h : ∀ trade ∈ trades, trade.1.rank ≤ n then ⟨trades, h⟩ else ⟨[], by simp⟩
 
 /-- The total trader denoted by two programs and a day-dependent clock. -/
-def clockedTrader (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ) : Trader where
+def clockedTraderTok (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ) : Trader where
   strat n := strategyOfTokens n (clockedTokens lengthCode tokenCode (clock n) n)
 
 def EfficientlyComputableTok (Tr : Trader) : Prop :=
   ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
-    clockedTrader lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
-
-/-- `def:lic`. The market `P` satisfies the **Logical Induction Criterion** relative to
-`DP` if no efficiently computable trader exploits it. This is the hypothesis the entire
-property tail is conditioned on (`[IsLogicalInductor P DP]`). With the faithful
-`EfficientlyComputableTok` above (the poly-*size*, token-indexed model — OPEN RISK 4
-resolved), this is the paper's `def:lic` on the nose, and it now admits deep poly-size
-exploiters (hysteresis, purchase counters) that the whole-number `EfficientlyComputable`
-excluded.
-Paper node: `def:lic` -/
-class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
-  /-- Markets are computable rational pricing sequences in the paper's definition. -/
-  marketComputable : ComputableMarket P
-  /-- Deductive processes are computable nested finite-set sequences in the paper's
-  definition. -/
-  processComputable : ComputableDeductiveProcess DP
-  /-- No efficiently computable trader exploits `P`. -/
-  noExploit : ∀ Tr : Trader, EfficientlyComputableTok Tr → ¬ Tr.Exploits P DP
-
-/-- The pricing range carried by every logical inductor's computable-market certificate. -/
-lemma IsLogicalInductor.price_mem_Icc
-    {P : History} {DP : DeductiveProcess} [hLI : IsLogicalInductor P DP]
-    (n : ℕ) (φ : Sentence) :
-    0 ≤ P n φ ∧ P n φ ≤ 1 :=
-  hLI.marketComputable.price_mem_Icc n φ
+    clockedTraderTok lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
 
 /-! ### The digit layer (`dd:fuel` refinement — Tranche 2 of the boundary-shoring plan)
 
@@ -1633,8 +1595,8 @@ lemma digitize_injective : Function.Injective digitize := by
   exact this.symm
 
 /-- The total trader denoted by two digit-emission programs and a day-dependent clock:
-as `clockedTrader`, but the emitted stream is read through the digit layer. -/
-def clockedTrader₂ (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ) : Trader where
+as `clockedTraderTok`, but the emitted stream is read through the digit layer. -/
+def clockedTraderDigit (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ) : Trader where
   strat n :=
     strategyOfTokens n (undigitize (clockedTokens lengthCode tokenCode (clock n) n))
 
@@ -1648,7 +1610,7 @@ step 3) and additionally admits per-day large rational literals and deep sentenc
 Paper node: `def:ec` -/
 def EfficientlyComputableTok₂ (Tr : Trader) : Prop :=
   ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
-    clockedTrader₂ lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
+    clockedTraderDigit lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
 
 /-! ### The Polish-notation (`Tok₃`) serialization layer
 
@@ -1723,7 +1685,7 @@ def unRpn (ts : List ℕ) : List ℕ := unRpnTokens ts.length ts
 /-- The total trader denoted by two digit-emission programs under a day clock, with
 Polish sentence blocks contracted before validation.
 Paper node: `def:trader`, `def:ec` -/
-def clockedTrader₃ (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ) :
+def clockedTrader (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ) :
     Trader where
   strat n := strategyOfTokens n (unRpn (undigitize
     (clockedTokens lengthCode tokenCode (clock n) n)))
@@ -1732,30 +1694,35 @@ def clockedTrader₃ (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → 
 programs under one polynomial clock emit the digit stream of an RPN-expanded strategy
 serialization.
 Paper node: `def:ec` -/
-def EfficientlyComputableTok₃ (Tr : Trader) : Prop :=
+def EfficientlyComputable (Tr : Trader) : Prop :=
   ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
-    clockedTrader₃ lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
+    clockedTrader lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
 
 end
 
-/-- `def:lic` over the **digit-metered** e.c. class — the paper-faithful criterion.
-Extends `IsLogicalInductor` with `noExploit₂`, no-exploitation against every
-`EfficientlyComputableTok₂` trader.  The parent's token-model `noExploit` is exactly the
-restriction of `noExploit₂` along the inclusion `EfficientlyComputableTok.toTok₂`
-(proved downstream in `Construction/Witnesses/M7Witnesses.lean` — the universal-machine
-machinery it needs lives there — which is why the parent field is retained rather than
-derived here; instance constructors discharge it from `noExploit₂` via the inclusion).
-
-Layering disclosure: the constructed `LIA` satisfies this class
-(`LIA_is_logical_inductor₂`); the conditioning transformations (`thm:scon`) currently
-produce only the parent class, because their trader-translation compilers carry
-token-model emission certificates — a digit-model translation certificate is the
-recorded residual that would let the two classes collapse into one.
+/-- `def:lic`. The market `P` satisfies the **Logical Induction Criterion** relative to
+`DP` if no efficiently computable trader exploits it.  Efficiency is the symbol-metered
+class `EfficientlyComputable` above — the paper's `def:ec` on the nose — and this is the
+hypothesis the entire property tail is conditioned on (`[IsLogicalInductor P DP]`).
+Token-model and digit-model no-exploitation follow through the emission constructors
+`EfficientlyComputable.ofTokenEmitter` / `.ofDigitEmitter`
+(`IsLogicalInductor.noExploitTok` / `.noExploitDigit` in `Framework/RpnEmission.lean`).
 Paper node: `def:lic` -/
-class IsLogicalInductor₂ (P : History) (DP : DeductiveProcess) : Prop
-    extends IsLogicalInductor P DP where
-  /-- No digit-model efficiently computable trader exploits `P`. -/
-  noExploit₂ : ∀ Tr : Trader, EfficientlyComputableTok₂ Tr → ¬ Tr.Exploits P DP
+class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
+  /-- Markets are computable rational pricing sequences in the paper's definition. -/
+  marketComputable : ComputableMarket P
+  /-- Deductive processes are computable nested finite-set sequences in the paper's
+  definition. -/
+  processComputable : ComputableDeductiveProcess DP
+  /-- No efficiently computable trader exploits `P`. -/
+  noExploit : ∀ Tr : Trader, EfficientlyComputable Tr → ¬ Tr.Exploits P DP
+
+/-- The pricing range carried by every logical inductor's computable-market certificate. -/
+lemma IsLogicalInductor.price_mem_Icc
+    {P : History} {DP : DeductiveProcess} [hLI : IsLogicalInductor P DP]
+    (n : ℕ) (φ : Sentence) :
+    0 ≤ P n φ ∧ P n φ ≤ 1 :=
+  hLI.marketComputable.price_mem_Icc n φ
 
 /-! ### Sanity / non-vacuity for the criterion machinery.
 

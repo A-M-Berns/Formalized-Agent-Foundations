@@ -1995,7 +1995,7 @@ theorem lic_domination_universalSemimeasure
       obtain ⟨i, hi⟩ := B.enumeration_covers σ
       refine ⟨i, ?_⟩
       simpa only [hi] using hlow
-    exact IsLogicalInductor.noExploit (P := P) (DP := DP)
+    exact IsLogicalInductor.noExploitTok (P := P) (DP := DP)
       (dusTrader A) (dusTrader_ecTok A emit)
       (dusTrader_exploits_of_failed_scales A P hworld hfail)
 
