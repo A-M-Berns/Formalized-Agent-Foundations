@@ -277,6 +277,86 @@ lemma parseRpn_escape (φ : Sentence) (rest : List ℕ) {fuel : ℕ} (hfuel : 1 
       rw [parseRpn_cons, if_neg (by omega), if_pos rfl]
       simp [Encodable.encodek]
 
+/-- **Parse extension** (self-delimitation): a successful parse is unchanged by
+appending a suffix to the input — the consumed block determines the result. -/
+lemma parseRpn_append : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {r : List ℕ}
+    (tail : List ℕ), parseRpn fuel ts = some (φ, r) →
+    parseRpn fuel (ts ++ tail) = some (φ, r ++ tail) := by
+  intro fuel
+  induction fuel with
+  | zero => intro ts φ r tail h; simp [parseRpn] at h
+  | succ fuel ih =>
+      intro ts φ r tail h
+      match ts with
+      | [] => simp at h
+      | t :: rest =>
+          rw [parseRpn_cons] at h
+          rw [List.cons_append, parseRpn_cons]
+          by_cases h0 : t = 0
+          · rw [if_pos h0] at h ⊢
+            obtain ⟨rfl, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
+            rfl
+          · rw [if_neg h0] at h ⊢
+            by_cases h1 : t = 1
+            · rw [if_pos h1] at h ⊢
+              match rest with
+              | [] => simp at h
+              | c :: rest' =>
+                  simp only [List.cons_append, List.head?_cons, Option.bind_some] at h ⊢
+                  cases hdec : Encodable.decode (α := Sentence) c with
+                  | none => rw [hdec] at h; simp at h
+                  | some ψ =>
+                      rw [hdec] at h
+                      simp only [Option.map_some, List.tail_cons] at h ⊢
+                      obtain ⟨rfl, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
+                      rfl
+            · rw [if_neg h1] at h ⊢
+              have hbin : ∀ (mk : Sentence → Sentence → Sentence),
+                  ((parseRpn fuel rest).bind fun p =>
+                    (parseRpn fuel p.2).bind fun q =>
+                      some (mk p.1 q.1, q.2)) = some (φ, r) →
+                  ((parseRpn fuel (rest ++ tail)).bind fun p =>
+                    (parseRpn fuel p.2).bind fun q =>
+                      some (mk p.1 q.1, q.2)) = some (φ, r ++ tail) := by
+                intro mk hh
+                cases hp : parseRpn fuel rest with
+                | none => rw [hp] at hh; simp at hh
+                | some p =>
+                    rw [hp] at hh
+                    simp only [Option.bind_some] at hh
+                    cases hq : parseRpn fuel p.2 with
+                    | none => rw [hq] at hh; simp at hh
+                    | some q =>
+                        rw [hq] at hh
+                        simp only [Option.bind_some] at hh
+                        obtain ⟨h1', h2'⟩ := Prod.mk.injEq .. ▸ Option.some.inj hh
+                        rw [ih rest tail hp]
+                        simp only [Option.bind_some]
+                        rw [ih p.2 tail hq]
+                        simp only [Option.bind_some]
+                        rw [h1', h2']
+              by_cases h2 : t = 2
+              · rw [if_pos h2] at h ⊢; exact hbin _ h
+              · rw [if_neg h2] at h ⊢
+                by_cases h3 : t = 3
+                · rw [if_pos h3] at h ⊢; exact hbin _ h
+                · rw [if_neg h3] at h ⊢
+                  by_cases h4 : t = 4
+                  · rw [if_pos h4] at h ⊢; exact hbin _ h
+                  · rw [if_neg h4] at h ⊢
+                    obtain ⟨rfl, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
+                    rfl
+
+/-- A complete self-delimiting block placed at the head of a longer stream parses to
+its sentence with exactly the appended tail as remainder, at any fuel covering the
+stream. -/
+lemma parseRpn_block_head {b : List ℕ} {φ : Sentence}
+    (hb : parseRpn b.length b = some (φ, [])) (tail : List ℕ) {fuel : ℕ}
+    (hfuel : b.length ≤ fuel) :
+    parseRpn fuel (b ++ tail) = some (φ, tail) := by
+  have := parseRpn_append b.length b tail hb
+  simpa using parseRpn_mono (b ++ tail) hfuel this
+
 /-- Injectivity of the canonical coding. -/
 lemma rpn_injective : Function.Injective rpn := by
   intro φ ψ h
@@ -422,6 +502,33 @@ lemma unRpn_trade_escape_chunk (φ : Sentence) (rest : List ℕ) :
     parseRpn_escape φ rest (by simp)]
   simp only []
   rw [unRpnTokens_congr rest (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
+  rfl
+
+/-- A complete price chunk with **any** self-delimiting block parsing to `φ`
+contracts exactly (canonical runs and escapes are the two special cases). -/
+lemma unRpn_price_chunk_block {b : List ℕ} {φ : Sentence}
+    (hb : parseRpn b.length b = some (φ, [])) (d : ℕ) (rest : List ℕ) :
+    unRpn (0 :: (b ++ d :: rest)) =
+      0 :: Encodable.encode φ :: d :: unRpn rest := by
+  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+    parseRpn_block_head hb (d :: rest) (by simp)]
+  simp only []
+  rw [unRpnTokens_congr rest
+    (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
+  rfl
+
+/-- A complete trade chunk with **any** self-delimiting block parsing to `φ`
+contracts exactly. -/
+lemma unRpn_trade_chunk_block {b : List ℕ} {φ : Sentence}
+    (hb : parseRpn b.length b = some (φ, [])) (rest : List ℕ) :
+    unRpn (6 :: (b ++ rest)) =
+      6 :: Encodable.encode φ :: unRpn rest := by
+  rw [unRpn, List.length_cons, unRpnTokens_cons,
+    if_neg (by norm_num), if_pos rfl,
+    parseRpn_block_head hb rest (by simp)]
+  simp only []
+  rw [unRpnTokens_congr rest
+    (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
   rfl
 
 /-- Opaque payload chunks (rational constants, variable indices) copy verbatim. -/
