@@ -541,12 +541,6 @@ lemma longSegment_tokens (P ψc D : ℕ) (ε : ℚ) :
 @[simp] lemma digitize_singleton (t : ℕ) : digitize [t] = tokenBlock t := by
   simp [digitize]
 
-lemma digitize_flatMap (l : List ℕ) (f : ℕ → List ℕ) :
-    digitize (l.flatMap f) = l.flatMap fun x => digitize (f x) := by
-  induction l with
-  | nil => simp [digitize]
-  | cons x rest ih => simp [List.flatMap_cons, ih]
-
 /-! ## The guarded rewrite (specification) -/
 
 /-- The guarded token-level price rewrite: the ordinary conditioning rewrite when every

@@ -1564,6 +1564,14 @@ def tokenBlock (t : ℕ) : List ℕ := natDigits4 t ++ [4]
 /-- The digit stream of a token stream. -/
 def digitize (ts : List ℕ) : List ℕ := ts.flatMap tokenBlock
 
+lemma digitize_flatMap (l : List ℕ) (f : ℕ → List ℕ) :
+    digitize (l.flatMap f) = l.flatMap fun x => digitize (f x) := by
+  induction l with
+  | nil => simp [digitize]
+  | cons x rest ih =>
+      simp only [digitize, List.flatMap_cons, List.flatMap_append] at ih ⊢
+      rw [ih]
+
 /-- Streaming inverse state step: `(finished tokens, block accumulator, place value)`.
 Digits `< 4` accumulate little-endian; anything else closes the current block. -/
 def undigitizeStep : List ℕ × ℕ × ℕ → ℕ → List ℕ × ℕ × ℕ
