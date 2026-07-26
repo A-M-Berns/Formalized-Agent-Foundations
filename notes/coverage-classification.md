@@ -69,7 +69,7 @@ or a conventional complexity class.  A row marked *complete* claims the paper st
 | thm:loops | complete | unconditional over `LIA` (Σ₁-sound `Θ ⊇ IΣ₁`) |
 | thm:lp | complete | public diagonal derived from the market computation (F3); unconditional over `LIA` |
 | thm:nd | conditional | global theory/world premises are the paper's own |
-| thm:ob | qualified | prefix-machine presentation and Kraft data retained |
+| thm:ob | qualified | concrete prefix machine fully constructed (`_ofPrefixMachine` endpoints unconditional over `[IsLogicalInductor]`); qualification = `prefixKappa` is a fixed computable self-delimiting code, not universal prefix complexity (type-`(c)` disclosure) |
 | thm:obu | conditional | over `[IsLogicalInductor]` with the paper's enumeration data |
 | thm:pac | complete | unconditional over `LIA` (Σ₁-sound `Θ ⊇ IΣ₁`) |
 | thm:pazfc | complete | unconditional over `LIA` (Σ₁-sound `Θ ⊇ IΣ₁`) |

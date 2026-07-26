@@ -1,10 +1,14 @@
 # M7-PREFIX-MACHINE — construction scope & status
 
-_Drafted 2026-07-20. Reopened and largely discharged 2026-07-26; status below._
+_Drafted 2026-07-20. Reopened and largely discharged 2026-07-26; **fully discharged
+2026-07-26 (second session)** — see the closing record at the end._
 
 The boundary that, if constructed, discharges the Occam-bound disclosures
 `lic_occam_lower` and `lic_occamBounds` (paper `thm:ob` / App. `ob`). Previously fully
-disclosed; now discharged down to **two residual fuel-model emission certificates**.
+disclosed; then discharged down to two residual fuel-model emission certificates;
+**now complete: both certificates are proved and the endpoints are unconditional** (up
+to `[IsLogicalInductor P DP]` and the standard market hypotheses, like every other
+property endpoint).
 
 ## Status after the 2026-07-26 session
 
@@ -42,13 +46,36 @@ Construction lives in `LogicalInduction/Construction/Witnesses/`:
 
 ## Residual input — `PrefixMachineComputation` (the honest remainder)
 
-Two conclusion-free fuel-model certificates, in the exact style of the existing
+**Update 2026-07-26 (second session): `approx_poly` is DERIVED, residual is down to
+one certificate.** `approx_polyRat_of_sentence` (PrefixMachine.lean) proves
+`PolySentenceCodes prefixSentenceEnum → PolyRatCodes prefixApprox`, so the structure
+collapsed to the single field `sentence_poly`; `PrefixMachineComputation.approx_poly`
+is now a theorem.  The derivation is:
+
+- `dcStep`/`dcIter_encode` — the code-level un-negation scan: iterating the branchless
+  strip step `encode φ` times computes `⟨encode (negCore φ), negDepth φ⟩` from
+  `encode φ` (saturation via `negDepth_le_encode`); poly-fueled by `PolyFueled.prec`
+  with state `≤ ⟨e, j⟩` (`dcIter_polyFueled`).
+- `p2s`/`p2s_polyFueled` — materializes `2^{size (x+1)}` by *halving-driven doubling*
+  (state `⟨(x+1)/2^j, 2^{min j (size (x+1))}⟩`): the doubling is clocked by the halving,
+  so the state stays `≤ 2(x+1)` and the off-diagonal `prec` clamp the original plan
+  called for is unnecessary.
+- `prefixDen_eq` — `2^κ = 2 · p2s(negDepth)² · p2s(encode ∘ negCore)²`, then `mulc`
+  assembly and the rational encode `⟨2, 2^κ⟩` (`encode_prefixApprox`).
+
+Remaining conclusion-free fuel-model certificate, in the exact style of the existing
 `BitPrefixCodeComputation` disclosure (`BitPrefixSyntax.lean`):
 
 1. `sentence_poly : PolySentenceCodes prefixSentenceEnum` — a `Nat.Partrec.Code`
    emitting `encode (prefixSentenceEnum n)` with polynomial fuel.
-2. `approx_poly : PolyRatCodes prefixApprox` — same for `encode (prefixApprox i)`
-   (equivalently, by `prefixDen_polyFueled`, for the denominator `2^{κᵢ}`).
+
+**Further reduced (same session):** `validCode : ℕ → Bool` (structural descent over
+`Formula.toNat`'s tagged-pair format) decides canonicity, with both directions proved
+(`validCode_encode`, `of_validCode`), and `sentencePoly_of_invalidBit` shows a
+poly-fueled emitter of the single **bit** `invalidBit n = if validCode n then 0 else 1`
+suffices for `sentence_poly` (`encode_prefixSentenceEnum` collapses the emitted value to
+`ifzSel ⟨⟨n, pair 1 n + 1⟩, bit⟩`).  So the entire residual is now: *one poly-fueled
+Boolean* — the tree-recursive canonicity decision of the scope note's item (ii).
 
 **Satisfiability (believed, not proved).** Both output values are polynomially
 bounded — `encode (sentenceₙ) ∈ {n, pair 1 n + 1}` and
@@ -103,11 +130,48 @@ in the module docstring of `PrefixMachine.lean`.
 | Field | Status 2026-07-26 |
 |---|---|
 | `sentence` | **constructed** (`prefixSentenceEnum`) |
-| `sentence_codes` | residual (`PrefixMachineComputation.sentence_poly`) |
+| `sentence_codes` | **proved** (`prefixSentenceEnum_polySentenceCodes`) |
 | `approximation` + `_nonneg`/`_le`/`_tendsto` | **proved** (exact weights) |
-| `approximation_codes` | residual (`PrefixMachineComputation.approx_poly`) |
+| `approximation_codes` | **proved** (`prefixApprox_polyRatCodes`) |
 | `kraft` | **proved** (`prefixKraft` ← `kraft_inequality`) |
 | `covers` | **proved** |
 
-`OccamThresholdEmission`: **derived** from `approx_poly`.
+`OccamThresholdEmission`: **derived** from the proved weight emission.
 `PrefixNegationCompiler`: **fully discharged** (overhead 2, proved).
+
+## Closing record (2026-07-26, second session)
+
+The last certificate — the canonicity bit — was constructed, so
+`PrefixMachineComputation` was **deleted** (consolidation discipline: no residual-input
+structure survives its own discharge).  `prefixMachinePresentation` and
+`prefixThresholdEmission` are plain defs; `lic_occam_lower_ofPrefixMachine` /
+`lic_occamBounds_ofPrefixMachine` take no operational input.  All axiom-clean.
+
+How the canonicity bit was computed inside `dd:fuel` (all in `PrefixMachine.lean`):
+
+- **Spec:** `validCode : ℕ → Bool` decides `n ∈ range Formula.toNat` by tagged-pair
+  descent; `validCode_encode` / `of_validCode` prove both directions;
+  `encode_prefixSentenceEnum` collapses the emitted value to
+  `ifzSel ⟨⟨n, pair 1 n + 1⟩, invalidBit n⟩` (`sentencePoly_of_invalidBit`).
+- **Breadth-first packed descent** (the tree recursion that course-of-values tables
+  cannot express in this fuel model): slots are plain codes with `0`/`1` as absorbing
+  invalid/valid resolved states (`1 = encode ⊥` — representation coincides with
+  semantics); `chL`/`chR` emit children; per-slot conservation
+  `validCode m = validCode (chL m) && validCode (chR m)`; levels packed as
+  `Nat.ofDigits` numbers in the level-varying base `sbChain n d + 2` (iterated-`√`
+  slot bound), fixed width `2^d`, so the packed value stays polynomial
+  (`bPow_le`/`capP_dominates`: `B_d^{2^d} ≤ 16^{2^{d+1}}(n+2) ≤ capP n`).
+- **Resolution:** `size`-halving argument (`sbChain_size_le`) collapses the slot
+  bound to `2` by depth `size (size n) + 2`, hence all slots to bits one level later.
+- **`prec` drive:** inner loop (`innerOutC`, clamped accumulator; clamp proved idle
+  on-diagonal), outer loop (`outerSt` with capped width doubling; `outerSt_eq` is the
+  on-diagonal characterization), final conjunction fold (`andSt`), runtime `sqrt` and
+  `size` scans.  Off-diagonal `prec` state boundedness is by *definition* (the clamps),
+  on-diagonal exactness by proof — this is the pattern the original scope note's
+  "clamped materialization" warning asked for.
+- The weight emission had already been derived from the sentence emission
+  (`approx_polyRat_of_sentence`: `dcIter` negation stripping + `p2s` halving-driven
+  doubling + `prefixDen_eq`).
+
+Remaining disclosure for this node: only the type-`(c)` non-universality of
+`prefixKappa` (above), which is a modeling statement, not a proof gap.

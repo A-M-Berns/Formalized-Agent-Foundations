@@ -157,10 +157,11 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 #assert_axioms_clean
   kraft_inequality
 
--- Construction/Witnesses/PrefixMachine.lean (M7-PREFIX-MACHINE steps 2-5: the concrete
--- self-delimiting sentence code; residual operational input = PrefixMachineComputation)
+-- Construction/Witnesses/PrefixMachine.lean (M7-PREFIX-MACHINE, complete: the concrete
+-- self-delimiting sentence code with both fuel-model emission certificates constructed)
 #assert_axioms_clean
   prefixKraft prefixNegationCompiler
+  invalidBit_polyFueled prefixSentenceEnum_polySentenceCodes prefixApprox_polyRatCodes
   lic_occam_lower_ofPrefixMachine lic_occamBounds_ofPrefixMachine
 
 -- Properties/Conditioning.lean, Properties/FinitePerturbations.lean
@@ -535,8 +536,6 @@ deliberately. -/
   code code_poly
 #assert_fields PolyNatCodes
   code code_poly
-#assert_fields PrefixMachineComputation
-  sentence_poly approx_poly
 #assert_fields PrefixMachinePresentation
   sentence sentence_codes approximation approximation_codes approximation_nonneg approximation_le approximation_tendsto kraft covers
 #assert_fields PrefixNegationCompiler
