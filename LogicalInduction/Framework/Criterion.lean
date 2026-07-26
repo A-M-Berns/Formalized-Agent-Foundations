@@ -1612,7 +1612,7 @@ def EfficientlyComputableTok₂ (Tr : Trader) : Prop :=
   ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
     clockedTraderDigit lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
 
-/-! ### The Polish-notation (`Tok₃`) serialization layer
+/-! ### The Polish-notation serialization layer
 
 Sentence slots of the flat strategy stream may carry Polish-notation symbol runs
 instead of single pair-code tokens (one token per formula symbol, escape tag `1` for
@@ -1690,7 +1690,7 @@ def clockedTrader (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ
   strat n := strategyOfTokens n (unRpn (undigitize
     (clockedTokens lengthCode tokenCode (clock n) n)))
 
-/-- **The symbol-metered efficient-computability class** (`def:ec`, `Tok₃`): two
+/-- **The symbol-metered efficient-computability class** (`def:ec`): two
 programs under one polynomial clock emit the digit stream of an RPN-expanded strategy
 serialization.
 Paper node: `def:ec` -/

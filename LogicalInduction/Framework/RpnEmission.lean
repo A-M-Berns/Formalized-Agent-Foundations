@@ -1,5 +1,5 @@
 /-
-# RPN emission bridges (the `Tok₃` layer, part 3: fuelled scans and realization)
+# RPN emission bridges: fuelled scans and realization
 
 The poly-fuelled side of the symbol-metered emission model: the escape-slot automaton
 scanned over any digit `PolySegStream`, the per-position range form of the escape

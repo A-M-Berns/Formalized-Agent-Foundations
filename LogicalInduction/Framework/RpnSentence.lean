@@ -1,10 +1,10 @@
 /-
-# Polish-notation sentence blocks (the `Tok₃` layer, part 1: the pure coding)
+# Polish-notation sentence blocks: the pure coding
 
 The digit-metered emission model (`EfficientlyComputableTok₂`) meters token *bit*
 size, but sentences still travel as single `Encodable` pair-code tokens, whose bit
 size is the formula's symbol count only up to balance: skewed formulas inflate
-exponentially.  The `Tok₃` layer removes that residual by letting sentence slots of
+exponentially.  The Polish-notation layer removes that residual by letting sentence slots of
 the flat strategy stream carry **Polish-notation symbol runs** instead: one token per
 formula symbol, so poly digit-stream length = poly symbol count — the paper's `𝓔𝓒`
 metering on the nose.
@@ -954,9 +954,9 @@ lemma strategyOfTokens_unRpn_escExpand (n : ℕ) (ts : List ℕ) :
   unfold strategyOfTokens
   rw [deserializeTrades_unRpn_escExpand]
 
-/-! ## The symbol-metered emission model (`Tok₃`)
+/-! ## The symbol-metered emission model
 
-A `Tok₃` trader emits a digit stream whose undigitized tokens form an RPN-expanded
+An efficiently computable trader emits a digit stream whose undigitized tokens form an RPN-expanded
 strategy stream; the decode contracts sentence blocks (`unRpn`) before validation.
 Poly digit length now meters formula *symbols*: sentences may be arbitrarily deep and
 skewed.  The escape tag keeps both earlier models included by verbatim splice. -/
