@@ -1,72 +1,113 @@
-# M7-PREFIX-MACHINE — construction scope
+# M7-PREFIX-MACHINE — construction scope & status
 
-_Drafted 2026-07-20. Status: scoping, not started._
+_Drafted 2026-07-20. Reopened and largely discharged 2026-07-26; status below._
 
 The boundary that, if constructed, discharges the Occam-bound disclosures
-`lic_occam_lower` and `lic_occamBounds` (paper `thm:ob` / App. `ob`), moving the project
-from 12/15 to 13/15 constructed. Currently disclosed in the README.
+`lic_occam_lower` and `lic_occamBounds` (paper `thm:ob` / App. `ob`). Previously fully
+disclosed; now discharged down to **two residual fuel-model emission certificates**.
 
-## What "constructed" means here
+## Status after the 2026-07-26 session
 
-Provide a constructor
-`PrefixMachinePresentation.ofUniversalMachine : … → PrefixMachinePresentation κ`
-(and inhabit `OccamThresholdEmission`) from a concrete universal self-delimiting machine,
-discharging every field of `PrefixMachinePresentation` (`Properties/OccamBounds.lean:33`)
-with a real proof rather than an assumption. The paper-specific market proof downstream of
-the structure is **already formalized** — this is purely about inhabiting the boundary.
+Construction lives in `LogicalInduction/Construction/Witnesses/`:
 
-## Field-by-field obligation
+- `KraftInequality.lean` — **`kraft_inequality` PROVED** (step 1 of the original plan).
+  Body produced by Aristotle (job `65eaafaa-2ba0-4501-8002-8e9e2043f4d8`, run
+  `2d017ff6…`; the earlier `bc2df18a…` attempt had failed), re-elaborated and
+  kernel-checked in-repo per the trust rule. Counting argument; axioms
+  `propext`/`Classical.choice`/`Quot.sound`. Audited in `AxiomAudit.lean`.
+- `PrefixMachine.lean` — **steps 2, 4 (partially), and 5 constructed**:
+  - `natCode` (unary-size marker + terminator + `testBit` payload, length
+    `2·size(n+1)`), prefix-free-injective (`natCode_prefix_inj`).
+  - `sentCode φ = natCode (negDepth φ) ++ natCode (encode (negCore φ))`,
+    prefix-free-injective; `prefixKappa φ = |sentCode φ| + 1`. The negation-depth
+    factoring is load-bearing: it is what makes the negation overhead **additive**.
+  - `prefixSentenceEnum` — total enumeration, canonical `decode` with `atom n`
+    fallback; surjective (`covers`), index multiplicity ≤ 2.
+  - **`kraft` field proved** (`prefixKraft`): split indices into the canonical and
+    fallback classes (each injective), apply `kraft_inequality` to each class's
+    prefix-free codeword image; the `+1` slack bit in `prefixKappa` halves every
+    weight, paying exactly for multiplicity two.
+  - **`PrefixNegationCompiler` fully discharged** (`prefixNegationCompiler`,
+    overhead = 2, proved): `κ(∼φ) ≤ κ(φ)+2` because `∼` bumps only the depth field,
+    and `size` grows by ≤ 1 per successor.
+  - `prefixApprox i = 2^{-κ(sentenceᵢ)}` exact (the concrete κ is computable, so the
+    from-below approximation is constant-in-stage); `nonneg`/`le`/`tendsto` proved.
+  - **Both `OccamThresholdEmission` streams derived, not assumed**
+    (`prefixThresholdSum_polyRat`, `prefixInverseWidth_polyRat`): they are `mulc`
+    arithmetic on the weight denominator `D i = 2^{κᵢ}` (`pair 2 (D·j⁴)` and
+    `pair (2·(2Dj⁴)) 1` under the closed-form rational encodes).
+  - Endpoints `lic_occam_lower_ofPrefixMachine` / `lic_occamBounds_ofPrefixMachine`
+    consume only `PrefixMachineComputation` + the standard market hypotheses.
+    All axiom-clean, audited, paper-node-annotated.
 
-`PrefixMachinePresentation κ` (κ : Sentence → ℕ is prefix complexity; `prefixWeight κ φ =
-1/2^(κ φ)`):
+## Residual input — `PrefixMachineComputation` (the honest remainder)
 
-| Field | Statement | Nature | Aristotle-able? |
-|---|---|---|---|
-| `sentence`, `sentence_codes` | efficient enumeration of all sentences with polynomial codes | repo computability (`PolySentenceCodes`, encoding) | **no** — needs repo `PolyFueled`/`Sentence` infra |
-| `approximation` + `_codes`/`_nonneg`/`_le`/`_tendsto` | polynomial rational from-below approximation to `2^{-κ}` | repo computability + basic analysis | **no** — repo infra; the `tendsto` is small analysis |
-| `kraft` | `∀ N, ∑_{i<N} 2^{-κ(sentenceᵢ)} ≤ 1` | **pure combinatorics/analysis** | **YES** — this is the extractable core |
-| `covers` | enumeration is surjective | repo computability | **no** |
+Two conclusion-free fuel-model certificates, in the exact style of the existing
+`BitPrefixCodeComputation` disclosure (`BitPrefixSyntax.lean`):
 
-`OccamThresholdEmission` (`:73`): two `PolyRatCodes` emission facts — repo computability.
+1. `sentence_poly : PolySentenceCodes prefixSentenceEnum` — a `Nat.Partrec.Code`
+   emitting `encode (prefixSentenceEnum n)` with polynomial fuel.
+2. `approx_poly : PolyRatCodes prefixApprox` — same for `encode (prefixApprox i)`
+   (equivalently, by `prefixDen_polyFueled`, for the denominator `2^{κᵢ}`).
 
-`PrefixNegationCompiler` (`:81`): `overhead : ℕ` + `κ(∼φ) ≤ κ φ + overhead`. The
-downstream `weight_div_le_neg` is **already proved**; only the `overhead` witness (a fixed
-negation program's length) is a construction obligation, and a small one.
+**Satisfiability (believed, not proved).** Both output values are polynomially
+bounded — `encode (sentenceₙ) ∈ {n, pair 1 n + 1}` and
+`2^{κᵢ} ≤ 32(d+1)²(c+1)² ≤ poly(i)` (`d = negDepth`, `c = encode ∘ negCore`, both
+`≤ encode (sentenceᵢ) ≤ (i+1)² + i + 2`) — so `not_polyFueled_two_pow`-style size
+separations do **not** bite; the algorithms are genuinely polynomial-time. The
+obligation is interpreter programming in raw `Nat.Partrec.Code`, not a size or
+model obstruction.
 
-## Honest bottom line
+**The precise obstruction (why this session stopped here).** Emitting
+`encode (prefixSentenceEnum n)` requires *deciding canonicity* of `n` — whether
+`n` is in the range of `Formula.toNat` — and computing `κ` additionally requires
+`negDepth`/`negCore`. In the `dd:fuel` toolkit:
 
-M7-PREFIX-MACHINE is **not** a single Aristotle job. It is a genuine universal-prefix-
-machine construction over the repo's computability substrate (enumeration, polynomial
-from-below approximation, coverage), of which exactly **one** sub-obligation — the finite
-Kraft inequality — is a clean, Mathlib-only lemma that Mathlib lacks and Aristotle could
-plausibly supply. Discharging Kraft does not discharge the boundary; it removes the one
-piece that is mathematics rather than plumbing, and that is currently absent from Mathlib.
+- `negDepth`/`negCore` and `size` are **single-chain iterations** (strip one
+  `imp _ ⊥` layer per step; halve per step), implementable via `PolyFueled.prec`
+  with poly-bounded state — feasible, a few hundred lines.
+- `2^κ` needs **clamped materialization** (plain doubling violates `prec`'s
+  poly-state bound at off-diagonal inputs; clamp by the provable
+  `2^κ ≤ 32(E+1)⁴` bound, the `BigDigits.clampVal` pattern) — feasible.
+- Canonicity/validity of `n` is **tree-recursive** (the `ofNat` descent over both
+  `unpair` children). Course-of-values tables are impossible in this fuel model
+  (a table of `n` entries has exponential *value*), so it needs an explicit-stack
+  simulation. The stack content is small (entries shrink as `√` per level, total
+  ≈ `2·log n` bits), so a mixed-radix/digit-stream encoding works **in principle**
+  — this is exactly the territory of the in-flight `RpnSentence`/`DigitArith`/
+  `BigDigits` tranche (B1a/B1b, other agent), which was out of bounds for this
+  session. Estimated multi-session; do not start it casually.
 
-Recommended order if reopened:
-1. Land `kraft_inequality` (Aristotle project `scratchpad/kraft`, below), verify in-repo.
-2. Build the concrete self-delimiting machine and its `code : Sentence → List Bool`
-   (prefix-free, `κ φ = (code φ).length`); derive the `kraft` field from step 1.
-3. Polynomial from-below `approximation` to `2^{-κ}` and its codes.
-4. `covers` and the two `OccamThresholdEmission` emissions.
-5. `PrefixNegationCompiler.overhead` witness.
+Recommended discharge order if reopened: (i) `negDepth`/`negCore`/`size` prec
+chains + clamped `2^κ` ⇒ discharges `approx_poly` *given* `sentence_poly`;
+(ii) the validity descent (possibly on top of the landed RPN/digit machinery,
+where a token-stream representation may sidestep `toNat`-validity entirely) ⇒
+discharges `sentence_poly`.
 
-Steps 2–5 are repo computability work of comparable weight to the other M7 witnesses;
-only step 1 is offloadable.
+## Modeling disclosure (type-`(c)`, recorded at construction time)
 
-## Extracted Aristotle project (step 1)
+`prefixKappa` is the length function of a **fixed computable self-delimiting code**,
+not a *universal* prefix machine: the paper's `κ` is universal prefix complexity
+(uncomputable; weights only lower-semicomputable — which is why the boundary has a
+from-below `tendsto` field at all). All downstream theorems are stated for arbitrary
+`κ`, so the generic paper-faithful statements are untouched; the new endpoints are a
+genuine non-vacuous *instance* in which "simplicity" means code length under this
+fixed code (`2^{-κ(φ)} ≈ 1/poly(encode φ)`). The universality upgrade (dovetailing
+over all programs) is a strictly larger construction and remains undone. Disclosed
+in the module docstring of `PrefixMachine.lean`.
 
-`scratchpad/kraft/` — Mathlib-only, statement validated to elaborate in-repo:
+## Original field-by-field table (kept for reference; statuses updated)
 
-```lean
-theorem kraft_inequality {S : Finset (List Bool)}
-    (hpf : ∀ a ∈ S, ∀ b ∈ S, a <+: b → a = b) :
-    ∑ w ∈ S, (1 / 2 : ℝ) ^ w.length ≤ 1
-```
+`PrefixMachinePresentation κ` (`Properties/OccamBounds.lean:33`):
 
-Prefix-free = antichain under list-prefix `<+:`. Preferred proof is the counting argument
-(each length-`ℓ` codeword blocks `2^(L−ℓ)` of the `2^L` length-`L` strings; prefix-freeness
-⟹ disjoint ⟹ `∑ 2^{−ℓᵢ} ≤ 1`); the docstring also notes the dyadic-interval proof.
+| Field | Status 2026-07-26 |
+|---|---|
+| `sentence` | **constructed** (`prefixSentenceEnum`) |
+| `sentence_codes` | residual (`PrefixMachineComputation.sentence_poly`) |
+| `approximation` + `_nonneg`/`_le`/`_tendsto` | **proved** (exact weights) |
+| `approximation_codes` | residual (`PrefixMachineComputation.approx_poly`) |
+| `kraft` | **proved** (`prefixKraft` ← `kraft_inequality`) |
+| `covers` | **proved** |
 
-To match the repo, the in-repo glue will instantiate `S` as the image of `Finset.range N`
-under the machine's `code`, with `w.length = κ (sentenceᵢ)`; that glue is step 2, not part
-of the extracted lemma.
+`OccamThresholdEmission`: **derived** from `approx_poly`.
+`PrefixNegationCompiler`: **fully discharged** (overhead 2, proved).
