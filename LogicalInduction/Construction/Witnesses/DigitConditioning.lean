@@ -1333,6 +1333,328 @@ lemma conditionedTranslation_preserves_ec₂
         (conditioningBudget n)).trades
     simp [Strategy.separatedLocallyGatedConditionalContract, hTempty]
 
+/-! ## The zero-aware guarded compiler (for the eventual translation) -/
+
+/-- The zero-aware token-model segment through the digit-side control view. -/
+lemma zeroAwareConditionPriceTokenSegment_eq (zeroDays : Finset ℕ)
+    (tf ψCode : ℕ → ℕ) (ε : ℚ) (n j : ℕ) :
+    zeroAwareConditionPriceTokenSegment zeroDays tf ψCode ε (Nat.pair n j) =
+      if freezeMode4 (vpre tf n j) = 2 then
+        (if tf (Nat.pair n j) ∈ zeroDays then
+          [tf (Nat.pair n j), 1, Encodable.encode (1 : ℚ), 8]
+        else [tf (Nat.pair n j)] ++
+          rawConditionalPriceTokens (tf (Nat.pair n (j - 1)))
+            (ψCode (tf (Nat.pair n j))) (tf (Nat.pair n j)) ε ++ [8])
+      else [tf (Nat.pair n j)] := by
+  have hfst : (PrefixPatchCompile.freezeControlNat tf (Nat.pair n j)).unpair.1 =
+      freezeMode4 (vpre tf n j) := freezeControlNat_fst tf n j
+  by_cases hm : freezeMode4 (vpre tf n j) = 2
+  · rw [if_pos hm]
+    match j with
+    | 0 => exact absurd hm (by simp [vpre, freezeMode4])
+    | j + 1 =>
+        have hctrl := freezeTokenControlAt_mode2 tf n j (by
+          have := freezeTokenControlAt_fst tf n (j + 1)
+          omega)
+        simp only [zeroAwareConditionPriceTokenSegment,
+          PrefixPatchCompile.freezeControlNat, Nat.unpair_pair]
+        rw [hctrl]
+        norm_num
+  · rw [if_neg hm]
+    simp only [zeroAwareConditionPriceTokenSegment]
+    rw [hfst]
+    by_cases h0 : freezeMode4 (vpre tf n j) = 0
+    · rw [if_pos h0]
+    rw [if_neg h0]
+    by_cases h1 : freezeMode4 (vpre tf n j) = 1
+    · rw [if_pos h1]
+    rw [if_neg h1, if_neg hm]
+
+/-- The guarded zero-aware token-level price rewrite. -/
+def guardedZeroAwareConditionTokens (zeroDays : Finset ℕ) (ψCode : ℕ → ℕ) (ε : ℚ)
+    (n : ℕ) (ts : List ℕ) : List ℕ :=
+  if ∀ j < ts.length, freezeMode4 (ts.take j) = 2 → ts.getD j 0 ≤ n
+  then (zeroAwareConditionPriceTokenRun zeroDays ψCode ε (0, 0) ts).2
+  else []
+
+/-- **Zero-aware B1 capstone**: the digit stream of the guarded zero-aware price
+rewrite of any digit `PolySegStream` is itself a `PolySegStream`.  The zero-day
+membership test runs on the clamped day, exact whenever the guard passes. -/
+lemma guardedZeroAwareConditionRun_polySegStream (zeroDays : Finset ℕ)
+    {s : ℕ → List ℕ} (h : PolySegStream s)
+    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) (ε : ℚ) :
+    PolySegStream (fun n => digitize (guardedZeroAwareConditionTokens zeroDays
+      (fun day => Encodable.encode (ψ day)) ε n (undigitize (s n)))) := by
+  obtain ⟨hcount, hbig⟩ := h.undigitizeTokens
+  obtain ⟨cc, hcnt⟩ := hcount
+  obtain ⟨cm, hmode⟩ := h.freezeModeScan
+  obtain ⟨cd, hclamp⟩ := h.dayClampTokens
+  obtain ⟨cf, hflag⟩ := PolySegStream.bigDayFlagScan h
+  obtain ⟨cψc, hψPoly⟩ := hψ
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have hreidx : PolyFueled _ (fun z => Nat.pair z.unpair.1 (z.unpair.2 - 1)) :=
+    (PolyFueled.left.pair (subc_polyFueled.comp (PolyFueled.right.pair
+      (PolyFueled.const 1)))).of_eq fun z => by simp only [Nat.unpair_pair]
+  have hpnd : BigDigits (fun z =>
+      (undigitize (s z.unpair.1)).getD (z.unpair.2 - 1) 0) :=
+    (hbig.comp hreidx).of_eq fun z => by simp only [Nat.unpair_pair]
+  have hψc := hψPoly.comp hclamp
+  have hlong := longEmit_polySegStream hpnd hclamp hψc ε
+  -- The zero-day branch: `[day, 1, enc 1, 8]` with the clamped day.
+  have hzero : PolySegStream (fun z => digitize
+      [min ((undigitize (s z.unpair.1)).getD z.unpair.2 0) (z.unpair.1 + 1),
+        1, Encodable.encode (1 : ℚ), 8]) :=
+    (PolySegStream.ofTokenStream
+      ((((PolyTokenStream.polyTok hclamp).append (PolyTokenStream.const 1)).append
+        (PolyTokenStream.const (Encodable.encode (1 : ℚ)))).append
+        (PolyTokenStream.const 8))).digitizeStream
+  obtain ⟨cmem, hmem⟩ := finsetMembership_polyFueled hclamp zeroDays
+  have hmode2Long := hzero.ifZero hlong
+    ((ifzSel_polyFueled.comp (((PolyFueled.const 1).pair
+      (PolyFueled.const 0)).pair hmem)).of_eq fun z => by
+        simp only [Nat.unpair_pair, ifzSelFn]
+        rfl)
+  have hcopy := hbig.blockSeg
+  have heq2 := had.comp ((subc_polyFueled.comp (hmode.pair (PolyFueled.const 2))).pair
+    (subc_polyFueled.comp ((PolyFueled.const 2).pair hmode)))
+  have hseg := hmode2Long.ifZero hcopy heq2
+  have hassembled := hseg.concatVar hcnt
+  have hflagEnd := hflag.comp (PolyFueled.id.pair hcnt)
+  have hempty : PolySegStream (fun _ : ℕ => ([] : List ℕ)) :=
+    PolySegStream.ofTokenStream PolyTokenStream.nil
+  refine (hassembled.ifZero hempty hflagEnd).of_eq fun n => ?_
+  simp only [Nat.unpair_pair]
+  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
+  have hget : ∀ i, i < (undigitize (s n)).length →
+      tf (Nat.pair n i) = (undigitize (s n)).getD i 0 := fun i _ => by
+    rw [htf]
+    simp only [Nat.unpair_pair]
+  have hguardIff : bigDayFlagAt tf n (undigitize (s n)).length = 0 ↔
+      ∀ j < (undigitize (s n)).length,
+        freezeMode4 ((undigitize (s n)).take j) = 2 →
+          (undigitize (s n)).getD j 0 ≤ n := by
+    rw [bigDayFlagAt_eq_zero_iff]
+    constructor
+    · intro hall j hj hm
+      rw [← hget j hj]
+      exact hall j hj (by rwa [vpre_eq_take hget (le_of_lt hj)])
+    · intro hall j hj hm
+      rw [hget j hj]
+      exact hall j hj (by rwa [vpre_eq_take hget (le_of_lt hj)] at hm)
+  by_cases hflagn : bigDayFlagAt tf n (undigitize (s n)).length = 0
+  · rw [if_pos hflagn, guardedZeroAwareConditionTokens,
+      if_pos (hguardIff.mp hflagn)]
+    have hts : undigitize (s n) =
+        (List.range (undigitize (s n)).length).map fun j => tf (Nat.pair n j) := by
+      conv_lhs => rw [list_eq_rangeMap_getD (undigitize (s n))]
+      exact List.map_congr_left fun j _ => (hget j (by
+        by_cases hjl : j < (undigitize (s n)).length
+        · exact hjl
+        · exact absurd (List.mem_range.mp (by assumption)) hjl)).symm
+    have hrun : (zeroAwareConditionPriceTokenRun zeroDays
+        (fun day => Encodable.encode (ψ day)) ε (0, 0) (undigitize (s n))).2 =
+        (List.range (undigitize (s n)).length).flatMap fun j =>
+          zeroAwareConditionPriceTokenSegment zeroDays tf
+            (fun day => Encodable.encode (ψ day)) ε (Nat.pair n j) := by
+      conv_lhs => rw [hts]
+      exact congrArg Prod.snd (zeroAwareConditionPriceTokenRun_range zeroDays tf
+        (fun day => Encodable.encode (ψ day)) ε n (undigitize (s n)).length)
+    rw [hrun, digitize_flatMap]
+    refine List.flatMap_congr fun j hj => ?_
+    rw [List.mem_range] at hj
+    rw [zeroAwareConditionPriceTokenSegment_eq]
+    by_cases hm : freezeMode4 (vpre tf n j) = 2
+    · rw [if_pos (by omega : freezeMode4 (vpre tf n j) - 2 +
+        (2 - freezeMode4 (vpre tf n j)) = 0), if_pos hm]
+      have hdle : tf (Nat.pair n j) ≤ n :=
+        (bigDayFlagAt_eq_zero_iff tf n _).mp hflagn j hj hm
+      have hclampEq : min (tf (Nat.pair n j)) (n + 1) = tf (Nat.pair n j) :=
+        Nat.min_eq_left (by omega)
+      have htfj : tf (Nat.pair n j) = (undigitize (s n)).getD j 0 := hget j hj
+      have htfj1 : tf (Nat.pair n (j - 1)) = (undigitize (s n)).getD (j - 1) 0 := by
+        rw [htf]
+        simp only [Nat.unpair_pair]
+      rw [← htfj, ← htfj1, hclampEq]
+      by_cases hzd : tf (Nat.pair n j) ∈ zeroDays
+      · rw [if_pos (by simp [hzd]), if_pos hzd]
+      · rw [if_neg (by simp [hzd]), if_neg hzd]
+    · rw [if_neg (by omega : ¬ freezeMode4 (vpre tf n j) - 2 +
+        (2 - freezeMode4 (vpre tf n j)) = 0), if_neg hm, digitize_singleton]
+      rw [htf]
+      simp only [Nat.unpair_pair]
+  · rw [if_neg hflagn, guardedZeroAwareConditionTokens,
+      if_neg (fun hguard => hflagn (hguardIff.mpr hguard))]
+    simp [digitize]
+
+/-- **The eventual (finite-zero, launch-gated) conditioning translation preserves
+digit-metered efficient computability.**
+Paper node: `thm:scon` -/
+lemma eventualConditionedTranslation_preserves_ec₂
+    {P : History} {ψ : ℕ → Sentence}
+    (F : EventualConditioningFloor P ψ) (hψ : PolySentenceCodes ψ)
+    (T : Trader) (hT : EfficientlyComputableTok₂ T) :
+    EfficientlyComputableTok₂ (T.eventualConditionedTranslation F) := by
+  obtain ⟨lengthCode, tokenCode, a, k, hcert⟩ := hT
+  let source : ℕ → List ℕ := fun n =>
+    clockedTokens lengthCode tokenCode (PrefixPatchCompile.ecClock a k n) n
+  have hsource : PolySegStream source :=
+    PrefixPatchCompile.clockedTokens_polySegStream lengthCode tokenCode a k
+  let priced : ℕ → List ℕ := fun n =>
+    digitize (guardedZeroAwareConditionTokens F.zeroDays
+      (fun d => Encodable.encode (ψ d)) F.epsilon n (undigitize (source n)))
+  have hpriced : PolySegStream priced :=
+    guardedZeroAwareConditionRun_polySegStream F.zeroDays hsource ψ hψ F.epsilon
+  let tfP : ℕ → ℕ := fun w => (undigitize (priced w.unpair.1)).getD w.unpair.2 0
+  let lenP : ℕ → ℕ := fun m => (undigitize (priced m)).length
+  let framed : ℕ → List ℕ := fun n =>
+    digitize (safeSeparatedFrameTokenOutput tfP lenP (ψ n) F.epsilon
+      (frameBudget n (frameTradeCount tfP lenP n)) n (undigitize (priced n)))
+  have hframed : PolySegStream framed :=
+    safeSeparatedFrameDigitOutput_polySegStream hpriced ψ hψ F.epsilon
+  let output : ℕ → List ℕ := fun n => if F.cutoff ≤ n then framed n else []
+  have hemptyStream : PolySegStream (fun _ : ℕ => ([] : List ℕ)) :=
+    PolySegStream.ofTokenStream PolyTokenStream.nil
+  have hlaunch : PolyFueled _ (fun n => n + 1 - F.cutoff) :=
+    (subc_polyFueled.comp (PolyFueled.id.succ_comp.pair
+      (PolyFueled.const F.cutoff))).of_eq fun n => by simp only [Nat.unpair_pair]
+  have houtput : PolySegStream output := by
+    refine (hemptyStream.ifZero hframed hlaunch).of_eq fun n => ?_
+    show _ = if F.cutoff ≤ n then framed n else []
+    by_cases hn : F.cutoff ≤ n
+    · rw [if_pos hn, if_neg (by omega)]
+    · rw [if_neg hn, if_pos (by omega)]
+  apply ecTok₂_of_rawSegStream (T.eventualConditionedTranslation F) houtput
+  intro n
+  by_cases hn : n < F.cutoff
+  · have hout : output n = [] := by
+      show (if F.cutoff ≤ n then framed n else []) = []
+      rw [if_neg (by omega)]
+    rw [hout, T.eventualConditionedTranslation_strat_of_lt F hn]
+    simp [strategyOfTokens, deserializeTrades,
+      EF.streamReadFrom, EF.streamInitial, Trader.zero, undigitize]
+  · have hcn : F.cutoff ≤ n := Nat.le_of_not_gt hn
+    have hout : output n = framed n := by
+      show (if F.cutoff ≤ n then framed n else []) = framed n
+      rw [if_pos hcn]
+    rw [hout]
+    have horig : strategyOfTokens n (undigitize (source n)) = T.strat n :=
+      congrFun (congrArg Trader.strat hcert) n
+    have hundig : undigitize (framed n) =
+        safeSeparatedFrameTokenOutput tfP lenP (ψ n) F.epsilon
+          (frameBudget n (frameTradeCount tfP lenP n)) n (undigitize (priced n)) :=
+      undigitize_digitize _
+    rw [hundig]
+    have htarget := T.eventualConditionedTranslation_strat_of_le F hcn
+    by_cases hguard : ∀ j < (undigitize (source n)).length,
+        freezeMode4 ((undigitize (source n)).take j) = 2 →
+          (undigitize (source n)).getD j 0 ≤ n
+    · have hpricedTok : undigitize (priced n) =
+          (zeroAwareConditionPriceTokenRun F.zeroDays
+            (fun d => Encodable.encode (ψ d)) F.epsilon (0, 0)
+            (undigitize (source n))).2 := by
+        show undigitize (digitize _) = _
+        rw [undigitize_digitize, guardedZeroAwareConditionTokens, if_pos hguard]
+      have hpricedEq : undigitize (priced n) =
+          (List.range (lenP n)).map fun i => tfP (Nat.pair n i) := by
+        conv_lhs => rw [list_eq_rangeMap_getD (undigitize (priced n))]
+        refine List.map_congr_left fun j _ => ?_
+        show (undigitize (priced n)).getD j 0 =
+          (undigitize (priced (Nat.pair n j).unpair.1)).getD
+            (Nat.pair n j).unpair.2 0
+        simp only [Nat.unpair_pair]
+      have hframes := strategyOfTokens_safeSeparatedFrameTokenOutput_trades
+        tfP lenP (ψ n) F.epsilon (frameBudget n (frameTradeCount tfP lenP n)) n
+        (undigitize (priced n)) hpricedEq
+      have hprice := strategyOfTokens_zeroAwareConditionPriceTokenRun_trades
+        F.zeroDays ψ F.epsilon n (undigitize (source n))
+      rw [← hpricedTok] at hprice
+      rw [congrArg Strategy.trades horig] at hprice
+      refine strategy_ext_trades ?_
+      rw [hframes, htarget]
+      by_cases hempty : (T.strat n).trades = []
+      · rw [hprice, hempty]
+        simp [Strategy.separatedExceptZeroConditionalContract]
+        exact hempty
+      · have hpricedNe : (strategyOfTokens n (undigitize (priced n))).trades ≠ [] := by
+          rw [hprice]
+          simpa using hempty
+        have hdecodePriced :=
+          deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
+            n (undigitize (priced n)) hpricedNe
+        have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
+          (undigitize (priced n)) (strategyOfTokens n (undigitize (priced n))).trades
+          hdecodePriced
+        have hreadyPricedTokens :
+            EF.streamReadFrom
+                ((List.range (lenP n)).map fun i => tfP (Nat.pair n i))
+                (some EF.streamInitial) =
+              some ((0, none),
+                ([], (strategyOfTokens n (undigitize (priced n))).trades)) := by
+          rw [← hpricedEq]
+          exact hreadyPriced
+        have hcount : frameTradeCount tfP lenP n = (T.strat n).trades.length := by
+          calc
+            frameTradeCount tfP lenP n =
+                (strategyOfTokens n (undigitize (priced n))).trades.length :=
+              frameTradeCount_eq_length_of_read tfP lenP n
+                ((0, none), ([], (strategyOfTokens n (undigitize (priced n))).trades))
+                hreadyPricedTokens
+            _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
+        have hpos : 0 < (T.strat n).trades.length :=
+          List.length_pos_iff.mpr hempty
+        rw [hprice, hcount, frameBudget_eq n (T.strat n).trades.length hpos]
+        simp only [List.map_map]
+        change
+          ((T.strat n).trades.map fun p =>
+            frameLeg false (ψ n) F.epsilon
+              (Strategy.localConditioningBudget (conditioningBudget n)
+                (T.strat n).trades.length) n
+              (p.1.retainedConditionPricesExceptZero F.zeroDays ψ F.epsilon,
+                p.2)) ++
+            ((T.strat n).trades.map fun p =>
+              frameLeg true (ψ n) F.epsilon
+                (Strategy.localConditioningBudget (conditioningBudget n)
+                  (T.strat n).trades.length) n
+                (p.1.retainedConditionPricesExceptZero F.zeroDays ψ F.epsilon,
+                  p.2)) =
+            ((T.strat n).separatedExceptZeroConditionalContract
+              F.zeroDays ψ F.epsilon (conditioningBudget n)).trades
+        simp only [frameLeg_exceptZero_eq_locallyGatedFirstLeg,
+          frameLeg_exceptZero_eq_locallyGatedSecondLeg]
+        rfl
+    · push_neg at hguard
+      obtain ⟨j, hj, hm, hday⟩ := hguard
+      have hTempty : (T.strat n).trades = [] := by
+        rw [← horig]
+        exact strategyOfTokens_trades_eq_nil_of_bigDay n (undigitize (source n))
+          j hj hm hday
+      have hpricedNil : undigitize (priced n) = [] := by
+        show undigitize (digitize _) = _
+        rw [undigitize_digitize, guardedZeroAwareConditionTokens,
+          if_neg (fun hall => absurd (hall j hj hm) (by omega))]
+      rw [hpricedNil]
+      have hframedNil : safeSeparatedFrameTokenOutput tfP lenP (ψ n) F.epsilon
+          (frameBudget n (frameTradeCount tfP lenP n)) n [] = [] := by
+        simp [safeSeparatedFrameTokenOutput, conditioningFrameTokenOutput,
+          conditioningFrameTokenRun]
+      rw [hframedNil]
+      refine strategy_ext_trades ?_
+      have hnil : (strategyOfTokens n ([] : List ℕ)).trades = [] := by
+        have hdec : deserializeTrades ([] : List ℕ) = some [] := rfl
+        unfold strategyOfTokens
+        split
+        · rfl
+        · next trades hdecode =>
+            rw [hdec] at hdecode
+            obtain rfl := Option.some.inj hdecode
+            simp
+      rw [hnil, htarget]
+      show ([] : List (EF × Sentence)) =
+        ((T.strat n).separatedExceptZeroConditionalContract
+          F.zeroDays ψ F.epsilon (conditioningBudget n)).trades
+      simp [Strategy.separatedExceptZeroConditionalContract, hTempty]
+
+#print axioms eventualConditionedTranslation_preserves_ec₂
 #print axioms conditionedTranslation_preserves_ec₂
 #print axioms strategyOfTokens_trades_eq_nil_of_bigDay
 #print axioms guardedConditionRun_polySegStream
