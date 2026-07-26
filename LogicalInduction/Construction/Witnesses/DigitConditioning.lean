@@ -307,7 +307,8 @@ lemma HasDay.streamReadFrom {D : ℕ} (ts : List ℕ) :
           exact ih h (hd.streamStep hstep)
 
 /-- **Guard honesty**: a price-day token exceeding the trading day at a mode-2 position
-forces the empty validated strategy. -/
+forces the empty validated strategy.
+Paper node: `thm:scon` -/
 lemma strategyOfTokens_trades_eq_nil_of_bigDay (n : ℕ) (ts : List ℕ) (j : ℕ)
     (hj : j < ts.length)
     (hmode : freezeMode4 (ts.take j) = 2)
@@ -611,7 +612,8 @@ lemma longEmit_polySegStream {cD cC : Code} {pnd D ψc : ℕ → ℕ}
 `PolySegStream` is itself a `PolySegStream`.  Copied tokens are re-rendered digit
 blocks; the rewrite's single bignum token (`conjunctionCode pending ψc`) is rendered
 from digit access to the pending code; price days are materialized by clamp, exact
-whenever the guard passes; flagged days emit nothing. -/
+whenever the guard passes; flagged days emit nothing.
+Paper node: `thm:scon` -/
 lemma guardedConditionRun_polySegStream {s : ℕ → List ℕ} (h : PolySegStream s)
     (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) (ε : ℚ) :
     PolySegStream (fun n => digitize (guardedConditionTokens
@@ -1149,7 +1151,8 @@ lemma frameLegOutput_polySegStream (second : Bool) {src : ℕ → List ℕ}
       simp [digitize]
 
 /-- **The digitized safe two-leg frame join** over any digit `PolySegStream`: the
-digit-model analogue of `safeSeparatedFrameTokenOutput_polySegStream`. -/
+digit-model analogue of `safeSeparatedFrameTokenOutput_polySegStream`.
+Paper node: `thm:scon` -/
 lemma safeSeparatedFrameDigitOutput_polySegStream {src : ℕ → List ℕ}
     (hsrc : PolySegStream src) (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ)
     (ε : ℚ) :
@@ -1379,7 +1382,8 @@ def guardedZeroAwareConditionTokens (zeroDays : Finset ℕ) (ψCode : ℕ → �
 
 /-- **Zero-aware B1 capstone**: the digit stream of the guarded zero-aware price
 rewrite of any digit `PolySegStream` is itself a `PolySegStream`.  The zero-day
-membership test runs on the clamped day, exact whenever the guard passes. -/
+membership test runs on the clamped day, exact whenever the guard passes.
+Paper node: `thm:scon` -/
 lemma guardedZeroAwareConditionRun_polySegStream (zeroDays : Finset ℕ)
     {s : ℕ → List ℕ} (h : PolySegStream s)
     (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) (ε : ℚ) :
@@ -1653,6 +1657,118 @@ lemma eventualConditionedTranslation_preserves_ec₂
         ((T.strat n).separatedExceptZeroConditionalContract
           F.zeroDays ψ F.epsilon (conditioningBudget n)).trades
       simp [Strategy.separatedExceptZeroConditionalContract, hTempty]
+
+/-! ## Criterion closure in the digit-metered class
+
+With both translation compilers proved `Tok₂ → Tok₂`, closure under conditioning holds
+inside `IsLogicalInductor₂` itself: the class layering introduced by the Tranche-2
+criterion flip no longer leaks through `thm:scon`. -/
+
+/-- Gated closure under conditioning in the digit-metered class.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_gated₂
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor₂ P DP]
+    (C : ConditioningPresentation DP extra) {ε : ℚ}
+    (W : GatedConditioningOperationalWitness P DP extra C ε) :
+    IsLogicalInductor₂ (conditionedHistory P C.condition) (DP.union extra) where
+  toIsLogicalInductor := lic_conditioned_gated P DP extra C W
+  noExploit₂ T hTec₂ hTexp :=
+    IsLogicalInductor₂.noExploit₂ (P := P) (DP := DP)
+      (T.conditionedTranslation C.condition ε)
+      (conditionedTranslation_preserves_ec₂ C.condition C.condition_codes ε T hTec₂)
+      (W.toCompiler.exploits_base hTexp)
+
+/-- Prefix-safe (finite-zero) closure under conditioning in the digit-metered class.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_eventual₂
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor₂ P DP]
+    (C : ConditioningPresentation DP extra)
+    (W : EventualConditioningOperationalWitness P DP extra C) :
+    IsLogicalInductor₂ (conditionedHistory P C.condition) (DP.union extra) where
+  toIsLogicalInductor := lic_conditioned_eventual P DP extra C W
+  noExploit₂ T hTec₂ hTexp :=
+    IsLogicalInductor₂.noExploit₂ (P := P) (DP := DP)
+      (T.eventualConditionedTranslation W.floor)
+      (eventualConditionedTranslation_preserves_ec₂ W.floor C.condition_codes T hTec₂)
+      (W.exploits_base hTexp)
+
+/-- Digit-metered `thm:scon` from joint consistency and concrete computability data.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_eventual_ofMarketComputation₂
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor₂ P DP]
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i)) :
+    IsLogicalInductor₂ (conditionedHistory P C.condition) (DP.union extra) := by
+  let floor : EventualConditioningFloor P C.condition :=
+    eventualConditioningFloorOfJointConsistency
+      P DP market C.condition C.condition_codes hjoint
+  exact lic_conditioned_eventual₂ P DP extra C
+    (eventualConditioningOperationalWitness C market floor)
+
+/-- Fixed-sentence digit-metered `thm:scon`.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_fixed_ofComputationAndMarket₂
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor₂ P DP]
+    (base : DeductiveProcessComputation DP) (market : MarketComputation P)
+    (ψ : Sentence)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ v.Holds ψ) :
+    IsLogicalInductor₂
+      (conditionedHistory P (fun _ => ψ)) (DP.adjoinSentence ψ) := by
+  let C := fixedConditioningPresentation base ψ
+  have hjointC : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
+    intro n
+    obtain ⟨v, hv, hψ⟩ := hjoint n
+    exact ⟨v, hv, fun _ => hψ⟩
+  have hresult :=
+    lic_conditioned_eventual_ofMarketComputation₂
+      P DP (fixedConditionProcess ψ) C market hjointC
+  simpa [C, fixedConditioningPresentation,
+    DeductiveProcess.adjoinSentence] using hresult
+
+/-- Growing finite-prefix digit-metered `thm:scon`.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_growing_ofComputationsAndMarket₂
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor₂ P DP]
+    (base : DeductiveProcessComputation DP)
+    (more : CompactConditioningProcessComputation extra)
+    (market : MarketComputation P)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧
+        ∀ i, v.ConsistentWith (extra.D i)) :
+    IsLogicalInductor₂
+      (conditionedHistory P
+        (fun n => deductiveStageCondition (extra.D n)))
+      (DP.union extra) := by
+  let C := conditioningPresentationOfComputations base more
+  have hjointC : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
+    intro n
+    obtain ⟨v, hv, hextra⟩ := hjoint n
+    refine ⟨v, hv, fun i => ?_⟩
+    exact (v.holds_deductiveStageCondition (extra.D i)).2 (hextra i)
+  exact lic_conditioned_eventual_ofMarketComputation₂
+    P DP extra C market hjointC
+
+/-- Gated digit-metered `thm:scon` with all compiler fields discharged.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_gated_ofMarketComputation₂
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor₂ P DP]
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (ε : ℚ) (hε : 0 < (ε : ℝ))
+    (hfloor : ∀ d, (ε : ℝ) ≤ P d (C.condition d)) :
+    IsLogicalInductor₂ (conditionedHistory P C.condition) (DP.union extra) :=
+  lic_conditioned_gated₂ P DP extra C
+    (gatedConditioningOperationalWitness C market ε hε hfloor)
+
+#print axioms lic_conditioned_gated₂
+#print axioms lic_conditioned_eventual₂
+#print axioms lic_conditioned_eventual_ofMarketComputation₂
+#print axioms lic_conditioned_fixed_ofComputationAndMarket₂
+#print axioms lic_conditioned_growing_ofComputationsAndMarket₂
+#print axioms lic_conditioned_gated_ofMarketComputation₂
 
 #print axioms eventualConditionedTranslation_preserves_ec₂
 #print axioms conditionedTranslation_preserves_ec₂

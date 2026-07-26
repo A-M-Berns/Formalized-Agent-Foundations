@@ -286,12 +286,31 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   denominatorPatchedGatedConditioningOperationalWitness
   lic_conditioned_gated_ofMarketComputation lic_conditioned_gated_ofComputationsAndMarket
 
+-- Construction/Witnesses/DigitConditioning.lean (`M7-SCON-COMPILER`, digit model —
+-- Tranche 2 B1–B3): the guarded digit compilers, guard honesty, the `Tok₂ → Tok₂`
+-- translation preservations, and conditioning closure inside `IsLogicalInductor₂`.
+#assert_axioms_clean
+  ConditioningCompile.strategyOfTokens_trades_eq_nil_of_bigDay
+  ConditioningCompile.guardedConditionRun_polySegStream
+  ConditioningCompile.guardedZeroAwareConditionRun_polySegStream
+  ConditioningCompile.safeSeparatedFrameDigitOutput_polySegStream
+  ConditioningCompile.conditionedTranslation_preserves_ec₂
+  ConditioningCompile.eventualConditionedTranslation_preserves_ec₂
+  ConditioningCompile.lic_conditioned_gated₂
+  ConditioningCompile.lic_conditioned_eventual₂
+  ConditioningCompile.lic_conditioned_eventual_ofMarketComputation₂
+  ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket₂
+  ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket₂
+  ConditioningCompile.lic_conditioned_gated_ofMarketComputation₂
+
 -- Construction/Witnesses/UnconditionalOverLIA.lean
 #assert_axioms_clean
   lic_domination_universalSemimeasure_unconditional
   lic_conditioned_ofCompiler_unconditional
   lic_conditioned_fixed_unconditional
   lic_conditioned_growing_unconditional
+  lic_conditioned_fixed_unconditional₂
+  lic_conditioned_growing_unconditional₂
 
 -- Construction/Witnesses/LUVSyntax.lean (`M7-LUV-SYNTAX`)
 #assert_axioms_clean LUVCombinationSyntax.meshSoftmaxOperationalWitness

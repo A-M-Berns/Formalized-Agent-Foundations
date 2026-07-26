@@ -1,6 +1,7 @@
 import LogicalInduction.Construction.Witnesses.ComputationDP
 import LogicalInduction.Construction.Witnesses.BitPrefixSyntax
 import LogicalInduction.Construction.Witnesses.ConditioningCompiler
+import LogicalInduction.Construction.Witnesses.DigitConditioning
 
 /-!
 # Unconditional instantiations over the constructed `LIA` — semimeasure & conditioning
@@ -118,6 +119,49 @@ theorem lic_conditioned_growing_unconditional
     (liaHistory (theoremDP T)) (theoremDP T) extra
     base more (theoremMarketComputation T) hjoint
 
+/-- Fixed-sentence `thm:scon` over the constructed `LIA`, in the digit-metered class:
+the conditioned inductor again defeats every `EfficientlyComputableTok₂` trader.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_fixed_unconditional₂
+    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    (ψ : Sentence)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith ((theoremDP T).D n) ∧ v.Holds ψ) :
+    IsLogicalInductor₂
+      (conditionedHistory (liaHistory (theoremDP T)) (fun _ => ψ))
+      ((theoremDP T).adjoinSentence ψ) := by
+  let base : DeductiveProcessComputation (theoremDP T) :=
+    (theoremDP_computable T).nonemptyComputation.some
+  haveI : IsLogicalInductor₂ (liaHistory (theoremDP T)) (theoremDP T) :=
+    LIA_is_logical_inductor₂ (theoremDP T) (theoremDP_computable T)
+  exact ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket₂
+    (liaHistory (theoremDP T)) (theoremDP T)
+    base (theoremMarketComputation T) ψ hjoint
+
+/-- Growing finite-prefix `thm:scon` over the constructed `LIA`, in the digit-metered
+class.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_growing_unconditional₂
+    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    (extra : DeductiveProcess)
+    (more : CompactConditioningProcessComputation extra)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith ((theoremDP T).D n) ∧
+        ∀ i, v.ConsistentWith (extra.D i)) :
+    IsLogicalInductor₂
+      (conditionedHistory (liaHistory (theoremDP T))
+        (fun n => deductiveStageCondition (extra.D n)))
+      ((theoremDP T).union extra) := by
+  let base : DeductiveProcessComputation (theoremDP T) :=
+    (theoremDP_computable T).nonemptyComputation.some
+  haveI : IsLogicalInductor₂ (liaHistory (theoremDP T)) (theoremDP T) :=
+    LIA_is_logical_inductor₂ (theoremDP T) (theoremDP_computable T)
+  exact ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket₂
+    (liaHistory (theoremDP T)) (theoremDP T) extra
+    base more (theoremMarketComputation T) hjoint
+
+#print axioms lic_conditioned_fixed_unconditional₂
+#print axioms lic_conditioned_growing_unconditional₂
 #print axioms lic_domination_universalSemimeasure_unconditional
 #print axioms lic_conditioned_ofCompiler_unconditional
 #print axioms lic_conditioned_fixed_unconditional
