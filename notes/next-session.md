@@ -44,7 +44,44 @@ keep compiling via the constructors.  This deliberately re-freezes `#assert_fiel
 IsLogicalInductor` — same disclosed protocol as the Tranche-2 flip.  Rationale: no
 structural evidence of previous versions (consolidation.md).
 
-**RPN-4 progress + the exact continuation point:**
+**RPN-4 status 2026-07-26 (later): the decode is DONE and primitive recursive**
+(commits `23c7947`..`3dd7220`): `parseRpnC`/`unRpnTokensC` code-level forms +
+correspondences; strong-recursion packages (`parseF`/`parseGCore`/`parseG`,
+`unF`/`unGCore`/`unG`) with step laws; `parseRpnC_prim` and **`unRpn_prim`** via
+`Primrec.nat_strong_rec` (assemblies live in RpnCriterion.lean where
+`sentencePrimcodable` is visible).  Proof-practice: fully bind every branch `have`
+before `of_eq` (holes elaborate too early otherwise); constructor-form `cases`
+(not `rcases`) for casesOn iota; `simp only [hts]` + `rfl` for under-binder
+scrutinee recomputation; `(Primrec.encdec.comp _).of_eq fun _ => rfl` bridges the
+Primcodable-vs-raw-instance mismatch.
+
+**THE COLLAPSE SURGERY (next; do stepwise, each green-committable):**
+A. Move `codeEvalnNat`(+`_polyFueled`) and the `clockedTokens_polySegStream` block
+   upstream from M7Witnesses/PrefixPatchCompile into Framework/Computable.lean
+   (self-contained; the notes flagged this as the field-collapse gate).
+B. Move the grammar/decode DEFS (`rpn`, `parseRpn`, `unRpnTokens`, `unRpn`,
+   `clockedTrader₃`, the class) from RpnSentence into Framework/Criterion.lean next
+   to `serialize`/`streamStep` (thematically the serialization layer); RpnSentence
+   keeps the lemma corpus.
+C. Post-A, move the inclusions (`toTok₂` from M7Witnesses, `toTok₃` from
+   RpnCriterion) into Framework as the emission constructors.
+D. Rename: `EfficientlyComputable` := the symbol-metered class (paper's `def:ec`);
+   constructors `EfficientlyComputable.ofTokenEmitter`/`.ofDigitEmitter`; ONE
+   `IsLogicalInductor.noExploit` field over it; property files fixed via a compat
+   lemma (`noExploit` applied to token certificates through the constructor —
+   one-line diffs at call sites).
+E. Enumeration: single decode (`TraderProgram.trader` := the RPN decode; parity/tag
+   dispatch deleted); coverage = one lemma; one `trading_firm_dominance`; LIACompiler
+   `enumeratedTraderTrades_prim` uses `strategyOfTokensTrades_prim ∘ unRpn_prim ∘
+   undigitize_prim ∘ clockedTokens_prim`; one `LIA_is_logical_inductor`.
+F. AxiomAudit: re-freeze `#assert_fields IsLogicalInductor`; absorb ALL ₂/₃-suffixed
+   public names (incl. `lic_conditioned*₂`, `IsLogicalInductor₂`,
+   `LIA_is_logical_inductor₂`); update README/docstrings so no layering archaeology
+   remains.  Then RPN-5 (conditioning compilers against the one class — RPN
+   conjunction is concatenation) and EC-SEQ (`RpnSentenceCodes` + `PolySequence`
+   migration).
+
+**RPN-4 progress + the exact continuation point (superseded by the above; kept):**
 * DONE (`Framework/RpnComputation.lean`, commit `169f014`): suffix discipline
   (`parseRpn_suffix`/`parseRpnC_suffix`), `encode_lt_encode_cons`/
   `encode_le_of_suffix`, and the strong-recursion package `parseF`/`parseGCore` (+
