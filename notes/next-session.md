@@ -3,6 +3,79 @@
 _Last updated: 2026-07-24 (fresh errata audit + boundary-shoring plan).
 Branch: `logical-induction`._
 
+# 🎯 ACTIVE PLAN 2 — the `Tok₃`/RPN layer + 𝓔𝓒-sequence migration (2026-07-26)
+
+Goal (Anson): do all remaining 𝓔𝓒-sequence-hypothesis work via the **layered RPN
+route** — a third emission model `Tok₃` where sentence slots carry Polish-notation
+symbol runs (poly digit length = poly *symbol* count, the paper's `𝓔𝓒` metering with
+no pair-code-balance caveat), then migrate the property-tail hypotheses.
+
+**Done so far (commits `edaf2c7`..`d0eefa0`, all green, Framework/RpnSentence.lean +
+Framework/RpnEmission.lean + Construction/Witnesses/RpnCriterion.lean):**
+* RPN-1: Polish coding `rpn` (tags 0=⊥,2=➝,3=⋏,4=⋎, atoms t+5, escape tag 1 =
+  literal pair code), fuelled block parser `parseRpn` (Option.bind form; strict
+  suffix, fuel-mono), canonical + escape round trips, injectivity.
+* RPN-2: `unRpn` grammar-driven stream contraction (fuel = length; failed blocks emit
+  the undecodable code 0 and stop, preserving rejection), fuel-invariance, chunk
+  equations; `escExpand` (escape splice, ≤ 2× length) with chunk equations; the
+  **parser simulation** `streamReadFrom_unRpn_escExpand` (equal results, or the
+  contraction failed while the original is stranded non-ready) with corollaries
+  `deserializeTrades_unRpn_escExpand` / `strategyOfTokens_unRpn_escExpand`.
+* RPN-3: `clockedTrader₃`/`EfficientlyComputableTok₃` (decode = `strategyOfTokens ∘
+  unRpn ∘ undigitize`); slot automaton `escModeStep/escModeList` (clamp-invariant) +
+  fold form + per-position range form; poly `escModeScan`; realization bridges
+  `ecTok₃_of_rawEmission`/`ecTok₃_of_rawSegStream`; **both inclusions**
+  `EfficientlyComputableTok₂.toTok₃` (escape splice via concatVar + the simulation)
+  and `EfficientlyComputableTok.toTok₃`.  KEY DESIGN WIN: the escape tag makes the
+  inclusions verbatim splices — **no digit-level sqrt/unpair needed** (drop that from
+  the old sizing).
+
+**Next: RPN-4, the criterion flip.**  Scoped this session, execute in order:
+1. **`unRpn` Primrec (the tall pole), via code-level parsing.**  Do NOT build
+   Formula-constructor primrec-ness.  Define `parseRpnC : ℕ → List ℕ →
+   Option (ℕ × List ℕ)` emitting the *pair code*: ⊥ ↦ `pair 0 0 + 1`, atom t ↦
+   `pair 1 (t-5) + 1`, binop ↦ `pair tag (pair c1 c2) + 1`; the **escape validity
+   test is the `Primcodable Sentence` round-trip field** (`Primcodable.prim` gives
+   primrec `c ↦ encode (decode c : Option Sentence)`; result 0 = invalid, `e+1` =
+   the canonical re-encode `e`).  Correctness: `parseRpnC fuel ts = (parseRpn fuel
+   ts).map (fun (φ, r) => (Encodable.encode φ, r))` by the same induction.
+   Primrec via `Primrec.nat_strong_rec` (Mathlib, Computability/Primrec/List.lean:274)
+   on the paired index `m = Nat.pair fuel (encode ts)`: recursive calls hit
+   `pair (fuel-1) (encode rest)` with `encode rest < encode ts` (cons strictly grows
+   the list code; sub-parse outputs are suffixes — need a small
+   `parseRpn_isSuffix` + encode-suffix-mono lemma).  Then `unRpnC`/`unRpn_prim` the
+   same way (its recursion also shrinks the pair).
+2. **Enumeration flip**: redefine `enumeratedTrader` dispatch from parity to `j % 3`
+   (residue 0 = token decode, 1 = digit decode, 2 = RPN decode via
+   `TraderProgram.trader₃`), mirror the per-residue ec lemmas + THREE coverage
+   lemmas (`exists_enumeratedTrader₃_eq`), patch `enumeratedTraderTrades_prim`
+   (LIACompiler ~2928 — the compiler's ONLY decode coupling) with the third branch
+   using `unRpn_prim`.
+3. **Dominance + LIA**: `trading_firm_dominance₃` (via the factored
+   `trading_firm_dominance_of_covered`), `lia_no_efficient_trader_exploits₃`,
+   `IsLogicalInductor₃ extends IsLogicalInductor₂`, `LIA_is_logical_inductor₃`,
+   `exists_logical_inductor₃`.  Mirror the Tok₂ flip (TraderEnumeration/TradingFirm/
+   LIACompiler + AxiomAudit entries).
+4. **RPN-5, conditioning at level 3**: translation compilers `Tok₃ → Tok₃`.  In RPN
+   the conjunction shell is CONCATENATION (`rpn (φ ⋏ ψ) = 3 :: rpn φ ++ rpn ψ`) — no
+   bignum pair shells; mirror DigitConditioning's guarded compiler with the sentence
+   slots spliced at the symbol level.  Then `lic_conditioned*₃` and the
+   unconditional-over-LIA forms.
+5. **EC-SEQ**: `RpnSentenceCodes φ := PolySegStream (fun n => rpn (φ n))` (the
+   paper's 𝓔𝓒 class on the nose) + inclusion from `PolySentenceCodes` (poly-value
+   code ⟹ its rpn stream is poly — needs a code→rpn-length bound: rpn length ≤
+   code value; emitter via... scope when reached); `PolySequence₃` mirror of
+   `AffineCombination.PolySequence` (sentence_poly → RpnSentenceCodes;
+   const/coefficient serialize streams → digitized-with-rpn-slots), then per-family
+   migration (copy-only families first: thm:tl, thm:und).
+
+Gotchas this session: Mathlib names are `Option.bind_some`/`bind_none`; `rcases h : e`
+substitutes `e` in the GOAL too (existential witnesses become `rfl`s); ₂/₃-suffixed
+lemmas placed inside a namespace break dot-notation (declare `_root_.…` or call
+explicitly); `Formula.ofNat` is WF-compiled (no defeq reduction — use its equations);
+the `(fuel fuel' : ℕ)` binders of fuel-congr lemmas must be EXPLICIT or `by omega`
+side goals see metavariables.
+
 # 🎯 ACTIVE PLAN — boundary shoring (2026-07-24, after fresh errata audit)
 
 Context: the 2026-07-24 fresh code-level audit (`m7-errata-audit.md`, commits
