@@ -382,6 +382,18 @@ lemma RpnSpliceStream.tradeSlot {φ : ℕ → Sentence} (hφ : RpnSentenceCodes 
   exact ⟨fun m => 6 :: s (f m), (h6.append (hs.comp hf)).of_eq (fun m => by simp),
     fun m => UnRpnContractsTo.tradeChunk (hp (f m))⟩
 
+lemma RpnSpliceStream.ifZero {s₀ s₁ : ℕ → List ℕ}
+    (h₀ : RpnSpliceStream s₀) (h₁ : RpnSpliceStream s₁)
+    {ct : Nat.Partrec.Code} {t : ℕ → ℕ} (ht : PolyFueled ct t) :
+    RpnSpliceStream (fun z => if t z = 0 then s₀ z else s₁ z) := by
+  obtain ⟨a, ha, hca⟩ := h₀
+  obtain ⟨b, hb, hcb⟩ := h₁
+  refine ⟨fun z => if t z = 0 then a z else b z,
+    PolySegStream.ifZero ha hb ht, fun z => ?_⟩
+  by_cases hz : t z = 0
+  · simpa [hz] using hca z
+  · simpa [hz] using hcb z
+
 lemma RpnSpliceStream.of_eq {a b : ℕ → List ℕ} (h : RpnSpliceStream a)
     (hab : ∀ z, a z = b z) : RpnSpliceStream b := by
   obtain ⟨s, hs, hc⟩ := h
@@ -456,6 +468,20 @@ lemma RpnSpliceStream.serialize_letE {X Body : ℕ → EF}
     RpnSpliceStream (fun z => (EF.letE (X z) (Body z)).serialize) :=
   ((hX.append hBody).append (RpnSpliceStream.tag 8 (by norm_num))).of_eq
     (fun z => by simp [EF.serialize])
+
+/-- A replicated close/operator tag as a spliceable stream. -/
+lemma RpnSpliceStream.repeatTag (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t ≠ 7)
+    {ccnt : Nat.Partrec.Code} {cnt : ℕ → ℕ} (hcnt : PolyFueled ccnt cnt) :
+    RpnSpliceStream (fun n => List.replicate (cnt n) t) := by
+  have key : ∀ m : ℕ, UnRpnTransparent (List.replicate m t) := by
+    intro m
+    induction m with
+    | zero => exact UnRpnTransparent.nil
+    | succ m ih =>
+        rw [List.replicate_succ,
+          show t :: List.replicate m t = [t] ++ List.replicate m t from rfl]
+        exact (UnRpnTransparent.single t ht).append ih
+  exact .ofTransparent (PolySegStream.repeatTag t hcnt) (fun n => key (cnt n))
 
 /-- A spliced varying price leaf: sentence slot from the block stream, day from a
 poly-fueled index. -/
