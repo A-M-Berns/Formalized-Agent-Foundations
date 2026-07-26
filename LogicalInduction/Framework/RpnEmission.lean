@@ -387,6 +387,101 @@ lemma RpnSpliceStream.of_eq {a b : ℕ → List ℕ} (h : RpnSpliceStream a)
   obtain ⟨s, hs, hc⟩ := h
   exact ⟨s, hs, fun z => (hab z) ▸ hc z⟩
 
+/-! ### Serialization combinator mirrors
+
+One-for-one mirrors of the `PolySegStream.serialize_*` closure suite, so an existing
+emission assembly flips by renaming combinators.  Operator tails and payload frames
+are transparent; only sentence slots differ. -/
+
+/-- A bare operator/close token as a spliceable stream. -/
+lemma RpnSpliceStream.tag (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t ≠ 7) :
+    RpnSpliceStream (fun _ => [t]) :=
+  .ofTransparent (PolySegStream.ofTokenStream (PolyTokenStream.const t))
+    (fun _ => UnRpnTransparent.single t ht)
+
+/-- A payload chunk (`1`/`7` tag with a poly-fueled payload) as a spliceable stream. -/
+lemma RpnSpliceStream.payload (t : ℕ) (ht : t = 1 ∨ t = 7)
+    {c : Nat.Partrec.Code} {f : ℕ → ℕ} (hf : PolyFueled c f) :
+    RpnSpliceStream (fun z => [t, f z]) :=
+  .ofTransparent (PolySegStream.ofTokenStream
+      ((PolyTokenStream.const t).append (PolyTokenStream.polyTok hf)))
+    (fun z => UnRpnTransparent.payload t (f z) ht)
+
+lemma RpnSpliceStream.serialize_const (q : ℚ) :
+    RpnSpliceStream (fun _ => (EF.const q).serialize) :=
+  RpnSpliceStream.payload 1 (Or.inl rfl)
+    (PolyFueled.const (Encodable.encode q))
+
+lemma RpnSpliceStream.serialize_const_comp {q : ℕ → ℚ}
+    (hq : ∃ c, PolyFueled c (fun z => Encodable.encode (q z))) :
+    RpnSpliceStream (fun z => (EF.const (q z)).serialize) := by
+  obtain ⟨c, hc⟩ := hq
+  exact RpnSpliceStream.payload 1 (Or.inl rfl) hc
+
+lemma RpnSpliceStream.serialize_add {A B : ℕ → EF}
+    (hA : RpnSpliceStream (fun z => (A z).serialize))
+    (hB : RpnSpliceStream (fun z => (B z).serialize)) :
+    RpnSpliceStream (fun z => (EF.add (A z) (B z)).serialize) :=
+  ((hA.append hB).append (RpnSpliceStream.tag 2 (by norm_num))).of_eq
+    (fun z => by simp [EF.serialize])
+
+lemma RpnSpliceStream.serialize_mul {A B : ℕ → EF}
+    (hA : RpnSpliceStream (fun z => (A z).serialize))
+    (hB : RpnSpliceStream (fun z => (B z).serialize)) :
+    RpnSpliceStream (fun z => (EF.mul (A z) (B z)).serialize) :=
+  ((hA.append hB).append (RpnSpliceStream.tag 3 (by norm_num))).of_eq
+    (fun z => by simp [EF.serialize])
+
+lemma RpnSpliceStream.serialize_max {A B : ℕ → EF}
+    (hA : RpnSpliceStream (fun z => (A z).serialize))
+    (hB : RpnSpliceStream (fun z => (B z).serialize)) :
+    RpnSpliceStream (fun z => (EF.max (A z) (B z)).serialize) :=
+  ((hA.append hB).append (RpnSpliceStream.tag 4 (by norm_num))).of_eq
+    (fun z => by simp [EF.serialize])
+
+lemma RpnSpliceStream.serialize_safeRecip {A : ℕ → EF}
+    (hA : RpnSpliceStream (fun z => (A z).serialize)) :
+    RpnSpliceStream (fun z => (EF.safeRecip (A z)).serialize) :=
+  (hA.append (RpnSpliceStream.tag 5 (by norm_num))).of_eq
+    (fun z => by simp [EF.serialize])
+
+lemma RpnSpliceStream.serialize_var {f : ℕ → ℕ} {cf : Nat.Partrec.Code}
+    (hf : PolyFueled cf f) :
+    RpnSpliceStream (fun z => (EF.var (f z)).serialize) :=
+  RpnSpliceStream.payload 7 (Or.inr rfl) hf
+
+lemma RpnSpliceStream.serialize_letE {X Body : ℕ → EF}
+    (hX : RpnSpliceStream (fun z => (X z).serialize))
+    (hBody : RpnSpliceStream (fun z => (Body z).serialize)) :
+    RpnSpliceStream (fun z => (EF.letE (X z) (Body z)).serialize) :=
+  ((hX.append hBody).append (RpnSpliceStream.tag 8 (by norm_num))).of_eq
+    (fun z => by simp [EF.serialize])
+
+/-- A spliced varying price leaf: sentence slot from the block stream, day from a
+poly-fueled index. -/
+lemma RpnSpliceStream.serialize_price {φ : ℕ → Sentence} (hφ : RpnSentenceCodes φ)
+    {cs cd : Nat.Partrec.Code} {sf df : ℕ → ℕ}
+    (hs : PolyFueled cs sf) (hd : PolyFueled cd df) :
+    RpnSpliceStream (fun z => (EF.price (φ (sf z)) (df z)).serialize) := by
+  obtain ⟨s, hstream, hp⟩ := hφ
+  refine ⟨fun z => 0 :: s (sf z) ++ [df z], ?_, fun z => ?_⟩
+  · have h0 : PolySegStream (fun _ : ℕ => [0]) :=
+      PolySegStream.ofTokenStream (PolyTokenStream.const 0)
+    have hdSeg : PolySegStream (fun z : ℕ => [df z]) :=
+      PolySegStream.ofTokenStream (PolyTokenStream.polyTok hd)
+    exact ((h0.append (hstream.comp hs)).append hdSeg).of_eq fun z => by simp
+  · have := UnRpnContractsTo.priceChunk (hp (sf z)) (df z)
+    exact fun rest => by
+      have h1 := this rest
+      simpa [EF.serialize] using h1
+
+/-- A transparent whole-serialization for price-free features. -/
+lemma RpnSpliceStream.ofPriceFree {A : ℕ → EF}
+    (h : PolySegStream (fun z => (A z).serialize))
+    (hfree : ∀ z, (A z).priceFree) :
+    RpnSpliceStream (fun z => (A z).serialize) :=
+  .ofTransparent h (fun z => EF.serialize_unRpnTransparent (A z) (hfree z))
+
 /-- **The capstone realization**: a trader whose per-day trade serialization is
 RPN-spliceable is efficiently computable.
 Paper node: `def:ec` -/
