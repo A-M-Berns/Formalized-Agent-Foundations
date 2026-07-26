@@ -1897,6 +1897,142 @@ lemma outerLoop_polyFueled :
       rfl)
     hst⟩
 
+/-! ### The final conjunction fold and the assembled bit -/
+
+/-- Fold of the all-slots-valid test over a packed resolved level. -/
+def andSt (B P : ℕ) : ℕ → ℕ
+  | 0 => 1
+  | k + 1 => andSt B P k * (if P / B ^ k % B = 1 then 1 else 0)
+
+lemma andSt_le_one (B P : ℕ) : ∀ k, andSt B P k ≤ 1 := by
+  intro k
+  induction k with
+  | zero => exact le_rfl
+  | succ k ih =>
+      rw [andSt]
+      by_cases h : P / B ^ k % B = 1
+      · simpa [h] using ih
+      · simp [h]
+
+lemma andSt_spec {B : ℕ} (hB : 0 < B) {L : List ℕ} (hd : ∀ v ∈ L, v < B) :
+    ∀ k, k ≤ L.length →
+      andSt B (Nat.ofDigits B L) k = if (L.take k).all (· == 1) then 1 else 0 := by
+  intro k
+  induction k with
+  | zero => simp [andSt]
+  | succ k ih =>
+      intro hk
+      have hklt : k < L.length := by omega
+      have htake : L.take (k + 1) = L.take k ++ [L[k]] := by
+        rw [List.take_add_one, List.getElem?_eq_getElem hklt]
+        rfl
+      rw [andSt, ih (by omega), ofDigits_digit hB hd hklt, htake, List.all_append]
+      by_cases hA : (L.take k).all (· == 1)
+      · by_cases h1 : L[k] = 1
+        · simp [hA, h1]
+        · simp [hA, h1]
+      · simp [hA]
+
+/-- The conjunction fold as a `prec`: input `⟨⟨b, P⟩, k⟩` (base `b+1`), state
+`⟨P / (b+1)^k, andSt (b+1) P k⟩`. -/
+lemma andLoop_polyFueled :
+    ∃ c, PolyFueled c (fun m =>
+      Nat.pair (m.unpair.1.unpair.2 / (m.unpair.1.unpair.1 + 1) ^ m.unpair.2)
+        (andSt (m.unpair.1.unpair.1 + 1) m.unpair.1.unpair.2 m.unpair.2)) := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  obtain ⟨cm, hm⟩ := mul_polyFueled
+  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
+  have aPF := PolyFueled.left
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  have RPF := PolyFueled.left.comp prevPF
+  have accPF := PolyFueled.right.comp prevPF
+  have bPF := PolyFueled.left.comp aPF
+  have PPF := PolyFueled.right.comp aPF
+  have dmPF := hdm.comp (bPF.pair RPF)
+  have R'PF := PolyFueled.left.comp dmPF
+  have vPF := PolyFueled.right.comp dmPF
+  have eq1PF := (ifzSel_polyFueled.comp ((PolyFueled.const (Nat.pair 1 0)).pair
+      (had.comp ((subc_polyFueled.comp (vPF.pair (PolyFueled.const 1))).pair
+        (subc_polyFueled.comp ((PolyFueled.const 1).pair vPF)))))).of_eq
+    (f' := fun z =>
+      if z.unpair.2.unpair.2.unpair.1 % (z.unpair.1.unpair.1 + 1) = 1 then 1 else 0)
+    (fun z => by
+      simp only [Nat.unpair_pair, ifzSelFn]
+      by_cases h : z.unpair.2.unpair.2.unpair.1 % (z.unpair.1.unpair.1 + 1) = 1
+      · rw [if_pos (by omega), if_pos h]
+      · rw [if_neg (by omega), if_neg h])
+  have gPF := R'PF.pair (hm.comp (accPF.pair eq1PF))
+  have hone : IsPolyBounded (fun _ : ℕ => (1:ℕ)) :=
+    (IsPolyBounded.linear 1).of_le (fun _ => by omega)
+  have hst : IsPolyBounded (fun m =>
+      Nat.pair (m.unpair.1.unpair.2 / (m.unpair.1.unpair.1 + 1) ^ m.unpair.2)
+        (andSt (m.unpair.1.unpair.1 + 1) m.unpair.1.unpair.2 m.unpair.2)) := by
+    apply (isPolyBounded_fst.pair hone).of_le
+    intro m
+    have h1 : m.unpair.1.unpair.2 / (m.unpair.1.unpair.1 + 1) ^ m.unpair.2 ≤
+        m.unpair.1 :=
+      le_trans (Nat.div_le_self _ _) (Nat.unpair_right_le _)
+    exact le_trans (pair_le_pair_left' _ h1)
+      (pair_le_pair_right' _ (andSt_le_one _ _ _))
+  exact ⟨_, PolyFueled.prec (PolyFueled.right.pair (PolyFueled.const 1)) gPF
+    (st := fun a k =>
+      Nat.pair (a.unpair.2 / (a.unpair.1 + 1) ^ k) (andSt (a.unpair.1 + 1) a.unpair.2 k))
+    (fun a => by simp [andSt])
+    (fun a k => by
+      simp only [Nat.unpair_pair]
+      rw [andSt, Nat.div_div_eq_div_mul, ← pow_succ])
+    hst⟩
+
+/-- **The canonicity bit is poly-fueled** (kind `P`; provenance `(a)` throughout: the
+breadth-first descent `outerSt` with its on-diagonal characterization, the resolution
+and conservation lemmas, and the conjunction fold).
+Paper node: `thm:ob` -/
+theorem invalidBit_polyFueled : ∃ c, PolyFueled c invalidBit := by
+  obtain ⟨cs, hs⟩ := sizec_polyFueled
+  obtain ⟨col, hol⟩ := outerLoop_polyFueled
+  obtain ⟨cal, hal⟩ := andLoop_polyFueled
+  obtain ⟨cD, hD⟩ := (hs.comp hs).addConst 3
+  have houter := (hol.comp (PolyFueled.id.pair hD)).of_eq
+    (f' := fun n => outerSt n (n.size.size + 3))
+    (fun n => by simp only [Nat.unpair_pair])
+  have SBPF := PolyFueled.left.comp houter
+  have WPF := PolyFueled.left.comp (PolyFueled.right.comp houter)
+  have PPF := PolyFueled.right.comp (PolyFueled.right.comp houter)
+  have handrun := hal.comp ((SBPF.succ_comp.pair PPF).pair WPF)
+  have accPF := PolyFueled.right.comp handrun
+  refine ⟨_, (subc_polyFueled.comp ((PolyFueled.const 1).pair accPF)).of_eq
+    (fun n => ?_)⟩
+  simp only [Nat.unpair_pair]
+  rw [outerSt_eq n (n.size.size + 3) le_rfl]
+  simp only [Nat.unpair_pair]
+  rw [show sbChain n (n.size.size + 3) + 1 + 1 = sbChain n (n.size.size + 3) + 2 from rfl]
+  have hres : ∀ m ∈ levelsM n (n.size.size + 3), m ≤ 1 := levelsM_resolved n
+  have hdig : ∀ v ∈ levelsM n (n.size.size + 3), v < sbChain n (n.size.size + 3) + 2 :=
+    fun v hv => by
+      have := levelsM_le n (n.size.size + 3) v hv
+      omega
+  have hlen : (levelsM n (n.size.size + 3)).length = 2 ^ (n.size.size + 3) :=
+    length_levelsM n _
+  rw [andSt_spec (by omega) hdig (2 ^ (n.size.size + 3)) (by omega),
+    List.take_of_length_le (by omega),
+    show ((levelsM n (n.size.size + 3)).all (· == 1)) = validCode n by
+      rw [← all_validCode_eq_all_one _ hres, levelsM_all]]
+  by_cases hb : validCode n
+  · simp [invalidBit, hb]
+  · simp [invalidBit, hb]
+
+/-- **The residual certificate, discharged**: the fuel-model sentence-code emitter of
+the concrete prefix machine (kind `P`; provenance `(a)`: `invalidBit_polyFueled` +
+`sentencePoly_of_invalidBit`).
+Paper node: `thm:ob` -/
+theorem prefixSentenceEnum_polySentenceCodes : PolySentenceCodes prefixSentenceEnum :=
+  sentencePoly_of_invalidBit invalidBit_polyFueled
+
+/-- The derived weight emission, now unconditional.
+Paper node: `thm:ob` -/
+theorem prefixApprox_polyRatCodes : PolyRatCodes prefixApprox :=
+  approx_polyRat_of_sentence prefixSentenceEnum_polySentenceCodes
+
 /-! ## Residual operational input and the assembled boundary -/
 
 /-- Compact operational input for the concrete prefix machine: the single fuel-model
