@@ -6,12 +6,15 @@ import Mathlib.Data.Nat.Size
 # Concrete prefix machine for Occam Bounds (`M7-PREFIX-MACHINE`, steps 2–5)
 
 This file constructs the concrete self-delimiting sentence code behind the Occam-bound
-boundary `PrefixMachinePresentation` (`Properties/OccamBounds.lean`) and discharges every
-*mathematical* field of that boundary — the finite Kraft budget (from
-`kraft_inequality`), coverage, the exact from-below approximation, and the fixed additive
-negation overhead — leaving exactly the fuel-model *emission programs* as the residual
-operational input (`PrefixMachineComputation`), in the same style as
-`BitPrefixCodeComputation` (`BitPrefixSyntax.lean`).
+boundary `PrefixMachinePresentation` (`Properties/OccamBounds.lean`) and discharges
+**every** field of that boundary: the finite Kraft budget (from `kraft_inequality`),
+coverage, the exact from-below approximation, the fixed additive negation overhead, and
+both fuel-model *emission programs* — the weight stream by code-level negation stripping
+(`dcIter`) plus halving-driven doubling (`p2s`), and the sentence stream by a
+poly-fueled decision of code canonicity (`validCode`, membership in `Formula.toNat`'s
+range) via a breadth-first packed descent whose slots shrink as `√` per level
+(`outerSt`; resolution depth `size (size n) + 3`).  The assembled presentation and the
+paper-facing endpoints are unconditional.
 
 ## The code
 
@@ -2033,37 +2036,19 @@ Paper node: `thm:ob` -/
 theorem prefixApprox_polyRatCodes : PolyRatCodes prefixApprox :=
   approx_polyRat_of_sentence prefixSentenceEnum_polySentenceCodes
 
-/-! ## Residual operational input and the assembled boundary -/
+/-! ## The assembled boundary (fully constructed) -/
 
-/-- Compact operational input for the concrete prefix machine: the single fuel-model
-program emitting the enumerated sentence codes.  This is the only field of the Occam
-boundary not discharged by this file; it is a conclusion-free emission certificate in
-the style of `BitPrefixCodeComputation`, and the emitted values are polynomially bounded
-(`encode (prefixSentenceEnum n) ∈ {n, pair 1 n + 1}`), so the obligation is interpreter
-programming (deciding canonicity of `n`), not a size obstruction.  The weight emission
-is *derived* (`approx_polyRat_of_sentence`), as are the two gate token streams of
-`OccamThresholdEmission` (`prefixThresholdSum_polyRat`, `prefixInverseWidth_polyRat`).
+/-- The concrete prefix machine presentation: **every** field is discharged by this
+file — `kraft` via `kraft_inequality`, coverage, exactness and convergence of the
+weights, and both fuel-model emission certificates
+(`prefixSentenceEnum_polySentenceCodes`, `prefixApprox_polyRatCodes`).
 Paper node: `thm:ob` -/
-structure PrefixMachineComputation where
-  sentence_poly : PolySentenceCodes prefixSentenceEnum
-
-/-- The derived weight emission of the operational input.
-Paper node: `thm:ob` -/
-theorem PrefixMachineComputation.approx_poly (C : PrefixMachineComputation) :
-    PolyRatCodes prefixApprox :=
-  approx_polyRat_of_sentence C.sentence_poly
-
-/-- The concrete prefix machine presentation: every mathematical field is discharged
-here (`kraft` via `kraft_inequality`, coverage, exactness and convergence of the
-weights); the fuel-model emission certificates come from the operational input.
-Paper node: `thm:ob` -/
-def prefixMachinePresentation (C : PrefixMachineComputation) :
-    PrefixMachinePresentation prefixKappa where
+def prefixMachinePresentation : PrefixMachinePresentation prefixKappa where
   sentence := prefixSentenceEnum
-  sentence_codes := C.sentence_poly
+  sentence_codes := prefixSentenceEnum_polySentenceCodes
   approximation := fun _ i => prefixApprox i
   approximation_codes := by
-    obtain ⟨c, hc⟩ := C.approx_poly
+    obtain ⟨c, hc⟩ := prefixApprox_polyRatCodes
     exact ⟨_, hc.comp PolyFueled.right⟩
   approximation_nonneg := fun _ i => (prefixApprox_pos i).le
   approximation_le := fun n i => (prefixApprox_eq i).le
@@ -2073,19 +2058,17 @@ def prefixMachinePresentation (C : PrefixMachineComputation) :
   kraft := prefixKraft
   covers := prefixSentenceEnum_covers
 
-/-- The gate token emission of the concrete machine, transported from the operational
-input along the definitional match between `obBase` over the assembled presentation and
-`prefixEmitBase`.
+/-- The gate token emission of the concrete machine, transported along the definitional
+match between `obBase` over the assembled presentation and `prefixEmitBase`.
 Paper node: `thm:ob` -/
-def prefixThresholdEmission (C : PrefixMachineComputation) :
-    OccamThresholdEmission (prefixMachinePresentation C) where
+def prefixThresholdEmission : OccamThresholdEmission prefixMachinePresentation where
   threshold_sum_codes := by
-    obtain ⟨c, hc⟩ := prefixThresholdSum_polyRat C.approx_poly
+    obtain ⟨c, hc⟩ := prefixThresholdSum_polyRat prefixApprox_polyRatCodes
     exact ⟨_, hc.of_eq (fun z => by
       simp [prefixEmitBase, obEmitBase, obBase, obCapacity,
         prefixMachinePresentation])⟩
   inverse_width_codes := by
-    obtain ⟨c, hc⟩ := prefixInverseWidth_polyRat C.approx_poly
+    obtain ⟨c, hc⟩ := prefixInverseWidth_polyRat prefixApprox_polyRatCodes
     exact ⟨_, hc.of_eq (fun z => by
       simp [prefixEmitBase, obEmitBase, obBase, obCapacity,
         prefixMachinePresentation])⟩
@@ -2093,21 +2076,21 @@ def prefixThresholdEmission (C : PrefixMachineComputation) :
 /-! ## Paper-facing corollaries over the concrete machine -/
 
 /-- Lower Occam bound over the concrete prefix machine: the presentation, threshold
-emission, and Kraft budget are all supplied by this file's construction; only the
-fuel-model emission programs remain as the operational input.
+emission, and Kraft budget are all supplied unconditionally by this file's
+construction.
 Paper node: `thm:ob` -/
-theorem lic_occam_lower_ofPrefixMachine (C : PrefixMachineComputation)
+theorem lic_occam_lower_ofPrefixMachine
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ K : ℝ, 0 < K ∧ ∀ φ,
       (∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds φ) →
       K * prefixWeight prefixKappa φ ≤ limitingBelief P φ :=
-  lic_occam_lower (prefixMachinePresentation C) (prefixThresholdEmission C) P DP hworld
+  lic_occam_lower prefixMachinePresentation prefixThresholdEmission P DP hworld
 
 /-- Occam Bounds over the concrete prefix machine, with the negation compiler
 discharged by `prefixNegationCompiler` (overhead 2, proved).
 Paper node: `thm:ob` -/
-theorem lic_occamBounds_ofPrefixMachine (C : PrefixMachineComputation)
+theorem lic_occamBounds_ofPrefixMachine
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ K : ℝ, 0 < K ∧
@@ -2117,12 +2100,15 @@ theorem lic_occamBounds_ofPrefixMachine (C : PrefixMachineComputation)
       (∀ φ,
         (∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ ¬ v.Holds φ) →
         limitingBelief P φ ≤ 1 - K * prefixWeight prefixKappa φ) :=
-  lic_occamBounds (prefixMachinePresentation C) (prefixThresholdEmission C)
+  lic_occamBounds prefixMachinePresentation prefixThresholdEmission
     prefixNegationCompiler P DP hworld
 
 #print axioms kraft_inequality
 #print axioms approx_polyRat_of_sentence
 #print axioms sentencePoly_of_invalidBit
+#print axioms invalidBit_polyFueled
+#print axioms prefixSentenceEnum_polySentenceCodes
+#print axioms prefixApprox_polyRatCodes
 #print axioms sentCode_prefix_inj
 #print axioms prefixKraft
 #print axioms prefixNegationCompiler

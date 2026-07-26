@@ -204,7 +204,7 @@ unopened spike; see the audit's §2.2 disposition.
   the M7-PREFIX-MACHINE record below for the remaining work.
 * GL fixed point: discharged and vendored (`ProvabilityLogic/`), 2026-07-21.
 
-## M7-PREFIX-MACHINE — remaining work (record, 2026-07-26; NOT the active focus)
+## M7-PREFIX-MACHINE — COMPLETE (2026-07-26, second session)
 
 Full detail in `notes/m7-prefix-machine-scope.md` (rewritten this session; read it
 before reopening).  Compressed state:
@@ -220,26 +220,25 @@ approximation + `nonneg`/`le`/`tendsto`; **`prefixNegationCompiler` fully proved
 emission (`prefixThresholdSum_polyRat`/`prefixInverseWidth_polyRat`).  Endpoints:
 `lic_occam_lower_ofPrefixMachine` / `lic_occamBounds_ofPrefixMachine`.
 
-**Residual — `PrefixMachineComputation`, exactly two fuel-model certificates:**
-1. `sentence_poly : PolySentenceCodes prefixSentenceEnum`;
-2. `approx_poly : PolyRatCodes prefixApprox` (equivalently the denominator stream
-   `2^{κᵢ}`, via `prefixDen_polyFueled`).
+**Both former residual certificates are now PROVED** (second 2026-07-26 session,
+worktree agent):
+1. `prefixSentenceEnum_polySentenceCodes : PolySentenceCodes prefixSentenceEnum` —
+   canonicity of `n` (membership in `Formula.toNat`'s range) decided poly-fueled by a
+   breadth-first *packed* descent: slots shrink as `√` per level, levels packed as
+   `Nat.ofDigits` in the level-varying base `sbChain n d + 2` with width `2^d`,
+   resolution at depth `size (size n) + 3`; conjunction conserved level-to-level
+   (`validCode m = validCode (chL m) && validCode (chR m)` with `0`/`1` absorbing
+   resolved slots).  No bespoke stack machine was needed — BFS level-packing sidesteps
+   the stack entirely.
+2. `prefixApprox_polyRatCodes : PolyRatCodes prefixApprox` — derived from (1) by
+   code-level negation stripping (`dcIter`) + halving-driven doubling (`p2s`; the
+   doubling is clocked by the halving, so no clamp is needed there) + `prefixDen_eq`.
 
-Believed satisfiable (all output values proved poly-bounded in the scope note —
-`2^{κᵢ} ≤ 32(d+1)²(c+1)² ≤ poly(i)`); the obligation is interpreter programming,
-not a size obstruction.  Discharge order if reopened:
-* `negDepth`/`negCore`/`size` are **single-chain prec iterations** (strip one
-  `imp _ ⊥` layer / halve per step) — feasible now; plus **clamped** `2^κ`
-  materialization (plain doubling violates `prec`'s poly-state bound off-diagonal;
-  clamp by the proved bound — the `BigDigits.clampVal` pattern).  That discharges
-  `approx_poly` *given* `sentence_poly`.
-* `sentence_poly` needs **canonicity of `n`** (is `n` in `Formula.toNat`'s range) —
-  tree-recursive; course-of-values tables are value-exponential in this fuel model,
-  so it needs an explicit small-stack/digit encoding (stack shrinks √-per-level,
-  ≈ 2·log n bits total).  **This is exactly the ACTIVE PLAN 2 RPN/digit territory**
-  — after the `Tok₃` collapse lands, a Polish-token index may sidestep
-  `toNat`-canonicity entirely (validity of an RPN run is a linear counter scan).
-  Reassess then rather than building a bespoke stack machine.
+`PrefixMachineComputation` is **deleted** (consolidation): `prefixMachinePresentation`
+and the endpoints `lic_occam_lower_ofPrefixMachine` / `lic_occamBounds_ofPrefixMachine`
+are unconditional (modulo `[IsLogicalInductor P DP]` + market hypotheses, as
+everywhere).  All new endpoints axiom-clean and in `AxiomAudit.lean`.  Full
+construction record in `notes/m7-prefix-machine-scope.md` (closing record).
 
 **Disclosures recorded:** type-`(c)` in `PrefixMachine.lean`'s module docstring —
 `prefixKappa` is a *fixed computable* self-delimiting code, not universal prefix
@@ -265,11 +264,10 @@ the propositional substrate.
 
 ## Deliberately disclosed boundaries
 
-- `M7-PREFIX-MACHINE` — **largely discharged 2026-07-26** (Kraft proved in-repo, machine
-  model + kraft field + negation compiler constructed, gate emissions derived); residual
-  = the two `PrefixMachineComputation` emission certificates plus the disclosed
-  non-universality of `prefixKappa`. See the record above and
-  `notes/m7-prefix-machine-scope.md`.
+- `M7-PREFIX-MACHINE` — **fully discharged 2026-07-26** (both emission certificates
+  constructed; `PrefixMachineComputation` deleted). The only remaining disclosure for
+  this node is the type-`(c)` non-universality of `prefixKappa` (a modeling statement,
+  not a proof gap). See the record above and `notes/m7-prefix-machine-scope.md`.
 - `M7-DUS-APPROX` and `M7-STRICT-SEPARATORS` — remain disclosed unless Anson reopens them.
 
 These three are the only intentional disclosures at the 12/15 target. The audit should

@@ -1,10 +1,14 @@
 # M7-PREFIX-MACHINE — construction scope & status
 
-_Drafted 2026-07-20. Reopened and largely discharged 2026-07-26; status below._
+_Drafted 2026-07-20. Reopened and largely discharged 2026-07-26; **fully discharged
+2026-07-26 (second session)** — see the closing record at the end._
 
 The boundary that, if constructed, discharges the Occam-bound disclosures
 `lic_occam_lower` and `lic_occamBounds` (paper `thm:ob` / App. `ob`). Previously fully
-disclosed; now discharged down to **two residual fuel-model emission certificates**.
+disclosed; then discharged down to two residual fuel-model emission certificates;
+**now complete: both certificates are proved and the endpoints are unconditional** (up
+to `[IsLogicalInductor P DP]` and the standard market hypotheses, like every other
+property endpoint).
 
 ## Status after the 2026-07-26 session
 
@@ -126,11 +130,48 @@ in the module docstring of `PrefixMachine.lean`.
 | Field | Status 2026-07-26 |
 |---|---|
 | `sentence` | **constructed** (`prefixSentenceEnum`) |
-| `sentence_codes` | residual (`PrefixMachineComputation.sentence_poly`) |
+| `sentence_codes` | **proved** (`prefixSentenceEnum_polySentenceCodes`) |
 | `approximation` + `_nonneg`/`_le`/`_tendsto` | **proved** (exact weights) |
-| `approximation_codes` | residual (`PrefixMachineComputation.approx_poly`) |
+| `approximation_codes` | **proved** (`prefixApprox_polyRatCodes`) |
 | `kraft` | **proved** (`prefixKraft` ← `kraft_inequality`) |
 | `covers` | **proved** |
 
-`OccamThresholdEmission`: **derived** from `approx_poly`.
+`OccamThresholdEmission`: **derived** from the proved weight emission.
 `PrefixNegationCompiler`: **fully discharged** (overhead 2, proved).
+
+## Closing record (2026-07-26, second session)
+
+The last certificate — the canonicity bit — was constructed, so
+`PrefixMachineComputation` was **deleted** (consolidation discipline: no residual-input
+structure survives its own discharge).  `prefixMachinePresentation` and
+`prefixThresholdEmission` are plain defs; `lic_occam_lower_ofPrefixMachine` /
+`lic_occamBounds_ofPrefixMachine` take no operational input.  All axiom-clean.
+
+How the canonicity bit was computed inside `dd:fuel` (all in `PrefixMachine.lean`):
+
+- **Spec:** `validCode : ℕ → Bool` decides `n ∈ range Formula.toNat` by tagged-pair
+  descent; `validCode_encode` / `of_validCode` prove both directions;
+  `encode_prefixSentenceEnum` collapses the emitted value to
+  `ifzSel ⟨⟨n, pair 1 n + 1⟩, invalidBit n⟩` (`sentencePoly_of_invalidBit`).
+- **Breadth-first packed descent** (the tree recursion that course-of-values tables
+  cannot express in this fuel model): slots are plain codes with `0`/`1` as absorbing
+  invalid/valid resolved states (`1 = encode ⊥` — representation coincides with
+  semantics); `chL`/`chR` emit children; per-slot conservation
+  `validCode m = validCode (chL m) && validCode (chR m)`; levels packed as
+  `Nat.ofDigits` numbers in the level-varying base `sbChain n d + 2` (iterated-`√`
+  slot bound), fixed width `2^d`, so the packed value stays polynomial
+  (`bPow_le`/`capP_dominates`: `B_d^{2^d} ≤ 16^{2^{d+1}}(n+2) ≤ capP n`).
+- **Resolution:** `size`-halving argument (`sbChain_size_le`) collapses the slot
+  bound to `2` by depth `size (size n) + 2`, hence all slots to bits one level later.
+- **`prec` drive:** inner loop (`innerOutC`, clamped accumulator; clamp proved idle
+  on-diagonal), outer loop (`outerSt` with capped width doubling; `outerSt_eq` is the
+  on-diagonal characterization), final conjunction fold (`andSt`), runtime `sqrt` and
+  `size` scans.  Off-diagonal `prec` state boundedness is by *definition* (the clamps),
+  on-diagonal exactness by proof — this is the pattern the original scope note's
+  "clamped materialization" warning asked for.
+- The weight emission had already been derived from the sentence emission
+  (`approx_polyRat_of_sentence`: `dcIter` negation stripping + `p2s` halving-driven
+  doubling + `prefixDen_eq`).
+
+Remaining disclosure for this node: only the type-`(c)` non-universality of
+`prefixKappa` (above), which is a modeling statement, not a proof gap.
