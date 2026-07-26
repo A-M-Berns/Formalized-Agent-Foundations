@@ -1005,11 +1005,161 @@ lemma strategyOfTokens_unRpn_escExpand (n : ℕ) (ts : List ℕ) :
   unfold strategyOfTokens
   rw [deserializeTrades_unRpn_escExpand]
 
+/-! ## The symbol-metered emission model (`Tok₃`)
+
+A `Tok₃` trader emits a digit stream whose undigitized tokens form an RPN-expanded
+strategy stream; the decode contracts sentence blocks (`unRpn`) before validation.
+Poly digit length now meters formula *symbols*: sentences may be arbitrarily deep and
+skewed.  The escape tag keeps both earlier models included by verbatim splice. -/
+
+/-- The total trader denoted by two digit-emission programs under a day clock, with
+Polish sentence blocks contracted before validation.
+Paper node: `def:trader`, `def:ec` -/
+def clockedTrader₃ (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ) :
+    Trader where
+  strat n := strategyOfTokens n (unRpn (undigitize
+    (clockedTokens lengthCode tokenCode (clock n) n)))
+
+/-- **The symbol-metered efficient-computability class** (`def:ec`, `Tok₃`): two
+programs under one polynomial clock emit the digit stream of an RPN-expanded strategy
+serialization.
+Paper node: `def:ec` -/
+def EfficientlyComputableTok₃ (Tr : Trader) : Prop :=
+  ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
+    clockedTrader₃ lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
+
+/-! ### The escape-slot automaton
+
+Sentence-slot positions of a flat strategy stream, as a small forward automaton:
+mode `0` = base (tags `0`/`6` open sentence slots, `1`/`7` opaque payloads), mode `1`
+= price sentence slot (day follows), mode `2` = price day, mode `3` = trade sentence
+slot, mode `4` = opaque payload.  Slots are modes `1` and `3`.  Base transitions test
+only tags `≤ 7`, so the automaton factors through the digit clamp. -/
+
+def escModeStep (m t : ℕ) : ℕ :=
+  if m = 0 then
+    if t = 0 then 1
+    else if t = 6 then 3
+    else if t = 1 then 4
+    else if t = 7 then 4
+    else 0
+  else if m = 1 then 2
+  else 0
+
+def escModeList (ts : List ℕ) : ℕ := ts.foldl escModeStep 0
+
+lemma escModeStep_le (m t : ℕ) : escModeStep m t ≤ 4 := by
+  rw [escModeStep]
+  split_ifs <;> omega
+
+lemma escModeList_le (ts : List ℕ) : escModeList ts ≤ 4 := by
+  rw [escModeList]
+  rcases ts.eq_nil_or_concat with rfl | ⟨l, t, rfl⟩
+  · simp
+  · rw [List.concat_eq_append, List.foldl_append, List.foldl_cons, List.foldl_nil]
+    exact escModeStep_le _ _
+
+lemma escModeList_snoc (ts : List ℕ) (t : ℕ) :
+    escModeList (ts ++ [t]) = escModeStep (escModeList ts) t := by
+  rw [escModeList, List.foldl_append, List.foldl_cons, List.foldl_nil, escModeList]
+
+lemma escModeStep_clamp (m t : ℕ) :
+    escModeStep m (min t 9) = escModeStep m t := by
+  by_cases h : t ≤ 9
+  · rw [Nat.min_eq_left h]
+  · rw [Nat.min_eq_right (by omega : 9 ≤ t)]
+    rw [escModeStep, escModeStep]
+    split_ifs <;> omega
+
+/-! ### The per-token fold form of the escape splice -/
+
+/-- `escExpand` as a per-token fold over the slot automaton. -/
+def escExpandFold : ℕ → List ℕ → List ℕ
+  | _, [] => []
+  | m, t :: rest =>
+      (if m = 1 ∨ m = 3 then [1, t] else [t]) ++ escExpandFold (escModeStep m t) rest
+
+lemma escExpandFold_eq_escExpand : ∀ (n : ℕ) (ts : List ℕ), ts.length ≤ n →
+    escExpandFold 0 ts = escExpand ts
+  | _, [], _ => rfl
+  | 0, t :: rest, hn => by simp at hn
+  | n + 1, t :: rest, hn => by
+      simp only [List.length_cons] at hn
+      by_cases h0 : t = 0
+      · subst h0
+        match rest with
+        | [] => rfl
+        | [c] =>
+            show escExpandFold 0 [0, c] = escExpand [0, c]
+            rw [show escExpand [0, c] = [0, 1, c] from rfl]
+            rfl
+        | c :: d :: r2 =>
+            rw [escExpand_price_chunk]
+            show ([0] ++ escExpandFold 1 (c :: d :: r2)) = _
+            rw [show escExpandFold 1 (c :: d :: r2) =
+              [1, c] ++ escExpandFold 2 (d :: r2) from rfl]
+            rw [show escExpandFold 2 (d :: r2) = [d] ++ escExpandFold 0 r2 from rfl]
+            simp only [List.length_cons] at hn
+            rw [escExpandFold_eq_escExpand n r2 (by omega)]
+            rfl
+      by_cases h6 : t = 6
+      · subst h6
+        match rest with
+        | [] => rfl
+        | c :: r =>
+            rw [escExpand_trade_chunk]
+            show ([6] ++ escExpandFold 3 (c :: r)) = _
+            rw [show escExpandFold 3 (c :: r) = [1, c] ++ escExpandFold 0 r from rfl]
+            simp only [List.length_cons] at hn
+            rw [escExpandFold_eq_escExpand n r (by omega)]
+            rfl
+      by_cases h1 : t = 1
+      · subst h1
+        match rest with
+        | [] => rfl
+        | c :: r =>
+            rw [escExpand_payload_chunk 1 c (Or.inl rfl)]
+            show ([1] ++ escExpandFold 4 (c :: r)) = _
+            rw [show escExpandFold 4 (c :: r) = [c] ++ escExpandFold 0 r from rfl]
+            simp only [List.length_cons] at hn
+            rw [escExpandFold_eq_escExpand n r (by omega)]
+            rfl
+      by_cases h7 : t = 7
+      · subst h7
+        match rest with
+        | [] => rfl
+        | c :: r =>
+            rw [escExpand_payload_chunk 7 c (Or.inr rfl)]
+            show ([7] ++ escExpandFold 4 (c :: r)) = _
+            rw [show escExpandFold 4 (c :: r) = [c] ++ escExpandFold 0 r from rfl]
+            simp only [List.length_cons] at hn
+            rw [escExpandFold_eq_escExpand n r (by omega)]
+            rfl
+      · rw [escExpand_single_chunk t ⟨h0, h1, h6, h7⟩]
+        show ((if (0 : ℕ) = 1 ∨ (0 : ℕ) = 3 then [1, t] else [t]) ++
+          escExpandFold (escModeStep 0 t) rest) = _
+        rw [if_neg (by norm_num),
+          show escModeStep 0 t = 0 by
+            rw [escModeStep, if_pos rfl, if_neg h0, if_neg h6, if_neg h1, if_neg h7]]
+        rw [escExpandFold_eq_escExpand n rest (by omega)]
+        rfl
+
+lemma escExpandFold_append (m : ℕ) (xs ys : List ℕ) :
+    escExpandFold m (xs ++ ys) =
+      escExpandFold m xs ++ escExpandFold (xs.foldl escModeStep m) ys := by
+  induction xs generalizing m with
+  | nil => rfl
+  | cons t rest ih =>
+      simp only [List.cons_append, escExpandFold, List.foldl_cons]
+      rw [ih]
+      simp [List.append_assoc]
+
 #print axioms parseRpn_rpn
 #print axioms parseRpn_escape
 #print axioms rpn_injective
 #print axioms unRpn_price_chunk
 #print axioms unRpn_trade_chunk
 #print axioms strategyOfTokens_unRpn_escExpand
+#print axioms escExpandFold_eq_escExpand
 
 end LogicalInduction
