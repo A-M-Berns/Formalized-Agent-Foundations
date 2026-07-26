@@ -153,6 +153,17 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_occamBounds lic_occam_lower lic_limitingBelief_add_neg
   lic_domination_universalSemimeasure lic_strict_domination_universalSemimeasure
 
+-- Construction/Witnesses/KraftInequality.lean (M7-PREFIX-MACHINE core; Aristotle-produced
+-- body, kernel-validated in-repo)
+#assert_axioms_clean
+  kraft_inequality
+
+-- Construction/Witnesses/PrefixMachine.lean (M7-PREFIX-MACHINE steps 2-5: the concrete
+-- self-delimiting sentence code; residual operational input = PrefixMachineComputation)
+#assert_axioms_clean
+  prefixKraft prefixNegationCompiler
+  lic_occam_lower_ofPrefixMachine lic_occamBounds_ofPrefixMachine
+
 -- Properties/Conditioning.lean, Properties/FinitePerturbations.lean
 #assert_axioms_clean
   lic_conditioned lic_conditioned_gated lic_conditioned_eventual
@@ -533,6 +544,8 @@ deliberately. -/
   code code_poly
 #assert_fields PolyNatCodes
   code code_poly
+#assert_fields PrefixMachineComputation
+  sentence_poly approx_poly
 #assert_fields PrefixMachinePresentation
   sentence sentence_codes approximation approximation_codes approximation_nonneg approximation_le approximation_tendsto kraft covers
 #assert_fields PrefixNegationCompiler
