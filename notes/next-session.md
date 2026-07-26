@@ -391,19 +391,50 @@ Two constructions on top of Tranche 1:
 Payoff: `lic_self_trust_unconditional_closed` (+ cee/ceu/ccee closures). Hardest
 assembly of the quotation tranches; do after 1 proves out the recipe.
 
-## Tranche 4 — sentence-code sub-tokenization (dd:fuel, the long pole)
+## Tranche 4 — sentence-code sub-tokenization (dd:fuel) — **rescoped 2026-07-25 post-Tranche-2**
 
-Same move as Tranche 2 one level down: `price φ n` / trade frames emit an RPN stream
-over Foundation's `Formula ℕ` constructors (atom-index, ⊤, ⊥, ∼, ⋏, ⋎, →; check the
-actual constructor set — `NegAbbrev`?), atom indices digit-split. Migrate
-`PolySentenceCodes`-shaped hypotheses to a stream predicate via an inclusion lemma
-(poly-value code ⟹ poly stream) so all current instantiations transfer. This is the
-tranche that finally admits deep poly-size sentence sequences and closes audit §2.1's
-concrete narrowing.
+> **Scoping verdict (fresh pass against the post-B3 state).**  Tranche 2 already
+> closed the *criterion-side* narrowing: `Tok₂` traders emit arbitrary-bit-size tokens
+> (per-day rational literals, large sentence codes), and the conditioning family's
+> compilers are fully digit-model.  What the original tranche description compressed
+> into "migrate hypotheses via an inclusion lemma" decomposes into three genuinely
+> different pieces:
+>
+> 1. **The hypothesis core — DONE** (`Framework/DigitArith.lean`):
+>    `DigitSentenceCodes φ := BigDigits (encode ∘ φ)` (poly digit access, code values
+>    may be exponential ⇒ admits all poly *bit-size* code sequences), with the
+>    inclusion `PolySentenceCodes.toDigit` transferring every existing instantiation,
+>    and poly reindexing.
+> 2. **Per-family endpoint migration — one family done, rest recorded.**  Widening an
+>    endpoint's hypothesis is not a signature edit: its exploiting trader's emission
+>    must be re-certified in the digit model (the B1/B2 pattern).  `thm:scon` is done
+>    end-to-end (`DigitConditioning.lean`).  The shared tall pole for the rest is the
+>    `PolySequence`/`priceFeature_polySeg` emission substrate (Computable.lean), which
+>    every property compiler consumes — digit-mirror it once (token slots that carry
+>    sentence codes become `BigDigits.blockSeg` blocks; the toolkit is all in place),
+>    then families migrate in order of emission complexity: copy-only families first
+>    (`thm:tl` timely learning, `thm:und` non-dogmatism), compute-on-codes families
+>    (affine/expectation, which build `⌜φ⋏ψ⌝`-style shells) via `BigDigits.natPair`
+>    exactly as conditioning did.  Multi-session; nothing is blocked, it is volume.
+> 3. **The representation residual — record, don't build (new finding).**  Even
+>    `DigitSentenceCodes` is not the paper's symbol-size e.c.: `Encodable` pair-codes
+>    inflate *skewed* poly-symbol formulas to exponential bit-size (each pair level
+>    roughly doubles bit-width), so deep right-nested conjunction chains still fall
+>    outside.  Removing this requires re-serializing sentences as RPN symbol streams
+>    over `Formula ℕ` constructors — but `EF.streamStep` decodes sentence tokens
+>    *atomically* via `Encodable.decode`, so that is a grammar change on the frozen
+>    trust surface (`EF.serialize`/`streamStep`/every compiler), not an additive
+>    layer.  This joins fuel-vs-TM-time in the Terminal section as a disclosed model
+>    sentence: *e.c. sentence sequences are metered by pair-code bit-size, which is
+>    symbol-size up to balance*.
+>
+> Recommendation: treat 2's substrate mirror as the next tranche-sized unit if the
+> narrowing matters downstream; otherwise 1+the disclosure is the honest steady state.
 
 ## Terminal (not a tranche — document, don't build)
 
-After 2+4 the only dd:fuel residual is fuel-model vs TM-time equivalence. **Blocked in
+After Tranche 2 the dd:fuel residuals are (a) fuel-model vs TM-time equivalence and
+(b) the pair-code bit-size vs symbol-size gap for skewed formulas (Tranche 4 item 3). **Blocked in
 principle**: Mathlib has no time-bounded computability/complexity theory (no poly-time
 TM class; `Turing.PartrecToTM2` is unbounded). Per CLAUDE.md rule 6 this is a
 stop-and-report boundary: keep the model-card calibrations (`PolyFueled.primrec`,
