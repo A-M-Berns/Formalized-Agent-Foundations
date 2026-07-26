@@ -180,13 +180,60 @@ unopened spike; see the audit's §2.2 disposition.
 
 ## External state
 
-* **Kraft / `M7-PREFIX-MACHINE`**: a background subagent (Fable 5, isolated
-  worktree under `.claude/worktrees/`) is executing the prefix-machine boundary,
-  starting from the Aristotle Kraft tarball
-  (`~/Downloads/65eaafaa-2ba0-4501-8002-8e9e2043f4d8-aristotle.tar.gz`).  Trust
-  rule: kernel-compiled in-repo or it does not merge.  If the session that launched
-  it was cleared, inspect the worktree branch directly.
+* **Kraft / `M7-PREFIX-MACHINE` — LANDED (2026-07-26, merged).** The subagent run
+  completed and its branch is merged (commits `511363b`/`d88faf9`/`1988a4c`/`f15d750`).
+  Aristotle job `65eaafaa…` genuinely discharged the Kraft sorry (unlike `bc2df18a…`);
+  `kraft_inequality` is re-elaborated and kernel-checked in-repo
+  (`Construction/Witnesses/KraftInequality.lean`), axioms strictly clean.  On top of it
+  `Construction/Witnesses/PrefixMachine.lean` constructs the concrete self-delimiting
+  sentence code and discharges every *mathematical* field of the Occam boundary — see
+  the M7-PREFIX-MACHINE record below for the remaining work.
 * GL fixed point: discharged and vendored (`ProvabilityLogic/`), 2026-07-21.
+
+## M7-PREFIX-MACHINE — remaining work (record, 2026-07-26; NOT the active focus)
+
+Full detail in `notes/m7-prefix-machine-scope.md` (rewritten this session; read it
+before reopening).  Compressed state:
+
+**Done, kernel-clean, audited:** `kraft_inequality` (Aristotle-produced body, in-repo
+validated); `natCode`/`sentCode` prefix-free-injective; `prefixKappa = |sentCode|+1`
+with negation depth factored out (that factoring is what makes the overhead
+*additive*); enumeration `prefixSentenceEnum` (canonical decode + `atom n` fallback,
+surjective, multiplicity ≤ 2); the presentation's `kraft` field proved
+(`prefixKraft`: half-budget per injective index class); `covers`; exact
+approximation + `nonneg`/`le`/`tendsto`; **`prefixNegationCompiler` fully proved
+(overhead = 2)**; both `OccamThresholdEmission` streams **derived** from the weight
+emission (`prefixThresholdSum_polyRat`/`prefixInverseWidth_polyRat`).  Endpoints:
+`lic_occam_lower_ofPrefixMachine` / `lic_occamBounds_ofPrefixMachine`.
+
+**Residual — `PrefixMachineComputation`, exactly two fuel-model certificates:**
+1. `sentence_poly : PolySentenceCodes prefixSentenceEnum`;
+2. `approx_poly : PolyRatCodes prefixApprox` (equivalently the denominator stream
+   `2^{κᵢ}`, via `prefixDen_polyFueled`).
+
+Believed satisfiable (all output values proved poly-bounded in the scope note —
+`2^{κᵢ} ≤ 32(d+1)²(c+1)² ≤ poly(i)`); the obligation is interpreter programming,
+not a size obstruction.  Discharge order if reopened:
+* `negDepth`/`negCore`/`size` are **single-chain prec iterations** (strip one
+  `imp _ ⊥` layer / halve per step) — feasible now; plus **clamped** `2^κ`
+  materialization (plain doubling violates `prec`'s poly-state bound off-diagonal;
+  clamp by the proved bound — the `BigDigits.clampVal` pattern).  That discharges
+  `approx_poly` *given* `sentence_poly`.
+* `sentence_poly` needs **canonicity of `n`** (is `n` in `Formula.toNat`'s range) —
+  tree-recursive; course-of-values tables are value-exponential in this fuel model,
+  so it needs an explicit small-stack/digit encoding (stack shrinks √-per-level,
+  ≈ 2·log n bits total).  **This is exactly the ACTIVE PLAN 2 RPN/digit territory**
+  — after the `Tok₃` collapse lands, a Polish-token index may sidestep
+  `toNat`-canonicity entirely (validity of an RPN run is a linear counter scan).
+  Reassess then rather than building a bespoke stack machine.
+
+**Disclosures recorded:** type-`(c)` in `PrefixMachine.lean`'s module docstring —
+`prefixKappa` is a *fixed computable* self-delimiting code, not universal prefix
+complexity; universality (dovetailing, lower-semicomputable weights) remains undone
+and is a strictly larger construction.  The multiplicity-2 slack bit and the
+non-injective-decode gotcha (`Formula.ofNat (pair 0 c + 1) = some ⊥` for every `c`,
+so plain decode-fallback enumerations double-spend — the canonical-index guard in
+`prefixSentenceEnum` exists for this) are documented in the scope note.
 
 ## Terminal (not a tranche — document, don't build)
 
@@ -204,10 +251,11 @@ the propositional substrate.
 
 ## Deliberately disclosed boundaries
 
-- `M7-PREFIX-MACHINE` — supplies standard universal self-delimiting-machine, from-below
-  weight, finite Kraft, and fixed negation-overhead facts for Occam Bounds; the paper-
-  specific market proof is already formalized. Optional post-target showcase; the finite
-  Kraft core is the Aristotle-able piece (`notes/m7-prefix-machine-scope.md`).
+- `M7-PREFIX-MACHINE` — **largely discharged 2026-07-26** (Kraft proved in-repo, machine
+  model + kraft field + negation compiler constructed, gate emissions derived); residual
+  = the two `PrefixMachineComputation` emission certificates plus the disclosed
+  non-universality of `prefixKappa`. See the record above and
+  `notes/m7-prefix-machine-scope.md`.
 - `M7-DUS-APPROX` and `M7-STRICT-SEPARATORS` — remain disclosed unless Anson reopens them.
 
 These three are the only intentional disclosures at the 12/15 target. The audit should
