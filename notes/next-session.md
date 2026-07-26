@@ -102,8 +102,22 @@ REMAINING (the per-family march):
    the collapsed class directly (today they go through `noExploitTok`, which stays
    correct meanwhile — migration is a strengthening, not a fix).
 3. Then swap property-statement hypotheses `PolySentenceCodes` → `RpnSentenceCodes`
-   family by family (copy-only first: thm:tl chain via PolySequence; thm:und's
-   obuTrader via `.ofTradeBlocks`).
+   family by family.  FIRST FAMILY MIGRATED (2026-07-26): `lic_provind_seq`
+   (thm:provind fragment) — `buySeq_ec_rpn` via `ofSingleTradeBlocks` (const-1
+   coefficient is price-free), hypothesis now `RpnSentenceCodes φ`, endpoint invoked
+   through the collapsed `noExploit`.  Next targets in feasibility order:
+   (a) price-slot splice families with CONCRETE serialize shapes (thm:pi buy-signal
+       `buySig` — one price leaf on the traded sentence; use `UnRpnContractsTo`
+       composition: transparent frames ++ `.priceChunk` ++ transparent ++
+       `.tradeChunk`, both slots fed from the same hφ block stream);
+   (b) thm:und (obuTrader): restructure the obu emission from equal-length
+       `PolySegStream.blocks` to `concatVar` variable segments with block slots
+       (arm blocks lose fixed length once slots vary); also migrate
+       `EfficientRepeatedEnumeration.sequence_poly` (constructors adapt via
+       `.ofPolySentenceCodes`, triangular reindex via `.comp`);
+   (c) thm:tl/perkno chain: migrate `PolySequence.sentence_poly` (Affine) — deep,
+       drags the ROI family layer (`PolyTradeEmulatable`, `EfficientlyEmulatable`
+       need RPN mirrors before the budgeted composites certify directly).
 
 Gotchas: Mathlib names are `Option.bind_some`/`bind_none`; `rcases h : e`
 substitutes `e` in the GOAL too; suffixed lemmas inside a namespace break

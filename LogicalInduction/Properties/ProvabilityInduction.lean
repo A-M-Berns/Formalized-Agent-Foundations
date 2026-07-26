@@ -220,6 +220,15 @@ lemma buySeq_value (φ : ℕ → Sentence) (V : History) (v : PCWorld) (n : ℕ)
   rw [hpay]; push_cast; ring
 
 
+/-- Symbol-class certificate for the sequence buy trader: the coefficient is a
+price-free constant, so the 𝓔𝓒 sentence stream is the only varying slot.
+Paper node: `def:ec` -/
+lemma buySeq_ec_rpn (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+    EfficientlyComputable (buySeq φ) :=
+  EfficientlyComputable.ofSingleTradeBlocks _ (fun _ => .const 1) φ
+    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1))
+    (fun _ => trivial) hφ (fun _ => rfl)
+
 lemma buySeq_ec (φ : ℕ → Sentence) {cφ : Nat.Partrec.Code}
     (hφ : PolyFueled cφ (fun n => Encodable.encode (φ n))) :
     EfficientlyComputableTok (buySeq φ) := by
@@ -233,7 +242,9 @@ lemma buySeq_ec (φ : ℕ → Sentence) {cφ : Nat.Partrec.Code}
 /-- **Timely-membership form of the sequence statement**: for an efficiently computable
 sequence of sentences `φₙ`, *each already deduced by its own day* (`hded : φ n ∈ D n`),
 the price `Pₙ(φₙ) → 1`. Same constant buy trader as the fixed case, now indexed by the
-sequence; e.c. via `ec_of_polyEF_seq` and the `𝓔𝓒`-sequence hypothesis.
+sequence; e.c. directly in the symbol-metered class from the `𝓔𝓒`-sequence
+hypothesis (`RpnSentenceCodes`), which admits arbitrarily deep and skewed sentence
+sequences.
 
 **This is not the paper's `thm:provind`**, whose content is precisely that `φ n` need
 *not* be in `D n` — theorems may be proved arbitrarily later than their indices. The
@@ -241,8 +252,7 @@ faithful sequence form is `lic_provind` (`AffineCoherence.lean`), which assumes 
 `∀ n, ∃ k, φ n ∈ D k`. This fragment is retained for its simpler trader and hypotheses.
 Paper node: `thm:provind` -/
 theorem lic_provind_seq (P : History) (DP : DeductiveProcess) [hLI : IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) {cφ : Nat.Partrec.Code}
-    (hφ : PolyFueled cφ (fun n => Encodable.encode (φ n)))
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (hded : ∀ n, φ n ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConvergesTo (fun n => P n (φ n)) 1 := by
@@ -251,7 +261,7 @@ theorem lic_provind_seq (P : History) (DP : DeductiveProcess) [hLI : IsLogicalIn
   have hev : ∀ᶠ n in atTop, 1 - ε < P n (φ n) := by
     by_contra h
     rw [not_eventually] at h; simp only [not_lt] at h
-    refine hLI.noExploitTok (buySeq φ) (buySeq_ec φ hφ) ?_
+    refine hLI.noExploit (buySeq φ) (buySeq_ec_rpn φ hφ) ?_
     refine exploits_of_nonneg_partialSums (buySeq φ) P DP (fun i => 1 - P i (φ i)) ε hε
       (fun i => by have := hP1 i; linarith) ?_ ?_ hcons
     · intro n v hv
