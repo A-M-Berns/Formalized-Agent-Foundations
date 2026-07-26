@@ -215,4 +215,119 @@ lemma parseG_spec (m : ℕ) :
   rw [List.getElem?_eq_getElem hib, Option.getD_some, List.getElem_map,
     List.getElem_range]
 
+/-! ## The strong-recursion package for the stream contraction -/
+
+/-- `unRpnTokensC` on the paired index. -/
+def unF (m : ℕ) : List ℕ :=
+  unRpnTokensC m.unpair.1 (Denumerable.ofNat (List ℕ) m.unpair.2)
+
+/-- One strong-recursion step over an abstract lookup for the smaller indices. -/
+def unGCore (m : ℕ) (look : ℕ → List ℕ) : List ℕ :=
+  match m.unpair.1, Denumerable.ofNat (List ℕ) m.unpair.2 with
+  | _, [] => []
+  | 0, _ :: _ => []
+  | fuel' + 1, t :: rest =>
+      if t = 0 then
+        match parseRpnC rest.length rest with
+        | none => [0, 0]
+        | some (e, r1) =>
+            match r1 with
+            | [] => [0, e]
+            | d :: r2 => 0 :: e :: d :: look (Nat.pair fuel' (Encodable.encode r2))
+      else if t = 6 then
+        match parseRpnC rest.length rest with
+        | none => [6, 0]
+        | some (e, r1) => 6 :: e :: look (Nat.pair fuel' (Encodable.encode r1))
+      else if t = 1 then
+        match rest with
+        | [] => [1]
+        | c :: r => 1 :: c :: look (Nat.pair fuel' (Encodable.encode r))
+      else if t = 7 then
+        match rest with
+        | [] => [7]
+        | c :: r => 7 :: c :: look (Nat.pair fuel' (Encodable.encode r))
+      else t :: look (Nat.pair fuel' (Encodable.encode rest))
+
+/-- The step law: any faithful lookup below `m` computes `unF m`. -/
+lemma unGCore_spec (m : ℕ) (look : ℕ → List ℕ)
+    (hlook : ∀ i, i < m → look i = unF i) :
+    unGCore m look = unF m := by
+  rw [unGCore]
+  rcases hts : Denumerable.ofNat (List ℕ) m.unpair.2 with _ | ⟨t, rest⟩
+  · rcases hfuel : m.unpair.1 with _ | fuel' <;>
+      · rw [unF, hfuel, hts]
+        rfl
+  rcases hfuel : m.unpair.1 with _ | fuel'
+  · rw [unF, hfuel, hts]
+    rfl
+  have hm2 : Encodable.encode (t :: rest) = m.unpair.2 := by
+    rw [← hts]
+    exact Denumerable.encode_ofNat _
+  have hrest_lt : Encodable.encode rest < m.unpair.2 := by
+    rw [← hm2]
+    exact encode_lt_encode_cons t rest
+  have hidx : ∀ x, x ≤ Encodable.encode rest → Nat.pair fuel' x < m := by
+    intro x hx
+    calc Nat.pair fuel' x ≤ Nat.pair fuel' (Encodable.encode rest) :=
+          pair_le_pair_right' fuel' hx
+      _ < Nat.pair (fuel' + 1) (Encodable.encode rest) :=
+          Nat.pair_lt_pair_left _ (Nat.lt_succ_self fuel')
+      _ ≤ Nat.pair (fuel' + 1) m.unpair.2 :=
+          pair_le_pair_right' _ (le_of_lt hrest_lt)
+      _ = Nat.pair m.unpair.1 m.unpair.2 := by rw [hfuel]
+      _ = m := Nat.pair_unpair m
+  have hlookAt : ∀ r : List ℕ, r <:+ rest →
+      look (Nat.pair fuel' (Encodable.encode r)) = unRpnTokensC fuel' r := by
+    intro r hr
+    rw [hlook _ (hidx _ (encode_le_of_suffix hr)), unF, Nat.unpair_pair,
+      Denumerable.ofNat_encode]
+  rw [unF, hfuel, hts, unRpnTokensC_cons]
+  simp only []
+  by_cases h0 : t = 0
+  · rw [if_pos h0, if_pos h0]
+    rcases hp : parseRpnC rest.length rest with _ | ⟨e, r1⟩
+    · rfl
+    rcases r1 with _ | ⟨d, r2⟩
+    · rfl
+    simp only []
+    have hsfx : r2 <:+ rest :=
+      ((List.suffix_cons d r2).trans (parseRpnC_suffix hp))
+    rw [hlookAt r2 hsfx]
+  rw [if_neg h0, if_neg h0]
+  by_cases h6 : t = 6
+  · rw [if_pos h6, if_pos h6]
+    rcases hp : parseRpnC rest.length rest with _ | ⟨e, r1⟩
+    · rfl
+    simp only []
+    rw [hlookAt r1 (parseRpnC_suffix hp)]
+  rw [if_neg h6, if_neg h6]
+  by_cases h1 : t = 1
+  · rw [if_pos h1, if_pos h1]
+    rcases rest with _ | ⟨c, r⟩
+    · rfl
+    simp only []
+    rw [hlookAt r (List.suffix_cons c r)]
+  rw [if_neg h1, if_neg h1]
+  by_cases h7 : t = 7
+  · rw [if_pos h7, if_pos h7]
+    rcases rest with _ | ⟨c, r⟩
+    · rfl
+    simp only []
+    rw [hlookAt r (List.suffix_cons c r)]
+  rw [if_neg h7, if_neg h7]
+  rw [hlookAt rest List.suffix_rfl]
+
+/-- The strong-recursion step over the value table. -/
+def unG (prev : List (List ℕ)) : Option (List ℕ) :=
+  some (unGCore prev.length fun i => (prev[i]?).getD [])
+
+lemma unG_spec (m : ℕ) :
+    unG ((List.range m).map unF) = some (unF m) := by
+  rw [unG, show ((List.range m).map unF).length = m from by simp]
+  congr 1
+  refine unGCore_spec m _ fun i hi => ?_
+  have hib : i < ((List.range m).map unF).length := by simpa using hi
+  rw [List.getElem?_eq_getElem hib, Option.getD_some, List.getElem_map,
+    List.getElem_range]
+
 end LogicalInduction
