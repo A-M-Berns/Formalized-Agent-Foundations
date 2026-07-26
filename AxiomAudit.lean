@@ -133,6 +133,11 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_occamBounds lic_occam_lower lic_limitingBelief_add_neg
   lic_domination_universalSemimeasure lic_strict_domination_universalSemimeasure
 
+-- Construction/Witnesses/KraftInequality.lean (M7-PREFIX-MACHINE core; Aristotle-produced
+-- body, kernel-validated in-repo)
+#assert_axioms_clean
+  kraft_inequality
+
 -- Properties/Conditioning.lean, Properties/FinitePerturbations.lean
 #assert_axioms_clean
   lic_conditioned lic_conditioned_gated lic_conditioned_eventual

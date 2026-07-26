@@ -7,6 +7,7 @@ The §5 construction spine — market maker, budgeter, trading firm, `LIA`, and 
 existence result — lives one level up; a reader auditing `exists_logical_inductor`
 never needs this folder.
 -/
+import LogicalInduction.Construction.Witnesses.KraftInequality
 import LogicalInduction.Construction.Witnesses.M7Witnesses
 import LogicalInduction.Construction.Witnesses.HistoricalMaturity
 import LogicalInduction.Construction.Witnesses.FeedbackEmission
