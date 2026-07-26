@@ -254,6 +254,51 @@ the build gate between construction files.
 >   higher-order `len_of_digits`-style applications need the family given
 >   explicitly (`(s := …)`) or the bound-proof goal keeps a metavariable.
 >
+> **Status 2026-07-25 (later): B1b, B1, B2, B3 ALL DONE** — Tranche 2 is complete.
+> Landed (commits `d98c56e`..`d530f7d`; new file
+> `Construction/Witnesses/DigitConditioning.lean`, all on the AxiomAudit surface,
+> axiom-clean, build+gates green):
+> * **B1b** (`Framework/DigitArith.lean`): `freezeMode4Step`/`freezeMode4` (standalone
+>   mode automaton, clamp-invariant tag tests), `PolySegStream.freezeModeScan`,
+>   `PolySegStream.dayClampTokens`.
+> * **B1**: mode/pending correspondence (`freezeTokenNext_fst`,
+>   `freezeTokenControlAt_mode2` — pending recovered *by position*), run-level
+>   `Matches` transport extracted from `streamReadFrom_freezeTokenRun` with trivial
+>   quote data, **guard honesty** (`strategyOfTokens_trades_eq_nil_of_bigDay`, via the
+>   `HasDay` parser invariant: day capture + preservation to the accepting state), and
+>   the guarded digit price rewrite `guardedConditionRun_polySegStream`
+>   (`guardedConditionTokens` spec; `longEmit_polySegStream` renders the single
+>   `conjunctionCode` bignum block from `BigDigits.natPair`, day by clamp — exact under
+>   the guard; flagged days emit `[]`).
+> * **B2**: digit-side frame scans (`tradeCountScan`/`depthScan`/`acceptsScan` — all
+>   small position-indexed states, tags via clamp), frame emission templates
+>   (`frameMidBeta`/`frameMidSecond` + compiler-checked split identities around the
+>   conjunction slots), `frameLegEmit`/`frameLegOutput`/
+>   `safeSeparatedFrameDigitOutput_polySegStream`, and both capstones
+>   **`conditionedTranslation_preserves_ec₂`** and (zero-aware + launch gate)
+>   **`eventualConditionedTranslation_preserves_ec₂`** — good days decode to the
+>   token-model streams via `undigitize_digitize` and reuse the fuel-free parser
+>   lemmas verbatim; guarded days are exact by honesty (both sides empty).
+> * **B3**: `lic_conditioned_gated₂`/`lic_conditioned_eventual₂` + the four
+>   paper-facing wrappers, and `lic_conditioned_fixed_unconditional₂` /
+>   `lic_conditioned_growing_unconditional₂` over the constructed LIA — **thm:scon is
+>   closed inside `IsLogicalInductor₂`**.
+> * **Residual (recorded, purely organizational — no mathematical content remains):**
+>   the optional single-field collapse (renaming `noExploit` to quantify over `Tok₂`
+>   and deriving the token-model lemma via `toTok₂`) is gated on moving
+>   `codeEvalnNat`/`clockedTokens_polySegStream`/`toTok₂` upstream from M7Witnesses
+>   into Framework so property files can see the compat lemma.  Every
+>   instance-*producing* theorem (LIA + the whole conditioning family) is now
+>   ₂-closed, so the layered class is a naming choice, not a gap.  Paper-facing
+>   existence citations should keep pointing at `LIA_is_logical_inductor₂`.
+> * Proof-practice notes: the `rfl` rcases pattern on `mem_cons` eliminates the
+>   *older* variable (use explicit `heq ▸`); `ifZero`'s FIRST stream is the
+>   test-zero branch; emitted-vs-spec raw/`tf`-form mismatches are handled by folding
+>   `have htfj : tf ⟨n,j⟩ = raw` and rewriting `←`; `simp only [Nat.unpair_pair]`
+>   must run BEFORE `set` folds the lambda.
+>
+> **Superseded plan below kept for context.**
+>
 > **Remaining plan (B1–B3), scoped 2026-07-25:**
 > * **B1 — digit transducer for the price rewrite.**  Input: a `Tok₂` certificate's
 >   clocked digit stream (a `PolySegStream`, possibly *not* `digitize` of anything, and
