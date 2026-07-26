@@ -302,6 +302,20 @@ lemma RpnSentenceCodes.comp {φ : ℕ → Sentence} (h : RpnSentenceCodes φ)
   obtain ⟨s, hs, hp⟩ := h
   exact ⟨fun z => s (f z), hs.comp hf, fun z => hp (f z)⟩
 
+/-- The spliced price-leaf serialization over a sentence-block stream: the reusable
+segment for buy-signal coefficients whose price leaf sits on the traded sentence
+(`[0, ⌜φ (f m)⌝, f m]` with the sentence token replaced by the block).  Its
+contraction is `UnRpnContractsTo.priceChunk`. -/
+lemma priceSlotSeg {s : ℕ → List ℕ} (hs : PolySegStream s)
+    {c : Nat.Partrec.Code} {f : ℕ → ℕ} (hf : PolyFueled c f) :
+    PolySegStream (fun m => 0 :: s (f m) ++ [f m]) := by
+  have h0 : PolySegStream (fun _ : ℕ => [0]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 0)
+  have hd : PolySegStream (fun m : ℕ => [f m]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.polyTok hf)
+  exact ((h0.append (hs.comp hf)).append hd).of_eq fun m => by
+    simp
+
 /-- **Single-trade realization over an 𝓔𝓒 sentence sequence**: a trader playing one
 trade per day, with a polynomially emittable price-free coefficient stream and an
 `RpnSentenceCodes` sentence sequence, is efficiently computable.  This is the workhorse
