@@ -430,6 +430,21 @@ assembly of the quotation tranches; do after 1 proves out the recipe.
 >
 > Recommendation: treat 2's substrate mirror as the next tranche-sized unit if the
 > narrowing matters downstream; otherwise 1+the disclosure is the honest steady state.
+>
+> **Concrete first step for item 2 (surveyed this session).**  The substrate boundary
+> is `AffineCombination.PolySequence` (Framework/Affine.lean:229), whose three
+> emission fields meter the token model: `sentence_poly` (poly code *value* — replace
+> by `BigDigits (encode ∘ sentence)`, i.e. `DigitSentenceCodes` on the term family),
+> and `const_poly`/`coefficient_poly` (token `PolySegStream`s of `EF.serialize` —
+> replace by digit streams of the digitized serializations; the sentence-code slots
+> inside price leaves become `BigDigits.blockSeg` blocks, mirroring
+> `longEmit_polySegStream`).  Define `PolySequence₂` with the inclusion
+> `PolySequence → PolySequence₂` (`digitizeStream` + `of_polyFueled`), then migrate
+> consumers (`buyBelowTrader` compilers in AffineProvability, LUVSyntax's mesh
+> generators, FeedbackEmission, HistoricalMaturity, QuotationAffine) family by
+> family, each closing with `ecTok₂_of_rawSegStream` instead of `ecTok`.  All
+> required toolkit pieces exist (B0/B1a/B1b + the DigitConditioning recipes); this is
+> volume, not risk.
 
 ## Terminal (not a tranche — document, don't build)
 
