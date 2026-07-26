@@ -316,6 +316,105 @@ lemma priceSlotSeg {s : ℕ → List ℕ} (hs : PolySegStream s)
   exact ((h0.append (hs.comp hf)).append hd).of_eq fun m => by
     simp
 
+/-! ## `RpnSpliceStream` — polynomially emittable RPN expansions
+
+The migration interface for the `𝓔𝓒`-sequence flip: a token-stream family is
+*RPN-spliceable* when some `PolySegStream` contracts (`UnRpnContractsTo`) to it
+position-wise.  Slot-free streams embed by transparency; price and trade sentence
+slots draw their blocks from an `RpnSentenceCodes` certificate; and the class is
+closed under the same combinators as `PolySegStream`, so every existing serialize
+emission assembly mirrors one-for-one. -/
+
+/-- Some polynomially emittable stream contracts to `ts` position-wise. -/
+def RpnSpliceStream (ts : ℕ → List ℕ) : Prop :=
+  ∃ s : ℕ → List ℕ, PolySegStream s ∧ ∀ z, UnRpnContractsTo (s z) (ts z)
+
+lemma RpnSpliceStream.ofTransparent {ts : ℕ → List ℕ} (h : PolySegStream ts)
+    (ht : ∀ z, UnRpnTransparent (ts z)) : RpnSpliceStream ts :=
+  ⟨ts, h, fun z => (ht z).contractsTo⟩
+
+lemma RpnSpliceStream.append {a b : ℕ → List ℕ}
+    (ha : RpnSpliceStream a) (hb : RpnSpliceStream b) :
+    RpnSpliceStream (fun z => a z ++ b z) := by
+  obtain ⟨sa, hsa, hca⟩ := ha
+  obtain ⟨sb, hsb, hcb⟩ := hb
+  exact ⟨fun z => sa z ++ sb z, hsa.append hsb, fun z => (hca z).append (hcb z)⟩
+
+lemma RpnSpliceStream.comp {ts : ℕ → List ℕ} (h : RpnSpliceStream ts)
+    {c : Nat.Partrec.Code} {f : ℕ → ℕ} (hf : PolyFueled c f) :
+    RpnSpliceStream (fun z => ts (f z)) := by
+  obtain ⟨s, hs, hc⟩ := h
+  exact ⟨fun z => s (f z), hs.comp hf, fun z => hc (f z)⟩
+
+lemma RpnSpliceStream.concatVar {seg : ℕ → List ℕ} (hseg : RpnSpliceStream seg)
+    {ccnt : Nat.Partrec.Code} {cnt : ℕ → ℕ} (hcnt : PolyFueled ccnt cnt) :
+    RpnSpliceStream (fun n =>
+      (List.range (cnt n)).flatMap fun j => seg (Nat.pair n j)) := by
+  obtain ⟨s, hs, hc⟩ := hseg
+  refine ⟨fun n => (List.range (cnt n)).flatMap fun j => s (Nat.pair n j),
+    PolySegStream.concatVar hs hcnt, fun n => ?_⟩
+  have key : ∀ m : ℕ, UnRpnContractsTo
+      ((List.range m).flatMap fun j => s (Nat.pair n j))
+      ((List.range m).flatMap fun j => seg (Nat.pair n j)) := by
+    intro m
+    induction m with
+    | zero => intro rest; simp
+    | succ m ih =>
+        rw [List.range_succ, List.flatMap_append, List.flatMap_append]
+        simpa using ih.append (hc (Nat.pair n m))
+  exact key (cnt n)
+
+/-- A spliced price leaf on a sentence sequence: target `[0, ⌜φ (f m)⌝, f m]`. -/
+lemma RpnSpliceStream.priceSlot {φ : ℕ → Sentence} (hφ : RpnSentenceCodes φ)
+    {c : Nat.Partrec.Code} {f : ℕ → ℕ} (hf : PolyFueled c f) :
+    RpnSpliceStream (fun m => [0, Encodable.encode (φ (f m)), f m]) := by
+  obtain ⟨s, hs, hp⟩ := hφ
+  exact ⟨fun m => 0 :: s (f m) ++ [f m], priceSlotSeg hs hf,
+    fun m => UnRpnContractsTo.priceChunk (hp (f m)) (f m)⟩
+
+/-- A spliced trade frame on a sentence sequence: target `[6, ⌜φ (f m)⌝]`. -/
+lemma RpnSpliceStream.tradeSlot {φ : ℕ → Sentence} (hφ : RpnSentenceCodes φ)
+    {c : Nat.Partrec.Code} {f : ℕ → ℕ} (hf : PolyFueled c f) :
+    RpnSpliceStream (fun m => [6, Encodable.encode (φ (f m))]) := by
+  obtain ⟨s, hs, hp⟩ := hφ
+  have h6 : PolySegStream (fun _ : ℕ => [6]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 6)
+  exact ⟨fun m => 6 :: s (f m), (h6.append (hs.comp hf)).of_eq (fun m => by simp),
+    fun m => UnRpnContractsTo.tradeChunk (hp (f m))⟩
+
+lemma RpnSpliceStream.of_eq {a b : ℕ → List ℕ} (h : RpnSpliceStream a)
+    (hab : ∀ z, a z = b z) : RpnSpliceStream b := by
+  obtain ⟨s, hs, hc⟩ := h
+  exact ⟨s, hs, fun z => (hab z) ▸ hc z⟩
+
+/-- **The capstone realization**: a trader whose per-day trade serialization is
+RPN-spliceable is efficiently computable.
+Paper node: `def:ec` -/
+lemma RpnSpliceStream.ec (Tr : Trader)
+    (h : RpnSpliceStream (fun n => serializeTrades (Tr.strat n).trades)) :
+    EfficientlyComputable Tr := by
+  obtain ⟨s, hs, hc⟩ := h
+  apply ec_of_rawSegStream Tr hs.digitizeStream
+  intro n
+  rw [undigitize_digitize]
+  have hun : unRpn (s n) = serializeTrades (Tr.strat n).trades := by
+    have h0 := (hc n).unRpn_eq
+    rw [show unRpn ([] : List ℕ) = [] from rfl, List.append_nil] at h0
+    exact h0
+  rw [hun]
+  have hdecode := deserializeTrades_serializeTrades (Tr.strat n).trades
+  cases hS : Tr.strat n with
+  | mk trades rank_le =>
+      simp only [strategyOfTokens]
+      rw [hS] at hdecode
+      split
+      · next hnone =>
+          rw [hdecode] at hnone; exact absurd hnone (by simp)
+      · next trades' hsome =>
+          rw [hdecode] at hsome
+          obtain rfl := Option.some.inj hsome
+          rw [dif_pos rank_le]
+
 /-- **Single-trade realization over an 𝓔𝓒 sentence sequence**: a trader playing one
 trade per day, with a polynomially emittable price-free coefficient stream and an
 `RpnSentenceCodes` sentence sequence, is efficiently computable.  This is the workhorse
@@ -434,5 +533,6 @@ lemma EfficientlyComputable.ofTradeBlocks (Tr : Trader)
 #print axioms RpnSentenceCodes.ofPolySentenceCodes
 #print axioms EfficientlyComputable.ofSingleTradeBlocks
 #print axioms EfficientlyComputable.ofTradeBlocks
+#print axioms RpnSpliceStream.ec
 
 end LogicalInduction
