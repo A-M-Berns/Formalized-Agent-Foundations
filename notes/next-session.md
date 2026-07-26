@@ -30,6 +30,50 @@ Framework/RpnEmission.lean + Construction/Witnesses/RpnCriterion.lean):**
   inclusions verbatim splices — **no digit-level sqrt/unpair needed** (drop that from
   the old sizing).
 
+**CONSOLIDATION DIRECTIVE (Anson, 2026-07-26, supersedes the layered plan below):**
+do the flip in **collapsed single-class form** — no ₃-suffixed public layer.  Rename
+the symbol-metered semantics to plain `EfficientlyComputable` (the paper's `def:ec`),
+demote `EfficientlyComputableTok`/`Tok₂` to internal emission constructors
+(`EfficientlyComputable.ofTokenEmitter`/`.ofDigitEmitter` — today's `toTok₃`/`toTok₂`
+inclusions renamed), give `enumeratedTrader` a SINGLE decode (the RPN decode; the
+parity/mod-3 tagging disappears — it existed only because multiple decode conventions
+were separate classes), one `trading_firm_dominance`, one `IsLogicalInductor` with one
+`noExploit` field, one `LIA_is_logical_inductor`.  Absorb every ₂-suffixed public name
+(incl. `lic_conditioned*₂`, `IsLogicalInductor₂`) in the same sweep; property files
+keep compiling via the constructors.  This deliberately re-freezes `#assert_fields
+IsLogicalInductor` — same disclosed protocol as the Tranche-2 flip.  Rationale: no
+structural evidence of previous versions (consolidation.md).
+
+**RPN-4 progress + the exact continuation point:**
+* DONE (`Framework/RpnComputation.lean`, commit `169f014`): suffix discipline
+  (`parseRpn_suffix`/`parseRpnC_suffix`), `encode_lt_encode_cons`/
+  `encode_le_of_suffix`, and the strong-recursion package `parseF`/`parseGCore` (+
+  step law `parseGCore_spec` — lookups below `m` are hit because
+  `pair fuel' (encode suffix) < pair (fuel'+1) (encode ts)`) and `parseG`/
+  `parseG_spec` over the value table.  ALSO DONE earlier: `parseRpnC`/`unRpnTokensC`
+  code-level forms with exact correspondences (`23c7947`).
+* NEXT (attempted, reverted — pitfalls recorded): `parseG_prim : Primrec parseG` by
+  combinator assembly over `PCtx := (List (Option (ℕ×List ℕ)) × ℕ) × (ℕ × List ℕ)`,
+  then `Primrec₂ parseRpnC` via `Primrec.nat_strong_rec` (α := Unit, g := parseG on
+  snd, H := parseG_spec) and the pair/encode wrapper (`Denumerable.ofNat_encode`
+  closes it).  Pitfalls hit: (a) `Primrec.encdec` for `Sentence` produced an
+  *instance mismatch* (`Primcodable.toEncodable` vs `Formula.instEncodable`) — find
+  how the repo's existing Sentence-decode primrec proofs (e.g. the streamStep chain
+  feeding `strategyOfTokensTrades_prim` in LIACompiler) pin the instance, and reuse
+  that idiom; (b) the nested-bind branch (`hbin`) needs its inner lambdas built over
+  explicit pair projections with `.to₂.of_eq` normalization — write the target
+  function of each `have` VERBATIM as it appears in `parseGCore` and let `of_eq`
+  discharge the association differences; (c) assemble the outer dispatch as
+  `Primrec.option_some.comp (Primrec.nat_casesOn hfuel (const none) hinner.to₂)`
+  with `hinner := (Primrec.list_casesOn hts0 (const none) hbody.to₂).of_eq …` — the
+  final `of_eq fun prev => by rw [parseG, parseGCore]; rcases …length.unpair.1 …;
+  rcases Denumerable.ofNat …` (both matches iota-reduce; close with `rfl`).
+* After `parseRpnC_prim`: `unRpnTokensC` primrec the SAME way (its recursion also
+  shrinks the pair; subroutine calls to `parseRpnC` via `parseRpnC_prim`), then
+  `unRpn_prim`, then the collapsed flip per the directive above.
+
+**The superseded layered plan (naming only — the technical content stands):**
+
 **Next: RPN-4, the criterion flip.**  Scoped this session, execute in order:
 1. **`unRpn` Primrec (the tall pole), via code-level parsing.**  Do NOT build
    Formula-constructor primrec-ness.  Define `parseRpnC : ℕ → List ℕ →
