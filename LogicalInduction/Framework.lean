@@ -16,6 +16,7 @@ substrate and the shared proof machinery.
 import LogicalInduction.Framework.Asymptotics
 import LogicalInduction.Framework.Foundations
 import LogicalInduction.Framework.Computable
+import LogicalInduction.Framework.Emission
 import LogicalInduction.Framework.DigitArith
 import LogicalInduction.Framework.RpnSentence
 import LogicalInduction.Framework.RpnEmission
