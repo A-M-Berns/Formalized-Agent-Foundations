@@ -171,6 +171,23 @@ REMAINING (the per-family march):
          Flip `PolyTradeEmulatable.sentence_poly : RpnSentenceCodes sentence` and
          `coefficient_poly : RpnSpliceStream …`; its `.polySeg` (679) becomes the
          spliced family stream via `tradeSlot`; `.gateBefore` (702) mirrors.
+       * ROI `EfficientlyEmulatable` ANATOMY (checked 2026-07-26): its def bundles
+         (1) pre-launch-zero clause, (2) poly LENGTH bound on `serializeTrades`,
+         (3) the universal-program token emission.  The economic theorem chain
+         (`sharedBudgetedTrader_netWorth` 2723 → 2959) threads the WHOLE predicate
+         as a hypothesis — check which clauses those proofs actually consume
+         (expected: (1)+(2) only; deep spliced families SATISFY (1)+(2) — token
+         lengths stay poly, only token VALUES blow up — but fail (3)).  Mirror
+         plan: split the predicate — economic half `(1)∧(2)` as the hypothesis the
+         netWorth/budget chain takes (inhabited from the spliced stream via a
+         `unRpn` length bound, e.g. `unRpn_length_le : (unRpn ts).length ≤
+         ts.length + 1`-ish, prove in RpnSentence), metering half replaced by the
+         spliced family stream + `RpnSpliceStream.ec` at the composite level.
+         `PolyTradeEmulatable.emulatable` field → the economic half only;
+         `.polySeg` (679) → spliced family stream via `tradeSlot` mirror;
+         `.gateBefore` mirrors with `RpnSpliceStream.ifZero` + an empty-stream
+         base (`RpnSpliceStream` of `fun _ => []` = ofTransparent of nil-token
+         stream).
        * Keep the interim compat (`noExploitTok`) callers green until each chain is
          flipped; flip `hLI.noExploitTok → hLI.noExploit` per chain as its cert
          lands in the collapsed class.: survey 2026-07-26 confirms thm:tl/perkno, thm:lex
