@@ -1454,6 +1454,246 @@ lemma chR_polyFueled : ∃ c, PolyFueled c chR := by
         · rw [if_pos (by omega : (m - 1).unpair.1 - 4 = 0), if_pos h4]
         · rw [if_neg (by omega : ¬ (m - 1).unpair.1 - 4 = 0), if_neg h4]
 
+/-- The inner loop as a `prec`: input `⟨⟨⟨b, b'⟩, ⟨CAP, P⟩⟩, k⟩` (bases `b+1`, `b'+1`),
+state `⟨P / (b+1)^k, innerOutC (b+1) (b'+1) CAP P k⟩`. -/
+lemma innerLoop_polyFueled :
+    ∃ c, PolyFueled c (fun m =>
+      Nat.pair
+        (m.unpair.1.unpair.2.unpair.2 / (m.unpair.1.unpair.1.unpair.1 + 1) ^ m.unpair.2)
+        (innerOutC (m.unpair.1.unpair.1.unpair.1 + 1) (m.unpair.1.unpair.1.unpair.2 + 1)
+          m.unpair.1.unpair.2.unpair.1 m.unpair.1.unpair.2.unpair.2 m.unpair.2)) := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  obtain ⟨cm, hm⟩ := mul_polyFueled
+  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
+  obtain ⟨ccl, hcl⟩ := chL_polyFueled
+  obtain ⟨ccr, hcr⟩ := chR_polyFueled
+  have aPF := PolyFueled.left
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  have RPF := PolyFueled.left.comp prevPF
+  have OPF := PolyFueled.right.comp prevPF
+  have bPF := PolyFueled.left.comp (PolyFueled.left.comp aPF)
+  have b'PF := PolyFueled.right.comp (PolyFueled.left.comp aPF)
+  have CAPPF := PolyFueled.left.comp (PolyFueled.right.comp aPF)
+  have dmPF := hdm.comp (bPF.pair RPF)
+  have R'PF := PolyFueled.left.comp dmPF
+  have vPF := PolyFueled.right.comp dmPF
+  have chLv := hcl.comp vPF
+  have chRv := hcr.comp vPF
+  have B'sq := hm.comp (b'PF.succ_comp.pair b'PF.succ_comp)
+  have t1 := hm.comp (OPF.pair B'sq)
+  have t2 := hm.comp (b'PF.succ_comp.pair chRv)
+  have t3 := had.comp (chLv.pair t2)
+  have OnewPF := had.comp (t1.pair t3)
+  have OclPF := (subc_polyFueled.comp
+      (OnewPF.pair (subc_polyFueled.comp (OnewPF.pair CAPPF)))).of_eq
+    (f' := fun z =>
+      min (z.unpair.2.unpair.2.unpair.2 *
+            ((z.unpair.1.unpair.1.unpair.2 + 1) * (z.unpair.1.unpair.1.unpair.2 + 1)) +
+          (chL (z.unpair.2.unpair.2.unpair.1 % (z.unpair.1.unpair.1.unpair.1 + 1)) +
+            (z.unpair.1.unpair.1.unpair.2 + 1) *
+              chR (z.unpair.2.unpair.2.unpair.1 % (z.unpair.1.unpair.1.unpair.1 + 1))))
+        z.unpair.1.unpair.2.unpair.1)
+    (fun z => by simp only [Nat.unpair_pair]; omega)
+  have gPF := R'PF.pair OclPF
+  have hst : IsPolyBounded (fun m =>
+      Nat.pair
+        (m.unpair.1.unpair.2.unpair.2 / (m.unpair.1.unpair.1.unpair.1 + 1) ^ m.unpair.2)
+        (innerOutC (m.unpair.1.unpair.1.unpair.1 + 1) (m.unpair.1.unpair.1.unpair.2 + 1)
+          m.unpair.1.unpair.2.unpair.1 m.unpair.1.unpair.2.unpair.2 m.unpair.2)) := by
+    apply (isPolyBounded_fst.pair isPolyBounded_fst).of_le
+    intro m
+    have h1 : m.unpair.1.unpair.2.unpair.2 / (m.unpair.1.unpair.1.unpair.1 + 1) ^
+        m.unpair.2 ≤ m.unpair.1 :=
+      le_trans (Nat.div_le_self _ _)
+        (le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _))
+    have h2 : innerOutC (m.unpair.1.unpair.1.unpair.1 + 1)
+        (m.unpair.1.unpair.1.unpair.2 + 1) m.unpair.1.unpair.2.unpair.1
+        m.unpair.1.unpair.2.unpair.2 m.unpair.2 ≤ m.unpair.1 :=
+      le_trans (innerOutC_le_cap _ _ _ _ _)
+        (le_trans (Nat.unpair_left_le _) (Nat.unpair_right_le _))
+    exact le_trans (pair_le_pair_left' _ h1) (pair_le_pair_right' _ h2)
+  exact ⟨_, PolyFueled.prec
+    ((PolyFueled.right.comp PolyFueled.right).pair (PolyFueled.const 0)) gPF
+    (st := fun a k =>
+      Nat.pair (a.unpair.2.unpair.2 / (a.unpair.1.unpair.1 + 1) ^ k)
+        (innerOutC (a.unpair.1.unpair.1 + 1) (a.unpair.1.unpair.2 + 1)
+          a.unpair.2.unpair.1 a.unpair.2.unpair.2 k))
+    (fun a => by simp [innerOutC])
+    (fun a k => by
+      simp only [Nat.unpair_pair]
+      rw [innerOutC, Nat.div_div_eq_div_mul, ← pow_succ])
+    hst⟩
+
+/-! ### The polynomial caps -/
+
+/-- Width cap. -/
+def capW (n : ℕ) : ℕ := 16 * n.size + 16
+
+lemma capW_polyFueled : ∃ c, PolyFueled c capW := by
+  obtain ⟨cm, hm⟩ := mul_polyFueled
+  obtain ⟨cs, hs⟩ := sizec_polyFueled
+  have h16 := (hm.comp ((PolyFueled.const 16).pair hs)).of_eq
+    (f' := fun n => 16 * n.size) (fun n => by simp only [Nat.unpair_pair])
+  obtain ⟨c, hc⟩ := h16.addConst 16
+  exact ⟨c, hc⟩
+
+lemma pow_le_capW (n : ℕ) : ∀ d ≤ n.size.size + 3, 2 ^ d ≤ capW n := by
+  intro d hd
+  have h8 : (2:ℕ) ^ d ≤ 8 * 2 ^ n.size.size := by
+    calc (2:ℕ) ^ d ≤ 2 ^ (n.size.size + 3) := Nat.pow_le_pow_right (by norm_num) hd
+      _ = 8 * 2 ^ n.size.size := by rw [pow_add]; ring
+  rcases Nat.eq_zero_or_pos n.size with h0 | hpos
+  · rw [h0] at h8
+    simp only [Nat.size_zero, pow_zero] at h8
+    rw [capW, h0]
+    omega
+  · have := two_pow_size_le hpos
+    rw [capW]
+    omega
+
+lemma min_clamp_sq (p M : ℕ) : min (p * p) M = min (min p M * min p M) M := by
+  by_cases hp : p ≤ M
+  · rw [Nat.min_eq_left hp]
+  · have hM : M ≤ p := le_of_not_ge hp
+    have hMM : M ≤ M * M := by nlinarith
+    have hpp : M ≤ p * p := by nlinarith
+    rw [Nat.min_eq_right hM, Nat.min_eq_right hpp, Nat.min_eq_right hMM]
+
+/-- The double power `2^{2^{size (size n)}}` — the seed of the packed-value cap. -/
+def sq2core (n : ℕ) : ℕ := 2 ^ 2 ^ n.size.size
+
+lemma sq2core_le (n : ℕ) : sq2core n ≤ 4 * (n + 1) * (n + 1) := by
+  rw [sq2core]
+  rcases Nat.eq_zero_or_pos n.size with h0 | hpos
+  · rw [h0]
+    simp only [Nat.size_zero, pow_zero, pow_one]
+    nlinarith
+  · have hσ : 2 ^ n.size.size ≤ 2 * n.size := two_pow_size_le hpos
+    have hn : 2 ^ n.size ≤ 2 * n := two_pow_size_le (by
+      rcases Nat.eq_zero_or_pos n with rfl | h
+      · simp at hpos
+      · exact h)
+    calc (2:ℕ) ^ 2 ^ n.size.size ≤ 2 ^ (2 * n.size) :=
+          Nat.pow_le_pow_right (by norm_num) hσ
+      _ = 2 ^ n.size * 2 ^ n.size := by rw [two_mul, pow_add]
+      _ ≤ (2 * n) * (2 * n) := Nat.mul_le_mul hn hn
+      _ ≤ 4 * (n + 1) * (n + 1) := by nlinarith
+
+lemma sq2_polyFueled : ∃ c, PolyFueled c sq2core := by
+  obtain ⟨cm, hm⟩ := mul_polyFueled
+  obtain ⟨cs, hs⟩ := sizec_polyFueled
+  have aPF := PolyFueled.left
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  -- CB a = 4 * (a+1) * (a+1) + 1
+  have ha1 := PolyFueled.id.succ_comp
+  have hCBcore := (hm.comp
+    (((hm.comp ((PolyFueled.const 4).pair ha1)).of_eq
+        (f' := fun a => 4 * (a + 1)) (fun a => by simp only [Nat.unpair_pair])).pair ha1))
+  obtain ⟨cCB, hCB⟩ := ((hCBcore).of_eq
+    (f' := fun a => 4 * (a + 1) * (a + 1))
+    (fun a => by simp only [Nat.unpair_pair])).addConst 1
+  have hCBz := hCB.comp aPF
+  have sqPF := hm.comp (prevPF.pair prevPF)
+  have gPF := (subc_polyFueled.comp
+      (sqPF.pair (subc_polyFueled.comp (sqPF.pair hCBz)))).of_eq
+    (f' := fun z => min (z.unpair.2.unpair.2 * z.unpair.2.unpair.2)
+      (4 * (z.unpair.1 + 1) * (z.unpair.1 + 1) + 1))
+    (fun z => by simp only [Nat.unpair_pair]; omega)
+  have hst : IsPolyBounded (fun m =>
+      min (2 ^ 2 ^ m.unpair.2) (4 * (m.unpair.1 + 1) * (m.unpair.1 + 1) + 1)) := by
+    refine ⟨9, 2, fun m => ?_⟩
+    have h1 := Nat.unpair_left_le m
+    have h2 : min (2 ^ 2 ^ m.unpair.2) (4 * (m.unpair.1 + 1) * (m.unpair.1 + 1) + 1) ≤
+        4 * (m.unpair.1 + 1) * (m.unpair.1 + 1) + 1 := Nat.min_le_right _ _
+    nlinarith
+  have hprec := PolyFueled.prec (PolyFueled.const 2) gPF
+    (st := fun a j => min (2 ^ 2 ^ j) (4 * (a + 1) * (a + 1) + 1))
+    (fun a => by
+      simp only [pow_zero, pow_one]
+      exact Nat.min_eq_left (by nlinarith))
+    (fun a j => by
+      simp only [Nat.unpair_pair]
+      rw [show (2:ℕ) ^ 2 ^ (j + 1) = 2 ^ 2 ^ j * 2 ^ 2 ^ j by
+        rw [pow_succ, pow_mul, pow_two]]
+      exact min_clamp_sq _ _)
+    hst
+  refine ⟨_, (hprec.comp (PolyFueled.id.pair (hs.comp hs))).of_eq (fun n => ?_)⟩
+  simp only [Nat.unpair_pair]
+  exact Nat.min_eq_left (le_trans (sq2core_le n) (by omega))
+
+/-- The packed-value cap `sq2core^64 · (n+2)`. -/
+def capP (n : ℕ) : ℕ := sq2core n ^ 64 * (n + 2)
+
+lemma capP_polyFueled : ∃ c, PolyFueled c capP := by
+  obtain ⟨cm, hm⟩ := mul_polyFueled
+  obtain ⟨cs, hs⟩ := sq2_polyFueled
+  have x2 := (hm.comp (hs.pair hs)).of_eq
+    (f' := fun n => sq2core n ^ 2) (fun n => by simp only [Nat.unpair_pair]; ring)
+  have x4 := (hm.comp (x2.pair x2)).of_eq
+    (f' := fun n => sq2core n ^ 4) (fun n => by simp only [Nat.unpair_pair]; ring)
+  have x8 := (hm.comp (x4.pair x4)).of_eq
+    (f' := fun n => sq2core n ^ 8) (fun n => by simp only [Nat.unpair_pair]; ring)
+  have x16 := (hm.comp (x8.pair x8)).of_eq
+    (f' := fun n => sq2core n ^ 16) (fun n => by simp only [Nat.unpair_pair]; ring)
+  have x32 := (hm.comp (x16.pair x16)).of_eq
+    (f' := fun n => sq2core n ^ 32) (fun n => by simp only [Nat.unpair_pair]; ring)
+  have x64 := (hm.comp (x32.pair x32)).of_eq
+    (f' := fun n => sq2core n ^ 64) (fun n => by simp only [Nat.unpair_pair]; ring)
+  exact ⟨_, (hm.comp (x64.pair PolyFueled.id.succ_comp.succ_comp)).of_eq
+    (fun n => by simp only [Nat.unpair_pair]; rfl)⟩
+
+/-- Level-base growth: one level squares the base up to a factor `16`. -/
+lemma sb_base_sq_le (x : ℕ) :
+    (Nat.sqrt x + 1 + 2) * (Nat.sqrt x + 1 + 2) ≤ 16 * (x + 2) := by
+  have h1 := Nat.sqrt_le x
+  have h2 := Nat.sqrt_le_self x
+  nlinarith
+
+lemma bPow_le (n : ℕ) : ∀ d, (sbChain n d + 2) ^ 2 ^ d ≤ 16 ^ 2 ^ (d + 1) * (n + 2) := by
+  intro d
+  induction d with
+  | zero =>
+      simp only [sbChain, pow_zero, pow_one]
+      exact Nat.le_mul_of_pos_left _ (by positivity)
+  | succ d ih =>
+      have hkey : (sbChain n (d + 1) + 2) ^ 2 ≤ 16 * (sbChain n d + 2) := by
+        rw [sbChain, pow_two]
+        exact sb_base_sq_le _
+      calc (sbChain n (d + 1) + 2) ^ 2 ^ (d + 1)
+          = ((sbChain n (d + 1) + 2) ^ 2) ^ 2 ^ d := by
+            rw [show (2:ℕ) ^ (d + 1) = 2 * 2 ^ d by rw [pow_succ]; ring, pow_mul]
+        _ ≤ (16 * (sbChain n d + 2)) ^ 2 ^ d := Nat.pow_le_pow_left hkey _
+        _ = 16 ^ 2 ^ d * (sbChain n d + 2) ^ 2 ^ d := mul_pow _ _ _
+        _ ≤ 16 ^ 2 ^ d * (16 ^ 2 ^ (d + 1) * (n + 2)) := Nat.mul_le_mul_left _ ih
+        _ = 16 ^ (2 ^ d + 2 ^ (d + 1)) * (n + 2) := by rw [← mul_assoc, ← pow_add]
+        _ ≤ 16 ^ 2 ^ (d + 2) * (n + 2) := by
+            have h1 : (2:ℕ) ^ (d + 1) = 2 ^ d * 2 := pow_succ 2 d
+            have h2 : (2:ℕ) ^ (d + 2) = 2 ^ (d + 1) * 2 := pow_succ 2 (d + 1)
+            exact Nat.mul_le_mul_right _
+              (Nat.pow_le_pow_right (by norm_num) (by omega))
+
+/-- **Cap dominance**: on-diagonal, the packed level value never reaches the clamp. -/
+lemma capP_dominates (n : ℕ) : ∀ d ≤ n.size.size + 3,
+    (sbChain n d + 2) ^ 2 ^ d ≤ capP n := by
+  intro d hd
+  refine le_trans (bPow_le n d) ?_
+  rw [capP]
+  refine Nat.mul_le_mul_right _ ?_
+  have hexp : 2 ^ (d + 1) ≤ 16 * 2 ^ n.size.size := by
+    calc (2:ℕ) ^ (d + 1) ≤ 2 ^ (n.size.size + 4) :=
+          Nat.pow_le_pow_right (by norm_num) (by omega)
+      _ = 16 * 2 ^ n.size.size := by rw [pow_add]; ring
+  calc (16:ℕ) ^ 2 ^ (d + 1) ≤ 16 ^ (16 * 2 ^ n.size.size) :=
+        Nat.pow_le_pow_right (by norm_num) hexp
+    _ = ((16:ℕ) ^ 16) ^ 2 ^ n.size.size := by
+        rw [← pow_mul]
+    _ = ((2:ℕ) ^ 64) ^ 2 ^ n.size.size := by norm_num
+    _ = ((2:ℕ) ^ 2 ^ n.size.size) ^ 64 := by
+        rw [← pow_mul, ← pow_mul]
+        congr 1
+        ring
+    _ = sq2core n ^ 64 := rfl
+
 /-! ## Residual operational input and the assembled boundary -/
 
 /-- Compact operational input for the concrete prefix machine: the single fuel-model
