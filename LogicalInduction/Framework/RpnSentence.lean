@@ -501,10 +501,515 @@ lemma unRpn_single_chunk (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t �
   rw [unRpnTokens_congr rest (by omega) le_rfl]
   rfl
 
+/-- Escape parse with an arbitrary decodable payload. -/
+lemma parseRpn_escape' {c : ℕ} {φ : Sentence}
+    (hdec : Encodable.decode (α := Sentence) c = some φ)
+    (rest : List ℕ) {fuel : ℕ} (hfuel : 1 ≤ fuel) :
+    parseRpn fuel (1 :: c :: rest) = some (φ, rest) := by
+  match fuel, hfuel with
+  | fuel + 1, _ =>
+      rw [parseRpn_cons, if_neg (by omega), if_pos rfl]
+      simp [hdec]
+
+/-- Escape parse failure on an undecodable payload. -/
+lemma parseRpn_escape_none {c : ℕ}
+    (hdec : Encodable.decode (α := Sentence) c = none)
+    (rest : List ℕ) (fuel : ℕ) :
+    parseRpn fuel (1 :: c :: rest) = none := by
+  match fuel with
+  | 0 => rfl
+  | fuel + 1 =>
+      rw [parseRpn_cons, if_neg (by omega), if_pos rfl]
+      simp [hdec]
+
+/-! ## The escape expansion
+
+`escExpand` is the forward splice for the model inclusions: each sentence-slot token
+`c` becomes the two-token escape block `[1, c]`, everything else is copied.  Composed
+with `unRpn` it re-emits the *canonical* code of the decoded sentence, so the streams
+need not agree token-for-token on non-canonical codes — but they parse identically,
+which is the simulation theorem below. -/
+
+def escExpandTokens : ℕ → List ℕ → List ℕ
+  | _, [] => []
+  | 0, _ => []
+  | fuel + 1, t :: rest =>
+      if t = 0 then
+        match rest with
+        | [] => [0]
+        | c :: r1 =>
+            match r1 with
+            | [] => [0, 1, c]
+            | d :: r2 => 0 :: 1 :: c :: d :: escExpandTokens fuel r2
+      else if t = 6 then
+        match rest with
+        | [] => [6]
+        | c :: r => 6 :: 1 :: c :: escExpandTokens fuel r
+      else if t = 1 then
+        match rest with
+        | [] => [1]
+        | c :: r => 1 :: c :: escExpandTokens fuel r
+      else if t = 7 then
+        match rest with
+        | [] => [7]
+        | c :: r => 7 :: c :: escExpandTokens fuel r
+      else t :: escExpandTokens fuel rest
+
+/-- Escape-expand every sentence slot of a flat strategy stream. -/
+def escExpand (ts : List ℕ) : List ℕ := escExpandTokens ts.length ts
+
+lemma escExpandTokens_cons (fuel t : ℕ) (rest : List ℕ) :
+    escExpandTokens (fuel + 1) (t :: rest) =
+      if t = 0 then
+        match rest with
+        | [] => [0]
+        | c :: r1 =>
+            match r1 with
+            | [] => [0, 1, c]
+            | d :: r2 => 0 :: 1 :: c :: d :: escExpandTokens fuel r2
+      else if t = 6 then
+        match rest with
+        | [] => [6]
+        | c :: r => 6 :: 1 :: c :: escExpandTokens fuel r
+      else if t = 1 then
+        match rest with
+        | [] => [1]
+        | c :: r => 1 :: c :: escExpandTokens fuel r
+      else if t = 7 then
+        match rest with
+        | [] => [7]
+        | c :: r => 7 :: c :: escExpandTokens fuel r
+      else t :: escExpandTokens fuel rest := rfl
+
+lemma escExpandTokens_congr_aux : ∀ (n : ℕ) (ts : List ℕ), ts.length ≤ n →
+    ∀ (fuel fuel' : ℕ), ts.length ≤ fuel → ts.length ≤ fuel' →
+    escExpandTokens fuel ts = escExpandTokens fuel' ts
+  | _, [], _, fuel, fuel', _, _ => by cases fuel <;> cases fuel' <;> rfl
+  | 0, t :: rest, hn, fuel, fuel', hf, hf' => by simp at hn
+  | n + 1, t :: rest, hn, fuel, fuel', hf, hf' => by
+      match fuel, fuel', hf, hf' with
+      | fuel + 1, fuel' + 1, hf, hf' =>
+          simp only [List.length_cons] at hn hf hf'
+          rw [escExpandTokens_cons, escExpandTokens_cons]
+          by_cases h0 : t = 0
+          · rw [if_pos h0, if_pos h0]
+            rcases rest with _ | ⟨c, r1⟩
+            · rfl
+            rcases r1 with _ | ⟨d, r2⟩
+            · rfl
+            simp only []
+            simp only [List.length_cons] at hn hf hf'
+            rw [escExpandTokens_congr_aux n r2 (by omega) fuel fuel' (by omega)
+              (by omega)]
+          rw [if_neg h0, if_neg h0]
+          by_cases h6 : t = 6
+          · rw [if_pos h6, if_pos h6]
+            rcases rest with _ | ⟨c, r⟩
+            · rfl
+            simp only []
+            simp only [List.length_cons] at hn hf hf'
+            rw [escExpandTokens_congr_aux n r (by omega) fuel fuel' (by omega)
+              (by omega)]
+          rw [if_neg h6, if_neg h6]
+          by_cases h1 : t = 1
+          · rw [if_pos h1, if_pos h1]
+            rcases rest with _ | ⟨c, r⟩
+            · rfl
+            simp only []
+            simp only [List.length_cons] at hn hf hf'
+            rw [escExpandTokens_congr_aux n r (by omega) fuel fuel' (by omega)
+              (by omega)]
+          rw [if_neg h1, if_neg h1]
+          by_cases h7 : t = 7
+          · rw [if_pos h7, if_pos h7]
+            rcases rest with _ | ⟨c, r⟩
+            · rfl
+            simp only []
+            simp only [List.length_cons] at hn hf hf'
+            rw [escExpandTokens_congr_aux n r (by omega) fuel fuel' (by omega)
+              (by omega)]
+          rw [if_neg h7, if_neg h7]
+          rw [escExpandTokens_congr_aux n rest (by omega) fuel fuel' (by omega)
+            (by omega)]
+
+lemma escExpandTokens_congr (ts : List ℕ) {fuel fuel' : ℕ}
+    (hf : ts.length ≤ fuel) (hf' : ts.length ≤ fuel') :
+    escExpandTokens fuel ts = escExpandTokens fuel' ts :=
+  escExpandTokens_congr_aux ts.length ts le_rfl fuel fuel' hf hf'
+
+/-- The escape splice at most doubles the stream. -/
+lemma escExpand_length_le : ∀ (n : ℕ) (ts : List ℕ), ts.length ≤ n →
+    ∀ (fuel : ℕ), ts.length ≤ fuel →
+    (escExpandTokens fuel ts).length ≤ 2 * ts.length
+  | _, [], _, fuel, _ => by
+      have h : escExpandTokens fuel [] = [] := by cases fuel <;> rfl
+      simp [h]
+  | 0, t :: rest, hn, fuel, hf => by simp at hn
+  | n + 1, t :: rest, hn, fuel, hf => by
+      match fuel, hf with
+      | fuel + 1, hf =>
+          simp only [List.length_cons] at hn hf
+          rw [escExpandTokens_cons]
+          by_cases h0 : t = 0
+          · rw [if_pos h0]
+            rcases rest with _ | ⟨c, r1⟩
+            · simp only []
+              simp
+            rcases r1 with _ | ⟨d, r2⟩
+            · simp only []
+              simp
+            simp only [List.length_cons] at hn hf ⊢
+            have := escExpand_length_le n r2 (by omega) fuel (by omega)
+            omega
+          rw [if_neg h0]
+          by_cases h6 : t = 6
+          · rw [if_pos h6]
+            rcases rest with _ | ⟨c, r⟩
+            · simp only []
+              simp
+            simp only [List.length_cons] at hn hf ⊢
+            have := escExpand_length_le n r (by omega) fuel (by omega)
+            omega
+          rw [if_neg h6]
+          by_cases h1 : t = 1
+          · rw [if_pos h1]
+            rcases rest with _ | ⟨c, r⟩
+            · simp only []
+              simp
+            simp only [List.length_cons] at hn hf ⊢
+            have := escExpand_length_le n r (by omega) fuel (by omega)
+            omega
+          rw [if_neg h1]
+          by_cases h7 : t = 7
+          · rw [if_pos h7]
+            rcases rest with _ | ⟨c, r⟩
+            · simp only []
+              simp
+            simp only [List.length_cons] at hn hf ⊢
+            have := escExpand_length_le n r (by omega) fuel (by omega)
+            omega
+          rw [if_neg h7]
+          have := escExpand_length_le n rest (by omega) fuel (by omega)
+          simp only [List.length_cons]
+          omega
+
+/-! ### Chunk equations for `escExpand` -/
+
+lemma escExpand_price_chunk (c d : ℕ) (r2 : List ℕ) :
+    escExpand (0 :: c :: d :: r2) = 0 :: 1 :: c :: d :: escExpand r2 := by
+  rw [escExpand, List.length_cons, escExpandTokens_cons, if_pos rfl]
+  simp only []
+  rw [escExpandTokens_congr r2 (by simp only [List.length_cons]; omega) le_rfl]
+  rfl
+
+lemma escExpand_trade_chunk (c : ℕ) (r : List ℕ) :
+    escExpand (6 :: c :: r) = 6 :: 1 :: c :: escExpand r := by
+  rw [escExpand, List.length_cons, escExpandTokens_cons,
+    if_neg (by norm_num), if_pos rfl]
+  simp only []
+  rw [escExpandTokens_congr r (by simp only [List.length_cons]; omega) le_rfl]
+  rfl
+
+lemma escExpand_payload_chunk (t c : ℕ) (ht : t = 1 ∨ t = 7) (r : List ℕ) :
+    escExpand (t :: c :: r) = t :: c :: escExpand r := by
+  rcases ht with rfl | rfl
+  · rw [escExpand, List.length_cons, escExpandTokens_cons,
+      if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+    simp only []
+    rw [escExpandTokens_congr r (by simp only [List.length_cons]; omega) le_rfl]
+    rfl
+  · rw [escExpand, List.length_cons, escExpandTokens_cons,
+      if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+    simp only []
+    rw [escExpandTokens_congr r (by simp only [List.length_cons]; omega) le_rfl]
+    rfl
+
+lemma escExpand_single_chunk (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t ≠ 7)
+    (r : List ℕ) :
+    escExpand (t :: r) = t :: escExpand r := by
+  obtain ⟨h0, h1, h6, h7⟩ := ht
+  rw [escExpand, List.length_cons, escExpandTokens_cons,
+    if_neg h0, if_neg h6, if_neg h1, if_neg h7]
+  rw [escExpandTokens_congr r (by omega) le_rfl]
+  rfl
+
+/-! ### Escape contractions with arbitrary payloads -/
+
+lemma unRpn_price_escape' {c : ℕ} {φ : Sentence}
+    (hdec : Encodable.decode (α := Sentence) c = some φ) (d : ℕ)
+    (rest : List ℕ) :
+    unRpn (0 :: 1 :: c :: d :: rest) = 0 :: Encodable.encode φ :: d :: unRpn rest := by
+  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+    parseRpn_escape' hdec (d :: rest) (by simp)]
+  simp only []
+  rw [unRpnTokens_congr rest (by simp only [List.length_cons]; omega) le_rfl]
+  rfl
+
+lemma unRpn_price_escape_none {c : ℕ}
+    (hdec : Encodable.decode (α := Sentence) c = none) (d : ℕ) (rest : List ℕ) :
+    unRpn (0 :: 1 :: c :: d :: rest) = [0, 0] := by
+  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+    parseRpn_escape_none hdec (d :: rest) _]
+
+lemma unRpn_trade_escape' {c : ℕ} {φ : Sentence}
+    (hdec : Encodable.decode (α := Sentence) c = some φ) (rest : List ℕ) :
+    unRpn (6 :: 1 :: c :: rest) = 6 :: Encodable.encode φ :: unRpn rest := by
+  rw [unRpn, List.length_cons, unRpnTokens_cons, if_neg (by norm_num), if_pos rfl,
+    parseRpn_escape' hdec rest (by simp)]
+  simp only []
+  rw [unRpnTokens_congr rest (by simp only [List.length_cons]; omega) le_rfl]
+  rfl
+
+lemma unRpn_trade_escape_none {c : ℕ}
+    (hdec : Encodable.decode (α := Sentence) c = none) (rest : List ℕ) :
+    unRpn (6 :: 1 :: c :: rest) = [6, 0] := by
+  rw [unRpn, List.length_cons, unRpnTokens_cons, if_neg (by norm_num), if_pos rfl,
+    parseRpn_escape_none hdec rest _]
+
+/-! ## The escape simulation
+
+The contraction of an escape-expanded stream parses exactly like the original stream —
+the emitted canonical codes decode to the same sentences — except that a stream
+stranded mid-chunk (truncated) leaves the original at a non-ready parser state where
+the contraction has already failed.  Either way the deserialized trades agree. -/
+
+/-- Simulation outcome: identical parser results, or the contraction failed while the
+original is stranded at a non-ready state. -/
+def SimOut (a b : Option EF.StreamState) : Prop :=
+  a = b ∨ (a = none ∧ ∃ st, b = some st ∧ st.1.1 ≠ 0)
+
+lemma decode_zero_sentence : Encodable.decode (α := Sentence) 0 = none := by
+  show Formula.ofNat 0 = none
+  simp [Formula.ofNat]
+
+lemma foldl_streamStep_none (ts : List ℕ) :
+    List.foldl EF.streamStep none ts = none := by
+  induction ts with
+  | nil => rfl
+  | cons t rest ih => simpa [EF.streamStep] using ih
+
+lemma streamReadFrom_unRpn_escExpand : ∀ (n : ℕ) (ts : List ℕ), ts.length ≤ n →
+    ∀ (mp : ℕ × Option Sentence) (stack : List EF)
+      (trades : List (EF × Sentence)), mp.1 = 0 →
+    SimOut
+      (EF.streamReadFrom (unRpn (escExpand ts)) (some (mp, (stack, trades))))
+      (EF.streamReadFrom ts (some (mp, (stack, trades))))
+  | n, [], _, mp, stack, trades, hm => by
+      rw [show escExpand [] = [] from rfl, show unRpn [] = [] from rfl]
+      exact Or.inl rfl
+  | 0, t :: rest, hn, mp, stack, trades, hm => by simp at hn
+  | n + 1, t :: rest, hn, mp, stack, trades, hm => by
+      obtain ⟨m, pend⟩ := mp
+      simp only at hm
+      subst hm
+      simp only [List.length_cons] at hn
+      by_cases h0 : t = 0
+      · subst h0
+        match rest with
+        | [] =>
+            rw [show escExpand [0] = [0] from rfl, show unRpn [0] = [0, 0] from rfl]
+            refine Or.inr ⟨?_, ((1, none), (stack, trades)), ?_, by norm_num⟩
+            · simp [EF.streamReadFrom, EF.streamStep, decode_zero_sentence]
+            · simp [EF.streamReadFrom, EF.streamStep]
+        | [c] =>
+            rw [show escExpand [0, c] = [0, 1, c] from rfl]
+            rcases hdec : Encodable.decode (α := Sentence) c with _ | φ
+            · rw [show unRpn [0, 1, c] = [0, 0] from by
+                rw [unRpn, show ([0, 1, c] : List ℕ).length = 3 from rfl,
+                  unRpnTokens_cons, if_pos rfl, parseRpn_escape_none hdec [] _]]
+              refine Or.inl ?_
+              simp [EF.streamReadFrom, EF.streamStep, decode_zero_sentence, hdec]
+            · rw [show unRpn [0, 1, c] = [0, Encodable.encode φ] from by
+                rw [unRpn, show ([0, 1, c] : List ℕ).length = 3 from rfl,
+                  unRpnTokens_cons, if_pos rfl, parseRpn_escape' hdec [] (by simp)]]
+              refine Or.inl ?_
+              simp [EF.streamReadFrom, EF.streamStep, hdec, Encodable.encodek]
+        | c :: d :: r2 =>
+            rw [escExpand_price_chunk]
+            rcases hdec : Encodable.decode (α := Sentence) c with _ | φ
+            · rw [unRpn_price_escape_none hdec]
+              refine Or.inl ?_
+              simp [EF.streamReadFrom, EF.streamStep, decode_zero_sentence, hdec,
+                foldl_streamStep_none]
+            · rw [unRpn_price_escape' hdec]
+              have hstep : ∀ ts' : List ℕ, ∀ ctok,
+                  Encodable.decode (α := Sentence) ctok = some φ →
+                  EF.streamReadFrom (0 :: ctok :: d :: ts')
+                      (some ((0, pend), (stack, trades))) =
+                    EF.streamReadFrom ts'
+                      (some ((0, none), (EF.price φ d :: stack, trades))) := by
+                intro ts' ctok hdec'
+                simp [EF.streamReadFrom, EF.streamStep, hdec']
+              rw [hstep _ c hdec, hstep _ (Encodable.encode φ) (Encodable.encodek φ)]
+              simp only [List.length_cons] at hn
+              exact streamReadFrom_unRpn_escExpand n r2 (by omega) (0, none)
+                (EF.price φ d :: stack) trades rfl
+      by_cases h6 : t = 6
+      · subst h6
+        match rest with
+        | [] =>
+            rw [show escExpand [6] = [6] from rfl, show unRpn [6] = [6, 0] from rfl]
+            refine Or.inr ⟨?_, ((4, none), (stack, trades)), ?_, by norm_num⟩
+            · rcases stack with _ | ⟨e, st'⟩ <;>
+                simp [EF.streamReadFrom, EF.streamStep, decode_zero_sentence]
+            · simp [EF.streamReadFrom, EF.streamStep]
+        | c :: r =>
+            rw [escExpand_trade_chunk]
+            rcases hdec : Encodable.decode (α := Sentence) c with _ | φ
+            · rw [unRpn_trade_escape_none hdec]
+              refine Or.inl ?_
+              rcases stack with _ | ⟨e, st'⟩ <;>
+                simp [EF.streamReadFrom, EF.streamStep, decode_zero_sentence, hdec,
+                  foldl_streamStep_none]
+            · rw [unRpn_trade_escape' hdec]
+              rcases stack with _ | ⟨e, st'⟩
+              · refine Or.inl ?_
+                simp [EF.streamReadFrom, EF.streamStep, hdec, Encodable.encodek,
+                  foldl_streamStep_none]
+              · have hstep : ∀ ts' : List ℕ, ∀ ctok,
+                    Encodable.decode (α := Sentence) ctok = some φ →
+                    EF.streamReadFrom (6 :: ctok :: ts')
+                        (some ((0, pend), (e :: st', trades))) =
+                      EF.streamReadFrom ts'
+                        (some ((0, none), (st', trades ++ [(e, φ)]))) := by
+                  intro ts' ctok hdec'
+                  simp [EF.streamReadFrom, EF.streamStep, hdec']
+                rw [hstep _ c hdec, hstep _ (Encodable.encode φ) (Encodable.encodek φ)]
+                simp only [List.length_cons] at hn
+                exact streamReadFrom_unRpn_escExpand n r (by omega) (0, none)
+                  st' (trades ++ [(e, φ)]) rfl
+      by_cases h1 : t = 1
+      · subst h1
+        match rest with
+        | [] =>
+            rw [show escExpand [1] = [1] from rfl, show unRpn [1] = [1] from rfl]
+            exact Or.inl rfl
+        | c :: r =>
+            rw [escExpand_payload_chunk 1 c (Or.inl rfl),
+              unRpn_payload_chunk 1 c (Or.inl rfl)]
+            rcases hdec : Encodable.decode (α := ℚ) c with _ | q
+            · refine Or.inl ?_
+              simp [EF.streamReadFrom, EF.streamStep, hdec, foldl_streamStep_none]
+            · have hstep : ∀ ts' : List ℕ,
+                  EF.streamReadFrom (1 :: c :: ts')
+                      (some ((0, pend), (stack, trades))) =
+                    EF.streamReadFrom ts'
+                      (some ((0, none), (EF.const q :: stack, trades))) := by
+                intro ts'
+                simp [EF.streamReadFrom, EF.streamStep, hdec]
+              rw [hstep, hstep]
+              simp only [List.length_cons] at hn
+              exact streamReadFrom_unRpn_escExpand n r (by omega) (0, none)
+                (EF.const q :: stack) trades rfl
+      by_cases h7 : t = 7
+      · subst h7
+        match rest with
+        | [] =>
+            rw [show escExpand [7] = [7] from rfl, show unRpn [7] = [7] from rfl]
+            exact Or.inl rfl
+        | c :: r =>
+            rw [escExpand_payload_chunk 7 c (Or.inr rfl),
+              unRpn_payload_chunk 7 c (Or.inr rfl)]
+            have hstep : ∀ ts' : List ℕ,
+                EF.streamReadFrom (7 :: c :: ts')
+                    (some ((0, pend), (stack, trades))) =
+                  EF.streamReadFrom ts'
+                    (some ((0, none), (EF.var c :: stack, trades))) := by
+              intro ts'
+              simp [EF.streamReadFrom, EF.streamStep]
+            rw [hstep, hstep]
+            simp only [List.length_cons] at hn
+            exact streamReadFrom_unRpn_escExpand n r (by omega) (0, none)
+              (EF.var c :: stack) trades rfl
+      · rw [escExpand_single_chunk t ⟨h0, h1, h6, h7⟩,
+          unRpn_single_chunk t ⟨h0, h1, h6, h7⟩]
+        have hread : ∀ ts' : List ℕ,
+            EF.streamReadFrom (t :: ts') (some ((0, pend), (stack, trades))) =
+              EF.streamReadFrom ts'
+                (EF.streamStep (some ((0, pend), (stack, trades))) t) :=
+          fun _ => rfl
+        rw [hread, hread]
+        rcases hstep : EF.streamStep (some ((0, pend), (stack, trades))) t
+          with _ | st'
+        · rw [show ∀ ts' : List ℕ, EF.streamReadFrom ts' none = none from
+            foldl_streamStep_none,
+            show ∀ ts' : List ℕ, EF.streamReadFrom ts' none = none from
+            foldl_streamStep_none]
+          exact Or.inl rfl
+        · have hmode : st'.1.1 = 0 := by
+            simp only [EF.streamStep, if_pos rfl] at hstep
+            rw [if_neg h0] at hstep
+            rw [if_neg h1] at hstep
+            by_cases ht2 : t = 2
+            · rw [if_pos ht2] at hstep
+              match stack, hstep with
+              | b :: a :: rest', hstep =>
+                  obtain rfl := Option.some.inj hstep
+                  rfl
+            rw [if_neg ht2] at hstep
+            by_cases ht3 : t = 3
+            · rw [if_pos ht3] at hstep
+              match stack, hstep with
+              | b :: a :: rest', hstep =>
+                  obtain rfl := Option.some.inj hstep
+                  rfl
+            rw [if_neg ht3] at hstep
+            by_cases ht4 : t = 4
+            · rw [if_pos ht4] at hstep
+              match stack, hstep with
+              | b :: a :: rest', hstep =>
+                  obtain rfl := Option.some.inj hstep
+                  rfl
+            rw [if_neg ht4] at hstep
+            by_cases ht5 : t = 5
+            · rw [if_pos ht5] at hstep
+              match stack, hstep with
+              | a :: rest', hstep =>
+                  obtain rfl := Option.some.inj hstep
+                  rfl
+            rw [if_neg ht5] at hstep
+            rw [if_neg h6] at hstep
+            rw [if_neg h7] at hstep
+            by_cases ht8 : t = 8
+            · rw [if_pos ht8] at hstep
+              match stack, hstep with
+              | body :: x :: rest', hstep =>
+                  obtain rfl := Option.some.inj hstep
+                  rfl
+            rw [if_neg ht8] at hstep
+            exact absurd hstep (by simp)
+          obtain ⟨⟨m', pend'⟩, ⟨stack', trades'⟩⟩ := st'
+          simp only at hmode
+          exact streamReadFrom_unRpn_escExpand n rest (by omega) (m', pend')
+            stack' trades' hmode
+
+
+/-- **Escape-splice correctness**: the contracted escape expansion deserializes to the
+same trades as the original stream. -/
+lemma deserializeTrades_unRpn_escExpand (ts : List ℕ) :
+    deserializeTrades (unRpn (escExpand ts)) = deserializeTrades ts := by
+  have h := streamReadFrom_unRpn_escExpand ts.length ts le_rfl (0, none) [] [] rfl
+  unfold deserializeTrades
+  rcases h with h | ⟨hnone, st, hsome, hmode⟩
+  · rw [show EF.streamInitial = ((0, none), ([], [])) from rfl, h]
+  · rw [show EF.streamInitial = ((0, none), ([], [])) from rfl, hnone, hsome]
+    rcases st with ⟨⟨m, pend⟩, ⟨stack, trades⟩⟩
+    simp only at hmode
+    match m, hmode with
+    | m + 1, _ => cases pend <;> cases stack <;> rfl
+
+/-- **Escape-splice strategy correctness**: the contracted escape expansion validates
+to the same day-`n` strategy. -/
+lemma strategyOfTokens_unRpn_escExpand (n : ℕ) (ts : List ℕ) :
+    strategyOfTokens n (unRpn (escExpand ts)) = strategyOfTokens n ts := by
+  unfold strategyOfTokens
+  rw [deserializeTrades_unRpn_escExpand]
+
 #print axioms parseRpn_rpn
 #print axioms parseRpn_escape
 #print axioms rpn_injective
 #print axioms unRpn_price_chunk
 #print axioms unRpn_trade_chunk
+#print axioms strategyOfTokens_unRpn_escExpand
 
 end LogicalInduction
