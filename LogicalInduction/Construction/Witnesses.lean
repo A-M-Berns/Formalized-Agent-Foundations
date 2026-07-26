@@ -27,4 +27,3 @@ import LogicalInduction.Construction.Witnesses.LUVDeductiveProcess
 import LogicalInduction.Construction.Witnesses.LUVExpectationCertified
 import LogicalInduction.Construction.Witnesses.QuoteCodeOfMarket
 import LogicalInduction.Construction.Witnesses.DigitConditioning
-import LogicalInduction.Construction.Witnesses.RpnCriterion
