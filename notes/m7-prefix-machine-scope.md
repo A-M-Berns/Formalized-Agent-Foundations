@@ -42,13 +42,28 @@ Construction lives in `LogicalInduction/Construction/Witnesses/`:
 
 ## Residual input — `PrefixMachineComputation` (the honest remainder)
 
-Two conclusion-free fuel-model certificates, in the exact style of the existing
+**Update 2026-07-26 (second session): `approx_poly` is DERIVED, residual is down to
+one certificate.** `approx_polyRat_of_sentence` (PrefixMachine.lean) proves
+`PolySentenceCodes prefixSentenceEnum → PolyRatCodes prefixApprox`, so the structure
+collapsed to the single field `sentence_poly`; `PrefixMachineComputation.approx_poly`
+is now a theorem.  The derivation is:
+
+- `dcStep`/`dcIter_encode` — the code-level un-negation scan: iterating the branchless
+  strip step `encode φ` times computes `⟨encode (negCore φ), negDepth φ⟩` from
+  `encode φ` (saturation via `negDepth_le_encode`); poly-fueled by `PolyFueled.prec`
+  with state `≤ ⟨e, j⟩` (`dcIter_polyFueled`).
+- `p2s`/`p2s_polyFueled` — materializes `2^{size (x+1)}` by *halving-driven doubling*
+  (state `⟨(x+1)/2^j, 2^{min j (size (x+1))}⟩`): the doubling is clocked by the halving,
+  so the state stays `≤ 2(x+1)` and the off-diagonal `prec` clamp the original plan
+  called for is unnecessary.
+- `prefixDen_eq` — `2^κ = 2 · p2s(negDepth)² · p2s(encode ∘ negCore)²`, then `mulc`
+  assembly and the rational encode `⟨2, 2^κ⟩` (`encode_prefixApprox`).
+
+Remaining conclusion-free fuel-model certificate, in the exact style of the existing
 `BitPrefixCodeComputation` disclosure (`BitPrefixSyntax.lean`):
 
 1. `sentence_poly : PolySentenceCodes prefixSentenceEnum` — a `Nat.Partrec.Code`
    emitting `encode (prefixSentenceEnum n)` with polynomial fuel.
-2. `approx_poly : PolyRatCodes prefixApprox` — same for `encode (prefixApprox i)`
-   (equivalently, by `prefixDen_polyFueled`, for the denominator `2^{κᵢ}`).
 
 **Satisfiability (believed, not proved).** Both output values are polynomially
 bounded — `encode (sentenceₙ) ∈ {n, pair 1 n + 1}` and
