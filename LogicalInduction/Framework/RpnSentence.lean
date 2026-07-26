@@ -1154,6 +1154,207 @@ lemma escExpandFold_append (m : ℕ) (xs ys : List ℕ) :
       rw [ih]
       simp [List.append_assoc]
 
+/-! ## Code-level parsing (for the compiler)
+
+The trading firm's compiler needs the decode primitive recursive.  Building
+`Primrec` for `Formula` constructors is unnecessary: parse straight to the *pair
+code* — `⊥ ↦ pair 0 0 + 1`, `atom t ↦ pair 1 t + 1`, binops `pair tag (pair c₁ c₂)
++ 1` — and use the `Primcodable` round trip (`encode ∘ decode`) as the escape
+validity test.  These mirror `parseRpn`/`unRpnTokens` exactly. -/
+
+def parseRpnC : ℕ → List ℕ → Option (ℕ × List ℕ)
+  | 0, _ => none
+  | _ + 1, [] => none
+  | fuel + 1, t :: rest =>
+      if t = 0 then some (Nat.pair 0 0 + 1, rest)
+      else if t = 1 then
+        rest.head?.bind fun c =>
+          if Encodable.encode (Encodable.decode (α := Sentence) c) = 0 then none
+          else some (Encodable.encode (Encodable.decode (α := Sentence) c) - 1,
+            rest.tail)
+      else if t = 2 then
+        (parseRpnC fuel rest).bind fun p =>
+          (parseRpnC fuel p.2).bind fun q =>
+            some (Nat.pair 2 (Nat.pair p.1 q.1) + 1, q.2)
+      else if t = 3 then
+        (parseRpnC fuel rest).bind fun p =>
+          (parseRpnC fuel p.2).bind fun q =>
+            some (Nat.pair 3 (Nat.pair p.1 q.1) + 1, q.2)
+      else if t = 4 then
+        (parseRpnC fuel rest).bind fun p =>
+          (parseRpnC fuel p.2).bind fun q =>
+            some (Nat.pair 4 (Nat.pair p.1 q.1) + 1, q.2)
+      else some (Nat.pair 1 (t - 5) + 1, rest)
+
+lemma parseRpnC_cons (fuel t : ℕ) (rest : List ℕ) :
+    parseRpnC (fuel + 1) (t :: rest) =
+      if t = 0 then some (Nat.pair 0 0 + 1, rest)
+      else if t = 1 then
+        rest.head?.bind fun c =>
+          if Encodable.encode (Encodable.decode (α := Sentence) c) = 0 then none
+          else some (Encodable.encode (Encodable.decode (α := Sentence) c) - 1,
+            rest.tail)
+      else if t = 2 then
+        (parseRpnC fuel rest).bind fun p =>
+          (parseRpnC fuel p.2).bind fun q =>
+            some (Nat.pair 2 (Nat.pair p.1 q.1) + 1, q.2)
+      else if t = 3 then
+        (parseRpnC fuel rest).bind fun p =>
+          (parseRpnC fuel p.2).bind fun q =>
+            some (Nat.pair 3 (Nat.pair p.1 q.1) + 1, q.2)
+      else if t = 4 then
+        (parseRpnC fuel rest).bind fun p =>
+          (parseRpnC fuel p.2).bind fun q =>
+            some (Nat.pair 4 (Nat.pair p.1 q.1) + 1, q.2)
+      else some (Nat.pair 1 (t - 5) + 1, rest) := rfl
+
+/-- Code-level parsing computes exactly the encoded sentence-level parse. -/
+lemma parseRpnC_eq : ∀ (fuel : ℕ) (ts : List ℕ),
+    parseRpnC fuel ts =
+      (parseRpn fuel ts).map fun pr => (Encodable.encode pr.1, pr.2)
+  | 0, ts => rfl
+  | fuel + 1, [] => rfl
+  | fuel + 1, t :: rest => by
+      rw [parseRpnC_cons, parseRpn_cons]
+      by_cases h0 : t = 0
+      · rw [if_pos h0, if_pos h0]
+        rfl
+      rw [if_neg h0, if_neg h0]
+      by_cases h1 : t = 1
+      · rw [if_pos h1, if_pos h1]
+        rcases rest with _ | ⟨c, r⟩
+        · rfl
+        simp only [List.head?_cons, Option.bind_some]
+        rcases hdec : Encodable.decode (α := Sentence) c with _ | φ
+        · simp [Encodable.encode_none]
+        · simp [Encodable.encode_some]
+      rw [if_neg h1, if_neg h1]
+      have hbin : ∀ (tag : ℕ) (mk : Sentence → Sentence → Sentence),
+          (∀ φ ψ, Encodable.encode (mk φ ψ) =
+            Nat.pair tag (Nat.pair (Encodable.encode φ) (Encodable.encode ψ)) + 1) →
+          ((parseRpnC fuel rest).bind fun p =>
+            (parseRpnC fuel p.2).bind fun q =>
+              some (Nat.pair tag (Nat.pair p.1 q.1) + 1, q.2)) =
+          ((parseRpn fuel rest).bind fun p =>
+            (parseRpn fuel p.2).bind fun q =>
+              some (mk p.1 q.1, q.2)).map fun pr => (Encodable.encode pr.1, pr.2) := by
+        intro tag mk hmk
+        rw [parseRpnC_eq fuel rest]
+        rcases parseRpn fuel rest with _ | ⟨φ1, r1⟩
+        · rfl
+        simp only [Option.map_some, Option.bind_some]
+        rw [parseRpnC_eq fuel r1]
+        rcases parseRpn fuel r1 with _ | ⟨φ2, r2⟩
+        · rfl
+        simp only [Option.map_some, Option.bind_some, hmk]
+      by_cases h2 : t = 2
+      · rw [if_pos h2, if_pos h2]
+        exact hbin 2 Formula.imp (fun φ ψ => rfl)
+      rw [if_neg h2, if_neg h2]
+      by_cases h3 : t = 3
+      · rw [if_pos h3, if_pos h3]
+        exact hbin 3 Formula.and (fun φ ψ => rfl)
+      rw [if_neg h3, if_neg h3]
+      by_cases h4 : t = 4
+      · rw [if_pos h4, if_pos h4]
+        exact hbin 4 Formula.or (fun φ ψ => rfl)
+      rw [if_neg h4, if_neg h4]
+      rfl
+
+/-! ### The code-level stream contraction -/
+
+def unRpnTokensC : ℕ → List ℕ → List ℕ
+  | _, [] => []
+  | 0, _ => []
+  | fuel + 1, t :: rest =>
+      if t = 0 then
+        match parseRpnC rest.length rest with
+        | none => [0, 0]
+        | some (e, r1) =>
+            match r1 with
+            | [] => [0, e]
+            | d :: r2 => 0 :: e :: d :: unRpnTokensC fuel r2
+      else if t = 6 then
+        match parseRpnC rest.length rest with
+        | none => [6, 0]
+        | some (e, r1) => 6 :: e :: unRpnTokensC fuel r1
+      else if t = 1 then
+        match rest with
+        | [] => [1]
+        | c :: r => 1 :: c :: unRpnTokensC fuel r
+      else if t = 7 then
+        match rest with
+        | [] => [7]
+        | c :: r => 7 :: c :: unRpnTokensC fuel r
+      else t :: unRpnTokensC fuel rest
+
+lemma unRpnTokensC_cons (fuel t : ℕ) (rest : List ℕ) :
+    unRpnTokensC (fuel + 1) (t :: rest) =
+      if t = 0 then
+        match parseRpnC rest.length rest with
+        | none => [0, 0]
+        | some (e, r1) =>
+            match r1 with
+            | [] => [0, e]
+            | d :: r2 => 0 :: e :: d :: unRpnTokensC fuel r2
+      else if t = 6 then
+        match parseRpnC rest.length rest with
+        | none => [6, 0]
+        | some (e, r1) => 6 :: e :: unRpnTokensC fuel r1
+      else if t = 1 then
+        match rest with
+        | [] => [1]
+        | c :: r => 1 :: c :: unRpnTokensC fuel r
+      else if t = 7 then
+        match rest with
+        | [] => [7]
+        | c :: r => 7 :: c :: unRpnTokensC fuel r
+      else t :: unRpnTokensC fuel rest := rfl
+
+/-- The code-level contraction computes the sentence-level one. -/
+lemma unRpnTokensC_eq : ∀ (fuel : ℕ) (ts : List ℕ),
+    unRpnTokensC fuel ts = unRpnTokens fuel ts
+  | fuel, [] => by cases fuel <;> rfl
+  | 0, t :: rest => rfl
+  | fuel + 1, t :: rest => by
+      rw [unRpnTokensC_cons, unRpnTokens_cons]
+      by_cases h0 : t = 0
+      · rw [if_pos h0, if_pos h0, parseRpnC_eq]
+        rcases parseRpn rest.length rest with _ | ⟨φ, r1⟩
+        · rfl
+        simp only [Option.map_some]
+        rcases r1 with _ | ⟨d, r2⟩
+        · rfl
+        simp only []
+        rw [unRpnTokensC_eq fuel r2]
+      rw [if_neg h0, if_neg h0]
+      by_cases h6 : t = 6
+      · rw [if_pos h6, if_pos h6, parseRpnC_eq]
+        rcases parseRpn rest.length rest with _ | ⟨φ, r1⟩
+        · rfl
+        simp only [Option.map_some]
+        rw [unRpnTokensC_eq fuel r1]
+      rw [if_neg h6, if_neg h6]
+      by_cases h1 : t = 1
+      · rw [if_pos h1, if_pos h1]
+        rcases rest with _ | ⟨c, r⟩
+        · rfl
+        simp only []
+        rw [unRpnTokensC_eq fuel r]
+      rw [if_neg h1, if_neg h1]
+      by_cases h7 : t = 7
+      · rw [if_pos h7, if_pos h7]
+        rcases rest with _ | ⟨c, r⟩
+        · rfl
+        simp only []
+        rw [unRpnTokensC_eq fuel r]
+      rw [if_neg h7, if_neg h7]
+      rw [unRpnTokensC_eq fuel rest]
+
+/-- `unRpn` through the code-level contraction. -/
+lemma unRpn_eq_unRpnTokensC (ts : List ℕ) : unRpn ts = unRpnTokensC ts.length ts :=
+  (unRpnTokensC_eq ts.length ts).symm
+
 #print axioms parseRpn_rpn
 #print axioms parseRpn_escape
 #print axioms rpn_injective
@@ -1161,5 +1362,7 @@ lemma escExpandFold_append (m : ℕ) (xs ys : List ℕ) :
 #print axioms unRpn_trade_chunk
 #print axioms strategyOfTokens_unRpn_escExpand
 #print axioms escExpandFold_eq_escExpand
+#print axioms parseRpnC_eq
+#print axioms unRpnTokensC_eq
 
 end LogicalInduction
