@@ -312,8 +312,199 @@ lemma rpn_injective : Function.Injective rpn := by
   obtain ⟨h1, -⟩ := Prod.mk.injEq .. ▸ Option.some.inj (hφ.symm.trans hψ)
   exact h1
 
+/-! ## The stream transducer
+
+`unRpn` walks the flat strategy grammar and contracts each sentence block back to a
+single pair-code token: sentence slots follow tags `0` (price — one day token after)
+and `6` (trade); tags `1` and `7` carry one opaque payload token; everything else is
+copied.  A failed block parse emits the undecodable code `0` and stops, preserving
+rejection.  Fuel decreases once per grammar chunk; `ts.length` always suffices. -/
+
+def unRpnTokens : ℕ → List ℕ → List ℕ
+  | _, [] => []
+  | 0, _ => []
+  | fuel + 1, t :: rest =>
+      if t = 0 then
+        match parseRpn rest.length rest with
+        | none => [0, 0]
+        | some (φ, r1) =>
+            match r1 with
+            | [] => [0, Encodable.encode φ]
+            | d :: r2 => 0 :: Encodable.encode φ :: d :: unRpnTokens fuel r2
+      else if t = 6 then
+        match parseRpn rest.length rest with
+        | none => [6, 0]
+        | some (φ, r1) => 6 :: Encodable.encode φ :: unRpnTokens fuel r1
+      else if t = 1 then
+        match rest with
+        | [] => [1]
+        | c :: r => 1 :: c :: unRpnTokens fuel r
+      else if t = 7 then
+        match rest with
+        | [] => [7]
+        | c :: r => 7 :: c :: unRpnTokens fuel r
+      else t :: unRpnTokens fuel rest
+
+/-- Contract every sentence block of a flat strategy stream to its pair code. -/
+def unRpn (ts : List ℕ) : List ℕ := unRpnTokens ts.length ts
+
+lemma unRpnTokens_cons (fuel t : ℕ) (rest : List ℕ) :
+    unRpnTokens (fuel + 1) (t :: rest) =
+      if t = 0 then
+        match parseRpn rest.length rest with
+        | none => [0, 0]
+        | some (φ, r1) =>
+            match r1 with
+            | [] => [0, Encodable.encode φ]
+            | d :: r2 => 0 :: Encodable.encode φ :: d :: unRpnTokens fuel r2
+      else if t = 6 then
+        match parseRpn rest.length rest with
+        | none => [6, 0]
+        | some (φ, r1) => 6 :: Encodable.encode φ :: unRpnTokens fuel r1
+      else if t = 1 then
+        match rest with
+        | [] => [1]
+        | c :: r => 1 :: c :: unRpnTokens fuel r
+      else if t = 7 then
+        match rest with
+        | [] => [7]
+        | c :: r => 7 :: c :: unRpnTokens fuel r
+      else t :: unRpnTokens fuel rest := rfl
+
+/-- Fuel invariance above the list length. -/
+lemma unRpnTokens_congr_aux : ∀ (n : ℕ) (ts : List ℕ), ts.length ≤ n →
+    ∀ (fuel fuel' : ℕ), ts.length ≤ fuel → ts.length ≤ fuel' →
+    unRpnTokens fuel ts = unRpnTokens fuel' ts
+  | _, [], _, fuel, fuel', _, _ => by cases fuel <;> cases fuel' <;> rfl
+  | 0, t :: rest, hn, fuel, fuel', hf, hf' => by simp at hn
+  | n + 1, t :: rest, hn, fuel, fuel', hf, hf' => by
+      match fuel, fuel', hf, hf' with
+      | fuel + 1, fuel' + 1, hf, hf' =>
+          simp only [List.length_cons] at hn hf hf'
+          rw [unRpnTokens_cons, unRpnTokens_cons]
+          by_cases h0 : t = 0
+          · rw [if_pos h0, if_pos h0]
+            rcases hp : parseRpn rest.length rest with _ | ⟨φ, r1⟩
+            · rfl
+            rcases r1 with _ | ⟨d, r2⟩
+            · rfl
+            simp only []
+            have hlen := parseRpn_length_lt _ _ _ _ hp
+            simp only [List.length_cons] at hlen
+            rw [unRpnTokens_congr_aux n r2 (by omega) fuel fuel' (by omega)
+              (by omega)]
+          rw [if_neg h0, if_neg h0]
+          by_cases h6 : t = 6
+          · rw [if_pos h6, if_pos h6]
+            rcases hp : parseRpn rest.length rest with _ | ⟨φ, r1⟩
+            · rfl
+            simp only []
+            have hlen := parseRpn_length_lt _ _ _ _ hp
+            rw [unRpnTokens_congr_aux n r1 (by omega) fuel fuel' (by omega)
+              (by omega)]
+          rw [if_neg h6, if_neg h6]
+          by_cases h1 : t = 1
+          · rw [if_pos h1, if_pos h1]
+            rcases rest with _ | ⟨c, r⟩
+            · rfl
+            simp only []
+            simp only [List.length_cons] at hn hf hf'
+            rw [unRpnTokens_congr_aux n r (by omega) fuel fuel' (by omega)
+              (by omega)]
+          rw [if_neg h1, if_neg h1]
+          by_cases h7 : t = 7
+          · rw [if_pos h7, if_pos h7]
+            rcases rest with _ | ⟨c, r⟩
+            · rfl
+            simp only []
+            simp only [List.length_cons] at hn hf hf'
+            rw [unRpnTokens_congr_aux n r (by omega) fuel fuel' (by omega)
+              (by omega)]
+          rw [if_neg h7, if_neg h7]
+          rw [unRpnTokens_congr_aux n rest (by omega) fuel fuel' (by omega)
+            (by omega)]
+
+lemma unRpnTokens_congr (ts : List ℕ) {fuel fuel' : ℕ}
+    (hf : ts.length ≤ fuel) (hf' : ts.length ≤ fuel') :
+    unRpnTokens fuel ts = unRpnTokens fuel' ts :=
+  unRpnTokens_congr_aux ts.length ts le_rfl fuel fuel' hf hf'
+
+/-! ### Chunk equations for `unRpn` (canonical blocks) -/
+
+lemma unRpn_nil : unRpn [] = [] := rfl
+
+/-- A complete price chunk with a canonical Polish block contracts exactly. -/
+lemma unRpn_price_chunk (φ : Sentence) (d : ℕ) (rest : List ℕ) :
+    unRpn (0 :: (rpn φ ++ d :: rest)) =
+      0 :: Encodable.encode φ :: d :: unRpn rest := by
+  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+    parseRpn_rpn φ (d :: rest) (by simp)]
+  simp only []
+  rw [unRpnTokens_congr rest (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
+  rfl
+
+/-- A complete trade chunk with a canonical Polish block contracts exactly. -/
+lemma unRpn_trade_chunk (φ : Sentence) (rest : List ℕ) :
+    unRpn (6 :: (rpn φ ++ rest)) =
+      6 :: Encodable.encode φ :: unRpn rest := by
+  rw [unRpn, List.length_cons, unRpnTokens_cons,
+    if_neg (by norm_num), if_pos rfl,
+    parseRpn_rpn φ rest (by simp)]
+  simp only []
+  rw [unRpnTokens_congr rest (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
+  rfl
+
+/-- A complete price chunk with an escaped canonical code contracts exactly. -/
+lemma unRpn_price_escape_chunk (φ : Sentence) (d : ℕ) (rest : List ℕ) :
+    unRpn (0 :: 1 :: Encodable.encode φ :: d :: rest) =
+      0 :: Encodable.encode φ :: d :: unRpn rest := by
+  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+    parseRpn_escape φ (d :: rest) (by simp)]
+  simp only []
+  rw [unRpnTokens_congr rest (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
+  rfl
+
+/-- A complete trade chunk with an escaped canonical code contracts exactly. -/
+lemma unRpn_trade_escape_chunk (φ : Sentence) (rest : List ℕ) :
+    unRpn (6 :: 1 :: Encodable.encode φ :: rest) =
+      6 :: Encodable.encode φ :: unRpn rest := by
+  rw [unRpn, List.length_cons, unRpnTokens_cons,
+    if_neg (by norm_num), if_pos rfl,
+    parseRpn_escape φ rest (by simp)]
+  simp only []
+  rw [unRpnTokens_congr rest (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
+  rfl
+
+/-- Opaque payload chunks (rational constants, variable indices) copy verbatim. -/
+lemma unRpn_payload_chunk (t c : ℕ) (ht : t = 1 ∨ t = 7) (rest : List ℕ) :
+    unRpn (t :: c :: rest) = t :: c :: unRpn rest := by
+  rcases ht with rfl | rfl
+  · rw [unRpn, List.length_cons, unRpnTokens_cons,
+      if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+    simp only []
+    rw [unRpnTokens_congr rest (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
+    rfl
+  · rw [unRpn, List.length_cons, unRpnTokens_cons,
+      if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num),
+      if_pos rfl]
+    simp only []
+    rw [unRpnTokens_congr rest (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
+    rfl
+
+/-- Bare operator/close tokens copy verbatim. -/
+lemma unRpn_single_chunk (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t ≠ 7)
+    (rest : List ℕ) :
+    unRpn (t :: rest) = t :: unRpn rest := by
+  obtain ⟨h0, h1, h6, h7⟩ := ht
+  rw [unRpn, List.length_cons, unRpnTokens_cons,
+    if_neg h0, if_neg h6, if_neg h1, if_neg h7]
+  rw [unRpnTokens_congr rest (by omega) le_rfl]
+  rfl
+
 #print axioms parseRpn_rpn
 #print axioms parseRpn_escape
 #print axioms rpn_injective
+#print axioms unRpn_price_chunk
+#print axioms unRpn_trade_chunk
 
 end LogicalInduction
