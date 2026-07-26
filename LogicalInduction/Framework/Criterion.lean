@@ -1602,7 +1602,8 @@ lemma foldl_undigitizeStep_tokenBlock (out : List ℕ) (t : ℕ) :
   rw [tokenBlock, List.foldl_append, foldl_undigitizeStep_natDigits4]
   simp [undigitizeStep]
 
-/-- **Digitization round-trips**: the digit stream determines the token stream. -/
+/-- **Digitization round-trips**: the digit stream determines the token stream.
+Paper node: `def:ec` -/
 lemma undigitize_digitize (ts : List ℕ) : undigitize (digitize ts) = ts := by
   suffices h : ∀ out, (List.foldl undigitizeStep (out, 0, 1) (digitize ts)).1 = out ++ ts by
     simpa using h []
@@ -1615,7 +1616,8 @@ lemma undigitize_digitize (ts : List ℕ) : undigitize (digitize ts) = ts := by
       rw [show (rest.flatMap tokenBlock) = digitize rest from rfl, ih]
       simp
 
-/-- `digitize` is injective. -/
+/-- `digitize` is injective.
+Paper node: `def:ec` -/
 lemma digitize_injective : Function.Injective digitize := by
   intro a b h
   have := undigitize_digitize a

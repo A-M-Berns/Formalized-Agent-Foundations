@@ -605,7 +605,8 @@ theorem lic_expectations_of_probabilities_ofCode_unconditional
     (liaHistory (theoremDP T)) φ hφ q hexact
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:er`, unconditional over `LIA`. -/
+/-- `thm:er`, unconditional over `LIA`.
+Paper node: `thm:er` -/
 theorem lic_iterated_expectations_ofCode_unconditional
     {value : ℕ → ℚ} (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X)
     (q : RationalQuoteCode T value)
@@ -617,7 +618,8 @@ theorem lic_iterated_expectations_ofCode_unconditional
     (liaHistory (theoremDP T)) X hX q hexact
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:ref` (introspection), unconditional over `LIA`. -/
+/-- `thm:ref` (introspection), unconditional over `LIA`.
+Paper node: `thm:ref` -/
 theorem lic_introspection_ofCode_unconditional
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) (a b δ : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
@@ -662,7 +664,8 @@ theorem lic_paradox_resistance_ofDiagonal_unconditional
     (theoremMarketComputation T) p hp0 hp1 width hwidth hwidthInv hwidthPos hwidthZero
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:cee` (expected future expectations), unconditional over `LIA`. -/
+/-- `thm:cee` (expected future expectations), unconditional over `LIA`.
+Paper node: `thm:cee` -/
 theorem lic_expected_future_expectations_ofRepresentation_unconditional
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     (X Y : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X) (hY : LUV.PolyThresholdCodeSeq Y)
@@ -677,7 +680,8 @@ theorem lic_expected_future_expectations_ofRepresentation_unconditional
     (DP := theoremDP T) f hstrict X Y hX hY source_valued reflected
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:ceu` (no expected net update), unconditional over `LIA`. -/
+/-- `thm:ceu` (no expected net update), unconditional over `LIA`.
+Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update_ofRepresentation_unconditional
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
@@ -691,7 +695,8 @@ theorem lic_no_expected_net_update_ofRepresentation_unconditional
     (DP := theoremDP T) f hstrict φ Y hφ hY reflected
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:ccee` (conditional no expected net update), unconditional over `LIA`. -/
+/-- `thm:ccee` (conditional no expected net update), unconditional over `LIA`.
+Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_ofRepresentation_unconditional
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     (X Z Z' : ℕ → LUV) (w : ℕ → ℚ)
@@ -713,7 +718,8 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation_unconditional
     source_valued left_reflected right_reflected
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:st` (self-trust), unconditional over `LIA`. -/
+/-- `thm:st` (self-trust), unconditional over `LIA`.
+Paper node: `thm:st` -/
 theorem lic_self_trust_ofRepresentation_unconditional
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
@@ -741,7 +747,8 @@ The other five `_ofComputation` meta-learning endpoints instantiate over `liaHis
 `theoremPresentation` + `theoremDP_hworld`. Only the caller's concrete computation and the
 (true) hypothesis about it remain. -/
 
-/-- `thm:pac`, unconditional over `LIA`. -/
+/-- `thm:pac`, unconditional over `LIA`.
+Paper node: `thm:pac` -/
 theorem lic_belief_finitistic_consistency_unconditional [𝗥₀ ⪯ T]
     (consistentWithin : ℕ → Prop) (C : BoundedComputation consistentWithin)
     (hconsistent : ∀ n, consistentWithin n) :
@@ -753,7 +760,8 @@ theorem lic_belief_finitistic_consistency_unconditional [𝗥₀ ⪯ T]
     (liaHistory (theoremDP T)) consistentWithin C hconsistent
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:pazfc`, unconditional over `LIA`. -/
+/-- `thm:pazfc`, unconditional over `LIA`.
+Paper node: `thm:pazfc` -/
 theorem lic_belief_stronger_theory_consistency_unconditional [𝗥₀ ⪯ T]
     (strongerConsistentWithin : ℕ → Prop)
     (C : BoundedComputation strongerConsistentWithin)
@@ -766,7 +774,8 @@ theorem lic_belief_stronger_theory_consistency_unconditional [𝗥₀ ⪯ T]
     (liaHistory (theoremDP T)) strongerConsistentWithin C hconsistent
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:incons`, unconditional over `LIA`. -/
+/-- `thm:incons`, unconditional over `LIA`.
+Paper node: `thm:incons` -/
 theorem lic_disbelief_inconsistent_theories_unconditional [𝗥₀ ⪯ T]
     (inconsistent : ℕ → Prop) (C : SemidecidableComputation inconsistent)
     (hall : ∀ n, inconsistent n) :
@@ -781,7 +790,8 @@ theorem lic_disbelief_inconsistent_theories_unconditional [𝗥₀ ⪯ T]
     (liaHistory (theoremDP T)) inconsistent C hall
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:loops`, unconditional over `LIA`. -/
+/-- `thm:loops`, unconditional over `LIA`.
+Paper node: `thm:loops` -/
 theorem lic_learns_provable_nonhalting_patterns_unconditional [𝗥₀ ⪯ T]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
     (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
@@ -795,7 +805,8 @@ theorem lic_learns_provable_nonhalting_patterns_unconditional [𝗥₀ ⪯ T]
     (liaHistory (theoremDP T)) machines inputs hm hi hloops
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:dontwait`, unconditional over `LIA`. -/
+/-- `thm:dontwait`, unconditional over `LIA`.
+Paper node: `thm:dontwait` -/
 theorem lic_does_not_anticipate_halting_unconditional [𝗥₀ ⪯ T]
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
     (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)

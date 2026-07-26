@@ -145,7 +145,8 @@ def PCWorld.ValuesAt (v : PCWorld) (X : LUV) (x : ℝ) : Prop :=
     ∀ r : ℚ, ((r : ℝ) < x → v.Holds (X.gt r)) ∧ (x < (r : ℝ) → ¬ v.Holds (X.gt r))
 
 /-- A world values a LUV at most one real: distinct candidates are separated by a rational
-threshold the world would have to both affirm and deny. -/
+threshold the world would have to both affirm and deny.
+Paper node: `def:luv` -/
 lemma PCWorld.ValuesAt.eq {v : PCWorld} {X : LUV} {x y : ℝ}
     (hx : v.ValuesAt X x) (hy : v.ValuesAt X y) : x = y := by
   by_contra hne

@@ -143,7 +143,8 @@ lemma decodedQuotationRat_lt_computablePred {value : ℕ → ℚ} (hvalue : Comp
 /-- Every total computable `[0,1]`-rational sequence has a `RationalQuoteCode`: name the
 Boolean comparison decider by its program, and completeness is FFL weak representation of
 the folded universal fibers (`BooleanQuoteCode.ofComputable`).  The `threshold_poly`
-obligation is the Part-A emitter. -/
+obligation is the Part-A emitter.
+Paper node: `thm:epr` -/
 noncomputable def RationalQuoteCode.ofComputable (T : ArithmeticTheory) [𝗥₀ ⪯ T]
     [T.SoundOnHierarchy 𝚺 1] {value : ℕ → ℚ} (hvalue : Computable value)
     (hmem : ∀ n, 0 ≤ value n ∧ value n ≤ 1) : RationalQuoteCode T value :=
@@ -307,7 +308,8 @@ lemma MarketComputation.expectQuoteAt_computable {P : History}
     (ratNatCast_prim.to_comp.comp Computable.snd) : _) :
     Computable fun a : ℕ × ℕ => market.expectQuoteAt X a.1 a.2)
 
-/-- Diagonal corollary: the day-`n` expectation sequence is computable. -/
+/-- Diagonal corollary: the day-`n` expectation sequence is computable.
+Paper node: `thm:er` -/
 lemma MarketComputation.expectQuote_computable {P : History}
     (market : MarketComputation P)
     {X : ℕ → LUV} (hX : LUV.PolyThresholdCodeSeq X) :
@@ -389,7 +391,8 @@ noncomputable def indicatorProductLUV {T : ArithmeticTheory} {value : ℕ → �
 lemma PCWorld.holds_top (v : PCWorld) : v.Holds (⊤ : Sentence) := fun h => h
 
 /-- **The product law**: completed-theory worlds value the indicator product at exactly
-`payout(φ n) · value n`. -/
+`payout(φ n) · value n`.
+Paper node: `thm:st` -/
 lemma indicatorProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory}
     {value : ℕ → ℚ} (Q : QuotationTheoryPresentation DP T)
     (q : RationalQuoteCode T value) (φ : ℕ → Sentence) (n : ℕ)

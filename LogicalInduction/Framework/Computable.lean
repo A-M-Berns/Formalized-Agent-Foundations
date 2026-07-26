@@ -2670,7 +2670,8 @@ lemma PolySegStream.block {ctok : Nat.Partrec.Code} {tokenFn : ℕ → ℕ}
     rw [if_neg h, if_pos hje, if_neg (by omega : ¬ j + 1 - len4 (tokenFn m) = 0)]
 
 /-- **The digit transformer**: the digit stream of a `PolySegStream` is a
-`PolySegStream` — the block family concatenated by the runtime prefix scan. -/
+`PolySegStream` — the block family concatenated by the runtime prefix scan.
+Paper node: `def:ec` -/
 lemma PolySegStream.digitizeStream {s : ℕ → List ℕ} (h : PolySegStream s) :
     PolySegStream (fun n => digitize (s n)) := by
   obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hlens, hspec⟩ := h

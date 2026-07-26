@@ -45,12 +45,12 @@ awk '
   /^  [A-Za-z]/           { if(mode=="ax") print; next }
   { mode="" }
 ' "$AUDIT" \
-  | grep -oE '[A-Za-z_][A-Za-z0-9_.'"'"']*' \
+  | grep -oE '[A-Za-z_][A-Za-z0-9_.₀₁₂₃₄₅₆₇₈₉'"'"']*' \
   | sed 's/.*\.//' | sort -u > /tmp/_pn_inv
 # short names that carry a Paper node field (declaration on the line after the field's `-/`)
 grep -rlE 'Paper nodes?:' --include='*.lean' "$LIB" | while read -r f; do
   awk '/Paper nodes?:/{p=1} p&&/-\/$/{f=1;next} f{print;f=0;p=0}' "$f"
-done | grep -oE '(structure|def|theorem|lemma|abbrev|class)\s+[A-Za-z_][A-Za-z0-9_.'"'"']*' \
+done | grep -oE '(structure|def|theorem|lemma|abbrev|class)\s+[A-Za-z_][A-Za-z0-9_.₀₁₂₃₄₅₆₇₈₉'"'"']*' \
   | awk '{print $2}' | sed 's/.*\.//' | sort -u > /tmp/_pn_have
 
 while read -r nm; do

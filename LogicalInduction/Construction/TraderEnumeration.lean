@@ -122,7 +122,8 @@ lemma exists_enumeratedTrader_eq (Tr : Trader) (hTr : EfficientlyComputableTok T
   exact hp
 
 /-- `prop:enumeration`, digit-model coverage clause: every digit-model efficiently
-computable trader occurs in the concrete natural-indexed sequence (at an odd index). -/
+computable trader occurs in the concrete natural-indexed sequence (at an odd index).
+Paper node: `lem:tfdom` -/
 lemma exists_enumeratedTrader₂_eq (Tr : Trader) (hTr : EfficientlyComputableTok₂ Tr) :
     ∃ j : ℕ, enumeratedTrader j = Tr := by
   obtain ⟨p, hp⟩ := exists_traderProgram₂_eq Tr hTr
