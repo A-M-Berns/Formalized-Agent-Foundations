@@ -1194,6 +1194,110 @@ lemma all_validCode_eq_all_one (L : List ℕ) (h : ∀ m ∈ L, m ≤ 1) :
       · simp [validCode_zero]
       · simp [validCode_one]
 
+/-! ### Runtime `sqrt` and `size` -/
+
+section RuntimeArith
+
+attribute [local irreducible] Nat.sqrt
+
+/-- One step of the counting square root: bump the count while `(j+1)² ≤ a`. -/
+lemma sqrtc_polyFueled : ∃ c, PolyFueled c Nat.sqrt := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  obtain ⟨cm, hm⟩ := mul_polyFueled
+  have aPF := PolyFueled.left
+  have jPF := PolyFueled.left.comp PolyFueled.right
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  have j1PF := jPF.succ_comp
+  have sqPF := (hm.comp (j1PF.pair j1PF)).of_eq
+    (f' := fun z => (z.unpair.2.unpair.1 + 1) * (z.unpair.2.unpair.1 + 1))
+    (fun z => by simp only [Nat.unpair_pair])
+  have tPF := subc_polyFueled.comp (sqPF.pair aPF)
+  have indPF := ifzSel_polyFueled.comp ((PolyFueled.const (Nat.pair 1 0)).pair tPF)
+  have gPF := had.comp (prevPF.pair indPF)
+  have hst : IsPolyBounded (fun m => min m.unpair.2 (Nat.sqrt m.unpair.1)) :=
+    isPolyBounded_snd.of_le (fun m => Nat.min_le_left _ _)
+  have hprec := PolyFueled.prec (PolyFueled.const 0) gPF
+    (st := fun a j => min j (Nat.sqrt a))
+    (fun a => by simp)
+    (fun a j => by
+      simp only [Nat.unpair_pair, ifzSelFn]
+      have hiff : (j + 1) * (j + 1) ≤ a ↔ j + 1 ≤ Nat.sqrt a := Nat.le_sqrt.symm
+      by_cases hc : (j + 1) * (j + 1) - a = 0
+      · have : j + 1 ≤ Nat.sqrt a := hiff.mp (by omega)
+        rw [if_pos hc]
+        omega
+      · have : ¬ (j + 1 ≤ Nat.sqrt a) := fun hcon => hc (by
+          have := hiff.mpr hcon
+          omega)
+        rw [if_neg hc]
+        omega)
+    hst
+  refine ⟨_, (hprec.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun a => ?_)⟩
+  simp only [Nat.unpair_pair]
+  exact Nat.min_eq_right (Nat.sqrt_le_self a)
+
+/-- One step of the halving `size` scan: bump the count while the quotient is nonzero. -/
+def szStep (p : ℕ) : ℕ :=
+  ifzSelFn (Nat.pair p (Nat.pair (p.unpair.1 / 2) (p.unpair.2 + 1))) p.unpair.1
+
+lemma szStep_spec (a j : ℕ) :
+    szStep (Nat.pair (a / 2 ^ j) (min j a.size)) =
+      Nat.pair (a / 2 ^ (j + 1)) (min (j + 1) a.size) := by
+  by_cases hc : a / 2 ^ j = 0
+  · have hlt : a < 2 ^ j := by
+      rw [Nat.div_eq_zero_iff] at hc
+      have : (0:ℕ) < 2 ^ j := Nat.pow_pos (by norm_num)
+      omega
+    have hs : a.size ≤ j := Nat.size_le.mpr hlt
+    have h1 : a / 2 ^ (j + 1) = 0 :=
+      Nat.div_eq_of_lt (lt_of_lt_of_le hlt (Nat.pow_le_pow_right (by norm_num) (by omega)))
+    rw [szStep, ifzSelFn]
+    simp only [Nat.unpair_pair, hc, if_true]
+    rw [h1, Nat.min_eq_right hs, Nat.min_eq_right (by omega)]
+  · have h2j : 2 ^ j ≤ a := by
+      rw [Nat.div_eq_zero_iff] at hc
+      have : (0:ℕ) < 2 ^ j := Nat.pow_pos (by norm_num)
+      omega
+    have hjs : j < a.size := by
+      by_contra hcon
+      have := Nat.size_le.mp (le_of_not_gt hcon)
+      omega
+    rw [szStep, ifzSelFn]
+    simp only [Nat.unpair_pair]
+    rw [if_neg hc, Nat.div_div_eq_div_mul, ← pow_succ,
+      Nat.min_eq_left (by omega), Nat.min_eq_left (by omega)]
+
+lemma sizec_polyFueled : ∃ c, PolyFueled c Nat.size := by
+  obtain ⟨cdm, hdm⟩ := divmodc_polyFueled 2 (by norm_num)
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  have curPF := PolyFueled.left.comp prevPF
+  have cntPF := PolyFueled.right.comp prevPF
+  have halfPF := (PolyFueled.left.comp (hdm.comp curPF)).of_eq
+    (f' := fun z => z.unpair.2.unpair.2.unpair.1 / 2)
+    (fun z => by simp only [Nat.unpair_pair])
+  have gPF : PolyFueled _ (fun z => szStep (z.unpair.2.unpair.2)) :=
+    (ifzSel_polyFueled.comp ((prevPF.pair (halfPF.pair cntPF.succ_comp)).pair curPF)).of_eq
+      (fun z => by simp only [Nat.unpair_pair, szStep])
+  have hst : IsPolyBounded (fun m =>
+      Nat.pair (m.unpair.1 / 2 ^ m.unpair.2) (min m.unpair.2 m.unpair.1.size)) := by
+    apply (isPolyBounded_fst.pair isPolyBounded_snd).of_le
+    intro m
+    exact le_trans (pair_le_pair_left' _ (Nat.div_le_self _ _))
+      (pair_le_pair_right' _ (Nat.min_le_left _ _))
+  have hprec := PolyFueled.prec (PolyFueled.id.pair (PolyFueled.const 0)) gPF
+    (st := fun a j => Nat.pair (a / 2 ^ j) (min j a.size))
+    (fun a => by simp)
+    (fun a j => by
+      simp only [Nat.unpair_pair]
+      exact (szStep_spec a j).symm)
+    hst
+  refine ⟨_, (PolyFueled.right.comp
+    (hprec.comp (PolyFueled.id.pair PolyFueled.id))).of_eq (fun a => ?_)⟩
+  simp only [Nat.unpair_pair]
+  exact Nat.min_eq_right (Nat.size_le.mpr (Nat.lt_pow_self (by norm_num)))
+
+end RuntimeArith
+
 /-! ## Residual operational input and the assembled boundary -/
 
 /-- Compact operational input for the concrete prefix machine: the single fuel-model
