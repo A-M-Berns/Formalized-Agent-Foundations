@@ -1368,6 +1368,17 @@ lemma innerOut_add_one_le (B B' P : ℕ) :
         _ ≤ B' ^ (2 * k) * (B' * B') := Nat.mul_le_mul_right _ IH
         _ = B' ^ (2 * (k + 1)) := by ring
 
+/-- Digit extraction from a packed list: `P / B^k % B` is the `k`-th slot. -/
+lemma ofDigits_digit {B : ℕ} (hB : 0 < B) {L : List ℕ} (hd : ∀ v ∈ L, v < B)
+    {k : ℕ} (hk : k < L.length) :
+    Nat.ofDigits B L / B ^ k % B = L[k] := by
+  rw [Nat.ofDigits_div_pow_eq_ofDigits_drop k hB L hd,
+    List.drop_eq_getElem_cons hk, Nat.ofDigits_cons]
+  have : (L[k] : ℕ) + B * Nat.ofDigits B (L.drop (k + 1)) =
+      L[k] + Nat.ofDigits B (L.drop (k + 1)) * B := by ring
+  rw [this, Nat.add_mul_mod_self_right,
+    Nat.mod_eq_of_lt (hd _ (L.getElem_mem hk))]
+
 /-- **The packed transform computes `levelStep`** (with the per-level reversal). -/
 lemma innerOut_bridge (B B' : ℕ) (hB : 0 < B) (L : List ℕ) (hd : ∀ v ∈ L, v < B) :
     ∀ k, k ≤ L.length → innerOut B B' (Nat.ofDigits B L) k =
@@ -1378,13 +1389,8 @@ lemma innerOut_bridge (B B' : ℕ) (hB : 0 < B) (L : List ℕ) (hd : ∀ v ∈ L
   | succ k ih =>
       intro hk
       have hklt : k < L.length := by omega
-      have hdig : (Nat.ofDigits B L : ℕ) / B ^ k % B = L[k] := by
-        rw [Nat.ofDigits_div_pow_eq_ofDigits_drop k hB L hd,
-          List.drop_eq_getElem_cons hklt, Nat.ofDigits_cons]
-        have : (L[k] : ℕ) + B * Nat.ofDigits B (L.drop (k + 1)) =
-            L[k] + Nat.ofDigits B (L.drop (k + 1)) * B := by ring
-        rw [this, Nat.add_mul_mod_self_right,
-          Nat.mod_eq_of_lt (hd _ (L.getElem_mem hklt))]
+      have hdig : (Nat.ofDigits B L : ℕ) / B ^ k % B = L[k] :=
+        ofDigits_digit hB hd hklt
       have htake : (L.take (k + 1)).reverse = L[k] :: (L.take k).reverse := by
         rw [List.take_add_one, List.getElem?_eq_getElem hklt]
         simp
@@ -1693,6 +1699,203 @@ lemma capP_dominates (n : ℕ) : ∀ d ≤ n.size.size + 3,
         congr 1
         ring
     _ = sq2core n ^ 64 := rfl
+
+/-! ### The outer level loop -/
+
+/-- One outer step on the state `⟨SB, ⟨W, P⟩⟩`: advance the slot bound along the `√`
+chain, double the (capped) width, and run the packed level transform for `W` slots. -/
+def outerStep (n s : ℕ) : ℕ :=
+  Nat.pair (Nat.sqrt s.unpair.1 + 1)
+    (Nat.pair (min (s.unpair.2.unpair.1 + s.unpair.2.unpair.1) (capW n))
+      (innerOutC (s.unpair.1 + 2) (Nat.sqrt s.unpair.1 + 3) (capP n)
+        s.unpair.2.unpair.2 s.unpair.2.unpair.1))
+
+def outerSt (n : ℕ) : ℕ → ℕ
+  | 0 => Nat.pair n (Nat.pair 1 n)
+  | d + 1 => outerStep n (outerSt n d)
+
+/-- **On-diagonal characterization**: up to the resolution depth, the outer state is
+exactly the `√`-chain bound, the true width `2^d`, and the packed level. -/
+lemma outerSt_eq (n : ℕ) : ∀ d, d ≤ n.size.size + 3 →
+    outerSt n d = Nat.pair (sbChain n d)
+      (Nat.pair (2 ^ d) (Nat.ofDigits (sbChain n d + 2) (levelsM n d))) := by
+  intro d
+  induction d with
+  | zero =>
+      intro _
+      simp [outerSt, sbChain, levelsM, Nat.ofDigits_singleton]
+  | succ d ih =>
+      intro hd
+      rw [outerSt, ih (by omega), outerStep]
+      simp only [Nat.unpair_pair]
+      rw [show Nat.sqrt (sbChain n d) + 3 = sbChain n (d + 1) + 2 from rfl,
+        show Nat.sqrt (sbChain n d) + 1 = sbChain n (d + 1) from rfl]
+      set B := sbChain n d + 2 with hB
+      set B' := sbChain n (d + 1) + 2 with hB'
+      set L := levelsM n d with hL
+      have hBpos : 0 < B := by omega
+      have hB'pos : 0 < B' := by omega
+      have hlen : L.length = 2 ^ d := length_levelsM n d
+      have hdig : ∀ v ∈ L, v < B := fun v hv => by
+        have := levelsM_le n d v hv
+        omega
+      have hch : ∀ j < 2 ^ d,
+          chL (Nat.ofDigits B L / B ^ j % B) < B' ∧
+          chR (Nat.ofDigits B L / B ^ j % B) < B' := by
+        intro j hj
+        have hjlt : j < L.length := by omega
+        rw [ofDigits_digit hBpos hdig hjlt]
+        have hmem : L[j] ∈ L := L.getElem_mem hjlt
+        have hle : L[j] ≤ sbChain n d := levelsM_le n d _ hmem
+        have hchL : chL L[j] ≤ Nat.sqrt (sbChain n d) + 1 :=
+          le_trans (chL_le _) (by
+            have := Nat.sqrt_le_sqrt hle
+            omega)
+        have hchR : chR L[j] ≤ Nat.sqrt (sbChain n d) + 1 :=
+          le_trans (chR_le _) (by
+            have := Nat.sqrt_le_sqrt hle
+            omega)
+        have hsb : Nat.sqrt (sbChain n d) + 1 = sbChain n (d + 1) := rfl
+        omega
+      have hbound : innerOut B B' (Nat.ofDigits B L) (2 ^ d) + 1 ≤ B' ^ (2 * 2 ^ d) :=
+        innerOut_add_one_le B B' _ (2 ^ d) hch
+      have hcapP : B' ^ (2 * 2 ^ d) ≤ capP n := by
+        have h1 : B' ^ (2 * 2 ^ d) = B' ^ 2 ^ (d + 1) := by
+          congr 1
+          rw [pow_succ]
+          ring
+        rw [h1, hB']
+        exact capP_dominates n (d + 1) hd
+      have hunclamp : innerOutC B B' (capP n) (Nat.ofDigits B L) (2 ^ d) =
+          innerOut B B' (Nat.ofDigits B L) (2 ^ d) :=
+        innerOutC_eq_innerOut B B' (capP n) _ (by omega) _ (by omega)
+      have hbridge : innerOut B B' (Nat.ofDigits B L) (2 ^ d) =
+          Nat.ofDigits B' (levelsM n (d + 1)) := by
+        rw [innerOut_bridge B B' hBpos L hdig (2 ^ d) (by omega),
+          show L.take (2 ^ d) = L from List.take_of_length_le (by omega)]
+        rfl
+      have hW : min (2 ^ d + 2 ^ d) (capW n) = 2 ^ (d + 1) := by
+        have h2 : (2:ℕ) ^ (d + 1) = 2 ^ d + 2 ^ d := by
+          rw [pow_succ]
+          ring
+        rw [← h2]
+        exact Nat.min_eq_left (pow_le_capW n (d + 1) hd)
+      rw [hW, hunclamp, hbridge]
+
+/-- Componentwise bounds of the outer state (the off-diagonal safety of the clamps). -/
+lemma outerSt_le (n : ℕ) : ∀ d,
+    (outerSt n d).unpair.1 ≤ max n 2 ∧
+    (outerSt n d).unpair.2.unpair.1 ≤ max 1 (capW n) ∧
+    (outerSt n d).unpair.2.unpair.2 ≤ max n (capP n) := by
+  intro d
+  induction d with
+  | zero =>
+      rw [outerSt]
+      simp only [Nat.unpair_pair]
+      exact ⟨le_max_left _ _, le_max_left _ _, le_max_left _ _⟩
+  | succ d ih =>
+      rw [outerSt, outerStep]
+      simp only [Nat.unpair_pair]
+      obtain ⟨h1, _, _⟩ := ih
+      refine ⟨?_, le_trans (Nat.min_le_right _ _) (le_max_right _ _),
+        le_trans (innerOutC_le_cap _ _ _ _ _) (le_max_right _ _)⟩
+      set x := (outerSt n d).unpair.1
+      rcases le_or_gt x 1 with hx | hx
+      · have : Nat.sqrt x ≤ 1 := le_trans (Nat.sqrt_le_self x) hx
+        omega
+      · have hlt : Nat.sqrt x < x := Nat.sqrt_lt_self hx
+        have : x ≤ max n 2 := h1
+        omega
+
+/-- The outer loop is poly-fueled. -/
+lemma outerLoop_polyFueled :
+    ∃ c, PolyFueled c (fun m => outerSt m.unpair.1 m.unpair.2) := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  obtain ⟨csq, hsq⟩ := sqrtc_polyFueled
+  obtain ⟨cw, hw⟩ := capW_polyFueled
+  obtain ⟨cp, hp⟩ := capP_polyFueled
+  obtain ⟨cil, hil⟩ := innerLoop_polyFueled
+  have nPF := PolyFueled.left
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  have SBPF := PolyFueled.left.comp prevPF
+  have WPF := PolyFueled.left.comp (PolyFueled.right.comp prevPF)
+  have PPF := PolyFueled.right.comp (PolyFueled.right.comp prevPF)
+  have sqPF := hsq.comp SBPF
+  have SB'PF := sqPF.succ_comp
+  have W2PF := had.comp (WPF.pair WPF)
+  have capWz := hw.comp nPF
+  have W'PF := (subc_polyFueled.comp
+      (W2PF.pair (subc_polyFueled.comp (W2PF.pair capWz)))).of_eq
+    (f' := fun z => min (z.unpair.2.unpair.2.unpair.2.unpair.1 +
+        z.unpair.2.unpair.2.unpair.2.unpair.1) (capW z.unpair.1))
+    (fun z => by simp only [Nat.unpair_pair]; omega)
+  have capPz := hp.comp nPF
+  have bPF := SBPF.succ_comp
+  have b'PF := sqPF.succ_comp.succ_comp
+  have innerArg := ((bPF.pair b'PF).pair (capPz.pair PPF)).pair WPF
+  have innerRes := hil.comp innerArg
+  have P'PF := PolyFueled.right.comp innerRes
+  have gPF := SB'PF.pair (W'PF.pair P'PF)
+  have hst : IsPolyBounded (fun m => outerSt m.unpair.1 m.unpair.2) := by
+    have hcapW : IsPolyBounded (fun m : ℕ => capW m.unpair.1) := by
+      refine ⟨32, 1, fun m => ?_⟩
+      have h1 := Nat.unpair_left_le m
+      have h2 : m.unpair.1.size ≤ m.unpair.1 :=
+        Nat.size_le.mpr (Nat.lt_pow_self (by norm_num))
+      simp only [capW]
+      nlinarith
+    have hcapP : IsPolyBounded (fun m : ℕ => capP m.unpair.1) := by
+      refine ⟨2 * 5 ^ 64, 129, fun m => ?_⟩
+      set x := m.unpair.1
+      have hx : x ≤ m := Nat.unpair_left_le m
+      have hs : sq2core x ≤ 5 * (x + 1) * (x + 1) := by
+        have := sq2core_le x
+        nlinarith
+      have hs' : sq2core x ^ 64 ≤ (5 * (x + 1) * (x + 1)) ^ 64 :=
+        Nat.pow_le_pow_left hs _
+      have hexp : (5 * (x + 1) * (x + 1)) ^ 64 = 5 ^ 64 * (x + 1) ^ 128 := by
+        rw [show 5 * (x + 1) * (x + 1) = 5 * ((x + 1) * (x + 1)) by ring, mul_pow,
+          show (x + 1) * (x + 1) = (x + 1) ^ 2 by ring, ← pow_mul]
+      have hfin : capP x ≤ 2 * 5 ^ 64 * (x + 1) ^ 129 := by
+        rw [capP]
+        calc sq2core x ^ 64 * (x + 2) ≤ 5 ^ 64 * (x + 1) ^ 128 * (x + 2) := by
+              rw [← hexp]
+              exact Nat.mul_le_mul_right _ hs'
+          _ ≤ 5 ^ 64 * (x + 1) ^ 128 * (2 * (x + 1)) := by
+              exact Nat.mul_le_mul_left _ (by omega)
+          _ = 2 * 5 ^ 64 * (x + 1) ^ 129 := by ring
+      calc capP x ≤ 2 * 5 ^ 64 * (x + 1) ^ 129 := hfin
+        _ ≤ 2 * 5 ^ 64 * (m + 1) ^ 129 := by
+            exact Nat.mul_le_mul_left _ (Nat.pow_le_pow_left (by omega) _)
+        _ ≤ 2 * 5 ^ 64 * (m + 1) ^ 129 + 2 * 5 ^ 64 := Nat.le_add_right _ _
+    have hmax1 : IsPolyBounded (fun m : ℕ => max m.unpair.1 2) :=
+      (IsPolyBounded.linear 2).of_le (fun m => by
+        have := Nat.unpair_left_le m
+        omega)
+    have hmax2 : IsPolyBounded (fun m : ℕ => max 1 (capW m.unpair.1)) :=
+      hcapW.add_one.of_le (fun m => by omega)
+    have hmax3 : IsPolyBounded (fun m : ℕ => max m.unpair.1 (capP m.unpair.1)) :=
+      isPolyBounded_fst.max hcapP
+    apply (hmax1.pair (hmax2.pair hmax3)).of_le
+    intro m
+    obtain ⟨h1, h2, h3⟩ := outerSt_le m.unpair.1 m.unpair.2
+    calc outerSt m.unpair.1 m.unpair.2
+        = Nat.pair (outerSt m.unpair.1 m.unpair.2).unpair.1
+            (Nat.pair (outerSt m.unpair.1 m.unpair.2).unpair.2.unpair.1
+              (outerSt m.unpair.1 m.unpair.2).unpair.2.unpair.2) := by
+          rw [Nat.pair_unpair, Nat.pair_unpair]
+      _ ≤ Nat.pair (max m.unpair.1 2)
+            (Nat.pair (max 1 (capW m.unpair.1)) (max m.unpair.1 (capP m.unpair.1))) := by
+          refine le_trans (pair_le_pair_right' _ ?_) (pair_le_pair_left' _ h1)
+          exact le_trans (pair_le_pair_right' _ h3) (pair_le_pair_left' _ h2)
+  exact ⟨_, PolyFueled.prec (PolyFueled.id.pair ((PolyFueled.const 1).pair PolyFueled.id))
+    gPF
+    (st := fun n d => outerSt n d)
+    (fun n => rfl)
+    (fun n d => by
+      simp only [Nat.unpair_pair]
+      rfl)
+    hst⟩
 
 /-! ## Residual operational input and the assembled boundary -/
 
