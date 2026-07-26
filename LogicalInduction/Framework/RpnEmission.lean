@@ -294,7 +294,131 @@ lemma RpnSentenceCodes.ofPolySentenceCodes {φ : ℕ → Sentence}
       ((PolyTokenStream.const 1).append (PolyTokenStream.polyTok hc)),
     fun n => parseRpn_escape (φ n) [] (by norm_num)⟩
 
+/-- Reindexing along a poly-fueled index map (e.g. `z ↦ z.unpair.1` for the paired
+family index of `PolySequence`). -/
+lemma RpnSentenceCodes.comp {φ : ℕ → Sentence} (h : RpnSentenceCodes φ)
+    {c : Nat.Partrec.Code} {f : ℕ → ℕ} (hf : PolyFueled c f) :
+    RpnSentenceCodes (fun z => φ (f z)) := by
+  obtain ⟨s, hs, hp⟩ := h
+  exact ⟨fun z => s (f z), hs.comp hf, fun z => hp (f z)⟩
+
+/-- **Single-trade realization over an 𝓔𝓒 sentence sequence**: a trader playing one
+trade per day, with a polynomially emittable price-free coefficient stream and an
+`RpnSentenceCodes` sentence sequence, is efficiently computable.  This is the workhorse
+for migrating the copy-only property families off the whole-value
+`PolySentenceCodes` hypothesis.
+Paper node: `def:ec` -/
+lemma EfficientlyComputable.ofSingleTradeBlocks (Tr : Trader) (f : ℕ → EF)
+    (φ : ℕ → Sentence)
+    (hf : PolySegStream fun n => (f n).serialize)
+    (hfree : ∀ n, (f n).priceFree)
+    (hφ : RpnSentenceCodes φ)
+    (hTr : ∀ n, (Tr.strat n).trades = [(f n, φ n)]) :
+    EfficientlyComputable Tr := by
+  obtain ⟨sφ, hsφ, hparse⟩ := hφ
+  have htag : PolySegStream (fun _ : ℕ => [6]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 6)
+  have hassemble : PolySegStream (fun n => (f n).serialize ++ 6 :: sφ n) :=
+    ((hf.append htag).append hsφ).of_eq fun n => by
+      simp [List.append_assoc]
+  apply ec_of_rawSegStream Tr hassemble.digitizeStream
+  intro n
+  rw [undigitize_digitize]
+  have hcontract : unRpn ((f n).serialize ++ 6 :: sφ n) =
+      serializeTrades [(f n, φ n)] := by
+    have := unRpn_tradeBlocks [((f n, φ n), sφ n)]
+      (fun p hp => by
+        rw [List.mem_singleton] at hp; subst hp
+        exact EF.serialize_unRpnTransparent (f n) (hfree n))
+      (fun p hp => by
+        rw [List.mem_singleton] at hp; subst hp
+        exact hparse n)
+    simpa using this
+  rw [hcontract]
+  have hrank : ∀ trade ∈ [(f n, φ n)], trade.1.rank ≤ n := by
+    intro trade htrade
+    have := (Tr.strat n).rank_le
+    rw [hTr n] at this
+    exact this trade htrade
+  have hdecode := deserializeTrades_serializeTrades [(f n, φ n)]
+  cases hS : Tr.strat n with
+  | mk trades rank_le =>
+      have htrades : trades = [(f n, φ n)] := by
+        have := hTr n; rwa [hS] at this
+      subst htrades
+      simp only [strategyOfTokens]
+      split
+      · next hnone => rw [hdecode] at hnone; exact absurd hnone (by simp)
+      · next trades' hsome =>
+          rw [hdecode] at hsome
+          obtain rfl := Option.some.inj hsome
+          rw [dif_pos hrank]
+
+/-- **Variable-count realization over an 𝓔𝓒 sentence sequence**: a trader playing
+`count n` trades on day `n` (indexed `z = ⟨n, j⟩`), with polynomially emittable
+price-free coefficient streams and an `RpnSentenceCodes` sentence family, is
+efficiently computable. -/
+lemma EfficientlyComputable.ofTradeBlocks (Tr : Trader)
+    (count : ℕ → ℕ) (f : ℕ → EF) (φ : ℕ → Sentence)
+    (hcount : ∃ c, PolyFueled c count)
+    (hf : PolySegStream fun z => (f z).serialize)
+    (hfree : ∀ z, (f z).priceFree)
+    (hφ : RpnSentenceCodes φ)
+    (hTr : ∀ n, (Tr.strat n).trades =
+      (List.range (count n)).map fun j => (f (Nat.pair n j), φ (Nat.pair n j))) :
+    EfficientlyComputable Tr := by
+  obtain ⟨sφ, hsφ, hparse⟩ := hφ
+  obtain ⟨ccount, hcountF⟩ := hcount
+  have htag : PolySegStream (fun _ : ℕ => [6]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 6)
+  have hseg : PolySegStream (fun z => (f z).serialize ++ 6 :: sφ z) :=
+    ((hf.append htag).append hsφ).of_eq fun z => by simp [List.append_assoc]
+  have hall := PolySegStream.concatVar hseg hcountF
+  apply ec_of_rawSegStream Tr hall.digitizeStream
+  intro n
+  rw [undigitize_digitize]
+  have hcontract : unRpn ((List.range (count n)).flatMap fun j =>
+      (f (Nat.pair n j)).serialize ++ 6 :: sφ (Nat.pair n j)) =
+      serializeTrades ((List.range (count n)).map fun j =>
+        (f (Nat.pair n j), φ (Nat.pair n j))) := by
+    have := unRpn_tradeBlocks ((List.range (count n)).map fun j =>
+        ((f (Nat.pair n j), φ (Nat.pair n j)), sφ (Nat.pair n j)))
+      (fun p hp => by
+        simp only [List.mem_map, List.mem_range] at hp
+        obtain ⟨j, -, rfl⟩ := hp
+        exact EF.serialize_unRpnTransparent _ (hfree _))
+      (fun p hp => by
+        simp only [List.mem_map, List.mem_range] at hp
+        obtain ⟨j, -, rfl⟩ := hp
+        exact hparse _)
+    rw [List.flatMap_map, List.map_map] at this
+    exact this
+  rw [hcontract]
+  have hrank : ∀ trade ∈ (List.range (count n)).map fun j =>
+      (f (Nat.pair n j), φ (Nat.pair n j)), trade.1.rank ≤ n := by
+    intro trade htrade
+    have := (Tr.strat n).rank_le
+    rw [hTr n] at this
+    exact this trade htrade
+  have hdecode := deserializeTrades_serializeTrades
+    ((List.range (count n)).map fun j => (f (Nat.pair n j), φ (Nat.pair n j)))
+  cases hS : Tr.strat n with
+  | mk trades rank_le =>
+      have htrades : trades = (List.range (count n)).map fun j =>
+          (f (Nat.pair n j), φ (Nat.pair n j)) := by
+        have := hTr n; rwa [hS] at this
+      subst htrades
+      simp only [strategyOfTokens]
+      split
+      · next hnone => rw [hdecode] at hnone; exact absurd hnone (by simp)
+      · next trades' hsome =>
+          rw [hdecode] at hsome
+          obtain rfl := Option.some.inj hsome
+          rw [dif_pos hrank]
+
 #print axioms RpnSentenceCodes.ofCanonical
 #print axioms RpnSentenceCodes.ofPolySentenceCodes
+#print axioms EfficientlyComputable.ofSingleTradeBlocks
+#print axioms EfficientlyComputable.ofTradeBlocks
 
 end LogicalInduction

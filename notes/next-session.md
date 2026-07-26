@@ -69,14 +69,41 @@ CONCATENATION — `rpn (φ ⋏ ψ) = 3 :: rpn φ ++ rpn ψ` — no bignum pair s
    sentence runs; quote table replacement at slot boundaries) ⇒ symbol-level
    `preserves_ec` ⇒ `liaEfficientPrefixPatch` restored.
 
-## THEN: EC-SEQ — 𝓔𝓒-sequence migration
+## THEN: EC-SEQ — 𝓔𝓒-sequence migration (INTERFACE + ENGINE LANDED 2026-07-26)
 
-`RpnSentenceCodes φ := PolySegStream (fun n => rpn (φ n))` (the paper's 𝓔𝓒 class on
-the nose) + inclusion from `PolySentenceCodes` (needs code→rpn-length bound: rpn
-length ≤ code value); `PolySequence` mirror over RPN slots
-(sentence_poly → RpnSentenceCodes; const/coefficient serialize streams →
-digitized-with-rpn-slots), then per-family migration (copy-only families first:
-thm:tl, thm:und).
+DONE (Framework, all axiom-clean):
+* `RpnSentenceCodes φ` := ∃ block stream `s`, `PolySegStream s` ∧ each `s n` parses
+  (`parseRpn`) to `φ n` with empty remainder.  Constructors: `.ofCanonical` (deep
+  sequences at poly symbol count), `.ofPolySentenceCodes` (2-token escape blocks),
+  `.comp` (poly reindex).  In `Framework/RpnEmission.lean`.
+* Splice engine (`Framework/RpnSentence.lean`): `parseRpn_append` (self-delimitation),
+  `parseRpn_block_head`, general-block chunk contractions
+  `unRpn_price_chunk_block`/`unRpn_trade_chunk_block`, transparency layer
+  (`UnRpnTransparent`, `.nil/.append/.payload/.single`), `EF.priceFree` +
+  `EF.serialize_unRpnTransparent`, and the trade-splice contraction
+  `unRpn_tradeBlocks`.
+* Realizations (`Framework/RpnEmission.lean`):
+  `EfficientlyComputable.ofSingleTradeBlocks` (one trade/day, price-free coefficient
+  stream + 𝓔𝓒 sentence stream) and `.ofTradeBlocks` (variable count via `concatVar`).
+
+REMAINING (the per-family march):
+1. Coefficients WITH price leaves (buy-signal `max(0, c − φ*ⁿ)` shapes) need the
+   price-slot splice: serialize-with-blocks for concrete coefficient shapes, using
+   `unRpn_price_chunk_block` + transparency for the non-slot fragments.  Per-family
+   concrete shapes; no new theory expected.
+2. Structure-field migration: `PolySequence.sentence_poly` (Affine),
+   `PolyTradeEmulatable.sentence_poly` (ROI), and the Pseudorandomness local mirror
+   → `RpnSentenceCodes`.  Construction sites adapt via `.comp`/`.ofPolySentenceCodes`;
+   consumer emission assemblies (ROI `serializeTrades` streams, e.g.
+   `PolyTradeEmulatable` ~ROI:683) re-assemble with block slots and realize through
+   `ec_of_rawSegStream` — the deep part is the ROI family layer
+   (`EfficientlyEmulatable`), which meters the firm's universal-program emulation and
+   needs its RPN mirror before the budgeted/fractional composite traders certify in
+   the collapsed class directly (today they go through `noExploitTok`, which stays
+   correct meanwhile — migration is a strengthening, not a fix).
+3. Then swap property-statement hypotheses `PolySentenceCodes` → `RpnSentenceCodes`
+   family by family (copy-only first: thm:tl chain via PolySequence; thm:und's
+   obuTrader via `.ofTradeBlocks`).
 
 Gotchas: Mathlib names are `Option.bind_some`/`bind_none`; `rcases h : e`
 substitutes `e` in the GOAL too; suffixed lemmas inside a namespace break

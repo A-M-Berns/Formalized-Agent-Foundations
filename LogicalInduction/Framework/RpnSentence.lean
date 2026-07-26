@@ -367,6 +367,24 @@ lemma rpn_injective : Function.Injective rpn := by
   obtain ⟨h1, -⟩ := Prod.mk.injEq .. ▸ Option.some.inj (hφ.symm.trans hψ)
   exact h1
 
+/-! ### Contraction transparency
+
+A token run is *transparent* when the stream contraction copies it verbatim and
+continues: the shape of every strategy-stream fragment that opens no sentence slot.
+Payload chunks, bare operator tokens, and their concatenations are transparent, and a
+transparent prefix commutes with `unRpn`. -/
+
+/-- `unRpn` copies `ts` verbatim ahead of any continuation. -/
+def UnRpnTransparent (ts : List ℕ) : Prop :=
+  ∀ rest, unRpn (ts ++ rest) = ts ++ unRpn rest
+
+lemma UnRpnTransparent.nil : UnRpnTransparent [] := fun _ => rfl
+
+lemma UnRpnTransparent.append {xs ys : List ℕ}
+    (hx : UnRpnTransparent xs) (hy : UnRpnTransparent ys) :
+    UnRpnTransparent (xs ++ ys) := fun rest => by
+  rw [List.append_assoc, hx (ys ++ rest), hy rest, List.append_assoc]
+
 /-! ## The stream transducer
 
 `unRpn` walks the flat strategy grammar and contracts each sentence block back to a
@@ -556,6 +574,61 @@ lemma unRpn_single_chunk (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t �
     if_neg h0, if_neg h6, if_neg h1, if_neg h7]
   rw [unRpnTokens_congr rest (by omega) le_rfl]
   rfl
+
+/-- Payload chunks are transparent. -/
+lemma UnRpnTransparent.payload (t c : ℕ) (ht : t = 1 ∨ t = 7) :
+    UnRpnTransparent [t, c] := fun rest => by
+  simpa using unRpn_payload_chunk t c ht rest
+
+/-- Bare operator/close tokens are transparent. -/
+lemma UnRpnTransparent.single (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t ≠ 7) :
+    UnRpnTransparent [t] := fun rest => by
+  simpa using unRpn_single_chunk t ht rest
+
+/-- No `price` leaves: the feature's serialization opens no sentence slot. -/
+def EF.priceFree : EF → Prop
+  | .price _ _ => False
+  | .const _ => True
+  | .add a b => a.priceFree ∧ b.priceFree
+  | .mul a b => a.priceFree ∧ b.priceFree
+  | .max a b => a.priceFree ∧ b.priceFree
+  | .safeRecip a => a.priceFree
+  | .var _ => True
+  | .letE x body => x.priceFree ∧ body.priceFree
+
+/-- The serialization of a price-leaf-free feature is transparent: its tokens are
+payload pairs (`1`/`7` tags) and bare operator tokens (`2`–`5`, `8`). -/
+lemma EF.serialize_unRpnTransparent : ∀ e : EF, EF.priceFree e →
+    UnRpnTransparent e.serialize := by
+  intro e
+  induction e with
+  | price φ n => intro h; exact absurd h not_false
+  | const q => intro _; exact UnRpnTransparent.payload 1 _ (Or.inl rfl)
+  | add a b iha ihb =>
+      intro h
+      obtain ⟨ha, hb⟩ := h
+      exact ((iha ha).append (ihb hb)).append
+        (UnRpnTransparent.single 2 (by norm_num))
+  | mul a b iha ihb =>
+      intro h
+      obtain ⟨ha, hb⟩ := h
+      exact ((iha ha).append (ihb hb)).append
+        (UnRpnTransparent.single 3 (by norm_num))
+  | max a b iha ihb =>
+      intro h
+      obtain ⟨ha, hb⟩ := h
+      exact ((iha ha).append (ihb hb)).append
+        (UnRpnTransparent.single 4 (by norm_num))
+  | safeRecip a iha =>
+      intro h
+      exact (iha h).append
+        (UnRpnTransparent.single 5 (by norm_num))
+  | var i => intro _; exact UnRpnTransparent.payload 7 _ (Or.inr rfl)
+  | letE x body ihx ihbody =>
+      intro h
+      obtain ⟨hx, hbody⟩ := h
+      exact ((ihx hx).append (ihbody hbody)).append
+        (UnRpnTransparent.single 8 (by norm_num))
 
 /-- Escape parse with an arbitrary decodable payload. -/
 lemma parseRpn_escape' {c : ℕ} {φ : Sentence}
@@ -1068,6 +1141,68 @@ strategy stream; the decode contracts sentence blocks (`unRpn`) before validatio
 Poly digit length now meters formula *symbols*: sentences may be arbitrarily deep and
 skewed.  The escape tag keeps both earlier models included by verbatim splice. -/
 
+
+/-! ### Compositional splice contraction
+
+`UnRpnContractsTo ts out`: ahead of any continuation, the contraction rewrites the
+run `ts` to `out` and proceeds.  Transparent runs contract to themselves; price and
+trade chunks with self-delimiting blocks contract to their token-level chunks; and
+the relation composes under append — so a spliced serialization contracts to its
+token-level serialization by mirroring the concrete concatenation shape. -/
+
+/-- `unRpn` rewrites `ts` to `out` ahead of any continuation. -/
+def UnRpnContractsTo (ts out : List ℕ) : Prop :=
+  ∀ rest, unRpn (ts ++ rest) = out ++ unRpn rest
+
+lemma UnRpnTransparent.contractsTo {ts : List ℕ} (h : UnRpnTransparent ts) :
+    UnRpnContractsTo ts ts := h
+
+lemma UnRpnContractsTo.append {xs ox ys oy : List ℕ}
+    (hx : UnRpnContractsTo xs ox) (hy : UnRpnContractsTo ys oy) :
+    UnRpnContractsTo (xs ++ ys) (ox ++ oy) := fun rest => by
+  rw [List.append_assoc, hx (ys ++ rest), hy rest, List.append_assoc]
+
+/-- A price chunk with a self-delimiting block contracts to the token-level chunk. -/
+lemma UnRpnContractsTo.priceChunk {b : List ℕ} {φ : Sentence}
+    (hb : parseRpn b.length b = some (φ, [])) (d : ℕ) :
+    UnRpnContractsTo (0 :: b ++ [d]) [0, Encodable.encode φ, d] := fun rest => by
+  have := unRpn_price_chunk_block hb d rest
+  simpa [List.append_assoc] using this
+
+/-- A trade chunk with a self-delimiting block contracts to the token-level chunk. -/
+lemma UnRpnContractsTo.tradeChunk {b : List ℕ} {φ : Sentence}
+    (hb : parseRpn b.length b = some (φ, [])) :
+    UnRpnContractsTo (6 :: b) [6, Encodable.encode φ] := fun rest => by
+  simpa using unRpn_trade_chunk_block hb rest
+
+/-- Whole-stream form: a contracting run is its own contraction (empty tail). -/
+lemma UnRpnContractsTo.unRpn_eq {ts out : List ℕ} (h : UnRpnContractsTo ts out) :
+    unRpn ts = out ++ unRpn [] := by
+  simpa using h []
+
+/-- **Trade-splice contraction**: a trade list rendered with transparent coefficient
+runs and arbitrary self-delimiting sentence blocks contracts to its token-level
+serialization. -/
+lemma unRpn_tradeBlocks : ∀ (L : List ((EF × Sentence) × List ℕ)),
+    (∀ p ∈ L, UnRpnTransparent (EF.serialize p.1.1)) →
+    (∀ p ∈ L, parseRpn p.2.length p.2 = some (p.1.2, [])) →
+    unRpn (L.flatMap fun p => EF.serialize p.1.1 ++ 6 :: p.2) =
+      serializeTrades (L.map Prod.fst) := by
+  intro L
+  induction L with
+  | nil => intro _ _; rfl
+  | cons p L ih =>
+      intro htr hblk
+      simp only [List.flatMap_cons, List.map_cons]
+      rw [List.append_assoc,
+        htr p (List.mem_cons_self ..) ((6 :: p.2) ++ (L.flatMap fun q =>
+          EF.serialize q.1.1 ++ 6 :: q.2)),
+        show (6 :: p.2) ++ (L.flatMap fun q => EF.serialize q.1.1 ++ 6 :: q.2) =
+          6 :: (p.2 ++ L.flatMap fun q => EF.serialize q.1.1 ++ 6 :: q.2) from rfl,
+        unRpn_trade_chunk_block (hblk p (List.mem_cons_self ..)),
+        ih (fun q hq => htr q (List.mem_cons_of_mem _ hq))
+          (fun q hq => hblk q (List.mem_cons_of_mem _ hq))]
+      rfl
 
 /-! ### The escape-slot automaton
 
