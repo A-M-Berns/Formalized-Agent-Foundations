@@ -56,9 +56,17 @@ scrutinee recomputation; `(Primrec.encdec.comp _).of_eq fun _ => rfl` bridges th
 Primcodable-vs-raw-instance mismatch.
 
 **THE COLLAPSE SURGERY (next; do stepwise, each green-committable):**
-A. Move `codeEvalnNat`(+`_polyFueled`) and the `clockedTokens_polySegStream` block
-   upstream from M7Witnesses/PrefixPatchCompile into Framework/Computable.lean
-   (self-contained; the notes flagged this as the field-collapse gate).
+A. Partition M7Witnesses (3543 ln; surveyed 2026-07-26): move the simulation core
+   (lines ~15-793: `codeEvalBound`..`BoundedEvalnCompiler` + the base/pair/comp/prec/
+   rfind compile sections) and the `PrefixPatchCompile` namespace (2697-3477, incl.
+   `ecClock`, `clockedTokens_polySegStream`, `freezeControlNat`) **name-stably** into
+   a new `Framework/Emission.lean` (import Framework.Computable).  KEY INTEL: the
+   file has ZERO uses of Properties/IsLogicalInductor, and its only true LIACompiler
+   deps are in the MIDDLE sections that stay behind (`deserializeTrades_prim` at
+   1816 inside SettlementCompile 1315-2693; the eq-const/dovetail section 794-1315
+   may also stay or move if clean) — verify the moved block references nothing from
+   the middle, else move the specific helpers too.  M7Witnesses then imports
+   Emission; all call sites keep their names (PrefixPatchCompile prefix preserved).
 B. Move the grammar/decode DEFS (`rpn`, `parseRpn`, `unRpnTokens`, `unRpn`,
    `clockedTrader₃`, the class) from RpnSentence into Framework/Criterion.lean next
    to `serialize`/`streamStep` (thematically the serialization layer); RpnSentence
