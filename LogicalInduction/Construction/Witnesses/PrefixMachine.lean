@@ -954,6 +954,246 @@ theorem sentencePoly_of_invalidBit (h : ∃ c, PolyFueled c invalidBit) :
   simp only [Nat.unpair_pair, ifzSelFn, encode_prefixSentenceEnum]
   by_cases hb : validCode n <;> simp [invalidBit, hb]
 
+/-! ## The canonicity bit by breadth-first descent
+
+`validCode` is tree-recursive over both `unpair` children — inexpressible directly as a
+single `prec` chain (a course-of-values table has exponential *value* in this fuel
+model).  But the recursion tree is shallow and narrow: children shrink as `√`, so after
+`D(n) = size (size n) + 3` levels every slot is resolved to `0`/`1`, and level `d` has
+`2^d ≤ O(size n)` slots each `≤ sbChain n d` (the iterated-`√` bound).  This section
+builds the *specification* layer: the slot-step `chL`/`chR` (with `0` = invalid and
+`1 = encode ⊥` = valid as absorbing resolved slots), the level iteration, conservation
+of the conjunction, the shrink bound, and resolution.  The next section will drive the
+packed (fixed-width, level-varying base) form through `PolyFueled.prec`. -/
+
+lemma unpair_fst_le_sqrt (n : ℕ) : n.unpair.1 ≤ Nat.sqrt n := by
+  simp only [Nat.unpair]
+  split_ifs with h
+  · exact le_of_lt h
+  · exact le_rfl
+
+lemma unpair_snd_le_sqrt (n : ℕ) : n.unpair.2 ≤ Nat.sqrt n := by
+  simp only [Nat.unpair]
+  split_ifs with h
+  · exact le_rfl
+  · have := Nat.sqrt_le_add n
+    omega
+
+/-- Left child of a slot: resolved slots (`0` invalid, `1` = `⊥` valid, atoms, garbage)
+emit their own resolution; tags `2`–`4` emit the left `unpair` child of the payload. -/
+def chL (m : ℕ) : ℕ :=
+  if m = 0 then 0
+  else if (m - 1).unpair.1 = 0 then (if (m - 1).unpair.2 = 0 then 1 else 0)
+  else if (m - 1).unpair.1 = 1 then 1
+  else if (m - 1).unpair.1 ≤ 4 then (m - 1).unpair.2.unpair.1
+  else 0
+
+/-- Right child of a slot. -/
+def chR (m : ℕ) : ℕ :=
+  if m = 0 then 0
+  else if (m - 1).unpair.1 = 0 then (if (m - 1).unpair.2 = 0 then 1 else 0)
+  else if (m - 1).unpair.1 = 1 then 1
+  else if (m - 1).unpair.1 ≤ 4 then (m - 1).unpair.2.unpair.2
+  else 0
+
+lemma validCode_zero : validCode 0 = false := by rw [validCode]
+
+lemma validCode_one : validCode 1 = true := by
+  have h := validCode_pair_tag 0 0
+  norm_num [Nat.pair] at h
+  exact h
+
+/-- One-step conservation: a slot's validity is the conjunction of its children's. -/
+lemma validCode_ch (m : ℕ) : validCode m = (validCode (chL m) && validCode (chR m)) := by
+  match m with
+  | 0 => simp [chL, chR, validCode_zero]
+  | (e + 1) =>
+    rw [validCode]
+    simp only [chL, chR, Nat.succ_ne_zero, if_false, Nat.add_sub_cancel]
+    by_cases h0 : e.unpair.1 = 0
+    · by_cases hc : e.unpair.2 = 0
+      · simp [h0, hc, validCode_one]
+      · simp [h0, hc, validCode_zero]
+    · by_cases h1 : e.unpair.1 = 1
+      · simp [h0, h1, validCode_one]
+      · by_cases h4 : e.unpair.1 ≤ 4
+        · simp [h0, h1, h4]
+        · simp [h0, h1, h4, validCode_zero]
+
+lemma chL_le (m : ℕ) : chL m ≤ Nat.sqrt m + 1 := by
+  rw [chL]
+  split_ifs with h0 h1 h2 h3 h4
+  · omega
+  · omega
+  · omega
+  · omega
+  · calc (m - 1).unpair.2.unpair.1 ≤ Nat.sqrt ((m - 1).unpair.2) := unpair_fst_le_sqrt _
+      _ ≤ Nat.sqrt m := Nat.sqrt_le_sqrt (le_trans (Nat.unpair_right_le _) (by omega))
+      _ ≤ Nat.sqrt m + 1 := by omega
+  · omega
+
+lemma chR_le (m : ℕ) : chR m ≤ Nat.sqrt m + 1 := by
+  rw [chR]
+  split_ifs with h0 h1 h2 h3 h4
+  · omega
+  · omega
+  · omega
+  · omega
+  · calc (m - 1).unpair.2.unpair.2 ≤ Nat.sqrt ((m - 1).unpair.2) := unpair_snd_le_sqrt _
+      _ ≤ Nat.sqrt m := Nat.sqrt_le_sqrt (le_trans (Nat.unpair_right_le _) (by omega))
+      _ ≤ Nat.sqrt m + 1 := by omega
+  · omega
+
+lemma chL_le_one (m : ℕ) (h : m ≤ 2) : chL m ≤ 1 := by
+  interval_cases m <;> decide
+
+lemma chR_le_one (m : ℕ) (h : m ≤ 2) : chR m ≤ 1 := by
+  interval_cases m <;> decide
+
+/-- One level of the breadth-first descent (list specification). -/
+def levelStep : List ℕ → List ℕ
+  | [] => []
+  | m :: L => chL m :: chR m :: levelStep L
+
+/-- The levels, with the per-level reversal the packed accumulator produces. -/
+def levelsM (n : ℕ) : ℕ → List ℕ
+  | 0 => [n]
+  | d + 1 => levelStep (levelsM n d).reverse
+
+lemma levelStep_all (L : List ℕ) :
+    (levelStep L).all validCode = L.all validCode := by
+  induction L with
+  | nil => rfl
+  | cons m L ih =>
+      rw [levelStep, List.all_cons, List.all_cons, List.all_cons, ih,
+        ← Bool.and_assoc, ← validCode_ch]
+
+/-- **Conservation**: the conjunction over any level is the root's validity bit. -/
+lemma levelsM_all (n : ℕ) : ∀ d, (levelsM n d).all validCode = validCode n := by
+  intro d
+  induction d with
+  | zero => simp [levelsM]
+  | succ d ih => rw [levelsM, levelStep_all, List.all_reverse, ih]
+
+lemma mem_levelStep {m' : ℕ} : ∀ {L : List ℕ}, m' ∈ levelStep L →
+    ∃ m ∈ L, m' = chL m ∨ m' = chR m := by
+  intro L
+  induction L with
+  | nil => intro h; exact absurd h (by simp [levelStep])
+  | cons m L ih =>
+      intro h
+      rw [levelStep, List.mem_cons, List.mem_cons] at h
+      rcases h with rfl | rfl | h
+      · exact ⟨m, by simp, Or.inl rfl⟩
+      · exact ⟨m, by simp, Or.inr rfl⟩
+      · obtain ⟨p, hp, hc⟩ := ih h
+        exact ⟨p, by simp [hp], hc⟩
+
+/-- The iterated-`√` slot bound. -/
+def sbChain (n : ℕ) : ℕ → ℕ
+  | 0 => n
+  | d + 1 => Nat.sqrt (sbChain n d) + 1
+
+lemma levelsM_le (n : ℕ) : ∀ d, ∀ m ∈ levelsM n d, m ≤ sbChain n d := by
+  intro d
+  induction d with
+  | zero => intro m hm; rw [levelsM, List.mem_singleton] at hm; simp [hm, sbChain]
+  | succ d ih =>
+      intro m' hm'
+      rw [levelsM] at hm'
+      obtain ⟨m, hm, hc⟩ := mem_levelStep hm'
+      rw [List.mem_reverse] at hm
+      have hle : m ≤ sbChain n d := ih m hm
+      have hs : Nat.sqrt m + 1 ≤ sbChain n (d + 1) := by
+        rw [sbChain]
+        exact Nat.add_le_add_right (Nat.sqrt_le_sqrt hle) 1
+      rcases hc with rfl | rfl
+      · exact le_trans (chL_le m) hs
+      · exact le_trans (chR_le m) hs
+
+lemma size_sqrt_succ_le (x : ℕ) :
+    (Nat.sqrt x + 1).size ≤ (x.size + 1) / 2 + 1 := by
+  have hx : x < 2 ^ x.size := Nat.lt_size_self x
+  have hle : x.size ≤ (x.size + 1) / 2 * 2 := by omega
+  have h2 : x < 2 ^ ((x.size + 1) / 2) * 2 ^ ((x.size + 1) / 2) := by
+    calc x < 2 ^ x.size := hx
+      _ ≤ 2 ^ ((x.size + 1) / 2 * 2) := Nat.pow_le_pow_right (by norm_num) hle
+      _ = 2 ^ ((x.size + 1) / 2) * 2 ^ ((x.size + 1) / 2) := by
+          rw [← pow_add]
+          congr 1
+          omega
+  have hs : Nat.sqrt x < 2 ^ ((x.size + 1) / 2) := Nat.sqrt_lt.mpr h2
+  apply Nat.size_le.mpr
+  have hpos : (0:ℕ) < 2 ^ ((x.size + 1) / 2) := Nat.pow_pos (by norm_num)
+  calc Nat.sqrt x + 1 < 2 ^ ((x.size + 1) / 2) + 2 ^ ((x.size + 1) / 2) := by omega
+    _ = 2 ^ ((x.size + 1) / 2 + 1) := by rw [pow_succ, Nat.mul_two]
+
+lemma sbChain_size_le (n : ℕ) : ∀ d, (sbChain n d).size ≤ n.size / 2 ^ d + 3 := by
+  intro d
+  induction d with
+  | zero => simp [sbChain]
+  | succ d ih =>
+      rw [sbChain]
+      calc (Nat.sqrt (sbChain n d) + 1).size
+          ≤ ((sbChain n d).size + 1) / 2 + 1 := size_sqrt_succ_le _
+        _ ≤ (n.size / 2 ^ d + 3 + 1) / 2 + 1 := by omega
+        _ = n.size / 2 ^ d / 2 + 3 := by omega
+        _ = n.size / 2 ^ (d + 1) + 3 := by
+            rw [Nat.div_div_eq_div_mul, ← pow_succ]
+
+/-- After `size (size n) + 2` levels the slot bound has collapsed to `2`. -/
+lemma sbChain_le_two (n : ℕ) : sbChain n (n.size.size + 2) ≤ 2 := by
+  have h7 : sbChain n n.size.size ≤ 7 := by
+    have h := sbChain_size_le n n.size.size
+    have hz : n.size / 2 ^ n.size.size = 0 :=
+      Nat.div_eq_of_lt (Nat.lt_size_self _)
+    rw [hz] at h
+    have := Nat.size_le.mp (le_trans h (by norm_num) : (sbChain n n.size.size).size ≤ 3)
+    omega
+  have h3 : sbChain n (n.size.size + 1) ≤ 3 := by
+    rw [sbChain]
+    have : Nat.sqrt (sbChain n n.size.size) < 3 := Nat.sqrt_lt.mpr (by omega)
+    omega
+  rw [show n.size.size + 2 = n.size.size + 1 + 1 from rfl, sbChain]
+  have : Nat.sqrt (sbChain n (n.size.size + 1)) < 2 := Nat.sqrt_lt.mpr (by omega)
+  omega
+
+/-- **Resolution**: at depth `size (size n) + 3` every slot is a resolved bit. -/
+lemma levelsM_resolved (n : ℕ) :
+    ∀ m ∈ levelsM n (n.size.size + 3), m ≤ 1 := by
+  intro m' hm'
+  rw [show n.size.size + 3 = n.size.size + 2 + 1 from rfl, levelsM] at hm'
+  obtain ⟨m, hm, hc⟩ := mem_levelStep hm'
+  rw [List.mem_reverse] at hm
+  have hle : m ≤ 2 := le_trans (levelsM_le n _ m hm) (sbChain_le_two n)
+  rcases hc with rfl | rfl
+  · exact chL_le_one m hle
+  · exact chR_le_one m hle
+
+lemma length_levelStep (L : List ℕ) : (levelStep L).length = 2 * L.length := by
+  induction L with
+  | nil => rfl
+  | cons m L ih => rw [levelStep]; simp [ih]; omega
+
+lemma length_levelsM (n : ℕ) : ∀ d, (levelsM n d).length = 2 ^ d := by
+  intro d
+  induction d with
+  | zero => rfl
+  | succ d ih => rw [levelsM, length_levelStep, List.length_reverse, ih, pow_succ]; ring
+
+/-- On a resolved level the validity conjunction is the all-ones test. -/
+lemma all_validCode_eq_all_one (L : List ℕ) (h : ∀ m ∈ L, m ≤ 1) :
+    L.all validCode = L.all (· == 1) := by
+  induction L with
+  | nil => rfl
+  | cons m L ih =>
+      rw [List.all_cons, List.all_cons, ih (fun m hm => h m (by simp [hm]))]
+      congr 1
+      have hm : m ≤ 1 := h m (by simp)
+      interval_cases m
+      · simp [validCode_zero]
+      · simp [validCode_one]
+
 /-! ## Residual operational input and the assembled boundary -/
 
 /-- Compact operational input for the concrete prefix machine: the single fuel-model
