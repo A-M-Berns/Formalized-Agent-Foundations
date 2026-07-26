@@ -260,4 +260,41 @@ lemma IsLogicalInductor.noExploitDigit {P : History} {DP : DeductiveProcess}
 #print axioms IsLogicalInductor.noExploitTok
 #print axioms IsLogicalInductor.noExploitDigit
 
+/-! ## The 𝓔𝓒 sentence-sequence interface (`RpnSentenceCodes`)
+
+The paper's affine and self-trust theorems quantify over *efficiently computable
+sequences of sentences*.  The whole-value interface (`PolySentenceCodes`) meters the
+single pair-code token, which excludes deep or skewed sentence sequences whose codes
+are value-exponential in their symbol count.  The faithful class meters **symbols**:
+some polynomially emittable stream of self-delimiting sentence blocks — canonical
+Polish runs or escaped pair codes — parses to the sequence. -/
+
+/-- The paper's 𝓔𝓒 sentence-sequence class: a `PolySegStream` of self-delimiting
+sentence blocks parsing to the sequence (each block consumed exactly).  Canonical
+Polish runs (`ofCanonical`) admit arbitrarily deep and skewed sentences at poly symbol
+count; escaped pair codes (`ofPolySentenceCodes`) embed the whole-value interface.
+Paper node: `def:ec` -/
+def RpnSentenceCodes (φ : ℕ → Sentence) : Prop :=
+  ∃ s : ℕ → List ℕ, PolySegStream s ∧
+    ∀ n, parseRpn (s n).length (s n) = some (φ n, [])
+
+/-- A polynomially emittable canonical Polish stream instantiates the class (the
+paper's 𝓔𝓒 on the nose: poly stream length = poly symbol count). -/
+lemma RpnSentenceCodes.ofCanonical {φ : ℕ → Sentence}
+    (h : PolySegStream fun n => rpn (φ n)) : RpnSentenceCodes φ :=
+  ⟨_, h, fun n => by
+    simpa using parseRpn_rpn (φ n) [] (le_refl (rpn (φ n)).length)⟩
+
+/-- Every whole-value certificate embeds by two-token escape blocks. -/
+lemma RpnSentenceCodes.ofPolySentenceCodes {φ : ℕ → Sentence}
+    (h : PolySentenceCodes φ) : RpnSentenceCodes φ := by
+  obtain ⟨c, hc⟩ := h
+  refine ⟨fun n => [1, Encodable.encode (φ n)],
+    PolySegStream.ofTokenStream
+      ((PolyTokenStream.const 1).append (PolyTokenStream.polyTok hc)),
+    fun n => parseRpn_escape (φ n) [] (by norm_num)⟩
+
+#print axioms RpnSentenceCodes.ofCanonical
+#print axioms RpnSentenceCodes.ofPolySentenceCodes
+
 end LogicalInduction

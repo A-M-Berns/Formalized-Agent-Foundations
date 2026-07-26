@@ -159,7 +159,10 @@ so plain decode-fallback enumerations double-spend — the canonical-index guard
 After Tranche 2 the dd:fuel residuals are (a) fuel-model vs TM-time equivalence and
 (b) the pair-code bit-size vs symbol-size gap for skewed formulas (Tranche 4 item 3). **Blocked in
 principle**: Mathlib has no time-bounded computability/complexity theory (no poly-time
-TM class; `Turing.PartrecToTM2` is unbounded). Per CLAUDE.md rule 6 this is a
+TM class; `Turing.PartrecToTM2` is unbounded).  Watch item (checked 2026-07-26): CSlib
+(`leanprover/cslib`, active) now owns TM machine models (single/multi-tape, det/nondet)
+but still no resource bounds/complexity classes — if it grows a poly-time class, the
+missing bridge is an `evaln`-fuel ↔ TM-step polynomial simulation theorem. Per CLAUDE.md rule 6 this is a
 stop-and-report boundary: keep the model-card calibrations (`PolyFueled.primrec`,
 `not_polyFueled_two_pow`, closure ops) and one disclosure sentence. Likewise the last
 quotation type-(c) — code-indexed atoms *mean* their arithmetic instances via
