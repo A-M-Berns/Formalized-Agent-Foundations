@@ -116,7 +116,40 @@ REMAINING (the per-family march):
        `EfficientRepeatedEnumeration.sequence_poly` (constructors adapt via
        `.ofPolySentenceCodes`, triangular reindex via `.comp`);
    (c) the `PolySequence.sentence_poly` (Affine) migration — **the EC-SEQ critical
-       path**: survey 2026-07-26 confirms thm:tl/perkno, thm:lex
+       path**.  SURGICAL MAP (derived 2026-07-26, execute like the collapse map):
+       * Field flip: `PolySequence.sentence_poly : RpnSentenceCodes sentence`
+         (Affine.lean:236; add `import ...Framework.RpnEmission` — no cycle:
+         RpnEmission ← DigitArith/RpnSentence/Emission ← Computable/Criterion,
+         Affine imports Criterion+Computable only).  Same flip for the mirrors:
+         `PolyTradeEmulatable.sentence_poly` (ROI:76) and the Pseudorandomness
+         local structure (:854).
+       * Affine-internal: `priceFeature_polySeg` (294) — obtain the block stream
+         `⟨s, hs, hparse⟩`, replace `hpriceTok`'s middle token
+         `[encode (sentence …)]` with `s ∘ hcanonical`-indexed segments
+         (`priceSlotSeg hs (hcanonical …)`), producing the SPLICED stream; its
+         statement becomes `PolySegStream (fun z => splicedPriceFeature …)` plus a
+         companion contraction fact via `UnRpnContractsTo` (price chunks + payload/
+         operator transparency; the coefficient serializations must be shown
+         transparent — they may contain price leaves in general! Check: coefficient
+         price leaves are on *coefficient* sentences, which are NOT covered by the
+         sentence field; families with priced coefficients need those slots spliced
+         too — survey each PolySequence inhabitant's coefficient shapes first;
+         PolySequence may need a `coefficient_priceFree` (or spliced coefficient
+         stream) field mid-flight).  Same for `magnitudeFeature_polySeg` (536).
+       * Construction sites (wrap, cheap): TimelyLearning 32/90, Relationships
+         (exclusiveExhaustive_polySequence), Pseudorandomness 79, AffinePersistence
+         553/725, AffineCoherence 387, FeedbackTruth 330, ComputationSyntax
+         320/338/391/408, LUV inhabitants — use
+         `(.ofPolySentenceCodes ⟨c, h⟩).comp hindex`.
+       * Consumers (the long tail; each ends in an ecTok realization that must
+         become `ec_of_rawSegStream` with a whole-stream contraction proof):
+         AffinePersistence 224, AffinePreemptiveLearning 303/363/394,
+         Calibration 1459, QuotationAffine 589, LUVSyntax 643, FeedbackEmission
+         262-263, Affine 632, and the ROI budgeted/fractional composites
+         (`PolyTradeEmulatable` ~683, `EfficientlyEmulatable` RPN mirror).
+       * Keep the interim compat (`noExploitTok`) callers green until each chain is
+         flipped; flip `hLI.noExploitTok → hLI.noExploit` per chain as its cert
+         lands in the collapsed class.: survey 2026-07-26 confirms thm:tl/perkno, thm:lex
        (`exclusiveExhaustive_polySequence`), pseudorandomness, and the presentation
        structures (SelfTrust/Introspection/MetaLearning `sentence_codes` fields) all
        route through PolySequence or PolySentenceCodes-field interfaces, so per-family
