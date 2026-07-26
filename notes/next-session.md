@@ -56,7 +56,21 @@ scrutinee recomputation; `(Primrec.encdec.comp _).of_eq fun _ => rfl` bridges th
 Primcodable-vs-raw-instance mismatch.
 
 **THE COLLAPSE SURGERY (next; do stepwise, each green-committable):**
-A. Partition M7Witnesses (3543 ln; surveyed 2026-07-26): move the simulation core
+A. Partition M7Witnesses — **exact map derived 2026-07-26, ready to execute**:
+   MOVE to new `Framework/Emission.lean` (imports Framework.Computable only; all
+   verified free of Properties/LIACompiler deps): the simulation core lines 15-793
+   (codeEvalBound … dovetailFound, incl. Prec/Rfind compile sections), the
+   PrefixPatchCompile block 2697-2809 ONLY (namespace opener + ecClock …
+   clockedTokens_polySegStream; close the namespace there), and root-level
+   `EfficientlyComputableTok.toTok₂` 3478-3502.  STAY in M7Witnesses: the middle
+   794-2693 (polyFueled_eqConst + Settlement sections — polyFueled_eqConst is NOT
+   used by the moved block, only by the staying freeze part), the freeze-coupled
+   PPC decls 2810-3092 (freezeNextNat … freezeBefore_preserves_ec — re-open
+   `namespace PrefixPatchCompile` around them, names stay stable), the
+   sentenceMatches/liaPrefixQuote tail 3093-3477, and `liaEfficientPrefixPatch`.
+   M7Witnesses gains `import LogicalInduction.Framework.Emission`; register
+   Emission in Framework.lean.  Then steps B-F as below.
+   (Original survey note: move the simulation core
    (lines ~15-793: `codeEvalBound`..`BoundedEvalnCompiler` + the base/pair/comp/prec/
    rfind compile sections) and the `PrefixPatchCompile` namespace (2697-3477, incl.
    `ecClock`, `clockedTokens_polySegStream`, `freezeControlNat`) **name-stably** into
@@ -66,7 +80,7 @@ A. Partition M7Witnesses (3543 ln; surveyed 2026-07-26): move the simulation cor
    1816 inside SettlementCompile 1315-2693; the eq-const/dovetail section 794-1315
    may also stay or move if clean) — verify the moved block references nothing from
    the middle, else move the specific helpers too.  M7Witnesses then imports
-   Emission; all call sites keep their names (PrefixPatchCompile prefix preserved).
+   Emission; all call sites keep their names (PrefixPatchCompile prefix preserved).)
 B. Move the grammar/decode DEFS (`rpn`, `parseRpn`, `unRpnTokens`, `unRpn`,
    `clockedTrader₃`, the class) from RpnSentence into Framework/Criterion.lean next
    to `serialize`/`streamStep` (thematically the serialization layer); RpnSentence
