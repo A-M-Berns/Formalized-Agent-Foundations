@@ -136,6 +136,32 @@ writeup must say so explicitly.
 
 ---
 
+### Consolidation discipline (Anson, standing — see `notes/consolidation.md`)
+
+The end state must show **no structural evidence of previous versions**: no
+ₙ-suffixed public layers (`Foo₂`/`Foo₃`), no parallel classes that exist only because
+a definition was upgraded mid-project, no in-references legible only to someone
+steeped in the repo's history. When strengthening a definition, land the refactor in
+**collapsed form** — the strongest version takes the plain, paper-matching name; the
+superseded versions become internal lemmas/constructors or disappear. Layered
+scaffolding is acceptable *mid-flight* to keep the build green, but it is technical
+debt with a scheduled demolition, not an end state.
+
+### External proofs (Aristotle, subagents, any generated Lean)
+
+A proof produced outside this session — Aristotle, a subagent's worktree, pasted
+code — is trusted only after it **compiles in this repo against this toolchain with
+`#print axioms` clean**. The kernel is the gate; never merge on the producer's word.
+Subagent work arrives on a worktree branch: inspect, build, axiom-check, then merge.
+
+### Recurring Lean traps
+
+The living gotcha log (tactic-level traps that repeatedly bite: `rcases h : e`
+substituting the goal, `of_eq` holes elaborating too early, constructor-form `cases`
+for `casesOn` iota, `Nat.sqrt` whnf loops, …) is kept in the status notes
+(`notes/next-session.md`), not here — check its most recent entries before starting
+deep `Primrec`/`PolyFueled` work.
+
 ## Working conventions
 
 - Namespace `LogicalInduction`; file layout mirrors the roadmap's Parts (see
