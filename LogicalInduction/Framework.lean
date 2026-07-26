@@ -19,6 +19,7 @@ import LogicalInduction.Framework.Computable
 import LogicalInduction.Framework.DigitArith
 import LogicalInduction.Framework.RpnSentence
 import LogicalInduction.Framework.RpnEmission
+import LogicalInduction.Framework.RpnComputation
 import LogicalInduction.Framework.Criterion
 import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.ROI
