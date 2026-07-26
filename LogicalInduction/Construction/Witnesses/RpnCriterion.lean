@@ -211,7 +211,209 @@ lemma parseRpnC_prim : Primrec₂ parseRpnC := by
   exact h2.to₂.of_eq fun fuel ts => by
     rw [parseF, Nat.unpair_pair, Denumerable.ofNat_encode]
 
+private abbrev UCtx := (List (List ℕ) × ℕ) × (ℕ × List ℕ)
+
+private lemma unG_prim : Primrec unG := by
+  have hfuel : Primrec fun prev : List (List ℕ) => prev.length.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
+  have hts0 : Primrec fun p : List (List ℕ) × ℕ =>
+      Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
+    (Primrec.ofNat (List ℕ)).comp
+      (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
+  have hprev : Primrec fun x : UCtx => x.1.1 := Primrec.fst.comp Primrec.fst
+  have hfuel' : Primrec fun x : UCtx => x.1.2 := Primrec.snd.comp Primrec.fst
+  have ht : Primrec fun x : UCtx => x.2.1 := Primrec.fst.comp Primrec.snd
+  have hrest : Primrec fun x : UCtx => x.2.2 := Primrec.snd.comp Primrec.snd
+  have hlook : ∀ {γ : Type} [Primcodable γ]
+      {fp : γ → List (List ℕ)} {ff : γ → ℕ} {fr : γ → List ℕ},
+      Primrec fp → Primrec ff → Primrec fr →
+      Primrec fun y : γ => ((fp y)[Nat.pair (ff y) (Encodable.encode (fr y))]?).getD
+        ([] : List ℕ) := by
+    intro γ _ fp ff fr hp hf hr
+    exact Primrec.option_getD.comp
+      (Primrec.list_getElem?.comp hp
+        (Primrec₂.natPair.comp hf (Primrec.encode.comp hr)))
+      (Primrec.const [])
+  have hparse : Primrec fun x : UCtx => parseRpnC x.2.2.length x.2.2 :=
+    parseRpnC_prim.comp (Primrec.list_length.comp hrest) hrest
+  -- price branch
+  have hbr0inner : Primrec fun y : UCtx × (ℕ × List ℕ) =>
+      match y.2.2 with
+      | [] => [0, y.2.1]
+      | d :: r2 =>
+          0 :: y.2.1 :: d ::
+            ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode r2)]?).getD []) := by
+    have hnil : Primrec fun y : UCtx × (ℕ × List ℕ) => [0, y.2.1] :=
+      Primrec.list_cons.comp (Primrec.const 0)
+        (Primrec.list_cons.comp (Primrec.fst.comp Primrec.snd)
+          (Primrec.const []))
+    have hcons : Primrec fun z : (UCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+        0 :: z.1.2.1 :: z.2.1 ::
+          ((z.1.1.1.1[Nat.pair z.1.1.1.2 (Encodable.encode z.2.2)]?).getD []) :=
+      Primrec.list_cons.comp (Primrec.const 0)
+        (Primrec.list_cons.comp
+          (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
+          (Primrec.list_cons.comp (Primrec.fst.comp Primrec.snd)
+            (hlook (Primrec.fst.comp (Primrec.fst.comp
+                (Primrec.fst.comp Primrec.fst)))
+              (Primrec.snd.comp (Primrec.fst.comp
+                (Primrec.fst.comp Primrec.fst)))
+              (Primrec.snd.comp Primrec.snd))))
+    exact (Primrec.list_casesOn (Primrec.snd.comp Primrec.snd) hnil
+      hcons.to₂).of_eq fun y => by rcases y.2.2 with _ | ⟨d, r2⟩ <;> rfl
+  have hbr0 : Primrec fun x : UCtx =>
+      match parseRpnC x.2.2.length x.2.2 with
+      | none => [0, 0]
+      | some (e, r1) =>
+          match r1 with
+          | [] => [0, e]
+          | d :: r2 =>
+              0 :: e :: d ::
+                ((x.1.1[Nat.pair x.1.2 (Encodable.encode r2)]?).getD []) :=
+    (Primrec.option_casesOn hparse (Primrec.const [0, 0]) hbr0inner.to₂).of_eq
+      fun x => by
+        rcases parseRpnC x.2.2.length x.2.2 with _ | ⟨e, r1⟩
+        · rfl
+        rcases r1 with _ | ⟨d, r2⟩ <;> rfl
+  -- trade branch
+  have hbr6inner : Primrec fun y : UCtx × (ℕ × List ℕ) =>
+      6 :: y.2.1 ::
+        ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode y.2.2)]?).getD []) :=
+    Primrec.list_cons.comp (Primrec.const 6)
+      (Primrec.list_cons.comp (Primrec.fst.comp Primrec.snd)
+        (hlook (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
+          (Primrec.snd.comp (Primrec.fst.comp Primrec.fst))
+          (Primrec.snd.comp Primrec.snd)))
+  have hbr6 : Primrec fun x : UCtx =>
+      match parseRpnC x.2.2.length x.2.2 with
+      | none => [6, 0]
+      | some (e, r1) =>
+          6 :: e :: ((x.1.1[Nat.pair x.1.2 (Encodable.encode r1)]?).getD []) :=
+    (Primrec.option_casesOn hparse (Primrec.const [6, 0]) hbr6inner.to₂).of_eq
+      fun x => by rcases parseRpnC x.2.2.length x.2.2 with _ | ⟨e, r1⟩ <;> rfl
+  -- opaque payload branches
+  have hpayinner : ∀ tag : ℕ, Primrec fun z : UCtx × (ℕ × List ℕ) =>
+      tag :: z.2.1 ::
+        ((z.1.1.1[Nat.pair z.1.1.2 (Encodable.encode z.2.2)]?).getD []) := by
+    intro tag
+    exact Primrec.list_cons.comp (Primrec.const tag)
+      (Primrec.list_cons.comp (Primrec.fst.comp Primrec.snd)
+        (hlook (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
+          (Primrec.snd.comp (Primrec.fst.comp Primrec.fst))
+          (Primrec.snd.comp Primrec.snd)))
+  have hpay : ∀ tag : ℕ, Primrec fun x : UCtx =>
+      match x.2.2 with
+      | [] => [tag]
+      | c :: r =>
+          tag :: c :: ((x.1.1[Nat.pair x.1.2 (Encodable.encode r)]?).getD []) := by
+    intro tag
+    exact (Primrec.list_casesOn hrest (Primrec.const [tag])
+      (hpayinner tag).to₂).of_eq fun x => by
+        rcases x.2.2 with _ | ⟨c, r⟩ <;> rfl
+  -- copy branch
+  have hcopy : Primrec fun x : UCtx =>
+      x.2.1 :: ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD []) :=
+    Primrec.list_cons.comp ht (hlook hprev hfuel' hrest)
+  have heqt : ∀ k : ℕ, PrimrecPred fun x : UCtx => x.2.1 = k := fun k =>
+    PrimrecRel.comp Primrec.eq ht (Primrec.const k)
+  have hbody : Primrec fun x : UCtx =>
+      if x.2.1 = 0 then
+        match parseRpnC x.2.2.length x.2.2 with
+        | none => [0, 0]
+        | some (e, r1) =>
+            match r1 with
+            | [] => [0, e]
+            | d :: r2 =>
+                0 :: e :: d ::
+                  ((x.1.1[Nat.pair x.1.2 (Encodable.encode r2)]?).getD [])
+      else if x.2.1 = 6 then
+        match parseRpnC x.2.2.length x.2.2 with
+        | none => [6, 0]
+        | some (e, r1) =>
+            6 :: e :: ((x.1.1[Nat.pair x.1.2 (Encodable.encode r1)]?).getD [])
+      else if x.2.1 = 1 then
+        match x.2.2 with
+        | [] => [1]
+        | c :: r =>
+            1 :: c :: ((x.1.1[Nat.pair x.1.2 (Encodable.encode r)]?).getD [])
+      else if x.2.1 = 7 then
+        match x.2.2 with
+        | [] => [7]
+        | c :: r =>
+            7 :: c :: ((x.1.1[Nat.pair x.1.2 (Encodable.encode r)]?).getD [])
+      else x.2.1 :: ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD []) := by
+    refine Primrec.ite (heqt 0) hbr0 ?_
+    refine Primrec.ite (heqt 6) hbr6 ?_
+    refine Primrec.ite (heqt 1) (hpay 1) ?_
+    exact Primrec.ite (heqt 7) (hpay 7) hcopy
+  have hinner : Primrec fun p : List (List ℕ) × ℕ =>
+      match Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with
+      | [] => ([] : List ℕ)
+      | t :: rest =>
+          if t = 0 then
+            match parseRpnC rest.length rest with
+            | none => [0, 0]
+            | some (e, r1) =>
+                match r1 with
+                | [] => [0, e]
+                | d :: r2 =>
+                    0 :: e :: d ::
+                      ((p.1[Nat.pair p.2 (Encodable.encode r2)]?).getD [])
+          else if t = 6 then
+            match parseRpnC rest.length rest with
+            | none => [6, 0]
+            | some (e, r1) =>
+                6 :: e :: ((p.1[Nat.pair p.2 (Encodable.encode r1)]?).getD [])
+          else if t = 1 then
+            match rest with
+            | [] => [1]
+            | c :: r =>
+                1 :: c :: ((p.1[Nat.pair p.2 (Encodable.encode r)]?).getD [])
+          else if t = 7 then
+            match rest with
+            | [] => [7]
+            | c :: r =>
+                7 :: c :: ((p.1[Nat.pair p.2 (Encodable.encode r)]?).getD [])
+          else t :: ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD []) :=
+    (Primrec.list_casesOn hts0 (Primrec.const []) hbody.to₂).of_eq fun p => by
+      rcases Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with _ | ⟨t, rest⟩ <;>
+        rfl
+  refine (Primrec.option_some.comp
+    (Primrec.nat_casesOn hfuel
+      ((Primrec.list_casesOn
+        ((Primrec.ofNat (List ℕ)).comp
+          (Primrec.snd.comp (Primrec.unpair.comp Primrec.list_length)))
+        (Primrec.const []) (Primrec.const []).to₂).of_eq fun prev => by
+          rcases Denumerable.ofNat (List ℕ) prev.length.unpair.2 with
+            _ | ⟨t, rest⟩ <;> rfl)
+      hinner.to₂)).of_eq fun prev => ?_
+  rw [unG, unGCore]
+  cases hf : prev.length.unpair.1 with
+  | zero =>
+      cases hts : Denumerable.ofNat (List ℕ) prev.length.unpair.2 with
+      | nil => simp [hts]
+      | cons t rest => simp [hts]
+  | succ fuel' =>
+      cases hts : Denumerable.ofNat (List ℕ) prev.length.unpair.2 with
+      | nil => simp [hts]
+      | cons t rest =>
+          simp only [hts]
+          rfl
+
+/-- The stream contraction is primitive recursive. -/
+lemma unRpn_prim : Primrec unRpn := by
+  have hF : Primrec₂ (fun (_ : Unit) => unF) :=
+    Primrec.nat_strong_rec _ (unG_prim.comp Primrec.snd).to₂
+      fun _ n => unG_spec n
+  have hF1 : Primrec unF := hF.comp (Primrec.const ()) Primrec.id
+  have h2 : Primrec fun ts : List ℕ =>
+      unF (Nat.pair ts.length (Encodable.encode ts)) :=
+    hF1.comp (Primrec₂.natPair.comp Primrec.list_length Primrec.encode)
+  exact h2.of_eq fun ts => by
+    rw [unF, Nat.unpair_pair, Denumerable.ofNat_encode, ← unRpn_eq_unRpnTokensC]
+
 #print axioms parseRpnC_prim
+#print axioms unRpn_prim
 #print axioms EfficientlyComputableTok₂.toTok₃
 #print axioms EfficientlyComputableTok.toTok₃
 
