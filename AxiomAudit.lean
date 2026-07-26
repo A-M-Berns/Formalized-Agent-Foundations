@@ -27,6 +27,26 @@ by the autoformalized `ProvabilityLogic/` sequent calculus (see `ModalAgents/Fix
 so every ModalAgents endpoint — including the cooperation results that rest on the GL fixed
 point — is asserted under `#assert_axioms_clean`. (`#assert_axioms_clean_except` is retained
 as a reusable tool but is no longer needed.)
+
+## Tier-2 membership, annotations, and regeneration
+
+**Tier 2 (`#assert_fields`)** freezes boundary *structures*: a structure's fields are
+the hypotheses its endpoints consume, so adding or removing one is premise smuggling.
+Membership is mechanical, not taste: a structure is Tier 2 iff it appears in the type
+of a Tier-1 endpoint, transitively through structure fields — computed by
+`SurfaceProbe.lean`'s `#surface_types`. Transitive closure is the right depth because
+reading an endpoint means understanding every structure its hypotheses mention.
+
+**Annotation convention**: the last line of every inventory member's docstring is
+`Paper node: ` followed by backticked labels taken verbatim from `\label{…}` in
+`notes/1609.03543v5-main.tex`, comma-separated — no ranges, no glosses, so every label
+is greppable. Members realizing the efficient-computability obligation without a node
+of their own carry `def:ec`; graded-strength endpoints share their theorem's node.
+
+**Regeneration** after a deliberate surface change: rerun `#surface_types` (seeded
+with the current `#assert_axioms_clean` names) and `#dump_fields` in
+`SurfaceProbe.lean`, update the `#assert_fields` block and affected `Paper node:`
+fields here, then run `scripts/check-paper-nodes.sh`.
 -/
 import Lean.Util.CollectAxioms
 import LogicalInduction.Properties
