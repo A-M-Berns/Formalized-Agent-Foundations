@@ -65,6 +65,14 @@ Remaining conclusion-free fuel-model certificate, in the exact style of the exis
 1. `sentence_poly : PolySentenceCodes prefixSentenceEnum` — a `Nat.Partrec.Code`
    emitting `encode (prefixSentenceEnum n)` with polynomial fuel.
 
+**Further reduced (same session):** `validCode : ℕ → Bool` (structural descent over
+`Formula.toNat`'s tagged-pair format) decides canonicity, with both directions proved
+(`validCode_encode`, `of_validCode`), and `sentencePoly_of_invalidBit` shows a
+poly-fueled emitter of the single **bit** `invalidBit n = if validCode n then 0 else 1`
+suffices for `sentence_poly` (`encode_prefixSentenceEnum` collapses the emitted value to
+`ifzSel ⟨⟨n, pair 1 n + 1⟩, bit⟩`).  So the entire residual is now: *one poly-fueled
+Boolean* — the tree-recursive canonicity decision of the scope note's item (ii).
+
 **Satisfiability (believed, not proved).** Both output values are polynomially
 bounded — `encode (sentenceₙ) ∈ {n, pair 1 n + 1}` and
 `2^{κᵢ} ≤ 32(d+1)²(c+1)² ≤ poly(i)` (`d = negDepth`, `c = encode ∘ negCore`, both

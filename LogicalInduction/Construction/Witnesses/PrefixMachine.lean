@@ -822,6 +822,138 @@ theorem approx_polyRat_of_sentence (h : PolySentenceCodes prefixSentenceEnum) :
   exact ⟨_, ((PolyFueled.const 2).pair hprod).of_eq (fun n => by
     rw [encode_prefixApprox])⟩
 
+/-! ## Canonicity of sentence codes
+
+`prefixSentenceEnum n` is `decode n` when `n` is canonical (`n ∈ range encode`) and the
+fallback `atom n` otherwise, so its emitted code is `n` or `pair 1 n + 1` according to a
+single canonicity **bit**.  `validCode` decides that bit by structural descent over
+`Formula.toNat`'s tagged-pair format; `sentencePoly_of_invalidBit` reduces the whole
+residual `sentence_poly` certificate to a poly-fueled emitter of the bit. -/
+
+/-- Canonicity of a sentence code: is `n` in the range of `Formula.toNat`?  Tag `0` is
+`⊥` (payload must be `0`), tag `1` is an atom (any payload), tags `2`–`4` recurse into
+both `unpair` children, anything else is garbage.
+Paper node: `thm:ob` -/
+def validCode : ℕ → Bool
+  | 0 => false
+  | (e + 1) =>
+    if e.unpair.1 = 0 then decide (e.unpair.2 = 0)
+    else if e.unpair.1 = 1 then true
+    else if e.unpair.1 ≤ 4 then
+      have h1 : e.unpair.2.unpair.1 < e + 1 :=
+        Nat.lt_succ_iff.mpr (le_trans (Nat.unpair_left_le _) (Nat.unpair_right_le _))
+      have h2 : e.unpair.2.unpair.2 < e + 1 :=
+        Nat.lt_succ_iff.mpr (le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _))
+      validCode e.unpair.2.unpair.1 && validCode e.unpair.2.unpair.2
+    else false
+
+/-- Unfolding of `validCode` on a tagged pair. -/
+lemma validCode_pair_tag (k c : ℕ) :
+    validCode (Nat.pair k c + 1) =
+      if k = 0 then decide (c = 0)
+      else if k = 1 then true
+      else if k ≤ 4 then validCode c.unpair.1 && validCode c.unpair.2
+      else false := by
+  rw [validCode]
+  simp only [Nat.unpair_pair]
+
+/-- Every canonical code is accepted. -/
+lemma validCode_encode : ∀ φ : Sentence, validCode (Encodable.encode φ) = true := by
+  intro φ
+  induction φ with
+  | atom a =>
+      rw [encode_atom', validCode_pair_tag]
+      norm_num
+  | falsum =>
+      rw [show Encodable.encode (Formula.falsum : Sentence) = Nat.pair 0 0 + 1 from rfl,
+        validCode_pair_tag]
+      norm_num
+  | and φ ψ ihφ ihψ =>
+      rw [encode_and', validCode_pair_tag]
+      norm_num [Nat.unpair_pair, ihφ, ihψ]
+  | or φ ψ ihφ ihψ =>
+      rw [encode_or', validCode_pair_tag]
+      norm_num [Nat.unpair_pair, ihφ, ihψ]
+  | imp φ ψ ihφ ihψ =>
+      rw [encode_imp', validCode_pair_tag]
+      norm_num [Nat.unpair_pair, ihφ, ihψ]
+
+/-- Every accepted code is canonical. -/
+lemma of_validCode : ∀ n, validCode n = true → ∃ φ : Sentence, Encodable.encode φ = n := by
+  intro n
+  induction n using Nat.strong_induction_on with
+  | _ n ih =>
+    match n with
+    | 0 => intro h; rw [validCode] at h; exact absurd h (by simp)
+    | (e + 1) =>
+      intro h
+      rw [validCode] at h
+      by_cases h0 : e.unpair.1 = 0
+      · rw [if_pos h0] at h
+        have hc : e.unpair.2 = 0 := by simpa using h
+        have he : e = 0 := by
+          have := Nat.pair_unpair e
+          rw [h0, hc] at this
+          simpa using this.symm
+        exact ⟨Formula.falsum, by rw [he]; rfl⟩
+      · rw [if_neg h0] at h
+        by_cases h1 : e.unpair.1 = 1
+        · refine ⟨Formula.atom e.unpair.2, ?_⟩
+          rw [encode_atom', ← h1, Nat.pair_unpair]
+        · rw [if_neg h1] at h
+          by_cases h4 : e.unpair.1 ≤ 4
+          · rw [if_pos h4] at h
+            obtain ⟨hv1, hv2⟩ : validCode e.unpair.2.unpair.1 = true ∧
+                validCode e.unpair.2.unpair.2 = true := by simpa using h
+            have hlt1 : e.unpair.2.unpair.1 < e + 1 :=
+              Nat.lt_succ_iff.mpr (le_trans (Nat.unpair_left_le _) (Nat.unpair_right_le _))
+            have hlt2 : e.unpair.2.unpair.2 < e + 1 :=
+              Nat.lt_succ_iff.mpr (le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _))
+            obtain ⟨φ₁, hφ₁⟩ := ih _ hlt1 hv1
+            obtain ⟨φ₂, hφ₂⟩ := ih _ hlt2 hv2
+            have hpc : Nat.pair e.unpair.2.unpair.1 e.unpair.2.unpair.2 = e.unpair.2 :=
+              Nat.pair_unpair _
+            have htag : e.unpair.1 = 2 ∨ e.unpair.1 = 3 ∨ e.unpair.1 = 4 := by omega
+            rcases htag with h2 | h3 | h4'
+            · exact ⟨Formula.imp φ₁ φ₂,
+                by rw [encode_imp', hφ₁, hφ₂, hpc, ← h2, Nat.pair_unpair]⟩
+            · exact ⟨Formula.and φ₁ φ₂,
+                by rw [encode_and', hφ₁, hφ₂, hpc, ← h3, Nat.pair_unpair]⟩
+            · exact ⟨Formula.or φ₁ φ₂,
+                by rw [encode_or', hφ₁, hφ₂, hpc, ← h4', Nat.pair_unpair]⟩
+          · rw [if_neg h4] at h
+            exact absurd h (by simp)
+
+/-- The emitted code of the total enumeration, as a function of the canonicity bit. -/
+lemma encode_prefixSentenceEnum (n : ℕ) :
+    Encodable.encode (prefixSentenceEnum n) =
+      if validCode n then n else Nat.pair 1 n + 1 := by
+  by_cases hv : validCode n
+  · obtain ⟨φ, rfl⟩ := of_validCode n hv
+    rw [prefixSentenceEnum_encode, if_pos hv]
+  · rw [prefixSentenceEnum_of_not_canonical
+      (fun φ he => hv (by rw [← he]; exact validCode_encode φ)),
+      encode_atom', if_neg hv]
+
+/-- The canonicity bit, arithmetized: `0` on canonical codes, `1` on fallback indices. -/
+def invalidBit (n : ℕ) : ℕ := if validCode n then 0 else 1
+
+/-- **The residual sentence emission reduces to the canonicity bit**: a poly-fueled
+emitter of `invalidBit` yields the full `sentence_poly` certificate, since the emitted
+value is `n` itself or the atom fallback `pair 1 n + 1` — both trivially assembled
+(kind `C`; provenance `(a)`: `encode_prefixSentenceEnum`, `of_validCode`,
+`validCode_encode`).
+Paper node: `thm:ob` -/
+theorem sentencePoly_of_invalidBit (h : ∃ c, PolyFueled c invalidBit) :
+    PolySentenceCodes prefixSentenceEnum := by
+  obtain ⟨cv, hv⟩ := h
+  refine ⟨_, (ifzSel_polyFueled.comp
+    ((PolyFueled.id.pair
+      (((PolyFueled.const 1).pair PolyFueled.id).succ_comp)).pair hv)).of_eq
+    (fun n => ?_)⟩
+  simp only [Nat.unpair_pair, ifzSelFn, encode_prefixSentenceEnum]
+  by_cases hb : validCode n <;> simp [invalidBit, hb]
+
 /-! ## Residual operational input and the assembled boundary -/
 
 /-- Compact operational input for the concrete prefix machine: the single fuel-model
@@ -911,6 +1043,7 @@ theorem lic_occamBounds_ofPrefixMachine (C : PrefixMachineComputation)
 
 #print axioms kraft_inequality
 #print axioms approx_polyRat_of_sentence
+#print axioms sentencePoly_of_invalidBit
 #print axioms sentCode_prefix_inj
 #print axioms prefixKraft
 #print axioms prefixNegationCompiler
