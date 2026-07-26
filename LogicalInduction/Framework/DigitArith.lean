@@ -18,6 +18,7 @@ elementary base-4 carry arithmetic; the implementation layer runs the carry loop
 Paper node: `def:ec` (digit model), `thm:scon` (conditioning translation residual).
 -/
 import LogicalInduction.Framework.Computable
+import LogicalInduction.Framework.Expectations
 
 namespace LogicalInduction
 
@@ -1560,6 +1561,37 @@ lemma PolySegStream.dayClampTokens {s : ℕ → List ℕ} (h : PolySegStream s) 
     ∃ c, PolyFueled c (fun z =>
       min ((undigitize (s z.unpair.1)).getD z.unpair.2 0) (z.unpair.1 + 1)) :=
   h.undigitizeTokens.2.clampVal PolyFueled.left
+
+/-! ## Digit-metered sentence-code sequences (the Tranche-4 hypothesis core)
+
+`PolySentenceCodes` demands a polynomial code *value* — admitting only sentences whose
+`Encodable` pair-codes stay small.  The digit-metered widening demands only poly-fueled
+*digit access*: sequences whose code bit-size is polynomial in the day qualify, code
+values may be exponential.  Property endpoints migrate hypothesis-by-hypothesis as
+their exploiting traders' emissions are re-certified in the digit model (the
+conditioning family is done; see `DigitConditioning.lean`); the inclusion below
+transfers every existing instantiation. -/
+
+/-- Digit-metered efficient sentence codeability: poly-fueled digit access to the
+(possibly exponentially large) codes. -/
+def DigitSentenceCodes (φ : ℕ → Sentence) : Prop :=
+  BigDigits (fun n => Encodable.encode (φ n))
+
+/-- Every poly-value code sequence has digit access (the inclusion that transfers
+existing `PolySentenceCodes` instantiations to digit-metered hypotheses). -/
+lemma PolySentenceCodes.toDigit {φ : ℕ → Sentence} (h : PolySentenceCodes φ) :
+    DigitSentenceCodes φ := by
+  obtain ⟨c, hc⟩ := h
+  exact BigDigits.of_polyFueled hc
+
+/-- Digit sentence codes reindex along poly-fueled day maps. -/
+lemma DigitSentenceCodes.comp {φ : ℕ → Sentence} (h : DigitSentenceCodes φ)
+    {cg : Code} {g : ℕ → ℕ} (hg : PolyFueled cg g) :
+    DigitSentenceCodes (fun n => φ (g n)) :=
+  BigDigits.comp h hg
+
+#print axioms DigitSentenceCodes
+#print axioms PolySentenceCodes.toDigit
 
 #print axioms PolySegStream.freezeModeScan
 #print axioms PolySegStream.dayClampTokens
