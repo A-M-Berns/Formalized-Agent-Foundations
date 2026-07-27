@@ -1273,6 +1273,371 @@ lemma run_step_decrement (st t : ℕ)
     simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
     first | omega | (exfalso; omega) | (exfalso; assumption)
 
+/-- **The converse walk lemma**: a token run the automaton walks from counter `c + 1`
+to its first return at counter `c` — staying strictly inside the run on every proper
+prefix — either parses completely as one sentence block, or poisons every extension
+(`parseRpn` fails on `u ++ tail` for every fuel and tail).  The only failure mode of
+an arity-complete run is an undecodable escape payload, which every extension
+reproduces. -/
+lemma parse_of_priceRunWalk : ∀ (N : ℕ) (u : List ℕ), u.length ≤ N → ∀ (c r : ℕ),
+    List.foldl rpnCondStep (rcPack 1 (c + 1) r) u =
+      (if c = 0 then rcPack 2 0 (r + u.length) else rcPack 1 c (r + u.length)) →
+    (∀ k < u.length,
+      (rcMode (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (u.take k)) = 1 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (u.take k)) = 6) ∧
+      c + 1 ≤ rcCnt (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (u.take k))) →
+    (∃ φ, parseRpn u.length u = some (φ, [])) ∨
+    (∀ fuel tail, parseRpn fuel (u ++ tail) = none) := by
+  intro N
+  induction N with
+  | zero =>
+      intro u hu c r h1 _
+      match u with
+      | [] =>
+          rw [List.foldl_nil] at h1
+          by_cases hc : c = 0
+          · rw [if_pos hc] at h1
+            simp only [rcPack, Nat.pair_eq_pair] at h1
+            omega
+          · rw [if_neg hc] at h1
+            simp only [rcPack, Nat.pair_eq_pair] at h1
+            omega
+      | t :: u' => exact absurd hu (by simp)
+  | succ N ih =>
+      intro u hu c r h1 h2
+      match u with
+      | [] =>
+          rw [List.foldl_nil] at h1
+          by_cases hc : c = 0
+          · rw [if_pos hc] at h1
+            simp only [rcPack, Nat.pair_eq_pair] at h1
+            omega
+          · rw [if_neg hc] at h1
+            simp only [rcPack, Nat.pair_eq_pair] at h1
+            omega
+      | t :: u' =>
+          simp only [List.length_cons] at hu
+          have hW1 : List.foldl rpnCondStep (rcPack 1 (c + 1) r) [t] =
+              rpnCondStep (rcPack 1 (c + 1) r) t := rfl
+          by_cases ht1 : t = 1
+          · -- Escape: the run is exactly `[1, payload]`.
+            subst ht1
+            match u' with
+            | [] =>
+                rw [List.foldl_cons, List.foldl_nil, rpnCondStep_price,
+                  if_pos rfl] at h1
+                by_cases hc : c = 0
+                · rw [if_pos hc] at h1
+                  simp only [rcPack, Nat.pair_eq_pair] at h1
+                  omega
+                · rw [if_neg hc] at h1
+                  simp only [rcPack, Nat.pair_eq_pair] at h1
+                  omega
+            | p :: u'' =>
+                have hW2 : List.foldl rpnCondStep (rcPack 1 (c + 1) r) [1, p] =
+                    (if c = 0 then rcPack 2 0 (r + 2) else rcPack 1 c (r + 2)) := by
+                  rw [List.foldl_cons, List.foldl_cons, List.foldl_nil,
+                    rpnCondStep_price, if_pos rfl, rpnCondStep_priceEsc]
+                have hu'' : u'' = [] := by
+                  by_contra hne
+                  have h2len : 2 < (1 :: p :: u'').length := by
+                    simp only [List.length_cons]
+                    have := List.length_pos_iff.mpr hne
+                    omega
+                  have := h2 2 h2len
+                  rw [show ((1 : ℕ) :: p :: u'').take 2 = [1, p] from rfl, hW2] at this
+                  by_cases hc : c = 0
+                  · rw [if_pos hc] at this
+                    simp only [rcMode_pack, rcCnt_pack] at this
+                    omega
+                  · rw [if_neg hc] at this
+                    simp only [rcMode_pack, rcCnt_pack] at this
+                    omega
+                subst hu''
+                cases hdec : Encodable.decode (α := Sentence) p with
+                | some ψ =>
+                    exact Or.inl ⟨ψ, by
+                      rw [show ([1, p] : List ℕ).length = 1 + 1 from rfl,
+                        parseRpn_cons]
+                      simp [hdec]⟩
+                | none =>
+                    refine Or.inr fun fuel tail => ?_
+                    match fuel with
+                    | 0 => rfl
+                    | fuel + 1 =>
+                        rw [List.cons_append, List.cons_append, parseRpn_cons,
+                          if_neg (by norm_num), if_pos rfl]
+                        simp [hdec]
+          · by_cases htop : t = 2 ∨ t = 3 ∨ t = 4
+            · -- Operator: split the tail at the first counter return.
+              have hstep1 : rpnCondStep (rcPack 1 (c + 1) r) t =
+                  rcPack 1 (c + 1 + 1) (r + 1) := by
+                rw [rpnCondStep_price, if_neg ht1, if_pos htop]
+              -- The tail walk.
+              set W' : ℕ → ℕ := fun k =>
+                List.foldl rpnCondStep (rcPack 1 (c + 1 + 1) (r + 1)) (u'.take k)
+                with hW'
+              have hWW' : ∀ k, List.foldl rpnCondStep (rcPack 1 (c + 1) r)
+                  ((t :: u').take (k + 1)) = W' k := fun k => by
+                rw [List.take_succ_cons, List.foldl_cons, hstep1]
+              have htake : ∀ (l : List ℕ) (k : ℕ) (hk : k < l.length),
+                  l.take (k + 1) = l.take k ++ [l[k]] := fun l k hk => by
+                rw [List.take_succ, List.getElem?_eq_getElem hk]
+                rfl
+              have hW'succ : ∀ k (hk : k < u'.length),
+                  W' (k + 1) = rpnCondStep (W' k) (u'[k]'hk) := fun k hk => by
+                rw [hW']
+                simp only []
+                rw [htake u' k hk, List.foldl_append, List.foldl_cons,
+                  List.foldl_nil]
+              have hW'0 : W' 0 = rcPack 1 (c + 2) (r + 1) := rfl
+              have hW'len : W' u'.length =
+                  (if c = 0 then rcPack 2 0 (r + (t :: u').length)
+                    else rcPack 1 c (r + (t :: u').length)) := by
+                rw [← h1, ← hWW' u'.length]
+                congr 1
+                rw [List.take_succ_cons, List.take_of_length_le le_rfl]
+              -- Modes and counters strictly inside.
+              have hmid : ∀ k < u'.length,
+                  (rcMode (W' k) = 1 ∨ rcMode (W' k) = 6) ∧
+                    c + 1 ≤ rcCnt (W' k) := fun k hk => by
+                have := h2 (k + 1) (by simp only [List.length_cons]; omega)
+                rwa [hWW' k] at this
+              -- First return of the counter to `c + 1`.
+              have hPex : ∃ k, k ≤ u'.length ∧ rcCnt (W' k) ≤ c + 1 :=
+                ⟨u'.length, le_rfl, by
+                  rw [hW'len]
+                  by_cases hc : c = 0
+                  · rw [if_pos hc, rcCnt_pack]
+                    omega
+                  · rw [if_neg hc, rcCnt_pack]
+                    omega⟩
+              classical
+              obtain ⟨k1, hk1le, hk1cnt, hmin⟩ :
+                  ∃ k1, k1 ≤ u'.length ∧ rcCnt (W' k1) ≤ c + 1 ∧
+                    ∀ k < k1, ¬ (k ≤ u'.length ∧ rcCnt (W' k) ≤ c + 1) :=
+                ⟨Nat.find hPex, (Nat.find_spec hPex).1, (Nat.find_spec hPex).2,
+                  fun k hk => Nat.find_min hPex hk⟩
+              have hk1pos : 0 < k1 := by
+                rcases Nat.eq_zero_or_pos k1 with h | h
+                · exfalso
+                  rw [h] at hk1cnt
+                  rw [hW'0, rcCnt_pack] at hk1cnt
+                  omega
+                · exact h
+              have hprevcnt : c + 2 ≤ rcCnt (W' (k1 - 1)) := by
+                have := hmin (k1 - 1) (by omega)
+                have hle : k1 - 1 ≤ u'.length := by omega
+                omega
+              have hk1m1lt : k1 - 1 < u'.length := by omega
+              have hprevmode := (hmid (k1 - 1) hk1m1lt).1
+              -- The run length along the walk.
+              have hlenW : ∀ k, k ≤ u'.length → rcLen (W' k) = r + 1 + k := by
+                intro k
+                induction k with
+                | zero => intro _; rw [hW'0, rcLen_pack]
+                | succ k ihk =>
+                    intro hk
+                    rw [hW'succ k (by omega),
+                      rcLen_run_step _ _ (hmid k (by omega)).1,
+                      ihk (by omega)]
+                    omega
+              -- The state at the first return.
+              have hstepk1 : W' k1 =
+                  rpnCondStep (W' (k1 - 1)) (u'[k1 - 1]'hk1m1lt) := by
+                have := hW'succ (k1 - 1) hk1m1lt
+                rwa [Nat.sub_add_cancel hk1pos] at this
+              have hdecstep : rcCnt (rpnCondStep (W' (k1 - 1))
+                  (u'[k1 - 1]'hk1m1lt)) < rcCnt (W' (k1 - 1)) := by
+                rw [← hstepk1]
+                omega
+              have hk1state : W' k1 = rcPack 1 (c + 1) (r + 1 + k1) := by
+                rw [hstepk1, run_step_decrement _ _ hprevmode (by omega) hdecstep]
+                have hcnteq : rcCnt (W' (k1 - 1)) - 1 = c + 1 := by
+                  have hback := rcCnt_run_step_ge (W' (k1 - 1))
+                    (u'[k1 - 1]'hk1m1lt) hprevmode
+                  rw [← hstepk1] at hback
+                  omega
+                rw [hcnteq, hlenW (k1 - 1) (by omega)]
+                congr 1
+                omega
+              -- The two children.
+              set u1 := u'.take k1 with hu1
+              set u2 := u'.drop k1 with hu2
+              have hu1len : u1.length = k1 := by
+                rw [hu1, List.length_take]
+                omega
+              have hu2len : u2.length = u'.length - k1 := by
+                rw [hu2, List.length_drop]
+              have hW2eq : ∀ k, List.foldl rpnCondStep
+                  (rcPack 1 (c + 1) (r + 1 + k1)) (u2.take k) = W' (k1 + k) := by
+                intro k
+                rw [hW']
+                simp only []
+                rw [List.take_add, List.foldl_append, ← hu2]
+                congr 1
+                exact hk1state.symm
+              -- Child 1 hypotheses.
+              have hchild1 := ih u1 (by rw [hu1len]; omega) (c + 1) (r + 1)
+                (by
+                  rw [if_neg (Nat.succ_ne_zero c), hu1len, hu1]
+                  exact hk1state)
+                (by
+                  intro k hk
+                  rw [hu1len] at hk
+                  have htt : u1.take k = u'.take k := by
+                    rw [hu1, List.take_take, min_eq_left (by omega)]
+                  rw [htt]
+                  refine ⟨(hmid k (by omega)).1, ?_⟩
+                  show c + 1 + 1 ≤ rcCnt (W' k)
+                  have := hmin k hk
+                  have hle : k ≤ u'.length := by omega
+                  omega)
+              -- Child 2 hypotheses.
+              have hchild2 := ih u2 (by rw [hu2len]; omega) c (r + 1 + k1)
+                (by
+                  conv_lhs => rw [show u2 = u2.take u2.length from
+                    (List.take_length).symm]
+                  rw [hW2eq u2.length, hu2len,
+                    show k1 + (u'.length - k1) = u'.length by omega, hW'len]
+                  have harg : r + 1 + k1 + (u'.length - k1) =
+                      r + (t :: u').length := by
+                    simp only [List.length_cons]
+                    omega
+                  by_cases hc : c = 0
+                  · rw [if_pos hc, if_pos hc, harg]
+                  · rw [if_neg hc, if_neg hc, harg])
+                (by
+                  intro k hk
+                  rw [hW2eq k]
+                  have hklt : k1 + k < u'.length := by
+                    rw [hu2len] at hk
+                    omega
+                  exact ⟨(hmid (k1 + k) hklt).1, (hmid (k1 + k) hklt).2⟩)
+              -- Combine.
+              have hsplit : u' = u1 ++ u2 := (List.take_append_drop k1 u').symm
+              rcases hchild1 with ⟨φ1, hφ1⟩ | hpoison1
+              · rcases hchild2 with ⟨φ2, hφ2⟩ | hpoison2
+                · -- Both children parse: the whole run parses.
+                  refine Or.inl ?_
+                  have hb1 : parseRpn (u1.length + u2.length) (u1 ++ u2) =
+                      some (φ1, u2) :=
+                    parseRpn_block_head hφ1 u2 (by omega)
+                  have hb2 : parseRpn (u1.length + u2.length) u2 =
+                      some (φ2, []) := parseRpn_mono u2 (by omega) hφ2
+                  have hlen' : (t :: u').length = (u1.length + u2.length) + 1 := by
+                    rw [hsplit]
+                    simp
+                  rw [hlen', hsplit]
+                  rw [parseRpn_cons, if_neg (by omega), if_neg ht1]
+                  rcases htop with rfl | rfl | rfl
+                  · exact ⟨LO.Propositional.Formula.imp φ1 φ2, by
+                      rw [if_pos rfl, hb1]
+                      simp only [Option.bind_some]
+                      rw [hb2]
+                      simp only [Option.bind_some]⟩
+                  · exact ⟨LO.Propositional.Formula.and φ1 φ2, by
+                      rw [if_neg (by omega), if_pos rfl, hb1]
+                      simp only [Option.bind_some]
+                      rw [hb2]
+                      simp only [Option.bind_some]⟩
+                  · exact ⟨LO.Propositional.Formula.or φ1 φ2, by
+                      rw [if_neg (by omega), if_neg (by omega), if_pos rfl, hb1]
+                      simp only [Option.bind_some]
+                      rw [hb2]
+                      simp only [Option.bind_some]⟩
+                · -- Second child poisons.
+                  refine Or.inr fun fuel tail => ?_
+                  match fuel with
+                  | 0 => rfl
+                  | fuel + 1 =>
+                      rw [List.cons_append, parseRpn_cons, if_neg (by omega),
+                        if_neg ht1]
+                      have hrest : u' ++ tail = u1 ++ (u2 ++ tail) := by
+                        rw [hsplit, List.append_assoc]
+                      have hnone : ∀ (mk : Sentence → Sentence → Sentence),
+                          ((parseRpn fuel (u' ++ tail)).bind fun p =>
+                            (parseRpn fuel p.2).bind fun q =>
+                              some (mk p.1 q.1, q.2)) = none := by
+                        intro mk
+                        cases hp : parseRpn fuel (u' ++ tail) with
+                        | none => rfl
+                        | some pr =>
+                            have hbig : parseRpn (fuel + u1.length)
+                                (u' ++ tail) = some pr :=
+                              parseRpn_mono _ (by omega) hp
+                            have hblk : parseRpn (fuel + u1.length)
+                                (u' ++ tail) = some (φ1, u2 ++ tail) := by
+                              rw [hrest]
+                              exact parseRpn_block_head hφ1 (u2 ++ tail)
+                                (by omega)
+                            rw [hblk] at hbig
+                            obtain rfl := Option.some.inj hbig
+                            simp only [Option.bind_some]
+                            rw [hpoison2 fuel tail]
+                            rfl
+                      rcases htop with rfl | rfl | rfl
+                      · rw [if_pos rfl]
+                        exact hnone _
+                      · rw [if_neg (by omega), if_pos rfl]
+                        exact hnone _
+                      · rw [if_neg (by omega), if_neg (by omega), if_pos rfl]
+                        exact hnone _
+              · -- First child poisons.
+                refine Or.inr fun fuel tail => ?_
+                match fuel with
+                | 0 => rfl
+                | fuel + 1 =>
+                    rw [List.cons_append, parseRpn_cons, if_neg (by omega),
+                      if_neg ht1]
+                    have hrest : u' ++ tail = u1 ++ (u2 ++ tail) := by
+                      rw [hsplit, List.append_assoc]
+                    have hnone : ∀ (mk : Sentence → Sentence → Sentence),
+                        ((parseRpn fuel (u' ++ tail)).bind fun p =>
+                          (parseRpn fuel p.2).bind fun q =>
+                            some (mk p.1 q.1, q.2)) = none := by
+                      intro mk
+                      rw [hrest, hpoison1 fuel (u2 ++ tail)]
+                      rfl
+                    rcases htop with rfl | rfl | rfl
+                    · rw [if_pos rfl]
+                      exact hnone _
+                    · rw [if_neg (by omega), if_pos rfl]
+                      exact hnone _
+                    · rw [if_neg (by omega), if_neg (by omega), if_pos rfl]
+                      exact hnone _
+            · -- Leaf (`0` or an atom): the run is exactly `[t]`.
+              have hstep1 : rpnCondStep (rcPack 1 (c + 1) r) t =
+                  (if c = 0 then rcPack 2 0 (r + 1) else rcPack 1 c (r + 1)) := by
+                rw [rpnCondStep_price, if_neg ht1, if_neg htop]
+              have hu' : u' = [] := by
+                by_contra hne
+                have h1len : 1 < (t :: u').length := by
+                  simp only [List.length_cons]
+                  have := List.length_pos_iff.mpr hne
+                  omega
+                have := h2 1 h1len
+                rw [show (t :: u').take 1 = [t] from rfl, hW1, hstep1] at this
+                by_cases hc : c = 0
+                · rw [if_pos hc] at this
+                  simp only [rcMode_pack, rcCnt_pack] at this
+                  omega
+                · rw [if_neg hc] at this
+                  simp only [rcMode_pack, rcCnt_pack] at this
+                  omega
+              subst hu'
+              by_cases ht0 : t = 0
+              · exact Or.inl ⟨LO.Propositional.Formula.falsum, by
+                  subst ht0
+                  rfl⟩
+              · exact Or.inl ⟨LO.Propositional.Formula.atom (t - 5), by
+                  rw [show ([t] : List ℕ).length = 0 + 1 from rfl, parseRpn_cons,
+                    if_neg ht0, if_neg ht1, if_neg (by omega), if_neg (by omega),
+                    if_neg (by omega)]⟩
+
+#print axioms parseRpn_strip
+#print axioms parse_of_priceRunWalk
+
 /-! ### Endpoint statements (open, recorded — not sorried)
 
 The two target endpoints are stated here as comments rather than sorried theorems so
