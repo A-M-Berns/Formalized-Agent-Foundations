@@ -1158,23 +1158,19 @@ lemma rpnGuardedConditionRun_polySegStream {s blocks : ℕ → List ℕ}
 
 /-! ## Endpoints (open)
 
-The remaining distance to the class-preservation endpoints, with the pieces above in
-hand:
+The remaining distance to the class-preservation endpoints.  Whole-stream
+contraction exactness (`unRpn_rpnConditionRun`) and guard-honesty transfer
+(`strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay`, packaged as
+`strategyOfTokens_rpnGuardedConditionTokens_trades`) are **proved below**; open:
 
-1. **Whole-stream contraction exactness** for the price pass: on every input stream,
-   `unRpn (rpnGuardedConditionTokens …)` decodes to the same strategy as
-   `guardedConditionTokens … (unRpn ts)` — well-formed chunks by
-   `unRpn_price_rewrite_chunk` + the run–parse correspondence; malformed streams by
-   rejection preservation (the rewrite copies the poisoning chunk verbatim).
-2. **Guard honesty transfer**: an oversized price-day at a run-aware mode-2 position
-   maps to a mode-2 position of the contracted stream
-   (`strategyOfTokens_trades_eq_nil_of_bigDay` then applies verbatim).
-3. **The frame pass mirror** (`conditioningFrameTokenRun` at the symbol level): the
-   same automaton + splice toolkit, with the trade sentence wrapped as
-   `3 :: run ++ block` and the two legs assembled by position (`concatVar`); its
-   PolySegStream certificate is the same assembly shape as
-   `rpnGuardedConditionRun_polySegStream`.
-4. The zero-aware variants for the eventual translation (mirror of
+1. **The frame pass mirror** (`conditioningFrameTokenRun` at the symbol level): the
+   same automaton with exit-triggered emission, the trade sentence wrapped as
+   `3 :: run ++ block` inside the RPN expansion of the leg bodies, and the two legs
+   assembled by position (`concatVar`); its PolySegStream certificate is the same
+   assembly shape as `rpnGuardedConditionRun_polySegStream`, and its commutation
+   the same chunk-induction skeleton as `unRpn_rpnConditionRun` (the trade-run
+   walk instances are already in place).
+2. The zero-aware variants for the eventual translation (mirror of
    `guardedZeroAwareConditionTokens`). -/
 
 /-! ## Parse localization
