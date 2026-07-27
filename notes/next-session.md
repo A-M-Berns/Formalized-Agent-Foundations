@@ -226,33 +226,56 @@ first-exit localization (`priceWalk_first_exit`/`tradeWalk_first_exit` +
 exits" branches are now *contradictions* against the base-mode hypothesis, which is
 why the `hex` quantifier is `k ≤ rest.length` (not `<`, as in the `frameAgree` proof).
 
-STILL OPEN for the join (the actual blocker, do NOT underestimate — two candidate
-routes, both real work):
+Ninth tranche (2026-07-27, worktree agent): the **join is CLOSED** — ROUTE B taken
+and held, green + axiom-clean (commits `ac8b212`, `ee40d53`).
 
-* ROUTE A (feed `unRpn_split`): prove
-  `List.foldl rpnCondStep (rcPack 0 0 0) (rpnFrameOutput second blkψ ε day bc ibc ts) = rcPack 0 0 0`
-  from the same hypothesis on `ts`.  Copies replay the source's transitions; each
-  `rpnFrameEmit` block must be shown automaton-neutral.  It IS neutral even on
-  unparseable buffers — its shell `0 :: (3 :: buf ++ blk) ++ day :: …` runs the
-  buffered trade tokens one counter level up (the `3` bumps the pending counter, `buf`
-  drives 2→1, the complete block `blk` drives 1→0, exit at the boundary, then the day
-  token returns to base) — but proving that needs a *counter-shift* form of
-  `foldl_rpnCondStep_run` (currently only the `c+1 → exit` instance exists).  Then the
-  mixed FrameAgree branches also need `freezeMode4 (conditioningFrameTokenOutput …) = 0`.
-* ROUTE B (strengthen in place): restate `frameAgree_unRpn_rpnFrameOutput` (~530
-  lines) as
-  `ContractsTo out tok ∨ (UnRpnStops out ∧ Unreadable (unRpn out) ∧ Unreadable tok)`
-  and re-run its chunk induction with `ContractsTo` in place of the raw `unRpn`
-  equality.  The ingredients exist (`ContractsTo.*` algebra, `rpnFrameEmit_contractsTo`,
-  and `unRpn_rpnFrameEmit_poison` is already in poisons-every-extension form), and the
-  proof's poison branches are already written continuation-generically (`hunL : ∀ Y`).
-  Mechanical but large; ROUTE B subsumes the mixed-branch bookkeeping ROUTE A needs.
+* `frameJoint_unRpn_rpnFrameOutput` replaces the old ~530-line `frameAgree` induction
+  with a JOINT conclusion: (i) the whole-stream `FrameAgree` (unchanged, re-exported as
+  `frameAgree_unRpn_rpnFrameOutput`, so `strategyOfTokens_unRpn_rpnFrameOutput_trades`
+  is untouched) and (ii), *under the source's base-mode invariant*
+  `List.foldl rpnCondStep (rcPack 0 0 0) ts = rcPack 0 0 0`, the prefix form
+  `FrameContract A B := ContractsTo A B ∨ (UnRpnStops A ∧ Unreadable (unRpn A) ∧
+  Unreadable B)` (`frameContract_rpnFrameOutput`).
+  KEY DESIGN FACT: Route B as originally stated is **false unconditionally** — a
+  truncated price chunk (`0 :: blk` with no day token) contracts to `[0, ⌜φ⌝]` but
+  appending a day token changes the contraction, so there is no `ContractsTo`.  The
+  base-mode hypothesis (exactly what the acceptance gate tests) *eliminates* the three
+  offending chunk cases — truncated price chunk, never-exiting price run, never-exiting
+  trade run, bare `[1]`/`[7]` tag — as contradictions; every surviving case has a
+  `ContractsTo` chunk, so the chunk step is one combinator
+  (`FrameContract.cons_chunk` / `ContractsTo.frameAgree_chunk`) instead of the old
+  `FrameAgree.cons_chunk` bookkeeping.  Support: `ContractsTo.nil`,
+  `FrameContract.frameAgree` / `.cons_chunk` / `.of_poison`, `rcModeF_price_ne` /
+  `rcMode_step_of_price_run`, `rpnCondStep_eq_base_of_mode_zero` /
+  `foldl_rpnCondStep_eq_base_of_mode_zero` (mode `0` ⇒ state `rcPack 0 0 0`, the bridge
+  from the gate to the base-mode hypothesis).
+* `strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades` — **the join agreement**.
+  Split on `deserializeTrades (unRpn ts)`:
+  - *readable*: both legs' poison branches are IMPOSSIBLE (a poison branch asserts the
+    leg's token image `Unreadable`, contradicting
+    `deserializeTrades_conditioningFrameTokenRun`), so `rpnStructurallyAccepts_agree`
+    gives the token gate's value and the accepting branch composes the two
+    `ContractsTo` legs (`ContractsTo.append` at `rest = []`) into an EXACT equality.
+    This is what dissolves the feared "mixed branch" (leg 1 transparent, leg 2 poisoned)
+    without needing a `second`-uniform induction or
+    `freezeMode4 (conditioningFrameTokenOutput …) = 0`.
+  - *unreadable*: both joins have no trades, via the extracted
+    `streamReadFrom_eq_none_of_accepts_of_deserializeTrades_none` (lifted out of
+    `deserializeTrades_safeSeparatedFrameTokenOutput`'s own `none` branch, which now
+    calls it) + `streamReadFrom_conditioningFrameTokenOutput_none`.
+  Also new in ConditioningCompiler: `parserStructurallyAccepts_eq_one_of_ne_zero`.
 
-The join's **definition and certificate** are already landed:
-`rpnSafeSeparatedFrameOutput` (gated exactly like `safeSeparatedFrameTokenOutput`) and
-`rpnSafeSeparatedFrameOutput_polySegStream` (three lines off `rpnAcceptScan`, day slot
-= `n` as in `safeSeparatedFrameDigitOutput_polySegStream`).  So what is missing is
-ONLY the join *agreement* (route A or B above); with it, items 2–4 below follow.
+GOTCHAS added by this tranche:
+* `omega` does **not** prove disjunctive goals (`6 = 1 ∨ 6 = 2 ∨ 6 = 6`) and does not
+  use a `False` hypothesis.  `split_ifs` on `rcModeF`'s dead outer branches leaves
+  `h : False` in context, so the working idiom is
+  `split_ifs <;> first | exact absurd ‹False› not_false | refine ⟨by omega, …⟩`
+  with the conclusion in `≠` form, and it needs `set_option maxHeartbeats 1000000`.
+* `refine ⟨Or.inr ⟨?_, by tac⟩, …⟩` elaborates the `by` block before the sibling `?_`
+  fixes the metavariable — split the anonymous constructor into separate `refine`
+  steps (same family as the "bind branch haves before `of_eq`" trap).
+
+
 
 Seventh tranche (2026-07-27, worktree agent): the frame pass's **`PolySegStream`
 certificate** and **budget exactness** are LANDED, green + axiom-clean (commits
@@ -289,41 +312,9 @@ the two-leg join.
   strategies are empty, so the budget never reaches a trade).
 
 REMAINING (in feasibility order):
-1. Frame-pass mirror — CORRECTNESS, CERTIFICATE and BUDGET EXACTNESS DONE (sixth +
-   seventh tranches above); what is left is only the **two-leg join**.  Original
-   architecture note, kept for the join:
-   REUSE `rpnCondStep` (no new automaton).  Emission (`rpnFrameEmit` + anchor +
-   run + commutation: LANDED) is exit-triggered
-   — at position (st, t) with
-   `rcMode st ∈ {4,7}` and `rcMode (rpnCondStep st t) = 0` (detected by
-   `runWalk_first_exit` trade instance) emit the RPN expansion of
-   `rawLocallyGated{Beta,Second}BodyTokens` with each price leaf `[0, code, day]`
-   expanded to `0 :: block ++ [day]` where the conjunction block is
-   `3 :: (buf ++ [t]) ++ blockψ(n)` and the ψ-leaf block is `blockψ(n)`; base-mode
-   token 6 emits `[]` (tag dropped; body closes with `8` and re-emits
-   `6 :: block'`).  Per-chunk contraction anchor mirrors
-   `unRpn_price_rewrite_chunk` (needs `parseRpn_and_block` + the existing
-   payload/single chunk lemmas over the body shape).  Its master commutation is
-   the SAME chunk-induction skeleton as `unRpn_rpnConditionRun` (trade converse
-   lemma + first-exit localization already landed).  Budget codes: the digit
-   model's `frameTradeCount tfP lenP` reads the CONTRACTED priced stream — at
-   symbol level count trade-run exits by a scan over `rpnCondScan`'s mode stream
-   (exit flag = mode ∈ {4,7} ∧ next mode 0), or reuse
-   `PolySegStream.tradeCountScan` on the digitized contracted stream if a
-   contraction emission is interposed (decide when implementing).  Certificate
-   assembly shape = `rpnGuardedConditionRun_polySegStream` (window copy via
-   `concatVar` over `rcLen + 1` — the emission splices `buf ++ [t]`, i.e. positions
-   `j - rcLen .. j` — constant frames, blocks and budget codes constant per day).
-   THE ONLY OPEN PIECE OF ITEM 1: the two legs join under the structural-acceptance
-   gate (`safeSeparatedFrameTokenOutput`'s shape:
-   `if parserStructurallyAccepts … = 0 then first else first ++ second`).  Needs a
-   symbol-side acceptance scan (the token one is `PolySegStream.acceptsScan` over
-   `parserDepthScanAt`) plus a join agreement.  NOTE a wrinkle the token model does
-   not have: `unRpn (A ++ B) ≠ unRpn A ++ unRpn B` when `A` is poisoned, so the join
-   needs the token model's none-absorbing argument replayed through `FrameAgree`.
-   (Certificate side of the join is cheap: `rpnFrameOutput_polySegStream` twice,
-   `.append`, and `.ifZero` on the acceptance scan — exactly
-   `safeSeparatedFrameDigitOutput_polySegStream`'s three lines.)
+1. Frame-pass mirror — **DONE** (correctness, certificate, budget exactness, and as of
+   the ninth tranche the gated two-leg join and its agreement).  Nothing open.
+
 2. Zero-aware variants (mirror `guardedZeroAwareConditionTokens`; the master
    commutation's day-emission case splits on `D ∈ zeroDays` with the short
    `[D, 1, encode 1, 8]` expansion — everything else identical).
