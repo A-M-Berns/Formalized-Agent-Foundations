@@ -1248,11 +1248,20 @@ certificate (`rpnFrameOutput_polySegStream`), the trade-run exit scan
 the contraction (`rpnTradeCountAt_eq_frameTradeCount`).  Still open:
 
 1. **The two-leg join** under a structural-acceptance gate, as in
-   `safeSeparatedFrameTokenOutput`.  At symbol level this needs a symbol-side
-   acceptance scan and a join agreement, and it must handle a wrinkle the token
-   model does not have: `unRpn (A ++ B) ≠ unRpn A ++ unRpn B` when `A` is poisoned,
-   so the none-absorbing argument of the token model has to be replayed through the
-   `FrameAgree` invariant.
+   `safeSeparatedFrameTokenOutput`.  The **gate** is now proved below — the
+   symbol-side test `rpnStructurallyAccepts` (run automaton ends in base mode with an
+   empty feature stack), its poly-fueled scan `rpnDepthScan`, and the gate-agreement
+   theorem `rpnStructurallyAccepts_agree` (symbol test = token test on the
+   contraction, or the contraction is unreadable).  The append wrinkle
+   (`unRpn (A ++ B) ≠ unRpn A ++ unRpn B` when `A` is poisoned) is isolated as
+   `unRpn_split`: a stream the automaton walks back to base is either
+   `ContractsTo`-transparent or its poison stops the contraction (`UnRpnStops`).
+   What is left is to feed `unRpn_split` on the frame output, which needs
+   `List.foldl rpnCondStep (rcPack 0 0 0) (rpnFrameOutput …) = rcPack 0 0 0` — the
+   copies replay the source's transitions and each `rpnFrameEmit` block is
+   automaton-neutral (its `3 :: buf ++ blk` shell runs the buffered trade tokens one
+   counter level up, so it exits exactly at the block boundary), which needs the
+   counter-shift form of the run-walk lemmas.
 2. The zero-aware variants for the eventual translation (mirror of
    `guardedZeroAwareConditionTokens`): the day-emission case of the master
    commutation splits on `D ∈ zeroDays` with the short `[D, 1, encode 1, 8]`
@@ -3349,6 +3358,539 @@ theorem rpnTradeCountAt_eq_frameTradeCount (tf tokenFn lenFn : ℕ → ℕ) (n :
 #print axioms tradeRuns_unRpn_agree
 #print axioms rpnTradeCountAt_eq_frameTradeCount
 
+/-! ## Symbol-level structural acceptance (the two-leg join gate)
+
+The token model joins the two frame legs only at a structurally accepting boundary
+(`safeSeparatedFrameTokenOutput` gates on `parserStructurallyAccepts`).  The symbol
+side needs the same test computed from the run automaton: the trajectory must end in
+base mode with an empty feature stack.  Depth is a pure function of the mode
+trajectory — base-mode tokens act exactly as in the token model, the price-day and
+payload slots push, a trade-run exit pops, and a sentence run is depth-neutral — so
+its agreement with the contraction has the same disjunctive shape as
+`tradeRuns_unRpn_agree`, and every poison branch discharges immediately. -/
+
+/-- Depth update at one symbol position: base-mode tokens act as in the token model,
+the price-day / payload slots push, and a trade-run exit pops. -/
+def rpnDepthNext (st st' t d : ℕ) : ℕ :=
+  if rcMode st = 0 then parserDepthNext 0 t d
+  else if rcMode st = 2 then d + 1
+  else if rcMode st = 3 then d + 1
+  else if rcMode st = 5 then d + 1
+  else if (rcMode st = 4 ∨ rcMode st = 7) ∧ rcMode st' = 0 then d.pred
+  else d
+
+/-- Symbol-level depth along a stream, from a control state and a starting depth. -/
+def rpnDepthRuns (st : ℕ) : List ℕ → ℕ → ℕ
+  | [], d => d
+  | t :: ts, d =>
+      rpnDepthRuns (rpnCondStep st t) ts (rpnDepthNext st (rpnCondStep st t) t d)
+
+/-- Token-model depth along a contracted stream, from a freeze mode. -/
+def tokDepthRuns (m : ℕ) : List ℕ → ℕ → ℕ
+  | [], d => d
+  | t :: L, d => tokDepthRuns (freezeMode4Step m t) L (parserDepthNext m t d)
+
+lemma rpnDepthRuns_append (st : ℕ) (xs ys : List ℕ) (d : ℕ) :
+    rpnDepthRuns st (xs ++ ys) d =
+      rpnDepthRuns (List.foldl rpnCondStep st xs) ys (rpnDepthRuns st xs d) := by
+  induction xs generalizing st d with
+  | nil => simp [rpnDepthRuns]
+  | cons t ts ih => simp only [List.cons_append, rpnDepthRuns, ih, List.foldl_cons]
+
+lemma tokDepthRuns_append (m : ℕ) (xs ys : List ℕ) (d : ℕ) :
+    tokDepthRuns m (xs ++ ys) d =
+      tokDepthRuns (List.foldl freezeMode4Step m xs) ys (tokDepthRuns m xs d) := by
+  induction xs generalizing m d with
+  | nil => simp [tokDepthRuns]
+  | cons t ts ih => simp only [List.cons_append, tokDepthRuns, ih, List.foldl_cons]
+
+/-- No depth change along a stretch that stays inside a sentence run without exiting. -/
+lemma rpnDepthRuns_eq_of_run (st : ℕ) (ts : List ℕ) (d : ℕ)
+    (h : ∀ k < ts.length,
+      (rcMode (List.foldl rpnCondStep st (ts.take k)) = 1 ∨
+        rcMode (List.foldl rpnCondStep st (ts.take k)) = 6 ∨
+        rcMode (List.foldl rpnCondStep st (ts.take k)) = 4 ∨
+        rcMode (List.foldl rpnCondStep st (ts.take k)) = 7) ∧
+      ¬((rcMode (List.foldl rpnCondStep st (ts.take k)) = 4 ∨
+          rcMode (List.foldl rpnCondStep st (ts.take k)) = 7) ∧
+        rcMode (List.foldl rpnCondStep st (ts.take (k + 1))) = 0)) :
+    rpnDepthRuns st ts d = d := by
+  induction ts generalizing st d with
+  | nil => rfl
+  | cons t ts ih =>
+      have h0 := h 0 (by simp)
+      simp only [List.take_zero, List.foldl_nil, List.take_succ_cons,
+        List.foldl_cons] at h0
+      rw [rpnDepthRuns,
+        show rpnDepthNext st (rpnCondStep st t) t d = d by
+          rw [rpnDepthNext]
+          rcases h0 with ⟨hm, hex⟩
+          rcases hm with hm | hm | hm | hm <;>
+            simp only [hm] <;> norm_num <;> tauto,
+        ih (rpnCondStep st t) d (fun k hk => by
+          have := h (k + 1) (by simp only [List.length_cons]; omega)
+          rwa [List.take_succ_cons, List.foldl_cons, List.take_succ_cons,
+            List.foldl_cons] at this)]
+
+/-- A complete price block leaves the depth unchanged. -/
+lemma rpnDepthRuns_price_block {b : List ℕ} {φ : Sentence}
+    (hb : parseRpn b.length b = some (φ, [])) (d : ℕ) :
+    rpnDepthRuns (rcPack 1 1 0) b d = d := by
+  obtain ⟨-, hinv⟩ := foldl_rpnCondStep_price_block hb
+  refine rpnDepthRuns_eq_of_run _ _ _ fun k hk => ?_
+  have := hinv k hk
+  constructor
+  · omega
+  · rintro ⟨h4, -⟩; omega
+
+/-- A complete trade block pops exactly one feature. -/
+lemma rpnDepthRuns_trade_block {b : List ℕ} {φ : Sentence}
+    (hb : parseRpn b.length b = some (φ, [])) (d : ℕ) :
+    rpnDepthRuns (rcPack 4 1 0) b d = d.pred := by
+  obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_trade_block hb
+  have hne : b ≠ [] := by
+    intro hnil
+    have := parseRpn_length_lt b.length b φ [] hb
+    rw [hnil] at this
+    simp at this
+  rcases List.eq_nil_or_concat' b with rfl | ⟨init, last, rfl⟩
+  · exact absurd rfl hne
+  · have hlen : (init ++ [last]).length = init.length + 1 := by simp
+    have hzero : ∀ e, rpnDepthRuns (rcPack 4 1 0) init e = e := fun e =>
+      rpnDepthRuns_eq_of_run _ _ _ fun k hk => by
+        have hk2 : k + 1 < (init ++ [last]).length := by rw [hlen]; omega
+        have h1 := hinv k (by rw [hlen]; omega)
+        have h2 := hinv (k + 1) hk2
+        rw [List.take_append_of_le_length (by omega)] at h1 h2
+        constructor
+        · omega
+        · rintro ⟨-, h0⟩; omega
+    have hmodeInit : rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 4 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 7 := by
+      have := hinv init.length (by rw [hlen]; omega)
+      rwa [List.take_append_of_le_length le_rfl, List.take_length] at this
+    have hstepLast :
+        rpnCondStep (List.foldl rpnCondStep (rcPack 4 1 0) init) last =
+          rcPack 0 0 0 := by
+      have hw := hwalk
+      rw [List.foldl_append] at hw
+      simpa using hw
+    rw [rpnDepthRuns_append, hzero, rpnDepthRuns, rpnDepthRuns, hstepLast,
+      rpnDepthNext]
+    rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
+      if_pos ⟨hmodeInit, by simp [rcMode, rcPack]⟩]
+
+/-- **Symbol-level depth and mode agree with the contraction** unless the contraction
+is unreadable. -/
+theorem depthMode_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
+    ((∀ d, rpnDepthRuns (rcPack 0 0 0) ts d = tokDepthRuns 0 (unRpn ts) d) ∧
+      rcMode (List.foldl rpnCondStep (rcPack 0 0 0) ts) = freezeMode4 (unRpn ts)) ∨
+    Unreadable (unRpn ts) := by
+  intro N
+  induction N with
+  | zero =>
+      intro ts hts
+      obtain rfl : ts = [] := List.eq_nil_of_length_eq_zero (by omega)
+      exact Or.inl ⟨fun d => rfl, by rw [List.foldl_nil, rcMode_pack, unRpn_nil]; rfl⟩
+  | succ N ih =>
+      intro ts hts
+      match ts with
+      | [] => exact Or.inl ⟨fun d => rfl, by rw [List.foldl_nil, rcMode_pack, unRpn_nil]; rfl⟩
+      | t :: rest =>
+          simp only [List.length_cons] at hts
+          by_cases ht0 : t = 0
+          · subst ht0
+            cases hp : parseRpn rest.length rest with
+            | none =>
+                refine Or.inr ?_
+                rw [show unRpn (0 :: rest) = [0, 0] by
+                  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl, hp]]
+                exact unreadable_price_poison
+            | some pr =>
+                obtain ⟨φ, r1⟩ := pr
+                obtain ⟨blk, heq, hblk⟩ := parseRpn_strip rest.length rest hp
+                obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_price_block hblk
+                match r1 with
+                | [] =>
+                    rw [List.append_nil] at heq
+                    subst heq
+                    have hun0 : unRpn (0 :: rest) = [0, Encodable.encode φ] := by
+                      rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+                        hblk]
+                    refine Or.inl ⟨fun d => ?_, ?_⟩
+                    · rw [hun0, rpnDepthRuns, rpnCondStep_base_price,
+                        show rpnDepthNext (rcPack 0 0 0) (rcPack 1 1 0) 0 d = d by
+                          simp [rpnDepthNext, rcMode, rcPack, parserDepthNext],
+                        rpnDepthRuns_price_block hblk]
+                      simp [tokDepthRuns, freezeMode4Step, parserDepthNext]
+                    · rw [hun0, List.foldl_cons, rpnCondStep_base_price, hwalk]
+                      simp [freezeMode4, freezeMode4Step, rcMode, rcPack]
+                | d0 :: r2 =>
+                    subst heq
+                    have hr2 : r2.length ≤ N := by
+                      have hlt := parseRpn_length_lt _ _ _ _ hp
+                      simp only [List.length_cons] at hlt
+                      omega
+                    have hstD : rpnCondStep (rcPack 2 0 blk.length) d0 =
+                        rcPack 0 0 0 :=
+                      rpnCondStep_fallback _ _ (by simp [rcMode, rcPack])
+                        (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
+                        (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
+                    have hstate : List.foldl rpnCondStep (rcPack 0 0 0)
+                        (0 :: (blk ++ d0 :: r2)) =
+                        List.foldl rpnCondStep (rcPack 0 0 0) r2 := by
+                      rw [List.foldl_cons, rpnCondStep_base_price,
+                        List.foldl_append, hwalk, List.foldl_cons, hstD]
+                    have hdepth : ∀ d, rpnDepthRuns (rcPack 0 0 0)
+                        (0 :: (blk ++ d0 :: r2)) d =
+                        rpnDepthRuns (rcPack 0 0 0) r2 (d + 1) := by
+                      intro d
+                      rw [rpnDepthRuns, rpnCondStep_base_price,
+                        show rpnDepthNext (rcPack 0 0 0) (rcPack 1 1 0) 0 d = d by
+                          simp [rpnDepthNext, rcMode, rcPack, parserDepthNext],
+                        rpnDepthRuns_append, rpnDepthRuns_price_block hblk, hwalk,
+                        rpnDepthRuns, hstD,
+                        show rpnDepthNext (rcPack 2 0 blk.length) (rcPack 0 0 0) d0 d
+                            = d + 1 by
+                          rw [rpnDepthNext, if_neg (by simp [rcMode, rcPack]),
+                            if_pos (by simp [rcMode, rcPack])]]
+                    have hchunk : List.foldl freezeMode4Step 0
+                        [0, Encodable.encode φ, d0] = 0 := by
+                      simp [freezeMode4Step]
+                    have hun := unRpn_price_chunk_block hblk d0 r2
+                    rcases ih r2 hr2 with ⟨hEq, hM⟩ | hU
+                    · refine Or.inl ⟨fun d => ?_, ?_⟩
+                      · rw [hun, hdepth,
+                          show (0 :: Encodable.encode φ :: d0 :: unRpn r2) =
+                            [0, Encodable.encode φ, d0] ++ unRpn r2 from rfl,
+                          tokDepthRuns_append, hchunk, hEq]
+                        congr 1
+                      · rw [hun, hstate,
+                          show (0 :: Encodable.encode φ :: d0 :: unRpn r2) =
+                            [0, Encodable.encode φ, d0] ++ unRpn r2 from rfl,
+                          freezeMode4, List.foldl_append, hchunk]
+                        exact hM
+                    · refine Or.inr ?_
+                      rw [hun,
+                        show (0 :: Encodable.encode φ :: d0 :: unRpn r2) =
+                          [0, Encodable.encode φ, d0] ++ unRpn r2 from rfl]
+                      exact hU.cons_chunk hchunk
+          · by_cases ht6 : t = 6
+            · subst ht6
+              cases hp : parseRpn rest.length rest with
+              | none =>
+                  refine Or.inr ?_
+                  rw [show unRpn (6 :: rest) = [6, 0] by
+                    rw [unRpn, List.length_cons, unRpnTokens_cons,
+                      if_neg (by norm_num), if_pos rfl, hp]]
+                  exact unreadable_trade_poison
+              | some pr =>
+                  obtain ⟨φ, r1⟩ := pr
+                  obtain ⟨blk, heq, hblk⟩ := parseRpn_strip rest.length rest hp
+                  subst heq
+                  obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_trade_block hblk
+                  have hr1 : r1.length ≤ N := by
+                    have hlt := parseRpn_length_lt _ _ _ _ hp
+                    simp only [List.length_append] at hts
+                    omega
+                  have hstate : List.foldl rpnCondStep (rcPack 0 0 0)
+                      (6 :: (blk ++ r1)) =
+                      List.foldl rpnCondStep (rcPack 0 0 0) r1 := by
+                    rw [List.foldl_cons, rpnCondStep_base_trade,
+                      List.foldl_append, hwalk]
+                  have hdepth : ∀ d, rpnDepthRuns (rcPack 0 0 0) (6 :: (blk ++ r1)) d =
+                      rpnDepthRuns (rcPack 0 0 0) r1 d.pred := by
+                    intro d
+                    rw [rpnDepthRuns, rpnCondStep_base_trade,
+                      show rpnDepthNext (rcPack 0 0 0) (rcPack 4 1 0) 6 d = d by
+                        simp [rpnDepthNext, rcMode, rcPack, parserDepthNext],
+                      rpnDepthRuns_append, rpnDepthRuns_trade_block hblk, hwalk]
+                  have hchunk : List.foldl freezeMode4Step 0
+                      [6, Encodable.encode φ] = 0 := by
+                    simp [freezeMode4Step]
+                  have hun := unRpn_trade_chunk_block hblk r1
+                  rcases ih r1 hr1 with ⟨hEq, hM⟩ | hU
+                  · refine Or.inl ⟨fun d => ?_, ?_⟩
+                    · rw [hun, hdepth,
+                        show (6 :: Encodable.encode φ :: unRpn r1) =
+                          [6, Encodable.encode φ] ++ unRpn r1 from rfl,
+                        tokDepthRuns_append, hchunk, hEq]
+                      congr 1
+                    · rw [hun, hstate,
+                        show (6 :: Encodable.encode φ :: unRpn r1) =
+                          [6, Encodable.encode φ] ++ unRpn r1 from rfl,
+                        freezeMode4, List.foldl_append, hchunk]
+                      exact hM
+                  · refine Or.inr ?_
+                    rw [hun,
+                      show (6 :: Encodable.encode φ :: unRpn r1) =
+                        [6, Encodable.encode φ] ++ unRpn r1 from rfl]
+                    exact hU.cons_chunk hchunk
+            · by_cases ht1 : t = 1 ∨ t = 7
+              · match rest with
+                | [] =>
+                    refine Or.inl ⟨fun d => ?_, ?_⟩
+                    · rcases ht1 with rfl | rfl <;>
+                        simp [unRpn, unRpnTokens, rpnDepthRuns, tokDepthRuns,
+                          rpnDepthNext, parserDepthNext, rcMode,
+                          rcPack]
+                    · rcases ht1 with rfl | rfl
+                      · rw [List.foldl_cons, List.foldl_nil, rpnCondStep_base_one]
+                        simp [unRpn, unRpnTokens, freezeMode4, freezeMode4Step,
+                          rcMode, rcPack]
+                      · rw [List.foldl_cons, List.foldl_nil, rpnCondStep_base_seven]
+                        simp [unRpn, unRpnTokens, freezeMode4, freezeMode4Step,
+                          rcMode, rcPack]
+                | c :: r =>
+                    have hr : r.length ≤ N := by
+                      simp only [List.length_cons] at hts
+                      omega
+                    have hstep1 : rpnCondStep (rcPack 0 0 0) t =
+                        rcPack (if t = 1 then 3 else 5) 0 0 := by
+                      rcases ht1 with rfl | rfl <;> simp [rpnCondStep_base]
+                    have hstep2 :
+                        rpnCondStep (rcPack (if t = 1 then 3 else 5) 0 0) c =
+                          rcPack 0 0 0 :=
+                      rpnCondStep_fallback _ _
+                        (by split <;> simp [rcMode, rcPack])
+                        (by split <;> simp [rcMode, rcPack])
+                        (by split <;> simp [rcMode, rcPack])
+                        (by split <;> simp [rcMode, rcPack])
+                        (by split <;> simp [rcMode, rcPack])
+                    have hstate : List.foldl rpnCondStep (rcPack 0 0 0)
+                        (t :: c :: r) = List.foldl rpnCondStep (rcPack 0 0 0) r := by
+                      rw [List.foldl_cons, hstep1, List.foldl_cons, hstep2]
+                    have hdepth : ∀ d, rpnDepthRuns (rcPack 0 0 0) (t :: c :: r) d =
+                        rpnDepthRuns (rcPack 0 0 0) r (d + 1) := by
+                      intro d
+                      rw [rpnDepthRuns, hstep1,
+                        show rpnDepthNext (rcPack 0 0 0)
+                            (rcPack (if t = 1 then 3 else 5) 0 0) t d = d by
+                          rcases ht1 with rfl | rfl <;>
+                            simp [rpnDepthNext, rcMode, rcPack, parserDepthNext],
+                        rpnDepthRuns, hstep2,
+                        show rpnDepthNext (rcPack (if t = 1 then 3 else 5) 0 0)
+                            (rcPack 0 0 0) c d = d + 1 by
+                          rcases ht1 with rfl | rfl <;>
+                            simp [rpnDepthNext, rcMode, rcPack]]
+                    have hchunk : List.foldl freezeMode4Step 0 [t, c] = 0 := by
+                      rcases ht1 with rfl | rfl <;> simp [freezeMode4Step]
+                    have hun := unRpn_payload_chunk t c ht1 r
+                    rcases ih r hr with ⟨hEq, hM⟩ | hU
+                    · refine Or.inl ⟨fun d => ?_, ?_⟩
+                      · rw [hun, hdepth,
+                          show (t :: c :: unRpn r) = [t, c] ++ unRpn r from rfl,
+                          tokDepthRuns_append, hchunk, hEq]
+                        congr 1
+                        rcases ht1 with rfl | rfl <;>
+                          simp [tokDepthRuns, freezeMode4Step, parserDepthNext]
+                      · rw [hun, hstate,
+                          show (t :: c :: unRpn r) = [t, c] ++ unRpn r from rfl,
+                          freezeMode4, List.foldl_append, hchunk]
+                        exact hM
+                    · refine Or.inr ?_
+                      rw [hun,
+                        show (t :: c :: unRpn r) = [t, c] ++ unRpn r from rfl]
+                      exact hU.cons_chunk hchunk
+              · push_neg at ht1
+                have hrest : rest.length ≤ N := by omega
+                have hstep := rpnCondStep_base_other t ht0 ht1.1 ht6 ht1.2
+                have hstate : List.foldl rpnCondStep (rcPack 0 0 0) (t :: rest) =
+                    List.foldl rpnCondStep (rcPack 0 0 0) rest := by
+                  rw [List.foldl_cons, hstep]
+                have hdepth : ∀ d, rpnDepthRuns (rcPack 0 0 0) (t :: rest) d =
+                    rpnDepthRuns (rcPack 0 0 0) rest (parserDepthNext 0 t d) := by
+                  intro d
+                  rw [rpnDepthRuns, hstep,
+                    show rpnDepthNext (rcPack 0 0 0) (rcPack 0 0 0) t d =
+                      parserDepthNext 0 t d by simp [rpnDepthNext, rcMode, rcPack]]
+                have hchunk : List.foldl freezeMode4Step 0 [t] = 0 := by
+                  simp [freezeMode4Step, ht0, ht1.1, ht6, ht1.2]
+                have hun := unRpn_single_chunk t ⟨ht0, ht1.1, ht6, ht1.2⟩ rest
+                rcases ih rest hrest with ⟨hEq, hM⟩ | hU
+                · refine Or.inl ⟨fun d => ?_, ?_⟩
+                  · rw [hun, hdepth,
+                      show (t :: unRpn rest) = [t] ++ unRpn rest from rfl,
+                      tokDepthRuns_append, hchunk, hEq]
+                    congr 1
+                  · rw [hun, hstate,
+                      show (t :: unRpn rest) = [t] ++ unRpn rest from rfl,
+                      freezeMode4, List.foldl_append, hchunk]
+                    exact hM
+                · refine Or.inr ?_
+                  rw [hun,
+                    show (t :: unRpn rest) = [t] ++ unRpn rest from rfl]
+                  exact hU.cons_chunk hchunk
+
+#print axioms depthMode_unRpn_agree
+
+/-! ## The position-indexed acceptance scan -/
+
+/-- Feature-stack depth strictly before source position `j`. -/
+def rpnDepthAt (tf : ℕ → ℕ) (n : ℕ) : ℕ → ℕ
+  | 0 => 0
+  | j + 1 =>
+      rpnDepthNext (rpnCondControlAt tf n j) (rpnCondControlAt tf n (j + 1))
+        (tf (Nat.pair n j)) (rpnDepthAt tf n j)
+
+lemma rpnDepthNext_le (st st' t d : ℕ) : rpnDepthNext st st' t d ≤ d + 1 := by
+  rw [rpnDepthNext, parserDepthNext]
+  have := Nat.pred_le d
+  split_ifs <;> omega
+
+lemma rpnDepthAt_le (tf : ℕ → ℕ) (n : ℕ) : ∀ j, rpnDepthAt tf n j ≤ j
+  | 0 => by simp [rpnDepthAt]
+  | j + 1 => by
+      rw [rpnDepthAt]
+      have h1 := rpnDepthNext_le (rpnCondControlAt tf n j)
+        (rpnCondControlAt tf n (j + 1)) (tf (Nat.pair n j)) (rpnDepthAt tf n j)
+      have h2 := rpnDepthAt_le tf n j
+      omega
+
+/-- The position-indexed depth is the list-level one over the position view. -/
+lemma rpnDepthAt_eq_runs (tf : ℕ → ℕ) (n : ℕ) : ∀ J,
+    rpnDepthAt tf n J = rpnDepthRuns (rcPack 0 0 0) (vpre tf n J) 0
+  | 0 => rfl
+  | J + 1 => by
+      rw [rpnDepthAt, vpre_succ, rpnDepthRuns_append, rpnDepthAt_eq_runs tf n J,
+        ← rpnCondControlAt_eq_foldl, rpnDepthRuns,
+        show rpnCondStep (rpnCondControlAt tf n J) (tf (Nat.pair n J)) =
+          rpnCondControlAt tf n (J + 1) from rfl, rpnDepthRuns]
+
+/-- The token-model depth scan is the list-level one over the position view. -/
+lemma parserDepthScanAt_eq_runs (tokenFn : ℕ → ℕ) (n : ℕ) : ∀ J,
+    parserDepthScanAt tokenFn n J = tokDepthRuns 0 (vpre tokenFn n J) 0
+  | 0 => rfl
+  | J + 1 => by
+      rw [parserDepthScanAt, vpre_succ, tokDepthRuns_append,
+        parserDepthScanAt_eq_runs tokenFn n J, freezeControlNat_fst,
+        show List.foldl freezeMode4Step 0 (vpre tokenFn n J) =
+          freezeMode4 (vpre tokenFn n J) from rfl, tokDepthRuns, tokDepthRuns]
+
+/-- Symbol-side structural acceptance: the run automaton ends in base mode with an
+empty feature stack (mirror of `parserStructurallyAccepts`). -/
+def rpnStructurallyAccepts (tf lenF : ℕ → ℕ) (n : ℕ) : ℕ :=
+  if rcMode (rpnCondControlAt tf n (lenF n)) = 0 then
+    (if rpnDepthAt tf n (lenF n) = 0 then 1 else 0)
+  else 0
+
+/-- **Gate agreement**: the symbol-side acceptance test agrees with the token-model
+test on the contraction, unless the contraction is unreadable. -/
+theorem rpnStructurallyAccepts_agree (tf tokenFn lenF lenFn : ℕ → ℕ) (n : ℕ)
+    (ts : List ℕ) (hts : vpre tf n (lenF n) = ts)
+    (hL : vpre tokenFn n (lenFn n) = unRpn ts) :
+    rpnStructurallyAccepts tf lenF n = parserStructurallyAccepts tokenFn lenFn n ∨
+      Unreadable (unRpn ts) := by
+  rcases depthMode_unRpn_agree ts.length ts le_rfl with ⟨hD, hM⟩ | hU
+  · refine Or.inl ?_
+    rw [rpnStructurallyAccepts, parserStructurallyAccepts, parserDepthScanNat]
+    simp only [Nat.unpair_pair]
+    rw [freezeControlNat_fst, parserDepthScanAt_eq_runs, hL, rpnDepthAt_eq_runs,
+      hts, rpnCondControlAt_eq_foldl, hts, hM, hD]
+  · exact Or.inr hU
+
+/-- The feature-stack depth scan is poly-fueled over any digit `PolySegStream`. -/
+lemma rpnDepthScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+    ∃ c, PolyFueled c (fun z =>
+      rpnDepthAt (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
+        z.unpair.1 z.unpair.2) := by
+  obtain ⟨cs, hscan⟩ := rpnCondScan h
+  obtain ⟨-, hbig⟩ := h.undigitizeTokens
+  obtain ⟨ctc, htc⟩ := hbig.clampVal (PolyFueled.const 8)
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  -- Step input `⟨n, ⟨j, prev⟩⟩`.
+  have hn := PolyFueled.left
+  have hj := PolyFueled.left.comp PolyFueled.right
+  have hprev := PolyFueled.right.comp PolyFueled.right
+  have hj1 : PolyFueled _ (fun z : ℕ => z.unpair.2.unpair.1 + 1) :=
+    (had.comp (hj.pair (PolyFueled.const 1))).of_eq fun z => by
+      simp only [Nat.unpair_pair]
+  have hmz := PolyFueled.left.comp (hscan.comp (hn.pair hj))
+  have hmz1 := PolyFueled.left.comp (hscan.comp (hn.pair hj1))
+  have htok := htc.comp (hn.pair hj)
+  have hsucc : PolyFueled _ (fun z : ℕ => z.unpair.2.unpair.2 + 1) :=
+    (had.comp (hprev.pair (PolyFueled.const 1))).of_eq fun z => by
+      simp only [Nat.unpair_pair]
+  have hpred : PolyFueled _ (fun z : ℕ => z.unpair.2.unpair.2 - 1) :=
+    (subc_polyFueled.comp (hprev.pair (PolyFueled.const 1))).of_eq fun z => by
+      simp only [Nat.unpair_pair]
+  obtain ⟨_, hb8⟩ := polyFueled_ifEq htok 8 hpred hprev
+  obtain ⟨_, hb4⟩ := polyFueled_ifEq htok 4 hpred hb8
+  obtain ⟨_, hb3⟩ := polyFueled_ifEq htok 3 hpred hb4
+  obtain ⟨_, hbase⟩ := polyFueled_ifEq htok 2 hpred hb3
+  obtain ⟨_, hexit⟩ := polyFueled_ifEq hmz1 0 hpred hprev
+  obtain ⟨_, hA7⟩ := polyFueled_ifEq hmz 7 hexit hprev
+  obtain ⟨_, hA4⟩ := polyFueled_ifEq hmz 4 hexit hA7
+  obtain ⟨_, hA5⟩ := polyFueled_ifEq hmz 5 hsucc hA4
+  obtain ⟨_, hA3⟩ := polyFueled_ifEq hmz 3 hsucc hA5
+  obtain ⟨_, hA2⟩ := polyFueled_ifEq hmz 2 hsucc hA3
+  obtain ⟨_, hstep⟩ := polyFueled_ifEq hmz 0 hbase hA2
+  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
+  refine ⟨_, PolyFueled.prec (PolyFueled.const 0) hstep
+    (st := fun n j => rpnDepthAt tf n j)
+    (fun n => rfl)
+    (fun n j => ?_)
+    ((IsPolyBounded.linear 0).of_le fun z =>
+      le_trans (rpnDepthAt_le _ _ _) (Nat.unpair_right_le z))⟩
+  simp only [Nat.unpair_pair]
+  have htfj : tf (Nat.pair n j) = (undigitize (s n)).getD j 0 := by
+    rw [htf]; simp only [Nat.unpair_pair]
+  rw [rpnDepthAt,
+    show (Nat.unpair (rpnCondControlAt tf n j)).1 =
+      rcMode (rpnCondControlAt tf n j) from rfl,
+    show (Nat.unpair (rpnCondControlAt tf n (j + 1))).1 =
+      rcMode (rpnCondControlAt tf n (j + 1)) from rfl,
+    ← htfj, rpnDepthNext]
+  simp only [Nat.pred_eq_sub_one]
+  have hclamp : ∀ k, k ≤ 8 →
+      (min (tf (Nat.pair n j)) (8 + 1) = k ↔ tf (Nat.pair n j) = k) := by
+    intro k hk
+    by_cases h9 : tf (Nat.pair n j) ≤ 9
+    · rw [Nat.min_eq_left h9]
+    · rw [Nat.min_eq_right (by omega : 8 + 1 ≤ _)]
+      constructor <;> intro h <;> omega
+  by_cases hm0 : rcMode (rpnCondControlAt tf n j) = 0
+  · rw [if_pos hm0, if_pos hm0, parserDepthNext, if_pos rfl]
+    simp only [Nat.pred_eq_sub_one]
+    by_cases h2 : tf (Nat.pair n j) = 2
+    · rw [if_pos ((hclamp 2 (by norm_num)).mpr h2), if_pos h2]
+    · rw [if_neg (fun hc => h2 ((hclamp 2 (by norm_num)).mp hc)), if_neg h2]
+      by_cases h3 : tf (Nat.pair n j) = 3
+      · rw [if_pos ((hclamp 3 (by norm_num)).mpr h3), if_pos h3]
+      · rw [if_neg (fun hc => h3 ((hclamp 3 (by norm_num)).mp hc)), if_neg h3]
+        by_cases h4 : tf (Nat.pair n j) = 4
+        · rw [if_pos ((hclamp 4 (by norm_num)).mpr h4), if_pos h4]
+        · rw [if_neg (fun hc => h4 ((hclamp 4 (by norm_num)).mp hc)), if_neg h4]
+          by_cases h8 : tf (Nat.pair n j) = 8
+          · rw [if_pos ((hclamp 8 (by norm_num)).mpr h8), if_pos h8]
+          · rw [if_neg (fun hc => h8 ((hclamp 8 (by norm_num)).mp hc)), if_neg h8]
+  · rw [if_neg hm0, if_neg hm0]
+    by_cases hm2 : rcMode (rpnCondControlAt tf n j) = 2
+    · rw [if_pos hm2, if_pos hm2]
+    · rw [if_neg hm2, if_neg hm2]
+      by_cases hm3 : rcMode (rpnCondControlAt tf n j) = 3
+      · rw [if_pos hm3, if_pos hm3]
+      · rw [if_neg hm3, if_neg hm3]
+        by_cases hm5 : rcMode (rpnCondControlAt tf n j) = 5
+        · rw [if_pos hm5, if_pos hm5]
+        · rw [if_neg hm5, if_neg hm5]
+          by_cases hm4 : rcMode (rpnCondControlAt tf n j) = 4
+          · rw [if_pos hm4]
+            by_cases hnext : rcMode (rpnCondControlAt tf n (j + 1)) = 0
+            · rw [if_pos hnext, if_pos ⟨Or.inl hm4, hnext⟩]
+            · rw [if_neg hnext, if_neg (by tauto)]
+          · rw [if_neg hm4]
+            by_cases hm7 : rcMode (rpnCondControlAt tf n j) = 7
+            · rw [if_pos hm7]
+              by_cases hnext : rcMode (rpnCondControlAt tf n (j + 1)) = 0
+              · rw [if_pos hnext, if_pos ⟨Or.inr hm7, hnext⟩]
+              · rw [if_neg hnext, if_neg (by tauto)]
+            · rw [if_neg hm7, if_neg (by tauto)]
+
+#print axioms rpnStructurallyAccepts_agree
+#print axioms rpnDepthScan
+
+
 /-! ## The frame pass (symbol level) — emission and contraction anchor
 
 The token-model frame transducer (`conditioningFrameTokenRun`) replaces each trade
@@ -3841,6 +4383,287 @@ lemma priceWalk_inside (v : List ℕ) (j : ℕ) (hj : j ≤ v.length)
     (fun c r t => rpnCondStep_price c r t)
     (fun c r t => rpnCondStep_priceEsc c r t)
     2 (fun r' => rcMode_pack 2 0 r') v j hj hmods
+
+/-! ### Splitting the contraction at a chunk boundary
+
+The two-leg join concatenates two symbol-level frame outputs, and `unRpn` does **not**
+distribute over an append when the left factor carries a poisoned chunk.  It does
+split, though, on any stream the run automaton walks back to base mode: either the
+stream is `ContractsTo`-transparent ahead of every continuation, or its first poisoned
+chunk stops the contraction outright.  Same chunk induction as
+`tradeRuns_unRpn_agree`, with the first-exit localization supplying the
+poisons-every-extension branch. -/
+
+/-- A stream that contracts to *something* ahead of any continuation contracts to its
+own contraction. -/
+lemma ContractsTo.self {A X : List ℕ} (h : ContractsTo A X) :
+    ContractsTo A (unRpn A) := by
+  have hX : unRpn A = X := by
+    have h0 := h []
+    rwa [List.append_nil, unRpn_nil, List.append_nil] at h0
+  rw [hX]; exact h
+
+/-- A poisoned stream stops the contraction: nothing appended is ever read. -/
+def UnRpnStops (A : List ℕ) : Prop := ∀ rest, unRpn (A ++ rest) = unRpn A
+
+lemma UnRpnStops.cons_chunk {C A : List ℕ} {P : List ℕ}
+    (hC : ContractsTo C P) (h : UnRpnStops A) : UnRpnStops (C ++ A) := by
+  intro rest
+  rw [List.append_assoc, hC (A ++ rest), hC A, h rest]
+
+/-- **The contraction splits at a chunk boundary**: on a stream the run automaton
+walks back to base mode, either the whole stream contracts transparently ahead of any
+continuation, or a poisoned chunk stops the contraction outright (and the contraction
+is unreadable). -/
+theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
+    List.foldl rpnCondStep (rcPack 0 0 0) A = rcPack 0 0 0 →
+    ContractsTo A (unRpn A) ∨ (UnRpnStops A ∧ Unreadable (unRpn A)) := by
+  intro N
+  induction N with
+  | zero =>
+      intro A hA _
+      obtain rfl : A = [] := List.eq_nil_of_length_eq_zero (by omega)
+      exact Or.inl (fun rest => rfl)
+  | succ N ih =>
+      intro A hA hbase
+      match A with
+      | [] => exact Or.inl (fun rest => rfl)
+      | t :: rest =>
+          simp only [List.length_cons] at hA
+          by_cases ht0 : t = 0
+          · subst ht0
+            cases hp : parseRpn rest.length rest with
+            | some pr =>
+                obtain ⟨φ, r1⟩ := pr
+                obtain ⟨blk, heq, hblk⟩ := parseRpn_strip rest.length rest hp
+                obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_price_block hblk
+                match r1 with
+                | [] =>
+                    exfalso
+                    rw [List.append_nil] at heq
+                    subst heq
+                    rw [List.foldl_cons, rpnCondStep_base_price, hwalk] at hbase
+                    have := congrArg rcMode hbase
+                    rw [rcMode_pack, rcMode_pack] at this
+                    exact absurd this (by norm_num)
+                | d0 :: r2 =>
+                    subst heq
+                    have hr2 : r2.length ≤ N := by
+                      have hlt := parseRpn_length_lt _ _ _ _ hp
+                      simp only [List.length_cons] at hlt
+                      omega
+                    have hstD : rpnCondStep (rcPack 2 0 blk.length) d0 =
+                        rcPack 0 0 0 :=
+                      rpnCondStep_fallback _ _ (by simp [rcMode, rcPack])
+                        (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
+                        (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
+                    have hbase2 : List.foldl rpnCondStep (rcPack 0 0 0) r2 =
+                        rcPack 0 0 0 := by
+                      rw [List.foldl_cons, rpnCondStep_base_price,
+                        List.foldl_append, hwalk, List.foldl_cons, hstD] at hbase
+                      exact hbase
+                    have hA2 : (0 : ℕ) :: (blk ++ d0 :: r2) =
+                        (0 :: blk ++ [d0]) ++ r2 := by simp
+                    have hC := ContractsTo.priceSym hblk d0
+                    rcases ih r2 hr2 hbase2 with hIH | ⟨hstop, hU⟩
+                    · exact Or.inl (((hC.append hIH).of_eq hA2.symm rfl).self)
+                    · refine Or.inr ⟨?_, ?_⟩
+                      · rw [hA2]; exact UnRpnStops.cons_chunk hC hstop
+                      · rw [unRpn_price_chunk_block hblk d0 r2,
+                          show (0 :: Encodable.encode φ :: d0 :: unRpn r2) =
+                            [0, Encodable.encode φ, d0] ++ unRpn r2 from rfl]
+                        exact hU.cons_chunk (by simp [freezeMode4Step])
+            | none =>
+                have hun0 : unRpn (0 :: rest) = [0, 0] := by
+                  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl, hp]
+                by_cases hex : ∃ k, k ≤ rest.length ∧
+                    rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (rest.take k)) = 2
+                · classical
+                  obtain ⟨hk₀le, hk₀mode⟩ := Nat.find_spec hex
+                  set k₀ := Nat.find hex with hk₀def
+                  have hfirst : ∀ i < k₀,
+                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+                        (rest.take i)) ≠ 2 := fun i hi hmode =>
+                    Nat.find_min hex hi ⟨by omega, hmode⟩
+                  obtain ⟨hk₀pos, hW, hinside⟩ := priceWalk_first_exit rest k₀
+                    hk₀le hfirst hk₀mode
+                  have htakelen : (rest.take k₀).length = k₀ := by
+                    rw [List.length_take]; omega
+                  have hconv := parse_of_priceRunWalk k₀ (rest.take k₀)
+                    (le_of_eq htakelen) 0 0
+                    (by rw [if_pos rfl, htakelen]; simpa using hW)
+                    (by
+                      intro k hk
+                      rw [htakelen] at hk
+                      rw [List.take_take, min_eq_left (le_of_lt hk)]
+                      exact ⟨(hinside k hk).1, (hinside k hk).2.1⟩)
+                  rcases hconv with ⟨φu, hφu⟩ | hpoison
+                  · exfalso
+                    rw [← List.take_append_drop k₀ rest] at hp
+                    rw [parseRpn_block_head hφu (rest.drop k₀) (by
+                      simp only [List.length_append]; omega)] at hp
+                    simp at hp
+                  · have hunL : ∀ Y, unRpn (0 :: (rest ++ Y)) = [0, 0] := fun Y => by
+                      rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+                        show rest ++ Y = rest.take k₀ ++ (rest.drop k₀ ++ Y) by
+                          rw [← List.append_assoc, List.take_append_drop],
+                        hpoison _ _]
+                    refine Or.inr ⟨fun Y => ?_, ?_⟩
+                    · rw [show (0 : ℕ) :: rest ++ Y = 0 :: (rest ++ Y) from rfl,
+                        hunL Y, hun0]
+                    · rw [hun0]; exact unreadable_price_poison
+                · exfalso
+                  push_neg at hex
+                  have hmods : ∀ i, i ≤ rest.length →
+                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+                        (rest.take i)) ≠ 2 := fun i hi => hex i hi
+                  have hend := priceWalk_inside rest rest.length le_rfl hmods
+                  rw [List.take_length] at hend
+                  rw [List.foldl_cons, rpnCondStep_base_price] at hbase
+                  rw [hbase, rcMode_pack] at hend
+                  omega
+          · by_cases ht6 : t = 6
+            · subst ht6
+              cases hp : parseRpn rest.length rest with
+              | some pr =>
+                  obtain ⟨φ, r1⟩ := pr
+                  obtain ⟨blk, heq, hblk⟩ := parseRpn_strip rest.length rest hp
+                  subst heq
+                  obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_trade_block hblk
+                  have hr1 : r1.length ≤ N := by
+                    have hlt := parseRpn_length_lt _ _ _ _ hp
+                    simp only [List.length_append] at hA
+                    omega
+                  have hbase1 : List.foldl rpnCondStep (rcPack 0 0 0) r1 =
+                      rcPack 0 0 0 := by
+                    rw [List.foldl_cons, rpnCondStep_base_trade,
+                      List.foldl_append, hwalk] at hbase
+                    exact hbase
+                  have hA1 : (6 : ℕ) :: (blk ++ r1) = (6 :: blk) ++ r1 := by simp
+                  have hC := ContractsTo.tradeSym hblk
+                  rcases ih r1 hr1 hbase1 with hIH | ⟨hstop, hU⟩
+                  · exact Or.inl (((hC.append hIH).of_eq hA1.symm rfl).self)
+                  · refine Or.inr ⟨?_, ?_⟩
+                    · rw [hA1]; exact UnRpnStops.cons_chunk hC hstop
+                    · rw [unRpn_trade_chunk_block hblk r1,
+                        show (6 :: Encodable.encode φ :: unRpn r1) =
+                          [6, Encodable.encode φ] ++ unRpn r1 from rfl]
+                      exact hU.cons_chunk (by simp [freezeMode4Step])
+              | none =>
+                  have hun0 : unRpn (6 :: rest) = [6, 0] := by
+                    rw [unRpn, List.length_cons, unRpnTokens_cons,
+                      if_neg (by norm_num), if_pos rfl, hp]
+                  by_cases hex : ∃ k, k ≤ rest.length ∧
+                      rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+                        (rest.take k)) = 0
+                  · classical
+                    obtain ⟨hk₀le, hk₀mode⟩ := Nat.find_spec hex
+                    set k₀ := Nat.find hex with hk₀def
+                    have hfirst : ∀ i < k₀,
+                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+                          (rest.take i)) ≠ 0 := fun i hi hmode =>
+                      Nat.find_min hex hi ⟨by omega, hmode⟩
+                    obtain ⟨hk₀pos, hW, hinside⟩ := tradeWalk_first_exit rest k₀
+                      hk₀le hfirst hk₀mode
+                    have htakelen : (rest.take k₀).length = k₀ := by
+                      rw [List.length_take]; omega
+                    have hconv := parse_of_tradeRunWalk k₀ (rest.take k₀)
+                      (le_of_eq htakelen) 0 0
+                      (by rw [if_pos rfl]; simpa using hW)
+                      (by
+                        intro k hk
+                        rw [htakelen] at hk
+                        rw [List.take_take, min_eq_left (le_of_lt hk)]
+                        exact ⟨(hinside k hk).1, (hinside k hk).2.1⟩)
+                    rcases hconv with ⟨φu, hφu⟩ | hpoison
+                    · exfalso
+                      rw [← List.take_append_drop k₀ rest] at hp
+                      rw [parseRpn_block_head hφu (rest.drop k₀) (by
+                        simp only [List.length_append]; omega)] at hp
+                      simp at hp
+                    · have hunL : ∀ Y, unRpn (6 :: (rest ++ Y)) = [6, 0] := fun Y => by
+                        rw [unRpn, List.length_cons, unRpnTokens_cons,
+                          if_neg (by norm_num), if_pos rfl,
+                          show rest ++ Y = rest.take k₀ ++ (rest.drop k₀ ++ Y) by
+                            rw [← List.append_assoc, List.take_append_drop],
+                          hpoison _ _]
+                      refine Or.inr ⟨fun Y => ?_, ?_⟩
+                      · rw [show (6 : ℕ) :: rest ++ Y = 6 :: (rest ++ Y) from rfl,
+                          hunL Y, hun0]
+                      · rw [hun0]; exact unreadable_trade_poison
+                  · exfalso
+                    push_neg at hex
+                    have hmods : ∀ i, i ≤ rest.length →
+                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+                          (rest.take i)) ≠ 0 := fun i hi => hex i hi
+                    have hend := tradeWalk_inside rest rest.length le_rfl hmods
+                    rw [List.take_length] at hend
+                    rw [List.foldl_cons, rpnCondStep_base_trade] at hbase
+                    rw [hbase, rcMode_pack] at hend
+                    omega
+            · by_cases ht1 : t = 1 ∨ t = 7
+              · match rest with
+                | [] =>
+                    exfalso
+                    rw [List.foldl_cons, List.foldl_nil] at hbase
+                    rcases ht1 with rfl | rfl
+                    · rw [rpnCondStep_base_one] at hbase
+                      have := congrArg rcMode hbase
+                      rw [rcMode_pack, rcMode_pack] at this
+                      exact absurd this (by norm_num)
+                    · rw [rpnCondStep_base_seven] at hbase
+                      have := congrArg rcMode hbase
+                      rw [rcMode_pack, rcMode_pack] at this
+                      exact absurd this (by norm_num)
+                | c :: r =>
+                    have hr : r.length ≤ N := by
+                      simp only [List.length_cons] at hA
+                      omega
+                    have hstep1 : rpnCondStep (rcPack 0 0 0) t =
+                        rcPack (if t = 1 then 3 else 5) 0 0 := by
+                      rcases ht1 with rfl | rfl <;> simp [rpnCondStep_base]
+                    have hstep2 :
+                        rpnCondStep (rcPack (if t = 1 then 3 else 5) 0 0) c =
+                          rcPack 0 0 0 :=
+                      rpnCondStep_fallback _ _
+                        (by split <;> simp [rcMode, rcPack])
+                        (by split <;> simp [rcMode, rcPack])
+                        (by split <;> simp [rcMode, rcPack])
+                        (by split <;> simp [rcMode, rcPack])
+                        (by split <;> simp [rcMode, rcPack])
+                    have hbaseR : List.foldl rpnCondStep (rcPack 0 0 0) r =
+                        rcPack 0 0 0 := by
+                      rw [List.foldl_cons, hstep1, List.foldl_cons, hstep2] at hbase
+                      exact hbase
+                    have hAp : t :: c :: r = [t, c] ++ r := rfl
+                    have hC := ContractsTo.payload t c ht1
+                    rcases ih r hr hbaseR with hIH | ⟨hstop, hU⟩
+                    · exact Or.inl (((hC.append hIH).of_eq hAp.symm rfl).self)
+                    · refine Or.inr ⟨?_, ?_⟩
+                      · rw [hAp]; exact UnRpnStops.cons_chunk hC hstop
+                      · rw [unRpn_payload_chunk t c ht1 r,
+                          show (t :: c :: unRpn r) = [t, c] ++ unRpn r from rfl]
+                        exact hU.cons_chunk (by
+                          rcases ht1 with rfl | rfl <;> simp [freezeMode4Step])
+              · push_neg at ht1
+                have hrest : rest.length ≤ N := by omega
+                have hstep := rpnCondStep_base_other t ht0 ht1.1 ht6 ht1.2
+                have hbaseR : List.foldl rpnCondStep (rcPack 0 0 0) rest =
+                    rcPack 0 0 0 := by
+                  rw [List.foldl_cons, hstep] at hbase
+                  exact hbase
+                have hAs : t :: rest = [t] ++ rest := rfl
+                have hC := ContractsTo.single t ⟨ht0, ht1.1, ht6, ht1.2⟩
+                rcases ih rest hrest hbaseR with hIH | ⟨hstop, hU⟩
+                · exact Or.inl (((hC.append hIH).of_eq hAs.symm rfl).self)
+                · refine Or.inr ⟨?_, ?_⟩
+                  · rw [hAs]; exact UnRpnStops.cons_chunk hC hstop
+                  · rw [unRpn_single_chunk t ⟨ht0, ht1.1, ht6, ht1.2⟩ rest,
+                      show (t :: unRpn rest) = [t] ++ unRpn rest from rfl]
+                    exact hU.cons_chunk (by
+                      simp [freezeMode4Step, ht0, ht1.1, ht6, ht1.2])
+
+#print axioms unRpn_split
 
 /-! ### Both-poison agreement -/
 
@@ -4854,6 +5677,76 @@ lemma rpnFrameOutput_polySegStream (second : Bool) {src blocks : ℕ → List �
 
 #print axioms rpnFrameOutput_polySegStream
 
+
+/-! ### The gated two-leg join
+
+`safeSeparatedFrameTokenOutput` emits the first frame leg alone unless the source is
+structurally accepting, in which case it emits both.  The symbol side mirrors that
+shape one-for-one off `rpnStructurallyAccepts`; the certificate is the same three
+lines as `safeSeparatedFrameDigitOutput_polySegStream`.
+
+The join's **agreement** with the token model is still open — see the note in
+"Endpoints (open)": concatenating the two legs needs `unRpn_split` fed with the frame
+output's own base-mode invariant. -/
+
+/-- The symbol-side acceptance test is poly-fueled over any digit `PolySegStream`. -/
+lemma rpnAcceptScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+    ∃ c, PolyFueled c (fun n =>
+      rpnStructurallyAccepts (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
+        (fun m => (undigitize (s m)).length) n) := by
+  obtain ⟨cs, hscan⟩ := rpnCondScan h
+  obtain ⟨cd, hdepth⟩ := rpnDepthScan h
+  obtain ⟨⟨cc, hcnt⟩, -⟩ := h.undigitizeTokens
+  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
+  have hend : PolyFueled _ (fun n : ℕ => Nat.pair n (undigitize (s n)).length) :=
+    PolyFueled.id.pair hcnt
+  have hmode : PolyFueled _ (fun n : ℕ =>
+      rcMode (rpnCondControlAt tf n (undigitize (s n)).length)) :=
+    (PolyFueled.left.comp (hscan.comp hend)).of_eq fun n => by
+      simp only [Nat.unpair_pair, rcMode]
+  have hdep : PolyFueled _ (fun n : ℕ =>
+      rpnDepthAt tf n (undigitize (s n)).length) :=
+    (hdepth.comp hend).of_eq fun n => by simp only [Nat.unpair_pair]
+  obtain ⟨_, hinner⟩ :=
+    polyFueled_ifEq hdep 0 (PolyFueled.const 1) (PolyFueled.const 0)
+  obtain ⟨c, hall⟩ := polyFueled_ifEq hmode 0 hinner (PolyFueled.const 0)
+  exact ⟨c, hall.of_eq fun n => by rw [rpnStructurallyAccepts]⟩
+
+/-- **The gated two-leg join at symbol level** (mirror of
+`safeSeparatedFrameTokenOutput`): both frame legs are emitted only at a structurally
+accepting source boundary. -/
+def rpnSafeSeparatedFrameOutput (tf lenF : ℕ → ℕ) (blkψ : List ℕ) (ε : ℚ)
+    (day bc ibc : ℕ) (ts : List ℕ) : List ℕ :=
+  let first := rpnFrameOutput false blkψ ε day bc ibc ts
+  let second := rpnFrameOutput true blkψ ε day bc ibc ts
+  if rpnStructurallyAccepts tf lenF day = 0 then first else first ++ second
+
+/-- **The gated join's certificate**: the digitized two-leg join of any digit
+`PolySegStream` is a `PolySegStream`. -/
+lemma rpnSafeSeparatedFrameOutput_polySegStream {src blocks : ℕ → List ℕ}
+    (hsrc : PolySegStream src) (hblocks : PolySegStream blocks)
+    {cb ci : Code} {bcF ibcF : ℕ → ℕ} (hbcF : PolyFueled cb bcF)
+    (hibcF : PolyFueled ci ibcF) (ε : ℚ) :
+    PolySegStream (fun n => digitize
+      (rpnSafeSeparatedFrameOutput
+        (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+        (fun m => (undigitize (src m)).length)
+        (blocks n) ε n (bcF n) (ibcF n) (undigitize (src n)))) := by
+  have hfirst := rpnFrameOutput_polySegStream false hsrc hblocks
+    (PolyFueled.id) hbcF hibcF ε
+  have hsecond := rpnFrameOutput_polySegStream true hsrc hblocks
+    (PolyFueled.id) hbcF hibcF ε
+  obtain ⟨caccept, haccept⟩ := rpnAcceptScan hsrc
+  refine (hfirst.ifZero (hfirst.append hsecond) haccept).of_eq fun n => ?_
+  simp only [rpnSafeSeparatedFrameOutput]
+  by_cases hacc : rpnStructurallyAccepts
+      (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+      (fun m => (undigitize (src m)).length) n = 0
+  · rw [if_pos hacc, if_pos hacc]
+  · rw [if_neg hacc, if_neg hacc, digitize_append]
+
+#print axioms rpnAcceptScan
+#print axioms rpnSafeSeparatedFrameOutput_polySegStream
 
 /-! ### Endpoint statements (open, recorded — not sorried)
 

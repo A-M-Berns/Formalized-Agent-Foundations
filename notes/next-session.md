@@ -199,6 +199,61 @@ Gotcha added: `0 :: blk ++ [d]` parses as `(0 :: blk) ++ [d]` (`::` binds tighte
 than `++`) — chunk-peel lemmas must parenthesise `0 :: (blk ++ [d])` or the
 `List.foldl_cons` rewrites silently miss.
 
+Eighth tranche (2026-07-27, worktree agent): the **join gate** is LANDED, green +
+axiom-clean.  `rpnDepthNext` / `rpnDepthRuns` / `tokDepthRuns` (+ append laws,
+`rpnDepthRuns_price_block` = depth-neutral, `rpnDepthRuns_trade_block` = one pop),
+the master agreement **`depthMode_unRpn_agree`** (on EVERY stream, symbol depth AND
+final mode agree with the contraction's, or the contraction is `Unreadable` — the
+same skeleton as `tradeRuns_unRpn_agree`, ~200 lines, no walk analysis), the
+position bridges `rpnDepthAt_eq_runs` / `parserDepthScanAt_eq_runs`, the symbol test
+**`rpnStructurallyAccepts`** mirroring `parserStructurallyAccepts`, its poly scan
+**`rpnDepthScan`**, and the gate-agreement consumable
+**`rpnStructurallyAccepts_agree`**.
+
+KEY DESIGN FACT worth recording: the symbol mode numbering was already chosen to
+mirror the token freeze automaton (0 base, 2 price-day, 3/5 base payloads), so the
+depth step is *literally* `parserDepthNext 0 t d` at base positions, `d+1` at the
+2/3/5 slots, `d.pred` at a trade-run exit, and identity inside a sentence run.
+
+Also landed in the eighth tranche: **`unRpn_split`** (+ `ContractsTo.self`,
+`UnRpnStops`, `UnRpnStops.cons_chunk`) — on any stream the run automaton walks back to
+base mode, `ContractsTo A (unRpn A) ∨ (UnRpnStops A ∧ Unreadable (unRpn A))`.  This is
+the generic form of the append wrinkle: it is exactly what licenses
+`unRpn (first ++ second) = unRpn first ++ unRpn second` (transparent branch) or
+`= unRpn first` (poison branch, and then both sides are unreadable).  ~230 lines,
+first-exit localization (`priceWalk_first_exit`/`tradeWalk_first_exit` +
+`parse_of_*RunWalk`) supplies the poisons-every-extension branch; the "run never
+exits" branches are now *contradictions* against the base-mode hypothesis, which is
+why the `hex` quantifier is `k ≤ rest.length` (not `<`, as in the `frameAgree` proof).
+
+STILL OPEN for the join (the actual blocker, do NOT underestimate — two candidate
+routes, both real work):
+
+* ROUTE A (feed `unRpn_split`): prove
+  `List.foldl rpnCondStep (rcPack 0 0 0) (rpnFrameOutput second blkψ ε day bc ibc ts) = rcPack 0 0 0`
+  from the same hypothesis on `ts`.  Copies replay the source's transitions; each
+  `rpnFrameEmit` block must be shown automaton-neutral.  It IS neutral even on
+  unparseable buffers — its shell `0 :: (3 :: buf ++ blk) ++ day :: …` runs the
+  buffered trade tokens one counter level up (the `3` bumps the pending counter, `buf`
+  drives 2→1, the complete block `blk` drives 1→0, exit at the boundary, then the day
+  token returns to base) — but proving that needs a *counter-shift* form of
+  `foldl_rpnCondStep_run` (currently only the `c+1 → exit` instance exists).  Then the
+  mixed FrameAgree branches also need `freezeMode4 (conditioningFrameTokenOutput …) = 0`.
+* ROUTE B (strengthen in place): restate `frameAgree_unRpn_rpnFrameOutput` (~530
+  lines) as
+  `ContractsTo out tok ∨ (UnRpnStops out ∧ Unreadable (unRpn out) ∧ Unreadable tok)`
+  and re-run its chunk induction with `ContractsTo` in place of the raw `unRpn`
+  equality.  The ingredients exist (`ContractsTo.*` algebra, `rpnFrameEmit_contractsTo`,
+  and `unRpn_rpnFrameEmit_poison` is already in poisons-every-extension form), and the
+  proof's poison branches are already written continuation-generically (`hunL : ∀ Y`).
+  Mechanical but large; ROUTE B subsumes the mixed-branch bookkeeping ROUTE A needs.
+
+The join's **definition and certificate** are already landed:
+`rpnSafeSeparatedFrameOutput` (gated exactly like `safeSeparatedFrameTokenOutput`) and
+`rpnSafeSeparatedFrameOutput_polySegStream` (three lines off `rpnAcceptScan`, day slot
+= `n` as in `safeSeparatedFrameDigitOutput_polySegStream`).  So what is missing is
+ONLY the join *agreement* (route A or B above); with it, items 2–4 below follow.
+
 Seventh tranche (2026-07-27, worktree agent): the frame pass's **`PolySegStream`
 certificate** and **budget exactness** are LANDED, green + axiom-clean (commits
 `ca54d22`, `87722ab`).  Item 1 of the REMAINING list below is now closed except for
