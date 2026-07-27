@@ -141,9 +141,20 @@ list are LANDED, green + axiom-clean (commits `85fb581`, `64b5b5f`, `f844a5a`):
   tails reject from every base-mode state, transported by
   `Unreadable.cons_chunk` through the `Matches` machinery).
 
+Fifth tranche (same session, commit `5ccc739`): the frame-pass **contraction
+anchor** is LANDED — `ContractsTo` (prefix-contraction algebra generalizing
+`UnRpnTransparent`: append/single/payload + expanded-block `priceSym`/`tradeSym`
+chunk contractions + the full raw-combinator algebra `constTok`..`gateTok`),
+`rpnFrameEmit` (the symbol-level frame-leg emission), and
+`rpnFrameEmit_contractsTo` (its contraction = token-model
+`rawLocallyGated{Beta,Second}BodyTokens` leg + re-emitted trade pair — the mirror
+of `unRpn_price_rewrite_chunk`).  The remaining frame work is the run + its
+commutation + certificate, per the map below.
+
 REMAINING (in feasibility order):
 1. Frame-pass mirror (two legs).  Concrete architecture: REUSE `rpnCondStep` (no
-   new automaton).  Emission is exit-triggered — at position (st, t) with
+   new automaton).  Emission (`rpnFrameEmit` + anchor: LANDED) is exit-triggered
+   — at position (st, t) with
    `rcMode st ∈ {4,7}` and `rcMode (rpnCondStep st t) = 0` (detected by
    `runWalk_first_exit` trade instance) emit the RPN expansion of
    `rawLocallyGated{Beta,Second}BodyTokens` with each price leaf `[0, code, day]`
