@@ -49,7 +49,10 @@ as in `PrefixMachine.lean`.
 `κ_U` is uncomputable (as universal prefix complexity must be), so the boundary's
 approximation field does real work here: `kappaStage n` is the from-below stage table,
 mining only the codewords discovered by stage `n`.  It is antitone, and *eventually equal*
-to `κ_U` pointwise, which is what makes the weights lower-semicomputable.
+to `κ_U` pointwise, which is what makes the weights lower-semicomputable.  That stage table
+*is* computable — a bounded search over codewords of length `≤ |natCode ⌜φ⌝| + 1` — and its
+program (`uCode`) is constructed here, so the boundary instantiation has no operational
+input left over.
 Paper node: `thm:ob`
 -/
 
@@ -598,9 +601,9 @@ clock `⟪z,z⟫` and keeping the last stage that finished yields an *exact* sta
 stage that grows without bound.  `nonneg` and `le` are then inherited verbatim and
 `tendsto` is a two-sided squeeze.
 
-The residual input is therefore only that the exact table has a **code** at all
-(`UniversalPrefixComputation`) — a computability fact about a bounded search, carrying no
-complexity claim, no market prices and no Occam conclusion.  `uTab` shifts the stage index
+All this needs of the exact table is that it has a **code** at all, which is `uCode`
+above — a computability fact about a bounded search, carrying no complexity claim, no
+market prices and no Occam conclusion.  `uTab` shifts the stage index
 by one so that the scan's initial state is a *constant* (the rational `0`), which is what
 `PolyFueled.prec` needs of a base case. -/
 
@@ -643,56 +646,509 @@ lemma uTab_tendsto (i : ℕ) :
 /-- The exact stage table, as a natural-number stream. -/
 noncomputable def uEmit (z : ℕ) : ℕ := Encodable.encode (uTab z.unpair.1 z.unpair.2)
 
-/-- The one remaining conclusion-free operational input of the universal machine: a
-`Nat.Partrec.Code` computing the **exact** stage table `uEmit`.
 
-**Disclosure (recorded at construction time, kind `T`, provenance `(c)`).**  Unlike the
-fixed-code machine of `PrefixMachine.lean`, whose weight emission is *proved*
-(`prefixApprox_polyRatCodes`), this one is **assumed**.  It is a pure computability claim —
-`uApprox n i` is a bounded search over codewords of length `≤ |natCode ⌜φᵢ⌝| + 1` using
-`acc n` and `Code.evaln n`, so the function is primitive recursive; what is missing is only
-the `Primrec` plumbing for that search (`notes/m7-prefix-machine-scope.md`).  **No
-complexity claim is assumed**: the polynomial clock below is *built on top of* this code,
-not assumed of it.  Every endpoint that consumes this structure is conditional on it, and
-says so.
+/-! ## The exact stage table is computable
+
+`kappaStage` is a *bounded* search: a codeword reaching `y` at stage `n` can be assumed no
+longer than `|natCode y| + 1`, since `0 ∷ natCode y` always reaches `y`.  So the exact
+table is decided by enumerating the finitely many bit strings of length `≤ |natCode y| + 1`
+and running the stage-`n` decision procedure `uVal` on each.  Everything here is plain
+primitive recursion — **no complexity claim is made or needed**: the polynomial clock of
+the next section is constructed on top of the code produced here. -/
+
+lemma size_prim : Primrec Nat.size := sizec_polyFueled.choose_spec.primrec
+
+lemma pow2_prim : Primrec (fun k : ℕ => 2 ^ k) :=
+  (Primrec₂.unpaired'.mp Nat.Primrec.pow).comp (Primrec.const 2) Primrec.id
+
+lemma testBit_prim : Primrec₂ (fun n i : ℕ => n.testBit i) := by
+  have : Primrec₂ (fun n i : ℕ => decide (n / 2 ^ i % 2 = 1)) :=
+    Primrec₂.mk (primrecPred_iff_primrec_decide.mp (Primrec.eq.comp
+      (Primrec.nat_mod.comp
+        (Primrec.nat_div.comp Primrec.fst (pow2_prim.comp Primrec.snd)) (Primrec.const 2))
+      (Primrec.const 1)))
+  exact this.of_eq (fun n i => Nat.testBit_eq_decide_div_mod_eq.symm)
+
+lemma natCode_prim : Primrec natCode := by
+  have hs : Primrec (fun n : ℕ => (n + 1).size) := size_prim.comp Primrec.succ
+  have hrep : Primrec (fun n : ℕ => List.replicate ((n + 1).size - 1) true) := by
+    have := Primrec.list_map (Primrec.list_range.comp
+      (Primrec.nat_sub.comp hs (Primrec.const 1)))
+      (Primrec.const true : Primrec (fun _ : ℕ × ℕ => true)).to₂
+    exact this.of_eq (fun n => by simp)
+  have hbits : Primrec (fun n : ℕ => (List.range (n + 1).size).map (n + 1).testBit) :=
+    Primrec.list_map (Primrec.list_range.comp hs)
+      (testBit_prim.comp (Primrec.succ.comp Primrec.fst) Primrec.snd).to₂
+  exact (Primrec.list_append.comp hrep
+    (Primrec.list_cons.comp (Primrec.const false) hbits)).of_eq (fun n => rfl)
+
+lemma natVal_prim : Primrec natVal := by
+  have hf : Primrec (fun u : List Bool => List.range (2 ^ u.length)) :=
+    Primrec.list_range.comp (pow2_prim.comp Primrec.list_length)
+  have hg : Primrec₂ (fun (u : List Bool) (n : ℕ) => if natCode n = u then some n else none) :=
+    Primrec.ite (Primrec.eq.comp (natCode_prim.comp Primrec.snd) Primrec.fst)
+      (Primrec.option_some.comp Primrec.snd) (Primrec.const none)
+  refine ((Primrec.list_head?.comp (Primrec.listFilterMap hf hg)).of_eq (fun u => ?_))
+  rw [natVal]
+  congr 1
+  induction (List.range (2 ^ u.length)) with
+  | nil => rfl
+  | cons a l ih =>
+      by_cases h : natCode a = u <;> simp [h, ih]
+
+/-- All bit strings of a given length. -/
+def wordsLen : ℕ → List (List Bool)
+  | 0 => [[]]
+  | k + 1 => (wordsLen k).flatMap (fun w => [false :: w, true :: w])
+
+lemma mem_wordsLen : ∀ (k : ℕ) (v : List Bool), v ∈ wordsLen k ↔ v.length = k
+  | 0, v => by cases v <;> simp [wordsLen]
+  | k + 1, v => by
+      rw [wordsLen]
+      constructor
+      · intro h
+        simp only [List.mem_flatMap, List.mem_cons, List.not_mem_nil, or_false] at h
+        obtain ⟨w, hw, hv⟩ := h
+        have := (mem_wordsLen k w).mp hw
+        rcases hv with rfl | rfl <;> simp [this]
+      · intro h
+        match v with
+        | [] => simp at h
+        | b :: w =>
+            have hw : w ∈ wordsLen k := (mem_wordsLen k w).mpr (by simpa using h)
+            refine List.mem_flatMap.mpr ⟨w, hw, ?_⟩
+            cases b <;> simp
+
+lemma wordsLen_prim : Primrec wordsLen := by
+  have hcons : Primrec₂ (fun (_ : ℕ × List (List Bool)) (w : List Bool) =>
+      [false :: w, true :: w]) :=
+    Primrec₂.mk (Primrec.list_cons.comp (Primrec.list_cons.comp (Primrec.const false) Primrec.snd)
+      (Primrec.list_cons.comp (Primrec.list_cons.comp (Primrec.const true) Primrec.snd)
+        (Primrec.const ([] : List (List Bool)))))
+  have hstep : Primrec₂ (fun (_ : ℕ) (l : List (List Bool)) =>
+      l.flatMap (fun w => [false :: w, true :: w])) :=
+    Primrec₂.mk (Primrec.list_flatMap Primrec.snd hcons)
+  refine (Primrec.nat_rec₁ ([[]] : List (List Bool)) hstep).of_eq (fun k => ?_)
+  induction k with
+  | zero => rfl
+  | succ k ih => rw [wordsLen, ← ih]
+
+lemma prefix_iff_mem_wordsLen (u v : List Bool) :
+    u <+: v ↔ ∃ w ∈ wordsLen (v.length - u.length), u ++ w = v := by
+  constructor
+  · rintro ⟨w, rfl⟩
+    exact ⟨w, (mem_wordsLen _ w).mpr (by simp), rfl⟩
+  · rintro ⟨w, -, rfl⟩
+    exact List.prefix_append _ _
+
+lemma isPrefix_prim : PrimrecRel (fun u v : List Bool => u <+: v) := by
+  have hR : PrimrecRel (fun (w : List Bool) (p : List Bool × List Bool) => p.1 ++ w = p.2) :=
+    Primrec.eq.comp (Primrec.list_append.comp (Primrec.fst.comp Primrec.snd) Primrec.fst)
+      (Primrec.snd.comp Primrec.snd)
+  have hL : Primrec (fun p : List Bool × List Bool =>
+      wordsLen (p.2.length - p.1.length)) :=
+    wordsLen_prim.comp (Primrec.nat_sub.comp (Primrec.list_length.comp Primrec.snd)
+      (Primrec.list_length.comp Primrec.fst))
+  have h := (PrimrecRel.exists_mem_list hR).comp₂
+    (Primrec₂.mk (f := fun u v : List Bool => wordsLen (v.length - u.length)) hL)
+    (Primrec₂.mk (f := fun u v : List Bool => (u, v)) (Primrec.fst.pair Primrec.snd))
+  exact h.of_eq (fun u v => (prefix_iff_mem_wordsLen u v).symm)
+
+lemma candCode_prim : Primrec candCode := Primrec.fst.comp Primrec.unpair
+
+lemma candFuel_prim : Primrec candFuel :=
+  Primrec.snd.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))
+
+lemma candWord_prim : Primrec candWord :=
+  Primrec.option_getD.comp
+    ((Primrec.decode (α := List Bool)).comp
+      (Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))))
+    (Primrec.const [])
+
+lemma candHit_prim : Primrec candHit :=
+  Nat.Partrec.Code.primrec_evaln.comp
+    ((candFuel_prim.pair ((Primrec.ofNat Nat.Partrec.Code).comp candCode_prim)).pair
+      (Primrec.encode.comp candWord_prim))
+
+lemma accOK_iff (t : ℕ) (L : List (ℕ × List Bool)) :
+    accOK t L = true ↔ (candHit t).isSome = true ∧
+      ∀ p ∈ L, ¬ (p.1 = candCode t ∧ (p.2 <+: candWord t ∨ candWord t <+: p.2)) := by
+  rw [accOK, Bool.and_eq_true, List.all_eq_true]
+  refine and_congr Iff.rfl (forall_congr' fun p => forall_congr' fun _ => ?_)
+  simp only [Bool.not_eq_true', Bool.and_eq_false_iff, decide_eq_false_iff_not,
+    Bool.or_eq_false_iff, not_and, not_or]
+  tauto
+
+lemma accOK_prim : Primrec₂ accOK := by
+  have hR : PrimrecRel (fun (p : ℕ × List Bool) (t : ℕ) =>
+      ¬ (p.1 = candCode t ∧ (p.2 <+: candWord t ∨ candWord t <+: p.2))) := by
+    have h1 : PrimrecRel (fun (p : ℕ × List Bool) (t : ℕ) => p.1 = candCode t) :=
+      Primrec.eq.comp (Primrec.fst.comp Primrec.fst) (candCode_prim.comp Primrec.snd)
+    have h2 : PrimrecRel (fun (p : ℕ × List Bool) (t : ℕ) => p.2 <+: candWord t) :=
+      isPrefix_prim.comp (Primrec.snd.comp Primrec.fst) (candWord_prim.comp Primrec.snd)
+    have h3 : PrimrecRel (fun (p : ℕ × List Bool) (t : ℕ) => candWord t <+: p.2) :=
+      isPrefix_prim.comp (candWord_prim.comp Primrec.snd) (Primrec.snd.comp Primrec.fst)
+    exact (h1.and (h2.or h3)).not
+  have hall := PrimrecRel.forall_mem_list hR
+  have hswap : PrimrecRel (fun (t : ℕ) (L : List (ℕ × List Bool)) =>
+      ∀ p ∈ L, ¬ (p.1 = candCode t ∧ (p.2 <+: candWord t ∨ candWord t <+: p.2))) :=
+    hall.comp₂ (Primrec₂.mk (f := fun (_ : ℕ) (L : List (ℕ × List Bool)) => L) Primrec.snd)
+      (Primrec₂.mk (f := fun (t : ℕ) (_ : List (ℕ × List Bool)) => t) Primrec.fst)
+  have hsome : PrimrecPred (fun t : ℕ => (candHit t).isSome = true) :=
+    Primrec.eq.comp (Primrec.option_isSome.comp candHit_prim) (Primrec.const true)
+  have : PrimrecRel (fun (t : ℕ) (L : List (ℕ × List Bool)) =>
+      (candHit t).isSome = true ∧
+      ∀ p ∈ L, ¬ (p.1 = candCode t ∧ (p.2 <+: candWord t ∨ candWord t <+: p.2))) :=
+    (hsome.comp Primrec.fst).and hswap
+  refine Primrec₂.mk (Primrec.of_eq (primrecPred_iff_primrec_decide.mp this) (fun p => ?_))
+  have h := accOK_iff p.1 p.2
+  by_cases hb : accOK p.1 p.2 = true
+  · rw [hb]; exact decide_eq_true (h.mp hb)
+  · rw [Bool.not_eq_true] at hb
+    rw [hb]
+    exact decide_eq_false (fun hc => by rw [h.mpr hc] at hb; exact absurd hb (by simp))
+
+lemma acc_prim : Primrec acc := by
+  have hstep : Primrec₂ (fun (t : ℕ) (l : List (ℕ × List Bool)) =>
+      if accOK t l then (candCode t, candWord t) :: l else l) := by
+    refine Primrec₂.mk (Primrec.of_eq
+      (Primrec.cond (accOK_prim.comp Primrec.fst Primrec.snd)
+        (Primrec.list_cons.comp
+          ((candCode_prim.comp Primrec.fst).pair (candWord_prim.comp Primrec.fst))
+          Primrec.snd)
+        Primrec.snd) (fun p => ?_))
+    cases h : accOK p.1 p.2 <;> simp
+  refine (Primrec.nat_rec₁ ([] : List (ℕ × List Bool)) hstep).of_eq (fun t => ?_)
+  induction t with
+  | zero => rfl
+  | succ t ih => rw [acc, ← ih]
+
+/-! ### The stage-`n` decision procedure -/
+
+/-- The value of a stage-`n` family-3 codeword, by a search through the finite accepted
+list `acc n`: at most one accepted pair splits `v` as `natCode e ++ w`. -/
+def uUniv (n : ℕ) (v : List Bool) : Option ℕ :=
+  (((acc n).filterMap (fun p => if natCode p.1 ++ p.2 = v then some p else none)).head?).bind
+    (fun p => (Denumerable.ofNat Nat.Partrec.Code p.1).evaln n (Encodable.encode p.2))
+
+lemma uUniv_spec (n : ℕ) (v : List Bool) (y : ℕ) :
+    uUniv n v = some y ↔ ∃ e w, natCode e ++ w = v ∧ (e, w) ∈ acc n ∧
+      (Denumerable.ofNat Nat.Partrec.Code e).evaln n (Encodable.encode w) = some y := by
+  set L := (acc n).filterMap
+    (fun p => if natCode p.1 ++ p.2 = v then some p else none) with hL
+  have hmem : ∀ p : ℕ × List Bool, p ∈ L ↔ p ∈ acc n ∧ natCode p.1 ++ p.2 = v := by
+    intro p
+    rw [hL, List.mem_filterMap]
+    constructor
+    · rintro ⟨q, hq, hq2⟩
+      by_cases h : natCode q.1 ++ q.2 = v
+      · rw [if_pos h] at hq2
+        obtain rfl : q = p := by simpa using hq2
+        exact ⟨hq, h⟩
+      · rw [if_neg h] at hq2; simp at hq2
+    · rintro ⟨hp, hv⟩
+      exact ⟨p, hp, by rw [if_pos hv]⟩
+  have huniq : ∀ p q : ℕ × List Bool, p ∈ L → q ∈ L → p = q := by
+    rintro ⟨p1, p2⟩ ⟨q1, q2⟩ hp hq
+    have h1 := (hmem (p1, p2)).mp hp
+    have h2 := (hmem (q1, q2)).mp hq
+    have hsame : natCode p1 ++ p2 = natCode q1 ++ q2 := by
+      simp only at h1 h2; rw [h1.2, h2.2]
+    have hpre : natCode p1 ++ p2 <+: natCode q1 ++ q2 := by rw [hsame]
+    obtain ⟨he, -⟩ := natCode_append_prefix hpre
+    subst he
+    rw [List.append_cancel_left hsame]
+  rw [uUniv, ← hL]
+  constructor
+  · intro h
+    obtain ⟨p, hp, hev⟩ := Option.bind_eq_some_iff.mp h
+    have := (hmem p).mp (List.mem_of_mem_head? hp)
+    exact ⟨p.1, p.2, this.2, this.1, hev⟩
+  · rintro ⟨e, w, hv, ha, hev⟩
+    have hmemL : (e, w) ∈ L := (hmem (e, w)).mpr ⟨ha, hv⟩
+    cases hh : L.head? with
+    | none => rw [List.head?_eq_none_iff] at hh; rw [hh] at hmemL; simp at hmemL
+    | some p =>
+        have hpL : p ∈ L := List.mem_of_mem_head? hh
+        obtain rfl : p = (e, w) := huniq p (e, w) hpL hmemL
+        simpa using hev
+
+/-- The stage-`n` value of a codeword: the decision procedure behind `UHaltBy`. -/
+def uVal (n : ℕ) : List Bool → Option ℕ
+  | [] => none
+  | false :: u => natVal u
+  | [true] => none
+  | true :: false :: v => (uVal n v).map negCode
+  | true :: true :: v => uUniv n v
+
+lemma uVal_spec (n : ℕ) : ∀ (v : List Bool) (y : ℕ), uVal n v = some y ↔ UHaltBy n v y
+  | [], y => by simp [uVal, UHaltBy]
+  | false :: u, y => by simp [uVal, UHaltBy]
+  | [true], y => by simp [uVal, UHaltBy]
+  | true :: false :: v, y => by
+      rw [uVal, UHaltBy, Option.map_eq_some_iff]
+      constructor
+      · rintro ⟨x, hx, rfl⟩; exact ⟨x, (uVal_spec n v x).mp hx, rfl⟩
+      · rintro ⟨x, hx, rfl⟩; exact ⟨x, (uVal_spec n v x).mpr hx, rfl⟩
+  | true :: true :: v, y => by rw [uVal, UHaltBy]; exact uUniv_spec n v y
+
+lemma uUniv_prim : Primrec₂ uUniv := by
+  have hlist : Primrec (fun x : ℕ × List Bool =>
+      (acc x.1).filterMap (fun p => if natCode p.1 ++ p.2 = x.2 then some p else none)) := by
+    refine Primrec.listFilterMap (acc_prim.comp Primrec.fst) ?_
+    refine Primrec₂.mk (Primrec.ite ?_ (Primrec.option_some.comp Primrec.snd)
+      (Primrec.const none))
+    exact Primrec.eq.comp
+      (Primrec.list_append.comp (natCode_prim.comp (Primrec.fst.comp Primrec.snd))
+        (Primrec.snd.comp Primrec.snd))
+      (Primrec.snd.comp Primrec.fst)
+  have hbind : Primrec₂ (fun (x : ℕ × List Bool) (p : ℕ × List Bool) =>
+      (Denumerable.ofNat Nat.Partrec.Code p.1).evaln x.1 (Encodable.encode p.2)) :=
+    Primrec₂.mk (Nat.Partrec.Code.primrec_evaln.comp
+      (((Primrec.fst.comp Primrec.fst).pair
+        ((Primrec.ofNat Nat.Partrec.Code).comp (Primrec.fst.comp Primrec.snd))).pair
+        (Primrec.encode.comp (Primrec.snd.comp Primrec.snd))))
+  exact Primrec₂.mk (Primrec.option_bind (Primrec.list_head?.comp hlist) hbind)
+
+/-- One step of the codeword scan, in the shape `Primrec.list_rec` consumes. -/
+noncomputable def uValStep (n : ℕ) (b : Bool) (r : List Bool) (pt : Option ℕ) : Option ℕ :=
+  bif b then (r.head?.bind (fun c => bif c then uUniv n r.tail else pt.map negCode))
+  else natVal r
+
+/-- The scan state: the value of the codeword and of its tail. -/
+noncomputable def uValP (n : ℕ) : List Bool → Option ℕ × Option ℕ
+  | [] => (none, none)
+  | b :: r => (uValStep n b r (uValP n r).2, (uValP n r).1)
+
+lemma uValP_eq (n : ℕ) : ∀ l : List Bool, uValP n l = (uVal n l, uVal n l.tail)
+  | [] => rfl
+  | b :: r => by
+      rw [uValP, uValP_eq n r]
+      simp only [List.tail_cons]
+      refine Prod.ext ?_ rfl
+      simp only
+      cases b
+      · rw [uValStep, uVal]; rfl
+      · match r with
+        | [] => rw [uValStep, uVal]; rfl
+        | false :: v => rw [uValStep, uVal]; rfl
+        | true :: v => rw [uValStep, uVal]; rfl
+
+lemma negCode_prim : Primrec negCode :=
+  Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
+    (Primrec₂.natPair.comp Primrec.id (Primrec.const 1)))
+
+lemma uValP_prim : Primrec (fun x : ℕ × List Bool => uValP x.1 x.2) := by
+  set A := ℕ × List Bool with hA
+  set S := Option ℕ × Option ℕ with hS
+  have hstep : Primrec₂ (fun (x : A) (w : Bool × List Bool × S) =>
+      ((uValStep x.1 w.1 w.2.1 w.2.2.2, w.2.2.1) : S)) := by
+    have hn : Primrec (fun y : A × (Bool × List Bool × S) => y.1.1) :=
+      Primrec.fst.comp Primrec.fst
+    have hb : Primrec (fun y : A × (Bool × List Bool × S) => y.2.1) :=
+      Primrec.fst.comp Primrec.snd
+    have hr : Primrec (fun y : A × (Bool × List Bool × S) => y.2.2.1) :=
+      Primrec.fst.comp (Primrec.snd.comp Primrec.snd)
+    have e1 : Primrec (fun y : A × (Bool × List Bool × S) => y.2) := Primrec.snd
+    have e2 : Primrec (fun y : A × (Bool × List Bool × S) => y.2.2) :=
+      Primrec.snd.comp e1
+    have e3 : Primrec (fun y : A × (Bool × List Bool × S) => y.2.2.2) :=
+      Primrec.snd.comp e2
+    have hpt : Primrec (fun y : A × (Bool × List Bool × S) => y.2.2.2.2) :=
+      Primrec.snd.comp e3
+    have hinner : Primrec₂ (fun (y : A × (Bool × List Bool × S)) (c : Bool) =>
+        bif c then uUniv y.1.1 y.2.2.1.tail else y.2.2.2.2.map negCode) :=
+      Primrec₂.mk (Primrec.cond Primrec.snd
+        (uUniv_prim.comp (hn.comp Primrec.fst)
+          (Primrec.list_tail.comp (hr.comp Primrec.fst)))
+        (Primrec.option_map (hpt.comp Primrec.fst)
+          (negCode_prim.comp Primrec.snd).to₂))
+    have hval : Primrec (fun y : A × (Bool × List Bool × S) =>
+        uValStep y.1.1 y.2.1 y.2.2.1 y.2.2.2.2) :=
+      (Primrec.cond hb
+        (Primrec.option_bind (Primrec.list_head?.comp hr) hinner)
+        (natVal_prim.comp hr))
+    have hih1 : Primrec (fun y : A × (Bool × List Bool × S) => y.2.2.2.1) :=
+      Primrec.fst.comp e3
+    exact Primrec₂.mk (hval.pair hih1)
+  refine (Primrec.list_rec Primrec.snd (Primrec.const ((none, none) : S)) hstep).of_eq
+    (fun x => ?_)
+  obtain ⟨n, l⟩ := x
+  induction l with
+  | nil => rfl
+  | cons b r ih => rw [uValP, ← ih]
+
+lemma uVal_prim : Primrec₂ uVal :=
+  Primrec₂.mk ((Primrec.fst.comp uValP_prim).of_eq (fun x => by rw [uValP_eq]))
+
+/-! ### The bounded search -/
+
+/-- All bit strings of length at most `L`. -/
+def wordsUpto (L : ℕ) : List (List Bool) := (List.range (L + 1)).flatMap wordsLen
+
+lemma mem_wordsUpto (L : ℕ) (v : List Bool) : v ∈ wordsUpto L ↔ v.length ≤ L := by
+  rw [wordsUpto, List.mem_flatMap]
+  constructor
+  · rintro ⟨k, hk, hv⟩
+    rw [mem_wordsLen] at hv
+    rw [hv]
+    simpa using Nat.lt_succ_iff.mp (List.mem_range.mp hk)
+  · intro h
+    exact ⟨v.length, List.mem_range.mpr (by omega), (mem_wordsLen _ _).mpr rfl⟩
+
+lemma wordsUpto_prim : Primrec wordsUpto :=
+  Primrec.list_flatten.comp
+    (Primrec.list_map (Primrec.list_range.comp Primrec.succ) (wordsLen_prim.comp Primrec.snd).to₂)
+
+/-- The stage-`n` codeword lengths for `y` discovered by the bounded search. -/
+def uLenList (n y : ℕ) : List ℕ :=
+  (wordsUpto ((natCode y).length + 1)).filterMap
+    (fun v => if uVal n v = some y then some v.length else none)
+
+/-- The exact from-below stage value, as a bounded search. -/
+def uMinLen (n y : ℕ) : ℕ := (uLenList n y).foldr min ((natCode y).length + 1)
+
+lemma foldr_min_le : ∀ (l : List ℕ) (d a : ℕ), a ∈ l → l.foldr min d ≤ a
+  | [], _, _, h => absurd h (by simp)
+  | b :: l, d, a, h => by
+      rcases List.mem_cons.mp h with rfl | h'
+      · exact Nat.min_le_left _ _
+      · exact le_trans (Nat.min_le_right _ _) (foldr_min_le l d a h')
+
+lemma foldr_min_mem : ∀ (l : List ℕ) (d : ℕ), l.foldr min d ∈ l ∨ l.foldr min d = d
+  | [], _ => Or.inr rfl
+  | b :: l, d => by
+      rcases Nat.le_total b (l.foldr min d) with h | h
+      · exact Or.inl (by rw [List.foldr_cons, Nat.min_eq_left h]; simp)
+      · rw [List.foldr_cons, Nat.min_eq_right h]
+        rcases foldr_min_mem l d with h' | h'
+        · exact Or.inl (List.mem_cons_of_mem _ h')
+        · exact Or.inr h'
+
+lemma mem_uLenList {n y m : ℕ} (h : m ∈ uLenList n y) :
+    ∃ v : List Bool, UHaltBy n v y ∧ v.length = m := by
+  rw [uLenList, List.mem_filterMap] at h
+  obtain ⟨v, -, hv⟩ := h
+  by_cases hc : uVal n v = some y
+  · rw [if_pos hc] at hv
+    exact ⟨v, (uVal_spec n v y).mp hc, by simpa using hv⟩
+  · rw [if_neg hc] at hv; simp at hv
+
+lemma uMinLen_eq (n y : ℕ) : uMinLen n y = sInf (uLenSetBy n y) := by
+  have hdefault : ((natCode y).length + 1) ∈ uLenSetBy n y :=
+    ⟨false :: natCode y, by simp [UHaltBy, natVal_natCode], by simp⟩
+  have hmem : uMinLen n y ∈ uLenSetBy n y := by
+    rcases foldr_min_mem (uLenList n y) ((natCode y).length + 1) with h | h
+    · obtain ⟨v, hv, hlen⟩ := mem_uLenList h
+      exact ⟨v, hv, hlen⟩
+    · rw [uMinLen, h]; exact hdefault
+  refine le_antisymm ?_ (Nat.sInf_le hmem)
+  obtain ⟨v, hv, hlen⟩ := Nat.sInf_mem (uLenSetBy_nonempty n y)
+  have hle : sInf (uLenSetBy n y) ≤ (natCode y).length + 1 := Nat.sInf_le hdefault
+  have hvm : v ∈ wordsUpto ((natCode y).length + 1) :=
+    (mem_wordsUpto _ v).mpr (by omega)
+  have : sInf (uLenSetBy n y) ∈ uLenList n y := by
+    rw [uLenList, List.mem_filterMap]
+    exact ⟨v, hvm, by rw [if_pos ((uVal_spec n v y).mpr hv), hlen]⟩
+  exact foldr_min_le _ _ _ this
+
+lemma kappaStage_eq (n y : ℕ) : kappaStage n y = uMinLen n y + 1 := by
+  rw [kappaStage, uMinLen_eq]
+
+lemma uMinLen_prim : Primrec₂ uMinLen := by
+  have hL : Primrec (fun x : ℕ × ℕ => (natCode x.2).length + 1) :=
+    Primrec.succ.comp (Primrec.list_length.comp (natCode_prim.comp Primrec.snd))
+  have hlist : Primrec (fun x : ℕ × ℕ => uLenList x.1 x.2) := by
+    refine Primrec.listFilterMap (wordsUpto_prim.comp hL) ?_
+    refine Primrec₂.mk (Primrec.ite ?_
+      (Primrec.option_some.comp (Primrec.list_length.comp Primrec.snd)) (Primrec.const none))
+    exact Primrec.eq.comp (uVal_prim.comp (Primrec.fst.comp Primrec.fst) Primrec.snd)
+      (Primrec.option_some.comp (Primrec.snd.comp Primrec.fst))
+  have hmin : Primrec₂ (fun (_ : ℕ × ℕ) (w : ℕ × ℕ) => min w.1 w.2) :=
+    Primrec₂.mk (Primrec.nat_min.comp (Primrec.fst.comp Primrec.snd)
+      (Primrec.snd.comp Primrec.snd))
+  exact Primrec₂.mk ((Primrec.list_foldr hlist hL hmin).of_eq (fun p => rfl))
+
+/-! ### The emission program -/
+
+lemma encodeEnum_prim : Primrec (fun i => Encodable.encode (prefixSentenceEnum i)) := by
+  have hinv : Primrec invalidBit := invalidBit_polyFueled.choose_spec.primrec
+  have hpred : PrimrecPred (fun i : ℕ => invalidBit i = 0) :=
+    Primrec.eq.comp hinv (Primrec.const 0)
+  refine (Primrec.ite hpred Primrec.id
+    (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1) Primrec.id))).of_eq
+    (fun i => ?_)
+  rw [encode_prefixSentenceEnum]
+  by_cases hv : validCode i
+  · rw [if_pos hv, if_pos (by simp [invalidBit, hv])]; rfl
+  · rw [if_neg hv, if_neg (by simp [invalidBit, hv])]; rfl
+
+lemma uApprox_eq_halfPow (n i : ℕ) :
+    uApprox n i = Dovetail.halfPow (uMinLen n (Encodable.encode (prefixSentenceEnum i))) := by
+  rw [uApprox, Dovetail.halfPow_eq, kappaStage_eq]
+  rw [div_pow]
+  norm_num
+
+lemma uEmit_prim : Primrec uEmit := by
+  have hj : Primrec (fun z : ℕ => z.unpair.1) := Primrec.fst.comp Primrec.unpair
+  have hi : Primrec (fun z : ℕ => z.unpair.2) := Primrec.snd.comp Primrec.unpair
+  have hy : Primrec (fun z : ℕ => Encodable.encode (prefixSentenceEnum z.unpair.2)) :=
+    encodeEnum_prim.comp hi
+  have hm : Primrec (fun z : ℕ =>
+      Dovetail.halfPow (uMinLen (z.unpair.1 - 1) (Encodable.encode
+        (prefixSentenceEnum z.unpair.2)))) :=
+    Dovetail.halfPow_prim.comp
+      (uMinLen_prim.comp (Primrec.nat_sub.comp hj (Primrec.const 1)) hy)
+  refine (Primrec.encode.comp
+    (Primrec.ite (Primrec.eq.comp hj (Primrec.const 0)) (Primrec.const (0 : ℚ)) hm)).of_eq
+    (fun z => ?_)
+  rw [uEmit, uTab]
+  by_cases h : z.unpair.1 = 0
+  · rw [if_pos h, if_pos h]
+  · rw [if_neg h, if_neg h, uApprox_eq_halfPow]
+
+theorem exists_uCode : ∃ c : Nat.Partrec.Code, ∀ z, c.eval z = Part.some (uEmit z) := by
+  obtain ⟨c, hc⟩ := Nat.Partrec.Code.exists_code.mp
+    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp uEmit_prim))
+  exact ⟨c, fun z => by rw [hc]; rfl⟩
+
+/-- **The exact stage table has a program.**  Discharged, not assumed: the table is the
+bounded search `uMinLen`, primitive recursive by the section above.  Note that this carries
+*no* complexity claim — the polynomial clock below is constructed on top of this code.
 Paper node: `thm:ob` -/
-structure UniversalPrefixComputation where
-  /-- A program for the exact stage table. -/
-  code : Nat.Partrec.Code
-  /-- It computes the exact stage table, totally. -/
-  eval_eq : ∀ z, code.eval z = Part.some (uEmit z)
+noncomputable def uCode : Nat.Partrec.Code := exists_uCode.choose
 
-variable (C : UniversalPrefixComputation)
+lemma uCode_eval (z : ℕ) : uCode.eval z = Part.some (uEmit z) := exists_uCode.choose_spec z
 
-lemma uCode_evaln_eq {k x out : ℕ} (h : C.code.evaln k x = some out) : out = uEmit x := by
-  have hmem : out ∈ C.code.eval x := Nat.Partrec.Code.evaln_sound h
-  rw [C.eval_eq] at hmem
+lemma uCode_evaln_eq {k x out : ℕ} (h : uCode.evaln k x = some out) : out = uEmit x := by
+  have hmem : out ∈ uCode.eval x := Nat.Partrec.Code.evaln_sound h
+  rw [uCode_eval] at hmem
   simpa using hmem
 
 lemma uCode_evaln_exists (x : ℕ) :
-    ∃ F₀, ∀ F, F₀ ≤ F → C.code.evaln F x = some (uEmit x) := by
-  have hmem : uEmit x ∈ C.code.eval x := by rw [C.eval_eq]; exact Part.mem_some _
+    ∃ F₀, ∀ F, F₀ ≤ F → uCode.evaln F x = some (uEmit x) := by
+  have hmem : uEmit x ∈ uCode.eval x := by rw [uCode_eval]; exact Part.mem_some _
   obtain ⟨F₀, hF₀⟩ := Nat.Partrec.Code.evaln_complete.mp hmem
   exact ⟨F₀, fun F hF => Nat.Partrec.Code.evaln_mono hF hF₀⟩
 
 /-- One clocked reading of the exact table: stage `j`, sentence index `i`, clock `F`.
 `0` means "the clock ran out". -/
 noncomputable def uRead (F j i : ℕ) : ℕ :=
-  codeEvalnNat C.code (Nat.pair F (Nat.pair j i))
+  codeEvalnNat uCode (Nat.pair F (Nat.pair j i))
 
-lemma uRead_eq_of_ne_zero {F j i : ℕ} (h : uRead C F j i ≠ 0) :
-    uRead C F j i = Encodable.encode (uTab j i) + 1 := by
+lemma uRead_eq_of_ne_zero {F j i : ℕ} (h : uRead F j i ≠ 0) :
+    uRead F j i = Encodable.encode (uTab j i) + 1 := by
   rw [uRead, codeEvalnNat] at h ⊢
   simp only [Nat.unpair_pair] at h ⊢
-  cases hev : C.code.evaln F (Nat.pair j i) with
+  cases hev : uCode.evaln F (Nat.pair j i) with
   | none => rw [hev] at h; simp at h
-  | some out => rw [uCode_evaln_eq C hev, uEmit, Nat.unpair_pair]
+  | some out => rw [uCode_evaln_eq hev, uEmit, Nat.unpair_pair]
 
-lemma uRead_le (F j i : ℕ) : uRead C F j i ≤ codeEvalBound C.code F + 1 := by
-  simpa [uRead] using codeEvalnNat_le C.code (Nat.pair F (Nat.pair j i))
+lemma uRead_le (F j i : ℕ) : uRead F j i ≤ codeEvalBound uCode F + 1 := by
+  simpa [uRead] using codeEvalnNat_le uCode (Nat.pair F (Nat.pair j i))
 
-lemma uRead_ne_zero (j i : ℕ) : ∃ F₀, ∀ F, F₀ ≤ F → uRead C F j i ≠ 0 := by
-  obtain ⟨F₀, hF₀⟩ := uCode_evaln_exists C (Nat.pair j i)
+lemma uRead_ne_zero (j i : ℕ) : ∃ F₀, ∀ F, F₀ ≤ F → uRead F j i ≠ 0 := by
+  obtain ⟨F₀, hF₀⟩ := uCode_evaln_exists (Nat.pair j i)
   refine ⟨F₀, fun F hF => ?_⟩
   rw [uRead, codeEvalnNat]
   simp [Nat.unpair_pair, hF₀ F hF]
@@ -705,47 +1161,47 @@ lemma le_uFuel (z : ℕ) : z ≤ uFuel z := Nat.left_le_pair z z
 /-- The stage that the last successful reading below `j` came from. -/
 noncomputable def uStage (z : ℕ) : ℕ → ℕ
   | 0 => 0
-  | j + 1 => if uRead C (uFuel z) j z.unpair.2 = 0 then uStage z j else j
+  | j + 1 => if uRead (uFuel z) j z.unpair.2 = 0 then uStage z j else j
 
 /-- The carried encoded state of the scan. -/
 noncomputable def uState (z : ℕ) : ℕ → ℕ
   | 0 => Encodable.encode (0 : ℚ) + 1
   | j + 1 =>
-      ifzSelFn (Nat.pair (uState z j) (uRead C (uFuel z) j z.unpair.2))
-        (uRead C (uFuel z) j z.unpair.2)
+      ifzSelFn (Nat.pair (uState z j) (uRead (uFuel z) j z.unpair.2))
+        (uRead (uFuel z) j z.unpair.2)
 
-lemma uState_zero (z : ℕ) : uState C z 0 = Encodable.encode (0 : ℚ) + 1 := rfl
+lemma uState_zero (z : ℕ) : uState z 0 = Encodable.encode (0 : ℚ) + 1 := rfl
 
 lemma uState_eq (z : ℕ) : ∀ j,
-    uState C z j = Encodable.encode (uTab (uStage C z j) z.unpair.2) + 1
+    uState z j = Encodable.encode (uTab (uStage z j) z.unpair.2) + 1
   | 0 => by rw [uState, uStage, uTab_zero]
   | j + 1 => by
       rw [uState, uStage, ifzSelFn]
-      by_cases h : uRead C (uFuel z) j z.unpair.2 = 0
+      by_cases h : uRead (uFuel z) j z.unpair.2 = 0
       · rw [if_pos h, if_pos h, Nat.unpair_pair]
         exact uState_eq z j
       · rw [if_neg h, if_neg h, Nat.unpair_pair]
-        exact uRead_eq_of_ne_zero C h
+        exact uRead_eq_of_ne_zero h
 
 lemma uState_le (z : ℕ) : ∀ j,
-    uState C z j ≤ codeEvalBound C.code (uFuel z) + Encodable.encode (0 : ℚ) + 2
+    uState z j ≤ codeEvalBound uCode (uFuel z) + Encodable.encode (0 : ℚ) + 2
   | 0 => by rw [uState]; omega
   | j + 1 => by
       rw [uState, ifzSelFn]
-      by_cases h : uRead C (uFuel z) j z.unpair.2 = 0
+      by_cases h : uRead (uFuel z) j z.unpair.2 = 0
       · rw [if_pos h, Nat.unpair_pair]; exact uState_le z j
       · rw [if_neg h, Nat.unpair_pair]
-        have := uRead_le C (uFuel z) j z.unpair.2
+        have := uRead_le (uFuel z) j z.unpair.2
         omega
 
 /-- A stage whose reading succeeds is never lost. -/
-lemma le_uStage {z j N : ℕ} (hj : j < N) (h : uRead C (uFuel z) j z.unpair.2 ≠ 0) :
-    j ≤ uStage C z N := by
+lemma le_uStage {z j N : ℕ} (hj : j < N) (h : uRead (uFuel z) j z.unpair.2 ≠ 0) :
+    j ≤ uStage z N := by
   induction N with
   | zero => omega
   | succ N ih =>
       rw [uStage]
-      by_cases hN : uRead C (uFuel z) N z.unpair.2 = 0
+      by_cases hN : uRead (uFuel z) N z.unpair.2 = 0
       · rw [if_pos hN]
         rcases Nat.lt_or_ge j N with hlt | hge
         · exact ih hlt
@@ -757,45 +1213,45 @@ lemma le_uStage {z j N : ℕ} (hj : j < N) (h : uRead C (uFuel z) j z.unpair.2 �
 /-- **The poly-fuel stage table.**  At query `z = ⟪n, i⟫` it is the exact table at whatever
 stage `< n` the clock `⟪z,z⟫` last completed on sentence index `i`.
 Paper node: `thm:ob` -/
-noncomputable def uSel (z : ℕ) : ℚ := uTab (uStage C z z.unpair.1) z.unpair.2
+noncomputable def uSel (z : ℕ) : ℚ := uTab (uStage z z.unpair.1) z.unpair.2
 
-lemma uSel_nonneg (z : ℕ) : 0 ≤ uSel C z := uTab_nonneg _ _
+lemma uSel_nonneg (z : ℕ) : 0 ≤ uSel z := uTab_nonneg _ _
 
 lemma uSel_le (z : ℕ) :
-    ((uSel C z : ℚ) : ℝ) ≤ prefixWeight kappaU (prefixSentenceEnum z.unpair.2) :=
+    ((uSel z : ℚ) : ℝ) ≤ prefixWeight kappaU (prefixSentenceEnum z.unpair.2) :=
   uTab_le _ _
 
-lemma encode_uSel (z : ℕ) : Encodable.encode (uSel C z) = uState C z z.unpair.1 - 1 := by
+lemma encode_uSel (z : ℕ) : Encodable.encode (uSel z) = uState z z.unpair.1 - 1 := by
   rw [uSel, uState_eq]
   omega
 
 /-- Every fixed stage is eventually reached. -/
 lemma uSel_eventually_ge (m i : ℕ) :
-    ∀ᶠ n in atTop, uTab m i ≤ uSel C (Nat.pair n i) := by
-  obtain ⟨F₀, hF₀⟩ := uRead_ne_zero C m i
+    ∀ᶠ n in atTop, uTab m i ≤ uSel (Nat.pair n i) := by
+  obtain ⟨F₀, hF₀⟩ := uRead_ne_zero m i
   refine Filter.eventually_atTop.2 ⟨max (m + 1) F₀, fun n hn => ?_⟩
   have hni : n ≤ Nat.pair n i := Nat.left_le_pair n i
   have hfuel : F₀ ≤ uFuel (Nat.pair n i) :=
     le_trans (le_trans (le_max_right _ _) hn) (le_trans hni (le_uFuel _))
   have hsnd : (Nat.pair n i).unpair.2 = i := by simp
-  have hne : uRead C (uFuel (Nat.pair n i)) m (Nat.pair n i).unpair.2 ≠ 0 := by
+  have hne : uRead (uFuel (Nat.pair n i)) m (Nat.pair n i).unpair.2 ≠ 0 := by
     rw [hsnd]; exact hF₀ _ hfuel
   have hlt : m < (Nat.pair n i).unpair.1 := by
     have : m + 1 ≤ n := le_trans (le_max_left _ _) hn
     simpa using this
-  have := le_uStage C hlt hne
+  have := le_uStage hlt hne
   rw [uSel, hsnd]
   exact uTab_mono this i
 
 lemma uSel_tendsto (i : ℕ) :
-    Tendsto (fun n => ((uSel C (Nat.pair n i) : ℚ) : ℝ)) atTop
+    Tendsto (fun n => ((uSel (Nat.pair n i) : ℚ) : ℝ)) atTop
       (𝓝 (prefixWeight kappaU (prefixSentenceEnum i))) := by
   refine tendsto_order.2 ⟨fun a ha => ?_, fun b hb => ?_⟩
   · obtain ⟨m, hm⟩ := ((uTab_tendsto i).eventually (eventually_gt_nhds ha)).exists
-    filter_upwards [uSel_eventually_ge C m i] with n hn
+    filter_upwards [uSel_eventually_ge m i] with n hn
     exact lt_of_lt_of_le hm (by exact_mod_cast hn)
   · refine Filter.Eventually.of_forall fun n => lt_of_le_of_lt ?_ hb
-    have h := uSel_le C (Nat.pair n i)
+    have h := uSel_le (Nat.pair n i)
     simpa using h
 
 /-! ### The emission certificate
@@ -807,22 +1263,22 @@ the clocked reading, poly-fueled because the simulated code is *fixed*. -/
 noncomputable def uStep (w : ℕ) : ℕ :=
   ifzSelFn
     (Nat.pair w.unpair.2.unpair.2
-      (codeEvalnNat C.code
+      (codeEvalnNat uCode
         (Nat.pair (Nat.pair w.unpair.1 w.unpair.1)
           (Nat.pair w.unpair.2.unpair.1 w.unpair.1.unpair.2))))
-    (codeEvalnNat C.code
+    (codeEvalnNat uCode
       (Nat.pair (Nat.pair w.unpair.1 w.unpair.1)
         (Nat.pair w.unpair.2.unpair.1 w.unpair.1.unpair.2)))
 
 lemma uState_succ (z j : ℕ) :
-    uState C z (j + 1) = uStep C (Nat.pair z (Nat.pair j (uState C z j))) := by
+    uState z (j + 1) = uStep (Nat.pair z (Nat.pair j (uState z j))) := by
   rw [uStep]
   simp only [Nat.unpair_pair]
   rfl
 
 attribute [local irreducible] Nat.sqrt uApprox uTab kappaStage in
-lemma uStep_polyFueled : ∃ c, PolyFueled c (uStep C) := by
-  obtain ⟨cR, hR⟩ := codeEvalnNat_polyFueled C.code
+lemma uStep_polyFueled : ∃ c, PolyFueled c uStep := by
+  obtain ⟨cR, hR⟩ := codeEvalnNat_polyFueled uCode
   have hz : PolyFueled _ (fun w : ℕ => w.unpair.1) := PolyFueled.left
   have hr : PolyFueled _ (fun w : ℕ => w.unpair.2) := PolyFueled.right
   have hj := PolyFueled.left.comp hr
@@ -839,43 +1295,44 @@ attribute [local irreducible] Nat.sqrt uApprox uTab kappaStage uStep uState in
 /-- The clocked selection table is polynomially emitted: the `evaln` self-clamp
 lets the emitter select exact stage values under a polynomial clock.
 Paper node: `thm:ob` -/
-theorem uSel_polyRatCodes : PolyRatCodes (uSel C) := by
-  obtain ⟨cs, hs⟩ := uStep_polyFueled C
-  have hst : IsPolyBounded (fun m => uState C m.unpair.1 m.unpair.2) := by
+theorem uSel_polyRatCodes : PolyRatCodes uSel := by
+  obtain ⟨cs, hs⟩ := uStep_polyFueled
+  have hst : IsPolyBounded (fun m => uState m.unpair.1 m.unpair.2) := by
     refine IsPolyBounded.of_le
-      (b' := fun m => codeEvalBound C.code (Nat.pair m.unpair.1 m.unpair.1)
+      (b' := fun m => codeEvalBound uCode (Nat.pair m.unpair.1 m.unpair.1)
         + Encodable.encode (0 : ℚ) + 2)
       ((IsPolyBounded.linear (Encodable.encode (0 : ℚ) + 2)).comp
-        ((codeEvalBound_poly C.code).comp
+        ((codeEvalBound_poly uCode).comp
           (isPolyBounded_fst.pair isPolyBounded_fst))) (fun m => ?_)
-    have := uState_le C m.unpair.1 m.unpair.2
+    have := uState_le m.unpair.1 m.unpair.2
     simpa [uFuel] using this
   have hprec := PolyFueled.prec (PolyFueled.const (Encodable.encode (0 : ℚ) + 1)) hs
-    (st := uState C) (uState_zero C) (uState_succ C) hst
-  have hstate : ∃ c, PolyFueled c (fun z => uState C z z.unpair.1) :=
+    (st := uState) uState_zero uState_succ hst
+  have hstate : ∃ c, PolyFueled c (fun z => uState z z.unpair.1) :=
     ⟨_, (hprec.comp (PolyFueled.id.pair PolyFueled.left)).of_eq
       (fun z => by simp only [Nat.unpair_pair])⟩
   obtain ⟨c, hc⟩ := hstate
-  exact ⟨_, (predc_polyFueled.comp hc).of_eq (fun z => (encode_uSel C z).symm)⟩
+  exact ⟨_, (predc_polyFueled.comp hc).of_eq (fun z => (encode_uSel z).symm)⟩
 
 /-- **The universal prefix machine as an Occam presentation.**  Every *mathematical* field
 is discharged here — the Kraft budget from the built-in prefix-freeness of `dom U`,
 coverage from the reused sentence enumeration, and the from-below convergence of the
-clocked stage table.  The single operational input is the exact table's code.
+clocked stage table — including the exact table's own program (`uCode`).  There is no
+residual input.
 Paper node: `thm:ob` -/
-noncomputable def universalPrefixPresentation (C : UniversalPrefixComputation) :
+noncomputable def universalPrefixPresentation :
     PrefixMachinePresentation kappaU where
   sentence := prefixSentenceEnum
   sentence_codes := prefixSentenceEnum_polySentenceCodes
-  approximation := fun n i => uSel C (Nat.pair n i)
+  approximation := fun n i => uSel (Nat.pair n i)
   approximation_codes := by
-    obtain ⟨c, hc⟩ := uSel_polyRatCodes C
+    obtain ⟨c, hc⟩ := uSel_polyRatCodes
     exact ⟨c, hc.of_eq (fun z => by simp only [Nat.pair_unpair])⟩
-  approximation_nonneg := fun n i => uSel_nonneg C _
+  approximation_nonneg := fun n i => uSel_nonneg _
   approximation_le := fun n i => by
-    have := uSel_le C (Nat.pair n i)
+    have := uSel_le (Nat.pair n i)
     simpa using this
-  approximation_tendsto := uSel_tendsto C
+  approximation_tendsto := uSel_tendsto
   kraft := kappaU_kraft
   covers := prefixSentenceEnum_covers
 
@@ -892,26 +1349,26 @@ def uQuery (z : ℕ) : ℕ := Nat.pair z.unpair.2.unpair.1 z.unpair.2.unpair.2
 
 /-- Reduced numerator of the emitted stage rational at the gate query. -/
 noncomputable def uNum (z : ℕ) : ℕ :=
-  (Encodable.encode (uSel C (uQuery z))).unpair.1 / 2
+  (Encodable.encode (uSel (uQuery z))).unpair.1 / 2
 
 /-- Reduced denominator of the emitted stage rational at the gate query. -/
 noncomputable def uDenom (z : ℕ) : ℕ :=
-  (Encodable.encode (uSel C (uQuery z))).unpair.2
+  (Encodable.encode (uSel (uQuery z))).unpair.2
 
-lemma uNum_eq (z : ℕ) : uNum C z = (uSel C (uQuery z)).num.toNat := by
-  rw [uNum, Dovetail.encode_rat_of_nonneg (uSel_nonneg C _), Nat.unpair_pair]
+lemma uNum_eq (z : ℕ) : uNum z = (uSel (uQuery z)).num.toNat := by
+  rw [uNum, Dovetail.encode_rat_of_nonneg (uSel_nonneg _), Nat.unpair_pair]
   omega
 
-lemma uDenom_eq (z : ℕ) : uDenom C z = (uSel C (uQuery z)).den := by
-  rw [uDenom, Dovetail.encode_rat_of_nonneg (uSel_nonneg C _), Nat.unpair_pair]
+lemma uDenom_eq (z : ℕ) : uDenom z = (uSel (uQuery z)).den := by
+  rw [uDenom, Dovetail.encode_rat_of_nonneg (uSel_nonneg _), Nat.unpair_pair]
 
-lemma uDenom_pos (z : ℕ) : 0 < uDenom C z := by
-  rw [uDenom_eq]; exact (uSel C (uQuery z)).den_pos
+lemma uDenom_pos (z : ℕ) : 0 < uDenom z := by
+  rw [uDenom_eq]; exact (uSel (uQuery z)).den_pos
 
 lemma uSel_query_eq (z : ℕ) :
-    uSel C (uQuery z) = (uNum C z : ℚ) / (uDenom C z : ℚ) := by
-  have hnn : 0 ≤ (uSel C (uQuery z)).num := Rat.num_nonneg.mpr (uSel_nonneg C _)
-  have hcast : ((uSel C (uQuery z)).num.toNat : ℚ) = ((uSel C (uQuery z)).num : ℚ) := by
+    uSel (uQuery z) = (uNum z : ℚ) / (uDenom z : ℚ) := by
+  have hnn : 0 ≤ (uSel (uQuery z)).num := Rat.num_nonneg.mpr (uSel_nonneg _)
+  have hcast : ((uSel (uQuery z)).num.toNat : ℚ) = ((uSel (uQuery z)).num : ℚ) := by
     exact_mod_cast congrArg (fun n : ℤ => (n : ℚ)) (Int.toNat_of_nonneg hnn)
   rw [uNum_eq, uDenom_eq, hcast]
   exact (Rat.num_div_den _).symm
@@ -920,24 +1377,24 @@ section Emission
 
 attribute [local irreducible] Nat.sqrt uSel uStage uState uApprox uTab kappaStage
 
-lemma uNum_polyFueled : ∃ c, PolyFueled c (uNum C) := by
-  obtain ⟨c, hc⟩ := uSel_polyRatCodes C
+lemma uNum_polyFueled : ∃ c, PolyFueled c uNum := by
+  obtain ⟨c, hc⟩ := uSel_polyRatCodes
   obtain ⟨cdm, hdm⟩ := divmodc_polyFueled 2 (by norm_num)
   have hq : PolyFueled _ (fun z : ℕ => Nat.pair z.unpair.2.unpair.1 z.unpair.2.unpair.2) :=
     (PolyFueled.left.comp PolyFueled.right).pair (PolyFueled.right.comp PolyFueled.right)
   exact ⟨_, (PolyFueled.left.comp (hdm.comp (PolyFueled.left.comp (hc.comp hq)))).of_eq
     (fun z => by simp only [Nat.unpair_pair]; rfl)⟩
 
-lemma uDenom_polyFueled : ∃ c, PolyFueled c (uDenom C) := by
-  obtain ⟨c, hc⟩ := uSel_polyRatCodes C
+lemma uDenom_polyFueled : ∃ c, PolyFueled c uDenom := by
+  obtain ⟨c, hc⟩ := uSel_polyRatCodes
   have hq : PolyFueled _ (fun z : ℕ => Nat.pair z.unpair.2.unpair.1 z.unpair.2.unpair.2) :=
     (PolyFueled.left.comp PolyFueled.right).pair (PolyFueled.right.comp PolyFueled.right)
   exact ⟨_, (PolyFueled.right.comp (hc.comp hq)).of_eq (fun z => rfl)⟩
 
 /-- `z ↦ uDenom z * (w * (z.1 + 1)⁴)`, the gate denominators for `w = 1` and `w = 2`. -/
 lemma uGateDen_polyFueled (w : ℕ) :
-    ∃ c, PolyFueled c (fun z => uDenom C z * (w * (z.unpair.1 + 1) ^ 4)) := by
-  obtain ⟨cd, hd⟩ := uDenom_polyFueled C
+    ∃ c, PolyFueled c (fun z => uDenom z * (w * (z.unpair.1 + 1) ^ 4)) := by
+  obtain ⟨cd, hd⟩ := uDenom_polyFueled
   obtain ⟨cm, hm⟩ := mul_polyFueled
   have hk1 := PolyFueled.left.succ_comp
   have hk2 := (hm.comp (hk1.pair hk1)).of_eq
@@ -952,45 +1409,45 @@ lemma uGateDen_polyFueled (w : ℕ) :
 
 attribute [local irreducible] uNum uDenom in
 lemma uEmitBase_eq (z : ℕ) :
-    obEmitBase (universalPrefixPresentation C) z
-      = (uNum C z : ℚ) / ((uDenom C z * (2 * (z.unpair.1 + 1) ^ 4) : ℕ) : ℚ) := by
-  have hD : (0 : ℚ) < (uDenom C z : ℚ) := by exact_mod_cast uDenom_pos C z
+    obEmitBase universalPrefixPresentation z
+      = (uNum z : ℚ) / ((uDenom z * (2 * (z.unpair.1 + 1) ^ 4) : ℕ) : ℚ) := by
+  have hD : (0 : ℚ) < (uDenom z : ℚ) := by exact_mod_cast uDenom_pos z
   have hk : (0 : ℚ) < ((z.unpair.1 : ℚ) + 1) := by positivity
-  show uSel C (uQuery z) / (2 * ((z.unpair.1 + 1 : ℕ) : ℚ) ^ 4) = _
+  show uSel (uQuery z) / (2 * ((z.unpair.1 + 1 : ℕ) : ℚ) ^ 4) = _
   rw [uSel_query_eq]
   push_cast
   field_simp
 
 lemma uEmitSum_eq (z : ℕ) :
-    obEmitBase (universalPrefixPresentation C) z + obEmitBase (universalPrefixPresentation C) z
-      = (uNum C z : ℚ) / ((uDenom C z * (1 * (z.unpair.1 + 1) ^ 4) : ℕ) : ℚ) := by
-  have hD : (0 : ℚ) < (uDenom C z : ℚ) := by exact_mod_cast uDenom_pos C z
+    obEmitBase universalPrefixPresentation z + obEmitBase universalPrefixPresentation z
+      = (uNum z : ℚ) / ((uDenom z * (1 * (z.unpair.1 + 1) ^ 4) : ℕ) : ℚ) := by
+  have hD : (0 : ℚ) < (uDenom z : ℚ) := by exact_mod_cast uDenom_pos z
   have hk : (0 : ℚ) < ((z.unpair.1 : ℚ) + 1) := by positivity
-  rw [uEmitBase_eq C]
+  rw [uEmitBase_eq]
   push_cast
   field_simp
   ring
 
 lemma uEmitRecip_eq (z : ℕ) :
-    1 / obEmitBase (universalPrefixPresentation C) z
-      = ((uDenom C z * (2 * (z.unpair.1 + 1) ^ 4) : ℕ) : ℚ) / (uNum C z : ℚ) := by
-  rw [uEmitBase_eq C, one_div_div]
+    1 / obEmitBase universalPrefixPresentation z
+      = ((uDenom z * (2 * (z.unpair.1 + 1) ^ 4) : ℕ) : ℚ) / (uNum z : ℚ) := by
+  rw [uEmitBase_eq, one_div_div]
 
 /-- The gate token emission of the universal machine, derived from its stage-table
 emission.
 Paper node: `thm:ob` -/
 theorem universalPrefixThresholdEmission :
-    OccamThresholdEmission (universalPrefixPresentation C) where
+    OccamThresholdEmission universalPrefixPresentation where
   threshold_sum_codes := by
-    obtain ⟨cn, hn⟩ := uNum_polyFueled C
-    obtain ⟨cd, hd⟩ := uGateDen_polyFueled C 1
+    obtain ⟨cn, hn⟩ := uNum_polyFueled
+    obtain ⟨cd, hd⟩ := uGateDen_polyFueled 1
     obtain ⟨c, hc⟩ := Dovetail.encode_natDiv_polyFueled hn hd
-    exact ⟨c, hc.of_eq (fun z => by simp only [uEmitSum_eq C])⟩
+    exact ⟨c, hc.of_eq (fun z => by simp only [uEmitSum_eq])⟩
   inverse_width_codes := by
-    obtain ⟨cn, hn⟩ := uGateDen_polyFueled C 2
-    obtain ⟨cd, hd⟩ := uNum_polyFueled C
+    obtain ⟨cn, hn⟩ := uGateDen_polyFueled 2
+    obtain ⟨cd, hd⟩ := uNum_polyFueled
     obtain ⟨c, hc⟩ := Dovetail.encode_natDiv_polyFueled hn hd
-    exact ⟨c, hc.of_eq (fun z => by simp only [uEmitRecip_eq C])⟩
+    exact ⟨c, hc.of_eq (fun z => by simp only [uEmitRecip_eq])⟩
 
 end Emission
 
@@ -999,21 +1456,21 @@ end Emission
 /-- **Lower Occam bound at universal prefix complexity.**  Same statement as
 `lic_occam_lower_ofPrefixMachine`, but `κ` is now the prefix complexity of a genuine
 universal prefix machine (`kappaU_le_of_prefixMachine`), not of one fixed code.
-Conditional on the single emission certificate `UniversalPrefixComputation`.
+Unconditional: the stage table's emission is fully constructed (`uSel_polyRatCodes`).
 Paper node: `thm:ob` -/
-theorem lic_occam_lower_ofUniversalPrefix (C : UniversalPrefixComputation) (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+theorem lic_occam_lower_ofUniversalPrefix (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ K : ℝ, 0 < K ∧ ∀ φ,
       (∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds φ) →
       K * prefixWeight kappaU φ ≤ limitingBelief P φ :=
-  lic_occam_lower (universalPrefixPresentation C)
-    (universalPrefixThresholdEmission C) P DP hworld
+  lic_occam_lower universalPrefixPresentation
+    (universalPrefixThresholdEmission) P DP hworld
 
 /-- **Occam Bounds at universal prefix complexity**, with the negation compiler discharged
 by the machine's hard-wired negation instruction (overhead `2`).
-Conditional on the single emission certificate `UniversalPrefixComputation`.
+Unconditional: the stage table's emission is fully constructed (`uSel_polyRatCodes`).
 Paper node: `thm:ob` -/
-theorem lic_occamBounds_ofUniversalPrefix (C : UniversalPrefixComputation) (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+theorem lic_occamBounds_ofUniversalPrefix (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ K : ℝ, 0 < K ∧
       (∀ φ,
@@ -1022,8 +1479,8 @@ theorem lic_occamBounds_ofUniversalPrefix (C : UniversalPrefixComputation) (P : 
       (∀ φ,
         (∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ ¬ v.Holds φ) →
         limitingBelief P φ ≤ 1 - K * prefixWeight kappaU φ) :=
-  lic_occamBounds (universalPrefixPresentation C)
-    (universalPrefixThresholdEmission C) kappaUNegationCompiler P DP hworld
+  lic_occamBounds universalPrefixPresentation
+    (universalPrefixThresholdEmission) kappaUNegationCompiler P DP hworld
 
 #print axioms UHalt_prefixFree
 #print axioms UHalt_functional
@@ -1031,6 +1488,9 @@ theorem lic_occamBounds_ofUniversalPrefix (C : UniversalPrefixComputation) (P : 
 #print axioms kappaUNegationCompiler
 #print axioms kappaU_le_of_prefixMachine
 #print axioms kappaStage_eventually_eq
+#print axioms uMinLen_eq
+#print axioms uEmit_prim
+#print axioms exists_uCode
 #print axioms universalPrefixPresentation
 #print axioms lic_occam_lower_ofUniversalPrefix
 #print axioms lic_occamBounds_ofUniversalPrefix

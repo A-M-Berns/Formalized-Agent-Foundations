@@ -136,18 +136,22 @@ over the prefix-ified dovetail `acc`.  `dom U` is prefix-free **by construction*
 assumed, and no c.e.-domain enumeration argument was needed.  Hard-wiring finitely many
 instructions into a universal machine is standard and moves `κ_U` only by `O(1)`.
 
-**The one residual** (kind `T`, provenance `(c)`, disclosed on the structure):
-`UPrefix.UniversalPrefixComputation` supplies a `Nat.Partrec.Code` for the **exact**
-from-below stage table `uEmit`.  It carries no complexity claim — the polynomial clock is
-*constructed* on top of it (`uRead`/`uStage`/`uState`/`uSel`/`uSel_polyRatCodes`, the
-self-clamped `Code.evaln` selection of `M7-DUS-APPROX`) — and it is satisfiable: `uApprox n i`
-is a bounded search over codewords of length `≤ |natCode ⌜φᵢ⌝| + 1` using `acc n` and
-`Code.evaln n`, hence primitive recursive.  Discharging it is `Primrec` plumbing for that
-search (`natVal`, `acc`, a length-bounded codeword enumeration) and nothing else.
+**The former residual is discharged** (2026-07-27, kind `P`, provenance `(a)`).
+`UPrefix.uCode` is a `Nat.Partrec.Code` for the **exact** from-below stage table `uEmit`,
+built from `exists_uCode`: the table is the bounded search `uMinLen n y` — the minimum
+length over the finitely many codewords of length `≤ |natCode y| + 1` accepted by the
+stage-`n` decision procedure `uVal` — and `uMinLen_eq` proves it equals
+`sInf (uLenSetBy n y)`.  The `Primrec` chain is `Nat.size`/`testBit` → `natCode` →
+`natVal`; `evaln` → `candHit` → `accOK` → `acc`; `uUniv`/`uVal` (a `list_rec` scan carrying
+the value of the tail, since the negation family recurses two positions down);
+`wordsLen`/`wordsUpto` (which also decides `<+:`, absent from Mathlib's `Primrec` API);
+then `uMinLen` → `uEmit`.  No complexity claim is involved: the polynomial clock is still
+*constructed* on top of the code (`uRead`/`uStage`/`uState`/`uSel`/`uSel_polyRatCodes`, the
+self-clamped `Code.evaln` selection of `M7-DUS-APPROX`).
 
-Note for anyone reopening: stating the residual as `PolyRatCodes` of the *exact* table
-would be **unsatisfiable** (reading stage `n` costs `n` dovetail stages).  The residual is
-a code, deliberately.
+Note for anyone reopening: stating this as `PolyRatCodes` of the *exact* table would be
+**unsatisfiable** (reading stage `n` costs `n` dovetail stages).  It is a plain code,
+deliberately.
 
 ## Original field-by-field table (kept for reference; statuses updated)
 
@@ -199,8 +203,7 @@ How the canonicity bit was computed inside `dd:fuel` (all in `PrefixMachine.lean
   (`approx_polyRat_of_sentence`: `dcIter` negation stripping + `p2s` halving-driven
   doubling + `prefixDen_eq`).
 
-Remaining disclosure for this node: none of type `(c)` on `prefixKappa` — the
-non-universality disclosure was discharged 2026-07-27 by the universal machine above.  The
-only open item on the node is `UPrefix.UniversalPrefixComputation` (a computability claim
-about a bounded search), which gates the universal instance's two endpoints and nothing
-else; the fixed-code endpoints remain unconditional.
+Remaining disclosure for this node: **none**.  The non-universality disclosure was
+discharged 2026-07-27 by the universal machine above, and the last open item — a code for
+the universal machine's exact stage table — was discharged the same day as `UPrefix.uCode`.
+Both the fixed-code and the universal endpoints are unconditional.

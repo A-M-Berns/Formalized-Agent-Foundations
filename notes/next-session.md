@@ -480,7 +480,7 @@ the propositional substrate.
 > **Stage-3 gate (Anson, 2026-07-27): DISCHARGED.**  Stage 3 (universal prefix κ) was
 > dispatched and landed the same day; see Tranche U below.  The surface is free to freeze
 > for the read-through, which should now cover `Construction/Witnesses/UniversalPrefix.lean`
-> (`UHalt`, `kappaU`, `kappaU_le_of_prefixMachine`, `UniversalPrefixComputation`, and the
+> (`UHalt`, `kappaU`, `kappaU_le_of_prefixMachine`, `uMinLen`/`uCode`, and the
 > two new endpoints).
 
 Three bins beyond the in-flight RPN-5/freeze line.  Everything not listed here is
@@ -605,16 +605,23 @@ see below.  Nothing in Tranche U remains open.
      is already prefix-free the guard never fires, so its whole domain reappears inside
      family 3 and `κ_U ≤ κ_M + 2·|natCode ⌜M⌝| + 3`.
 
-   **Residual (one, disclosed at the structure, kind `T` provenance `(c)`):**
-   `UPrefix.UniversalPrefixComputation` supplies a `Nat.Partrec.Code` for the **exact**
-   stage table.  Note what it is *not*: it assumes no complexity bound — the polynomial
-   clock is built on top of it here — and it is satisfiable (the exact table is a bounded
-   search over codewords of length `≤ |natCode ⌜φᵢ⌝| + 1` using `acc n` and `Code.evaln n`,
-   hence primitive recursive).  Discharging it is pure `Primrec` plumbing for that search:
-   `natVal`, `acc`, and a length-bounded codeword enumeration.  **A `PolyRatCodes` residual
-   on the *exact* table would have been unsatisfiable** (reading stage `n` costs `n`
-   dovetail stages) — that trap is why the residual is stated as a code, and why the
-   selection layer is inside the file rather than assumed.
+   **Residual: none (discharged 2026-07-27, kind `P` provenance `(a)`).**  What had been
+   an input — a `Nat.Partrec.Code` for the **exact** stage table — is now
+   `UPrefix.uCode`/`exists_uCode`.  The table is the bounded search `uMinLen n y` (minimum
+   length over the finitely many codewords of length `≤ |natCode y| + 1` that the stage-`n`
+   decision procedure `uVal` accepts), `uMinLen_eq` proves it equals `sInf (uLenSetBy n y)`,
+   and `uEmit_prim` runs the `Primrec` chain: `Nat.size`/`testBit` → `natCode` → `natVal`;
+   `evaln` → `candHit` → `accOK` → `acc`; `uUniv`/`uVal`; `wordsLen`/`wordsUpto`; `uMinLen`.
+   Two things worth remembering from doing it: (i) `UHaltBy`'s negation family recurses
+   *two* positions down, which `Primrec.list_rec` cannot express directly — the scan
+   (`uValP`) carries the value of the tail alongside the value of the list; (ii) Mathlib
+   has no `Primrec` for `List.take` or `<+:`, so the codeword enumeration `wordsLen` does
+   double duty as the prefix decision (`u <+: v` iff some string of length `|v| - |u|`
+   extends `u` to `v`).  `Nat.size` and the sentence-enumeration canonicity bit came free
+   from `PolyFueled.primrec` over the existing `sizec_polyFueled` / `invalidBit_polyFueled`.
+   **A `PolyRatCodes` obligation on the *exact* table would have been unsatisfiable**
+   (reading stage `n` costs `n` dovetail stages) — that trap is why it was stated as a
+   code, and why the selection layer is inside the file rather than assumed.
 
    Endpoints: `UPrefix.lic_occam_lower_ofUniversalPrefix` /
    `UPrefix.lic_occamBounds_ofUniversalPrefix`, minted **alongside** the fixed-code ones,
