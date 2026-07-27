@@ -57,6 +57,59 @@ landed in **collapsed single-class form** (consolidation directive).
 
 ## NEXT: RPN-5 — symbol-level translation compilers
 
+### RPN-5 part 1 PROGRESS (2026-07-26, worktree agent — price pass LANDED)
+
+New `Construction/Witnesses/RpnConditioning.lean` (registered in Witnesses.lean),
+all green + axiom-clean except the two sorried endpoints:
+
+* **Run-aware automaton** `rpnCondStep` on packed state `⟨mode, counter, runLen⟩`
+  (modes: 0 base / 1,6 price run+escape / 2 price-day / 4,7 trade run+escape /
+  3,5 base payloads); clamp (`min t 9` — matches `clampVal`'s `B+1`!), bounds,
+  runLen reset-or-increment dichotomy.
+* **Run–parse correspondence** `foldl_rpnCondStep_run` (+ price/trade instances and
+  complete-block corollaries): a parseRpn-consumed block is walked exactly, exiting
+  at the boundary with runLen = block length.  Generic over the mode pair via two
+  step-shape hypotheses — instantiate, don't duplicate.
+* **The price rewrite** `rpnConditionRun` (streaming; buffer = current run,
+  recovered by position via `rpnCondWindow`), `rpnConditionRun_range` (per-position
+  segment form), `rpnGuardedConditionTokens` (day guard).  DESIGN: letE-preserving —
+  the original chunk is copied, then at the day position the emitted expression
+  re-splices the buffered run into the conjunction shell `3 :: run ++ blk` and the
+  ψ-block twice, closing with `8`; so the contraction per chunk is EXACTLY the
+  token-model segment: `unRpn_price_rewrite_chunk` proves
+  `unRpn (0 :: b ++ rpnConditionEmit blk ε b D ++ rest) = [0,⌜φ⌝,D] ++
+  rawConditionalPriceTokens ⌜φ⌝ ⌜ψ⌝ D ε ++ 8 :: unRpn rest` (uses new
+  `parseRpn_and_block`).
+* **Scans**: `rpnCondScan` (packed control poly-fueled over any digit PolySegStream;
+  via scalar component functions `rcModeF/rcCntF/rcLenF` + reusable
+  `polyFueled_ifEq`/`polyFueled_ifLeOne` dispatch combinators — this pattern makes
+  prec-scan side goals rfl-close, no split_ifs in the scan itself), day-guard flag
+  `rpnBigDayFlagAt` + `rpnBigDayFlagScan`.
+* **Emission certificate** `rpnGuardedConditionRun_polySegStream`: digitized guarded
+  rewrite of any digit PolySegStream is a PolySegStream over any poly block stream
+  (window copy = `concatVar` over the recorded run length with `BigDigits` position
+  access; blocks at the clamped day; flagged days emit []).
+
+SORRIED (honest, TODO(blueprint:thm:scon) at each): the endpoints
+`conditionedTranslation_preserves_ecRpn` / `eventualConditionedTranslation_preserves_ecRpn`.
+Remaining distance, itemized in the file's "Endpoints (open)" section:
+(1) whole-stream contraction exactness for the price pass (well-formed chunks via
+`unRpn_price_rewrite_chunk` + run–parse correspondence; malformed via rejection
+preservation); (2) guard-honesty transfer to the contracted stream (then digit-model
+`strategyOfTokens_trades_eq_nil_of_bigDay` applies); (3) the FRAME pass mirror
+(two legs, trade slot as `3 :: run ++ blockψ(n)`, same assembly shape as the landed
+certificate); (4) zero-aware variants for the eventual translation.  After those:
+witness constructors return to ConditioningCompiler, `lic_conditioned_*` regain
+class-instance conclusions, AxiomAudit update (endpoints not added there while
+sorried).
+
+Gotchas hit (add to the log): `clampVal (const B)` clamps at `B+1`, so automaton
+clamp lemmas must use `min t (B+1)`; omega chokes on `True ∧ _` conjuncts (add
+`true_and, and_true` to the pack-equality simp set) and on goals whose only closing
+hyp is `False` (`first | omega | (exfalso; assumption)`); `rcMode`-style projection
+defs print as raw `unpair` in goals — insert `show`/`rfl` rewrites before `if_pos/
+if_neg` on them.
+
 Two constructions, both stream rewrites over the RPN grammar (sentence-slot spans now
 recognized by the pending-counter scan; conjunction of sentence blocks is
 CONCATENATION — `rpn (φ ⋏ ψ) = 3 :: rpn φ ++ rpn ψ` — no bignum pair shells):

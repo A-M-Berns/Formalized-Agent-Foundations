@@ -21,7 +21,14 @@ This file provides the spec layer of that compiler:
   the condition block drawn from an `RpnSentenceCodes` stream) plus the letE close, so
   the contraction of the output is exactly the token-model rewrite
   (`conditionPriceTokenRun`) of the contraction of the input;
-* the per-chunk contraction identity `unRpn_price_rewrite_chunk` anchoring that claim.
+* the per-chunk contraction identity `unRpn_price_rewrite_chunk` anchoring that claim;
+* the poly-fueled side: the packed control scan (`rpnCondScan`), the day-guard flag
+  scan, and the emission certificate `rpnGuardedConditionRun_polySegStream` — the
+  digitized guarded rewrite of any digit `PolySegStream` is a `PolySegStream`.
+
+The class-preservation endpoints are stated at the end and remain open
+(`TODO(blueprint:thm:scon)`): whole-stream contraction exactness, guard-honesty
+transfer, and the frame-pass mirror.
 
 Paper node: `thm:scon` (symbol-metered conditioning translation).
 -/
@@ -1081,6 +1088,50 @@ lemma rpnGuardedConditionRun_polySegStream {s blocks : ℕ → List ℕ}
     simp [digitize]
 
 #print axioms rpnGuardedConditionRun_polySegStream
+
+/-! ## Endpoints (open)
+
+The remaining distance to the class-preservation endpoints, with the pieces above in
+hand:
+
+1. **Whole-stream contraction exactness** for the price pass: on every input stream,
+   `unRpn (rpnGuardedConditionTokens …)` decodes to the same strategy as
+   `guardedConditionTokens … (unRpn ts)` — well-formed chunks by
+   `unRpn_price_rewrite_chunk` + the run–parse correspondence; malformed streams by
+   rejection preservation (the rewrite copies the poisoning chunk verbatim).
+2. **Guard honesty transfer**: an oversized price-day at a run-aware mode-2 position
+   maps to a mode-2 position of the contracted stream
+   (`strategyOfTokens_trades_eq_nil_of_bigDay` then applies verbatim).
+3. **The frame pass mirror** (`conditioningFrameTokenRun` at the symbol level): the
+   same automaton + splice toolkit, with the trade sentence wrapped as
+   `3 :: run ++ block` and the two legs assembled by position (`concatVar`); its
+   PolySegStream certificate is the same assembly shape as
+   `rpnGuardedConditionRun_polySegStream`.
+4. The zero-aware variants for the eventual translation (mirror of
+   `guardedZeroAwareConditionTokens`). -/
+
+/-- **The conditioning translation preserves the collapsed class** (`def:ec`): for
+`ψ` with symbol-metered sentence codes, `T ↦ T.conditionedTranslation ψ ε` maps
+`EfficientlyComputable` traders to `EfficientlyComputable` traders.
+Paper node: `thm:scon` -/
+theorem conditionedTranslation_preserves_ecRpn
+    (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ) (ε : ℚ)
+    (T : Trader) (hT : EfficientlyComputable T) :
+    EfficientlyComputable (T.conditionedTranslation ψ ε) := by
+  -- TODO(blueprint:thm:scon): compose `rpnGuardedConditionRun_polySegStream` with the
+  -- symbol-level frame pass and discharge contraction exactness (items 1–3 above).
+  sorry
+
+/-- **The eventual conditioning translation preserves the collapsed class**.
+Paper node: `thm:scon` -/
+theorem eventualConditionedTranslation_preserves_ecRpn
+    {P : History} {ψ : ℕ → Sentence}
+    (F : EventualConditioningFloor P ψ) (hψ : RpnSentenceCodes ψ)
+    (T : Trader) (hT : EfficientlyComputable T) :
+    EfficientlyComputable (T.eventualConditionedTranslation F) := by
+  -- TODO(blueprint:thm:scon): zero-aware mirror of the guarded rewrite (item 4) +
+  -- the frame pass + launch gate, as in `eventualConditionedTranslation_preserves_ec₂`.
+  sorry
 
 end RpnConditioning
 
