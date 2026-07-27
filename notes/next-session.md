@@ -174,7 +174,11 @@ witness constructors return to ConditioningCompiler, `lic_conditioned_*` regain
 class-instance conclusions, AxiomAudit update (endpoints not added there while
 sorried).
 
-Gotchas hit (add to the log): `clampVal (const B)` clamps at `B+1`, so automaton
+Gotchas hit (add to the log): the `Nat.sqrt` irreducible scoping is NECESSARY BUT
+NOT SUFFICIENT for deep recursive definitions — the whnf blowup only clears once the
+DOMAIN LEAVES (the recursive defs themselves) are also made locally irreducible per
+declaration (Tranche U: rawStep/rawVal/childPair/colOf/rootVal/tabCol/trim/
+universalApprox all needed it); `clampVal (const B)` clamps at `B+1`, so automaton
 clamp lemmas must use `min t (B+1)`; omega chokes on `True ∧ _` conjuncts (add
 `true_and, and_true` to the pack-equality simp set) and on goals whose only closing
 hyp is `False` (`first | omega | (exfalso; assumption)`); `rcMode`-style projection
