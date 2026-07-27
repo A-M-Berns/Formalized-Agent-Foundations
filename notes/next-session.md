@@ -215,18 +215,43 @@ mirror the token freeze automaton (0 base, 2 price-day, 3/5 base payloads), so t
 depth step is *literally* `parserDepthNext 0 t d` at base positions, `d+1` at the
 2/3/5 slots, `d.pred` at a trade-run exit, and identity inside a sentence run.
 
-STILL OPEN for the join (the actual blocker, do NOT underestimate): the two legs are
-concatenated at symbol level, and `unRpn (A ++ B) ≠ unRpn A ++ unRpn B` when `A`
-carries a poisoned chunk.  `frameAgree_unRpn_rpnFrameOutput` (~530 lines) states only
-`FrameAgree (unRpn out) tok`, which says nothing about `unRpn (out ++ rest)`.  The
-join needs it restated as
-`ContractsTo out tok ∨ ((∀ rest, unRpn (out ++ rest) = unRpn out) ∧ Unreadable (unRpn out) ∧ Unreadable tok)`
-— i.e. the whole master commutation re-run with `ContractsTo` in place of the raw
-`unRpn` equality (the `ContractsTo.*` algebra and `rpnFrameEmit_contractsTo` already
-exist for it, and `unRpn_rpnFrameEmit_poison` is already stated in the
-poisons-every-extension form).  With that in hand the gated join, its certificate
-(`rpnFrameOutput_polySegStream` twice, `.append`, `.ifZero` on `rpnDepthScan`-backed
-acceptance) and the strategy-level agreement follow mechanically.
+Also landed in the eighth tranche: **`unRpn_split`** (+ `ContractsTo.self`,
+`UnRpnStops`, `UnRpnStops.cons_chunk`) — on any stream the run automaton walks back to
+base mode, `ContractsTo A (unRpn A) ∨ (UnRpnStops A ∧ Unreadable (unRpn A))`.  This is
+the generic form of the append wrinkle: it is exactly what licenses
+`unRpn (first ++ second) = unRpn first ++ unRpn second` (transparent branch) or
+`= unRpn first` (poison branch, and then both sides are unreadable).  ~230 lines,
+first-exit localization (`priceWalk_first_exit`/`tradeWalk_first_exit` +
+`parse_of_*RunWalk`) supplies the poisons-every-extension branch; the "run never
+exits" branches are now *contradictions* against the base-mode hypothesis, which is
+why the `hex` quantifier is `k ≤ rest.length` (not `<`, as in the `frameAgree` proof).
+
+STILL OPEN for the join (the actual blocker, do NOT underestimate — two candidate
+routes, both real work):
+
+* ROUTE A (feed `unRpn_split`): prove
+  `List.foldl rpnCondStep (rcPack 0 0 0) (rpnFrameOutput second blkψ ε day bc ibc ts) = rcPack 0 0 0`
+  from the same hypothesis on `ts`.  Copies replay the source's transitions; each
+  `rpnFrameEmit` block must be shown automaton-neutral.  It IS neutral even on
+  unparseable buffers — its shell `0 :: (3 :: buf ++ blk) ++ day :: …` runs the
+  buffered trade tokens one counter level up (the `3` bumps the pending counter, `buf`
+  drives 2→1, the complete block `blk` drives 1→0, exit at the boundary, then the day
+  token returns to base) — but proving that needs a *counter-shift* form of
+  `foldl_rpnCondStep_run` (currently only the `c+1 → exit` instance exists).  Then the
+  mixed FrameAgree branches also need `freezeMode4 (conditioningFrameTokenOutput …) = 0`.
+* ROUTE B (strengthen in place): restate `frameAgree_unRpn_rpnFrameOutput` (~530
+  lines) as
+  `ContractsTo out tok ∨ (UnRpnStops out ∧ Unreadable (unRpn out) ∧ Unreadable tok)`
+  and re-run its chunk induction with `ContractsTo` in place of the raw `unRpn`
+  equality.  The ingredients exist (`ContractsTo.*` algebra, `rpnFrameEmit_contractsTo`,
+  and `unRpn_rpnFrameEmit_poison` is already in poisons-every-extension form), and the
+  proof's poison branches are already written continuation-generically (`hunL : ∀ Y`).
+  Mechanical but large; ROUTE B subsumes the mixed-branch bookkeeping ROUTE A needs.
+
+With either in hand the gated join, its certificate (`rpnFrameOutput_polySegStream`
+twice, `.append`, `.ifZero` on the `rpnDepthScan`-backed acceptance flag — three lines,
+exactly `safeSeparatedFrameDigitOutput_polySegStream`) and the strategy-level agreement
+follow mechanically, and then items 2–4 below.
 
 Seventh tranche (2026-07-27, worktree agent): the frame pass's **`PolySegStream`
 certificate** and **budget exactness** are LANDED, green + axiom-clean (commits

@@ -1252,11 +1252,16 @@ the contraction (`rpnTradeCountAt_eq_frameTradeCount`).  Still open:
    symbol-side test `rpnStructurallyAccepts` (run automaton ends in base mode with an
    empty feature stack), its poly-fueled scan `rpnDepthScan`, and the gate-agreement
    theorem `rpnStructurallyAccepts_agree` (symbol test = token test on the
-   contraction, or the contraction is unreadable).  What is left is the **join
-   agreement** itself, which must handle a wrinkle the token model does not have:
-   `unRpn (A ++ B) ≠ unRpn A ++ unRpn B` when `A` is poisoned, so
-   `frameAgree_unRpn_rpnFrameOutput` has to be strengthened to a `ContractsTo`-or-
-   poison-stops form before the two legs may be concatenated.
+   contraction, or the contraction is unreadable).  The append wrinkle
+   (`unRpn (A ++ B) ≠ unRpn A ++ unRpn B` when `A` is poisoned) is isolated as
+   `unRpn_split`: a stream the automaton walks back to base is either
+   `ContractsTo`-transparent or its poison stops the contraction (`UnRpnStops`).
+   What is left is to feed `unRpn_split` on the frame output, which needs
+   `List.foldl rpnCondStep (rcPack 0 0 0) (rpnFrameOutput …) = rcPack 0 0 0` — the
+   copies replay the source's transitions and each `rpnFrameEmit` block is
+   automaton-neutral (its `3 :: buf ++ blk` shell runs the buffered trade tokens one
+   counter level up, so it exits exactly at the block boundary), which needs the
+   counter-shift form of the run-walk lemmas.
 2. The zero-aware variants for the eventual translation (mirror of
    `guardedZeroAwareConditionTokens`): the day-emission case of the master
    commutation splits on `D ∈ zeroDays` with the short `[D, 1, encode 1, 8]`
@@ -4378,6 +4383,287 @@ lemma priceWalk_inside (v : List ℕ) (j : ℕ) (hj : j ≤ v.length)
     (fun c r t => rpnCondStep_price c r t)
     (fun c r t => rpnCondStep_priceEsc c r t)
     2 (fun r' => rcMode_pack 2 0 r') v j hj hmods
+
+/-! ### Splitting the contraction at a chunk boundary
+
+The two-leg join concatenates two symbol-level frame outputs, and `unRpn` does **not**
+distribute over an append when the left factor carries a poisoned chunk.  It does
+split, though, on any stream the run automaton walks back to base mode: either the
+stream is `ContractsTo`-transparent ahead of every continuation, or its first poisoned
+chunk stops the contraction outright.  Same chunk induction as
+`tradeRuns_unRpn_agree`, with the first-exit localization supplying the
+poisons-every-extension branch. -/
+
+/-- A stream that contracts to *something* ahead of any continuation contracts to its
+own contraction. -/
+lemma ContractsTo.self {A X : List ℕ} (h : ContractsTo A X) :
+    ContractsTo A (unRpn A) := by
+  have hX : unRpn A = X := by
+    have h0 := h []
+    rwa [List.append_nil, unRpn_nil, List.append_nil] at h0
+  rw [hX]; exact h
+
+/-- A poisoned stream stops the contraction: nothing appended is ever read. -/
+def UnRpnStops (A : List ℕ) : Prop := ∀ rest, unRpn (A ++ rest) = unRpn A
+
+lemma UnRpnStops.cons_chunk {C A : List ℕ} {P : List ℕ}
+    (hC : ContractsTo C P) (h : UnRpnStops A) : UnRpnStops (C ++ A) := by
+  intro rest
+  rw [List.append_assoc, hC (A ++ rest), hC A, h rest]
+
+/-- **The contraction splits at a chunk boundary**: on a stream the run automaton
+walks back to base mode, either the whole stream contracts transparently ahead of any
+continuation, or a poisoned chunk stops the contraction outright (and the contraction
+is unreadable). -/
+theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
+    List.foldl rpnCondStep (rcPack 0 0 0) A = rcPack 0 0 0 →
+    ContractsTo A (unRpn A) ∨ (UnRpnStops A ∧ Unreadable (unRpn A)) := by
+  intro N
+  induction N with
+  | zero =>
+      intro A hA _
+      obtain rfl : A = [] := List.eq_nil_of_length_eq_zero (by omega)
+      exact Or.inl (fun rest => rfl)
+  | succ N ih =>
+      intro A hA hbase
+      match A with
+      | [] => exact Or.inl (fun rest => rfl)
+      | t :: rest =>
+          simp only [List.length_cons] at hA
+          by_cases ht0 : t = 0
+          · subst ht0
+            cases hp : parseRpn rest.length rest with
+            | some pr =>
+                obtain ⟨φ, r1⟩ := pr
+                obtain ⟨blk, heq, hblk⟩ := parseRpn_strip rest.length rest hp
+                obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_price_block hblk
+                match r1 with
+                | [] =>
+                    exfalso
+                    rw [List.append_nil] at heq
+                    subst heq
+                    rw [List.foldl_cons, rpnCondStep_base_price, hwalk] at hbase
+                    have := congrArg rcMode hbase
+                    rw [rcMode_pack, rcMode_pack] at this
+                    exact absurd this (by norm_num)
+                | d0 :: r2 =>
+                    subst heq
+                    have hr2 : r2.length ≤ N := by
+                      have hlt := parseRpn_length_lt _ _ _ _ hp
+                      simp only [List.length_cons] at hlt
+                      omega
+                    have hstD : rpnCondStep (rcPack 2 0 blk.length) d0 =
+                        rcPack 0 0 0 :=
+                      rpnCondStep_fallback _ _ (by simp [rcMode, rcPack])
+                        (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
+                        (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
+                    have hbase2 : List.foldl rpnCondStep (rcPack 0 0 0) r2 =
+                        rcPack 0 0 0 := by
+                      rw [List.foldl_cons, rpnCondStep_base_price,
+                        List.foldl_append, hwalk, List.foldl_cons, hstD] at hbase
+                      exact hbase
+                    have hA2 : (0 : ℕ) :: (blk ++ d0 :: r2) =
+                        (0 :: blk ++ [d0]) ++ r2 := by simp
+                    have hC := ContractsTo.priceSym hblk d0
+                    rcases ih r2 hr2 hbase2 with hIH | ⟨hstop, hU⟩
+                    · exact Or.inl (((hC.append hIH).of_eq hA2.symm rfl).self)
+                    · refine Or.inr ⟨?_, ?_⟩
+                      · rw [hA2]; exact UnRpnStops.cons_chunk hC hstop
+                      · rw [unRpn_price_chunk_block hblk d0 r2,
+                          show (0 :: Encodable.encode φ :: d0 :: unRpn r2) =
+                            [0, Encodable.encode φ, d0] ++ unRpn r2 from rfl]
+                        exact hU.cons_chunk (by simp [freezeMode4Step])
+            | none =>
+                have hun0 : unRpn (0 :: rest) = [0, 0] := by
+                  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl, hp]
+                by_cases hex : ∃ k, k ≤ rest.length ∧
+                    rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (rest.take k)) = 2
+                · classical
+                  obtain ⟨hk₀le, hk₀mode⟩ := Nat.find_spec hex
+                  set k₀ := Nat.find hex with hk₀def
+                  have hfirst : ∀ i < k₀,
+                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+                        (rest.take i)) ≠ 2 := fun i hi hmode =>
+                    Nat.find_min hex hi ⟨by omega, hmode⟩
+                  obtain ⟨hk₀pos, hW, hinside⟩ := priceWalk_first_exit rest k₀
+                    hk₀le hfirst hk₀mode
+                  have htakelen : (rest.take k₀).length = k₀ := by
+                    rw [List.length_take]; omega
+                  have hconv := parse_of_priceRunWalk k₀ (rest.take k₀)
+                    (le_of_eq htakelen) 0 0
+                    (by rw [if_pos rfl, htakelen]; simpa using hW)
+                    (by
+                      intro k hk
+                      rw [htakelen] at hk
+                      rw [List.take_take, min_eq_left (le_of_lt hk)]
+                      exact ⟨(hinside k hk).1, (hinside k hk).2.1⟩)
+                  rcases hconv with ⟨φu, hφu⟩ | hpoison
+                  · exfalso
+                    rw [← List.take_append_drop k₀ rest] at hp
+                    rw [parseRpn_block_head hφu (rest.drop k₀) (by
+                      simp only [List.length_append]; omega)] at hp
+                    simp at hp
+                  · have hunL : ∀ Y, unRpn (0 :: (rest ++ Y)) = [0, 0] := fun Y => by
+                      rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+                        show rest ++ Y = rest.take k₀ ++ (rest.drop k₀ ++ Y) by
+                          rw [← List.append_assoc, List.take_append_drop],
+                        hpoison _ _]
+                    refine Or.inr ⟨fun Y => ?_, ?_⟩
+                    · rw [show (0 : ℕ) :: rest ++ Y = 0 :: (rest ++ Y) from rfl,
+                        hunL Y, hun0]
+                    · rw [hun0]; exact unreadable_price_poison
+                · exfalso
+                  push_neg at hex
+                  have hmods : ∀ i, i ≤ rest.length →
+                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+                        (rest.take i)) ≠ 2 := fun i hi => hex i hi
+                  have hend := priceWalk_inside rest rest.length le_rfl hmods
+                  rw [List.take_length] at hend
+                  rw [List.foldl_cons, rpnCondStep_base_price] at hbase
+                  rw [hbase, rcMode_pack] at hend
+                  omega
+          · by_cases ht6 : t = 6
+            · subst ht6
+              cases hp : parseRpn rest.length rest with
+              | some pr =>
+                  obtain ⟨φ, r1⟩ := pr
+                  obtain ⟨blk, heq, hblk⟩ := parseRpn_strip rest.length rest hp
+                  subst heq
+                  obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_trade_block hblk
+                  have hr1 : r1.length ≤ N := by
+                    have hlt := parseRpn_length_lt _ _ _ _ hp
+                    simp only [List.length_append] at hA
+                    omega
+                  have hbase1 : List.foldl rpnCondStep (rcPack 0 0 0) r1 =
+                      rcPack 0 0 0 := by
+                    rw [List.foldl_cons, rpnCondStep_base_trade,
+                      List.foldl_append, hwalk] at hbase
+                    exact hbase
+                  have hA1 : (6 : ℕ) :: (blk ++ r1) = (6 :: blk) ++ r1 := by simp
+                  have hC := ContractsTo.tradeSym hblk
+                  rcases ih r1 hr1 hbase1 with hIH | ⟨hstop, hU⟩
+                  · exact Or.inl (((hC.append hIH).of_eq hA1.symm rfl).self)
+                  · refine Or.inr ⟨?_, ?_⟩
+                    · rw [hA1]; exact UnRpnStops.cons_chunk hC hstop
+                    · rw [unRpn_trade_chunk_block hblk r1,
+                        show (6 :: Encodable.encode φ :: unRpn r1) =
+                          [6, Encodable.encode φ] ++ unRpn r1 from rfl]
+                      exact hU.cons_chunk (by simp [freezeMode4Step])
+              | none =>
+                  have hun0 : unRpn (6 :: rest) = [6, 0] := by
+                    rw [unRpn, List.length_cons, unRpnTokens_cons,
+                      if_neg (by norm_num), if_pos rfl, hp]
+                  by_cases hex : ∃ k, k ≤ rest.length ∧
+                      rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+                        (rest.take k)) = 0
+                  · classical
+                    obtain ⟨hk₀le, hk₀mode⟩ := Nat.find_spec hex
+                    set k₀ := Nat.find hex with hk₀def
+                    have hfirst : ∀ i < k₀,
+                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+                          (rest.take i)) ≠ 0 := fun i hi hmode =>
+                      Nat.find_min hex hi ⟨by omega, hmode⟩
+                    obtain ⟨hk₀pos, hW, hinside⟩ := tradeWalk_first_exit rest k₀
+                      hk₀le hfirst hk₀mode
+                    have htakelen : (rest.take k₀).length = k₀ := by
+                      rw [List.length_take]; omega
+                    have hconv := parse_of_tradeRunWalk k₀ (rest.take k₀)
+                      (le_of_eq htakelen) 0 0
+                      (by rw [if_pos rfl]; simpa using hW)
+                      (by
+                        intro k hk
+                        rw [htakelen] at hk
+                        rw [List.take_take, min_eq_left (le_of_lt hk)]
+                        exact ⟨(hinside k hk).1, (hinside k hk).2.1⟩)
+                    rcases hconv with ⟨φu, hφu⟩ | hpoison
+                    · exfalso
+                      rw [← List.take_append_drop k₀ rest] at hp
+                      rw [parseRpn_block_head hφu (rest.drop k₀) (by
+                        simp only [List.length_append]; omega)] at hp
+                      simp at hp
+                    · have hunL : ∀ Y, unRpn (6 :: (rest ++ Y)) = [6, 0] := fun Y => by
+                        rw [unRpn, List.length_cons, unRpnTokens_cons,
+                          if_neg (by norm_num), if_pos rfl,
+                          show rest ++ Y = rest.take k₀ ++ (rest.drop k₀ ++ Y) by
+                            rw [← List.append_assoc, List.take_append_drop],
+                          hpoison _ _]
+                      refine Or.inr ⟨fun Y => ?_, ?_⟩
+                      · rw [show (6 : ℕ) :: rest ++ Y = 6 :: (rest ++ Y) from rfl,
+                          hunL Y, hun0]
+                      · rw [hun0]; exact unreadable_trade_poison
+                  · exfalso
+                    push_neg at hex
+                    have hmods : ∀ i, i ≤ rest.length →
+                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+                          (rest.take i)) ≠ 0 := fun i hi => hex i hi
+                    have hend := tradeWalk_inside rest rest.length le_rfl hmods
+                    rw [List.take_length] at hend
+                    rw [List.foldl_cons, rpnCondStep_base_trade] at hbase
+                    rw [hbase, rcMode_pack] at hend
+                    omega
+            · by_cases ht1 : t = 1 ∨ t = 7
+              · match rest with
+                | [] =>
+                    exfalso
+                    rw [List.foldl_cons, List.foldl_nil] at hbase
+                    rcases ht1 with rfl | rfl
+                    · rw [rpnCondStep_base_one] at hbase
+                      have := congrArg rcMode hbase
+                      rw [rcMode_pack, rcMode_pack] at this
+                      exact absurd this (by norm_num)
+                    · rw [rpnCondStep_base_seven] at hbase
+                      have := congrArg rcMode hbase
+                      rw [rcMode_pack, rcMode_pack] at this
+                      exact absurd this (by norm_num)
+                | c :: r =>
+                    have hr : r.length ≤ N := by
+                      simp only [List.length_cons] at hA
+                      omega
+                    have hstep1 : rpnCondStep (rcPack 0 0 0) t =
+                        rcPack (if t = 1 then 3 else 5) 0 0 := by
+                      rcases ht1 with rfl | rfl <;> simp [rpnCondStep_base]
+                    have hstep2 :
+                        rpnCondStep (rcPack (if t = 1 then 3 else 5) 0 0) c =
+                          rcPack 0 0 0 :=
+                      rpnCondStep_fallback _ _
+                        (by split <;> simp [rcMode, rcPack])
+                        (by split <;> simp [rcMode, rcPack])
+                        (by split <;> simp [rcMode, rcPack])
+                        (by split <;> simp [rcMode, rcPack])
+                        (by split <;> simp [rcMode, rcPack])
+                    have hbaseR : List.foldl rpnCondStep (rcPack 0 0 0) r =
+                        rcPack 0 0 0 := by
+                      rw [List.foldl_cons, hstep1, List.foldl_cons, hstep2] at hbase
+                      exact hbase
+                    have hAp : t :: c :: r = [t, c] ++ r := rfl
+                    have hC := ContractsTo.payload t c ht1
+                    rcases ih r hr hbaseR with hIH | ⟨hstop, hU⟩
+                    · exact Or.inl (((hC.append hIH).of_eq hAp.symm rfl).self)
+                    · refine Or.inr ⟨?_, ?_⟩
+                      · rw [hAp]; exact UnRpnStops.cons_chunk hC hstop
+                      · rw [unRpn_payload_chunk t c ht1 r,
+                          show (t :: c :: unRpn r) = [t, c] ++ unRpn r from rfl]
+                        exact hU.cons_chunk (by
+                          rcases ht1 with rfl | rfl <;> simp [freezeMode4Step])
+              · push_neg at ht1
+                have hrest : rest.length ≤ N := by omega
+                have hstep := rpnCondStep_base_other t ht0 ht1.1 ht6 ht1.2
+                have hbaseR : List.foldl rpnCondStep (rcPack 0 0 0) rest =
+                    rcPack 0 0 0 := by
+                  rw [List.foldl_cons, hstep] at hbase
+                  exact hbase
+                have hAs : t :: rest = [t] ++ rest := rfl
+                have hC := ContractsTo.single t ⟨ht0, ht1.1, ht6, ht1.2⟩
+                rcases ih rest hrest hbaseR with hIH | ⟨hstop, hU⟩
+                · exact Or.inl (((hC.append hIH).of_eq hAs.symm rfl).self)
+                · refine Or.inr ⟨?_, ?_⟩
+                  · rw [hAs]; exact UnRpnStops.cons_chunk hC hstop
+                  · rw [unRpn_single_chunk t ⟨ht0, ht1.1, ht6, ht1.2⟩ rest,
+                      show (t :: unRpn rest) = [t] ++ unRpn rest from rfl]
+                    exact hU.cons_chunk (by
+                      simp [freezeMode4Step, ht0, ht1.1, ht6, ht1.2])
+
+#print axioms unRpn_split
 
 /-! ### Both-poison agreement -/
 
