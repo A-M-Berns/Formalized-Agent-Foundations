@@ -425,9 +425,9 @@ All three are mechanical with the existing mirror suite (`RpnSpliceStream`,
   class the scheduled audit hunts, caught pre-audit.  The paper's `app:strict` uses
   single-bit CONSTRAINT theories + class-mass, not nested prefixes; the faithful
   redesign (constraint stream + per-level consistent set + finite-disjunction
-  coherence/pigeonhole market half) is scoped under Tranche S.  DECISION PENDING
-  ANSON: accept permanent disclosure with the obstruction file as documentation, or
-  approve the redesign as a fresh tranche.
+  coherence/pigeonhole market half) is scoped under Tranche S.  DECISION (Anson, 2026-07-27): **redesign approved** — the vacuity is a real
+  problem; fix the interface and the market half rather than accept disclosure.
+  Redesign tranche in flight (worktree agent).
   `M7-STRICT-SEPARATORS` is now disclosed for a *stronger* reason: its interface is
   provably vacuous under computable enumerability of its prefix strings, and needs the
   redesign scoped under Tranche S above (`Construction/Witnesses/StrictSeparators.lean`).
