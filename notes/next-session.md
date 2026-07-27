@@ -248,10 +248,11 @@ routes, both real work):
   proof's poison branches are already written continuation-generically (`hunL : ∀ Y`).
   Mechanical but large; ROUTE B subsumes the mixed-branch bookkeeping ROUTE A needs.
 
-With either in hand the gated join, its certificate (`rpnFrameOutput_polySegStream`
-twice, `.append`, `.ifZero` on the `rpnDepthScan`-backed acceptance flag — three lines,
-exactly `safeSeparatedFrameDigitOutput_polySegStream`) and the strategy-level agreement
-follow mechanically, and then items 2–4 below.
+The join's **definition and certificate** are already landed:
+`rpnSafeSeparatedFrameOutput` (gated exactly like `safeSeparatedFrameTokenOutput`) and
+`rpnSafeSeparatedFrameOutput_polySegStream` (three lines off `rpnAcceptScan`, day slot
+= `n` as in `safeSeparatedFrameDigitOutput_polySegStream`).  So what is missing is
+ONLY the join *agreement* (route A or B above); with it, items 2–4 below follow.
 
 Seventh tranche (2026-07-27, worktree agent): the frame pass's **`PolySegStream`
 certificate** and **budget exactness** are LANDED, green + axiom-clean (commits

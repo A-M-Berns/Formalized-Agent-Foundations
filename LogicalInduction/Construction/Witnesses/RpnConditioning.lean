@@ -5678,6 +5678,76 @@ lemma rpnFrameOutput_polySegStream (second : Bool) {src blocks : ℕ → List �
 #print axioms rpnFrameOutput_polySegStream
 
 
+/-! ### The gated two-leg join
+
+`safeSeparatedFrameTokenOutput` emits the first frame leg alone unless the source is
+structurally accepting, in which case it emits both.  The symbol side mirrors that
+shape one-for-one off `rpnStructurallyAccepts`; the certificate is the same three
+lines as `safeSeparatedFrameDigitOutput_polySegStream`.
+
+The join's **agreement** with the token model is still open — see the note in
+"Endpoints (open)": concatenating the two legs needs `unRpn_split` fed with the frame
+output's own base-mode invariant. -/
+
+/-- The symbol-side acceptance test is poly-fueled over any digit `PolySegStream`. -/
+lemma rpnAcceptScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+    ∃ c, PolyFueled c (fun n =>
+      rpnStructurallyAccepts (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
+        (fun m => (undigitize (s m)).length) n) := by
+  obtain ⟨cs, hscan⟩ := rpnCondScan h
+  obtain ⟨cd, hdepth⟩ := rpnDepthScan h
+  obtain ⟨⟨cc, hcnt⟩, -⟩ := h.undigitizeTokens
+  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
+  have hend : PolyFueled _ (fun n : ℕ => Nat.pair n (undigitize (s n)).length) :=
+    PolyFueled.id.pair hcnt
+  have hmode : PolyFueled _ (fun n : ℕ =>
+      rcMode (rpnCondControlAt tf n (undigitize (s n)).length)) :=
+    (PolyFueled.left.comp (hscan.comp hend)).of_eq fun n => by
+      simp only [Nat.unpair_pair, rcMode]
+  have hdep : PolyFueled _ (fun n : ℕ =>
+      rpnDepthAt tf n (undigitize (s n)).length) :=
+    (hdepth.comp hend).of_eq fun n => by simp only [Nat.unpair_pair]
+  obtain ⟨_, hinner⟩ :=
+    polyFueled_ifEq hdep 0 (PolyFueled.const 1) (PolyFueled.const 0)
+  obtain ⟨c, hall⟩ := polyFueled_ifEq hmode 0 hinner (PolyFueled.const 0)
+  exact ⟨c, hall.of_eq fun n => by rw [rpnStructurallyAccepts]⟩
+
+/-- **The gated two-leg join at symbol level** (mirror of
+`safeSeparatedFrameTokenOutput`): both frame legs are emitted only at a structurally
+accepting source boundary. -/
+def rpnSafeSeparatedFrameOutput (tf lenF : ℕ → ℕ) (blkψ : List ℕ) (ε : ℚ)
+    (day bc ibc : ℕ) (ts : List ℕ) : List ℕ :=
+  let first := rpnFrameOutput false blkψ ε day bc ibc ts
+  let second := rpnFrameOutput true blkψ ε day bc ibc ts
+  if rpnStructurallyAccepts tf lenF day = 0 then first else first ++ second
+
+/-- **The gated join's certificate**: the digitized two-leg join of any digit
+`PolySegStream` is a `PolySegStream`. -/
+lemma rpnSafeSeparatedFrameOutput_polySegStream {src blocks : ℕ → List ℕ}
+    (hsrc : PolySegStream src) (hblocks : PolySegStream blocks)
+    {cb ci : Code} {bcF ibcF : ℕ → ℕ} (hbcF : PolyFueled cb bcF)
+    (hibcF : PolyFueled ci ibcF) (ε : ℚ) :
+    PolySegStream (fun n => digitize
+      (rpnSafeSeparatedFrameOutput
+        (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+        (fun m => (undigitize (src m)).length)
+        (blocks n) ε n (bcF n) (ibcF n) (undigitize (src n)))) := by
+  have hfirst := rpnFrameOutput_polySegStream false hsrc hblocks
+    (PolyFueled.id) hbcF hibcF ε
+  have hsecond := rpnFrameOutput_polySegStream true hsrc hblocks
+    (PolyFueled.id) hbcF hibcF ε
+  obtain ⟨caccept, haccept⟩ := rpnAcceptScan hsrc
+  refine (hfirst.ifZero (hfirst.append hsecond) haccept).of_eq fun n => ?_
+  simp only [rpnSafeSeparatedFrameOutput]
+  by_cases hacc : rpnStructurallyAccepts
+      (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
+      (fun m => (undigitize (src m)).length) n = 0
+  · rw [if_pos hacc, if_pos hacc]
+  · rw [if_neg hacc, if_neg hacc, digitize_append]
+
+#print axioms rpnAcceptScan
+#print axioms rpnSafeSeparatedFrameOutput_polySegStream
+
 /-! ### Endpoint statements (open, recorded — not sorried)
 
 The two target endpoints are stated here as comments rather than sorried theorems so
