@@ -4863,7 +4863,13 @@ lemma rcMode_step_of_price_run {st t : ℕ} (h : rcMode st = 1 ∨ rcMode st = 6
 
 /-! ### The frame-pass master commutation -/
 
-/-- **Whole-stream agreement for the frame pass**, in joint form. -/
+/-- **Whole-stream agreement for the frame pass**, in joint form: the unconditional
+`FrameAgree` statement and — under the source's base-mode invariant, which is exactly
+what the acceptance gate tests — the stronger prefix form `FrameContract`.  The two
+share one chunk induction because every chunk case that admits a prefix contraction is
+the same case that admits the equality; the base-mode hypothesis discharges the three
+that do not (a truncated price chunk, a run that never exits, a bare payload tag).
+Paper node: `thm:scon` -/
 theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
     {ψn : Sentence} (hblkψ : parseRpn blkψ.length blkψ = some (ψn, []))
     (ε : ℚ) (day bc ibc : ℕ) : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
