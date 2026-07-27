@@ -113,19 +113,84 @@ hypotheses (mirror `foldl_rpnCondStep_run`'s design), or prove a mode-swap walk
 correspondence (1↔4, 6↔7, exits pack 2 0 (r+1) ↔ pack 0 0 0) by induction using
 trade-mode step normal forms (mirrors of `rpnCondStep_price`/`_priceEsc`).
 
+2026-07-27 UPDATE (fourth tranche, worktree agent): items 1 and 2 of the previous
+list are LANDED, green + axiom-clean (commits `85fb581`, `64b5b5f`, `f844a5a`):
+
+* `parse_of_runWalk` — the converse walk lemma generalized over the run-mode pair
+  `(a, b, exit)` exactly as `foldl_rpnCondStep_run` (step-shape hypotheses + exit
+  counter/mode disambiguators `hexitCnt`/`hexitMode`); `parse_of_priceRunWalk` /
+  `parse_of_tradeRunWalk` are instances.  Trade step normal forms
+  `rpnCondStep_trade`/`_tradeEsc`; generic step facts `runWalk_step_cases`,
+  `rcCnt_runWalk_step_ge`, `runWalk_step_decrement`.
+* **Master commutation** `unRpn_rpnConditionRun`: on EVERY stream,
+  `unRpn ((rpnConditionRun blocks ε (rcPack 0 0 0, []) ts).2) =
+  (conditionPriceTokenRun (encode ∘ ψ) ε (0,0) (unRpn ts)).2`, given
+  `hblocks : ∀ D, parseRpn (blocks D).length (blocks D) = some (ψ D, [])`.
+  Support layer: `rpnConditionRun_cons`/`_from_day`/`_from_payload`, base/reset
+  step equations (`rpnCondStep_base*`, `rpnCondStep_fallback`), the buffer fold
+  `rpnCondBufFold` (append/run/reset laws), copy lemma
+  `rpnConditionRun_copy_of_ne_two`, trajectory invariants `runWalk_inside` /
+  `runWalk_first_exit` (+ price/trade instances), and token-model per-chunk run
+  equations (`conditionPriceTokenRun_single/_payload/_price/_price_pair/_trade`).
+* **Guarded strategy-level equality**
+  `strategyOfTokens_rpnGuardedConditionTokens_trades`: contraction of the guarded
+  symbol rewrite = retained-condition-price map of the contraction's trades, all
+  streams.  Guard honesty `strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay` via
+  `rpn_mode2_localize` (symbol mode-2 either survives as a token mode-2 with the
+  same day — `mode2_witness_shift` — or the contraction is `Unreadable`; poison
+  tails reject from every base-mode state, transported by
+  `Unreadable.cons_chunk` through the `Matches` machinery).
+
+Fifth tranche (same session, commit `5ccc739`): the frame-pass **contraction
+anchor** is LANDED — `ContractsTo` (prefix-contraction algebra generalizing
+`UnRpnTransparent`: append/single/payload + expanded-block `priceSym`/`tradeSym`
+chunk contractions + the full raw-combinator algebra `constTok`..`gateTok`),
+`rpnFrameEmit` (the symbol-level frame-leg emission), and
+`rpnFrameEmit_contractsTo` (its contraction = token-model
+`rawLocallyGated{Beta,Second}BodyTokens` leg + re-emitted trade pair — the mirror
+of `unRpn_price_rewrite_chunk`).  The remaining frame work is the run + its
+commutation + certificate, per the map below.
+
 REMAINING (in feasibility order):
-1. Master commutation for the price pass (chunk induction above) ⇒ guarded version ⇒
-   guard-honesty transfer (`strategyOfTokens_trades_eq_nil_of_bigDay` on the
-   contracted stream) ⇒ a price-pass-only strategy-level equality.
-2. Frame-pass mirror (two legs; same automaton + certificate assembly shape as
-   `rpnGuardedConditionRun_polySegStream`; trade slot = 3 :: run ++ blockψ(n));
-   its commutation reuses the SAME localization lemmas (trade-run instance).
-3. Zero-aware variants (mirror guardedZeroAwareConditionTokens).
-4. Endpoints `conditionedTranslation_preserves_ecRpn` /
-   `eventualConditionedTranslation_preserves_ecRpn` (statements recorded as comments
-   at file end) ⇒ witness constructors (translation_ec fields in
-   Properties/Conditioning.lean structures) ⇒ restore class-instance
-   lic_conditioned_* endpoints, delete interim digit-transfer forms ⇒ AxiomAudit.
+1. Frame-pass mirror (two legs).  Concrete architecture: REUSE `rpnCondStep` (no
+   new automaton).  Emission (`rpnFrameEmit` + anchor: LANDED) is exit-triggered
+   — at position (st, t) with
+   `rcMode st ∈ {4,7}` and `rcMode (rpnCondStep st t) = 0` (detected by
+   `runWalk_first_exit` trade instance) emit the RPN expansion of
+   `rawLocallyGated{Beta,Second}BodyTokens` with each price leaf `[0, code, day]`
+   expanded to `0 :: block ++ [day]` where the conjunction block is
+   `3 :: (buf ++ [t]) ++ blockψ(n)` and the ψ-leaf block is `blockψ(n)`; base-mode
+   token 6 emits `[]` (tag dropped; body closes with `8` and re-emits
+   `6 :: block'`).  Per-chunk contraction anchor mirrors
+   `unRpn_price_rewrite_chunk` (needs `parseRpn_and_block` + the existing
+   payload/single chunk lemmas over the body shape).  Its master commutation is
+   the SAME chunk-induction skeleton as `unRpn_rpnConditionRun` (trade converse
+   lemma + first-exit localization already landed).  Budget codes: the digit
+   model's `frameTradeCount tfP lenP` reads the CONTRACTED priced stream — at
+   symbol level count trade-run exits by a scan over `rpnCondScan`'s mode stream
+   (exit flag = mode ∈ {4,7} ∧ next mode 0), or reuse
+   `PolySegStream.tradeCountScan` on the digitized contracted stream if a
+   contraction emission is interposed (decide when implementing).  Certificate
+   assembly shape = `rpnGuardedConditionRun_polySegStream` (window copy via
+   `concatVar` over `rcLen`, constant frames, blocks at the clamped day).
+2. Zero-aware variants (mirror `guardedZeroAwareConditionTokens`; the master
+   commutation's day-emission case splits on `D ∈ zeroDays` with the short
+   `[D, 1, encode 1, 8]` expansion — everything else identical).
+3. Endpoints `conditionedTranslation_preserves_ecRpn` /
+   `eventualConditionedTranslation_preserves_ecRpn` (statements recorded as
+   comments at file end).  Proof skeleton now fully determined: mirror
+   `conditionedTranslation_preserves_ec₂` with source = the RPN clocked stream of
+   the `EfficientlyComputable` witness, priced = digitized
+   `rpnGuardedConditionTokens` (certificate landed), framed = the symbol frame
+   pass (item 1); strategy equality via
+   `strategyOfTokens_rpnGuardedConditionTokens_trades` + the frame mirror; guard
+   path via `strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay`.  `blocks` for a
+   condition family comes from `RpnSentenceCodes ψ` (`Framework/RpnSplice.lean`)
+   — its block stream satisfies `hblocks` by construction.
+4. Witness constructors (translation_ec fields in Properties/Conditioning.lean
+   structures) ⇒ restore class-instance lic_conditioned_* endpoints, delete
+   interim digit-transfer forms ⇒ UnconditionalOverLIA class-instance forms ⇒
+   AxiomAudit; mark the thm:scon interim seam CLOSED here.
 
 ### RPN-5 part 1 PROGRESS (2026-07-26, worktree agent — price pass LANDED, MERGED)
 
