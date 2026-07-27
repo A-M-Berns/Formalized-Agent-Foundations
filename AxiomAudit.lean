@@ -451,7 +451,7 @@ deliberately. -/
 #assert_fields BitPrefixCodeComputation
   code code_poly
 #assert_fields BitPrefixSentences
-  atom prefixSentence enumeration enumeration_covers prefix_codes holds_prefix finite_realizable
+  atom prefixSentence enumeration enumeration_covers prefix_codes holds_prefix realizable
 #assert_fields BooleanQuoteCode
   code pos_complete neg_complete
 #assert_fields BoundedComputation
@@ -511,7 +511,7 @@ deliberately. -/
 #assert_fields InconsistentTheoryClaims
   inconsistencySentence consistencySentence inconsistency_poly consistency_poly inconsistency_provable consistency_disprovable
 #assert_fields IndependentBitAtoms
-  atom finite_realizable
+  atom realizable
 #assert_fields IntrospectionIntervalQuote
   source_codes lower_feature lower_generated upper_feature upper_generated width_codes inverse_width_codes width_pos width_tendsto_zero probability_bounds quote quote_codes reflected inside_affine outside_affine
 #assert_fields IsLogicalInductor

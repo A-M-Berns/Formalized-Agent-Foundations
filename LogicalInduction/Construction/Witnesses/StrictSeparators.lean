@@ -512,29 +512,270 @@ lemma kleeneAssignment_of_decide {n e : ℕ} {b : Bool} (h : kleeneDecide n e = 
 
 /-- Stage-`n` constraint: the conjunction of the literals for the bits decided by stage
 `n`.  Undecided bits are left free, so this is *not* a prefix sentence. -/
+def separatorConstraintAux (atom : ℕ → Sentence) (n : ℕ) : ℕ → Sentence
+  | 0 => ⊤
+  | e + 1 =>
+      match kleeneDecide n e with
+      | none => separatorConstraintAux atom n e
+      | some b => separatorConstraintAux atom n e ⋏ bitPrefixLiteral atom e b
+
+/-- Stage-`n` constraint: the literals for all bits decided by stage `n`. -/
 def separatorConstraint (atom : ℕ → Sentence) (n : ℕ) : Sentence :=
-  sentenceConjunction ((List.range n).filterMap fun e ↦
-    (kleeneDecide n e).map fun b ↦ bitPrefixLiteral atom e b)
+  separatorConstraintAux atom n n
+
+lemma holds_separatorConstraintAux (v : PCWorld) (atom : ℕ → Sentence) (n : ℕ) :
+    ∀ e, v.Holds (separatorConstraintAux atom n e) ↔
+      ∀ e' < e, ∀ b, kleeneDecide n e' = some b → (v.Holds (atom e') ↔ b = true) := by
+  intro e
+  induction e with
+  | zero =>
+      simp [separatorConstraintAux, PCWorld.Holds,
+        LO.Propositional.Formula.Boolean.val]
+  | succ e ih =>
+      rcases hb : kleeneDecide n e with _ | b
+      · rw [show separatorConstraintAux atom n (e + 1) =
+          separatorConstraintAux atom n e from by
+            simp only [separatorConstraintAux, hb], ih]
+        constructor
+        · intro h e' he' b' hb'
+          rcases Nat.lt_succ_iff_lt_or_eq.mp he' with h' | h'
+          · exact h e' h' b' hb'
+          · exact absurd (h' ▸ hb') (by rw [hb]; simp)
+        · intro h e' he' b' hb'
+          exact h e' (Nat.lt_succ_of_lt he') b' hb'
+      · rw [show separatorConstraintAux atom n (e + 1) =
+          separatorConstraintAux atom n e ⋏ bitPrefixLiteral atom e b from by
+            simp only [separatorConstraintAux, hb], PCWorld.holds_and, ih,
+          PCWorld.holds_bitPrefixLiteral]
+        constructor
+        · rintro ⟨hprev, hlit⟩ e' he' b' hb'
+          rcases Nat.lt_succ_iff_lt_or_eq.mp he' with h' | h'
+          · exact hprev e' h' b' hb'
+          · subst h'
+            rw [hb] at hb'
+            simpa using (Option.some.inj hb') ▸ hlit
+        · intro h
+          exact ⟨fun e' he' b' hb' ↦ h e' (Nat.lt_succ_of_lt he') b' hb',
+            h e (Nat.lt_succ_self e) b hb⟩
 
 lemma holds_separatorConstraint (v : PCWorld) (atom : ℕ → Sentence) (n : ℕ) :
     v.Holds (separatorConstraint atom n) ↔
-      ∀ e < n, ∀ b, kleeneDecide n e = some b → (v.Holds (atom e) ↔ b = true) := by
-  rw [separatorConstraint, holds_sentenceConjunction]
-  constructor
-  · intro h e he b hb
-    have hmem : bitPrefixLiteral atom e b ∈ (List.range n).filterMap fun e ↦
-        (kleeneDecide n e).map fun b ↦ bitPrefixLiteral atom e b :=
-      List.mem_filterMap.2 ⟨e, List.mem_range.2 he, by rw [hb]; rfl⟩
-    simpa using (PCWorld.holds_bitPrefixLiteral v atom e b).mp (h _ hmem)
-  · intro h φ hφ
-    obtain ⟨e, he, hmap⟩ := List.mem_filterMap.1 hφ
-    rcases hb : kleeneDecide n e with _ | b
-    · rw [hb] at hmap; simp at hmap
-    · rw [hb] at hmap
-      have hφeq : φ = bitPrefixLiteral atom e b := by simpa using hmap.symm
-      rw [hφeq]
-      exact (PCWorld.holds_bitPrefixLiteral v atom e b).mpr
-        (h e (List.mem_range.1 he) b hb)
+      ∀ e < n, ∀ b, kleeneDecide n e = some b → (v.Holds (atom e) ↔ b = true) :=
+  holds_separatorConstraintAux v atom n n
+
+/-! ### Gödel codes of the constraint sentences
+
+Foundation's propositional encoding is a plain tagged pairing, so the conjunction /
+negation / `⊤` shells are literal `Nat.pair` arithmetic (`rfl`).  That makes the whole
+constraint stream computable by a `Nat.rec` over the decided bits, which is what
+`CEEnumeration` — and hence `EfficientRepeatedEnumeration` — needs. -/
+
+/-- Code of `φ ⋏ ψ` from the codes of `φ` and `ψ`. -/
+def sepAndCode (x y : ℕ) : ℕ := Nat.pair 3 (Nat.pair x y) + 1
+
+/-- Code of `∼φ` from the code of `φ`. -/
+def sepNegCode (x : ℕ) : ℕ := Nat.pair 2 (Nat.pair x (Nat.pair 0 0 + 1)) + 1
+
+/-- Code of `⊤`. -/
+def sepTopCode : ℕ := Nat.pair 2 (Nat.pair (Nat.pair 0 0 + 1) (Nat.pair 0 0 + 1)) + 1
+
+lemma encode_sepAnd (φ ψ : Sentence) :
+    Encodable.encode (φ ⋏ ψ) = sepAndCode (Encodable.encode φ) (Encodable.encode ψ) := rfl
+
+lemma encode_sepNeg (φ : Sentence) :
+    Encodable.encode (∼φ) = sepNegCode (Encodable.encode φ) := rfl
+
+lemma encode_sepTop : Encodable.encode (⊤ : Sentence) = sepTopCode := rfl
+
+/-- The stage decision as a numeral: `0` undecided, `1` decided `false`, `2` decided
+`true`.  This is the shape a `Nat.rec` can branch on. -/
+def kleeneDecideNat (n e : ℕ) : ℕ :=
+  match Nat.Partrec.Code.evaln n (Denumerable.ofNat Nat.Partrec.Code e) e with
+  | some 0 => 1
+  | some 1 => 2
+  | _ => 0
+
+lemma kleeneDecideNat_eq (n e : ℕ) :
+    kleeneDecideNat n e =
+      match kleeneDecide n e with
+      | none => 0
+      | some false => 1
+      | some true => 2 := by
+  unfold kleeneDecideNat kleeneDecide
+  rcases Nat.Partrec.Code.evaln n (Denumerable.ofNat Nat.Partrec.Code e) e with _ | v
+  · rfl
+  · match v with
+    | 0 => rfl
+    | 1 => rfl
+    | (v + 2) => rfl
+
+/-- The code mirror of `separatorConstraintAux`. -/
+def separatorConstraintCodeAux (atomCode : ℕ → ℕ) (n : ℕ) : ℕ → ℕ
+  | 0 => sepTopCode
+  | e + 1 =>
+      if kleeneDecideNat n e = 0 then separatorConstraintCodeAux atomCode n e
+      else sepAndCode (separatorConstraintCodeAux atomCode n e)
+        (if kleeneDecideNat n e = 2 then atomCode e else sepNegCode (atomCode e))
+
+lemma separatorConstraintCodeAux_eq (atom : ℕ → Sentence) (n : ℕ) :
+    ∀ e, separatorConstraintCodeAux (fun k ↦ Encodable.encode (atom k)) n e =
+      Encodable.encode (separatorConstraintAux atom n e) := by
+  intro e
+  induction e with
+  | zero => simp [separatorConstraintCodeAux, separatorConstraintAux, encode_sepTop]
+  | succ e ih =>
+      rcases hb : kleeneDecide n e with _ | b
+      · have h0 : kleeneDecideNat n e = 0 := by rw [kleeneDecideNat_eq, hb]
+        rw [show separatorConstraintAux atom n (e + 1) =
+            separatorConstraintAux atom n e from by simp only [separatorConstraintAux, hb]]
+        simp only [separatorConstraintCodeAux, h0, if_pos rfl]
+        exact ih
+      · have hlit : separatorConstraintAux atom n (e + 1) =
+            separatorConstraintAux atom n e ⋏ bitPrefixLiteral atom e b := by
+          simp only [separatorConstraintAux, hb]
+        cases b with
+        | false =>
+            have h1 : kleeneDecideNat n e = 1 := by rw [kleeneDecideNat_eq, hb]
+            rw [hlit, encode_sepAnd, ← ih]
+            simp [separatorConstraintCodeAux, h1, bitPrefixLiteral, encode_sepNeg]
+        | true =>
+            have h2 : kleeneDecideNat n e = 2 := by rw [kleeneDecideNat_eq, hb]
+            rw [hlit, encode_sepAnd, ← ih]
+            simp [separatorConstraintCodeAux, h2, bitPrefixLiteral]
+
+lemma kleeneDecideNat_computable :
+    Computable fun p : ℕ × ℕ ↦ kleeneDecideNat p.1 p.2 := by
+  have hcode : Computable fun p : ℕ × ℕ ↦ Denumerable.ofNat Nat.Partrec.Code p.2 :=
+    (Primrec.ofNat Nat.Partrec.Code).to_comp.comp Computable.snd
+  have hev : Computable fun p : ℕ × ℕ ↦
+      Nat.Partrec.Code.evaln p.1 (Denumerable.ofNat Nat.Partrec.Code p.2) p.2 :=
+    Nat.Partrec.Code.primrec_evaln.to_comp.comp
+      ((Computable.fst.pair hcode).pair Computable.snd)
+  have hbranch : Computable fun w : ℕ ↦ if w = 0 then 1 else if w = 1 then 2 else 0 := by
+    have h1 : Computable fun w : ℕ ↦ decide (w = 0) :=
+      Computable.comp ((Primrec.eq (α := ℕ)).decide).to_comp
+        (Computable.id.pair (Computable.const 0))
+    have h2 : Computable fun w : ℕ ↦ decide (w = 1) :=
+      Computable.comp ((Primrec.eq (α := ℕ)).decide).to_comp
+        (Computable.id.pair (Computable.const 1))
+    exact (Computable.cond h1 (Computable.const 1)
+      (Computable.cond h2 (Computable.const 2) (Computable.const 0))).of_eq (by
+        intro w
+        by_cases hw0 : w = 0
+        · simp [hw0]
+        · by_cases hw1 : w = 1 <;> simp [hw0, hw1])
+  refine (Computable.comp (Primrec.option_getD.to_comp)
+    ((Computable.option_map hev (hbranch.comp Computable.snd).to₂).pair
+      (Computable.const 0))).of_eq ?_
+  rintro ⟨n, e⟩
+  unfold kleeneDecideNat
+  rcases Nat.Partrec.Code.evaln n (Denumerable.ofNat Nat.Partrec.Code e) e with _ | v
+  · rfl
+  · match v with
+    | 0 => rfl
+    | 1 => rfl
+    | (v + 2) => simp
+
+lemma separatorConstraintCodeAux_computable {atomCode : ℕ → ℕ}
+    (hatom : Computable atomCode) :
+    Computable fun p : ℕ × ℕ ↦ separatorConstraintCodeAux atomCode p.1 p.2 := by
+  have hdec : Computable fun r : (ℕ × ℕ) × (ℕ × ℕ) ↦
+      kleeneDecideNat r.1.1 r.2.1 :=
+    kleeneDecideNat_computable.comp
+      ((Computable.fst.comp Computable.fst).pair (Computable.fst.comp Computable.snd))
+  have hzero : Computable fun r : (ℕ × ℕ) × (ℕ × ℕ) ↦
+      decide (kleeneDecideNat r.1.1 r.2.1 = 0) :=
+    Computable.comp ((Primrec.eq (α := ℕ)).decide).to_comp
+      (hdec.pair (Computable.const 0))
+  have htwo : Computable fun r : (ℕ × ℕ) × (ℕ × ℕ) ↦
+      decide (kleeneDecideNat r.1.1 r.2.1 = 2) :=
+    Computable.comp ((Primrec.eq (α := ℕ)).decide).to_comp
+      (hdec.pair (Computable.const 2))
+  have hatomAt : Computable fun r : (ℕ × ℕ) × (ℕ × ℕ) ↦ atomCode r.2.1 :=
+    hatom.comp (Computable.fst.comp Computable.snd)
+  have hlit : Computable fun r : (ℕ × ℕ) × (ℕ × ℕ) ↦
+      if kleeneDecideNat r.1.1 r.2.1 = 2 then atomCode r.2.1
+        else sepNegCode (atomCode r.2.1) := by
+    have hneg : Computable fun r : (ℕ × ℕ) × (ℕ × ℕ) ↦ sepNegCode (atomCode r.2.1) := by
+      unfold sepNegCode
+      exact Computable.succ.comp (Computable₂.comp Primrec₂.natPair.to_comp
+        (Computable.const 2)
+        (Computable₂.comp Primrec₂.natPair.to_comp hatomAt
+          (Computable.const (Nat.pair 0 0 + 1))))
+    exact (Computable.cond htwo hatomAt hneg).of_eq (by
+      intro r
+      by_cases h : kleeneDecideNat r.1.1 r.2.1 = 2 <;> simp [h])
+  have hand : Computable fun r : (ℕ × ℕ) × (ℕ × ℕ) ↦
+      sepAndCode r.2.2 (if kleeneDecideNat r.1.1 r.2.1 = 2 then atomCode r.2.1
+        else sepNegCode (atomCode r.2.1)) := by
+    unfold sepAndCode
+    exact Computable.succ.comp (Computable₂.comp Primrec₂.natPair.to_comp
+      (Computable.const 3)
+      (Computable₂.comp Primrec₂.natPair.to_comp
+        (Computable.snd.comp Computable.snd) hlit))
+  have hstep : Computable₂ fun (p : ℕ × ℕ) (q : ℕ × ℕ) ↦
+      if kleeneDecideNat p.1 q.1 = 0 then q.2
+      else sepAndCode q.2 (if kleeneDecideNat p.1 q.1 = 2 then atomCode q.1
+        else sepNegCode (atomCode q.1)) :=
+    (Computable.cond hzero (Computable.snd.comp Computable.snd) hand).of_eq (by
+      intro r
+      by_cases h : kleeneDecideNat r.1.1 r.2.1 = 0 <;> simp [h])
+  refine (Computable.nat_rec Computable.snd (Computable.const sepTopCode) hstep).of_eq ?_
+  rintro ⟨n, e⟩
+  induction e with
+  | zero => rfl
+  | succ e ih =>
+      simp only [separatorConstraintCodeAux]
+      by_cases h : kleeneDecideNat n e = 0 <;> simp [h, ← ih]
+
+/-- The constraint stream's Gödel codes are computable whenever the atom family's are. -/
+lemma separatorConstraint_computable {atom : ℕ → Sentence}
+    (hatom : Computable fun k ↦ Encodable.encode (atom k)) :
+    Computable fun n ↦ Encodable.encode (separatorConstraint atom n) :=
+  ((separatorConstraintCodeAux_computable hatom).comp
+    (Computable.id.pair Computable.id)).of_eq (by
+      intro n
+      exact separatorConstraintCodeAux_eq atom n n)
+
+/-- A program enumerating the constraint theory exists. -/
+lemma exists_separatorConstraintCode {atom : ℕ → Sentence}
+    (hatom : Computable fun k ↦ Encodable.encode (atom k)) :
+    ∃ c : Nat.Partrec.Code,
+      (∀ i, ∃ fuel, codeEvalnNat c (Nat.pair fuel i) =
+        Encodable.encode (separatorConstraint atom i) + 1) ∧
+      (∀ z, codeEvalnNat c z ≠ 0 →
+        ∃ i, codeEvalnNat c z = Encodable.encode (separatorConstraint atom i) + 1) := by
+  have hnp : Nat.Partrec fun z ↦ Part.bind (Encodable.decode (α := ℕ) z)
+      fun a ↦ Part.map Encodable.encode
+        (Part.some (Encodable.encode (separatorConstraint atom a))) :=
+    separatorConstraint_computable hatom
+  obtain ⟨c, hc⟩ := Nat.Partrec.Code.exists_code.mp hnp
+  have hval : ∀ i, Encodable.encode (separatorConstraint atom i) ∈ c.eval i := by
+    intro i
+    rw [hc]
+    simp
+  refine ⟨c, fun i ↦ ?_, fun z hz ↦ ?_⟩
+  · obtain ⟨fuel, hfuel⟩ := Nat.Partrec.Code.evaln_complete.mp (hval i)
+    refine ⟨fuel, ?_⟩
+    rw [codeEvalnNat]
+    simp only [Nat.unpair_pair]
+    rw [Option.mem_def.mp hfuel]
+  · rcases hev : Nat.Partrec.Code.evaln z.unpair.1 c z.unpair.2 with _ | w
+    · rw [codeEvalnNat, hev] at hz
+      simp at hz
+    · refine ⟨z.unpair.2, ?_⟩
+      have hmem : w ∈ c.eval z.unpair.2 := Nat.Partrec.Code.evaln_sound hev
+      have hw := Part.mem_unique hmem (hval z.unpair.2)
+      rw [codeEvalnNat, hev, hw]
+
+/-- The constraint theory is computably enumerable, so `EfficientRepeatedEnumeration.ofCE`
+supplies the interface's `repetition` field. -/
+noncomputable def separatorConstraintCE {atom : ℕ → Sentence}
+    (hatom : Computable fun k ↦ Encodable.encode (atom k)) :
+    CEEnumeration (separatorConstraint atom) where
+  code := Classical.choose (exists_separatorConstraintCode hatom)
+  halts := (Classical.choose_spec (exists_separatorConstraintCode hatom)).1
+  outputs_sound := (Classical.choose_spec (exists_separatorConstraintCode hatom)).2
 
 /-- All bit strings of a given length. -/
 def allBitStrings (n : ℕ) : List (List Bool) :=
@@ -581,18 +822,26 @@ lemma mem_separatorConsistentAt {σ : List Bool} {n : ℕ} :
     · rfl
     · simpa using hall e (List.mem_range.1 he) b hb
 
+/-- The repo's concrete bit atoms have computable Gödel codes, so they meet the atom
+hypothesis of the separator presentation. -/
+lemma ordinaryAtom_code_computable :
+    Computable fun k ↦ Encodable.encode (ordinaryIndependentBitAtoms.atom k) := by
+  have hpair : Computable fun k : ℕ ↦ Nat.pair 1 k + 1 :=
+    Computable.succ.comp
+      (Computable₂.comp Primrec₂.natPair.to_comp (Computable.const 1) Computable.id)
+  exact hpair.of_eq (fun _ ↦ rfl)
+
 /-! ### The separator presentation
 
-Everything except the semimeasure fact is discharged here.  Two inputs are supplied by the
-caller and disclosed:
+Everything except the semimeasure fact is discharged here.  Realizability of the
+non-computable target assignment comes from `BitPrefixSentences.realizable` — the total
+form, which is exactly why that field is total rather than finite-prefix (the constraint
+theory pins infinitely many bits).  Two inputs are supplied by the caller and disclosed:
 
-* `hatoms` — *infinite* independent realizability of the atom family (every total Boolean
-  assignment is compatible with every finite deductive stage).  `BitPrefixSentences`
-  only carries the finite-prefix form, which cannot support a theory constraining
-  infinitely many bits; this is the paper's "predicates not mentioned in `Theory`".
-* `hce` — a program enumerating the constraint theory.  This mirrors the operational input
-  `BitPrefixCodeComputation` already taken by the DUS prefix syntax: the repo does not yet
-  build Foundation formula codes from scratch.
+* `hatom` — computability of the atom family's Gödel codes.  This is discharged for the
+  repo's concrete atoms by `ordinaryAtom_code_computable`; from it the whole constraint
+  theory's enumerator is *built* (`separatorConstraintCE`), so no formula-emission input is
+  assumed here.
 * `hmass` — the disclosed `M7-STRICT-SEPARATORS` residue: the universal semimeasure gives
   the stage classes vanishing total mass.  `kleene_recursively_inseparable` above is its
   computability-theoretic input; the measure-theoretic step (a positive-mass class would
@@ -604,15 +853,13 @@ caller and disclosed:
 noncomputable def strictSeparatorPresentationOfKleene
     {DP : DeductiveProcess} (M : UniversalContinuousSemimeasure)
     (B : BitPrefixSentences DP)
-    (hatoms : ∀ (n : ℕ) (f : ℕ → Bool), ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧ ∀ k, (v.Holds (B.atom k) ↔ f k = true))
-    (hce : CEEnumeration (separatorConstraint B.atom))
+    (hatom : Computable fun k ↦ Encodable.encode (B.atom k))
     (hmass : Tendsto (fun n ↦ ((separatorConsistentAt n).map M.mass).sum) atTop (𝓝 0)) :
     StrictSeparatorPresentation M B where
   constraint := separatorConstraint B.atom
-  repetition := EfficientRepeatedEnumeration.ofCE hce
+  repetition := EfficientRepeatedEnumeration.ofCE (separatorConstraintCE hatom)
   jointly_possible n := by
-    obtain ⟨v, hv, hbits⟩ := hatoms n kleeneAssignment
+    obtain ⟨v, hv, hbits⟩ := B.realizable n kleeneAssignment
     refine ⟨v, hv, fun i ↦ ?_⟩
     refine (holds_separatorConstraint v B.atom i).2 (fun e _ b hb ↦ ?_)
     rw [hbits e, kleeneAssignment_of_decide hb]

@@ -383,8 +383,8 @@ session pinned down what that actually costs:
    `lic_occamBounds_ofPrefixMachine` paper-strength Occam (up to the additive-constant
    slop the paper itself has).  Untouched.
 
-Tranche S can already reuse stage 1: `Dovetail.trim`/`dovetailMass` give the
-lower-semicomputable approximants that `mass_tendsto_zero`'s contrapositive argues over.
+Tranche S does **not** need this: its one open statement is written against
+`UniversalContinuousSemimeasure`'s own approximation fields (see Tranche S).
 
 ## Tranche S — M7-STRICT-SEPARATORS — redesigned and landed (2026-07-27)
 
@@ -415,30 +415,70 @@ comes from the interface's own `jointly_possible`, so no hypothesis was added.
 
 **Discharged concretely** in `StrictSeparators.lean`: `kleeneSet`, `kleeneSet_disjoint`,
 `kleene_recursively_inseparable` (the diagonalization — proved, axiom-clean),
-`kleeneDecide` + soundness, `separatorConstraint` + exact semantics, `allBitStrings`,
-`separatorConsistentAt` + membership, and `strictSeparatorPresentationOfKleene`.
+`kleeneDecide` + soundness, `separatorConstraint` (a `Nat.rec` over decided bits) + exact
+semantics, its Gödel-code mirror and computability, `separatorConstraintCE`,
+`allBitStrings`, `separatorConsistentAt` + membership, `ordinaryAtom_code_computable`,
+and `strictSeparatorPresentationOfKleene`.
 
-**Three named inputs of `strictSeparatorPresentationOfKleene`, disclosed:**
-1. `hatoms` — *infinite* independent realizability (`∀ n f, ∃ v, ConsistentWith (DP.D n) ∧
-   ∀ k, v.Holds (atom k) ↔ f k`).  `BitPrefixSentences.finite_realizable` only gives the
-   finite-prefix form and cannot support a theory constraining infinitely many bits.  The
-   paper's "zero-arity predicates not mentioned in `Theory`" satisfy it.  *Next step if
-   this is to be closed: strengthen `IndependentBitAtoms.finite_realizable` to the total
-   form and re-derive the DUS uses, which only need the finite form.*
-2. `hce : CEEnumeration (separatorConstraint B.atom)` — a program enumerating the
-   constraint theory.  Mirrors `BitPrefixCodeComputation`, already taken as an operational
-   input by the DUS prefix syntax; the repo does not yet build Foundation formula codes
-   from scratch.  Closing it needs a `Computable (fun i ↦ encode (constraint i))` route
-   through the RPN emission machinery.
-3. `hmass` — `Tendsto (fun n ↦ ((separatorConsistentAt n).map M.mass).sum) atTop (𝓝 0)`.
-   This is the genuine remaining mathematics: `kleene_recursively_inseparable` supplies the
-   computability side; the missing step is Kučera–Demuth (a positive-mass class lets the
-   lower-semicomputable approximants of `M` compute a separator by majority vote over the
-   class, contradicting inseparability).  It is stated as a hypothesis, not a `sorry`, so
-   the repo stays sorry-free; grep `TODO(blueprint:thm:strict)`.
-   Needed from Tranche U if U lands first: nothing structural — only `M`'s existing
-   `approximation` / `approximation_mono` / `approximation_tendsto` fields are used, so the
-   proof can be written against `UniversalContinuousSemimeasure` directly.
+**Residual inputs of `strictSeparatorPresentationOfKleene` — two of three discharged
+(2026-07-27):**
+
+1. ~~`hatoms` (infinite realizability)~~ — **discharged.**  `IndependentBitAtoms.realizable`
+   and `BitPrefixSentences.realizable` now state the *total* form (every total Boolean
+   assignment is compatible with every finite stage); the finite-prefix forms survive as
+   derived lemmas `*.finite_realizable`, so the DUS uses are untouched, and
+   `ordinaryIndependentBitAtoms` proves the total form directly.  `jointly_possible` now
+   comes from `B.realizable` applied to the non-computable Kleene assignment.
+2. ~~`hce` (constraint-theory enumerator)~~ — **discharged, and built rather than assumed.**
+   `separatorConstraint` is a left-nested `Nat.rec` over the decided bits; Foundation's
+   propositional encoding is tagged `Nat.pair` arithmetic (`sepAndCode` / `sepNegCode` /
+   `sepTopCode`, all `rfl`), so `separatorConstraintCodeAux_computable` gives
+   `separatorConstraint_computable`, hence `separatorConstraintCE : CEEnumeration …` and
+   `repetition` via `.ofCE`.  Mathlib's `Nat.Partrec.Code.primrec_evaln` + `Primrec.ofNat`
+   carry the dovetailing.  The construction now assumes only `hatom : Computable fun k ↦
+   encode (B.atom k)`, itself proved for the repo's atoms by
+   `ordinaryAtom_code_computable`.
+3. `hmass` — **open, and now the sole boundary of `thm:strict`.**
+
+### The one remaining statement
+
+```lean
+Tendsto (fun n ↦ ((separatorConsistentAt n).map M.mass).sum) atTop (𝓝 0)
+```
+
+for `M : UniversalContinuousSemimeasure`.  Everything it needs is in place:
+`kleene_recursively_inseparable` (proved here) is the computability side, and `M`'s
+`approximation` / `approximation_mono` / `approximation_tendsto` fields are the
+measure side.  **No Tranche-U dependency** — the proof is against the interface, not a
+concrete dovetailer.
+
+Proof plan (Kučera–Demuth, following `app:strict`'s sketch), with the Lean-side costs:
+
+1. **Antitone.**  `m n := ((separatorConsistentAt n).map M.mass).sum` is non-increasing:
+   every `σ ∈ separatorConsistentAt (n+1)` has `σ.take n ∈ separatorConsistentAt n`
+   (`evaln` is monotone in fuel, so stage-`n` decisions are among stage-`(n+1)` ones), the
+   map is at most 2-to-1, and `children_le` bounds each fibre by the parent's mass.  Lean
+   cost: list-sum bookkeeping over `allBitStrings` (needs `Nodup`, or a switch of
+   `consistentAt` to `Finset`).  This is the fiddly-but-routine part.
+2. **Limit `r := ⨅ n, m n ≥ 0` exists.**  Antitone + bounded below.  If `r = 0` we are
+   done, so assume `r > 0` for contradiction.
+3. **Fix a level.**  Choose `k` with `m k ∈ [r, 6r/5)` and a rational `q ∈ [4r/5, r)`.
+4. **The separator.**  On input `j`, search over stages `s` for an approximation-level
+   witness that the mass of the level-`s` class restricted to `bit j = 0` (resp. `1`)
+   exceeds `q`; output the majority side.  Termination uses `approximation_tendsto` (the
+   true sum exceeds `q`, so some finite approximation does).  Computability: the search is
+   `Nat.rfind` over a decidable rational predicate built from `M.approximation_code`
+   (`Nat.Partrec.Code.evaln` + `Primrec.ofNat`, exactly the pattern in
+   `kleeneDecideNat_computable`), then `Computable` by totality — the
+   `Partrec.rfind` + `Part.get` pattern.
+5. **Correctness.**  If the vote says `0` but `j ∈ A₁`, the class consistent with the
+   constraints keeps mass `≥ r` while the chosen side holds `≤ 6r/5 − 2r/5 = 4r/5 < r`;
+   contradiction.  Feed the resulting computable separator to
+   `kleene_recursively_inseparable`.
+
+Estimate: 2–4 sessions, most of it steps 1 and 4.  Step 1 is worth doing first and
+independently — it is a clean lemma about `M` and `separatorConsistentAt` with no
+computability content, and it is what makes `r` exist.
 
 ## Tranche P — 𝓔𝓒 polish (cheap optionals, ~½–4 sessions total, no paper-node demand)
 

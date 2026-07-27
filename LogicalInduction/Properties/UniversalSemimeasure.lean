@@ -54,9 +54,8 @@ market data, or domination conclusion.
 Paper node: `thm:dus` -/
 structure IndependentBitAtoms (DP : DeductiveProcess) where
   atom : ℕ → Sentence
-  finite_realizable : ∀ (n : ℕ) (σ : List Bool), ∃ v : PCWorld,
-    v.ConsistentWith (DP.D n) ∧
-      ∀ k : Fin σ.length, (v.Holds (atom k) ↔ σ.get k = true)
+  realizable : ∀ (n : ℕ) (f : ℕ → Bool), ∃ v : PCWorld,
+    v.ConsistentWith (DP.D n) ∧ ∀ k, (v.Holds (atom k) ↔ f k = true)
 
 /-- Propositional syntax for the independent zero-arity predicates and their finite-prefix
 conjunctions from `thm:dus`. `holds_prefix` fixes the exact Boolean semantics, while
@@ -71,9 +70,30 @@ structure BitPrefixSentences (DP : DeductiveProcess) where
   prefix_codes : PolySentenceCodes (fun i ↦ prefixSentence (enumeration i))
   holds_prefix : ∀ (v : PCWorld) (σ : List Bool), v.Holds (prefixSentence σ) ↔
     ∀ k : Fin σ.length, (v.Holds (atom k) ↔ σ.get k = true)
-  finite_realizable : ∀ (n : ℕ) (σ : List Bool), ∃ v : PCWorld,
-    v.ConsistentWith (DP.D n) ∧
-      ∀ k : Fin σ.length, (v.Holds (atom k) ↔ σ.get k = true)
+  realizable : ∀ (n : ℕ) (f : ℕ → Bool), ∃ v : PCWorld,
+    v.ConsistentWith (DP.D n) ∧ ∀ k, (v.Holds (atom k) ↔ f k = true)
+
+/-- The finite-prefix form of realizability: every finite bit string is compatible with
+every finite deductive stage.  Specialization of the total field, which is what a theory
+constraining infinitely many bits (`thm:strict`) needs. -/
+lemma IndependentBitAtoms.finite_realizable {DP : DeductiveProcess}
+    (I : IndependentBitAtoms DP) (n : ℕ) (σ : List Bool) : ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧
+        ∀ k : Fin σ.length, (v.Holds (I.atom k) ↔ σ.get k = true) := by
+  obtain ⟨v, hv, hbits⟩ := I.realizable n (fun k ↦ σ.getD k false)
+  refine ⟨v, hv, fun k ↦ ?_⟩
+  rw [hbits k, List.getD_eq_getElem _ _ k.isLt]
+  simp
+
+/-- The finite-prefix form of realizability for an assembled prefix presentation. -/
+lemma BitPrefixSentences.finite_realizable {DP : DeductiveProcess}
+    (B : BitPrefixSentences DP) (n : ℕ) (σ : List Bool) : ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧
+        ∀ k : Fin σ.length, (v.Holds (B.atom k) ↔ σ.get k = true) := by
+  obtain ⟨v, hv, hbits⟩ := B.realizable n (fun k ↦ σ.getD k false)
+  refine ⟨v, hv, fun k ↦ ?_⟩
+  rw [hbits k, List.getD_eq_getElem _ _ k.isLt]
+  simp
 
 lemma BitPrefixSentences.prefix_possible
     {DP : DeductiveProcess} (B : BitPrefixSentences DP) (σ : List Bool) :
