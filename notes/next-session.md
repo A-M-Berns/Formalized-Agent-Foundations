@@ -424,35 +424,74 @@ things learned that are worth keeping:
   (`ExpectationConvergence.lean`, now public, `AddCommMonoid`), downstream duplicate
   deleted.
 
-**Remaining: the polynomial clock only** (`M7-DUS-APPROX` proper).  Step 1 gives
-*lower-semicomputability*; `DUSApproximationPresentation` wants `PolyRatCodes`.  The
-session pinned down what that actually costs:
+**Step 3 landed 2026-07-27 — `M7-DUS-APPROX` is COMPLETE.**  The polynomial clock is
+discharged, and *not* by the clamped-recursion route the previous session predicted.  The
+prediction was that the poly emitter would have to round inside the `trim` recursion (grid
+rounding, with a drift/error-accumulation bound replacing the broken monotonicity).  That
+turned out to be unnecessary, because **`Code.evaln` is already self-clamping**:
 
-1. **`universalApprox` can never satisfy it, and the fix is legitimate.** `PolyFueled`
-   demands `IsPolyBounded` of the *encoded output*, and the `(1/2)^(i+1)` weights alone
-   force denominators of order `2^n`.  But `DUSApproximationPresentation` requires only
-   `nonneg`/`le_mass`/`tendsto` — **not** monotonicity — so the table may be rounded down
-   onto the `1/(n+1)` grid.  That is done and proved: `Dovetail.gridApprox`, with
-   `gridApprox_le_mass`, `gridApprox_tendsto`, and `encode_gridApprox_le` /
-   `isPolyBounded_encode_gridApprox` (encoding `≤ (2(n+1)+1)^2`).  All axiom-clean, on the
-   audit surface.  **Two of the three presentation fields, plus the size half of the
-   third, are therefore already discharged.**
-2. **What is left is exactly the fuel half:** a code computing `gridApprox` in `evaln`
-   fuel polynomial in `⟪n, i⟫`.  This is *not* a re-certification of `tabCol`: a program
-   run for `n` steps can emit rationals of doubly-exponential magnitude, and the trimming
-   threads those exact values, so the poly emitter must round **inside** the recursion
-   (onto the same `1/(n+1)` grid) — a different, clamped dovetailer, whose exactness proof
-   must be redone since grid rounding breaks the monotonicity the current
-   `trim_tendsto_of_exact` relies on.  `DUSThresholdEmission` then derives by rational
-   arithmetic on those denominators, as `prefixThresholdSum_polyRat` did.  Estimate 1–3
-   sessions; do not start it expecting to reuse `tabCol`.
-3. Then upgrade `PrefixMachine.lean`'s κ to universal prefix complexity: dovetailing
+* every `evaln` clause guards `n ≤ k`, so a code run with fuel `k` can neither read an
+  input above `k` nor return a value above `codeEvalBound c k` — and for a **fixed** code
+  that bound is *polynomial* in `k` (`codeEvaln_result_le` + `codeEvalBound_poly`);
+* the exact emitter `approxEmit` is a fixed code (`Dovetail.approxCode`), so
+  `codeEvalnNat_polyFueled` (`M7-HIST-EVALN`) makes *reading it under a polynomial clock*
+  poly-fueled, with a poly-bounded output, for free.
+
+So the emitter does not approximate the table — it **selects** from it.  `dusState` scans
+`j < n` at clock `⟪z,z⟫` keeping the last reading that finished; `dusStage` names the stage
+that reading came from; `dusApprox z = universalApprox (dusStage z z.1) σ` is therefore an
+*exact* stage value.  `nonneg`/`le_mass` are then `universalApprox_nonneg`/`_le` verbatim,
+and `tendsto` is a two-sided squeeze (`≤ mass` always; `≥ universalApprox m σ` eventually,
+since the clock grows past the fuel stage `m` needs and `le_dusStage` never lets the
+recorded stage slip back).  No drift bound, no clamped recursion, no `tabCol` rewrite.
+
+Landed, all axiom-clean and on the audit surface:
+* `Dovetail.approxCode` / `approxCode_eval` / `stageRead` / `dusState` / `dusStage` /
+  `dusApprox`, with `dusApprox_polyRatCodes` (`PolyFueled.prec` over the packed step
+  `dusStep`; state bounded by `codeEvalBound approxCode ⟪z,z⟫ + 2`);
+* `Dovetail.dusApproximationPresentation` and `Dovetail.dusThresholdEmission` — every
+  field constructed.  The threshold streams reuse a new generic
+  `Dovetail.encode_natDiv_polyFueled` (runtime `gcdc` reduction of `(a:ℚ)/(b:ℚ)`, zero
+  denominator ↦ `⌜0⌝`), which is the DUS analogue of `prefixThresholdSum_polyRat`;
+* endpoints `lic_domination_dovetailSemimeasure_unconditional` (no semimeasure input at
+  all) and `lic_domination_everyLowerSemicomputable_unconditional` (the paper's actual
+  conclusion: the constructed market dominates *every* lower-semicomputable continuous
+  semimeasure).  Only `BitPrefixCodeComputation` (`M7-DUS-PREFIX-SYNTAX`) remains a caller
+  input on that family.
+
+`Dovetail.gridApprox` and its four lemmas are **kept**: they are the record of the
+alternative route (rounding the stage onto the `1/(n+1)` grid), they independently
+discharge the same two analytic fields, and `isPolyBounded_encode_gridApprox` is the only
+place in the repo where a stage table's *size* bound is proved directly.
+
+Two things worth keeping:
+* `UniversalDovetailer.lean` now imports `QuoteCodeOfMarket` for `encode_rat_natCast_div`.
+  That lemma (and `ComputableLUV.natCast_div_num`/`_den` under it) are generic `Encodable ℚ`
+  facts sitting in `Construction/Witnesses/`; the consolidation-correct home is
+  `Framework/Computable.lean` next to `encode_rat_natCast`.  Deferred, noted.
+* `cases hev : e` substitutes `e` in the **goal** but *not* in existing hypotheses — the
+  mirror image of the recorded `rcases h : e` trap.  `rw [hev] at h` first.
+
+**Still open in Tranche U:** only item 3 below.
+
+3. Upgrade `PrefixMachine.lean`'s κ to universal prefix complexity: dovetailing
    weights are lower-semicomputable, so the presentation's `tendsto` field does real
    work (from-below stage convergence); the Kraft field needs the universal machine's
    prefix-free domain (adapt `kraft_inequality` application to the c.e. domain
    enumeration).  This removes the type-(c) in PrefixMachine's docstring and makes
    `lic_occamBounds_ofPrefixMachine` paper-strength Occam (up to the additive-constant
-   slop the paper itself has).  Untouched.
+   slop the paper itself has).  Untouched.  **Sketch of what it now needs beyond the DUS
+   machinery** (2026-07-27): the *approximation* half is now cheap — `prefixApprox` would
+   become a dovetailed from-below weight table, and the identical self-clamp trick
+   (`codeEvalnNat` on a fixed exact-weight emitter, scan for the last stage that finished)
+   supplies `approximation_codes`/`_nonneg`/`_le`/`_tendsto` with no new machinery, since
+   `PrefixMachinePresentation` also asks only for from-below convergence.  What is *not*
+   supplied by this session's work is the **Kraft** field: `∑_{i<N} 2^{-κ(φᵢ)} ≤ 1` for the
+   *universal* prefix machine needs the halting set of a prefix-free universal machine to
+   be enumerated with its codewords, i.e. a prefix-free universal domain construction plus
+   the observation that `kraft_inequality` applies to each finite stage of that
+   enumeration.  That is a genuine new construction (a self-delimiting universal machine),
+   not a re-certification — estimate 1–2 sessions, and it is the only remaining piece.
 
 Tranche S does **not** need this: its one open statement is written against
 `UniversalContinuousSemimeasure`'s own approximation fields (see Tranche S).

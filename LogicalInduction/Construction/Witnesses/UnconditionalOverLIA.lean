@@ -2,6 +2,7 @@ import LogicalInduction.Construction.Witnesses.ComputationDP
 import LogicalInduction.Construction.Witnesses.BitPrefixSyntax
 import LogicalInduction.Construction.Witnesses.ConditioningCompiler
 import LogicalInduction.Construction.Witnesses.DigitConditioning
+import LogicalInduction.Construction.Witnesses.UniversalDovetailer
 
 /-!
 # Unconditional instantiations over the constructed `LIA` — semimeasure & conditioning
@@ -60,6 +61,40 @@ theorem lic_domination_universalSemimeasure_unconditional
   lic_domination_universalSemimeasure_ofIndependentAtoms ordinaryIndependentBitAtoms C A emit
     (liaHistory emptyBitDeductiveProcess)
     emptyBitDeductiveProcess_hworld
+
+/-- **`thm:dus` over the constructed dovetail, with no semimeasure input.**  `M` is
+`Construction/Witnesses/UniversalDovetailer.lean`'s explicit dovetail `M*`, and both
+`M7-DUS-APPROX` premises are discharged there by the self-clamped stage table, so the only
+remaining caller input is the prefix-sentence code emitter `C` (`M7-DUS-PREFIX-SYNTAX`).
+Paper node: `thm:dus` -/
+theorem lic_domination_dovetailSemimeasure_unconditional
+    (C : BitPrefixCodeComputation ordinaryIndependentBitAtoms) :
+    ∃ K : ℝ, 0 < K ∧ ∀ σ,
+      K * Dovetail.universalMass σ ≤ limitingBelief (liaHistory emptyBitDeductiveProcess)
+        (bitPrefixSentence ordinaryIndependentBitAtoms.atom σ) :=
+  lic_domination_universalSemimeasure_unconditional C
+    (Dovetail.dusApproximationPresentation
+      (bitPrefixSentencesOfIndependentAtoms ordinaryIndependentBitAtoms C) (fun _ ↦ rfl))
+    (Dovetail.dusThresholdEmission _ _)
+
+/-- **The paper's actual `thm:dus` conclusion, unconditional on the semimeasure side.**
+Because the dovetail is *universal*, the constructed market's limiting beliefs dominate
+**every** lower-semicomputable continuous semimeasure, with a constant assembled from the
+dovetail weight of that semimeasure's own approximation program.
+Paper node: `thm:dus` -/
+theorem lic_domination_everyLowerSemicomputable_unconditional
+    (C : BitPrefixCodeComputation ordinaryIndependentBitAtoms)
+    (ν : LowerSemicomputableContinuousSemimeasure) :
+    ∃ K : ℝ, 0 < K ∧ ∀ σ,
+      K * ν.mass σ ≤ limitingBelief (liaHistory emptyBitDeductiveProcess)
+        (bitPrefixSentence ordinaryIndependentBitAtoms.atom σ) := by
+  obtain ⟨K, hK, hbelief⟩ := lic_domination_dovetailSemimeasure_unconditional C
+  obtain ⟨c, hc, hdom⟩ := Dovetail.universalMass_dominates ν
+  refine ⟨K * c, mul_pos hK hc, fun σ ↦ ?_⟩
+  calc K * c * ν.mass σ = K * (c * ν.mass σ) := by ring
+    _ ≤ K * Dovetail.universalMass σ := by
+        exact mul_le_mul_of_nonneg_left (hdom σ) hK.le
+    _ ≤ _ := hbelief σ
 
 /-! ## Conditioning over the constructed `LIA` -/
 
@@ -123,6 +158,8 @@ theorem lic_conditioned_growing_unconditional
     base more (theoremMarketComputation T) hjoint
 
 #print axioms lic_domination_universalSemimeasure_unconditional
+#print axioms lic_domination_dovetailSemimeasure_unconditional
+#print axioms lic_domination_everyLowerSemicomputable_unconditional
 #print axioms lic_conditioned_ofCompiler_unconditional
 #print axioms lic_conditioned_fixed_unconditional
 #print axioms lic_conditioned_growing_unconditional

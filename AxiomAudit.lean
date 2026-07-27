@@ -300,17 +300,20 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 #assert_axioms_clean
   bitPrefixSentencesOfIndependentAtoms lic_domination_universalSemimeasure_ofIndependentAtoms
 
--- Construction/Witnesses/UniversalDovetailer.lean (`M7-DUS-APPROX`, semimeasure side)
+-- Construction/Witnesses/UniversalDovetailer.lean (`M7-DUS-APPROX`, COMPLETE)
 -- The universal continuous semimeasure is fully constructed: the semimeasure laws, the
 -- monotone from-below stage table, the explicit domination constant, and the emission
--- program for the stage table (column tabulation).  What `M7-DUS-APPROX` still discloses
--- is the *polynomial* clock (`DUSApproximationPresentation`/`DUSThresholdEmission`), not
--- computability.
+-- program for the stage table (column tabulation).  The *polynomial* clock is now
+-- discharged as well: the self-clamped stage table reads the fixed exact emitter under a
+-- polynomial `evaln` clock, so both `DUSApproximationPresentation` and
+-- `DUSThresholdEmission` are constructed objects.
 #assert_axioms_clean
   Dovetail.continuousSemimeasure Dovetail.universalMass_dominates
   Dovetail.exists_universalApprox_code Dovetail.universalSemimeasure
   Dovetail.gridApprox_le_mass Dovetail.gridApprox_tendsto
   Dovetail.isPolyBounded_encode_gridApprox
+  Dovetail.dusApprox_tendsto Dovetail.dusApprox_polyRatCodes
+  Dovetail.dusApproximationPresentation Dovetail.dusThresholdEmission
 
 -- Construction/Witnesses/ConditioningPresentation.lean (`M7-SCON-PRESENTATION`)
 #assert_axioms_clean
@@ -345,6 +348,8 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 -- Construction/Witnesses/UnconditionalOverLIA.lean
 #assert_axioms_clean
   lic_domination_universalSemimeasure_unconditional
+  lic_domination_dovetailSemimeasure_unconditional
+  lic_domination_everyLowerSemicomputable_unconditional
   lic_conditioned_ofCompiler_unconditional
   lic_conditioned_fixed_unconditional
   lic_conditioned_growing_unconditional

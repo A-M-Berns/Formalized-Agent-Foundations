@@ -215,6 +215,23 @@ The paper needs only lower-semicomputability here.
 > the trimming threads them exactly), not a re-certification of the tabulation.
 > `lic_domination_universalSemimeasure_unconditional` stays qualified until that lands —
 > deliberately, so no hollow endpoint is minted.
+>
+> **Update (2026-07-27, Tranche U step 3) — RESOLVED.**  `M7-DUS-APPROX` is discharged and
+> the endpoint is minted.  The predicted clamped-recursion route was not needed:
+> `Code.evaln` self-clamps (every clause guards `n ≤ k`, and for a *fixed* code
+> `codeEvalBound` is polynomial in the fuel), so reading the fixed exact emitter
+> `Dovetail.approxCode` under a polynomial clock is poly-fueled by `codeEvalnNat_polyFueled`
+> and poly-bounded in output for free.  `Dovetail.dusApprox` keeps the last stage the clock
+> finished, so the emitted value is an *exact* stage value — nonneg and `le_mass` are the
+> existing `universalApprox` lemmas, `tendsto` is a squeeze, and `PolyRatCodes` is a
+> `PolyFueled.prec` scan.  `Dovetail.dusApproximationPresentation` and
+> `Dovetail.dusThresholdEmission` are constructed, axiom-clean, on the audit surface, and
+> `lic_domination_dovetailSemimeasure_unconditional` /
+> `lic_domination_everyLowerSemicomputable_unconditional` (`UnconditionalOverLIA.lean`)
+> take **no** semimeasure input.  The only caller input left on this family is
+> `BitPrefixCodeComputation` (`M7-DUS-PREFIX-SYNTAX`), which is a *syntax* obligation (a
+> poly-fueled emitter for the literal prefix-conjunction sentence codes), not a semimeasure
+> one.
 
 ### 2.5 `hworld` consistency hypotheses
 
