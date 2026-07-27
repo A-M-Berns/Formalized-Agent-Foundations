@@ -57,7 +57,54 @@ landed in **collapsed single-class form** (consolidation directive).
 
 ## NEXT: RPN-5 — symbol-level translation compilers
 
-### RPN-5 part 1 PROGRESS (2026-07-26, worktree agent — price pass LANDED)
+### RPN-5 part 2 PROGRESS (2026-07-26, worktree agent, second tranche — parse
+### localization LANDED)
+
+On top of the merged transducer core (ca0d452), the exactness item's hard theory is
+now green and axiom-clean in RpnConditioning.lean:
+
+* `parseRpn_strip` — a successful parse factors as a complete block ++ remainder.
+* Run-step normal forms: `rpnCondStep_price` / `rpnCondStep_priceEsc` (offset-counter
+  step equations), `rcCnt_run_step_ge`, `rcLen_run_step`, `run_step_decrement`.
+* **`parse_of_priceRunWalk`** (the converse walk lemma): a run the automaton walks
+  from counter c+1 to its FIRST return at counter c — strictly inside on every proper
+  prefix — either parses completely as one block, or POISONS EVERY EXTENSION
+  (`parseRpn fuel (u ++ tail) = none` for all fuel/tail).  Proof by strong induction
+  + first-passage decomposition (Nat.find on the counter's first return).  The only
+  failure mode of an arity-complete run is an undecodable escape payload.
+
+WHY THIS UNBLOCKS THE MASTER COMMUTATION: to prove
+`unRpn ((rpnConditionRun blocks ε (rcPack 0 0 0, []) ts).2) =
+ (conditionPriceTokenRun ψCode ε (0,0) (unRpn ts)).2`
+for ALL ts, induct on ts by grammar chunks (run_append decomposition; transducer
+returns to base at chunk boundaries).  Price/trade chunk with run u:
+- if the walk never completes: pure copy on both sides (truncation ⇒ parse fails ⇒
+  unRpn stops with [tag, 0] on both);
+- if it completes: `parse_of_priceRunWalk` splits: (a) u parses ⇒ `parseRpn_strip` +
+  `unRpn_price_rewrite_chunk` / `unRpn_trade_chunk_block` give the exact contraction
+  on both sides; (b) u poisons every extension ⇒ both sides' unRpn stop with
+  [tag, 0] AT THE SAME CHUNK (the transducer's insertion sits beyond the poisoned
+  run, so the ∀-tail form kills the rewritten stream too).
+Uniqueness of the completion point (needed to align (a)'s block with the automaton's
+emission position): successful parse ⇒ its consumed prefix is a first-return walk
+(add the no-early-exit conjunct to `foldl_rpnCondStep_run` — mechanical extension),
+and two first-return prefixes of the same list coincide (determinism).
+
+REMAINING (in feasibility order):
+1. Master commutation for the price pass (chunk induction above) ⇒ guarded version ⇒
+   guard-honesty transfer (`strategyOfTokens_trades_eq_nil_of_bigDay` on the
+   contracted stream) ⇒ a price-pass-only strategy-level equality.
+2. Frame-pass mirror (two legs; same automaton + certificate assembly shape as
+   `rpnGuardedConditionRun_polySegStream`; trade slot = 3 :: run ++ blockψ(n));
+   its commutation reuses the SAME localization lemmas (trade-run instance).
+3. Zero-aware variants (mirror guardedZeroAwareConditionTokens).
+4. Endpoints `conditionedTranslation_preserves_ecRpn` /
+   `eventualConditionedTranslation_preserves_ecRpn` (statements recorded as comments
+   at file end) ⇒ witness constructors (translation_ec fields in
+   Properties/Conditioning.lean structures) ⇒ restore class-instance
+   lic_conditioned_* endpoints, delete interim digit-transfer forms ⇒ AxiomAudit.
+
+### RPN-5 part 1 PROGRESS (2026-07-26, worktree agent — price pass LANDED, MERGED)
 
 New `Construction/Witnesses/RpnConditioning.lean` (registered in Witnesses.lean),
 all green + axiom-clean except the two sorried endpoints:
