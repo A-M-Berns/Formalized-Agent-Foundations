@@ -90,6 +90,29 @@ emission position): successful parse ⇒ its consumed prefix is a first-return w
 (add the no-early-exit conjunct to `foldl_rpnCondStep_run` — mechanical extension),
 and two first-return prefixes of the same list coincide (determinism).
 
+2026-07-27 UPDATE (third tranche, worktree agent): the no-early-exit conjunct is
+LANDED — `foldl_rpnCondStep_run` (+ price/trade instances, block corollaries) now
+also give: every proper prefix of the consumed block stays in the run modes.  This
+supplies (i) transducer copy-behavior on blocks (no spurious mode-2 emission), and
+(ii) the converse walk lemma's hypotheses at first-exit positions.  NEXT concrete
+steps for the master commutation (design fully worked out, see the mapped chunk
+induction below): (a) a general copy lemma
+`rpnConditionRun blocks ε (st, buf) ts = ((foldl rpnCondStep st ts, bufFold …), ts)`
+whenever no prefix of ts hits mode 2 from st (define bufFold; trivial induction);
+(b) buffer values over run blocks (price: buf ++ b via rcLen_run_step ≠ 0; trade:
+[] at exit); (c) the chunk induction itself: payload/single chunks transparent;
+price chunk 0 :: rest splits on parse rest (some: strip + copy + day emission +
+`unRpn_price_rewrite_chunk`; none: either no completion (pure copy, both sides
+[0,0]-poison) or first completion at k₀ (converse lemma ⇒ u parses ⇒ contradiction
+with none, or u poisons ⇒ both sides [0,0]-poison — the mode-2 first-exit state is
+`rcPack 2 0 k₀` via an exit-shape lemma `rcMode (step st t) = 2 → step st t =
+rcPack 2 0 (rcLen st + 1)` + cnt ≥ 1 invariant in run modes); trade chunk mirrors
+with `unRpn_trade_chunk_block`, EXCEPT trade-(b2) needs the converse lemma in TRADE
+modes — either generalize `parse_of_priceRunWalk` over (a,b,exit) with step-shape
+hypotheses (mirror `foldl_rpnCondStep_run`'s design), or prove a mode-swap walk
+correspondence (1↔4, 6↔7, exits pack 2 0 (r+1) ↔ pack 0 0 0) by induction using
+trade-mode step normal forms (mirrors of `rpnCondStep_price`/`_priceEsc`).
+
 REMAINING (in feasibility order):
 1. Master commutation for the price pass (chunk induction above) ⇒ guarded version ⇒
    guard-honesty transfer (`strategyOfTokens_trades_eq_nil_of_bigDay` on the
