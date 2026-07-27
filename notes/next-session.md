@@ -151,9 +151,59 @@ chunk contractions + the full raw-combinator algebra `constTok`..`gateTok`),
 of `unRpn_price_rewrite_chunk`).  The remaining frame work is the run + its
 commutation + certificate, per the map below.
 
+Sixth tranche (2026-07-27, worktree agent): the frame pass's **transducer + master
+commutation** are LANDED, green + axiom-clean:
+
+* `rpnFrameEmitAt` / `rpnFrameRun` / `rpnFrameOutput` — the streaming frame rewrite,
+  REUSING `rpnCondStep`/`rpnCondBuf` (no new automaton, so `rpnCondControlAt`,
+  `rpnCondWindow`, `rpnCondScan` all apply verbatim to it).  Base-mode `6` is
+  withheld, trade-run tokens are buffered silently, the token that returns the
+  automaton to base fires `rpnFrameEmit` on `buf ++ [t]`, everything else is copied;
+  an unfinished trade run is flushed with a bare `6` at end of stream (mirror of
+  `conditioningFrameTokenOutput`'s flush).
+* Support: `rpnFrameRun_append/_cons/_state`, `rpnFrameRun_copy_of_modes` (copy off
+  base/trade modes), `rpnFrameRun_silent` + `rcLen_trade_run_step` (buffering inside
+  a live trade run), `rpnFrameRun_trade_block`, `rpnFrameOutput_append_base` (chunk
+  peel), `priceWalk_inside`, and the token-model per-chunk equations
+  `conditioningFrameTokenOutput_{nil,single,payload,one,price,price_pair,trade,
+  trade_flush}`.
+* **`frameAgree_unRpn_rpnFrameOutput`** — the master statement, on EVERY stream.
+  DESIGN NOTE (important, and NOT the price pass's shape): exact equality is
+  **false** at a malformed trade run.  The token model sees the contracted `[6, 0]`
+  and expands a full leg body around the poison code `0`; the symbol side has no
+  block to splice and can only flush.  Both outputs are nevertheless *unreadable* —
+  the token side because its ratio's numerator price carries
+  `conjunctionCode 0 ⌜ψ⌝` (undecodable, via `conjunctionCode_decode_none`), the
+  symbol side because the flushed/emitted run fails to parse — so the invariant is
+  `FrameAgree a b := a = b ∨ (Unreadable a ∧ Unreadable b)`, which is preserved by
+  `FrameAgree.cons_chunk` and collapses to strategy equality
+  (`FrameAgree.strategyOfTokens_trades_eq`).  Price-poison chunks still give exact
+  equality (both sides copy).  Supporting: `Unreadable.append_right`,
+  `unreadable_price_code`/`unreadable_cons_price`,
+  `rawConditioningRatioTokens_eq_price_head`, `rpnFrameEmit_eq_price_head`,
+  `parseRpn_cons_and_poison`, `unRpn_cons_and_poison`,
+  `unRpn_rpnFrameEmit_poison`, `unreadable_conditioningFrameTokenOutput_poison`.
+* **`strategyOfTokens_unRpn_rpnFrameOutput_trades`** — the consumable corollary: the
+  contraction of the symbol frame output decodes to the same validated strategy as
+  the token-model frame output of the contraction, on every stream.
+
+* Per-position view for the certificate: `rpnFrameSegment` +
+  **`rpnFrameRun_range`** (final state = `rpnCondControlAt`, buffer =
+  `rpnCondWindow`, output = flatMap of the segments — the exact mirror of
+  `rpnConditionRun_range`, and it reuses `rpnCondBuf_window` verbatim) and
+  `rpnFrameSegment_eq` (the three-way dispatch form the poly-fueled assembly
+  consumes: base-mode `6` ⇒ `[]`, trade modes ⇒ emission iff the successor control
+  mode is `0`, otherwise copy).
+
+Gotcha added: `0 :: blk ++ [d]` parses as `(0 :: blk) ++ [d]` (`::` binds tighter
+than `++`) — chunk-peel lemmas must parenthesise `0 :: (blk ++ [d])` or the
+`List.foldl_cons` rewrites silently miss.
+
 REMAINING (in feasibility order):
-1. Frame-pass mirror (two legs).  Concrete architecture: REUSE `rpnCondStep` (no
-   new automaton).  Emission (`rpnFrameEmit` + anchor: LANDED) is exit-triggered
+1. Frame-pass mirror — CORRECTNESS DONE (sixth tranche above); what is left is the
+   **`PolySegStream` certificate** and the two-leg join.  Concrete architecture:
+   REUSE `rpnCondStep` (no new automaton).  Emission (`rpnFrameEmit` + anchor +
+   run + commutation: LANDED) is exit-triggered
    — at position (st, t) with
    `rcMode st ∈ {4,7}` and `rcMode (rpnCondStep st t) = 0` (detected by
    `runWalk_first_exit` trade instance) emit the RPN expansion of
@@ -172,7 +222,12 @@ REMAINING (in feasibility order):
    `PolySegStream.tradeCountScan` on the digitized contracted stream if a
    contraction emission is interposed (decide when implementing).  Certificate
    assembly shape = `rpnGuardedConditionRun_polySegStream` (window copy via
-   `concatVar` over `rcLen`, constant frames, blocks at the clamped day).
+   `concatVar` over `rcLen + 1` — the emission splices `buf ++ [t]`, i.e. positions
+   `j - rcLen .. j` — constant frames, blocks and budget codes constant per day).
+   Then the two legs join under the structural-acceptance gate
+   (`safeSeparatedFrameTokenOutput`'s shape).  NOTE a new wrinkle at symbol level:
+   `unRpn (A ++ B) ≠ unRpn A ++ unRpn B` when `A` is poisoned, so the join needs the
+   token model's none-absorbing argument replayed through `FrameAgree`.
 2. Zero-aware variants (mirror `guardedZeroAwareConditionTokens`; the master
    commutation's day-emission case splits on `D ∈ zeroDays` with the short
    `[D, 1, encode 1, 8]` expansion — everything else identical).
