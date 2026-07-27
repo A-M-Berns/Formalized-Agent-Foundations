@@ -28,10 +28,12 @@ This file provides the spec layer of that compiler:
 
 Whole-stream contraction exactness (`unRpn_rpnConditionRun`), guard-honesty transfer
 (`strategyOfTokens_rpnGuardedConditionTokens_trades`) and the **frame pass** — its
-streaming transducer `rpnFrameRun`/`rpnFrameOutput` and master agreement
-`frameAgree_unRpn_rpnFrameOutput` — are proved here.  The class-preservation
+streaming transducer `rpnFrameRun`/`rpnFrameOutput`, master agreement
+`frameAgree_unRpn_rpnFrameOutput`, emission certificate
+`rpnFrameOutput_polySegStream`, and budget exactness
+`rpnTradeCountAt_eq_frameTradeCount` — are proved here.  The class-preservation
 endpoints are stated at the end and remain open (`TODO(blueprint:thm:scon)`): the
-frame pass's `PolySegStream` certificate, the zero-aware variants, and the
+two-leg join under the structural-acceptance gate, the zero-aware variants, and the
 assembly.
 
 Paper node: `thm:scon` (symbol-metered conditioning translation).
@@ -1238,19 +1240,23 @@ contraction exactness (`unRpn_rpnConditionRun`) and guard-honesty transfer
 (`strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay`, packaged as
 `strategyOfTokens_rpnGuardedConditionTokens_trades`) are **proved below**; open:
 
-1. **The frame pass mirror** — its *correctness* half is now **proved below**
-   (`rpnFrameRun` / `rpnFrameOutput`, master agreement
-   `frameAgree_unRpn_rpnFrameOutput`, strategy-level corollary
-   `strategyOfTokens_unRpn_rpnFrameOutput_trades`).  What remains is its
-   **`PolySegStream` certificate** (same assembly shape as
-   `rpnGuardedConditionRun_polySegStream`: mode dispatch off `rpnCondScan`, window
-   copy by `concatVar` over `rcLen + 1`, blocks and budget codes constant per day),
-   which additionally needs a symbol-level trade-count scan (count the trade-run
-   exits: `rcMode ∈ {4, 7}` with successor mode `0`) to feed `frameBudget`, and the
-   two legs joined under a structural-acceptance gate as in
-   `safeSeparatedFrameTokenOutput`.
+The frame pass mirror is **proved below** in full — correctness (`rpnFrameRun` /
+`rpnFrameOutput`, master agreement `frameAgree_unRpn_rpnFrameOutput`, strategy-level
+corollary `strategyOfTokens_unRpn_rpnFrameOutput_trades`), its `PolySegStream`
+certificate (`rpnFrameOutput_polySegStream`), the trade-run exit scan
+(`rpnTradeCountScan`) feeding `frameBudget`, and that count's **exactness** against
+the contraction (`rpnTradeCountAt_eq_frameTradeCount`).  Still open:
+
+1. **The two-leg join** under a structural-acceptance gate, as in
+   `safeSeparatedFrameTokenOutput`.  At symbol level this needs a symbol-side
+   acceptance scan and a join agreement, and it must handle a wrinkle the token
+   model does not have: `unRpn (A ++ B) ≠ unRpn A ++ unRpn B` when `A` is poisoned,
+   so the none-absorbing argument of the token model has to be replayed through the
+   `FrameAgree` invariant.
 2. The zero-aware variants for the eventual translation (mirror of
-   `guardedZeroAwareConditionTokens`). -/
+   `guardedZeroAwareConditionTokens`): the day-emission case of the master
+   commutation splits on `D ∈ zeroDays` with the short `[D, 1, encode 1, 8]`
+   expansion, everything else identical. -/
 
 /-! ## Parse localization
 
