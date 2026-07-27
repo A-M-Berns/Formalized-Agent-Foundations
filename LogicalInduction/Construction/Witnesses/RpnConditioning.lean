@@ -31,10 +31,11 @@ Whole-stream contraction exactness (`unRpn_rpnConditionRun`), guard-honesty tran
 streaming transducer `rpnFrameRun`/`rpnFrameOutput`, master agreement
 `frameAgree_unRpn_rpnFrameOutput`, emission certificate
 `rpnFrameOutput_polySegStream`, and budget exactness
-`rpnTradeCountAt_eq_frameTradeCount` — are proved here.  The class-preservation
-endpoints are stated at the end and remain open (`TODO(blueprint:thm:scon)`): the
-two-leg join under the structural-acceptance gate, the zero-aware variants, and the
-assembly.
+`rpnTradeCountAt_eq_frameTradeCount` — are proved here, as is the gated two-leg join
+(`rpnSafeSeparatedFrameOutput`, `strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades`).
+The gated class-preservation endpoint `conditionedTranslation_preserves_ecRpn` is
+assembled at the end; the zero-aware (eventual) mirror is the one remaining open item
+(`TODO(blueprint:thm:scon)`).
 
 Paper node: `thm:scon` (symbol-metered conditioning translation).
 -/
@@ -6114,21 +6115,159 @@ theorem strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
 
 #print axioms strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
 
-/-! ### Endpoint statements (open, recorded — not sorried)
+/-! ### The class-preservation endpoints
 
-The two target endpoints are stated here as comments rather than sorried theorems so
-the mainline keeps its strict no-`sorryAx` guarantee for public statements.  The
-remaining distance is itemized above ("Endpoints (open)"); every construction
-ingredient below them is proved.
+The assembly: the source certificate gives the clocked digit stream of the RPN-expanded
+strategy serialization; the guarded price pass rewrites its price days
+(`rpnGuardedConditionRun_polySegStream` for emission,
+`strategyOfTokens_rpnGuardedConditionTokens_trades` for agreement); the gated frame
+join splices the two conditional legs (`rpnSafeSeparatedFrameOutput_polySegStream`,
+`strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades`); the budget codes are set
+by the symbol-level trade-run count, exact against the token model
+(`rpnTradeCountAt_eq_frameTradeCount`); and `ec_of_rawSegStream` digitizes back into a
+`def:ec` certificate. -/
 
-```
+/-- **The gated conditioning translation preserves symbol-metered efficient
+computability** (`def:ec` → `def:ec`), over any `𝓔𝓒` sentence sequence.
+Paper node: `thm:scon` -/
 theorem conditionedTranslation_preserves_ecRpn
     (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ) (ε : ℚ)
     (T : Trader) (hT : EfficientlyComputable T) :
-    EfficientlyComputable (T.conditionedTranslation ψ ε)
--- TODO(blueprint:thm:scon): compose `rpnGuardedConditionRun_polySegStream` with the
--- symbol-level frame pass and discharge contraction exactness.
+    EfficientlyComputable (T.conditionedTranslation ψ ε) := by
+  obtain ⟨lengthCode, tokenCode, a, k, hcert⟩ := hT
+  obtain ⟨blocks, hblocksPoly, hblocksParse⟩ := hψ
+  let source : ℕ → List ℕ := fun n =>
+    clockedTokens lengthCode tokenCode (PrefixPatchCompile.ecClock a k n) n
+  have hsource : PolySegStream source :=
+    PrefixPatchCompile.clockedTokens_polySegStream lengthCode tokenCode a k
+  let priced : ℕ → List ℕ := fun n =>
+    digitize (rpnGuardedConditionTokens blocks ε n (undigitize (source n)))
+  have hpriced : PolySegStream priced :=
+    rpnGuardedConditionRun_polySegStream hsource hblocksPoly ε
+  set tfP : ℕ → ℕ := fun w => (undigitize (priced w.unpair.1)).getD w.unpair.2 0
+    with htfP
+  set lenP : ℕ → ℕ := fun m => (undigitize (priced m)).length with hlenP
+  obtain ⟨ctc, htc⟩ := rpnTradeCountScan hpriced
+  obtain ⟨⟨ccnt, hcnt⟩, -⟩ := hpriced.undigitizeTokens
+  have hcountF : PolyFueled _ (fun n => rpnTradeCountAt tfP n (lenP n)) :=
+    (htc.comp (PolyFueled.id.pair hcnt)).of_eq fun n => by
+      simp only [Nat.unpair_pair]
+      rfl
+  obtain ⟨⟨cb, hbF⟩, ⟨ci, hiF⟩⟩ := frameBudgetCodes_polyFueled PolyFueled.id hcountF
+  let framed : ℕ → List ℕ := fun n =>
+    digitize (rpnSafeSeparatedFrameOutput tfP lenP (blocks n) ε n
+      (frameBudgetCode n (rpnTradeCountAt tfP n (lenP n)))
+      (frameInverseBudgetCode n (rpnTradeCountAt tfP n (lenP n)))
+      (undigitize (priced n)))
+  have hframed : PolySegStream framed :=
+    rpnSafeSeparatedFrameOutput_polySegStream hpriced hblocksPoly hbF hiF ε
+  apply ec_of_rawSegStream (T.conditionedTranslation ψ ε) hframed
+  intro n
+  -- Abbreviations for the contracted priced stream.
+  set ts : List ℕ := undigitize (priced n) with hts
+  set tokP : ℕ → ℕ := fun w => (unRpn (undigitize (priced w.unpair.1))).getD
+    w.unpair.2 0 with htokP
+  set lenT : ℕ → ℕ := fun m => (unRpn (undigitize (priced m))).length with hlenT
+  have hvts : vpre tfP n (lenP n) = ts := by
+    rw [vpre, hts, htfP, hlenP]
+    simp only [Nat.unpair_pair]
+    exact (list_eq_rangeMap_getD _).symm
+  have hvL : vpre tokP n (lenT n) = unRpn ts := by
+    rw [vpre, hts, htokP, hlenT]
+    simp only [Nat.unpair_pair]
+    exact (list_eq_rangeMap_getD _).symm
+  set q : ℚ := frameBudget n (rpnTradeCountAt tfP n (lenP n)) with hq
+  have hundig : undigitize (framed n) =
+      rpnSafeSeparatedFrameOutput tfP lenP (blocks n) ε n
+        (Encodable.encode q) (Encodable.encode q⁻¹) ts := by
+    show undigitize (digitize _) = _
+    rw [undigitize_digitize, frameBudgetCode_exact, frameInverseBudgetCode_exact]
+  rw [hundig]
+  have hjoin := strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
+    tfP tokP lenP lenT (blocks n) (hblocksParse n) ε q n ts hvts hvL
+  refine strategy_ext_trades ?_
+  rw [hjoin]
+  -- The price pass: the contraction of the priced stream is the token-model rewrite.
+  have horig : strategyOfTokens n (unRpn (undigitize (source n))) = T.strat n :=
+    congrFun (congrArg Trader.strat hcert) n
+  have hprice : (strategyOfTokens n (unRpn ts)).trades =
+      (T.strat n).trades.map fun trade =>
+        (trade.1.retainedConditionPrices ψ ε, trade.2) := by
+    have hraw : ts = rpnGuardedConditionTokens blocks ε n (undigitize (source n)) := by
+      rw [hts]
+      exact undigitize_digitize _
+    rw [hraw, strategyOfTokens_rpnGuardedConditionTokens_trades blocks ψ
+      hblocksParse ε n (undigitize (source n)), horig]
+  have hframes := strategyOfTokens_safeSeparatedFrameTokenOutput_trades
+    tokP lenT (ψ n) ε q n (unRpn ts) hvL.symm
+  rw [hframes]
+  by_cases hempty : (T.strat n).trades = []
+  · rw [hprice, hempty]
+    simp [Trader.conditionedTranslation,
+      Strategy.separatedLocallyGatedConditionalContract]
+    exact hempty
+  · have hpricedNe : (strategyOfTokens n (unRpn ts)).trades ≠ [] := by
+      rw [hprice]
+      simpa using hempty
+    have hdecodePriced :=
+      deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
+        n (unRpn ts) hpricedNe
+    have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
+      (unRpn ts) (strategyOfTokens n (unRpn ts)).trades hdecodePriced
+    have hreadyTokens :
+        EF.streamReadFrom ((List.range (lenT n)).map fun i => tokP (Nat.pair n i))
+            (some EF.streamInitial) =
+          some ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) := by
+      rw [show ((List.range (lenT n)).map fun i => tokP (Nat.pair n i)) =
+        unRpn ts from hvL]
+      exact hreadyPriced
+    have hcountTok : frameTradeCount tokP lenT n = (T.strat n).trades.length := by
+      calc
+        frameTradeCount tokP lenT n =
+            (strategyOfTokens n (unRpn ts)).trades.length :=
+          frameTradeCount_eq_length_of_read tokP lenT n
+            ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) hreadyTokens
+        _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
+    -- the symbol-side trade-run count is exact against the token-side count
+    have hnotUnread : ¬ Unreadable (unRpn ts) := by
+      intro hU
+      rw [hU.deserializeTrades_eq_none] at hdecodePriced
+      simp at hdecodePriced
+    have hcountSym : rpnTradeCountAt tfP n (lenP n) = frameTradeCount tokP lenT n := by
+      have hlenEq : ts.length = lenP n := rfl
+      have := rpnTradeCountAt_eq_frameTradeCount tfP tokP lenT n ts
+        (by rw [hlenEq]; exact hvts) hvL
+      rcases this with h | hU
+      · rw [← h, hlenEq]
+      · exact absurd hU hnotUnread
+    have hpos : 0 < (T.strat n).trades.length := List.length_pos_iff.mpr hempty
+    rw [hprice, hq, hcountSym, hcountTok,
+      frameBudget_eq n (T.strat n).trades.length hpos]
+    simp only [List.map_map]
+    change
+      ((T.strat n).trades.map fun p =>
+        frameLeg false (ψ n) ε
+          (Strategy.localConditioningBudget (conditioningBudget n)
+            (T.strat n).trades.length) n
+          (p.1.retainedConditionPrices ψ ε, p.2)) ++
+        ((T.strat n).trades.map fun p =>
+          frameLeg true (ψ n) ε
+            (Strategy.localConditioningBudget (conditioningBudget n)
+              (T.strat n).trades.length) n
+            (p.1.retainedConditionPrices ψ ε, p.2)) =
+        ((T.conditionedTranslation ψ ε).strat n).trades
+    simp only [frameLeg_retained_eq_locallyGatedFirstLeg,
+      frameLeg_retained_eq_locallyGatedSecondLeg]
+    rfl
 
+#print axioms conditionedTranslation_preserves_ecRpn
+
+/-! ### Endpoint statement (open, recorded — not sorried)
+
+The remaining endpoint is stated here as a comment rather than a sorried theorem so the
+mainline keeps its strict no-`sorryAx` guarantee for public statements.
+
+```
 theorem eventualConditionedTranslation_preserves_ecRpn
     {P : History} {ψ : ℕ → Sentence}
     (F : EventualConditioningFloor P ψ) (hψ : RpnSentenceCodes ψ)
