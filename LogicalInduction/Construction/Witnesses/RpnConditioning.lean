@@ -4119,6 +4119,72 @@ theorem strategyOfTokens_unRpn_rpnFrameOutput_trades (second : Bool) (blkψ : Li
 #print axioms frameAgree_unRpn_rpnFrameOutput
 #print axioms strategyOfTokens_unRpn_rpnFrameOutput_trades
 
+/-! ### Per-position view of the frame pass
+
+The frame pass drives the price pass's automaton and buffer, so its per-position
+views are literally `rpnCondControlAt` / `rpnCondWindow`; only the emission differs. -/
+
+/-- One source-token segment of the frame rewrite. -/
+def rpnFrameSegment (tf : ℕ → ℕ) (second : Bool) (blkψ : List ℕ) (ε : ℚ)
+    (day bc ibc : ℕ) (z : ℕ) : List ℕ :=
+  rpnFrameEmitAt second blkψ ε day bc ibc
+    (rpnCondControlAt tf z.unpair.1 z.unpair.2)
+    (rpnCondWindow tf z.unpair.1 z.unpair.2) (tf z)
+
+/-- **Range form of the frame rewrite**: over the per-position view of any stream, the
+transducer's final state is the position control, its buffer the position window, and
+its output the concatenation of the per-position segments. -/
+lemma rpnFrameRun_range (tf : ℕ → ℕ) (second : Bool) (blkψ : List ℕ) (ε : ℚ)
+    (day bc ibc : ℕ) (n count : ℕ) :
+    rpnFrameRun second blkψ ε day bc ibc (rcPack 0 0 0, [])
+        ((List.range count).map fun j => tf (Nat.pair n j)) =
+      ((rpnCondControlAt tf n count, rpnCondWindow tf n count),
+        (List.range count).flatMap fun j =>
+          rpnFrameSegment tf second blkψ ε day bc ibc (Nat.pair n j)) := by
+  induction count with
+  | zero => simp [rpnCondControlAt]
+  | succ count ih =>
+      rw [List.range_succ, List.map_append, rpnFrameRun_append, ih]
+      simp only [List.map_cons, List.map_nil,
+        List.flatMap_append, List.flatMap_cons, List.flatMap_nil,
+        List.append_nil]
+      rw [show rpnFrameRun second blkψ ε day bc ibc
+          (rpnCondControlAt tf n count, rpnCondWindow tf n count)
+          [tf (Nat.pair n count)] =
+        ((rpnCondStep (rpnCondControlAt tf n count) (tf (Nat.pair n count)),
+          rpnCondBuf (rpnCondControlAt tf n count) (rpnCondWindow tf n count)
+            (tf (Nat.pair n count))),
+          rpnFrameEmitAt second blkψ ε day bc ibc (rpnCondControlAt tf n count)
+            (rpnCondWindow tf n count) (tf (Nat.pair n count)) ++ []) from rfl]
+      rw [rpnCondBuf_window,
+        show rpnCondStep (rpnCondControlAt tf n count) (tf (Nat.pair n count)) =
+          rpnCondControlAt tf n (count + 1) from rfl]
+      simp only [List.append_nil]
+      refine congrArg₂ Prod.mk rfl (congrArg₂ (· ++ ·) rfl ?_)
+      rw [rpnFrameSegment]
+      simp only [Nat.unpair_pair]
+
+/-- The frame segment through the position control, in dispatch form (the shape the
+poly-fueled assembly consumes: a three-way branch on the control mode, with the
+emission fired at a trade-run exit). -/
+lemma rpnFrameSegment_eq (tf : ℕ → ℕ) (second : Bool) (blkψ : List ℕ) (ε : ℚ)
+    (day bc ibc : ℕ) (n j : ℕ) :
+    rpnFrameSegment tf second blkψ ε day bc ibc (Nat.pair n j) =
+      if rcMode (rpnCondControlAt tf n j) = 0 ∧ tf (Nat.pair n j) = 6 then []
+      else if rcMode (rpnCondControlAt tf n j) = 4 ∨
+          rcMode (rpnCondControlAt tf n j) = 7 then
+        (if rcMode (rpnCondControlAt tf n (j + 1)) = 0 then
+          rpnFrameEmit second blkψ ε day bc ibc
+            (rpnCondWindow tf n j ++ [tf (Nat.pair n j)])
+        else [])
+      else [tf (Nat.pair n j)] := by
+  rw [rpnFrameSegment]
+  simp only [Nat.unpair_pair, rpnFrameEmitAt]
+  rfl
+
+#print axioms rpnFrameRun_range
+#print axioms rpnFrameSegment_eq
+
 /-! ### Endpoint statements (open, recorded — not sorried)
 
 The two target endpoints are stated here as comments rather than sorried theorems so

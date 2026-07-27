@@ -187,6 +187,14 @@ commutation** are LANDED, green + axiom-clean:
   contraction of the symbol frame output decodes to the same validated strategy as
   the token-model frame output of the contraction, on every stream.
 
+* Per-position view for the certificate: `rpnFrameSegment` +
+  **`rpnFrameRun_range`** (final state = `rpnCondControlAt`, buffer =
+  `rpnCondWindow`, output = flatMap of the segments — the exact mirror of
+  `rpnConditionRun_range`, and it reuses `rpnCondBuf_window` verbatim) and
+  `rpnFrameSegment_eq` (the three-way dispatch form the poly-fueled assembly
+  consumes: base-mode `6` ⇒ `[]`, trade modes ⇒ emission iff the successor control
+  mode is `0`, otherwise copy).
+
 Gotcha added: `0 :: blk ++ [d]` parses as `(0 :: blk) ++ [d]` (`::` binds tighter
 than `++`) — chunk-peel lemmas must parenthesise `0 :: (blk ++ [d])` or the
 `List.foldl_cons` rewrites silently miss.
