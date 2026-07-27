@@ -8,8 +8,8 @@ import Mathlib.Computability.Halting
 This file records what a *computably enumerable* family of nested bit prefixes can and
 cannot do against a universal continuous semimeasure.
 
-The intended target of the tranche was to inhabit `StrictSeparatorPresentation`
-(`Properties/UniversalSemimeasure.lean`), whose fields ask for
+**History.**  `StrictSeparatorPresentation` (`Properties/UniversalSemimeasure.lean`) was
+once shaped as a *nested prefix family*:
 
 * `prefixes : ℕ → List Bool`, nested, with lengths tending to infinity,
 * an `EfficientRepeatedEnumeration` of the associated prefix sentences, and
@@ -19,7 +19,9 @@ The intended target of the tranche was to inhabit `StrictSeparatorPresentation`
 as the prefix strings admit a computable enumeration — which is exactly what
 `EfficientRepeatedEnumeration` supplies once the prefix syntax can be decoded (its
 `sequence` is emitted by a program, and its `sound`/`covers` fields say the emitted
-sentences are precisely the `prefixSentence (prefixes i)`).
+sentences are precisely the `prefixSentence (prefixes i)`).  That is why the interface now
+carries a c.e. *constraint theory* plus per-stage consistent classes instead; this file
+keeps the obstruction so the abandoned shape stays refuted rather than merely deprecated.
 
 The argument is elementary and does not even need the lengths to grow.  A computable
 enumeration of a *nested* (pairwise comparable) family of strings carries a
@@ -33,7 +35,7 @@ The reusable pieces are `ceNestedSemimeasure` (a concrete inhabitant of
 `LowerSemicomputableContinuousSemimeasure`) and `exists_code_evaln_of_computable` (any
 computable `ℕ × List Bool → ℚ` meets the bounded-fuel `approximation_computes` interface).
 
-## Consequence for the boundary
+## Consequence for the boundary (acted on)
 
 The paper's proof (`app:strict`) never claims mass vanishes along one computable branch.
 It applies Uniform Non-Dogmatism to the c.e. *constraint theory* of a recursively
@@ -413,23 +415,8 @@ theorem no_ce_null_prefix_family (M : UniversalContinuousSemimeasure)
   obtain ⟨N, hN⟩ := eventually_atTop.1 hev
   exact absurd (hN N le_rfl) (not_lt.2 (hall N))
 
-/-- **`StrictSeparatorPresentation` is unsatisfiable for a computably enumerable prefix
-family.**  Its `repetition` field asserts precisely that the prefix *sentences* are
-enumerated by a program; whenever those sentences can be decoded back to their strings —
-as they can for the concrete `bitPrefixSentence` syntax — the hypothesis below is met and
-the presentation cannot exist.
-Paper node: `thm:strict` -/
-theorem strictSeparatorPresentation_not_ce
-    {M : UniversalContinuousSemimeasure} {DP : DeductiveProcess}
-    {B : BitPrefixSentences DP} (S : StrictSeparatorPresentation M B)
-    (henum : Computable enum)
-    (hsound : ∀ j, ∃ i, enum j = S.prefixes i)
-    (hcov : ∀ i, ∃ j, enum j = S.prefixes i) : False :=
-  no_ce_null_prefix_family M S.prefixes S.nested henum hsound hcov S.mass_tendsto_zero
-
 #print axioms ceNestedSemimeasure
 #print axioms exists_pos_mass_of_ce_nested
 #print axioms no_ce_null_prefix_family
-#print axioms strictSeparatorPresentation_not_ce
 
 end LogicalInduction

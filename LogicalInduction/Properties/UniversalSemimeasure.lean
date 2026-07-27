@@ -7,6 +7,7 @@ one path may retain mass `1` through infinitely many prefixes, so `thm:dus` cann
 reduced to ordinary sentence prefix complexity with a fixed coding constant.
 -/
 import LogicalInduction.Properties.OccamBounds
+import LogicalInduction.Properties.LimitCoherence
 
 namespace LogicalInduction
 
@@ -2013,54 +2014,93 @@ theorem lic_domination_universalSemimeasure
 
 /-! ## Strict Domination of the Universal Semimeasure (`thm:strict`)
 
-Formerly `StrictSemimeasure.lean`.  The market argument is separated from the
-computability-theory separator construction; the latter is the disclosed
-`M7-STRICT-SEPARATORS` boundary, which supplies the nested finite separator prefixes,
-their efficient repetition, joint realizability, and the `mass_tendsto_zero` theorem.
-No market price or strict-domination conclusion occurs in that boundary. -/
+The market argument is separated from the computability-theory separator construction;
+the latter is the disclosed `M7-STRICT-SEPARATORS` boundary.  No market price or
+strict-domination conclusion occurs in that boundary.
+
+The separator data is the paper's (`app:strict`): a **c.e. constraint theory** — one
+single-bit constraint for each code enumerated into one half of a recursively inseparable
+pair — together with, at each stage, the finite class of bit strings still consistent with
+the constraints decided so far.  Undecided bits stay free, so the constraints never
+assemble into a single nested prefix family.  That earlier shape is not merely
+inconvenient, it is uninhabitable: see `no_ce_null_prefix_family` in
+`Construction/Witnesses/StrictSeparators.lean`, which shows a nested prefix family with a
+computable enumeration always keeps positive universal-semimeasure mass. -/
 
 open Filter Topology
 
 /-- Concrete interface to the recursively-inseparable separator class used in the paper's
-proof of Strict Domination.  `mass_tendsto_zero` is the precise computability-theory fact
-to be instantiated from disjoint c.e. sets with no computable separator; the remaining
-fields expose the finite prefix theory and its legal syntax preprocessing.
+proof of Strict Domination.  `mass_class_tendsto_zero` is the precise computability-theory
+fact to be instantiated from disjoint c.e. sets with no computable separator: the universal
+semimeasure gives the stage-`n` separator class vanishing total mass.  The remaining fields
+expose the constraint theory, its legal syntax preprocessing, and the finite class data.
 Paper node: `thm:strict` -/
 structure StrictSeparatorPresentation
     (M : UniversalContinuousSemimeasure) {DP : DeductiveProcess}
     (B : BitPrefixSentences DP) where
-  prefixes : ℕ → List Bool
-  nested : ∀ i, ∃ rest, prefixes (i + 1) = prefixes i ++ rest
-  length_tendsto_atTop : Tendsto (fun i ↦ (prefixes i).length) atTop atTop
-  repetition : EfficientRepeatedEnumeration
-    (fun i ↦ B.prefixSentence (prefixes i))
+  /-- Stage-`n` conjunction of the separator constraints decided by stage `n`. -/
+  constraint : ℕ → Sentence
+  /-- The constraint theory is computably enumerable, in the paper's preprocessed form. -/
+  repetition : EfficientRepeatedEnumeration constraint
+  /-- Every finite deductive stage admits a world satisfying the whole constraint theory. -/
   jointly_possible : ∀ n, ∃ v : PCWorld,
-    v.ConsistentWith (DP.D n) ∧
-      ∀ i, v.Holds (B.prefixSentence (prefixes i))
-  mass_tendsto_zero : Tendsto (fun i ↦ M.mass (prefixes i)) atTop (𝓝 0)
+    v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (constraint i)
+  /-- The finite class of bit strings consistent with the stage-`n` constraints. -/
+  consistentAt : ℕ → List (List Bool)
+  /-- Every world satisfying the stage-`n` constraint realizes a member of that class. -/
+  class_covers : ∀ n (v : PCWorld), v.Holds (constraint n) →
+    ∃ σ ∈ consistentAt n, v.Holds (B.prefixSentence σ)
+  /-- The universal semimeasure gives the separator classes vanishing total mass. -/
+  mass_class_tendsto_zero :
+    Tendsto (fun n ↦ ((consistentAt n).map M.mass).sum) atTop (𝓝 0)
 
-/-- General market half of the strict-domination proof. A uniformly possible prefix
-theory whose semimeasure mass vanishes has limiting probability bounded below by Uniform
-Non-Dogmatism, hence beats every fixed multiple of that semimeasure somewhere. -/
-lemma strict_domination_of_null_prefix_theory
+/-- General market half of the strict-domination proof.  Uniform Non-Dogmatism puts a fixed
+positive floor under every stage of the constraint theory; limit coherence spreads that
+floor over the stage's finite consistent class; and vanishing class mass then forces some
+member of the class to beat any fixed multiple of its semimeasure mass. -/
+lemma strict_domination_of_null_separator_class
     {DP : DeductiveProcess}
     {M : UniversalContinuousSemimeasure}
     {B : BitPrefixSentences DP}
     (P : History) [IsLogicalInductor P DP]
     (S : StrictSeparatorPresentation M B) :
-    ∀ C : ℝ, 0 < C → ∃ i,
-      C * M.mass (S.prefixes i) <
-        limitingBelief P (B.prefixSentence (S.prefixes i)) := by
+    ∀ C : ℝ, 0 < C → ∃ σ : List Bool,
+      C * M.mass σ < limitingBelief P (B.prefixSentence σ) := by
+  have hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) := by
+    intro n
+    obtain ⟨v, hv, -⟩ := S.jointly_possible n
+    exact ⟨v, hv⟩
+  have hgaif := lic_limitingBelief_gaifman P DP hworld
   obtain ⟨ε, hε, hlower⟩ := lic_uniform_nonDogmatism P DP
-    (fun i ↦ B.prefixSentence (S.prefixes i)) S.repetition
-    S.jointly_possible
+    S.constraint S.repetition S.jointly_possible
   intro C hC
-  have hscaled : Tendsto (fun i ↦ C * M.mass (S.prefixes i)) atTop (𝓝 0) := by
-    simpa using S.mass_tendsto_zero.const_mul C
-  have hevent : ∀ᶠ i in atTop, C * M.mass (S.prefixes i) < ε :=
-    (tendsto_order.1 hscaled).2 ε hε
-  obtain ⟨N, hN⟩ := Filter.eventually_atTop.1 hevent
-  exact ⟨N, (hN N le_rfl).trans_le (hlower N)⟩
+  by_contra hno
+  push_neg at hno
+  have hscaled : Tendsto (fun n ↦ C * ((S.consistentAt n).map M.mass).sum) atTop (𝓝 0) := by
+    simpa using S.mass_class_tendsto_zero.const_mul C
+  obtain ⟨N, hN⟩ := Filter.eventually_atTop.1 ((tendsto_order.1 hscaled).2 ε hε)
+  have hsmall : C * ((S.consistentAt N).map M.mass).sum < ε := hN N le_rfl
+  -- Limit coherence: the stage-`N` constraint is covered by its consistent class.
+  have hcover : limitingBelief P (S.constraint N) ≤
+      (((S.consistentAt N).map (fun σ ↦ B.prefixSentence σ)).map (limitingBelief P)).sum :=
+    GaifmanCoherent.le_sum_of_covers hgaif (by
+      intro v hv
+      obtain ⟨σ, hσ, hvσ⟩ := S.class_covers N v hv
+      exact ⟨B.prefixSentence σ, List.mem_map_of_mem hσ, hvσ⟩)
+  rw [List.map_map] at hcover
+  -- Each member is dominated by its scaled semimeasure mass, by assumption.
+  have hterm : ((S.consistentAt N).map
+      (limitingBelief P ∘ fun σ ↦ B.prefixSentence σ)).sum ≤
+      ((S.consistentAt N).map (fun σ ↦ C * M.mass σ)).sum :=
+    List.sum_le_sum (fun σ _ ↦ hno σ)
+  have hscale : ((S.consistentAt N).map (fun σ ↦ C * M.mass σ)).sum =
+      C * ((S.consistentAt N).map M.mass).sum := by
+    induction S.consistentAt N with
+    | nil => simp
+    | cons σ l ih => simp [ih, mul_add]
+  have hfloor : ε ≤ limitingBelief P (S.constraint N) := hlower N
+  rw [hscale] at hterm
+  linarith
 
 /-- **Strict Domination of the Universal Semimeasure** (`thm:strict`). The universal
 continuous semimeasure does not dominate the logical inductor's limiting prefix beliefs.
@@ -2074,10 +2114,10 @@ theorem lic_strict_domination_universalSemimeasure
     ∀ C : ℝ, 0 < C → ∃ σ : List Bool,
       limitingBelief P (B.prefixSentence σ) > C * M.mass σ := by
   intro C hC
-  obtain ⟨i, hi⟩ := strict_domination_of_null_prefix_theory P S C hC
-  exact ⟨S.prefixes i, hi⟩
+  obtain ⟨σ, hσ⟩ := strict_domination_of_null_separator_class P S C hC
+  exact ⟨σ, hσ⟩
 
-#print axioms strict_domination_of_null_prefix_theory
+#print axioms strict_domination_of_null_separator_class
 #print axioms lic_strict_domination_universalSemimeasure
 
 end LogicalInduction
