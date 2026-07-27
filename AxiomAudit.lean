@@ -164,6 +164,22 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   invalidBit_polyFueled prefixSentenceEnum_polySentenceCodes prefixApprox_polyRatCodes
   lic_occam_lower_ofPrefixMachine lic_occamBounds_ofPrefixMachine
 
+-- Construction/Witnesses/UniversalPrefix.lean (Tranche U stage 3: the self-delimiting
+-- UNIVERSAL prefix machine).  `dom U` is prefix-free by construction, so the Kraft field
+-- needs no hypothesis; `kappaU_le_of_prefixMachine` is the invariance theorem that earns
+-- the word "universal"; `uSel_polyRatCodes` builds the polynomial clock (the self-clamped
+-- `evaln` selection of `M7-DUS-APPROX`) on top of the exact stage table.  The two
+-- endpoints carry ONE conclusion-free operational input, `UniversalPrefixComputation` —
+-- a code for the exact stage table (a computability claim about a bounded search; no
+-- complexity content).  Disclosed in the structure's docstring and in the README.
+#assert_axioms_clean
+  UPrefix.UHalt_prefixFree UPrefix.UHalt_functional UPrefix.acc_antichain
+  UPrefix.kappaU_kraft UPrefix.kappaUNegationCompiler
+  UPrefix.kappaU_le_of_prefixMachine UPrefix.kappaStage_eventually_eq
+  UPrefix.uSel_polyRatCodes UPrefix.universalPrefixPresentation
+  UPrefix.universalPrefixThresholdEmission
+  UPrefix.lic_occam_lower_ofUniversalPrefix UPrefix.lic_occamBounds_ofUniversalPrefix
+
 -- Properties/Conditioning.lean, Properties/FinitePerturbations.lean
 #assert_axioms_clean
   lic_conditioned lic_conditioned_gated lic_conditioned_eventual
@@ -568,6 +584,8 @@ deliberately. -/
   sentence sentence_codes approximation approximation_codes approximation_nonneg approximation_le approximation_tendsto kraft covers
 #assert_fields PrefixNegationCompiler
   overhead complexity_neg_le
+#assert_fields UPrefix.UniversalPrefixComputation
+  code eval_eq
 #assert_fields PseudorandomFrequencyInfrastructure
   clock
 #assert_fields QuotationTheoryPresentation

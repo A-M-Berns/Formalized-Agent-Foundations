@@ -9,6 +9,7 @@ never needs this folder.
 -/
 import LogicalInduction.Construction.Witnesses.KraftInequality
 import LogicalInduction.Construction.Witnesses.PrefixMachine
+import LogicalInduction.Construction.Witnesses.UniversalPrefix
 import LogicalInduction.Construction.Witnesses.UniversalDovetailer
 import LogicalInduction.Construction.Witnesses.M7Witnesses
 import LogicalInduction.Construction.Witnesses.HistoricalMaturity
