@@ -180,7 +180,7 @@ lemma accOK_guard {t : ℕ} {L : List (ℕ × List Bool)} (h : accOK t L = true)
   · exact ⟨by simpa using h1, by simpa using h2⟩
 
 /-- The accepted strings of each machine form an antichain — the prefix-freeness that the
-Kraft budget rests on, built in rather than assumed. -/
+Kraft budget rests on, built in rather than assumed. Paper node: `thm:ob` -/
 lemma acc_antichain : ∀ (t : ℕ) (p q : ℕ × List Bool), p ∈ acc t → q ∈ acc t →
     p.1 = q.1 → p.2 <+: q.2 → p = q
   | 0 => by simp [acc]
@@ -259,7 +259,7 @@ lemma natCode_append_prefix {e e' : ℕ} {w w' : List Bool}
   subst he
   exact ⟨rfl, List.prefix_append_right_inj _ |>.mp h⟩
 
-/-- `U` is a partial *function*. -/
+/-- `U` is a partial *function*. Paper node: `thm:ob` -/
 lemma UHalt_functional : ∀ (v : List Bool) (y y' : ℕ), UHalt v y → UHalt v y' → y = y'
   | [], _, _, h, _ => absurd h (by simp [UHalt])
   | false :: _, _, _, h, h' => by
@@ -281,7 +281,7 @@ lemma UHalt_functional : ∀ (v : List Bool) (y y' : ℕ), UHalt v y → UHalt v
       subst hww
       exact Part.mem_unique hy hy'
 
-/-- **`dom U` is prefix-free** — by construction, not by hypothesis. -/
+/-- **`dom U` is prefix-free** — by construction, not by hypothesis. Paper node: `thm:ob` -/
 lemma UHalt_prefixFree : ∀ (n : ℕ) (v v' : List Bool) (y y' : ℕ), v.length ≤ n →
     UHalt v y → UHalt v' y' → v <+: v' → v = v' := by
   intro n
@@ -548,7 +548,7 @@ lemma kappaStage_antitone {n m y : ℕ} (h : n ≤ m) : kappaStage m y ≤ kappa
   exact Nat.add_le_add_right (hlen ▸ Nat.sInf_le ⟨v, UHaltBy_mono v n m _ h hv, rfl⟩) 1
 
 /-- The stage table is *eventually exact*: the shortest codeword is discovered at some
-finite stage, and from then on the table reports the true complexity. -/
+finite stage, and from then on the table reports the true complexity. Paper node: `thm:ob` -/
 lemma kappaStage_eventually_eq (φ : Sentence) :
     ∀ᶠ n in atTop, kappaStage n (Encodable.encode φ) = kappaU φ := by
   obtain ⟨n₀, hn₀⟩ := UHaltBy_of_UHalt (uWord φ) _ (uWord_halt φ)
@@ -1005,7 +1005,7 @@ def uLenList (n y : ℕ) : List ℕ :=
   (wordsUpto ((natCode y).length + 1)).filterMap
     (fun v => if uVal n v = some y then some v.length else none)
 
-/-- The exact from-below stage value, as a bounded search. -/
+/-- The exact from-below stage value, as a bounded search. Paper node: `thm:ob` -/
 def uMinLen (n y : ℕ) : ℕ := (uLenList n y).foldr min ((natCode y).length + 1)
 
 lemma foldr_min_le : ∀ (l : List ℕ) (d a : ℕ), a ∈ l → l.foldr min d ≤ a
@@ -1034,6 +1034,8 @@ lemma mem_uLenList {n y m : ℕ} (h : m ∈ uLenList n y) :
     exact ⟨v, (uVal_spec n v y).mp hc, by simpa using hv⟩
   · rw [if_neg hc] at hv; simp at hv
 
+/-- The bounded search computes exactly the stage-`n` minimum codeword length.
+Paper node: `thm:ob` -/
 lemma uMinLen_eq (n y : ℕ) : uMinLen n y = sInf (uLenSetBy n y) := by
   have hdefault : ((natCode y).length + 1) ∈ uLenSetBy n y :=
     ⟨false :: natCode y, by simp [UHaltBy, natVal_natCode], by simp⟩
@@ -1069,7 +1071,7 @@ lemma uMinLen_prim : Primrec₂ uMinLen := by
       (Primrec.snd.comp Primrec.snd))
   exact Primrec₂.mk ((Primrec.list_foldr hlist hL hmin).of_eq (fun p => rfl))
 
-/-! ### The emission program -/
+/-! ### The emission program Paper node: `thm:ob` -/
 
 lemma encodeEnum_prim : Primrec (fun i => Encodable.encode (prefixSentenceEnum i)) := by
   have hinv : Primrec invalidBit := invalidBit_polyFueled.choose_spec.primrec
@@ -1089,6 +1091,8 @@ lemma uApprox_eq_halfPow (n i : ℕ) :
   rw [div_pow]
   norm_num
 
+/-- The exact stage-table emission is primitive recursive.
+Paper node: `thm:ob` -/
 lemma uEmit_prim : Primrec uEmit := by
   have hj : Primrec (fun z : ℕ => z.unpair.1) := Primrec.fst.comp Primrec.unpair
   have hi : Primrec (fun z : ℕ => z.unpair.2) := Primrec.snd.comp Primrec.unpair
