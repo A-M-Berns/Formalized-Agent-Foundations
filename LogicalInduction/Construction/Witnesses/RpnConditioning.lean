@@ -3024,6 +3024,325 @@ theorem strategyOfTokens_rpnGuardedConditionTokens_trades
 #print axioms strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay
 #print axioms strategyOfTokens_rpnGuardedConditionTokens_trades
 
+/-! ## Budget exactness: symbol-level trade counting
+
+The frame pass's budget is `frameBudget n (frameTradeCount …)`, and the digit model
+reads that count off the **contracted** stream, so the symbol-level count must be
+*exact*, not merely an over-approximation.  It is — except on streams whose
+contraction is unreadable, where both validated strategies are empty and the budget
+never reaches a trade.  The invariant is therefore the same disjunctive shape as
+`FrameAgree`, and every poison branch discharges it immediately (a poisoned chunk
+contracts to `[0, 0]` / `[6, 0]`, which are `Unreadable`). -/
+
+/-- Trade-run exits along a stream, from a given control state. -/
+def rpnTradeRuns (st : ℕ) : List ℕ → ℕ
+  | [] => 0
+  | t :: ts =>
+      (if (rcMode st = 4 ∨ rcMode st = 7) ∧ rcMode (rpnCondStep st t) = 0
+        then 1 else 0) + rpnTradeRuns (rpnCondStep st t) ts
+
+/-- Completed trades along a contracted stream, from a given freeze mode. -/
+def tokTradeRuns (m : ℕ) : List ℕ → ℕ
+  | [] => 0
+  | t :: L => (if m = 4 then 1 else 0) + tokTradeRuns (freezeMode4Step m t) L
+
+lemma rpnTradeRuns_append (st : ℕ) (xs ys : List ℕ) :
+    rpnTradeRuns st (xs ++ ys) =
+      rpnTradeRuns st xs + rpnTradeRuns (List.foldl rpnCondStep st xs) ys := by
+  induction xs generalizing st with
+  | nil => simp [rpnTradeRuns]
+  | cons t ts ih => simp only [List.cons_append, rpnTradeRuns, ih, List.foldl_cons]
+                    omega
+
+lemma tokTradeRuns_append (m : ℕ) (xs ys : List ℕ) :
+    tokTradeRuns m (xs ++ ys) =
+      tokTradeRuns m xs + tokTradeRuns (List.foldl freezeMode4Step m xs) ys := by
+  induction xs generalizing m with
+  | nil => simp [tokTradeRuns]
+  | cons t ts ih => simp only [List.cons_append, tokTradeRuns, ih, List.foldl_cons]
+                    omega
+
+/-- No exit fires along a stretch whose positions never complete a trade run. -/
+lemma rpnTradeRuns_eq_zero (st : ℕ) (ts : List ℕ)
+    (h : ∀ k < ts.length,
+      ¬((rcMode (List.foldl rpnCondStep st (ts.take k)) = 4 ∨
+          rcMode (List.foldl rpnCondStep st (ts.take k)) = 7) ∧
+        rcMode (List.foldl rpnCondStep st (ts.take (k + 1))) = 0)) :
+    rpnTradeRuns st ts = 0 := by
+  induction ts generalizing st with
+  | nil => rfl
+  | cons t ts ih =>
+      have h0 := h 0 (by simp)
+      simp only [List.take_zero, List.foldl_nil, List.take_succ_cons,
+        List.foldl_cons] at h0
+      rw [rpnTradeRuns, if_neg h0,
+        ih (rpnCondStep st t) (fun k hk => by
+          have := h (k + 1) (by simp only [List.length_cons]; omega)
+          rwa [List.take_succ_cons, List.foldl_cons, List.take_succ_cons,
+            List.foldl_cons] at this)]
+
+/-- A complete price block contains no trade-run exit. -/
+lemma rpnTradeRuns_price_block {b : List ℕ} {φ : Sentence}
+    (hb : parseRpn b.length b = some (φ, [])) :
+    rpnTradeRuns (rcPack 1 1 0) b = 0 := by
+  obtain ⟨-, hinv⟩ := foldl_rpnCondStep_price_block hb
+  exact rpnTradeRuns_eq_zero _ _ fun k hk => by
+    have := hinv k hk
+    omega
+
+/-- A complete trade block contains exactly one trade-run exit. -/
+lemma rpnTradeRuns_trade_block {b : List ℕ} {φ : Sentence}
+    (hb : parseRpn b.length b = some (φ, [])) :
+    rpnTradeRuns (rcPack 4 1 0) b = 1 := by
+  obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_trade_block hb
+  have hne : b ≠ [] := by
+    intro hnil
+    have := parseRpn_length_lt b.length b φ [] hb
+    rw [hnil] at this
+    simp at this
+  rcases List.eq_nil_or_concat' b with rfl | ⟨init, last, rfl⟩
+  · exact absurd rfl hne
+  · have hlen : (init ++ [last]).length = init.length + 1 := by simp
+    have hzero : rpnTradeRuns (rcPack 4 1 0) init = 0 :=
+      rpnTradeRuns_eq_zero _ _ fun k hk => by
+        have hk2 : k + 1 < (init ++ [last]).length := by rw [hlen]; omega
+        have := hinv (k + 1) hk2
+        rw [List.take_append_of_le_length (by omega)] at this
+        omega
+    have hmodeInit : rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 4 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 7 := by
+      have := hinv init.length (by rw [hlen]; omega)
+      rwa [List.take_append_of_le_length le_rfl, List.take_length] at this
+    have hstepLast :
+        rpnCondStep (List.foldl rpnCondStep (rcPack 4 1 0) init) last =
+          rcPack 0 0 0 := by
+      have hw := hwalk
+      rw [List.foldl_append] at hw
+      simpa using hw
+    rw [rpnTradeRuns_append, hzero, rpnTradeRuns, rpnTradeRuns, hstepLast,
+      if_pos ⟨hmodeInit, by simp [rcMode, rcPack]⟩]
+
+/-- **Symbol-level trade counting is exact on readable streams**: the trade-run exits
+of a stream and the completed trades of its contraction agree, unless the contraction
+is unreadable (in which case the validated strategy — and hence the frame budget — is
+empty on both sides).
+Paper node: `thm:scon` -/
+theorem tradeRuns_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
+    rpnTradeRuns (rcPack 0 0 0) ts = tokTradeRuns 0 (unRpn ts) ∨
+      Unreadable (unRpn ts) := by
+  intro N
+  induction N with
+  | zero =>
+      intro ts hts
+      obtain rfl : ts = [] := List.eq_nil_of_length_eq_zero (by omega)
+      exact Or.inl rfl
+  | succ N ih =>
+      intro ts hts
+      match ts with
+      | [] => exact Or.inl rfl
+      | t :: rest =>
+          simp only [List.length_cons] at hts
+          by_cases ht0 : t = 0
+          · subst ht0
+            cases hp : parseRpn rest.length rest with
+            | none =>
+                refine Or.inr ?_
+                rw [show unRpn (0 :: rest) = [0, 0] by
+                  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl, hp]]
+                exact unreadable_price_poison
+            | some pr =>
+                obtain ⟨φ, r1⟩ := pr
+                obtain ⟨blk, heq, hblk⟩ := parseRpn_strip rest.length rest hp
+                obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_price_block hblk
+                match r1 with
+                | [] =>
+                    rw [List.append_nil] at heq
+                    subst heq
+                    refine Or.inl ?_
+                    rw [show unRpn (0 :: rest) = [0, Encodable.encode φ] by
+                      rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+                        hblk]]
+                    rw [rpnTradeRuns, rpnCondStep_base_price,
+                      if_neg (by simp [rcMode, rcPack]),
+                      rpnTradeRuns_price_block hblk]
+                    simp [tokTradeRuns, freezeMode4Step]
+                | d :: r2 =>
+                    subst heq
+                    have hr2 : r2.length ≤ N := by
+                      have hlt := parseRpn_length_lt _ _ _ _ hp
+                      simp only [List.length_cons] at hlt
+                      omega
+                    have hcount : rpnTradeRuns (rcPack 0 0 0)
+                        (0 :: (blk ++ d :: r2)) =
+                        rpnTradeRuns (rcPack 0 0 0) r2 := by
+                      rw [rpnTradeRuns, rpnCondStep_base_price,
+                        if_neg (by simp [rcMode, rcPack]),
+                        rpnTradeRuns_append, rpnTradeRuns_price_block hblk, hwalk,
+                        rpnTradeRuns,
+                        show rpnCondStep (rcPack 2 0 blk.length) d = rcPack 0 0 0 from
+                          rpnCondStep_fallback _ _ (by simp [rcMode, rcPack])
+                            (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
+                            (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]),
+                        if_neg (by simp [rcMode, rcPack])]
+                      omega
+                    rw [unRpn_price_chunk_block hblk d r2, hcount]
+                    have hchunk : List.foldl freezeMode4Step 0
+                        [0, Encodable.encode φ, d] = 0 := by
+                      simp [freezeMode4Step]
+                    rcases ih r2 hr2 with hEq | hU
+                    · refine Or.inl ?_
+                      rw [show (0 :: Encodable.encode φ :: d :: unRpn r2) =
+                        [0, Encodable.encode φ, d] ++ unRpn r2 from rfl,
+                        tokTradeRuns_append, hchunk, hEq]
+                      simp [tokTradeRuns, freezeMode4Step]
+                    · refine Or.inr ?_
+                      rw [show (0 :: Encodable.encode φ :: d :: unRpn r2) =
+                        [0, Encodable.encode φ, d] ++ unRpn r2 from rfl]
+                      exact hU.cons_chunk hchunk
+          · by_cases ht6 : t = 6
+            · subst ht6
+              cases hp : parseRpn rest.length rest with
+              | none =>
+                  refine Or.inr ?_
+                  rw [show unRpn (6 :: rest) = [6, 0] by
+                    rw [unRpn, List.length_cons, unRpnTokens_cons,
+                      if_neg (by norm_num), if_pos rfl, hp]]
+                  exact unreadable_trade_poison
+              | some pr =>
+                  obtain ⟨φ, r1⟩ := pr
+                  obtain ⟨blk, heq, hblk⟩ := parseRpn_strip rest.length rest hp
+                  subst heq
+                  obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_trade_block hblk
+                  have hr1 : r1.length ≤ N := by
+                    have hlt := parseRpn_length_lt _ _ _ _ hp
+                    simp only [List.length_cons] at hlt
+                    simp only [List.length_append] at hts
+                    omega
+                  have hcount : rpnTradeRuns (rcPack 0 0 0) (6 :: (blk ++ r1)) =
+                      1 + rpnTradeRuns (rcPack 0 0 0) r1 := by
+                    rw [rpnTradeRuns, rpnCondStep_base_trade,
+                      if_neg (by simp [rcMode, rcPack]),
+                      rpnTradeRuns_append, rpnTradeRuns_trade_block hblk, hwalk]
+                    omega
+                  rw [unRpn_trade_chunk_block hblk r1, hcount]
+                  have hchunk : List.foldl freezeMode4Step 0
+                      [6, Encodable.encode φ] = 0 := by
+                    simp [freezeMode4Step]
+                  rcases ih r1 hr1 with hEq | hU
+                  · refine Or.inl ?_
+                    rw [show (6 :: Encodable.encode φ :: unRpn r1) =
+                      [6, Encodable.encode φ] ++ unRpn r1 from rfl,
+                      tokTradeRuns_append, hchunk, hEq]
+                    simp [tokTradeRuns, freezeMode4Step]
+                  · refine Or.inr ?_
+                    rw [show (6 :: Encodable.encode φ :: unRpn r1) =
+                      [6, Encodable.encode φ] ++ unRpn r1 from rfl]
+                    exact hU.cons_chunk hchunk
+            · by_cases ht1 : t = 1 ∨ t = 7
+              · match rest with
+                | [] =>
+                    refine Or.inl ?_
+                    rcases ht1 with rfl | rfl <;>
+                      simp [unRpn, unRpnTokens, rpnTradeRuns, tokTradeRuns,
+                        freezeMode4Step, rpnCondStep_base, rcMode, rcPack]
+                | c :: r =>
+                    have hr : r.length ≤ N := by
+                      simp only [List.length_cons] at hts
+                      omega
+                    have hstep1 : rpnCondStep (rcPack 0 0 0) t =
+                        rcPack (if t = 1 then 3 else 5) 0 0 := by
+                      rcases ht1 with rfl | rfl <;>
+                        simp [rpnCondStep_base]
+                    have hcount : rpnTradeRuns (rcPack 0 0 0) (t :: c :: r) =
+                        rpnTradeRuns (rcPack 0 0 0) r := by
+                      rw [rpnTradeRuns, hstep1, if_neg (by
+                        rcases ht1 with rfl | rfl <;> simp [rcMode, rcPack]),
+                        rpnTradeRuns,
+                        show rpnCondStep (rcPack (if t = 1 then 3 else 5) 0 0) c =
+                            rcPack 0 0 0 from
+                          rpnCondStep_fallback _ _
+                            (by split <;> simp [rcMode, rcPack])
+                            (by split <;> simp [rcMode, rcPack])
+                            (by split <;> simp [rcMode, rcPack])
+                            (by split <;> simp [rcMode, rcPack])
+                            (by split <;> simp [rcMode, rcPack]),
+                        if_neg (by split <;> simp [rcMode, rcPack])]
+                      omega
+                    rw [unRpn_payload_chunk t c ht1 r, hcount]
+                    have hchunk : List.foldl freezeMode4Step 0 [t, c] = 0 := by
+                      rcases ht1 with rfl | rfl <;> simp [freezeMode4Step]
+                    rcases ih r hr with hEq | hU
+                    · refine Or.inl ?_
+                      rw [show (t :: c :: unRpn r) = [t, c] ++ unRpn r from rfl,
+                        tokTradeRuns_append, hchunk, hEq]
+                      rcases ht1 with rfl | rfl <;>
+                        simp [tokTradeRuns, freezeMode4Step]
+                    · refine Or.inr ?_
+                      rw [show (t :: c :: unRpn r) = [t, c] ++ unRpn r from rfl]
+                      exact hU.cons_chunk hchunk
+              · push_neg at ht1
+                have hrest : rest.length ≤ N := by omega
+                have hcount : rpnTradeRuns (rcPack 0 0 0) (t :: rest) =
+                    rpnTradeRuns (rcPack 0 0 0) rest := by
+                  rw [rpnTradeRuns,
+                    rpnCondStep_base_other t ht0 ht1.1 ht6 ht1.2,
+                    if_neg (by simp [rcMode, rcPack])]
+                  omega
+                rw [unRpn_single_chunk t ⟨ht0, ht1.1, ht6, ht1.2⟩ rest, hcount]
+                have hchunk : List.foldl freezeMode4Step 0 [t] = 0 := by
+                  simp [freezeMode4Step, ht0, ht1.1, ht6, ht1.2]
+                rcases ih rest hrest with hEq | hU
+                · refine Or.inl ?_
+                  rw [show (t :: unRpn rest) = [t] ++ unRpn rest from rfl,
+                    tokTradeRuns_append, hchunk, hEq]
+                  simp [tokTradeRuns, freezeMode4Step, ht0, ht1.1, ht6, ht1.2]
+                · refine Or.inr ?_
+                  rw [show (t :: unRpn rest) = [t] ++ unRpn rest from rfl]
+                  exact hU.cons_chunk hchunk
+
+/-- The position-indexed exit count is the list-level one over the position view. -/
+lemma rpnTradeCountAt_eq_runs (tf : ℕ → ℕ) (n : ℕ) : ∀ J,
+    rpnTradeCountAt tf n J = rpnTradeRuns (rcPack 0 0 0) (vpre tf n J)
+  | 0 => rfl
+  | J + 1 => by
+      rw [rpnTradeCountAt, vpre_succ, rpnTradeRuns_append,
+        rpnTradeCountAt_eq_runs tf n J,
+        ← rpnCondControlAt_eq_foldl,
+        rpnTradeRuns, rpnTradeRuns,
+        show rpnCondStep (rpnCondControlAt tf n J) (tf (Nat.pair n J)) =
+          rpnCondControlAt tf n (J + 1) from rfl]
+      split <;> omega
+
+/-- The token-model trade scan is the list-level count over the position view. -/
+lemma tradeScanAt_eq_runs (tokenFn : ℕ → ℕ) (n : ℕ) : ∀ J,
+    (tradeScanAt tokenFn n J).2 = tokTradeRuns 0 (vpre tokenFn n J)
+  | 0 => rfl
+  | J + 1 => by
+      rw [tradeScanAt, vpre_succ, tokTradeRuns_append,
+        tradeScanAt_eq_runs tokenFn n J, freezeControlNat_fst,
+        show List.foldl freezeMode4Step 0 (vpre tokenFn n J) =
+          freezeMode4 (vpre tokenFn n J) from rfl,
+        tokTradeRuns, tokTradeRuns]
+      split <;> simp [tradeScanAt_eq_runs tokenFn n J]
+
+/-- **The frame budget is exact at symbol level**: the trade-run exit count of a
+symbol-level stream equals the completed-trade count the digit-model frame pass reads
+off the contraction — unless the contraction is unreadable, in which case both
+validated strategies are empty and the budget is irrelevant.
+Paper node: `thm:scon` -/
+theorem rpnTradeCountAt_eq_frameTradeCount (tf tokenFn lenFn : ℕ → ℕ) (n : ℕ)
+    (ts : List ℕ) (hts : vpre tf n ts.length = ts)
+    (hL : vpre tokenFn n (lenFn n) = unRpn ts) :
+    rpnTradeCountAt tf n ts.length = frameTradeCount tokenFn lenFn n ∨
+      Unreadable (unRpn ts) := by
+  rw [rpnTradeCountAt_eq_runs, hts, frameTradeCount, tradeScanNat]
+  simp only [Nat.unpair_pair]
+  rw [tradeScanAt_eq_runs, hL]
+  exact tradeRuns_unRpn_agree ts.length ts le_rfl
+
+#print axioms tradeRuns_unRpn_agree
+#print axioms rpnTradeCountAt_eq_frameTradeCount
+
 /-! ## The frame pass (symbol level) — emission and contraction anchor
 
 The token-model frame transducer (`conditioningFrameTokenRun`) replaces each trade
