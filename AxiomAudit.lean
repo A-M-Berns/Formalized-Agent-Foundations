@@ -315,6 +315,17 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   Dovetail.dusApprox_tendsto Dovetail.dusApprox_polyRatCodes
   Dovetail.dusApproximationPresentation Dovetail.dusThresholdEmission
 
+-- Construction/Witnesses/StrictSeparators.lean (`M7-STRICT-SEPARATORS`)
+-- The separator presentation is fully constructed: Kleene's pair is recursively
+-- inseparable, the constraint theory's enumerator is built from the atom codes, and the
+-- stage classes are null (`separatorClass_mass_tendsto_zero`, the Kučera–Demuth argument)
+-- rather than assumed.  `strictSeparatorPresentationOfKleene`'s only input is
+-- computability of the atom Gödel codes, itself proved for the repo's atoms.
+#assert_axioms_clean
+  kleene_recursively_inseparable no_ce_null_prefix_family
+  separatorClass_mass_tendsto_zero strictSeparatorPresentationOfKleene
+  ordinaryAtom_code_computable
+
 -- Construction/Witnesses/ConditioningPresentation.lean (`M7-SCON-PRESENTATION`)
 #assert_axioms_clean
   conditioningPresentationOfComputations fixedConditioningPresentation

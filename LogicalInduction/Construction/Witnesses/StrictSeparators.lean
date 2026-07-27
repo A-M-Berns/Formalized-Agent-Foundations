@@ -822,8 +822,661 @@ lemma mem_separatorConsistentAt {σ : List Bool} {n : ℕ} :
     · rfl
     · simpa using hall e (List.mem_range.1 he) b hb
 
+/-! ### The stage class masses are non-increasing
+
+Nothing computability-theoretic is needed for this half.  A stage-`(n+1)` consistent string
+truncates to a stage-`n` consistent one — stage decisions only grow with fuel — and
+`children_le` bounds the two children of a node by the node itself.  So the class masses
+form a non-increasing sequence, converging to an infimum `r ≥ 0`, and `thm:strict` becomes
+the assertion that `r = 0`.
+
+The sums are taken over `p`-selected parts of the class, because the Kučera–Demuth
+argument below needs the same monotonicity for the parts on which a fixed bit is `0`
+(resp. `1`). -/
+
+lemma append_bit_inj {a b : List Bool} {x y : Bool} (h : a ++ [x] = b ++ [y]) :
+    a = b ∧ x = y := by
+  have hxy : x = y := by
+    have hlast := congrArg List.getLast? h
+    simpa [List.getLast?_concat] using hlast
+  subst hxy
+  exact ⟨List.append_cancel_right h, rfl⟩
+
+/-- **Children never gain mass.**  If every member of `T` has length `n+1` and truncates
+into `S`, then `T` carries at most the mass of `S`: this is `children_le` summed over the
+fibres of the truncation map. -/
+lemma ContinuousSemimeasure.sum_le_of_take (M : ContinuousSemimeasure) {n : ℕ}
+    {S T : Finset (List Bool)}
+    (hlen : ∀ σ ∈ T, σ.length = n + 1) (htake : ∀ σ ∈ T, σ.take n ∈ S) :
+    ∑ σ ∈ T, M.mass σ ≤ ∑ τ ∈ S, M.mass τ := by
+  classical
+  have hsub : T ⊆ S.biUnion fun τ ↦ ({τ ++ [false], τ ++ [true]} : Finset (List Bool)) := by
+    intro σ hσ
+    refine Finset.mem_biUnion.2 ⟨σ.take n, htake σ hσ, ?_⟩
+    obtain ⟨b, hb⟩ := List.length_eq_one_iff.mp
+      (show (σ.drop n).length = 1 by simp [hlen σ hσ])
+    have hsplit : σ.take n ++ [b] = σ := by rw [← hb, List.take_append_drop]
+    cases b
+    · exact Finset.mem_insert.2 (Or.inl hsplit.symm)
+    · exact Finset.mem_insert_of_mem (Finset.mem_singleton.2 hsplit.symm)
+  have hdisj : (S : Set (List Bool)).PairwiseDisjoint
+      fun τ ↦ ({τ ++ [false], τ ++ [true]} : Finset (List Bool)) := by
+    intro a _ b _ hab
+    simp only [Function.onFun, Finset.disjoint_left, Finset.mem_insert,
+      Finset.mem_singleton]
+    rintro x (rfl | rfl) <;> rintro (h | h) <;> exact hab (append_bit_inj h).1
+  calc ∑ σ ∈ T, M.mass σ
+      ≤ ∑ σ ∈ S.biUnion fun τ ↦ ({τ ++ [false], τ ++ [true]} : Finset (List Bool)),
+          M.mass σ :=
+        Finset.sum_le_sum_of_subset_of_nonneg hsub fun i _ _ ↦ M.nonneg i
+    _ = ∑ τ ∈ S, ∑ σ ∈ ({τ ++ [false], τ ++ [true]} : Finset (List Bool)), M.mass σ :=
+        Finset.sum_biUnion hdisj
+    _ ≤ ∑ τ ∈ S, M.mass τ := Finset.sum_le_sum fun τ _ ↦ by
+        rw [Finset.sum_pair (by simp)]
+        exact M.children_le τ
+
+lemma allBitStrings_succ (n : ℕ) :
+    allBitStrings (n + 1) = (allBitStrings n).flatMap fun σ ↦ [false :: σ, true :: σ] := by
+  simp [allBitStrings, List.replicate_succ]
+
+lemma allBitStrings_nodup (n : ℕ) : (allBitStrings n).Nodup := by
+  induction n with
+  | zero => simp [allBitStrings]
+  | succ n ih =>
+      rw [allBitStrings_succ]
+      refine List.nodup_flatMap.2 ⟨fun σ _ ↦ by simp, List.Pairwise.imp ?_ ih⟩
+      intro a b hab
+      simp only [Function.onFun, List.disjoint_left, List.mem_cons,
+        List.not_mem_nil, or_false]
+      rintro x (rfl | rfl) <;> rintro (h | h) <;> simp_all
+
+lemma separatorConsistentAt_nodup (n : ℕ) : (separatorConsistentAt n).Nodup :=
+  List.Nodup.filter _ (allBitStrings_nodup n)
+
+/-- Stage decisions only grow: `evaln` is monotone in its fuel. -/
+lemma kleeneDecide_mono {n n' e : ℕ} {b : Bool} (h : n ≤ n')
+    (hd : kleeneDecide n e = some b) : kleeneDecide n' e = some b := by
+  unfold kleeneDecide at hd ⊢
+  rcases hev : Nat.Partrec.Code.evaln n (Denumerable.ofNat Nat.Partrec.Code e) e with _ | v
+  · rw [hev] at hd; simp at hd
+  · have hmono : Nat.Partrec.Code.evaln n' (Denumerable.ofNat Nat.Partrec.Code e) e =
+        some v := Nat.Partrec.Code.evaln_mono h hev
+    rw [hmono]
+    rw [hev] at hd
+    exact hd
+
+lemma getD_take_of_lt {σ : List Bool} {n e : ℕ} (h : e < n) :
+    (σ.take n).getD e false = σ.getD e false := by
+  rw [List.getD_eq_getElem?_getD, List.getElem?_take_of_lt h,
+    ← List.getD_eq_getElem?_getD]
+
+lemma take_mem_separatorConsistentAt {σ : List Bool} {n : ℕ}
+    (h : σ ∈ separatorConsistentAt (n + 1)) : σ.take n ∈ separatorConsistentAt n := by
+  obtain ⟨hlen, hbits⟩ := mem_separatorConsistentAt.1 h
+  refine mem_separatorConsistentAt.2 ⟨by simp [hlen], fun e he b hb ↦ ?_⟩
+  rw [getD_take_of_lt he]
+  exact hbits e (Nat.lt_succ_of_lt he) b (kleeneDecide_mono (Nat.le_succ n) hb)
+
+/-- The mass of the part of the stage-`n` class selected by `p`. -/
+noncomputable def classMass (M : ContinuousSemimeasure) (p : List Bool → Bool) (n : ℕ) :
+    ℝ :=
+  (((separatorConsistentAt n).filter p).map M.mass).sum
+
+lemma classMass_eq_finsetSum (M : ContinuousSemimeasure) (p : List Bool → Bool) (n : ℕ) :
+    classMass M p n = ∑ σ ∈ ((separatorConsistentAt n).filter p).toFinset, M.mass σ :=
+  (List.sum_toFinset _ (List.Nodup.filter _ (separatorConsistentAt_nodup n))).symm
+
+lemma classMass_nonneg (M : ContinuousSemimeasure) (p : List Bool → Bool) (n : ℕ) :
+    0 ≤ classMass M p n := by
+  rw [classMass_eq_finsetSum]
+  exact Finset.sum_nonneg fun σ _ ↦ M.nonneg σ
+
+/-- The unrestricted class mass is the sum appearing in `mass_class_tendsto_zero`. -/
+lemma classMass_true (M : ContinuousSemimeasure) (n : ℕ) :
+    classMass M (fun _ ↦ true) n = ((separatorConsistentAt n).map M.mass).sum := by
+  simp [classMass]
+
+/-- One antitonicity step, for any selector stable under truncation at length `n`. -/
+lemma classMass_succ_le (M : ContinuousSemimeasure) {p : List Bool → Bool} {n : ℕ}
+    (hp : ∀ σ : List Bool, σ.length = n + 1 → p σ = true → p (σ.take n) = true) :
+    classMass M p (n + 1) ≤ classMass M p n := by
+  rw [classMass_eq_finsetSum, classMass_eq_finsetSum]
+  refine M.sum_le_of_take (n := n) ?_ ?_
+  · intro σ hσ
+    obtain ⟨hmem, -⟩ := List.mem_filter.1 (List.mem_toFinset.1 hσ)
+    exact (mem_separatorConsistentAt.1 hmem).1
+  · intro σ hσ
+    obtain ⟨hmem, hpσ⟩ := List.mem_filter.1 (List.mem_toFinset.1 hσ)
+    refine List.mem_toFinset.2 (List.mem_filter.2 ⟨take_mem_separatorConsistentAt hmem, ?_⟩)
+    exact hp σ (mem_separatorConsistentAt.1 hmem).1 hpσ
+
+/-- **Step 1.**  The class masses are non-increasing. -/
+lemma classMass_antitone (M : ContinuousSemimeasure) :
+    Antitone (classMass M fun _ ↦ true) :=
+  antitone_nat_of_succ_le fun _ ↦ classMass_succ_le M fun _ _ _ ↦ rfl
+
+/-- The same monotonicity for the part of the class fixing bit `j` to `b`, valid from
+stage `j + 1` on (before that the bit is not even present in the strings). -/
+lemma classMass_bit_le (M : ContinuousSemimeasure) (j : ℕ) (b : Bool) {n n' : ℕ}
+    (hj : j < n) (hn : n ≤ n') :
+    classMass M (fun σ ↦ σ.getD j false == b) n' ≤
+      classMass M (fun σ ↦ σ.getD j false == b) n := by
+  induction n', hn using Nat.le_induction with
+  | base => exact le_rfl
+  | succ m hm ih =>
+      refine le_trans (classMass_succ_le M ?_) ih
+      intro σ _ hpσ
+      rw [getD_take_of_lt (lt_of_lt_of_le hj hm)]
+      exact hpσ
+
+/-! ### Splitting the class along one bit -/
+
+private lemma sum_filter_add_sum_filter_not {α : Type*} (f : α → ℝ) (p : α → Bool) :
+    ∀ L : List α,
+      (((L.filter fun a ↦ p a).map f).sum + ((L.filter fun a ↦ !p a).map f).sum)
+        = (L.map f).sum
+  | [] => by simp
+  | a :: L => by
+      have ih := sum_filter_add_sum_filter_not f p L
+      by_cases h : p a = true <;>
+        simp [List.filter_cons, h, Bool.not_eq_true] at ih ⊢ <;> linarith
+
+/-- The class splits into the part where bit `j` is `b` and the part where it is not. -/
+lemma classMass_bit_split (M : ContinuousSemimeasure) (j : ℕ) (b : Bool) (n : ℕ) :
+    classMass M (fun σ ↦ σ.getD j false == b) n
+        + classMass M (fun σ ↦ σ.getD j false == !b) n
+      = classMass M (fun _ ↦ true) n := by
+  have hnot : ∀ σ : List Bool, (!(σ.getD j false == b)) = (σ.getD j false == !b) := by
+    intro σ; cases b <;> cases hσ : σ.getD j false <;> simp
+  have h := sum_filter_add_sum_filter_not M.mass
+    (fun σ : List Bool ↦ σ.getD j false == b) (separatorConsistentAt n)
+  simp only [hnot] at h
+  simp only [classMass, List.filter_true]
+  exact h
+
+/-- Once bit `j` is decided at stage `n`, the class holds no string disagreeing with it. -/
+lemma classMass_bit_zero_of_decided (M : ContinuousSemimeasure) {j n : ℕ} {b : Bool}
+    (hj : j < n) (hd : kleeneDecide n j = some b) :
+    classMass M (fun σ ↦ σ.getD j false == !b) n = 0 := by
+  have hnil : ((separatorConsistentAt n).filter fun σ ↦ σ.getD j false == !b) = [] := by
+    rw [List.filter_eq_nil_iff]
+    intro σ hσ hp
+    rw [(mem_separatorConsistentAt.1 hσ).2 j hj b hd] at hp
+    cases b <;> simp at hp
+  rw [classMass, hnil]
+  simp
+
+/-- The decided half of Kleene's pair is eventually decided by the dovetailing. -/
+lemma exists_kleeneDecide {e : ℕ} {b : Bool} (h : e ∈ kleeneSet b) :
+    ∃ n, kleeneDecide n e = some b := by
+  obtain ⟨n, hn⟩ := Nat.Partrec.Code.evaln_complete.mp h
+  refine ⟨n, ?_⟩
+  have hn' : Nat.Partrec.Code.evaln n (Denumerable.ofNat Nat.Partrec.Code e) e =
+      some (if b then 1 else 0) := hn
+  cases b <;> simp [kleeneDecide, hn']
+
+/-- **Step 5, the measure half.**  If bit `j` really belongs to the `b`-half of Kleene's
+pair, then from the pivot stage `k` on, the *other* half of the class is small: the `b`-part
+keeps mass `≥ r` forever, while the whole class never exceeds `6r/5`. -/
+lemma classMass_wrong_bit_lt (M : ContinuousSemimeasure) {r : ℝ} {k : ℕ}
+    (hle : ∀ n, r ≤ classMass M (fun _ ↦ true) n)
+    (hk : classMass M (fun _ ↦ true) k < 6 * r / 5)
+    {j : ℕ} {b : Bool} (hb : j ∈ kleeneSet b) {s : ℕ} (hks : k ≤ s) (hjs : j < s) :
+    classMass M (fun σ ↦ σ.getD j false == !b) s < r / 5 := by
+  obtain ⟨N, hN⟩ := exists_kleeneDecide hb
+  set S := max (max s N) (j + 1) with hSdef
+  have hsS : s ≤ S := le_trans (le_max_left s N) (le_max_left _ _)
+  have hNS : N ≤ S := le_trans (le_max_right s N) (le_max_left _ _)
+  have hjS : j < S := lt_of_lt_of_le (Nat.lt_succ_self j) (le_max_right _ _)
+  have hzero : classMass M (fun σ ↦ σ.getD j false == !b) S = 0 :=
+    classMass_bit_zero_of_decided M hjS (kleeneDecide_mono hNS hN)
+  have hsplitS := classMass_bit_split M j b S
+  have hsplits := classMass_bit_split M j b s
+  have hbig : classMass M (fun σ ↦ σ.getD j false == b) S ≤
+      classMass M (fun σ ↦ σ.getD j false == b) s := classMass_bit_le M j b hjs hsS
+  have hks' : classMass M (fun _ ↦ true) s ≤ classMass M (fun _ ↦ true) k :=
+    classMass_antitone M hks
+  have hrS := hle S
+  linarith
+
+/-! ### Bounded-fuel access to the approximants
+
+The search below must run the approximation program itself, so it works with the
+*bounded-fuel* values: whatever `M.approximation_code` has printed within `fuel` steps, and
+`0` where it has not printed yet.  Underestimating is harmless — the search only needs a
+lower bound on the class mass, and each individual value is either the true approximant or
+`0`, both of which are below the mass. -/
+
+/-- The bounded-fuel reading of `M`'s approximation program. -/
+def boundedApprox (M : LowerSemicomputableContinuousSemimeasure) (fuel t : ℕ)
+    (σ : List Bool) : ℚ :=
+  ((M.approximation_code.evaln fuel (Nat.pair t (Encodable.encode σ))).bind
+    fun v ↦ Encodable.decode (α := ℚ) v).getD 0
+
+lemma boundedApprox_eq (M : LowerSemicomputableContinuousSemimeasure) (fuel t : ℕ)
+    (σ : List Bool) :
+    boundedApprox M fuel t σ = 0 ∨ boundedApprox M fuel t σ = M.approximation t σ := by
+  unfold boundedApprox
+  rcases hev : M.approximation_code.evaln fuel (Nat.pair t (Encodable.encode σ)) with _ | v
+  · exact Or.inl (by simp)
+  · obtain ⟨fuel', hfuel'⟩ := M.approximation_computes t σ
+    have h1 : v ∈ M.approximation_code.eval (Nat.pair t (Encodable.encode σ)) :=
+      Nat.Partrec.Code.evaln_sound hev
+    have h2 : Encodable.encode (M.approximation t σ) ∈
+        M.approximation_code.eval (Nat.pair t (Encodable.encode σ)) :=
+      Nat.Partrec.Code.evaln_sound hfuel'
+    exact Or.inr (by simp [Part.mem_unique h1 h2, Encodable.encodek])
+
+lemma boundedApprox_le_mass (M : LowerSemicomputableContinuousSemimeasure) (fuel t : ℕ)
+    (σ : List Bool) : ((boundedApprox M fuel t σ : ℚ) : ℝ) ≤ M.mass σ := by
+  rcases boundedApprox_eq M fuel t σ with h | h
+  · rw [h]; simpa using M.nonneg σ
+  · rw [h]; exact M.approximation_le t σ
+
+/-- Enough fuel makes the program print on every string of a finite list. -/
+lemma exists_fuel_evaln (M : LowerSemicomputableContinuousSemimeasure) (t : ℕ) :
+    ∀ L : List (List Bool), ∃ fuel, ∀ σ ∈ L,
+      M.approximation_code.evaln fuel (Nat.pair t (Encodable.encode σ)) =
+        some (Encodable.encode (M.approximation t σ))
+  | [] => ⟨0, by simp⟩
+  | σ :: L => by
+      obtain ⟨fuel, hfuel⟩ := exists_fuel_evaln M t L
+      obtain ⟨fuel', hfuel'⟩ := M.approximation_computes t σ
+      refine ⟨max fuel fuel', fun τ hτ ↦ ?_⟩
+      rcases List.mem_cons.1 hτ with rfl | hτ
+      · exact Nat.Partrec.Code.evaln_mono (le_max_right _ _) hfuel'
+      · exact Nat.Partrec.Code.evaln_mono (le_max_left _ _) (hfuel τ hτ)
+
+lemma exists_fuel_boundedApprox (M : LowerSemicomputableContinuousSemimeasure) (t : ℕ)
+    (L : List (List Bool)) :
+    ∃ fuel, ∀ σ ∈ L, boundedApprox M fuel t σ = M.approximation t σ := by
+  obtain ⟨fuel, hfuel⟩ := exists_fuel_evaln M t L
+  exact ⟨fuel, fun σ hσ ↦ by simp [boundedApprox, hfuel σ hσ, Encodable.encodek]⟩
+
+/-! ### The stage classes and the search are programs
+
+The Kučera–Demuth separator has to *run* on inputs, so every ingredient below is carried at
+the `Primrec` level: the enumeration of bit strings, the stage class, the bounded-fuel
+approximants, and the rational comparison against the threshold. -/
+
+lemma allBitStrings_primrec : Primrec allBitStrings := by
+  have hcons : Primrec fun y : (ℕ × (ℕ × List (List Bool))) × List Bool ↦
+      [false :: y.2, true :: y.2] :=
+    Primrec.list_cons.comp
+      (Primrec.list_cons.comp (Primrec.const false) Primrec.snd)
+      (Primrec.list_cons.comp
+        (Primrec.list_cons.comp (Primrec.const true) Primrec.snd)
+        (Primrec.const []))
+  have hstep : Primrec₂ fun (_ : ℕ) (z : ℕ × List (List Bool)) ↦
+      z.2.flatMap fun σ ↦ [false :: σ, true :: σ] :=
+    Primrec.list_flatMap (Primrec.snd.comp Primrec.snd) hcons.to₂
+  have h := Primrec.nat_rec' Primrec.id
+    (Primrec.const ([[]] : List (List Bool))) hstep
+  refine h.of_eq fun n ↦ ?_
+  simp only [id_eq]
+  induction n with
+  | zero => simp [allBitStrings]
+  | succ n ih => rw [allBitStrings_succ, ← ih]
+
+/-- The stage decision in numeral form agreeing with a bit. -/
+def decideAgrees (d : ℕ) (x : Bool) : Bool :=
+  if d = 0 then true else cond x (decide (d = 2)) (decide (d = 1))
+
+lemma decideAgrees_eq (n e : ℕ) (x : Bool) :
+    decideAgrees (kleeneDecideNat n e) x =
+      (match kleeneDecide n e with
+        | none => true
+        | some b => x == b) := by
+  rw [kleeneDecideNat_eq]
+  rcases kleeneDecide n e with _ | b
+  · rfl
+  · cases b <;> cases x <;> rfl
+
+lemma separatorConsistentAt_eq (n : ℕ) :
+    separatorConsistentAt n =
+      (allBitStrings n).filter fun σ ↦
+        decide (∀ e ∈ List.range n,
+          decideAgrees (kleeneDecideNat n e) (σ.getD e false) = true) := by
+  rw [separatorConsistentAt]
+  congr 1
+  funext σ
+  rw [Bool.eq_iff_iff]
+  simp only [List.all_eq_true, decide_eq_true_eq, List.mem_range]
+  constructor
+  · intro h e he
+    rw [decideAgrees_eq]
+    exact h e he
+  · intro h e he
+    rw [← decideAgrees_eq]
+    exact h e he
+
+lemma kleeneDecideNat_primrec : Primrec fun p : ℕ × ℕ ↦ kleeneDecideNat p.1 p.2 := by
+  have hcode : Primrec fun p : ℕ × ℕ ↦ Denumerable.ofNat Nat.Partrec.Code p.2 :=
+    (Primrec.ofNat Nat.Partrec.Code).comp Primrec.snd
+  have hev : Primrec fun p : ℕ × ℕ ↦
+      Nat.Partrec.Code.evaln p.1 (Denumerable.ofNat Nat.Partrec.Code p.2) p.2 :=
+    Nat.Partrec.Code.primrec_evaln.comp ((Primrec.fst.pair hcode).pair Primrec.snd)
+  have hbranch : Primrec fun w : ℕ ↦ if w = 0 then 1 else if w = 1 then 2 else 0 := by
+    have h1 : PrimrecPred fun w : ℕ ↦ w = 0 :=
+      Primrec.eq.comp Primrec.id (Primrec.const 0)
+    have h2 : PrimrecPred fun w : ℕ ↦ w = 1 :=
+      Primrec.eq.comp Primrec.id (Primrec.const 1)
+    exact Primrec.ite h1 (Primrec.const 1) (Primrec.ite h2 (Primrec.const 2)
+      (Primrec.const 0))
+  refine (Primrec.option_getD.comp
+    (Primrec.option_map hev (hbranch.comp Primrec.snd).to₂) (Primrec.const 0)).of_eq ?_
+  rintro ⟨n, e⟩
+  unfold kleeneDecideNat
+  rcases Nat.Partrec.Code.evaln n (Denumerable.ofNat Nat.Partrec.Code e) e with _ | v
+  · rfl
+  · match v with
+    | 0 => rfl
+    | 1 => rfl
+    | (v + 2) => simp
+
+lemma separatorConsistentAt_primrec : Primrec separatorConsistentAt := by
+  have hagree : Primrec fun z : (List Bool × ℕ) × ℕ ↦
+      decideAgrees (kleeneDecideNat z.1.2 z.2) (z.1.1.getD z.2 false) := by
+    have hd : Primrec fun z : (List Bool × ℕ) × ℕ ↦ kleeneDecideNat z.1.2 z.2 :=
+      kleeneDecideNat_primrec.comp ((Primrec.snd.comp Primrec.fst).pair Primrec.snd)
+    have hx : Primrec fun z : (List Bool × ℕ) × ℕ ↦ z.1.1.getD z.2 false :=
+      (Primrec.list_getD false).comp (Primrec.fst.comp Primrec.fst) Primrec.snd
+    have h0 : PrimrecPred fun z : (List Bool × ℕ) × ℕ ↦ kleeneDecideNat z.1.2 z.2 = 0 :=
+      Primrec.eq.comp hd (Primrec.const 0)
+    have h1 : PrimrecPred fun z : (List Bool × ℕ) × ℕ ↦ kleeneDecideNat z.1.2 z.2 = 1 :=
+      Primrec.eq.comp hd (Primrec.const 1)
+    have h2 : PrimrecPred fun z : (List Bool × ℕ) × ℕ ↦ kleeneDecideNat z.1.2 z.2 = 2 :=
+      Primrec.eq.comp hd (Primrec.const 2)
+    have hb1 : Primrec fun z : (List Bool × ℕ) × ℕ ↦
+        decide (kleeneDecideNat z.1.2 z.2 = 1) := h1.decide
+    have hb2 : Primrec fun z : (List Bool × ℕ) × ℕ ↦
+        decide (kleeneDecideNat z.1.2 z.2 = 2) := h2.decide
+    exact (Primrec.ite h0 (Primrec.const true)
+      (Primrec.cond hx hb2 hb1)).of_eq fun z ↦ rfl
+  have hR : PrimrecRel fun (σ : List Bool) (n : ℕ) ↦
+      ∀ e ∈ List.range n, decideAgrees (kleeneDecideNat n e) (σ.getD e false) = true := by
+    have hbase : PrimrecRel fun (e : ℕ) (z : List Bool × ℕ) ↦
+        decideAgrees (kleeneDecideNat z.2 e) (z.1.getD e false) = true := by
+      have := hagree.comp (Primrec.snd.pair Primrec.fst)
+      exact (Primrec.eq.comp this (Primrec.const true))
+    have hforall := PrimrecRel.forall_mem_list hbase
+    exact hforall.comp (Primrec.list_range.comp Primrec.snd) Primrec.id
+  have hfilter := PrimrecRel.listFilter hR
+  refine (hfilter.comp allBitStrings_primrec Primrec.id).of_eq fun n ↦ ?_
+  simp only [id_eq]
+  rw [separatorConsistentAt_eq]
+
+private lemma list_sum_primrec : Primrec fun L : List ℚ ↦ L.sum := by
+  have h := Primrec.list_foldr (α := List ℚ) Primrec.id (Primrec.const (0 : ℚ))
+    (ratAdd_prim.comp (Primrec.fst.comp Primrec.snd) (Primrec.snd.comp Primrec.snd)).to₂
+  refine h.of_eq fun L ↦ ?_
+  simp only [id_eq]
+  induction L with
+  | nil => rfl
+  | cons a L ih => simp only [List.foldr_cons, List.sum_cons, ih]
+
+lemma boundedApprox_primrec (M : LowerSemicomputableContinuousSemimeasure) :
+    Primrec fun z : (ℕ × ℕ) × List Bool ↦ boundedApprox M z.1.1 z.1.2 z.2 := by
+  have harg : Primrec fun z : (ℕ × ℕ) × List Bool ↦
+      Nat.pair z.1.2 (Encodable.encode z.2) :=
+    Primrec₂.natPair.comp (Primrec.snd.comp Primrec.fst) (Primrec.encode.comp Primrec.snd)
+  have hev : Primrec fun z : (ℕ × ℕ) × List Bool ↦
+      M.approximation_code.evaln z.1.1 (Nat.pair z.1.2 (Encodable.encode z.2)) :=
+    Nat.Partrec.Code.primrec_evaln.comp
+      (((Primrec.fst.comp Primrec.fst).pair
+        (Primrec.const M.approximation_code)).pair harg)
+  have hdec : Primrec₂ fun (_ : (ℕ × ℕ) × List Bool) (w : ℕ) ↦
+      Encodable.decode (α := ℚ) w := Primrec.decode.comp Primrec.snd
+  exact Primrec.option_getD.comp (Primrec.option_bind hev hdec) (Primrec.const 0)
+
+/-- The `(fuel, t)`-bounded approximation to the mass of the part of the stage-`s` class on
+which bit `j` is `b`. -/
+def sepApproxSum (M : LowerSemicomputableContinuousSemimeasure) (j : ℕ) (b : Bool)
+    (s fuel t : ℕ) : ℚ :=
+  (((separatorConsistentAt s).filter fun σ ↦ σ.getD j false == b).map
+    (boundedApprox M fuel t)).sum
+
+lemma sepApproxSum_primrec (M : LowerSemicomputableContinuousSemimeasure) (b : Bool) :
+    Primrec fun z : (ℕ × ℕ) × ℕ × ℕ ↦ sepApproxSum M z.1.1 b z.1.2 z.2.1 z.2.2 := by
+  have hbit : PrimrecRel fun (σ : List Bool) (j : ℕ) ↦ (σ.getD j false == b) = true := by
+    have hx : Primrec fun z : List Bool × ℕ ↦ z.1.getD z.2 false :=
+      (Primrec.list_getD false).comp Primrec.fst Primrec.snd
+    exact Primrec.eq.comp (Primrec.beq.comp hx (Primrec.const b)) (Primrec.const true)
+  have hclass : Primrec fun z : (ℕ × ℕ) × ℕ × ℕ ↦
+      (separatorConsistentAt z.1.2).filter fun σ ↦ σ.getD z.1.1 false == b :=
+    ((PrimrecRel.listFilter hbit).comp
+      (separatorConsistentAt_primrec.comp (Primrec.snd.comp Primrec.fst))
+      (Primrec.fst.comp Primrec.fst)).of_eq fun z ↦ by
+        refine congrArg (fun p ↦ List.filter p (separatorConsistentAt z.1.2)) ?_
+        funext σ
+        cases σ.getD z.1.1 false <;> cases b <;> rfl
+  have happrox : Primrec₂ fun (z : (ℕ × ℕ) × ℕ × ℕ) (σ : List Bool) ↦
+      boundedApprox M z.2.1 z.2.2 σ :=
+    (boundedApprox_primrec M).comp
+      (((Primrec.fst.comp (Primrec.snd.comp Primrec.fst)).pair
+        (Primrec.snd.comp (Primrec.snd.comp Primrec.fst))).pair Primrec.snd)
+  exact list_sum_primrec.comp (Primrec.list_map hclass happrox)
+
+/-- One dovetailed search step of the Kučera–Demuth separator: at search index `z` it looks
+at stage `k + j + 1 + z.unpair.1` (above both the pivot `k` and the bit index `j`) with
+fuel and approximation level read off `z.unpair.2`, and reports a bit whose part of the
+class already approximates above the threshold `q`. -/
+def sepGuard (M : LowerSemicomputableContinuousSemimeasure) (k : ℕ) (q : ℚ) (j z : ℕ) :
+    Option ℕ :=
+  if q < sepApproxSum M j true (k + j + 1 + z.unpair.1) z.unpair.2.unpair.1
+      z.unpair.2.unpair.2 then some 1
+  else if q < sepApproxSum M j false (k + j + 1 + z.unpair.1) z.unpair.2.unpair.1
+      z.unpair.2.unpair.2 then some 0
+  else none
+
+lemma sepGuard_computable (M : LowerSemicomputableContinuousSemimeasure) (k : ℕ) (q : ℚ) :
+    Computable₂ (sepGuard M k q) := by
+  have hstage : Primrec fun p : ℕ × ℕ ↦ k + p.1 + 1 + p.2.unpair.1 :=
+    Primrec.nat_add.comp
+      (Primrec.nat_add.comp
+        (Primrec.nat_add.comp (Primrec.const k) Primrec.fst) (Primrec.const 1))
+      (Primrec.fst.comp (Primrec.unpair.comp Primrec.snd))
+  have hfuel : Primrec fun p : ℕ × ℕ ↦ p.2.unpair.2.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp
+      (Primrec.unpair.comp Primrec.snd)))
+  have ht : Primrec fun p : ℕ × ℕ ↦ p.2.unpair.2.unpair.2 :=
+    Primrec.snd.comp (Primrec.unpair.comp (Primrec.snd.comp
+      (Primrec.unpair.comp Primrec.snd)))
+  have hsum : ∀ b : Bool, PrimrecPred fun p : ℕ × ℕ ↦
+      q < sepApproxSum M p.1 b (k + p.1 + 1 + p.2.unpair.1) p.2.unpair.2.unpair.1
+        p.2.unpair.2.unpair.2 := by
+    intro b
+    have happ : Primrec fun p : ℕ × ℕ ↦
+        sepApproxSum M p.1 b (k + p.1 + 1 + p.2.unpair.1) p.2.unpair.2.unpair.1
+          p.2.unpair.2.unpair.2 :=
+      (sepApproxSum_primrec M b).comp ((Primrec.fst.pair hstage).pair (hfuel.pair ht))
+    have hle : PrimrecPred fun p : ℕ × ℕ ↦
+        sepApproxSum M p.1 b (k + p.1 + 1 + p.2.unpair.1) p.2.unpair.2.unpair.1
+          p.2.unpair.2.unpair.2 ≤ q := ratLE_prim.comp happ (Primrec.const q)
+    exact (PrimrecPred.of_eq hle.not fun p ↦ not_le)
+  exact (Primrec.ite (hsum true) (Primrec.const (some 1))
+    (Primrec.ite (hsum false) (Primrec.const (some 0)) (Primrec.const none))).to_comp.to₂
+
+/-! ### Soundness and termination of the search -/
+
+private lemma sum_boundedApprox_le (M : LowerSemicomputableContinuousSemimeasure)
+    (fuel t : ℕ) : ∀ L : List (List Bool),
+      (((L.map (boundedApprox M fuel t)).sum : ℚ) : ℝ) ≤ (L.map M.mass).sum
+  | [] => by simp
+  | σ :: L => by
+      have ih := sum_boundedApprox_le M fuel t L
+      have h := boundedApprox_le_mass M fuel t σ
+      simp only [List.map_cons, List.sum_cons, Rat.cast_add]
+      linarith
+
+/-- The search never overstates: a fired guard really witnesses a heavy part of the
+class. -/
+lemma sepApproxSum_le (M : LowerSemicomputableContinuousSemimeasure) (j : ℕ) (b : Bool)
+    (s fuel t : ℕ) :
+    ((sepApproxSum M j b s fuel t : ℚ) : ℝ)
+      ≤ classMass M.toContinuousSemimeasure (fun σ ↦ σ.getD j false == b) s :=
+  sum_boundedApprox_le M fuel t _
+
+private lemma tendsto_list_approx (M : LowerSemicomputableContinuousSemimeasure) :
+    ∀ L : List (List Bool),
+      Tendsto (fun t ↦ (((L.map (M.approximation t)).sum : ℚ) : ℝ)) atTop
+        (𝓝 ((L.map M.mass).sum))
+  | [] => by simpa using tendsto_const_nhds
+  | σ :: L => by
+      have ih := tendsto_list_approx M L
+      have h := (M.approximation_tendsto σ).add ih
+      simpa [List.map_cons, List.sum_cons] using h
+
+/-- **Termination.**  Whatever `j` is, one of the two sides of the class carries more than
+half of `r`, hence more than the threshold `q`, and the approximants eventually see it. -/
+lemma exists_sepGuard (M : LowerSemicomputableContinuousSemimeasure) {r : ℝ} {q : ℚ}
+    (k j : ℕ)
+    (hle : ∀ n, r ≤ classMass M.toContinuousSemimeasure (fun _ ↦ true) n)
+    (hq : 2 * (q : ℝ) < r) :
+    ∃ z v, sepGuard M k q j z = some v := by
+  set C := M.toContinuousSemimeasure with hC
+  set s := k + j + 1 with hs
+  have hsplit := classMass_bit_split C j true s
+  have hside : ∃ b : Bool, (q : ℝ) < classMass C (fun σ ↦ σ.getD j false == b) s := by
+    by_contra h
+    push_neg at h
+    have h1 := h true
+    have h2 := h false
+    have h3 := hle s
+    simp only [Bool.not_true] at hsplit
+    linarith
+  obtain ⟨b, hb⟩ := hside
+  have htend := tendsto_list_approx M
+    ((separatorConsistentAt s).filter fun σ ↦ σ.getD j false == b)
+  obtain ⟨t, ht⟩ := (htend.eventually_const_lt hb).exists
+  obtain ⟨fuel, hfuel⟩ := exists_fuel_boundedApprox M t
+    ((separatorConsistentAt s).filter fun σ ↦ σ.getD j false == b)
+  have hval : sepApproxSum M j b s fuel t =
+      (((separatorConsistentAt s).filter fun σ ↦ σ.getD j false == b).map
+        (M.approximation t)).sum :=
+    congrArg List.sum (List.map_congr_left hfuel)
+  have hqlt : q < sepApproxSum M j b s fuel t := by
+    rw [hval]; exact_mod_cast ht
+  refine ⟨Nat.pair 0 (Nat.pair fuel t), ?_⟩
+  unfold sepGuard
+  simp only [Nat.unpair_pair, Nat.add_zero, ← hs]
+  cases b
+  · by_cases h1 : q < sepApproxSum M j true s fuel t
+    · exact ⟨1, by simp [h1]⟩
+    · exact ⟨0, by simp [h1, hqlt]⟩
+  · exact ⟨1, by simp [hqlt]⟩
+
+/-- **Soundness.**  A fired guard reports a bit whose part of the stage class really has
+mass above the threshold. -/
+lemma sepGuard_spec {M : LowerSemicomputableContinuousSemimeasure} {k : ℕ} {q : ℚ}
+    {j z v : ℕ} (h : sepGuard M k q j z = some v) :
+    ∃ b : Bool, v = (if b then 1 else 0) ∧
+      (q : ℝ) < classMass M.toContinuousSemimeasure (fun σ ↦ σ.getD j false == b)
+        (k + j + 1 + z.unpair.1) := by
+  unfold sepGuard at h
+  split_ifs at h with h1 h2
+  · exact ⟨true, by simpa using (Option.some.inj h).symm,
+      lt_of_lt_of_le (by exact_mod_cast h1) (sepApproxSum_le M j true _ _ _)⟩
+  · exact ⟨false, by simpa using (Option.some.inj h).symm,
+      lt_of_lt_of_le (by exact_mod_cast h2) (sepApproxSum_le M j false _ _ _)⟩
+
+/-! ### Step 5: the classes are null
+
+If they were not, the search above would be a total computable separator for Kleene's
+recursively inseparable pair. -/
+
+/-- **The extraction.**  A positive floor `r` on the class masses, together with a pivot
+stage `k` whose class mass is below `6r/5`, is contradictory: the dovetailed search
+`sepGuard` then computes a total separator for Kleene's pair.
+
+On input `j` the program searches over stages `s ≥ max k (j+1)`, approximation levels and
+fuel, and reports the first bit `b` whose part of the stage class approximates above the
+threshold `q` (`r/5 < q < r/2`).  It always halts, because the two parts sum to at least
+`r > 2q`; and it is never wrong, because if `j` lies in the `b`-half of Kleene's pair then
+the `b`-part keeps mass `≥ r` while the other part is below `6r/5 − r = r/5 < q`. -/
+private lemma no_pos_class_floor (L : LowerSemicomputableContinuousSemimeasure) {r : ℝ}
+    {k : ℕ} (hpos : 0 < r)
+    (hle : ∀ n, r ≤ classMass L.toContinuousSemimeasure (fun _ ↦ true) n)
+    (hk : classMass L.toContinuousSemimeasure (fun _ ↦ true) k < 6 * r / 5) : False := by
+  obtain ⟨q, hq1, hq2⟩ : ∃ q : ℚ, r / 5 < (q : ℝ) ∧ (q : ℝ) < r / 2 :=
+    exists_rat_btwn (by linarith)
+  have hsearch : Partrec fun j ↦ Nat.rfindOpt (sepGuard L k q j) :=
+    Partrec.rfindOpt (sepGuard_computable L k q)
+  have hdom : ∀ j, (Nat.rfindOpt (sepGuard L k q j)).Dom := by
+    intro j
+    rw [Nat.rfindOpt_dom]
+    obtain ⟨z, v, hzv⟩ := exists_sepGuard L k j hle (by linarith)
+    exact ⟨z, v, hzv⟩
+  have houtc : Computable fun j ↦ (Nat.rfindOpt (sepGuard L k q j)).get (hdom j) :=
+    hsearch.of_eq_tot fun j ↦ Part.get_mem _
+  have houtspec : ∀ j, ∃ z,
+      sepGuard L k q j z = some ((Nat.rfindOpt (sepGuard L k q j)).get (hdom j)) :=
+    fun j ↦ Nat.rfindOpt_spec (Part.get_mem (hdom j))
+  have hone : Primrec fun x : ℕ ↦ decide (x = 1) :=
+    (PrimrecPred.decide (p := fun x : ℕ ↦ x = 1)
+      (Primrec.eq.comp Primrec.id (Primrec.const 1)))
+  have hbit : ∀ (j : ℕ) (b : Bool), j ∈ kleeneSet b →
+      (Nat.rfindOpt (sepGuard L k q j)).get (hdom j) = (if b then 1 else 0) := by
+    intro j b hj
+    obtain ⟨z, hz⟩ := houtspec j
+    obtain ⟨b', hb', hmass⟩ := sepGuard_spec hz
+    have hbb : b' = b := by
+      by_contra hne
+      have hnb : b' = !b := by
+        cases b <;> cases b' <;>
+          simp only [Bool.not_true, Bool.not_false] <;>
+          first | rfl | exact absurd rfl hne
+      subst hnb
+      have hsmall := classMass_wrong_bit_lt L.toContinuousSemimeasure hle hk hj
+        (s := k + j + 1 + z.unpair.1) (by omega) (by omega)
+      linarith
+    rw [hb', hbb]
+  refine kleene_recursively_inseparable
+    (fun j ↦ decide ((Nat.rfindOpt (sepGuard L k q j)).get (hdom j) = 1))
+    (hone.to_comp.comp houtc) ?_ ?_
+  · intro e he
+    simp [hbit e true he]
+  · intro e he
+    simp [hbit e false he]
+
+/-- **The separator classes are null (`thm:strict`, measure half).**  For a universal
+continuous semimeasure the stage classes of the Kleene constraint theory carry vanishing
+total mass: the class masses are antitone, so they converge to some `r ≥ 0`, and a positive
+floor is refuted by `no_pos_class_floor` (Kučera–Demuth: the semimeasure's own
+lower-semicomputable approximants would compute a separator by majority vote,
+contradicting `kleene_recursively_inseparable`).
+Paper node: `thm:strict` -/
+theorem separatorClass_mass_tendsto_zero (M : UniversalContinuousSemimeasure) :
+    Tendsto (fun n ↦ ((separatorConsistentAt n).map M.mass).sum) atTop (𝓝 0) := by
+  have hrw : (fun n ↦ ((separatorConsistentAt n).map M.mass).sum)
+      = classMass M.toLowerSemicomputableContinuousSemimeasure.toContinuousSemimeasure
+        (fun _ ↦ true) :=
+    funext fun n ↦ (classMass_true _ n).symm
+  rw [hrw]
+  set C := M.toLowerSemicomputableContinuousSemimeasure.toContinuousSemimeasure with hC
+  have hnonneg : ∀ n, 0 ≤ classMass C (fun _ ↦ true) n := fun n ↦ classMass_nonneg C _ n
+  have hbdd : BddBelow (Set.range (classMass C fun _ ↦ true)) := by
+    refine ⟨0, ?_⟩
+    rintro x ⟨n, rfl⟩
+    exact hnonneg n
+  have htend : Tendsto (classMass C fun _ ↦ true) atTop
+      (𝓝 (⨅ n, classMass C (fun _ ↦ true) n)) :=
+    tendsto_atTop_ciInf (classMass_antitone C) hbdd
+  have hle : ∀ n, (⨅ n, classMass C (fun _ ↦ true) n) ≤ classMass C (fun _ ↦ true) n :=
+    fun n ↦ ciInf_le hbdd n
+  rcases eq_or_lt_of_le (le_ciInf hnonneg :
+      (0 : ℝ) ≤ ⨅ n, classMass C (fun _ ↦ true) n) with hzero | hpos
+  · rw [← hzero] at htend
+    exact htend
+  exfalso
+  obtain ⟨k, hk⟩ : ∃ k, classMass C (fun _ ↦ true) k <
+      6 * (⨅ n, classMass C (fun _ ↦ true) n) / 5 :=
+    (htend.eventually_lt_const (by linarith)).exists
+  exact no_pos_class_floor M.toLowerSemicomputableContinuousSemimeasure hpos hle hk
+
 /-- The repo's concrete bit atoms have computable Gödel codes, so they meet the atom
-hypothesis of the separator presentation. -/
+hypothesis of the separator presentation.
+Paper node: `thm:strict` -/
 lemma ordinaryAtom_code_computable :
     Computable fun k ↦ Encodable.encode (ordinaryIndependentBitAtoms.atom k) := by
   have hpair : Computable fun k : ℕ ↦ Nat.pair 1 k + 1 :=
@@ -833,28 +1486,25 @@ lemma ordinaryAtom_code_computable :
 
 /-! ### The separator presentation
 
-Everything except the semimeasure fact is discharged here.  Realizability of the
-non-computable target assignment comes from `BitPrefixSentences.realizable` — the total
-form, which is exactly why that field is total rather than finite-prefix (the constraint
-theory pins infinitely many bits).  Two inputs are supplied by the caller and disclosed:
+Every field is discharged here.  Realizability of the non-computable target assignment
+comes from `BitPrefixSentences.realizable` — the total form, which is exactly why that
+field is total rather than finite-prefix (the constraint theory pins infinitely many bits);
+the vanishing class mass is `separatorClass_mass_tendsto_zero` (Kučera–Demuth).  One input
+is supplied by the caller:
 
 * `hatom` — computability of the atom family's Gödel codes.  This is discharged for the
   repo's concrete atoms by `ordinaryAtom_code_computable`; from it the whole constraint
   theory's enumerator is *built* (`separatorConstraintCE`), so no formula-emission input is
-  assumed here.
-* `hmass` — the disclosed `M7-STRICT-SEPARATORS` residue: the universal semimeasure gives
-  the stage classes vanishing total mass.  `kleene_recursively_inseparable` above is its
-  computability-theoretic input; the measure-theoretic step (a positive-mass class would
-  let the lower-semicomputable approximants of `M` compute a separator by majority vote —
-  Kučera–Demuth) is not yet formalized.
-  TODO(blueprint:thm:strict): need `Tendsto (fun n ↦ ((separatorConsistentAt n).map
-  M.mass).sum) atTop (𝓝 0)` from `kleene_recursively_inseparable` plus the approximation
-  fields of `M`. -/
+  assumed here. -/
+
+/-- The separator presentation of `thm:strict`, built from Kleene's recursively inseparable
+pair: the constraint theory, its c.e. enumerator, the stagewise consistent classes, and
+their vanishing mass are all constructed.
+Paper node: `thm:strict` -/
 noncomputable def strictSeparatorPresentationOfKleene
     {DP : DeductiveProcess} (M : UniversalContinuousSemimeasure)
     (B : BitPrefixSentences DP)
-    (hatom : Computable fun k ↦ Encodable.encode (B.atom k))
-    (hmass : Tendsto (fun n ↦ ((separatorConsistentAt n).map M.mass).sum) atTop (𝓝 0)) :
+    (hatom : Computable fun k ↦ Encodable.encode (B.atom k)) :
     StrictSeparatorPresentation M B where
   constraint := separatorConstraint B.atom
   repetition := EfficientRepeatedEnumeration.ofCE (separatorConstraintCE hatom)
@@ -882,12 +1532,28 @@ noncomputable def strictSeparatorPresentationOfKleene
       have hk : (k : ℕ) < n := by simpa using k.isLt
       simp only [List.get_eq_getElem, List.getElem_map, List.getElem_range,
         decide_eq_true_eq]
-  mass_class_tendsto_zero := hmass
+  mass_class_tendsto_zero := separatorClass_mass_tendsto_zero M
+
+/-- **Strict domination with the separator argument discharged** (`thm:strict`).  The only
+remaining input is computability of the atom family's Gödel codes, which
+`ordinaryAtom_code_computable` proves for the repo's concrete atoms; the constraint theory,
+its enumerator, the stage classes and their vanishing mass are all constructed here.
+Paper node: `thm:strict` -/
+theorem lic_strict_domination_universalSemimeasure_ofAtomCodes
+    {DP : DeductiveProcess} {M : UniversalContinuousSemimeasure}
+    {B : BitPrefixSentences DP}
+    (hatom : Computable fun k ↦ Encodable.encode (B.atom k))
+    (P : History) [IsLogicalInductor P DP] :
+    ∀ C : ℝ, 0 < C → ∃ σ : List Bool,
+      limitingBelief P (B.prefixSentence σ) > C * M.mass σ :=
+  lic_strict_domination_universalSemimeasure P (strictSeparatorPresentationOfKleene M B hatom)
 
 #print axioms ceNestedSemimeasure
 #print axioms exists_pos_mass_of_ce_nested
 #print axioms no_ce_null_prefix_family
 #print axioms kleene_recursively_inseparable
+#print axioms separatorClass_mass_tendsto_zero
 #print axioms strictSeparatorPresentationOfKleene
+#print axioms lic_strict_domination_universalSemimeasure_ofAtomCodes
 
 end LogicalInduction

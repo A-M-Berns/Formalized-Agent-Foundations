@@ -496,7 +496,7 @@ Two things worth keeping:
 Tranche S does **not** need this: its one open statement is written against
 `UniversalContinuousSemimeasure`'s own approximation fields (see Tranche S).
 
-## Tranche S — M7-STRICT-SEPARATORS — redesigned and landed (2026-07-27)
+## Tranche S — M7-STRICT-SEPARATORS — redesigned, landed, and CLOSED (2026-07-27)
 
 **What happened.**  The old interface (nested prefix family) was proved *uninhabitable*
 (`no_ce_null_prefix_family`, `Construction/Witnesses/StrictSeparators.lean`: a nested
@@ -513,7 +513,7 @@ constant forever).  Anson approved the redesign; it is now in, in collapsed form
 | `jointly_possible` | proved, from infinite independent realizability of the atoms |
 | `consistentAt : ℕ → List (List Bool)` | constructed (`separatorConsistentAt`, filtered `allBitStrings`) |
 | `class_covers` | proved (read the world's bits off the atoms) |
-| `mass_class_tendsto_zero` | **open** — the disclosed residue |
+| `mass_class_tendsto_zero` | constructed (`separatorClass_mass_tendsto_zero`, Kučera–Demuth — see below) |
 
 **Market half.**  `strict_domination_of_null_separator_class` replaces
 `strict_domination_of_null_prefix_theory`: UND floors the constraint theory at ε; limit
@@ -548,47 +548,43 @@ and `strictSeparatorPresentationOfKleene`.
    carry the dovetailing.  The construction now assumes only `hatom : Computable fun k ↦
    encode (B.atom k)`, itself proved for the repo's atoms by
    `ordinaryAtom_code_computable`.
-3. `hmass` — **open, and now the sole boundary of `thm:strict`.**
+3. ~~`hmass` (vanishing class mass)~~ — **discharged 2026-07-27, and with it `thm:strict`
+   is CLOSED.**  `separatorClass_mass_tendsto_zero` (`Construction/Witnesses/
+   StrictSeparators.lean`) proves it outright, axiom-clean, against the interface's own
+   approximation fields — no Tranche-U dependency.
 
-### The one remaining statement
+### How `hmass` was proved (Kučera–Demuth, `app:strict`)
 
-```lean
-Tendsto (fun n ↦ ((separatorConsistentAt n).map M.mass).sum) atTop (𝓝 0)
-```
+1. **Antitone.**  `classMass M p n` (the mass of the part of the stage class selected by
+   `p`) is non-increasing for every truncation-stable `p`: a stage-`(n+1)` consistent
+   string truncates into the stage-`n` class (`kleeneDecide_mono`,
+   `take_mem_separatorConsistentAt`), and `ContinuousSemimeasure.sum_le_of_take` sums
+   `children_le` over the fibres of the truncation map.  `allBitStrings_nodup` is what
+   lets the list sums become `Finset` sums.
+2. **Limit.**  `tendsto_atTop_ciInf` gives `r := ⨅ n, classMass … n ≥ 0`; assume `r > 0`.
+3. **Pivot.**  A stage `k` with class mass `< 6r/5`, and a rational `r/5 < q < r/2`
+   (`exists_rat_btwn`).
+4. **The separator.**  `sepGuard` dovetails over stages `s = k+j+1+…`, fuel and
+   approximation level, and fires on the first bit `b` whose part of the stage class
+   approximates above `q`.  The key simplification: instead of extracting a *total*
+   computable `M.approximation`, the search reads `M.approximation_code` under a fuel
+   bound (`boundedApprox`, `0` when it has not printed yet).  That keeps the whole guard
+   **`Primrec`** — `separatorConsistentAt_primrec`, `boundedApprox_primrec`,
+   `sepApproxSum_primrec` — and is sound because `0` underestimates the mass.
+   Totality of the search is `Nat.rfindOpt` + `Partrec.of_eq_tot` (the
+   `LIAComputation` pattern).
+5. **Correctness.**  Termination: the two parts sum to `≥ r > 2q`, so one exceeds `q`, and
+   `approximation_tendsto` makes a finite approximant see it (`exists_sepGuard`).
+   Soundness: a fired guard really witnesses mass `> q` (`sepGuard_spec`).  Wrongness is
+   impossible: if `j ∈ kleeneSet b` then the `b`-part keeps mass `≥ r` from `k` on, so the
+   other part is `< 6r/5 − r = r/5 < q` (`classMass_wrong_bit_lt`).  The resulting total
+   computable function contradicts `kleene_recursively_inseparable`.
 
-for `M : UniversalContinuousSemimeasure`.  Everything it needs is in place:
-`kleene_recursively_inseparable` (proved here) is the computability side, and `M`'s
-`approximation` / `approximation_mono` / `approximation_tendsto` fields are the
-measure side.  **No Tranche-U dependency** — the proof is against the interface, not a
-concrete dovetailer.
-
-Proof plan (Kučera–Demuth, following `app:strict`'s sketch), with the Lean-side costs:
-
-1. **Antitone.**  `m n := ((separatorConsistentAt n).map M.mass).sum` is non-increasing:
-   every `σ ∈ separatorConsistentAt (n+1)` has `σ.take n ∈ separatorConsistentAt n`
-   (`evaln` is monotone in fuel, so stage-`n` decisions are among stage-`(n+1)` ones), the
-   map is at most 2-to-1, and `children_le` bounds each fibre by the parent's mass.  Lean
-   cost: list-sum bookkeeping over `allBitStrings` (needs `Nodup`, or a switch of
-   `consistentAt` to `Finset`).  This is the fiddly-but-routine part.
-2. **Limit `r := ⨅ n, m n ≥ 0` exists.**  Antitone + bounded below.  If `r = 0` we are
-   done, so assume `r > 0` for contradiction.
-3. **Fix a level.**  Choose `k` with `m k ∈ [r, 6r/5)` and a rational `q ∈ [4r/5, r)`.
-4. **The separator.**  On input `j`, search over stages `s` for an approximation-level
-   witness that the mass of the level-`s` class restricted to `bit j = 0` (resp. `1`)
-   exceeds `q`; output the majority side.  Termination uses `approximation_tendsto` (the
-   true sum exceeds `q`, so some finite approximation does).  Computability: the search is
-   `Nat.rfind` over a decidable rational predicate built from `M.approximation_code`
-   (`Nat.Partrec.Code.evaln` + `Primrec.ofNat`, exactly the pattern in
-   `kleeneDecideNat_computable`), then `Computable` by totality — the
-   `Partrec.rfind` + `Part.get` pattern.
-5. **Correctness.**  If the vote says `0` but `j ∈ A₁`, the class consistent with the
-   constraints keeps mass `≥ r` while the chosen side holds `≤ 6r/5 − 2r/5 = 4r/5 < r`;
-   contradiction.  Feed the resulting computable separator to
-   `kleene_recursively_inseparable`.
-
-Estimate: 2–4 sessions, most of it steps 1 and 4.  Step 1 is worth doing first and
-independently — it is a clean lemma about `M` and `separatorConsistentAt` with no
-computability content, and it is what makes `r` exist.
+**Consequences landed in the same tranche.**  `strictSeparatorPresentationOfKleene` no
+longer takes `hmass`; its only input is `hatom` (atom Gödel codes computable, proved for
+the repo's atoms).  New corollary `lic_strict_domination_universalSemimeasure_ofAtomCodes`
+discharges the separator argument of the endpoint.  README boundary row + status table
+(13/15) and `AxiomAudit.lean` updated.
 
 ## Tranche P — 𝓔𝓒 polish (cheap optionals, ~½–4 sessions total, no paper-node demand)
 
@@ -679,22 +675,14 @@ genuinely needs deep quoted sentences.
   fields plus the output-size half of the third are proved for the rounded table
   `gridApprox`.  What is still disclosed is **only** the poly-fuel emitter, and it needs a
   clamped dovetailer rather than the tabulation that landed.  See the Tranche U entry.
-- `M7-STRICT-SEPARATORS` — **DEFECTIVE AS STATED (kernel-checked, 2026-07-27)**:
-  `StrictSeparatorPresentation` is uninhabitable modulo one mechanical bridge —
-  its `repetition` field forces `M.mass (prefixes i) ≥ c > 0` by universality
-  (`strictSeparatorPresentation_not_ce`, Construction/Witnesses/StrictSeparators.lean),
-  contradicting `mass_tendsto_zero`.  The paper's `app:strict` uses single-bit
-  CONSTRAINT theories + class-mass, not nested prefixes.  DECISION (Anson,
-  2026-07-27): **redesign approved** — and **EXECUTED the same day**: the interface
-  was redesigned in place (the old nested-prefix shape is provably uninhabitable —
-  `no_ce_null_prefix_family`); the market half is
-  `strict_domination_of_null_separator_class`; the endpoint statement is UNCHANGED.
-  Kleene recursive inseparability is fully proved.  All fields but
-  `mass_class_tendsto_zero` are constructed; see Tranche S above for the three named
-  residual inputs (hatoms / hce / hmass — hypotheses, not sorries).
 
-These three are the only intentional disclosures at the 12/15 target. The audit should
-confirm no fourth boundary is assumed anywhere it isn't named.
+These two are the only intentional disclosures at the 13/15 target. The audit should
+confirm no third boundary is assumed anywhere it isn't named.
+
+`M7-STRICT-SEPARATORS` was the third until 2026-07-27; it is now **constructed** (see
+Tranche S above): the interface was redesigned away from the provably uninhabitable
+nested-prefix shape (`no_ce_null_prefix_family`), and all of its fields — including
+`mass_class_tendsto_zero` — are discharged by constructions.
 
 
 ## Verification and commit discipline
