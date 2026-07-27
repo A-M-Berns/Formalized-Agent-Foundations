@@ -337,22 +337,62 @@ Shared core: a **concrete universal dovetailer with clocked approximants**.
   slop the paper itself has).
 * Order: `M*` + approximants first (serves both), then DUS packaging, then κ.
 
-## Tranche S — M7-STRICT-SEPARATORS (3–6 sessions, partly research-grade)
+## Tranche S — M7-STRICT-SEPARATORS — **BLOCKED: the interface as written is vacuous**
 
-`StrictSeparatorPresentation` (UniversalSemimeasure.lean:2029), conclusion-free.
-* Core input: a recursively inseparable pair of c.e. sets over `Nat.Partrec.Code`
-  (Kleene's `{e : e(e)↓=0}` / `{e : e(e)↓=1}`).  **Check Mathlib first** (rule 2b):
-  `rg` for inseparable/`Computable` separators; expect absence — building it is the
-  research-grade part (diagonalization against all computable separators, on top of
-  `Nat.Partrec.Code.eval`).
-* From the pair: nested separator prefixes (`prefixes i` = the length-`i` bit string
-  recording membership decisions dovetailed so far), `nested`/`length_tendsto_atTop`
-  structural, `repetition` via the existing `EfficientRepeatedEnumeration.ofPoly`
-  machinery (cheap now), `jointly_possible` from independence of the bit atoms.
-* `mass_tendsto_zero`: any computable semimeasure concentrating mass on all separator
-  prefixes would yield a computable separator — the contrapositive argument against
-  `M`'s lower-semicomputable approximants.  This is where the tranche-U dovetailer
-  gets reused if U lands first (recommended order: U before S).
+**Finding (2026-07-27, `Construction/Witnesses/StrictSeparators.lean`, all endpoints
+axiom-clean, no `sorry`).**  `StrictSeparatorPresentation` (UniversalSemimeasure.lean)
+cannot be inhabited as stated.  Its `mass_tendsto_zero` field contradicts its own
+`repetition` field:
+
+* `no_ce_null_prefix_family` — for a universal `M`, no family `prefixes : ℕ → List Bool`
+  that is `nested` and admits a **computable enumeration of its strings** can satisfy
+  `Tendsto (fun i ↦ M.mass (prefixes i)) atTop (𝓝 0)`.  (`length_tendsto_atTop` is not
+  even needed.)
+* Reason: a computably enumerated *nested* family carries a lower-semicomputable
+  continuous semimeasure `ceNestedSemimeasure` — mass `1` on every string that is a
+  prefix of an enumerated one, `0` elsewhere; comparability of the enumerated strings is
+  exactly what makes the two children of a node compete, so `children_le` holds.
+  Universality of `M` then pins `M.mass (prefixes i) ≥ c > 0` forever.
+* `strictSeparatorPresentation_not_ce` states the conclusion directly on the structure,
+  under the hypothesis that the prefix *strings* are computably enumerable.
+* The gap between that hypothesis and the structure's `repetition` field is only
+  decoding: `EfficientRepeatedEnumeration` already emits the prefix *sentences* by
+  program (`sequence_poly`) and its `sound`/`covers` fields say those sentences are
+  exactly `prefixSentence (prefixes i)`.  Turning that into `Computable enum` needs
+  (i) a `PolyFueled`/`RpnSentenceCodes → Computable` bridge and (ii) a computable
+  inverse for `bitPrefixSentence` (parse a literal conjunction back to its bit string).
+  Both are mechanical-but-real; neither changes the mathematical conclusion.
+
+**Why the paper is not wrong — what the redesign must look like.**  `app:strict` never
+claims mass vanishes along one nested (hence, once c.e., computable) branch.  It applies
+Uniform Non-Dogmatism to the c.e. **constraint theory** of a recursively inseparable pair
+(`A₀ = {e : e(0)↓=0}`, `A₁ = {e : e(0)↓=1}`): the sentences are single-bit constraints
+`b_e` / `¬b_e`, leaving the undecided bits free, so they do *not* assemble into prefixes.
+It then shows the universal semimeasure gives vanishing mass to the **class** of
+length-`n` strings consistent with those constraints.  A faithful `thm:strict` interface
+therefore needs:
+1. `theory : ℕ → Sentence` (the c.e. constraint stream) + `EfficientRepeatedEnumeration`
+   + `jointly_possible` — the Uniform Non-Dogmatism half, unchanged in spirit;
+2. `consistentAt : ℕ → List (List Bool)` — the length-`n` strings consistent with the
+   constraints — with `mass_class_tendsto_zero : Tendsto (fun n ↦ Σ σ ∈ consistentAt n,
+   M.mass σ) atTop (𝓝 0)` (this is the genuinely research-grade computability fact, and
+   it is *not* refuted by the obstruction above);
+3. a market half that replaces `strict_domination_of_null_prefix_theory`: from
+   `ε ≤ limitingBelief P (theory i)` and coherence, `ε ≤ Σ σ ∈ consistentAt n,
+   limitingBelief P (prefixSentence σ)`; pigeonhole against `Σ M.mass σ < ε/C` gives one
+   `σ` with `C * M.mass σ < limitingBelief P (prefixSentence σ)`.
+   Step 3 is new market work (a finite-disjunction coherence lemma over prefix
+   sentences), so this is a redesign of both halves, not a drop-in field swap.
+
+**Mathlib survey (rule 2b, done).**  No recursive inseparability anywhere in Mathlib
+(`Inseparable` is the topological notion only).  `Computability/Halting.lean` has
+`ComputablePred`, `REPred`, `halting_problem`, `rice`, `computable_iff_re_compl_re`;
+`PartrecCode.lean` has `exists_code`, `evaln_complete`, `evaln_mono`.  Kleene's pair and
+its inseparability would have to be built here — but it is *not* the blocker: the blocker
+is the interface shape, and the inseparable pair is only needed for item 2 above.
+
+Until the redesign is scoped and accepted, `thm:strict` stays a disclosed boundary; the
+new file documents *why*, in kernel-checked form rather than prose.
 
 ## Tranche P — 𝓔𝓒 polish (cheap optionals, ~½–4 sessions total, no paper-node demand)
 
@@ -376,6 +416,9 @@ All three are mechanical with the existing mirror suite (`RpnSpliceStream`,
   this node is the type-`(c)` non-universality of `prefixKappa` (a modeling statement,
   not a proof gap). See the record above and `notes/m7-prefix-machine-scope.md`.
 - `M7-DUS-APPROX` and `M7-STRICT-SEPARATORS` — remain disclosed unless Anson reopens them.
+  `M7-STRICT-SEPARATORS` is now disclosed for a *stronger* reason: its interface is
+  provably vacuous under computable enumerability of its prefix strings, and needs the
+  redesign scoped under Tranche S above (`Construction/Witnesses/StrictSeparators.lean`).
 
 These three are the only intentional disclosures at the 12/15 target. The audit should
 confirm no fourth boundary is assumed anywhere it isn't named.
