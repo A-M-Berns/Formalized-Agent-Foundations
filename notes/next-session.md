@@ -123,138 +123,25 @@ CONCATENATION — `rpn (φ ⋏ ψ) = 3 :: rpn φ ++ rpn ψ` — no bignum pair s
    sentence runs; quote table replacement at slot boundaries) ⇒ symbol-level
    `preserves_ec` ⇒ `liaEfficientPrefixPatch` restored.
 
-## THEN: EC-SEQ — 𝓔𝓒-sequence migration (INTERFACE + ENGINE LANDED 2026-07-26)
+## EC-SEQ — 𝓔𝓒-sequence migration: **COMPLETE (2026-07-26)**
 
-DONE (Framework, all axiom-clean):
-* `RpnSentenceCodes φ` := ∃ block stream `s`, `PolySegStream s` ∧ each `s n` parses
-  (`parseRpn`) to `φ n` with empty remainder.  Constructors: `.ofCanonical` (deep
-  sequences at poly symbol count), `.ofPolySentenceCodes` (2-token escape blocks),
-  `.comp` (poly reindex).  In `Framework/RpnEmission.lean`.
-* Splice engine (`Framework/RpnSentence.lean`): `parseRpn_append` (self-delimitation),
-  `parseRpn_block_head`, general-block chunk contractions
-  `unRpn_price_chunk_block`/`unRpn_trade_chunk_block`, transparency layer
-  (`UnRpnTransparent`, `.nil/.append/.payload/.single`), `EF.priceFree` +
-  `EF.serialize_unRpnTransparent`, and the trade-splice contraction
-  `unRpn_tradeBlocks`.
-* Realizations (`Framework/RpnEmission.lean`):
-  `EfficientlyComputable.ofSingleTradeBlocks` (one trade/day, price-free coefficient
-  stream + 𝓔𝓒 sentence stream) and `.ofTradeBlocks` (variable count via `concatVar`).
-
-REMAINING (the per-family march):
-1. Coefficients WITH price leaves (buy-signal `max(0, c − φ*ⁿ)` shapes) need the
-   price-slot splice: serialize-with-blocks for concrete coefficient shapes, using
-   `unRpn_price_chunk_block` + transparency for the non-slot fragments.  Per-family
-   concrete shapes; no new theory expected.
-2. Structure-field migration: `PolySequence.sentence_poly` (Affine),
-   `PolyTradeEmulatable.sentence_poly` (ROI), and the Pseudorandomness local mirror
-   → `RpnSentenceCodes`.  Construction sites adapt via `.comp`/`.ofPolySentenceCodes`;
-   consumer emission assemblies (ROI `serializeTrades` streams, e.g.
-   `PolyTradeEmulatable` ~ROI:683) re-assemble with block slots and realize through
-   `ec_of_rawSegStream` — the deep part is the ROI family layer
-   (`EfficientlyEmulatable`), which meters the firm's universal-program emulation and
-   needs its RPN mirror before the budgeted/fractional composite traders certify in
-   the collapsed class directly (today they go through `noExploitTok`, which stays
-   correct meanwhile — migration is a strengthening, not a fix).
-3. Then swap property-statement hypotheses `PolySentenceCodes` → `RpnSentenceCodes`
-   family by family.  FIRST FAMILY MIGRATED (2026-07-26): `lic_provind_seq`
-   (thm:provind fragment) — `buySeq_ec_rpn` via `ofSingleTradeBlocks` (const-1
-   coefficient is price-free), hypothesis now `RpnSentenceCodes φ`, endpoint invoked
-   through the collapsed `noExploit`.  Next targets in feasibility order:
-   (a) price-slot splice families with CONCRETE serialize shapes (thm:pi buy-signal
-       `buySig` — one price leaf on the traded sentence; use `UnRpnContractsTo`
-       composition: transparent frames ++ `.priceChunk` ++ transparent ++
-       `.tradeChunk`, both slots fed from the same hφ block stream);
-   (b) thm:und (obuTrader): restructure the obu emission from equal-length
-       `PolySegStream.blocks` to `concatVar` variable segments with block slots
-       (arm blocks lose fixed length once slots vary); also migrate
-       `EfficientRepeatedEnumeration.sequence_poly` (constructors adapt via
-       `.ofPolySentenceCodes`, triangular reindex via `.comp`);
-   (c) the `PolySequence.sentence_poly` (Affine) migration — **the EC-SEQ critical
-       path**.  SURGICAL MAP (derived 2026-07-26, execute like the collapse map):
-       * Field flip: `PolySequence.sentence_poly : RpnSentenceCodes sentence`
-         (Affine.lean:236; add `import ...Framework.RpnEmission` — no cycle:
-         RpnEmission ← DigitArith/RpnSentence/Emission ← Computable/Criterion,
-         Affine imports Criterion+Computable only).  Same flip for the mirrors:
-         `PolyTradeEmulatable.sentence_poly` (ROI:76) and the Pseudorandomness
-         local structure (:854).
-       * Affine-internal: `priceFeature_polySeg` (294) — obtain the block stream
-         `⟨s, hs, hparse⟩`, replace `hpriceTok`'s middle token
-         `[encode (sentence …)]` with `s ∘ hcanonical`-indexed segments
-         (`priceSlotSeg hs (hcanonical …)`), producing the SPLICED stream; its
-         statement becomes `PolySegStream (fun z => splicedPriceFeature …)` plus a
-         companion contraction fact via `UnRpnContractsTo` (price chunks + payload/
-         operator transparency; the coefficient serializations must be shown
-         transparent — they may contain price leaves in general! Check: coefficient
-         price leaves are on *coefficient* sentences, which are NOT covered by the
-         sentence field; families with priced coefficients need those slots spliced
-         too — survey each PolySequence inhabitant's coefficient shapes first;
-         PolySequence may need a `coefficient_priceFree` (or spliced coefficient
-         stream) field mid-flight).  Same for `magnitudeFeature_polySeg` (536).
-       * Construction sites (wrap, cheap): TimelyLearning 32/90, Relationships
-         (exclusiveExhaustive_polySequence), Pseudorandomness 79, AffinePersistence
-         553/725, AffineCoherence 387, FeedbackTruth 330, ComputationSyntax
-         320/338/391/408, LUV inhabitants — use
-         `(.ofPolySentenceCodes ⟨c, h⟩).comp hindex`.
-       * Consumers (the long tail; each ends in an ecTok realization that must
-         become `ec_of_rawSegStream` with a whole-stream contraction proof):
-         AffinePersistence 224, AffinePreemptiveLearning 303/363/394,
-         Calibration 1459, QuotationAffine 589, LUVSyntax 643, FeedbackEmission
-         262-263, Affine 632, and the ROI budgeted/fractional composites
-         (`PolyTradeEmulatable` ~683, `EfficientlyEmulatable` RPN mirror).
-       * ROI-MIRROR DESIGN INTEL: `EfficientlyEmulatable` (ROI:25) is the family
-         universal-program TOKEN emission; its consumers split into (i) economic
-         lemmas (`zero_before`, `netWorth_launch`, triangular sums at 1396/2057/2255)
-         that likely need only the pre-launch-zero clause — check whether they can
-         take `hzero` directly — and (ii) the metering role, which in the collapsed
-         world is: assemble the composite (fractional/shared budgeted) trader's
-         SPLICED serialize stream from `PolyTradeEmulatable`'s flipped fields
-         (budget/gate arithmetic segments are payload/transparent, mirror 1-for-1)
-         and realize via `RpnSpliceStream.ec`, replacing the final
-         `hLI.noExploitTok _ hec` calls (ROI ~2353/2985) with `hLI.noExploit`.
-         Flip `PolyTradeEmulatable.sentence_poly : RpnSentenceCodes sentence` and
-         `coefficient_poly : RpnSpliceStream …`; its `.polySeg` (679) becomes the
-         spliced family stream via `tradeSlot`; `.gateBefore` (702) mirrors.
-       * ROI `EfficientlyEmulatable` ANATOMY (checked 2026-07-26): its def bundles
-         (1) pre-launch-zero clause, (2) poly LENGTH bound on `serializeTrades`,
-         (3) the universal-program token emission.  The economic theorem chain
-         (`sharedBudgetedTrader_netWorth` 2723 → 2959) threads the WHOLE predicate
-         as a hypothesis — check which clauses those proofs actually consume
-         (expected: (1)+(2) only; deep spliced families SATISFY (1)+(2) — token
-         lengths stay poly, only token VALUES blow up — but fail (3)).  Mirror
-         plan: split the predicate — economic half `(1)∧(2)` as the hypothesis the
-         netWorth/budget chain takes (inhabited from the spliced stream via a
-         `unRpn` length bound, e.g. `unRpn_length_le : (unRpn ts).length ≤
-         ts.length + 1`-ish, prove in RpnSentence), metering half replaced by the
-         spliced family stream + `RpnSpliceStream.ec` at the composite level.
-         `PolyTradeEmulatable.emulatable` field → the economic half only;
-         `.polySeg` (679) → spliced family stream via `tradeSlot` mirror;
-         `.gateBefore` mirrors with `RpnSpliceStream.ifZero` + an empty-stream
-         base (`RpnSpliceStream` of `fun _ => []` = ofTransparent of nil-token
-         stream).
-       * **FLIP COMPLETE (2026-07-26, full build green, all gates pass).**  Every
-         PolySequence/PolyTradeEmulatable/PGenerableWeighting/GeneratedRatFeature/
-         LUVCombinationSyntax/FeedbackTraderEmission emission field carries
-         `RpnSpliceStream`/`RpnSentenceCodes`; the engine core lives upstream in
-         `Framework/RpnSplice.lean` (PolySentenceCodes/PolyRatCodes moved to
-         Computable).  The escape-splice fragment bridge was NOT needed: both
-         `GeneratedRatFeature` inhabitants are constant features.  The arithmetic
-         quotation layer (`QuoteCodeOfMarket`, Gödel-coding is value-dependent)
-         legitimately keeps whole-value `PolySentenceCodes` hypotheses and wraps via
-         `.ofPolySentenceCodes` at flipped call sites.  Deferred niceties: finite
-         k-way block dispatch for thm:lex (currently `ofPolySentenceCodes` wrap);
-         `LUV.PolyThresholdCodes` block form (threshold sentences stay whole-value).
-       * Keep the interim compat (`noExploitTok`) callers green until each chain is
-         flipped; flip `hLI.noExploitTok → hLI.noExploit` per chain as its cert
-         lands in the collapsed class.: survey 2026-07-26 confirms thm:tl/perkno, thm:lex
-       (`exclusiveExhaustive_polySequence`), pseudorandomness, and the presentation
-       structures (SelfTrust/Introspection/MetaLearning `sentence_codes` fields) all
-       route through PolySequence or PolySentenceCodes-field interfaces, so per-family
-       splices don't reach them; the field flip + the ROI family layer
-       (`PolyTradeEmulatable`, `EfficientlyEmulatable` RPN mirrors) unlocks them all
-       at once.  Construction sites adapt via `.ofPolySentenceCodes`/`.comp`;
-       consumers re-assemble their `serializeTrades` streams with block slots
-       (engine: `priceSlotSeg`, `UnRpnContractsTo`, `unRpn_tradeBlocks`) and realize
-       through `ec_of_rawSegStream`.
+Every property-family sentence-sequence hypothesis now quantifies over
+`RpnSentenceCodes` (the paper's 𝓔𝓒 class): the PolySequence-routed families
+(thm:tl/perkno, thm:prand/benford chains, wubaff, pseudorandomness, affine
+provind/coherence/persistence/preemptive, calibration, LUV meshes), the direct
+families thm:provind (seq fragment), thm:lex (`RpnSentenceCodes.modDispatch` —
+finite mod-k block dispatch), and thm:obu (obu chain re-certified through
+`RpnSpliceStream`, variable-length arm blocks via `concatVar`; token chain
+deleted).  Deliberate whole-value residuals, each with a reason:
+* `QuoteCodeOfMarket`/arithmetic quotation hypotheses — Gödel-coding is
+  value-dependent; wraps via `.ofPolySentenceCodes` where spliced consumers need it.
+* `PrefixMachinePresentation.sentence_codes` (OccamBounds) — the concrete prefix
+  enumeration's whole-value certificate is PROVED (M7-PREFIX-MACHINE); nothing gained
+  by weakening the field.
+* `ConditioningPresentation.condition_codes` — conditions are r.e.-stage sentences;
+  the RPN-5 transducer takes `RpnSentenceCodes ψ` and wraps at call time.
+* `LUV.PolyThresholdCodes` — threshold sentences stay whole-value (deep-threshold
+  LUVs would need a block-form threshold interface; not demanded by any paper node).
 
 Gotchas: Mathlib names are `Option.bind_some`/`bind_none`; `rcases h : e`
 substitutes `e` in the GOAL too; suffixed lemmas inside a namespace break
