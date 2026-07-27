@@ -111,17 +111,43 @@ chains + clamped `2^κ` ⇒ discharges `approx_poly` *given* `sentence_poly`;
 where a token-stream representation may sidestep `toNat`-validity entirely) ⇒
 discharges `sentence_poly`.
 
-## Modeling disclosure (type-`(c)`, recorded at construction time)
+## The universality upgrade — DONE (2026-07-27)
 
-`prefixKappa` is the length function of a **fixed computable self-delimiting code**,
-not a *universal* prefix machine: the paper's `κ` is universal prefix complexity
-(uncomputable; weights only lower-semicomputable — which is why the boundary has a
-from-below `tendsto` field at all). All downstream theorems are stated for arbitrary
-`κ`, so the generic paper-faithful statements are untouched; the new endpoints are a
-genuine non-vacuous *instance* in which "simplicity" means code length under this
-fixed code (`2^{-κ(φ)} ≈ 1/poly(encode φ)`). The universality upgrade (dovetailing
-over all programs) is a strictly larger construction and remains undone. Disclosed
-in the module docstring of `PrefixMachine.lean`.
+The former type-`(c)` disclosure here ("`prefixKappa` is a fixed computable code, not a
+universal prefix machine; the universality upgrade remains undone") is **discharged**:
+`Construction/Witnesses/UniversalPrefix.lean` constructs a self-delimiting *universal*
+machine `U` and instantiates the same boundary at `UPrefix.kappaU`.  Both instances are
+kept, and they say different things:
+
+* `prefixKappa` — fixed computable code; its instance is **unconditional**, and because the
+  code is computable the from-below approximation is exact (lower semicomputability is not
+  exercised).
+* `UPrefix.kappaU` — the prefix complexity of a genuine universal prefix machine, satisfying
+  the invariance theorem `UPrefix.kappaU_le_of_prefixMachine` (`κ_U ≤ κ_M + O(1)` for every
+  code with prefix-free halting domain), hence uncomputable and machine-independent up to a
+  constant.  This is the paper's `κ`.
+
+`U` dispatches on a self-delimiting tag into three families — `0 ∷ natCode n ↦ n`
+(coverage), `1 ∷ 0 ∷ v ↦ ¬(U v)` (the negation instruction, which is what makes
+`PrefixNegationCompiler`'s overhead an explicit `2`), and `1 ∷ 1 ∷ natCode e ++ w ↦ φ_e(w)`
+over the prefix-ified dovetail `acc`.  `dom U` is prefix-free **by construction**
+(`UHalt_prefixFree`) and single-valued (`UHalt_functional`), so the Kraft field is
+`kraft_inequality` applied to the selected shortest codewords — nothing about Kraft is
+assumed, and no c.e.-domain enumeration argument was needed.  Hard-wiring finitely many
+instructions into a universal machine is standard and moves `κ_U` only by `O(1)`.
+
+**The one residual** (kind `T`, provenance `(c)`, disclosed on the structure):
+`UPrefix.UniversalPrefixComputation` supplies a `Nat.Partrec.Code` for the **exact**
+from-below stage table `uEmit`.  It carries no complexity claim — the polynomial clock is
+*constructed* on top of it (`uRead`/`uStage`/`uState`/`uSel`/`uSel_polyRatCodes`, the
+self-clamped `Code.evaln` selection of `M7-DUS-APPROX`) — and it is satisfiable: `uApprox n i`
+is a bounded search over codewords of length `≤ |natCode ⌜φᵢ⌝| + 1` using `acc n` and
+`Code.evaln n`, hence primitive recursive.  Discharging it is `Primrec` plumbing for that
+search (`natVal`, `acc`, a length-bounded codeword enumeration) and nothing else.
+
+Note for anyone reopening: stating the residual as `PolyRatCodes` of the *exact* table
+would be **unsatisfiable** (reading stage `n` costs `n` dovetail stages).  The residual is
+a code, deliberately.
 
 ## Original field-by-field table (kept for reference; statuses updated)
 
@@ -173,5 +199,8 @@ How the canonicity bit was computed inside `dd:fuel` (all in `PrefixMachine.lean
   (`approx_polyRat_of_sentence`: `dcIter` negation stripping + `p2s` halving-driven
   doubling + `prefixDen_eq`).
 
-Remaining disclosure for this node: only the type-`(c)` non-universality of
-`prefixKappa` (above), which is a modeling statement, not a proof gap.
+Remaining disclosure for this node: none of type `(c)` on `prefixKappa` — the
+non-universality disclosure was discharged 2026-07-27 by the universal machine above.  The
+only open item on the node is `UPrefix.UniversalPrefixComputation` (a computability claim
+about a bounded search), which gates the universal instance's two endpoints and nothing
+else; the fixed-code endpoints remain unconditional.

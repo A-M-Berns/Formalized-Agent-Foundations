@@ -377,11 +377,11 @@ the propositional substrate.
 
 # REOPENABLE TRANCHES (scoped 2026-07-27, Anson-approved taxonomy)
 
-> **Stage-3 gate (Anson, 2026-07-27):** universal prefix κ (the last type-(c) in
-> PrefixMachine) is GATED on the clamped-dovetailer agent's outcome: if the rounded
-> poly-fuel emission lands cleanly, dispatch stage 3 BEFORE freezing the surface for
-> the read-through (read the final statements once); if it struggles, defer stage 3
-> past consolidation as the one scoped post-freeze enhancement.
+> **Stage-3 gate (Anson, 2026-07-27): DISCHARGED.**  Stage 3 (universal prefix κ) was
+> dispatched and landed the same day; see Tranche U below.  The surface is free to freeze
+> for the read-through, which should now cover `Construction/Witnesses/UniversalPrefix.lean`
+> (`UHalt`, `kappaU`, `kappaU_le_of_prefixMachine`, `UniversalPrefixComputation`, and the
+> two new endpoints).
 
 Three bins beyond the in-flight RPN-5/freeze line.  Everything not listed here is
 either **closed** (prefix-enumeration whole-value row: proved, zero debt) or
@@ -472,26 +472,60 @@ Two things worth keeping:
 * `cases hev : e` substitutes `e` in the **goal** but *not* in existing hypotheses — the
   mirror image of the recorded `rcases h : e` trap.  `rw [hev] at h` first.
 
-**Still open in Tranche U:** only item 3 below.
+**Tranche U is COMPLETE (2026-07-27).**  Item 3 — the universal prefix machine — landed;
+see below.  Nothing in Tranche U remains open.
 
-3. Upgrade `PrefixMachine.lean`'s κ to universal prefix complexity: dovetailing
-   weights are lower-semicomputable, so the presentation's `tendsto` field does real
-   work (from-below stage convergence); the Kraft field needs the universal machine's
-   prefix-free domain (adapt `kraft_inequality` application to the c.e. domain
-   enumeration).  This removes the type-(c) in PrefixMachine's docstring and makes
-   `lic_occamBounds_ofPrefixMachine` paper-strength Occam (up to the additive-constant
-   slop the paper itself has).  Untouched.  **Sketch of what it now needs beyond the DUS
-   machinery** (2026-07-27): the *approximation* half is now cheap — `prefixApprox` would
-   become a dovetailed from-below weight table, and the identical self-clamp trick
-   (`codeEvalnNat` on a fixed exact-weight emitter, scan for the last stage that finished)
-   supplies `approximation_codes`/`_nonneg`/`_le`/`_tendsto` with no new machinery, since
-   `PrefixMachinePresentation` also asks only for from-below convergence.  What is *not*
-   supplied by this session's work is the **Kraft** field: `∑_{i<N} 2^{-κ(φᵢ)} ≤ 1` for the
-   *universal* prefix machine needs the halting set of a prefix-free universal machine to
-   be enumerated with its codewords, i.e. a prefix-free universal domain construction plus
-   the observation that `kraft_inequality` applies to each finite stage of that
-   enumeration.  That is a genuine new construction (a self-delimiting universal machine),
-   not a re-certification — estimate 1–2 sessions, and it is the only remaining piece.
+3. ~~Upgrade `PrefixMachine.lean`'s κ to universal prefix complexity.~~ **DONE
+   (2026-07-27, `Construction/Witnesses/UniversalPrefix.lean`).**  The estimate above ("a
+   genuine new construction, 1–2 sessions, the Kraft field is the hard part") was wrong
+   about *where* the difficulty sat, and the correction is the reusable lesson:
+
+   * The sketch assumed the Kraft field would need "the halting set of a prefix-free
+     universal machine enumerated with its codewords".  It does not.  Making the domain
+     prefix-free **by construction** — a tagged three-family machine, each family
+     prefix-free, the recursive family prefix-free *because the whole domain is* (structural
+     recursion on codeword length) — turns Kraft into `kraft_inequality` applied to the
+     selected shortest codewords, roughly 20 lines.  `UHalt_prefixFree` /
+     `UHalt_functional` are the whole content.
+   * The genuinely expensive field is the **approximation**, exactly the opposite of the
+     prediction.  `κ_U` is uncomputable, so the from-below stage table has to mine a
+     dovetailed enumeration; the poly-fuel emitter then needs the `M7-DUS-APPROX`
+     self-clamping trick verbatim (`uRead`/`uStage`/`uState`/`uSel`, `PolyFueled.prec`).
+     That copy is real but mechanical — `uTab` shifts the stage index by one purely so the
+     `prec` base case is a *constant*.
+   * The three families: `0 ∷ natCode n ↦ n` (coverage — this is why no sentence-code
+     computability is ever needed), `1 ∷ 0 ∷ v ↦ ¬(U v)` (the hard-wired negation
+     instruction: `PrefixNegationCompiler` overhead is an explicit **2**, not the size of a
+     compiler index — this is what the sketch's "negation compiler" item wanted and it is
+     free once negation is an instruction), and `1 ∷ 1 ∷ natCode e ++ w` over the
+     prefix-ified dovetail `acc`.
+   * `acc` prefix-ifies by the standard guard (accept `w` for machine `e` only if it halts
+     and is incomparable with everything already accepted for `e`).  The one lemma that
+     earns the word *universal* is `kappaU_le_of_prefixMachine`: if a code's halting domain
+     is already prefix-free the guard never fires, so its whole domain reappears inside
+     family 3 and `κ_U ≤ κ_M + 2·|natCode ⌜M⌝| + 3`.
+
+   **Residual (one, disclosed at the structure, kind `T` provenance `(c)`):**
+   `UPrefix.UniversalPrefixComputation` supplies a `Nat.Partrec.Code` for the **exact**
+   stage table.  Note what it is *not*: it assumes no complexity bound — the polynomial
+   clock is built on top of it here — and it is satisfiable (the exact table is a bounded
+   search over codewords of length `≤ |natCode ⌜φᵢ⌝| + 1` using `acc n` and `Code.evaln n`,
+   hence primitive recursive).  Discharging it is pure `Primrec` plumbing for that search:
+   `natVal`, `acc`, and a length-bounded codeword enumeration.  **A `PolyRatCodes` residual
+   on the *exact* table would have been unsatisfiable** (reading stage `n` costs `n`
+   dovetail stages) — that trap is why the residual is stated as a code, and why the
+   selection layer is inside the file rather than assumed.
+
+   Endpoints: `UPrefix.lic_occam_lower_ofUniversalPrefix` /
+   `UPrefix.lic_occamBounds_ofUniversalPrefix`, minted **alongside** the fixed-code ones,
+   which stay unconditional.  The type-`(c)` non-universality paragraph is gone from
+   `PrefixMachine.lean`'s docstring, replaced by an accurate statement of what each of the
+   two instances means.  Consolidation done in the same pass:
+   `sum_prefixWeight_le_half_of_code` / `prefixKraft_of_code` (Kraft, generic over the
+   code) and `gateEmitBase` / `gate*_polyRat` (gate tokens, generic over any reciprocal
+   weight stream) in `PrefixMachine.lean`, with the fixed-code lemmas as one-line
+   instantiations; the universal machine's gate tokens reuse
+   `Dovetail.encode_natDiv_polyFueled`.
 
 Tranche S does **not** need this: its one open statement is written against
 `UniversalContinuousSemimeasure`'s own approximation fields (see Tranche S).

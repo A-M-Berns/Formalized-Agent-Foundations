@@ -34,16 +34,30 @@ what makes the negation overhead **additive** (`κ(∼φ) ≤ κ(φ) + 2`, disch
 `prefixNegationCompiler` with a real proof), where a plain enumeration code would only
 give a multiplicative bound.
 
-## Modeling disclosure (type-`(c)`, recorded at proof time)
+## What this instance means (and what the universal one means)
 
-`prefixKappa` is the length function of a **fixed, computable** self-delimiting code, not
-of a *universal* prefix machine: the paper's `κ` is universal prefix (Kolmogorov)
-complexity, which is uncomputable and machine-independent up to a constant.  Every
-theorem downstream of `PrefixMachinePresentation` is stated for an arbitrary `κ`, so the
-generic paper-faithful statements are unchanged; what this file adds is a genuine,
-non-vacuous *instance* whose "simplicity" is code length under this fixed code.  The
-universality upgrade (dovetailing over all programs, lower-semicomputable weights) is a
-strictly larger construction and remains undone; see `notes/m7-prefix-machine-scope.md`.
+Every theorem downstream of `PrefixMachinePresentation` is stated for an arbitrary `κ`, so
+the generic paper-faithful statements are independent of which machine is plugged in.  Two
+machines are now plugged in, and they say different things:
+
+* **This file.**  `prefixKappa` is the length function of a *fixed, computable*
+  self-delimiting code.  Its instance is fully unconditional — every field, including both
+  fuel-model emission programs, is proved here — and "simplicity" in
+  `lic_occam_lower_ofPrefixMachine` / `lic_occamBounds_ofPrefixMachine` means code length
+  under that one code.  Because `prefixKappa` is computable the boundary's from-below
+  approximation is *exact*, so the lower-semicomputability the paper's `κ` needs is not
+  exercised.
+* **`UniversalPrefix.lean`.**  `UPrefix.kappaU` is the prefix complexity of a genuine
+  self-delimiting **universal** machine, satisfying the invariance theorem
+  `UPrefix.kappaU_le_of_prefixMachine` (`κ_U ≤ κ_M + O(1)` for every prefix machine `M`),
+  hence uncomputable and machine-independent up to a constant — the paper's `κ`.  There the
+  approximation field does real work (a from-below stage table over a dovetailed
+  enumeration).  Its endpoints carry one conclusion-free operational input,
+  `UPrefix.UniversalPrefixComputation`: a `Nat.Partrec.Code` for the *exact* stage table.
+
+So the fixed code is the *unconditional* instance and the universal one is the
+*paper-strength* instance; neither subsumes the other, and both are kept.  See
+`notes/m7-prefix-machine-scope.md`.
 -/
 
 namespace LogicalInduction
