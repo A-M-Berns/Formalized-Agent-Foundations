@@ -306,6 +306,69 @@ quotation type-(c) — code-indexed atoms *mean* their arithmetic instances via
 the propositional substrate.
 
 
+# REOPENABLE TRANCHES (scoped 2026-07-27, Anson-approved taxonomy)
+
+Three bins beyond the in-flight RPN-5/freeze line.  Everything not listed here is
+either **closed** (prefix-enumeration whole-value row: proved, zero debt) or
+**permanently disclosed in principle** (dd:fuel↔TM-time: no time-bounded machine
+theory exists anywhere to bridge to; keep the model-card calibrations + the CSlib
+watch item — if CSlib ever grows a poly-time class, the remaining gap is one
+`evaln`-fuel ↔ TM-step polynomial simulation theorem, and that alone).
+
+## Tranche U — universality: M7-DUS-APPROX + prefix-code universality (2–5 sessions)
+
+Shared core: a **concrete universal dovetailer with clocked approximants**.
+* Build a universal continuous semimeasure `M*` as an explicit dovetail over
+  `Nat.Partrec.Code` with a stage clock, such that the stage-`n` from-below
+  approximant has a `PolyFueled` emitter (the prefix-machine `approx_poly` discharge
+  is the pattern: clamped materialization, `BigDigits.clampVal`).  Key risk: the
+  usual universality proofs quantify over all machines via unbounded search — the
+  *approximant* stages are still poly-clockable because stage `n` only runs `n`
+  programs for `n` steps; the poly bound is on the STAGE, not the limit.
+* Discharge `DUSApproximationPresentation` + `DUSThresholdEmission` for `M*`
+  (threshold streams derive like `prefixThresholdSum_polyRat` did), upgrading
+  `thm:dus` from qualified to complete-over-LIA.
+* Then upgrade `PrefixMachine.lean`'s κ to universal prefix complexity: dovetailing
+  weights are lower-semicomputable, so the presentation's `tendsto` field does real
+  work (from-below stage convergence); the Kraft field needs the universal machine's
+  prefix-free domain (adapt `kraft_inequality` application to the c.e. domain
+  enumeration).  This removes the type-(c) in PrefixMachine's docstring and makes
+  `lic_occamBounds_ofPrefixMachine` paper-strength Occam (up to the additive-constant
+  slop the paper itself has).
+* Order: `M*` + approximants first (serves both), then DUS packaging, then κ.
+
+## Tranche S — M7-STRICT-SEPARATORS (3–6 sessions, partly research-grade)
+
+`StrictSeparatorPresentation` (UniversalSemimeasure.lean:2029), conclusion-free.
+* Core input: a recursively inseparable pair of c.e. sets over `Nat.Partrec.Code`
+  (Kleene's `{e : e(e)↓=0}` / `{e : e(e)↓=1}`).  **Check Mathlib first** (rule 2b):
+  `rg` for inseparable/`Computable` separators; expect absence — building it is the
+  research-grade part (diagonalization against all computable separators, on top of
+  `Nat.Partrec.Code.eval`).
+* From the pair: nested separator prefixes (`prefixes i` = the length-`i` bit string
+  recording membership decisions dovetailed so far), `nested`/`length_tendsto_atTop`
+  structural, `repetition` via the existing `EfficientRepeatedEnumeration.ofPoly`
+  machinery (cheap now), `jointly_possible` from independence of the bit atoms.
+* `mass_tendsto_zero`: any computable semimeasure concentrating mass on all separator
+  prefixes would yield a computable separator — the contrapositive argument against
+  `M`'s lower-semicomputable approximants.  This is where the tranche-U dovetailer
+  gets reused if U lands first (recommended order: U before S).
+
+## Tranche P — 𝓔𝓒 polish (cheap optionals, ~½–4 sessions total, no paper-node demand)
+
+All three are mechanical with the existing mirror suite (`RpnSpliceStream`,
+`RpnSentenceCodes`, `modDispatch`); reopen only if a consumer appears.
+1. `ConditioningPresentation.condition_codes` → `RpnSentenceCodes` (½–1 session):
+   field flip + `fixedConditioningPresentation`/`conditioningPresentationOfComputations`
+   + call-site plumbing; value = conditioning on DEEP condition sequences.  Do after
+   the RPN-5 packaging sweep settles (same files).
+2. `LUV.PolyThresholdCodes` block form (1–2 sessions): block-form threshold interface
+   + LUVSyntax/ExpectationAffine/QuotationAffine mesh re-plumb; value = deep-threshold
+   LUVs.
+3. Arithmetic-quotation numerals (2–4 sessions, lowest value): digit-wise numeral
+   emission inside QuoteCodeOfMarket so §4.11–12 quotation chains accept deep φ;
+   inherently a new layer ("RPN for numerals") — sketch before committing.
+
 ## Deliberately disclosed boundaries
 
 - `M7-PREFIX-MACHINE` — **fully discharged 2026-07-26** (both emission certificates
