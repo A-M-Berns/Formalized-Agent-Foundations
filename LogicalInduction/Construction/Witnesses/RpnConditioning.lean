@@ -1110,6 +1110,121 @@ hand:
 4. The zero-aware variants for the eventual translation (mirror of
    `guardedZeroAwareConditionTokens`). -/
 
+/-! ## Parse localization
+
+The whole-stream exactness argument needs to evaluate `unRpn` on transducer outputs
+whose price chunks wrap *arbitrary* (possibly malformed) runs.  Two facts localize the
+parse: a successful parse factors through a complete block (`parseRpn_strip`), and a
+run the automaton walks to completion either parses completely or poisons **every**
+extension (`parse_of_priceRunWalk`) — the two cases behind copied-chunk transparency
+on garbage. -/
+
+/-- Consumed-prefix completeness: a successful parse factors as a complete block
+followed by the remainder. -/
+lemma parseRpn_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {rest : List ℕ},
+    parseRpn fuel ts = some (φ, rest) →
+    ∃ blk, ts = blk ++ rest ∧ parseRpn blk.length blk = some (φ, []) := by
+  intro fuel
+  induction fuel with
+  | zero => intro ts φ rest h; simp [parseRpn] at h
+  | succ fuel ih =>
+      intro ts φ rest h
+      match ts with
+      | [] => simp at h
+      | t :: ts' =>
+          rw [parseRpn_cons] at h
+          by_cases h0 : t = 0
+          · rw [if_pos h0] at h
+            obtain ⟨rfl, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
+            subst h0
+            exact ⟨[0], rfl, rfl⟩
+          · rw [if_neg h0] at h
+            by_cases h1 : t = 1
+            · rw [if_pos h1] at h
+              match ts' with
+              | [] => simp at h
+              | c₀ :: ts'' =>
+                  rw [List.head?_cons] at h
+                  simp only [Option.bind_some] at h
+                  cases hdec : Encodable.decode (α := Sentence) c₀ with
+                  | none => rw [hdec] at h; simp at h
+                  | some ψ =>
+                      rw [hdec] at h
+                      simp only [Option.map_some, List.tail_cons] at h
+                      obtain ⟨rfl, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
+                      subst h1
+                      refine ⟨[1, c₀], rfl, ?_⟩
+                      rw [show ([1, c₀] : List ℕ).length = 1 + 1 from rfl,
+                        parseRpn_cons]
+                      simp [hdec]
+            · rw [if_neg h1] at h
+              have hbin : ∀ (mk : Sentence → Sentence → Sentence),
+                  ((parseRpn fuel ts').bind fun p =>
+                    (parseRpn fuel p.2).bind fun q =>
+                      some (mk p.1 q.1, q.2)) = some (φ, rest) →
+                  ((t = 2 ∧ mk = LO.Propositional.Formula.imp) ∨ (t = 3 ∧ mk = LO.Propositional.Formula.and) ∨
+                    (t = 4 ∧ mk = LO.Propositional.Formula.or)) →
+                  ∃ blk, t :: ts' = blk ++ rest ∧
+                    parseRpn blk.length blk = some (φ, []) := by
+                intro mk hh ht
+                cases hp : parseRpn fuel ts' with
+                | none => rw [hp] at hh; simp at hh
+                | some p =>
+                    rw [hp] at hh
+                    simp only [Option.bind_some] at hh
+                    cases hq : parseRpn fuel p.2 with
+                    | none => rw [hq] at hh; simp at hh
+                    | some q =>
+                        rw [hq] at hh
+                        simp only [Option.bind_some] at hh
+                        obtain ⟨hφ, hrest⟩ :=
+                          Prod.mk.injEq .. ▸ Option.some.inj hh
+                        obtain ⟨blk₁, hts', hblk₁⟩ := ih ts' hp
+                        obtain ⟨blk₂, hp2, hblk₂⟩ := ih p.2 hq
+                        refine ⟨t :: blk₁ ++ blk₂, by
+                          rw [hts', hp2, hrest]; simp, ?_⟩
+                        have hb1 : parseRpn (blk₁.length + blk₂.length)
+                            (blk₁ ++ blk₂) = some (p.1, blk₂) :=
+                          parseRpn_block_head hblk₁ blk₂ (by omega)
+                        have hb2 : parseRpn (blk₁.length + blk₂.length) blk₂ =
+                            some (q.1, []) :=
+                          parseRpn_mono blk₂ (by omega) hblk₂
+                        rw [List.cons_append,
+                          show (t :: (blk₁ ++ blk₂)).length =
+                            (blk₁.length + blk₂.length) + 1 by simp,
+                          parseRpn_cons, if_neg h0, if_neg h1]
+                        rcases ht with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+                        · rw [if_pos rfl, hb1]
+                          simp only [Option.bind_some]
+                          rw [hb2]
+                          simp only [Option.bind_some, ← hφ]
+                        · rw [if_neg (by omega), if_pos rfl, hb1]
+                          simp only [Option.bind_some]
+                          rw [hb2]
+                          simp only [Option.bind_some, ← hφ]
+                        · rw [if_neg (by omega), if_neg (by omega), if_pos rfl,
+                            hb1]
+                          simp only [Option.bind_some]
+                          rw [hb2]
+                          simp only [Option.bind_some, ← hφ]
+              by_cases h2 : t = 2
+              · rw [if_pos h2] at h
+                exact hbin _ h (Or.inl ⟨h2, rfl⟩)
+              · rw [if_neg h2] at h
+                by_cases h3 : t = 3
+                · rw [if_pos h3] at h
+                  exact hbin _ h (Or.inr (Or.inl ⟨h3, rfl⟩))
+                · rw [if_neg h3] at h
+                  by_cases h4 : t = 4
+                  · rw [if_pos h4] at h
+                    exact hbin _ h (Or.inr (Or.inr ⟨h4, rfl⟩))
+                  · rw [if_neg h4] at h
+                    obtain ⟨rfl, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
+                    refine ⟨[t], rfl, ?_⟩
+                    rw [show ([t] : List ℕ).length = 0 + 1 from rfl,
+                      parseRpn_cons, if_neg h0, if_neg h1, if_neg h2, if_neg h3,
+                      if_neg h4]
+
 /-! ### Endpoint statements (open, recorded — not sorried)
 
 The two target endpoints are stated here as comments rather than sorried theorems so
