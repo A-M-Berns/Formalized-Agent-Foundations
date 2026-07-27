@@ -969,6 +969,334 @@ lemma classMass_bit_le (M : ContinuousSemimeasure) (j : ℕ) (b : Bool) {n n' : 
       rw [getD_take_of_lt (lt_of_lt_of_le hj hm)]
       exact hpσ
 
+/-! ### Splitting the class along one bit -/
+
+private lemma sum_filter_add_sum_filter_not {α : Type*} (f : α → ℝ) (p : α → Bool) :
+    ∀ L : List α,
+      (((L.filter fun a ↦ p a).map f).sum + ((L.filter fun a ↦ !p a).map f).sum)
+        = (L.map f).sum
+  | [] => by simp
+  | a :: L => by
+      have ih := sum_filter_add_sum_filter_not f p L
+      by_cases h : p a = true <;>
+        simp [List.filter_cons, h, Bool.not_eq_true] at ih ⊢ <;> linarith
+
+/-- The class splits into the part where bit `j` is `b` and the part where it is not. -/
+lemma classMass_bit_split (M : ContinuousSemimeasure) (j : ℕ) (b : Bool) (n : ℕ) :
+    classMass M (fun σ ↦ σ.getD j false == b) n
+        + classMass M (fun σ ↦ σ.getD j false == !b) n
+      = classMass M (fun _ ↦ true) n := by
+  have hnot : ∀ σ : List Bool, (!(σ.getD j false == b)) = (σ.getD j false == !b) := by
+    intro σ; cases b <;> cases hσ : σ.getD j false <;> simp
+  have h := sum_filter_add_sum_filter_not M.mass
+    (fun σ : List Bool ↦ σ.getD j false == b) (separatorConsistentAt n)
+  simp only [hnot] at h
+  simp only [classMass, List.filter_true]
+  exact h
+
+/-- Once bit `j` is decided at stage `n`, the class holds no string disagreeing with it. -/
+lemma classMass_bit_zero_of_decided (M : ContinuousSemimeasure) {j n : ℕ} {b : Bool}
+    (hj : j < n) (hd : kleeneDecide n j = some b) :
+    classMass M (fun σ ↦ σ.getD j false == !b) n = 0 := by
+  have hnil : ((separatorConsistentAt n).filter fun σ ↦ σ.getD j false == !b) = [] := by
+    rw [List.filter_eq_nil_iff]
+    intro σ hσ hp
+    rw [(mem_separatorConsistentAt.1 hσ).2 j hj b hd] at hp
+    cases b <;> simp at hp
+  rw [classMass, hnil]
+  simp
+
+/-- The decided half of Kleene's pair is eventually decided by the dovetailing. -/
+lemma exists_kleeneDecide {e : ℕ} {b : Bool} (h : e ∈ kleeneSet b) :
+    ∃ n, kleeneDecide n e = some b := by
+  obtain ⟨n, hn⟩ := Nat.Partrec.Code.evaln_complete.mp h
+  refine ⟨n, ?_⟩
+  have hn' : Nat.Partrec.Code.evaln n (Denumerable.ofNat Nat.Partrec.Code e) e =
+      some (if b then 1 else 0) := hn
+  cases b <;> simp [kleeneDecide, hn']
+
+/-- **Step 5, the measure half.**  If bit `j` really belongs to the `b`-half of Kleene's
+pair, then from the pivot stage `k` on, the *other* half of the class is small: the `b`-part
+keeps mass `≥ r` forever, while the whole class never exceeds `6r/5`. -/
+lemma classMass_wrong_bit_lt (M : ContinuousSemimeasure) {r : ℝ} {k : ℕ}
+    (hle : ∀ n, r ≤ classMass M (fun _ ↦ true) n)
+    (hk : classMass M (fun _ ↦ true) k < 6 * r / 5)
+    {j : ℕ} {b : Bool} (hb : j ∈ kleeneSet b) {s : ℕ} (hks : k ≤ s) (hjs : j < s) :
+    classMass M (fun σ ↦ σ.getD j false == !b) s < r / 5 := by
+  obtain ⟨N, hN⟩ := exists_kleeneDecide hb
+  set S := max (max s N) (j + 1) with hSdef
+  have hsS : s ≤ S := le_trans (le_max_left s N) (le_max_left _ _)
+  have hNS : N ≤ S := le_trans (le_max_right s N) (le_max_left _ _)
+  have hjS : j < S := lt_of_lt_of_le (Nat.lt_succ_self j) (le_max_right _ _)
+  have hzero : classMass M (fun σ ↦ σ.getD j false == !b) S = 0 :=
+    classMass_bit_zero_of_decided M hjS (kleeneDecide_mono hNS hN)
+  have hsplitS := classMass_bit_split M j b S
+  have hsplits := classMass_bit_split M j b s
+  have hbig : classMass M (fun σ ↦ σ.getD j false == b) S ≤
+      classMass M (fun σ ↦ σ.getD j false == b) s := classMass_bit_le M j b hjs hsS
+  have hks' : classMass M (fun _ ↦ true) s ≤ classMass M (fun _ ↦ true) k :=
+    classMass_antitone M hks
+  have hrS := hle S
+  linarith
+
+/-! ### Bounded-fuel access to the approximants
+
+The search below must run the approximation program itself, so it works with the
+*bounded-fuel* values: whatever `M.approximation_code` has printed within `fuel` steps, and
+`0` where it has not printed yet.  Underestimating is harmless — the search only needs a
+lower bound on the class mass, and each individual value is either the true approximant or
+`0`, both of which are below the mass. -/
+
+/-- The bounded-fuel reading of `M`'s approximation program. -/
+def boundedApprox (M : LowerSemicomputableContinuousSemimeasure) (fuel t : ℕ)
+    (σ : List Bool) : ℚ :=
+  ((M.approximation_code.evaln fuel (Nat.pair t (Encodable.encode σ))).bind
+    fun v ↦ Encodable.decode (α := ℚ) v).getD 0
+
+lemma boundedApprox_eq (M : LowerSemicomputableContinuousSemimeasure) (fuel t : ℕ)
+    (σ : List Bool) :
+    boundedApprox M fuel t σ = 0 ∨ boundedApprox M fuel t σ = M.approximation t σ := by
+  unfold boundedApprox
+  rcases hev : M.approximation_code.evaln fuel (Nat.pair t (Encodable.encode σ)) with _ | v
+  · exact Or.inl (by simp)
+  · obtain ⟨fuel', hfuel'⟩ := M.approximation_computes t σ
+    have h1 : v ∈ M.approximation_code.eval (Nat.pair t (Encodable.encode σ)) :=
+      Nat.Partrec.Code.evaln_sound hev
+    have h2 : Encodable.encode (M.approximation t σ) ∈
+        M.approximation_code.eval (Nat.pair t (Encodable.encode σ)) :=
+      Nat.Partrec.Code.evaln_sound hfuel'
+    exact Or.inr (by simp [Part.mem_unique h1 h2, Encodable.encodek])
+
+lemma boundedApprox_le_mass (M : LowerSemicomputableContinuousSemimeasure) (fuel t : ℕ)
+    (σ : List Bool) : ((boundedApprox M fuel t σ : ℚ) : ℝ) ≤ M.mass σ := by
+  rcases boundedApprox_eq M fuel t σ with h | h
+  · rw [h]; simpa using M.nonneg σ
+  · rw [h]; exact M.approximation_le t σ
+
+/-- Enough fuel makes the program print on every string of a finite list. -/
+lemma exists_fuel_evaln (M : LowerSemicomputableContinuousSemimeasure) (t : ℕ) :
+    ∀ L : List (List Bool), ∃ fuel, ∀ σ ∈ L,
+      M.approximation_code.evaln fuel (Nat.pair t (Encodable.encode σ)) =
+        some (Encodable.encode (M.approximation t σ))
+  | [] => ⟨0, by simp⟩
+  | σ :: L => by
+      obtain ⟨fuel, hfuel⟩ := exists_fuel_evaln M t L
+      obtain ⟨fuel', hfuel'⟩ := M.approximation_computes t σ
+      refine ⟨max fuel fuel', fun τ hτ ↦ ?_⟩
+      rcases List.mem_cons.1 hτ with rfl | hτ
+      · exact Nat.Partrec.Code.evaln_mono (le_max_right _ _) hfuel'
+      · exact Nat.Partrec.Code.evaln_mono (le_max_left _ _) (hfuel τ hτ)
+
+lemma exists_fuel_boundedApprox (M : LowerSemicomputableContinuousSemimeasure) (t : ℕ)
+    (L : List (List Bool)) :
+    ∃ fuel, ∀ σ ∈ L, boundedApprox M fuel t σ = M.approximation t σ := by
+  obtain ⟨fuel, hfuel⟩ := exists_fuel_evaln M t L
+  exact ⟨fuel, fun σ hσ ↦ by simp [boundedApprox, hfuel σ hσ, Encodable.encodek]⟩
+
+/-! ### The stage classes and the search are programs
+
+The Kučera–Demuth separator has to *run* on inputs, so every ingredient below is carried at
+the `Primrec` level: the enumeration of bit strings, the stage class, the bounded-fuel
+approximants, and the rational comparison against the threshold. -/
+
+lemma allBitStrings_primrec : Primrec allBitStrings := by
+  have hcons : Primrec fun y : (ℕ × (ℕ × List (List Bool))) × List Bool ↦
+      [false :: y.2, true :: y.2] :=
+    Primrec.list_cons.comp
+      (Primrec.list_cons.comp (Primrec.const false) Primrec.snd)
+      (Primrec.list_cons.comp
+        (Primrec.list_cons.comp (Primrec.const true) Primrec.snd)
+        (Primrec.const []))
+  have hstep : Primrec₂ fun (_ : ℕ) (z : ℕ × List (List Bool)) ↦
+      z.2.flatMap fun σ ↦ [false :: σ, true :: σ] :=
+    Primrec.list_flatMap (Primrec.snd.comp Primrec.snd) hcons.to₂
+  have h := Primrec.nat_rec' Primrec.id
+    (Primrec.const ([[]] : List (List Bool))) hstep
+  refine h.of_eq fun n ↦ ?_
+  simp only [id_eq]
+  induction n with
+  | zero => simp [allBitStrings]
+  | succ n ih => rw [allBitStrings_succ, ← ih]
+
+/-- The stage decision in numeral form agreeing with a bit. -/
+def decideAgrees (d : ℕ) (x : Bool) : Bool :=
+  if d = 0 then true else cond x (decide (d = 2)) (decide (d = 1))
+
+lemma decideAgrees_eq (n e : ℕ) (x : Bool) :
+    decideAgrees (kleeneDecideNat n e) x =
+      (match kleeneDecide n e with
+        | none => true
+        | some b => x == b) := by
+  rw [kleeneDecideNat_eq]
+  rcases kleeneDecide n e with _ | b
+  · rfl
+  · cases b <;> cases x <;> rfl
+
+lemma separatorConsistentAt_eq (n : ℕ) :
+    separatorConsistentAt n =
+      (allBitStrings n).filter fun σ ↦
+        decide (∀ e ∈ List.range n,
+          decideAgrees (kleeneDecideNat n e) (σ.getD e false) = true) := by
+  rw [separatorConsistentAt]
+  congr 1
+  funext σ
+  rw [Bool.eq_iff_iff]
+  simp only [List.all_eq_true, decide_eq_true_eq, List.mem_range]
+  constructor
+  · intro h e he
+    rw [decideAgrees_eq]
+    exact h e he
+  · intro h e he
+    rw [← decideAgrees_eq]
+    exact h e he
+
+lemma kleeneDecideNat_primrec : Primrec fun p : ℕ × ℕ ↦ kleeneDecideNat p.1 p.2 := by
+  have hcode : Primrec fun p : ℕ × ℕ ↦ Denumerable.ofNat Nat.Partrec.Code p.2 :=
+    (Primrec.ofNat Nat.Partrec.Code).comp Primrec.snd
+  have hev : Primrec fun p : ℕ × ℕ ↦
+      Nat.Partrec.Code.evaln p.1 (Denumerable.ofNat Nat.Partrec.Code p.2) p.2 :=
+    Nat.Partrec.Code.primrec_evaln.comp ((Primrec.fst.pair hcode).pair Primrec.snd)
+  have hbranch : Primrec fun w : ℕ ↦ if w = 0 then 1 else if w = 1 then 2 else 0 := by
+    have h1 : PrimrecPred fun w : ℕ ↦ w = 0 :=
+      Primrec.eq.comp Primrec.id (Primrec.const 0)
+    have h2 : PrimrecPred fun w : ℕ ↦ w = 1 :=
+      Primrec.eq.comp Primrec.id (Primrec.const 1)
+    exact Primrec.ite h1 (Primrec.const 1) (Primrec.ite h2 (Primrec.const 2)
+      (Primrec.const 0))
+  refine (Primrec.option_getD.comp
+    (Primrec.option_map hev (hbranch.comp Primrec.snd).to₂) (Primrec.const 0)).of_eq ?_
+  rintro ⟨n, e⟩
+  unfold kleeneDecideNat
+  rcases Nat.Partrec.Code.evaln n (Denumerable.ofNat Nat.Partrec.Code e) e with _ | v
+  · rfl
+  · match v with
+    | 0 => rfl
+    | 1 => rfl
+    | (v + 2) => simp
+
+lemma separatorConsistentAt_primrec : Primrec separatorConsistentAt := by
+  have hagree : Primrec fun z : (List Bool × ℕ) × ℕ ↦
+      decideAgrees (kleeneDecideNat z.1.2 z.2) (z.1.1.getD z.2 false) := by
+    have hd : Primrec fun z : (List Bool × ℕ) × ℕ ↦ kleeneDecideNat z.1.2 z.2 :=
+      kleeneDecideNat_primrec.comp ((Primrec.snd.comp Primrec.fst).pair Primrec.snd)
+    have hx : Primrec fun z : (List Bool × ℕ) × ℕ ↦ z.1.1.getD z.2 false :=
+      (Primrec.list_getD false).comp (Primrec.fst.comp Primrec.fst) Primrec.snd
+    have h0 : PrimrecPred fun z : (List Bool × ℕ) × ℕ ↦ kleeneDecideNat z.1.2 z.2 = 0 :=
+      Primrec.eq.comp hd (Primrec.const 0)
+    have h1 : PrimrecPred fun z : (List Bool × ℕ) × ℕ ↦ kleeneDecideNat z.1.2 z.2 = 1 :=
+      Primrec.eq.comp hd (Primrec.const 1)
+    have h2 : PrimrecPred fun z : (List Bool × ℕ) × ℕ ↦ kleeneDecideNat z.1.2 z.2 = 2 :=
+      Primrec.eq.comp hd (Primrec.const 2)
+    have hb1 : Primrec fun z : (List Bool × ℕ) × ℕ ↦
+        decide (kleeneDecideNat z.1.2 z.2 = 1) := h1.decide
+    have hb2 : Primrec fun z : (List Bool × ℕ) × ℕ ↦
+        decide (kleeneDecideNat z.1.2 z.2 = 2) := h2.decide
+    exact (Primrec.ite h0 (Primrec.const true)
+      (Primrec.cond hx hb2 hb1)).of_eq fun z ↦ rfl
+  have hR : PrimrecRel fun (σ : List Bool) (n : ℕ) ↦
+      ∀ e ∈ List.range n, decideAgrees (kleeneDecideNat n e) (σ.getD e false) = true := by
+    have hbase : PrimrecRel fun (e : ℕ) (z : List Bool × ℕ) ↦
+        decideAgrees (kleeneDecideNat z.2 e) (z.1.getD e false) = true := by
+      have := hagree.comp (Primrec.snd.pair Primrec.fst)
+      exact (Primrec.eq.comp this (Primrec.const true))
+    have hforall := PrimrecRel.forall_mem_list hbase
+    exact hforall.comp (Primrec.list_range.comp Primrec.snd) Primrec.id
+  have hfilter := PrimrecRel.listFilter hR
+  refine (hfilter.comp allBitStrings_primrec Primrec.id).of_eq fun n ↦ ?_
+  simp only [id_eq]
+  rw [separatorConsistentAt_eq]
+
+private lemma list_sum_primrec : Primrec fun L : List ℚ ↦ L.sum := by
+  have h := Primrec.list_foldr (α := List ℚ) Primrec.id (Primrec.const (0 : ℚ))
+    (ratAdd_prim.comp (Primrec.fst.comp Primrec.snd) (Primrec.snd.comp Primrec.snd)).to₂
+  refine h.of_eq fun L ↦ ?_
+  simp only [id_eq]
+  induction L with
+  | nil => rfl
+  | cons a L ih => simp only [List.foldr_cons, List.sum_cons, ih]
+
+lemma boundedApprox_primrec (M : LowerSemicomputableContinuousSemimeasure) :
+    Primrec fun z : (ℕ × ℕ) × List Bool ↦ boundedApprox M z.1.1 z.1.2 z.2 := by
+  have harg : Primrec fun z : (ℕ × ℕ) × List Bool ↦
+      Nat.pair z.1.2 (Encodable.encode z.2) :=
+    Primrec₂.natPair.comp (Primrec.snd.comp Primrec.fst) (Primrec.encode.comp Primrec.snd)
+  have hev : Primrec fun z : (ℕ × ℕ) × List Bool ↦
+      M.approximation_code.evaln z.1.1 (Nat.pair z.1.2 (Encodable.encode z.2)) :=
+    Nat.Partrec.Code.primrec_evaln.comp
+      (((Primrec.fst.comp Primrec.fst).pair
+        (Primrec.const M.approximation_code)).pair harg)
+  have hdec : Primrec₂ fun (_ : (ℕ × ℕ) × List Bool) (w : ℕ) ↦
+      Encodable.decode (α := ℚ) w := Primrec.decode.comp Primrec.snd
+  exact Primrec.option_getD.comp (Primrec.option_bind hev hdec) (Primrec.const 0)
+
+/-- The `(fuel, t)`-bounded approximation to the mass of the part of the stage-`s` class on
+which bit `j` is `b`. -/
+def sepApproxSum (M : LowerSemicomputableContinuousSemimeasure) (j : ℕ) (b : Bool)
+    (s fuel t : ℕ) : ℚ :=
+  (((separatorConsistentAt s).filter fun σ ↦ σ.getD j false == b).map
+    (boundedApprox M fuel t)).sum
+
+lemma sepApproxSum_primrec (M : LowerSemicomputableContinuousSemimeasure) (b : Bool) :
+    Primrec fun z : (ℕ × ℕ) × ℕ × ℕ ↦ sepApproxSum M z.1.1 b z.1.2 z.2.1 z.2.2 := by
+  have hbit : PrimrecRel fun (σ : List Bool) (j : ℕ) ↦ (σ.getD j false == b) = true := by
+    have hx : Primrec fun z : List Bool × ℕ ↦ z.1.getD z.2 false :=
+      (Primrec.list_getD false).comp Primrec.fst Primrec.snd
+    exact Primrec.eq.comp (Primrec.beq.comp hx (Primrec.const b)) (Primrec.const true)
+  have hclass : Primrec fun z : (ℕ × ℕ) × ℕ × ℕ ↦
+      (separatorConsistentAt z.1.2).filter fun σ ↦ σ.getD z.1.1 false == b :=
+    ((PrimrecRel.listFilter hbit).comp
+      (separatorConsistentAt_primrec.comp (Primrec.snd.comp Primrec.fst))
+      (Primrec.fst.comp Primrec.fst)).of_eq fun z ↦ by
+        refine congrArg (fun p ↦ List.filter p (separatorConsistentAt z.1.2)) ?_
+        funext σ
+        cases σ.getD z.1.1 false <;> cases b <;> rfl
+  have happrox : Primrec₂ fun (z : (ℕ × ℕ) × ℕ × ℕ) (σ : List Bool) ↦
+      boundedApprox M z.2.1 z.2.2 σ :=
+    (boundedApprox_primrec M).comp
+      (((Primrec.fst.comp (Primrec.snd.comp Primrec.fst)).pair
+        (Primrec.snd.comp (Primrec.snd.comp Primrec.fst))).pair Primrec.snd)
+  exact list_sum_primrec.comp (Primrec.list_map hclass happrox)
+
+/-- One dovetailed search step of the Kučera–Demuth separator: at search index `z` it looks
+at stage `k + j + 1 + z.unpair.1` (above both the pivot `k` and the bit index `j`) with
+fuel and approximation level read off `z.unpair.2`, and reports a bit whose part of the
+class already approximates above the threshold `q`. -/
+def sepGuard (M : LowerSemicomputableContinuousSemimeasure) (k : ℕ) (q : ℚ) (j z : ℕ) :
+    Option ℕ :=
+  if q < sepApproxSum M j true (k + j + 1 + z.unpair.1) z.unpair.2.unpair.1
+      z.unpair.2.unpair.2 then some 1
+  else if q < sepApproxSum M j false (k + j + 1 + z.unpair.1) z.unpair.2.unpair.1
+      z.unpair.2.unpair.2 then some 0
+  else none
+
+lemma sepGuard_computable (M : LowerSemicomputableContinuousSemimeasure) (k : ℕ) (q : ℚ) :
+    Computable₂ (sepGuard M k q) := by
+  have hstage : Primrec fun p : ℕ × ℕ ↦ k + p.1 + 1 + p.2.unpair.1 :=
+    Primrec.nat_add.comp
+      (Primrec.nat_add.comp
+        (Primrec.nat_add.comp (Primrec.const k) Primrec.fst) (Primrec.const 1))
+      (Primrec.fst.comp (Primrec.unpair.comp Primrec.snd))
+  have hfuel : Primrec fun p : ℕ × ℕ ↦ p.2.unpair.2.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp
+      (Primrec.unpair.comp Primrec.snd)))
+  have ht : Primrec fun p : ℕ × ℕ ↦ p.2.unpair.2.unpair.2 :=
+    Primrec.snd.comp (Primrec.unpair.comp (Primrec.snd.comp
+      (Primrec.unpair.comp Primrec.snd)))
+  have hsum : ∀ b : Bool, PrimrecPred fun p : ℕ × ℕ ↦
+      q < sepApproxSum M p.1 b (k + p.1 + 1 + p.2.unpair.1) p.2.unpair.2.unpair.1
+        p.2.unpair.2.unpair.2 := by
+    intro b
+    have happ : Primrec fun p : ℕ × ℕ ↦
+        sepApproxSum M p.1 b (k + p.1 + 1 + p.2.unpair.1) p.2.unpair.2.unpair.1
+          p.2.unpair.2.unpair.2 :=
+      (sepApproxSum_primrec M b).comp ((Primrec.fst.pair hstage).pair (hfuel.pair ht))
+    have hle : PrimrecPred fun p : ℕ × ℕ ↦
+        sepApproxSum M p.1 b (k + p.1 + 1 + p.2.unpair.1) p.2.unpair.2.unpair.1
+          p.2.unpair.2.unpair.2 ≤ q := ratLE_prim.comp happ (Primrec.const q)
+    exact (PrimrecPred.of_eq hle.not fun p ↦ not_le)
+  exact (Primrec.ite (hsum true) (Primrec.const (some 1))
+    (Primrec.ite (hsum false) (Primrec.const (some 0)) (Primrec.const none))).to_comp.to₂
+
 /-- The repo's concrete bit atoms have computable Gödel codes, so they meet the atom
 hypothesis of the separator presentation. -/
 lemma ordinaryAtom_code_computable :
