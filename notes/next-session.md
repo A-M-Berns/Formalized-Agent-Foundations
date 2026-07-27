@@ -199,6 +199,35 @@ Gotcha added: `0 :: blk ++ [d]` parses as `(0 :: blk) ++ [d]` (`::` binds tighte
 than `++`) — chunk-peel lemmas must parenthesise `0 :: (blk ++ [d])` or the
 `List.foldl_cons` rewrites silently miss.
 
+Eighth tranche (2026-07-27, worktree agent): the **join gate** is LANDED, green +
+axiom-clean.  `rpnDepthNext` / `rpnDepthRuns` / `tokDepthRuns` (+ append laws,
+`rpnDepthRuns_price_block` = depth-neutral, `rpnDepthRuns_trade_block` = one pop),
+the master agreement **`depthMode_unRpn_agree`** (on EVERY stream, symbol depth AND
+final mode agree with the contraction's, or the contraction is `Unreadable` — the
+same skeleton as `tradeRuns_unRpn_agree`, ~200 lines, no walk analysis), the
+position bridges `rpnDepthAt_eq_runs` / `parserDepthScanAt_eq_runs`, the symbol test
+**`rpnStructurallyAccepts`** mirroring `parserStructurallyAccepts`, its poly scan
+**`rpnDepthScan`**, and the gate-agreement consumable
+**`rpnStructurallyAccepts_agree`**.
+
+KEY DESIGN FACT worth recording: the symbol mode numbering was already chosen to
+mirror the token freeze automaton (0 base, 2 price-day, 3/5 base payloads), so the
+depth step is *literally* `parserDepthNext 0 t d` at base positions, `d+1` at the
+2/3/5 slots, `d.pred` at a trade-run exit, and identity inside a sentence run.
+
+STILL OPEN for the join (the actual blocker, do NOT underestimate): the two legs are
+concatenated at symbol level, and `unRpn (A ++ B) ≠ unRpn A ++ unRpn B` when `A`
+carries a poisoned chunk.  `frameAgree_unRpn_rpnFrameOutput` (~530 lines) states only
+`FrameAgree (unRpn out) tok`, which says nothing about `unRpn (out ++ rest)`.  The
+join needs it restated as
+`ContractsTo out tok ∨ ((∀ rest, unRpn (out ++ rest) = unRpn out) ∧ Unreadable (unRpn out) ∧ Unreadable tok)`
+— i.e. the whole master commutation re-run with `ContractsTo` in place of the raw
+`unRpn` equality (the `ContractsTo.*` algebra and `rpnFrameEmit_contractsTo` already
+exist for it, and `unRpn_rpnFrameEmit_poison` is already stated in the
+poisons-every-extension form).  With that in hand the gated join, its certificate
+(`rpnFrameOutput_polySegStream` twice, `.append`, `.ifZero` on `rpnDepthScan`-backed
+acceptance) and the strategy-level agreement follow mechanically.
+
 Seventh tranche (2026-07-27, worktree agent): the frame pass's **`PolySegStream`
 certificate** and **budget exactness** are LANDED, green + axiom-clean (commits
 `ca54d22`, `87722ab`).  Item 1 of the REMAINING list below is now closed except for
