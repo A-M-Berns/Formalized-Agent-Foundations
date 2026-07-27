@@ -109,14 +109,16 @@ theorem lic_limitingBelief_add_neg
   have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
     fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   let pair : ℕ → ℕ → Sentence := fun j _ ↦ if j = 0 then φ else ∼φ
-  have hcodes : ∀ j < 2, PolySentenceCodes (pair j) := by
+  have hcodes : ∀ j < 2, RpnSentenceCodes (pair j) := by
     intro j hj
     by_cases h0 : j = 0
     · subst j
-      exact ⟨_, PolyFueled.const (Encodable.encode φ)⟩
+      exact RpnSentenceCodes.ofPolySentenceCodes
+        ⟨_, PolyFueled.const (Encodable.encode φ)⟩
     · have h1 : j = 1 := by omega
       subst j
-      exact ⟨_, PolyFueled.const (Encodable.encode (∼φ))⟩
+      exact RpnSentenceCodes.ofPolySentenceCodes
+        ⟨_, PolyFueled.const (Encodable.encode (∼φ))⟩
   have hsemantic : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ((List.range 2).map (fun j ↦ v.payout (pair j n))).sum = 1 := by
     intro n v hv

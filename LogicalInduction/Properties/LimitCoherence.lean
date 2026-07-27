@@ -137,7 +137,7 @@ lemma lic_limitingBelief_exactlyOne
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (k : ℕ) (hk : 0 < k) (φ : ℕ → Sentence)
-    (hcodes : ∀ j < k, PolySentenceCodes (fun _ => φ j))
+    (hcodes : ∀ j < k, RpnSentenceCodes (fun _ => φ j))
     (hexact : ∀ v : PCWorld, v.ConsistentWithTheory DP →
       ((List.range k).map (fun j => v.payout (φ j))).sum = 1) :
     ((List.range k).map (fun j => limitingBelief P (φ j))).sum = 1 := by
@@ -168,9 +168,10 @@ lemma lic_limitingBelief_add_neg'
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (φ : Sentence) :
     limitingBelief P φ + limitingBelief P (∼φ) = 1 := by
   let pair : ℕ → Sentence := fun j => if j = 0 then φ else ∼φ
-  have hcodes : ∀ j < 2, PolySentenceCodes (fun _ => pair j) := by
+  have hcodes : ∀ j < 2, RpnSentenceCodes (fun _ => pair j) := by
     intro j hj
-    exact ⟨_, PolyFueled.const (Encodable.encode (pair j))⟩
+    exact RpnSentenceCodes.ofPolySentenceCodes
+      ⟨_, PolyFueled.const (Encodable.encode (pair j))⟩
   have h := lic_limitingBelief_exactlyOne P DP hworld 2 (by omega) pair hcodes (by
     intro v hv
     have hrange : List.range 2 = [0, 1] := by decide
@@ -187,9 +188,10 @@ lemma lic_limitingBelief_congr
     {φ ψ : Sentence} (heq : ∀ v : PCWorld, v.Holds φ ↔ v.Holds ψ) :
     limitingBelief P φ = limitingBelief P ψ := by
   let pair : ℕ → Sentence := fun j => if j = 0 then φ else ∼ψ
-  have hcodes : ∀ j < 2, PolySentenceCodes (fun _ => pair j) := by
+  have hcodes : ∀ j < 2, RpnSentenceCodes (fun _ => pair j) := by
     intro j hj
-    exact ⟨_, PolyFueled.const (Encodable.encode (pair j))⟩
+    exact RpnSentenceCodes.ofPolySentenceCodes
+      ⟨_, PolyFueled.const (Encodable.encode (pair j))⟩
   have hpair0 := lic_limitingBelief_exactlyOne P DP hworld 2 (by omega) pair hcodes (by
     intro v hv
     have hrange : List.range 2 = [0, 1] := by decide
@@ -212,9 +214,10 @@ lemma lic_limitingBelief_disjoint_add
     {φ ψ : Sentence} (hdisj : ∀ v : PCWorld, ¬(v.Holds φ ∧ v.Holds ψ)) :
     limitingBelief P (φ ⋎ ψ) = limitingBelief P φ + limitingBelief P ψ := by
   let triple : ℕ → Sentence := fun j => if j = 0 then φ else if j = 1 then ψ else ∼(φ ⋎ ψ)
-  have hcodes : ∀ j < 3, PolySentenceCodes (fun _ => triple j) := by
+  have hcodes : ∀ j < 3, RpnSentenceCodes (fun _ => triple j) := by
     intro j hj
-    exact ⟨_, PolyFueled.const (Encodable.encode (triple j))⟩
+    exact RpnSentenceCodes.ofPolySentenceCodes
+      ⟨_, PolyFueled.const (Encodable.encode (triple j))⟩
   have htriple0 := lic_limitingBelief_exactlyOne P DP hworld 3 (by omega) triple hcodes (by
     intro v hv
     have hrange : List.range 3 = [0, 1, 2] := by decide
@@ -244,9 +247,10 @@ theorem lic_limitingBelief_gaifman
       (Filter.Eventually.of_forall fun n =>
         IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ)
   · let singleton : ℕ → Sentence := fun _ => ⊤
-    have hcodes : ∀ j < 1, PolySentenceCodes (fun _ => singleton j) := by
+    have hcodes : ∀ j < 1, RpnSentenceCodes (fun _ => singleton j) := by
       intro j hj
-      exact ⟨_, PolyFueled.const (Encodable.encode (⊤ : Sentence))⟩
+      exact RpnSentenceCodes.ofPolySentenceCodes
+        ⟨_, PolyFueled.const (Encodable.encode (⊤ : Sentence))⟩
     have h := lic_limitingBelief_exactlyOne P DP hworld 1 (by omega) singleton hcodes (by
       intro v hv
       have hrange : List.range 1 = [0] := by decide

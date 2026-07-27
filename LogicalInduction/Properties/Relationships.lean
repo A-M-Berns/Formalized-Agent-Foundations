@@ -310,43 +310,8 @@ def exclusiveExhaustiveAffine (k : ℕ) (φ : ℕ → ℕ → Sentence) (n : ℕ
 sentence sequences. -/
 noncomputable def exclusiveExhaustive_polySequence
     (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
-    (hφ : ∀ j < k, PolySentenceCodes (φ j)) :
+    (hφ : ∀ j < k, RpnSentenceCodes (φ j)) :
     AffineCombination.PolySequence (exclusiveExhaustiveAffine k φ) := by
-  let streams : List (ℕ → ℕ) :=
-    (List.range k).map (fun j n => Encodable.encode (φ j n))
-  have hstreams : PolyFueledTuple streams := by
-    simpa only [streams, List.map_map, Function.comp_def] using
-      (polyFueledTuple_of_sentenceCodes (List.range k |>.map φ) (by
-        intro ψ hψ
-        simp only [List.mem_map, List.mem_range] at hψ
-        obtain ⟨j, hj, rfl⟩ := hψ
-        exact hφ j hj))
-  let ct := Classical.choose hstreams
-  have hct := Classical.choose_spec hstreams
-  let cdm := Classical.choose (divmodc_polyFueled k hk)
-  have hdm := Classical.choose_spec (divmodc_polyFueled k hk)
-  have hrem : PolyFueled (Nat.Partrec.Code.comp Nat.Partrec.Code.right
-      (Nat.Partrec.Code.comp cdm Nat.Partrec.Code.right))
-      (fun z => z.unpair.2 % k) := by
-    simpa only [Function.comp_apply, Nat.unpair_pair] using
-      PolyFueled.right.comp (hdm.comp PolyFueled.right)
-  have hsentence : ∃ c, PolyFueled c
-      (fun z => Encodable.encode (φ (z.unpair.2 % k) z.unpair.1)) := by
-    refine ⟨Nat.Partrec.Code.comp sel
-      ((Nat.Partrec.Code.comp ct Nat.Partrec.Code.left).pair
-        (Nat.Partrec.Code.comp Nat.Partrec.Code.right
-          (Nat.Partrec.Code.comp cdm Nat.Partrec.Code.right))), ?_⟩
-    have hsel := sel_polyFueled.comp ((hct.comp PolyFueled.left).pair hrem)
-    convert hsel using 1
-    funext z
-    simp only [Nat.unpair_pair]
-    rw [selFn_tupleEnc]
-    have hr : z.unpair.2 % k <
-        (streams.map (fun t => t z.unpair.1)).length := by
-      simp only [streams, List.length_map, List.length_range]
-      exact Nat.mod_lt z.unpair.2 hk
-    rw [List.getD_eq_getElem _ _ hr]
-    simp [streams]
   exact {
     termCount := fun _ => k
     coefficient := fun _ => .const (1 / (k : ℚ))
@@ -354,7 +319,7 @@ noncomputable def exclusiveExhaustive_polySequence
     termCount_poly := ⟨Nat.Partrec.Code.const k, PolyFueled.const k⟩
     const_poly := RpnSpliceStream.serialize_const (-(1 / (k : ℚ)))
     coefficient_poly := RpnSpliceStream.serialize_const (1 / (k : ℚ))
-    sentence_poly := RpnSentenceCodes.ofPolySentenceCodes hsentence
+    sentence_poly := RpnSentenceCodes.modDispatch hk hφ
     terms_eq := by
       intro n
       rw [exclusiveExhaustiveAffine]
@@ -402,7 +367,7 @@ Paper node: `thm:lex` -/
 theorem lic_learning_exclusive_exhaustive
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
-    (hφ : ∀ j < k, PolySentenceCodes (φ j))
+    (hφ : ∀ j < k, RpnSentenceCodes (φ j))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hexclusiveExhaustive : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ((List.range k).map (fun j => v.payout (φ j n))).sum = 1) :

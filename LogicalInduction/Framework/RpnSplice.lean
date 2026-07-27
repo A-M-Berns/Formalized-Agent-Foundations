@@ -75,6 +75,52 @@ lemma RpnSentenceCodes.ifZero {φ ψ : ℕ → Sentence}
   · simpa [hz] using hpa z
   · simpa [hz] using hpb z
 
+section
+-- The documented `dd:fuel` gotcha: nested `Nat.unpair` reductions loop `whnf` on
+-- `Nat.sqrt`; scope it irreducible rather than raising heartbeats.
+attribute [local irreducible] Nat.sqrt
+
+/-- Finite mod-`k` dispatch of sentence-block streams: the paper's fixed-`k` family
+forms (`thm:lex`) quantify over `k` independent 𝓔𝓒 sequences read through
+`z ↦ φ (z.unpair.2 % k) z.unpair.1`. -/
+lemma RpnSentenceCodes.modDispatch {k : ℕ} (hk : 0 < k) {φ : ℕ → ℕ → Sentence}
+    (hφ : ∀ j < k, RpnSentenceCodes (φ j)) :
+    RpnSentenceCodes (fun z => φ (z.unpair.2 % k) z.unpair.1) := by
+  obtain ⟨cdm, hdm⟩ := divmodc_polyFueled k hk
+  obtain ⟨cadd, hadd⟩ := addc_polyFueled
+  have hrem : PolyFueled _ (fun z : ℕ => z.unpair.2 % k) :=
+    (PolyFueled.right.comp (hdm.comp PolyFueled.right)).of_eq (fun z => by
+      simp)
+  have hleft := PolyFueled.left
+  have H : ∀ m, m ≤ k → RpnSentenceCodes (fun z =>
+      if z.unpair.2 % k < m then φ (z.unpair.2 % k) z.unpair.1
+      else φ 0 z.unpair.1) := by
+    intro m
+    induction m with
+    | zero =>
+        intro _
+        exact ((hφ 0 hk).comp hleft).of_eq (fun z => by simp)
+    | succ m ih =>
+        intro hm
+        have hmk : m < k := hm
+        have htest : PolyFueled _ (fun z : ℕ =>
+            (z.unpair.2 % k - m) + (m - z.unpair.2 % k)) :=
+          (hadd.comp ((subc_polyFueled.comp (hrem.pair (PolyFueled.const m))).pair
+            (subc_polyFueled.comp ((PolyFueled.const m).pair hrem)))).of_eq
+            (fun z => by simp)
+        refine (RpnSentenceCodes.ifZero ((hφ m hmk).comp hleft)
+          (ih (le_of_lt hm)) htest).of_eq (fun z => ?_)
+        by_cases heq : z.unpair.2 % k = m
+        · rw [if_pos (by omega), if_pos (by omega), heq]
+        · rw [if_neg (by omega)]
+          by_cases hlt : z.unpair.2 % k < m + 1
+          · rw [if_pos hlt, if_pos (by omega)]
+          · rw [if_neg hlt, if_neg (by omega)]
+  exact (H k le_rfl).of_eq (fun z => by
+    rw [if_pos (Nat.mod_lt z.unpair.2 hk)])
+
+end
+
 /-- The spliced price-leaf serialization over a sentence-block stream: the reusable
 segment for buy-signal coefficients whose price leaf sits on the traded sentence
 (`[0, ⌜φ (f m)⌝, f m]` with the sentence token replaced by the block).  Its
