@@ -3481,7 +3481,7 @@ lemma rpnDepthRuns_trade_block {b : List ℕ} {φ : Sentence}
       if_pos ⟨hmodeInit, by simp [rcMode, rcPack]⟩]
 
 /-- **Symbol-level depth and mode agree with the contraction** unless the contraction
-is unreadable. -/
+is unreadable. Paper node: `thm:scon` -/
 theorem depthMode_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
     ((∀ d, rpnDepthRuns (rcPack 0 0 0) ts d = tokDepthRuns 0 (unRpn ts) d) ∧
       rcMode (List.foldl rpnCondStep (rcPack 0 0 0) ts) = freezeMode4 (unRpn ts)) ∨
@@ -3775,7 +3775,7 @@ def rpnStructurallyAccepts (tf lenF : ℕ → ℕ) (n : ℕ) : ℕ :=
   else 0
 
 /-- **Gate agreement**: the symbol-side acceptance test agrees with the token-model
-test on the contraction, unless the contraction is unreadable. -/
+test on the contraction, unless the contraction is unreadable. Paper node: `thm:scon` -/
 theorem rpnStructurallyAccepts_agree (tf tokenFn lenF lenFn : ℕ → ℕ) (n : ℕ)
     (ts : List ℕ) (hts : vpre tf n (lenF n) = ts)
     (hL : vpre tokenFn n (lenFn n) = unRpn ts) :
@@ -4414,7 +4414,7 @@ lemma UnRpnStops.cons_chunk {C A : List ℕ} {P : List ℕ}
 /-- **The contraction splits at a chunk boundary**: on a stream the run automaton
 walks back to base mode, either the whole stream contracts transparently ahead of any
 continuation, or a poisoned chunk stops the contraction outright (and the contraction
-is unreadable). -/
+is unreadable). Paper node: `thm:scon` -/
 theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
     List.foldl rpnCondStep (rcPack 0 0 0) A = rcPack 0 0 0 →
     ContractsTo A (unRpn A) ∨ (UnRpnStops A ∧ Unreadable (unRpn A)) := by
