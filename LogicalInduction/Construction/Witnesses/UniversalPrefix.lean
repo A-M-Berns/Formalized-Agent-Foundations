@@ -1107,6 +1107,9 @@ lemma uEmit_prim : Primrec uEmit := by
   · rw [if_pos h, if_pos h]
   · rw [if_neg h, if_neg h, uApprox_eq_halfPow]
 
+/-- The exact κ_U stage table has a `Nat.Partrec.Code`: the emission function is
+primitive recursive, so `exists_code` + `evaln_complete` supply the program.
+Paper node: `thm:ob` -/
 theorem exists_uCode : ∃ c : Nat.Partrec.Code, ∀ z, c.eval z = Part.some (uEmit z) := by
   obtain ⟨c, hc⟩ := Nat.Partrec.Code.exists_code.mp
     (Nat.Partrec.of_primrec (Primrec.nat_iff.mp uEmit_prim))
