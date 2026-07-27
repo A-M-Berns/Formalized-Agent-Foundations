@@ -1110,28 +1110,30 @@ hand:
 4. The zero-aware variants for the eventual translation (mirror of
    `guardedZeroAwareConditionTokens`). -/
 
-/-- **The conditioning translation preserves the collapsed class** (`def:ec`): for
-`ψ` with symbol-metered sentence codes, `T ↦ T.conditionedTranslation ψ ε` maps
-`EfficientlyComputable` traders to `EfficientlyComputable` traders.
-Paper node: `thm:scon` -/
+/-! ### Endpoint statements (open, recorded — not sorried)
+
+The two target endpoints are stated here as comments rather than sorried theorems so
+the mainline keeps its strict no-`sorryAx` guarantee for public statements.  The
+remaining distance is itemized above ("Endpoints (open)"); every construction
+ingredient below them is proved.
+
+```
 theorem conditionedTranslation_preserves_ecRpn
     (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ) (ε : ℚ)
     (T : Trader) (hT : EfficientlyComputable T) :
-    EfficientlyComputable (T.conditionedTranslation ψ ε) := by
-  -- TODO(blueprint:thm:scon): compose `rpnGuardedConditionRun_polySegStream` with the
-  -- symbol-level frame pass and discharge contraction exactness (items 1–3 above).
-  sorry
+    EfficientlyComputable (T.conditionedTranslation ψ ε)
+-- TODO(blueprint:thm:scon): compose `rpnGuardedConditionRun_polySegStream` with the
+-- symbol-level frame pass and discharge contraction exactness.
 
-/-- **The eventual conditioning translation preserves the collapsed class**.
-Paper node: `thm:scon` -/
 theorem eventualConditionedTranslation_preserves_ecRpn
     {P : History} {ψ : ℕ → Sentence}
     (F : EventualConditioningFloor P ψ) (hψ : RpnSentenceCodes ψ)
     (T : Trader) (hT : EfficientlyComputable T) :
-    EfficientlyComputable (T.eventualConditionedTranslation F) := by
-  -- TODO(blueprint:thm:scon): zero-aware mirror of the guarded rewrite (item 4) +
-  -- the frame pass + launch gate, as in `eventualConditionedTranslation_preserves_ec₂`.
-  sorry
+    EfficientlyComputable (T.eventualConditionedTranslation F)
+-- TODO(blueprint:thm:scon): zero-aware mirror of the guarded rewrite + frame pass +
+-- launch gate, as in `eventualConditionedTranslation_preserves_ec₂`.
+```
+-/
 
 end RpnConditioning
 
