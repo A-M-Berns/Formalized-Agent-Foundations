@@ -1,3 +1,4 @@
+import Critch.Infrastructure.QuoteSentence
 import Critch.BoundedProvability.Basic
 import Critch.BoundedProvability.Asymp
 import Critch.ParametricDiagonal
