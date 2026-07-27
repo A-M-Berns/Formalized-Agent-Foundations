@@ -2834,6 +2834,41 @@ def safeSeparatedFrameTokenOutput
     (Encodable.encode q) (Encodable.encode q⁻¹) tokens
   if parserStructurallyAccepts tokenFn lenFn day = 0 then first else first ++ second
 
+/-- The shallow acceptance test is `0` or `1`. -/
+lemma parserStructurallyAccepts_eq_one_of_ne_zero {tokenFn lenFn : ℕ → ℕ} {day : ℕ}
+    (h : parserStructurallyAccepts tokenFn lenFn day ≠ 0) :
+    parserStructurallyAccepts tokenFn lenFn day = 1 := by
+  unfold parserStructurallyAccepts at h ⊢
+  split_ifs at h ⊢ <;> simp_all
+
+/-- A structurally accepting source whose trades do not decode does not even *read*:
+the shallow test can only be a false positive when the stream read has already failed
+(a surviving read at an accepting boundary is ready with no pending sentence, and then
+`deserializeTrades` succeeds). -/
+lemma streamReadFrom_eq_none_of_accepts_of_deserializeTrades_none
+    (tokenFn lenFn : ℕ → ℕ) (day : ℕ) (tokens : List ℕ)
+    (htokens : tokens =
+      (List.range (lenFn day)).map fun i => tokenFn (Nat.pair day i))
+    (haccept1 : parserStructurallyAccepts tokenFn lenFn day = 1)
+    (hsource : deserializeTrades tokens = none) :
+    EF.streamReadFrom tokens (some EF.streamInitial) = none := by
+  cases hread : EF.streamReadFrom tokens (some EF.streamInitial) with
+  | none => rfl
+  | some state =>
+      have hread' := hread
+      rw [htokens] at hread'
+      have hshape := (parserStructurallyAccepts_eq_one_iff_of_read
+        tokenFn lenFn day state hread').mp haccept1
+      have hpending := streamReadFrom_readyPendingInvariant tokens state hread
+      unfold deserializeTrades at hsource
+      rw [hread] at hsource
+      rcases state with ⟨⟨mode, pending⟩, ⟨stack, decoded⟩⟩
+      simp only at hshape hpending
+      rcases hshape with ⟨rfl, rfl⟩
+      have hp : pending = none := hpending rfl
+      subst pending
+      simp at hsource
+
 lemma deserializeTrades_safeSeparatedFrameTokenOutput
     (tokenFn lenFn : ℕ → ℕ) (ψ : Sentence) (ε q : ℚ)
     (day : ℕ) (tokens : List ℕ)
@@ -2870,26 +2905,11 @@ lemma deserializeTrades_safeSeparatedFrameTokenOutput
       by_cases haccept : parserStructurallyAccepts tokenFn lenFn day = 0
       · unfold safeSeparatedFrameTokenOutput
         simp [haccept, hfirst]
-      · have haccept1 : parserStructurallyAccepts tokenFn lenFn day = 1 := by
-          unfold parserStructurallyAccepts at haccept ⊢
-          split_ifs at haccept ⊢ <;> simp_all
-        have hreadNone : EF.streamReadFrom tokens (some EF.streamInitial) = none := by
-          cases hread : EF.streamReadFrom tokens (some EF.streamInitial) with
-          | none => rfl
-          | some state =>
-              have hread' := hread
-              rw [htokens] at hread'
-              have hshape := (parserStructurallyAccepts_eq_one_iff_of_read
-                tokenFn lenFn day state hread').mp haccept1
-              have hpending := streamReadFrom_readyPendingInvariant tokens state hread
-              unfold deserializeTrades at hsource
-              rw [hread] at hsource
-              rcases state with ⟨⟨mode, pending⟩, ⟨stack, decoded⟩⟩
-              simp only at hshape hpending
-              rcases hshape with ⟨rfl, rfl⟩
-              have hp : pending = none := hpending rfl
-              subst pending
-              simp at hsource
+      · have haccept1 : parserStructurallyAccepts tokenFn lenFn day = 1 :=
+          parserStructurallyAccepts_eq_one_of_ne_zero haccept
+        have hreadNone :=
+          streamReadFrom_eq_none_of_accepts_of_deserializeTrades_none
+            tokenFn lenFn day tokens htokens haccept1 hsource
         have hfirstRead := streamReadFrom_conditioningFrameTokenOutput_none
           false ψ ε q day tokens hreadNone
         unfold safeSeparatedFrameTokenOutput

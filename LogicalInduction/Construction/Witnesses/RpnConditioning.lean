@@ -1247,22 +1247,20 @@ certificate (`rpnFrameOutput_polySegStream`), the trade-run exit scan
 (`rpnTradeCountScan`) feeding `frameBudget`, and that count's **exactness** against
 the contraction (`rpnTradeCountAt_eq_frameTradeCount`).  Still open:
 
-1. **The two-leg join** under a structural-acceptance gate, as in
-   `safeSeparatedFrameTokenOutput`.  The **gate** is now proved below — the
-   symbol-side test `rpnStructurallyAccepts` (run automaton ends in base mode with an
-   empty feature stack), its poly-fueled scan `rpnDepthScan`, and the gate-agreement
-   theorem `rpnStructurallyAccepts_agree` (symbol test = token test on the
-   contraction, or the contraction is unreadable).  The append wrinkle
-   (`unRpn (A ++ B) ≠ unRpn A ++ unRpn B` when `A` is poisoned) is isolated as
-   `unRpn_split`: a stream the automaton walks back to base is either
-   `ContractsTo`-transparent or its poison stops the contraction (`UnRpnStops`).
-   What is left is to feed `unRpn_split` on the frame output, which needs
-   `List.foldl rpnCondStep (rcPack 0 0 0) (rpnFrameOutput …) = rcPack 0 0 0` — the
-   copies replay the source's transitions and each `rpnFrameEmit` block is
-   automaton-neutral (its `3 :: buf ++ blk` shell runs the buffered trade tokens one
-   counter level up, so it exits exactly at the block boundary), which needs the
-   counter-shift form of the run-walk lemmas.
-2. The zero-aware variants for the eventual translation (mirror of
+The **two-leg join** under the structural-acceptance gate is also proved below:
+the symbol-side test `rpnStructurallyAccepts` with its poly-fueled scan
+`rpnDepthScan` and gate agreement `rpnStructurallyAccepts_agree`, the gated join
+`rpnSafeSeparatedFrameOutput` with certificate
+`rpnSafeSeparatedFrameOutput_polySegStream`, and the join agreement
+`strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades`.  The append wrinkle
+(`unRpn (A ++ B) ≠ unRpn A ++ unRpn B` when `A` is poisoned) is handled by the
+prefix form `FrameContract` of the frame agreement
+(`frameContract_rpnFrameOutput`, available exactly when the source returns the run
+automaton to base mode — which is what the gate tests) plus the observation that a
+*readable* source excludes both legs' poison branches, since a poisoned leg's token
+image would fail to deserialize.  Still open:
+
+1. The zero-aware variants for the eventual translation (mirror of
    `guardedZeroAwareConditionTokens`): the day-emission case of the master
    commutation splits on `D ∈ zeroDays` with the short `[D, 1, encode 1, 8]`
    expansion, everything else identical. -/
@@ -5933,9 +5931,9 @@ structurally accepting, in which case it emits both.  The symbol side mirrors th
 shape one-for-one off `rpnStructurallyAccepts`; the certificate is the same three
 lines as `safeSeparatedFrameDigitOutput_polySegStream`.
 
-The join's **agreement** with the token model is still open — see the note in
-"Endpoints (open)": concatenating the two legs needs `unRpn_split` fed with the frame
-output's own base-mode invariant. -/
+The join's **agreement** with the token model is proved below
+(`strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades`), off the prefix form
+`frameContract_rpnFrameOutput` of the frame agreement. -/
 
 /-- The symbol-side acceptance test is poly-fueled over any digit `PolySegStream`. -/
 lemma rpnAcceptScan {s : ℕ → List ℕ} (h : PolySegStream s) :
@@ -5995,6 +5993,120 @@ lemma rpnSafeSeparatedFrameOutput_polySegStream {src blocks : ℕ → List ℕ}
 
 #print axioms rpnAcceptScan
 #print axioms rpnSafeSeparatedFrameOutput_polySegStream
+
+/-- **The gated two-leg join agrees with the token model**: the contraction of the
+symbol-level gated join decodes to the same validated strategy as the token-model
+gated join of the contraction.
+Paper node: `thm:scon` -/
+theorem strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
+    (tf tokenFn lenF lenFn : ℕ → ℕ) (blkψ : List ℕ) {ψn : Sentence}
+    (hblkψ : parseRpn blkψ.length blkψ = some (ψn, [])) (ε q : ℚ) (n : ℕ)
+    (ts : List ℕ) (hts : vpre tf n (lenF n) = ts)
+    (hL : vpre tokenFn n (lenFn n) = unRpn ts) :
+    (strategyOfTokens n (unRpn (rpnSafeSeparatedFrameOutput tf lenF blkψ ε n
+        (Encodable.encode q) (Encodable.encode q⁻¹) ts))).trades =
+      (strategyOfTokens n
+        (safeSeparatedFrameTokenOutput tokenFn lenFn ψn ε q n (unRpn ts))).trades := by
+  have hgate := rpnStructurallyAccepts_agree tf tokenFn lenF lenFn n ts hts hL
+  have hB1 := deserializeTrades_conditioningFrameTokenRun false ψn ε q n (unRpn ts)
+  have hB2 := deserializeTrades_conditioningFrameTokenRun true ψn ε q n (unRpn ts)
+  have hjoinTok := deserializeTrades_safeSeparatedFrameTokenOutput tokenFn lenFn ψn ε
+    q n (unRpn ts) hL.symm
+  -- the base-mode invariant delivered by an accepting symbol-side gate
+  have hbaseOf : rpnStructurallyAccepts tf lenF n ≠ 0 →
+      List.foldl rpnCondStep (rcPack 0 0 0) ts = rcPack 0 0 0 := by
+    intro hacc
+    have hmode : rcMode (rpnCondControlAt tf n (lenF n)) = 0 := by
+      unfold rpnStructurallyAccepts at hacc
+      split_ifs at hacc with h1 h2 <;> simp_all
+    rw [rpnCondControlAt_eq_foldl, hts] at hmode
+    exact foldl_rpnCondStep_eq_base_of_mode_zero ts hmode
+  cases hsrc : deserializeTrades (unRpn ts) with
+  | some trades =>
+      -- readable source: the poison branches are impossible on both legs.
+      rw [hsrc] at hB1 hB2
+      simp only [Option.map_some] at hB1 hB2
+      have hne1 : ¬ Unreadable (conditioningFrameTokenOutput false
+          (Encodable.encode ψn) n ε (Encodable.encode q) (Encodable.encode q⁻¹)
+          (unRpn ts)) := by
+        intro hU
+        rw [hU.deserializeTrades_eq_none] at hB1
+        simp at hB1
+      have hne2 : ¬ Unreadable (conditioningFrameTokenOutput true
+          (Encodable.encode ψn) n ε (Encodable.encode q) (Encodable.encode q⁻¹)
+          (unRpn ts)) := by
+        intro hU
+        rw [hU.deserializeTrades_eq_none] at hB2
+        simp at hB2
+      have hgateEq : rpnStructurallyAccepts tf lenF n =
+          parserStructurallyAccepts tokenFn lenFn n := by
+        rcases hgate with h | hU
+        · exact h
+        · rw [hU.deserializeTrades_eq_none] at hsrc
+          exact absurd hsrc (by simp)
+      by_cases hacc : rpnStructurallyAccepts tf lenF n = 0
+      · have hacc' : parserStructurallyAccepts tokenFn lenFn n = 0 := by
+          rw [← hgateEq]; exact hacc
+        unfold rpnSafeSeparatedFrameOutput safeSeparatedFrameTokenOutput
+        simp only [hacc, hacc', if_true]
+        exact strategyOfTokens_unRpn_rpnFrameOutput_trades false blkψ hblkψ ε n _ _ n ts
+      · have hacc' : parserStructurallyAccepts tokenFn lenFn n ≠ 0 := by
+          rw [← hgateEq]; exact hacc
+        have hbase := hbaseOf hacc
+        have hC1 := frameContract_rpnFrameOutput false blkψ hblkψ ε n
+          (Encodable.encode q) (Encodable.encode q⁻¹) ts hbase
+        have hC2 := frameContract_rpnFrameOutput true blkψ hblkψ ε n
+          (Encodable.encode q) (Encodable.encode q⁻¹) ts hbase
+        rcases hC1 with hT1 | ⟨-, -, hU1⟩
+        · rcases hC2 with hT2 | ⟨-, -, hU2⟩
+          · have hjoin := (hT1.append hT2) []
+            rw [List.append_nil, unRpn_nil, List.append_nil] at hjoin
+            unfold rpnSafeSeparatedFrameOutput safeSeparatedFrameTokenOutput
+            simp only [hacc, hacc', if_false]
+            rw [hjoin]
+          · exact absurd hU2 hne2
+        · exact absurd hU1 hne1
+  | none =>
+      -- unreadable source: neither side produces trades.
+      have htokNil : (strategyOfTokens n
+          (safeSeparatedFrameTokenOutput tokenFn lenFn ψn ε q n (unRpn ts))).trades =
+          [] := by
+        refine strategyOfTokens_of_deserializeTrades_none ?_ n
+        rw [hjoinTok, hsrc]
+        rfl
+      rw [htokNil]
+      refine strategyOfTokens_of_deserializeTrades_none ?_ n
+      rw [hsrc] at hB1
+      simp only [Option.map_none] at hB1
+      by_cases hacc : rpnStructurallyAccepts tf lenF n = 0
+      · unfold rpnSafeSeparatedFrameOutput
+        simp only [hacc, if_true]
+        rcases frameAgree_unRpn_rpnFrameOutput false blkψ hblkψ ε n
+          (Encodable.encode q) (Encodable.encode q⁻¹) ts with heq | ⟨hU, -⟩
+        · rw [heq]; exact hB1
+        · exact hU.deserializeTrades_eq_none
+      · have hbase := hbaseOf hacc
+        have hreadNone : EF.streamReadFrom (unRpn ts) (some EF.streamInitial) =
+            none := by
+          rcases hgate with h | hU
+          · refine streamReadFrom_eq_none_of_accepts_of_deserializeTrades_none
+              tokenFn lenFn n (unRpn ts) hL.symm ?_ hsrc
+            exact parserStructurallyAccepts_eq_one_of_ne_zero (by rw [← h]; exact hacc)
+          · exact hU (0, none) [] [] rfl
+        have hB1read := streamReadFrom_conditioningFrameTokenOutput_none false ψn ε q
+          n (unRpn ts) hreadNone
+        have hC1 := frameContract_rpnFrameOutput false blkψ hblkψ ε n
+          (Encodable.encode q) (Encodable.encode q⁻¹) ts hbase
+        unfold rpnSafeSeparatedFrameOutput
+        simp only [hacc, if_false]
+        rcases hC1 with hT1 | ⟨hstop, hU1, -⟩
+        · rw [hT1 _]
+          unfold deserializeTrades
+          rw [EF.streamReadFrom_append, hB1read, EF.streamReadFrom_none]
+        · rw [hstop _]
+          exact hU1.deserializeTrades_eq_none
+
+#print axioms strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
 
 /-! ### Endpoint statements (open, recorded — not sorried)
 
