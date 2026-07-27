@@ -7,16 +7,21 @@
 
 import Mathlib.Data.Nat.Cast.Order.Ring
 import Mathlib.Data.Nat.Log
+import Mathlib.Computability.Partrec
 
 namespace LO.FirstOrder.Critch
 
 namespace Asymp
 
-/-- Critch §2.5 asymptotic domination relation on meta-level proof bounds. -/
+/-- Critch §2.5 asymptotic domination relation on meta-level proof bounds.
+
+Paper node: §2.5 (the relation `f ≺ g`). -/
 def LtAsymp (f g : Nat → Nat) : Prop :=
   ∀ M : Nat, ∃ N : Nat, ∀ n, N < n → M * f n < g n
 
-/-- Eventual positivity, used for the zero sanity check. -/
+/-- Eventual positivity, used for the zero sanity check.
+
+Paper node: infrastructure — no paper node (support for the §2.5 sanity check). -/
 def EventuallyPositive (g : Nat → Nat) : Prop :=
   ∃ N, ∀ n, N < n → 0 < g n
 
@@ -27,6 +32,8 @@ scoped infix:50 " ≺ " => Asymp.LtAsymp
 /--
 Integer logarithm base 2, used as the meta-level analogue of Critch's `lg(k)`
 from §2.2.
+
+Paper node: §2.2 (`lg`).
 -/
 def lg (k : Nat) : Nat :=
   Nat.log 2 k
@@ -35,13 +42,17 @@ namespace Asymp
 
 variable {f g h : Nat → Nat}
 
-/-- Sanity check for Critch §2.5: zero is dominated by any eventually positive function. -/
+/-- Sanity check for Critch §2.5: zero is dominated by any eventually positive function.
+
+Paper node: §2.5 (sanity check for `≺`). -/
 lemma zero_ltAsymp (hg : EventuallyPositive g) : (fun _ => 0) ≺ g := by
   intro M
   rcases hg with ⟨N, hN⟩
   exact ⟨N, fun n hn ↦ by simpa using hN n hn⟩
 
-/-- Transitivity of `≺`, used repeatedly in Critch §4. -/
+/-- Transitivity of `≺`, used repeatedly in Critch §4.
+
+Paper node: §2.5 (used throughout the §4 proof of Theorem 1). -/
 lemma trans (hfg : f ≺ g) (hgh : g ≺ h) : f ≺ h := by
   intro M
   rcases hfg M with ⟨N₁, hN₁⟩
@@ -79,7 +90,9 @@ private lemma add_lt_of_two_mul_lt {a b c : Nat} (ha : 2 * a < c) (hb : 2 * b < 
     exact hsum
   exact (Nat.mul_lt_mul_left (by decide : 0 < 2)).mp htwice
 
-/-- Basic growth fact for Critch §4, step 1: `lg k ≺ k`. -/
+/-- Basic growth fact for Critch §4, step 1: `lg k ≺ k`.
+
+Paper node: §4 (Theorem 1 proof, step 1). -/
 lemma lg_ltAsymp_id : lg ≺ id := by
   intro M
   refine ⟨2 ^ (2 * M), fun n hn ↦ ?_⟩
@@ -92,6 +105,8 @@ lemma lg_ltAsymp_id : lg ≺ id := by
 /--
 Closure under addition of dominated terms, used in Critch §4, steps 12 and 15
 to combine proof-overhead terms.
+
+Paper node: §4 (Theorem 1 proof, bound combination).
 -/
 lemma add (hfh : f ≺ h) (hgh : g ≺ h) : (fun k => f k + g k) ≺ h := by
   intro M
@@ -108,25 +123,21 @@ lemma add (hfh : f ≺ h) (hgh : g ≺ h) : (fun k => f k + g k) ≺ h := by
   rwa [← Nat.mul_add] at hadd
 
 /--
-Fallback witness condition for Critch §4, step 1.
+Witness condition for Critch §4, Theorem 1 proof, step 1: a **computable**
+intermediate function `g` with `lg ≺ g` and `e ∘ g ≺ f`.
 
-The concrete inverse/square-root construction is intentionally not formalized
-here. Phase 4 can assume this condition and extract the required `g`.
+`Computable g` is required even though the paper's step-1 sentence states only
+the growth conditions: the proof immediately represents `g` inside the formula
+`G[n, k]` (through its graph, §2.4), which is possible only for computable `g` —
+the paper's own example `g(k) = ⌊√((lg k)(e⁻¹(f k)))⌋` is computable by
+construction. The concrete inverse/square-root construction is intentionally not
+formalized here; consumers of Theorem 1 carry this condition as a hypothesis and
+extract the required `g`.
+
+Paper node: §4 (Theorem 1 proof, step 1).
 -/
 def HasIntermediateWitness (e f : Nat → Nat) : Prop :=
-  ∃ g, lg ≺ g ∧ (fun k => e (g k)) ≺ f
-
-/-- Extract the intermediate `g` required in Critch §4, step 1. -/
-lemma exists_intermediate_witness {e f : Nat → Nat} (h : HasIntermediateWitness e f) :
-    ∃ g, lg ≺ g ∧ (fun k => e (g k)) ≺ f :=
-  h
-
-/--
-Unpack a concrete threshold from `f ≺ g`; used throughout Critch §4 when fixing
-specific constants.
--/
-lemma threshold (hfg : f ≺ g) (M : Nat) : ∃ N, ∀ n, N < n → M * f n < g n :=
-  hfg M
+  ∃ g, Computable g ∧ lg ≺ g ∧ (fun k => e (g k)) ≺ f
 
 end Asymp
 

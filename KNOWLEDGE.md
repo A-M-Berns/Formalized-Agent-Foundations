@@ -10,12 +10,13 @@ Project plan: `notes/critch-pbl-roadmap.md` — its four standing scope decision
 
 | Paper (§/symbol) | Lean name | Notes |
 |---|---|---|
-| §3.1 `BBew[m,n,k]` / `□ₖ` | `BoundedProvability.bbew : Semisentence L₀ 2` | var 0 = bound (object-level), var 1 = formula code; helpers `prt` (bound term) / `pr` (numeral) |
+| §3.1 `BBew[m,n,k]` / `□ₖ` | `BoundedProvability.bbew : Semisentence L 2` | var 0 = bound (object-level), var 1 = formula code; helpers `prt` (bound term) / `pr` (numeral); **single-system**: one `T`, one `ProofMeasure` (R2-F04 — the T₀/μ₀ split lost the paper's re-necessitation step; the specialization is the honest interface) |
 | §3.1 Eval₁ extension | `bbew₁` + class `BEvalSpec` | box over a 1-free-variable formula; what Theorem 1's parametric formula consumes |
+| Property 4's boxed-box `□_z(□ₐ(φ[k]))` | `bbewInner : Semisentence L 1 → Semisentence L 3` | slots: outer bound, inner bound, argument — Eval₂ composition; inner formula has BOTH `a` and `k` unbound so Eval₁ can't express it; anchored per-numeral by `BEvalSpec.eval_spec_inner` (R2-F02) |
 | §2/§4 `⊢ₖ` judgment | `ProofMeasure` (fields `Pf sound complete mono`) | abstract bounded-proof judgment; concrete measure is Phase B |
-| §3.2 Property 1 | class `BImpDistr` | ONE internal theorem, `(∀a)(∀b)` inside the turnstile, object-level `a+b+c` (R1-F02) |
-| §3.2 Property 2 | class `BQuantDistr` | abstract computable ν via graph formula `νGraph` (§2.4 desugaring); no `lg` (R1-F05) |
-| §4 Definition 1 + Properties 3–4 | class `BExpansion` | ONE computable `e` serving both properties; P3 has bounded premise + `e(k)` outer bound (R1-F03/F06) |
+| §3.2 Property 1 | class `BImpDistr` | ONE internal theorem over `bbew₁`, `(∀k)(∀a)(∀b)` inside the turnstile, open L(1) formulas (R1-F02, R2-F01) |
+| §3.2 Property 2 | class `BQuantDistr` | abstract computable ν via graph formula + **internal totality & functionality** (R1-F05, R2-F05) |
+| §4 Definition 1 + Properties 3–4 | class `BExpansion` | ONE computable `e` (graph `eGraph` + spec + total + func); P3 bounded premise + `e(k)` outer bound; P4 internal over `bbewInner` (R1-F03/F06, R2-F02) |
 | bundle | `BHBL` | extends the five classes |
 | — | `Critch/Infrastructure/QuoteSentence.lean` | Sentence-level quote commutation; Foundation-upstream candidates (R1-F13) |
 
@@ -43,6 +44,26 @@ and Theorem 1. Cite accordingly.
 - If Theorem 1's proof later needs stronger νGraph↔ν coherence (e.g. internally provable
   totality), that is an interface **extension**, not a rewrite (fixer flag, round 2).
 
+- All Theorem-1 consumers on L_S(1) formulas (BImpDistr, BMono, innerNec) are single
+  internal theorems over `bbew₁`/`bbewInner` with `k` and the bounds quantified inside the
+  turnstile (R2-F01/F02/F10). Closed-sentence forms are NOT stored — derivable from the
+  open form + `eval_spec` at a fixed numeral; derive only when a consumer exists.
+- **Graph-formula rule** (R2-F05 cross-exam, generalize it): any computable function
+  entering internal statements via a §2.4 graph (ν, e, later g) must carry internal
+  totality AND functionality fields, not just the per-numeral spec — `Γ ∧ Con_x(T)`
+  satisfies spec + guarded conclusion vacuously at nonstandard parameters while totality
+  would prove Con(T). Asymptotic comparisons stay downstream in Asymp, never in the class.
+- R2-F03 resolution: no internal-(∀k) eval conversion exists or is needed — pp. 6–8 stay
+  in `bbew₁`/`bbewInner` form from Quantifier Distribution onward and end box-free;
+  per-numeral `eval_spec`(+`_inner`) are honest §3.1 specs and vacuity anchors.
+- Anticipated interface EXTENSIONS for the ParametricLöb proof phase (extensions, not
+  rewrites): (a) forming the diagonal `G` before `ψ` exists needs `bbew₁` exposed as a
+  code-slot instance of one code-parametric 3-var formula (§3.1 "Eval₁ is represented");
+  (b) eq 4.5's weakening may need a `bbewInner`-form mono; (c) the internal bridge between
+  `□_b(□_{g(k)}ψ[k])` as `bbew₁`-of-desugared-box vs `bbewInner ψ` at `a := g(k)` is a
+  proof-phase obligation. Quote-instance commitments on open formulas are deliberately
+  deferred to Anson's shaping.
+
 ## Intentional deviations from the paper
 
 - **Disclosed-fallback-only, NOT adopted** (R1-F04 postscript): if Phase B's node-count
@@ -56,7 +77,11 @@ and Theorem 1. Cite accordingly.
 
 ## Paper errata
 
-(None found.)
+- §4 Theorem 1 proof, step 1: the sentence introducing `g` states only `lg ≺ g` and
+  `e(g(k)) ≺ f(k)`, but the proof immediately represents `g` inside `G[n,k]` via its
+  graph, which requires `g` **computable** — the paper's own example witness is
+  computable, but the stated hypothesis understates the requirement. Lean's
+  `HasIntermediateWitness` carries `Computable g` explicitly. (Lens B r2 + R2-F07.)
 
 ## Pitfalls
 

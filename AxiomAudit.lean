@@ -13,6 +13,8 @@ Critch 2019 by §/Property/Theorem (§-citations; the paper PDF has no \label so
 -/
 import Lean.Util.CollectAxioms
 import Critch.BoundedProvability.Basic
+import Critch.BoundedProvability.Asymp
+import Critch.ParametricDiagonal
 import Critch.Infrastructure.QuoteSentence
 
 open Lean Elab Command in
@@ -66,28 +68,47 @@ substitution helpers `prt`/`pr` (the semisentence↔sentence bridge). -/
   BoundedProvability.BHBL
   BoundedProvability.exists_pr_of_provable
 
+/-! ## Asymptotic layer (§2.2, §2.5; §4 Theorem 1 proof-step support) -/
+
+#assert_axioms_clean
+  lg
+  Asymp.LtAsymp
+  Asymp.EventuallyPositive
+  Asymp.HasIntermediateWitness
+  Asymp.zero_ltAsymp
+  Asymp.trans
+  Asymp.lg_ltAsymp_id
+  Asymp.add
+
+/-! ## Parametric diagonalization (§4, Proposition 1) -/
+
+#assert_axioms_clean
+  parametricFixedpoint
+  parametric_diagonal
+  parametric_diagonal₁
+
 /-! ## Frozen field surfaces — every interface class and boundary structure -/
 
 #assert_fields ProofMeasure
   Pf sound complete mono
 
 #assert_fields BoundedProvability
-  bbew bbew₁
+  bbew bbew₁ bbewInner
 
 #assert_fields BoundedProvability.BImpDistr
   c impDistr
 
 #assert_fields BoundedProvability.BQuantDistr
-  C ν ν_computable νGraph νGraph_spec quantDistr
+  C ν ν_computable νGraph νGraph_spec νGraph_total νGraph_func quantDistr
 
 #assert_fields BoundedProvability.BEvalSpec
-  eval_spec
+  eval_spec eval_spec_inner
 
 #assert_fields BoundedProvability.BMono
   mono
 
 #assert_fields BoundedProvability.BExpansion
-  e e_computable nec innerNec
+  e e_computable eGraph eGraph_spec eGraph_total eGraph_func nec innerNec
 
 #assert_fields BoundedProvability.BHBL
   toBImpDistr toBQuantDistr toBEvalSpec toBMono toBExpansion

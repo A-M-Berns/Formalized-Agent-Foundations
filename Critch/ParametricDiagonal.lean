@@ -17,6 +17,8 @@ Critch §4, Proposition 1 fixed point.
 
 This is Foundation's `Arithmetic.parameterizedFixedpoint` with Critch-facing
 naming.
+
+Paper node: §4 (Proposition 1, the fixed-point formula `ψ`).
 -/
 noncomputable abbrev parametricFixedpoint {r : Nat} (G : Semisentence ℒₒᵣ (r + 1)) :
     Semisentence ℒₒᵣ r :=
@@ -26,6 +28,8 @@ noncomputable abbrev parametricFixedpoint {r : Nat} (G : Semisentence ℒₒᵣ 
 Critch §4, Proposition 1, general parameter arity.
 
 Thin wrapper around Foundation's `Arithmetic.parameterized_diagonal`.
+
+Paper node: §4 (Proposition 1).
 -/
 theorem parametric_diagonal {T : Theory ℒₒᵣ} [𝗜𝚺₁ ⪯ T] {r : Nat}
     (G : Semisentence ℒₒᵣ (r + 1)) :
@@ -37,6 +41,8 @@ Critch §4, Proposition 1 in the single-parameter form used in the proof of
 Theorem 1.
 
 Thin wrapper around Foundation's `Arithmetic.parameterized_diagonal₁`.
+
+Paper node: §4 (Proposition 1, `r = 1`).
 -/
 theorem parametric_diagonal₁ {T : Theory ℒₒᵣ} [𝗜𝚺₁ ⪯ T]
     (G : Semisentence ℒₒᵣ 2) :
