@@ -415,7 +415,19 @@ All three are mechanical with the existing mirror suite (`RpnSpliceStream`,
   constructed; `PrefixMachineComputation` deleted). The only remaining disclosure for
   this node is the type-`(c)` non-universality of `prefixKappa` (a modeling statement,
   not a proof gap). See the record above and `notes/m7-prefix-machine-scope.md`.
-- `M7-DUS-APPROX` and `M7-STRICT-SEPARATORS` — remain disclosed unless Anson reopens them.
+- `M7-DUS-APPROX` — remains disclosed unless Anson reopens it (Tranche U in flight).
+- `M7-STRICT-SEPARATORS` — **DEFECTIVE AS STATED (kernel-checked, 2026-07-27)**:
+  `StrictSeparatorPresentation` is uninhabitable modulo one mechanical bridge —
+  its `repetition` field forces `M.mass (prefixes i) ≥ c > 0` by universality
+  (`strictSeparatorPresentation_not_ce`, Construction/Witnesses/StrictSeparators.lean),
+  contradicting `mass_tendsto_zero`.  `lic_strict_domination_universalSemimeasure`'s
+  boundary hypothesis is therefore (essentially) unsatisfiable — exactly the vacuity
+  class the scheduled audit hunts, caught pre-audit.  The paper's `app:strict` uses
+  single-bit CONSTRAINT theories + class-mass, not nested prefixes; the faithful
+  redesign (constraint stream + per-level consistent set + finite-disjunction
+  coherence/pigeonhole market half) is scoped under Tranche S.  DECISION PENDING
+  ANSON: accept permanent disclosure with the obstruction file as documentation, or
+  approve the redesign as a fresh tranche.
   `M7-STRICT-SEPARATORS` is now disclosed for a *stronger* reason: its interface is
   provably vacuous under computable enumerability of its prefix strings, and needs the
   redesign scoped under Tranche S above (`Construction/Witnesses/StrictSeparators.lean`).
