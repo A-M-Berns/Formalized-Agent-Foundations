@@ -476,7 +476,9 @@ def excTrader (X : LUV) (a b δ : ℚ) (n₀ : ℕ) : Trader where
         simp only [excCoef, EF.rank, max_le_iff]
         omega }
 
-private lemma list_range_map_sum (f : ℕ → ℝ) : ∀ n,
+/-- A `Finset.range` sum written as the sum of the corresponding mapped `List.range`.
+Used wherever a payout bundle is built as a list but reasoned about as a `Finset` sum. -/
+lemma list_range_map_sum {M : Type*} [AddCommMonoid M] (f : ℕ → M) : ∀ n,
     ((List.range n).map f).sum = ∑ i ∈ Finset.range n, f i
   | 0 => by simp
   | (n + 1) => by

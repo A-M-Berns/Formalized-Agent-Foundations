@@ -1596,14 +1596,6 @@ def dusTrader
     Strategy.scaleBy (.const (dusDiagonalWeight j)) (by simp [EF.rank])
       ((dusScaleTrader A (dusDiagonalScale j)).strat n)))
 
-private lemma dus_list_range_map_sum (g : ℕ → ℝ) : ∀ n,
-    ((List.range n).map g).sum = ∑ j ∈ Finset.range n, g j
-  | 0 => by simp
-  | n + 1 => by
-      rw [List.range_succ, List.map_append, List.sum_append,
-        Finset.sum_range_succ, dus_list_range_map_sum g n]
-      simp
-
 lemma dusTrader_strat_value
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -1614,7 +1606,7 @@ lemma dusTrader_strat_value
         (1 / (((j + 1 : ℕ) : ℝ) ^ 2)) *
           ((dusScaleTrader A (dusDiagonalScale j)).strat n).value P w := by
   rw [dusTrader, Strategy.join_value]
-  rw [List.map_map, dus_list_range_map_sum]
+  rw [List.map_map, list_range_map_sum]
   apply Finset.sum_congr rfl
   intro j hj
   simp only [Function.comp_apply]

@@ -1,4 +1,5 @@
 import LogicalInduction.Properties.UniversalSemimeasure
+import LogicalInduction.Construction.LIACompiler
 
 /-!
 # The universal dovetailer (`M7-DUS-APPROX`, stage 1)
@@ -30,13 +31,34 @@ The mixture `universalMass σ = ∑' c, (1/2) ^ (c+1) * dovetailMass c σ` is th
 semimeasure dominating every lower-semicomputable one, with constant `(1/2) ^ (c+1)` where
 `c` is the index of its approximation program.
 
-## Disclosure (recorded at proof time)
+## The emission program
 
-The `approximation_computes` field of `LowerSemicomputableContinuousSemimeasure` — a
-`Nat.Partrec.Code` for the stage table `universalApprox` — is **not** discharged here; see
-`TODO(blueprint:M7-DUS-APPROX)` at `universalApprox_computes`.  Everything else in this file
-is proved: each field of `ContinuousSemimeasure`, the monotone from-below stage
-approximation with its limit, and the domination constant.
+`approximation_computes` is discharged by **column tabulation**.  `trim` is a `Nat.rec`
+over the stage clock whose state is a *function* on strings, which no `Primcodable` state
+can hold; the transposition tabulates the whole clock-column at one string and recurses
+structurally on the *reversed* string, so extension by one bit is `cons` and the carried
+state is a plain `List ℚ` (`tabCol`, `Primrec.list_rec`).  The two children of a node must
+be emitted together — the `true` child reads the `false` child's freshly computed value —
+so one `ℕ`-recursion carrying `ℚ × ℚ` (`childPair`) produces both columns from the parent
+column.  Rational arithmetic is the repository's own primitive-recursive toolkit
+(`ratPrimcodable`, `ratAdd_prim`, `ratMul_prim`, `ratMax_prim`, `ratLE_prim` in
+`Construction/LIACompiler.lean`, plus `ratMin_prim`/`ratSub_prim'` here).
+
+## Status (recorded at proof time)
+
+Every field of `UniversalContinuousSemimeasure` is proved or constructed: the semimeasure
+laws, the monotone from-below stage table with its limit, the domination constant, and the
+emission program.  `universalSemimeasure` is axiom-clean.
+
+**Still open (`M7-DUS-APPROX`, disclosed):** this file gives *lower-semicomputability*, not
+a *polynomial* clock.  `DUSApproximationPresentation` asks for `PolyRatCodes` on the stage
+emitter, and `DUSThresholdEmission` for the derived threshold streams; neither is provided
+here, so `lic_domination_universalSemimeasure_unconditional` remains qualified.  The stage
+design was chosen to make that step plausible — stage `n` runs `n` programs for `n` steps,
+so the bound is on the STAGE, not the limit — but the tabulation above is *exponential* in
+the string length (`childPair` re-runs the whole clock-column at each of the `|σ|` levels,
+and `rawTable` re-scans `n` dovetail readings), so the poly refinement needs a genuinely
+different emitter, not a re-certification of this one.
 -/
 
 namespace LogicalInduction
@@ -718,41 +740,447 @@ theorem universalMass_dominates (ν : LowerSemicomputableContinuousSemimeasure) 
     rw [codeOf, Denumerable.ofNat_encode, dovetailMass_eq_mass ν σ] at h
     exact h⟩
 
-/-! ### The one undischarged obligation of this file. -/
+/-! ## The emission program: column tabulation
 
-/-! ### The emission obligation and the packaging (open, recorded — not sorried)
+`trim` is a `Nat.rec` over the stage clock whose state is a *function* on strings, which no
+`Primcodable` state can hold.  The transposition below removes that: tabulate the whole
+clock-column at one string, and recurse structurally on the *reversed* string, so that
+extension by one bit is `cons` and the carried state is a plain `List ℚ`.
 
-The single remaining `M7-DUS-APPROX` obligation, and the two packagings that follow
-from it, are recorded as statement comments so the mainline keeps its strict
-no-`sorryAx` guarantee.  The column-tabulation recipe for the code (state = `List ℚ`
-via `Primrec.list_rec`; both children emitted together from one `List.foldl` carrying
-`ℚ × ℚ`; the rational primrec toolkit already exists in `Construction/LIACompiler.lean`:
-`ratPrimcodable`, `ratAdd_prim`, `ratMul_prim`, `ratMax_prim`, `ratLE_prim`) is in
-`notes/next-session.md`, Tranche U.
+The two children of a node must be produced **together** — the `true` child reads the
+`false` child's freshly computed value — so one `ℕ`-recursion carrying `ℚ × ℚ`
+(`childPair`) emits both columns from the parent column. -/
 
-```
+/-- The root column: `rootVal c n = trim c n []`. -/
+def rootVal (c : Nat.Partrec.Code) (n : ℕ) : ℚ :=
+  if n = 0 then 0 else min (rawTable c n []) 1
+
+lemma rootVal_eq (c : Nat.Partrec.Code) (n : ℕ) : rootVal c n = trim c n [] := by
+  cases n with
+  | zero => simp [rootVal]
+  | succ k => simp [rootVal, trim_succ, trimStage_nil]
+
+/-- Stage-`n` values of the two children of `r.reverse`, computed from the parent's column
+`pcol`.  Finite state (`ℚ × ℚ`), one `ℕ`-recursion. -/
+def childPair (c : Nat.Partrec.Code) (r : List Bool) (pcol : List ℚ) : ℕ → ℚ × ℚ
+  | 0 => (0, 0)
+  | n + 1 =>
+      let ab := childPair c r pcol n
+      let p := pcol.getD (n + 1) 0
+      let f := max ab.1 (min (rawTable c (n + 1) (r.reverse ++ [false])) (p - ab.2))
+      (f, max ab.2 (min (rawTable c (n + 1) (r.reverse ++ [true])) (p - f)))
+
+lemma childPair_zero (c : Nat.Partrec.Code) (r : List Bool) (pcol : List ℚ) :
+    childPair c r pcol 0 = (0, 0) := rfl
+
+lemma childPair_succ (c : Nat.Partrec.Code) (r : List Bool) (pcol : List ℚ) (n : ℕ) :
+    childPair c r pcol (n + 1) =
+      (max (childPair c r pcol n).1
+          (min (rawTable c (n + 1) (r.reverse ++ [false]))
+            (pcol.getD (n + 1) 0 - (childPair c r pcol n).2)),
+        max (childPair c r pcol n).2
+          (min (rawTable c (n + 1) (r.reverse ++ [true]))
+            (pcol.getD (n + 1) 0 -
+              max (childPair c r pcol n).1
+                (min (rawTable c (n + 1) (r.reverse ++ [false]))
+                  (pcol.getD (n + 1) 0 - (childPair c r pcol n).2))))) := rfl
+
+/-- `childPair` reproduces the two child columns of `trim`, given a correct parent
+column. -/
+lemma childPair_eq (c : Nat.Partrec.Code) (r : List Bool) (pcol : List ℚ) {N : ℕ}
+    (hp : ∀ m, m ≤ N → pcol.getD m 0 = trim c m r.reverse) :
+    ∀ n, n ≤ N → childPair c r pcol n
+      = (trim c n (r.reverse ++ [false]), trim c n (r.reverse ++ [true])) := by
+  intro n
+  induction n with
+  | zero => intro _; simp [childPair_zero]
+  | succ k ih =>
+      intro hk
+      have hk' : k ≤ N := Nat.le_of_succ_le hk
+      have hab := ih hk'
+      have hpar : pcol.getD (k + 1) 0 = trim c (k + 1) r.reverse := hp (k + 1) hk
+      have hf : max (childPair c r pcol k).1
+          (min (rawTable c (k + 1) (r.reverse ++ [false]))
+            (pcol.getD (k + 1) 0 - (childPair c r pcol k).2))
+          = trim c (k + 1) (r.reverse ++ [false]) := by
+        rw [hab, hpar, trim_succ_false]
+      rw [childPair_succ, hf, hab, hpar, trim_succ_true]
+
+/-- One column of the tabulation, from the parent column. -/
+def colOf (c : Nat.Partrec.Code) (N : ℕ) (b : Bool) (r : List Bool) (pcol : List ℚ) :
+    List ℚ :=
+  (List.range (N + 1)).map fun n ↦
+    if b then (childPair c r pcol n).2 else (childPair c r pcol n).1
+
+/-- **Column tabulation.**  `tabCol c N r` is the clock-column
+`[trim c 0 r.reverse, …, trim c N r.reverse]`, by structural recursion on `r`. -/
+def tabCol (c : Nat.Partrec.Code) (N : ℕ) : List Bool → List ℚ
+  | [] => (List.range (N + 1)).map (rootVal c)
+  | b :: r => colOf c N b r (tabCol c N r)
+
+lemma getD_map_range {α : Type*} (f : ℕ → α) (d : α) {k m : ℕ} (h : m < k) :
+    ((List.range k).map f).getD m d = f m := by
+  rw [List.getD_eq_getElem?_getD]
+  rw [List.getElem?_map, List.getElem?_range h]
+  rfl
+
+lemma tabCol_eq (c : Nat.Partrec.Code) (N : ℕ) : ∀ r : List Bool,
+    tabCol c N r = (List.range (N + 1)).map fun n ↦ trim c n r.reverse := by
+  intro r
+  induction r with
+  | nil => simp [tabCol, rootVal_eq]
+  | cons b r ih =>
+      have hp : ∀ m, m ≤ N → (tabCol c N r).getD m 0 = trim c m r.reverse := by
+        intro m hm
+        rw [ih, getD_map_range _ _ (Nat.lt_succ_of_le hm)]
+      have hcp := childPair_eq c r (tabCol c N r) hp
+      show colOf c N b r (tabCol c N r) = _
+      unfold colOf
+      refine List.map_congr_left ?_
+      intro n hn
+      have hn' : n ≤ N := Nat.lt_succ_iff.mp (List.mem_range.mp hn)
+      rw [hcp n hn']
+      cases b <;> simp
+
+/-- The stage table read off its own column. -/
+lemma trim_eq_tabCol (c : Nat.Partrec.Code) (n : ℕ) (σ : List Bool) :
+    trim c n σ = (tabCol c n σ.reverse).getD n 0 := by
+  rw [tabCol_eq, getD_map_range _ _ (Nat.lt_succ_self n), List.reverse_reverse]
+
+/-! ### The mixture's stage table as a list -/
+
+/-- `halfPow i = (1/2) ^ (i+1)`, by a `ℕ`-recursion in `ℚ` (no numeral cast needed). -/
+def halfPow : ℕ → ℚ
+  | 0 => 1 / 2
+  | i + 1 => halfPow i * (1 / 2)
+
+lemma halfPow_eq : ∀ i, halfPow i = (1 / 2 : ℚ) ^ (i + 1)
+  | 0 => by simp [halfPow]
+  | i + 1 => by rw [halfPow, halfPow_eq i, pow_succ]; ring
+
+/-- The stage table as an explicit list sum. -/
+def approxList (n : ℕ) (σ : List Bool) : List ℚ :=
+  (List.range n).map fun i ↦ halfPow i * trim (codeOf i) n σ
+
+lemma universalApprox_eq_sum (n : ℕ) (σ : List Bool) :
+    universalApprox n σ = (approxList n σ).sum := by
+  rw [approxList, list_range_map_sum]
+  exact Finset.sum_congr rfl fun i _ ↦ by rw [halfPow_eq]
+
+/-! ## Primitive recursion of the emission program -/
+
+section Emission
+
+attribute [local irreducible] Nat.sqrt
+
+/-- Rational minimum is primitive recursive (mirror of `ratMax_prim`). -/
+lemma ratMin_prim : Primrec₂ fun q r : ℚ ↦ min q r := by
+  exact (Primrec.ite ratLE_prim Primrec₂.left Primrec₂.right).to₂.of_eq fun q r ↦ by
+    simp [min_def]
+
+/-- Rational subtraction is primitive recursive. -/
+lemma ratSub_prim' : Primrec₂ fun q r : ℚ ↦ q - r := by
+  exact (ratAdd_prim.comp Primrec.fst
+      (ratMul_prim.comp (Primrec.const (-1 : ℚ)) Primrec.snd)).of_eq fun p ↦ by
+    show p.1 + (-1) * p.2 = p.1 - p.2
+    ring
+
+/-- The dovetail's single clocked reading is primitive recursive: `evaln` is, and the
+rational decode is the repository's canonical rational `Primcodable`. -/
+lemma rawStep_prim :
+    Primrec fun x : (Nat.Partrec.Code × ℕ) × List Bool ↦ rawStep x.1.1 x.1.2 x.2 := by
+  have hc : Primrec fun x : (Nat.Partrec.Code × ℕ) × List Bool ↦ x.1.1 :=
+    Primrec.fst.comp Primrec.fst
+  have hn : Primrec fun x : (Nat.Partrec.Code × ℕ) × List Bool ↦ x.1.2 :=
+    Primrec.snd.comp Primrec.fst
+  have hs : Primrec fun x : (Nat.Partrec.Code × ℕ) × List Bool ↦ x.2 := Primrec.snd
+  have hup : Primrec fun x : (Nat.Partrec.Code × ℕ) × List Bool ↦ x.1.2.unpair :=
+    Primrec.unpair.comp hn
+  have hm : Primrec fun x : (Nat.Partrec.Code × ℕ) × List Bool ↦ x.1.2.unpair.1 :=
+    Primrec.fst.comp hup
+  have hf : Primrec fun x : (Nat.Partrec.Code × ℕ) × List Bool ↦ x.1.2.unpair.2 :=
+    Primrec.snd.comp hup
+  have harg : Primrec fun x : (Nat.Partrec.Code × ℕ) × List Bool ↦
+      Nat.pair x.1.2.unpair.1 (Encodable.encode x.2) :=
+    Primrec₂.natPair.comp hm (Primrec.encode.comp hs)
+  have hev : Primrec fun x : (Nat.Partrec.Code × ℕ) × List Bool ↦
+      Nat.Partrec.Code.evaln x.1.2.unpair.2 x.1.1
+        (Nat.pair x.1.2.unpair.1 (Encodable.encode x.2)) :=
+    Nat.Partrec.Code.primrec_evaln.comp ((hf.pair hc).pair harg)
+  have hdec : Primrec fun x : (Nat.Partrec.Code × ℕ) × List Bool ↦
+      (Nat.Partrec.Code.evaln x.1.2.unpair.2 x.1.1
+        (Nat.pair x.1.2.unpair.1 (Encodable.encode x.2))).bind
+          (Encodable.decode (α := ℚ)) :=
+    Primrec.option_bind hev ((Primrec.decode (α := ℚ)).comp₂ Primrec₂.right)
+  have hgd : Primrec fun x : (Nat.Partrec.Code × ℕ) × List Bool ↦
+      ((Nat.Partrec.Code.evaln x.1.2.unpair.2 x.1.1
+        (Nat.pair x.1.2.unpair.1 (Encodable.encode x.2))).bind
+          (Encodable.decode (α := ℚ))).getD 0 :=
+    Primrec.option_getD.comp hdec (Primrec.const 0)
+  exact (ratMax_prim.comp (Primrec.const 0) hgd).of_eq fun x ↦ rfl
+
+lemma rawTable_rec (c : Nat.Partrec.Code) (σ : List Bool) : ∀ n,
+    rawTable c n σ = n.rec (motive := fun _ ↦ ℚ) 0 fun k IH ↦ max IH (rawStep c k σ)
+  | 0 => rfl
+  | n + 1 => by rw [rawTable_succ, rawTable_rec c σ n]
+
+attribute [local irreducible] rawStep rawVal in
+lemma rawTable_prim :
+    Primrec₂ fun (a : Nat.Partrec.Code × List Bool) (n : ℕ) ↦ rawTable a.1 n a.2 := by
+  have hstep : Primrec₂ fun (a : Nat.Partrec.Code × List Bool) (p : ℕ × ℚ) ↦
+      max p.2 (rawStep a.1 p.1 a.2) := by
+    have hraw : Primrec fun y : (Nat.Partrec.Code × List Bool) × ℕ × ℚ ↦
+        rawStep y.1.1 y.2.1 y.1.2 :=
+      rawStep_prim.comp (((Primrec.fst.comp Primrec.fst).pair
+        (Primrec.fst.comp Primrec.snd)).pair (Primrec.snd.comp Primrec.fst))
+    exact (ratMax_prim.comp (Primrec.snd.comp Primrec.snd) hraw).to₂
+  exact (Primrec.nat_rec (Primrec.const (0 : ℚ)) hstep).of_eq fun a n ↦
+    (rawTable_rec a.1 a.2 n).symm
+
+/-! ### The child pair and the tabulation -/
+
+lemma childPair_rec (c : Nat.Partrec.Code) (r : List Bool) (pcol : List ℚ) : ∀ n,
+    childPair c r pcol n =
+      n.rec (motive := fun _ ↦ ℚ × ℚ) (0, 0) fun k IH ↦
+        (max IH.1
+            (min (rawTable c (k + 1) (r.reverse ++ [false]))
+              (pcol.getD (k + 1) 0 - IH.2)),
+          max IH.2
+            (min (rawTable c (k + 1) (r.reverse ++ [true]))
+              (pcol.getD (k + 1) 0 -
+                max IH.1
+                  (min (rawTable c (k + 1) (r.reverse ++ [false]))
+                    (pcol.getD (k + 1) 0 - IH.2)))))
+  | 0 => rfl
+  | n + 1 => by rw [childPair_succ, childPair_rec c r pcol n]
+
+attribute [local irreducible] rawStep rawVal in
+lemma childPair_prim :
+    Primrec₂ fun (a : Nat.Partrec.Code × List Bool × List ℚ) (n : ℕ) ↦
+      childPair a.1 a.2.1 a.2.2 n := by
+  set A := Nat.Partrec.Code × List Bool × List ℚ with hA
+  have hc : Primrec fun y : A × ℕ × (ℚ × ℚ) ↦ y.1.1 := Primrec.fst.comp Primrec.fst
+  have hr : Primrec fun y : A × ℕ × (ℚ × ℚ) ↦ y.1.2.1 :=
+    Primrec.fst.comp (Primrec.snd.comp Primrec.fst)
+  have hpcol : Primrec fun y : A × ℕ × (ℚ × ℚ) ↦ y.1.2.2 :=
+    Primrec.snd.comp (Primrec.snd.comp Primrec.fst)
+  have hk1 : Primrec fun y : A × ℕ × (ℚ × ℚ) ↦ y.2.1 + 1 :=
+    Primrec.succ.comp (Primrec.fst.comp Primrec.snd)
+  have hih1 : Primrec fun y : A × ℕ × (ℚ × ℚ) ↦ y.2.2.1 :=
+    Primrec.fst.comp (Primrec.snd.comp Primrec.snd)
+  have hih2 : Primrec fun y : A × ℕ × (ℚ × ℚ) ↦ y.2.2.2 :=
+    Primrec.snd.comp (Primrec.snd.comp Primrec.snd)
+  have hp : Primrec fun y : A × ℕ × (ℚ × ℚ) ↦ y.1.2.2.getD (y.2.1 + 1) 0 :=
+    (Primrec.list_getD (0 : ℚ)).comp hpcol hk1
+  have hs0 : Primrec fun y : A × ℕ × (ℚ × ℚ) ↦ y.1.2.1.reverse ++ [false] :=
+    Primrec.list_append.comp (Primrec.list_reverse.comp hr) (Primrec.const [false])
+  have hs1 : Primrec fun y : A × ℕ × (ℚ × ℚ) ↦ y.1.2.1.reverse ++ [true] :=
+    Primrec.list_append.comp (Primrec.list_reverse.comp hr) (Primrec.const [true])
+  have hraw0 : Primrec fun y : A × ℕ × (ℚ × ℚ) ↦
+      rawTable y.1.1 (y.2.1 + 1) (y.1.2.1.reverse ++ [false]) :=
+    rawTable_prim.comp (hc.pair hs0) hk1
+  have hraw1 : Primrec fun y : A × ℕ × (ℚ × ℚ) ↦
+      rawTable y.1.1 (y.2.1 + 1) (y.1.2.1.reverse ++ [true]) :=
+    rawTable_prim.comp (hc.pair hs1) hk1
+  have hf : Primrec fun y : A × ℕ × (ℚ × ℚ) ↦
+      max y.2.2.1
+        (min (rawTable y.1.1 (y.2.1 + 1) (y.1.2.1.reverse ++ [false]))
+          (y.1.2.2.getD (y.2.1 + 1) 0 - y.2.2.2)) :=
+    ratMax_prim.comp hih1 (ratMin_prim.comp hraw0 (ratSub_prim'.comp hp hih2))
+  have ht : Primrec fun y : A × ℕ × (ℚ × ℚ) ↦
+      max y.2.2.2
+        (min (rawTable y.1.1 (y.2.1 + 1) (y.1.2.1.reverse ++ [true]))
+          (y.1.2.2.getD (y.2.1 + 1) 0 -
+            max y.2.2.1
+              (min (rawTable y.1.1 (y.2.1 + 1) (y.1.2.1.reverse ++ [false]))
+                (y.1.2.2.getD (y.2.1 + 1) 0 - y.2.2.2)))) :=
+    ratMax_prim.comp hih2 (ratMin_prim.comp hraw1 (ratSub_prim'.comp hp hf))
+  exact (Primrec.nat_rec (Primrec.const ((0 : ℚ), (0 : ℚ))) (hf.pair ht).to₂).of_eq
+    fun a n ↦ (childPair_rec a.1 a.2.1 a.2.2 n).symm
+
+attribute [local irreducible] rawStep rawVal childPair in
+lemma colOf_prim :
+    Primrec fun y : (Nat.Partrec.Code × ℕ) × Bool × List Bool × List ℚ ↦
+      colOf y.1.1 y.1.2 y.2.1 y.2.2.1 y.2.2.2 := by
+  set B := (Nat.Partrec.Code × ℕ) × Bool × List Bool × List ℚ with hB
+  have hrange : Primrec fun y : B ↦ List.range (y.1.2 + 1) :=
+    Primrec.list_range.comp (Primrec.succ.comp (Primrec.snd.comp Primrec.fst))
+  have hargs : Primrec fun z : B × ℕ ↦
+      ((z.1.1.1, z.1.2.2.1, z.1.2.2.2) : Nat.Partrec.Code × List Bool × List ℚ) :=
+    (Primrec.fst.comp (Primrec.fst.comp Primrec.fst)).pair
+      ((Primrec.fst.comp (Primrec.snd.comp (Primrec.snd.comp Primrec.fst))).pair
+        (Primrec.snd.comp (Primrec.snd.comp (Primrec.snd.comp Primrec.fst))))
+  have hcp : Primrec fun z : B × ℕ ↦ childPair z.1.1.1 z.1.2.2.1 z.1.2.2.2 z.2 :=
+    childPair_prim.comp hargs Primrec.snd
+  have hsel : Primrec₂ fun (y : B) (n : ℕ) ↦
+      if y.2.1 then (childPair y.1.1 y.2.2.1 y.2.2.2 n).2
+      else (childPair y.1.1 y.2.2.1 y.2.2.2 n).1 := by
+    refine (Primrec.cond (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
+      (Primrec.snd.comp hcp) (Primrec.fst.comp hcp)).to₂.of_eq ?_
+    intro y n
+    cases hb : y.2.1 <;> simp
+  exact Primrec.list_map hrange hsel
+
+attribute [local irreducible] rawStep rawVal childPair in
+lemma rootVal_prim :
+    Primrec fun x : Nat.Partrec.Code × ℕ ↦ rootVal x.1 x.2 := by
+  have hz : PrimrecPred fun x : Nat.Partrec.Code × ℕ ↦ x.2 = 0 :=
+    Primrec.eq.comp Primrec.snd (Primrec.const 0)
+  have hraw : Primrec fun x : Nat.Partrec.Code × ℕ ↦ rawTable x.1 x.2 [] :=
+    rawTable_prim.comp (Primrec.fst.pair (Primrec.const [])) Primrec.snd
+  exact (Primrec.ite hz (Primrec.const 0)
+    (ratMin_prim.comp hraw (Primrec.const 1))).of_eq fun x ↦ rfl
+
+attribute [local irreducible] rawStep rawVal childPair colOf in
+lemma tabCol_prim :
+    Primrec fun x : (Nat.Partrec.Code × ℕ) × List Bool ↦ tabCol x.1.1 x.1.2 x.2 := by
+  set A := Nat.Partrec.Code × ℕ with hA
+  have hbase : Primrec fun a : A ↦ (List.range (a.2 + 1)).map (rootVal a.1) := by
+    refine Primrec.list_map (Primrec.list_range.comp (Primrec.succ.comp Primrec.snd)) ?_
+    exact (rootVal_prim.comp ((Primrec.fst.comp Primrec.fst).pair Primrec.snd)).to₂
+  have hh : Primrec₂ fun (x : A × List Bool) (w : Bool × List Bool × List ℚ) ↦
+      colOf x.1.1 x.1.2 w.1 w.2.1 w.2.2 :=
+    (colOf_prim.comp ((Primrec.fst.comp Primrec.fst).pair Primrec.snd)).to₂
+  have hlr := Primrec.list_rec (f := fun x : A × List Bool ↦ x.2)
+    (g := fun x : A × List Bool ↦ (List.range (x.1.2 + 1)).map (rootVal x.1.1))
+    (h := fun (x : A × List Bool) (w : Bool × List Bool × List ℚ) ↦
+      colOf x.1.1 x.1.2 w.1 w.2.1 w.2.2)
+    Primrec.snd (hbase.comp Primrec.fst) hh
+  refine hlr.of_eq fun x ↦ ?_
+  obtain ⟨a, r⟩ := x
+  induction r with
+  | nil => rfl
+  | cons b r ih => simpa [tabCol] using congrArg (colOf a.1 a.2 b r) ih
+
+attribute [local irreducible] rawStep rawVal childPair colOf rootVal in
+lemma trim_prim :
+    Primrec fun x : (Nat.Partrec.Code × ℕ) × List Bool ↦ trim x.1.1 x.1.2 x.2 := by
+  have htab : Primrec fun x : (Nat.Partrec.Code × ℕ) × List Bool ↦
+      tabCol x.1.1 x.1.2 x.2.reverse :=
+    tabCol_prim.comp (Primrec.fst.pair (Primrec.list_reverse.comp Primrec.snd))
+  exact ((Primrec.list_getD (0 : ℚ)).comp htab
+    (Primrec.snd.comp Primrec.fst)).of_eq fun x ↦ (trim_eq_tabCol x.1.1 x.1.2 x.2).symm
+
+/-! ### The mixture's stage table -/
+
+lemma halfPow_rec : ∀ i,
+    halfPow i = i.rec (motive := fun _ ↦ ℚ) (1 / 2) fun _ ih ↦ ih * (1 / 2)
+  | 0 => rfl
+  | i + 1 => by rw [halfPow, halfPow_rec i]
+
+lemma halfPow_prim : Primrec halfPow := by
+  have hstep : Primrec₂ fun (_ : ℕ) (ih : ℚ) ↦ ih * (1 / 2) :=
+    (ratMul_prim.comp Primrec.snd (Primrec.const (1 / 2 : ℚ))).to₂
+  exact (Primrec.nat_rec₁ (1 / 2 : ℚ) hstep).of_eq fun i ↦ (halfPow_rec i).symm
+
+/-- Sum of a rational list, in the `foldr` shape the `Primrec` API consumes. -/
+def sumQ (l : List ℚ) : ℚ := l.foldr (fun a b ↦ a + b) 0
+
+lemma sumQ_eq : ∀ l : List ℚ, sumQ l = l.sum
+  | [] => rfl
+  | a :: l => by rw [sumQ, List.foldr_cons, List.sum_cons, ← sumQ, sumQ_eq l]
+
+attribute [local irreducible] rawStep rawVal childPair colOf rootVal tabCol in
+lemma approxList_prim :
+    Primrec fun x : ℕ × List Bool ↦ approxList x.1 x.2 := by
+  refine Primrec.list_map (Primrec.list_range.comp Primrec.fst) ?_
+  have hcode : Primrec fun y : (ℕ × List Bool) × ℕ ↦ codeOf y.2 :=
+    (Primrec.ofNat Nat.Partrec.Code).comp Primrec.snd
+  have hn : Primrec fun y : (ℕ × List Bool) × ℕ ↦ y.1.1 :=
+    Primrec.fst.comp Primrec.fst
+  have hσ : Primrec fun y : (ℕ × List Bool) × ℕ ↦ y.1.2 :=
+    Primrec.snd.comp Primrec.fst
+  have htrim : Primrec fun y : (ℕ × List Bool) × ℕ ↦ trim (codeOf y.2) y.1.1 y.1.2 :=
+    trim_prim.comp ((hcode.pair hn).pair hσ)
+  exact (ratMul_prim.comp (halfPow_prim.comp Primrec.snd) htrim).to₂
+
+attribute [local irreducible] rawStep rawVal childPair colOf rootVal tabCol trim in
+lemma universalApprox_prim :
+    Primrec fun x : ℕ × List Bool ↦ universalApprox x.1 x.2 := by
+  have hsum : Primrec fun x : ℕ × List Bool ↦ sumQ (approxList x.1 x.2) := by
+    have h := Primrec.list_foldr approxList_prim (Primrec.const (0 : ℚ))
+      ((ratAdd_prim.comp (Primrec.fst.comp Primrec.snd)
+        (Primrec.snd.comp Primrec.snd)).to₂)
+    exact h.of_eq fun x ↦ rfl
+  exact hsum.of_eq fun x ↦ by rw [sumQ_eq, ← universalApprox_eq_sum]
+
+/-! ### The emission program -/
+
+/-- The emission program's arithmetic form: stage index and string code in one `Nat.pair`
+argument, encoded rational result. -/
+def approxEmit (z : ℕ) : ℕ :=
+  Encodable.encode
+    (universalApprox z.unpair.1 ((Encodable.decode (α := List Bool) z.unpair.2).getD []))
+
+attribute [local irreducible] rawStep rawVal childPair colOf rootVal tabCol trim
+  universalApprox in
+lemma approxEmit_prim : Primrec approxEmit := by
+  have hup : Primrec fun z : ℕ ↦ z.unpair := Primrec.unpair
+  have hσ : Primrec fun z : ℕ ↦ ((Encodable.decode (α := List Bool) z.unpair.2).getD []) :=
+    Primrec.option_getD.comp
+      ((Primrec.decode (α := List Bool)).comp (Primrec.snd.comp hup)) (Primrec.const [])
+  exact Primrec.encode.comp
+    (universalApprox_prim.comp ((Primrec.fst.comp hup).pair hσ))
+
+/-- **The emission obligation, discharged.**  One fixed program emits the encoded stage
+table on `⟪n, σ⟫`; the fuel is whatever `evaln` needs, since only lower-semicomputability
+(not a polynomial clock) is at stake here.
+Paper node: `thm:dus` -/
 theorem exists_universalApprox_code :
     ∃ c : Nat.Partrec.Code, ∀ n σ, ∃ fuel,
       c.evaln fuel (Nat.pair n (Encodable.encode σ)) =
-        some (Encodable.encode (universalApprox n σ))
--- TODO(blueprint:M7-DUS-APPROX): column tabulation, see notes Tranche U.
+        some (Encodable.encode (universalApprox n σ)) := by
+  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
+    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp approxEmit_prim))
+  refine ⟨code, fun n σ ↦ ?_⟩
+  have hval : approxEmit (Nat.pair n (Encodable.encode σ))
+      = Encodable.encode (universalApprox n σ) := by
+    simp [approxEmit, Nat.unpair_pair, Encodable.encodek]
+  have hmem : Encodable.encode (universalApprox n σ) ∈
+      code.eval (Nat.pair n (Encodable.encode σ)) := by
+    rw [hcode, ← hval]
+    exact Part.mem_some _
+  obtain ⟨fuel, hfuel⟩ := Nat.Partrec.Code.evaln_complete.mp hmem
+  exact ⟨fuel, Option.mem_def.mp hfuel⟩
 
-noncomputable def lowerSemicomputable : LowerSemicomputableContinuousSemimeasure
--- fields: universalMass / universalApprox with the code above; all analytic
--- fields (nonneg, root_le_one, children_le, approximation_nonneg/mono/le/tendsto)
--- are PROVED above and ready.
+end Emission
 
-noncomputable def universalSemimeasure : UniversalContinuousSemimeasure
--- universality via universalMass_dominates with the explicit constant
--- wt (encode ν.approximation_code); PROVED above, awaiting only the packaging.
-```
--/
+/-! ### The packaging
+
+With `exists_universalApprox_code` discharged, both structures are real definitions: every
+analytic field was proved above, and the emission field is now a constructed program. -/
+
+/-- The dovetail as a lower-semicomputable continuous semimeasure.
+Paper node: `thm:dus` -/
+noncomputable def lowerSemicomputable : LowerSemicomputableContinuousSemimeasure where
+  mass := universalMass
+  nonneg := universalMass_nonneg
+  root_le_one := universalMass_root_le_one
+  children_le := universalMass_children
+  approximation := universalApprox
+  approximation_code := exists_universalApprox_code.choose
+  approximation_computes := exists_universalApprox_code.choose_spec
+  approximation_nonneg := universalApprox_nonneg
+  approximation_mono := universalApprox_mono
+  approximation_le := universalApprox_le
+  approximation_tendsto := universalApprox_tendsto
+
+/-- **The constructed universal continuous semimeasure.**  Domination of an arbitrary
+lower-semicomputable `ν` holds with the explicit constant `wt (encode ν.approximation_code)`
+— the dovetail weight of `ν`'s own approximation program.
+Paper node: `thm:dus` -/
+noncomputable def universalSemimeasure : UniversalContinuousSemimeasure where
+  toLowerSemicomputableContinuousSemimeasure := lowerSemicomputable
+  universal := fun ν ↦ universalMass_dominates ν
 
 #print axioms continuousSemimeasure
 #print axioms universalMass_dominates
 #print axioms dovetailMass_eq_mass
 #print axioms trim_tendsto_of_exact
 #print axioms universalApprox_tendsto
+#print axioms exists_universalApprox_code
+#print axioms lowerSemicomputable
+#print axioms universalSemimeasure
 
 end Dovetail
 

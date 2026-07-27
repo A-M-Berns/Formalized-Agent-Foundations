@@ -300,13 +300,15 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 #assert_axioms_clean
   bitPrefixSentencesOfIndependentAtoms lic_domination_universalSemimeasure_ofIndependentAtoms
 
--- Construction/Witnesses/UniversalDovetailer.lean (`M7-DUS-APPROX`, mathematical part)
--- The packaged `Dovetail.universalSemimeasure` is *not* listed: its
--- `approximation_computes` field is the file's disclosed `sorry`.  The two members below
--- are the unconditional content — the mixture is a continuous semimeasure, and it
--- dominates every lower-semicomputable one with an explicit constant.
+-- Construction/Witnesses/UniversalDovetailer.lean (`M7-DUS-APPROX`, semimeasure side)
+-- The universal continuous semimeasure is fully constructed: the semimeasure laws, the
+-- monotone from-below stage table, the explicit domination constant, and the emission
+-- program for the stage table (column tabulation).  What `M7-DUS-APPROX` still discloses
+-- is the *polynomial* clock (`DUSApproximationPresentation`/`DUSThresholdEmission`), not
+-- computability.
 #assert_axioms_clean
   Dovetail.continuousSemimeasure Dovetail.universalMass_dominates
+  Dovetail.exists_universalApprox_code Dovetail.universalSemimeasure
 
 -- Construction/Witnesses/ConditioningPresentation.lean (`M7-SCON-PRESENTATION`)
 #assert_axioms_clean
