@@ -976,6 +976,77 @@ lemma rpnBigDayFlagScan {s : ℕ → List ℕ} (h : PolySegStream s) :
 #print axioms rpnCondScan
 #print axioms rpnBigDayFlagScan
 
+/-! ## The trade-run exit count
+
+The frame pass's budget codes are set by the number of completed trades; at symbol
+level a trade is a *run*, so the count scans the control mode stream for run exits
+(mode `4`/`7` with successor mode `0`). -/
+
+/-- Number of completed trade runs strictly before source position `j`: a trade run
+exits at the position whose control mode is `4`/`7` and whose successor mode is `0`. -/
+def rpnTradeCountAt (tf : ℕ → ℕ) (n : ℕ) : ℕ → ℕ
+  | 0 => 0
+  | j + 1 =>
+      if (rcMode (rpnCondControlAt tf n j) = 4 ∨
+            rcMode (rpnCondControlAt tf n j) = 7) ∧
+          rcMode (rpnCondControlAt tf n (j + 1)) = 0 then
+        rpnTradeCountAt tf n j + 1
+      else rpnTradeCountAt tf n j
+
+lemma rpnTradeCountAt_le (tf : ℕ → ℕ) (n : ℕ) : ∀ j, rpnTradeCountAt tf n j ≤ j
+  | 0 => by simp [rpnTradeCountAt]
+  | j + 1 => by
+      rw [rpnTradeCountAt]
+      have := rpnTradeCountAt_le tf n j
+      split <;> omega
+
+/-- The trade-run exit count is poly-fueled over any digit `PolySegStream`. -/
+lemma rpnTradeCountScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+    ∃ c, PolyFueled c (fun z =>
+      rpnTradeCountAt (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
+        z.unpair.1 z.unpair.2) := by
+  obtain ⟨cs, hscan⟩ := rpnCondScan h
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  -- Step input `⟨n, ⟨j, prev⟩⟩`.
+  have hn := PolyFueled.left
+  have hj := PolyFueled.left.comp PolyFueled.right
+  have hprev := PolyFueled.right.comp PolyFueled.right
+  have hj1 : PolyFueled _ (fun z : ℕ => z.unpair.2.unpair.1 + 1) :=
+    (had.comp (hj.pair (PolyFueled.const 1))).of_eq fun z => by
+      simp only [Nat.unpair_pair]
+  have hmz := PolyFueled.left.comp (hscan.comp (hn.pair hj))
+  have hmz1 := PolyFueled.left.comp (hscan.comp (hn.pair hj1))
+  have hsucc : PolyFueled _ (fun z : ℕ => z.unpair.2.unpair.2 + 1) :=
+    (had.comp (hprev.pair (PolyFueled.const 1))).of_eq fun z => by
+      simp only [Nat.unpair_pair]
+  obtain ⟨_, hA⟩ := polyFueled_ifEq hmz 7 hsucc hprev
+  obtain ⟨_, hB⟩ := polyFueled_ifEq hmz 4 hsucc hA
+  obtain ⟨_, hstep⟩ := polyFueled_ifEq hmz1 0 hB hprev
+  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
+  refine ⟨_, PolyFueled.prec (PolyFueled.const 0) hstep
+    (st := fun n j => rpnTradeCountAt tf n j)
+    (fun n => rfl)
+    (fun n j => ?_)
+    ((IsPolyBounded.linear 0).of_le fun z =>
+      le_trans (rpnTradeCountAt_le _ _ _) (Nat.unpair_right_le z))⟩
+  simp only [Nat.unpair_pair]
+  rw [rpnTradeCountAt]
+  rw [show (Nat.unpair (rpnCondControlAt tf n j)).1 =
+      rcMode (rpnCondControlAt tf n j) from rfl,
+    show (Nat.unpair (rpnCondControlAt tf n (j + 1))).1 =
+      rcMode (rpnCondControlAt tf n (j + 1)) from rfl]
+  by_cases hm1 : rcMode (rpnCondControlAt tf n (j + 1)) = 0
+  · rw [if_pos hm1]
+    by_cases hm4 : rcMode (rpnCondControlAt tf n j) = 4
+    · rw [if_pos hm4, if_pos ⟨Or.inl hm4, hm1⟩]
+    · rw [if_neg hm4]
+      by_cases hm7 : rcMode (rpnCondControlAt tf n j) = 7
+      · rw [if_pos hm7, if_pos ⟨Or.inr hm7, hm1⟩]
+      · rw [if_neg hm7, if_neg (by tauto)]
+  · rw [if_neg hm1, if_neg (by tauto)]
+
+#print axioms rpnTradeCountScan
+
 /-! ## The emission certificate
 
 The digit stream of the guarded symbol-level price rewrite of any digit
@@ -4184,6 +4255,280 @@ lemma rpnFrameSegment_eq (tf : ℕ → ℕ) (second : Bool) (blkψ : List ℕ) (
 
 #print axioms rpnFrameRun_range
 #print axioms rpnFrameSegment_eq
+
+/-! ### The frame-pass emission certificate
+
+Same assembly shape as `rpnGuardedConditionRun_polySegStream`: a mode dispatch off
+`rpnCondScan`, the window copy by `concatVar` over `rcLen + 1` (the emission splices
+`buf ++ [t]`, i.e. positions `j - rcLen .. j`), condition blocks and budget codes
+constant per day, and the end-of-stream flush of a withheld trade tag. -/
+
+/-- The (sentence-free) gated core of the frame-leg emission. -/
+def rpnFrameCore (second : Bool) (bc ibc : ℕ) : List ℕ :=
+  if second then
+    rawMulTokens (rawConstTokens (Encodable.encode (-1 : ℚ)))
+      (rawMulTokens (rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc)))
+        [7, 0])
+  else rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc))
+
+/-- The all-poly stretch of the frame-leg emission after its last sentence block. -/
+def rpnFrameTailMid (second : Bool) (day bc ibc : ℕ) : List ℕ :=
+  [day, 3, 5, 3, 3] ++ rpnFrameCore second bc ibc ++ [8, 8, 6]
+
+lemma rpnFrameEmit_split (second : Bool) (blk : List ℕ) (ε : ℚ) (day bc ibc : ℕ)
+    (buf : List ℕ) :
+    rpnFrameEmit second blk ε day bc ibc buf =
+      [0, 3] ++ buf ++ blk ++
+        [day, 1, Encodable.encode (1 / ε : ℚ), 1, Encodable.encode (1 / ε : ℚ), 0] ++
+        blk ++ rpnFrameTailMid second day bc ibc ++
+        (if second then blk else [3] ++ buf ++ blk) := by
+  cases second <;>
+    simp [rpnFrameEmit, rpnFrameRatioSym, rpnFramePriceSym, rpnFrameTailMid,
+      rpnFrameCore, rawMulTokens, rawLowerSafeRecipTokens, rawConstTokens,
+      rawSafeRecipTokens]
+
+lemma digitize_rpnFrameEmit (second : Bool) (blk : List ℕ) (ε : ℚ)
+    (day bc ibc : ℕ) (buf : List ℕ) :
+    digitize (rpnFrameEmit second blk ε day bc ibc buf) =
+      digitize [0, 3] ++ digitize buf ++ digitize blk ++
+        digitize [day, 1, Encodable.encode (1 / ε : ℚ), 1,
+          Encodable.encode (1 / ε : ℚ), 0] ++
+        digitize blk ++ digitize (rpnFrameTailMid second day bc ibc) ++
+        (if second then digitize blk
+          else digitize [3] ++ digitize buf ++ digitize blk) := by
+  rw [rpnFrameEmit_split]
+  cases second <;>
+    simp only [Bool.false_eq_true, if_false, if_true, digitize_append,
+      List.append_assoc]
+
+/-- The digitized position window extended by the exit token is a run of copied digit
+blocks (positions `j - rcLen .. j`). -/
+lemma digitize_rpnCondWindow_snoc (tf : ℕ → ℕ) (n j : ℕ) :
+    digitize (rpnCondWindow tf n j ++ [tf (Nat.pair n j)]) =
+      (List.range (rcLen (rpnCondControlAt tf n j) + 1)).flatMap fun i =>
+        tokenBlock (tf (Nat.pair n (j - rcLen (rpnCondControlAt tf n j) + i))) := by
+  have hle : rcLen (rpnCondControlAt tf n j) ≤ j := rcLen_controlAt_le tf n j
+  rw [digitize_append, List.range_succ, List.flatMap_append]
+  refine congrArg₂ (· ++ ·) ?_ ?_
+  · rw [rpnCondWindow, digitize, List.flatMap_map]
+  · simp only [List.flatMap_cons, List.flatMap_nil, List.append_nil,
+      digitize_singleton]
+    rw [Nat.sub_add_cancel hle]
+
+/-- The all-poly stretch of the frame-leg emission is a poly token stream. -/
+lemma rpnFrameTailMid_polyTokenStream (second : Bool) {cD cb ci : Code}
+    {dayF bcF ibcF : ℕ → ℕ} (hdayF : PolyFueled cD dayF) (hbcF : PolyFueled cb bcF)
+    (hibcF : PolyFueled ci ibcF) :
+    PolyTokenStream (fun z => rpnFrameTailMid second (dayF z) (bcF z) (ibcF z)) := by
+  have hgate : PolyTokenStream (fun z => rpnFrameGate (bcF z) (ibcF z)) :=
+    PolyTokenStream.rawGate hbcF hibcF
+  have hmin : PolyTokenStream (fun z =>
+      rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate (bcF z) (ibcF z)))) :=
+    PolyTokenStream.rawMin (PolyTokenStream.varTok 1)
+      (PolyTokenStream.rawMul (PolyTokenStream.varTok 1) hgate)
+  have hcore : PolyTokenStream (fun z => rpnFrameCore second (bcF z) (ibcF z)) := by
+    cases second
+    · exact hmin.of_eq fun z => by simp [rpnFrameCore]
+    · exact (PolyTokenStream.rawMul (PolyTokenStream.rawConstQ (-1))
+        (PolyTokenStream.rawMul hmin (PolyTokenStream.varTok 0))).of_eq fun z => by
+          simp [rpnFrameCore]
+  refine (((((PolyTokenStream.polyTok hdayF).append
+    (PolyTokenStream.const 3)).append
+    (((PolyTokenStream.const 5).append (PolyTokenStream.const 3)).append
+      (PolyTokenStream.const 3))).append hcore).append
+    (((PolyTokenStream.const 8).append (PolyTokenStream.const 8)).append
+      (PolyTokenStream.const 6))).of_eq fun z => ?_
+  simp [rpnFrameTailMid]
+
+/-- **The frame-pass certificate**: the digitized symbol-level frame output of any digit
+`PolySegStream` is a `PolySegStream`, over any polynomially emittable condition block
+stream and poly-fueled day/budget codes.
+Paper node: `thm:scon` -/
+lemma rpnFrameOutput_polySegStream (second : Bool) {src blocks : ℕ → List ℕ}
+    (hsrc : PolySegStream src) (hblocks : PolySegStream blocks)
+    {cD cb ci : Code} {dayF bcF ibcF : ℕ → ℕ}
+    (hdayF : PolyFueled cD dayF) (hbcF : PolyFueled cb bcF)
+    (hibcF : PolyFueled ci ibcF) (ε : ℚ) :
+    PolySegStream (fun n => digitize
+      (rpnFrameOutput second (blocks n) ε (dayF n) (bcF n) (ibcF n)
+        (undigitize (src n)))) := by
+  obtain ⟨⟨cc, hcnt⟩, hbig⟩ := hsrc.undigitizeTokens
+  obtain ⟨cs, hscan⟩ := rpnCondScan hsrc
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  set tf : ℕ → ℕ := fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0 with htf
+  -- Per-position views (input `z = ⟨n, j⟩`).
+  have hmodeZ := PolyFueled.left.comp hscan
+  have hlenZ := PolyFueled.right.comp (PolyFueled.right.comp hscan)
+  have hnextZ : PolyFueled _ (fun z : ℕ =>
+      Nat.pair z.unpair.1 (z.unpair.2 + 1)) :=
+    (PolyFueled.left.pair (had.comp (PolyFueled.right.pair
+      (PolyFueled.const 1)))).of_eq fun z => by simp only [Nat.unpair_pair]
+  have hmodeZ1 := PolyFueled.left.comp (hscan.comp hnextZ)
+  have hnZ : PolyFueled _ (fun z : ℕ => z.unpair.1) := PolyFueled.left
+  -- Copy branch: one digit block per source token.
+  have hcopy := hbig.blockSeg
+  -- The window copy, extended by the exit token: `concatVar` over `rcLen + 1`.
+  have hidxE : ∃ c, PolyFueled c (fun w : ℕ => Nat.pair w.unpair.1.unpair.1
+      (w.unpair.1.unpair.2 - rcLen (rpnCondControlAt tf
+        w.unpair.1.unpair.1 w.unpair.1.unpair.2) + w.unpair.2)) := by
+    have hz : PolyFueled Code.left (fun m : ℕ => m.unpair.1) := PolyFueled.left
+    have hn2 := PolyFueled.left.comp hz
+    have hj2 := PolyFueled.right.comp hz
+    have hlenW := hlenZ.comp hz
+    have hsub := subc_polyFueled.comp (hj2.pair hlenW)
+    have hoff := had.comp (hsub.pair PolyFueled.right)
+    exact ⟨_, (hn2.pair hoff).of_eq fun w => by
+      simp only [Nat.unpair_pair, rcLen]⟩
+  obtain ⟨cidx, hidx⟩ := hidxE
+  have hlenZ1 : PolyFueled _ (fun z : ℕ =>
+      rcLen (rpnCondControlAt tf z.unpair.1 z.unpair.2) + 1) :=
+    (had.comp (hlenZ.pair (PolyFueled.const 1))).of_eq fun z => by
+      simp only [Nat.unpair_pair, rcLen]
+  have hwin := (hbig.comp hidx).blockSeg.concatVar hlenZ1
+  -- Condition blocks at the trading day.
+  have hblkN := (hblocks.comp hnZ).digitizeStream
+  -- Constant and poly frames.
+  have hconst03 : PolySegStream (fun _ : ℕ => digitize [0, 3]) :=
+    (PolySegStream.ofTokenStream
+      ((PolyTokenStream.const 0).append
+        (PolyTokenStream.const 3))).digitizeStream.of_eq fun n => by simp
+  have hdayFrame : PolySegStream (fun z : ℕ => digitize
+      [dayF z.unpair.1, 1, Encodable.encode (1 / ε : ℚ), 1,
+        Encodable.encode (1 / ε : ℚ), 0]) :=
+    (PolySegStream.ofTokenStream
+      (((((PolyTokenStream.polyTok (hdayF.comp hnZ)).append
+        (PolyTokenStream.const 1)).append
+        (PolyTokenStream.const (Encodable.encode (1 / ε : ℚ)))).append
+        (PolyTokenStream.const 1)).append
+        ((PolyTokenStream.const (Encodable.encode (1 / ε : ℚ))).append
+          (PolyTokenStream.const 0)))).digitizeStream.of_eq fun n => by simp
+  have hmid : PolySegStream (fun z : ℕ => digitize
+      (rpnFrameTailMid second (dayF z.unpair.1) (bcF z.unpair.1)
+        (ibcF z.unpair.1))) :=
+    (PolySegStream.ofTokenStream (rpnFrameTailMid_polyTokenStream second
+      (hdayF.comp hnZ) (hbcF.comp hnZ) (hibcF.comp hnZ))).digitizeStream
+  have hconst3 : PolySegStream (fun _ : ℕ => digitize [3]) :=
+    (PolySegStream.ofTokenStream (PolyTokenStream.const 3)).digitizeStream.of_eq
+      fun n => by simp
+  have hwinD : PolySegStream (fun z : ℕ =>
+      digitize (rpnCondWindow tf z.unpair.1 z.unpair.2 ++ [tf (Nat.pair z.unpair.1 z.unpair.2)])) :=
+    hwin.of_eq fun z => by
+      simp only [Nat.unpair_pair]
+      exact (digitize_rpnCondWindow_snoc tf z.unpair.1 z.unpair.2).symm
+  have hlast : PolySegStream (fun z : ℕ =>
+      if second then digitize (blocks z.unpair.1)
+      else digitize [3] ++ digitize (rpnCondWindow tf z.unpair.1 z.unpair.2 ++
+        [tf (Nat.pair z.unpair.1 z.unpair.2)]) ++ digitize (blocks z.unpair.1)) := by
+    cases second
+    · exact ((hconst3.append hwinD).append hblkN).of_eq fun z => by simp
+    · exact hblkN.of_eq fun z => by simp
+  have hEmit : PolySegStream (fun z : ℕ => digitize
+      (rpnFrameEmit second (blocks z.unpair.1) ε (dayF z.unpair.1) (bcF z.unpair.1)
+        (ibcF z.unpair.1) (rpnCondWindow tf z.unpair.1 z.unpair.2 ++ [tf (Nat.pair z.unpair.1 z.unpair.2)]))) := by
+    refine ((((((hconst03.append hwinD).append hblkN).append hdayFrame).append
+      hblkN).append hmid).append hlast).of_eq fun z => ?_
+    rw [digitize_rpnFrameEmit]
+  have hempty : PolySegStream (fun _ : ℕ => ([] : List ℕ)) :=
+    PolySegStream.ofTokenStream PolyTokenStream.nil
+  -- The emission fires only when the successor control mode is base.
+  have hExit := hEmit.ifZero hempty hmodeZ1
+  have heqTest (K : ℕ) {cf : Code} {f : ℕ → ℕ} (hf : PolyFueled cf f) :
+      ∃ c, PolyFueled c (fun z => f z - K + (K - f z)) :=
+    ⟨_, (had.comp ((subc_polyFueled.comp (hf.pair (PolyFueled.const K))).pair
+      (subc_polyFueled.comp ((PolyFueled.const K).pair hf)))).of_eq
+      (fun z => by simp only [Nat.unpair_pair])⟩
+  obtain ⟨_, heq4⟩ := heqTest 4 hmodeZ
+  obtain ⟨_, heq7⟩ := heqTest 7 hmodeZ
+  have hseg7 := hExit.ifZero hcopy heq7
+  have hseg4 := hExit.ifZero hseg7 heq4
+  -- The withheld base-mode trade tag.
+  obtain ⟨ctc, htagclamp⟩ := hbig.clampVal (PolyFueled.const 8)
+  have heq6 := had.comp ((subc_polyFueled.comp (htagclamp.pair
+    (PolyFueled.const 6))).pair
+    (subc_polyFueled.comp ((PolyFueled.const 6).pair htagclamp)))
+  have hsel1 := had.comp (hmodeZ.pair heq6)
+  have hseg := hempty.ifZero hseg4 hsel1
+  have hassembled := hseg.concatVar hcnt
+  -- End-of-stream flush of an unfinished trade run.
+  have hmodeEnd := hmodeZ.comp (PolyFueled.id.pair hcnt)
+  obtain ⟨_, heq4End⟩ := heqTest 4 hmodeEnd
+  obtain ⟨_, heq7End⟩ := heqTest 7 hmodeEnd
+  have hblock6 : PolySegStream (fun _ : ℕ => tokenBlock 6) :=
+    PolySegStream.block (PolyFueled.const 6)
+  have hflush := hblock6.ifZero (hblock6.ifZero hempty heq7End) heq4End
+  refine (hassembled.append hflush).of_eq fun n => ?_
+  simp only [Nat.unpair_pair]
+  have hget : ∀ i, tf (Nat.pair n i) = (undigitize (src n)).getD i 0 := fun i => by
+    rw [htf]
+    simp only [Nat.unpair_pair]
+  have hts : undigitize (src n) =
+      (List.range (undigitize (src n)).length).map fun j => tf (Nat.pair n j) := by
+    conv_lhs => rw [list_eq_rangeMap_getD (undigitize (src n))]
+    exact List.map_congr_left fun j _ => (hget j).symm
+  have hrun : rpnFrameRun second (blocks n) ε (dayF n) (bcF n) (ibcF n)
+      (rcPack 0 0 0, []) (undigitize (src n)) =
+      ((rpnCondControlAt tf n (undigitize (src n)).length,
+        rpnCondWindow tf n (undigitize (src n)).length),
+        (List.range (undigitize (src n)).length).flatMap fun j =>
+          rpnFrameSegment tf second (blocks n) ε (dayF n) (bcF n) (ibcF n)
+            (Nat.pair n j)) := by
+    conv_lhs => rw [hts]
+    exact rpnFrameRun_range tf second (blocks n) ε (dayF n) (bcF n) (ibcF n) n
+      (undigitize (src n)).length
+  rw [rpnFrameOutput, hrun]
+  simp only [digitize_append, digitize_flatMap]
+  refine congrArg₂ (· ++ ·) ?_ ?_
+  · refine List.flatMap_congr fun j hj => ?_
+    rw [rpnFrameSegment_eq]
+    rw [show (Nat.unpair (rpnCondControlAt tf n j)).1 =
+        rcMode (rpnCondControlAt tf n j) from rfl,
+      show (Nat.unpair (rpnCondControlAt tf n (j + 1))).1 =
+        rcMode (rpnCondControlAt tf n (j + 1)) from rfl]
+    have hclampSix : min (tf (Nat.pair n j)) 9 = 6 ↔ tf (Nat.pair n j) = 6 := by
+      by_cases h9 : tf (Nat.pair n j) ≤ 9
+      · rw [Nat.min_eq_left h9]
+      · rw [Nat.min_eq_right (by omega : 9 ≤ _)]
+        constructor
+        · intro h; omega
+        · intro h; omega
+    by_cases hc1 : rcMode (rpnCondControlAt tf n j) = 0 ∧ tf (Nat.pair n j) = 6
+    · rw [if_pos (by
+        rcases hc1 with ⟨hm0, ht6⟩
+        rw [hm0, ht6]
+        norm_num), if_pos hc1]
+      simp [digitize]
+    · rw [if_neg (by
+        intro hz0
+        exact hc1 ⟨by omega, hclampSix.mp (by omega)⟩), if_neg hc1]
+      by_cases hm4 : rcMode (rpnCondControlAt tf n j) = 4
+      · rw [if_pos (by omega), if_pos (Or.inl hm4)]
+        by_cases hnext : rcMode (rpnCondControlAt tf n (j + 1)) = 0
+        · rw [if_pos hnext, if_pos hnext]
+        · rw [if_neg hnext, if_neg hnext]
+          simp [digitize]
+      · rw [if_neg (by omega)]
+        by_cases hm7 : rcMode (rpnCondControlAt tf n j) = 7
+        · rw [if_pos (by omega), if_pos (Or.inr hm7)]
+          by_cases hnext : rcMode (rpnCondControlAt tf n (j + 1)) = 0
+          · rw [if_pos hnext, if_pos hnext]
+          · rw [if_neg hnext, if_neg hnext]
+            simp [digitize]
+        · rw [if_neg (by omega), if_neg (by tauto)]
+          simp [digitize]
+  · rw [show (Nat.unpair (rpnCondControlAt tf n (undigitize (src n)).length)).1 =
+        rcMode (rpnCondControlAt tf n (undigitize (src n)).length) from rfl]
+    by_cases hm4 : rcMode (rpnCondControlAt tf n (undigitize (src n)).length) = 4
+    · rw [if_pos (by omega), if_pos (Or.inl hm4)]
+      simp [digitize]
+    · rw [if_neg (by omega)]
+      by_cases hm7 : rcMode (rpnCondControlAt tf n (undigitize (src n)).length) = 7
+      · rw [if_pos (by omega), if_pos (Or.inr hm7)]
+        simp [digitize]
+      · rw [if_neg (by omega), if_neg (by tauto)]
+        simp [digitize]
+
+#print axioms rpnFrameOutput_polySegStream
+
 
 /-! ### Endpoint statements (open, recorded — not sorried)
 
