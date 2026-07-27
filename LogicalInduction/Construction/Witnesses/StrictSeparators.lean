@@ -1297,8 +1297,186 @@ lemma sepGuard_computable (M : LowerSemicomputableContinuousSemimeasure) (k : �
   exact (Primrec.ite (hsum true) (Primrec.const (some 1))
     (Primrec.ite (hsum false) (Primrec.const (some 0)) (Primrec.const none))).to_comp.to₂
 
+/-! ### Soundness and termination of the search -/
+
+private lemma sum_boundedApprox_le (M : LowerSemicomputableContinuousSemimeasure)
+    (fuel t : ℕ) : ∀ L : List (List Bool),
+      (((L.map (boundedApprox M fuel t)).sum : ℚ) : ℝ) ≤ (L.map M.mass).sum
+  | [] => by simp
+  | σ :: L => by
+      have ih := sum_boundedApprox_le M fuel t L
+      have h := boundedApprox_le_mass M fuel t σ
+      simp only [List.map_cons, List.sum_cons, Rat.cast_add]
+      linarith
+
+/-- The search never overstates: a fired guard really witnesses a heavy part of the
+class. -/
+lemma sepApproxSum_le (M : LowerSemicomputableContinuousSemimeasure) (j : ℕ) (b : Bool)
+    (s fuel t : ℕ) :
+    ((sepApproxSum M j b s fuel t : ℚ) : ℝ)
+      ≤ classMass M.toContinuousSemimeasure (fun σ ↦ σ.getD j false == b) s :=
+  sum_boundedApprox_le M fuel t _
+
+private lemma tendsto_list_approx (M : LowerSemicomputableContinuousSemimeasure) :
+    ∀ L : List (List Bool),
+      Tendsto (fun t ↦ (((L.map (M.approximation t)).sum : ℚ) : ℝ)) atTop
+        (𝓝 ((L.map M.mass).sum))
+  | [] => by simpa using tendsto_const_nhds
+  | σ :: L => by
+      have ih := tendsto_list_approx M L
+      have h := (M.approximation_tendsto σ).add ih
+      simpa [List.map_cons, List.sum_cons] using h
+
+/-- **Termination.**  Whatever `j` is, one of the two sides of the class carries more than
+half of `r`, hence more than the threshold `q`, and the approximants eventually see it. -/
+lemma exists_sepGuard (M : LowerSemicomputableContinuousSemimeasure) {r : ℝ} {q : ℚ}
+    (k j : ℕ)
+    (hle : ∀ n, r ≤ classMass M.toContinuousSemimeasure (fun _ ↦ true) n)
+    (hq : 2 * (q : ℝ) < r) :
+    ∃ z v, sepGuard M k q j z = some v := by
+  set C := M.toContinuousSemimeasure with hC
+  set s := k + j + 1 with hs
+  have hsplit := classMass_bit_split C j true s
+  have hside : ∃ b : Bool, (q : ℝ) < classMass C (fun σ ↦ σ.getD j false == b) s := by
+    by_contra h
+    push_neg at h
+    have h1 := h true
+    have h2 := h false
+    have h3 := hle s
+    simp only [Bool.not_true] at hsplit
+    linarith
+  obtain ⟨b, hb⟩ := hside
+  have htend := tendsto_list_approx M
+    ((separatorConsistentAt s).filter fun σ ↦ σ.getD j false == b)
+  obtain ⟨t, ht⟩ := (htend.eventually_const_lt hb).exists
+  obtain ⟨fuel, hfuel⟩ := exists_fuel_boundedApprox M t
+    ((separatorConsistentAt s).filter fun σ ↦ σ.getD j false == b)
+  have hval : sepApproxSum M j b s fuel t =
+      (((separatorConsistentAt s).filter fun σ ↦ σ.getD j false == b).map
+        (M.approximation t)).sum :=
+    congrArg List.sum (List.map_congr_left hfuel)
+  have hqlt : q < sepApproxSum M j b s fuel t := by
+    rw [hval]; exact_mod_cast ht
+  refine ⟨Nat.pair 0 (Nat.pair fuel t), ?_⟩
+  unfold sepGuard
+  simp only [Nat.unpair_pair, Nat.add_zero, ← hs]
+  cases b
+  · by_cases h1 : q < sepApproxSum M j true s fuel t
+    · exact ⟨1, by simp [h1]⟩
+    · exact ⟨0, by simp [h1, hqlt]⟩
+  · exact ⟨1, by simp [hqlt]⟩
+
+/-- **Soundness.**  A fired guard reports a bit whose part of the stage class really has
+mass above the threshold. -/
+lemma sepGuard_spec {M : LowerSemicomputableContinuousSemimeasure} {k : ℕ} {q : ℚ}
+    {j z v : ℕ} (h : sepGuard M k q j z = some v) :
+    ∃ b : Bool, v = (if b then 1 else 0) ∧
+      (q : ℝ) < classMass M.toContinuousSemimeasure (fun σ ↦ σ.getD j false == b)
+        (k + j + 1 + z.unpair.1) := by
+  unfold sepGuard at h
+  split_ifs at h with h1 h2
+  · exact ⟨true, by simpa using (Option.some.inj h).symm,
+      lt_of_lt_of_le (by exact_mod_cast h1) (sepApproxSum_le M j true _ _ _)⟩
+  · exact ⟨false, by simpa using (Option.some.inj h).symm,
+      lt_of_lt_of_le (by exact_mod_cast h2) (sepApproxSum_le M j false _ _ _)⟩
+
+/-! ### Step 5: the classes are null
+
+If they were not, the search above would be a total computable separator for Kleene's
+recursively inseparable pair. -/
+
+/-- **The extraction.**  A positive floor `r` on the class masses, together with a pivot
+stage `k` whose class mass is below `6r/5`, is contradictory: the dovetailed search
+`sepGuard` then computes a total separator for Kleene's pair.
+
+On input `j` the program searches over stages `s ≥ max k (j+1)`, approximation levels and
+fuel, and reports the first bit `b` whose part of the stage class approximates above the
+threshold `q` (`r/5 < q < r/2`).  It always halts, because the two parts sum to at least
+`r > 2q`; and it is never wrong, because if `j` lies in the `b`-half of Kleene's pair then
+the `b`-part keeps mass `≥ r` while the other part is below `6r/5 − r = r/5 < q`. -/
+private lemma no_pos_class_floor (L : LowerSemicomputableContinuousSemimeasure) {r : ℝ}
+    {k : ℕ} (hpos : 0 < r)
+    (hle : ∀ n, r ≤ classMass L.toContinuousSemimeasure (fun _ ↦ true) n)
+    (hk : classMass L.toContinuousSemimeasure (fun _ ↦ true) k < 6 * r / 5) : False := by
+  obtain ⟨q, hq1, hq2⟩ : ∃ q : ℚ, r / 5 < (q : ℝ) ∧ (q : ℝ) < r / 2 :=
+    exists_rat_btwn (by linarith)
+  have hsearch : Partrec fun j ↦ Nat.rfindOpt (sepGuard L k q j) :=
+    Partrec.rfindOpt (sepGuard_computable L k q)
+  have hdom : ∀ j, (Nat.rfindOpt (sepGuard L k q j)).Dom := by
+    intro j
+    rw [Nat.rfindOpt_dom]
+    obtain ⟨z, v, hzv⟩ := exists_sepGuard L k j hle (by linarith)
+    exact ⟨z, v, hzv⟩
+  have houtc : Computable fun j ↦ (Nat.rfindOpt (sepGuard L k q j)).get (hdom j) :=
+    hsearch.of_eq_tot fun j ↦ Part.get_mem _
+  have houtspec : ∀ j, ∃ z,
+      sepGuard L k q j z = some ((Nat.rfindOpt (sepGuard L k q j)).get (hdom j)) :=
+    fun j ↦ Nat.rfindOpt_spec (Part.get_mem (hdom j))
+  have hone : Primrec fun x : ℕ ↦ decide (x = 1) :=
+    (PrimrecPred.decide (p := fun x : ℕ ↦ x = 1)
+      (Primrec.eq.comp Primrec.id (Primrec.const 1)))
+  have hbit : ∀ (j : ℕ) (b : Bool), j ∈ kleeneSet b →
+      (Nat.rfindOpt (sepGuard L k q j)).get (hdom j) = (if b then 1 else 0) := by
+    intro j b hj
+    obtain ⟨z, hz⟩ := houtspec j
+    obtain ⟨b', hb', hmass⟩ := sepGuard_spec hz
+    have hbb : b' = b := by
+      by_contra hne
+      have hnb : b' = !b := by
+        cases b <;> cases b' <;>
+          simp only [Bool.not_true, Bool.not_false] <;>
+          first | rfl | exact absurd rfl hne
+      subst hnb
+      have hsmall := classMass_wrong_bit_lt L.toContinuousSemimeasure hle hk hj
+        (s := k + j + 1 + z.unpair.1) (by omega) (by omega)
+      linarith
+    rw [hb', hbb]
+  refine kleene_recursively_inseparable
+    (fun j ↦ decide ((Nat.rfindOpt (sepGuard L k q j)).get (hdom j) = 1))
+    (hone.to_comp.comp houtc) ?_ ?_
+  · intro e he
+    simp [hbit e true he]
+  · intro e he
+    simp [hbit e false he]
+
+/-- **The separator classes are null (`thm:strict`, measure half).**  For a universal
+continuous semimeasure the stage classes of the Kleene constraint theory carry vanishing
+total mass: the class masses are antitone, so they converge to some `r ≥ 0`, and a positive
+floor is refuted by `no_pos_class_floor` (Kučera–Demuth: the semimeasure's own
+lower-semicomputable approximants would compute a separator by majority vote,
+contradicting `kleene_recursively_inseparable`).
+Paper node: `thm:strict` -/
+theorem separatorClass_mass_tendsto_zero (M : UniversalContinuousSemimeasure) :
+    Tendsto (fun n ↦ ((separatorConsistentAt n).map M.mass).sum) atTop (𝓝 0) := by
+  have hrw : (fun n ↦ ((separatorConsistentAt n).map M.mass).sum)
+      = classMass M.toLowerSemicomputableContinuousSemimeasure.toContinuousSemimeasure
+        (fun _ ↦ true) :=
+    funext fun n ↦ (classMass_true _ n).symm
+  rw [hrw]
+  set C := M.toLowerSemicomputableContinuousSemimeasure.toContinuousSemimeasure with hC
+  have hnonneg : ∀ n, 0 ≤ classMass C (fun _ ↦ true) n := fun n ↦ classMass_nonneg C _ n
+  have hbdd : BddBelow (Set.range (classMass C fun _ ↦ true)) := by
+    refine ⟨0, ?_⟩
+    rintro x ⟨n, rfl⟩
+    exact hnonneg n
+  have htend : Tendsto (classMass C fun _ ↦ true) atTop
+      (𝓝 (⨅ n, classMass C (fun _ ↦ true) n)) :=
+    tendsto_atTop_ciInf (classMass_antitone C) hbdd
+  have hle : ∀ n, (⨅ n, classMass C (fun _ ↦ true) n) ≤ classMass C (fun _ ↦ true) n :=
+    fun n ↦ ciInf_le hbdd n
+  rcases eq_or_lt_of_le (le_ciInf hnonneg :
+      (0 : ℝ) ≤ ⨅ n, classMass C (fun _ ↦ true) n) with hzero | hpos
+  · rw [← hzero] at htend
+    exact htend
+  exfalso
+  obtain ⟨k, hk⟩ : ∃ k, classMass C (fun _ ↦ true) k <
+      6 * (⨅ n, classMass C (fun _ ↦ true) n) / 5 :=
+    (htend.eventually_lt_const (by linarith)).exists
+  exact no_pos_class_floor M.toLowerSemicomputableContinuousSemimeasure hpos hle hk
+
 /-- The repo's concrete bit atoms have computable Gödel codes, so they meet the atom
-hypothesis of the separator presentation. -/
+hypothesis of the separator presentation.
+Paper node: `thm:strict` -/
 lemma ordinaryAtom_code_computable :
     Computable fun k ↦ Encodable.encode (ordinaryIndependentBitAtoms.atom k) := by
   have hpair : Computable fun k : ℕ ↦ Nat.pair 1 k + 1 :=
@@ -1308,28 +1486,25 @@ lemma ordinaryAtom_code_computable :
 
 /-! ### The separator presentation
 
-Everything except the semimeasure fact is discharged here.  Realizability of the
-non-computable target assignment comes from `BitPrefixSentences.realizable` — the total
-form, which is exactly why that field is total rather than finite-prefix (the constraint
-theory pins infinitely many bits).  Two inputs are supplied by the caller and disclosed:
+Every field is discharged here.  Realizability of the non-computable target assignment
+comes from `BitPrefixSentences.realizable` — the total form, which is exactly why that
+field is total rather than finite-prefix (the constraint theory pins infinitely many bits);
+the vanishing class mass is `separatorClass_mass_tendsto_zero` (Kučera–Demuth).  One input
+is supplied by the caller:
 
 * `hatom` — computability of the atom family's Gödel codes.  This is discharged for the
   repo's concrete atoms by `ordinaryAtom_code_computable`; from it the whole constraint
   theory's enumerator is *built* (`separatorConstraintCE`), so no formula-emission input is
-  assumed here.
-* `hmass` — the disclosed `M7-STRICT-SEPARATORS` residue: the universal semimeasure gives
-  the stage classes vanishing total mass.  `kleene_recursively_inseparable` above is its
-  computability-theoretic input; the measure-theoretic step (a positive-mass class would
-  let the lower-semicomputable approximants of `M` compute a separator by majority vote —
-  Kučera–Demuth) is not yet formalized.
-  TODO(blueprint:thm:strict): need `Tendsto (fun n ↦ ((separatorConsistentAt n).map
-  M.mass).sum) atTop (𝓝 0)` from `kleene_recursively_inseparable` plus the approximation
-  fields of `M`. -/
+  assumed here. -/
+
+/-- The separator presentation of `thm:strict`, built from Kleene's recursively inseparable
+pair: the constraint theory, its c.e. enumerator, the stagewise consistent classes, and
+their vanishing mass are all constructed.
+Paper node: `thm:strict` -/
 noncomputable def strictSeparatorPresentationOfKleene
     {DP : DeductiveProcess} (M : UniversalContinuousSemimeasure)
     (B : BitPrefixSentences DP)
-    (hatom : Computable fun k ↦ Encodable.encode (B.atom k))
-    (hmass : Tendsto (fun n ↦ ((separatorConsistentAt n).map M.mass).sum) atTop (𝓝 0)) :
+    (hatom : Computable fun k ↦ Encodable.encode (B.atom k)) :
     StrictSeparatorPresentation M B where
   constraint := separatorConstraint B.atom
   repetition := EfficientRepeatedEnumeration.ofCE (separatorConstraintCE hatom)
@@ -1357,12 +1532,28 @@ noncomputable def strictSeparatorPresentationOfKleene
       have hk : (k : ℕ) < n := by simpa using k.isLt
       simp only [List.get_eq_getElem, List.getElem_map, List.getElem_range,
         decide_eq_true_eq]
-  mass_class_tendsto_zero := hmass
+  mass_class_tendsto_zero := separatorClass_mass_tendsto_zero M
+
+/-- **Strict domination with the separator argument discharged** (`thm:strict`).  The only
+remaining input is computability of the atom family's Gödel codes, which
+`ordinaryAtom_code_computable` proves for the repo's concrete atoms; the constraint theory,
+its enumerator, the stage classes and their vanishing mass are all constructed here.
+Paper node: `thm:strict` -/
+theorem lic_strict_domination_universalSemimeasure_ofAtomCodes
+    {DP : DeductiveProcess} {M : UniversalContinuousSemimeasure}
+    {B : BitPrefixSentences DP}
+    (hatom : Computable fun k ↦ Encodable.encode (B.atom k))
+    (P : History) [IsLogicalInductor P DP] :
+    ∀ C : ℝ, 0 < C → ∃ σ : List Bool,
+      limitingBelief P (B.prefixSentence σ) > C * M.mass σ :=
+  lic_strict_domination_universalSemimeasure P (strictSeparatorPresentationOfKleene M B hatom)
 
 #print axioms ceNestedSemimeasure
 #print axioms exists_pos_mass_of_ce_nested
 #print axioms no_ce_null_prefix_family
 #print axioms kleene_recursively_inseparable
+#print axioms separatorClass_mass_tendsto_zero
 #print axioms strictSeparatorPresentationOfKleene
+#print axioms lic_strict_domination_universalSemimeasure_ofAtomCodes
 
 end LogicalInduction
