@@ -837,6 +837,71 @@ lemma _root_.LogicalInduction.PolyTokenStream.of_eq {s s' : ℕ → List ℕ}
     (h : PolyTokenStream s) (he : ∀ n, s n = s' n) : PolyTokenStream s' := by
   rwa [funext he] at h
 
+/-! ### The raw-combinator `PolyTokenStream` algebra
+
+Every raw expression combinator maps poly token streams to poly token streams; the
+frame emitters (token-level and symbol-level alike) are assembled from these. -/
+
+namespace PolyTokenStream
+
+lemma rawConst {c : Code} {k : ℕ → ℕ} (hk : PolyFueled c k) :
+    PolyTokenStream (fun z => rawConstTokens (k z)) :=
+  (PolyTokenStream.const 1).append (PolyTokenStream.polyTok hk)
+
+lemma rawConstQ (q : ℚ) :
+    PolyTokenStream (fun _ : ℕ => rawConstTokens (Encodable.encode q)) :=
+  (PolyTokenStream.const 1).append (PolyTokenStream.const _)
+
+lemma rawMul {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
+    PolyTokenStream (fun z => rawMulTokens (a z) (b z)) :=
+  (ha.append hb).append (PolyTokenStream.const 3)
+
+lemma rawAdd {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
+    PolyTokenStream (fun z => rawAddTokens (a z) (b z)) :=
+  (ha.append hb).append (PolyTokenStream.const 2)
+
+lemma rawMax {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
+    PolyTokenStream (fun z => rawMaxTokens (a z) (b z)) :=
+  (ha.append hb).append (PolyTokenStream.const 4)
+
+lemma rawSafeRecip {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
+    PolyTokenStream (fun z => rawSafeRecipTokens (a z)) :=
+  ha.append (PolyTokenStream.const 5)
+
+lemma rawMin {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
+    PolyTokenStream (fun z => rawMinTokens (a z) (b z)) :=
+  rawMul (rawConstQ (-1)) (rawMax (rawMul (rawConstQ (-1)) ha)
+    (rawMul (rawConstQ (-1)) hb))
+
+lemma rawClip01 {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
+    PolyTokenStream (fun z => rawClip01Tokens (a z)) :=
+  rawMax (rawConstQ 0) (rawMin (rawConstQ 1) ha)
+
+lemma rawAbs {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
+    PolyTokenStream (fun z => rawAbsTokens (a z)) :=
+  rawMax ha (rawMul (rawConstQ (-1)) ha)
+
+lemma rawLowerSafeRecip {a : ℕ → List ℕ} (ha : PolyTokenStream a) (ε : ℚ) :
+    PolyTokenStream (fun z => rawLowerSafeRecipTokens (a z) ε) :=
+  rawMul (rawConstQ (1 / ε)) (rawSafeRecip (rawMul (rawConstQ (1 / ε)) ha))
+
+/-- The `letE` variable slot `i` as a (constant) poly token stream. -/
+lemma varTok (i : ℕ) : PolyTokenStream (fun _ : ℕ => ([7, i] : List ℕ)) :=
+  (PolyTokenStream.const 7).append (PolyTokenStream.const i)
+
+/-- The conditioning gate over the two `letE` variables, with poly budget codes. -/
+lemma rawGate {cb ci : Code} {bc ibc : ℕ → ℕ}
+    (hbc : PolyFueled cb bc) (hibc : PolyFueled ci ibc) :
+    PolyTokenStream (fun z => rawConditioningGateTokens [7, 0]
+      (rawAbsTokens [7, 1]) (bc z) (ibc z)) :=
+  rawClip01 (rawMul
+    (rawAdd (rawAdd (rawConstQ 1)
+      (rawMul (rawConst hbc) (rawSafeRecip (rawAbs (varTok 1)))))
+      (rawMul (rawConstQ (-1)) (varTok 0)))
+    (rawMul (rawConst hibc) (rawMax (rawConstQ 1) (rawAbs (varTok 1)))))
+
+end PolyTokenStream
+
 /-- The all-poly middle of the first (β) frame leg emission. -/
 def frameMidBeta (ψc day bc ibc : ℕ) (ε : ℚ) : List ℕ :=
   [day] ++ rawLowerSafeRecipTokens (rawPriceTokens ψc day) ε ++ [3] ++
@@ -875,59 +940,21 @@ lemma frameMid_polyTokenStream (second : Bool)
     PolyTokenStream (fun z =>
       if second then frameMidSecond (ψc z) (day z) (bc z) (ibc z) ε
       else frameMidBeta (ψc z) (day z) (bc z) (ibc z) ε) := by
-  have hRCc : ∀ k : ℕ, PolyTokenStream (fun _ : ℕ => rawConstTokens k) := fun k =>
-    (PolyTokenStream.const 1).append (PolyTokenStream.const k)
-  have hRCq : ∀ q : ℚ, PolyTokenStream (fun _ : ℕ =>
-      rawConstTokens (Encodable.encode q)) := fun q => hRCc _
-  have hmul : ∀ {a b : ℕ → List ℕ}, PolyTokenStream a → PolyTokenStream b →
-      PolyTokenStream (fun z => rawMulTokens (a z) (b z)) := fun ha hb =>
-    (ha.append hb).append (PolyTokenStream.const 3)
-  have hadd : ∀ {a b : ℕ → List ℕ}, PolyTokenStream a → PolyTokenStream b →
-      PolyTokenStream (fun z => rawAddTokens (a z) (b z)) := fun ha hb =>
-    (ha.append hb).append (PolyTokenStream.const 2)
-  have hmax : ∀ {a b : ℕ → List ℕ}, PolyTokenStream a → PolyTokenStream b →
-      PolyTokenStream (fun z => rawMaxTokens (a z) (b z)) := fun ha hb =>
-    (ha.append hb).append (PolyTokenStream.const 4)
-  have hsafe : ∀ {a : ℕ → List ℕ}, PolyTokenStream a →
-      PolyTokenStream (fun z => rawSafeRecipTokens (a z)) := fun ha =>
-    ha.append (PolyTokenStream.const 5)
-  have hmin : ∀ {a b : ℕ → List ℕ}, PolyTokenStream a → PolyTokenStream b →
-      PolyTokenStream (fun z => rawMinTokens (a z) (b z)) := fun ha hb =>
-    hmul (hRCq (-1)) (hmax (hmul (hRCq (-1)) ha) (hmul (hRCq (-1)) hb))
-  have hclip : ∀ {a : ℕ → List ℕ}, PolyTokenStream a →
-      PolyTokenStream (fun z => rawClip01Tokens (a z)) := fun ha =>
-    hmax (hRCq 0) (hmin (hRCq 1) ha)
-  have habs : ∀ {a : ℕ → List ℕ}, PolyTokenStream a →
-      PolyTokenStream (fun z => rawAbsTokens (a z)) := fun ha =>
-    hmax ha (hmul (hRCq (-1)) ha)
   have h70 : PolyTokenStream (fun _ : ℕ => ([7, 0] : List ℕ)) :=
-    (PolyTokenStream.const 7).append (PolyTokenStream.const 0)
+    PolyTokenStream.varTok 0
   have h71 : PolyTokenStream (fun _ : ℕ => ([7, 1] : List ℕ)) :=
-    (PolyTokenStream.const 7).append (PolyTokenStream.const 1)
-  have hRCbc : PolyTokenStream (fun z => rawConstTokens (bc z)) :=
-    (PolyTokenStream.const 1).append (PolyTokenStream.polyTok hbc)
-  have hRCibc : PolyTokenStream (fun z => rawConstTokens (ibc z)) :=
-    (PolyTokenStream.const 1).append (PolyTokenStream.polyTok hibc)
+    PolyTokenStream.varTok 1
   have hgate : PolyTokenStream (fun z => rawConditioningGateTokens
-      [7, 0] (rawAbsTokens [7, 1]) (bc z) (ibc z)) := by
-    have hmag : PolyTokenStream (fun _ : ℕ => rawAbsTokens [7, 1]) := habs h71
-    have htol : PolyTokenStream (fun z => rawMulTokens (rawConstTokens (bc z))
-        (rawSafeRecipTokens (rawAbsTokens [7, 1]))) := hmul hRCbc (hsafe hmag)
-    have hmaxMag : PolyTokenStream (fun _ : ℕ => rawMaxTokens
-        (rawConstTokens (Encodable.encode (1 : ℚ))) (rawAbsTokens [7, 1])) :=
-      hmax (hRCq 1) hmag
-    exact hclip (hmul
-      (hadd (hadd (hRCq 1) htol) (hmul (hRCq (-1)) h70))
-      (hmul hRCibc hmaxMag))
+      [7, 0] (rawAbsTokens [7, 1]) (bc z) (ibc z)) :=
+    PolyTokenStream.rawGate hbc hibc
   have hlower : PolyTokenStream (fun z => rawLowerSafeRecipTokens
-      (rawPriceTokens (ψc z) (day z)) ε) := by
-    have hden : PolyTokenStream (fun z => rawPriceTokens (ψc z) (day z)) :=
-      ((PolyTokenStream.const 0).append (PolyTokenStream.polyTok hψc)).append
-        (PolyTokenStream.polyTok hday)
-    exact hmul (hRCq (1 / ε)) (hsafe (hmul (hRCq (1 / ε)) hden))
+      (rawPriceTokens (ψc z) (day z)) ε) :=
+    PolyTokenStream.rawLowerSafeRecip
+      (((PolyTokenStream.const 0).append (PolyTokenStream.polyTok hψc)).append
+        (PolyTokenStream.polyTok hday)) ε
   have hcore : PolyTokenStream (fun z => rawMinTokens [7, 1] (rawMulTokens [7, 1]
       (rawConditioningGateTokens [7, 0] (rawAbsTokens [7, 1]) (bc z) (ibc z)))) :=
-    hmin h71 (hmul h71 hgate)
+    PolyTokenStream.rawMin h71 (PolyTokenStream.rawMul h71 hgate)
   cases second with
   | false =>
       refine (((((PolyTokenStream.polyTok hday).append hlower).append
@@ -939,7 +966,8 @@ lemma frameMid_polyTokenStream (second : Bool)
   | true =>
       refine (((((PolyTokenStream.polyTok hday).append hlower).append
         (PolyTokenStream.const 3)).append
-          (hmul (hRCq (-1)) (hmul hcore h70))).append
+          (PolyTokenStream.rawMul (PolyTokenStream.rawConstQ (-1))
+            (PolyTokenStream.rawMul hcore h70))).append
         ((((PolyTokenStream.const 8).append (PolyTokenStream.const 8)).append
           (PolyTokenStream.const 6)).append (PolyTokenStream.polyTok hψc))).of_eq ?_
       intro z
