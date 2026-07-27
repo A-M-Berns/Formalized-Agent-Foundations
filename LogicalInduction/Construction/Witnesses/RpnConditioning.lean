@@ -2945,6 +2945,216 @@ theorem strategyOfTokens_rpnGuardedConditionTokens_trades
 #print axioms strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay
 #print axioms strategyOfTokens_rpnGuardedConditionTokens_trades
 
+/-! ## The frame pass (symbol level) — emission and contraction anchor
+
+The token-model frame transducer (`conditioningFrameTokenRun`) replaces each trade
+chunk `[6, φc]` of the priced stream by a locally gated leg body
+(`rawLocallyGated{Beta,Second}BodyTokens`) closing with a re-emitted trade.  At the
+symbol level the trade sentence is a run; the mirror emission splices the buffered
+run into the two sentence slots of the body — the conjunction block
+`3 :: run ++ blockψ` at the ratio's numerator and re-emitted trade, and `blockψ` at
+the denominator — leaving the gate arithmetic (constants, `letE` variables,
+operators) verbatim.  The contraction anchor below is compositional, through the
+prefix-contraction algebra `ContractsTo`. -/
+
+/-- `xs` contracts to `ys` ahead of any continuation (`UnRpnTransparent`
+generalized to a non-identity contraction). -/
+def ContractsTo (xs ys : List ℕ) : Prop :=
+  ∀ rest, unRpn (xs ++ rest) = ys ++ unRpn rest
+
+lemma UnRpnTransparent.contractsTo {xs : List ℕ} (h : UnRpnTransparent xs) :
+    ContractsTo xs xs := h
+
+lemma ContractsTo.of_eq {xs ys xs' ys' : List ℕ} (h : ContractsTo xs ys)
+    (hx : xs = xs') (hy : ys = ys') : ContractsTo xs' ys' := hx ▸ hy ▸ h
+
+lemma ContractsTo.append {a a' b b' : List ℕ}
+    (ha : ContractsTo a a') (hb : ContractsTo b b') :
+    ContractsTo (a ++ b) (a' ++ b') := fun rest => by
+  rw [List.append_assoc, ha (b ++ rest), hb rest, ← List.append_assoc]
+
+lemma ContractsTo.single (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t ≠ 7) :
+    ContractsTo [t] [t] :=
+  (UnRpnTransparent.single t ht).contractsTo
+
+lemma ContractsTo.payload (t c : ℕ) (ht : t = 1 ∨ t = 7) :
+    ContractsTo [t, c] [t, c] :=
+  (UnRpnTransparent.payload t c ht).contractsTo
+
+/-- A price chunk with an expanded sentence block contracts to the token-model
+price leaf. -/
+lemma ContractsTo.priceSym {b : List ℕ} {φ : Sentence}
+    (hb : parseRpn b.length b = some (φ, [])) (day : ℕ) :
+    ContractsTo (0 :: b ++ [day]) (rawPriceTokens (Encodable.encode φ) day) :=
+  fun rest => by
+    rw [show (0 :: b ++ [day]) ++ rest = 0 :: (b ++ day :: rest) by simp,
+      unRpn_price_chunk_block hb day rest]
+    rfl
+
+/-- A trade chunk with an expanded sentence block contracts to the token-model
+trade pair. -/
+lemma ContractsTo.tradeSym {b : List ℕ} {φ : Sentence}
+    (hb : parseRpn b.length b = some (φ, [])) :
+    ContractsTo (6 :: b) [6, Encodable.encode φ] := fun rest => by
+  rw [show (6 :: b) ++ rest = 6 :: (b ++ rest) by simp,
+    unRpn_trade_chunk_block hb rest]
+  rfl
+
+/-! ### The raw-combinator algebra -/
+
+lemma ContractsTo.constTok (c : ℕ) :
+    ContractsTo (rawConstTokens c) (rawConstTokens c) :=
+  ContractsTo.payload 1 c (Or.inl rfl)
+
+lemma ContractsTo.varTok (i : ℕ) : ContractsTo [7, i] [7, i] :=
+  ContractsTo.payload 7 i (Or.inr rfl)
+
+lemma ContractsTo.mulTok {a a' b b' : List ℕ}
+    (ha : ContractsTo a a') (hb : ContractsTo b b') :
+    ContractsTo (rawMulTokens a b) (rawMulTokens a' b') :=
+  (ha.append hb).append (ContractsTo.single 3 (by norm_num))
+
+lemma ContractsTo.addTok {a a' b b' : List ℕ}
+    (ha : ContractsTo a a') (hb : ContractsTo b b') :
+    ContractsTo (rawAddTokens a b) (rawAddTokens a' b') :=
+  (ha.append hb).append (ContractsTo.single 2 (by norm_num))
+
+lemma ContractsTo.maxTok {a a' b b' : List ℕ}
+    (ha : ContractsTo a a') (hb : ContractsTo b b') :
+    ContractsTo (rawMaxTokens a b) (rawMaxTokens a' b') :=
+  (ha.append hb).append (ContractsTo.single 4 (by norm_num))
+
+lemma ContractsTo.safeRecipTok {a a' : List ℕ} (ha : ContractsTo a a') :
+    ContractsTo (rawSafeRecipTokens a) (rawSafeRecipTokens a') :=
+  ha.append (ContractsTo.single 5 (by norm_num))
+
+lemma ContractsTo.minTok {a a' b b' : List ℕ}
+    (ha : ContractsTo a a') (hb : ContractsTo b b') :
+    ContractsTo (rawMinTokens a b) (rawMinTokens a' b') :=
+  (ContractsTo.constTok _).mulTok
+    (((ContractsTo.constTok _).mulTok ha).maxTok
+      ((ContractsTo.constTok _).mulTok hb))
+
+lemma ContractsTo.absTok {a a' : List ℕ} (ha : ContractsTo a a') :
+    ContractsTo (rawAbsTokens a) (rawAbsTokens a') :=
+  ha.maxTok ((ContractsTo.constTok _).mulTok ha)
+
+lemma ContractsTo.clip01Tok {a a' : List ℕ} (ha : ContractsTo a a') :
+    ContractsTo (rawClip01Tokens a) (rawClip01Tokens a') :=
+  (ContractsTo.constTok _).maxTok ((ContractsTo.constTok _).minTok ha)
+
+lemma ContractsTo.gateTok {r r' m m' : List ℕ}
+    (hr : ContractsTo r r') (hm : ContractsTo m m')
+    (bc ibc : ℕ) :
+    ContractsTo (rawConditioningGateTokens r m bc ibc)
+      (rawConditioningGateTokens r' m' bc ibc) :=
+  ContractsTo.clip01Tok
+    ((((ContractsTo.constTok _).addTok
+        ((ContractsTo.constTok bc).mulTok hm.safeRecipTok)).addTok
+      ((ContractsTo.constTok _).mulTok hr)).mulTok
+    ((ContractsTo.constTok ibc).mulTok ((ContractsTo.constTok _).maxTok hm)))
+
+lemma ContractsTo.lowerSafeRecipTok {a a' : List ℕ} (ha : ContractsTo a a')
+    (ε : ℚ) :
+    ContractsTo (rawLowerSafeRecipTokens a ε) (rawLowerSafeRecipTokens a' ε) :=
+  (ContractsTo.constTok _).mulTok
+    (((ContractsTo.constTok _).mulTok ha).safeRecipTok)
+
+/-! ### The frame-leg emission -/
+
+/-- A symbol-level price leaf: the sentence slot holds an expanded block. -/
+def rpnFramePriceSym (block : List ℕ) (day : ℕ) : List ℕ := 0 :: block ++ [day]
+
+/-- The (sentence-free) conditioning gate over the two `letE` variables. -/
+def rpnFrameGate (bc ibc : ℕ) : List ℕ :=
+  rawConditioningGateTokens [7, 0] (rawAbsTokens [7, 1]) bc ibc
+
+/-- The conditional-ratio value with expanded sentence blocks. -/
+def rpnFrameRatioSym (conjBlock ψBlock : List ℕ) (day : ℕ) (ε : ℚ) : List ℕ :=
+  rawMulTokens (rpnFramePriceSym conjBlock day)
+    (rawLowerSafeRecipTokens (rpnFramePriceSym ψBlock day) ε)
+
+/-- **The frame-leg emission at a trade-run exit**: the RPN expansion of the
+locally gated leg body, with the buffered trade run `buf` and the condition block
+`blk` spliced into the sentence slots, closing with the re-emitted trade. -/
+def rpnFrameEmit (second : Bool) (blk : List ℕ) (ε : ℚ) (day bc ibc : ℕ)
+    (buf : List ℕ) : List ℕ :=
+  (if second then
+    rpnFrameRatioSym (3 :: buf ++ blk) blk day ε ++
+      rawMulTokens (rawConstTokens (Encodable.encode (-1 : ℚ)))
+        (rawMulTokens
+          (rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc)))
+          [7, 0]) ++ [8]
+  else
+    rpnFrameRatioSym (3 :: buf ++ blk) blk day ε ++
+      rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc)) ++ [8]) ++
+  8 :: 6 :: (if second then blk else 3 :: buf ++ blk)
+
+/-- **The frame-leg emission contracts to the token-model frame emission** (the
+correctness anchor for the frame pass, mirror of `unRpn_price_rewrite_chunk`).
+Paper node: `thm:scon` -/
+lemma rpnFrameEmit_contractsTo {buf blk : List ℕ} {φ ψn : Sentence}
+    (hbuf : parseRpn buf.length buf = some (φ, []))
+    (hblk : parseRpn blk.length blk = some (ψn, []))
+    (second : Bool) (day bc ibc : ℕ) (ε : ℚ) :
+    ContractsTo (rpnFrameEmit second blk ε day bc ibc buf)
+      ((if second then
+          rawLocallyGatedSecondBodyTokens (Encodable.encode φ)
+            (Encodable.encode ψn) day bc ibc ε
+        else
+          rawLocallyGatedBetaBodyTokens (Encodable.encode φ)
+            (Encodable.encode ψn) day bc ibc ε) ++
+        8 :: [6, if second then Encodable.encode ψn
+          else conjunctionCode (Encodable.encode φ) (Encodable.encode ψn)]) := by
+  have hconj : parseRpn (3 :: buf ++ blk).length (3 :: buf ++ blk) =
+      some (φ ⋏ ψn, []) := parseRpn_and_block hbuf hblk
+  have hgate : ContractsTo (rpnFrameGate bc ibc) (rpnFrameGate bc ibc) :=
+    ContractsTo.gateTok (ContractsTo.varTok 0)
+      (ContractsTo.absTok (ContractsTo.varTok 1)) bc ibc
+  have hratio : ContractsTo (rpnFrameRatioSym (3 :: buf ++ blk) blk day ε)
+      (rawMulTokens (rawPriceTokens (Encodable.encode (φ ⋏ ψn)) day)
+        (rawLowerSafeRecipTokens
+          (rawPriceTokens (Encodable.encode ψn) day) ε)) :=
+    (ContractsTo.priceSym hconj day).mulTok
+      (ContractsTo.lowerSafeRecipTok (ContractsTo.priceSym hblk day) ε)
+  have hmin : ContractsTo
+      (rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc)))
+      (rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc))) :=
+    (ContractsTo.varTok 1).minTok ((ContractsTo.varTok 1).mulTok hgate)
+  have hclose : ContractsTo [(8 : ℕ)] [8] :=
+    ContractsTo.single 8 (by norm_num)
+  cases second with
+  | false =>
+      have htail : ContractsTo (6 :: (3 :: buf ++ blk))
+          [6, Encodable.encode (φ ⋏ ψn)] := ContractsTo.tradeSym hconj
+      have hcomp := (((hratio.append hmin).append hclose).append
+        (hclose.append htail))
+      refine hcomp.of_eq ?_ ?_
+      · simp [rpnFrameEmit]
+      · simp [rawLocallyGatedBetaBodyTokens, rawConditioningRatioTokens,
+          rpnFrameGate, conjunctionCode_exact]
+  | true =>
+      have htail : ContractsTo (6 :: blk) [6, Encodable.encode ψn] :=
+        ContractsTo.tradeSym hblk
+      have hsecondBody : ContractsTo
+          (rawMulTokens (rawConstTokens (Encodable.encode (-1 : ℚ)))
+            (rawMulTokens
+              (rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc)))
+              [7, 0]))
+          (rawMulTokens (rawConstTokens (Encodable.encode (-1 : ℚ)))
+            (rawMulTokens
+              (rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc)))
+              [7, 0])) :=
+        (ContractsTo.constTok _).mulTok (hmin.mulTok (ContractsTo.varTok 0))
+      have hcomp := (((hratio.append hsecondBody).append hclose).append
+        (hclose.append htail))
+      refine hcomp.of_eq ?_ ?_
+      · simp [rpnFrameEmit]
+      · simp [rawLocallyGatedSecondBodyTokens, rawConditioningRatioTokens,
+          rpnFrameGate, conjunctionCode_exact]
+
+#print axioms rpnFrameEmit_contractsTo
+
 /-! ### Endpoint statements (open, recorded — not sorried)
 
 The two target endpoints are stated here as comments rather than sorried theorems so
