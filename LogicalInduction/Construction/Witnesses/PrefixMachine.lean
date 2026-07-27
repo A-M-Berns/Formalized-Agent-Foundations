@@ -228,43 +228,59 @@ lemma prefixSentenceEnum_of_not_canonical {n : ℕ}
 
 /-! ## The Kraft budget -/
 
-/-- Half of the Kraft budget covers any injectively indexed sentence family: the
-codewords are prefix-free, so `kraft_inequality` bounds the length-weights by one, and
-the slack bit halves the total. -/
-lemma sum_prefixWeight_le_half {T : Finset ℕ} {f : ℕ → Sentence}
+/-- Half of the Kraft budget covers any injectively indexed sentence family, for **any**
+self-delimiting code `cw` whose length function is `κ - 1`: the selected codewords are
+prefix-free, so `kraft_inequality` bounds the length-weights by one, and the slack bit
+halves the total.
+
+This is the generic half-budget step; `sum_prefixWeight_le_half` instantiates it at the
+fixed code `sentCode`, and the universal prefix machine of `UniversalPrefix.lean`
+instantiates it at its minimal-codeword selector. -/
+lemma sum_prefixWeight_le_half_of_code {κ : Sentence → ℕ} {T : Finset ℕ} {f : ℕ → Sentence}
+    (cw : Sentence → List Bool) (hlen : ∀ φ, (cw φ).length + 1 = κ φ)
+    (hcw : ∀ φ ψ : Sentence, cw φ <+: cw ψ → φ = ψ)
     (hinj : ∀ i ∈ T, ∀ j ∈ T, f i = f j → i = j) :
-    ∑ i ∈ T, prefixWeight prefixKappa (f i) ≤ 1 / 2 := by
+    ∑ i ∈ T, prefixWeight κ (f i) ≤ 1 / 2 := by
   classical
-  have hterm : ∀ i, prefixWeight prefixKappa (f i) =
-      (1 / 2 : ℝ) ^ (sentCode (f i)).length * (1 / 2) := by
+  have hterm : ∀ i, prefixWeight κ (f i) =
+      (1 / 2 : ℝ) ^ (cw (f i)).length * (1 / 2) := by
     intro i
-    rw [prefixWeight, prefixKappa, pow_succ, one_div_pow, mul_one_div, div_div]
-  have hcode_inj : ∀ i ∈ T, ∀ j ∈ T, sentCode (f i) = sentCode (f j) → i = j := by
+    rw [prefixWeight, ← hlen (f i), pow_succ, one_div_pow, mul_one_div, div_div]
+  have hcode_inj : ∀ i ∈ T, ∀ j ∈ T, cw (f i) = cw (f j) → i = j := by
     intro i hi j hj hij
-    exact hinj i hi j hj (sentCode_prefix_inj (hij ▸ List.prefix_refl _))
-  have hpf : ∀ a ∈ T.image (fun i => sentCode (f i)),
-      ∀ b ∈ T.image (fun i => sentCode (f i)), a <+: b → a = b := by
+    exact hinj i hi j hj (hcw _ _ (hij ▸ List.prefix_refl _))
+  have hpf : ∀ a ∈ T.image (fun i => cw (f i)),
+      ∀ b ∈ T.image (fun i => cw (f i)), a <+: b → a = b := by
     intro a ha b hb hab
     obtain ⟨i, hi, rfl⟩ := Finset.mem_image.mp ha
     obtain ⟨j, hj, rfl⟩ := Finset.mem_image.mp hb
-    rw [sentCode_prefix_inj hab]
-  calc ∑ i ∈ T, prefixWeight prefixKappa (f i)
-      = (∑ i ∈ T, (1 / 2 : ℝ) ^ (sentCode (f i)).length) * (1 / 2) := by
+    rw [hcw _ _ hab]
+  calc ∑ i ∈ T, prefixWeight κ (f i)
+      = (∑ i ∈ T, (1 / 2 : ℝ) ^ (cw (f i)).length) * (1 / 2) := by
         rw [Finset.sum_mul]
         exact Finset.sum_congr rfl (fun i _ => hterm i)
-    _ = (∑ w ∈ T.image (fun i => sentCode (f i)), (1 / 2 : ℝ) ^ w.length) * (1 / 2) := by
+    _ = (∑ w ∈ T.image (fun i => cw (f i)), (1 / 2 : ℝ) ^ w.length) * (1 / 2) := by
         rw [Finset.sum_image hcode_inj]
     _ ≤ 1 * (1 / 2) := by
         have := kraft_inequality hpf
         nlinarith
     _ = 1 / 2 := one_mul _
 
-/-- The finite Kraft budget of the concrete machine over its total enumeration: the
-canonical indices and the atom-fallback indices are each injective, and each half of the
-budget covers one class.
+/-- Half of the Kraft budget covers any injectively indexed sentence family. -/
+lemma sum_prefixWeight_le_half {T : Finset ℕ} {f : ℕ → Sentence}
+    (hinj : ∀ i ∈ T, ∀ j ∈ T, f i = f j → i = j) :
+    ∑ i ∈ T, prefixWeight prefixKappa (f i) ≤ 1 / 2 :=
+  sum_prefixWeight_le_half_of_code sentCode (fun _ => rfl)
+    (fun _ _ h => sentCode_prefix_inj h) hinj
+
+/-- The finite Kraft budget over the total enumeration, for **any** self-delimiting code:
+the canonical indices and the atom-fallback indices are each injective, and each half of
+the budget covers one class.
 Paper node: `thm:ob` -/
-lemma prefixKraft (N : ℕ) :
-    ∑ i ∈ Finset.range N, prefixWeight prefixKappa (prefixSentenceEnum i) ≤ 1 := by
+lemma prefixKraft_of_code {κ : Sentence → ℕ} (cw : Sentence → List Bool)
+    (hlen : ∀ φ, (cw φ).length + 1 = κ φ)
+    (hcw : ∀ φ ψ : Sentence, cw φ <+: cw ψ → φ = ψ) (N : ℕ) :
+    ∑ i ∈ Finset.range N, prefixWeight κ (prefixSentenceEnum i) ≤ 1 := by
   classical
   have hcanon : ∀ i : ℕ, (∃ φ : Sentence, Encodable.encode φ = i) →
       Encodable.encode (prefixSentenceEnum i) = i := by
@@ -274,16 +290,16 @@ lemma prefixKraft (N : ℕ) :
     (fun i => ∃ φ : Sentence, Encodable.encode φ = i)]
   have h1 : ∑ i ∈ (Finset.range N).filter
         (fun i => ∃ φ : Sentence, Encodable.encode φ = i),
-      prefixWeight prefixKappa (prefixSentenceEnum i) ≤ 1 / 2 := by
-    apply sum_prefixWeight_le_half
+      prefixWeight κ (prefixSentenceEnum i) ≤ 1 / 2 := by
+    apply sum_prefixWeight_le_half_of_code cw hlen hcw
     intro i hi j hj hij
     have hci := hcanon i (Finset.mem_filter.mp hi).2
     have hcj := hcanon j (Finset.mem_filter.mp hj).2
     rw [← hci, ← hcj, hij]
   have h2 : ∑ i ∈ (Finset.range N).filter
         (fun i => ¬ ∃ φ : Sentence, Encodable.encode φ = i),
-      prefixWeight prefixKappa (prefixSentenceEnum i) ≤ 1 / 2 := by
-    apply sum_prefixWeight_le_half
+      prefixWeight κ (prefixSentenceEnum i) ≤ 1 / 2 := by
+    apply sum_prefixWeight_le_half_of_code cw hlen hcw
     intro i hi j hj hij
     have hai : prefixSentenceEnum i = Formula.atom i :=
       prefixSentenceEnum_of_not_canonical
@@ -294,6 +310,12 @@ lemma prefixKraft (N : ℕ) :
     rw [hai, haj] at hij
     exact Formula.atom.inj hij
   linarith
+
+/-- The finite Kraft budget of the concrete machine over its total enumeration.
+Paper node: `thm:ob` -/
+lemma prefixKraft (N : ℕ) :
+    ∑ i ∈ Finset.range N, prefixWeight prefixKappa (prefixSentenceEnum i) ≤ 1 :=
+  prefixKraft_of_code sentCode (fun _ => rfl) (fun _ _ h => sentCode_prefix_inj h) N
 
 /-! ## The fixed negation compiler (fully discharged) -/
 
@@ -337,11 +359,14 @@ lemma prefixApprox_eq (i : ℕ) :
   push_cast
   norm_num
 
-/-- Threshold base of the concrete machine, matching `obBase` over the presentation
-below: input `z = ⟨j', ⟨n, i⟩⟩` denotes rung `j'+1`, day `n`, sentence index `i`. -/
+/-- Threshold base of a weight stream, matching `obBase` over the presentation below:
+input `z = ⟨j', ⟨n, i⟩⟩` denotes rung `j'+1`, day `n`, sentence index `i`. -/
+def gateEmitBase (app : ℕ → ℚ) (z : ℕ) : ℚ :=
+  app z / (2 * ((z.unpair.1 + 1 : ℕ) : ℚ) ^ 4)
+
+/-- Threshold base of the concrete machine. -/
 def prefixEmitBase (z : ℕ) : ℚ :=
-  prefixApprox z.unpair.2.unpair.2 /
-    (2 * ((z.unpair.1 + 1 : ℕ) : ℚ) ^ 4)
+  gateEmitBase (fun z => prefixApprox z.unpair.2.unpair.2) z
 
 /-! ## Deriving the gate emissions from the weight emission
 
@@ -365,39 +390,53 @@ lemma encode_prefixApprox (i : ℕ) :
     Encodable.encode (prefixApprox i) = Nat.pair 2 (prefixDen i) := by
   rw [prefixApprox_eq_inv, encode_rat_inv_natCast (prefixDen_pos i)]
 
-/-- The weight denominator stream extracted from the weight emission. -/
-lemma prefixDen_polyFueled (h : PolyRatCodes prefixApprox) :
-    ∃ c, PolyFueled c prefixDen := by
-  obtain ⟨c, hc⟩ := h
-  exact ⟨_, (PolyFueled.right.comp hc).of_eq (fun i => by
-    rw [encode_prefixApprox, Nat.unpair_pair])⟩
+/-! ### Generic derivation of the gate tokens from a reciprocal weight stream
 
-lemma prefixEmit_sum_eq (z : ℕ) :
-    prefixEmitBase z + prefixEmitBase z =
-      ((prefixDen z.unpair.2.unpair.2 * (z.unpair.1 + 1) ^ 4 : ℕ) : ℚ)⁻¹ := by
-  have hD : (0 : ℚ) < ((prefixDen z.unpair.2.unpair.2 : ℕ) : ℚ) := by
-    exact_mod_cast prefixDen_pos z.unpair.2.unpair.2
+Both `OccamThresholdEmission` streams are `mulc` arithmetic on the weight *denominator*:
+for `app i = (D i)⁻¹` the threshold sum at rung `j'+1` is `1 / (D i · (j'+1)⁴)` and the
+inverse width is `2 · D i · (j'+1)⁴`.  Stated once here, for any reciprocal weight stream;
+the fixed machine and the universal machine of `UniversalPrefix.lean` both instantiate it.
+Paper node: `thm:ob` -/
+
+section GateTokens
+
+variable {app : ℕ → ℚ} {D : ℕ → ℕ}
+
+lemma gateEmit_sum_eq (hinv : ∀ i, app i = ((D i : ℕ) : ℚ)⁻¹) (hpos : ∀ i, 0 < D i)
+    (z : ℕ) :
+    gateEmitBase app z + gateEmitBase app z =
+      ((D z * (z.unpair.1 + 1) ^ 4 : ℕ) : ℚ)⁻¹ := by
+  have hD : (0 : ℚ) < ((D z : ℕ) : ℚ) := by
+    exact_mod_cast hpos z
   have hj : (0 : ℚ) < (((z.unpair.1 + 1 : ℕ) : ℚ)) := by positivity
-  rw [prefixEmitBase, prefixApprox_eq_inv]
+  rw [gateEmitBase, hinv]
   push_cast
   field_simp
   ring
 
-lemma prefixEmit_inv_eq (z : ℕ) :
-    1 / prefixEmitBase z =
-      ((2 * prefixDen z.unpair.2.unpair.2 * (z.unpair.1 + 1) ^ 4 : ℕ) : ℚ) := by
-  have hD : (0 : ℚ) < ((prefixDen z.unpair.2.unpair.2 : ℕ) : ℚ) := by
-    exact_mod_cast prefixDen_pos z.unpair.2.unpair.2
+lemma gateEmit_inv_eq (hinv : ∀ i, app i = ((D i : ℕ) : ℚ)⁻¹) (hpos : ∀ i, 0 < D i)
+    (z : ℕ) :
+    1 / gateEmitBase app z =
+      ((2 * D z * (z.unpair.1 + 1) ^ 4 : ℕ) : ℚ) := by
+  have hD : (0 : ℚ) < ((D z : ℕ) : ℚ) := by
+    exact_mod_cast hpos z
   have hj : (0 : ℚ) < (((z.unpair.1 + 1 : ℕ) : ℚ)) := by positivity
-  rw [prefixEmitBase, prefixApprox_eq_inv]
+  rw [gateEmitBase, hinv]
   push_cast
   field_simp
 
+/-- The weight denominator stream extracted from the weight emission. -/
+lemma gateDen_polyFueled (hinv : ∀ i, app i = ((D i : ℕ) : ℚ)⁻¹) (hpos : ∀ i, 0 < D i)
+    (h : PolyRatCodes app) : ∃ c, PolyFueled c D := by
+  obtain ⟨c, hc⟩ := h
+  exact ⟨_, (PolyFueled.right.comp hc).of_eq (fun i => by
+    rw [hinv, encode_rat_inv_natCast (hpos i), Nat.unpair_pair])⟩
+
 /-- Common `mulc` assembly: the poly-fueled stream `z ↦ D(i(z)) · (j'(z)+1)⁴`. -/
-lemma prefixGateDen_polyFueled (h : PolyRatCodes prefixApprox) :
-    ∃ c, PolyFueled c
-      (fun z => prefixDen z.unpair.2.unpair.2 * (z.unpair.1 + 1) ^ 4) := by
-  obtain ⟨cD, hD⟩ := prefixDen_polyFueled h
+lemma gateGateDen_polyFueled (hinv : ∀ i, app i = ((D i : ℕ) : ℚ)⁻¹) (hpos : ∀ i, 0 < D i)
+    (h : PolyRatCodes app) :
+    ∃ c, PolyFueled c (fun z => D z * (z.unpair.1 + 1) ^ 4) := by
+  obtain ⟨cD, hD⟩ := gateDen_polyFueled hinv hpos h
   obtain ⟨cm, hm⟩ := mul_polyFueled
   have hj := PolyFueled.left.succ_comp
   have hj2 : PolyFueled ((Nat.Partrec.Code.succ.comp Nat.Partrec.Code.left).pair
@@ -407,36 +446,61 @@ lemma prefixGateDen_polyFueled (h : PolyRatCodes prefixApprox) :
   have hj4 := (hm.comp (hj2.pair hj2)).of_eq
     (f' := fun z => (z.unpair.1 + 1) ^ 4)
     (fun z => by simp only [Nat.unpair_pair]; ring)
-  have hi : PolyFueled (Nat.Partrec.Code.right.comp Nat.Partrec.Code.right)
-      (fun z => z.unpair.2.unpair.2) :=
-    PolyFueled.right.comp PolyFueled.right
-  have hDi := hD.comp hi
-  exact ⟨_, (hm.comp (hDi.pair hj4)).of_eq
+  exact ⟨_, (hm.comp (hD.pair hj4)).of_eq
     (fun z => by simp only [Nat.unpair_pair])⟩
 
 /-- The threshold-sum token stream, derived from the weight emission. -/
-lemma prefixThresholdSum_polyRat (h : PolyRatCodes prefixApprox) :
-    PolyRatCodes (fun z => prefixEmitBase z + prefixEmitBase z) := by
-  obtain ⟨cg, hg⟩ := prefixGateDen_polyFueled h
+lemma gateThresholdSum_polyRat (hinv : ∀ i, app i = ((D i : ℕ) : ℚ)⁻¹)
+    (hpos : ∀ i, 0 < D i) (h : PolyRatCodes app) :
+    PolyRatCodes (fun z => gateEmitBase app z + gateEmitBase app z) := by
+  obtain ⟨cg, hg⟩ := gateGateDen_polyFueled hinv hpos h
   refine ⟨_, ((PolyFueled.const 2).pair hg).of_eq (fun z => ?_)⟩
-  have hpos : 0 < prefixDen z.unpair.2.unpair.2 * (z.unpair.1 + 1) ^ 4 :=
-    Nat.mul_pos (prefixDen_pos _) (by positivity)
-  show _ = Encodable.encode (prefixEmitBase z + prefixEmitBase z)
-  rw [prefixEmit_sum_eq, encode_rat_inv_natCast hpos]
+  have hp : 0 < D z * (z.unpair.1 + 1) ^ 4 :=
+    Nat.mul_pos (hpos z) (by positivity)
+  show _ = Encodable.encode (gateEmitBase app z + gateEmitBase app z)
+  rw [gateEmit_sum_eq hinv hpos, encode_rat_inv_natCast hp]
+
+/-- The inverse-width token stream, derived from the weight emission. -/
+lemma gateInverseWidth_polyRat (hinv : ∀ i, app i = ((D i : ℕ) : ℚ)⁻¹)
+    (hpos : ∀ i, 0 < D i) (h : PolyRatCodes app) :
+    PolyRatCodes (fun z => 1 / gateEmitBase app z) := by
+  obtain ⟨cg, hg⟩ := gateGateDen_polyFueled hinv hpos h
+  obtain ⟨cm, hm⟩ := mul_polyFueled
+  have hquad : PolyFueled _ (fun z =>
+      4 * (D z * (z.unpair.1 + 1) ^ 4)) :=
+    (hm.comp ((PolyFueled.const 4).pair hg)).of_eq (fun z => by rw [Nat.unpair_pair])
+  refine ⟨_, (hquad.pair (PolyFueled.const 1)).of_eq (fun z => ?_)⟩
+  show _ = Encodable.encode (1 / gateEmitBase app z)
+  rw [gateEmit_inv_eq hinv hpos, encode_rat_natCast]
+  congr 1
+  ring
+
+end GateTokens
+
+/-- The weight denominator stream extracted from the weight emission. -/
+lemma prefixDen_polyFueled (h : PolyRatCodes prefixApprox) :
+    ∃ c, PolyFueled c prefixDen := by
+  obtain ⟨c, hc⟩ := h
+  exact ⟨_, (PolyFueled.right.comp hc).of_eq (fun i => by
+    rw [encode_prefixApprox, Nat.unpair_pair])⟩
+
+/-- The query-indexed weight stream of the concrete machine. -/
+lemma prefixApprox_query_polyRat (h : PolyRatCodes prefixApprox) :
+    PolyRatCodes (fun z => prefixApprox z.unpair.2.unpair.2) := by
+  obtain ⟨c, hc⟩ := h
+  exact ⟨_, hc.comp (PolyFueled.right.comp PolyFueled.right)⟩
+
+/-- The threshold-sum token stream, derived from the weight emission. -/
+lemma prefixThresholdSum_polyRat (h : PolyRatCodes prefixApprox) :
+    PolyRatCodes (fun z => prefixEmitBase z + prefixEmitBase z) :=
+  gateThresholdSum_polyRat (fun z => prefixApprox_eq_inv _)
+    (fun z => prefixDen_pos _) (prefixApprox_query_polyRat h)
 
 /-- The inverse-width token stream, derived from the weight emission. -/
 lemma prefixInverseWidth_polyRat (h : PolyRatCodes prefixApprox) :
-    PolyRatCodes (fun z => 1 / prefixEmitBase z) := by
-  obtain ⟨cg, hg⟩ := prefixGateDen_polyFueled h
-  obtain ⟨cm, hm⟩ := mul_polyFueled
-  have hquad : PolyFueled _ (fun z =>
-      4 * (prefixDen z.unpair.2.unpair.2 * (z.unpair.1 + 1) ^ 4)) :=
-    (hm.comp ((PolyFueled.const 4).pair hg)).of_eq (fun z => by rw [Nat.unpair_pair])
-  refine ⟨_, (hquad.pair (PolyFueled.const 1)).of_eq (fun z => ?_)⟩
-  show _ = Encodable.encode (1 / prefixEmitBase z)
-  rw [prefixEmit_inv_eq, encode_rat_natCast]
-  congr 1
-  ring
+    PolyRatCodes (fun z => 1 / prefixEmitBase z) :=
+  gateInverseWidth_polyRat (fun z => prefixApprox_eq_inv _)
+    (fun z => prefixDen_pos _) (prefixApprox_query_polyRat h)
 
 /-! ## Deriving the weight emission from the sentence emission
 
@@ -2065,12 +2129,12 @@ def prefixThresholdEmission : OccamThresholdEmission prefixMachinePresentation w
   threshold_sum_codes := by
     obtain ⟨c, hc⟩ := prefixThresholdSum_polyRat prefixApprox_polyRatCodes
     exact ⟨_, hc.of_eq (fun z => by
-      simp [prefixEmitBase, obEmitBase, obBase, obCapacity,
+      simp [prefixEmitBase, gateEmitBase, obEmitBase, obBase, obCapacity,
         prefixMachinePresentation])⟩
   inverse_width_codes := by
     obtain ⟨c, hc⟩ := prefixInverseWidth_polyRat prefixApprox_polyRatCodes
     exact ⟨_, hc.of_eq (fun z => by
-      simp [prefixEmitBase, obEmitBase, obBase, obCapacity,
+      simp [prefixEmitBase, gateEmitBase, obEmitBase, obBase, obCapacity,
         prefixMachinePresentation])⟩
 
 /-! ## Paper-facing corollaries over the concrete machine -/
