@@ -1866,6 +1866,718 @@ lemma parse_of_tradeRunWalk : ∀ (N : ℕ) (u : List ℕ), u.length ≤ N → �
 #print axioms parse_of_priceRunWalk
 #print axioms parse_of_tradeRunWalk
 
+/-! ## Whole-stream contraction exactness (the master commutation)
+
+`unRpn` of the transducer output on an **arbitrary** stream — garbage included — is
+the token-model price rewrite (`conditionPriceTokenRun`) of the contraction.  The
+proof is a chunk induction: well-formed chunks contract by
+`unRpn_price_rewrite_chunk` / `unRpn_trade_chunk_block`; a malformed chunk poisons
+both sides at the same chunk (the transducer's insertion sits beyond the poisoned
+run, so the `∀`-tail poison of `parse_of_runWalk` kills the rewritten stream too). -/
+
+/-- The cons unfolding of the streaming rewrite. -/
+lemma rpnConditionRun_cons (blocks : ℕ → List ℕ) (ε : ℚ) (st : ℕ) (buf : List ℕ)
+    (t : ℕ) (ts : List ℕ) :
+    rpnConditionRun blocks ε (st, buf) (t :: ts) =
+      ((rpnConditionRun blocks ε (rpnCondStep st t, rpnCondBuf st buf t) ts).1,
+        (if rcMode st = 2 then rpnConditionEmit (blocks t) ε buf t else [t]) ++
+          (rpnConditionRun blocks ε (rpnCondStep st t, rpnCondBuf st buf t) ts).2) :=
+  rfl
+
+/-! ### Base-state and reset step equations -/
+
+/-- The step from the base control state. -/
+lemma rpnCondStep_base (t : ℕ) :
+    rpnCondStep (rcPack 0 0 0) t =
+      if t = 0 then rcPack 1 1 0
+      else if t = 1 then rcPack 3 0 0
+      else if t = 6 then rcPack 4 1 0
+      else if t = 7 then rcPack 5 0 0
+      else rcPack 0 0 0 := by
+  rw [rpnCondStep]
+  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
+  simp
+
+lemma rpnCondStep_base_price : rpnCondStep (rcPack 0 0 0) 0 = rcPack 1 1 0 := by
+  rw [rpnCondStep_base]
+  norm_num
+
+lemma rpnCondStep_base_one : rpnCondStep (rcPack 0 0 0) 1 = rcPack 3 0 0 := by
+  rw [rpnCondStep_base]
+  norm_num
+
+lemma rpnCondStep_base_trade : rpnCondStep (rcPack 0 0 0) 6 = rcPack 4 1 0 := by
+  rw [rpnCondStep_base]
+  norm_num
+
+lemma rpnCondStep_base_seven : rpnCondStep (rcPack 0 0 0) 7 = rcPack 5 0 0 := by
+  rw [rpnCondStep_base]
+  norm_num
+
+lemma rpnCondStep_base_other (t : ℕ)
+    (h0 : t ≠ 0) (h1 : t ≠ 1) (h6 : t ≠ 6) (h7 : t ≠ 7) :
+    rpnCondStep (rcPack 0 0 0) t = rcPack 0 0 0 := by
+  rw [rpnCondStep_base, if_neg h0, if_neg h1, if_neg h6, if_neg h7]
+
+/-- Any mode outside the walking set falls back to base. -/
+lemma rpnCondStep_fallback (st t : ℕ)
+    (h0 : rcMode st ≠ 0) (h1 : rcMode st ≠ 1) (h6 : rcMode st ≠ 6)
+    (h4 : rcMode st ≠ 4) (h7 : rcMode st ≠ 7) :
+    rpnCondStep st t = rcPack 0 0 0 := by
+  rw [rpnCondStep, if_neg h0, if_neg h1, if_neg h6, if_neg h4, if_neg h7]
+
+lemma rcLen_step_base (t : ℕ) : rcLen (rpnCondStep (rcPack 0 0 0) t) = 0 := by
+  rw [rpnCondStep_base]
+  split_ifs <;> simp
+
+lemma rpnCondBuf_of_len_zero (st : ℕ) (buf : List ℕ) (t : ℕ)
+    (h : rcLen (rpnCondStep st t) = 0) : rpnCondBuf st buf t = [] := by
+  rw [rpnCondBuf, if_pos h]
+
+lemma rpnCondBuf_base (buf : List ℕ) (t : ℕ) :
+    rpnCondBuf (rcPack 0 0 0) buf t = [] :=
+  rpnCondBuf_of_len_zero _ _ _ (rcLen_step_base t)
+
+/-- The cons unfolding from an opaque-payload mode (`3` / `5`): copy and fall back. -/
+lemma rpnConditionRun_from_payload (blocks : ℕ → List ℕ) (ε : ℚ)
+    (m c' r' : ℕ) (hm : m = 3 ∨ m = 5) (buf : List ℕ) (t : ℕ) (L : List ℕ) :
+    rpnConditionRun blocks ε (rcPack m c' r', buf) (t :: L) =
+      ((rpnConditionRun blocks ε (rcPack 0 0 0, []) L).1,
+        t :: (rpnConditionRun blocks ε (rcPack 0 0 0, []) L).2) := by
+  have hstep : rpnCondStep (rcPack m c' r') t = rcPack 0 0 0 :=
+    rpnCondStep_fallback _ _
+      (by rcases hm with rfl | rfl <;> simp)
+      (by rcases hm with rfl | rfl <;> simp)
+      (by rcases hm with rfl | rfl <;> simp)
+      (by rcases hm with rfl | rfl <;> simp)
+      (by rcases hm with rfl | rfl <;> simp)
+  have hbuf : rpnCondBuf (rcPack m c' r') buf t = [] :=
+    rpnCondBuf_of_len_zero _ _ _ (by rw [hstep]; simp)
+  rw [rpnConditionRun_cons, hstep, hbuf,
+    if_neg (by rcases hm with rfl | rfl <;> simp)]
+  simp
+
+/-- The cons unfolding at a price-day slot: emit the conditional-price expansion and
+fall back to base. -/
+lemma rpnConditionRun_from_day (blocks : ℕ → List ℕ) (ε : ℚ)
+    (r' : ℕ) (buf : List ℕ) (d : ℕ) (L : List ℕ) :
+    rpnConditionRun blocks ε (rcPack 2 0 r', buf) (d :: L) =
+      ((rpnConditionRun blocks ε (rcPack 0 0 0, []) L).1,
+        rpnConditionEmit (blocks d) ε buf d ++
+          (rpnConditionRun blocks ε (rcPack 0 0 0, []) L).2) := by
+  have hstep : rpnCondStep (rcPack 2 0 r') d = rcPack 0 0 0 :=
+    rpnCondStep_fallback _ _ (by simp) (by simp) (by simp) (by simp) (by simp)
+  have hbuf : rpnCondBuf (rcPack 2 0 r') buf d = [] :=
+    rpnCondBuf_of_len_zero _ _ _ (by rw [hstep]; simp)
+  rw [rpnConditionRun_cons, hstep, hbuf, if_pos (by simp)]
+
+/-! ### Copy behavior and the buffer fold -/
+
+/-- The buffer after a copied stretch (fold of `rpnCondBuf` along the walk). -/
+def rpnCondBufFold (st : ℕ) (buf : List ℕ) : List ℕ → List ℕ
+  | [] => buf
+  | t :: ts => rpnCondBufFold (rpnCondStep st t) (rpnCondBuf st buf t) ts
+
+lemma rpnCondBufFold_append (st : ℕ) (buf : List ℕ) (xs ys : List ℕ) :
+    rpnCondBufFold st buf (xs ++ ys) =
+      rpnCondBufFold (List.foldl rpnCondStep st xs)
+        (rpnCondBufFold st buf xs) ys := by
+  induction xs generalizing st buf with
+  | nil => rfl
+  | cons t ts ih =>
+      simp only [List.cons_append, rpnCondBufFold, List.foldl_cons]
+      rw [ih]
+
+/-- Copy behavior: while no consumed position is in the emission mode `2`, the
+transducer copies its input verbatim. -/
+lemma rpnConditionRun_copy_of_ne_two (blocks : ℕ → List ℕ) (ε : ℚ)
+    (st : ℕ) (buf : List ℕ) (ts : List ℕ)
+    (h : ∀ k < ts.length, rcMode (List.foldl rpnCondStep st (ts.take k)) ≠ 2) :
+    rpnConditionRun blocks ε (st, buf) ts =
+      ((List.foldl rpnCondStep st ts, rpnCondBufFold st buf ts), ts) := by
+  induction ts generalizing st buf with
+  | nil => rfl
+  | cons t ts ih =>
+      have h0 : rcMode st ≠ 2 := by
+        have := h 0 (by simp)
+        simpa using this
+      rw [rpnConditionRun_cons, if_neg h0,
+        ih (rpnCondStep st t) (rpnCondBuf st buf t) (fun k hk => by
+          have := h (k + 1) (by simp only [List.length_cons]; omega)
+          rwa [List.take_succ_cons, List.foldl_cons] at this)]
+      simp [rpnCondBufFold]
+
+/-- Along a price run the buffer accumulates the walked tokens. -/
+lemma rpnCondBufFold_run (st : ℕ) (buf : List ℕ) (ts : List ℕ)
+    (h : ∀ k < ts.length,
+      rcMode (List.foldl rpnCondStep st (ts.take k)) = 1 ∨
+      rcMode (List.foldl rpnCondStep st (ts.take k)) = 6) :
+    rpnCondBufFold st buf ts = buf ++ ts := by
+  induction ts generalizing st buf with
+  | nil => simp [rpnCondBufFold]
+  | cons t ts ih =>
+      have h0 : rcMode st = 1 ∨ rcMode st = 6 := by
+        have := h 0 (by simp)
+        simpa using this
+      have hbuf : rpnCondBuf st buf t = buf ++ [t] := by
+        rw [rpnCondBuf, rcLen_run_step st t h0, if_neg (by omega)]
+      rw [show rpnCondBufFold st buf (t :: ts) =
+          rpnCondBufFold (rpnCondStep st t) (rpnCondBuf st buf t) ts from rfl,
+        hbuf, ih (rpnCondStep st t) (buf ++ [t]) (fun k hk => by
+          have := h (k + 1) (by simp only [List.length_cons]; omega)
+          rwa [List.take_succ_cons, List.foldl_cons] at this)]
+      simp
+
+/-- The buffer is empty after any nonempty stretch whose final control has run
+length `0`. -/
+lemma rpnCondBufFold_reset (st : ℕ) (buf : List ℕ) (ts : List ℕ) (hne : ts ≠ [])
+    (h : rcLen (List.foldl rpnCondStep st ts) = 0) :
+    rpnCondBufFold st buf ts = [] := by
+  rcases List.eq_nil_or_concat' ts with rfl | ⟨ts', t, rfl⟩
+  · exact absurd rfl hne
+  · rw [rpnCondBufFold_append]
+    rw [List.foldl_append, List.foldl_cons, List.foldl_nil] at h
+    rw [show rpnCondBufFold (List.foldl rpnCondStep st ts')
+        (rpnCondBufFold st buf ts') [t] =
+      rpnCondBuf (List.foldl rpnCondStep st ts')
+        (rpnCondBufFold st buf ts') t from rfl]
+    exact rpnCondBuf_of_len_zero _ _ _ h
+
+/-! ### Run-walk trajectory invariants (first-exit localization) -/
+
+/-- While no prefix has exited, the walk from a fresh run entry stays in the run
+modes with positive counter and run length equal to the position. -/
+lemma runWalk_inside {a b : ℕ} {exit : ℕ → ℕ}
+    (hrun : ∀ c r t, rpnCondStep (rcPack a (c + 1) r) t =
+      if t = 1 then rcPack b (c + 1) (r + 1)
+      else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack a (c + 2) (r + 1)
+      else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+    (hesc : ∀ c r t, rpnCondStep (rcPack b (c + 1) r) t =
+      if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+    (e : ℕ) (hexitModeEq : ∀ r', rcMode (exit r') = e)
+    (v : List ℕ) : ∀ j, j ≤ v.length →
+    (∀ i, i ≤ j → rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) ≠ e) →
+    (rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take j)) = a ∨
+      rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take j)) = b) ∧
+    1 ≤ rcCnt (List.foldl rpnCondStep (rcPack a 1 0) (v.take j)) ∧
+    rcLen (List.foldl rpnCondStep (rcPack a 1 0) (v.take j)) = j := by
+  intro j
+  induction j with
+  | zero => intro _ _; simp
+  | succ j ih =>
+      intro hj hmods
+      have hjlt : j < v.length := by omega
+      obtain ⟨hm, hc, hl⟩ := ih (by omega) (fun i hi => hmods i (by omega))
+      have htake : v.take (j + 1) = v.take j ++ [v[j]'hjlt] := by
+        rw [List.take_succ, List.getElem?_eq_getElem hjlt]
+        rfl
+      have hstep : List.foldl rpnCondStep (rcPack a 1 0) (v.take (j + 1)) =
+          rpnCondStep (List.foldl rpnCondStep (rcPack a 1 0) (v.take j))
+            (v[j]'hjlt) := by
+        rw [htake, List.foldl_append, List.foldl_cons, List.foldl_nil]
+      rw [hstep]
+      rcases runWalk_step_cases hrun hesc _ (v[j]'hjlt) hm hc with
+        ⟨hm', hc', hl'⟩ | hexitEq
+      · exact ⟨hm', hc', by rw [hl', hl]⟩
+      · exfalso
+        refine hmods (j + 1) le_rfl ?_
+        rw [hstep, hexitEq, hexitModeEq]
+
+/-- At the first exit position the walk state is exactly the exit, and every earlier
+position is strictly inside. -/
+lemma runWalk_first_exit {a b : ℕ} {exit : ℕ → ℕ}
+    (hrun : ∀ c r t, rpnCondStep (rcPack a (c + 1) r) t =
+      if t = 1 then rcPack b (c + 1) (r + 1)
+      else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack a (c + 2) (r + 1)
+      else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+    (hesc : ∀ c r t, rpnCondStep (rcPack b (c + 1) r) t =
+      if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+    (e : ℕ) (hexitModeEq : ∀ r', rcMode (exit r') = e)
+    (hea : e ≠ a) (heb : e ≠ b)
+    (v : List ℕ) (k₀ : ℕ) (hk₀ : k₀ ≤ v.length)
+    (hfirst : ∀ i < k₀,
+      rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) ≠ e)
+    (hexitAt : rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take k₀)) = e) :
+    1 ≤ k₀ ∧
+    List.foldl rpnCondStep (rcPack a 1 0) (v.take k₀) = exit k₀ ∧
+    ∀ i < k₀,
+      ((rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = a ∨
+        rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = b) ∧
+      1 ≤ rcCnt (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) ∧
+      rcLen (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = i) := by
+  have hpos : 1 ≤ k₀ := by
+    by_contra h
+    have hk0 : k₀ = 0 := by omega
+    subst hk0
+    rw [List.take_zero, List.foldl_nil, rcMode_pack] at hexitAt
+    exact hea hexitAt.symm
+  have hinside : ∀ i < k₀,
+      ((rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = a ∨
+        rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = b) ∧
+      1 ≤ rcCnt (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) ∧
+      rcLen (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = i) := fun i hi =>
+    runWalk_inside hrun hesc e hexitModeEq v i (by omega)
+      (fun i' hi' => hfirst i' (by omega))
+  refine ⟨hpos, ?_, hinside⟩
+  have hklt : k₀ - 1 < v.length := by omega
+  have htake : v.take k₀ = v.take (k₀ - 1) ++ [v[k₀ - 1]'hklt] := by
+    conv_lhs => rw [show k₀ = (k₀ - 1) + 1 by omega]
+    rw [List.take_succ, List.getElem?_eq_getElem hklt]
+    rfl
+  obtain ⟨hm, hc, hl⟩ := hinside (k₀ - 1) (by omega)
+  rw [htake, List.foldl_append, List.foldl_cons, List.foldl_nil] at hexitAt ⊢
+  rcases runWalk_step_cases hrun hesc _ (v[k₀ - 1]'hklt) hm hc with
+    ⟨hm', -, -⟩ | hexitEq
+  · exfalso
+    rcases hm' with h | h
+    · rw [h] at hexitAt
+      exact hea hexitAt.symm
+    · rw [h] at hexitAt
+      exact heb hexitAt.symm
+  · rw [hexitEq, hl]
+    congr 1
+    omega
+
+/-- Price-run instance of the first-exit localization. -/
+lemma priceWalk_first_exit (v : List ℕ) (k₀ : ℕ) (hk₀ : k₀ ≤ v.length)
+    (hfirst : ∀ i < k₀,
+      rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (v.take i)) ≠ 2)
+    (hexitAt : rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (v.take k₀)) = 2) :
+    1 ≤ k₀ ∧
+    List.foldl rpnCondStep (rcPack 1 1 0) (v.take k₀) = rcPack 2 0 k₀ ∧
+    ∀ i < k₀,
+      ((rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (v.take i)) = 1 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (v.take i)) = 6) ∧
+      1 ≤ rcCnt (List.foldl rpnCondStep (rcPack 1 1 0) (v.take i)) ∧
+      rcLen (List.foldl rpnCondStep (rcPack 1 1 0) (v.take i)) = i) :=
+  runWalk_first_exit (b := 6) (exit := fun r' => rcPack 2 0 r')
+    (fun c r t => rpnCondStep_price c r t)
+    (fun c r t => rpnCondStep_priceEsc c r t)
+    2 (fun r' => rcMode_pack 2 0 r') (by norm_num) (by norm_num)
+    v k₀ hk₀ hfirst hexitAt
+
+/-- Trade-run instance of the first-exit localization. -/
+lemma tradeWalk_first_exit (v : List ℕ) (k₀ : ℕ) (hk₀ : k₀ ≤ v.length)
+    (hfirst : ∀ i < k₀,
+      rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take i)) ≠ 0)
+    (hexitAt : rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take k₀)) = 0) :
+    1 ≤ k₀ ∧
+    List.foldl rpnCondStep (rcPack 4 1 0) (v.take k₀) = rcPack 0 0 0 ∧
+    ∀ i < k₀,
+      ((rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take i)) = 4 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take i)) = 7) ∧
+      1 ≤ rcCnt (List.foldl rpnCondStep (rcPack 4 1 0) (v.take i)) ∧
+      rcLen (List.foldl rpnCondStep (rcPack 4 1 0) (v.take i)) = i) :=
+  runWalk_first_exit (b := 7) (exit := fun _ => rcPack 0 0 0)
+    (fun c r t => rpnCondStep_trade c r t)
+    (fun c r t => rpnCondStep_tradeEsc c r t)
+    0 (fun _ => rcMode_pack 0 0 0) (by norm_num) (by norm_num)
+    v k₀ hk₀ hfirst hexitAt
+
+/-- Trade-run instance of the inside invariant (for streams that never exit). -/
+lemma tradeWalk_inside (v : List ℕ) (j : ℕ) (hj : j ≤ v.length)
+    (hmods : ∀ i, i ≤ j →
+      rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take i)) ≠ 0) :
+    (rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take j)) = 4 ∨
+      rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take j)) = 7) ∧
+    1 ≤ rcCnt (List.foldl rpnCondStep (rcPack 4 1 0) (v.take j)) ∧
+    rcLen (List.foldl rpnCondStep (rcPack 4 1 0) (v.take j)) = j :=
+  runWalk_inside (b := 7) (exit := fun _ => rcPack 0 0 0)
+    (fun c r t => rpnCondStep_trade c r t)
+    (fun c r t => rpnCondStep_tradeEsc c r t)
+    0 (fun _ => rcMode_pack 0 0 0) v j hj hmods
+
+/-! ### Token-model run equations (per contracted chunk) -/
+
+section TokenRunEq
+
+variable (ψc : ℕ → ℕ) (ε : ℚ)
+
+lemma conditionPriceTokenRun_single (t : ℕ)
+    (h0 : t ≠ 0) (h1 : t ≠ 1) (h6 : t ≠ 6) (h7 : t ≠ 7) (L : List ℕ) :
+    (conditionPriceTokenRun ψc ε (0, 0) (t :: L)).2 =
+      t :: (conditionPriceTokenRun ψc ε (0, 0) L).2 := by
+  simp [conditionPriceTokenRun, conditionPriceTokenEmit, EF.freezeTokenNext,
+    h0, h1, h6, h7]
+
+lemma conditionPriceTokenRun_one (t : ℕ) :
+    (conditionPriceTokenRun ψc ε (0, 0) [t]).2 = [t] := by
+  simp [conditionPriceTokenRun, conditionPriceTokenEmit]
+
+lemma conditionPriceTokenRun_payload (t c : ℕ) (ht : t = 1 ∨ t = 7) (L : List ℕ) :
+    (conditionPriceTokenRun ψc ε (0, 0) (t :: c :: L)).2 =
+      t :: c :: (conditionPriceTokenRun ψc ε (0, 0) L).2 := by
+  rcases ht with rfl | rfl <;>
+    simp [conditionPriceTokenRun, conditionPriceTokenEmit, EF.freezeTokenNext]
+
+lemma conditionPriceTokenRun_price (fc d : ℕ) (L : List ℕ) :
+    (conditionPriceTokenRun ψc ε (0, 0) (0 :: fc :: d :: L)).2 =
+      0 :: fc :: d :: (rawConditionalPriceTokens fc (ψc d) d ε ++
+        8 :: (conditionPriceTokenRun ψc ε (0, 0) L).2) := by
+  simp [conditionPriceTokenRun, conditionPriceTokenEmit, EF.freezeTokenNext]
+
+lemma conditionPriceTokenRun_price_pair (fc : ℕ) :
+    (conditionPriceTokenRun ψc ε (0, 0) [0, fc]).2 = [0, fc] := by
+  simp [conditionPriceTokenRun, conditionPriceTokenEmit, EF.freezeTokenNext]
+
+lemma conditionPriceTokenRun_trade (fc : ℕ) (L : List ℕ) :
+    (conditionPriceTokenRun ψc ε (0, 0) (6 :: fc :: L)).2 =
+      6 :: fc :: (conditionPriceTokenRun ψc ε (0, 0) L).2 := by
+  simp [conditionPriceTokenRun, conditionPriceTokenEmit, EF.freezeTokenNext]
+
+end TokenRunEq
+
+/-! ### The master commutation -/
+
+/-- **Whole-stream contraction exactness for the price pass**: on every input stream
+— well-formed or garbage — the contraction of the transducer output is the
+token-model price rewrite (`conditionPriceTokenRun`) of the contraction.
+Paper node: `thm:scon` -/
+theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
+    (hblocks : ∀ D, parseRpn (blocks D).length (blocks D) = some (ψ D, []))
+    (ε : ℚ) : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
+    unRpn ((rpnConditionRun blocks ε (rcPack 0 0 0, []) ts).2) =
+      (conditionPriceTokenRun (fun D => Encodable.encode (ψ D)) ε (0, 0)
+        (unRpn ts)).2 := by
+  intro N
+  induction N with
+  | zero =>
+      intro ts hts
+      obtain rfl : ts = [] := List.eq_nil_of_length_eq_zero (by omega)
+      rfl
+  | succ N ih =>
+      intro ts hts
+      match ts with
+      | [] => rfl
+      | t :: rest =>
+          simp only [List.length_cons] at hts
+          by_cases ht0 : t = 0
+          · -- Price chunk.
+            subst ht0
+            cases hp : parseRpn rest.length rest with
+            | some pr =>
+                obtain ⟨φ, r1⟩ := pr
+                obtain ⟨blk, heq, hblk⟩ := parseRpn_strip rest.length rest hp
+                obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_price_block hblk
+                match r1 with
+                | [] =>
+                    rw [List.append_nil] at heq
+                    subst heq
+                    -- Transducer output: pure copy (the walk exits only at the
+                    -- final state, which is never consumed).
+                    have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                        (0 :: rest)).2 = 0 :: rest :=
+                      congrArg Prod.snd (rpnConditionRun_copy_of_ne_two blocks ε
+                        (rcPack 0 0 0) [] (0 :: rest) (by
+                          intro k hk
+                          match k with
+                          | 0 => simp
+                          | j + 1 =>
+                              simp only [List.length_cons] at hk
+                              rw [List.take_succ_cons, List.foldl_cons,
+                                rpnCondStep_base_price]
+                              have := hinv j (by omega)
+                              omega))
+                    have hun : unRpn (0 :: rest) = [0, Encodable.encode φ] := by
+                      rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+                        hblk]
+                    rw [hout, hun, conditionPriceTokenRun_price_pair]
+                | d :: r2 =>
+                    subst heq
+                    -- Transducer output: copy the block, splice at the day.
+                    have hblkcopy : rpnConditionRun blocks ε (rcPack 1 1 0, [])
+                        blk = ((rcPack 2 0 blk.length, blk), blk) := by
+                      rw [rpnConditionRun_copy_of_ne_two blocks ε _ _ _
+                        (fun k hk => by have := hinv k hk; omega)]
+                      rw [hwalk, rpnCondBufFold_run _ _ _ (fun k hk => hinv k hk)]
+                      simp
+                    have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                        (0 :: (blk ++ d :: r2))).2 =
+                      0 :: blk ++ rpnConditionEmit (blocks d) ε blk d ++
+                        (rpnConditionRun blocks ε (rcPack 0 0 0, []) r2).2 := by
+                      rw [rpnConditionRun_cons, if_neg (by simp),
+                        rpnCondStep_base_price, rpnCondBuf_base,
+                        rpnConditionRun_append]
+                      simp [hblkcopy, rpnConditionRun_from_day,
+                        List.append_assoc]
+                    have hr2 : r2.length ≤ N := by
+                      have hlt := parseRpn_length_lt _ _ _ _ hp
+                      simp only [List.length_cons] at hlt
+                      omega
+                    rw [hout,
+                      unRpn_price_rewrite_chunk hblk (hblocks d) d ε _,
+                      ih r2 hr2,
+                      unRpn_price_chunk_block hblk d r2,
+                      conditionPriceTokenRun_price]
+            | none =>
+                have hun0 : unRpn (0 :: rest) = [0, 0] := by
+                  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl, hp]
+                by_cases hex : ∃ k, k < rest.length ∧
+                    rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+                      (rest.take k)) = 2
+                · -- First completion: the walked prefix poisons every extension.
+                  classical
+                  obtain ⟨hk₀lt, hk₀mode⟩ := Nat.find_spec hex
+                  set k₀ := Nat.find hex with hk₀def
+                  have hfirst : ∀ i < k₀,
+                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+                        (rest.take i)) ≠ 2 := fun i hi hmode =>
+                    Nat.find_min hex hi ⟨by omega, hmode⟩
+                  obtain ⟨hk₀pos, hW, hinside⟩ := priceWalk_first_exit rest k₀
+                    (le_of_lt hk₀lt) hfirst hk₀mode
+                  have htakelen : (rest.take k₀).length = k₀ := by
+                    rw [List.length_take]
+                    omega
+                  have hconv := parse_of_priceRunWalk k₀ (rest.take k₀)
+                    (le_of_eq htakelen) 0 0
+                    (by
+                      rw [if_pos rfl, htakelen]
+                      simpa using hW)
+                    (by
+                      intro k hk
+                      rw [htakelen] at hk
+                      rw [List.take_take, min_eq_left (le_of_lt hk)]
+                      exact ⟨(hinside k hk).1, (hinside k hk).2.1⟩)
+                  rcases hconv with ⟨φu, hφu⟩ | hpoison
+                  · exfalso
+                    rw [← List.take_append_drop k₀ rest] at hp
+                    rw [parseRpn_block_head hφu (rest.drop k₀) (by
+                      simp only [List.length_append]
+                      omega)] at hp
+                    simp at hp
+                  · -- Both contractions stop with `[0, 0]` at this chunk.
+                    have hucopy := rpnConditionRun_copy_of_ne_two blocks ε
+                      (rcPack 1 1 0) [] (rest.take k₀) (by
+                        intro k hk
+                        rw [htakelen] at hk
+                        rw [List.take_take, min_eq_left (le_of_lt hk)]
+                        have := (hinside k hk).1
+                        omega)
+                    have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                        (0 :: rest)).2 = 0 :: (rest.take k₀ ++
+                          (rpnConditionRun blocks ε
+                            (List.foldl rpnCondStep (rcPack 1 1 0)
+                              (rest.take k₀),
+                             rpnCondBufFold (rcPack 1 1 0) [] (rest.take k₀))
+                            (rest.drop k₀)).2) := by
+                      conv_lhs =>
+                        rw [show rest = rest.take k₀ ++ rest.drop k₀ from
+                          (List.take_append_drop k₀ rest).symm]
+                      rw [rpnConditionRun_cons, if_neg (by simp),
+                        rpnCondStep_base_price, rpnCondBuf_base,
+                        rpnConditionRun_append]
+                      simp [hucopy, List.append_assoc]
+                    have hunL : ∀ Y, unRpn (0 :: (rest.take k₀ ++ Y)) =
+                        [0, 0] := fun Y => by
+                      rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+                        hpoison _ _]
+                    rw [hout, hunL, hun0, conditionPriceTokenRun_price_pair]
+                · -- No completion: pure copy, both contractions stop.
+                  have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                      (0 :: rest)).2 = 0 :: rest :=
+                    congrArg Prod.snd (rpnConditionRun_copy_of_ne_two blocks ε
+                      (rcPack 0 0 0) [] (0 :: rest) (by
+                        intro k hk
+                        match k with
+                        | 0 => simp
+                        | j + 1 =>
+                            simp only [List.length_cons] at hk
+                            rw [List.take_succ_cons, List.foldl_cons,
+                              rpnCondStep_base_price]
+                            exact fun hmode => hex ⟨j, by omega, hmode⟩))
+                  rw [hout, hun0, conditionPriceTokenRun_price_pair]
+          · by_cases ht6 : t = 6
+            · -- Trade chunk.
+              subst ht6
+              cases hp : parseRpn rest.length rest with
+              | some pr =>
+                  obtain ⟨φ, r1⟩ := pr
+                  obtain ⟨blk, heq, hblk⟩ := parseRpn_strip rest.length rest hp
+                  subst heq
+                  obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_trade_block hblk
+                  have hblkne : blk ≠ [] := by
+                    have := parseRpn_length_lt blk.length blk φ [] hblk
+                    intro hnil
+                    rw [hnil] at this
+                    simp at this
+                  have hblkcopy : rpnConditionRun blocks ε (rcPack 4 1 0, [])
+                      blk = ((rcPack 0 0 0, []), blk) := by
+                    rw [rpnConditionRun_copy_of_ne_two blocks ε _ _ _
+                      (fun k hk => by have := hinv k hk; omega)]
+                    rw [hwalk, rpnCondBufFold_reset _ _ _ hblkne (by
+                      rw [hwalk]; simp)]
+                  have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                      (6 :: (blk ++ r1))).2 =
+                    6 :: (blk ++
+                      (rpnConditionRun blocks ε (rcPack 0 0 0, []) r1).2) := by
+                    rw [rpnConditionRun_cons, if_neg (by simp),
+                      rpnCondStep_base_trade, rpnCondBuf_base,
+                      rpnConditionRun_append]
+                    simp [hblkcopy]
+                  have hr1 : r1.length ≤ N := by
+                    have hlt := parseRpn_length_lt _ _ _ _ hp
+                    omega
+                  rw [hout, unRpn_trade_chunk_block hblk _,
+                    ih r1 hr1,
+                    unRpn_trade_chunk_block hblk r1,
+                    conditionPriceTokenRun_trade]
+              | none =>
+                  have hun0 : unRpn (6 :: rest) = [6, 0] := by
+                    rw [unRpn, List.length_cons, unRpnTokens_cons,
+                      if_neg (by norm_num), if_pos rfl, hp]
+                  by_cases hex : ∃ k, k ≤ rest.length ∧
+                      rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+                        (rest.take k)) = 0
+                  · classical
+                    obtain ⟨hk₀le, hk₀mode⟩ := Nat.find_spec hex
+                    set k₀ := Nat.find hex with hk₀def
+                    have hfirst : ∀ i < k₀,
+                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+                          (rest.take i)) ≠ 0 := fun i hi hmode =>
+                      Nat.find_min hex hi ⟨by omega, hmode⟩
+                    obtain ⟨hk₀pos, hW, hinside⟩ := tradeWalk_first_exit rest k₀
+                      hk₀le hfirst hk₀mode
+                    have htakelen : (rest.take k₀).length = k₀ := by
+                      rw [List.length_take]
+                      omega
+                    have hconv := parse_of_tradeRunWalk k₀ (rest.take k₀)
+                      (le_of_eq htakelen) 0 0
+                      (by
+                        rw [if_pos rfl]
+                        exact hW)
+                      (by
+                        intro k hk
+                        rw [htakelen] at hk
+                        rw [List.take_take, min_eq_left (le_of_lt hk)]
+                        exact ⟨(hinside k hk).1, (hinside k hk).2.1⟩)
+                    rcases hconv with ⟨φu, hφu⟩ | hpoison
+                    · exfalso
+                      rw [← List.take_append_drop k₀ rest] at hp
+                      rw [parseRpn_block_head hφu (rest.drop k₀) (by
+                        simp only [List.length_append]
+                        omega)] at hp
+                      simp at hp
+                    · have hucopy := rpnConditionRun_copy_of_ne_two blocks ε
+                        (rcPack 4 1 0) [] (rest.take k₀) (by
+                          intro k hk
+                          rw [htakelen] at hk
+                          rw [List.take_take, min_eq_left (le_of_lt hk)]
+                          have := (hinside k hk).1
+                          omega)
+                      have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                          (6 :: rest)).2 = 6 :: (rest.take k₀ ++
+                            (rpnConditionRun blocks ε
+                              (List.foldl rpnCondStep (rcPack 4 1 0)
+                                (rest.take k₀),
+                               rpnCondBufFold (rcPack 4 1 0) []
+                                 (rest.take k₀))
+                              (rest.drop k₀)).2) := by
+                        conv_lhs =>
+                          rw [show rest = rest.take k₀ ++ rest.drop k₀ from
+                            (List.take_append_drop k₀ rest).symm]
+                        rw [rpnConditionRun_cons, if_neg (by simp),
+                          rpnCondStep_base_trade, rpnCondBuf_base,
+                          rpnConditionRun_append]
+                        simp [hucopy, List.append_assoc]
+                      have hunL : ∀ Y, unRpn (6 :: (rest.take k₀ ++ Y)) =
+                          [6, 0] := fun Y => by
+                        rw [unRpn, List.length_cons, unRpnTokens_cons,
+                          if_neg (by norm_num), if_pos rfl, hpoison _ _]
+                      rw [hout, hunL, hun0]
+                      rw [conditionPriceTokenRun_trade]
+                      rfl
+                  · -- Never exits: pure copy of an unfinished trade run.
+                    have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                        (6 :: rest)).2 = 6 :: rest :=
+                      congrArg Prod.snd (rpnConditionRun_copy_of_ne_two blocks ε
+                        (rcPack 0 0 0) [] (6 :: rest) (by
+                          intro k hk
+                          match k with
+                          | 0 => simp
+                          | j + 1 =>
+                              simp only [List.length_cons] at hk
+                              rw [List.take_succ_cons, List.foldl_cons,
+                                rpnCondStep_base_trade]
+                              have hmods : ∀ i, i ≤ j →
+                                  rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+                                    (rest.take i)) ≠ 0 := fun i hi hmode =>
+                                hex ⟨i, by omega, hmode⟩
+                              have := (tradeWalk_inside rest j (by omega)
+                                hmods).1
+                              omega))
+                    rw [hout, hun0]
+                    rw [conditionPriceTokenRun_trade]
+                    rfl
+            · by_cases ht1 : t = 1
+              · -- Constant payload chunk.
+                subst ht1
+                match rest with
+                | [] =>
+                    have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                        [1]).2 = [1] := by
+                      rw [rpnConditionRun_cons, if_neg (by simp)]
+                      rfl
+                    rw [hout, show unRpn [1] = [1] from rfl,
+                      conditionPriceTokenRun_one]
+                | c :: rest' =>
+                    have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                        (1 :: c :: rest')).2 =
+                      1 :: c :: (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                        rest').2 := by
+                      rw [rpnConditionRun_cons, if_neg (by simp),
+                        rpnCondStep_base_one, rpnCondBuf_base,
+                        rpnConditionRun_from_payload blocks ε 3 0 0
+                          (Or.inl rfl) [] c rest']
+                      rfl
+                    have hr : rest'.length ≤ N := by
+                      simp only [List.length_cons] at hts
+                      omega
+                    rw [hout, unRpn_payload_chunk 1 c (Or.inl rfl) _,
+                      ih rest' hr,
+                      unRpn_payload_chunk 1 c (Or.inl rfl) rest',
+                      conditionPriceTokenRun_payload _ _ 1 c (Or.inl rfl)]
+              · by_cases ht7 : t = 7
+                · -- Variable payload chunk.
+                  subst ht7
+                  match rest with
+                  | [] =>
+                      have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                          [7]).2 = [7] := by
+                        rw [rpnConditionRun_cons, if_neg (by simp)]
+                        rfl
+                      rw [hout, show unRpn [7] = [7] from rfl,
+                        conditionPriceTokenRun_one]
+                  | c :: rest' =>
+                      have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                          (7 :: c :: rest')).2 =
+                        7 :: c :: (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                          rest').2 := by
+                        rw [rpnConditionRun_cons, if_neg (by simp),
+                          rpnCondStep_base_seven, rpnCondBuf_base,
+                          rpnConditionRun_from_payload blocks ε 5 0 0
+                            (Or.inr rfl) [] c rest']
+                        rfl
+                      have hr : rest'.length ≤ N := by
+                        simp only [List.length_cons] at hts
+                        omega
+                      rw [hout, unRpn_payload_chunk 7 c (Or.inr rfl) _,
+                        ih rest' hr,
+                        unRpn_payload_chunk 7 c (Or.inr rfl) rest',
+                        conditionPriceTokenRun_payload _ _ 7 c (Or.inr rfl)]
+                · -- Bare operator/close token: transparent.
+                  have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                      (t :: rest)).2 =
+                    t :: (rpnConditionRun blocks ε (rcPack 0 0 0, []) rest).2 := by
+                    rw [rpnConditionRun_cons, if_neg (by simp),
+                      rpnCondStep_base_other t ht0 ht1 ht6 ht7, rpnCondBuf_base]
+                    rfl
+                  rw [hout, unRpn_single_chunk t ⟨ht0, ht1, ht6, ht7⟩ _,
+                    ih rest (by omega),
+                    unRpn_single_chunk t ⟨ht0, ht1, ht6, ht7⟩ rest,
+                    conditionPriceTokenRun_single _ _ t ht0 ht1 ht6 ht7]
+
+#print axioms unRpn_rpnConditionRun
+
 /-! ### Endpoint statements (open, recorded — not sorried)
 
 The two target endpoints are stated here as comments rather than sorried theorems so
