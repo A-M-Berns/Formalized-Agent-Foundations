@@ -1225,6 +1225,54 @@ lemma parseRpn_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {rest : 
                       parseRpn_cons, if_neg h0, if_neg h1, if_neg h2, if_neg h3,
                       if_neg h4]
 
+/-! ### Run-step normal forms (for the converse walk argument) -/
+
+/-- The step inside a price run, in offset-counter form. -/
+lemma rpnCondStep_price (c r t : ℕ) :
+    rpnCondStep (rcPack 1 (c + 1) r) t =
+      if t = 1 then rcPack 6 (c + 1) (r + 1)
+      else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack 1 (c + 2) (r + 1)
+      else if c = 0 then rcPack 2 0 (r + 1) else rcPack 1 c (r + 1) := by
+  rw [rpnCondStep]
+  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
+  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
+    first | omega | (exfalso; assumption)
+
+/-- The step on an escape payload inside a price run. -/
+lemma rpnCondStep_priceEsc (c r t : ℕ) :
+    rpnCondStep (rcPack 6 (c + 1) r) t =
+      if c = 0 then rcPack 2 0 (r + 1) else rcPack 1 c (r + 1) := by
+  rw [rpnCondStep]
+  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
+  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
+    first | omega | (exfalso; assumption)
+
+/-- Inside a run the counter drops by at most one per token. -/
+lemma rcCnt_run_step_ge (st t : ℕ)
+    (hm : rcMode st = 1 ∨ rcMode st = 6) :
+    rcCnt st ≤ rcCnt (rpnCondStep st t) + 1 := by
+  rw [rpnCondStep]
+  split_ifs <;> simp only [rcCnt_pack] <;> omega
+
+/-- Inside a run the recorded run length grows by exactly one per token. -/
+lemma rcLen_run_step (st t : ℕ)
+    (hm : rcMode st = 1 ∨ rcMode st = 6) :
+    rcLen (rpnCondStep st t) = rcLen st + 1 := by
+  rw [rpnCondStep]
+  split_ifs <;> simp only [rcLen_pack] <;> omega
+
+/-- A strict counter decrement from a run state with counter `≥ 2` lands back in
+run mode `1` (never the exit): the closing token of a proper subtree. -/
+lemma run_step_decrement (st t : ℕ)
+    (hm : rcMode st = 1 ∨ rcMode st = 6) (h2 : 2 ≤ rcCnt st)
+    (hdec : rcCnt (rpnCondStep st t) < rcCnt st) :
+    rpnCondStep st t = rcPack 1 (rcCnt st - 1) (rcLen st + 1) := by
+  rw [rpnCondStep] at hdec ⊢
+  split_ifs at hdec ⊢ <;>
+    simp only [rcCnt_pack] at hdec <;>
+    simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
+    first | omega | (exfalso; omega) | (exfalso; assumption)
+
 /-! ### Endpoint statements (open, recorded — not sorried)
 
 The two target endpoints are stated here as comments rather than sorried theorems so
