@@ -422,18 +422,80 @@ comes from the interface's own `jointly_possible`, so no hypothesis was added.
 
 ## Tranche P — 𝓔𝓒 polish (cheap optionals, ~½–4 sessions total, no paper-node demand)
 
-All three are mechanical with the existing mirror suite (`RpnSpliceStream`,
-`RpnSentenceCodes`, `modDispatch`); reopen only if a consumer appears.
-1. `ConditioningPresentation.condition_codes` → `RpnSentenceCodes` (½–1 session):
-   field flip + `fixedConditioningPresentation`/`conditioningPresentationOfComputations`
-   + call-site plumbing; value = conditioning on DEEP condition sequences.  Do after
-   the RPN-5 packaging sweep settles (same files).
-2. `LUV.PolyThresholdCodes` block form (1–2 sessions): block-form threshold interface
-   + LUVSyntax/ExpectationAffine/QuotationAffine mesh re-plumb; value = deep-threshold
-   LUVs.
-3. Arithmetic-quotation numerals (2–4 sessions, lowest value): digit-wise numeral
-   emission inside QuoteCodeOfMarket so §4.11–12 quotation chains accept deep φ;
-   inherently a new layer ("RPN for numerals") — sketch before committing.
+1. **OPEN** — `ConditioningPresentation.condition_codes` → `RpnSentenceCodes`
+   (½–1 session): field flip + `fixedConditioningPresentation` /
+   `conditioningPresentationOfComputations` + call-site plumbing; value = conditioning
+   on DEEP condition sequences.  Do after the RPN-5 packaging sweep settles (same
+   files).
+2. **DONE 2026-07-27** — `LUV.PolyThresholdCodes` block form.  `LUV.RpnThresholdCodes`
+   / `LUV.RpnThresholdCodeSeq` (`Framework/Expectations.lean`) are the `def:ec` block
+   forms — literally `RpnSentenceCodes` at the paired-index conventions — with
+   `ofPolyThresholdCodes` / `ofPolyThresholdCodeSeq` embedding the whole-value
+   interfaces by escape blocks, and `RpnThresholdCodes.constSeq` bridging the two.
+   Re-plumbed: `ExpectationAffine` (expect/indicator/linearity mesh),
+   `ExpectationConvergence` (the `thm:ec` bundle trader moved off `PolySegStream` /
+   `EfficientlyComputableTok` onto `RpnSpliceStream` / `EfficientlyComputable` — its
+   `excThresholdBlk` block is now variable-width via `serialize_price` + `concatVar`),
+   `ExpectationProperties.ConvergencePresentation.threshold_code`,
+   `LUVCombinationSyntax.threshold_poly`, `QuotationAffine` (expectAffineSeq /
+   crossPrecision / reindex), `SelfTrust`, `Introspection`, `ComputationDP`,
+   `LUVExpectationCertified`.  `QuoteCodeOfMarket` deliberately stays whole-value and
+   wraps at the boundary (see item 3).  Dead `PolySegStream` ramp closures in
+   `AffinePreemptiveLearning` removed; the `PolySegStream.serialize_oneMinus/efMin/
+   clip01` trio moved next to its `RpnSpliceStream`/`PolyTokenStream` siblings in
+   `Hysteresis.lean`.
+3. **SKETCH ONLY — do not implement as scoped** (arithmetic-quotation numerals).
+   Design sketch below; verdict: this is a genuinely new layer, ≥2 sessions, and the
+   block form buys *nothing* for the object it would flip.
+
+### Item 3 sketch — digit-wise numerals in `QuoteCodeOfMarket` (verdict: don't build)
+
+**What the object actually is.**  The quotation LUV's threshold sentence is
+`arithmeticThresholdLUV code n |>.gt r = quoteAtom (pair code (pair n ⌜r⌝))`
+(`QuotationAffine.lean:262`) — a *propositional atom* whose index is a Gödel number.
+Depth 1.  So the `RpnSentenceCodes` block form gains nothing structurally here: the
+block for an atom is one escape pair, and the only cost is the atom's index *value*.
+
+**Where the value-exponential blowup actually sits.**  Two places, both value-typed:
+* `quoteAtom_mesh_encode_polyFueled` (`QuoteCodeOfMarket.lean:63`) builds the atom index
+  by *arithmetic on the reduced fraction* (`gcdc`/`divmod1`/`ifzSel`) and then wraps it
+  in a fixed `pair` shell.  That is already poly in the *values* `n, k, i`; nothing to
+  digitize.
+* `indicatorProductLUV_polyThresholdCodeSeq` (`:444`) and `theoremFutureQuoteCode` /
+  `theoremConfidenceQuoteCode` (`:511`, `:598`) take `hφ : PolySentenceCodes φ` and use
+  `Encodable.encode (φ n)` *as a numeral inside the quoted formula* (the `⋏`-shell, and
+  the market's own `quote day ⌜φ n⌝`).  **This** is the deep-φ obstruction: a deep `φ n`
+  has poly symbol count but its pair code — hence the numeral naming it — is
+  exponential in that count, so no poly-fueled program can emit it as a token.
+
+**What accepting deep φ would require (the new layer).**
+  (a) A *digit-stream* numeral interface: `PolyDigitCodes (f : ℕ → ℕ)` = the base-`b`
+      digits of `f n` are poly-emittable, plus closure under the pair/succ shells that
+      `encode_and` and `encode_quoteAtom` use.  Nothing like this exists — the current
+      digit layer (`Criterion.lean`'s `clockedTraderDigit`, `digitize`/`undigitize` in
+      `RpnEmission.lean`) digitizes *token streams*, not *arithmetic operands*, and has
+      no arithmetic closure lemmas at all.
+  (b) A bridge `RpnSentenceCodes φ → PolyDigitCodes (fun n => Encodable.encode (φ n))`,
+      i.e. "compute the Gödel number's digits from the parse blocks" — a
+      carry-propagating streaming encoder for Foundation's `Encodable (Formula ℕ)`.
+      This is the genuinely new work and is where the ≥2 sessions go.
+  (c) A *second* consumer to satisfy, which the block form does not serve at all:
+      `MarketComputation.expectQuoteAt_computable` (`:262`) destructures the whole-value
+      certificate and uses `hcX.primrec` to feed `Nat.Partrec.Code`-level composition.
+      There is **no** `RpnSentenceCodes → Computable (encode ∘ φ)` bridge in the repo
+      (checked `Framework/RpnSplice.lean`, `Framework/RpnEmission.lean`), and building
+      one means running `parseRpn` over the reassembled segment — provable, but another
+      independent lemma.
+
+**Why it is not worth it.**  The paper's §4.11–12 chains are quantified over
+*Θ-definable* quotation families, whose numerals are exactly the value-typed objects
+above; the whole-value interface is the faithful reading there, and the disclosure is
+already recorded (`dd:fuel`).  Flipping it would strengthen only hypothetically-deep φ
+in `thm:st`/`thm:ceu`/`thm:cee`, at the cost of a new arithmetic-digit layer that
+nothing else in the repo consumes.  **Recommendation: leave `QuoteCodeOfMarket`
+whole-value; the item-2 flip already wraps at that boundary via
+`LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq`.**  Revisit only if a consumer
+genuinely needs deep quoted sentences.
 
 ## Deliberately disclosed boundaries
 

@@ -76,6 +76,40 @@ def PolyThresholdCodeSeq (X : ℕ → LUV) : Prop :=
     Encodable.encode ((X m.unpair.1).gt
       ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))))
 
+/-! #### Block form of the threshold interfaces (`def:ec`)
+
+`PolyThresholdCodes` meters the *pair code* of the threshold sentence, which excludes deep
+or skewed threshold families whose codes are value-exponential in their symbol count. The
+faithful `def:ec` reading meters **symbols**: a `PolySegStream` of self-delimiting sentence
+blocks parsing to the thresholds, at the same paired-index convention. These are the block
+forms; the whole-value interfaces embed into them by `ofPolyThresholdCodes`. -/
+
+/-- Block form of `PolyThresholdCodes`: an 𝓔𝓒 sentence-block stream emitting `⌜X > i/k⌝`
+at index `⟨k,i⟩`. Paper node: `def:ec` -/
+def RpnThresholdCodes (X : LUV) : Prop :=
+  RpnSentenceCodes (fun m => X.gt ((m.unpair.2 : ℚ) / (m.unpair.1 : ℚ)))
+
+/-- Block form of `PolyThresholdCodeSeq`: an 𝓔𝓒 sentence-block stream emitting
+`⌜X_n > i/k⌝` at index `⟨n,⟨k,i⟩⟩`. Paper node: `def:ec` -/
+def RpnThresholdCodeSeq (X : ℕ → LUV) : Prop :=
+  RpnSentenceCodes (fun m => (X m.unpair.1).gt
+    ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))
+
+/-- The whole-value threshold interface embeds into the block form by escape blocks. -/
+lemma RpnThresholdCodes.ofPolyThresholdCodes {X : LUV} (h : X.PolyThresholdCodes) :
+    X.RpnThresholdCodes :=
+  RpnSentenceCodes.ofPolySentenceCodes h
+
+/-- The whole-value sequence interface embeds into the block form by escape blocks. -/
+lemma RpnThresholdCodeSeq.ofPolyThresholdCodeSeq {X : ℕ → LUV}
+    (h : PolyThresholdCodeSeq X) : RpnThresholdCodeSeq X :=
+  RpnSentenceCodes.ofPolySentenceCodes h
+
+/-- A constant LUV sequence inherits the block form from the single-LUV interface. -/
+lemma RpnThresholdCodes.constSeq {X : LUV} (h : X.RpnThresholdCodes) :
+    RpnThresholdCodeSeq (fun _ => X) :=
+  (h.comp (PolyFueled.right)).of_eq (fun _ => rfl)
+
 /-- `def:e`. The **approximate expectation** of `X` under a valuation `V` at precision `k`:
 `𝔼_k^V(X) = ∑_{i<k} (1/k) · V(⌜X > i/k⌝)`. Lands in `[0,1]` when `V` does (a share is worth
 at most 1), so expectations of `[0,1]`-LUVs are themselves `[0,1]`-valued. -/

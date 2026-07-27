@@ -959,7 +959,7 @@ appearing in a combination sequence.  It records only compact threshold codeabil
 daily world valuation; it does not assume convergence or any expectation theorem. -/
 structure ConvergencePresentation (As : ℕ → LUVCombination)
     (DP : DeductiveProcess) where
-  threshold_code : ∀ n p, p ∈ (As n).terms → p.2.PolyThresholdCodes
+  threshold_code : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes
   daily_value : ∀ n p, p ∈ (As n).terms → ∀ᶠ m in atTop, ∀ (v : PCWorld),
     v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo p.2 x m
 
@@ -1487,7 +1487,7 @@ noncomputable def expectInf (A : LUVCombination) (P : History) : ℝ :=
 private lemma expectTerms_converge
     (l : List (EF × LUV)) (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP]
-    (hcode : ∀ p ∈ l, p.2.PolyThresholdCodes)
+    (hcode : ∀ p ∈ l, p.2.RpnThresholdCodes)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ p ∈ l, ∀ᶠ m in atTop, ∀ (v : PCWorld),
       v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo p.2 x m) :
@@ -1500,7 +1500,7 @@ private lemma expectTerms_converge
   | cons p rest ih =>
       obtain ⟨LX, hLX⟩ := p.2.expect_converges P DP (hcode p (by simp)) hworld
         (hval p (by simp))
-      have hcodeRest : ∀ q ∈ rest, q.2.PolyThresholdCodes := by
+      have hcodeRest : ∀ q ∈ rest, q.2.RpnThresholdCodes := by
         intro q hq
         exact hcode q (by simp [hq])
       have hvalRest : ∀ q ∈ rest, ∀ᶠ m in atTop, ∀ (v : PCWorld),

@@ -261,7 +261,7 @@ the plain rational bound `c ≤ numᵢ/denᵢ`.  Remaining premises are the disc
 efficiency codes, the price range, and a logical inductor over the scheduled process.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_arith (P : History) [IsLogicalInductor P (L.gridDP)]
-    (i : ℕ) (hcode : (toLUV i).PolyThresholdCodes)
+    (i : ℕ) (hcode : (toLUV i).RpnThresholdCodes)
     (c : ℝ) (hc : c ≤ (L.value i : ℝ)) :
     AsympGE ((toLUV i).expectSeq P) (fun _ => c) :=
   lic_expectation_provind P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
@@ -272,7 +272,7 @@ theorem lic_expectation_provind_arith (P : History) [IsLogicalInductor P (L.grid
 /-- Certified expectation provability induction, upper (`≤`) form.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_le_arith (P : History) [IsLogicalInductor P (L.gridDP)]
-    (i : ℕ) (hcode : (toLUV i).PolyThresholdCodes)
+    (i : ℕ) (hcode : (toLUV i).RpnThresholdCodes)
     (c : ℝ) (hc : (L.value i : ℝ) ≤ c) :
     AsympLE ((toLUV i).expectSeq P) (fun _ => c) :=
   lic_expectation_provind_le P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
@@ -283,7 +283,7 @@ theorem lic_expectation_provind_le_arith (P : History) [IsLogicalInductor P (L.g
 `dd:luv-arith` value forces the expectation sequence to it.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_eq_arith (P : History) [IsLogicalInductor P (L.gridDP)]
-    (i : ℕ) (hcode : (toLUV i).PolyThresholdCodes)
+    (i : ℕ) (hcode : (toLUV i).RpnThresholdCodes)
     (c : ℝ) (hc : (L.value i : ℝ) = c) :
     AsympEq ((toLUV i).expectSeq P) (fun _ => c) :=
   lic_expectation_provind_eq P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
@@ -296,8 +296,8 @@ sole content is the plain rational identity `valueₖ = a·valueᵢ + b·value�
 Paper node: `thm:loe` -/
 theorem lic_linearity_of_expectation_arith (P : History) [IsLogicalInductor P (L.gridDP)]
     (a b : ℚ) (i j k : ℕ)
-    (hcodeI : (toLUV i).PolyThresholdCodes) (hcodeJ : (toLUV j).PolyThresholdCodes)
-    (hcodeK : (toLUV k).PolyThresholdCodes)
+    (hcodeI : (toLUV i).RpnThresholdCodes) (hcodeJ : (toLUV j).RpnThresholdCodes)
+    (hcodeK : (toLUV k).RpnThresholdCodes)
     (hlin : L.value k = a * L.value i + b * L.value j) :
     AsympEq (fun n => (a : ℝ) * (toLUV i).expect P n + (b : ℝ) * (toLUV j).expect P n)
       ((toLUV k).expectSeq P) :=
@@ -396,7 +396,7 @@ scheduled grid (eventually, once the stage reaches the LUV index); the threshold
 certificate is the disclosed `dd:fuel` hypothesis. -/
 noncomputable def convergencePresentation_combinedDP {As : ℕ → LUVCombination}
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.PolyThresholdCodes) :
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes) :
     LUVCombination.ConvergencePresentation As (L.combinedDP T) where
   threshold_code := hcode
   daily_value := by
@@ -417,7 +417,7 @@ theorem expcoh_arith {As : ℕ → LUVCombination} {P : History}
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
     (h : LUVCombination.BoundedSequence As P)
     (ops : LUVCombination.MeshSoftmaxOperationalWitness As P)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.PolyThresholdCodes)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
     (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
      :
     (liminf (LUVCombination.completedLow As P (L.combinedDP T)) atTop ≤
@@ -439,7 +439,7 @@ theorem perexpkno_arith {As : ℕ → LUVCombination} {P : History}
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
     (h : LUVCombination.BoundedSequence As P)
     (ops : LUVCombination.MeshSoftmaxOperationalWitness As P)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.PolyThresholdCodes)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
     (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
      :
     liminf (LUVCombination.futureLow As P) atTop =
@@ -615,7 +615,7 @@ theorem lic_expectation_provind_arith_unconditional (i : ℕ) (c : ℝ)
     AsympGE ((toLUV i).expectSeq (liaHistory (L.gridDP))) (fun _ => c) := by
   haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
   exact L.lic_expectation_provind_arith (liaHistory (L.gridDP)) i
-    (toLUV_polyThresholdCodes i)
+    (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes i))
     c hc
 
 /-- **Fully unconditional certified expectation provability induction (`≤`).**
@@ -625,7 +625,7 @@ theorem lic_expectation_provind_le_arith_unconditional (i : ℕ) (c : ℝ)
     AsympLE ((toLUV i).expectSeq (liaHistory (L.gridDP))) (fun _ => c) := by
   haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
   exact L.lic_expectation_provind_le_arith (liaHistory (L.gridDP)) i
-    (toLUV_polyThresholdCodes i)
+    (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes i))
     c hc
 
 /-- **Fully unconditional certified expectation provability induction (`=`).**
@@ -635,7 +635,7 @@ theorem lic_expectation_provind_eq_arith_unconditional (i : ℕ) (c : ℝ)
     AsympEq ((toLUV i).expectSeq (liaHistory (L.gridDP))) (fun _ => c) := by
   haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
   exact L.lic_expectation_provind_eq_arith (liaHistory (L.gridDP)) i
-    (toLUV_polyThresholdCodes i)
+    (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes i))
     c hc
 
 /-- **Fully unconditional certified linearity of expectation.**  The sole hypothesis is the
@@ -648,7 +648,9 @@ theorem lic_linearity_of_expectation_arith_unconditional (a b : ℚ) (i j k : �
       ((toLUV k).expectSeq (liaHistory (L.gridDP))) := by
   haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
   exact L.lic_linearity_of_expectation_arith (liaHistory (L.gridDP)) a b i j k
-    (toLUV_polyThresholdCodes i) (toLUV_polyThresholdCodes j) (toLUV_polyThresholdCodes k)
+    (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes i))
+    (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes j))
+    (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes k))
     hlin
 
 end ComputableLUV

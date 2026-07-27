@@ -270,28 +270,6 @@ lemma sellIndF_closed {e : EF} {ρ : List ℝ} {V : History} (high δ : ℚ)
     EF.denote_add, EF.denote_const, Pi.mul_apply, Pi.add_apply]
   rw [he]
 
-/-- Segment-level closure for the feature-generic sell ramp. -/
-lemma PolySegStream.serialize_sellIndF {e : ℕ → EF}
-    (he : PolySegStream (fun n => (e n).serialize)) (high δ : ℚ) :
-    PolySegStream (fun n => (sellIndF (e n) high δ).serialize) :=
-  PolySegStream.serialize_clip01
-    (PolySegStream.serialize_mul
-      (PolySegStream.serialize_add he
-        (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (δ - high))))
-      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (1 / δ))))
-
-/-- Segment-level closure for the feature-generic buy ramp. -/
-lemma PolySegStream.serialize_buyIndF {e : ℕ → EF}
-    (he : PolySegStream (fun n => (e n).serialize)) (low δ : ℚ) :
-    PolySegStream (fun n => (buyIndF (e n) low δ).serialize) :=
-  PolySegStream.serialize_clip01
-    (PolySegStream.serialize_mul
-      (PolySegStream.serialize_add
-        (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (low + δ)))
-        (PolySegStream.serialize_mul
-          (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) he))
-      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (1 / δ))))
-
 /-- Spliced mirror of the sell ramp closure. -/
 lemma RpnSpliceStream.serialize_sellIndF {e : ℕ → EF}
     (he : RpnSpliceStream (fun n => (e n).serialize)) (high δ : ℚ) :

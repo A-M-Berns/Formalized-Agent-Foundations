@@ -29,7 +29,7 @@ structure LUVCombinationSyntax (As : ℕ → LUVCombination) where
   termCount_poly : ∃ c, PolyFueled c termCount
   const_poly : RpnSpliceStream (fun n ↦ (As n).const.serialize)
   coefficient_poly : RpnSpliceStream (fun z ↦ (coefficient z).serialize)
-  threshold_poly : LUV.PolyThresholdCodeSeq luv
+  threshold_poly : LUV.RpnThresholdCodeSeq luv
   terms_eq : ∀ n, (As n).terms = (List.range (termCount n)).map (fun j ↦
     (coefficient (Nat.pair n j), luv (Nat.pair n j)))
   const_rank : ∀ n, (As n).const.rank ≤ n
@@ -202,8 +202,7 @@ noncomputable def diagonalMeshPoly {As : ℕ → LUVCombination}
   have hoffset := Classical.choose_spec S.meshOffset_poly
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
-  let cthreshold := Classical.choose S.threshold_poly
-  have hthreshold := Classical.choose_spec S.threshold_poly
+  have hthreshold := S.threshold_poly
   have hsource : PolyFueled _ (fun z ↦
       Nat.pair z.unpair.1 (S.meshMember z)) :=
     PolyFueled.left.pair hmember
@@ -223,9 +222,8 @@ noncomputable def diagonalMeshPoly {As : ℕ → LUVCombination}
     coefficient_poly := RpnSpliceStream.of_eq
       (RpnSpliceStream.serialize_mul hcoeffSource hinvSource) (fun z ↦ by
         simp [meshCoefficient])
-    sentence_poly := RpnSentenceCodes.ofPolySentenceCodes ⟨cthreshold.comp _,
-      (hthreshold.comp hquery).of_eq (fun z ↦ by
-        simp [meshSentence])⟩
+    sentence_poly := (hthreshold.comp hquery).of_eq (fun z ↦ by
+      simp [meshSentence])
     terms_eq := ?_
     const_rank := S.const_rank
     coefficient_rank := ?_
@@ -298,14 +296,13 @@ structure TheorySemantics {As : ℕ → LUVCombination}
 
 lemma threshold_code {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (n : ℕ) (p : EF × LUV)
-    (hp : p ∈ (As n).terms) : p.2.PolyThresholdCodes := by
+    (hp : p ∈ (As n).terms) : p.2.RpnThresholdCodes := by
   rw [S.terms_eq] at hp
   simp only [List.mem_map, List.mem_range] at hp
   obtain ⟨j, hj, rfl⟩ := hp
-  obtain ⟨c, hc⟩ := S.threshold_poly
   have hquery : PolyFueled _ (fun m : ℕ ↦
       Nat.pair (Nat.pair n j) m) := (PolyFueled.const (Nat.pair n j)).pair PolyFueled.id
-  exact ⟨c.comp _, (hc.comp hquery).of_eq (fun m ↦ by simp)⟩
+  exact (S.threshold_poly.comp hquery).of_eq (fun m ↦ by simp)
 
 /-- Compact syntax plus stagewise representation discharges the convergence presentation. -/
 def convergencePresentation {As : ℕ → LUVCombination}
@@ -959,8 +956,7 @@ noncomputable def meshFamilyPoly {As : ℕ → LUVCombination}
   have hcount := Classical.choose_spec S.termCount_poly
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
-  let cthreshold := Classical.choose S.threshold_poly
-  have hthreshold := Classical.choose_spec S.threshold_poly
+  have hthreshold := S.threshold_poly
   let cmul := Classical.choose mul_polyFueled
   have hmul := Classical.choose_spec mul_polyFueled
   let cdm := Classical.choose divmod1_polyFueled
@@ -1014,8 +1010,7 @@ noncomputable def meshFamilyPoly {As : ℕ → LUVCombination}
     termCount_poly := ⟨_, hcountPF⟩
     const_poly := S.const_poly.comp hsourcePF
     coefficient_poly := RpnSpliceStream.serialize_mul hcoeffSource hinvPrecision
-    sentence_poly := RpnSentenceCodes.ofPolySentenceCodes ⟨cthreshold.comp _,
-      (hthreshold.comp hthresholdQuery).of_eq (fun z ↦ by simp)⟩
+    sentence_poly := (hthreshold.comp hthresholdQuery).of_eq (fun z ↦ by simp)
     terms_eq := ?_
     const_rank := ?_
     coefficient_rank := ?_

@@ -82,7 +82,7 @@ Paper node: `thm:epr` -/
 structure CurrentPriceExpectationQuote (P : History) (DP : DeductiveProcess)
     (φ : ℕ → Sentence) (Y : ℕ → LUV) where
   sentence_codes : RpnSentenceCodes φ
-  quote_codes : LUV.PolyThresholdCodeSeq Y
+  quote_codes : LUV.RpnThresholdCodeSeq Y
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) (P n (φ n))
   affine : CompletedAffineQuoteApprox P DP
@@ -93,8 +93,8 @@ expectation of `X n`.
 Paper node: `thm:er` -/
 structure CurrentExpectationQuote (P : History) (DP : DeductiveProcess)
     (X Y : ℕ → LUV) where
-  source_codes : LUV.PolyThresholdCodeSeq X
-  quote_codes : LUV.PolyThresholdCodeSeq Y
+  source_codes : LUV.RpnThresholdCodeSeq X
+  quote_codes : LUV.RpnThresholdCodeSeq Y
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) ((X n).expect P n)
   affine : CompletedAffineQuoteApprox P DP

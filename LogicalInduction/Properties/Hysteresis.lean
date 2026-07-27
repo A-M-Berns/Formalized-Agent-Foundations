@@ -467,6 +467,35 @@ fixed-width blocks (the `H (n+1)` chain), fixed mid `[1,⌜−1⌝,1,⌜0⌝]`, 
 (the `H n` chain), fixed tail `[3,2,6,⌜φ⌝]` — emitted by the segment-composition layer
 (`PolySegStream`, `Computable.lean`). -/
 
+/-- Segment-level mirrors of the ramp closures (transparent operator tails). -/
+lemma PolySegStream.serialize_oneMinus {e : ℕ → EF}
+    (he : PolySegStream (fun n => (e n).serialize)) :
+    PolySegStream (fun n => (oneMinus (e n)).serialize) :=
+  PolySegStream.serialize_add
+    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1))
+    (PolySegStream.serialize_mul
+      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) he)
+
+lemma PolySegStream.serialize_efMin {e f : ℕ → EF}
+    (he : PolySegStream (fun n => (e n).serialize))
+    (hf : PolySegStream (fun n => (f n).serialize)) :
+    PolySegStream (fun n => (efMin (e n) (f n)).serialize) :=
+  PolySegStream.serialize_mul
+    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1)))
+    (PolySegStream.serialize_max
+      (PolySegStream.serialize_mul
+        (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) he)
+      (PolySegStream.serialize_mul
+        (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) hf))
+
+lemma PolySegStream.serialize_clip01 {e : ℕ → EF}
+    (he : PolySegStream (fun n => (e n).serialize)) :
+    PolySegStream (fun n => (clip01 (e n)).serialize) :=
+  PolySegStream.serialize_max
+    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0))
+    (PolySegStream.serialize_efMin
+      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)) he)
+
 /-- Spliced mirrors of the ramp closures (sentence slots may carry RPN blocks). -/
 lemma RpnSpliceStream.serialize_oneMinus {e : ℕ → EF}
     (he : RpnSpliceStream (fun n => (e n).serialize)) :

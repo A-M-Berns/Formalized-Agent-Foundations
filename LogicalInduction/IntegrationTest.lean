@@ -118,10 +118,10 @@ noncomputable example (P : History) (X : LUV) : ℕ → ℝ := X.expectSeq P
 example (P : History) (X Y : LUV) : Prop := X.expectSeq P ≈ₙ Y.expectSeq P
 
 /-- `thm:ec` now discharges convergence of a concrete expectation sequence end to end.
-The compact threshold-code and world-value hypotheses are the explicit interfaces by which
+The threshold-block and world-value hypotheses are the explicit interfaces by which
 the propositional model represents the paper's Θ-definable LUV. -/
 theorem expectation_convergence_discharged (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
+    [IsLogicalInductor P DP] (X : LUV) (hcode : X.RpnThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x) :
     ∃ L, ConvergesTo (X.expectSeq P) L :=

@@ -158,7 +158,8 @@ noncomputable def RationalQuoteCode.ofComputable (T : ArithmeticTheory) [𝗥₀
     neg_complete := fun n r hr => b.neg_complete (Nat.pair n (Encodable.encode r))
       (by simp only [Nat.unpair_pair, decodedQuotationRat_encode]
           exact not_lt.mpr hr.le)
-    threshold_poly := arithmeticThresholdLUV_polyThresholdCodeSeq b.code }
+    threshold_poly := LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
+      (arithmeticThresholdLUV_polyThresholdCodeSeq b.code) }
 
 /-! ## Part C — the market's own quotes are such a sequence -/
 
@@ -566,7 +567,8 @@ theorem lic_expected_future_expectations_closed
         (liaHistory (theoremDP T)) n :=
   lic_expected_future_expectations_ofRepresentation_unconditional (T := T) f hstrict X
     ((theoremDeferredExpectationQuoteCode T f X hX).luv)
-    hX (theoremDeferredExpectationQuoteCode T f X hX).poly source_valued
+    (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq hX)
+    (theoremDeferredExpectationQuoteCode T f X hX).poly source_valued
     (fun n v hv => by
       have h := RationalQuoteCode.reflected (quotationPresentation T)
         (theoremDeferredExpectationQuoteCode T f X hX) n v hv
@@ -582,7 +584,8 @@ theorem lic_iterated_expectations_closed
     (fun n => (X n).expect (liaHistory (theoremDP T)) n) ≈ₙ
       fun n => ((theoremExpectationQuoteCode T X hX).luv n).expect
         (liaHistory (theoremDP T)) n :=
-  lic_iterated_expectations_ofCode_unconditional (T := T) X hX
+  lic_iterated_expectations_ofCode_unconditional (T := T) X
+    (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq hX)
     (theoremExpectationQuoteCode T X hX)
     ((theoremMarketComputation T).expectQuote_cast X)
 
@@ -698,7 +701,8 @@ theorem lic_self_trust_closed
     (fun n => indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n)
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).luv
     delta_pos probability_mem (RpnSentenceCodes.ofPolySentenceCodes hφ) hδ hδinv hp
-    (indicatorProductLUV_polyThresholdCodeSeq _ hφ)
+    (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
+      (indicatorProductLUV_polyThresholdCodeSeq _ hφ))
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).poly
     (fun n v hv => ?_) (fun n v hv => ?_)
   · have h := RationalQuoteCode.reflected (quotationPresentation T)
@@ -777,8 +781,9 @@ theorem lic_no_expected_net_update_conditional_closed
     (fun n => indicatorProductLUV
       (theoremDeferredWeightQuoteCode T f w hw weight_mem) φ n)
     ((theoremConditionalExpectationQuoteCode T f X hX w hw weight_mem).luv)
-    w weight_mem weight_generable hX
-    (indicatorProductLUV_polyThresholdCodeSeq _ hφ)
+    w weight_mem weight_generable (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq hX)
+    (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
+      (indicatorProductLUV_polyThresholdCodeSeq _ hφ))
     (theoremConditionalExpectationQuoteCode T f X hX w hw weight_mem).poly
     (fun n v hv => ⟨v.payout (φ n), (hind n).valuesAt (hv n)⟩)
     (fun n v hv x hx => ?_) (fun n v hv => ?_)

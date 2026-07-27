@@ -35,7 +35,7 @@ lemma expectAffine_value (X : LUV) (P : History) (w : Valuation) (n : ℕ) :
   rw [zero_add, List.sum_map_mul_left, one_div]
   congr 1
 
-def expectAffine_polySequence (X : LUV) (hcode : X.PolyThresholdCodes) :
+def expectAffine_polySequence (X : LUV) (hcode : X.RpnThresholdCodes) :
     AffineCombination.PolySequence X.expectAffine := by
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
@@ -47,7 +47,7 @@ def expectAffine_polySequence (X : LUV) (hcode : X.PolyThresholdCodes) :
   const_poly := RpnSpliceStream.serialize_const 0
   coefficient_poly := RpnSpliceStream.serialize_const_comp
     ⟨cinv.comp Nat.Partrec.Code.left, hinv.comp PolyFueled.left⟩
-  sentence_poly := RpnSentenceCodes.ofPolySentenceCodes hcode
+  sentence_poly := hcode
   terms_eq := by intro n; simp [expectAffine]
   const_rank := by intro n; simp [expectAffine]
   coefficient_rank := by intro n j hj; simp [EF.rank]
@@ -75,27 +75,22 @@ def indicatorAffine (Y : LUV) (φ : Sentence) (n : ℕ) : AffineCombination wher
     else (.const (-1), φ))
 
 noncomputable def indicatorAffine_polySequence (Y : LUV) (φ : Sentence)
-    (hcode : Y.PolyThresholdCodes) :
+    (hcode : Y.RpnThresholdCodes) :
     AffineCombination.PolySequence (Y.indicatorAffine φ) := by
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
-  let cy := Classical.choose hcode
-  have hy := Classical.choose_spec hcode
   have htest := subc_polyFueled.comp (PolyFueled.left.pair PolyFueled.right)
   have hInvSeg : RpnSpliceStream (fun z => (EF.const (1 / (z.unpair.1 : ℚ))).serialize) :=
     RpnSpliceStream.serialize_const_comp
       ⟨cinv.comp Nat.Partrec.Code.left, hinv.comp PolyFueled.left⟩
   have hNegSeg : RpnSpliceStream (fun _ => (EF.const (-1)).serialize) :=
     RpnSpliceStream.serialize_const (-1)
-  have hsentence : PolyFueled
-      (ifzSel.comp (((Nat.Partrec.Code.const (Encodable.encode φ)).pair cy).pair
-        (subc.comp (Nat.Partrec.Code.left.pair Nat.Partrec.Code.right))))
-      (fun z => Encodable.encode (if z.unpair.2 < z.unpair.1 then
-        Y.gt ((z.unpair.2 : ℚ) / (z.unpair.1 : ℚ)) else φ)) := by
-    apply PolyFueled.of_eq
-      (ifzSel_polyFueled.comp (((PolyFueled.const (Encodable.encode φ)).pair hy).pair htest))
-    intro z
-    simp only [Nat.unpair_pair, ifzSelFn]
+  have hconst : RpnSentenceCodes (fun _ : ℕ => φ) :=
+    RpnSentenceCodes.ofPolySentenceCodes ⟨_, PolyFueled.const (Encodable.encode φ)⟩
+  have hsentence : RpnSentenceCodes (fun z => if z.unpair.2 < z.unpair.1 then
+      Y.gt ((z.unpair.2 : ℚ) / (z.unpair.1 : ℚ)) else φ) := by
+    refine (RpnSentenceCodes.ifZero hconst hcode htest).of_eq (fun z => ?_)
+    simp only [Nat.unpair_pair]
     by_cases hj : z.unpair.2 < z.unpair.1
     · rw [if_pos hj, if_neg (by omega)]
     · rw [if_neg hj, if_pos (by omega)]
@@ -113,7 +108,7 @@ noncomputable def indicatorAffine_polySequence (Y : LUV) (φ : Sentence)
       by_cases hj : z.unpair.2 < z.unpair.1
       · rw [if_pos hj, if_neg (by omega)]
       · rw [if_neg hj, if_pos (by omega)])
-    sentence_poly := RpnSentenceCodes.ofPolySentenceCodes ⟨_, hsentence⟩
+    sentence_poly := hsentence
     terms_eq := by
       intro n
       simp only [indicatorAffine]
@@ -174,17 +169,11 @@ def linearityAffine (a b : ℚ) (X Y Z : LUV) (n : ℕ) : AffineCombination wher
         Z.gt (((j - n * 2 : ℕ) : ℚ) / (n : ℚ))))
 
 noncomputable def linearityAffine_polySequence (a b : ℚ) (X Y Z : LUV)
-    (hX : X.PolyThresholdCodes) (hY : Y.PolyThresholdCodes)
-    (hZ : Z.PolyThresholdCodes) :
+    (hX : X.RpnThresholdCodes) (hY : Y.RpnThresholdCodes)
+    (hZ : Z.RpnThresholdCodes) :
     AffineCombination.PolySequence (linearityAffine a b X Y Z) := by
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
-  let cx := Classical.choose hX
-  have hcx := Classical.choose_spec hX
-  let cy := Classical.choose hY
-  have hcy := Classical.choose_spec hY
-  let cz := Classical.choose hZ
-  have hcz := Classical.choose_spec hZ
   let cmul2 := Classical.choose (mulc_polyFueled 2)
   have hmul2 := Classical.choose_spec (mulc_polyFueled 2)
   let cmul3 := Classical.choose (mulc_polyFueled 3)
@@ -219,25 +208,24 @@ noncomputable def linearityAffine_polySequence (a b : ℚ) (X Y Z : LUV)
       by_cases hy : z.unpair.2 < z.unpair.1 * 2
       · rw [if_pos hy, if_pos (by omega)]
       · rw [if_neg hy, if_neg (by omega)]
-  have hsX := hcx
-  have hsY := hcy.comp hidxY
-  have hsZ := hcz.comp hidxZ
-  have hsAll : ∃ c, PolyFueled c (fun z => Encodable.encode
-      (if z.unpair.2 < z.unpair.1 then
+  have hsX := hX
+  have hsY := hY.comp hidxY
+  have hsZ := hZ.comp hidxZ
+  have hsAll : RpnSentenceCodes (fun z =>
+      if z.unpair.2 < z.unpair.1 then
         X.gt ((z.unpair.2 : ℚ) / (z.unpair.1 : ℚ))
       else if z.unpair.2 < z.unpair.1 * 2 then
         Y.gt (((z.unpair.2 - z.unpair.1 : ℕ) : ℚ) / (z.unpair.1 : ℚ))
-      else Z.gt (((z.unpair.2 - z.unpair.1 * 2 : ℕ) : ℚ) / (z.unpair.1 : ℚ)))) := by
-    let inner := ifzSel_polyFueled.comp ((hsY.pair hsZ).pair htestY)
-    let outer := ifzSel_polyFueled.comp ((hsX.pair inner).pair htestX)
-    refine ⟨_, outer.of_eq (fun z => ?_)⟩
-    simp only [Nat.unpair_pair, ifzSelFn]
+      else Z.gt (((z.unpair.2 - z.unpair.1 * 2 : ℕ) : ℚ) / (z.unpair.1 : ℚ))) := by
+    refine (RpnSentenceCodes.ifZero hsX
+      (RpnSentenceCodes.ifZero hsY hsZ htestY) htestX).of_eq (fun z => ?_)
+    simp only [Nat.unpair_pair]
     by_cases hx : z.unpair.2 < z.unpair.1
-    · rw [if_pos hx, if_pos (by omega)]
-    · rw [if_neg hx, if_neg (by omega)]
+    · rw [if_pos (show z.unpair.2 + 1 - z.unpair.1 = 0 from by omega), if_pos hx]
+    · rw [if_neg (show ¬ z.unpair.2 + 1 - z.unpair.1 = 0 from by omega), if_neg hx]
       by_cases hy : z.unpair.2 < z.unpair.1 * 2
-      · rw [if_pos hy, if_pos (by omega)]
-      · rw [if_neg hy, if_neg (by omega)]
+      · rw [if_pos (show z.unpair.2 + 1 - z.unpair.1 * 2 = 0 from by omega), if_pos hy]
+      · rw [if_neg (show ¬ z.unpair.2 + 1 - z.unpair.1 * 2 = 0 from by omega), if_neg hy]
   exact {
     termCount := fun n => n * 3
     coefficient := fun z =>
@@ -255,7 +243,7 @@ noncomputable def linearityAffine_polySequence (a b : ℚ) (X Y Z : LUV)
     termCount_poly := ⟨cmul3, hmul3⟩
     const_poly := RpnSpliceStream.serialize_const 0
     coefficient_poly := hcoeffAll
-    sentence_poly := RpnSentenceCodes.ofPolySentenceCodes hsAll
+    sentence_poly := hsAll
     terms_eq := by
       intro n
       simp only [linearityAffine]
@@ -359,7 +347,7 @@ end LUV
 /-- **Expectations of indicators** (`thm:ei`).
 Paper node: `thm:ei` -/
 theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (φ : Sentence) (Y : LUV) (hcode : Y.PolyThresholdCodes)
+    [IsLogicalInductor P DP] (φ : Sentence) (Y : LUV) (hcode : Y.RpnThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hY : Y.IsIndicator φ DP) :
     AsympEq (Y.expectSeq P) (fun n => P n φ) := by
@@ -396,8 +384,8 @@ finite stage (unlike the full `PCWorld.ValuesAt` cut, which pins infinitely many
 Paper node: `thm:loe` -/
 theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (a b : ℚ) (X Y Z : LUV)
-    (hcodeX : X.PolyThresholdCodes) (hcodeY : Y.PolyThresholdCodes)
-    (hcodeZ : Z.PolyThresholdCodes)
+    (hcodeX : X.RpnThresholdCodes) (hcodeY : Y.RpnThresholdCodes)
+    (hcodeZ : Z.RpnThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hvals : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
       ∃ x y z : ℝ, z = (a : ℝ) * x + (b : ℝ) * y ∧
@@ -462,8 +450,8 @@ supplies `z = a x + b y`.
 Paper node: `thm:loe` -/
 theorem lic_linearity_of_expectation_ofValuesAt (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (a b : ℚ) (X Y Z : LUV)
-    (hcodeX : X.PolyThresholdCodes) (hcodeY : Y.PolyThresholdCodes)
-    (hcodeZ : Z.PolyThresholdCodes)
+    (hcodeX : X.RpnThresholdCodes) (hcodeY : Y.RpnThresholdCodes)
+    (hcodeZ : Z.RpnThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hvals : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) →
       ∃ x y z, v.ValuesAt X x ∧ v.ValuesAt Y y ∧ v.ValuesAt Z z)
@@ -486,7 +474,7 @@ satisfiable, finite-stage content the trader argument consumes.  The `…_ofValu
 recovers the full `PCWorld.ValuesAt` statement.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
+    [IsLogicalInductor P DP] (X : LUV) (hcode : X.RpnThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
     (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
       ∃ x : ℝ, c ≤ x ∧ |X.expectApprox v.payout n - x| ≤ 1 / n) :
@@ -521,7 +509,7 @@ theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
 /-- **Expectation Provability Induction** (`thm:expprovind`), full `PCWorld.ValuesAt` form.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_ofValuesAt (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
+    [IsLogicalInductor P DP] (X : LUV) (hcode : X.RpnThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
     (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) →
       ∃ x, c ≤ x ∧ v.ValuesAt X x) :
@@ -537,7 +525,7 @@ theorem lic_expectation_provind_ofValuesAt (P : History) (DP : DeductiveProcess)
 lower form through the negated affine mesh.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_le (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
+    [IsLogicalInductor P DP] (X : LUV) (hcode : X.RpnThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
     (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
       ∃ x : ℝ, x ≤ c ∧ |X.expectApprox v.payout n - x| ≤ 1 / n) :
@@ -571,7 +559,7 @@ theorem lic_expectation_provind_le (P : History) (DP : DeductiveProcess)
 lower and upper forms: a determined LUV value forces the expectation sequence to it.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_eq (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (X : LUV) (hcode : X.PolyThresholdCodes)
+    [IsLogicalInductor P DP] (X : LUV) (hcode : X.RpnThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
     (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
       |X.expectApprox v.payout n - c| ≤ 1 / n) :

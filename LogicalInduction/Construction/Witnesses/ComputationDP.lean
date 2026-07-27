@@ -608,7 +608,7 @@ theorem lic_expectations_of_probabilities_ofCode_unconditional
 /-- `thm:er`, unconditional over `LIA`.
 Paper node: `thm:er` -/
 theorem lic_iterated_expectations_ofCode_unconditional
-    {value : ℕ → ℚ} (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X)
+    {value : ℕ → ℚ} (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, (X n).expect (liaHistory (theoremDP T)) n = (value n : ℝ)) :
     (fun n => (X n).expect (liaHistory (theoremDP T)) n) ≈ₙ
@@ -668,7 +668,7 @@ theorem lic_paradox_resistance_ofDiagonal_unconditional
 Paper node: `thm:cee` -/
 theorem lic_expected_future_expectations_ofRepresentation_unconditional
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
-    (X Y : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X) (hY : LUV.PolyThresholdCodeSeq Y)
+    (X Y : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) (hY : LUV.RpnThresholdCodeSeq Y)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       ∃ x, v.ValuesAt (X n) x)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
@@ -685,7 +685,7 @@ Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update_ofRepresentation_unconditional
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
-    (hφ : RpnSentenceCodes φ) (hY : LUV.PolyThresholdCodeSeq Y)
+    (hφ : RpnSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       v.ValuesAt (Y n) (liaHistory (theoremDP T) (f n) (φ n))) :
     (fun n ↦ liaHistory (theoremDP T) n (φ n)) ≈ₙ
@@ -702,8 +702,8 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation_unconditional
     (X Z Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w)
-    (hX : LUV.PolyThresholdCodeSeq X) (hZ : LUV.PolyThresholdCodeSeq Z)
-    (hZ' : LUV.PolyThresholdCodeSeq Z')
+    (hX : LUV.RpnThresholdCodeSeq X) (hZ : LUV.RpnThresholdCodeSeq Z)
+    (hZ' : LUV.RpnThresholdCodeSeq Z')
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       ∃ x, v.ValuesAt (X n) x)
     (left_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
@@ -726,7 +726,7 @@ theorem lic_self_trust_ofRepresentation_unconditional
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
     (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
     (hδinv : PolyRatCodes (fun n ↦ 1 / δ n)) (hp : PolyRatCodes p)
-    (hA : LUV.PolyThresholdCodeSeq A) (hB : LUV.PolyThresholdCodeSeq B)
+    (hA : LUV.RpnThresholdCodeSeq A) (hB : LUV.RpnThresholdCodeSeq B)
     (confidence_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       v.ValuesAt (B n) (ctsInd (δ n) (liaHistory (theoremDP T) (f n) (φ n)) (p n)))
     (product_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →

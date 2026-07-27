@@ -112,8 +112,8 @@ world semantics, and the fixed-portfolio cross-grid law are one explicit trust o
 Paper node: `thm:cee` -/
 structure ExpectedFutureExpectationQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (X Y : ℕ → LUV) where
-  source_codes : LUV.PolyThresholdCodeSeq X
-  quote_codes : LUV.PolyThresholdCodeSeq Y
+  source_codes : LUV.RpnThresholdCodeSeq X
+  quote_codes : LUV.RpnThresholdCodeSeq Y
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) ((X n).expect P (f n))
   affine : AffineQuoteEq P f (fun n => (X n).expect P n - (Y n).expect P n)
@@ -123,7 +123,7 @@ Paper node: `thm:ceu` -/
 structure FuturePriceQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (φ : ℕ → Sentence) (Y : ℕ → LUV) where
   sentence_codes : RpnSentenceCodes φ
-  quote_codes : LUV.PolyThresholdCodeSeq Y
+  quote_codes : LUV.RpnThresholdCodeSeq Y
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) (P (f n) (φ n))
   affine : AffineQuoteEq P f (fun n => P n (φ n) - (Y n).expect P n)
@@ -134,9 +134,9 @@ structure ConditionalExpectationQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (X Z Z' : ℕ → LUV) (w : ℕ → ℚ) where
   weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1
   weight_generable : PGenerableRat P w
-  source_codes : LUV.PolyThresholdCodeSeq X
-  left_codes : LUV.PolyThresholdCodeSeq Z
-  right_codes : LUV.PolyThresholdCodeSeq Z'
+  source_codes : LUV.RpnThresholdCodeSeq X
+  left_codes : LUV.RpnThresholdCodeSeq Z
+  right_codes : LUV.RpnThresholdCodeSeq Z'
   source_valued : ∀ n (v : PCWorld),
     v.ConsistentWithTheory DP → ∃ x, v.ValuesAt (X n) x
   left_reflected : ∀ n (v : PCWorld),
@@ -158,8 +158,8 @@ structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
   sentence_codes : RpnSentenceCodes φ
   delta_codes : PolyRatCodes δ
   probability_codes : PolyRatCodes p
-  product_codes : LUV.PolyThresholdCodeSeq A
-  confidence_codes : LUV.PolyThresholdCodeSeq B
+  product_codes : LUV.RpnThresholdCodeSeq A
+  confidence_codes : LUV.RpnThresholdCodeSeq B
   confidence_reflected : ∀ n (v : PCWorld),
     v.ConsistentWithTheory DP →
       v.ValuesAt (B n) (ctsInd (δ n) (P (f n) (φ n)) (p n))
