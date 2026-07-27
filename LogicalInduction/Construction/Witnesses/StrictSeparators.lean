@@ -583,13 +583,11 @@ lemma mem_separatorConsistentAt {σ : List Bool} {n : ℕ} :
 
 /-! ### The separator presentation
 
-Everything except the semimeasure fact is discharged here.  Two inputs are supplied by the
-caller and disclosed:
+Everything except the semimeasure fact is discharged here.  Realizability of the
+non-computable target assignment comes from `BitPrefixSentences.realizable` — the total
+form, which is exactly why that field is total rather than finite-prefix (the constraint
+theory pins infinitely many bits).  Two inputs are supplied by the caller and disclosed:
 
-* `hatoms` — *infinite* independent realizability of the atom family (every total Boolean
-  assignment is compatible with every finite deductive stage).  `BitPrefixSentences`
-  only carries the finite-prefix form, which cannot support a theory constraining
-  infinitely many bits; this is the paper's "predicates not mentioned in `Theory`".
 * `hce` — a program enumerating the constraint theory.  This mirrors the operational input
   `BitPrefixCodeComputation` already taken by the DUS prefix syntax: the repo does not yet
   build Foundation formula codes from scratch.
@@ -604,15 +602,13 @@ caller and disclosed:
 noncomputable def strictSeparatorPresentationOfKleene
     {DP : DeductiveProcess} (M : UniversalContinuousSemimeasure)
     (B : BitPrefixSentences DP)
-    (hatoms : ∀ (n : ℕ) (f : ℕ → Bool), ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧ ∀ k, (v.Holds (B.atom k) ↔ f k = true))
     (hce : CEEnumeration (separatorConstraint B.atom))
     (hmass : Tendsto (fun n ↦ ((separatorConsistentAt n).map M.mass).sum) atTop (𝓝 0)) :
     StrictSeparatorPresentation M B where
   constraint := separatorConstraint B.atom
   repetition := EfficientRepeatedEnumeration.ofCE hce
   jointly_possible n := by
-    obtain ⟨v, hv, hbits⟩ := hatoms n kleeneAssignment
+    obtain ⟨v, hv, hbits⟩ := B.realizable n kleeneAssignment
     refine ⟨v, hv, fun i ↦ ?_⟩
     refine (holds_separatorConstraint v B.atom i).2 (fun e _ b hb ↦ ?_)
     rw [hbits e, kleeneAssignment_of_decide hb]

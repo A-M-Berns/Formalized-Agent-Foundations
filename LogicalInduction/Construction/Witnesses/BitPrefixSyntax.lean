@@ -81,21 +81,13 @@ def emptyBitDeductiveProcess : DeductiveProcess where
 deductive process. -/
 def ordinaryIndependentBitAtoms : IndependentBitAtoms emptyBitDeductiveProcess where
   atom := LO.Propositional.Formula.atom
-  finite_realizable := by
-    intro n σ
-    let v : PCWorld := fun a ↦
-      ∃ h : a < σ.length, σ.get ⟨a, h⟩ = true
-    refine ⟨v, ?_, ?_⟩
+  realizable := by
+    intro n f
+    refine ⟨fun a ↦ f a = true, ?_, ?_⟩
     · intro φ hφ
       simp [emptyBitDeductiveProcess] at hφ
     · intro k
-      change (∃ h : k.1 < σ.length, σ.get ⟨k.1, h⟩ = true) ↔
-        σ.get k = true
-      constructor
-      · rintro ⟨h, hbit⟩
-        simpa using hbit
-      · intro hbit
-        exact ⟨k.2, hbit⟩
+      rfl
 
 lemma independentBitAtoms_nonempty :
     ∃ DP : DeductiveProcess, Nonempty (IndependentBitAtoms DP) :=
@@ -124,7 +116,7 @@ def bitPrefixSentencesOfIndependentAtoms
   enumeration_covers := bitStringEnumeration_covers
   prefix_codes := ⟨C.code, C.code_poly⟩
   holds_prefix := fun v σ ↦ PCWorld.holds_bitPrefixSentence v I.atom σ
-  finite_realizable := I.finite_realizable
+  realizable := I.realizable
 
 /-- Domination of the universal semimeasure with the opaque `BitPrefixSentences` argument
 discharged by the concrete Boolean-prefix constructor.  The approximation and threshold
