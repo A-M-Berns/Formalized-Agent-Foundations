@@ -317,7 +317,7 @@ noncomputable def representedSemidecidableClaimsOfComputation
     (C : SemidecidableComputation truth) :
     RepresentedSemidecidableClaims DP truth where
   sentence n := haltingClaimSentence (haltingClaimInput C.machine (C.input n))
-  sentence_poly := haltingClaimSentence_poly <|
+  sentence_poly := RpnSentenceCodes.ofPolySentenceCodes <| haltingClaimSentence_poly <|
     haltingClaimInput_poly
       ⟨_, PolyFueled.const (Encodable.encode C.machine)⟩ C.input_poly
   provable_of_true n hn := by
@@ -335,7 +335,7 @@ noncomputable def representedDecidableClaimsOfComputation
     RepresentedDecidableClaims DP truth where
   sentence n := boundedHaltingClaimSentence
     (boundedHaltingClaimInput C.machine (C.input n) (C.steps n))
-  sentence_poly := boundedHaltingClaimSentence_poly <|
+  sentence_poly := RpnSentenceCodes.ofPolySentenceCodes <| boundedHaltingClaimSentence_poly <|
     boundedHaltingClaimInput_poly
       ⟨_, PolyFueled.const (Encodable.encode C.machine)⟩ C.input_poly C.steps_poly
   provable_of_true n hn := by
@@ -362,10 +362,10 @@ noncomputable def inconsistentTheoryClaimsOfComputation
     (haltingClaimInput C.machine (C.input n))
   consistencySentence n := consistencyClaimSentence
     (haltingClaimInput C.machine (C.input n))
-  inconsistency_poly := inconsistencyClaimSentence_poly <|
+  inconsistency_poly := RpnSentenceCodes.ofPolySentenceCodes <| inconsistencyClaimSentence_poly <|
     haltingClaimInput_poly
       ⟨_, PolyFueled.const (Encodable.encode C.machine)⟩ C.input_poly
-  consistency_poly := consistencyClaimSentence_poly <|
+  consistency_poly := RpnSentenceCodes.ofPolySentenceCodes <| consistencyClaimSentence_poly <|
     haltingClaimInput_poly
       ⟨_, PolyFueled.const (Encodable.encode C.machine)⟩ C.input_poly
   inconsistency_provable n hn := by
@@ -388,7 +388,7 @@ noncomputable def representedHaltingClaims
     RepresentedSemidecidableClaims DP
       (fun n => CodeHalts (machines n) (inputs n)) where
   sentence n := haltingClaimSentence (haltingClaimInput (machines n) (inputs n))
-  sentence_poly := haltingClaimSentence_poly (haltingClaimInput_poly hm hi)
+  sentence_poly := RpnSentenceCodes.ofPolySentenceCodes <| haltingClaimSentence_poly (haltingClaimInput_poly hm hi)
   provable_of_true n hn := by
     apply Q.halting_enters
     apply (re_complete (T := T) universalCodeHalts_re).mp
@@ -405,7 +405,7 @@ noncomputable def representedBoundedHaltingClaims
       (fun n => CodeHaltsWithin (machines n) (inputs n) (steps n)) where
   sentence n := boundedHaltingClaimSentence
     (boundedHaltingClaimInput (machines n) (inputs n) (steps n))
-  sentence_poly := boundedHaltingClaimSentence_poly
+  sentence_poly := RpnSentenceCodes.ofPolySentenceCodes <| boundedHaltingClaimSentence_poly
     (boundedHaltingClaimInput_poly hm hi hs)
   provable_of_true n hn := by
     apply Q.boundedHalting_enters

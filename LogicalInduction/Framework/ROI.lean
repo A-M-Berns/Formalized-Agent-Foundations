@@ -32,11 +32,26 @@ def EfficientlyEmulatable (Ts : ℕ → Trader) : Prop :=
           (Nat.pair k (Nat.pair n i)) =
         some ((serializeTrades ((Ts k).strat n).trades).getD i 0)
 
+/-- The economic half of family emulation: members trade nothing before launch.
+This is the only clause the netWorth/budget chain consumes, and — unlike the
+universal-program token emission — it is metering-agnostic, so symbol-metered
+(spliced) families inhabit it too. -/
+def LaunchGated (Ts : ℕ → Trader) : Prop :=
+  ∀ k n, n < k → ((Ts k).strat n).trades = []
+
+lemma EfficientlyEmulatable.launchGated {Ts : ℕ → Trader}
+    (h : EfficientlyEmulatable Ts) : LaunchGated Ts := by
+  obtain ⟨_, _, _, hz, _, _⟩ := h
+  exact hz
+
+lemma LaunchGated.zero_before {Ts : ℕ → Trader}
+    (h : LaunchGated Ts) {k n : ℕ} (hnk : n < k) :
+    ((Ts k).strat n).trades = [] := h k n hnk
+
 lemma EfficientlyEmulatable.zero_before {Ts : ℕ → Trader}
     (h : EfficientlyEmulatable Ts) {k n : ℕ} (hnk : n < k) :
-    ((Ts k).strat n).trades = [] := by
-  obtain ⟨_, _, _, hz, _, _⟩ := h
-  exact hz k n hnk
+    ((Ts k).strat n).trades = [] :=
+  h.launchGated.zero_before hnk
 
 lemma Trader.netWorth_succ (Tr : Trader) (V : History) (v : PCWorld) (n : ℕ) :
     Tr.netWorth V v (n + 1) =
@@ -45,8 +60,8 @@ lemma Trader.netWorth_succ (Tr : Trader) (V : History) (v : PCWorld) (n : ℕ) :
 
 /-- A family member contributes no pre-launch value, so its net worth on launch day is
 exactly that day's strategy value. -/
-lemma EfficientlyEmulatable.netWorth_launch {Ts : ℕ → Trader}
-    (h : EfficientlyEmulatable Ts) (V : History) (v : PCWorld) (k : ℕ) :
+lemma LaunchGated.netWorth_launch {Ts : ℕ → Trader}
+    (h : LaunchGated Ts) (V : History) (v : PCWorld) (k : ℕ) :
     (Ts k).netWorth V v k = ((Ts k).strat k).value V v.payout := by
   rw [Trader.netWorth]
   apply Finset.sum_eq_single k
@@ -60,6 +75,11 @@ lemma EfficientlyEmulatable.netWorth_launch {Ts : ℕ → Trader}
   · intro hk
     simp at hk
 
+lemma EfficientlyEmulatable.netWorth_launch {Ts : ℕ → Trader}
+    (h : EfficientlyEmulatable Ts) (V : History) (v : PCWorld) (k : ℕ) :
+    (Ts k).netWorth V v k = ((Ts k).strat k).value V v.payout :=
+  h.launchGated.netWorth_launch V v k
+
 /-- Structured operational witness for an emulatable trader family. The raw
 `EfficientlyEmulatable` program certifies the paper-facing token semantics; these extra
 fields expose polynomially computable trade boundaries, coefficient segments, and sentence
@@ -67,13 +87,13 @@ codes. That boundary data is exactly what a uniform syntax transformation (such 
 every trade by a generated feature) needs. Indices are
 `z = ⟨⟨k,n⟩,j⟩`: family member, day, then trade number. -/
 structure PolyTradeEmulatable (Ts : ℕ → Trader) where
-  emulatable : EfficientlyEmulatable Ts
+  launchGated : LaunchGated Ts
   tradeCount : ℕ → ℕ
   coefficient : ℕ → EF
   sentence : ℕ → Sentence
   tradeCount_poly : ∃ c, PolyFueled c tradeCount
-  coefficient_poly : PolySegStream (fun z => (coefficient z).serialize)
-  sentence_poly : ∃ c, PolyFueled c (fun z => Encodable.encode (sentence z))
+  coefficient_poly : RpnSpliceStream (fun z => (coefficient z).serialize)
+  sentence_poly : RpnSentenceCodes sentence
   trades_eq : ∀ k n,
     ((Ts k).strat n).trades =
       (List.range (tradeCount (Nat.pair k n))).map (fun j =>
@@ -677,22 +697,17 @@ lemma serializeTrades_map_singleton {α : Type} (xs : List α)
 trade list. This is the reusable bridge from trade-level boundary data back to the faithful
 `serializeTrades` representation. -/
 lemma PolyTradeEmulatable.polySeg {Ts : ℕ → Trader} (h : PolyTradeEmulatable Ts) :
-    PolySegStream (fun z =>
+    RpnSpliceStream (fun z =>
       serializeTrades ((Ts z.unpair.1).strat z.unpair.2).trades) := by
   obtain ⟨ccount, hcount⟩ := h.tradeCount_poly
-  obtain ⟨csentence, hsentence⟩ := h.sentence_poly
-  have htag : PolySegStream (fun _ => [6]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 6)
-  have hsentenceSeg : PolySegStream (fun z => [Encodable.encode (h.sentence z)]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.polyTok hsentence)
-  have hone : PolySegStream (fun z =>
+  have hframe := RpnSpliceStream.tradeSlot h.sentence_poly PolyFueled.id
+  have hone : RpnSpliceStream (fun z =>
       serializeTrades [(h.coefficient z, h.sentence z)]) := by
-    refine PolySegStream.of_eq
-      ((h.coefficient_poly.append htag).append hsentenceSeg) ?_
+    refine RpnSpliceStream.of_eq (h.coefficient_poly.append hframe) ?_
     intro z
-    simp [serializeTrades, List.append_assoc]
-  have hall := PolySegStream.concatVar hone hcount
-  refine PolySegStream.of_eq hall ?_
+    simp [serializeTrades]
+  have hall := hone.concatVar hcount
+  refine RpnSpliceStream.of_eq hall ?_
   intro z
   rw [h.trades_eq]
   rw [serializeTrades_map_singleton]
@@ -720,8 +735,10 @@ noncomputable def PolyTradeEmulatable.gateBefore {Ts : ℕ → Trader}
     by_cases hs : start ≤ z.unpair.1
     · rw [if_pos hs, if_neg (by omega)]
     · rw [if_neg hs, if_pos (by omega)]
-  have hzeroSeg : PolySegStream (fun _ => []) :=
-    PolySegStream.ofTokenStream PolyTokenStream.nil
+  have hzeroSeg : RpnSpliceStream (fun _ => []) :=
+    RpnSpliceStream.ofTransparent
+      (PolySegStream.ofTokenStream PolyTokenStream.nil)
+      (fun _ => UnRpnTransparent.nil)
   have hmemberTestRaw := subc_polyFueled.comp
     (PolyFueled.left.succ_comp.pair (PolyFueled.const start))
   have hmemberTest : PolyFueled
@@ -731,10 +748,10 @@ noncomputable def PolyTradeEmulatable.gateBefore {Ts : ℕ → Trader}
     apply PolyFueled.of_eq hmemberTestRaw
     intro z
     simp only [Nat.unpair_pair]
-  have hstream : PolySegStream (fun z => serializeTrades
+  have hstream : RpnSpliceStream (fun z => serializeTrades
       (((gateTraderFamily start Ts) z.unpair.1).strat z.unpair.2).trades) := by
-    refine PolySegStream.of_eq
-      (PolySegStream.ifZero hzeroSeg h.polySeg hmemberTest) ?_
+    refine RpnSpliceStream.of_eq
+      (RpnSpliceStream.ifZero hzeroSeg h.polySeg hmemberTest) ?_
     intro z
     simp only [gateTraderFamily]
     by_cases hs : start ≤ z.unpair.1
@@ -746,10 +763,10 @@ noncomputable def PolyTradeEmulatable.gateBefore {Ts : ℕ → Trader}
     intro k n hnk
     by_cases hs : start ≤ k
     · rw [gateTraderFamily, if_pos hs]
-      exact h.emulatable.zero_before hnk
+      exact h.launchGated.zero_before hnk
     · simp [gateTraderFamily, hs, Trader.zero]
   refine
-    { emulatable := EfficientlyEmulatable.of_polySeg hzero hstream
+    { launchGated := hzero
       tradeCount := count
       coefficient := h.coefficient
       sentence := h.sentence
@@ -973,9 +990,9 @@ def featureWeightBody (active : ℕ → ℕ → Bool) (α : ℕ → EF) (k : ℕ
 `i < k` use of `PolySegStream.concatVar`: each term conditionally emits either
 `var(k-1-i) * αᵢ` or zero, and the fold's postfix `add` tags form a second linear run. -/
 lemma featureWeightBody_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (hα : PolySegStream (fun i => (α i).serialize))
+    (hα : RpnSpliceStream (fun i => (α i).serialize))
     (hactive : PolyActiveSchedule active) :
-    PolySegStream (fun k => (featureWeightBody active α k).serialize) := by
+    RpnSpliceStream (fun k => (featureWeightBody active α k).serialize) := by
   obtain ⟨cactive, hactivePF⟩ := hactive
   let term : ℕ → EF := fun z =>
     if active z.unpair.2 z.unpair.1 then
@@ -985,34 +1002,34 @@ lemma featureWeightBody_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF
     ((predc_polyFueled.comp PolyFueled.left).pair PolyFueled.right)
   have idxPF' := idxPF.of_eq (f' := fun z => z.unpair.1 - 1 - z.unpair.2)
     (fun z => by simp [Nat.pred_eq_sub_one])
-  have hvar : PolySegStream
+  have hvar : RpnSpliceStream
       (fun z => (EF.var (z.unpair.1 - 1 - z.unpair.2)).serialize) :=
-    PolySegStream.serialize_var idxPF'
-  have hαright : PolySegStream (fun z => (α z.unpair.2).serialize) :=
+    RpnSpliceStream.serialize_var idxPF'
+  have hαright : RpnSpliceStream (fun z => (α z.unpair.2).serialize) :=
     hα.comp PolyFueled.right
-  have hmul : PolySegStream (fun z =>
+  have hmul : RpnSpliceStream (fun z =>
       (EF.mul (EF.var (z.unpair.1 - 1 - z.unpair.2)) (α z.unpair.2)).serialize) :=
-    PolySegStream.serialize_mul hvar hαright
-  have hzero : PolySegStream (fun _ => (EF.const 0).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
-  have hterm : PolySegStream (fun z => (term z).serialize) := by
-    have hchoose := PolySegStream.ifZero hzero hmul hactivePF
-    refine PolySegStream.of_eq hchoose ?_
+    RpnSpliceStream.serialize_mul hvar hαright
+  have hzero : RpnSpliceStream (fun _ => (EF.const 0).serialize) :=
+    RpnSpliceStream.serialize_const 0
+  have hterm : RpnSpliceStream (fun z => (term z).serialize) := by
+    have hchoose := RpnSpliceStream.ifZero hzero hmul hactivePF
+    refine RpnSpliceStream.of_eq hchoose ?_
     intro z
     simp only [term]
     by_cases h : active z.unpair.2 z.unpair.1 = true
     · simp [h]
     · have hf : active z.unpair.2 z.unpair.1 = false := Bool.eq_false_of_not_eq_true h
       simp [hf]
-  have hterms : PolySegStream (fun k =>
+  have hterms : RpnSpliceStream (fun k =>
       (List.range k).flatMap (fun i => (term (Nat.pair k i)).serialize)) :=
-    PolySegStream.concatVar hterm PolyFueled.id
-  have haddTags : PolySegStream (fun k => List.replicate k 2) :=
-    PolySegStream.repeatTag 2 PolyFueled.id
+    RpnSpliceStream.concatVar hterm PolyFueled.id
+  have haddTags : RpnSpliceStream (fun k => List.replicate k 2) :=
+    RpnSpliceStream.repeatTag 2 (by norm_num) PolyFueled.id
   have hsumRaw := (hterms.append hzero).append haddTags
-  have hsum : PolySegStream (fun k =>
+  have hsum : RpnSpliceStream (fun k =>
       (sumFeatures (List.ofFn (fun i : Fin k => term (Nat.pair k i)))).serialize) := by
-    refine PolySegStream.of_eq hsumRaw ?_
+    refine RpnSpliceStream.of_eq hsumRaw ?_
     intro k
     rw [serialize_sumFeatures]
     simp only [List.length_ofFn]
@@ -1020,13 +1037,13 @@ lemma featureWeightBody_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF
     rw [← List.map_coe_finRange_eq_range]
     rw [List.flatMap_map]
     simp only [List.ofFn_eq_map, List.flatMap_map]
-  have hone : PolySegStream (fun _ => (EF.const 1).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)
-  have hnegone : PolySegStream (fun _ => (EF.const (-1)).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))
-  have hbody := PolySegStream.serialize_add hone
-    (PolySegStream.serialize_mul hnegone hsum)
-  refine PolySegStream.of_eq hbody ?_
+  have hone : RpnSpliceStream (fun _ => (EF.const 1).serialize) :=
+    RpnSpliceStream.serialize_const 1
+  have hnegone : RpnSpliceStream (fun _ => (EF.const (-1)).serialize) :=
+    RpnSpliceStream.serialize_const (-1)
+  have hbody := RpnSpliceStream.serialize_add hone
+    (RpnSpliceStream.serialize_mul hnegone hsum)
+  refine RpnSpliceStream.of_eq hbody ?_
   intro k
   simp only [featureWeightBody, term]
   congr 4
@@ -1066,23 +1083,23 @@ lemma sharedWeights_serialize (active : ℕ → ℕ → Bool) (α : ℕ → EF)
 This is the representation-level closure needed in addition to its semantic, rank,
 and exact-cost specifications below. -/
 lemma sharedFeatureWeight_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (hα : PolySegStream (fun i => (α i).serialize))
+    (hα : RpnSpliceStream (fun i => (α i).serialize))
     (hactive : PolyActiveSchedule active) :
-    PolySegStream (fun n => (sharedFeatureWeight active α n).serialize) := by
+    RpnSpliceStream (fun n => (sharedFeatureWeight active α n).serialize) := by
   have hbody := featureWeightBody_polySeg active α hα hactive
-  have hbodies : PolySegStream (fun n =>
+  have hbodies : RpnSpliceStream (fun n =>
       (List.range (n + 1)).flatMap
         (fun j => (featureWeightBody active α j).serialize)) := by
-    refine PolySegStream.of_eq
-      (PolySegStream.concatVar (hbody.comp PolyFueled.right)
+    refine RpnSpliceStream.of_eq
+      (RpnSpliceStream.concatVar (hbody.comp PolyFueled.right)
         PolyFueled.id.succ_comp) ?_
     intro n
     simp only [Nat.unpair_pair]
-  have hvar : PolySegStream (fun _ => (EF.var 0).serialize) :=
-    PolySegStream.serialize_var (PolyFueled.const 0)
-  have htags : PolySegStream (fun n => List.replicate (n + 1) 8) :=
-    PolySegStream.repeatTag 8 PolyFueled.id.succ_comp
-  refine PolySegStream.of_eq ((hbodies.append hvar).append htags) ?_
+  have hvar : RpnSpliceStream (fun _ => (EF.var 0).serialize) :=
+    RpnSpliceStream.serialize_var (PolyFueled.const 0)
+  have htags : RpnSpliceStream (fun n => List.replicate (n + 1) 8) :=
+    RpnSpliceStream.repeatTag 8 (by norm_num) PolyFueled.id.succ_comp
+  refine RpnSpliceStream.of_eq ((hbodies.append hvar).append htags) ?_
   intro n
   rw [sharedFeatureWeight, sharedWeights_serialize]
   rw [List.range_eq_range']
@@ -1299,13 +1316,12 @@ component, then all components launched by day `n`. -/
 lemma sharedBudgetedTrader_polySeg (Ts : ℕ → Trader)
     (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hαrank : ∀ i, (α i).rank ≤ i)
-    (hαseg : PolySegStream (fun i => (α i).serialize))
+    (hαseg : RpnSpliceStream (fun i => (α i).serialize))
     (hactive : PolyActiveSchedule active)
     (hTs : PolyTradeEmulatable Ts) :
-    PolySegStream (fun n =>
+    RpnSpliceStream (fun n =>
       serializeTrades ((sharedBudgetedTrader Ts active α hαrank).strat n).trades) := by
   obtain ⟨ccount, hcount⟩ := hTs.tradeCount_poly
-  obtain ⟨csentence, hsentence⟩ := hTs.sentence_poly
   -- Input to an individual scaled trade is `q = ⟨⟨n,k⟩,j⟩`.
   have hday := PolyFueled.left.comp PolyFueled.left
   have hmember := PolyFueled.right.comp PolyFueled.left
@@ -1313,27 +1329,22 @@ lemma sharedBudgetedTrader_polySeg (Ts : ℕ → Trader)
   have hcanonical := (hmember.pair hday).pair htradeNo
   have hβ := (sharedFeatureWeight_polySeg active α hαseg hactive).comp hmember
   have hcoeff := hTs.coefficient_poly.comp hcanonical
-  have hscaled := PolySegStream.serialize_mul hβ hcoeff
-  have htag : PolySegStream (fun _ => [6]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 6)
-  have hsentenceSeg : PolySegStream (fun q =>
-      [Encodable.encode (hTs.sentence
-        (Nat.pair (Nat.pair q.unpair.1.unpair.2 q.unpair.1.unpair.1) q.unpair.2))]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.polyTok (hsentence.comp hcanonical))
-  have hone : PolySegStream (fun q =>
+  have hscaled := RpnSpliceStream.serialize_mul hβ hcoeff
+  have hframe := RpnSpliceStream.tradeSlot hTs.sentence_poly hcanonical
+  have hone : RpnSpliceStream (fun q =>
       let n := q.unpair.1.unpair.1
       let k := q.unpair.1.unpair.2
       let j := q.unpair.2
       let z := Nat.pair (Nat.pair k n) j
       serializeTrades [
         (EF.mul (sharedFeatureWeight active α k) (hTs.coefficient z), hTs.sentence z)]) := by
-    refine PolySegStream.of_eq ((hscaled.append htag).append hsentenceSeg) ?_
+    refine RpnSpliceStream.of_eq (hscaled.append hframe) ?_
     intro q
     simp [serializeTrades, List.append_assoc]
   have hcountReindexed := hcount.comp (PolyFueled.right.pair PolyFueled.left)
-  have hcomponent := PolySegStream.concatVar hone hcountReindexed
-  have hall := PolySegStream.concatVar hcomponent PolyFueled.id.succ_comp
-  refine PolySegStream.of_eq hall ?_
+  have hcomponent := RpnSpliceStream.concatVar hone hcountReindexed
+  have hall := RpnSpliceStream.concatVar hcomponent PolyFueled.id.succ_comp
+  refine RpnSpliceStream.of_eq hall ?_
   intro n
   rw [sharedBudgetedTrader]
   simp only [Strategy.join, Strategy.scaleBy]
@@ -1350,14 +1361,14 @@ lemma sharedBudgetedTrader_polySeg (Ts : ℕ → Trader)
   rw [serializeTrades_map_singleton]
   simp only [Function.comp_apply]
 
-lemma sharedBudgetedTrader_ecTok (Ts : ℕ → Trader)
+lemma sharedBudgetedTrader_ec (Ts : ℕ → Trader)
     (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hαrank : ∀ i, (α i).rank ≤ i)
-    (hαseg : PolySegStream (fun i => (α i).serialize))
+    (hαseg : RpnSpliceStream (fun i => (α i).serialize))
     (hactive : PolyActiveSchedule active)
     (hTs : PolyTradeEmulatable Ts) :
-    EfficientlyComputableTok (sharedBudgetedTrader Ts active α hαrank) :=
-  ecTok_of_segStream _
+    EfficientlyComputable (sharedBudgetedTrader Ts active α hαrank) :=
+  RpnSpliceStream.ec _
     (sharedBudgetedTrader_polySeg Ts active α hαrank hαseg hactive hTs)
 
 lemma sharedBudgetedTrader_value (Ts : ℕ → Trader) (active : ℕ → ℕ → Bool)
@@ -1393,7 +1404,7 @@ lemma sharedBudgetedTrader_netWorth (Ts : ℕ → Trader)
     (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hαrank : ∀ i, (α i).rank ≤ i)
     (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
-    (hTs : EfficientlyEmulatable Ts) (V : History) (v : PCWorld) :
+    (hTs : LaunchGated Ts) (V : History) (v : PCWorld) :
     ∀ n,
       (sharedBudgetedTrader Ts active α hαrank).netWorth V v n =
         ∑ i : Fin (n + 1), weight active (fun k => (α k).denote V) i *
@@ -1734,10 +1745,10 @@ lemma fractionalSharedWeights_serialize (occupancy : ℕ → ℕ → EF)
 /-- Uniform segment emitter for the fractional recurrence bodies. The occupancy stream is
 indexed by `⟨day, component⟩`. -/
 lemma fractionalWeightBody_polySeg (occupancy : ℕ → ℕ → EF)
-    (α : ℕ → EF) (hα : PolySegStream (fun i => (α i).serialize))
-    (hocc : PolySegStream (fun z =>
+    (α : ℕ → EF) (hα : RpnSpliceStream (fun i => (α i).serialize))
+    (hocc : RpnSpliceStream (fun z =>
       (occupancy z.unpair.2 z.unpair.1).serialize)) :
-    PolySegStream (fun k => (fractionalWeightBody occupancy α k).serialize) := by
+    RpnSpliceStream (fun k => (fractionalWeightBody occupancy α k).serialize) := by
   let term : ℕ → EF := fun z =>
     EF.mul (EF.mul (EF.var (z.unpair.1 - 1 - z.unpair.2)) (α z.unpair.2))
       (occupancy z.unpair.2 z.unpair.1)
@@ -1745,24 +1756,24 @@ lemma fractionalWeightBody_polySeg (occupancy : ℕ → ℕ → EF)
     ((predc_polyFueled.comp PolyFueled.left).pair PolyFueled.right)
   have idxPF' := idxPF.of_eq (f' := fun z => z.unpair.1 - 1 - z.unpair.2)
     (fun z => by simp [Nat.pred_eq_sub_one])
-  have hvar : PolySegStream
+  have hvar : RpnSpliceStream
       (fun z => (EF.var (z.unpair.1 - 1 - z.unpair.2)).serialize) :=
-    PolySegStream.serialize_var idxPF'
-  have hαright : PolySegStream (fun z => (α z.unpair.2).serialize) :=
+    RpnSpliceStream.serialize_var idxPF'
+  have hαright : RpnSpliceStream (fun z => (α z.unpair.2).serialize) :=
     hα.comp PolyFueled.right
-  have hterm : PolySegStream (fun z => (term z).serialize) :=
-    PolySegStream.serialize_mul (PolySegStream.serialize_mul hvar hαright) hocc
-  have hterms : PolySegStream (fun k =>
+  have hterm : RpnSpliceStream (fun z => (term z).serialize) :=
+    RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_mul hvar hαright) hocc
+  have hterms : RpnSpliceStream (fun k =>
       (List.range k).flatMap (fun i => (term (Nat.pair k i)).serialize)) :=
-    PolySegStream.concatVar hterm PolyFueled.id
-  have hzero : PolySegStream (fun _ => (EF.const 0).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
-  have haddTags : PolySegStream (fun k => List.replicate k 2) :=
-    PolySegStream.repeatTag 2 PolyFueled.id
+    RpnSpliceStream.concatVar hterm PolyFueled.id
+  have hzero : RpnSpliceStream (fun _ => (EF.const 0).serialize) :=
+    RpnSpliceStream.serialize_const 0
+  have haddTags : RpnSpliceStream (fun k => List.replicate k 2) :=
+    RpnSpliceStream.repeatTag 2 (by norm_num) PolyFueled.id
   have hsumRaw := (hterms.append hzero).append haddTags
-  have hsum : PolySegStream (fun k =>
+  have hsum : RpnSpliceStream (fun k =>
       (sumFeatures (List.ofFn (fun i : Fin k => term (Nat.pair k i)))).serialize) := by
-    refine PolySegStream.of_eq hsumRaw ?_
+    refine RpnSpliceStream.of_eq hsumRaw ?_
     intro k
     rw [serialize_sumFeatures]
     simp only [List.length_ofFn]
@@ -1770,13 +1781,13 @@ lemma fractionalWeightBody_polySeg (occupancy : ℕ → ℕ → EF)
     rw [← List.map_coe_finRange_eq_range]
     rw [List.flatMap_map]
     simp only [List.ofFn_eq_map, List.flatMap_map]
-  have hone : PolySegStream (fun _ => (EF.const 1).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)
-  have hnegone : PolySegStream (fun _ => (EF.const (-1)).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))
-  have hbody := PolySegStream.serialize_add hone
-    (PolySegStream.serialize_mul hnegone hsum)
-  refine PolySegStream.of_eq hbody ?_
+  have hone : RpnSpliceStream (fun _ => (EF.const 1).serialize) :=
+    RpnSpliceStream.serialize_const 1
+  have hnegone : RpnSpliceStream (fun _ => (EF.const (-1)).serialize) :=
+    RpnSpliceStream.serialize_const (-1)
+  have hbody := RpnSpliceStream.serialize_add hone
+    (RpnSpliceStream.serialize_mul hnegone hsum)
+  refine RpnSpliceStream.of_eq hbody ?_
   intro k
   simp only [fractionalWeightBody, term]
   congr 4
@@ -1785,24 +1796,24 @@ lemma fractionalWeightBody_polySeg (occupancy : ℕ → ℕ → EF)
   simp
 
 lemma fractionalSharedFeatureWeight_polySeg (occupancy : ℕ → ℕ → EF)
-    (α : ℕ → EF) (hα : PolySegStream (fun i => (α i).serialize))
-    (hocc : PolySegStream (fun z =>
+    (α : ℕ → EF) (hα : RpnSpliceStream (fun i => (α i).serialize))
+    (hocc : RpnSpliceStream (fun z =>
       (occupancy z.unpair.2 z.unpair.1).serialize)) :
-    PolySegStream (fun n => (fractionalSharedFeatureWeight occupancy α n).serialize) := by
+    RpnSpliceStream (fun n => (fractionalSharedFeatureWeight occupancy α n).serialize) := by
   have hbody := fractionalWeightBody_polySeg occupancy α hα hocc
-  have hbodies : PolySegStream (fun n =>
+  have hbodies : RpnSpliceStream (fun n =>
       (List.range (n + 1)).flatMap
         (fun j => (fractionalWeightBody occupancy α j).serialize)) := by
-    refine PolySegStream.of_eq
-      (PolySegStream.concatVar (hbody.comp PolyFueled.right)
+    refine RpnSpliceStream.of_eq
+      (RpnSpliceStream.concatVar (hbody.comp PolyFueled.right)
         PolyFueled.id.succ_comp) ?_
     intro n
     simp only [Nat.unpair_pair]
-  have hvar : PolySegStream (fun _ => (EF.var 0).serialize) :=
-    PolySegStream.serialize_var (PolyFueled.const 0)
-  have htags : PolySegStream (fun n => List.replicate (n + 1) 8) :=
-    PolySegStream.repeatTag 8 PolyFueled.id.succ_comp
-  refine PolySegStream.of_eq ((hbodies.append hvar).append htags) ?_
+  have hvar : RpnSpliceStream (fun _ => (EF.var 0).serialize) :=
+    RpnSpliceStream.serialize_var (PolyFueled.const 0)
+  have htags : RpnSpliceStream (fun n => List.replicate (n + 1) 8) :=
+    RpnSpliceStream.repeatTag 8 (by norm_num) PolyFueled.id.succ_comp
+  refine RpnSpliceStream.of_eq ((hbodies.append hvar).append htags) ?_
   intro n
   rw [fractionalSharedFeatureWeight, fractionalSharedWeights_serialize]
   rw [List.range_eq_range']
@@ -1966,28 +1977,22 @@ lemma fractionalBudgetedTrader_polySeg (Ts : ℕ → Trader)
     (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
     (hαrank : ∀ i, (α i).rank ≤ i)
     (hoccRank : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n)
-    (hαseg : PolySegStream (fun i => (α i).serialize))
-    (hoccSeg : PolySegStream (fun z =>
+    (hαseg : RpnSpliceStream (fun i => (α i).serialize))
+    (hoccSeg : RpnSpliceStream (fun z =>
       (occupancy z.unpair.2 z.unpair.1).serialize))
     (hTs : PolyTradeEmulatable Ts) :
-    PolySegStream (fun n => serializeTrades
+    RpnSpliceStream (fun n => serializeTrades
       ((fractionalBudgetedTrader Ts occupancy α hαrank hoccRank).strat n).trades) := by
   obtain ⟨ccount, hcount⟩ := hTs.tradeCount_poly
-  obtain ⟨csentence, hsentence⟩ := hTs.sentence_poly
   have hday := PolyFueled.left.comp PolyFueled.left
   have hmember := PolyFueled.right.comp PolyFueled.left
   have htradeNo := PolyFueled.right
   have hcanonical := (hmember.pair hday).pair htradeNo
   have hβ := (fractionalSharedFeatureWeight_polySeg occupancy α hαseg hoccSeg).comp hmember
   have hcoeff := hTs.coefficient_poly.comp hcanonical
-  have hscaled := PolySegStream.serialize_mul hβ hcoeff
-  have htag : PolySegStream (fun _ => [6]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 6)
-  have hsentenceSeg : PolySegStream (fun q =>
-      [Encodable.encode (hTs.sentence
-        (Nat.pair (Nat.pair q.unpair.1.unpair.2 q.unpair.1.unpair.1) q.unpair.2))]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.polyTok (hsentence.comp hcanonical))
-  have hone : PolySegStream (fun q =>
+  have hscaled := RpnSpliceStream.serialize_mul hβ hcoeff
+  have hframe := RpnSpliceStream.tradeSlot hTs.sentence_poly hcanonical
+  have hone : RpnSpliceStream (fun q =>
       let n := q.unpair.1.unpair.1
       let k := q.unpair.1.unpair.2
       let j := q.unpair.2
@@ -1995,13 +2000,13 @@ lemma fractionalBudgetedTrader_polySeg (Ts : ℕ → Trader)
       serializeTrades [
         (EF.mul (fractionalSharedFeatureWeight occupancy α k) (hTs.coefficient z),
           hTs.sentence z)]) := by
-    refine PolySegStream.of_eq ((hscaled.append htag).append hsentenceSeg) ?_
+    refine RpnSpliceStream.of_eq (hscaled.append hframe) ?_
     intro q
     simp [serializeTrades, List.append_assoc]
   have hcountReindexed := hcount.comp (PolyFueled.right.pair PolyFueled.left)
-  have hcomponent := PolySegStream.concatVar hone hcountReindexed
-  have hall := PolySegStream.concatVar hcomponent PolyFueled.id.succ_comp
-  refine PolySegStream.of_eq hall ?_
+  have hcomponent := RpnSpliceStream.concatVar hone hcountReindexed
+  have hall := RpnSpliceStream.concatVar hcomponent PolyFueled.id.succ_comp
+  refine RpnSpliceStream.of_eq hall ?_
   intro n
   rw [fractionalBudgetedTrader]
   simp only [Strategy.join, Strategy.scaleBy]
@@ -2015,17 +2020,17 @@ lemma fractionalBudgetedTrader_polySeg (Ts : ℕ → Trader)
   rw [hTs.trades_eq, List.map_map, serializeTrades_map_singleton]
   simp only [Function.comp_apply]
 
-lemma fractionalBudgetedTrader_ecTok (Ts : ℕ → Trader)
+lemma fractionalBudgetedTrader_ec (Ts : ℕ → Trader)
     (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
     (hαrank : ∀ i, (α i).rank ≤ i)
     (hoccRank : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n)
-    (hαseg : PolySegStream (fun i => (α i).serialize))
-    (hoccSeg : PolySegStream (fun z =>
+    (hαseg : RpnSpliceStream (fun i => (α i).serialize))
+    (hoccSeg : RpnSpliceStream (fun z =>
       (occupancy z.unpair.2 z.unpair.1).serialize))
     (hTs : PolyTradeEmulatable Ts) :
-    EfficientlyComputableTok
+    EfficientlyComputable
       (fractionalBudgetedTrader Ts occupancy α hαrank hoccRank) :=
-  ecTok_of_segStream _
+  RpnSpliceStream.ec _
     (fractionalBudgetedTrader_polySeg Ts occupancy α hαrank hoccRank
       hαseg hoccSeg hTs)
 
@@ -2054,7 +2059,7 @@ lemma fractionalBudgetedTrader_netWorth (Ts : ℕ → Trader)
     (hoccRank : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n)
     (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
     (hoccc : ∀ i n ρ V, (occupancy i n).denoteWith ρ V = (occupancy i n).denote V)
-    (hTs : EfficientlyEmulatable Ts) (V : History) (v : PCWorld) : ∀ n,
+    (hTs : LaunchGated Ts) (V : History) (v : PCWorld) : ∀ n,
     (fractionalBudgetedTrader Ts occupancy α hαrank hoccRank).netWorth V v n =
       ∑ i : Fin (n + 1),
         fractionalWeight (fun j d => (occupancy j d).denote V)
@@ -2252,7 +2257,7 @@ lemma fractionalBudgetedTrader_exploits
       ∃ N, ∀ n, N ≤ n → (occupancy i n).denote V = 0)
     (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
     {δ : ℝ} (hδ : 0 < δ) (hfreq : ∃ᶠ i in Filter.atTop, δ ≤ (α i).denote V)
-    (hTs : EfficientlyEmulatable Ts)
+    (hTs : LaunchGated Ts)
     (hworth : ∀ i n, i ≤ n → ∀ v : PCWorld, v.ConsistentWith (DP.D n) →
       ε * (α i).denote V * (1 - (occupancy i n).denote V) -
           (α i).denote V * (occupancy i n).denote V ≤
@@ -2327,8 +2332,8 @@ lemma noFractionalRepeatableReturn
     (ε : ℝ) (hε : 0 < ε) (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
     (hαrank : ∀ i, (α i).rank ≤ i)
     (hoccRank : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n)
-    (hαseg : PolySegStream (fun i => (α i).serialize))
-    (hoccSeg : PolySegStream (fun z =>
+    (hαseg : RpnSpliceStream (fun i => (α i).serialize))
+    (hoccSeg : RpnSpliceStream (fun z =>
       (occupancy z.unpair.2 z.unpair.1).serialize))
     (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
     (hoccc : ∀ i n ρ W, (occupancy i n).denoteWith ρ W = (occupancy i n).denote W)
@@ -2346,12 +2351,12 @@ lemma noFractionalRepeatableReturn
   refine Metric.tendsto_atTop.mpr (fun δ hδ => ?_)
   have hnotfreq : ¬ ∃ᶠ i in Filter.atTop, δ ≤ (α i).denote V := by
     intro hfreq
-    have hec := fractionalBudgetedTrader_ecTok Ts occupancy α hαrank hoccRank
+    have hec := fractionalBudgetedTrader_ec Ts occupancy α hαrank hoccRank
       hαseg hoccSeg hTs
     have hex := fractionalBudgetedTrader_exploits Ts V DP ε hε occupancy α
-      hαrank hoccRank hαc hoccc hocc hzero hα0 hα1 hδ hfreq hTs.emulatable
+      hαrank hoccRank hαc hoccc hocc hzero hα0 hα1 hδ hfreq hTs.launchGated
       hworth hworld
-    exact hLI.noExploitTok _ hec hex
+    exact hLI.noExploit _ hec hex
   rw [Filter.not_frequently] at hnotfreq
   obtain ⟨N, hN⟩ := Filter.eventually_atTop.mp hnotfreq
   refine ⟨N, fun n hn => ?_⟩
@@ -2720,7 +2725,7 @@ lemma sharedBudgetedTrader_netWorth_lower
     (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
     (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
     (hP : ∀ d φ, 0 ≤ V d φ ∧ V d φ ≤ 1)
-    (hemul : EfficientlyEmulatable Ts)
+    (hemul : LaunchGated Ts)
     (hroi : ∀ i, HasROI (Ts i) V DP ε)
     (hη0 : ∀ i, 0 ≤ η i) (hηsum : Summable η)
     (hmature : MaturitySchedule Ts V DP ε η close)
@@ -2821,7 +2826,7 @@ lemma sharedBudgetedTrader_exploits_of_unboundedAllocation
     (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
     (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
     (hP : ∀ d φ, 0 ≤ V d φ ∧ V d φ ≤ 1)
-    (hemul : EfficientlyEmulatable Ts)
+    (hemul : LaunchGated Ts)
     (hroi : ∀ i, HasROI (Ts i) V DP ε)
     (hη0 : ∀ i, 0 ≤ η i) (hηsum : Summable η)
     (hmature : MaturitySchedule Ts V DP ε η close)
@@ -2867,7 +2872,7 @@ lemma sharedBudgetedTrader_exploits
     (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
     {δ : ℝ} (hδ : 0 < δ) (hδα : ∀ i, δ ≤ (α i).denote V)
     (hP : ∀ d φ, 0 ≤ V d φ ∧ V d φ ≤ 1)
-    (hemul : EfficientlyEmulatable Ts)
+    (hemul : LaunchGated Ts)
     (hroi : ∀ i, HasROI (Ts i) V DP ε)
     (hη0 : ∀ i, 0 ≤ η i) (hηsum : Summable η)
     (hmature : MaturitySchedule Ts V DP ε η close)
@@ -2893,7 +2898,7 @@ lemma sharedBudgetedTrader_exploits_of_frequently
     {δ : ℝ} (hδ : 0 < δ)
     (hδα : ∃ᶠ i in Filter.atTop, δ ≤ (α i).denote V)
     (hP : ∀ d φ, 0 ≤ V d φ ∧ V d φ ≤ 1)
-    (hemul : EfficientlyEmulatable Ts)
+    (hemul : LaunchGated Ts)
     (hroi : ∀ i, HasROI (Ts i) V DP ε)
     (hη0 : ∀ i, 0 ≤ η i) (hηsum : Summable η)
     (hmature : MaturitySchedule Ts V DP ε η close)
@@ -2912,7 +2917,7 @@ lemma repeatableROI
     (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
     (ε : ℝ) (hε : 0 < ε) (η : ℕ → ℝ) (close : ℕ → ℕ)
     (α : ℕ → EF) (hαrank : ∀ i, (α i).rank ≤ i)
-    (hαseg : PolySegStream (fun i => (α i).serialize))
+    (hαseg : RpnSpliceStream (fun i => (α i).serialize))
     (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
     (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
     (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
@@ -2924,20 +2929,20 @@ lemma repeatableROI
     (hη0 : ∀ i, 0 ≤ η i) (hηsum : Summable η)
     (hmature : MaturitySchedule Ts V DP ε η close)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    EfficientlyComputableTok
+    EfficientlyComputable
         (sharedBudgetedTrader Ts (activeUntil close) α hαrank) ∧
       (sharedBudgetedTrader Ts (activeUntil close) α hαrank).Exploits V DP := by
   constructor
-  · exact sharedBudgetedTrader_ecTok Ts (activeUntil close) α hαrank hαseg hactive hTs
+  · exact sharedBudgetedTrader_ec Ts (activeUntil close) α hαrank hαseg hactive hTs
   · exact sharedBudgetedTrader_exploits Ts V DP ε hε η close α hαrank hαc hmag
-      hα0 hα1 hδ hδα hP hTs.emulatable hroi hη0 hηsum hmature hworld
+      hα0 hα1 hδ hδα hP hTs.launchGated hroi hη0 hηsum hmature hworld
 
 /-- Sparse form of the full repeatable-ROI construction. -/
 lemma repeatableROI_of_frequently
     (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
     (ε : ℝ) (hε : 0 < ε) (η : ℕ → ℝ) (close : ℕ → ℕ)
     (α : ℕ → EF) (hαrank : ∀ i, (α i).rank ≤ i)
-    (hαseg : PolySegStream (fun i => (α i).serialize))
+    (hαseg : RpnSpliceStream (fun i => (α i).serialize))
     (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
     (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
     (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
@@ -2950,13 +2955,13 @@ lemma repeatableROI_of_frequently
     (hη0 : ∀ i, 0 ≤ η i) (hηsum : Summable η)
     (hmature : MaturitySchedule Ts V DP ε η close)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    EfficientlyComputableTok
+    EfficientlyComputable
         (sharedBudgetedTrader Ts (activeUntil close) α hαrank) ∧
       (sharedBudgetedTrader Ts (activeUntil close) α hαrank).Exploits V DP := by
   constructor
-  · exact sharedBudgetedTrader_ecTok Ts (activeUntil close) α hαrank hαseg hactive hTs
+  · exact sharedBudgetedTrader_ec Ts (activeUntil close) α hαrank hαseg hactive hTs
   · exact sharedBudgetedTrader_exploits_of_frequently Ts V DP ε hε η close α hαrank
-      hαc hmag hα0 hα1 hδ hδα hP hTs.emulatable hroi hη0 hηsum hmature hworld
+      hαc hmag hα0 hα1 hδ hδα hP hTs.launchGated hroi hη0 hηsum hmature hworld
 
 /-- `lem:type3`, operational paper-facing form: a logical inductor admits no efficiently
 repeatable family with fixed positive ROI and a polynomial maturity verifier unless the
@@ -2966,7 +2971,7 @@ theorem noRepeatableROI
     [hLI : IsLogicalInductor V DP]
     (ε : ℝ) (hε : 0 < ε) (η : ℕ → ℝ) (close : ℕ → ℕ)
     (α : ℕ → EF) (hαrank : ∀ i, (α i).rank ≤ i)
-    (hαseg : PolySegStream (fun i => (α i).serialize))
+    (hαseg : RpnSpliceStream (fun i => (α i).serialize))
     (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
     (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
     (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
@@ -2983,7 +2988,7 @@ theorem noRepeatableROI
     intro hfreq
     obtain ⟨hec, hex⟩ := repeatableROI_of_frequently Ts V DP ε hε η close α hαrank
       hαseg hαc hmag hα0 hα1 hδ hfreq hP hTs hactive hroi hη0 hηsum hmature hworld
-    exact hLI.noExploitTok _ hec hex
+    exact hLI.noExploit _ hec hex
   rw [Filter.not_frequently] at hnotfreq
   obtain ⟨N, hN⟩ := Filter.eventually_atTop.mp hnotfreq
   refine ⟨N, fun n hn => ?_⟩
@@ -2998,7 +3003,7 @@ lemma noRepeatableROI_of_verifiedMaturity
     [hLI : IsLogicalInductor V DP]
     (ε : ℝ) (hε : 0 < ε) (η : ℕ → ℝ)
     (α : ℕ → EF) (hαrank : ∀ i, (α i).rank ≤ i)
-    (hαseg : PolySegStream (fun i => (α i).serialize))
+    (hαseg : RpnSpliceStream (fun i => (α i).serialize))
     (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
     (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
     (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
@@ -3034,7 +3039,7 @@ lemma maturitySchedule_closing (Ts : ℕ → Trader) (V : History)
 #print axioms fractionalWeight_nonneg_and_postAllocation_le
 #print axioms fractionalSharedFeatureWeight_denote
 #print axioms fractionalSharedFeatureWeight_polySeg
-#print axioms fractionalBudgetedTrader_ecTok
+#print axioms fractionalBudgetedTrader_ec
 #print axioms fractionalBudgetedTrader_exploits
 #print axioms noFractionalRepeatableReturn
 #print axioms EfficientlyEmulatable.of_polySeg
@@ -3054,7 +3059,7 @@ lemma maturitySchedule_closing (Ts : ℕ → Trader) (V : History)
 #print axioms sharedFeatureWeight_polySeg
 #print axioms sharedBudgetedTrader_value
 #print axioms sharedBudgetedTrader_magnitude
-#print axioms sharedBudgetedTrader_ecTok
+#print axioms sharedBudgetedTrader_ec
 #print axioms sharedBudgetedTrader_netWorth_lower
 #print axioms allocationPrefix_not_bddAbove
 #print axioms allocationPrefix_not_bddAbove_of_frequently

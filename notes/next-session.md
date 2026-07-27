@@ -188,6 +188,18 @@ REMAINING (the per-family march):
          `.gateBefore` mirrors with `RpnSpliceStream.ifZero` + an empty-stream
          base (`RpnSpliceStream` of `fun _ => []` = ofTransparent of nil-token
          stream).
+       * **FLIP COMPLETE (2026-07-26, full build green, all gates pass).**  Every
+         PolySequence/PolyTradeEmulatable/PGenerableWeighting/GeneratedRatFeature/
+         LUVCombinationSyntax/FeedbackTraderEmission emission field carries
+         `RpnSpliceStream`/`RpnSentenceCodes`; the engine core lives upstream in
+         `Framework/RpnSplice.lean` (PolySentenceCodes/PolyRatCodes moved to
+         Computable).  The escape-splice fragment bridge was NOT needed: both
+         `GeneratedRatFeature` inhabitants are constant features.  The arithmetic
+         quotation layer (`QuoteCodeOfMarket`, Gödel-coding is value-dependent)
+         legitimately keeps whole-value `PolySentenceCodes` hypotheses and wraps via
+         `.ofPolySentenceCodes` at flipped call sites.  Deferred niceties: finite
+         k-way block dispatch for thm:lex (currently `ofPolySentenceCodes` wrap);
+         `LUV.PolyThresholdCodes` block form (threshold sentences stay whole-value).
        * Keep the interim compat (`noExploitTok`) callers green until each chain is
          flipped; flip `hLI.noExploitTok → hLI.noExploit` per chain as its cert
          lands in the collapsed class.: survey 2026-07-26 confirms thm:tl/perkno, thm:lex

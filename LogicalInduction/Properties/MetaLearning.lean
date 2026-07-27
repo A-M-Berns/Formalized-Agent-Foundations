@@ -19,7 +19,7 @@ process.  This is the exact propositional boundary used for halting and inconsis
 Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 structure RepresentedSemidecidableClaims (DP : DeductiveProcess) (truth : ℕ → Prop) where
   sentence : ℕ → Sentence
-  sentence_poly : PolySentenceCodes sentence
+  sentence_poly : RpnSentenceCodes sentence
   provable_of_true : ∀ n, truth n → ∃ k, sentence n ∈ DP.D k
 
 /-- A uniformly emitted sentence family representing a decidable computation.  In addition
@@ -47,8 +47,8 @@ Paper node: `thm:incons` -/
 structure InconsistentTheoryClaims (DP : DeductiveProcess) (inconsistent : ℕ → Prop) where
   inconsistencySentence : ℕ → Sentence
   consistencySentence : ℕ → Sentence
-  inconsistency_poly : PolySentenceCodes inconsistencySentence
-  consistency_poly : PolySentenceCodes consistencySentence
+  inconsistency_poly : RpnSentenceCodes inconsistencySentence
+  consistency_poly : RpnSentenceCodes consistencySentence
   inconsistency_provable : ∀ n, inconsistent n →
     ∃ k, inconsistencySentence n ∈ DP.D k
   consistency_disprovable : ∀ n, inconsistent n →

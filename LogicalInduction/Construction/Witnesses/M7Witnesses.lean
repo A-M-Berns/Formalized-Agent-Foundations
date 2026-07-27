@@ -1067,19 +1067,33 @@ lemma AffineCombination.PolySequence.primrec {As : ℕ → AffineCombination}
   have hcount : Primrec h.termCount := by
     obtain ⟨c, hc⟩ := h.termCount_poly
     exact hc.primrec
-  have hconstTokens : Primrec fun n => (As n).const.serialize :=
-    h.const_poly.primrec
+  have hconstTokens : Primrec fun n => (As n).const.serialize := by
+    obtain ⟨s, hs, hcontract⟩ := h.const_poly
+    refine (unRpn_prim.comp hs.primrec).of_eq fun n => ?_
+    have h0 := (hcontract n).unRpn_eq
+    rwa [show unRpn ([] : List ℕ) = [] from rfl, List.append_nil] at h0
   have hconst : Primrec fun n => (As n).const :=
     (efFromSerializedTokens_prim.comp hconstTokens).of_eq fun n =>
       efFromSerializedTokens_serialize (As n).const
-  have hcoefficientTokens : Primrec fun z => (h.coefficient z).serialize :=
-    h.coefficient_poly.primrec
+  have hcoefficientTokens : Primrec fun z => (h.coefficient z).serialize := by
+    obtain ⟨s, hs, hcontract⟩ := h.coefficient_poly
+    refine (unRpn_prim.comp hs.primrec).of_eq fun z => ?_
+    have h0 := (hcontract z).unRpn_eq
+    rwa [show unRpn ([] : List ℕ) = [] from rfl, List.append_nil] at h0
   have hcoefficient : Primrec h.coefficient :=
     (efFromSerializedTokens_prim.comp hcoefficientTokens).of_eq fun z =>
       efFromSerializedTokens_serialize (h.coefficient z)
   have hsentenceCode : Primrec fun z => Encodable.encode (h.sentence z) := by
-    obtain ⟨c, hc⟩ := h.sentence_poly
-    exact hc.primrec
+    obtain ⟨s, hs, hp⟩ := h.sentence_poly
+    have hlist := hs.primrec
+    have hparse : Primrec fun z => parseRpnC (s z).length (s z) :=
+      parseRpnC_prim.comp (Primrec.list_length.comp hlist) hlist
+    refine (Primrec.fst.comp (Primrec.option_getD.comp hparse
+      (Primrec.const ((0, []) : ℕ × List ℕ)))).of_eq fun z => ?_
+    rw [show parseRpnC (s z).length (s z) =
+        some (Encodable.encode (h.sentence z), []) by
+      rw [parseRpnC_eq, hp z]; rfl]
+    rfl
   have hsentence : Primrec h.sentence := by
     have hdecode : Primrec fun z =>
         (Encodable.decode (Encodable.encode (h.sentence z))).getD

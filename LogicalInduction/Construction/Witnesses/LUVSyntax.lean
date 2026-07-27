@@ -27,8 +27,8 @@ structure LUVCombinationSyntax (As : ℕ → LUVCombination) where
   coefficient : ℕ → EF
   luv : ℕ → LUV
   termCount_poly : ∃ c, PolyFueled c termCount
-  const_poly : PolySegStream (fun n ↦ (As n).const.serialize)
-  coefficient_poly : PolySegStream (fun z ↦ (coefficient z).serialize)
+  const_poly : RpnSpliceStream (fun n ↦ (As n).const.serialize)
+  coefficient_poly : RpnSpliceStream (fun z ↦ (coefficient z).serialize)
   threshold_poly : LUV.PolyThresholdCodeSeq luv
   terms_eq : ∀ n, (As n).terms = (List.range (termCount n)).map (fun j ↦
     (coefficient (Nat.pair n j), luv (Nat.pair n j)))
@@ -208,9 +208,8 @@ noncomputable def diagonalMeshPoly {As : ℕ → LUVCombination}
       Nat.pair z.unpair.1 (S.meshMember z)) :=
     PolyFueled.left.pair hmember
   have hcoeffSource := S.coefficient_poly.comp hsource
-  have hinvSource := PolySegStream.ofTokenStream
-    (PolyTokenStream.serialize_const_comp
-      ⟨cinv.comp Nat.Partrec.Code.left, hinv.comp PolyFueled.left⟩)
+  have hinvSource := RpnSpliceStream.serialize_const_comp
+    ⟨cinv.comp Nat.Partrec.Code.left, hinv.comp PolyFueled.left⟩
   have hquery : PolyFueled _ (fun z : ℕ ↦
       Nat.pair (Nat.pair z.unpair.1 (S.meshMember z))
         (Nat.pair z.unpair.1 (S.meshOffset z))) :=
@@ -221,10 +220,10 @@ noncomputable def diagonalMeshPoly {As : ℕ → LUVCombination}
     sentence := S.meshSentence
     termCount_poly := S.meshTermCount_poly
     const_poly := S.const_poly
-    coefficient_poly := PolySegStream.of_eq
-      (PolySegStream.serialize_mul hcoeffSource hinvSource) (fun z ↦ by
+    coefficient_poly := RpnSpliceStream.of_eq
+      (RpnSpliceStream.serialize_mul hcoeffSource hinvSource) (fun z ↦ by
         simp [meshCoefficient])
-    sentence_poly := ⟨cthreshold.comp _,
+    sentence_poly := RpnSentenceCodes.ofPolySentenceCodes ⟨cthreshold.comp _,
       (hthreshold.comp hquery).of_eq (fun z ↦ by
         simp [meshSentence])⟩
     terms_eq := ?_
@@ -633,45 +632,44 @@ private lemma triangularFold_serialize (G : ℕ → AffineCombination)
 
 private lemma triangularSignal_polySeg {G : ℕ → AffineCombination}
     (hG : PolySequence G) (threshold pad : ℚ) :
-    PolySegStream (fun z ↦
+    RpnSpliceStream (fun z ↦
       (triangularSignal G z.unpair.1 z.unpair.2 threshold pad).serialize) := by
   have hquery : PolyFueled _ (fun z : ℕ ↦
       Nat.pair (triangularIndex z.unpair.1 z.unpair.2) z.unpair.1) :=
     ((PolyFueled.left.pair PolyFueled.right.succ_comp).pair
       PolyFueled.left).of_eq (fun z ↦ by simp [triangularIndex])
-  refine PolySegStream.of_eq
-    (PolySegStream.serialize_sellIndF (hG.priceFeature_polySeg.comp hquery)
+  refine RpnSpliceStream.of_eq
+    (RpnSpliceStream.serialize_sellIndF (hG.priceFeature_polySeg.comp hquery)
       threshold pad) ?_
   intro z
   simp [triangularSignal]
 
 private lemma triangularRemainder_polySeg {G : ℕ → AffineCombination}
     (hG : PolySequence G) (threshold pad : ℚ) :
-    PolySegStream (fun z ↦
+    RpnSpliceStream (fun z ↦
       (triangularRemainder G z.unpair.1 z.unpair.2 threshold pad).serialize) := by
   have hsig := triangularSignal_polySeg hG threshold pad
-  have hone : PolySegStream (fun _ : ℕ ↦ (EF.const 1).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)
-  have hneg : PolySegStream (fun _ : ℕ ↦ (EF.const (-1)).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))
-  have honeMinus := PolySegStream.serialize_add hone
-    (PolySegStream.serialize_mul hneg hsig)
-  have hblock := honeMinus.append
-    (PolySegStream.ofTokenStream (PolyTokenStream.const 3))
+  have hone : RpnSpliceStream (fun _ : ℕ ↦ (EF.const 1).serialize) :=
+    RpnSpliceStream.serialize_const 1
+  have hneg : RpnSpliceStream (fun _ : ℕ ↦ (EF.const (-1)).serialize) :=
+    RpnSpliceStream.serialize_const (-1)
+  have honeMinus := RpnSpliceStream.serialize_add hone
+    (RpnSpliceStream.serialize_mul hneg hsig)
+  have hblock := honeMinus.append (RpnSpliceStream.tag 3 (by norm_num))
   have hreindex : PolyFueled _ (fun q : ℕ ↦
       Nat.pair q.unpair.1.unpair.1 q.unpair.2) :=
     (PolyFueled.left.comp PolyFueled.left).pair PolyFueled.right
-  have hblocks := PolySegStream.concatVar (hblock.comp hreindex) PolyFueled.right
-  refine PolySegStream.of_eq (hone.append hblocks) ?_
+  have hblocks := RpnSpliceStream.concatVar (hblock.comp hreindex) PolyFueled.right
+  refine RpnSpliceStream.of_eq (hone.append hblocks) ?_
   intro z
   rw [triangularRemainder_serialize]
   simp [oneMinus]
 
 private lemma triangularWeight_polySeg {G : ℕ → AffineCombination}
     (hG : PolySequence G) (threshold pad : ℚ) :
-    PolySegStream (fun z ↦
+    RpnSpliceStream (fun z ↦
       (triangularWeight G z.unpair.1 z.unpair.2 threshold pad).serialize) :=
-  PolySegStream.serialize_mul (triangularRemainder_polySeg hG threshold pad)
+  RpnSpliceStream.serialize_mul (triangularRemainder_polySeg hG threshold pad)
     (triangularSignal_polySeg hG threshold pad)
 
 private lemma triangularMember_lt {G : ℕ → AffineCombination}
@@ -789,22 +787,22 @@ noncomputable def triangularSoftmaxPoly {G : ℕ → AffineCombination}
       simp [triangularIndex])
   have hweight := triangularWeight_polySeg hG threshold pad
   have hweightMember := hweight.comp (PolyFueled.left.pair hmember)
-  have hcoefficient := PolySegStream.serialize_mul hweightMember
+  have hcoefficient := RpnSpliceStream.serialize_mul hweightMember
     (hG.coefficient_poly.comp hcanonical)
   have hsourceIndex : PolyFueled _ (fun z : ℕ ↦
       triangularIndex z.unpair.1 z.unpair.2) :=
     (PolyFueled.left.pair PolyFueled.right.succ_comp).of_eq (fun z ↦ by
       simp [triangularIndex])
-  have hconstBlock := PolySegStream.serialize_mul hweight
+  have hconstBlock := RpnSpliceStream.serialize_mul hweight
     (hG.const_poly.comp hsourceIndex)
-  have hconstTerms := PolySegStream.concatVar hconstBlock PolyFueled.id
-  have hzero : PolySegStream (fun _ : ℕ ↦ (EF.const 0).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
-  have htags := PolySegStream.repeatTag 2 PolyFueled.id
+  have hconstTerms := RpnSpliceStream.concatVar hconstBlock PolyFueled.id
+  have hzero : RpnSpliceStream (fun _ : ℕ ↦ (EF.const 0).serialize) :=
+    RpnSpliceStream.serialize_const 0
+  have htags := RpnSpliceStream.repeatTag 2 (by norm_num) PolyFueled.id
   have hconstRaw := (hconstTerms.append hzero).append htags
-  have hconst : PolySegStream (fun m ↦
+  have hconst : RpnSpliceStream (fun m ↦
       (softmaxAffine (triangularGaps G m) m threshold pad (.const 1)).const.serialize) := by
-    refine PolySegStream.of_eq hconstRaw ?_
+    refine RpnSpliceStream.of_eq hconstRaw ?_
     intro m
     rw [softmaxAffine_triangular_const, triangularFold_serialize]
     simp
@@ -814,7 +812,7 @@ noncomputable def triangularSoftmaxPoly {G : ℕ → AffineCombination}
     sentence := triangularSentence hG
     termCount_poly := triangularTermCount_poly hG
     const_poly := hconst
-    coefficient_poly := PolySegStream.of_eq hcoefficient (fun z ↦ by
+    coefficient_poly := RpnSpliceStream.of_eq hcoefficient (fun z ↦ by
       simp [triangularCoefficient])
     sentence_poly := ?_
     terms_eq := ?_
@@ -823,9 +821,8 @@ noncomputable def triangularSoftmaxPoly {G : ℕ → AffineCombination}
     const_closed := ?_
     coefficient_closed := ?_
   }
-  · obtain ⟨c, hc⟩ := hG.sentence_poly
-    exact ⟨c.comp _, (hc.comp hcanonical).of_eq (fun z ↦ by
-      simp [triangularSentence])⟩
+  · exact (hG.sentence_poly.comp hcanonical).of_eq (fun z ↦ by
+      simp [triangularSentence])
   · intro m
     rw [softmaxAffine_triangular_terms]
     let lenFn := triangularMemberLength hG
@@ -997,11 +994,11 @@ noncomputable def meshFamilyPoly {As : ℕ → LUVCombination}
       Nat.pair (source z.unpair.1) (member z)) :=
     (hsourcePF.comp PolyFueled.left).pair hmember
   have hcoeffSource := S.coefficient_poly.comp hsourceTerm
-  have hinvPrecision : PolySegStream (fun z ↦
+  have hinvPrecision : RpnSpliceStream (fun z ↦
       (EF.const (1 / (precision z.unpair.1 : ℚ))).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const_comp
+    RpnSpliceStream.serialize_const_comp
       ⟨cinv.comp (cprecision.comp Nat.Partrec.Code.left),
-        hinv.comp (hprecisionPF.comp PolyFueled.left)⟩)
+        hinv.comp (hprecisionPF.comp PolyFueled.left)⟩
   have hthresholdQuery : PolyFueled _ (fun z : ℕ ↦
       Nat.pair (Nat.pair (source z.unpair.1) (member z))
         (Nat.pair (precision z.unpair.1) (offset z))) :=
@@ -1016,8 +1013,8 @@ noncomputable def meshFamilyPoly {As : ℕ → LUVCombination}
         ((offset z : ℚ) / (precision z.unpair.1 : ℚ))
     termCount_poly := ⟨_, hcountPF⟩
     const_poly := S.const_poly.comp hsourcePF
-    coefficient_poly := PolySegStream.serialize_mul hcoeffSource hinvPrecision
-    sentence_poly := ⟨cthreshold.comp _,
+    coefficient_poly := RpnSpliceStream.serialize_mul hcoeffSource hinvPrecision
+    sentence_poly := RpnSentenceCodes.ofPolySentenceCodes ⟨cthreshold.comp _,
       (hthreshold.comp hthresholdQuery).of_eq (fun z ↦ by simp)⟩
     terms_eq := ?_
     const_rank := ?_
@@ -1081,7 +1078,7 @@ noncomputable def PolySequence.addConstEF {As : ℕ → AffineCombination}
   coefficient := hA.coefficient
   sentence := hA.sentence
   termCount_poly := hA.termCount_poly
-  const_poly := PolySegStream.serialize_add hA.const_poly he.polySeg
+  const_poly := RpnSpliceStream.serialize_add hA.const_poly he.polySeg
   coefficient_poly := hA.coefficient_poly
   sentence_poly := hA.sentence_poly
   terms_eq := hA.terms_eq
@@ -1180,11 +1177,11 @@ noncomputable def upperGapPoly {As : ℕ → LUVCombination}
   have hbase := hlow.add hhigh.neg
   let e : ℕ → EF := fun q ↦ LUVCombination.meshErrorFeature q.unpair.2 b
   have he : PGenerableWeighting e := {
-    polySeg := PolySegStream.serialize_mul
-      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-(2 * b))))
-      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const_comp
+    polySeg := RpnSpliceStream.serialize_mul
+      (RpnSpliceStream.serialize_const (-(2 * b)))
+      (RpnSpliceStream.serialize_const_comp
         ⟨(Classical.choose encode_inv_nat_polyFueled).comp Nat.Partrec.Code.right,
-          (Classical.choose_spec encode_inv_nat_polyFueled).comp PolyFueled.right⟩))
+          (Classical.choose_spec encode_inv_nat_polyFueled).comp PolyFueled.right⟩)
     rank_le := by intro q; simp [e, LUVCombination.meshErrorFeature, EF.rank]
     closed := by intro q ρ V; simp [e, LUVCombination.meshErrorFeature, EF.denoteWith]
   }
@@ -1203,11 +1200,11 @@ noncomputable def lowerGapPoly {As : ℕ → LUVCombination}
   have hbase := hhigh.add hlow.neg
   let e : ℕ → EF := fun q ↦ LUVCombination.meshErrorFeature q.unpair.2 b
   have he : PGenerableWeighting e := {
-    polySeg := PolySegStream.serialize_mul
-      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-(2 * b))))
-      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const_comp
+    polySeg := RpnSpliceStream.serialize_mul
+      (RpnSpliceStream.serialize_const (-(2 * b)))
+      (RpnSpliceStream.serialize_const_comp
         ⟨(Classical.choose encode_inv_nat_polyFueled).comp Nat.Partrec.Code.right,
-          (Classical.choose_spec encode_inv_nat_polyFueled).comp PolyFueled.right⟩))
+          (Classical.choose_spec encode_inv_nat_polyFueled).comp PolyFueled.right⟩)
     rank_le := by intro q; simp [e, LUVCombination.meshErrorFeature, EF.rank]
     closed := by intro q ρ V; simp [e, LUVCombination.meshErrorFeature, EF.denoteWith]
   }

@@ -81,7 +81,7 @@ the affine field is the concrete same-day portfolio consumed by the proof.
 Paper node: `thm:epr` -/
 structure CurrentPriceExpectationQuote (P : History) (DP : DeductiveProcess)
     (φ : ℕ → Sentence) (Y : ℕ → LUV) where
-  sentence_codes : PolySentenceCodes φ
+  sentence_codes : RpnSentenceCodes φ
   quote_codes : LUV.PolyThresholdCodeSeq Y
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) (P n (φ n))
@@ -149,7 +149,7 @@ neither object assumes the error bounds proved below.
 Paper node: `thm:ref` -/
 structure IntrospectionIntervalQuote (P : History) (DP : DeductiveProcess)
     (φ : ℕ → Sentence) (a b δ : ℕ → ℚ) where
-  source_codes : PolySentenceCodes φ
+  source_codes : RpnSentenceCodes φ
   lower_feature : ℕ → EF
   lower_generated : GeneratedRatFeature P a lower_feature
   upper_feature : ℕ → EF
@@ -161,7 +161,7 @@ structure IntrospectionIntervalQuote (P : History) (DP : DeductiveProcess)
   probability_bounds : ∀ n,
     0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1
   quote : ℕ → Sentence
-  quote_codes : PolySentenceCodes quote
+  quote_codes : RpnSentenceCodes quote
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     (v.Holds (quote n) ↔ (a n : ℝ) < P n (φ n) ∧ P n (φ n) < (b n : ℝ))
   inside_affine : CompletedAffineQuoteEq P DP (fun n ↦
@@ -311,7 +311,7 @@ Paper node: `thm:lp` -/
 structure ParadoxResistanceQuote (P : History) (DP : DeductiveProcess)
     (p : ℚ) where
   sentence : ℕ → Sentence
-  sentence_codes : PolySentenceCodes sentence
+  sentence_codes : RpnSentenceCodes sentence
   width : ℕ → ℚ
   width_codes : PolyRatCodes width
   width_pos : ∀ n, 0 < width n

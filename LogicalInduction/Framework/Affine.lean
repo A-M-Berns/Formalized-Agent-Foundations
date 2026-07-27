@@ -14,6 +14,7 @@ objects compared by affine provability/preemptive learning.
 import LogicalInduction.Framework.Criterion
 import LogicalInduction.Framework.Asymptotics
 import LogicalInduction.Framework.Computable
+import LogicalInduction.Framework.RpnEmission
 import Mathlib.Topology.Algebra.InfiniteSum.Basic
 
 namespace LogicalInduction
@@ -231,9 +232,9 @@ structure PolySequence (As : ℕ → AffineCombination) where
   coefficient : ℕ → EF
   sentence : ℕ → Sentence
   termCount_poly : ∃ c, PolyFueled c termCount
-  const_poly : PolySegStream (fun n => (As n).const.serialize)
-  coefficient_poly : PolySegStream (fun z => (coefficient z).serialize)
-  sentence_poly : ∃ c, PolyFueled c (fun z => Encodable.encode (sentence z))
+  const_poly : RpnSpliceStream (fun n => (As n).const.serialize)
+  coefficient_poly : RpnSpliceStream (fun z => (coefficient z).serialize)
+  sentence_poly : RpnSentenceCodes sentence
   terms_eq : ∀ n,
     (As n).terms = (List.range (termCount n)).map (fun j =>
       (coefficient (Nat.pair n j), sentence (Nat.pair n j)))
@@ -293,44 +294,27 @@ lemma priceFeature_serialize (A : AffineCombination) (n : ℕ) :
 feature.  Input `z = ⟨n,m⟩` denotes the feature pricing `Aₙ` on market day `m`. -/
 lemma PolySequence.priceFeature_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) :
-    PolySegStream (fun z => ((As z.unpair.1).priceFeature z.unpair.2).serialize) := by
+    RpnSpliceStream (fun z => ((As z.unpair.1).priceFeature z.unpair.2).serialize) := by
   obtain ⟨ccount, hcount⟩ := h.termCount_poly
-  obtain ⟨csentence, hsentence⟩ := h.sentence_poly
   -- An individual term block is indexed by `q = ⟨⟨n,m⟩,j⟩`.
   have hmember := PolyFueled.left.comp PolyFueled.left
   have hday := PolyFueled.right.comp PolyFueled.left
   have hterm := PolyFueled.right
   have hcanonical := hmember.pair hterm
   have hcoeff := h.coefficient_poly.comp hcanonical
-  have hpriceTok : PolyTokenStream (fun q =>
-      (EF.price (h.sentence
-          (Nat.pair q.unpair.1.unpair.1 q.unpair.2)) q.unpair.1.unpair.2).serialize) := by
-    have heq : (fun q : ℕ =>
-        (EF.price (h.sentence
-            (Nat.pair q.unpair.1.unpair.1 q.unpair.2)) q.unpair.1.unpair.2).serialize) =
-        (fun q : ℕ => [0] ++ [Encodable.encode (h.sentence
-            (Nat.pair q.unpair.1.unpair.1 q.unpair.2))] ++ [q.unpair.1.unpair.2]) := by
-      funext q
-      simp [EF.serialize]
-    rw [heq]
-    exact (PolyTokenStream.const 0).append
-      ((PolyTokenStream.polyTok (hsentence.comp hcanonical)).append
-        (PolyTokenStream.polyTok hday))
-  have hprice := PolySegStream.ofTokenStream hpriceTok
-  have hmul : PolySegStream (fun _ => [3]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 3)
-  have hadd : PolySegStream (fun _ => [2]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 2)
-  have hblock : PolySegStream (fun q =>
+  have hprice := RpnSpliceStream.serialize_price h.sentence_poly hcanonical hday
+  have hblock : RpnSpliceStream (fun q =>
       (h.coefficient (Nat.pair q.unpair.1.unpair.1 q.unpair.2)).serialize ++
         (EF.price (h.sentence (Nat.pair q.unpair.1.unpair.1 q.unpair.2))
           q.unpair.1.unpair.2).serialize ++ [3, 2]) := by
-    refine PolySegStream.of_eq (((hcoeff.append hprice).append hmul).append hadd) ?_
+    refine RpnSpliceStream.of_eq
+      (((hcoeff.append hprice).append (RpnSpliceStream.tag 3 (by norm_num))).append
+        (RpnSpliceStream.tag 2 (by norm_num))) ?_
     intro q
     simp [List.append_assoc]
-  have hblocks := PolySegStream.concatVar hblock (hcount.comp PolyFueled.left)
+  have hblocks := hblock.concatVar (hcount.comp PolyFueled.left)
   have hconst := h.const_poly.comp PolyFueled.left
-  refine PolySegStream.of_eq (hconst.append hblocks) ?_
+  refine RpnSpliceStream.of_eq (hconst.append hblocks) ?_
   intro z
   rw [priceFeature_serialize, h.terms_eq]
   simp only [List.flatMap_map, Nat.unpair_pair]
@@ -535,26 +519,20 @@ lemma magnitudeFeature_serialize (A : AffineCombination) :
 /-- Uniform emission of the reified share magnitude for a polynomial affine sequence. -/
 lemma PolySequence.magnitudeFeature_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) :
-    PolySegStream (fun n => (As n).magnitudeFeature.serialize) := by
+    RpnSpliceStream (fun n => (As n).magnitudeFeature.serialize) := by
   obtain ⟨ccount, hcount⟩ := h.termCount_poly
-  have hneg : PolySegStream (fun _ => (EF.const (-1)).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))
-  have hmul : PolySegStream (fun _ => [3]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 3)
-  have hmax : PolySegStream (fun _ => [4]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 4)
-  have habs : PolySegStream (fun z => (absFeature (h.coefficient z)).serialize) := by
-    refine PolySegStream.of_eq
-      ((((h.coefficient_poly.append hneg).append h.coefficient_poly).append hmul).append
-        hmax) ?_
+  have habs : RpnSpliceStream (fun z => (absFeature (h.coefficient z)).serialize) := by
+    refine RpnSpliceStream.of_eq
+      ((((h.coefficient_poly.append (RpnSpliceStream.serialize_const (-1))).append
+          h.coefficient_poly).append (RpnSpliceStream.tag 3 (by norm_num))).append
+        (RpnSpliceStream.tag 4 (by norm_num))) ?_
     intro z
     rw [absFeature_serialize]
-    simp [List.append_assoc]
-  have hterms := PolySegStream.concatVar habs hcount
-  have hzero : PolySegStream (fun _ => (EF.const 0).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
-  have htags := PolySegStream.repeatTag 2 hcount
-  refine PolySegStream.of_eq ((hterms.append hzero).append htags) ?_
+    simp [EF.serialize, List.append_assoc]
+  have hterms := habs.concatVar hcount
+  have htags := RpnSpliceStream.repeatTag 2 (by norm_num) hcount
+  refine RpnSpliceStream.of_eq
+    ((hterms.append (RpnSpliceStream.serialize_const 0)).append htags) ?_
   intro n
   rw [magnitudeFeature_serialize, h.terms_eq]
   simp only [List.flatMap_map, List.length_map, List.length_range]
@@ -627,9 +605,9 @@ lemma riskFeature_rank_le (A : AffineCombination) (entry : EF) {n : ℕ}
 /-- Uniform launch-risk emission once the entry feature is uniformly emitted. -/
 lemma PolySequence.riskFeature_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) {entry : ℕ → EF}
-    (hentry : PolySegStream (fun n => (entry n).serialize)) :
-    PolySegStream (fun n => ((As n).riskFeature (entry n)).serialize) :=
-  PolySegStream.serialize_mul hentry h.magnitudeFeature_polySeg
+    (hentry : RpnSpliceStream (fun n => (entry n).serialize)) :
+    RpnSpliceStream (fun n => ((As n).riskFeature (entry n)).serialize) :=
+  RpnSpliceStream.serialize_mul hentry h.magnitudeFeature_polySeg
 
 /-- Buying `A` on day `n`: purchase each sentence coefficient at the current market price.
 The affine constant needs no trade because it cancels between world value and price. -/
@@ -714,10 +692,10 @@ def PolySequence.scaleRat {As : ℕ → AffineCombination} (h : PolySequence As)
   coefficient := fun z => EF.mul (EF.const q) (h.coefficient z)
   sentence := h.sentence
   termCount_poly := h.termCount_poly
-  const_poly := PolySegStream.serialize_mul
-    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const q)) h.const_poly
-  coefficient_poly := PolySegStream.serialize_mul
-    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const q))
+  const_poly := RpnSpliceStream.serialize_mul
+    (RpnSpliceStream.serialize_const q) h.const_poly
+  coefficient_poly := RpnSpliceStream.serialize_mul
+    (RpnSpliceStream.serialize_const q)
     h.coefficient_poly
   sentence_poly := h.sentence_poly
   terms_eq := by
@@ -779,10 +757,10 @@ def PolySequence.neg {As : ℕ → AffineCombination} (h : PolySequence As) :
   coefficient := fun z => EF.mul (EF.const (-1)) (h.coefficient z)
   sentence := h.sentence
   termCount_poly := h.termCount_poly
-  const_poly := PolySegStream.serialize_mul
-    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))) h.const_poly
-  coefficient_poly := PolySegStream.serialize_mul
-    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1)))
+  const_poly := RpnSpliceStream.serialize_mul
+    (RpnSpliceStream.serialize_const (-1)) h.const_poly
+  coefficient_poly := RpnSpliceStream.serialize_mul
+    (RpnSpliceStream.serialize_const (-1))
     h.coefficient_poly
   sentence_poly := h.sentence_poly
   terms_eq := by

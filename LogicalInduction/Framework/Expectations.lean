@@ -21,6 +21,7 @@ hypotheses, rather than reconstructing the first-order syntax.
 -/
 import LogicalInduction.Framework.Computable
 import LogicalInduction.Framework.Asymptotics
+import LogicalInduction.Framework.RpnSplice
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
 namespace LogicalInduction
@@ -34,14 +35,6 @@ An arbitrary Lean function `ℕ → Sentence` or `ℕ → LUV` is much broader: 
 uncomputable diagonal that no legal trader can follow.  These interfaces expose exactly the
 compact codes consumed by the token-emission model. -/
 
-/-- An efficiently codeable sequence of sentences. -/
-def PolySentenceCodes (φ : ℕ → Sentence) : Prop :=
-  ∃ c : Nat.Partrec.Code, PolyFueled c (fun n => Encodable.encode (φ n))
-
-/-- An efficiently codeable sequence of rational constants. -/
-def PolyRatCodes (q : ℕ → ℚ) : Prop :=
-  ∃ c : Nat.Partrec.Code, PolyFueled c (fun n => Encodable.encode (q n))
-
 /-- A rational sequence generated continuously from the market by a polynomial-size,
 closed feature progression. This is the propositional/token-model rendering of the
 paper's `def:pgen` for rational sequences. Closure is load-bearing: internal `EF.var`
@@ -50,7 +43,7 @@ Paper node: `def:ece` -/
 structure GeneratedRatFeature (P : History) (q : ℕ → ℚ)
     (feature : ℕ → EF) : Prop where
   rank_le : ∀ n, (feature n).rank ≤ n
-  polyTok : PolyTokenStream (fun n => (feature n).serialize)
+  polyTok : RpnSpliceStream (fun n => (feature n).serialize)
   closed : ∀ n ρ V, (feature n).denoteWith ρ V = (feature n).denote V
   denote : ∀ n, (feature n).denote P = (q n : ℝ)
 

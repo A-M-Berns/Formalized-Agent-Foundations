@@ -50,7 +50,8 @@ theorem lic_wub_ofComputation_unconditional
       (fun i ↦ liaHistory (theoremDP T) i (φ i)) truth ≈ₙ (fun _ ↦ 0) := by
   haveI := feedbackLIA T
   exact lic_wub_ofComputation (liaHistory (theoremDP T)) (theoremDP T)
-    φ hφ truth htruth W hW hWdiv f hstrict C hsupport
+    φ (RpnSentenceCodes.ofPolySentenceCodes hφ) truth htruth W hW hWdiv f hstrict
+    C hsupport
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:wubaff`, unconditional over the constructed `LIA`: the market, deductive process,
