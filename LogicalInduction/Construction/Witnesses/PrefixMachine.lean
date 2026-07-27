@@ -52,10 +52,10 @@ machines are now plugged in, and they say different things:
   `UPrefix.kappaU_le_of_prefixMachine` (`κ_U ≤ κ_M + O(1)` for every prefix machine `M`),
   hence uncomputable and machine-independent up to a constant — the paper's `κ`.  There the
   approximation field does real work (a from-below stage table over a dovetailed
-  enumeration).  Its endpoints carry one conclusion-free operational input,
-  `UPrefix.UniversalPrefixComputation`: a `Nat.Partrec.Code` for the *exact* stage table.
+  enumeration); that table is a bounded search, and its `Nat.Partrec.Code` is constructed
+  (`UPrefix.exists_uCode`), so those endpoints are unconditional too.
 
-So the fixed code is the *unconditional* instance and the universal one is the
+So the fixed code is the *elementary* instance and the universal one is the
 *paper-strength* instance; neither subsumes the other, and both are kept.  See
 `notes/m7-prefix-machine-scope.md`.
 -/
