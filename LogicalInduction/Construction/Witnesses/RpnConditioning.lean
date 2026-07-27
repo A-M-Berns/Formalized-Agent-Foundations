@@ -2578,6 +2578,377 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
 
 #print axioms unRpn_rpnConditionRun
 
+/-! ## Guard-honesty transfer
+
+An oversized price-day at a run-aware mode-2 position of the **symbol** stream forces
+the empty validated strategy on the contraction: either the day survives contraction
+at a token-model mode-2 position of `unRpn ts` carrying the same day token — then
+`strategyOfTokens_trades_eq_nil_of_bigDay` applies — or an earlier chunk poisoned the
+contraction and the decoder rejects from every base-mode state. -/
+
+/-- The contraction rejects from every base-mode parser state (the poison tails
+`[0, 0]` / `[6, 0]` are undecodable regardless of the surrounding parse). -/
+def Unreadable (out : List ℕ) : Prop :=
+  ∀ (mp : ℕ × Option Sentence) (stack : List EF) (trades : List (EF × Sentence)),
+    mp.1 = 0 → EF.streamReadFrom out (some (mp, (stack, trades))) = none
+
+lemma Unreadable.deserializeTrades_eq_none {out : List ℕ} (h : Unreadable out) :
+    deserializeTrades out = none := by
+  unfold deserializeTrades
+  rw [show EF.streamReadFrom out (some EF.streamInitial) = none from
+    h (0, none) [] [] rfl]
+
+lemma unreadable_price_poison : Unreadable [0, 0] := by
+  intro mp stack trades hmp
+  obtain ⟨m, pend⟩ := mp
+  simp only at hmp
+  subst hmp
+  simp [EF.streamReadFrom, EF.streamStep, decode_zero_sentence]
+
+lemma unreadable_trade_poison : Unreadable [6, 0] := by
+  intro mp stack trades hmp
+  obtain ⟨m, pend⟩ := mp
+  simp only at hmp
+  subst hmp
+  rcases stack with _ | ⟨e, st'⟩ <;>
+    simp [EF.streamReadFrom, EF.streamStep, decode_zero_sentence]
+
+/-- Prepending a complete contracted chunk (mode automaton returns to base)
+preserves unreadability. -/
+lemma Unreadable.cons_chunk {C R : List ℕ}
+    (hC : List.foldl freezeMode4Step 0 C = 0)
+    (h : Unreadable R) : Unreadable (C ++ R) := by
+  intro mp stack trades hmp
+  rw [EF.streamReadFrom_append]
+  cases hmid : EF.streamReadFrom C (some (mp, (stack, trades))) with
+  | none => rw [EF.streamReadFrom_none]
+  | some st₁ =>
+      have hmatch := matches_streamReadFrom C (0, 0) (mp, (stack, trades)) st₁
+        ⟨hmp.symm, fun h2 => absurd (hmp.symm.trans h2) (by norm_num)⟩ hmid
+      rcases st₁ with ⟨mp₁, stack₁, trades₁⟩
+      have hmode1 : mp₁.1 = 0 := by
+        have h1 := hmatch.1
+        rw [← freezeMode4_eq_foldl] at h1
+        rw [show freezeMode4 C = 0 from hC] at h1
+        exact h1.symm
+      exact h mp₁ stack₁ trades₁ hmode1
+
+/-- Shift a token-model mode-2 witness across a complete contracted chunk. -/
+lemma mode2_witness_shift (C R : List ℕ)
+    (hC : List.foldl freezeMode4Step 0 C = 0)
+    (j'' : ℕ) (hj'' : j'' < R.length) (hm : freezeMode4 (R.take j'') = 2)
+    (d : ℕ) (hd : R.getD j'' 0 = d) :
+    ∃ j' < (C ++ R).length, freezeMode4 ((C ++ R).take j') = 2 ∧
+      (C ++ R).getD j' 0 = d := by
+  refine ⟨C.length + j'', by simp only [List.length_append]; omega, ?_, ?_⟩
+  · rw [List.take_add, List.take_left, List.drop_left]
+    rw [freezeMode4, List.foldl_append, hC]
+    exact hm
+  · rw [List.getD_append_right _ _ _ _ (by omega)]
+    simpa using hd
+
+/-- **Localization of a symbol-level mode-2 position**: it either survives
+contraction as a token-model mode-2 position carrying the same day token, or the
+contraction is unreadable. -/
+lemma rpn_mode2_localize : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
+    ∀ j, j < ts.length →
+    rcMode (List.foldl rpnCondStep (rcPack 0 0 0) (ts.take j)) = 2 →
+    (∃ j' < (unRpn ts).length,
+      freezeMode4 ((unRpn ts).take j') = 2 ∧
+      (unRpn ts).getD j' 0 = ts.getD j 0) ∨
+    Unreadable (unRpn ts) := by
+  intro N
+  induction N with
+  | zero =>
+      intro ts hts j hj _
+      obtain rfl : ts = [] := List.eq_nil_of_length_eq_zero (by omega)
+      simp at hj
+  | succ N ih =>
+      intro ts hts j hj hmode
+      match ts with
+      | [] => simp at hj
+      | t :: rest =>
+          simp only [List.length_cons] at hts hj
+          match j with
+          | 0 =>
+              rw [List.take_zero, List.foldl_nil, rcMode_pack] at hmode
+              omega
+          | j + 1 =>
+              rw [List.take_succ_cons, List.foldl_cons] at hmode
+              by_cases ht0 : t = 0
+              · -- Price chunk.
+                subst ht0
+                rw [rpnCondStep_base_price] at hmode
+                cases hp : parseRpn rest.length rest with
+                | some pr =>
+                    obtain ⟨φ, r1⟩ := pr
+                    obtain ⟨blk, heq, hblk⟩ := parseRpn_strip rest.length rest hp
+                    obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_price_block hblk
+                    match r1 with
+                    | [] =>
+                        rw [List.append_nil] at heq
+                        subst heq
+                        exfalso
+                        have := hinv j (by omega)
+                        omega
+                    | d :: r2 =>
+                        subst heq
+                        rcases Nat.lt_trichotomy j blk.length with hjb | hjb | hjb
+                        · exfalso
+                          rw [List.take_append_of_le_length (le_of_lt hjb)]
+                            at hmode
+                          have := hinv j hjb
+                          omega
+                        · -- The day position: direct witness at token index 2.
+                          subst hjb
+                          refine Or.inl ?_
+                          rw [unRpn_price_chunk_block hblk d r2]
+                          refine ⟨2, by simp only [List.length_cons]; omega,
+                            rfl, ?_⟩
+                          simp only [List.getD_cons_succ, List.getD_cons_zero]
+                          rw [List.getD_append_right _ _ _ _ le_rfl,
+                            Nat.sub_self, List.getD_cons_zero]
+                        · -- Beyond the chunk: recurse past the day emission.
+                          have hjsplit : j = blk.length + (j - blk.length) := by
+                            omega
+                          rw [hjsplit, List.take_add, List.take_left,
+                            List.drop_left, List.foldl_append, hwalk,
+                            show j - blk.length = (j - blk.length - 1) + 1 by
+                              omega,
+                            List.take_succ_cons, List.foldl_cons,
+                            rpnCondStep_fallback _ _ (by simp) (by simp)
+                              (by simp) (by simp) (by simp)] at hmode
+                          have hjr2 : j - blk.length - 1 < r2.length := by
+                            simp only [List.length_append, List.length_cons]
+                              at hj
+                            omega
+                          have hr2N : r2.length ≤ N := by
+                            simp only [List.length_append, List.length_cons]
+                              at hts
+                            omega
+                          rcases ih r2 hr2N (j - blk.length - 1) hjr2 hmode with
+                            ⟨j'', hj'', hm'', hd''⟩ | hun
+                          · refine Or.inl ?_
+                            rw [unRpn_price_chunk_block hblk d r2]
+                            have := mode2_witness_shift
+                              [0, Encodable.encode φ, d] (unRpn r2) rfl
+                              j'' hj'' hm'' _ hd''
+                            simp only [List.cons_append, List.nil_append]
+                              at this
+                            refine this.imp fun j' hj' => ?_
+                            refine ⟨hj'.1, hj'.2.1, ?_⟩
+                            rw [hj'.2.2, List.getD_cons_succ,
+                              List.getD_append_right _ _ _ _ (by omega)]
+                            conv_rhs => rw [show j - blk.length =
+                                (j - blk.length - 1) + 1 from by omega,
+                              List.getD_cons_succ]
+                          · refine Or.inr ?_
+                            rw [unRpn_price_chunk_block hblk d r2]
+                            exact Unreadable.cons_chunk
+                              (C := [0, Encodable.encode φ, d]) rfl hun
+                | none =>
+                    refine Or.inr ?_
+                    rw [show unRpn (0 :: rest) = [0, 0] from by
+                      rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+                        hp]]
+                    exact unreadable_price_poison
+              · by_cases ht6 : t = 6
+                · -- Trade chunk.
+                  subst ht6
+                  rw [rpnCondStep_base_trade] at hmode
+                  cases hp : parseRpn rest.length rest with
+                  | some pr =>
+                      obtain ⟨φ, r1⟩ := pr
+                      obtain ⟨blk, heq, hblk⟩ :=
+                        parseRpn_strip rest.length rest hp
+                      subst heq
+                      obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_trade_block hblk
+                      rcases Nat.lt_trichotomy j blk.length with hjb | hjb | hjb
+                      · exfalso
+                        rw [List.take_append_of_le_length (le_of_lt hjb)]
+                          at hmode
+                        have := hinv j hjb
+                        omega
+                      · exfalso
+                        subst hjb
+                        rw [List.take_left, hwalk] at hmode
+                        simp at hmode
+                      · have hjsplit : j = blk.length + (j - blk.length) := by
+                          omega
+                        rw [hjsplit, List.take_add, List.take_left,
+                          List.drop_left, List.foldl_append, hwalk] at hmode
+                        have hjr1 : j - blk.length < r1.length := by
+                          simp only [List.length_append] at hj
+                          omega
+                        have hr1N : r1.length ≤ N := by
+                          simp only [List.length_append] at hts
+                          have := parseRpn_length_lt blk.length blk φ [] hblk
+                          omega
+                        rcases ih r1 hr1N (j - blk.length) hjr1 hmode with
+                          ⟨j'', hj'', hm'', hd''⟩ | hun
+                        · refine Or.inl ?_
+                          rw [unRpn_trade_chunk_block hblk r1]
+                          have := mode2_witness_shift
+                            [6, Encodable.encode φ] (unRpn r1) rfl
+                            j'' hj'' hm'' _ hd''
+                          simp only [List.cons_append, List.nil_append] at this
+                          refine this.imp fun j' hj' => ?_
+                          refine ⟨hj'.1, hj'.2.1, ?_⟩
+                          rw [hj'.2.2, List.getD_cons_succ,
+                            List.getD_append_right _ _ _ _ (by omega)]
+                        · refine Or.inr ?_
+                          rw [unRpn_trade_chunk_block hblk r1]
+                          exact Unreadable.cons_chunk
+                            (C := [6, Encodable.encode φ]) rfl hun
+                  | none =>
+                      refine Or.inr ?_
+                      rw [show unRpn (6 :: rest) = [6, 0] from by
+                        rw [unRpn, List.length_cons, unRpnTokens_cons,
+                          if_neg (by norm_num), if_pos rfl, hp]]
+                      exact unreadable_trade_poison
+                · by_cases ht1 : t = 1
+                  · -- Constant payload chunk.
+                    subst ht1
+                    rw [rpnCondStep_base_one] at hmode
+                    match rest with
+                    | [] => exact absurd hj (by simp)
+                    | c :: rest' =>
+                        match j with
+                        | 0 =>
+                            rw [List.take_zero, List.foldl_nil, rcMode_pack]
+                              at hmode
+                            omega
+                        | j + 1 =>
+                            rw [List.take_succ_cons, List.foldl_cons,
+                              rpnCondStep_fallback _ _ (by simp) (by simp)
+                                (by simp) (by simp) (by simp)] at hmode
+                            simp only [List.length_cons] at hj hts
+                            rcases ih rest' (by omega) j (by omega) hmode with
+                              ⟨j'', hj'', hm'', hd''⟩ | hun
+                            · refine Or.inl ?_
+                              rw [unRpn_payload_chunk 1 c (Or.inl rfl) rest']
+                              have := mode2_witness_shift [1, c] (unRpn rest')
+                                rfl j'' hj'' hm'' _ hd''
+                              simp only [List.cons_append, List.nil_append]
+                                at this
+                              refine this.imp fun j' hj' => ?_
+                              exact ⟨hj'.1, hj'.2.1, by
+                                rw [hj'.2.2, List.getD_cons_succ,
+                                  List.getD_cons_succ]⟩
+                            · refine Or.inr ?_
+                              rw [unRpn_payload_chunk 1 c (Or.inl rfl) rest']
+                              exact Unreadable.cons_chunk (C := [1, c]) rfl hun
+                  · by_cases ht7 : t = 7
+                    · -- Variable payload chunk.
+                      subst ht7
+                      rw [rpnCondStep_base_seven] at hmode
+                      match rest with
+                      | [] => exact absurd hj (by simp)
+                      | c :: rest' =>
+                          match j with
+                          | 0 =>
+                              rw [List.take_zero, List.foldl_nil, rcMode_pack]
+                                at hmode
+                              omega
+                          | j + 1 =>
+                              rw [List.take_succ_cons, List.foldl_cons,
+                                rpnCondStep_fallback _ _ (by simp) (by simp)
+                                  (by simp) (by simp) (by simp)] at hmode
+                              simp only [List.length_cons] at hj hts
+                              rcases ih rest' (by omega) j (by omega) hmode with
+                                ⟨j'', hj'', hm'', hd''⟩ | hun
+                              · refine Or.inl ?_
+                                rw [unRpn_payload_chunk 7 c (Or.inr rfl) rest']
+                                have := mode2_witness_shift [7, c] (unRpn rest')
+                                  rfl j'' hj'' hm'' _ hd''
+                                simp only [List.cons_append, List.nil_append]
+                                  at this
+                                refine this.imp fun j' hj' => ?_
+                                exact ⟨hj'.1, hj'.2.1, by
+                                  rw [hj'.2.2, List.getD_cons_succ,
+                                    List.getD_cons_succ]⟩
+                              · refine Or.inr ?_
+                                rw [unRpn_payload_chunk 7 c (Or.inr rfl) rest']
+                                exact Unreadable.cons_chunk (C := [7, c]) rfl
+                                  hun
+                    · -- Bare operator/close token.
+                      rw [rpnCondStep_base_other t ht0 ht1 ht6 ht7] at hmode
+                      rcases ih rest (by omega) j (by omega) hmode with
+                        ⟨j'', hj'', hm'', hd''⟩ | hun
+                      · refine Or.inl ?_
+                        rw [unRpn_single_chunk t ⟨ht0, ht1, ht6, ht7⟩ rest]
+                        have := mode2_witness_shift [t] (unRpn rest)
+                          (by simp [freezeMode4Step, ht0, ht1, ht6, ht7])
+                          j'' hj'' hm'' _ hd''
+                        simp only [List.cons_append, List.nil_append] at this
+                        refine this.imp fun j' hj' => ?_
+                        exact ⟨hj'.1, hj'.2.1, by
+                          rw [hj'.2.2, List.getD_cons_succ]⟩
+                      · refine Or.inr ?_
+                        rw [unRpn_single_chunk t ⟨ht0, ht1, ht6, ht7⟩ rest]
+                        exact Unreadable.cons_chunk (C := [t])
+                          (by simp [freezeMode4Step, ht0, ht1, ht6, ht7]) hun
+
+/-- **Symbol-level guard honesty**: an oversized price-day at a run-aware mode-2
+position of the symbol stream forces the empty validated strategy on the
+contraction.
+Paper node: `thm:scon` -/
+theorem strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay (n : ℕ) (ts : List ℕ)
+    (j : ℕ) (hj : j < ts.length)
+    (hmode : rcMode (List.foldl rpnCondStep (rcPack 0 0 0) (ts.take j)) = 2)
+    (hday : n < ts.getD j 0) :
+    (strategyOfTokens n (unRpn ts)).trades = [] := by
+  rcases rpn_mode2_localize ts.length ts le_rfl j hj hmode with
+    ⟨j', hj', hm', hd'⟩ | hun
+  · refine strategyOfTokens_trades_eq_nil_of_bigDay n (unRpn ts) j' hj' hm' ?_
+    rw [hd']
+    exact hday
+  · have hdec := hun.deserializeTrades_eq_none
+    unfold strategyOfTokens
+    split
+    · rfl
+    · next trades hdecode =>
+        rw [hdec] at hdecode
+        exact absurd hdecode (by simp)
+
+/-- The empty stream decodes to the empty validated strategy. -/
+lemma strategyOfTokens_nil_trades (n : ℕ) :
+    (strategyOfTokens n ([] : List ℕ)).trades = [] := by
+  have hdec : deserializeTrades ([] : List ℕ) = some [] := rfl
+  unfold strategyOfTokens
+  split
+  · rfl
+  · next trades hdecode =>
+      rw [hdec] at hdecode
+      obtain rfl := Option.some.inj hdecode
+      simp
+
+/-- **The guarded price-pass strategy-level equality**: the contraction of the
+guarded symbol-level price rewrite decodes to the retained-condition-price
+translation of the contraction's strategy — on every stream, including under a
+failed guard (both sides are then empty by guard honesty).
+Paper node: `thm:scon` -/
+theorem strategyOfTokens_rpnGuardedConditionTokens_trades
+    (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
+    (hblocks : ∀ D, parseRpn (blocks D).length (blocks D) = some (ψ D, []))
+    (ε : ℚ) (n : ℕ) (ts : List ℕ) :
+    (strategyOfTokens n (unRpn (rpnGuardedConditionTokens blocks ε n ts))).trades =
+      (strategyOfTokens n (unRpn ts)).trades.map fun trade =>
+        (trade.1.retainedConditionPrices ψ ε, trade.2) := by
+  rw [rpnGuardedConditionTokens]
+  split_ifs with hguard
+  · rw [unRpn_rpnConditionRun blocks ψ hblocks ε ts.length ts le_rfl]
+    exact strategyOfTokens_conditionPriceTokenRun_trades ψ ε n (unRpn ts)
+  · push_neg at hguard
+    obtain ⟨j, hj, hm, hday⟩ := hguard
+    rw [unRpn_nil, strategyOfTokens_nil_trades,
+      strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay n ts j hj hm hday]
+    rfl
+
+#print axioms rpn_mode2_localize
+#print axioms strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay
+#print axioms strategyOfTokens_rpnGuardedConditionTokens_trades
+
 /-! ### Endpoint statements (open, recorded — not sorried)
 
 The two target endpoints are stated here as comments rather than sorried theorems so
