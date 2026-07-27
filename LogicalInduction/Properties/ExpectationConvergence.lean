@@ -873,28 +873,6 @@ lemma PolySegStream.serialize_clip01 {e : ℕ → EF}
     (PolySegStream.serialize_efMin
       (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)) he)
 
-/-- Spliced mirrors of the ramp closures (sentence slots may carry RPN blocks). -/
-lemma RpnSpliceStream.serialize_oneMinus {e : ℕ → EF}
-    (he : RpnSpliceStream (fun n => (e n).serialize)) :
-    RpnSpliceStream (fun n => (oneMinus (e n)).serialize) :=
-  RpnSpliceStream.serialize_add (RpnSpliceStream.serialize_const 1)
-    (RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const (-1)) he)
-
-lemma RpnSpliceStream.serialize_efMin {e f : ℕ → EF}
-    (he : RpnSpliceStream (fun n => (e n).serialize))
-    (hf : RpnSpliceStream (fun n => (f n).serialize)) :
-    RpnSpliceStream (fun n => (efMin (e n) (f n)).serialize) :=
-  RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const (-1))
-    (RpnSpliceStream.serialize_max
-      (RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const (-1)) he)
-      (RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const (-1)) hf))
-
-lemma RpnSpliceStream.serialize_clip01 {e : ℕ → EF}
-    (he : RpnSpliceStream (fun n => (e n).serialize)) :
-    RpnSpliceStream (fun n => (clip01 (e n)).serialize) :=
-  RpnSpliceStream.serialize_max (RpnSpliceStream.serialize_const 0)
-    (RpnSpliceStream.serialize_efMin (RpnSpliceStream.serialize_const 1) he)
-
 lemma excBuy_polySegStream (X : LUV) (hcode : X.PolyThresholdCodes)
     (a δ : ℚ) (n₀ : ℕ) :
     PolySegStream (fun n => (excBuy X a δ n₀ n).serialize) := by

@@ -299,66 +299,9 @@ lemma obuTrader_exploits
 
 /-! ## Uniform token emission -/
 
-/-- A varying sentence/day price leaf is a polynomial token stream whenever the shared
-index and sentence-code progression are polynomially fueled. -/
-lemma PolyTokenStream.serialize_price_sequence_comp
-    {φ : ℕ → Sentence} (hφ : PolySentenceCodes φ)
-    {f : ℕ → ℕ} {cf : Nat.Partrec.Code} (hf : PolyFueled cf f) :
-    PolyTokenStream (fun m ↦ (EF.price (φ (f m)) (f m)).serialize) := by
-  obtain ⟨cφ, hφc⟩ := hφ
-  have hcode := hφc.comp hf
-  have heq : (fun m ↦ (EF.price (φ (f m)) (f m)).serialize) =
-      (fun m ↦ [0] ++ ([Encodable.encode (φ (f m))] ++ [f m])) := by
-    funext m
-    simp [EF.serialize]
-  rw [heq]
-  exact (PolyTokenStream.const 0).append
-    ((PolyTokenStream.polyTok hcode).append (PolyTokenStream.polyTok hf))
-
-/-- Varying-sentence version of the parametric buy-signal emitter. -/
-lemma obuBuySig_tokenStream_comp
-    {φ : ℕ → Sentence} (hφ : PolySentenceCodes φ)
-    {af δf : ℕ → ℚ} {cj : Nat.Partrec.Code} {jf : ℕ → ℕ}
-    (hj : PolyFueled cj jf)
-    (ha : ∃ c, PolyFueled c (fun m ↦ Encodable.encode (af m + δf m)))
-    (hd : ∃ c, PolyFueled c (fun m ↦ Encodable.encode (1 / δf m))) :
-    PolyTokenStream (fun m ↦
-      (buyIndEF (φ (jf m)) (af m) (δf m) (jf m)).serialize) :=
-  PolyTokenStream.serialize_clip01 (PolyTokenStream.serialize_mul
-    (PolyTokenStream.serialize_add (PolyTokenStream.serialize_const_comp ha)
-      (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const (-1))
-        (PolyTokenStream.serialize_price_sequence_comp hφ hj)))
-    (PolyTokenStream.serialize_const_comp hd))
-
 /-- Serialization block for one historical varying-sentence arm update. -/
 def obuArmBlock (φ : ℕ → Sentence) (j i : ℕ) : List ℕ :=
   (oneMinus (obuBuySig φ j i)).serialize ++ [3]
-
-lemma obuArmBlock_tokenStream (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
-    PolyTokenStream
-      (fun x ↦ obuArmBlock φ (x.unpair.1.unpair.2 + 1) x.unpair.2) := by
-  have hbuy : PolyTokenStream (fun x ↦
-      (obuBuySig φ (x.unpair.1.unpair.2 + 1) x.unpair.2).serialize) := by
-    simpa only [obuBuySig] using
-      obuBuySig_tokenStream_comp hφ
-        (af := fun x ↦ ndThr (x.unpair.1.unpair.2 + 1))
-        (δf := fun x ↦ ndPadThr (x.unpair.1.unpair.2 + 1) x.unpair.2)
-        PolyFueled.right
-        (encode_thrSum_polyFueled
-          (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
-        (encode_thrRecip_polyFueled
-          (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
-  exact (PolyTokenStream.serialize_oneMinus hbuy).append
-    (PolyTokenStream.const 3)
-
-lemma obuArmBlock_length (φ : ℕ → Sentence) (j i : ℕ) :
-    (obuArmBlock φ j i).length = (obuArmBlock φ 1 0).length := by
-  simp [obuArmBlock, obuBuySig, ndBuySig, buyIndEF, oneMinus, clip01, efMin,
-    EF.serialize]
-
-lemma serialize_obuBuySig_length (φ : ℕ → Sentence) (j i : ℕ) :
-    (obuBuySig φ j i).serialize.length = (obuBuySig φ 1 0).serialize.length := by
-  simp [obuBuySig, ndBuySig, buyIndEF, clip01, efMin, EF.serialize]
 
 lemma serialize_armChain_obuBuy (φ : ℕ → Sentence) (j : ℕ) : ∀ n,
     (armChain (obuBuySig φ j) n).serialize =
@@ -392,79 +335,92 @@ lemma serialize_obuLadderEF (φ : ℕ → Sentence) (n : ℕ) : ∀ m,
         List.flatMap_append, List.flatMap_singleton]
       simp [List.append_assoc]
 
-lemma obuChunkSeg_polySegStream
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
-    PolySegStream (fun m ↦
+/-- Spliced varying-sentence buy-signal emitter: the sentence slot draws blocks from
+an `RpnSentenceCodes` certificate, admitting deep enumerations. -/
+lemma obuBuySig_spliceStream_comp
+    {φ : ℕ → Sentence} (hφ : RpnSentenceCodes φ)
+    {af δf : ℕ → ℚ} {cj : Nat.Partrec.Code} {jf : ℕ → ℕ}
+    (hj : PolyFueled cj jf)
+    (ha : ∃ c, PolyFueled c (fun m ↦ Encodable.encode (af m + δf m)))
+    (hd : ∃ c, PolyFueled c (fun m ↦ Encodable.encode (1 / δf m))) :
+    RpnSpliceStream (fun m ↦
+      (buyIndEF (φ (jf m)) (af m) (δf m) (jf m)).serialize) :=
+  RpnSpliceStream.serialize_clip01 (RpnSpliceStream.serialize_mul
+    (RpnSpliceStream.serialize_add (RpnSpliceStream.serialize_const_comp ha)
+      (RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const (-1))
+        (RpnSpliceStream.serialize_price hφ hj hj)))
+    (RpnSpliceStream.serialize_const_comp hd))
+
+/-- Spliced arm-update block. -/
+lemma obuArmBlock_spliceStream (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+    RpnSpliceStream
+      (fun x ↦ obuArmBlock φ (x.unpair.1.unpair.2 + 1) x.unpair.2) := by
+  have hbuy : RpnSpliceStream (fun x ↦
+      (obuBuySig φ (x.unpair.1.unpair.2 + 1) x.unpair.2).serialize) := by
+    simpa only [obuBuySig] using
+      obuBuySig_spliceStream_comp hφ
+        (af := fun x ↦ ndThr (x.unpair.1.unpair.2 + 1))
+        (δf := fun x ↦ ndPadThr (x.unpair.1.unpair.2 + 1) x.unpair.2)
+        PolyFueled.right
+        (encode_thrSum_polyFueled
+          (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
+        (encode_thrRecip_polyFueled
+          (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
+  exact (RpnSpliceStream.serialize_oneMinus hbuy).append
+    (RpnSpliceStream.tag 3 (by norm_num))
+
+/-- Spliced coefficient chunk (`obuCoef` + the ladder `add` tag): the arm blocks are
+variable-length once sentence slots carry blocks, so the fixed-width `blocks` combinator
+is replaced by `concatVar`. -/
+lemma obuChunkSeg_spliceStream
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+    RpnSpliceStream (fun m ↦
       (obuCoef φ (m.unpair.2 + 1) m.unpair.1).serialize ++ [2]) := by
-  have hW0 : 0 < (obuArmBlock φ 1 0).length := by
-    norm_num [obuArmBlock, obuBuySig, ndBuySig, buyIndEF, oneMinus, clip01,
-      efMin, EF.serialize]
-  have segA : PolySegStream (fun m ↦
+  have segA : RpnSpliceStream (fun m ↦
       (EF.const (((m.unpair.2 + 1 : ℕ) : ℚ))).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const_comp
-      (encode_ratCast_polyFueled PolyFueled.right))
-  have segB : PolySegStream (fun _ : ℕ ↦ [1, Encodable.encode ((1 : ℚ))]) :=
-    PolySegStream.ofTokenStream
-      ((PolyTokenStream.const 1).append (PolyTokenStream.const _))
-  have segC := PolySegStream.blocks (obuArmBlock_tokenStream φ hφ)
-    ((obuArmBlock φ 1 0).length) (fun x ↦ obuArmBlock_length φ _ _) hW0
-      PolyFueled.left
-  have segD : PolySegStream (fun m ↦
-      (obuBuySig φ (m.unpair.2 + 1) m.unpair.1).serialize) :=
-    PolySegStream.ofTokenStream (by
-      simpa only [obuBuySig] using
-        obuBuySig_tokenStream_comp hφ
-          (af := fun m ↦ ndThr (m.unpair.2 + 1))
-          (δf := fun m ↦ ndPadThr (m.unpair.2 + 1) m.unpair.1)
-          PolyFueled.left
-          (encode_thrSum_polyFueled PolyFueled.right PolyFueled.left)
-          (encode_thrRecip_polyFueled PolyFueled.right PolyFueled.left))
-  have segE : PolySegStream (fun _ : ℕ ↦ [3, 3, 2]) :=
-    PolySegStream.ofTokenStream ((PolyTokenStream.const 3).append
-      ((PolyTokenStream.const 3).append (PolyTokenStream.const 2)))
-  refine PolySegStream.of_eq
+    RpnSpliceStream.serialize_const_comp
+      (encode_ratCast_polyFueled PolyFueled.right)
+  have segB : RpnSpliceStream (fun _ : ℕ ↦ [1, Encodable.encode ((1 : ℚ))]) :=
+    RpnSpliceStream.payload 1 (Or.inl rfl)
+      (PolyFueled.const (Encodable.encode ((1 : ℚ))))
+  have segC := (obuArmBlock_spliceStream φ hφ).concatVar PolyFueled.left
+  have segD : RpnSpliceStream (fun m ↦
+      (obuBuySig φ (m.unpair.2 + 1) m.unpair.1).serialize) := by
+    simpa only [obuBuySig] using
+      obuBuySig_spliceStream_comp hφ
+        (af := fun m ↦ ndThr (m.unpair.2 + 1))
+        (δf := fun m ↦ ndPadThr (m.unpair.2 + 1) m.unpair.1)
+        PolyFueled.left
+        (encode_thrSum_polyFueled PolyFueled.right PolyFueled.left)
+        (encode_thrRecip_polyFueled PolyFueled.right PolyFueled.left)
+  have segE : RpnSpliceStream (fun _ : ℕ ↦ [3, 3, 2]) :=
+    ((RpnSpliceStream.tag 3 (by norm_num)).append
+      (RpnSpliceStream.tag 3 (by norm_num))).append
+        (RpnSpliceStream.tag 2 (by norm_num))
+  refine RpnSpliceStream.of_eq
     ((((segA.append segB).append segC).append segD).append segE) (fun m ↦ ?_)
   rw [serialize_obuCoef, serialize_armChain_obuBuy]
   simp [EF.serialize, Nat.unpair_pair, List.append_assoc]
 
-/-- The actual varying-sentence scale ladder has a token-indexed polynomial emitter. -/
-lemma obuTrader_ecTok (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
-    EfficientlyComputableTok (obuTrader φ) := by
-  have hunif : ∀ n j,
-      ((obuCoef φ ((Nat.pair n j).unpair.2 + 1)
-          (Nat.pair n j).unpair.1).serialize ++ [2]).length =
-        ((obuCoef φ ((Nat.pair n 0).unpair.2 + 1)
-          (Nat.pair n 0).unpair.1).serialize ++ [2]).length := by
-    intro n j
-    simp only [Nat.unpair_pair]
-    rw [serialize_obuCoef, serialize_obuCoef, serialize_armChain_obuBuy,
-      serialize_armChain_obuBuy]
-    have hfm : ∀ j' : ℕ,
-        ((List.range n).flatMap (fun i ↦ obuArmBlock φ j' i)).length =
-          n * (obuArmBlock φ 1 0).length := fun j' ↦
-      length_flatMap_const_width _ _ n (fun i _ ↦ obuArmBlock_length φ _ _)
-    have hsig := serialize_obuBuySig_length φ (j + 1) n
-    have hsig0 := serialize_obuBuySig_length φ (0 + 1) n
-    simp only [List.length_append, List.length_cons, List.length_nil, hfm]
-    omega
-  have segChunks := PolySegStream.concat
-    (obuChunkSeg_polySegStream φ hφ) PolyFueled.id hunif
-  have seg1 : PolySegStream (fun _ : ℕ ↦ [1, Encodable.encode ((0 : ℚ))]) :=
-    PolySegStream.ofTokenStream
-      ((PolyTokenStream.const 1).append (PolyTokenStream.const _))
-  obtain ⟨cφ, hφc⟩ := hφ
-  have seg3 : PolySegStream (fun n ↦ [6, Encodable.encode (φ n)]) :=
-    PolySegStream.ofTokenStream
-      ((PolyTokenStream.const 6).append (PolyTokenStream.polyTok hφc))
-  refine ecTok_of_segStream _
-    (PolySegStream.of_eq ((seg1.append segChunks).append seg3) ?_)
+/-- The varying-sentence scale ladder is efficiently computable in the collapsed
+symbol-metered class, from an 𝓔𝓒 enumeration certificate.
+Paper node: `def:ec` -/
+lemma obuTrader_ec (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+    EfficientlyComputable (obuTrader φ) := by
+  have segChunks := (obuChunkSeg_spliceStream φ hφ).concatVar PolyFueled.id
+  have seg1 : RpnSpliceStream (fun _ : ℕ ↦ [1, Encodable.encode ((0 : ℚ))]) :=
+    RpnSpliceStream.payload 1 (Or.inl rfl)
+      (PolyFueled.const (Encodable.encode ((0 : ℚ))))
+  have seg3 := RpnSpliceStream.tradeSlot hφ PolyFueled.id
+  refine RpnSpliceStream.ec _
+    (RpnSpliceStream.of_eq ((seg1.append segChunks).append seg3) ?_)
   intro n
   show _ = serializeTrades ((obuTrader φ).strat n).trades
   rw [show ((obuTrader φ).strat n).trades = [(obuLadderEF φ n n, φ n)] from rfl,
     serializeTrades, serializeTrades, serialize_obuLadderEF]
   simp [Nat.unpair_pair]
 
-#print axioms obuTrader_ecTok
+#print axioms obuTrader_ec
 
 /-! ## Uniform lower bound -/
 
@@ -495,7 +451,7 @@ a propositional world satisfying the entire enumerated theory.
 Paper node: `thm:obu` -/
 theorem lic_uniform_nonDogmatism_repeating
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (hrepeat : RepeatsEveryMember φ)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (φ i)) :
@@ -517,8 +473,8 @@ theorem lic_uniform_nonDogmatism_repeating
     intro j hj
     exact exists_obu_fire_of_low_limit P DP φ hrepeat hworld
       (hlow _ (ndThr_pos hj))
-  exact IsLogicalInductor.noExploitTok (P := P) (DP := DP)
-    (obuTrader φ) (obuTrader_ecTok φ hφ)
+  exact IsLogicalInductor.noExploit (P := P) (DP := DP)
+    (obuTrader φ) (obuTrader_ec φ hφ)
     (obuTrader_exploits P DP φ hjoint hfire)
 
 /-- A concrete witness for the paper's preprocessing of a c.e. sentence stream into an
@@ -528,7 +484,7 @@ purely syntactic: it contains neither prices nor a non-dogmatism conclusion.
 Paper node: `thm:obu` -/
 structure EfficientRepeatedEnumeration (source : ℕ → Sentence) where
   sequence : ℕ → Sentence
-  sequence_poly : PolySentenceCodes sequence
+  sequence_poly : RpnSentenceCodes sequence
   repeats : RepeatsEveryMember sequence
   sound : ∀ j, ∃ i, sequence j = source i
   covers : ∀ i, ∃ j, sequence j = source i

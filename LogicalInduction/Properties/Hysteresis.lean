@@ -467,6 +467,28 @@ fixed-width blocks (the `H (n+1)` chain), fixed mid `[1,⌜−1⌝,1,⌜0⌝]`, 
 (the `H n` chain), fixed tail `[3,2,6,⌜φ⌝]` — emitted by the segment-composition layer
 (`PolySegStream`, `Computable.lean`). -/
 
+/-- Spliced mirrors of the ramp closures (sentence slots may carry RPN blocks). -/
+lemma RpnSpliceStream.serialize_oneMinus {e : ℕ → EF}
+    (he : RpnSpliceStream (fun n => (e n).serialize)) :
+    RpnSpliceStream (fun n => (oneMinus (e n)).serialize) :=
+  RpnSpliceStream.serialize_add (RpnSpliceStream.serialize_const 1)
+    (RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const (-1)) he)
+
+lemma RpnSpliceStream.serialize_efMin {e f : ℕ → EF}
+    (he : RpnSpliceStream (fun n => (e n).serialize))
+    (hf : RpnSpliceStream (fun n => (f n).serialize)) :
+    RpnSpliceStream (fun n => (efMin (e n) (f n)).serialize) :=
+  RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const (-1))
+    (RpnSpliceStream.serialize_max
+      (RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const (-1)) he)
+      (RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const (-1)) hf))
+
+lemma RpnSpliceStream.serialize_clip01 {e : ℕ → EF}
+    (he : RpnSpliceStream (fun n => (e n).serialize)) :
+    RpnSpliceStream (fun n => (clip01 (e n)).serialize) :=
+  RpnSpliceStream.serialize_max (RpnSpliceStream.serialize_const 0)
+    (RpnSpliceStream.serialize_efMin (RpnSpliceStream.serialize_const 1) he)
+
 /-- Token streams of `oneMinus` families. -/
 lemma PolyTokenStream.serialize_oneMinus {e : ℕ → EF}
     (he : PolyTokenStream (fun m => (e m).serialize)) :

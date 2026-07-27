@@ -286,19 +286,6 @@ theorem lic_imp_eventually_le (P : History) (DP : DeductiveProcess)
 
 /-! ## Exact `thm:lex`: finite exclusive–exhaustive families -/
 
-/-- A finite list of independently polynomial sentence streams can be evaluated as one
-polynomial tuple.  This is the uniformity step needed by the paper's fixed-`k` family. -/
-lemma polyFueledTuple_of_sentenceCodes
-    (φs : List (ℕ → Sentence))
-    (hφs : ∀ φ ∈ φs, PolySentenceCodes φ) :
-    PolyFueledTuple (φs.map (fun φ n => Encodable.encode (φ n))) := by
-  induction φs with
-  | nil => exact PolyFueledTuple.nil
-  | cons φ φs ih =>
-      obtain ⟨c, hc⟩ := hφs φ (by simp)
-      apply PolyFueledTuple.cons hc
-      exact ih (fun ψ hψ => hφs ψ (by simp [hψ]))
-
 /-- The normalized affine constraint `(Σ_{j<k} φʲₙ - 1) / k`.  Normalization is internal
 and leaves its share magnitude exactly one. -/
 def exclusiveExhaustiveAffine (k : ℕ) (φ : ℕ → ℕ → Sentence) (n : ℕ) :
