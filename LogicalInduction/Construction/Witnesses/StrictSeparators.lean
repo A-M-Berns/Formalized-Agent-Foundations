@@ -1,15 +1,24 @@
-import LogicalInduction.Properties.UniversalSemimeasure
+import LogicalInduction.Construction.Witnesses.BitPrefixSyntax
 import Mathlib.Computability.Halting
+import Mathlib.Data.List.Sections
 
 
 /-!
-# Tranche S (`M7-STRICT-SEPARATORS`): the computable-enumeration obstruction
+# Tranche S (`M7-STRICT-SEPARATORS`): separators, and the obstruction that shaped them
 
-This file records what a *computably enumerable* family of nested bit prefixes can and
-cannot do against a universal continuous semimeasure.
+This file has two halves.
 
-The intended target of the tranche was to inhabit `StrictSeparatorPresentation`
-(`Properties/UniversalSemimeasure.lean`), whose fields ask for
+**Half 2 (`### Kleene's inseparable pair`, below)** builds the paper's separator data:
+Kleene's recursively inseparable pair, its dovetailed stage decisions, the c.e. constraint
+theory they generate over an independent atom family, the stagewise class of consistent
+bit strings, and the resulting `StrictSeparatorPresentation`.
+
+**Half 1 (this one)** records what a *computably enumerable family of nested bit prefixes*
+can and cannot do against a universal continuous semimeasure — the obstruction that forced
+the interface into its present shape.
+
+**History.**  `StrictSeparatorPresentation` (`Properties/UniversalSemimeasure.lean`) was
+once shaped as a *nested prefix family*:
 
 * `prefixes : ℕ → List Bool`, nested, with lengths tending to infinity,
 * an `EfficientRepeatedEnumeration` of the associated prefix sentences, and
@@ -19,7 +28,9 @@ The intended target of the tranche was to inhabit `StrictSeparatorPresentation`
 as the prefix strings admit a computable enumeration — which is exactly what
 `EfficientRepeatedEnumeration` supplies once the prefix syntax can be decoded (its
 `sequence` is emitted by a program, and its `sound`/`covers` fields say the emitted
-sentences are precisely the `prefixSentence (prefixes i)`).
+sentences are precisely the `prefixSentence (prefixes i)`).  That is why the interface now
+carries a c.e. *constraint theory* plus per-stage consistent classes instead; this file
+keeps the obstruction so the abandoned shape stays refuted rather than merely deprecated.
 
 The argument is elementary and does not even need the lengths to grow.  A computable
 enumeration of a *nested* (pairwise comparable) family of strings carries a
@@ -33,7 +44,7 @@ The reusable pieces are `ceNestedSemimeasure` (a concrete inhabitant of
 `LowerSemicomputableContinuousSemimeasure`) and `exists_code_evaln_of_computable` (any
 computable `ℕ × List Bool → ℚ` meets the bounded-fuel `approximation_computes` interface).
 
-## Consequence for the boundary
+## Consequence for the boundary (acted on)
 
 The paper's proof (`app:strict`) never claims mass vanishes along one computable branch.
 It applies Uniform Non-Dogmatism to the c.e. *constraint theory* of a recursively
@@ -413,23 +424,223 @@ theorem no_ce_null_prefix_family (M : UniversalContinuousSemimeasure)
   obtain ⟨N, hN⟩ := eventually_atTop.1 hev
   exact absurd (hN N le_rfl) (not_lt.2 (hall N))
 
-/-- **`StrictSeparatorPresentation` is unsatisfiable for a computably enumerable prefix
-family.**  Its `repetition` field asserts precisely that the prefix *sentences* are
-enumerated by a program; whenever those sentences can be decoded back to their strings —
-as they can for the concrete `bitPrefixSentence` syntax — the hypothesis below is met and
-the presentation cannot exist.
+/-! ### Kleene's inseparable pair
+
+`A₁ = {e : e(e) ↓ = 1}` and `A₀ = {e : e(e) ↓ = 0}` are disjoint c.e. sets with no
+computable separator (`kleene_recursively_inseparable`).  Dovetailing them with `evaln`
+gives, at each stage, a finite set of *decided* bits; the undecided bits stay free. -/
+
+/-- The `b`-half of Kleene's diagonal pair: codes whose self-application returns the
+numeral of `b`. -/
+def kleeneSet (b : Bool) : Set ℕ :=
+  {e | (if b then 1 else 0) ∈ (Denumerable.ofNat Nat.Partrec.Code e).eval e}
+
+lemma kleeneSet_disjoint {e : ℕ} (h0 : e ∈ kleeneSet false) (h1 : e ∈ kleeneSet true) :
+    False := by
+  have h0' : (0 : ℕ) ∈ (Denumerable.ofNat Nat.Partrec.Code e).eval e := by
+    simpa [kleeneSet] using h0
+  have h1' : (1 : ℕ) ∈ (Denumerable.ofNat Nat.Partrec.Code e).eval e := by
+    simpa [kleeneSet] using h1
+  exact absurd (Part.mem_unique h0' h1') (by norm_num)
+
+/-- **Recursive inseparability of Kleene's pair.**  No computable predicate contains `A₁`
+and avoids `A₀`.  This is the computability-theoretic input behind `thm:strict`; it is what
+makes the separator class contain no computable member.
 Paper node: `thm:strict` -/
-theorem strictSeparatorPresentation_not_ce
-    {M : UniversalContinuousSemimeasure} {DP : DeductiveProcess}
-    {B : BitPrefixSentences DP} (S : StrictSeparatorPresentation M B)
-    (henum : Computable enum)
-    (hsound : ∀ j, ∃ i, enum j = S.prefixes i)
-    (hcov : ∀ i, ∃ j, enum j = S.prefixes i) : False :=
-  no_ce_null_prefix_family M S.prefixes S.nested henum hsound hcov S.mass_tendsto_zero
+theorem kleene_recursively_inseparable (f : ℕ → Bool) (hf : Computable f)
+    (h1 : ∀ e ∈ kleeneSet true, f e = true)
+    (h0 : ∀ e ∈ kleeneSet false, f e = false) : False := by
+  have hg : Nat.Partrec fun e : ℕ ↦ (Part.some (if f e then 0 else 1) : Part ℕ) := by
+    refine Partrec.nat_iff.mp ?_
+    exact (Computable.cond hf (Computable.const (0 : ℕ)) (Computable.const (1 : ℕ))).partrec.of_eq
+      (fun e ↦ by by_cases h : f e <;> simp [h])
+  obtain ⟨c, hc⟩ := Nat.Partrec.Code.exists_code.mp hg
+  set e₀ := Encodable.encode c with he₀
+  have hdecode : Denumerable.ofNat Nat.Partrec.Code e₀ = c := by
+    simp [he₀, Denumerable.ofNat_encode]
+  have hval : (Denumerable.ofNat Nat.Partrec.Code e₀).eval e₀ =
+      Part.some (if f e₀ then 0 else 1) := by
+    rw [hdecode, hc]
+  by_cases hfe : f e₀
+  · have hmem : e₀ ∈ kleeneSet false := by
+      simp only [kleeneSet, Set.mem_setOf_eq, if_neg (by simp : ¬ (false = true))]
+      rw [hval, hfe]
+      simp
+    exact absurd (h0 e₀ hmem) (by simp [hfe])
+  · have hmem : e₀ ∈ kleeneSet true := by
+      simp only [kleeneSet, Set.mem_setOf_eq, if_pos rfl]
+      rw [hval]
+      simp [hfe]
+    exact absurd (h1 e₀ hmem) (by simp [hfe])
+
+/-- The intended (non-computable) separator: the characteristic function of `A₁`. -/
+noncomputable def kleeneAssignment (e : ℕ) : Bool := by
+  classical exact decide (e ∈ kleeneSet true)
+
+/-- Stage-`n` dovetailed decision of bit `e`: `evaln` with fuel `n`. -/
+def kleeneDecide (n e : ℕ) : Option Bool :=
+  match Nat.Partrec.Code.evaln n (Denumerable.ofNat Nat.Partrec.Code e) e with
+  | some 0 => some false
+  | some 1 => some true
+  | _ => none
+
+lemma kleeneDecide_sound {n e : ℕ} {b : Bool} (h : kleeneDecide n e = some b) :
+    e ∈ kleeneSet b := by
+  unfold kleeneDecide at h
+  rcases hev : Nat.Partrec.Code.evaln n (Denumerable.ofNat Nat.Partrec.Code e) e with _ | v
+  · rw [hev] at h; simp at h
+  · have hmem : v ∈ (Denumerable.ofNat Nat.Partrec.Code e).eval e :=
+      Nat.Partrec.Code.evaln_sound hev
+    rw [hev] at h
+    match v, h with
+    | 0, h => simpa [kleeneSet, (by simpa using h : b = false)] using hmem
+    | 1, h => simpa [kleeneSet, (by simpa using h : b = true)] using hmem
+    | (v + 2), h => simp at h
+
+/-- A decided bit is decided the way the intended separator decides it. -/
+lemma kleeneAssignment_of_decide {n e : ℕ} {b : Bool} (h : kleeneDecide n e = some b) :
+    kleeneAssignment e = b := by
+  classical
+  have hmem := kleeneDecide_sound h
+  cases b with
+  | false =>
+      have : e ∉ kleeneSet true := fun h1 ↦ kleeneSet_disjoint hmem h1
+      simp [kleeneAssignment, this]
+  | true => simp [kleeneAssignment, hmem]
+
+/-! ### The constraint theory and its stagewise consistent class -/
+
+/-- Stage-`n` constraint: the conjunction of the literals for the bits decided by stage
+`n`.  Undecided bits are left free, so this is *not* a prefix sentence. -/
+def separatorConstraint (atom : ℕ → Sentence) (n : ℕ) : Sentence :=
+  sentenceConjunction ((List.range n).filterMap fun e ↦
+    (kleeneDecide n e).map fun b ↦ bitPrefixLiteral atom e b)
+
+lemma holds_separatorConstraint (v : PCWorld) (atom : ℕ → Sentence) (n : ℕ) :
+    v.Holds (separatorConstraint atom n) ↔
+      ∀ e < n, ∀ b, kleeneDecide n e = some b → (v.Holds (atom e) ↔ b = true) := by
+  rw [separatorConstraint, holds_sentenceConjunction]
+  constructor
+  · intro h e he b hb
+    have hmem : bitPrefixLiteral atom e b ∈ (List.range n).filterMap fun e ↦
+        (kleeneDecide n e).map fun b ↦ bitPrefixLiteral atom e b :=
+      List.mem_filterMap.2 ⟨e, List.mem_range.2 he, by rw [hb]; rfl⟩
+    simpa using (PCWorld.holds_bitPrefixLiteral v atom e b).mp (h _ hmem)
+  · intro h φ hφ
+    obtain ⟨e, he, hmap⟩ := List.mem_filterMap.1 hφ
+    rcases hb : kleeneDecide n e with _ | b
+    · rw [hb] at hmap; simp at hmap
+    · rw [hb] at hmap
+      have hφeq : φ = bitPrefixLiteral atom e b := by simpa using hmap.symm
+      rw [hφeq]
+      exact (PCWorld.holds_bitPrefixLiteral v atom e b).mpr
+        (h e (List.mem_range.1 he) b hb)
+
+/-- All bit strings of a given length. -/
+def allBitStrings (n : ℕ) : List (List Bool) :=
+  List.sections (List.replicate n [false, true])
+
+lemma mem_allBitStrings {σ : List Bool} {n : ℕ} :
+    σ ∈ allBitStrings n ↔ σ.length = n := by
+  rw [allBitStrings, List.mem_sections]
+  constructor
+  · intro h
+    simpa using h.length_eq
+  · intro h
+    subst h
+    induction σ with
+    | nil => simp
+    | cons b σ ih =>
+        rw [List.length_cons, List.replicate_succ]
+        exact List.Forall₂.cons (by cases b <;> simp) ih
+
+/-- The stage-`n` class: every length-`n` string agreeing with the bits decided by stage
+`n`. -/
+def separatorConsistentAt (n : ℕ) : List (List Bool) :=
+  (allBitStrings n).filter fun σ ↦
+    (List.range n).all fun e ↦
+      match kleeneDecide n e with
+      | none => true
+      | some b => σ.getD e false == b
+
+lemma mem_separatorConsistentAt {σ : List Bool} {n : ℕ} :
+    σ ∈ separatorConsistentAt n ↔
+      σ.length = n ∧ ∀ e < n, ∀ b, kleeneDecide n e = some b → σ.getD e false = b := by
+  rw [separatorConsistentAt, List.mem_filter, mem_allBitStrings]
+  constructor
+  · rintro ⟨hlen, hall⟩
+    refine ⟨hlen, fun e he b hb ↦ ?_⟩
+    have := (List.all_eq_true.1 (by simpa using hall)) e (List.mem_range.2 he)
+    rw [hb] at this
+    simpa using this
+  · rintro ⟨hlen, hall⟩
+    refine ⟨hlen, ?_⟩
+    simp only [decide_eq_true_eq, List.all_eq_true]
+    intro e he
+    rcases hb : kleeneDecide n e with _ | b
+    · rfl
+    · simpa using hall e (List.mem_range.1 he) b hb
+
+/-! ### The separator presentation
+
+Everything except the semimeasure fact is discharged here.  Two inputs are supplied by the
+caller and disclosed:
+
+* `hatoms` — *infinite* independent realizability of the atom family (every total Boolean
+  assignment is compatible with every finite deductive stage).  `BitPrefixSentences`
+  only carries the finite-prefix form, which cannot support a theory constraining
+  infinitely many bits; this is the paper's "predicates not mentioned in `Theory`".
+* `hce` — a program enumerating the constraint theory.  This mirrors the operational input
+  `BitPrefixCodeComputation` already taken by the DUS prefix syntax: the repo does not yet
+  build Foundation formula codes from scratch.
+* `hmass` — the disclosed `M7-STRICT-SEPARATORS` residue: the universal semimeasure gives
+  the stage classes vanishing total mass.  `kleene_recursively_inseparable` above is its
+  computability-theoretic input; the measure-theoretic step (a positive-mass class would
+  let the lower-semicomputable approximants of `M` compute a separator by majority vote —
+  Kučera–Demuth) is not yet formalized.
+  TODO(blueprint:thm:strict): need `Tendsto (fun n ↦ ((separatorConsistentAt n).map
+  M.mass).sum) atTop (𝓝 0)` from `kleene_recursively_inseparable` plus the approximation
+  fields of `M`. -/
+noncomputable def strictSeparatorPresentationOfKleene
+    {DP : DeductiveProcess} (M : UniversalContinuousSemimeasure)
+    (B : BitPrefixSentences DP)
+    (hatoms : ∀ (n : ℕ) (f : ℕ → Bool), ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ k, (v.Holds (B.atom k) ↔ f k = true))
+    (hce : CEEnumeration (separatorConstraint B.atom))
+    (hmass : Tendsto (fun n ↦ ((separatorConsistentAt n).map M.mass).sum) atTop (𝓝 0)) :
+    StrictSeparatorPresentation M B where
+  constraint := separatorConstraint B.atom
+  repetition := EfficientRepeatedEnumeration.ofCE hce
+  jointly_possible n := by
+    obtain ⟨v, hv, hbits⟩ := hatoms n kleeneAssignment
+    refine ⟨v, hv, fun i ↦ ?_⟩
+    refine (holds_separatorConstraint v B.atom i).2 (fun e _ b hb ↦ ?_)
+    rw [hbits e, kleeneAssignment_of_decide hb]
+  consistentAt := separatorConsistentAt
+  class_covers n v hv := by
+    classical
+    refine ⟨(List.range n).map fun k ↦ decide (v.Holds (B.atom k)), ?_, ?_⟩
+    · refine mem_separatorConsistentAt.2 ⟨by simp, fun e he b hb ↦ ?_⟩
+      have hlt : e < ((List.range n).map fun k ↦ decide (v.Holds (B.atom k))).length := by
+        simpa using he
+      rw [List.getD_eq_getElem _ _ hlt]
+      simp only [List.getElem_map, List.getElem_range]
+      have hiff := (holds_separatorConstraint v B.atom n).1 hv e he b hb
+      cases b with
+      | false =>
+          simp only [decide_eq_false_iff_not]
+          exact fun hh ↦ by simpa using hiff.mp hh
+      | true => simpa using hiff.mpr rfl
+    · refine (B.holds_prefix v _).2 (fun k ↦ ?_)
+      have hk : (k : ℕ) < n := by simpa using k.isLt
+      simp only [List.get_eq_getElem, List.getElem_map, List.getElem_range,
+        decide_eq_true_eq]
+  mass_class_tendsto_zero := hmass
 
 #print axioms ceNestedSemimeasure
 #print axioms exists_pos_mass_of_ce_nested
 #print axioms no_ce_null_prefix_family
-#print axioms strictSeparatorPresentation_not_ce
+#print axioms kleene_recursively_inseparable
+#print axioms strictSeparatorPresentationOfKleene
 
 end LogicalInduction

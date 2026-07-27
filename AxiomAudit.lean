@@ -567,7 +567,7 @@ deliberately. -/
 #assert_fields Strategy
   trades rank_le
 #assert_fields StrictSeparatorPresentation
-  prefixes nested length_tendsto_atTop repetition jointly_possible mass_tendsto_zero
+  constraint repetition jointly_possible consistentAt class_covers mass_class_tendsto_zero
 #assert_fields Trader
   strat
 #assert_fields UniversalContinuousSemimeasure

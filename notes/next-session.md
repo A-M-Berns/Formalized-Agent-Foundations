@@ -366,62 +366,59 @@ commit "Tranche U stage 1: the universal dovetailer with clocked approximants").
 Tranche S can already reuse stage 1: `Dovetail.trim`/`dovetailMass` give the
 lower-semicomputable approximants that `mass_tendsto_zero`'s contrapositive argues over.
 
-## Tranche S — M7-STRICT-SEPARATORS — **BLOCKED: the interface as written is vacuous**
+## Tranche S — M7-STRICT-SEPARATORS — redesigned and landed (2026-07-27)
 
-**Finding (2026-07-27, `Construction/Witnesses/StrictSeparators.lean`, all endpoints
-axiom-clean, no `sorry`).**  `StrictSeparatorPresentation` (UniversalSemimeasure.lean)
-cannot be inhabited as stated.  Its `mass_tendsto_zero` field contradicts its own
-`repetition` field:
+**What happened.**  The old interface (nested prefix family) was proved *uninhabitable*
+(`no_ce_null_prefix_family`, `Construction/Witnesses/StrictSeparators.lean`: a nested
+family with a computable string enumeration carries a lower-semicomputable point-style
+semimeasure `ceNestedSemimeasure`, so universality keeps its mass above a positive
+constant forever).  Anson approved the redesign; it is now in, in collapsed form.
 
-* `no_ce_null_prefix_family` — for a universal `M`, no family `prefixes : ℕ → List Bool`
-  that is `nested` and admits a **computable enumeration of its strings** can satisfy
-  `Tendsto (fun i ↦ M.mass (prefixes i)) atTop (𝓝 0)`.  (`length_tendsto_atTop` is not
-  even needed.)
-* Reason: a computably enumerated *nested* family carries a lower-semicomputable
-  continuous semimeasure `ceNestedSemimeasure` — mass `1` on every string that is a
-  prefix of an enumerated one, `0` elsewhere; comparability of the enumerated strings is
-  exactly what makes the two children of a node compete, so `children_le` holds.
-  Universality of `M` then pins `M.mass (prefixes i) ≥ c > 0` forever.
-* `strictSeparatorPresentation_not_ce` states the conclusion directly on the structure,
-  under the hypothesis that the prefix *strings* are computably enumerable.
-* The gap between that hypothesis and the structure's `repetition` field is only
-  decoding: `EfficientRepeatedEnumeration` already emits the prefix *sentences* by
-  program (`sequence_poly`) and its `sound`/`covers` fields say those sentences are
-  exactly `prefixSentence (prefixes i)`.  Turning that into `Computable enum` needs
-  (i) a `PolyFueled`/`RpnSentenceCodes → Computable` bridge and (ii) a computable
-  inverse for `bitPrefixSentence` (parse a literal conjunction back to its bit string).
-  Both are mechanical-but-real; neither changes the mathematical conclusion.
+**Interface now (`Properties/UniversalSemimeasure.lean`), all conclusion-free:**
 
-**Why the paper is not wrong — what the redesign must look like.**  `app:strict` never
-claims mass vanishes along one nested (hence, once c.e., computable) branch.  It applies
-Uniform Non-Dogmatism to the c.e. **constraint theory** of a recursively inseparable pair
-(`A₀ = {e : e(0)↓=0}`, `A₁ = {e : e(0)↓=1}`): the sentences are single-bit constraints
-`b_e` / `¬b_e`, leaving the undecided bits free, so they do *not* assemble into prefixes.
-It then shows the universal semimeasure gives vanishing mass to the **class** of
-length-`n` strings consistent with those constraints.  A faithful `thm:strict` interface
-therefore needs:
-1. `theory : ℕ → Sentence` (the c.e. constraint stream) + `EfficientRepeatedEnumeration`
-   + `jointly_possible` — the Uniform Non-Dogmatism half, unchanged in spirit;
-2. `consistentAt : ℕ → List (List Bool)` — the length-`n` strings consistent with the
-   constraints — with `mass_class_tendsto_zero : Tendsto (fun n ↦ Σ σ ∈ consistentAt n,
-   M.mass σ) atTop (𝓝 0)` (this is the genuinely research-grade computability fact, and
-   it is *not* refuted by the obstruction above);
-3. a market half that replaces `strict_domination_of_null_prefix_theory`: from
-   `ε ≤ limitingBelief P (theory i)` and coherence, `ε ≤ Σ σ ∈ consistentAt n,
-   limitingBelief P (prefixSentence σ)`; pigeonhole against `Σ M.mass σ < ε/C` gives one
-   `σ` with `C * M.mass σ < limitingBelief P (prefixSentence σ)`.
-   Step 3 is new market work (a finite-disjunction coherence lemma over prefix
-   sentences), so this is a redesign of both halves, not a drop-in field swap.
+| field | status |
+| --- | --- |
+| `constraint : ℕ → Sentence` | constructed (`separatorConstraint`, the stage-`n` conjunction of decided Kleene literals) |
+| `repetition` | constructed from a `CEEnumeration` via `EfficientRepeatedEnumeration.ofCE` |
+| `jointly_possible` | proved, from infinite independent realizability of the atoms |
+| `consistentAt : ℕ → List (List Bool)` | constructed (`separatorConsistentAt`, filtered `allBitStrings`) |
+| `class_covers` | proved (read the world's bits off the atoms) |
+| `mass_class_tendsto_zero` | **open** — the disclosed residue |
 
-**Mathlib survey (rule 2b, done).**  No recursive inseparability anywhere in Mathlib
-(`Inseparable` is the topological notion only).  `Computability/Halting.lean` has
-`ComputablePred`, `REPred`, `halting_problem`, `rice`, `computable_iff_re_compl_re`;
-`PartrecCode.lean` has `exists_code`, `evaln_complete`, `evaln_mono`.  Kleene's pair and
-its inseparability would have to be built here — but it is *not* the blocker: the blocker
-is the interface shape, and the inseparable pair is only needed for item 2 above.
+**Market half.**  `strict_domination_of_null_separator_class` replaces
+`strict_domination_of_null_prefix_theory`: UND floors the constraint theory at ε; limit
+coherence (`GaifmanCoherent.mono` / `.or_le` / `.le_sum_of_covers`, new in
+`Properties/LimitCoherence.lean`) spreads the floor over the stage class; pigeonhole
+against vanishing class mass finishes.  **`lic_strict_domination_universalSemimeasure`'s
+statement is unchanged** — only the type of its separator argument changed, and `hworld`
+comes from the interface's own `jointly_possible`, so no hypothesis was added.
 
-Until the redesign is scoped and accepted, `thm:strict` stays a disclosed boundary; the
-new file documents *why*, in kernel-checked form rather than prose.
+**Discharged concretely** in `StrictSeparators.lean`: `kleeneSet`, `kleeneSet_disjoint`,
+`kleene_recursively_inseparable` (the diagonalization — proved, axiom-clean),
+`kleeneDecide` + soundness, `separatorConstraint` + exact semantics, `allBitStrings`,
+`separatorConsistentAt` + membership, and `strictSeparatorPresentationOfKleene`.
+
+**Three named inputs of `strictSeparatorPresentationOfKleene`, disclosed:**
+1. `hatoms` — *infinite* independent realizability (`∀ n f, ∃ v, ConsistentWith (DP.D n) ∧
+   ∀ k, v.Holds (atom k) ↔ f k`).  `BitPrefixSentences.finite_realizable` only gives the
+   finite-prefix form and cannot support a theory constraining infinitely many bits.  The
+   paper's "zero-arity predicates not mentioned in `Theory`" satisfy it.  *Next step if
+   this is to be closed: strengthen `IndependentBitAtoms.finite_realizable` to the total
+   form and re-derive the DUS uses, which only need the finite form.*
+2. `hce : CEEnumeration (separatorConstraint B.atom)` — a program enumerating the
+   constraint theory.  Mirrors `BitPrefixCodeComputation`, already taken as an operational
+   input by the DUS prefix syntax; the repo does not yet build Foundation formula codes
+   from scratch.  Closing it needs a `Computable (fun i ↦ encode (constraint i))` route
+   through the RPN emission machinery.
+3. `hmass` — `Tendsto (fun n ↦ ((separatorConsistentAt n).map M.mass).sum) atTop (𝓝 0)`.
+   This is the genuine remaining mathematics: `kleene_recursively_inseparable` supplies the
+   computability side; the missing step is Kučera–Demuth (a positive-mass class lets the
+   lower-semicomputable approximants of `M` compute a separator by majority vote over the
+   class, contradicting inseparability).  It is stated as a hypothesis, not a `sorry`, so
+   the repo stays sorry-free; grep `TODO(blueprint:thm:strict)`.
+   Needed from Tranche U if U lands first: nothing structural — only `M`'s existing
+   `approximation` / `approximation_mono` / `approximation_tendsto` fields are used, so the
+   proof can be written against `UniversalContinuousSemimeasure` directly.
 
 ## Tranche P — 𝓔𝓒 polish (cheap optionals, ~½–4 sessions total, no paper-node demand)
 
@@ -454,9 +451,13 @@ All three are mechanical with the existing mirror suite (`RpnSpliceStream`,
   (`strictSeparatorPresentation_not_ce`, Construction/Witnesses/StrictSeparators.lean),
   contradicting `mass_tendsto_zero`.  The paper's `app:strict` uses single-bit
   CONSTRAINT theories + class-mass, not nested prefixes.  DECISION (Anson,
-  2026-07-27): **redesign approved**; the redesign tranche (constraint stream +
-  per-level consistent set + finite-disjunction coherence/pigeonhole market half)
-  is in flight (worktree agent).
+  2026-07-27): **redesign approved** — and **EXECUTED the same day**: the interface
+  was redesigned in place (the old nested-prefix shape is provably uninhabitable —
+  `no_ce_null_prefix_family`); the market half is
+  `strict_domination_of_null_separator_class`; the endpoint statement is UNCHANGED.
+  Kleene recursive inseparability is fully proved.  All fields but
+  `mass_class_tendsto_zero` are constructed; see Tranche S above for the three named
+  residual inputs (hatoms / hce / hmass — hypotheses, not sorries).
 
 These three are the only intentional disclosures at the 12/15 target. The audit should
 confirm no fourth boundary is assumed anywhere it isn't named.

@@ -322,6 +322,69 @@ lemma disjoint_sum (l : List Sentence)
         obtain ⟨ψ, hψl, hvψ⟩ := (holds_sentenceDisjunction v l).mp hvl
         exact (List.pairwise_cons.mp hdisj).1 ψ hψl v ⟨hvφ, hvψ⟩
 
+/-- Monotonicity along semantic implication. -/
+lemma mono {φ ψ : Sentence} (himp : ∀ v : PCWorld, v.Holds φ → v.Holds ψ) :
+    L φ ≤ L ψ := by
+  have hsplit : L (φ ⋎ (ψ ⋏ ∼φ)) = L φ + L (ψ ⋏ ∼φ) :=
+    GaifmanCoherent.disjoint_add hL (by
+      intro v hv
+      exact (PCWorld.holds_and v ψ (∼φ)).mp hv.2 |>.2
+        |> fun h => ((PCWorld.holds_neg v φ).mp h) hv.1)
+  have hcongr : L (φ ⋎ (ψ ⋏ ∼φ)) = L ψ :=
+    GaifmanCoherent.congr hL (by
+      intro v
+      simp only [PCWorld.holds_or, PCWorld.holds_and, PCWorld.holds_neg]
+      constructor
+      · rintro (h | ⟨h, -⟩)
+        · exact himp v h
+        · exact h
+      · intro h
+        by_cases hφ : v.Holds φ
+        · exact Or.inl hφ
+        · exact Or.inr ⟨h, hφ⟩)
+  have hnonneg : 0 ≤ L (ψ ⋏ ∼φ) := (GaifmanCoherent.mem_Icc hL _).1
+  rw [hcongr] at hsplit
+  linarith
+
+/-- Subadditivity on a binary disjunction. -/
+lemma or_le (φ ψ : Sentence) : L (φ ⋎ ψ) ≤ L φ + L ψ := by
+  have hcongr : L (φ ⋎ ψ) = L (φ ⋎ (ψ ⋏ ∼φ)) :=
+    GaifmanCoherent.congr hL (by
+      intro v
+      simp only [PCWorld.holds_or, PCWorld.holds_and, PCWorld.holds_neg]
+      constructor
+      · rintro (h | h)
+        · exact Or.inl h
+        · by_cases hφ : v.Holds φ
+          · exact Or.inl hφ
+          · exact Or.inr ⟨h, hφ⟩
+      · rintro (h | ⟨h, -⟩)
+        · exact Or.inl h
+        · exact Or.inr h)
+  have hsplit : L (φ ⋎ (ψ ⋏ ∼φ)) = L φ + L (ψ ⋏ ∼φ) :=
+    GaifmanCoherent.disjoint_add hL (by
+      intro v hv
+      exact ((PCWorld.holds_neg v φ).mp ((PCWorld.holds_and v ψ (∼φ)).mp hv.2).2) hv.1)
+  have hmono : L (ψ ⋏ ∼φ) ≤ L ψ :=
+    GaifmanCoherent.mono hL (fun v hv => ((PCWorld.holds_and v ψ (∼φ)).mp hv).1)
+  rw [hcongr, hsplit]
+  linarith
+
+/-- Finite subadditivity: a sentence covered by a finite list of sentence events has
+valuation at most the sum of theirs.  No disjointness is required. -/
+lemma le_sum_of_covers {φ : Sentence} {l : List Sentence}
+    (hcov : ∀ v : PCWorld, v.Holds φ → ∃ ψ ∈ l, v.Holds ψ) :
+    L φ ≤ (l.map L).sum := by
+  have hmono : L φ ≤ L (sentenceDisjunction l) :=
+    GaifmanCoherent.mono hL (fun v hv => (holds_sentenceDisjunction v l).mpr (hcov v hv))
+  refine hmono.trans ?_
+  clear hmono hcov
+  induction l with
+  | nil => simp [sentenceDisjunction, GaifmanCoherent.bot_eq_zero hL]
+  | cons ψ l ih =>
+      rw [sentenceDisjunction, List.map_cons, List.sum_cons]
+      exact (GaifmanCoherent.or_le hL ψ (sentenceDisjunction l)).trans (by linarith)
+
 end GaifmanCoherent
 
 /-- The sentence asserting that atom `i` has Boolean value `b`. -/
