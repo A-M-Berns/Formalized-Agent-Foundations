@@ -49,7 +49,7 @@ or a conventional complexity class.  A row marked *complete* claims the paper st
 | thm:ceu | qualified | same |
 | thm:con | conditional | genuine trader proof over `[IsLogicalInductor]` |
 | thm:dontwait | complete | unconditional over `LIA` on the provability process (Σ₁-sound `Θ ⊇ IΣ₁`) |
-| thm:dus | qualified | unconditional over `LIA`, but the `M7-DUS-APPROX` approximation/emission data is a retained input |
+| thm:dus | qualified | unconditional over `LIA` **and over the semimeasure**: `M7-DUS-APPROX` is discharged by the constructed dovetail (`lic_domination_everyLowerSemicomputable_unconditional` dominates every lower-semicomputable continuous semimeasure with no approximation/emission input); the retained input is the prefix-sentence code emitter `BitPrefixCodeComputation` (`M7-DUS-PREFIX-SYNTAX`) |
 | thm:ec | qualified | finite-precision threshold-LUV representation (`ApproxValuesUpTo`) retained |
 | thm:ei | qualified | indicator linkage over threshold LUVs retained |
 | thm:epr | qualified | unconditional-over-LIA variant exists but retains quote-code data |

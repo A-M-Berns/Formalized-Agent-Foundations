@@ -1,5 +1,6 @@
 import LogicalInduction.Properties.UniversalSemimeasure
 import LogicalInduction.Construction.LIACompiler
+import LogicalInduction.Construction.Witnesses.QuoteCodeOfMarket
 
 /-!
 # The universal dovetailer (`M7-DUS-APPROX`, stage 1)
@@ -50,15 +51,13 @@ Every field of `UniversalContinuousSemimeasure` is proved or constructed: the se
 laws, the monotone from-below stage table with its limit, the domination constant, and the
 emission program.  `universalSemimeasure` is axiom-clean.
 
-**Still open (`M7-DUS-APPROX`, disclosed):** this file gives *lower-semicomputability*, not
-a *polynomial* clock.  `DUSApproximationPresentation` asks for `PolyRatCodes` on the stage
-emitter, and `DUSThresholdEmission` for the derived threshold streams; neither is provided
-here, so `lic_domination_universalSemimeasure_unconditional` remains qualified.  The stage
-design was chosen to make that step plausible — stage `n` runs `n` programs for `n` steps,
-so the bound is on the STAGE, not the limit — but the tabulation above is *exponential* in
-the string length (`childPair` re-runs the whole clock-column at each of the `|σ|` levels,
-and `rawTable` re-scans `n` dovetail readings), so the poly refinement needs a genuinely
-different emitter, not a re-certification of this one.
+The **polynomial** clock (`M7-DUS-APPROX` proper) is discharged at the end of the file by
+the *self-clamped* stage table `dusApprox`: the exact emitter above is a fixed code, so
+`Code.evaln`'s own guards clamp both its input and its output, and `codeEvalnNat_polyFueled`
+makes reading it under a polynomial clock poly-fueled.  Scanning the stages that finished
+within the clock therefore emits an exact stage value at a stage that grows without bound —
+`DUSApproximationPresentation` and `DUSThresholdEmission` are constructed objects, so
+`lic_domination_dovetailSemimeasure_unconditional` carries no semimeasure input at all.
 -/
 
 namespace LogicalInduction
@@ -1335,6 +1334,441 @@ noncomputable def universalSemimeasure : UniversalContinuousSemimeasure where
 #print axioms gridApprox_le_mass
 #print axioms gridApprox_tendsto
 #print axioms isPolyBounded_encode_gridApprox
+
+/-! ## The polynomial clock: the self-clamped stage table
+
+The exact emitter `approxEmit` is *primitive* recursive, not poly-fueled: at stage `n` its
+`(1/2)^(i+1)` weights already carry denominators of order `2^n`.  The fix is not to make it
+cheaper but to let the interpreter's own clock decide how far it gets.
+
+`Code.evaln` is **self-clamping**: every clause guards `n ≤ k`, so a code run with fuel `k`
+can neither read an input above `k` nor return a value above `codeEvalBound c k`, which for
+a *fixed* `c` is polynomial in `k` (`codeEvaln_result_le`, `codeEvalBound_poly`).  That is
+the clamp the recursion needs, and it is free — it is already in `evaln`'s definition.  So
+instead of re-engineering the dovetail's arithmetic, the poly-fuel emitter *runs the exact
+emitter under a polynomial clock and keeps the best stage that finished*:
+
+* `stageRead F j i` reads the exact table at stage `j` on string index `i` with clock `F`
+  (`0` when the clock ran out) — poly-fueled because the simulated code is fixed
+  (`codeEvalnNat_polyFueled`, `M7-HIST-EVALN`);
+* `dusState z` scans `j < n` at clock `⟪z, z⟫`, keeping the last reading that succeeded;
+* `dusStage z n` names the stage that reading came from, so the emitted rational is
+  literally `universalApprox (dusStage …) σ` — hence nonneg, below the mass, and (since
+  every fixed stage eventually fits the growing clock, and the table is monotone)
+  convergent to it.
+
+The carried state is one encoded rational bounded by `codeEvalBound approxCode ⟪z,z⟫ + 1`,
+which is exactly the poly-bounded state `PolyFueled.prec` demands.  No drift bound is
+needed: the rounding is not an approximation of the exact table but a *selection* from it,
+so the values are exact and monotonicity survives intact.  (`gridApprox` above remains the
+record of the alternative route — grid rounding of the *stage* — which discharges the same
+two analytic fields but would have required the drift argument.) -/
+
+/-- The exact stage emitter as a total program.  `approxEmit_prim` is primitive recursive,
+so `Code.exists_code` names a code whose `eval` is total and equal to it. -/
+noncomputable def approxCode : Nat.Partrec.Code :=
+  (Nat.Partrec.Code.exists_code.mp
+    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp approxEmit_prim))).choose
+
+lemma approxCode_eval : approxCode.eval = fun z ↦ Part.some (approxEmit z) :=
+  (Nat.Partrec.Code.exists_code.mp
+    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp approxEmit_prim))).choose_spec
+
+lemma approxCode_evaln_eq {k x out : ℕ} (h : approxCode.evaln k x = some out) :
+    out = approxEmit x := by
+  have hmem : out ∈ approxCode.eval x := Nat.Partrec.Code.evaln_sound h
+  rw [approxCode_eval] at hmem
+  simpa using hmem
+
+lemma approxCode_evaln_exists (x : ℕ) :
+    ∃ F₀, ∀ F, F₀ ≤ F → approxCode.evaln F x = some (approxEmit x) := by
+  have hmem : approxEmit x ∈ approxCode.eval x := by
+    rw [approxCode_eval]; exact Part.mem_some _
+  obtain ⟨F₀, hF₀⟩ := Nat.Partrec.Code.evaln_complete.mp hmem
+  exact ⟨F₀, fun F hF ↦ Nat.Partrec.Code.evaln_mono hF hF₀⟩
+
+/-- One clocked reading of the exact table: stage `j`, string index `i`, clock `F`.
+`0` means "the clock ran out"; otherwise the value is `⌜universalApprox j σᵢ⌝ + 1`. -/
+noncomputable def stageRead (F j i : ℕ) : ℕ :=
+  codeEvalnNat approxCode (Nat.pair F (Nat.pair j i))
+
+/-- The string named by an index, as the exact emitter decodes it. -/
+def dusString (i : ℕ) : List Bool := (Encodable.decode (α := List Bool) i).getD []
+
+lemma stageRead_eq_of_ne_zero {F j i : ℕ} (h : stageRead F j i ≠ 0) :
+    stageRead F j i = Encodable.encode (universalApprox j (dusString i)) + 1 := by
+  rw [stageRead, codeEvalnNat] at h ⊢
+  simp only [Nat.unpair_pair] at h ⊢
+  cases hev : approxCode.evaln F (Nat.pair j i) with
+  | none => rw [hev] at h; simp at h
+  | some out =>
+      rw [approxCode_evaln_eq hev, approxEmit, Nat.unpair_pair, dusString]
+
+lemma stageRead_le (F j i : ℕ) :
+    stageRead F j i ≤ codeEvalBound approxCode F + 1 := by
+  simpa [stageRead] using codeEvalnNat_le approxCode (Nat.pair F (Nat.pair j i))
+
+lemma stageRead_ne_zero (j i : ℕ) :
+    ∃ F₀, ∀ F, F₀ ≤ F → stageRead F j i ≠ 0 := by
+  obtain ⟨F₀, hF₀⟩ := approxCode_evaln_exists (Nat.pair j i)
+  refine ⟨F₀, fun F hF ↦ ?_⟩
+  rw [stageRead, codeEvalnNat]
+  simp [Nat.unpair_pair, hF₀ F hF]
+
+/-- The polynomial clock offered at query `z`. -/
+def dusFuel (z : ℕ) : ℕ := Nat.pair z z
+
+lemma le_dusFuel (z : ℕ) : z ≤ dusFuel z := Nat.left_le_pair z z
+
+/-- The stage that the last successful reading below `j` came from. -/
+noncomputable def dusStage (z : ℕ) : ℕ → ℕ
+  | 0 => 0
+  | j + 1 => if stageRead (dusFuel z) j z.unpair.2 = 0 then dusStage z j else j
+
+/-- The carried encoded state of the scan: `⌜universalApprox (dusStage z j) σ⌝ + 1`. -/
+noncomputable def dusState (z : ℕ) : ℕ → ℕ
+  | 0 => 2
+  | j + 1 =>
+      ifzSelFn (Nat.pair (dusState z j) (stageRead (dusFuel z) j z.unpair.2))
+        (stageRead (dusFuel z) j z.unpair.2)
+
+@[simp] lemma dusState_zero (z : ℕ) : dusState z 0 = 2 := rfl
+
+lemma universalApprox_zero (σ : List Bool) : universalApprox 0 σ = 0 := by
+  simp [universalApprox]
+
+/-- The scan's state is exactly the encoded table value at the recorded stage. -/
+lemma dusState_eq (z : ℕ) : ∀ j,
+    dusState z j = Encodable.encode (universalApprox (dusStage z j) (dusString z.unpair.2)) + 1
+  | 0 => by
+      rw [dusState, dusStage, universalApprox_zero]
+      rfl
+  | j + 1 => by
+      rw [dusState, dusStage, ifzSelFn]
+      by_cases h : stageRead (dusFuel z) j z.unpair.2 = 0
+      · rw [if_pos h, if_pos h, Nat.unpair_pair]
+        exact dusState_eq z j
+      · rw [if_neg h, if_neg h, Nat.unpair_pair]
+        exact stageRead_eq_of_ne_zero h
+
+lemma dusState_le (z : ℕ) : ∀ j, dusState z j ≤ codeEvalBound approxCode (dusFuel z) + 2
+  | 0 => by rw [dusState]; omega
+  | j + 1 => by
+      rw [dusState, ifzSelFn]
+      by_cases h : stageRead (dusFuel z) j z.unpair.2 = 0
+      · rw [if_pos h, Nat.unpair_pair]; exact dusState_le z j
+      · rw [if_neg h, Nat.unpair_pair]
+        have := stageRead_le (dusFuel z) j z.unpair.2
+        omega
+
+/-- A stage whose reading succeeds is never lost: the recorded stage only grows. -/
+lemma le_dusStage {z j N : ℕ} (hj : j < N) (h : stageRead (dusFuel z) j z.unpair.2 ≠ 0) :
+    j ≤ dusStage z N := by
+  induction N with
+  | zero => omega
+  | succ N ih =>
+      rw [dusStage]
+      by_cases hN : stageRead (dusFuel z) N z.unpair.2 = 0
+      · rw [if_pos hN]
+        rcases Nat.lt_or_ge j N with hlt | hge
+        · exact ih hlt
+        · have hjN : j = N := by omega
+          subst hjN
+          exact absurd hN h
+      · rw [if_neg hN]; omega
+
+/-! ### The emitted table -/
+
+/-- **The poly-fuel stage table.**  On query `z = ⟪n, i⟫` it is the exact stage table at
+whatever stage `< n` the clock `⟪z, z⟫` last completed on string `σᵢ`.
+Paper node: `thm:dus` -/
+noncomputable def dusApprox (z : ℕ) : ℚ :=
+  universalApprox (dusStage z z.unpair.1) (dusString z.unpair.2)
+
+lemma dusApprox_nonneg (z : ℕ) : 0 ≤ dusApprox z := universalApprox_nonneg _ _
+
+lemma dusApprox_le_mass (z : ℕ) :
+    ((dusApprox z : ℚ) : ℝ) ≤ universalMass (dusString z.unpair.2) :=
+  universalApprox_le _ _
+
+lemma encode_dusApprox (z : ℕ) :
+    Encodable.encode (dusApprox z) = dusState z z.unpair.1 - 1 := by
+  rw [dusApprox, dusState_eq]
+  omega
+
+/-- Every fixed stage is eventually reached: the clock `⟪⟪n,i⟫,⟪n,i⟫⟫` grows past the fuel
+that stage `m` needs, and `le_dusStage` never lets the stage slip back. -/
+lemma dusApprox_eventually_ge (m i : ℕ) :
+    ∀ᶠ n in atTop, universalApprox m (dusString i) ≤ dusApprox (Nat.pair n i) := by
+  obtain ⟨F₀, hF₀⟩ := stageRead_ne_zero m i
+  refine Filter.eventually_atTop.2 ⟨max (m + 1) F₀, fun n hn ↦ ?_⟩
+  have hni : n ≤ Nat.pair n i := Nat.left_le_pair n i
+  have hfuel : F₀ ≤ dusFuel (Nat.pair n i) :=
+    le_trans (le_trans (le_max_right _ _) hn) (le_trans hni (le_dusFuel _))
+  have hsnd : (Nat.pair n i).unpair.2 = i := by simp
+  have hne : stageRead (dusFuel (Nat.pair n i)) m (Nat.pair n i).unpair.2 ≠ 0 := by
+    rw [hsnd]; exact hF₀ _ hfuel
+  have hlt : m < (Nat.pair n i).unpair.1 := by
+    have : m + 1 ≤ n := le_trans (le_max_left _ _) hn
+    simpa using this
+  have := le_dusStage hlt hne
+  rw [dusApprox, hsnd]
+  exact universalApprox_mono _ this
+
+/-- The clocked table converges to the mass: it is below the mass at every stage, and above
+every fixed stage of the exact table eventually.
+Paper node: `thm:dus` -/
+lemma dusApprox_tendsto (i : ℕ) :
+    Tendsto (fun n ↦ ((dusApprox (Nat.pair n i) : ℚ) : ℝ)) atTop
+      (𝓝 (universalMass (dusString i))) := by
+  refine tendsto_order.2 ⟨fun a ha ↦ ?_, fun b hb ↦ ?_⟩
+  · obtain ⟨m, hm⟩ := ((universalApprox_tendsto (dusString i)).eventually
+      (eventually_gt_nhds ha)).exists
+    filter_upwards [dusApprox_eventually_ge m i] with n hn
+    exact lt_of_lt_of_le hm (by exact_mod_cast hn)
+  · refine Filter.Eventually.of_forall fun n ↦ lt_of_le_of_lt ?_ hb
+    have h := dusApprox_le_mass (Nat.pair n i)
+    simpa using h
+
+/-! ### The emission certificate
+
+`PolyFueled.prec` over the packed input `w = ⟪z, ⟪j, prev⟫⟫`.  The only nontrivial input is
+the clocked reading, which is `codeEvalnNat approxCode` at a `Nat.pair`-assembled argument —
+poly-fueled because `approxCode` is a *fixed* code (`M7-HIST-EVALN`).  The state bound is
+`codeEvalBound approxCode ⟪z,z⟫ + 2`, polynomial in `z` for the same reason. -/
+
+/-- The scan's step function on the packed `prec` input `w = ⟪z, ⟪j, prev⟫⟫`. -/
+noncomputable def dusStep (w : ℕ) : ℕ :=
+  ifzSelFn
+    (Nat.pair w.unpair.2.unpair.2
+      (codeEvalnNat approxCode
+        (Nat.pair (Nat.pair w.unpair.1 w.unpair.1)
+          (Nat.pair w.unpair.2.unpair.1 w.unpair.1.unpair.2))))
+    (codeEvalnNat approxCode
+      (Nat.pair (Nat.pair w.unpair.1 w.unpair.1)
+        (Nat.pair w.unpair.2.unpair.1 w.unpair.1.unpair.2)))
+
+lemma dusState_succ (z j : ℕ) :
+    dusState z (j + 1) = dusStep (Nat.pair z (Nat.pair j (dusState z j))) := by
+  rw [dusStep]
+  simp only [Nat.unpair_pair]
+  rfl
+
+attribute [local irreducible] Nat.sqrt approxCode approxEmit universalApprox trim tabCol
+  rootVal colOf childPair rawVal rawStep in
+lemma dusStep_polyFueled : ∃ c, PolyFueled c dusStep := by
+  obtain ⟨cR, hR⟩ := codeEvalnNat_polyFueled approxCode
+  have hz : PolyFueled _ (fun w : ℕ ↦ w.unpair.1) := PolyFueled.left
+  have hr : PolyFueled _ (fun w : ℕ ↦ w.unpair.2) := PolyFueled.right
+  have hj := PolyFueled.left.comp hr
+  have hprev := PolyFueled.right.comp hr
+  have hi := PolyFueled.right.comp hz
+  have hv := hR.comp ((hz.pair hz).pair (hj.pair hi))
+  exact ⟨_, (ifzSel_polyFueled.comp ((hprev.pair hv).pair hv)).of_eq
+    (fun w ↦ by simp only [Nat.unpair_pair, dusStep])⟩
+
+attribute [local irreducible] Nat.sqrt approxCode approxEmit universalApprox trim tabCol
+  rootVal colOf childPair rawVal rawStep dusStep dusState in
+lemma dusState_polyFueled : ∃ c, PolyFueled c (fun z ↦ dusState z z.unpair.1) := by
+  obtain ⟨cs, hs⟩ := dusStep_polyFueled
+  have hst : IsPolyBounded (fun m ↦ dusState m.unpair.1 m.unpair.2) := by
+    refine IsPolyBounded.of_le
+      (b' := fun m ↦ codeEvalBound approxCode (Nat.pair m.unpair.1 m.unpair.1) + 1 + 1)
+      (((codeEvalBound_poly approxCode).comp
+        (isPolyBounded_fst.pair isPolyBounded_fst)).add_one.add_one) (fun m ↦ ?_)
+    have := dusState_le m.unpair.1 m.unpair.2
+    simpa [dusFuel] using this
+  have hprec := PolyFueled.prec (PolyFueled.const 2) hs (st := dusState)
+    dusState_zero dusState_succ hst
+  exact ⟨_, (hprec.comp (PolyFueled.id.pair PolyFueled.left)).of_eq
+    (fun z ↦ by simp only [Nat.unpair_pair])⟩
+
+/-- **The poly-fuel emission certificate for the stage table** (`M7-DUS-APPROX`).
+Paper node: `thm:dus` -/
+theorem dusApprox_polyRatCodes : PolyRatCodes dusApprox := by
+  obtain ⟨c, hc⟩ := dusState_polyFueled
+  exact ⟨_, (predc_polyFueled.comp hc).of_eq (fun z ↦ (encode_dusApprox z).symm)⟩
+
+/-! ### The approximation presentation -/
+
+@[simp] lemma lowerSemicomputable_mass : lowerSemicomputable.mass = universalMass := rfl
+
+/-- **`DUSApproximationPresentation` for the constructed universal semimeasure**
+(`M7-DUS-APPROX`).  Every field is discharged by this file: the table is the exact stage
+table read under a polynomial clock, so it is nonneg and below the mass by construction,
+converges because the clock eventually reaches every stage, and is poly-emitted because the
+simulated code is fixed.
+Paper node: `thm:dus` -/
+noncomputable def dusApproximationPresentation {DP : DeductiveProcess}
+    (B : BitPrefixSentences DP) (hB : ∀ i, B.enumeration i = dusString i) :
+    DUSApproximationPresentation lowerSemicomputable B where
+  approximation := fun n i ↦ dusApprox (Nat.pair n i)
+  approximation_codes := by
+    obtain ⟨c, hc⟩ := dusApprox_polyRatCodes
+    exact ⟨c, hc.of_eq (fun z ↦ by simp only [Nat.pair_unpair])⟩
+  nonneg := fun _ _ ↦ dusApprox_nonneg _
+  le_mass := fun n i ↦ by
+    rw [hB i]
+    show ((dusApprox (Nat.pair n i) : ℚ) : ℝ) ≤ universalMass (dusString i)
+    simpa using dusApprox_le_mass (Nat.pair n i)
+  tendsto := fun i ↦ by
+    rw [hB i]
+    show Tendsto (fun n ↦ ((dusApprox (Nat.pair n i) : ℚ) : ℝ)) atTop
+      (𝓝 (universalMass (dusString i)))
+    exact dusApprox_tendsto i
+
+/-! ### The threshold emission
+
+Both gate streams are rational arithmetic on the emitted stage rational: with
+`q = N / D` in lowest terms and rung scale `k`, the base is `N / (4(k+1)D)`, so the
+threshold sum is `N / (2(k+1)D)` and the inverse width is `4(k+1)D / N` (both zero when
+`N = 0`, matching `ℚ`'s `x / 0 = 0`).  One generic `gcdc`-reduced emitter covers both. -/
+
+/-- Encoding of a nonnegative rational in closed pairing form. -/
+lemma encode_rat_of_nonneg {q : ℚ} (hq : 0 ≤ q) :
+    Encodable.encode q = Nat.pair (2 * q.num.toNat) q.den := by
+  have hnn : 0 ≤ q.num := Rat.num_nonneg.mpr hq
+  have h : Encodable.encode q.num = 2 * q.num.toNat := by
+    obtain ⟨m, hm⟩ := Int.eq_ofNat_of_zero_le hnn
+    rw [hm]
+    simpa using encode_int_natCast m
+  rw [encode_rat_eq, h]
+
+/-- Poly-fueled encoding of a natural-cast quotient.  `gcdc` reduces the fraction at
+runtime; the zero-denominator branch emits `⌜(0 : ℚ)⌝`, matching `x / 0 = 0` in `ℚ`. -/
+lemma encode_natDiv_polyFueled {cn cd : Nat.Partrec.Code} {nf df : ℕ → ℕ}
+    (hn : PolyFueled cn nf) (hd : PolyFueled cd df) :
+    ∃ c, PolyFueled c (fun m ↦ Encodable.encode ((nf m : ℚ) / (df m : ℚ))) := by
+  obtain ⟨cg, hgcd⟩ := gcdc_polyFueled
+  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have gPF := hgcd.comp (hn.pair hd)
+  have pgPF := predc_polyFueled.comp gPF
+  have numPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hn))
+  have denPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hd))
+  have h2num := had.comp (numPF.pair numPF)
+  refine ⟨_, (ifzSel_polyFueled.comp
+    (((PolyFueled.const (Nat.pair 0 1)).pair (h2num.pair denPF)).pair hd)).of_eq (fun m ↦ ?_)⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  by_cases hk0 : df m = 0
+  · rw [if_pos hk0, hk0]
+    norm_num
+    rfl
+  · rw [if_neg hk0]
+    have hg : 0 < Nat.gcd (nf m) (df m) :=
+      Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
+    have hg1 : (Nat.gcd (nf m) (df m)).pred + 1 = Nat.gcd (nf m) (df m) :=
+      Nat.succ_pred_eq_of_pos hg
+    rw [hg1, encode_rat_natCast_div hk0, two_mul]
+
+/-- The gate query's stage-table argument: day `z.2`, string index `z.2.2`. -/
+def dusQuery (z : ℕ) : ℕ := Nat.pair z.unpair.2 z.unpair.2.unpair.2
+
+/-- Reduced numerator of the emitted stage rational at the gate query. -/
+noncomputable def dusNum (z : ℕ) : ℕ :=
+  (Encodable.encode (dusApprox (dusQuery z))).unpair.1 / 2
+
+/-- Reduced denominator of the emitted stage rational at the gate query. -/
+noncomputable def dusDen (z : ℕ) : ℕ :=
+  (Encodable.encode (dusApprox (dusQuery z))).unpair.2
+
+lemma dusNum_eq (z : ℕ) : dusNum z = (dusApprox (dusQuery z)).num.toNat := by
+  rw [dusNum, encode_rat_of_nonneg (dusApprox_nonneg _), Nat.unpair_pair]
+  omega
+
+lemma dusDen_eq (z : ℕ) : dusDen z = (dusApprox (dusQuery z)).den := by
+  rw [dusDen, encode_rat_of_nonneg (dusApprox_nonneg _), Nat.unpair_pair]
+
+lemma dusDen_pos (z : ℕ) : 0 < dusDen z := by
+  rw [dusDen_eq]; exact (dusApprox (dusQuery z)).den_pos
+
+lemma dusApprox_query_eq (z : ℕ) :
+    dusApprox (dusQuery z) = (dusNum z : ℚ) / (dusDen z : ℚ) := by
+  have hnn : 0 ≤ (dusApprox (dusQuery z)).num := Rat.num_nonneg.mpr (dusApprox_nonneg _)
+  have hcast : ((dusApprox (dusQuery z)).num.toNat : ℚ) = ((dusApprox (dusQuery z)).num : ℚ) := by
+    exact_mod_cast congrArg (fun n : ℤ ↦ (n : ℚ)) (Int.toNat_of_nonneg hnn)
+  rw [dusNum_eq, dusDen_eq, hcast]
+  exact (Rat.num_div_den _).symm
+
+lemma dusNum_polyFueled : ∃ c, PolyFueled c dusNum := by
+  obtain ⟨c, hc⟩ := dusApprox_polyRatCodes
+  obtain ⟨cdm, hdm⟩ := divmodc_polyFueled 2 (by norm_num)
+  have hq : PolyFueled _ (fun z ↦ Nat.pair z.unpair.2 z.unpair.2.unpair.2) :=
+    PolyFueled.right.pair (PolyFueled.right.comp PolyFueled.right)
+  exact ⟨_, (PolyFueled.left.comp (hdm.comp (PolyFueled.left.comp (hc.comp hq)))).of_eq
+    (fun z ↦ by simp only [Nat.unpair_pair]; rfl)⟩
+
+lemma dusDen_polyFueled : ∃ c, PolyFueled c dusDen := by
+  obtain ⟨c, hc⟩ := dusApprox_polyRatCodes
+  have hq : PolyFueled _ (fun z ↦ Nat.pair z.unpair.2 z.unpair.2.unpair.2) :=
+    PolyFueled.right.pair (PolyFueled.right.comp PolyFueled.right)
+  exact ⟨_, (PolyFueled.right.comp (hc.comp hq)).of_eq (fun z ↦ rfl)⟩
+
+/-- `z ↦ dusDen z * (w * (z.1 + 1))`, the gate denominators for `w = 2` and `w = 4`. -/
+lemma dusGateDen_polyFueled (w : ℕ) :
+    ∃ c, PolyFueled c (fun z ↦ dusDen z * (w * (z.unpair.1 + 1))) := by
+  obtain ⟨cd, hd⟩ := dusDen_polyFueled
+  obtain ⟨cm, hm⟩ := mul_polyFueled
+  have hk1 := PolyFueled.left.succ_comp
+  have hw := (hm.comp ((PolyFueled.const w).pair hk1)).of_eq
+    (f' := fun z ↦ w * (z.unpair.1 + 1)) (fun z ↦ by simp only [Nat.unpair_pair])
+  exact ⟨_, (hm.comp (hd.pair hw)).of_eq (fun z ↦ by simp only [Nat.unpair_pair])⟩
+
+section Emission
+
+-- The gate identities unfold `dusEmitBase` through nested `Nat.unpair`s; keep `Nat.sqrt`
+-- opaque so `whnf` does not descend into the pairing implementation.
+attribute [local irreducible] Nat.sqrt dusApprox dusNum dusDen
+
+variable {DP : DeductiveProcess} (B : BitPrefixSentences DP)
+  (hB : ∀ i, B.enumeration i = dusString i)
+
+lemma dusEmitBase_eq (z : ℕ) :
+    dusEmitBase (dusApproximationPresentation B hB) z
+      = (dusNum z : ℚ) / ((dusDen z * (4 * (z.unpair.1 + 1)) : ℕ) : ℚ) := by
+  have hD : (0 : ℚ) < (dusDen z : ℚ) := by exact_mod_cast dusDen_pos z
+  have hk : (0 : ℚ) < ((z.unpair.1 : ℚ) + 1) := by positivity
+  show dusApprox (dusQuery z) / (4 * ((z.unpair.1 : ℚ) + 1)) = _
+  rw [dusApprox_query_eq]
+  push_cast
+  field_simp
+
+lemma dusEmitSum_eq (z : ℕ) :
+    dusEmitBase (dusApproximationPresentation B hB) z
+        + dusEmitBase (dusApproximationPresentation B hB) z
+      = (dusNum z : ℚ) / ((dusDen z * (2 * (z.unpair.1 + 1)) : ℕ) : ℚ) := by
+  have hD : (0 : ℚ) < (dusDen z : ℚ) := by exact_mod_cast dusDen_pos z
+  have hk : (0 : ℚ) < ((z.unpair.1 : ℚ) + 1) := by positivity
+  rw [dusEmitBase_eq B hB]
+  push_cast
+  field_simp
+  ring
+
+lemma dusEmitRecip_eq (z : ℕ) :
+    1 / dusEmitBase (dusApproximationPresentation B hB) z
+      = ((dusDen z * (4 * (z.unpair.1 + 1)) : ℕ) : ℚ) / (dusNum z : ℚ) := by
+  rw [dusEmitBase_eq B hB, one_div_div]
+
+/-- **`DUSThresholdEmission` for the constructed universal semimeasure** (`M7-DUS-APPROX`).
+Paper node: `thm:dus` -/
+theorem dusThresholdEmission : DUSThresholdEmission (dusApproximationPresentation B hB) where
+  threshold_sum_codes := by
+    obtain ⟨cn, hn⟩ := dusNum_polyFueled
+    obtain ⟨cd, hd⟩ := dusGateDen_polyFueled 2
+    obtain ⟨c, hc⟩ := encode_natDiv_polyFueled hn hd
+    exact ⟨c, hc.of_eq (fun z ↦ by simp only [dusEmitSum_eq B hB])⟩
+  inverse_width_codes := by
+    obtain ⟨cn, hn⟩ := dusGateDen_polyFueled 4
+    obtain ⟨cd, hd⟩ := dusNum_polyFueled
+    obtain ⟨c, hc⟩ := encode_natDiv_polyFueled hn hd
+    exact ⟨c, hc.of_eq (fun z ↦ by simp only [dusEmitRecip_eq B hB])⟩
+
+end Emission
+
+#print axioms dusApprox_tendsto
+#print axioms dusApprox_polyRatCodes
+#print axioms dusApproximationPresentation
+#print axioms dusThresholdEmission
 
 end Dovetail
 
