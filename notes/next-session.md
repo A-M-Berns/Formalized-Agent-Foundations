@@ -312,6 +312,12 @@ the propositional substrate.
 
 # REOPENABLE TRANCHES (scoped 2026-07-27, Anson-approved taxonomy)
 
+> **Stage-3 gate (Anson, 2026-07-27):** universal prefix κ (the last type-(c) in
+> PrefixMachine) is GATED on the clamped-dovetailer agent's outcome: if the rounded
+> poly-fuel emission lands cleanly, dispatch stage 3 BEFORE freezing the surface for
+> the read-through (read the final statements once); if it struggles, defer stage 3
+> past consolidation as the one scoped post-freeze enhancement.
+
 Three bins beyond the in-flight RPN-5/freeze line.  Everything not listed here is
 either **closed** (prefix-enumeration whole-value row: proved, zero debt) or
 **permanently disclosed in principle** (dd:fuel↔TM-time: no time-bounded machine
