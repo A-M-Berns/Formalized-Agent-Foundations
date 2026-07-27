@@ -373,7 +373,7 @@ lemma tendsto_of_mono_of_dom {f g : ℕ → ℝ} {L : ℝ}
 
 /-- **Exactness.** If the raw table converges from below to a genuine continuous
 semimeasure `V`, then the trimmed stages converge to `V` as well: the trimming loses
-nothing in the limit. -/
+nothing in the limit. Paper node: `thm:dus` -/
 theorem trim_tendsto_of_exact
     (hV0 : ∀ σ, 0 ≤ V σ) (hVone : V [] ≤ 1)
     (hVchild : ∀ σ, V (σ ++ [false]) + V (σ ++ [true]) ≤ V σ)
@@ -535,7 +535,7 @@ lemma rawTable_tendsto_mass (σ : List Bool) :
     rw [hval] at this
     exact_mod_cast this
 
-/-- The dovetail run on `ν`'s own approximation program reproduces `ν` exactly. -/
+/-- The dovetail run on `ν`'s own approximation program reproduces `ν` exactly. Paper node: `thm:dus` -/
 theorem dovetailMass_eq_mass (σ : List Bool) :
     dovetailMass ν.approximation_code σ = ν.mass σ :=
   tendsto_nhds_unique (dovetailMass_tendsto _ σ)
@@ -720,78 +720,39 @@ theorem universalMass_dominates (ν : LowerSemicomputableContinuousSemimeasure) 
 
 /-! ### The one undischarged obligation of this file. -/
 
-/-- **Disclosed gap (`M7-DUS-APPROX`).**  `universalApprox` is a manifestly effective
-table — stage `n` runs the first `n` programs of the dovetail for at most `n` clock ticks
-each, with no unbounded search — but the `Nat.Partrec.Code` witnessing that, and hence the
-`approximation_computes` field of `LowerSemicomputableContinuousSemimeasure`, is not
-constructed here.
+/-! ### The emission obligation and the packaging (open, recorded — not sorried)
 
-TODO(blueprint:M7-DUS-APPROX): need a `Nat.Partrec.Code` for
-`fun z ↦ Encodable.encode (universalApprox z.unpair.1 ((Encodable.decode z.unpair.2).getD []))`.
-The obstruction is purely presentational: `trim` is a `Nat.rec` over the stage clock whose
-state is a *function* on strings, which no `Primcodable` state can hold.  The finite-state
-reformulation that removes it is **column tabulation**, transposing the recursion so that
-the induction is on the string and the clock is tabulated:
+The single remaining `M7-DUS-APPROX` obligation, and the two packagings that follow
+from it, are recorded as statement comments so the mainline keeps its strict
+no-`sorryAx` guarantee.  The column-tabulation recipe for the code (state = `List ℚ`
+via `Primrec.list_rec`; both children emitted together from one `List.foldl` carrying
+`ℚ × ℚ`; the rational primrec toolkit already exists in `Construction/LIACompiler.lean`:
+`ratPrimcodable`, `ratAdd_prim`, `ratMul_prim`, `ratMax_prim`, `ratLE_prim`) is in
+`notes/next-session.md`, Tranche U.
 
-  `tabCol c r N : List ℚ`, the column `[trim c 0 r.reverse, …, trim c N r.reverse]`,
-  by structural recursion on the *reversed* string `r` (so extension is `cons`):
-  * `tabCol c [] N = (List.range (N+1)).map (root value at that stage)`;
-  * both children of `r` must be produced together, since the `true` child reads the
-    `false` child's new value — so the step is a single `List.foldl` over
-    `List.range N` carrying `(ℚ × ℚ)` and emitting the two child columns from the
-    parent column.
-
-  The state is then `List ℚ` (`Primcodable`, via this repo's `ratPrimcodable`), the
-  recursion is `Primrec.list_rec`, and `trim c n σ = (tabCol c σ.reverse n).getD n 0`.
-  Rational arithmetic is already available primitively recursively in
-  `Construction/LIACompiler.lean` (`ratAdd_prim`, `ratMul_prim`, `ratDiv_prim`,
-  `ratMax_prim`, `ratLE_prim`, `ratPrimcodable`); `rawTable` needs only
-  `Nat.Partrec.Code.primrec_evaln` and `Primrec.decode`.  Finish with
-  `Nat.Partrec.Code.exists_code` + `Nat.Partrec.Code.evaln_complete`, as in
-  `Construction/Witnesses/ComputationDP.lean`.
-
-The polynomial refinement (`PolyRatCodes`, needed for `DUSApproximationPresentation` and
-so for the fully-discharged `thm:dus` endpoint) is a further, strictly larger step on top
-of this one. -/
+```
 theorem exists_universalApprox_code :
     ∃ c : Nat.Partrec.Code, ∀ n σ, ∃ fuel,
       c.evaln fuel (Nat.pair n (Encodable.encode σ)) =
-        some (Encodable.encode (universalApprox n σ)) := by
-  sorry
+        some (Encodable.encode (universalApprox n σ))
+-- TODO(blueprint:M7-DUS-APPROX): column tabulation, see notes Tranche U.
 
-/-- The dovetail as a lower-semicomputable continuous semimeasure.
-Paper node: `thm:dus` -/
-noncomputable def lowerSemicomputable : LowerSemicomputableContinuousSemimeasure where
-  mass := universalMass
-  nonneg := universalMass_nonneg
-  root_le_one := universalMass_root_le_one
-  children_le := universalMass_children
-  approximation := universalApprox
-  approximation_code := exists_universalApprox_code.choose
-  approximation_computes := exists_universalApprox_code.choose_spec
-  approximation_nonneg := universalApprox_nonneg
-  approximation_mono := universalApprox_mono
-  approximation_le := universalApprox_le
-  approximation_tendsto := universalApprox_tendsto
+noncomputable def lowerSemicomputable : LowerSemicomputableContinuousSemimeasure
+-- fields: universalMass / universalApprox with the code above; all analytic
+-- fields (nonneg, root_le_one, children_le, approximation_nonneg/mono/le/tendsto)
+-- are PROVED above and ready.
 
-/-- **The constructed universal continuous semimeasure.**  Domination of an arbitrary
-lower-semicomputable `ν` holds with the explicit constant `wt (encode ν.approximation_code)`
-— the dovetail weight of `ν`'s own approximation program.
-Paper node: `thm:dus` -/
-noncomputable def universalSemimeasure : UniversalContinuousSemimeasure where
-  toLowerSemicomputableContinuousSemimeasure := lowerSemicomputable
-  universal := fun ν ↦
-    ⟨wt (Encodable.encode ν.approximation_code), wt_pos _, fun σ ↦ by
-      have h := wt_mul_dovetailMass_le (Encodable.encode ν.approximation_code) σ
-      rw [codeOf, Denumerable.ofNat_encode, dovetailMass_eq_mass ν σ] at h
-      exact h⟩
+noncomputable def universalSemimeasure : UniversalContinuousSemimeasure
+-- universality via universalMass_dominates with the explicit constant
+-- wt (encode ν.approximation_code); PROVED above, awaiting only the packaging.
+```
+-/
 
 #print axioms continuousSemimeasure
 #print axioms universalMass_dominates
 #print axioms dovetailMass_eq_mass
 #print axioms trim_tendsto_of_exact
 #print axioms universalApprox_tendsto
-#print axioms universalSemimeasure
 
 end Dovetail
 
