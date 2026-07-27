@@ -198,15 +198,23 @@ The paper needs only lower-semicomputability here.
 > `UniversalContinuousSemimeasure.universal`, and it means the `M` in the endpoint above is
 > no longer a hypothetical object.
 >
-> Two obligations remain, in order of increasing size:
-> 1. `Dovetail.exists_universalApprox_code` — a `Nat.Partrec.Code` for the stage table
->    (the `approximation_computes` field).  Single disclosed `sorry`; the packaged
->    `Dovetail.universalSemimeasure` is the only declaration that depends on it and is
->    deliberately **not** on the audit surface.  Recipe (column tabulation + the repo's
->    existing `ratPrimcodable`/`ratAdd_prim` toolkit) is in the theorem's docstring.
-> 2. The *polynomial* refinement — `DUSApproximationPresentation` and
->    `DUSThresholdEmission` for `M*` — which is what actually upgrades the endpoint above
->    from qualified to complete.  Strictly larger than (1); not attempted.
+> **Update (same day, stages 1–2).** The emission program is now constructed by column
+> tabulation, so `Dovetail.exists_universalApprox_code`,
+> `Dovetail.lowerSemicomputable` and `Dovetail.universalSemimeasure` are real, axiom-clean
+> declarations on the audit surface — `M` in the endpoint above can be instantiated.
+>
+> The residual obligation is now **only the polynomial clock**, and its shape is known:
+> `PolyFueled` demands `IsPolyBounded` of the encoded output, which `universalApprox`
+> cannot satisfy (`(1/2)^(i+1)` forces `2^n` denominators).  Since
+> `DUSApproximationPresentation` requires only `nonneg`/`le_mass`/`tendsto` — not
+> monotonicity — the table is legitimately rounded onto the `1/(n+1)` grid
+> (`Dovetail.gridApprox`), and `gridApprox_le_mass`, `gridApprox_tendsto` and
+> `isPolyBounded_encode_gridApprox` are proved.  Two of three fields plus the size half of
+> the third are therefore done; what is left is the poly-*fuel* emitter, which needs a
+> clamped dovetailer (a code run for `n` steps can emit doubly-exponential rationals and
+> the trimming threads them exactly), not a re-certification of the tabulation.
+> `lic_domination_universalSemimeasure_unconditional` stays qualified until that lands —
+> deliberately, so no hollow endpoint is minted.
 
 ### 2.5 `hworld` consistency hypotheses
 

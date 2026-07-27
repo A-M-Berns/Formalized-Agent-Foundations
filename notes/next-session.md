@@ -336,25 +336,41 @@ commit "Tranche U stage 1: the universal dovetailer with clocked approximants").
 * `Dovetail.universalApprox` — the monotone from-below stage table (first `n` programs,
   each at trimmed stage `n`), with `_nonneg`/`_mono`/`_le`/`_tendsto` all proved.
 
-**Remaining, in order.**
-1. `Dovetail.exists_universalApprox_code` — the file's single `sorry`
-   (`approximation_computes`), which is all that keeps `Dovetail.universalSemimeasure`
-   off the audit surface.  *Obstruction is presentational only*: `trim` is a `Nat.rec`
-   over the clock whose state is a function on strings.  Fix = **column tabulation**
-   (`tabCol c r N : List ℚ`, the clock-column at a string, by structural recursion on
-   the reversed string, both children produced together by one `List.foldl` over
-   `List.range N` carrying `ℚ × ℚ`).  State becomes `List ℚ`; use `Primrec.list_rec`,
-   `Primrec.list_foldl`, `Primrec.list_range`, `Primrec.list_getD`, this repo's
-   `ratPrimcodable`/`ratAdd_prim`/`ratMul_prim`/`ratMax_prim`/`ratLE_prim`
-   (`Construction/LIACompiler.lean`), `Nat.Partrec.Code.primrec_evaln`, then
-   `exists_code` + `evaln_complete` (pattern: `Witnesses/ComputationDP.lean`).
-   Full recipe is in the theorem's docstring.  Estimate ½–1½ sessions.
-2. `DUSApproximationPresentation` + `DUSThresholdEmission` for `M*` — the *polynomial*
-   refinement (`PolyRatCodes`, `PolyFueled`), which is what upgrades `thm:dus` from
-   qualified to complete-over-LIA.  Strictly larger than (1) and **not** unblocked by
-   it: (1) gives computability, this needs a poly clock on the stage emitter, with the
-   prefix-machine `approx_polyRat` discharge as the pattern (clamped materialization,
-   `BigDigits.clampVal`).  Do not start before (1).  Estimate 1–3 sessions.
+**Step 1 landed 2026-07-27** (`exists_universalApprox_code` + packaging).  The emission
+program is constructed by **column tabulation** (`tabCol`, `childPair`, `trim_prim`,
+`universalApprox_prim`, `approxEmit_prim`), so `Dovetail.lowerSemicomputable` and
+`Dovetail.universalSemimeasure` are real, axiom-clean defs on the audit surface.  Two
+things learned that are worth keeping:
+* `Nat.sqrt` being section-`irreducible` was **not** sufficient for the documented whnf
+  blowup — it only cleared once the *domain leaves* (`rawStep`, `rawVal`, `childPair`,
+  `colOf`, `rootVal`, `tabCol`, `trim`, `universalApprox`) were made locally irreducible
+  per declaration.  Worth adding to the gotcha log as the standard second step.
+* `list_range_map_sum` existed twice, both `private`, both ℝ-only.  Generalized upstream
+  (`ExpectationConvergence.lean`, now public, `AddCommMonoid`), downstream duplicate
+  deleted.
+
+**Remaining: the polynomial clock only** (`M7-DUS-APPROX` proper).  Step 1 gives
+*lower-semicomputability*; `DUSApproximationPresentation` wants `PolyRatCodes`.  The
+session pinned down what that actually costs:
+
+1. **`universalApprox` can never satisfy it, and the fix is legitimate.** `PolyFueled`
+   demands `IsPolyBounded` of the *encoded output*, and the `(1/2)^(i+1)` weights alone
+   force denominators of order `2^n`.  But `DUSApproximationPresentation` requires only
+   `nonneg`/`le_mass`/`tendsto` — **not** monotonicity — so the table may be rounded down
+   onto the `1/(n+1)` grid.  That is done and proved: `Dovetail.gridApprox`, with
+   `gridApprox_le_mass`, `gridApprox_tendsto`, and `encode_gridApprox_le` /
+   `isPolyBounded_encode_gridApprox` (encoding `≤ (2(n+1)+1)^2`).  All axiom-clean, on the
+   audit surface.  **Two of the three presentation fields, plus the size half of the
+   third, are therefore already discharged.**
+2. **What is left is exactly the fuel half:** a code computing `gridApprox` in `evaln`
+   fuel polynomial in `⟪n, i⟫`.  This is *not* a re-certification of `tabCol`: a program
+   run for `n` steps can emit rationals of doubly-exponential magnitude, and the trimming
+   threads those exact values, so the poly emitter must round **inside** the recursion
+   (onto the same `1/(n+1)` grid) — a different, clamped dovetailer, whose exactness proof
+   must be redone since grid rounding breaks the monotonicity the current
+   `trim_tendsto_of_exact` relies on.  `DUSThresholdEmission` then derives by rational
+   arithmetic on those denominators, as `prefixThresholdSum_polyRat` did.  Estimate 1–3
+   sessions; do not start it expecting to reuse `tabCol`.
 3. Then upgrade `PrefixMachine.lean`'s κ to universal prefix complexity: dovetailing
    weights are lower-semicomputable, so the presentation's `tendsto` field does real
    work (from-below stage convergence); the Kraft field needs the universal machine's
@@ -503,10 +519,12 @@ genuinely needs deep quoted sentences.
   constructed; `PrefixMachineComputation` deleted). The only remaining disclosure for
   this node is the type-`(c)` non-universality of `prefixKappa` (a modeling statement,
   not a proof gap). See the record above and `notes/m7-prefix-machine-scope.md`.
-- `M7-DUS-APPROX` — **partially discharged 2026-07-27** (Tranche U stage 1): the
-  universal semimeasure `M*` is constructed and its universality proved axiom-clean; what
-  remains disclosed is the *emission* side (a code for the stage table, then its poly
-  refinement).  See the Tranche U entry above.
+- `M7-DUS-APPROX` — **narrowed to the polynomial clock, 2026-07-27** (Tranche U stages
+  1–2): `M*` is constructed, universal, and lower-semicomputable — `universalSemimeasure`
+  is a real axiom-clean inhabitant — and two of the three `DUSApproximationPresentation`
+  fields plus the output-size half of the third are proved for the rounded table
+  `gridApprox`.  What is still disclosed is **only** the poly-fuel emitter, and it needs a
+  clamped dovetailer rather than the tabulation that landed.  See the Tranche U entry.
 - `M7-STRICT-SEPARATORS` — **DEFECTIVE AS STATED (kernel-checked, 2026-07-27)**:
   `StrictSeparatorPresentation` is uninhabitable modulo one mechanical bridge —
   its `repetition` field forces `M.mass (prefixes i) ≥ c > 0` by universality
