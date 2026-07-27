@@ -1,6 +1,6 @@
 # Logical Induction — handoff
 
-_Last updated: 2026-07-26 (collapse surgery landed; M7-PREFIX-MACHINE certificates proved & merged).
+_Last updated: 2026-07-26 (collapse + prefix machine + FULL EC-SEQ flip merged at `ca0d452`; RPN-5 transducer core merged, endpoints in flight).
 Branch: `logical-induction`._
 
 # 🎯 ACTIVE PLAN 2 — remaining: RPN-5 + EC-SEQ (updated 2026-07-26, collapse landed)
@@ -90,7 +90,8 @@ all green + axiom-clean except the two sorried endpoints:
   (window copy = `concatVar` over the recorded run length with `BigDigits` position
   access; blocks at the clamped day; flagged days emit []).
 
-SORRIED (honest, TODO(blueprint:thm:scon) at each): the endpoints
+OPEN (recorded as statement comments in RpnConditioning.lean — mainline sorry-free;
+worktree agent resumed on them 2026-07-26): the endpoints
 `conditionedTranslation_preserves_ecRpn` / `eventualConditionedTranslation_preserves_ecRpn`.
 Remaining distance, itemized in the file's "Endpoints (open)" section:
 (1) whole-stream contraction exactness for the price pass (well-formed chunks via
@@ -200,17 +201,6 @@ REMAINING (the per-family march):
          Calibration 1459, QuotationAffine 589, LUVSyntax 643, FeedbackEmission
          262-263, Affine 632, and the ROI budgeted/fractional composites
          (`PolyTradeEmulatable` ~683, `EfficientlyEmulatable` RPN mirror).
-       * IN-FLIGHT STATE (tree mid-flip when this was written; finish before any
-         other work): Affine.lean fields FLIPPED and green (priceFeature/
-         magnitudeFeature/riskFeature `_polySeg` now produce `RpnSpliceStream`;
-         scaleRat/neg use mirror combinators).  Derived ramp mirrors added:
-         ExpectationConvergence (`RpnSpliceStream.serialize_oneMinus/efMin/clip01`),
-         AffinePreemptiveLearning (`serialize_sellIndF/buyIndF`); APL's gradual*
-         `_polySeg` chain flipped through `gradualOccupancy_polySeg`.  REMAINING
-         COMPILER ERRORS (work down the file, then the build's next wave):
-         `gradualCoefficient_polySeg` (mechanical mirror flip),
-         `gradualFamilyPolyTrade` (needs the ROI decision below), endpoint ~1155,
-         then ROI, then the other consumer files.
        * ROI-MIRROR DESIGN INTEL: `EfficientlyEmulatable` (ROI:25) is the family
          universal-program TOKEN emission; its consumers split into (i) economic
          lemmas (`zero_before`, `netWorth_launch`, triangular sums at 1396/2057/2255)
