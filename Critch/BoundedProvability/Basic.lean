@@ -53,13 +53,24 @@ decision 1.
 proof is a proof; every proof has some size); `mono` is monotonicity of the
 measure, which the paper uses silently.
 
-Paper node: §4 (the `⊢ₖ` judgment of Property 3).
+Paper node: §2.1 (the `⊢ₙ` judgment; consumed by §4, Property 3).
 -/
 structure ProofMeasure (T : Theory L) where
   Pf : ℕ → Sentence L → Prop
   sound {k : ℕ} {σ : Sentence L} : Pf k σ → T ⊢ σ
   complete {σ : Sentence L} : T ⊢ σ → ∃ k, Pf k σ
   mono {k l : ℕ} {σ : Sentence L} : k ≤ l → Pf k σ → Pf l σ
+
+/--
+The arithmetic guard `↑m < k` as a one-free-variable formula: the boxed content
+of `BQuantDistr.bddCompleteCmp`. Pure syntax; kept as a named definition so the
+guard-completeness field quantifies over a fixed formula rather than a notation
+occurrence.
+
+Paper node: §4 (the restricted-quantifier guards `k > k̂` of eqs. 4.4–4.7,
+officially `(∀k)(k > k̂ → …)` under the §2.4 conventions). -/
+def ltGuard [L.Zero] [L.One] [L.Add] [L.LT] (m : ℕ) : Semisentence L 1 :=
+  “k. ↑m < k”
 
 /--
 Bounded provability predicate with an **object-level** bound, in the single
@@ -169,9 +180,31 @@ while yielding no bounded box at all (were totality then provable, it would prov
 `Con(T)`). The asymptotic comparison of `ν` against `lg` stays a downstream
 `Asymp` obligation, deliberately outside this class.
 
-Paper node: §3.2 (Property 2), with §2.4 (representing computable functions).
+`bddCompleteCmp` is bounded completeness for the numeral-comparison guards
+(R3-F06): for each meta-level `m`,
+
+`⊢ (∀k > m̄)(□_{c₂+ν(k)}(m̄ < k))`,
+
+officially `(∀k)(∀y)(Γ_ν[k,y] → (m̄ < k → □_{c₂+y}(m̄ < k)))` — the box is over
+the one-free-variable guard `ltGuard m` via `bbew₁`, and the bound is a fixed
+constant `c₂` plus the numeral cost `ν(k)` routed through `νGraph` (standing
+decision 4: never a baked-in `lg`; writing out the numeral `°k` is what the
+verification of `m̄ < k` costs). The paper never states this property, but its
+Theorem 1 proof spends it silently: the restricted universals of eqs. 4.4–4.7
+are officially guarded implications, and recovering `(∀k > k₂)(□(ψ[k]))` from a
+box of the guarded universal (Quantifier Distribution output
+`□(k > k₂ → ψ[k])` at internal `k`) needs a uniformly bounded box of the guard
+fact itself to feed Implication Distribution — no other interface field can
+produce a box from nothing. The paper's own Property 2 proof sketch (p. 5)
+exhibits exactly this cost shape: specializing an encoded proof at `°K` extends
+it by `C + N + lg(K)` characters, a constant plus the numeral cost, which is
+this field's `c₂ + ν(k)`. The order symbol this guard needs is why the class
+assumes `[L.LT]`.
+
+Paper node: §3.2 (Property 2), with §2.4 (representing computable functions)
+and p. 5 (proof sketch: numeral-specialization cost, used silently in §4).
 -/
-class BQuantDistr [L.Zero] [L.One] [L.Add] [L.Eq] (𝔅 : BoundedProvability T) where
+class BQuantDistr [L.Zero] [L.One] [L.Add] [L.Eq] [L.LT] (𝔅 : BoundedProvability T) where
   C : ℕ
   ν : ℕ → ℕ
   ν_computable : Computable ν
@@ -182,6 +215,9 @@ class BQuantDistr [L.Zero] [L.One] [L.Add] [L.Eq] (𝔅 : BoundedProvability T) 
   quantDistr {N : ℕ} {φ : Semisentence L 1} :
     T ⊢ 𝔅.pr N (∀⁰ φ : Sentence L) →
     T ⊢ “∀ k y, !νGraph k y → !(𝔅.bbew₁ φ) (↑C + ↑(2 * N) + y) k”
+  c₂ : ℕ
+  bddCompleteCmp (m : ℕ) :
+    T ⊢ “∀ k y, !νGraph k y → ↑m < k → !(𝔅.bbew₁ (ltGuard m)) (↑c₂ + y) k”
 
 /--
 The `Eval` specifications for the free-variable boxes: substituting standard
@@ -275,13 +311,25 @@ class BExpansion [L.Zero] [L.One] [L.Add] [L.Eq] (μ : ProofMeasure T)
 /-- Sanity: the interface recovers unbounded D1 — an ordinary `T`-theorem has
 *some* bounded box provable in `T` (via `ProofMeasure.complete` and Property 3).
 
+`μ` is an explicit argument: it occurs otherwise only inside the instance
+argument's type, so leaving it implicit strands instance search on
+`BExpansion ?μ 𝔅` and the lemma cannot be applied at all (R3-F07).
+
 Paper node: §4 (Property 3 degenerates to Löb's derivability condition D1). -/
 lemma exists_pr_of_provable [L.Zero] [L.One] [L.Add] [L.Eq]
-    {μ : ProofMeasure T} {𝔅 : BoundedProvability T}
+    (μ : ProofMeasure T) {𝔅 : BoundedProvability T}
     [BExpansion μ 𝔅] {σ : Sentence L} (h : T ⊢ σ) :
     ∃ k, T ⊢ 𝔅.pr k σ := by
   obtain ⟨k, hk⟩ := μ.complete h
   exact ⟨k, μ.sound (BExpansion.nec hk)⟩
+
+/-- R3-F07 regression check: the sanity lemma is applicable with the instance in
+context (the round-3 form was stuck on `BExpansion ?μ 𝔅`). -/
+example [L.Zero] [L.One] [L.Add] [L.Eq]
+    {μ : ProofMeasure T} {𝔅 : BoundedProvability T}
+    [BExpansion μ 𝔅] {σ : Sentence L} (h : T ⊢ σ) :
+    ∃ k, T ⊢ 𝔅.pr k σ :=
+  exists_pr_of_provable μ h
 
 /--
 Convenience bundle of the full bounded-HBL interface for the parametric bounded
@@ -290,7 +338,7 @@ serves theorems needing the whole collection.
 
 Paper node: §§3.2–4 (Properties 1–4, Definition 1, `Eval₁` specification).
 -/
-class BHBL [L.Zero] [L.One] [L.Add] [L.Eq] (μ : ProofMeasure T)
+class BHBL [L.Zero] [L.One] [L.Add] [L.Eq] [L.LT] (μ : ProofMeasure T)
     (𝔅 : BoundedProvability T) extends
   𝔅.BImpDistr, 𝔅.BQuantDistr, 𝔅.BEvalSpec, 𝔅.BMono, BExpansion μ 𝔅
 

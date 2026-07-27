@@ -14,6 +14,7 @@ Critch 2019 by §/Property/Theorem (§-citations; the paper PDF has no \label so
 import Lean.Util.CollectAxioms
 import Critch.BoundedProvability.Basic
 import Critch.BoundedProvability.Asymp
+import Critch.BoundedProvability.Diagonal
 import Critch.ParametricDiagonal
 import Critch.Infrastructure.QuoteSentence
 
@@ -57,6 +58,7 @@ substitution helpers `prt`/`pr` (the semisentence↔sentence bridge). -/
 
 #assert_axioms_clean
   ProofMeasure
+  ltGuard
   BoundedProvability
   BoundedProvability.prt
   BoundedProvability.pr
@@ -80,12 +82,11 @@ substitution helpers `prt`/`pr` (the semisentence↔sentence bridge). -/
   Asymp.lg_ltAsymp_id
   Asymp.add
 
-/-! ## Parametric diagonalization (§4, Proposition 1) -/
+/-! ## Parametric diagonalization (§4, Proposition 1: interface class + ℒₒᵣ instance) -/
 
 #assert_axioms_clean
-  parametricFixedpoint
-  parametric_diagonal
-  parametric_diagonal₁
+  ParametricDiagonalization
+  instParametricDiagonalizationLOR
 
 /-! ## Frozen field surfaces — every interface class and boundary structure -/
 
@@ -100,6 +101,7 @@ substitution helpers `prt`/`pr` (the semisentence↔sentence bridge). -/
 
 #assert_fields BoundedProvability.BQuantDistr
   C ν ν_computable νGraph νGraph_spec νGraph_total νGraph_func quantDistr
+  c₂ bddCompleteCmp
 
 #assert_fields BoundedProvability.BEvalSpec
   eval_spec eval_spec_inner
@@ -112,5 +114,8 @@ substitution helpers `prt`/`pr` (the semisentence↔sentence bridge). -/
 
 #assert_fields BoundedProvability.BHBL
   toBImpDistr toBQuantDistr toBEvalSpec toBMono toBExpansion
+
+#assert_fields ParametricDiagonalization
+  fixedpoint diagonal
 
 end LO.FirstOrder.Critch

@@ -18,6 +18,7 @@ Project plan: `notes/critch-pbl-roadmap.md` — its four standing scope decision
 | §3.2 Property 2 | class `BQuantDistr` | abstract computable ν via graph formula + **internal totality & functionality** (R1-F05, R2-F05) |
 | §4 Definition 1 + Properties 3–4 | class `BExpansion` | ONE computable `e` (graph `eGraph` + spec + total + func); P3 bounded premise + `e(k)` outer bound; P4 internal over `bbewInner` (R1-F03/F06, R2-F02) |
 | bundle | `BHBL` | extends the five classes |
+| §4 Proposition 1 | class `ParametricDiagonalization` (`Critch/BoundedProvability/Diagonal.lean`) | fields `fixedpoint`/`diagonal`; r = 1 form; quote hypothesis `GödelNumber L (Semisentence L 1)`; ℒₒᵣ instance `instParametricDiagonalizationLOR` (`Critch/ParametricDiagonal.lean`) via Foundation's `Arithmetic.parameterized_diagonal₁` under Foundation's own names (R3-F03/R3-F08) |
 | — | `Critch/Infrastructure/QuoteSentence.lean` | Sentence-level quote commutation; Foundation-upstream candidates (R1-F13) |
 
 §-map (R1-F07): Properties 1–2 live in **§3.2**; §4 contains Definition 1, Properties 3–4,
@@ -52,10 +53,20 @@ and Theorem 1. Cite accordingly.
   entering internal statements via a §2.4 graph (ν, e, later g) must carry internal
   totality AND functionality fields, not just the per-numeral spec — `Γ ∧ Con_x(T)`
   satisfies spec + guarded conclusion vacuously at nonstandard parameters while totality
-  would prove Con(T). Asymptotic comparisons stay downstream in Asymp, never in the class.
+  would prove Con(T). Asymptotic comparisons stay out of the class — but NOT as external
+  `Asymp ≺` facts either (R3-F01/R3-F05): the three bound weakenings (eqs 4.4/4.5/4.7)
+  consume INTERNALLY provable comparisons, which external `≺` cannot supply — Con-guard
+  counterexample: a computable bound that behaves like k² unless a T-contradiction proof
+  of code ≤ k exists is externally k² with total functional graph, yet its internal
+  eventual lower bound would prove Con(T). These comparisons enter as hypotheses of
+  Theorem 1's Lean statement, stated in graph vocabulary for f, g, h (anticipated
+  extension for the Theorem 1 phase), never as class fields.
 - R2-F03 resolution: no internal-(∀k) eval conversion exists or is needed — pp. 6–8 stay
-  in `bbew₁`/`bbewInner` form from Quantifier Distribution onward and end box-free;
-  per-numeral `eval_spec`(+`_inner`) are honest §3.1 specs and vacuity anchors.
+  in `bbew₁`/`bbewInner` form from Quantifier Distribution onward, and only the final
+  modus ponens of eqs 4.6+4.7 lands box-free at `(∀k>k̂)(p[k])`. (Correction, R3-F05
+  documentation remedy: this entry previously called eqs 4.6–4.7 box-free — false for
+  4.7, which is `(∀k>k̂)(□_{g(k)}(ψ[k]))`.) Per-numeral `eval_spec`(+`_inner`) are honest
+  §3.1 specs and vacuity anchors.
 - Anticipated interface EXTENSIONS for the ParametricLöb proof phase (extensions, not
   rewrites): (a) forming the diagonal `G` before `ψ` exists needs `bbew₁` exposed as a
   code-slot instance of one code-parametric 3-var formula (§3.1 "Eval₁ is represented");
@@ -63,6 +74,21 @@ and Theorem 1. Cite accordingly.
   `□_b(□_{g(k)}ψ[k])` as `bbew₁`-of-desugared-box vs `bbewInner ψ` at `a := g(k)` is a
   proof-phase obligation. Quote-instance commitments on open formulas are deliberately
   deferred to Anson's shaping.
+
+- **Diagonal-as-hypothesis** (R3-F03/R3-F08, user ruling option (a), round 4): Proposition 1
+  enters the general-`L` interface as the class `ParametricDiagonalization`, NOT as an
+  ℒₒᵣ-pinned lemma and NOT as renamed re-exports of Foundation. Rationale: the paper states
+  Prop 1 as an assumption-shaped input ("Suppose S is a first-order theory capable of
+  representing all computable functions, as in Section 2.4"), so every external input to
+  Theorem 1 now enters uniformly via an interface class discharged by grounding; the ℒₒᵣ
+  instance discharges it from `𝗜𝚺₁ ⪯ T` via Foundation's `Arithmetic.parameterized_diagonal₁`
+  under Foundation's own names. Sub-decisions (documented in Diagonal.lean's header): r = 1
+  only (all Theorem 1 consumes; extend, don't rewrite, if general r is ever needed — Foundation
+  already has it at ℒₒᵣ); quote hypothesis is exactly
+  `[Semiterm.Operator.GödelNumber L (Semisentence L 1)]`; sentence-level `⊢` only — eq 4.3's
+  bounded `⊢_n` comes from `ProofMeasure.complete` at the consumption site; Skolemized
+  `fixedpoint` field per Foundation's `Diagonalization` precedent. Generalizing Foundation's
+  diagonal machinery beyond ℒₒᵣ upstream remains a possible later contribution.
 
 ## Intentional deviations from the paper
 
@@ -82,6 +108,12 @@ and Theorem 1. Cite accordingly.
   graph, which requires `g` **computable** — the paper's own example witness is
   computable, but the stated hypothesis understates the requirement. Lean's
   `HasIntermediateWitness` carries `Computable g` explicitly. (Lens B r2 + R2-F07.)
+- §4 Theorem 1 proof, eq 4.4: absorbing `g(k) + h(k) + O(lg k)` into `f(k)` needs
+  `g ≺ f`, which the step-1 hypotheses (`lg ≺ g`, `e(g(k)) ≺ f(k)`) yield only if `e` is
+  expansive (`k ≾ e(k)`) — but Definition 1 constrains `e` only to be "large enough" for
+  Properties 3–4, which a non-expansive `e` can satisfy, breaking the absorption. Lean's
+  `HasIntermediateWitness` carries `g ≺ f` as an explicit conjunct instead. (R3-F04
+  cross-exam.)
 
 ## Pitfalls
 

@@ -83,12 +83,7 @@ private lemma mul_lt_two_pow_of_two_mul_le (M l : Nat) (hMl : 2 * M ≤ l) :
       _ = 2 ^ (i + 1) := by rw [pow_succ]
 
 private lemma add_lt_of_two_mul_lt {a b c : Nat} (ha : 2 * a < c) (hb : 2 * b < c) :
-    a + b < c := by
-  have hsum : 2 * a + 2 * b < c + c := Nat.add_lt_add ha hb
-  have htwice : 2 * (a + b) < 2 * c := by
-    rw [Nat.mul_add, two_mul c]
-    exact hsum
-  exact (Nat.mul_lt_mul_left (by decide : 0 < 2)).mp htwice
+    a + b < c := by omega
 
 /-- Basic growth fact for Critch §4, step 1: `lg k ≺ k`.
 
@@ -123,21 +118,35 @@ lemma add (hfh : f ≺ h) (hgh : g ≺ h) : (fun k => f k + g k) ≺ h := by
   rwa [← Nat.mul_add] at hadd
 
 /--
-Witness condition for Critch §4, Theorem 1 proof, step 1: a **computable**
-intermediate function `g` with `lg ≺ g` and `e ∘ g ≺ f`.
+Witness condition for Critch §4, Theorem 1 proof, step 1, stated against the
+interface's actual cost functions: a **computable** intermediate `g` with
+`ν ≺ g`, `g ≺ f`, and `e ∘ g ≺ f`, where `ν` is the abstract numeral-cost
+function of `BQuantDistr` (standing decision 4).
 
-`Computable g` is required even though the paper's step-1 sentence states only
-the growth conditions: the proof immediately represents `g` inside the formula
-`G[n, k]` (through its graph, §2.4), which is possible only for computable `g` —
-the paper's own example `g(k) = ⌊√((lg k)(e⁻¹(f k)))⌋` is computable by
-construction. The concrete inverse/square-root construction is intentionally not
-formalized here; consumers of Theorem 1 carry this condition as a hypothesis and
-extract the required `g`.
+The paper's step-1 sentence asks only for `lg ≺ g` and `e ∘ g ≺ f`; the three
+divergences are each forced (R3-F04):
+
+* `ν ≺ g`, not `lg ≺ g`: eq. 4.7 absorbs the Quantifier Distribution bound
+  `C + 2N + ν(k)` into `g(k)`, so the comparison must be against the
+  interface's `ν` — `lg` is only the paper's binary-numeral instance of it,
+  and already for unary numerals (`ν(k) = k`) `lg ≺ g` is strictly too weak.
+* `g ≺ f` is explicit: eq. 4.4 absorbs `g(k) + h(k) + O(lg k)` into `f(k)`,
+  which needs `g ≺ f`. The paper omits it because it tacitly reads `e` as
+  expansive (`k ≾ e(k)`, whence `g ≾ e ∘ g ≺ f`), but Definition 1 requires
+  only that `e` be "large enough" for Properties 3–4, which a non-expansive
+  `e` can satisfy — see the second paper erratum in KNOWLEDGE.md.
+* `Computable g`: the proof represents `g` inside `G[n, k]` through its graph
+  (§2.4), possible only for computable `g` — first paper erratum in
+  KNOWLEDGE.md; the paper's own example
+  `g(k) = ⌊√((lg k)(e⁻¹(f k)))⌋` is computable by construction.
+
+The concrete geometric-mean construction is intentionally not formalized here;
+consumers of Theorem 1 carry this condition as a hypothesis and extract `g`.
 
 Paper node: §4 (Theorem 1 proof, step 1).
 -/
-def HasIntermediateWitness (e f : Nat → Nat) : Prop :=
-  ∃ g, Computable g ∧ lg ≺ g ∧ (fun k => e (g k)) ≺ f
+def HasIntermediateWitness (ν e f : Nat → Nat) : Prop :=
+  ∃ g, Computable g ∧ ν ≺ g ∧ g ≺ f ∧ (fun k => e (g k)) ≺ f
 
 end Asymp
 

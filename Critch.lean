@@ -1,6 +1,7 @@
 import Critch.Infrastructure.QuoteSentence
 import Critch.BoundedProvability.Basic
 import Critch.BoundedProvability.Asymp
+import Critch.BoundedProvability.Diagonal
 import Critch.ParametricDiagonal
 import Critch.ParametricLöb
 import Critch.RobustCooperation
