@@ -434,11 +434,11 @@ def gateFeature (start : ℕ) (f : ℕ → EF) (i : ℕ) : EF :=
 def gateOccupancy (start : ℕ) (f : ℕ → ℕ → EF) (i n : ℕ) : EF :=
   if start ≤ i then f i n else EF.const 0
 
-lemma PolySegStream.gateFeature {f : ℕ → EF}
-    (hf : PolySegStream (fun i => (f i).serialize)) (start : ℕ) :
-    PolySegStream (fun i => (gateFeature start f i).serialize) := by
-  have hzero : PolySegStream (fun _ => (EF.const 0).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
+lemma RpnSpliceStream.gateFeature {f : ℕ → EF}
+    (hf : RpnSpliceStream (fun i => (f i).serialize)) (start : ℕ) :
+    RpnSpliceStream (fun i => (gateFeature start f i).serialize) := by
+  have hzero : RpnSpliceStream (fun _ => (EF.const 0).serialize) :=
+    RpnSpliceStream.serialize_const 0
   have htestRaw := subc_polyFueled.comp
     (PolyFueled.id.succ_comp.pair (PolyFueled.const start))
   have htest : PolyFueled
@@ -449,17 +449,17 @@ lemma PolySegStream.gateFeature {f : ℕ → EF}
     apply PolyFueled.of_eq htestRaw
     intro i
     simp only [Nat.unpair_pair]
-  refine PolySegStream.of_eq (PolySegStream.ifZero hzero hf htest) ?_
+  refine RpnSpliceStream.of_eq (RpnSpliceStream.ifZero hzero hf htest) ?_
   intro i
   by_cases hs : start ≤ i
   · rw [if_neg (by omega), AffineCombination.gateFeature, if_pos hs]
   · rw [if_pos (by omega), AffineCombination.gateFeature, if_neg hs]
 
-lemma PolySegStream.gateOccupancy {f : ℕ → ℕ → EF}
-    (hf : PolySegStream (fun z => (f z.unpair.2 z.unpair.1).serialize)) (start : ℕ) :
-    PolySegStream (fun z => (gateOccupancy start f z.unpair.2 z.unpair.1).serialize) := by
-  have hzero : PolySegStream (fun _ => (EF.const 0).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
+lemma RpnSpliceStream.gateOccupancy {f : ℕ → ℕ → EF}
+    (hf : RpnSpliceStream (fun z => (f z.unpair.2 z.unpair.1).serialize)) (start : ℕ) :
+    RpnSpliceStream (fun z => (gateOccupancy start f z.unpair.2 z.unpair.1).serialize) := by
+  have hzero : RpnSpliceStream (fun _ => (EF.const 0).serialize) :=
+    RpnSpliceStream.serialize_const 0
   have htestRaw := subc_polyFueled.comp
     (PolyFueled.right.succ_comp.pair (PolyFueled.const start))
   have htest : PolyFueled
@@ -469,7 +469,7 @@ lemma PolySegStream.gateOccupancy {f : ℕ → ℕ → EF}
     apply PolyFueled.of_eq htestRaw
     intro z
     simp only [Nat.unpair_pair]
-  refine PolySegStream.of_eq (PolySegStream.ifZero hzero hf htest) ?_
+  refine RpnSpliceStream.of_eq (RpnSpliceStream.ifZero hzero hf htest) ?_
   intro z
   by_cases hs : start ≤ z.unpair.2
   · rw [if_neg (by omega), AffineCombination.gateOccupancy, if_pos hs]
@@ -816,50 +816,26 @@ noncomputable def PolySequence.gradualFamilyPolyTrade {As : ℕ → AffineCombin
     PolyTradeEmulatable (gradualFamily As low high δ h) := by
   let ccount := Classical.choose h.gradualTradeCount_poly
   have hcount := Classical.choose_spec h.gradualTradeCount_poly
-  let csentence := Classical.choose h.sentence_poly
-  have hsentence := Classical.choose_spec h.sentence_poly
   have hk := PolyFueled.left.comp PolyFueled.left
   have hj := PolyFueled.right
   have hcanonical := hk.pair hj
   have hcoeff := h.gradualCoefficient_polySeg low high δ
-  have htag : PolySegStream (fun _ => [6]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 6)
-  have hsentencePF : PolyFueled
-      (csentence.comp
-        ((Nat.Partrec.Code.left.comp Nat.Partrec.Code.left).pair Nat.Partrec.Code.right))
-      (fun z => Encodable.encode (gradualSentence h z)) := by
-    apply PolyFueled.of_eq (hsentence.comp hcanonical)
-    intro z
-    rfl
-  have hsentenceSeg : PolySegStream (fun z => [Encodable.encode (gradualSentence h z)]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.polyTok hsentencePF)
-  have hone : PolySegStream (fun z => serializeTrades
-      [(gradualCoefficient h low high δ z, gradualSentence h z)]) := by
-    refine PolySegStream.of_eq ((hcoeff.append htag).append hsentenceSeg) ?_
-    intro z
-    simp [serializeTrades, List.append_assoc]
-  have hserialized : PolySegStream (fun z => serializeTrades
-      (((gradualFamily As low high δ h) z.unpair.1).strat z.unpair.2).trades) := by
-    refine PolySegStream.of_eq (PolySegStream.concatVar hone hcount) ?_
-    intro z
-    rw [h.gradualFamily_trades_eq]
-    rw [serializeTrades_map_singleton]
-    simp only [Nat.pair_unpair]
+  have hsentenceBlocks : RpnSentenceCodes (gradualSentence h) := by
+    have := h.sentence_poly.comp hcanonical
+    exact this.of_eq (fun z => rfl)
   have hzero : ∀ k n, n < k →
       (((gradualFamily As low high δ h) k).strat n).trades = [] := by
     intro k n hnk
     rw [h.gradualFamily_trades_eq]
     simp [gradualTradeCount, hnk]
-  refine
-    { emulatable := EfficientlyEmulatable.of_polySeg hzero hserialized
+  exact
+    { launchGated := hzero
       tradeCount := gradualTradeCount h
       coefficient := gradualCoefficient h low high δ
       sentence := gradualSentence h
       tradeCount_poly := ⟨ccount, hcount⟩
       coefficient_poly := hcoeff
-      sentence_poly := ⟨csentence.comp
-        ((Nat.Partrec.Code.left.comp Nat.Partrec.Code.left).pair Nat.Partrec.Code.right),
-          hsentencePF⟩
+      sentence_poly := hsentenceBlocks
       trades_eq := h.gradualFamily_trades_eq low high δ }
 
 @[simp] theorem gradualTrader_strat_buyDay (A : AffineCombination) (entry : EF)
@@ -1150,8 +1126,8 @@ lemma PolySequence.gradualRisk_converges {As : ℕ → AffineCombination}
       · simpa [occupancy, gateOccupancy, hs, baseOccupancy] using
           h.gradualOccupancy_rank_le high δ i n hin
       · simp [occupancy, gateOccupancy, hs])
-    (PolySegStream.gateFeature (h.gradualRisk_polySeg low δ) start)
-    (PolySegStream.gateOccupancy (h.gradualOccupancy_polySeg high δ) start)
+    (RpnSpliceStream.gateFeature (h.gradualRisk_polySeg low δ) start)
+    (RpnSpliceStream.gateOccupancy (h.gradualOccupancy_polySeg high δ) start)
     (fun i ρ W => by
       by_cases hs : start ≤ i
       · simpa [α, gateFeature, hs, baseα] using h.gradualRisk_closed low δ i ρ W

@@ -352,11 +352,9 @@ noncomputable def exclusiveExhaustive_polySequence
     coefficient := fun _ => .const (1 / (k : ℚ))
     sentence := fun z => φ (z.unpair.2 % k) z.unpair.1
     termCount_poly := ⟨Nat.Partrec.Code.const k, PolyFueled.const k⟩
-    const_poly := PolySegStream.ofTokenStream
-      (PolyTokenStream.serialize_const (-(1 / (k : ℚ))))
-    coefficient_poly := PolySegStream.ofTokenStream
-      (PolyTokenStream.serialize_const (1 / (k : ℚ)))
-    sentence_poly := hsentence
+    const_poly := RpnSpliceStream.serialize_const (-(1 / (k : ℚ)))
+    coefficient_poly := RpnSpliceStream.serialize_const (1 / (k : ℚ))
+    sentence_poly := RpnSentenceCodes.ofPolySentenceCodes hsentence
     terms_eq := by
       intro n
       rw [exclusiveExhaustiveAffine]

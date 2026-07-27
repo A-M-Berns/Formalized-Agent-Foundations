@@ -302,6 +302,11 @@ lemma RpnSentenceCodes.comp {φ : ℕ → Sentence} (h : RpnSentenceCodes φ)
   obtain ⟨s, hs, hp⟩ := h
   exact ⟨fun z => s (f z), hs.comp hf, fun z => hp (f z)⟩
 
+lemma RpnSentenceCodes.of_eq {φ ψ : ℕ → Sentence} (h : RpnSentenceCodes φ)
+    (hφψ : ∀ n, φ n = ψ n) : RpnSentenceCodes ψ := by
+  obtain ⟨s, hs, hp⟩ := h
+  exact ⟨s, hs, fun n => (hφψ n) ▸ hp n⟩
+
 /-- The spliced price-leaf serialization over a sentence-block stream: the reusable
 segment for buy-signal coefficients whose price leaf sits on the traded sentence
 (`[0, ⌜φ (f m)⌝, f m]` with the sentence token replaced by the block).  Its

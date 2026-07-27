@@ -188,6 +188,28 @@ REMAINING (the per-family march):
          `.gateBefore` mirrors with `RpnSpliceStream.ifZero` + an empty-stream
          base (`RpnSpliceStream` of `fun _ => []` = ofTransparent of nil-token
          stream).
+       * FLIP PROGRESS (WIP branch `wip/ecseq-polysequence-flip`, updated): GREEN
+         through Affine, ROI (LaunchGated split executed exactly as mapped;
+         composites certify via `RpnSpliceStream.ec` and `hLI.noExploit`),
+         AffinePreemptiveLearning, AffinePersistence, AffineProvability,
+         AffineCoherence (lic_provind_true/false now over `RpnSentenceCodes`),
+         TimelyLearning (thm:tl/perkno over the 𝓔𝓒 class), ExpectationAffine,
+         Calibration (PGenerableWeighting.polySeg spliced; biasRun chain flipped),
+         MetaLearning (claim structures carry `RpnSentenceCodes`), Relationships
+         (thm:lex via `ofPolySentenceCodes` wrap — finite k-way block dispatch is a
+         later nicety).  NEXT BLOCKER (real machinery, not a rename):
+         Pseudorandomness's `GeneratedRatFeature.polyTok` fragments are token-level
+         feature serializations whose price slots hold bare pair codes — needs the
+         ESCAPE-SPLICE FRAGMENT BRIDGE: define `EF.serializeEsc` (serialize with
+         price-slot sentence tokens escaped as `[1, c]`), prove
+         `UnRpnContractsTo (serializeEsc e) (serialize e)` by EF induction
+         (payload/operator transparency + `unRpn_price_escape_chunk`), and a
+         PolyTokenStream→PolySegStream emitter for `serializeEsc` from the one for
+         `serialize` (per-token rewrite through the EF slot automaton — compare
+         `escExpand`/`escModeScan`, which do exactly this at whole-strategy level).
+         Then `GeneratedRatFeature` gains a derived RpnSpliceStream and
+         Pseudorandomness + the remaining Construction-witness wave flip like the
+         others.
        * Keep the interim compat (`noExploitTok`) callers green until each chain is
          flipped; flip `hLI.noExploitTok → hLI.noExploit` per chain as its cert
          lands in the collapsed class.: survey 2026-07-26 confirms thm:tl/perkno, thm:lex

@@ -368,23 +368,21 @@ noncomputable def PolySequence.eventualMember {As : ℕ → AffineCombination}
   let cidx := Classical.choose hidx
   have hcidx := Classical.choose_spec hidx
   let hconst := h.const_poly.comp (PolyFueled.const i)
-  let hconstGated := PolySegStream.gateFeature hconst i
+  let hconstGated := RpnSpliceStream.gateFeature hconst i
   let hcoeff := h.coefficient_poly.comp hcidx
-  let cs := Classical.choose h.sentence_poly
-  have hcs := Classical.choose_spec h.sentence_poly
   exact {
     termCount := fun n => if n < i then 0 else h.termCount i
     coefficient := fun z => h.coefficient (idx z)
     sentence := fun z => h.sentence (idx z)
     termCount_poly := polyFueled_if_lt_const i 0 (h.termCount i)
     const_poly := by
-      refine PolySegStream.of_eq hconstGated ?_
+      refine RpnSpliceStream.of_eq hconstGated ?_
       intro n
       by_cases hin : i ≤ n
       · simp [AffineCombination.eventualMember, hin, gateFeature]
       · simp [AffineCombination.eventualMember, hin, gateFeature, AffineCombination.empty]
     coefficient_poly := hcoeff
-    sentence_poly := ⟨cs.comp cidx, hcs.comp hcidx⟩
+    sentence_poly := h.sentence_poly.comp hcidx
     terms_eq := by
       intro n
       by_cases hin : i ≤ n
@@ -877,7 +875,7 @@ completed-theory theorems. Individual proofs may appear arbitrarily later than t
 sequence indices.
 Paper node: `thm:affprovind` -/
 theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (φ n)) ≈ₙ fun _ => 1 := by
@@ -897,7 +895,7 @@ theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInducto
 whose negations are completed-theory theorems.
 Paper node: `thm:affprovind` -/
 theorem lic_provind_false (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ)
+    (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ)
     (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (ψ n)) ≈ₙ fun _ => 0 := by
@@ -920,7 +918,7 @@ process; they need not be present by their own index.
 Paper node: `thm:provind` -/
 theorem lic_provind (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ ψ : ℕ → Sentence)
-    (hφ : PolySentenceCodes φ) (hψ : PolySentenceCodes ψ)
+    (hφ : RpnSentenceCodes φ) (hψ : RpnSentenceCodes ψ)
     (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
     (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :

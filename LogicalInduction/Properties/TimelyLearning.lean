@@ -29,18 +29,16 @@ def sentenceAffine (φ : ℕ → Sentence) (n : ℕ) : AffineCombination where
   simp [sentenceAffine, magnitude]
 
 /-- A polynomial sentence-code progression induces a legal one-share affine sequence. -/
-noncomputable def sentenceAffine_polySequence (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
+noncomputable def sentenceAffine_polySequence (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
     PolySequence (sentenceAffine φ) := by
-  let cφ := Classical.choose hφ
-  have hcφ := Classical.choose_spec hφ
   exact {
     termCount := fun _ => 1
     coefficient := fun _ => .const 1
     sentence := fun z => φ z.unpair.1
     termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
-    coefficient_poly := PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)
-    sentence_poly := ⟨cφ.comp Nat.Partrec.Code.left, hcφ.comp PolyFueled.left⟩
+    const_poly := RpnSpliceStream.serialize_const 0
+    coefficient_poly := RpnSpliceStream.serialize_const 1
+    sentence_poly := hφ.comp PolyFueled.left
     terms_eq := by intro n; simp [sentenceAffine]
     const_rank := by intro n; simp [sentenceAffine]
     coefficient_rank := by intro n j hj; simp [EF.rank]
@@ -57,7 +55,7 @@ lemma sentenceAffine_bounded (φ : ℕ → Sentence) (P : History)
   constructor <;> linarith [(hP m (φ n)).1, (hP m (φ n)).2]
 
 /-- The one-share sentence family as an exact paper `BCS` witness. -/
-noncomputable def sentenceAffine_bcs (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
+noncomputable def sentenceAffine_bcs (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (P : History) : BoundedCombinationSequence (sentenceAffine φ) P where
   poly := sentenceAffine_polySequence φ hφ
   bounded := ⟨1, fun n => by simp [l1Norm, sentenceAffine, magnitude]⟩
@@ -89,20 +87,18 @@ def sentenceMinusProbability (φ : ℕ → Sentence) (p : ℕ → ℚ) (n : ℕ)
 the Appendix proof of `thm:perkno`. -/
 noncomputable def sentenceMinusProbability_polySequence
     (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : PolySentenceCodes φ) (hp : PolyRatCodes p) :
+    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p) :
     PolySequence (sentenceMinusProbability φ p) := by
-  let cφ := Classical.choose hφ
-  have hcφ := Classical.choose_spec hφ
   exact {
     termCount := fun _ => 1
     coefficient := fun _ => .const 1
     sentence := fun z => φ z.unpair.1
     termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := PolySegStream.serialize_mul
-      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1)))
-      (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const_comp hp))
-    coefficient_poly := PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)
-    sentence_poly := ⟨cφ.comp Nat.Partrec.Code.left, hcφ.comp PolyFueled.left⟩
+    const_poly := RpnSpliceStream.serialize_mul
+      (RpnSpliceStream.serialize_const (-1))
+      (RpnSpliceStream.serialize_const_comp hp)
+    coefficient_poly := RpnSpliceStream.serialize_const 1
+    sentence_poly := hφ.comp PolyFueled.left
     terms_eq := by intro n; simp [sentenceMinusProbability]
     const_rank := by intro n; simp [sentenceMinusProbability, EF.rank]
     coefficient_rank := by intro n j hj; simp [EF.rank]
@@ -174,7 +170,7 @@ uniformly from that side.
 Paper node: `thm:perkno` -/
 theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : PolySentenceCodes φ) (hp : PolyRatCodes p)
+    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (((fun n => limitingBelief P (φ n) - (p n : ℝ)) ≲ₙ
@@ -204,7 +200,7 @@ theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge_upper (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : PolySentenceCodes φ) (hp : PolyRatCodes p)
+    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hlim : (fun n => limitingBelief P (φ n)) ≲ₙ fun n => (p n : ℝ)) :
@@ -235,7 +231,7 @@ theorem lic_persistence_of_knowledge_upper (P : History) (DP : DeductiveProcess)
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge_lower (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : PolySentenceCodes φ) (hp : PolyRatCodes p)
+    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hlim : (fun n => limitingBelief P (φ n)) ≳ₙ fun n => (p n : ℝ)) :
@@ -320,7 +316,7 @@ target sequence pointwise.
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : PolySentenceCodes φ) (hp : PolyRatCodes p)
+    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (((fun n => limitingBelief P (φ n)) ≈ₙ fun n => (p n : ℝ)) →
@@ -350,7 +346,7 @@ The price range is carried by `IsLogicalInductor`; plausible-world existence rem
 explicit deductive-process hypothesis.
 Paper node: `thm:tbo` -/
 theorem lic_preemptive_learning (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
+    [IsLogicalInductor P DP] (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (fun n => P n (φ n)) atTop =
         liminf (fun n => sSup (Set.range (fun j => P (n + j) (φ n)))) atTop ∧

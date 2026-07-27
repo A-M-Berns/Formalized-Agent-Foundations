@@ -522,6 +522,70 @@ lemma unRpn_trade_escape_chunk (φ : Sentence) (rest : List ℕ) :
   rw [unRpnTokens_congr rest (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
   rfl
 
+/-- The contraction never lengthens a stream by more than the one trailing
+failure marker: the economic length bounds of a spliced emission transfer to its
+token-level serialization. -/
+lemma unRpnTokens_length_le : ∀ (fuel : ℕ) (ts : List ℕ),
+    (unRpnTokens fuel ts).length ≤ ts.length + 1 := by
+  intro fuel
+  induction fuel with
+  | zero => intro ts; cases ts <;> simp [unRpnTokens]
+  | succ fuel ih =>
+      intro ts
+      match ts with
+      | [] => simp [unRpnTokens]
+      | t :: rest =>
+          rw [unRpnTokens_cons]
+          by_cases h0 : t = 0
+          · rw [if_pos h0]
+            cases hp : parseRpn rest.length rest with
+            | none => simp
+            | some pr =>
+                obtain ⟨φ, r1⟩ := pr
+                cases r1 with
+                | nil => simp
+                | cons d r2 =>
+                    have hlt := parseRpn_length_lt rest.length rest φ (d :: r2) hp
+                    have := ih r2
+                    simp only [List.length_cons] at hlt ⊢
+                    omega
+          · rw [if_neg h0]
+            by_cases h6 : t = 6
+            · rw [if_pos h6]
+              cases hp : parseRpn rest.length rest with
+              | none => simp
+              | some pr =>
+                  obtain ⟨φ, r1⟩ := pr
+                  have hlt := parseRpn_length_lt rest.length rest φ r1 hp
+                  have := ih r1
+                  simp only [List.length_cons] at ⊢
+                  omega
+            · rw [if_neg h6]
+              by_cases h1 : t = 1
+              · rw [if_pos h1]
+                cases rest with
+                | nil => simp
+                | cons c r =>
+                    have := ih r
+                    simp only [List.length_cons] at ⊢
+                    omega
+              · rw [if_neg h1]
+                by_cases h7 : t = 7
+                · rw [if_pos h7]
+                  cases rest with
+                  | nil => simp
+                  | cons c r =>
+                      have := ih r
+                      simp only [List.length_cons] at ⊢
+                      omega
+                · rw [if_neg h7]
+                  have := ih rest
+                  simp only [List.length_cons] at ⊢
+                  omega
+
+lemma unRpn_length_le (ts : List ℕ) : (unRpn ts).length ≤ ts.length + 1 :=
+  unRpnTokens_length_le ts.length ts
+
 /-- A complete price chunk with **any** self-delimiting block parsing to `φ`
 contracts exactly (canonical runs and escapes are the two special cases). -/
 lemma unRpn_price_chunk_block {b : List ℕ} {φ : Sentence}

@@ -37,27 +37,23 @@ lemma PolySequence.buyBelowTrader_trades {As : ℕ → AffineCombination}
 
 lemma PolySequence.buyBelowTrader_ec {As : ℕ → AffineCombination}
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
-    EfficientlyComputableTok (h.buyBelowTrader start low δ) := by
-  have hentry : PolySegStream (fun n =>
+    EfficientlyComputable (h.buyBelowTrader start low δ) := by
+  have hentry : RpnSpliceStream (fun n =>
       (gateFeature start (gradualEntry As low δ) n).serialize) :=
-    PolySegStream.gateFeature (h.gradualEntry_polySeg low δ) start
-  have hcoeff : PolySegStream (fun z =>
+    RpnSpliceStream.gateFeature (h.gradualEntry_polySeg low δ) start
+  have hcoeff : RpnSpliceStream (fun z =>
       (EF.mul (gateFeature start (gradualEntry As low δ) z.unpair.1)
         (h.coefficient z)).serialize) :=
-    PolySegStream.serialize_mul (hentry.comp PolyFueled.left) h.coefficient_poly
-  obtain ⟨csentence, hsentence⟩ := h.sentence_poly
-  have hsentenceSeg : PolySegStream (fun z => [Encodable.encode (h.sentence z)]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.polyTok hsentence)
-  have htag : PolySegStream (fun _ => [6]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 6)
-  have hone : PolySegStream (fun z => serializeTrades
+    RpnSpliceStream.serialize_mul (hentry.comp PolyFueled.left) h.coefficient_poly
+  have hframe := RpnSpliceStream.tradeSlot h.sentence_poly PolyFueled.id
+  have hone : RpnSpliceStream (fun z => serializeTrades
       [(EF.mul (gateFeature start (gradualEntry As low δ) z.unpair.1)
           (h.coefficient z), h.sentence z)]) := by
-    refine PolySegStream.of_eq ((hcoeff.append htag).append hsentenceSeg) ?_
+    refine RpnSpliceStream.of_eq (hcoeff.append hframe) ?_
     intro z
-    simp [serializeTrades, List.append_assoc]
-  refine ecTok_of_segStream _ (PolySegStream.of_eq
-    (PolySegStream.concatVar hone (Classical.choose_spec h.termCount_poly)) ?_)
+    simp [serializeTrades]
+  refine RpnSpliceStream.ec _ (RpnSpliceStream.of_eq
+    (RpnSpliceStream.concatVar hone (Classical.choose_spec h.termCount_poly)) ?_)
   intro n
   rw [h.buyBelowTrader_trades start low δ, serializeTrades_map_singleton]
   simp only [Nat.unpair_pair]
@@ -138,7 +134,7 @@ lemma PolySequence.affine_provind {As : ℕ → AffineCombination}
     exact mul_le_mul_of_nonneg_left (sub_le_sub_right hvi _) (by
       simpa [gateFeature, his] using
         (buyIndF_mem ((As i).priceFeature i) low δ P).1)
-  exact hLI.noExploitTok _ (h.buyBelowTrader_ec start low δ)
+  exact hLI.noExploit _ (h.buyBelowTrader_ec start low δ)
     (exploits_of_ge_partialSums _ P DP w ε hε hnonneg hnet hfreqW hcons)
 
 /-- Two-sided affine provability: if every late plausible world values the family
