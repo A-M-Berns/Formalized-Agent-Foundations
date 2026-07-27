@@ -300,6 +300,14 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 #assert_axioms_clean
   bitPrefixSentencesOfIndependentAtoms lic_domination_universalSemimeasure_ofIndependentAtoms
 
+-- Construction/Witnesses/UniversalDovetailer.lean (`M7-DUS-APPROX`, mathematical part)
+-- The packaged `Dovetail.universalSemimeasure` is *not* listed: its
+-- `approximation_computes` field is the file's disclosed `sorry`.  The two members below
+-- are the unconditional content — the mixture is a continuous semimeasure, and it
+-- dominates every lower-semicomputable one with an explicit constant.
+#assert_axioms_clean
+  Dovetail.continuousSemimeasure Dovetail.universalMass_dominates
+
 -- Construction/Witnesses/ConditioningPresentation.lean (`M7-SCON-PRESENTATION`)
 #assert_axioms_clean
   conditioningPresentationOfComputations fixedConditioningPresentation
