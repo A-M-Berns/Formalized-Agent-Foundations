@@ -822,6 +822,153 @@ lemma mem_separatorConsistentAt {σ : List Bool} {n : ℕ} :
     · rfl
     · simpa using hall e (List.mem_range.1 he) b hb
 
+/-! ### The stage class masses are non-increasing
+
+Nothing computability-theoretic is needed for this half.  A stage-`(n+1)` consistent string
+truncates to a stage-`n` consistent one — stage decisions only grow with fuel — and
+`children_le` bounds the two children of a node by the node itself.  So the class masses
+form a non-increasing sequence, converging to an infimum `r ≥ 0`, and `thm:strict` becomes
+the assertion that `r = 0`.
+
+The sums are taken over `p`-selected parts of the class, because the Kučera–Demuth
+argument below needs the same monotonicity for the parts on which a fixed bit is `0`
+(resp. `1`). -/
+
+lemma append_bit_inj {a b : List Bool} {x y : Bool} (h : a ++ [x] = b ++ [y]) :
+    a = b ∧ x = y := by
+  have hxy : x = y := by
+    have hlast := congrArg List.getLast? h
+    simpa [List.getLast?_concat] using hlast
+  subst hxy
+  exact ⟨List.append_cancel_right h, rfl⟩
+
+/-- **Children never gain mass.**  If every member of `T` has length `n+1` and truncates
+into `S`, then `T` carries at most the mass of `S`: this is `children_le` summed over the
+fibres of the truncation map. -/
+lemma ContinuousSemimeasure.sum_le_of_take (M : ContinuousSemimeasure) {n : ℕ}
+    {S T : Finset (List Bool)}
+    (hlen : ∀ σ ∈ T, σ.length = n + 1) (htake : ∀ σ ∈ T, σ.take n ∈ S) :
+    ∑ σ ∈ T, M.mass σ ≤ ∑ τ ∈ S, M.mass τ := by
+  classical
+  have hsub : T ⊆ S.biUnion fun τ ↦ ({τ ++ [false], τ ++ [true]} : Finset (List Bool)) := by
+    intro σ hσ
+    refine Finset.mem_biUnion.2 ⟨σ.take n, htake σ hσ, ?_⟩
+    obtain ⟨b, hb⟩ := List.length_eq_one_iff.mp
+      (show (σ.drop n).length = 1 by simp [hlen σ hσ])
+    have hsplit : σ.take n ++ [b] = σ := by rw [← hb, List.take_append_drop]
+    cases b
+    · exact Finset.mem_insert.2 (Or.inl hsplit.symm)
+    · exact Finset.mem_insert_of_mem (Finset.mem_singleton.2 hsplit.symm)
+  have hdisj : (S : Set (List Bool)).PairwiseDisjoint
+      fun τ ↦ ({τ ++ [false], τ ++ [true]} : Finset (List Bool)) := by
+    intro a _ b _ hab
+    simp only [Function.onFun, Finset.disjoint_left, Finset.mem_insert,
+      Finset.mem_singleton]
+    rintro x (rfl | rfl) <;> rintro (h | h) <;> exact hab (append_bit_inj h).1
+  calc ∑ σ ∈ T, M.mass σ
+      ≤ ∑ σ ∈ S.biUnion fun τ ↦ ({τ ++ [false], τ ++ [true]} : Finset (List Bool)),
+          M.mass σ :=
+        Finset.sum_le_sum_of_subset_of_nonneg hsub fun i _ _ ↦ M.nonneg i
+    _ = ∑ τ ∈ S, ∑ σ ∈ ({τ ++ [false], τ ++ [true]} : Finset (List Bool)), M.mass σ :=
+        Finset.sum_biUnion hdisj
+    _ ≤ ∑ τ ∈ S, M.mass τ := Finset.sum_le_sum fun τ _ ↦ by
+        rw [Finset.sum_pair (by simp)]
+        exact M.children_le τ
+
+lemma allBitStrings_succ (n : ℕ) :
+    allBitStrings (n + 1) = (allBitStrings n).flatMap fun σ ↦ [false :: σ, true :: σ] := by
+  simp [allBitStrings, List.replicate_succ]
+
+lemma allBitStrings_nodup (n : ℕ) : (allBitStrings n).Nodup := by
+  induction n with
+  | zero => simp [allBitStrings]
+  | succ n ih =>
+      rw [allBitStrings_succ]
+      refine List.nodup_flatMap.2 ⟨fun σ _ ↦ by simp, List.Pairwise.imp ?_ ih⟩
+      intro a b hab
+      simp only [Function.onFun, List.disjoint_left, List.mem_cons,
+        List.not_mem_nil, or_false]
+      rintro x (rfl | rfl) <;> rintro (h | h) <;> simp_all
+
+lemma separatorConsistentAt_nodup (n : ℕ) : (separatorConsistentAt n).Nodup :=
+  List.Nodup.filter _ (allBitStrings_nodup n)
+
+/-- Stage decisions only grow: `evaln` is monotone in its fuel. -/
+lemma kleeneDecide_mono {n n' e : ℕ} {b : Bool} (h : n ≤ n')
+    (hd : kleeneDecide n e = some b) : kleeneDecide n' e = some b := by
+  unfold kleeneDecide at hd ⊢
+  rcases hev : Nat.Partrec.Code.evaln n (Denumerable.ofNat Nat.Partrec.Code e) e with _ | v
+  · rw [hev] at hd; simp at hd
+  · have hmono : Nat.Partrec.Code.evaln n' (Denumerable.ofNat Nat.Partrec.Code e) e =
+        some v := Nat.Partrec.Code.evaln_mono h hev
+    rw [hmono]
+    rw [hev] at hd
+    exact hd
+
+lemma getD_take_of_lt {σ : List Bool} {n e : ℕ} (h : e < n) :
+    (σ.take n).getD e false = σ.getD e false := by
+  rw [List.getD_eq_getElem?_getD, List.getElem?_take_of_lt h,
+    ← List.getD_eq_getElem?_getD]
+
+lemma take_mem_separatorConsistentAt {σ : List Bool} {n : ℕ}
+    (h : σ ∈ separatorConsistentAt (n + 1)) : σ.take n ∈ separatorConsistentAt n := by
+  obtain ⟨hlen, hbits⟩ := mem_separatorConsistentAt.1 h
+  refine mem_separatorConsistentAt.2 ⟨by simp [hlen], fun e he b hb ↦ ?_⟩
+  rw [getD_take_of_lt he]
+  exact hbits e (Nat.lt_succ_of_lt he) b (kleeneDecide_mono (Nat.le_succ n) hb)
+
+/-- The mass of the part of the stage-`n` class selected by `p`. -/
+noncomputable def classMass (M : ContinuousSemimeasure) (p : List Bool → Bool) (n : ℕ) :
+    ℝ :=
+  (((separatorConsistentAt n).filter p).map M.mass).sum
+
+lemma classMass_eq_finsetSum (M : ContinuousSemimeasure) (p : List Bool → Bool) (n : ℕ) :
+    classMass M p n = ∑ σ ∈ ((separatorConsistentAt n).filter p).toFinset, M.mass σ :=
+  (List.sum_toFinset _ (List.Nodup.filter _ (separatorConsistentAt_nodup n))).symm
+
+lemma classMass_nonneg (M : ContinuousSemimeasure) (p : List Bool → Bool) (n : ℕ) :
+    0 ≤ classMass M p n := by
+  rw [classMass_eq_finsetSum]
+  exact Finset.sum_nonneg fun σ _ ↦ M.nonneg σ
+
+/-- The unrestricted class mass is the sum appearing in `mass_class_tendsto_zero`. -/
+lemma classMass_true (M : ContinuousSemimeasure) (n : ℕ) :
+    classMass M (fun _ ↦ true) n = ((separatorConsistentAt n).map M.mass).sum := by
+  simp [classMass]
+
+/-- One antitonicity step, for any selector stable under truncation at length `n`. -/
+lemma classMass_succ_le (M : ContinuousSemimeasure) {p : List Bool → Bool} {n : ℕ}
+    (hp : ∀ σ : List Bool, σ.length = n + 1 → p σ = true → p (σ.take n) = true) :
+    classMass M p (n + 1) ≤ classMass M p n := by
+  rw [classMass_eq_finsetSum, classMass_eq_finsetSum]
+  refine M.sum_le_of_take (n := n) ?_ ?_
+  · intro σ hσ
+    obtain ⟨hmem, -⟩ := List.mem_filter.1 (List.mem_toFinset.1 hσ)
+    exact (mem_separatorConsistentAt.1 hmem).1
+  · intro σ hσ
+    obtain ⟨hmem, hpσ⟩ := List.mem_filter.1 (List.mem_toFinset.1 hσ)
+    refine List.mem_toFinset.2 (List.mem_filter.2 ⟨take_mem_separatorConsistentAt hmem, ?_⟩)
+    exact hp σ (mem_separatorConsistentAt.1 hmem).1 hpσ
+
+/-- **Step 1.**  The class masses are non-increasing. -/
+lemma classMass_antitone (M : ContinuousSemimeasure) :
+    Antitone (classMass M fun _ ↦ true) :=
+  antitone_nat_of_succ_le fun _ ↦ classMass_succ_le M fun _ _ _ ↦ rfl
+
+/-- The same monotonicity for the part of the class fixing bit `j` to `b`, valid from
+stage `j + 1` on (before that the bit is not even present in the strings). -/
+lemma classMass_bit_le (M : ContinuousSemimeasure) (j : ℕ) (b : Bool) {n n' : ℕ}
+    (hj : j < n) (hn : n ≤ n') :
+    classMass M (fun σ ↦ σ.getD j false == b) n' ≤
+      classMass M (fun σ ↦ σ.getD j false == b) n := by
+  induction n', hn using Nat.le_induction with
+  | base => exact le_rfl
+  | succ m hm ih =>
+      refine le_trans (classMass_succ_le M ?_) ih
+      intro σ _ hpσ
+      rw [getD_take_of_lt (lt_of_lt_of_le hj hm)]
+      exact hpσ
+
 /-- The repo's concrete bit atoms have computable Gödel codes, so they meet the atom
 hypothesis of the separator presentation. -/
 lemma ordinaryAtom_code_computable :
