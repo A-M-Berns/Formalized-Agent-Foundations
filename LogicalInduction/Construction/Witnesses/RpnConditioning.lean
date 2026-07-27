@@ -99,10 +99,10 @@ def rpnCondStep (st t : ℕ) : ℕ :=
 
 /-- The automaton only tests the small grammar tags, so it factors through the clamp. -/
 lemma rpnCondStep_clamp (st t : ℕ) :
-    rpnCondStep st (min t 8) = rpnCondStep st t := by
-  by_cases h : t ≤ 8
+    rpnCondStep st (min t 9) = rpnCondStep st t := by
+  by_cases h : t ≤ 9
   · rw [Nat.min_eq_left h]
-  · rw [Nat.min_eq_right (by omega : 8 ≤ t)]
+  · rw [Nat.min_eq_right (by omega : 9 ≤ t)]
     rw [rpnCondStep, rpnCondStep]
     have e0 : ¬ t = 0 := by omega
     have e1 : ¬ t = 1 := by omega
@@ -110,9 +110,9 @@ lemma rpnCondStep_clamp (st t : ℕ) :
     have e6 : ¬ t = 6 := by omega
     have e7 : ¬ t = 7 := by omega
     simp only [e0, e1, e234, e6, e7, if_false, ite_false,
-      show ((8 : ℕ) = 0) = False by simp, show ((8 : ℕ) = 1) = False by simp,
-      show ((8 : ℕ) = 2 ∨ (8 : ℕ) = 3 ∨ (8 : ℕ) = 4) = False by simp,
-      show ((8 : ℕ) = 6) = False by simp, show ((8 : ℕ) = 7) = False by simp]
+      show ((9 : ℕ) = 0) = False by simp, show ((9 : ℕ) = 1) = False by simp,
+      show ((9 : ℕ) = 2 ∨ (9 : ℕ) = 3 ∨ (9 : ℕ) = 4) = False by simp,
+      show ((9 : ℕ) = 6) = False by simp, show ((9 : ℕ) = 7) = False by simp]
 
 lemma rcMode_step_le (st t : ℕ) : rcMode (rpnCondStep st t) ≤ 7 := by
   rw [rpnCondStep]
@@ -544,6 +544,359 @@ def rpnGuardedConditionTokens (blocks : ℕ → List ℕ) (ε : ℚ) (n : ℕ)
 #print axioms foldl_rpnCondStep_trade_block
 #print axioms rpnConditionRun_range
 #print axioms unRpn_price_rewrite_chunk
+
+/-! ## Scalar components of the step (the fueled decomposition)
+
+The packed step splits into three scalar functions of `(mode, counter, runLen, token)`
+whose branch tests are single equalities/inequalities — the shape the `ifzSel`
+cascades arithmetize.  All token tests factor through the clamp `min t 8`. -/
+
+def rcModeF (m c t : ℕ) : ℕ :=
+  if m = 0 then
+    if t = 0 then 1 else if t = 1 then 3 else if t = 6 then 4
+    else if t = 7 then 5 else 0
+  else if m = 1 then
+    if t = 1 then 6
+    else if t = 2 then 1 else if t = 3 then 1 else if t = 4 then 1
+    else if c ≤ 1 then 2 else 1
+  else if m = 6 then if c ≤ 1 then 2 else 1
+  else if m = 4 then
+    if t = 1 then 7
+    else if t = 2 then 4 else if t = 3 then 4 else if t = 4 then 4
+    else if c ≤ 1 then 0 else 4
+  else if m = 7 then if c ≤ 1 then 0 else 4
+  else 0
+
+def rcCntF (m c t : ℕ) : ℕ :=
+  if m = 0 then (if t = 0 then 1 else if t = 6 then 1 else 0)
+  else if m = 1 then
+    if t = 1 then c
+    else if t = 2 then c + 1 else if t = 3 then c + 1 else if t = 4 then c + 1
+    else if c ≤ 1 then 0 else c - 1
+  else if m = 6 then if c ≤ 1 then 0 else c - 1
+  else if m = 4 then
+    if t = 1 then c
+    else if t = 2 then c + 1 else if t = 3 then c + 1 else if t = 4 then c + 1
+    else if c ≤ 1 then 0 else c - 1
+  else if m = 7 then if c ≤ 1 then 0 else c - 1
+  else 0
+
+def rcLenF (m c r t : ℕ) : ℕ :=
+  if m = 0 then 0
+  else if m = 1 then r + 1
+  else if m = 6 then r + 1
+  else if m = 4 then
+    if t = 1 then r + 1
+    else if t = 2 then r + 1 else if t = 3 then r + 1 else if t = 4 then r + 1
+    else if c ≤ 1 then 0 else r + 1
+  else if m = 7 then if c ≤ 1 then 0 else r + 1
+  else 0
+
+lemma rcMode_step_eq (st t : ℕ) :
+    rcMode (rpnCondStep st t) = rcModeF (rcMode st) (rcCnt st) t := by
+  rw [rpnCondStep, rcModeF]
+  split_ifs <;> simp only [rcMode_pack] <;> omega
+
+lemma rcCnt_step_eq (st t : ℕ) :
+    rcCnt (rpnCondStep st t) = rcCntF (rcMode st) (rcCnt st) t := by
+  rw [rpnCondStep, rcCntF]
+  split_ifs <;> simp only [rcCnt_pack] <;> omega
+
+lemma rcLen_step_eq (st t : ℕ) :
+    rcLen (rpnCondStep st t) = rcLenF (rcMode st) (rcCnt st) (rcLen st) t := by
+  rw [rpnCondStep, rcLenF]
+  split_ifs <;> simp only [rcLen_pack] <;> omega
+
+/-- The packed step through its scalar components. -/
+lemma rpnCondStep_components (st t : ℕ) :
+    rpnCondStep st t = rcPack (rcModeF (rcMode st) (rcCnt st) t)
+      (rcCntF (rcMode st) (rcCnt st) t)
+      (rcLenF (rcMode st) (rcCnt st) (rcLen st) t) := by
+  conv_lhs => rw [rcPack_surjective (rpnCondStep st t)]
+  rw [rcMode_step_eq, rcCnt_step_eq, rcLen_step_eq]
+
+/-! ## Control bounds (for the polynomially bounded scan state) -/
+
+lemma rcMode_controlAt_le (tf : ℕ → ℕ) (n : ℕ) : ∀ j,
+    rcMode (rpnCondControlAt tf n j) ≤ 7
+  | 0 => by simp [rpnCondControlAt]
+  | j + 1 => by
+      rw [rpnCondControlAt]
+      exact rcMode_step_le _ _
+
+lemma rcCnt_controlAt_le (tf : ℕ → ℕ) (n : ℕ) : ∀ j,
+    rcCnt (rpnCondControlAt tf n j) ≤ j + 1
+  | 0 => by simp [rpnCondControlAt]
+  | j + 1 => by
+      rw [rpnCondControlAt]
+      exact le_trans (rcCnt_step_le _ _)
+        (Nat.succ_le_succ (rcCnt_controlAt_le tf n j))
+
+lemma rpnCondControlAt_le (tf : ℕ → ℕ) (n j : ℕ) :
+    rpnCondControlAt tf n j ≤ Nat.pair 7 (Nat.pair (j + 1) j) := by
+  conv_lhs => rw [rcPack_surjective (rpnCondControlAt tf n j)]
+  rw [rcPack]
+  calc Nat.pair (rcMode (rpnCondControlAt tf n j))
+        (Nat.pair (rcCnt (rpnCondControlAt tf n j))
+          (rcLen (rpnCondControlAt tf n j))) ≤
+      Nat.pair 7 (Nat.pair (rcCnt (rpnCondControlAt tf n j))
+        (rcLen (rpnCondControlAt tf n j))) :=
+        pair_le_pair_left' _ (rcMode_controlAt_le tf n j)
+    _ ≤ Nat.pair 7 (Nat.pair (j + 1) j) :=
+        pair_le_pair_right' _
+          (le_trans (pair_le_pair_left' _ (rcCnt_controlAt_le tf n j))
+            (pair_le_pair_right' _ (rcLen_controlAt_le tf n j)))
+
+/-! ## Fueled `if` combinators -/
+
+private lemma polyFueled_ifz {c₁ c₂ c₃ : Code} {A B T : ℕ → ℕ}
+    (hA : PolyFueled c₁ A) (hB : PolyFueled c₂ B) (hT : PolyFueled c₃ T) :
+    ∃ c, PolyFueled c (fun z => if T z = 0 then A z else B z) :=
+  ⟨_, (ifzSel_polyFueled.comp ((hA.pair hB).pair hT)).of_eq fun z => by
+    simp only [Nat.unpair_pair, ifzSelFn]⟩
+
+/-- Dispatch on an equality test `X z = k`. -/
+private lemma polyFueled_ifEq {cx c₁ c₂ : Code} {X A B : ℕ → ℕ}
+    (hX : PolyFueled cx X) (k : ℕ)
+    (hA : PolyFueled c₁ A) (hB : PolyFueled c₂ B) :
+    ∃ c, PolyFueled c (fun z => if X z = k then A z else B z) := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have hT : PolyFueled _ (fun z => (X z - k) + (k - X z)) :=
+    (had.comp ((subc_polyFueled.comp (hX.pair (PolyFueled.const k))).pair
+      (subc_polyFueled.comp ((PolyFueled.const k).pair hX)))).of_eq fun z => by
+        simp only [Nat.unpair_pair]
+  obtain ⟨c, hc⟩ := polyFueled_ifz hA hB hT
+  exact ⟨c, hc.of_eq fun z => by
+    by_cases hk : X z = k
+    · rw [if_pos (by omega), if_pos hk]
+    · rw [if_neg (by omega), if_neg hk]⟩
+
+/-- Dispatch on the counter test `X z ≤ 1`. -/
+private lemma polyFueled_ifLeOne {cx c₁ c₂ : Code} {X A B : ℕ → ℕ}
+    (hX : PolyFueled cx X) (hA : PolyFueled c₁ A) (hB : PolyFueled c₂ B) :
+    ∃ c, PolyFueled c (fun z => if X z ≤ 1 then A z else B z) := by
+  have hT : PolyFueled _ (fun z => X z - 1) :=
+    (subc_polyFueled.comp (hX.pair (PolyFueled.const 1))).of_eq fun z => by
+      simp only [Nat.unpair_pair]
+  obtain ⟨c, hc⟩ := polyFueled_ifz hA hB hT
+  exact ⟨c, hc.of_eq fun z => by
+    by_cases hk : X z ≤ 1
+    · rw [if_pos (by omega), if_pos hk]
+    · rw [if_neg (by omega), if_neg hk]⟩
+
+/-! ## Fueled component trees -/
+
+lemma rcModeF_polyFueled {cm cc ct : Code} {m c t : ℕ → ℕ}
+    (hm : PolyFueled cm m) (hc : PolyFueled cc c) (ht : PolyFueled ct t) :
+    ∃ code, PolyFueled code (fun z => rcModeF (m z) (c z) (t z)) := by
+  obtain ⟨_, hm0i⟩ := polyFueled_ifEq ht 7 (PolyFueled.const 5) (PolyFueled.const 0)
+  obtain ⟨_, hm0h⟩ := polyFueled_ifEq ht 6 (PolyFueled.const 4) hm0i
+  obtain ⟨_, hm0g⟩ := polyFueled_ifEq ht 1 (PolyFueled.const 3) hm0h
+  obtain ⟨_, hm0⟩ := polyFueled_ifEq ht 0 (PolyFueled.const 1) hm0g
+  obtain ⟨_, hle12⟩ := polyFueled_ifLeOne hc (PolyFueled.const 2) (PolyFueled.const 1)
+  obtain ⟨_, hm1d⟩ := polyFueled_ifEq ht 4 (PolyFueled.const 1) hle12
+  obtain ⟨_, hm1c⟩ := polyFueled_ifEq ht 3 (PolyFueled.const 1) hm1d
+  obtain ⟨_, hm1b⟩ := polyFueled_ifEq ht 2 (PolyFueled.const 1) hm1c
+  obtain ⟨_, hm1⟩ := polyFueled_ifEq ht 1 (PolyFueled.const 6) hm1b
+  obtain ⟨_, hle04⟩ := polyFueled_ifLeOne hc (PolyFueled.const 0) (PolyFueled.const 4)
+  obtain ⟨_, hm4d⟩ := polyFueled_ifEq ht 4 (PolyFueled.const 4) hle04
+  obtain ⟨_, hm4c⟩ := polyFueled_ifEq ht 3 (PolyFueled.const 4) hm4d
+  obtain ⟨_, hm4b⟩ := polyFueled_ifEq ht 2 (PolyFueled.const 4) hm4c
+  obtain ⟨_, hm4⟩ := polyFueled_ifEq ht 1 (PolyFueled.const 7) hm4b
+  obtain ⟨_, hT7⟩ := polyFueled_ifEq hm 7 hle04 (PolyFueled.const 0)
+  obtain ⟨_, hT4⟩ := polyFueled_ifEq hm 4 hm4 hT7
+  obtain ⟨_, hT6⟩ := polyFueled_ifEq hm 6 hle12 hT4
+  obtain ⟨_, hT1⟩ := polyFueled_ifEq hm 1 hm1 hT6
+  obtain ⟨code, hT0⟩ := polyFueled_ifEq hm 0 hm0 hT1
+  exact ⟨code, hT0.of_eq fun z => by rw [rcModeF]⟩
+
+lemma rcCntF_polyFueled {cm cc ct : Code} {m c t : ℕ → ℕ}
+    (hm : PolyFueled cm m) (hc : PolyFueled cc c) (ht : PolyFueled ct t) :
+    ∃ code, PolyFueled code (fun z => rcCntF (m z) (c z) (t z)) := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have hsucc : PolyFueled _ (fun z => c z + 1) :=
+    (had.comp (hc.pair (PolyFueled.const 1))).of_eq fun z => by
+      simp only [Nat.unpair_pair]
+  have hpred : PolyFueled _ (fun z => c z - 1) :=
+    (subc_polyFueled.comp (hc.pair (PolyFueled.const 1))).of_eq fun z => by
+      simp only [Nat.unpair_pair]
+  obtain ⟨_, hm0i⟩ := polyFueled_ifEq ht 6 (PolyFueled.const 1) (PolyFueled.const 0)
+  obtain ⟨_, hm0⟩ := polyFueled_ifEq ht 0 (PolyFueled.const 1) hm0i
+  obtain ⟨_, hleC⟩ := polyFueled_ifLeOne hc (PolyFueled.const 0) hpred
+  obtain ⟨_, hm1d⟩ := polyFueled_ifEq ht 4 hsucc hleC
+  obtain ⟨_, hm1c⟩ := polyFueled_ifEq ht 3 hsucc hm1d
+  obtain ⟨_, hm1b⟩ := polyFueled_ifEq ht 2 hsucc hm1c
+  obtain ⟨_, hm1⟩ := polyFueled_ifEq ht 1 hc hm1b
+  obtain ⟨_, hT7⟩ := polyFueled_ifEq hm 7 hleC (PolyFueled.const 0)
+  obtain ⟨_, hT4⟩ := polyFueled_ifEq hm 4 hm1 hT7
+  obtain ⟨_, hT6⟩ := polyFueled_ifEq hm 6 hleC hT4
+  obtain ⟨_, hT1⟩ := polyFueled_ifEq hm 1 hm1 hT6
+  obtain ⟨code, hT0⟩ := polyFueled_ifEq hm 0 hm0 hT1
+  exact ⟨code, hT0.of_eq fun z => by rw [rcCntF]⟩
+
+lemma rcLenF_polyFueled {cm cc cr ct : Code} {m c r t : ℕ → ℕ}
+    (hm : PolyFueled cm m) (hc : PolyFueled cc c) (hr : PolyFueled cr r)
+    (ht : PolyFueled ct t) :
+    ∃ code, PolyFueled code (fun z => rcLenF (m z) (c z) (r z) (t z)) := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have hsucc : PolyFueled _ (fun z => r z + 1) :=
+    (had.comp (hr.pair (PolyFueled.const 1))).of_eq fun z => by
+      simp only [Nat.unpair_pair]
+  obtain ⟨_, hleR⟩ := polyFueled_ifLeOne hc (PolyFueled.const 0) hsucc
+  obtain ⟨_, hm4d⟩ := polyFueled_ifEq ht 4 hsucc hleR
+  obtain ⟨_, hm4c⟩ := polyFueled_ifEq ht 3 hsucc hm4d
+  obtain ⟨_, hm4b⟩ := polyFueled_ifEq ht 2 hsucc hm4c
+  obtain ⟨_, hm4⟩ := polyFueled_ifEq ht 1 hsucc hm4b
+  obtain ⟨_, hT7⟩ := polyFueled_ifEq hm 7 hleR (PolyFueled.const 0)
+  obtain ⟨_, hT4⟩ := polyFueled_ifEq hm 4 hm4 hT7
+  obtain ⟨_, hT6⟩ := polyFueled_ifEq hm 6 hsucc hT4
+  obtain ⟨_, hT1⟩ := polyFueled_ifEq hm 1 hsucc hT6
+  obtain ⟨code, hT0⟩ := polyFueled_ifEq hm 0 (PolyFueled.const 0) hT1
+  exact ⟨code, hT0.of_eq fun z => by rw [rcLenF]⟩
+
+/-! ## The control scan
+
+Over any digit `PolySegStream`, the packed control state at each token position of
+the undigitized stream is poly-fueled (input `⟨n, j⟩`): the state is polynomially
+bounded (counter and run length are at most the position), and every branch test of
+the step factors through the token clamp. -/
+
+lemma rpnCondScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+    ∃ c, PolyFueled c (fun z =>
+      rpnCondControlAt (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
+        z.unpair.1 z.unpair.2) := by
+  obtain ⟨-, hbig⟩ := h.undigitizeTokens
+  obtain ⟨ctc, htc⟩ := hbig.clampVal (PolyFueled.const 8)
+  -- Step input `⟨n, ⟨j, prev⟩⟩`.
+  have hn := PolyFueled.left
+  have hj := PolyFueled.left.comp PolyFueled.right
+  have hprev := PolyFueled.right.comp PolyFueled.right
+  have htok := htc.comp (hn.pair hj)
+  have hmode : PolyFueled _ (fun z : ℕ => rcMode (z.unpair.2.unpair.2)) :=
+    PolyFueled.left.comp hprev
+  have hcnt : PolyFueled _ (fun z : ℕ => rcCnt (z.unpair.2.unpair.2)) :=
+    PolyFueled.left.comp (PolyFueled.right.comp hprev)
+  have hlen : PolyFueled _ (fun z : ℕ => rcLen (z.unpair.2.unpair.2)) :=
+    PolyFueled.right.comp (PolyFueled.right.comp hprev)
+  obtain ⟨cM, hMF⟩ := rcModeF_polyFueled hmode hcnt htok
+  obtain ⟨cC, hCF⟩ := rcCntF_polyFueled hmode hcnt htok
+  obtain ⟨cL, hLF⟩ := rcLenF_polyFueled hmode hcnt hlen htok
+  have hstep := hMF.pair (hCF.pair hLF)
+  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
+  have hbound : IsPolyBounded (fun w : ℕ =>
+      rpnCondControlAt tf w.unpair.1 w.unpair.2) := by
+    have hmaj : IsPolyBounded (fun w : ℕ =>
+        Nat.pair 7 (Nat.pair (w.unpair.2 + 1) w.unpair.2)) :=
+      ((IsPolyBounded.linear 7).of_le fun _ => by omega).pair
+        (isPolyBounded_snd.add_one.pair isPolyBounded_snd)
+    exact hmaj.of_le fun w => rpnCondControlAt_le tf w.unpair.1 w.unpair.2
+  refine ⟨_, PolyFueled.prec (PolyFueled.const 0) hstep
+    (st := fun n j => rpnCondControlAt tf n j)
+    (fun n => rfl)
+    (fun n j => ?_) hbound⟩
+  show rpnCondControlAt tf n (j + 1) = _
+  rw [show rpnCondControlAt tf n (j + 1) =
+    rpnCondStep (rpnCondControlAt tf n j) (tf (Nat.pair n j)) from rfl,
+    ← rpnCondStep_clamp, rpnCondStep_components]
+  simp only [htf, Nat.unpair_pair, rcPack, Nat.reduceAdd]
+
+/-! ## The day-guard flag -/
+
+/-- `1` iff some price-day position below the cursor carries a day token exceeding
+`n` (mirror of `ConditioningCompile.bigDayFlagAt` over the run-aware automaton). -/
+def rpnBigDayFlagAt (tf : ℕ → ℕ) (n : ℕ) : ℕ → ℕ
+  | 0 => 0
+  | j + 1 =>
+      if rcMode (rpnCondControlAt tf n j) = 2 ∧ n < tf (Nat.pair n j) then 1
+      else rpnBigDayFlagAt tf n j
+
+lemma rpnBigDayFlagAt_le_one (tf : ℕ → ℕ) (n : ℕ) : ∀ j,
+    rpnBigDayFlagAt tf n j ≤ 1
+  | 0 => by simp [rpnBigDayFlagAt]
+  | j + 1 => by
+      rw [rpnBigDayFlagAt]
+      split
+      · exact le_refl 1
+      · exact rpnBigDayFlagAt_le_one tf n j
+
+lemma rpnBigDayFlagAt_eq_zero_iff (tf : ℕ → ℕ) (n J : ℕ) :
+    rpnBigDayFlagAt tf n J = 0 ↔
+      ∀ j < J, rcMode (rpnCondControlAt tf n j) = 2 → tf (Nat.pair n j) ≤ n := by
+  induction J with
+  | zero => simp [rpnBigDayFlagAt]
+  | succ J ih =>
+      rw [rpnBigDayFlagAt]
+      by_cases hc : rcMode (rpnCondControlAt tf n J) = 2 ∧ n < tf (Nat.pair n J)
+      · rw [if_pos hc]
+        constructor
+        · omega
+        · intro hall
+          exact absurd (hall J (by omega) hc.1) (by omega)
+      · rw [if_neg hc, ih]
+        constructor
+        · intro hall j hj hm
+          rcases Nat.lt_or_ge j J with h | h
+          · exact hall j h hm
+          · have hjJ : j = J := by omega
+            subst hjJ
+            by_contra hlt
+            exact hc ⟨hm, by omega⟩
+        · intro hall j hj hm
+          exact hall j (by omega) hm
+
+/-- The guard flag is poly-fueled over any digit `PolySegStream` (input `⟨n, j⟩`). -/
+lemma rpnBigDayFlagScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+    ∃ c, PolyFueled c (fun z =>
+      rpnBigDayFlagAt (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
+        z.unpair.1 z.unpair.2) := by
+  obtain ⟨cs, hscan⟩ := rpnCondScan h
+  obtain ⟨cd, hclamp⟩ := h.dayClampTokens
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  -- Step input `⟨n, ⟨j, prev⟩⟩`.
+  have hn := PolyFueled.left
+  have hj := PolyFueled.left.comp PolyFueled.right
+  have hprev := PolyFueled.right.comp PolyFueled.right
+  have hmz := PolyFueled.left.comp (hscan.comp (hn.pair hj))
+  have hdz := hclamp.comp (hn.pair hj)
+  have heq2 := had.comp ((subc_polyFueled.comp (hmz.pair (PolyFueled.const 2))).pair
+    (subc_polyFueled.comp ((PolyFueled.const 2).pair hmz)))
+  have hexcess := subc_polyFueled.comp (hdz.pair hn)
+  have hinner := ifzSel_polyFueled.comp ((hexcess.pair (PolyFueled.const 0)).pair heq2)
+  have hstep := ifzSel_polyFueled.comp ((hprev.pair (PolyFueled.const 1)).pair hinner)
+  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
+  refine ⟨_, PolyFueled.prec (PolyFueled.const 0) hstep
+    (st := fun n j => rpnBigDayFlagAt tf n j)
+    (fun n => rfl)
+    (fun n j => ?_)
+    ((IsPolyBounded.linear 1).of_le fun z =>
+      le_trans (rpnBigDayFlagAt_le_one _ _ _) (by omega))⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  rw [rpnBigDayFlagAt]
+  have htfj : tf (Nat.pair n j) = (undigitize (s n)).getD j 0 := by
+    rw [htf]
+    simp only [Nat.unpair_pair]
+  rw [← htfj]
+  rw [show (Nat.unpair (rpnCondControlAt tf n j)).1 =
+    rcMode (rpnCondControlAt tf n j) from rfl]
+  by_cases hm : rcMode (rpnCondControlAt tf n j) = 2
+  · have heq2z : rcMode (rpnCondControlAt tf n j) - 2 +
+        (2 - rcMode (rpnCondControlAt tf n j)) = 0 := by omega
+    rw [if_pos heq2z]
+    by_cases hd : n < tf (Nat.pair n j)
+    · rw [if_pos ⟨hm, hd⟩, Nat.min_eq_right (by omega : n + 1 ≤ tf (Nat.pair n j)),
+        if_neg (by omega : ¬ n + 1 - n = 0)]
+    · rw [if_neg (by tauto :
+          ¬ (rcMode (rpnCondControlAt tf n j) = 2 ∧ n < tf (Nat.pair n j))),
+        Nat.min_eq_left (by omega : tf (Nat.pair n j) ≤ n + 1),
+        if_pos (by omega : tf (Nat.pair n j) - n = 0)]
+  · rw [if_neg (by tauto :
+        ¬ (rcMode (rpnCondControlAt tf n j) = 2 ∧ n < tf (Nat.pair n j))),
+      if_neg (by omega : ¬ rcMode (rpnCondControlAt tf n j) - 2 +
+        (2 - rcMode (rpnCondControlAt tf n j)) = 0),
+      if_pos rfl]
+
+#print axioms rpnCondScan
+#print axioms rpnBigDayFlagScan
 
 end RpnConditioning
 
