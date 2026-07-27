@@ -1145,6 +1145,157 @@ theorem exists_universalApprox_code :
 
 end Emission
 
+/-! ## Toward the polynomial clock: the rounded stage table
+
+`PolyRatCodes` is `PolyFueled` on the *encoded* value, and `PolyFueled` demands
+`IsPolyBounded` of the **output** as well as of the fuel.  `universalApprox` can never
+satisfy that: its `(1/2) ^ (i+1)` weights alone force denominators of order `2 ^ n`, whose
+encoding is exponential in the stage index.
+
+The interface leaves room, though: `DUSApproximationPresentation` asks only for `nonneg`,
+`le_mass` and `tendsto` — **not** monotonicity.  So the stage table may be rounded down
+onto the `1 / (n+1)` grid, which costs `1 / (n+1)` of accuracy (harmless in the limit) and
+caps both numerator and denominator by `n + 1`.  `encode_gridApprox_le` is the resulting
+output bound: the half of `PolyFueled` that is about size, discharged.
+
+What remains open is the *fuel* half — a program computing `gridApprox` in `evaln` fuel
+polynomial in `⟪n, i⟫`.  That is not a re-certification of `tabCol`: a code run for `n`
+steps can emit rationals of doubly-exponential magnitude, and the trimming threads those
+exact values, so a poly-fueled emitter must round *inside* the recursion as well. -/
+
+/-- The stage table rounded down onto the `1 / (n+1)` grid. -/
+def gridApprox (n : ℕ) (σ : List Bool) : ℚ :=
+  Rat.divInt ⌊universalApprox n σ * (n + 1)⌋ (n + 1)
+
+lemma universalMass_le_one (σ : List Bool) : universalMass σ ≤ 1 := by
+  calc universalMass σ ≤ ∑' i, wt i :=
+        Summable.tsum_le_tsum
+          (fun i ↦ mul_le_of_le_one_right (wt_pos i).le (dovetailMass_le_one _ _))
+          (summable_universal _) summable_wt
+    _ = 1 := tsum_wt
+
+lemma universalApprox_le_one (n : ℕ) (σ : List Bool) : universalApprox n σ ≤ 1 := by
+  have h : ((universalApprox n σ : ℚ) : ℝ) ≤ 1 :=
+    (universalApprox_le n σ).trans (universalMass_le_one σ)
+  exact_mod_cast h
+
+lemma gridApprox_eq_div (n : ℕ) (σ : List Bool) :
+    gridApprox n σ = ((⌊universalApprox n σ * (n + 1)⌋ : ℤ) : ℚ) / ((n : ℚ) + 1) := by
+  rw [gridApprox, Rat.divInt_eq_div]
+  push_cast
+  ring_nf
+
+lemma gridApprox_nonneg (n : ℕ) (σ : List Bool) : 0 ≤ gridApprox n σ := by
+  rw [gridApprox_eq_div]
+  have hx : (0 : ℚ) ≤ universalApprox n σ * (n + 1) := by
+    have := universalApprox_nonneg n σ
+    positivity
+  have hfl : (0 : ℤ) ≤ ⌊universalApprox n σ * (n + 1)⌋ := Int.floor_nonneg.mpr hx
+  have hd : (0 : ℚ) < (n : ℚ) + 1 := by positivity
+  exact div_nonneg (by exact_mod_cast hfl) hd.le
+
+lemma gridApprox_le_universalApprox (n : ℕ) (σ : List Bool) :
+    gridApprox n σ ≤ universalApprox n σ := by
+  rw [gridApprox_eq_div, div_le_iff₀ (by positivity : (0 : ℚ) < (n : ℚ) + 1)]
+  exact Int.floor_le _
+
+lemma universalApprox_sub_gridApprox_le (n : ℕ) (σ : List Bool) :
+    universalApprox n σ - gridApprox n σ ≤ 1 / ((n : ℚ) + 1) := by
+  have hd : (0 : ℚ) < (n : ℚ) + 1 := by positivity
+  rw [gridApprox_eq_div, sub_le_iff_le_add, ← add_div, le_div_iff₀ hd]
+  have := Int.sub_one_lt_floor (universalApprox n σ * ((n : ℚ) + 1))
+  linarith
+
+/-- `le_mass` for the rounded stage table: the `DUSApproximationPresentation` field.
+Paper node: `thm:dus` -/
+lemma gridApprox_le_mass (n : ℕ) (σ : List Bool) :
+    ((gridApprox n σ : ℚ) : ℝ) ≤ universalMass σ := by
+  refine le_trans ?_ (universalApprox_le n σ)
+  exact_mod_cast gridApprox_le_universalApprox n σ
+
+/-- `tendsto` for the rounded stage table: rounding costs `1/(n+1)`, which vanishes.
+Paper node: `thm:dus` -/
+lemma gridApprox_tendsto (σ : List Bool) :
+    Tendsto (fun n ↦ ((gridApprox n σ : ℚ) : ℝ)) atTop (𝓝 (universalMass σ)) := by
+  have hlow : Tendsto
+      (fun n : ℕ ↦ ((universalApprox n σ : ℚ) : ℝ) - 1 / ((n : ℝ) + 1)) atTop
+      (𝓝 (universalMass σ)) := by
+    have h0 : Tendsto (fun n : ℕ ↦ 1 / ((n : ℝ) + 1)) atTop (𝓝 0) :=
+      tendsto_one_div_add_atTop_nhds_zero_nat
+    simpa using (universalApprox_tendsto σ).sub h0
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le hlow (universalApprox_tendsto σ)
+    (fun n ↦ ?_) (fun n ↦ ?_)
+  · have h := universalApprox_sub_gridApprox_le n σ
+    have h' : ((universalApprox n σ : ℚ) : ℝ) - ((gridApprox n σ : ℚ) : ℝ)
+        ≤ ((1 / ((n : ℚ) + 1) : ℚ) : ℝ) := by exact_mod_cast h
+    have hcast : ((1 / ((n : ℚ) + 1) : ℚ) : ℝ) = 1 / ((n : ℝ) + 1) := by push_cast; ring
+    rw [hcast] at h'
+    linarith
+  · exact_mod_cast gridApprox_le_universalApprox n σ
+
+/-! ### The output-size half of `PolyFueled` -/
+
+lemma gridApprox_den_le (n : ℕ) (σ : List Bool) : (gridApprox n σ).den ≤ n + 1 := by
+  have hdvd : (((gridApprox n σ).den : ℤ)) ∣ ((n : ℤ) + 1) := by
+    have := Rat.den_dvd ⌊universalApprox n σ * ((n : ℚ) + 1)⌋ ((n : ℤ) + 1)
+    simpa [gridApprox] using this
+  have hpos : (0 : ℤ) < (n : ℤ) + 1 := by positivity
+  have := Int.le_of_dvd hpos hdvd
+  omega
+
+lemma num_le_den_of_le_one {q : ℚ} (h1 : q ≤ 1) : q.num ≤ (q.den : ℤ) := by
+  have hd : (0 : ℚ) < (q.den : ℚ) := by exact_mod_cast q.pos
+  have hq : q * (q.den : ℚ) = (q.num : ℚ) := by
+    nth_rewrite 1 [← Rat.num_div_den q]
+    exact div_mul_cancel₀ _ (ne_of_gt hd)
+  have hle : ((q.num : ℚ)) ≤ ((q.den : ℚ)) := by
+    have := mul_le_mul_of_nonneg_right h1 hd.le
+    rw [hq, one_mul] at this
+    exact this
+  exact_mod_cast hle
+
+lemma gridApprox_num_le (n : ℕ) (σ : List Bool) :
+    (gridApprox n σ).num ≤ ((gridApprox n σ).den : ℤ) :=
+  num_le_den_of_le_one
+    ((gridApprox_le_universalApprox n σ).trans (universalApprox_le_one n σ))
+
+/-- **The size half of `PolyRatCodes`.**  The rounded stage table's encoding is bounded by
+a fixed quadratic in the stage index — so the obstruction to
+`DUSApproximationPresentation` is now entirely on the *fuel* side. -/
+lemma encode_gridApprox_le (n : ℕ) (σ : List Bool) :
+    Encodable.encode (gridApprox n σ) ≤ (2 * (n + 1) + 1) ^ 2 := by
+  have hnn : 0 ≤ (gridApprox n σ).num := Rat.num_nonneg.mpr (gridApprox_nonneg n σ)
+  have hden : (gridApprox n σ).den ≤ n + 1 := gridApprox_den_le n σ
+  have hnum : (gridApprox n σ).num.toNat ≤ n + 1 := by
+    have := gridApprox_num_le n σ
+    omega
+  have henc : Encodable.encode (gridApprox n σ)
+      = Nat.pair (2 * (gridApprox n σ).num.toNat) (gridApprox n σ).den := by
+    rw [encode_rat_eq]
+    congr 1
+    rw [show (gridApprox n σ).num = ((gridApprox n σ).num.toNat : ℤ) by omega]
+    exact encode_int_natCast _
+  rw [henc]
+  have hlt := Nat.pair_lt_max_add_one_sq (2 * (gridApprox n σ).num.toNat)
+    (gridApprox n σ).den
+  have hmax : max (2 * (gridApprox n σ).num.toNat) (gridApprox n σ).den + 1
+      ≤ 2 * (n + 1) + 1 := by omega
+  exact le_of_lt (lt_of_lt_of_le hlt (Nat.pow_le_pow_left hmax 2))
+
+/-- The encoded rounded table is polynomially size-bounded in the packed argument — the
+`IsPolyBounded`-of-output half of `PolyRatCodes`.
+Paper node: `thm:dus` -/
+lemma isPolyBounded_encode_gridApprox (e : ℕ → List Bool) :
+    IsPolyBounded fun z ↦ Encodable.encode (gridApprox z.unpair.1 (e z.unpair.2)) := by
+  refine ⟨16, 2, fun z ↦ ?_⟩
+  have hz : z.unpair.1 ≤ z := Nat.unpair_left_le z
+  have h := encode_gridApprox_le z.unpair.1 (e z.unpair.2)
+  have hb : (2 * (z.unpair.1 + 1) + 1) ^ 2 ≤ 16 * (z + 1) ^ 2 := by
+    have hlin : 2 * (z.unpair.1 + 1) + 1 ≤ 4 * (z + 1) := by omega
+    calc (2 * (z.unpair.1 + 1) + 1) ^ 2 ≤ (4 * (z + 1)) ^ 2 := Nat.pow_le_pow_left hlin 2
+      _ = 16 * (z + 1) ^ 2 := by ring
+  exact le_trans (le_trans h hb) (Nat.le_add_right _ _)
+
 /-! ### The packaging
 
 With `exists_universalApprox_code` discharged, both structures are real definitions: every
@@ -1181,6 +1332,9 @@ noncomputable def universalSemimeasure : UniversalContinuousSemimeasure where
 #print axioms exists_universalApprox_code
 #print axioms lowerSemicomputable
 #print axioms universalSemimeasure
+#print axioms gridApprox_le_mass
+#print axioms gridApprox_tendsto
+#print axioms isPolyBounded_encode_gridApprox
 
 end Dovetail
 

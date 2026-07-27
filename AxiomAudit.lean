@@ -309,6 +309,8 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 #assert_axioms_clean
   Dovetail.continuousSemimeasure Dovetail.universalMass_dominates
   Dovetail.exists_universalApprox_code Dovetail.universalSemimeasure
+  Dovetail.gridApprox_le_mass Dovetail.gridApprox_tendsto
+  Dovetail.isPolyBounded_encode_gridApprox
 
 -- Construction/Witnesses/ConditioningPresentation.lean (`M7-SCON-PRESENTATION`)
 #assert_axioms_clean
