@@ -315,27 +315,56 @@ theory exists anywhere to bridge to; keep the model-card calibrations + the CSli
 watch item — if CSlib ever grows a poly-time class, the remaining gap is one
 `evaln`-fuel ↔ TM-step polynomial simulation theorem, and that alone).
 
-## Tranche U — universality: M7-DUS-APPROX + prefix-code universality (2–5 sessions)
+## Tranche U — universality: M7-DUS-APPROX + prefix-code universality
 
-Shared core: a **concrete universal dovetailer with clocked approximants**.
-* Build a universal continuous semimeasure `M*` as an explicit dovetail over
-  `Nat.Partrec.Code` with a stage clock, such that the stage-`n` from-below
-  approximant has a `PolyFueled` emitter (the prefix-machine `approx_poly` discharge
-  is the pattern: clamped materialization, `BigDigits.clampVal`).  Key risk: the
-  usual universality proofs quantify over all machines via unbounded search — the
-  *approximant* stages are still poly-clockable because stage `n` only runs `n`
-  programs for `n` steps; the poly bound is on the STAGE, not the limit.
-* Discharge `DUSApproximationPresentation` + `DUSThresholdEmission` for `M*`
-  (threshold streams derive like `prefixThresholdSum_polyRat` did), upgrading
-  `thm:dus` from qualified to complete-over-LIA.
-* Then upgrade `PrefixMachine.lean`'s κ to universal prefix complexity: dovetailing
-  weights are lower-semicomputable, so the presentation's `tendsto` field does real
-  work (from-below stage convergence); the Kraft field needs the universal machine's
-  prefix-free domain (adapt `kraft_inequality` application to the c.e. domain
-  enumeration).  This removes the type-(c) in PrefixMachine's docstring and makes
-  `lic_occamBounds_ofPrefixMachine` paper-strength Occam (up to the additive-constant
-  slop the paper itself has).
-* Order: `M*` + approximants first (serves both), then DUS packaging, then κ.
+**Stage 1 landed 2026-07-27** (`Construction/Witnesses/UniversalDovetailer.lean`,
+commit "Tranche U stage 1: the universal dovetailer with clocked approximants").
+`M*` exists as an explicit dovetail over `Nat.Partrec.Code` with a stage clock:
+
+* `Dovetail.rawTable` — running max of the first `n` dovetail readings, reading
+  `(index, fuel) = n.unpair` at stage `n`.  One clock, monotone, no unbounded search.
+* `Dovetail.trim` — each raw stage trimmed top-down into a semimeasure, every value
+  remembering the previous stage.  **The memory is load-bearing**: the ordered trim
+  alone is *not* monotone in `n` (the sibling subtraction moves the wrong way), and
+  without the memory the stage table can overshoot its own limit, so
+  `approximation_le` would fail.  `trim_tendsto_of_exact` shows the memory costs
+  nothing in the limit.
+* `Dovetail.universalMass` — the `(1/2)^(i+1)`-weighted mixture; a `ContinuousSemimeasure`
+  (`Dovetail.continuousSemimeasure`) dominating every lower-semicomputable continuous
+  semimeasure with explicit constant (`Dovetail.universalMass_dominates`).  Both
+  axiom-clean and on the AxiomAudit surface.
+* `Dovetail.universalApprox` — the monotone from-below stage table (first `n` programs,
+  each at trimmed stage `n`), with `_nonneg`/`_mono`/`_le`/`_tendsto` all proved.
+
+**Remaining, in order.**
+1. `Dovetail.exists_universalApprox_code` — the file's single `sorry`
+   (`approximation_computes`), which is all that keeps `Dovetail.universalSemimeasure`
+   off the audit surface.  *Obstruction is presentational only*: `trim` is a `Nat.rec`
+   over the clock whose state is a function on strings.  Fix = **column tabulation**
+   (`tabCol c r N : List ℚ`, the clock-column at a string, by structural recursion on
+   the reversed string, both children produced together by one `List.foldl` over
+   `List.range N` carrying `ℚ × ℚ`).  State becomes `List ℚ`; use `Primrec.list_rec`,
+   `Primrec.list_foldl`, `Primrec.list_range`, `Primrec.list_getD`, this repo's
+   `ratPrimcodable`/`ratAdd_prim`/`ratMul_prim`/`ratMax_prim`/`ratLE_prim`
+   (`Construction/LIACompiler.lean`), `Nat.Partrec.Code.primrec_evaln`, then
+   `exists_code` + `evaln_complete` (pattern: `Witnesses/ComputationDP.lean`).
+   Full recipe is in the theorem's docstring.  Estimate ½–1½ sessions.
+2. `DUSApproximationPresentation` + `DUSThresholdEmission` for `M*` — the *polynomial*
+   refinement (`PolyRatCodes`, `PolyFueled`), which is what upgrades `thm:dus` from
+   qualified to complete-over-LIA.  Strictly larger than (1) and **not** unblocked by
+   it: (1) gives computability, this needs a poly clock on the stage emitter, with the
+   prefix-machine `approx_polyRat` discharge as the pattern (clamped materialization,
+   `BigDigits.clampVal`).  Do not start before (1).  Estimate 1–3 sessions.
+3. Then upgrade `PrefixMachine.lean`'s κ to universal prefix complexity: dovetailing
+   weights are lower-semicomputable, so the presentation's `tendsto` field does real
+   work (from-below stage convergence); the Kraft field needs the universal machine's
+   prefix-free domain (adapt `kraft_inequality` application to the c.e. domain
+   enumeration).  This removes the type-(c) in PrefixMachine's docstring and makes
+   `lic_occamBounds_ofPrefixMachine` paper-strength Occam (up to the additive-constant
+   slop the paper itself has).  Untouched.
+
+Tranche S can already reuse stage 1: `Dovetail.trim`/`dovetailMass` give the
+lower-semicomputable approximants that `mass_tendsto_zero`'s contrapositive argues over.
 
 ## Tranche S — M7-STRICT-SEPARATORS (3–6 sessions, partly research-grade)
 
@@ -375,7 +404,11 @@ All three are mechanical with the existing mirror suite (`RpnSpliceStream`,
   constructed; `PrefixMachineComputation` deleted). The only remaining disclosure for
   this node is the type-`(c)` non-universality of `prefixKappa` (a modeling statement,
   not a proof gap). See the record above and `notes/m7-prefix-machine-scope.md`.
-- `M7-DUS-APPROX` and `M7-STRICT-SEPARATORS` — remain disclosed unless Anson reopens them.
+- `M7-DUS-APPROX` — **partially discharged 2026-07-27** (Tranche U stage 1): the
+  universal semimeasure `M*` is constructed and its universality proved axiom-clean; what
+  remains disclosed is the *emission* side (a code for the stage table, then its poly
+  refinement).  See the Tranche U entry above.
+- `M7-STRICT-SEPARATORS` — remains disclosed unless Anson reopens it.
 
 These three are the only intentional disclosures at the 12/15 target. The audit should
 confirm no fourth boundary is assumed anywhere it isn't named.

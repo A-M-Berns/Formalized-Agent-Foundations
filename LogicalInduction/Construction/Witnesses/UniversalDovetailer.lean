@@ -727,12 +727,32 @@ each, with no unbounded search — but the `Nat.Partrec.Code` witnessing that, a
 constructed here.
 
 TODO(blueprint:M7-DUS-APPROX): need a `Nat.Partrec.Code` for
-`fun z ↦ Encodable.encode (universalApprox z.unpair.1 (decode z.unpair.2))`.  The
-recursion is a `Nat.rec` over the stage clock whose state is a function on strings; the
-effective route is the depth-bounded table (values on the prefixes of `σ` and their
-siblings, a list of `2 * σ.length + 1` rationals) which is `Primcodable`, followed by
-`Nat.Partrec.Code.exists_code`.  The polynomial refinement (`PolyRatCodes`, needed for
-`DUSApproximationPresentation`) is a further step on top. -/
+`fun z ↦ Encodable.encode (universalApprox z.unpair.1 ((Encodable.decode z.unpair.2).getD []))`.
+The obstruction is purely presentational: `trim` is a `Nat.rec` over the stage clock whose
+state is a *function* on strings, which no `Primcodable` state can hold.  The finite-state
+reformulation that removes it is **column tabulation**, transposing the recursion so that
+the induction is on the string and the clock is tabulated:
+
+  `tabCol c r N : List ℚ`, the column `[trim c 0 r.reverse, …, trim c N r.reverse]`,
+  by structural recursion on the *reversed* string `r` (so extension is `cons`):
+  * `tabCol c [] N = (List.range (N+1)).map (root value at that stage)`;
+  * both children of `r` must be produced together, since the `true` child reads the
+    `false` child's new value — so the step is a single `List.foldl` over
+    `List.range N` carrying `(ℚ × ℚ)` and emitting the two child columns from the
+    parent column.
+
+  The state is then `List ℚ` (`Primcodable`, via this repo's `ratPrimcodable`), the
+  recursion is `Primrec.list_rec`, and `trim c n σ = (tabCol c σ.reverse n).getD n 0`.
+  Rational arithmetic is already available primitively recursively in
+  `Construction/LIACompiler.lean` (`ratAdd_prim`, `ratMul_prim`, `ratDiv_prim`,
+  `ratMax_prim`, `ratLE_prim`, `ratPrimcodable`); `rawTable` needs only
+  `Nat.Partrec.Code.primrec_evaln` and `Primrec.decode`.  Finish with
+  `Nat.Partrec.Code.exists_code` + `Nat.Partrec.Code.evaln_complete`, as in
+  `Construction/Witnesses/ComputationDP.lean`.
+
+The polynomial refinement (`PolyRatCodes`, needed for `DUSApproximationPresentation` and
+so for the fully-discharged `thm:dus` endpoint) is a further, strictly larger step on top
+of this one. -/
 theorem exists_universalApprox_code :
     ∃ c : Nat.Partrec.Code, ∀ n σ, ∃ fuel,
       c.evaln fuel (Nat.pair n (Encodable.encode σ)) =

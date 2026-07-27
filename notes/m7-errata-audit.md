@@ -188,6 +188,26 @@ propositional), and `hworld`. Still caller-supplied: `DUSApproximationPresentati
 from-below approximation, i.e. the 2.1 residual again, applied to `M`'s approximants.
 The paper needs only lower-semicomputability here.
 
+> **Update (2026-07-27, Tranche U stage 1).** A concrete universal continuous semimeasure
+> now exists in the repo: `Construction/Witnesses/UniversalDovetailer.lean` builds `M*` as
+> an explicit dovetail over `Nat.Partrec.Code` with a stage clock.  Axiom-clean and on the
+> audit surface: `Dovetail.continuousSemimeasure` (the mixture is a continuous semimeasure)
+> and `Dovetail.universalMass_dominates` (multiplicative domination of *every*
+> lower-semicomputable continuous semimeasure, with the explicit constant
+> `(1/2) ^ (encode ν.approximation_code + 1)`).  This is the mathematical content of
+> `UniversalContinuousSemimeasure.universal`, and it means the `M` in the endpoint above is
+> no longer a hypothetical object.
+>
+> Two obligations remain, in order of increasing size:
+> 1. `Dovetail.exists_universalApprox_code` — a `Nat.Partrec.Code` for the stage table
+>    (the `approximation_computes` field).  Single disclosed `sorry`; the packaged
+>    `Dovetail.universalSemimeasure` is the only declaration that depends on it and is
+>    deliberately **not** on the audit surface.  Recipe (column tabulation + the repo's
+>    existing `ratPrimcodable`/`ratAdd_prim` toolkit) is in the theorem's docstring.
+> 2. The *polynomial* refinement — `DUSApproximationPresentation` and
+>    `DUSThresholdEmission` for `M*` — which is what actually upgrades the endpoint above
+>    from qualified to complete.  Strictly larger than (1); not attempted.
+
 ### 2.5 `hworld` consistency hypotheses
 
 Most property endpoints carry `hworld : ∀ n, ∃ v, v.ConsistentWith (DP.D n)`. The paper
