@@ -661,8 +661,8 @@ lemma lic_limitingBelief_theorem
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (φ : Sentence) (hthm : ∃ k, φ ∈ DP.D k) : limitingBelief P φ = 1 := by
-  have hcodes : PolySentenceCodes (fun _ => φ) :=
-    ⟨_, PolyFueled.const (Encodable.encode φ)⟩
+  have hcodes : RpnSentenceCodes (fun _ => φ) :=
+    RpnSentenceCodes.ofPolySentenceCodes ⟨_, PolyFueled.const (Encodable.encode φ)⟩
   have hone := lic_provind_true P DP (fun _ => φ) hcodes (fun _ => hthm) hworld
   have ht : ConvergesTo (fun n => P n φ) 1 :=
     convergesTo_iff_asympEq_const.mpr hone
@@ -674,8 +674,8 @@ lemma lic_limitingBelief_refutable
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (φ : Sentence) (hdis : ∃ k, (∼φ) ∈ DP.D k) : limitingBelief P φ = 0 := by
-  have hcodes : PolySentenceCodes (fun _ => φ) :=
-    ⟨_, PolyFueled.const (Encodable.encode φ)⟩
+  have hcodes : RpnSentenceCodes (fun _ => φ) :=
+    RpnSentenceCodes.ofPolySentenceCodes ⟨_, PolyFueled.const (Encodable.encode φ)⟩
   have hzero := lic_provind_false P DP (fun _ => φ) hcodes (fun _ => hdis) hworld
   have ht : ConvergesTo (fun n => P n φ) 0 :=
     convergesTo_iff_asympEq_const.mpr hzero

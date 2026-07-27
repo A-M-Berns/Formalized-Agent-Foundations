@@ -272,8 +272,6 @@ noncomputable def sequencePoly
   have hsource := Classical.choose_spec (sourceIndex_polyFueled f fa fd)
   let ccount := Classical.choose hA.termCount_poly
   have hcount := Classical.choose_spec hA.termCount_poly
-  let csentence := Classical.choose hA.sentence_poly
-  have hsentence := Classical.choose_spec hA.sentence_poly
   let ctruth := Classical.choose (truthCodeAt_polyFueled C fa fd)
   have htruth := Classical.choose_spec (truthCodeAt_polyFueled C fa fd)
   let count : ℕ → ℕ := fun m =>
@@ -290,35 +288,30 @@ noncomputable def sequencePoly
   have hquery : PolyFueled _ (fun z : ℕ =>
       Nat.pair (sourceIndex f fa fd z.unpair.1) z.unpair.2) :=
     (hsource.comp PolyFueled.left).pair PolyFueled.right
-  have hcoeffPoly : PolySegStream (fun z => (coeff z).serialize) := by
+  have hcoeffPoly : RpnSpliceStream (fun z => (coeff z).serialize) := by
     simpa only [coeff] using hA.coefficient_poly.comp hquery
-  have hsentencePoly : ∃ c, PolyFueled c (fun z => Encodable.encode (sentence z)) :=
-    ⟨_, hsentence.comp hquery⟩
-  have hzeroConst : PolySegStream (fun _ => (EF.const 0).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
-  have hrawConst : PolySegStream (fun m => [1, truthCodeAt C fa fd m]) :=
-    PolySegStream.ofTokenStream ((PolyTokenStream.const 1).append
-      (PolyTokenStream.polyTok htruth))
-  have hminusRaw : PolySegStream (fun m =>
-      (EF.const (-1)).serialize ++ [1, truthCodeAt C fa fd m] ++ [3]) := by
-    have htag : PolySegStream (fun _ => [3]) :=
-      PolySegStream.ofTokenStream (PolyTokenStream.const 3)
-    exact ((PolySegStream.ofTokenStream
-      (PolyTokenStream.serialize_const (-1))).append hrawConst).append htag
-  have hactiveRaw : PolySegStream (fun m =>
+  have hsentencePoly : RpnSentenceCodes sentence :=
+    (hA.sentence_poly.comp hquery).of_eq (fun z => rfl)
+  have hrawConst : RpnSpliceStream (fun m => [1, truthCodeAt C fa fd m]) :=
+    RpnSpliceStream.payload 1 (Or.inl rfl) htruth
+  have hminusRaw : RpnSpliceStream (fun m =>
+      (EF.const (-1)).serialize ++ [1, truthCodeAt C fa fd m] ++ [3]) :=
+    ((RpnSpliceStream.serialize_const (-1)).append hrawConst).append
+      (RpnSpliceStream.tag 3 (by norm_num))
+  have hactiveRaw : RpnSpliceStream (fun m =>
       (As (sourceIndex f fa fd m)).const.serialize ++
-        ((EF.const (-1)).serialize ++ [1, truthCodeAt C fa fd m] ++ [3]) ++ [2]) := by
-    have htag : PolySegStream (fun _ => [2]) :=
-      PolySegStream.ofTokenStream (PolyTokenStream.const 2)
-    exact ((hA.const_poly.comp hsource).append hminusRaw).append htag
-  have hconstIf := PolySegStream.ifZero hzeroConst hactiveRaw hflag
+        ((EF.const (-1)).serialize ++ [1, truthCodeAt C fa fd m] ++ [3]) ++ [2]) :=
+    ((hA.const_poly.comp hsource).append hminusRaw).append
+      (RpnSpliceStream.tag 2 (by norm_num))
+  have hconstIf := RpnSpliceStream.ifZero
+    (RpnSpliceStream.serialize_const 0) hactiveRaw hflag
   exact {
     termCount := count
     coefficient := coeff
     sentence := sentence
     termCount_poly := hcountPoly
     const_poly := by
-      refine PolySegStream.of_eq hconstIf ?_
+      refine RpnSpliceStream.of_eq hconstIf ?_
       intro m
       by_cases hm : feedbackFlag f fa fd m = 0
       · simp [sequence, hm]
@@ -526,7 +519,7 @@ completed-theory truth stream, weighting, schedule, and deadline-bounded truth p
 Paper node: `thm:wub` -/
 theorem lic_wub_ofComputation
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : TheoryTruth φ DP truth)
     (W : ℕ → EF) (hW : PGenerableWeighting W)
     (hWdiv : DivergentWeighting W P)

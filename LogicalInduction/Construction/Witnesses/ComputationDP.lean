@@ -595,7 +595,7 @@ noncomputable def theoremDiagonalQuoteCode (p : ℚ) :
 /-- `thm:epr`, unconditional over `LIA`.
 Paper node: `thm:epr` -/
 theorem lic_expectations_of_probabilities_ofCode_unconditional
-    {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
+    {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, liaHistory (theoremDP T) n (φ n) = (value n : ℝ)) :
     (fun n => liaHistory (theoremDP T) n (φ n)) ≈ₙ
@@ -621,7 +621,7 @@ theorem lic_iterated_expectations_ofCode_unconditional
 /-- `thm:ref` (introspection), unconditional over `LIA`.
 Paper node: `thm:ref` -/
 theorem lic_introspection_ofCode_unconditional
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) (a b δ : ℕ → ℚ)
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (a b δ : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
     (upperFeature : ℕ → EF)
@@ -685,7 +685,7 @@ Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update_ofRepresentation_unconditional
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
-    (hφ : PolySentenceCodes φ) (hY : LUV.PolyThresholdCodeSeq Y)
+    (hφ : RpnSentenceCodes φ) (hY : LUV.PolyThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       v.ValuesAt (Y n) (liaHistory (theoremDP T) (f n) (φ n))) :
     (fun n ↦ liaHistory (theoremDP T) n (φ n)) ≈ₙ
@@ -724,7 +724,7 @@ theorem lic_self_trust_ofRepresentation_unconditional
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : PolySentenceCodes φ) (hδ : PolyRatCodes δ)
+    (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
     (hδinv : PolyRatCodes (fun n ↦ 1 / δ n)) (hp : PolyRatCodes p)
     (hA : LUV.PolyThresholdCodeSeq A) (hB : LUV.PolyThresholdCodeSeq B)
     (confidence_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →

@@ -1991,6 +1991,14 @@ lemma histTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (histTrader φ
     rw [serializeTrades, serializeTrades, serialize_histSum]
     simp [Nat.unpair_pair]
 
+/-- An efficiently codeable sequence of sentences. -/
+def PolySentenceCodes (φ : ℕ → Sentence) : Prop :=
+  ∃ c : Nat.Partrec.Code, PolyFueled c (fun n => Encodable.encode (φ n))
+
+/-- An efficiently codeable sequence of rational constants. -/
+def PolyRatCodes (q : ℕ → ℚ) : Prop :=
+  ∃ c : Nat.Partrec.Code, PolyFueled c (fun n => Encodable.encode (q n))
+
 /-! ### `PolySegStream` — segment-composable emission.
 
 `ecTok_of_blockStream` covers `head ++ blocks ++ tail`. The hysteresis trade

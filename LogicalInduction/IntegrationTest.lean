@@ -85,7 +85,7 @@ def ProvindSequenceHypothesis (P : History) (φ ψ : ℕ → Sentence) : Prop :=
 lemma provind_sequence_hypothesis_discharged
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ ψ : ℕ → Sentence)
-    (hφ : PolySentenceCodes φ) (hψ : PolySentenceCodes ψ)
+    (hφ : RpnSentenceCodes φ) (hψ : RpnSentenceCodes ψ)
     (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
     (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :

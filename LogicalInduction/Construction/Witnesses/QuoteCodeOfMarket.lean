@@ -488,7 +488,8 @@ theorem lic_expectations_of_probabilities_closed
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
     (fun n => liaHistory (theoremDP T) n (φ n)) ≈ₙ
       fun n => ((theoremPriceQuoteCode T φ hφ).luv n).expect (liaHistory (theoremDP T)) n :=
-  lic_expectations_of_probabilities_ofCode_unconditional (T := T) φ hφ
+  lic_expectations_of_probabilities_ofCode_unconditional (T := T) φ
+    (RpnSentenceCodes.ofPolySentenceCodes hφ)
     (theoremPriceQuoteCode T φ hφ)
     (fun n => (theoremMarketComputation T).quote_exact n (φ n))
 
@@ -528,7 +529,8 @@ theorem lic_no_expected_net_update_closed
         (liaHistory (theoremDP T)) n :=
   lic_no_expected_net_update_ofRepresentation_unconditional (T := T) f hstrict φ
     ((theoremFutureQuoteCode T f φ hφ).luv)
-    hφ (theoremFutureQuoteCode T f φ hφ).poly
+    (RpnSentenceCodes.ofPolySentenceCodes hφ)
+    (theoremFutureQuoteCode T f φ hφ).poly
     (fun n v hv => by
       have h := RationalQuoteCode.reflected (quotationPresentation T)
         (theoremFutureQuoteCode T f φ hφ) n v hv
@@ -671,7 +673,8 @@ theorem lic_introspection_closed
               liaHistory (theoremDP T) n (φ n) < (b n : ℝ) + δ n)) →
           liaHistory (theoremDP T) n
             ((theoremIntervalQuoteCode T φ hφ a b ha hb).sentence n) < (ε n : ℝ)) :=
-  lic_introspection_ofCode_unconditional (T := T) φ hφ a b δ lowerFeature hlower
+  lic_introspection_ofCode_unconditional (T := T) φ
+    (RpnSentenceCodes.ofPolySentenceCodes hφ) a b δ lowerFeature hlower
     upperFeature hupper hδ hδinv hδpos hδzero hab
     (theoremIntervalQuoteCode T φ hφ a b ha hb)
 
@@ -694,7 +697,7 @@ theorem lic_self_trust_closed
   refine lic_self_trust_ofRepresentation_unconditional (T := T) f hstrict φ δ p
     (fun n => indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n)
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).luv
-    delta_pos probability_mem hφ hδ hδinv hp
+    delta_pos probability_mem (RpnSentenceCodes.ofPolySentenceCodes hφ) hδ hδinv hp
     (indicatorProductLUV_polyThresholdCodeSeq _ hφ)
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).poly
     (fun n v hv => ?_) (fun n v hv => ?_)

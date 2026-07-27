@@ -24,14 +24,25 @@ lemma PolyTradeEmulatable.trades_primrec {Ts : ℕ → Trader}
   have hcount : Primrec h.tradeCount := by
     obtain ⟨c, hc⟩ := h.tradeCount_poly
     exact hc.primrec
-  have hcoefficientTokens : Primrec fun z => (h.coefficient z).serialize :=
-    h.coefficient_poly.primrec
+  have hcoefficientTokens : Primrec fun z => (h.coefficient z).serialize := by
+    obtain ⟨s, hs, hcontract⟩ := h.coefficient_poly
+    refine (unRpn_prim.comp hs.primrec).of_eq fun z => ?_
+    have h0 := (hcontract z).unRpn_eq
+    rwa [show unRpn ([] : List ℕ) = [] from rfl, List.append_nil] at h0
   have hcoefficient : Primrec h.coefficient :=
     (efFromSerializedTokens_prim.comp hcoefficientTokens).of_eq fun z =>
       efFromSerializedTokens_serialize (h.coefficient z)
   have hsentenceCode : Primrec fun z => Encodable.encode (h.sentence z) := by
-    obtain ⟨c, hc⟩ := h.sentence_poly
-    exact hc.primrec
+    obtain ⟨s, hs, hp⟩ := h.sentence_poly
+    have hlist := hs.primrec
+    have hparse : Primrec fun z => parseRpnC (s z).length (s z) :=
+      parseRpnC_prim.comp (Primrec.list_length.comp hlist) hlist
+    refine (Primrec.fst.comp (Primrec.option_getD.comp hparse
+      (Primrec.const ((0, []) : ℕ × List ℕ)))).of_eq fun z => ?_
+    rw [show parseRpnC (s z).length (s z) =
+        some (Encodable.encode (h.sentence z), []) by
+      rw [parseRpnC_eq, hp z]; rfl]
+    rfl
   have hsentence : Primrec h.sentence := by
     have hdecode : Primrec fun z =>
         (Encodable.decode (Encodable.encode (h.sentence z))).getD markerSentence :=
@@ -1515,7 +1526,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_above
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : PolySentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : RpnSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1542,7 +1553,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_below
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : PolySentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : RpnSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1569,7 +1580,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : PolySentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : RpnSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1595,7 +1606,7 @@ settlement clocks.  Historical maturity is now constructed by the theorem.
 Paper node: `thm:benford` -/
 structure PseudorandomFrequencyInfrastructure
     (P : History) (DP : DeductiveProcess) (φ : ℕ → Sentence)
-    (_hφ : PolySentenceCodes φ) (truth : ℕ → ℝ) (f : DeferralFunction) where
+    (_hφ : RpnSentenceCodes φ) (truth : ℕ → ℝ) (f : DeferralFunction) where
   clock : ∀ (q : ℚ), 0 ≤ (q : ℝ) → (q : ℝ) ≤ 1 →
     PatientSettlementClock
       (AffineCombination.sentenceMinusFeature φ
@@ -1606,7 +1617,7 @@ structure PseudorandomFrequencyInfrastructure
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_above
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1641,7 +1652,7 @@ theorem lic_learning_pseudorandom_frequency_above
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_below
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1676,7 +1687,7 @@ theorem lic_learning_pseudorandom_frequency_below
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
