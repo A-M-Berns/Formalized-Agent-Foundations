@@ -399,30 +399,35 @@ def rpnConditionEmit (blk : List ℕ) (ε : ℚ) (buf : List ℕ) (D : ℕ) : Li
         1 :: Encodable.encode (1 / ε : ℚ) :: 0 :: (blk ++
           [D, 3, 5, 3, 3, 3, 4, 3, 8]))
 
+/-- The price emitter of the conditioning compiler: at a price day `D`, splice the
+condition block `blocks D` into the buffered run's conjunction shell. -/
+def rpnPriceEmit (blocks : ℕ → List ℕ) (ε : ℚ) : List ℕ → ℕ → List ℕ :=
+  fun buf D => rpnConditionEmit (blocks D) ε buf D
+
 /-- Streaming buffer update: reset whenever the automaton leaves (or is outside) a
 sentence run, extend inside one — the buffer is exactly the current run. -/
 def rpnCondBuf (st : ℕ) (buf : List ℕ) (t : ℕ) : List ℕ :=
   if rcLen (rpnCondStep st t) = 0 then [] else buf ++ [t]
 
 /-- The streaming price rewrite: state, run buffer, and emitted output. -/
-def rpnConditionRun (blocks : ℕ → List ℕ) (ε : ℚ) :
+def rpnConditionRun (emit : List ℕ → ℕ → List ℕ) :
     ℕ × List ℕ → List ℕ → (ℕ × List ℕ) × List ℕ
   | s, [] => (s, [])
   | (st, buf), t :: ts =>
-      let rest := rpnConditionRun blocks ε
+      let rest := rpnConditionRun emit
         (rpnCondStep st t, rpnCondBuf st buf t) ts
       (rest.1,
-        (if rcMode st = 2 then rpnConditionEmit (blocks t) ε buf t else [t])
+        (if rcMode st = 2 then emit buf t else [t])
           ++ rest.2)
 
-@[simp] lemma rpnConditionRun_nil (blocks : ℕ → List ℕ) (ε : ℚ) (s : ℕ × List ℕ) :
-    rpnConditionRun blocks ε s [] = (s, []) := rfl
+@[simp] lemma rpnConditionRun_nil (emit : List ℕ → ℕ → List ℕ) (s : ℕ × List ℕ) :
+    rpnConditionRun emit s [] = (s, []) := rfl
 
-lemma rpnConditionRun_append (blocks : ℕ → List ℕ) (ε : ℚ)
+lemma rpnConditionRun_append (emit : List ℕ → ℕ → List ℕ)
     (s : ℕ × List ℕ) (xs ys : List ℕ) :
-    rpnConditionRun blocks ε s (xs ++ ys) =
-      let first := rpnConditionRun blocks ε s xs
-      let second := rpnConditionRun blocks ε first.1 ys
+    rpnConditionRun emit s (xs ++ ys) =
+      let first := rpnConditionRun emit s xs
+      let second := rpnConditionRun emit first.1 ys
       (second.1, first.2 ++ second.2) := by
   induction xs generalizing s with
   | nil => rfl
@@ -434,10 +439,10 @@ lemma rpnConditionRun_append (blocks : ℕ → List ℕ) (ε : ℚ)
 
 /-- Inside a run (and at nowhere else relevant to emission) the buffer is untouched by
 the rewrite; a copied token emits itself. -/
-lemma rpnConditionRun_copy (blocks : ℕ → List ℕ) (ε : ℚ)
+lemma rpnConditionRun_copy (emit : List ℕ → ℕ → List ℕ)
     (st : ℕ) (buf : List ℕ) (t : ℕ) (hm : rcMode st ≠ 2) (ts : List ℕ) :
-    rpnConditionRun blocks ε (st, buf) (t :: ts) =
-      let rest := rpnConditionRun blocks ε
+    rpnConditionRun emit (st, buf) (t :: ts) =
+      let rest := rpnConditionRun emit
         (rpnCondStep st t, rpnCondBuf st buf t) ts
       (rest.1, t :: rest.2) := by
   simp [rpnConditionRun, hm]
@@ -539,11 +544,10 @@ def rpnCondWindow (tf : ℕ → ℕ) (n j : ℕ) : List ℕ :=
   simp [rpnCondWindow, rpnCondControlAt]
 
 /-- One source-token segment of the price rewrite. -/
-def rpnConditionSegment (tf : ℕ → ℕ) (blocks : ℕ → List ℕ) (ε : ℚ) (z : ℕ) :
+def rpnConditionSegment (tf : ℕ → ℕ) (emit : List ℕ → ℕ → List ℕ) (z : ℕ) :
     List ℕ :=
   if rcMode (rpnCondControlAt tf z.unpair.1 z.unpair.2) = 2 then
-    rpnConditionEmit (blocks (tf z)) ε (rpnCondWindow tf z.unpair.1 z.unpair.2)
-      (tf z)
+    emit (rpnCondWindow tf z.unpair.1 z.unpair.2) (tf z)
   else [tf z]
 
 /-- The streaming buffer tracks the position window. -/
@@ -572,13 +576,13 @@ lemma rpnCondBuf_window (tf : ℕ → ℕ) (n j : ℕ) :
 /-- **Range form of the price rewrite**: over the per-position view of any stream, the
 transducer's final state is the position control, its buffer the position window, and
 its output the concatenation of the per-position segments. -/
-lemma rpnConditionRun_range (tf : ℕ → ℕ) (blocks : ℕ → List ℕ) (ε : ℚ)
+lemma rpnConditionRun_range (tf : ℕ → ℕ) (emit : List ℕ → ℕ → List ℕ)
     (n count : ℕ) :
-    rpnConditionRun blocks ε (rcPack 0 0 0, [])
+    rpnConditionRun emit (rcPack 0 0 0, [])
         ((List.range count).map fun j => tf (Nat.pair n j)) =
       ((rpnCondControlAt tf n count, rpnCondWindow tf n count),
         (List.range count).flatMap fun j =>
-          rpnConditionSegment tf blocks ε (Nat.pair n j)) := by
+          rpnConditionSegment tf emit (Nat.pair n j)) := by
   induction count with
   | zero => simp [rpnConditionRun, rpnCondControlAt]
   | succ count ih =>
@@ -586,15 +590,14 @@ lemma rpnConditionRun_range (tf : ℕ → ℕ) (blocks : ℕ → List ℕ) (ε :
       simp only [List.map_cons, List.map_nil, List.range_succ,
         List.flatMap_append, List.flatMap_cons, List.flatMap_nil,
         List.append_nil]
-      rw [show rpnConditionRun blocks ε
+      rw [show rpnConditionRun emit
           (rpnCondControlAt tf n count, rpnCondWindow tf n count)
           [tf (Nat.pair n count)] =
         ((rpnCondStep (rpnCondControlAt tf n count) (tf (Nat.pair n count)),
           rpnCondBuf (rpnCondControlAt tf n count) (rpnCondWindow tf n count)
             (tf (Nat.pair n count))),
           (if rcMode (rpnCondControlAt tf n count) = 2 then
-            rpnConditionEmit (blocks (tf (Nat.pair n count))) ε
-              (rpnCondWindow tf n count) (tf (Nat.pair n count))
+            emit (rpnCondWindow tf n count) (tf (Nat.pair n count))
           else [tf (Nat.pair n count)]) ++ []) from rfl]
       rw [rpnCondBuf_window,
         show rpnCondStep (rpnCondControlAt tf n count) (tf (Nat.pair n count)) =
@@ -613,12 +616,12 @@ every price-day token is within the trading day and the empty stream otherwise (
 oversized day forces the empty validated strategy on both sides). -/
 
 /-- The guarded symbol-level price rewrite. -/
-def rpnGuardedConditionTokens (blocks : ℕ → List ℕ) (ε : ℚ) (n : ℕ)
+def rpnGuardedConditionTokens (emit : List ℕ → ℕ → List ℕ) (n : ℕ)
     (ts : List ℕ) : List ℕ :=
   if ∀ j < ts.length,
       rcMode ((ts.take j).foldl rpnCondStep (rcPack 0 0 0)) = 2 →
         ts.getD j 0 ≤ n
-  then (rpnConditionRun blocks ε (rcPack 0 0 0, []) ts).2
+  then (rpnConditionRun emit (rcPack 0 0 0, []) ts).2
   else []
 
 #print axioms foldl_rpnCondStep_price_block
@@ -1080,25 +1083,117 @@ lemma digitize_rpnCondWindow (tf : ℕ → ℕ) (n j : ℕ) :
           (j - rcLen (rpnCondControlAt tf n j) + i))) := by
   rw [rpnCondWindow, digitize, List.flatMap_map]
 
-/-- **The certificate**: the digitized guarded symbol-level price rewrite of any digit
-`PolySegStream` is a `PolySegStream`, over any polynomially emittable condition block
-stream.
+/-- **The certificate, for an arbitrary emitter**: the digitized guarded symbol-level
+rewrite of any digit `PolySegStream` is a `PolySegStream`, given that the emitted
+segment — read at the *clamped* day, which is exact wherever the guard passes — is
+itself polynomially emittable.
 Paper node: `thm:scon` -/
-lemma rpnGuardedConditionRun_polySegStream {s blocks : ℕ → List ℕ}
-    (h : PolySegStream s) (hb : PolySegStream blocks) (ε : ℚ) :
-    PolySegStream (fun n => digitize (rpnGuardedConditionTokens blocks ε n
+lemma rpnGuardedConditionRun_polySegStream_of {s : ℕ → List ℕ} (h : PolySegStream s)
+    (emit : List ℕ → ℕ → List ℕ)
+    (hEmit : PolySegStream (fun z => digitize
+      (emit (rpnCondWindow (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
+          z.unpair.1 z.unpair.2)
+        (min ((undigitize (s z.unpair.1)).getD z.unpair.2 0) (z.unpair.1 + 1))))) :
+    PolySegStream (fun n => digitize (rpnGuardedConditionTokens emit n
       (undigitize (s n)))) := by
   obtain ⟨⟨cc, hcnt⟩, hbig⟩ := h.undigitizeTokens
   obtain ⟨cs, hscan⟩ := rpnCondScan h
-  obtain ⟨cd, hclamp⟩ := h.dayClampTokens
   obtain ⟨cf, hflag⟩ := rpnBigDayFlagScan h
   obtain ⟨cad, had⟩ := addc_polyFueled
   set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
-  -- Per-position views (input `z = ⟨n, j⟩`).
   have hmodeZ := PolyFueled.left.comp hscan
-  have hlenZ := PolyFueled.right.comp (PolyFueled.right.comp hscan)
-  -- Copy branch: one digit block per source token.
   have hcopy := hbig.blockSeg
+  have heq2 := had.comp ((subc_polyFueled.comp (hmodeZ.pair (PolyFueled.const 2))).pair
+    (subc_polyFueled.comp ((PolyFueled.const 2).pair hmodeZ)))
+  have hseg := hEmit.ifZero hcopy heq2
+  have hassembled := hseg.concatVar hcnt
+  have hflagEnd := hflag.comp (PolyFueled.id.pair hcnt)
+  have hempty : PolySegStream (fun _ : ℕ => ([] : List ℕ)) :=
+    PolySegStream.ofTokenStream PolyTokenStream.nil
+  refine (hassembled.ifZero hempty hflagEnd).of_eq fun n => ?_
+  simp only [Nat.unpair_pair]
+  have hget : ∀ i, i < (undigitize (s n)).length →
+      tf (Nat.pair n i) = (undigitize (s n)).getD i 0 := fun i _ => by
+    rw [htf]
+    simp only [Nat.unpair_pair]
+  -- Guard equivalence between the flag and the list-level predicate.
+  have hguardIff : rpnBigDayFlagAt tf n (undigitize (s n)).length = 0 ↔
+      ∀ j < (undigitize (s n)).length,
+        rcMode (((undigitize (s n)).take j).foldl rpnCondStep (rcPack 0 0 0)) = 2 →
+          (undigitize (s n)).getD j 0 ≤ n := by
+    rw [rpnBigDayFlagAt_eq_zero_iff]
+    constructor
+    · intro hall j hj hm
+      rw [← hget j hj]
+      refine hall j hj ?_
+      rw [rpnCondControlAt_eq_foldl, vpre_eq_take hget (le_of_lt hj)]
+      exact hm
+    · intro hall j hj hm
+      rw [hget j hj]
+      refine hall j hj ?_
+      rw [rpnCondControlAt_eq_foldl, vpre_eq_take hget (le_of_lt hj)] at hm
+      exact hm
+  by_cases hflagn : rpnBigDayFlagAt tf n (undigitize (s n)).length = 0
+  · rw [if_pos hflagn, rpnGuardedConditionTokens, if_pos (hguardIff.mp hflagn)]
+    have hts : undigitize (s n) =
+        (List.range (undigitize (s n)).length).map fun j => tf (Nat.pair n j) := by
+      apply List.ext_getElem
+      · simp
+      · intro i h1 h2
+        simp only [List.getElem_map, List.getElem_range]
+        rw [hget i (by simpa using h2)]
+        exact (List.getD_eq_getElem (undigitize (s n)) 0 (by simpa using h2)).symm
+    have hrun : (rpnConditionRun emit (rcPack 0 0 0, []) (undigitize (s n))).2 =
+        (List.range (undigitize (s n)).length).flatMap fun j =>
+          rpnConditionSegment tf emit (Nat.pair n j) := by
+      conv_lhs => rw [hts]
+      exact congrArg Prod.snd (rpnConditionRun_range tf emit n
+        (undigitize (s n)).length)
+    rw [hrun, digitize_flatMap]
+    refine List.flatMap_congr fun j hj => ?_
+    rw [List.mem_range] at hj
+    rw [rpnConditionSegment]
+    simp only [Nat.unpair_pair]
+    rw [show (Nat.unpair (rpnCondControlAt tf n j)).1 =
+      rcMode (rpnCondControlAt tf n j) from rfl]
+    by_cases hm : rcMode (rpnCondControlAt tf n j) = 2
+    · rw [if_pos (by omega : rcMode (rpnCondControlAt tf n j) - 2 +
+        (2 - rcMode (rpnCondControlAt tf n j)) = 0), if_pos hm]
+      have hdle : tf (Nat.pair n j) ≤ n :=
+        (rpnBigDayFlagAt_eq_zero_iff tf n _).mp hflagn j hj hm
+      have htfj : tf (Nat.pair n j) = (undigitize (s n)).getD j 0 := by
+        rw [htf]
+        simp only [Nat.unpair_pair]
+      rw [htfj] at hdle
+      have hclampEq : min ((undigitize (s n)).getD j 0) (n + 1) =
+          (undigitize (s n)).getD j 0 := Nat.min_eq_left (by omega)
+      simp only [Nat.unpair_pair, htf, hclampEq]
+    · rw [if_neg (by omega : ¬ rcMode (rpnCondControlAt tf n j) - 2 +
+        (2 - rcMode (rpnCondControlAt tf n j)) = 0), if_neg hm]
+      rw [htf]
+      simp only [Nat.unpair_pair]
+      simp [digitize]
+  · rw [if_neg hflagn, rpnGuardedConditionTokens,
+      if_neg (fun hguard => hflagn (hguardIff.mpr hguard))]
+    simp [digitize]
+
+/-- **The price-pass certificate**: the digitized guarded symbol-level price rewrite of
+any digit `PolySegStream` is a `PolySegStream`, over any polynomially emittable
+condition block stream — copied tokens are re-rendered digit blocks, the buffered run
+is copied by position (`concatVar` over the recorded run length), and the condition
+blocks are drawn at the clamped day.
+Paper node: `thm:scon` -/
+lemma rpnGuardedConditionRun_polySegStream {s blocks : ℕ → List ℕ}
+    (h : PolySegStream s) (hb : PolySegStream blocks) (ε : ℚ) :
+    PolySegStream (fun n => digitize
+      (rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n (undigitize (s n)))) := by
+  obtain ⟨⟨cc, hcnt⟩, hbig⟩ := h.undigitizeTokens
+  obtain ⟨cs, hscan⟩ := rpnCondScan h
+  obtain ⟨cd, hclamp⟩ := h.dayClampTokens
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
+  have hlenZ := PolyFueled.right.comp (PolyFueled.right.comp hscan)
+  refine rpnGuardedConditionRun_polySegStream_of h _ ?_
   -- Day copies (clamped; exact under the guard).
   have hD := PolySegStream.block hclamp
   -- Constant frames.
@@ -1142,95 +1237,23 @@ lemma rpnGuardedConditionRun_polySegStream {s blocks : ℕ → List ℕ}
   have hidxE : ∃ c, PolyFueled c (fun w : ℕ => Nat.pair w.unpair.1.unpair.1
       (w.unpair.1.unpair.2 - rcLen (rpnCondControlAt tf
         w.unpair.1.unpair.1 w.unpair.1.unpair.2) + w.unpair.2)) := by
+    obtain ⟨cad', had'⟩ := addc_polyFueled
     have hz : PolyFueled Code.left (fun m : ℕ => m.unpair.1) := PolyFueled.left
     have hn2 := PolyFueled.left.comp hz
     have hj2 := PolyFueled.right.comp hz
     have hlenW := hlenZ.comp hz
     have hsub := subc_polyFueled.comp (hj2.pair hlenW)
-    have hoff := had.comp (hsub.pair PolyFueled.right)
+    have hoff := had'.comp (hsub.pair PolyFueled.right)
     exact ⟨_, (hn2.pair hoff).of_eq fun w => by
       simp only [Nat.unpair_pair, rcLen]⟩
   obtain ⟨cidx, hidx⟩ := hidxE
   have hwin := (hbig.comp hidx).blockSeg.concatVar hlenZ
   -- Condition blocks at the clamped day.
   have hblkD := (hb.comp hclamp).digitizeStream
-  -- The emit branch and the mode dispatch.
-  have hEmit := ((((((((hD.append hA).append hwin).append hblkD).append
-    hD).append hB).append hblkD).append hD).append hC)
-  have heq2 := had.comp ((subc_polyFueled.comp (hmodeZ.pair (PolyFueled.const 2))).pair
-    (subc_polyFueled.comp ((PolyFueled.const 2).pair hmodeZ)))
-  have hseg := hEmit.ifZero hcopy heq2
-  have hassembled := hseg.concatVar hcnt
-  have hflagEnd := hflag.comp (PolyFueled.id.pair hcnt)
-  have hempty : PolySegStream (fun _ : ℕ => ([] : List ℕ)) :=
-    PolySegStream.ofTokenStream PolyTokenStream.nil
-  refine (hassembled.ifZero hempty hflagEnd).of_eq fun n => ?_
-  simp only [Nat.unpair_pair]
-  have hget : ∀ i, i < (undigitize (s n)).length →
-      tf (Nat.pair n i) = (undigitize (s n)).getD i 0 := fun i _ => by
-    rw [htf]
-    simp only [Nat.unpair_pair]
-  -- Guard equivalence between the flag and the list-level predicate.
-  have hguardIff : rpnBigDayFlagAt tf n (undigitize (s n)).length = 0 ↔
-      ∀ j < (undigitize (s n)).length,
-        rcMode (((undigitize (s n)).take j).foldl rpnCondStep (rcPack 0 0 0)) = 2 →
-          (undigitize (s n)).getD j 0 ≤ n := by
-    rw [rpnBigDayFlagAt_eq_zero_iff]
-    constructor
-    · intro hall j hj hm
-      rw [← hget j hj]
-      refine hall j hj ?_
-      rw [rpnCondControlAt_eq_foldl, vpre_eq_take hget (le_of_lt hj)]
-      exact hm
-    · intro hall j hj hm
-      rw [hget j hj]
-      refine hall j hj ?_
-      rw [rpnCondControlAt_eq_foldl, vpre_eq_take hget (le_of_lt hj)] at hm
-      exact hm
-  by_cases hflagn : rpnBigDayFlagAt tf n (undigitize (s n)).length = 0
-  · rw [if_pos hflagn, rpnGuardedConditionTokens, if_pos (hguardIff.mp hflagn)]
-    have hts : undigitize (s n) =
-        (List.range (undigitize (s n)).length).map fun j => tf (Nat.pair n j) := by
-      apply List.ext_getElem
-      · simp
-      · intro i h1 h2
-        simp only [List.getElem_map, List.getElem_range]
-        rw [hget i (by simpa using h2)]
-        exact (List.getD_eq_getElem (undigitize (s n)) 0 (by simpa using h2)).symm
-    have hrun : (rpnConditionRun blocks ε (rcPack 0 0 0, []) (undigitize (s n))).2 =
-        (List.range (undigitize (s n)).length).flatMap fun j =>
-          rpnConditionSegment tf blocks ε (Nat.pair n j) := by
-      conv_lhs => rw [hts]
-      exact congrArg Prod.snd (rpnConditionRun_range tf blocks ε n
-        (undigitize (s n)).length)
-    rw [hrun, digitize_flatMap]
-    refine List.flatMap_congr fun j hj => ?_
-    rw [List.mem_range] at hj
-    rw [rpnConditionSegment]
-    simp only [Nat.unpair_pair]
-    rw [show (Nat.unpair (rpnCondControlAt tf n j)).1 =
-      rcMode (rpnCondControlAt tf n j) from rfl]
-    by_cases hm : rcMode (rpnCondControlAt tf n j) = 2
-    · rw [if_pos (by omega : rcMode (rpnCondControlAt tf n j) - 2 +
-        (2 - rcMode (rpnCondControlAt tf n j)) = 0), if_pos hm]
-      have hdle : tf (Nat.pair n j) ≤ n :=
-        (rpnBigDayFlagAt_eq_zero_iff tf n _).mp hflagn j hj hm
-      have htfj : tf (Nat.pair n j) = (undigitize (s n)).getD j 0 := by
-        rw [htf]
-        simp only [Nat.unpair_pair]
-      rw [htfj] at hdle
-      have hclampEq : min ((undigitize (s n)).getD j 0) (n + 1) =
-          (undigitize (s n)).getD j 0 := Nat.min_eq_left (by omega)
-      rw [digitize_rpnConditionEmit, digitize_rpnCondWindow]
-      simp only [Nat.unpair_pair, htf, rcLen, hclampEq, List.append_assoc]
-    · rw [if_neg (by omega : ¬ rcMode (rpnCondControlAt tf n j) - 2 +
-        (2 - rcMode (rpnCondControlAt tf n j)) = 0), if_neg hm]
-      rw [htf]
-      simp only [Nat.unpair_pair]
-      simp [digitize]
-  · rw [if_neg hflagn, rpnGuardedConditionTokens,
-      if_neg (fun hguard => hflagn (hguardIff.mpr hguard))]
-    simp [digitize]
+  refine (((((((((hD.append hA).append hwin).append hblkD).append
+    hD).append hB).append hblkD).append hD).append hC)).of_eq fun z => ?_
+  rw [rpnPriceEmit, digitize_rpnConditionEmit, digitize_rpnCondWindow]
+  simp only [Nat.unpair_pair, htf, rcLen, List.append_assoc]
 
 #print axioms rpnGuardedConditionRun_polySegStream
 
@@ -1965,12 +1988,12 @@ both sides at the same chunk (the transducer's insertion sits beyond the poisone
 run, so the `∀`-tail poison of `parse_of_runWalk` kills the rewritten stream too). -/
 
 /-- The cons unfolding of the streaming rewrite. -/
-lemma rpnConditionRun_cons (blocks : ℕ → List ℕ) (ε : ℚ) (st : ℕ) (buf : List ℕ)
+lemma rpnConditionRun_cons (emit : List ℕ → ℕ → List ℕ) (st : ℕ) (buf : List ℕ)
     (t : ℕ) (ts : List ℕ) :
-    rpnConditionRun blocks ε (st, buf) (t :: ts) =
-      ((rpnConditionRun blocks ε (rpnCondStep st t, rpnCondBuf st buf t) ts).1,
-        (if rcMode st = 2 then rpnConditionEmit (blocks t) ε buf t else [t]) ++
-          (rpnConditionRun blocks ε (rpnCondStep st t, rpnCondBuf st buf t) ts).2) :=
+    rpnConditionRun emit (st, buf) (t :: ts) =
+      ((rpnConditionRun emit (rpnCondStep st t, rpnCondBuf st buf t) ts).1,
+        (if rcMode st = 2 then emit buf t else [t]) ++
+          (rpnConditionRun emit (rpnCondStep st t, rpnCondBuf st buf t) ts).2) :=
   rfl
 
 /-! ### Base-state and reset step equations -/
@@ -2028,11 +2051,11 @@ lemma rpnCondBuf_base (buf : List ℕ) (t : ℕ) :
   rpnCondBuf_of_len_zero _ _ _ (rcLen_step_base t)
 
 /-- The cons unfolding from an opaque-payload mode (`3` / `5`): copy and fall back. -/
-lemma rpnConditionRun_from_payload (blocks : ℕ → List ℕ) (ε : ℚ)
+lemma rpnConditionRun_from_payload (emit : List ℕ → ℕ → List ℕ)
     (m c' r' : ℕ) (hm : m = 3 ∨ m = 5) (buf : List ℕ) (t : ℕ) (L : List ℕ) :
-    rpnConditionRun blocks ε (rcPack m c' r', buf) (t :: L) =
-      ((rpnConditionRun blocks ε (rcPack 0 0 0, []) L).1,
-        t :: (rpnConditionRun blocks ε (rcPack 0 0 0, []) L).2) := by
+    rpnConditionRun emit (rcPack m c' r', buf) (t :: L) =
+      ((rpnConditionRun emit (rcPack 0 0 0, []) L).1,
+        t :: (rpnConditionRun emit (rcPack 0 0 0, []) L).2) := by
   have hstep : rpnCondStep (rcPack m c' r') t = rcPack 0 0 0 :=
     rpnCondStep_fallback _ _
       (by rcases hm with rfl | rfl <;> simp)
@@ -2048,12 +2071,12 @@ lemma rpnConditionRun_from_payload (blocks : ℕ → List ℕ) (ε : ℚ)
 
 /-- The cons unfolding at a price-day slot: emit the conditional-price expansion and
 fall back to base. -/
-lemma rpnConditionRun_from_day (blocks : ℕ → List ℕ) (ε : ℚ)
+lemma rpnConditionRun_from_day (emit : List ℕ → ℕ → List ℕ)
     (r' : ℕ) (buf : List ℕ) (d : ℕ) (L : List ℕ) :
-    rpnConditionRun blocks ε (rcPack 2 0 r', buf) (d :: L) =
-      ((rpnConditionRun blocks ε (rcPack 0 0 0, []) L).1,
-        rpnConditionEmit (blocks d) ε buf d ++
-          (rpnConditionRun blocks ε (rcPack 0 0 0, []) L).2) := by
+    rpnConditionRun emit (rcPack 2 0 r', buf) (d :: L) =
+      ((rpnConditionRun emit (rcPack 0 0 0, []) L).1,
+        emit buf d ++
+          (rpnConditionRun emit (rcPack 0 0 0, []) L).2) := by
   have hstep : rpnCondStep (rcPack 2 0 r') d = rcPack 0 0 0 :=
     rpnCondStep_fallback _ _ (by simp) (by simp) (by simp) (by simp) (by simp)
   have hbuf : rpnCondBuf (rcPack 2 0 r') buf d = [] :=
@@ -2079,10 +2102,10 @@ lemma rpnCondBufFold_append (st : ℕ) (buf : List ℕ) (xs ys : List ℕ) :
 
 /-- Copy behavior: while no consumed position is in the emission mode `2`, the
 transducer copies its input verbatim. -/
-lemma rpnConditionRun_copy_of_ne_two (blocks : ℕ → List ℕ) (ε : ℚ)
+lemma rpnConditionRun_copy_of_ne_two (emit : List ℕ → ℕ → List ℕ)
     (st : ℕ) (buf : List ℕ) (ts : List ℕ)
     (h : ∀ k < ts.length, rcMode (List.foldl rpnCondStep st (ts.take k)) ≠ 2) :
-    rpnConditionRun blocks ε (st, buf) ts =
+    rpnConditionRun emit (st, buf) ts =
       ((List.foldl rpnCondStep st ts, rpnCondBufFold st buf ts), ts) := by
   induction ts generalizing st buf with
   | nil => rfl
@@ -2318,26 +2341,38 @@ end TokenRunEq
 
 /-! ### The master commutation -/
 
-/-- **Whole-stream contraction exactness for the price pass**: on every input stream
-— well-formed or garbage — the contraction of the transducer output is the
-token-model price rewrite (`conditionPriceTokenRun`) of the contraction.
+/-- **Whole-stream contraction exactness, for an arbitrary emitter**: on every input
+stream — well-formed or garbage — the contraction of the transducer output is the
+token-model rewrite `R` of the contraction, provided `R` copies every non-price chunk,
+splices the shared price body `Z` at a completed price leaf, and the symbol emitter
+contracts to that same body (`hemit`).
 Paper node: `thm:scon` -/
-theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
-    (hblocks : ∀ D, parseRpn (blocks D).length (blocks D) = some (ψ D, []))
-    (ε : ℚ) : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
-    unRpn ((rpnConditionRun blocks ε (rcPack 0 0 0, []) ts).2) =
-      (conditionPriceTokenRun (fun D => Encodable.encode (ψ D)) ε (0, 0)
-        (unRpn ts)).2 := by
+theorem unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List ℕ → List ℕ)
+    (Z : ℕ → ℕ → List ℕ)
+    (hRnil : R [] = [])
+    (hRsingle : ∀ t L, t ≠ 0 → t ≠ 1 → t ≠ 6 → t ≠ 7 → R (t :: L) = t :: R L)
+    (hRone : ∀ t, R [t] = [t])
+    (hRpayload : ∀ t c L, (t = 1 ∨ t = 7) → R (t :: c :: L) = t :: c :: R L)
+    (hRprice : ∀ fc d L, R (0 :: fc :: d :: L) = 0 :: fc :: d :: (Z fc d ++ R L))
+    (hRpricePair : ∀ fc, R [0, fc] = [0, fc])
+    (hRtrade : ∀ fc L, R (6 :: fc :: L) = 6 :: fc :: R L)
+    (hemit : ∀ (b : List ℕ) (φ : Sentence),
+      parseRpn b.length b = some (φ, []) → ∀ (D : ℕ) (rest : List ℕ),
+        unRpn (0 :: b ++ emit b D ++ rest) =
+          0 :: Encodable.encode φ :: D ::
+            (Z (Encodable.encode φ) D ++ unRpn rest)) :
+    ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
+    unRpn ((rpnConditionRun emit (rcPack 0 0 0, []) ts).2) = R (unRpn ts) := by
   intro N
   induction N with
   | zero =>
       intro ts hts
       obtain rfl : ts = [] := List.eq_nil_of_length_eq_zero (by omega)
-      rfl
+      exact hRnil.symm
   | succ N ih =>
       intro ts hts
       match ts with
-      | [] => rfl
+      | [] => exact hRnil.symm
       | t :: rest =>
           simp only [List.length_cons] at hts
           by_cases ht0 : t = 0
@@ -2354,9 +2389,9 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
                     subst heq
                     -- Transducer output: pure copy (the walk exits only at the
                     -- final state, which is never consumed).
-                    have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                    have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                         (0 :: rest)).2 = 0 :: rest :=
-                      congrArg Prod.snd (rpnConditionRun_copy_of_ne_two blocks ε
+                      congrArg Prod.snd (rpnConditionRun_copy_of_ne_two emit
                         (rcPack 0 0 0) [] (0 :: rest) (by
                           intro k hk
                           match k with
@@ -2370,20 +2405,20 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
                     have hun : unRpn (0 :: rest) = [0, Encodable.encode φ] := by
                       rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
                         hblk]
-                    rw [hout, hun, conditionPriceTokenRun_price_pair]
+                    rw [hout, hun, hRpricePair]
                 | d :: r2 =>
                     subst heq
                     -- Transducer output: copy the block, splice at the day.
-                    have hblkcopy : rpnConditionRun blocks ε (rcPack 1 1 0, [])
+                    have hblkcopy : rpnConditionRun emit (rcPack 1 1 0, [])
                         blk = ((rcPack 2 0 blk.length, blk), blk) := by
-                      rw [rpnConditionRun_copy_of_ne_two blocks ε _ _ _
+                      rw [rpnConditionRun_copy_of_ne_two emit _ _ _
                         (fun k hk => by have := hinv k hk; omega)]
                       rw [hwalk, rpnCondBufFold_run _ _ _ (fun k hk => hinv k hk)]
                       simp
-                    have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                    have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                         (0 :: (blk ++ d :: r2))).2 =
-                      0 :: blk ++ rpnConditionEmit (blocks d) ε blk d ++
-                        (rpnConditionRun blocks ε (rcPack 0 0 0, []) r2).2 := by
+                      0 :: blk ++ emit blk d ++
+                        (rpnConditionRun emit (rcPack 0 0 0, []) r2).2 := by
                       rw [rpnConditionRun_cons, if_neg (by simp),
                         rpnCondStep_base_price, rpnCondBuf_base,
                         rpnConditionRun_append]
@@ -2394,10 +2429,10 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
                       simp only [List.length_cons] at hlt
                       omega
                     rw [hout,
-                      unRpn_price_rewrite_chunk hblk (hblocks d) d ε _,
+                      hemit blk _ hblk d _,
                       ih r2 hr2,
                       unRpn_price_chunk_block hblk d r2,
-                      conditionPriceTokenRun_price]
+                      hRprice]
             | none =>
                 have hun0 : unRpn (0 :: rest) = [0, 0] := by
                   rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl, hp]
@@ -2435,16 +2470,16 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
                       omega)] at hp
                     simp at hp
                   · -- Both contractions stop with `[0, 0]` at this chunk.
-                    have hucopy := rpnConditionRun_copy_of_ne_two blocks ε
+                    have hucopy := rpnConditionRun_copy_of_ne_two emit
                       (rcPack 1 1 0) [] (rest.take k₀) (by
                         intro k hk
                         rw [htakelen] at hk
                         rw [List.take_take, min_eq_left (le_of_lt hk)]
                         have := (hinside k hk).1
                         omega)
-                    have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                    have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                         (0 :: rest)).2 = 0 :: (rest.take k₀ ++
-                          (rpnConditionRun blocks ε
+                          (rpnConditionRun emit
                             (List.foldl rpnCondStep (rcPack 1 1 0)
                               (rest.take k₀),
                              rpnCondBufFold (rcPack 1 1 0) [] (rest.take k₀))
@@ -2460,11 +2495,11 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
                         [0, 0] := fun Y => by
                       rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
                         hpoison _ _]
-                    rw [hout, hunL, hun0, conditionPriceTokenRun_price_pair]
+                    rw [hout, hunL, hun0, hRpricePair]
                 · -- No completion: pure copy, both contractions stop.
-                  have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                  have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                       (0 :: rest)).2 = 0 :: rest :=
-                    congrArg Prod.snd (rpnConditionRun_copy_of_ne_two blocks ε
+                    congrArg Prod.snd (rpnConditionRun_copy_of_ne_two emit
                       (rcPack 0 0 0) [] (0 :: rest) (by
                         intro k hk
                         match k with
@@ -2474,7 +2509,7 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
                             rw [List.take_succ_cons, List.foldl_cons,
                               rpnCondStep_base_price]
                             exact fun hmode => hex ⟨j, by omega, hmode⟩))
-                  rw [hout, hun0, conditionPriceTokenRun_price_pair]
+                  rw [hout, hun0, hRpricePair]
           · by_cases ht6 : t = 6
             · -- Trade chunk.
               subst ht6
@@ -2489,16 +2524,16 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
                     intro hnil
                     rw [hnil] at this
                     simp at this
-                  have hblkcopy : rpnConditionRun blocks ε (rcPack 4 1 0, [])
+                  have hblkcopy : rpnConditionRun emit (rcPack 4 1 0, [])
                       blk = ((rcPack 0 0 0, []), blk) := by
-                    rw [rpnConditionRun_copy_of_ne_two blocks ε _ _ _
+                    rw [rpnConditionRun_copy_of_ne_two emit _ _ _
                       (fun k hk => by have := hinv k hk; omega)]
                     rw [hwalk, rpnCondBufFold_reset _ _ _ hblkne (by
                       rw [hwalk]; simp)]
-                  have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                  have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                       (6 :: (blk ++ r1))).2 =
                     6 :: (blk ++
-                      (rpnConditionRun blocks ε (rcPack 0 0 0, []) r1).2) := by
+                      (rpnConditionRun emit (rcPack 0 0 0, []) r1).2) := by
                     rw [rpnConditionRun_cons, if_neg (by simp),
                       rpnCondStep_base_trade, rpnCondBuf_base,
                       rpnConditionRun_append]
@@ -2509,7 +2544,7 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
                   rw [hout, unRpn_trade_chunk_block hblk _,
                     ih r1 hr1,
                     unRpn_trade_chunk_block hblk r1,
-                    conditionPriceTokenRun_trade]
+                    hRtrade]
               | none =>
                   have hun0 : unRpn (6 :: rest) = [6, 0] := by
                     rw [unRpn, List.length_cons, unRpnTokens_cons,
@@ -2546,16 +2581,16 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
                         simp only [List.length_append]
                         omega)] at hp
                       simp at hp
-                    · have hucopy := rpnConditionRun_copy_of_ne_two blocks ε
+                    · have hucopy := rpnConditionRun_copy_of_ne_two emit
                         (rcPack 4 1 0) [] (rest.take k₀) (by
                           intro k hk
                           rw [htakelen] at hk
                           rw [List.take_take, min_eq_left (le_of_lt hk)]
                           have := (hinside k hk).1
                           omega)
-                      have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                      have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                           (6 :: rest)).2 = 6 :: (rest.take k₀ ++
-                            (rpnConditionRun blocks ε
+                            (rpnConditionRun emit
                               (List.foldl rpnCondStep (rcPack 4 1 0)
                                 (rest.take k₀),
                                rpnCondBufFold (rcPack 4 1 0) []
@@ -2573,12 +2608,11 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
                         rw [unRpn, List.length_cons, unRpnTokens_cons,
                           if_neg (by norm_num), if_pos rfl, hpoison _ _]
                       rw [hout, hunL, hun0]
-                      rw [conditionPriceTokenRun_trade]
-                      rfl
+                      rw [hRtrade, hRnil]
                   · -- Never exits: pure copy of an unfinished trade run.
-                    have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                    have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                         (6 :: rest)).2 = 6 :: rest :=
-                      congrArg Prod.snd (rpnConditionRun_copy_of_ne_two blocks ε
+                      congrArg Prod.snd (rpnConditionRun_copy_of_ne_two emit
                         (rcPack 0 0 0) [] (6 :: rest) (by
                           intro k hk
                           match k with
@@ -2595,27 +2629,26 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
                                 hmods).1
                               omega))
                     rw [hout, hun0]
-                    rw [conditionPriceTokenRun_trade]
-                    rfl
+                    rw [hRtrade, hRnil]
             · by_cases ht1 : t = 1
               · -- Constant payload chunk.
                 subst ht1
                 match rest with
                 | [] =>
-                    have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                    have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                         [1]).2 = [1] := by
                       rw [rpnConditionRun_cons, if_neg (by simp)]
                       rfl
                     rw [hout, show unRpn [1] = [1] from rfl,
-                      conditionPriceTokenRun_one]
+                      hRone]
                 | c :: rest' =>
-                    have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                    have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                         (1 :: c :: rest')).2 =
-                      1 :: c :: (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                      1 :: c :: (rpnConditionRun emit (rcPack 0 0 0, [])
                         rest').2 := by
                       rw [rpnConditionRun_cons, if_neg (by simp),
                         rpnCondStep_base_one, rpnCondBuf_base,
-                        rpnConditionRun_from_payload blocks ε 3 0 0
+                        rpnConditionRun_from_payload emit 3 0 0
                           (Or.inl rfl) [] c rest']
                       rfl
                     have hr : rest'.length ≤ N := by
@@ -2624,26 +2657,26 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
                     rw [hout, unRpn_payload_chunk 1 c (Or.inl rfl) _,
                       ih rest' hr,
                       unRpn_payload_chunk 1 c (Or.inl rfl) rest',
-                      conditionPriceTokenRun_payload _ _ 1 c (Or.inl rfl)]
+                      hRpayload 1 c _ (Or.inl rfl)]
               · by_cases ht7 : t = 7
                 · -- Variable payload chunk.
                   subst ht7
                   match rest with
                   | [] =>
-                      have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                      have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                           [7]).2 = [7] := by
                         rw [rpnConditionRun_cons, if_neg (by simp)]
                         rfl
                       rw [hout, show unRpn [7] = [7] from rfl,
-                        conditionPriceTokenRun_one]
+                        hRone]
                   | c :: rest' =>
-                      have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                      have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                           (7 :: c :: rest')).2 =
-                        7 :: c :: (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                        7 :: c :: (rpnConditionRun emit (rcPack 0 0 0, [])
                           rest').2 := by
                         rw [rpnConditionRun_cons, if_neg (by simp),
                           rpnCondStep_base_seven, rpnCondBuf_base,
-                          rpnConditionRun_from_payload blocks ε 5 0 0
+                          rpnConditionRun_from_payload emit 5 0 0
                             (Or.inr rfl) [] c rest']
                         rfl
                       have hr : rest'.length ≤ N := by
@@ -2652,19 +2685,47 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
                       rw [hout, unRpn_payload_chunk 7 c (Or.inr rfl) _,
                         ih rest' hr,
                         unRpn_payload_chunk 7 c (Or.inr rfl) rest',
-                        conditionPriceTokenRun_payload _ _ 7 c (Or.inr rfl)]
+                        hRpayload 7 c _ (Or.inr rfl)]
                 · -- Bare operator/close token: transparent.
-                  have hout : (rpnConditionRun blocks ε (rcPack 0 0 0, [])
+                  have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                       (t :: rest)).2 =
-                    t :: (rpnConditionRun blocks ε (rcPack 0 0 0, []) rest).2 := by
+                    t :: (rpnConditionRun emit (rcPack 0 0 0, []) rest).2 := by
                     rw [rpnConditionRun_cons, if_neg (by simp),
                       rpnCondStep_base_other t ht0 ht1 ht6 ht7, rpnCondBuf_base]
                     rfl
                   rw [hout, unRpn_single_chunk t ⟨ht0, ht1, ht6, ht7⟩ _,
                     ih rest (by omega),
                     unRpn_single_chunk t ⟨ht0, ht1, ht6, ht7⟩ rest,
-                    conditionPriceTokenRun_single _ _ t ht0 ht1 ht6 ht7]
+                    hRsingle t _ ht0 ht1 ht6 ht7]
 
+/-- **Whole-stream contraction exactness for the price pass**: on every input stream
+— well-formed or garbage — the contraction of the transducer output is the token-model
+price rewrite (`conditionPriceTokenRun`) of the contraction.
+Paper node: `thm:scon` -/
+theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
+    (hblocks : ∀ D, parseRpn (blocks D).length (blocks D) = some (ψ D, []))
+    (ε : ℚ) : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
+    unRpn ((rpnConditionRun (rpnPriceEmit blocks ε) (rcPack 0 0 0, []) ts).2) =
+      (conditionPriceTokenRun (fun D => Encodable.encode (ψ D)) ε (0, 0)
+        (unRpn ts)).2 :=
+  unRpn_rpnConditionRun_of (rpnPriceEmit blocks ε)
+    (fun L => (conditionPriceTokenRun (fun D => Encodable.encode (ψ D)) ε (0, 0) L).2)
+    (fun fc d => rawConditionalPriceTokens fc (Encodable.encode (ψ d)) d ε ++ [8])
+    rfl
+    (fun t L h0 h1 h6 h7 => conditionPriceTokenRun_single _ ε t h0 h1 h6 h7 L)
+    (fun t => conditionPriceTokenRun_one _ ε t)
+    (fun t c L ht => conditionPriceTokenRun_payload _ ε t c ht L)
+    (fun fc d L => by
+      simp only []
+      rw [conditionPriceTokenRun_price]
+      simp [List.append_assoc])
+    (fun fc => conditionPriceTokenRun_price_pair _ ε fc)
+    (fun fc L => conditionPriceTokenRun_trade _ ε fc L)
+    (fun b φ hb D rest => by
+      rw [rpnPriceEmit, unRpn_price_rewrite_chunk hb (hblocks D) D ε rest]
+      simp [List.append_assoc])
+
+#print axioms unRpn_rpnConditionRun_of
 #print axioms unRpn_rpnConditionRun
 
 /-! ## Guard-honesty transfer
@@ -3021,7 +3082,8 @@ theorem strategyOfTokens_rpnGuardedConditionTokens_trades
     (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
     (hblocks : ∀ D, parseRpn (blocks D).length (blocks D) = some (ψ D, []))
     (ε : ℚ) (n : ℕ) (ts : List ℕ) :
-    (strategyOfTokens n (unRpn (rpnGuardedConditionTokens blocks ε n ts))).trades =
+    (strategyOfTokens n
+        (unRpn (rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n ts))).trades =
       (strategyOfTokens n (unRpn ts)).trades.map fun trade =>
         (trade.1.retainedConditionPrices ψ ε, trade.2) := by
   rw [rpnGuardedConditionTokens]
@@ -6141,7 +6203,8 @@ theorem conditionedTranslation_preserves_ecRpn
   have hsource : PolySegStream source :=
     PrefixPatchCompile.clockedTokens_polySegStream lengthCode tokenCode a k
   let priced : ℕ → List ℕ := fun n =>
-    digitize (rpnGuardedConditionTokens blocks ε n (undigitize (source n)))
+    digitize (rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n
+      (undigitize (source n)))
   have hpriced : PolySegStream priced :=
     rpnGuardedConditionRun_polySegStream hsource hblocksPoly ε
   set tfP : ℕ → ℕ := fun w => (undigitize (priced w.unpair.1)).getD w.unpair.2 0
@@ -6193,7 +6256,8 @@ theorem conditionedTranslation_preserves_ecRpn
   have hprice : (strategyOfTokens n (unRpn ts)).trades =
       (T.strat n).trades.map fun trade =>
         (trade.1.retainedConditionPrices ψ ε, trade.2) := by
-    have hraw : ts = rpnGuardedConditionTokens blocks ε n (undigitize (source n)) := by
+    have hraw : ts =
+        rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n (undigitize (source n)) := by
       rw [hts]
       exact undigitize_digitize _
     rw [hraw, strategyOfTokens_rpnGuardedConditionTokens_trades blocks ψ
