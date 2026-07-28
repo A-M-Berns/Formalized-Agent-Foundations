@@ -2759,7 +2759,7 @@ lemma deserializeTrades_prim : Primrec deserializeTrades := by
         rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
         cases mode <;> cases pending <;> cases stack <;> rfl
 
-private lemma strategyTradesValid_prim₂ :
+private lemma strategyTradesValid_primDigit :
     PrimrecRel fun (trades : List (EF × Sentence)) n =>
       ∀ p ∈ trades, p.1.rank ≤ n := by
   have hp : PrimrecRel fun (p : EF × Sentence) n => p.1.rank ≤ n :=
@@ -2777,7 +2777,7 @@ private lemma strategyOfTokensTrades_prim : Primrec₂ fun n tokens =>
       if ∀ trade ∈ trades, trade.1.rank ≤ p.1 then trades else [] := by
     have hvalid : PrimrecPred fun z : P × List (EF × Sentence) =>
         ∀ trade ∈ z.2, trade.1.rank ≤ z.1.1 :=
-      PrimrecRel.comp strategyTradesValid_prim₂ Primrec.snd
+      PrimrecRel.comp strategyTradesValid_primDigit Primrec.snd
         (Primrec.fst.comp Primrec.fst)
     exact (Primrec.ite hvalid Primrec.snd (Primrec.const [])).to₂
   exact ((Primrec.option_casesOn hdecode (Primrec.const []) hsome).to₂).of_eq

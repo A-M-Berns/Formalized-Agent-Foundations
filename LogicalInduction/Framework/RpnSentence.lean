@@ -1,7 +1,7 @@
 /-
 # Polish-notation sentence blocks: the pure coding
 
-The digit-metered emission model (`EfficientlyComputableTok₂`) meters token *bit*
+The digit-metered emission model (`EfficientlyComputableDigit`) meters token *bit*
 size, but sentences still travel as single `Encodable` pair-code tokens, whose bit
 size is the formula's symbol count only up to balance: skewed formulas inflate
 exponentially.  The Polish-notation layer removes that residual by letting sentence slots of

@@ -17,9 +17,9 @@ Language and the probabilistic substrate the criterion is stated over. Nodes hos
 When this Part grows past one file, promote it to the Mathlib idiom: a `Foundations/`
 directory of content files plus this file as their roll-up.
 
-Status (M1): `def:lang` (`Sentence`) and the valuation/history substrate `def:tf`'s
-denotation lands on (`Valuation`, `History`) are here. `World`, `DeductiveProcess`, and
-`EfficientlyComputable` remain TODO (later in M1 / M2).
+Contents: `def:lang` (`Sentence`) and the valuation/history substrate `def:tf`'s
+denotation lands on (`Valuation`, `History`).  `World`, `DeductiveProcess`, and
+`EfficientlyComputable` live downstream in `Computable.lean` / `Criterion.lean`.
 -/
 import Mathlib.Algebra.Ring.Pi
 import Mathlib.Topology.Instances.Real.Lemmas

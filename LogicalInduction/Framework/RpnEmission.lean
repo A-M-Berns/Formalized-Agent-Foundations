@@ -3,8 +3,8 @@
 
 The poly-fuelled side of the symbol-metered emission model: the escape-slot automaton
 scanned over any digit `PolySegStream`, the per-position range form of the escape
-splice, and the `₃`-model realization bridges (mirrors of `ecTok₂_of_rawEmission` /
-`ecTok₂_of_rawSegStream`, with the decode routed through `unRpn ∘ undigitize`).
+splice, and the `₃`-model realization bridges (mirrors of `ecDigit_of_rawEmission` /
+`ecDigit_of_rawSegStream`, with the decode routed through `unRpn ∘ undigitize`).
 
 Paper node: `def:ec` (symbol-metered sentence slots).
 -/
@@ -180,11 +180,11 @@ digit-level rewrite whose contracted decode is the original strategy
 (`strategyOfTokens_unRpn_escExpand`). -/
 
 /-- **The digit-emitter constructor**: a digit-metered certificate
-(`EfficientlyComputableTok₂`, internal) is efficiently computable — the escape splice
+(`EfficientlyComputableDigit`, internal) is efficiently computable — the escape splice
 transfers the certificate verbatim.
 Paper node: `def:ec` -/
 theorem EfficientlyComputable.ofDigitEmitter {Tr : Trader}
-    (h : EfficientlyComputableTok₂ Tr) : EfficientlyComputable Tr := by
+    (h : EfficientlyComputableDigit Tr) : EfficientlyComputable Tr := by
   obtain ⟨lc, tc, a, k, hTr⟩ := h
   let ds : ℕ → List ℕ := fun n =>
     clockedTokens lc tc (PrefixPatchCompile.ecClock a k n) n
@@ -239,7 +239,7 @@ emitter.
 Paper node: `def:ec` -/
 theorem EfficientlyComputable.ofTokenEmitter {Tr : Trader}
     (h : EfficientlyComputableTok Tr) : EfficientlyComputable Tr :=
-  EfficientlyComputable.ofDigitEmitter h.toTok₂
+  EfficientlyComputable.ofDigitEmitter h.toDigit
 
 /-- Token-model no-exploitation, through the emission constructor: the compat form the
 property proofs invoke for their concretely constructed exploiting traders.
@@ -253,7 +253,7 @@ lemma IsLogicalInductor.noExploitTok {P : History} {DP : DeductiveProcess}
 Paper node: `def:lic` -/
 lemma IsLogicalInductor.noExploitDigit {P : History} {DP : DeductiveProcess}
     [hLI : IsLogicalInductor P DP] :
-    ∀ Tr : Trader, EfficientlyComputableTok₂ Tr → ¬ Tr.Exploits P DP :=
+    ∀ Tr : Trader, EfficientlyComputableDigit Tr → ¬ Tr.Exploits P DP :=
   fun Tr h => hLI.noExploit Tr (EfficientlyComputable.ofDigitEmitter h)
 
 #print axioms EfficientlyComputable.ofDigitEmitter

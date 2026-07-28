@@ -37,7 +37,7 @@ through a small clamp is the escape leaf, which must decide
 `Formula.ofNat` ignores the payload at tag `0`, `decode` is not injective, so that reduces
 to `Nat.unpair` / integer square root, which `BigDigits` does not close over.  In the
 intended complexity model the claim is true (`unpair` on poly-bit inputs is poly-time);
-this is a `dd:fuel`-model limitation.  `notes/next-session.md` (INTERIM SEAMS item 2)
+this is a `dd:fuel`-model limitation.  `notes/next-session.md` (the route-(A) record)
 records the routes out and what each costs.
 
 Building the missing `BigDigits.sqrt` closure directly (route (A)) was attempted on
@@ -683,9 +683,10 @@ factors through a small clamp — grammar tags `0/1/2/3/4`, atom tokens `a + 5` 
 escape leaf, which must decide `Encodable.decode c = some ψ` for an exponentially large
 `c`; Foundation's `ofNat` ignores the payload at tag `0`, so `decode` is not injective and
 that decision reduces to `Nat.unpair` (integer square root), which the `BigDigits` API does
-not provide and — per the route (A) analysis in `notes/next-session.md`, INTERIM SEAMS
-item 2 — cannot provide without either a new axiom or the `TC⁰` division machinery.  Until
-one of the recorded routes is taken, `EfficientPrefixPatch.preserves_ec` has no LIA
+not provide and — per the route-(A) stop-and-report in `notes/next-session.md` — cannot
+provide without either a new axiom or the `TC⁰` division machinery (the digit model is
+closed under forward big-value operations and provably open under their inverses).  This
+is a permanently disclosed boundary: `EfficientPrefixPatch.preserves_ec` has no LIA
 inhabitant at the collapsed class and this lemma is the token-model half of the
 certificate only. -/
 lemma matchRun_polyFueled {ct cn : Code} {tf N : ℕ → ℕ}

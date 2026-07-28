@@ -3,7 +3,7 @@
 
 The digit-model conditioning compiler (`DigitConditioning.lean`) rewrites price chunks
 of the *contracted* strategy stream, so its source certificates are digit-metered
-(`EfficientlyComputableTok₂`).  The collapsed class `EfficientlyComputable` meters the
+(`EfficientlyComputableDigit`).  The collapsed class `EfficientlyComputable` meters the
 RPN-expanded stream, where sentence slots are symbol **runs**; the price rewrite must
 walk the flat grammar with a run-aware automaton (pending-counter scan) and splice the
 condition sentence as a *block* (conjunction = concatenation:
@@ -3951,37 +3951,24 @@ run into the two sentence slots of the body — the conjunction block
 `3 :: run ++ blockψ` at the ratio's numerator and re-emitted trade, and `blockψ` at
 the denominator — leaving the gate arithmetic (constants, `letE` variables,
 operators) verbatim.  The contraction anchor below is compositional, through the
-prefix-contraction algebra `ContractsTo`. -/
+prefix-contraction algebra `UnRpnContractsTo`. -/
 
-/-- `xs` contracts to `ys` ahead of any continuation (`UnRpnTransparent`
-generalized to a non-identity contraction). -/
-def ContractsTo (xs ys : List ℕ) : Prop :=
-  ∀ rest, unRpn (xs ++ rest) = ys ++ unRpn rest
+lemma _root_.LogicalInduction.UnRpnContractsTo.of_eq {xs ys xs' ys' : List ℕ} (h : UnRpnContractsTo xs ys)
+    (hx : xs = xs') (hy : ys = ys') : UnRpnContractsTo xs' ys' := hx ▸ hy ▸ h
 
-lemma UnRpnTransparent.contractsTo {xs : List ℕ} (h : UnRpnTransparent xs) :
-    ContractsTo xs xs := h
-
-lemma ContractsTo.of_eq {xs ys xs' ys' : List ℕ} (h : ContractsTo xs ys)
-    (hx : xs = xs') (hy : ys = ys') : ContractsTo xs' ys' := hx ▸ hy ▸ h
-
-lemma ContractsTo.append {a a' b b' : List ℕ}
-    (ha : ContractsTo a a') (hb : ContractsTo b b') :
-    ContractsTo (a ++ b) (a' ++ b') := fun rest => by
-  rw [List.append_assoc, ha (b ++ rest), hb rest, ← List.append_assoc]
-
-lemma ContractsTo.single (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t ≠ 7) :
-    ContractsTo [t] [t] :=
+lemma _root_.LogicalInduction.UnRpnContractsTo.single (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t ≠ 7) :
+    UnRpnContractsTo [t] [t] :=
   (UnRpnTransparent.single t ht).contractsTo
 
-lemma ContractsTo.payload (t c : ℕ) (ht : t = 1 ∨ t = 7) :
-    ContractsTo [t, c] [t, c] :=
+lemma _root_.LogicalInduction.UnRpnContractsTo.payload (t c : ℕ) (ht : t = 1 ∨ t = 7) :
+    UnRpnContractsTo [t, c] [t, c] :=
   (UnRpnTransparent.payload t c ht).contractsTo
 
 /-- A price chunk with an expanded sentence block contracts to the token-model
 price leaf. -/
-lemma ContractsTo.priceSym {b : List ℕ} {φ : Sentence}
+lemma _root_.LogicalInduction.UnRpnContractsTo.priceSym {b : List ℕ} {φ : Sentence}
     (hb : parseRpn b.length b = some (φ, [])) (day : ℕ) :
-    ContractsTo (0 :: b ++ [day]) (rawPriceTokens (Encodable.encode φ) day) :=
+    UnRpnContractsTo (0 :: b ++ [day]) (rawPriceTokens (Encodable.encode φ) day) :=
   fun rest => by
     rw [show (0 :: b ++ [day]) ++ rest = 0 :: (b ++ day :: rest) by simp,
       unRpn_price_chunk_block hb day rest]
@@ -3989,72 +3976,72 @@ lemma ContractsTo.priceSym {b : List ℕ} {φ : Sentence}
 
 /-- A trade chunk with an expanded sentence block contracts to the token-model
 trade pair. -/
-lemma ContractsTo.tradeSym {b : List ℕ} {φ : Sentence}
+lemma _root_.LogicalInduction.UnRpnContractsTo.tradeSym {b : List ℕ} {φ : Sentence}
     (hb : parseRpn b.length b = some (φ, [])) :
-    ContractsTo (6 :: b) [6, Encodable.encode φ] := fun rest => by
+    UnRpnContractsTo (6 :: b) [6, Encodable.encode φ] := fun rest => by
   rw [show (6 :: b) ++ rest = 6 :: (b ++ rest) by simp,
     unRpn_trade_chunk_block hb rest]
   rfl
 
 /-! ### The raw-combinator algebra -/
 
-lemma ContractsTo.constTok (c : ℕ) :
-    ContractsTo (rawConstTokens c) (rawConstTokens c) :=
-  ContractsTo.payload 1 c (Or.inl rfl)
+lemma _root_.LogicalInduction.UnRpnContractsTo.constTok (c : ℕ) :
+    UnRpnContractsTo (rawConstTokens c) (rawConstTokens c) :=
+  UnRpnContractsTo.payload 1 c (Or.inl rfl)
 
-lemma ContractsTo.varTok (i : ℕ) : ContractsTo [7, i] [7, i] :=
-  ContractsTo.payload 7 i (Or.inr rfl)
+lemma _root_.LogicalInduction.UnRpnContractsTo.varTok (i : ℕ) : UnRpnContractsTo [7, i] [7, i] :=
+  UnRpnContractsTo.payload 7 i (Or.inr rfl)
 
-lemma ContractsTo.mulTok {a a' b b' : List ℕ}
-    (ha : ContractsTo a a') (hb : ContractsTo b b') :
-    ContractsTo (rawMulTokens a b) (rawMulTokens a' b') :=
-  (ha.append hb).append (ContractsTo.single 3 (by norm_num))
+lemma _root_.LogicalInduction.UnRpnContractsTo.mulTok {a a' b b' : List ℕ}
+    (ha : UnRpnContractsTo a a') (hb : UnRpnContractsTo b b') :
+    UnRpnContractsTo (rawMulTokens a b) (rawMulTokens a' b') :=
+  (ha.append hb).append (UnRpnContractsTo.single 3 (by norm_num))
 
-lemma ContractsTo.addTok {a a' b b' : List ℕ}
-    (ha : ContractsTo a a') (hb : ContractsTo b b') :
-    ContractsTo (rawAddTokens a b) (rawAddTokens a' b') :=
-  (ha.append hb).append (ContractsTo.single 2 (by norm_num))
+lemma _root_.LogicalInduction.UnRpnContractsTo.addTok {a a' b b' : List ℕ}
+    (ha : UnRpnContractsTo a a') (hb : UnRpnContractsTo b b') :
+    UnRpnContractsTo (rawAddTokens a b) (rawAddTokens a' b') :=
+  (ha.append hb).append (UnRpnContractsTo.single 2 (by norm_num))
 
-lemma ContractsTo.maxTok {a a' b b' : List ℕ}
-    (ha : ContractsTo a a') (hb : ContractsTo b b') :
-    ContractsTo (rawMaxTokens a b) (rawMaxTokens a' b') :=
-  (ha.append hb).append (ContractsTo.single 4 (by norm_num))
+lemma _root_.LogicalInduction.UnRpnContractsTo.maxTok {a a' b b' : List ℕ}
+    (ha : UnRpnContractsTo a a') (hb : UnRpnContractsTo b b') :
+    UnRpnContractsTo (rawMaxTokens a b) (rawMaxTokens a' b') :=
+  (ha.append hb).append (UnRpnContractsTo.single 4 (by norm_num))
 
-lemma ContractsTo.safeRecipTok {a a' : List ℕ} (ha : ContractsTo a a') :
-    ContractsTo (rawSafeRecipTokens a) (rawSafeRecipTokens a') :=
-  ha.append (ContractsTo.single 5 (by norm_num))
+lemma _root_.LogicalInduction.UnRpnContractsTo.safeRecipTok {a a' : List ℕ} (ha : UnRpnContractsTo a a') :
+    UnRpnContractsTo (rawSafeRecipTokens a) (rawSafeRecipTokens a') :=
+  ha.append (UnRpnContractsTo.single 5 (by norm_num))
 
-lemma ContractsTo.minTok {a a' b b' : List ℕ}
-    (ha : ContractsTo a a') (hb : ContractsTo b b') :
-    ContractsTo (rawMinTokens a b) (rawMinTokens a' b') :=
-  (ContractsTo.constTok _).mulTok
-    (((ContractsTo.constTok _).mulTok ha).maxTok
-      ((ContractsTo.constTok _).mulTok hb))
+lemma _root_.LogicalInduction.UnRpnContractsTo.minTok {a a' b b' : List ℕ}
+    (ha : UnRpnContractsTo a a') (hb : UnRpnContractsTo b b') :
+    UnRpnContractsTo (rawMinTokens a b) (rawMinTokens a' b') :=
+  (UnRpnContractsTo.constTok _).mulTok
+    (((UnRpnContractsTo.constTok _).mulTok ha).maxTok
+      ((UnRpnContractsTo.constTok _).mulTok hb))
 
-lemma ContractsTo.absTok {a a' : List ℕ} (ha : ContractsTo a a') :
-    ContractsTo (rawAbsTokens a) (rawAbsTokens a') :=
-  ha.maxTok ((ContractsTo.constTok _).mulTok ha)
+lemma _root_.LogicalInduction.UnRpnContractsTo.absTok {a a' : List ℕ} (ha : UnRpnContractsTo a a') :
+    UnRpnContractsTo (rawAbsTokens a) (rawAbsTokens a') :=
+  ha.maxTok ((UnRpnContractsTo.constTok _).mulTok ha)
 
-lemma ContractsTo.clip01Tok {a a' : List ℕ} (ha : ContractsTo a a') :
-    ContractsTo (rawClip01Tokens a) (rawClip01Tokens a') :=
-  (ContractsTo.constTok _).maxTok ((ContractsTo.constTok _).minTok ha)
+lemma _root_.LogicalInduction.UnRpnContractsTo.clip01Tok {a a' : List ℕ} (ha : UnRpnContractsTo a a') :
+    UnRpnContractsTo (rawClip01Tokens a) (rawClip01Tokens a') :=
+  (UnRpnContractsTo.constTok _).maxTok ((UnRpnContractsTo.constTok _).minTok ha)
 
-lemma ContractsTo.gateTok {r r' m m' : List ℕ}
-    (hr : ContractsTo r r') (hm : ContractsTo m m')
+lemma _root_.LogicalInduction.UnRpnContractsTo.gateTok {r r' m m' : List ℕ}
+    (hr : UnRpnContractsTo r r') (hm : UnRpnContractsTo m m')
     (bc ibc : ℕ) :
-    ContractsTo (rawConditioningGateTokens r m bc ibc)
+    UnRpnContractsTo (rawConditioningGateTokens r m bc ibc)
       (rawConditioningGateTokens r' m' bc ibc) :=
-  ContractsTo.clip01Tok
-    ((((ContractsTo.constTok _).addTok
-        ((ContractsTo.constTok bc).mulTok hm.safeRecipTok)).addTok
-      ((ContractsTo.constTok _).mulTok hr)).mulTok
-    ((ContractsTo.constTok ibc).mulTok ((ContractsTo.constTok _).maxTok hm)))
+  UnRpnContractsTo.clip01Tok
+    ((((UnRpnContractsTo.constTok _).addTok
+        ((UnRpnContractsTo.constTok bc).mulTok hm.safeRecipTok)).addTok
+      ((UnRpnContractsTo.constTok _).mulTok hr)).mulTok
+    ((UnRpnContractsTo.constTok ibc).mulTok ((UnRpnContractsTo.constTok _).maxTok hm)))
 
-lemma ContractsTo.lowerSafeRecipTok {a a' : List ℕ} (ha : ContractsTo a a')
+lemma _root_.LogicalInduction.UnRpnContractsTo.lowerSafeRecipTok {a a' : List ℕ} (ha : UnRpnContractsTo a a')
     (ε : ℚ) :
-    ContractsTo (rawLowerSafeRecipTokens a ε) (rawLowerSafeRecipTokens a' ε) :=
-  (ContractsTo.constTok _).mulTok
-    (((ContractsTo.constTok _).mulTok ha).safeRecipTok)
+    UnRpnContractsTo (rawLowerSafeRecipTokens a ε) (rawLowerSafeRecipTokens a' ε) :=
+  (UnRpnContractsTo.constTok _).mulTok
+    (((UnRpnContractsTo.constTok _).mulTok ha).safeRecipTok)
 
 /-! ### The frame-leg emission -/
 
@@ -4093,7 +4080,7 @@ lemma rpnFrameEmit_contractsTo {buf blk : List ℕ} {φ ψn : Sentence}
     (hbuf : parseRpn buf.length buf = some (φ, []))
     (hblk : parseRpn blk.length blk = some (ψn, []))
     (second : Bool) (day bc ibc : ℕ) (ε : ℚ) :
-    ContractsTo (rpnFrameEmit second blk ε day bc ibc buf)
+    UnRpnContractsTo (rpnFrameEmit second blk ε day bc ibc buf)
       ((if second then
           rawLocallyGatedSecondBodyTokens (Encodable.encode φ)
             (Encodable.encode ψn) day bc ibc ε
@@ -4104,25 +4091,25 @@ lemma rpnFrameEmit_contractsTo {buf blk : List ℕ} {φ ψn : Sentence}
           else conjunctionCode (Encodable.encode φ) (Encodable.encode ψn)]) := by
   have hconj : parseRpn (3 :: buf ++ blk).length (3 :: buf ++ blk) =
       some (φ ⋏ ψn, []) := parseRpn_and_block hbuf hblk
-  have hgate : ContractsTo (rpnFrameGate bc ibc) (rpnFrameGate bc ibc) :=
-    ContractsTo.gateTok (ContractsTo.varTok 0)
-      (ContractsTo.absTok (ContractsTo.varTok 1)) bc ibc
-  have hratio : ContractsTo (rpnFrameRatioSym (3 :: buf ++ blk) blk day ε)
+  have hgate : UnRpnContractsTo (rpnFrameGate bc ibc) (rpnFrameGate bc ibc) :=
+    UnRpnContractsTo.gateTok (UnRpnContractsTo.varTok 0)
+      (UnRpnContractsTo.absTok (UnRpnContractsTo.varTok 1)) bc ibc
+  have hratio : UnRpnContractsTo (rpnFrameRatioSym (3 :: buf ++ blk) blk day ε)
       (rawMulTokens (rawPriceTokens (Encodable.encode (φ ⋏ ψn)) day)
         (rawLowerSafeRecipTokens
           (rawPriceTokens (Encodable.encode ψn) day) ε)) :=
-    (ContractsTo.priceSym hconj day).mulTok
-      (ContractsTo.lowerSafeRecipTok (ContractsTo.priceSym hblk day) ε)
-  have hmin : ContractsTo
+    (UnRpnContractsTo.priceSym hconj day).mulTok
+      (UnRpnContractsTo.lowerSafeRecipTok (UnRpnContractsTo.priceSym hblk day) ε)
+  have hmin : UnRpnContractsTo
       (rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc)))
       (rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc))) :=
-    (ContractsTo.varTok 1).minTok ((ContractsTo.varTok 1).mulTok hgate)
-  have hclose : ContractsTo [(8 : ℕ)] [8] :=
-    ContractsTo.single 8 (by norm_num)
+    (UnRpnContractsTo.varTok 1).minTok ((UnRpnContractsTo.varTok 1).mulTok hgate)
+  have hclose : UnRpnContractsTo [(8 : ℕ)] [8] :=
+    UnRpnContractsTo.single 8 (by norm_num)
   cases second with
   | false =>
-      have htail : ContractsTo (6 :: (3 :: buf ++ blk))
-          [6, Encodable.encode (φ ⋏ ψn)] := ContractsTo.tradeSym hconj
+      have htail : UnRpnContractsTo (6 :: (3 :: buf ++ blk))
+          [6, Encodable.encode (φ ⋏ ψn)] := UnRpnContractsTo.tradeSym hconj
       have hcomp := (((hratio.append hmin).append hclose).append
         (hclose.append htail))
       refine hcomp.of_eq ?_ ?_
@@ -4130,9 +4117,9 @@ lemma rpnFrameEmit_contractsTo {buf blk : List ℕ} {φ ψn : Sentence}
       · simp [rawLocallyGatedBetaBodyTokens, rawConditioningRatioTokens,
           rpnFrameGate, conjunctionCode_exact]
   | true =>
-      have htail : ContractsTo (6 :: blk) [6, Encodable.encode ψn] :=
-        ContractsTo.tradeSym hblk
-      have hsecondBody : ContractsTo
+      have htail : UnRpnContractsTo (6 :: blk) [6, Encodable.encode ψn] :=
+        UnRpnContractsTo.tradeSym hblk
+      have hsecondBody : UnRpnContractsTo
           (rawMulTokens (rawConstTokens (Encodable.encode (-1 : ℚ)))
             (rawMulTokens
               (rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc)))
@@ -4141,7 +4128,7 @@ lemma rpnFrameEmit_contractsTo {buf blk : List ℕ} {φ ψn : Sentence}
             (rawMulTokens
               (rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc)))
               [7, 0])) :=
-        (ContractsTo.constTok _).mulTok (hmin.mulTok (ContractsTo.varTok 0))
+        (UnRpnContractsTo.constTok _).mulTok (hmin.mulTok (UnRpnContractsTo.varTok 0))
       have hcomp := (((hratio.append hsecondBody).append hclose).append
         (hclose.append htail))
       refine hcomp.of_eq ?_ ?_
@@ -4439,15 +4426,15 @@ lemma priceWalk_inside (v : List ℕ) (j : ℕ) (hj : j ≤ v.length)
 The two-leg join concatenates two symbol-level frame outputs, and `unRpn` does **not**
 distribute over an append when the left factor carries a poisoned chunk.  It does
 split, though, on any stream the run automaton walks back to base mode: either the
-stream is `ContractsTo`-transparent ahead of every continuation, or its first poisoned
+stream is `UnRpnContractsTo`-transparent ahead of every continuation, or its first poisoned
 chunk stops the contraction outright.  Same chunk induction as
 `tradeRuns_unRpn_agree`, with the first-exit localization supplying the
 poisons-every-extension branch. -/
 
 /-- A stream that contracts to *something* ahead of any continuation contracts to its
 own contraction. -/
-lemma ContractsTo.self {A X : List ℕ} (h : ContractsTo A X) :
-    ContractsTo A (unRpn A) := by
+lemma _root_.LogicalInduction.UnRpnContractsTo.self {A X : List ℕ} (h : UnRpnContractsTo A X) :
+    UnRpnContractsTo A (unRpn A) := by
   have hX : unRpn A = X := by
     have h0 := h []
     rwa [List.append_nil, unRpn_nil, List.append_nil] at h0
@@ -4457,7 +4444,7 @@ lemma ContractsTo.self {A X : List ℕ} (h : ContractsTo A X) :
 def UnRpnStops (A : List ℕ) : Prop := ∀ rest, unRpn (A ++ rest) = unRpn A
 
 lemma UnRpnStops.cons_chunk {C A : List ℕ} {P : List ℕ}
-    (hC : ContractsTo C P) (h : UnRpnStops A) : UnRpnStops (C ++ A) := by
+    (hC : UnRpnContractsTo C P) (h : UnRpnStops A) : UnRpnStops (C ++ A) := by
   intro rest
   rw [List.append_assoc, hC (A ++ rest), hC A, h rest]
 
@@ -4467,7 +4454,7 @@ continuation, or a poisoned chunk stops the contraction outright (and the contra
 is unreadable). Paper node: `thm:scon` -/
 theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
     List.foldl rpnCondStep (rcPack 0 0 0) A = rcPack 0 0 0 →
-    ContractsTo A (unRpn A) ∨ (UnRpnStops A ∧ Unreadable (unRpn A)) := by
+    UnRpnContractsTo A (unRpn A) ∨ (UnRpnStops A ∧ Unreadable (unRpn A)) := by
   intro N
   induction N with
   | zero =>
@@ -4514,7 +4501,7 @@ theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                       exact hbase
                     have hA2 : (0 : ℕ) :: (blk ++ d0 :: r2) =
                         (0 :: blk ++ [d0]) ++ r2 := by simp
-                    have hC := ContractsTo.priceSym hblk d0
+                    have hC := UnRpnContractsTo.priceSym hblk d0
                     rcases ih r2 hr2 hbase2 with hIH | ⟨hstop, hU⟩
                     · exact Or.inl (((hC.append hIH).of_eq hA2.symm rfl).self)
                     · refine Or.inr ⟨?_, ?_⟩
@@ -4590,7 +4577,7 @@ theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                       List.foldl_append, hwalk] at hbase
                     exact hbase
                   have hA1 : (6 : ℕ) :: (blk ++ r1) = (6 :: blk) ++ r1 := by simp
-                  have hC := ContractsTo.tradeSym hblk
+                  have hC := UnRpnContractsTo.tradeSym hblk
                   rcases ih r1 hr1 hbase1 with hIH | ⟨hstop, hU⟩
                   · exact Or.inl (((hC.append hIH).of_eq hA1.symm rfl).self)
                   · refine Or.inr ⟨?_, ?_⟩
@@ -4686,7 +4673,7 @@ theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                       rw [List.foldl_cons, hstep1, List.foldl_cons, hstep2] at hbase
                       exact hbase
                     have hAp : t :: c :: r = [t, c] ++ r := rfl
-                    have hC := ContractsTo.payload t c ht1
+                    have hC := UnRpnContractsTo.payload t c ht1
                     rcases ih r hr hbaseR with hIH | ⟨hstop, hU⟩
                     · exact Or.inl (((hC.append hIH).of_eq hAp.symm rfl).self)
                     · refine Or.inr ⟨?_, ?_⟩
@@ -4703,7 +4690,7 @@ theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                   rw [List.foldl_cons, hstep] at hbase
                   exact hbase
                 have hAs : t :: rest = [t] ++ rest := rfl
-                have hC := ContractsTo.single t ⟨ht0, ht1.1, ht6, ht1.2⟩
+                have hC := UnRpnContractsTo.single t ⟨ht0, ht1.1, ht6, ht1.2⟩
                 rcases ih rest hrest hbaseR with hIH | ⟨hstop, hU⟩
                 · exact Or.inl (((hC.append hIH).of_eq hAs.symm rfl).self)
                 · refine Or.inr ⟨?_, ?_⟩
@@ -4848,9 +4835,9 @@ token-model output ahead of *any* continuation, or its first poisoned chunk stop
 contraction outright and both sides are unreadable.  This is the form the two-leg join
 needs — `FrameAgree` alone does not survive an append. -/
 def FrameContract (A B : List ℕ) : Prop :=
-  ContractsTo A B ∨ (UnRpnStops A ∧ Unreadable (unRpn A) ∧ Unreadable B)
+  UnRpnContractsTo A B ∨ (UnRpnStops A ∧ Unreadable (unRpn A) ∧ Unreadable B)
 
-lemma ContractsTo.nil : ContractsTo [] [] := fun rest => by simp
+lemma _root_.LogicalInduction.UnRpnContractsTo.nil : UnRpnContractsTo [] [] := fun rest => by simp
 
 lemma FrameContract.frameAgree {A B : List ℕ} (h : FrameContract A B) :
     FrameAgree (unRpn A) B := by
@@ -4860,7 +4847,7 @@ lemma FrameContract.frameAgree {A B : List ℕ} (h : FrameContract A B) :
     simpa [unRpn_nil] using this
   · exact Or.inr ⟨hU, hB⟩
 
-lemma FrameContract.cons_chunk {C P A B : List ℕ} (hC : ContractsTo C P)
+lemma FrameContract.cons_chunk {C P A B : List ℕ} (hC : UnRpnContractsTo C P)
     (hF : List.foldl freezeMode4Step 0 P = 0) (h : FrameContract A B) :
     FrameContract (C ++ A) (P ++ B) := by
   rcases h with hA | ⟨hstop, hU, hB⟩
@@ -4869,7 +4856,7 @@ lemma FrameContract.cons_chunk {C P A B : List ℕ} (hC : ContractsTo C P)
     rw [hC A]
     exact hU.cons_chunk hF
 
-lemma ContractsTo.frameAgree_chunk {C P A B : List ℕ} (hC : ContractsTo C P)
+lemma _root_.LogicalInduction.UnRpnContractsTo.frameAgree_chunk {C P A B : List ℕ} (hC : UnRpnContractsTo C P)
     (hF : List.foldl freezeMode4Step 0 P = 0) (h : FrameAgree (unRpn A) B) :
     FrameAgree (unRpn (C ++ A)) (P ++ B) := by
   rw [hC A]
@@ -4943,7 +4930,7 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
           ibc (unRpn []) = [] := by
         simp [conditioningFrameTokenOutput, conditioningFrameTokenRun, unRpn_nil]
       exact ⟨Or.inl (by rw [hA, hB, unRpn_nil]),
-        fun _ => Or.inl (by rw [hA, hB]; exact ContractsTo.nil)⟩
+        fun _ => Or.inl (by rw [hA, hB]; exact UnRpnContractsTo.nil)⟩
   | succ N ih =>
       intro ts hts
       match ts with
@@ -4954,7 +4941,7 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
               bc ibc (unRpn []) = [] := by
             simp [conditioningFrameTokenOutput, conditioningFrameTokenRun, unRpn_nil]
           exact ⟨Or.inl (by rw [hA, hB, unRpn_nil]),
-            fun _ => Or.inl (by rw [hA, hB]; exact ContractsTo.nil)⟩
+            fun _ => Or.inl (by rw [hA, hB]; exact UnRpnContractsTo.nil)⟩
       | t :: rest =>
           simp only [List.length_cons] at hts
           by_cases ht0 : t = 0
@@ -5031,9 +5018,9 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                       rw [unRpn_price_chunk_block hblk d r2,
                         conditioningFrameTokenOutput_price]
                       rfl
-                    have hC : ContractsTo (0 :: (blk ++ [d]))
+                    have hC : UnRpnContractsTo (0 :: (blk ++ [d]))
                         [0, Encodable.encode φ, d] :=
-                      (ContractsTo.priceSym hblk d).of_eq (by simp)
+                      (UnRpnContractsTo.priceSym hblk d).of_eq (by simp)
                         (by simp [rawPriceTokens])
                     have hF : List.foldl freezeMode4Step 0
                         [0, Encodable.encode φ, d] = 0 := by
@@ -5214,7 +5201,7 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                         day ε bc ibc (unRpn r1) := by
                     rw [unRpn_trade_chunk_block hblk r1,
                       conditioningFrameTokenOutput_trade]
-                  have hC : ContractsTo (rpnFrameEmit second blkψ ε day bc ibc blk)
+                  have hC : UnRpnContractsTo (rpnFrameEmit second blkψ ε day bc ibc blk)
                       (if second then
                           rawLocallyGatedSecondBodyTokens (Encodable.encode φ)
                             (Encodable.encode ψn) day bc ibc ε ++
@@ -5472,8 +5459,8 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                         conditioningFrameTokenOutput_payload _ _ _ _ _ _ 1 c
                           (Or.inl rfl)]
                       rfl
-                    have hC : ContractsTo [1, c] [1, c] :=
-                      ContractsTo.payload 1 c (Or.inl rfl)
+                    have hC : UnRpnContractsTo [1, c] [1, c] :=
+                      UnRpnContractsTo.payload 1 c (Or.inl rfl)
                     have hF : List.foldl freezeMode4Step 0 [1, c] = 0 := by
                       simp [freezeMode4Step]
                     have hr : rest'.length ≤ N := by
@@ -5539,8 +5526,8 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                           conditioningFrameTokenOutput_payload _ _ _ _ _ _ 7 c
                             (Or.inr rfl)]
                         rfl
-                      have hC : ContractsTo [7, c] [7, c] :=
-                        ContractsTo.payload 7 c (Or.inr rfl)
+                      have hC : UnRpnContractsTo [7, c] [7, c] :=
+                        UnRpnContractsTo.payload 7 c (Or.inr rfl)
                       have hF : List.foldl freezeMode4Step 0 [7, c] = 0 := by
                         simp [freezeMode4Step]
                       have hr : rest'.length ≤ N := by
@@ -5578,8 +5565,8 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                       conditioningFrameTokenOutput_single _ _ _ _ _ _ t ht0 ht1 ht6
                         ht7]
                     rfl
-                  have hC : ContractsTo [t] [t] :=
-                    ContractsTo.single t ⟨ht0, ht1, ht6, ht7⟩
+                  have hC : UnRpnContractsTo [t] [t] :=
+                    UnRpnContractsTo.single t ⟨ht0, ht1, ht6, ht7⟩
                   have hF : List.foldl freezeMode4Step 0 [t] = 0 := by
                     simp [freezeMode4Step, ht0, ht1, ht6, ht7]
                   refine ⟨?_, fun hbase => ?_⟩

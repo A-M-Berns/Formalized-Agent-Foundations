@@ -74,7 +74,7 @@ File layout (promoted from a single file once it grew past ~1000 lines):
   cross-grid law; `DeferralFunction` (`def:deferralfunc`).
 
 See `notes/logical-induction-roadmap.md` for the paper-node map and
-`notes/next-session.md` for the active construction scope.
+`notes/next-session.md` for the construction record.
 -/
 import LogicalInduction.Properties.Basic
 import LogicalInduction.Properties.ProvabilityInduction

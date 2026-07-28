@@ -2468,13 +2468,13 @@ lemma ecTok_of_segStream (Tr : Trader)
   · intro n i hi
     exact hspec n i (by rw [← hlens n]; exact hi)
 
-/-! ### The digit layer is poly-fueled (`dd:fuel`, Tranche 2 step 3)
+/-! ### The digit layer is poly-fueled (`dd:fuel`)
 
-The inclusion `EfficientlyComputableTok → EfficientlyComputableTok₂` factors through
+The inclusion `EfficientlyComputableTok → EfficientlyComputableDigit` factors through
 `PolySegStream`: an old certificate's clocked token stream is a `PolySegStream`
 (`PrefixPatchCompile.clockedTokens_polySegStream`, M7Witnesses), the digit stream of any
 `PolySegStream` is again one (`PolySegStream.digitizeStream` below, via `concatVar`), and
-any `PolySegStream` realizes a `₂`-certificate (`ecTok₂_of_rawSegStream`).  The final
+any `PolySegStream` realizes a digit-model certificate (`ecDigit_of_rawSegStream`).  The final
 composition lives in M7Witnesses next to its last ingredient. -/
 
 /-- Iterated division `t / 4^j` is poly-fueled in `⟨t, j⟩` (state stays `≤ t`). -/
@@ -2644,11 +2644,11 @@ lemma PolySegStream.digitizeStream {s : ℕ → List ℕ} (h : PolySegStream s) 
   | nil => simp
   | cons j rest ihr => simp_all [List.flatMap_cons]
 
-/-! ### The `₂`-model realization bridges (mirrors of `ecTok_of_rawEmission` /
+/-! ### The digit-model realization bridges (mirrors of `ecTok_of_rawEmission` /
 `ecTok_of_rawTokenFn`, with the decode routed through `undigitize`). -/
 
 /-- Exact digit emitters instantiate the digit-metered bounded-emulator definition. -/
-lemma ecTok₂_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
+lemma ecDigit_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
     (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
     (hlength : ∀ n, evaln (a * (n + 1) ^ k + a) lengthCode n =
       some (raw n).length)
@@ -2657,7 +2657,7 @@ lemma ecTok₂_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
       evaln (a * (n + 1) ^ k + a) tokenCode (Nat.pair n i) =
         some ((raw n).getD i 0))
     (hstrategy : ∀ n, strategyOfTokens n (undigitize (raw n)) = Tr.strat n) :
-    EfficientlyComputableTok₂ Tr := by
+    EfficientlyComputableDigit Tr := by
   refine ⟨lengthCode, tokenCode, a, k, ?_⟩
   have hstrat :
       (clockedTraderDigit lengthCode tokenCode (fun n => a * (n + 1) ^ k + a)).strat =
@@ -2682,11 +2682,11 @@ lemma ecTok₂_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
   exact congrArg Trader.mk hstrat
 
 /-- Any `PolySegStream` whose undigitized decode is the target trader realizes a
-`₂`-certificate (the clock-max juggling of `ecTok_of_rawTokenFn`, verbatim). -/
-lemma ecTok₂_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
+digit-model certificate (the clock-max juggling of `ecTok_of_rawTokenFn`, verbatim). -/
+lemma ecDigit_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
     (h : PolySegStream raw)
     (hstrategy : ∀ n, strategyOfTokens n (undigitize (raw n)) = Tr.strat n) :
-    EfficientlyComputableTok₂ Tr := by
+    EfficientlyComputableDigit Tr := by
   obtain ⟨ct, cl, tokenFn, lenFn, htokf, hlenf, hlens, hspec⟩ := h
   have hlenRaw : PolyFueled cl (fun n => (raw n).length) :=
     hlenf.of_eq (fun n => (hlens n).symm)
@@ -2698,7 +2698,7 @@ lemma ecTok₂_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
       ⟨a₀, k₀, fun _ => le_rfl⟩).comp
       ((IsPolyBounded.linear 0).pair hlenBounded)
   obtain ⟨A, K, hAK⟩ := (hblBounded.max hbcbound).max hlenBounded
-  refine ecTok₂_of_rawEmission Tr raw cl ct A K (fun n => ?_) (fun n => ?_)
+  refine ecDigit_of_rawEmission Tr raw cl ct A K (fun n => ?_) (fun n => ?_)
     (fun n i hi => ?_) hstrategy
   · exact evaln_mono
       ((le_max_left _ _).trans ((le_max_left _ _).trans (hAK n))) (hfl n)

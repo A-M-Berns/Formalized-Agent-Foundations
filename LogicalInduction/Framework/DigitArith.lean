@@ -1,7 +1,7 @@
 /-
 # Digit-stream bignum arithmetic (`dd:fuel`, digit model)
 
-The digit-metered emission model (`EfficientlyComputableTok₂`) admits token *values*
+The digit-metered emission model (`EfficientlyComputableDigit`) admits token *values*
 exponential in the day, held only as base-4 digit blocks.  Transducers that must
 *compute* on such values — the conditioning translation derives `⌜φ ⋏ ψ⌝` from `⌜φ⌝`,
 a `Nat.pair`-shell (square + add) at exponential values — therefore need arithmetic
@@ -1562,7 +1562,7 @@ lemma PolySegStream.dayClampTokens {s : ℕ → List ℕ} (h : PolySegStream s) 
       min ((undigitize (s z.unpair.1)).getD z.unpair.2 0) (z.unpair.1 + 1)) :=
   h.undigitizeTokens.2.clampVal PolyFueled.left
 
-/-! ## Digit-metered sentence-code sequences (the Tranche-4 hypothesis core)
+/-! ## Digit-metered sentence-code sequences
 
 `PolySentenceCodes` demands a polynomial code *value* — admitting only sentences whose
 `Encodable` pair-codes stay small.  The digit-metered widening demands only poly-fueled

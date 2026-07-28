@@ -1,9 +1,9 @@
 /-
-# Digit-model conditioning translation (Tranche 2, B1)
+# Digit-model conditioning translation
 
 The conditioning price rewrite (`conditionPriceTokenRun`, ConditioningCompiler) is a
 token transducer whose emitted rewrite applies `ψCode` to the price-*day* token.  In the
-digit-metered emission model (`EfficientlyComputableTok₂`) token values may be
+digit-metered emission model (`EfficientlyComputableDigit`) token values may be
 exponential in the day, held only as digit blocks, so the transducer must **guard**:
 price-day tokens are compared against the trading day `n` by digit clamp, and an
 oversized day aborts the emission.  This file provides
@@ -1216,15 +1216,15 @@ lemma strategy_ext_trades {n : ℕ} {S S' : Strategy n} (h : S.trades = S'.trade
   simpa using h
 
 /-- **The conditioning translation preserves digit-metered efficient computability**
-(`EfficientlyComputableTok₂ → EfficientlyComputableTok₂`), via the guarded digit
+(`EfficientlyComputableDigit → EfficientlyComputableDigit`), via the guarded digit
 compiler: price days are materialized by clamp, the conjunction shells are rendered
 from digit access, and on guarded days (an oversized price-day token) both the source
 strategy and its translation are empty, so the empty emission is exact.
 Paper node: `thm:scon` -/
-lemma conditionedTranslation_preserves_ec₂
+lemma conditionedTranslation_preserves_ecDigit
     (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) (ε : ℚ)
-    (T : Trader) (hT : EfficientlyComputableTok₂ T) :
-    EfficientlyComputableTok₂ (T.conditionedTranslation ψ ε) := by
+    (T : Trader) (hT : EfficientlyComputableDigit T) :
+    EfficientlyComputableDigit (T.conditionedTranslation ψ ε) := by
   obtain ⟨lengthCode, tokenCode, a, k, hcert⟩ := hT
   let source : ℕ → List ℕ := fun n =>
     clockedTokens lengthCode tokenCode (PrefixPatchCompile.ecClock a k n) n
@@ -1242,7 +1242,7 @@ lemma conditionedTranslation_preserves_ec₂
       (frameBudget n (frameTradeCount tfP lenP n)) n (undigitize (priced n)))
   have hframed : PolySegStream framed :=
     safeSeparatedFrameDigitOutput_polySegStream hpriced ψ hψ ε
-  apply ecTok₂_of_rawSegStream (T.conditionedTranslation ψ ε) hframed
+  apply ecDigit_of_rawSegStream (T.conditionedTranslation ψ ε) hframed
   intro n
   have horig : strategyOfTokens n (undigitize (source n)) = T.strat n :=
     congrFun (congrArg Trader.strat hcert) n
@@ -1515,11 +1515,11 @@ lemma guardedZeroAwareConditionRun_polySegStream (zeroDays : Finset ℕ)
 /-- **The eventual (finite-zero, launch-gated) conditioning translation preserves
 digit-metered efficient computability.**
 Paper node: `thm:scon` -/
-lemma eventualConditionedTranslation_preserves_ec₂
+lemma eventualConditionedTranslation_preserves_ecDigit
     {P : History} {ψ : ℕ → Sentence}
     (F : EventualConditioningFloor P ψ) (hψ : PolySentenceCodes ψ)
-    (T : Trader) (hT : EfficientlyComputableTok₂ T) :
-    EfficientlyComputableTok₂ (T.eventualConditionedTranslation F) := by
+    (T : Trader) (hT : EfficientlyComputableDigit T) :
+    EfficientlyComputableDigit (T.eventualConditionedTranslation F) := by
   obtain ⟨lengthCode, tokenCode, a, k, hcert⟩ := hT
   let source : ℕ → List ℕ := fun n =>
     clockedTokens lengthCode tokenCode (PrefixPatchCompile.ecClock a k n) n
@@ -1549,7 +1549,7 @@ lemma eventualConditionedTranslation_preserves_ec₂
     by_cases hn : F.cutoff ≤ n
     · rw [if_pos hn, if_neg (by omega)]
     · rw [if_neg hn, if_pos (by omega)]
-  apply ecTok₂_of_rawSegStream (T.eventualConditionedTranslation F) houtput
+  apply ecDigit_of_rawSegStream (T.eventualConditionedTranslation F) houtput
   intro n
   by_cases hn : n < F.cutoff
   · have hout : output n = [] := by
@@ -1680,8 +1680,8 @@ lemma eventualConditionedTranslation_preserves_ec₂
           F.zeroDays ψ F.epsilon (conditioningBudget n)).trades
       simp [Strategy.separatedExceptZeroConditionalContract, hTempty]
 
-#print axioms eventualConditionedTranslation_preserves_ec₂
-#print axioms conditionedTranslation_preserves_ec₂
+#print axioms eventualConditionedTranslation_preserves_ecDigit
+#print axioms conditionedTranslation_preserves_ecDigit
 #print axioms strategyOfTokens_trades_eq_nil_of_bigDay
 #print axioms guardedConditionRun_polySegStream
 #print axioms PolySegStream.tradeCountScan

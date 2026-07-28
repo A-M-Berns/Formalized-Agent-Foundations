@@ -2610,11 +2610,13 @@ LIA's first `cutoff` rational belief states form a fixed finite table; exhaustiv
 sentence matching and the flat administrative freeze transducer compile that table into a
 polynomial token emitter, preserving token-model efficient computability.
 
-Interim (pending the RPN-level freeze transducer): the collapsed
-`EfficientPrefixPatch.preserves_ec` asks for symbol-metered preservation, so this
-token-model fact no longer packages into that structure — the RPN freeze (copying
-Polish sentence runs symbol-by-symbol through the parser control) is the recorded
-residual that will restore the `liaEfficientPrefixPatch` inhabitant.
+Disclosed boundary: the collapsed `EfficientPrefixPatch.preserves_ec` asks for
+symbol-metered preservation, so this token-model fact does not package into that
+structure.  The RPN freeze transducer is constructed (`RpnFreeze.lean`), but its fuel
+certificate needs a digit-model decode test on exponentially large escape codes, which
+the digit model provably cannot express (inverse-operation ceiling; route-(A)
+stop-and-report in `notes/next-session.md`) — so there is no LIA inhabitant at the
+collapsed class, and this token-level fact is the boundary's constructed content.
 Paper node: `def:lia` -/
 theorem liaFreezeBefore_preserves_ecTok (DP : DeductiveProcess) (cutoff : ℕ) :
     ∀ Tr : Trader, EfficientlyComputableTok Tr →

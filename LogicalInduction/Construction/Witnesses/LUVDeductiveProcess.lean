@@ -19,7 +19,7 @@ actual standard truth of each threshold predicate) is consistent with every stag
 The **efficient-computability certificate** for this process (the analogue of
 `theoremDP_computable`, needed to compile it into an actual `LIA` and obtain fully unconditional
 endpoints) is *not* built here; it is the same ~200-line primitive-recursive encoding as the
-computation tail and is recorded as remaining work in `notes/next-session.md`.  What is proved
+computation tail and is a disclosed residual in `notes/next-session.md`.  What is proved
 here is exactly what makes the Phase-B derivation non-vacuous.
 -/
 

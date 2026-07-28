@@ -164,8 +164,8 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   invalidBit_polyFueled prefixSentenceEnum_polySentenceCodes prefixApprox_polyRatCodes
   lic_occam_lower_ofPrefixMachine lic_occamBounds_ofPrefixMachine
 
--- Construction/Witnesses/UniversalPrefix.lean (Tranche U stage 3: the self-delimiting
--- UNIVERSAL prefix machine).  `dom U` is prefix-free by construction, so the Kraft field
+-- Construction/Witnesses/UniversalPrefix.lean (the self-delimiting UNIVERSAL prefix
+-- machine).  `dom U` is prefix-free by construction, so the Kraft field
 -- needs no hypothesis; `kappaU_le_of_prefixMachine` is the invariance theorem that earns
 -- the word "universal"; `uSel_polyRatCodes` builds the polynomial clock (the self-clamped
 -- `evaln` selection of `M7-DUS-APPROX`) on top of the exact stage table, whose own program
@@ -246,14 +246,14 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   EF.cost_le_serialize_length EF.serialize_length_le_cost
   Strategy.serializeTrades_length_le_cost
 
--- dd:fuel digit layer (`def:ec`, Tranche 2): the digit stream determines the token
--- stream (round-trip + injectivity), and every token-model certificate transfers into
--- the digit-metered class (the inclusion capstone, M7Witnesses).  `Tok₂` becomes the
--- criterion class in the Tranche-2 step-4 flip.
+-- dd:fuel digit layer (`def:ec`): the digit stream determines the token stream
+-- (round-trip + injectivity), and every token-model certificate transfers into the
+-- digit-metered class (the inclusion capstone, M7Witnesses).  The digit model is the
+-- metering underneath the collapsed criterion class `EfficientlyComputable`.
 #assert_axioms_clean
   undigitize_digitize digitize_injective
   PolySegStream.digitizeStream
-  EfficientlyComputableTok.toTok₂
+  EfficientlyComputableTok.toDigit
 
 -- dd:fuel discharged for dd:luv-arith: the threshold-code and process-computability
 -- certificates are proved (gcdc_polyFueled/toLUV_polyThresholdCodes/gridDP_computable),
@@ -354,16 +354,16 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   exists_eventual_condition_price_floor
   eventualConditioningFloorOfJointConsistency
 
--- Construction/Witnesses/DigitConditioning.lean (`M7-SCON-COMPILER`, digit model —
--- Tranche 2 B1–B3): the guarded digit compilers, guard honesty, and the `Tok₂ → Tok₂`
--- translation preservations.
+-- Construction/Witnesses/DigitConditioning.lean (`M7-SCON-COMPILER`, digit model):
+-- the guarded digit compilers, guard honesty, and the digit-to-digit translation
+-- preservations.
 #assert_axioms_clean
   ConditioningCompile.strategyOfTokens_trades_eq_nil_of_bigDay
   ConditioningCompile.guardedConditionRun_polySegStream
   ConditioningCompile.guardedZeroAwareConditionRun_polySegStream
   ConditioningCompile.safeSeparatedFrameDigitOutput_polySegStream
-  ConditioningCompile.conditionedTranslation_preserves_ec₂
-  ConditioningCompile.eventualConditionedTranslation_preserves_ec₂
+  ConditioningCompile.conditionedTranslation_preserves_ecDigit
+  ConditioningCompile.eventualConditionedTranslation_preserves_ecDigit
 
 -- Construction/Witnesses/RpnConditioning.lean (`M7-SCON-COMPILER`, symbol model —
 -- RPN-5): the run-aware price transducer and its master commutation, guard honesty,
@@ -398,7 +398,8 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 -- instance of the emitter-generic run rewriter.  These do NOT close the boundary:
 -- `EfficientPrefixPatch.preserves_ec` still has no LIA inhabitant at the collapsed
 -- class, because the emitted segment's fuel certificate needs a `BigDigits` decode
--- test on exponentially large escape codes (notes/next-session.md, INTERIM SEAMS 2).
+-- test on exponentially large escape codes (the inverse-operation ceiling of the digit
+-- model; see the route-(A) stop-and-report in notes/next-session.md).
 #assert_axioms_clean
   RpnFreeze.matchRun_iff
   RpnFreeze.runPrefixQuoteFromStates_exact
@@ -427,9 +428,8 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_learns_provable_nonhalting_patterns_ofComputation
   lic_does_not_anticipate_halting_ofComputation
 
--- Construction/Witnesses/QuoteCodeOfMarket.lean — constructed rational quote codes
--- (Tranche 1 of the boundary-shoring plan): the first *discharge* of the
--- `RationalQuoteCode` reflection data.  `lic_expectations_of_probabilities_closed` is
+-- Construction/Witnesses/QuoteCodeOfMarket.lean — constructed rational quote codes:
+-- the first *discharge* of the `RationalQuoteCode` reflection data.  `lic_expectations_of_probabilities_closed` is
 -- `thm:epr` over the constructed LIA with no reflection hypotheses at all.
 #assert_axioms_clean
   arithmeticThresholdLUV_polyThresholdCodeSeq
@@ -439,7 +439,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_expectations_of_probabilities_closed
   lic_iterated_expectations_closed
 
--- Tranche 3: the deferred-day / self-trust reflection data constructed from the market
+-- The deferred-day / self-trust reflection data constructed from the market
 -- program.  `indicatorProductLUV_valuesAt` is the product law behind `thm:st`'s `A`.
 #assert_axioms_clean
   theoremFutureQuoteCode theoremDeferredExpectationQuoteCode
@@ -450,7 +450,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_self_trust_closed
   theoremIntervalQuoteCode lic_introspection_closed
 
--- Tranche 3 (ccee): the weighted conditional, indicator-source closed form.  The
+-- `ccee`: the weighted conditional, indicator-source closed form.  The
 -- deferred-weight quote code names the `w ∘ f` program (deferral costs nothing at
 -- emission), and `PCWorld.ValuesAt.eq` links the caller's relational source value to
 -- the payout.  Fully general caller sources are impossible in the token model (the
@@ -464,8 +464,8 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 -- Construction/Witnesses/ComputationDP.lean — unconditional-over-LIA capstones
 -- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above).
 -- The quotation family below discharges market/inductor/presentation/hworld; the
--- reflection data (`RationalQuoteCode`, `*_reflected`) remains a caller hypothesis until
--- the Tranche-1/3 `*OfMarket` constructors land (see next-session.md ACTIVE PLAN).
+-- reflection data (`RationalQuoteCode`, `*_reflected`) stays a caller hypothesis here,
+-- discharged where needed by `RationalQuoteCode.ofComputable` (QuoteCodeOfMarket.lean).
 #assert_axioms_clean
   lia_learns_halting_patterns_unconditional
   lic_expectations_of_probabilities_ofCode_unconditional

@@ -3598,16 +3598,12 @@ noncomputable def eventualConditioningFloorOfJointConsistency
   (eventualConditioningFloor_nonempty_of_jointConsistency
     P DP market ψ hψ hjoint).some
 
-/-! ### Endpoint status (interim, collapse flip)
+/-! ### Endpoint location
 
-The public operational-witness constructors and the criterion-level closure endpoints
-formerly here required `translation_ec` in the **token** model; after the single-class
-collapse the witness structures ask for symbol-metered (`EfficientlyComputable`)
-translation certificates, which await the RPN-level conditioning compiler (RPN-5 —
-in RPN, conjunction of sentence blocks is concatenation).  The interim paper-facing
-`thm:scon` endpoints live in `DigitConditioning.lean`, stated as digit-class
-no-exploitation transfer over `[IsLogicalInductor P DP]`.  Every economic and
-computability ingredient is unchanged above/below; only the packaging awaits RPN-5. -/
+The public operational-witness constructors and the paper-facing `thm:scon` endpoints
+live in `RpnConditioning.lean` (namespace `ConditioningCompile`), where the
+symbol-metered (`EfficientlyComputable`) translation certificates they require are
+proved.  This file carries the economic and floor content they consume. -/
 
 #print axioms conditionedTranslation_preserves_ec
 #print axioms eventualConditionedTranslation_preserves_ec

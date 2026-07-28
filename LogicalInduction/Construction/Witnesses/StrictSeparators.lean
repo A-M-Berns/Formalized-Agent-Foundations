@@ -4,7 +4,7 @@ import Mathlib.Data.List.Sections
 
 
 /-!
-# Tranche S (`M7-STRICT-SEPARATORS`): separators, and the obstruction that shaped them
+# `M7-STRICT-SEPARATORS`: separators, and the obstruction that shaped them
 
 This file has two halves.
 
@@ -53,7 +53,7 @@ free — and then argues that a universal semimeasure gives vanishing mass to th
 length-`n` separator prefixes.  Faithfully formalizing `thm:strict` therefore requires the
 boundary interface to carry a c.e. constraint theory plus a per-level *set* of consistent
 strings, with the market half summing over that set (coherence + pigeonhole), rather than
-a single nested prefix family.  See `notes/next-session.md`, Tranche S.
+a single nested prefix family.  See `notes/next-session.md` for the design record.
 -/
 
 namespace LogicalInduction

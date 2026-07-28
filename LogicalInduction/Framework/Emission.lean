@@ -7,7 +7,7 @@ Conclusion-free bounded-simulation compilers over `Nat.Partrec.Code`
 (`codeEvalBound`, `codeEvalnNat`, `BoundedEvalnCompiler`, dovetailing) and the
 clocked token-emission layer (`PrefixPatchCompile.ecClock` …
 `clockedTokens_polySegStream`), together with the token→digit inclusion
-`EfficientlyComputableTok.toTok₂`.  No market-limit, exploitation, or
+`EfficientlyComputableTok.toDigit`.  No market-limit, exploitation, or
 logical-inductor conclusions appear here; property files consume the interfaces.
 -/
 
@@ -906,24 +906,24 @@ lemma clockedTokens_polySegStream (lengthCode tokenCode : Nat.Partrec.Code)
 
 end PrefixPatchCompile
 
-/-! ### The digit-model inclusion (`dd:fuel`, Tranche 2 step 3 capstone) -/
+/-! ### The digit-model inclusion (`dd:fuel`) -/
 
 /-- **Every token-model certificate is a digit-model certificate.**  The old clocked
 token stream is a `PolySegStream` (`clockedTokens_polySegStream`), its digit stream is
 again one (`PolySegStream.digitizeStream`), and any `PolySegStream` realizes a
-`₂`-certificate whose undigitized decode is the same trader
-(`ecTok₂_of_rawSegStream` + `undigitize_digitize`).  This transfers every existing
+digit-model certificate whose undigitized decode is the same trader
+(`ecDigit_of_rawSegStream` + `undigitize_digitize`).  This transfers every existing
 `_ecTok` certificate into the wider digit-metered class without touching it.
 Paper node: `def:ec` -/
-theorem EfficientlyComputableTok.toTok₂ {Tr : Trader}
-    (h : EfficientlyComputableTok Tr) : EfficientlyComputableTok₂ Tr := by
+theorem EfficientlyComputableTok.toDigit {Tr : Trader}
+    (h : EfficientlyComputableTok Tr) : EfficientlyComputableDigit Tr := by
   obtain ⟨lc, tc, a, k, hTr⟩ := h
   have hdig := PolySegStream.digitizeStream
     (PrefixPatchCompile.clockedTokens_polySegStream lc tc a k)
-  refine ecTok₂_of_rawSegStream Tr hdig (fun n => ?_)
+  refine ecDigit_of_rawSegStream Tr hdig (fun n => ?_)
   rw [undigitize_digitize, ← hTr]
   rfl
 
-#print axioms EfficientlyComputableTok.toTok₂
+#print axioms EfficientlyComputableTok.toDigit
 
 end LogicalInduction

@@ -19,10 +19,10 @@ hosted here (see roadmap §3, Part I):
 * `def:lic`        → `IsLogicalInductor` — "no e.c. trader exploits the market." The
   hypothesis the entire property tail is conditioned on.
 
-Status (M1): the `def:tf` keystone is landed below (`EF`, `denote`, `cost`, `rank`, the
-`CommRing` on rank-≤`n` features, continuity **proved**, non-vacuity witnesses). The
-remaining Part-I criterion nodes (`ValuationFeature`, `TradingStrategy`, `Trader`,
-`Exploits`, `IsLogicalInductor`) are still TODO in this milestone.
+Contents: the `def:tf` keystone (`EF`, `denote`, `cost`, `rank`, the `CommRing` on
+rank-≤`n` features, continuity proved, non-vacuity witnesses) and the remaining Part-I
+criterion nodes (`ValuationFeature`, `TradingStrategy`, `Trader`, `Exploits`,
+`IsLogicalInductor`), with the `def:ec` metering layers (token, digit, symbol/RPN).
 -/
 import LogicalInduction.Framework.Foundations
 import Mathlib.Topology.Algebra.GroupWithZero
@@ -1490,7 +1490,7 @@ def EfficientlyComputableTok (Tr : Trader) : Prop :=
   ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
     clockedTraderTok lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
 
-/-! ### The digit layer (`dd:fuel` refinement — Tranche 2 of the boundary-shoring plan)
+/-! ### The digit layer (`dd:fuel` refinement)
 
 `EfficientlyComputableTok` above emits the flat token stream one token per program call,
 so each *token value* must be polynomial in the day — which excludes per-day rational
@@ -1498,7 +1498,7 @@ literals (`2^{-n}`) and deep/large sentence codes, though the paper's poly-*time
 admits them (the residual disclosed above). The digit layer removes that residual without
 touching `serialize`/`readM`/`cost`: every token is re-emitted as a **self-delimiting
 base-4 digit block** (digits `0..3`, terminator `4`), so a `B`-bit token becomes `O(B)`
-bounded-value digits. `EfficientlyComputableTok₂` meters the digitized stream; poly
+bounded-value digits. `EfficientlyComputableDigit` meters the digitized stream; poly
 digit-stream length ⇔ poly *bit* size — the paper's accounting. -/
 
 /-- Little-endian base-4 digits of `n` (empty for `0`). -/
@@ -1605,10 +1605,11 @@ in the digit model if one program emits the *digit-stream* length of the day-`n`
 and a second emits that stream one digit at a time, both under one polynomial clock.
 Since every digit is `≤ 4`, the emitted-value constraint of the token model disappears:
 poly digit-stream length is exactly poly *bit* size, the paper's `def:ec` accounting.
-This class strictly contains `EfficientlyComputableTok` (inclusion lemma: Tranche 2
-step 3) and additionally admits per-day large rational literals and deep sentence codes.
+This class strictly contains `EfficientlyComputableTok` (inclusion lemma:
+`EfficientlyComputableTok.toDigit`) and additionally admits per-day large rational
+literals and deep sentence codes.
 Paper node: `def:ec` -/
-def EfficientlyComputableTok₂ (Tr : Trader) : Prop :=
+def EfficientlyComputableDigit (Tr : Trader) : Prop :=
   ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
     clockedTraderDigit lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
 
