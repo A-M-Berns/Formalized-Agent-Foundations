@@ -33,9 +33,10 @@ streaming transducer `rpnFrameRun`/`rpnFrameOutput`, master agreement
 `rpnFrameOutput_polySegStream`, and budget exactness
 `rpnTradeCountAt_eq_frameTradeCount` — are proved here, as is the gated two-leg join
 (`rpnSafeSeparatedFrameOutput`, `strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades`).
-The gated class-preservation endpoint `conditionedTranslation_preserves_ecRpn` is
-assembled at the end; the zero-aware (eventual) mirror is the one remaining open item
-(`TODO(blueprint:thm:scon)`).
+Both class-preservation endpoints are assembled at the end:
+`conditionedTranslation_preserves_ecRpn` (gated) and
+`eventualConditionedTranslation_preserves_ecRpn` (finite-zero, launch-gated), the
+latter through the zero-aware instance of the emitter-generic transducer.
 
 Paper node: `thm:scon` (symbol-metered conditioning translation).
 -/
@@ -1257,37 +1258,25 @@ lemma rpnGuardedConditionRun_polySegStream {s blocks : ℕ → List ℕ}
 
 #print axioms rpnGuardedConditionRun_polySegStream
 
-/-! ## Endpoints (open)
+/-! ## Road map of the remaining sections
 
-The remaining distance to the class-preservation endpoints.  Whole-stream
-contraction exactness (`unRpn_rpnConditionRun`) and guard-honesty transfer
+Whole-stream contraction exactness (`unRpn_rpnConditionRun_of` and its price /
+zero-aware instances), guard-honesty transfer
 (`strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay`, packaged as
-`strategyOfTokens_rpnGuardedConditionTokens_trades`) are **proved below**; open:
-
-The frame pass mirror is **proved below** in full — correctness (`rpnFrameRun` /
-`rpnFrameOutput`, master agreement `frameAgree_unRpn_rpnFrameOutput`, strategy-level
-corollary `strategyOfTokens_unRpn_rpnFrameOutput_trades`), its `PolySegStream`
-certificate (`rpnFrameOutput_polySegStream`), the trade-run exit scan
-(`rpnTradeCountScan`) feeding `frameBudget`, and that count's **exactness** against
-the contraction (`rpnTradeCountAt_eq_frameTradeCount`).  Still open:
-
-The **two-leg join** under the structural-acceptance gate is also proved below:
-the symbol-side test `rpnStructurallyAccepts` with its poly-fueled scan
-`rpnDepthScan` and gate agreement `rpnStructurallyAccepts_agree`, the gated join
-`rpnSafeSeparatedFrameOutput` with certificate
-`rpnSafeSeparatedFrameOutput_polySegStream`, and the join agreement
-`strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades`.  The append wrinkle
-(`unRpn (A ++ B) ≠ unRpn A ++ unRpn B` when `A` is poisoned) is handled by the
-prefix form `FrameContract` of the frame agreement
+`strategyOfTokens_rpnGuardedConditionTokens_trades`), the frame pass (`rpnFrameRun` /
+`rpnFrameOutput`, master agreement `frameAgree_unRpn_rpnFrameOutput`, certificate
+`rpnFrameOutput_polySegStream`, exit scan `rpnTradeCountScan` and its exactness
+`rpnTradeCountAt_eq_frameTradeCount`), and the **two-leg join** under the
+structural-acceptance gate (`rpnStructurallyAccepts` with `rpnDepthScan` and
+`rpnStructurallyAccepts_agree`, the gated join `rpnSafeSeparatedFrameOutput` with
+`rpnSafeSeparatedFrameOutput_polySegStream` and
+`strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades`) all follow below.  The
+append wrinkle (`unRpn (A ++ B) ≠ unRpn A ++ unRpn B` when `A` is poisoned) is handled
+by the prefix form `FrameContract` of the frame agreement
 (`frameContract_rpnFrameOutput`, available exactly when the source returns the run
 automaton to base mode — which is what the gate tests) plus the observation that a
 *readable* source excludes both legs' poison branches, since a poisoned leg's token
-image would fail to deserialize.  Still open:
-
-1. The zero-aware variants for the eventual translation (mirror of
-   `guardedZeroAwareConditionTokens`): the day-emission case of the master
-   commutation splits on `D ∈ zeroDays` with the short `[D, 1, encode 1, 8]`
-   expansion, everything else identical. -/
+image would fail to deserialize. -/
 
 /-! ## Parse localization
 
@@ -6177,6 +6166,232 @@ theorem strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
 
 #print axioms strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
 
+/-! ## The zero-aware price pass (for the eventual translation)
+
+The eventual translation prices a *finite* set of days at the constant `1` instead of
+the conditional-price body.  At symbol level that is a second emitter for the same
+transducer, so the master commutation and the emission certificate are obtained by
+instantiating their emitter-generic forms. -/
+
+section ZeroAwareTokenRunEq
+
+variable (zeroDays : Finset ℕ) (ψc : ℕ → ℕ) (ε : ℚ)
+
+lemma zeroAwareConditionPriceTokenRun_single (t : ℕ)
+    (h0 : t ≠ 0) (h1 : t ≠ 1) (h6 : t ≠ 6) (h7 : t ≠ 7) (L : List ℕ) :
+    (zeroAwareConditionPriceTokenRun zeroDays ψc ε (0, 0) (t :: L)).2 =
+      t :: (zeroAwareConditionPriceTokenRun zeroDays ψc ε (0, 0) L).2 := by
+  simp [zeroAwareConditionPriceTokenRun, zeroAwareConditionPriceTokenEmit,
+    EF.freezeTokenNext, h0, h1, h6, h7]
+
+lemma zeroAwareConditionPriceTokenRun_one (t : ℕ) :
+    (zeroAwareConditionPriceTokenRun zeroDays ψc ε (0, 0) [t]).2 = [t] := by
+  simp [zeroAwareConditionPriceTokenRun, zeroAwareConditionPriceTokenEmit]
+
+lemma zeroAwareConditionPriceTokenRun_payload (t c : ℕ) (ht : t = 1 ∨ t = 7)
+    (L : List ℕ) :
+    (zeroAwareConditionPriceTokenRun zeroDays ψc ε (0, 0) (t :: c :: L)).2 =
+      t :: c :: (zeroAwareConditionPriceTokenRun zeroDays ψc ε (0, 0) L).2 := by
+  rcases ht with rfl | rfl <;>
+    simp [zeroAwareConditionPriceTokenRun, zeroAwareConditionPriceTokenEmit,
+      EF.freezeTokenNext]
+
+lemma zeroAwareConditionPriceTokenRun_price (fc d : ℕ) (L : List ℕ) :
+    (zeroAwareConditionPriceTokenRun zeroDays ψc ε (0, 0)
+        (0 :: fc :: d :: L)).2 =
+      0 :: fc :: d ::
+        ((if d ∈ zeroDays then [1, Encodable.encode (1 : ℚ), 8]
+          else rawConditionalPriceTokens fc (ψc d) d ε ++ [8]) ++
+          (zeroAwareConditionPriceTokenRun zeroDays ψc ε (0, 0) L).2) := by
+  by_cases hd : d ∈ zeroDays <;>
+    simp [zeroAwareConditionPriceTokenRun, zeroAwareConditionPriceTokenEmit,
+      EF.freezeTokenNext, hd]
+
+lemma zeroAwareConditionPriceTokenRun_price_pair (fc : ℕ) :
+    (zeroAwareConditionPriceTokenRun zeroDays ψc ε (0, 0) [0, fc]).2 = [0, fc] := by
+  simp [zeroAwareConditionPriceTokenRun, zeroAwareConditionPriceTokenEmit,
+    EF.freezeTokenNext]
+
+lemma zeroAwareConditionPriceTokenRun_trade (fc : ℕ) (L : List ℕ) :
+    (zeroAwareConditionPriceTokenRun zeroDays ψc ε (0, 0) (6 :: fc :: L)).2 =
+      6 :: fc :: (zeroAwareConditionPriceTokenRun zeroDays ψc ε (0, 0) L).2 := by
+  simp [zeroAwareConditionPriceTokenRun, zeroAwareConditionPriceTokenEmit,
+    EF.freezeTokenNext]
+
+end ZeroAwareTokenRunEq
+
+/-- The zero-aware price emitter: a price day in `zeroDays` binds the constant `1`
+instead of the conditional-price body. -/
+def rpnZeroAwareEmit (zeroDays : Finset ℕ) (blocks : ℕ → List ℕ) (ε : ℚ) :
+    List ℕ → ℕ → List ℕ :=
+  fun buf D =>
+    if D ∈ zeroDays then [D, 1, Encodable.encode (1 : ℚ), 8]
+    else rpnConditionEmit (blocks D) ε buf D
+
+/-- The zero-day chunk contracts to the token-model zero-day emission. -/
+lemma unRpn_zero_rewrite_chunk {b : List ℕ} {φ : Sentence}
+    (hb : parseRpn b.length b = some (φ, [])) (D : ℕ) (rest : List ℕ) :
+    unRpn (0 :: b ++ [D, 1, Encodable.encode (1 : ℚ), 8] ++ rest) =
+      0 :: Encodable.encode φ :: D ::
+        (1 :: Encodable.encode (1 : ℚ) :: 8 :: unRpn rest) := by
+  have hshape : 0 :: b ++ [D, 1, Encodable.encode (1 : ℚ), 8] ++ rest =
+      0 :: (b ++ D :: 1 :: Encodable.encode (1 : ℚ) :: 8 :: rest) := by
+    simp
+  rw [hshape, unRpn_price_chunk_block hb,
+    unRpn_payload_chunk 1 _ (Or.inl rfl), unRpn_single_chunk 8 (by norm_num)]
+
+/-- **Whole-stream contraction exactness for the zero-aware price pass.**
+Paper node: `thm:scon` -/
+theorem unRpn_rpnZeroAwareConditionRun (zeroDays : Finset ℕ) (blocks : ℕ → List ℕ)
+    (ψ : ℕ → Sentence)
+    (hblocks : ∀ D, parseRpn (blocks D).length (blocks D) = some (ψ D, []))
+    (ε : ℚ) : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
+    unRpn ((rpnConditionRun (rpnZeroAwareEmit zeroDays blocks ε)
+        (rcPack 0 0 0, []) ts).2) =
+      (zeroAwareConditionPriceTokenRun zeroDays (fun D => Encodable.encode (ψ D)) ε
+        (0, 0) (unRpn ts)).2 :=
+  unRpn_rpnConditionRun_of (rpnZeroAwareEmit zeroDays blocks ε)
+    (fun L => (zeroAwareConditionPriceTokenRun zeroDays
+      (fun D => Encodable.encode (ψ D)) ε (0, 0) L).2)
+    (fun fc d => if d ∈ zeroDays then [1, Encodable.encode (1 : ℚ), 8]
+      else rawConditionalPriceTokens fc (Encodable.encode (ψ d)) d ε ++ [8])
+    rfl
+    (fun t L h0 h1 h6 h7 =>
+      zeroAwareConditionPriceTokenRun_single zeroDays _ ε t h0 h1 h6 h7 L)
+    (fun t => zeroAwareConditionPriceTokenRun_one zeroDays _ ε t)
+    (fun t c L ht => zeroAwareConditionPriceTokenRun_payload zeroDays _ ε t c ht L)
+    (fun fc d L => by
+      simp only []
+      rw [zeroAwareConditionPriceTokenRun_price])
+    (fun fc => zeroAwareConditionPriceTokenRun_price_pair zeroDays _ ε fc)
+    (fun fc L => zeroAwareConditionPriceTokenRun_trade zeroDays _ ε fc L)
+    (fun b φ hb D rest => by
+      simp only []
+      rw [rpnZeroAwareEmit]
+      by_cases hD : D ∈ zeroDays
+      · rw [if_pos hD, unRpn_zero_rewrite_chunk hb D rest, if_pos hD]
+        simp
+      · rw [if_neg hD, unRpn_price_rewrite_chunk hb (hblocks D) D ε rest, if_neg hD]
+        simp [List.append_assoc])
+
+/-- **The zero-aware guarded price-pass strategy-level equality.**
+Paper node: `thm:scon` -/
+theorem strategyOfTokens_rpnGuardedZeroAwareConditionTokens_trades
+    (zeroDays : Finset ℕ) (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
+    (hblocks : ∀ D, parseRpn (blocks D).length (blocks D) = some (ψ D, []))
+    (ε : ℚ) (n : ℕ) (ts : List ℕ) :
+    (strategyOfTokens n
+        (unRpn (rpnGuardedConditionTokens (rpnZeroAwareEmit zeroDays blocks ε)
+          n ts))).trades =
+      (strategyOfTokens n (unRpn ts)).trades.map fun trade =>
+        (trade.1.retainedConditionPricesExceptZero zeroDays ψ ε, trade.2) := by
+  rw [rpnGuardedConditionTokens]
+  split_ifs with hguard
+  · rw [unRpn_rpnZeroAwareConditionRun zeroDays blocks ψ hblocks ε ts.length ts
+      le_rfl]
+    exact strategyOfTokens_zeroAwareConditionPriceTokenRun_trades zeroDays ψ ε n
+      (unRpn ts)
+  · push_neg at hguard
+    obtain ⟨j, hj, hm, hday⟩ := hguard
+    rw [unRpn_nil, strategyOfTokens_nil_trades,
+      strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay n ts j hj hm hday]
+    rfl
+
+/-- **The zero-aware price-pass certificate.**
+Paper node: `thm:scon` -/
+lemma rpnGuardedZeroAwareConditionRun_polySegStream (zeroDays : Finset ℕ)
+    {s blocks : ℕ → List ℕ} (h : PolySegStream s) (hb : PolySegStream blocks)
+    (ε : ℚ) :
+    PolySegStream (fun n => digitize
+      (rpnGuardedConditionTokens (rpnZeroAwareEmit zeroDays blocks ε) n
+        (undigitize (s n)))) := by
+  obtain ⟨⟨cc, hcnt⟩, hbig⟩ := h.undigitizeTokens
+  obtain ⟨cs, hscan⟩ := rpnCondScan h
+  obtain ⟨cd, hclamp⟩ := h.dayClampTokens
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
+  have hlenZ := PolyFueled.right.comp (PolyFueled.right.comp hscan)
+  refine rpnGuardedConditionRun_polySegStream_of h _ ?_
+  have hD := PolySegStream.block hclamp
+  have hA : PolySegStream (fun _ : ℕ => digitize
+      [1, Encodable.encode (-1 : ℚ), 1, Encodable.encode (-1 : ℚ),
+        1, Encodable.encode (1 : ℚ), 3, 1, Encodable.encode (-1 : ℚ), 0, 3]) :=
+    (PolySegStream.ofTokenStream
+      (((((((((((PolyTokenStream.const 1).append
+        (PolyTokenStream.const (Encodable.encode (-1 : ℚ)))).append
+        (PolyTokenStream.const 1)).append
+        (PolyTokenStream.const (Encodable.encode (-1 : ℚ)))).append
+        (PolyTokenStream.const 1)).append
+        (PolyTokenStream.const (Encodable.encode (1 : ℚ)))).append
+        (PolyTokenStream.const 3)).append
+        (PolyTokenStream.const 1)).append
+        (PolyTokenStream.const (Encodable.encode (-1 : ℚ)))).append
+        (PolyTokenStream.const 0)).append
+        (PolyTokenStream.const 3))).digitizeStream.of_eq fun n => by
+      simp
+  have hB : PolySegStream (fun _ : ℕ => digitize
+      [1, Encodable.encode (1 / ε : ℚ), 1, Encodable.encode (1 / ε : ℚ), 0]) :=
+    (PolySegStream.ofTokenStream
+      (((((PolyTokenStream.const 1).append
+        (PolyTokenStream.const (Encodable.encode (1 / ε : ℚ)))).append
+        (PolyTokenStream.const 1)).append
+        (PolyTokenStream.const (Encodable.encode (1 / ε : ℚ)))).append
+        (PolyTokenStream.const 0))).digitizeStream.of_eq fun n => by
+      simp
+  have hC : PolySegStream (fun _ : ℕ => digitize [3, 5, 3, 3, 3, 4, 3, 8]) :=
+    (PolySegStream.ofTokenStream
+      ((((((((PolyTokenStream.const 3).append
+        (PolyTokenStream.const 5)).append
+        (PolyTokenStream.const 3)).append
+        (PolyTokenStream.const 3)).append
+        (PolyTokenStream.const 3)).append
+        (PolyTokenStream.const 4)).append
+        (PolyTokenStream.const 3)).append
+        (PolyTokenStream.const 8))).digitizeStream.of_eq fun n => by
+      simp
+  have hidxE : ∃ c, PolyFueled c (fun w : ℕ => Nat.pair w.unpair.1.unpair.1
+      (w.unpair.1.unpair.2 - rcLen (rpnCondControlAt tf
+        w.unpair.1.unpair.1 w.unpair.1.unpair.2) + w.unpair.2)) := by
+    obtain ⟨cad', had'⟩ := addc_polyFueled
+    have hz : PolyFueled Code.left (fun m : ℕ => m.unpair.1) := PolyFueled.left
+    have hn2 := PolyFueled.left.comp hz
+    have hj2 := PolyFueled.right.comp hz
+    have hlenW := hlenZ.comp hz
+    have hsub := subc_polyFueled.comp (hj2.pair hlenW)
+    have hoff := had'.comp (hsub.pair PolyFueled.right)
+    exact ⟨_, (hn2.pair hoff).of_eq fun w => by
+      simp only [Nat.unpair_pair, rcLen]⟩
+  obtain ⟨cidx, hidx⟩ := hidxE
+  have hwin := (hbig.comp hidx).blockSeg.concatVar hlenZ
+  have hblkD := (hb.comp hclamp).digitizeStream
+  have hlong := ((((((((hD.append hA).append hwin).append hblkD).append
+    hD).append hB).append hblkD).append hD).append hC)
+  -- The zero-day branch: `[D, 1, enc 1, 8]` at the clamped day.
+  have hzero : PolySegStream (fun z : ℕ => digitize
+      [min ((undigitize (s z.unpair.1)).getD z.unpair.2 0) (z.unpair.1 + 1),
+        1, Encodable.encode (1 : ℚ), 8]) :=
+    (PolySegStream.ofTokenStream
+      ((((PolyTokenStream.polyTok hclamp).append (PolyTokenStream.const 1)).append
+        (PolyTokenStream.const (Encodable.encode (1 : ℚ)))).append
+        (PolyTokenStream.const 8))).digitizeStream
+  obtain ⟨cmem, hmem⟩ := finsetMembership_polyFueled hclamp zeroDays
+  refine (hzero.ifZero hlong
+    ((ifzSel_polyFueled.comp (((PolyFueled.const 1).pair
+      (PolyFueled.const 0)).pair hmem)).of_eq fun z => by
+        simp only [Nat.unpair_pair, ifzSelFn]
+        rfl)).of_eq fun z => ?_
+  rw [rpnZeroAwareEmit]
+  by_cases hz : min ((undigitize (s z.unpair.1)).getD z.unpair.2 0)
+      (z.unpair.1 + 1) ∈ zeroDays
+  · rw [if_pos (by simpa using hz), if_pos hz]
+  · rw [if_neg (by simpa using hz), if_neg hz]
+    rw [digitize_rpnConditionEmit, digitize_rpnCondWindow]
+    simp only [Nat.unpair_pair, htf, rcLen, List.append_assoc]
+
+
+#print axioms unRpn_rpnZeroAwareConditionRun
+#print axioms rpnGuardedZeroAwareConditionRun_polySegStream
+
 /-! ### The class-preservation endpoints
 
 The assembly: the source certificate gives the clocked digit stream of the RPN-expanded
@@ -6326,21 +6541,169 @@ theorem conditionedTranslation_preserves_ecRpn
 
 #print axioms conditionedTranslation_preserves_ecRpn
 
-/-! ### Endpoint statement (open, recorded — not sorried)
-
-The remaining endpoint is stated here as a comment rather than a sorried theorem so the
-mainline keeps its strict no-`sorryAx` guarantee for public statements.
-
-```
+/-- **The eventual (finite-zero, launch-gated) conditioning translation preserves
+symbol-metered efficient computability** (`def:ec` → `def:ec`).
+Paper node: `thm:scon` -/
 theorem eventualConditionedTranslation_preserves_ecRpn
     {P : History} {ψ : ℕ → Sentence}
     (F : EventualConditioningFloor P ψ) (hψ : RpnSentenceCodes ψ)
     (T : Trader) (hT : EfficientlyComputable T) :
-    EfficientlyComputable (T.eventualConditionedTranslation F)
--- TODO(blueprint:thm:scon): zero-aware mirror of the guarded rewrite + frame pass +
--- launch gate, as in `eventualConditionedTranslation_preserves_ec₂`.
-```
--/
+    EfficientlyComputable (T.eventualConditionedTranslation F) := by
+  obtain ⟨lengthCode, tokenCode, a, k, hcert⟩ := hT
+  obtain ⟨blocks, hblocksPoly, hblocksParse⟩ := hψ
+  let source : ℕ → List ℕ := fun n =>
+    clockedTokens lengthCode tokenCode (PrefixPatchCompile.ecClock a k n) n
+  have hsource : PolySegStream source :=
+    PrefixPatchCompile.clockedTokens_polySegStream lengthCode tokenCode a k
+  let priced : ℕ → List ℕ := fun n =>
+    digitize (rpnGuardedConditionTokens
+      (rpnZeroAwareEmit F.zeroDays blocks F.epsilon) n (undigitize (source n)))
+  have hpriced : PolySegStream priced :=
+    rpnGuardedZeroAwareConditionRun_polySegStream F.zeroDays hsource hblocksPoly
+      F.epsilon
+  set tfP : ℕ → ℕ := fun w => (undigitize (priced w.unpair.1)).getD w.unpair.2 0
+    with htfP
+  set lenP : ℕ → ℕ := fun m => (undigitize (priced m)).length with hlenP
+  obtain ⟨ctc, htc⟩ := rpnTradeCountScan hpriced
+  obtain ⟨⟨ccnt, hcnt⟩, -⟩ := hpriced.undigitizeTokens
+  have hcountF : PolyFueled _ (fun n => rpnTradeCountAt tfP n (lenP n)) :=
+    (htc.comp (PolyFueled.id.pair hcnt)).of_eq fun n => by
+      simp only [Nat.unpair_pair]
+      rfl
+  obtain ⟨⟨cb, hbF⟩, ⟨ci, hiF⟩⟩ := frameBudgetCodes_polyFueled PolyFueled.id hcountF
+  let framed : ℕ → List ℕ := fun n =>
+    digitize (rpnSafeSeparatedFrameOutput tfP lenP (blocks n) F.epsilon n
+      (frameBudgetCode n (rpnTradeCountAt tfP n (lenP n)))
+      (frameInverseBudgetCode n (rpnTradeCountAt tfP n (lenP n)))
+      (undigitize (priced n)))
+  have hframed : PolySegStream framed :=
+    rpnSafeSeparatedFrameOutput_polySegStream hpriced hblocksPoly hbF hiF F.epsilon
+  let output : ℕ → List ℕ := fun n => if F.cutoff ≤ n then framed n else []
+  have hemptyStream : PolySegStream (fun _ : ℕ => ([] : List ℕ)) :=
+    PolySegStream.ofTokenStream PolyTokenStream.nil
+  have hlaunch : PolyFueled _ (fun n => n + 1 - F.cutoff) :=
+    (subc_polyFueled.comp (PolyFueled.id.succ_comp.pair
+      (PolyFueled.const F.cutoff))).of_eq fun n => by simp only [Nat.unpair_pair]
+  have houtput : PolySegStream output := by
+    refine (hemptyStream.ifZero hframed hlaunch).of_eq fun n => ?_
+    show _ = if F.cutoff ≤ n then framed n else []
+    by_cases hn : F.cutoff ≤ n
+    · rw [if_pos hn, if_neg (by omega)]
+    · rw [if_neg hn, if_pos (by omega)]
+  apply ec_of_rawSegStream (T.eventualConditionedTranslation F) houtput
+  intro n
+  by_cases hn : n < F.cutoff
+  · have hout : output n = [] := by
+      show (if F.cutoff ≤ n then framed n else []) = []
+      rw [if_neg (by omega)]
+    rw [hout, T.eventualConditionedTranslation_strat_of_lt F hn]
+    simp [strategyOfTokens, deserializeTrades, unRpn, unRpnTokens,
+      EF.streamReadFrom, EF.streamInitial, Trader.zero, undigitize]
+  · have hcn : F.cutoff ≤ n := Nat.le_of_not_gt hn
+    have hout : output n = framed n := by
+      show (if F.cutoff ≤ n then framed n else []) = framed n
+      rw [if_pos hcn]
+    rw [hout]
+    set ts : List ℕ := undigitize (priced n) with hts
+    set tokP : ℕ → ℕ := fun w => (unRpn (undigitize (priced w.unpair.1))).getD
+      w.unpair.2 0 with htokP
+    set lenT : ℕ → ℕ := fun m => (unRpn (undigitize (priced m))).length with hlenT
+    have hvts : vpre tfP n (lenP n) = ts := by
+      rw [vpre, hts, htfP, hlenP]
+      simp only [Nat.unpair_pair]
+      exact (list_eq_rangeMap_getD _).symm
+    have hvL : vpre tokP n (lenT n) = unRpn ts := by
+      rw [vpre, hts, htokP, hlenT]
+      simp only [Nat.unpair_pair]
+      exact (list_eq_rangeMap_getD _).symm
+    set q : ℚ := frameBudget n (rpnTradeCountAt tfP n (lenP n)) with hq
+    have hundig : undigitize (framed n) =
+        rpnSafeSeparatedFrameOutput tfP lenP (blocks n) F.epsilon n
+          (Encodable.encode q) (Encodable.encode q⁻¹) ts := by
+      show undigitize (digitize _) = _
+      rw [undigitize_digitize, frameBudgetCode_exact, frameInverseBudgetCode_exact]
+    rw [hundig]
+    have hjoin := strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
+      tfP tokP lenP lenT (blocks n) (hblocksParse n) F.epsilon q n ts hvts hvL
+    refine strategy_ext_trades ?_
+    rw [hjoin]
+    have horig : strategyOfTokens n (unRpn (undigitize (source n))) = T.strat n :=
+      congrFun (congrArg Trader.strat hcert) n
+    have hprice : (strategyOfTokens n (unRpn ts)).trades =
+        (T.strat n).trades.map fun trade =>
+          (trade.1.retainedConditionPricesExceptZero F.zeroDays ψ F.epsilon,
+            trade.2) := by
+      have hraw : ts = rpnGuardedConditionTokens
+          (rpnZeroAwareEmit F.zeroDays blocks F.epsilon) n
+          (undigitize (source n)) := by
+        rw [hts]
+        exact undigitize_digitize _
+      rw [hraw, strategyOfTokens_rpnGuardedZeroAwareConditionTokens_trades
+        F.zeroDays blocks ψ hblocksParse F.epsilon n (undigitize (source n)), horig]
+    have hframes := strategyOfTokens_safeSeparatedFrameTokenOutput_trades
+      tokP lenT (ψ n) F.epsilon q n (unRpn ts) hvL.symm
+    have htarget := T.eventualConditionedTranslation_strat_of_le F hcn
+    rw [hframes, htarget]
+    by_cases hempty : (T.strat n).trades = []
+    · rw [hprice, hempty]
+      simp [Strategy.separatedExceptZeroConditionalContract]
+      exact hempty
+    · have hpricedNe : (strategyOfTokens n (unRpn ts)).trades ≠ [] := by
+        rw [hprice]
+        simpa using hempty
+      have hdecodePriced :=
+        deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
+          n (unRpn ts) hpricedNe
+      have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
+        (unRpn ts) (strategyOfTokens n (unRpn ts)).trades hdecodePriced
+      have hreadyTokens :
+          EF.streamReadFrom ((List.range (lenT n)).map fun i => tokP (Nat.pair n i))
+              (some EF.streamInitial) =
+            some ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) := by
+        rw [show ((List.range (lenT n)).map fun i => tokP (Nat.pair n i)) =
+          unRpn ts from hvL]
+        exact hreadyPriced
+      have hcountTok : frameTradeCount tokP lenT n = (T.strat n).trades.length := by
+        calc
+          frameTradeCount tokP lenT n =
+              (strategyOfTokens n (unRpn ts)).trades.length :=
+            frameTradeCount_eq_length_of_read tokP lenT n
+              ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) hreadyTokens
+          _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
+      have hnotUnread : ¬ Unreadable (unRpn ts) := by
+        intro hU
+        rw [hU.deserializeTrades_eq_none] at hdecodePriced
+        simp at hdecodePriced
+      have hcountSym :
+          rpnTradeCountAt tfP n (lenP n) = frameTradeCount tokP lenT n := by
+        have hlenEq : ts.length = lenP n := rfl
+        have := rpnTradeCountAt_eq_frameTradeCount tfP tokP lenT n ts
+          (by rw [hlenEq]; exact hvts) hvL
+        rcases this with h | hU
+        · rw [← h, hlenEq]
+        · exact absurd hU hnotUnread
+      have hpos : 0 < (T.strat n).trades.length := List.length_pos_iff.mpr hempty
+      rw [hprice, hq, hcountSym, hcountTok,
+        frameBudget_eq n (T.strat n).trades.length hpos]
+      simp only [List.map_map]
+      change
+        ((T.strat n).trades.map fun p =>
+          frameLeg false (ψ n) F.epsilon
+            (Strategy.localConditioningBudget (conditioningBudget n)
+              (T.strat n).trades.length) n
+            (p.1.retainedConditionPricesExceptZero F.zeroDays ψ F.epsilon, p.2)) ++
+          ((T.strat n).trades.map fun p =>
+            frameLeg true (ψ n) F.epsilon
+              (Strategy.localConditioningBudget (conditioningBudget n)
+                (T.strat n).trades.length) n
+              (p.1.retainedConditionPricesExceptZero F.zeroDays ψ F.epsilon, p.2)) =
+          ((T.strat n).separatedExceptZeroConditionalContract
+            F.zeroDays ψ F.epsilon (conditioningBudget n)).trades
+      simp only [frameLeg_exceptZero_eq_locallyGatedFirstLeg,
+        frameLeg_exceptZero_eq_locallyGatedSecondLeg]
+      rfl
+
+#print axioms eventualConditionedTranslation_preserves_ecRpn
 
 end RpnConditioning
 
