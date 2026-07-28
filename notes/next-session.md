@@ -37,7 +37,7 @@ landed in **collapsed single-class form** (consolidation directive).
   `Tok₂` as constructor inputs, `..._preserves_ec₂` digit compilers) or Mathlib
   arity suffixes.
 
-## INTERIM SEAMS (disclosed; seam 1 closed, seam 2 BLOCKED — see below)
+## INTERIM SEAMS (disclosed; seam 1 closed, seam 2 RESTING at route (B) — see below)
 
 1. **Conditioning (`thm:scon`)** — **CLOSED 2026-07-27 (RPN-5).**  Both symbol-metered
    translation certificates are proved in `Witnesses/RpnConditioning.lean`
@@ -59,8 +59,9 @@ landed in **collapsed single-class form** (consolidation directive).
    parallel layer survives.  The digit compilers (`..._preserves_ec₂`) remain as the
    internal Tok₂ route.
 
-2. **Finite perturbations (`thm:ifp`/`app:ifp`)** — **OPEN, and now precisely mapped:
-   BLOCKED ON A MISSING `BigDigits` PRIMITIVE (2026-07-28).**
+2. **Finite perturbations (`thm:ifp`/`app:ifp`)** — **RESTING at route (B), permanently
+   disclosed (2026-07-28; blocked primitive proven structurally unbuildable — see the
+   route-(A) stop-and-report and RESTING STATE below).**
    `EfficientPrefixPatch.preserves_ec` is the collapsed class;
    `lic_iff_of_finitePerturbation` is unchanged and fully proved (patch structures were
    always explicit hypotheses).  The LIA inhabitant remains reduced to
@@ -203,6 +204,26 @@ landed in **collapsed single-class form** (consolidation directive).
      Canonicalization only shrinks codes, so morally the class is unchanged — but *proving*
      the two versions of `def:ec` agree needs exactly the blocked primitive, so adopting
      (C) is a disclosed modeling decision about `def:ec` itself, not a theorem.
+
+   ### RESTING STATE: route (B) (2026-07-28)
+
+   Route (A) proven structurally impossible (above); (C) rejected — **polarity argument**:
+   `EfficientlyComputable` occurs *negatively* in `noExploit`, so narrowing `def:ec`
+   silently weakens every `IsLogicalInductor` conclusion repo-wide, which is exactly the
+   move the audit exists to catch.  (D) (a named `BigDigits.sqrt` axiom) not adopted — it
+   would break the mainline's axiom-clean invariant for one witness instance.  So the seam
+   rests at **(B)**: `thm:ifp` fully proved, hypothesis-carrying; token-level content
+   `liaFreezeBefore_preserves_ecTok` proved; no LIA inhabitant of `EfficientPrefixPatch`
+   at the collapsed class.  **Severity, for the record: this ceiling bit exactly once in
+   the entire ~85k-line program** — every paper construction (all fifteen boundaries, the
+   universal semimeasure, the universal prefix machine, Kučera–Demuth) landed inside the
+   fuel class, which is now an empirical fact, not a hope.  Directionality of the gap:
+   our class ⊆ the paper's poly class, so every constructed exploiting trader is a
+   legitimate paper trader (property conclusions paper-valid as-is); the only weakening
+   is in the criterion-satisfaction claim (`noExploit` quantifies over fewer traders —
+   a hypothetical "sqrt trader" whose digit extraction needs big-value inverse arithmetic
+   is not proven defeated).  Audit item carried forward: `EfficientPrefixPatch` is
+   inhabited only degenerately (`cutoff = 0`).
 
 ## RPN-5 — symbol-level translation compilers — **COMPLETE (2026-07-27)**
 
@@ -436,7 +457,20 @@ TM class; `Turing.PartrecToTM2` is unbounded).  Watch item (checked 2026-07-26):
 but still no resource bounds/complexity classes — if it grows a poly-time class, the
 missing bridge is an `evaln`-fuel ↔ TM-step polynomial simulation theorem. Per CLAUDE.md rule 6 this is a
 stop-and-report boundary: keep the model-card calibrations (`PolyFueled.primrec`,
-`not_polyFueled_two_pow`, closure ops) and one disclosure sentence. Likewise the last
+`not_polyFueled_two_pow`, closure ops) and one disclosure sentence.
+
+**(c) — added 2026-07-28 — the inverse-operation ceiling is the same disclosure at
+root.**  The route-(A) stop-and-report (seam 2, above) proved the fuel calculus has no
+big intermediates at all, so `BigDigits` closes exactly under poly-carry digit
+recurrences: forward ops yes, inverses (`sqrt`, `unpair`, big-divisor `div`) provably
+no.  This is an artifact of *interpreter-clock metering specifically*: on a TM with
+binary tapes, `sqrt` is trivially poly-time (uniform `TC⁰ ⊆ L`, Hesse–Allender–
+Barrington).  Consequence for the watch item: if CSlib (or anyone) ships a usable
+poly-time TM class, the single `evaln`-fuel ↔ TM-step polynomial simulation theorem
+would not just retire disclosure (a) — it would dissolve the inverse-op ceiling and
+un-block the `EfficientPrefixPatch` LIA inhabitant too.  One bridge theorem, two
+disclosures closed.  Until then, the only in-model route is the HAB CRR/iterated-
+product machinery (research-scale, not a tranche). Likewise the last
 quotation type-(c) — code-indexed atoms *mean* their arithmetic instances via
 `theoremDP`'s enter/refute clauses — is closed by an intended-semantics bridge lemma
 (Σ₁-soundness ⟹ truth-in-ℕ for entering atoms) if one is missing, **not** by replacing

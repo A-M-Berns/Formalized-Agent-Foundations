@@ -114,9 +114,9 @@ Paths abbreviated as `Properties/...` or `Framework/Expectations.lean` in the ta
 | 15 | `M7-COMP-SYNTAX` | **constructed** | `representedSemidecidableClaimsOfComputation`, `representedDecidableClaimsOfComputation`, `inconsistentTheoryClaimsOfComputation`, and the six `..._ofComputation` consumers (`Construction/Witnesses/ComputationSyntax.lean`) |
 
 The active construction target is recorded in `notes/next-session.md`; this inventory reports
-what is concrete today. Constructing all fifteen would additionally require,
-among other things, the remaining operational inputs recorded per boundary above (the
-universal prefix machine's exact stage-table code is no longer among them: it is
+what is concrete today. All fifteen boundaries are constructed (the one partial row,
+`M7-PREFIX-PATCH`, is constructed at the token model with the symbol-level residual
+disclosed above; the universal prefix machine's exact stage-table code is
 constructed as `UPrefix.uCode` / `exists_uCode`).  The universal prefix
 machine with its Kraft proof, the universal lower semicomputable continuous semimeasure,
 and the recursively-inseparable-set mass theorem are all now constructed
