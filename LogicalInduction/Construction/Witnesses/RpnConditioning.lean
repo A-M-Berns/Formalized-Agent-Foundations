@@ -6026,7 +6026,8 @@ def rpnSafeSeparatedFrameOutput (tf lenF : ℕ → ℕ) (blkψ : List ℕ) (ε :
   if rpnStructurallyAccepts tf lenF day = 0 then first else first ++ second
 
 /-- **The gated join's certificate**: the digitized two-leg join of any digit
-`PolySegStream` is a `PolySegStream`. -/
+`PolySegStream` is a `PolySegStream`.
+Paper node: `thm:scon` -/
 lemma rpnSafeSeparatedFrameOutput_polySegStream {src blocks : ℕ → List ℕ}
     (hsrc : PolySegStream src) (hblocks : PolySegStream blocks)
     {cb ci : Code} {bcF ibcF : ℕ → ℕ} (hbcF : PolyFueled cb bcF)
@@ -6706,5 +6707,182 @@ theorem eventualConditionedTranslation_preserves_ecRpn
 #print axioms eventualConditionedTranslation_preserves_ecRpn
 
 end RpnConditioning
+
+namespace ConditioningCompile
+
+open RpnConditioning
+
+/-! ## `thm:scon` packaging: operational witnesses and the paper-facing endpoints
+
+With both symbol-metered translation certificates proved, the operational witness
+structures of `Properties/Conditioning.lean` are fully dischargeable and the criterion
+level closes: conditioning a logical inductor on a computable presentation yields a
+logical inductor of the conditioned market. -/
+
+/-! ### Public operational witness constructors -/
+
+/-- Construct the complete prefix-safe operational witness from an exact rational market
+and a finite-zero floor certificate.
+Paper node: `thm:scon` -/
+noncomputable def eventualConditioningOperationalWitness
+    {P : History} {DP extra : DeductiveProcess}
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (floor : EventualConditioningFloor P C.condition) :
+    EventualConditioningOperationalWitness P DP extra C where
+  floor := floor
+  conditioned_computable :=
+    (conditionedMarketComputation market C.condition C.condition_codes).toComputable
+  translation_ec := fun T hT =>
+    eventualConditionedTranslation_preserves_ecRpn floor
+      (RpnSentenceCodes.ofPolySentenceCodes C.condition_codes) T hT
+
+/-- Construct the complete gated-conditioning operational witness from a named rational
+base-market computation and an actual positive denominator floor.
+Paper node: `thm:scon` -/
+noncomputable def gatedConditioningOperationalWitness
+    {P : History} {DP extra : DeductiveProcess}
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (ε : ℚ) (hε : 0 < (ε : ℝ))
+    (hfloor : ∀ d, (ε : ℝ) ≤ P d (C.condition d)) :
+    GatedConditioningOperationalWitness P DP extra C ε where
+  epsilon_pos := hε
+  denominator_floor := hfloor
+  conditioned_computable :=
+    (conditionedMarketComputation market C.condition C.condition_codes).toComputable
+  translation_ec := fun T hT =>
+    conditionedTranslation_preserves_ecRpn C.condition
+      (RpnSentenceCodes.ofPolySentenceCodes C.condition_codes) ε T hT
+
+/-- The paper's finite-prefix denominator repair supplies the floor and the exact rational
+market computation required by the operational witness.  Transporting logical induction
+from `P` to this patched history remains correctly isolated behind the qualified finite-
+perturbation theorem and its two `EfficientPrefixPatch` certificates.
+Paper node: `thm:scon` -/
+noncomputable def denominatorPatchedGatedConditioningOperationalWitness
+    {P : History} {DP extra : DeductiveProcess}
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (cutoff : ℕ) (ε : ℚ) (hε : 0 < (ε : ℝ)) (hεone : (ε : ℝ) ≤ 1)
+    (htail : ∀ day, cutoff ≤ day → (ε : ℝ) ≤ P day (C.condition day)) :
+    GatedConditioningOperationalWitness
+      (denominatorPatchedHistory P C.condition cutoff) DP extra C ε :=
+  gatedConditioningOperationalWitness C
+    (denominatorPatchedMarketComputation market C.condition C.condition_codes cutoff)
+    ε hε (denominatorPatchedHistory_floor P C.condition cutoff hεone htail)
+
+/-! ### The paper-facing `thm:scon` endpoints -/
+
+/-- Closure under conditioning through the concrete gated translator.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_gated_ofMarketComputation
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (ε : ℚ) (hε : 0 < (ε : ℝ))
+    (hfloor : ∀ d, (ε : ℝ) ≤ P d (C.condition d)) :
+    IsLogicalInductor (conditionedHistory P C.condition) (DP.union extra) :=
+  LogicalInduction.lic_conditioned_gated P DP extra C
+    (gatedConditioningOperationalWitness C market ε hε hfloor)
+
+/-- Closure under conditioning through the prefix-safe finite-zero compiler.  This does
+not modify the base history and therefore does not depend on unrestricted
+finite-perturbation closure.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_eventualOfFloor
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (floor : EventualConditioningFloor P C.condition) :
+    IsLogicalInductor (conditionedHistory P C.condition) (DP.union extra) :=
+  LogicalInduction.lic_conditioned_eventual P DP extra C
+    (eventualConditioningOperationalWitness C market floor)
+
+/-- Closure under conditioning from the paper's joint-consistency hypothesis and concrete
+computability data.  The proof stays on the original market: the finite exceptional prefix
+is handled by the zero-aware compiler.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_eventual_ofMarketComputation
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i)) :
+    IsLogicalInductor (conditionedHistory P C.condition) (DP.union extra) :=
+  lic_conditioned_eventualOfFloor P DP extra C market
+    (eventualConditioningFloorOfJointConsistency
+      P DP market C.condition C.condition_codes hjoint)
+
+/-- Fixed-sentence form of Closure Under Conditioning.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_fixed_ofComputationAndMarket
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (base : DeductiveProcessComputation DP) (market : MarketComputation P)
+    (ψ : Sentence)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ v.Holds ψ) :
+    IsLogicalInductor
+      (conditionedHistory P (fun _ => ψ)) (DP.adjoinSentence ψ) := by
+  let C := fixedConditioningPresentation base ψ
+  have hjointC : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
+    intro n
+    obtain ⟨v, hv, hψ⟩ := hjoint n
+    exact ⟨v, hv, fun _ => hψ⟩
+  have hresult :=
+    lic_conditioned_eventual_ofMarketComputation
+      P DP (fixedConditionProcess ψ) C market hjointC
+  simpa [C, fixedConditioningPresentation,
+    DeductiveProcess.adjoinSentence] using hresult
+
+/-- Growing finite-prefix form of Closure Under Conditioning.  Joint consistency means
+that, alongside each base stage, one world satisfies every finite stage of the extra
+deductive process.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_growing_ofComputationsAndMarket
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
+    (base : DeductiveProcessComputation DP)
+    (more : CompactConditioningProcessComputation extra)
+    (market : MarketComputation P)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧
+        ∀ i, v.ConsistentWith (extra.D i)) :
+    IsLogicalInductor
+      (conditionedHistory P
+        (fun n => deductiveStageCondition (extra.D n)))
+      (DP.union extra) := by
+  let C := conditioningPresentationOfComputations base more
+  have hjointC : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
+    intro n
+    obtain ⟨v, hv, hextra⟩ := hjoint n
+    refine ⟨v, hv, fun i => ?_⟩
+    exact (v.holds_deductiveStageCondition (extra.D i)).2 (hextra i)
+  exact lic_conditioned_eventual_ofMarketComputation
+    P DP extra C market hjointC
+
+/-- Paper-facing SCON constructor: the canonical finite-stage presentation and the complete
+market/trader compiler are both assembled from their named computations.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_gated_ofComputationsAndMarket
+    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
+    (base : DeductiveProcessComputation DP)
+    (more : CompactConditioningProcessComputation extra)
+    (market : MarketComputation P) (ε : ℚ) (hε : 0 < (ε : ℝ))
+    (hfloor : ∀ d, (ε : ℝ) ≤
+      P d (deductiveStageCondition (extra.D d))) :
+    IsLogicalInductor
+      (conditionedHistory P (fun n => deductiveStageCondition (extra.D n)))
+      (DP.union extra) :=
+  lic_conditioned_gated_ofMarketComputation P DP extra
+    (conditioningPresentationOfComputations base more) market ε hε hfloor
+
+#print axioms eventualConditioningOperationalWitness
+#print axioms gatedConditioningOperationalWitness
+#print axioms denominatorPatchedGatedConditioningOperationalWitness
+#print axioms lic_conditioned_gated_ofMarketComputation
+#print axioms lic_conditioned_eventualOfFloor
+#print axioms lic_conditioned_eventual_ofMarketComputation
+#print axioms lic_conditioned_fixed_ofComputationAndMarket
+#print axioms lic_conditioned_growing_ofComputationsAndMarket
+#print axioms lic_conditioned_gated_ofComputationsAndMarket
+
+end ConditioningCompile
+
 
 end LogicalInduction

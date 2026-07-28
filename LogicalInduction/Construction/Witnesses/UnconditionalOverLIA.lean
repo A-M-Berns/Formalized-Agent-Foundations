@@ -1,7 +1,7 @@
 import LogicalInduction.Construction.Witnesses.ComputationDP
 import LogicalInduction.Construction.Witnesses.BitPrefixSyntax
 import LogicalInduction.Construction.Witnesses.ConditioningCompiler
-import LogicalInduction.Construction.Witnesses.DigitConditioning
+import LogicalInduction.Construction.Witnesses.RpnConditioning
 import LogicalInduction.Construction.Witnesses.UniversalDovetailer
 
 /-!
@@ -113,17 +113,16 @@ theorem lic_conditioned_ofCompiler_unconditional
   lic_conditioned (liaHistory (theoremDP T)) (theoremDP T) extra C compiler
 
 /-- Fixed-sentence `thm:scon` transfer over the constructed `LIA`: only the paper's joint
-consistency premise remains.  Interim (pending RPN-5): the conclusion is digit-class
-no-exploitation of the conditioned market rather than a class instance.
+consistency premise remains.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_fixed_unconditional
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (ψ : Sentence)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith ((theoremDP T).D n) ∧ v.Holds ψ) :
-    ∀ Tr : Trader, EfficientlyComputableTok₂ Tr →
-      ¬ Tr.Exploits (conditionedHistory (liaHistory (theoremDP T)) (fun _ => ψ))
-        ((theoremDP T).adjoinSentence ψ) := by
+    IsLogicalInductor
+      (conditionedHistory (liaHistory (theoremDP T)) (fun _ => ψ))
+      ((theoremDP T).adjoinSentence ψ) := by
   let base : DeductiveProcessComputation (theoremDP T) :=
     (theoremDP_computable T).nonemptyComputation.some
   haveI : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
@@ -134,8 +133,7 @@ theorem lic_conditioned_fixed_unconditional
 
 /-- Growing finite-prefix `thm:scon` transfer over the constructed `LIA`.  The extra process
 supplies its compact condition-code computation, and the remaining semantic premise is exactly
-joint consistency of the base stages with the full growing condition theory.  Interim (pending
-RPN-5): digit-class no-exploitation conclusion.
+joint consistency of the base stages with the full growing condition theory.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_growing_unconditional
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -144,11 +142,10 @@ theorem lic_conditioned_growing_unconditional
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith ((theoremDP T).D n) ∧
         ∀ i, v.ConsistentWith (extra.D i)) :
-    ∀ Tr : Trader, EfficientlyComputableTok₂ Tr →
-      ¬ Tr.Exploits
-        (conditionedHistory (liaHistory (theoremDP T))
-          (fun n => deductiveStageCondition (extra.D n)))
-        ((theoremDP T).union extra) := by
+    IsLogicalInductor
+      (conditionedHistory (liaHistory (theoremDP T))
+        (fun n => deductiveStageCondition (extra.D n)))
+      ((theoremDP T).union extra) := by
   let base : DeductiveProcessComputation (theoremDP T) :=
     (theoremDP_computable T).nonemptyComputation.some
   haveI : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=

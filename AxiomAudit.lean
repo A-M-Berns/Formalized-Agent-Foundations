@@ -354,10 +354,8 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   eventualConditioningFloorOfJointConsistency
 
 -- Construction/Witnesses/DigitConditioning.lean (`M7-SCON-COMPILER`, digit model —
--- Tranche 2 B1–B3): the guarded digit compilers, guard honesty, the `Tok₂ → Tok₂`
--- translation preservations, and the interim `thm:scon` transfer endpoints
--- (digit-class no-exploitation of the conditioned market; class-instance closure
--- returns with the RPN conditioning compiler, RPN-5).
+-- Tranche 2 B1–B3): the guarded digit compilers, guard honesty, and the `Tok₂ → Tok₂`
+-- translation preservations.
 #assert_axioms_clean
   ConditioningCompile.strategyOfTokens_trades_eq_nil_of_bigDay
   ConditioningCompile.guardedConditionRun_polySegStream
@@ -365,12 +363,34 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   ConditioningCompile.safeSeparatedFrameDigitOutput_polySegStream
   ConditioningCompile.conditionedTranslation_preserves_ec₂
   ConditioningCompile.eventualConditionedTranslation_preserves_ec₂
-  ConditioningCompile.lic_conditioned_gated
-  ConditioningCompile.lic_conditioned_eventual
+
+-- Construction/Witnesses/RpnConditioning.lean (`M7-SCON-COMPILER`, symbol model —
+-- RPN-5): the run-aware price transducer and its master commutation, guard honesty,
+-- the frame pass and its gated two-leg join, the two `def:ec → def:ec` translation
+-- endpoints, and the `thm:scon` packaging (operational witnesses + criterion-level
+-- closure of the conditioned market).
+#assert_axioms_clean
+  RpnConditioning.rpnGuardedConditionRun_polySegStream
+  RpnConditioning.rpnGuardedZeroAwareConditionRun_polySegStream
+  RpnConditioning.unRpn_rpnConditionRun
+  RpnConditioning.unRpn_rpnZeroAwareConditionRun
+  RpnConditioning.strategyOfTokens_rpnGuardedConditionTokens_trades
+  RpnConditioning.strategyOfTokens_rpnGuardedZeroAwareConditionTokens_trades
+  RpnConditioning.rpnTradeCountAt_eq_frameTradeCount
+  RpnConditioning.rpnStructurallyAccepts_agree
+  RpnConditioning.rpnSafeSeparatedFrameOutput_polySegStream
+  RpnConditioning.strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
+  RpnConditioning.conditionedTranslation_preserves_ecRpn
+  RpnConditioning.eventualConditionedTranslation_preserves_ecRpn
+  ConditioningCompile.eventualConditioningOperationalWitness
+  ConditioningCompile.gatedConditioningOperationalWitness
+  ConditioningCompile.denominatorPatchedGatedConditioningOperationalWitness
+  ConditioningCompile.lic_conditioned_gated_ofMarketComputation
+  ConditioningCompile.lic_conditioned_eventualOfFloor
   ConditioningCompile.lic_conditioned_eventual_ofMarketComputation
   ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket
   ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket
-  ConditioningCompile.lic_conditioned_gated_ofMarketComputation
+  ConditioningCompile.lic_conditioned_gated_ofComputationsAndMarket
 
 -- Construction/Witnesses/UnconditionalOverLIA.lean
 #assert_axioms_clean
