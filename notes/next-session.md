@@ -1,6 +1,6 @@
 # Logical Induction — handoff
 
-_Last updated: 2026-07-26 (collapse + prefix machine + FULL EC-SEQ flip merged at `ca0d452`; RPN-5 transducer core merged, endpoints in flight).
+_Last updated: 2026-07-27 (RPN-5 **COMPLETE** — both `thm:scon` symbol-metered endpoints proved and the criterion-level packaging restored; interim seam 1 CLOSED).
 Branch: `logical-induction`._
 
 # 🎯 ACTIVE PLAN 2 — remaining: RPN-5 + EC-SEQ (updated 2026-07-26, collapse landed)
@@ -39,304 +39,85 @@ landed in **collapsed single-class form** (consolidation directive).
 
 ## INTERIM SEAMS (disclosed, both closed by RPN-5)
 
-1. **Conditioning (`thm:scon`)**: the abstract closures (`lic_conditioned`,
-   `lic_conditioned_gated`, `lic_conditioned_eventual` in Properties/Conditioning.lean)
-   kept FULL class strength — their witness structures now carry symbol-metered
-   `translation_ec` fields (hypothesis-carrying; witness-free transport lemmas
-   `Trader.conditionedTranslation_exploits_base` /
-   `Trader.eventualConditionedTranslation_exploits_base` added).  The CONCRETE
-   endpoints moved to DigitConditioning under plain names
-   (`ConditioningCompile.lic_conditioned_*`) with interim conclusions = digit-class
-   no-exploitation transfer of the conditioned market (subsumes the old token family
-   via `toTok₂`).  UnconditionalOverLIA fixed/growing forms match.
+1. **Conditioning (`thm:scon`)** — **CLOSED 2026-07-27 (RPN-5).**  Both symbol-metered
+   translation certificates are proved in `Witnesses/RpnConditioning.lean`
+   (`conditionedTranslation_preserves_ecRpn`,
+   `eventualConditionedTranslation_preserves_ecRpn`, both
+   `EfficientlyComputable → EfficientlyComputable` over `RpnSentenceCodes ψ`), so the
+   `translation_ec` fields of `GatedConditioningOperationalWitness` /
+   `EventualConditioningOperationalWitness` are discharged by construction.  The
+   operational witness constructors are back
+   (`gatedConditioningOperationalWitness`, `eventualConditioningOperationalWitness`,
+   `denominatorPatchedGatedConditioningOperationalWitness`) and the paper-facing
+   endpoints again conclude `IsLogicalInductor` of the conditioned market
+   (`ConditioningCompile.lic_conditioned_gated_ofMarketComputation`,
+   `_eventualOfFloor`, `_eventual_ofMarketComputation`,
+   `_fixed_ofComputationAndMarket`, `_growing_ofComputationsAndMarket`,
+   `_gated_ofComputationsAndMarket`; over the constructed LIA,
+   `lic_conditioned_fixed_unconditional` / `lic_conditioned_growing_unconditional`).
+   The interim digit-transfer forms in `DigitConditioning.lean` are DELETED — no
+   parallel layer survives.  The digit compilers (`..._preserves_ec₂`) remain as the
+   internal Tok₂ route.
+
 2. **Finite perturbations (`thm:ifp`/`app:ifp`)**: `EfficientPrefixPatch.preserves_ec`
    upgraded to the collapsed class; `lic_iff_of_finitePerturbation` unchanged and fully
    proved (patch structures were always explicit hypotheses).  The LIA inhabitant is
    interim-reduced to `liaFreezeBefore_preserves_ecTok` (token-level content); the
    RPN freeze transducer restores `liaEfficientPrefixPatch`.
 
-## NEXT: RPN-5 — symbol-level translation compilers
+## RPN-5 — symbol-level translation compilers — **COMPLETE (2026-07-27)**
 
-### RPN-5 part 2 PROGRESS (2026-07-26, worktree agent, second tranche — parse
-### localization LANDED)
+Final record.  `Witnesses/RpnConditioning.lean` now carries the whole symbol-level
+conditioning compiler, green and axiom-clean (`propext, Classical.choice, Quot.sound`
+throughout; no `sorryAx`).
 
-On top of the merged transducer core (ca0d452), the exactness item's hard theory is
-now green and axiom-clean in RpnConditioning.lean:
+**Architecture (as landed).**  The transducer is generic in its mode-2 emitter:
+`rpnConditionRun (emit : List ℕ → ℕ → List ℕ)`, with `rpnConditionSegment` /
+`rpnGuardedConditionTokens` likewise.  Two instances:
+`rpnPriceEmit blocks ε` (conditional-price body) and
+`rpnZeroAwareEmit zeroDays blocks ε` (finite zero-day set bound to the constant `1`).
+Both the master commutation and the emission certificate are proved once in
+emitter-generic form and instantiated twice:
 
-* `parseRpn_strip` — a successful parse factors as a complete block ++ remainder.
-* Run-step normal forms: `rpnCondStep_price` / `rpnCondStep_priceEsc` (offset-counter
-  step equations), `rcCnt_run_step_ge`, `rcLen_run_step`, `run_step_decrement`.
-* **`parse_of_priceRunWalk`** (the converse walk lemma): a run the automaton walks
-  from counter c+1 to its FIRST return at counter c — strictly inside on every proper
-  prefix — either parses completely as one block, or POISONS EVERY EXTENSION
-  (`parseRpn fuel (u ++ tail) = none` for all fuel/tail).  Proof by strong induction
-  + first-passage decomposition (Nat.find on the counter's first return).  The only
-  failure mode of an arity-complete run is an undecodable escape payload.
+* `unRpn_rpnConditionRun_of` — whole-stream contraction exactness for any emitter,
+  given the token-model run's chunk equations (`hRnil/hRsingle/hRone/hRpayload/
+  hRprice/hRpricePair/hRtrade`) and the per-chunk emitter contraction `hemit`.
+  Instances: `unRpn_rpnConditionRun` (price), `unRpn_rpnZeroAwareConditionRun`.
+* `rpnGuardedConditionRun_polySegStream_of` — the digitized guarded rewrite of any
+  digit `PolySegStream` is a `PolySegStream`, given that the emitted segment read at
+  the **clamped** day is polynomially emittable (exact wherever the guard passes).
+  Instances: `rpnGuardedConditionRun_polySegStream`,
+  `rpnGuardedZeroAwareConditionRun_polySegStream`.
 
-WHY THIS UNBLOCKS THE MASTER COMMUTATION: to prove
-`unRpn ((rpnConditionRun blocks ε (rcPack 0 0 0, []) ts).2) =
- (conditionPriceTokenRun ψCode ε (0,0) (unRpn ts)).2`
-for ALL ts, induct on ts by grammar chunks (run_append decomposition; transducer
-returns to base at chunk boundaries).  Price/trade chunk with run u:
-- if the walk never completes: pure copy on both sides (truncation ⇒ parse fails ⇒
-  unRpn stops with [tag, 0] on both);
-- if it completes: `parse_of_priceRunWalk` splits: (a) u parses ⇒ `parseRpn_strip` +
-  `unRpn_price_rewrite_chunk` / `unRpn_trade_chunk_block` give the exact contraction
-  on both sides; (b) u poisons every extension ⇒ both sides' unRpn stop with
-  [tag, 0] AT THE SAME CHUNK (the transducer's insertion sits beyond the poisoned
-  run, so the ∀-tail form kills the rewritten stream too).
-Uniqueness of the completion point (needed to align (a)'s block with the automaton's
-emission position): successful parse ⇒ its consumed prefix is a first-return walk
-(add the no-early-exit conjunct to `foldl_rpnCondStep_run` — mechanical extension),
-and two first-return prefixes of the same list coincide (determinism).
+Strategy-level agreement: `strategyOfTokens_rpnGuardedConditionTokens_trades` and
+`strategyOfTokens_rpnGuardedZeroAwareConditionTokens_trades` (both routed through
+guard honesty `strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay`, so a failed guard
+empties both sides).
 
-2026-07-27 UPDATE (third tranche, worktree agent): the no-early-exit conjunct is
-LANDED — `foldl_rpnCondStep_run` (+ price/trade instances, block corollaries) now
-also give: every proper prefix of the consumed block stays in the run modes.  This
-supplies (i) transducer copy-behavior on blocks (no spurious mode-2 emission), and
-(ii) the converse walk lemma's hypotheses at first-exit positions.  NEXT concrete
-steps for the master commutation (design fully worked out, see the mapped chunk
-induction below): (a) a general copy lemma
-`rpnConditionRun blocks ε (st, buf) ts = ((foldl rpnCondStep st ts, bufFold …), ts)`
-whenever no prefix of ts hits mode 2 from st (define bufFold; trivial induction);
-(b) buffer values over run blocks (price: buf ++ b via rcLen_run_step ≠ 0; trade:
-[] at exit); (c) the chunk induction itself: payload/single chunks transparent;
-price chunk 0 :: rest splits on parse rest (some: strip + copy + day emission +
-`unRpn_price_rewrite_chunk`; none: either no completion (pure copy, both sides
-[0,0]-poison) or first completion at k₀ (converse lemma ⇒ u parses ⇒ contradiction
-with none, or u poisons ⇒ both sides [0,0]-poison — the mode-2 first-exit state is
-`rcPack 2 0 k₀` via an exit-shape lemma `rcMode (step st t) = 2 → step st t =
-rcPack 2 0 (rcLen st + 1)` + cnt ≥ 1 invariant in run modes); trade chunk mirrors
-with `unRpn_trade_chunk_block`, EXCEPT trade-(b2) needs the converse lemma in TRADE
-modes — either generalize `parse_of_priceRunWalk` over (a,b,exit) with step-shape
-hypotheses (mirror `foldl_rpnCondStep_run`'s design), or prove a mode-swap walk
-correspondence (1↔4, 6↔7, exits pack 2 0 (r+1) ↔ pack 0 0 0) by induction using
-trade-mode step normal forms (mirrors of `rpnCondStep_price`/`_priceEsc`).
+Frame pass and gated join (unchanged from the ninth tranche): `rpnFrameRun` /
+`rpnFrameOutput` with `frameAgree_unRpn_rpnFrameOutput` and its prefix form
+`frameContract_rpnFrameOutput`; the certificate `rpnFrameOutput_polySegStream`; budget
+exactness `rpnTradeCountAt_eq_frameTradeCount`; the acceptance gate
+`rpnStructurallyAccepts` / `rpnStructurallyAccepts_agree` / `rpnDepthScan`; the gated
+join `rpnSafeSeparatedFrameOutput` with `rpnSafeSeparatedFrameOutput_polySegStream`
+and `strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades`.
 
-2026-07-27 UPDATE (fourth tranche, worktree agent): items 1 and 2 of the previous
-list are LANDED, green + axiom-clean (commits `85fb581`, `64b5b5f`, `f844a5a`):
+**The two endpoints (final assembly).**  Both follow one shape: source certificate ⇒
+clocked digit stream of the RPN-expanded serialization; guarded price pass; budget
+codes from the symbol-level trade-run count (`rpnTradeCountScan`, exact against
+`frameTradeCount` by `rpnTradeCountAt_eq_frameTradeCount` — the `Unreadable` disjunct
+is discharged in the nonempty-trades branch); gated two-leg frame join; digitize;
+`ec_of_rawSegStream`.  The eventual form adds the zero-aware price pass and the launch
+gate `if F.cutoff ≤ n then … else []`.  Trades-shape reconciliation mirrors
+`conditionedTranslation_preserves_ec₂`'s last section verbatim.
 
-* `parse_of_runWalk` — the converse walk lemma generalized over the run-mode pair
-  `(a, b, exit)` exactly as `foldl_rpnCondStep_run` (step-shape hypotheses + exit
-  counter/mode disambiguators `hexitCnt`/`hexitMode`); `parse_of_priceRunWalk` /
-  `parse_of_tradeRunWalk` are instances.  Trade step normal forms
-  `rpnCondStep_trade`/`_tradeEsc`; generic step facts `runWalk_step_cases`,
-  `rcCnt_runWalk_step_ge`, `runWalk_step_decrement`.
-* **Master commutation** `unRpn_rpnConditionRun`: on EVERY stream,
-  `unRpn ((rpnConditionRun blocks ε (rcPack 0 0 0, []) ts).2) =
-  (conditionPriceTokenRun (encode ∘ ψ) ε (0,0) (unRpn ts)).2`, given
-  `hblocks : ∀ D, parseRpn (blocks D).length (blocks D) = some (ψ D, [])`.
-  Support layer: `rpnConditionRun_cons`/`_from_day`/`_from_payload`, base/reset
-  step equations (`rpnCondStep_base*`, `rpnCondStep_fallback`), the buffer fold
-  `rpnCondBufFold` (append/run/reset laws), copy lemma
-  `rpnConditionRun_copy_of_ne_two`, trajectory invariants `runWalk_inside` /
-  `runWalk_first_exit` (+ price/trade instances), and token-model per-chunk run
-  equations (`conditionPriceTokenRun_single/_payload/_price/_price_pair/_trade`).
-* **Guarded strategy-level equality**
-  `strategyOfTokens_rpnGuardedConditionTokens_trades`: contraction of the guarded
-  symbol rewrite = retained-condition-price map of the contraction's trades, all
-  streams.  Guard honesty `strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay` via
-  `rpn_mode2_localize` (symbol mode-2 either survives as a token mode-2 with the
-  same day — `mode2_witness_shift` — or the contraction is `Unreadable`; poison
-  tails reject from every base-mode state, transported by
-  `Unreadable.cons_chunk` through the `Matches` machinery).
+**Packaging.**  See INTERIM SEAMS item 1 above — CLOSED.  `AxiomAudit.lean` gained an
+`RpnConditioning.lean` block (12 construction endpoints + 3 witnesses + 6 criterion
+endpoints); the `DigitConditioning.lean` block lost the interim transfer names.
 
-Fifth tranche (same session, commit `5ccc739`): the frame-pass **contraction
-anchor** is LANDED — `ContractsTo` (prefix-contraction algebra generalizing
-`UnRpnTransparent`: append/single/payload + expanded-block `priceSym`/`tradeSym`
-chunk contractions + the full raw-combinator algebra `constTok`..`gateTok`),
-`rpnFrameEmit` (the symbol-level frame-leg emission), and
-`rpnFrameEmit_contractsTo` (its contraction = token-model
-`rawLocallyGated{Beta,Second}BodyTokens` leg + re-emitted trade pair — the mirror
-of `unRpn_price_rewrite_chunk`).  The remaining frame work is the run + its
-commutation + certificate, per the map below.
-
-Sixth tranche (2026-07-27, worktree agent): the frame pass's **transducer + master
-commutation** are LANDED, green + axiom-clean:
-
-* `rpnFrameEmitAt` / `rpnFrameRun` / `rpnFrameOutput` — the streaming frame rewrite,
-  REUSING `rpnCondStep`/`rpnCondBuf` (no new automaton, so `rpnCondControlAt`,
-  `rpnCondWindow`, `rpnCondScan` all apply verbatim to it).  Base-mode `6` is
-  withheld, trade-run tokens are buffered silently, the token that returns the
-  automaton to base fires `rpnFrameEmit` on `buf ++ [t]`, everything else is copied;
-  an unfinished trade run is flushed with a bare `6` at end of stream (mirror of
-  `conditioningFrameTokenOutput`'s flush).
-* Support: `rpnFrameRun_append/_cons/_state`, `rpnFrameRun_copy_of_modes` (copy off
-  base/trade modes), `rpnFrameRun_silent` + `rcLen_trade_run_step` (buffering inside
-  a live trade run), `rpnFrameRun_trade_block`, `rpnFrameOutput_append_base` (chunk
-  peel), `priceWalk_inside`, and the token-model per-chunk equations
-  `conditioningFrameTokenOutput_{nil,single,payload,one,price,price_pair,trade,
-  trade_flush}`.
-* **`frameAgree_unRpn_rpnFrameOutput`** — the master statement, on EVERY stream.
-  DESIGN NOTE (important, and NOT the price pass's shape): exact equality is
-  **false** at a malformed trade run.  The token model sees the contracted `[6, 0]`
-  and expands a full leg body around the poison code `0`; the symbol side has no
-  block to splice and can only flush.  Both outputs are nevertheless *unreadable* —
-  the token side because its ratio's numerator price carries
-  `conjunctionCode 0 ⌜ψ⌝` (undecodable, via `conjunctionCode_decode_none`), the
-  symbol side because the flushed/emitted run fails to parse — so the invariant is
-  `FrameAgree a b := a = b ∨ (Unreadable a ∧ Unreadable b)`, which is preserved by
-  `FrameAgree.cons_chunk` and collapses to strategy equality
-  (`FrameAgree.strategyOfTokens_trades_eq`).  Price-poison chunks still give exact
-  equality (both sides copy).  Supporting: `Unreadable.append_right`,
-  `unreadable_price_code`/`unreadable_cons_price`,
-  `rawConditioningRatioTokens_eq_price_head`, `rpnFrameEmit_eq_price_head`,
-  `parseRpn_cons_and_poison`, `unRpn_cons_and_poison`,
-  `unRpn_rpnFrameEmit_poison`, `unreadable_conditioningFrameTokenOutput_poison`.
-* **`strategyOfTokens_unRpn_rpnFrameOutput_trades`** — the consumable corollary: the
-  contraction of the symbol frame output decodes to the same validated strategy as
-  the token-model frame output of the contraction, on every stream.
-
-* Per-position view for the certificate: `rpnFrameSegment` +
-  **`rpnFrameRun_range`** (final state = `rpnCondControlAt`, buffer =
-  `rpnCondWindow`, output = flatMap of the segments — the exact mirror of
-  `rpnConditionRun_range`, and it reuses `rpnCondBuf_window` verbatim) and
-  `rpnFrameSegment_eq` (the three-way dispatch form the poly-fueled assembly
-  consumes: base-mode `6` ⇒ `[]`, trade modes ⇒ emission iff the successor control
-  mode is `0`, otherwise copy).
-
-Gotcha added: `0 :: blk ++ [d]` parses as `(0 :: blk) ++ [d]` (`::` binds tighter
-than `++`) — chunk-peel lemmas must parenthesise `0 :: (blk ++ [d])` or the
-`List.foldl_cons` rewrites silently miss.
-
-Eighth tranche (2026-07-27, worktree agent): the **join gate** is LANDED, green +
-axiom-clean.  `rpnDepthNext` / `rpnDepthRuns` / `tokDepthRuns` (+ append laws,
-`rpnDepthRuns_price_block` = depth-neutral, `rpnDepthRuns_trade_block` = one pop),
-the master agreement **`depthMode_unRpn_agree`** (on EVERY stream, symbol depth AND
-final mode agree with the contraction's, or the contraction is `Unreadable` — the
-same skeleton as `tradeRuns_unRpn_agree`, ~200 lines, no walk analysis), the
-position bridges `rpnDepthAt_eq_runs` / `parserDepthScanAt_eq_runs`, the symbol test
-**`rpnStructurallyAccepts`** mirroring `parserStructurallyAccepts`, its poly scan
-**`rpnDepthScan`**, and the gate-agreement consumable
-**`rpnStructurallyAccepts_agree`**.
-
-KEY DESIGN FACT worth recording: the symbol mode numbering was already chosen to
-mirror the token freeze automaton (0 base, 2 price-day, 3/5 base payloads), so the
-depth step is *literally* `parserDepthNext 0 t d` at base positions, `d+1` at the
-2/3/5 slots, `d.pred` at a trade-run exit, and identity inside a sentence run.
-
-Also landed in the eighth tranche: **`unRpn_split`** (+ `ContractsTo.self`,
-`UnRpnStops`, `UnRpnStops.cons_chunk`) — on any stream the run automaton walks back to
-base mode, `ContractsTo A (unRpn A) ∨ (UnRpnStops A ∧ Unreadable (unRpn A))`.  This is
-the generic form of the append wrinkle: it is exactly what licenses
-`unRpn (first ++ second) = unRpn first ++ unRpn second` (transparent branch) or
-`= unRpn first` (poison branch, and then both sides are unreadable).  ~230 lines,
-first-exit localization (`priceWalk_first_exit`/`tradeWalk_first_exit` +
-`parse_of_*RunWalk`) supplies the poisons-every-extension branch; the "run never
-exits" branches are now *contradictions* against the base-mode hypothesis, which is
-why the `hex` quantifier is `k ≤ rest.length` (not `<`, as in the `frameAgree` proof).
-
-Ninth tranche (2026-07-27, worktree agent): the **join is CLOSED** — ROUTE B taken
-and held, green + axiom-clean (commits `ac8b212`, `ee40d53`).
-
-* `frameJoint_unRpn_rpnFrameOutput` replaces the old ~530-line `frameAgree` induction
-  with a JOINT conclusion: (i) the whole-stream `FrameAgree` (unchanged, re-exported as
-  `frameAgree_unRpn_rpnFrameOutput`, so `strategyOfTokens_unRpn_rpnFrameOutput_trades`
-  is untouched) and (ii), *under the source's base-mode invariant*
-  `List.foldl rpnCondStep (rcPack 0 0 0) ts = rcPack 0 0 0`, the prefix form
-  `FrameContract A B := ContractsTo A B ∨ (UnRpnStops A ∧ Unreadable (unRpn A) ∧
-  Unreadable B)` (`frameContract_rpnFrameOutput`).
-  KEY DESIGN FACT: Route B as originally stated is **false unconditionally** — a
-  truncated price chunk (`0 :: blk` with no day token) contracts to `[0, ⌜φ⌝]` but
-  appending a day token changes the contraction, so there is no `ContractsTo`.  The
-  base-mode hypothesis (exactly what the acceptance gate tests) *eliminates* the three
-  offending chunk cases — truncated price chunk, never-exiting price run, never-exiting
-  trade run, bare `[1]`/`[7]` tag — as contradictions; every surviving case has a
-  `ContractsTo` chunk, so the chunk step is one combinator
-  (`FrameContract.cons_chunk` / `ContractsTo.frameAgree_chunk`) instead of the old
-  `FrameAgree.cons_chunk` bookkeeping.  Support: `ContractsTo.nil`,
-  `FrameContract.frameAgree` / `.cons_chunk` / `.of_poison`, `rcModeF_price_ne` /
-  `rcMode_step_of_price_run`, `rpnCondStep_eq_base_of_mode_zero` /
-  `foldl_rpnCondStep_eq_base_of_mode_zero` (mode `0` ⇒ state `rcPack 0 0 0`, the bridge
-  from the gate to the base-mode hypothesis).
-* `strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades` — **the join agreement**.
-  Split on `deserializeTrades (unRpn ts)`:
-  - *readable*: both legs' poison branches are IMPOSSIBLE (a poison branch asserts the
-    leg's token image `Unreadable`, contradicting
-    `deserializeTrades_conditioningFrameTokenRun`), so `rpnStructurallyAccepts_agree`
-    gives the token gate's value and the accepting branch composes the two
-    `ContractsTo` legs (`ContractsTo.append` at `rest = []`) into an EXACT equality.
-    This is what dissolves the feared "mixed branch" (leg 1 transparent, leg 2 poisoned)
-    without needing a `second`-uniform induction or
-    `freezeMode4 (conditioningFrameTokenOutput …) = 0`.
-  - *unreadable*: both joins have no trades, via the extracted
-    `streamReadFrom_eq_none_of_accepts_of_deserializeTrades_none` (lifted out of
-    `deserializeTrades_safeSeparatedFrameTokenOutput`'s own `none` branch, which now
-    calls it) + `streamReadFrom_conditioningFrameTokenOutput_none`.
-  Also new in ConditioningCompiler: `parserStructurallyAccepts_eq_one_of_ne_zero`.
-
-GOTCHAS added by this tranche:
-* `omega` does **not** prove disjunctive goals (`6 = 1 ∨ 6 = 2 ∨ 6 = 6`) and does not
-  use a `False` hypothesis.  `split_ifs` on `rcModeF`'s dead outer branches leaves
-  `h : False` in context, so the working idiom is
-  `split_ifs <;> first | exact absurd ‹False› not_false | refine ⟨by omega, …⟩`
-  with the conclusion in `≠` form, and it needs `set_option maxHeartbeats 1000000`.
-* `refine ⟨Or.inr ⟨?_, by tac⟩, …⟩` elaborates the `by` block before the sibling `?_`
-  fixes the metavariable — split the anonymous constructor into separate `refine`
-  steps (same family as the "bind branch haves before `of_eq`" trap).
-
-
-
-Seventh tranche (2026-07-27, worktree agent): the frame pass's **`PolySegStream`
-certificate** and **budget exactness** are LANDED, green + axiom-clean (commits
-`ca54d22`, `87722ab`).  Item 1 of the REMAINING list below is now closed except for
-the two-leg join.
-
-* `rpnTradeCountAt` / `rpnTradeCountScan` — the symbol-level trade-run exit count
-  (control mode `4`/`7` with successor mode `0`), poly-fueled over any digit
-  `PolySegStream` by the same `PolyFueled.prec` pattern as `rpnCondScan`.
-* `rpnFrameCore` / `rpnFrameTailMid` / `rpnFrameEmit_split` /
-  `digitize_rpnFrameEmit` / `digitize_rpnCondWindow_snoc` /
-  `rpnFrameTailMid_polyTokenStream`, and the certificate
-  **`rpnFrameOutput_polySegStream`** (any digit `PolySegStream` source, any poly
-  block stream, poly day/budget emitters).  Window copy = `concatVar` over
-  `rcLen + 1` exactly as predicted; the flush is a two-step mode test.
-* CONSOLIDATION done in passing: the raw-combinator `PolyTokenStream` algebra
-  (`PolyTokenStream.rawMul/rawAdd/rawMax/rawSafeRecip/rawMin/rawClip01/rawAbs/
-  rawConst/rawConstQ/rawLowerSafeRecip/varTok/rawGate`) was lifted out of
-  `frameMid_polyTokenStream`'s local `have`s into public lemmas in
-  DigitConditioning; both frame emitters now share it (no duplicate algebra).
-* **Budget exactness** — the load-bearing one.  `rpnTradeRuns` / `tokTradeRuns`
-  (list-level counters + append laws), `rpnTradeRuns_price_block` (0 exits),
-  `rpnTradeRuns_trade_block` (exactly 1), and **`tradeRuns_unRpn_agree`**: on
-  EVERY stream, either the symbol count equals the contraction's completed-trade
-  count or the contraction is `Unreadable`.  KEY SIMPLIFICATION (worth recording):
-  this chunk induction needs **no** walk/first-exit analysis — the count depends
-  only on the mode trajectory, so every `parseRpn … = none` branch is discharged
-  immediately by `unreadable_price_poison` / `unreadable_trade_poison`, and
-  `Unreadable.cons_chunk` carries the disjunct across completed chunks.  ~200
-  lines, not the ~500 of the master commutations.  Position bridges
-  `rpnTradeCountAt_eq_runs` / `tradeScanAt_eq_runs` give the consumable
-  **`rpnTradeCountAt_eq_frameTradeCount`** (symbol scan = `frameTradeCount` of the
-  contraction, or unreadable — and in the unreadable case both validated
-  strategies are empty, so the budget never reaches a trade).
-
-REMAINING (in feasibility order):
-1. Frame-pass mirror — **DONE** (correctness, certificate, budget exactness, and as of
-   the ninth tranche the gated two-leg join and its agreement).  Nothing open.
-
-2. Zero-aware variants (mirror `guardedZeroAwareConditionTokens`; the master
-   commutation's day-emission case splits on `D ∈ zeroDays` with the short
-   `[D, 1, encode 1, 8]` expansion — everything else identical).
-3. Endpoints `conditionedTranslation_preserves_ecRpn` /
-   `eventualConditionedTranslation_preserves_ecRpn` (statements recorded as
-   comments at file end).  Proof skeleton now fully determined: mirror
-   `conditionedTranslation_preserves_ec₂` with source = the RPN clocked stream of
-   the `EfficientlyComputable` witness, priced = digitized
-   `rpnGuardedConditionTokens` (certificate landed), framed = the symbol frame
-   pass (item 1); strategy equality via
-   `strategyOfTokens_rpnGuardedConditionTokens_trades` + the frame mirror; guard
-   path via `strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay`.  `blocks` for a
-   condition family comes from `RpnSentenceCodes ψ` (`Framework/RpnSplice.lean`)
-   — its block stream satisfies `hblocks` by construction.  Budget exactness in the
-   final assembly is `rpnTradeCountAt_eq_frameTradeCount`: split on
-   `(T.strat n).trades = []` exactly as `conditionedTranslation_preserves_ec₂` does;
-   the nonempty branch gives a readable contraction, so the `Unreadable` disjunct is
-   discharged and the budget matches `frameBudget n (T.strat n).trades.length`.
-4. Witness constructors (translation_ec fields in Properties/Conditioning.lean
-   structures) ⇒ restore class-instance lic_conditioned_* endpoints, delete
-   interim digit-transfer forms ⇒ UnconditionalOverLIA class-instance forms ⇒
-   AxiomAudit; mark the thm:scon interim seam CLOSED here.
+Remaining RPN work: **interim seam 2 only** — the RPN freeze transducer restoring
+`liaEfficientPrefixPatch` (run-walk + finite run-comparison against the
+`liaPrefixQuote` table, in `M7Witnesses.lean`).
 
 ### RPN-5 part 1 PROGRESS (2026-07-26, worktree agent — price pass LANDED, MERGED)
 
