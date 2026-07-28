@@ -35,6 +35,11 @@ namespace LogicalInduction
 namespace RpnFreeze
 
 open PrefixPatchCompile RpnConditioning
+open Nat.Partrec (Code)
+
+-- Deep `PolyFueled` compositions over paired inputs loop `whnf` on `Nat.sqrt`
+-- (pair/unpair unfolding); keep it opaque throughout (the standard `dd:fuel` safeguard).
+attribute [local irreducible] Nat.sqrt
 
 /-- Tokens read from a stream between two positions. -/
 def segOf (get : ℕ → ℕ) (p q : ℕ) : List ℕ :=
@@ -597,6 +602,227 @@ theorem unRpn_rpnFreezeRun (quoteRun : List ℕ → ℕ → ℕ) (quoteCode : �
     (freezeTokens_trade quoteCode cutoff)
     (fun b φ hb D rest => unRpn_freeze_rewrite_chunk quoteRun quoteCode cutoff hq hb
       D rest)
+
+/-! ### The poly-fueled side
+
+The matcher is a *constant-depth* composition, so its fuel certificate is a plain
+induction over the target sentence — no scan and no automaton state. -/
+
+private lemma polyFueled_addConst {cf : Code} {f : ℕ → ℕ} (hf : PolyFueled cf f)
+    (K : ℕ) : ∃ c, PolyFueled c (fun z => f z + K) := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  exact ⟨_, (had.comp (hf.pair (PolyFueled.const K))).of_eq
+    (fun z => by simp only [Nat.unpair_pair])⟩
+
+private lemma polyFueled_subConst {cf : Code} {f : ℕ → ℕ} (hf : PolyFueled cf f)
+    (K : ℕ) : ∃ c, PolyFueled c (fun z => f z - K) :=
+  ⟨_, (subc_polyFueled.comp (hf.pair (PolyFueled.const K))).of_eq
+    (fun z => by simp only [Nat.unpair_pair])⟩
+
+private lemma polyFueled_ifEqConst {cf ca cb : Code} {f A B : ℕ → ℕ}
+    (hf : PolyFueled cf f) (K : ℕ) (hA : PolyFueled ca A) (hB : PolyFueled cb B) :
+    ∃ c, PolyFueled c (fun z => if f z = K then A z else B z) := by
+  obtain ⟨ceq, heq⟩ := polyFueled_eqConst hf K
+  obtain ⟨c, hc⟩ := polyFueled_ifZero heq hB hA
+  exact ⟨c, hc.of_eq fun z => by by_cases h : f z = K <;> simp [h]⟩
+
+private lemma polyFueled_ifEqFn {cf cg ca cb : Code} {f g A B : ℕ → ℕ}
+    (hf : PolyFueled cf f) (hg : PolyFueled cg g)
+    (hA : PolyFueled ca A) (hB : PolyFueled cb B) :
+    ∃ c, PolyFueled c (fun z => if f z = g z then A z else B z) := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have hs1 : PolyFueled _ (fun z => f z - g z) :=
+    (subc_polyFueled.comp (hf.pair hg)).of_eq (fun z => by simp only [Nat.unpair_pair])
+  have hs2 : PolyFueled _ (fun z => g z - f z) :=
+    (subc_polyFueled.comp (hg.pair hf)).of_eq (fun z => by simp only [Nat.unpair_pair])
+  have htest : PolyFueled _ (fun z => (f z - g z) + (g z - f z)) :=
+    (had.comp (hs1.pair hs2)).of_eq (fun z => by simp only [Nat.unpair_pair])
+  obtain ⟨c, hc⟩ := polyFueled_ifZero htest hA hB
+  exact ⟨c, hc.of_eq fun z => by
+    by_cases h : f z = g z
+    · rw [if_pos (by omega), if_pos h]
+    · rw [if_neg (by omega), if_neg h]⟩
+
+/-- The positional run matcher against a fixed target is polynomially fueled over any
+poly-fueled token function, stream index and start position. -/
+lemma matchRun_polyFueled {ct cn : Code} {tf N : ℕ → ℕ}
+    (htf : PolyFueled ct tf) (hN : PolyFueled cn N) (target : Sentence) :
+    ∀ {cp : Code} {P : ℕ → ℕ}, PolyFueled cp P →
+      ∃ c, PolyFueled c
+        (fun z => matchRun (fun i => tf (Nat.pair (N z) i)) target (P z)) := by
+  induction target with
+  | falsum =>
+      intro cp P hP
+      have hg0 := htf.comp (hN.pair hP)
+      have hg1 := htf.comp (hN.pair hP.succ_comp)
+      obtain ⟨cm, hm⟩ := sentenceMatches_polyFueled (⊥ : Sentence)
+      obtain ⟨c3, h3⟩ := polyFueled_addConst hP 3
+      obtain ⟨c2, h2⟩ := polyFueled_addConst hP 2
+      obtain ⟨ca, ha⟩ :=
+        polyFueled_ifEqConst (hm.comp hg1) 1 h3 (PolyFueled.const 0)
+      obtain ⟨cb, hb⟩ := polyFueled_ifEqConst hg0 0 h2 (PolyFueled.const 0)
+      obtain ⟨c, hc⟩ := polyFueled_ifEqConst hg0 1 ha hb
+      exact ⟨c, hc.of_eq fun z => by rw [matchRun]⟩
+  | atom a =>
+      intro cp P hP
+      have hg0 := htf.comp (hN.pair hP)
+      have hg1 := htf.comp (hN.pair hP.succ_comp)
+      obtain ⟨cm, hm⟩ := sentenceMatches_polyFueled ((.atom a : Sentence))
+      obtain ⟨c3, h3⟩ := polyFueled_addConst hP 3
+      obtain ⟨c2, h2⟩ := polyFueled_addConst hP 2
+      obtain ⟨ca, ha⟩ :=
+        polyFueled_ifEqConst (hm.comp hg1) 1 h3 (PolyFueled.const 0)
+      obtain ⟨cb, hb⟩ := polyFueled_ifEqConst hg0 (a + 5) h2 (PolyFueled.const 0)
+      obtain ⟨c, hc⟩ := polyFueled_ifEqConst hg0 1 ha hb
+      exact ⟨c, hc.of_eq fun z => by rw [matchRun]⟩
+  | imp φ ψ ihφ ihψ =>
+      intro cp P hP
+      have hg0 := htf.comp (hN.pair hP)
+      have hg1 := htf.comp (hN.pair hP.succ_comp)
+      obtain ⟨cm, hm⟩ := sentenceMatches_polyFueled ((φ 🡒 ψ : Sentence))
+      obtain ⟨c3, h3⟩ := polyFueled_addConst hP 3
+      obtain ⟨ca, ha⟩ :=
+        polyFueled_ifEqConst (hm.comp hg1) 1 h3 (PolyFueled.const 0)
+      obtain ⟨cφ, hφ⟩ := ihφ hP.succ_comp
+      obtain ⟨cd, hd⟩ := polyFueled_subConst hφ 1
+      obtain ⟨cψ, hψ⟩ := ihψ hd
+      obtain ⟨cbody, hbody⟩ :=
+        polyFueled_ifEqConst hφ 0 (PolyFueled.const 0) hψ
+      obtain ⟨cb, hb⟩ := polyFueled_ifEqConst hg0 2 hbody (PolyFueled.const 0)
+      obtain ⟨c, hc⟩ := polyFueled_ifEqConst hg0 1 ha hb
+      exact ⟨c, hc.of_eq fun z => by rw [matchRun]⟩
+  | and φ ψ ihφ ihψ =>
+      intro cp P hP
+      have hg0 := htf.comp (hN.pair hP)
+      have hg1 := htf.comp (hN.pair hP.succ_comp)
+      obtain ⟨cm, hm⟩ := sentenceMatches_polyFueled ((φ ⋏ ψ : Sentence))
+      obtain ⟨c3, h3⟩ := polyFueled_addConst hP 3
+      obtain ⟨ca, ha⟩ :=
+        polyFueled_ifEqConst (hm.comp hg1) 1 h3 (PolyFueled.const 0)
+      obtain ⟨cφ, hφ⟩ := ihφ hP.succ_comp
+      obtain ⟨cd, hd⟩ := polyFueled_subConst hφ 1
+      obtain ⟨cψ, hψ⟩ := ihψ hd
+      obtain ⟨cbody, hbody⟩ :=
+        polyFueled_ifEqConst hφ 0 (PolyFueled.const 0) hψ
+      obtain ⟨cb, hb⟩ := polyFueled_ifEqConst hg0 3 hbody (PolyFueled.const 0)
+      obtain ⟨c, hc⟩ := polyFueled_ifEqConst hg0 1 ha hb
+      exact ⟨c, hc.of_eq fun z => by rw [matchRun]⟩
+  | or φ ψ ihφ ihψ =>
+      intro cp P hP
+      have hg0 := htf.comp (hN.pair hP)
+      have hg1 := htf.comp (hN.pair hP.succ_comp)
+      obtain ⟨cm, hm⟩ := sentenceMatches_polyFueled ((φ ⋎ ψ : Sentence))
+      obtain ⟨c3, h3⟩ := polyFueled_addConst hP 3
+      obtain ⟨ca, ha⟩ :=
+        polyFueled_ifEqConst (hm.comp hg1) 1 h3 (PolyFueled.const 0)
+      obtain ⟨cφ, hφ⟩ := ihφ hP.succ_comp
+      obtain ⟨cd, hd⟩ := polyFueled_subConst hφ 1
+      obtain ⟨cψ, hψ⟩ := ihψ hd
+      obtain ⟨cbody, hbody⟩ :=
+        polyFueled_ifEqConst hφ 0 (PolyFueled.const 0) hψ
+      obtain ⟨cb, hb⟩ := polyFueled_ifEqConst hg0 4 hbody (PolyFueled.const 0)
+      obtain ⟨c, hc⟩ := polyFueled_ifEqConst hg0 1 ha hb
+      exact ⟨c, hc.of_eq fun z => by rw [matchRun]⟩
+
+/-! ### Positional form of the run-level tables -/
+
+lemma runMatches_cases (target : Sentence) (b : List ℕ) :
+    runMatches target b = 0 ∨ runMatches target b = 1 := by
+  rw [runMatches]; split <;> simp
+
+lemma runMatches_segOf (get : ℕ → ℕ) {p q : ℕ} (h : p ≤ q) (target : Sentence) :
+    runMatches target (segOf get p q) =
+      if matchRun get target p = q + 1 then 1 else 0 := by
+  have hget : ∀ i, i < (segOf get p q).length →
+      get (p + i) = (segOf get p q).getD i 0 := by
+    intro i hi
+    rw [segOf_getD get (by simpa using hi)]
+  have hiff := matchRun_iff (b := segOf get p q) (φ := target) (get := get) (p := p)
+    hget
+  rw [show p + (segOf get p q).length + 1 = q + 1 by
+    simp only [segOf_length]; omega] at hiff
+  by_cases hm : matchRun get target p = q + 1
+  · rw [if_pos hm, (runMatches_eq_one_iff target _).mpr (hiff.mp hm)]
+  · rw [if_neg hm]
+    rcases runMatches_cases target (segOf get p q) with hz | ho
+    · exact hz
+    · exact absurd (hiff.mpr ((runMatches_eq_one_iff target _).mp ho)) hm
+
+/-- Positional form of `runQuoteFromEntries`. -/
+def runQuoteFromEntriesAt : List (Sentence × ℚ) → (ℕ → ℕ) → ℕ → ℕ → ℕ
+  | [], _, _, _ => Encodable.encode (0 : ℚ)
+  | (target, q) :: entries, get, p, e =>
+      if matchRun get target p = e + 1 then Encodable.encode q
+      else runQuoteFromEntriesAt entries get p e
+
+lemma runQuoteFromEntries_segOf (entries : List (Sentence × ℚ)) (get : ℕ → ℕ)
+    {p q : ℕ} (h : p ≤ q) :
+    runQuoteFromEntries entries (segOf get p q) =
+      runQuoteFromEntriesAt entries get p q := by
+  induction entries with
+  | nil => rfl
+  | cons entry entries ih =>
+      rcases entry with ⟨target, r⟩
+      rw [runQuoteFromEntries, runQuoteFromEntriesAt, runMatches_segOf get h target]
+      by_cases hm : matchRun get target p = q + 1
+      · simp [hm]
+      · simp [hm, ih]
+
+/-- Positional form of `runPrefixQuoteFromStates`. -/
+def runPrefixQuoteFromStatesAt :
+    List RationalBeliefState → ℕ → (ℕ → ℕ) → ℕ → ℕ → ℕ
+  | [], _, _, _, _ => Encodable.encode (0 : ℚ)
+  | state :: _, 0, get, p, e => runQuoteFromEntriesAt state.entries get p e
+  | _ :: states, day + 1, get, p, e => runPrefixQuoteFromStatesAt states day get p e
+
+lemma runPrefixQuoteFromStates_segOf (states : List RationalBeliefState) (day : ℕ)
+    (get : ℕ → ℕ) {p q : ℕ} (h : p ≤ q) :
+    runPrefixQuoteFromStates states day (segOf get p q) =
+      runPrefixQuoteFromStatesAt states day get p q := by
+  induction states generalizing day with
+  | nil => rfl
+  | cons state states ih =>
+      cases day with
+      | zero => exact runQuoteFromEntries_segOf state.entries get h
+      | succ day => exact ih day
+
+lemma runQuoteFromEntriesAt_polyFueled (entries : List (Sentence × ℚ))
+    {ct cn cp ce : Code} {tf N P E : ℕ → ℕ}
+    (htf : PolyFueled ct tf) (hN : PolyFueled cn N) (hP : PolyFueled cp P)
+    (hE : PolyFueled ce E) :
+    ∃ c, PolyFueled c (fun z =>
+      runQuoteFromEntriesAt entries (fun i => tf (Nat.pair (N z) i)) (P z) (E z)) := by
+  induction entries with
+  | nil => exact ⟨_, PolyFueled.const (Encodable.encode (0 : ℚ))⟩
+  | cons entry entries ih =>
+      rcases entry with ⟨target, r⟩
+      obtain ⟨cm, hm⟩ := matchRun_polyFueled htf hN target hP
+      obtain ⟨crest, hrest⟩ := ih
+      obtain ⟨c, hc⟩ := polyFueled_ifEqFn hm hE.succ_comp
+        (PolyFueled.const (Encodable.encode r)) hrest
+      exact ⟨c, hc.of_eq fun z => by rw [runQuoteFromEntriesAt]⟩
+
+lemma runPrefixQuoteFromStatesAt_polyFueled (states : List RationalBeliefState)
+    {ct cn cp ce cd : Code} {tf N P E D : ℕ → ℕ}
+    (htf : PolyFueled ct tf) (hN : PolyFueled cn N) (hP : PolyFueled cp P)
+    (hE : PolyFueled ce E) (hD : PolyFueled cd D) :
+    ∃ c, PolyFueled c (fun z =>
+      runPrefixQuoteFromStatesAt states (D z) (fun i => tf (Nat.pair (N z) i))
+        (P z) (E z)) := by
+  induction states generalizing cd D with
+  | nil => exact ⟨_, PolyFueled.const (Encodable.encode (0 : ℚ))⟩
+  | cons state states ih =>
+      obtain ⟨centry, hentry⟩ :=
+        runQuoteFromEntriesAt_polyFueled state.entries htf hN hP hE
+      obtain ⟨cpred, hpred⟩ := polyFueled_subConst hD 1
+      obtain ⟨crest, hrest⟩ := ih hpred
+      obtain ⟨c, hc⟩ := polyFueled_ifZero hD hentry hrest
+      refine ⟨c, hc.of_eq fun z => ?_⟩
+      cases hd : D z with
+      | zero => simp only [if_pos, runPrefixQuoteFromStatesAt]
+      | succ day =>
+          simp only [Nat.succ_ne_zero, if_false, Nat.add_sub_cancel,
+            runPrefixQuoteFromStatesAt]
 
 end RpnFreeze
 end LogicalInduction
