@@ -2344,7 +2344,7 @@ lemma sentenceMatches_eq_one_iff (target : Sentence) (code : ℕ) :
           · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
               LO.Propositional.Formula.ofNat, htag]
 
-private lemma sentenceMatches_polyFueled (target : Sentence) :
+lemma sentenceMatches_polyFueled (target : Sentence) :
     ∃ c, PolyFueled c (sentenceMatches target) := by
   obtain ⟨cmul, hmul⟩ := mul_polyFueled
   induction target using LO.Propositional.Formula.rec' with
@@ -2415,7 +2415,7 @@ private lemma sentenceMatches_polyFueled (target : Sentence) :
       obtain ⟨c, hc⟩ := polyFueled_ifZero PolyFueled.id (PolyFueled.const 0) hbody
       exact ⟨c, hc.of_eq (fun code => by simp [sentenceMatches])⟩
 
-private lemma sentenceMatches_le_one (target : Sentence) (code : ℕ) :
+lemma sentenceMatches_le_one (target : Sentence) (code : ℕ) :
     sentenceMatches target code ≤ 1 := by
   induction target using LO.Propositional.Formula.rec' generalizing code with
   | hfalsum =>
@@ -2460,7 +2460,7 @@ private lemma sentenceMatches_le_one (target : Sentence) (code : ℕ) :
             nlinarith [ihφ e.unpair.2.unpair.1, ihψ e.unpair.2.unpair.2]
           · simp [htag]
 
-private lemma sentenceMatches_eq_zero_iff (target : Sentence) (code : ℕ) :
+lemma sentenceMatches_eq_zero_iff (target : Sentence) (code : ℕ) :
     sentenceMatches target code = 0 ↔
       Encodable.decode (α := Sentence) code ≠ some target := by
   constructor

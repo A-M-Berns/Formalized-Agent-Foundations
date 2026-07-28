@@ -30,4 +30,5 @@ import LogicalInduction.Construction.Witnesses.LUVExpectationCertified
 import LogicalInduction.Construction.Witnesses.QuoteCodeOfMarket
 import LogicalInduction.Construction.Witnesses.DigitConditioning
 import LogicalInduction.Construction.Witnesses.RpnConditioning
+import LogicalInduction.Construction.Witnesses.RpnFreeze
 import LogicalInduction.Construction.Witnesses.StrictSeparators
