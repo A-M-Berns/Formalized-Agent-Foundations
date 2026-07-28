@@ -6,16 +6,21 @@ Critch 2019 is a PDF source with no `\\label`s, so the label convention is §-ci
 (see AxiomAudit.lean's header) and label validity is checked against the recorded section
 map below instead of a TeX `\\label` sweep. Three directions:
 
-  1. **§-citation validity** — every section number cited on a `Paper node:` line is a
-     real section of Critch 2019 (map recorded below from the PDF's headings).
+  1. **Citation validity** — every section number (§-citation) and every named node
+     (`Theorem n` / `Property n` / `Proposition n` / `Definition n`) cited on a
+     `Paper node:` line exists in Critch 2019 (maps recorded below from the PDF).
   2. **Inventory → annotation** — every declaration listed in `AxiomAudit.lean` (Tier-1
      `#assert_axioms_clean` endpoint or Tier-2 `#assert_fields` structure) carries a
      `Paper node:` docstring line ("infrastructure — no paper node" counts: it is an
      explicit annotation, not a missing one).
-  3. **Annotation → inventory** — every section cited by any annotated declaration is
-     also cited by at least one inventory endpoint (§§-ranges expanded on both sides).
-     A section annotated only on internal lemmas is paper material we claim to formalize
-     but never expose on the audited trust surface.
+  3. **Annotation → inventory** — every section and named node cited by any annotated
+     declaration is also cited by at least one inventory endpoint (§§- and
+     `Properties i–j` ranges expanded on both sides). Material annotated only on
+     internal lemmas is paper content we claim to formalize but never expose on the
+     audited trust surface. Named nodes cited as *proof* references ("Theorem 1 proof,
+     step 1", "the §4 proof of Theorem 1") are validity-checked but exempt from
+     coverage — a proof step is not a claim that the theorem itself is an endpoint
+     (the analogue of the logical-induction branch's `app:*` exclusion).
 
 Coverage is a *statement-surface* check, deliberately orthogonal to axiom cleanliness:
 `lake env lean AxiomAudit.lean` enforces cleanliness; this enforces completeness of the
@@ -39,12 +44,24 @@ SECTIONS = [
     "5", "6",
 ]
 
-# Sections that legitimately have no inventory endpoint of their own.
+# Named-node map of Critch 2019, from the PDF's numbered statements.
+NODES = {
+    "Theorem": {"1", "2"},
+    "Property": {"1", "2", "3", "4"},
+    "Proposition": {"1"},
+    "Definition": {"1"},
+}
+
+# Sections / named nodes that legitimately have no inventory endpoint of their own.
 # Add entries only with a one-line justification; the default posture is "no exclusion".
 EXCLUDE_SECTIONS: dict[str, str] = {}
 
 SINGLE = re.compile(r"(?<!§)§(?!§)\s*(\d+(?:\.\d+)?)")
 RANGE = re.compile(r"§§\s*(\d+(?:\.\d+)?)\s*[–—-]\s*(\d+(?:\.\d+)?)")
+NODE = re.compile(
+    r"(Theorem|Propert(?:y|ies)|Proposition|Definition)s?\s+(\d+)(?:\s*[–—-]\s*(\d+))?"
+)
+PROOF_WINDOW = 24  # chars around a named-node match scanned for "proof"
 DECL = re.compile(
     r"^\s*(?:@\[[^\]]*\]\s*)?(?:private\s+|protected\s+|noncomputable\s+)*"
     r"(?:structure|def|theorem|lemma|abbrev|class|instance)\s+([A-Za-z_][\w.'₀-₉]*)"
@@ -70,16 +87,31 @@ def expand(lo: str, hi: str, where: str, errors: list[str]) -> set[str]:
 
 
 def parse_annotation(text: str, where: str, errors: list[str]) -> set[str]:
-    """Validated section set cited by one `Paper node:` annotation body."""
-    secs: set[str] = set()
+    """Validated citation set (sections `3.2` and named nodes `Property 1`) from one
+    `Paper node:` annotation body. Named nodes in a proof context are validity-checked
+    but not returned (exempt from coverage)."""
+    cites: set[str] = set()
     for lo, hi in RANGE.findall(text):
-        secs |= expand(lo, hi, where, errors)
+        cites |= expand(lo, hi, where, errors)
     for s in SINGLE.findall(RANGE.sub("", text)):
         if s not in SECTIONS:
             errors.append(f"{where}: §{s} is not a section of Critch 2019")
         else:
-            secs.add(s)
-    return secs
+            cites.add(s)
+    for m in NODE.finditer(text):
+        kind = "Property" if m.group(1).startswith("Propert") else m.group(1)
+        lo, hi = m.group(2), m.group(3) or m.group(2)
+        if int(lo) > int(hi):
+            errors.append(f"{where}: backwards range {m.group(0)}")
+            continue
+        nums = [str(n) for n in range(int(lo), int(hi) + 1)]
+        for n in nums:
+            if n not in NODES[kind]:
+                errors.append(f"{where}: '{kind} {n}' is not a numbered statement of Critch 2019")
+        window = text[max(0, m.start() - PROOF_WINDOW) : m.end() + PROOF_WINDOW]
+        if "proof" not in window.lower():
+            cites |= {f"{kind} {n}" for n in nums if n in NODES[kind]}
+    return cites
 
 
 def inventory_members() -> set[str]:
@@ -166,24 +198,27 @@ def main() -> int:
         used |= secs
         if name in inv:
             covered |= secs
+    def label(s: str) -> str:
+        return f"§{s}" if s in SECTIONS else s
+
     gap = sorted(
         (s for s in used - covered if s not in EXCLUDE_SECTIONS),
-        key=SECTIONS.index,
+        key=lambda s: (0, SECTIONS.index(s)) if s in SECTIONS else (1, s),
     )
     if gap:
         print("endpoint-coverage check: FAIL")
-        print(f"  {len(gap)} cited section(s) with no AxiomAudit endpoint citing them:")
+        print(f"  {len(gap)} cited section(s)/node(s) with no AxiomAudit endpoint citing them:")
         for s in gap:
             carriers = sorted({n for ss, n in decls if s in ss})
-            print(f"    §{s}   (annotated on: {', '.join(carriers)})")
-        print("  Either add a full-strength endpoint to AxiomAudit.lean, or, if the section")
+            print(f"    {label(s)}   (annotated on: {', '.join(carriers)})")
+        print("  Either add a full-strength endpoint to AxiomAudit.lean, or, if the citation")
         print("  is genuinely internal, add it to EXCLUDE_SECTIONS with a justification.")
         return 1
 
     n_excl = len({s for s in used if s in EXCLUDE_SECTIONS})
     print(
         f"paper-node check: OK ({len(inv)} inventory members annotated; "
-        f"{len(covered)} cited sections covered by endpoints; "
+        f"{len(covered)} cited sections/nodes covered by endpoints; "
         f"{n_excl} excluded; 0 uncovered)"
     )
     return 0
