@@ -392,6 +392,17 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket
   ConditioningCompile.lic_conditioned_gated_ofComputationsAndMarket
 
+-- Construction/Witnesses/RpnFreeze.lean (`M7-PREFIX-PATCH`, symbol model — PARTIAL).
+-- The run-level quote lookup and the symbol-level freeze transducer, as the third
+-- instance of the emitter-generic run rewriter.  These do NOT close the boundary:
+-- `EfficientPrefixPatch.preserves_ec` still has no LIA inhabitant at the collapsed
+-- class, because the emitted segment's fuel certificate needs a `BigDigits` decode
+-- test on exponentially large escape codes (notes/next-session.md, INTERIM SEAMS 2).
+#assert_axioms_clean
+  RpnFreeze.matchRun_iff
+  RpnFreeze.runPrefixQuoteFromStates_exact
+  RpnFreeze.unRpn_rpnFreezeRun
+
 -- Construction/Witnesses/UnconditionalOverLIA.lean
 #assert_axioms_clean
   lic_domination_universalSemimeasure_unconditional

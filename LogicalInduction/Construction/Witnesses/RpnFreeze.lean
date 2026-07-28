@@ -26,6 +26,20 @@ The transducer itself is the *third* instance of the emitter-generic run rewrite
 commutation `unRpn_rpnConditionRun_of` and the emission certificate
 `rpnGuardedConditionRun_polySegStream_of` are reused rather than reproved.
 
+## STATUS: the emission certificate is BLOCKED, and this file says where
+
+Everything below is unconditional and axiom-clean, but it does **not** yet yield
+`liaEfficientPrefixPatch`.  The missing step is the fuel certificate for the emitted
+segment: `matchRun_polyFueled` asks for a `PolyFueled` (poly-*bounded*) token function,
+whereas a digit stream supplies only `BigDigits`.  The single test that does not factor
+through a small clamp is the escape leaf, which must decide
+`Encodable.decode c = some ψ` for an exponentially large `c` — and since Foundation's
+`Formula.ofNat` ignores the payload at tag `0`, `decode` is not injective, so that reduces
+to `Nat.unpair` / integer square root, which `BigDigits` does not close over.  In the
+intended complexity model the claim is true (`unpair` on poly-bit inputs is poly-time);
+this is a `dd:fuel`-model limitation.  `notes/next-session.md` (INTERIM SEAMS item 2)
+records the three routes out and what each costs.
+
 Paper node: `app:ifp` / `thm:ifp` (the finite-prefix efficiency closure), `def:lia`.
 -/
 import LogicalInduction.Construction.Witnesses.RpnConditioning
@@ -401,7 +415,8 @@ lemma matchRun_complete : ∀ (N : ℕ) (b : List ℕ), b.length ≤ N →
           simp
 
 /-- **The matcher characterization**: on a stream carrying the block `b` at position `p`,
-the matcher stops exactly at the block's end iff the block parses to the target. -/
+the matcher stops exactly at the block's end iff the block parses to the target.
+Paper node: `app:ifp` -/
 lemma matchRun_iff {b : List ℕ} {φ : Sentence} {get : ℕ → ℕ} {p : ℕ}
     (hget : ∀ i, i < b.length → get (p + i) = b.getD i 0) :
     matchRun get φ p = p + b.length + 1 ↔ parseRpn b.length b = some (φ, []) := by
@@ -489,6 +504,9 @@ def runPrefixQuoteFromStates : List RationalBeliefState → ℕ → List ℕ →
   | state :: _, 0, b => runQuoteFromEntries state.entries b
   | _ :: states, day + 1, b => runPrefixQuoteFromStates states day b
 
+/-- The run-level prefix quote table agrees with the token-model one at the run's
+contracted code.
+Paper node: `def:lia` -/
 lemma runPrefixQuoteFromStates_exact (states : List RationalBeliefState) (day : ℕ)
     {b : List ℕ} {φ : Sentence} (hb : parseRpn b.length b = some (φ, [])) :
     runPrefixQuoteFromStates states day b =
@@ -644,7 +662,18 @@ private lemma polyFueled_ifEqFn {cf cg ca cb : Code} {f g A B : ℕ → ℕ}
     · rw [if_neg (by omega), if_neg h]⟩
 
 /-- The positional run matcher against a fixed target is polynomially fueled over any
-poly-fueled token function, stream index and start position. -/
+poly-fueled token function, stream index and start position.
+
+**Scope warning — this is the token-metered hypothesis, and it is *not* available at the
+symbol-metered emission site.**  A digit stream supplies only `BigDigits` access to its
+tokens (values may be exponential), never `PolyFueled`.  Every test inside `matchRun`
+factors through a small clamp — grammar tags `0/1/2/3/4`, atom tokens `a + 5` — except the
+escape leaf, which must decide `Encodable.decode c = some ψ` for an exponentially large
+`c`; Foundation's `ofNat` ignores the payload at tag `0`, so `decode` is not injective and
+that decision reduces to `Nat.unpair` (integer square root), which the `BigDigits` API does
+not provide.  See `notes/next-session.md`, INTERIM SEAMS item 2, for the routes out; until
+one is taken, `EfficientPrefixPatch.preserves_ec` has no LIA inhabitant at the collapsed
+class and this lemma is the token-model half of the certificate only. -/
 lemma matchRun_polyFueled {ct cn : Code} {tf N : ℕ → ℕ}
     (htf : PolyFueled ct tf) (hN : PolyFueled cn N) (target : Sentence) :
     ∀ {cp : Code} {P : ℕ → ℕ}, PolyFueled cp P →
