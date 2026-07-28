@@ -133,21 +133,38 @@ lemma DeductiveProcessComputation.union_toComputable
     ComputableDeductiveProcess (DP.union extra) :=
   (base.union more).toComputable
 
+/-! ### Efficient repetition of a symbol-metered stream -/
+
+/-- Symbol-metered form of `EfficientRepeatedEnumeration.ofPoly`: triangular repetition of
+an already 𝓔𝓒 (`def:ec`) sentence stream.  The second pairing coordinate is pure padding,
+so every source index recurs arbitrarily late, and the reindexing is poly-fueled.
+TODO(consolidation): belongs beside `ofPoly`/`ofCE` in `M7Witnesses.lean`, with `ofPoly`
+(now unused) retired; parked here only to avoid a concurrent edit of that file. -/
+def EfficientRepeatedEnumeration.ofRpn (source : ℕ → Sentence)
+    (hsource : RpnSentenceCodes source) :
+    EfficientRepeatedEnumeration source where
+  sequence := triangularRepeat source
+  sequence_poly := hsource.comp PolyFueled.left
+  repeats := triangularRepeat_repeats source
+  sound j := ⟨j.unpair.1, rfl⟩
+  covers i := ⟨Nat.pair i 0, by simp [triangularRepeat]⟩
+
 /-! ### Public presentation constructor -/
 
-/-- Honest operational input for polynomial condition naming.  The ordinary stage program
-is retained for the union construction.  `condition_code_poly` says a single program emits
-the code of the *actual* finite conjunction within polynomial fuel; it assumes no prices,
-trades, wealth bound, exploitation fact, or logical-inductor conclusion.
+/-- Honest operational input for efficient condition naming.  The ordinary stage program
+is retained for the union construction.  `condition_codes` says the *actual* finite
+conjunctions form an 𝓔𝓒 sentence sequence (`def:ec`, symbol-metered); it assumes no
+prices, trades, wealth bound, exploitation fact, or logical-inductor conclusion.
 
 This strengthening is necessary: `ComputableDeductiveProcess` alone promises termination
-but no polynomial runtime or output-size bound.
-Paper node: `thm:scon` -/
+but no efficiency bound.  Metering **symbols** rather than the whole pair-code value is
+what keeps the growing form realizable: `deductiveStageCondition (extra.D n)` is a
+conjunction of `|extra.D n|` sentences, so it is deep, and its pair code is exponential
+in its symbol count.
+Paper node: `thm:scon`, `def:ec` -/
 structure CompactConditioningProcessComputation (extra : DeductiveProcess)
     extends DeductiveProcessComputation extra where
-  condition_code : Nat.Partrec.Code
-  condition_code_poly : PolyFueled condition_code
-    (fun n ↦ Encodable.encode (deductiveStageCondition (extra.D n)))
+  condition_codes : RpnSentenceCodes fun n ↦ deductiveStageCondition (extra.D n)
 
 /-- `N+` witness: the compact operational interface is inhabited by the constantly empty
 deductive process.  Its stage program and empty-conjunction program are both literal
@@ -161,11 +178,10 @@ lemma compactConditioningProcessComputation_nonempty :
   refine ⟨extra, ⟨{
     code := Nat.Partrec.Code.const (Encodable.encode (∅ : Finset Sentence))
     code_spec := fun n ↦ by simp [extra]
-    condition_code := Nat.Partrec.Code.const
-      (Encodable.encode (deductiveStageCondition (∅ : Finset Sentence)))
-    condition_code_poly := (PolyFueled.const
-      (Encodable.encode (deductiveStageCondition (∅ : Finset Sentence)))).of_eq
-        (fun n ↦ by simp [extra]) }⟩⟩
+    condition_codes := RpnSentenceCodes.ofPolySentenceCodes
+      ⟨_, (PolyFueled.const
+        (Encodable.encode (deductiveStageCondition (∅ : Finset Sentence)))).of_eq
+          (fun n ↦ by simp [extra])⟩ }⟩⟩
 
 /-- Construct the exact syntax/semantics presentation used by `thm:scon` from operational
 programs for the base process and the compact extra process.
@@ -176,7 +192,7 @@ noncomputable def conditioningPresentationOfComputations
     (more : CompactConditioningProcessComputation extra) :
     ConditioningPresentation DP extra where
   condition n := deductiveStageCondition (extra.D n)
-  condition_codes := ⟨more.condition_code, more.condition_code_poly⟩
+  condition_codes := more.condition_codes
   holds_condition n v := v.holds_deductiveStageCondition (extra.D n)
   combined_computable := base.union_toComputable more.toDeductiveProcessComputation
 
@@ -206,8 +222,9 @@ noncomputable def fixedConditioningPresentation
     ConditioningPresentation DP (fixedConditionProcess ψ) where
   condition := fun _ => ψ
   condition_codes :=
-    ⟨Nat.Partrec.Code.const (Encodable.encode ψ),
-      (PolyFueled.const (Encodable.encode ψ)).of_eq (fun _ => rfl)⟩
+    RpnSentenceCodes.ofPolySentenceCodes
+      ⟨Nat.Partrec.Code.const (Encodable.encode ψ),
+        (PolyFueled.const (Encodable.encode ψ)).of_eq (fun _ => rfl)⟩
   holds_condition := by
     intro n v
     simp [fixedConditionProcess, PCWorld.ConsistentWith]

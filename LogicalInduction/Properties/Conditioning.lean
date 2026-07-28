@@ -1799,10 +1799,17 @@ lemma PCWorld.consistentWith_union_iff
 /-- Syntax/semantics presentation of the finite conjunction of the extra deductive stage.
 This is the shared input for both the fixed-condition and growing-prefix forms of
 `thm:scon`. It carries no prices or logical-inductor conclusion.
+
+`condition_codes` is the paper's 𝓔𝓒 class (`def:ec`), metered in **symbols**: growing
+finite conjunctions are deep, so their whole-value pair codes are exponential in symbol
+count and the whole-value interface would silently exclude exactly the intended
+`thm:scon` inputs. Where a whole-value naming program is genuinely needed (the
+conditioned market's quote table, keyed by sentence code) it is extracted recursively —
+not polynomially — via `RpnSentenceCodes.exists_code`.
 Paper node: `thm:scon` -/
 structure ConditioningPresentation (DP extra : DeductiveProcess) where
   condition : ℕ → Sentence
-  condition_codes : PolySentenceCodes condition
+  condition_codes : RpnSentenceCodes condition
   holds_condition : ∀ n (v : PCWorld),
     v.Holds (condition n) ↔ v.ConsistentWith (extra.D n)
   combined_computable : ComputableDeductiveProcess (DP.union extra)

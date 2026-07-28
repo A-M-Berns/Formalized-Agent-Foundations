@@ -556,11 +556,42 @@ discharges the separator argument of the endpoint.  README boundary row + status
 
 ## Tranche P — 𝓔𝓒 polish (cheap optionals, ~½–4 sessions total, no paper-node demand)
 
-1. **OPEN** — `ConditioningPresentation.condition_codes` → `RpnSentenceCodes`
-   (½–1 session): field flip + `fixedConditioningPresentation` /
-   `conditioningPresentationOfComputations` + call-site plumbing; value = conditioning
-   on DEEP condition sequences.  Do after the RPN-5 packaging sweep settles (same
-   files).
+1. **DONE 2026-07-28** — `ConditioningPresentation.condition_codes` →
+   `RpnSentenceCodes`.  `thm:scon` now accepts DEEP condition sequences.
+
+   *Flipped:* `ConditioningPresentation.condition_codes` (Properties/Conditioning.lean)
+   and — because growing finite conjunctions are exactly the deep case — the constructor
+   input `CompactConditioningProcessComputation`, whose two whole-value fields
+   (`condition_code` + `condition_code_poly`) collapse into the single field
+   `condition_codes : RpnSentenceCodes fun n ↦ deductiveStageCondition (extra.D n)`.
+   `fixedConditioningPresentation` (constant ψ) wraps via `.ofPolySentenceCodes`;
+   `conditioningPresentationOfComputations` now just forwards `more.condition_codes`.
+   Downstream in `ConditioningCompiler.lean`: `conditionedQuoteCode(_spec)`,
+   `conditionedMarketComputation`, `denominatorPatchedQuoteCode(_spec)`,
+   `denominatorPatchedMarketComputation`, `exists_eventual_condition_price_floor`,
+   `eventualConditioningFloor_nonempty_of_jointConsistency`,
+   `eventualConditioningFloorOfJointConsistency`.  Payoff at the RPN-5 packaging
+   (`RpnConditioning.lean` §`ConditioningCompile`): the two
+   `RpnSentenceCodes.ofPolySentenceCodes C.condition_codes` wraps are gone.
+
+   *The one genuine whole-value consumer*, and how it was discharged: the conditioned
+   **market quote table** is keyed by sentence *code*, so `conditionedQuoteCode` needs a
+   program emitting `Encodable.encode (ψ n)` as a value.  It never needed that program
+   to be *poly* — only recursive.  New in `Construction/LIACompiler.lean`
+   (§`RpnDecodePrimrec`, beside `parseRpnC_prim`): `RpnSentenceCodes.primrec`
+   (`PolySegStream.primrec` + `parseRpnC_prim` + `parseRpnC_eq`) and
+   `RpnSentenceCodes.exists_code`.  So symbol-metered emission gives *recursive*, not
+   polynomial, whole-value naming — which is exactly what that boundary asks for.  This
+   is the reusable move for any future "flip blocked by a value-typed quotation
+   boundary" (cf. Tranche P item 3): check whether the boundary wants poly or merely
+   computable.
+
+   *`EfficientRepeatedEnumeration.ofPoly` is now dead.*  Its symbol-metered replacement
+   `EfficientRepeatedEnumeration.ofRpn` is parked in
+   `Construction/Witnesses/ConditioningPresentation.lean` **only** because a concurrent
+   agent held `M7Witnesses.lean`.  TODO(consolidation): move `ofRpn` beside `ofCE` in
+   `M7Witnesses.lean` and delete `ofPoly` + `triangularRepeat_codes` (also unused) and
+   their `#print axioms` lines.
 2. **DONE 2026-07-27** — `LUV.PolyThresholdCodes` block form.  `LUV.RpnThresholdCodes`
    / `LUV.RpnThresholdCodeSeq` (`Framework/Expectations.lean`) are the `def:ec` block
    forms — literally `RpnSentenceCodes` at the paired-index conventions — with

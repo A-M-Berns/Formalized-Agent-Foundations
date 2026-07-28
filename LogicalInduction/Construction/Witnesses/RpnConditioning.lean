@@ -6734,7 +6734,7 @@ noncomputable def eventualConditioningOperationalWitness
     (conditionedMarketComputation market C.condition C.condition_codes).toComputable
   translation_ec := fun T hT =>
     eventualConditionedTranslation_preserves_ecRpn floor
-      (RpnSentenceCodes.ofPolySentenceCodes C.condition_codes) T hT
+      C.condition_codes T hT
 
 /-- Construct the complete gated-conditioning operational witness from a named rational
 base-market computation and an actual positive denominator floor.
@@ -6751,7 +6751,7 @@ noncomputable def gatedConditioningOperationalWitness
     (conditionedMarketComputation market C.condition C.condition_codes).toComputable
   translation_ec := fun T hT =>
     conditionedTranslation_preserves_ecRpn C.condition
-      (RpnSentenceCodes.ofPolySentenceCodes C.condition_codes) ε T hT
+      C.condition_codes ε T hT
 
 /-- The paper's finite-prefix denominator repair supplies the floor and the exact rational
 market computation required by the operational witness.  Transporting logical induction

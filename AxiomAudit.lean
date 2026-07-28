@@ -513,7 +513,7 @@ deliberately. -/
 #assert_fields CEEnumeration
   code halts outputs_sound
 #assert_fields CompactConditioningProcessComputation
-  toDeductiveProcessComputation condition_code condition_code_poly
+  toDeductiveProcessComputation condition_codes
 #assert_fields CompletedAffineQuoteApprox
   toAffineQuotePortfolio theory_coherent
 #assert_fields CompletedAffineQuoteEq

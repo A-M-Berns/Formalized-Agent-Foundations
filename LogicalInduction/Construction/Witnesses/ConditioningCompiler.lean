@@ -136,8 +136,8 @@ lemma conditionedQuoteTable_exact {P : History} (market : MarketComputation P)
 
 /-- The concrete partial-recursive program for the conditioned quote table. -/
 noncomputable def conditionedQuoteCode {P : History} (market : MarketComputation P)
-    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) : Nat.Partrec.Code := by
-  let ψCode : Nat.Partrec.Code := Classical.choose hψ
+    (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ) : Nat.Partrec.Code := by
+  let ψCode : Nat.Partrec.Code := Classical.choose hψ.exists_code
   let conditionAt : Nat.Partrec.Code := ψCode.comp Nat.Partrec.Code.left
   let conjunctionInput : Nat.Partrec.Code :=
     Nat.Partrec.Code.left.pair
@@ -149,21 +149,15 @@ noncomputable def conditionedQuoteCode {P : History} (market : MarketComputation
     ((market.code.comp conjunctionInput).pair (market.code.comp denominatorInput))
 
 lemma conditionedQuoteCode_spec {P : History} (market : MarketComputation P)
-    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) (z : ℕ) :
+    (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ) (z : ℕ) :
     Encodable.encode
         (conditionedQuoteTable market ψ z.unpair.1 z.unpair.2) ∈
       (conditionedQuoteCode market ψ hψ).eval z := by
   classical
-  have hψPoly : PolyFueled (Classical.choose hψ)
-      (fun n => Encodable.encode (ψ n)) :=
-    Classical.choose_spec hψ
-  obtain ⟨ψFuel, hψRun, _, _⟩ := hψPoly
   have hconditionMem : Encodable.encode (ψ z.unpair.1) ∈
-      (Classical.choose hψ).eval z.unpair.1 := by
-    apply Nat.Partrec.Code.evaln_sound
-    rw [hψRun z.unpair.1]
-    simp
-  have hcondition : (Classical.choose hψ).eval z.unpair.1 =
+      (Classical.choose hψ.exists_code).eval z.unpair.1 :=
+    Classical.choose_spec hψ.exists_code z.unpair.1
+  have hcondition : (Classical.choose hψ.exists_code).eval z.unpair.1 =
       Part.some (Encodable.encode (ψ z.unpair.1)) :=
     Part.eq_some_iff.mpr hconditionMem
   let conjunction := conjunctionCode z.unpair.2
@@ -200,9 +194,10 @@ lemma conditionedQuoteCode_spec {P : History} (market : MarketComputation P)
     denominator, conditionedQuoteTable]
 
 /-- The actual conditioned history is a computable rational market whenever the base
-market has a named computation and the condition has polynomial (hence recursive) codes. -/
+market has a named computation and the condition sequence is symbol-metered (whence its
+whole-value naming program is recursive — `RpnSentenceCodes.exists_code`). -/
 noncomputable def conditionedMarketComputation {P : History}
-    (market : MarketComputation P) (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) :
+    (market : MarketComputation P) (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ) :
     MarketComputation (conditionedHistory P ψ) where
   price_mem_Icc := conditionedHistory_mem_Icc P market.price_mem_Icc ψ
   quote := conditionedQuoteTable market ψ
@@ -312,28 +307,23 @@ lemma denominatorPatchNormCode_spec (cutoff z : ℕ) :
 /-- Partial-recursive program for the finitely patched base market. -/
 noncomputable def denominatorPatchedQuoteCode {P : History}
     (market : MarketComputation P) (ψ : ℕ → Sentence)
-    (hψ : PolySentenceCodes ψ) (cutoff : ℕ) : Nat.Partrec.Code :=
-  let conditionAt := (Classical.choose hψ).comp Nat.Partrec.Code.left
+    (hψ : RpnSentenceCodes ψ) (cutoff : ℕ) : Nat.Partrec.Code :=
+  let conditionAt := (Classical.choose hψ.exists_code).comp Nat.Partrec.Code.left
   denominatorPatchNormCode cutoff |>.comp
     ((Nat.Partrec.Code.left.pair Nat.Partrec.Code.right).pair
       (conditionAt.pair market.code))
 
 lemma denominatorPatchedQuoteCode_spec {P : History}
     (market : MarketComputation P) (ψ : ℕ → Sentence)
-    (hψ : PolySentenceCodes ψ) (cutoff z : ℕ) :
+    (hψ : RpnSentenceCodes ψ) (cutoff z : ℕ) :
     Encodable.encode (denominatorPatchedQuoteTable market ψ cutoff
       z.unpair.1 z.unpair.2) ∈
       (denominatorPatchedQuoteCode market ψ hψ cutoff).eval z := by
   classical
-  have hψPoly : PolyFueled (Classical.choose hψ)
-      (fun n => Encodable.encode (ψ n)) := Classical.choose_spec hψ
-  obtain ⟨ψFuel, hψRun, _, _⟩ := hψPoly
   have hconditionMem : Encodable.encode (ψ z.unpair.1) ∈
-      (Classical.choose hψ).eval z.unpair.1 := by
-    apply Nat.Partrec.Code.evaln_sound
-    rw [hψRun z.unpair.1]
-    simp
-  have hcondition : (Classical.choose hψ).eval z.unpair.1 =
+      (Classical.choose hψ.exists_code).eval z.unpair.1 :=
+    Classical.choose_spec hψ.exists_code z.unpair.1
+  have hcondition : (Classical.choose hψ.exists_code).eval z.unpair.1 =
       Part.some (Encodable.encode (ψ z.unpair.1)) :=
     Part.eq_some_iff.mpr hconditionMem
   let baseQuote := market.quote z.unpair.1 z.unpair.2
@@ -354,7 +344,7 @@ lemma denominatorPatchedQuoteCode_spec {P : History}
 /-- Named exact computation of the finite denominator patch. -/
 noncomputable def denominatorPatchedMarketComputation {P : History}
     (market : MarketComputation P) (ψ : ℕ → Sentence)
-    (hψ : PolySentenceCodes ψ) (cutoff : ℕ) :
+    (hψ : RpnSentenceCodes ψ) (cutoff : ℕ) :
     MarketComputation (denominatorPatchedHistory P ψ cutoff) where
   price_mem_Icc := denominatorPatchedHistory_mem_Icc P ψ cutoff market.price_mem_Icc
   quote := denominatorPatchedQuoteTable market ψ cutoff
@@ -3523,13 +3513,13 @@ condition sequence.  This is the analytic step used by the repaired proof of
 Paper node: `thm:scon` -/
 lemma exists_eventual_condition_price_floor
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ)
+    (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (ψ i)) :
     ∃ cutoff : ℕ, ∃ ε : ℚ, 0 < (ε : ℝ) ∧
       ∀ d, cutoff ≤ d → (ε : ℝ) ≤ P d (ψ d) := by
   let rep : EfficientRepeatedEnumeration ψ :=
-    EfficientRepeatedEnumeration.ofPoly ψ hψ
+    EfficientRepeatedEnumeration.ofRpn ψ hψ
   obtain ⟨lower, hlower, hlowerLimiting⟩ :=
     lic_uniform_nonDogmatism P DP ψ rep hjoint
   have hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) := by
@@ -3566,8 +3556,7 @@ lemma exists_eventual_condition_price_floor
       funext (AffineCombination.sentenceAffine_futureHigh ψ P)
     rw [hfutureEq] at hfutureLiminfAffine
     exact hfutureLiminfAffine
-  have hpreemptive := lic_preemptive_learning P DP ψ
-    (RpnSentenceCodes.ofPolySentenceCodes hψ) hworld
+  have hpreemptive := lic_preemptive_learning P DP ψ hψ hworld
   have hdiagLiminf : lower ≤ liminf (fun n => P n (ψ n)) atTop := by
     rw [hpreemptive.1]
     exact hfutureLiminf
@@ -3588,7 +3577,7 @@ consumed by the repaired conditioning compiler. -/
 lemma eventualConditioningFloor_nonempty_of_jointConsistency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (market : MarketComputation P)
-    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ)
+    (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (ψ i)) :
     Nonempty (EventualConditioningFloor P ψ) := by
@@ -3602,7 +3591,7 @@ Paper node: `thm:scon` -/
 noncomputable def eventualConditioningFloorOfJointConsistency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (market : MarketComputation P)
-    (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ)
+    (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (ψ i)) :
     EventualConditioningFloor P ψ :=
