@@ -37,7 +37,7 @@ landed in **collapsed single-class form** (consolidation directive).
   `Tok₂` as constructor inputs, `..._preserves_ec₂` digit compilers) or Mathlib
   arity suffixes.
 
-## INTERIM SEAMS (disclosed, both closed by RPN-5)
+## INTERIM SEAMS (disclosed; seam 1 closed, seam 2 BLOCKED — see below)
 
 1. **Conditioning (`thm:scon`)** — **CLOSED 2026-07-27 (RPN-5).**  Both symbol-metered
    translation certificates are proved in `Witnesses/RpnConditioning.lean`
@@ -59,11 +59,65 @@ landed in **collapsed single-class form** (consolidation directive).
    parallel layer survives.  The digit compilers (`..._preserves_ec₂`) remain as the
    internal Tok₂ route.
 
-2. **Finite perturbations (`thm:ifp`/`app:ifp`)**: `EfficientPrefixPatch.preserves_ec`
-   upgraded to the collapsed class; `lic_iff_of_finitePerturbation` unchanged and fully
-   proved (patch structures were always explicit hypotheses).  The LIA inhabitant is
-   interim-reduced to `liaFreezeBefore_preserves_ecTok` (token-level content); the
-   RPN freeze transducer restores `liaEfficientPrefixPatch`.
+2. **Finite perturbations (`thm:ifp`/`app:ifp`)** — **OPEN, and now precisely mapped:
+   BLOCKED ON A MISSING `BigDigits` PRIMITIVE (2026-07-28).**
+   `EfficientPrefixPatch.preserves_ec` is the collapsed class;
+   `lic_iff_of_finitePerturbation` is unchanged and fully proved (patch structures were
+   always explicit hypotheses).  The LIA inhabitant remains reduced to
+   `liaFreezeBefore_preserves_ecTok` (token-level content only); **`liaEfficientPrefixPatch`
+   does not exist and the README row for `M7-PREFIX-PATCH` has been corrected to say so.**
+
+   *What landed* (`Witnesses/RpnFreeze.lean`, green, axiom-clean): the symbol-level freeze
+   transducer as the **third instance** of RpnConditioning's emitter-generic run rewriter —
+   `freezeEmit` into `rpnConditionRun`, with the whole-stream contraction exactness
+   `unRpn_rpnFreezeRun` following from the master commutation `unRpn_rpnConditionRun_of`
+   against the token-model freeze (`freezeTokens`, the seven chunk equations, spliced body
+   `freezeBody`).  Plus the run-level quote lookup the freeze needs: since the LIA prefix
+   table is a finite entry list and a run for a *fixed* target is a constant-depth pattern
+   (the target's Polish traversal with any subterm optionally escaped), the lookup is
+   `matchRun` — a bounded composition of token comparisons, **not** a scan — characterized
+   by `matchRun_sound` / `matchRun_complete` / `matchRun_iff` and transferred to the table
+   by `runQuoteFromEntries_exact` / `runPrefixQuoteFromStates_exact`, with positional forms
+   (`..._segOf`) for the emission side and the fuel certificate `matchRun_polyFueled`.
+
+   *The obstruction.*  `matchRun_polyFueled` needs `PolyFueled ct tf` — a **poly-bounded**
+   token function.  In the symbol-metered model the stream is a *digit* stream, so tokens
+   are only `BigDigits` (values may be exponential; that is the point of the digit model,
+   and `EfficientlyComputable.ofDigitEmitter` really does produce such streams).  All of
+   `matchRun`'s tests factor through a small clamp — grammar tags `0/1/2/3/4`, atom tokens
+   `a+5` — **except one**: at an escape leaf `1 :: c` it must decide
+   `Encodable.decode c = some ψ` for a fixed subformula `ψ` and an exponentially large `c`.
+
+   That decision is not expressible with the current `BigDigits` API (`add`, `mul`,
+   `ltNat`, `natPair`, `succ`, `clampVal`, `comp`, `blockSeg`).  Reason: Foundation's
+   `Formula.ofNat` ignores the payload at tag `0`, so `decode` is **not injective** —
+   `decode (Nat.pair 0 k + 1) = ⊥` for every `k`.  Hence `{c : decode c = some ψ}` is
+   infinite whenever `ψ` has a `⊥` subformula (i.e. essentially always, since negation is
+   `φ 🡒 ⊥`), and membership in it reduces to *perfect-square testing* / `Nat.unpair`,
+   i.e. to integer square root.  `PolyFueled` cannot carry the huge intermediates
+   (`PolyFueled c f` demands `IsPolyBounded f`, and `evaln`'s guard forbids feeding a value
+   larger than the fuel), and a digit-level `sqrt` does not fit `PolyFueled.prec`, whose
+   iterated state must be poly-bounded while sqrt's natural state (partial root and
+   remainder) is as large as the value.  **In the intended complexity model the claim is
+   true** — `unpair` on poly-bit inputs is poly-time — so this is a `dd:fuel`-model
+   limitation (type `(c)`), not a paper gap.
+
+   *Routes out, for Anson to choose* (none taken unilaterally — each touches the trust
+   surface):
+   * **(A)** Add a `BigDigits` integer-square-root / `unpair` closure to `DigitArith`.
+     Faithful, but needs a big-value recursion principle the file does not have today;
+     this is a real development, not plumbing.
+   * **(B)** Leave the seam open and disclosed (current state): `thm:ifp` stays fully
+     proved but conditional on `EfficientPrefixPatch`, with no LIA inhabitant at the
+     collapsed class — only the token-level `liaFreezeBefore_preserves_ecTok`.
+   * **(C)** Restrict the RPN grammar's escape clause to *canonical* codes
+     (`parseRpn`, `Framework/Criterion.lean`: accept `1 :: c` only when
+     `Encodable.encode (decode c) = c`).  Then `matchRun`'s escape test becomes equality
+     with a **constant**, which `BigDigits.ltNat` decides, and everything already landed in
+     `RpnFreeze.lean` closes the seam with only the emission certificate left to assemble.
+     Canonicalization only shrinks codes, so morally the class is unchanged — but *proving*
+     the two versions of `def:ec` agree needs exactly the blocked primitive, so adopting
+     (C) is a disclosed modeling decision about `def:ec` itself, not a theorem.
 
 ## RPN-5 — symbol-level translation compilers — **COMPLETE (2026-07-27)**
 
@@ -187,7 +241,9 @@ CONCATENATION — `rpn (φ ⋏ ψ) = 3 :: rpn φ ++ rpn ψ` — no bignum pair s
    forms deleted.
 2. **Freeze**: RPN-aware `freezeBefore` transducer (parser control skips/copies
    sentence runs; quote table replacement at slot boundaries) ⇒ symbol-level
-   `preserves_ec` ⇒ `liaEfficientPrefixPatch` restored.
+   `preserves_ec` ⇒ `liaEfficientPrefixPatch` restored.  *(Transducer + run lookup landed
+   2026-07-28 in `Witnesses/RpnFreeze.lean`; the emission certificate is blocked on the
+   escape-payload decode test — see INTERIM SEAMS item 2.)*
 
 ## EC-SEQ — 𝓔𝓒-sequence migration: **COMPLETE (2026-07-26)**
 
