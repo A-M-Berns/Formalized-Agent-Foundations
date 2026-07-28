@@ -102,8 +102,10 @@ landed in **collapsed single-class form** (consolidation directive).
    true** — `unpair` on poly-bit inputs is poly-time — so this is a `dd:fuel`-model
    limitation (type `(c)`), not a paper gap.
 
-   *Routes out, for Anson to choose* (none taken unilaterally — each touches the trust
-   surface):
+   **DECISION (Anson, 2026-07-28): route (A)** — build the `BigDigits` sqrt/`unpair`
+   closure faithfully; (C) rejected (narrowing `def:ec` post hoc is what the audit
+   exists to catch).  Tranche in flight.
+   *Routes out (recorded)*:
    * **(A)** Add a `BigDigits` integer-square-root / `unpair` closure to `DigitArith`.
      Faithful, but needs a big-value recursion principle the file does not have today;
      this is a real development, not plumbing.
