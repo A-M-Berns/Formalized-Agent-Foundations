@@ -1,0 +1,45 @@
+name: CI
+
+# Per-branch workflow (this branch's version covers the Critch PBL formalization;
+# the logical-induction branch carries its own version of this file).
+on:
+  push:
+    branches: [critch-pbl]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      # Blocking: every `theorem` in Critch/ carries a paper-node docstring and no
+      # `private theorem` occurs (keyword-hygiene rule; see AxiomAudit.lean header).
+      - name: Lint paper labels
+        run: python3 scripts/lint_paper_labels.py
+
+      # Blocking: §-citations valid against the recorded section map; every AxiomAudit
+      # inventory member annotated; every annotated section has an inventory endpoint.
+      - name: Check paper-node annotations
+        run: ./scripts/check-paper-nodes.sh
+
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Build (Barasz + Critch default targets)
+        uses: leanprover/lean-action@v1
+        with:
+          use-mathlib-cache: true
+          use-github-cache: true
+
+      # Blocking: the checked public-surface inventory — fails on sorryAx, disallowed
+      # axioms, vanished endpoints, or drifted boundary-structure fields.
+      - name: Axiom audit
+        run: lake env lean AxiomAudit.lean
