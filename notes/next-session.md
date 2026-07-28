@@ -104,7 +104,90 @@ landed in **collapsed single-class form** (consolidation directive).
 
    **DECISION (Anson, 2026-07-28): route (A)** — build the `BigDigits` sqrt/`unpair`
    closure faithfully; (C) rejected (narrowing `def:ec` post hoc is what the audit
-   exists to catch).  Tranche in flight.
+   exists to catch).
+
+   ### Route (A) — ATTEMPTED, STOP-AND-REPORT (2026-07-28, worktree agent)
+
+   Route (A) does **not** materialize, and the reason is structural rather than a matter
+   of effort.  Recording it in full, because the boundary it exposes is a property of the
+   whole `dd:fuel` calculus, not of this seam.
+
+   **(A1) What the toolkit's closures actually have in common.**  Read `add`, `mul`,
+   `ltNat`, `natPair`, `clampVal` in `Framework/DigitArith.lean` side by side: each is a
+   `PolyFueled.prec` digit loop whose *carry* is `O(1)`- or `O(poly index)`-sized —
+   `addCarry4 ≤ 1`, `mulCarry4 x y p ≤ 3(p+1)`, `conv4Partial ≤ 9i`, `ltFlag4 ≤ 1`, and
+   `clampVal`'s pair of clamped accumulators.  The design invariant is exactly:
+   **`BigDigits` is closed under an operation iff that operation's base-4 digit
+   recurrence has a poly-bounded carry.**  Nothing else is available, because
+   `PolyFueled.prec` requires `IsPolyBounded (fun m => st m.unpair.1 m.unpair.2)` — the
+   iterated state is poly in `⟨m, i⟩`, hence poly in `m`, while a `BigDigits` value is
+   `4 ^ poly m`.
+
+   **(A2) The ceiling is the fuel model itself, not `prec`'s statement.**  `PolyFueled c f`
+   bundles `Fueled c f b` with `IsPolyBounded b`, and `evaln`'s guard bounds a code's
+   *input* by its fuel.  So every value ever fed to a sub-code is bounded by a polynomial:
+   **the calculus has no big intermediates at all.**  Big values exist in this repo only
+   through the hand-built `BigDigits` digit-array interface, which is an *interface*, not
+   a computation model — so every new closure must come with an explicit small-carry
+   algorithm.  There is no weaker `prec` hypothesis to relax.
+
+   **(A3) Why square root has no small carry.**  The intended algorithm (base-4 restoring
+   digit recurrence, consuming two digits of `v` per output digit) carries the pair
+   `(R_j, W_j)` with `R_j = Nat.sqrt (v / 4 ^ (2j))` and `W_j = v / 4 ^ (2j) - R_j ^ 2`,
+   satisfying `R_j = 4 R_{j+1} + d_j` and
+   `W_j = 16 W_{j+1} + e_j - d_j (8 R_{j+1} + d_j)`, with `d_j` the largest `d ≤ 3` making
+   the subtraction nonnegative.  Both components have `Θ(L - j)` base-4 digits.  This is
+   not an artifact of the presentation: the residual is what determines every remaining
+   output digit, so it carries `Ω(L)` bits, and **no MSD-first sequential recurrence for
+   `sqrt` can have an `O(log)`-sized carry.**  (Contrast division by a *poly-bounded*
+   divisor, whose running remainder is bounded by the divisor and therefore *is* a legal
+   carry — that closure would be routine.  The blocked operations are exactly the
+   *inverses* of the forward closures: `sqrt`, `unpair`, big-divisor `div`.  The toolkit
+   is closed under the forward monotone big-value operations and open under inversion.)
+
+   **(A4) Why the state-history trick does not rescue it.**  `prec` exposes `st m i` at
+   *all* `i`, so nested `prec`s give random-access DP tables — that is how `mul`'s inner
+   convolution feeds its outer carry.  But the sqrt recurrence is genuinely 2-D (row `j`,
+   digit `k`) with a row-to-row dependence, and a `prec` step sees only the immediately
+   preceding state *of its own row*.  Producing row `j` from row `j+1` needs either one
+   `prec` per row (code depth `L`, and `PolyFueled` demands a single fixed `Code`) or a
+   state holding a whole row (`Θ(L)` digits, forbidden by (A1)).  Recomputing instead of
+   storing is exponential: the greedy `d_j = max {d ≤ 3 | (4 R_{j+1} + d) ^ 2 ≤ v / 4 ^ (2j)}`
+   needs every higher digit, so `C(j) = poly + Σ_{i > j} C(i)`, i.e. `4 ^ L`.
+
+   **(A5) The claim is still true in the intended model — and that is the disclosure.**
+   `sqrt`/`unpair` on poly-bit inputs is poly-time (in fact uniform `TC⁰ ⊆ L`,
+   Hesse–Allender–Barrington), and the fuel calculus *can* express any logspace
+   computation (a single `prec` carrying an `O(log)`-bit machine configuration).  So
+   `BigDigits.sqrt` is a true statement about the model, whose only known proof route is
+   the Chinese-remainder / iterated-product division machinery of HAB.  That is a
+   research-scale formalization, not a tranche.  Type `(c)`, disclosed; **not** a paper gap.
+
+   **(A6) Two facts derived on the way, worth keeping.**
+   * The escape test is *exactly* perfect-square testing.  `Formula.ofNat` ignores the
+     tag-0 payload, so `decode c = some ψ` iff `c ∈ Image E_ψ`, where `E_ψ` is the fixed
+     nest of `Nat.pair`/`succ` with one free parameter per `⊥` leaf.  At the base:
+     `Nat.pair 0 k = k ^ 2`, so `decode c = some ⊥ ↔ c - 1` is a perfect square.  Deciding
+     membership therefore *is* `sqrt`, with no cheaper special case.
+   * **Expanding an escape shrinks the digit stream.**  `encode` is a tower: a formula with
+     `s` nodes has depth `≥ log₂ s`, hence `≳ s ^ 2` base-4 digits.  So the escape payload's
+     digit block is at least the square of the fully expanded Polish run it abbreviates.
+     Consequences: the escape clause buys no *asymptotic* expressiveness (support for
+     route (C)/(C′) being harmless in fact, though still not provably so — canonicalizing
+     an existing emitter needs `decode`); and it re-explains why whole-value metering was
+     never viable (`unRpn` of a length-`L` run is a canonical code of `≈ 4 ^ L` digits).
+
+   **Recommendation for the next decision.**  Given (A2), the choices are genuinely three:
+   stay at (B); adopt (C) as a *disclosed* modeling decision on `def:ec` (with (A6)'s
+   second bullet as the honest argument that nothing is lost in fact); or adopt a new
+   route **(D)**: state `BigDigits.sqrt` as a single named, isolated **axiom** (or `sorry`)
+   in `Framework/DigitArith.lean`, disclosed in the README's Axioms section exactly like
+   `ModalAgents`' two facts, and let Phases 2–3 of this seam land unconditionally on top
+   of it.  (D) is the option that keeps `def:ec` untouched *and* makes the cost a single
+   kernel-visible line rather than a silent narrowing — but it breaks the mainline's
+   sorry-free/axiom-clean invariant, so it is Anson's call, not this agent's.  **No axiom,
+   `sorry`, or grammar change was introduced by this tranche.**
+
    *Routes out (recorded)*:
    * **(A)** Add a `BigDigits` integer-square-root / `unpair` closure to `DigitArith`.
      Faithful, but needs a big-value recursion principle the file does not have today;
@@ -644,12 +727,12 @@ discharges the separator argument of the endpoint.  README boundary row + status
    boundary" (cf. Tranche P item 3): check whether the boundary wants poly or merely
    computable.
 
-   *`EfficientRepeatedEnumeration.ofPoly` is now dead.*  Its symbol-metered replacement
-   `EfficientRepeatedEnumeration.ofRpn` is parked in
-   `Construction/Witnesses/ConditioningPresentation.lean` **only** because a concurrent
-   agent held `M7Witnesses.lean`.  TODO(consolidation): move `ofRpn` beside `ofCE` in
-   `M7Witnesses.lean` and delete `ofPoly` + `triangularRepeat_codes` (also unused) and
-   their `#print axioms` lines.
+   *`EfficientRepeatedEnumeration.ofPoly` is now dead.*  **DEMOLITION EXECUTED
+   2026-07-28**: `EfficientRepeatedEnumeration.ofRpn` now lives beside `ofCE` in
+   `M7Witnesses.lean` (`ConditioningPresentation.lean`'s parked copy deleted), and
+   `ofPoly` + `triangularRepeat_codes` + their `#print axioms` lines are gone.  `ofRpn`
+   joined the `M7Witnesses.lean` `#assert_axioms_clean` inventory block.  No
+   ₙ-suffixed or superseded layer survives here.
 2. **DONE 2026-07-27** — `LUV.PolyThresholdCodes` block form.  `LUV.RpnThresholdCodes`
    / `LUV.RpnThresholdCodeSeq` (`Framework/Expectations.lean`) are the `def:ec` block
    forms — literally `RpnSentenceCodes` at the paired-index conventions — with
