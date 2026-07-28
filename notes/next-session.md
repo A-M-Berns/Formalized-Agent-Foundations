@@ -1,7 +1,29 @@
 # Logical Induction — handoff
 
-_Last updated: 2026-07-27 (RPN-5 **COMPLETE** — both `thm:scon` symbol-metered endpoints proved and the criterion-level packaging restored; interim seam 1 CLOSED).
+_Last updated: 2026-07-28 (consolidation pass done; **SURFACE FROZEN FOR AUDIT** —
+Anson's ordering: M7 adversarial audit next, final statement read-through after).
 Branch: `logical-induction`._
+
+## SURFACE FREEZE (2026-07-28, commit `8b07fd1`)
+
+Construction program complete (seam 2 rests at route (B), disclosed).  One
+consolidation pass ran per `notes/consolidation.md`:
+* `Tok₂` layer renamed to `Digit` vocabulary (`EfficientlyComputableDigit`,
+  `EfficientlyComputableTok.toDigit`, `ecDigit_of_rawEmission`/`_rawSegStream`,
+  `*_preserves_ecDigit`) — no ₙ-suffixed names remain except math-variable subscripts.
+* Rule-2b duplicate merged: `RpnConditioning.ContractsTo` was a verbatim re-definition
+  of `Framework/RpnSentence.lean`'s `UnRpnContractsTo`; duplicate def + `.append` +
+  `UnRpnTransparent.contractsTo` deleted, the ~19 new combinators re-homed into the
+  `UnRpnContractsTo` namespace (`_root_` declarations inside `RpnConditioning.lean`).
+* All "Tranche/seam/interim/next-session" in-references in `.lean` docstrings rewritten
+  as self-contained statements; stale blocks corrected (M7Witnesses freeze paragraph,
+  ConditioningCompiler endpoint block, two M1-era "TODO" module docstrings, AxiomAudit
+  comments, stale `RationalQuoteCode` "until constructors land" note).
+* Linter check: only upstream Foundation warnings remain (exempt per consolidation.md).
+* Audit items queued for the M7 adversarial audit: `EfficientPrefixPatch` inhabited only
+  degenerately (`cutoff = 0`); the four disclosed whole-value 𝓔𝓒 residuals; the
+  route-(B) disclosure surface; the new-statement surface from the tranche agents
+  (UniversalDovetailer, UniversalPrefix, StrictSeparators, RpnConditioning, RpnFreeze).
 
 # 🎯 ACTIVE PLAN 2 — remaining: RPN-5 + EC-SEQ (updated 2026-07-26, collapse landed)
 
@@ -33,9 +55,9 @@ landed in **collapsed single-class form** (consolidation directive).
   undigitize_prim ∘ clockedTokens_prim`.  AxiomAudit re-froze `#assert_fields
   IsLogicalInductor`.
 * **F**: ₂/₃-suffixed public names absorbed; `Tok₃` docstring archaeology removed.
-  Remaining subscripted names are internal by design (`EfficientlyComputableTok`/
-  `Tok₂` as constructor inputs, `..._preserves_ec₂` digit compilers) or Mathlib
-  arity suffixes.
+  (2026-07-28 consolidation pass finished the job: the internal `Tok₂` layer is now
+  the `Digit` vocabulary — `EfficientlyComputableDigit` etc.; only math-variable
+  subscripts remain.)
 
 ## INTERIM SEAMS (disclosed; seam 1 closed, seam 2 RESTING at route (B) — see below)
 
