@@ -133,22 +133,6 @@ lemma DeductiveProcessComputation.union_toComputable
     ComputableDeductiveProcess (DP.union extra) :=
   (base.union more).toComputable
 
-/-! ### Efficient repetition of a symbol-metered stream -/
-
-/-- Symbol-metered form of `EfficientRepeatedEnumeration.ofPoly`: triangular repetition of
-an already 𝓔𝓒 (`def:ec`) sentence stream.  The second pairing coordinate is pure padding,
-so every source index recurs arbitrarily late, and the reindexing is poly-fueled.
-TODO(consolidation): belongs beside `ofPoly`/`ofCE` in `M7Witnesses.lean`, with `ofPoly`
-(now unused) retired; parked here only to avoid a concurrent edit of that file. -/
-def EfficientRepeatedEnumeration.ofRpn (source : ℕ → Sentence)
-    (hsource : RpnSentenceCodes source) :
-    EfficientRepeatedEnumeration source where
-  sequence := triangularRepeat source
-  sequence_poly := hsource.comp PolyFueled.left
-  repeats := triangularRepeat_repeats source
-  sound j := ⟨j.unpair.1, rfl⟩
-  covers i := ⟨Nat.pair i 0, by simp [triangularRepeat]⟩
-
 /-! ### Public presentation constructor -/
 
 /-- Honest operational input for efficient condition naming.  The ordinary stage program

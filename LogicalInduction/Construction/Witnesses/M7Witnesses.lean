@@ -391,35 +391,30 @@ coordinate is pure padding, so every source index occurs arbitrarily late. -/
 def triangularRepeat (source : ℕ → Sentence) (n : ℕ) : Sentence :=
   source n.unpair.1
 
-lemma triangularRepeat_codes (source : ℕ → Sentence)
-    (hsource : PolySentenceCodes source) :
-    PolySentenceCodes (triangularRepeat source) := by
-  obtain ⟨code, hcode⟩ := hsource
-  exact ⟨code.comp Nat.Partrec.Code.left,
-    hcode.comp PolyFueled.left⟩
-
 lemma triangularRepeat_repeats (source : ℕ → Sentence) :
     RepeatsEveryMember (triangularRepeat source) := by
   intro i N
   refine ⟨Nat.pair i.unpair.1 N, Nat.right_le_pair _ _, ?_⟩
   simp [triangularRepeat]
 
-/-- The exact efficient-repetition witness when the supplied enumeration is already a
-polynomial stream.  The bounded universal-emulator extension below removes this stronger
-clock assumption for arbitrary computable/c.e. source programs. -/
-def EfficientRepeatedEnumeration.ofPoly (source : ℕ → Sentence)
-    (hsource : PolySentenceCodes source) :
+/-- The exact efficient-repetition witness when the supplied enumeration is already an
+𝓔𝓒 (`def:ec`, symbol-metered) sentence stream.  The second pairing coordinate is pure
+padding, so every source index recurs arbitrarily late, and the reindexing is poly-fueled.
+The bounded universal-emulator extension below removes this stronger clock assumption for
+arbitrary computable/c.e. source programs.
+Paper node: `def:ec` -/
+def EfficientRepeatedEnumeration.ofRpn (source : ℕ → Sentence)
+    (hsource : RpnSentenceCodes source) :
     EfficientRepeatedEnumeration source where
   sequence := triangularRepeat source
-  sequence_poly := RpnSentenceCodes.ofPolySentenceCodes
-    (triangularRepeat_codes source hsource)
+  sequence_poly := hsource.comp PolyFueled.left
   repeats := triangularRepeat_repeats source
   sound j := ⟨j.unpair.1, rfl⟩
   covers i := ⟨Nat.pair i 0, by simp [triangularRepeat]⟩
 
 /-! ### General (c.e.) efficient repetition via the universal simulator
 
-`ofPoly` requires the source stream to already be polynomially codeable. The paper's Uniform
+`ofRpn` requires the source stream to already be efficiently codeable. The paper's Uniform
 Non-Dogmatism preprocesses an arbitrary **c.e.** stream, which need not be poly. With the
 `M7-HIST-EVALN` simulator this is now inhabitable: a code-enumerable source is dovetailed —
 on `⟨i, fuel⟩` we run the enumerator on `i` for `fuel` steps (the bounded interpreter
@@ -2653,9 +2648,8 @@ theorem liaFreezeBefore_preserves_ecTok (DP : DeductiveProcess) (cutoff : ℕ) :
 #print axioms deadlinePassed_eventually
 #print axioms deadlinePassed_mono
 #print axioms dovetailFound_eq_true_iff
-#print axioms triangularRepeat_codes
 #print axioms triangularRepeat_repeats
-#print axioms EfficientRepeatedEnumeration.ofPoly
+#print axioms EfficientRepeatedEnumeration.ofRpn
 #print axioms EfficientRepeatedEnumeration.ofCE
 #print axioms PrefixPatchCompile.freezeBefore_preserves_ec
 #print axioms liaFreezeBefore_preserves_ecTok

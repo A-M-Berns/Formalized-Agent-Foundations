@@ -281,7 +281,8 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 -- Construction/Witnesses/M7Witnesses.lean (`M7-HIST-EVALN`, `M7-CE-REPETITION`,
 -- `M7-PATIENT-CLOCK`, `M7-PREFIX-PATCH`)
 #assert_axioms_clean
-  codeEvalnNat_polyFueled boundedEvalnCompiler EfficientRepeatedEnumeration.ofCE
+  codeEvalnNat_polyFueled boundedEvalnCompiler
+  EfficientRepeatedEnumeration.ofRpn EfficientRepeatedEnumeration.ofCE
   SettlementChecker.ofComputations PatientSettlementClock.ofComputations
   liaFreezeBefore_preserves_ecTok
 
