@@ -1964,13 +1964,21 @@ market and deductive-process programs already supply. `PatientSettlementClock.of
 `thm:prand`, `thm:prandexp`, and `thm:benford` endpoint discharges it with no added
 hypothesis — provenance kind `C`, composition. Its emitted bit is polynomially codeable;
 activity only decreases; every component is active through its deadline and eventually
-becomes inactive; and inactivity certifies both deadline passage and exact finite-stage
-settlement.  It contains no prices, weighting divergence, bias, or pseudorandom-learning
-conclusion.  The concrete bounded universal evaluator and finite-world checker which
-instantiate it are the ledgered `M7-PATIENT-CLOCK` witness.
+becomes inactive; and inactivity certifies both deadline passage and finite-stage
+settlement *to within the error stream `err`*.  It contains no prices, weighting
+divergence, bias, or pseudorandom-learning conclusion.  The concrete bounded universal
+evaluator and finite-world checker which instantiate it are the ledgered
+`M7-PATIENT-CLOCK` witness.
+
+`err` is `0` whenever the sequence is exactly determined via the completed theory.  It is
+nonzero exactly when the traded sequence is only *approximately* determined — the
+threshold mesh of a LUV combination, where `def:affthmval` fixes the combination's value
+but completed worlds still disagree about individual threshold sentences.  A checker
+cannot decide exact agreement there, so it decides agreement within a rational tolerance
+and `err` absorbs the tolerance plus the determination error.
 Paper node: `app:prandaff` -/
 structure PatientSettlementClock (As : ℕ → AffineCombination) (P : History)
-    (DP : DeductiveProcess) (truth : ℕ → ℝ) (f : DeferralFunction) where
+    (DP : DeductiveProcess) (truth err : ℕ → ℝ) (f : DeferralFunction) where
   active : ℕ → ℕ → Bool
   active_codes : PolyRatCodes (fun z ↦
     if active z.unpair.2 z.unpair.1 then (1 : ℚ) else 0)
@@ -1979,13 +1987,13 @@ structure PatientSettlementClock (As : ℕ → AffineCombination) (P : History)
   eventually_inactive : ∀ i, ∃ N, ∀ n, N ≤ n → active i n = false
   settled_of_inactive : ∀ i n, active i n = false →
     deferralEnvelope f i < n ∧ ∀ v : PCWorld, v.ConsistentWith (DP.D n) →
-      (As i).value P v.payout = truth i
+      |(As i).value P v.payout - truth i| ≤ err i
 
 def PatientSettlementClock.neg
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth : ℕ → ℝ} {f : DeferralFunction}
-    (clock : PatientSettlementClock As P DP truth f) :
-    PatientSettlementClock (fun n ↦ (As n).neg) P DP (fun n ↦ -truth n) f :=
+    {truth err : ℕ → ℝ} {f : DeferralFunction}
+    (clock : PatientSettlementClock As P DP truth err f) :
+    PatientSettlementClock (fun n ↦ (As n).neg) P DP (fun n ↦ -truth n) err f :=
   { active := clock.active
     active_codes := clock.active_codes
     antitone := clock.antitone
@@ -1995,12 +2003,13 @@ def PatientSettlementClock.neg
       intro i n hinactive
       obtain ⟨hdeadline, hsettled⟩ := clock.settled_of_inactive i n hinactive
       refine ⟨hdeadline, fun v hv ↦ ?_⟩
-      rw [AffineCombination.neg_value, hsettled v hv] }
+      rw [AffineCombination.neg_value, ← abs_neg, neg_sub_neg]
+      simpa [abs_sub_comm] using hsettled v hv }
 
 /-- Boolean unresolved/deferred occupancy as a closed expressible constant. -/
 def patientOccupancy {As : ℕ → AffineCombination} {P : History}
-    {DP : DeductiveProcess} {truth : ℕ → ℝ} {f : DeferralFunction}
-    (clock : PatientSettlementClock As P DP truth f) (i n : ℕ) : EF :=
+    {DP : DeductiveProcess} {truth err : ℕ → ℝ} {f : DeferralFunction}
+    (clock : PatientSettlementClock As P DP truth err f) (i n : ℕ) : EF :=
   EF.const (if clock.active i n then 1 else 0)
 
 /-- The continuous attempted weight used when the diagonal affine price is below `low`.
@@ -2013,8 +2022,8 @@ def patientUnderpriceAttempt (As : ℕ → AffineCombination) (low width : ℚ)
 computes remaining capital from earlier attempted weights and their current clock
 occupancy, then multiplies by today's underpricing attempt. -/
 def patientUnderpriceWeight {As : ℕ → AffineCombination} {P : History}
-    {DP : DeductiveProcess} {truth : ℕ → ℝ} {f : DeferralFunction}
-    (clock : PatientSettlementClock As P DP truth f) (low width : ℚ)
+    {DP : DeductiveProcess} {truth err : ℕ → ℝ} {f : DeferralFunction}
+    (clock : PatientSettlementClock As P DP truth err f) (low width : ℚ)
     (n : ℕ) : EF :=
   EF.mul
     (ROIBudget.fractionalSharedFeatureWeight (patientOccupancy clock)
@@ -2023,8 +2032,8 @@ def patientUnderpriceWeight {As : ℕ → AffineCombination} {P : History}
 
 lemma PatientSettlementClock.occupancy_polySeg
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth : ℕ → ℝ} {f : DeferralFunction}
-    (clock : PatientSettlementClock As P DP truth f) :
+    {truth err : ℕ → ℝ} {f : DeferralFunction}
+    (clock : PatientSettlementClock As P DP truth err f) :
     RpnSpliceStream (fun z ↦
       (patientOccupancy clock z.unpair.2 z.unpair.1).serialize) := by
   exact RpnSpliceStream.serialize_const_comp clock.active_codes
@@ -2036,8 +2045,8 @@ lemma patientUnderpriceAttempt_polySeg {As : ℕ → AffineCombination}
 
 lemma patientUnderpriceWeight_polySeg
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
-    {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
+    {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
+    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth err f)
     (low width : ℚ) :
     RpnSpliceStream (fun n ↦ (patientUnderpriceWeight clock low width n).serialize) := by
   have hattempt := patientUnderpriceAttempt_polySeg hpoly low width
@@ -2048,8 +2057,8 @@ lemma patientUnderpriceWeight_polySeg
 
 @[simp] theorem patientOccupancy_denote
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth : ℕ → ℝ} {f : DeferralFunction}
-    (clock : PatientSettlementClock As P DP truth f) (i n : ℕ) (V : History) :
+    {truth err : ℕ → ℝ} {f : DeferralFunction}
+    (clock : PatientSettlementClock As P DP truth err f) (i n : ℕ) (V : History) :
     (patientOccupancy clock i n).denote V =
       if clock.active i n then 1 else 0 := by
   simp only [patientOccupancy, EF.denote_const]
@@ -2057,8 +2066,8 @@ lemma patientUnderpriceWeight_polySeg
 
 lemma PatientSettlementClock.occupancy_decreasing
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth : ℕ → ℝ} {f : DeferralFunction}
-    (clock : PatientSettlementClock As P DP truth f) (V : History) :
+    {truth err : ℕ → ℝ} {f : DeferralFunction}
+    (clock : PatientSettlementClock As P DP truth err f) (V : History) :
     ROIBudget.DecreasingOccupancy
       (fun i n ↦ (patientOccupancy clock i n).denote V) := by
   refine { nonneg := ?_, le_one := ?_, antitone := ?_ }
@@ -2082,15 +2091,15 @@ lemma patientUnderpriceAttempt_rank_le {As : ℕ → AffineCombination}
 
 lemma patientOccupancy_rank_le
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth : ℕ → ℝ} {f : DeferralFunction}
-    (clock : PatientSettlementClock As P DP truth f) (i n : ℕ) :
+    {truth err : ℕ → ℝ} {f : DeferralFunction}
+    (clock : PatientSettlementClock As P DP truth err f) (i n : ℕ) :
     (patientOccupancy clock i n).rank ≤ n := by
   simp [patientOccupancy]
 
 lemma patientUnderpriceWeight_rank_le
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
-    {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
+    {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
+    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth err f)
     (low width : ℚ) (n : ℕ) :
     (patientUnderpriceWeight clock low width n).rank ≤ n := by
   simp only [patientUnderpriceWeight, EF.rank]
@@ -2110,8 +2119,8 @@ lemma patientUnderpriceAttempt_closed {As : ℕ → AffineCombination}
 
 lemma patientOccupancy_closed
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth : ℕ → ℝ} {f : DeferralFunction}
-    (clock : PatientSettlementClock As P DP truth f)
+    {truth err : ℕ → ℝ} {f : DeferralFunction}
+    (clock : PatientSettlementClock As P DP truth err f)
     (i n : ℕ) (ρ : List ℝ) (V : History) :
     (patientOccupancy clock i n).denoteWith ρ V =
       (patientOccupancy clock i n).denote V := by
@@ -2120,8 +2129,8 @@ lemma patientOccupancy_closed
 /-- Exact semantic form of the concrete selector weight. -/
 lemma patientUnderpriceWeight_denote
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
-    {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
+    {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
+    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth err f)
     (low width : ℚ) (V : History) (n : ℕ) :
     (patientUnderpriceWeight clock low width n).denote V =
       ROIBudget.fractionalWeight
@@ -2144,8 +2153,8 @@ lemma patientUnderpriceAttempt_mem (As : ℕ → AffineCombination)
 /-- Every realized selector value lies in the weighting interval `[0,1]`. -/
 lemma patientUnderpriceWeight_mem
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
-    {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
+    {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
+    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth err f)
     (low width : ℚ) (V : History) (n : ℕ) :
     0 ≤ (patientUnderpriceWeight clock low width n).denote V ∧
       (patientUnderpriceWeight clock low width n).denote V ≤ 1 := by
@@ -2167,8 +2176,8 @@ lemma patientUnderpriceWeight_mem
 
 lemma patientUnderpriceWeight_pos_imp_price_lt
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
-    {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
+    {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
+    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth err f)
     (low width : ℚ) (hwidth : 0 < (width : ℝ)) (n : ℕ)
     (hpos : 0 < (patientUnderpriceWeight clock low width n).denote P) :
     (As n).price P n < (low : ℝ) + width := by
@@ -2192,8 +2201,8 @@ lemma patientUnderpriceWeight_pos_imp_price_lt
 polynomial segment emitter, legal rank, and closed semantics. -/
 lemma patientUnderpriceWeight_pgenerable
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
-    {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
+    {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
+    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth err f)
     (low width : ℚ) :
     PGenerableWeighting (patientUnderpriceWeight clock low width) :=
   { polySeg := patientUnderpriceWeight_polySeg hpoly clock low width
@@ -2215,8 +2224,8 @@ function.  The proof uses the explicit monotone envelope: all launches in
 invariant bounds the whole window by one. -/
 lemma patientUnderpriceWeight_deferralPatient
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
-    {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
+    {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
+    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth err f)
     (low width : ℚ) :
     DeferralPatient f (patientUnderpriceWeight clock low width) P := by
   refine ⟨1, fun n ↦ ?_⟩
@@ -2248,8 +2257,8 @@ lemma patientUnderpriceWeight_deferralPatient
 
 lemma patientUnderpriceWeight_prefixSum_eq_fractionalAllocationPrefix
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
-    {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
+    {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
+    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth err f)
     (low width : ℚ) (n : ℕ) :
     prefixSum (fun i ↦ (patientUnderpriceWeight clock low width i).denote P) n =
       ROIBudget.fractionalAllocationPrefix
@@ -2268,8 +2277,8 @@ the audited fractional recurrence forces unbounded cumulative allocation wheneve
 attempt stream is frequently one. -/
 lemma patientUnderpriceWeight_divergent
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
-    {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth f)
+    {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
+    {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth err f)
     (low width : ℚ) (hwidth : 0 < (width : ℝ))
     (hfreq : ∃ᶠ n in atTop, (As n).price P n < (low : ℝ)) :
     DivergentWeighting (patientUnderpriceWeight clock low width) P := by
@@ -2417,14 +2426,16 @@ operational representation boundaries: historical maturity verification for arbi
 legal weightings, and the settlement clock for the determined affine sequence.  The
 proof constructs the Appendix selector, proves it P-generable/divergent/patient, obtains
 its zero recurring-bias limit point, and derives the diagonal contradiction. -/
-theorem AffineCombination.DeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
+theorem AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    {truth : ℕ → ℝ} (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    {truth e err : ℕ → ℝ}
+    (hdet : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
+    (hnegl : AffineCombination.ErrorNegligible As P e)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth f)
+    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : PseudorandomAbove truth f P)
     (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
       AffineCombination.BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
@@ -2482,21 +2493,23 @@ theorem AffineCombination.DeterminedViaTheory.lic_prandaff_above_of_historicalVe
     simpa only [w] using hpseudo W hWgen hWdiv hWpatient
   have hbias : HasLimitPoint (weightedBias w market truth) 0 := by
     simpa only [w, market] using
-      hdet.recunbiasedaff_of_historicalVerifiers hpoly hWgen hWdiv hmag
+      hdet.recunbiasedaff_of_historicalVerifiers hpoly hWgen hnegl hWdiv hmag
         hworld (hverify W hWgen) (hverifyNeg W hWgen)
   exact (not_eventually_weightedAverage_lt_of_limitPoint_bias
     w market truth hden hbias htruth ((q : ℝ) / 2) (half_pos hq0)) hmarketBad
 
 /-- The `≲ₙ 0` branch of `thm:prandaff`, obtained by applying the proved nonnegative
 branch to the explicitly negated affine sequence. -/
-theorem AffineCombination.DeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
+theorem AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    {truth : ℕ → ℝ} (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    {truth e err : ℕ → ℝ}
+    (hdet : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
+    (hnegl : AffineCombination.ErrorNegligible As P e)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth f)
+    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : PseudorandomBelow truth f P)
     (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
       AffineCombination.BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
@@ -2517,7 +2530,7 @@ theorem AffineCombination.DeterminedViaTheory.lic_prandaff_below_of_historicalVe
     rw [AffineCombination.neg_magnitude]
     exact hmag i
   have haboveNeg := hdet.neg.lic_prandaff_above_of_historicalVerifiers
-    hpoly.neg hboundedNeg hmagNeg hworld f clock.neg hpseudo.neg
+    hpoly.neg hnegl.neg hboundedNeg hmagNeg hworld f clock.neg hpseudo.neg
       hverifyNeg hverifyNegNeg
   intro ε hε
   filter_upwards [haboveNeg ε hε] with n hn
@@ -2528,14 +2541,16 @@ theorem AffineCombination.DeterminedViaTheory.lic_prandaff_below_of_historicalVe
 /-- Exact two-sided `thm:prandaff`: pseudorandom completed-theory values force the
 diagonal affine prices to converge asymptotically to zero.  The separate declarations
 above retain the paper's one-sided variants. -/
-theorem AffineCombination.DeterminedViaTheory.lic_prandaff_of_historicalVerifiers
+theorem AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_of_historicalVerifiers
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    {truth : ℕ → ℝ} (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    {truth e err : ℕ → ℝ}
+    (hdet : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
+    (hnegl : AffineCombination.ErrorNegligible As P e)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth f)
+    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : Pseudorandom truth f P)
     (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
       AffineCombination.BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
@@ -2550,10 +2565,74 @@ theorem AffineCombination.DeterminedViaTheory.lic_prandaff_of_historicalVerifier
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   rw [asympEq_iff_asympLE_asympGE]
   exact ⟨
-    hdet.lic_prandaff_below_of_historicalVerifiers hpoly hbounded hmag hworld
+    hdet.lic_prandaff_below_of_historicalVerifiers hpoly hnegl hbounded hmag hworld
       f clock hpseudo.2 hverifyNeg hverifyNegNeg,
-    hdet.lic_prandaff_above_of_historicalVerifiers hpoly hbounded hmag hworld
+    hdet.lic_prandaff_above_of_historicalVerifiers hpoly hnegl hbounded hmag hworld
       f clock hpseudo.1 hverify hverifyNeg⟩
+
+/-- Exact `thm:prandaff`, nonnegative branch: the `e = 0` specialization. -/
+theorem AffineCombination.DeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
+    {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    {truth err : ℕ → ℝ} (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    (hbounded : BoundedAffinePrices As P)
+    (hmag : ∀ i, (As i).magnitude P ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
+    (hpseudo : PseudorandomAbove truth f P)
+    (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
+      AffineCombination.BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
+    (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
+      AffineCombination.BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
+        hpoly.neg W hWgen P DP) :
+    (fun n ↦ (As n).price P n) ≳ₙ (fun _ ↦ 0) :=
+  hdet.approx.lic_prandaff_above_of_historicalVerifiers hpoly
+    (AffineCombination.errorNegligible_zero As P) hbounded hmag hworld f clock hpseudo
+    hverify hverifyNeg
+
+/-- Exact `thm:prandaff`, nonpositive branch: the `e = 0` specialization. -/
+theorem AffineCombination.DeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
+    {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    {truth err : ℕ → ℝ} (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    (hbounded : BoundedAffinePrices As P)
+    (hmag : ∀ i, (As i).magnitude P ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
+    (hpseudo : PseudorandomBelow truth f P)
+    (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
+      AffineCombination.BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
+        hpoly.neg W hWgen P DP)
+    (hverifyNegNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
+      AffineCombination.BiasRunHistoricallyVerifiable
+        (fun n ↦ ((As n).neg).neg) hpoly.neg.neg W hWgen P DP) :
+    (fun n ↦ (As n).price P n) ≲ₙ (fun _ ↦ 0) :=
+  hdet.approx.lic_prandaff_below_of_historicalVerifiers hpoly
+    (AffineCombination.errorNegligible_zero As P) hbounded hmag hworld f clock hpseudo
+    hverifyNeg hverifyNegNeg
+
+/-- Exact two-sided `thm:prandaff`: the `e = 0` specialization. -/
+theorem AffineCombination.DeterminedViaTheory.lic_prandaff_of_historicalVerifiers
+    {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    {truth err : ℕ → ℝ} (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    (hbounded : BoundedAffinePrices As P)
+    (hmag : ∀ i, (As i).magnitude P ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
+    (hpseudo : Pseudorandom truth f P)
+    (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
+      AffineCombination.BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
+    (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
+      AffineCombination.BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
+        hpoly.neg W hWgen P DP)
+    (hverifyNegNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
+      AffineCombination.BiasRunHistoricallyVerifiable
+        (fun n ↦ ((As n).neg).neg) hpoly.neg.neg W hWgen P DP) :
+    (fun n ↦ (As n).price P n) ≈ₙ (fun _ ↦ 0) :=
+  hdet.approx.lic_prandaff_of_historicalVerifiers hpoly
+    (AffineCombination.errorNegligible_zero As P) hbounded hmag hworld f clock hpseudo
+    hverify hverifyNeg hverifyNegNeg
 
 /-- Conditional compatibility form of the nonnegative `thm:prandaff` branch for an arbitrary
 `BCS`.
@@ -2569,7 +2648,7 @@ theorem AffineCombination.BoundedCombinationSequence.prandaff_above_of_historica
     (f : DeferralFunction)
     (clock : PatientSettlementClock
       (fun n => (As n).scale (.const h.unitNormalization.scale)) P DP
-      (fun n => (h.unitNormalization.scale : ℝ) * truth n) f)
+      (fun n => (h.unitNormalization.scale : ℝ) * truth n) 0 f)
     (hpseudo : PseudorandomAbove truth f P)
     (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
       AffineCombination.BiasRunHistoricallyVerifiable
@@ -2608,7 +2687,7 @@ theorem AffineCombination.BoundedCombinationSequence.prandaff_below_of_historica
     (f : DeferralFunction)
     (clock : PatientSettlementClock
       (fun n => (As n).scale (.const h.unitNormalization.scale)) P DP
-      (fun n => (h.unitNormalization.scale : ℝ) * truth n) f)
+      (fun n => (h.unitNormalization.scale : ℝ) * truth n) 0 f)
     (hpseudo : PseudorandomBelow truth f P)
     (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
       AffineCombination.BiasRunHistoricallyVerifiable
@@ -2647,7 +2726,7 @@ theorem AffineCombination.BoundedCombinationSequence.prandaff_of_historicalVerif
     (f : DeferralFunction)
     (clock : PatientSettlementClock
       (fun n => (As n).scale (.const h.unitNormalization.scale)) P DP
-      (fun n => (h.unitNormalization.scale : ℝ) * truth n) f)
+      (fun n => (h.unitNormalization.scale : ℝ) * truth n) 0 f)
     (hpseudo : Pseudorandom truth f P)
     (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
       AffineCombination.BiasRunHistoricallyVerifiable
@@ -2695,7 +2774,7 @@ theorem lic_learning_varied_pseudorandom_above_of_historicalVerifiers
     (f : DeferralFunction)
     (clock : PatientSettlementClock
       (AffineCombination.sentenceMinusFeature φ pFeature) P DP
-      (fun n ↦ truth n - (p n : ℝ)) f)
+      (fun n ↦ truth n - (p n : ℝ)) 0 f)
     (hpseudo : VariedPseudorandomAbove truth p f P)
     (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
       AffineCombination.BiasRunHistoricallyVerifiable
@@ -2732,7 +2811,7 @@ theorem lic_learning_varied_pseudorandom_below_of_historicalVerifiers
     (f : DeferralFunction)
     (clock : PatientSettlementClock
       (AffineCombination.sentenceMinusFeature φ pFeature) P DP
-      (fun n ↦ truth n - (p n : ℝ)) f)
+      (fun n ↦ truth n - (p n : ℝ)) 0 f)
     (hpseudo : VariedPseudorandomBelow truth p f P)
     (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
       AffineCombination.BiasRunHistoricallyVerifiable
@@ -2769,7 +2848,7 @@ theorem lic_learning_varied_pseudorandom_of_historicalVerifiers
     (f : DeferralFunction)
     (clock : PatientSettlementClock
       (AffineCombination.sentenceMinusFeature φ pFeature) P DP
-      (fun n ↦ truth n - (p n : ℝ)) f)
+      (fun n ↦ truth n - (p n : ℝ)) 0 f)
     (hpseudo : VariedPseudorandom truth p f P)
     (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
       AffineCombination.BiasRunHistoricallyVerifiable
@@ -2817,7 +2896,7 @@ structure PseudorandomFrequencyInfrastructureWithHistoricalVerifiers
     PatientSettlementClock
       (AffineCombination.sentenceMinusFeature φ
         (AffineCombination.constantRatFeature q)) P DP
-      (fun n ↦ truth n - (q : ℝ)) f
+      (fun n ↦ truth n - (q : ℝ)) 0 f
   verify : ∀ (q : ℚ), 0 ≤ (q : ℝ) → (q : ℝ) ≤ 1 →
     ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
       AffineCombination.BiasRunHistoricallyVerifiable

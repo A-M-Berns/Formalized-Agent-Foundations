@@ -165,7 +165,7 @@ lemma prandexp_hypothesis_discharged
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
-    (hexact : LUVCombination.ExactTheoryPresentation As DP)
+    (hvalued : LUVCombination.WorldValued As DP)
     {truth : ℕ → ℝ}
     (hdet : LUVCombination.DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
@@ -173,7 +173,7 @@ lemma prandexp_hypothesis_discharged
     (f : DeferralFunction)
     (hpseudo : PseudorandomAbove truth f P) :
     PseudorandomExpectationHypothesis As P :=
-  h.prandexp hexact hdet b hshare hworld f hpseudo
+  h.prandexp hvalued hdet b hshare hworld f hpseudo
 
 #print axioms divergent_weighted_null_error_discharged
 #print axioms prandexp_hypothesis_discharged

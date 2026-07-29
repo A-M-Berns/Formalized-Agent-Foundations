@@ -239,35 +239,53 @@ lemma dovetailFound_mono (c : Nat.Partrec.Code) {i n : ℕ}
   obtain ⟨j, hj, ha⟩ := h
   exact ⟨j, by omega, acceptsWithin_mono c (Nat.le_succ n) ha⟩
 
-/-- A code semi-deciding settlement, stated **semantically**.
+/-- A code semi-deciding **tolerance agreement**, stated semantically.
 
 Prefer `SettlementChecker` and `PatientSettlementClock.ofChecker` below.  This structure's
-`sound` field *states* settlement, so a clock built from it has its `settled_of_inactive`
+`sound` field *states* the agreement bound, so a clock built from it has that bound
 transported from an assumption rather than derived — a conclusion-in-hypothesis shape.  It
 is kept because it is the honest general interface (any semi-decider will do, however
 obtained), and because `ofChecker` factors through it; but the concrete route derives both
-fields as theorems.  See `settlementTest_iff_settled`. -/
+fields as theorems.  See `settlementTest_iff_agree`.
+
+Neither field mentions `truth`: a checker cannot compute a limit over the completed
+theory, and does not need to. -/
 structure SettlementSemiDecider (As : ℕ → AffineCombination) (P : History)
-    (DP : DeductiveProcess) (truth : ℕ → ℝ) where
+    (DP : DeductiveProcess) (tol : ℕ → ℚ) where
   code : Nat.Partrec.Code
   sound : ∀ i j F, acceptsWithin code F (Nat.pair i j) = true →
-    ∀ v : PCWorld, v.ConsistentWith (DP.D j) → (As i).value P v.payout = truth i
-  complete : ∀ i j, (∀ v : PCWorld, v.ConsistentWith (DP.D j) →
-      (As i).value P v.payout = truth i) →
+    ∀ v w : PCWorld, v.ConsistentWith (DP.D j) → w.ConsistentWith (DP.D j) →
+      |(As i).value P v.payout - (As i).value P w.payout| ≤ ((tol i : ℚ) : ℝ)
+  complete : ∀ i j, (∀ v w : PCWorld, v.ConsistentWith (DP.D j) →
+      w.ConsistentWith (DP.D j) →
+      |(As i).value P v.payout - (As i).value P w.payout| ≤ ((tol i : ℚ) : ℝ)) →
     ∃ F, acceptsWithin code F (Nat.pair i j) = true
 
 private lemma orNot_eq_false_iff (a b : Bool) :
     ((!a) || (!b)) = false ↔ a = true ∧ b = true := by
   cases a <;> cases b <;> simp
 
-/-- **The patient settlement clock, constructed.**  Given a settlement semi-decider and
-completed-theory determination, the clock exists: activity is the deadline
-under-approximation OR'd with the dovetail's failure to certify settlement. -/
+/-- **The patient settlement clock, constructed.**  Given a semi-decider for agreement
+within `tol` and approximate completed-theory determination with error `e`, the clock
+exists: activity is the deadline under-approximation OR'd with the dovetail's failure to
+certify agreement.  The clock's residual error is `tol + e` — the checker's tolerance plus
+the determination error — reported through any upper bound `err`.  `hreach` is what makes
+the dovetail *fire*: some finite stage must already confine the plausible worlds' values to
+within `tol i`.  It holds at `tol = 0` under exact determination
+(`exists_settled_stage`), and at any `tol i > 2 * e i` under approximate determination
+(`exists_agree_stage`). -/
 noncomputable def PatientSettlementClock.ofSemiDecider
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    (d : SettlementSemiDecider As P DP truth)
-    (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
-    (f : DeferralFunction) : PatientSettlementClock As P DP truth f where
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    {truth e err : ℕ → ℝ} {tol : ℕ → ℚ}
+    (d : SettlementSemiDecider As P DP tol)
+    (hdet : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hreach : ∀ i, ∃ m, ∀ v w : PCWorld, v.ConsistentWith (DP.D m) →
+      w.ConsistentWith (DP.D m) →
+      |(As i).value P v.payout - (As i).value P w.payout| ≤ ((tol i : ℚ) : ℝ))
+    (herr : ∀ i, ((tol i : ℚ) : ℝ) + e i ≤ err i)
+    (f : DeferralFunction) :
+    PatientSettlementClock As P DP truth err f where
   active i n := (!(deadlinePassed f i n)) || (!(dovetailFound d.code i n))
   active_codes := by
     obtain ⟨cdp, hdp⟩ := polyFueled_deadlinePassed f
@@ -304,7 +322,7 @@ noncomputable def PatientSettlementClock.ofSemiDecider
   eventually_inactive := by
     intro i
     obtain ⟨N1, hN1⟩ := deadlinePassed_eventually f i
-    obtain ⟨m, hm⟩ := hdet.exists_settled_stage i
+    obtain ⟨m, hm⟩ := hreach i
     obtain ⟨F, hF⟩ := d.complete i m hm
     refine ⟨max N1 (max F m), fun n hn => ?_⟩
     refine (orNot_eq_false_iff _ _).2 ⟨hN1 n (le_trans (le_max_left _ _) hn), ?_⟩
@@ -317,19 +335,20 @@ noncomputable def PatientSettlementClock.ofSemiDecider
     obtain ⟨hdp, hdf⟩ := (orNot_eq_false_iff _ _).1 hinactive
     refine ⟨deadlinePassed_sound f hdp, fun v hv => ?_⟩
     obtain ⟨j, hj, ha⟩ := (dovetailFound_eq_true_iff d.code i n).1 hdf
-    exact d.sound i j n ha v (fun φ hφ => hv φ (DP.mono_le hj hφ))
+    exact le_trans (hdet.close_of_agree hworld i j ((tol i : ℚ) : ℝ) (d.sound i j n ha) v
+      (fun φ hφ => hv φ (DP.mono_le hj hφ))) (herr i)
 
 /-! ### The purely computational checker
 
 `SettlementSemiDecider` above assumes a *semantic* property of a code.  The honest route
 assumes only that a code recognizes a **named decidable function** — `SettlementTest`,
 which mentions no market, no `truth`, no worlds beyond the finite enumeration — and then
-*derives* soundness and completeness from `settlementTest_iff_settled`.
+*derives* soundness and completeness from `settlementTest_iff_agree`.
 
 What is left assumed is then irreducible plumbing: "this program recognizes this decidable
 predicate."  It carries no semantics at all. -/
 
-/-- A code recognizing the concrete decidable settlement test.
+/-- A code recognizing the concrete decidable settlement test at tolerance `tol i`.
 
 **Purely computational**: the spec relates a program to a `Bool`-valued function of
 `⟨i,j⟩` and nothing else — no history, no `truth`, no market conclusion.
@@ -341,46 +360,45 @@ quantifies over `FiniteWorld B = Fin B → Bool` with `B` computed from the inpu
 dependent family that `Computable` cannot decompose, so no code could be shown to
 recognize it in that form.  `SettlementTestBool` ranges over `List Bool`, one
 non-dependent `Primcodable` type; `settlementTestBool_iff` bridges them.
-
-Inhabiting this is the sole remaining obligation of `M7-PATIENT-CLOCK`: exhibit a
-`Nat.Partrec.Code` for a non-dependent decidable function, i.e. `Computable` plumbing
-through `MarketComputation.quoteAtFuel`, `DeductiveProcessComputation.stageAtFuel` and
-`PolySequence`.
 Paper node: `def:ec` -/
 structure SettlementChecker (As : ℕ → AffineCombination) (Q : ℕ → Sentence → ℚ)
-    (DP : DeductiveProcess) where
+    (DP : DeductiveProcess) (tol : ℕ → ℚ) where
   code : Nat.Partrec.Code
   spec : ∀ i j, (∃ F, acceptsWithin code F (Nat.pair i j) = true) ↔
-    (As i).SettlementTestBool Q (DP.D j) = true
+    (As i).SettlementTestBool Q (DP.D j) (tol i) = true
 
 /-- A concrete checker yields a semi-decider: soundness and completeness are **derived**
-from `settlementTest_iff_settled`, not assumed. -/
+from `settlementTest_iff_agree`, not assumed. -/
 def SettlementChecker.toSemiDecider
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    {Q : ℕ → Sentence → ℚ} (chk : SettlementChecker As Q DP)
-    (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
-    (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    SettlementSemiDecider As P DP truth where
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    {Q : ℕ → Sentence → ℚ} {tol : ℕ → ℚ} (chk : SettlementChecker As Q DP tol)
+    (hQ : ∀ d φ, P d φ = (Q d φ : ℝ)) :
+    SettlementSemiDecider As P DP tol where
   code := chk.code
   sound i j F ha :=
-    (hdet.settlementTest_iff_settled Q hQ hworld i j).1
-      (((As i).settlementTestBool_iff Q (DP.D j)).1 ((chk.spec i j).1 ⟨F, ha⟩))
-  complete i j hsettled :=
-    (chk.spec i j).2 (((As i).settlementTestBool_iff Q (DP.D j)).2
-      ((hdet.settlementTest_iff_settled Q hQ hworld i j).2 hsettled))
+    ((As i).settlementTest_iff_agree P Q hQ (DP.D j) (tol i)).1
+      (((As i).settlementTestBool_iff Q (DP.D j) (tol i)).1 ((chk.spec i j).1 ⟨F, ha⟩))
+  complete i j hagree :=
+    (chk.spec i j).2 (((As i).settlementTestBool_iff Q (DP.D j) (tol i)).2
+      (((As i).settlementTest_iff_agree P Q hQ (DP.D j) (tol i)).2 hagree))
 
 /-- **The patient settlement clock from a concrete checker.**  The only assumption is that
 one program recognizes one decidable predicate; every semantic field of the clock —
 including `settled_of_inactive` — is proved. -/
 noncomputable def PatientSettlementClock.ofChecker
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    {Q : ℕ → Sentence → ℚ} (chk : SettlementChecker As Q DP)
-    (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    {truth e err : ℕ → ℝ}
+    {Q : ℕ → Sentence → ℚ} {tol : ℕ → ℚ} (chk : SettlementChecker As Q DP tol)
+    (hdet : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
     (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) : PatientSettlementClock As P DP truth f :=
-  PatientSettlementClock.ofSemiDecider (chk.toSemiDecider hdet hQ hworld) hdet f
+    (hreach : ∀ i, ∃ m, ∀ v w : PCWorld, v.ConsistentWith (DP.D m) →
+      w.ConsistentWith (DP.D m) →
+      |(As i).value P v.payout - (As i).value P w.payout| ≤ ((tol i : ℚ) : ℝ))
+    (herr : ∀ i, ((tol i : ℚ) : ℝ) + e i ≤ err i)
+    (f : DeferralFunction) :
+    PatientSettlementClock As P DP truth err f :=
+  PatientSettlementClock.ofSemiDecider (chk.toSemiDecider hQ) hdet hworld hreach herr f
 
 end
 
@@ -1611,23 +1629,60 @@ that one — carried through to a `Primrec`-backed code below.  It is conservati
 timeout (of the process program or of any market call) reads as `false`, so a `true` result
 always certifies the real test. -/
 
+/-- Tolerance agreement of two *possibly timed-out* market evaluations.  A timeout on
+either side reads as failure, so a `true` result always certifies the real comparison. -/
+def ratWithinOpt (v v' : Option ℚ) (tol : ℚ) : Bool :=
+  (v.isSome && v'.isSome) && ratWithin (v.getD 0) (v'.getD 0) tol
+
+lemma ratWithinOpt_eq_true_iff {v v' : Option ℚ} {tol : ℚ} :
+    ratWithinOpt v v' tol = true ↔
+      ∃ x y, v = some x ∧ v' = some y ∧ |x - y| ≤ tol := by
+  cases v with
+  | none => simp [ratWithinOpt]
+  | some x =>
+      cases v' with
+      | none => simp [ratWithinOpt]
+      | some y => simp [ratWithinOpt, ratWithin_eq_true_iff]
+
+private lemma ratWithin_prim :
+    Primrec fun p : (ℚ × ℚ) × ℚ => ratWithin p.1.1 p.1.2 p.2 := by
+  have hx : Primrec fun p : (ℚ × ℚ) × ℚ => p.1.1 := Primrec.fst.comp Primrec.fst
+  have hy : Primrec fun p : (ℚ × ℚ) × ℚ => p.1.2 := Primrec.snd.comp Primrec.fst
+  have ht : Primrec fun p : (ℚ × ℚ) × ℚ => p.2 := Primrec.snd
+  have h1 := (ratLE_prim.comp hx (ratAdd_prim.comp hy ht)).decide
+  have h2 := (ratLE_prim.comp hy (ratAdd_prim.comp hx ht)).decide
+  exact (Primrec.and.comp h1 h2).of_eq fun _ => rfl
+
+private lemma ratWithinOpt_prim :
+    Primrec fun p : (Option ℚ × Option ℚ) × ℚ => ratWithinOpt p.1.1 p.1.2 p.2 := by
+  have hv : Primrec fun p : (Option ℚ × Option ℚ) × ℚ => p.1.1 :=
+    Primrec.fst.comp Primrec.fst
+  have hv' : Primrec fun p : (Option ℚ × Option ℚ) × ℚ => p.1.2 :=
+    Primrec.snd.comp Primrec.fst
+  have ht : Primrec fun p : (Option ℚ × Option ℚ) × ℚ => p.2 := Primrec.snd
+  have hg : Primrec fun p : (Option ℚ × Option ℚ) × ℚ => p.1.1.getD 0 :=
+    Primrec.option_getD.comp hv (Primrec.const 0)
+  have hg' : Primrec fun p : (Option ℚ × Option ℚ) × ℚ => p.1.2.getD 0 :=
+    Primrec.option_getD.comp hv' (Primrec.const 0)
+  exact (Primrec.and.comp
+    (Primrec.and.comp (Primrec.option_isSome.comp hv) (Primrec.option_isSome.comp hv'))
+    (ratWithin_prim.comp ((hg.pair hg').pair ht))).of_eq fun _ => rfl
+
 /-- The executable bounded settlement check.  Accepts only once the certified process
 program has produced stage `j` and every market call needed by both worlds' values has
-terminated. -/
+terminated, and then compares the two worlds' rational values within `tol`. -/
 def AffineCombination.settlementCheckAtFuel (A : AffineCombination)
     {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) (process : DeductiveProcessComputation DP)
-    (j fuel : ℕ) : Bool :=
+    (tol : ℚ) (j fuel : ℕ) : Bool :=
   match process.stageAtFuel fuel j with
   | none => false
   | some stage =>
       (allBitLists (A.settlementAtomLimit stage)).all fun l =>
         (allBitLists (A.settlementAtomLimit stage)).all fun l' =>
           !(stageSatBits stage l) || !(stageSatBits stage l') ||
-            (match A.valueRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l),
-                 A.valueRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l') with
-             | some v, some v' => decide (v = v')
-             | _, _ => false)
+            ratWithinOpt (A.valueRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l))
+              (A.valueRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l')) tol
 
 section
 attribute [local irreducible] Nat.sqrt
@@ -1638,9 +1693,9 @@ kept outside this function and is supplied by `Partrec.rfindOpt` below. -/
 lemma AffineCombination.settlementCheckAtFuel_prim
     {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) (process : DeductiveProcessComputation DP) :
-    Primrec fun q : AffineCombination × ℕ × ℕ =>
-      q.1.settlementCheckAtFuel market process q.2.1 q.2.2 := by
-  let Q := AffineCombination × ℕ × ℕ
+    Primrec fun q : AffineCombination × ℚ × ℕ × ℕ =>
+      q.1.settlementCheckAtFuel market process q.2.1 q.2.2.1 q.2.2.2 := by
+  let Q := AffineCombination × ℚ × ℕ × ℕ
   let S := Q × Finset Sentence
   let R := S × List Bool
   have hlimit : Primrec fun p : S => p.1.1.settlementAtomLimit p.2 :=
@@ -1650,28 +1705,31 @@ lemma AffineCombination.settlementCheckAtFuel_prim
   have hsat : Primrec fun p : R => stageSatBits p.1.2 p.2 :=
     stageSatBits_prim.comp (Primrec.snd.comp Primrec.fst) Primrec.snd
   have hvalue : Primrec fun p : R =>
-      valueRatCompAt p.1.1.1 market p.1.1.2.2 p.2 :=
+      valueRatCompAt p.1.1.1 market p.1.1.2.2.2 p.2 :=
     (valueRatCompAt_prim market).comp
       (((Primrec.fst.comp (Primrec.fst.comp Primrec.fst)).pair
-        (Primrec.snd.comp (Primrec.snd.comp (Primrec.fst.comp Primrec.fst)))).pair
+        (Primrec.snd.comp (Primrec.snd.comp
+          (Primrec.snd.comp (Primrec.fst.comp Primrec.fst))))).pair
         Primrec.snd)
   have hagree : Primrec fun p : R × List Bool =>
-      let v := valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2 p.1.2
-      let v' := valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2 p.2
-      v.isSome && decide (v = v') := by
+      let v := valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2.2 p.1.2
+      let v' := valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2.2 p.2
+      ratWithinOpt v v' p.1.1.1.2.1 := by
     have hv : Primrec fun p : R × List Bool =>
-        valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2 p.1.2 :=
+        valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2.2 p.1.2 :=
       hvalue.comp Primrec.fst
     have hv' : Primrec fun p : R × List Bool =>
-        valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2 p.2 :=
+        valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2.2 p.2 :=
       hvalue.comp ((Primrec.fst.comp Primrec.fst).pair Primrec.snd)
-    exact Primrec.and.comp (Primrec.option_isSome.comp hv)
-      (Primrec.eq.comp hv hv').decide
+    have htol : Primrec fun p : R × List Bool => p.1.1.1.2.1 :=
+      Primrec.fst.comp (Primrec.snd.comp
+        (Primrec.fst.comp (Primrec.fst.comp Primrec.fst)))
+    exact ratWithinOpt_prim.comp ((hv.pair hv').pair htol)
   have hcondition : Primrec fun p : R × List Bool =>
       (!stageSatBits p.1.1.2 p.1.2) || (!stageSatBits p.1.1.2 p.2) ||
-        (let v := valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2 p.1.2
-         let v' := valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2 p.2
-         v.isSome && decide (v = v')) := by
+        (let v := valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2.2 p.1.2
+         let v' := valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2.2 p.2
+         ratWithinOpt v v' p.1.1.1.2.1) := by
     have hs1 : Primrec fun p : R × List Bool => stageSatBits p.1.1.2 p.1.2 :=
       hsat.comp Primrec.fst
     have hs2 : Primrec fun p : R × List Bool => stageSatBits p.1.1.2 p.2 :=
@@ -1680,9 +1738,9 @@ lemma AffineCombination.settlementCheckAtFuel_prim
       (Primrec.or.comp (Primrec.not.comp hs1) (Primrec.not.comp hs2)) hagree
   have hinnerStep : Primrec₂ fun (r : R) (x : List Bool × Bool) =>
       ((!stageSatBits r.1.2 r.2) || (!stageSatBits r.1.2 x.1) ||
-        (let v := valueRatCompAt r.1.1.1 market r.1.1.2.2 r.2
-         let v' := valueRatCompAt r.1.1.1 market r.1.1.2.2 x.1
-         v.isSome && decide (v = v'))) && x.2 :=
+        (let v := valueRatCompAt r.1.1.1 market r.1.1.2.2.2 r.2
+         let v' := valueRatCompAt r.1.1.1 market r.1.1.2.2.2 x.1
+         ratWithinOpt v v' r.1.1.2.1)) && x.2 :=
     (Primrec.and.comp
       (hcondition.comp (Primrec.fst.pair (Primrec.fst.comp Primrec.snd)))
       (Primrec.snd.comp Primrec.snd)).to₂
@@ -1690,17 +1748,17 @@ lemma AffineCombination.settlementCheckAtFuel_prim
       (allBitLists (r.1.1.1.settlementAtomLimit r.1.2)).foldr
         (fun l' acc =>
           ((!stageSatBits r.1.2 r.2) || (!stageSatBits r.1.2 l') ||
-            (let v := valueRatCompAt r.1.1.1 market r.1.1.2.2 r.2
-             let v' := valueRatCompAt r.1.1.1 market r.1.1.2.2 l'
-             v.isSome && decide (v = v'))) && acc) true :=
+            (let v := valueRatCompAt r.1.1.1 market r.1.1.2.2.2 r.2
+             let v' := valueRatCompAt r.1.1.1 market r.1.1.2.2.2 l'
+             ratWithinOpt v v' r.1.1.2.1)) && acc) true :=
     Primrec.list_foldr (hworlds.comp Primrec.fst) (Primrec.const true) hinnerStep
   have houterStep : Primrec₂ fun (s : S) (x : List Bool × Bool) =>
       ((allBitLists (s.1.1.settlementAtomLimit s.2)).foldr
         (fun l' acc =>
           ((!stageSatBits s.2 x.1) || (!stageSatBits s.2 l') ||
-            (let v := valueRatCompAt s.1.1 market s.1.2.2 x.1
-             let v' := valueRatCompAt s.1.1 market s.1.2.2 l'
-             v.isSome && decide (v = v'))) && acc) true) && x.2 :=
+            (let v := valueRatCompAt s.1.1 market s.1.2.2.2 x.1
+             let v' := valueRatCompAt s.1.1 market s.1.2.2.2 l'
+             ratWithinOpt v v' s.1.2.1)) && acc) true) && x.2 :=
     (Primrec.and.comp
       (hinner.comp (Primrec.fst.pair (Primrec.fst.comp Primrec.snd)))
       (Primrec.snd.comp Primrec.snd)).to₂
@@ -1710,15 +1768,16 @@ lemma AffineCombination.settlementCheckAtFuel_prim
           ((allBitLists (s.1.1.settlementAtomLimit s.2)).foldr
             (fun l' acc' =>
               ((!stageSatBits s.2 l) || (!stageSatBits s.2 l') ||
-                (let v := valueRatCompAt s.1.1 market s.1.2.2 l
-                 let v' := valueRatCompAt s.1.1 market s.1.2.2 l'
-                 v.isSome && decide (v = v'))) && acc') true) && acc) true :=
+                (let v := valueRatCompAt s.1.1 market s.1.2.2.2 l
+                 let v' := valueRatCompAt s.1.1 market s.1.2.2.2 l'
+                 ratWithinOpt v v' s.1.2.1)) && acc') true) && acc) true :=
     Primrec.list_foldr hworlds (Primrec.const true) houterStep
-  have hstage : Primrec fun q : Q => process.stageAtFuel q.2.2 q.2.1 :=
+  have hstage : Primrec fun q : Q => process.stageAtFuel q.2.2.2 q.2.2.1 :=
     processStageAtFuel_prim process |>.comp
-      (Primrec.snd.comp Primrec.snd) (Primrec.fst.comp Primrec.snd)
+      (Primrec.snd.comp (Primrec.snd.comp Primrec.snd))
+      (Primrec.fst.comp (Primrec.snd.comp Primrec.snd))
   have hcompiled : Primrec fun q : Q =>
-      match process.stageAtFuel q.2.2 q.2.1 with
+      match process.stageAtFuel q.2.2.2 q.2.2.1 with
       | none => false
       | some stage =>
           (allBitLists (q.1.settlementAtomLimit stage)).foldr
@@ -1726,15 +1785,15 @@ lemma AffineCombination.settlementCheckAtFuel_prim
               ((allBitLists (q.1.settlementAtomLimit stage)).foldr
                 (fun l' acc' =>
                   ((!stageSatBits stage l) || (!stageSatBits stage l') ||
-                    (let v := valueRatCompAt q.1 market q.2.2 l
-                     let v' := valueRatCompAt q.1 market q.2.2 l'
-                     v.isSome && decide (v = v'))) && acc') true) && acc) true :=
+                    (let v := valueRatCompAt q.1 market q.2.2.2 l
+                     let v' := valueRatCompAt q.1 market q.2.2.2 l'
+                     ratWithinOpt v v' q.2.1)) && acc') true) && acc) true :=
     (Primrec.option_casesOn hstage (Primrec.const false)
       (houter.comp (Primrec.fst.pair Primrec.snd)).to₂).of_eq fun q => by
-        cases process.stageAtFuel q.2.2 q.2.1 <;> rfl
+        cases process.stageAtFuel q.2.2.2 q.2.2.1 <;> rfl
   exact hcompiled.of_eq fun q => by
     unfold AffineCombination.settlementCheckAtFuel
-    cases hst : process.stageAtFuel q.2.2 q.2.1 with
+    cases hst : process.stageAtFuel q.2.2.2 q.2.2.1 with
     | none => rfl
     | some stage =>
         simp only
@@ -1748,20 +1807,16 @@ lemma AffineCombination.settlementCheckAtFuel_prim
           List.foldr f true (allBitLists (q.1.settlementAtomLimit stage)))
         funext l' acc'
         rw [valueRatCompAt_eq, valueRatCompAt_eq]
-        cases hs : stageSatBits stage l <;>
-          cases hs' : stageSatBits stage l' <;>
-          cases hv : q.1.valueRatAtFuel market q.2.2 (BoolPCWorld.bitsPayoutRat l) <;>
-          cases hv' : q.1.valueRatAtFuel market q.2.2 (BoolPCWorld.bitsPayoutRat l') <;>
-          simp
 
 end
 
 lemma AffineCombination.settlementCheckAtFuel_sound (A : AffineCombination)
     {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) (process : DeductiveProcessComputation DP)
-    {j fuel : ℕ}
-    (h : A.settlementCheckAtFuel market process j fuel = true) :
-    A.SettlementTestBool (fun d φ => market.quote d (Encodable.encode φ)) (DP.D j) = true := by
+    {tol : ℚ} {j fuel : ℕ}
+    (h : A.settlementCheckAtFuel market process tol j fuel = true) :
+    A.SettlementTestBool (fun d φ => market.quote d (Encodable.encode φ))
+      (DP.D j) tol = true := by
   unfold AffineCombination.settlementCheckAtFuel at h
   cases hstage : process.stageAtFuel fuel j with
   | none => rw [hstage] at h; exact absurd h (by simp)
@@ -1781,26 +1836,19 @@ lemma AffineCombination.settlementCheckAtFuel_sound (A : AffineCombination)
       · simp
       rw [ha, ha'] at hb
       simp only [Bool.not_true, Bool.false_or] at hb ⊢
-      -- The check's match certifies both market evaluations terminated and agreed.
-      cases hv : A.valueRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l) with
-      | none => rw [hv] at hb; exact absurd hb (by simp)
-      | some v =>
-          cases hv' : A.valueRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l') with
-          | none => rw [hv, hv'] at hb; exact absurd hb (by simp)
-          | some v' =>
-              rw [hv, hv'] at hb
-              simp only [decide_eq_true_iff] at hb ⊢
-              rw [← A.valueRatAtFuel_sound market fuel _ hv,
-                ← A.valueRatAtFuel_sound market fuel _ hv']
-              exact hb
+      -- The check certifies both market evaluations terminated and agreed within `tol`.
+      obtain ⟨v, v', hv, hv', hclose⟩ := ratWithinOpt_eq_true_iff.1 hb
+      rw [ratWithin_eq_true_iff, ← A.valueRatAtFuel_sound market fuel _ hv,
+        ← A.valueRatAtFuel_sound market fuel _ hv']
+      exact hclose
 
 lemma AffineCombination.settlementCheckAtFuel_complete (A : AffineCombination)
     {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) (process : DeductiveProcessComputation DP)
-    (j : ℕ)
+    (tol : ℚ) (j : ℕ)
     (h : A.SettlementTestBool (fun d φ => market.quote d (Encodable.encode φ))
-      (DP.D j) = true) :
-    ∃ fuel, A.settlementCheckAtFuel market process j fuel = true := by
+      (DP.D j) tol = true) :
+    ∃ fuel, A.settlementCheckAtFuel market process tol j fuel = true := by
   obtain ⟨f0, h0⟩ := process.stageAtFuel_complete j
   obtain ⟨f1, h1⟩ := A.exists_fuel_valueRatAtFuel_list market
     ((allBitLists (A.settlementAtomLimit (DP.D j))).map BoolPCWorld.bitsPayoutRat)
@@ -1832,24 +1880,30 @@ Paper node: `def:ec` -/
 noncomputable def SettlementChecker.ofComputations
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     (hpoly : AffineCombination.PolySequence As)
-    (market : MarketComputation P) (process : DeductiveProcessComputation DP) :
-    SettlementChecker As (fun d φ => market.quote d (Encodable.encode φ)) DP := by
+    (market : MarketComputation P) (process : DeductiveProcessComputation DP)
+    {tol : ℕ → ℚ} (htol : Primrec tol) :
+    SettlementChecker As (fun d φ => market.quote d (Encodable.encode φ)) DP tol := by
   have hAs : Primrec As := hpoly.primrec
   have hcheck : Primrec₂ fun (z fuel : ℕ) =>
-      (As z.unpair.1).settlementCheckAtFuel market process z.unpair.2 fuel := by
+      (As z.unpair.1).settlementCheckAtFuel market process (tol z.unpair.1)
+        z.unpair.2 fuel := by
+    have hidx : Primrec fun p : ℕ × ℕ => p.1.unpair.1 :=
+      Primrec.fst.comp (Primrec.unpair.comp Primrec.fst)
     have hinput : Primrec fun p : ℕ × ℕ =>
-        (As p.1.unpair.1, p.1.unpair.2, p.2) :=
-      (hAs.comp (Primrec.fst.comp (Primrec.unpair.comp Primrec.fst))).pair
-        ((Primrec.snd.comp (Primrec.unpair.comp Primrec.fst)).pair Primrec.snd)
+        (As p.1.unpair.1, tol p.1.unpair.1, p.1.unpair.2, p.2) :=
+      (hAs.comp hidx).pair ((htol.comp hidx).pair
+        ((Primrec.snd.comp (Primrec.unpair.comp Primrec.fst)).pair Primrec.snd))
     exact ((AffineCombination.settlementCheckAtFuel_prim market process).comp hinput).to₂
   let guard : ℕ → ℕ → Option ℕ := fun z fuel =>
-    if (As z.unpair.1).settlementCheckAtFuel market process z.unpair.2 fuel then
+    if (As z.unpair.1).settlementCheckAtFuel market process (tol z.unpair.1)
+        z.unpair.2 fuel then
       some 1
     else
       none
   have hguard : Computable₂ guard := by
     have hp : Primrec fun p : ℕ × ℕ =>
-        if (As p.1.unpair.1).settlementCheckAtFuel market process p.1.unpair.2 p.2 then
+        if (As p.1.unpair.1).settlementCheckAtFuel market process (tol p.1.unpair.1)
+            p.1.unpair.2 p.2 then
           some 1
         else
           none := by
@@ -1882,12 +1936,12 @@ noncomputable def SettlementChecker.ofComputations
       exact this
     obtain ⟨fuel', hfuel'⟩ := Nat.rfindOpt_spec hmem
     have hcheckTrue :
-        (As i).settlementCheckAtFuel market process j fuel' = true := by
+        (As i).settlementCheckAtFuel market process (tol i) j fuel' = true := by
       simpa [guard] using hfuel'
     exact (As i).settlementCheckAtFuel_sound market process hcheckTrue
   · intro htest
     obtain ⟨fuel, hfuel⟩ :=
-      (As i).settlementCheckAtFuel_complete market process j htest
+      (As i).settlementCheckAtFuel_complete market process (tol i) j htest
     have hdom : (Nat.rfindOpt (guard (Nat.pair i j))).Dom := by
       rw [Nat.rfindOpt_dom]
       exact ⟨fuel, 1, by simp [guard, hfuel]⟩
@@ -1895,7 +1949,7 @@ noncomputable def SettlementChecker.ofComputations
       have hout := Part.get_mem hdom
       obtain ⟨fuel', hfuel'⟩ := Nat.rfindOpt_spec hout
       have houtEq : (Nat.rfindOpt (guard (Nat.pair i j))).get hdom = 1 := by
-        have hp : (As i).settlementCheckAtFuel market process j fuel' = true ∧
+        have hp : (As i).settlementCheckAtFuel market process (tol i) j fuel' = true ∧
             1 = (Nat.rfindOpt (guard (Nat.pair i j))).get hdom := by
           simpa [guard] using hfuel'
         exact hp.2.symm
@@ -1913,14 +1967,22 @@ noncomputable def SettlementChecker.ofComputations
 deductive-process programs.  No computability bridge or checker remains as a hypothesis.
 Paper node: `def:ec` -/
 noncomputable def PatientSettlementClock.ofComputations
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    {truth e err : ℕ → ℝ} {tol : ℕ → ℚ}
     (hpoly : AffineCombination.PolySequence As)
     (market : MarketComputation P) (process : DeductiveProcessComputation DP)
-    (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    (hdet : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) : PatientSettlementClock As P DP truth f :=
+    (htolPrim : Primrec tol)
+    (hreach : ∀ i, ∃ m, ∀ v w : PCWorld, v.ConsistentWith (DP.D m) →
+      w.ConsistentWith (DP.D m) →
+      |(As i).value P v.payout - (As i).value P w.payout| ≤ ((tol i : ℚ) : ℝ))
+    (herr : ∀ i, ((tol i : ℚ) : ℝ) + e i ≤ err i)
+    (f : DeferralFunction) :
+    PatientSettlementClock As P DP truth err f :=
   PatientSettlementClock.ofChecker
-    (SettlementChecker.ofComputations hpoly market process) hdet market.quote_exact hworld f
+    (SettlementChecker.ofComputations hpoly market process htolPrim) hdet
+    market.quote_exact hworld hreach herr f
 
 end SettlementCompile
 

@@ -2469,13 +2469,13 @@ theorem BoundedSequence.prandexp_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
-    (hexact : ExactTheoryPresentation As DP)
+    (hvalued : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction)
+    (f : DeferralFunction) {err : ℕ → ℝ}
     (clock : PatientSettlementClock (normalizedMesh As b) P DP
-      (normalizedMeshTruth As P DP hworld b) f)
+      (normalizedMeshTruth As P DP hworld b) err f)
     (hpseudo : PseudorandomAbove truth f P)
     (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
       AffineCombination.BiasRunHistoricallyVerifiable
@@ -2489,11 +2489,12 @@ theorem BoundedSequence.prandexp_of_historicalVerifiers
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : 0 < q := meshNormScale_pos b
-  have hpseudoMesh := hexact.toWorldValued.normalizedMeshTruth_pseudorandomAbove
+  have hpseudoMesh := hvalued.normalizedMeshTruth_pseudorandomAbove
     hdet hworld b hshare hpseudo
   have haff :=
-    AffineCombination.DeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
-      (h.normalizedMesh_poly b) (hexact.normalizedMesh_determined hworld b)
+    AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
+      (h.normalizedMesh_poly b) (hvalued.normalizedMesh_approxDetermined hdet hworld b)
+      (normalizedMesh_errorNegligible As P b)
       (h.normalizedMesh_boundedPrices b hP)
       (normalizedMesh_magnitude_le_one b hshare) hworld f clock
       hpseudoMesh hverify hverifyNeg
@@ -2507,13 +2508,13 @@ theorem BoundedSequence.prandexp_below_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
-    (hexact : ExactTheoryPresentation As DP)
+    (hvalued : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction)
+    (f : DeferralFunction) {err : ℕ → ℝ}
     (clock : PatientSettlementClock (normalizedMesh As b) P DP
-      (normalizedMeshTruth As P DP hworld b) f)
+      (normalizedMeshTruth As P DP hworld b) err f)
     (hpseudo : PseudorandomBelow truth f P)
     (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
       AffineCombination.BiasRunHistoricallyVerifiable
@@ -2528,11 +2529,12 @@ theorem BoundedSequence.prandexp_below_of_historicalVerifiers
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : 0 < q := meshNormScale_pos b
-  have hpseudoMesh := hexact.toWorldValued.normalizedMeshTruth_pseudorandomBelow
+  have hpseudoMesh := hvalued.normalizedMeshTruth_pseudorandomBelow
     hdet hworld b hshare hpseudo
   have haff :=
-    AffineCombination.DeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
-      (h.normalizedMesh_poly b) (hexact.normalizedMesh_determined hworld b)
+    AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
+      (h.normalizedMesh_poly b) (hvalued.normalizedMesh_approxDetermined hdet hworld b)
+      (normalizedMesh_errorNegligible As P b)
       (h.normalizedMesh_boundedPrices b hP)
       (normalizedMesh_magnitude_le_one b hshare) hworld f clock
       hpseudoMesh hverifyNeg hverifyNegNeg
@@ -2546,13 +2548,13 @@ theorem BoundedSequence.prandexp_eq_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
-    (hexact : ExactTheoryPresentation As DP)
+    (hvalued : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction)
+    (f : DeferralFunction) {err : ℕ → ℝ}
     (clock : PatientSettlementClock (normalizedMesh As b) P DP
-      (normalizedMeshTruth As P DP hworld b) f)
+      (normalizedMeshTruth As P DP hworld b) err f)
     (hpseudo : Pseudorandom truth f P)
     (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
       AffineCombination.BiasRunHistoricallyVerifiable
@@ -2570,9 +2572,9 @@ theorem BoundedSequence.prandexp_eq_of_historicalVerifiers
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   rw [asympEq_iff_asympLE_asympGE]
   exact ⟨
-    h.prandexp_below_of_historicalVerifiers hexact hdet b hshare hworld f clock hpseudo.2
+    h.prandexp_below_of_historicalVerifiers hvalued hdet b hshare hworld f clock hpseudo.2
       hverifyNeg hverifyNegNeg,
-    h.prandexp_of_historicalVerifiers hexact hdet b hshare hworld f clock hpseudo.1
+    h.prandexp_of_historicalVerifiers hvalued hdet b hshare hworld f clock hpseudo.1
       hverify hverifyNeg⟩
 
 #print axioms LUV.expectAffine_priceAt
