@@ -48,6 +48,16 @@ own data.
    property tail is unaffected (each exploiting trader is certified inside the class),
    but the existence theorem defeats this class rather than the paper's, and is weaker
    than the paper's `thm:li` if the inclusion fails.
+
+   Worth noting: the paper itself is explicit (remark after `def:ec`) that its
+   framework is not wedded to polynomial time — any efficiency class with suitable
+   closure properties yields logical inductors, with stricter classes giving weaker
+   but faster ones. Poly-time was their choice of convenience, not a load-bearing
+   one. The fuel class demonstrably *has* the closure properties the theory needs —
+   the entire construction and property tail completed inside it — so even if the
+   inclusion question resolves negatively, what is formalized here is a logical
+   inductor over a legitimate neighboring instantiation of the framework, not a
+   different kind of theorem.
 2. **The logical substrate is propositional.** Sentences are Foundation's
    propositional formulas; the paper's first-order theory Θ enters through explicit
    interfaces, instantiated by arithmetic theories for the unconditional endpoints. In
