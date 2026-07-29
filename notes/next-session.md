@@ -22,13 +22,40 @@ diverges at immature stages (Σ|Δₙ| divergence vs. `Exploits`' all-stage lowe
 The correct derivation is the paper's own: `thm:affcoh` + `thm:lc` + `lem:conluvapprox`.
 The diagonal-hypothesis `excTrader` layer was deleted with the fix.
 
-**Queued follow-ups:** (1) `ConvergencePresentation.daily_value` still carries the
-diagonal maturity form — weaken to per-grid after the ExpectationProperties fixer
-merges (one field change + two witness sites). (2) F6b: feature-indexed thresholds so
-`thm:st`'s `p` can be P-generable. (3) F10: expectation precision `n+1` reindex, alone,
-last. (4) Record two paper-errata candidates (Settled-predicate computability repaired
-by `settled_iff_agree`; non-monotone-deferral patience gap repaired by
-`deferralEnvelope`) in `notes/logical-induction-paper-errata.md`.
+**Wave outcomes (final, 2026-07-29):** all fix packets merged and gated —
+F1/F2/F4/F5/F6a/F6b/F7/F9 plus the residual wave (`daily_value` per-grid,
+`recurringunbiasednessexp` and the full **prandexp family** now at the paper's
+combination-level hypotheses via the tolerance-indexed settlement checker;
+`patientApproxClockOfInductor` constructs the weakened clock with vanishing tolerance —
+vacuity guard discharged). Paper errata PE3/PE4 recorded. F10 (precision `n+1` reindex)
+in flight, solo, last.
+
+**Remaining future work (all with verified obstructions, none blocking):**
+* dd:fuel lower calibration — realistic route is the two-model architecture: `def:ec`
+  at a genuine machine class (Mathlib `Turing.TM2ComputableInPolyTime`), trading firm
+  enumerates it via poly-overhead universal simulation, fuel calculus kept as the
+  certification tool through the easy inclusion (fuel-poly ⇒ TM-poly). The pure bridge
+  theorem (current class ⊇ paper class) is judged unlikely (~10–15%): the fuel model has
+  no cheap poly-bit random-access state, so inherently sequential poly-time big-state
+  computations look unreachable; Hesse-style TC⁰ division could rescue the specific
+  inverse-operation ceiling but not general P.
+* Gated-fibre-sum layer (F6a residual: injectivity → bare `f n > n`).
+* EF parser + fueled `denoteRatWithAtFuel` bound (closes the `thm:st`/`thm:ccee`
+  LIA-closed seams — the "two-layer pattern" in both endpoints' docstrings).
+* Propositional compactness in Foundation (growing-form `thm:scon` consistency
+  hypothesis).
+
+**Wave gotchas (Lean/infra, for the standing log):**
+* `lake env lean <file>` auto-binds implicits and reads stale upstream oleans — never
+  the green gate for signature changes; re-`lake build <Module>` after upstream edits.
+* Seeding `.lake/build` into a worktree while a build runs silently produces stale-olean
+  "green" builds; verify new symbols exist in the rebuilt olean before trusting.
+* `LIACompiler` keeps most rational `Primrec` lemmas `private` (only
+  `ratLE/ratAdd/ratMul/ratDiv_prim` public); express new checkers in those four or
+  rebuild locally (`natCastRat_prim` pattern, HistoricalMaturity).
+* Harness worktrees are provisioned from `main` (no `LogicalInduction/`) with no olean
+  caches: `git reset --hard <li-head>`, `lake exe cache get`, plus copy the project
+  `.lake/build` AND `Foundation`'s (`cache get` does not supply Foundation).
 
 ## SURFACE FREEZE (2026-07-28, commit `8b07fd1`)
 
