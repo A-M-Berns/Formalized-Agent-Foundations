@@ -10,6 +10,9 @@ lean_lib Barasz where
 lean_lib Critch where
   srcDir := "."
 
+lean_lib AxiomAudit where
+  srcDir := "."
+
 @[default_target]
 lean_lib AgentFoundations where
   srcDir := "."

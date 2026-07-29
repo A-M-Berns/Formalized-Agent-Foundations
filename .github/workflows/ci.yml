@@ -12,21 +12,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    timeout-minutes: 10
+    outputs:
+      lean: ${{ steps.filter.outputs.lean }}
     steps:
       - uses: actions/checkout@v4
+
+      # The Lean build only runs when something it can see changed; check steps
+      # below always run.
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            lean:
+              - '**/*.lean'
+              - 'lean-toolchain'
+              - 'lake-manifest.json'
+              - '.github/workflows/ci.yml'
 
       # Blocking: every `theorem` in Critch/ carries a paper-node docstring and no
       # `private theorem` occurs (keyword-hygiene rule; see AxiomAudit.lean header).
       - name: Lint paper labels
         run: python3 scripts/lint_paper_labels.py
 
-      # Blocking: §-citations valid against the recorded section map; every AxiomAudit
-      # inventory member annotated; every annotated section has an inventory endpoint.
+      # Blocking: §-citations and named nodes valid against the recorded paper maps;
+      # every AxiomAudit inventory member annotated; every annotated citation has an
+      # inventory endpoint.
       - name: Check paper-node annotations
         run: ./scripts/check-paper-nodes.sh
+
+  build:
+    needs: checks
+    if: needs.checks.outputs.lean == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Free runner disk space
         run: |
@@ -42,4 +65,4 @@ jobs:
       # Blocking: the checked public-surface inventory — fails on sorryAx, disallowed
       # axioms, vanished endpoints, or drifted boundary-structure fields.
       - name: Axiom audit
-        run: lake env lean AxiomAudit.lean
+        run: lake build AxiomAudit

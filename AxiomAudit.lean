@@ -2,7 +2,8 @@
 # Axiom audit — the checked public-surface inventory (critch-pbl)
 
 Instantiated from the harness template (see the logical-induction branch's AxiomAudit.lean
-for the canonical worked instance). Standalone target: `lake env lean AxiomAudit.lean`.
+for the canonical worked instance). Standalone non-default target: `lake build AxiomAudit`
+(incremental — reuses the cached olean when nothing it depends on changed).
 Every declaration listed is public trust surface for the PBL formalization; the build
 fails if any listed endpoint acquires an axiom beyond `propext`, `Classical.choice`,
 `Quot.sound` (in particular `sorryAx`), or ceases to exist. Every interface class and
