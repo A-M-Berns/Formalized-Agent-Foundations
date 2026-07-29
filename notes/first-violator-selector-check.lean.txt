@@ -1,0 +1,46 @@
+import Mathlib.Algebra.BigOperators.Intervals
+import Mathlib.Analysis.SpecialFunctions.Pow.Real
+
+open Finset
+
+/-- First-success telescoping: the total weight a "first violator" selector spends is
+`1 - Π (1 - g j) ≤ 1`, so no normalization (no `safeRecip`) is needed to keep the
+magnitude budget. -/
+theorem firstSuccess_sum (g : ℕ → ℝ) (c : ℕ) :
+    ∑ k ∈ range c, g k * ∏ j ∈ range k, (1 - g j) =
+      1 - ∏ j ∈ range c, (1 - g j) := by
+  induction c with
+  | zero => simp
+  | succ c ih =>
+      rw [Finset.sum_range_succ, ih, Finset.prod_range_succ]
+      ring
+
+theorem firstSuccess_sum_le_one (g : ℕ → ℝ) (hg : ∀ k, 0 ≤ g k ∧ g k ≤ 1) (c : ℕ) :
+    ∑ k ∈ range c, g k * ∏ j ∈ range k, (1 - g j) ≤ 1 := by
+  rw [firstSuccess_sum]
+  have : (0:ℝ) ≤ ∏ j ∈ range c, (1 - g j) :=
+    Finset.prod_nonneg (fun j _ => by have := (hg j).2; linarith)
+  linarith
+
+theorem firstSuccess_sum_nonneg (g : ℕ → ℝ) (hg : ∀ k, 0 ≤ g k ∧ g k ≤ 1) (c : ℕ) :
+    0 ≤ ∑ k ∈ range c, g k * ∏ j ∈ range k, (1 - g j) := by
+  refine Finset.sum_nonneg (fun k _ => mul_nonneg (hg k).1 ?_)
+  exact Finset.prod_nonneg (fun j _ => by have := (hg j).2; linarith)
+
+/-- Forcing: with nonnegative summands and a selector whose weight is `1` on the first
+violator `k₀` (because every earlier gate is `0`), the gated sum dominates that
+violator's gap.  This is the step that makes the terms non-cancelling. -/
+theorem firstViolator_forces (g d : ℕ → ℝ) (c k₀ : ℕ) (hk₀ : k₀ < c)
+    (hg : ∀ k, 0 ≤ g k ∧ g k ≤ 1) (hd : ∀ k, 0 ≤ d k)
+    (hearly : ∀ j < k₀, g j = 0) (hhit : g k₀ = 1) :
+    d k₀ ≤ ∑ k ∈ range c, (g k * ∏ j ∈ range k, (1 - g j)) * d k := by
+  have hterm : ∀ k ∈ range c, 0 ≤ (g k * ∏ j ∈ range k, (1 - g j)) * d k := by
+    intro k _
+    refine mul_nonneg (mul_nonneg (hg k).1 ?_) (hd k)
+    exact Finset.prod_nonneg (fun j _ => by have := (hg j).2; linarith)
+  have hsingle : (g k₀ * ∏ j ∈ range k₀, (1 - g j)) * d k₀ = d k₀ := by
+    rw [hhit, Finset.prod_congr rfl (fun j hj => by
+      rw [hearly j (Finset.mem_range.1 hj)])]
+    simp
+  calc d k₀ = (g k₀ * ∏ j ∈ range k₀, (1 - g j)) * d k₀ := hsingle.symm
+    _ ≤ _ := Finset.single_le_sum hterm (Finset.mem_range.2 hk₀)

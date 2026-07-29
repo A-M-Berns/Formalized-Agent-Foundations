@@ -335,7 +335,18 @@ the `hjoint` docstring misattribution inside F7 (it found the branch gap itself)
 All with verified obstructions, none blocking: (1) dd:fuel lower calibration — realistic
 route is a two-model architecture (`def:ec` at a machine class, firm enumerates it via
 poly-overhead universal simulation, fuel calculus kept as certification tool via the easy
-inclusion); the pure bridge theorem is judged unlikely (~10–15%). (2) Gated-fibre-sum
-affine layer (injective deferral → bare `f n > n`). (3) EF parser + fueled
-`denoteRatWithAtFuel` bound (closes the `thm:st`/`thm:ccee` LIA-closed seams).
+inclusion); the pure bridge theorem is judged unlikely (~10–15%); staged plan in
+`notes/two-model-ec-feasibility.md`. (2) Injective deferral → bare `f n > n`:
+**CORRECTED 2026-07-29** — the originally-registered fix (sign-gated fibre sum forcing
+each `|dₖ| → 0`) is *unsound*: `magnitude_le_one` caps the day-`m` weight budget across
+the whole fibre while the gap convergence is rate-free, so no violation-independent
+weighting forces individual terms when `|f⁻¹(m)|` is unbounded. The viable design is a
+division-free **first-violator selector** (`gateₖ = ctsInd(δ;dₖ)·Π_{j<k}(1−ctsInd(δ;dⱼ))`,
+δ-indexed tower); its two analytic legs are verified in Lean
+(`notes/first-violator-selector-check.lean.txt`: telescoping magnitude budget in `[0,1]`
+with no normalization; gated sum dominates the first violator's gap). Blocked on volume:
+needs a variable-width affine `PolySequence` combinator and a variable-width feature-fold
+emission device (neither exists) plus non-mechanical rebuilds of five `QuotationAffine`
+endpoint constructions — ~1.5–2k lines in the repo's hardest layers. (3) EF parser +
+fueled `denoteRatWithAtFuel` bound (closes the `thm:st`/`thm:ccee` LIA-closed seams).
 (4) Propositional compactness in Foundation (growing-form `thm:scon`).
