@@ -133,28 +133,18 @@ theorem lic_conditioned_fixed_unconditional
     (liaHistory (theoremDP T)) (theoremDP T)
     base (theoremMarketComputation T) ψ
 
-/-- Growing finite-prefix `thm:scon` transfer over the constructed `LIA`.  The extra process
-supplies its compact condition-code computation.
-
-**Repo-side hypothesis, not the paper's.**  The paper's `thm:scon` states the growing form
-with no consistency premise: if `Θ ∪ {ψᵢ}` is inconsistent the conditioned sequence is
-(degenerately) an inductor over that inconsistent theory.  `hjoint` — one world satisfying
-the base stage *and every* stage of the extra process — is what the price-floor argument
-(Uniform Non-Dogmatism + Preemptive Learning) needs, and it covers the
-consistent-conditioning case only.  Unlike the fixed-sentence form above, the degenerate
-branch cannot be split off here: failure of `hjoint` gives no *single* unsatisfiable stage
-of the union process without propositional compactness, which the Foundation substrate does
-not supply.  So the uncovered case is exactly: every finite stage of `Θ ∪ {ψ₁…ψₙ}` is
-satisfiable while no world satisfies the whole growing theory.
-Kind `C`; hypothesis `hjoint` provenance `(c)` (narrowing modeling substitution — disclosed).
+/-- Growing finite-prefix `thm:scon` transfer over the constructed `LIA`, with **no**
+remaining premise — the paper's statement exactly.  The extra process supplies its compact
+condition-code computation; the consistent case is carried by propositional compactness
+(`DeductiveProcess.exists_consistentWithTheory`, which turns per-stage satisfiability of
+`Θ ∪ {ψ₁…ψₙ}` into one world satisfying the whole growing theory, as the price-floor
+argument needs) and the degenerate case by `isLogicalInductor_of_stage_unsatisfiable`.
+Kind `C`; hypotheses `(a)`.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_growing_unconditional
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (extra : DeductiveProcess)
-    (more : CompactConditioningProcessComputation extra)
-    (hjoint : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith ((theoremDP T).D n) ∧
-        ∀ i, v.ConsistentWith (extra.D i)) :
+    (more : CompactConditioningProcessComputation extra) :
     IsLogicalInductor
       (conditionedHistory (liaHistory (theoremDP T))
         (fun n => deductiveStageCondition (extra.D n)))
@@ -165,7 +155,7 @@ theorem lic_conditioned_growing_unconditional
     LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
   exact ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket
     (liaHistory (theoremDP T)) (theoremDP T) extra
-    base more (theoremMarketComputation T) hjoint
+    base more (theoremMarketComputation T)
 
 #print axioms lic_domination_universalSemimeasure_unconditional
 #print axioms lic_domination_dovetailSemimeasure_unconditional

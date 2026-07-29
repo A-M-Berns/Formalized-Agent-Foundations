@@ -369,3 +369,9 @@ and `lic_no_expected_net_update_conditional_closed` now take P-generable `p`/`w`
 evaluator is deliberately `Computable`, not fuel-bounded — evaluation dovetails the
 market program, and a plain `Nat.Partrec.Code` quote code needs exactly that.
 (4) Propositional compactness in Foundation (growing-form `thm:scon`).
+
+Item (4) is **done** (2026-07-29): `Framework/Compactness.lean` proves compactness directly
+over Cantor space (`DeductiveProcess.exists_consistentWithTheory`), and `hjoint` is deleted
+from `lic_conditioned_growing_ofComputationsAndMarket` and
+`lic_conditioned_growing_unconditional`, which now case-split on per-stage satisfiability of
+the union process exactly as the fixed-sentence form does; `thm:scon` is complete.

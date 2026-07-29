@@ -18,6 +18,8 @@ substrate and the shared proof machinery.
 * `RpnComputation` — primitive recursion for the Polish-notation contraction, which the
                      trading firm's compiler runs to decode candidate traders.
 * `Criterion`      — expressible features (`def:tf`), traders, the LI criterion (`def:lic`).
+* `Compactness`    — propositional compactness over Cantor space: per-stage satisfiability
+                     of a deductive process yields one world consistent with every stage.
 * `Affine`         — trade magnitude/net-worth bounds and affine combinations (buy orders).
 * `ROI`            — the repeatable return-on-investment lemma (`lem:type3`) and the
                      budgeted-trader machinery its proof needs.
@@ -35,6 +37,7 @@ import LogicalInduction.Framework.RpnSplice
 import LogicalInduction.Framework.RpnEmission
 import LogicalInduction.Framework.RpnComputation
 import LogicalInduction.Framework.Criterion
+import LogicalInduction.Framework.Compactness
 import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.ROI
 import LogicalInduction.Framework.Expectations
