@@ -339,3 +339,9 @@ inclusion); the pure bridge theorem is judged unlikely (~10–15%). (2) Gated-fi
 affine layer (injective deferral → bare `f n > n`). (3) EF parser + fueled
 `denoteRatWithAtFuel` bound (closes the `thm:st`/`thm:ccee` LIA-closed seams).
 (4) Propositional compactness in Foundation (growing-form `thm:scon`).
+
+Item (4) is **done** (2026-07-29): `Framework/Compactness.lean` proves compactness directly
+over Cantor space (`DeductiveProcess.exists_consistentWithTheory`), and `hjoint` is deleted
+from `lic_conditioned_growing_ofComputationsAndMarket` and
+`lic_conditioned_growing_unconditional`, which now case-split on per-stage satisfiability of
+the union process exactly as the fixed-sentence form does; `thm:scon` is complete.

@@ -186,8 +186,13 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 -- Tier note: `isLogicalInductor_of_stage_unsatisfiable` (Framework/Affine.lean) is the
 -- degenerate half of `thm:scon` — the criterion over a deductive process one of whose
 -- stages has no propositionally consistent world.  It is listed here because it is what
--- lets the fixed-sentence `thm:scon` endpoints drop the repo-side joint-consistency
--- hypothesis and match the paper's premise-free statement.
+-- lets the `thm:scon` endpoints drop the repo-side joint-consistency hypothesis and match
+-- the paper's premise-free statement.  For the growing form the other half of that split is
+-- `DeductiveProcess.exists_consistentWithTheory` (Framework/Compactness.lean): propositional
+-- compactness over Cantor space, which converts per-stage satisfiability of the union
+-- process into the single world the price-floor argument consumes.  It is internal
+-- infrastructure, not a paper node, so it is not itself an inventory member; its axiom
+-- report is covered transitively by the `thm:scon` endpoints below.
 #assert_axioms_clean
   lic_conditioned lic_conditioned_gated lic_conditioned_eventual
   isLogicalInductor_of_stage_unsatisfiable

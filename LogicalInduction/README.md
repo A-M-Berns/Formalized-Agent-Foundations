@@ -79,9 +79,6 @@ Each item has a verified obstruction on record; none blocks the results above.
   random-access state. A staged plan with effort estimates, scoped against what
   Mathlib actually provides, is in
   [`notes/two-model-ec-feasibility.md`](../notes/two-model-ec-feasibility.md).
-* **Propositional compactness in Foundation** — would remove the joint-consistency
-  hypothesis from the growing-conjunction form of closure under conditioning (the
-  fixed-sentence form is already hypothesis-free, exactly the paper's statement).
 * **A gated-fibre-sum affine layer** — would relax the self-trust chain's injectivity
   assumption on deferral functions to the paper's bare `f(n) > n`.
 * **An expressible-feature parser + fueled evaluator** — would let the fully-closed

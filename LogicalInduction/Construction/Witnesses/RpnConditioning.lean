@@ -37,6 +37,7 @@ Paper node: `thm:scon` (symbol-metered conditioning translation).
 -/
 import LogicalInduction.Construction.Witnesses.DigitConditioning
 import LogicalInduction.Framework.RpnEmission
+import LogicalInduction.Framework.Compactness
 
 namespace LogicalInduction
 
@@ -6824,37 +6825,41 @@ theorem lic_conditioned_fixed_ofComputationAndMarket
       PCWorld.consistentWith_union_iff] at hv
     exact hN v hv.1 (hv.2 ψ (by simp [fixedConditionProcess]))
 
-/-- Growing finite-prefix form of Closure Under Conditioning.  `hjoint` means that, alongside
-each base stage, one world satisfies every finite stage of the extra deductive process.
-
-**`hjoint` is a repo-side hypothesis, not the paper's**: `thm:scon` states the growing form
-with no consistency premise, the inconsistent case being degenerately true.  It restricts
-this endpoint to the consistent-conditioning case; the fixed-sentence form above needs no
-such premise because there failure of joint consistency *is* an unsatisfiable stage of the
-union process, whereas here bridging the two needs propositional compactness (unavailable in
-the Foundation substrate).
+/-- Growing finite-prefix form of Closure Under Conditioning, with **no** consistency
+hypothesis — the paper's `thm:scon` statement exactly.  As in the fixed-sentence form, the
+two branches are the paper's two cases.  Where every finite stage of `Θ ∪ {ψ₁…ψₙ}` is
+satisfiable, propositional compactness (`DeductiveProcess.exists_consistentWithTheory`)
+produces a *single* world consistent with the whole growing theory, which is exactly what
+the analytic price-floor argument consumes.  Where some stage is already unsatisfiable the
+criterion holds vacuously.
+Kind `C` (composition of the two branches); hypotheses `(a)`.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_growing_ofComputationsAndMarket
     (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
     (base : DeductiveProcessComputation DP)
     (more : CompactConditioningProcessComputation extra)
-    (market : MarketComputation P)
-    (hjoint : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧
-        ∀ i, v.ConsistentWith (extra.D i)) :
+    (market : MarketComputation P) :
     IsLogicalInductor
       (conditionedHistory P
         (fun n => deductiveStageCondition (extra.D n)))
       (DP.union extra) := by
   let C := conditioningPresentationOfComputations base more
-  have hjointC : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
-    intro n
-    obtain ⟨v, hv, hextra⟩ := hjoint n
-    refine ⟨v, hv, fun i => ?_⟩
-    exact (v.holds_deductiveStageCondition (extra.D i)).2 (hextra i)
-  exact lic_conditioned_eventual_ofMarketComputation
-    P DP extra C market hjointC
+  by_cases hsat : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((DP.union extra).D n)
+  · obtain ⟨w, hw⟩ := (DP.union extra).exists_consistentWithTheory hsat
+    have hjointC : ∀ n, ∃ v : PCWorld,
+        v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
+      intro n
+      refine ⟨w, ((PCWorld.consistentWith_union_iff w DP extra n).mp (hw n)).1, fun i => ?_⟩
+      exact (C.holds_condition i w).2
+        ((PCWorld.consistentWith_union_iff w DP extra i).mp (hw i)).2
+    exact lic_conditioned_eventual_ofMarketComputation
+      P DP extra C market hjointC
+  · push_neg at hsat
+    obtain ⟨N, hN⟩ := hsat
+    exact isLogicalInductor_of_stage_unsatisfiable _ _
+      ((conditionedMarketComputation market C.condition
+        C.condition_codes).toComputable)
+      C.combined_computable (N := N) hN
 
 /-- Paper-facing SCON constructor: the canonical finite-stage presentation and the complete
 market/trader compiler are both assembled from their named computations.
