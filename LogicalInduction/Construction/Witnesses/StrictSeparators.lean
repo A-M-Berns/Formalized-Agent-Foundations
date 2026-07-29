@@ -1007,8 +1007,8 @@ lemma exists_kleeneDecide {e : ℕ} {b : Bool} (h : e ∈ kleeneSet b) :
   cases b <;> simp [kleeneDecide, hn']
 
 /-- If bit `j` really belongs to the `b`-half of Kleene's pair, then from the pivot stage
-`k` on, the *other* half of the class is small: the `b`-part
-keeps mass `≥ r` forever, while the whole class never exceeds `6r/5`. -/
+`k` on, the *other* half of the class is small: the `b`-part keeps mass `≥ r` forever,
+while the whole class never exceeds `6r/5`. -/
 lemma classMass_wrong_bit_lt (M : ContinuousSemimeasure) {r : ℝ} {k : ℕ}
     (hle : ∀ n, r ≤ classMass M (fun _ ↦ true) n)
     (hk : classMass M (fun _ ↦ true) k < 6 * r / 5)

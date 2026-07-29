@@ -55,8 +55,8 @@ The **polynomial** clock is discharged at the end of the file by the *self-clamp
 table `dusApprox`: the exact emitter above is a fixed code, so `Code.evaln`'s own guards
 clamp both its input and its output, and `codeEvalnNat_polyFueled` makes reading it under a
 polynomial clock poly-fueled.  Scanning the stages that finished within the clock therefore
-emits an exact stage value at a stage that grows without bound —
-`DUSApproximationPresentation` and `DUSThresholdEmission` are constructed objects, so
+emits an exact stage value at a stage that grows without bound — `DUSApproximationPresentation`
+and `DUSThresholdEmission` are constructed objects, so
 `lic_domination_dovetailSemimeasure_unconditional` carries no semimeasure input at all.
 -/
 
