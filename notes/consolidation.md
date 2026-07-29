@@ -160,3 +160,44 @@ the directory so `import LogicalInduction.Foo` works) — keep it, one roll-up p
 Hi Anson here. What I'd like is for the end result to be as immediately legible as possible that this repo really contains a correct formalization of the paper, with only disclosed holes. Conventions should match the paper as much as possible. There should be no "in-references" i.e. names or ontologies that only make sense to an agent seeped in the repo. The API surface and library organization should be clean and consolidated, logically organized whenever possible. Proof bodies can be opaque that's not a big deal, but there should be as few "tricks" (e.g. setting heartbeats) as possible. The repo should be de-slopified, that's the goal. It should be easy for human-level attention to engage with the repo given basic understanding (and reference to) the paper. At this point, we've done a lot of work on shoring up the formalization and expanding the trust boundary past where it was originally scoped. I think this might mean that there is vestigial structure left from before that work, please fix that. There should be no structural evidence that there was ever a "previous version" of anything. Please make sure names (especially e.g. structure names) are informative and not opaque.
 
 Documentation notes: A) i'd like to split up the README into one overall README that says this is a project formalizing important agent foundations papers using agent orchestration and here's what we have so far without getting into details, and then separate detailed readmes for modalagents and li B) de-sloppify docstrings and comments. the purpose should be to aid in understanding, so cut out "blabbering." Also cut out "in-references" to like phase language we've been using in the project (e.g. M7.) C) it should be very clear what is intended future work and what is permanent modeling disclosure (e.g. in the readme and elsewhere.) Also please include a description of the fuel model and the propositional substrate, including a mention that the paper's explicit description of e.c. includes other models like this one.
+
+## De-slop punch list (running, 2026-07-29 — items noticed during the audit/fix/docs work)
+
+- **`scripts/coverage-classification.md` strength rows are stale** (pre-fix-wave:
+  `complete=19, conditional=18, qualified=28`). Several endpoints strengthened in the
+  wave (clock-free pseudorandomness family, hypothesis-free fixed `thm:scon`, per-grid
+  `thm:ec`, paper-hypothesis `wubexp`/`prandexp`, `thm:li` belief-sequence conjunct).
+  Reclassify each label; the counts currently undersell the repo. Also its header prose
+  still describes its old `notes/` home.
+- **CLAUDE.md references retired files and phase ontology**: `notes/logical-induction-roadmap.md`
+  ("read it before touching"), `notes/next-session.md` (gotcha log, scope/endpoint
+  section names), M2/M3/M7 milestone language, the sequencing override's step names.
+  Rewrite against the post-consolidation reality (README + audit ledger + this file).
+- **In-reference sweep in `.lean` docstrings**: ~34 files carry `M7-…` work-package
+  tags, "seam"/"route (A/B)"/"OPEN RISK"/"tranche" language, or pointers to
+  now-deleted notes sections. Replace with self-contained statements. The `dd:*`
+  design-decision labels are load-bearing disclosure vocabulary — keep them, but give
+  them a glossary in the root roll-up `LogicalInduction.lean` (planned there anyway)
+  so they stop being in-references.
+- **File rename**: `Construction/Witnesses/M7Witnesses.lean` is a pure phase-name.
+  Rename to something content-bearing (it hosts the bounded-evaln compiler, repetition
+  enumeration, settlement clocks, prefix-patch freeze). One dedicated import-churn
+  commit per the layout rules above.
+- **`#assert_fields` is weaker than its docstring claims** (found by the F10 fixer):
+  the macro compares field *names* only, so a boundary field's *type* can change
+  silently (it happened, benignly: `mesh_poly`'s index moved). Either extend the freeze
+  to hash field types, or correct the docstring so nobody trusts it for more than it
+  checks. Extending is preferable — it is the actual premise-smuggling guard.
+- **`maxHeartbeats`/`irreducible` tricks inventory** (Anson: as few tricks as
+  possible): `Brouwer.lean` sets `maxHeartbeats 1000000` (generated interior —
+  acceptable, but say so at the site); the `attribute [local irreducible] Nat.sqrt`
+  sections in the Primrec files deserve one shared comment explaining the whnf trap
+  rather than bare repetition.
+- **Audit-wave scaffolding cleanup**: remove merged `.claude/worktrees/agent-*`
+  worktrees (`git worktree remove`); they hold ~2.5 GB of dead build state each.
+- **Structure-name legibility pass** over the Tier-2 boundary structures: most are
+  fine, but review the ones named for their proof role rather than their content
+  (e.g. `ExactTheoryPresentation` vs. what it now is — per-component completed-theory
+  valuation; `PseudorandomFrequencyInfrastructureWithHistoricalVerifiers` is a
+  mouthful that survived the wave). Renames are surface changes: update `AxiomAudit`
+  in the same commit.
