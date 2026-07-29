@@ -311,9 +311,8 @@ noncomputable def hystBpos (φ : Sentence) (a b δ : ℚ) (P : History) (n : ℕ
 noncomputable def hystBneg (φ : Sentence) (a b δ : ℚ) (P : History) (n : ℕ) : ℝ :=
   ∑ i ∈ Finset.range (n + 1), max (-(hystDelta φ a b δ P i)) 0
 
-/-- `x⁺ - x⁻ = x` in the `max`-form used by the affine serialization proofs here and in
-`ExpectationConvergence`. (Mathlib's `posPart_sub_negPart` is the same fact in `⁺`/`⁻`
-notation.) -/
+/-- `x⁺ - x⁻ = x` in the `max`-form used by the affine serialization proofs.
+(Mathlib's `posPart_sub_negPart` is the same fact in `⁺`/`⁻` notation.) -/
 lemma max_sub_max_neg (x : ℝ) : max x 0 - max (-x) 0 = x := by
   rcases le_total x 0 with h | h
   · rw [max_eq_right h, max_eq_left (by linarith : (0:ℝ) ≤ -x)]; ring
@@ -664,5 +663,105 @@ lemma oscillation_exploitable_hyst (P : History) (DP : DeductiveProcess) (φ : S
     linarith
   exact ⟨hystTrader φ a b δ, hystTrader_ecTok φ a b δ,
     hystTrader_exploits P DP φ hδ ha hgap hcons hA hB⟩
+
+/-! ### Feature-generic continuous threshold indicators
+
+The signals above with the priced object abstracted: `buyIndF e a δ` ramps
+from `1` (when `e ≤ a`) to `0` (when `e ≥ a + δ`); `sellIndF e b δ` from `0` (at
+`b − δ`) to `1` (at `b`). At `δ = 0` both are identically `0` (`1/0 = 0` in `ℚ`) — the
+gate padding. -/
+
+/-- Buy signal on the feature `e`: `1` when `e ≤ a`, ramps to `0` at `a + δ`. -/
+def buyIndF (e : EF) (a δ : ℚ) : EF :=
+  clip01 (.mul (.add (.const (a + δ)) (.mul (.const (-1)) e)) (.const (1/δ)))
+
+/-- Sell signal on the feature `e`: `1` when `e ≥ b`, ramps to `0` at `b − δ`. -/
+def sellIndF (e : EF) (b δ : ℚ) : EF :=
+  clip01 (.mul (.add e (.const (δ - b))) (.const (1/δ)))
+
+lemma buyIndF_denote (e : EF) (a δ : ℚ) (V : History) :
+    (buyIndF e a δ).denote V
+      = max 0 (min 1 (((a : ℝ) + δ - e.denote V) * (1/(δ : ℝ)))) := by
+  simp only [buyIndF, clip01_denote, EF.denote_mul, EF.denote_add, EF.denote_const,
+    Pi.mul_apply, Pi.add_apply]
+  push_cast; ring_nf
+
+lemma sellIndF_denote (e : EF) (b δ : ℚ) (V : History) :
+    (sellIndF e b δ).denote V
+      = max 0 (min 1 ((e.denote V - ((b : ℝ) - δ)) * (1/(δ : ℝ)))) := by
+  simp only [sellIndF, clip01_denote, EF.denote_mul, EF.denote_add, EF.denote_const,
+    Pi.mul_apply, Pi.add_apply]
+  push_cast; ring_nf
+
+@[simp] theorem buyIndF_rank (e : EF) (a δ : ℚ) : (buyIndF e a δ).rank = e.rank := by
+  simp [buyIndF, EF.rank]
+
+@[simp] theorem sellIndF_rank (e : EF) (b δ : ℚ) : (sellIndF e b δ).rank = e.rank := by
+  simp [sellIndF, EF.rank]
+
+section SignalFacts
+
+variable {e : EF} {a b δ : ℚ} {V : History}
+
+lemma buyIndF_mem (e : EF) (a δ : ℚ) (V : History) :
+    0 ≤ (buyIndF e a δ).denote V ∧ (buyIndF e a δ).denote V ≤ 1 := by
+  rw [buyIndF_denote]; exact ⟨clipVal_nonneg _, clipVal_le_one _⟩
+
+lemma sellIndF_mem (e : EF) (b δ : ℚ) (V : History) :
+    0 ≤ (sellIndF e b δ).denote V ∧ (sellIndF e b δ).denote V ≤ 1 := by
+  rw [sellIndF_denote]; exact ⟨clipVal_nonneg _, clipVal_le_one _⟩
+
+lemma buyIndF_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (buyIndF e a δ).denote V) :
+    e.denote V < (a : ℝ) + δ := by
+  rw [buyIndF_denote] at h
+  have := clipVal_pos_imp h
+  nlinarith [mul_pos (show (0:ℝ) < 1/(δ:ℝ) by positivity) hδ]
+
+lemma buyIndF_eq_one (hδ : 0 < (δ : ℝ)) (h : e.denote V < (a : ℝ)) :
+    (buyIndF e a δ).denote V = 1 := by
+  rw [buyIndF_denote]
+  refine clipVal_eq_one ?_
+  have h1 : (δ:ℝ) ≤ (a:ℝ) + δ - e.denote V := by linarith
+  calc (1:ℝ) = (δ:ℝ) * (1/(δ:ℝ)) := by field_simp
+    _ ≤ ((a:ℝ) + δ - e.denote V) * (1/(δ:ℝ)) := by
+        apply mul_le_mul_of_nonneg_right h1; positivity
+
+lemma buyIndF_eq_zero (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ)
+    (h : (b : ℝ) < e.denote V) : (buyIndF e a δ).denote V = 0 := by
+  rw [buyIndF_denote]
+  refine clipVal_eq_zero ?_
+  have hδ' : (0:ℝ) < δ := hδ
+  have : (a:ℝ) + δ - e.denote V ≤ 0 := by nlinarith
+  have h1δ : (0:ℝ) ≤ 1/(δ:ℝ) := by positivity
+  nlinarith
+
+lemma sellIndF_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (sellIndF e b δ).denote V) :
+    (b : ℝ) - δ < e.denote V := by
+  rw [sellIndF_denote] at h
+  have := clipVal_pos_imp h
+  nlinarith [mul_pos (show (0:ℝ) < 1/(δ:ℝ) by positivity) hδ]
+
+lemma sellIndF_eq_one (hδ : 0 < (δ : ℝ)) (h : (b : ℝ) < e.denote V) :
+    (sellIndF e b δ).denote V = 1 := by
+  rw [sellIndF_denote]
+  refine clipVal_eq_one ?_
+  have h1 : (δ:ℝ) ≤ e.denote V - ((b:ℝ) - δ) := by linarith
+  calc (1:ℝ) = (δ:ℝ) * (1/(δ:ℝ)) := by field_simp
+    _ ≤ (e.denote V - ((b:ℝ) - δ)) * (1/(δ:ℝ)) := by
+        apply mul_le_mul_of_nonneg_right h1; positivity
+
+/-- The `δ = 0` degenerate buy signal is identically `0` — the gate padding. -/
+lemma buyIndF_denote_zero_delta (e : EF) (a : ℚ) (V : History) :
+    (buyIndF e a 0).denote V = 0 := by
+  rw [buyIndF_denote]
+  norm_num
+
+/-- The `δ = 0` degenerate sell signal is identically `0` — the gate padding. -/
+lemma sellIndF_denote_zero_delta (e : EF) (b : ℚ) (V : History) :
+    (sellIndF e b 0).denote V = 0 := by
+  rw [sellIndF_denote]
+  norm_num
+
+end SignalFacts
 
 end LogicalInduction

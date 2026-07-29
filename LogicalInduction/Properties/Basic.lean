@@ -169,4 +169,14 @@ lemma exploits_of_bddBelow_of_unbounded (Tr : Trader) (P : History) (DP : Deduct
   obtain ⟨x, hx, hBx⟩ := h2 B
   exact absurd (hB hx) (not_le.mpr hBx)
 
+/-- A `Finset.range` sum written as the sum of the corresponding mapped `List.range`.
+Used wherever a payout bundle is built as a list but reasoned about as a `Finset` sum. -/
+lemma list_range_map_sum {M : Type*} [AddCommMonoid M] (f : ℕ → M) : ∀ n,
+    ((List.range n).map f).sum = ∑ i ∈ Finset.range n, f i
+  | 0 => by simp
+  | (n + 1) => by
+      rw [List.range_succ, List.map_append, List.sum_append, Finset.sum_range_succ,
+        list_range_map_sum f n]
+      simp
+
 end LogicalInduction
