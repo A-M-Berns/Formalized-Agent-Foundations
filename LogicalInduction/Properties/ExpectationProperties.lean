@@ -957,12 +957,16 @@ structure BoundedSequence (As : ℕ → LUVCombination) (P : History) where
 
 /-- Propositional representation boundary needed to invoke `thm:ec` on every LUV
 appearing in a combination sequence.  It records only compact threshold codeability and
-daily world valuation; it does not assume convergence or any expectation theorem. -/
+per-grid world valuation; it does not assume convergence or any expectation theorem.
+
+`daily_value` is **per grid**, matching `thm:ec`'s own `hval`: for each precision `k`
+there is some stage after which every stage-consistent world values the LUV on grid `k`,
+with *no rate* tying `k` to the stage. -/
 structure ConvergencePresentation (As : ℕ → LUVCombination)
     (DP : DeductiveProcess) where
   threshold_code : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes
-  daily_value : ∀ n p, p ∈ (As n).terms → ∀ᶠ m in atTop, ∀ (v : PCWorld),
-    v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo p.2 x m
+  daily_value : ∀ n p, p ∈ (As n).terms → ∀ k, ∀ᶠ m in atTop, ∀ (v : PCWorld),
+    v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo p.2 x k
 
 /-- The paper's future expectation extrema use each future day's own mesh. -/
 noncomputable def futureLow (As : ℕ → LUVCombination)
@@ -1521,8 +1525,8 @@ private lemma expectTerms_converge
     [IsLogicalInductor P DP]
     (hcode : ∀ p ∈ l, p.2.RpnThresholdCodes)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hval : ∀ p ∈ l, ∀ᶠ m in atTop, ∀ (v : PCWorld),
-      v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo p.2 x m) :
+    (hval : ∀ p ∈ l, ∀ k, ∀ᶠ m in atTop, ∀ (v : PCWorld),
+      v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo p.2 x k) :
     ∃ L : ℝ, Tendsto (fun m =>
       (l.map (fun p => p.1.denote P * p.2.expect P m)).sum) atTop (𝓝 L) := by
   have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
@@ -1530,16 +1534,13 @@ private lemma expectTerms_converge
   induction l with
   | nil => exact ⟨0, by simp⟩
   | cons p rest ih =>
-      -- `thm:ec` consumes world valuation *per grid*; the daily form gives it a fortiori.
       obtain ⟨LX, hLX⟩ := p.2.expect_converges P DP (hcode p (by simp)) hworld
-        (fun k => by
-          filter_upwards [hval p (by simp), Filter.eventually_ge_atTop k] with m hm hmk v hv
-          exact (hm v hv).imp (fun _ hx => hx.mono hmk))
+        (hval p (by simp))
       have hcodeRest : ∀ q ∈ rest, q.2.RpnThresholdCodes := by
         intro q hq
         exact hcode q (by simp [hq])
-      have hvalRest : ∀ q ∈ rest, ∀ᶠ m in atTop, ∀ (v : PCWorld),
-          v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo q.2 x m := by
+      have hvalRest : ∀ q ∈ rest, ∀ k, ∀ᶠ m in atTop, ∀ (v : PCWorld),
+          v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo q.2 x k := by
         intro q hq
         exact hval q (by simp [hq])
       obtain ⟨LR, hLR⟩ := ih hcodeRest hvalRest

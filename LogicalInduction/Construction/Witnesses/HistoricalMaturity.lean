@@ -957,13 +957,16 @@ lemma roiToleranceRat_pos (i : ℕ) : 0 < (roiToleranceRat i : ℝ) := by
   positivity
 
 /-- One-sided affine recurring unbiasedness with the historical verifier constructed
-from the logical inductor's certified market and deductive-process programs. -/
-lemma DeterminedViaTheory.not_eventually_weightedBias_lt_ofComputations
+from the logical inductor's certified market and deductive-process programs.  Stated at
+approximate determination (`def:affthmval` determines the *combination*, so a threshold
+mesh reproduces it only up to a negligible error); the exact form below is `err = 0`. -/
+lemma ApproxDeterminedViaTheory.not_eventually_weightedBias_lt_ofComputations
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} [hLI : IsLogicalInductor P DP]
-    {truth : ℕ → ℝ}
-    (hdet : DeterminedViaTheory As P DP truth)
+    {truth err : ℕ → ℝ}
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (hnegl : ErrorNegligible As P err)
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -999,8 +1002,8 @@ lemma DeterminedViaTheory.not_eventually_weightedBias_lt_ofComputations
     have hunit : ∀ i, N ≤ i → (Ts i).magnitude P = 1 := by
       intro i hi
       simpa [Ts] using
-        (hdet.approx.biasRunTrader_magnitude_eq_one_of_negative_bias hpoly hWgen
-          (fun i => (As i).magnitude_nonneg P) hWdiv hmag hworld hP (biasRunRate scale)
+        (hdet.biasRunTrader_magnitude_eq_one_of_negative_bias hpoly hWgen
+          hnegl.2.1 hWdiv hmag hworld hP (biasRunRate scale)
           (fun k => (biasRunRate_pos scale k).le)
           (biasRunRate_le_one scale) (q : ℝ) hq0 hbiasQ i
           (biasRunRate_pos scale i))
@@ -1012,20 +1015,22 @@ lemma DeterminedViaTheory.not_eventually_weightedBias_lt_ofComputations
       hTs market process (q / 4) roiToleranceRat roiToleranceRat_prim
       roiToleranceRat_pos N hunit hroi'
     simpa [Ts, roiTolerance] using hs
-  have hnotQ := hdet.approx.not_eventually_weightedBias_lt_of_historicalVerifier
-    hpoly hWgen (AffineCombination.errorNegligible_zero As P) hWdiv hmag hworld
+  have hnotQ := hdet.not_eventually_weightedBias_lt_of_historicalVerifier
+    hpoly hWgen hnegl hWdiv hmag hworld
       (q : ℝ) hq0 roiTolerance
       roiTolerance_nonneg roiTolerance_summable hverify
   exact hnotQ hbiasQ
 
 /-- Affine recurring unbiasedness with both one-sided historical schedules constructed
-from the logical inductor computations. -/
-lemma DeterminedViaTheory.recunbiasedaff_ofComputations
+from the logical inductor computations.  Approximate determination suffices; the exact
+`thm:recunbiasedaff` form below is the `err = 0` specialization. -/
+lemma ApproxDeterminedViaTheory.recunbiasedaff_ofComputations
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    {truth : ℕ → ℝ}
-    (hdet : DeterminedViaTheory As P DP truth)
+    {truth err : ℕ → ℝ}
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (hnegl : ErrorNegligible As P err)
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1040,18 +1045,18 @@ lemma DeterminedViaTheory.recunbiasedaff_ofComputations
   let f : ℕ → ℝ := weightedBias w market truth
   have hstep : Tendsto (fun n => f (n + 1) - f n) Filter.atTop (nhds 0) := by
     apply weightedAverage_step_tendsto_zero w
-      (fun i => market i - truth i) 1
+      (fun i => market i - truth i) 2
     · exact fun n => (hWdiv.1 n).1
     · exact fun n => (hWdiv.1 n).2
     · intro n
       have hn := hdet.abs_truth_sub_price_le_magnitude hpoly hworld hP n
       rw [abs_sub_comm] at hn
-      exact hn.trans (hmag n)
+      exact hn.trans (by linarith [hmag n, hnegl.2.1 n])
     · exact hWdiv.2
   have hlower : ∀ ε > 0, ∃ᶠ n in Filter.atTop, -ε < f n := by
     intro ε hε
     have hnot := hdet.not_eventually_weightedBias_lt_ofComputations
-      hpoly hWgen hWdiv hmag hworld hP (ε / 2) (by linarith)
+      hpoly hWgen hnegl hWdiv hmag hworld hP (ε / 2) (by linarith)
     rw [Filter.not_eventually] at hnot
     exact hnot.mono (fun n hn => by
       simp only [not_lt] at hn
@@ -1065,7 +1070,7 @@ lemma DeterminedViaTheory.recunbiasedaff_ofComputations
   have hupper : ∀ ε > 0, ∃ᶠ n in Filter.atTop, f n < ε := by
     intro ε hε
     have hnot := hdetNeg.not_eventually_weightedBias_lt_ofComputations
-      hpoly.neg hWgen hWdiv hmagNeg hworld hP (ε / 2) (by linarith)
+      hpoly.neg hWgen hnegl.neg hWdiv hmagNeg hworld hP (ε / 2) (by linarith)
     rw [Filter.not_eventually] at hnot
     exact hnot.mono (fun n hn => by
       simp only [not_lt] at hn
@@ -1076,6 +1081,22 @@ lemma DeterminedViaTheory.recunbiasedaff_ofComputations
       dsimp only [f]
       linarith)
   exact hasLimitPoint_zero_of_two_sided_recurring f hstep hlower hupper
+
+/-- Exact `thm:recunbiasedaff` with constructed schedules: the `err = 0` specialization. -/
+lemma DeterminedViaTheory.recunbiasedaff_ofComputations
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hWgen : PGenerableWeighting W)
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    {truth : ℕ → ℝ}
+    (hdet : DeterminedViaTheory As P DP truth)
+    (hWdiv : DivergentWeighting W P)
+    (hmag : ∀ i, (As i).magnitude P ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    HasLimitPoint
+      (weightedBias (fun i => (W i).denote P)
+        (fun i => (As i).price P i) truth) 0 :=
+  hdet.approx.recunbiasedaff_ofComputations hpoly hWgen
+    (AffineCombination.errorNegligible_zero As P) hWdiv hmag hworld
 
 /-! ## Statistical-learning capstones -/
 
@@ -1387,12 +1408,17 @@ open Filter
 
 /-- `thm:recurringunbiasednessexp` with the normalized-mesh maturity schedule constructed
 from the logical inductor computations.
+
+Determination is the paper's `def:affthmval` premise on the *combination*; `hvalued` only
+asks that each completed world value the component LUVs somehow.  The mesh traded is
+therefore only approximately determined, and the bias-run economics absorbs the
+(negligible-against-magnitude) mesh error.
 Paper node: `thm:recurringunbiasednessexp` -/
 theorem BoundedSequence.recurringunbiasednessexp
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
-    (hexact : ExactTheoryPresentation As DP)
+    (hvalued : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
@@ -1408,8 +1434,9 @@ theorem BoundedSequence.recurringunbiasednessexp
   let meshTruth : ℕ → ℝ := meshTheoryTruth As P DP hworld
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : q ≠ 0 := ne_of_gt (meshNormScale_pos b)
-  have haff := (hexact.normalizedMesh_determined hworld b).recunbiasedaff_ofComputations
-    (h.normalizedMesh_poly b) hWgen hWdiv
+  have haff := (hvalued.normalizedMesh_approxDetermined hdet hworld
+      b).recunbiasedaff_ofComputations
+    (h.normalizedMesh_poly b) hWgen (normalizedMesh_errorNegligible As P b) hWdiv
       (normalizedMesh_magnitude_le_one b hshare) hworld
   have hscaled : HasLimitPoint
       (fun n => q * weightedBias w market meshTruth n) 0 := by
@@ -1427,7 +1454,7 @@ theorem BoundedSequence.recurringunbiasednessexp
   let d : ℕ → ℝ := fun n => weightedAverage w (fun i => meshTruth i - truth i) n
   have herr : Tendsto (fun n => meshTruth n - truth n) Filter.atTop (nhds 0) := by
     simpa only [meshTruth] using
-      hexact.toWorldValued.meshTheoryTruth_sub_truth_tendsto hdet hworld b hshare
+      hvalued.meshTheoryTruth_sub_truth_tendsto hdet hworld b hshare
   have hd : Tendsto d Filter.atTop (nhds 0) :=
     weightedAverage_tendsto_zero_of_tendsto_zero
       (fun n => (hWdiv.1 n).1) hWdiv.2 herr
