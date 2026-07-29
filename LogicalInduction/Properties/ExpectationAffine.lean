@@ -1,8 +1,10 @@
 /-
-# Affine expectation lift
+# Expectations — §4.8: `thm:ei`, `thm:loe`, `thm:expprovind`
 
-Polynomial affine presentations of the growing threshold bundles used by `def:e`, followed
-by the expectation-level consequences of affine provability induction.
+Polynomial affine presentations of the growing threshold bundles of `def:e`, followed by
+the expectation-level consequences of affine provability induction: expectations of
+indicators, linearity of expectation, and expectation provability induction (in `≥`, `≤`
+and `=` forms).
 -/
 import LogicalInduction.Properties.AffineProvability
 
@@ -381,11 +383,12 @@ theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
 
 /-- **Linearity of expectation** (`thm:loe`, fixed `X, Y, Z` form), finite-precision hypothesis.
 
-The world hypothesis is the **finite-precision agreement** the trader argument actually consumes:
-in every day-`n` plausible world, `X`, `Y`, `Z` have exact values `x, y, z` with `z = a x + b y`,
-and the day-`n` approximate expectations (grid `n + 1`) sit within `1/(n+1)` of them.  This is *satisfiable* at a
-finite stage (unlike the full `PCWorld.ValuesAt` cut, which pins infinitely many thresholds); the
-`…_ofValuesAt` corollary recovers the `ValuesAt` form via `expectApprox_near`.
+The world hypothesis is the finite-precision agreement the trader argument consumes: in
+every day-`n` plausible world, `X`, `Y`, `Z` have values `x, y, z` with `z = a x + b y`, and
+the day-`n` approximate expectations (grid `n + 1`) sit within `1/(n+1)` of them.  This is
+satisfiable at a finite stage, unlike the full `PCWorld.ValuesAt` cut, which pins infinitely
+many thresholds; `lic_linearity_of_expectation_ofValuesAt` recovers the `ValuesAt` form via
+`expectApprox_near`.
 Paper node: `thm:loe` -/
 theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (a b : ℚ) (X Y Z : LUV)
@@ -483,9 +486,9 @@ theorem lic_linearity_of_expectation_ofValuesAt (P : History) (DP : DeductivePro
 /-- **Expectation Provability Induction** (`thm:expprovind`), finite-precision form.
 
 The world hypothesis is the day-`n` approximation bound `|𝔼_{n+1}^v(X) − x| ≤ 1/(n+1)` with
-`c ≤ x` (day `n` carries grid `n + 1`, `def:e`) — the satisfiable, finite-stage content the trader
-argument consumes.  The `…_ofValuesAt` corollary
-recovers the full `PCWorld.ValuesAt` statement.
+`c ≤ x` (day `n` carries grid `n + 1`, `def:e`) — the satisfiable, finite-stage content the
+trader argument consumes.  `lic_expectation_provind_ofValuesAt` recovers the full
+`PCWorld.ValuesAt` statement.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV) (hcode : X.RpnThresholdCodes)

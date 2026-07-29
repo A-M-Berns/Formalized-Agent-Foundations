@@ -1,11 +1,14 @@
 /-
-# Occam Bounds (`thm:ob`)
+# `thm:ob` — Occam Bounds (paper §4.6)
 
-The paper allocates one unit of risk across sentences according to the Kraft weights
-`2^{-κ(φ)}` and uses an efficiently emulatable family indexed by the desired inverse
-constant.  In the repository's single-trader criterion we diagonalize that family into
-one trader: rung `j` has purchase capacity `j⁴` and is scaled by `1/j²`.  Thus its total
-risk is at most `1/j²`, while a full purchase has plausible payout of order `j²`.
+The paper allocates one unit of risk across sentences by the Kraft weights `2^{-κ(φ)}`,
+using an efficiently emulatable *family* of traders indexed by the desired constant.
+Our exploitation criterion quantifies over single traders, so the family is diagonalized
+into one: rung `j` has purchase capacity `j⁴` scaled by `1/j²`, hence risks at most
+`1/j²` while a full purchase has plausible payout of order `j²`, and `Σ_j 1/j²` converges.
+
+Contents: `lic_occam_lower` (the lower half) and `lic_occamBounds` (both halves, sharing
+one constant), plus `lic_limitingBelief_add_neg` (`thm:lc`), which the upper half needs.
 -/
 import LogicalInduction.Properties.UniformNonDogmatism
 import LogicalInduction.Properties.Relationships
@@ -98,8 +101,8 @@ lemma PrefixNegationCompiler.weight_div_le_neg
     _ = 1 / (2 : ℝ) ^ (κ φ + neg.overhead) := by rw [pow_add]
     _ ≤ 1 / (2 : ℝ) ^ κ (∼φ) := one_div_le_one_div_of_le hpos hpow
 
-/-- Limit coherence for a sentence and its propositional negation, obtained from the
-audited exclusive–exhaustive lemma rather than assumed as a valuation identity.
+/-- Limit coherence for a sentence and its propositional negation. Derived from the
+exclusive–exhaustive learning law, not assumed as a valuation identity.
 Paper node: `thm:lc` -/
 theorem lic_limitingBelief_add_neg
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -551,9 +554,9 @@ def obTrader {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ) : Trader
       obtain ⟨i, hi, rfl⟩ := List.mem_map.mp hp
       exact obSentenceEF_rank_le U n i n }
 
-/-- The actual Occam trader has a token-indexed polynomial emitter. Both nested triangular
-runs use the repository's proved variable-width prefix scanner, so padding branches and
-varying rational tokens are handled literally rather than by a whole-strategy oracle. -/
+/-- The Occam trader has a token-indexed polynomial emitter. Both nested triangular runs
+go through the variable-width prefix scanner, so the padding branches and the varying
+rational tokens are emitted literally rather than assumed of the strategy wholesale. -/
 lemma obTrader_ecTok {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (emit : OccamThresholdEmission U) :
     EfficientlyComputableTok (obTrader U) := by
@@ -995,8 +998,8 @@ lemma obNetWorth_add_risk {κ : Sentence → ℕ}
   intro k hk
   dsimp [obAdjustedTerm]
 
-/-- The Occam ladder genuinely exploits whenever every rung finds one sufficiently
-underpriced sentence that remains propositionally possible. -/
+/-- The Occam ladder exploits whenever every rung finds one sufficiently underpriced
+sentence that remains propositionally possible. -/
 lemma obTrader_exploits {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (DP : DeductiveProcess)
     (hfire : ∀ j, 1 ≤ j → ∃ i n, ∃ v : PCWorld,
@@ -1101,8 +1104,8 @@ theorem lic_occam_lower
 
 /-- `thm:ob` (Occam Bounds). One fixed positive constant simultaneously supplies the
 lower bound for every unrefutable sentence and the upper bound for every unprovable
-sentence. The upper half uses only the fixed syntax overhead for negation and the already
-verified exclusive–exhaustive limit law.
+sentence. The upper half needs only the negation compiler's fixed complexity overhead
+plus limit coherence (`lic_limitingBelief_add_neg`).
 Paper node: `thm:ob` -/
 theorem lic_occamBounds
     {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)

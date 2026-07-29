@@ -1,10 +1,12 @@
 /-
-# Closure Under Conditioning (`thm:scon`)
+# Conditionals (paper §4.7)
 
-This file begins with the exact capped conditional market from the paper and the semantic
-combined deductive process.  The trader compiler is kept separate: it must translate an
-arbitrary token-emitted trader through conditional contracts while controlling the cap
-case by the paper's summable gate.
+The capped conditional market of `def:condp`, the combined deductive process, and Closure
+Under Conditioning (`thm:scon`) in both its fixed-condition and growing-prefix forms.
+
+The trader compiler is a separate interface: it must translate an arbitrary
+token-emitted trader through conditional contracts while paying for the capped case out
+of a summable per-day loss budget.
 -/
 import LogicalInduction.Properties.UniversalSemimeasure
 import LogicalInduction.Properties.FinitePerturbations
@@ -2141,8 +2143,9 @@ structure EventualConditioningOperationalWitness
   translation_ec : ∀ T, EfficientlyComputable T →
     EfficientlyComputable (T.eventualConditionedTranslation floor)
 
-/-- Assemble the old compiler contract from the concrete gated translator.  Both economic
-fields are theorems above; only executable representation data remains in the witness. -/
+/-- Assemble a `ConditioningTraderCompiler` from the concrete gated translator.  Both of
+the compiler's economic fields are discharged by the lemmas above; only executable
+representation data is supplied by the witness. -/
 def GatedConditioningOperationalWitness.toCompiler
     {P : History} {DP extra : DeductiveProcess}
     {C : ConditioningPresentation DP extra} {ε : ℚ}
@@ -2293,9 +2296,9 @@ theorem lic_conditioned
       (compiler.translate T) (compiler.translate_ec T hTec)
       (compiler.exploits_base hTexp)
 
-/-- Closure under conditioning through the concrete gated translator.  The remaining
-premise is operational only; the summable tracking and first-failure downside arguments
-are no longer assumed through an opaque compiler field.
+/-- Closure under conditioning through the concrete gated translator.  Its remaining
+premise is operational only: the summable tracking estimate and the first-failure
+downside argument are proved here rather than assumed.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_gated
     (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]

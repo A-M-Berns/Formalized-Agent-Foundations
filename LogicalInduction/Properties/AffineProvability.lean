@@ -1,9 +1,10 @@
 /-
-# Affine Provability Induction
+# Affine Provability Induction (§4.5, `thm:affprovind`, `app:affprovind`)
 
-The semantic half of the M4 affine lift.  If every sufficiently late plausible world
-values a polynomially generated affine bundle at least `c`, logical induction prevents
-the bundle's diagonal market price from remaining below `c`.
+The affine analogue of provability induction, stated semantically: if every sufficiently
+late plausible world values a polynomially generated affine bundle at least `c`, then the
+bundle's diagonal market price cannot stay below `c`. `affine_tendsto_zero` is the
+two-sided form obtained by applying it to the family and its negation.
 -/
 import LogicalInduction.Properties.AffinePreemptiveLearning
 

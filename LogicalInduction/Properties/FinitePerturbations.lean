@@ -1,5 +1,5 @@
 /-
-# Closure under finite perturbations (`thm:ifp`)
+# §4.6 Closure under finite perturbations (`thm:ifp`, appendix `app:ifp`)
 
 The paper transports an exploiting trader across a finite change of market history by
 replacing every old price leaf in its feature syntax with the corresponding rational
@@ -9,9 +9,6 @@ exploitation laws.  Retaining the leaf is what makes the flat rewrite parser-tra
 even on malformed raw trader programs.
 
 ## PAPER ERRATUM — the appendix proof of `thm:ifp` has a gap
-
-The durable paper-level record, including the unrestricted-theorem-or-counterexample stretch
-goal, is `notes/logical-induction-paper-errata.md`.
 
 This is **not** a modeling artifact of our substrate.  The paper's proof (`app:ifp`)
 transports the trader by hard-coding the old prices, and justifies efficiency thus:
@@ -36,9 +33,8 @@ numeral is `~2^(2^n)`, which no polynomial clock can emit (`codeEvaln_result_le`
 `codeEvalBound_poly` give the relevant fixed-code polynomial output bound, not an
 output-`≤`-fuel bound).  For such a `P'`,
 `EfficientPrefixPatch P' 1` is **uninhabited** — the hypothesis is not merely unproved but
-unsatisfiable.  (This argument is *not* formalized; see
-`notes/logical-induction-paper-errata.md` for the one unformalized fact it rests on and for
-what remains open.)
+unsatisfiable.  (This counterexample is *not* formalized, and neither is the step it rests
+on: that no polynomial clock can emit a numeral of magnitude `2^(2^n)`.)
 
 Note the paper is aware `LIA` itself has finite support per day (`sec:construct`, remark
 following the belief-sequence definition) and *deliberately* generalizes the property tail
@@ -51,11 +47,12 @@ transformation, and `lic_iff_of_finitePerturbation` takes it as a hypothesis for
 market.  The structure contains no trading, exploitation, or logical-inductor conclusion.
 Consequently `lic_iff_of_finitePerturbation` is **strictly weaker than the paper's
 `thm:ifp`**: it does not cover every finite perturbation of a computable market, only those
-whose frozen prefix admits an efficient presentation.  It is not vacuous — for `LIA` the
-per-day quote table is a finite entry list (`RationalBeliefState`, `MarketMaker.lean`), so
-the patch is a hardcodable finite lookup and `liaEfficientPrefixPatch` discharges
-`M7-PREFIX-PATCH` — but the restriction must be stated whenever this theorem is cited as
-the paper's.
+whose frozen prefix admits an efficient presentation.  For `LIA` the obstruction above is
+absent — the per-day quote table is a finite entry list (`RationalBeliefState`,
+`MarketMaker.lean`), so the freeze is a finite lookup rather than an unbounded computation
+— but the efficiency certificate for the emitted stream is not discharged, so no `LIA`
+instance of `EfficientPrefixPatch` exists at present.  The restriction must be stated
+whenever this theorem is cited as the paper's.
 -/
 import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.Computable
@@ -710,17 +707,17 @@ theorem Trader.Exploits.of_boundedDifference
 freeze above preserves token-indexed polynomial emission.  It contains no semantic market
 claim and no exploitation or convergence conclusion.
 
-**This is a paper erratum, not a modeling substitution** (see the file header and
-`notes/logical-induction-paper-errata.md`).
-`app:ifp` asserts this closure is immediate because "only
-finitely many constants are needed"; that is false — finitely many *days*, but unboundedly
-many sentences.  This structure is **not inhabited for every `ComputableMarket P`**: a
-market with huge-encoding day-`0` quotes admits no such patch at all.  Do not read it as a
-routine obligation awaiting labor; instantiating it is a real claim about `P`.
+**This is a paper erratum, not a modeling substitution** (see the file header).  `app:ifp`
+asserts this closure is immediate because "only finitely many constants are needed"; that
+is false — finitely many *days*, but unboundedly many sentences.  This structure is **not
+inhabited for every `ComputableMarket P`**: a market with huge-encoding day-`0` quotes
+admits no such patch at all.  Do not read it as a routine obligation awaiting labor;
+instantiating it is a real claim about `P`.
 
-For `LIA` it *is* inhabitable — each day's quote table is a finite `RationalBeliefState`
-entry list, so the freeze is a hardcodable finite lookup with constant-size tokens.  That
-is `M7-PREFIX-PATCH`.
+For `LIA` that obstruction is absent — each day's quote table is a finite
+`RationalBeliefState` entry list, so the freeze is a finite lookup with constant-size
+tokens — but the fuel certificate for the emitted stream is not discharged, so no `LIA`
+instance of this structure exists at present.
 Paper node: `app:ifp` -/
 structure EfficientPrefixPatch (P : History) (cutoff : ℕ) where
   quote : ℕ → Sentence → ℚ
@@ -728,10 +725,10 @@ structure EfficientPrefixPatch (P : History) (cutoff : ℕ) where
   preserves_ec : ∀ Tr : Trader, EfficientlyComputable Tr →
     EfficientlyComputable (Tr.freezeBefore quote cutoff)
 
-/-- **Closure under Finite Perturbations** (`thm:ifp`), with the exact computational
-qualification forced by this repository's clocked model.  The two histories agree from
-`cutoff` onward, and each finite prefix supplies the concrete efficient-freeze certificate
-above.  The conclusion is the paper's biconditional, not merely one direction.
+/-- **Closure under Finite Perturbations** (`thm:ifp`), with the computational
+qualification forced by the clocked efficiency model (`dd:fuel`).  The two histories agree
+from `cutoff` onward, and each supplies the efficient-freeze certificate above.  The
+conclusion is the paper's biconditional, not merely one direction.
 Paper node: `thm:ifp` -/
 theorem lic_iff_of_finitePerturbation
     (P P' : History) (DP : DeductiveProcess) (cutoff : ℕ)

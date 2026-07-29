@@ -1,5 +1,9 @@
 /-
-# `thm:lex` — learning logical relationships (equivalence, implication)
+# Learning Logical Relationships — §4.5: `thm:lex` (`app:lex`)
+
+Three renderings, in increasing generality: equivalence (`⊢ φ ↔ ψ` forces the prices
+together), implication (`⊢ φ → ψ` eventually stops `φ` being overpriced against `ψ`), and
+the exclusive–exhaustive families of `thm:lex` proper.
 -/
 import LogicalInduction.Properties.Basic
 import LogicalInduction.Properties.AffineCoherence

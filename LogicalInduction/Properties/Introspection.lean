@@ -1,12 +1,12 @@
 /-
-# Same-day introspective expectation identities
+# Introspection — §4.11: `thm:epr`, `thm:er`, `thm:ref`, `thm:lp`
 
-This file proves `thm:epr` and `thm:er`.  The repository's propositional language cannot
-construct the paper's first-order quotations directly, so the quote is represented by a
-concrete polynomial affine portfolio.  Unlike the future Self-Trust certificates, no
-cross-day coherence is assumed: the portfolio has the quoted gap as its current price and
-is worth zero in every world consistent with the completed theory.  Affine Provability
-Induction supplies the entire learning step.
+Same-day introspective identities.  The propositional language here cannot construct the
+paper's first-order quotations directly, so a quote is represented by a concrete polynomial
+affine portfolio.  Unlike the deferred Self-Trust certificates, no cross-day coherence is
+assumed: the portfolio has the quoted gap as its current price and is worth zero in every
+world consistent with the completed theory.  Affine Provability Induction supplies the
+learning step.
 -/
 import LogicalInduction.Properties.SelfTrust
 import LogicalInduction.Properties.AffineCoherence
@@ -76,8 +76,8 @@ lemma gap_asympEq_zero {P : History} {DP : DeductiveProcess} {gap : ℕ → ℝ}
 end CompletedAffineQuoteApprox
 
 /-- Operational quotation package for `thm:epr`. `Y n` is the LUV expressing the actual
-day-`n` price of `φ n`. The delayed/world field records the intended first-order semantics;
-the affine field is the concrete same-day portfolio consumed by the proof.
+day-`n` price of `φ n`. The `reflected` field records the intended first-order semantics;
+the `affine` field is the concrete same-day portfolio consumed by the proof.
 Paper node: `thm:epr` -/
 structure CurrentPriceExpectationQuote (P : History) (DP : DeductiveProcess)
     (φ : ℕ → Sentence) (Y : ℕ → LUV) where

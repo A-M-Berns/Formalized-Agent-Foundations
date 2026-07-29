@@ -1,23 +1,20 @@
 /-
-# `thm:nd` — Non-Dogmatism (weak fragment)
+# `thm:nd` — Non-Dogmatism (paper §4.6; appendix `app:nondog`)
 
-Paper (`main.tex` 1528): if `Θ ⊬ ¬φ` then `P∞(φ) > 0`. Our semantic substrate renders the
-unrefutability hypothesis per-day — "`φ`-satisfying plausible worlds keep existing"
-(`∀ n, ∃ v, v.ConsistentWith (DP.D n) ∧ v.Holds φ`, the `def:lang`-level reading of `⊬`,
-disclosed in the ledger) — and this file proves the **weak fragment**: the price cannot
-frequently fall below the decaying bound `2^{-(n+2)}`. It is honestly *weaker* than
-`thm:nd` (the bound decays; the full liminf form is Phase B2's budget-halving trader).
+Paper statement: if `Θ ⊬ ¬φ` then `P∞(φ) > 0`, and if `Θ ⊬ φ` then `P∞(φ) < 1`.
 
-The exploiting trader is memoryless: on day `n` it buys
-`β n = max 0 (1 − 2^{n+1}·φ*ⁿ)` shares of `φ`. Its day-`n` spend is `β n · Pₙφ ≤ 2^{-(n+1)}`
-(the signal only fires below `2^{-(n+1)}`), so the total spend is ≤ 1 in every world —
-bounded downside. If the price frequently dips below `2^{-(n+2)}`, the signal fires with
-`β ≥ 1/2` while a plausible `φ`-world pays `1 − Pₙφ ≥ 1/2` per share — each dip banks
-`≥ 1/4` of `φ`-world value, and the dips accumulate without bound.
+**Modeling substitution, disclosed.** The syntactic hypothesis `Θ ⊬ ¬φ` is rendered
+semantically and per-day — "`φ`-satisfying plausible worlds keep existing", i.e.
+`∀ n, ∃ v, v.ConsistentWith (DP.D n) ∧ v.Holds φ` — the `def:lang`-level reading of `⊬`.
+The dual direction uses the mirrored condition with `¬ v.Holds φ`.
 
-The power `2^{n+1}` is a **left-nested** `mul`-chain of `const 2` — size `Θ(n)` with
-homogeneous width-3 serialization blocks, so `ecTok_of_blockStream` (Phase A2) certifies
-the trader e.c. directly.
+Contents:
+* `lic_nonDogmatism_weak` — a decaying-bound fragment (eventually `Pₙφ ≥ 2^{-(n+2)}`),
+  proved by a memoryless one-day-at-a-time trader; retained beside the full theorem.
+* `lic_nonDogmatism`, `lic_nonDogmatism_dual` — the two directions of `thm:nd`, via the
+  buy and sell scale ladders (the trader shape the paper uses in `app:obu`).
+* `lic_limit_pos`, `lic_limit_lt_one` — the limit forms `P∞(φ) > 0` and `P∞(φ) < 1`,
+  taking price convergence as a hypothesis.
 -/
 import LogicalInduction.Properties.Basic
 import LogicalInduction.Properties.Hysteresis
@@ -25,6 +22,14 @@ import LogicalInduction.Properties.Hysteresis
 namespace LogicalInduction
 
 open Filter Topology
+
+/-! ## The weak fragment: a decaying lower bound
+
+The trader is memoryless: on day `n` it buys `β n = max 0 (1 − 2^{n+1}·Pₙφ)` shares of
+`φ`. Its day-`n` spend is `β n · Pₙφ ≤ 2^{-(n+1)}`, so total spend is `≤ 1` in every
+world. If the price frequently dips below `2^{-(n+2)}`, the signal fires with `β ≥ 1/2`
+while a plausible `φ`-world pays `1 − Pₙφ ≥ 1/2` per share, so each dip banks `≥ 1/4` of
+`φ`-world value and the dips accumulate without bound. -/
 
 /-! ### The sharpening power `2^(k+1)`, as a block-serializable feature -/
 
@@ -55,7 +60,7 @@ lemma serialize_twoPowChain : ∀ k,
       rw [twoPowChain, EF.serialize, serialize_twoPowChain k, List.range_succ]
       simp [EF.serialize]
 
-/-! ### The trader (`def:trader`, constructed — not stubbed) -/
+/-! ### The trader (`def:trader`) -/
 
 /-- Day-`n` buy signal: `max 0 (1 − 2^{n+1}·φ*ⁿ)` — fires only when the price is below
 `2^{-(n+1)}`, at slope `2^{n+1}`. -/
@@ -200,7 +205,7 @@ theorem ndTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
             Finset.sum_le_sum_of_subset_of_nonneg hsub (fun i _ _ => hterm0 i)
     nlinarith
 
-/-! ### Efficient computability, via `ecTok_of_blockStream` (Phase A2) -/
+/-! ### Efficient computability, via `ecTok_of_blockStream` -/
 
 theorem serialize_ndBeta (φ : Sentence) (n : ℕ) :
     (ndBeta φ n).serialize
@@ -248,9 +253,12 @@ lemma ndTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (ndTrader φ) :=
 
 /-- **Non-Dogmatism, weak fragment** (`thm:nd`): under a logical inductor, if
 `φ`-satisfying plausible worlds keep existing (the per-day semantic rendering of
-`Θ ⊬ ¬φ`), the price is eventually at least `2^{-(n+2)}`. Weaker than the paper's
-`thm:nd` (the bound decays with `n`); the faithful eventual-lower-bound form is
-`lic_nonDogmatism` below. The price range is carried by `IsLogicalInductor`.
+`Θ ⊬ ¬φ`), the price is eventually at least `2^{-(n+2)}`.
+
+RETAINED FRAGMENT — strictly weaker than the paper's `thm:nd`, because the bound decays
+with `n` rather than being bounded away from `0`. It is kept beside the faithful form
+`lic_nonDogmatism` below, which supersedes it. The price range is carried by
+`IsLogicalInductor`.
 Paper node: `thm:nd` -/
 theorem lic_nonDogmatism_weak (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence)
@@ -269,12 +277,12 @@ theorem lic_nonDogmatism_weak (P : History) (DP : DeductiveProcess)
 
 /-! ## Full `thm:nd` — the scale-ladder trader
 
-Paper (`main.tex` 1533, sketch; `app:obu`/`lem:type2`, 5556 ff., the formal construction):
-the trader "spend[s] their first 50 cents when `Pₙ(φ) < 1/2` … their next 25 cents when
+Paper: the §4.6 proof sketch, with the formal construction in `app:obu` via `lem:type2`.
+The trader "spend[s] their first 50 cents when `Pₙ(φ) < 1/2` … their next 25 cents when
 `Pₙ(φ) < 1/4`", one rung per scale, so that under `liminf Pₙφ = 0` every rung eventually
 fires and plausible profits diverge while total spend stays bounded.
 
-**Two modeling findings, disclosed here rather than discovered later:**
+**Two modeling deviations from the paper's trader, disclosed:**
 
 1. *The recursive budget trader is not poly-size expressible as an `EF` tree.* The natural
    state `r(n+1) = r n − Pₙ·ctsind(Pₙ < r n/2)` uses `r n` twice (once bare, once inside
@@ -296,7 +304,7 @@ fires and plausible profits diverge while total spend stays bounded.
 
 Rungs are padded with degenerate (`δ = 0`, identically-zero) `ctsind` factors on days
 before their start day `j`, so every rung's arming chain has the same, uniform-width
-serialization — the shape the (pending) doubly-indexed emission needs. -/
+serialization — the shape the doubly-indexed token emission needs. -/
 
 /-! ### The generic arming chain -/
 
@@ -900,12 +908,12 @@ lemma ndChunkSeg_polySegStream (φ : Sentence) :
   rw [serialize_ndCoef, serialize_armChain_ndBuy]
   simp [EF.serialize, Nat.unpair_pair, List.append_assoc]
 
-/-- **The scale-ladder trader is efficiently computable** — the first parametric-family
-emission cert: head `[1, ⌜0⌝]`, then `n` rung chunks of uniform runtime width via
-`PolySegStream.concat` (each chunk: rung-constant head, `n` fixed-width arm blocks via
-`PolySegStream.blocks`, the day-`n` signal, closers), then the trade tail. The
-rung-varying `ℚ`-constant tokens are emitted as poly-fueled arithmetic through the
-closed encoding forms (`encode_ndThr` etc.). -/
+/-- The scale-ladder trader is efficiently computable. The day-`n` stream is a head
+`[1, ⌜0⌝]`, then `n` rung chunks of uniform runtime width via `PolySegStream.concat`
+(each chunk: rung-constant head, `n` fixed-width arm blocks via `PolySegStream.blocks`,
+the day-`n` signal, closers), then the trade tail. The rung-varying `ℚ`-constant tokens
+are emitted as poly-fueled arithmetic through the closed encoding forms
+(`encode_ndThr` etc.). -/
 lemma ndLadderTrader_ecTok (φ : Sentence) :
     EfficientlyComputableTok (ndLadderTrader φ) := by
   have hunif : ∀ n j,
@@ -942,11 +950,8 @@ lemma ndLadderTrader_ecTok (φ : Sentence) :
 
 /-- **Non-Dogmatism, positive direction** (`thm:nd`): under a logical inductor, if
 `φ`-satisfying plausible worlds keep existing (the per-day semantic rendering of
-`Θ ⊬ ¬φ`), the price is eventually bounded away from `0`. No price-range hypotheses:
-the ladder's economics localize to its trigger bands.
-
-The scale-ladder trader, its exploitation proof, and its variable-width token-emission
-certificate are all discharged.
+`Θ ⊬ ¬φ`), the price is eventually bounded away from `0`. No price-range hypotheses are
+needed: the ladder's economics localize to its trigger bands.
 Paper node: `thm:nd` -/
 theorem lic_nonDogmatism (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence)
@@ -965,8 +970,8 @@ theorem lic_nonDogmatism (P : History) (DP : DeductiveProcess)
 
 /-! ### The dual direction: `Θ ⊬ φ` ⇒ price bounded away from `1`
 
-The mirrored **sell** ladder. As the plan notes, this does *not* reduce to the positive
-direction applied to `∼φ` — prices of `φ` and `∼φ` are unlinked without coherence — so
+The mirrored **sell** ladder. This does *not* reduce to the positive direction applied to
+`∼φ` — the prices of `φ` and `∼φ` are unlinked without coherence — so
 rung `j` here *sells* up to `j³` shares when the price spikes above `1 − 1/j³`, with the
 same arming chain over `sellIndEF` signals. Selling banks the price now against a payout
 `≤ 1` later: in every world the rung's downside is `≤ 1/j²` (the spike band), and in the
@@ -1468,9 +1473,8 @@ lemma ndSellChunkSeg_polySegStream (φ : Sentence) :
   rw [serialize_ndSellCoef, serialize_armChain_ndSell]
   simp [EF.serialize, Nat.unpair_pair, List.append_assoc]
 
-/-- **The sell ladder is efficiently computable** — the mirror of
-`ndLadderTrader_ecTok`, with the negative-numerator band constants emitted through
-`encode_sellB_polyFueled`. -/
+/-- The sell ladder is efficiently computable: the mirror of `ndLadderTrader_ecTok`, with
+the negative-numerator band constants emitted through `encode_sellB_polyFueled`. -/
 lemma ndSellLadderTrader_ecTok (φ : Sentence) :
     EfficientlyComputableTok (ndSellLadderTrader φ) := by
   have hunif : ∀ n j,
@@ -1509,9 +1513,6 @@ lemma ndSellLadderTrader_ecTok (φ : Sentence) :
 /-- **Non-Dogmatism, dual direction** (`thm:nd`): under a logical inductor, if
 `φ`-falsifying plausible worlds keep existing (the per-day semantic rendering of
 `Θ ⊬ φ`), the price is eventually bounded away from `1`.
-
-The mirrored sell-ladder trader, its exploitation proof, and its variable-width
-token-emission certificate are all discharged.
 Paper node: `thm:nd` -/
 theorem lic_nonDogmatism_dual (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence)
@@ -1530,9 +1531,9 @@ theorem lic_nonDogmatism_dual (P : History) (DP : DeductiveProcess)
 
 /-! ### Limit-form corollaries (`P∞`) -/
 
-/-- `thm:nd`, limit form, positive direction: with the price convergent (from `thm:con`,
-`lic_price_convergesTo`), `P∞(φ) > 0`. Convergence is an explicit hypothesis, in the
-style of `lic_limit_additive`.
+/-- `thm:nd`, limit form, positive direction: `P∞(φ) > 0`. Convergence of the price is an
+explicit hypothesis rather than an appeal to `thm:con`, so the statement is usable at any
+convergent limit the caller already has (`lic_price_convergesTo` supplies one).
 Paper node: `thm:nd` -/
 theorem lic_limit_pos (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : Sentence) {L : ℝ}

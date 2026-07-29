@@ -1,9 +1,11 @@
 /-
-# Part III — shared substrate for the property tail
+# Shared substrate for the property proofs
 
-World/payout boolean lemmas and the two exploitation engines (`exploits_of_nonneg_partialSums`
-for world-neutral traders, `exploits_of_ge_partialSums` for world-dependent ones bounded below
-by a world-independent quantity). Every family file below builds on these.
+The pieces every property family reuses: the continuous buy-signal `max(0, feat − ε/2)`,
+the Boolean payout lemmas for p.c. worlds, and the exploitation engines
+(`exploits_of_nonneg_partialSums` for world-neutral traders, `exploits_of_ge_partialSums`
+for world-dependent ones bounded below by a world-independent quantity, and
+`exploits_of_bddBelow_of_unbounded` for traders whose growth itself is world-dependent).
 -/
 import LogicalInduction.Framework.Criterion
 import LogicalInduction.Framework.Asymptotics

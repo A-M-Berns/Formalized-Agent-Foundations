@@ -1,10 +1,12 @@
 /-
-# Domination of the Universal Semimeasure (`thm:dus`)
+# Non-Dogmatism: the universal semimeasure (paper §4.6)
 
-This file first fixes the faithful mathematical and propositional substrate for the paper's
-direct unit-budget trader. A continuous semimeasure is not a discrete a-priori semimeasure:
-one path may retain mass `1` through infinitely many prefixes, so `thm:dus` cannot be
-reduced to ordinary sentence prefix complexity with a fixed coding constant.
+Renders `thm:dus` (Domination of the Universal Semimeasure) and `thm:strict` (Strict
+Domination), together with the semimeasure substrate and the unit-budget trader they need.
+
+A continuous semimeasure is not a discrete a-priori semimeasure: one path may retain mass
+`1` through infinitely many prefixes, so `thm:dus` does not reduce to ordinary sentence
+prefix complexity with a fixed coding constant.
 -/
 import LogicalInduction.Properties.OccamBounds
 import LogicalInduction.Properties.LimitCoherence
@@ -47,10 +49,10 @@ structure UniversalContinuousSemimeasure extends
   universal : ∀ ν : LowerSemicomputableContinuousSemimeasure,
     ∃ c : ℝ, 0 < c ∧ ∀ σ, c * ν.mass σ ≤ mass σ
 
-/-- The genuine semantic premise behind the independent zero-arity predicates used in
-`thm:dus`: every finite Boolean assignment to the atoms remains compatible with every
-finite deductive stage.  It contains no preassembled prefix sentence, syntax semantics,
-market data, or domination conclusion.
+/-- The semantic premise behind the independent zero-arity predicates used in `thm:dus`:
+every finite Boolean assignment to the atoms remains compatible with every finite deductive
+stage.  It carries no preassembled prefix sentence, syntax semantics, market data, or
+domination conclusion.
 Paper node: `thm:dus` -/
 structure IndependentBitAtoms (DP : DeductiveProcess) where
   atom : ℕ → Sentence
@@ -339,16 +341,15 @@ lemma semimeasureMean_root_le_max
 
 /-! ## The direct unit-budget purchase family
 
-The appendix considers every prefix on every sufficiently late day.  The equivalent
-dovetail below considers one prefix per day: on day `n` it visits enumeration index
-`n.unpair.2`.  Every index `i` is therefore revisited on the unbounded subsequence
-`Nat.pair m i`.  This removes an inessential triangular loop while retaining the exact
-economic argument.
+Deviation from the appendix, which considers every prefix on every sufficiently late day:
+the dovetail below considers one prefix per day, visiting enumeration index `n.unpair.2`
+on day `n`, so every index `i` recurs on the unbounded subsequence `Nat.pair m i`.  The
+economic argument is unchanged.
 
 The paper first slows an arbitrary lower approximation down to a polynomial-time table.
-That compiler fact is kept separate from the mathematical semimeasure presentation: this
-structure contains only the rational table and its syntax-level polynomial certificate,
-and no prices, purchases, or domination conclusion. -/
+That compiler fact is kept separate from the mathematical semimeasure presentation: the
+structure below carries only the rational table and its syntax-level polynomial
+certificate — no prices, purchases, or domination conclusion. -/
 
 /-- Polynomially emitted from-below approximation used by the DUS trader.
 Paper node: `thm:dus` -/
@@ -553,7 +554,7 @@ lemma dusCostEF_closed {DP : DeductiveProcess}
 
 /-! ### Uniform syntax emission for the purchase inputs -/
 
-/-- Literal segment emission for the padded, scale-varying DUS signal. -/
+/-- Segment emission for the padded, scale-varying low-price signal. -/
 lemma dusSignal_polySegStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -739,7 +740,7 @@ lemma dusRemainingEF_polySegStream
   rw [dusRemainingEF, ROIBudget.sharedFeatureWeight,
     ROIBudget.sharedWeights_serialize, List.range_eq_range']
 
-/-- Uniform emission of the actual share coefficient. -/
+/-- Uniform emission of the share coefficient. -/
 lemma dusSharesEF_polySegStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -1449,7 +1450,8 @@ lemma dusScaleTrader_family_polySegStream
   · have ht : z.unpair.2 + 1 - z.unpair.1 ≠ 0 := by omega
     simp [ht, dusScaleTrader, hpad]
 
-/-- The family is genuinely uniformly emulatable; no whole-strategy oracle is used. -/
+/-- The scale family is uniformly emulatable from its segment stream; no whole-strategy
+oracle is used. -/
 lemma dusScaleTrader_emulatable
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -1460,7 +1462,7 @@ lemma dusScaleTrader_emulatable
     (fun _ _ h ↦ dusScaleTrader_zero_before A h)
     (dusScaleTrader_family_polySegStream A emit)
 
-/-- Every fixed scale member has a real token-indexed polynomial certificate. -/
+/-- Every fixed scale member carries a token-indexed polynomial certificate. -/
 lemma dusScaleTrader_ecTok
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -1555,8 +1557,8 @@ lemma exists_consistent_dusScaleTrader_netWorth_ge_of_low_limit
   norm_num at hmean ⊢
   linarith
 
-/-- Bounded downside is literal: nonnegative prefix shares can lose only their purchase
-cost, and cumulative purchase cost is at most one. -/
+/-- Bounded downside: nonnegative prefix shares can lose only their purchase cost, and
+cumulative purchase cost is at most one. -/
 lemma dusScaleTrader_netWorth_ge_neg_one
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -1659,7 +1661,7 @@ lemma dusTrader_strat_value_full_prefix
   rw [dusDiagonalComponent_value_zero_of_day_lt_index A P w (by omega), mul_zero]
 
 /-- Exact finite accounting: the joined trader's wealth is the weighted sum of its
-component traders' actual wealth in the same world. -/
+component traders' wealth in the same world. -/
 lemma dusTrader_netWorth
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -1690,7 +1692,7 @@ lemma dusTrader_netWorth
       intro j hj
       rw [Trader.netWorth, Finset.mul_sum]
 
-/-- The inverse-square diagonal preserves a literal uniform downside bound. -/
+/-- The inverse-square weights keep the diagonal's downside uniformly bounded, by two. -/
 lemma dusTrader_netWorth_ge_neg_two
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -1876,7 +1878,7 @@ lemma dusDiagonalWeight_polyRatCodes
   refine ⟨_, ((PolyFueled.const 2).pair hsq).of_eq (fun x ↦ ?_)⟩
   rw [encode_dusDiagonalWeight]
 
-/-- Literal polynomial segment emitter for the actual inverse-square diagonal trader. -/
+/-- Polynomial segment emitter for the inverse-square diagonal trader. -/
 lemma dusTrader_polySegStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -1954,7 +1956,7 @@ lemma dusTrader_polySegStream
   rw [hdayeq]
   simp
 
-/-- The paper-facing DUS diagonal has a genuine token-indexed polynomial certificate. -/
+/-- The diagonal trader carries a token-indexed polynomial certificate. -/
 lemma dusTrader_ecTok
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -2026,26 +2028,28 @@ theorem lic_domination_universalSemimeasure
 
 /-! ## Strict Domination of the Universal Semimeasure (`thm:strict`)
 
-The market argument is separated from the computability-theory separator construction;
-the latter is the disclosed `M7-STRICT-SEPARATORS` boundary.  No market price or
-strict-domination conclusion occurs in that boundary.
+Only the market half is proved here.  It is factored over
+`StrictSeparatorPresentation`, an interface holding the computability-theory data, and
+that interface mentions no market price and no strict-domination conclusion — it cannot
+smuggle the theorem in as a hypothesis.  The interface is discharged by
+`strictSeparatorPresentationOfKleene` in `Construction/Witnesses/StrictSeparators.lean`,
+which builds it from Kleene's recursively inseparable pair.
 
 The separator data is the paper's (`app:strict`): a **c.e. constraint theory** — one
 single-bit constraint for each code enumerated into one half of a recursively inseparable
 pair — together with, at each stage, the finite class of bit strings still consistent with
 the constraints decided so far.  Undecided bits stay free, so the constraints never
-assemble into a single nested prefix family.  That earlier shape is not merely
-inconvenient, it is uninhabitable: see `no_ce_null_prefix_family` in
-`Construction/Witnesses/StrictSeparators.lean`, which shows a nested prefix family with a
+assemble into a single nested prefix family, and no such family would do: by
+`no_ce_null_prefix_family` (same construction file), a nested prefix family with a
 computable enumeration always keeps positive universal-semimeasure mass. -/
 
 open Filter Topology
 
-/-- Concrete interface to the recursively-inseparable separator class used in the paper's
-proof of Strict Domination.  `mass_class_tendsto_zero` is the precise computability-theory
-fact to be instantiated from disjoint c.e. sets with no computable separator: the universal
-semimeasure gives the stage-`n` separator class vanishing total mass.  The remaining fields
-expose the constraint theory, its legal syntax preprocessing, and the finite class data.
+/-- Interface to the recursively-inseparable separator class used in the paper's proof of
+Strict Domination.  `mass_class_tendsto_zero` is the computability-theory fact it exists
+to carry — for disjoint c.e. sets with no computable separator, the universal semimeasure
+gives the stage-`n` separator class vanishing total mass.  The remaining fields expose the
+constraint theory, its enumeration, and the finite class data.
 Paper node: `thm:strict` -/
 structure StrictSeparatorPresentation
     (M : UniversalContinuousSemimeasure) {DP : DeductiveProcess}

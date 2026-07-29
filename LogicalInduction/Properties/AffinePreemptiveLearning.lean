@@ -1,10 +1,15 @@
 /-
-# `thm:affpolymax` — analytic preemptive-learning hub
+# Affine Preemptive Learning (paper §4.5, `thm:affpolymax`)
 
-This file isolates the order/limit half of Affine Preemptive Learning.  The economic half
-constructs an efficiently emulatable family of affine round trips and proves the two
-`NoPreemptive*` conditions below via repeatable ROI.  Once those conditions are available,
-the paper's two liminf/limsup equalities are purely generic filter arguments.
+Renders `thm:affpolymax` and its appendix proof `app:affpolymax`: for a bounded combination
+sequence, the liminf/limsup of the diagonal prices `Pₙ(Aₙ)` agree with those of the future
+benchmarks `sup_{m ≥ n} Pₘ(Aₙ)` and `inf_{m ≥ n} Pₘ(Aₙ)`.
+
+The proof is factored over two operational conditions, `NoPreemptiveUnderpricing` and
+`NoPreemptiveOverpricing`.  Given those, the equalities are generic filter arguments; the
+conditions themselves are supplied by an efficiently emulatable family of gradual-sale
+affine round trips whose return on investment (`app:roi`, `def:roi`) contradicts logical
+induction if a persistent price gap recurs.
 -/
 import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.ROI
@@ -88,8 +93,8 @@ noncomputable def affineFutureLow (As : ℕ → AffineCombination) (V : History)
   sInf (Set.range (fun j => (As n).price V (n + j)))
 
 /-- Uniform boundedness of all cross-time prices of the affine sequence.  A paper `BCS`
-witness implies this from its coefficient `L¹` bound and market prices in `[0,1]`; the
-analytic hub records only the consequence it consumes. -/
+witness implies this from its coefficient `L¹` bound and market prices in `[0,1]`; this
+definition records only the consequence the liminf/limsup arguments consume. -/
 def BoundedAffinePrices (As : ℕ → AffineCombination) (V : History) : Prop :=
   ∃ B : ℝ, 0 ≤ B ∧ ∀ n m, |(As n).price V m| ≤ B
 
@@ -108,9 +113,8 @@ lemma AffineCombination.BoundedCombinationSequence.boundedPrices
   exact ((As n).abs_price_le_l1Norm V m (hP m)).trans (hB n)
 
 /-- A canonical positive rational rescaling of an arbitrary paper `BCS` into the
-unit-magnitude regime used by the economic trader constructions.  The scale is part of
-the data so downstream capstones can state their operational witnesses for exactly the
-normalized sequence they consume. -/
+unit-magnitude regime used by the trader constructions.  The scale is part of the data, so
+a consumer can state its operational witnesses for exactly the normalized sequence. -/
 structure AffineCombination.BoundedCombinationSequence.UnitNormalization
     {As : ℕ → AffineCombination} {V : History}
     (h : BoundedCombinationSequence As V) where
@@ -229,9 +233,10 @@ structure AffineNoPreemptiveGaps (As : ℕ → AffineCombination) (V : History) 
   overpriced : NoPreemptiveOverpricing
     (fun n => (As n).price V n) (affineFutureLow As V)
 
-/-- Analytic capstone for `thm:affpolymax`.  The remaining construction theorem must derive
-`AffineNoPreemptiveGaps` from `[IsLogicalInductor V DP]` for bounded polynomially generated
-affine sequences; no limit algebra is duplicated there. -/
+/-- Order/limit half of `thm:affpolymax`: given the two operational no-preemption
+conditions, the paper's liminf/limsup equalities follow generically.
+`PolySequence.noPreemptiveGaps` below supplies those conditions from
+`[IsLogicalInductor V DP]`. -/
 theorem affpolymax_of_noPreemptiveGaps
     (As : ℕ → AffineCombination) (V : History)
     (hbounded : BoundedAffinePrices As V)

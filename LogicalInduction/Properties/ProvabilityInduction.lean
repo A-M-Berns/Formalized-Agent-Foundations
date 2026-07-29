@@ -1,5 +1,7 @@
 /-
-# `thm:provind` — Provability Induction (fixed sentence and `𝓔𝓒`-sequence forms)
+# Provability Induction — §4.2, `thm:provind` (`app:provind`, `sec:provind`)
+
+Fixed-sentence and `𝓔𝓒`-sequence forms.
 -/
 import LogicalInduction.Properties.Basic
 
@@ -8,7 +10,7 @@ namespace LogicalInduction
 open Filter Topology
 
 
-/-! ### The exploiting trader (`def:trader`, constructed — not stubbed) -/
+/-! ### The exploiting trader (`def:trader`) -/
 
 /-- The trader that buys exactly one share of `φ` on every day. Each day-`n` strategy is
 the single pair `(1, φ)`: a constant (hence continuous, hence legal) trade of rank 0. This
@@ -29,13 +31,13 @@ lemma buyDaily_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) :
   simp [Trader.netWorth]
 
 
-/-! ### Efficient computability, via the clocked interpreter (no stub)
+/-! ### Efficient computability, via the clocked interpreter
 
 The day-`n` strategy is the same constant list `[(const 1, φ)]` for every `n`, so the
 program that computes it is `Code.const K`, where `K` is that list's code. It halts within
 `n + K + 1` fuel (`evaln_const_self`), which is affine in `n`, hence within the polynomial
-budget the faithful `EfficientlyComputable` requires. This certifies e.c. through the
-genuine `dd:fuel` model — a single program producing the strategies under a poly clock. -/
+budget `EfficientlyComputable` requires — a single program producing the strategies under
+a polynomial clock, in the `dd:fuel` model. -/
 lemma buyDaily_ec (φ : Sentence) : EfficientlyComputableTok (buyDaily φ) := by
   refine ecTok_of_stream _ ?_
   have h : ∀ n, ((buyDaily φ).strat n).trades = [(EF.const 1, φ)] := fun _ => rfl
@@ -44,7 +46,7 @@ lemma buyDaily_ec (φ : Sentence) : EfficientlyComputableTok (buyDaily φ) := by
     (PolyFueled.const (Encodable.encode φ)) PolyTokenStream.trades_nil
 
 
-/-! ### The exploitation (`def:exploitation`, proved in full) -/
+/-! ### The exploitation (`def:exploitation`) -/
 
 /-- If `φ` is always deducible and the market holds it uniformly `ε` below 1, the
 do-buy-daily trader exploits: bounded below (net worth `≥ 0` in every plausible world,
@@ -86,7 +88,7 @@ lemma buyDaily_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence) (�
     nlinarith [this, hBm, hε]
 
 
-/-! ### The criterion consequence (the loop closed against `def:lic`) -/
+/-! ### The criterion consequence (`def:lic`) -/
 
 /-- **Base case of Provability Induction** (`thm:provind`), stated against `def:lic`: a
 logical inductor cannot hold an always-deducible sentence uniformly below price 1. For
@@ -101,17 +103,13 @@ theorem lic_deducible_price_near_one (P : History) (DP : DeductiveProcess)
   exact hLI.noExploitTok (buyDaily φ) (buyDaily_ec φ) (buyDaily_exploits P DP φ ε hε hded h hcons)
 
 
-/-! ## M3 — Provability Induction in the limit (fixed sentence), via accumulation
+/-! ## Provability Induction in the limit, for a fixed sentence
 
-The base case above assumed *uniform* underpricing and concluded only that the price rises
-above `1 − ε` *once*. The genuine `thm:provind` conclusion is the **limit** statement
-`Pₙ(φ) → 1`. For a *fixed* always-deducible `φ` we obtain it from the **same constant
-`buyDaily` trader** — no new construction, no new e.c. proof — by a stronger analysis: if
-the price dips below `1 − ε` *infinitely often*, then buying one share a day accumulates
-profit `≥ ε` on each of infinitely many days, so the net worth is unbounded. (The
-*responsive* `max(0,·)` trader and its harder efficient-computability proof are only needed
-for the **sequence** form of `thm:provind` — an `𝓔𝓒`-sequence `φₙ` — which is deferred; see
-the milestone notes.) -/
+The statement above assumed *uniform* underpricing and concluded only that the price rises
+above `1 − ε` once. The `thm:provind` conclusion is the limit statement `Pₙ(φ) → 1`. For a
+fixed always-deducible `φ` the same constant `buyDaily` trader delivers it under a stronger
+analysis: if the price dips below `1 − ε` infinitely often, buying one share a day
+accumulates profit `≥ ε` on each of infinitely many days, so net worth is unbounded. -/
 
 /-- Exploitation under *infinitely-often* underpricing (the accumulation argument). With
 prices bounded by `1`, every plausible assessment is `≥ 0` (bounded below); and along the

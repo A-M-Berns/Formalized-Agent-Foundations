@@ -1,10 +1,14 @@
 /-
-# Collected expectation-property lifts
+# Expectations (paper §4.8)
 
-This file builds the concrete mesh-affine presentation used by the six collected
-expectation theorems.  A LUV combination is not collapsed to a synthetic LUV: each term
-is expanded into the paper's `n` threshold shares, so the affine master theorems continue
-to see the actual traded sentences.
+LUV combinations (`def:luv`) and bounded combination sequences (`def:blcp`); the
+threshold-mesh lemmas `lem:mesh` and `lem:limexpapprox`; and the expectation theorems
+`thm:expcoh`, `thm:exppolymax`, `thm:perexpkno`, `thm:recurringunbiasednessexp`,
+`thm:wubexp` and `thm:prandexp`, each obtained from its affine counterpart.
+
+A LUV combination is never collapsed to a synthetic LUV: each term is expanded into the
+paper's `n` threshold shares, so the affine theorems still see the actual traded
+sentences.
 -/
 import LogicalInduction.Properties.ExpectationAffine
 import LogicalInduction.Properties.ExpectationConvergence
@@ -503,9 +507,8 @@ noncomputable def softmaxMass (gaps : List AffineCombination) (P : History)
       remaining.denote P * signal.denote P +
         softmaxMass rest P day threshold pad (.mul remaining (oneMinus signal))
 
--- `oneMinus_denote` is the `@[simp]` lemma in `Properties/Hysteresis.lean` (in scope here
--- via `oneMinus`); the duplicate in this namespace was removed in the consolidation pass.
--- The `simp only [… oneMinus_denote]` calls below resolve to that root lemma.
+-- The `oneMinus_denote` used by the `simp only` calls below is the `@[simp]` lemma
+-- accompanying `oneMinus` in `Properties/Hysteresis.lean`.
 
 lemma softmax_mass_add_remainder
     (gaps : List AffineCombination) (P : History) (day : ℕ)
@@ -2394,9 +2397,11 @@ theorem BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
 
 /-- `thm:wubexp`: determined LUV-combination truth is weighted-unbiased under
 every represented divergent weighting supported on a strictly increasing feedback
-schedule.  The feedback emitter and delayed-truth bridge are the same conclusion-free
-`M7-FEEDBACK-EMIT` and `M7-FEEDBACK-TRUTH` boundaries as in `wubaff`, instantiated on
-the concretely normalized threshold mesh.
+schedule.  The two operational premises are the ones `lic_wubaff` takes, instantiated on
+the normalized threshold mesh: `emit` supplies the concrete feedback-trader family in
+both sign orientations, and `bridge` supplies the delayed-quote-error affine sequence
+that every completed-theory world values at zero.  Neither carries a bias or convergence
+claim.
 
 Determination is the paper's own `def:affthmval` premise — all completed worlds agree on
 the value of the *combination*.  `hvalued` only asks that each completed world value the
@@ -2470,10 +2475,8 @@ theorem BoundedSequence.wubexp
     ring
   simpa only [AsympEq, sub_zero, w, market] using hfinal
 
-/-- Conditional compatibility form of the nonnegative `thm:prandexp` branch.  Pseudorandom
-exact LUV truth is
-transferred through the vanishing threshold-mesh error, the affine `prandaff` theorem is
-applied to the normalized mesh, and its positive normalization is cancelled. -/
+/-- The nonnegative comparison direction of `thm:prandexp`, taking the bias-run
+historical-verifiability premises for the normalized threshold mesh. -/
 theorem BoundedSequence.prandexp_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]

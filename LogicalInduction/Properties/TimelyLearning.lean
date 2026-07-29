@@ -1,10 +1,10 @@
 /-
-# Timely-learning consequences (`thm:tbo`, `thm:perkno`)
+# Timely Learning — §4.2: `thm:perkno`, `thm:tbo` (`app:perkno`, `app:tbo`)
 
-This file specializes the affine property hubs to ordinary efficiently codeable sentence
-sequences. The one-share affine presentation below is deliberately explicit: it is the
-certificate that `thm:tbo` consumes, so the paper's efficient-sequence premise is not
-silently widened to an arbitrary Lean function.
+Specializes the affine persistence and preemptive-learning results to ordinary efficiently
+codeable sentence sequences. The one-share affine presentation below is deliberately
+explicit: it is the certificate `thm:tbo` consumes, so the paper's efficient-sequence
+premise is not silently widened to an arbitrary Lean function.
 -/
 import LogicalInduction.Properties.AffinePersistence
 import LogicalInduction.Framework.Expectations

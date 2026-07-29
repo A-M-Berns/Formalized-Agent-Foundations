@@ -1,10 +1,10 @@
 /-
-# Limit coherence (`thm:lc`)
+# §4.1 Limit coherence (`thm:lc`, appendix `app:lc`)
 
-This file completes the Gaifman-extension step of the paper's limit-coherence theorem.
-The limiting prices define coherent probabilities on every finite Boolean cylinder; compactness
-of `ℕ → Bool` makes the resulting cylinder content countably additive, hence it extends to an
-actual probability measure on worlds.
+The Gaifman-extension step: the limiting prices define coherent probabilities on every
+finite Boolean cylinder, and compactness of `ℕ → Bool` makes the resulting cylinder content
+countably additive, hence it extends to an actual probability measure on worlds.  The
+paper-facing statement is `lic_limitCoherence`.
 -/
 import LogicalInduction.Properties.Relationships
 import Mathlib.MeasureTheory.Constructions.BorelSpace.Basic
@@ -677,7 +677,7 @@ theorem gaifmanMeasure_sentence (L : Valuation) (hL : GaifmanCoherent L) (φ : S
   rw [← BoolPCWorld.eval_eq_true_iff_holds, ← BoolPCWorld.eval_eq_true_iff_holds,
     eval_extend_restrict]
 
-/-- The Boolean presentation maps measurably to the repository's proposition-valued worlds. -/
+/-- The Boolean presentation maps measurably to the proposition-valued worlds. -/
 lemma BoolPCWorld.measurable_toPCWorld : Measurable BoolPCWorld.toPCWorld := by
   apply measurable_pi_lambda
   intro a
@@ -702,7 +702,7 @@ lemma measurable_consistentWithTheory (DP : DeductiveProcess) :
   intro φ
   exact measurable_const.imp (measurable_pcWorld_holds φ)
 
-/-- The Gaifman measure transported to the repository's canonical `PCWorld` type. -/
+/-- The Gaifman measure transported to the proposition-valued `PCWorld` type. -/
 noncomputable def gaifmanWorldMeasure (L : Valuation) (hL : GaifmanCoherent L) :
     Measure PCWorld :=
   (gaifmanMeasure L hL).map BoolPCWorld.toPCWorld
@@ -791,8 +791,7 @@ theorem lic_gaifmanWorldMeasure_supported
 
 /-- **Limit Coherence** (`thm:lc`): limiting prices are the sentence-event probabilities of
 an actual countably additive probability measure concentrated on completed-theory worlds.
-This packages convergence and the Gaifman extension step, rather than stopping at finite
-additivity.
+The conclusion is the measure itself, not just finite additivity.
 Paper node: `thm:lc` -/
 theorem lic_limitCoherence
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
