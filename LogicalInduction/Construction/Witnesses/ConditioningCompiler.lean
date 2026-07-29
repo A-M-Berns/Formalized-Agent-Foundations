@@ -1,9 +1,20 @@
 /-
 # Executable compiler for closure under conditioning
 
-This file constructs the rational conditional-market program used by `thm:scon` from an
-actual base-market computation and the polynomial condition-code program.  The finite
-denominator patch and the flat token transducer are developed below this core computation.
+Machinery behind the paper's closure of the logical-induction criterion under
+conditioning (`thm:scon`).  Three layers, each usable on its own:
+
+* the exact rational program for the conditioned market `P(φ | ψ)`, built from a base
+  market's own rational quote table and a recursive naming program for the condition
+  sequence;
+* a finite denominator patch, pinning the condition's price to `1` on a finite prefix so
+  that a positive rational floor on the denominator is available on every day;
+* a flat token transducer rewriting a trader's serialized strategy stream into the
+  conditioned trader's, with the polynomial certificates that make the rewrite
+  efficiently computable.
+
+The closing sections supply the tail price floor the patch consumes, deriving it from
+Uniform Non-Dogmatism and Preemptive Learning.
 -/
 import LogicalInduction.Construction.Witnesses.ConditioningPresentation
 import LogicalInduction.Construction.LIACompiler
@@ -15,8 +26,8 @@ namespace ConditioningCompile
 
 open Filter
 
--- Deep polynomial token compositions carry nested `Primcodable` products.  Keep the
--- implementation of pairing opaque during elaboration (the standard `dd:fuel` safeguard).
+-- `Primrec`/`PolyFueled` elaboration over the deep product types below unfolds `Nat.sqrt`'s
+-- well-founded definition during `whnf` and loops; local irreducibility stops that.
 attribute [local irreducible] Nat.sqrt
 
 /-- Exact rational counterpart of the paper's capped conditional quote. -/
@@ -193,9 +204,9 @@ lemma conditionedQuoteCode_spec {P : History} (market : MarketComputation P)
     hnumerator, hdenominator, hconditional, Seq.seq, conjunction, numerator,
     denominator, conditionedQuoteTable]
 
-/-- The actual conditioned history is a computable rational market whenever the base
-market has a named computation and the condition sequence is symbol-metered (whence its
-whole-value naming program is recursive — `RpnSentenceCodes.exists_code`). -/
+/-- The conditioned history is a computable rational market whenever the base market has a
+named computation and the condition sequence is symbol-metered (whence its whole-value
+naming program is recursive — `RpnSentenceCodes.exists_code`). -/
 noncomputable def conditionedMarketComputation {P : History}
     (market : MarketComputation P) (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ) :
     MarketComputation (conditionedHistory P ψ) where
@@ -411,8 +422,8 @@ def rawLocallyGatedSecondBodyTokens
     (ε : ℚ) : List ℕ :=
   let _beta := rawLocallyGatedBetaBodyTokens
     sentenceCode conditionCode day budgetCode inverseBudgetCode ε
-  -- Replace the inner beta body by the corresponding second-leg body under the same
-  -- leading ratio binding.
+  -- The second leg reuses the β leg's leading ratio binding, but negates the product of
+  -- the gated bound with the bound ratio.
   let ratioValue := rawConditioningRatioTokens sentenceCode conditionCode day ε
   let boundRatio := [7, 0]
   let bound := [7, 1]
@@ -656,6 +667,8 @@ def retainedConditionStreamState (ψ : ℕ → Sentence) (ε : ℚ) :
       (control, stack.map fun e => e.retainedConditionPrices ψ ε,
         trades.map fun trade => (trade.1.retainedConditionPrices ψ ε, trade.2))
 
+-- One `simp` per parser mode and per stack shape: nine token tags times the stack cases
+-- exceeds the default heartbeat budget.
 set_option maxHeartbeats 800000 in
 lemma streamReadFrom_conditionPriceTokenEmit
     (ψ : ℕ → Sentence) (ε : ℚ)
@@ -1026,6 +1039,8 @@ def retainedConditionExceptZeroStreamState
         trades.map fun trade =>
           (trade.1.retainedConditionPricesExceptZero zeroDays ψ ε, trade.2))
 
+-- Same mode-by-tag-by-stack case split as the unguarded emitter, with the extra zero-day
+-- branch on top; the default heartbeat budget does not cover it.
 set_option maxHeartbeats 800000 in
 lemma streamReadFrom_zeroAwareConditionPriceTokenEmit
     (zeroDays : Finset ℕ) (ψ : ℕ → Sentence) (ε : ℚ)
@@ -1546,6 +1561,8 @@ lemma streamRead_rawConditioningRatio_none {sentenceCode : ℕ} {ψ : Sentence}
   apply streamRead_append_none
   exact streamRead_rawPrice_none (conjunctionCode_decode_none hdecode) day stack trades
 
+-- The β body is a deep `++` nest over the raw combinators; associating it for the rewrite
+-- exceeds the default heartbeat budget.
 set_option maxHeartbeats 800000 in
 lemma streamRead_rawFirstBody_none {sentenceCode : ℕ} {ψ : Sentence}
     (hdecode : Encodable.decode (α := Sentence) sentenceCode = none)
@@ -1559,6 +1576,7 @@ lemma streamRead_rawFirstBody_none {sentenceCode : ℕ} {ψ : Sentence}
     streamRead_rawConditioningRatio_none hdecode, EF.streamReadFrom_none,
     EF.streamReadFrom_none]
 
+-- As for the β body: a deep `++` nest whose reassociation exceeds the default budget.
 set_option maxHeartbeats 800000 in
 lemma streamRead_rawSecondBody_none {sentenceCode : ℕ} {ψ : Sentence}
     (hdecode : Encodable.decode (α := Sentence) sentenceCode = none)
@@ -1572,6 +1590,8 @@ lemma streamRead_rawSecondBody_none {sentenceCode : ℕ} {ψ : Sentence}
     streamRead_rawConditioningRatio_none hdecode, EF.streamReadFrom_none,
     EF.streamReadFrom_none]
 
+-- The decodable branch simps the whole frame body — every raw combinator unfolded at once
+-- against the streaming parser — which does not fit the default budget.
 set_option maxHeartbeats 800000 in
 lemma streamRead_rawFrame_empty (second : Bool) (sentenceCode : ℕ)
     (ψ : Sentence) (day : ℕ) (ε q : ℚ) (trades : List (EF × Sentence)) :
@@ -1633,6 +1653,8 @@ def frameStreamState (second : Bool) (ψ : Sentence) (ε q : ℚ) (day : ℕ) :
           if mode = 4 ∨ mode = 0 then none else pending),
         stack, trades.map (frameLeg second ψ ε q day))
 
+-- The largest case split in the file: every parser mode against every token tag, and the
+-- mode-4 branch additionally unfolds a full frame body.  Needs a large heartbeat budget.
 set_option maxHeartbeats 3000000 in
 lemma streamReadFrom_conditioningFrameTokenEmit
     (second : Bool) (ψ : Sentence) (ε q : ℚ) (day : ℕ)
@@ -1906,6 +1928,8 @@ def conditioningFrameTokenOutput (second : Bool) (ψCode day : ℕ) (ε : ℚ)
     budgetCode inverseBudgetCode (0, 0) tokens
   run.2 ++ if run.1.1 = 4 then [6] else []
 
+-- Runs the whole framing pass, plus its flush suffix, through the streaming parser in one
+-- proof; the default heartbeat budget is not enough.
 set_option maxHeartbeats 1000000 in
 lemma deserializeTrades_conditioningFrameTokenRun
     (second : Bool) (ψ : Sentence) (ε q : ℚ) (day : ℕ) (tokens : List ℕ) :
@@ -3407,8 +3431,8 @@ lemma eventualConditionedTranslation_preserves_ec
 /-! ### Constructing the finite-prefix floor -/
 
 /-- A finite family of positive rational numbers and one further positive rational have
-one common positive rational lower bound.  This is the elementary finite-prefix step in
-the direct repair of `thm:scon`. -/
+one common positive rational lower bound.  This is the finite-prefix step that turns an
+eventual price floor into a floor valid on every day. -/
 lemma exists_positive_rational_lower_finset
     (s : Finset ℕ) (f : ℕ → ℚ) (q : ℚ)
     (hf : ∀ x ∈ s, 0 < f x) (hq : 0 < q) :
@@ -3506,15 +3530,17 @@ noncomputable def eventualConditioningFloorOfTail
 
 /-! ### Deriving the tail floor from joint consistency
 
-The floor argument below is the consistent-conditioning half of `thm:scon`.  Its `hjoint`
-hypothesis is repo-side — the paper's `thm:scon` assumes no consistency of `Θ ∪ {ψᵢ}` — and
-the complementary degenerate half is `isLogicalInductor_of_stage_unsatisfiable`. -/
+The floor argument below covers the case in which the condition sequence is jointly
+consistent with every stage of the deductive process.  That joint-consistency hypothesis is
+*added here*: the paper's `thm:scon` assumes no such thing.  The complementary case, where
+some stage together with the conditions is unsatisfiable, is handled separately by
+`isLogicalInductor_of_stage_unsatisfiable`. -/
 
 /-- Uniform Non-Dogmatism followed by Preemptive Learning gives an eventual positive
-rational floor on the diagonal prices of any efficiently codeable jointly consistent
-condition sequence.  This is the analytic step used by the repaired proof of
-`thm:scon`.  Joint consistency is needed *here*, in the price-floor argument; it is not a
-hypothesis of the paper's theorem.
+rational floor on the diagonal prices of any efficiently codeable, jointly consistent
+condition sequence.  This is the analytic content behind the conditioning compiler's
+denominator floor.  Joint consistency is needed *here*, in the price-floor argument; it is
+not a hypothesis of the paper's theorem.
 Paper node: `thm:scon` -/
 lemma exists_eventual_condition_price_floor
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -3577,8 +3603,8 @@ lemma exists_eventual_condition_price_floor
   obtain ⟨cutoff, hcutoff⟩ := Filter.eventually_atTop.mp hevent
   exact ⟨cutoff, ε, hε, fun d hd => (hcutoff d hd).le⟩
 
-/-- Joint consistency therefore produces the exact finite-zero floor certificate consumed by
-the repaired conditioning compiler. -/
+/-- Joint consistency therefore produces the finite-zero floor certificate the conditioning
+compiler consumes. -/
 lemma eventualConditioningFloor_nonempty_of_jointConsistency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (market : MarketComputation P)

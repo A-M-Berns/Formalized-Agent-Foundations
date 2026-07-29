@@ -110,11 +110,11 @@ lemma lia_no_efficient_trader_exploits (DP : DeductiveProcess)
   rw [tradingFirmTrader_liaQuote_eq_liaTrader] at hfirm
   exact liaTrader_not_exploited DP hfirm
 
-/-- Assembly lemma isolating the one remaining construction obligation: once the exact
-partial-recursive presentation of `liaHistory` is supplied, all semantic fields of the
-logical-inductor criterion are already discharged.  This is deliberately not named the
-paper-facing `LIA_is_logical_inductor`; M7 does not count the computability premise as a
-solution. -/
+/-- Assembly lemma isolating the one remaining construction obligation: once an exact
+partial-recursive presentation of `liaHistory` is supplied, every semantic field of the
+logical-inductor criterion is already discharged.  It takes that presentation as a
+hypothesis, so it is deliberately *not* the paper-facing `LIA_is_logical_inductor`:
+assuming the market is computable is not the same as exhibiting the program. -/
 lemma lia_isLogicalInductor_of_computableMarket (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP)
     (hmarket : ComputableMarket (liaHistory DP)) :

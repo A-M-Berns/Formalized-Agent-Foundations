@@ -2,8 +2,8 @@
 # Redundant enumeration of efficiently computable traders (`prop:enumeration`)
 
 The construction needs more than a complexity predicate: it needs a total, clocked
-emulator whose index contains both the exact serialized-length program and the token
-program.  This file starts that construction and proves the coverage half: every
+emulator whose index carries both the serialized-length program and the token program.
+This file builds that emulator and proves the coverage half of `prop:enumeration`: every
 `EfficientlyComputable` trader is reproduced extensionally by one emulator program.
 -/
 import LogicalInduction.Framework.Computable

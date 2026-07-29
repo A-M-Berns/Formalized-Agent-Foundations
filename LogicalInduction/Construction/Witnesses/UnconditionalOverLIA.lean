@@ -16,8 +16,8 @@ made unconditional over a constructed `LIA` inductor:
 * **Conditioning** (`thm:scon`), a *transformation* result: the constructed inductor,
   conditioned on a computable event, is again a logical inductor over the union process.
 
-The remaining disclosed boundary `M7-DUS-APPROX` (the from-below approximation `A`/`emit`)
-stays an explicit caller input.
+Where a from-below approximation of the semimeasure and its threshold-emission certificate
+(`A`/`emit`) are still needed, they stay explicit caller inputs rather than being assumed.
 -/
 
 namespace LogicalInduction
@@ -42,7 +42,7 @@ lemma emptyBitDeductiveProcess_hworld (n : ℕ) :
 
 /-! ## Universal semimeasure domination, unconditional over `LIA` -/
 
-/-- `thm:dus`, unconditional over `LIA` modulo the disclosed `M7-DUS-APPROX` approximation.
+/-- `thm:dus`, unconditional over `LIA` except for the semimeasure's approximation data.
 The market / inductor / non-vacuity side is fully discharged — the inductor is the
 constructed `LIA` over the (computable) empty process and `hworld` is trivial — so only the
 from-below approximation `A` and its threshold emission `emit` remain caller inputs.
@@ -63,9 +63,10 @@ theorem lic_domination_universalSemimeasure_unconditional
     emptyBitDeductiveProcess_hworld
 
 /-- **`thm:dus` over the constructed dovetail, with no semimeasure input.**  `M` is
-`Construction/Witnesses/UniversalDovetailer.lean`'s explicit dovetail `M*`, and both
-`M7-DUS-APPROX` premises are discharged there by the self-clamped stage table, so the only
-remaining caller input is the prefix-sentence code emitter `C` (`M7-DUS-PREFIX-SYNTAX`).
+`Construction/Witnesses/UniversalDovetailer.lean`'s explicit dovetail `M*`, and both the
+from-below approximation and its threshold emission are discharged there by the
+self-clamped stage table, so the only remaining caller input is the prefix-sentence code
+emitter `C`.
 Paper node: `thm:dus` -/
 theorem lic_domination_dovetailSemimeasure_unconditional
     (C : BitPrefixCodeComputation ordinaryIndependentBitAtoms) :

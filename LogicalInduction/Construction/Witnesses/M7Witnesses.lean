@@ -3,20 +3,34 @@ import LogicalInduction.Framework.Emission
 import LogicalInduction.Properties
 
 /-!
-# Concrete post-M5 representation witnesses
+# Representation witnesses for the efficient-computability side conditions
 
-This file hosts the conclusion-free compiler and syntax objects required by the M7
-completion contract.  The constructions here contain no market-limit, exploitation, or
-logical-inductor conclusions; those remain in the property files that consume the
-interfaces.
+The paper's traders and enumerations must be *efficiently computable* (`def:ec`); this file
+supplies the concrete computability objects that discharge that requirement, in four groups:
+
+* **The patient settlement clock.** A sound under-approximation of the deferral deadline
+  plus a dovetailed accept-search, assembled into `PatientSettlementClock` from a single
+  purely computational assumption (a code recognizing a named decidable predicate).
+* **Efficient repeated enumeration.** Triangular repetition for an already-efficient
+  sentence stream, and — via the bounded universal interpreter `codeEvalnNat` — the same
+  for an arbitrary code-enumerable stream, as Uniform Non-Dogmatism needs.
+* **The settlement test compiler.** `Primrec` course-of-values recursions over Gödel codes
+  of `Sentence` (atom bound, evaluation, stage quantifier, bit-list worlds), the fuel layer
+  over the market's quote table, and the extracted checker code.
+* **The finite-prefix freeze objects.** Polynomial parser control, variable-width freeze
+  emission, and lookup in the logical inductor's finite prefix quote table (`def:lia`).
+
+No market-limit, exploitation, or logical-inductor conclusions appear here; those live in
+the property files that consume these interfaces.
 -/
 
 namespace LogicalInduction
 
 section
--- The documented `dd:fuel` gotcha: `whnf` loops on `Nat.sqrt` (reached via `Nat.unpair`'s
--- `Primcodable` instance), not on any domain math.  Scope it irreducible rather than
--- raising heartbeats.
+-- `PolyFueled` elaboration over deep product types unfolds `Nat.sqrt`'s well-founded
+-- definition during `whnf` (reached via `Nat.unpair` in the `Primcodable` instances) and
+-- loops; making it locally irreducible stops that.  The loop is not domain math, so the
+-- fix is opacity rather than a heartbeat raise.
 attribute [local irreducible] Nat.sqrt
 
 /-- Equality against a fixed natural constant as a polynomial `0`/`1` table. -/
@@ -218,10 +232,10 @@ lemma polyFueled_deadlinePassed (f : DeferralFunction) :
 
 /-! ### Assembling the clock
 
-Everything the clock needs is now in hand except one thing: a *code* semi-deciding
-settlement.  That is isolated as `SettlementSemiDecider` — a pure computability
-obligation with no market, economic or limit content — and the clock is constructed from
-it.  The remaining M7 work for `M7-PATIENT-CLOCK` is exactly to inhabit that structure. -/
+The clock's one remaining ingredient is a *code* semi-deciding settlement.  It is isolated
+as `SettlementSemiDecider` — a pure computability obligation with no market, economic or
+limit content — and the clock is constructed from it, so building a patient clock reduces
+entirely to inhabiting that structure (done below from `SettlementChecker`). -/
 
 lemma acceptsWithin_mono (c : Nat.Partrec.Code) {F F' x : ℕ} (h : F ≤ F')
     (ha : acceptsWithin c F x = true) : acceptsWithin c F' x = true := by
@@ -340,13 +354,12 @@ noncomputable def PatientSettlementClock.ofSemiDecider
 
 /-! ### The purely computational checker
 
-`SettlementSemiDecider` above assumes a *semantic* property of a code.  The honest route
-assumes only that a code recognizes a **named decidable function** — `SettlementTest`,
-which mentions no market, no `truth`, no worlds beyond the finite enumeration — and then
-*derives* soundness and completeness from `settlementTest_iff_agree`.
-
-What is left assumed is then irreducible plumbing: "this program recognizes this decidable
-predicate."  It carries no semantics at all. -/
+`SettlementSemiDecider` above assumes a *semantic* property of a code.  `SettlementChecker`
+instead assumes only that a code recognizes a **named decidable function** —
+`SettlementTest`, which mentions no market, no `truth`, no worlds beyond the finite
+enumeration — and *derives* soundness and completeness from `settlementTest_iff_agree`.
+The residual assumption is then pure plumbing: "this program recognizes this decidable
+predicate", carrying no semantics at all. -/
 
 /-- A code recognizing the concrete decidable settlement test at tolerance `tol i`.
 
@@ -432,13 +445,12 @@ def EfficientRepeatedEnumeration.ofRpn (source : ℕ → Sentence)
 
 /-! ### General (c.e.) efficient repetition via the universal simulator
 
-`ofRpn` requires the source stream to already be efficiently codeable. The paper's Uniform
-Non-Dogmatism preprocesses an arbitrary **c.e.** stream, which need not be poly. With the
-`M7-HIST-EVALN` simulator this is now inhabitable: a code-enumerable source is dovetailed —
-on `⟨i, fuel⟩` we run the enumerator on `i` for `fuel` steps (the bounded interpreter
-`codeEvalnNat`, poly by `codeEvalnNat_polyFueled`) and emit the decoded output, padding with
-`source 0` before it halts. The emitted stream is poly regardless of how expensive `source`
-itself is. -/
+`ofRpn` requires the source stream to already be efficiently codeable.  The paper's Uniform
+Non-Dogmatism preprocesses an arbitrary **c.e.** stream, which need not be poly.  The
+bounded universal interpreter `codeEvalnNat` — itself poly-fueled by
+`codeEvalnNat_polyFueled` — removes that gap by dovetailing: on `⟨i, fuel⟩` run the
+enumerator on `i` for `fuel` steps and emit the decoded output, padding with `source 0`
+before it halts.  The emitted stream is poly regardless of how expensive `source` is. -/
 
 /-- The result at fuel `fuel` is stable under larger fuel (bounded interpreter monotonicity). -/
 lemma codeEvalnNat_pair_mono {code : Nat.Partrec.Code} {i fuel fuel' v : ℕ}
@@ -498,7 +510,7 @@ lemma ceRepeatSeq_codes {source : ℕ → Sentence} (h : CEEnumeration source) :
   rw [ceRepeatSeq_encode]
   simp only [Nat.unpair_pair, ifzSelFn, Nat.pred_eq_sub_one]
 
-/-- **General efficient repetition (`M7-CE-REPETITION`).** Every code-enumerable source has an
+/-- **General efficient repetition.** Every code-enumerable source has an
 efficient-repetition witness — no polynomial-clock assumption on the source itself.
 Paper node: `def:ec` -/
 noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
@@ -1573,6 +1585,8 @@ lemma valueRatCompAt_eq {P : History} (A : AffineCombination)
       cases affineTermsRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l) A.terms <;> rfl
 
 section
+-- `Primrec` elaboration over these nested product types unfolds `Nat.sqrt`'s well-founded
+-- definition during `whnf` (via `Nat.unpair`) and loops; local opacity stops that.
 attribute [local irreducible] Nat.sqrt
 
 /-- The affine term fold is primitive recursive in `((A, fuel), l)`. -/
@@ -1685,6 +1699,8 @@ def AffineCombination.settlementCheckAtFuel (A : AffineCombination)
               (A.valueRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l')) tol
 
 section
+-- `Primrec` elaboration over these nested product types unfolds `Nat.sqrt`'s well-founded
+-- definition during `whnf` (via `Nat.unpair`) and loops; local opacity stops that.
 attribute [local irreducible] Nat.sqrt
 
 /-- The bounded settlement check is primitive recursive in `(A, j, fuel)` for fixed
@@ -1986,12 +2002,18 @@ noncomputable def PatientSettlementClock.ofComputations
 
 end SettlementCompile
 
-/-! ## M7-PREFIX-PATCH: parser control and prefix quoting -/
+/-! ## The finite-prefix freeze: parser control and prefix quoting
+
+Overwriting a trader's quotes on the days before a cutoff must preserve efficient
+computability.  The pieces are a small polynomial parser-control automaton over the token
+stream, a variable-width emitter for the frozen suffix, and lookup of a quote in the
+logical inductor's finite table of early belief states. -/
 
 namespace PrefixPatchCompile
 
--- Deep `PolyFueled`/segment compositions carry nested `Primcodable` products.  Prevent
--- elaboration from reducing their `Nat.unpair` implementation through `Nat.sqrt`.
+-- Deep `PolyFueled`/segment compositions carry nested `Primcodable` products; elaboration
+-- unfolds their `Nat.unpair` through `Nat.sqrt`'s well-founded definition during `whnf`
+-- and loops.  Local opacity stops that.
 attribute [local irreducible] Nat.sqrt
 
 /-! ### Polynomial parser control -/
@@ -2667,18 +2689,21 @@ lemma liaPrefixQuoteCode_polyFueled (DP : DeductiveProcess) (cutoff : ℕ) :
 end PrefixPatchCompile
 
 
-/-- **Concrete finite-prefix compiler (`M7-PREFIX-PATCH`), token-level content.**  The
-LIA's first `cutoff` rational belief states form a fixed finite table; exhaustive raw
-sentence matching and the flat administrative freeze transducer compile that table into a
-polynomial token emitter, preserving token-model efficient computability.
+/-- **Concrete finite-prefix compiler, token-level content.**  The LIA's first `cutoff`
+rational belief states form a fixed finite table; exhaustive raw sentence matching and the
+flat administrative freeze transducer compile that table into a polynomial token emitter,
+preserving token-model efficient computability.
 
-Disclosed boundary: the collapsed `EfficientPrefixPatch.preserves_ec` asks for
-symbol-metered preservation, so this token-model fact does not package into that
-structure.  The RPN freeze transducer is constructed (`RpnFreeze.lean`), but its fuel
-certificate needs a digit-model decode test on exponentially large escape codes, which
-the digit model provably cannot express (inverse-operation ceiling; route-(A)
-stop-and-report in `notes/next-session.md`) — so there is no LIA inhabitant at the
-collapsed class, and this token-level fact is the boundary's constructed content.
+Disclosed boundary (`dd:fuel`): the collapsed `EfficientPrefixPatch.preserves_ec` asks for
+symbol-metered preservation, so this token-model fact does not package into that structure.
+The RPN freeze transducer is constructed (`RpnFreeze.lean`), but its fuel certificate needs
+a decode test on exponentially large escape codes, and the digit model cannot express it:
+`BigDigits` is closed under an operation only when that operation's base-4 digit recurrence
+has a poly-bounded carry, and the escape test reduces to `Nat.unpair` / integer square
+root, whose carry is the partial remainder — `Θ(len)` digits wide.  The digit model is thus
+closed under the forward big-value operations and open under their inverses.  So there is
+no LIA inhabitant at the collapsed class, and this token-level fact is the boundary's
+constructed content.
 Paper node: `def:lia` -/
 theorem liaFreezeBefore_preserves_ecTok (DP : DeductiveProcess) (cutoff : ℕ) :
     ∀ Tr : Trader, EfficientlyComputableTok Tr →

@@ -1,42 +1,37 @@
 /-
-# Symbol-level conditioning translation compiler (RPN-5, part 1)
+# Symbol-level conditioning translation compiler
 
-The digit-model conditioning compiler (`DigitConditioning.lean`) rewrites price chunks
-of the *contracted* strategy stream, so its source certificates are digit-metered
-(`EfficientlyComputableDigit`).  The collapsed class `EfficientlyComputable` meters the
-RPN-expanded stream, where sentence slots are symbol **runs**; the price rewrite must
-walk the flat grammar with a run-aware automaton (pending-counter scan) and splice the
-condition sentence as a *block* (conjunction = concatenation:
-`rpn (φ ⋏ ψ) = 3 :: rpn φ ++ rpn ψ`).
+Closure under conditioning asks that conditioning an efficiently computable trader on a
+computable sentence sequence again yield an efficiently computable trader.  Efficiency
+(`EfficientlyComputable`) is metered on the RPN-expanded strategy stream, in which a
+sentence slot is a whole symbol **run** rather than a single code.  The rewrite must
+therefore walk the flat grammar with a run-aware automaton (a pending-subtree counter)
+and splice the condition sentence as a *block*, using the fact that conjunction is
+concatenation under the `3` shell: `rpn (φ ⋏ ψ) = 3 :: rpn φ ++ rpn ψ`.  The companion
+compiler in `DigitConditioning.lean` rewrites the *contracted* stream instead, where a
+sentence slot is one token.
 
-This file provides the spec layer of that compiler:
+Contents:
 
-* the run-aware mode automaton `rpnCondStep` (packed state `⟨mode, counter, runLen⟩`),
-  its clamp/bounds lemmas, and the **run–parse correspondence**: over any block that
-  `parseRpn` consumes completely, the automaton walks the run and exits exactly at the
-  block boundary;
-* the price rewrite `rpnConditionRun` — a streaming transducer that copies every input
-  token and, at each price-day position, appends the RPN expansion of the conditional
-  price expression (the buffered sentence run re-spliced into the conjunction shell,
-  the condition block drawn from an `RpnSentenceCodes` stream) plus the letE close, so
-  the contraction of the output is exactly the token-model rewrite
-  (`conditionPriceTokenRun`) of the contraction of the input;
-* the per-chunk contraction identity `unRpn_price_rewrite_chunk` anchoring that claim;
-* the poly-fueled side: the packed control scan (`rpnCondScan`), the day-guard flag
-  scan, and the emission certificate `rpnGuardedConditionRun_polySegStream` — the
-  digitized guarded rewrite of any digit `PolySegStream` is a `PolySegStream`.
-
-Whole-stream contraction exactness (`unRpn_rpnConditionRun`), guard-honesty transfer
-(`strategyOfTokens_rpnGuardedConditionTokens_trades`) and the **frame pass** — its
-streaming transducer `rpnFrameRun`/`rpnFrameOutput`, master agreement
-`frameAgree_unRpn_rpnFrameOutput`, emission certificate
-`rpnFrameOutput_polySegStream`, and budget exactness
-`rpnTradeCountAt_eq_frameTradeCount` — are proved here, as is the gated two-leg join
-(`rpnSafeSeparatedFrameOutput`, `strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades`).
-Both class-preservation endpoints are assembled at the end:
-`conditionedTranslation_preserves_ecRpn` (gated) and
-`eventualConditionedTranslation_preserves_ecRpn` (finite-zero, launch-gated), the
-latter through the zero-aware instance of the emitter-generic transducer.
+* the run-aware mode automaton `rpnCondStep` (packed state `⟨mode, counter, runLen⟩`)
+  and the **run–parse correspondence**: over any block `parseRpn` consumes completely,
+  the automaton walks the run and exits exactly at the block boundary;
+* the **price pass** `rpnConditionRun`: a streaming transducer copying every input
+  token and, at each price-day position, appending the RPN expansion of the conditional
+  price expression — the buffered sentence run re-spliced into the conjunction shell,
+  the condition block drawn from an `RpnSentenceCodes` stream — so that contracting the
+  output reproduces the token-model rewrite `conditionPriceTokenRun` of the contracted
+  input (`unRpn_rpnConditionRun`, anchored per chunk by `unRpn_price_rewrite_chunk`);
+* the **frame pass** `rpnFrameRun` / `rpnFrameOutput`, replacing each trade run by the
+  locally gated leg body, with its agreement `frameAgree_unRpn_rpnFrameOutput`, budget
+  exactness `rpnTradeCountAt_eq_frameTradeCount`, and the gated two-leg join
+  `rpnSafeSeparatedFrameOutput`;
+* the emission certificates `rpnGuardedConditionRun_polySegStream` and
+  `rpnFrameOutput_polySegStream`: each pass carries a digit `PolySegStream` to a digit
+  `PolySegStream`;
+* the class-preservation endpoints `conditionedTranslation_preserves_ecRpn` (gated) and
+  `eventualConditionedTranslation_preserves_ecRpn` (finite-zero, launch-gated), and the
+  paper-facing conditioning theorems assembled from them.
 
 Paper node: `thm:scon` (symbol-metered conditioning translation).
 -/
@@ -51,8 +46,9 @@ open Nat.Partrec (Code)
 open Nat.Partrec.Code
 open ConditioningCompile
 
--- Deep `Primrec`/`PolyFueled` compositions over paired inputs loop `whnf` on `Nat.sqrt`
--- (pair/unpair unfolding); keep it opaque throughout (the standard `dd:fuel` safeguard).
+-- `Primrec`/`PolyFueled` elaboration over deep product types unfolds `Nat.sqrt`'s
+-- well-founded definition during `whnf` (through `Nat.pair`/`unpair`) and loops; making
+-- it locally irreducible stops that.
 attribute [local irreducible] Nat.sqrt
 
 /-! ## The run-aware automaton state
@@ -438,8 +434,8 @@ lemma rpnConditionRun_append (emit : List ℕ → ℕ → List ℕ)
       rw [ih]
       simp [List.append_assoc]
 
-/-- Inside a run (and at nowhere else relevant to emission) the buffer is untouched by
-the rewrite; a copied token emits itself. -/
+/-- At a non-emitting position (control mode ≠ `2`) the transducer copies the token
+through and leaves the buffer to the streaming update. -/
 lemma rpnConditionRun_copy (emit : List ℕ → ℕ → List ℕ)
     (st : ℕ) (buf : List ℕ) (t : ℕ) (hm : rcMode st ≠ 2) (ts : List ℕ) :
     rpnConditionRun emit (st, buf) (t :: ts) =
@@ -1258,25 +1254,16 @@ lemma rpnGuardedConditionRun_polySegStream {s blocks : ℕ → List ℕ}
 
 #print axioms rpnGuardedConditionRun_polySegStream
 
-/-! ## Road map of the remaining sections
+/-! ## The append wrinkle
 
-Whole-stream contraction exactness (`unRpn_rpnConditionRun_of` and its price /
-zero-aware instances), guard-honesty transfer
-(`strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay`, packaged as
-`strategyOfTokens_rpnGuardedConditionTokens_trades`), the frame pass (`rpnFrameRun` /
-`rpnFrameOutput`, master agreement `frameAgree_unRpn_rpnFrameOutput`, certificate
-`rpnFrameOutput_polySegStream`, exit scan `rpnTradeCountScan` and its exactness
-`rpnTradeCountAt_eq_frameTradeCount`), and the **two-leg join** under the
-structural-acceptance gate (`rpnStructurallyAccepts` with `rpnDepthScan` and
-`rpnStructurallyAccepts_agree`, the gated join `rpnSafeSeparatedFrameOutput` with
-`rpnSafeSeparatedFrameOutput_polySegStream` and
-`strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades`) all follow below.  The
-append wrinkle (`unRpn (A ++ B) ≠ unRpn A ++ unRpn B` when `A` is poisoned) is handled
-by the prefix form `FrameContract` of the frame agreement
-(`frameContract_rpnFrameOutput`, available exactly when the source returns the run
-automaton to base mode — which is what the gate tests) plus the observation that a
-*readable* source excludes both legs' poison branches, since a poisoned leg's token
-image would fail to deserialize. -/
+`unRpn` does **not** distribute over an append: if `A` carries a poisoned chunk the
+contraction stops inside `A` and never reads `B`, so in general
+`unRpn (A ++ B) ≠ unRpn A ++ unRpn B`.  The two-leg join concatenates two frame outputs
+and therefore cannot consume the plain agreement `FrameAgree`; it consumes the prefix
+form `FrameContract` instead, which is available exactly when the source returns the run
+automaton to base mode — the condition the structural-acceptance gate tests — together
+with the observation that a *readable* source excludes both legs' poison branches, since
+a poisoned leg's token image fails to deserialize. -/
 
 /-! ## Parse localization
 
@@ -4883,6 +4870,8 @@ lemma foldl_rpnCondStep_eq_base_of_mode_zero (ts : List ℕ)
   · simp only [List.foldl_append, List.foldl_cons, List.foldl_nil] at h ⊢
     exact rpnCondStep_eq_base_of_mode_zero h
 
+-- `split_ifs` over `rcModeF`'s two-level branch cascade generates enough goals to
+-- exceed the default heartbeat budget.
 set_option maxHeartbeats 1000000 in
 /-- A price-run mode step never returns to base and never enters a trade run. -/
 lemma rcModeF_price_ne {m c t : ℕ} (h : m = 1 ∨ m = 6) :
@@ -4903,11 +4892,11 @@ lemma rcMode_step_of_price_run {st t : ℕ} (h : rcMode st = 1 ∨ rcMode st = 6
 /-! ### The frame-pass master commutation -/
 
 /-- **Whole-stream agreement for the frame pass**, in joint form: the unconditional
-`FrameAgree` statement and — under the source's base-mode invariant, which is exactly
-what the acceptance gate tests — the stronger prefix form `FrameContract`.  The two
-share one chunk induction because every chunk case that admits a prefix contraction is
-the same case that admits the equality; the base-mode hypothesis discharges the three
-that do not (a truncated price chunk, a run that never exits, a bare payload tag).
+`FrameAgree` statement and — under the source's base-mode invariant, which is what the
+acceptance gate tests — the stronger prefix form `FrameContract`.  Stated jointly because
+a single chunk induction proves both: every chunk case admitting a prefix contraction is
+the one admitting the equality, and the base-mode hypothesis discharges the three that do
+not (a truncated price chunk, a run that never exits, a bare payload tag).
 Paper node: `thm:scon` -/
 theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
     {ψn : Sentence} (hblkψ : parseRpn blkψ.length blkψ = some (ψn, []))
@@ -5972,13 +5961,10 @@ lemma rpnFrameOutput_polySegStream (second : Bool) {src blocks : ℕ → List �
 /-! ### The gated two-leg join
 
 `safeSeparatedFrameTokenOutput` emits the first frame leg alone unless the source is
-structurally accepting, in which case it emits both.  The symbol side mirrors that
-shape one-for-one off `rpnStructurallyAccepts`; the certificate is the same three
-lines as `safeSeparatedFrameDigitOutput_polySegStream`.
-
-The join's **agreement** with the token model is proved below
-(`strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades`), off the prefix form
-`frameContract_rpnFrameOutput` of the frame agreement. -/
+structurally accepting, in which case it emits both.  The symbol side mirrors that shape
+off `rpnStructurallyAccepts`.  Because the join appends two frame outputs, its agreement
+with the token model runs through the prefix form `FrameContract` of the frame agreement
+rather than `FrameAgree`, which does not survive an append. -/
 
 /-- The symbol-side acceptance test is poly-fueled over any digit `PolySegStream`. -/
 lemma rpnAcceptScan {s : ℕ → List ℕ} (h : PolySegStream s) :
@@ -6701,10 +6687,10 @@ open RpnConditioning
 
 /-! ## `thm:scon` packaging: operational witnesses and the paper-facing endpoints
 
-With both symbol-metered translation certificates proved, the operational witness
-structures of `Properties/Conditioning.lean` are fully dischargeable and the criterion
-level closes: conditioning a logical inductor on a computable presentation yields a
-logical inductor of the conditioned market. -/
+The two symbol-metered translation certificates discharge the operational witness
+structures of `Properties/Conditioning.lean`, closing the criterion level: conditioning a
+logical inductor on a computable presentation yields a logical inductor of the
+conditioned market. -/
 
 /-! ### Public operational witness constructors -/
 
@@ -6742,8 +6728,8 @@ noncomputable def gatedConditioningOperationalWitness
 
 /-- The paper's finite-prefix denominator repair supplies the floor and the exact rational
 market computation required by the operational witness.  Transporting logical induction
-from `P` to this patched history remains correctly isolated behind the qualified finite-
-perturbation theorem and its two `EfficientPrefixPatch` certificates.
+from `P` to the patched history is a separate step, behind the qualified
+finite-perturbation theorem and its two `EfficientPrefixPatch` certificates.
 Paper node: `thm:scon` -/
 noncomputable def denominatorPatchedGatedConditioningOperationalWitness
     {P : History} {DP extra : DeductiveProcess}

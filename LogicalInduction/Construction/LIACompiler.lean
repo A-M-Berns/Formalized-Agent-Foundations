@@ -5,10 +5,19 @@ import Mathlib.Data.Rat.Denumerable
 /-!
 # Concrete compiler for the bounded LIA evaluator
 
-This file supplies the primitive-recursive encoding infrastructure needed to instantiate
-`LIABoundedEvaluatorCompiler`.  The first boundary is the project's actual propositional
-sentence encoding: Foundation's decoder is structurally recursive on smaller Gödel numbers,
-so we compile its encode-after-decode normalizer by primitive-recursive strong recursion.
+The paper's construction section defines `MarketMaker`, `Budgeter`, `TradingFirm` and the
+recursively specified market `LIA` by ordinary mathematics, and then asserts that each is
+computable.  This file discharges those assertions concretely: every object the
+construction names gets a first-order Gödel encoding together with a `Primrec` certificate,
+ending in the `LIABoundedEvaluatorCompiler` instance that the main theorems consume.
+
+The chain runs: encodings (propositional sentences, rationals, `EF` feature syntax, belief
+states, finite sentence sets) → the exact stack machine that evaluates rational `EF`
+features → the three trader components → the bounded LIA state-prefix evaluator.
+
+The first link is the propositional sentence encoding: Foundation's decoder recurses on
+strictly smaller Gödel numbers, so its encode-after-decode normalizer is compiled by
+primitive-recursive strong recursion rather than by structural recursion on `Formula`.
 -/
 
 namespace LogicalInduction
@@ -1688,9 +1697,9 @@ private lemma efRank_prim : Primrec EF.rank := by
 inspects.  Its primitive recursivity is the guard that keeps the total quote table `V`
 (which substitutes `0` for an unanswered query) from silently certifying a false
 settlement test: `EF.denoteRatWithAtFuel_complete` fires only once every listed query is
-answered.  Compiled by course-of-values recursion on the Gödel code, exactly mirroring the
-`EF.rank` compiler above, but carrying the list-valued result directly through
-`Nat.strong_rec` (`σ := Option (List (ℕ × Sentence))`) rather than a normalized `ℕ`. -/
+answered.  Compiled by course-of-values recursion on the Gödel code, carrying the
+list-valued result directly through `Nat.strong_rec` at `σ := Option (List (ℕ × Sentence))`
+rather than through a normalized `ℕ`. -/
 
 /-- Query-list values `List (ℕ × Sentence)`, tracked as `Option` (`none` = decoder
 failure). -/
@@ -2931,13 +2940,15 @@ section RpnDecodePrimrec
 open Nat.Partrec (Code)
 open Nat.Partrec.Code
 
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.
 attribute [local irreducible] Nat.sqrt
 
 /-! ## Primitive recursion of the decode
 
-The trading firm's compiler runs the symbol-metered decode; with the concrete
-`Primcodable Sentence` instance in scope the strong-recursion steps assemble from
-standard combinators. -/
+The trading firm's compiler runs the symbol-metered decode.  With the concrete
+`Primcodable Sentence` instance in scope, each strong-recursion step is a composition of
+standard `Primrec` combinators. -/
 
 private abbrev PCtx :=
   (List (Option (ℕ × List ℕ)) × ℕ) × (ℕ × List ℕ)
@@ -4450,6 +4461,8 @@ private lemma candidateCompiledEFValue_prim :
       candidateCompiledEFValue p.1 p.2 :=
   efRatCompiledEval_prim candidateQuote candidateQuote_prim
 
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.
 attribute [local irreducible] Nat.sqrt in
 /-- A generic exact compiler for rational market value.  The context supplies both the
 history quotation and the finite world's payout; the trade list itself remains ordinary
@@ -4528,6 +4541,8 @@ private def marketMakerWorldValue (p : MarketMakerWorldInput) : ℚ :=
     (candidateRationalHistory p.1.1.2 p.1.1.1.2 p.1.2)
     (tradeListSupportBitWorldRatFromList p.1.1.1.1 p.2)
 
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.
 attribute [local irreducible] Nat.sqrt in
 private lemma marketMakerWorldValue_prim :
     Primrec marketMakerWorldValue := by
@@ -4632,6 +4647,8 @@ private instance marketMakerCandidateAcceptsDataDecidable
       p.1.1.2 p.1.2 p.2)
     (marketMakerCandidateAcceptsData_iff p).symm
 
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.
 attribute [local irreducible] Nat.sqrt in
 private lemma marketMakerCandidateAcceptsData_prim :
     PrimrecPred marketMakerCandidateAcceptsData := by
@@ -4701,6 +4718,8 @@ private lemma marketMakerSearchIndexData_eq
               h ((marketMakerCandidateAcceptsData_iff (ctx, fuel)).mpr hs)
             simp [h, h']
 
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.
 attribute [local irreducible] Nat.sqrt in
 private lemma marketMakerSearchStepData_prim :
     Primrec₂ marketMakerSearchStepData := by
@@ -5566,6 +5585,8 @@ private def firmDayMarketValueData
   tradeListMarketValueRat ((firmRawTrader j).strat i).trades i
     (budgetWorldHistory ctx) (budgetWorldPayout ctx)
 
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.
 attribute [local irreducible] Nat.sqrt in
 private lemma firmDayMarketValueData_prim : Primrec fun p :
     (BudgetWorldContext × ℕ) × ℕ =>
@@ -5585,6 +5606,8 @@ private def firmRawPriorWorthData
     (ctx : BudgetWorldContext) (j n : ℕ) : ℚ :=
   ((List.range n).map fun i => firmDayMarketValueData ctx j i).sum
 
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.
 attribute [local irreducible] Nat.sqrt in
 private lemma firmRawPriorWorthData_prim : Primrec fun p :
     (BudgetWorldContext × ℕ) × ℕ =>
@@ -5650,6 +5673,8 @@ private def budgetWorthBreachedData
     (ctx : BudgetWorldContext) (j b m : ℕ) : Bool :=
   decide (firmRawPriorWorthData ctx j (m + 1) ≤ -(b : ℚ))
 
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.
 attribute [local irreducible] Nat.sqrt in
 private lemma budgetWorthBreachedData_prim : Primrec fun p :
     ((BudgetWorldContext × ℕ) × ℕ) × ℕ =>
@@ -5680,22 +5705,15 @@ private def firmBudgetBreachAtDayData
       (core.1.1.1.2, budgetAtomList core.1.1.1.1 core.1.1.2 core.2, xs)
       core.1.1.2 core.1.2 m
 
--- INTERACTIVE-SESSION SCAFFOLD (2026-07-15).  The `have` chain below elaborates cleanly
--- and fast (verified by bisection).  The sole obstruction is the final `exact`: the defeq
--- bridge `firmBudgetBreachAtDayData p.1.1 p.1.2 p.2 =?= (composed && form)` sends `whnf`
--- into a heartbeat blowup (isDefEq eagerly reduces the rational `decide`/`budgetAtomList`
--- leaves).  The `attribute [local irreducible]` line below is the candidate fix — it stops
--- isDefEq from unfolding those leaves so the bridge matches structurally.  If the `exact`
--- still spins in the Infoview, try: (a) `unfold firmBudgetBreachAtDayData; exact …`;
--- (b) `with_reducible exact …`; (c) profile with `set_option trace.profiler true in` at
--- low `maxHeartbeats` to see which leaf whnf is stuck on.  This is a tooling/defeq fix,
--- not a mathematical gap.  It is the last Budgeter-gate primrec piece.
+-- The closing `exact` below has to check `firmBudgetBreachAtDayData p.1.1 p.1.2 p.2`
+-- defeq against the composed Boolean; without the overrides that check unfolds the
+-- rational `decide` and `budgetAtomList` leaves eagerly and exhausts the heartbeat budget.
 section
--- Scoped so the reducibility overrides do not leak to later declarations.  Diagnostics
--- (`set_option diagnostics true`) showed the final `exact` blows up computing `Nat.sqrt`
--- (23k unfoldings) via `Nat.unpair` — i.e. isDefEq reconciling the `Primcodable` instance
--- of the deeply-nested product type, not the budget math.  Blocking `Nat.sqrt` (and the
--- budget leaves) stops that reduction so the instances/leaves match structurally.
+-- Scoped so the reducibility overrides do not leak to later declarations.  The blowup is
+-- in `Nat.sqrt` (tens of thousands of unfoldings, reached via `Nat.unpair`) while `isDefEq`
+-- reconciles the `Primcodable` instance of this deeply nested product type — not in the
+-- budget arithmetic.  Making `Nat.sqrt` and the budget leaves irreducible lets the
+-- instances and leaves match structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt budgetConsistentAtDayData budgetWorthBreachedData
   budgetAtomList firmRawPriorWorthData decodedStageTable tableConsistentFromAtomList
 
@@ -6368,6 +6386,9 @@ private def priorBudgetBreachData (core : BudgetCoreInput) : Bool :=
   (allBoolLists atoms.length).any fun xs =>
     firmBudgetAssignmentBreachesData core xs
 
+-- Raised budget: this proof threads `Primrec` certificates through the whole nested
+-- `BudgetCoreInput` product and the `allBoolLists` search, and exceeds the default at the
+-- final composition.
 set_option maxHeartbeats 1600000 in
 private lemma priorBudgetBreachData_prim : Primrec priorBudgetBreachData := by
   have hstages : Primrec fun core : BudgetCoreInput => core.1.1.1.1 :=
@@ -6406,9 +6427,9 @@ private lemma priorBudgetBreachData_prim : Primrec priorBudgetBreachData := by
         | cons xs xss ih => simp [ih]
       exact hAny assignments
 
-/-! The remaining Budgeter compiler builds the proof-erased world-value feature before
-assembling the finite minimum.  Keeping this syntax constructor separate makes the bridge
-back to `Strategy.tradeListWorldValueFeature` exact and reusable. -/
+/-! The Budgeter's scale factor is the minimum over finitely many worlds of a per-world
+value feature.  That feature is built here as a standalone proof-erased syntax constructor,
+so the bridge back to `Strategy.tradeListWorldValueFeature` stays exact and reusable. -/
 
 private def tradeListWorldValueFeatureData
     (atoms : List ℕ) (xs : List Bool) (trades : List (EF × Sentence))
@@ -6419,6 +6440,9 @@ private def tradeListWorldValueFeatureData
       (.mul (.const (-1)) (.price p.2 n))))
 
 section
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
+-- other names are blocked so the defeq bridges match structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt sentenceBoolFromAtomList
   tradeListWorldValueFeatureData
 
@@ -6493,6 +6517,9 @@ private def budgetWorldScaleData
     (EF.neg (tradeListWorldValueFeatureData atoms xs trades core.2)))
 
 section
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
+-- other names are blocked so the defeq bridges match structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt budgetWorldScaleData budgetAtomList
   firmRawPriorWorthData tradeListWorldValueFeatureData
 
@@ -6584,6 +6611,9 @@ private def budgetScaleFeatureData (core : BudgetCoreInput) : EF :=
   EF.listMin (budgetScaleFeaturesData core)
 
 section
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
+-- other names are blocked so the defeq bridges match structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt budgetScaleFeaturesData
   budgetScaleFeatureData budgetConsistentAtDayData budgetWorldScaleData
   budgetAtomList decodedStageTable tableConsistentFromAtomList
@@ -6755,6 +6785,9 @@ private lemma budgetScaleFeatureData_eq
             (rationalHistory past) (finiteAtomTableFromList A xs) n)) ih
 
 section
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
+-- other names are blocked so the defeq bridges match structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt priorBudgetBreachData
   budgetScaleFeatureData
 
@@ -6801,6 +6834,9 @@ private abbrev TradingFirmComponentInput :=
   ((List (Finset Sentence) × List RationalBeliefState) × ℕ) × ℕ
 
 section
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
+-- other names are blocked so the defeq bridges match structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt tradingFirmCutoffTradeLists
   budgeterTradesFromStageTradeLists
 
@@ -6884,6 +6920,9 @@ private abbrev TradingFirmInput :=
   (List (Finset Sentence) × List RationalBeliefState) × ℕ
 
 section
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
+-- other name is blocked so the defeq bridge matches structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt
   tradingFirmComponentTradesFromStageTradeLists
 
@@ -6920,6 +6959,9 @@ private lemma marketMakerError_prim : Primrec marketMakerError := by
     rfl
 
 section
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
+-- other names are blocked so the defeq bridges match structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt liaPrefixFromTradeListsAtFuel
   tradingFirmTradesFromStageTradeLists marketMakerSearchUpToTradeList
 
@@ -7037,6 +7079,9 @@ private lemma liaPrefixAtFuel_prim {DP : DeductiveProcess}
     rfl
 
 section
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
+-- other name is blocked so the defeq bridge matches structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt liaEncodedQuoteAtFuel
 
 /-- The bounded exact rational quote evaluator is primitive recursive in its common
@@ -7099,6 +7144,9 @@ private lemma liaEncodedQuoteAtFuel_prim {DP : DeductiveProcess}
 end
 
 section
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
+-- other name is blocked so the defeq bridge matches structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt liaEncodedQuoteNatAtFuel
 
 /-- The natural-coded bounded evaluator is primitive recursive in the paired
@@ -7135,6 +7183,9 @@ lemma liaEncodedQuoteNatAtFuel_computable {DP : DeductiveProcess}
   (liaEncodedQuoteNatAtFuel_prim process).to_comp
 
 section
+-- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
+-- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
+-- other name is blocked so the defeq bridge matches structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt liaEncodedEntriesAtFuel
 
 /-- The bounded belief-state evaluator is primitive recursive in its day input and its

@@ -1,9 +1,12 @@
 /-
-# M7 witness constructions (`LogicalInduction.Construction.Witnesses`)
+# Witness constructions (`LogicalInduction.Construction.Witnesses`)
 
-The compilers that discharge the property tail's formerly assumed boundary interfaces
-(the M7 slate; construction record in `notes/next-session.md`, honest accounting in
-the README).
+Concrete compilers and syntax objects that inhabit the boundary interfaces the property
+proofs take as hypotheses — prefix machines, the universal semimeasure and its
+dovetailer, feedback and quotation witnesses, and the efficiency certificates for the
+conditioning and freeze compilers. Each turns an assumed interface into a constructed
+one; the README records which remain disclosed.
+
 The §5 construction spine — market maker, budgeter, trading firm, `LIA`, and the
 existence result — lives one level up; a reader auditing `exists_logical_inductor`
 never needs this folder.
