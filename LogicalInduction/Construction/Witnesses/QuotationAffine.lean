@@ -937,7 +937,21 @@ lemma ctsInd_eq_zero_of_le (δ : ℚ) (x y : ℝ) (hδ : 0 < δ)
     div_nonpos_of_nonpos_of_nonneg (by linarith) hδR.le
   rw [max_eq_left hratio, min_eq_right zero_le_one]
 
-/-! ## Strict deferral reindexing -/
+/-! ## Injective deferral reindexing
+
+A day-indexed affine family that is to be evaluated on the deferral day `f n` must
+recover the source day `n` from `f n` by a bounded scan, so the reindexing device below
+needs `f` to be injective — and *only* injective.  The paper's `def:deferralfunc` asks
+for no more than `f n > n` plus time-computability, so `Function.Injective f.f` is a
+residual narrowing of the `thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` endpoints that
+consume this section; it is recorded on each of them.  (For `thm:wub`/`thm:wubaff`/
+`thm:wubexp` the paper itself asks for a strictly increasing deferral function, so
+`StrictlyIncreasingDeferral` is faithful there and those endpoints keep it.)
+
+The narrowing bottoms out at `deferralPreimage_at`: when `f n₁ = f n₂` for `n₁ ≠ n₂` a
+single day-`f n` portfolio cannot carry both sources, and separating them needs a
+variable-length, price-gated sum over the whole fibre `f⁻¹(m)` — infrastructure the
+affine `PolySequence` layer (pairwise `add`/`scaleFeature` only) does not have. -/
 
 /-- Number of bounded-schedule preimages of day `m` among the only possible source
 indices `k < m`. -/
@@ -982,38 +996,8 @@ lemma deferralImageFlag_zero_or_one (f : DeferralFunction) (a degree m : ℕ) :
   simp only [deferralImageFlag]
   split <;> simp
 
-lemma deferralMatchCount_at
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
-    {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k =
-      some (f k)) (n : ℕ) :
-    deferralMatchCount f a degree (f n) = 1 := by
-  let lenFn : ℕ → ℕ := fun z => FeedbackEmission.scheduledMatch f a degree z
-  have hscan : ∀ k, k ≤ f n →
-      segPrefix lenFn (f n) k = if n < k then 1 else 0 := by
-    intro k hk
-    induction k with
-    | zero => simp [segPrefix]
-    | succ k ih =>
-        rw [segPrefix_succ, ih (by omega)]
-        have hmatch : lenFn (Nat.pair (f n) k) = if k = n then 1 else 0 := by
-          rw [show lenFn (Nat.pair (f n) k) =
-            FeedbackEmission.scheduledMatch f a degree (Nat.pair (f n) k) by rfl]
-          by_cases hkn : k = n
-          · subst k
-            simpa using
-              (FeedbackEmission.scheduledMatch_eq_one_iff f hspec (f n) n).2 rfl
-          · have hne : f k ≠ f n := fun h => hkn (hstrict.injective h)
-            simpa [hkn] using
-              (FeedbackEmission.scheduledMatch_eq_zero_iff f hspec (f n) k).2 hne
-        rw [hmatch]
-        split_ifs <;> omega
-  rw [deferralMatchCount, hscan (f n) le_rfl]
-  simp [f.lt n]
-
 lemma deferralPreimage_at
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln
       (PrefixPatchCompile.ecClock a degree (f k)) f.code k =
@@ -1034,23 +1018,13 @@ lemma deferralPreimage_at
           · subst k
             simpa using
               (FeedbackEmission.scheduledMatch_eq_one_iff f hspec (f n) n).2 rfl
-          · have hne : f k ≠ f n := fun h => hkn (hstrict.injective h)
+          · have hne : f k ≠ f n := fun h => hkn (hinj h)
             simpa [hkn] using
               (FeedbackEmission.scheduledMatch_eq_zero_iff f hspec (f n) k).2 hne
         simp only [lenFn, Nat.unpair_pair, hmatch]
         split_ifs <;> omega
   rw [deferralPreimage, hscan (f n) le_rfl]
   simp [f.lt n]
-
-lemma deferralImageFlag_at
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
-    {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k =
-      some (f k)) (n : ℕ) :
-    deferralImageFlag f a degree (f n) = 1 := by
-  rw [deferralImageFlag, deferralMatchCount_at f hstrict hspec n]
-  simp
 
 lemma deferralMatchCount_pos_iff
     (f : DeferralFunction) {a degree : ℕ}
@@ -1117,8 +1091,18 @@ lemma deferralImageFlag_eq_one_iff
     · intro _
       rfl
 
+/-- Every scheduled day is flagged: `n` itself witnesses membership of `f n` in the
+image, so no injectivity of `f` is needed here. -/
+lemma deferralImageFlag_at
+    (f : DeferralFunction) {a degree : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln
+      (PrefixPatchCompile.ecClock a degree (f k)) f.code k =
+      some (f k)) (n : ℕ) :
+    deferralImageFlag f a degree (f n) = 1 :=
+  (deferralImageFlag_eq_one_iff f hspec (f n)).2 ⟨n, f.lt n, rfl⟩
+
 lemma deferralPreimage_spec
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln
       (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
@@ -1128,9 +1112,29 @@ lemma deferralPreimage_spec
   obtain ⟨k, hk, hfk⟩ := (deferralImageFlag_eq_one_iff f hspec m).1 hm
   have hidx : deferralPreimage f a degree m = k := by
     rw [← hfk]
-    exact deferralPreimage_at f hstrict hspec k
+    exact deferralPreimage_at f hinj hspec k
   rw [hidx]
   exact ⟨hk, hfk⟩
+
+/-- Only finitely many days are scheduled from below `N`, so past the largest of them
+every flagged day has its preimage at or above `N`.  This replaces the monotonicity
+argument `index m < N → f (index m) < f N`. -/
+lemma deferralPreimage_ge
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
+    {a degree : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln
+      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
+    (N : ℕ) :
+    ∃ M, ∀ m, M ≤ m → deferralImageFlag f a degree m = 1 →
+      N ≤ deferralPreimage f a degree m := by
+  refine ⟨(Finset.range N).sup (fun k ↦ f k) + 1, fun m hm hflag ↦ ?_⟩
+  by_contra hnot
+  have hlt : deferralPreimage f a degree m < N := Nat.lt_of_not_ge hnot
+  have hval := (deferralPreimage_spec f hinj hspec hflag).2
+  have hle : f (deferralPreimage f a degree m) ≤
+      (Finset.range N).sup (fun k ↦ f k) :=
+    Finset.le_sup (f := fun k ↦ f k) (Finset.mem_range.2 hlt)
+  omega
 
 /-- The image flag as a closed, polynomially emitted feature. -/
 def deferralImageFeature (f : DeferralFunction) (a degree m : ℕ) : EF :=
@@ -1476,13 +1480,14 @@ lemma LUV.crossPrecisionAffine_magnitude_le_two
 
 /-! ### Image-gated cross-precision correction -/
 
-/-- Along the image of a strict deferral, the low mesh selected by the bounded inverse
-and the day-indexed high mesh have the same completed-world value.  The image gate makes
-the family identically zero elsewhere, so affine provability induction can learn the
-cross-precision correction without ever emitting `f n` threshold terms on day `n`. -/
+/-- Along the image of an injective deferral, the low mesh selected by the bounded
+inverse and the day-indexed high mesh have the same completed-world value.  The image
+gate makes the family identically zero elsewhere, so affine provability induction can
+learn the cross-precision correction without ever emitting `f n` threshold terms on
+day `n`. -/
 noncomputable def completedImageCrossPrecisionQuote
     {P : History} {DP : DeductiveProcess}
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln
       (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
@@ -1567,15 +1572,12 @@ noncomputable def completedImageCrossPrecisionQuote
           apply (div_lt_div_iff₀ hNR (by norm_num : (0 : ℝ) < 4)).2
           simpa using hεN
         exact hsmall.le
-      refine eventually_atTop.2 ⟨f N, fun m hm v hv ↦ ?_⟩
+      obtain ⟨M, hM⟩ := deferralPreimage_ge f hinj hspec N
+      refine eventually_atTop.2 ⟨M, fun m hm v hv ↦ ?_⟩
       rcases deferralImageFlag_zero_or_one f a degree m with hflag0 | hflag1
       · simpa [family, gated, flag, hflag0, AffineCombination.scale_value] using hε.le
-      · have hspecm := deferralPreimage_spec f hstrict hspec hflag1
-        have hindexN : N ≤ deferralPreimage f a degree m := by
-          by_contra hnot
-          have hlt := hstrict (Nat.lt_of_not_ge hnot)
-          rw [hspecm.2] at hlt
-          omega
+      · have hspecm := deferralPreimage_spec f hinj hspec hflag1
+        have hindexN : N ≤ deferralPreimage f a degree m := hM m hm hflag1
         have hindexPos : 0 < deferralPreimage f a degree m :=
           hNpos.trans_le hindexN
         have hmPos : 0 < m := by omega
@@ -2822,7 +2824,7 @@ premise is the explicit first-order representation fact needed to compare two th
 mesh precisions; compact syntax alone cannot imply it. -/
 noncomputable def expectedFutureExpectationQuoteOfRepresentation
     {P : History} {DP : DeductiveProcess}
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (X Y : ℕ → LUV)
     (hX : LUV.RpnThresholdCodeSeq X) (hY : LUV.RpnThresholdCodeSeq Y)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
@@ -2858,19 +2860,19 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
       ∀ v : PCWorld, v.ConsistentWithTheory DP →
         v.ValuesAt (Y' m) ((H m).denote P) := by
     intro m hm v hv
-    have hmSpec := deferralPreimage_spec f hstrict hspec hm
+    have hmSpec := deferralPreimage_spec f hinj hspec hm
     rw [show (H m).denote P = (X' m).expect P m by
       exact currentExpectationFeature_denote X' P m]
     simpa only [X', Y', index, hmSpec.2] using reflected (index m) v hv
   let high := completedImageNumericQuote f H hH Y' hY'
     hreflectedImage hHmem hP
-  let crossX := completedImageCrossPrecisionQuote f hstrict hspec X hX
+  let crossX := completedImageCrossPrecisionQuote f hinj hspec X hX
     source_valued hP
   have quote_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ y, v.ValuesAt (Y n) y := by
     intro n v hv
     exact ⟨(X n).expect P (f n), reflected n v hv⟩
-  let crossY := completedImageCrossPrecisionQuote f hstrict hspec Y hY
+  let crossY := completedImageCrossPrecisionQuote f hinj hspec Y hY
     quote_valued hP
   let highGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
     ((X (index m)).expect P m - (Y (index m)).expect P m)
@@ -2938,8 +2940,8 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
           simp only [family, raw, AffineCombination.scale_price,
             EF.denote_const, LUV.expectDifferenceAffine_priceAt, highGap,
             crossXGap, crossYGap, flagN, index,
-            deferralImageFlag_at f hstrict hspec n,
-            deferralPreimage_at f hstrict hspec n, Nat.cast_one, one_mul,
+            deferralImageFlag_at f hspec n,
+            deferralPreimage_at f hinj hspec n, Nat.cast_one, one_mul,
             Rat.cast_div, Rat.cast_one, Rat.cast_ofNat, LUV.expect,
             _root_.sub_zero]
           ring
@@ -2949,7 +2951,7 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
 /-- Construct the complete `thm:ceu` future-price quote package. -/
 noncomputable def futurePriceQuoteOfRepresentation
     {P : History} {DP : DeductiveProcess}
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
     (hφ : RpnSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
@@ -2983,7 +2985,7 @@ noncomputable def futurePriceQuoteOfRepresentation
       ∀ v : PCWorld, v.ConsistentWithTheory DP →
         v.ValuesAt (Y' m) ((H m).denote P) := by
     intro m hm v hv
-    have hmSpec := deferralPreimage_spec f hstrict hspec hm
+    have hmSpec := deferralPreimage_spec f hinj hspec hm
     simpa only [Y', H, currentPriceFeature, φ', index, hmSpec.2] using
       reflected (index m) v hv
   let high := completedImageNumericQuote f H hH Y' hY'
@@ -2992,7 +2994,7 @@ noncomputable def futurePriceQuoteOfRepresentation
       ∃ y, v.ValuesAt (Y n) y := by
     intro n v hv
     exact ⟨P (f n) (φ n), reflected n v hv⟩
-  let crossY := completedImageCrossPrecisionQuote f hstrict hspec Y hY
+  let crossY := completedImageCrossPrecisionQuote f hinj hspec Y hY
     quote_valued hP
   let highGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
     (P m (φ (index m)) - (Y (index m)).expect P m)
@@ -3066,8 +3068,8 @@ noncomputable def futurePriceQuoteOfRepresentation
             AffineCombination.add_price, AffineCombination.neg_price,
             AffineCombination.sentenceAffine_price, LUV.expectAffineSeq,
             LUV.expectAffine_priceAt, highGap, crossYGap, flagN, index,
-            deferralImageFlag_at f hstrict hspec n,
-            deferralPreimage_at f hstrict hspec n, Nat.cast_one, one_mul,
+            deferralImageFlag_at f hspec n,
+            deferralPreimage_at f hinj hspec n, Nat.cast_one, one_mul,
             Rat.cast_div, Rat.cast_one, Rat.cast_ofNat, LUV.expect,
             _root_.sub_zero]
           ring
@@ -3077,7 +3079,7 @@ noncomputable def futurePriceQuoteOfRepresentation
 /-- Construct the complete `thm:ccee` conditional-expectation quote package. -/
 noncomputable def conditionalExpectationQuoteOfRepresentation
     {P : History} {DP : DeductiveProcess}
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (X Z Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat P w)
@@ -3118,7 +3120,7 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
         ∃ x, v.ValuesAt (Xr m) x ∧ v.ValuesAt (Zr m) (x * w m) ∧
           v.ValuesAt (Zr' m) ((Xr m).expect P m * w m) := by
     intro m hm v hv
-    have hmSpec := deferralPreimage_spec f hstrict hspec hm
+    have hmSpec := deferralPreimage_spec f hinj hspec hm
     obtain ⟨x, hx⟩ := source_valued (index m) v hv
     refine ⟨x, hx, ?_, ?_⟩
     · simpa only [Zr, Xr, index, hmSpec.2] using
@@ -3136,8 +3138,8 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
       ∃ z, v.ValuesAt (Z' n) z := by
     intro n v hv
     exact ⟨(X n).expect P (f n) * w (f n), right_reflected n v hv⟩
-  let crossZ := completedImageCrossPrecisionQuote f hstrict hspec Z hZ Zvalued hP
-  let crossZ' := completedImageCrossPrecisionQuote f hstrict hspec Z' hZ' Z'valued hP
+  let crossZ := completedImageCrossPrecisionQuote f hinj hspec Z hZ Zvalued hP
+  let crossZ' := completedImageCrossPrecisionQuote f hinj hspec Z' hZ' Z'valued hP
   let highGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
     ((Z (index m)).expect P m - (Z' (index m)).expect P m)
   let crossZGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
@@ -3208,8 +3210,8 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
           simp only [family, raw, AffineCombination.scale_price,
             EF.denote_const, LUV.expectDifferenceAffine_priceAt, highGap,
             crossZGap, crossZ'Gap, flagN, index,
-            deferralImageFlag_at f hstrict hspec n,
-            deferralPreimage_at f hstrict hspec n, Nat.cast_one, one_mul,
+            deferralImageFlag_at f hspec n,
+            deferralPreimage_at f hinj hspec n, Nat.cast_one, one_mul,
             Rat.cast_div, Rat.cast_one, Rat.cast_ofNat, LUV.expect,
             _root_.sub_zero]
           ring
@@ -3223,7 +3225,7 @@ this concrete constructor, where it makes the bounded image inverse unambiguous;
 abstract `SelfTrustQuote` and its consumer remain stated for every deferral function. -/
 noncomputable def selfTrustQuoteOfRepresentation
     {P : History} {DP : DeductiveProcess}
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n)
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
@@ -3292,7 +3294,7 @@ noncomputable def selfTrustQuoteOfRepresentation
         v.ValuesAt (Br m) ((G m).denote P) ∧
           v.ValuesAt (Ar m) (v.payout (φr m) * (G m).denote P) := by
     intro m hm v hv
-    have hmSpec := deferralPreimage_spec f hstrict hspec hm
+    have hmSpec := deferralPreimage_spec f hinj hspec hm
     constructor
     · rw [hGDenote]
       simpa only [Br, δr, pr, φr, index, hmSpec.2] using
@@ -3314,8 +3316,8 @@ noncomputable def selfTrustQuoteOfRepresentation
     intro n v hv
     exact ⟨ctsInd (δ n) (P (f n) (φ n)) (p n),
       confidence_reflected n v hv⟩
-  let crossA := completedImageCrossPrecisionQuote f hstrict hspec A hA Avalued hP
-  let crossB := completedImageCrossPrecisionQuote f hstrict hspec B hB Bvalued hP
+  let crossA := completedImageCrossPrecisionQuote f hinj hspec A hA Avalued hP
+  let crossB := completedImageCrossPrecisionQuote f hinj hspec B hB Bvalued hP
   let highGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
     ((A (index m)).expect P m - (p (index m) : ℝ) *
         (B (index m)).expect P m -
@@ -3451,8 +3453,8 @@ noncomputable def selfTrustQuoteOfRepresentation
             LUV.expectAffineSeq, LUV.expectAffine_priceAt, EF.denote_mul,
             EF.denote_const, ratCodeFeature, Pi.mul_apply, combined,
             highGap, crossAGap, crossBGap, flagN, index, δr, pr, φr,
-            deferralImageFlag_at f hstrict hspec n,
-            deferralPreimage_at f hstrict hspec n, Nat.cast_one, one_mul,
+            deferralImageFlag_at f hspec n,
+            deferralPreimage_at f hinj hspec n, Nat.cast_one, one_mul,
             hGDenote, Rat.cast_neg, Rat.cast_one, Rat.cast_div,
             Rat.cast_ofNat, neg_mul]
           ring
@@ -3464,10 +3466,12 @@ noncomputable def selfTrustQuoteOfRepresentation
 /-! ## Direct deferred consumers -/
 
 /-- Paper-facing `thm:cee` entry point from completed-world representation data.
+Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
+`f n > n`; see the injective-deferral reindexing section for where this is used.
 Paper node: `thm:cee` -/
 theorem lic_expected_future_expectations_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (X Y : ℕ → LUV)
     (hX : LUV.RpnThresholdCodeSeq X) (hY : LUV.RpnThresholdCodeSeq Y)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
@@ -3477,14 +3481,16 @@ theorem lic_expected_future_expectations_ofRepresentation
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n ↦ (X n).expect P n) ≈ₙ fun n ↦ (Y n).expect P n :=
   lic_expected_future_expectations P DP f X Y hworld
-    (expectedFutureExpectationQuoteOfRepresentation f hstrict X Y hX hY
+    (expectedFutureExpectationQuoteOfRepresentation f hinj X Y hX hY
       source_valued reflected hworld)
 
 /-- Paper-facing `thm:ceu` entry point from completed-world representation data.
+Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
+`f n > n`; see the injective-deferral reindexing section for where this is used.
 Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
     (hφ : RpnSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
@@ -3492,13 +3498,15 @@ theorem lic_no_expected_net_update_ofRepresentation
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n ↦ P n (φ n)) ≈ₙ fun n ↦ (Y n).expect P n :=
   lic_no_expected_net_update P DP f φ Y hworld
-    (futurePriceQuoteOfRepresentation f hstrict φ Y hφ hY reflected hworld)
+    (futurePriceQuoteOfRepresentation f hinj φ Y hφ hY reflected hworld)
 
 /-- Paper-facing `thm:ccee` entry point from completed-world product representations.
+Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
+`f n > n`; see the injective-deferral reindexing section for where this is used.
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (X Z Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat P w)
@@ -3514,16 +3522,18 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n ↦ (Z n).expect P n) ≈ₙ fun n ↦ (Z' n).expect P n :=
   lic_no_expected_net_update_conditional P DP f X Z Z' w hworld
-    (conditionalExpectationQuoteOfRepresentation f hstrict X Z Z' w
+    (conditionalExpectationQuoteOfRepresentation f hinj X Z Z' w
       weight_mem weight_generable hX hZ hZ' source_valued left_reflected
       right_reflected hworld)
 
 /-- Paper-facing `thm:st` entry point from completed-world confidence/product
 representations.
+Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
+`f n > n`; see the injective-deferral reindexing section for where this is used.
 Paper node: `thm:st` -/
 theorem lic_self_trust_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n)
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
@@ -3543,7 +3553,7 @@ theorem lic_self_trust_ofRepresentation
     (fun n ↦ (A n).expect P n) ≳ₙ
       fun n ↦ (p n : ℝ) * (B n).expect P n :=
   lic_self_trust P DP f φ δ p A B hworld
-    (selfTrustQuoteOfRepresentation f hstrict φ δ p A B delta_pos
+    (selfTrustQuoteOfRepresentation f hinj φ δ p A B delta_pos
       probability_mem hφ hδ hδinv hp hA hB confidence_reflected
       product_reflected hworld)
 
