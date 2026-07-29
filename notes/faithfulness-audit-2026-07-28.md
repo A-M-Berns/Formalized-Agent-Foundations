@@ -22,6 +22,33 @@ every listed endpoint clean of everything beyond `propext`/`Classical.choice`/
 
 ---
 
+## Status update (2026-07-28, same-day fix wave)
+
+Every finding below was triaged and, except where Anson ruled otherwise, **fixed** the
+same day by a parallel fixer wave (worktree branches, per-branch kernel gates, batched
+consolidation builds; details in `notes/next-session.md`). Outcomes:
+
+* **F1** — docstring overclaim reverted; "Lower calibration — OPEN" recorded in the
+  `dd:fuel` model card. The lower-calibration theorem itself remains the one deliberate
+  open problem of the substitution.
+* **F2** — **fixed**: the `thm:li` endpoint now carries the `def:belseq` emission
+  conjunct (`exists_liaEntries_code`), so it states the paper's actual claim.
+* **F4** — **fixed**: `thm:ec` takes the per-grid hypothesis; proof rebuilt along the
+  paper's own route (affine tower + `thm:lc` + `lem:conluvapprox`); the diagonal-
+  hypothesis bespoke trader was deleted as unsound-for-purpose.
+* **F5** — **fixed** for `thm:wubexp` and the `_of_historicalVerifiers` recurring form
+  (combination-level determination only, via the approximate-determination engine);
+  prandexp family follow-up in flight (approximate settlement checker).
+* **F6a** — **fixed** to `Function.Injective f.f`; the final step to bare `f n > n`
+  needs a gated-fibre-sum layer — ruled future work (Anson, 2026-07-28). F6b
+  (P-generable `p` in `thm:st`) in flight.
+* **F7** — **fixed**: fixed-sentence `thm:scon` is hypothesis-free; growing form
+  discloses the propositional-compactness obstruction.
+* **F9** — **fixed**, and this report's original justification was WRONG; see the
+  corrected F9 section below.
+* **F10** — real reindex queued as the final, solo change.
+* F3/F8/F11 — stand as disclosed (F8 is paper erratum PE1).
+
 ## Headline
 
 The core market/trader/exploitation layer is faithful to the paper essentially on the
@@ -190,24 +217,25 @@ note, of which this is the concrete instance. One nuance worth keeping: the Lean
 
 ### F9 (B) — `thm:benford`/`thm:prand` endpoints carry a settlement-clock infrastructure hypothesis absent from the paper. *(mine; not flagged by codex)*
 
-`lic_learning_pseudorandom_frequency*` (`HistoricalMaturity.lean:1688`) and the varied
-variants require `PseudorandomFrequencyInfrastructure` / `PatientSettlementClock` — an
-e.c.-coded, antitone activity clock that eventually deactivates and certifies settlement
-of each centered affine combination. The paper's `thm:prand` hypotheses are: Θ-decidable
-sentences, P-generable patient divergent weightings, and pseudorandomness — **no
-computable settlement clock**. (Contrast `thm:wub`, where the paper *does* assume
-truth-computability in `O(f(n+1))` time, faithfully rendered by `FeedbackTruthSequence`.)
-Decidability alone yields no computable bound on settlement time, so the clock is a
-genuine strengthening — the "historical maturity" residue that the file's header says
-was being shrunk. On the positive side, the pseudorandomness hypothesis itself is
-*weaker* than paper-`benford`'s (it quantifies only over `f`-patient weightings, which
-is the `thm:prand` form the paper calls a strict generalization), so the two deviations
-pull in opposite directions and neither subsumes the other.
+**CORRECTED (same day).** The observation (endpoints narrower than the paper) was
+right; the diagnosis was wrong. This section originally argued "decidability alone
+yields no computable bound on settlement time, so the clock is a genuine strengthening."
+No bound is needed by either side: the paper's `app:prandaff` proof *constructs* the
+settlement occupancy as the dovetailed lower approximation `DefinitelySettled`
+(tex:4863–4882) — an unbounded eventual, exactly the shape of the repo's
+`eventually_inactive` field — and the repo already contained the corresponding
+constructor, `PatientSettlementClock.ofComputations`, discharging the clock from
+`IsLogicalInductor`'s own `marketComputable`/`processComputable` with **zero added
+hypotheses**. It had zero call sites: the narrowing was a wiring omission, not a
+modeling boundary. (The case the original diagnosis describes is `thm:wub`, where the
+paper genuinely assumes timed feedback and the repo renders it faithfully.)
 
-**Remedy:** disclose the clock as a type-`(c)` operational premise at the endpoint (the
-structure docstring says "only the settlement clocks" as if residual — make the ledger
-say *why* it is believed necessary in the propositional rendering, or discharge it for
-the arithmetic instantiation the way `M7-FEEDBACK-TRUTH` was).
+**Resolution:** fixed — all nine paper-facing `thm:prandaff`/`thm:prandexp`/
+`thm:prand`/`thm:benford` endpoints are clock-free (`patientClockOfInductor` derives
+the clock internally); `PseudorandomFrequencyInfrastructure` is deleted; the clock's
+provenance is now kind `C` (composition of the paper's own dovetail), not type-`(c)`.
+Two paper errata surfaced by the eliminability investigation are recorded as PE3/PE4 in
+`notes/logical-induction-paper-errata.md`.
 
 ### F10 (C) — Expectation precision is off by one under the repo's day-index convention. *(codex #9, confirmed)*
 

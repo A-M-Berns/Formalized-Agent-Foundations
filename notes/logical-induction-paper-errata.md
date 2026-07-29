@@ -4,8 +4,8 @@ _Last reviewed: 2026-07-23 against arXiv:1609.03543v5._
 
 This ledger records defects in the source paper rather than discrepancies introduced by the
 Lean development. Paper errata are intentionally excluded from
-[`m7-errata-audit.md`](m7-errata-audit.md), whose scope is the faithfulness and completeness
-of this repository.
+[`faithfulness-audit-2026-07-28.md`](faithfulness-audit-2026-07-28.md), whose scope is the
+faithfulness and completeness of this repository.
 
 ## PE1 — Closure under Finite Perturbations (`thm:ifp`)
 
@@ -135,3 +135,32 @@ limit. This is forced by construction: the full-limit conclusion is not provable
 deferral clause, and the limit-point conclusion does not need it, so building the actual
 proofs disciplined the statements into the corrected shape. The discrepancy was not previously
 recorded as a paper erratum.
+
+## PE3 — `Settled(n,m)` decidability as written (`app:prandaff`)
+
+**Status:** repaired in-repo; the paper's assertion is fixable but not literally true as
+stated.
+
+`1609.03543v5-main.tex:4865` asserts that `Settled(n,m)` — "all worlds in
+`pcworlds(D_m)` value the combination `A_n` at `thmval(A_n)`" — is decidable. As written
+the predicate mentions `thmval(A_n)`, which is not computable, so the literal test is not
+one a machine can run. The repair (which the paper's proof clearly intends): under
+consistency of the theory, settlement is equivalent to inter-world *agreement* on the
+finitely many relevant truth assignments, which is a finite decidable test given exact
+rational market quotes. Formalized as
+`AffineCombination.DeterminedViaTheory.settled_iff_agree`
+(`Properties/Calibration.lean`), with the rational-quote requirement supplied by
+`IsLogicalInductor.marketComputable`. Discovered during the 2026-07-28 F9 investigation.
+
+## PE4 — Patience argument assumes a monotone deferral function (`app:prandaff`)
+
+**Status:** repaired in-repo by a strengthened trader; not previously recorded.
+
+`1609.03543v5-main.tex:4905` argues the constructed weighting is `f`-patient via
+`Σ_{n≤m} [f(n) ≥ m] α_n ≤ 1`, which implicitly assumes the deferral function is
+monotone; `def:deferralfunc` (tex:1240) requires only `f(n) > n`. For non-monotone `f`
+the bracket can admit unboundedly many terms between `m` and `f`-images from far below.
+The repo's trader replaces the bracket with the envelope `max_{k≤i} f k`
+(`deferralEnvelope`, `Properties/Pseudorandomness.lean`), which restores the bound for
+arbitrary deferral functions. Justified in the docstring at the definition site;
+surfaced as an erratum during the 2026-07-28 F9 investigation.
