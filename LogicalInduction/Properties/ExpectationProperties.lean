@@ -1398,7 +1398,8 @@ lemma BoundedSequence.futureExtrema_filterBounds
     isBoundedUnder_of_eventually_le (Eventually.of_forall hlowHi)⟩
 
 /-- Appendix `lem:mesh`: uniformly over all future market days, the fixed day-`n`
-threshold mesh and the future day's own mesh become indistinguishable. -/
+threshold mesh and the future day's own mesh become indistinguishable.
+Paper node: `lem:mesh` -/
 theorem BoundedSequence.mesh_independence
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]

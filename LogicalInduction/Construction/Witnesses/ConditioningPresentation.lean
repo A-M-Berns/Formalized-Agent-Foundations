@@ -1,4 +1,4 @@
-import LogicalInduction.Construction.Witnesses.M7Witnesses
+import LogicalInduction.Construction.Witnesses.BoundedEvaluation
 import LogicalInduction.Properties.Conditioning
 
 /-!

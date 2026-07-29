@@ -53,7 +53,7 @@ or a conventional complexity class.  A row marked *complete* claims the paper st
 | def:luv | qualified | threshold-sentence abstraction; the certified first-order bridge exists only for the `dd:luv-arith` class |
 | def:trader | complete | direct rendering |
 | def:tradestrat | complete | direct rendering, with the paper's rank/horizon bound on traded features |
-| lem:mesh | interface | the paper-strength statement exists (`LUVCombination.BoundedSequence.mesh_independence`) but is not an inventory endpoint; the inventory covers the label via the mesh-softmax witness structure |
+| lem:mesh | qualified | `LUVCombination.BoundedSequence.mesh_independence` is an inventory endpoint carrying the label; retained: `WorldValued` (the propositional-substrate world-value certificate) and the mesh-softmax operational witness, the latter dischargeable from `LUVCombinationSyntax` |
 | lem:tfdom | complete | `trading_firm_dominance`: any efficiently computable exploiter is dominated, over any rational `[0,1]` market, with no inductor hypothesis |
 | thm:affcoh | conditional | analytic capstone over `[IsLogicalInductor]` with the paper's bounded-combination data |
 | thm:affpolymax | conditional | same, and the price/magnitude bounds are derived from the sequence rather than assumed |

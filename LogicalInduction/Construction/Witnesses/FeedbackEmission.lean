@@ -1,4 +1,4 @@
-import LogicalInduction.Construction.Witnesses.M7Witnesses
+import LogicalInduction.Construction.Witnesses.BoundedEvaluation
 
 /-!
 # Concrete feedback-trader emission for `thm:wubaff`

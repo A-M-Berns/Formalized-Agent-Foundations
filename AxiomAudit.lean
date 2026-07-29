@@ -233,6 +233,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 -- Properties/ExpectationProperties.lean: the paper-facing LUV-combination sequence
 -- capstones (`thm:exppolymax`, `thm:expcoh`, `thm:perexpkno`, `thm:wubexp`).
 #assert_axioms_clean
+  LUVCombination.BoundedSequence.mesh_independence
   LUVCombination.BoundedSequence.exppolymax
   LUVCombination.BoundedSequence.expcoh
   LUVCombination.BoundedSequence.perexpkno
@@ -294,7 +295,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 Each block below names the file whose constructions *discharge* an interface the property
 tail would otherwise assume, together with the criterion endpoints that consume them. -/
 
--- Construction/Witnesses/M7Witnesses.lean — the bounded-`evaln` compiler, repeated
+-- Construction/Witnesses/BoundedEvaluation.lean — the bounded-`evaln` compiler, repeated
 -- enumeration of a c.e. set, settlement/patient clocks, and the prefix-freeze certificate.
 #assert_axioms_clean
   codeEvalnNat_polyFueled boundedEvalnCompiler

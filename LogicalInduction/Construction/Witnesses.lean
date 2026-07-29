@@ -15,7 +15,7 @@ import LogicalInduction.Construction.Witnesses.KraftInequality
 import LogicalInduction.Construction.Witnesses.PrefixMachine
 import LogicalInduction.Construction.Witnesses.UniversalPrefix
 import LogicalInduction.Construction.Witnesses.UniversalDovetailer
-import LogicalInduction.Construction.Witnesses.M7Witnesses
+import LogicalInduction.Construction.Witnesses.BoundedEvaluation
 import LogicalInduction.Construction.Witnesses.HistoricalMaturity
 import LogicalInduction.Construction.Witnesses.FeedbackEmission
 import LogicalInduction.Construction.Witnesses.ConditioningPresentation

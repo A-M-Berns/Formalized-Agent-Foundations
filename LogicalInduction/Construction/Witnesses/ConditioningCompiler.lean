@@ -18,7 +18,7 @@ Uniform Non-Dogmatism and Preemptive Learning.
 -/
 import LogicalInduction.Construction.Witnesses.ConditioningPresentation
 import LogicalInduction.Construction.LIACompiler
-import LogicalInduction.Construction.Witnesses.M7Witnesses
+import LogicalInduction.Construction.Witnesses.BoundedEvaluation
 
 namespace LogicalInduction
 

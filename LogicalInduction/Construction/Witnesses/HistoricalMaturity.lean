@@ -1,4 +1,4 @@
-import LogicalInduction.Construction.Witnesses.M7Witnesses
+import LogicalInduction.Construction.Witnesses.BoundedEvaluation
 
 /-!
 # Uniform historical-maturity verification
