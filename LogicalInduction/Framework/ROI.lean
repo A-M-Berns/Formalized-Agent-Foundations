@@ -1,10 +1,17 @@
 /-
 # Repeatable return on investment (`LogicalInduction.ROI`)
 
-This file isolates the capital-allocation argument used by the paper's repeatable-ROI
-lemma.  `open i n` records that the `i`th component trader is still tying up capital on
-day `n`.  The recursively chosen weight is exactly the capital not tied up by earlier
-components on that day.
+The capital-allocation argument behind the paper's repeatable-ROI lemma (`lem:type3`).
+A family of component traders is combined into a single budgeted trader: `active i n`
+records that the `i`th component is still tying up capital on day `n`, and the
+recursively chosen weight `βₙ` is exactly the capital not tied up by earlier components
+on that day.
+
+Contents: uniformly emulatable trader families and their efficient-computability
+witnesses; exact rational finite-prefix semantics for magnitude and net worth; the
+Boolean-schedule and continuous-occupancy budgets with their unit-capital invariants;
+the bounded-verification bridge from a polynomial maturity checker to a closing
+schedule; and the concluding `noRepeatableROI`.
 -/
 import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.RpnEmission
@@ -80,9 +87,9 @@ lemma EfficientlyEmulatable.netWorth_launch {Ts : ℕ → Trader}
     (Ts k).netWorth V v k = ((Ts k).strat k).value V v.payout :=
   h.launchGated.netWorth_launch V v k
 
-/-- Structured operational witness for an emulatable trader family. The raw
-`EfficientlyEmulatable` program certifies the paper-facing token semantics; these extra
-fields expose polynomially computable trade boundaries, coefficient segments, and sentence
+/-- Structured operational witness for an emulatable trader family. Where
+`EfficientlyEmulatable` only certifies the paper-facing token semantics, this witness also
+exposes polynomially computable trade boundaries, coefficient segments, and sentence
 codes. That boundary data is exactly what a uniform syntax transformation (such as scaling
 every trade by a generated feature) needs. Indices are
 `z = ⟨⟨k,n⟩,j⟩`: family member, day, then trade number. -/
@@ -953,7 +960,7 @@ lemma featureWeight_denote (active : ℕ → ℕ → Bool) (α : ℕ → EF)
   · simp [Function.comp_apply, h]
 
 /-- If the magnitude progression is rank-respecting, so is every reified budget
-coefficient. Thus `βₙ†` is legal to use on every day `m ≥ n`. -/
+coefficient.  The day-`n` coefficient is therefore legal to use on every day `m ≥ n`. -/
 lemma featureWeight_rank_le (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hα : ∀ i, (α i).rank ≤ i) : ∀ n, (featureWeight active α n).rank ≤ n := by
   intro n
@@ -987,7 +994,7 @@ def featureWeightBody (active : ℕ → ℕ → Bool) (α : ℕ → EF) (k : ℕ
       if active i k then EF.mul (EF.var (k - 1 - i)) (α i) else EF.const 0))))
 
 /-- Uniform variable-length emission of the recurrence bodies. This is the triangular
-`i < k` use of `PolySegStream.concatVar`: each term conditionally emits either
+`i < k` use of `RpnSpliceStream.concatVar`: each term conditionally emits either
 `var(k-1-i) * αᵢ` or zero, and the fold's postfix `add` tags form a second linear run. -/
 lemma featureWeightBody_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hα : RpnSpliceStream (fun i => (α i).serialize))
@@ -1079,9 +1086,9 @@ lemma sharedWeights_serialize (active : ℕ → ℕ → Bool) (α : ℕ → EF)
       rw [ih (k + 1)]
       simp [List.range'_succ, List.replicate_succ', List.append_assoc]
 
-/-- Uniform polynomial-time emission of the complete shared coefficient `βₙ†`.
-This is the representation-level closure needed in addition to its semantic, rank,
-and exact-cost specifications below. -/
+/-- Uniform polynomial-time emission of the complete day-`n` shared budget coefficient.
+This is the representation-level companion to the semantic, rank, and exact-cost
+specifications of the same feature. -/
 lemma sharedFeatureWeight_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hα : RpnSpliceStream (fun i => (α i).serialize))
     (hactive : PolyActiveSchedule active) :
@@ -1398,8 +1405,8 @@ lemma sharedBudgetedTrader_magnitude (Ts : ℕ → Trader) (active : ℕ → ℕ
   rw [Strategy.scaleBy_magnitude, sharedFeatureWeight_denote active α hαc]
 
 /-- Net worth of the shared sum is the finite weighted sum of component net worths.
-The pre-launch-zero clause in `EfficientlyEmulatable` is what turns the triangular daily
-bundle into this rectangular component view. -/
+`LaunchGated` — components trade nothing before their launch day — is what turns the
+triangular daily bundle into this rectangular component view. -/
 lemma sharedBudgetedTrader_netWorth (Ts : ℕ → Trader)
     (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hαrank : ∀ i, (α i).rank ≤ i)
@@ -2911,8 +2918,8 @@ lemma sharedBudgetedTrader_exploits_of_frequently
       simp [activeUntil]
       omega) (fun i => (α i).denote V) hα0 hα1 hδ hδα
 
-/-- Full repeatable-ROI hub: the shared budget trader is both faithfully polynomial-time
-token-computable and exploiting. -/
+/-- Full repeatable-ROI conclusion: the shared budget trader is both efficiently
+computable and exploiting. -/
 lemma repeatableROI
     (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
     (ε : ℝ) (hε : 0 < ε) (η : ℕ → ℝ) (close : ℕ → ℕ)

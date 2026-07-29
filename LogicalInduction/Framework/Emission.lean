@@ -185,10 +185,12 @@ lemma codeEvalnNat_output_poly (code : Nat.Partrec.Code) :
     (codeEvalBound_poly code).comp isPolyBounded_fst
   exact hclock.add_one.of_le (codeEvalnNat_le code)
 
-/-- Shared M7 compiler hub: a polynomial-clock program for the total bounded interpreter.
-It stores only exact finite simulation and complexity data.  The construction of this
-object is the common operational core of `M7-HIST-EVALN`, `M7-CE-REPETITION`,
-`M7-DUS-APPROX`, and the computation-syntax witnesses.
+/-- A polynomial-clock program for the total bounded interpreter `codeEvalnNat simulated`.
+It stores only exact finite simulation and complexity data.  This is the shared operational
+core of the construction witnesses: the bounded-`evaln` history compiler
+(`Construction/Witnesses/HistoricalMaturity.lean`), efficient repetition over c.e. sources
+(`EfficientRepeatedEnumeration.ofCE`), the universal dovetailer's stage table
+(`Construction/Witnesses/UniversalDovetailer.lean`), and the computation-syntax witnesses.
 Paper node: `def:ec` -/
 structure BoundedEvalnCompiler (simulated : Nat.Partrec.Code) where
   code : Nat.Partrec.Code
@@ -276,13 +278,12 @@ lemma precEvalState_final (cf cg : Nat.Partrec.Code)
         have hnle : ¬Nat.pair a total ≤ k := by omega
         simp [Nat.Partrec.Code.evaln, hnle]
 
-/-! ## Universal bounded simulator — the `M7-HIST-EVALN` linchpin
+/-! ## Universal bounded simulator
 
 Target: for every fixed `simulated : Code`, the total normalized bounded interpreter
 `codeEvalnNat simulated : ℕ → ℕ` is computable in the project's own polynomial-fuel model
-(`PolyFueled`). This is the reusable universal-simulation theorem flagged in the M5 notes
-as the piece neither Mathlib (`Code.primrec_evaln` is only primitive recursive, not
-poly-fuel) nor this repo previously supplied. The proof is a structural induction on
+(`PolyFueled`). Mathlib does not supply this: `Code.primrec_evaln` gives only primitive
+recursion, with no polynomial fuel certificate. The proof is a structural induction on
 `simulated`. Every `evaln` clause self-guards its input (`guard (n ≤ k)`), so a failed
 guard already forces the sub-code interpreter to `none`; that makes the `pair`/`comp`
 cases pure combinations of the sub-code compilers, while only `prec`/`rfind'` require
@@ -726,8 +727,8 @@ lemma codeEvalnNat_rfind_polyFueled {cf : Nat.Partrec.Code}
 
 end RfindCompile
 
-/-- **Universal bounded simulator (`M7-HIST-EVALN`).** For every fixed `simulated`, the total
-normalized bounded interpreter is computable in the project polynomial-fuel model.
+/-- **Universal bounded simulator.** For every fixed `simulated`, the total normalized
+bounded interpreter is computable in the project polynomial-fuel model.
 Paper node: `def:ec` -/
 lemma codeEvalnNat_polyFueled :
     ∀ c : Nat.Partrec.Code, ∃ prog, PolyFueled prog (codeEvalnNat c)
@@ -752,7 +753,7 @@ lemma codeEvalnNat_polyFueled :
   | .rfind' cf =>
     codeEvalnNat_rfind_polyFueled (codeEvalnNat_polyFueled cf)
 
-/-- The `M7-HIST-EVALN` hub is inhabited for every simulated code.
+/-- `BoundedEvalnCompiler` is inhabited for every simulated code.
 Paper node: `def:ec` -/
 noncomputable def boundedEvalnCompiler (simulated : Nat.Partrec.Code) :
     BoundedEvalnCompiler simulated :=
@@ -769,11 +770,12 @@ with the three properties it needs: poly in `m`; `DefinitelySettled → Settled`
 `Settled(n,m)` then `DefinitelySettled(n,M)` for some `M ≥ m`.  Nothing here is specific to
 settlement — this is the generic move that turns *any* code into a polynomial Boolean table
 that is monotone in the budget and eventually fires.  It is what
-`PatientSettlementClock.active_codes` and `HistoricalVerifiedMaturitySchedule.check_poly`
-both need (`M7-PATIENT-CLOCK`, `M7-FEEDBACK-EMIT`), so it is stated once, generically.
+`PatientSettlementClock.active_codes` (`Properties/Pseudorandomness.lean`) and
+`HistoricalVerifiedMaturitySchedule.check_poly` (`Framework/ROI.lean`) both need, so it is
+stated once, generically.
 
-The simulator (`codeEvalnNat_polyFueled`, `M7-HIST-EVALN`) is what makes the budgeted run
-polynomial; `polyFueled_boundedAny` supplies the bounded search. -/
+The simulator (`codeEvalnNat_polyFueled`) is what makes the budgeted run polynomial;
+`polyFueled_boundedAny` supplies the bounded search. -/
 
 /-- `c` returns `1` on input `x` within `fuel` steps of the clocked interpreter.
 (`codeEvalnNat` normalizes `none ↦ 0` and `some out ↦ out+1`, so acceptance is `2`.) -/
@@ -792,7 +794,11 @@ lemma dovetailFound_eq_true_iff (c : Nat.Partrec.Code) (i n : ℕ) :
     dovetailFound c i n = true ↔ ∃ j ≤ n, acceptsWithin c n (Nat.pair i j) = true := by
   simp [dovetailFound, boundedAny_eq_true_iff, dovetailStep]
 
-/-! ## M7-PREFIX-PATCH: polynomial flat-token transduction -/
+/-! ## Polynomial flat-token transduction
+
+The evaluator clock `ecClock` carried by an `EfficientlyComputableTok` certificate,
+together with the total length/token oracles of one clocked trader program and the proof
+that the resulting raw token stream is a `PolySegStream`. -/
 
 namespace PrefixPatchCompile
 
@@ -908,12 +914,12 @@ end PrefixPatchCompile
 
 /-! ### The digit-model inclusion (`dd:fuel`) -/
 
-/-- **Every token-model certificate is a digit-model certificate.**  The old clocked
-token stream is a `PolySegStream` (`clockedTokens_polySegStream`), its digit stream is
-again one (`PolySegStream.digitizeStream`), and any `PolySegStream` realizes a
-digit-model certificate whose undigitized decode is the same trader
-(`ecDigit_of_rawSegStream` + `undigitize_digitize`).  This transfers every existing
-`_ecTok` certificate into the wider digit-metered class without touching it.
+/-- **Every token-model certificate is a digit-model certificate.**  A clocked token
+stream is a `PolySegStream` (`clockedTokens_polySegStream`), its digit stream is again one
+(`PolySegStream.digitizeStream`), and any `PolySegStream` realizes a digit-model
+certificate whose undigitized decode is the same trader (`ecDigit_of_rawSegStream` +
+`undigitize_digitize`).  This transfers an `EfficientlyComputableTok` certificate into the
+wider digit-metered class unchanged.
 Paper node: `def:ec` -/
 theorem EfficientlyComputableTok.toDigit {Tr : Trader}
     (h : EfficientlyComputableTok Tr) : EfficientlyComputableDigit Tr := by

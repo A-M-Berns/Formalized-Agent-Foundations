@@ -1,18 +1,29 @@
 /-
-# Efficient-computability infrastructure (`dd:fuel`) — prec-free fuel combinators
+# Efficient-computability infrastructure (`dd:fuel`)
 
-Certifying that a *responsive* trader is efficiently computable (`def:ec`) means exhibiting a
+Certifying that a trader is efficiently computable (`def:ec`) means exhibiting a
 `Nat.Partrec.Code` and a polynomial `evaln` fuel budget that reproduces the encoded day-`n`
-strategy. The obstacle was fuel accounting through `Nat.pair` — but with the `Nat.pair`-tagged
-`EF` encoding (`Criterion.lean`), the strategy-encoding function is a tree of the interpreter's
-**prec-free** primitives (`const`/`left`/`right`/`pair`/`comp`), and for those `evaln` does not
-decrement fuel: a single budget exceeding every intermediate value evaluates the whole tree.
+strategy. With the `Nat.pair`-tagged `EF` encoding (`Criterion.lean`) the strategy-encoding
+function is a tree of the interpreter's **prec-free** primitives
+(`const`/`left`/`right`/`pair`/`comp`), and for those `evaln` does not decrement fuel: a
+single budget exceeding every intermediate value evaluates the whole tree.
 
-This file packages that as a `Fueled c f b` predicate — "`c` computes `f` within `b n` fuel" —
-closed under the primitives, so a trader's code is assembled compositionally and its fuel bound
-falls out. Composing const/pair over a fixed template gives a bound polynomial in `n`, which is
-exactly `EfficientlyComputable`. Faithfulness is untouched: this is the paper's poly-time
-`def:ec`, only now with a tractable membership proof.
+Contents:
+
+* `Fueled c f b` — "`c` computes `f` within `b n` fuel" — closed under the interpreter's
+  primitives; `IsPolyBounded`, the polynomial normal form `def:ec` is stated over.
+* `PolyFueled c f` — a code with polynomial bounds on *both* output and fuel. Closed under
+  `const`/`id`/`pair`/`comp`/`succ` and, through `PolyFueled.prec`, under primitive
+  recursion; hence the poly-fueled arithmetic `predc`, `subc`, `addc`, `mulc`, `divmodc`,
+  `divmod1`, `gcdc`.
+* Emission layers carrying a trader's serialized token stream to an
+  `EfficientlyComputableTok` certificate: fixed-length lists (`ecTok_of_tokenList`), a
+  single token function (`ecTok_of_tokenFn`), repeating fixed-width blocks
+  (`ecTok_of_blockStream`), and the composable `PolySegStream` — append, conditional,
+  uniform- and variable-width concatenation — with capstone `ecTok_of_segStream`.
+* The digit model: `PolySegStream.digitizeStream` and `ecDigit_of_rawSegStream`.
+* The `dd:fuel` model card — calibration, closure, inhabitation, separation, and the
+  open lower calibration.
 -/
 import LogicalInduction.Framework.Criterion
 import Mathlib.Analysis.SpecificLimits.Normed
@@ -21,11 +32,11 @@ import Mathlib.Analysis.SpecificLimits.Normed
 
 A general fact about Mathlib's `evaln`, in its own namespace.
 
-The *bound* itself — for a fixed code, every `evaln` output is bounded by a polynomial in
-the fuel — is already proved in this repo as `codeEvaln_result_le` together with
-`codeEvalBound_poly` (`Construction/M7Witnesses.lean`), where the explicit `codeEvalBound`
-function carries the simulator's clock arithmetic.  Cite those.  This file records only
-the accompanying negative fact, which is what makes the bound's *shape* legible. -/
+The positive *bound* — for a fixed code, every `evaln` output is bounded by a polynomial in
+the fuel — is `codeEvaln_result_le` together with `codeEvalBound_poly`
+(`Framework/Emission.lean`), whose explicit `codeEvalBound` carries the simulator's
+clock arithmetic.  Recorded here is only the accompanying negative fact, which fixes the
+bound's *shape*. -/
 
 namespace Nat.Partrec.Code
 
@@ -240,9 +251,8 @@ lemma PolyFueled.succ_comp {cg : Nat.Partrec.Code} {g : ℕ → ℕ} (hg : PolyF
 /-! ### `PolyEF` — day-indexed feature templates with e.c. codes.
 
 `PolyEF t` says the per-day code `n ↦ (t n).toNat` is poly-fueled. It is closed under the
-`EF` constructors (leaves `const`/`price φ n`), so *any* feature template a property proof
-builds — e.g. the responsive `max(0, c − φ*ⁿ)` buy-signal — is e.c. for free, and a
-single-sentence responsive trader's feature codes assemble for free. -/
+`EF` constructors (leaves `const`/`price φ n`), so any feature template a property proof
+builds — e.g. the responsive `max(0, c − φ*ⁿ)` buy-signal — is e.c. by composition. -/
 
 /-- The per-day code of the template `t` is efficiently computable. -/
 def PolyEF (t : ℕ → EF) : Prop := ∃ c, PolyFueled c (fun n => (t n).toNat)
@@ -273,8 +283,8 @@ lemma PolyEF.safeRecip {a : ℕ → EF} (ha : PolyEF a) :
   obtain ⟨_, hca⟩ := ha
   exact ⟨_, (PolyFueled.const 5).pair hca⟩
 
-/-- Payoff: the responsive **buy-signal** coefficient `max(0, c − φ*ⁿ)` — the actual shape
-the convergence / provability-induction property proofs use — is `PolyEF` in one line. -/
+/-- The responsive **buy-signal** coefficient `max(0, c − φ*ⁿ)` — the shape the convergence
+and provability-induction property proofs use — is `PolyEF`. -/
 example (φ : Sentence) (c : ℚ) :
     PolyEF (fun n => EF.max (EF.const 0) (EF.add (EF.const c) (EF.mul (EF.const (-1))
       (EF.price φ n)))) :=
@@ -1550,10 +1560,13 @@ interpreter `Nat.Partrec.Code.evaln`; the calibration facts an auditor should ch
 output size (`not_polyFueled_two_pow`).  There is **no lower-calibration theorem**: nothing
 here proves that every trader computable by a polynomial-time machine in the paper's
 `def:ec` sense is `EfficientlyComputable`.  The inclusion paper-e.c. ⊆ `EfficientlyComputable`
-is undischarged, and it is not free — the `BigDigits` inverse-operation ceiling (seam 2
-route (A), `notes/next-session.md`) is a concrete stop-and-report showing this metering
-closes under poly-carry digit recurrences but provably *not* under inverse operations
-(`sqrt`, `unpair`, big-divisor `div`) that are trivially poly-time on a binary-tape machine.
+is undischarged, and it is not free.  The concrete obstruction is the digit calculus's
+inverse-operation ceiling: bignum arithmetic on digit streams closes under *forward*
+poly-carry digit recurrences, but provably not under inverse operations (`sqrt`, `unpair`,
+big-divisor `div`), whose carries exceed the poly-bounded-state requirement of
+`PolyFueled.prec` — even though those operations are trivially poly-time on a binary-tape
+machine.  The full statement of that ceiling is in the docstrings of
+`Construction/Witnesses/RpnFreeze.lean`.
 
 Direction of risk, stated precisely:
 
@@ -1564,8 +1577,13 @@ Direction of risk, stated precisely:
   the fuel-metered class only; if that class is a strict subclass of the paper's e.c.
   traders, the paper's `thm:li` is strictly stronger than the Lean one.
 
-Closing this needs a bridge theorem (an `evaln`-fuel ↔ TM-step polynomial simulation)
-against a poly-time machine class Mathlib/CSlib does not yet expose. -/
+Closing this needs a bridge theorem: an `evaln`-fuel ↔ TM-step polynomial simulation
+against a machine class.  Mathlib does define one (`Turing.TM2ComputableInPolyTime`), but
+it carries no theory to build on — no composition, pairing, or closure results, no link to
+`Partrec`/`Primrec`, and no timed simulation lemmas, since every simulation in Mathlib is
+stated through the step-count-discarding `Turing.Respects`.  The bridge therefore requires
+first developing that missing theory; `notes/two-model-ec-feasibility.md` is the
+plan of record. -/
 
 /-- Polynomials do not majorize `2 ^ n`: the fuel model's size bound genuinely bites
 (`def:ec` separation substrate). -/
@@ -1710,11 +1728,10 @@ lemma ecTok_of_rawTokenFn (Tr : Trader) (raw : ℕ → List ℕ)
 /-! ### Validation: a genuinely size-`Θ(n)` trader is `EfficientlyComputableTok`.
 
 `srChain n = safeRecip^[n] (const 1)` is a **depth-`n`** feature: its `serialize` is
-`[1, ⌜1⌝] ++ replicate n 5` — a *growing* (length `n+2`) token stream, exactly the shape the
-old whole-number `def:ec` could not emit (its `toNat` is `~2^{2^n}`). `deepTrader φ` trades it;
-we certify `EfficientlyComputableTok` via `ecTok_of_tokenFn`, with the `i`-th token computed by
-a fixed nesting of `ifzSel` over `predc`/`subc`-shifted indices. This is the payoff of the whole
-`ifzSel`/`subc`/`ecTok_of_tokenFn` toolkit — the first deep trader admitted by the new `def:ec`. -/
+`[1, ⌜1⌝] ++ replicate n 5` — a *growing* (length `n+2`) token stream whose whole-number
+encoding `toNat` is `~2^{2^n}`, so only the token-indexed form of `def:ec` can emit it.
+`deepTrader φ` trades it, and `ecTok_of_tokenFn` certifies it, the `i`-th token computed by
+a fixed nesting of `ifzSel` over `predc`/`subc`-shifted indices. -/
 
 /-- A depth-`n` feature: `n`-fold safe reciprocal of the constant `1`. Rank `0` (no price
 features), so it is a legal day-`n` coefficient; its *size* is `Θ(n)`. -/
@@ -1794,9 +1811,9 @@ lemma deepStream_getD (n i eφ : ℕ) (hi : i < n + 4) :
         rfl
 
 /-- **Validation of `ecTok_of_tokenFn`**: the depth-`n` (size-`Θ(n)`) `deepTrader φ` — whose
-day-`n` token stream *grows* with `n` — is `EfficientlyComputableTok`. The old whole-number
-`def:ec` could not certify it; the new one does. The `i`-th token is a fixed nesting of
-`ifzSel` over `predc`/`subc`-shifted indices. -/
+day-`n` token stream *grows* with `n`, out of reach of a whole-number encoding — is
+`EfficientlyComputableTok`. The `i`-th token is a fixed nesting of `ifzSel` over
+`predc`/`subc`-shifted indices. -/
 lemma deepTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (deepTrader φ) := by
   have nPlus3 : PolyFueled _ (fun m => m.unpair.1 + 1 + 1 + 1) :=
     PolyFueled.left.succ_comp.succ_comp.succ_comp
@@ -1824,7 +1841,7 @@ lemma deepTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (deepTrader φ
     -- LHS = the `ifzSel` token nesting, RHS = the by-region value; equal in every case.
     split_ifs <;> omega
 
-/-! ### `ecTok_of_blockStream` — the repeating-block emission workhorse (Phase A2).
+/-! ### `ecTok_of_blockStream` — the repeating-block emission workhorse.
 
 Every remaining property-tail trader is *deep*: its day-`n` feature scans history, so its
 token stream is `head ++ block 0 ++ … ++ block (cnt n − 1) ++ tail` with fixed-width blocks,
@@ -1870,7 +1887,7 @@ lemma getD_flatMap_const_width (f : ℕ → List ℕ) (W : ℕ) (hW0 : 0 < W) :
           (by omega)
         rw [hdiv, hmod]
 
-/-- **The block-emission workhorse (`def:ec`, Phase A2).** A trader whose day-`n` token
+/-- **The block-emission workhorse (`def:ec`).** A trader whose day-`n` token
 stream is `head.map (· n) ++ (range (cnt n)).flatMap (fun j => bs.map (· ⟨n, j⟩)) ++
 tail.map (· n)` — fixed head/tail, `cnt n` fixed-width blocks of poly-fueled tokens of
 `⟨n, j⟩`, `cnt` poly-fueled — is `EfficientlyComputableTok`. -/
@@ -1953,7 +1970,7 @@ lemma ecTok_of_blockStream (Tr : Trader) (head bs tail : List (ℕ → ℕ))
             (by rw [List.length_append, hlenH, hlenB]; omega),
           List.length_append, hlenH, hlenB]
 
-/-! ### Validation (Phase A3): a size-`Θ(n)` history-scanning trader.
+/-! ### Validation: a size-`Θ(n)` history-scanning trader.
 
 `histSum φ n = Σ_{k<n} φ*ᵏ` (left-nested adds) is the direct dress rehearsal for the
 `thm:con`/`thm:nd` traders: its day-`n` serialization is `[1, ⌜0⌝]` followed by `n`
@@ -2028,8 +2045,8 @@ def PolyRatCodes (q : ℕ → ℚ) : Prop :=
 chains) interleaved with fixed frames — so this layer makes emission *compositional*: a
 `PolySegStream` is a stream family with poly-fueled emitter **and length**, closed under
 append (dispatch on the runtime boundary via `subc`/`ifzSel`), with fixed-tuple and
-repeating-block base cases. Any future multi-segment trader (B2's budget chains, D2's
-bundles) composes. -/
+repeating-block base cases. Further multi-segment traders — budget chains, growing
+bundles — compose from the same combinators. -/
 
 /-- A stream family with a poly-fueled per-token emitter and a poly-fueled length. -/
 def PolySegStream (s : ℕ → List ℕ) : Prop :=
@@ -2493,11 +2510,12 @@ lemma ecTok_of_segStream (Tr : Trader)
 /-! ### The digit layer is poly-fueled (`dd:fuel`)
 
 The inclusion `EfficientlyComputableTok → EfficientlyComputableDigit` factors through
-`PolySegStream`: an old certificate's clocked token stream is a `PolySegStream`
-(`PrefixPatchCompile.clockedTokens_polySegStream`, M7Witnesses), the digit stream of any
-`PolySegStream` is again one (`PolySegStream.digitizeStream` below, via `concatVar`), and
-any `PolySegStream` realizes a digit-model certificate (`ecDigit_of_rawSegStream`).  The final
-composition lives in M7Witnesses next to its last ingredient. -/
+`PolySegStream`: a token-model certificate's clocked token stream is a `PolySegStream`
+(`PrefixPatchCompile.clockedTokens_polySegStream`, `Framework/Emission.lean`), the
+digit stream of any `PolySegStream` is again one (`PolySegStream.digitizeStream` below, via
+`concatVar`), and any `PolySegStream` realizes a digit-model certificate
+(`ecDigit_of_rawSegStream`, also below).  The composition of the three is
+`EfficientlyComputableTok.toDigit` in `Framework/Emission.lean`. -/
 
 /-- Iterated division `t / 4^j` is poly-fueled in `⟨t, j⟩` (state stays `≤ t`). -/
 lemma divPow4_polyFueled :

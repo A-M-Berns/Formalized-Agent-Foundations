@@ -1,13 +1,12 @@
 /-
 # Polish-notation sentence blocks: the pure coding
 
-The digit-metered emission model (`EfficientlyComputableDigit`) meters token *bit*
-size, but sentences still travel as single `Encodable` pair-code tokens, whose bit
-size is the formula's symbol count only up to balance: skewed formulas inflate
-exponentially.  The Polish-notation layer removes that residual by letting sentence slots of
-the flat strategy stream carry **Polish-notation symbol runs** instead: one token per
-formula symbol, so poly digit-stream length = poly symbol count — the paper's `𝓔𝓒`
-metering on the nose.
+Where a sentence travels as a single `Encodable` pair-code token, its bit size tracks
+the formula's symbol count only up to balance: skewed formulas inflate exponentially.
+The Polish-notation layer removes that residual by letting sentence slots of the flat
+strategy stream carry **Polish-notation symbol runs** instead — one token per formula
+symbol, so poly digit-stream length = poly symbol count, the paper's `𝓔𝓒` metering on
+the nose.
 
 Symbol alphabet of a sentence block:
 
@@ -22,8 +21,12 @@ Prefix order is forward self-delimiting: a pending-formula counter starts at `1`
 leaves decrement it, binary tags increment it, and the block ends exactly when it
 reaches `0` — every proper prefix keeps it positive.
 
-This file is the pure layer: the coding, the fuelled block parser, round trips, and
-injectivity.  The stream transducer and its computability live in part 2.
+Contents: the coding and its fuelled block parser, round trips and injectivity; the
+stream transducer `unRpn` contracting sentence blocks back to pair codes; the escape
+splice `escExpand` and its simulation theorem; and code-level mirrors of the parser and
+the transducer (`parseRpnC`, `unRpnTokensC`), which compute on pair codes so the compiler
+can certify them.  Their primitive recursiveness is proved in `Framework/RpnComputation.lean`,
+and the poly-fuelled emission bridges in `Framework/RpnEmission.lean`.
 
 Paper node: `def:ec` (symbol-metered sentence slots).
 -/
@@ -1200,10 +1203,12 @@ lemma strategyOfTokens_unRpn_escExpand (n : ℕ) (ts : List ℕ) :
 
 /-! ## The symbol-metered emission model
 
-An efficiently computable trader emits a digit stream whose undigitized tokens form an RPN-expanded
-strategy stream; the decode contracts sentence blocks (`unRpn`) before validation.
-Poly digit length now meters formula *symbols*: sentences may be arbitrarily deep and
-skewed.  The escape tag keeps both earlier models included by verbatim splice. -/
+An efficiently computable trader emits a digit stream whose undigitized tokens form an
+RPN-expanded strategy stream; the decode contracts sentence blocks (`unRpn`) before
+validation.  Poly digit length then meters formula *symbols*, so sentences may be
+arbitrarily deep and skewed.  The escape tag `1` makes the token- and digit-metered
+models (`EfficientlyComputableTok`, `EfficientlyComputableDigit`) verbatim splices into
+this one. -/
 
 
 /-! ### Compositional splice contraction
