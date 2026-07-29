@@ -4,56 +4,46 @@ import Mathlib.Data.List.Sections
 
 
 /-!
-# `M7-STRICT-SEPARATORS`: separators, and the obstruction that shaped them
+# Separator data for strict domination of the universal semimeasure (`thm:strict`)
 
-This file has two halves.
+`thm:strict` says a logical inductor's limiting beliefs strictly dominate a universal
+continuous semimeasure.  The paper's proof (`app:strict`) runs through a recursively
+inseparable pair of c.e. sets: Uniform Non-Dogmatism (`thm:obu`) applied to the c.e.
+*constraint theory* of the pair puts a positive floor on the inductor's limiting belief in
+the separating bit strings, while a universal semimeasure gives vanishing mass to the
+*class* of length-`n` separator prefixes.
 
-**Half 2 (`### Kleene's inseparable pair`, below)** builds the paper's separator data:
-Kleene's recursively inseparable pair, its dovetailed stage decisions, the c.e. constraint
-theory they generate over an independent atom family, the stagewise class of consistent
-bit strings, and the resulting `StrictSeparatorPresentation`.
+This file builds that data over Kleene's pair `A₁ = {e : e(e) ↓ = 1}`, `A₀ = {e : e(e) ↓ =
+0}` and discharges the boundary `StrictSeparatorPresentation`
+(`Properties/UniversalSemimeasure.lean`): recursive inseparability of the pair, its
+dovetailed stage decisions, the c.e. constraint theory they generate over an independent
+atom family, the stagewise class of consistent bit strings, and the Kučera–Demuth argument
+that a universal semimeasure's mass on those classes tends to zero.
 
-**Half 1 (this one)** records what a *computably enumerable family of nested bit prefixes*
-can and cannot do against a universal continuous semimeasure — the obstruction that forced
-the interface into its present shape.
+## Why the interface carries a constraint theory and per-stage classes
 
-**History.**  `StrictSeparatorPresentation` (`Properties/UniversalSemimeasure.lean`) was
-once shaped as a *nested prefix family*:
+The stage-`n` constraint is the conjunction of the literals for the bits *decided* by stage
+`n`; the undecided bits stay free, so it is not a prefix sentence, and what it constrains
+is a whole *set* of length-`n` strings rather than one string per stage.  The market half
+of the argument accordingly sums over that set (coherence plus pigeonhole).
 
-* `prefixes : ℕ → List Bool`, nested, with lengths tending to infinity,
-* an `EfficientRepeatedEnumeration` of the associated prefix sentences, and
-* `mass_tendsto_zero : Tendsto (fun i ↦ M.mass (prefixes i)) atTop (𝓝 0)`.
+The obvious simpler interface — a single nested family of bit prefixes whose
+universal-semimeasure mass tends to zero — is not merely inconvenient but impossible, and
+`no_ce_null_prefix_family` below proves it: those requirements are jointly unsatisfiable as
+soon as the prefix strings admit a computable enumeration, which is exactly what an
+efficient repeated enumeration of the associated prefix sentences supplies.  The argument
+is elementary and does not even need the lengths to grow.  A computable enumeration of a
+*nested* (pairwise comparable) family of strings carries a lower-semicomputable continuous
+semimeasure `ceNestedSemimeasure`, of mass `1` on every string that is a prefix of an
+enumerated one and `0` elsewhere: comparability is exactly what makes the two children of a
+node compete, so the semimeasure inequality holds.  A universal `M` dominates it, so
+`M.mass (prefixes i)` stays above a fixed positive constant forever, and cannot tend to
+`0`.
 
-`no_ce_null_prefix_family` below shows those fields are jointly **unsatisfiable** as soon
-as the prefix strings admit a computable enumeration — which is exactly what
-`EfficientRepeatedEnumeration` supplies once the prefix syntax can be decoded (its
-`sequence` is emitted by a program, and its `sound`/`covers` fields say the emitted
-sentences are precisely the `prefixSentence (prefixes i)`).  That is why the interface now
-carries a c.e. *constraint theory* plus per-stage consistent classes instead; this file
-keeps the obstruction so the abandoned shape stays refuted rather than merely deprecated.
-
-The argument is elementary and does not even need the lengths to grow.  A computable
-enumeration of a *nested* (pairwise comparable) family of strings carries a
-lower-semicomputable continuous semimeasure `ceNestedSemimeasure`, of mass `1` on every
-string that is a prefix of an enumerated one and `0` elsewhere: comparability is exactly
-what makes the two children of a node compete, so the semimeasure inequality holds.  A
-universal `M` dominates it, so `M.mass (prefixes i)` stays above a fixed positive constant
-forever, and cannot tend to `0`.
-
-The reusable pieces are `ceNestedSemimeasure` (a concrete inhabitant of
-`LowerSemicomputableContinuousSemimeasure`) and `exists_code_evaln_of_computable` (any
-computable `ℕ × List Bool → ℚ` meets the bounded-fuel `approximation_computes` interface).
-
-## Consequence for the boundary (acted on)
-
-The paper's proof (`app:strict`) never claims mass vanishes along one computable branch.
-It applies Uniform Non-Dogmatism to the c.e. *constraint theory* of a recursively
-inseparable pair — single-bit constraints `b_e` / `¬b_e`, which leave the undecided bits
-free — and then argues that a universal semimeasure gives vanishing mass to the *class* of
-length-`n` separator prefixes.  Faithfully formalizing `thm:strict` therefore requires the
-boundary interface to carry a c.e. constraint theory plus a per-level *set* of consistent
-strings, with the market half summing over that set (coherence + pigeonhole), rather than
-a single nested prefix family.  See `notes/next-session.md` for the design record.
+Two pieces of that argument are reusable elsewhere: `ceNestedSemimeasure`, a concrete
+inhabitant of `LowerSemicomputableContinuousSemimeasure`, and
+`exists_code_evaln_of_computable`, which says any computable `ℕ × List Bool → ℕ` meets the
+bounded-fuel `approximation_computes` interface.
 -/
 
 namespace LogicalInduction
@@ -61,7 +51,7 @@ namespace LogicalInduction
 open Filter Topology
 
 -- `Nat.unpair` reduction loops `whnf` on `Nat.sqrt` inside the `Primcodable` instances
--- for the product/list types used below (see the gotcha log in `notes/next-session.md`).
+-- for the product and list types used below, so `Nat.sqrt` is kept opaque in this file.
 attribute [local irreducible] Nat.sqrt
 
 /-! ### Pointwise prefix agreement
@@ -376,7 +366,7 @@ theorem exists_pos_mass_of_ce_nested (M : UniversalContinuousSemimeasure)
   rw [hmass] at h
   simpa using h
 
-/-! ### The obstruction to `StrictSeparatorPresentation` -/
+/-! ### No computably enumerated nested family is null -/
 
 /-- A family nested in the `∃ rest, prefixes (i+1) = prefixes i ++ rest` sense is pairwise
 comparable. -/
@@ -398,8 +388,9 @@ lemma prefixAgree_of_nested {prefixes : ℕ → List Bool}
   · exact Or.inl (by simpa [Nat.add_sub_cancel' h] using hmono i (i' - i))
   · exact Or.inr (by simpa [Nat.add_sub_cancel' h] using hmono i' (i - i'))
 
-/-- **The core obstruction.**  No nested family of bit strings with a computable
-enumeration can have vanishing universal-semimeasure mass.
+/-- No nested family of bit strings with a computable enumeration can have vanishing
+universal-semimeasure mass.  This is what rules out presenting the separator data as a
+single nested prefix family.
 Paper node: `thm:strict` -/
 theorem no_ce_null_prefix_family (M : UniversalContinuousSemimeasure)
     (prefixes : ℕ → List Bool)
@@ -824,7 +815,7 @@ lemma mem_separatorConsistentAt {σ : List Bool} {n : ℕ} :
 
 /-! ### The stage class masses are non-increasing
 
-Nothing computability-theoretic is needed for this half.  A stage-`(n+1)` consistent string
+Nothing computability-theoretic is needed here.  A stage-`(n+1)` consistent string
 truncates to a stage-`n` consistent one — stage decisions only grow with fuel — and
 `children_le` bounds the two children of a node by the node itself.  So the class masses
 form a non-increasing sequence, converging to an infimum `r ≥ 0`, and `thm:strict` becomes
@@ -950,7 +941,7 @@ lemma classMass_succ_le (M : ContinuousSemimeasure) {p : List Bool → Bool} {n 
     refine List.mem_toFinset.2 (List.mem_filter.2 ⟨take_mem_separatorConsistentAt hmem, ?_⟩)
     exact hp σ (mem_separatorConsistentAt.1 hmem).1 hpσ
 
-/-- **Step 1.**  The class masses are non-increasing. -/
+/-- The class masses are non-increasing. -/
 lemma classMass_antitone (M : ContinuousSemimeasure) :
     Antitone (classMass M fun _ ↦ true) :=
   antitone_nat_of_succ_le fun _ ↦ classMass_succ_le M fun _ _ _ ↦ rfl
@@ -1015,8 +1006,8 @@ lemma exists_kleeneDecide {e : ℕ} {b : Bool} (h : e ∈ kleeneSet b) :
       some (if b then 1 else 0) := hn
   cases b <;> simp [kleeneDecide, hn']
 
-/-- **Step 5, the measure half.**  If bit `j` really belongs to the `b`-half of Kleene's
-pair, then from the pivot stage `k` on, the *other* half of the class is small: the `b`-part
+/-- If bit `j` really belongs to the `b`-half of Kleene's pair, then from the pivot stage
+`k` on, the *other* half of the class is small: the `b`-part
 keeps mass `≥ r` forever, while the whole class never exceeds `6r/5`. -/
 lemma classMass_wrong_bit_lt (M : ContinuousSemimeasure) {r : ℝ} {k : ℕ}
     (hle : ∀ n, r ≤ classMass M (fun _ ↦ true) n)
@@ -1380,7 +1371,7 @@ lemma sepGuard_spec {M : LowerSemicomputableContinuousSemimeasure} {k : ℕ} {q 
   · exact ⟨false, by simpa using (Option.some.inj h).symm,
       lt_of_lt_of_le (by exact_mod_cast h2) (sepApproxSum_le M j false _ _ _)⟩
 
-/-! ### Step 5: the classes are null
+/-! ### The stage classes are null
 
 If they were not, the search above would be a total computable separator for Kleene's
 recursively inseparable pair. -/

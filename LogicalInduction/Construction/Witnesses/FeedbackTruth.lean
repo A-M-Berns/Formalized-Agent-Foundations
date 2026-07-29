@@ -1,7 +1,7 @@
 import LogicalInduction.Construction.Witnesses.QuotationAffine
 
 /-!
-# Concrete delayed feedback truth (`M7-FEEDBACK-TRUTH`)
+# Concrete delayed feedback truth for `thm:wubaff` and `thm:wubexp`
 
 The completed-theory value stream in `DeterminedViaTheory` is semantic data; it is not a
 computable oracle.  This file therefore takes the paper's separate operational premise:
@@ -447,7 +447,7 @@ lemma sequence_bounded
     rw [abs_le] at hprice htruth
     constructor <;> linarith
 
-/-- Public constructor for the formerly opaque `FeedbackTruthSequence` boundary.
+/-- Public constructor for the `FeedbackTruthSequence` boundary.
 Normalization is deliberately external: `hA`, `hP`, and `hworld` provide the ordinary
 paper BCS/market premises, while `C` contains only the delayed computation.
 Paper node: `thm:wubaff` -/

@@ -3,11 +3,20 @@ import LogicalInduction.Construction.Witnesses.M7Witnesses
 /-!
 # Uniform historical-maturity verification
 
-This file discharges the computational boundary isolated by
-`AffineCombination.BiasRunHistoricallyVerifiable`.  The semantic finite maturity checker
-lives in `Properties.Calibration`; here it is compiled for a uniformly emulatable trader
-family, placed behind the generic bounded dovetail, and packaged as the historical
-verification schedule consumed by repeatable ROI.
+The Return on Investment lemma (`lem:type3`) builds its trader around a maturity search: on day
+`n`, for every `k, j ≤ n`, it records `open(k,j) = 0` once `j` steps of computation verify that
+the `k`th member's holdings have matured — few future trades, plus guaranteed profit in every
+plausible world.  Running that search uniformly needs programs for the member traders, the
+market, and the deductive stages.
+
+The semantic finite maturity check lives in `Properties.Calibration`, and
+`AffineCombination.BiasRunHistoricallyVerifiable` isolates the computational boundary it leaves
+open.  This file closes that boundary: the check is compiled for a uniformly emulatable trader
+family, placed behind the generic bounded dovetail, and packaged as the historical verification
+schedule that repeatable ROI consumes.  The statistical endpoints at the end of the file
+(`thm:recunbiasedaff`, `thm:prandaff`, `thm:simcal`, `thm:prand`, `thm:benford`,
+`thm:recurringunbiasednessexp`, `thm:prandexp`) are stated with no verifier hypothesis as a
+result.
 -/
 
 namespace LogicalInduction
@@ -564,8 +573,10 @@ private lemma familyMaturityWorlds_all_iff {Ts : ℕ → Trader}
     exact h (bitsToFin
       (AffineCombination.maturityAtomLimitFromStage (Ts i) stage m) bits)
 
-/-- The compiled non-dependent checker recognizes exactly the existing semantic unit
-maturity check. -/
+/-- The compiled family checker accepts exactly when
+`AffineCombination.unitMaturityCheckAtFuel` does for the corresponding member.  The compiled
+form differs only in being non-dependent — it never mentions `Ts i` in its type — which is what
+makes it primitive recursive in the member index. -/
 lemma familyMaturityCheckAtFuel_iff {Ts : ℕ → Trader} {P : History}
     {DP : DeductiveProcess} (market : MarketComputation P)
     (process : DeductiveProcessComputation DP) (epsilon : ℚ)
@@ -1100,11 +1111,11 @@ lemma DeterminedViaTheory.recunbiasedaff_ofComputations
 
 /-! ## Statistical-learning capstones -/
 
-/-- The patient settlement clock is **derived, not assumed**: `IsLogicalInductor` already
-carries a computable market and a computable deductive process (`def:lic`), and those two
-programs are exactly what the paper's `app:prandaff` `DefinitelySettled` dovetail needs.
-`PatientSettlementClock.ofComputations` runs that dovetail, so no endpoint below has to
-take a clock as a hypothesis. -/
+/-- The patient settlement clock comes from the inductor itself.  `IsLogicalInductor`
+(`def:lic`) carries a computable market and a computable deductive process, which are exactly
+the two programs the `DefinitelySettled` dovetail of `app:prandaff` runs — a bounded search for
+a stage by which the combination is settled.  `PatientSettlementClock.ofComputations` performs
+that search, so no endpoint below takes a clock as a hypothesis. -/
 private noncomputable def patientApproxClockOfInductor
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [hLI : IsLogicalInductor P DP] {truth e err : ℕ → ℝ} {tol : ℕ → ℚ}
@@ -1833,7 +1844,8 @@ theorem lic_learning_pseudorandom_frequency_below
       hqhigh.trans_le (min_le_right 1 (p + ε / 2))
     linarith
 
-/-- Exact fixed-frequency `thm:benford`; the infrastructure contains clocks only.
+/-- Exact fixed-frequency `thm:benford`: the two one-sided halves combined, with no
+historical-verifier or settlement-clock premise.
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]

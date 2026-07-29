@@ -2,12 +2,14 @@ import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Algebra.BigOperators.Field
 
 /-!
-# Kraft's inequality (finite, binary) — the mathematical core of `M7-PREFIX-MACHINE`
+# Kraft's inequality (finite, binary)
 
-Mathlib-only. A prefix-free finite set of binary codewords has total Kraft weight
-`∑ 2^{-|w|} ≤ 1`. Mathlib has no Kraft inequality (checked 2026-07-20); this is the one
-sub-obligation of the `M7-PREFIX-MACHINE` boundary that is mathematics rather than
-repository plumbing (`notes/m7-prefix-machine-scope.md`, step 1).
+A prefix-free finite set of binary codewords has total Kraft weight `∑ 2^{-|w|} ≤ 1`.
+This is the budget the Occam risk allocation of `thm:ob` spends, and the mathematical
+core of the concrete prefix machine that backs it
+(`Construction/Witnesses/PrefixMachine.lean`); the rest of that construction is Lean
+plumbing. Mathlib has no Kraft inequality (checked 2026-07-20), so the proof here depends
+on Mathlib only.
 
 Proof: the counting argument. Let `L` be the maximum codeword length. A codeword `w` of
 length `ℓ` is the common prefix of exactly `2^(L-ℓ)` binary strings of length `L`;

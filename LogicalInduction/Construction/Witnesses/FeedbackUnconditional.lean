@@ -4,10 +4,12 @@ import LogicalInduction.Construction.Witnesses.FeedbackTruth
 /-!
 # Feedback and LUV unbiasedness over the constructed `LIA`
 
-The feedback `_ofComputation` endpoints already construct both operational witnesses used by
-the paper's unbiasedness argument: the feedback traders and the delayed truth sequence.  Their
-remaining market-side hypotheses are discharged here over the same provability process used by
-the meta-learning and quotation endpoints:
+The paper's unbiasedness-from-feedback theorems (`thm:wub`, `thm:wubaff`, `thm:wubexp`),
+instantiated at the constructed provability process and its `LIA` inductor.  The
+`_ofComputation` endpoints supply both operational witnesses of the argument — the feedback
+traders and the delayed truth sequence — and the remaining market-side hypotheses are
+discharged here over the same provability process the computational-knowledge and quotation
+endpoints use:
 
 * `theoremDP_computable` constructs the deductive process and hence the `LIA` inductor;
 * `liaHistory_range` supplies the ordinary probability bounds; and
@@ -32,11 +34,10 @@ private noncomputable abbrev feedbackLIA :
     IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
   LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
 
-/-- `thm:wub`, unconditional over the constructed `LIA`: the market, deductive process,
-logical-inductor instance, finite-stage plausible worlds, feedback traders, and sparse delayed
-truth sequence are all constructed.  The caller supplies the paper's efficiently coded
-sentence sequence, completed-theory truth stream, weighting, schedule, and deadline-bounded
-truth program.
+/-- `thm:wub` over the constructed `LIA`: the market, deductive process, logical-inductor
+instance, finite-stage plausible worlds, feedback traders, and sparse delayed truth sequence
+are all constructed.  The caller supplies the paper's efficiently coded sentence sequence,
+completed-theory truth stream, weighting, schedule, and deadline-bounded truth program.
 Paper node: `thm:wub` -/
 theorem lic_wub_ofComputation_unconditional
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
@@ -54,10 +55,8 @@ theorem lic_wub_ofComputation_unconditional
     C hsupport
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:wubaff`, unconditional over the constructed `LIA`: the market, deductive process,
-logical-inductor instance, finite-stage plausible worlds, feedback traders, and sparse delayed
-truth sequence are all constructed.  Only the paper's affine data and operational delayed-truth
-program remain caller inputs.
+/-- `thm:wubaff` over the constructed `LIA`.  Only the paper's affine data and the
+operational delayed-truth program remain caller inputs.
 Paper node: `thm:wubaff` -/
 theorem lic_wubaff_ofComputation_unconditional
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
@@ -76,8 +75,8 @@ theorem lic_wubaff_ofComputation_unconditional
   exact lic_wubaff_ofComputation hpoly hW hdet C hstrict hsupport hWdiv hbounded hmag
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- Paper-facing `thm:wubaff`, unconditional over the constructed `LIA`, for an arbitrary
-bounded affine-combination sequence.  The canonical unit-risk normalization and both feedback
+/-- Paper-facing `thm:wubaff` over the constructed `LIA`, for an arbitrary bounded
+affine-combination sequence.  The canonical unit-risk normalization and both feedback
 operational witnesses are constructed by the lower-level endpoint.
 Paper node: `thm:wubaff` -/
 theorem boundedCombination_wubaff_ofComputation_unconditional
@@ -97,10 +96,10 @@ theorem boundedCombination_wubaff_ofComputation_unconditional
   exact boundedCombination_wubaff_ofComputation h hW hdet hstrict C hsupport hWdiv
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:wubexp`, unconditional over the constructed `LIA`: the concrete normalized threshold
-mesh, its feedback traders, and its delayed truth sequence yield recurring unbiasedness for
-bounded LUV combinations.  The exact completed-theory presentation and deadline-bounded truth
-program remain the paper's explicit semantic and operational inputs.
+/-- `thm:wubexp` over the constructed `LIA`: the concrete normalized threshold mesh, its
+feedback traders, and its delayed truth sequence yield recurring unbiasedness for bounded LUV
+combinations.  The exact completed-theory presentation and deadline-bounded truth program
+remain the paper's explicit semantic and operational inputs.
 Paper node: `thm:wubexp` -/
 theorem luv_wubexp_ofComputation_unconditional
     {As : ℕ → LUVCombination}

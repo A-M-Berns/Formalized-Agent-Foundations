@@ -6,13 +6,16 @@ import Foundation.FirstOrder.Bootstrapping.Syntax.Theory
 /-!
 # Concrete computation syntax and arithmetic-theory representation
 
+Syntax layer for the paper's computational-knowledge theorems (`thm:pac`, `thm:pazfc`,
+`thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait`).
+
 The public logical-induction language is propositional, while the computation
-representation theorem is first-order arithmetic.  This file makes that seam explicit.
-Claims carry an actual FFL arithmetic schema and a compact input, and their Gödel names are
-propositional atoms.  `ComputationTheoryPresentation` is the remaining background-theory
-premise: it translates proofs of the fixed universal computation schemas into stages of a
-computable deductive process.  It contains no sentence sequences, prices, markets, or
-asymptotic conclusions.
+representation theorem is first-order arithmetic.  This file supplies the translation
+between the two: claims carry an actual FFL arithmetic schema and a compact input, and
+their Gödel names are propositional atoms.  `ComputationTheoryPresentation` is the
+remaining background-theory premise: it translates proofs of the fixed universal
+computation schemas into stages of a computable deductive process.  It contains no
+sentence sequences, prices, markets, or asymptotic conclusions.
 
 FFL's `re_complete` gives weak (positive) representation of every r.e. predicate.  A false
 decidable claim is not in general refutable merely from weak representation, so bounded

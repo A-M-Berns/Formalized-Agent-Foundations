@@ -4,15 +4,17 @@ import LogicalInduction.Properties.ExpectationProperties
 /-!
 # Concrete syntax for polynomial LUV-combination sequences
 
-This file constructs the non-statistical part of `M7-LUV-SYNTAX`.  A compact sequence
-presentation names the constants, coefficients, LUVs, and threshold sentences occurring
-in a sequence of LUV combinations.  The diagonal threshold mesh is then emitted directly:
-term `j * n + i` is coefficient `a_j / n` on the literal sentence `X_j > i/n`.
+The paper's expectations material (`sec:expectations`) works with `[0,1]`-LUVs (`def:luv`)
+and finite rational combinations of them, approximating their expectations by a threshold
+mesh (`lem:mesh`).  This file supplies the syntactic side of that machinery: a compact sequence
+presentation naming the constants, coefficients, LUVs, and threshold sentences occurring
+in a sequence of LUV combinations, from which the diagonal threshold mesh is emitted
+directly — term `j * n + i` is coefficient `a_j / n` on the literal sentence `X_j > i/n`.
 
-The presentation contains no prices, convergence, exploitation, or logical-inductor
+The presentation carries no prices, convergence, exploitation, or logical-inductor
 conclusion.  Its semantic companion states only the represented threshold facts in finite
 and completed stages; the public `WorldValued`, `ConvergencePresentation`, and
-`ExactTheoryPresentation` packages are derived below.
+`ExactTheoryPresentation` packages are derived from those below.
 -/
 
 namespace LogicalInduction
@@ -1216,8 +1218,9 @@ noncomputable def meshSoftmaxLowerPoly {As : ℕ → LUVCombination}
     AffineCombination.triangularGaps, lowerGapFamily,
     AffineCombination.triangularIndex] using h
 
-/-- Compact LUV syntax and the sequence's stated `L¹` bound discharge the final
-operational boundary used by the mesh lemma.
+/-- Compact LUV syntax and the sequence's `L¹` bound together discharge the operational
+witness — polynomial emission of the mesh softmax, plus a uniform price bound on it — that
+the mesh lemma consumes.
 Paper node: `lem:mesh`, `thm:wubexp` -/
 noncomputable def meshSoftmaxOperationalWitness
     {As : ℕ → LUVCombination} {P : History}

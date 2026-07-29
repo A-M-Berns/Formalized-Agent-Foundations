@@ -5,29 +5,32 @@ import LogicalInduction.Construction.LIACompiler
 import Foundation.FirstOrder.Incompleteness.Halting
 
 /-!
-# M7-QUOTE-DP meta-learning MVP — computation side
+# The provability deductive process and the unconditional `LIA` endpoints
 
-The `_ofComputation` meta-learning endpoints of `ComputationSyntax.lean` are conditional on
-a `ComputationTheoryPresentation DP T`: a computable deductive process whose stages track the
-`T`-provable instances of the fixed universal computation schemas.  This file **constructs**
-such a process for a fixed Σ₁-sound `T ⊇ 𝗜𝚺₁`, discharging the presentation and — crucially —
-the market non-vacuity hypothesis `hworld`, which is *proved* here from `T`-consistency rather
-than assumed.  Feeding it to the constructed `LIA` inductor yields the project's first
-**unconditional** epistemic theorem over `LIA` (`lia_learns_halting_patterns_unconditional`).
+The `_ofComputation` endpoints of `ComputationSyntax.lean` are conditional on a
+`ComputationTheoryPresentation DP T`: a computable deductive process whose stages track the
+`T`-provable instances of the fixed universal computation schemas.  This file constructs
+such a process for a fixed Σ₁-sound `T ⊇ 𝗜𝚺₁`, discharging both the presentation and the
+market non-vacuity hypothesis `hworld`, which is *proved* from consistency and Σ₁-soundness
+of `T` rather than assumed.  Instantiated at the constructed `LIA` inductor, this leaves the
+computational-knowledge endpoints (`thm:halts`, `thm:pac`, `thm:pazfc`, `thm:incons`,
+`thm:loops`, `thm:dontwait`) with no market, inductor, presentation, or `hworld` hypothesis.
 
-The **same** computable process also inhabits the redesigned code-indexed
-`QuotationTheoryPresentation` (event tags 6/7 enumerate the quotation atoms), so
-`quotationPresentation` + `theoremDP_hworld` jointly certify that `Q ∧ hworld` is
-satisfiable (`quotation_presentation_nonvacuous`) — the fix for the old free-schema
-quotation vacuity.  Because quotation folds a decidable-decision selector into the numeral
-of *fixed* universal schemas (`universalQuotePos`/`universalQuoteNeg`), its instances are
-enumerable by the very same `provable_instances_re`; the positive/negative fibers are the
-value-1/value-0 fibers of one deterministic computation, hence mutually exclusive, which is
-what keeps `hworld` consistent (tags 6/7).
+The same computable process also inhabits the code-indexed `QuotationTheoryPresentation`
+(event tags 6/7 enumerate the quotation atoms), so `quotationPresentation` together with
+`theoremDP_hworld` exhibit a presentation and a plausible-world family that hold
+simultaneously (`quotation_presentation_nonvacuous`).  Because quotation folds a
+decidable-decision selector into the numeral of *fixed* universal schemas
+(`universalQuotePos`/`universalQuoteNeg`), its instances are enumerable by the same
+`provable_instances_re`; the positive and negative fibers are the value-1 and value-0
+fibers of one deterministic computation, hence mutually exclusive, which is what keeps
+`hworld` consistent on tags 6/7.  The self-reference endpoints (`thm:ref`, `thm:lp`,
+`thm:st`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`) then instantiate over the
+same constructed inductor.
 
-The result is unconditional and strictly axiom-clean: tall pole A (provability of schema
-instances is r.e.), the representation coverage, the non-vacuity world `hworld`, and tall
-pole B (the fuel-clocked enumerator is primitive recursive) are all discharged.
+The two mechanical obligations behind all of this are discharged here: provability of
+schema instances is recursively enumerable, and the fuel-clocked stage enumerator is
+primitive recursive.
 -/
 
 namespace LogicalInduction
@@ -36,7 +39,7 @@ open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 open LO.Propositional
 open Filter Topology
 
-/-! ## Tall pole A — provability of schema instances is r.e. -/
+/-! ## Provability of schema instances is recursively enumerable -/
 
 open Classical in
 /-- For a fixed schema `φ`, provability of its numerical instances in a Δ₁, Σ₁-sound theory
@@ -306,7 +309,7 @@ lemma theoremDP_hworld [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     show LO.Propositional.Formula.Boolean.val (provabilityWorld T) ⊤
     simp [LO.Propositional.Formula.Boolean.val]
 
-/-! ## Computability of the stage enumerator (tall pole B)
+/-! ## Computability of the stage enumerator
 
 The stage function is a total fuel-clocked computation; its encoding is primitive recursive
 in the stage index.  Isolating this mechanical obligation keeps the epistemic content above
@@ -459,8 +462,8 @@ lemma theoremStage_encode_prim (c : Nat.Partrec.Code) :
   rw [hkey]
   exact Primrec.encode.comp (sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp hlist))
 
-/-- **Tall pole B discharged.**  The provability deductive process is computable: one fixed
-partial-recursive program emits the encoded stage `D n` on input `n`. -/
+/-- The provability deductive process is computable: one fixed partial-recursive program
+emits the encoded stage `D n` on input `n`. -/
 lemma theoremDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
     ComputableDeductiveProcess (theoremDP T) := by
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
@@ -502,12 +505,11 @@ noncomputable def theoremPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHi
     obtain ⟨k, hk⟩ := theoremDP_covers T this
     exact ⟨k, by simpa only [eventAtom, Nat.unpair_pair] using hk⟩
 
-/-- **The constructed quotation presentation — certifies the vacuity fix.**  The very same
-computable provability process `theoremDP` (whose stages also enumerate the code-indexed
-quotation atoms, tags 6/7) inhabits `QuotationTheoryPresentation`.  Its existence, together
-with the *proved* `theoremDP_hworld`, demonstrates that `Q ∧ hworld` is satisfiable — so the
-introspection / self-trust / expectation / paradox-resistance endpoints keyed on
-`QuotationTheoryPresentation` are **no longer vacuous**.
+/-- The constructed quotation presentation.  The same computable provability process
+`theoremDP`, whose stages also enumerate the code-indexed quotation atoms on tags 6/7,
+inhabits `QuotationTheoryPresentation`.  Together with the proved `theoremDP_hworld` this
+supplies the two hypotheses shared by the introspection, self-trust, expectation, and
+paradox-resistance endpoints.
 Paper node: `thm:ref` -/
 noncomputable def quotationPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
     QuotationTheoryPresentation (theoremDP T) T where
@@ -524,14 +526,14 @@ noncomputable def quotationPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOn
     obtain ⟨k, hk⟩ := theoremDP_covers T this
     exact ⟨k, by simpa only [eventAtom, Nat.unpair_pair] using hk⟩
 
-/-- **Quotation non-vacuity certificate (`N+`).**  For a Σ₁-sound `T ⊇ 𝗜𝚺₁` there is a
-deductive process carrying *both* a `QuotationTheoryPresentation` *and* the market
-non-vacuity hypothesis `hworld`.  So the conjunction `Q ∧ hworld` that every introspection /
-self-trust / expectation / paradox-resistance `_ofCode`/`_ofDiagonal`/`_ofRepresentation`
-endpoint consumes is **satisfiable** — those endpoints are no longer vacuously true, which
-the old free-schema `QuotationTheoryPresentation` made impossible (`positive = negative = ⊤`
-forced an inconsistent stage).  The code-indexed redesign (fixed universal schemas, selector
-folded into the numeral) is what makes this witness exist.
+/-- Quotation non-vacuity certificate (`N+`).  For a Σ₁-sound `T ⊇ 𝗜𝚺₁` there is a deductive
+process carrying both a `QuotationTheoryPresentation` and the market non-vacuity hypothesis
+`hworld`, so the conjunction consumed by every `_ofCode`/`_ofDiagonal`/`_ofRepresentation`
+introspection, self-trust, expectation, and paradox-resistance endpoint is satisfiable.
+Code-indexing is what makes such a witness possible: the quotation schemas are fixed
+(`universalQuotePos`/`universalQuoteNeg`) with the decision selector folded into the
+numeral, so their positive and negative fibers are mutually exclusive and no stage is
+forced to contain a literal together with its negation.
 Paper node: `thm:ref` -/
 theorem quotation_presentation_nonvacuous
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
@@ -540,11 +542,11 @@ theorem quotation_presentation_nonvacuous
   ⟨theoremDP T, quotationPresentation T,
     fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩⟩
 
-/-- **The MVP.** For a Σ₁-sound theory `T ⊇ 𝗜𝚺₁`, the constructed `LIA` inductor over the
-constructed provability deductive process learns every provably-halting pattern —
-**unconditionally**: the deductive process is constructed and proved computable, and the
-market non-vacuity `hworld` is proved, not assumed.  No hypotheses remain beyond the theory
-instances and the (true) hypothesis that the machines provably halt.
+/-- For a Σ₁-sound theory `T ⊇ 𝗜𝚺₁`, the constructed `LIA` inductor over the constructed
+provability deductive process learns every halting pattern.  The deductive process is
+constructed and proved computable and the market non-vacuity `hworld` is proved, so no
+hypothesis remains beyond the theory instances and the (true) hypothesis that the machines
+halt.
 Paper node: `thm:halts` -/
 theorem lia_learns_halting_patterns_unconditional
     (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -560,16 +562,13 @@ theorem lia_learns_halting_patterns_unconditional
     machines inputs hm hi hhalts
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-! ## Unconditional self-reference / quotation endpoints over the constructed `LIA`
+/-! ## Unconditional self-reference and quotation endpoints over the constructed `LIA`
 
-Step 3 of the quotation rescue.  Because `quotationPresentation` inhabits the redesigned
-`QuotationTheoryPresentation` over the constructed computable `theoremDP`, and
-`theoremDP_hworld` discharges the market non-vacuity, every `_ofCode`/`_ofDiagonal`/
-`_ofRepresentation` self-reference endpoint instantiates over `liaHistory (theoremDP T)` with
-**no** market / inductor / `Q` / `hworld` hypotheses remaining — only the caller's own quoted
-decision and its reflection data.  This turns the introspection / expectation / self-trust /
-paradox-resistance family from *conditional on an assumed presentation* into *unconditional
-over a concrete constructed inductor*, the same status the meta-learning MVP reached. -/
+Because `quotationPresentation` inhabits `QuotationTheoryPresentation` over the constructed
+computable `theoremDP`, and `theoremDP_hworld` discharges the market non-vacuity, every
+`_ofCode`/`_ofDiagonal`/`_ofRepresentation` self-reference endpoint instantiates over
+`liaHistory (theoremDP T)` with no market, inductor, presentation, or `hworld` hypothesis
+remaining — only the caller's own quoted decision and its reflection data. -/
 
 variable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
 

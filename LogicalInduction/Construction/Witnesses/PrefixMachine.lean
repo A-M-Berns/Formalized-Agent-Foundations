@@ -3,18 +3,20 @@ import LogicalInduction.Properties.OccamBounds
 import Mathlib.Data.Nat.Size
 
 /-!
-# Concrete prefix machine for Occam Bounds (`M7-PREFIX-MACHINE`, steps 2–5)
+# A concrete prefix machine for Occam Bounds (`thm:ob`)
 
-This file constructs the concrete self-delimiting sentence code behind the Occam-bound
-boundary `PrefixMachinePresentation` (`Properties/OccamBounds.lean`) and discharges
-**every** field of that boundary: the finite Kraft budget (from `kraft_inequality`),
-coverage, the exact from-below approximation, the fixed additive negation overhead, and
-both fuel-model *emission programs* — the weight stream by code-level negation stripping
-(`dcIter`) plus halving-driven doubling (`p2s`), and the sentence stream by a
-poly-fueled decision of code canonicity (`validCode`, membership in `Formula.toNat`'s
-range) via a breadth-first packed descent whose slots shrink as `√` per level
-(`outerSt`; resolution depth `size (size n) + 3`).  The assembled presentation and the
-paper-facing endpoints are unconditional.
+Occam Bounds (`thm:ob`, proved in `app:ob`) bounds a logical inductor's limiting belief in
+`φ` away from `0` and `1` by `C · 2^{-κ(φ)}`, where `κ` is prefix complexity.  The boundary
+`PrefixMachinePresentation` (`Properties/OccamBounds.lean`) abstracts `κ` as the length
+function of a prefix machine; this file supplies a concrete self-delimiting sentence code
+and discharges **every** field of that boundary: the finite Kraft budget (from
+`kraft_inequality`), coverage, the exact from-below approximation, the fixed additive
+negation overhead, and both fuel-model *emission programs* — the weight stream by
+code-level negation stripping (`dcIter`) plus halving-driven doubling (`p2s`), and the
+sentence stream by a poly-fueled decision of code canonicity (`validCode`, membership in
+`Formula.toNat`'s range) via a breadth-first packed descent whose slots shrink as `√` per
+level (`outerSt`; resolution depth `size (size n) + 3`).  The assembled presentation and
+the paper-facing endpoints are unconditional.
 
 ## The code
 
@@ -27,37 +29,40 @@ the concatenation of two self-delimiting integer codes
 where `natCode n` spends `size (n+1) - 1` unary marker bits, one terminator bit, and
 `size (n+1)` payload bits (`2 · size (n+1)` in total).  The prefix complexity is
 `prefixKappa φ = |sentCode φ| + 1`; the extra bit halves every weight, which is exactly
-the slack the multiplicity-two enumeration below spends.
+the slack the multiplicity-two enumeration below spends.  Because `prefixKappa` is
+computable, the boundary's from-below approximation is *exact* and constant in the stage.
 
 Factoring the negation depth *out of* the stock `Encodable` code is load-bearing: it is
 what makes the negation overhead **additive** (`κ(∼φ) ≤ κ(φ) + 2`, discharged here as
 `prefixNegationCompiler` with a real proof), where a plain enumeration code would only
 give a multiplicative bound.
 
-## What this instance means (and what the universal one means)
+## Scope: what "simplicity" means in this file's endpoints
 
 Every theorem downstream of `PrefixMachinePresentation` is stated for an arbitrary `κ`, so
-the generic paper-faithful statements are independent of which machine is plugged in.  Two
-machines are now plugged in, and they say different things:
+the paper-faithful statements do not depend on which machine is plugged in.  Two machines
+are, and they mean different things.
 
-* **This file.**  `prefixKappa` is the length function of a *fixed, computable*
-  self-delimiting code.  Its instance is fully unconditional — every field, including both
-  fuel-model emission programs, is proved here — and "simplicity" in
-  `lic_occam_lower_ofPrefixMachine` / `lic_occamBounds_ofPrefixMachine` means code length
-  under that one code.  Because `prefixKappa` is computable the boundary's from-below
-  approximation is *exact*, so the lower-semicomputability the paper's `κ` needs is not
-  exercised.
-* **`UniversalPrefix.lean`.**  `UPrefix.kappaU` is the prefix complexity of a genuine
-  self-delimiting **universal** machine, satisfying the invariance theorem
-  `UPrefix.kappaU_le_of_prefixMachine` (`κ_U ≤ κ_M + O(1)` for every prefix machine `M`),
-  hence uncomputable and machine-independent up to a constant — the paper's `κ`.  There the
-  approximation field does real work (a from-below stage table over a dovetailed
-  enumeration); that table is a bounded search, and its `Nat.Partrec.Code` is constructed
-  (`UPrefix.exists_uCode`), so those endpoints are unconditional too.
+`prefixKappa` is the length function of one *fixed, computable* self-delimiting code, not
+of a universal machine.  So in `lic_occam_lower_ofPrefixMachine` and
+`lic_occamBounds_ofPrefixMachine`, "the complexity of `φ`" means codeword length under that
+one code, and the bound's constant is calibrated to it; the lower semicomputability that
+the paper's uncomputable `κ` forces on the interface is never exercised, since the
+approximation field is met exactly.  What is bought for that restriction is that the whole
+instance, including both emission programs, is elementary and assumption-free.
 
-So the fixed code is the *elementary* instance and the universal one is the
-*paper-strength* instance; neither subsumes the other, and both are kept.  See
-`notes/m7-prefix-machine-scope.md`.
+The paper's `κ` is prefix complexity relative to a universal machine, fixed only up to an
+additive constant (its footnote to `thm:ob` notes that changing the machine only shifts the
+constants, so the theorem holds for every choice).  `UniversalPrefix.lean` instantiates the
+same boundary at the prefix complexity `κ_U` of a genuine self-delimiting universal machine
+constructed there, with the invariance theorem `κ_U ≤ κ_M + O(1)` for every prefix machine
+`M` — uncomputable and machine-independent up to a constant, as the paper's `κ` is.  There
+the approximation field does real work (a from-below stage table over a dovetailed
+enumeration), and its program is constructed too, so those endpoints are also
+unconditional.
+
+The fixed code is thus the elementary instance and the universal one the paper-strength
+instance; neither subsumes the other, and both are kept.
 -/
 
 namespace LogicalInduction
@@ -1279,6 +1284,8 @@ lemma all_validCode_eq_all_one (L : List ℕ) (h : ∀ m ∈ L, m ≤ 1) :
 
 section RuntimeArith
 
+-- `Nat.unpair` reduction loops `whnf` on `Nat.sqrt` inside the `Primcodable` instances for
+-- the product types appearing in the assemblies below, so `Nat.sqrt` is kept opaque here.
 attribute [local irreducible] Nat.sqrt
 
 /-- One step of the counting square root: bump the count while `(j+1)² ≤ a`. -/

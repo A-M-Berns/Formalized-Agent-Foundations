@@ -2,12 +2,12 @@ import LogicalInduction.Construction.Witnesses.PrefixMachine
 import LogicalInduction.Construction.Witnesses.UniversalDovetailer
 
 /-!
-# A universal prefix machine and its prefix complexity (`M7-PREFIX-UNIVERSAL`)
+# A universal prefix machine and its prefix complexity
 
-`PrefixMachine.lean` instantiates the Occam boundary at the length function of a *fixed*
-computable self-delimiting code.  This file removes that restriction: it constructs a
-genuine **self-delimiting universal machine** `U` and instantiates the same boundary at
-its prefix complexity `κ_U`.
+`PrefixMachine.lean` instantiates the Occam Bounds boundary (`thm:ob`) at the length
+function of a *fixed* computable self-delimiting code.  This file removes that restriction:
+it constructs a genuine **self-delimiting universal machine** `U` and instantiates the same
+boundary at its prefix complexity `κ_U`.
 
 ## The machine
 
@@ -594,15 +594,14 @@ lemma uApprox_mono {n m : ℕ} (h : n ≤ m) (i : ℕ) : uApprox n i ≤ uApprox
 /-! ## The polynomial clock: the self-clamped stage table
 
 The exact stage table is *not* poly-fueled — reading stage `n` means running the dovetail
-for `n` stages — so, exactly as for the universal dovetailer (`Dovetail.dusApprox`,
-`M7-DUS-APPROX`), the emitted table does not approximate the exact one but **selects**
-from it.  `Code.evaln` is self-clamping, so running the exact emitter under the polynomial
-clock `⟪z,z⟫` and keeping the last stage that finished yields an *exact* stage value, at a
-stage that grows without bound.  `nonneg` and `le` are then inherited verbatim and
-`tendsto` is a two-sided squeeze.
+for `n` stages — so, exactly as for the universal dovetailer (`Dovetail.dusApprox`), the
+emitted table does not approximate the exact one but **selects** from it.  `Code.evaln` is
+self-clamping, so running the exact emitter under the polynomial clock `⟪z,z⟫` and keeping
+the last stage that finished yields an *exact* stage value, at a stage that grows without
+bound.  `nonneg` and `le` are then inherited verbatim and `tendsto` is a two-sided squeeze.
 
 All this needs of the exact table is that it has a **code** at all, which is `uCode`
-above — a computability fact about a bounded search, carrying no complexity claim, no
+below — a computability fact about a bounded search, carrying no complexity claim, no
 market prices and no Occam conclusion.  `uTab` shifts the stage index
 by one so that the scan's initial state is a *constant* (the rational `0`), which is what
 `PolyFueled.prec` needs of a base case. -/
@@ -1119,9 +1118,9 @@ theorem exists_uCode : ∃ c : Nat.Partrec.Code, ∀ z, c.eval z = Part.some (uE
     (Nat.Partrec.of_primrec (Primrec.nat_iff.mp uEmit_prim))
   exact ⟨c, fun z => by rw [hc]; rfl⟩
 
-/-- **The exact stage table has a program.**  Discharged, not assumed: the table is the
-bounded search `uMinLen`, primitive recursive by the section above.  Note that this carries
-*no* complexity claim — the polynomial clock below is constructed on top of this code.
+/-- **The exact stage table has a program.**  The table is the bounded search `uMinLen`,
+primitive recursive by the section above, so the code is constructed rather than assumed.
+It carries *no* complexity claim — the polynomial clock below is built on top of it.
 Paper node: `thm:ob` -/
 noncomputable def uCode : Nat.Partrec.Code := exists_uCode.choose
 

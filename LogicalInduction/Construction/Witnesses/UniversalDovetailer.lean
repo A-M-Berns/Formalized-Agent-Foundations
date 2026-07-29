@@ -3,11 +3,11 @@ import LogicalInduction.Construction.LIACompiler
 import LogicalInduction.Construction.Witnesses.QuoteCodeOfMarket
 
 /-!
-# The universal dovetailer (`M7-DUS-APPROX`, stage 1)
+# The universal dovetailer
 
-`Properties/UniversalSemimeasure.lean` states `thm:dus` for an arbitrary
-`UniversalContinuousSemimeasure`.  This file *constructs* one: an explicit dovetail over
-`Nat.Partrec.Code` with a stage clock.
+`Properties/UniversalSemimeasure.lean` states `thm:dus` (Domination of the Universal
+Semimeasure) for an arbitrary `UniversalContinuousSemimeasure`.  This file *constructs*
+one: an explicit dovetail over `Nat.Partrec.Code` with a stage clock.
 
 ## The construction
 
@@ -45,17 +45,17 @@ column.  Rational arithmetic is the repository's own primitive-recursive toolkit
 (`ratPrimcodable`, `ratAdd_prim`, `ratMul_prim`, `ratMax_prim`, `ratLE_prim` in
 `Construction/LIACompiler.lean`, plus `ratMin_prim`/`ratSub_prim'` here).
 
-## Status (recorded at proof time)
+## What this file discharges
 
 Every field of `UniversalContinuousSemimeasure` is proved or constructed: the semimeasure
 laws, the monotone from-below stage table with its limit, the domination constant, and the
 emission program.  `universalSemimeasure` is axiom-clean.
 
-The **polynomial** clock (`M7-DUS-APPROX` proper) is discharged at the end of the file by
-the *self-clamped* stage table `dusApprox`: the exact emitter above is a fixed code, so
-`Code.evaln`'s own guards clamp both its input and its output, and `codeEvalnNat_polyFueled`
-makes reading it under a polynomial clock poly-fueled.  Scanning the stages that finished
-within the clock therefore emits an exact stage value at a stage that grows without bound —
+The **polynomial** clock is discharged at the end of the file by the *self-clamped* stage
+table `dusApprox`: the exact emitter above is a fixed code, so `Code.evaln`'s own guards
+clamp both its input and its output, and `codeEvalnNat_polyFueled` makes reading it under a
+polynomial clock poly-fueled.  Scanning the stages that finished within the clock therefore
+emits an exact stage value at a stage that grows without bound —
 `DUSApproximationPresentation` and `DUSThresholdEmission` are constructed objects, so
 `lic_domination_dovetailSemimeasure_unconditional` carries no semimeasure input at all.
 -/
@@ -634,8 +634,8 @@ lemma wt_mul_dovetailMass_le (i : ℕ) (σ : List Bool) :
 /-! ## The clocked stage approximation of the mixture -/
 
 /-- Stage `n` of the mixture: the first `n` programs, each run to trimmed stage `n`.  This
-is the object whose polynomial emission the `M7-DUS-APPROX` boundary asks for; note the
-bound is on the *stage*, not the limit.
+is the object whose polynomial emission `DUSApproximationPresentation` asks for; the bound
+is on the *stage*, not the limit.
 Paper node: `thm:dus` -/
 def universalApprox (n : ℕ) (σ : List Bool) : ℚ :=
   ∑ i ∈ Finset.range n, (1 / 2 : ℚ) ^ (i + 1) * trim (codeOf i) n σ
@@ -717,7 +717,8 @@ lemma universalApprox_tendsto (σ : List Bool) :
 
 `universalMass` is a continuous semimeasure and dominates every lower-semicomputable
 continuous semimeasure, with an explicit constant.  Neither statement mentions a program
-for the mixture's own stage table, so neither depends on the disclosed gap below. -/
+for the mixture's own stage table, so both are independent of the emission machinery
+below. -/
 
 /-- The mixture as a continuous semimeasure.  Unconditional.
 Paper node: `thm:dus` -/
@@ -730,7 +731,8 @@ noncomputable def continuousSemimeasure : ContinuousSemimeasure where
 /-- **Universality, unconditionally.**  The dovetail mixture multiplicatively dominates
 every lower-semicomputable continuous semimeasure; the constant is the dovetail weight of
 `ν`'s own approximation program.  This is the mathematical content of
-`UniversalContinuousSemimeasure.universal`, proved without the disclosed emission gap.
+`UniversalContinuousSemimeasure.universal`, proved without any appeal to an emission
+program.
 Paper node: `thm:dus` -/
 theorem universalMass_dominates (ν : LowerSemicomputableContinuousSemimeasure) :
     ∃ K : ℝ, 0 < K ∧ ∀ σ, K * ν.mass σ ≤ universalMass σ :=
@@ -739,16 +741,7 @@ theorem universalMass_dominates (ν : LowerSemicomputableContinuousSemimeasure) 
     rw [codeOf, Denumerable.ofNat_encode, dovetailMass_eq_mass ν σ] at h
     exact h⟩
 
-/-! ## The emission program: column tabulation
-
-`trim` is a `Nat.rec` over the stage clock whose state is a *function* on strings, which no
-`Primcodable` state can hold.  The transposition below removes that: tabulate the whole
-clock-column at one string, and recurse structurally on the *reversed* string, so that
-extension by one bit is `cons` and the carried state is a plain `List ℚ`.
-
-The two children of a node must be produced **together** — the `true` child reads the
-`false` child's freshly computed value — so one `ℕ`-recursion carrying `ℚ × ℚ`
-(`childPair`) emits both columns from the parent column. -/
+/-! ## The emission program: column tabulation -/
 
 /-- The root column: `rootVal c n = trim c n []`. -/
 def rootVal (c : Nat.Partrec.Code) (n : ℕ) : ℚ :=
@@ -1144,7 +1137,7 @@ theorem exists_universalApprox_code :
 
 end Emission
 
-/-! ## Toward the polynomial clock: the rounded stage table
+/-! ## The rounded stage table
 
 `PolyRatCodes` is `PolyFueled` on the *encoded* value, and `PolyFueled` demands
 `IsPolyBounded` of the **output** as well as of the fuel.  `universalApprox` can never
@@ -1155,12 +1148,15 @@ The interface leaves room, though: `DUSApproximationPresentation` asks only for 
 `le_mass` and `tendsto` — **not** monotonicity.  So the stage table may be rounded down
 onto the `1 / (n+1)` grid, which costs `1 / (n+1)` of accuracy (harmless in the limit) and
 caps both numerator and denominator by `n + 1`.  `encode_gridApprox_le` is the resulting
-output bound: the half of `PolyFueled` that is about size, discharged.
+output bound: the half of `PolyFueled` that is about size.
 
-What remains open is the *fuel* half — a program computing `gridApprox` in `evaln` fuel
-polynomial in `⟪n, i⟫`.  That is not a re-certification of `tabCol`: a code run for `n`
-steps can emit rationals of doubly-exponential magnitude, and the trimming threads those
-exact values, so a poly-fueled emitter must round *inside* the recursion as well. -/
+Rounding the stage does not by itself supply the *fuel* half — a program computing
+`gridApprox` in `evaln` fuel polynomial in `⟪n, i⟫`.  That is not a re-certification of
+`tabCol`: a code run for `n` steps can emit rationals of doubly-exponential magnitude, and
+the trimming threads those exact values, so such an emitter would have to round *inside*
+the recursion as well.  The self-clamped table `dusApprox` at the end of the file avoids
+that by *selecting* exact stage values under a polynomial clock, and so obtains both
+halves at once. -/
 
 /-- The stage table rounded down onto the `1 / (n+1)` grid. -/
 def gridApprox (n : ℕ) (σ : List Bool) : ℚ :=
@@ -1259,8 +1255,7 @@ lemma gridApprox_num_le (n : ℕ) (σ : List Bool) :
     ((gridApprox_le_universalApprox n σ).trans (universalApprox_le_one n σ))
 
 /-- **The size half of `PolyRatCodes`.**  The rounded stage table's encoding is bounded by
-a fixed quadratic in the stage index — so the obstruction to
-`DUSApproximationPresentation` is now entirely on the *fuel* side. -/
+a fixed quadratic in the stage index. -/
 lemma encode_gridApprox_le (n : ℕ) (σ : List Bool) :
     Encodable.encode (gridApprox n σ) ≤ (2 * (n + 1) + 1) ^ 2 := by
   have hnn : 0 ≤ (gridApprox n σ).num := Rat.num_nonneg.mpr (gridApprox_nonneg n σ)
@@ -1297,8 +1292,8 @@ lemma isPolyBounded_encode_gridApprox (e : ℕ → List Bool) :
 
 /-! ### The packaging
 
-With `exists_universalApprox_code` discharged, both structures are real definitions: every
-analytic field was proved above, and the emission field is now a constructed program. -/
+Both structures are real definitions: every analytic field is proved above, and the
+emission field is the constructed program `exists_universalApprox_code`. -/
 
 /-- The dovetail as a lower-semicomputable continuous semimeasure.
 Paper node: `thm:dus` -/
@@ -1350,7 +1345,7 @@ emitter under a polynomial clock and keeps the best stage that finished*:
 
 * `stageRead F j i` reads the exact table at stage `j` on string index `i` with clock `F`
   (`0` when the clock ran out) — poly-fueled because the simulated code is fixed
-  (`codeEvalnNat_polyFueled`, `M7-HIST-EVALN`);
+  (`codeEvalnNat_polyFueled`);
 * `dusState z` scans `j < n` at clock `⟪z, z⟫`, keeping the last reading that succeeded;
 * `dusStage z n` names the stage that reading came from, so the emitted rational is
   literally `universalApprox (dusStage …) σ` — hence nonneg, below the mass, and (since
@@ -1359,10 +1354,10 @@ emitter under a polynomial clock and keeps the best stage that finished*:
 
 The carried state is one encoded rational bounded by `codeEvalBound approxCode ⟪z,z⟫ + 1`,
 which is exactly the poly-bounded state `PolyFueled.prec` demands.  No drift bound is
-needed: the rounding is not an approximation of the exact table but a *selection* from it,
-so the values are exact and monotonicity survives intact.  (`gridApprox` above remains the
-record of the alternative route — grid rounding of the *stage* — which discharges the same
-two analytic fields but would have required the drift argument.) -/
+needed: the emitted value is not an approximation of the exact table but a *selection* from
+it, so the values are exact and monotonicity survives intact.  (`gridApprox` above rounds
+the *stage* onto the `1/(n+1)` grid instead; it discharges the same two analytic fields,
+but only at the price of that drift argument.) -/
 
 /-- The exact stage emitter as a total program.  `approxEmit_prim` is primitive recursive,
 so `Code.exists_code` names a code whose `eval` is total and equal to it. -/
@@ -1534,7 +1529,7 @@ lemma dusApprox_tendsto (i : ℕ) :
 
 `PolyFueled.prec` over the packed input `w = ⟪z, ⟪j, prev⟫⟫`.  The only nontrivial input is
 the clocked reading, which is `codeEvalnNat approxCode` at a `Nat.pair`-assembled argument —
-poly-fueled because `approxCode` is a *fixed* code (`M7-HIST-EVALN`).  The state bound is
+poly-fueled because `approxCode` is a *fixed* code.  The state bound is
 `codeEvalBound approxCode ⟪z,z⟫ + 2`, polynomial in `z` for the same reason. -/
 
 /-- The scan's step function on the packed `prec` input `w = ⟪z, ⟪j, prev⟫⟫`. -/
@@ -1583,7 +1578,7 @@ lemma dusState_polyFueled : ∃ c, PolyFueled c (fun z ↦ dusState z z.unpair.1
   exact ⟨_, (hprec.comp (PolyFueled.id.pair PolyFueled.left)).of_eq
     (fun z ↦ by simp only [Nat.unpair_pair])⟩
 
-/-- **The poly-fuel emission certificate for the stage table** (`M7-DUS-APPROX`).
+/-- **The poly-fuel emission certificate for the stage table.**
 Paper node: `thm:dus` -/
 theorem dusApprox_polyRatCodes : PolyRatCodes dusApprox := by
   obtain ⟨c, hc⟩ := dusState_polyFueled
@@ -1593,8 +1588,8 @@ theorem dusApprox_polyRatCodes : PolyRatCodes dusApprox := by
 
 @[simp] lemma lowerSemicomputable_mass : lowerSemicomputable.mass = universalMass := rfl
 
-/-- **`DUSApproximationPresentation` for the constructed universal semimeasure**
-(`M7-DUS-APPROX`).  Every field is discharged by this file: the table is the exact stage
+/-- **`DUSApproximationPresentation` for the constructed universal semimeasure.**
+Every field is discharged by this file: the table is the exact stage
 table read under a polynomial clock, so it is nonneg and below the mass by construction,
 converges because the clock eventually reaches every stage, and is poly-emitted because the
 simulated code is fixed.
@@ -1749,7 +1744,7 @@ lemma dusEmitRecip_eq (z : ℕ) :
       = ((dusDen z * (4 * (z.unpair.1 + 1)) : ℕ) : ℚ) / (dusNum z : ℚ) := by
   rw [dusEmitBase_eq B hB, one_div_div]
 
-/-- **`DUSThresholdEmission` for the constructed universal semimeasure** (`M7-DUS-APPROX`).
+/-- **`DUSThresholdEmission` for the constructed universal semimeasure.**
 Paper node: `thm:dus` -/
 theorem dusThresholdEmission : DUSThresholdEmission (dusApproximationPresentation B hB) where
   threshold_sum_codes := by

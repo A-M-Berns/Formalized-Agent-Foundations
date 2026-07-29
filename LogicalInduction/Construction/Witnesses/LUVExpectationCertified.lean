@@ -2,21 +2,26 @@ import LogicalInduction.Construction.Witnesses.LUVDeductiveProcess
 import LogicalInduction.Properties.ExpectationAffine
 
 /-!
-# End-to-end certified expectation endpoint (F7, item 5 discharge)
+# Certified expectation endpoints for arithmetically presented LUVs
 
-`ExpectationAffine.lean` now states `lic_expectation_provind` with a **finite-precision, eventual**
-world hypothesis (`|𝔼_n^v(X) − x| ≤ 1/n`), which a finite deductive-process stage can realize.
-This file *discharges that hypothesis from the certified arithmetic*: it builds a scheduled-reveal
-deductive process `gridDP` whose stage `n` contains, for every LUV index `i ≤ n` and grid point
-`j/n` (`j < n`), the `Θ`-decided threshold literal.  Every world consistent with that stage then
-satisfies grid coherence, so `expectApprox_near_ofGrid` pins its day-`n` expectation within `1/n`
-of the standard value `numᵢ/denᵢ` — for **all** consistent worlds, which is what the trader
-engine needs.
+The paper's LUV expectation theorems (`thm:expprovind`, `thm:loe`, `thm:expcoh`,
+`thm:perexpkno`, `thm:exppolymax`, `thm:wubexp`) are stated in `Properties.ExpectationAffine`
+against a finite-precision world hypothesis: every world consistent with the day-`n` deductive
+stage values the LUV within `1/n` of a fixed real.  This file discharges that hypothesis for a
+`ComputableLUV`, whose values are explicit rationals `numᵢ/denᵢ`, so that the endpoints below
+carry no world-value premise.
 
-The resulting `lic_expectation_provind_arith` is the paper's provability-induction endpoint with
-the value-agreement hypothesis (`ValuesAt`/the audit's "operational hypothesis the paper
-discharges") **replaced by arithmetic**: nothing but `c ≤ numᵢ/denᵢ`, the disclosed
-efficiency-code and price-range boundaries, and the existence of a logical inductor over `gridDP`.
+The mechanism is the scheduled-reveal deductive process `gridDP`: stage `n` contains, for every
+LUV index `i ≤ n` and grid point `j/m` with `m ≤ n + 1` and `j < m`, the threshold literal in
+whichever polarity `Θ` decides.  A world consistent with that stage therefore reads back the whole
+grid, and `expectApprox_near_ofGrid` pins its day-`n` expectation within `1/n` of `numᵢ/denᵢ`
+uniformly over consistent worlds — uniformity being what the trader argument consumes.
+
+The endpoints then come in two strengths.  The `_arith` forms assume a logical inductor over
+`gridDP` and the threshold-code efficiency certificate; the `_unconditional` forms discharge both
+(`gridDP` is proved computable here, the threshold codes are poly-fueled) and run over the
+constructed inductor `liaHistory gridDP`, leaving the rational hypothesis on `numᵢ/denᵢ` as the
+sole premise.
 -/
 
 namespace LogicalInduction
@@ -161,7 +166,8 @@ efficiently generated bounded rational sequences `a, b` and ec sequences of `[0,
 with `Θ ⊢ Zₙ = aₙXₙ + bₙYₙ` (encoded as the combination being valued `0`), the diagonal
 expectations are asymptotically linear.  Derived, as in the paper's own proof (`app:loe`), from
 `thm:expprovind` for the LUV-combination `aX+bY−Z`.  Efficiency (`BoundedSequence`) and
-representation (`ExactTheoryPresentation`, F7-derivable) enter as the disclosed hypotheses.
+representation (`ExactTheoryPresentation`, discharged from compact syntax in `LUVSyntax.lean`)
+enter as the disclosed hypotheses.
 Paper node: `thm:loe` -/
 theorem lic_linearity_of_expectation_seq
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
@@ -274,10 +280,10 @@ lemma expectApprox_near_gridDP {v : PCWorld} {m n : ℕ} (hn : 0 < n)
     rw [hc] at this
     exact absurd this (not_lt.mpr (le_of_lt hlt))
 
-/-- **F7 item 5, certified provability induction.**  Expectation provability induction for a
-`dd:luv-arith` LUV, with the world-value hypothesis discharged from arithmetic: it follows from
-the plain rational bound `c ≤ numᵢ/denᵢ`.  Remaining premises are the disclosed boundaries — the
-efficiency codes, the price range, and a logical inductor over the scheduled process.
+/-- **Certified expectation provability induction.**  Provability induction for a `dd:luv-arith`
+LUV, with the world-value hypothesis discharged from arithmetic: it follows from the plain
+rational bound `c ≤ numᵢ/denᵢ`.  The remaining premises are the disclosed boundaries — the
+threshold-code efficiency certificate and a logical inductor over the scheduled process.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_arith (P : History) [IsLogicalInductor P (L.gridDP)]
     (i : ℕ) (hcode : (toLUV i).RpnThresholdCodes)
@@ -309,7 +315,7 @@ theorem lic_expectation_provind_eq_arith (P : History) [IsLogicalInductor P (L.g
     ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
       hc ▸ (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega))))
 
-/-- **F7 item 5, certified linearity of expectation.**  Linearity for `dd:luv-arith` LUVs `Xᵢ`,
+/-- **Certified linearity of expectation.**  Linearity for `dd:luv-arith` LUVs `Xᵢ`,
 `Xⱼ`, `Xₖ`, with the world-value and linear-relation hypotheses discharged from arithmetic: the
 sole content is the plain rational identity `valueₖ = a·valueᵢ + b·valueⱼ`.
 Paper node: `thm:loe` -/
@@ -328,10 +334,10 @@ theorem lic_linearity_of_expectation_arith (P : History) [IsLogicalInductor P (L
         (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega)),
         (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega))⟩))
 
-/-- **F7 item 5, certified `thm:exppolymax`.**  The sequence-level polynomial-max expectation
-identity for a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation*
-hypothesis discharged from arithmetic (Phase B, over `luvThresholdDP` which reveals every provable
-threshold).  The residual `MeshSoftmaxOperationalWitness` is the disclosed operational/efficiency
+/-- **Certified `thm:exppolymax`.**  The sequence-level polynomial-max expectation identity for a
+`dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation* hypothesis
+discharged from arithmetic over `luvThresholdDP`, the process that reveals every `T`-provable
+threshold.  The residual `MeshSoftmaxOperationalWitness` is the disclosed operational/efficiency
 boundary the paper's own construction supplies.
 Paper node: `thm:exppolymax` -/
 theorem exppolymax_arith {As : ℕ → LUVCombination} {P : History} {T : ArithmeticTheory}
@@ -348,11 +354,19 @@ theorem exppolymax_arith {As : ℕ → LUVCombination} {P : History} {T : Arithm
   h.exppolymax ops (L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
     b hb hshare (L.luvThresholdDP_hworld T)
 
-/-- **F7 item 5, certified `thm:wubexp`.**  Weighted-unbiasedness of determined-value expectation
-for a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation*
-hypothesis discharged from arithmetic (Phase B, over `luvThresholdDP`).  The residual feedback
-witnesses (`M7-FEEDBACK-EMIT`/`M7-FEEDBACK-TRUTH`) and determinacy datum are the disclosed
-operational boundaries the paper's own construction supplies.
+/-- **Certified `thm:wubexp`.**  Weighted unbiasedness of determined-value expectation for a
+`dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation* hypothesis
+discharged from arithmetic over `luvThresholdDP`.
+
+Three inputs stay assumed; together they are the paper's own hypotheses on the sequence, in
+operational form.  `hdet` is determination via `Θ` (`def:affthmval`) together with the resulting
+truth stream — a semantic object, not a computable oracle, so it is given rather than derived.
+`bridge` is the paper's "`thmval(Aₙ)` computable by the next deferral deadline" premise, packaged
+as an explicit sparse affine sequence that is zero-valued in every completed world and whose day
+`f (k+1)` price equals `A_{f k}`'s price minus its truth value; it is constructed in
+`FeedbackTruth.lean`.  `emit` is the syntactic emission certificate for the positive and negative
+sign branches of the feedback trader — the literal coefficient and sentence streams witnessing
+that the trader is efficiently computable — constructed in `FeedbackEmission.lean`.
 Paper node: `thm:wubexp` -/
 theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -403,7 +417,8 @@ lemma combinedDP_hworld (m : ℕ) : ∃ v : PCWorld, v.ConsistentWith ((L.combin
   ⟨L.luvWorld, fun φ hφ => (Finset.mem_union.mp hφ).elim
     (L.luvWorld_consistent_gridStage m φ) (L.luvWorld_consistent T m φ)⟩
 
-/-- `WorldValued` over `combinedDP`, from Phase B (over the ⊆ provability enumerator). -/
+/-- `WorldValued` over `combinedDP`, transported from the arithmetic presentation over the
+smaller provability enumerator `luvThresholdDP`. -/
 lemma worldValued_combinedDP {As : ℕ → LUVCombination}
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i) :
     LUVCombination.WorldValued As (L.combinedDP T) :=
@@ -431,7 +446,7 @@ noncomputable def convergencePresentation_combinedDP {As : ℕ → LUVCombinatio
           L.expectApprox_near_gridDP hj (L.combinedDP_consistent_grid T hv) hmi
             (by omega)⟩ hmk⟩
 
-/-- **F7 item 5, certified `thm:expcoh`.**  Completed/limiting/diagonal expectation coherence for
+/-- **Certified `thm:expcoh`.**  Completed/limiting/diagonal expectation coherence for
 a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` and `ConvergencePresentation`
 representation hypotheses discharged from arithmetic; only the disclosed mesh-softmax operational
 witness and threshold-code efficiency remain.
@@ -455,7 +470,7 @@ theorem expcoh_arith {As : ℕ → LUVCombination} {P : History}
   h.expcoh ops (L.worldValued_combinedDP T hAs)
     (L.convergencePresentation_combinedDP T hAs hcode) b hb hshare (L.combinedDP_hworld T)
 
-/-- **F7 item 5, certified `thm:perexpkno`.**  Persistence of expectation knowledge, with the
+/-- **Certified `thm:perexpkno`.**  Persistence of expectation knowledge, with the
 representation hypotheses discharged from arithmetic as in `expcoh_arith`.
 Paper node: `thm:perexpkno` -/
 theorem perexpkno_arith {As : ℕ → LUVCombination} {P : History}
