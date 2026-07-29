@@ -112,14 +112,15 @@ theorem lic_conditioned_ofCompiler_unconditional
     LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
   lic_conditioned (liaHistory (theoremDP T)) (theoremDP T) extra C compiler
 
-/-- Fixed-sentence `thm:scon` transfer over the constructed `LIA`: only the paper's joint
-consistency premise remains.
+/-- Fixed-sentence `thm:scon` transfer over the constructed `LIA`, with **no** remaining
+premise — the paper's statement exactly: conditioning the constructed inductor on any single
+sentence `ψ` yields a logical inductor over `Θ ∪ {ψ}`, including the degenerate case where
+`Θ ∪ {ψ}` is unsatisfiable at some stage (there the criterion holds vacuously; see
+`isLogicalInductor_of_stage_unsatisfiable`).
 Paper node: `thm:scon` -/
 theorem lic_conditioned_fixed_unconditional
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
-    (ψ : Sentence)
-    (hjoint : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith ((theoremDP T).D n) ∧ v.Holds ψ) :
+    (ψ : Sentence) :
     IsLogicalInductor
       (conditionedHistory (liaHistory (theoremDP T)) (fun _ => ψ))
       ((theoremDP T).adjoinSentence ψ) := by
@@ -129,11 +130,22 @@ theorem lic_conditioned_fixed_unconditional
     LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
   exact ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket
     (liaHistory (theoremDP T)) (theoremDP T)
-    base (theoremMarketComputation T) ψ hjoint
+    base (theoremMarketComputation T) ψ
 
 /-- Growing finite-prefix `thm:scon` transfer over the constructed `LIA`.  The extra process
-supplies its compact condition-code computation, and the remaining semantic premise is exactly
-joint consistency of the base stages with the full growing condition theory.
+supplies its compact condition-code computation.
+
+**Repo-side hypothesis, not the paper's.**  The paper's `thm:scon` states the growing form
+with no consistency premise: if `Θ ∪ {ψᵢ}` is inconsistent the conditioned sequence is
+(degenerately) an inductor over that inconsistent theory.  `hjoint` — one world satisfying
+the base stage *and every* stage of the extra process — is what the price-floor argument
+(Uniform Non-Dogmatism + Preemptive Learning) needs, and it covers the
+consistent-conditioning case only.  Unlike the fixed-sentence form above, the degenerate
+branch cannot be split off here: failure of `hjoint` gives no *single* unsatisfiable stage
+of the union process without propositional compactness, which the Foundation substrate does
+not supply.  So the uncovered case is exactly: every finite stage of `Θ ∪ {ψ₁…ψₙ}` is
+satisfiable while no world satisfies the whole growing theory.
+Kind `C`; hypothesis `hjoint` provenance `(c)` (narrowing modeling substitution — disclosed).
 Paper node: `thm:scon` -/
 theorem lic_conditioned_growing_unconditional
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]

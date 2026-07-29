@@ -807,6 +807,12 @@ structure DeductiveProcess where
   /-- The revealed sets are nondecreasing. -/
   mono : ∀ n, D n ⊆ D (n + 1)
 
+/-- Nestedness at arbitrary distance: `D m ⊆ D n` whenever `m ≤ n`. -/
+lemma DeductiveProcess.mono_le (DP : DeductiveProcess) {m n : ℕ} (h : m ≤ n) :
+    DP.D m ⊆ DP.D n := by
+  show DP.D m ≤ DP.D n
+  exact (monotone_nat_of_le_succ (fun i => show DP.D i ≤ DP.D (i + 1) from DP.mono i)) h
+
 /-- Worlds consistent with every finite stage of the deductive process: the propositional
 rendering of the paper's `cworlds(Θ)`.  This definition lives with the core world/process
 types so quotation interfaces can use it without importing the later affine-coherence

@@ -206,6 +206,50 @@ lemma Trader.bddBelow_plausible_of_finiteMagnitude (Tr : Trader) (V : History)
 
 #print axioms Trader.abs_netWorth_le_magnitude
 
+/-! ### The degenerate process: no plausible worlds from some stage on
+
+If some stage `D N` of the deductive process is propositionally unsatisfiable, nestedness
+kills every later stage too, so the plausible assessments of any trader are drawn from the
+finitely many days `n < N` and are bounded by the corresponding partial magnitudes.  Nobody
+exploits such a process, and the criterion is satisfied by any computable market over it.
+This is the branch the paper's closure results silently include when the theory being
+conditioned on is inconsistent. -/
+
+/-- No trader exploits a deductive process one of whose stages has no propositionally
+consistent world: its plausible assessments are a finite union of magnitude-bounded sets,
+hence bounded above. -/
+lemma Trader.not_exploits_of_stage_unsatisfiable (Tr : Trader) (V : History)
+    (DP : DeductiveProcess) (hV : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
+    {N : ℕ} (hN : ∀ v : PCWorld, ¬ v.ConsistentWith (DP.D N)) :
+    ¬ Tr.Exploits V DP := by
+  rintro ⟨-, hunbdd⟩
+  refine hunbdd ⟨∑ i ∈ Finset.range N, (Tr.strat i).magnitude V, ?_⟩
+  rintro x ⟨n, v, hv, rfl⟩
+  have hn : n < N := by
+    by_contra hn
+    exact hN v (fun φ hφ => hv φ (DP.mono_le (not_lt.mp hn) hφ))
+  calc Tr.netWorth V v n
+      ≤ |Tr.netWorth V v n| := le_abs_self _
+    _ ≤ ∑ i ∈ Finset.range (n + 1), (Tr.strat i).magnitude V :=
+        Tr.abs_netWorth_le_partialMagnitude V v hV n
+    _ ≤ ∑ i ∈ Finset.range N, (Tr.strat i).magnitude V :=
+        Finset.sum_le_sum_of_subset_of_nonneg
+          (by intro i hi; simp only [Finset.mem_range] at hi ⊢; omega)
+          (fun i _ _ => Strategy.magnitude_nonneg (Tr.strat i) V)
+
+/-- `def:lic` is satisfied vacuously over a deductive process with an unsatisfiable stage:
+computability of the market and of the process is all that remains to check.  Kind `P`;
+hypotheses `(a)`. -/
+lemma isLogicalInductor_of_stage_unsatisfiable (V : History) (DP : DeductiveProcess)
+    (hV : ComputableMarket V) (hDP : ComputableDeductiveProcess DP)
+    {N : ℕ} (hN : ∀ v : PCWorld, ¬ v.ConsistentWith (DP.D N)) :
+    IsLogicalInductor V DP where
+  marketComputable := hV
+  processComputable := hDP
+  noExploit Tr _ := Tr.not_exploits_of_stage_unsatisfiable V DP hV.1 hN
+
+#print axioms isLogicalInductor_of_stage_unsatisfiable
+
 /-- `def:affcomsen`. An affine combination `c + Σ eᵢ φᵢ` with expressible-feature
 coefficients. Repeated sentences are allowed, matching `Strategy`; normalization is not
 needed for the value and magnitude arguments.

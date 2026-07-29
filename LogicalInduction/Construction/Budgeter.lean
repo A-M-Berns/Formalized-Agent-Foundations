@@ -77,11 +77,6 @@ def sentenceAtoms {n : ℕ} (T : Strategy n) : Finset ℕ :=
 
 end Strategy
 
-lemma DeductiveProcess.mono_le (DP : DeductiveProcess) {m n : ℕ} (h : m ≤ n) :
-    DP.D m ⊆ DP.D n := by
-  show DP.D m ≤ DP.D n
-  exact (monotone_nat_of_le_succ (fun i => show DP.D i ≤ DP.D (i + 1) from DP.mono i)) h
-
 /-- The finite atom context sufficient to evaluate the deductive stage and every raw trade
 through day `n`. -/
 def budgetAtoms (DP : DeductiveProcess) (Tr : Trader) (n : ℕ) : Finset ℕ :=
