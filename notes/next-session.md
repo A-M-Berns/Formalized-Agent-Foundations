@@ -4,6 +4,32 @@ _Last updated: 2026-07-28 (consolidation pass done; **SURFACE FROZEN FOR AUDIT**
 Anson's ordering: M7 adversarial audit next, final statement read-through after).
 Branch: `logical-induction`._
 
+## Audit fix wave (2026-07-28 evening, in progress)
+
+Findings from `notes/faithfulness-audit-2026-07-28.md` under repair by parallel fixers;
+F1 and F6a merged so far.
+
+**Ruling (Anson, 2026-07-28) — F6a residual:** the cee/ceu/ccee/st chain keeps
+`Function.Injective f.f` as a **disclosed narrowing** of `def:deferralfunc` (paper asks
+only `f n > n`). Eliminating it needs a variable-length price-gated affine sum over
+deferral fibres (`AffineCombination.PolySequence` is pairwise-only) — accepted as
+**future work**, not attempted now. Do not re-flag the injectivity hypothesis as an
+audit finding; do not attempt the fibre-sum layer without a fresh go-ahead.
+
+**Route lesson (F4, thm:ec):** no bespoke-trader proof of `thm:ec` exists under the
+paper-faithful per-grid maturity hypothesis — the day-`n` bundle trader's downside
+diverges at immature stages (Σ|Δₙ| divergence vs. `Exploits`' all-stage lower bound).
+The correct derivation is the paper's own: `thm:affcoh` + `thm:lc` + `lem:conluvapprox`.
+The diagonal-hypothesis `excTrader` layer was deleted with the fix.
+
+**Queued follow-ups:** (1) `ConvergencePresentation.daily_value` still carries the
+diagonal maturity form — weaken to per-grid after the ExpectationProperties fixer
+merges (one field change + two witness sites). (2) F6b: feature-indexed thresholds so
+`thm:st`'s `p` can be P-generable. (3) F10: expectation precision `n+1` reindex, alone,
+last. (4) Record two paper-errata candidates (Settled-predicate computability repaired
+by `settled_iff_agree`; non-monotone-deferral patience gap repaired by
+`deferralEnvelope`) in `notes/logical-induction-paper-errata.md`.
+
 ## SURFACE FREEZE (2026-07-28, commit `8b07fd1`)
 
 Construction program complete (seam 2 rests at route (B), disclosed).  One
