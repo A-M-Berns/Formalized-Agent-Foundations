@@ -125,9 +125,7 @@ def finiteAtomAssignments (A : Finset ℕ) : List (A → Bool) :=
   (allBoolLists A.card).map (atomAssignmentOfList A)
 
 /-! A first-order presentation of the same finite assignments.  Keeping the bit vector as
-data avoids placing the value-dependent function type `A → Bool` at the compiler boundary;
-`finiteAtomTableFromList` has exactly the same atom lookup as `finiteAtomTable` applied to
-`atomAssignmentOfList`. -/
+data avoids placing the value-dependent function type `A → Bool` at the compiler boundary. -/
 
 def finiteAtomTableFromList (A : Finset ℕ) (xs : List Bool) : ℕ → Bool := fun a =>
   if a ∈ A then xs.getD ((A.sort (· ≤ ·)).idxOf a) false else false

@@ -4,9 +4,10 @@ import LogicalInduction.Properties.Conditioning
 /-!
 # Concrete finite-stage presentation for Closure Under Conditioning
 
-This file constructs `M7-SCON-PRESENTATION`.  The condition on day `n` is the canonical
-finite conjunction of the extra deductive stage.  Its Boolean semantics and the computation
-of the union process are derived here.  Polynomial naming is supplied by an operational
+This file constructs the `ConditioningPresentation` that `thm:scon` takes as input, so
+that no caller has to assume one.  The condition on day `n` is the canonical finite
+conjunction of the extra deductive stage; its Boolean semantics and the computation of the
+union process are derived here.  Polynomial naming is supplied by an operational
 certificate for the extra process: the certificate contains one program that emits the
 actual conjunction code with polynomial fuel, rather than treating the semantic stage
 function as a polynomial oracle.

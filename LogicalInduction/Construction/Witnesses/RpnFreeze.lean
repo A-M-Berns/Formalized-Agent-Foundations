@@ -1,5 +1,5 @@
 /-
-# Symbol-level finite-prefix freeze compiler (`M7-PREFIX-PATCH`)
+# Symbol-level finite-prefix freeze compiler
 
 `Properties/FinitePerturbations.lean` compiles the administrative prefix freeze
 `EF.freezeBefore` into a flat streaming transducer over the *contracted* strategy stream
@@ -21,36 +21,34 @@ matcher stops exactly at the block's end iff the block parses to the target, whi
 transfers the token-model table verbatim (`runQuoteFromEntries_exact`,
 `runPrefixQuoteFromStates_exact`).
 
-The transducer itself is the *third* instance of the emitter-generic run rewriter of
-`RpnConditioning.lean`: `freezeEmit` plugs into `rpnConditionRun`, so the master
-commutation `unRpn_rpnConditionRun_of` and the emission certificate
+The transducer itself is an instance of the emitter-generic run rewriter in
+`RpnConditioning.lean`: `freezeEmit` plugs into `rpnConditionRun`, so the commutation
+`unRpn_rpnConditionRun_of` and the emission certificate
 `rpnGuardedConditionRun_polySegStream_of` are reused rather than reproved.
 
-## STATUS: the emission certificate is BLOCKED, and this file says where
+## Disclosed residual: the emission certificate
 
-Everything below is unconditional and axiom-clean, but it does **not** yet yield
+Everything below is unconditional and axiom-clean, but it does **not** yield
 `liaEfficientPrefixPatch`.  The missing step is the fuel certificate for the emitted
 segment: `matchRun_polyFueled` asks for a `PolyFueled` (poly-*bounded*) token function,
-whereas a digit stream supplies only `BigDigits`.  The single test that does not factor
-through a small clamp is the escape leaf, which must decide
-`Encodable.decode c = some ψ` for an exponentially large `c` — and since Foundation's
-`Formula.ofNat` ignores the payload at tag `0`, `decode` is not injective, so that reduces
-to `Nat.unpair` / integer square root, which `BigDigits` does not close over.  In the
-intended complexity model the claim is true (`unpair` on poly-bit inputs is poly-time);
-this is a `dd:fuel`-model limitation.  `notes/next-session.md` (the route-(A) record)
-records the routes out and what each costs.
+whereas a digit stream supplies only `BigDigits`.  The one test that does not factor
+through a small clamp is the escape leaf, which must decide `Encodable.decode c = some ψ`
+for an exponentially large `c`; since Foundation's `Formula.ofNat` ignores the payload at
+tag `0`, `decode` is not injective, so the test reduces to `Nat.unpair` / integer square
+root, which `BigDigits` does not close over.
 
-Building the missing `BigDigits.sqrt` closure directly (route (A)) was attempted on
-2026-07-28 and is blocked structurally, not by effort: `BigDigits` is closed under an
-operation exactly when that operation's base-4 digit recurrence has a poly-bounded carry
-(`addCarry4 ≤ 1`, `mulCarry4 x y p ≤ 3(p+1)`, `ltFlag4 ≤ 1`, …), because
-`PolyFueled.prec`'s iterated state must be `IsPolyBounded`; and — more fundamentally —
-`evaln`'s guard bounds every sub-code's input by its fuel, so the fuel calculus has no big
+That gap is a limitation of the fuel model (`dd:fuel`), not of the mathematics: in the
+intended complexity model the claim holds, since `unpair` on poly-bit inputs is
+poly-time.  Closing it inside the fuel calculus — a `BigDigits.sqrt` — is blocked
+structurally rather than by effort.  `BigDigits` is closed under an operation exactly
+when that operation's base-4 digit recurrence has a poly-bounded carry (`addCarry4 ≤ 1`,
+`mulCarry4 x y p ≤ 3(p+1)`, `ltFlag4 ≤ 1`, …), because the iterated state of
+`PolyFueled.prec` must be `IsPolyBounded`; and, more fundamentally, `evaln`'s guard
+bounds every sub-code's input by its fuel, so the fuel calculus admits no large
 intermediates anywhere.  Square root's carry is the partial remainder, which has `Θ(len)`
-digits and provably cannot be compressed to `O(log)` bits.  The toolkit is closed under
-the forward big-value operations (`add`, `mul`, `natPair`, `ltNat`, `clampVal`) and open
-under their *inverses* (`sqrt`, `unpair`, big-divisor `div`).  See INTERIM SEAMS item 2,
-subsection "Route (A) — ATTEMPTED", for the full argument.
+digits and cannot be compressed to `O(log)` bits.  So the toolkit is closed under the
+forward big-value operations (`add`, `mul`, `natPair`, `ltNat`, `clampVal`) and open
+under their *inverses* (`sqrt`, `unpair`, division by a large divisor).
 
 Paper node: `app:ifp` / `thm:ifp` (the finite-prefix efficiency closure), `def:lia`.
 -/
@@ -63,8 +61,8 @@ namespace RpnFreeze
 open PrefixPatchCompile RpnConditioning
 open Nat.Partrec (Code)
 
--- Deep `PolyFueled` compositions over paired inputs loop `whnf` on `Nat.sqrt`
--- (pair/unpair unfolding); keep it opaque throughout (the standard `dd:fuel` safeguard).
+-- `PolyFueled` elaboration over paired inputs unfolds `Nat.sqrt`'s well-founded definition
+-- during `whnf` (reached via `Nat.pair`/`unpair`) and loops; local opacity stops that.
 attribute [local irreducible] Nat.sqrt
 
 /-- Tokens read from a stream between two positions. -/
@@ -682,13 +680,13 @@ tokens (values may be exponential), never `PolyFueled`.  Every test inside `matc
 factors through a small clamp — grammar tags `0/1/2/3/4`, atom tokens `a + 5` — except the
 escape leaf, which must decide `Encodable.decode c = some ψ` for an exponentially large
 `c`; Foundation's `ofNat` ignores the payload at tag `0`, so `decode` is not injective and
-that decision reduces to `Nat.unpair` (integer square root), which the `BigDigits` API does
-not provide and — per the route-(A) stop-and-report in `notes/next-session.md` — cannot
-provide without either a new axiom or the `TC⁰` division machinery (the digit model is
-closed under forward big-value operations and provably open under their inverses).  This
-is a permanently disclosed boundary: `EfficientPrefixPatch.preserves_ec` has no LIA
-inhabitant at the collapsed class and this lemma is the token-model half of the
-certificate only. -/
+that decision reduces to `Nat.unpair` (integer square root).  The `BigDigits` API does not
+provide it, and cannot without either a new axiom or `TC⁰` division machinery: closure
+requires a poly-bounded digit carry, and square root's carry is the partial remainder,
+which is `Θ(len)` digits wide — the digit model is closed under the forward big-value
+operations and open under their inverses.  This is therefore a permanently disclosed
+boundary: `EfficientPrefixPatch.preserves_ec` has no LIA inhabitant at the collapsed
+class, and this lemma is the token-model half of the certificate only. -/
 lemma matchRun_polyFueled {ct cn : Code} {tf N : ℕ → ℕ}
     (htf : PolyFueled ct tf) (hN : PolyFueled cn N) (target : Sentence) :
     ∀ {cp : Code} {P : ℕ → ℕ}, PolyFueled cp P →

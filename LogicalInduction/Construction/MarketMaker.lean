@@ -1,10 +1,10 @@
 /-
 # Market maker (`lem:fpl`, `def:markemaker`, `lem:mm`)
 
-This file implements M6: the finite-dimensional fixed-point argument and the computable
-rational market maker.  The analytic layer below deliberately works with the actual
-`Strategy` representation, including repeated occurrences of one sentence: `shares`
-aggregates all positions in a sentence before the price-adjustment map is formed.
+The finite-dimensional fixed-point argument behind the paper's market maker, and the
+computable rational prices it produces.  The analytic layer below deliberately works with
+the actual `Strategy` representation, including repeated occurrences of one sentence:
+`shares` aggregates all positions in a sentence before the price-adjustment map is formed.
 -/
 import LogicalInduction.Construction.Brouwer
 import LogicalInduction.Framework.Affine

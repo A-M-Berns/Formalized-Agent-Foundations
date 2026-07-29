@@ -573,9 +573,9 @@ lemma LIABoundedEvaluatorCompiler.toComputableMarket
       RationalBeliefState.toValuation]
   · exact hcode
 
-/-- Exact criterion assembly from the bounded evaluator compiler.  The final M7 theorem
-will instantiate `compiler`; this lemma makes clear that no further semantic premise is
-missing. -/
+/-- Exact criterion assembly from the bounded evaluator compiler: no semantic premise
+beyond `compiler` is missing.  `Construction/LIACompiler.lean` instantiates `compiler`,
+which is what makes `LIA_is_logical_inductor` unconditional. -/
 lemma lia_isLogicalInductor_of_compiler
     {DP : DeductiveProcess} (process : DeductiveProcessComputation DP)
     (compiler : LIABoundedEvaluatorCompiler process) :

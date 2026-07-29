@@ -1,16 +1,14 @@
 /-
-# Part IV — Construction / existence (`LogicalInduction.Construction`)
+# Construction and existence (`LogicalInduction.Construction`)
 
-The hard core. Expect this Part to be where real time goes. Nodes hosted here (see
-roadmap §3, Part IV):
+The paper's §5: an explicit algorithm `LIA` together with the proof that its market
+satisfies the logical-induction criterion. Paper nodes hosted here:
 
-* `lem:fpl` → `fixed_point_lemma` — **Brouwer.** The price-adjustment map `adj` on the
-  compact convex `Valuations'` is continuous *because trading strategies are continuous*
-  (what `EF.denote` continuity buys).
-  ⚠ FINDING (M0): Mathlib has **no Brouwer fixed-point theorem** (only Brouwerian/Heyting
-  *algebras* and Riesz–Markov–*Kakutani*, both unrelated). The missing theorem has since
-  been proved in-project via Sperner's lemma; `Construction.Brouwer` is the completed M6
-  gate. See `Construction.Brouwer`'s header for its trust-surface disclosure.
+* `lem:fpl` → `fixed_point_lemma` — the price-adjustment map on the compact convex
+  space of valuations has a fixed point; it is continuous because trading strategies
+  are (what continuity of `EF.denote` buys). Mathlib has no Brouwer fixed-point
+  theorem, so `Construction.Brouwer` proves the instance needed here from Sperner's
+  lemma; see that file's header for its trust-surface disclosure.
 * `def:markemaker` → `MarketMaker` — rational approximation to the fixed point.
 * `lem:budgeter` → `Budgeter`, `budgeter_props` — caps each enumerated trader.
 * `def:tradingfirm` → `TradingFirm` — combines enumerated traders with budgets.

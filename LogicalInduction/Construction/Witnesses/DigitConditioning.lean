@@ -30,8 +30,9 @@ namespace ConditioningCompile
 open Nat.Partrec (Code)
 open Nat.Partrec.Code
 
--- Deep `Primrec`/`PolyFueled` compositions over paired inputs loop `whnf` on `Nat.sqrt`
--- (pair/unpair unfolding); keep it opaque throughout (the standard `dd:fuel` safeguard).
+-- `Primrec`/`PolyFueled` elaboration over the deep paired inputs below unfolds `Nat.sqrt`'s
+-- well-founded definition during `whnf` (via `unpair`) and loops; local irreducibility stops
+-- that.
 attribute [local irreducible] Nat.sqrt
 
 /-! ## Mode-automaton correspondence
@@ -602,11 +603,11 @@ lemma longEmit_polySegStream {cD cC : Code} {pnd D ψc : ℕ → ℕ}
   rw [longSegment_tokens (pnd z) (ψc z) (D z) ε, digitize_append, digitize_append,
     digitize_singleton]
 
-/-- **B1 capstone**: the digit stream of the guarded price rewrite of any digit
-`PolySegStream` is itself a `PolySegStream`.  Copied tokens are re-rendered digit
-blocks; the rewrite's single bignum token (`conjunctionCode pending ψc`) is rendered
-from digit access to the pending code; price days are materialized by clamp, exact
-whenever the guard passes; flagged days emit nothing.
+/-- The digit stream of the guarded price rewrite of any digit `PolySegStream` is itself a
+`PolySegStream`.  Copied tokens are re-rendered digit blocks; the rewrite's single bignum
+token (`conjunctionCode pending ψc`) is rendered from digit access to the pending code;
+price days are materialized by clamp, exact whenever the guard passes; flagged days emit
+nothing.
 Paper node: `thm:scon` -/
 lemma guardedConditionRun_polySegStream {s : ℕ → List ℕ} (h : PolySegStream s)
     (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) (ε : ℚ) :
@@ -1172,8 +1173,8 @@ lemma frameLegOutput_polySegStream (second : Bool) {src : ℕ → List ℕ}
     · rw [if_neg (by omega), if_neg hm4]
       simp [digitize]
 
-/-- **The digitized safe two-leg frame join** over any digit `PolySegStream`: the
-digit-model analogue of `safeSeparatedFrameTokenOutput_polySegStream`.
+/-- The digitized safe two-leg frame join over any digit `PolySegStream`: the digit-model
+counterpart of `safeSeparatedFrameTokenOutput_polySegStream`.
 Paper node: `thm:scon` -/
 lemma safeSeparatedFrameDigitOutput_polySegStream {src : ℕ → List ℕ}
     (hsrc : PolySegStream src) (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ)
@@ -1215,11 +1216,10 @@ lemma strategy_ext_trades {n : ℕ} {S S' : Strategy n} (h : S.trades = S'.trade
   cases S'
   simpa using h
 
-/-- **The conditioning translation preserves digit-metered efficient computability**
-(`EfficientlyComputableDigit → EfficientlyComputableDigit`), via the guarded digit
-compiler: price days are materialized by clamp, the conjunction shells are rendered
-from digit access, and on guarded days (an oversized price-day token) both the source
-strategy and its translation are empty, so the empty emission is exact.
+/-- The conditioning translation preserves digit-metered efficient computability, via the
+guarded digit compiler: price days are materialized by clamp, the conjunction shells are
+rendered from digit access, and on guarded days (an oversized price-day token) both the
+source strategy and its translation are empty, so the empty emission is exact.
 Paper node: `thm:scon` -/
 lemma conditionedTranslation_preserves_ecDigit
     (ψ : ℕ → Sentence) (hψ : PolySentenceCodes ψ) (ε : ℚ)
@@ -1402,9 +1402,9 @@ def guardedZeroAwareConditionTokens (zeroDays : Finset ℕ) (ψCode : ℕ → �
   then (zeroAwareConditionPriceTokenRun zeroDays ψCode ε (0, 0) ts).2
   else []
 
-/-- **Zero-aware B1 capstone**: the digit stream of the guarded zero-aware price
-rewrite of any digit `PolySegStream` is itself a `PolySegStream`.  The zero-day
-membership test runs on the clamped day, exact whenever the guard passes.
+/-- The digit stream of the guarded zero-aware price rewrite of any digit `PolySegStream`
+is itself a `PolySegStream`.  The zero-day membership test runs on the clamped day, exact
+whenever the guard passes.
 Paper node: `thm:scon` -/
 lemma guardedZeroAwareConditionRun_polySegStream (zeroDays : Finset ℕ)
     {s : ℕ → List ℕ} (h : PolySegStream s)
@@ -1512,8 +1512,10 @@ lemma guardedZeroAwareConditionRun_polySegStream (zeroDays : Finset ℕ)
       if_neg (fun hguard => hflagn (hguardIff.mpr hguard))]
     simp [digitize]
 
-/-- **The eventual (finite-zero, launch-gated) conditioning translation preserves
-digit-metered efficient computability.**
+/-- The eventual conditioning translation preserves digit-metered efficient computability.
+The floor `F` supplies the finite set of days on which the condition price vanishes — the
+zero-aware rewrite binds those price leaves to the constant `1` — and the launch day below
+which the translated trader emits nothing at all.
 Paper node: `thm:scon` -/
 lemma eventualConditionedTranslation_preserves_ecDigit
     {P : History} {ψ : ℕ → Sentence}

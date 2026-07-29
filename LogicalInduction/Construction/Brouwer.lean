@@ -1,12 +1,12 @@
 /-
 # Brouwer fixed-point theorem (`lem:fpl` dependency)
 
-Mathlib has no Brouwer/Kakutani fixed-point theorem, so this
-file proves it from scratch: Sperner's lemma over the Freudenthal/Kuhn triangulation of
-the standard simplex (`BrouwerProof.Sperner`), lifted to an arbitrary nonempty compact
-convex `K ⊆ EuclideanSpace ℝ (Fin d)` (`BrouwerProof`), concluding in
-`LogicalInduction.brouwer_fixed_point` — the exact statement the construction (Part IV)
-consumes.
+Mathlib has no Brouwer or Kakutani fixed-point theorem, so this file proves Brouwer from
+scratch: Sperner's lemma over the Freudenthal/Kuhn triangulation of the standard simplex
+(`BrouwerProof.Sperner`), lifted to an arbitrary nonempty compact convex
+`K ⊆ EuclideanSpace ℝ (Fin d)` (`BrouwerProof`), concluding in
+`LogicalInduction.brouwer_fixed_point` — the exact statement the market maker's
+price-adjustment fixed point consumes.
 
 Provenance: autoformalized by Harmonic's Aristotle (runs 1d7dc5e0 / c712e6d9), built
 there against Lean v4.28.0 + Mathlib v4.28.0, re-validated against this project's
@@ -26,11 +26,14 @@ import Mathlib.Data.Real.StarOrdered
 import Mathlib.Algebra.Order.Ring.Star
 import Mathlib.Topology.Algebra.Module.Cardinality
 
--- The Sperner interior below is Aristotle-generated (see README); we do not hand-edit
--- generated proof bodies, so the unused-simp-arg/variable linters are silenced here.
+-- The Sperner interior below is machine-generated (see the provenance note above); we do
+-- not hand-edit generated proof bodies, so the unused-simp-arg/variable linters are
+-- silenced rather than chased.
 set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
 
+-- The generated combinatorial interior is elaboration-heavy — long `simp_all`/`grind`
+-- chains over `Fin`-indexed sums and permutations — and exceeds the default budget.
 set_option maxHeartbeats 1000000
 
 namespace LogicalInduction
