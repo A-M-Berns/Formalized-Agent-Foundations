@@ -1078,6 +1078,21 @@ lemma DeterminedViaTheory.recunbiasedaff_ofComputations
 
 /-! ## Statistical-learning capstones -/
 
+/-- The patient settlement clock is **derived, not assumed**: `IsLogicalInductor` already
+carries a computable market and a computable deductive process (`def:lic`), and those two
+programs are exactly what the paper's `app:prandaff` `DefinitelySettled` dovetail needs.
+`PatientSettlementClock.ofComputations` runs that dovetail, so no endpoint below has to
+take a clock as a hypothesis. -/
+private noncomputable def patientClockOfInductor
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    [hLI : IsLogicalInductor P DP] {truth : ℕ → ℝ}
+    (hpoly : PolySequence As) (hdet : DeterminedViaTheory As P DP truth)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (f : DeferralFunction) : PatientSettlementClock As P DP truth f :=
+  PatientSettlementClock.ofComputations hpoly
+    hLI.marketComputable.nonemptyComputation.some
+    hLI.processComputable.nonemptyComputation.some hdet hworld f
+
 /-- The nonnegative affine pseudorandomness branch with historical maturity constructed
 from the logical inductor computations.
 Paper node: `thm:prandaff` -/
@@ -1244,9 +1259,6 @@ theorem BoundedCombinationSequence.prandaff_above
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
-    (clock : PatientSettlementClock
-      (fun n => (As n).scale (.const h.unitNormalization.scale)) P DP
-      (fun n => (h.unitNormalization.scale : ℝ) * truth n) f)
     (hpseudo : PseudorandomAbove truth f P) :
     (fun n => (As n).price P n) ≳ₙ (fun _ => 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
@@ -1260,7 +1272,8 @@ theorem BoundedCombinationSequence.prandaff_above
     rw [scale_value, EF.denote_const, hdet n v hv]
   have hs := hdetScaled.lic_prandaff_above
     (h.poly.scaleRat q) ((h.boundedPrices hP).scaleRat q)
-      h.unitNormalization.magnitude_le_one hworld f clock
+      h.unitNormalization.magnitude_le_one hworld f
+      (patientClockOfInductor (h.poly.scaleRat q) hdetScaled hworld f)
       (hpseudo.const_mul_pos hq)
   have hscaled : (fun n => (q : ℝ) * (As n).price P n) ≳ₙ (fun _ => 0) := by
     simpa only [q, scale_price, EF.denote_const] using hs
@@ -1275,9 +1288,6 @@ theorem BoundedCombinationSequence.prandaff_below
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
-    (clock : PatientSettlementClock
-      (fun n => (As n).scale (.const h.unitNormalization.scale)) P DP
-      (fun n => (h.unitNormalization.scale : ℝ) * truth n) f)
     (hpseudo : PseudorandomBelow truth f P) :
     (fun n => (As n).price P n) ≲ₙ (fun _ => 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
@@ -1291,7 +1301,8 @@ theorem BoundedCombinationSequence.prandaff_below
     rw [scale_value, EF.denote_const, hdet n v hv]
   have hs := hdetScaled.lic_prandaff_below
     (h.poly.scaleRat q) ((h.boundedPrices hP).scaleRat q)
-      h.unitNormalization.magnitude_le_one hworld f clock
+      h.unitNormalization.magnitude_le_one hworld f
+      (patientClockOfInductor (h.poly.scaleRat q) hdetScaled hworld f)
       (hpseudo.const_mul_pos hq)
   have hscaled : (fun n => (q : ℝ) * (As n).price P n) ≲ₙ (fun _ => 0) := by
     simpa only [q, scale_price, EF.denote_const] using hs
@@ -1306,16 +1317,13 @@ theorem BoundedCombinationSequence.prandaff
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
-    (clock : PatientSettlementClock
-      (fun n => (As n).scale (.const h.unitNormalization.scale)) P DP
-      (fun n => (h.unitNormalization.scale : ℝ) * truth n) f)
     (hpseudo : Pseudorandom truth f P) :
     (fun n => (As n).price P n) ≈ₙ (fun _ => 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   rw [asympEq_iff_asympLE_asympGE]
-  exact ⟨h.prandaff_below hdet hworld f clock hpseudo.2,
-    h.prandaff_above hdet hworld f clock hpseudo.1⟩
+  exact ⟨h.prandaff_below hdet hworld f hpseudo.2,
+    h.prandaff_above hdet hworld f hpseudo.1⟩
 
 /-- Ordinary recurring unbiasedness with its affine historical schedules constructed.
 Paper node: `thm:recurringunbiasedness` -/
@@ -1445,8 +1453,6 @@ theorem BoundedSequence.prandexp
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
-    (clock : PatientSettlementClock (normalizedMesh As b) P DP
-      (normalizedMeshTruth As P DP hworld b) f)
     (hpseudo : PseudorandomAbove truth f P) :
     (fun n => (As n).expect P n) ≳ₙ (fun _ => 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
@@ -1459,7 +1465,9 @@ theorem BoundedSequence.prandexp
     AffineCombination.DeterminedViaTheory.lic_prandaff_above
       (h.normalizedMesh_poly b) (hexact.normalizedMesh_determined hworld b)
       (h.normalizedMesh_boundedPrices b hP)
-      (normalizedMesh_magnitude_le_one b hshare) hworld f clock hpseudoMesh
+      (normalizedMesh_magnitude_le_one b hshare) hworld f
+      (AffineCombination.patientClockOfInductor (h.normalizedMesh_poly b)
+        (hexact.normalizedMesh_determined hworld b) hworld f) hpseudoMesh
   have hscaled : (fun n => q * (As n).expect P n) ≳ₙ (fun _ => 0) := by
     simpa only [q, normalizedMesh, AffineCombination.scale_price, EF.denote_const,
       meshAffine_price_diagonal] using haff
@@ -1476,8 +1484,6 @@ theorem BoundedSequence.prandexp_below
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
-    (clock : PatientSettlementClock (normalizedMesh As b) P DP
-      (normalizedMeshTruth As P DP hworld b) f)
     (hpseudo : PseudorandomBelow truth f P) :
     (fun n => (As n).expect P n) ≲ₙ (fun _ => 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
@@ -1490,7 +1496,9 @@ theorem BoundedSequence.prandexp_below
     AffineCombination.DeterminedViaTheory.lic_prandaff_below
       (h.normalizedMesh_poly b) (hexact.normalizedMesh_determined hworld b)
       (h.normalizedMesh_boundedPrices b hP)
-      (normalizedMesh_magnitude_le_one b hshare) hworld f clock hpseudoMesh
+      (normalizedMesh_magnitude_le_one b hshare) hworld f
+      (AffineCombination.patientClockOfInductor (h.normalizedMesh_poly b)
+        (hexact.normalizedMesh_determined hworld b) hworld f) hpseudoMesh
   have hscaled : (fun n => q * (As n).expect P n) ≲ₙ (fun _ => 0) := by
     simpa only [q, normalizedMesh, AffineCombination.scale_price, EF.denote_const,
       meshAffine_price_diagonal] using haff
@@ -1507,15 +1515,13 @@ theorem BoundedSequence.prandexp_eq
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
-    (clock : PatientSettlementClock (normalizedMesh As b) P DP
-      (normalizedMeshTruth As P DP hworld b) f)
     (hpseudo : Pseudorandom truth f P) :
     (fun n => (As n).expect P n) ≈ₙ (fun _ => 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   rw [asympEq_iff_asympLE_asympGE]
-  exact ⟨h.prandexp_below hexact hdet b hshare hworld f clock hpseudo.2,
-    h.prandexp hexact hdet b hshare hworld f clock hpseudo.1⟩
+  exact ⟨h.prandexp_below hexact hdet b hshare hworld f hpseudo.2,
+    h.prandexp hexact hdet b hshare hworld f hpseudo.1⟩
 
 end LUVCombination
 
@@ -1531,9 +1537,6 @@ theorem lic_learning_varied_pseudorandom_above
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
-    (clock : PatientSettlementClock
-      (AffineCombination.sentenceMinusFeature φ pFeature) P DP
-      (fun n ↦ truth n - (p n : ℝ)) f)
     (hpseudo : VariedPseudorandomAbove truth p f P) :
     (fun n ↦ P n (φ n)) ≳ₙ (fun n ↦ (p n : ℝ)) := by
   have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
@@ -1542,7 +1545,10 @@ theorem lic_learning_varied_pseudorandom_above
   have hres := hdet.lic_prandaff_above
     (AffineCombination.sentenceMinusFeature_polySequence φ pFeature hφ hp)
     (AffineCombination.sentenceMinusFeature_bounded φ pFeature hp hP hpProb)
-    (fun i ↦ by simp) hworld f clock hpseudo
+    (fun i ↦ by simp) hworld f
+    (AffineCombination.patientClockOfInductor
+      (AffineCombination.sentenceMinusFeature_polySequence φ pFeature hφ hp)
+      hdet hworld f) hpseudo
   intro ε hε
   filter_upwards [hres ε hε] with n hn
   rw [AffineCombination.sentenceMinusFeature_price, hp.denote n] at hn
@@ -1558,9 +1564,6 @@ theorem lic_learning_varied_pseudorandom_below
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
-    (clock : PatientSettlementClock
-      (AffineCombination.sentenceMinusFeature φ pFeature) P DP
-      (fun n ↦ truth n - (p n : ℝ)) f)
     (hpseudo : VariedPseudorandomBelow truth p f P) :
     (fun n ↦ P n (φ n)) ≲ₙ (fun n ↦ (p n : ℝ)) := by
   have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
@@ -1569,7 +1572,10 @@ theorem lic_learning_varied_pseudorandom_below
   have hres := hdet.lic_prandaff_below
     (AffineCombination.sentenceMinusFeature_polySequence φ pFeature hφ hp)
     (AffineCombination.sentenceMinusFeature_bounded φ pFeature hp hP hpProb)
-    (fun i ↦ by simp) hworld f clock hpseudo
+    (fun i ↦ by simp) hworld f
+    (AffineCombination.patientClockOfInductor
+      (AffineCombination.sentenceMinusFeature_polySequence φ pFeature hφ hp)
+      hdet hworld f) hpseudo
   intro ε hε
   filter_upwards [hres ε hε] with n hn
   rw [AffineCombination.sentenceMinusFeature_price, hp.denote n] at hn
@@ -1585,9 +1591,6 @@ theorem lic_learning_varied_pseudorandom
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
-    (clock : PatientSettlementClock
-      (AffineCombination.sentenceMinusFeature φ pFeature) P DP
-      (fun n ↦ truth n - (p n : ℝ)) f)
     (hpseudo : VariedPseudorandom truth p f P) :
     (fun n ↦ P n (φ n)) ≈ₙ (fun n ↦ (p n : ℝ)) := by
   have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
@@ -1596,24 +1599,16 @@ theorem lic_learning_varied_pseudorandom
   have hres := hdet.lic_prandaff
     (AffineCombination.sentenceMinusFeature_polySequence φ pFeature hφ hp)
     (AffineCombination.sentenceMinusFeature_bounded φ pFeature hp hP hpProb)
-    (fun i ↦ by simp) hworld f clock hpseudo
+    (fun i ↦ by simp) hworld f
+    (AffineCombination.patientClockOfInductor
+      (AffineCombination.sentenceMinusFeature_polySequence φ pFeature hφ hp)
+      hdet hworld f) hpseudo
   show Filter.Tendsto (fun n ↦ P n (φ n) - (p n : ℝ)) Filter.atTop (nhds 0)
   simpa only [AsympEq, AffineCombination.sentenceMinusFeature_price,
     hp.denote, sub_zero] using hres
 
-/-- The remaining operational infrastructure for fixed-frequency learning: only the
-settlement clocks.  Historical maturity is now constructed by the theorem.
-Paper node: `thm:benford` -/
-structure PseudorandomFrequencyInfrastructure
-    (P : History) (DP : DeductiveProcess) (φ : ℕ → Sentence)
-    (_hφ : RpnSentenceCodes φ) (truth : ℕ → ℝ) (f : DeferralFunction) where
-  clock : ∀ (q : ℚ), 0 ≤ (q : ℝ) → (q : ℝ) ≤ 1 →
-    PatientSettlementClock
-      (AffineCombination.sentenceMinusFeature φ
-        (AffineCombination.constantRatFeature q)) P DP
-      (fun n ↦ truth n - (q : ℝ)) f
-
-/-- Lower half of fixed-frequency `thm:benford`, with maturity constructed internally.
+/-- Lower half of fixed-frequency `thm:benford`, with maturity and settlement both
+constructed internally: no operational infrastructure hypothesis remains.
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_above
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -1621,8 +1616,7 @@ theorem lic_learning_pseudorandom_frequency_above
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) (hpseudo : PseudorandomFrequency truth p f P)
-    (hinfra : PseudorandomFrequencyInfrastructure P DP φ hφ truth f) :
+    (f : DeferralFunction) (hpseudo : PseudorandomFrequency truth p f P) :
     (fun n ↦ P n (φ n)) ≳ₙ (fun _ ↦ p) := by
   have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
     fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
@@ -1642,7 +1636,7 @@ theorem lic_learning_pseudorandom_frequency_above
       P DP φ (fun _ ↦ q) (AffineCombination.constantRatFeature q)
       hφ (AffineCombination.constantRatFeature_generated P q)
       truth htruth (fun _ ↦ ⟨hq0, hq1⟩) hworld f
-      (hinfra.clock q hq0 hq1) (hpseudo.variedAbove_of_lt q hqhigh)
+      (hpseudo.variedAbove_of_lt q hqhigh)
     filter_upwards [hlearn (ε / 2) (by linarith)] with n hn
     have hqnear : p - ε / 2 < (q : ℝ) :=
       (le_max_right 0 (p - ε / 2)).trans_lt hqlow
@@ -1656,8 +1650,7 @@ theorem lic_learning_pseudorandom_frequency_below
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) (hpseudo : PseudorandomFrequency truth p f P)
-    (hinfra : PseudorandomFrequencyInfrastructure P DP φ hφ truth f) :
+    (f : DeferralFunction) (hpseudo : PseudorandomFrequency truth p f P) :
     (fun n ↦ P n (φ n)) ≲ₙ (fun _ ↦ p) := by
   have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
     fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
@@ -1677,7 +1670,7 @@ theorem lic_learning_pseudorandom_frequency_below
       P DP φ (fun _ ↦ q) (AffineCombination.constantRatFeature q)
       hφ (AffineCombination.constantRatFeature_generated P q)
       truth htruth (fun _ ↦ ⟨hq0, hq1⟩) hworld f
-      (hinfra.clock q hq0 hq1) (hpseudo.variedBelow_of_lt q hqlow)
+      (hpseudo.variedBelow_of_lt q hqlow)
     filter_upwards [hlearn (ε / 2) (by linarith)] with n hn
     have hqnear : (q : ℝ) < p + ε / 2 :=
       hqhigh.trans_le (min_le_right 1 (p + ε / 2))
@@ -1691,16 +1684,15 @@ theorem lic_learning_pseudorandom_frequency
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) (hpseudo : PseudorandomFrequency truth p f P)
-    (hinfra : PseudorandomFrequencyInfrastructure P DP φ hφ truth f) :
+    (f : DeferralFunction) (hpseudo : PseudorandomFrequency truth p f P) :
     (fun n ↦ P n (φ n)) ≈ₙ (fun _ ↦ p) := by
   have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
     fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   rw [asympEq_iff_asympLE_asympGE]
   exact ⟨
     lic_learning_pseudorandom_frequency_below P DP φ hφ truth htruth p hp hworld
-      f hpseudo hinfra,
+      f hpseudo,
     lic_learning_pseudorandom_frequency_above P DP φ hφ truth htruth p hp hworld
-      f hpseudo hinfra⟩
+      f hpseudo⟩
 
 end LogicalInduction

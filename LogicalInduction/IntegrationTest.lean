@@ -170,11 +170,9 @@ lemma prandexp_hypothesis_discharged
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
-    (clock : PatientSettlementClock (LUVCombination.normalizedMesh As b) P DP
-      (LUVCombination.normalizedMeshTruth As P DP hworld b) f)
     (hpseudo : PseudorandomAbove truth f P) :
     PseudorandomExpectationHypothesis As P :=
-  h.prandexp hexact hdet b hshare hworld f clock hpseudo
+  h.prandexp hexact hdet b hshare hworld f hpseudo
 
 #print axioms divergent_weighted_null_error_discharged
 #print axioms prandexp_hypothesis_discharged
@@ -224,12 +222,9 @@ lemma arbitrary_bcs_prandaff_discharged
     {truth : ℕ → ℝ} (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
-    (clock : PatientSettlementClock
-      (fun n => (As n).scale (.const h.unitNormalization.scale)) P DP
-      (fun n => (h.unitNormalization.scale : ℝ) * truth n) f)
     (hpseudo : Pseudorandom truth f P) :
     (fun n => (As n).price P n) ≈ₙ (fun _ => 0) :=
-  h.prandaff hdet hworld f clock hpseudo
+  h.prandaff hdet hworld f hpseudo
 
 #print axioms arbitrary_bcs_recunbiasedaff_discharged
 #print axioms arbitrary_bcs_wubaff_discharged
