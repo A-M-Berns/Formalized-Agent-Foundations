@@ -1955,12 +1955,18 @@ lemma lt_deferralEnvelope (f : DeferralFunction) (n : ℕ) :
 `app:prandaff` selector: whether component `i` is still before its envelope deadline or
 not yet certified settled at stage `n`.
 
-The clock is a type-(c) computation boundary, not an economic certificate.  Its emitted
-bit is polynomially codeable; activity only decreases; every component is active through
-its deadline and eventually becomes inactive; and inactivity certifies both deadline
-passage and exact finite-stage settlement.  It contains no prices, weighting divergence,
-bias, or pseudorandom-learning conclusion.  The concrete bounded universal evaluator and
-finite-world checker which instantiate it are the ledgered `M7-PATIENT-CLOCK` witness.
+The clock is an internal interface, **not** a modeling substitution: it is *derived* from
+the paper's own `DefinitelySettled` dovetail (`app:prandaff`), which a logical inductor's
+market and deductive-process programs already supply. `PatientSettlementClock.ofComputations`
+(`Construction/Witnesses/M7Witnesses.lean`) builds it from `IsLogicalInductor`'s
+`marketComputable`/`processComputable` alone, so every paper-facing `thm:prandaff`,
+`thm:prand`, `thm:prandexp`, and `thm:benford` endpoint discharges it with no added
+hypothesis — provenance kind `C`, composition. Its emitted bit is polynomially codeable;
+activity only decreases; every component is active through its deadline and eventually
+becomes inactive; and inactivity certifies both deadline passage and exact finite-stage
+settlement.  It contains no prices, weighting divergence, bias, or pseudorandom-learning
+conclusion.  The concrete bounded universal evaluator and finite-world checker which
+instantiate it are the ledgered `M7-PATIENT-CLOCK` witness.
 Paper node: `app:prandaff` -/
 structure PatientSettlementClock (As : ℕ → AffineCombination) (P : History)
     (DP : DeductiveProcess) (truth : ℕ → ℝ) (f : DeferralFunction) where

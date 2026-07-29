@@ -616,8 +616,6 @@ deliberately. -/
   sentence sentence_codes approximation approximation_codes approximation_nonneg approximation_le approximation_tendsto kraft covers
 #assert_fields PrefixNegationCompiler
   overhead complexity_neg_le
-#assert_fields PseudorandomFrequencyInfrastructure
-  clock
 #assert_fields QuotationTheoryPresentation
   toComputationTheoryPresentation theory_sigmaOne quote_positive_enters quote_negative_refutes
 #assert_fields RationalQuoteCode
