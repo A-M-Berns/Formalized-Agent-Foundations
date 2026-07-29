@@ -7134,6 +7134,81 @@ lemma liaEncodedQuoteNatAtFuel_computable {DP : DeductiveProcess}
     Computable₂ (liaEncodedQuoteNatAtFuel process) :=
   (liaEncodedQuoteNatAtFuel_prim process).to_comp
 
+section
+attribute [local irreducible] Nat.sqrt liaEncodedEntriesAtFuel
+
+/-- The bounded belief-state evaluator is primitive recursive in its day input and its
+common fuel clock. -/
+private lemma liaEncodedEntriesAtFuel_prim {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) :
+    Primrec₂ (liaEncodedEntriesAtFuel process) := by
+  let X := ℕ × ℕ
+  have hday : Primrec fun p : X => p.1 := Primrec.fst
+  have hdaySucc : Primrec fun p : X => p.1 + 1 :=
+    Primrec.nat_add.comp hday (Primrec.const 1)
+  have hprefix : Primrec fun p : X =>
+      liaPrefixAtFuel process p.2 (p.1 + 1) :=
+    (liaPrefixAtFuel_prim process).comp Primrec.snd hdaySucc
+  let Y := X × List RationalBeliefState
+  have hlookup : Primrec fun y : Y => y.2[y.1.1]? :=
+    Primrec.list_getElem?.comp Primrec.snd (hday.comp Primrec.fst)
+  have hfinish : Primrec₂ fun (_y : Y) (state : RationalBeliefState) =>
+      some (Encodable.encode state.entries) :=
+    Primrec₂.option_some_iff.mpr
+      (Primrec.encode.comp₂ (rationalBeliefStateEntries_prim.comp₂ Primrec₂.right))
+  have hinner : Primrec₂ fun (p : X)
+      (states : List RationalBeliefState) =>
+      states[p.1]?.bind fun state => some (Encodable.encode state.entries) :=
+    (Primrec.option_bind hlookup hfinish).to₂
+  exact ((Primrec.option_bind hprefix hinner).to₂).of_eq fun n fuel => by
+    unfold liaEncodedEntriesAtFuel
+    rfl
+
+end
+
+/-- Concrete computability certificate for the bounded belief-state evaluator. -/
+lemma liaEncodedEntriesAtFuel_computable {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) :
+    Computable₂ (liaEncodedEntriesAtFuel process) :=
+  (liaEncodedEntriesAtFuel_prim process).to_comp
+
+/-- Minimizing the bounded belief-state evaluator over its fuel clock gives one total
+computable function emitting the exact day-`n` finite association list. -/
+lemma liaEntries_computable {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) :
+    Computable fun n : ℕ => Encodable.encode (liaStates DP n).entries := by
+  let search : ℕ → Part ℕ := fun n =>
+    Nat.rfindOpt (liaEncodedEntriesAtFuel process n)
+  have hsearch : Partrec search :=
+    Partrec.rfindOpt (liaEncodedEntriesAtFuel_computable process)
+  apply hsearch.of_eq_tot
+  intro n
+  have hdom : (search n).Dom := by
+    rw [Nat.rfindOpt_dom]
+    obtain ⟨fuel, hfuel⟩ := exists_liaEncodedEntriesAtFuel process n
+    exact ⟨fuel, _, hfuel⟩
+  let out := (search n).get hdom
+  have hout : out ∈ search n := Part.get_mem hdom
+  obtain ⟨fuel, hfuel⟩ := Nat.rfindOpt_spec hout
+  have houtEq := liaEncodedEntriesAtFuel_sound process hfuel
+  rw [← houtEq]
+  exact hout
+
+/-- The single program promised by `def:belseq`: on input `n` it emits the code of the
+day-`n` finite belief-state association list. -/
+lemma exists_liaEntries_code {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) :
+    ∃ code : Nat.Partrec.Code, ∀ n : ℕ,
+      Encodable.encode (liaStates DP n).entries ∈ code.eval n := by
+  have hpart : Nat.Partrec (fun n : ℕ =>
+      Part.some (Encodable.encode (liaStates DP n).entries)) :=
+    Partrec.nat_iff.mp (liaEntries_computable process).partrec
+  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp hpart
+  refine ⟨code, ?_⟩
+  intro n
+  rw [hcode]
+  simp
+
 /-- The concrete bounded evaluator compiler assembled from the primitive-recursive
 first-order implementation above. -/
 def liaBoundedEvaluatorCompiler {DP : DeductiveProcess}
@@ -7159,30 +7234,44 @@ theorem exists_logical_inductor (DP : DeductiveProcess)
   ⟨liaHistory DP, LIA_is_logical_inductor DP hDP⟩
 
 /-- **`thm:li`, full belief-sequence form.**  The paper's main theorem concludes existence of a
-*computable belief sequence* whose daily belief states have finite support and `[0,1]` values, and
-whose induced pricing satisfies the criterion.  This states exactly that: the witness is the
-recursive rational belief sequence `liaStates DP : ℕ → RationalBeliefState`, and
+*computable belief sequence* (`def:belseq`) of finite-support `[0,1]`-rational belief states
+(`def:belstate`) whose induced pricing satisfies the criterion.  The witness is the recursive
+rational belief sequence `liaStates DP : ℕ → RationalBeliefState`, and
 
 * `IsLogicalInductor (fun n => (𝔹 n).toValuation) DP` — the induced real pricing is a logical
   inductor.  This class bundles the paper's *computable exact-rational market* certificate
   (`marketComputable : ComputableMarket` — one fixed program computes the rational quote table),
-  the computable deductive process, and the no-exploitation criterion, so **computability, exact
-  rational pricing, and the `[0,1]` range are all carried here**;
+  the computable deductive process, and the no-exploitation criterion;
+* **one program emits the belief states themselves**: a single `Nat.Partrec.Code` that on input
+  `n` outputs the code of the day-`n` finite association list `(𝔹 n).entries`.  This is the
+  conjunct that makes `𝔹` a *computable belief sequence* in the paper's sense; it is strictly
+  stronger than the quote-table computability carried by `marketComputable`, since a uniformly
+  computable finite-support quote table need not have a computable support listing;
 * each day's belief state has **finite support** — only the finitely many sentences in
   `(𝔹 n).support` are priced nonzero;
 * each priced value is an **exact rational in `[0,1]`**; and
 * the induced real pricing is the rational quote cast to `ℝ`.
 
 `exists_logical_inductor` above is the projection to the bare existence statement.
+
+Proof kind `C` (composition).  Provenance: the criterion conjunct is `LIA_is_logical_inductor`
+(a); the emission conjunct is `exists_liaEntries_code` (a) — minimization of the primitive
+recursive bounded evaluator `liaEncodedEntriesAtFuel` over its fuel clock, pinned to the
+semantic states by `liaEncodedEntriesAtFuel_sound`; the support/range/cast conjuncts are
+`RationalBeliefState` facts (a).
 Paper node: `thm:li` -/
 theorem exists_computable_beliefSequence_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
     ∃ 𝔹 : ℕ → RationalBeliefState,
       IsLogicalInductor (fun n => (𝔹 n).toValuation) DP ∧
+        (∃ code : Nat.Partrec.Code, ∀ n : ℕ,
+          Encodable.encode (𝔹 n).entries ∈ code.eval n) ∧
         (∀ n φ, φ ∉ (𝔹 n).support → (𝔹 n).quote φ = 0) ∧
         (∀ n φ, 0 ≤ (𝔹 n).quote φ ∧ (𝔹 n).quote φ ≤ 1) ∧
-        (∀ n φ, (𝔹 n).toValuation φ = ((𝔹 n).quote φ : ℝ)) :=
-  ⟨liaStates DP, LIA_is_logical_inductor DP hDP,
+        (∀ n φ, (𝔹 n).toValuation φ = ((𝔹 n).quote φ : ℝ)) := by
+  obtain ⟨process⟩ := hDP.nonemptyComputation
+  exact ⟨liaStates DP, LIA_is_logical_inductor DP hDP,
+    exists_liaEntries_code process,
     fun n φ h => (liaStates DP n).quote_eq_zero_of_not_mem h,
     fun n φ => (liaStates DP n).quote_mem_Icc φ,
     fun _ _ => rfl⟩
