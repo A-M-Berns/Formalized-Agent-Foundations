@@ -27,7 +27,7 @@ from pathlib import Path
 
 LIB = Path("LogicalInduction")
 AUDIT = Path("AxiomAudit.lean")
-CLASSIFICATION = Path("notes/coverage-classification.md")
+CLASSIFICATION = Path("scripts/coverage-classification.md")
 TIERS = {"complete", "conditional", "qualified", "interface"}
 
 # Labels that legitimately have no standalone endpoint of their own:
