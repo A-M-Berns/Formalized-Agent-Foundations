@@ -31,5 +31,6 @@ for p in "$MAIN"/.lake/packages/*/; do
     || cp -R "$p" "$WT/.lake/packages/$name" 2>/dev/null
   clone "$p/.lake/build" "$WT/.lake/packages/$name/.lake/build"
 done
-echo '{"systemMessage": "Seeded Lean build caches into new worktree."}'
+# NOTE: WorktreeCreate treats hook stdout as a worktree-path override — emit nothing.
+echo "seeded caches into $WT" >&2
 exit 0
