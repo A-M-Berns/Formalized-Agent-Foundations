@@ -1,32 +1,31 @@
 /-
-# Self-Trust — `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` (statement audit)
+# Self-Trust — §4.12: `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`; `def:deferralfunc`
 
-Paper §4.12 (`main.tex` 2045–2092). These theorems quantify over *quoted* sentences
-(`⌜𝔼_{f(n)}(X_n)⌝`, `⌜P_{f(n)}(φ_n)⌝`) — first-order reflection our propositional
-`Sentence` cannot express. Per the G2 decision (Anson, 2026-07-11), reflection is modeled
-the **non-vacuous way**:
+These theorems quantify over *quoted* sentences (`⌜𝔼_{f(n)}(X_n)⌝`, `⌜P_{f(n)}(φ_n)⌝`) —
+first-order reflection our propositional `Sentence` cannot express. Reflection is therefore
+modeled in the way that keeps the statements non-vacuous:
 
 * **Quoted objects are relational.** Each quoted expression enters as an *arbitrary* LUV
   family `Y : ℕ → LUV` constrained by a linkage hypothesis (`PCWorld.ValuesAt`), never as
-  a canonical construction — constructing a representative would silently pre-discharge
-  the learning content (the D3 general principle).
+  a canonical construction — building a representative here would silently pre-discharge
+  the very learning content the theorem asserts.
 * **Reflection uses the completed theory.** A value assertion quantifies over every rational
   threshold, so no finite deductive stage can in general contain its entire infinite
   threshold diagram.  The faithful propositional translation therefore asks every world
-  consistent with the completed theory to value the quote correctly.  M7's construction
-  discharges this pointwise: each true or false threshold computation is eventually proved
-  and enters `D`.  Deferred market timing remains a separate, load-bearing obligation in
-  `AffineQuoteEq`/`AffineQuoteGE`; no future-knowing deductive process is introduced.
+  consistent with the completed theory to value the quote correctly.  The explicit inductor
+  construction discharges this pointwise: each true or false threshold computation is
+  eventually proved and enters `D`.  Deferred market timing remains a separate, load-bearing
+  obligation in `AffineQuoteEq`/`AffineQuoteGE`; no future-knowing deductive process is
+  introduced.
 
-**Residual type-`(c)` (ledgered):** the linkage hypotheses import the paper's entire
-"quoting + Θ-represents-computations" mechanism; their principled witness is M7's
-construction. Naming caution (roadmap): the deference corpus's "cee" is the paper's
-`thm:ceu`.
+**Residual type-`(c)` disclosure:** the linkage hypotheses import the paper's entire
+"quoting + Θ-represents-computations" mechanism; their principled witness is the explicit
+inductor construction.
 
-**M4/M7 repair:** completed-theory hypotheses record the logical semantics of each quote,
-while `AffineQuoteEq`/`AffineQuoteGE` supply the operational certificate: one fixed,
-uniformly emitted affine portfolio whose later price is coherent.  This separates logical
-quotation from the preemptive-learning transport proved here.
+The completed-theory hypotheses record the logical semantics of each quote, while
+`AffineQuoteEq`/`AffineQuoteGE` supply the operational certificate: one fixed, uniformly
+emitted affine portfolio whose later price is coherent.  This separates logical quotation
+from the preemptive-learning transport proved here.
 -/
 import LogicalInduction.Properties.ExpectationAffine
 import LogicalInduction.Properties.Basic
@@ -65,7 +64,7 @@ noncomputable def ctsInd (δ : ℚ) (x y : ℝ) : ℝ :=
 The paper's `thm:exppolymax` step does not compare two independently regenerated
 day-indexed expectation grids.  It fixes one affine portfolio on day `n`, and compares
 the price of that *same portfolio* on day `n` with its price on the deferred day `f n`.
-The certificate below exposes exactly that missing boundary.  It contains the concrete
+The certificate below exposes exactly that boundary.  It contains the concrete
 portfolio family, its uniform polynomial emitter, the normalization used to keep one
 unit of affine risk, and the exact identification of its day-`n` price with the quoted
 gap.  Coherence is imposed only at the later market day, so it does not give `D n`
@@ -77,7 +76,7 @@ Paper node: `thm:er` -/
 structure AffineQuotePortfolio (P : History) (gap : ℕ → ℝ) where
   /-- The portfolio fixed on day `n` and retained unchanged when priced later. -/
   family : ℕ → AffineCombination
-  /-- Honest uniform syntax/emission certificate for the family. -/
+  /-- Uniform syntax/emission certificate for the family. -/
   poly : AffineCombination.PolySequence family
   /-- Positive rational normalization of the represented gap. -/
   scale : ℚ
@@ -91,7 +90,7 @@ structure AffineQuotePortfolio (P : History) (gap : ℕ → ℝ) where
 
 /-- Two-sided quote coherence: the fixed portfolio's actual deferred-day price tends to
 zero.  This is the propositional interface for the paper's quoted-expectation reasoning
-(`thm:er`/`thm:epr` plus encoding coherence), and is the obligation that M7's concrete
+(`thm:er`/`thm:epr` plus encoding coherence), and is the obligation that a concrete
 quotation mechanism must discharge.
 Paper node: `thm:er` -/
 structure AffineQuoteEq (P : History) (f : DeferralFunction) (gap : ℕ → ℝ)
@@ -323,8 +322,8 @@ theorem lic_expected_future_expectations (P : History) (DP : DeductiveProcess)
       hquote.affine.future_coherent
 
 /-- **No Expected Net Update** (`thm:ceu`): `Pₙ(φₙ) ≈ₙ 𝔼ₙ(⌜P_{f(n)}(φₙ)⌝)`.
-`Y n` is the quoted future price: every world consistent with `D (r n)` values it at the
-actual day-`f n` price of `φ n`. (Deference-corpus name: "cee".)
+`Y n` is the quoted future price: every completed-theory world values it at the actual
+day-`f n` price of `φ n`.
 Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (φ : ℕ → Sentence)

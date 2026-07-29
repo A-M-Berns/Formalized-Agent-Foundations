@@ -1,11 +1,14 @@
 /-
-# Metamathematical and halting-pattern consequences
+# Trust in Consistency and Reasoning about Halting — §4.9–4.10
 
-The paper derives these nodes from Provability Induction plus the assumption that the
-background theory represents computations.  This repository has propositional sentences
-rather than first-order Gödel syntax, so the representation step is exposed as a narrow
-interface.  Its fields mention only sentence emission and eventual theoremhood/refutability;
-they never mention market prices or any desired asymptotic conclusion.
+`thm:pac`, `thm:pazfc`, `thm:incons` (trust in consistency); `thm:halts`, `thm:loops`,
+`thm:dontwait` (halting patterns).
+
+The paper derives these from Provability Induction plus the assumption that the background
+theory represents computations.  The sentences here are propositional rather than
+first-order Gödel syntax, so the representation step is exposed as a narrow interface.  Its
+fields mention only sentence emission and eventual theoremhood/refutability; they never
+mention market prices or any desired asymptotic conclusion.
 -/
 import LogicalInduction.Properties.AffineCoherence
 
@@ -30,7 +33,7 @@ structure RepresentedDecidableClaims (DP : DeductiveProcess) (truth : ℕ → Pr
     extends RepresentedSemidecidableClaims DP truth where
   disprovable_of_false : ∀ n, ¬truth n → ∃ k, (∼sentence n) ∈ DP.D k
 
-/-- Halting of one repository machine code on one natural-number input. -/
+/-- Halting of one `Nat.Partrec.Code` machine on one natural-number input. -/
 def CodeHalts (machine : Nat.Partrec.Code) (input : ℕ) : Prop :=
   (machine.eval input).Dom
 
@@ -42,7 +45,7 @@ def CodeHaltsWithin (machine : Nat.Partrec.Code) (input steps : ℕ) : Prop :=
 /-- The two separately emitted sentences used for an inconsistent theory: “inconsistent”
 is eventually proved when the finite contradiction search succeeds, while “consistent” is
 then refuted.  Keeping both sequences explicit avoids assuming a syntactic-negation law that
-the repository's abstract `Sentence` representation does not provide.
+the abstract `Sentence` representation does not provide.
 Paper node: `thm:incons` -/
 structure InconsistentTheoryClaims (DP : DeductiveProcess) (inconsistent : ℕ → Prop) where
   inconsistencySentence : ℕ → Sentence
@@ -98,9 +101,9 @@ theorem lic_disbelief_inconsistent_theories
     lic_provind_false P DP R.consistencySentence R.consistency_poly
       (fun n => R.consistency_disprovable n (hall n)) hworld⟩
 
-/-- **Learning of Halting Patterns** (`thm:halts`) for polynomially named repository
-machine/input sequences.  Machine runtime is unrestricted: only the representing sentence
-sequence must be polynomially emitted.
+/-- **Learning of Halting Patterns** (`thm:halts`) for polynomially named machine/input
+sequences.  Machine runtime is unrestricted: only the representing sentence sequence must
+be polynomially emitted.
 Paper node: `thm:halts` -/
 theorem lic_learns_halting_patterns
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]

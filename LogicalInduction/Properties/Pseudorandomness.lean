@@ -1,16 +1,21 @@
 /-
-# Feedback and pseudorandomness infrastructure
+# Feedback and pseudorandomness
 
-This file develops the `wubaff`/`prandaff` dependency tranche without weakening the
-paper's quantifiers.  In particular, `DeferralPatient` is the paper's bounded-window
-condition, not the stronger and easier condition “all divergent weightings”.  It builds
-the market-generated patient-capacity selector used by `thm:prandaff`, specializes that
-theorem to the rational varied-frequency `thm:prand`, and proves fixed-frequency
-`thm:benford` for an arbitrary real frequency by the paper's rational squeeze.
+Renders §4.4 "Learning Statistical Patterns" together with the affine feedback theorems
+it depends on: `thm:wubaff` (Affine Unbiasedness from Feedback) and its one-share
+specialization `thm:wub`, `thm:prandaff` (Learning Pseudorandom Affine Sequences), its
+rational varied-frequency specialization `thm:prand`, and fixed real frequency
+`thm:benford`, proved from `thm:prand` by the paper's rational squeeze.  Definitions
+`def:deferralfunc`, `def:pseudorandom`, `def:seqprand`; appendix proofs `app:wubaff`,
+`app:prandaff`, `app:pseudorandom`.
 
-The remaining operational boundaries are deliberately visible as settlement clocks and
-historical verifier constructors.  They contain no selector divergence, price bound,
-bias, pseudorandomness, or learning conclusion.
+`DeferralPatient` is the paper's bounded-window condition (uniformly bounded weight in
+each window `[n, f n]`), not the stronger and easier "all divergent weightings".
+
+Two operational premises are kept explicit as hypothesis structures rather than folded
+into the theorems: settlement clocks and historical verifier constructors.  Each carries
+only computational data — no selector divergence, price bound, bias, pseudorandomness, or
+learning conclusion.
 -/
 import LogicalInduction.Properties.Calibration
 import LogicalInduction.Properties.SelfTrust
@@ -389,10 +394,10 @@ lemma feedbackWealth_log_lower {δ : ℝ} {w r : ℕ → ℝ}
             rw [Finset.mul_sum, Finset.mul_sum, Finset.sum_sub_distrib]
     _ ≤ ∑ i ∈ Finset.range k, Real.log (1 + δ * w i * r i) := hsum
 
-/-- A recurrent positive weighted return margin makes the Kelly wealth genuinely
-unbounded.  This is the non-vacuous upside half of the `wubaff` economic argument; the
-later market theorem must still realize these returns with an efficiently computable
-round-trip trader and prove its world-uniform downside bound. -/
+/-- A recurrent positive weighted return margin makes the Kelly wealth unbounded — the
+upside half of the `app:wubaff` economic argument.  This is a statement about the
+recurrence alone; realizing these returns with an efficiently computable round-trip
+trader, and bounding its downside uniformly in the world, is done below. -/
 lemma feedbackWealth_not_bddAbove_of_frequently_positive_return
     {δ γ : ℝ} {w r : ℕ → ℝ}
     (hδ0 : 0 < δ) (hδ : δ ≤ 1 / 2) (hgap : 2 * δ < γ)
@@ -819,7 +824,7 @@ def feedbackTraderTrades (As : ℕ → AffineCombination) (W : ℕ → EF)
     (f : DeferralFunction) (δ : ℚ) (n : ℕ) : List (EF × Sentence) :=
   (List.range (n + 1)).flatMap fun k ↦ feedbackRoundTripTrades As W f δ k n
 
-/-- `feedbackTraderTrades` is literal list equality with the existing economic trader. -/
+/-- The joined trader's day-`n` trade list is literally `feedbackTraderTrades`. -/
 lemma feedbackTrader_trades
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -835,8 +840,9 @@ lemma feedbackTrader_trades
 the exact trade count, each coefficient feature, and each sentence code; `trades_eq`
 requires these fields to reconstruct the trader's real day strategy.  It contains no
 prices, worlds, wealth bounds, bias premise, exploitation claim, or logical-induction
-conclusion.  Constructing it uniformly from a deferral program is the ledgered
-`M7-FEEDBACK-EMIT` bounded-dovetail obligation.
+conclusion.  Inhabiting it is a purely computational obligation, discharged by running
+the deferral program under a day-`n` polynomial clock and emitting a trade only for the
+components whose bounded run has returned the current day.
 Paper node: `thm:wubaff`, `thm:wubexp` -/
 structure FeedbackTraderEmission
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
@@ -944,9 +950,9 @@ lemma feedbackTrader_strat_value_full_prefix
   simp only [Finset.mem_range] at hkN hkn
   exact feedbackRoundTrip_value_zero_of_day_lt_index hpoly hW hstrict δ P w (by omega)
 
-/-- Finite-prefix accounting for the joined trader.  This theorem is deliberately about
-the concrete `Trader.netWorth`, not an abstract wealth certificate: it reorders the
-actual finite sum of emitted day strategies into the sum of component round trips. -/
+/-- Finite-prefix accounting for the joined trader, stated for the concrete
+`Trader.netWorth` rather than an abstract wealth certificate: it reorders the finite sum
+of emitted day strategies into the sum of component round trips. -/
 lemma feedbackTrader_netWorth_eq_component_sum
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -1244,9 +1250,9 @@ lemma feedbackTrader_plausible_not_bddAbove_of_wealth
     ⟨f k, v, hv, rfl⟩, ?_⟩
   linarith
 
-/-- The completed economic kernel: genuinely unbounded feedback wealth makes the
-explicit sparse round-trip trader exploit the market, with the downside and upside both
-proved from its emitted strategies.  Efficient computability is attached separately. -/
+/-- The economic kernel: unbounded feedback wealth makes the sparse round-trip trader
+exploit the market.  Both the bounded downside and the unbounded upside come from the
+trader's emitted strategies; efficient computability is attached separately. -/
 lemma feedbackTrader_exploits_of_wealth_unbounded
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -1266,9 +1272,9 @@ lemma feedbackTrader_exploits_of_wealth_unbounded
     feedbackTrader_plausible_not_bddAbove_of_wealth hpoly hW hstrict δ hWdiv hmag hP
       hδ0 hδ hworld hwealth⟩
 
-/-- Non-vacuous end-to-end Kelly exploitation theorem.  A recurrent positive return
-margin and divergent supported mass force the explicit trader's plausible assessments
-unbounded above while its global loss remains bounded by one. -/
+/-- Kelly exploitation from the hypotheses the market argument actually supplies: a
+recurrent positive return margin and divergent supported mass force the trader's
+plausible assessments unbounded above while its global loss stays bounded by one. -/
 lemma feedbackTrader_exploits_of_frequently_positive_return
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -1696,9 +1702,9 @@ lemma feedbackWeightedBias_asympGE_zero
   change 0 ≤ feedbackWeightedAverage w bias k + ε
   linarith
 
-/-- Two-sided sparse feedback unbiasedness.  The upper bound is the proved lower-bound
-theorem applied to the explicit negated affine sequence, then transported back using
-linearity of the feedback weighted average. -/
+/-- Two-sided sparse feedback unbiasedness.  The upper bound is the lower-bound lemma
+applied to the negated affine sequence, transported back by linearity of the feedback
+weighted average. -/
 lemma feedbackWeightedBias_asympEq_zero
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W) {f : DeferralFunction}
@@ -1750,8 +1756,9 @@ lemma feedbackWeightedBias_asympEq_zero
 /-- Conclusion-free sparse sequence used to obtain delayed feedback from affine
 provability induction.  At day `f(k+1)` its diagonal price is exactly the delayed quote
 error for `A_{f k}`; every completed-theory world values it at zero.  The polynomial
-sequence and normalization data are the ledgered `M7-FEEDBACK-TRUTH` witness corresponding
-to the paper's premise that `ThmValue(A_{f k})` is computable within `poly(f(k+1))`.
+sequence and normalization data render the paper's premise that `ThmValue(A_{f k})` is
+computable within `poly(f(k+1))`: a bounded simulation of that program, combined with the
+deferral schedule, emits the sparse family literally.
 Paper node: `thm:wubaff`, `thm:wubexp` -/
 structure FeedbackTruthSequence
     (As : ℕ → AffineCombination) (truth : ℕ → ℝ)
@@ -1793,15 +1800,14 @@ lemma FeedbackTruthSequence.accurate
   rw [bridge.feedback_price] at hnear
   exact hnear
 
-/-- `thm:wubaff` (conditional on the two explicit representation boundaries).
+/-- `thm:wubaff`, conditional on the two computational representation hypotheses.
 
 For every divergent market-generated weighting supported on a strictly increasing
-feedback schedule, the weighted affine bias converges to zero.  `emit` supplies real
-token certificates for the concrete Kelly traders in both sign orientations, while
-`bridge` supplies the conclusion-free sparse zero-valued affine sequence whose delayed
-accuracy follows from affine provability induction.  These are precisely the ledgered
-`M7-FEEDBACK-EMIT` and `M7-FEEDBACK-TRUTH` constructors; all economic, analytic,
-support-reindexing, and sign-transfer arguments are proved here.
+feedback schedule, the weighted affine bias converges to zero.  `emit` supplies token
+certificates for the concrete Kelly traders in both sign orientations; `bridge` supplies
+the conclusion-free sparse zero-valued affine sequence whose delayed accuracy follows
+from affine provability induction.  Those two are the only inputs not derived here — the
+economic, analytic, support-reindexing, and sign-transfer arguments are all in this file.
 Paper node: `thm:wubaff` -/
 theorem lic_wubaff
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
@@ -1888,10 +1894,9 @@ theorem BoundedCombinationSequence.wubaff
     rwa [heq] at hs'
   exact asympEq_zero_of_const_mul_pos hq hscaled
 
-/-- Exact conditional `thm:wub`, obtained by the paper's one-share specialization of
-`thm:wubaff`.  `TheoryTruth` states that `truth` is the completed-theory truth stream;
-the two feedback representation arguments are the same narrowly ledgered computational
-constructors as in the affine theorem, specialized to `sentenceAffine φ`.
+/-- `thm:wub`, the paper's one-share specialization of `thm:wubaff`.  `TheoryTruth` states
+that `truth` is the completed-theory truth stream; `emit` and `bridge` are the same two
+computational hypotheses as in the affine theorem, specialized to `sentenceAffine φ`.
 Paper node: `thm:wub` -/
 theorem lic_wub
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -1959,16 +1964,16 @@ not yet certified settled at stage `n`.
 The clock is an internal interface, **not** a modeling substitution: it is *derived* from
 the paper's own `DefinitelySettled` dovetail (`app:prandaff`), which a logical inductor's
 market and deductive-process programs already supply. `PatientSettlementClock.ofComputations`
-(`Construction/Witnesses/M7Witnesses.lean`) builds it from `IsLogicalInductor`'s
+builds it from `IsLogicalInductor`'s
 `marketComputable`/`processComputable` alone, so every paper-facing `thm:prandaff`,
 `thm:prand`, `thm:prandexp`, and `thm:benford` endpoint discharges it with no added
 hypothesis — provenance kind `C`, composition. Its emitted bit is polynomially codeable;
 activity only decreases; every component is active through its deadline and eventually
 becomes inactive; and inactivity certifies both deadline passage and finite-stage
 settlement *to within the error stream `err`*.  It contains no prices, weighting
-divergence, bias, or pseudorandom-learning conclusion.  The concrete bounded universal
-evaluator and finite-world checker which instantiate it are the ledgered
-`M7-PATIENT-CLOCK` witness.
+divergence, bias, or pseudorandom-learning conclusion.  It is instantiated by a bounded
+universal evaluator (a total fuel-clocked interpreter run under a growing budget) plus a
+finite-world checker.
 
 `err` is `0` whenever the sequence is exactly determined via the completed theory.  It is
 nonzero exactly when the traded sequence is only *approximately* determined — the
@@ -2018,9 +2023,9 @@ def patientUnderpriceAttempt (As : ℕ → AffineCombination) (low width : ℚ)
     (n : ℕ) : EF :=
   buyIndF ((As n).priceFeature n) low width
 
-/-- The actual patient selector weighting.  The audited shared fractional recurrence
-computes remaining capital from earlier attempted weights and their current clock
-occupancy, then multiplies by today's underpricing attempt. -/
+/-- The patient selector weighting.  The shared fractional recurrence computes remaining
+capital from earlier attempted weights and their current clock occupancy, then multiplies
+by today's underpricing attempt. -/
 def patientUnderpriceWeight {As : ℕ → AffineCombination} {P : History}
     {DP : DeductiveProcess} {truth err : ℕ → ℝ} {f : DeferralFunction}
     (clock : PatientSettlementClock As P DP truth err f) (low width : ℚ)
@@ -2197,8 +2202,8 @@ lemma patientUnderpriceWeight_pos_imp_price_lt
   simpa only [α, patientUnderpriceAttempt,
     (As n).priceFeature_denote] using hopen
 
-/-- The patient selector is a genuinely market-generated weighting with a uniform
-polynomial segment emitter, legal rank, and closed semantics. -/
+/-- The patient selector is a market-generated weighting: uniform polynomial segment
+emitter, legal rank, and closed semantics. -/
 lemma patientUnderpriceWeight_pgenerable
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
     {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
@@ -2271,10 +2276,10 @@ lemma patientUnderpriceWeight_prefixSum_eq_fractionalAllocationPrefix
   rw [patientUnderpriceWeight_denote hpoly clock low width P i]
   rfl
 
-/-- Recurrent full-strength underpricing makes the patient selector genuinely divergent.
-This is the Appendix recycling argument: every old occupancy eventually vanishes, while
-the audited fractional recurrence forces unbounded cumulative allocation whenever the
-attempt stream is frequently one. -/
+/-- Recurrent full-strength underpricing makes the patient selector divergent.  This is
+the recycling argument of `app:prandaff`: every old occupancy eventually vanishes, while
+the fractional recurrence forces unbounded cumulative allocation whenever the attempt
+stream is frequently one. -/
 lemma patientUnderpriceWeight_divergent
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
     {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
@@ -2337,13 +2342,11 @@ lemma DeferralPatient.mono_bound {f : DeferralFunction} {W : ℕ → EF} {P : Hi
   obtain ⟨C, hC⟩ := h
   refine ⟨max C 0, le_max_right _ _, fun n ↦ (hC n).trans (le_max_left _ _ )⟩
 
-/-- The analytic contradiction at the heart of the recurring-unbiasedness route to
-pseudorandom learning.  If normalized bias has `0` as a genuine subsequential limit and
-the normalized truth average is asymptotically nonnegative, then the normalized market
-average cannot remain below any fixed negative margin.
-
-This theorem proves the crossing/limit argument explicitly.  Its hypotheses contain no
-diagonal market conclusion and no selector weighting. -/
+/-- The analytic contradiction linking recurring unbiasedness to pseudorandom learning.
+If normalized bias has `0` as a subsequential limit and the normalized truth average is
+asymptotically nonnegative, then the normalized market average cannot remain below any
+fixed negative margin.  The hypotheses mention no diagonal market conclusion and no
+selector weighting. -/
 lemma not_eventually_weightedAverage_lt_of_limitPoint_bias
     (w market truth : ℕ → ℝ)
     (hden : ∀ᶠ n in atTop, 0 < prefixSum w n)
@@ -2421,10 +2424,10 @@ lemma not_eventually_weightedAverage_gt_of_limitPoint_bias
 
 /-! ## Paper-facing affine pseudorandomness branch -/
 
-/-- The `≳ₙ 0` branch of `thm:prandaff`, conditional only on the two already disclosed
-operational representation boundaries: historical maturity verification for arbitrary
-legal weightings, and the settlement clock for the determined affine sequence.  The
-proof constructs the Appendix selector, proves it P-generable/divergent/patient, obtains
+/-- The `≳ₙ 0` branch of `thm:prandaff`, conditional only on the two operational
+representation hypotheses: historical maturity verification for arbitrary legal
+weightings, and the settlement clock for the determined affine sequence.  The proof
+constructs the `app:prandaff` selector, proves it P-generable/divergent/patient, obtains
 its zero recurring-bias limit point, and derives the diagonal contradiction. -/
 theorem AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
     {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
@@ -2634,10 +2637,9 @@ theorem AffineCombination.DeterminedViaTheory.lic_prandaff_of_historicalVerifier
     (AffineCombination.errorNegligible_zero As P) hbounded hmag hworld f clock hpseudo
     hverify hverifyNeg hverifyNegNeg
 
-/-- Conditional compatibility form of the nonnegative `thm:prandaff` branch for an arbitrary
-`BCS`.
-The patient clock and historical verifiers are formulated for the canonical normalized
-family, and positive-scale cancellation restores the original diagonal prices. -/
+/-- The nonnegative `thm:prandaff` branch for an arbitrary `BCS`.  The patient clock and
+historical verifiers are formulated for the canonical normalized family, and
+positive-scale cancellation restores the original diagonal prices. -/
 theorem AffineCombination.BoundedCombinationSequence.prandaff_above_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
@@ -2676,7 +2678,7 @@ theorem AffineCombination.BoundedCombinationSequence.prandaff_above_of_historica
     simpa only [q, AffineCombination.scale_price, EF.denote_const] using hs
   exact asympGE_zero_of_const_mul_pos hq hscaled
 
-/-- Conditional compatibility form of the nonpositive `thm:prandaff` branch. -/
+/-- The nonpositive `thm:prandaff` branch for an arbitrary `BCS`. -/
 theorem AffineCombination.BoundedCombinationSequence.prandaff_below_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
@@ -2715,7 +2717,7 @@ theorem AffineCombination.BoundedCombinationSequence.prandaff_below_of_historica
     simpa only [q, AffineCombination.scale_price, EF.denote_const] using hs
   exact asympLE_zero_of_const_mul_pos hq hscaled
 
-/-- Conditional two-sided compatibility form of `thm:prandaff`. -/
+/-- Two-sided `thm:prandaff` for an arbitrary `BCS`. -/
 theorem AffineCombination.BoundedCombinationSequence.prandaff_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
@@ -2879,15 +2881,15 @@ theorem lic_learning_varied_pseudorandom_of_historicalVerifiers
 
 /-! ## Fixed-frequency rational squeeze -/
 
-/-- The legacy operational evidence needed to apply the conditional rational-target
-`prand` theorem at
-every rational `q ∈ [0,1]` used by the `thm:benford` squeeze.
+/-- The operational evidence needed to apply the conditional rational-target `prand`
+theorem at every rational `q ∈ [0,1]` used by the `thm:benford` squeeze.
 
 This is an explicit type-(c) representation boundary, not a learning certificate.  Its
-fields provide settlement clocks and executable historical verifiers for the
-centered affine family and its two negations.  In particular, it contains no price bound,
-pseudorandomness premise, convergence statement, or conclusion of `thm:benford`.
-`M7-HIST-EVALN` and `M7-PATIENT-CLOCK` are the ledgered concrete witnesses.
+fields provide settlement clocks and executable historical verifiers for the centered
+affine family `φₙ - q` and its two negations.  It contains no price bound,
+pseudorandomness premise, convergence statement, or conclusion of `thm:benford`.  Both
+fields are inhabited from a total fuel-clocked universal interpreter run under a growing
+budget.
 Paper node: `thm:benford` -/
 structure PseudorandomFrequencyInfrastructureWithHistoricalVerifiers
     (P : History) (DP : DeductiveProcess) (φ : ℕ → Sentence)

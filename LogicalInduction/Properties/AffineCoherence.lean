@@ -1,10 +1,14 @@
 /-
-# Affine coherence (`thm:affcoh`)
+# §4.5 Affine coherence (`thm:affcoh`, appendix `app:affcoh`)
 
-This file supplies the compactness bridge that the thin finite-stage plausible-world
-substrate does not otherwise expose.  Boolean worlds are represented topologically as
-`ℕ → Bool`; formula evaluation is continuous, so nested finite-stage model sets and every
-fixed affine sublevel set are closed in a compact product space.
+The compactness bridge and the theorems that consume it.  Boolean worlds are represented
+topologically as `ℕ → Bool`; formula evaluation is continuous, so nested finite-stage model
+sets and every fixed affine sublevel set are closed in a compact product space.  That is
+what lets a bound holding in every completed-theory world be pulled back to a uniform bound
+from some finite stage on.
+
+Theorems here: `thm:affcoh` (`PolySequence.affcoh`), the completed-theory forms of
+`thm:affprovind`, and `thm:provind` (`lic_provind`).
 -/
 import LogicalInduction.Properties.AffinePersistence
 import LogicalInduction.Properties.AffineProvability
@@ -233,10 +237,9 @@ lemma affineCompactConstraint_isClosed (DP : DeductiveProcess) (A : AffineCombin
 fixed affine combination is strictly above `q` in every world consistent with the
 completed theory, then after some finite stage it is above `q` in every plausible world.
 
-The proof is a genuine compact-product argument. If bad finite-stage worlds existed
-arbitrarily late, the closed finite-stage model sets together with the fixed affine
-sublevel set would have the finite intersection property, hence a completed-theory bad
-world. -/
+The proof is a compact-product argument: if bad finite-stage worlds existed arbitrarily
+late, the closed finite-stage model sets together with the fixed affine sublevel set would
+have the finite intersection property, hence a completed-theory bad world. -/
 theorem eventually_affineValue_gt_of_theory
     (DP : DeductiveProcess) (A : AffineCombination) (P : History) (q : ℝ)
     (hall : ∀ v : PCWorld, v.ConsistentWithTheory DP → q < A.value P v.payout) :

@@ -1,10 +1,11 @@
 /-
-# Uniform Non-Dogmatism (`thm:obu`)
+# Uniform Non-Dogmatism — §4.6, `thm:obu`
 
-This is the varying-sentence form of the verified non-dogmatism scale ladder.  Rung `j`
-buys from the current enumerated sentence whenever its price falls below `1/j³`, spends at
-most `1/j²` over its lifetime, and permanently disarms after one full trigger.  A world
-which satisfies the whole enumerated theory values every purchased share at one.
+The varying-sentence form of the non-dogmatism scale ladder: rung `j` buys from the
+currently enumerated sentence whenever its price falls below `1/j³`, spends at most `1/j²`
+over its lifetime, and permanently disarms after one full trigger.  A world satisfying the
+whole enumerated theory values every purchased share at one, so the ladder is bounded below
+while a single rung firing already yields profit `j − 1`.
 -/
 import LogicalInduction.Properties.NonDogmatism
 import LogicalInduction.Properties.AffinePersistence
@@ -200,7 +201,7 @@ lemma obuTerm_profit (φ : ℕ → Sentence) (P : History) (v : PCWorld)
   · rw [← hb']
     norm_num
 
-/-- The varying ladder genuinely exploits if every rung receives one full trigger and
+/-- The varying ladder exploits if every rung receives one full trigger and
 every finite deductive stage has a world satisfying the whole enumerated theory. -/
 lemma obuTrader_exploits
     (P : History) (DP : DeductiveProcess) (φ : ℕ → Sentence)
@@ -370,8 +371,8 @@ lemma obuArmBlock_spliceStream (φ : ℕ → Sentence) (hφ : RpnSentenceCodes �
     (RpnSpliceStream.tag 3 (by norm_num))
 
 /-- Spliced coefficient chunk (`obuCoef` + the ladder `add` tag): the arm blocks are
-variable-length once sentence slots carry blocks, so the fixed-width `blocks` combinator
-is replaced by `concatVar`. -/
+variable-length once sentence slots carry blocks, so this uses `concatVar` rather than the
+fixed-width `blocks` combinator. -/
 lemma obuChunkSeg_spliceStream
     (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
     RpnSpliceStream (fun m ↦
@@ -402,8 +403,8 @@ lemma obuChunkSeg_spliceStream
   rw [serialize_obuCoef, serialize_armChain_obuBuy]
   simp [EF.serialize, Nat.unpair_pair, List.append_assoc]
 
-/-- The varying-sentence scale ladder is efficiently computable in the collapsed
-symbol-metered class, from an 𝓔𝓒 enumeration certificate.
+/-- The varying-sentence scale ladder is efficiently computable in the symbol-metered
+class, from an 𝓔𝓒 enumeration certificate.
 Paper node: `def:ec` -/
 lemma obuTrader_ec (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
     EfficientlyComputable (obuTrader φ) := by

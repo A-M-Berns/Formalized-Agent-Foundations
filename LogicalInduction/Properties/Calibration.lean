@@ -1,15 +1,15 @@
 /-
-# Recurring calibration and unbiasedness
+# Calibration and unbiasedness
 
-This file begins the statistical tail of the paper.  It keeps three layers separate:
+Renders §4.3 "Calibration and Unbiasedness": `thm:simcal` (Recurring Calibration) and
+`thm:recurringunbiasedness` (Recurring Unbiasedness), over divergent weightings (`def:fuz`)
+generable from the market (`def:ece`), together with the affine generalization
+`thm:recunbiasedaff`.  Appendix proofs: `app:simcal`, `app:recurringunbiasedness`,
+`app:recunbiasedaff`.
 
-* the exact representation of a weighting generable from the market;
-* normalized weighted averages and their limit-point analysis; and
-* the operational weighted-bias trader theorem (developed below this analytic spine).
-
-In particular, a zero denominator is assigned value zero, but every theorem which uses
-division proves that the denominator is eventually positive from divergence.  This avoids
-silently strengthening the paper's divergent-weighting hypothesis.
+Convention: `weightedAverage` is total, taking value zero when the denominator vanishes.
+Every result that divides separately proves the denominator eventually positive from
+divergence, so the paper's divergent-weighting hypothesis is never silently strengthened.
 -/
 import LogicalInduction.Properties.AffineCoherence
 import Mathlib.Topology.Bases
@@ -32,8 +32,8 @@ structure PGenerableWeighting (W : ℕ → EF) : Prop where
   closed : ∀ n ρ V, (W n).denoteWith ρ V = (W n).denote V
 
 /-- Operational certificate for the paper's efficiently computable positive calibration
-widths.  The inverse-code field records closure under rational inversion in the repository's
-fuel model; semantically it adds nothing beyond positivity and computability of `δ`. -/
+widths.  The inverse-code field records closure under rational inversion in the fuel model;
+semantically it adds nothing beyond positivity and computability of `δ`. -/
 structure PolyPositiveWidths (δ : ℕ → ℚ) : Prop where
   codes : PolyRatCodes δ
   inverse_codes : PolyRatCodes (fun n => 1 / δ n)
@@ -127,7 +127,7 @@ lemma calibrationIndicator_pos_imp
   norm_num at hright
   constructor <;> linarith
 
-/-- Inclusive prefix sum, matching the repository's day-zero indexing convention. -/
+/-- Inclusive prefix sum: `prefixSum x n` sums days `0` through `n`. -/
 noncomputable def prefixSum (x : ℕ → ℝ) (n : ℕ) : ℝ :=
   ∑ i ∈ Finset.range (n + 1), x i
 
@@ -279,8 +279,8 @@ lemma weightedAverage_add (w x y : ℕ → ℝ) {n : ℕ}
     ring]
   field_simp
 
-/-- Fixed scalar multiplication commutes with the repository's total weighted average,
-including its zero-denominator branch. -/
+/-- Fixed scalar multiplication commutes with the weighted average, including its
+zero-denominator branch. -/
 lemma weightedAverage_const_mul (w x : ℕ → ℝ) (c : ℝ) (n : ℕ) :
     weightedAverage w (fun i => c * x i) n = c * weightedAverage w x n := by
   by_cases hden : prefixSum w n = 0
@@ -789,8 +789,8 @@ This is the form the threshold mesh of a LUV combination satisfies.  The paper's
 `def:affthmval` determines a LUV *combination*, not its component LUVs, so completed
 worlds may disagree about the individual threshold sentences; what survives is that the
 precision-`n` mesh reproduces the determined combination value up to the mesh error.
-Every consumer below is stated at this generality, and the exact statements are its
-`e = 0` specializations — there is one engine, not two. -/
+Every consumer below is stated at this generality; the exact statements are its `e = 0`
+specializations. -/
 def AffineCombination.ApproxDeterminedViaTheory
     (As : ℕ → AffineCombination) (P : History) (DP : DeductiveProcess)
     (truth e : ℕ → ℝ) : Prop :=
@@ -1020,7 +1020,7 @@ lemma AffineCombination.ApproxDeterminedViaTheory.exists_agree_stage
   rw [abs_sub_comm (truth i)] at hstep
   linarith
 
-/-! ### Deciding settlement (`M7-PATIENT-CLOCK`, step 2b)
+/-! ### Deciding settlement
 
 `settled_iff_agree` reduces settlement to *agreement* among plausible worlds and
 `exists_settled_stage` guarantees agreement eventually holds.  What remains is to decide
@@ -1210,9 +1210,7 @@ instance AffineCombination.SettlementTest.decidable (A : AffineCombination)
 `SettlementTest` quantifies over `BoolPCWorld.FiniteWorld B = Fin B → Bool`, whose *type*
 depends on `B` — which is computed from the input.  Lean's `Computable` machinery wants
 `Primcodable` domains and does not decompose a `decide` over such a dependent family, so no
-code can be shown to recognize the test in that form.  (Verified 2026-07-16: no
-`Computable`/`Primrec` proof over a `FiniteWorld` quantifier exists anywhere in this repo,
-and the analogous `unitMaturityCheckAtFuel` was never compiled either.)
+code can be shown to recognize the test in that form.
 
 `SettlementTestBool` is the same test presented over `List Bool` — one non-dependent
 `Primcodable` type — with `settlementTestBool_iff` proving them equivalent.  The checker's
@@ -1456,9 +1454,9 @@ lemma biasRunRate_mul_index_le (scale k : ℕ) :
   field_simp [ne_of_gt hs, ne_of_gt hk]
   nlinarith
 
-/-- Family-uniform version of the audited fractional-weight emitter.  The existing ROI
-lemma emits one recurrence with a fixed attempted-weight stream; here the family index is
-carried through every recurrence body, yielding one program for all pairs `⟨k,n⟩`. -/
+/-- Family-uniform token emitter for the fractional-weight recurrence: the family index is
+carried through every recurrence body, so a single program covers all pairs `⟨k,n⟩` rather
+than one program per fixed attempted-weight stream. -/
 lemma fractionalFamilyFeatureWeight_polySeg
     (occupancy : ℕ → ℕ → EF) (α : ℕ → ℕ → EF)
     (hα : RpnSpliceStream (fun z => (α z.unpair.1 z.unpair.2).serialize))
@@ -1584,9 +1582,9 @@ noncomputable def biasRunAttemptValue (W : ℕ → EF) (rate : ℕ → ℚ)
     (P : History) (k n : ℕ) : ℝ :=
   (biasRunAttempt W rate k n).denote P
 
-/-- The capped purchase coefficient.  `fractionalWeight` is the existing audited
-straight-line capital recurrence; multiplying it by the attempted weight gives the actual
-number of copies bought on day `n`. -/
+/-- The capped purchase coefficient.  `fractionalWeight` is the straight-line capital
+recurrence; multiplying it by the attempted weight gives the actual number of copies
+bought on day `n`. -/
 def biasRunCoefficient (As : ℕ → AffineCombination) (W : ℕ → EF)
     (rate : ℕ → ℚ) (k n : ℕ) : EF :=
   EF.mul
@@ -1713,7 +1711,7 @@ lemma biasRunAttemptedRisk_tendsto_atTop
     · simp [biasRunAttemptValue, biasRunAttempt, hki, EF.denote])
 
 /-- The capped run never commits more than one unit of share magnitude through any day.
-This is a non-vacuous capital bound derived from the actual fractional recurrence. -/
+The bound comes from the fractional recurrence itself, not from a hypothesis. -/
 lemma biasRun_magnitudePrefix_le_one
     {As : ℕ → AffineCombination} {W : ℕ → EF} {P : History}
     (hW : DivergentWeighting W P)
@@ -1919,10 +1917,10 @@ lemma biasRun_truthProfitPrefix_lower_of_surplus
   rw [hid] at hab
   linarith
 
-/-- If the uncapped attempted risk has divergent total mass, the audited fractional cap
-uses its entire unit budget: actual run magnitude tends to one.  The proof is elementary:
-the remaining budget is antitone; if it stayed above `ε`, actual allocation would dominate
-`ε` times a divergent attempted-risk sum, contradicting the unit cap. -/
+/-- If the uncapped attempted risk has divergent total mass, the fractional cap uses its
+entire unit budget: actual run magnitude tends to one.  The remaining budget is antitone;
+if it stayed above `ε`, actual allocation would dominate `ε` times a divergent
+attempted-risk sum, contradicting the unit cap. -/
 lemma biasRun_magnitudePrefix_tendsto_one
     {As : ℕ → AffineCombination} {W : ℕ → EF} {P : History}
     (hW : DivergentWeighting W P)
@@ -2349,8 +2347,8 @@ lemma ApproxDeterminedViaTheory.biasRunTrader_hasROI_of_surplus
   have hgamma1 : ∀ i, biasRunGamma As W rate P k i ≤ 1 :=
     biasRunGamma_le_one hWdiv hmag rate hrate0 hrate1 k
   -- The determination error the run has bought, day by day.  It vanishes before launch
-  -- and is `k`-fold dominated by that day's share magnitude afterwards, so the whole
-  -- forfeit over the run's unit of magnitude is at most `1/k`.
+  -- and is at most `c` times that day's share magnitude afterwards, so the whole forfeit
+  -- over the run's unit of magnitude is at most `c`.
   have hslack0 : ∀ i, 0 ≤ biasRunGamma As W rate P k i * err i :=
     fun i => mul_nonneg (hgamma0 i) (herr0 i)
   have hslackAll : ∑ i ∈ Finset.range (n + 1),
@@ -2679,10 +2677,10 @@ lemma ApproxDeterminedViaTheory.biasRun_surplus_eventually
     have := mul_nonneg (hrate0 k) (Nat.cast_nonneg k)
     nlinarith
 
-/-- End-to-end exposure consequence for one negative-bias run: under persistent negative
-bias, every positive-rate launched component has total share magnitude exactly one.  This
-is deliberately weaker than ROI—the latter additionally needs its plausible-world payoff
-lower bound—but it closes all normalization, finite-prefix, and summability obligations. -/
+/-- Exposure consequence for one negative-bias run: under persistent negative bias, every
+positive-rate launched component has total share magnitude exactly one.  This is weaker
+than ROI — which additionally needs the plausible-world payoff lower bound — but it settles
+the normalization, finite-prefix, and summability side conditions. -/
 lemma ApproxDeterminedViaTheory.biasRunTrader_magnitude_eq_one_of_negative_bias
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
@@ -2790,9 +2788,9 @@ reduced to the finite type of assignments to the first `B` atoms.  The rational 
 function is fixed by the market's actual partial-recursive presentation, rather than being
 supplied by this object.
 
-This structure is deliberately named `SemanticCertificate`: its proposition-valued fields
-are not claimed to be an encoded executable payload.  The next layer must define a Boolean
-checker whose clocked market/process outputs entail these fields. -/
+The name records what is *not* claimed: the proposition-valued fields are not an encoded
+executable payload.  `unitMaturityCheckAtFuel` below is the Boolean checker whose clocked
+market and process outputs entail them. -/
 structure UnitMaturitySemanticCertificate (Tr : Trader) (P : History)
     (DP : DeductiveProcess) (market : MarketComputation P)
     (ε η : ℚ) (m : ℕ) where
@@ -2961,9 +2959,9 @@ def unitMaturityCheckAtFuel_certificate
               Tr.partialNetWorthRatAtFuel_sound market fuel u.payoutRat m hworth
             simpa [hworth, hworthEq] using hworld
 
-/-- Soundness of the finite rational/Boolean maturity certificate.  This theorem closes
-the semantic core of the checker: exhaustive finite assignments really imply the
-universal real-valued plausible-world payoff condition in `Trader.Matured`. -/
+/-- Soundness of the finite rational/Boolean maturity certificate: exhaustive finite
+assignments imply the universal real-valued plausible-world payoff condition in
+`Trader.Matured`. -/
 lemma UnitMaturitySemanticCertificate.sound
     {Tr : Trader} {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) {ε η : ℚ} {m : ℕ}
@@ -3003,8 +3001,8 @@ lemma UnitMaturitySemanticCertificate.sound
         v.payout_eq_ratCast m]
     exact_mod_cast hpay
 
-/-- A `true` bounded check is a genuine maturity witness for a unit-magnitude trader.
-This is the central no-false-positive theorem for the executable checker. -/
+/-- A `true` bounded check is a genuine maturity witness for a unit-magnitude trader: the
+no-false-positive direction for the executable checker. -/
 lemma unitMaturityCheckAtFuel_sound
     {Tr : Trader} {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) (process : DeductiveProcessComputation DP)
@@ -3017,7 +3015,7 @@ lemma unitMaturityCheckAtFuel_sound
 /-- Semantic completeness of the finite rational/Boolean reduction.  Every genuine
 rational-parameter maturity witness for a unit-magnitude trader yields a finite support
 bound and the exact rational inequalities consumed by the semantic certificate.  No
-computability claim is made here; serialization and bounded checking are the next layer. -/
+computability claim is made here. -/
 def UnitMaturitySemanticCertificate.ofMatured
     {Tr : Trader} {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) {ε η : ℚ} {m : ℕ}
@@ -3153,8 +3151,8 @@ oracle, the returned object exposes its checker, polynomial clock, soundness, an
 eventual-completeness fields through `HistoricalVerifiedMaturitySchedule`.
 
 The paper derives this interface by dovetailing the computable rational market and
-deductive-process computations.  `Construction.Witnesses.HistoricalMaturity` implements
-that dovetailer; this predicate remains as the low-level compatibility interface. -/
+deductive-process computations; `Construction.Witnesses.HistoricalMaturity` implements
+that dovetailer against this predicate. -/
 def BiasRunHistoricallyVerifiable
     (As : ℕ → AffineCombination) (hpoly : PolySequence As)
     (W : ℕ → EF) (hWgen : PGenerableWeighting W)
@@ -3174,9 +3172,8 @@ run traders.  If finite historical maturity claims for that tail have the paper'
 verifier, `noRepeatableROI` forces the corresponding `0/1` magnitude progression to tend
 to zero, contradicting its eventual value one.
 
-This theorem intentionally exposes the historical verifier as a hypothesis and is not the
-paper-facing capstone.  The construction layer discharges it from
-`IsLogicalInductor.marketComputable` and `.processComputable`. -/
+The historical verifier is exposed as a hypothesis here; the construction layer discharges
+it from `IsLogicalInductor.marketComputable` and `.processComputable`. -/
 lemma ApproxDeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)

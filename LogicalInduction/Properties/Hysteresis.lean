@@ -1,5 +1,5 @@
 /-
-# `thm:con` — the hysteresis arbitrage trader (`app:con`)
+# The hysteresis arbitrage trader for Convergence (`thm:con`, appendix `app:con`)
 
 The economic core of Convergence: given a rational oscillation of `Pₙφ` across `[a, b]`
 (price `< a` i.o., `> b` i.o.), the **hysteresis** trader — buy on dips below `a`, hold
@@ -14,10 +14,10 @@ continuous threshold indicators (`def:ctsind`, as `EF`s)
 
 and the **holdings state** is the size-`Θ(k)` running feature
 `H 0 = 0`, `H (k+1) = max (H k · (1 − sellInd k)) (buyInd k)` (recursive branch first, so
-the serialization accretes fixed-width blocks on one side — Phase A2's emission shape).
+the serialization accretes fixed-width blocks in ascending day order on one side).
 The day-`n` trade is the difference `H (n+1) − H n` on `φ`.
 
-**The accounting (C2)** avoids any per-swing induction: writing `Δᵢ` for the day-`i`
+**The accounting** avoids any per-swing induction: writing `Δᵢ` for the day-`i`
 position change and `B₊/B₋` for the positive/negative variation, buys happen only below
 `a + δ` (fact 1) and sells only above `b − δ` (fact 2), so in every world
 `netWorth ≥ (b−a−2δ)·B₋ − (a+δ)` — bounded below outright, and unbounded as soon as
@@ -176,7 +176,7 @@ end Signals
 /-- The `k`-block holdings state: `H 0 = 0`,
 `H (k+1) = max (H k · (1 − sellInd k)) (buyInd k)`. Day-`n` holdings are `H (n+1)`.
 The recursive branch is written first so the serialization accretes blocks in ascending
-day order on one side (the Phase-A2 emission shape). -/
+day order on one side. -/
 def hystN (φ : Sentence) (a b δ : ℚ) : ℕ → EF
   | 0 => .const 0
   | (k + 1) => .max (.mul (hystN φ a b δ k) (oneMinus (sellIndEF φ b δ k)))
@@ -301,7 +301,7 @@ lemma hystTrader_netWorth (φ a b δ) (P : History) (v : PCWorld) (n : ℕ) :
       = ∑ i ∈ Finset.range (n + 1), hystDelta φ a b δ P i * (v.payout φ - P i φ) := by
   simp [Trader.netWorth, hystTrader, Strategy.value]
 
-/-! ### The variation bookkeeping (C2) -/
+/-! ### The variation bookkeeping -/
 
 /-- Positive variation `B₊ n = ∑_{i ≤ n} max Δᵢ 0`. -/
 noncomputable def hystBpos (φ : Sentence) (a b δ : ℚ) (P : History) (n : ℕ) : ℝ :=
@@ -336,7 +336,7 @@ lemma hystBpos_eq (φ a b δ) (P : History) (n : ℕ) :
 lemma hystBneg_nonneg (φ a b δ) (P : History) (n : ℕ) : 0 ≤ hystBneg φ a b δ P n :=
   Finset.sum_nonneg (fun _ _ => le_max_right _ _)
 
-/-- **The C2 master bound**: in *every* world, the net worth is at least
+/-- **The master bound**: in *every* world, the net worth is at least
 `(b−δ−(a+δ))·B₋ − (a+δ)`. Bounded below outright; unbounded once `B₋ → ∞`. -/
 lemma hystTrader_netWorth_ge (φ : Sentence) (a b δ : ℚ) (P : History)
     (hδ : 0 < (δ : ℝ)) (ha : 0 ≤ (a : ℝ) + δ) (v : PCWorld) (n : ℕ) :
@@ -381,7 +381,7 @@ lemma hystTrader_netWorth_ge (φ : Sentence) (a b δ : ℚ) (P : History)
   have hBp := hystBpos_eq φ a b δ P n
   nlinarith [mul_nonneg hpay hh0]
 
-/-! ### `B₋ → ∞` under oscillation (C3) -/
+/-! ### `B₋ → ∞` under oscillation -/
 
 section Unbounded
 
@@ -411,7 +411,7 @@ lemma hystBneg_swing (φ a b δ) (P : History) {n m : ℕ} (h : n ≤ m) :
         rw [Finset.sum_neg_distrib, ← hdel]; ring
     _ ≤ _ := hge
 
-/-- **C3**: under two-sided oscillation, the negative variation is unbounded — each full
+/-- Under two-sided oscillation the negative variation is unbounded — each full
 swing (dip below `a`, then spike above `b`) adds at least `1`. -/
 lemma hystBneg_unbounded (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ)
     (hA : ∃ᶠ n in atTop, P n φ < (a : ℝ)) (hB : ∃ᶠ n in atTop, (b : ℝ) < P n φ) :
@@ -459,7 +459,7 @@ lemma hystTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
     rw [div_lt_iff₀ hγ0] at hK
     nlinarith
 
-/-! ### Efficient computability (C4)
+/-! ### Efficient computability
 
 The day-`n` stream decomposes into five segments — fixed head `[1,⌜0⌝]`, `n+1`
 fixed-width blocks (the `H (n+1)` chain), fixed mid `[1,⌜−1⌝,1,⌜0⌝]`, `n` more blocks
@@ -612,7 +612,7 @@ lemma serialize_hystN (φ : Sentence) (a b δ : ℚ) : ∀ k,
         List.flatMap_singleton, hystBlk]
       simp [List.append_assoc]
 
-/-- **C4: the hysteresis trader is efficiently computable** — five-segment emission. -/
+/-- **The hysteresis trader is efficiently computable** — five-segment emission. -/
 lemma hystTrader_ecTok (φ : Sentence) (a b δ : ℚ) :
     EfficientlyComputableTok (hystTrader φ a b δ) := by
   have hW : ∀ m : ℕ, (hystBlk φ a b δ m.unpair.2).length = (hystBlk φ a b δ 0).length :=
@@ -668,8 +668,7 @@ lemma oscillation_exploitable_hyst (P : History) (DP : DeductiveProcess) (φ : S
 
 The signals above with the priced object abstracted: `buyIndF e a δ` ramps
 from `1` (when `e ≤ a`) to `0` (when `e ≥ a + δ`); `sellIndF e b δ` from `0` (at
-`b − δ`) to `1` (at `b`). At `δ = 0` both are identically `0` (`1/0 = 0` in `ℚ`) — the
-gate padding. -/
+`b − δ`) to `1` (at `b`). At `δ = 0` both are identically `0`, since `1/0 = 0` in `ℚ`. -/
 
 /-- Buy signal on the feature `e`: `1` when `e ≤ a`, ramps to `0` at `a + δ`. -/
 def buyIndF (e : EF) (a δ : ℚ) : EF :=
@@ -750,13 +749,13 @@ lemma sellIndF_eq_one (hδ : 0 < (δ : ℝ)) (h : (b : ℝ) < e.denote V) :
     _ ≤ (e.denote V - ((b:ℝ) - δ)) * (1/(δ:ℝ)) := by
         apply mul_le_mul_of_nonneg_right h1; positivity
 
-/-- The `δ = 0` degenerate buy signal is identically `0` — the gate padding. -/
+/-- The `δ = 0` degenerate buy signal is identically `0`. -/
 lemma buyIndF_denote_zero_delta (e : EF) (a : ℚ) (V : History) :
     (buyIndF e a 0).denote V = 0 := by
   rw [buyIndF_denote]
   norm_num
 
-/-- The `δ = 0` degenerate sell signal is identically `0` — the gate padding. -/
+/-- The `δ = 0` degenerate sell signal is identically `0`. -/
 lemma sellIndF_denote_zero_delta (e : EF) (b : ℚ) (V : History) :
     (sellIndF e b 0).denote V = 0 := by
   rw [sellIndF_denote]

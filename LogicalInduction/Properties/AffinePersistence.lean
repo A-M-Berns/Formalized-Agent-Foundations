@@ -1,12 +1,16 @@
 /-
-# Affine persistence infrastructure (`thm:peraffkno`)
+# `thm:peraffkno` — Persistence of Affine Knowledge (paper §4.5, appendix `app:peraffkno`)
 
-The paper's persistence theorem compares every fixed affine combination `A n` with the
-limiting belief state `P∞`. This file constructs that limiting valuation, proves fixed
-finite affine convergence, and implements the uniform-in-`n` prefix portfolio from
-Appendix `app:peraffkno`. The portfolio has an explicit polynomial affine-sequence
-certificate and reduces the economic contradiction to the already verified affine
-round-trip/ROI hub.
+The paper's persistence theorem compares every fixed affine combination `Aₙ` with the
+limiting belief state `P∞`. This file constructs that limiting valuation
+(`limitingBelief`), proves that a fixed finite affine combination's prices converge to
+its value under `P∞`, and builds the uniform-in-`n` prefix portfolio of `app:peraffkno`
+with an explicit polynomial affine-sequence certificate; the economic contradiction is
+then discharged by Affine Preemptive Learning (`thm:affpolymax`).
+
+Endpoint: `AffineCombination.PolySequence.peraffkno`, the pair of future-tail /
+limiting-value equalities. Its sentence-level special case `Aₙ := φₙ` is Persistence of
+Knowledge (`thm:perkno`, `app:perkno`), which lives in `Properties.TimelyLearning`.
 -/
 import LogicalInduction.Properties.AffinePreemptiveLearning
 import LogicalInduction.Properties.Coherence
@@ -16,8 +20,8 @@ namespace LogicalInduction
 open Filter Topology
 
 /-- The limiting valuation `P∞`, represented canonically by the limsup of each price
-sequence. Under the logical-inductor market hypotheses, `lic_limitingBelief_tendsto` proves
-that this limsup is the actual limit. -/
+sequence. The limsup is total, so this is well defined for any history; under the
+logical-inductor hypotheses `lic_limitingBelief_tendsto` shows it is the genuine limit. -/
 noncomputable def limitingBelief (P : History) : Valuation :=
   fun φ => limsup (fun n => P n φ) atTop
 
@@ -130,14 +134,17 @@ end AffineCombination
 
 /-! ## Polynomial prefix portfolios
 
-The paper's `app:peraffkno` component launched on day `k` buys every earlier member
-which is then underpriced.  We package that finite mixture as one normalized affine
-combination.  This lets the already verified `affpolymax` round-trip family supply the
-economic contradiction, while the definitions below expose the whole polynomial
-emission boundary rather than hiding it in a computability certificate.
+The `app:peraffkno` component launched on day `k` buys every earlier member that is then
+underpriced.  We package that finite mixture as a single normalized affine combination,
+so that the Affine Preemptive Learning no-gap result
+(`AffineCombination.PolySequence.noPreemptiveUnderpricing`, `thm:affpolymax`) supplies
+the economic contradiction.
+The definitions below spell out the polynomial emission of the portfolio — term count,
+coefficient syntax, sentence codes — rather than assuming a computability certificate
+for it.
 
-The normalizer is the safe reciprocal of the sum of entry weights, not of the number of
-prefix members.  Thus the portfolio has magnitude at most one, and whenever even one
+The normalizer is the safe reciprocal of the *sum of entry weights*, not of the number of
+prefix members.  Hence the portfolio has magnitude at most one, and whenever even one
 entry signal is fully on, its total normalized entry weight is exactly one.
 -/
 
@@ -517,9 +524,10 @@ lemma PolySequence.persistenceNorm_closed {As : ℕ → AffineCombination}
   simp only [persistenceNorm, EF.denoteWith, EF.denote_safeRecip]
   rw [h.persistenceEntrySum_closed start low δ k ρ V]
 
-/-- The normalized prefix portfolios are themselves a polynomial affine sequence.  This
-is the efficient-emission certificate consumed by `affpolymax`; it explicitly emits the
-flattened prefix term count, coefficient syntax, and sentence codes. -/
+/-- The normalized prefix portfolios are themselves a polynomial affine sequence: the
+efficient-emission certificate that the Affine Preemptive Learning no-gap results
+consume.  It emits the flattened prefix term count, the coefficient syntax, and the
+sentence codes explicitly. -/
 noncomputable def PolySequence.persistencePortfolioPoly {As : ℕ → AffineCombination}
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
     PolySequence (persistencePortfolio h start low δ) := by
@@ -1098,11 +1106,12 @@ lemma persistencePortfolio_price_le_of_entry_one {As : ℕ → AffineCombination
         As start low δ P hn hone]
       ring
 
-/-- The Appendix `app:peraffkno` underpricing contradiction.  A day-`k` portfolio
-contains every earlier member whose day-`k` price is below the chosen threshold.  The
-portfolio is translated so its limiting value is nonnegative, while every full signal
-makes its current price uniformly negative.  The verified affine round-trip family then
-rules out infinitely many such launch days. -/
+/-- The `app:peraffkno` underpricing contradiction.  A day-`k` portfolio contains every
+earlier member whose day-`k` price is below the chosen threshold.  The portfolio is
+translated so that its limiting value is nonnegative while any full entry signal drives
+its current price uniformly negative — a preemptive-underpricing gap, which
+`AffineCombination.PolySequence.noPreemptiveUnderpricing` allows on only finitely many
+launch days. -/
 lemma PolySequence.noPersistenceUnderpricing {As : ℕ → AffineCombination}
     (h : PolySequence As) (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP]
@@ -1384,8 +1393,9 @@ theorem peraffkno_of_noPersistenceGaps
   · exact limsup_eq_of_noPreemptiveOverpricing _ _ hhlo hhhi hlimlo hlimhi
       (fun n => (hbetween n).2) hgap.overpriced
 
-/-- Paper-facing **Persistence of Affine Knowledge** (`thm:peraffkno`). This is the exact
-pair of future-tail/limiting-belief equalities for a normalized polynomial affine family.
+/-- **Persistence of Affine Knowledge** (`thm:peraffkno`): the exact pair of
+future-tail / limiting-belief equalities, for a polynomial affine family with uniformly
+bounded prices and uniformly bounded magnitude.
 Paper node: `thm:peraffkno` -/
 theorem AffineCombination.PolySequence.peraffkno
     {As : ℕ → AffineCombination} (h : AffineCombination.PolySequence As)

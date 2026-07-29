@@ -2,7 +2,7 @@
 # §4.1 Convergence and Coherence
 
 * `thm:lc`  — Limit Coherence (bullets 2 & 3: disprovable→0, finite additivity).
-* `thm:con` — Convergence (reduction + arbitrage trader), formerly `Convergence.lean`.
+* `thm:con` — Convergence (the oscillation reduction and its arbitrage trader).
 -/
 import LogicalInduction.Properties.Basic
 import LogicalInduction.Properties.Hysteresis
@@ -12,13 +12,12 @@ namespace LogicalInduction
 open Filter Topology
 
 
-/-! ## M3 — Limit Coherence, bullet (2): disprovable ⇒ price → 0 (`thm:lc`)
+/-! ## Limit Coherence, bullet (2): disprovable ⇒ price → 0 (`thm:lc`)
 
-The dual of the provability bullet, via the mirror-image **sell** trader. If `φ` is
-disprovable — `∼φ` always deducible — then every plausible world values `φ` at `0`, so
-selling one share of `φ` a day yields net worth `∑ᵢ Pᵢ(φ) ≥ 0`; if the price stays above
-`ε` infinitely often that is unbounded, so a logical inductor forces `Pₙ(φ) → 0`. Same
-constant-trader, same already-certified efficient computability — only the sign flips. -/
+The mirror image of the provability bullet, via the **sell** trader. If `φ` is disprovable
+— `∼φ` always deducible — then every plausible world values `φ` at `0`, so selling one share
+of `φ` a day yields net worth `∑ᵢ Pᵢ(φ) ≥ 0`; if the price stays above `ε` infinitely often
+that is unbounded, so a logical inductor forces `Pₙ(φ) → 0`. -/
 
 /-- In a world consistent with a set containing `∼φ`, `φ` is false (Foundation Boolean
 semantics: `∼φ = φ 🡒 ⊥`, so `Holds (∼φ) ↔ ¬ Holds φ`). -/
@@ -138,18 +137,16 @@ about `φ`, its price oscillates, and a trader can **arbitrage** the oscillation
 cheap, sell it back dear — pocketing a fixed profit on each swing at no risk, hence
 exploiting. A logical inductor forbids this, so the price must converge.
 
-This splits into two halves along the M2 pattern:
+This splits into two halves:
 
-1. **The reduction (`exists_rat_oscillation_of_not_convergesTo`, proved below, no `sorry`).**
-   Non-convergence of a `[0,1]`-bounded price forces a *rational* oscillation: `a < b` in `ℚ`
-   with `Pₙφ < a` infinitely often and `Pₙφ > b` infinitely often. This is exactly the
-   contrapositive of Mathlib's `tendsto_of_no_upcrossings`, taken over the dense set `↑ℚ ⊆ ℝ`
-   — the "assume the property fails → extract the exploitable configuration" step, carried by
-   a library lemma rather than hand-rolled.
+1. **The reduction (`exists_rat_oscillation_of_not_convergesTo`).** Non-convergence of a
+   `[0,1]`-bounded price forces a *rational* oscillation: `a < b` in `ℚ` with `Pₙφ < a`
+   infinitely often and `Pₙφ > b` infinitely often. This is the contrapositive of Mathlib's
+   `tendsto_of_no_upcrossings` over the dense set `↑ℚ ⊆ ℝ`.
 
-2. **The exploiting trader (`oscillation_exploitable`, proved).** Given the oscillation, the
+2. **The exploiting trader (`oscillation_exploitable`).** Given the oscillation, the
    hysteresis trader (`Properties/Hysteresis.lean`) arbitrages it: buy below `a`, hold, sell
-   above `b`; e.c. discharged via the five-segment `PolySegStream` emission.
+   above `b`.
 
 `lic_price_convergesTo` chains them against `def:lic`. -/
 
@@ -356,11 +353,10 @@ theorem lic_limit_additive (P : History) (DP : DeductiveProcess) [IsLogicalInduc
 
 open Filter Topology
 
-/-- **The oscillation reduction, general form** (D2 step 1). A `[0,1]`-bounded real
-sequence that does *not* converge must **oscillate across a rational gap**: there are
-rationals `a < b` with the sequence below `a` infinitely often and above `b` infinitely
-often. Instantiated at prices (`exists_rat_oscillation_of_not_convergesTo`) and at
-expectation sequences (`thm:ec`, Phase D2).
+/-- **The oscillation reduction, general form.** A `[0,1]`-bounded real sequence that does
+*not* converge must **oscillate across a rational gap**: there are rationals `a < b` with the
+sequence below `a` infinitely often and above `b` infinitely often. Instantiated at prices
+(`exists_rat_oscillation_of_not_convergesTo`) and at expectation sequences (`thm:ec`).
 
 This is the contrapositive of `tendsto_of_no_upcrossings` instantiated at the dense range
 of `(↑) : ℚ → ℝ`; the rationality of `a, b` is what lets the arbitrage traders use them as
@@ -376,7 +372,7 @@ theorem exists_rat_oscillation_of_not_exists_convergesTo (u : ℕ → ℝ)
   rintro _ ⟨a, rfl⟩ _ ⟨b, rfl⟩ hab ⟨hA, hB⟩
   exact hcon ⟨a, b, hab, hA, hB⟩
 
-/-- **Reduction step for `thm:con`** (fully proved): the price specialization of
+/-- **Reduction step for `thm:con`**: the price specialization of
 `exists_rat_oscillation_of_not_exists_convergesTo`. -/
 theorem exists_rat_oscillation_of_not_convergesTo (P : History) (φ : Sentence)
     (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
@@ -386,7 +382,7 @@ theorem exists_rat_oscillation_of_not_convergesTo (P : History) (φ : Sentence)
   exists_rat_oscillation_of_not_exists_convergesTo (fun n => P n φ) hb hnc
 
 
-/-- **The oscillation-arbitrage trader exists and exploits** (`app:con` — proved).
+/-- **The oscillation-arbitrage trader exists and exploits** (`app:con`).
 
 Given a rational oscillation of `Pₙφ` across `[a, b]` (price `< a` i.o. and `> b` i.o.), with
 plausible worlds available every day, there is an *efficiently computable* trader that
@@ -397,10 +393,8 @@ a size-`Θ(n)` running holdings state — buy on dips below `a`, hold through th
 spikes above `b`. Its net worth is `≥ ((b−a)/2)·B₋ − (a+δ)` in *every* world (buys happen
 only below `a+δ`, sells only above `b−δ`), and each completed swing adds `1` to the negative
 variation `B₋`, so the oscillation drives it to unbounded upside off bounded downside.
-Efficient computability is discharged through the clocked interpreter via the five-segment
-`PolySegStream` emission (`hystTrader_ecTok`) — this is exactly the deep (linear-depth)
-exploiter the poly-size `EfficientlyComputableTok` redefinition of `def:ec` was built to
-admit (OPEN RISK 4). -/
+Efficient computability is discharged through the clocked interpreter
+(`hystTrader_ecTok`). -/
 lemma oscillation_exploitable (P : History) (DP : DeductiveProcess) (φ : Sentence)
     (a b : ℚ) (hab : (a : ℝ) < b) (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))

@@ -1,7 +1,7 @@
 /-
-# `thm:ec` — Expectations Converge
+# `thm:ec` — Expectations Converge (§4.8)
 
-Paper (`main.tex` 1688): the day-`n` expectation `𝔼ₙ(X)` of any `[0,1]`-LUV converges.
+The day-`n` expectation `𝔼ₙ(X)` of any `[0,1]`-LUV converges.
 
 The paper derives `thm:ec` from the affine master theorems rather than from a bespoke
 trader, and so do we.  `𝔼ₙ(X)` is *exactly* the market price of the precision-`n`
@@ -21,8 +21,7 @@ The world-value hypothesis is therefore consumed **per grid**: for each precisio
 `k` to the stage — that is exactly what `Θ`-completeness delivers, and a completed-theory
 world (being consistent with every stage) is constrained on every grid at once.
 
-The feature-generic signal layer (`buyIndF`/`sellIndF`) that used to live here is shared
-vocabulary and now sits in `Properties/Hysteresis.lean`, next to `thm:con`'s own signals.
+Also proves `lem:conluvapprox` in difference form.
 -/
 import LogicalInduction.Properties.AffineCoherence
 import LogicalInduction.Properties.LimitCoherence

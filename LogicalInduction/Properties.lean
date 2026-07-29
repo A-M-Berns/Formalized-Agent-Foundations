@@ -1,81 +1,78 @@
 /-
-# Part III — Property tail (`LogicalInduction.Properties`) — roll-up
+# §4 — Properties of logical inductors
 
-Every property here is conditioned on `[IsLogicalInductor P DP]` and proved via the
-assume-fail → build-trader → certify-e.c. → invoke-criterion pattern, with the exploiting
-trader *genuinely constructed* and its efficient computability *discharged through the clocked
-interpreter* (`dd:fuel`). No arithmetic stub ever stands in for an exploit.
+Every theorem in this directory is conditioned on `[IsLogicalInductor P DP]` and proved by
+the paper's pattern: assume the property fails, construct a trader that exploits `P` under
+that assumption, certify the trader efficiently computable, and invoke the criterion. The
+exploiting trader is always constructed, and its efficient computability always discharged
+through the clocked interpreter (`dd:fuel`).
 
-File layout (promoted from a single file once it grew past ~1000 lines):
+Modules, by the paper subsection they render:
 
-* `Properties.Basic` — shared substrate: `PCWorld` boolean/payout lemmas and the two
-  exploitation engines (`exploits_of_nonneg_partialSums` world-neutral;
-  `exploits_of_ge_partialSums` world-dependent).
-* `Properties.ProvabilityInduction` — `thm:provind`: `buyDaily` (fixed φ, base + limiting form)
-  and `buySeq` (`𝓔𝓒`-sequence form).
-* `Properties.Coherence` — `thm:lc`: bullet 2 (disprovable → 0, `sellDaily`) and bullet 3
-  (finite additivity + the limit identity, world-neutral portfolio `exclTr`).
-* `Properties.Coherence` (§4.1, includes former `Convergence`) — `thm:con`: the non-convergence ⇒ rational-oscillation reduction,
-  and `oscillation_exploitable`, discharged by the hysteresis trader.
-* `Properties.Hysteresis` — the `thm:con` arbitrage core: the size-`Θ(n)` hysteresis
-  holdings state, the sign-decomposition accounting, and its five-segment e.c. emission.
-* `Properties.NonDogmatism` — `thm:nd`: the weak fragment (`ndTrader`, the first Phase-A
-  block-emission trader) and the full theorem, both directions (the `app:obu` scale
-  ladders `ndLadderTrader`/`ndSellLadderTrader`) plus the `P∞` limit forms.
-* `Properties.UniformNonDogmatism` — `thm:obu`: the varying-sentence scale ladder,
-  non-vacuous joint-consistency exploitation proof, polynomial token emitter, and exact
-  common positive `P∞` bound over an explicit efficient-repetition preprocessing witness.
-* `Properties.OccamBounds` — `thm:ob`: the Kraft-weighted sentence/rung ladder, literal
-  triangular token emitter, global summable-risk floor, unbounded possible-world upside,
-  and the exact common lower/upper `P∞` bounds through a fixed negation compiler overhead.
-* `Properties.UniversalSemimeasure` — faithful continuous/lower-semicomputable/universal
-  semimeasure and independent bit-prefix syntax for `thm:dus`, plus the finite-tree
-  `MeanPayout ≤ MaxPayout` analytic core and the direct unit-budget scale trader with
-  maximizing-world extraction, the summable scale diagonal and its literal token emitter,
-  global downside/unbounded-upside proof, and the exact fixed-constant capstone.
-* `Properties.UniversalSemimeasure` (includes former `StrictSemimeasure`) — `thm:strict` from Uniform Non-Dogmatism and the
-  explicit recursively-inseparable null-prefix-class representation boundary.
-* `Properties.Conditioning` — exact capped conditional markets, a direct finite-zero
-  prefix repair on the original market, and stagewise combined deductive-process semantics
-  for the fixed and growing-prefix forms of `thm:scon`.
+* `Properties.Basic` — shared substrate, not a paper node: `PCWorld` boolean/payout lemmas
+  and the two exploitation engines (`exploits_of_nonneg_partialSums`, world-neutral;
+  `exploits_of_ge_partialSums`, world-dependent).
+
+§4.1 Convergence and Coherence
+* `Properties.Coherence` — `thm:con` (non-convergence ⇒ rational oscillation ⇒ exploit) and
+  `thm:lc` bullets 2 and 3 (disprovable ⇒ price → 0; finite additivity).
+* `Properties.Hysteresis` — the `thm:con` arbitrage trader: buy-low/sell-high holdings
+  state, its net-worth accounting, and its efficient-computability certificate.
+* `Properties.LimitCoherence` — `thm:lc`: the Gaifman conditions on the limiting belief and
+  the countably additive probability measure on `PCWorld` it induces.
+
+§4.2 Timely Learning
+* `Properties.ProvabilityInduction` — `thm:provind`, for a fixed sentence and for an
+  efficiently computable sentence sequence.
+* `Properties.TimelyLearning` — `thm:perkno` (persistence of knowledge) and `thm:tbo`
+  (preemptive learning).
+
+§4.3 Calibration and Unbiasedness
+* `Properties.Calibration` — `thm:simcal` (recurring calibration) and
+  `thm:recurringunbiasedness`, over divergent weightings (`def:fuz`).
+
+§4.4 Learning Statistical Patterns
+* `Properties.Pseudorandomness` — `thm:wubaff`/`thm:wub` (unbiasedness from feedback),
+  `thm:prandaff`, and the pseudorandom-frequency theorems `thm:prand`/`thm:benford`.
+
+§4.5 Learning Logical Relationships
+* `Properties.Relationships` — `thm:lex` (exclusive-exhaustive families), plus the
+  equivalence and implication consequences.
+* `Properties.AffineProvability` — `thm:affprovind`, from a semantic affine lower bound.
+* `Properties.AffineCoherence` — `thm:affcoh`.
+* `Properties.AffinePersistence` — `thm:peraffkno`.
+* `Properties.AffinePreemptiveLearning` — `thm:affpolymax`, factored over the two
+  no-preemptive-gap conditions supplied by the return-on-investment machinery.
+
+§4.6 Non-Dogmatism
+* `Properties.FinitePerturbations` — `thm:ifp` (closure under finite perturbations).
+* `Properties.NonDogmatism` — `thm:nd`, both directions, in finite-stage and limit form.
+* `Properties.UniformNonDogmatism` — `thm:obu`.
+* `Properties.OccamBounds` — `thm:ob`, over a Kraft-weighted sentence ladder.
+* `Properties.UniversalSemimeasure` — `thm:dus` (domination of the universal semimeasure)
+  and `thm:strict` (strict domination).
+
+§4.7 Conditionals
+* `Properties.Conditioning` — `thm:scon`, in the fixed-prefix and growing-prefix forms.
+
+§4.8 Expectations
 * `Properties.ExpectationConvergence` — `thm:ec`: the day-`n` expectation is the price of
-  the precision-`n` threshold bundle, so `thm:affcoh` traps it between the limiting
-  belief's liminf/limsup, `thm:lc` averages that belief over completed-theory worlds, and
-  `lem:conluvapprox` makes the precision sequence Cauchy.
-* `Properties.Relationships` — `thm:lex`: the paper's finite exclusive/exhaustive family
-  theorem, plus fixed-equivalence (`eqTr`) and implication/price-monotonicity (`impTr`)
-  consequences.
-* `Properties.LimitCoherence` — `thm:lc`: the Gaifman conditions for limiting beliefs,
-  completed-theory theorem/refutation limits, and the countably additive probability measure
-  on `PCWorld` concentrated on worlds consistent with the completed deductive process.
-* `Properties.FinitePerturbations` — `thm:ifp`: the literal old-price syntax freeze,
-  finite net-worth error accounting, exploitation transport, and exact conditional
-  logical-inductor biconditional over the disclosed efficient-prefix compiler boundary.
-* `Properties.AffinePreemptiveLearning` — `thm:affpolymax`'s exact liminf/limsup analytic
-  hub, factored over the two operational no-preemptive-gap conditions supplied by ROI.
-* `Properties.AffineProvability` / `Properties.ExpectationAffine` — the semantic affine
-  lower-bound theorem and the proved `thm:ei`/`loe`/`expprovind` LUV lift.
-* `Properties.ExpectationProperties` — concrete LUV-combination threshold meshes,
+  the precision-`n` threshold bundle, trapped by `thm:affcoh` and made Cauchy by
+  `lem:conluvapprox`.
+* `Properties.ExpectationAffine` — `thm:ei`, `thm:loe`, `thm:expprovind`.
+* `Properties.ExpectationProperties` — LUV-combination threshold meshes,
   completed-world approximation, and the collected expectation-property lifts.
-* `Properties.Calibration` — generated divergent weightings, normalized bias/limit-point
-  analysis, and the capped affine run family for recurring unbiasedness.
-* `Properties.Pseudorandomness` — exact deferral-patient weighting vocabulary, the
-  explicit Kelly feedback trader/economic kernel and conditional `thm:wubaff`/`thm:wub`
-  capstones, the polynomial patient-capacity selector, and all three conditional `thm:prandaff` comparison
-  directions, plus the exact varied-frequency `thm:prand` specialization and arbitrary-
-  real-frequency rational squeeze for `thm:benford`.
-* `Properties.MetaLearning` — the `pac`/`pazfc`/`incons` and
-  `halts`/`loops`/`dontwait` consequences over explicit computation-representation
-  interfaces, all reduced to completed-theory Provability Induction.
-* `Properties.Introspection` — exact interval introspection (`ref`), paradox resistance
-  (`lp`), and same-day quoted-price/quoted-expectation identities (`epr`/`er`) through
-  concrete completed-theory affine quote portfolios.
-* `Properties.SelfTrust` — proved `thm:cee`/`ceu`/`ccee`/`st`, over theorem-specific
-  quote certificates bundling delayed revelation semantics with the fixed-portfolio
-  cross-grid law; `DeferralFunction` (`def:deferralfunc`).
 
-See `notes/logical-induction-roadmap.md` for the paper-node map and
-`notes/next-session.md` for the construction record.
+§4.9–4.10 Trust in Consistency, Reasoning about Halting
+* `Properties.MetaLearning` — `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`,
+  `thm:loops`, `thm:dontwait`, all reduced to completed-theory Provability Induction.
+
+§4.11 Introspection
+* `Properties.Introspection` — `thm:ref`, `thm:lp`, `thm:epr`, `thm:er`.
+
+§4.12 Self-Trust
+* `Properties.SelfTrust` — `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`, and the deferral
+  functions (`def:deferralfunc`) they quantify over.
 -/
 import LogicalInduction.Properties.Basic
 import LogicalInduction.Properties.ProvabilityInduction
