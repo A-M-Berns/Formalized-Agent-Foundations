@@ -76,7 +76,9 @@ Each item has a verified obstruction on record; none blocks the results above.
   poly-overhead universal simulation, and keep the fuel calculus as the certification
   tool through the easy inclusion (fuel-poly ⟹ machine-poly). A direct bridge theorem
   for the current class is judged unlikely: the fuel model lacks cheap poly-bit
-  random-access state.
+  random-access state. A staged plan with effort estimates, scoped against what
+  Mathlib actually provides, is in
+  [`notes/two-model-ec-feasibility.md`](../notes/two-model-ec-feasibility.md).
 * **Propositional compactness in Foundation** — would remove the joint-consistency
   hypothesis from the growing-conjunction form of closure under conditioning (the
   fixed-sentence form is already hypothesis-free, exactly the paper's statement).
