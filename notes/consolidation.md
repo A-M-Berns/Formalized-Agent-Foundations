@@ -201,3 +201,24 @@ Documentation notes: A) i'd like to split up the README into one overall README 
   valuation; `PseudorandomFrequencyInfrastructureWithHistoricalVerifiers` is a
   mouthful that survived the wave). Renames are surface changes: update `AxiomAudit`
   in the same commit.
+
+## Next lead item (Anson, 2026-07-29): relax injectivity
+
+Priority for the next work block: **remove `Function.Injective f.f` from the
+`thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` chain**, so `def:deferralfunc` matches the paper
+(`f n > n` only) across the whole self-trust family. This is the last non-fuel residual on
+the property surface and the only remaining item that changes what a reader sees.
+
+Starting position (from the 2026-07-29 attempt): design risk is *retired* — the
+first-violator selector's two analytic legs are verified Lean
+(`notes/first-violator-selector-check.lean.txt`), and the previously-registered
+gated-sum plan is known unsound. What remains is volume, ~2.5–4k lines:
+1. variable-width affine `PolySequence` combinator (flat-index ↔ (block, offset) inverse
+   prefix-sum as `PolyFueled`, `terms_eq` flattening, rank/closure bookkeeping) — the
+   serial bottleneck, everything else builds on it;
+2. variable-width gate-fold feature + `RpnSpliceStream` certificate;
+3. fibre enumeration, δ-indexed quote package, δ-tower → pointwise bridge;
+4. rebuild the five gap-shaped constructions in `QuotationAffine.lean`
+   (~2911/3038/3166/3318/3563) — mutually independent, so parallelizable — then delete
+   the twelve `hinj` binders (mechanical).
+Estimate ~1 week of orchestrated work; stretch risk is item 1's interface bookkeeping.
