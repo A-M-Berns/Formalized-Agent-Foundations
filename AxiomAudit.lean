@@ -463,9 +463,14 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 
 -- The deferred-day / self-trust reflection data constructed from the market
 -- program.  `indicatorProductLUV_valuesAt` is the product law behind `thm:st`'s `A`.
+-- `PGenerableRat.computable` is the certification that lets the closed quote codes emit a
+-- threshold sentence about a *P-generable* (`def:ece`) threshold: parse the feature back
+-- out of its emitted serialization, evaluate it against the certified market, minimize
+-- over the interpreter clock.
 #assert_axioms_clean
   theoremFutureQuoteCode theoremDeferredExpectationQuoteCode
   theoremConfidenceQuoteCode
+  PGenerableRat.computable
   indicatorProductLUV_valuesAt indicatorProductLUV_polyThresholdCodeSeq
   lic_no_expected_net_update_closed
   lic_expected_future_expectations_closed

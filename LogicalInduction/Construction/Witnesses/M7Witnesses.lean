@@ -1399,6 +1399,90 @@ lemma MarketComputation.denoteRatComp_prim {P : History} (market : MarketComputa
   exact hite.to₂.of_eq fun fuel e => by
     simp only [MarketComputation.denoteRatComp]
 
+/-! ### P-generable rational sequences are computable (`def:ece`)
+
+`GeneratedRatFeature` presents a rational sequence only through a *market-dependent* feature
+progression, while an arithmetic quote code has to **emit** a sentence naming the numeral
+`q n` — which takes a program.  Both halves of that program are already above: the emitted
+serialization parses back to the feature (`efFromSerializedTokens`, the same step
+`AffineCombination.PolySequence.primrec` uses on coefficients), and the parsed feature
+evaluates exactly against the certified market at one interpreter clock
+(`MarketComputation.denoteRatComp`, sound and complete through
+`EF.denoteRatWithAtFuel`).  What remains is to minimize over the clock.
+
+Evaluation is genuinely unbounded — it dovetails the market program, whose runtime the day
+index does not bound — so the certificate is `Computable`, not `PolyFueled`.  That is
+exactly what a `Nat.Partrec.Code` quote code consumes. -/
+
+/-- A feature progression emitted as an RPN-spliceable serialization stream is primitive
+recursive as a whole-value function. -/
+lemma RpnSpliceStream.feature_primrec {feature : ℕ → EF}
+    (h : RpnSpliceStream fun n => (feature n).serialize) : Primrec feature := by
+  obtain ⟨s, hs, hcontract⟩ := h
+  have htokens : Primrec fun n => (feature n).serialize := by
+    refine (unRpn_prim.comp hs.primrec).of_eq fun n => ?_
+    have h0 := (hcontract n).unRpn_eq
+    rwa [show unRpn ([] : List ℕ) = [] from rfl, List.append_nil] at h0
+  exact (efFromSerializedTokens_prim.comp htokens).of_eq fun n =>
+    efFromSerializedTokens_serialize (feature n)
+
+/-- **A P-generable rational sequence (`def:ece`) is computable against the certified
+market.**  This is the bridge the arithmetic quote codes need in order to accept
+market-dependent thresholds: `def:ece` hands over only a feature stream, and emitting
+`⌜… > q n⌝` requires a program computing `q n`.
+
+Proof kind `C` (composition).  Provenance: the parse step is
+`RpnSpliceStream.feature_primrec` (a); the evaluation step is minimization of
+`MarketComputation.denoteRatComp` over the interpreter clock, pinned by
+`EF.denoteRatWithAtFuel_sound`/`_complete` and
+`MarketComputation.exists_fuel_quoteAtFuel_list` (a); the bridge from `EF.denote` to
+`EF.denoteRat` is `EF.denote_eq_ratCast` against `MarketComputation.quote_exact` (a).
+Paper node: `def:ece` -/
+lemma PGenerableRat.computable {P : History} (market : MarketComputation P) {q : ℕ → ℚ}
+    (h : PGenerableRat P q) : Computable q := by
+  obtain ⟨feature, hfeature⟩ := h
+  have hfp : Primrec feature := RpnSpliceStream.feature_primrec hfeature.polyTok
+  have hval : ∀ n, (feature n).denoteRat
+      (fun day φ => market.quote day (Encodable.encode φ)) = q n := by
+    intro n
+    have hcast := EF.denote_eq_ratCast (feature n) P
+      (fun day φ => market.quote day (Encodable.encode φ))
+      (fun day φ => market.quote_exact day φ)
+    rw [hfeature.denote n] at hcast
+    exact_mod_cast hcast.symm
+  -- Soundness of one accepted clock, and existence of an accepting clock.
+  have hsound : ∀ n fuel r, market.denoteRatComp fuel (feature n) = some r → r = q n := by
+    intro n fuel r hr
+    rw [market.denoteRatComp_eq] at hr
+    rw [(feature n).denoteRatWithAtFuel_sound market fuel [] hr, ← EF.denoteRat, hval n]
+  have hexists : ∀ n, ∃ fuel, market.denoteRatComp fuel (feature n) = some (q n) := by
+    intro n
+    obtain ⟨fuel, hfuel⟩ := market.exists_fuel_quoteAtFuel_list (feature n).priceQueries
+    refine ⟨fuel, ?_⟩
+    rw [market.denoteRatComp_eq,
+      (feature n).denoteRatWithAtFuel_complete market fuel [] hfuel, ← EF.denoteRat, hval n]
+  let guard : ℕ → ℕ → Option ℕ := fun n fuel =>
+    (market.denoteRatComp fuel (feature n)).map Encodable.encode
+  have hguard : Computable₂ guard := by
+    have hpacked : Primrec fun p : ℕ × ℕ => market.denoteRatComp p.2 (feature p.1) :=
+      (market.denoteRatComp_prim).comp Primrec.snd (hfp.comp Primrec.fst)
+    exact (Primrec.option_map hpacked
+      (Primrec.encode.comp Primrec.snd).to₂).to₂.to_comp
+  have hsearch : Partrec fun n => Nat.rfindOpt (guard n) := Partrec.rfindOpt hguard
+  refine Computable.encode_iff.mp (hsearch.of_eq_tot ?_)
+  intro n
+  obtain ⟨fuel, hfuel⟩ := hexists n
+  have hdom : (Nat.rfindOpt (guard n)).Dom := by
+    rw [Nat.rfindOpt_dom]
+    exact ⟨fuel, Encodable.encode (q n), by simp [guard, hfuel]⟩
+  have hout : (Nat.rfindOpt (guard n)).get hdom ∈ Nat.rfindOpt (guard n) :=
+    Part.get_mem hdom
+  obtain ⟨fuel', hfuel'⟩ := Nat.rfindOpt_spec hout
+  obtain ⟨r, hr, hrEq⟩ := Option.map_eq_some_iff.mp hfuel'
+  rw [show Encodable.encode (q n) = (Nat.rfindOpt (guard n)).get hdom by
+    rw [← hrEq, hsound n fuel' r hr]]
+  exact hout
+
 /-- Bounded exact evaluator for an affine combination's term list. -/
 def affineTermsRatAtFuel {P : History} (market : MarketComputation P)
     (fuel : ℕ) (w : Sentence → ℚ) : List (EF × Sentence) → Option ℚ

@@ -41,7 +41,7 @@ consolidation builds; details in `notes/next-session.md`). Outcomes:
   prandexp family follow-up in flight (approximate settlement checker).
 * **F6a** — **fixed** to `Function.Injective f.f`; the final step to bare `f n > n`
   needs a gated-fibre-sum layer — ruled future work (Anson, 2026-07-28). F6b
-  (P-generable `p` in `thm:st`) in flight.
+  (P-generable `p` in `thm:st`) — **fixed 2026-07-29** via `PGenerableRat.computable`.
 * **F7** — **fixed**: fixed-sentence `thm:scon` is hypothesis-free; growing form
   discloses the propositional-compactness obstruction.
 * **F9** — **fixed**, and this report's original justification was WRONG; see the
@@ -188,6 +188,17 @@ continuously with market prices).
 **Remedy:** disclose both narrowings at the endpoints (one docstring line each), or lift
 them (strict-increase: possibly by monotone re-indexing; P-generable `p`: would need the
 threshold sentence family to take feature-valued thresholds — likely a real extension).
+
+**Update (2026-07-29): the `p` narrowing is lifted.** The threshold family did *not* need
+feature-valued thresholds; what was missing was a program for `p` recoverable from the
+feature presentation.  `PGenerableRat.computable` (`Construction/LIACompiler.lean`) builds
+it: parse the emitted serialization back to the feature
+(`RpnSpliceStream.feature_primrec`, on `deserializeTrades_prim` + `unRpn_prim`), evaluate
+it exactly against the certified market at one interpreter clock
+(`marketFeatureValueAtFuel`, on `efRatCompiledEval` guarded by `EF.priceQueries`
+readiness), and minimize over the clock.  `lic_self_trust_closed` and
+`lic_no_expected_net_update_conditional_closed` now take `PGenerableRat` for `p`/`w`.
+The deferral narrowing (F6a) stands as future work.
 
 ### F7 (B) — `thm:scon`: the inconsistent-conditioning branch is uncovered, and `hjoint` is mislabeled as "the paper's premise". *(codex #7, confirmed)*
 
@@ -336,6 +347,14 @@ All with verified obstructions, none blocking: (1) dd:fuel lower calibration —
 route is a two-model architecture (`def:ec` at a machine class, firm enumerates it via
 poly-overhead universal simulation, fuel calculus kept as certification tool via the easy
 inclusion); the pure bridge theorem is judged unlikely (~10–15%). (2) Gated-fibre-sum
-affine layer (injective deferral → bare `f n > n`). (3) EF parser + fueled
-`denoteRatWithAtFuel` bound (closes the `thm:st`/`thm:ccee` LIA-closed seams).
+affine layer (injective deferral → bare `f n > n`). (3) **DONE (2026-07-29)** — EF parser
++ market-relative evaluator: `featureOfSerialization` / `RpnSpliceStream.feature_primrec`
+recover the feature program from the emitted serialization, `marketFeatureValueAtFuel`
+evaluates it exactly against the certified market at one interpreter clock, and
+`PGenerableRat.computable` minimizes over the clock (all in
+`Construction/LIACompiler.lean`).  `lic_self_trust_closed` and
+`lic_no_expected_net_update_conditional_closed` now take P-generable `p`/`w` (`def:ece`)
+instead of `PolyRatCodes`; the `thm:st`/`thm:ccee` closed-form threshold seams are closed.
+Note the evaluator is *not* fuel-bounded — evaluation dovetails the market program, so the
+certificate is `Computable`, which is exactly what a `Nat.Partrec.Code` quote code needs.
 (4) Propositional compactness in Foundation (growing-form `thm:scon`).
