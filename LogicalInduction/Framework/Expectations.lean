@@ -4,7 +4,7 @@
 The deference / dose-response corpora run almost entirely on **expectations** `E^H_n(X)` of
 logically uncertain variables — objects they treat as abstract `ℕ → ℝ` sequences. This file
 makes that object *concrete*, which is what lets their expectation-level hypotheses be
-discharged from our side (roadmap M3/M4 LUV bridge).
+discharged from our side.
 
 The unlock is the paper's `def:e`: the day-`n` expectation of a `[0,1]`-LUV `X` is a **finite
 sum of the market's prices** on `X`'s threshold sentences,
@@ -28,9 +28,10 @@ namespace LogicalInduction
 
 open Filter Topology
 
-/-! ### Efficient family interfaces used by the M4 lifts
+/-! ### Efficient family interfaces
 
-The paper's affine and Self-Trust theorems quantify over efficiently computable sequences.
+The paper's affine, Self-Trust, and introspection theorems quantify over efficiently
+computable sequences.
 An arbitrary Lean function `ℕ → Sentence` or `ℕ → LUV` is much broader: it can encode an
 uncomputable diagonal that no legal trader can follow.  These interfaces expose exactly the
 compact codes consumed by the token-emission model. -/
@@ -197,8 +198,9 @@ Counting argument: thresholds `i/n` strictly below `x` pay `1` (there are at lea
 `⌈nx⌉ ≥ nx` of them among `i < n`, since `x ≤ 1`), thresholds strictly above pay `0`
 (so the payout sum is at most `⌊nx⌋ + 1 ≤ nx + 1` — only `i ≤ ⌊nx⌋` can pay), and the
 one possible threshold *equal* to `x` is the `+1` slack. Hence
-`x ≤ 𝔼ₙ ≤ x + 1/n` — one-sided, which `|·|` weakens. The combination (`b/n`) form for
-affine LUV combinations waits for M4's affine layer. -/
+`x ≤ 𝔼ₙ ≤ x + 1/n` — one-sided, which `|·|` weakens. Only this single-LUV form is needed:
+the affine results in `Properties/ExpectationAffine.lean` combine per-LUV bounds rather
+than a combination (`b/n`) form. -/
 theorem PCWorld.expectApprox_near_ofGrid {v : PCWorld} {X : LUV} {x : ℝ}
     (hx0 : 0 ≤ x) (hx1 : x ≤ 1) {n : ℕ} (hn : 0 < n)
     (hgrid : ∀ i : ℕ, i < n →
@@ -326,9 +328,10 @@ lemma PCWorld.ValuesAt.approxValuesUpTo {v : PCWorld} {X : LUV} {x : ℝ}
 
 /-! ### Relational expectation-family substrate
 
-The definitions live here because expectation convergence consumes them. The M4 theorems
-`thm:ei`, `thm:loe`, and `thm:expprovind` are proved in
-`Properties/ExpectationAffine.lean`, after the affine machinery is available.
+The definitions live here because expectation convergence consumes them, and keeping them
+upstream of the affine layer avoids an import cycle. The theorems that use them —
+`thm:ei`, `thm:loe`, `thm:expprovind` — are proved in `Properties/ExpectationAffine.lean`,
+where the affine machinery is available.
 **General principle (D3):** paper-side LUV *constructions* — indicators, affine
 combinations — enter our modeling as **relational predicates over arbitrary threshold
 families**, never as canonical `LUV` values. Constructing a representative (e.g. defining
@@ -347,7 +350,8 @@ def LUV.IsIndicator (Y : LUV) (φ : Sentence) (DP : DeductiveProcess) : Prop :=
     (1 ≤ (r : ℝ) → ¬ v.Holds (Y.gt r))
 
 /-- The relational indicator hypotheses really assign the indicator its intended world value:
-`1` in `φ`-worlds and `0` otherwise. This is the world-side input to the M4 LUV lift. -/
+`1` in `φ`-worlds and `0` otherwise. This is the world-side input to `thm:ei` in
+`Properties/ExpectationAffine.lean`. -/
 lemma LUV.IsIndicator.valuesAt {Y : LUV} {φ : Sentence} {DP : DeductiveProcess}
     (hY : Y.IsIndicator φ DP) {n : ℕ} {v : PCWorld}
     (hv : v.ConsistentWith (DP.D n)) : v.ValuesAt Y (v.payout φ) := by
@@ -374,9 +378,5 @@ lemma LUV.IsIndicator.valuesAt {Y : LUV} {φ : Sentence} {DP : DeductiveProcess}
       · exact hhi (le_of_not_gt hr1)
 
 #print axioms LUV.IsIndicator.valuesAt
-
-/-! The three expectation-family theorems are proved in
-`Properties/ExpectationAffine.lean`, after the affine machinery is available.  Keeping
-their relational LUV definitions here avoids an import cycle with expectation convergence. -/
 
 end LogicalInduction

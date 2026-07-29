@@ -502,7 +502,7 @@ lemma conv4Partial_le (x y p i : ℕ) : conv4Partial x y p i ≤ 9 * i := by
 may be exponential in `m`, but its digit count and each digit are poly-fueled.  Every
 closure below runs a carry loop with `PolyFueled.prec`, whose iterated state (a carry, a
 flag, or a partial column sum) is polynomially bounded even though the represented value
-is not — that is the entire trick. -/
+is not. -/
 
 /-- Poly-fueled digit access to a (possibly exponentially large) value family. -/
 def BigDigits (x : ℕ → ℕ) : Prop :=
@@ -516,7 +516,8 @@ lemma of_eq {x x' : ℕ → ℕ} (h : BigDigits x) (he : ∀ m, x m = x' m) :
     BigDigits x' := by
   rwa [funext he] at h
 
-/-- Polynomial *values* have digit access (the inclusion of the old world). -/
+/-- Polynomial *values* have digit access — the degenerate case, where the value itself
+and not merely its digits is poly-fueled. -/
 lemma of_polyFueled {c : Code} {x : ℕ → ℕ} (h : PolyFueled c x) : BigDigits x := by
   obtain ⟨cl4, hl4⟩ := len4_polyFueled
   obtain ⟨cdg, hdg⟩ := digitAt_polyFueled
@@ -1564,21 +1565,20 @@ lemma PolySegStream.dayClampTokens {s : ℕ → List ℕ} (h : PolySegStream s) 
 
 /-! ## Digit-metered sentence-code sequences
 
-`PolySentenceCodes` demands a polynomial code *value* — admitting only sentences whose
-`Encodable` pair-codes stay small.  The digit-metered widening demands only poly-fueled
-*digit access*: sequences whose code bit-size is polynomial in the day qualify, code
-values may be exponential.  Property endpoints migrate hypothesis-by-hypothesis as
-their exploiting traders' emissions are re-certified in the digit model (the
-conditioning family is done; see `DigitConditioning.lean`); the inclusion below
-transfers every existing instantiation. -/
+`PolySentenceCodes` demands a polynomial code *value*, admitting only sentences whose
+`Encodable` pair-codes stay small.  `DigitSentenceCodes` demands only poly-fueled
+*digit access*: any sequence whose code bit-size is polynomial in the day qualifies, and
+code values may be exponential.  The inclusion `PolySentenceCodes.toDigit` carries every
+poly-value hypothesis over to the digit-metered form; the conditioning traders of
+`DigitConditioning.lean` consume the digit-metered form directly. -/
 
 /-- Digit-metered efficient sentence codeability: poly-fueled digit access to the
 (possibly exponentially large) codes. -/
 def DigitSentenceCodes (φ : ℕ → Sentence) : Prop :=
   BigDigits (fun n => Encodable.encode (φ n))
 
-/-- Every poly-value code sequence has digit access (the inclusion that transfers
-existing `PolySentenceCodes` instantiations to digit-metered hypotheses). -/
+/-- Every poly-value code sequence has digit access — the inclusion that carries
+`PolySentenceCodes` hypotheses over to their digit-metered form. -/
 lemma PolySentenceCodes.toDigit {φ : ℕ → Sentence} (h : PolySentenceCodes φ) :
     DigitSentenceCodes φ := by
   obtain ⟨c, hc⟩ := h

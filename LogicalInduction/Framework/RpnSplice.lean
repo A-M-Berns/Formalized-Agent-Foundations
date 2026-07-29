@@ -1,8 +1,8 @@
 /-
 # RPN splice streams: the 𝓔𝓒-sequence interface and its combinators
 
-The migration interface for the `𝓔𝓒`-sequence flip, upstream of the feature/LUV
-interfaces so their structures can carry it.  `RpnSentenceCodes` is the paper's
+This module sits upstream of the feature and LUV interfaces, so their structures can
+carry the `𝓔𝓒`-sequence hypothesis.  `RpnSentenceCodes` is the paper's
 efficiently-computable-sentence-sequence class (self-delimiting block streams);
 `RpnSpliceStream` says a token-stream family has a polynomially emittable RPN
 expansion contracting to it position-wise.  The realization capstones (digitize +
@@ -20,7 +20,7 @@ namespace LogicalInduction
 The paper's affine and self-trust theorems quantify over *efficiently computable
 sequences of sentences*.  The whole-value interface (`PolySentenceCodes`) meters the
 single pair-code token, which excludes deep or skewed sentence sequences whose codes
-are value-exponential in their symbol count.  The faithful class meters **symbols**:
+are value-exponential in their symbol count.  `RpnSentenceCodes` meters **symbols** instead:
 some polynomially emittable stream of self-delimiting sentence blocks — canonical
 Polish runs or escaped pair codes — parses to the sequence. -/
 
@@ -77,7 +77,7 @@ lemma RpnSentenceCodes.ifZero {φ ψ : ℕ → Sentence}
   · simpa [hz] using hpb z
 
 section
--- The documented `dd:fuel` gotcha: nested `Nat.unpair` reductions loop `whnf` on
+-- A recurring `dd:fuel` gotcha: nested `Nat.unpair` reductions loop `whnf` on
 -- `Nat.sqrt`; scope it irreducible rather than raising heartbeats.
 attribute [local irreducible] Nat.sqrt
 
@@ -138,12 +138,12 @@ lemma priceSlotSeg {s : ℕ → List ℕ} (hs : PolySegStream s)
 
 /-! ## `RpnSpliceStream` — polynomially emittable RPN expansions
 
-The migration interface for the `𝓔𝓒`-sequence flip: a token-stream family is
-*RPN-spliceable* when some `PolySegStream` contracts (`UnRpnContractsTo`) to it
-position-wise.  Slot-free streams embed by transparency; price and trade sentence
-slots draw their blocks from an `RpnSentenceCodes` certificate; and the class is
-closed under the same combinators as `PolySegStream`, so every existing serialize
-emission assembly mirrors one-for-one. -/
+A token-stream family is *RPN-spliceable* when some `PolySegStream` contracts
+(`UnRpnContractsTo`) to it position-wise.  Slot-free streams embed by transparency;
+price and trade sentence slots draw their blocks from an `RpnSentenceCodes`
+certificate; and the class is closed under the same combinators as `PolySegStream`, so
+a serialize emission assembly built from those combinators transfers combinator for
+combinator. -/
 
 /-- Some polynomially emittable stream contracts to `ts` position-wise. -/
 def RpnSpliceStream (ts : ℕ → List ℕ) : Prop :=
@@ -221,9 +221,9 @@ lemma RpnSpliceStream.of_eq {a b : ℕ → List ℕ} (h : RpnSpliceStream a)
 
 /-! ### Serialization combinator mirrors
 
-One-for-one mirrors of the `PolySegStream.serialize_*` closure suite, so an existing
-emission assembly flips by renaming combinators.  Operator tails and payload frames
-are transparent; only sentence slots differ. -/
+One-for-one mirrors of the `PolySegStream.serialize_*` closure suite: an emission
+assembly written against that suite transfers by renaming combinators.  Operator tails
+and payload frames are transparent; only sentence slots differ. -/
 
 /-- A bare operator/close token as a spliceable stream. -/
 lemma RpnSpliceStream.tag (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t ≠ 7) :

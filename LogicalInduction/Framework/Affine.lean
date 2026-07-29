@@ -1,11 +1,12 @@
 /-
-# Affine combinations — shared M4 lift substrate
+# Affine combinations
 
-Hosts `def:tradermag` (`Strategy.magnitude`, `Trader.magnitude`) and the trade
-value/net-worth bounds formerly in `Engine.lean`, followed by the affine-combination
-syntax the M4 lift hubs consume.
+Hosts `def:tradermag` (`Strategy.magnitude`, `Trader.magnitude`) with the trade
+value/net-worth bounds, `def:roi`, and the affine-combination syntax `def:affcomsen`
+consumed by the affine property proofs in `Properties/` (affine coherence, provability,
+persistence, preemptive learning) and by the expectation lifts built on them.
 
-The paper's affine hubs trade expressions `c + Σ eᵢ φᵢ`.  A trade contains only the
+The paper's affine results trade expressions `c + Σ eᵢ φᵢ`.  A trade contains only the
 sentence coefficients: buying the combination on day `n` automatically contributes the
 cash term `-Pₙ(c + Σ eᵢ φᵢ)`, so the explicit affine constant cancels.  Keeping the
 combination as syntax is nevertheless essential: its price and its value in a world are the

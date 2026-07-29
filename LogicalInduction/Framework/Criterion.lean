@@ -1,28 +1,26 @@
 /-
-# Part I — Criterion (`LogicalInduction.Criterion`)
+# Criterion — expressible features, traders, and the Logical Induction Criterion
 
-The expressible-feature DSL keystone, traders, and the Logical Induction Criterion. The
-DSL is the keystone — invest disproportionately and add non-vacuity examples. Nodes
-hosted here (see roadmap §3, Part I):
+The definitions of §3 of the paper, in dependency order:
 
-* `def:tf` (keystone) → `EF`, `EF.denote`, `EF.cost`, `instCommRing EF_n`. An inductive
-  syntax over price features `pf φ`, `ℚ`, `+`, `×`, `max(·,·)`, safe reciprocation
-  `max(1,·)⁻¹`, with two semantics:
-    - `EF.denote : EF → (History → ℝ)` — continuous ℝ-valued; feeds Brouwer.
-    - `EF.cost   : EF → ℕ` — syntactic size; an auxiliary bound on description size.
-  `EF_n` (rank ≤ `n`) is a commutative ring. The continuity of `denote` is *stated* here;
-  its proof may defer.
-* `def:valfeature` → `ValuationFeature` — semantic target `EF.denote` lands in.
-* `def:tradestrat` → `TradingStrategy` — affine combo `cash + Σ ef_i · φ_i`.
-* `def:trader`     → `Trader` — sequence of `n`-strategies.
-* `def:exploitation` → `Exploits` — plausible-world values bounded below, `sup = +∞`.
-* `def:lic`        → `IsLogicalInductor` — "no e.c. trader exploits the market." The
-  hypothesis the entire property tail is conditioned on.
-
-Contents: the `def:tf` keystone (`EF`, `denote`, `cost`, `rank`, the `CommRing` on
-rank-≤`n` features, continuity proved, non-vacuity witnesses) and the remaining Part-I
-criterion nodes (`ValuationFeature`, `TradingStrategy`, `Trader`, `Exploits`,
-`IsLogicalInductor`), with the `def:ec` metering layers (token, digit, symbol/RPN).
+* `def:tf` → `EF`, `EF.denote`, `EF.cost`, `EF.rank`. An inductive syntax over price
+  features `pf φ`, `ℚ`, `+`, `×`, `max(·,·)`, and safe reciprocation `max(1,·)⁻¹`, with
+  two semantics:
+    - `EF.denote : EF → (History → ℝ)` — the continuous ℝ-valued feature (continuity is
+      proved here: `continuous_denote`);
+    - `EF.cost   : EF → ℕ` — syntactic size, a bound on description size.
+  The rank-≤`n` features form a commutative ring `EFn n`, a subring of `History → ℝ`.
+* `def:world`, `def:pc` → `PCWorld` — propositionally consistent truth assignments.
+* `def:dedproc` → `DeductiveProcess`, with its computability certificate.
+* `def:tradestrat` → `Strategy n` — a finite list of `(feature, sentence)` pairs.
+* `def:trader` → `Trader` — one strategy per day.
+* `def:exploitation` → `Trader.Exploits` — plausible-world net worths bounded below and
+  unbounded above.
+* `def:ec` → the emission-metered efficient-computability classes
+  (`EfficientlyComputableTok`, `EfficientlyComputableDigit`, `EfficientlyComputable`),
+  built on the flat token serialization of a strategy.
+* `def:lic` → `IsLogicalInductor` — "no efficiently computable trader exploits the
+  market", the hypothesis the property tail is conditioned on.
 -/
 import LogicalInduction.Framework.Foundations
 import Mathlib.Topology.Algebra.GroupWithZero
@@ -36,7 +34,7 @@ import Foundation.Propositional.Boolean.Basic
 
 namespace LogicalInduction
 
-/-! ## `def:tf` — Expressible Features (the keystone)
+/-! ## `def:tf` — Expressible Features
 
 A reified DSL (`dd:dsl`) with two semantics. The *syntax* `EF` is the object that carries
 `cost` (for efficient computability) and `rank` (dependence horizon); the *denotation*
@@ -214,10 +212,10 @@ def rank : EF → ℕ
 @[simp] theorem denote_safeRecip (a : EF) (V : History) :
     (safeRecip a).denote V = (Max.max 1 (a.denote V))⁻¹ := rfl
 
-/-! ### Continuity (`def:tf`).  Discharged for the whole DSL rather than left as a
-constraint — this is what breaks the price/trade circularity the paper needs for Brouwer.
-Safe reciprocation is the only nontrivial case: `max 1 x ≥ 1 > 0`, so the reciprocal is
-continuous with no removable singularity. -/
+/-! ### Continuity (`def:tf`), proved for the whole DSL — this is what breaks the
+price/trade circularity the paper's fixed-point argument needs. Safe reciprocation is the
+only nontrivial case: `max 1 x ≥ 1 > 0`, so the reciprocal is continuous with no removable
+singularity. -/
 
 private lemma continuous_env_getD (ρ : List (History → ℝ))
     (hρ : ∀ f ∈ ρ, Continuous f) (i : ℕ) :
@@ -434,8 +432,10 @@ in tree depth** (`Nat.pair`-nesting squares the magnitude per level), so a size-
 feature has a `2^{2^n}`-value `toNat` — a `4ⁿ`-*bit* number. Under the clocked interpreter a
 fixed program run for `poly n` fuel can only *output* a `poly n`-**value** natural (every
 `evaln` clause fuel-guards its inputs, so intermediates stay `≤ fuel`; see
-`EfficientlyComputableTok`), i.e. `O(log n)` bits. So whole-number emission of `toNat` wrongly
-excludes deep-but-poly-*size* features — the wall behind OPEN RISK 4.
+`EfficientlyComputableTok`), i.e. `O(log n)` bits. So an efficiency notion based on emitting
+`toNat` as a single number would exclude features that are poly-*size* but deep, which the
+paper's `def:ec` admits — an unfaithfulness in the class itself, not merely a proof
+inconvenience.
 
 `serialize` is the fix: a flat postfix (RPN) token stream whose **length is `Θ(node count)`**
 (`serialize_length_le_cost`), so poly-*size* ⇔ poly-*length*, and whose individual tokens are
@@ -454,8 +454,8 @@ def serialize : EF → List ℕ
   | var i       => [7, i]
   | letE x body => x.serialize ++ body.serialize ++ [8]
 
-/-- `serialize`'s length is bounded by `3 · cost` — linear in the node count. This is the
-whole point: poly-*size* (poly-`cost`) features have poly-*length* serializations, so
+/-- `serialize`'s length is bounded by `3 · cost` — linear in the node count. Hence
+poly-*size* (poly-`cost`) features have poly-*length* serializations, so
 `EfficientlyComputableTok` admits them (unlike `toNat`, whose *value* is exponential).
 Paper node: `def:ec` -/
 lemma serialize_length_le_cost (e : EF) : (serialize e).length ≤ 3 * e.cost := by
@@ -476,7 +476,7 @@ lemma serialize_length_le_cost (e : EF) : (serialize e).length ≤ 3 * e.cost :=
 
 /-- Converse calibration: the node count is bounded by the token count, so `cost` and the
 serialized length agree up to the fixed factor `3`.  Together with `serialize_length_le_cost`
-this closes the seam between the two cost vocabularies: `EF.cost` (the syntactic size the
+this reconciles the two cost vocabularies in play: `EF.cost` (the syntactic size the
 strategy-level bounds are stated in) is an honest two-sided proxy for the token-stream length
 that `def:ec`'s emission model actually meters.
 Paper node: `def:ec` -/
@@ -503,9 +503,9 @@ end EF
 A **strategy** is a `List (EF × Sentence)`; `serializeTrades` flattens it to a token stream by
 concatenating each coefficient's `EF.serialize` followed by a trade-frame `[6, ⌜φ⌝]`. A single
 stack machine `readM` decodes both features (tags `0..5`, pushing onto an `EF` stack) and trade
-frames (tag `6`, popping a coefficient and recording the trade), which lets us prove both
-`serialize` and `serializeTrades` injective from one roundtrip induction — the honesty guarantee
-that the token stream `EfficientlyComputableTok` emits genuinely determines the strategy. -/
+frames (tag `6`, popping a coefficient and recording the trade), so both `serialize` and
+`serializeTrades` are proved injective from one roundtrip induction: the token stream
+`EfficientlyComputableTok` emits determines the strategy. -/
 
 namespace EF
 
@@ -1368,9 +1368,9 @@ efficient-computability bound (`dd:fuel`). -/
 def cost {n : ℕ} (T : Strategy n) : ℕ :=
   (T.trades.map (fun p => p.1.cost)).sum + T.trades.length + 1
 
-/-- Strategy-level seam: the emitted token stream of a whole strategy is linearly bounded by
-its syntactic `cost`, so a poly-`cost` strategy sequence has poly-length serializations — the
-quantity `EfficientlyComputableTok` meters.
+/-- The same cost/length calibration at strategy level: a whole strategy's emitted token
+stream is linearly bounded by its syntactic `cost`, so a poly-`cost` strategy sequence has
+poly-length serializations — the quantity `EfficientlyComputableTok` meters.
 Paper node: `def:ec` -/
 lemma serializeTrades_length_le_cost {n : ℕ} (T : Strategy n) :
     (serializeTrades T.trades).length ≤ 3 * T.cost := by
@@ -1448,15 +1448,15 @@ run under one polynomial clock.  The length emitter is load-bearing: a mere poly
 uncomputably with `n`, and such a class could not be redundantly enumerated by the
 construction's `TradingFirm`.
 
-This replaces whole-number emission of `Encodable.encode` (`EfficientlyComputable` above). The
-reason is a hard limit of the clocked interpreter, not a stylistic choice: every `evaln` clause
-fuel-guards its inputs (`guard (n ≤ k)` in `Mathlib.Computability.PartrecCode`), so a fixed
-program run for `poly n` fuel can only *output* a value `≤ poly n` — `O(log n)` bits.
+Emission is token-by-token rather than as one `Encodable.encode` numeral because of a hard
+limit of the clocked interpreter, not as a stylistic choice: every `evaln` clause fuel-guards
+its inputs (`guard (n ≤ k)` in `Mathlib.Computability.PartrecCode`), so a fixed program run
+for `poly n` fuel can only *output* a value `≤ poly n` — `O(log n)` bits.
 
 That claim is **proved**, not read off the source: `codeEvaln_result_le` with
-`codeEvalBound_poly` (`Construction/M7Witnesses.lean`) bound a fixed code's output by an
-explicit polynomial in the fuel; compose with the clock. Note it is *not* "output `≤ fuel`"
-— that is false, and proved false (`evaln_output_can_exceed_fuel`, `Computable.lean`) — and
+`codeEvalBound_poly` (`Framework/Emission.lean`) bound a fixed code's output by an explicit
+polynomial in the fuel; compose with the clock. Note it is *not* "output `≤ fuel`" — that is
+false, and proved false (`evaln_output_can_exceed_fuel`, `Framework/Computable.lean`) — and
 it does not follow from Mathlib's `evaln_bound`, which bounds the input only. A strategy
 whose `Encodable.encode` is a large number (any poly-*size* but deep feature: its `toNat` value
 is `2^{poly n}`) is therefore *unemittable as one number*, though the paper's poly-*size*
@@ -1466,10 +1466,13 @@ faithful poly-*size* rendering, and it is what deep traders (`thm:con` hysteresi
 purchase counters) need.
 
 **Residual disclosure (type-`(c)`):** each token's *value* is still generated by a clocked
-program, so a traded
-sentence's atomic code `⌜φ⌝` must be `poly n`-value on day `n`. Fixed sentences (every current
-trader) are constant, absorbed into `a`; varying-sentence traders already carry a poly bound on
-`⌜φₙ⌝`. Formula-level sub-tokenization would remove even this and is a later refinement. -/
+program, so a traded sentence's atomic code `⌜φ⌝` must be `poly n`-value on day `n`. A trader
+that always trades the same sentences pays a constant, absorbed into `a`; a trader whose
+traded sentence varies with the day must carry a poly bound on `⌜φₙ⌝`. Two further layers
+below remove the residual: `EfficientlyComputableDigit` meters token *bits* rather than
+token values, and the Polish-notation layer replaces a sentence's single pair code by one
+token per formula symbol, so that stream length tracks symbol count even for skewed
+formulas. Their composite is the symbol-metered class `EfficientlyComputable`. -/
 
 /-- Run a length program and then a token program under a shared clock.  The requested
 length is clamped to the clock, so every index emits a polynomial-size stream even when its

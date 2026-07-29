@@ -3,7 +3,8 @@
 
 The poly-fuelled side of the symbol-metered emission model: the escape-slot automaton
 scanned over any digit `PolySegStream`, the per-position range form of the escape
-splice, and the `₃`-model realization bridges (mirrors of `ecDigit_of_rawEmission` /
+splice, and the realization bridges into `EfficientlyComputable` (`ec_of_rawEmission` /
+`ec_of_rawSegStream`, the symbol-metered counterparts of `ecDigit_of_rawEmission` /
 `ecDigit_of_rawSegStream`, with the decode routed through `unRpn ∘ undigitize`).
 
 Paper node: `def:ec` (symbol-metered sentence slots).
@@ -99,7 +100,7 @@ lemma PolySegStream.escModeScan {s : ℕ → List ℕ} (h : PolySegStream s) :
   simp only [escModeStep, Nat.unpair_pair, ifzSelFn, Nat.reduceAdd]
   split_ifs <;> omega
 
-/-! ## The `₃`-model realization bridges -/
+/-! ## The symbol-metered realization bridges -/
 
 /-- Exact digit emitters instantiate the symbol-metered bounded-emulator definition. -/
 lemma ec_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
@@ -136,7 +137,7 @@ lemma ec_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
   exact congrArg Trader.mk hstrat
 
 /-- Any `PolySegStream` whose contracted undigitized decode is the target trader
-realizes a `₃`-certificate. -/
+realizes an `EfficientlyComputable` certificate. -/
 lemma ec_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
     (h : PolySegStream raw)
     (hstrategy : ∀ n, strategyOfTokens n (unRpn (undigitize (raw n))) = Tr.strat n) :
@@ -292,9 +293,9 @@ lemma RpnSpliceStream.ec (Tr : Trader)
 
 /-- **Single-trade realization over an 𝓔𝓒 sentence sequence**: a trader playing one
 trade per day, with a polynomially emittable price-free coefficient stream and an
-`RpnSentenceCodes` sentence sequence, is efficiently computable.  This is the workhorse
-for migrating the copy-only property families off the whole-value
-`PolySentenceCodes` hypothesis.
+`RpnSentenceCodes` sentence sequence, is efficiently computable.  This is the entry point
+used by the copy-only property families, which need only the symbol-metered
+`RpnSentenceCodes` hypothesis rather than the stronger whole-value `PolySentenceCodes`.
 Paper node: `def:ec` -/
 lemma EfficientlyComputable.ofSingleTradeBlocks (Tr : Trader) (f : ℕ → EF)
     (φ : ℕ → Sentence)

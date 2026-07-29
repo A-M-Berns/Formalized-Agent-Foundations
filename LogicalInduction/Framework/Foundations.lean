@@ -1,25 +1,26 @@
 /-
 # Part I — Foundations (`LogicalInduction.Foundations`)
 
-Language and the probabilistic substrate the criterion is stated over. Nodes hosted here
-(see roadmap §3, Part I):
+Language and the probabilistic substrate the criterion is stated over
+(arXiv:1609.03543 §2–§3).
+
+Defined here:
 
 * `def:lang`   → `Sentence` — thin wrapper over Foundation's `Formula ℕ` / `⊢` /
-  `Consistent`. Inspect Foundation's *actual* API; do not assume it. `Formula ℕ` carries
-  `DecidableEq` and `Encodable` (→ computable sentence codes, which `def:ec` needs).
-* `def:market` / `def:world` → `Valuation`, `World` — a world is a propositionally
-  consistent `{0,1}` valuation; a market is a computable sequence of `[0,1]`-pricings.
+  `Consistent`. `Formula ℕ` carries `DecidableEq` and `Encodable` (→ computable
+  sentence codes, which `def:ec` needs).
+* `def:market` → `Valuation` (a value assignment to sentences) and `History` (one
+  valuation per day). A `def:tf` feature's denotation is a function of a `History`.
+
+Built on this substrate downstream, in `Computable.lean` / `Criterion.lean`:
+
+* `def:market` → `ComputableMarket` — a `History` of `[0,1]`-pricings with a computable
+  price sequence.
+* `def:world` → `PCWorld` — a propositionally consistent `{0,1}` valuation.
 * `def:worlds` → `DeductiveProcess` — `D n ⊆ D (n+1)`, each propositionally consistent,
   union = theorems.
 * `def:ec`     → `EfficientlyComputable` — a fuel-clocked interpreter (`dd:fuel`),
   **not** a complexity class. This is a disclosed type-`(c)` modeling choice.
-
-When this Part grows past one file, promote it to the Mathlib idiom: a `Foundations/`
-directory of content files plus this file as their roll-up.
-
-Contents: `def:lang` (`Sentence`) and the valuation/history substrate `def:tf`'s
-denotation lands on (`Valuation`, `History`).  `World`, `DeductiveProcess`, and
-`EfficientlyComputable` live downstream in `Computable.lean` / `Criterion.lean`.
 -/
 import Mathlib.Algebra.Ring.Pi
 import Mathlib.Topology.Instances.Real.Lemmas
