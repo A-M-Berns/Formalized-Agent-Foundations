@@ -1428,7 +1428,7 @@ theorem BoundedCombinationSequence.prandaff
 
 /-- Ordinary recurring unbiasedness with its affine historical schedules constructed.
 Paper node: `thm:recurringunbiasedness` -/
-lemma recurringunbiasedness
+theorem recurringunbiasedness
     (φ : ℕ → Sentence) (hpoly : PolySequence (sentenceAffine φ))
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
@@ -1453,7 +1453,7 @@ lemma recurringunbiasedness
 
 /-- Recurring calibration with no historical-verifier premises.
 Paper node: `thm:simcal` -/
-lemma simcal
+theorem simcal
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (truth : ℕ → ℝ)
     (a b : ℚ) (δ : ℕ → ℚ)

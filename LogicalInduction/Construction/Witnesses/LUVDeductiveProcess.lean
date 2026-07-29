@@ -7,7 +7,7 @@ import LogicalInduction.Construction.Witnesses.LUVPresentation
 `ArithmeticLUVPresentation` (the deductive process reveals the `Θ`-provable threshold literals).
 This file discharges the project's **satisfiability bar** (`CLAUDE.md`): it *constructs* a
 concrete deductive process `luvThresholdDP` and *proves* `ArithmeticLUVPresentation` for it, so
-the Phase-B premise is not vacuous.
+that premise is satisfied by a real object rather than assumed.
 
 The construction mirrors `ComputationSyntax`/`ComputationDP`'s `theoremDP`: a two-tag event
 stream (tag `0` = a positive threshold literal, tag `1` = its refutation) whose firing predicate
@@ -16,11 +16,10 @@ is `Θ`-provability of the threshold schema instance — recursively enumerable 
 actual standard truth of each threshold predicate) is consistent with every stage, giving
 `hworld` non-vacuity.
 
-The **efficient-computability certificate** for this process (the analogue of
-`theoremDP_computable`, needed to compile it into an actual `LIA` and obtain fully unconditional
-endpoints) is *not* built here; it is the same ~200-line primitive-recursive encoding as the
-computation tail and is a disclosed residual in `notes/next-session.md`.  What is proved
-here is exactly what makes the Phase-B derivation non-vacuous.
+The **computability certificate** for this process is also built here
+(`luvThresholdDP_computable`, the analogue of `theoremDP_computable`), which is what lets
+`LUVExpectationCertified.lean` compile it into the concrete inductor and obtain the fully
+unconditional certified-LUV endpoints.
 -/
 
 namespace LogicalInduction
