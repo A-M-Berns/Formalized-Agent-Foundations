@@ -1703,8 +1703,12 @@ end
 
 /-- `def:lic`. The market `P` satisfies the **Logical Induction Criterion** relative to
 `DP` if no efficiently computable trader exploits it.  Efficiency is the symbol-metered
-class `EfficientlyComputable` above — the paper's `def:ec` on the nose — and this is the
-hypothesis the entire property tail is conditioned on (`[IsLogicalInductor P DP]`).
+class `EfficientlyComputable` above: the `dd:fuel` rendering of the paper's `def:ec` — a
+fuel-clocked interpreter model, a disclosed type-`(c)` substitution, **not** a machine
+complexity class.  Its calibration facts and the open lower-calibration question live in
+the `dd:fuel` model card (`Framework/Computable.lean`, "### `dd:fuel` model card"); read
+that before reading `noExploit` as the paper's quantifier.  This is the hypothesis the
+entire property tail is conditioned on (`[IsLogicalInductor P DP]`).
 Token-model and digit-model no-exploitation follow through the emission constructors
 `EfficientlyComputable.ofTokenEmitter` / `.ofDigitEmitter`
 (`IsLogicalInductor.noExploitTok` / `.noExploitDigit` in `Framework/RpnEmission.lean`).

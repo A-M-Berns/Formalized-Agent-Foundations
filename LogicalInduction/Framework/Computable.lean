@@ -1540,10 +1540,32 @@ interpreter `Nat.Partrec.Code.evaln`; the calibration facts an auditor should ch
 * **Separation** — the class provably excludes exponential-*output* functions
   (`not_polyFueled_two_pow` below).  This is a size-based separation only: a time-based lower
   bound (small output, provably superpolynomial fuel) and any equivalence with machine-model
-  polynomial time are *not* claimed (F10, permanently disclosed).
+  polynomial time are *not* claimed (permanently disclosed; see "Lower calibration" below).
 * **Interpreter subtlety** — `evaln` outputs can exceed the fuel
   (`Nat.Partrec.Code.evaln_output_can_exceed_fuel`), which is why `PolyFueled` carries a
-  polynomial bound on the *output* separately from the fuel. -/
+  polynomial bound on the *output* separately from the fuel.
+
+**Lower calibration — OPEN.**  Everything above bounds the class from *above*
+(`PolyFueled.primrec`), inhabits it by real algorithms, and separates it from below by
+output size (`not_polyFueled_two_pow`).  There is **no lower-calibration theorem**: nothing
+here proves that every trader computable by a polynomial-time machine in the paper's
+`def:ec` sense is `EfficientlyComputable`.  The inclusion paper-e.c. ⊆ `EfficientlyComputable`
+is undischarged, and it is not free — the `BigDigits` inverse-operation ceiling (seam 2
+route (A), `notes/next-session.md`) is a concrete stop-and-report showing this metering
+closes under poly-carry digit recurrences but provably *not* under inverse operations
+(`sqrt`, `unpair`, big-divisor `div`) that are trivially poly-time on a binary-tape machine.
+
+Direction of risk, stated precisely:
+
+* For the **property tail** the substitution is conservative.  Each exploiting trader is
+  explicitly constructed and certified *inside* `EfficientlyComputable`, so `noExploit`
+  applies to it whatever the class's relation to the paper's is.
+* For **`thm:li`** the substitution weakens the theorem.  `LIA_is_logical_inductor` defeats
+  the fuel-metered class only; if that class is a strict subclass of the paper's e.c.
+  traders, the paper's `thm:li` is strictly stronger than the Lean one.
+
+Closing this needs a bridge theorem (an `evaln`-fuel ↔ TM-step polynomial simulation)
+against a poly-time machine class Mathlib/CSlib does not yet expose. -/
 
 /-- Polynomials do not majorize `2 ^ n`: the fuel model's size bound genuinely bites
 (`def:ec` separation substrate). -/

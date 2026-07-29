@@ -33,8 +33,9 @@ def RpnSentenceCodes (φ : ℕ → Sentence) : Prop :=
   ∃ s : ℕ → List ℕ, PolySegStream s ∧
     ∀ n, parseRpn (s n).length (s n) = some (φ n, [])
 
-/-- A polynomially emittable canonical Polish stream instantiates the class (the
-paper's 𝓔𝓒 on the nose: poly stream length = poly symbol count). -/
+/-- A polynomially emittable canonical Polish stream instantiates the class (the paper's
+𝓔𝓒 *metering* on the nose: poly stream length = poly symbol count; this is a statement
+about the cost measure, not a claim that the fuel-metered class equals the paper's). -/
 lemma RpnSentenceCodes.ofCanonical {φ : ℕ → Sentence}
     (h : PolySegStream fun n => rpn (φ n)) : RpnSentenceCodes φ :=
   ⟨_, h, fun n => by
