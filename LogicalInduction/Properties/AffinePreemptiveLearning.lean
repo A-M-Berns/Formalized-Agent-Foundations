@@ -8,7 +8,8 @@ the paper's two liminf/limsup equalities are purely generic filter arguments.
 -/
 import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.ROI
-import LogicalInduction.Properties.ExpectationConvergence
+import LogicalInduction.Properties.Coherence
+import LogicalInduction.Framework.Expectations
 import Mathlib.Topology.Order.LiminfLimsup
 
 namespace LogicalInduction

@@ -2852,4 +2852,18 @@ lemma polyFueled_boundedNone (p : ℕ → ℕ → Bool)
 #print axioms polyFueled_boundedAny
 #print axioms polyFueled_boundedNone
 
+/-- The rational sequence `1/n` is emitted with polynomial fuel (`1/0 = 0` is selected by
+the zero test).  Coefficient streams of growing bundles are built from this. -/
+lemma encode_inv_nat_polyFueled :
+    ∃ c, PolyFueled c (fun n => Encodable.encode (1 / (n : ℚ))) := by
+  have livePF := (PolyFueled.const 2).pair PolyFueled.id
+  have pickPF := ifzSel_polyFueled.comp
+    (((PolyFueled.const (Encodable.encode (0 : ℚ))).pair livePF).pair PolyFueled.id)
+  refine ⟨_, pickPF.of_eq (fun n => ?_)⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  rcases n with _ | n
+  · simp
+  · simp only [Nat.succ_ne_zero, if_false, one_div]
+    simpa using (encode_rat_inv_natCast (Nat.succ_pos n)).symm
+
 end LogicalInduction

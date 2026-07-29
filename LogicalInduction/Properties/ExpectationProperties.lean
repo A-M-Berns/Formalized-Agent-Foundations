@@ -7,6 +7,7 @@ is expanded into the paper's `n` threshold shares, so the affine master theorems
 to see the actual traded sentences.
 -/
 import LogicalInduction.Properties.ExpectationAffine
+import LogicalInduction.Properties.ExpectationConvergence
 import LogicalInduction.Properties.AffineCoherence
 import LogicalInduction.Properties.Pseudorandomness
 import Mathlib.Topology.Algebra.Order.LiminfLimsup
@@ -1498,8 +1499,11 @@ private lemma expectTerms_converge
   induction l with
   | nil => exact ⟨0, by simp⟩
   | cons p rest ih =>
+      -- `thm:ec` consumes world valuation *per grid*; the daily form gives it a fortiori.
       obtain ⟨LX, hLX⟩ := p.2.expect_converges P DP (hcode p (by simp)) hworld
-        (hval p (by simp))
+        (fun k => by
+          filter_upwards [hval p (by simp), Filter.eventually_ge_atTop k] with m hm hmk v hv
+          exact (hm v hv).imp (fun _ hx => hx.mono hmk))
       have hcodeRest : ∀ q ∈ rest, q.2.RpnThresholdCodes := by
         intro q hq
         exact hcode q (by simp [hq])

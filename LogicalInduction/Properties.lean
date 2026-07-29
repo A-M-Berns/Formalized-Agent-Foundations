@@ -38,9 +38,10 @@ File layout (promoted from a single file once it grew past ~1000 lines):
 * `Properties.Conditioning` — exact capped conditional markets, a direct finite-zero
   prefix repair on the original market, and stagewise combined deductive-process semantics
   for the fixed and growing-prefix forms of `thm:scon`.
-* `Properties.ExpectationConvergence` — `thm:ec`: the feature-generic hysteresis layer
-  (`buyIndF`/`sellIndF`/`hystChain`) and the bundle trader `excTrader` on the
-  expectation feature `𝔼(X)`, gated to absorb the `lem:conluvapprox` payout error.
+* `Properties.ExpectationConvergence` — `thm:ec`: the day-`n` expectation is the price of
+  the precision-`n` threshold bundle, so `thm:affcoh` traps it between the limiting
+  belief's liminf/limsup, `thm:lc` averages that belief over completed-theory worlds, and
+  `lem:conluvapprox` makes the precision sequence Cauchy.
 * `Properties.Relationships` — `thm:lex`: the paper's finite exclusive/exhaustive family
   theorem, plus fixed-equivalence (`eqTr`) and implication/price-monotonicity (`impTr`)
   consequences.
@@ -85,12 +86,12 @@ import LogicalInduction.Properties.UniformNonDogmatism
 import LogicalInduction.Properties.OccamBounds
 import LogicalInduction.Properties.UniversalSemimeasure
 import LogicalInduction.Properties.Conditioning
-import LogicalInduction.Properties.ExpectationConvergence
 import LogicalInduction.Properties.Relationships
 import LogicalInduction.Properties.LimitCoherence
 import LogicalInduction.Properties.FinitePerturbations
 import LogicalInduction.Properties.AffineProvability
 import LogicalInduction.Properties.ExpectationAffine
+import LogicalInduction.Properties.ExpectationConvergence
 import LogicalInduction.Properties.ExpectationProperties
 import LogicalInduction.Properties.SelfTrust
 import LogicalInduction.Properties.AffinePreemptiveLearning

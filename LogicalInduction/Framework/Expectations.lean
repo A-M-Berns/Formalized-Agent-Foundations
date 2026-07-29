@@ -149,11 +149,12 @@ lemma expect_mem_Icc (P : History) (n : ℕ) (X : LUV)
 
 /-! ### `thm:ec` — Expectations Converge.
 
-Proved in `Properties/ExpectationConvergence.lean` (`LUV.expect_converges`, Phase D2):
-the bundle-hysteresis trader — `thm:con`'s state driven by the expectation feature,
-trading the day-`n` threshold bundle, gated to absorb the `lem:conluvapprox` payout
-error. The statement lives there (it needs the world-value linkage `hval` and daily
-plausible worlds, on top of the price bounds). -/
+Proved in `Properties/ExpectationConvergence.lean` (`LUV.expect_converges`): the day-`n`
+expectation is the price of the precision-`n` threshold bundle, so `thm:affcoh` traps it
+between the limiting belief's liminf/limsup, and `thm:lc` averages the limiting belief
+over completed-theory worlds, where `lem:conluvapprox` makes the precision sequence
+Cauchy. The statement lives there (it needs the per-grid world-value linkage `hval` and
+daily plausible worlds, on top of the price bounds). -/
 
 end LUV
 
@@ -306,6 +307,11 @@ the expectation-convergence trader actually consumes (it uses `expectApprox_near
 precisions `≤ N`). -/
 def PCWorld.ApproxValuesUpTo (v : PCWorld) (X : LUV) (x : ℝ) (N : ℕ) : Prop :=
   0 ≤ x ∧ ∀ n, 0 < n → n ≤ N → |X.expectApprox v.payout n - x| ≤ 1 / n
+
+/-- Finite-precision agreement is downward closed in the precision. -/
+lemma PCWorld.ApproxValuesUpTo.mono {v : PCWorld} {X : LUV} {x : ℝ} {M N : ℕ}
+    (h : v.ApproxValuesUpTo X x N) (hMN : M ≤ N) : v.ApproxValuesUpTo X x M :=
+  ⟨h.1, fun n hn hnM => h.2 n hn (hnM.trans hMN)⟩
 
 /-- Full `ValuesAt` implies the finite-precision agreement at every `N`. -/
 lemma PCWorld.ValuesAt.approxValuesUpTo {v : PCWorld} {X : LUV} {x : ℝ}

@@ -126,7 +126,8 @@ theorem expectation_convergence_discharged (P : History) (DP : DeductiveProcess)
     (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x) :
     ∃ L, ConvergesTo (X.expectSeq P) L :=
   X.expect_converges P DP hcode hcons
-    (Filter.Eventually.of_forall (fun n v hv => (hval n v hv).imp (fun _ hx => hx.approxValuesUpTo n)))
+    (fun k => Filter.Eventually.of_forall
+      (fun n v hv => (hval n v hv).imp (fun _ hx => hx.approxValuesUpTo k)))
 
 #print axioms expectation_convergence_discharged
 #print axioms provind_sequence_hypothesis_discharged
