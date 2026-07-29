@@ -2,16 +2,18 @@ import LogicalInduction.Construction.Witnesses.M7Witnesses
 import LogicalInduction.Properties.UniversalSemimeasure
 
 /-!
-# Concrete Boolean-prefix syntax for Domination of the Universal Semimeasure
+# Concrete Boolean-prefix syntax for `thm:dus`
 
-This file constructs `M7-DUS-PREFIX-SYNTAX`.  Prefix sentences are literal finite
-conjunctions over an independent atom family, and the finite-string enumeration is the
-total decode-with-empty enumeration induced by the stock `List Bool` encoding.
+Domination of the Universal Semimeasure (`thm:dus`) is stated over an abstract
+`BitPrefixSentences` presentation.  This file supplies a concrete one: prefix sentences are
+literal finite conjunctions over an independent atom family, and the finite-string
+enumeration is the total decode-with-empty enumeration induced by the stock `List Bool`
+encoding.
 
-The two residual inputs are honest and conclusion-free.  `IndependentBitAtoms` supplies
-only finite compatibility with the deductive stages.  `BitPrefixCodeComputation` supplies
-one program which emits the code of the *actual* conjunction below with polynomial fuel;
-ordinary primitive recursiveness alone would not justify that whole-number bound.
+Two inputs remain, both conclusion-free.  `IndependentBitAtoms` supplies only finite
+compatibility with the deductive stages.  `BitPrefixCodeComputation` supplies one program
+which emits the code of the *actual* conjunction below with polynomial fuel; ordinary
+primitive recursiveness alone would not justify that whole-number bound.
 -/
 
 namespace LogicalInduction
@@ -119,8 +121,8 @@ def bitPrefixSentencesOfIndependentAtoms
   realizable := I.realizable
 
 /-- Domination of the universal semimeasure with the opaque `BitPrefixSentences` argument
-discharged by the concrete Boolean-prefix constructor.  The approximation and threshold
-emission premises remain explicit (`M7-DUS-APPROX`).
+discharged by the concrete Boolean-prefix constructor.  The semimeasure's from-below
+approximation and its threshold emission remain caller inputs.
 Paper node: `thm:dus` -/
 theorem lic_domination_universalSemimeasure_ofIndependentAtoms
     {DP : DeductiveProcess}

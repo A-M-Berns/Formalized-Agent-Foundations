@@ -2,24 +2,28 @@ import LogicalInduction.Construction.Witnesses.ComputationDP
 import LogicalInduction.Construction.Witnesses.LUVArithmetic
 
 /-!
-# Constructed rational quote codes — closing the epr/er reflection seam
+# Rational quote codes built from the market program
 
-`RationalQuoteCode` (QuotationAffine.lean) has until now only been *consumed*: every
-`thm:epr`/`thm:er` endpoint took the quote object and its exactness as caller hypotheses.
-This file constructs it, the way `parameterizedDiagonalQuoteCodeOfMarket` already does for
-the paradox-resistance diagonal: from the certified market program itself, with no
-caller-supplied semantic relation.
+The self-referential theorems `thm:epr` (Expectations of Probabilities), `thm:er`
+(Iterated Expectations), `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:ref` (Introspection) and
+`thm:st` (Self-Trust) each ask the market to price a sentence *quoting* one of its own
+numbers.  `RationalQuoteCode` and `BooleanQuoteCode` (`QuotationAffine.lean`) are the
+objects carrying such a quote.  This file constructs them from the certified market
+program itself, so the semantic relation between the quoted syntax and the quantity it
+names is derived rather than supplied by the caller.
 
-* `arithmeticThresholdLUV_polyThresholdCodeSeq` — the first discharge of a
-  `RationalQuoteCode.threshold_poly` obligation: one poly-fueled program emits the encoded
-  quotation-atom threshold sentence `⌜value(n) > i/k⌝` from `⟨n,⟨k,i⟩⟩`, by the
-  `gcdc`/`divmod1`/`ifzSel` recipe of `ComputableLUV.toLUV_polyThresholdCodes`.
-* `RationalQuoteCode.ofComputable` — any total computable `[0,1]`-rational sequence has a
-  quote code; positive/negative completeness comes from `BooleanQuoteCode.ofComputable`
-  over the decidable comparison fiber.
-* `theoremPriceQuoteCode` / `lic_expectations_of_probabilities_closed` — `thm:epr` over the
-  constructed `LIA` with **no reflection hypotheses**: the quoted LUV is built from the
-  market program and its exactness is the market certificate's `quote_exact`.
+* `arithmeticThresholdLUV_polyThresholdCodeSeq` discharges the `threshold_poly`
+  obligation: one poly-fueled program emits the encoded quotation-atom threshold sentence
+  `⌜value(n) > i/k⌝` from `⟨n,⟨k,i⟩⟩`, by the `gcdc`/`divmod1`/`ifzSel` recipe of
+  `ComputableLUV.toLUV_polyThresholdCodes`.
+* `RationalQuoteCode.ofComputable` gives a quote code to any total computable
+  `[0,1]`-rational sequence; positive and negative completeness come from
+  `BooleanQuoteCode.ofComputable` over the decidable comparison fiber.
+* The `theorem…QuoteCode` definitions instantiate this at the constructed `LIA` market's
+  own prices, expectations, deferred prices and confidence indicators.  The `…_closed`
+  theorems are the corresponding paper endpoints with the reflection hypotheses
+  discharged: each quoted LUV is built from the market program, and its exactness is the
+  market certificate's `quote_exact`.
 -/
 
 namespace LogicalInduction
@@ -101,8 +105,8 @@ lemma quoteAtom_mesh_encode_polyFueled (code : ℕ) :
       Nat.succ_pred_eq_of_pos hg
     rw [hg1, encode_rat_natCast_div hk0, two_mul]
 
-/-- **`threshold_poly` discharged for the universal quotation schema.**  The obligation
-every `RationalQuoteCode` carries; it had never before been discharged.
+/-- The `threshold_poly` obligation of a `RationalQuoteCode`, discharged for the universal
+quotation schema at selector `code`.
 Paper node: `def:ec`, `thm:epr`, `thm:er` -/
 lemma arithmeticThresholdLUV_polyThresholdCodeSeq (code : ℕ) :
     LUV.PolyThresholdCodeSeq (fun n => arithmeticThresholdLUV code n) := by
@@ -191,11 +195,10 @@ lemma MarketComputation.quote_mem_Icc {P : History} (market : MarketComputation 
 /-! ## Part D — the market's own expectations are also such a sequence -/
 
 /-- Exact rational expectation of the LUV `X idx` at market day `day` (quotes from day
-`day`, mesh the day's own grid `day + 1`): the rational value whose cast is
-`(X idx).expect P day` (`def:e`
-computed through the market program's exact quotes).  The two indices separate the LUV
-selector from the evaluation day, which is what the deferred-day theorems
-(`thm:cee`/`thm:st`) need. -/
+`day`, mesh the day's own grid `day + 1`): the rational value whose cast is the `def:e`
+expectation `(X idx).expect P day`, computed through the market program's exact quotes.
+The two indices separate the LUV selector from the evaluation day, which is what the
+deferred-day theorems (`thm:cee`/`thm:st`) need. -/
 def MarketComputation.expectQuoteAt {P : History} (market : MarketComputation P)
     (X : ℕ → LUV) (idx day : ℕ) : ℚ :=
   (∑ i ∈ Finset.range (day + 1),
@@ -740,8 +743,8 @@ theorem lic_self_trust_closed
 
 /-! ## Part F — the weighted conditional (`thm:ccee`), indicator-source closed form
 
-Fully general caller sources are impossible in the token model, not merely undone: the
-scaled LUV's mesh threshold must contain the sentence `X.gt (r / w (f n))` — a finite
+A closed form for fully general caller sources is out of reach for a structural reason:
+the scaled LUV's mesh threshold must contain the sentence `X.gt (r / w (f n))` — a finite
 Boolean combination of `X` thresholds only jumps at the thresholds it uses — so its
 emitter would have to *compute* `w (f n)` within fuel polynomial in `n`, exactly what
 `def:deferralfunc` withholds (the paper's trader likewise never evaluates `w_{f(n)}` on
@@ -785,10 +788,11 @@ noncomputable def theoremConditionalExpectationQuoteCode (f : DeferralFunction)
 
 /-- **`thm:ccee` (no expected net update under conditionals), closed form over the
 constructed `LIA`** — the paper's conditional-probability instance, with both quoted
-products constructed.  The source is a caller indicator family (relational, per D3);
-`Z` is its indicator product with the deferred-weight quote code, and `Z'` the quote of
-the market's own deferred weighted expectation.  Only the sentence sequence, the source
-family and its indicator linkage, the weight data, and the deferral function remain.
+products constructed.  The source `X` is supplied by its indicator relation to `φ` rather
+than as a concrete LUV term; `Z` is its indicator product with the deferred-weight quote
+code, and `Z'` the quote of the market's own deferred weighted expectation.  Only the
+sentence sequence, the source family and its indicator linkage, the weight data, and the
+deferral function remain.
 Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
 `f n > n`; see `QuotationAffine`'s injective-deferral reindexing section.
 Paper node: `thm:ccee` -/

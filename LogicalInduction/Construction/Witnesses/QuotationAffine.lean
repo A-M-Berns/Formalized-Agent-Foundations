@@ -6,12 +6,17 @@ import Foundation.FirstOrder.Bootstrapping.FixedPoint
 /-!
 # Arithmetic quotation and affine-package construction
 
+The reflection apparatus behind `thm:ref` (Introspection), `thm:lp` (Paradox Resistance),
+`thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee` and `thm:st` (Self-Trust).  Each of
+those theorems prices a sentence that quotes a market quantity; this file supplies the
+quoted syntax together with the affine portfolios that trade on it.
+
 The public market language is propositional, while the paper's quotation mechanism is
-first-order arithmetic.  This file makes that boundary concrete.  Every quoted Boolean
-decision is represented by a positive and a complementary FFL arithmetic schema; the pair
-has one injective, polynomially emitted propositional name.  A quoted rational value uses
-the same dual-schema mechanism at every rational threshold.  Consequently a world
-consistent with the completed deductive theory values the resulting LUV correctly.
+first-order arithmetic.  Every quoted Boolean decision is represented by a positive and a
+complementary FFL arithmetic schema; the pair has one injective, polynomially emitted
+propositional name.  A quoted rational value uses the same dual-schema mechanism at every
+rational threshold.  Consequently a world consistent with the completed deductive theory
+values the resulting LUV correctly.
 
 `ParameterizedDiagonalQuoteCode` records an actual FFL parameterized fixed point.  For
 paradox resistance, `parameterizedDiagonalQuoteCodeOfMarket` uses Kleene's second recursion
@@ -69,20 +74,22 @@ lemma quotationClaimSentence_poly
 
 /-! ## Universal computable quotation predicates
 
-The old quotation fields quantified over two *independent, arbitrary* schemas
-`positive negative : ArithmeticSemisentence 1`, keyed only by an `input`.  That freedom is
-what made the interface **vacuous** alongside the market non-vacuity hypothesis `hworld`:
-taking `positive = negative = ⊤` forces an atom and its negation into a common stage, so no
-world is consistent with it.  It also makes the deductive process **non-computable** (there
-is no uniform enumeration of provable instances over all schemas).
+Quotation is keyed by a *decidable-decision selector* `code : ℕ`, folded into the numeral
+of two **fixed** universal schemas `universalQuotePos`/`universalQuoteNeg` — the same shape
+the computation side uses (`ComputationSyntax`).  Two properties of the interface depend on
+the schemas being fixed and complementary rather than arbitrary.
 
-The redesign folds a *decidable-decision selector* `code : ℕ` into the numeral of two
-**fixed** universal schemas, mirroring the computation side (`ComputationSyntax`), whose
-fixed complementary schemas are exactly what keep it non-vacuous *and* computably
-enumerable.  The positive and negative fibers of one partial-recursive computation are
-mutually exclusive by determinism, so the provability world can believe the positive
-literal without ever being forced into a contradiction, and the schema is a fixed constant
-so its instances are enumerable via `provable_instances_re`. -/
+*Non-vacuity.*  An interface quantifying over independent schemas
+`positive negative : ArithmeticSemisentence 1` can be instantiated at
+`positive = negative = ⊤`, which forces an atom and its negation into a common stage, so
+that no world is consistent with the theory.  The positive and negative fibers of one
+partial-recursive computation are instead mutually exclusive by determinism, so a
+provability world can believe the positive literal without ever being forced into a
+contradiction.
+
+*Computable enumerability of the deductive process.*  There is no uniform enumeration of
+the provable instances of arbitrary schemas; for a fixed schema the instances are
+enumerable via `provable_instances_re`. -/
 
 /-- The partial-recursive computation named by `code`. -/
 noncomputable def decodedComputation (code : ℕ) : ℕ →. ℕ :=
@@ -152,13 +159,13 @@ noncomputable def quoteAtom (w : ℕ) : Sentence :=
   quotationClaimSentence universalQuotePos universalQuoteNeg w
 
 /-- A first-order arithmetic background and one generic proof-to-public-language
-translation.  Unlike the old quote packages this object contains no sentence family,
-LUV, price, affine combination, or asymptotic field.
+translation.  It carries no sentence family, LUV, price, affine combination, or
+asymptotic field.
 
 The quotation fields are **code-indexed** (`dd:quote-code`): a selector `code : ℕ` naming
 a decidable decision, folded into the numeral of the two fixed universal schemas
-`universalQuotePos`/`universalQuoteNeg`.  This kills the old `⊤,⊤` vacuity (the schemas are
-fixed and complementary) and makes the process computably enumerable.
+`universalQuotePos`/`universalQuoteNeg`.  Fixing the schemas is what keeps the interface
+non-vacuous and the deductive process computably enumerable.
 Paper node: `thm:ref`, `thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` -/
 structure QuotationTheoryPresentation
     (DP : DeductiveProcess) (T : ArithmeticTheory)
@@ -1172,8 +1179,8 @@ lemma deferralPreimage_le
   · exact (deferralPreimage_spec f hinj hspec hm).1.le
 
 /-- Only finitely many days are scheduled from below `N`, so past the largest of them
-every flagged day has its preimage at or above `N`.  This replaces the monotonicity
-argument `index m < N → f (index m) < f N`. -/
+every flagged day has its preimage at or above `N`.  Only injectivity of `f` is used; no
+monotonicity is needed. -/
 lemma deferralPreimage_ge
     (f : DeferralFunction) (hinj : Function.Injective f.f)
     {a degree : ℕ}
@@ -2390,8 +2397,8 @@ structure ParameterizedDiagonalQuoteCode
   represents_fixedpoint : ∀ (z : ℕ), (ℕ ⊧ₘ (parameterizedFixedpoint body)/[↑z]) ↔ truth z
 
 /-- The genuine parameterized fixed point carried by a diagonal quote satisfies FFL's
-uniform diagonal law inside the presented arithmetic theory — a standalone honesty
-artifact that a real self-referential arithmetic sentence backs the quoted decision. -/
+uniform diagonal law inside the presented arithmetic theory: a genuine self-referential
+arithmetic sentence, not a stipulated relation, backs the quoted decision. -/
 lemma ParameterizedDiagonalQuoteCode.diagonal_law
     {DP : DeductiveProcess} {T : ArithmeticTheory} {truth : ℕ → Prop}
     (Q : QuotationTheoryPresentation DP T)
@@ -2630,8 +2637,8 @@ lemma parameterizedDiagonalQuoteCodeOfMarket_sentence
   rfl
 
 /-- The constructor's represented arithmetic fixed point is exactly the same-day price
-comparison for its inherited public atom.  This is the semantic edge formerly supplied as
-an external premise.
+comparison for its inherited public atom.  This is the semantic link between the
+arithmetic fixed point and the public atom, derived here rather than assumed.
 Paper node: `thm:lp` -/
 lemma parameterizedDiagonalQuoteCodeOfMarket_public_fixedpoint
     {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
