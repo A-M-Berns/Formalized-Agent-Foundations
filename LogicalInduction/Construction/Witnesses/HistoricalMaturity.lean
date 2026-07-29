@@ -957,13 +957,16 @@ lemma roiToleranceRat_pos (i : ℕ) : 0 < (roiToleranceRat i : ℝ) := by
   positivity
 
 /-- One-sided affine recurring unbiasedness with the historical verifier constructed
-from the logical inductor's certified market and deductive-process programs. -/
-lemma DeterminedViaTheory.not_eventually_weightedBias_lt_ofComputations
+from the logical inductor's certified market and deductive-process programs.  Stated at
+approximate determination (`def:affthmval` determines the *combination*, so a threshold
+mesh reproduces it only up to a negligible error); the exact form below is `err = 0`. -/
+lemma ApproxDeterminedViaTheory.not_eventually_weightedBias_lt_ofComputations
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} [hLI : IsLogicalInductor P DP]
-    {truth : ℕ → ℝ}
-    (hdet : DeterminedViaTheory As P DP truth)
+    {truth err : ℕ → ℝ}
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (hnegl : ErrorNegligible As P err)
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -999,8 +1002,8 @@ lemma DeterminedViaTheory.not_eventually_weightedBias_lt_ofComputations
     have hunit : ∀ i, N ≤ i → (Ts i).magnitude P = 1 := by
       intro i hi
       simpa [Ts] using
-        (hdet.approx.biasRunTrader_magnitude_eq_one_of_negative_bias hpoly hWgen
-          (fun i => (As i).magnitude_nonneg P) hWdiv hmag hworld hP (biasRunRate scale)
+        (hdet.biasRunTrader_magnitude_eq_one_of_negative_bias hpoly hWgen
+          hnegl.2.1 hWdiv hmag hworld hP (biasRunRate scale)
           (fun k => (biasRunRate_pos scale k).le)
           (biasRunRate_le_one scale) (q : ℝ) hq0 hbiasQ i
           (biasRunRate_pos scale i))
@@ -1012,20 +1015,22 @@ lemma DeterminedViaTheory.not_eventually_weightedBias_lt_ofComputations
       hTs market process (q / 4) roiToleranceRat roiToleranceRat_prim
       roiToleranceRat_pos N hunit hroi'
     simpa [Ts, roiTolerance] using hs
-  have hnotQ := hdet.approx.not_eventually_weightedBias_lt_of_historicalVerifier
-    hpoly hWgen (AffineCombination.errorNegligible_zero As P) hWdiv hmag hworld
+  have hnotQ := hdet.not_eventually_weightedBias_lt_of_historicalVerifier
+    hpoly hWgen hnegl hWdiv hmag hworld
       (q : ℝ) hq0 roiTolerance
       roiTolerance_nonneg roiTolerance_summable hverify
   exact hnotQ hbiasQ
 
 /-- Affine recurring unbiasedness with both one-sided historical schedules constructed
-from the logical inductor computations. -/
-lemma DeterminedViaTheory.recunbiasedaff_ofComputations
+from the logical inductor computations.  Approximate determination suffices; the exact
+`thm:recunbiasedaff` form below is the `err = 0` specialization. -/
+lemma ApproxDeterminedViaTheory.recunbiasedaff_ofComputations
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    {truth : ℕ → ℝ}
-    (hdet : DeterminedViaTheory As P DP truth)
+    {truth err : ℕ → ℝ}
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (hnegl : ErrorNegligible As P err)
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1040,18 +1045,18 @@ lemma DeterminedViaTheory.recunbiasedaff_ofComputations
   let f : ℕ → ℝ := weightedBias w market truth
   have hstep : Tendsto (fun n => f (n + 1) - f n) Filter.atTop (nhds 0) := by
     apply weightedAverage_step_tendsto_zero w
-      (fun i => market i - truth i) 1
+      (fun i => market i - truth i) 2
     · exact fun n => (hWdiv.1 n).1
     · exact fun n => (hWdiv.1 n).2
     · intro n
       have hn := hdet.abs_truth_sub_price_le_magnitude hpoly hworld hP n
       rw [abs_sub_comm] at hn
-      exact hn.trans (hmag n)
+      exact hn.trans (by linarith [hmag n, hnegl.2.1 n])
     · exact hWdiv.2
   have hlower : ∀ ε > 0, ∃ᶠ n in Filter.atTop, -ε < f n := by
     intro ε hε
     have hnot := hdet.not_eventually_weightedBias_lt_ofComputations
-      hpoly hWgen hWdiv hmag hworld hP (ε / 2) (by linarith)
+      hpoly hWgen hnegl hWdiv hmag hworld hP (ε / 2) (by linarith)
     rw [Filter.not_eventually] at hnot
     exact hnot.mono (fun n hn => by
       simp only [not_lt] at hn
@@ -1065,7 +1070,7 @@ lemma DeterminedViaTheory.recunbiasedaff_ofComputations
   have hupper : ∀ ε > 0, ∃ᶠ n in Filter.atTop, f n < ε := by
     intro ε hε
     have hnot := hdetNeg.not_eventually_weightedBias_lt_ofComputations
-      hpoly.neg hWgen hWdiv hmagNeg hworld hP (ε / 2) (by linarith)
+      hpoly.neg hWgen hnegl.neg hWdiv hmagNeg hworld hP (ε / 2) (by linarith)
     rw [Filter.not_eventually] at hnot
     exact hnot.mono (fun n hn => by
       simp only [not_lt] at hn
@@ -1077,6 +1082,22 @@ lemma DeterminedViaTheory.recunbiasedaff_ofComputations
       linarith)
   exact hasLimitPoint_zero_of_two_sided_recurring f hstep hlower hupper
 
+/-- Exact `thm:recunbiasedaff` with constructed schedules: the `err = 0` specialization. -/
+lemma DeterminedViaTheory.recunbiasedaff_ofComputations
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hWgen : PGenerableWeighting W)
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    {truth : ℕ → ℝ}
+    (hdet : DeterminedViaTheory As P DP truth)
+    (hWdiv : DivergentWeighting W P)
+    (hmag : ∀ i, (As i).magnitude P ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    HasLimitPoint
+      (weightedBias (fun i => (W i).denote P)
+        (fun i => (As i).price P i) truth) 0 :=
+  hdet.approx.recunbiasedaff_ofComputations hpoly hWgen
+    (AffineCombination.errorNegligible_zero As P) hWdiv hmag hworld
+
 /-! ## Statistical-learning capstones -/
 
 /-- The patient settlement clock is **derived, not assumed**: `IsLogicalInductor` already
@@ -1084,27 +1105,48 @@ carries a computable market and a computable deductive process (`def:lic`), and 
 programs are exactly what the paper's `app:prandaff` `DefinitelySettled` dovetail needs.
 `PatientSettlementClock.ofComputations` runs that dovetail, so no endpoint below has to
 take a clock as a hypothesis. -/
+private noncomputable def patientApproxClockOfInductor
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    [hLI : IsLogicalInductor P DP] {truth e err : ℕ → ℝ} {tol : ℕ → ℚ}
+    (hpoly : PolySequence As) (hdet : ApproxDeterminedViaTheory As P DP truth e)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (htolPrim : Primrec tol) (htol : ∀ i, 2 * e i < ((tol i : ℚ) : ℝ))
+    (herr : ∀ i, ((tol i : ℚ) : ℝ) + e i ≤ err i)
+    (f : DeferralFunction) : PatientSettlementClock As P DP truth err f :=
+  PatientSettlementClock.ofComputations hpoly
+    hLI.marketComputable.nonemptyComputation.some
+    hLI.processComputable.nonemptyComputation.some hdet hworld htolPrim
+    (fun i => hdet.exists_agree_stage i _ (htol i)) herr f
+
+/-- The exact clock: `tol = 0` and `e = 0`, so the dovetail decides *exact* agreement and
+the clock reports exact settlement.  Reachability is `exists_settled_stage`. -/
 private noncomputable def patientClockOfInductor
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [hLI : IsLogicalInductor P DP] {truth : ℕ → ℝ}
     (hpoly : PolySequence As) (hdet : DeterminedViaTheory As P DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) : PatientSettlementClock As P DP truth f :=
-  PatientSettlementClock.ofComputations hpoly
+    (f : DeferralFunction) : PatientSettlementClock As P DP truth 0 f :=
+  PatientSettlementClock.ofComputations (tol := fun _ => 0) hpoly
     hLI.marketComputable.nonemptyComputation.some
-    hLI.processComputable.nonemptyComputation.some hdet hworld f
+    hLI.processComputable.nonemptyComputation.some hdet.approx hworld
+    (Primrec.const 0)
+    (fun i => by
+      obtain ⟨m, hm⟩ := hdet.exists_settled_stage i
+      exact ⟨m, fun v w hv hw => by rw [hm v hv, hm w hw]; simp⟩)
+    (fun i => by simp) f
 
 /-- The nonnegative affine pseudorandomness branch with historical maturity constructed
 from the logical inductor computations.
 Paper node: `thm:prandaff` -/
-theorem DeterminedViaTheory.lic_prandaff_above
+theorem ApproxDeterminedViaTheory.lic_prandaff_above
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
+    {truth e err : ℕ → ℝ} (hdet : ApproxDeterminedViaTheory As P DP truth e)
+    (hnegl : ErrorNegligible As P e)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth f)
+    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : PseudorandomAbove truth f P) :
     (fun n ↦ (As n).price P n) ≳ₙ (fun _ ↦ 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
@@ -1153,20 +1195,21 @@ theorem DeterminedViaTheory.lic_prandaff_above
     simpa only [w] using hpseudo W hWgen hWdiv hWpatient
   have hbias : HasLimitPoint (weightedBias w market truth) 0 := by
     simpa only [w, market] using
-      hdet.recunbiasedaff_ofComputations hpoly hWgen hWdiv hmag hworld
+      hdet.recunbiasedaff_ofComputations hpoly hWgen hnegl hWdiv hmag hworld
   exact (not_eventually_weightedAverage_lt_of_limitPoint_bias
     w market truth hden hbias htruth ((q : ℝ) / 2) (half_pos hq0)) hmarketBad
 
 /-- The nonpositive affine pseudorandomness branch with constructed maturity schedules.
 Paper node: `thm:prandaff` -/
-theorem DeterminedViaTheory.lic_prandaff_below
+theorem ApproxDeterminedViaTheory.lic_prandaff_below
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
+    {truth e err : ℕ → ℝ} (hdet : ApproxDeterminedViaTheory As P DP truth e)
+    (hnegl : ErrorNegligible As P e)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth f)
+    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : PseudorandomBelow truth f P) :
     (fun n ↦ (As n).price P n) ≲ₙ (fun _ ↦ 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
@@ -1180,7 +1223,7 @@ theorem DeterminedViaTheory.lic_prandaff_below
     intro i
     rw [neg_magnitude]
     exact hmag i
-  have haboveNeg := hdet.neg.lic_prandaff_above hpoly.neg hboundedNeg hmagNeg
+  have haboveNeg := hdet.neg.lic_prandaff_above hpoly.neg hnegl.neg hboundedNeg hmagNeg
     hworld f clock.neg hpseudo.neg
   intro ε hε
   filter_upwards [haboveNeg ε hε] with n hn
@@ -1190,21 +1233,67 @@ theorem DeterminedViaTheory.lic_prandaff_below
 
 /-- Exact two-sided affine pseudorandomness with no historical-verifier premises.
 Paper node: `thm:prandaff` -/
-theorem DeterminedViaTheory.lic_prandaff
+theorem ApproxDeterminedViaTheory.lic_prandaff
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
+    {truth e err : ℕ → ℝ} (hdet : ApproxDeterminedViaTheory As P DP truth e)
+    (hnegl : ErrorNegligible As P e)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth f)
+    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : Pseudorandom truth f P) :
     (fun n ↦ (As n).price P n) ≈ₙ (fun _ ↦ 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   rw [asympEq_iff_asympLE_asympGE]
-  exact ⟨hdet.lic_prandaff_below hpoly hbounded hmag hworld f clock hpseudo.2,
-    hdet.lic_prandaff_above hpoly hbounded hmag hworld f clock hpseudo.1⟩
+  exact ⟨hdet.lic_prandaff_below hpoly hnegl hbounded hmag hworld f clock hpseudo.2,
+    hdet.lic_prandaff_above hpoly hnegl hbounded hmag hworld f clock hpseudo.1⟩
+
+/-- Exact `thm:prandaff`, nonnegative branch with constructed maturity: `e = 0`.
+Paper node: `thm:prandaff` -/
+theorem DeterminedViaTheory.lic_prandaff_above
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    {truth err : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
+    (hbounded : BoundedAffinePrices As P)
+    (hmag : ∀ i, (As i).magnitude P ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
+    (hpseudo : PseudorandomAbove truth f P) :
+    (fun n ↦ (As n).price P n) ≳ₙ (fun _ ↦ 0) :=
+  hdet.approx.lic_prandaff_above hpoly (errorNegligible_zero As P) hbounded hmag hworld
+    f clock hpseudo
+
+/-- Exact `thm:prandaff`, nonpositive branch with constructed maturity: `e = 0`.
+Paper node: `thm:prandaff` -/
+theorem DeterminedViaTheory.lic_prandaff_below
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    {truth err : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
+    (hbounded : BoundedAffinePrices As P)
+    (hmag : ∀ i, (As i).magnitude P ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
+    (hpseudo : PseudorandomBelow truth f P) :
+    (fun n ↦ (As n).price P n) ≲ₙ (fun _ ↦ 0) :=
+  hdet.approx.lic_prandaff_below hpoly (errorNegligible_zero As P) hbounded hmag hworld
+    f clock hpseudo
+
+/-- Exact two-sided `thm:prandaff` with constructed maturity: `e = 0`.
+Paper node: `thm:prandaff` -/
+theorem DeterminedViaTheory.lic_prandaff
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    {truth err : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
+    (hbounded : BoundedAffinePrices As P)
+    (hmag : ∀ i, (As i).magnitude P ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
+    (hpseudo : Pseudorandom truth f P) :
+    (fun n ↦ (As n).price P n) ≈ₙ (fun _ ↦ 0) :=
+  hdet.approx.lic_prandaff hpoly (errorNegligible_zero As P) hbounded hmag hworld
+    f clock hpseudo
 
 /-- Paper-facing bounded affine recurring-unbiasedness with no verifier hypothesis.
 Paper node: `thm:recunbiasedaff` -/
@@ -1385,14 +1474,74 @@ namespace LUVCombination
 
 open Filter
 
+/-! ### The mesh settlement tolerance
+
+A combination-determined threshold mesh is only *approximately* determined: completed
+worlds agree on the combination's value (`def:affthmval`) but not on the individual
+threshold sentences, so their mesh values spread by up to `meshErrorBound`.  A settlement
+checker therefore cannot test exact agreement; it tests agreement within the vanishing
+rational stream below, which is strictly above twice that spread. -/
+
+private lemma natCastRat_prim : Primrec fun n : ℕ => (n : ℚ) := by
+  apply Primrec.encode_iff.mp
+  exact (Primrec₂.natPair.comp (Primrec.nat_mul.comp (Primrec.const 2) Primrec.id)
+    (Primrec.const 1)).of_eq fun n => (encode_rat_natCast n).symm
+
+/-- Rational settlement tolerance for the normalized mesh of a `shareNorm ≤ b` sequence. -/
+private def meshTol (b : ℚ) (i : ℕ) : ℚ :=
+  (8 * meshNormScale b * |b| + 2) / (i + 1)
+
+private lemma meshTol_prim (b : ℚ) : Primrec (meshTol b) :=
+  (ratDiv_prim.comp (Primrec.const (8 * meshNormScale b * |b| + 2))
+    (ratAdd_prim.comp natCastRat_prim (Primrec.const 1))).of_eq fun _ => rfl
+
+private lemma meshTol_gt {As : ℕ → LUVCombination} {P : History} {b : ℚ}
+    (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ)) (i : ℕ) :
+    2 * meshErrorBound As P b i < ((meshTol b i : ℚ) : ℝ) := by
+  have hq : (0 : ℝ) < ((meshNormScale b : ℚ) : ℝ) := meshNormScale_pos b
+  have hb0 : (0 : ℝ) ≤ |(b : ℝ)| := abs_nonneg _
+  have hcast : ((meshTol b i : ℚ) : ℝ) =
+      (8 * ((meshNormScale b : ℚ) : ℝ) * |(b : ℝ)| + 2) / ((i : ℝ) + 1) := by
+    unfold meshTol
+    push_cast
+    ring
+  rcases Nat.eq_zero_or_pos i with hi | hi
+  · subst hi
+    have hzero : meshErrorBound As P b 0 = 0 := by
+      unfold meshErrorBound
+      simpa using min_eq_right ((normalizedMesh As b 0).magnitude_nonneg P)
+    rw [hzero, hcast]
+    simp only [Nat.cast_zero, zero_add, div_one, mul_zero]
+    positivity
+  · have hiR : (1 : ℝ) ≤ (i : ℝ) := by exact_mod_cast hi
+    have hi0 : (0 : ℝ) < (i : ℝ) := by linarith
+    have hE0 : 0 ≤ meshErrorBound As P b i := (normalizedMesh_errorNegligible As P b).1 i
+    have hshareLe : (As i).shareNorm P ≤ |(b : ℝ)| := (hshare i).trans (le_abs_self _)
+    have hmin : meshErrorBound As P b i ≤
+        2 * ((meshNormScale b : ℚ) : ℝ) * (As i).shareNorm P / (i : ℝ) :=
+      min_le_right _ _
+    have hE : meshErrorBound As P b i ≤
+        2 * ((meshNormScale b : ℚ) : ℝ) * |(b : ℝ)| / (i : ℝ) := by
+      exact hmin.trans (by gcongr)
+    rw [le_div_iff₀ hi0] at hE
+    have hE1 : meshErrorBound As P b i ≤ 2 * ((meshNormScale b : ℚ) : ℝ) * |(b : ℝ)| := by
+      nlinarith
+    rw [hcast, lt_div_iff₀ (by linarith)]
+    nlinarith [mul_nonneg hq.le hb0]
+
 /-- `thm:recurringunbiasednessexp` with the normalized-mesh maturity schedule constructed
 from the logical inductor computations.
+
+Determination is the paper's `def:affthmval` premise on the *combination*; `hvalued` only
+asks that each completed world value the component LUVs somehow.  The mesh traded is
+therefore only approximately determined, and the bias-run economics absorbs the
+(negligible-against-magnitude) mesh error.
 Paper node: `thm:recurringunbiasednessexp` -/
 theorem BoundedSequence.recurringunbiasednessexp
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
-    (hexact : ExactTheoryPresentation As DP)
+    (hvalued : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
@@ -1408,8 +1557,9 @@ theorem BoundedSequence.recurringunbiasednessexp
   let meshTruth : ℕ → ℝ := meshTheoryTruth As P DP hworld
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : q ≠ 0 := ne_of_gt (meshNormScale_pos b)
-  have haff := (hexact.normalizedMesh_determined hworld b).recunbiasedaff_ofComputations
-    (h.normalizedMesh_poly b) hWgen hWdiv
+  have haff := (hvalued.normalizedMesh_approxDetermined hdet hworld
+      b).recunbiasedaff_ofComputations
+    (h.normalizedMesh_poly b) hWgen (normalizedMesh_errorNegligible As P b) hWdiv
       (normalizedMesh_magnitude_le_one b hshare) hworld
   have hscaled : HasLimitPoint
       (fun n => q * weightedBias w market meshTruth n) 0 := by
@@ -1427,7 +1577,7 @@ theorem BoundedSequence.recurringunbiasednessexp
   let d : ℕ → ℝ := fun n => weightedAverage w (fun i => meshTruth i - truth i) n
   have herr : Tendsto (fun n => meshTruth n - truth n) Filter.atTop (nhds 0) := by
     simpa only [meshTruth] using
-      hexact.toWorldValued.meshTheoryTruth_sub_truth_tendsto hdet hworld b hshare
+      hvalued.meshTheoryTruth_sub_truth_tendsto hdet hworld b hshare
   have hd : Tendsto d Filter.atTop (nhds 0) :=
     weightedAverage_tendsto_zero_of_tendsto_zero
       (fun n => (hWdiv.1 n).1) hWdiv.2 herr
@@ -1444,12 +1594,18 @@ theorem BoundedSequence.recurringunbiasednessexp
   ring
 
 /-- Paper-facing nonnegative `thm:prandexp`, without historical-verifier premises.
+
+Determination is the paper's `def:affthmval` premise on the *combination*; `hvalued` only
+asks that each completed world value the component LUVs somehow.  The traded threshold
+mesh is therefore only approximately determined, so its settlement clock is built from a
+checker that decides agreement within the vanishing rational tolerance `meshTol`, and the
+bias-run economics absorbs the (negligible-against-magnitude) mesh error.
 Paper node: `thm:prandexp` -/
 theorem BoundedSequence.prandexp
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
-    (hexact : ExactTheoryPresentation As DP)
+    (hvalued : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1460,27 +1616,31 @@ theorem BoundedSequence.prandexp
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : 0 < q := meshNormScale_pos b
-  have hpseudoMesh := hexact.toWorldValued.normalizedMeshTruth_pseudorandomAbove
+  have hpseudoMesh := hvalued.normalizedMeshTruth_pseudorandomAbove
     hdet hworld b hshare hpseudo
+  have hmesh := hvalued.normalizedMesh_approxDetermined hdet hworld b
   have haff :=
-    AffineCombination.DeterminedViaTheory.lic_prandaff_above
-      (h.normalizedMesh_poly b) (hexact.normalizedMesh_determined hworld b)
+    AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_above
+      (h.normalizedMesh_poly b) hmesh (normalizedMesh_errorNegligible As P b)
       (h.normalizedMesh_boundedPrices b hP)
       (normalizedMesh_magnitude_le_one b hshare) hworld f
-      (AffineCombination.patientClockOfInductor (h.normalizedMesh_poly b)
-        (hexact.normalizedMesh_determined hworld b) hworld f) hpseudoMesh
+      (AffineCombination.patientApproxClockOfInductor (h.normalizedMesh_poly b)
+        hmesh hworld (meshTol_prim b) (meshTol_gt hshare) (fun _ => le_rfl) f)
+      hpseudoMesh
   have hscaled : (fun n => q * (As n).expect P n) ≳ₙ (fun _ => 0) := by
     simpa only [q, normalizedMesh, AffineCombination.scale_price, EF.denote_const,
       meshAffine_price_diagonal] using haff
   exact asympGE_zero_of_const_mul_pos hq hscaled
 
 /-- The nonpositive comparison direction of `thm:prandexp`, with constructed maturity.
+Determination is combination-level (`def:affthmval`); see `prandexp` for the mesh
+tolerance discipline this forces on the settlement clock.
 Paper node: `thm:prandexp` -/
 theorem BoundedSequence.prandexp_below
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
-    (hexact : ExactTheoryPresentation As DP)
+    (hvalued : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1491,27 +1651,31 @@ theorem BoundedSequence.prandexp_below
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : 0 < q := meshNormScale_pos b
-  have hpseudoMesh := hexact.toWorldValued.normalizedMeshTruth_pseudorandomBelow
+  have hpseudoMesh := hvalued.normalizedMeshTruth_pseudorandomBelow
     hdet hworld b hshare hpseudo
+  have hmesh := hvalued.normalizedMesh_approxDetermined hdet hworld b
   have haff :=
-    AffineCombination.DeterminedViaTheory.lic_prandaff_below
-      (h.normalizedMesh_poly b) (hexact.normalizedMesh_determined hworld b)
+    AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_below
+      (h.normalizedMesh_poly b) hmesh (normalizedMesh_errorNegligible As P b)
       (h.normalizedMesh_boundedPrices b hP)
       (normalizedMesh_magnitude_le_one b hshare) hworld f
-      (AffineCombination.patientClockOfInductor (h.normalizedMesh_poly b)
-        (hexact.normalizedMesh_determined hworld b) hworld f) hpseudoMesh
+      (AffineCombination.patientApproxClockOfInductor (h.normalizedMesh_poly b)
+        hmesh hworld (meshTol_prim b) (meshTol_gt hshare) (fun _ => le_rfl) f)
+      hpseudoMesh
   have hscaled : (fun n => q * (As n).expect P n) ≲ₙ (fun _ => 0) := by
     simpa only [q, normalizedMesh, AffineCombination.scale_price, EF.denote_const,
       meshAffine_price_diagonal] using haff
   exact asympLE_zero_of_const_mul_pos hq hscaled
 
-/-- Exact two-sided expectation pseudorandomness, without verifier premises.
+/-- Two-sided expectation pseudorandomness, without verifier premises.
+Determination is combination-level (`def:affthmval`); see `prandexp` for the mesh
+tolerance discipline this forces on the settlement clock.
 Paper node: `thm:prandexp` -/
 theorem BoundedSequence.prandexp_eq
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
-    (hexact : ExactTheoryPresentation As DP)
+    (hvalued : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1521,8 +1685,8 @@ theorem BoundedSequence.prandexp_eq
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   rw [asympEq_iff_asympLE_asympGE]
-  exact ⟨h.prandexp_below hexact hdet b hshare hworld f hpseudo.2,
-    h.prandexp hexact hdet b hshare hworld f hpseudo.1⟩
+  exact ⟨h.prandexp_below hvalued hdet b hshare hworld f hpseudo.2,
+    h.prandexp hvalued hdet b hshare hworld f hpseudo.1⟩
 
 end LUVCombination
 

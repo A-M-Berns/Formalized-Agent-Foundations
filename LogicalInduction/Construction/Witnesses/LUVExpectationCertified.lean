@@ -400,12 +400,16 @@ noncomputable def convergencePresentation_combinedDP {As : ℕ → LUVCombinatio
     LUVCombination.ConvergencePresentation As (L.combinedDP T) where
   threshold_code := hcode
   daily_value := by
-    intro n p hp
+    intro n p hp k
     obtain ⟨i, hie⟩ := hAs n p hp
-    filter_upwards [Filter.eventually_ge_atTop i] with m hmi v hv
+    filter_upwards [Filter.eventually_ge_atTop (max i k)] with m hm v hv
+    have hmi : i ≤ m := le_of_max_le_left hm
+    have hmk : k ≤ m := le_of_max_le_right hm
     rw [hie]
-    exact ⟨(L.value i : ℝ), by exact_mod_cast L.value_nonneg i, fun k hk hkm =>
-      L.expectApprox_near_gridDP hk (L.combinedDP_consistent_grid T hv) hmi hkm⟩
+    exact ⟨(L.value i : ℝ),
+      PCWorld.ApproxValuesUpTo.mono
+        ⟨by exact_mod_cast L.value_nonneg i, fun j hj hjm =>
+          L.expectApprox_near_gridDP hj (L.combinedDP_consistent_grid T hv) hmi hjm⟩ hmk⟩
 
 /-- **F7 item 5, certified `thm:expcoh`.**  Completed/limiting/diagonal expectation coherence for
 a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` and `ConvergencePresentation`

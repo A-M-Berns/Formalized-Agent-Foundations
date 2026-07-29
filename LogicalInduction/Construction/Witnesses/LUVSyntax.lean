@@ -310,12 +310,12 @@ def convergencePresentation {As : ℕ → LUVCombination}
     (H : S.TheorySemantics DP) : LUVCombination.ConvergencePresentation As DP where
   threshold_code := S.threshold_code
   daily_value := by
-    intro n p hp
+    intro n p hp k
     rw [S.terms_eq] at hp
     simp only [List.mem_map, List.mem_range] at hp
     obtain ⟨j, hj, rfl⟩ := hp
     exact Filter.Eventually.of_forall (fun m v hv =>
-      ⟨H.value n (S.luv (Nat.pair n j)), (H.stage_values n j hj m v hv).approxValuesUpTo m⟩)
+      ⟨H.value n (S.luv (Nat.pair n j)), (H.stage_values n j hj m v hv).approxValuesUpTo k⟩)
 
 /-- Compact syntax plus completed-theory representation discharges the exact presentation. -/
 def exactTheoryPresentation {As : ℕ → LUVCombination}

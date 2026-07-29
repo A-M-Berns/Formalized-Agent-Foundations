@@ -981,6 +981,45 @@ lemma AffineCombination.DeterminedViaTheory.settled_iff_agree
     obtain ⟨v₀, hv₀⟩ := exists_consistentWithTheory DP hworld
     rw [hagree v v₀ hv (hv₀ m), h i v₀ hv₀]
 
+/-- **Tolerance agreement bounds the distance to `truth`.**  If the worlds plausible at
+stage `m` all value `As i` within `tol` of each other, then — since some completed-theory
+world is among them, and it values `As i` within `e i` of `truth i` — every plausible
+world is within `tol + e i` of `truth i`.  This is the approximate replacement for the
+easy direction of `settled_iff_agree`. -/
+lemma AffineCombination.ApproxDeterminedViaTheory.close_of_agree
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    {truth e : ℕ → ℝ}
+    (h : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (i m : ℕ) (tol : ℝ)
+    (hagree : ∀ v w : PCWorld, v.ConsistentWith (DP.D m) → w.ConsistentWith (DP.D m) →
+      |(As i).value P v.payout - (As i).value P w.payout| ≤ tol) :
+    ∀ v : PCWorld, v.ConsistentWith (DP.D m) →
+      |(As i).value P v.payout - truth i| ≤ tol + e i := by
+  intro v hv
+  obtain ⟨v₀, hv₀⟩ := exists_consistentWithTheory DP hworld
+  exact (abs_sub_le _ ((As i).value P v₀.payout) _).trans
+    (add_le_add (hagree v v₀ hv (hv₀ m)) (h i v₀ hv₀))
+
+/-- **Tolerance agreement is reachable.**  Completed-theory worlds pin `As i` to within
+`e i` of `truth i`, so `eventually_close` makes the plausible worlds' spread beat any
+tolerance strictly above `2 * e i` at some finite stage.  This is the realizability core
+of the approximate clock's `eventually_inactive`: it is why the tolerance checker
+eventually fires even though exact agreement may never hold. -/
+lemma AffineCombination.ApproxDeterminedViaTheory.exists_agree_stage
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    {truth e : ℕ → ℝ}
+    (h : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
+    (i : ℕ) (tol : ℝ) (htol : 2 * e i < tol) :
+    ∃ m, ∀ v w : PCWorld, v.ConsistentWith (DP.D m) → w.ConsistentWith (DP.D m) →
+      |(As i).value P v.payout - (As i).value P w.payout| ≤ tol := by
+  obtain ⟨m, hm⟩ := (h.eventually_close i ((tol - 2 * e i) / 2) (by linarith)).exists
+  refine ⟨m, fun v w hv hw => ?_⟩
+  have h1 := hm v hv
+  have h2 := hm w hw
+  have hstep := abs_sub_le ((As i).value P v.payout) (truth i) ((As i).value P w.payout)
+  rw [abs_sub_comm (truth i)] at hstep
+  linarith
+
 /-! ### Deciding settlement (`M7-PATIENT-CLOCK`, step 2b)
 
 `settled_iff_agree` reduces settlement to *agreement* among plausible worlds and
@@ -1094,13 +1133,13 @@ test.  This is the step that needs `P` rational, and it is the whole reason
 `History`. -/
 lemma AffineCombination.agree_of_finiteWorlds_agree (A : AffineCombination)
     (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
-    (stage : Finset Sentence)
+    (stage : Finset Sentence) (tol : ℚ)
     (h : ∀ u u' : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage),
       (∀ φ ∈ stage, BoolPCWorld.eval u.toBoolPCWorld φ = true) →
       (∀ φ ∈ stage, BoolPCWorld.eval u'.toBoolPCWorld φ = true) →
-        A.valueRat Q u.payoutRat = A.valueRat Q u'.payoutRat)
+        |A.valueRat Q u.payoutRat - A.valueRat Q u'.payoutRat| ≤ tol)
     (v w : PCWorld) (hv : v.ConsistentWith stage) (hw : w.ConsistentWith stage) :
-    A.value P v.payout = A.value P w.payout := by
+    |A.value P v.payout - A.value P w.payout| ≤ (tol : ℝ) := by
   classical
   have hrestrict (x : PCWorld) :
       A.valueRat Q
@@ -1113,7 +1152,8 @@ lemma AffineCombination.agree_of_finiteWorlds_agree (A : AffineCombination)
   rw [A.value_eq_ratCast P Q hQ v.payout v.payoutRat (PCWorld.payout_eq_ratCast v),
     A.value_eq_ratCast P Q hQ w.payout w.payoutRat (PCWorld.payout_eq_ratCast w),
     ← hrestrict v, ← hrestrict w]
-  exact congrArg _ (h _ _ (A.restrict_plausible stage v hv) (A.restrict_plausible stage w hw))
+  have hfin := h _ _ (A.restrict_plausible stage v hv) (A.restrict_plausible stage w hw)
+  exact_mod_cast hfin
 
 /-- The converse of `agree_of_finiteWorlds_agree`: genuine agreement restricts to finite
 agreement.  Every plausible *finite* world extends to a genuine plausible `PCWorld` with
@@ -1121,13 +1161,13 @@ the same payouts, so the finite test cannot be stricter than the real condition.
 what makes the concrete test **complete**, not merely sound. -/
 lemma AffineCombination.finiteWorlds_agree_of_agree (A : AffineCombination)
     (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
-    (stage : Finset Sentence)
+    (stage : Finset Sentence) (tol : ℚ)
     (h : ∀ v w : PCWorld, v.ConsistentWith stage → w.ConsistentWith stage →
-      A.value P v.payout = A.value P w.payout) :
+      |A.value P v.payout - A.value P w.payout| ≤ (tol : ℝ)) :
     ∀ u u' : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage),
       (∀ φ ∈ stage, BoolPCWorld.eval u.toBoolPCWorld φ = true) →
       (∀ φ ∈ stage, BoolPCWorld.eval u'.toBoolPCWorld φ = true) →
-        A.valueRat Q u.payoutRat = A.valueRat Q u'.payoutRat := by
+        |A.valueRat Q u.payoutRat - A.valueRat Q u'.payoutRat| ≤ tol := by
   classical
   intro u u' hu hu'
   have hcons (x : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage))
@@ -1144,19 +1184,24 @@ lemma AffineCombination.finiteWorlds_agree_of_agree (A : AffineCombination)
   exact_mod_cast hreal
 
 /-- **The concrete settlement test.**  Decidable: a `Fintype` quantifier over
-`BoolPCWorld.FiniteWorld B = Fin B → Bool` with exact rational equality.  This is the
+`BoolPCWorld.FiniteWorld B = Fin B → Bool` with rational comparison.  This is the
 object the paper's `settled` Turing machine (`app:prandaff`) decides — stated here so that
-a checker's correctness is a *theorem* rather than an assumption. -/
+a checker's correctness is a *theorem* rather than an assumption.
+
+The test is **agreement within a rational tolerance** `tol`, not exact agreement.  Exact
+agreement is `tol = 0`; the tolerance is what makes the test satisfiable for a
+combination-determined threshold mesh, whose completed worlds genuinely disagree about the
+individual threshold sentences (`def:affthmval` determines the *combination*). -/
 def AffineCombination.SettlementTest (A : AffineCombination) (Q : ℕ → Sentence → ℚ)
-    (stage : Finset Sentence) : Prop :=
+    (stage : Finset Sentence) (tol : ℚ) : Prop :=
   ∀ u u' : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage),
     (∀ φ ∈ stage, BoolPCWorld.eval u.toBoolPCWorld φ = true) →
     (∀ φ ∈ stage, BoolPCWorld.eval u'.toBoolPCWorld φ = true) →
-      A.valueRat Q u.payoutRat = A.valueRat Q u'.payoutRat
+      |A.valueRat Q u.payoutRat - A.valueRat Q u'.payoutRat| ≤ tol
 
 instance AffineCombination.SettlementTest.decidable (A : AffineCombination)
-    (Q : ℕ → Sentence → ℚ) (stage : Finset Sentence) :
-    Decidable (A.SettlementTest Q stage) := by
+    (Q : ℕ → Sentence → ℚ) (stage : Finset Sentence) (tol : ℚ) :
+    Decidable (A.SettlementTest Q stage tol) := by
   unfold AffineCombination.SettlementTest
   infer_instance
 
@@ -1273,6 +1318,16 @@ lemma stageSatBits_eq_true_iff (stage : Finset Sentence) (l : List Bool) :
       ∀ φ ∈ stage, BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ = true := by
   simp [stageSatBits, List.all_eq_true]
 
+/-- Two rationals within a tolerance, as a `Bool` built from `≤` alone.  Subtraction and
+`|·|` are deliberately avoided: the primitive-recursive checker has `ratLE_prim` and
+`ratAdd_prim`, so this form compiles with no further rational arithmetic. -/
+def ratWithin (x y tol : ℚ) : Bool := decide (x ≤ y + tol) && decide (y ≤ x + tol)
+
+lemma ratWithin_eq_true_iff (x y tol : ℚ) :
+    ratWithin x y tol = true ↔ |x - y| ≤ tol := by
+  rw [ratWithin, Bool.and_eq_true, decide_eq_true_iff, decide_eq_true_iff,
+    abs_sub_le_iff, sub_le_iff_le_add, sub_le_iff_le_add, add_comm tol y, add_comm tol x]
+
 private lemma orNot_orNot_eq_true_iff (a b c : Bool) :
     ((!a) || (!b) || c) = true ↔ (a = true → b = true → c = true) := by
   cases a <;> cases b <;> cases c <;> simp
@@ -1285,20 +1340,21 @@ world appears as an argument — `bitsWorld` is applied and beta-reduced in plac
 what makes the test compilable; `settlementTestBool_iff` proves it is still the same
 test. -/
 def AffineCombination.SettlementTestBool (A : AffineCombination) (Q : ℕ → Sentence → ℚ)
-    (stage : Finset Sentence) : Bool :=
+    (stage : Finset Sentence) (tol : ℚ) : Bool :=
   (allBitLists (A.settlementAtomLimit stage)).all fun l =>
     (allBitLists (A.settlementAtomLimit stage)).all fun l' =>
       !(stageSatBits stage l) || !(stageSatBits stage l') ||
-        decide (A.valueRat Q (BoolPCWorld.bitsPayoutRat l)
-          = A.valueRat Q (BoolPCWorld.bitsPayoutRat l'))
+        ratWithin (A.valueRat Q (BoolPCWorld.bitsPayoutRat l))
+          (A.valueRat Q (BoolPCWorld.bitsPayoutRat l')) tol
 
 /-- The `List Bool` presentation is the same test.  Surjectivity of `bitsToFin` onto
 `FiniteWorld B` (via `List.ofFn`) is what makes it complete, not merely sound. -/
 lemma AffineCombination.settlementTestBool_iff (A : AffineCombination)
-    (Q : ℕ → Sentence → ℚ) (stage : Finset Sentence) :
-    A.SettlementTestBool Q stage = true ↔ A.SettlementTest Q stage := by
+    (Q : ℕ → Sentence → ℚ) (stage : Finset Sentence) (tol : ℚ) :
+    A.SettlementTestBool Q stage tol = true ↔ A.SettlementTest Q stage tol := by
   simp only [AffineCombination.SettlementTestBool, AffineCombination.SettlementTest,
-    List.all_eq_true, orNot_orNot_eq_true_iff, stageSatBits_eq_true_iff, decide_eq_true_iff]
+    List.all_eq_true, orNot_orNot_eq_true_iff, stageSatBits_eq_true_iff,
+    ratWithin_eq_true_iff]
   constructor
   · -- Completeness: every finite world is `bitsToFin` of its own `List.ofFn`.
     intro h u u' hu hu'
@@ -1314,21 +1370,33 @@ lemma AffineCombination.settlementTestBool_iff (A : AffineCombination)
       ← payoutRat_bitsToFin ((mem_allBitLists _ _).1 hl')]
     exact h _ _
 
-/-- **The concrete test is exactly settlement.**  Both directions: sound (a passing test
-implies every plausible world values `As i` at `truth i`) and complete (settlement implies
-the test passes).  Consistency (`hworld`) and rationality of the market (`hQ`) are the two
-hypotheses that carry it; neither is dispensable. -/
+/-- **The concrete test is exactly tolerance agreement.**  Both directions: sound (a
+passing test bounds the spread of the real values over all plausible worlds) and complete
+(a bounded spread makes the test pass).  Rationality of the market (`hQ`) is what carries
+it; `truth` never appears — a checker cannot compute `truth`, and does not need to. -/
+lemma AffineCombination.settlementTest_iff_agree (A : AffineCombination)
+    (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
+    (stage : Finset Sentence) (tol : ℚ) :
+    A.SettlementTest Q stage tol ↔
+      ∀ v w : PCWorld, v.ConsistentWith stage → w.ConsistentWith stage →
+        |A.value P v.payout - A.value P w.payout| ≤ (tol : ℝ) :=
+  ⟨fun htest v w hv hw => A.agree_of_finiteWorlds_agree P Q hQ stage tol htest v w hv hw,
+    fun hagree => A.finiteWorlds_agree_of_agree P Q hQ stage tol hagree⟩
+
+/-- **The concrete test is exactly settlement.**  The `tol = 0` specialization of
+`settlementTest_iff_agree` against exact determination: an exactly passing test says every
+plausible world values `As i` at `truth i`, and conversely.  Consistency (`hworld`) is
+what turns agreement into agreement *with `truth`*. -/
 lemma AffineCombination.DeterminedViaTheory.settlementTest_iff_settled
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
     (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
     (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (i j : ℕ) :
-    (As i).SettlementTest Q (DP.D j) ↔
+    (As i).SettlementTest Q (DP.D j) 0 ↔
       ∀ v : PCWorld, v.ConsistentWith (DP.D j) → (As i).value P v.payout = truth i := by
-  rw [hdet.settled_iff_agree hworld i j]
-  exact ⟨fun htest v w hv hw =>
-      (As i).agree_of_finiteWorlds_agree P Q hQ (DP.D j) htest v w hv hw,
-    fun hagree => (As i).finiteWorlds_agree_of_agree P Q hQ (DP.D j) hagree⟩
+  rw [hdet.settled_iff_agree hworld i j,
+    (As i).settlementTest_iff_agree P Q hQ (DP.D j) 0]
+  simp only [Rat.cast_zero, abs_nonpos_iff, sub_eq_zero]
 
 lemma AffineCombination.DeterminedViaTheory.unique
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
