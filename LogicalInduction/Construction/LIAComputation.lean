@@ -358,6 +358,56 @@ lemma exists_liaPrefixAtFuel {DP : DeductiveProcess}
   exact liaPrefixFromStagesAtFuel_mono_success
     (decodedStageTable stages) n (Nat.le_max_right fuel₁ fuel₂) hstates
 
+/-- Bounded evaluator for the day-`n` belief state itself.  It returns the exact finite
+association list of `liaStates DP n`, and `none` only while the common process/MM clock is
+too small.  The argument order is the one used by `Partrec.rfindOpt`: the day is the input
+and the fuel is the search variable. -/
+def liaEncodedEntriesAtFuel {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) (n fuel : ℕ) : Option ℕ := do
+  let states ← liaPrefixAtFuel process fuel (n + 1)
+  let state ← states[n]?
+  some (Encodable.encode state.entries)
+
+lemma liaEncodedEntriesAtFuel_sound {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) {n fuel out : ℕ}
+    (h : liaEncodedEntriesAtFuel process n fuel = some out) :
+    out = Encodable.encode (liaStates DP n).entries := by
+  unfold liaEncodedEntriesAtFuel at h
+  change Option.bind (liaPrefixAtFuel process fuel (n + 1))
+    (fun states => Option.bind states[n]?
+      (fun state => some (Encodable.encode state.entries))) = some out at h
+  rw [Option.bind_eq_some_iff] at h
+  obtain ⟨states, hstates, h⟩ := h
+  have hstatesEq := liaPrefixAtFuel_sound process fuel (n + 1) hstates
+  subst states
+  rw [liaStatePrefix_eq_ofFn] at h
+  simp only [List.getElem?_ofFn] at h
+  simpa using h.symm
+
+lemma exists_liaEncodedEntriesAtFuel {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) (n : ℕ) :
+    ∃ fuel, liaEncodedEntriesAtFuel process n fuel =
+      some (Encodable.encode (liaStates DP n).entries) := by
+  obtain ⟨fuel, states, hstates⟩ := exists_liaPrefixAtFuel process (n + 1)
+  have hstatesEq := liaPrefixAtFuel_sound process fuel (n + 1) hstates
+  subst states
+  refine ⟨fuel, ?_⟩
+  unfold liaEncodedEntriesAtFuel
+  rw [hstates]
+  change Option.bind (some (liaStatePrefix DP (n + 1)))
+    (fun states => Option.bind states[n]?
+      (fun state => some (Encodable.encode state.entries))) = _
+  simp only [Option.bind_some]
+  have hn : n < (liaStatePrefix DP (n + 1)).length := by
+    simp [liaStatePrefix_length]
+  rw [List.getElem?_eq_getElem hn]
+  have hget : (liaStatePrefix DP (n + 1))[n] = liaStates DP n := by
+    rw [← List.getD_eq_getElem (liaStatePrefix DP (n + 1))
+      (liaStates DP 0) hn]
+    exact liaStatePrefix_getD DP (by omega)
+  rw [hget]
+  rfl
+
 /-- Exact rational quote on arbitrary natural sentence codes; malformed codes are assigned
 zero, as permitted by `ComputableMarket`'s total external table. -/
 noncomputable def liaEncodedQuote (DP : DeductiveProcess)
