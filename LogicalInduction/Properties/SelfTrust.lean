@@ -149,6 +149,11 @@ structure ConditionalExpectationQuote (P : History) (DP : DeductiveProcess)
     (fun n => (Z n).expect P n - (Z' n).expect P n)
 
 /-- Complete confidence/product quote certificate for `thm:st`.
+
+The confidence threshold `p` enters as a **P-generable** rational sequence (`def:ece`),
+matching the paper's `thm:st`: `p` may vary continuously with the market's own prices, and
+the trader carries it as a feature *expression* rather than as a day-`n` numeral.  The
+paper's e.c. rational sequences are the special case `ratCodeFeature`.
 Paper node: `thm:st` -/
 structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
@@ -157,7 +162,7 @@ structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
   probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1
   sentence_codes : RpnSentenceCodes φ
   delta_codes : PolyRatCodes δ
-  probability_codes : PolyRatCodes p
+  probability_generable : PGenerableRat P p
   product_codes : LUV.RpnThresholdCodeSeq A
   confidence_codes : LUV.RpnThresholdCodeSeq B
   confidence_reflected : ∀ n (v : PCWorld),
@@ -363,7 +368,8 @@ self will be confident in `φₙ`, is at least `pₙ` times its expectation of t
 world at the actual `ctsind` of the day-`f n` price against threshold `p n` — and `A n`
 the quoted product `1(φₙ)·B n`, valued at `payout(φₙ)` times that indicator (the value of
 `1(φ)` in `v` **is** `v`'s payout on `φ`, which is what makes the conclusion genuinely
-world-dependent).
+world-dependent).  `p` is P-generable (`def:ece`), as in the paper — not restricted to
+market-independent e.c. rational sequences.
 Paper node: `thm:st` -/
 theorem lic_self_trust (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (φ : ℕ → Sentence)

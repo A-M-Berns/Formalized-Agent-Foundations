@@ -631,7 +631,7 @@ deliberately. -/
 #assert_fields RepresentedSemidecidableClaims
   sentence sentence_poly provable_of_true
 #assert_fields SelfTrustQuote
-  delta_pos probability_mem sentence_codes delta_codes probability_codes product_codes confidence_codes confidence_reflected product_reflected affine
+  delta_pos probability_mem sentence_codes delta_codes probability_generable product_codes confidence_codes confidence_reflected product_reflected affine
 #assert_fields SemidecidableComputation
   machine input input_poly truth_iff
 #assert_fields SettlementChecker
