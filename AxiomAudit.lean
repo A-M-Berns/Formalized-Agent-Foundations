@@ -181,8 +181,14 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   UPrefix.lic_occam_lower_ofUniversalPrefix UPrefix.lic_occamBounds_ofUniversalPrefix
 
 -- Properties/Conditioning.lean, Properties/FinitePerturbations.lean
+-- Tier note: `isLogicalInductor_of_stage_unsatisfiable` (Framework/Affine.lean) is the
+-- degenerate half of `thm:scon` — the criterion over a deductive process one of whose
+-- stages has no propositionally consistent world.  It is listed here because it is what
+-- lets the fixed-sentence `thm:scon` endpoints drop the repo-side joint-consistency
+-- hypothesis and match the paper's premise-free statement.
 #assert_axioms_clean
   lic_conditioned lic_conditioned_gated lic_conditioned_eventual
+  isLogicalInductor_of_stage_unsatisfiable
   lic_iff_of_finitePerturbation
 
 -- Properties/Pseudorandomness.lean

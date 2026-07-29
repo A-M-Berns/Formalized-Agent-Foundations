@@ -3504,12 +3504,17 @@ noncomputable def eventualConditioningFloorOfTail
   (eventualConditioningFloor_nonempty_of_tail
     market ψ cutoff tailε htailε htail).some
 
-/-! ### Deriving the tail floor from the paper hypotheses -/
+/-! ### Deriving the tail floor from joint consistency
+
+The floor argument below is the consistent-conditioning half of `thm:scon`.  Its `hjoint`
+hypothesis is repo-side — the paper's `thm:scon` assumes no consistency of `Θ ∪ {ψᵢ}` — and
+the complementary degenerate half is `isLogicalInductor_of_stage_unsatisfiable`. -/
 
 /-- Uniform Non-Dogmatism followed by Preemptive Learning gives an eventual positive
 rational floor on the diagonal prices of any efficiently codeable jointly consistent
 condition sequence.  This is the analytic step used by the repaired proof of
-`thm:scon`.
+`thm:scon`.  Joint consistency is needed *here*, in the price-floor argument; it is not a
+hypothesis of the paper's theorem.
 Paper node: `thm:scon` -/
 lemma exists_eventual_condition_price_floor
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -3572,8 +3577,8 @@ lemma exists_eventual_condition_price_floor
   obtain ⟨cutoff, hcutoff⟩ := Filter.eventually_atTop.mp hevent
   exact ⟨cutoff, ε, hε, fun d hd => (hcutoff d hd).le⟩
 
-/-- The paper assumptions therefore produce the exact finite-zero floor certificate
-consumed by the repaired conditioning compiler. -/
+/-- Joint consistency therefore produces the exact finite-zero floor certificate consumed by
+the repaired conditioning compiler. -/
 lemma eventualConditioningFloor_nonempty_of_jointConsistency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (market : MarketComputation P)

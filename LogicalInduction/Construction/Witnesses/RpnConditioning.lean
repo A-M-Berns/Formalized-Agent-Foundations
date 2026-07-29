@@ -6781,9 +6781,15 @@ theorem lic_conditioned_eventualOfFloor
   LogicalInduction.lic_conditioned_eventual P DP extra C
     (eventualConditioningOperationalWitness C market floor)
 
-/-- Closure under conditioning from the paper's joint-consistency hypothesis and concrete
-computability data.  The proof stays on the original market: the finite exceptional prefix
-is handled by the zero-aware compiler.
+/-- Closure under conditioning from joint consistency of the base stages with the whole
+condition sequence, plus concrete computability data.  The proof stays on the original
+market: the finite exceptional prefix is handled by the zero-aware compiler.
+
+`hjoint` is **repo-side**, not a premise of the paper's `thm:scon`; it is what the analytic
+price-floor argument consumes, and it confines this constructor to the
+consistent-conditioning case.  The degenerate case (some stage of the union process has no
+propositionally consistent world) is handled separately by
+`isLogicalInductor_of_stage_unsatisfiable`.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_eventual_ofMarketComputation
     (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
@@ -6795,31 +6801,52 @@ theorem lic_conditioned_eventual_ofMarketComputation
     (eventualConditioningFloorOfJointConsistency
       P DP market C.condition C.condition_codes hjoint)
 
-/-- Fixed-sentence form of Closure Under Conditioning.
+/-- Fixed-sentence form of Closure Under Conditioning, with **no** consistency hypothesis —
+the paper's `thm:scon` statement exactly.  The two branches are the paper's two cases: where
+`Θ ∪ {ψ}` stays satisfiable at every stage the analytic price-floor argument runs, and where
+some stage of `Θ ∪ {ψ}` is already unsatisfiable the criterion holds vacuously (no plausible
+world remains to assess a trader's net worth, so nothing exploits — the paper's remark that
+conditional prices go to `1` where the denominator vanishes).
+Kind `C` (composition of the two branches); hypotheses `(a)`.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_fixed_ofComputationAndMarket
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (base : DeductiveProcessComputation DP) (market : MarketComputation P)
-    (ψ : Sentence)
-    (hjoint : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧ v.Holds ψ) :
+    (ψ : Sentence) :
     IsLogicalInductor
       (conditionedHistory P (fun _ => ψ)) (DP.adjoinSentence ψ) := by
   let C := fixedConditioningPresentation base ψ
-  have hjointC : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
-    intro n
-    obtain ⟨v, hv, hψ⟩ := hjoint n
-    exact ⟨v, hv, fun _ => hψ⟩
-  have hresult :=
-    lic_conditioned_eventual_ofMarketComputation
-      P DP (fixedConditionProcess ψ) C market hjointC
-  simpa [C, fixedConditioningPresentation,
-    DeductiveProcess.adjoinSentence] using hresult
+  by_cases hjoint : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds ψ
+  · have hjointC : ∀ n, ∃ v : PCWorld,
+        v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
+      intro n
+      obtain ⟨v, hv, hψ⟩ := hjoint n
+      exact ⟨v, hv, fun _ => hψ⟩
+    have hresult :=
+      lic_conditioned_eventual_ofMarketComputation
+        P DP (fixedConditionProcess ψ) C market hjointC
+    simpa [C, fixedConditioningPresentation,
+      DeductiveProcess.adjoinSentence] using hresult
+  · push_neg at hjoint
+    obtain ⟨N, hN⟩ := hjoint
+    refine isLogicalInductor_of_stage_unsatisfiable _ _
+      ((conditionedMarketComputation market (fun _ => ψ)
+        (C.condition_codes)).toComputable)
+      C.combined_computable (N := N) ?_
+    intro v hv
+    rw [DeductiveProcess.adjoinSentence,
+      PCWorld.consistentWith_union_iff] at hv
+    exact hN v hv.1 (hv.2 ψ (by simp [fixedConditionProcess]))
 
-/-- Growing finite-prefix form of Closure Under Conditioning.  Joint consistency means
-that, alongside each base stage, one world satisfies every finite stage of the extra
-deductive process.
+/-- Growing finite-prefix form of Closure Under Conditioning.  `hjoint` means that, alongside
+each base stage, one world satisfies every finite stage of the extra deductive process.
+
+**`hjoint` is a repo-side hypothesis, not the paper's**: `thm:scon` states the growing form
+with no consistency premise, the inconsistent case being degenerately true.  It restricts
+this endpoint to the consistent-conditioning case; the fixed-sentence form above needs no
+such premise because there failure of joint consistency *is* an unsatisfiable stage of the
+union process, whereas here bridging the two needs propositional compactness (unavailable in
+the Foundation substrate).
 Paper node: `thm:scon` -/
 theorem lic_conditioned_growing_ofComputationsAndMarket
     (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
