@@ -239,8 +239,10 @@ lemma Trader.not_exploits_of_stage_unsatisfiable (Tr : Trader) (V : History)
 
 /-- `def:lic` is satisfied vacuously over a deductive process with an unsatisfiable stage:
 computability of the market and of the process is all that remains to check.  Kind `P`;
-hypotheses `(a)`. -/
-lemma isLogicalInductor_of_stage_unsatisfiable (V : History) (DP : DeductiveProcess)
+hypotheses `(a)`.  This is the degenerate branch of Closure Under Conditioning — the case
+the paper's `thm:scon` covers implicitly when the extended theory is inconsistent.
+Paper node: `thm:scon` -/
+theorem isLogicalInductor_of_stage_unsatisfiable (V : History) (DP : DeductiveProcess)
     (hV : ComputableMarket V) (hDP : ComputableDeductiveProcess DP)
     {N : ℕ} (hN : ∀ v : PCWorld, ¬ v.ConsistentWith (DP.D N)) :
     IsLogicalInductor V DP where
