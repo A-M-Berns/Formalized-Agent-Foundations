@@ -968,9 +968,15 @@ consume this section; it is recorded on each of them.  (For `thm:wub`/`thm:wubaf
 `StrictlyIncreasingDeferral` is faithful there and those endpoints keep it.)
 
 The narrowing bottoms out at `deferralPreimage_at`: when `f n₁ = f n₂` for `n₁ ≠ n₂` a
-single day-`f n` portfolio cannot carry both sources, and separating them needs a
-variable-length, price-gated sum over the whole fibre `f⁻¹(m)` — infrastructure the
-affine `PolySequence` layer (pairwise `add`/`scaleFeature` only) does not have. -/
+single day-`f n` portfolio cannot carry both sources.  A plain price-gated sum over the
+fibre `f⁻¹(m)` provably cannot lift this (the unit magnitude budget spreads across an
+unboundedly large fibre while the gap convergence carries no rate, so no
+violation-independent weighting forces individual terms); the viable device is a
+division-free first-violator selector over the fibre — design and Lean-verified
+analytic core in `notes/first-violator-selector-check.lean.txt` and the future-work
+register — which additionally needs variable-width affine-combination and feature-fold
+infrastructure the `PolySequence` layer (pairwise `add`/`scaleFeature` only) does not
+have. -/
 
 /-- Number of bounded-schedule preimages of day `m` among the only possible source
 indices `k < m`. -/
