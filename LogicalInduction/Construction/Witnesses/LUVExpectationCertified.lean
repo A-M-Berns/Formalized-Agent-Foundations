@@ -329,8 +329,8 @@ theorem exppolymax_arith {As : ℕ → LUVCombination} {P : History} {T : Arithm
   h.exppolymax ops (L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
     b hb hshare (L.luvThresholdDP_hworld T)
 
-/-- **F7 item 5, certified `thm:wubexp`.**  Weighted-unbiasedness of exact-value expectation for a
-`dd:luv-arith` LUV-combination sequence, with the `ExactTheoryPresentation` *representation*
+/-- **F7 item 5, certified `thm:wubexp`.**  Weighted-unbiasedness of determined-value expectation
+for a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation*
 hypothesis discharged from arithmetic (Phase B, over `luvThresholdDP`).  The residual feedback
 witnesses (`M7-FEEDBACK-EMIT`/`M7-FEEDBACK-TRUTH`) and determinacy datum are the disclosed
 operational boundaries the paper's own construction supplies.
@@ -354,7 +354,7 @@ theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : Arithmetic
         (L.luvThresholdDP_hworld T) b) P (L.luvThresholdDP T) f) :
     weightedBias (fun i => (W i).denote P)
       (fun i => (As i).expect P i) truth ≈ₙ (fun _ => 0) :=
-  h.wubexp (L.exactTheoryPresentation_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
+  h.wubexp (L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
     hdet b hshare hWgen hWdiv hstrict hsupport (L.luvThresholdDP_hworld T) emit bridge
 
 /-! ## Certified liminf/limsup coherence (`thm:expcoh`, `thm:perexpkno`)

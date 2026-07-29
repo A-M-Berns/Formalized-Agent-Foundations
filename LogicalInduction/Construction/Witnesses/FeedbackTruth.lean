@@ -468,7 +468,7 @@ noncomputable def feedbackTruthSequence
   have hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k) := by
     simpa [fa, fd, ecClock] using Classical.choose_spec (Classical.choose_spec f.fueled)
   exact {
-    determined := hdet
+    determined := ⟨0, tendsto_const_nhds, hdet.approx⟩
     sequence := sequence As C fa fd
     poly := sequencePoly hpoly C hstrict fa fd hspec
     bounded := sequence_bounded hpoly hbounded hmag hdet C hstrict hspec hP hworld
@@ -605,8 +605,8 @@ theorem luv_wubexp_ofComputation
   let bridge := feedbackTruthSequence (h.normalizedMesh_poly b)
     (h.normalizedMesh_boundedPrices b hP) hmeshDet C' hstrict
     (LUVCombination.normalizedMesh_magnitude_le_one b hshare) hP hworld
-  exact FeedbackEmission.luv_wubexp_ofFeedbackTruth h hexact hdet b hshare hW hWdiv
-    hstrict hsupport hworld bridge
+  exact FeedbackEmission.luv_wubexp_ofFeedbackTruth h hexact.toWorldValued hdet b hshare
+    hW hWdiv hstrict hsupport hworld bridge
 
 #print axioms feedbackTruthSequence
 #print axioms lic_wubaff_ofComputation

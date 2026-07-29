@@ -781,6 +781,68 @@ def AffineCombination.DeterminedViaTheory
   ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     (As n).value P v.payout = truth n
 
+/-- Approximate determination: every completed-theory world values `As n` within `e n` of
+the advertised `truth n`.  `DeterminedViaTheory` is the `e = 0` case
+(`DeterminedViaTheory.approx`).
+
+This is the form the threshold mesh of a LUV combination satisfies.  The paper's
+`def:affthmval` determines a LUV *combination*, not its component LUVs, so completed
+worlds may disagree about the individual threshold sentences; what survives is that the
+precision-`n` mesh reproduces the determined combination value up to the mesh error.
+Every consumer below is stated at this generality, and the exact statements are its
+`e = 0` specializations — there is one engine, not two. -/
+def AffineCombination.ApproxDeterminedViaTheory
+    (As : ℕ → AffineCombination) (P : History) (DP : DeductiveProcess)
+    (truth e : ℕ → ℝ) : Prop :=
+  ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
+    |(As n).value P v.payout - truth n| ≤ e n
+
+/-- The determination error of an approximately determined sequence is *negligible against
+share magnitude*: it never exceeds the day's magnitude, and past a launch day chosen from
+any tolerance it is within that fraction of it.
+
+This is exactly what the precision-`n` threshold mesh of a bounded LUV-combination sequence
+provides (`err n ≤ magnitude n / n`), and it is all the bias-run economics needs: a run
+launched late enough forfeits an arbitrarily small share of its unit magnitude. -/
+def AffineCombination.ErrorNegligible (As : ℕ → AffineCombination) (P : History)
+    (err : ℕ → ℝ) : Prop :=
+  (∀ i, 0 ≤ err i) ∧ (∀ i, err i ≤ (As i).magnitude P) ∧
+    ∀ c > 0, ∃ N, ∀ i, N ≤ i → err i ≤ c * (As i).magnitude P
+
+lemma AffineCombination.errorNegligible_zero (As : ℕ → AffineCombination) (P : History) :
+    AffineCombination.ErrorNegligible As P 0 :=
+  ⟨fun _ => le_rfl, fun i => (As i).magnitude_nonneg P,
+    fun c hc => ⟨0, fun i _ => by
+      simpa using mul_nonneg hc.le ((As i).magnitude_nonneg P)⟩⟩
+
+lemma AffineCombination.ErrorNegligible.neg
+    {As : ℕ → AffineCombination} {P : History} {err : ℕ → ℝ}
+    (h : AffineCombination.ErrorNegligible As P err) :
+    AffineCombination.ErrorNegligible (fun n => (As n).neg) P err := by
+  obtain ⟨h0, hmag, hneg⟩ := h
+  refine ⟨h0, fun i => by rw [AffineCombination.neg_magnitude]; exact hmag i,
+    fun c hc => ?_⟩
+  obtain ⟨N, hN⟩ := hneg c hc
+  exact ⟨N, fun i hi => by rw [AffineCombination.neg_magnitude]; exact hN i hi⟩
+
+lemma AffineCombination.DeterminedViaTheory.approx
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    {truth : ℕ → ℝ} (h : DeterminedViaTheory As P DP truth) :
+    AffineCombination.ApproxDeterminedViaTheory As P DP truth 0 := by
+  intro n v hv
+  rw [h n v hv]
+  simp
+
+lemma AffineCombination.ApproxDeterminedViaTheory.neg
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    {truth e : ℕ → ℝ} (h : ApproxDeterminedViaTheory As P DP truth e) :
+    AffineCombination.ApproxDeterminedViaTheory (fun n => (As n).neg) P DP
+      (fun n => -truth n) e := by
+  intro n v hv
+  rw [AffineCombination.neg_value, show -(As n).value P v.payout - -truth n =
+    -((As n).value P v.payout - truth n) by ring, abs_neg]
+  exact h n v hv
+
 /-- Determination in every completed-theory world becomes uniform approximate
 determination over all sufficiently late finite-stage plausible worlds.  This compactness
 bridge is what turns a finite capped run of weighted affine purchases into an actual ROI
@@ -796,6 +858,29 @@ lemma AffineCombination.DeterminedViaTheory.eventually_close
     (fun v hv => by rw [h i v hv]; linarith)
   have hhi := eventually_affineValue_gt_of_theory DP (As i).neg P (-truth i - ε)
     (fun v hv => by rw [AffineCombination.neg_value, h i v hv]; linarith)
+  filter_upwards [hlo, hhi] with n hnlo hnhi
+  intro v hv
+  have hl := hnlo v hv
+  have hu := hnhi v hv
+  rw [AffineCombination.neg_value] at hu
+  rw [abs_lt]
+  constructor <;> linarith
+
+/-- Approximate determination in every completed-theory world likewise becomes uniform
+finite-stage approximation, with the determination error added to the tolerance. -/
+lemma AffineCombination.ApproxDeterminedViaTheory.eventually_close
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    {truth e : ℕ → ℝ}
+    (h : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
+    (i : ℕ) (ε : ℝ) (hε : 0 < ε) :
+    ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWith (DP.D n) →
+      |(As i).value P v.payout - truth i| < e i + ε := by
+  have hlo := eventually_affineValue_gt_of_theory DP (As i) P (truth i - e i - ε)
+    (fun v hv => by have := abs_le.1 (h i v hv); linarith [this.1])
+  have hhi := eventually_affineValue_gt_of_theory DP (As i).neg P (-truth i - e i - ε)
+    (fun v hv => by
+      rw [AffineCombination.neg_value]
+      have := abs_le.1 (h i v hv); linarith [this.2])
   filter_upwards [hlo, hhi] with n hnlo hnhi
   intro v hv
   have hl := hnlo v hv
@@ -1604,6 +1689,13 @@ lemma biasRun_magnitudePrefix_le_one
     _ ≤ 1 := by
       simpa [ROIBudget.fractionalOutstanding] using hbudget
 
+/-- A run launched on day `k` holds nothing before day `k`. -/
+lemma biasRunGamma_eq_zero_of_lt
+    {As : ℕ → AffineCombination} {W : ℕ → EF} {P : History}
+    (rate : ℕ → ℚ) {k n : ℕ} (hnk : n < k) :
+    biasRunGamma As W rate P k n = 0 := by
+  simp [biasRunGamma, biasRunAttemptValue, biasRunAttempt, Nat.not_le.2 hnk]
+
 lemma biasRunGamma_nonneg
     {As : ℕ → AffineCombination} {W : ℕ → EF} {P : History}
     (hW : DivergentWeighting W P)
@@ -2071,9 +2163,27 @@ lemma biasRunTrader_magnitude_eq_one_of_attemptedRisk
     simpa [prefixSum, Trader.magnitude] using hraw
   exact tendsto_nhds_unique htoMagnitude hprefTrader
 
-/-- A determined affine value differs from its diagonal market price by at most its share
-magnitude.  The completed-theory world needed for this comparison is obtained by the
-compactness theorem, not assumed separately for each member. -/
+/-- An approximately determined affine value differs from its diagonal market price by at
+most its share magnitude plus the determination error.  The completed-theory world needed
+for this comparison is obtained by the compactness theorem, not assumed separately for
+each member. -/
+lemma ApproxDeterminedViaTheory.abs_truth_sub_price_le_magnitude
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {P : History} {DP : DeductiveProcess} {truth e : ℕ → ℝ}
+    (hdet : ApproxDeterminedViaTheory As P DP truth e)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) (n : ℕ) :
+    |truth n - (As n).price P n| ≤ (As n).magnitude P + e n := by
+  obtain ⟨v, hv⟩ := exists_consistentWithTheory DP hworld
+  have hval := (As n).abs_value_sub_price_le_magnitude P v.payout n
+    (hpoly.terms_rank n) (fun φ => by
+      by_cases hφ : v.Holds φ
+      · exact Or.inr (by simp [PCWorld.payout, hφ])
+      · exact Or.inl (by simp [PCWorld.payout, hφ])) (hP n)
+  have hnear := hdet n v hv
+  rw [abs_le] at hval hnear ⊢
+  constructor <;> linarith
+
 lemma DeterminedViaTheory.abs_truth_sub_price_le_magnitude
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
@@ -2081,30 +2191,31 @@ lemma DeterminedViaTheory.abs_truth_sub_price_le_magnitude
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) (n : ℕ) :
     |truth n - (As n).price P n| ≤ (As n).magnitude P := by
-  obtain ⟨v, hv⟩ := exists_consistentWithTheory DP hworld
-  rw [← hdet n v hv]
-  exact (As n).abs_value_sub_price_le_magnitude P v.payout n
-    (hpoly.terms_rank n) (fun φ => by
-      by_cases hφ : v.Holds φ
-      · exact Or.inr (by simp [PCWorld.payout, hφ])
-      · exact Or.inl (by simp [PCWorld.payout, hφ])) (hP n)
+  simpa using hdet.approx.abs_truth_sub_price_le_magnitude hpoly hworld hP n
 
 /-- A full-risk capped run with an Abel-prefix surplus has genuine ROI.  Compactness is
 used only for the finitely many large early positions; the summable risk tail is controlled
 uniformly by magnitude.  Thus no effective settlement oracle is hidden in this semantic
-step. -/
-lemma DeterminedViaTheory.biasRunTrader_hasROI_of_surplus
+step.
+
+Under approximate determination the run additionally forfeits the determination error it
+has bought.  `hslack` says that error is at most a `c`-fraction of the share magnitude from
+the run's launch day onwards, so the whole forfeit is at most `c`: the trader's total share
+magnitude is one, and it holds no shares before day `k`. -/
+lemma ApproxDeterminedViaTheory.biasRunTrader_hasROI_of_surplus
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
-    {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    (hdet : DeterminedViaTheory As P DP truth)
+    {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (herr0 : ∀ i, 0 ≤ err i)
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (rate : ℕ → ℚ) (hrate0 : ∀ k, 0 ≤ (rate k : ℝ))
     (hrate1 : ∀ k, (rate k : ℝ) ≤ 1)
-    (ρ δ : ℝ) (hρ0 : 0 ≤ ρ) (k : ℕ)
+    (ρ δ c : ℝ) (hρ0 : 0 ≤ ρ) (hc0 : 0 ≤ c) (k : ℕ)
+    (hslack : ∀ i, k ≤ i → err i ≤ c * (As i).magnitude P)
     (hsurplus : ∀ n,
       -δ ≤ prefixSum (fun i =>
         biasRunAttemptValue W rate P k i *
@@ -2112,7 +2223,7 @@ lemma DeterminedViaTheory.biasRunTrader_hasROI_of_surplus
     (hrisk : Tendsto
       (prefixSum (fun i =>
         biasRunAttemptValue W rate P k i * (As i).magnitude P)) atTop atTop) :
-    HasROI (biasRunTrader hpoly hWgen rate k) P DP (ρ - δ) := by
+    HasROI (biasRunTrader hpoly hWgen rate k) P DP (ρ - δ - c) := by
   let Tr := biasRunTrader hpoly hWgen rate k
   have hsummable :=
     (biasRunTrader_summable_and_magnitude_le_one hpoly hWgen hWdiv hmag rate
@@ -2137,7 +2248,7 @@ lemma DeterminedViaTheory.biasRunTrader_hasROI_of_surplus
   have he : 0 < e := div_pos hη (by positivity)
   have hearly : ∀ᶠ n in atTop, ∀ i ∈ Finset.range (M + 1),
       ∀ v : PCWorld, v.ConsistentWith (DP.D n) →
-        |(As i).value P v.payout - truth i| < e := by
+        |(As i).value P v.payout - truth i| < err i + e := by
     rw [Finset.eventually_all]
     intro i hi
     exact hdet.eventually_close i e he
@@ -2169,26 +2280,69 @@ lemma DeterminedViaTheory.biasRunTrader_hasROI_of_surplus
     biasRunGamma_nonneg hWdiv hmag rate hrate0 hrate1 k
   have hgamma1 : ∀ i, biasRunGamma As W rate P k i ≤ 1 :=
     biasRunGamma_le_one hWdiv hmag rate hrate0 hrate1 k
-  have hearlySum : -(η / 8) ≤
+  -- The determination error the run has bought, day by day.  It vanishes before launch
+  -- and is `k`-fold dominated by that day's share magnitude afterwards, so the whole
+  -- forfeit over the run's unit of magnitude is at most `1/k`.
+  have hslack0 : ∀ i, 0 ≤ biasRunGamma As W rate P k i * err i :=
+    fun i => mul_nonneg (hgamma0 i) (herr0 i)
+  have hslackAll : ∑ i ∈ Finset.range (n + 1),
+      biasRunGamma As W rate P k i * err i ≤ c := by
+    have hterm : ∀ i ∈ Finset.range (n + 1),
+        biasRunGamma As W rate P k i * err i ≤
+          c * (biasRunGamma As W rate P k i * (As i).magnitude P) := by
+      intro i _
+      by_cases hik : k ≤ i
+      · calc biasRunGamma As W rate P k i * err i
+            ≤ biasRunGamma As W rate P k i * (c * (As i).magnitude P) :=
+              mul_le_mul_of_nonneg_left (hslack i hik) (hgamma0 i)
+          _ = c * (biasRunGamma As W rate P k i * (As i).magnitude P) := by ring
+      · rw [biasRunGamma_eq_zero_of_lt rate (Nat.lt_of_not_le hik)]
+        simp
+    calc ∑ i ∈ Finset.range (n + 1), biasRunGamma As W rate P k i * err i
+        ≤ ∑ i ∈ Finset.range (n + 1),
+            c * (biasRunGamma As W rate P k i * (As i).magnitude P) :=
+          Finset.sum_le_sum hterm
+      _ = c * ∑ i ∈ Finset.range (n + 1),
+            biasRunGamma As W rate P k i * (As i).magnitude P := by
+          rw [Finset.mul_sum]
+      _ ≤ c * 1 := by
+          have hcap := biasRun_magnitudePrefix_le_one hWdiv hmag rate hrate0 hrate1 k n
+          change ∑ i ∈ Finset.range (n + 1),
+            biasRunGamma As W rate P k i * (As i).magnitude P ≤ 1 at hcap
+          exact mul_le_mul_of_nonneg_left hcap hc0
+      _ = c := mul_one _
+  have hslackSplit :
+      (∑ i ∈ Finset.range (M + 1), biasRunGamma As W rate P k i * err i) +
+        ∑ i ∈ Finset.Ico (M + 1) (n + 1),
+          biasRunGamma As W rate P k i * err i ≤ c := by
+    rw [Finset.sum_range_add_sum_Ico _ (Nat.succ_le_succ hnM)]
+    exact hslackAll
+  have hearlySum : -(η / 8) -
+      (∑ i ∈ Finset.range (M + 1), biasRunGamma As W rate P k i * err i) ≤
       ∑ i ∈ Finset.range (M + 1),
         biasRunGamma As W rate P k i *
           ((As i).value P v.payout - truth i) := by
-    calc
-      -(η / 8) = ∑ _i ∈ Finset.range (M + 1), -e := by
-        simp [e]
-        field_simp
-      _ ≤ ∑ i ∈ Finset.range (M + 1),
+    have hpt : ∀ i ∈ Finset.range (M + 1),
+        -e - biasRunGamma As W rate P k i * err i ≤
           biasRunGamma As W rate P k i *
             ((As i).value P v.payout - truth i) := by
-        apply Finset.sum_le_sum
-        intro i hi
-        have hclose := hNe n hnNe i hi v hv
-        rw [abs_lt] at hclose
-        have hge := mul_nonneg (hgamma0 i)
-          (show 0 ≤ ((As i).value P v.payout - truth i) + e by linarith)
-        have hge' := mul_nonneg (show 0 ≤ 1 - biasRunGamma As W rate P k i by
-            linarith [hgamma1 i]) (le_of_lt he)
-        nlinarith
+      intro i hi
+      have hclose := hNe n hnNe i hi v hv
+      rw [abs_lt] at hclose
+      have hge := mul_nonneg (hgamma0 i)
+        (show 0 ≤ ((As i).value P v.payout - truth i) + (err i + e) by
+          linarith [hclose.1])
+      have hge' := mul_nonneg (show 0 ≤ 1 - biasRunGamma As W rate P k i by
+          linarith [hgamma1 i]) (le_of_lt he)
+      nlinarith
+    have hsum := Finset.sum_le_sum hpt
+    rw [Finset.sum_sub_distrib, Finset.sum_const, Finset.card_range] at hsum
+    have hMe : (M + 1) • (-e) = -(η / 8) := by
+      simp only [nsmul_eq_mul, e]
+      push_cast
+      field_simp
+    rw [hMe] at hsum
+    exact hsum
   have htailRisk :
       ∑ i ∈ Finset.Ico (M + 1) (n + 1),
         biasRunGamma As W rate P k i * (As i).magnitude P ≤ a := by
@@ -2208,12 +2362,15 @@ lemma DeterminedViaTheory.biasRunTrader_hasROI_of_surplus
     change 1 - a < ∑ i ∈ Finset.range (M + 1),
       biasRunGamma As W rate P k i * (As i).magnitude P at hRiskMlow
     linarith
-  have htailSum : -(η / 4) ≤
+  have htailSum : -(η / 4) -
+      (∑ i ∈ Finset.Ico (M + 1) (n + 1),
+        biasRunGamma As W rate P k i * err i) ≤
       ∑ i ∈ Finset.Ico (M + 1) (n + 1),
         biasRunGamma As W rate P k i *
           ((As i).value P v.payout - truth i) := by
     have hpoint : ∀ i,
-        -(2 * (biasRunGamma As W rate P k i * (As i).magnitude P)) ≤
+        -(2 * (biasRunGamma As W rate P k i * (As i).magnitude P)) -
+            biasRunGamma As W rate P k i * err i ≤
           biasRunGamma As W rate P k i *
             ((As i).value P v.payout - truth i) := by
       intro i
@@ -2223,15 +2380,16 @@ lemma DeterminedViaTheory.biasRunTrader_hasROI_of_surplus
           · exact Or.inr (by simp [PCWorld.payout, hφ])
           · exact Or.inl (by simp [PCWorld.payout, hφ])) (hP i)
       have htprice := hdet.abs_truth_sub_price_le_magnitude hpoly hworld hP i
-      have hdiff : -2 * (As i).magnitude P ≤
+      have hdiff : -2 * (As i).magnitude P - err i ≤
           (As i).value P v.payout - truth i := by
         rw [abs_le] at hwprice htprice
         linarith
       have hprod := mul_nonneg (hgamma0 i)
         (show 0 ≤ (As i).value P v.payout - truth i +
-          2 * (As i).magnitude P by linarith)
+          2 * (As i).magnitude P + err i by linarith)
       nlinarith
     have hsum := Finset.sum_le_sum (fun i (_ : i ∈ Finset.Ico (M + 1) (n + 1)) => hpoint i)
+    rw [Finset.sum_sub_distrib] at hsum
     have haη : 2 * a ≤ η / 4 := by
       dsimp only [a]
       have hinv : 1 / (ρ + 1) ≤ 1 := (div_le_one hρone).2 (by linarith)
@@ -2254,7 +2412,7 @@ lemma DeterminedViaTheory.biasRunTrader_hasROI_of_surplus
       ring
     rw [hsumId] at hsum
     nlinarith
-  have herror : -(3 * η / 8) ≤ prefixSum (fun i =>
+  have herror : -(3 * η / 8) - c ≤ prefixSum (fun i =>
       biasRunGamma As W rate P k i *
         ((As i).value P v.payout - truth i)) n := by
     rw [prefixSum]
@@ -2279,8 +2437,48 @@ lemma DeterminedViaTheory.biasRunTrader_hasROI_of_surplus
   linarith
 
 /-- A persistent negative affine bias forces divergent `W`-weighted share magnitude.
-This is the exact specialization of the statistical forcing estimate to affine values
-determined by the completed deductive theory. -/
+This is the specialization of the statistical forcing estimate to affine values
+approximately determined by the completed deductive theory.  `herrmag` — the determination
+error never exceeds the day's share magnitude — is free for a threshold mesh, whose value
+spread between any two worlds is bounded by its own coefficient sum. -/
+lemma ApproxDeterminedViaTheory.weightedMagnitude_tendsto_atTop_of_negative_bias
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (herrmag : ∀ i, err i ≤ (As i).magnitude P)
+    (hWdiv : DivergentWeighting W P)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
+    (ε : ℝ) (hε : 0 < ε)
+    (hbias : ∀ᶠ n in atTop,
+      weightedBias (fun i => (W i).denote P)
+        (fun i => (As i).price P i) truth n < -ε) :
+    Tendsto
+      (prefixSum (fun i => (W i).denote P * (As i).magnitude P))
+      atTop atTop := by
+  have hdouble : Tendsto
+      (prefixSum (fun i => (W i).denote P * (2 * (As i).magnitude P)))
+      atTop atTop := by
+    apply weightedExposure_tendsto_atTop_of_eventually_negative_bias
+      (fun i => (W i).denote P) (fun i => (As i).price P i) truth
+        (fun i => 2 * (As i).magnitude P) ε
+    · exact fun n => (hWdiv.1 n).1
+    · intro n
+      have := (le_abs_self (truth n - (As n).price P n)).trans
+        (hdet.abs_truth_sub_price_le_magnitude hpoly hworld hP n)
+      linarith [herrmag n]
+    · exact hWdiv.2
+    · exact hε
+    · exact hbias
+  have hhalf : ∀ n, prefixSum (fun i => (W i).denote P * (2 * (As i).magnitude P)) n =
+      2 * prefixSum (fun i => (W i).denote P * (As i).magnitude P) n := by
+    intro n
+    simp only [prefixSum, Finset.mul_sum]
+    exact Finset.sum_congr rfl fun i _ => by ring
+  have hd2 := (hdouble.congr hhalf).const_mul_atTop (show (0:ℝ) < 1 / 2 by norm_num)
+  refine hd2.congr fun n => ?_
+  ring
+
 lemma DeterminedViaTheory.weightedMagnitude_tendsto_atTop_of_negative_bias
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
@@ -2294,25 +2492,18 @@ lemma DeterminedViaTheory.weightedMagnitude_tendsto_atTop_of_negative_bias
         (fun i => (As i).price P i) truth n < -ε) :
     Tendsto
       (prefixSum (fun i => (W i).denote P * (As i).magnitude P))
-      atTop atTop := by
-  apply weightedExposure_tendsto_atTop_of_eventually_negative_bias
-    (fun i => (W i).denote P) (fun i => (As i).price P i) truth
-      (fun i => (As i).magnitude P) ε
-  · exact fun n => (hWdiv.1 n).1
-  · intro n
-    exact (le_abs_self (truth n - (As n).price P n)).trans
-      (hdet.abs_truth_sub_price_le_magnitude hpoly hworld hP n)
-  · exact hWdiv.2
-  · exact hε
-  · exact hbias
+      atTop atTop :=
+  hdet.approx.weightedMagnitude_tendsto_atTop_of_negative_bias hpoly
+    (fun i => (As i).magnitude_nonneg P) hWdiv hworld hP ε hε hbias
 
 /-- Eventually, every sufficiently late launched run has a uniform Abel-prefix surplus
 bound.  The only loss is its finite pre-launch prefix, at most `rateₖ · k`; the persistent
 global bias pays for every later prefix. -/
-lemma DeterminedViaTheory.biasRun_surplus_eventually
+lemma ApproxDeterminedViaTheory.biasRun_surplus_eventually
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
-    {W : ℕ → EF} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    (hdet : DeterminedViaTheory As P DP truth)
+    {W : ℕ → EF} {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (herrmag : ∀ i, err i ≤ (As i).magnitude P)
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -2323,7 +2514,7 @@ lemma DeterminedViaTheory.biasRun_surplus_eventually
       weightedBias (fun i => (W i).denote P)
         (fun i => (As i).price P i) truth n < -ε) :
     ∃ N, ∀ k, N ≤ k → ∀ n,
-      -(rate k : ℝ) * k ≤ prefixSum (fun i =>
+      -(rate k : ℝ) * (2 * k) ≤ prefixSum (fun i =>
         biasRunAttemptValue W rate P k i *
           ((truth i - (As i).price P i) - ρ * (As i).magnitude P)) n := by
   let w : ℕ → ℝ := fun i => (W i).denote P
@@ -2342,7 +2533,7 @@ lemma DeterminedViaTheory.biasRun_surplus_eventually
     by_cases hki : k ≤ i
     · simp [biasRunAttemptValue, biasRunAttempt, hki, w, mul_assoc]
     · simp [biasRunAttemptValue, biasRunAttempt, hki]
-  change -(rate k : ℝ) * k ≤
+  change -(rate k : ℝ) * (2 * k) ≤
     prefixSum (fun i => biasRunAttemptValue W rate P k i * (x i - ρ * m i)) n
   rw [hgateEq]
   by_cases hkn : k ≤ n
@@ -2383,25 +2574,29 @@ lemma DeterminedViaTheory.biasRun_surplus_eventually
       have hrhoeps := mul_le_mul_of_nonneg_right hρε hsum0
       linarith
     have hinit :
-        ∑ i ∈ Finset.range k, w i * (x i - ρ * m i) ≤ k := by
+        ∑ i ∈ Finset.range k, w i * (x i - ρ * m i) ≤ 2 * k := by
       calc
         ∑ i ∈ Finset.range k, w i * (x i - ρ * m i) ≤
-            ∑ _i ∈ Finset.range k, (1 : ℝ) := by
+            ∑ _i ∈ Finset.range k, (2 : ℝ) := by
               apply Finset.sum_le_sum
               intro i _
-              have hxi : x i ≤ m i :=
+              have hxi : x i ≤ m i + err i :=
                 (le_abs_self (x i)).trans
                   (hdet.abs_truth_sub_price_le_magnitude hpoly hworld hP i)
-              have hexpr : x i - ρ * m i ≤ 1 := by
+              have hexpr : x i - ρ * m i ≤ 2 := by
                 have hm0 := (As i).magnitude_nonneg P
                 have hrhom0 := mul_nonneg hρ0 hm0
-                linarith [hmag i]
+                linarith [hmag i, herrmag i]
               calc
-                w i * (x i - ρ * m i) ≤ w i * 1 :=
+                w i * (x i - ρ * m i) ≤ w i * 2 :=
                   mul_le_mul_of_nonneg_left hexpr (hWdiv.1 i).1
-                _ = w i := mul_one _
-                _ ≤ 1 := (hWdiv.1 i).2
-        _ = k := by simp
+                _ ≤ 1 * 2 := by
+                  have := (hWdiv.1 i).2
+                  nlinarith
+                _ = 2 := by ring
+        _ = 2 * k := by
+              rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]
+              ring
     have hc := hrate0 k
     nlinarith [mul_le_mul_of_nonneg_left hinit hc]
   · have hnlt : n < k := Nat.lt_of_not_ge hkn
@@ -2420,11 +2615,12 @@ lemma DeterminedViaTheory.biasRun_surplus_eventually
 bias, every positive-rate launched component has total share magnitude exactly one.  This
 is deliberately weaker than ROI—the latter additionally needs its plausible-world payoff
 lower bound—but it closes all normalization, finite-prefix, and summability obligations. -/
-lemma DeterminedViaTheory.biasRunTrader_magnitude_eq_one_of_negative_bias
+lemma ApproxDeterminedViaTheory.biasRunTrader_magnitude_eq_one_of_negative_bias
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
-    {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    (hdet : DeterminedViaTheory As P DP truth)
+    {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (herrmag : ∀ i, err i ≤ (As i).magnitude P)
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -2438,7 +2634,7 @@ lemma DeterminedViaTheory.biasRunTrader_magnitude_eq_one_of_negative_bias
     (k : ℕ) (hratek : 0 < (rate k : ℝ)) :
     (biasRunTrader hpoly hWgen rate k).magnitude P = 1 := by
   have hweighted := hdet.weightedMagnitude_tendsto_atTop_of_negative_bias
-    hpoly hWdiv hworld hP ε hε hbias
+    hpoly herrmag hWdiv hworld hP ε hε hbias
   have hrisk := biasRunAttemptedRisk_tendsto_atTop As rate P k hratek hweighted
   exact biasRunTrader_magnitude_eq_one_of_attemptedRisk hpoly hWgen hWdiv hmag
     rate hrate0 hrate1 k hrisk
@@ -2446,11 +2642,12 @@ lemma DeterminedViaTheory.biasRunTrader_magnitude_eq_one_of_negative_bias
 /-- Persistent negative bias yields a uniformly positive-ROI tail of the canonical capped
 run family.  The scale is chosen once from the alleged bias gap; every sufficiently late
 member then has `ε/4` ROI and total magnitude one. -/
-lemma DeterminedViaTheory.eventually_biasRunTrader_hasROI
+lemma ApproxDeterminedViaTheory.eventually_biasRunTrader_hasROI
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
-    {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    (hdet : DeterminedViaTheory As P DP truth)
+    {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (hnegl : ErrorNegligible As P err)
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -2461,8 +2658,9 @@ lemma DeterminedViaTheory.eventually_biasRunTrader_hasROI
         (fun i => (As i).price P i) truth n < -ε) :
     ∃ scale N, ∀ k, N ≤ k →
       HasROI (biasRunTrader hpoly hWgen (biasRunRate scale) k) P DP (ε / 4) := by
-  obtain ⟨scale, hscaleNat⟩ := exists_nat_gt (4 / ε)
-  have hscale : 1 / (scale + 1 : ℝ) ≤ ε / 4 := by
+  obtain ⟨herr0, herrmag, hfrac⟩ := hnegl
+  obtain ⟨scale, hscaleNat⟩ := exists_nat_gt (16 / ε)
+  have hscale : 1 / (scale + 1 : ℝ) ≤ ε / 16 := by
     have hspos : 0 < (scale : ℝ) + 1 := by positivity
     apply (div_le_iff₀ hspos).2
     have hmul := (div_lt_iff₀ hε).1 hscaleNat
@@ -2471,27 +2669,31 @@ lemma DeterminedViaTheory.eventually_biasRunTrader_hasROI
     fun k => (biasRunRate_pos scale k).le
   have hrate1 : ∀ k, (biasRunRate scale k : ℝ) ≤ 1 :=
     biasRunRate_le_one scale
-  obtain ⟨N, hN⟩ := hdet.biasRun_surplus_eventually hpoly hWdiv hmag
+  obtain ⟨N, hN⟩ := hdet.biasRun_surplus_eventually hpoly herrmag hWdiv hmag
     hworld hP (biasRunRate scale) hrate0 ε (ε / 2) (by linarith)
       (by linarith) hbias
-  refine ⟨scale, N, fun k hk => ?_⟩
-  have hsurplusRaw := hN k hk
-  have hcharge : (biasRunRate scale k : ℝ) * k ≤ ε / 4 :=
-    (biasRunRate_mul_index_le scale k).trans hscale
+  obtain ⟨N₀, hN₀⟩ := hfrac (ε / 8) (by linarith)
+  refine ⟨scale, max N N₀, fun k hk => ?_⟩
+  have hsurplusRaw := hN k ((le_max_left N N₀).trans hk)
+  have hcharge : (biasRunRate scale k : ℝ) * (2 * k) ≤ ε / 8 := by
+    have := (biasRunRate_mul_index_le scale k).trans hscale
+    nlinarith [hrate0 k, Nat.cast_nonneg (α := ℝ) k]
   have hsurplus : ∀ n,
-      -(ε / 4) ≤ prefixSum (fun i =>
+      -(ε / 8) ≤ prefixSum (fun i =>
         biasRunAttemptValue W (biasRunRate scale) P k i *
           ((truth i - (As i).price P i) -
             (ε / 2) * (As i).magnitude P)) n := by
     intro n
     linarith [hsurplusRaw n]
   have hweighted := hdet.weightedMagnitude_tendsto_atTop_of_negative_bias
-    hpoly hWdiv hworld hP ε hε hbias
+    hpoly herrmag hWdiv hworld hP ε hε hbias
   have hrisk := biasRunAttemptedRisk_tendsto_atTop As (biasRunRate scale) P k
     (biasRunRate_pos scale k) hweighted
-  convert hdet.biasRunTrader_hasROI_of_surplus hpoly hWgen hWdiv hmag
-    hworld hP (biasRunRate scale) hrate0 hrate1 (ε / 2) (ε / 4)
-      (by linarith) k hsurplus hrisk using 1 ; ring
+  have hslack : ∀ i, k ≤ i → err i ≤ (ε / 8) * (As i).magnitude P :=
+    fun i hi => hN₀ i (((le_max_right N N₀).trans hk).trans hi)
+  convert hdet.biasRunTrader_hasROI_of_surplus hpoly hWgen herr0 hWdiv hmag
+    hworld hP (biasRunRate scale) hrate0 hrate1 (ε / 2) (ε / 8) (ε / 8)
+      (by linarith) (by linarith) k hslack hsurplus hrisk using 1 ; ring
 
 /-- Exact rational code for the canonical repeatable-ROI tolerance budget. -/
 def roiToleranceRat (i : ℕ) : ℚ := ((1 : ℚ) / 2) ^ (i + 1)
@@ -2907,12 +3109,13 @@ to zero, contradicting its eventual value one.
 This theorem intentionally exposes the historical verifier as a hypothesis and is not the
 paper-facing capstone.  The construction layer discharges it from
 `IsLogicalInductor.marketComputable` and `.processComputable`. -/
-lemma DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
+lemma ApproxDeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    {truth : ℕ → ℝ}
-    (hdet : DeterminedViaTheory As P DP truth)
+    {truth err : ℕ → ℝ}
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (hnegl : ErrorNegligible As P err)
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -2933,7 +3136,7 @@ lemma DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   intro hbias
   obtain ⟨scale, N, hroiTail⟩ := hdet.eventually_biasRunTrader_hasROI
-    hpoly hWgen hWdiv hmag hworld hP ε hε hbias
+    hpoly hWgen hnegl hWdiv hmag hworld hP ε hε hbias
   let baseTs : ℕ → Trader :=
     biasRunTrader hpoly hWgen (biasRunRate scale)
   let Ts : ℕ → Trader := gateTraderFamily N baseTs
@@ -2967,7 +3170,7 @@ lemma DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
       symm
       simpa using
         (hdet.biasRunTrader_magnitude_eq_one_of_negative_bias hpoly hWgen
-          hWdiv hmag hworld hP (biasRunRate scale)
+          hnegl.2.1 hWdiv hmag hworld hP (biasRunRate scale)
           (fun k => (biasRunRate_pos scale k).le)
           (biasRunRate_le_one scale) ε hε hbias i (biasRunRate_pos scale i))
     · simp [α, Ts, gateFeature, gateTraderFamily, hi, Trader.magnitude,
@@ -2994,12 +3197,13 @@ lemma DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
 
 /-- One-sided affine recurring unbiasedness from the isolated historical-verification
 interface.  This is the exact `limsup ≥ 0` half of the paper proof. -/
-lemma DeterminedViaTheory.not_eventually_weightedBias_lt
+lemma ApproxDeterminedViaTheory.not_eventually_weightedBias_lt
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    {truth : ℕ → ℝ}
-    (hdet : DeterminedViaTheory As P DP truth)
+    {truth err : ℕ → ℝ}
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (hnegl : ErrorNegligible As P err)
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -3013,7 +3217,7 @@ lemma DeterminedViaTheory.not_eventually_weightedBias_lt
   obtain ⟨q, hq0, hqε⟩ : ∃ q : ℚ, (0 : ℝ) < q ∧ (q : ℝ) < ε :=
     exists_rat_btwn hε
   have hnotq := hdet.not_eventually_weightedBias_lt_of_historicalVerifier
-    hpoly hWgen hWdiv hmag hworld (q : ℝ) hq0 roiTolerance
+    hpoly hWgen hnegl hWdiv hmag hworld (q : ℝ) hq0 roiTolerance
       roiTolerance_nonneg roiTolerance_summable
       (fun scale N hroi => (hverify q hq0 scale N hroi).some)
   intro hbad
@@ -3025,12 +3229,13 @@ lemma DeterminedViaTheory.not_eventually_weightedBias_lt
 historical-verification representation boundary for the sequence and its negation.  The
 analytic crossing, both economic contradictions, and negation transport are all proved
 here; no limit-point or bias conclusion occurs in either verifier hypothesis. -/
-lemma DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
+lemma ApproxDeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    {truth : ℕ → ℝ}
-    (hdet : DeterminedViaTheory As P DP truth)
+    {truth err : ℕ → ℝ}
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (hnegl : ErrorNegligible As P err)
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -3047,17 +3252,17 @@ lemma DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
   let f : ℕ → ℝ := weightedBias w market truth
   have hstep : Tendsto (fun n => f (n + 1) - f n) atTop (𝓝 0) := by
     apply weightedAverage_step_tendsto_zero w
-      (fun i => market i - truth i) 1
+      (fun i => market i - truth i) 2
     · exact fun n => (hWdiv.1 n).1
     · exact fun n => (hWdiv.1 n).2
     · intro n
       have hn := hdet.abs_truth_sub_price_le_magnitude hpoly hworld hP n
       rw [abs_sub_comm] at hn
-      exact hn.trans (hmag n)
+      exact hn.trans (by linarith [hmag n, hnegl.2.1 n])
     · exact hWdiv.2
   have hlower : ∀ ε > 0, ∃ᶠ n in atTop, -ε < f n := by
     intro ε hε
-    have hnot := hdet.not_eventually_weightedBias_lt hpoly hWgen hWdiv
+    have hnot := hdet.not_eventually_weightedBias_lt hpoly hWgen hnegl hWdiv
       hmag hworld hverify (ε / 2) (by linarith)
     rw [Filter.not_eventually] at hnot
     exact hnot.mono (fun n hn => by
@@ -3071,7 +3276,7 @@ lemma DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
     exact hmag i
   have hupper : ∀ ε > 0, ∃ᶠ n in atTop, f n < ε := by
     intro ε hε
-    have hnot := hdetNeg.not_eventually_weightedBias_lt hpoly.neg hWgen hWdiv
+    have hnot := hdetNeg.not_eventually_weightedBias_lt hpoly.neg hWgen hnegl.neg hWdiv
       hmagNeg hworld hverifyNeg (ε / 2) (by linarith)
     rw [Filter.not_eventually] at hnot
     exact hnot.mono (fun n hn => by
@@ -3083,6 +3288,25 @@ lemma DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
       dsimp only [f]
       linarith)
   exact hasLimitPoint_zero_of_two_sided_recurring f hstep hlower hupper
+
+/-- Exact `thm:recunbiasedaff` hub: the `err = 0` specialization of the approximate one. -/
+lemma DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hWgen : PGenerableWeighting W)
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    {truth : ℕ → ℝ}
+    (hdet : DeterminedViaTheory As P DP truth)
+    (hWdiv : DivergentWeighting W P)
+    (hmag : ∀ i, (As i).magnitude P ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hverify : BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
+    (hverifyNeg : BiasRunHistoricallyVerifiable (fun n => (As n).neg)
+      hpoly.neg W hWgen P DP) :
+    HasLimitPoint
+      (weightedBias (fun i => (W i).denote P)
+        (fun i => (As i).price P i) truth) 0 :=
+  hdet.approx.recunbiasedaff_of_historicalVerifiers hpoly hWgen
+    (AffineCombination.errorNegligible_zero As P) hWdiv hmag hworld hverify hverifyNeg
 
 /-- Paper-facing `thm:recunbiasedaff` for an arbitrary bounded-combination sequence.
 The economic hub above is stated at unit magnitude; this wrapper performs one canonical
@@ -3233,13 +3457,13 @@ end AffineCombination
 #print axioms AffineCombination.biasRun_magnitudePrefix_le_one
 #print axioms AffineCombination.biasRunTrader_summable_and_magnitude_le_one
 #print axioms AffineCombination.biasRunTrader_magnitude_eq_one_of_attemptedRisk
-#print axioms AffineCombination.DeterminedViaTheory.abs_truth_sub_price_le_magnitude
+#print axioms AffineCombination.ApproxDeterminedViaTheory.abs_truth_sub_price_le_magnitude
 #print axioms weightedExposure_tendsto_atTop_of_eventually_negative_bias
 #print axioms prefixSum_mul_lower_of_prefixSum_lower
 #print axioms AffineCombination.fractionalFamilyFeatureWeight_polySeg
 #print axioms AffineCombination.biasRunTrader_polyTrade
-#print axioms AffineCombination.DeterminedViaTheory.biasRunTrader_hasROI_of_surplus
-#print axioms AffineCombination.DeterminedViaTheory.eventually_biasRunTrader_hasROI
+#print axioms AffineCombination.ApproxDeterminedViaTheory.biasRunTrader_hasROI_of_surplus
+#print axioms AffineCombination.ApproxDeterminedViaTheory.eventually_biasRunTrader_hasROI
 #print axioms MarketComputation.evaln_quote_eq
 #print axioms MarketComputation.exists_evaln_quote
 #print axioms MarketComputation.quoteAtFuel_sound
@@ -3263,7 +3487,7 @@ end AffineCombination
 #print axioms AffineCombination.unitMaturityCheckAtFuel_eventually_complete
 #print axioms AffineCombination.UnitMaturitySemanticCertificate.sound
 #print axioms AffineCombination.UnitMaturitySemanticCertificate.nonempty_iff_matured
-#print axioms AffineCombination.DeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
+#print axioms AffineCombination.ApproxDeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
 #print axioms AffineCombination.DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
 #print axioms AffineCombination.BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers
 #print axioms AffineCombination.recurringunbiasedness_of_historicalVerifiers

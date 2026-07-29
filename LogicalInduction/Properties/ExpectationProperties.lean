@@ -994,6 +994,37 @@ lemma meshAffine_magnitude_le_shareNorm
       simp only [AffineCombination.magnitude] at hp
       linarith
 
+private lemma expectAffine_magnitude_eq_one (X : LUV) (P : History) {k : ℕ}
+    (hk : 0 < k) : (X.expectAffine k).magnitude P = 1 := by
+  simp only [LUV.expectAffine, AffineCombination.magnitude, List.map_map]
+  change ((List.range k).map (fun _ => |(((1 / (k : ℚ) : ℚ) : ℝ))|)).sum = 1
+  rw [List.map_const', List.sum_replicate, List.length_range, nsmul_eq_mul]
+  have hkR : (0 : ℝ) < k := by exact_mod_cast hk
+  push_cast
+  rw [abs_of_nonneg (by positivity)]
+  field_simp
+
+private lemma meshBlock_magnitude_eq
+    (α : EF) (X : LUV) (P : History) {k : ℕ} (hk : 0 < k) :
+    ((X.expectAffine k).scale α).magnitude P = |α.denote P| := by
+  rw [AffineCombination.scale_magnitude, expectAffine_magnitude_eq_one X P hk, mul_one]
+
+/-- At positive precision the mesh expansion has *exactly* the share norm as its
+magnitude: each LUV's `k` threshold shares carry coefficient `aᵢ/k`.  The lower half is
+what makes the mesh error negligible against the traded magnitude (`ErrorNegligible`). -/
+lemma meshAffine_magnitude_eq_shareNorm
+    (A : LUVCombination) (P : History) {k : ℕ} (hk : 0 < k) :
+    (A.meshAffine k).magnitude P = A.shareNorm P := by
+  simp only [AffineCombination.magnitude, meshAffine, shareNorm]
+  induction A.terms with
+  | nil => simp
+  | cons p rest ih =>
+      rw [List.flatMap_cons, List.map_append, List.sum_append,
+        List.map_cons, List.sum_cons]
+      have hp := meshBlock_magnitude_eq p.1 p.2 P hk
+      simp only [AffineCombination.magnitude] at hp
+      rw [hp, ih]
+
 lemma meshGap_magnitude_le (A : LUVCombination) (P : History)
     (n m : ℕ) (b : ℚ) :
     (A.meshGap n m b).magnitude P ≤ 2 * A.shareNorm P := by
@@ -1617,11 +1648,138 @@ lemma ExactTheoryPresentation.normalizedMesh_determined
     h.meshAffine_value_eq hworld n v hv]
   rfl
 
-/-- The mesh's common completed-theory truth differs from the exact determined
-LUV-combination truth by at most `shareNorm / n`. -/
-lemma ExactTheoryPresentation.meshTheoryTruth_near
+/-! ### The mesh is only *approximately* determined
+
+The paper's `def:affthmval` determines a LUV *combination*, not its component LUVs, so
+completed worlds may disagree about the individual threshold sentences the mesh trades.
+What survives is quantitative: two completed worlds each reproduce the determined
+combination value to within `shareNorm/n`, hence agree with each other to within twice
+that — and trivially to within the mesh's own coefficient sum.  That is exactly the
+`ApproxDeterminedViaTheory` + `ErrorNegligible` input of the affine bias-run economics. -/
+
+/-- Diagonal mesh-error budget for the normalized threshold mesh. -/
+noncomputable def meshErrorBound (As : ℕ → LUVCombination) (P : History) (b : ℚ)
+    (n : ℕ) : ℝ :=
+  min ((normalizedMesh As b n).magnitude P)
+    (2 * ((meshNormScale b : ℚ) : ℝ) * (As n).shareNorm P / n)
+
+private lemma meshAffine_zero_terms (A : LUVCombination) :
+    (A.meshAffine 0).terms = [] := by
+  simp only [meshAffine, LUV.expectAffine, AffineCombination.scale, List.range_zero,
+    List.map_nil]
+  induction A.terms with
+  | nil => rfl
+  | cons p rest ih => simpa using ih
+
+private lemma payout_eq_zero_or_one (u : PCWorld) (φ : Sentence) :
+    u.payout φ = 0 ∨ u.payout φ = 1 := by
+  by_cases hφ : u.Holds φ
+  · exact Or.inr (by simp [PCWorld.payout, hφ])
+  · exact Or.inl (by simp [PCWorld.payout, hφ])
+
+lemma normalizedMesh_errorNegligible (As : ℕ → LUVCombination) (P : History) (b : ℚ) :
+    AffineCombination.ErrorNegligible (normalizedMesh As b) P (meshErrorBound As P b) := by
+  have hq := (meshNormScale_pos b).le
+  refine ⟨fun n => ?_, fun n => min_le_left _ _, fun c hc => ?_⟩
+  · refine le_min ((normalizedMesh As b n).magnitude_nonneg P) ?_
+    have := (As n).shareNorm_nonneg P
+    positivity
+  · obtain ⟨N, hN⟩ := exists_nat_gt (2 / c)
+    refine ⟨max 1 N, fun i hi => ?_⟩
+    have hi1 : 0 < i := lt_of_lt_of_le Nat.zero_lt_one (le_trans (le_max_left 1 N) hi)
+    have hiR : (0 : ℝ) < i := by exact_mod_cast hi1
+    have hmagEq : (normalizedMesh As b i).magnitude P =
+        ((meshNormScale b : ℚ) : ℝ) * (As i).shareNorm P := by
+      rw [normalizedMesh, AffineCombination.scale_magnitude, EF.denote_const,
+        abs_of_pos (meshNormScale_pos b), (As i).meshAffine_magnitude_eq_shareNorm P hi1]
+    have hmag0 : 0 ≤ (normalizedMesh As b i).magnitude P :=
+      (normalizedMesh As b i).magnitude_nonneg P
+    have hci : 2 / (i : ℝ) ≤ c := by
+      have hNi : ((N : ℕ) : ℝ) ≤ i := by
+        exact_mod_cast le_trans (le_max_right 1 N) hi
+      rw [div_le_iff₀ hiR]
+      nlinarith [(div_lt_iff₀ hc).1 hN]
+    refine le_trans (min_le_right _ _) ?_
+    have hrewrite : 2 * ((meshNormScale b : ℚ) : ℝ) * (As i).shareNorm P / i =
+        (2 / (i : ℝ)) * (normalizedMesh As b i).magnitude P := by
+      rw [hmagEq]
+      field_simp
+    rw [hrewrite]
+    exact mul_le_mul_of_nonneg_right hci hmag0
+
+/-- Combination-level determination (`def:affthmval`) plus per-world LUV values make the
+diagonal mesh approximately determined, with the negligible `meshErrorBound`. -/
+lemma WorldValued.normalizedMesh_approxDetermined
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    (h : ExactTheoryPresentation As DP)
+    (h : WorldValued As DP)
+    {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (b : ℚ) :
+    AffineCombination.ApproxDeterminedViaTheory (normalizedMesh As b) P DP
+      (normalizedMeshTruth As P DP hworld b) (meshErrorBound As P b) := by
+  intro n v hv
+  set tw := theoryWorld DP hworld with htwdef
+  have htw : tw.ConsistentWithTheory DP := theoryWorld_consistent DP hworld
+  have hdiff : (normalizedMesh As b n).value P v.payout -
+      normalizedMeshTruth As P DP hworld b n =
+      (normalizedMesh As b n).value P v.payout -
+        (normalizedMesh As b n).value P tw.payout := by
+    rw [normalizedMeshTruth, meshTheoryTruth, normalizedMesh,
+      AffineCombination.scale_value, AffineCombination.scale_value, EF.denote_const]
+  have hmagb : |(normalizedMesh As b n).value P v.payout -
+      normalizedMeshTruth As P DP hworld b n| ≤
+      (normalizedMesh As b n).magnitude P := by
+    rw [hdiff]
+    exact (normalizedMesh As b n).abs_value_sub_value_le_magnitude P _ _
+      (payout_eq_zero_or_one v) (payout_eq_zero_or_one tw)
+  rw [meshErrorBound, le_min_iff]
+  refine ⟨hmagb, ?_⟩
+  rcases Nat.eq_zero_or_pos n with hn0 | hn
+  · subst hn0
+    have hz : (normalizedMesh As b 0).magnitude P = 0 := by
+      simp [normalizedMesh, AffineCombination.magnitude, AffineCombination.scale,
+        meshAffine_zero_terms]
+    refine hmagb.trans ?_
+    rw [hz]
+    simp
+  · obtain ⟨νv, hνv⟩ := h n v hv
+    obtain ⟨νw, hνw⟩ := h n tw htw
+    have h1 := (As n).meshAffine_value_near P v νv hn hνv
+    have h2 := (As n).meshAffine_value_near P tw νw hn hνw
+    rw [hdet n v νv hv hνv] at h1
+    rw [hdet n tw νw htw hνw] at h2
+    have hsum : |((As n).meshAffine n).value P v.payout -
+        ((As n).meshAffine n).value P tw.payout| ≤
+        2 * ((As n).shareNorm P * (1 / (n : ℝ))) := by
+      have htri := abs_add_le
+        (((As n).meshAffine n).value P v.payout - truth n)
+        (truth n - ((As n).meshAffine n).value P tw.payout)
+      have hrw : (((As n).meshAffine n).value P v.payout - truth n) +
+          (truth n - ((As n).meshAffine n).value P tw.payout) =
+          ((As n).meshAffine n).value P v.payout -
+            ((As n).meshAffine n).value P tw.payout := by ring
+      rw [hrw] at htri
+      rw [abs_sub_comm (truth n)] at htri
+      linarith
+    have hnR : (0 : ℝ) < n := by exact_mod_cast hn
+    rw [hdiff, normalizedMesh, AffineCombination.scale_value,
+      AffineCombination.scale_value, EF.denote_const, ← mul_sub, abs_mul,
+      abs_of_pos (meshNormScale_pos b)]
+    have hstep := mul_le_mul_of_nonneg_left hsum (meshNormScale_pos b).le
+    refine hstep.trans ?_
+    rw [le_div_iff₀ hnR]
+    field_simp
+    exact le_refl _
+
+/-- The mesh's common completed-theory truth differs from the determined
+LUV-combination truth by at most `shareNorm / n`.
+
+Only `WorldValued` is needed: the mesh-error identity requires each completed world to
+give the component LUVs *some* coherent values, and `DeterminedViaTheory` then pins the
+value of the *combination* — which is exactly the paper's `def:affthmval` premise.  No
+per-component agreement across worlds is used. -/
+lemma WorldValued.meshTheoryTruth_near
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
+    (h : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     {n : ℕ} (hn : 0 < n) :
@@ -1629,14 +1787,14 @@ lemma ExactTheoryPresentation.meshTheoryTruth_near
       (As n).shareNorm P * (1 / (n : ℝ)) := by
   let v := theoryWorld DP hworld
   have hv : v.ConsistentWithTheory DP := theoryWorld_consistent DP hworld
-  have hnear := (As n).meshAffine_value_near P v (h.value n) hn
-    (h.valuesAt n v hv)
-  have htruth := hdet n v (h.value n) hv (h.valuesAt n v hv)
+  obtain ⟨ν, hvals⟩ := h n v hv
+  have hnear := (As n).meshAffine_value_near P v ν hn hvals
+  have htruth := hdet n v ν hv hvals
   simpa only [meshTheoryTruth, v, htruth] using hnear
 
-lemma ExactTheoryPresentation.meshTheoryTruth_sub_truth_tendsto
+lemma WorldValued.meshTheoryTruth_sub_truth_tendsto
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    (h : ExactTheoryPresentation As DP)
+    (h : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ)) :
@@ -2124,9 +2282,9 @@ lemma PseudorandomBelow.congr_of_sub_tendsto_zero
 
 /-- Exact LUV truth pseudorandomness transfers to the normalized threshold mesh used by
 the affine statistical hubs. -/
-lemma ExactTheoryPresentation.normalizedMeshTruth_pseudorandomAbove
+lemma WorldValued.normalizedMeshTruth_pseudorandomAbove
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    (h : ExactTheoryPresentation As DP)
+    (h : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
@@ -2139,9 +2297,9 @@ lemma ExactTheoryPresentation.normalizedMeshTruth_pseudorandomAbove
   have hscaledErr := herr.const_mul q
   simpa only [normalizedMeshTruth, q, mul_sub, mul_zero] using hscaledErr
 
-lemma ExactTheoryPresentation.normalizedMeshTruth_pseudorandomBelow
+lemma WorldValued.normalizedMeshTruth_pseudorandomBelow
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    (h : ExactTheoryPresentation As DP)
+    (h : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
@@ -2154,15 +2312,20 @@ lemma ExactTheoryPresentation.normalizedMeshTruth_pseudorandomBelow
   have hscaledErr := herr.const_mul q
   simpa only [normalizedMeshTruth, q, mul_sub, mul_zero] using hscaledErr
 
-/-- `thm:recurringunbiasednessexp`: exact determined LUV-combination truth is recurrently
+/-- `thm:recurringunbiasednessexp`: determined LUV-combination truth is recurrently
 unbiased under every represented divergent weighting.  The two verifier premises are
 the same conclusion-free historical-maturity boundaries exposed by `recunbiasedaff`,
-instantiated on the concretely normalized threshold mesh. -/
+instantiated on the concretely normalized threshold mesh.
+
+Determination is the paper's `def:affthmval` premise on the *combination*; `hvalued` only
+asks that each completed world value the component LUVs somehow.  The mesh they trade is
+therefore only approximately determined, and the bias-run economics absorbs the
+(negligible-against-magnitude) mesh error. -/
 theorem BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
-    (hexact : ExactTheoryPresentation As DP)
+    (hvalued : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
@@ -2183,8 +2346,9 @@ theorem BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
   let meshTruth : ℕ → ℝ := meshTheoryTruth As P DP hworld
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : q ≠ 0 := ne_of_gt (meshNormScale_pos b)
-  have haff := (hexact.normalizedMesh_determined hworld b).recunbiasedaff_of_historicalVerifiers
-    (h.normalizedMesh_poly b) hWgen hWdiv
+  have haff := (hvalued.normalizedMesh_approxDetermined hdet hworld
+      b).recunbiasedaff_of_historicalVerifiers
+    (h.normalizedMesh_poly b) hWgen (normalizedMesh_errorNegligible As P b) hWdiv
       (normalizedMesh_magnitude_le_one b hshare) hworld hverify hverifyNeg
   have hscaled : HasLimitPoint
       (fun n => q * weightedBias w market meshTruth n) 0 := by
@@ -2202,7 +2366,7 @@ theorem BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
   let d : ℕ → ℝ := fun n => weightedAverage w (fun i => meshTruth i - truth i) n
   have herr : Tendsto (fun n => meshTruth n - truth n) atTop (𝓝 0) := by
     simpa only [meshTruth] using
-      hexact.meshTheoryTruth_sub_truth_tendsto hdet hworld b hshare
+      hvalued.meshTheoryTruth_sub_truth_tendsto hdet hworld b hshare
   have hd : Tendsto d atTop (𝓝 0) := by
     exact weightedAverage_tendsto_zero_of_tendsto_zero
       (fun n => (hWdiv.1 n).1) hWdiv.2 herr
@@ -2218,17 +2382,22 @@ theorem BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
   funext i
   ring
 
-/-- `thm:wubexp`: exact determined LUV-combination truth is weighted-unbiased under
+/-- `thm:wubexp`: determined LUV-combination truth is weighted-unbiased under
 every represented divergent weighting supported on a strictly increasing feedback
 schedule.  The feedback emitter and delayed-truth bridge are the same conclusion-free
 `M7-FEEDBACK-EMIT` and `M7-FEEDBACK-TRUTH` boundaries as in `wubaff`, instantiated on
 the concretely normalized threshold mesh.
+
+Determination is the paper's own `def:affthmval` premise — all completed worlds agree on
+the value of the *combination*.  `hvalued` only asks that each completed world value the
+component LUVs somehow (paper LUVs always do, `W(X)` being a supremum); the components
+are free to differ between worlds, so `Z = X + (1 - X)` is covered.
 Paper node: `thm:wubexp` -/
 theorem BoundedSequence.wubexp
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
-    (hexact : ExactTheoryPresentation As DP)
+    (hvalued : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
@@ -2272,7 +2441,7 @@ theorem BoundedSequence.wubexp
   let d : ℕ → ℝ := fun n => weightedAverage w (fun i => meshTruth i - truth i) n
   have herr : Tendsto (fun n => meshTruth n - truth n) atTop (𝓝 0) := by
     simpa only [meshTruth] using
-      hexact.meshTheoryTruth_sub_truth_tendsto hdet hworld b hshare
+      hvalued.meshTheoryTruth_sub_truth_tendsto hdet hworld b hshare
   have hd : Tendsto d atTop (𝓝 0) := by
     exact weightedAverage_tendsto_zero_of_tendsto_zero
       (fun n => (hWdiv.1 n).1) hWdiv.2 herr
@@ -2319,7 +2488,7 @@ theorem BoundedSequence.prandexp_of_historicalVerifiers
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : 0 < q := meshNormScale_pos b
-  have hpseudoMesh := hexact.normalizedMeshTruth_pseudorandomAbove
+  have hpseudoMesh := hexact.toWorldValued.normalizedMeshTruth_pseudorandomAbove
     hdet hworld b hshare hpseudo
   have haff :=
     AffineCombination.DeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
@@ -2358,7 +2527,7 @@ theorem BoundedSequence.prandexp_below_of_historicalVerifiers
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : 0 < q := meshNormScale_pos b
-  have hpseudoMesh := hexact.normalizedMeshTruth_pseudorandomBelow
+  have hpseudoMesh := hexact.toWorldValued.normalizedMeshTruth_pseudorandomBelow
     hdet hworld b hshare hpseudo
   have haff :=
     AffineCombination.DeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
