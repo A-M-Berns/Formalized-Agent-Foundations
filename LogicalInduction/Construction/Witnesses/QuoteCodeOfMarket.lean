@@ -521,14 +521,16 @@ noncomputable def theoremFutureQuoteCode (f : DeferralFunction)
 reflection hypotheses.  The quoted future-price LUV is constructed from the market
 program itself; only the sentence sequence, its poly codes, and the deferral function
 remain.
+Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
+`f n > n`; see `QuotationAffine`'s injective-deferral reindexing section.
 Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update_closed
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
     (fun n ↦ liaHistory (theoremDP T) n (φ n)) ≈ₙ
       fun n ↦ ((theoremFutureQuoteCode T f φ hφ).luv n).expect
         (liaHistory (theoremDP T)) n :=
-  lic_no_expected_net_update_ofRepresentation_unconditional (T := T) f hstrict φ
+  lic_no_expected_net_update_ofRepresentation_unconditional (T := T) f hinj φ
     ((theoremFutureQuoteCode T f φ hφ).luv)
     (RpnSentenceCodes.ofPolySentenceCodes hφ)
     (theoremFutureQuoteCode T f φ hφ).poly
@@ -556,16 +558,18 @@ noncomputable def theoremDeferredExpectationQuoteCode (f : DeferralFunction)
 — the reflection data is constructed from the market program; only the source LUV
 sequence, its poly codes, its own theory-valuedness (`source_valued`, the paper's premise
 that `X` is a genuine LUV of the theory), and the deferral function remain.
+Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
+`f n > n`; see `QuotationAffine`'s injective-deferral reindexing section.
 Paper node: `thm:cee` -/
 theorem lic_expected_future_expectations_closed
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       ∃ x, v.ValuesAt (X n) x) :
     (fun n ↦ (X n).expect (liaHistory (theoremDP T)) n) ≈ₙ
       fun n ↦ ((theoremDeferredExpectationQuoteCode T f X hX).luv n).expect
         (liaHistory (theoremDP T)) n :=
-  lic_expected_future_expectations_ofRepresentation_unconditional (T := T) f hstrict X
+  lic_expected_future_expectations_ofRepresentation_unconditional (T := T) f hinj X
     ((theoremDeferredExpectationQuoteCode T f X hX).luv)
     (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq hX)
     (theoremDeferredExpectationQuoteCode T f X hX).poly source_valued
@@ -685,9 +689,11 @@ theorem lic_introspection_closed
 hypotheses.  Both quoted LUVs are constructed: `B` is the confidence quote code of the
 market's own deferred-day price, and `A` is its indicator product with `φ n`.  Only the
 sentence sequence, the deferral function, the thresholds, and their poly codes remain.
+Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
+`f n > n`; see `QuotationAffine`'s injective-deferral reindexing section.
 Paper node: `thm:st` -/
 theorem lic_self_trust_closed
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
     (hφ : PolySentenceCodes φ) (hδ : PolyRatCodes δ)
@@ -697,7 +703,7 @@ theorem lic_self_trust_closed
       fun n ↦ (p n : ℝ) *
         ((theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).luv n).expect
           (liaHistory (theoremDP T)) n := by
-  refine lic_self_trust_ofRepresentation_unconditional (T := T) f hstrict φ δ p
+  refine lic_self_trust_ofRepresentation_unconditional (T := T) f hinj φ δ p
     (fun n => indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n)
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).luv
     delta_pos probability_mem (RpnSentenceCodes.ofPolySentenceCodes hφ) hδ hδinv hp
@@ -763,9 +769,11 @@ products constructed.  The source is a caller indicator family (relational, per 
 `Z` is its indicator product with the deferred-weight quote code, and `Z'` the quote of
 the market's own deferred weighted expectation.  Only the sentence sequence, the source
 family and its indicator linkage, the weight data, and the deferral function remain.
+Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
+`f n > n`; see `QuotationAffine`'s injective-deferral reindexing section.
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_closed
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
     (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X)
     (hind : ∀ n, (X n).IsIndicator (φ n) (theoremDP T))
@@ -777,7 +785,7 @@ theorem lic_no_expected_net_update_conditional_closed
       fun n ↦ ((theoremConditionalExpectationQuoteCode T f X hX w hw weight_mem).luv
         n).expect (liaHistory (theoremDP T)) n := by
   refine lic_no_expected_net_update_conditional_ofRepresentation_unconditional (T := T)
-    f hstrict X
+    f hinj X
     (fun n => indicatorProductLUV
       (theoremDeferredWeightQuoteCode T f w hw weight_mem) φ n)
     ((theoremConditionalExpectationQuoteCode T f X hX w hw weight_mem).luv)

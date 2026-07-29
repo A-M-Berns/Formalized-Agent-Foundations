@@ -665,9 +665,11 @@ theorem lic_paradox_resistance_ofDiagonal_unconditional
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:cee` (expected future expectations), unconditional over `LIA`.
+Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
+`f n > n`; see `QuotationAffine`'s injective-deferral reindexing section.
 Paper node: `thm:cee` -/
 theorem lic_expected_future_expectations_ofRepresentation_unconditional
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (X Y : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) (hY : LUV.RpnThresholdCodeSeq Y)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       ∃ x, v.ValuesAt (X n) x)
@@ -677,13 +679,15 @@ theorem lic_expected_future_expectations_ofRepresentation_unconditional
       fun n ↦ (Y n).expect (liaHistory (theoremDP T)) n :=
   haveI := theoremLIA T
   lic_expected_future_expectations_ofRepresentation (P := liaHistory (theoremDP T))
-    (DP := theoremDP T) f hstrict X Y hX hY source_valued reflected
+    (DP := theoremDP T) f hinj X Y hX hY source_valued reflected
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:ceu` (no expected net update), unconditional over `LIA`.
+Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
+`f n > n`; see `QuotationAffine`'s injective-deferral reindexing section.
 Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update_ofRepresentation_unconditional
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
     (hφ : RpnSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
@@ -692,13 +696,15 @@ theorem lic_no_expected_net_update_ofRepresentation_unconditional
       fun n ↦ (Y n).expect (liaHistory (theoremDP T)) n :=
   haveI := theoremLIA T
   lic_no_expected_net_update_ofRepresentation (P := liaHistory (theoremDP T))
-    (DP := theoremDP T) f hstrict φ Y hφ hY reflected
+    (DP := theoremDP T) f hinj φ Y hφ hY reflected
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:ccee` (conditional no expected net update), unconditional over `LIA`.
+Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
+`f n > n`; see `QuotationAffine`'s injective-deferral reindexing section.
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_ofRepresentation_unconditional
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (X Z Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w)
@@ -714,14 +720,16 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation_unconditional
       fun n ↦ (Z' n).expect (liaHistory (theoremDP T)) n :=
   haveI := theoremLIA T
   lic_no_expected_net_update_conditional_ofRepresentation (P := liaHistory (theoremDP T))
-    (DP := theoremDP T) f hstrict X Z Z' w weight_mem weight_generable hX hZ hZ'
+    (DP := theoremDP T) f hinj X Z Z' w weight_mem weight_generable hX hZ hZ'
     source_valued left_reflected right_reflected
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:st` (self-trust), unconditional over `LIA`.
+Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
+`f n > n`; see `QuotationAffine`'s injective-deferral reindexing section.
 Paper node: `thm:st` -/
 theorem lic_self_trust_ofRepresentation_unconditional
-    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
     (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
@@ -736,7 +744,7 @@ theorem lic_self_trust_ofRepresentation_unconditional
       fun n ↦ (p n : ℝ) * (B n).expect (liaHistory (theoremDP T)) n :=
   haveI := theoremLIA T
   lic_self_trust_ofRepresentation (P := liaHistory (theoremDP T)) (DP := theoremDP T)
-    f hstrict φ δ p A B delta_pos probability_mem hφ hδ hδinv hp hA hB
+    f hinj φ δ p A B delta_pos probability_mem hφ hδ hδinv hp hA hB
     confidence_reflected product_reflected
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 

@@ -80,8 +80,8 @@ lemma feedbackFlag_at
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
     (k : ℕ) : feedbackFlag f a degree (f (k + 1)) = 1 := by
   rw [feedbackFlag,
-    deferralImageFlag_at f hstrict hspec (k + 1),
-    deferralPreimage_at f hstrict hspec (k + 1)]
+    deferralImageFlag_at f hspec (k + 1),
+    deferralPreimage_at f hstrict.injective hspec (k + 1)]
   simp
 
 lemma feedbackIndex_at
@@ -89,7 +89,7 @@ lemma feedbackIndex_at
     {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
     (k : ℕ) : feedbackIndex f a degree (f (k + 1)) = k := by
-  rw [feedbackIndex, deferralPreimage_at f hstrict hspec (k + 1)]
+  rw [feedbackIndex, deferralPreimage_at f hstrict.injective hspec (k + 1)]
   omega
 
 /-- On every active day, the shifted schedule really names a unique feedback component. -/
@@ -110,7 +110,7 @@ lemma feedbackFlag_spec
     unfold feedbackFlag at hm
     rw [if_neg (by omega)] at hm
     split at hm <;> omega
-  have hspec' := deferralPreimage_spec f hstrict hspec himage
+  have hspec' := deferralPreimage_spec f hstrict.injective hspec himage
   rw [feedbackIndex]
   have hpos : 1 ≤ deferralPreimage f a degree m := Nat.one_le_iff_ne_zero.2 hpre
   rw [Nat.sub_add_cancel hpos]
