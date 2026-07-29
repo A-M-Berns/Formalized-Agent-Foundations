@@ -84,9 +84,6 @@ Each item has a verified obstruction on record; none blocks the results above.
   fixed-sentence form is already hypothesis-free, exactly the paper's statement).
 * **A gated-fibre-sum affine layer** — would relax the self-trust chain's injectivity
   assumption on deferral functions to the paper's bare `f(n) > n`.
-* **An expressible-feature parser + fueled evaluator** — would let the fully-closed
-  quote-code instances of self-trust accept market-dependent thresholds, matching the
-  abstract endpoints, which already do.
 
 ## Faithfulness
 

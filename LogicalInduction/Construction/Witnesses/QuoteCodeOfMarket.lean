@@ -609,10 +609,15 @@ theorem lic_iterated_expectations_closed
 /-- The confidence quote code for `thm:st`: the market's own continuous indicator of its
 deferred-day price against the target probability,
 `value n = ratCtsInd (δ n) (quote (f n) ⌜φ n⌝) (p n)`.
+
+The threshold `p` is P-generable (`def:ece`), exactly as in the paper: the emitter recovers
+a program for `p` from the feature presentation by parsing the emitted serialization
+(`RpnSpliceStream.feature_primrec`) and evaluating it against this market
+(`PGenerableRat.computable`).
 Paper node: `thm:st` -/
 noncomputable def theoremConfidenceQuoteCode (f : DeferralFunction)
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) (δ p : ℕ → ℚ)
-    (hδ : PolyRatCodes δ) (hp : PolyRatCodes p) :
+    (hδ : PolyRatCodes δ) (hp : PGenerableRat (liaHistory (theoremDP T)) p) :
     RationalQuoteCode T (fun n => ratCtsInd (δ n)
       ((theoremMarketComputation T).quote (f n) (Encodable.encode (φ n))) (p n)) :=
   have hquote : Computable fun n =>
@@ -621,7 +626,8 @@ noncomputable def theoremConfidenceQuoteCode (f : DeferralFunction)
       hφ.choose_spec.primrec.to_comp : _)
   have hval : Computable fun n => ratCtsInd (δ n)
       ((theoremMarketComputation T).quote (f n) (Encodable.encode (φ n))) (p n) :=
-    (ratCtsInd_computable.comp (hδ.computable.pair (hquote.pair hp.computable)) : _)
+    (ratCtsInd_computable.comp (hδ.computable.pair
+      (hquote.pair (hp.computable (theoremMarketComputation T)))) : _)
   RationalQuoteCode.ofComputable T hval (fun n => ratCtsInd_mem_Icc _ _ _)
 
 /-- Cast identity for the confidence value against the real market. -/
@@ -701,25 +707,22 @@ theorem lic_introspection_closed
 /-- **`thm:st` (self-trust), closed form over the constructed `LIA`** — no reflection
 hypotheses.  Both quoted LUVs are constructed: `B` is the confidence quote code of the
 market's own deferred-day price, and `A` is its indicator product with `φ n`.  Only the
-sentence sequence, the deferral function, the thresholds, and their poly codes remain.
+sentence sequence, the deferral function, and the threshold data remain.
 Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
 `f n > n`; see `QuotationAffine`'s injective-deferral reindexing section.
 
-Threshold narrowing (the closed form only): `p` is an e.c. rational sequence, not a general
-P-generable one.  The trader layer is P-generable throughout
-(`lic_self_trust_ofRepresentation_unconditional` takes the feature), and the constant
-feature `ratCodeFeature` is what this instance supplies.  The narrowing is the *quote
-code*: `theoremConfidenceQuoteCode` emits `⌜ctsind_δ(P_{f(n)}(φₙ) > pₙ)⌝` from a program
-computing `p n`, and recovering a program for `p` from a `GeneratedRatFeature` means
-parsing the feature back out of its `RpnSpliceStream` serialization and metering
-`EF.denoteRatWithAtFuel` against the market — neither exists in the repo.
+The threshold `p` is P-generable (`def:ece`), matching the paper: the quote code recovers
+a program for `p` from the feature presentation itself (`PGenerableRat.computable`).  An
+e.c. rational sequence is the constant-feature special case — supply
+`⟨ratCodeFeature p, ratCodeFeature_generated _ p hp⟩` for `hp : PolyRatCodes p`.
 Paper node: `thm:st` -/
 theorem lic_self_trust_closed
     (f : DeferralFunction) (hinj : Function.Injective f.f)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
     (hφ : PolySentenceCodes φ) (hδ : PolyRatCodes δ)
-    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n)) (hp : PolyRatCodes p) :
+    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
+    (hp : PGenerableRat (liaHistory (theoremDP T)) p) :
     (fun n ↦ (indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n).expect
         (liaHistory (theoremDP T)) n) ≳ₙ
       fun n ↦ (p n : ℝ) *
@@ -729,7 +732,7 @@ theorem lic_self_trust_closed
     (fun n => indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n)
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).luv
     delta_pos probability_mem (RpnSentenceCodes.ofPolySentenceCodes hφ) hδ hδinv
-    (ratCodeFeature p) (ratCodeFeature_generated (liaHistory (theoremDP T)) p hp)
+    hp.choose hp.choose_spec
     (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
       (indicatorProductLUV_polyThresholdCodeSeq _ hφ))
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).poly
@@ -755,12 +758,16 @@ family, the left quoted product is the `thm:st` indicator-product over a quote c
 weighted expectation program. -/
 
 /-- Quote code naming the deferred-weight program `n ↦ w (f n)`: the quotation atom
-quotes the program, so deferral costs nothing at strategy-emission time.
+quotes the program, so deferral costs nothing at strategy-emission time.  The weight is
+P-generable (`def:ece`); its program comes from the feature presentation
+(`PGenerableRat.computable`).
 Paper node: `thm:ccee` -/
 noncomputable def theoremDeferredWeightQuoteCode (f : DeferralFunction) (w : ℕ → ℚ)
-    (hw : PolyRatCodes w) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
+    (hw : PGenerableRat (liaHistory (theoremDP T)) w)
+    (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
     RationalQuoteCode T (fun n => w (f n)) :=
-  RationalQuoteCode.ofComputable T (hw.computable.comp f.computable)
+  RationalQuoteCode.ofComputable T
+    ((hw.computable (theoremMarketComputation T)).comp f.computable)
     (fun n => weight_mem (f n))
 
 /-- Quote code for the market's own deferred weighted expectation
@@ -768,7 +775,8 @@ noncomputable def theoremDeferredWeightQuoteCode (f : DeferralFunction) (w : ℕ
 Paper node: `thm:ccee` -/
 noncomputable def theoremConditionalExpectationQuoteCode (f : DeferralFunction)
     (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X) (w : ℕ → ℚ)
-    (hw : PolyRatCodes w) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
+    (hw : PGenerableRat (liaHistory (theoremDP T)) w)
+    (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
     RationalQuoteCode T (fun n =>
       (theoremMarketComputation T).expectQuoteAt X n (f.f n) * w (f.f n)) :=
   -- The `( … : _)` ascriptions are load-bearing (see the Part B note).
@@ -778,7 +786,8 @@ noncomputable def theoremConditionalExpectationQuoteCode (f : DeferralFunction)
       (Computable.id.pair f.computable) : _)
   have hval : Computable fun n =>
       (theoremMarketComputation T).expectQuoteAt X n (f.f n) * w (f.f n) :=
-    (ratMul_prim.to_comp.comp hexp (hw.computable.comp f.computable) : _)
+    (ratMul_prim.to_comp.comp hexp
+      ((hw.computable (theoremMarketComputation T)).comp f.computable) : _)
   RationalQuoteCode.ofComputable T hval
     (fun n => by
       obtain ⟨he0, he1⟩ :=
@@ -801,30 +810,30 @@ theorem lic_no_expected_net_update_conditional_closed
     (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
     (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X)
     (hind : ∀ n, (X n).IsIndicator (φ n) (theoremDP T))
-    (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) (hw : PolyRatCodes w)
+    (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w) :
     (fun n ↦ (indicatorProductLUV
-        (theoremDeferredWeightQuoteCode T f w hw weight_mem) φ n).expect
+        (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) φ n).expect
           (liaHistory (theoremDP T)) n) ≈ₙ
-      fun n ↦ ((theoremConditionalExpectationQuoteCode T f X hX w hw weight_mem).luv
-        n).expect (liaHistory (theoremDP T)) n := by
+      fun n ↦ ((theoremConditionalExpectationQuoteCode T f X hX w weight_generable
+        weight_mem).luv n).expect (liaHistory (theoremDP T)) n := by
   refine lic_no_expected_net_update_conditional_ofRepresentation_unconditional (T := T)
     f hinj X
     (fun n => indicatorProductLUV
-      (theoremDeferredWeightQuoteCode T f w hw weight_mem) φ n)
-    ((theoremConditionalExpectationQuoteCode T f X hX w hw weight_mem).luv)
+      (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) φ n)
+    ((theoremConditionalExpectationQuoteCode T f X hX w weight_generable weight_mem).luv)
     w weight_mem weight_generable (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq hX)
     (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
       (indicatorProductLUV_polyThresholdCodeSeq _ hφ))
-    (theoremConditionalExpectationQuoteCode T f X hX w hw weight_mem).poly
+    (theoremConditionalExpectationQuoteCode T f X hX w weight_generable weight_mem).poly
     (fun n v hv => ⟨v.payout (φ n), (hind n).valuesAt (hv n)⟩)
     (fun n v hv x hx => ?_) (fun n v hv => ?_)
   · have hxeq : x = v.payout (φ n) := hx.eq ((hind n).valuesAt (hv n))
     have h := indicatorProductLUV_valuesAt (quotationPresentation T)
-      (theoremDeferredWeightQuoteCode T f w hw weight_mem) φ n v hv
+      (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) φ n v hv
     rwa [hxeq]
   · have h := RationalQuoteCode.reflected (quotationPresentation T)
-      (theoremConditionalExpectationQuoteCode T f X hX w hw weight_mem) n v hv
+      (theoremConditionalExpectationQuoteCode T f X hX w weight_generable weight_mem) n v hv
     rwa [Rat.cast_mul,
       ← (theoremMarketComputation T).expectQuoteAt_cast X n (f.f n)] at h
 

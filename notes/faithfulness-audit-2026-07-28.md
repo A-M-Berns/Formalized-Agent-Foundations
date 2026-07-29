@@ -41,7 +41,7 @@ consolidation builds; details in `notes/next-session.md`). Outcomes:
   prandexp family follow-up in flight (approximate settlement checker).
 * **F6a** — **fixed** to `Function.Injective f.f`; the final step to bare `f n > n`
   needs a gated-fibre-sum layer — ruled future work (Anson, 2026-07-28). F6b
-  (P-generable `p` in `thm:st`) in flight.
+  (P-generable `p` in `thm:st`) — **fixed 2026-07-29** via `PGenerableRat.computable`.
 * **F7** — **fixed**: fixed-sentence `thm:scon` is hypothesis-free; growing form
   discloses the propositional-compactness obstruction.
 * **F9** — **fixed**, and this report's original justification was WRONG; see the
@@ -188,6 +188,17 @@ continuously with market prices).
 **Remedy:** disclose both narrowings at the endpoints (one docstring line each), or lift
 them (strict-increase: possibly by monotone re-indexing; P-generable `p`: would need the
 threshold sentence family to take feature-valued thresholds — likely a real extension).
+
+**Update (2026-07-29): the `p` narrowing is lifted.** The threshold family did *not* need
+feature-valued thresholds; what was missing was a program for `p` recoverable from the
+feature presentation.  `PGenerableRat.computable` (`Construction/LIACompiler.lean`) builds
+it: parse the emitted serialization back to the feature
+(`RpnSpliceStream.feature_primrec`, on `deserializeTrades_prim` + `unRpn_prim`), evaluate
+it exactly against the certified market at one interpreter clock
+(`marketFeatureValueAtFuel`, on `efRatCompiledEval` guarded by `EF.priceQueries`
+readiness), and minimize over the clock.  `lic_self_trust_closed` and
+`lic_no_expected_net_update_conditional_closed` now take `PGenerableRat` for `p`/`w`.
+The deferral narrowing (F6a) stands as future work.
 
 ### F7 (B) — `thm:scon`: the inconsistent-conditioning branch is uncovered, and `hjoint` is mislabeled as "the paper's premise". *(codex #7, confirmed)*
 
@@ -347,6 +358,14 @@ division-free **first-violator selector** (`gateₖ = ctsInd(δ;dₖ)·Π_{j<k}(
 with no normalization; gated sum dominates the first violator's gap). Blocked on volume:
 needs a variable-width affine `PolySequence` combinator and a variable-width feature-fold
 emission device (neither exists) plus non-mechanical rebuilds of five `QuotationAffine`
-endpoint constructions — ~1.5–2k lines in the repo's hardest layers. (3) EF parser +
-fueled `denoteRatWithAtFuel` bound (closes the `thm:st`/`thm:ccee` LIA-closed seams).
+endpoint constructions — ~1.5–2k lines in the repo's hardest layers. (3) **DONE
+(2026-07-29)** — EF parser + market-relative evaluator: `RpnSpliceStream.feature_primrec`
+recovers the feature program from the emitted serialization and `PGenerableRat.computable`
+evaluates it against the certified market by clock minimization (both in
+`Construction/Witnesses/M7Witnesses.lean`, built on the pre-existing
+`efFromSerializedTokens` / `MarketComputation.denoteRatComp`). `lic_self_trust_closed`
+and `lic_no_expected_net_update_conditional_closed` now take P-generable `p`/`w`
+(`def:ece`); the `thm:st`/`thm:ccee` closed-form threshold seams are closed. The
+evaluator is deliberately `Computable`, not fuel-bounded — evaluation dovetails the
+market program, and a plain `Nat.Partrec.Code` quote code needs exactly that.
 (4) Propositional compactness in Foundation (growing-form `thm:scon`).
