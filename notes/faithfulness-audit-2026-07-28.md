@@ -329,3 +329,13 @@ the `hjoint` docstring misattribution inside F7 (it found the branch gap itself)
    convention-note it).
 5. F4/F5/F6/F9 disclosures (ledger honesty; lifting any of them is real work and should
    be triaged separately).
+
+## Future-work register (post-wave, 2026-07-29)
+
+All with verified obstructions, none blocking: (1) dd:fuel lower calibration — realistic
+route is a two-model architecture (`def:ec` at a machine class, firm enumerates it via
+poly-overhead universal simulation, fuel calculus kept as certification tool via the easy
+inclusion); the pure bridge theorem is judged unlikely (~10–15%). (2) Gated-fibre-sum
+affine layer (injective deferral → bare `f n > n`). (3) EF parser + fueled
+`denoteRatWithAtFuel` bound (closes the `thm:st`/`thm:ccee` LIA-closed seams).
+(4) Propositional compactness in Foundation (growing-form `thm:scon`).
