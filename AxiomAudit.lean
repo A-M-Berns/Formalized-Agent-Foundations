@@ -1,12 +1,12 @@
 /-
 # Axiom audit — the checked public-surface inventory
 
-Mechanical guard 1 of the consolidation phase (`notes/consolidation.md`). A standalone
-build target, deliberately outside the `LogicalInduction` library: the library carries
-the mathematics, this target carries the check. This file is the endpoint inventory: every declaration listed below is public trust surface — the
-table of contents for the deferred human read-through. Anything *not* listed here is
-internal and may be renamed, moved, or inlined freely; changes to a listed statement are
-surface changes and must be flagged.
+A standalone build target, deliberately outside the `LogicalInduction` library: the
+library carries the mathematics, this target carries the check. This file is the endpoint
+inventory: every declaration listed below is public trust surface — the table of contents
+for the human statement read-through. Anything *not* listed here is internal and may be
+renamed, moved, or inlined freely; changes to a listed statement are surface changes and
+must be flagged.
 
 The build fails if any listed endpoint acquires an axiom beyond `propext`,
 `Classical.choice`, `Quot.sound` (in particular `sorryAx`), or ceases to exist.
@@ -17,7 +17,7 @@ Two independent claims, checked separately — do not conflate them:
   * **surface completeness** (`scripts/check_endpoint_coverage.py`): every paper `\label`
     cited in a `Paper node:` annotation has at least one endpoint *in this list*. It says
     nothing about axioms, nor about whether the listed endpoint is the strongest form of
-    the theorem (that is the deferred human read-through's job — see below).
+    the theorem (that is the human statement read-through's job — see below).
 Green here + green there = "the enumerated surface is clean and covers every annotated
 paper node", not "the formalization is faithful". Faithfulness is the read-through.
 
@@ -108,7 +108,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 #assert_axioms_clean
   trading_firm_dominance exists_enumeratedTrader_eq enumeratedTrader_ec
 
-/-! ## Property tail, conditional on `[IsLogicalInductor P DP]` (M3–M5) -/
+/-! ## Property tail, conditional on `[IsLogicalInductor P DP]` -/
 
 -- Properties/Coherence.lean
 #assert_axioms_clean
@@ -152,13 +152,15 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_occamBounds lic_occam_lower lic_limitingBelief_add_neg
   lic_domination_universalSemimeasure lic_strict_domination_universalSemimeasure
 
--- Construction/Witnesses/KraftInequality.lean (M7-PREFIX-MACHINE core; Aristotle-produced
--- body, kernel-validated in-repo)
+-- Construction/Witnesses/KraftInequality.lean — the Kraft inequality underlying the
+-- prefix-machine complexity bounds.  Proof body autoformalized by Aristotle and
+-- kernel-revalidated in-repo; the statement is audited surface, the generated interior
+-- has not had a line-by-line human read.
 #assert_axioms_clean
   kraft_inequality
 
--- Construction/Witnesses/PrefixMachine.lean (M7-PREFIX-MACHINE, complete: the concrete
--- self-delimiting sentence code with both fuel-model emission certificates constructed)
+-- Construction/Witnesses/PrefixMachine.lean — the concrete self-delimiting sentence code,
+-- with both fuel-model emission certificates constructed (no operational input remains).
 #assert_axioms_clean
   prefixKraft prefixNegationCompiler
   invalidBit_polyFueled prefixSentenceEnum_polySentenceCodes prefixApprox_polyRatCodes
@@ -167,8 +169,8 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 -- Construction/Witnesses/UniversalPrefix.lean (the self-delimiting UNIVERSAL prefix
 -- machine).  `dom U` is prefix-free by construction, so the Kraft field
 -- needs no hypothesis; `kappaU_le_of_prefixMachine` is the invariance theorem that earns
--- the word "universal"; `uSel_polyRatCodes` builds the polynomial clock (the self-clamped
--- `evaln` selection of `M7-DUS-APPROX`) on top of the exact stage table, whose own program
+-- the word "universal"; `uSel_polyRatCodes` builds the polynomial clock (a self-clamped
+-- `evaln` selection) on top of the exact stage table, whose own program
 -- `uCode` is now CONSTRUCTED (`exists_uCode`, via the bounded search `uMinLen`), so the
 -- two endpoints carry no operational input at all.
 #assert_axioms_clean
@@ -231,7 +233,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   LUVCombination.BoundedSequence.perexpkno
   LUVCombination.BoundedSequence.wubexp
 
--- Construction/Witnesses/LUVExpectationCertified.lean (F7 `dd:luv-arith`): the
+-- Construction/Witnesses/LUVExpectationCertified.lean (`dd:luv-arith`): the
 -- expectation endpoints whose world-value hypotheses are discharged from arithmetic
 -- (`thm:loe`, `thm:expprovind`).  The certified LUV, its derived world-value
 -- interfaces (`threshold_holds_iff`, `exactTheoryPresentation_ofArithmetic`), and the
@@ -254,7 +256,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 
 -- dd:fuel digit layer (`def:ec`): the digit stream determines the token stream
 -- (round-trip + injectivity), and every token-model certificate transfers into the
--- digit-metered class (the inclusion capstone, M7Witnesses).  The digit model is the
+-- digit-metered class (the inclusion capstone).  The digit model is the
 -- metering underneath the collapsed criterion class `EfficientlyComputable`.
 #assert_axioms_clean
   undigitize_digitize digitize_injective
@@ -282,17 +284,21 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_disbelief_inconsistent_theories lic_learns_halting_patterns
   lic_learns_provable_nonhalting_patterns lic_does_not_anticipate_halting
 
-/-! ## Constructed M7 witnesses and their direct criterion consumers -/
+/-! ## Constructed boundary witnesses and their direct criterion consumers
 
--- Construction/Witnesses/M7Witnesses.lean (`M7-HIST-EVALN`, `M7-CE-REPETITION`,
--- `M7-PATIENT-CLOCK`, `M7-PREFIX-PATCH`)
+Each block below names the file whose constructions *discharge* an interface the property
+tail would otherwise assume, together with the criterion endpoints that consume them. -/
+
+-- Construction/Witnesses/M7Witnesses.lean — the bounded-`evaln` compiler, repeated
+-- enumeration of a c.e. set, settlement/patient clocks, and the prefix-freeze certificate.
 #assert_axioms_clean
   codeEvalnNat_polyFueled boundedEvalnCompiler
   EfficientRepeatedEnumeration.ofRpn EfficientRepeatedEnumeration.ofCE
   SettlementChecker.ofComputations PatientSettlementClock.ofComputations
   liaFreezeBefore_preserves_ecTok
 
--- Construction/Witnesses/QuotationAffine.lean (`M7-QUOTE-AFFINE`)
+-- Construction/Witnesses/QuotationAffine.lean — the code-indexed quotation layer
+-- (`dd:quote-code`) and the diagonal price fixed point it makes constructible.
 #assert_axioms_clean
   diagonalPriceDecisionPart_partrec diagonalPriceDecisionCode_eval
   diagonalPriceQuotePos_iff diagonalPriceQuoteNeg_iff diagonalPriceFixedpoint_spec
@@ -306,12 +312,14 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   theoremMarketComputation theoremDiagonalQuoteCode
   lic_paradox_resistance_ofDiagonal_unconditional
 
--- Construction/Witnesses/FeedbackEmission.lean (`M7-FEEDBACK-EMIT`)
+-- Construction/Witnesses/FeedbackEmission.lean — the emitter that turns a feedback
+-- trader schedule into an `def:ec`-certified trade stream.
 #assert_axioms_clean
   feedbackTraderEmissionSigns lic_wubaff_ofFeedbackTruth
   boundedCombination_wubaff_ofFeedbackTruth luv_wubexp_ofFeedbackTruth
 
--- Construction/Witnesses/FeedbackTruth.lean (`M7-FEEDBACK-TRUTH`)
+-- Construction/Witnesses/FeedbackTruth.lean — the delayed-truth bridge: a computation of
+-- the feedback value, clocked to the deferral day, feeding the unbiasedness endpoints.
 #assert_axioms_clean
   feedbackTruthSequence lic_wubaff_ofComputation lic_wub_ofComputation
   boundedCombination_wubaff_ofComputation luv_wubexp_ofComputation
@@ -319,11 +327,12 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   boundedCombination_wubaff_ofComputation_unconditional
   luv_wubexp_ofComputation_unconditional
 
--- Construction/Witnesses/BitPrefixSyntax.lean (`M7-DUS-PREFIX-SYNTAX`)
+-- Construction/Witnesses/BitPrefixSyntax.lean — the prefix-sentence family over
+-- independent bit atoms, and the semimeasure-domination endpoint it feeds.
 #assert_axioms_clean
   bitPrefixSentencesOfIndependentAtoms lic_domination_universalSemimeasure_ofIndependentAtoms
 
--- Construction/Witnesses/UniversalDovetailer.lean (`M7-DUS-APPROX`, COMPLETE)
+-- Construction/Witnesses/UniversalDovetailer.lean — the universal continuous semimeasure.
 -- The universal continuous semimeasure is fully constructed: the semimeasure laws, the
 -- monotone from-below stage table, the explicit domination constant, and the emission
 -- program for the stage table (column tabulation).  The *polynomial* clock is now
@@ -338,7 +347,8 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   Dovetail.dusApprox_tendsto Dovetail.dusApprox_polyRatCodes
   Dovetail.dusApproximationPresentation Dovetail.dusThresholdEmission
 
--- Construction/Witnesses/StrictSeparators.lean (`M7-STRICT-SEPARATORS`)
+-- Construction/Witnesses/StrictSeparators.lean — the recursively inseparable pair and the
+-- null stage classes that make the strict-domination separator presentation constructible.
 -- The separator presentation is fully constructed: Kleene's pair is recursively
 -- inseparable, the constraint theory's enumerator is built from the atom codes, and the
 -- stage classes are null (`separatorClass_mass_tendsto_zero`, the Kučera–Demuth argument)
@@ -349,20 +359,22 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   separatorClass_mass_tendsto_zero strictSeparatorPresentationOfKleene
   ordinaryAtom_code_computable
 
--- Construction/Witnesses/ConditioningPresentation.lean (`M7-SCON-PRESENTATION`)
+-- Construction/Witnesses/ConditioningPresentation.lean — the conditioning presentation
+-- (condition sentences plus their codes) built from the process computations.
 #assert_axioms_clean
   conditioningPresentationOfComputations fixedConditioningPresentation
   lic_conditioned_gated_ofComputations
 
--- Construction/Witnesses/ConditioningCompiler.lean (`M7-SCON-COMPILER`)
+-- Construction/Witnesses/ConditioningCompiler.lean — the `def:ec`-preserving trader
+-- translation across conditioning, and the eventual price floor it needs.
 #assert_axioms_clean
   conditionedTranslation_preserves_ec eventualConditionedTranslation_preserves_ec
   exists_eventual_condition_price_floor
   eventualConditioningFloorOfJointConsistency
 
--- Construction/Witnesses/DigitConditioning.lean (`M7-SCON-COMPILER`, digit model):
--- the guarded digit compilers, guard honesty, and the digit-to-digit translation
--- preservations.
+-- Construction/Witnesses/DigitConditioning.lean — the conditioning translation in the
+-- digit metering model: guarded compilers, guard honesty, and the digit-to-digit
+-- preservation results.
 #assert_axioms_clean
   ConditioningCompile.strategyOfTokens_trades_eq_nil_of_bigDay
   ConditioningCompile.guardedConditionRun_polySegStream
@@ -371,8 +383,8 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   ConditioningCompile.conditionedTranslation_preserves_ecDigit
   ConditioningCompile.eventualConditionedTranslation_preserves_ecDigit
 
--- Construction/Witnesses/RpnConditioning.lean (`M7-SCON-COMPILER`, symbol model —
--- RPN-5): the run-aware price transducer and its master commutation, guard honesty,
+-- Construction/Witnesses/RpnConditioning.lean — the conditioning translation in the RPN
+-- symbol model: the run-aware price transducer and its master commutation, guard honesty,
 -- the frame pass and its gated two-leg join, the two `def:ec → def:ec` translation
 -- endpoints, and the `thm:scon` packaging (operational witnesses + criterion-level
 -- closure of the conditioned market).
@@ -399,13 +411,15 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket
   ConditioningCompile.lic_conditioned_gated_ofComputationsAndMarket
 
--- Construction/Witnesses/RpnFreeze.lean (`M7-PREFIX-PATCH`, symbol model — PARTIAL).
--- The run-level quote lookup and the symbol-level freeze transducer, as the third
--- instance of the emitter-generic run rewriter.  These do NOT close the boundary:
+-- Construction/Witnesses/RpnFreeze.lean — the prefix-freeze transducer in the RPN symbol
+-- model: the run-level quote lookup and the symbol-level freeze transducer, as the third
+-- instance of the emitter-generic run rewriter.
+-- PARTIAL, and the listed endpoints do NOT close the boundary:
 -- `EfficientPrefixPatch.preserves_ec` still has no LIA inhabitant at the collapsed
 -- class, because the emitted segment's fuel certificate needs a `BigDigits` decode
 -- test on exponentially large escape codes (the inverse-operation ceiling of the digit
--- model; see the route-(A) stop-and-report in notes/next-session.md).
+-- model).  `thm:ifp` is therefore covered only by `lic_iff_of_finitePerturbation` at the
+-- efficiently-patchable restriction, never by an LIA-level discharge of the patch.
 #assert_axioms_clean
   RpnFreeze.matchRun_iff
   RpnFreeze.runPrefixQuoteFromStates_exact
@@ -420,10 +434,12 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_conditioned_fixed_unconditional
   lic_conditioned_growing_unconditional
 
--- Construction/Witnesses/LUVSyntax.lean (`M7-LUV-SYNTAX`)
+-- Construction/Witnesses/LUVSyntax.lean — LUV-combination syntax and the mesh-softmax
+-- operational witness it constructs (`lem:mesh`).
 #assert_axioms_clean LUVCombinationSyntax.meshSoftmaxOperationalWitness
 
--- Construction/Witnesses/ComputationSyntax.lean (`M7-COMP-SYNTAX`)
+-- Construction/Witnesses/ComputationSyntax.lean — represented semidecidable/decidable
+-- claims built from a bounded computation, discharging the meta-learning interfaces.
 #assert_axioms_clean
   representedSemidecidableClaimsOfComputation representedDecidableClaimsOfComputation
   inconsistentTheoryClaimsOfComputation
@@ -492,7 +508,7 @@ open AffineCombination LUVCombination in
 /-! ## Tier-2 boundary structures — field (hypothesis) surface
 
 Each structure below appears in the *type* of a Tier-1 endpoint (directly, or
-transitively through structure fields), so its fields are hypotheses the deferred
+transitively through structure fields), so its fields are hypotheses the statement
 read-through must audit. `#assert_fields` freezes that field set: adding or removing
 a field — smuggling a premise in or out of a boundary — fails the build. The set is
 order-insensitive. Regenerate with `SurfaceProbe`/`FieldProbe` if the surface changes
