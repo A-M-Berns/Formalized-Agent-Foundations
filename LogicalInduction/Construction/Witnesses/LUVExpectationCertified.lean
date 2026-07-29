@@ -37,20 +37,28 @@ theorem lic_expect_combination_provind_le
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨B, hB⟩ := h.bounded
-  have hbounded : BoundedAffinePrices (fun n => (As n).meshAffine n) P :=
+  have hbounded : BoundedAffinePrices (fun n => (As n).meshAffine (n + 1)) P :=
     ⟨max B 0, le_max_right _ _, fun n m =>
-      le_trans (le_trans ((((As n).meshAffine n).abs_price_le_l1Norm P m (fun φ => hP m φ)).trans
-        ((As n).meshAffine_l1Norm_le P n)) (hB n)) (le_max_left _ _)⟩
-  have hmag : ∃ C : ℝ, ∀ n, ((As n).meshAffine n).magnitude P ≤ C :=
-    ⟨(b : ℝ), fun n => ((As n).meshAffine_magnitude_le_shareNorm P n).trans (hshare n)⟩
+      le_trans (le_trans ((((As n).meshAffine (n + 1)).abs_price_le_l1Norm P m
+        (fun φ => hP m φ)).trans
+        ((As n).meshAffine_l1Norm_le P (n + 1))) (hB n)) (le_max_left _ _)⟩
+  have hmag : ∃ C : ℝ, ∀ n, ((As n).meshAffine (n + 1)).magnitude P ≤ C :=
+    ⟨(b : ℝ), fun n =>
+      ((As n).meshAffine_magnitude_le_shareNorm P (n + 1)).trans (hshare n)⟩
   have hval : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWithTheory DP →
-      ((As n).meshAffine n).value P v.payout ≤ c + ε := by
+      ((As n).meshAffine (n + 1)).value P v.payout ≤ c + ε := by
     intro ε hε
     obtain ⟨N, hN⟩ := exists_nat_gt ((b : ℝ) / ε)
     filter_upwards [Filter.eventually_ge_atTop (max 1 N)] with n hn v hv
     have hn0 : 0 < n := by omega
     have hnR : (0 : ℝ) < n := by exact_mod_cast hn0
-    have hnear := (As n).meshAffine_value_near P v (hexact.value n) hn0 (hexact.valuesAt n v hv)
+    have hnear : |((As n).meshAffine (n + 1)).value P v.payout -
+        (As n).value P (hexact.value n)| ≤ (As n).shareNorm P * (1 / (n : ℝ)) := by
+      have hstep : (1 : ℝ) / ((n : ℝ) + 1) ≤ 1 / (n : ℝ) :=
+        one_div_le_one_div_of_le hnR (by linarith)
+      refine LE.le.trans ?_ (mul_le_mul_of_nonneg_left hstep ((As n).shareNorm_nonneg P))
+      simpa using (As n).meshAffine_value_near (k := n + 1) P v (hexact.value n)
+        n.succ_pos (hexact.valuesAt n v hv)
     rw [abs_le] at hnear
     have hbound : (As n).shareNorm P * (1 / n) ≤ (b : ℝ) * (1 / n) :=
       mul_le_mul_of_nonneg_right (hshare n) (by positivity)
@@ -75,20 +83,28 @@ theorem lic_expect_combination_provind_ge
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨B, hB⟩ := h.bounded
-  have hbounded : BoundedAffinePrices (fun n => (As n).meshAffine n) P :=
+  have hbounded : BoundedAffinePrices (fun n => (As n).meshAffine (n + 1)) P :=
     ⟨max B 0, le_max_right _ _, fun n m =>
-      le_trans (le_trans ((((As n).meshAffine n).abs_price_le_l1Norm P m (fun φ => hP m φ)).trans
-        ((As n).meshAffine_l1Norm_le P n)) (hB n)) (le_max_left _ _)⟩
-  have hmag : ∃ C : ℝ, ∀ n, ((As n).meshAffine n).magnitude P ≤ C :=
-    ⟨(b : ℝ), fun n => ((As n).meshAffine_magnitude_le_shareNorm P n).trans (hshare n)⟩
+      le_trans (le_trans ((((As n).meshAffine (n + 1)).abs_price_le_l1Norm P m
+        (fun φ => hP m φ)).trans
+        ((As n).meshAffine_l1Norm_le P (n + 1))) (hB n)) (le_max_left _ _)⟩
+  have hmag : ∃ C : ℝ, ∀ n, ((As n).meshAffine (n + 1)).magnitude P ≤ C :=
+    ⟨(b : ℝ), fun n =>
+      ((As n).meshAffine_magnitude_le_shareNorm P (n + 1)).trans (hshare n)⟩
   have hval : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWithTheory DP →
-      c - ε ≤ ((As n).meshAffine n).value P v.payout := by
+      c - ε ≤ ((As n).meshAffine (n + 1)).value P v.payout := by
     intro ε hε
     obtain ⟨N, hN⟩ := exists_nat_gt ((b : ℝ) / ε)
     filter_upwards [Filter.eventually_ge_atTop (max 1 N)] with n hn v hv
     have hn0 : 0 < n := by omega
     have hnR : (0 : ℝ) < n := by exact_mod_cast hn0
-    have hnear := (As n).meshAffine_value_near P v (hexact.value n) hn0 (hexact.valuesAt n v hv)
+    have hnear : |((As n).meshAffine (n + 1)).value P v.payout -
+        (As n).value P (hexact.value n)| ≤ (As n).shareNorm P * (1 / (n : ℝ)) := by
+      have hstep : (1 : ℝ) / ((n : ℝ) + 1) ≤ 1 / (n : ℝ) :=
+        one_div_le_one_div_of_le hnR (by linarith)
+      refine LE.le.trans ?_ (mul_le_mul_of_nonneg_left hstep ((As n).shareNorm_nonneg P))
+      simpa using (As n).meshAffine_value_near (k := n + 1) P v (hexact.value n)
+        n.succ_pos (hexact.valuesAt n v hv)
     rw [abs_le] at hnear
     have hbound : (As n).shareNorm P * (1 / n) ≤ (b : ℝ) * (1 / n) :=
       mul_le_mul_of_nonneg_right (hshare n) (by positivity)
@@ -177,14 +193,15 @@ noncomputable def gridLiteral (i j m : ℕ) : Sentence :=
   then thresholdSentence i ((j : ℚ) / (m : ℚ))
   else ∼ thresholdSentence i ((j : ℚ) / (m : ℚ))
 
-/-- Scheduled-reveal stage: all grid literals for indices and precisions up to `n`. -/
+/-- Scheduled-reveal stage: all grid literals for indices up to `n` and precisions up to
+day `n`'s own grid `n + 1`. -/
 noncomputable def gridStage (n : ℕ) : Finset Sentence :=
   (Finset.range (n + 1)).biUnion (fun i =>
-    (Finset.range (n + 1)).biUnion (fun m =>
+    (Finset.range (n + 2)).biUnion (fun m =>
       (Finset.range m).image (fun j => L.gridLiteral i j m)))
 
 lemma mem_gridStage {φ : Sentence} {n : ℕ} :
-    φ ∈ L.gridStage n ↔ ∃ i m j, i ≤ n ∧ m ≤ n ∧ j < m ∧ φ = L.gridLiteral i j m := by
+    φ ∈ L.gridStage n ↔ ∃ i m j, i ≤ n ∧ m ≤ n + 1 ∧ j < m ∧ φ = L.gridLiteral i j m := by
   simp only [gridStage, Finset.mem_biUnion, Finset.mem_image, Finset.mem_range]
   constructor
   · rintro ⟨i, hi, m, hm, j, hj, rfl⟩; exact ⟨i, m, j, by omega, by omega, hj, rfl⟩
@@ -222,7 +239,8 @@ attribute [local irreducible] Nat.sqrt in
 literal's polarity for every index `i ≤ m` and precision `n ≤ m`, so `⌜Xᵢ > j/n⌝` holds exactly
 when the threshold predicate does. -/
 lemma holds_thresholdSentence_iff {v : PCWorld} {m n : ℕ}
-    (hv : v.ConsistentWith ((L.gridDP).D m)) {i j : ℕ} (hi : i ≤ m) (hnm : n ≤ m) (hj : j < n) :
+    (hv : v.ConsistentWith ((L.gridDP).D m)) {i j : ℕ} (hi : i ≤ m) (hnm : n ≤ m + 1)
+    (hj : j < n) :
     v.Holds (thresholdSentence i ((j : ℚ) / (n : ℚ)))
       ↔ L.ThresholdPred (thresholdCode i ((j : ℚ) / (n : ℚ))) := by
   have hmem : L.gridLiteral i j n ∈ (L.gridDP).D m := by
@@ -237,10 +255,11 @@ lemma holds_thresholdSentence_iff {v : PCWorld} {m n : ℕ}
     exact ⟨fun h => absurd h hholds, fun h => absurd h hp⟩
 
 /-- **The value-agreement discharge.**  For a world consistent with scheduled stage `m`, any LUV
-index `i ≤ m`, and any precision `0 < n ≤ m`, the day-`n` approximate expectation of `Xᵢ` is within
-`1/n` of its standard rational value — with no world-value hypothesis. -/
+index `i ≤ m`, and any precision `0 < n ≤ m + 1` (in particular stage `m`'s own grid `m + 1`),
+the precision-`n` approximate expectation of `Xᵢ` is within `1/n` of its standard rational value —
+with no world-value hypothesis. -/
 lemma expectApprox_near_gridDP {v : PCWorld} {m n : ℕ} (hn : 0 < n)
-    (hv : v.ConsistentWith ((L.gridDP).D m)) {i : ℕ} (hi : i ≤ m) (hnm : n ≤ m) :
+    (hv : v.ConsistentWith ((L.gridDP).D m)) {i : ℕ} (hi : i ≤ m) (hnm : n ≤ m + 1) :
     |(toLUV i).expectApprox v.payout n - (L.value i : ℝ)| ≤ 1 / n := by
   refine PCWorld.expectApprox_near_ofGrid (by exact_mod_cast L.value_nonneg i)
     (by exact_mod_cast L.value_le_one i) hn (fun j hj => ?_)
@@ -267,7 +286,7 @@ theorem lic_expectation_provind_arith (P : History) [IsLogicalInductor P (L.grid
   lic_expectation_provind P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
     ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
       ⟨(L.value i : ℝ), hc,
-        L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl⟩))
+        (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega))⟩))
 
 /-- Certified expectation provability induction, upper (`≤`) form.
 Paper node: `thm:expprovind` -/
@@ -277,7 +296,7 @@ theorem lic_expectation_provind_le_arith (P : History) [IsLogicalInductor P (L.g
     AsympLE ((toLUV i).expectSeq P) (fun _ => c) :=
   lic_expectation_provind_le P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
     ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
-      ⟨(L.value i : ℝ), hc, L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl⟩))
+      ⟨(L.value i : ℝ), hc, (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega))⟩))
 
 /-- Certified expectation provability induction, equality (`=`) form: a determined
 `dd:luv-arith` value forces the expectation sequence to it.
@@ -288,7 +307,7 @@ theorem lic_expectation_provind_eq_arith (P : History) [IsLogicalInductor P (L.g
     AsympEq ((toLUV i).expectSeq P) (fun _ => c) :=
   lic_expectation_provind_eq P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
     ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
-      hc ▸ L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl))
+      hc ▸ (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega))))
 
 /-- **F7 item 5, certified linearity of expectation.**  Linearity for `dd:luv-arith` LUVs `Xᵢ`,
 `Xⱼ`, `Xₖ`, with the world-value and linear-relation hypotheses discharged from arithmetic: the
@@ -305,9 +324,9 @@ theorem lic_linearity_of_expectation_arith (P : History) [IsLogicalInductor P (L
     hcodeI hcodeJ hcodeK L.gridDP_hcons
     ((Filter.eventually_ge_atTop (max 1 (max i (max j k)))).mono (fun n hin v hv =>
       ⟨(L.value i : ℝ), (L.value j : ℝ), (L.value k : ℝ), by exact_mod_cast hlin,
-        L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl,
-        L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl,
-        L.expectApprox_near_gridDP (by omega) hv (by omega) le_rfl⟩))
+        (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega)),
+        (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega)),
+        (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega))⟩))
 
 /-- **F7 item 5, certified `thm:exppolymax`.**  The sequence-level polynomial-max expectation
 identity for a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation*
@@ -409,7 +428,8 @@ noncomputable def convergencePresentation_combinedDP {As : ℕ → LUVCombinatio
     exact ⟨(L.value i : ℝ),
       PCWorld.ApproxValuesUpTo.mono
         ⟨by exact_mod_cast L.value_nonneg i, fun j hj hjm =>
-          L.expectApprox_near_gridDP hj (L.combinedDP_consistent_grid T hv) hmi hjm⟩ hmk⟩
+          L.expectApprox_near_gridDP hj (L.combinedDP_consistent_grid T hv) hmi
+            (by omega)⟩ hmk⟩
 
 /-- **F7 item 5, certified `thm:expcoh`.**  Completed/limiting/diagonal expectation coherence for
 a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` and `ConvergencePresentation`
@@ -465,7 +485,7 @@ polarity runs `L.num`/`L.den`, so this layer works with `Computable` rather than
 /-- Total per-event literal emitter for stage `n`: decode `e = ⟨i, ⟨m, j⟩⟩` and emit the grid
 literal when in range, else the fixed in-range literal `⌜X₀ > 0/1⌝` (deduplicated away). -/
 private noncomputable def gridEmit (n e : ℕ) : Sentence :=
-  if e.unpair.1 ≤ n ∧ e.unpair.2.unpair.1 ≤ n ∧ e.unpair.2.unpair.2 < e.unpair.2.unpair.1
+  if e.unpair.1 ≤ n ∧ e.unpair.2.unpair.1 ≤ n + 1 ∧ e.unpair.2.unpair.2 < e.unpair.2.unpair.1
   then L.gridLiteral e.unpair.1 e.unpair.2.unpair.2 e.unpair.2.unpair.1
   else L.gridLiteral 0 0 1
 
@@ -500,7 +520,7 @@ private lemma gridEmit_computable : Computable₂ (L.gridEmit) := by
     · simp [h, thresholdSentence, thresholdCodeNat_eq]
   -- the range test is primitive recursive on the pair `(n, e)`
   have hc : Computable (fun p : ℕ × ℕ => decide (p.2.unpair.1 ≤ p.1
-      ∧ p.2.unpair.2.unpair.1 ≤ p.1 ∧ p.2.unpair.2.unpair.2 < p.2.unpair.2.unpair.1)) := by
+      ∧ p.2.unpair.2.unpair.1 ≤ p.1 + 1 ∧ p.2.unpair.2.unpair.2 < p.2.unpair.2.unpair.1)) := by
     have hi : Primrec (fun p : ℕ × ℕ => p.2.unpair.1) :=
       Primrec.fst.comp (Primrec.unpair.comp Primrec.snd)
     have hm : Primrec (fun p : ℕ × ℕ => p.2.unpair.2.unpair.1) :=
@@ -510,49 +530,45 @@ private lemma gridEmit_computable : Computable₂ (L.gridEmit) := by
       Primrec.snd.comp (Primrec.unpair.comp
         (Primrec.snd.comp (Primrec.unpair.comp Primrec.snd)))
     exact (PrimrecPred.decide (PrimrecPred.and (Primrec.nat_le.comp hi Primrec.fst)
-      (PrimrecPred.and (Primrec.nat_le.comp hm Primrec.fst)
+      (PrimrecPred.and (Primrec.nat_le.comp hm (Primrec.succ.comp Primrec.fst))
         (Primrec.nat_lt.comp hj hm)))).to_comp
   exact (Computable.cond hc (hlit.comp Computable.snd)
     (Computable.const (L.gridLiteral 0 0 1))).of_eq (fun p => by
       unfold gridEmit
-      by_cases h : p.2.unpair.1 ≤ p.1 ∧ p.2.unpair.2.unpair.1 ≤ p.1
+      by_cases h : p.2.unpair.1 ≤ p.1 ∧ p.2.unpair.2.unpair.1 ≤ p.1 + 1
           ∧ p.2.unpair.2.unpair.2 < p.2.unpair.2.unpair.1
       · simp [h]
       · simp [h])
 
 /-- The stage-`n` literal list is computable (built by `Nat.rec` over the event bound). -/
 private lemma gridList_computable :
-    Computable (fun n => (List.range (Nat.pair n (Nat.pair n n) + 1)).map (L.gridEmit n)) := by
-  have hB : Computable (fun n : ℕ => Nat.pair n (Nat.pair n n) + 1) :=
+    Computable (fun n =>
+      (List.range (Nat.pair n (Nat.pair (n + 1) (n + 1)) + 1)).map (L.gridEmit n)) := by
+  have hB : Computable (fun n : ℕ => Nat.pair n (Nat.pair (n + 1) (n + 1)) + 1) :=
     (Primrec.succ.comp (Primrec₂.natPair.comp Primrec.id
-      (Primrec₂.natPair.comp Primrec.id Primrec.id))).to_comp
+      (Primrec₂.natPair.comp (Primrec.succ.comp Primrec.id)
+        (Primrec.succ.comp Primrec.id)))).to_comp
   have hh : Computable₂ (fun (n : ℕ) (p : ℕ × List Sentence) => p.2 ++ [L.gridEmit n p.1]) :=
     (Computable.list_concat.comp (Computable.snd.comp Computable.snd)
       (L.gridEmit_computable.comp Computable.fst (Computable.fst.comp Computable.snd))).to₂
   have h := Computable.nat_rec hB (Computable.const ([] : List Sentence)) hh
   refine h.of_eq (fun n => ?_)
-  generalize Nat.pair n (Nat.pair n n) + 1 = N
+  generalize Nat.pair n (Nat.pair (n + 1) (n + 1)) + 1 = N
   induction N with
   | zero => simp
   | succ N ih => simp [List.range_succ, ih]
 
-private lemma gridStage_zero : L.gridStage 0 = ∅ := by
-  ext φ
-  simp only [Finset.notMem_empty, iff_false]
-  rw [mem_gridStage]
-  rintro ⟨i, m, j, _, hm, hj, _⟩
-  omega
-
-private lemma gridStage_eq_list_toFinset {n : ℕ} (hn : 1 ≤ n) :
+private lemma gridStage_eq_list_toFinset (n : ℕ) :
     L.gridStage n
-      = ((List.range (Nat.pair n (Nat.pair n n) + 1)).map (L.gridEmit n)).toFinset := by
+      = ((List.range (Nat.pair n (Nat.pair (n + 1) (n + 1)) + 1)).map
+          (L.gridEmit n)).toFinset := by
   ext φ
   rw [mem_gridStage]
   simp only [List.mem_toFinset, List.mem_map, List.mem_range]
   constructor
   · rintro ⟨i, m, j, hi, hm, hj, rfl⟩
     refine ⟨Nat.pair i (Nat.pair m j), ?_, ?_⟩
-    · have hbound : Nat.pair i (Nat.pair m j) ≤ Nat.pair n (Nat.pair n n) :=
+    · have hbound : Nat.pair i (Nat.pair m j) ≤ Nat.pair n (Nat.pair (n + 1) (n + 1)) :=
         le_trans (pair_le_pair_right' _
           (le_trans (pair_le_pair_right' _ (by omega)) (pair_le_pair_left' _ hm)))
           (pair_le_pair_left' _ hi)
@@ -562,33 +578,26 @@ private lemma gridStage_eq_list_toFinset {n : ℕ} (hn : 1 ≤ n) :
       rw [if_pos ⟨hi, hm, hj⟩]
   · rintro ⟨e, _, rfl⟩
     unfold gridEmit
-    by_cases hc : e.unpair.1 ≤ n ∧ e.unpair.2.unpair.1 ≤ n
+    by_cases hc : e.unpair.1 ≤ n ∧ e.unpair.2.unpair.1 ≤ n + 1
         ∧ e.unpair.2.unpair.2 < e.unpair.2.unpair.1
     · rw [if_pos hc]
       exact ⟨e.unpair.1, e.unpair.2.unpair.1, e.unpair.2.unpair.2, hc.1, hc.2.1, hc.2.2, rfl⟩
     · rw [if_neg hc]
-      exact ⟨0, 1, 0, Nat.zero_le n, hn, Nat.zero_lt_one, rfl⟩
+      exact ⟨0, 1, 0, Nat.zero_le n, by omega, Nat.zero_lt_one, rfl⟩
 
 /-- **The scheduled grid process is computable.** -/
 lemma gridDP_computable : ComputableDeductiveProcess (L.gridDP) := by
   have hsorted : Computable (fun n =>
-      Encodable.encode ((sentenceDedup ((List.range (Nat.pair n (Nat.pair n n) + 1)).map
-        (L.gridEmit n))).insertionSort sentenceCodeLE)) :=
+      Encodable.encode ((sentenceDedup
+        ((List.range (Nat.pair n (Nat.pair (n + 1) (n + 1)) + 1)).map
+          (L.gridEmit n))).insertionSort sentenceCodeLE)) :=
     Computable.encode.comp (sentenceInsertionSort_prim.to_comp.comp
       (sentenceDedup_prim.to_comp.comp (L.gridList_computable)))
   have henc : Computable (fun n => Encodable.encode ((L.gridDP).D n)) := by
-    refine (Computable.nat_casesOn Computable.id
-      (Computable.const (Encodable.encode (∅ : Finset Sentence)))
-      (hsorted.comp Computable.fst).to₂).of_eq (fun n => ?_)
-    cases n with
-    | zero =>
-        show Encodable.encode (∅ : Finset Sentence) = Encodable.encode (L.gridStage 0)
-        rw [L.gridStage_zero]
-    | succ k =>
-        show Encodable.encode ((sentenceDedup _).insertionSort sentenceCodeLE)
-          = Encodable.encode (L.gridStage (k + 1))
-        rw [L.gridStage_eq_list_toFinset (Nat.succ_le_succ (Nat.zero_le k)),
-          encode_toFinset_eq]
+    refine hsorted.of_eq (fun n => ?_)
+    show Encodable.encode ((sentenceDedup _).insertionSort sentenceCodeLE)
+      = Encodable.encode (L.gridStage n)
+    rw [L.gridStage_eq_list_toFinset n, encode_toFinset_eq]
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp (Partrec.nat_iff.mp henc.partrec)
   refine ⟨code, fun n => ?_⟩
   rw [hcode]

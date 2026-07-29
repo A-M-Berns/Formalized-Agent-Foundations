@@ -860,6 +860,40 @@ def PolySequence.neg {As : ℕ → AffineCombination} (h : PolySequence As) :
     simp only [EF.denoteWith, EF.denote_mul, EF.denote_const, Pi.mul_apply]
     rw [h.coefficient_closed z ρ V]
 
+/-- Reindex a polynomial affine family one step forward, `n ↦ As (n + 1)`.
+
+This is what pairs a *precision*-indexed bundle family with the day it is priced on: under
+the repo's day-index convention (Lean day `n` = paper day `n+1`) the day-`n` grid is
+`n + 1`, so every diagonal use of a precision-indexed family goes through `shift`. The
+rank discipline is not automatic — day `n + 1`'s features may mention prices up to day
+`n + 1`, which day `n` may not — so it is taken as a hypothesis; for the constant-
+coefficient threshold bundles of `def:e` it is free. -/
+def PolySequence.shift {As : ℕ → AffineCombination} (h : PolySequence As)
+    (hconst : ∀ n, (As (n + 1)).const.rank ≤ n)
+    (hrank : ∀ n, ∀ p ∈ (As (n + 1)).terms, p.1.rank ≤ n) :
+    PolySequence (fun n => As (n + 1)) where
+  termCount := fun n => h.termCount (n + 1)
+  coefficient := fun z => h.coefficient (Nat.pair (z.unpair.1 + 1) z.unpair.2)
+  sentence := fun z => h.sentence (Nat.pair (z.unpair.1 + 1) z.unpair.2)
+  termCount_poly := by
+    obtain ⟨c, hc⟩ := h.termCount_poly
+    exact ⟨_, hc.comp PolyFueled.id.succ_comp⟩
+  const_poly := h.const_poly.comp PolyFueled.id.succ_comp
+  coefficient_poly := h.coefficient_poly.comp
+    (PolyFueled.left.succ_comp.pair PolyFueled.right)
+  sentence_poly := h.sentence_poly.comp
+    (PolyFueled.left.succ_comp.pair PolyFueled.right)
+  terms_eq := by intro n; simpa using h.terms_eq (n + 1)
+  const_rank := hconst
+  coefficient_rank := by
+    intro n j hj
+    simp only [Nat.unpair_pair] at hj ⊢
+    refine hrank n (h.coefficient (Nat.pair (n + 1) j), h.sentence (Nat.pair (n + 1) j)) ?_
+    rw [h.terms_eq (n + 1)]
+    exact List.mem_map.2 ⟨j, List.mem_range.2 hj, rfl⟩
+  const_closed := fun n => h.const_closed (n + 1)
+  coefficient_closed := fun z => h.coefficient_closed _
+
 /-! ## Finite round trips
 
 The affine-preemptive-learning trader is assembled from finite buy-low/sell-high round

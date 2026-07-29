@@ -44,37 +44,36 @@ namespace LUVCombinationSyntax
 /-- Number of threshold shares in the diagonal mesh. -/
 def meshTermCount {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (n : ℕ) : ℕ :=
-  S.termCount n * n
+  S.termCount n * (n + 1)
 
 /-- Source term containing a flattened diagonal-mesh term. -/
 def meshMember {As : ℕ → LUVCombination}
     (_S : LUVCombinationSyntax As) (z : ℕ) : ℕ :=
-  z.unpair.2 / (z.unpair.1 - 1 + 1)
+  z.unpair.2 / (z.unpair.1 + 1)
 
 /-- Threshold numerator within a flattened diagonal-mesh term. -/
 def meshOffset {As : ℕ → LUVCombination}
     (_S : LUVCombinationSyntax As) (z : ℕ) : ℕ :=
-  z.unpair.2 % (z.unpair.1 - 1 + 1)
+  z.unpair.2 % (z.unpair.1 + 1)
 
-/-- Literal coefficient `a_j / n` of a flattened threshold share. -/
+/-- Literal coefficient `a_j / (n+1)` of a flattened threshold share. -/
 def meshCoefficient {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (z : ℕ) : EF :=
   .mul (S.coefficient (Nat.pair z.unpair.1 (S.meshMember z)))
-    (.const (1 / (z.unpair.1 : ℚ)))
+    (.const (1 / ((z.unpair.1 + 1 : ℕ) : ℚ)))
 
-/-- Literal sentence `X_j > i/n` of a flattened threshold share. -/
+/-- Literal sentence `X_j > i/(n+1)` of a flattened threshold share. -/
 def meshSentence {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (z : ℕ) : Sentence :=
   (S.luv (Nat.pair z.unpair.1 (S.meshMember z))).gt
-    ((S.meshOffset z : ℚ) / (z.unpair.1 : ℚ))
+    ((S.meshOffset z : ℚ) / ((z.unpair.1 + 1 : ℕ) : ℚ))
 
 lemma meshTermCount_poly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) :
     ∃ c, PolyFueled c S.meshTermCount := by
   obtain ⟨cmul, hmul⟩ := mul_polyFueled
   obtain ⟨ccount, hcount⟩ := S.termCount_poly
-  exact ⟨cmul.comp (ccount.pair Nat.Partrec.Code.id),
-    (hmul.comp (hcount.pair PolyFueled.id)).of_eq (fun n ↦ by
+  exact ⟨_, (hmul.comp (hcount.pair PolyFueled.id.succ_comp)).of_eq (fun n ↦ by
       simp [meshTermCount])⟩
 
 attribute [local irreducible] Nat.sqrt in
@@ -83,10 +82,8 @@ private lemma meshDivMod_poly {As : ℕ → LUVCombination}
     ∃ c, PolyFueled c (fun z ↦ Nat.pair (S.meshMember z) (S.meshOffset z)) := by
   obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
   have hinput : PolyFueled _ (fun z : ℕ ↦
-      Nat.pair (z.unpair.1 - 1) z.unpair.2) :=
-    ((subc_polyFueled.comp
-      (PolyFueled.left.pair (PolyFueled.const 1))).pair
-      PolyFueled.right).of_eq (fun z ↦ by simp)
+      Nat.pair z.unpair.1 z.unpair.2) :=
+    (PolyFueled.left.pair PolyFueled.right)
   refine ⟨cdm.comp _, (hdm.comp hinput).of_eq (fun z ↦ ?_)⟩
   simp [meshMember, meshOffset]
 
@@ -195,7 +192,7 @@ lemma flatMap_threshold_terms (l : List (EF × LUV)) (n : ℕ) :
 property theorems. -/
 noncomputable def diagonalMeshPoly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) :
-    AffineCombination.PolySequence (fun n ↦ (As n).meshAffine n) := by
+    AffineCombination.PolySequence (fun n ↦ (As n).meshAffine (n + 1)) := by
   let cmember := Classical.choose S.meshMember_poly
   have hmember := Classical.choose_spec S.meshMember_poly
   let coffset := Classical.choose S.meshOffset_poly
@@ -208,11 +205,11 @@ noncomputable def diagonalMeshPoly {As : ℕ → LUVCombination}
     PolyFueled.left.pair hmember
   have hcoeffSource := S.coefficient_poly.comp hsource
   have hinvSource := RpnSpliceStream.serialize_const_comp
-    ⟨cinv.comp Nat.Partrec.Code.left, hinv.comp PolyFueled.left⟩
+    ⟨_, hinv.comp PolyFueled.left.succ_comp⟩
   have hquery : PolyFueled _ (fun z : ℕ ↦
       Nat.pair (Nat.pair z.unpair.1 (S.meshMember z))
-        (Nat.pair z.unpair.1 (S.meshOffset z))) :=
-    hsource.pair (PolyFueled.left.pair hoffset)
+        (Nat.pair (z.unpair.1 + 1) (S.meshOffset z))) :=
+    hsource.pair (PolyFueled.left.succ_comp.pair hoffset)
   refine {
     termCount := S.meshTermCount
     coefficient := S.meshCoefficient
@@ -238,33 +235,22 @@ noncomputable def diagonalMeshPoly {As : ℕ → LUVCombination}
     apply List.map_congr_left
     intro t ht
     simp only [List.mem_range] at ht
-    have hn : 0 < n := by
-      by_contra hzero
-      simp only [Nat.not_lt, Nat.le_zero] at hzero
-      subst n
-      simp at ht
-    have hj : t / n < S.termCount n := (Nat.div_lt_iff_lt_mul hn).2 ht
-    have hidx : t / n < ((List.range (S.termCount n)).map fun j ↦
+    have hj : t / (n + 1) < S.termCount n :=
+      (Nat.div_lt_iff_lt_mul n.succ_pos).2 ht
+    have hidx : t / (n + 1) < ((List.range (S.termCount n)).map fun j ↦
         (S.coefficient (Nat.pair n j), S.luv (Nat.pair n j))).length := by
       simpa using hj
     rw [List.getD_eq_getElem (l := (List.range (S.termCount n)).map fun j ↦
       (S.coefficient (Nat.pair n j), S.luv (Nat.pair n j)))
       (d := (EF.const 0, (⟨fun _ ↦ ⊤⟩ : LUV))) hidx]
-    simp [meshCoefficient, meshSentence, meshMember, meshOffset,
-      Nat.sub_add_cancel (Nat.one_le_iff_ne_zero.mpr hn.ne')]
+    simp [meshCoefficient, meshSentence, meshMember, meshOffset]
   · intro n t ht
     simp only [meshCoefficient, Nat.unpair_pair, EF.rank]
     apply Nat.max_le.mpr
     refine ⟨?_, by simp⟩
-    have hn : 0 < n := by
-      by_contra hzero
-      have : n = 0 := Nat.eq_zero_of_not_pos hzero
-      subst n
-      simp [meshTermCount] at ht
-    have hj : t / n < S.termCount n :=
-      (Nat.div_lt_iff_lt_mul hn).2 (by simpa [meshTermCount] using ht)
-    simpa [meshMember, Nat.sub_add_cancel (Nat.one_le_iff_ne_zero.mpr hn.ne')]
-      using S.coefficient_rank n (t / n) hj
+    have hj : t / (n + 1) < S.termCount n :=
+      (Nat.div_lt_iff_lt_mul n.succ_pos).2 (by simpa [meshTermCount] using ht)
+    simpa [meshMember] using S.coefficient_rank n (t / (n + 1)) hj
   · intro z ρ V
     simp only [meshCoefficient, EF.denoteWith, EF.denote_mul, EF.denote_const,
       Pi.mul_apply]
@@ -1094,11 +1080,11 @@ namespace LUVCombinationSyntax
 
 private def upperGapFamily (As : ℕ → LUVCombination) (b : ℚ) (q : ℕ) :
     AffineCombination :=
-  (As q.unpair.2).meshGap q.unpair.2 q.unpair.1 b
+  (As q.unpair.2).meshGap (q.unpair.2 + 1) (q.unpair.1 + 1) b
 
 private def lowerGapFamily (As : ℕ → LUVCombination) (b : ℚ) (q : ℕ) :
     AffineCombination :=
-  (As q.unpair.2).meshGapLower q.unpair.2 q.unpair.1 b
+  (As q.unpair.2).meshGapLower (q.unpair.2 + 1) (q.unpair.1 + 1) b
 
 private lemma meshAffine_terms_rank_of_syntax {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) {n k m : ℕ} (hnm : n ≤ m) :
@@ -1165,18 +1151,18 @@ noncomputable def upperGapPoly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (b : ℚ) :
     AffineCombination.PolySequence (upperGapFamily As b) := by
   have hright : ∀ q : ℕ, q.unpair.2 ≤ q := Nat.unpair_right_le
-  have hlow := S.meshFamilyPoly (fun q ↦ q.unpair.2) (fun q ↦ q.unpair.2)
-    ⟨_, PolyFueled.right⟩ ⟨_, PolyFueled.right⟩ hright
-  have hhigh := S.meshFamilyPoly (fun q ↦ q.unpair.2) (fun q ↦ q.unpair.1)
-    ⟨_, PolyFueled.right⟩ ⟨_, PolyFueled.left⟩ hright
+  have hlow := S.meshFamilyPoly (fun q ↦ q.unpair.2) (fun q ↦ q.unpair.2 + 1)
+    ⟨_, PolyFueled.right⟩ ⟨_, PolyFueled.right.succ_comp⟩ hright
+  have hhigh := S.meshFamilyPoly (fun q ↦ q.unpair.2) (fun q ↦ q.unpair.1 + 1)
+    ⟨_, PolyFueled.right⟩ ⟨_, PolyFueled.left.succ_comp⟩ hright
   have hbase := hlow.add hhigh.neg
-  let e : ℕ → EF := fun q ↦ LUVCombination.meshErrorFeature q.unpair.2 b
+  let e : ℕ → EF := fun q ↦ LUVCombination.meshErrorFeature (q.unpair.2 + 1) b
   have he : PGenerableWeighting e := {
     polySeg := RpnSpliceStream.serialize_mul
       (RpnSpliceStream.serialize_const (-(2 * b)))
       (RpnSpliceStream.serialize_const_comp
-        ⟨(Classical.choose encode_inv_nat_polyFueled).comp Nat.Partrec.Code.right,
-          (Classical.choose_spec encode_inv_nat_polyFueled).comp PolyFueled.right⟩)
+        ⟨_, (Classical.choose_spec encode_inv_nat_polyFueled).comp
+          PolyFueled.right.succ_comp⟩)
     rank_le := by intro q; simp [e, LUVCombination.meshErrorFeature, EF.rank]
     closed := by intro q ρ V; simp [e, LUVCombination.meshErrorFeature, EF.denoteWith]
   }
@@ -1188,18 +1174,18 @@ noncomputable def lowerGapPoly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (b : ℚ) :
     AffineCombination.PolySequence (lowerGapFamily As b) := by
   have hright : ∀ q : ℕ, q.unpair.2 ≤ q := Nat.unpair_right_le
-  have hlow := S.meshFamilyPoly (fun q ↦ q.unpair.2) (fun q ↦ q.unpair.2)
-    ⟨_, PolyFueled.right⟩ ⟨_, PolyFueled.right⟩ hright
-  have hhigh := S.meshFamilyPoly (fun q ↦ q.unpair.2) (fun q ↦ q.unpair.1)
-    ⟨_, PolyFueled.right⟩ ⟨_, PolyFueled.left⟩ hright
+  have hlow := S.meshFamilyPoly (fun q ↦ q.unpair.2) (fun q ↦ q.unpair.2 + 1)
+    ⟨_, PolyFueled.right⟩ ⟨_, PolyFueled.right.succ_comp⟩ hright
+  have hhigh := S.meshFamilyPoly (fun q ↦ q.unpair.2) (fun q ↦ q.unpair.1 + 1)
+    ⟨_, PolyFueled.right⟩ ⟨_, PolyFueled.left.succ_comp⟩ hright
   have hbase := hhigh.add hlow.neg
-  let e : ℕ → EF := fun q ↦ LUVCombination.meshErrorFeature q.unpair.2 b
+  let e : ℕ → EF := fun q ↦ LUVCombination.meshErrorFeature (q.unpair.2 + 1) b
   have he : PGenerableWeighting e := {
     polySeg := RpnSpliceStream.serialize_mul
       (RpnSpliceStream.serialize_const (-(2 * b)))
       (RpnSpliceStream.serialize_const_comp
-        ⟨(Classical.choose encode_inv_nat_polyFueled).comp Nat.Partrec.Code.right,
-          (Classical.choose_spec encode_inv_nat_polyFueled).comp PolyFueled.right⟩)
+        ⟨_, (Classical.choose_spec encode_inv_nat_polyFueled).comp
+          PolyFueled.right.succ_comp⟩)
     rank_le := by intro q; simp [e, LUVCombination.meshErrorFeature, EF.rank]
     closed := by intro q ρ V; simp [e, LUVCombination.meshErrorFeature, EF.denoteWith]
   }
@@ -1271,7 +1257,7 @@ noncomputable def meshSoftmaxOperationalWitness
               exact le_add_of_nonneg_left (abs_nonneg _)
             _ ≤ B := hB (i + 1)
         exact (LUVCombination.meshGap_magnitude_le (As (i + 1)) P
-          (i + 1) m b).trans (by linarith)
+          (i + 2) (m + 1) b).trans (by linarith)
       simpa only [LUVCombination.meshSoftmax, EF.denote_const, Rat.cast_one, one_mul] using
         LUVCombination.softmaxAffine_magnitude_le
           (LUVCombination.meshGaps As m b) P m (ε / 2) (ε / 4) (.const 1)
@@ -1310,7 +1296,7 @@ noncomputable def meshSoftmaxOperationalWitness
               exact le_add_of_nonneg_left (abs_nonneg _)
             _ ≤ B := hB (i + 1)
         exact (LUVCombination.meshGapLower_magnitude_le (As (i + 1)) P
-          (i + 1) m b).trans (by linarith)
+          (i + 2) (m + 1) b).trans (by linarith)
       simpa only [LUVCombination.meshSoftmaxLower, EF.denote_const, Rat.cast_one,
           one_mul] using
         LUVCombination.softmaxAffine_magnitude_le

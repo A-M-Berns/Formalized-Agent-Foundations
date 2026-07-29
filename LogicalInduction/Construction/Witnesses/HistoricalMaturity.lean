@@ -1505,29 +1505,21 @@ private lemma meshTol_gt {As : ℕ → LUVCombination} {P : History} {b : ℚ}
     unfold meshTol
     push_cast
     ring
-  rcases Nat.eq_zero_or_pos i with hi | hi
-  · subst hi
-    have hzero : meshErrorBound As P b 0 = 0 := by
-      unfold meshErrorBound
-      simpa using min_eq_right ((normalizedMesh As b 0).magnitude_nonneg P)
-    rw [hzero, hcast]
-    simp only [Nat.cast_zero, zero_add, div_one, mul_zero]
-    positivity
-  · have hiR : (1 : ℝ) ≤ (i : ℝ) := by exact_mod_cast hi
-    have hi0 : (0 : ℝ) < (i : ℝ) := by linarith
-    have hE0 : 0 ≤ meshErrorBound As P b i := (normalizedMesh_errorNegligible As P b).1 i
-    have hshareLe : (As i).shareNorm P ≤ |(b : ℝ)| := (hshare i).trans (le_abs_self _)
-    have hmin : meshErrorBound As P b i ≤
-        2 * ((meshNormScale b : ℚ) : ℝ) * (As i).shareNorm P / (i : ℝ) :=
-      min_le_right _ _
-    have hE : meshErrorBound As P b i ≤
-        2 * ((meshNormScale b : ℚ) : ℝ) * |(b : ℝ)| / (i : ℝ) := by
-      exact hmin.trans (by gcongr)
-    rw [le_div_iff₀ hi0] at hE
-    have hE1 : meshErrorBound As P b i ≤ 2 * ((meshNormScale b : ℚ) : ℝ) * |(b : ℝ)| := by
-      nlinarith
-    rw [hcast, lt_div_iff₀ (by linarith)]
-    nlinarith [mul_nonneg hq.le hb0]
+  have hi0 : (0 : ℝ) < (i : ℝ) + 1 := by positivity
+  have hshareLe : (As i).shareNorm P ≤ |(b : ℝ)| := (hshare i).trans (le_abs_self _)
+  have hmin : meshErrorBound As P b i ≤
+      2 * ((meshNormScale b : ℚ) : ℝ) * (As i).shareNorm P / ((i : ℝ) + 1) :=
+    min_le_right _ _
+  have hE : meshErrorBound As P b i ≤
+      2 * ((meshNormScale b : ℚ) : ℝ) * |(b : ℝ)| / ((i : ℝ) + 1) :=
+    hmin.trans (by gcongr)
+  have hnum : 2 * (2 * ((meshNormScale b : ℚ) : ℝ) * |(b : ℝ)|) <
+      8 * ((meshNormScale b : ℚ) : ℝ) * |(b : ℝ)| + 2 := by nlinarith
+  rw [hcast]
+  calc 2 * meshErrorBound As P b i
+      ≤ 2 * (2 * ((meshNormScale b : ℚ) : ℝ) * |(b : ℝ)| / ((i : ℝ) + 1)) := by linarith
+    _ = (2 * (2 * ((meshNormScale b : ℚ) : ℝ) * |(b : ℝ)|)) / ((i : ℝ) + 1) := by ring
+    _ < (8 * ((meshNormScale b : ℚ) : ℝ) * |(b : ℝ)| + 2) / ((i : ℝ) + 1) := by gcongr
 
 /-- `thm:recurringunbiasednessexp` with the normalized-mesh maturity schedule constructed
 from the logical inductor computations.

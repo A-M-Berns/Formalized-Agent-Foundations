@@ -205,23 +205,30 @@ theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨L, hL⟩ := X.expectApprox_limitingBelief_converges P DP hcons hval
   refine ⟨L, ?_⟩
-  have hbdd : BoundedAffinePrices X.expectAffine P := by
+  have hbdd : BoundedAffinePrices (fun n => X.expectAffine (n + 1)) P := by
     refine ⟨1, zero_le_one, fun n m => ?_⟩
-    rw [AffineCombination.price, X.expectAffine_value P (P m) n, abs_of_nonneg
-      (X.expectApprox_nonneg (P m) n (fun s => (hP m s).1))]
-    exact X.expectApprox_le_one (P m) n (fun s => (hP m s).2)
-  have hcoh := (X.expectAffine_polySequence hcode).affcoh P DP hbdd
-    ⟨1, fun n => X.expectAffine_magnitude_le_one P n⟩ hcons
-  have hvalEq : (fun n => (X.expectAffine n).value P (limitingBelief P))
-      = fun n => X.expectApprox (limitingBelief P) n :=
-    funext (fun n => X.expectAffine_value P (limitingBelief P) n)
-  have hpriceEq : (fun n => (X.expectAffine n).price P n) = X.expectSeq P :=
+    rw [AffineCombination.price, X.expectAffine_value P (P m) (n + 1), abs_of_nonneg
+      (X.expectApprox_nonneg (P m) (n + 1) (fun s => (hP m s).1))]
+    exact X.expectApprox_le_one (P m) (n + 1) (fun s => (hP m s).2)
+  have hcoh := ((X.expectAffine_polySequence hcode).shift
+      (fun n => by simp [LUV.expectAffine])
+      (fun n p hp => by
+        simp only [LUV.expectAffine, List.mem_map] at hp
+        obtain ⟨j, _, rfl⟩ := hp
+        simp [EF.rank])).affcoh P DP hbdd
+    ⟨1, fun n => X.expectAffine_magnitude_le_one P (n + 1)⟩ hcons
+  have hvalEq : (fun n => (X.expectAffine (n + 1)).value P (limitingBelief P))
+      = fun n => X.expectApprox (limitingBelief P) (n + 1) :=
+    funext (fun n => X.expectAffine_value P (limitingBelief P) (n + 1))
+  have hpriceEq : (fun n => (X.expectAffine (n + 1)).price P n) = X.expectSeq P :=
     funext (fun n => X.expectAffine_price P n)
   rw [hvalEq, hpriceEq] at hcoh
-  have hlimI : liminf (fun n => X.expectApprox (limitingBelief P) n) atTop = L :=
-    hL.liminf_eq
-  have hlimS : limsup (fun n => X.expectApprox (limitingBelief P) n) atTop = L :=
-    hL.limsup_eq
+  have hLshift : Tendsto (fun n => X.expectApprox (limitingBelief P) (n + 1)) atTop (𝓝 L) :=
+    hL.comp (Filter.tendsto_add_atTop_nat 1)
+  have hlimI : liminf (fun n => X.expectApprox (limitingBelief P) (n + 1)) atTop = L :=
+    hLshift.liminf_eq
+  have hlimS : limsup (fun n => X.expectApprox (limitingBelief P) (n + 1)) atTop = L :=
+    hLshift.limsup_eq
   have hlo : IsBoundedUnder (· ≥ ·) atTop (X.expectSeq P) :=
     isBoundedUnder_of_eventually_ge (a := (0 : ℝ)) (Filter.Eventually.of_forall
       (fun n => (X.expect_mem_Icc P n (fun s => hP n s)).1))
