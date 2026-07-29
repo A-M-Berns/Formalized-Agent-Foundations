@@ -691,6 +691,15 @@ market's own deferred-day price, and `A` is its indicator product with `φ n`.  
 sentence sequence, the deferral function, the thresholds, and their poly codes remain.
 Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
 `f n > n`; see `QuotationAffine`'s injective-deferral reindexing section.
+
+Threshold narrowing (the closed form only): `p` is an e.c. rational sequence, not a general
+P-generable one.  The trader layer is P-generable throughout
+(`lic_self_trust_ofRepresentation_unconditional` takes the feature), and the constant
+feature `ratCodeFeature` is what this instance supplies.  The narrowing is the *quote
+code*: `theoremConfidenceQuoteCode` emits `⌜ctsind_δ(P_{f(n)}(φₙ) > pₙ)⌝` from a program
+computing `p n`, and recovering a program for `p` from a `GeneratedRatFeature` means
+parsing the feature back out of its `RpnSpliceStream` serialization and metering
+`EF.denoteRatWithAtFuel` against the market — neither exists in the repo.
 Paper node: `thm:st` -/
 theorem lic_self_trust_closed
     (f : DeferralFunction) (hinj : Function.Injective f.f)
@@ -706,7 +715,8 @@ theorem lic_self_trust_closed
   refine lic_self_trust_ofRepresentation_unconditional (T := T) f hinj φ δ p
     (fun n => indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n)
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).luv
-    delta_pos probability_mem (RpnSentenceCodes.ofPolySentenceCodes hφ) hδ hδinv hp
+    delta_pos probability_mem (RpnSentenceCodes.ofPolySentenceCodes hφ) hδ hδinv
+    (ratCodeFeature p) (ratCodeFeature_generated (liaHistory (theoremDP T)) p hp)
     (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
       (indicatorProductLUV_polyThresholdCodeSeq _ hφ))
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).poly

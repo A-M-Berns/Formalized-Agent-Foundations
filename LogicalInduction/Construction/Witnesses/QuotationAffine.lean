@@ -885,6 +885,21 @@ lemma PolyRatCodes.reindex {q : ℕ → ℚ} (hq : PolyRatCodes q)
   obtain ⟨ci, hi⟩ := hindex
   exact ⟨cq.comp ci, hq.comp hi⟩
 
+/-- A generated rational feature remains generated after a polynomially fueled,
+non-increasing reindexing: the day-`m` expression is the source expression at day
+`index m`, whose rank is already below `index m ≤ m`. -/
+lemma GeneratedRatFeature.reindex {P : History} {q : ℕ → ℚ} {feature : ℕ → EF}
+    (h : GeneratedRatFeature P q feature)
+    {index : ℕ → ℕ} (hindex : ∃ c, PolyFueled c index)
+    (hle : ∀ m, index m ≤ m) :
+    GeneratedRatFeature P (fun m ↦ q (index m)) (fun m ↦ feature (index m)) where
+  rank_le := fun m ↦ (h.rank_le (index m)).trans (hle m)
+  polyTok := by
+    obtain ⟨ci, hi⟩ := hindex
+    exact h.polyTok.comp hi
+  closed := fun m ↦ h.closed (index m)
+  denote := fun m ↦ h.denote (index m)
+
 /-- Express `ctsInd δ x y` using only the repository's allowed feature operations. -/
 def ctsIndFeature (δ : ℕ → ℚ) (x y : ℕ → EF) (n : ℕ) : EF :=
   clip01 (EF.mul
@@ -1115,6 +1130,49 @@ lemma deferralPreimage_spec
     exact deferralPreimage_at f hinj hspec k
   rw [hidx]
   exact ⟨hk, hfk⟩
+
+/-- Off the image of `f` the preimage scan sums an all-zero match vector, so it
+defaults to `0`. -/
+private lemma deferralPreimage_eq_zero_of_unflagged
+    (f : DeferralFunction) (a degree m : ℕ)
+    (hm : deferralImageFlag f a degree m = 0) :
+    deferralPreimage f a degree m = 0 := by
+  have hcount : deferralMatchCount f a degree m = 0 := by
+    by_contra hne
+    rw [deferralImageFlag, if_neg hne] at hm
+    exact _root_.one_ne_zero hm
+  have key : ∀ r,
+      segPrefix (fun z ↦ FeedbackEmission.scheduledMatch f a degree z) m r = 0 →
+      segPrefix (fun z ↦ z.unpair.2 *
+        FeedbackEmission.scheduledMatch f a degree z) m r = 0 := by
+    intro r
+    induction r with
+    | zero => intro _; rfl
+    | succ r ih =>
+        intro h
+        rw [segPrefix_succ] at h ⊢
+        have h1 : segPrefix (fun z ↦ FeedbackEmission.scheduledMatch f a degree z) m r
+            = 0 := by omega
+        have h2 : FeedbackEmission.scheduledMatch f a degree (Nat.pair m r) = 0 := by
+          omega
+        rw [ih h1]
+        simp [h2]
+  exact key m (by simpa [deferralMatchCount] using hcount)
+
+/-- The preimage scan never overshoots its own day: on the image of `f` it lands on the
+strictly earlier source day, and off it on `0`.  This is what lets a day-`m` feature carry
+the source day's expression without violating the rank discipline. -/
+lemma deferralPreimage_le
+    (f : DeferralFunction) (hinj : Function.Injective f.f)
+    {a degree : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln
+      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
+    (m : ℕ) :
+    deferralPreimage f a degree m ≤ m := by
+  rcases deferralImageFlag_zero_or_one f a degree m with hm | hm
+  · rw [deferralPreimage_eq_zero_of_unflagged f a degree m hm]
+    exact Nat.zero_le m
+  · exact (deferralPreimage_spec f hinj hspec hm).1.le
 
 /-- Only finitely many days are scheduled from below `N`, so past the largest of them
 every flagged day has its preimage at or above `N`.  This replaces the monotonicity
@@ -3222,7 +3280,13 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
 
 /-- Construct the complete `thm:st` self-trust package.  Strictness is needed only by
 this concrete constructor, where it makes the bounded image inverse unambiguous; the
-abstract `SelfTrustQuote` and its consumer remain stated for every deferral function. -/
+abstract `SelfTrustQuote` and its consumer remain stated for every deferral function.
+
+The confidence threshold enters as a P-generable feature `pFeature` (`def:ece`), so the
+trader may scale by a threshold that varies with the market's own prices: the emitted
+portfolio carries the *expression* `pFeature n`, never a day-`n` numeral for `p n`.  On the
+deferral day `f n` the expression is transported by `GeneratedRatFeature.reindex` along the
+bounded preimage scan, which `deferralPreimage_le` keeps within the rank discipline. -/
 noncomputable def selfTrustQuoteOfRepresentation
     {P : History} {DP : DeductiveProcess}
     (f : DeferralFunction) (hinj : Function.Injective f.f)
@@ -3231,7 +3295,7 @@ noncomputable def selfTrustQuoteOfRepresentation
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
     (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
     (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
-    (hp : PolyRatCodes p)
+    (pFeature : ℕ → EF) (hp : GeneratedRatFeature P p pFeature)
     (hA : LUV.RpnThresholdCodeSeq A)
     (hB : LUV.RpnThresholdCodeSeq B)
     (confidence_reflected : ∀ n (v : PCWorld),
@@ -3266,9 +3330,9 @@ noncomputable def selfTrustQuoteOfRepresentation
   let hAr := hA.reindex hindex
   let hBr := hB.reindex hindex
   let hδrInv := hδinv.reindex hindex
-  let hpr := hp.reindex hindex
-  let pF : ℕ → EF := ratCodeFeature pr
-  let hpFgen := ratCodeFeature_generated P pr hpr
+  let pF : ℕ → EF := fun m ↦ pFeature (index m)
+  let hpFgen : GeneratedRatFeature P pr pF :=
+    hp.reindex hindex (deferralPreimage_le f hinj hspec)
   let hpF := hpFgen.toWeighting
   let priceF : ℕ → EF := currentPriceFeature φr
   let hpriceF := currentPriceFeature_generated φr hφr
@@ -3353,9 +3417,8 @@ noncomputable def selfTrustQuoteOfRepresentation
       ((hhigh0.add hcrossA0).sub hpCrossB0).const_mul (1 / 2 : ℝ)
   have hdeferred0 : Tendsto (fun n ↦ combined (f n)) atTop (𝓝 0) := by
     simpa only [Function.comp_apply] using hcombined0.comp f.tendsto_atTop
-  let pOrig : ℕ → EF := ratCodeFeature p
-  let hpOrig : PGenerableWeighting pOrig :=
-    (ratCodeFeature_generated P p hp).toWeighting
+  let pOrig : ℕ → EF := pFeature
+  let hpOrig : PGenerableWeighting pOrig := hp.toWeighting
   let pNeg : ℕ → EF := fun n ↦ EF.mul (EF.const (-1)) (pOrig n)
   have hpNeg : PGenerableWeighting pNeg := {
     polySeg := RpnSpliceStream.serialize_mul
@@ -3377,7 +3440,7 @@ noncomputable def selfTrustQuoteOfRepresentation
     probability_mem := probability_mem
     sentence_codes := hφ
     delta_codes := hδ
-    probability_codes := hp
+    probability_generable := ⟨pFeature, hp⟩
     product_codes := hA
     confidence_codes := hB
     confidence_reflected := confidence_reflected
@@ -3392,7 +3455,7 @@ noncomputable def selfTrustQuoteOfRepresentation
         simp only [family, raw, AA, AB, pNeg, pOrig,
           AffineCombination.scale_price, AffineCombination.add_price,
           LUV.expectAffineSeq_price, EF.denote_mul, EF.denote_const,
-          ratCodeFeature, Pi.mul_apply]
+          hp.denote, Pi.mul_apply]
         push_cast
         ring
       bounded := by
@@ -3400,7 +3463,7 @@ noncomputable def selfTrustQuoteOfRepresentation
         simp only [family, raw, AA, AB, pNeg, pOrig,
           AffineCombination.scale_price, AffineCombination.add_price,
           LUV.expectAffineSeq, LUV.expectAffine_priceAt, EF.denote_mul,
-          EF.denote_const, ratCodeFeature, Pi.mul_apply]
+          EF.denote_const, hp.denote, Pi.mul_apply]
         push_cast
         have hA0 := (A n).expectApprox_nonneg (P m) n (fun s ↦ (hP m s).1)
         have hA1 := (A n).expectApprox_le_one (P m) n (fun s ↦ (hP m s).2)
@@ -3415,7 +3478,7 @@ noncomputable def selfTrustQuoteOfRepresentation
         simp only [family, raw, AA, AB, pNeg, pOrig,
           AffineCombination.scale_magnitude, AffineCombination.add_magnitude,
           LUV.expectAffineSeq, EF.denote_const, EF.denote_mul,
-          ratCodeFeature, Pi.mul_apply, Rat.cast_neg, Rat.cast_one, neg_mul,
+          hp.denote, Pi.mul_apply, Rat.cast_neg, Rat.cast_one, neg_mul,
           one_mul, abs_neg]
         have hAm := (A n).expectAffine_magnitude_le_one P n
         have hBm := (B n).expectAffine_magnitude_le_one P n
@@ -3451,7 +3514,7 @@ noncomputable def selfTrustQuoteOfRepresentation
           simp only [family, raw, AA, AB, pNeg, pOrig,
             AffineCombination.scale_price, AffineCombination.add_price,
             LUV.expectAffineSeq, LUV.expectAffine_priceAt, EF.denote_mul,
-            EF.denote_const, ratCodeFeature, Pi.mul_apply, combined,
+            EF.denote_const, hp.denote, Pi.mul_apply, combined,
             highGap, crossAGap, crossBGap, flagN, index, δr, pr, φr,
             deferralImageFlag_at f hspec n,
             deferralPreimage_at f hinj hspec n, Nat.cast_one, one_mul,
@@ -3527,7 +3590,8 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation
       right_reflected hworld)
 
 /-- Paper-facing `thm:st` entry point from completed-world confidence/product
-representations.
+representations.  The confidence threshold `p` is P-generable (`def:ece`), presented by its
+feature expression, exactly as in the paper's `thm:st`.
 Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
 `f n > n`; see the injective-deferral reindexing section for where this is used.
 Paper node: `thm:st` -/
@@ -3539,7 +3603,7 @@ theorem lic_self_trust_ofRepresentation
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
     (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
     (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
-    (hp : PolyRatCodes p)
+    (pFeature : ℕ → EF) (hp : GeneratedRatFeature P p pFeature)
     (hA : LUV.RpnThresholdCodeSeq A)
     (hB : LUV.RpnThresholdCodeSeq B)
     (confidence_reflected : ∀ n (v : PCWorld),
@@ -3554,7 +3618,7 @@ theorem lic_self_trust_ofRepresentation
       fun n ↦ (p n : ℝ) * (B n).expect P n :=
   lic_self_trust P DP f φ δ p A B hworld
     (selfTrustQuoteOfRepresentation f hinj φ δ p A B delta_pos
-      probability_mem hφ hδ hδinv hp hA hB confidence_reflected
+      probability_mem hφ hδ hδinv pFeature hp hA hB confidence_reflected
       product_reflected hworld)
 
 /-! ## Direct same-day consumers -/

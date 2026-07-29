@@ -724,7 +724,9 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation_unconditional
     source_valued left_reflected right_reflected
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:st` (self-trust), unconditional over `LIA`.
+/-- `thm:st` (self-trust), unconditional over `LIA`.  The confidence threshold `p` is
+P-generable (`def:ece`) against the constructed market, presented by its feature
+expression.
 Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
 `f n > n`; see `QuotationAffine`'s injective-deferral reindexing section.
 Paper node: `thm:st` -/
@@ -733,7 +735,9 @@ theorem lic_self_trust_ofRepresentation_unconditional
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
     (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
-    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n)) (hp : PolyRatCodes p)
+    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
+    (pFeature : ℕ → EF)
+    (hp : GeneratedRatFeature (liaHistory (theoremDP T)) p pFeature)
     (hA : LUV.RpnThresholdCodeSeq A) (hB : LUV.RpnThresholdCodeSeq B)
     (confidence_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       v.ValuesAt (B n) (ctsInd (δ n) (liaHistory (theoremDP T) (f n) (φ n)) (p n)))
@@ -744,7 +748,7 @@ theorem lic_self_trust_ofRepresentation_unconditional
       fun n ↦ (p n : ℝ) * (B n).expect (liaHistory (theoremDP T)) n :=
   haveI := theoremLIA T
   lic_self_trust_ofRepresentation (P := liaHistory (theoremDP T)) (DP := theoremDP T)
-    f hinj φ δ p A B delta_pos probability_mem hφ hδ hδinv hp hA hB
+    f hinj φ δ p A B delta_pos probability_mem hφ hδ hδinv pFeature hp hA hB
     confidence_reflected product_reflected
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
