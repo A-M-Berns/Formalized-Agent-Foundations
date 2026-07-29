@@ -12,14 +12,15 @@ open Filter Topology
 
 namespace LUV
 
-/-- The affine bundle whose market price is the day-`n` expectation of `X`. -/
-def expectAffine (X : LUV) (n : ℕ) : AffineCombination where
+/-- The precision-`k` threshold bundle of `X`: `∑_{i<k} (1/k)·⌜X > i/k⌝` (`def:e`).  Priced
+on day `n` at the day's own grid `k = n + 1` it is the day-`n` expectation. -/
+def expectAffine (X : LUV) (k : ℕ) : AffineCombination where
   const := .const 0
-  terms := (List.range n).map (fun (i : ℕ) =>
-    (.const (1 / (n : ℚ)), X.gt ((i : ℚ) / (n : ℚ))))
+  terms := (List.range k).map (fun (i : ℕ) =>
+    (.const (1 / (k : ℚ)), X.gt ((i : ℚ) / (k : ℚ))))
 
 lemma expectAffine_price (X : LUV) (P : History) (n : ℕ) :
-    (X.expectAffine n).price P n = X.expect P n := by
+    (X.expectAffine (n + 1)).price P n = X.expect P n := by
   rw [expectAffine, AffineCombination.price, AffineCombination.value,
     LUV.expect, LUV.expectApprox]
   simp only [EF.denote, EF.denoteWith, List.map_map, Function.comp_def]
@@ -65,13 +66,13 @@ lemma expectAffine_magnitude_le_one (X : LUV) (P : History) (n : ℕ) :
     field_simp
     norm_num
 
-/-- Affine discrepancy between an indicator LUV's expectation and the price of its
-underlying sentence. -/
-def indicatorAffine (Y : LUV) (φ : Sentence) (n : ℕ) : AffineCombination where
+/-- Affine discrepancy between an indicator LUV's precision-`k` expectation and the price
+of its underlying sentence. -/
+def indicatorAffine (Y : LUV) (φ : Sentence) (k : ℕ) : AffineCombination where
   const := .const 0
-  terms := (List.range (n + 1)).map (fun j =>
-    if j < n then
-      (.const (1 / (n : ℚ)), Y.gt ((j : ℚ) / (n : ℚ)))
+  terms := (List.range (k + 1)).map (fun j =>
+    if j < k then
+      (.const (1 / (k : ℚ)), Y.gt ((j : ℚ) / (k : ℚ)))
     else (.const (-1), φ))
 
 noncomputable def indicatorAffine_polySequence (Y : LUV) (φ : Sentence)
@@ -122,9 +123,9 @@ noncomputable def indicatorAffine_polySequence (Y : LUV) (φ : Sentence)
     coefficient_closed := by intro z ρ V; split <;> simp [EF.denoteWith]
   }
 
-lemma indicatorAffine_terms (Y : LUV) (φ : Sentence) (n : ℕ) :
-    (Y.indicatorAffine φ n).terms =
-      (Y.expectAffine n).terms ++ [(EF.const (-1), φ)] := by
+lemma indicatorAffine_terms (Y : LUV) (φ : Sentence) (k : ℕ) :
+    (Y.indicatorAffine φ k).terms =
+      (Y.expectAffine k).terms ++ [(EF.const (-1), φ)] := by
   simp only [indicatorAffine, expectAffine]
   rw [List.range_succ, List.map_append, List.map_singleton]
   congr 1
@@ -135,7 +136,7 @@ lemma indicatorAffine_terms (Y : LUV) (φ : Sentence) (n : ℕ) :
   · simp
 
 lemma indicatorAffine_price (Y : LUV) (φ : Sentence) (P : History) (n : ℕ) :
-    (Y.indicatorAffine φ n).price P n = Y.expect P n - P n φ := by
+    (Y.indicatorAffine φ (n + 1)).price P n = Y.expect P n - P n φ := by
   rw [AffineCombination.price, AffineCombination.value, indicatorAffine_terms,
     List.map_append, List.map_singleton, List.sum_append]
   have hbase := Y.expectAffine_price P n
@@ -145,28 +146,28 @@ lemma indicatorAffine_price (Y : LUV) (φ : Sentence) (P : History) (n : ℕ) :
   linarith
 
 lemma indicatorAffine_value (Y : LUV) (φ : Sentence) (P : History)
-    (w : Valuation) (n : ℕ) :
-    (Y.indicatorAffine φ n).value P w = Y.expectApprox w n - w φ := by
+    (w : Valuation) (k : ℕ) :
+    (Y.indicatorAffine φ k).value P w = Y.expectApprox w k - w φ := by
   rw [AffineCombination.value, indicatorAffine_terms, List.map_append,
     List.map_singleton, List.sum_append]
-  have hbase := Y.expectAffine_value P w n
+  have hbase := Y.expectAffine_value P w k
   rw [AffineCombination.value] at hbase
   simp only [indicatorAffine, expectAffine, EF.denote_const, List.sum_singleton,
     Rat.cast_neg, Rat.cast_one] at hbase ⊢
   linarith
 
-/-- The affine discrepancy witnessing linearity of expectation. -/
-def linearityAffine (a b : ℚ) (X Y Z : LUV) (n : ℕ) : AffineCombination where
+/-- The affine discrepancy witnessing linearity of expectation, at precision `k`. -/
+def linearityAffine (a b : ℚ) (X Y Z : LUV) (k : ℕ) : AffineCombination where
   const := .const 0
-  terms := (List.range (n * 3)).map (fun j =>
-    if j < n then
-      (.mul (.const a) (.const (1 / (n : ℚ))), X.gt ((j : ℚ) / (n : ℚ)))
-    else if j < n * 2 then
-      (.mul (.const b) (.const (1 / (n : ℚ))),
-        Y.gt (((j - n : ℕ) : ℚ) / (n : ℚ)))
+  terms := (List.range (k * 3)).map (fun j =>
+    if j < k then
+      (.mul (.const a) (.const (1 / (k : ℚ))), X.gt ((j : ℚ) / (k : ℚ)))
+    else if j < k * 2 then
+      (.mul (.const b) (.const (1 / (k : ℚ))),
+        Y.gt (((j - k : ℕ) : ℚ) / (k : ℚ)))
     else
-      (.mul (.const (-1)) (.const (1 / (n : ℚ))),
-        Z.gt (((j - n * 2 : ℕ) : ℚ) / (n : ℚ))))
+      (.mul (.const (-1)) (.const (1 / (k : ℚ))),
+        Z.gt (((j - k * 2 : ℕ) : ℚ) / (k : ℚ))))
 
 noncomputable def linearityAffine_polySequence (a b : ℚ) (X Y Z : LUV)
     (hX : X.RpnThresholdCodes) (hY : Y.RpnThresholdCodes)
@@ -269,28 +270,28 @@ noncomputable def linearityAffine_polySequence (a b : ℚ) (X Y Z : LUV)
           simp [h1, h2, EF.denote, EF.denoteWith]
   }
 
-lemma linearityAffine_terms (a b : ℚ) (X Y Z : LUV) (n : ℕ) :
-    (linearityAffine a b X Y Z n).terms =
-      ((X.expectAffine n).terms.map (fun p => (.mul (.const a) p.1, p.2))) ++
-      ((Y.expectAffine n).terms.map (fun p => (.mul (.const b) p.1, p.2))) ++
-      ((Z.expectAffine n).terms.map (fun p => (.mul (.const (-1)) p.1, p.2))) := by
+lemma linearityAffine_terms (a b : ℚ) (X Y Z : LUV) (k : ℕ) :
+    (linearityAffine a b X Y Z k).terms =
+      ((X.expectAffine k).terms.map (fun p => (.mul (.const a) p.1, p.2))) ++
+      ((Y.expectAffine k).terms.map (fun p => (.mul (.const b) p.1, p.2))) ++
+      ((Z.expectAffine k).terms.map (fun p => (.mul (.const (-1)) p.1, p.2))) := by
   simp only [linearityAffine, expectAffine, List.map_map, Function.comp_def]
-  rw [show n * 3 = n + n * 2 by omega, List.range_add, List.map_append]
+  rw [show k * 3 = k + k * 2 by omega, List.range_add, List.map_append]
   rw [List.append_assoc]
   apply congrArg₂ (· ++ ·)
   · apply List.map_congr_left
     intro j hj
     simp only [List.mem_range] at hj
     simp [hj]
-  · rw [show n * 2 = n + n by omega, List.range_add, List.map_append,
+  · rw [show k * 2 = k + k by omega, List.range_add, List.map_append,
       List.map_append]
     apply congrArg₂ (· ++ ·)
     · rw [List.map_map]
       apply List.map_congr_left
       intro j hj
       simp only [List.mem_range] at hj
-      have h1 : ¬n + j < n := by omega
-      have h2 : n + j < n + n := by omega
+      have h1 : ¬k + j < k := by omega
+      have h2 : k + j < k + k := by omega
       simp only [Function.comp_apply]
       rw [if_neg h1, if_pos h2]
       simp
@@ -298,14 +299,14 @@ lemma linearityAffine_terms (a b : ℚ) (X Y Z : LUV) (n : ℕ) :
       apply List.map_congr_left
       intro j hj
       simp only [List.mem_range] at hj
-      have h1 : ¬n + (n + j) < n := by omega
-      have h2 : ¬n + (n + j) < n + n := by omega
+      have h1 : ¬k + (k + j) < k := by omega
+      have h2 : ¬k + (k + j) < k + k := by omega
       simp only [Function.comp_apply]
       rw [if_neg h1, if_neg h2]
       simp
 
 lemma linearityAffine_price (a b : ℚ) (X Y Z : LUV) (P : History) (n : ℕ) :
-    (linearityAffine a b X Y Z n).price P n =
+    (linearityAffine a b X Y Z (n + 1)).price P n =
       (a : ℝ) * X.expect P n + (b : ℝ) * Y.expect P n - Z.expect P n := by
   rw [AffineCombination.price, AffineCombination.value, linearityAffine_terms]
   simp only [List.map_append, List.sum_append, List.map_map, Function.comp_def,
@@ -323,18 +324,18 @@ lemma linearityAffine_price (a b : ℚ) (X Y Z : LUV) (P : History) (n : ℕ) :
   ring
 
 lemma linearityAffine_value (a b : ℚ) (X Y Z : LUV) (P : History)
-    (w : Valuation) (n : ℕ) :
-    (linearityAffine a b X Y Z n).value P w =
-      (a : ℝ) * X.expectApprox w n + (b : ℝ) * Y.expectApprox w n -
-        Z.expectApprox w n := by
+    (w : Valuation) (k : ℕ) :
+    (linearityAffine a b X Y Z k).value P w =
+      (a : ℝ) * X.expectApprox w k + (b : ℝ) * Y.expectApprox w k -
+        Z.expectApprox w k := by
   rw [AffineCombination.value, linearityAffine_terms]
   simp only [List.map_append, List.sum_append, List.map_map, Function.comp_def,
     EF.denote_mul, EF.denote_const, Pi.mul_apply]
   simp_rw [mul_assoc]
   simp only [List.sum_map_mul_left]
-  have hX := X.expectAffine_value P w n
-  have hY := Y.expectAffine_value P w n
-  have hZ := Z.expectAffine_value P w n
+  have hX := X.expectAffine_value P w k
+  have hY := Y.expectAffine_value P w k
+  have hZ := Z.expectAffine_value P w k
   rw [AffineCombination.value] at hX hY hZ
   simp only [expectAffine, linearityAffine, EF.denote_const] at hX hY hZ ⊢
   push_cast
@@ -353,22 +354,26 @@ theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
     AsympEq (Y.expectSeq P) (fun n => P n φ) := by
   have hsemantic : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld,
       v.ConsistentWith (DP.D n) →
-        |(Y.indicatorAffine φ n).value P v.payout| ≤ ε := by
+        |(Y.indicatorAffine φ (n + 1)).value P v.payout| ≤ ε := by
     intro ε hε
     obtain ⟨N, hN⟩ := exists_nat_gt (1 / ε)
-    refine Filter.eventually_atTop.mpr ⟨max 1 N, fun n hnlarge v hv => ?_⟩
-    have hn : 0 < n := by omega
-    have hnR : (0 : ℝ) < n := by exact_mod_cast hn
-    have hNn : (1 : ℝ) / ε < (n : ℝ) :=
-      hN.trans_le (by exact_mod_cast (le_trans (le_max_right 1 N) hnlarge))
-    have hsmall : 1 / (n : ℝ) < ε := by
+    refine Filter.eventually_atTop.mpr ⟨N, fun n hnlarge v hv => ?_⟩
+    have hnR : (0 : ℝ) < ((n + 1 : ℕ) : ℝ) := by positivity
+    have hNn : (1 : ℝ) / ε < ((n + 1 : ℕ) : ℝ) :=
+      hN.trans_le (by push_cast; exact_mod_cast (Nat.le_succ_of_le hnlarge))
+    have hsmall : 1 / ((n + 1 : ℕ) : ℝ) < ε := by
       rw [div_lt_iff₀ hε] at hNn
       rw [div_lt_iff₀ hnR]
       nlinarith
-    have hnear := (hY.valuesAt hv).expectApprox_near hn
+    have hnear := (hY.valuesAt hv).expectApprox_near n.succ_pos
     rw [LUV.indicatorAffine_value]
     exact hnear.trans hsmall.le
-  have hzero := (Y.indicatorAffine_polySequence φ hcode).affine_tendsto_zero
+  have hzero := ((Y.indicatorAffine_polySequence φ hcode).shift
+      (fun n => by simp [LUV.indicatorAffine])
+      (fun n p hp => by
+        simp only [LUV.indicatorAffine, List.mem_map] at hp
+        obtain ⟨j, _, rfl⟩ := hp
+        split <;> simp [EF.rank])).affine_tendsto_zero
     P DP hcons hsemantic
   simpa only [LUV.indicatorAffine_price, LUV.expectSeq, AsympEq, sub_zero] using hzero
 
@@ -378,7 +383,7 @@ theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
 
 The world hypothesis is the **finite-precision agreement** the trader argument actually consumes:
 in every day-`n` plausible world, `X`, `Y`, `Z` have exact values `x, y, z` with `z = a x + b y`,
-and the day-`n` approximate expectations sit within `1/n` of them.  This is *satisfiable* at a
+and the day-`n` approximate expectations (grid `n + 1`) sit within `1/(n+1)` of them.  This is *satisfiable* at a
 finite stage (unlike the full `PCWorld.ValuesAt` cut, which pins infinitely many thresholds); the
 `…_ofValuesAt` corollary recovers the `ValuesAt` form via `expectApprox_near`.
 Paper node: `thm:loe` -/
@@ -389,55 +394,61 @@ theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hvals : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
       ∃ x y z : ℝ, z = (a : ℝ) * x + (b : ℝ) * y ∧
-        |X.expectApprox v.payout n - x| ≤ 1 / n ∧
-        |Y.expectApprox v.payout n - y| ≤ 1 / n ∧
-        |Z.expectApprox v.payout n - z| ≤ 1 / n) :
+        |X.expectApprox v.payout (n + 1) - x| ≤ 1 / ((n : ℝ) + 1) ∧
+        |Y.expectApprox v.payout (n + 1) - y| ≤ 1 / ((n : ℝ) + 1) ∧
+        |Z.expectApprox v.payout (n + 1) - z| ≤ 1 / ((n : ℝ) + 1)) :
     AsympEq (fun n => (a : ℝ) * X.expect P n + (b : ℝ) * Y.expect P n)
       (Z.expectSeq P) := by
   let C : ℝ := |(a : ℝ)| + |(b : ℝ)| + 1
   have hC : 0 < C := by dsimp [C]; positivity
   have hsemantic : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld,
       v.ConsistentWith (DP.D n) →
-        |(LUV.linearityAffine a b X Y Z n).value P v.payout| ≤ ε := by
+        |(LUV.linearityAffine a b X Y Z (n + 1)).value P v.payout| ≤ ε := by
     intro ε hε
     obtain ⟨N, hN⟩ := exists_nat_gt (C / ε)
-    filter_upwards [hvals, Filter.eventually_ge_atTop (max 1 N)] with n hvals_n hnlarge v hv
-    have hn : 0 < n := by omega
-    have hnR : (0 : ℝ) < n := by exact_mod_cast hn
-    have hNn : C / ε < (n : ℝ) :=
-      hN.trans_le (by exact_mod_cast (le_trans (le_max_right 1 N) hnlarge))
-    have hsmall : C * (1 / (n : ℝ)) < ε := by
-      have hNn' : C < (n : ℝ) * ε := (div_lt_iff₀ hε).mp hNn
+    filter_upwards [hvals, Filter.eventually_ge_atTop N] with n hvals_n hnlarge v hv
+    have hnR : (0 : ℝ) < (n : ℝ) + 1 := by positivity
+    have hNn : C / ε < (n : ℝ) + 1 :=
+      hN.trans_le (by have : (N : ℝ) ≤ (n : ℝ) := by exact_mod_cast hnlarge
+                      linarith)
+    have hsmall : C * (1 / ((n : ℝ) + 1)) < ε := by
+      have hNn' : C < ((n : ℝ) + 1) * ε := (div_lt_iff₀ hε).mp hNn
       calc
-        C * (1 / (n : ℝ)) = C / (n : ℝ) := by ring
+        C * (1 / ((n : ℝ) + 1)) = C / ((n : ℝ) + 1) := by ring
         _ < ε := (div_lt_iff₀ hnR).2 (by nlinarith)
     obtain ⟨x, y, z, hrelation, hnearX, hnearY, hnearZ⟩ := hvals_n v hv
     rw [LUV.linearityAffine_value]
     have hrearrange :
-        (a : ℝ) * X.expectApprox v.payout n + (b : ℝ) * Y.expectApprox v.payout n -
-            Z.expectApprox v.payout n =
-          (a : ℝ) * (X.expectApprox v.payout n - x) +
-            (b : ℝ) * (Y.expectApprox v.payout n - y) -
-              (Z.expectApprox v.payout n - z) := by
+        (a : ℝ) * X.expectApprox v.payout (n + 1) +
+              (b : ℝ) * Y.expectApprox v.payout (n + 1) -
+            Z.expectApprox v.payout (n + 1) =
+          (a : ℝ) * (X.expectApprox v.payout (n + 1) - x) +
+            (b : ℝ) * (Y.expectApprox v.payout (n + 1) - y) -
+              (Z.expectApprox v.payout (n + 1) - z) := by
       rw [hrelation]
       ring
     rw [hrearrange]
     calc
-      |(a : ℝ) * (X.expectApprox v.payout n - x) +
-          (b : ℝ) * (Y.expectApprox v.payout n - y) -
-            (Z.expectApprox v.payout n - z)|
-          ≤ |(a : ℝ) * (X.expectApprox v.payout n - x)| +
-              |(b : ℝ) * (Y.expectApprox v.payout n - y)| +
-                |Z.expectApprox v.payout n - z| := by
+      |(a : ℝ) * (X.expectApprox v.payout (n + 1) - x) +
+          (b : ℝ) * (Y.expectApprox v.payout (n + 1) - y) -
+            (Z.expectApprox v.payout (n + 1) - z)|
+          ≤ |(a : ℝ) * (X.expectApprox v.payout (n + 1) - x)| +
+              |(b : ℝ) * (Y.expectApprox v.payout (n + 1) - y)| +
+                |Z.expectApprox v.payout (n + 1) - z| := by
             exact (abs_sub _ _).trans (add_le_add (abs_add_le _ _) le_rfl)
-      _ = |(a : ℝ)| * |X.expectApprox v.payout n - x| +
-            |(b : ℝ)| * |Y.expectApprox v.payout n - y| +
-              |Z.expectApprox v.payout n - z| := by rw [abs_mul, abs_mul]
-      _ ≤ |(a : ℝ)| * (1 / (n : ℝ)) + |(b : ℝ)| * (1 / (n : ℝ)) +
-            1 / (n : ℝ) := by gcongr
-      _ = C * (1 / (n : ℝ)) := by dsimp [C]; ring
+      _ = |(a : ℝ)| * |X.expectApprox v.payout (n + 1) - x| +
+            |(b : ℝ)| * |Y.expectApprox v.payout (n + 1) - y| +
+              |Z.expectApprox v.payout (n + 1) - z| := by rw [abs_mul, abs_mul]
+      _ ≤ |(a : ℝ)| * (1 / ((n : ℝ) + 1)) + |(b : ℝ)| * (1 / ((n : ℝ) + 1)) +
+            1 / ((n : ℝ) + 1) := by gcongr
+      _ = C * (1 / ((n : ℝ) + 1)) := by dsimp [C]; ring
       _ ≤ ε := hsmall.le
-  have hzero := (LUV.linearityAffine_polySequence a b X Y Z hcodeX hcodeY hcodeZ).affine_tendsto_zero
+  have hzero := ((LUV.linearityAffine_polySequence a b X Y Z hcodeX hcodeY hcodeZ).shift
+      (fun n => by simp [LUV.linearityAffine])
+      (fun n p hp => by
+        simp only [LUV.linearityAffine, List.mem_map] at hp
+        obtain ⟨j, _, rfl⟩ := hp
+        split <;> [skip; split] <;> simp [EF.rank])).affine_tendsto_zero
     P DP hcons hsemantic
   simpa only [LUV.linearityAffine_price, LUV.expectSeq, AsympEq, sub_zero] using hzero
 
@@ -460,36 +471,39 @@ theorem lic_linearity_of_expectation_ofValuesAt (P : History) (DP : DeductivePro
     AsympEq (fun n => (a : ℝ) * X.expect P n + (b : ℝ) * Y.expect P n)
       (Z.expectSeq P) :=
   lic_linearity_of_expectation P DP a b X Y Z hcodeX hcodeY hcodeZ hcons
-    ((Filter.eventually_gt_atTop 0).mono (fun n hn v hv => by
+    (Filter.Eventually.of_forall (fun n v hv => by
       obtain ⟨x, y, z, hx, hy, hz⟩ := hvals n v hv
       exact ⟨x, y, z, hlin n v hv x y z hx hy hz,
-        hx.expectApprox_near hn, hy.expectApprox_near hn, hz.expectApprox_near hn⟩))
+        by simpa using hx.expectApprox_near n.succ_pos,
+        by simpa using hy.expectApprox_near n.succ_pos,
+        by simpa using hz.expectApprox_near n.succ_pos⟩))
 
 #print axioms lic_linearity_of_expectation_ofValuesAt
 
 /-- **Expectation Provability Induction** (`thm:expprovind`), finite-precision form.
 
-The world hypothesis is the day-`n` approximation bound `|𝔼_n^v(X) − x| ≤ 1/n` with `c ≤ x` — the
-satisfiable, finite-stage content the trader argument consumes.  The `…_ofValuesAt` corollary
+The world hypothesis is the day-`n` approximation bound `|𝔼_{n+1}^v(X) − x| ≤ 1/(n+1)` with
+`c ≤ x` (day `n` carries grid `n + 1`, `def:e`) — the satisfiable, finite-stage content the trader
+argument consumes.  The `…_ofValuesAt` corollary
 recovers the full `PCWorld.ValuesAt` statement.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV) (hcode : X.RpnThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
     (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
-      ∃ x : ℝ, c ≤ x ∧ |X.expectApprox v.payout n - x| ≤ 1 / n) :
+      ∃ x : ℝ, c ≤ x ∧ |X.expectApprox v.payout (n + 1) - x| ≤ 1 / ((n : ℝ) + 1)) :
     AsympGE (X.expectSeq P) (fun _ => c) := by
   intro ε hε
   obtain ⟨N, hN⟩ := exists_nat_gt (2 / ε)
   have hsemantic : ∀ᶠ n in atTop, ∀ v : PCWorld,
       v.ConsistentWith (DP.D n) →
-        c - ε / 2 ≤ (X.expectAffine n).value P v.payout := by
-    filter_upwards [hval, Filter.eventually_ge_atTop (max 1 N)] with n hval_n hnlarge v hv
-    have hn : 0 < n := by omega
-    have hNn : (2 : ℝ) / ε < (n : ℝ) :=
-      hN.trans_le (by exact_mod_cast (le_trans (le_max_right 1 N) hnlarge))
-    have hnR : (0 : ℝ) < n := by exact_mod_cast hn
-    have hsmall : 1 / (n : ℝ) < ε / 2 := by
+        c - ε / 2 ≤ (X.expectAffine (n + 1)).value P v.payout := by
+    filter_upwards [hval, Filter.eventually_ge_atTop N] with n hval_n hnlarge v hv
+    have hnR : (0 : ℝ) < (n : ℝ) + 1 := by positivity
+    have hNn : (2 : ℝ) / ε < (n : ℝ) + 1 :=
+      hN.trans_le (by have : (N : ℝ) ≤ (n : ℝ) := by exact_mod_cast hnlarge
+                      linarith)
+    have hsmall : 1 / ((n : ℝ) + 1) < ε / 2 := by
       rw [div_lt_iff₀ hε] at hNn
       rw [div_lt_iff₀ hnR]
       nlinarith
@@ -497,7 +511,12 @@ theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
     rw [LUV.expectAffine_value]
     rw [abs_le] at hnear
     linarith
-  have hprov := (X.expectAffine_polySequence hcode).affine_provind P DP hcons
+  have hprov := ((X.expectAffine_polySequence hcode).shift
+      (fun n => by simp [LUV.expectAffine])
+      (fun n p hp => by
+        simp only [LUV.expectAffine, List.mem_map] at hp
+        obtain ⟨j, _, rfl⟩ := hp
+        simp [EF.rank])).affine_provind P DP hcons
     (c - ε / 2) hsemantic
   have hevent := hprov (ε / 2) (by linarith)
   filter_upwards [hevent] with n hn
@@ -515,9 +534,9 @@ theorem lic_expectation_provind_ofValuesAt (P : History) (DP : DeductiveProcess)
       ∃ x, c ≤ x ∧ v.ValuesAt X x) :
     AsympGE (X.expectSeq P) (fun _ => c) :=
   lic_expectation_provind P DP X hcode hcons c
-    ((Filter.eventually_gt_atTop 0).mono (fun n hn v hv => by
+    (Filter.Eventually.of_forall (fun n v hv => by
       obtain ⟨x, hcx, hx⟩ := hval n v hv
-      exact ⟨x, hcx, hx.expectApprox_near hn⟩))
+      exact ⟨x, hcx, by simpa using hx.expectApprox_near n.succ_pos⟩))
 
 #print axioms lic_expectation_provind_ofValuesAt
 
@@ -528,25 +547,30 @@ theorem lic_expectation_provind_le (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV) (hcode : X.RpnThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
     (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
-      ∃ x : ℝ, x ≤ c ∧ |X.expectApprox v.payout n - x| ≤ 1 / n) :
+      ∃ x : ℝ, x ≤ c ∧ |X.expectApprox v.payout (n + 1) - x| ≤ 1 / ((n : ℝ) + 1)) :
     AsympLE (X.expectSeq P) (fun _ => c) := by
   intro ε hε
   obtain ⟨N, hN⟩ := exists_nat_gt (2 / ε)
   have hsemantic : ∀ᶠ n in atTop, ∀ v : PCWorld,
       v.ConsistentWith (DP.D n) →
-        -c - ε / 2 ≤ ((X.expectAffine n).neg).value P v.payout := by
-    filter_upwards [hval, Filter.eventually_ge_atTop (max 1 N)] with n hval_n hnlarge v hv
-    have hn : 0 < n := by omega
-    have hNn : (2 : ℝ) / ε < (n : ℝ) :=
-      hN.trans_le (by exact_mod_cast (le_trans (le_max_right 1 N) hnlarge))
-    have hnR : (0 : ℝ) < n := by exact_mod_cast hn
-    have hsmall : 1 / (n : ℝ) < ε / 2 := by
+        -c - ε / 2 ≤ ((X.expectAffine (n + 1)).neg).value P v.payout := by
+    filter_upwards [hval, Filter.eventually_ge_atTop N] with n hval_n hnlarge v hv
+    have hnR : (0 : ℝ) < (n : ℝ) + 1 := by positivity
+    have hNn : (2 : ℝ) / ε < (n : ℝ) + 1 :=
+      hN.trans_le (by have : (N : ℝ) ≤ (n : ℝ) := by exact_mod_cast hnlarge
+                      linarith)
+    have hsmall : 1 / ((n : ℝ) + 1) < ε / 2 := by
       rw [div_lt_iff₀ hε] at hNn; rw [div_lt_iff₀ hnR]; nlinarith
     obtain ⟨x, hxc, hnear⟩ := hval_n v hv
     rw [AffineCombination.neg_value, LUV.expectAffine_value]
     rw [abs_le] at hnear
     linarith
-  have hprov := (X.expectAffine_polySequence hcode).neg.affine_provind P DP hcons
+  have hprov := ((X.expectAffine_polySequence hcode).shift
+      (fun n => by simp [LUV.expectAffine])
+      (fun n p hp => by
+        simp only [LUV.expectAffine, List.mem_map] at hp
+        obtain ⟨j, _, rfl⟩ := hp
+        simp [EF.rank])).neg.affine_provind P DP hcons
     (-c - ε / 2) hsemantic
   have hevent := hprov (ε / 2) (by linarith)
   filter_upwards [hevent] with n hn
@@ -562,7 +586,7 @@ theorem lic_expectation_provind_eq (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV) (hcode : X.RpnThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (c : ℝ)
     (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
-      |X.expectApprox v.payout n - c| ≤ 1 / n) :
+      |X.expectApprox v.payout (n + 1) - c| ≤ 1 / ((n : ℝ) + 1)) :
     AsympEq (X.expectSeq P) (fun _ => c) := by
   have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
     fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s

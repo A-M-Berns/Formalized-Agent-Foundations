@@ -116,9 +116,15 @@ at most 1), so expectations of `[0,1]`-LUVs are themselves `[0,1]`-valued. -/
 noncomputable def expectApprox (V : Valuation) (k : ℕ) (X : LUV) : ℝ :=
   (k : ℝ)⁻¹ * ∑ i ∈ Finset.range k, V (X.gt ((i : ℚ) / (k : ℚ)))
 
-/-- `𝔼ₙ := 𝔼_n^{Pₙ}` — the day-`n` expectation, precision tied to the day (`def:e`). -/
+/-- `𝔼ₙ := 𝔼_n^{Pₙ}` — the day-`n` expectation, precision tied to the day (`def:e`).
+
+Under the repo's day-index convention (Lean day `n` = paper day `n+1`, see
+`Framework/Foundations.lean`), the paper's precision-and-day pairing is `n + 1` on both
+sides: Lean day `n` carries the paper's precision-`n+1` operator `𝔼_{n+1}^{P_{n+1}}`. In
+particular every day — day `0` included — has a nondegenerate grid, and the `1/k` grid
+error bounds are `1/(n+1)`, whose positivity is free. -/
 noncomputable def expect (P : History) (n : ℕ) (X : LUV) : ℝ :=
-  X.expectApprox (P n) n
+  X.expectApprox (P n) (n + 1)
 
 /-- The **expectation sequence** `n ↦ 𝔼ₙ(X)`. This is the concrete object the deference
 corpus abstracts as `E^H_n(X) : ℕ → ℝ`; a hypothesis `Approx (E_now X) (E_now Y)` there is
@@ -144,13 +150,13 @@ lemma expectApprox_le_one (V : Valuation) (k : ℕ) (X : LUV)
 
 lemma expect_mem_Icc (P : History) (n : ℕ) (X : LUV)
     (hP : ∀ s, 0 ≤ P n s ∧ P n s ≤ 1) : 0 ≤ X.expect P n ∧ X.expect P n ≤ 1 :=
-  ⟨X.expectApprox_nonneg (P n) n (fun s => (hP s).1),
-   X.expectApprox_le_one (P n) n (fun s => (hP s).2)⟩
+  ⟨X.expectApprox_nonneg (P n) (n + 1) (fun s => (hP s).1),
+   X.expectApprox_le_one (P n) (n + 1) (fun s => (hP s).2)⟩
 
 /-! ### `thm:ec` — Expectations Converge.
 
 Proved in `Properties/ExpectationConvergence.lean` (`LUV.expect_converges`): the day-`n`
-expectation is the price of the precision-`n` threshold bundle, so `thm:affcoh` traps it
+expectation is the price of the precision-`n+1` threshold bundle, so `thm:affcoh` traps it
 between the limiting belief's liminf/limsup, and `thm:lc` averages the limiting belief
 over completed-theory worlds, where `lem:conluvapprox` makes the precision sequence
 Cauchy. The statement lives there (it needs the per-grid world-value linkage `hval` and

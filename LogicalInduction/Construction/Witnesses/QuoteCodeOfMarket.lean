@@ -190,15 +190,18 @@ lemma MarketComputation.quote_mem_Icc {P : History} (market : MarketComputation 
 
 /-! ## Part D — the market's own expectations are also such a sequence -/
 
-/-- Exact rational expectation of the LUV `X idx` at market day `day` (quote day and
-mesh both `day`): the rational value whose cast is `(X idx).expect P day` (`def:e`
+/-- Exact rational expectation of the LUV `X idx` at market day `day` (quotes from day
+`day`, mesh the day's own grid `day + 1`): the rational value whose cast is
+`(X idx).expect P day` (`def:e`
 computed through the market program's exact quotes).  The two indices separate the LUV
 selector from the evaluation day, which is what the deferred-day theorems
 (`thm:cee`/`thm:st`) need. -/
 def MarketComputation.expectQuoteAt {P : History} (market : MarketComputation P)
     (X : ℕ → LUV) (idx day : ℕ) : ℚ :=
-  (∑ i ∈ Finset.range day,
-    market.quote day (Encodable.encode ((X idx).gt ((i : ℚ) / (day : ℚ))))) / (day : ℚ)
+  (∑ i ∈ Finset.range (day + 1),
+      market.quote day
+        (Encodable.encode ((X idx).gt ((i : ℚ) / ((day + 1 : ℕ) : ℚ))))) /
+    ((day + 1 : ℕ) : ℚ)
 
 /-- Exact rational day-`n` expectation of a varying LUV — the diagonal case. -/
 def MarketComputation.expectQuote {P : History} (market : MarketComputation P)
@@ -210,11 +213,13 @@ def MarketComputation.expectQuote {P : History} (market : MarketComputation P)
 lemma MarketComputation.expectQuoteAt_cast {P : History} (market : MarketComputation P)
     (X : ℕ → LUV) (idx day : ℕ) :
     (X idx).expect P day = (market.expectQuoteAt X idx day : ℝ) := by
-  have hq : ∀ i : ℕ, P day ((X idx).gt ((i : ℚ) / (day : ℚ))) =
+  have hq : ∀ i : ℕ, P day ((X idx).gt ((i : ℚ) / ((day + 1 : ℕ) : ℚ))) =
       ((market.quote day
-        (Encodable.encode ((X idx).gt ((i : ℚ) / (day : ℚ)))) : ℚ) : ℝ) :=
+        (Encodable.encode ((X idx).gt ((i : ℚ) / ((day + 1 : ℕ) : ℚ)))) : ℚ) : ℝ) :=
     fun i => market.quote_exact day _
-  simp only [LUV.expect, LUV.expectApprox, MarketComputation.expectQuoteAt, hq]
+  simp only [LUV.expect, LUV.expectApprox, MarketComputation.expectQuoteAt]
+  rw [Rat.cast_div, Rat.cast_sum]
+  simp only [hq]
   push_cast
   ring
 
@@ -228,21 +233,22 @@ lemma MarketComputation.expectQuoteAt_mem_Icc {P : History} (market : MarketComp
     (X : ℕ → LUV) (idx day : ℕ) :
     0 ≤ market.expectQuoteAt X idx day ∧ market.expectQuoteAt X idx day ≤ 1 := by
   unfold MarketComputation.expectQuoteAt
-  have hterm : ∀ i ∈ Finset.range day,
+  have hterm : ∀ i ∈ Finset.range (day + 1),
       (0 : ℚ) ≤ market.quote day
-          (Encodable.encode ((X idx).gt ((i : ℚ) / (day : ℚ)))) ∧
-        market.quote day (Encodable.encode ((X idx).gt ((i : ℚ) / (day : ℚ)))) ≤ 1 :=
+          (Encodable.encode ((X idx).gt ((i : ℚ) / ((day + 1 : ℕ) : ℚ)))) ∧
+        market.quote day
+          (Encodable.encode ((X idx).gt ((i : ℚ) / ((day + 1 : ℕ) : ℚ)))) ≤ 1 :=
     fun i _ => market.quote_mem_Icc day _
+  have hpos : (0 : ℚ) < ((day + 1 : ℕ) : ℚ) := by exact_mod_cast day.succ_pos
   constructor
-  · exact div_nonneg (Finset.sum_nonneg fun i hi => (hterm i hi).1) (Nat.cast_nonneg day)
-  · rcases Nat.eq_zero_or_pos day with hn | hn
-    · simp [hn]
-    · rw [div_le_one (by exact_mod_cast hn)]
-      calc (∑ i ∈ Finset.range day,
-            market.quote day (Encodable.encode ((X idx).gt ((i : ℚ) / (day : ℚ)))))
-          ≤ ∑ _i ∈ Finset.range day, (1 : ℚ) :=
-            Finset.sum_le_sum fun i hi => (hterm i hi).2
-        _ = (day : ℚ) := by simp
+  · exact div_nonneg (Finset.sum_nonneg fun i hi => (hterm i hi).1) hpos.le
+  · rw [div_le_one hpos]
+    calc (∑ i ∈ Finset.range (day + 1),
+          market.quote day
+            (Encodable.encode ((X idx).gt ((i : ℚ) / ((day + 1 : ℕ) : ℚ)))))
+        ≤ ∑ _i ∈ Finset.range (day + 1), (1 : ℚ) :=
+          Finset.sum_le_sum fun i hi => (hterm i hi).2
+      _ = ((day + 1 : ℕ) : ℚ) := by simp
 
 lemma MarketComputation.expectQuote_mem_Icc {P : History} (market : MarketComputation P)
     (X : ℕ → LUV) (n : ℕ) :
@@ -268,45 +274,49 @@ lemma MarketComputation.expectQuoteAt_computable {P : History}
   obtain ⟨cX, hcX⟩ := hX
   -- The threshold-code function of `⟨⟨idx, day⟩, i⟩`.
   have hpack : Computable fun z : (ℕ × ℕ) × ℕ =>
-      Nat.pair z.1.1 (Nat.pair z.1.2 z.2) :=
+      Nat.pair z.1.1 (Nat.pair (z.1.2 + 1) z.2) :=
     Primrec₂.natPair.to_comp.comp (Computable.fst.comp Computable.fst)
-      (Primrec₂.natPair.to_comp.comp (Computable.snd.comp Computable.fst)
+      (Primrec₂.natPair.to_comp.comp
+        (Primrec.succ.to_comp.comp (Computable.snd.comp Computable.fst))
         Computable.snd)
   have hgt : Computable fun z : (ℕ × ℕ) × ℕ =>
-      Encodable.encode ((X z.1.1).gt ((z.2 : ℚ) / (z.1.2 : ℚ))) :=
+      Encodable.encode ((X z.1.1).gt ((z.2 : ℚ) / ((z.1.2 + 1 : ℕ) : ℚ))) :=
     (hcX.primrec.to_comp.comp hpack).of_eq fun z => by simp [Nat.unpair_pair]
   -- The per-cell exact quote.
   have hcell : Computable fun z : (ℕ × ℕ) × ℕ =>
       market.quote z.1.2
-        (Encodable.encode ((X z.1.1).gt ((z.2 : ℚ) / (z.1.2 : ℚ)))) :=
+        (Encodable.encode ((X z.1.1).gt ((z.2 : ℚ) / ((z.1.2 + 1 : ℕ) : ℚ)))) :=
     (market.quote_comp_computable (Computable.snd.comp Computable.fst) hgt : _)
   -- The bounded sum, by primitive recursion on the day.
   have hstepC : Computable fun q : (ℕ × ℕ) × (ℕ × ℚ) =>
       q.2.2 + market.quote q.1.2
-        (Encodable.encode ((X q.1.1).gt ((q.2.1 : ℚ) / (q.1.2 : ℚ)))) := by
+        (Encodable.encode ((X q.1.1).gt ((q.2.1 : ℚ) / ((q.1.2 + 1 : ℕ) : ℚ)))) := by
     -- `( … : _)` ascriptions here and on `hcell` are load-bearing (see Part B note).
     have hc : Computable fun q : (ℕ × ℕ) × (ℕ × ℚ) =>
         market.quote q.1.2
-          (Encodable.encode ((X q.1.1).gt ((q.2.1 : ℚ) / (q.1.2 : ℚ)))) :=
+          (Encodable.encode ((X q.1.1).gt ((q.2.1 : ℚ) / ((q.1.2 + 1 : ℕ) : ℚ)))) :=
       (hcell.comp (Computable.fst.pair (Computable.fst.comp Computable.snd)) : _)
     exact (ratAdd_prim.to_comp.comp (Computable.snd.comp Computable.snd) hc : _)
-  have hsum : Computable fun a : ℕ × ℕ => ∑ i ∈ Finset.range a.2,
-      market.quote a.2 (Encodable.encode ((X a.1).gt ((i : ℚ) / (a.2 : ℚ)))) := by
-    have hrec := Computable.nat_rec Computable.snd (Computable.const (0 : ℚ)) hstepC.to₂
+  have hsum : Computable fun a : ℕ × ℕ => ∑ i ∈ Finset.range (a.2 + 1),
+      market.quote a.2
+        (Encodable.encode ((X a.1).gt ((i : ℚ) / ((a.2 + 1 : ℕ) : ℚ)))) := by
+    have hrec := Computable.nat_rec (Primrec.succ.to_comp.comp Computable.snd)
+      (Computable.const (0 : ℚ)) hstepC.to₂
     refine hrec.of_eq fun a => ?_
     have key : ∀ m : ℕ, (Nat.rec (motive := fun _ => ℚ) 0
         (fun i s => s + market.quote a.2
-          (Encodable.encode ((X a.1).gt ((i : ℚ) / (a.2 : ℚ))))) m) =
+          (Encodable.encode ((X a.1).gt ((i : ℚ) / ((a.2 + 1 : ℕ) : ℚ))))) m) =
         ∑ i ∈ Finset.range m,
-          market.quote a.2 (Encodable.encode ((X a.1).gt ((i : ℚ) / (a.2 : ℚ)))) := by
+          market.quote a.2
+            (Encodable.encode ((X a.1).gt ((i : ℚ) / ((a.2 + 1 : ℕ) : ℚ)))) := by
       intro m
       induction m with
       | zero => simp
       | succ m ih => rw [Finset.sum_range_succ, ← ih]
-    exact key a.2
+    exact key (a.2 + 1)
   -- The final average.
   exact ((ratDiv_prim.to_comp.comp hsum
-    (ratNatCast_prim.to_comp.comp Computable.snd) : _) :
+    (ratNatCast_prim.to_comp.comp (Primrec.succ.to_comp.comp Computable.snd)) : _) :
     Computable fun a : ℕ × ℕ => market.expectQuoteAt X a.1 a.2)
 
 /-- Diagonal corollary: the day-`n` expectation sequence is computable.

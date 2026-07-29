@@ -313,9 +313,10 @@ end RationalQuoteCode
 
 namespace LUV
 
-/-- The day-indexed expectation mesh for a varying LUV family. -/
+/-- The day-indexed expectation mesh for a varying LUV family: day `n` carries its own
+grid `n + 1` (`def:e`). -/
 def expectAffineSeq (X : ℕ → LUV) (n : ℕ) : AffineCombination :=
-  (X n).expectAffine n
+  (X n).expectAffine (n + 1)
 
 lemma expectAffineSeq_price (X : ℕ → LUV) (P : History) (n : ℕ) :
     (expectAffineSeq X n).price P n = (X n).expect P n :=
@@ -323,13 +324,13 @@ lemma expectAffineSeq_price (X : ℕ → LUV) (P : History) (n : ℕ) :
 
 lemma expectAffineSeq_value (X : ℕ → LUV) (P : History)
     (w : Valuation) (n : ℕ) :
-    (expectAffineSeq X n).value P w = (X n).expectApprox w n :=
-  (X n).expectAffine_value P w n
+    (expectAffineSeq X n).value P w = (X n).expectApprox w (n + 1) :=
+  (X n).expectAffine_value P w (n + 1)
 
 lemma expectAffineSeq_magnitude_le_one (X : ℕ → LUV)
     (P : History) (n : ℕ) :
     (expectAffineSeq X n).magnitude P ≤ 1 :=
-  (X n).expectAffine_magnitude_le_one P n
+  (X n).expectAffine_magnitude_le_one P (n + 1)
 
 /-- A compact varying threshold presentation emits the literal diagonal expectation
 mesh uniformly; no opaque serialized affine object is decoded. -/
@@ -338,22 +339,17 @@ noncomputable def expectAffineSeq_polySequence (X : ℕ → LUV)
     AffineCombination.PolySequence (expectAffineSeq X) := by
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
-  have hindex : PolyFueled
-      (Nat.Partrec.Code.left.pair
-        (Nat.Partrec.Code.left.pair Nat.Partrec.Code.right))
-      (fun z : ℕ ↦
-      Nat.pair z.unpair.1 (Nat.pair z.unpair.1 z.unpair.2)) :=
-    PolyFueled.left.pair (PolyFueled.left.pair PolyFueled.right)
+  have hindex := PolyFueled.left.pair (PolyFueled.left.succ_comp.pair PolyFueled.right)
   have hsentence := hcode.comp hindex
   exact {
-    termCount := fun n ↦ n
-    coefficient := fun z ↦ .const (1 / (z.unpair.1 : ℚ))
+    termCount := fun n ↦ n + 1
+    coefficient := fun z ↦ .const (1 / ((z.unpair.1 + 1 : ℕ) : ℚ))
     sentence := fun z ↦
-      (X z.unpair.1).gt ((z.unpair.2 : ℚ) / (z.unpair.1 : ℚ))
-    termCount_poly := ⟨Nat.Partrec.Code.id, PolyFueled.id⟩
+      (X z.unpair.1).gt ((z.unpair.2 : ℚ) / ((z.unpair.1 + 1 : ℕ) : ℚ))
+    termCount_poly := ⟨_, PolyFueled.id.succ_comp⟩
     const_poly := RpnSpliceStream.serialize_const 0
     coefficient_poly := RpnSpliceStream.serialize_const_comp
-      ⟨cinv.comp Nat.Partrec.Code.left, hinv.comp PolyFueled.left⟩
+      ⟨_, hinv.comp PolyFueled.left.succ_comp⟩
     sentence_poly := hsentence.of_eq (fun z ↦ by simp)
     terms_eq := by intro n; simp [expectAffineSeq, LUV.expectAffine]
     const_rank := by intro n; simp [expectAffineSeq, LUV.expectAffine]
@@ -376,17 +372,17 @@ the quotation thresholds are held with coefficient `-1/n`. -/
 def numericQuoteAffine (H : ℕ → EF) (Y : ℕ → LUV) (n : ℕ) :
     AffineCombination where
   const := H n
-  terms := ((Y n).expectAffine n).terms.map fun p ↦
+  terms := ((Y n).expectAffine (n + 1)).terms.map fun p ↦
     (EF.mul (EF.const (-1)) p.1, p.2)
 
 lemma numericQuoteAffine_value (H : ℕ → EF) (Y : ℕ → LUV)
     (P : History) (w : Valuation) (n : ℕ) :
     (numericQuoteAffine H Y n).value P w =
-      (H n).denote P - (Y n).expectApprox w n := by
-  let l := ((Y n).expectAffine n).terms
+      (H n).denote P - (Y n).expectApprox w (n + 1) := by
+  let l := ((Y n).expectAffine (n + 1)).terms
   have hbase : (l.map (fun p ↦ p.1.denote P * w p.2)).sum =
-      (Y n).expectApprox w n := by
-    have h := (Y n).expectAffine_value P w n
+      (Y n).expectApprox w (n + 1) := by
+    have h := (Y n).expectAffine_value P w (n + 1)
     rw [AffineCombination.value] at h
     norm_num [l, LUV.expectAffine] at h ⊢
     exact h
@@ -418,13 +414,13 @@ lemma numericQuoteAffine_price (H : ℕ → EF) (Y : ℕ → LUV)
 lemma numericQuoteAffine_priceAt (H : ℕ → EF) (Y : ℕ → LUV)
     (P : History) (n m : ℕ) :
     (numericQuoteAffine H Y n).price P m =
-      (H n).denote P - (Y n).expectApprox (P m) n := by
+      (H n).denote P - (Y n).expectApprox (P m) (n + 1) := by
   rw [AffineCombination.price, numericQuoteAffine_value]
 
 lemma numericQuoteAffine_magnitude (H : ℕ → EF) (Y : ℕ → LUV)
     (P : History) (n : ℕ) :
     (numericQuoteAffine H Y n).magnitude P =
-      ((Y n).expectAffine n).magnitude P := by
+      ((Y n).expectAffine (n + 1)).magnitude P := by
   simp only [numericQuoteAffine, AffineCombination.magnitude, List.map_map]
   apply congrArg List.sum
   apply List.map_congr_left
@@ -488,9 +484,9 @@ noncomputable def completedNumericQuote
   bounded := by
     refine ⟨1, zero_le_one, fun n m ↦ ?_⟩
     rw [AffineCombination.price, numericQuoteAffine_value, target.denote, abs_le]
-    have hE0 := (q.luv n).expectApprox_nonneg (P m) n
+    have hE0 := (q.luv n).expectApprox_nonneg (P m) (n + 1)
       (fun s ↦ (hP m s).1)
-    have hE1 := (q.luv n).expectApprox_le_one (P m) n
+    have hE1 := (q.luv n).expectApprox_le_one (P m) (n + 1)
       (fun s ↦ (hP m s).2)
     have hv0 : (0 : ℝ) ≤ value n := by exact_mod_cast (q.value_mem n).1
     have hv1 : (value n : ℝ) ≤ 1 := by exact_mod_cast (q.value_mem n).2
@@ -498,21 +494,22 @@ noncomputable def completedNumericQuote
   magnitude_le_one := by
     intro n
     rw [numericQuoteAffine_magnitude]
-    exact (q.luv n).expectAffine_magnitude_le_one P n
+    exact (q.luv n).expectAffine_magnitude_le_one P (n + 1)
   theory_coherent := by
     intro ε hε
     obtain ⟨N, hN⟩ := exists_nat_gt (1 / ε)
-    refine eventually_atTop.2 ⟨max 1 N, fun n hn v hv ↦ ?_⟩
-    have hn0 : 0 < n := by omega
-    have hnR : (0 : ℝ) < n := by exact_mod_cast hn0
-    have hsmall : 1 / (n : ℝ) ≤ ε := by
-      have hNn : (1 : ℝ) / ε < n :=
-        hN.trans_le (by exact_mod_cast (le_trans (le_max_right 1 N) hn))
+    refine eventually_atTop.2 ⟨N, fun n hn v hv ↦ ?_⟩
+    have hnR : (0 : ℝ) < (n : ℝ) + 1 := by positivity
+    have hsmall : 1 / ((n : ℝ) + 1) ≤ ε := by
+      have hNn : (1 : ℝ) / ε < (n : ℝ) + 1 :=
+        hN.trans_le (by have : (N : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
+                        linarith)
       rw [div_lt_iff₀ hε] at hNn
       rw [div_le_iff₀ hnR]
       nlinarith
     rw [numericQuoteAffine_value, target.denote, abs_sub_comm]
-    exact ((q.reflected Q n v hv).expectApprox_near hn0).trans hsmall
+    refine LE.le.trans ?_ hsmall
+    simpa using (q.reflected Q n v hv).expectApprox_near (n := n + 1) n.succ_pos
 
 /-! ### The two same-day numeric quotation packages -/
 
@@ -1556,20 +1553,21 @@ noncomputable def completedImageCrossPrecisionQuote
     CompletedAffineQuoteApprox P DP (fun m ↦
       (deferralImageFlag f a degree m : ℝ) *
         ((X (deferralPreimage f a degree m)).expectApprox (P m)
-            (deferralPreimage f a degree m) -
-          (X (deferralPreimage f a degree m)).expectApprox (P m) m)) := by
+            (deferralPreimage f a degree m + 1) -
+          (X (deferralPreimage f a degree m)).expectApprox (P m) (m + 1))) := by
   let index := deferralPreimage f a degree
   let flag := deferralImageFeature f a degree
   let X' : ℕ → LUV := fun m ↦ X (index m)
   let base : ℕ → AffineCombination :=
-    LUV.crossPrecisionAffine X' index id
+    LUV.crossPrecisionAffine X' (fun m ↦ index m + 1) (fun m ↦ m + 1)
   let gated : ℕ → AffineCombination := fun m ↦ (base m).scale (flag m)
   let family : ℕ → AffineCombination := fun m ↦
     (gated m).scale (EF.const (1 / 2))
   let hindex := deferralPreimage_polyFueled f a degree
   let hX' := hX.reindex hindex
-  let hbase := LUV.crossPrecisionAffine_polySequence X' index id hX'
-    hindex ⟨Nat.Partrec.Code.id, PolyFueled.id⟩
+  let hbase := LUV.crossPrecisionAffine_polySequence X'
+    (fun m ↦ index m + 1) (fun m ↦ m + 1) hX'
+    ⟨_, (Classical.choose_spec hindex).succ_comp⟩ ⟨_, PolyFueled.id.succ_comp⟩
   let hflag := deferralImageFeature_generated f a degree
   let hgated := hbase.scaleFeature flag hflag
   let hfamily := hgated.scaleRat (1 / 2)
@@ -1593,17 +1591,17 @@ noncomputable def completedImageCrossPrecisionQuote
       · rw [hm]
         norm_num
         have hlo0 := (X (deferralPreimage f a degree m)).expectApprox_nonneg
-          (P day) (deferralPreimage f a degree m) (fun s ↦ (hP day s).1)
+          (P day) (deferralPreimage f a degree m + 1) (fun s ↦ (hP day s).1)
         have hlo1 := (X (deferralPreimage f a degree m)).expectApprox_le_one
-          (P day) (deferralPreimage f a degree m) (fun s ↦ (hP day s).2)
+          (P day) (deferralPreimage f a degree m + 1) (fun s ↦ (hP day s).2)
         have hhi0 := (X (deferralPreimage f a degree m)).expectApprox_nonneg
-          (P day) m (fun s ↦ (hP day s).1)
+          (P day) (m + 1) (fun s ↦ (hP day s).1)
         have hhi1 := (X (deferralPreimage f a degree m)).expectApprox_le_one
-          (P day) m (fun s ↦ (hP day s).2)
+          (P day) (m + 1) (fun s ↦ (hP day s).2)
         have habs :
             |(X (deferralPreimage f a degree m)).expectApprox (P day)
-                (deferralPreimage f a degree m) -
-              (X (deferralPreimage f a degree m)).expectApprox (P day) m| ≤ 1 := by
+                (deferralPreimage f a degree m + 1) -
+              (X (deferralPreimage f a degree m)).expectApprox (P day) (m + 1)| ≤ 1 := by
           rw [abs_le]
           constructor <;> linarith
         nlinarith
@@ -1612,7 +1610,7 @@ noncomputable def completedImageCrossPrecisionQuote
       simp only [family, gated, AffineCombination.scale_magnitude,
         EF.denote_const, flag, deferralImageFeature_denote]
       have hbaseMag := LUV.crossPrecisionAffine_magnitude_le_two
-        X' index id P m
+        X' (fun m ↦ index m + 1) (fun m ↦ m + 1) P m
       rcases deferralImageFlag_zero_or_one f a degree m with hm | hm
       · simp [hm]
       · rw [hm]
@@ -1636,27 +1634,32 @@ noncomputable def completedImageCrossPrecisionQuote
       · simpa [family, gated, flag, hflag0, AffineCombination.scale_value] using hε.le
       · have hspecm := deferralPreimage_spec f hinj hspec hflag1
         have hindexN : N ≤ deferralPreimage f a degree m := hM m hm hflag1
-        have hindexPos : 0 < deferralPreimage f a degree m :=
-          hNpos.trans_le hindexN
-        have hmPos : 0 < m := by omega
         obtain ⟨x, hx⟩ := hvalued (deferralPreimage f a degree m) v hv
-        have hlo := hx.expectApprox_near hindexPos
-        have hhi := hx.expectApprox_near hmPos
+        have hlo := hx.expectApprox_near (n := deferralPreimage f a degree m + 1)
+          (deferralPreimage f a degree m).succ_pos
+        have hhi := hx.expectApprox_near (n := m + 1) m.succ_pos
+        push_cast at hlo hhi
         have hmesh :
             |(X (deferralPreimage f a degree m)).expectApprox v.payout
-                (deferralPreimage f a degree m) -
-              (X (deferralPreimage f a degree m)).expectApprox v.payout m| ≤
-              1 / (deferralPreimage f a degree m : ℝ) + 1 / (m : ℝ) := by
+                (deferralPreimage f a degree m + 1) -
+              (X (deferralPreimage f a degree m)).expectApprox v.payout (m + 1)| ≤
+              1 / ((deferralPreimage f a degree m : ℝ) + 1) + 1 / ((m : ℝ) + 1) := by
           calc
             |_ - _| = |(_ - x) - (_ - x)| := by ring_nf
             _ ≤ |_ - x| + |_ - x| := abs_sub _ _
-            _ ≤ 1 / (deferralPreimage f a degree m : ℝ) + 1 / (m : ℝ) :=
+            _ ≤ 1 / ((deferralPreimage f a degree m : ℝ) + 1) + 1 / ((m : ℝ) + 1) :=
               add_le_add hlo hhi
-        have hlowSmall : 1 / (deferralPreimage f a degree m : ℝ) ≤ ε / 4 := by
-          exact (one_div_le_one_div_of_le (by exact_mod_cast hNpos) (by exact_mod_cast hindexN)).trans hNsmall
+        have hlowSmall : 1 / ((deferralPreimage f a degree m : ℝ) + 1) ≤ ε / 4 := by
+          refine LE.le.trans ?_ hNsmall
+          refine one_div_le_one_div_of_le (by exact_mod_cast hNpos) ?_
+          have : (N : ℝ) ≤ (deferralPreimage f a degree m : ℝ) := by exact_mod_cast hindexN
+          linarith
         have hmN : N ≤ m := le_trans hindexN hspecm.1.le
-        have hhighSmall : 1 / (m : ℝ) ≤ ε / 4 := by
-          exact (one_div_le_one_div_of_le (by exact_mod_cast hNpos) (by exact_mod_cast hmN)).trans hNsmall
+        have hhighSmall : 1 / ((m : ℝ) + 1) ≤ ε / 4 := by
+          refine LE.le.trans ?_ hNsmall
+          refine one_div_le_one_div_of_le (by exact_mod_cast hNpos) ?_
+          have : (N : ℝ) ≤ (m : ℝ) := by exact_mod_cast hmN
+          linarith
         simp only [family, gated, base, flag, X', index,
           AffineCombination.scale_value, LUV.crossPrecisionAffine_value,
           deferralImageFeature_denote, hflag1, Nat.cast_one, one_mul,
@@ -1707,9 +1710,9 @@ noncomputable def completedImageNumericQuote
       · rw [hm]
         norm_num
         rw [AffineCombination.price, numericQuoteAffine_value]
-        have hE0 := (Y m).expectApprox_nonneg (P day) m
+        have hE0 := (Y m).expectApprox_nonneg (P day) (m + 1)
           (fun s ↦ (hP day s).1)
-        have hE1 := (Y m).expectApprox_le_one (P day) m
+        have hE1 := (Y m).expectApprox_le_one (P day) (m + 1)
           (fun s ↦ (hP day s).2)
         rw [abs_le]
         constructor <;> linarith [(hHmem m).1, (hHmem m).2]
@@ -1718,7 +1721,7 @@ noncomputable def completedImageNumericQuote
       simp only [family, base, flag, AffineCombination.scale_magnitude,
         deferralImageFeature_denote]
       rw [numericQuoteAffine_magnitude]
-      have hmag := (Y m).expectAffine_magnitude_le_one P m
+      have hmag := (Y m).expectAffine_magnitude_le_one P (m + 1)
       rcases deferralImageFlag_zero_or_one f a degree m with hm | hm
       · simp [hm]
       · rw [hm]
@@ -1727,14 +1730,14 @@ noncomputable def completedImageNumericQuote
     theory_coherent := by
       intro ε hε
       obtain ⟨N, hN⟩ := exists_nat_gt (1 / ε)
-      refine eventually_atTop.2 ⟨max 1 N, fun m hm v hv ↦ ?_⟩
+      refine eventually_atTop.2 ⟨N, fun m hm v hv ↦ ?_⟩
       rcases deferralImageFlag_zero_or_one f a degree m with hflag0 | hflag1
       · simpa [family, base, flag, hflag0, AffineCombination.scale_value] using hε.le
-      · have hmPos : 0 < m := by omega
-        have hmR : (0 : ℝ) < m := by exact_mod_cast hmPos
-        have hsmall : 1 / (m : ℝ) ≤ ε := by
-          have hNm : (1 : ℝ) / ε < m :=
-            hN.trans_le (by exact_mod_cast (le_trans (le_max_right 1 N) hm))
+      · have hmR : (0 : ℝ) < (m : ℝ) + 1 := by positivity
+        have hsmall : 1 / ((m : ℝ) + 1) ≤ ε := by
+          have hNm : (1 : ℝ) / ε < (m : ℝ) + 1 :=
+            hN.trans_le (by have : (N : ℝ) ≤ (m : ℝ) := by exact_mod_cast hm
+                            linarith)
           rw [div_lt_iff₀ hε] at hNm
           rw [div_le_iff₀ hmR]
           nlinarith
@@ -1742,7 +1745,9 @@ noncomputable def completedImageNumericQuote
           deferralImageFeature_denote, hflag1, Nat.cast_one, one_mul,
           numericQuoteAffine_value]
         rw [abs_sub_comm]
-        exact (hreflected m hflag1 v hv).expectApprox_near hmPos |>.trans hsmall
+        refine LE.le.trans ?_ hsmall
+        simpa using
+          (hreflected m hflag1 v hv).expectApprox_near (n := m + 1) m.succ_pos
   }
 
 /-! ### Fixed expectation-difference portfolios -/
@@ -1761,7 +1766,7 @@ noncomputable def LUV.expectDifferenceAffine_polySequence
 lemma LUV.expectDifferenceAffine_priceAt
     (X Y : ℕ → LUV) (P : History) (n m : ℕ) :
     (LUV.expectDifferenceAffine X Y n).price P m =
-      (X n).expectApprox (P m) n - (Y n).expectApprox (P m) n := by
+      (X n).expectApprox (P m) (n + 1) - (Y n).expectApprox (P m) (n + 1) := by
   rw [LUV.expectDifferenceAffine, AffineCombination.add_price,
     AffineCombination.neg_price]
   simp only [LUV.expectAffineSeq]
@@ -1902,28 +1907,28 @@ noncomputable def completedImageConditionalQuote
       · simp [hm]
       · rw [hm]
         norm_num
-        have hZ0 := (Z m).expectApprox_nonneg (P day) m (fun s ↦ (hP day s).1)
-        have hZ1 := (Z m).expectApprox_le_one (P day) m (fun s ↦ (hP day s).2)
-        have hZ'0 := (Z' m).expectApprox_nonneg (P day) m (fun s ↦ (hP day s).1)
-        have hZ'1 := (Z' m).expectApprox_le_one (P day) m (fun s ↦ (hP day s).2)
-        have hX0 := (X m).expectApprox_nonneg (P day) m (fun s ↦ (hP day s).1)
-        have hX1 := (X m).expectApprox_le_one (P day) m (fun s ↦ (hP day s).2)
+        have hZ0 := (Z m).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
+        have hZ1 := (Z m).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
+        have hZ'0 := (Z' m).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
+        have hZ'1 := (Z' m).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
+        have hX0 := (X m).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
+        have hX1 := (X m).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
         have hEX0 := (X m).expect_mem_Icc P m (hP m) |>.1
         have hEX1 := (X m).expect_mem_Icc P m (hP m) |>.2
         have hw0 : (0 : ℝ) ≤ w m := by exact_mod_cast (hw m).1
         have hw1 : (w m : ℝ) ≤ 1 := by exact_mod_cast (hw m).2
         have habs :
-            |(Z m).expectApprox (P day) m - (w m : ℝ) *
-                (X m).expectApprox (P day) m +
+            |(Z m).expectApprox (P day) (m + 1) - (w m : ℝ) *
+                (X m).expectApprox (P day) (m + 1) +
               ((w m : ℝ) * (X m).expect P m -
-                (Z' m).expectApprox (P day) m)| ≤ 4 := by
+                (Z' m).expectApprox (P day) (m + 1))| ≤ 4 := by
           rw [abs_le]
           constructor <;> nlinarith
         have habs' :
-            |(Z m).expectApprox (P day) m +
-                (-((w m : ℝ) * (X m).expectApprox (P day) m)) +
+            |(Z m).expectApprox (P day) (m + 1) +
+                (-((w m : ℝ) * (X m).expectApprox (P day) (m + 1))) +
               ((w m : ℝ) * (X m).expect P m -
-                (Z' m).expectApprox (P day) m)| ≤ 4 := by
+                (Z' m).expectApprox (P day) (m + 1))| ≤ 4 := by
           simpa only [sub_eq_add_neg] using habs
         nlinarith
     magnitude_le_one := by
@@ -1949,7 +1954,7 @@ noncomputable def completedImageConditionalQuote
           calc
             |_| * _ ≤ 1 * 1 := mul_le_mul hwR hXm hXnonneg (by norm_num)
             _ = 1 := by norm_num
-        have hZ'm' : ((Z' m).expectAffine m).magnitude P ≤ 1 := by
+        have hZ'm' : ((Z' m).expectAffine (m + 1)).magnitude P ≤ 1 := by
           simpa only [LUV.expectAffineSeq] using hZ'm
         linarith
     theory_coherent := by
@@ -1967,14 +1972,21 @@ noncomputable def completedImageConditionalQuote
           rw [div_le_iff₀ hmR]
           nlinarith
         obtain ⟨x, hx, hz, hz'⟩ := hsemantic m hflag1 v hv
-        have hnearX := hx.expectApprox_near hmPos
-        have hnearZ := hz.expectApprox_near hmPos
-        have hnearZ' := hz'.expectApprox_near hmPos
+        have hgrid : ∀ {Y : LUV} {y : ℝ}, v.ValuesAt Y y →
+            |Y.expectApprox v.payout (m + 1) - y| ≤ 1 / (m : ℝ) := by
+          intro Y y hy
+          have hstep : 1 / ((m : ℝ) + 1) ≤ 1 / (m : ℝ) :=
+            one_div_le_one_div_of_le hmR (by linarith)
+          refine LE.le.trans ?_ hstep
+          simpa using hy.expectApprox_near (n := m + 1) m.succ_pos
+        have hnearX := hgrid hx
+        have hnearZ := hgrid hz
+        have hnearZ' := hgrid hz'
         have hw0 : (0 : ℝ) ≤ w m := by exact_mod_cast (hw m).1
         have hw1 : (w m : ℝ) ≤ 1 := by exact_mod_cast (hw m).2
         have hwabs : |(w m : ℝ)| ≤ 1 := by simpa [abs_of_nonneg hw0] using hw1
         have hmul : |(w m : ℝ)| *
-            |(X m).expectApprox v.payout m - x| ≤ 1 / (m : ℝ) := by
+            |(X m).expectApprox v.payout (m + 1) - x| ≤ 1 / (m : ℝ) := by
           calc
             |_| * |_| ≤ 1 * (1 / (m : ℝ)) :=
               mul_le_mul hwabs hnearX (abs_nonneg _) (by positivity)
@@ -1986,9 +1998,9 @@ noncomputable def completedImageConditionalQuote
           EF.denote_const, Wneg, EX, target, EF.denote_mul, Pi.mul_apply,
           hWdenote, currentExpectationFeature_denote]
         push_cast
-        let eZ := (Z m).expectApprox v.payout m - x * (w m : ℝ)
-        let eX := (X m).expectApprox v.payout m - x
-        let eZ' := (Z' m).expectApprox v.payout m -
+        let eZ := (Z m).expectApprox v.payout (m + 1) - x * (w m : ℝ)
+        let eX := (X m).expectApprox v.payout (m + 1) - x
+        let eZ' := (Z' m).expectApprox v.payout (m + 1) -
           (X m).expect P m * (w m : ℝ)
         have hbound :
             |eZ - (w m : ℝ) * eX - eZ'| ≤ 3 / (m : ℝ) := by
@@ -2002,10 +2014,10 @@ noncomputable def completedImageConditionalQuote
               exact add_le_add (add_le_add hnearZ hmul) hnearZ'
             _ = 3 / (m : ℝ) := by ring
         have hform : (1 / 4 : ℝ) *
-              ((Z m).expectApprox v.payout m + (-1) * (w m : ℝ) *
-                  (X m).expectApprox v.payout m +
+              ((Z m).expectApprox v.payout (m + 1) + (-1) * (w m : ℝ) *
+                  (X m).expectApprox v.payout (m + 1) +
                 ((w m : ℝ) * (X m).expect P m -
-                  (Z' m).expectApprox v.payout m)) =
+                  (Z' m).expectApprox v.payout (m + 1))) =
             (1 / 4 : ℝ) * (eZ - (w m : ℝ) * eX - eZ') := by
           dsimp only [eZ, eX, eZ']
           ring
@@ -2110,23 +2122,23 @@ noncomputable def completedImageSelfTrustQuote
       · simp [hm]
       · rw [hm]
         norm_num
-        have hA0 := (A m).expectApprox_nonneg (P day) m (fun s ↦ (hP day s).1)
-        have hA1 := (A m).expectApprox_le_one (P day) m (fun s ↦ (hP day s).2)
-        have hB0 := (B m).expectApprox_nonneg (P day) m (fun s ↦ (hP day s).1)
-        have hB1 := (B m).expectApprox_le_one (P day) m (fun s ↦ (hP day s).2)
+        have hA0 := (A m).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
+        have hA1 := (A m).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
+        have hB0 := (B m).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
+        have hB1 := (B m).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
         have hp0 : (0 : ℝ) ≤ p m := by exact_mod_cast (hp m).1
         have hp1 : (p m : ℝ) ≤ 1 := by exact_mod_cast (hp m).2
         have habs :
-            |(A m).expectApprox (P day) m - (p m : ℝ) *
-                (B m).expectApprox (P day) m -
+            |(A m).expectApprox (P day) (m + 1) - (p m : ℝ) *
+                (B m).expectApprox (P day) (m + 1) -
               (G m).denote P * P day (φ m) +
               (p m : ℝ) * (G m).denote P| ≤ 4 := by
           rw [abs_le]
           constructor <;> nlinarith [(hGmem m).1, (hGmem m).2,
             (hP day (φ m)).1, (hP day (φ m)).2]
         have habs' :
-            |(A m).expectApprox (P day) m +
-                (-(p m : ℝ) * (B m).expectApprox (P day) m) +
+            |(A m).expectApprox (P day) (m + 1) +
+                (-(p m : ℝ) * (B m).expectApprox (P day) (m + 1)) +
               (-(G m).denote P * P day (φ m)) +
               (p m : ℝ) * (G m).denote P| ≤ 4 := by
           convert habs using 1
@@ -2144,8 +2156,8 @@ noncomputable def completedImageSelfTrustQuote
         EF.denote_const, pNeg, GNeg, EF.denote_mul, Pi.mul_apply,
         hpDenote, Rat.cast_neg, Rat.cast_one, neg_mul, one_mul, abs_neg,
         add_zero]
-      have hAm := (A m).expectAffine_magnitude_le_one P m
-      have hBm := (B m).expectAffine_magnitude_le_one P m
+      have hAm := (A m).expectAffine_magnitude_le_one P (m + 1)
+      have hBm := (B m).expectAffine_magnitude_le_one P (m + 1)
       have hpR : |(p m : ℝ)| ≤ 1 := by
         rw [abs_of_nonneg (by exact_mod_cast (hp m).1)]
         exact_mod_cast (hp m).2
@@ -2153,8 +2165,8 @@ noncomputable def completedImageSelfTrustQuote
       · simp [hm]
       · rw [hm]
         norm_num
-        have hpB : |(p m : ℝ)| * ((B m).expectAffine m).magnitude P ≤ 1 := by
-          exact (mul_le_mul hpR hBm (((B m).expectAffine m).magnitude_nonneg P)
+        have hpB : |(p m : ℝ)| * ((B m).expectAffine (m + 1)).magnitude P ≤ 1 := by
+          exact (mul_le_mul hpR hBm (((B m).expectAffine (m + 1)).magnitude_nonneg P)
             (by norm_num)).trans_eq (one_mul 1)
         have hGabs : |(G m).denote P| ≤ 1 := by
           simpa [abs_of_nonneg (hGmem m).1] using (hGmem m).2
@@ -2174,8 +2186,15 @@ noncomputable def completedImageSelfTrustQuote
           rw [div_le_iff₀ hmR]
           nlinarith
         obtain ⟨hBv, hAv⟩ := hsemantic m hflag1 v hv
-        have hnearA := hAv.expectApprox_near hmPos
-        have hnearB := hBv.expectApprox_near hmPos
+        have hgrid : ∀ {Y : LUV} {y : ℝ}, v.ValuesAt Y y →
+            |Y.expectApprox v.payout (m + 1) - y| ≤ 1 / (m : ℝ) := by
+          intro Y y hy
+          have hstep : 1 / ((m : ℝ) + 1) ≤ 1 / (m : ℝ) :=
+            one_div_le_one_div_of_le hmR (by linarith)
+          refine LE.le.trans ?_ hstep
+          simpa using hy.expectApprox_near (n := m + 1) m.succ_pos
+        have hnearA := hgrid hAv
+        have hnearB := hgrid hBv
         have hp0 : (0 : ℝ) ≤ p m := by exact_mod_cast (hp m).1
         have hp1 : (p m : ℝ) ≤ 1 := by exact_mod_cast (hp m).2
         simp only [family, raw, AA, AB, S, C, flag,
@@ -2188,15 +2207,15 @@ noncomputable def completedImageSelfTrustQuote
         have hpabs : |(p m : ℝ)| ≤ 1 := by
           simpa [abs_of_nonneg hp0] using hp1
         have hpnear : |(p m : ℝ)| *
-            |(B m).expectApprox v.payout m - (G m).denote P| ≤
+            |(B m).expectApprox v.payout (m + 1) - (G m).denote P| ≤
               1 / (m : ℝ) := by
           calc
             |_| * |_| ≤ 1 * (1 / (m : ℝ)) :=
               mul_le_mul hpabs hnearB (abs_nonneg _) (by positivity)
             _ = _ := one_mul _
-        let eA := (A m).expectApprox v.payout m -
+        let eA := (A m).expectApprox v.payout (m + 1) -
           v.payout (φ m) * (G m).denote P
-        let eB := (B m).expectApprox v.payout m - (G m).denote P
+        let eB := (B m).expectApprox v.payout (m + 1) - (G m).denote P
         have herr : |eA - (p m : ℝ) * eB| ≤ 2 / (m : ℝ) := by
           calc
             |eA - (p m : ℝ) * eB| ≤ |eA| + |(p m : ℝ) * eB| := abs_sub _ _
@@ -2204,8 +2223,8 @@ noncomputable def completedImageSelfTrustQuote
             _ ≤ 1 / (m : ℝ) + 1 / (m : ℝ) := add_le_add hnearA hpnear
             _ = 2 / (m : ℝ) := by ring
         have hform : (1 / 4 : ℝ) *
-            ((A m).expectApprox v.payout m + (-1) * (p m : ℝ) *
-                (B m).expectApprox v.payout m +
+            ((A m).expectApprox v.payout (m + 1) + (-1) * (p m : ℝ) *
+                (B m).expectApprox v.payout (m + 1) +
               (-1) * (G m).denote P * v.payout (φ m) +
               (p m : ℝ) * (G m).denote P) =
             (1 / 4 : ℝ) * (eA - (p m : ℝ) * eB) := by
@@ -2935,10 +2954,10 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
   let highGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
     ((X (index m)).expect P m - (Y (index m)).expect P m)
   let crossXGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((X (index m)).expectApprox (P m) (index m) -
+    ((X (index m)).expectApprox (P m) (index m + 1) -
       (X (index m)).expect P m)
   let crossYGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((Y (index m)).expectApprox (P m) (index m) -
+    ((Y (index m)).expectApprox (P m) (index m + 1) -
       (Y (index m)).expect P m)
   have hhigh0 : Tendsto highGap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, high, highGap, flagN, X', Y', H,
@@ -2972,10 +2991,10 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
         refine ⟨1, zero_le_one, fun n m ↦ ?_⟩
         simp only [family, raw, AffineCombination.scale_price, EF.denote_const,
           LUV.expectDifferenceAffine_priceAt]
-        have hX0 := (X n).expectApprox_nonneg (P m) n (fun s ↦ (hP m s).1)
-        have hX1 := (X n).expectApprox_le_one (P m) n (fun s ↦ (hP m s).2)
-        have hY0 := (Y n).expectApprox_nonneg (P m) n (fun s ↦ (hP m s).1)
-        have hY1 := (Y n).expectApprox_le_one (P m) n (fun s ↦ (hP m s).2)
+        have hX0 := (X n).expectApprox_nonneg (P m) (n + 1) (fun s ↦ (hP m s).1)
+        have hX1 := (X n).expectApprox_le_one (P m) (n + 1) (fun s ↦ (hP m s).2)
+        have hY0 := (Y n).expectApprox_nonneg (P m) (n + 1) (fun s ↦ (hP m s).1)
+        have hY1 := (Y n).expectApprox_le_one (P m) (n + 1) (fun s ↦ (hP m s).2)
         rw [abs_le]
         constructor <;> norm_num <;> linarith
       magnitude_le_one := by
@@ -3057,7 +3076,7 @@ noncomputable def futurePriceQuoteOfRepresentation
   let highGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
     (P m (φ (index m)) - (Y (index m)).expect P m)
   let crossYGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((Y (index m)).expectApprox (P m) (index m) -
+    ((Y (index m)).expectApprox (P m) (index m + 1) -
       (Y (index m)).expect P m)
   have hhigh0 : Tendsto highGap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, high, highGap, flagN, Y', H,
@@ -3098,8 +3117,8 @@ noncomputable def futurePriceQuoteOfRepresentation
           AffineCombination.add_price, AffineCombination.neg_price,
           AffineCombination.sentenceAffine_price, LUV.expectAffineSeq,
           LUV.expectAffine_priceAt]
-        have hY0 := (Y n).expectApprox_nonneg (P m) n (fun s ↦ (hP m s).1)
-        have hY1 := (Y n).expectApprox_le_one (P m) n (fun s ↦ (hP m s).2)
+        have hY0 := (Y n).expectApprox_nonneg (P m) (n + 1) (fun s ↦ (hP m s).1)
+        have hY1 := (Y n).expectApprox_le_one (P m) (n + 1) (fun s ↦ (hP m s).2)
         rw [abs_le]
         constructor <;> norm_num <;> linarith [(hP m (φ n)).1, (hP m (φ n)).2]
       magnitude_le_one := by
@@ -3201,10 +3220,10 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
   let highGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
     ((Z (index m)).expect P m - (Z' (index m)).expect P m)
   let crossZGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((Z (index m)).expectApprox (P m) (index m) -
+    ((Z (index m)).expectApprox (P m) (index m + 1) -
       (Z (index m)).expect P m)
   let crossZ'Gap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((Z' (index m)).expectApprox (P m) (index m) -
+    ((Z' (index m)).expectApprox (P m) (index m + 1) -
       (Z' (index m)).expect P m)
   have hhigh0 : Tendsto highGap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, high, highGap, flagN, Xr, Zr,
@@ -3242,10 +3261,10 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
         refine ⟨1, zero_le_one, fun n m ↦ ?_⟩
         simp only [family, raw, AffineCombination.scale_price, EF.denote_const,
           LUV.expectDifferenceAffine_priceAt]
-        have hZ0 := (Z n).expectApprox_nonneg (P m) n (fun s ↦ (hP m s).1)
-        have hZ1 := (Z n).expectApprox_le_one (P m) n (fun s ↦ (hP m s).2)
-        have hZ'0 := (Z' n).expectApprox_nonneg (P m) n (fun s ↦ (hP m s).1)
-        have hZ'1 := (Z' n).expectApprox_le_one (P m) n (fun s ↦ (hP m s).2)
+        have hZ0 := (Z n).expectApprox_nonneg (P m) (n + 1) (fun s ↦ (hP m s).1)
+        have hZ1 := (Z n).expectApprox_le_one (P m) (n + 1) (fun s ↦ (hP m s).2)
+        have hZ'0 := (Z' n).expectApprox_nonneg (P m) (n + 1) (fun s ↦ (hP m s).1)
+        have hZ'1 := (Z' n).expectApprox_le_one (P m) (n + 1) (fun s ↦ (hP m s).2)
         rw [abs_le]
         constructor <;> norm_num <;> linarith
       magnitude_le_one := by
@@ -3387,10 +3406,10 @@ noncomputable def selfTrustQuoteOfRepresentation
         (B (index m)).expect P m -
       (G m).denote P * (P m (φ (index m)) - (p (index m) : ℝ)))
   let crossAGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((A (index m)).expectApprox (P m) (index m) -
+    ((A (index m)).expectApprox (P m) (index m + 1) -
       (A (index m)).expect P m)
   let crossBGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((B (index m)).expectApprox (P m) (index m) -
+    ((B (index m)).expectApprox (P m) (index m + 1) -
       (B (index m)).expect P m)
   have hhigh0 : Tendsto highGap atTop (𝓝 0) := by
     simpa only [AsympEq, _root_.sub_zero, high, highGap, flagN, Ar, Br,
@@ -3465,10 +3484,10 @@ noncomputable def selfTrustQuoteOfRepresentation
           LUV.expectAffineSeq, LUV.expectAffine_priceAt, EF.denote_mul,
           EF.denote_const, hp.denote, Pi.mul_apply]
         push_cast
-        have hA0 := (A n).expectApprox_nonneg (P m) n (fun s ↦ (hP m s).1)
-        have hA1 := (A n).expectApprox_le_one (P m) n (fun s ↦ (hP m s).2)
-        have hB0 := (B n).expectApprox_nonneg (P m) n (fun s ↦ (hP m s).1)
-        have hB1 := (B n).expectApprox_le_one (P m) n (fun s ↦ (hP m s).2)
+        have hA0 := (A n).expectApprox_nonneg (P m) (n + 1) (fun s ↦ (hP m s).1)
+        have hA1 := (A n).expectApprox_le_one (P m) (n + 1) (fun s ↦ (hP m s).2)
+        have hB0 := (B n).expectApprox_nonneg (P m) (n + 1) (fun s ↦ (hP m s).1)
+        have hB1 := (B n).expectApprox_le_one (P m) (n + 1) (fun s ↦ (hP m s).2)
         have hp0 : (0 : ℝ) ≤ p n := by exact_mod_cast (probability_mem n).1
         have hp1 : (p n : ℝ) ≤ 1 := by exact_mod_cast (probability_mem n).2
         rw [abs_le]
@@ -3480,13 +3499,13 @@ noncomputable def selfTrustQuoteOfRepresentation
           LUV.expectAffineSeq, EF.denote_const, EF.denote_mul,
           hp.denote, Pi.mul_apply, Rat.cast_neg, Rat.cast_one, neg_mul,
           one_mul, abs_neg]
-        have hAm := (A n).expectAffine_magnitude_le_one P n
-        have hBm := (B n).expectAffine_magnitude_le_one P n
+        have hAm := (A n).expectAffine_magnitude_le_one P (n + 1)
+        have hBm := (B n).expectAffine_magnitude_le_one P (n + 1)
         have hpabs : |(p n : ℝ)| ≤ 1 := by
           rw [abs_of_nonneg (by exact_mod_cast (probability_mem n).1)]
           exact_mod_cast (probability_mem n).2
-        have hpB : |(p n : ℝ)| * ((B n).expectAffine n).magnitude P ≤ 1 := by
-          exact (mul_le_mul hpabs hBm (((B n).expectAffine n).magnitude_nonneg P)
+        have hpB : |(p n : ℝ)| * ((B n).expectAffine (n + 1)).magnitude P ≤ 1 := by
+          exact (mul_le_mul hpabs hBm (((B n).expectAffine (n + 1)).magnitude_nonneg P)
             (by norm_num)).trans_eq (one_mul 1)
         norm_num
         linarith

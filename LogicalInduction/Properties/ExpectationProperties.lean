@@ -84,9 +84,10 @@ noncomputable def expectAt (A : LUVCombination) (P : History) (k m : ℕ) : ℝ 
   A.const.denote P +
     (A.terms.map (fun p => p.1.denote P * p.2.expectApprox (P m) k)).sum
 
-/-- The paper's diagonal expectation of a LUV combination. -/
+/-- The paper's diagonal expectation of a LUV combination: day `n` prices, at the grid
+`n + 1` the day-index convention attaches to Lean day `n` (`def:e`). -/
 noncomputable def expect (A : LUVCombination) (P : History) (n : ℕ) : ℝ :=
-  A.expectAt P n n
+  A.expectAt P (n + 1) n
 
 /-- Evaluate the combination under an arbitrary LUV valuation. -/
 noncomputable def value (A : LUVCombination) (P : History) (ν : LUV → ℝ) : ℝ :=
@@ -245,7 +246,7 @@ lemma meshNormScale_mul_le_one (b : ℚ) :
 /-- The normalized diagonal threshold mesh. -/
 def normalizedMesh (As : ℕ → LUVCombination) (b : ℚ) (n : ℕ) :
     AffineCombination :=
-  ((As n).meshAffine n).scale (.const (meshNormScale b))
+  ((As n).meshAffine (n + 1)).scale (.const (meshNormScale b))
 
 private lemma meshBlock_price
     (α : EF) (X : LUV) (P : History) (k m : ℕ) :
@@ -281,7 +282,7 @@ lemma meshAffine_price (A : LUVCombination) (P : History) (k m : ℕ) :
 
 @[simp] theorem meshAffine_price_diagonal
     (A : LUVCombination) (P : History) (n : ℕ) :
-    (A.meshAffine n).price P n = A.expect P n := by
+    (A.meshAffine (n + 1)).price P n = A.expect P n := by
   rw [meshAffine_price]
   rfl
 
@@ -304,14 +305,14 @@ lemma meshAffine_value (A : LUVCombination) (P : History)
 noncomputable def meshTheoryTruth (As : ℕ → LUVCombination) (P : History)
     (DP : DeductiveProcess)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (n : ℕ) : ℝ :=
-  ((As n).meshAffine n).value P (theoryWorld DP hworld).payout
+  ((As n).meshAffine (n + 1)).value P (theoryWorld DP hworld).payout
 
 lemma ExactTheoryPresentation.meshAffine_value_eq
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     (h : ExactTheoryPresentation As DP)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (n : ℕ) (v : PCWorld) (hv : v.ConsistentWithTheory DP) :
-    ((As n).meshAffine n).value P v.payout = meshTheoryTruth As P DP hworld n := by
+    ((As n).meshAffine (n + 1)).value P v.payout = meshTheoryTruth As P DP hworld n := by
   rw [meshAffine_value]
   rw [meshTheoryTruth, meshAffine_value]
   unfold LUVCombination.value
@@ -319,10 +320,10 @@ lemma ExactTheoryPresentation.meshAffine_value_eq
   apply congrArg List.sum
   apply List.map_congr_left
   intro p hp
-  change p.1.denote P * p.2.expectApprox v.payout n =
-    p.1.denote P * p.2.expectApprox (theoryWorld DP hworld).payout n
+  show p.1.denote P * p.2.expectApprox v.payout (n + 1) =
+    p.1.denote P * p.2.expectApprox (theoryWorld DP hworld).payout (n + 1)
   rw [h.expectApprox_eq v (theoryWorld DP hworld) hv
-    (theoryWorld_consistent DP hworld) hp n]
+    (theoryWorld_consistent DP hworld) hp (n + 1)]
 
 private lemma meshValue_near_list
     (l : List (EF × LUV)) (P : History) (v : PCWorld) (ν : LUV → ℝ)
@@ -751,10 +752,11 @@ lemma softmaxAffine_price_ge_threshold_sub_pad_of_detected
   rw [hmass] at hlower
   simpa using hlower
 
-/-- All cross-precision gaps considered by the day-`m` softmax (`n = 1, …, m`). -/
+/-- All cross-precision gaps considered by the day-`m` softmax (`n = 1, …, m`): day `n`'s
+own grid `n + 1` against day `m`'s grid `m + 1`. -/
 def meshGaps (As : ℕ → LUVCombination) (m : ℕ) (b : ℚ) :
     List AffineCombination :=
-  (List.range m).map (fun i => (As (i + 1)).meshGap (i + 1) m b)
+  (List.range m).map (fun i => (As (i + 1)).meshGap (i + 2) (m + 1) b)
 
 /-- The actual Appendix softmax sequence for the upper half of `lem:mesh`. -/
 def meshSoftmax (As : ℕ → LUVCombination) (b ε : ℚ) (m : ℕ) :
@@ -763,7 +765,7 @@ def meshSoftmax (As : ℕ → LUVCombination) (b ε : ℚ) (m : ℕ) :
 
 def meshGapsLower (As : ℕ → LUVCombination) (m : ℕ) (b : ℚ) :
     List AffineCombination :=
-  (List.range m).map (fun i => (As (i + 1)).meshGapLower (i + 1) m b)
+  (List.range m).map (fun i => (As (i + 1)).meshGapLower (i + 2) (m + 1) b)
 
 /-- Reverse-gap softmax for the lower half of `lem:mesh`. -/
 def meshSoftmaxLower (As : ℕ → LUVCombination) (b ε : ℚ) (m : ℕ) :
@@ -789,16 +791,17 @@ lemma meshSoftmax_detects_upper_gap
     {As : ℕ → LUVCombination} {P : History} {b ε : ℚ}
     (hε : 0 < (ε : ℝ)) {m n : ℕ} (hn : 0 < n) (hnm : n ≤ m)
     (hgap : (ε : ℝ) <
-      (As n).expectAt P n m - (As n).expectAt P m m - 2 * (b : ℝ) / n) :
+      (As n).expectAt P (n + 1) m - (As n).expectAt P (m + 1) m -
+        2 * (b : ℝ) / ((n : ℝ) + 1)) :
     (ε : ℝ) / 4 ≤ (meshSoftmax As b ε m).price P m := by
   have hdet : ∃ A ∈ meshGaps As m b,
       (((ε / 2 : ℚ) : ℝ)) < A.price P m := by
     let i := n - 1
     have hi : i < m := by dsimp [i]; omega
     have hin : i + 1 = n := by dsimp [i]; omega
-    refine ⟨(As n).meshGap n m b, ?_, ?_⟩
+    refine ⟨(As n).meshGap (n + 1) (m + 1) b, ?_, ?_⟩
     · simp only [meshGaps, List.mem_map, List.mem_range]
-      exact ⟨i, hi, by rw [hin]⟩
+      exact ⟨i, hi, by rw [show i + 2 = n + 1 by omega, hin]⟩
     · rw [meshGap_price]
       push_cast
       linarith
@@ -829,16 +832,17 @@ lemma meshSoftmaxLower_detects_gap
     {As : ℕ → LUVCombination} {P : History} {b ε : ℚ}
     (hε : 0 < (ε : ℝ)) {m n : ℕ} (hn : 0 < n) (hnm : n ≤ m)
     (hgap : (ε : ℝ) <
-      (As n).expectAt P m m - (As n).expectAt P n m - 2 * (b : ℝ) / n) :
+      (As n).expectAt P (m + 1) m - (As n).expectAt P (n + 1) m -
+        2 * (b : ℝ) / ((n : ℝ) + 1)) :
     (ε : ℝ) / 4 ≤ (meshSoftmaxLower As b ε m).price P m := by
   have hdet : ∃ A ∈ meshGapsLower As m b,
       (((ε / 2 : ℚ) : ℝ)) < A.price P m := by
     let i := n - 1
     have hi : i < m := by dsimp [i]; omega
     have hin : i + 1 = n := by dsimp [i]; omega
-    refine ⟨(As n).meshGapLower n m b, ?_, ?_⟩
+    refine ⟨(As n).meshGapLower (n + 1) (m + 1) b, ?_, ?_⟩
     · simp only [meshGapsLower, List.mem_map, List.mem_range]
-      exact ⟨i, hi, by rw [hin]⟩
+      exact ⟨i, hi, by rw [show i + 2 = n + 1 by omega, hin]⟩
     · rw [meshGapLower_price]
       push_cast
       linarith
@@ -880,8 +884,8 @@ theorem mesh_upper_eventually
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∀ᶠ m in atTop, ∀ n, 0 < n → n ≤ m →
-      (As n).expectAt P n m - (As n).expectAt P m m ≤
-        2 * (b : ℝ) / n + (ε : ℝ) := by
+      (As n).expectAt P (n + 1) m - (As n).expectAt P (m + 1) m ≤
+        2 * (b : ℝ) / ((n : ℝ) + 1) + (ε : ℝ) := by
   have hlearn := (ops.poly b ε).affine_provind_theory_le P DP
     (ops.bounded b ε) (ops.magnitude b ε) hworld 0
     (fun m v hv => meshSoftmax_value_nonpos hvalued hshare m v hv)
@@ -890,7 +894,8 @@ theorem mesh_upper_eventually
   intro n hn hnm
   by_contra hnot
   have hgap : (ε : ℝ) <
-      (As n).expectAt P n m - (As n).expectAt P m m - 2 * (b : ℝ) / n := by
+      (As n).expectAt P (n + 1) m - (As n).expectAt P (m + 1) m -
+        2 * (b : ℝ) / ((n : ℝ) + 1) := by
     push_neg at hnot
     linarith
   have hdetect := meshSoftmax_detects_upper_gap hε hn hnm hgap
@@ -905,8 +910,8 @@ lemma mesh_lower_eventually
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∀ᶠ m in atTop, ∀ n, 0 < n → n ≤ m →
-      (As n).expectAt P m m - (As n).expectAt P n m ≤
-        2 * (b : ℝ) / n + (ε : ℝ) := by
+      (As n).expectAt P (m + 1) m - (As n).expectAt P (n + 1) m ≤
+        2 * (b : ℝ) / ((n : ℝ) + 1) + (ε : ℝ) := by
   have hlearn := (ops.lower_poly b ε).affine_provind_theory_le P DP
     (ops.lower_bounded b ε) (ops.lower_magnitude b ε) hworld 0
     (fun m v hv => meshSoftmaxLower_value_nonpos hvalued hshare m v hv)
@@ -915,7 +920,8 @@ lemma mesh_lower_eventually
   intro n hn hnm
   by_contra hnot
   have hgap : (ε : ℝ) <
-      (As n).expectAt P m m - (As n).expectAt P n m - 2 * (b : ℝ) / n := by
+      (As n).expectAt P (m + 1) m - (As n).expectAt P (n + 1) m -
+        2 * (b : ℝ) / ((n : ℝ) + 1) := by
     push_neg at hnot
     linarith
   have hdetect := meshSoftmaxLower_detects_gap hε hn hnm hgap
@@ -931,8 +937,8 @@ theorem mesh_close_eventually
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∀ᶠ m in atTop, ∀ n, 0 < n → n ≤ m →
-      |(As n).expectAt P n m - (As n).expectAt P m m| ≤
-        2 * (b : ℝ) / n + (ε : ℝ) := by
+      |(As n).expectAt P (n + 1) m - (As n).expectAt P (m + 1) m| ≤
+        2 * (b : ℝ) / ((n : ℝ) + 1) + (ε : ℝ) := by
   filter_upwards [mesh_upper_eventually ops hvalued b ε hε hshare hworld,
     mesh_lower_eventually ops hvalued b ε hε hshare hworld] with m hu hl
   intro n hn hnm
@@ -946,7 +952,7 @@ the exact compiled threshold mesh consumed by the affine theorems; it contains n
 world-value, convergence, or learning conclusion.
 Paper node: `def:ec`, `def:luv` -/
 structure PolySequence (As : ℕ → LUVCombination) where
-  mesh_poly : AffineCombination.PolySequence (fun n => (As n).meshAffine n)
+  mesh_poly : AffineCombination.PolySequence (fun n => (As n).meshAffine (n + 1))
 
 /-- `def:blcp`: a polynomially generated LUV-combination sequence with one uniform full
 coefficient `L¹` bound.
@@ -1099,28 +1105,35 @@ lemma abs_meshGapLower_price_le (A : LUVCombination) (P : History)
         abs_sub (A.expectAt P m day - A.expectAt P n day) (2 * (b : ℝ) / n)]
     _ ≤ 2 * B + 2 * |(b : ℝ)| := by linarith
 
+/-- `c / (n + 1) → 0`: the day-index-shifted form of `tendsto_const_div_atTop_nhds_zero_nat`,
+used wherever a grid error `1/(n+1)` is squeezed to zero. -/
+lemma tendsto_const_div_succ_atTop_nhds_zero (c : ℝ) :
+    Tendsto (fun n : ℕ => c / ((n : ℝ) + 1)) atTop (𝓝 0) := by
+  have h := (tendsto_const_div_atTop_nhds_zero_nat c).comp (Filter.tendsto_add_atTop_nat 1)
+  simpa [Function.comp_def] using h
+
 /-- Tail supremum appearing literally in Appendix `lem:mesh`. -/
 noncomputable def meshTailError (As : ℕ → LUVCombination)
     (P : History) (n : ℕ) : ℝ :=
   sSup (Set.range (fun j =>
-    |(As n).expectAt P n (n + j) - (As n).expectAt P (n + j) (n + j)|))
+    |(As n).expectAt P (n + 1) (n + j) - (As n).expectAt P (n + j + 1) (n + j)|))
 
 lemma BoundedSequence.meshTailError_bddAbove
     {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P)
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) (n : ℕ) :
     BddAbove (Set.range (fun j =>
-      |(As n).expectAt P n (n + j) - (As n).expectAt P (n + j) (n + j)|)) := by
+      |(As n).expectAt P (n + 1) (n + j) - (As n).expectAt P (n + j + 1) (n + j)|)) := by
   obtain ⟨B, hB⟩ := h.bounded
   have hB0 : 0 ≤ B := (As 0).l1Norm_nonneg P |>.trans (hB 0)
   refine ⟨2 * B, ?_⟩
   rintro x ⟨j, rfl⟩
-  have hcoarse := (As n).abs_expectAt_le_l1Norm P n (n + j) (hP (n + j))
-  have hfine := (As n).abs_expectAt_le_l1Norm P (n + j) (n + j) (hP (n + j))
+  have hcoarse := (As n).abs_expectAt_le_l1Norm P (n + 1) (n + j) (hP (n + j))
+  have hfine := (As n).abs_expectAt_le_l1Norm P (n + j + 1) (n + j) (hP (n + j))
   calc
-    |(As n).expectAt P n (n + j) - (As n).expectAt P (n + j) (n + j)|
-        ≤ |(As n).expectAt P n (n + j)| +
-          |(As n).expectAt P (n + j) (n + j)| := abs_sub _ _
+    |(As n).expectAt P (n + 1) (n + j) - (As n).expectAt P (n + j + 1) (n + j)|
+        ≤ |(As n).expectAt P (n + 1) (n + j)| +
+          |(As n).expectAt P (n + j + 1) (n + j)| := abs_sub _ _
     _ ≤ B + B := add_le_add (hcoarse.trans (hB n)) (hfine.trans (hB n))
     _ = 2 * B := by ring
 
@@ -1136,7 +1149,7 @@ lemma meshTailError_le
     {As : ℕ → LUVCombination} {P : History}
     {n : ℕ} {δ : ℝ}
     (hδ : ∀ m, n ≤ m →
-      |(As n).expectAt P n m - (As n).expectAt P m m| ≤ δ) :
+      |(As n).expectAt P (n + 1) m - (As n).expectAt P (m + 1) m| ≤ δ) :
     meshTailError As P n ≤ δ := by
   apply csSup_le (Set.range_nonempty _)
   rintro x ⟨j, rfl⟩
@@ -1298,46 +1311,46 @@ lemma BoundedSequence.futureHigh_mesh_near
     {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P)
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) (n : ℕ) :
-    |affineFutureHigh (fun i => (As i).meshAffine i) P n - futureHigh As P n| ≤
+    |affineFutureHigh (fun i => (As i).meshAffine (i + 1)) P n - futureHigh As P n| ≤
       meshTailError As P n := by
   obtain ⟨B, hB⟩ := h.bounded
-  have hcoarse : BddAbove (Set.range (fun j => (As n).expectAt P n (n + j))) := by
+  have hcoarse : BddAbove (Set.range (fun j => (As n).expectAt P (n + 1) (n + j))) := by
     refine ⟨B, ?_⟩
     rintro x ⟨j, rfl⟩
     exact (le_abs_self _).trans
-      ((As n).abs_expectAt_le_l1Norm P n (n + j) (hP (n + j)) |>.trans (hB n))
-  have hfine : BddAbove (Set.range (fun j => (As n).expectAt P (n + j) (n + j))) := by
+      ((As n).abs_expectAt_le_l1Norm P (n + 1) (n + j) (hP (n + j)) |>.trans (hB n))
+  have hfine : BddAbove (Set.range (fun j => (As n).expectAt P (n + j + 1) (n + j))) := by
     refine ⟨B, ?_⟩
     rintro x ⟨j, rfl⟩
     exact (le_abs_self _).trans
-      ((As n).abs_expectAt_le_l1Norm P (n + j) (n + j) (hP (n + j)) |>.trans (hB n))
-  simpa only [affineFutureHigh, meshAffine_price, futureHigh, meshTailError] using
+      ((As n).abs_expectAt_le_l1Norm P (n + j + 1) (n + j) (hP (n + j)) |>.trans (hB n))
+  simpa only [affineFutureHigh, meshAffine_price, futureHigh, meshTailError, expect] using
     abs_sSup_range_sub_sSup_range_le
-      (fun j => (As n).expectAt P n (n + j))
-      (fun j => (As n).expectAt P (n + j) (n + j)) hcoarse hfine
+      (fun j => (As n).expectAt P (n + 1) (n + j))
+      (fun j => (As n).expectAt P (n + j + 1) (n + j)) hcoarse hfine
       (h.meshTailError_bddAbove hP n)
 
 lemma BoundedSequence.futureLow_mesh_near
     {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P)
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) (n : ℕ) :
-    |affineFutureLow (fun i => (As i).meshAffine i) P n - futureLow As P n| ≤
+    |affineFutureLow (fun i => (As i).meshAffine (i + 1)) P n - futureLow As P n| ≤
       meshTailError As P n := by
   obtain ⟨B, hB⟩ := h.bounded
-  have hcoarse : BddBelow (Set.range (fun j => (As n).expectAt P n (n + j))) := by
+  have hcoarse : BddBelow (Set.range (fun j => (As n).expectAt P (n + 1) (n + j))) := by
     refine ⟨-B, ?_⟩
     rintro x ⟨j, rfl⟩
-    exact (neg_le_neg ((As n).abs_expectAt_le_l1Norm P n (n + j)
+    exact (neg_le_neg ((As n).abs_expectAt_le_l1Norm P (n + 1) (n + j)
       (hP (n + j)) |>.trans (hB n))).trans (neg_abs_le _)
-  have hfine : BddBelow (Set.range (fun j => (As n).expectAt P (n + j) (n + j))) := by
+  have hfine : BddBelow (Set.range (fun j => (As n).expectAt P (n + j + 1) (n + j))) := by
     refine ⟨-B, ?_⟩
     rintro x ⟨j, rfl⟩
-    exact (neg_le_neg ((As n).abs_expectAt_le_l1Norm P (n + j) (n + j)
+    exact (neg_le_neg ((As n).abs_expectAt_le_l1Norm P (n + j + 1) (n + j)
       (hP (n + j)) |>.trans (hB n))).trans (neg_abs_le _)
-  simpa only [affineFutureLow, meshAffine_price, futureLow, meshTailError] using
+  simpa only [affineFutureLow, meshAffine_price, futureLow, meshTailError, expect] using
     abs_sInf_range_sub_sInf_range_le
-      (fun j => (As n).expectAt P n (n + j))
-      (fun j => (As n).expectAt P (n + j) (n + j)) hcoarse hfine
+      (fun j => (As n).expectAt P (n + 1) (n + j))
+      (fun j => (As n).expectAt P (n + j + 1) (n + j)) hcoarse hfine
       (h.meshTailError_bddAbove hP n)
 
 /-- A BLCS uniformly bounds both future expectation extrema, supplying the finite
@@ -1352,7 +1365,7 @@ lemma BoundedSequence.futureExtrema_filterBounds
     IsBoundedUnder (· ≤ ·) atTop (futureLow As P) := by
   obtain ⟨B, hB⟩ := h.bounded
   have habs : ∀ n m, |(As n).expect P m| ≤ B := fun n m =>
-    ((As n).abs_expectAt_le_l1Norm P m m (hP m)).trans (hB n)
+    ((As n).abs_expectAt_le_l1Norm P (m + 1) m (hP m)).trans (hB n)
   have hhighLo : ∀ n, -B ≤ futureHigh As P n := fun n => by
     have hdiagLo : -B ≤ (As n).expect P n := by
       linarith [neg_le_abs ((As n).expect P n), habs n n]
@@ -1407,7 +1420,10 @@ theorem BoundedSequence.mesh_independence
   have hNn : 4 * (b : ℝ) / δ < (n : ℝ) :=
     hN.trans_le (by exact_mod_cast (le_trans (le_max_left N M)
       (le_trans (le_max_right 1 (max N M)) hn)))
-  have hsmall : 2 * (b : ℝ) / n < δ / 2 := by
+  have hsmall : 2 * (b : ℝ) / ((n : ℝ) + 1) < δ / 2 := by
+    have hmono : 2 * (b : ℝ) / ((n : ℝ) + 1) ≤ 2 * (b : ℝ) / n :=
+      div_le_div_of_nonneg_left (by linarith) hnR (by linarith)
+    refine hmono.trans_lt ?_
     by_cases hb0 : (b : ℝ) = 0
     · rw [hb0]
       simp [hδ]
@@ -1419,10 +1435,16 @@ theorem BoundedSequence.mesh_independence
   have hnM : M ≤ n :=
     (le_max_right N M).trans (le_max_right 1 (max N M) |>.trans hn)
   have hpair : ∀ m, n ≤ m →
-      |(As n).expectAt P n m - (As n).expectAt P m m| ≤
-        2 * (b : ℝ) / n + (ε : ℝ) := by
+      |(As n).expectAt P (n + 1) m - (As n).expectAt P (m + 1) m| ≤
+        2 * (b : ℝ) / ((n : ℝ) + 1) + (ε : ℝ) := by
     intro m hnm
-    exact hM m (hnM.trans hnm) n hn0 hnm
+    rcases Nat.lt_or_ge n m with hlt | hge
+    · exact hM m (hnM.trans hnm) n hn0 hnm
+    · have hmn : m = n := le_antisymm hge hnm
+      subst hmn
+      have hb' : 0 ≤ 2 * (b : ℝ) / ((m : ℝ) + 1) := by positivity
+      simp only [sub_self, abs_zero]
+      linarith
   have hsup := meshTailError_le hpair
   have hnonneg := h.meshTailError_nonneg hP n
   rw [Real.dist_eq, sub_zero, abs_of_nonneg hnonneg]
@@ -1454,23 +1476,23 @@ lemma meshAffine_rank
 def BoundedSequence.affineBCS {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P) :
     AffineCombination.BoundedCombinationSequence
-      (fun n => (As n).meshAffine n) P where
+      (fun n => (As n).meshAffine (n + 1)) P where
   poly := h.poly.mesh_poly
   bounded := by
     obtain ⟨B, hB⟩ := h.bounded
-    exact ⟨B, fun n => ((As n).meshAffine_l1Norm_le P n).trans (hB n)⟩
+    exact ⟨B, fun n => ((As n).meshAffine_l1Norm_le P (n + 1)).trans (hB n)⟩
 
 lemma BoundedSequence.mesh_magnitudeBounded
     {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P) :
-    ∃ B : ℝ, ∀ n, ((As n).meshAffine n).magnitude P ≤ B :=
+    ∃ B : ℝ, ∀ n, ((As n).meshAffine (n + 1)).magnitude P ≤ B :=
   h.affineBCS.magnitudeBounded
 
 lemma BoundedSequence.mesh_boundedPrices
     {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P)
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) :
-    BoundedAffinePrices (fun n => (As n).meshAffine n) P :=
+    BoundedAffinePrices (fun n => (As n).meshAffine (n + 1)) P :=
   h.affineBCS.boundedPrices hP
 
 noncomputable def BoundedSequence.normalizedMesh_poly
@@ -1496,7 +1518,7 @@ lemma normalizedMesh_magnitude_le_one
   rw [normalizedMesh, AffineCombination.scale_magnitude, EF.denote_const,
     abs_of_nonneg hq0]
   exact (mul_le_mul_of_nonneg_left
-    ((As n).meshAffine_magnitude_le_shareNorm P n) hq0).trans
+    ((As n).meshAffine_magnitude_le_shareNorm P (n + 1)) hq0).trans
     ((mul_le_mul_of_nonneg_left (hshare n) hq0).trans
       (meshNormScale_mul_le_one b))
 
@@ -1576,17 +1598,17 @@ theorem BoundedSequence.mesh_limitingValue_near_expectInf
     (h : BoundedSequence As P)
     (hc : ConvergencePresentation As DP)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (n : ℕ) :
-    |((As n).meshAffine n).value P (limitingBelief P) - (As n).expectInf P| ≤
+    |((As n).meshAffine (n + 1)).value P (limitingBelief P) - (As n).expectInf P| ≤
       meshTailError As P n := by
   have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
     fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
-  have hmeshLim := ((As n).meshAffine n).price_tendsto_limitingValue P DP hworld
+  have hmeshLim := ((As n).meshAffine (n + 1)).price_tendsto_limitingValue P DP hworld
   have hexpectLim := hc.expect_tendsto_expectInf (P := P) hworld n
   have hdiffLim := (hmeshLim.sub hexpectLim).abs
   apply le_of_tendsto hdiffLim
   apply eventually_atTop.2
   refine ⟨n, fun m hnm => ?_⟩
-  have hrange : |(As n).expectAt P n m - (As n).expectAt P m m| ≤
+  have hrange : |(As n).expectAt P (n + 1) m - (As n).expectAt P (m + 1) m| ≤
       meshTailError As P n := by
     apply le_csSup (h.meshTailError_bddAbove hP n)
     refine ⟨m - n, ?_⟩
@@ -1606,7 +1628,7 @@ theorem BoundedSequence.limexpapprox
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     Tendsto (fun n =>
-      |((As n).meshAffine n).value P (limitingBelief P) - (As n).expectInf P|)
+      |((As n).meshAffine (n + 1)).value P (limitingBelief P) - (As n).expectInf P|)
       atTop (𝓝 0) := by
   have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
     fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
@@ -1628,7 +1650,7 @@ lemma ExactTheoryPresentation.mesh_determined
     (h : ExactTheoryPresentation As DP)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     AffineCombination.DeterminedViaTheory
-      (fun n => (As n).meshAffine n) P DP (meshTheoryTruth As P DP hworld) := by
+      (fun n => (As n).meshAffine (n + 1)) P DP (meshTheoryTruth As P DP hworld) := by
   intro n v hv
   exact h.meshAffine_value_eq hworld n v hv
 
@@ -1662,7 +1684,7 @@ that — and trivially to within the mesh's own coefficient sum.  That is exactl
 noncomputable def meshErrorBound (As : ℕ → LUVCombination) (P : History) (b : ℚ)
     (n : ℕ) : ℝ :=
   min ((normalizedMesh As b n).magnitude P)
-    (2 * ((meshNormScale b : ℚ) : ℝ) * (As n).shareNorm P / n)
+    (2 * ((meshNormScale b : ℚ) : ℝ) * (As n).shareNorm P / ((n : ℝ) + 1))
 
 private lemma meshAffine_zero_terms (A : LUVCombination) :
     (A.meshAffine 0).terms = [] := by
@@ -1686,23 +1708,22 @@ lemma normalizedMesh_errorNegligible (As : ℕ → LUVCombination) (P : History)
     have := (As n).shareNorm_nonneg P
     positivity
   · obtain ⟨N, hN⟩ := exists_nat_gt (2 / c)
-    refine ⟨max 1 N, fun i hi => ?_⟩
-    have hi1 : 0 < i := lt_of_lt_of_le Nat.zero_lt_one (le_trans (le_max_left 1 N) hi)
-    have hiR : (0 : ℝ) < i := by exact_mod_cast hi1
+    refine ⟨N, fun i hi => ?_⟩
+    have hiR : (0 : ℝ) < (i : ℝ) + 1 := by positivity
     have hmagEq : (normalizedMesh As b i).magnitude P =
         ((meshNormScale b : ℚ) : ℝ) * (As i).shareNorm P := by
       rw [normalizedMesh, AffineCombination.scale_magnitude, EF.denote_const,
-        abs_of_pos (meshNormScale_pos b), (As i).meshAffine_magnitude_eq_shareNorm P hi1]
+        abs_of_pos (meshNormScale_pos b),
+        (As i).meshAffine_magnitude_eq_shareNorm P i.succ_pos]
     have hmag0 : 0 ≤ (normalizedMesh As b i).magnitude P :=
       (normalizedMesh As b i).magnitude_nonneg P
-    have hci : 2 / (i : ℝ) ≤ c := by
-      have hNi : ((N : ℕ) : ℝ) ≤ i := by
-        exact_mod_cast le_trans (le_max_right 1 N) hi
+    have hci : 2 / ((i : ℝ) + 1) ≤ c := by
+      have hNi : ((N : ℕ) : ℝ) ≤ i := by exact_mod_cast hi
       rw [div_le_iff₀ hiR]
       nlinarith [(div_lt_iff₀ hc).1 hN]
     refine le_trans (min_le_right _ _) ?_
-    have hrewrite : 2 * ((meshNormScale b : ℚ) : ℝ) * (As i).shareNorm P / i =
-        (2 / (i : ℝ)) * (normalizedMesh As b i).magnitude P := by
+    have hrewrite : 2 * ((meshNormScale b : ℚ) : ℝ) * (As i).shareNorm P / ((i : ℝ) + 1) =
+        (2 / ((i : ℝ) + 1)) * (normalizedMesh As b i).magnitude P := by
       rw [hmagEq]
       field_simp
     rw [hrewrite]
@@ -1734,42 +1755,36 @@ lemma WorldValued.normalizedMesh_approxDetermined
       (payout_eq_zero_or_one v) (payout_eq_zero_or_one tw)
   rw [meshErrorBound, le_min_iff]
   refine ⟨hmagb, ?_⟩
-  rcases Nat.eq_zero_or_pos n with hn0 | hn
-  · subst hn0
-    have hz : (normalizedMesh As b 0).magnitude P = 0 := by
-      simp [normalizedMesh, AffineCombination.magnitude, AffineCombination.scale,
-        meshAffine_zero_terms]
-    refine hmagb.trans ?_
-    rw [hz]
-    simp
-  · obtain ⟨νv, hνv⟩ := h n v hv
-    obtain ⟨νw, hνw⟩ := h n tw htw
-    have h1 := (As n).meshAffine_value_near P v νv hn hνv
-    have h2 := (As n).meshAffine_value_near P tw νw hn hνw
-    rw [hdet n v νv hv hνv] at h1
-    rw [hdet n tw νw htw hνw] at h2
-    have hsum : |((As n).meshAffine n).value P v.payout -
-        ((As n).meshAffine n).value P tw.payout| ≤
-        2 * ((As n).shareNorm P * (1 / (n : ℝ))) := by
-      have htri := abs_add_le
-        (((As n).meshAffine n).value P v.payout - truth n)
-        (truth n - ((As n).meshAffine n).value P tw.payout)
-      have hrw : (((As n).meshAffine n).value P v.payout - truth n) +
-          (truth n - ((As n).meshAffine n).value P tw.payout) =
-          ((As n).meshAffine n).value P v.payout -
-            ((As n).meshAffine n).value P tw.payout := by ring
-      rw [hrw] at htri
-      rw [abs_sub_comm (truth n)] at htri
-      linarith
-    have hnR : (0 : ℝ) < n := by exact_mod_cast hn
-    rw [hdiff, normalizedMesh, AffineCombination.scale_value,
-      AffineCombination.scale_value, EF.denote_const, ← mul_sub, abs_mul,
-      abs_of_pos (meshNormScale_pos b)]
-    have hstep := mul_le_mul_of_nonneg_left hsum (meshNormScale_pos b).le
-    refine hstep.trans ?_
-    rw [le_div_iff₀ hnR]
-    field_simp
-    exact le_refl _
+  obtain ⟨νv, hνv⟩ := h n v hv
+  obtain ⟨νw, hνw⟩ := h n tw htw
+  have h1 : |((As n).meshAffine (n + 1)).value P v.payout - truth n| ≤
+      (As n).shareNorm P * (1 / ((n : ℝ) + 1)) := by
+    simpa [hdet n v νv hv hνv] using (As n).meshAffine_value_near (k := n + 1) P v νv n.succ_pos hνv
+  have h2 : |((As n).meshAffine (n + 1)).value P tw.payout - truth n| ≤
+      (As n).shareNorm P * (1 / ((n : ℝ) + 1)) := by
+    simpa [hdet n tw νw htw hνw] using (As n).meshAffine_value_near (k := n + 1) P tw νw n.succ_pos hνw
+  have hsum : |((As n).meshAffine (n + 1)).value P v.payout -
+      ((As n).meshAffine (n + 1)).value P tw.payout| ≤
+      2 * ((As n).shareNorm P * (1 / ((n : ℝ) + 1))) := by
+    have htri := abs_add_le
+      (((As n).meshAffine (n + 1)).value P v.payout - truth n)
+      (truth n - ((As n).meshAffine (n + 1)).value P tw.payout)
+    have hrw : (((As n).meshAffine (n + 1)).value P v.payout - truth n) +
+        (truth n - ((As n).meshAffine (n + 1)).value P tw.payout) =
+        ((As n).meshAffine (n + 1)).value P v.payout -
+          ((As n).meshAffine (n + 1)).value P tw.payout := by ring
+    rw [hrw] at htri
+    rw [abs_sub_comm (truth n)] at htri
+    linarith
+  have hnR : (0 : ℝ) < (n : ℝ) + 1 := by positivity
+  rw [hdiff, normalizedMesh, AffineCombination.scale_value,
+    AffineCombination.scale_value, EF.denote_const, ← mul_sub, abs_mul,
+    abs_of_pos (meshNormScale_pos b)]
+  have hstep := mul_le_mul_of_nonneg_left hsum (meshNormScale_pos b).le
+  refine hstep.trans ?_
+  rw [le_div_iff₀ hnR]
+  field_simp
+  exact le_refl _
 
 /-- The mesh's common completed-theory truth differs from the determined
 LUV-combination truth by at most `shareNorm / n`.
@@ -1783,15 +1798,15 @@ lemma WorldValued.meshTheoryTruth_near
     (h : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    {n : ℕ} (hn : 0 < n) :
+    (n : ℕ) :
     |meshTheoryTruth As P DP hworld n - truth n| ≤
-      (As n).shareNorm P * (1 / (n : ℝ)) := by
+      (As n).shareNorm P * (1 / ((n : ℝ) + 1)) := by
   let v := theoryWorld DP hworld
   have hv : v.ConsistentWithTheory DP := theoryWorld_consistent DP hworld
   obtain ⟨ν, hvals⟩ := h n v hv
-  have hnear := (As n).meshAffine_value_near P v ν hn hvals
+  have hnear := (As n).meshAffine_value_near (k := n + 1) P v ν n.succ_pos hvals
   have htruth := hdet n v ν hv hvals
-  simpa only [meshTheoryTruth, v, htruth] using hnear
+  simpa only [meshTheoryTruth, v, htruth, Nat.cast_add, Nat.cast_one] using hnear
 
 lemma WorldValued.meshTheoryTruth_sub_truth_tendsto
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
@@ -1803,12 +1818,10 @@ lemma WorldValued.meshTheoryTruth_sub_truth_tendsto
       atTop (𝓝 0) := by
   rw [tendsto_zero_iff_abs_tendsto_zero]
   apply squeeze_zero' (Eventually.of_forall fun n => abs_nonneg _)
-    (eventually_atTop.2 ⟨1, fun n hn => ?_⟩)
-    (tendsto_const_div_atTop_nhds_zero_nat (b : ℝ))
-  have hnear := h.meshTheoryTruth_near hdet hworld (Nat.zero_lt_of_lt hn)
-  exact hnear.trans (by
-    simpa only [div_eq_mul_inv, one_mul] using
-      mul_le_mul_of_nonneg_right (hshare n) (inv_nonneg.mpr (by positivity)))
+    (Eventually.of_forall fun n => ?_) (tendsto_const_div_succ_atTop_nhds_zero (b : ℝ))
+  refine (h.meshTheoryTruth_near hdet hworld n).trans ?_
+  rw [div_eq_mul_inv, one_mul]
+  exact mul_le_mul_of_nonneg_right (hshare n) (by positivity)
 
 /-- A Toeplitz-style transfer for the repository's inclusive weighted averages:
 nonnegative weights with divergent total mass send every null sequence to zero. -/
@@ -1908,48 +1921,48 @@ lemma hasLimitPoint_add_tendsto_zero
 
 lemma completedValues_to_mesh
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    {n : ℕ} (hn : 0 < n) {x : ℝ}
+    (n : ℕ) {x : ℝ}
     (hx : x ∈ completedValues DP (As n) P) :
-    ∃ y ∈ completedAffineValues DP ((As n).meshAffine n) P,
-      |y - x| ≤ (As n).shareNorm P * (1 / (n : ℝ)) := by
+    ∃ y ∈ completedAffineValues DP ((As n).meshAffine (n + 1)) P,
+      |y - x| ≤ (As n).shareNorm P * (1 / ((n : ℝ) + 1)) := by
   obtain ⟨v, ν, hv, hvals, rfl⟩ := hx
-  refine ⟨((As n).meshAffine n).value P v.payout, ⟨v, hv, rfl⟩, ?_⟩
-  exact (As n).meshAffine_value_near P v ν hn hvals
+  refine ⟨((As n).meshAffine (n + 1)).value P v.payout, ⟨v, hv, rfl⟩, ?_⟩
+  simpa using (As n).meshAffine_value_near (k := n + 1) P v ν n.succ_pos hvals
 
 lemma mesh_completedValue_to_exact
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    (hvalued : WorldValued As DP) {n : ℕ} (hn : 0 < n) {y : ℝ}
-    (hy : y ∈ completedAffineValues DP ((As n).meshAffine n) P) :
+    (hvalued : WorldValued As DP) (n : ℕ) {y : ℝ}
+    (hy : y ∈ completedAffineValues DP ((As n).meshAffine (n + 1)) P) :
     ∃ x ∈ completedValues DP (As n) P,
-      |y - x| ≤ (As n).shareNorm P * (1 / (n : ℝ)) := by
+      |y - x| ≤ (As n).shareNorm P * (1 / ((n : ℝ) + 1)) := by
   obtain ⟨v, hv, rfl⟩ := hy
   obtain ⟨ν, hvals⟩ := hvalued n v hv
   refine ⟨(As n).value P ν, ⟨v, ν, hv, hvals, rfl⟩, ?_⟩
-  exact (As n).meshAffine_value_near P v ν hn hvals
+  simpa using (As n).meshAffine_value_near (k := n + 1) P v ν n.succ_pos hvals
 
 /-- Completed-world extrema of the finite threshold mesh approximate the exact
-LUV-combination extrema within the same `shareNorm / n` bound. -/
+LUV-combination extrema within the same `shareNorm / (n+1)` bound. -/
 lemma BoundedSequence.completedExtrema_mesh_near
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     (h : BoundedSequence As P)
     (hvalued : WorldValued As DP)
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    {n : ℕ} (hn : 0 < n) :
-    |completedAffineLow (fun i => (As i).meshAffine i) P DP n -
-        completedLow As P DP n| ≤ (As n).shareNorm P * (1 / (n : ℝ)) ∧
-      |completedAffineHigh (fun i => (As i).meshAffine i) P DP n -
-        completedHigh As P DP n| ≤ (As n).shareNorm P * (1 / (n : ℝ)) := by
-  let S := completedAffineValues DP ((As n).meshAffine n) P
+    (n : ℕ) :
+    |completedAffineLow (fun i => (As i).meshAffine (i + 1)) P DP n -
+        completedLow As P DP n| ≤ (As n).shareNorm P * (1 / ((n : ℝ) + 1)) ∧
+      |completedAffineHigh (fun i => (As i).meshAffine (i + 1)) P DP n -
+        completedHigh As P DP n| ≤ (As n).shareNorm P * (1 / ((n : ℝ) + 1)) := by
+  let S := completedAffineValues DP ((As n).meshAffine (n + 1)) P
   let T := completedValues DP (As n) P
-  let E := (As n).shareNorm P * (1 / (n : ℝ))
-  have hS : S.Nonempty := completedAffineValues_nonempty DP ((As n).meshAffine n) P hworld
+  let E := (As n).shareNorm P * (1 / ((n : ℝ) + 1))
+  have hS : S.Nonempty := completedAffineValues_nonempty DP ((As n).meshAffine (n + 1)) P hworld
   have hST : ∀ y ∈ S, ∃ x ∈ T, |y - x| ≤ E := by
     intro y hy
-    exact mesh_completedValue_to_exact hvalued hn hy
+    exact mesh_completedValue_to_exact hvalued n hy
   have hTS : ∀ x ∈ T, ∃ y ∈ S, |y - x| ≤ E := by
     intro x hx
-    exact completedValues_to_mesh hn hx
+    exact completedValues_to_mesh n hx
   have hT : T.Nonempty := by
     obtain ⟨y, hy⟩ := hS
     obtain ⟨x, hx, _⟩ := hST y hy
@@ -1986,28 +1999,24 @@ lemma BoundedSequence.completedExtrema_mesh_tendsto
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     Tendsto (fun n =>
-        |completedAffineLow (fun i => (As i).meshAffine i) P DP n -
+        |completedAffineLow (fun i => (As i).meshAffine (i + 1)) P DP n -
           completedLow As P DP n|) atTop (𝓝 0) ∧
       Tendsto (fun n =>
-        |completedAffineHigh (fun i => (As i).meshAffine i) P DP n -
+        |completedAffineHigh (fun i => (As i).meshAffine (i + 1)) P DP n -
           completedHigh As P DP n|) atTop (𝓝 0) := by
-  have hdiv : Tendsto (fun n : ℕ => (b : ℝ) / n) atTop (𝓝 0) :=
-    tendsto_const_div_atTop_nhds_zero_nat (b : ℝ)
+  have hdiv : Tendsto (fun n : ℕ => (b : ℝ) / ((n : ℝ) + 1)) atTop (𝓝 0) :=
+    tendsto_const_div_succ_atTop_nhds_zero (b : ℝ)
   constructor
   · apply squeeze_zero' (Eventually.of_forall fun n => abs_nonneg _)
-      (eventually_atTop.2 ⟨1, fun n hn => ?_⟩) hdiv
-    have hnear := (h.completedExtrema_mesh_near hvalued hP hworld
-      (Nat.zero_lt_of_lt hn)).1
-    exact hnear.trans (by
-      simpa only [div_eq_mul_inv, one_mul] using
-        mul_le_mul_of_nonneg_right (hshare n) (inv_nonneg.mpr (by positivity)))
+      (Eventually.of_forall fun n => ?_) hdiv
+    refine (h.completedExtrema_mesh_near hvalued hP hworld n).1.trans ?_
+    rw [div_eq_mul_inv, one_mul]
+    exact mul_le_mul_of_nonneg_right (hshare n) (by positivity)
   · apply squeeze_zero' (Eventually.of_forall fun n => abs_nonneg _)
-      (eventually_atTop.2 ⟨1, fun n hn => ?_⟩) hdiv
-    have hnear := (h.completedExtrema_mesh_near hvalued hP hworld
-      (Nat.zero_lt_of_lt hn)).2
-    exact hnear.trans (by
-      simpa only [div_eq_mul_inv, one_mul] using
-        mul_le_mul_of_nonneg_right (hshare n) (inv_nonneg.mpr (by positivity)))
+      (Eventually.of_forall fun n => ?_) hdiv
+    refine (h.completedExtrema_mesh_near hvalued hP hworld n).2.trans ?_
+    rw [div_eq_mul_inv, one_mul]
+    exact mul_le_mul_of_nonneg_right (hshare n) (by positivity)
 
 /-! The three affine master theorems applied to the literal diagonal threshold mesh.
 The remaining expectation-specific step is `lem:mesh`, which replaces fixed precision
@@ -2019,9 +2028,9 @@ theorem BoundedSequence.mesh_affpolymax
     [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (fun n => (As n).expect P n) atTop =
-        liminf (affineFutureHigh (fun n => (As n).meshAffine n) P) atTop ∧
+        liminf (affineFutureHigh (fun n => (As n).meshAffine (n + 1)) P) atTop ∧
       limsup (fun n => (As n).expect P n) atTop =
-        limsup (affineFutureLow (fun n => (As n).meshAffine n) P) atTop := by
+        limsup (affineFutureLow (fun n => (As n).meshAffine (n + 1)) P) atTop := by
   simpa only [meshAffine_price_diagonal] using
     h.affineBCS.affpolymax DP hworld
 
@@ -2046,21 +2055,21 @@ theorem BoundedSequence.exppolymax
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   have hmesh := h.mesh_independence ops hvalued b hb hshare hworld
   have hhighNear : Tendsto (fun n =>
-      |affineFutureHigh (fun i => (As i).meshAffine i) P n - futureHigh As P n|)
+      |affineFutureHigh (fun i => (As i).meshAffine (i + 1)) P n - futureHigh As P n|)
       atTop (𝓝 0) :=
     squeeze_zero (fun n => abs_nonneg _)
       (fun n => h.futureHigh_mesh_near hP n) hmesh
   have hlowNear : Tendsto (fun n =>
-      |affineFutureLow (fun i => (As i).meshAffine i) P n - futureLow As P n|)
+      |affineFutureLow (fun i => (As i).meshAffine (i + 1)) P n - futureLow As P n|)
       atTop (𝓝 0) :=
     squeeze_zero (fun n => abs_nonneg _)
       (fun n => h.futureLow_mesh_near hP n) hmesh
   obtain ⟨hhlo, hhhi, hllo, hlhi⟩ := h.futureExtrema_filterBounds hP
   have hhighLimits := liminf_limsup_eq_of_abs_sub_tendsto_zero
-    (affineFutureHigh (fun i => (As i).meshAffine i) P)
+    (affineFutureHigh (fun i => (As i).meshAffine (i + 1)) P)
     (futureHigh As P) hhlo hhhi hhighNear
   have hlowLimits := liminf_limsup_eq_of_abs_sub_tendsto_zero
-    (affineFutureLow (fun i => (As i).meshAffine i) P)
+    (affineFutureLow (fun i => (As i).meshAffine (i + 1)) P)
     (futureLow As P) hllo hlhi hlowNear
   have haff := h.mesh_affpolymax DP hworld
   exact ⟨haff.1.trans hhighLimits.1, haff.2.trans hlowLimits.2⟩
@@ -2070,10 +2079,10 @@ lemma BoundedSequence.mesh_peraffkno
     (h : BoundedSequence As P) (DP : DeductiveProcess)
     [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    liminf (affineFutureLow (fun n => (As n).meshAffine n) P) atTop =
-        liminf (fun n => ((As n).meshAffine n).value P (limitingBelief P)) atTop ∧
-      limsup (affineFutureHigh (fun n => (As n).meshAffine n) P) atTop =
-        limsup (fun n => ((As n).meshAffine n).value P (limitingBelief P)) atTop :=
+    liminf (affineFutureLow (fun n => (As n).meshAffine (n + 1)) P) atTop =
+        liminf (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ∧
+      limsup (affineFutureHigh (fun n => (As n).meshAffine (n + 1)) P) atTop =
+        limsup (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop :=
   h.poly.mesh_poly.peraffkno P DP
     (h.mesh_boundedPrices
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
@@ -2098,7 +2107,7 @@ theorem BoundedSequence.perexpkno
         limsup (fun n => (As n).expectInf P) atTop := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
-  let Ms : ℕ → AffineCombination := fun n => (As n).meshAffine n
+  let Ms : ℕ → AffineCombination := fun n => (As n).meshAffine (n + 1)
   let Mlim : ℕ → ℝ := fun n => (Ms n).value P (limitingBelief P)
   have hmesh := h.mesh_independence ops hvalued b hb hshare hworld
   have hlowNear : Tendsto (fun n =>
@@ -2136,14 +2145,14 @@ lemma BoundedSequence.mesh_affcoh
     (h : BoundedSequence As P) (DP : DeductiveProcess)
     [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    (liminf (completedAffineLow (fun n => (As n).meshAffine n) P DP) atTop ≤
-        liminf (fun n => ((As n).meshAffine n).value P (limitingBelief P)) atTop ∧
-      liminf (fun n => ((As n).meshAffine n).value P (limitingBelief P)) atTop ≤
+    (liminf (completedAffineLow (fun n => (As n).meshAffine (n + 1)) P DP) atTop ≤
+        liminf (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ∧
+      liminf (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ≤
         liminf (fun n => (As n).expect P n) atTop) ∧
       (limsup (fun n => (As n).expect P n) atTop ≤
-          limsup (fun n => ((As n).meshAffine n).value P (limitingBelief P)) atTop ∧
-        limsup (fun n => ((As n).meshAffine n).value P (limitingBelief P)) atTop ≤
-          limsup (completedAffineHigh (fun n => (As n).meshAffine n) P DP) atTop) := by
+          limsup (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ∧
+        limsup (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ≤
+          limsup (completedAffineHigh (fun n => (As n).meshAffine (n + 1)) P DP) atTop) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   simpa only [meshAffine_price_diagonal] using
@@ -2173,7 +2182,7 @@ theorem BoundedSequence.expcoh
           limsup (completedHigh As P DP) atTop) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
-  let Ms : ℕ → AffineCombination := fun n => (As n).meshAffine n
+  let Ms : ℕ → AffineCombination := fun n => (As n).meshAffine (n + 1)
   let Mlim : ℕ → ℝ := fun n => (Ms n).value P (limitingBelief P)
   have hcompNear := h.completedExtrema_mesh_tendsto hvalued b hshare hP hworld
   obtain ⟨hallo, halhi, hahlo, hahhi⟩ :=
