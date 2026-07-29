@@ -10,8 +10,8 @@ over the concrete constructed inductor. **Zero `sorry`, zero `axiom` declaration
 every public endpoint reports only Lean's standard `propext`, `Classical.choice`,
 `Quot.sound`, enforced by the build (`AxiomAudit.lean` enumerates the public surface
 and fails compilation on any regression), and every paper-label citation is verified
-two-way by script. What separates this from a *complete* formalization is exactly two
-declared modeling boundaries, described below.
+two-way by script. The two declared modeling choices, and the planned future work that
+would tighten them further, are described below.
 
 ## The main theorem
 
