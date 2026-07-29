@@ -164,3 +164,20 @@ The repo's trader replaces the bracket with the envelope `max_{k≤i} f k`
 (`deferralEnvelope`, `Properties/Pseudorandomness.lean`), which restores the bound for
 arbitrary deferral functions. Justified in the docstring at the definition site;
 surfaced as an erratum during the 2026-07-28 F9 investigation.
+
+## PE5 — Sign inconsistency in `def:seqprand` vs. `thm:prand`'s one-sided forms
+
+**Status:** repaired in-repo by orienting the definition to its advertised conclusion;
+disclosed at the definition site. Minor, and plausibly a transcription slip.
+
+`def:seqprand` (`1609.03543v5-main.tex:1305–1311`) displays the weighted average of
+`(pᵢ − ThmInd(φᵢ))` and says the `≂ₙ` may be replaced by `≳ₙ` to give "varied
+pseudorandom **above** ⟨p⟩". `thm:prand` (tex:1314–1320) then pairs that notion with the
+conclusion `Pₙ(φₙ) ≳ₙ pₙ`. With the paper's centering those two `≳ₙ`s point in opposite
+directions: bounding `avg(p − ThmInd)` *below* says the truth frequency undershoots `p`,
+which forces the price *down*, not up. The repo centers the other way —
+`VariedPseudorandomAbove truth p := PseudorandomAbove (truth − p)`
+(`Properties/Pseudorandomness.lean`) — which is the orientation the exploiting-trader
+argument actually needs and which makes the paper's advertised conclusion come out
+right. Disclosed in that definition's docstring ("with the sign oriented to match its
+advertised conclusion"). Surfaced by the 2026-07-29 closing audit.
