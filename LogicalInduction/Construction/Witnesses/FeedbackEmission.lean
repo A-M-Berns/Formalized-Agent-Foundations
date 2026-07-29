@@ -772,7 +772,7 @@ theorem luv_wubexp_ofFeedbackTruth
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
-    (hexact : LUVCombination.ExactTheoryPresentation As DP)
+    (hvalued : LUVCombination.WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : LUVCombination.DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     {W : ℕ → EF} (hW : PGenerableWeighting W)
@@ -785,7 +785,7 @@ theorem luv_wubexp_ofFeedbackTruth
       (LUVCombination.normalizedMeshTruth As P DP hworld b) P DP f) :
     weightedBias (fun i ↦ (W i).denote P)
       (fun i ↦ (As i).expect P i) truth ≈ₙ (fun _ ↦ 0) :=
-  h.wubexp hexact hdet b hshare hW hWdiv hstrict hsupport hworld
+  h.wubexp hvalued hdet b hshare hW hWdiv hstrict hsupport hworld
     (feedbackTraderEmissionSigns (h.normalizedMesh_poly b) hW hstrict) bridge
 
 #print axioms feedbackTraderEmissionSigns

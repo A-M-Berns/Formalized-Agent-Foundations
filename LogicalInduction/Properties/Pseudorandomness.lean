@@ -1756,7 +1756,8 @@ Paper node: `thm:wubaff`, `thm:wubexp` -/
 structure FeedbackTruthSequence
     (As : ℕ → AffineCombination) (truth : ℕ → ℝ)
     (P : History) (DP : DeductiveProcess) (f : DeferralFunction) where
-  determined : DeterminedViaTheory As P DP truth
+  determined : ∃ e : ℕ → ℝ, Tendsto e atTop (𝓝 0) ∧
+    ApproxDeterminedViaTheory As P DP truth e
   sequence : ℕ → AffineCombination
   poly : PolySequence sequence
   bounded : BoundedAffinePrices sequence P
@@ -1867,7 +1868,7 @@ theorem BoundedCombinationSequence.wubaff
   let bridge' : FeedbackTruthSequence
       (fun n => (As n).scale (.const q))
       (fun n => (q : ℝ) * truth n) P DP f :=
-    { bridge with determined := hdetScaled }
+    { bridge with determined := ⟨0, tendsto_const_nhds, hdetScaled.approx⟩ }
   have hs := lic_wubaff (h.poly.scaleRat q) hW hstrict hsupport emit bridge'
     hWdiv h.unitNormalization.magnitude_le_one hworld
   have hscaled : (fun n => (q : ℝ) *
@@ -1915,7 +1916,7 @@ theorem lic_wub
     intro i
     simp
   let bridge' : FeedbackTruthSequence (sentenceAffine φ) truth P DP f :=
-    { bridge with determined := hdet }
+    { bridge with determined := ⟨0, tendsto_const_nhds, hdet.approx⟩ }
   have h := lic_wubaff (sentenceAffine_polySequence φ hφ) hW hstrict
     hsupport emit bridge' hWdiv hmag hworld
   simpa only [sentenceAffine_price] using h

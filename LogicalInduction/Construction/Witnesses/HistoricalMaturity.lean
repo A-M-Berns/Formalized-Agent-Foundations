@@ -999,8 +999,8 @@ lemma DeterminedViaTheory.not_eventually_weightedBias_lt_ofComputations
     have hunit : ∀ i, N ≤ i → (Ts i).magnitude P = 1 := by
       intro i hi
       simpa [Ts] using
-        (hdet.biasRunTrader_magnitude_eq_one_of_negative_bias hpoly hWgen
-          hWdiv hmag hworld hP (biasRunRate scale)
+        (hdet.approx.biasRunTrader_magnitude_eq_one_of_negative_bias hpoly hWgen
+          (fun i => (As i).magnitude_nonneg P) hWdiv hmag hworld hP (biasRunRate scale)
           (fun k => (biasRunRate_pos scale k).le)
           (biasRunRate_le_one scale) (q : ℝ) hq0 hbiasQ i
           (biasRunRate_pos scale i))
@@ -1012,8 +1012,9 @@ lemma DeterminedViaTheory.not_eventually_weightedBias_lt_ofComputations
       hTs market process (q / 4) roiToleranceRat roiToleranceRat_prim
       roiToleranceRat_pos N hunit hroi'
     simpa [Ts, roiTolerance] using hs
-  have hnotQ := hdet.not_eventually_weightedBias_lt_of_historicalVerifier
-    hpoly hWgen hWdiv hmag hworld (q : ℝ) hq0 roiTolerance
+  have hnotQ := hdet.approx.not_eventually_weightedBias_lt_of_historicalVerifier
+    hpoly hWgen (AffineCombination.errorNegligible_zero As P) hWdiv hmag hworld
+      (q : ℝ) hq0 roiTolerance
       roiTolerance_nonneg roiTolerance_summable hverify
   exact hnotQ hbiasQ
 
@@ -1418,7 +1419,7 @@ theorem BoundedSequence.recurringunbiasednessexp
   let d : ℕ → ℝ := fun n => weightedAverage w (fun i => meshTruth i - truth i) n
   have herr : Tendsto (fun n => meshTruth n - truth n) Filter.atTop (nhds 0) := by
     simpa only [meshTruth] using
-      hexact.meshTheoryTruth_sub_truth_tendsto hdet hworld b hshare
+      hexact.toWorldValued.meshTheoryTruth_sub_truth_tendsto hdet hworld b hshare
   have hd : Tendsto d Filter.atTop (nhds 0) :=
     weightedAverage_tendsto_zero_of_tendsto_zero
       (fun n => (hWdiv.1 n).1) hWdiv.2 herr
@@ -1453,7 +1454,7 @@ theorem BoundedSequence.prandexp
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : 0 < q := meshNormScale_pos b
-  have hpseudoMesh := hexact.normalizedMeshTruth_pseudorandomAbove
+  have hpseudoMesh := hexact.toWorldValued.normalizedMeshTruth_pseudorandomAbove
     hdet hworld b hshare hpseudo
   have haff :=
     AffineCombination.DeterminedViaTheory.lic_prandaff_above
@@ -1484,7 +1485,7 @@ theorem BoundedSequence.prandexp_below
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : 0 < q := meshNormScale_pos b
-  have hpseudoMesh := hexact.normalizedMeshTruth_pseudorandomBelow
+  have hpseudoMesh := hexact.toWorldValued.normalizedMeshTruth_pseudorandomBelow
     hdet hworld b hshare hpseudo
   have haff :=
     AffineCombination.DeterminedViaTheory.lic_prandaff_below

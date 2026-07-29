@@ -647,6 +647,34 @@ lemma abs_value_sub_price_le_magnitude (A : AffineCombination) (V : History)
   rw [← A.buy_value V w n hrank, ← A.buy_magnitude V n hrank]
   exact Strategy.abs_value_le_magnitude (A.buy n hrank) V w hw hV
 
+/-- Two `{0,1}` valuations of an affine combination differ by at most its share
+magnitude: the affine constant cancels and each coefficient is charged at most once. -/
+lemma abs_value_sub_value_le_magnitude (A : AffineCombination) (V : History)
+    (w u : Valuation) (hw : ∀ φ, w φ = 0 ∨ w φ = 1)
+    (hu : ∀ φ, u φ = 0 ∨ u φ = 1) :
+    |A.value V w - A.value V u| ≤ A.magnitude V := by
+  simp only [value, magnitude, add_sub_add_left_eq_sub]
+  induction A.terms with
+  | nil => simp
+  | cons p ps ih =>
+      simp only [List.map_cons, List.sum_cons]
+      have hstep : |p.1.denote V * w p.2 - p.1.denote V * u p.2| ≤ |p.1.denote V| := by
+        rw [← mul_sub, abs_mul]
+        refine mul_le_of_le_one_right (abs_nonneg _) ?_
+        rcases hw p.2 with h1 | h1 <;> rcases hu p.2 with h2 | h2 <;>
+          simp [h1, h2]
+      calc
+        |p.1.denote V * w p.2 + (ps.map (fun q => q.1.denote V * w q.2)).sum -
+            (p.1.denote V * u p.2 + (ps.map (fun q => q.1.denote V * u q.2)).sum)|
+            = |(p.1.denote V * w p.2 - p.1.denote V * u p.2) +
+              ((ps.map (fun q => q.1.denote V * w q.2)).sum -
+                (ps.map (fun q => q.1.denote V * u q.2)).sum)| := by ring_nf
+          _ ≤ |p.1.denote V * w p.2 - p.1.denote V * u p.2| +
+              |(ps.map (fun q => q.1.denote V * w q.2)).sum -
+                (ps.map (fun q => q.1.denote V * u q.2)).sum| := abs_add_le _ _
+          _ ≤ |p.1.denote V| + (ps.map (fun q => |q.1.denote V|)).sum :=
+              add_le_add hstep ih
+
 /-- Scale every coefficient, including the affine constant, by an expressible feature. -/
 def scale (e : EF) (A : AffineCombination) : AffineCombination where
   const := .mul e A.const
