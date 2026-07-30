@@ -2453,6 +2453,122 @@ theorem deferred_block_price_tendsto_zero
   rw [Real.dist_eq, _root_.sub_zero]
   linarith
 
+/-- Two-index cross-precision mesh difference: at `z = ⟨m,k⟩`, the day-`m` reading of the
+source-`k` LUV's mesh-`(k+1)` expectation minus its mesh-`(m+1)` expectation.  This is the
+block family the fibre selector gates. -/
+noncomputable def crossPrecisionBlocks (X : ℕ → LUV) : ℕ → AffineCombination :=
+  LUV.crossPrecisionAffine (fun z ↦ X z.unpair.2)
+    (fun z ↦ z.unpair.2 + 1) (fun z ↦ z.unpair.1 + 1)
+
+private lemma crossPrecisionBlocks_terms_rank (X : ℕ → LUV) (z : ℕ) :
+    ∀ p ∈ (crossPrecisionBlocks X z).terms, p.1.rank ≤ z.unpair.1 := by
+  intro p hp
+  simp only [crossPrecisionBlocks, LUV.crossPrecisionAffine, LUV.expectAffine,
+    List.mem_append, List.mem_map, List.mem_range] at hp
+  rcases hp with h | ⟨q, hq, rfl⟩
+  · obtain ⟨i, _, rfl⟩ := h
+    simp [EF.rank]
+  · obtain ⟨i, _, rfl⟩ := hq
+    simp [EF.rank]
+
+private lemma crossPrecisionBlocks_terms_length (X : ℕ → LUV) (m k : ℕ) :
+    (crossPrecisionBlocks X (Nat.pair m k)).terms.length = (k + 1) + (m + 1) := by
+  simp [crossPrecisionBlocks, LUV.crossPrecisionAffine, LUV.expectAffine]
+
+private lemma crossPrecisionBlocks_price (X : ℕ → LUV) (P : History) (m k day : ℕ) :
+    (crossPrecisionBlocks X (Nat.pair m k)).price P day =
+      (X k).expectApprox (P day) (k + 1) - (X k).expectApprox (P day) (m + 1) := by
+  simpa using LUV.crossPrecisionAffine_price (fun z ↦ X z.unpair.2)
+    (fun z ↦ z.unpair.2 + 1) (fun z ↦ z.unpair.1 + 1) P (Nat.pair m k) day
+
+private lemma crossPrecisionBlocks_value (X : ℕ → LUV) (P : History) (w : Valuation)
+    (m k : ℕ) :
+    (crossPrecisionBlocks X (Nat.pair m k)).value P w =
+      (X k).expectApprox w (k + 1) - (X k).expectApprox w (m + 1) := by
+  simpa using LUV.crossPrecisionAffine_value (fun z ↦ X z.unpair.2)
+    (fun z ↦ z.unpair.2 + 1) (fun z ↦ z.unpair.1 + 1) P w (Nat.pair m k)
+
+/-- **`def:deferralfunc`-faithful cross-precision correction.**  The deferred-day reading of
+a source LUV's own-day expectation mesh agrees asymptotically with its deferred-day mesh,
+for every deferral function satisfying only `f n > n` plus poly-clocked emission. -/
+theorem crossPrecision_deferred_tendsto_zero
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (f : DeferralFunction) {a degree : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln
+      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
+    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
+    (hvalued : ∀ k (v : PCWorld), v.ConsistentWithTheory DP → ∃ x, v.ValuesAt (X k) x)
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
+    Tendsto (fun n ↦ (X n).expectApprox (P (f n)) (n + 1) -
+      (X n).expectApprox (P (f n)) (f n + 1)) atTop (𝓝 0) := by
+  have hX' : LUV.RpnThresholdCodeSeq (fun z ↦ X z.unpair.2) :=
+    hX.reindex ⟨_, PolyFueled.right⟩
+  have hB : AffineCombination.PolySequence (crossPrecisionBlocks X) :=
+    LUV.crossPrecisionAffine_polySequence (fun z ↦ X z.unpair.2)
+      (fun z ↦ z.unpair.2 + 1) (fun z ↦ z.unpair.1 + 1) hX'
+      ⟨_, PolyFueled.right.succ_comp⟩ ⟨_, PolyFueled.left.succ_comp⟩
+  have hw : ∃ c, PolyFueled c (fun m ↦ m * 2 + 2) := by
+    have h2 := Classical.choose_spec (mulc_polyFueled 2)
+    obtain ⟨ca, hca⟩ := h2.addConst 2
+    exact ⟨ca, hca⟩
+  have hkey := deferred_block_price_tendsto_zero (P := P) (DP := DP) hworld f hspec hB
+    (hconstRank := fun z ↦ by
+      simp [crossPrecisionBlocks, LUV.crossPrecisionAffine, EF.rank])
+    (htermRank := crossPrecisionBlocks_terms_rank X)
+    (width := fun m ↦ m * 2 + 2) (hwidth := hw)
+    (hwidthPos := fun m ↦ by dsimp only; omega)
+    (hwide := fun m k hk ↦ by
+      rw [crossPrecisionBlocks_terms_length]; dsimp only; omega)
+    (C := 2) (hC := by norm_num)
+    (hmag := fun z ↦ by
+      simpa using LUV.crossPrecisionAffine_magnitude_le_two (fun z ↦ X z.unpair.2)
+        (fun z ↦ z.unpair.2 + 1) (fun z ↦ z.unpair.1 + 1) P z)
+    (hbdd := fun z day ↦ by
+      obtain ⟨m, k, rfl⟩ : ∃ m k, z = Nat.pair m k := ⟨z.unpair.1, z.unpair.2, by simp⟩
+      rw [crossPrecisionBlocks_price]
+      have h1 := (X k).expectApprox_nonneg (P day) (k + 1) (fun s ↦ (hP day s).1)
+      have h2 := (X k).expectApprox_le_one (P day) (k + 1) (fun s ↦ (hP day s).2)
+      have h3 := (X k).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
+      have h4 := (X k).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
+      rw [abs_le]
+      norm_num
+      constructor <;> linarith)
+    (hsmall := ?_)
+  · refine Tendsto.congr' (Eventually.of_forall fun n ↦ ?_) hkey
+    rw [crossPrecisionBlocks_price]
+  · intro ε hε
+    obtain ⟨N, hNpos, hNsmall⟩ : ∃ N : ℕ, 0 < N ∧ 2 / (N : ℝ) ≤ ε := by
+      obtain ⟨N, hN⟩ := exists_nat_gt (2 / ε)
+      have hNR : (0 : ℝ) < N := (div_pos (by norm_num) hε).trans hN
+      refine ⟨N, by exact_mod_cast hNR, ?_⟩
+      rw [div_le_iff₀ hNR]
+      have := (div_lt_iff₀ hε).mp hN
+      linarith [this]
+    refine ⟨N, fun m k hk hkm _ v hv ↦ ?_⟩
+    obtain ⟨x, hx⟩ := hvalued k v hv
+    have hlo := hx.expectApprox_near (n := k + 1) k.succ_pos
+    have hhi := hx.expectApprox_near (n := m + 1) m.succ_pos
+    push_cast at hlo hhi
+    rw [crossPrecisionBlocks_value]
+    have hcalc : |(X k).expectApprox v.payout (k + 1) - (X k).expectApprox v.payout (m + 1)| ≤
+        1 / ((k : ℝ) + 1) + 1 / ((m : ℝ) + 1) := by
+      calc |(X k).expectApprox v.payout (k + 1) - (X k).expectApprox v.payout (m + 1)|
+          = |((X k).expectApprox v.payout (k + 1) - x) -
+              ((X k).expectApprox v.payout (m + 1) - x)| := by ring_nf
+        _ ≤ |(X k).expectApprox v.payout (k + 1) - x| +
+              |(X k).expectApprox v.payout (m + 1) - x| := abs_sub _ _
+        _ ≤ _ := add_le_add hlo hhi
+    have hkR : (N : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
+    have hmR : (N : ℝ) ≤ (m : ℝ) := by exact_mod_cast le_of_lt (lt_of_le_of_lt hk hkm)
+    have hNR : (0 : ℝ) < N := by exact_mod_cast hNpos
+    have b1 : 1 / ((k : ℝ) + 1) ≤ 1 / (N : ℝ) :=
+      one_div_le_one_div_of_le hNR (by linarith)
+    have b2 : 1 / ((m : ℝ) + 1) ≤ 1 / (N : ℝ) :=
+      one_div_le_one_div_of_le hNR (by linarith)
+    have : 2 / (N : ℝ) = 1 / (N : ℝ) + 1 / (N : ℝ) := by ring
+    linarith [hcalc, hNsmall]
+
 end DeferralFibre
 
 /-- Difference between two threshold meshes of the same represented LUV. -/
