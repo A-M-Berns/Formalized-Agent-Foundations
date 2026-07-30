@@ -28,3 +28,8 @@ Brouwer fixed-point theorem via Sperner's lemma (Mathlib has none), an autoforma
 sequent-calculus proof of the de Jongh–Sambin GL fixed-point theorem, and four recorded
 errata in the *Logical Induction* paper itself
 ([`notes/logical-induction-paper-errata.md`](notes/logical-induction-paper-errata.md)).
+
+## License
+
+Apache License 2.0 — see [`LICENSE`](LICENSE). The same license Mathlib uses, so material
+here can be upstreamed without friction.
