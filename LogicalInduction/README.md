@@ -10,7 +10,8 @@ is formalized, named after its paper label, and build-audited. How strong each o
 | | count | what it means |
 |---|---:|---|
 | **paper strength** | 39 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
-| **qualified** | 14 | proved with one explicitly named representation interface or class restriction retained |
+| **qualified** | 12 | proved with one explicitly named representation interface or class restriction retained |
+| **not yet witnessed** | 2 | proved, but from a premise that currently has no inhabitant — see below |
 
 Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
@@ -54,6 +55,30 @@ computation-representing theories), that machinery is *constructed* over the con
 inductor wherever the model permits, yielding `_unconditional` and `_closed` endpoints
 with no hypotheses beyond the statement's own data; where a residual interface remains,
 the per-node table says which.
+
+## Two nodes are currently vacuous — domination of the universal semimeasure
+
+`thm:dus` and `thm:strict` are proved, but from a premise we have since proved
+**uninhabited**, so as they stand they carry no content. This is disclosed here rather
+than buried in the per-node table because it is the most serious defect currently on the
+surface.
+
+The cause is a metering mismatch of our own making. `BitPrefixSentences.prefix_codes`
+requires `PolySentenceCodes` — *whole-value* metering, where the emitted Gödel **number**
+must be polynomially bounded in the enumeration index. But the sentences it meters are
+prefix conjunctions of unbounded depth: a binary connective costs two nested `Nat.pair`s
+(a fourth power) while a `List Bool` cons costs one (a square), so the sentence's code is
+about `2^(4^m)` at an index of about `5^(2^m)`. No polynomial closes that gap, for any
+atom family over any deductive process — `bitPrefixCodeComputation_isEmpty`
+(`Construction/Witnesses/BitPrefixSyntax.lean`) proves it.
+
+The repair is known and the tooling for it already exists in this repo: switch the field
+to the symbol-metered `RpnSentenceCodes` — the class built for exactly this pathology,
+whose own docstring names it — since the prefix conjunction's Polish form is `Θ(m)` small
+tokens. That also requires indexing the family length-lex rather than by list code (so the
+emitter never has to invert an exponential-valued index) and migrating the trader's
+emission chain onto the `RpnSpliceStream` mirrors. Until that lands, treat these two nodes
+as unproved.
 
 ## One upstream gap
 
