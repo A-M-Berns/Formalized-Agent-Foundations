@@ -1742,7 +1742,7 @@ lemma firstSuccess_forces {g d : ℕ → ℝ} {δ : ℝ} {c k₀ : ℕ} (hk₀ :
   have hzero : ∏ j ∈ Finset.range c, (1 - g j) = 0 :=
     Finset.prod_eq_zero (Finset.mem_range.2 hk₀) (by rw [hhit]; ring)
   have htotal : ∑ k ∈ Finset.range c, g k * ∏ j ∈ Finset.range k, (1 - g j) = 1 := by
-    rw [firstSuccess_sum, hzero, sub_zero]
+    rw [firstSuccess_sum, hzero, _root_.sub_zero]
   calc δ = δ * ∑ k ∈ Finset.range c, g k * ∏ j ∈ Finset.range k, (1 - g j) := by
         rw [htotal, mul_one]
     _ = ∑ k ∈ Finset.range c, (g k * ∏ j ∈ Finset.range k, (1 - g j)) * δ := by
