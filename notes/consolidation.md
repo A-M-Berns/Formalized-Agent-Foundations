@@ -178,6 +178,19 @@ Documentation notes: A) i'd like to split up the README into one overall README 
   `interface` row is gone, so every paper label is covered by a named endpoint.
 
 **Open:**
+- **Standing check: grep every AxiomAudit inventory constructor for zero call sites.** Three
+  times now a discharge constructor has been built, proved, audited — and never wired into
+  the endpoint whose hypothesis it discharges: `PatientSettlementClock.ofComputations`
+  (found 2026-07-29, freed the whole pseudorandomness family), the EF parser/market
+  evaluator (found 2026-07-29, freed the `thm:st`/`thm:ccee` closed forms), and
+  `LUVCombinationSyntax.meshSoftmaxOperationalWitness` (found 2026-07-30, four expectation
+  nodes). This is a systematic failure mode of building the discharge and the consumer in
+  separate sessions, not bad luck. Make it a mechanical check before any faithfulness audit:
+  for each name in `AxiomAudit.lean`, `rg` its call sites; a constructor with none is either
+  dead code or an unclaimed upgrade. Related cause: the discharge often lives *downstream*
+  of the endpoint (Construction/ vs Properties/), so it cannot be wired in place — the fix
+  is a downstream `_ofX` endpoint, per the `HistoricalMaturity` precedent.
+
 - **`#assert_fields` is weaker than its docstring claims**: the macro compares field
   *names* only, so a boundary field's *type* can change silently (it did, benignly:
   `mesh_poly`'s index moved during the precision reindex). Extend the freeze to hash
