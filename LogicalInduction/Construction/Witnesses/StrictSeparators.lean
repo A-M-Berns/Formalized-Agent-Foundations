@@ -1529,6 +1529,13 @@ noncomputable def strictSeparatorPresentationOfKleene
 remaining input is computability of the atom family's Gödel codes, which
 `ordinaryAtom_code_computable` proves for the repo's concrete atoms; the constraint theory,
 its enumerator, the stage classes and their vanishing mass are all constructed here.
+
+**No presentation witness is available.**  The `B : BitPrefixSentences DP` argument is not
+known to be inhabited: the repo's only constructor for it,
+`bitPrefixSentencesOfIndependentAtoms`, is vacuous because its emission certificate is
+uninhabited (`bitPrefixCodeComputation_isEmpty`, `Construction/Witnesses/BitPrefixSyntax.lean`,
+where the two repair routes are recorded).  So this endpoint cannot presently be closed over
+the repo's own atoms, and `thm:strict` rests on an unwitnessed representation premise.
 Paper node: `thm:strict` -/
 theorem lic_strict_domination_universalSemimeasure_ofAtomCodes
     {DP : DeductiveProcess} {M : UniversalContinuousSemimeasure}

@@ -63,6 +63,13 @@ structure IndependentBitAtoms (DP : DeductiveProcess) where
 conjunctions from `thm:dus`. `holds_prefix` fixes the exact Boolean semantics, while
 `finite_realizable` records compatibility with each finite deductive stage.  The
 enumeration/code fields record the paper's efficient list of all finite strings.
+
+**Unwitnessed premise.**  `prefix_codes` is *whole-value* metered (`PolySentenceCodes`), and
+no literal prefix conjunction meets that bound: `bitPrefixCodeComputation_isEmpty`
+(`Construction/Witnesses/BitPrefixSyntax.lean`) proves the repo's concrete instance of this
+field is uninhabited, so the only constructor for this structure is vacuous and no inhabitant
+is currently known.  The two repair routes — symbol-metered `RpnSentenceCodes` for this
+field, or a logarithmic-depth prefix syntax — are recorded at that lemma.
 Paper node: `thm:dus` -/
 structure BitPrefixSentences (DP : DeductiveProcess) where
   atom : ℕ → Sentence

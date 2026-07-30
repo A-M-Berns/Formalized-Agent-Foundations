@@ -334,7 +334,10 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   luv_wubexp_ofComputation_unconditional
 
 -- Construction/Witnesses/BitPrefixSyntax.lean — the prefix-sentence family over
--- independent bit atoms, and the semimeasure-domination endpoint it feeds.
+-- independent bit atoms, and the semimeasure-domination endpoint it feeds.  Both are
+-- **vacuous**: `bitPrefixCodeComputation_isEmpty` proves the whole-value emission certificate
+-- they consume is uninhabited (the literal conjunction's Gödel code outruns every polynomial
+-- in its own enumeration index).  Repair routes are recorded in that file's docstring.
 #assert_axioms_clean
   bitPrefixSentencesOfIndependentAtoms lic_domination_universalSemimeasure_ofIndependentAtoms
 

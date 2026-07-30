@@ -46,6 +46,11 @@ lemma emptyBitDeductiveProcess_hworld (n : ℕ) :
 The market / inductor / non-vacuity side is fully discharged — the inductor is the
 constructed `LIA` over the (computable) empty process and `hworld` is trivial — so only the
 from-below approximation `A` and its threshold emission `emit` remain caller inputs.
+
+**Vacuous:** the hypothesis `C` is uninhabited — `bitPrefixCodeComputation_isEmpty`
+(`Construction/Witnesses/BitPrefixSyntax.lean`) proves that the whole-value code bound the
+literal prefix conjunction is asked for cannot hold.  The statement is true but empty, and so
+are the two `thm:dus` endpoints below, until that interface is repaired.
 Paper node: `thm:dus` -/
 theorem lic_domination_universalSemimeasure_unconditional
     (C : BitPrefixCodeComputation ordinaryIndependentBitAtoms)
@@ -66,7 +71,8 @@ theorem lic_domination_universalSemimeasure_unconditional
 `Construction/Witnesses/UniversalDovetailer.lean`'s explicit dovetail `M*`, and both the
 from-below approximation and its threshold emission are discharged there by the
 self-clamped stage table, so the only remaining caller input is the prefix-sentence code
-emitter `C`.
+emitter `C` — which is **uninhabited** (`bitPrefixCodeComputation_isEmpty`), leaving this
+statement vacuous.
 Paper node: `thm:dus` -/
 theorem lic_domination_dovetailSemimeasure_unconditional
     (C : BitPrefixCodeComputation ordinaryIndependentBitAtoms) :
@@ -82,6 +88,8 @@ theorem lic_domination_dovetailSemimeasure_unconditional
 Because the dovetail is *universal*, the constructed market's limiting beliefs dominate
 **every** lower-semicomputable continuous semimeasure, with a constant assembled from the
 dovetail weight of that semimeasure's own approximation program.
+
+**Vacuous** for the same reason as the two statements above: `C` is uninhabited.
 Paper node: `thm:dus` -/
 theorem lic_domination_everyLowerSemicomputable_unconditional
     (C : BitPrefixCodeComputation ordinaryIndependentBitAtoms)
