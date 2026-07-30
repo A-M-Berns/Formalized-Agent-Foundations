@@ -216,52 +216,53 @@ Documentation notes: A) i'd like to split up the README into one overall README 
   per-component completed-theory valuation; `PseudorandomFrequencyInfrastructureWithHistoricalVerifiers` is a mouthful that survived the wave). Renames are surface changes:
   update `AxiomAudit` in the same commit.
 
-## Next lead item (Anson, 2026-07-29): relax injectivity — *in progress*
+## Relaxing injectivity — *complete (2026-07-30)*
 
-Priority for the next work block: **remove `Function.Injective f.f` from the
-`thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` chain**, so `def:deferralfunc` matches the paper
-(`f n > n` only) across the whole self-trust family. This is the last non-fuel residual on
-the property surface and the only remaining item that changes what a reader sees.
+`Function.Injective f.f` is gone from the `thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` chain:
+all twelve endpoints (four `*_ofRepresentation` in `QuotationAffine.lean`, four
+`*_ofRepresentation_unconditional` in `ComputationDP.lean`, four `*_closed` in
+`QuoteCodeOfMarket.lean`) now assume of the deferral function exactly what
+`def:deferralfunc` asks — `f n > n` plus poly-clocked emission.
 
-Status after the 2026-07-29 build block: **items 1–3 are landed and green** in
-`QuotationAffine.lean`'s `DeferralFibre` section; items 3c and 4 remain.
+The landed device, all in `QuotationAffine.lean`'s `DeferralFibre` section:
+1. `AffineCombination.blockSum` + `PolySequence.blockSum` — the variable-width affine
+   combinator. The interface bookkeeping flagged as the stretch risk was **avoided, not
+   solved**: blocks are padded to a common `width m`, so the flat term index stays a plain
+   `range` and the block/offset inverse is `divmod1_polyFueled`. Do not reintroduce a
+   prefix-sum inverse.
+2. `selectorFeature` (division-free first-violator selector as `EF` syntax) and
+   `PairedWeighting` — the paired-index emission certificate carrying `rank ≤ z.unpair.1`
+   (the day-indexed `PGenerableWeighting` only gives `rank ≤ z`, too weak for fibre gates),
+   with bridges `toPGenerable`, `ofPGenerableFst` (day-indexed data) and
+   `ofPGenerableClamped` (source-indexed data read at `min k m`, which keeps a source
+   expression legal on the evaluation day and agrees with `k` on the fibre, where `k < m`).
+3. `deferred_block_price_tendsto_zero`: for **any** `DeferralFunction`, a uniformly-small
+   completed-theory block family has `(Bs ⟨f n, n⟩).price P (f n) → 0`.
+3b/3c. Paired-index block families — `pairedExpectationBlocks` (+ its `PolySequence`),
+   `pairedExpectationFeature`, `pairedPriceFeature`, `numericQuoteBlocks` — and the four
+   instantiations the constructions consume: `crossPrecision_`, `numericQuote_`,
+   `conditional_` and `selfTrust_deferred_tendsto_zero`.
+4. The four gap-shaped constructions were rewired onto them; their `future_coherent`
+   bodies got *shorter* (the limits arrive already indexed by `n` at day `f n`, so the
+   `.comp f.tendsto_atTop` step and all flag/preimage rewriting are gone). Deleted with
+   them: `completedImageCrossPrecisionQuote`, `completedImageNumericQuote`,
+   `completedImageConditionalQuote`, `completedImageSelfTrustQuote`,
+   `deferralImageFeature`, `deferralPreimage_le`, `deferralPreimage_ge`.
 
-Landed:
-1. `AffineCombination.blockSum` + `AffineCombination.PolySequence.blockSum` — the
-   variable-width affine combinator. The interface bookkeeping that was flagged as the
-   stretch risk was **avoided, not solved**: blocks are padded to a common `width m`, so
-   the flat term index stays a plain `range` and the block/offset inverse is
-   `divmod1_polyFueled` rather than an inverse prefix-sum. This is the key simplification;
-   do not reintroduce a prefix-sum inverse.
-2. `selectorFeature` (division-free first-violator selector as `EF` syntax, with
-   `RpnSpliceStream` certificate) and `PairedWeighting` — the paired-index emission
-   certificate carrying `rank ≤ z.unpair.1` (the day-indexed `PGenerableWeighting` only
-   gives `rank ≤ z`, which is too weak for fibre gates).
-3. `DeferralFibre.deferred_block_price_tendsto_zero`: for **any** `DeferralFunction`,
-   a uniformly-small completed-theory block family has
-   `(Bs ⟨f n, n⟩).price P (f n) → 0`. `DeferralFibre.crossPrecision_deferred_tendsto_zero`
-   instantiates it for the cross-precision correction.
-
-Two design corrections found while building, both now in the code:
+Two design corrections found while building, both in the code:
 * the notes' forcing lemma (`hearly : ∀ j < k₀, g j = 0`) is **not achievable** with a
-  continuous gate — a first violator can sit at the threshold with tiny weight. The
-  landed `firstSuccess_forces` needs no minimality at all: `Σ gₖπₖdₖ ≥ δ Σ gₖπₖ =
-  δ(1 − Π(1−gⱼ)) = δ` as soon as one gate saturates. Strictly simpler and stronger.
+  continuous gate — a first violator can sit at the threshold with tiny weight. The landed
+  `firstSuccess_forces` needs no minimality at all: `Σ gₖπₖdₖ ≥ δ Σ gₖπₖ = δ(1 − Π(1−gⱼ))
+  = δ` as soon as one gate saturates. Strictly simpler and stronger.
 * the summands are **signed**, so a single selector cancels. The landed device runs two
-  selectors (on `max(price,0)` and `max(−price,0)`) and takes their *difference* as the
-  one affine coefficient; the two halves are individually non-cancelling
-  (`hsplit` in `fibre_price_eventually_small`).
+  selectors (on `max(price,0)` and `max(−price,0)`) and takes their *difference* as the one
+  affine coefficient; the two halves are individually non-cancelling.
 
-Remaining:
-3c. two-index `numericQuoteAffine` blocks (the day-`m` expectation-mesh feature of `X k`
-    with `rank ≤ m`, i.e. a paired-index `currentExpectationFeature`) plus their
-    `hsmall`, giving a `numericQuote_deferred_tendsto_zero` companion.
-4.  rewire the five gap-shaped constructions in `QuotationAffine.lean` to consume 3b/3c
-    instead of `completedImageNumericQuote`/`completedImageCrossPrecisionQuote` + the
-    `deferralPreimage_at` specialization — the `future_coherent` bodies barely change,
-    since 3b/3c already deliver exactly the three `…Gap (f n)` limits those bodies use —
-    then delete the twelve `hinj` binders and the now-dead
-    `deferralPreimage`/`deferralImageFlag` layer.
+What survives of the old image-gated layer — `deferralPreimage`, `deferralImageFlag`,
+`deferralMatchCount` and their `_at`/`_spec`/`_polyFueled` lemmas — is used **only** by
+`FeedbackTruth.lean`'s `thm:wub` chain, where the paper itself asks for a strictly
+increasing deferral function, so `StrictlyIncreasingDeferral.injective` supplies the
+hypothesis and nothing is narrowed. The section header says so.
 
 ### Punch-list addition (2026-07-29, Anson)
 

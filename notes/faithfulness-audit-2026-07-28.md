@@ -347,18 +347,19 @@ All with verified obstructions, none blocking: (1) dd:fuel lower calibration —
 route is a two-model architecture (`def:ec` at a machine class, firm enumerates it via
 poly-overhead universal simulation, fuel calculus kept as certification tool via the easy
 inclusion); the pure bridge theorem is judged unlikely (~10–15%); staged plan in
-`notes/two-model-ec-feasibility.md`. (2) Injective deferral → bare `f n > n`:
-**CORRECTED 2026-07-29** — the originally-registered fix (sign-gated fibre sum forcing
-each `|dₖ| → 0`) is *unsound*: `magnitude_le_one` caps the day-`m` weight budget across
-the whole fibre while the gap convergence is rate-free, so no violation-independent
-weighting forces individual terms when `|f⁻¹(m)|` is unbounded. The viable design is a
-division-free **first-violator selector** (`gateₖ = ctsInd(δ;dₖ)·Π_{j<k}(1−ctsInd(δ;dⱼ))`,
-δ-indexed tower); its two analytic legs are verified in Lean
-(`notes/first-violator-selector-check.lean.txt`: telescoping magnitude budget in `[0,1]`
-with no normalization; gated sum dominates the first violator's gap). Blocked on volume:
-needs a variable-width affine `PolySequence` combinator and a variable-width feature-fold
-emission device (neither exists) plus non-mechanical rebuilds of five `QuotationAffine`
-endpoint constructions — ~1.5–2k lines in the repo's hardest layers. (3) **DONE
+`notes/two-model-ec-feasibility.md`. (2) Injective deferral → bare `f n > n`: **DONE (2026-07-30)** — the
+`thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` chain now assumes only `def:deferralfunc`
+(`f n > n` plus poly-clocked emission) at all twelve endpoints. The originally-registered
+fix (sign-gated fibre sum forcing each `|dₖ| → 0`) was *unsound* and stays retired; the
+landed device is the division-free **first-violator selector** over the deferral fibre
+(`selectorFeature` with `firstSuccess_sum_le_one`/`firstSuccess_forces`), a variable-width
+affine combinator (`AffineCombination.blockSum`), the paired-index emission certificate
+`PairedWeighting` (rank `≤ z.unpair.1`, the day of evaluation), and
+`DeferralFibre.deferred_block_price_tendsto_zero`, instantiated by
+`crossPrecision_/numericQuote_/conditional_/selfTrust_deferred_tendsto_zero`. The
+image-gated `deferralPreimage` layer is gone from this chain (it survives only for the
+`thm:wub` feedback chain, where the paper itself asks for strict increase).
+(3) **DONE
 (2026-07-29)** — EF parser + market-relative evaluator: `RpnSpliceStream.feature_primrec`
 recovers the feature program from the emitted serialization and `PGenerableRat.computable`
 evaluates it against the certified market by clock minimization (both in

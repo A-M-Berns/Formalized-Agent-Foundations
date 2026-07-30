@@ -956,33 +956,26 @@ lemma ctsInd_eq_zero_of_le (δ : ℚ) (x y : ℝ) (hδ : 0 < δ)
     div_nonpos_of_nonpos_of_nonneg (by linarith) hδR.le
   rw [max_eq_left hratio, min_eq_right zero_le_one]
 
-/-! ## Injective deferral reindexing
+/-! ## Bounded deferral preimage
 
-A day-indexed affine family that is to be evaluated on the deferral day `f n` must
-recover the source day `n` from `f n` by a bounded scan, so the reindexing device below
-needs `f` to be injective — and *only* injective.  The paper's `def:deferralfunc` asks
-for no more than `f n > n` plus time-computability, so `Function.Injective f.f` is a
-residual narrowing of the `thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` endpoints that
-consume this section; it is recorded on each of them.  (For `thm:wub`/`thm:wubaff`/
-`thm:wubexp` the paper itself asks for a strictly increasing deferral function, so
-`StrictlyIncreasingDeferral` is faithful there and those endpoints keep it.)
+A day-indexed affine family that is to be evaluated on the deferral day `f n` may recover
+the source day `n` from `f n` by a bounded scan whenever `f` is injective.  That is the
+device below, and its only consumers are the `thm:wub`/`thm:wubaff`/`thm:wubexp` feedback
+chain (`FeedbackTruth`), where the paper itself asks for a *strictly increasing* deferral
+function, so `StrictlyIncreasingDeferral.injective` supplies the hypothesis and nothing is
+narrowed.
 
-The narrowing bottoms out at `deferralPreimage_at`: when `f n₁ = f n₂` for `n₁ ≠ n₂` a
-single day-`f n` portfolio cannot carry both sources.  A plain price-gated sum over the
-fibre `f⁻¹(m)` provably cannot lift this (the unit magnitude budget spreads across an
+The `thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` chain does **not** use it: those endpoints
+hold for every `def:deferralfunc` (`f n > n` plus time-computability), through the
+deferral-fibre selector of the `DeferralFibre` section — `AffineCombination.blockSum`
+(variable-width affine combination), `selectorFeature` (division-free first-violator
+selector, with `firstSuccess_sum_le_one` for the budget and `firstSuccess_forces` for the
+forcing step) and `DeferralFibre.deferred_block_price_tendsto_zero`, which delivers
+`(Bs ⟨f n, n⟩).price P (f n) → 0` with no injectivity.  A plain price-gated sum over the
+fibre `f⁻¹(m)` provably cannot do this (the unit magnitude budget spreads across an
 unboundedly large fibre while the gap convergence carries no rate, so no
-violation-independent weighting forces individual terms).
-
-The replacement device is built and green in the `DeferralFibre` section below:
-`AffineCombination.blockSum` (variable-width affine combination), `selectorFeature`
-(division-free first-violator selector, with `firstSuccess_sum_le_one` for the budget and
-`firstSuccess_forces` for the forcing step), and
-`DeferralFibre.deferred_block_price_tendsto_zero`, which delivers
-`(Bs ⟨f n, n⟩).price P (f n) → 0` for *any* `DeferralFunction` — no injectivity.
-`DeferralFibre.crossPrecision_deferred_tendsto_zero` instantiates it for the
-cross-precision correction.  What still routes through this injective section is the
-*numeric quote* half (`completedImageNumericQuote`) and the five construction bodies that
-consume both halves; until those are rewired, the twelve endpoints keep `hinj`. -/
+violation-independent weighting forces individual terms); the first-violator selector is
+what makes one saturated gate enough. -/
 
 /-- Number of bounded-schedule preimages of day `m` among the only possible source
 indices `k < m`. -/
@@ -1146,89 +1139,6 @@ lemma deferralPreimage_spec
     exact deferralPreimage_at f hinj hspec k
   rw [hidx]
   exact ⟨hk, hfk⟩
-
-/-- Off the image of `f` the preimage scan sums an all-zero match vector, so it
-defaults to `0`. -/
-private lemma deferralPreimage_eq_zero_of_unflagged
-    (f : DeferralFunction) (a degree m : ℕ)
-    (hm : deferralImageFlag f a degree m = 0) :
-    deferralPreimage f a degree m = 0 := by
-  have hcount : deferralMatchCount f a degree m = 0 := by
-    by_contra hne
-    rw [deferralImageFlag, if_neg hne] at hm
-    exact _root_.one_ne_zero hm
-  have key : ∀ r,
-      segPrefix (fun z ↦ FeedbackEmission.scheduledMatch f a degree z) m r = 0 →
-      segPrefix (fun z ↦ z.unpair.2 *
-        FeedbackEmission.scheduledMatch f a degree z) m r = 0 := by
-    intro r
-    induction r with
-    | zero => intro _; rfl
-    | succ r ih =>
-        intro h
-        rw [segPrefix_succ] at h ⊢
-        have h1 : segPrefix (fun z ↦ FeedbackEmission.scheduledMatch f a degree z) m r
-            = 0 := by omega
-        have h2 : FeedbackEmission.scheduledMatch f a degree (Nat.pair m r) = 0 := by
-          omega
-        rw [ih h1]
-        simp [h2]
-  exact key m (by simpa [deferralMatchCount] using hcount)
-
-/-- The preimage scan never overshoots its own day: on the image of `f` it lands on the
-strictly earlier source day, and off it on `0`.  This is what lets a day-`m` feature carry
-the source day's expression without violating the rank discipline. -/
-lemma deferralPreimage_le
-    (f : DeferralFunction) (hinj : Function.Injective f.f)
-    {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
-    (m : ℕ) :
-    deferralPreimage f a degree m ≤ m := by
-  rcases deferralImageFlag_zero_or_one f a degree m with hm | hm
-  · rw [deferralPreimage_eq_zero_of_unflagged f a degree m hm]
-    exact Nat.zero_le m
-  · exact (deferralPreimage_spec f hinj hspec hm).1.le
-
-/-- Only finitely many days are scheduled from below `N`, so past the largest of them
-every flagged day has its preimage at or above `N`.  Only injectivity of `f` is used; no
-monotonicity is needed. -/
-lemma deferralPreimage_ge
-    (f : DeferralFunction) (hinj : Function.Injective f.f)
-    {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
-    (N : ℕ) :
-    ∃ M, ∀ m, M ≤ m → deferralImageFlag f a degree m = 1 →
-      N ≤ deferralPreimage f a degree m := by
-  refine ⟨(Finset.range N).sup (fun k ↦ f k) + 1, fun m hm hflag ↦ ?_⟩
-  by_contra hnot
-  have hlt : deferralPreimage f a degree m < N := Nat.lt_of_not_ge hnot
-  have hval := (deferralPreimage_spec f hinj hspec hflag).2
-  have hle : f (deferralPreimage f a degree m) ≤
-      (Finset.range N).sup (fun k ↦ f k) :=
-    Finset.le_sup (f := fun k ↦ f k) (Finset.mem_range.2 hlt)
-  omega
-
-/-- The image flag as a closed, polynomially emitted feature. -/
-def deferralImageFeature (f : DeferralFunction) (a degree m : ℕ) : EF :=
-  EF.const (deferralImageFlag f a degree m : ℚ)
-
-lemma deferralImageFeature_generated (f : DeferralFunction) (a degree : ℕ) :
-    PGenerableWeighting (deferralImageFeature f a degree) := by
-  obtain ⟨cflag, hflag⟩ := deferralImageFlag_polyFueled f a degree
-  have hcodes := ratNatCast_codes_of_polyFueled hflag
-  exact {
-    polySeg := RpnSpliceStream.serialize_const_comp hcodes
-    rank_le := by intro n; simp [deferralImageFeature]
-    closed := by intro n ρ V; simp [deferralImageFeature]
-  }
-
-@[simp] theorem deferralImageFeature_denote
-    (f : DeferralFunction) (a degree m : ℕ) (P : History) :
-    (deferralImageFeature f a degree m).denote P =
-      (deferralImageFlag f a degree m : ℝ) := by
-  simp [deferralImageFeature]
 
 /-! ### Reindexed threshold syntax and cross-precision meshes -/
 
@@ -1975,9 +1885,9 @@ lemma clip01 {A : ℕ → EF} (hA : PairedWeighting A) :
       (PairedWeighting.const 1)).max ((PairedWeighting.const (-1)).mul hA)))))
   exact h
 
-lemma ctsInd {δ : ℚ} (hδinv : PolyRatCodes (fun _ : ℕ ↦ 1 / δ))
+lemma ctsInd {δ : ℕ → ℚ} (hδinv : PolyRatCodes (fun z ↦ 1 / δ z))
     {x y : ℕ → EF} (hx : PairedWeighting x) (hy : PairedWeighting y) :
-    PairedWeighting (ctsIndFeature (fun _ ↦ δ) x y) :=
+    PairedWeighting (ctsIndFeature δ x y) :=
   PairedWeighting.clip01
     ((hx.add ((PairedWeighting.const (-1)).mul hy)).mul (PairedWeighting.ofRatCodes hδinv))
 
@@ -1990,6 +1900,41 @@ lemma selector {A : ℕ → EF} (hA : PairedWeighting A) :
       (fun j _ ↦ by simpa using hA.rank_le (Nat.pair z.unpair.1 j))
     simpa using this
   closed := selectorFeature_closed hA.closed
+
+/-- A paired-index emission certificate is in particular a day-indexed one: the paired
+rank bound `≤ z.unpair.1` implies the day bound `≤ z`. -/
+lemma toPGenerable {A : ℕ → EF} (h : PairedWeighting A) :
+    PGenerableWeighting A where
+  polySeg := h.polySeg
+  rank_le := fun z ↦ (h.rank_le z).trans (Nat.unpair_left_le z)
+  closed := h.closed
+
+/-- A day-indexed generated feature, read at the *evaluation day* of a paired index, is a
+paired-index feature. -/
+lemma ofPGenerableFst {A : ℕ → EF} (h : PGenerableWeighting A) :
+    PairedWeighting (fun z ↦ A z.unpair.1) where
+  polySeg := h.polySeg.comp PolyFueled.left
+  rank_le := fun z ↦ h.rank_le _
+  closed := fun z ρ V ↦ h.closed _ ρ V
+
+/-- The source index of a paired index, clamped to the evaluation day.  On the fibre the
+source is below the day, so the clamp is invisible there; off it, it keeps the emitted
+expression legal on day `z.unpair.1`. -/
+lemma clampedSource_polyFueled :
+    ∃ c, PolyFueled c (fun z : ℕ ↦ min z.unpair.2 z.unpair.1) :=
+  ⟨_, (subc_polyFueled.comp (PolyFueled.right.pair
+    (subc_polyFueled.comp (PolyFueled.right.pair PolyFueled.left)))).of_eq
+      (fun z ↦ by simp; omega)⟩
+
+/-- A day-indexed generated feature read at the *clamped source* index of a paired index.
+This is how source-indexed confidence data (a threshold, a probability expression) becomes
+a legal day-`z.unpair.1` coefficient. -/
+lemma ofPGenerableClamped {A : ℕ → EF} (h : PGenerableWeighting A) :
+    PairedWeighting (fun z ↦ A (min z.unpair.2 z.unpair.1)) where
+  polySeg := h.polySeg.comp (Classical.choose_spec clampedSource_polyFueled)
+  rank_le := fun z ↦ (h.rank_le _).trans (min_le_right _ _)
+  closed := fun z ρ V ↦ h.closed _ ρ V
+
 
 end PairedWeighting
 
@@ -2760,223 +2705,6 @@ lemma crossPrecision_deferred_tendsto_zero
 
 end DeferralFibre
 
-/-! ### Image-gated cross-precision correction -/
-
-/-- Along the image of an injective deferral, the low mesh selected by the bounded
-inverse and the day-indexed high mesh have the same completed-world value.  The image
-gate makes the family identically zero elsewhere, so affine provability induction can
-learn the cross-precision correction without ever emitting `f n` threshold terms on
-day `n`. -/
-noncomputable def completedImageCrossPrecisionQuote
-    {P : History} {DP : DeductiveProcess}
-    (f : DeferralFunction) (hinj : Function.Injective f.f)
-    {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
-    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
-    (hvalued : ∀ k (v : PCWorld), v.ConsistentWithTheory DP →
-      ∃ x, v.ValuesAt (X k) x)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
-    CompletedAffineQuoteApprox P DP (fun m ↦
-      (deferralImageFlag f a degree m : ℝ) *
-        ((X (deferralPreimage f a degree m)).expectApprox (P m)
-            (deferralPreimage f a degree m + 1) -
-          (X (deferralPreimage f a degree m)).expectApprox (P m) (m + 1))) := by
-  let index := deferralPreimage f a degree
-  let flag := deferralImageFeature f a degree
-  let X' : ℕ → LUV := fun m ↦ X (index m)
-  let base : ℕ → AffineCombination :=
-    LUV.crossPrecisionAffine X' (fun m ↦ index m + 1) (fun m ↦ m + 1)
-  let gated : ℕ → AffineCombination := fun m ↦ (base m).scale (flag m)
-  let family : ℕ → AffineCombination := fun m ↦
-    (gated m).scale (EF.const (1 / 2))
-  let hindex := deferralPreimage_polyFueled f a degree
-  let hX' := hX.reindex hindex
-  let hbase := LUV.crossPrecisionAffine_polySequence X'
-    (fun m ↦ index m + 1) (fun m ↦ m + 1) hX'
-    ⟨_, (Classical.choose_spec hindex).succ_comp⟩ ⟨_, PolyFueled.id.succ_comp⟩
-  let hflag := deferralImageFeature_generated f a degree
-  let hgated := hbase.scaleFeature flag hflag
-  let hfamily := hgated.scaleRat (1 / 2)
-  exact {
-    family := family
-    poly := hfamily
-    scale := 1 / 2
-    scale_pos := by norm_num
-    current_price := by
-      intro m
-      simp only [family, gated, base, flag, X', index,
-        AffineCombination.scale_price, LUV.crossPrecisionAffine_price,
-        deferralImageFeature_denote, EF.denote_const, id_eq]
-    bounded := by
-      refine ⟨1, zero_le_one, fun m day ↦ ?_⟩
-      simp only [family, gated, base, flag, X', index,
-        AffineCombination.scale_price, LUV.crossPrecisionAffine_price,
-        deferralImageFeature_denote, id_eq]
-      rcases deferralImageFlag_zero_or_one f a degree m with hm | hm
-      · simp [hm]
-      · rw [hm]
-        norm_num
-        have hlo0 := (X (deferralPreimage f a degree m)).expectApprox_nonneg
-          (P day) (deferralPreimage f a degree m + 1) (fun s ↦ (hP day s).1)
-        have hlo1 := (X (deferralPreimage f a degree m)).expectApprox_le_one
-          (P day) (deferralPreimage f a degree m + 1) (fun s ↦ (hP day s).2)
-        have hhi0 := (X (deferralPreimage f a degree m)).expectApprox_nonneg
-          (P day) (m + 1) (fun s ↦ (hP day s).1)
-        have hhi1 := (X (deferralPreimage f a degree m)).expectApprox_le_one
-          (P day) (m + 1) (fun s ↦ (hP day s).2)
-        have habs :
-            |(X (deferralPreimage f a degree m)).expectApprox (P day)
-                (deferralPreimage f a degree m + 1) -
-              (X (deferralPreimage f a degree m)).expectApprox (P day) (m + 1)| ≤ 1 := by
-          rw [abs_le]
-          constructor <;> linarith
-        nlinarith
-    magnitude_le_one := by
-      intro m
-      simp only [family, gated, AffineCombination.scale_magnitude,
-        EF.denote_const, flag, deferralImageFeature_denote]
-      have hbaseMag := LUV.crossPrecisionAffine_magnitude_le_two
-        X' (fun m ↦ index m + 1) (fun m ↦ m + 1) P m
-      rcases deferralImageFlag_zero_or_one f a degree m with hm | hm
-      · simp [hm]
-      · rw [hm]
-        norm_num
-        linarith
-    theory_coherent := by
-      intro ε hε
-      obtain ⟨N, hNpos, hNsmall⟩ : ∃ N : ℕ, 0 < N ∧ 1 / (N : ℝ) ≤ ε / 4 := by
-        obtain ⟨N, hN⟩ := exists_nat_gt (4 / ε)
-        have hNR : (0 : ℝ) < N := (div_pos (by norm_num) hε).trans hN
-        refine ⟨N, by exact_mod_cast hNR, ?_⟩
-        have hεN : 4 < ε * (N : ℝ) := by
-          simpa only [mul_comm] using (div_lt_iff₀ hε).mp hN
-        have hsmall : 1 / (N : ℝ) < ε / 4 := by
-          apply (div_lt_div_iff₀ hNR (by norm_num : (0 : ℝ) < 4)).2
-          simpa using hεN
-        exact hsmall.le
-      obtain ⟨M, hM⟩ := deferralPreimage_ge f hinj hspec N
-      refine eventually_atTop.2 ⟨M, fun m hm v hv ↦ ?_⟩
-      rcases deferralImageFlag_zero_or_one f a degree m with hflag0 | hflag1
-      · simpa [family, gated, flag, hflag0, AffineCombination.scale_value] using hε.le
-      · have hspecm := deferralPreimage_spec f hinj hspec hflag1
-        have hindexN : N ≤ deferralPreimage f a degree m := hM m hm hflag1
-        obtain ⟨x, hx⟩ := hvalued (deferralPreimage f a degree m) v hv
-        have hlo := hx.expectApprox_near (n := deferralPreimage f a degree m + 1)
-          (deferralPreimage f a degree m).succ_pos
-        have hhi := hx.expectApprox_near (n := m + 1) m.succ_pos
-        push_cast at hlo hhi
-        have hmesh :
-            |(X (deferralPreimage f a degree m)).expectApprox v.payout
-                (deferralPreimage f a degree m + 1) -
-              (X (deferralPreimage f a degree m)).expectApprox v.payout (m + 1)| ≤
-              1 / ((deferralPreimage f a degree m : ℝ) + 1) + 1 / ((m : ℝ) + 1) := by
-          calc
-            |_ - _| = |(_ - x) - (_ - x)| := by ring_nf
-            _ ≤ |_ - x| + |_ - x| := abs_sub _ _
-            _ ≤ 1 / ((deferralPreimage f a degree m : ℝ) + 1) + 1 / ((m : ℝ) + 1) :=
-              add_le_add hlo hhi
-        have hlowSmall : 1 / ((deferralPreimage f a degree m : ℝ) + 1) ≤ ε / 4 := by
-          refine LE.le.trans ?_ hNsmall
-          refine one_div_le_one_div_of_le (by exact_mod_cast hNpos) ?_
-          have : (N : ℝ) ≤ (deferralPreimage f a degree m : ℝ) := by exact_mod_cast hindexN
-          linarith
-        have hmN : N ≤ m := le_trans hindexN hspecm.1.le
-        have hhighSmall : 1 / ((m : ℝ) + 1) ≤ ε / 4 := by
-          refine LE.le.trans ?_ hNsmall
-          refine one_div_le_one_div_of_le (by exact_mod_cast hNpos) ?_
-          have : (N : ℝ) ≤ (m : ℝ) := by exact_mod_cast hmN
-          linarith
-        simp only [family, gated, base, flag, X', index,
-          AffineCombination.scale_value, LUV.crossPrecisionAffine_value,
-          deferralImageFeature_denote, hflag1, Nat.cast_one, one_mul,
-          EF.denote_const]
-        push_cast
-        rw [abs_mul]
-        norm_num
-        nlinarith
-  }
-
-/-- An image-gated numeric quotation mesh.  Only scheduled deferral days need carry
-semantic content; off the image the generated feature erases the entire affine object. -/
-noncomputable def completedImageNumericQuote
-    {P : History} {DP : DeductiveProcess}
-    (f : DeferralFunction) {a degree : ℕ}
-    (H : ℕ → EF) (hH : PGenerableWeighting H)
-    (Y : ℕ → LUV) (hY : LUV.RpnThresholdCodeSeq Y)
-    (hreflected : ∀ m, deferralImageFlag f a degree m = 1 →
-      ∀ v : PCWorld, v.ConsistentWithTheory DP →
-        v.ValuesAt (Y m) ((H m).denote P))
-    (hHmem : ∀ m, 0 ≤ (H m).denote P ∧ (H m).denote P ≤ 1)
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
-    CompletedAffineQuoteApprox P DP (fun m ↦
-      (deferralImageFlag f a degree m : ℝ) *
-        ((H m).denote P - (Y m).expect P m)) := by
-  let flag := deferralImageFeature f a degree
-  let base := numericQuoteAffine H Y
-  let family : ℕ → AffineCombination := fun m ↦ (base m).scale (flag m)
-  let hbase := numericQuoteAffine_polySequence H Y hH hY
-  let hflag := deferralImageFeature_generated f a degree
-  let hfamily := hbase.scaleFeature flag hflag
-  exact {
-    family := family
-    poly := hfamily
-    scale := 1
-    scale_pos := by norm_num
-    current_price := by
-      intro m
-      simp only [family, base, flag, AffineCombination.scale_price,
-        numericQuoteAffine_price, deferralImageFeature_denote]
-      norm_num
-    bounded := by
-      refine ⟨1, zero_le_one, fun m day ↦ ?_⟩
-      simp only [family, base, flag, AffineCombination.scale_price,
-        deferralImageFeature_denote]
-      rcases deferralImageFlag_zero_or_one f a degree m with hm | hm
-      · simp [hm]
-      · rw [hm]
-        norm_num
-        rw [AffineCombination.price, numericQuoteAffine_value]
-        have hE0 := (Y m).expectApprox_nonneg (P day) (m + 1)
-          (fun s ↦ (hP day s).1)
-        have hE1 := (Y m).expectApprox_le_one (P day) (m + 1)
-          (fun s ↦ (hP day s).2)
-        rw [abs_le]
-        constructor <;> linarith [(hHmem m).1, (hHmem m).2]
-    magnitude_le_one := by
-      intro m
-      simp only [family, base, flag, AffineCombination.scale_magnitude,
-        deferralImageFeature_denote]
-      rw [numericQuoteAffine_magnitude]
-      have hmag := (Y m).expectAffine_magnitude_le_one P (m + 1)
-      rcases deferralImageFlag_zero_or_one f a degree m with hm | hm
-      · simp [hm]
-      · rw [hm]
-        norm_num
-        exact hmag
-    theory_coherent := by
-      intro ε hε
-      obtain ⟨N, hN⟩ := exists_nat_gt (1 / ε)
-      refine eventually_atTop.2 ⟨N, fun m hm v hv ↦ ?_⟩
-      rcases deferralImageFlag_zero_or_one f a degree m with hflag0 | hflag1
-      · simpa [family, base, flag, hflag0, AffineCombination.scale_value] using hε.le
-      · have hmR : (0 : ℝ) < (m : ℝ) + 1 := by positivity
-        have hsmall : 1 / ((m : ℝ) + 1) ≤ ε := by
-          have hNm : (1 : ℝ) / ε < (m : ℝ) + 1 :=
-            hN.trans_le (by have : (N : ℝ) ≤ (m : ℝ) := by exact_mod_cast hm
-                            linarith)
-          rw [div_lt_iff₀ hε] at hNm
-          rw [div_le_iff₀ hmR]
-          nlinarith
-        simp only [family, base, flag, AffineCombination.scale_value,
-          deferralImageFeature_denote, hflag1, Nat.cast_one, one_mul,
-          numericQuoteAffine_value]
-        rw [abs_sub_comm]
-        refine LE.le.trans ?_ hsmall
-        simpa using
-          (hreflected m hflag1 v hv).expectApprox_near (n := m + 1) m.succ_pos
-  }
-
 /-! ### Fixed expectation-difference portfolios -/
 
 /-- The literal threshold portfolio for `E(X) - E(Y)` at the day-indexed mesh. -/
@@ -3050,428 +2778,648 @@ noncomputable def featureConstantAffine_polySequence
     (featureConstantAffine H n).magnitude P = 0 := by
   simp [featureConstantAffine, AffineCombination.magnitude]
 
-/-- Image-gated high-precision certificate for the conditional-expectation identity.
-The first summand learns `Z = wX` world by world; the second numerically quotes the
-market expectation `w E(X)`. -/
-noncomputable def completedImageConditionalQuote
-    {P : History} {DP : DeductiveProcess}
+/-! ### Paired-index block families
+
+The deferral fibre needs its blocks indexed by *both* the evaluation day and the
+source index: `z = ⟨m,k⟩` carries the day-`m` reading of source-`k` data, and every
+emitted coefficient must be legal on day `m`.  These are the paired analogues of the
+day-indexed mesh, expectation feature, price feature and numeric quote. -/
+
+namespace DeferralFibre
+
+/-- Two-index expectation mesh: at `z = ⟨m,k⟩` the source-`k` LUV's precision-`(m+1)`
+threshold bundle — the block a day-`m` fibre portfolio may hold. -/
+def pairedExpectationBlocks (X : ℕ → LUV) (z : ℕ) : AffineCombination :=
+  (X z.unpair.2).expectAffine (z.unpair.1 + 1)
+
+lemma pairedExpectationBlocks_value (X : ℕ → LUV) (P : History) (w : Valuation)
+    (m k : ℕ) :
+    (pairedExpectationBlocks X (Nat.pair m k)).value P w =
+      (X k).expectApprox w (m + 1) := by
+  simpa [pairedExpectationBlocks] using
+    (X k).expectAffine_value P w (m + 1)
+
+lemma pairedExpectationBlocks_price (X : ℕ → LUV) (P : History) (m k day : ℕ) :
+    (pairedExpectationBlocks X (Nat.pair m k)).price P day =
+      (X k).expectApprox (P day) (m + 1) := by
+  rw [AffineCombination.price, pairedExpectationBlocks_value]
+
+lemma pairedExpectationBlocks_magnitude_le_one (X : ℕ → LUV) (P : History) (z : ℕ) :
+    (pairedExpectationBlocks X z).magnitude P ≤ 1 :=
+  (X z.unpair.2).expectAffine_magnitude_le_one P (z.unpair.1 + 1)
+
+lemma pairedExpectationBlocks_terms_length (X : ℕ → LUV) (z : ℕ) :
+    (pairedExpectationBlocks X z).terms.length = z.unpair.1 + 1 := by
+  simp [pairedExpectationBlocks, LUV.expectAffine]
+
+lemma pairedExpectationBlocks_const_rank (X : ℕ → LUV) (z : ℕ) :
+    (pairedExpectationBlocks X z).const.rank ≤ z.unpair.1 := by
+  simp [pairedExpectationBlocks, LUV.expectAffine, EF.rank]
+
+lemma pairedExpectationBlocks_terms_rank (X : ℕ → LUV) (z : ℕ) :
+    ∀ p ∈ (pairedExpectationBlocks X z).terms, p.1.rank ≤ z.unpair.1 := by
+  intro p hp
+  simp only [pairedExpectationBlocks, LUV.expectAffine, List.mem_map,
+    List.mem_range] at hp
+  obtain ⟨i, _, rfl⟩ := hp
+  simp [EF.rank]
+
+/-- The paired mesh family is emitted uniformly from the varying threshold presentation:
+the evaluation day fixes the precision and the source index selects the LUV. -/
+noncomputable def pairedExpectationBlocks_polySequence (X : ℕ → LUV)
+    (hX : LUV.RpnThresholdCodeSeq X) :
+    AffineCombination.PolySequence (pairedExpectationBlocks X) := by
+  let cinv := Classical.choose encode_inv_nat_polyFueled
+  have hinv := Classical.choose_spec encode_inv_nat_polyFueled
+  have hm := PolyFueled.left.comp PolyFueled.left
+  have hk := PolyFueled.right.comp PolyFueled.left
+  have hj := PolyFueled.right
+  have hquery := hk.pair (hm.succ_comp.pair hj)
+  have hsentence := hX.comp hquery
+  exact {
+    termCount := fun z ↦ z.unpair.1 + 1
+    coefficient := fun w ↦ .const (1 / ((w.unpair.1.unpair.1 + 1 : ℕ) : ℚ))
+    sentence := fun w ↦
+      (X w.unpair.1.unpair.2).gt ((w.unpair.2 : ℚ) /
+        ((w.unpair.1.unpair.1 + 1 : ℕ) : ℚ))
+    termCount_poly := ⟨_, PolyFueled.left.succ_comp⟩
+    const_poly := RpnSpliceStream.serialize_const 0
+    coefficient_poly := RpnSpliceStream.serialize_const_comp
+      ⟨_, hinv.comp hm.succ_comp⟩
+    sentence_poly := hsentence.of_eq (fun w ↦ by simp)
+    terms_eq := by intro z; simp [pairedExpectationBlocks, LUV.expectAffine]
+    const_rank := by intro z; simp [pairedExpectationBlocks, LUV.expectAffine]
+    coefficient_rank := by intro z j hj; simp [EF.rank]
+    const_closed := by
+      intro z ρ V; simp [pairedExpectationBlocks, LUV.expectAffine]
+    coefficient_closed := by intro w ρ V; simp [EF.denoteWith]
+  }
+
+/-- Two-index current-expectation feature: at `z = ⟨m,k⟩` the day-`m` market price of the
+source-`k` LUV's precision-`(m+1)` mesh, i.e. `𝔼ₘ(X k)`.  Its rank is the evaluation day
+`m`, not the source index, which is what a fibre gate requires. -/
+noncomputable def pairedExpectationFeature (X : ℕ → LUV) (z : ℕ) : EF :=
+  (pairedExpectationBlocks X z).priceFeature z.unpair.1
+
+lemma pairedExpectationFeature_denote (X : ℕ → LUV) (P : History) (m k : ℕ) :
+    (pairedExpectationFeature X (Nat.pair m k)).denote P = (X k).expect P m := by
+  rw [pairedExpectationFeature, AffineCombination.priceFeature_denote]
+  simp [pairedExpectationBlocks_price, LUV.expect]
+
+lemma pairedExpectationFeature_paired (X : ℕ → LUV)
+    (hX : LUV.RpnThresholdCodeSeq X) :
+    PairedWeighting (pairedExpectationFeature X) := by
+  let hmesh := pairedExpectationBlocks_polySequence X hX
+  exact {
+    polySeg := (hmesh.priceFeature_polySeg.comp
+      (PolyFueled.id.pair PolyFueled.left)).of_eq
+        (fun z ↦ by simp [pairedExpectationFeature])
+    rank_le := fun z ↦ AffineCombination.priceFeature_rank _ le_rfl
+      (pairedExpectationBlocks_const_rank X z)
+      (pairedExpectationBlocks_terms_rank X z)
+    closed := fun z ρ V ↦ hmesh.priceFeature_closed z z.unpair.1 ρ V
+  }
+
+/-- Two-index current-price feature: at `z = ⟨m,k⟩` the day-`m` market price of the
+source-`k` sentence. -/
+def pairedPriceFeature (φ : ℕ → Sentence) (z : ℕ) : EF :=
+  EF.price (φ z.unpair.2) z.unpair.1
+
+lemma pairedPriceFeature_denote (φ : ℕ → Sentence) (P : History) (m k : ℕ) :
+    (pairedPriceFeature φ (Nat.pair m k)).denote P = P m (φ k) := by
+  simp [pairedPriceFeature]
+
+lemma pairedPriceFeature_paired (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+    PairedWeighting (pairedPriceFeature φ) where
+  polySeg := (RpnSpliceStream.serialize_price hφ PolyFueled.right
+    PolyFueled.left).of_eq (fun z ↦ by simp [pairedPriceFeature])
+  rank_le := by intro z; simp [pairedPriceFeature]
+  closed := by intro z ρ V; simp [pairedPriceFeature]
+
+/-- Two-index numeric quote block: at `z = ⟨m,k⟩` the quoted target `H z` minus the
+source-`k` LUV's precision-`(m+1)` mesh. -/
+noncomputable def numericQuoteBlocks (H : ℕ → EF) (Y : ℕ → LUV) (z : ℕ) :
+    AffineCombination :=
+  (featureConstantAffine H z).add ((pairedExpectationBlocks Y z).neg)
+
+lemma numericQuoteBlocks_value (H : ℕ → EF) (Y : ℕ → LUV) (P : History)
+    (w : Valuation) (m k : ℕ) :
+    (numericQuoteBlocks H Y (Nat.pair m k)).value P w =
+      (H (Nat.pair m k)).denote P - (Y k).expectApprox w (m + 1) := by
+  rw [numericQuoteBlocks, AffineCombination.add_value,
+    AffineCombination.neg_value, featureConstantAffine_value,
+    pairedExpectationBlocks_value]
+  ring
+
+lemma numericQuoteBlocks_price (H : ℕ → EF) (Y : ℕ → LUV) (P : History)
+    (m k day : ℕ) :
+    (numericQuoteBlocks H Y (Nat.pair m k)).price P day =
+      (H (Nat.pair m k)).denote P - (Y k).expectApprox (P day) (m + 1) := by
+  rw [AffineCombination.price, numericQuoteBlocks_value]
+
+lemma numericQuoteBlocks_magnitude (H : ℕ → EF) (Y : ℕ → LUV) (P : History) (z : ℕ) :
+    (numericQuoteBlocks H Y z).magnitude P ≤ 1 := by
+  rw [numericQuoteBlocks, AffineCombination.add_magnitude,
+    featureConstantAffine_magnitude, AffineCombination.neg_magnitude, zero_add]
+  exact pairedExpectationBlocks_magnitude_le_one Y P z
+
+lemma numericQuoteBlocks_terms_length (H : ℕ → EF) (Y : ℕ → LUV) (z : ℕ) :
+    (numericQuoteBlocks H Y z).terms.length = z.unpair.1 + 1 := by
+  rw [numericQuoteBlocks]
+  simp [AffineCombination.add, featureConstantAffine, AffineCombination.neg,
+    AffineCombination.scale, pairedExpectationBlocks, LUV.expectAffine]
+
+lemma numericQuoteBlocks_const_rank {H : ℕ → EF} (hH : PairedWeighting H)
+    (Y : ℕ → LUV) (z : ℕ) :
+    (numericQuoteBlocks H Y z).const.rank ≤ z.unpair.1 := by
+  simp only [numericQuoteBlocks, AffineCombination.add, AffineCombination.neg,
+    AffineCombination.scale, featureConstantAffine, EF.rank]
+  exact Nat.max_le.mpr ⟨hH.rank_le z, by simp [EF.rank,
+    pairedExpectationBlocks, LUV.expectAffine]⟩
+
+lemma numericQuoteBlocks_terms_rank (H : ℕ → EF) (Y : ℕ → LUV) (z : ℕ) :
+    ∀ p ∈ (numericQuoteBlocks H Y z).terms, p.1.rank ≤ z.unpair.1 := by
+  intro p hp
+  simp only [numericQuoteBlocks, AffineCombination.add, featureConstantAffine,
+    List.nil_append] at hp
+  exact AffineCombination.neg_terms_rank_le _
+    (pairedExpectationBlocks_terms_rank Y z) p hp
+
+noncomputable def numericQuoteBlocks_polySequence
+    (H : ℕ → EF) (hH : PairedWeighting H) (Y : ℕ → LUV)
+    (hY : LUV.RpnThresholdCodeSeq Y) :
+    AffineCombination.PolySequence (numericQuoteBlocks H Y) :=
+  (featureConstantAffine_polySequence H hH.toPGenerable).add
+    (pairedExpectationBlocks_polySequence Y hY).neg
+
+/-- **Deferred numeric quote without injectivity.**  If every completed world assigns the
+paired target `H ⟨f k, k⟩` to the quote LUV `Y k`, then the deferred market reading of
+`Y k` matches that target asymptotically — for every deferral function satisfying only
+`f n > n` plus poly-clocked emission. -/
+lemma numericQuote_deferred_tendsto_zero
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) {a degree : ℕ}
-    (X Z Z' : ℕ → LUV)
-    (hX : LUV.RpnThresholdCodeSeq X)
-    (hZ : LUV.RpnThresholdCodeSeq Z)
-    (hZ' : LUV.RpnThresholdCodeSeq Z')
-    (w : ℕ → ℚ)
-    (W : ℕ → EF) (hW : PGenerableWeighting W)
+    (hspec : ∀ k, Nat.Partrec.Code.evaln
+      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
+    (H : ℕ → EF) (hH : PairedWeighting H)
+    (hHmem : ∀ z, 0 ≤ (H z).denote P ∧ (H z).denote P ≤ 1)
+    (Y : ℕ → LUV) (hY : LUV.RpnThresholdCodeSeq Y)
+    (hreflected : ∀ m k, f k = m → ∀ v : PCWorld, v.ConsistentWithTheory DP →
+      v.ValuesAt (Y k) ((H (Nat.pair m k)).denote P))
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
+    Tendsto (fun n ↦ (H (Nat.pair (f n) n)).denote P -
+      (Y n).expectApprox (P (f n)) (f n + 1)) atTop (𝓝 0) := by
+  have hkey := deferred_block_price_tendsto_zero (P := P) (DP := DP) hworld f hspec
+    (numericQuoteBlocks_polySequence H hH Y hY)
+    (hconstRank := numericQuoteBlocks_const_rank hH Y)
+    (htermRank := numericQuoteBlocks_terms_rank H Y)
+    (width := fun m ↦ m + 1) (hwidth := ⟨_, PolyFueled.id.succ_comp⟩)
+    (hwidthPos := fun m ↦ Nat.succ_pos m)
+    (hwide := fun m k hk ↦ by rw [numericQuoteBlocks_terms_length]; simp)
+    (C := 1) (hC := by norm_num)
+    (hmag := fun z ↦ by simpa using numericQuoteBlocks_magnitude H Y P z)
+    (hbdd := fun z day ↦ by
+      obtain ⟨m, k, rfl⟩ : ∃ m k, z = Nat.pair m k := ⟨z.unpair.1, z.unpair.2, by simp⟩
+      rw [numericQuoteBlocks_price]
+      have h1 := (Y k).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
+      have h2 := (Y k).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
+      have h3 := hHmem (Nat.pair m k)
+      rw [abs_le]
+      norm_num
+      constructor <;> linarith [h3.1, h3.2])
+    (hsmall := ?_)
+  · refine Tendsto.congr' (Eventually.of_forall fun n ↦ ?_) hkey
+    rw [numericQuoteBlocks_price]
+  · intro ε hε
+    obtain ⟨N, hN⟩ := exists_nat_gt (1 / ε)
+    refine ⟨N, fun m k hk hkm hfk v hv ↦ ?_⟩
+    have hmR : (0 : ℝ) < (m : ℝ) + 1 := by positivity
+    have hsmall : 1 / ((m : ℝ) + 1) ≤ ε := by
+      have hNm : (1 : ℝ) / ε < (m : ℝ) + 1 := by
+        refine hN.trans_le ?_
+        have : (N : ℝ) ≤ (m : ℝ) := by
+          exact_mod_cast le_of_lt (lt_of_le_of_lt hk hkm)
+        linarith
+      rw [div_lt_iff₀ hε] at hNm
+      rw [div_le_iff₀ hmR]
+      nlinarith
+    rw [numericQuoteBlocks_value, abs_sub_comm]
+    refine LE.le.trans ?_ hsmall
+    simpa using
+      (hreflected m k hfk v hv).expectApprox_near (n := m + 1) m.succ_pos
+
+/-- **Deferred conditional-expectation quote without injectivity.**  If on the fibre
+`f k = m` every completed world reads `Z k` as `w m · X k` and `Z' k` as the numeral
+`w m · 𝔼ₘ(X k)`, then the two deferred market expectations agree asymptotically — for
+every deferral function satisfying only `f n > n` plus poly-clocked emission, with no
+injectivity or monotonicity assumption. -/
+lemma conditional_deferred_tendsto_zero
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (f : DeferralFunction) {a degree : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln
+      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
+    (X Z Z' : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
+    (hZ : LUV.RpnThresholdCodeSeq Z) (hZ' : LUV.RpnThresholdCodeSeq Z')
+    (w : ℕ → ℚ) (W : ℕ → EF) (hW : PGenerableWeighting W)
     (hWdenote : ∀ m, (W m).denote P = (w m : ℝ))
     (hw : ∀ m, 0 ≤ w m ∧ w m ≤ 1)
-    (hsemantic : ∀ m, deferralImageFlag f a degree m = 1 →
-      ∀ v : PCWorld, v.ConsistentWithTheory DP →
-        ∃ x, v.ValuesAt (X m) x ∧ v.ValuesAt (Z m) (x * w m) ∧
-          v.ValuesAt (Z' m) ((X m).expect P m * w m))
+    (hsemantic : ∀ m k, f k = m → ∀ v : PCWorld, v.ConsistentWithTheory DP →
+      ∃ x, v.ValuesAt (X k) x ∧ v.ValuesAt (Z k) (x * w m) ∧
+        v.ValuesAt (Z' k) ((X k).expect P m * w m))
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
-    CompletedAffineQuoteApprox P DP (fun m ↦
-      (deferralImageFlag f a degree m : ℝ) *
-        ((Z m).expect P m - (Z' m).expect P m)) := by
-  let EX := currentExpectationFeature X
-  let hEX := currentExpectationFeature_generated X hX
-  let target : ℕ → EF := fun m ↦ EF.mul (W m) (EX m)
-  let htarget := hW.mul hEX
-  let Wneg : ℕ → EF := fun m ↦ EF.mul (EF.const (-1)) (W m)
-  have hWneg : PGenerableWeighting Wneg := {
-    polySeg := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const (-1)) hW.polySeg
-    rank_le := by intro m; simp [Wneg, EF.rank, hW.rank_le m]
-    closed := by
-      intro m ρ V
-      simp only [Wneg, EF.denoteWith, EF.denote_mul, EF.denote_const,
-        Pi.mul_apply]
-      rw [hW.closed m ρ V]
-  }
-
-  let AX := LUV.expectAffineSeq X
-  let AZ := LUV.expectAffineSeq Z
-  let relation : ℕ → AffineCombination := fun m ↦
-    (AZ m).add ((AX m).scale (Wneg m))
-  let numeric := numericQuoteAffine target Z'
-  let raw : ℕ → AffineCombination := fun m ↦ (relation m).add (numeric m)
-  let flag := deferralImageFeature f a degree
-  let gated : ℕ → AffineCombination := fun m ↦ (raw m).scale (flag m)
-  let family : ℕ → AffineCombination := fun m ↦
-    (gated m).scale (EF.const (1 / 4))
-  let hAX := LUV.expectAffineSeq_polySequence X hX
-  let hAZ := LUV.expectAffineSeq_polySequence Z hZ
-  let hrelation := hAZ.add (hAX.scaleFeature Wneg hWneg)
-  let hnumeric := numericQuoteAffine_polySequence target Z' htarget hZ'
-  let hraw := hrelation.add hnumeric
-  let hflag := deferralImageFeature_generated f a degree
-  let hgated := hraw.scaleFeature flag hflag
-  let hfamily := hgated.scaleRat (1 / 4)
-  exact {
-    family := family
-    poly := hfamily
-    scale := 1 / 4
-    scale_pos := by norm_num
-    current_price := by
-      intro m
-      simp only [family, gated, raw, relation, numeric, AX, AZ, flag,
-        AffineCombination.scale_price, AffineCombination.add_price,
-        LUV.expectAffineSeq_price, numericQuoteAffine_price,
-        deferralImageFeature_denote, EF.denote_const, Wneg, EX, target,
-        EF.denote_mul, Pi.mul_apply, hWdenote,
-        currentExpectationFeature_denote]
-      push_cast
-      ring
-    bounded := by
-      refine ⟨1, zero_le_one, fun m day ↦ ?_⟩
-      simp only [family, gated, raw, relation, numeric, AX, AZ, flag,
-        AffineCombination.scale_price, AffineCombination.add_price,
-        LUV.expectAffineSeq, LUV.expectAffine_priceAt,
-        numericQuoteAffine_priceAt,
-        deferralImageFeature_denote, EF.denote_const, Wneg, EX, target,
-        EF.denote_mul, Pi.mul_apply, hWdenote,
-        currentExpectationFeature_denote]
-      rcases deferralImageFlag_zero_or_one f a degree m with hm | hm
-      · simp [hm]
-      · rw [hm]
-        norm_num
-        have hZ0 := (Z m).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
-        have hZ1 := (Z m).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
-        have hZ'0 := (Z' m).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
-        have hZ'1 := (Z' m).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
-        have hX0 := (X m).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
-        have hX1 := (X m).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
-        have hEX0 := (X m).expect_mem_Icc P m (hP m) |>.1
-        have hEX1 := (X m).expect_mem_Icc P m (hP m) |>.2
-        have hw0 : (0 : ℝ) ≤ w m := by exact_mod_cast (hw m).1
-        have hw1 : (w m : ℝ) ≤ 1 := by exact_mod_cast (hw m).2
-        have habs :
-            |(Z m).expectApprox (P day) (m + 1) - (w m : ℝ) *
-                (X m).expectApprox (P day) (m + 1) +
-              ((w m : ℝ) * (X m).expect P m -
-                (Z' m).expectApprox (P day) (m + 1))| ≤ 4 := by
-          rw [abs_le]
-          constructor <;> nlinarith
-        have habs' :
-            |(Z m).expectApprox (P day) (m + 1) +
-                (-((w m : ℝ) * (X m).expectApprox (P day) (m + 1))) +
-              ((w m : ℝ) * (X m).expect P m -
-                (Z' m).expectApprox (P day) (m + 1))| ≤ 4 := by
-          simpa only [sub_eq_add_neg] using habs
-        nlinarith
-    magnitude_le_one := by
-      intro m
-      simp only [family, gated, raw, relation, numeric, AX, AZ, flag,
-        AffineCombination.scale_magnitude, AffineCombination.add_magnitude,
-        deferralImageFeature_denote, EF.denote_const,
-        numericQuoteAffine_magnitude, Wneg, EF.denote_mul, Pi.mul_apply,
-        hWdenote, Rat.cast_neg, Rat.cast_one, neg_mul, one_mul, abs_neg]
-      have hXm := LUV.expectAffineSeq_magnitude_le_one X P m
-      have hZm := LUV.expectAffineSeq_magnitude_le_one Z P m
-      have hZ'm := LUV.expectAffineSeq_magnitude_le_one Z' P m
-      have hwR : |(w m : ℝ)| ≤ 1 := by
-        rw [abs_of_nonneg (by exact_mod_cast (hw m).1)]
+    Tendsto (fun n ↦ (Z n).expect P (f n) - (Z' n).expect P (f n)) atTop (𝓝 0) := by
+  classical
+  have hWnegP : PairedWeighting (fun z ↦ EF.mul (EF.const (-1)) (W z.unpair.1)) :=
+    (PairedWeighting.const (-1)).mul (PairedWeighting.ofPGenerableFst hW)
+  have htargetP :
+      PairedWeighting (fun z ↦ EF.mul (W z.unpair.1) (pairedExpectationFeature X z)) :=
+    (PairedWeighting.ofPGenerableFst hW).mul (pairedExpectationFeature_paired X hX)
+  set Wneg : ℕ → EF := fun z ↦ EF.mul (EF.const (-1)) (W z.unpair.1) with hWnegDef
+  set target : ℕ → EF := fun z ↦ EF.mul (W z.unpair.1) (pairedExpectationFeature X z)
+    with htargetDef
+  set Bs : ℕ → AffineCombination := fun z ↦
+    ((pairedExpectationBlocks Z z).add
+      ((pairedExpectationBlocks X z).scale (Wneg z))).add
+      (numericQuoteBlocks target Z' z) with hBsDef
+  have hB : AffineCombination.PolySequence Bs :=
+    ((pairedExpectationBlocks_polySequence Z hZ).add
+      ((pairedExpectationBlocks_polySequence X hX).scaleFeature Wneg
+        hWnegP.toPGenerable)).add
+      (numericQuoteBlocks_polySequence target htargetP Z' hZ')
+  -- denotations of the two derived features
+  have hWnegDenote : ∀ m k, (Wneg (Nat.pair m k)).denote P = -(w m : ℝ) := by
+    intro m k
+    simp [hWnegDef, hWdenote]
+  have htargetDenote : ∀ m k,
+      (target (Nat.pair m k)).denote P = (w m : ℝ) * (X k).expect P m := by
+    intro m k
+    simp [htargetDef, hWdenote, pairedExpectationFeature_denote]
+  -- price of a block
+  have hprice : ∀ m k day, (Bs (Nat.pair m k)).price P day =
+      (Z k).expectApprox (P day) (m + 1) -
+        (w m : ℝ) * (X k).expectApprox (P day) (m + 1) +
+        ((w m : ℝ) * (X k).expect P m - (Z' k).expectApprox (P day) (m + 1)) := by
+    intro m k day
+    rw [hBsDef]
+    simp only [AffineCombination.add_price, AffineCombination.scale_price,
+      pairedExpectationBlocks_price, numericQuoteBlocks_price,
+      hWnegDenote m k, htargetDenote m k]
+    ring
+  have hvalue : ∀ m k (u : Valuation), (Bs (Nat.pair m k)).value P u =
+      (Z k).expectApprox u (m + 1) -
+        (w m : ℝ) * (X k).expectApprox u (m + 1) +
+        ((w m : ℝ) * (X k).expect P m - (Z' k).expectApprox u (m + 1)) := by
+    intro m k u
+    rw [hBsDef]
+    simp only [AffineCombination.add_value, AffineCombination.scale_value,
+      pairedExpectationBlocks_value, numericQuoteBlocks_value,
+      hWnegDenote m k, htargetDenote m k]
+    ring
+  -- width certificate
+  have hwidth : ∃ c, PolyFueled c (fun m ↦ m * 3 + 3) := by
+    have h3 := Classical.choose_spec (mulc_polyFueled 3)
+    obtain ⟨ca, hca⟩ := h3.addConst 3
+    exact ⟨ca, hca⟩
+  have hkey := deferred_block_price_tendsto_zero (P := P) (DP := DP) hworld f hspec hB
+    (hconstRank := by
+      intro z
+      have h1 : ((pairedExpectationBlocks X z).scale (Wneg z)).const.rank ≤ z.unpair.1 := by
+        simp only [AffineCombination.scale, EF.rank, Nat.max_le]
+        exact ⟨hWnegP.rank_le z, pairedExpectationBlocks_const_rank X z⟩
+      have h2 := pairedExpectationBlocks_const_rank Z z
+      have h3 := numericQuoteBlocks_const_rank htargetP Z' z
+      simp only [hBsDef, AffineCombination.add, EF.rank, Nat.max_le]
+      exact ⟨⟨h2, h1⟩, h3⟩)
+    (htermRank := by
+      intro z p hp
+      simp only [hBsDef, AffineCombination.add, List.mem_append] at hp
+      rcases hp with (hp | hp) | hp
+      · exact pairedExpectationBlocks_terms_rank Z z p hp
+      · exact AffineCombination.scale_terms_rank_le _ _ (hWnegP.rank_le z)
+          (pairedExpectationBlocks_terms_rank X z) p hp
+      · exact numericQuoteBlocks_terms_rank target Z' z p hp)
+    (width := fun m ↦ m * 3 + 3) (hwidth := hwidth)
+    (hwidthPos := fun m ↦ by dsimp only; omega)
+    (hwide := fun m k hk ↦ by
+      simp only [hBsDef, AffineCombination.add, AffineCombination.scale,
+        List.length_append, List.length_map, pairedExpectationBlocks_terms_length,
+        numericQuoteBlocks_terms_length, Nat.unpair_pair]
+      omega)
+    (C := 4) (hC := by norm_num)
+    (hmag := by
+      intro z
+      have h1 := pairedExpectationBlocks_magnitude_le_one Z P z
+      have h2 := pairedExpectationBlocks_magnitude_le_one X P z
+      have h3 := numericQuoteBlocks_magnitude target Z' P z
+      have h4 : |(Wneg z).denote P| ≤ 1 := by
+        obtain ⟨m, k, rfl⟩ : ∃ m k, z = Nat.pair m k := ⟨z.unpair.1, z.unpair.2, by simp⟩
+        rw [hWnegDenote m k, abs_neg, abs_of_nonneg (by exact_mod_cast (hw m).1)]
         exact_mod_cast (hw m).2
-      rcases deferralImageFlag_zero_or_one f a degree m with hm | hm
-      · simp [hm]
-      · rw [hm]
-        norm_num
-        have hXnonneg := (LUV.expectAffineSeq X m).magnitude_nonneg P
-        have hwmag : |(w m : ℝ)| *
-            (LUV.expectAffineSeq X m).magnitude P ≤ 1 := by
-          calc
-            |_| * _ ≤ 1 * 1 := mul_le_mul hwR hXm hXnonneg (by norm_num)
-            _ = 1 := by norm_num
-        have hZ'm' : ((Z' m).expectAffine (m + 1)).magnitude P ≤ 1 := by
-          simpa only [LUV.expectAffineSeq] using hZ'm
-        linarith
-    theory_coherent := by
-      intro ε hε
-      obtain ⟨N, hN⟩ := exists_nat_gt (1 / ε)
-      refine eventually_atTop.2 ⟨max 1 N, fun m hm v hv ↦ ?_⟩
-      rcases deferralImageFlag_zero_or_one f a degree m with hflag0 | hflag1
-      · simpa [family, gated, flag, hflag0, AffineCombination.scale_value] using hε.le
-      · have hmPos : 0 < m := by omega
-        have hmR : (0 : ℝ) < m := by exact_mod_cast hmPos
-        have hsmall : 1 / (m : ℝ) ≤ ε := by
-          have hNm : (1 : ℝ) / ε < m :=
-            hN.trans_le (by exact_mod_cast (le_trans (le_max_right 1 N) hm))
-          rw [div_lt_iff₀ hε] at hNm
-          rw [div_le_iff₀ hmR]
-          nlinarith
-        obtain ⟨x, hx, hz, hz'⟩ := hsemantic m hflag1 v hv
-        have hgrid : ∀ {Y : LUV} {y : ℝ}, v.ValuesAt Y y →
-            |Y.expectApprox v.payout (m + 1) - y| ≤ 1 / (m : ℝ) := by
-          intro Y y hy
-          have hstep : 1 / ((m : ℝ) + 1) ≤ 1 / (m : ℝ) :=
-            one_div_le_one_div_of_le hmR (by linarith)
-          refine LE.le.trans ?_ hstep
-          simpa using hy.expectApprox_near (n := m + 1) m.succ_pos
-        have hnearX := hgrid hx
-        have hnearZ := hgrid hz
-        have hnearZ' := hgrid hz'
-        have hw0 : (0 : ℝ) ≤ w m := by exact_mod_cast (hw m).1
-        have hw1 : (w m : ℝ) ≤ 1 := by exact_mod_cast (hw m).2
-        have hwabs : |(w m : ℝ)| ≤ 1 := by simpa [abs_of_nonneg hw0] using hw1
-        have hmul : |(w m : ℝ)| *
-            |(X m).expectApprox v.payout (m + 1) - x| ≤ 1 / (m : ℝ) := by
-          calc
-            |_| * |_| ≤ 1 * (1 / (m : ℝ)) :=
-              mul_le_mul hwabs hnearX (abs_nonneg _) (by positivity)
-            _ = 1 / (m : ℝ) := one_mul _
-        simp only [family, gated, raw, relation, numeric, AX, AZ, flag,
-          AffineCombination.scale_value, AffineCombination.add_value,
-          LUV.expectAffineSeq_value, numericQuoteAffine_value,
-          deferralImageFeature_denote, hflag1, Nat.cast_one, one_mul,
-          EF.denote_const, Wneg, EX, target, EF.denote_mul, Pi.mul_apply,
-          hWdenote, currentExpectationFeature_denote]
-        push_cast
-        let eZ := (Z m).expectApprox v.payout (m + 1) - x * (w m : ℝ)
-        let eX := (X m).expectApprox v.payout (m + 1) - x
-        let eZ' := (Z' m).expectApprox v.payout (m + 1) -
-          (X m).expect P m * (w m : ℝ)
-        have hbound :
-            |eZ - (w m : ℝ) * eX - eZ'| ≤ 3 / (m : ℝ) := by
-          calc
-            |eZ - (w m : ℝ) * eX - eZ'|
-                ≤ (|eZ| + |(w m : ℝ) * eX|) + |eZ'| := by
-              exact (abs_sub _ _).trans
-                (add_le_add (abs_sub eZ ((w m : ℝ) * eX)) (le_refl _))
-            _ = (|eZ| + |(w m : ℝ)| * |eX|) + |eZ'| := by rw [abs_mul]
-            _ ≤ (1 / (m : ℝ) + 1 / (m : ℝ)) + 1 / (m : ℝ) := by
-              exact add_le_add (add_le_add hnearZ hmul) hnearZ'
-            _ = 3 / (m : ℝ) := by ring
-        have hform : (1 / 4 : ℝ) *
-              ((Z m).expectApprox v.payout (m + 1) + (-1) * (w m : ℝ) *
-                  (X m).expectApprox v.payout (m + 1) +
-                ((w m : ℝ) * (X m).expect P m -
-                  (Z' m).expectApprox v.payout (m + 1))) =
-            (1 / 4 : ℝ) * (eZ - (w m : ℝ) * eX - eZ') := by
-          dsimp only [eZ, eX, eZ']
-          ring
-        rw [hform]
-        rw [abs_mul]
-        norm_num
-        calc
-          1 / 4 * |eZ - (w m : ℝ) * eX - eZ'|
-              ≤ 1 / 4 * (3 / (m : ℝ)) :=
-            mul_le_mul_of_nonneg_left hbound (by norm_num)
-          _ ≤ 1 / (m : ℝ) := by
-            have hinv : 0 ≤ 1 / (m : ℝ) := (one_div_nonneg.mpr hmR.le)
-            calc
-              1 / 4 * (3 / (m : ℝ)) = (3 / 4) * (1 / (m : ℝ)) := by ring
-              _ ≤ 1 * (1 / (m : ℝ)) :=
-                mul_le_mul_of_nonneg_right (by norm_num) hinv
-              _ = 1 / (m : ℝ) := one_mul _
-          _ ≤ ε := hsmall
-  }
-
-/-! ### Image-gated self-trust correction -/
-
-/-- The high-precision affine identity behind self-trust.  Its completed-world value is
-only the two mesh errors for `A` and `B`; the literal gate/sentence correction cancels
-the represented product exactly. -/
-noncomputable def completedImageSelfTrustQuote
-    {P : History} {DP : DeductiveProcess}
-    (f : DeferralFunction) {a degree : ℕ}
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
-    (p : ℕ → ℚ) (pF : ℕ → EF) (hpF : PGenerableWeighting pF)
-    (hpDenote : ∀ m, (pF m).denote P = (p m : ℝ))
-    (hp : ∀ m, 0 ≤ p m ∧ p m ≤ 1)
-    (G : ℕ → EF) (hG : PGenerableWeighting G)
-    (hGmem : ∀ m, 0 ≤ (G m).denote P ∧ (G m).denote P ≤ 1)
-    (A B : ℕ → LUV) (hA : LUV.RpnThresholdCodeSeq A)
-    (hB : LUV.RpnThresholdCodeSeq B)
-    (hsemantic : ∀ m, deferralImageFlag f a degree m = 1 →
-      ∀ v : PCWorld, v.ConsistentWithTheory DP →
-        v.ValuesAt (B m) ((G m).denote P) ∧
-          v.ValuesAt (A m) (v.payout (φ m) * (G m).denote P))
-    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
-    CompletedAffineQuoteApprox P DP (fun m ↦
-      (deferralImageFlag f a degree m : ℝ) *
-        ((A m).expect P m - (p m : ℝ) * (B m).expect P m -
-          (G m).denote P * (P m (φ m) - (p m : ℝ)))) := by
-  let pNeg : ℕ → EF := fun m ↦ EF.mul (EF.const (-1)) (pF m)
-  let GNeg : ℕ → EF := fun m ↦ EF.mul (EF.const (-1)) (G m)
-  let pG : ℕ → EF := fun m ↦ EF.mul (pF m) (G m)
-  have hpNeg : PGenerableWeighting pNeg := {
-    polySeg := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const (-1)) hpF.polySeg
-    rank_le := by intro m; simp [pNeg, EF.rank, hpF.rank_le m]
-    closed := by intro m ρ V; simp [pNeg, EF.denoteWith, hpF.closed m ρ V]
-  }
-  have hGNeg : PGenerableWeighting GNeg := {
-    polySeg := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const (-1)) hG.polySeg
-    rank_le := by intro m; simp [GNeg, EF.rank, hG.rank_le m]
-    closed := by intro m ρ V; simp [GNeg, EF.denoteWith, hG.closed m ρ V]
-  }
-  let hpG := hpF.mul hG
-  let AA := LUV.expectAffineSeq A
-  let AB := LUV.expectAffineSeq B
-  let S := AffineCombination.sentenceAffine φ
-  let C := featureConstantAffine pG
-  let raw : ℕ → AffineCombination := fun m ↦
-    (((AA m).add ((AB m).scale (pNeg m))).add
-      ((S m).scale (GNeg m))).add (C m)
-  let flag := deferralImageFeature f a degree
-  let family : ℕ → AffineCombination := fun m ↦
-    ((raw m).scale (flag m)).scale (EF.const (1 / 4))
-  let hraw := (((LUV.expectAffineSeq_polySequence A hA).add
-      ((LUV.expectAffineSeq_polySequence B hB).scaleFeature pNeg hpNeg)).add
-      ((AffineCombination.sentenceAffine_polySequence φ hφ).scaleFeature GNeg hGNeg)).add
-      (featureConstantAffine_polySequence pG hpG)
-  let hfamily := (hraw.scaleFeature flag
-    (deferralImageFeature_generated f a degree)).scaleRat (1 / 4)
-  exact {
-    family := family
-    poly := hfamily
-    scale := 1 / 4
-    scale_pos := by norm_num
-    current_price := by
-      intro m
-      simp only [family, raw, AA, AB, S, C, flag,
-        AffineCombination.scale_price, AffineCombination.add_price,
-        LUV.expectAffineSeq_price, AffineCombination.sentenceAffine_price,
-        featureConstantAffine_price, deferralImageFeature_denote,
-        EF.denote_const, pNeg, GNeg, pG, EF.denote_mul, Pi.mul_apply,
-        hpDenote]
+      have hXnonneg := (pairedExpectationBlocks X z).magnitude_nonneg P
+      have hscale : ((pairedExpectationBlocks X z).scale (Wneg z)).magnitude P ≤ 1 := by
+        rw [AffineCombination.scale_magnitude]
+        calc |(Wneg z).denote P| * (pairedExpectationBlocks X z).magnitude P
+            ≤ 1 * 1 := mul_le_mul h4 h2 hXnonneg (by norm_num)
+          _ = 1 := by norm_num
+      simp only [hBsDef, AffineCombination.add_magnitude]
       push_cast
-      ring_nf
-    bounded := by
-      refine ⟨1, zero_le_one, fun m day ↦ ?_⟩
-      simp only [family, raw, AA, AB, S, C, flag,
-        AffineCombination.scale_price, AffineCombination.add_price,
-        LUV.expectAffineSeq, LUV.expectAffine_priceAt,
-        AffineCombination.sentenceAffine_price, featureConstantAffine_price,
-        deferralImageFeature_denote, EF.denote_const, pNeg, GNeg, pG,
-        EF.denote_mul, Pi.mul_apply, hpDenote]
-      rcases deferralImageFlag_zero_or_one f a degree m with hm | hm
-      · simp [hm]
-      · rw [hm]
-        norm_num
-        have hA0 := (A m).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
-        have hA1 := (A m).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
-        have hB0 := (B m).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
-        have hB1 := (B m).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
-        have hp0 : (0 : ℝ) ≤ p m := by exact_mod_cast (hp m).1
-        have hp1 : (p m : ℝ) ≤ 1 := by exact_mod_cast (hp m).2
-        have habs :
-            |(A m).expectApprox (P day) (m + 1) - (p m : ℝ) *
-                (B m).expectApprox (P day) (m + 1) -
-              (G m).denote P * P day (φ m) +
-              (p m : ℝ) * (G m).denote P| ≤ 4 := by
-          rw [abs_le]
-          constructor <;> nlinarith [(hGmem m).1, (hGmem m).2,
-            (hP day (φ m)).1, (hP day (φ m)).2]
-        have habs' :
-            |(A m).expectApprox (P day) (m + 1) +
-                (-(p m : ℝ) * (B m).expectApprox (P day) (m + 1)) +
-              (-(G m).denote P * P day (φ m)) +
-              (p m : ℝ) * (G m).denote P| ≤ 4 := by
-          convert habs using 1
-          all_goals ring_nf
-        have hscaled := mul_le_mul_of_nonneg_left habs'
-          (show (0 : ℝ) ≤ 1 / 4 by norm_num)
-        norm_num at hscaled ⊢
-        exact hscaled
-    magnitude_le_one := by
-      intro m
-      simp only [family, raw, AA, AB, S, C, flag,
-        AffineCombination.scale_magnitude, AffineCombination.add_magnitude,
-        LUV.expectAffineSeq, AffineCombination.sentenceAffine_magnitude,
-        featureConstantAffine_magnitude, deferralImageFeature_denote,
-        EF.denote_const, pNeg, GNeg, EF.denote_mul, Pi.mul_apply,
-        hpDenote, Rat.cast_neg, Rat.cast_one, neg_mul, one_mul, abs_neg,
-        add_zero]
-      have hAm := (A m).expectAffine_magnitude_le_one P (m + 1)
-      have hBm := (B m).expectAffine_magnitude_le_one P (m + 1)
-      have hpR : |(p m : ℝ)| ≤ 1 := by
-        rw [abs_of_nonneg (by exact_mod_cast (hp m).1)]
-        exact_mod_cast (hp m).2
-      rcases deferralImageFlag_zero_or_one f a degree m with hm | hm
-      · simp [hm]
-      · rw [hm]
-        norm_num
-        have hpB : |(p m : ℝ)| * ((B m).expectAffine (m + 1)).magnitude P ≤ 1 := by
-          exact (mul_le_mul hpR hBm (((B m).expectAffine (m + 1)).magnitude_nonneg P)
-            (by norm_num)).trans_eq (one_mul 1)
-        have hGabs : |(G m).denote P| ≤ 1 := by
-          simpa [abs_of_nonneg (hGmem m).1] using (hGmem m).2
+      linarith)
+    (hbdd := by
+      intro z day
+      obtain ⟨m, k, rfl⟩ : ∃ m k, z = Nat.pair m k := ⟨z.unpair.1, z.unpair.2, by simp⟩
+      rw [hprice]
+      have h1 := (Z k).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
+      have h2 := (Z k).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
+      have h3 := (Z' k).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
+      have h4 := (Z' k).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
+      have h5 := (X k).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
+      have h6 := (X k).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
+      have h7 := ((X k).expect_mem_Icc P m (hP m)).1
+      have h8 := ((X k).expect_mem_Icc P m (hP m)).2
+      have hw0 : (0 : ℝ) ≤ (w m : ℝ) := by exact_mod_cast (hw m).1
+      have hw1 : (w m : ℝ) ≤ 1 := by exact_mod_cast (hw m).2
+      rw [abs_le]
+      push_cast
+      constructor <;> nlinarith)
+    (hsmall := ?_)
+  · refine Tendsto.congr' (Eventually.of_forall fun n ↦ ?_) hkey
+    rw [hprice]
+    simp only [LUV.expect]
+    ring
+  · intro ε hε
+    obtain ⟨N, hN⟩ := exists_nat_gt (3 / ε)
+    refine ⟨N, fun m k hk hkm hfk v hv ↦ ?_⟩
+    obtain ⟨x, hx, hz, hz'⟩ := hsemantic m k hfk v hv
+    have hmR : (0 : ℝ) < (m : ℝ) + 1 := by positivity
+    have hgrid : ∀ {Y : LUV} {y : ℝ}, v.ValuesAt Y y →
+        |Y.expectApprox v.payout (m + 1) - y| ≤ 1 / ((m : ℝ) + 1) := by
+      intro Y y hy
+      simpa using hy.expectApprox_near (n := m + 1) m.succ_pos
+    have hnearX := hgrid hx
+    have hnearZ := hgrid hz
+    have hnearZ' := hgrid hz'
+    have hw0 : (0 : ℝ) ≤ (w m : ℝ) := by exact_mod_cast (hw m).1
+    have hw1 : (w m : ℝ) ≤ 1 := by exact_mod_cast (hw m).2
+    have hwabs : |(w m : ℝ)| ≤ 1 := by rw [abs_of_nonneg hw0]; exact hw1
+    have hmul : |(w m : ℝ)| * |(X k).expectApprox v.payout (m + 1) - x| ≤
+        1 / ((m : ℝ) + 1) := by
+      calc |(w m : ℝ)| * |(X k).expectApprox v.payout (m + 1) - x|
+          ≤ 1 * (1 / ((m : ℝ) + 1)) :=
+            mul_le_mul hwabs hnearX (abs_nonneg _) (by positivity)
+        _ = 1 / ((m : ℝ) + 1) := one_mul _
+    have hsmallε : 3 / ((m : ℝ) + 1) ≤ ε := by
+      have hNm : (3 : ℝ) / ε < (m : ℝ) + 1 := by
+        refine hN.trans_le ?_
+        have : (N : ℝ) ≤ (m : ℝ) := by
+          exact_mod_cast le_of_lt (lt_of_le_of_lt hk hkm)
         linarith
-    theory_coherent := by
-      intro ε hε
-      obtain ⟨N, hN⟩ := exists_nat_gt (1 / ε)
-      refine eventually_atTop.2 ⟨max 1 N, fun m hm v hv ↦ ?_⟩
-      rcases deferralImageFlag_zero_or_one f a degree m with hflag0 | hflag1
-      · simpa [family, flag, hflag0, AffineCombination.scale_value] using hε.le
-      · have hmPos : 0 < m := by omega
-        have hmR : (0 : ℝ) < m := by exact_mod_cast hmPos
-        have hsmall : 1 / (m : ℝ) ≤ ε := by
-          have hNm : (1 : ℝ) / ε < m :=
-            hN.trans_le (by exact_mod_cast (le_trans (le_max_right 1 N) hm))
-          rw [div_lt_iff₀ hε] at hNm
-          rw [div_le_iff₀ hmR]
-          nlinarith
-        obtain ⟨hBv, hAv⟩ := hsemantic m hflag1 v hv
-        have hgrid : ∀ {Y : LUV} {y : ℝ}, v.ValuesAt Y y →
-            |Y.expectApprox v.payout (m + 1) - y| ≤ 1 / (m : ℝ) := by
-          intro Y y hy
-          have hstep : 1 / ((m : ℝ) + 1) ≤ 1 / (m : ℝ) :=
-            one_div_le_one_div_of_le hmR (by linarith)
-          refine LE.le.trans ?_ hstep
-          simpa using hy.expectApprox_near (n := m + 1) m.succ_pos
-        have hnearA := hgrid hAv
-        have hnearB := hgrid hBv
-        have hp0 : (0 : ℝ) ≤ p m := by exact_mod_cast (hp m).1
-        have hp1 : (p m : ℝ) ≤ 1 := by exact_mod_cast (hp m).2
-        simp only [family, raw, AA, AB, S, C, flag,
-          AffineCombination.scale_value, AffineCombination.add_value,
-          LUV.expectAffineSeq_value, AffineCombination.sentenceAffine_value,
-          featureConstantAffine_value, deferralImageFeature_denote, hflag1,
-          Nat.cast_one, one_mul, EF.denote_const, pNeg, GNeg, pG,
-          EF.denote_mul, Pi.mul_apply, hpDenote]
-        push_cast
-        have hpabs : |(p m : ℝ)| ≤ 1 := by
-          simpa [abs_of_nonneg hp0] using hp1
-        have hpnear : |(p m : ℝ)| *
-            |(B m).expectApprox v.payout (m + 1) - (G m).denote P| ≤
-              1 / (m : ℝ) := by
-          calc
-            |_| * |_| ≤ 1 * (1 / (m : ℝ)) :=
-              mul_le_mul hpabs hnearB (abs_nonneg _) (by positivity)
-            _ = _ := one_mul _
-        let eA := (A m).expectApprox v.payout (m + 1) -
-          v.payout (φ m) * (G m).denote P
-        let eB := (B m).expectApprox v.payout (m + 1) - (G m).denote P
-        have herr : |eA - (p m : ℝ) * eB| ≤ 2 / (m : ℝ) := by
-          calc
-            |eA - (p m : ℝ) * eB| ≤ |eA| + |(p m : ℝ) * eB| := abs_sub _ _
-            _ = |_| + |(p m : ℝ)| * |_| := by rw [abs_mul]
-            _ ≤ 1 / (m : ℝ) + 1 / (m : ℝ) := add_le_add hnearA hpnear
-            _ = 2 / (m : ℝ) := by ring
-        have hform : (1 / 4 : ℝ) *
-            ((A m).expectApprox v.payout (m + 1) + (-1) * (p m : ℝ) *
-                (B m).expectApprox v.payout (m + 1) +
-              (-1) * (G m).denote P * v.payout (φ m) +
-              (p m : ℝ) * (G m).denote P) =
-            (1 / 4 : ℝ) * (eA - (p m : ℝ) * eB) := by
-          dsimp only [eA, eB]
-          ring
-        rw [hform, abs_mul]
-        norm_num
-        calc
-          1 / 4 * |eA - (p m : ℝ) * eB|
-              ≤ 1 / 4 * (2 / (m : ℝ)) :=
-            mul_le_mul_of_nonneg_left herr (by norm_num)
-          _ ≤ 1 / (m : ℝ) := by
-            have hi : 0 ≤ 1 / (m : ℝ) := one_div_nonneg.mpr hmR.le
-            calc
-              1 / 4 * (2 / (m : ℝ)) = (1 / 2) * (1 / (m : ℝ)) := by ring
-              _ ≤ 1 * (1 / (m : ℝ)) :=
-                mul_le_mul_of_nonneg_right (by norm_num) hi
-              _ = _ := one_mul _
-          _ ≤ ε := hsmall
-  }
+      rw [div_lt_iff₀ hε] at hNm
+      rw [div_le_iff₀ hmR]
+      nlinarith
+    rw [hvalue]
+    set eZ := (Z k).expectApprox v.payout (m + 1) - x * (w m : ℝ) with heZ
+    set eX := (X k).expectApprox v.payout (m + 1) - x with heX
+    set eZ' := (Z' k).expectApprox v.payout (m + 1) -
+      (X k).expect P m * (w m : ℝ) with heZ'
+    have hform : (Z k).expectApprox v.payout (m + 1) -
+          (w m : ℝ) * (X k).expectApprox v.payout (m + 1) +
+          ((w m : ℝ) * (X k).expect P m -
+            (Z' k).expectApprox v.payout (m + 1)) =
+        eZ - (w m : ℝ) * eX - eZ' := by
+      rw [heZ, heX, heZ']; ring
+    rw [hform]
+    have hbound : |eZ - (w m : ℝ) * eX - eZ'| ≤ 3 / ((m : ℝ) + 1) := by
+      calc |eZ - (w m : ℝ) * eX - eZ'|
+          ≤ (|eZ| + |(w m : ℝ) * eX|) + |eZ'| :=
+            (abs_sub _ _).trans (add_le_add (abs_sub eZ ((w m : ℝ) * eX)) (le_refl _))
+        _ = (|eZ| + |(w m : ℝ)| * |eX|) + |eZ'| := by rw [abs_mul]
+        _ ≤ (1 / ((m : ℝ) + 1) + 1 / ((m : ℝ) + 1)) + 1 / ((m : ℝ) + 1) :=
+            add_le_add (add_le_add hnearZ hmul) hnearZ'
+        _ = 3 / ((m : ℝ) + 1) := by ring
+    exact hbound.trans hsmallε
+
+/-- **Deferred self-trust correction without injectivity.**  If every completed world
+values the confidence LUV `B k` at the paired gate `G ⟨f k, k⟩` and the product LUV `A k`
+at that gate scaled by the payout of `φ k`, then the deferred reading of the self-trust
+identity vanishes asymptotically — for every deferral function satisfying only `f n > n`
+plus poly-clocked emission.  The block family carries the emitted confidence *expression*
+`pF` rather than a numeral, so the day-`f n` portfolio stays inside the rank discipline. -/
+lemma selfTrust_deferred_tendsto_zero
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (f : DeferralFunction) {a degree : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln
+      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (p : ℕ → ℚ) (hp : ∀ m, 0 ≤ p m ∧ p m ≤ 1)
+    (pF : ℕ → EF) (hpF : PairedWeighting pF)
+    (hpFmem : ∀ z, 0 ≤ (pF z).denote P ∧ (pF z).denote P ≤ 1)
+    (hpDenote : ∀ m k, k ≤ m → (pF (Nat.pair m k)).denote P = (p k : ℝ))
+    (G : ℕ → EF) (hG : PairedWeighting G)
+    (hGmem : ∀ z, 0 ≤ (G z).denote P ∧ (G z).denote P ≤ 1)
+    (A B : ℕ → LUV) (hA : LUV.RpnThresholdCodeSeq A) (hB : LUV.RpnThresholdCodeSeq B)
+    (hsemantic : ∀ m k, f k = m → ∀ v : PCWorld, v.ConsistentWithTheory DP →
+      v.ValuesAt (B k) ((G (Nat.pair m k)).denote P) ∧
+        v.ValuesAt (A k) (v.payout (φ k) * (G (Nat.pair m k)).denote P))
+    (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
+    Tendsto (fun n ↦ (A n).expect P (f n) - (p n : ℝ) * (B n).expect P (f n) -
+      (G (Nat.pair (f n) n)).denote P * (P (f n) (φ n) - (p n : ℝ)))
+      atTop (𝓝 0) := by
+  classical
+  set pNeg : ℕ → EF := fun z ↦ EF.mul (EF.const (-1)) (pF z) with hpNegDef
+  set GNeg : ℕ → EF := fun z ↦ EF.mul (EF.const (-1)) (G z) with hGNegDef
+  set pG : ℕ → EF := fun z ↦ EF.mul (pF z) (G z) with hpGDef
+  have hpNeg : PairedWeighting pNeg := (PairedWeighting.const (-1)).mul hpF
+  have hGNeg : PairedWeighting GNeg := (PairedWeighting.const (-1)).mul hG
+  have hpG : PairedWeighting pG := hpF.mul hG
+  have hφ' : RpnSentenceCodes (fun z ↦ φ z.unpair.2) := hφ.comp PolyFueled.right
+  set Bs : ℕ → AffineCombination := fun z ↦
+    ((((pairedExpectationBlocks A z).add
+        ((pairedExpectationBlocks B z).scale (pNeg z))).add
+      ((AffineCombination.sentenceAffine (fun z ↦ φ z.unpair.2) z).scale (GNeg z))).add
+      (featureConstantAffine pG z)) with hBsDef
+  have hBpoly : AffineCombination.PolySequence Bs :=
+    (((pairedExpectationBlocks_polySequence A hA).add
+        ((pairedExpectationBlocks_polySequence B hB).scaleFeature pNeg
+          hpNeg.toPGenerable)).add
+      ((AffineCombination.sentenceAffine_polySequence
+          (fun z ↦ φ z.unpair.2) hφ').scaleFeature GNeg hGNeg.toPGenerable)).add
+      (featureConstantAffine_polySequence pG hpG.toPGenerable)
+  -- pointwise readings of the block family
+  have hvalue : ∀ (w : Valuation) (m k : ℕ),
+      (Bs (Nat.pair m k)).value P w =
+        (A k).expectApprox w (m + 1) +
+          (-(pF (Nat.pair m k)).denote P) * (B k).expectApprox w (m + 1) +
+          (-(G (Nat.pair m k)).denote P) * w (φ k) +
+          (pF (Nat.pair m k)).denote P * (G (Nat.pair m k)).denote P := by
+    intro w m k
+    simp only [hBsDef, AffineCombination.add_value, AffineCombination.scale_value,
+      pairedExpectationBlocks_value, AffineCombination.sentenceAffine_value,
+      featureConstantAffine_value, hpNegDef, hGNegDef, hpGDef, EF.denote_mul,
+      EF.denote_const, Pi.mul_apply, Nat.unpair_pair, Rat.cast_neg, Rat.cast_one]
+    ring
+  have hprice : ∀ (day m k : ℕ),
+      (Bs (Nat.pair m k)).price P day =
+        (A k).expectApprox (P day) (m + 1) +
+          (-(pF (Nat.pair m k)).denote P) * (B k).expectApprox (P day) (m + 1) +
+          (-(G (Nat.pair m k)).denote P) * P day (φ k) +
+          (pF (Nat.pair m k)).denote P * (G (Nat.pair m k)).denote P := by
+    intro day m k
+    rw [AffineCombination.price, hvalue]
+  have hpairs : ∀ z : ℕ, ∃ m k, z = Nat.pair m k :=
+    fun z ↦ ⟨z.unpair.1, z.unpair.2, by simp⟩
+  have hwidth : ∃ c, PolyFueled c (fun m ↦ m * 2 + 3) := by
+    have h2 := Classical.choose_spec (mulc_polyFueled 2)
+    obtain ⟨ca, hca⟩ := h2.addConst 3
+    exact ⟨ca, hca⟩
+  have hkey := deferred_block_price_tendsto_zero (P := P) (DP := DP) hworld f hspec hBpoly
+    (hconstRank := ?_) (htermRank := ?_)
+    (width := fun m ↦ m * 2 + 3) (hwidth := hwidth)
+    (hwidthPos := fun m ↦ by dsimp only; omega)
+    (hwide := ?_)
+    (C := 4) (hC := by norm_num)
+    (hmag := ?_) (hbdd := ?_) (hsmall := ?_)
+  · refine Tendsto.congr' (Eventually.of_forall fun n ↦ ?_) hkey
+    rw [hprice, hpDenote (f n) n (f.lt n).le]
+    simp only [LUV.expect]
+    ring
+  · -- hconstRank
+    intro z
+    simp only [hBsDef, AffineCombination.add, AffineCombination.scale,
+      AffineCombination.sentenceAffine, featureConstantAffine, EF.rank,
+      hpNegDef, hGNegDef, hpGDef]
+    refine Nat.max_le.mpr ⟨Nat.max_le.mpr ⟨Nat.max_le.mpr
+      ⟨pairedExpectationBlocks_const_rank A z, ?_⟩, ?_⟩, ?_⟩
+    · exact Nat.max_le.mpr ⟨Nat.max_le.mpr ⟨by simp, hpF.rank_le z⟩,
+        pairedExpectationBlocks_const_rank B z⟩
+    · exact Nat.max_le.mpr ⟨Nat.max_le.mpr ⟨by simp, hG.rank_le z⟩, by simp⟩
+    · exact Nat.max_le.mpr ⟨hpF.rank_le z, hG.rank_le z⟩
+  · -- htermRank
+    intro z q hq
+    have hstep : ∀ (X Y : AffineCombination),
+        (∀ r ∈ X.terms, r.1.rank ≤ z.unpair.1) →
+        (∀ r ∈ Y.terms, r.1.rank ≤ z.unpair.1) →
+        ∀ r ∈ (X.add Y).terms, r.1.rank ≤ z.unpair.1 := by
+      intro X Y hX hY r hr
+      simp only [AffineCombination.add, List.mem_append] at hr
+      rcases hr with hr | hr
+      · exact hX r hr
+      · exact hY r hr
+    have hpNegRank : (pNeg z).rank ≤ z.unpair.1 := hpNeg.rank_le z
+    have hGNegRank : (GNeg z).rank ≤ z.unpair.1 := hGNeg.rank_le z
+    have hSent : ∀ r ∈ (AffineCombination.sentenceAffine
+        (fun z ↦ φ z.unpair.2) z).terms, r.1.rank ≤ z.unpair.1 := by
+      intro r hr
+      simp only [AffineCombination.sentenceAffine, List.mem_cons,
+        List.not_mem_nil, or_false] at hr
+      subst hr
+      simp [EF.rank]
+    refine hstep _ _ (hstep _ _ (hstep _ _
+      (pairedExpectationBlocks_terms_rank A z)
+      (AffineCombination.scale_terms_rank_le _ _ hpNegRank
+        (pairedExpectationBlocks_terms_rank B z)))
+      (AffineCombination.scale_terms_rank_le _ _ hGNegRank hSent))
+      ?_ q hq
+    intro r hr
+    simp [featureConstantAffine] at hr
+  · -- hwide
+    intro m k hk
+    simp only [hBsDef, AffineCombination.add, AffineCombination.scale,
+      AffineCombination.sentenceAffine, featureConstantAffine,
+      pairedExpectationBlocks, LUV.expectAffine, List.length_append,
+      List.length_map, List.length_range, List.length_cons, List.length_nil,
+      Nat.unpair_pair]
+    omega
+  · -- hmag
+    intro z
+    obtain ⟨m, k, rfl⟩ := hpairs z
+    have hpm := hpFmem (Nat.pair m k)
+    have hgm := hGmem (Nat.pair m k)
+    have hmagEq : (Bs (Nat.pair m k)).magnitude P =
+        (pairedExpectationBlocks A (Nat.pair m k)).magnitude P +
+          |(pF (Nat.pair m k)).denote P| *
+            (pairedExpectationBlocks B (Nat.pair m k)).magnitude P +
+          |(G (Nat.pair m k)).denote P| * 1 + 0 := by
+      simp only [hBsDef, AffineCombination.add_magnitude,
+        AffineCombination.scale_magnitude, featureConstantAffine_magnitude,
+        AffineCombination.sentenceAffine_magnitude, hpNegDef, hGNegDef,
+        EF.denote_mul, EF.denote_const, Pi.mul_apply, Rat.cast_neg, Rat.cast_one,
+        neg_mul, one_mul, abs_neg]
+    rw [hmagEq, show ((4:ℚ):ℝ) = 4 by norm_num]
+    have h1 := pairedExpectationBlocks_magnitude_le_one A P (Nat.pair m k)
+    have h2 := pairedExpectationBlocks_magnitude_le_one B P (Nat.pair m k)
+    have h3 := (pairedExpectationBlocks B (Nat.pair m k)).magnitude_nonneg P
+    have hpabs : |(pF (Nat.pair m k)).denote P| ≤ 1 := by
+      rw [abs_of_nonneg hpm.1]; exact hpm.2
+    have hgabs : |(G (Nat.pair m k)).denote P| ≤ 1 := by
+      rw [abs_of_nonneg hgm.1]; exact hgm.2
+    have h4 : (0:ℝ) ≤ |(pF (Nat.pair m k)).denote P| := abs_nonneg _
+    nlinarith
+  · -- hbdd
+    intro z day
+    obtain ⟨m, k, rfl⟩ := hpairs z
+    rw [hprice]
+    have hpm := hpFmem (Nat.pair m k)
+    have hgm := hGmem (Nat.pair m k)
+    have hA0 := (A k).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
+    have hA1 := (A k).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
+    have hB0 := (B k).expectApprox_nonneg (P day) (m + 1) (fun s ↦ (hP day s).1)
+    have hB1 := (B k).expectApprox_le_one (P day) (m + 1) (fun s ↦ (hP day s).2)
+    have hs0 := (hP day (φ k)).1
+    have hs1 := (hP day (φ k)).2
+    rw [abs_le]
+    constructor <;> [skip; skip] <;> push_cast <;>
+      nlinarith [hpm.1, hpm.2, hgm.1, hgm.2]
+  · -- hsmall
+    intro ε hε
+    obtain ⟨N, hN⟩ := exists_nat_gt (2 / ε)
+    refine ⟨N, fun m k hk hkm hfk v hv ↦ ?_⟩
+    obtain ⟨hBv, hAv⟩ := hsemantic m k hfk v hv
+    have hmR : (0 : ℝ) < (m : ℝ) + 1 := by positivity
+    have hsmallm : 2 / ((m : ℝ) + 1) ≤ ε := by
+      have hNm : (2 : ℝ) / ε < (m : ℝ) + 1 := by
+        refine hN.trans_le ?_
+        have : (N : ℝ) ≤ (m : ℝ) := by
+          exact_mod_cast le_of_lt (lt_of_le_of_lt hk hkm)
+        linarith
+      rw [div_lt_iff₀ hε] at hNm
+      rw [div_le_iff₀ hmR]
+      nlinarith
+    have hnearA : |(A k).expectApprox v.payout (m + 1) -
+        v.payout (φ k) * (G (Nat.pair m k)).denote P| ≤ 1 / ((m : ℝ) + 1) := by
+      simpa using hAv.expectApprox_near (n := m + 1) m.succ_pos
+    have hnearB : |(B k).expectApprox v.payout (m + 1) -
+        (G (Nat.pair m k)).denote P| ≤ 1 / ((m : ℝ) + 1) := by
+      simpa using hBv.expectApprox_near (n := m + 1) m.succ_pos
+    have hpk : (pF (Nat.pair m k)).denote P = (p k : ℝ) :=
+      hpDenote m k (le_of_lt hkm)
+    have hpabs : |(p k : ℝ)| ≤ 1 := by
+      rw [abs_of_nonneg (by exact_mod_cast (hp k).1)]
+      exact_mod_cast (hp k).2
+    rw [hvalue, hpk]
+    set eA := (A k).expectApprox v.payout (m + 1) -
+      v.payout (φ k) * (G (Nat.pair m k)).denote P with heA
+    set eB := (B k).expectApprox v.payout (m + 1) -
+      (G (Nat.pair m k)).denote P with heB
+    have hform : (A k).expectApprox v.payout (m + 1) +
+        (-(p k : ℝ)) * (B k).expectApprox v.payout (m + 1) +
+        (-(G (Nat.pair m k)).denote P) * v.payout (φ k) +
+        (p k : ℝ) * (G (Nat.pair m k)).denote P = eA - (p k : ℝ) * eB := by
+      rw [heA, heB]; ring
+    rw [hform]
+    have hmulB : |(p k : ℝ)| * |eB| ≤ 1 / ((m : ℝ) + 1) := by
+      calc |(p k : ℝ)| * |eB| ≤ 1 * (1 / ((m : ℝ) + 1)) :=
+            mul_le_mul hpabs hnearB (abs_nonneg _) (by positivity)
+        _ = _ := one_mul _
+    calc |eA - (p k : ℝ) * eB| ≤ |eA| + |(p k : ℝ) * eB| := abs_sub _ _
+      _ = |eA| + |(p k : ℝ)| * |eB| := by rw [abs_mul]
+      _ ≤ 1 / ((m : ℝ) + 1) + 1 / ((m : ℝ) + 1) := add_le_add hnearA hmulB
+      _ = 2 / ((m : ℝ) + 1) := by ring
+      _ ≤ ε := hsmallm
+
+end DeferralFibre
 
 /-! ## Interval quotation package -/
 
@@ -4128,7 +4076,7 @@ premise is the explicit first-order representation fact needed to compare two th
 mesh precisions; compact syntax alone cannot imply it. -/
 noncomputable def expectedFutureExpectationQuoteOfRepresentation
     {P : History} {DP : DeductiveProcess}
-    (f : DeferralFunction) (hinj : Function.Injective f.f)
+    (f : DeferralFunction)
     (X Y : ℕ → LUV)
     (hX : LUV.RpnThresholdCodeSeq X) (hY : LUV.RpnThresholdCodeSeq Y)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
@@ -4146,56 +4094,31 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
       (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k) := by
     simpa [a, degree, PrefixPatchCompile.ecClock] using
       Classical.choose_spec (Classical.choose_spec f.fueled)
-  let index := deferralPreimage f a degree
-  let flagN := deferralImageFlag f a degree
-  let X' : ℕ → LUV := fun m ↦ X (index m)
-  let Y' : ℕ → LUV := fun m ↦ Y (index m)
-  let hindex := deferralPreimage_polyFueled f a degree
-  let hX' := hX.reindex hindex
-  let hY' := hY.reindex hindex
-  let H := currentExpectationFeature X'
-  let hH := currentExpectationFeature_generated X' hX'
-  have hHmem : ∀ m, 0 ≤ (H m).denote P ∧ (H m).denote P ≤ 1 := by
-    intro m
-    rw [show (H m).denote P = (X' m).expect P m by
-      exact currentExpectationFeature_denote X' P m]
-    exact (X' m).expect_mem_Icc P m (hP m)
-  have hreflectedImage : ∀ m, flagN m = 1 →
-      ∀ v : PCWorld, v.ConsistentWithTheory DP →
-        v.ValuesAt (Y' m) ((H m).denote P) := by
-    intro m hm v hv
-    have hmSpec := deferralPreimage_spec f hinj hspec hm
-    rw [show (H m).denote P = (X' m).expect P m by
-      exact currentExpectationFeature_denote X' P m]
-    simpa only [X', Y', index, hmSpec.2] using reflected (index m) v hv
-  let high := completedImageNumericQuote f H hH Y' hY'
-    hreflectedImage hHmem hP
-  let crossX := completedImageCrossPrecisionQuote f hinj hspec X hX
-    source_valued hP
   have quote_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ y, v.ValuesAt (Y n) y := by
     intro n v hv
     exact ⟨(X n).expect P (f n), reflected n v hv⟩
-  let crossY := completedImageCrossPrecisionQuote f hinj hspec Y hY
-    quote_valued hP
-  let highGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((X (index m)).expect P m - (Y (index m)).expect P m)
-  let crossXGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((X (index m)).expectApprox (P m) (index m + 1) -
-      (X (index m)).expect P m)
-  let crossYGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((Y (index m)).expectApprox (P m) (index m + 1) -
-      (Y (index m)).expect P m)
-  have hhigh0 : Tendsto highGap atTop (𝓝 0) := by
-    simpa only [AsympEq, _root_.sub_zero, high, highGap, flagN, X', Y', H,
-      index, currentExpectationFeature_denote] using
-      high.gap_asympEq_zero hworld
-  have hcrossX0 : Tendsto crossXGap atTop (𝓝 0) := by
-    simpa only [AsympEq, _root_.sub_zero, crossX, crossXGap, flagN, index,
-      LUV.expect] using crossX.gap_asympEq_zero hworld
-  have hcrossY0 : Tendsto crossYGap atTop (𝓝 0) := by
-    simpa only [AsympEq, _root_.sub_zero, crossY, crossYGap, flagN, index,
-      LUV.expect] using crossY.gap_asympEq_zero hworld
+  have hHmem : ∀ z, 0 ≤ (DeferralFibre.pairedExpectationFeature X z).denote P ∧
+      (DeferralFibre.pairedExpectationFeature X z).denote P ≤ 1 := by
+    intro z
+    obtain ⟨m, k, rfl⟩ : ∃ m k, z = Nat.pair m k := ⟨z.unpair.1, z.unpair.2, by simp⟩
+    rw [DeferralFibre.pairedExpectationFeature_denote]
+    exact (X k).expect_mem_Icc P m (hP m)
+  have hhigh0 : Tendsto (fun n ↦ (X n).expect P (f n) - (Y n).expect P (f n))
+      atTop (𝓝 0) := by
+    have h := DeferralFibre.numericQuote_deferred_tendsto_zero hworld f hspec
+      (DeferralFibre.pairedExpectationFeature X)
+      (DeferralFibre.pairedExpectationFeature_paired X hX) hHmem Y hY
+      (fun m k hfk v hv ↦ by
+        rw [DeferralFibre.pairedExpectationFeature_denote, ← hfk]
+        exact reflected k v hv) hP
+    refine Tendsto.congr' (Eventually.of_forall fun n ↦ ?_) h
+    rw [DeferralFibre.pairedExpectationFeature_denote]
+    rfl
+  have hcrossX0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
+    X hX source_valued hP
+  have hcrossY0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
+    Y hY quote_valued hP
   let raw := LUV.expectDifferenceAffine X Y
   let family : ℕ → AffineCombination := fun n ↦
     (raw n).scale (EF.const (1 / 2))
@@ -4230,22 +4153,18 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
         norm_num
         linarith [LUV.expectDifferenceAffine_magnitude_le_two X Y P n]
       future_coherent := by
-        have hcombined : Tendsto (fun m ↦ (1 / 2 : ℝ) *
-            (highGap m + crossXGap m - crossYGap m)) atTop (𝓝 0) := by
+        have hcombined : Tendsto (fun n ↦ (1 / 2 : ℝ) *
+            (((X n).expect P (f n) - (Y n).expect P (f n)) +
+              ((X n).expectApprox (P (f n)) (n + 1) -
+                (X n).expectApprox (P (f n)) (f n + 1)) -
+              ((Y n).expectApprox (P (f n)) (n + 1) -
+                (Y n).expectApprox (P (f n)) (f n + 1)))) atTop (𝓝 0) := by
           simpa using ((hhigh0.add hcrossX0).sub hcrossY0).const_mul (1 / 2 : ℝ)
-        have hdeferred := hcombined.comp f.tendsto_atTop
-        have hdeferred' : Tendsto (fun n ↦ (1 / 2 : ℝ) *
-            (highGap (f n) + crossXGap (f n) - crossYGap (f n)))
-            atTop (𝓝 0) := by
-          simpa only [Function.comp_apply] using hdeferred
         show Tendsto (fun n ↦ (family n).price P (f n) - 0) atTop (𝓝 0)
-        apply Tendsto.congr' _ hdeferred'
+        apply Tendsto.congr' _ hcombined
         exact Eventually.of_forall fun n ↦ by
           simp only [family, raw, AffineCombination.scale_price,
-            EF.denote_const, LUV.expectDifferenceAffine_priceAt, highGap,
-            crossXGap, crossYGap, flagN, index,
-            deferralImageFlag_at f hspec n,
-            deferralPreimage_at f hinj hspec n, Nat.cast_one, one_mul,
+            EF.denote_const, LUV.expectDifferenceAffine_priceAt,
             Rat.cast_div, Rat.cast_one, Rat.cast_ofNat, LUV.expect,
             _root_.sub_zero]
           ring
@@ -4255,7 +4174,7 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
 /-- Construct the complete `thm:ceu` future-price quote package. -/
 noncomputable def futurePriceQuoteOfRepresentation
     {P : History} {DP : DeductiveProcess}
-    (f : DeferralFunction) (hinj : Function.Injective f.f)
+    (f : DeferralFunction)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
     (hφ : RpnSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
@@ -4271,46 +4190,29 @@ noncomputable def futurePriceQuoteOfRepresentation
       (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k) := by
     simpa [a, degree, PrefixPatchCompile.ecClock] using
       Classical.choose_spec (Classical.choose_spec f.fueled)
-  let index := deferralPreimage f a degree
-  let flagN := deferralImageFlag f a degree
-  let φ' : ℕ → Sentence := fun m ↦ φ (index m)
-  let Y' : ℕ → LUV := fun m ↦ Y (index m)
-  let hindex := deferralPreimage_polyFueled f a degree
-  have hφ' : RpnSentenceCodes φ' := by
-    have hcindex := Classical.choose_spec hindex
-    exact (hφ.comp hcindex).of_eq (fun m ↦ by simp [φ', index])
-  let hY' := hY.reindex hindex
-  let H := currentPriceFeature φ'
-  let hH := currentPriceFeature_generated φ' hφ'
-  have hHmem : ∀ m, 0 ≤ (H m).denote P ∧ (H m).denote P ≤ 1 := by
-    intro m
-    simpa [H, currentPriceFeature, φ'] using hP m (φ (index m))
-  have hreflectedImage : ∀ m, flagN m = 1 →
-      ∀ v : PCWorld, v.ConsistentWithTheory DP →
-        v.ValuesAt (Y' m) ((H m).denote P) := by
-    intro m hm v hv
-    have hmSpec := deferralPreimage_spec f hinj hspec hm
-    simpa only [Y', H, currentPriceFeature, φ', index, hmSpec.2] using
-      reflected (index m) v hv
-  let high := completedImageNumericQuote f H hH Y' hY'
-    hreflectedImage hHmem hP
   have quote_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ y, v.ValuesAt (Y n) y := by
     intro n v hv
     exact ⟨P (f n) (φ n), reflected n v hv⟩
-  let crossY := completedImageCrossPrecisionQuote f hinj hspec Y hY
-    quote_valued hP
-  let highGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    (P m (φ (index m)) - (Y (index m)).expect P m)
-  let crossYGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((Y (index m)).expectApprox (P m) (index m + 1) -
-      (Y (index m)).expect P m)
-  have hhigh0 : Tendsto highGap atTop (𝓝 0) := by
-    simpa only [AsympEq, _root_.sub_zero, high, highGap, flagN, Y', H,
-      φ', index, currentPriceFeature] using high.gap_asympEq_zero hworld
-  have hcrossY0 : Tendsto crossYGap atTop (𝓝 0) := by
-    simpa only [AsympEq, _root_.sub_zero, crossY, crossYGap, flagN, index,
-      LUV.expect] using crossY.gap_asympEq_zero hworld
+  have hHmem : ∀ z, 0 ≤ (DeferralFibre.pairedPriceFeature φ z).denote P ∧
+      (DeferralFibre.pairedPriceFeature φ z).denote P ≤ 1 := by
+    intro z
+    obtain ⟨m, k, rfl⟩ : ∃ m k, z = Nat.pair m k := ⟨z.unpair.1, z.unpair.2, by simp⟩
+    rw [DeferralFibre.pairedPriceFeature_denote]
+    exact hP m (φ k)
+  have hhigh0 : Tendsto (fun n ↦ P (f n) (φ n) - (Y n).expect P (f n))
+      atTop (𝓝 0) := by
+    have h := DeferralFibre.numericQuote_deferred_tendsto_zero hworld f hspec
+      (DeferralFibre.pairedPriceFeature φ)
+      (DeferralFibre.pairedPriceFeature_paired φ hφ) hHmem Y hY
+      (fun m k hfk v hv ↦ by
+        rw [DeferralFibre.pairedPriceFeature_denote, ← hfk]
+        exact reflected k v hv) hP
+    refine Tendsto.congr' (Eventually.of_forall fun n ↦ ?_) h
+    rw [DeferralFibre.pairedPriceFeature_denote]
+    rfl
+  have hcrossY0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
+    Y hY quote_valued hP
   let sentenceFamily := AffineCombination.sentenceAffine φ
   let quoteFamily := LUV.expectAffineSeq Y
   let raw : ℕ → AffineCombination := fun n ↦
@@ -4357,23 +4259,19 @@ noncomputable def futurePriceQuoteOfRepresentation
         norm_num
         linarith [LUV.expectAffineSeq_magnitude_le_one Y P n]
       future_coherent := by
-        have hcombined : Tendsto (fun m ↦ (1 / 2 : ℝ) *
-            (highGap m - crossYGap m)) atTop (𝓝 0) := by
+        have hcombined : Tendsto (fun n ↦ (1 / 2 : ℝ) *
+            ((P (f n) (φ n) - (Y n).expect P (f n)) -
+              ((Y n).expectApprox (P (f n)) (n + 1) -
+                (Y n).expectApprox (P (f n)) (f n + 1)))) atTop (𝓝 0) := by
           simpa using (hhigh0.sub hcrossY0).const_mul (1 / 2 : ℝ)
-        have hdeferred := hcombined.comp f.tendsto_atTop
-        have hdeferred' : Tendsto (fun n ↦ (1 / 2 : ℝ) *
-            (highGap (f n) - crossYGap (f n))) atTop (𝓝 0) := by
-          simpa only [Function.comp_apply] using hdeferred
         show Tendsto (fun n ↦ (family n).price P (f n) - 0) atTop (𝓝 0)
-        apply Tendsto.congr' _ hdeferred'
+        apply Tendsto.congr' _ hcombined
         exact Eventually.of_forall fun n ↦ by
           simp only [family, raw, sentenceFamily, quoteFamily,
             AffineCombination.scale_price, EF.denote_const,
             AffineCombination.add_price, AffineCombination.neg_price,
             AffineCombination.sentenceAffine_price, LUV.expectAffineSeq,
-            LUV.expectAffine_priceAt, highGap, crossYGap, flagN, index,
-            deferralImageFlag_at f hspec n,
-            deferralPreimage_at f hinj hspec n, Nat.cast_one, one_mul,
+            LUV.expectAffine_priceAt,
             Rat.cast_div, Rat.cast_one, Rat.cast_ofNat, LUV.expect,
             _root_.sub_zero]
           ring
@@ -4383,7 +4281,7 @@ noncomputable def futurePriceQuoteOfRepresentation
 /-- Construct the complete `thm:ccee` conditional-expectation quote package. -/
 noncomputable def conditionalExpectationQuoteOfRepresentation
     {P : History} {DP : DeductiveProcess}
-    (f : DeferralFunction) (hinj : Function.Injective f.f)
+    (f : DeferralFunction)
     (X Z Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat P w)
@@ -4407,32 +4305,16 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
       (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k) := by
     simpa [a, degree, PrefixPatchCompile.ecClock] using
       Classical.choose_spec (Classical.choose_spec f.fueled)
-  let index := deferralPreimage f a degree
-  let flagN := deferralImageFlag f a degree
-  let Xr : ℕ → LUV := fun m ↦ X (index m)
-  let Zr : ℕ → LUV := fun m ↦ Z (index m)
-  let Zr' : ℕ → LUV := fun m ↦ Z' (index m)
-  let hindex := deferralPreimage_polyFueled f a degree
-  let hXr := hX.reindex hindex
-  let hZr := hZ.reindex hindex
-  let hZr' := hZ'.reindex hindex
   let W := Classical.choose weight_generable
   let hWgen := Classical.choose_spec weight_generable
   let hW := hWgen.toWeighting
-  have hsemantic : ∀ m, flagN m = 1 →
-      ∀ v : PCWorld, v.ConsistentWithTheory DP →
-        ∃ x, v.ValuesAt (Xr m) x ∧ v.ValuesAt (Zr m) (x * w m) ∧
-          v.ValuesAt (Zr' m) ((Xr m).expect P m * w m) := by
-    intro m hm v hv
-    have hmSpec := deferralPreimage_spec f hinj hspec hm
-    obtain ⟨x, hx⟩ := source_valued (index m) v hv
-    refine ⟨x, hx, ?_, ?_⟩
-    · simpa only [Zr, Xr, index, hmSpec.2] using
-        left_reflected (index m) v hv x hx
-    · simpa only [Zr', Xr, index, hmSpec.2] using
-        right_reflected (index m) v hv
-  let high := completedImageConditionalQuote f Xr Zr Zr' hXr hZr hZr'
-    w W hW hWgen.denote weight_mem hsemantic hP
+  have hsemantic : ∀ m k, f k = m → ∀ v : PCWorld, v.ConsistentWithTheory DP →
+      ∃ x, v.ValuesAt (X k) x ∧ v.ValuesAt (Z k) (x * w m) ∧
+        v.ValuesAt (Z' k) ((X k).expect P m * w m) := by
+    intro m k hfk v hv
+    subst hfk
+    obtain ⟨x, hx⟩ := source_valued k v hv
+    exact ⟨x, hx, left_reflected k v hv x hx, right_reflected k v hv⟩
   have Zvalued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ z, v.ValuesAt (Z n) z := by
     intro n v hv
@@ -4442,25 +4324,12 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
       ∃ z, v.ValuesAt (Z' n) z := by
     intro n v hv
     exact ⟨(X n).expect P (f n) * w (f n), right_reflected n v hv⟩
-  let crossZ := completedImageCrossPrecisionQuote f hinj hspec Z hZ Zvalued hP
-  let crossZ' := completedImageCrossPrecisionQuote f hinj hspec Z' hZ' Z'valued hP
-  let highGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((Z (index m)).expect P m - (Z' (index m)).expect P m)
-  let crossZGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((Z (index m)).expectApprox (P m) (index m + 1) -
-      (Z (index m)).expect P m)
-  let crossZ'Gap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((Z' (index m)).expectApprox (P m) (index m + 1) -
-      (Z' (index m)).expect P m)
-  have hhigh0 : Tendsto highGap atTop (𝓝 0) := by
-    simpa only [AsympEq, _root_.sub_zero, high, highGap, flagN, Xr, Zr,
-      Zr', index] using high.gap_asympEq_zero hworld
-  have hcrossZ0 : Tendsto crossZGap atTop (𝓝 0) := by
-    simpa only [AsympEq, _root_.sub_zero, crossZ, crossZGap, flagN, index,
-      LUV.expect] using crossZ.gap_asympEq_zero hworld
-  have hcrossZ'0 : Tendsto crossZ'Gap atTop (𝓝 0) := by
-    simpa only [AsympEq, _root_.sub_zero, crossZ', crossZ'Gap, flagN, index,
-      LUV.expect] using crossZ'.gap_asympEq_zero hworld
+  have hhigh0 := DeferralFibre.conditional_deferred_tendsto_zero hworld f hspec
+    X Z Z' hX hZ hZ' w W hW hWgen.denote weight_mem hsemantic hP
+  have hcrossZ0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
+    Z hZ Zvalued hP
+  have hcrossZ'0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
+    Z' hZ' Z'valued hP
   let raw := LUV.expectDifferenceAffine Z Z'
   let family : ℕ → AffineCombination := fun n ↦
     (raw n).scale (EF.const (1 / 2))
@@ -4500,22 +4369,18 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
         norm_num
         linarith [LUV.expectDifferenceAffine_magnitude_le_two Z Z' P n]
       future_coherent := by
-        have hcombined : Tendsto (fun m ↦ (1 / 2 : ℝ) *
-            (highGap m + crossZGap m - crossZ'Gap m)) atTop (𝓝 0) := by
+        have hcombined : Tendsto (fun n ↦ (1 / 2 : ℝ) *
+            (((Z n).expect P (f n) - (Z' n).expect P (f n) +
+                ((Z n).expectApprox (P (f n)) (n + 1) -
+                  (Z n).expectApprox (P (f n)) (f n + 1))) -
+              ((Z' n).expectApprox (P (f n)) (n + 1) -
+                (Z' n).expectApprox (P (f n)) (f n + 1)))) atTop (𝓝 0) := by
           simpa using ((hhigh0.add hcrossZ0).sub hcrossZ'0).const_mul (1 / 2 : ℝ)
-        have hdeferred := hcombined.comp f.tendsto_atTop
-        have hdeferred' : Tendsto (fun n ↦ (1 / 2 : ℝ) *
-            (highGap (f n) + crossZGap (f n) - crossZ'Gap (f n)))
-            atTop (𝓝 0) := by
-          simpa only [Function.comp_apply] using hdeferred
         show Tendsto (fun n ↦ (family n).price P (f n) - 0) atTop (𝓝 0)
-        apply Tendsto.congr' _ hdeferred'
+        apply Tendsto.congr' _ hcombined
         exact Eventually.of_forall fun n ↦ by
           simp only [family, raw, AffineCombination.scale_price,
-            EF.denote_const, LUV.expectDifferenceAffine_priceAt, highGap,
-            crossZGap, crossZ'Gap, flagN, index,
-            deferralImageFlag_at f hspec n,
-            deferralPreimage_at f hinj hspec n, Nat.cast_one, one_mul,
+            EF.denote_const, LUV.expectDifferenceAffine_priceAt,
             Rat.cast_div, Rat.cast_one, Rat.cast_ofNat, LUV.expect,
             _root_.sub_zero]
           ring
@@ -4524,18 +4389,20 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
 
 /-! ### Complete deferred self-trust package -/
 
-/-- Construct the complete `thm:st` self-trust package.  Strictness is needed only by
-this concrete constructor, where it makes the bounded image inverse unambiguous; the
-abstract `SelfTrustQuote` and its consumer remain stated for every deferral function.
+/-- Construct the complete `thm:st` self-trust package.  The constructor asks of the
+deferral function only what `def:deferralfunc` does — `f n > n` plus poly-clocked
+emission; no injectivity, no monotonicity.
 
 The confidence threshold enters as a P-generable feature `pFeature` (`def:ece`), so the
 trader may scale by a threshold that varies with the market's own prices: the emitted
-portfolio carries the *expression* `pFeature n`, never a day-`n` numeral for `p n`.  On the
-deferral day `f n` the expression is transported by `GeneratedRatFeature.reindex` along the
-bounded preimage scan, which `deferralPreimage_le` keeps within the rank discipline. -/
+portfolio carries the *expression* `pFeature n`, never a day-`n` numeral for `p n`.  The
+deferred gate is a *paired-index* family: at `z = ⟨m,k⟩` it reads the day-`m` price of
+`φ k` against the confidence data at the clamped source index `min k m`, which keeps the
+emitted expression legal on day `m` while agreeing with the source index `k` on the
+fibre, where `k < f k = m`. -/
 noncomputable def selfTrustQuoteOfRepresentation
     {P : History} {DP : DeductiveProcess}
-    (f : DeferralFunction) (hinj : Function.Injective f.f)
+    (f : DeferralFunction)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n)
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
@@ -4562,107 +4429,86 @@ noncomputable def selfTrustQuoteOfRepresentation
       (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k) := by
     simpa [a, degree, PrefixPatchCompile.ecClock] using
       Classical.choose_spec (Classical.choose_spec f.fueled)
-  let index := deferralPreimage f a degree
-  let flagN := deferralImageFlag f a degree
-  let φr : ℕ → Sentence := fun m ↦ φ (index m)
-  let δr : ℕ → ℚ := fun m ↦ δ (index m)
-  let pr : ℕ → ℚ := fun m ↦ p (index m)
-  let Ar : ℕ → LUV := fun m ↦ A (index m)
-  let Br : ℕ → LUV := fun m ↦ B (index m)
-  let hindex := deferralPreimage_polyFueled f a degree
-  have hφr : RpnSentenceCodes φr := by
-    obtain ⟨ci, hi⟩ := hindex
-    exact (hφ.comp hi).of_eq (fun m ↦ by simp [φr, index])
-  let hAr := hA.reindex hindex
-  let hBr := hB.reindex hindex
-  let hδrInv := hδinv.reindex hindex
-  let pF : ℕ → EF := fun m ↦ pFeature (index m)
-  let hpFgen : GeneratedRatFeature P pr pF :=
-    hp.reindex hindex (deferralPreimage_le f hinj hspec)
-  let hpF := hpFgen.toWeighting
-  let priceF : ℕ → EF := currentPriceFeature φr
-  let hpriceF := currentPriceFeature_generated φr hφr
-  let G : ℕ → EF := ctsIndFeature δr priceF pF
-  have hδrPos : ∀ m, 0 < δr m := by
-    intro m
-    exact delta_pos (index m)
-  let hG := ctsIndFeature_generated δr priceF pF hδrInv hpriceF hpF
-  have hpFDenote : ∀ m, (pF m).denote P = (pr m : ℝ) := by
-    exact hpFgen.denote
-  have hGDenote : ∀ m, (G m).denote P =
-      ctsInd (δr m) (P m (φr m)) (pr m : ℝ) := by
-    intro m
-    rw [show G m = ctsIndFeature δr priceF pF m by rfl,
-      ctsIndFeature_denote δr priceF pF hδrPos P m]
-    simp [priceF, currentPriceFeature, hpFDenote]
-  have hGmem : ∀ m, 0 ≤ (G m).denote P ∧ (G m).denote P ≤ 1 := by
-    intro m
-    rw [hGDenote]
+  let δp : ℕ → ℚ := fun z ↦ δ (min z.unpair.2 z.unpair.1)
+  have hδpInv : PolyRatCodes (fun z ↦ 1 / δp z) :=
+    hδinv.reindex PairedWeighting.clampedSource_polyFueled
+  have hδpPos : ∀ z, 0 < δp z := fun z ↦ delta_pos _
+  let pF : ℕ → EF := fun z ↦ pFeature (min z.unpair.2 z.unpair.1)
+  have hpF : PairedWeighting pF :=
+    PairedWeighting.ofPGenerableClamped hp.toWeighting
+  have hpFdenote : ∀ z, (pF z).denote P = (p (min z.unpair.2 z.unpair.1) : ℝ) :=
+    fun z ↦ hp.denote _
+  have hpFmem : ∀ z, 0 ≤ (pF z).denote P ∧ (pF z).denote P ≤ 1 := by
+    intro z
+    rw [hpFdenote]
+    exact ⟨by exact_mod_cast (probability_mem _).1,
+      by exact_mod_cast (probability_mem _).2⟩
+  have hpDenote : ∀ m k, k ≤ m → (pF (Nat.pair m k)).denote P = (p k : ℝ) := by
+    intro m k hk
+    rw [hpFdenote]
+    simp [min_eq_left hk]
+  let G : ℕ → EF := ctsIndFeature δp (DeferralFibre.pairedPriceFeature φ) pF
+  have hG : PairedWeighting G :=
+    PairedWeighting.ctsInd hδpInv (DeferralFibre.pairedPriceFeature_paired φ hφ) hpF
+  have hGdenote : ∀ m k, k ≤ m → (G (Nat.pair m k)).denote P =
+      ctsInd (δ k) (P m (φ k)) (p k) := by
+    intro m k hk
+    rw [show G (Nat.pair m k) = ctsIndFeature δp (DeferralFibre.pairedPriceFeature φ) pF
+        (Nat.pair m k) from rfl,
+      ctsIndFeature_denote δp (DeferralFibre.pairedPriceFeature φ) pF hδpPos P (Nat.pair m k),
+      DeferralFibre.pairedPriceFeature_denote, hpDenote m k hk]
+    simp [δp, min_eq_left hk]
+  have hGmem : ∀ z, 0 ≤ (G z).denote P ∧ (G z).denote P ≤ 1 := by
+    intro z
+    rw [show G z = ctsIndFeature δp (DeferralFibre.pairedPriceFeature φ) pF z from rfl,
+      ctsIndFeature_denote δp (DeferralFibre.pairedPriceFeature φ) pF hδpPos P z]
     exact ctsInd_mem_Icc _ _ _
-  have hsemantic : ∀ m, flagN m = 1 →
-      ∀ v : PCWorld, v.ConsistentWithTheory DP →
-        v.ValuesAt (Br m) ((G m).denote P) ∧
-          v.ValuesAt (Ar m) (v.payout (φr m) * (G m).denote P) := by
-    intro m hm v hv
-    have hmSpec := deferralPreimage_spec f hinj hspec hm
-    constructor
-    · rw [hGDenote]
-      simpa only [Br, δr, pr, φr, index, hmSpec.2] using
-        confidence_reflected (index m) v hv
-    · rw [hGDenote]
-      simpa only [Ar, δr, pr, φr, index, hmSpec.2] using
-        product_reflected (index m) v hv
-  let high := completedImageSelfTrustQuote (a := a) (degree := degree)
-    f φr hφr pr pF hpF hpFDenote
-      (fun m ↦ probability_mem (index m)) G hG hGmem Ar Br hAr hBr
-      hsemantic hP
+  have hsemantic : ∀ m k, f k = m → ∀ v : PCWorld, v.ConsistentWithTheory DP →
+      v.ValuesAt (B k) ((G (Nat.pair m k)).denote P) ∧
+        v.ValuesAt (A k) (v.payout (φ k) * (G (Nat.pair m k)).denote P) := by
+    intro m k hfk v hv
+    have hk : k ≤ m := hfk ▸ (f.lt k).le
+    rw [hGdenote m k hk, ← hfk]
+    exact ⟨confidence_reflected k v hv, product_reflected k v hv⟩
   have Avalued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
-      ∃ x, v.ValuesAt (A n) x := by
-    intro n v hv
-    exact ⟨v.payout (φ n) * ctsInd (δ n) (P (f n) (φ n)) (p n),
-      product_reflected n v hv⟩
+      ∃ x, v.ValuesAt (A n) x := fun n v hv ↦
+    ⟨_, product_reflected n v hv⟩
   have Bvalued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
-      ∃ x, v.ValuesAt (B n) x := by
-    intro n v hv
-    exact ⟨ctsInd (δ n) (P (f n) (φ n)) (p n),
-      confidence_reflected n v hv⟩
-  let crossA := completedImageCrossPrecisionQuote f hinj hspec A hA Avalued hP
-  let crossB := completedImageCrossPrecisionQuote f hinj hspec B hB Bvalued hP
-  let highGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((A (index m)).expect P m - (p (index m) : ℝ) *
-        (B (index m)).expect P m -
-      (G m).denote P * (P m (φ (index m)) - (p (index m) : ℝ)))
-  let crossAGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((A (index m)).expectApprox (P m) (index m + 1) -
-      (A (index m)).expect P m)
-  let crossBGap : ℕ → ℝ := fun m ↦ (flagN m : ℝ) *
-    ((B (index m)).expectApprox (P m) (index m + 1) -
-      (B (index m)).expect P m)
+      ∃ x, v.ValuesAt (B n) x := fun n v hv ↦
+    ⟨_, confidence_reflected n v hv⟩
+  let highGap : ℕ → ℝ := fun n ↦
+    (A n).expect P (f n) - (p n : ℝ) * (B n).expect P (f n) -
+      ctsInd (δ n) (P (f n) (φ n)) (p n) * (P (f n) (φ n) - (p n : ℝ))
+  let crossAGap : ℕ → ℝ := fun n ↦
+    (A n).expectApprox (P (f n)) (n + 1) - (A n).expect P (f n)
+  let crossBGap : ℕ → ℝ := fun n ↦
+    (B n).expectApprox (P (f n)) (n + 1) - (B n).expect P (f n)
   have hhigh0 : Tendsto highGap atTop (𝓝 0) := by
-    simpa only [AsympEq, _root_.sub_zero, high, highGap, flagN, Ar, Br,
-      φr, pr, index] using high.gap_asympEq_zero hworld
+    have hkey := DeferralFibre.selfTrust_deferred_tendsto_zero
+      (P := P) (DP := DP) hworld f hspec φ hφ p probability_mem pF hpF hpFmem
+      hpDenote G hG hGmem A B hA hB hsemantic hP
+    refine Tendsto.congr' (Eventually.of_forall fun n ↦ ?_) hkey
+    rw [hGdenote (f n) n (f.lt n).le]
   have hcrossA0 : Tendsto crossAGap atTop (𝓝 0) := by
-    simpa only [AsympEq, _root_.sub_zero, crossA, crossAGap, flagN, index,
-      LUV.expect] using crossA.gap_asympEq_zero hworld
+    simpa only [crossAGap, LUV.expect] using
+      DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec A hA
+        Avalued hP
   have hcrossB0 : Tendsto crossBGap atTop (𝓝 0) := by
-    simpa only [AsympEq, _root_.sub_zero, crossB, crossBGap, flagN, index,
-      LUV.expect] using crossB.gap_asympEq_zero hworld
-  have hpCrossB0 : Tendsto (fun m ↦ (p (index m) : ℝ) * crossBGap m)
-      atTop (𝓝 0) := by
-    apply bdd_le_mul_tendsto_zero
-      (b := (0 : ℝ)) (B := (1 : ℝ))
-    · exact Eventually.of_forall fun m ↦ by
-        exact_mod_cast (probability_mem (index m)).1
-    · exact Eventually.of_forall fun m ↦ by
-        exact_mod_cast (probability_mem (index m)).2
+    simpa only [crossBGap, LUV.expect] using
+      DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec B hB
+        Bvalued hP
+  have hpCrossB0 : Tendsto (fun n ↦ (p n : ℝ) * crossBGap n) atTop (𝓝 0) := by
+    apply bdd_le_mul_tendsto_zero (b := (0 : ℝ)) (B := (1 : ℝ))
+    · exact Eventually.of_forall fun n ↦ by
+        exact_mod_cast (probability_mem n).1
+    · exact Eventually.of_forall fun n ↦ by
+        exact_mod_cast (probability_mem n).2
     · exact hcrossB0
-  let combined : ℕ → ℝ := fun m ↦ (1 / 2 : ℝ) *
-    (highGap m + crossAGap m - (p (index m) : ℝ) * crossBGap m)
+  let combined : ℕ → ℝ := fun n ↦ (1 / 2 : ℝ) *
+    (highGap n + crossAGap n - (p n : ℝ) * crossBGap n)
   have hcombined0 : Tendsto combined atTop (𝓝 0) := by
     simpa [combined] using
       ((hhigh0.add hcrossA0).sub hpCrossB0).const_mul (1 / 2 : ℝ)
-  have hdeferred0 : Tendsto (fun n ↦ combined (f n)) atTop (𝓝 0) := by
-    simpa only [Function.comp_apply] using hcombined0.comp f.tendsto_atTop
   let pOrig : ℕ → EF := pFeature
   let hpOrig : PGenerableWeighting pOrig := hp.toWeighting
   let pNeg : ℕ → EF := fun n ↦ EF.mul (EF.const (-1)) (pOrig n)
@@ -4739,12 +4585,12 @@ noncomputable def selfTrustQuoteOfRepresentation
       future_coherent := by
         intro ε hε
         have hnear := asympEq_iff_eventuallyWithin.1
-          (show AsympEq (fun n ↦ combined (f n)) (fun _ ↦ 0) by
-            simpa only [AsympEq, _root_.sub_zero] using hdeferred0)
+          (show AsympEq combined (fun _ ↦ 0) by
+            simpa only [AsympEq, _root_.sub_zero] using hcombined0)
           ε hε
         filter_upwards [hnear] with n hn
         simp only [_root_.sub_zero] at hn
-        have hlower : -ε ≤ combined (f n) := (abs_le.mp hn).1
+        have hlower : -ε ≤ combined n := (abs_le.mp hn).1
         have hcorr : 0 ≤ ctsInd (δ n) (P (f n) (φ n)) (p n) *
             (P (f n) (φ n) - (p n : ℝ)) := by
           by_cases hle : P (f n) (φ n) ≤ (p n : ℝ)
@@ -4754,18 +4600,15 @@ noncomputable def selfTrustQuoteOfRepresentation
               linarith [lt_of_not_ge hle]
             exact mul_nonneg (ctsInd_mem_Icc _ _ _).1 hdiff
         have hidentity : (family n).price P (f n) =
-            combined (f n) + (1 / 2 : ℝ) *
+            combined n + (1 / 2 : ℝ) *
               (ctsInd (δ n) (P (f n) (φ n)) (p n) *
                 (P (f n) (φ n) - (p n : ℝ))) := by
           simp only [family, raw, AA, AB, pNeg, pOrig,
             AffineCombination.scale_price, AffineCombination.add_price,
             LUV.expectAffineSeq, LUV.expectAffine_priceAt, EF.denote_mul,
             EF.denote_const, hp.denote, Pi.mul_apply, combined,
-            highGap, crossAGap, crossBGap, flagN, index, δr, pr, φr,
-            deferralImageFlag_at f hspec n,
-            deferralPreimage_at f hinj hspec n, Nat.cast_one, one_mul,
-            hGDenote, Rat.cast_neg, Rat.cast_one, Rat.cast_div,
-            Rat.cast_ofNat, neg_mul]
+            highGap, crossAGap, crossBGap, LUV.expect]
+          push_cast
           ring
         rw [hidentity]
         nlinarith
@@ -4775,12 +4618,10 @@ noncomputable def selfTrustQuoteOfRepresentation
 /-! ## Direct deferred consumers -/
 
 /-- Paper-facing `thm:cee` entry point from completed-world representation data.
-Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
-`f n > n`; see the injective-deferral reindexing section for where this is used.
 Paper node: `thm:cee` -/
 theorem lic_expected_future_expectations_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    (f : DeferralFunction) (hinj : Function.Injective f.f)
+    (f : DeferralFunction)
     (X Y : ℕ → LUV)
     (hX : LUV.RpnThresholdCodeSeq X) (hY : LUV.RpnThresholdCodeSeq Y)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
@@ -4790,16 +4631,14 @@ theorem lic_expected_future_expectations_ofRepresentation
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n ↦ (X n).expect P n) ≈ₙ fun n ↦ (Y n).expect P n :=
   lic_expected_future_expectations P DP f X Y hworld
-    (expectedFutureExpectationQuoteOfRepresentation f hinj X Y hX hY
+    (expectedFutureExpectationQuoteOfRepresentation f X Y hX hY
       source_valued reflected hworld)
 
 /-- Paper-facing `thm:ceu` entry point from completed-world representation data.
-Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
-`f n > n`; see the injective-deferral reindexing section for where this is used.
 Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    (f : DeferralFunction) (hinj : Function.Injective f.f)
+    (f : DeferralFunction)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
     (hφ : RpnSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
@@ -4807,15 +4646,13 @@ theorem lic_no_expected_net_update_ofRepresentation
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n ↦ P n (φ n)) ≈ₙ fun n ↦ (Y n).expect P n :=
   lic_no_expected_net_update P DP f φ Y hworld
-    (futurePriceQuoteOfRepresentation f hinj φ Y hφ hY reflected hworld)
+    (futurePriceQuoteOfRepresentation f φ Y hφ hY reflected hworld)
 
 /-- Paper-facing `thm:ccee` entry point from completed-world product representations.
-Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
-`f n > n`; see the injective-deferral reindexing section for where this is used.
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    (f : DeferralFunction) (hinj : Function.Injective f.f)
+    (f : DeferralFunction)
     (X Z Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat P w)
@@ -4831,19 +4668,17 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n ↦ (Z n).expect P n) ≈ₙ fun n ↦ (Z' n).expect P n :=
   lic_no_expected_net_update_conditional P DP f X Z Z' w hworld
-    (conditionalExpectationQuoteOfRepresentation f hinj X Z Z' w
+    (conditionalExpectationQuoteOfRepresentation f X Z Z' w
       weight_mem weight_generable hX hZ hZ' source_valued left_reflected
       right_reflected hworld)
 
 /-- Paper-facing `thm:st` entry point from completed-world confidence/product
 representations.  The confidence threshold `p` is P-generable (`def:ece`), presented by its
 feature expression, exactly as in the paper's `thm:st`.
-Deferral narrowing: `f` is assumed injective, where `def:deferralfunc` asks only for
-`f n > n`; see the injective-deferral reindexing section for where this is used.
 Paper node: `thm:st` -/
 theorem lic_self_trust_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    (f : DeferralFunction) (hinj : Function.Injective f.f)
+    (f : DeferralFunction)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n)
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
@@ -4863,7 +4698,7 @@ theorem lic_self_trust_ofRepresentation
     (fun n ↦ (A n).expect P n) ≳ₙ
       fun n ↦ (p n : ℝ) * (B n).expect P n :=
   lic_self_trust P DP f φ δ p A B hworld
-    (selfTrustQuoteOfRepresentation f hinj φ δ p A B delta_pos
+    (selfTrustQuoteOfRepresentation f φ δ p A B delta_pos
       probability_mem hφ hδ hδinv pFeature hp hA hB confidence_reflected
       product_reflected hworld)
 

@@ -109,17 +109,6 @@ Each item has a verified obstruction on record; none blocks the results above.
   random-access state. A staged plan with effort estimates, scoped against what
   Mathlib actually provides, is in
   [`notes/two-model-ec-feasibility.md`](../notes/two-model-ec-feasibility.md).
-* **Relaxing injective deferral, final rewiring** — the self-trust chain
-  (`thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st`) still assumes `Function.Injective f.f` where
-  the paper's `def:deferralfunc` asks only `f(n) > n`. The device that removes it is now
-  **built and green**: a variable-width affine combinator
-  (`AffineCombination.PolySequence.blockSum`), a division-free first-violator selector over
-  the deferral fibre (`selectorFeature`, with its budget and forcing lemmas), and
-  `DeferralFibre.deferred_block_price_tendsto_zero`, which delivers deferred-price
-  coherence for *any* deferral function with no injectivity. What remains is the
-  numeric-quote half of the block families and rewiring the five gap-shaped constructions
-  onto it; until that lands the twelve endpoints keep the `hinj` binder. (An earlier
-  gated-*sum* plan was proved unsound; do not retry it.)
 
 ## Faithfulness
 
