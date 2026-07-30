@@ -4,20 +4,27 @@ A Lean 4 formalization of Garrabrant, Benson-Tilsen, Critch, Soares, Taylor,
 [*Logical Induction*](https://arxiv.org/abs/1609.03543) (arXiv:1609.03543v5).
 
 This is a **near-complete formalization of the paper**: the existence theorem is proved
-in the paper's full sense, and every named theorem of the paper is formalized and
-build-audited. Of the 53 theorem/lemma nodes, **34 are stated at the paper's own
-hypotheses** — for every logical inductor, as the paper states them — and **14 of those
-are additionally unconditional over the concrete constructed inductor**; the remaining
-**19 retain an explicitly named representation interface or class restriction**, each
-recorded per-node in
-[`scripts/coverage-classification.md`](../scripts/coverage-classification.md), which is
-machine-checked against the endpoint inventory. **Zero `sorry`, zero `axiom`
-declarations** —
-every public endpoint reports only Lean's standard `propext`, `Classical.choice`,
-`Quot.sound`, enforced by the build (`AxiomAudit.lean` enumerates the public surface
-and fails compilation on any regression), and every paper-label citation is verified
-two-way by script. The two declared modeling choices, and the planned future work that
-would tighten them further, are described below.
+in the paper's full sense, and every named theorem and lemma of the paper — 53 of them —
+is formalized, named after its paper label, and build-audited. How strong each one is:
+
+| | count | what it means |
+|---|---:|---|
+| **unconditional** | 14 | proved at paper strength *and* instantiated over the concrete inductor constructed here |
+| **conditional** | 20 | proved at paper strength for **every** logical inductor — exactly the form the paper states |
+| **qualified** | 19 | proved with one explicitly named representation interface or class restriction retained |
+
+So **34 of 53 are at the paper's own hypotheses** (the first two rows), and the 19
+qualified nodes each say in one line which premise they retain and why. The per-node
+table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
+machine-checked against the endpoint inventory so a node cannot ship without a strength
+call.
+
+**Zero `sorry`, zero `axiom` declarations** — every public endpoint reports only Lean's
+standard `propext`, `Classical.choice`, `Quot.sound`, enforced by the build
+(`AxiomAudit.lean` enumerates the public surface and fails compilation on any
+regression), and every paper-label citation is verified two-way by script. The two
+declared modeling choices, and the planned future work that would tighten them further,
+are described below.
 
 ## The main theorem
 
