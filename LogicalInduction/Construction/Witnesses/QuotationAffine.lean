@@ -1368,6 +1368,751 @@ noncomputable def AffineCombination.PolySequence.scaleFeature
     simp only [EF.denoteWith, EF.denote_mul, Pi.mul_apply]
     rw [hW.closed z.unpair.1 ρ V, hA.coefficient_closed z ρ V]
 
+/-! ## Variable-width affine combinations
+
+The `add`/`scaleFeature` layer combines a *fixed* number of affine families.  The
+deferral-fibre gating below needs a day-indexed sum whose width grows with the day: on
+day `m`, one term per source day `k < cnt m`, each weighted by a day-`m`-legal feature.
+Blocks are padded out to a common width `width m`, which keeps the flat term index a
+plain `range` — block `= j / width m`, offset `= j % width m` — and so replaces an
+inverse prefix-sum by division and remainder. -/
+
+namespace AffineCombination
+
+/-- Zero-coefficient padding entry. -/
+def padEntry (pad : Sentence) : EF × Sentence := (EF.const 0, pad)
+
+private lemma eq_map_range_getD {α : Type*} (t : List α) (d : α) :
+    t = (List.range t.length).map (fun o => t.getD o d) := by
+  apply List.ext_getElem
+  · simp
+  · intro i h1 h2
+    rw [List.getElem_map, List.getElem_range, List.getD_eq_getElem _ _ h1]
+
+private lemma padded_map_sum {α : Type*} [AddCommMonoid α]
+    {β : Type*} (t : List β) (d : β) (W : ℕ) (hW : t.length ≤ W)
+    (F : β → α) (hF : F d = 0) :
+    ((List.range W).map (fun o => F (t.getD o d))).sum = (t.map F).sum := by
+  obtain ⟨r, hr⟩ : ∃ r, W = t.length + r := ⟨W - t.length, by omega⟩
+  subst hr
+  rw [List.range_add]
+  simp only [List.map_append, List.sum_append, List.map_map, Function.comp_def]
+  have h1 : ((List.range t.length).map (fun o => F (t.getD o d))).sum = (t.map F).sum := by
+    conv_rhs => rw [eq_map_range_getD t d]
+    simp [Function.comp_def]
+  have h2 : ((List.range r).map (fun o => F (t.getD (t.length + o) d))).sum = 0 := by
+    have hz : ∀ o, F (t.getD (t.length + o) d) = 0 := by
+      intro o
+      rw [List.getD_eq_default _ _ (by omega), hF]
+    rw [List.map_congr_left (fun o _ => hz o)]
+    simp
+  rw [h1, h2, add_zero]
+
+private lemma sum_map_flatMap {α β γ : Type*} [AddCommMonoid γ]
+    (L : List α) (g : α → List β) (F : β → γ) :
+    ((L.flatMap g).map F).sum = (L.map (fun x => ((g x).map F).sum)).sum := by
+  induction L with
+  | nil => simp
+  | cons a L ih => simp [List.flatMap_cons, ih]
+
+private lemma sum_map_add' {α γ : Type*} [AddCommMonoid γ] (L : List α) (u v : α → γ) :
+    (L.map fun x => u x + v x).sum = (L.map u).sum + (L.map v).sum := by
+  induction L with
+  | nil => simp
+  | cons a L ih => simp only [List.map_cons, List.sum_cons, ih]; abel
+
+/-- Rectangular flattening: a block/offset double range is the plain range of the product,
+read through division and remainder by the block width. -/
+private lemma flatMap_range_map_range {α : Type*} (a b : ℕ) (hb : 0 < b) (G : ℕ → ℕ → α) :
+    ((List.range a).flatMap fun k => (List.range b).map fun o => G k o)
+      = (List.range (a * b)).map fun j => G (j / b) (j % b) := by
+  induction a with
+  | zero => simp
+  | succ a ih =>
+      rw [List.range_succ, List.flatMap_append, ih]
+      simp only [List.flatMap_cons, List.flatMap_nil, List.append_nil]
+      rw [show (a + 1) * b = a * b + b by ring, List.range_add, List.map_append]
+      congr 1
+      · rw [List.map_map]
+        refine List.map_congr_left fun o ho => ?_
+        simp only [Function.comp_apply, List.mem_range] at ho ⊢
+        have hd : (a * b + o) / b = a := by
+          rw [Nat.mul_comm, Nat.mul_add_div hb, Nat.div_eq_of_lt ho, Nat.add_zero]
+        have hm : (a * b + o) % b = o := by
+          rw [Nat.mul_comm, Nat.mul_add_mod, Nat.mod_eq_of_lt ho]
+        rw [hd, hm]
+
+/-- `blockSum Bs coeff cnt width pad m = Σ_{k < cnt m} coeff⟨m,k⟩ · Bs⟨m,k⟩`, each block's
+term list padded with zero coefficients out to the uniform width `width m`. -/
+noncomputable def blockSum (Bs : ℕ → AffineCombination) (coeff : ℕ → EF)
+    (cnt width : ℕ → ℕ) (pad : Sentence) (m : ℕ) : AffineCombination where
+  const := (List.range (cnt m)).foldr
+    (fun k acc => .add (.mul (coeff (Nat.pair m k)) (Bs (Nat.pair m k)).const) acc)
+    (.const 0)
+  terms := (List.range (cnt m)).flatMap fun k =>
+    (List.range (width m)).map fun o =>
+      (EF.mul (coeff (Nat.pair m k))
+          ((Bs (Nat.pair m k)).terms.getD o (padEntry pad)).1,
+        ((Bs (Nat.pair m k)).terms.getD o (padEntry pad)).2)
+
+private lemma foldr_addMul_denote (L : List ℕ) (c v : ℕ → EF) (V : History) :
+    ((L.foldr (fun k acc => EF.add (EF.mul (c k) (v k)) acc) (EF.const 0)).denote V)
+      = (L.map fun k => (c k).denote V * (v k).denote V).sum := by
+  induction L with
+  | nil => simp
+  | cons k L ih => simp [ih]
+
+lemma blockSum_value (Bs : ℕ → AffineCombination) (coeff : ℕ → EF)
+    (cnt width : ℕ → ℕ) (pad : Sentence) (m : ℕ) (V : History) (w : Valuation)
+    (hw : ∀ k < cnt m, (Bs (Nat.pair m k)).terms.length ≤ width m) :
+    (blockSum Bs coeff cnt width pad m).value V w =
+      ((List.range (cnt m)).map fun k =>
+        (coeff (Nat.pair m k)).denote V * (Bs (Nat.pair m k)).value V w).sum := by
+  rw [value, blockSum]
+  rw [foldr_addMul_denote, sum_map_flatMap, ← sum_map_add']
+  refine congrArg List.sum (List.map_congr_left fun k hk => ?_)
+  simp only [List.mem_range] at hk
+  have hblock := padded_map_sum ((Bs (Nat.pair m k)).terms) (padEntry pad) (width m)
+    (hw k hk) (fun p : EF × Sentence =>
+      (EF.mul (coeff (Nat.pair m k)) p.1).denote V * w p.2) (by simp [padEntry])
+  rw [List.map_map]
+  simp only [Function.comp_def]
+  rw [hblock, value]
+  simp only [EF.denote_mul, Pi.mul_apply]
+  have hpull : ((Bs (Nat.pair m k)).terms.map fun p =>
+      (coeff (Nat.pair m k)).denote V * p.1.denote V * w p.2).sum
+      = (coeff (Nat.pair m k)).denote V *
+        ((Bs (Nat.pair m k)).terms.map fun p => p.1.denote V * w p.2).sum := by
+    induction (Bs (Nat.pair m k)).terms with
+    | nil => simp
+    | cons p ps ih => simp only [List.map_cons, List.sum_cons, ih]; ring
+  rw [hpull]
+  ring
+
+lemma blockSum_price (Bs : ℕ → AffineCombination) (coeff : ℕ → EF)
+    (cnt width : ℕ → ℕ) (pad : Sentence) (m : ℕ) (V : History) (day : ℕ)
+    (hw : ∀ k < cnt m, (Bs (Nat.pair m k)).terms.length ≤ width m) :
+    (blockSum Bs coeff cnt width pad m).price V day =
+      ((List.range (cnt m)).map fun k =>
+        (coeff (Nat.pair m k)).denote V * (Bs (Nat.pair m k)).price V day).sum := by
+  simpa only [price] using blockSum_value Bs coeff cnt width pad m V (V day) hw
+
+lemma blockSum_magnitude (Bs : ℕ → AffineCombination) (coeff : ℕ → EF)
+    (cnt width : ℕ → ℕ) (pad : Sentence) (m : ℕ) (V : History)
+    (hw : ∀ k < cnt m, (Bs (Nat.pair m k)).terms.length ≤ width m) :
+    (blockSum Bs coeff cnt width pad m).magnitude V =
+      ((List.range (cnt m)).map fun k =>
+        |(coeff (Nat.pair m k)).denote V| * (Bs (Nat.pair m k)).magnitude V).sum := by
+  rw [magnitude, blockSum]
+  rw [sum_map_flatMap]
+  refine congrArg List.sum (List.map_congr_left fun k hk => ?_)
+  simp only [List.mem_range] at hk
+  have hblock := padded_map_sum ((Bs (Nat.pair m k)).terms) (padEntry pad) (width m)
+    (hw k hk) (fun p : EF × Sentence =>
+      |(EF.mul (coeff (Nat.pair m k)) p.1).denote V|) (by simp [padEntry])
+  rw [List.map_map]
+  simp only [Function.comp_def]
+  rw [hblock, magnitude]
+  simp only [EF.denote_mul, Pi.mul_apply, abs_mul]
+  induction (Bs (Nat.pair m k)).terms with
+  | nil => simp
+  | cons p ps ih => simp only [List.map_cons, List.sum_cons, ih]; ring
+
+lemma PolySequence.terms_length {As : ℕ → AffineCombination} (h : PolySequence As)
+    (n : ℕ) : (As n).terms.length = h.termCount n := by
+  rw [h.terms_eq]; simp
+
+lemma getD_map_range_ite {α : Type*} (n : ℕ) (g : ℕ → α) (o : ℕ) (d : α) :
+    ((List.range n).map g).getD o d = if o < n then g o else d := by
+  by_cases ho : o < n
+  · rw [if_pos ho, List.getD_eq_getElem _ _ (by simpa using ho)]
+    simp
+  · rw [if_neg ho, List.getD_eq_default _ _ (by simpa using Nat.le_of_not_lt ho)]
+
+/-- Serialization of a `Σ uₖ · vₖ` fold: one `coefficient/value/multiply` block per
+summand, closed by a run of `add` tags. -/
+private lemma foldr_addMul_serialize (L : List ℕ) (u v : ℕ → EF) :
+    (L.foldr (fun k acc => EF.add (EF.mul (u k) (v k)) acc) (EF.const 0)).serialize =
+      (L.flatMap fun k => (u k).serialize ++ (v k).serialize ++ [3]) ++
+        (EF.const 0).serialize ++ List.replicate L.length 2 := by
+  induction L with
+  | nil => simp
+  | cons k L ih =>
+      simp only [List.foldr_cons, List.flatMap_cons, List.length_cons]
+      rw [show (EF.add (EF.mul (u k) (v k))
+            (L.foldr (fun k acc => EF.add (EF.mul (u k) (v k)) acc) (EF.const 0))).serialize =
+          ((u k).serialize ++ (v k).serialize ++ [3]) ++
+            (L.foldr (fun k acc => EF.add (EF.mul (u k) (v k)) acc)
+              (EF.const 0)).serialize ++ [2] by
+        simp [EF.serialize, List.append_assoc]]
+      rw [ih]
+      simp [List.replicate_succ', List.append_assoc]
+
+private lemma foldr_addMul_rank (L : List ℕ) (u v : ℕ → EF) (n : ℕ)
+    (hu : ∀ k ∈ L, (u k).rank ≤ n) (hv : ∀ k ∈ L, (v k).rank ≤ n) :
+    (L.foldr (fun k acc => EF.add (EF.mul (u k) (v k)) acc) (EF.const 0)).rank ≤ n := by
+  induction L with
+  | nil => simp [EF.rank]
+  | cons k L ih =>
+      simp only [List.foldr_cons, EF.rank]
+      refine Nat.max_le.mpr ⟨Nat.max_le.mpr ⟨hu k (by simp), hv k (by simp)⟩,
+        ih (fun j hj => hu j (by simp [hj])) (fun j hj => hv j (by simp [hj]))⟩
+
+private lemma foldr_addMul_closed (L : List ℕ) (u v : ℕ → EF) (ρ : List ℝ) (V : History)
+    (hu : ∀ k ∈ L, (u k).denoteWith ρ V = (u k).denote V)
+    (hv : ∀ k ∈ L, (v k).denoteWith ρ V = (v k).denote V) :
+    (L.foldr (fun k acc => EF.add (EF.mul (u k) (v k)) acc) (EF.const 0)).denoteWith ρ V =
+      (L.foldr (fun k acc => EF.add (EF.mul (u k) (v k)) acc) (EF.const 0)).denote V := by
+  induction L with
+  | nil => simp [EF.denoteWith, EF.denote]
+  | cons k L ih =>
+      simp only [List.foldr_cons, EF.denoteWith, EF.denote_add, EF.denote_mul,
+        Pi.add_apply, Pi.mul_apply]
+      rw [hu k (by simp), hv k (by simp),
+        ih (fun j hj => hu j (by simp [hj])) (fun j hj => hv j (by simp [hj]))]
+
+/-- **Variable-width affine combinator.**  A polynomially emitted *block* family `Bs`
+(indexed by `⟨m,k⟩`: evaluation day `m`, source day `k`) and a day-`m`-legal coefficient
+family combine into a polynomially emitted affine sequence whose day-`m` member is
+`Σ_{k < cnt m} coeff⟨m,k⟩ · Bs⟨m,k⟩`.  Blocks are padded to the common width `width m`, so
+the flat term index stays a plain `range` and the block/offset inverse is division and
+remainder rather than an inverse prefix-sum. -/
+noncomputable def PolySequence.blockSum
+    {Bs : ℕ → AffineCombination} (hB : PolySequence Bs)
+    {coeff : ℕ → EF} (hcoeff : RpnSpliceStream fun z => (coeff z).serialize)
+    (hcoeffClosed : ∀ z ρ V, (coeff z).denoteWith ρ V = (coeff z).denote V)
+    (hcoeffRank : ∀ m k, (coeff (Nat.pair m k)).rank ≤ m)
+    {cnt width : ℕ → ℕ}
+    (hcnt : ∃ c, PolyFueled c cnt) (hwidth : ∃ c, PolyFueled c width)
+    (hwidthPos : ∀ m, 0 < width m)
+    (hBconstRank : ∀ m k, (Bs (Nat.pair m k)).const.rank ≤ m)
+    (hBcoeffRank : ∀ m k o, o < hB.termCount (Nat.pair m k) →
+      (hB.coefficient (Nat.pair (Nat.pair m k) o)).rank ≤ m)
+    (pad : Sentence) (hpad : RpnSentenceCodes fun _ : ℕ => pad) :
+    PolySequence (AffineCombination.blockSum Bs coeff cnt width pad) := by
+  have hcntPF := Classical.choose_spec hcnt
+  have hwidthPF := Classical.choose_spec hwidth
+  have hmulPF := Classical.choose_spec mul_polyFueled
+  have hdmPF := Classical.choose_spec divmod1_polyFueled
+  have htcPF0 := Classical.choose_spec hB.termCount_poly
+  -- block index and offset of a flat term index
+  have hdm0 := hdmPF.comp ((subc_polyFueled.comp ((hwidthPF.comp PolyFueled.left).pair
+    (PolyFueled.const 1))).pair PolyFueled.right)
+  have hdm : PolyFueled _ (fun z : ℕ ↦
+      Nat.pair (z.unpair.2 / width z.unpair.1) (z.unpair.2 % width z.unpair.1)) :=
+    hdm0.of_eq (fun z ↦ by
+      have hw := hwidthPos z.unpair.1
+      simp only [Nat.unpair_pair]
+      rw [show width z.unpair.1 - 1 + 1 = width z.unpair.1 from by omega])
+  have hblk : PolyFueled _ (fun z : ℕ ↦ z.unpair.2 / width z.unpair.1) :=
+    (PolyFueled.left.comp hdm).of_eq (fun z ↦ by simp)
+  have hoff : PolyFueled _ (fun z : ℕ ↦ z.unpair.2 % width z.unpair.1) :=
+    (PolyFueled.right.comp hdm).of_eq (fun z ↦ by simp)
+  have hkey : PolyFueled _ (fun z : ℕ ↦ Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1)) :=
+    PolyFueled.left.pair hblk
+  have hq : PolyFueled _ (fun z : ℕ ↦
+      Nat.pair (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
+        (z.unpair.2 % width z.unpair.1)) := hkey.pair hoff
+  have htest : PolyFueled _ (fun z : ℕ ↦
+      (z.unpair.2 % width z.unpair.1 + 1) -
+        hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))) :=
+    (subc_polyFueled.comp (hoff.succ_comp.pair (htcPF0.comp hkey))).of_eq
+      (fun z ↦ by simp)
+  have htermCount : ∃ c, PolyFueled c (fun m ↦ cnt m * width m) :=
+    ⟨_, (hmulPF.comp (hcntPF.pair hwidthPF)).of_eq (fun m ↦ by simp)⟩
+  refine
+    { termCount := fun m ↦ cnt m * width m
+      coefficient := fun z ↦ EF.mul
+        (coeff (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1)))
+        (if z.unpair.2 % width z.unpair.1 <
+            hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1)) then
+          hB.coefficient (Nat.pair (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
+            (z.unpair.2 % width z.unpair.1))
+        else EF.const 0)
+      sentence := fun z ↦
+        if z.unpair.2 % width z.unpair.1 <
+            hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1)) then
+          hB.sentence (Nat.pair (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
+            (z.unpair.2 % width z.unpair.1))
+        else pad
+      termCount_poly := htermCount
+      const_poly := ?_
+      coefficient_poly := ?_
+      sentence_poly := ?_
+      terms_eq := ?_
+      const_rank := ?_
+      coefficient_rank := ?_
+      const_closed := ?_
+      coefficient_closed := ?_ }
+  · refine RpnSpliceStream.of_eq
+      ((((hcoeff.append hB.const_poly).append (RpnSpliceStream.tag 3 (by norm_num))).concatVar
+        hcntPF).append ((RpnSpliceStream.serialize_const 0).append
+          (RpnSpliceStream.repeatTag 2 (by norm_num) hcntPF))) (fun m ↦ ?_)
+    rw [AffineCombination.blockSum, foldr_addMul_serialize]
+    simp [List.append_assoc]
+  · have hif : RpnSpliceStream (fun z ↦
+        (if z.unpair.2 % width z.unpair.1 <
+            hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1)) then
+          hB.coefficient (Nat.pair (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
+            (z.unpair.2 % width z.unpair.1))
+        else EF.const 0).serialize) := by
+      refine RpnSpliceStream.of_eq (RpnSpliceStream.ifZero (hB.coefficient_poly.comp hq)
+        (RpnSpliceStream.serialize_const 0) htest) (fun z ↦ ?_)
+      by_cases hlt : z.unpair.2 % width z.unpair.1 <
+          hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
+      · rw [if_pos hlt, if_pos (show _ = 0 from by omega)]
+      · rw [if_neg hlt, if_neg (show ¬ _ = 0 from by omega)]
+    exact RpnSpliceStream.serialize_mul (hcoeff.comp hkey) hif
+  · refine (RpnSentenceCodes.ifZero (hB.sentence_poly.comp hq) hpad htest).of_eq (fun z ↦ ?_)
+    by_cases hlt : z.unpair.2 % width z.unpair.1 <
+        hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
+    · rw [if_pos (show _ = 0 from by omega), if_pos hlt]
+    · rw [if_neg (show ¬ _ = 0 from by omega), if_neg hlt]
+  · intro m
+    rw [AffineCombination.blockSum,
+      flatMap_range_map_range (cnt m) (width m) (hwidthPos m)]
+    refine List.map_congr_left fun j _ ↦ ?_
+    simp only [Nat.unpair_pair]
+    rw [hB.terms_eq, getD_map_range_ite]
+    by_cases hlt : j % width m < hB.termCount (Nat.pair m (j / width m)) <;>
+      simp [hlt, AffineCombination.padEntry]
+  · intro m
+    rw [AffineCombination.blockSum]
+    exact foldr_addMul_rank _ _ _ m (fun k _ ↦ hcoeffRank m k) (fun k _ ↦ hBconstRank m k)
+  · intro m j hj
+    simp only [Nat.unpair_pair, EF.rank]
+    refine Nat.max_le.mpr ⟨hcoeffRank m (j / width m), ?_⟩
+    by_cases hlt : j % width m < hB.termCount (Nat.pair m (j / width m))
+    · rw [if_pos hlt]
+      exact hBcoeffRank m (j / width m) (j % width m) hlt
+    · rw [if_neg hlt]
+      simp [EF.rank]
+  · intro m ρ V
+    rw [AffineCombination.blockSum]
+    exact foldr_addMul_closed _ _ _ ρ V (fun k _ ↦ hcoeffClosed _ ρ V)
+      (fun k _ ↦ hB.const_closed _ ρ V)
+  · intro z ρ V
+    simp only [EF.denoteWith, EF.denote_mul, Pi.mul_apply]
+    rw [hcoeffClosed _ ρ V]
+    by_cases hlt : z.unpair.2 % width z.unpair.1 <
+        hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
+    · rw [if_pos hlt, hB.coefficient_closed _ ρ V]
+    · rw [if_neg hlt]
+      simp [EF.denoteWith]
+
+end AffineCombination
+
+/-! ## First-violator selector: analytic core -/
+
+/-- First-success telescoping: the total weight a first-violator selector spends is
+`1 - Π (1 - g j)`, so no normalization (no `safeRecip`, no division) is needed to keep
+the day's magnitude budget. -/
+lemma firstSuccess_sum (g : ℕ → ℝ) (c : ℕ) :
+    ∑ k ∈ Finset.range c, g k * ∏ j ∈ Finset.range k, (1 - g j) =
+      1 - ∏ j ∈ Finset.range c, (1 - g j) := by
+  induction c with
+  | zero => simp
+  | succ c ih =>
+      rw [Finset.sum_range_succ, ih, Finset.prod_range_succ]
+      ring
+
+lemma firstSuccess_weight_nonneg {g : ℕ → ℝ} (hg : ∀ k, 0 ≤ g k ∧ g k ≤ 1) (k : ℕ) :
+    0 ≤ g k * ∏ j ∈ Finset.range k, (1 - g j) :=
+  mul_nonneg (hg k).1 (Finset.prod_nonneg fun j _ => by have := (hg j).2; linarith)
+
+lemma firstSuccess_sum_le_one {g : ℕ → ℝ} (hg : ∀ k, 0 ≤ g k ∧ g k ≤ 1) (c : ℕ) :
+    ∑ k ∈ Finset.range c, g k * ∏ j ∈ Finset.range k, (1 - g j) ≤ 1 := by
+  rw [firstSuccess_sum]
+  have : (0:ℝ) ≤ ∏ j ∈ Finset.range c, (1 - g j) :=
+    Finset.prod_nonneg (fun j _ => by have := (hg j).2; linarith)
+  linarith
+
+lemma firstSuccess_sum_nonneg {g : ℕ → ℝ} (hg : ∀ k, 0 ≤ g k ∧ g k ≤ 1) (c : ℕ) :
+    0 ≤ ∑ k ∈ Finset.range c, g k * ∏ j ∈ Finset.range k, (1 - g j) :=
+  Finset.sum_nonneg fun k _ => firstSuccess_weight_nonneg hg k
+
+/-- **Forcing.**  Once *some* gate in the window saturates, the selector's total weight is
+exactly `1`; since every summand carrying positive weight is at least `δ`, the gated sum
+is at least `δ`.  This is the step that makes the terms non-cancelling, and it needs no
+minimality of the violator — only the telescoping identity above. -/
+lemma firstSuccess_forces {g d : ℕ → ℝ} {δ : ℝ} {c k₀ : ℕ} (hk₀ : k₀ < c)
+    (hg : ∀ k, 0 ≤ g k ∧ g k ≤ 1) (hhit : g k₀ = 1)
+    (hδ : ∀ k < c, 0 < g k → δ ≤ d k) :
+    δ ≤ ∑ k ∈ Finset.range c, (g k * ∏ j ∈ Finset.range k, (1 - g j)) * d k := by
+  have hzero : ∏ j ∈ Finset.range c, (1 - g j) = 0 :=
+    Finset.prod_eq_zero (Finset.mem_range.2 hk₀) (by rw [hhit]; ring)
+  have htotal : ∑ k ∈ Finset.range c, g k * ∏ j ∈ Finset.range k, (1 - g j) = 1 := by
+    rw [firstSuccess_sum, hzero, sub_zero]
+  calc δ = δ * ∑ k ∈ Finset.range c, g k * ∏ j ∈ Finset.range k, (1 - g j) := by
+        rw [htotal, mul_one]
+    _ = ∑ k ∈ Finset.range c, (g k * ∏ j ∈ Finset.range k, (1 - g j)) * δ := by
+        rw [Finset.mul_sum]; exact Finset.sum_congr rfl fun k _ => by ring
+    _ ≤ _ := by
+        refine Finset.sum_le_sum fun k hk => ?_
+        rcases eq_or_lt_of_le (hg k).1 with hk0 | hk0
+        · simp [← hk0]
+        · exact mul_le_mul_of_nonneg_left (hδ k (Finset.mem_range.1 hk) hk0)
+            (firstSuccess_weight_nonneg hg k)
+
+/-! ## First-violator selector: syntax -/
+
+/-- One factor `1 - g j` of the selector product. -/
+private def selectorFactor (g : ℕ → EF) (j : ℕ) : EF :=
+  EF.add (EF.const 1) (EF.mul (EF.const (-1)) (g j))
+
+/-- The selector product `Π_{j < k} (1 - g⟨m,j⟩)` for `z = ⟨m,k⟩`. -/
+private def selectorProd (g : ℕ → EF) (z : ℕ) : EF :=
+  (List.range z.unpair.2).foldr
+    (fun j acc ↦ EF.mul (selectorFactor g (Nat.pair z.unpair.1 j)) acc) (EF.const 1)
+
+/-- **First-violator selector weight** `gate⟨m,k⟩ = g⟨m,k⟩ · Π_{j<k} (1 - g⟨m,j⟩)`.  A
+division-free device that spreads a *unit* total weight across an unboundedly large
+deferral fibre: by `firstSuccess_sum` the weights over a fibre sum to `1 - Π(1-g) ≤ 1`
+with no normalization, and by `firstSuccess_forces` a single saturated gate already forces
+the whole gated sum. -/
+def selectorFeature (g : ℕ → EF) (z : ℕ) : EF :=
+  EF.mul (g z) (selectorProd g z)
+
+private lemma list_prod_range {M : Type*} [CommMonoid M] (n : ℕ) (F : ℕ → M) :
+    ((List.range n).map F).prod = ∏ j ∈ Finset.range n, F j := by
+  induction n with
+  | zero => simp
+  | succ n ih =>
+      rw [List.range_succ, List.map_append, List.prod_append, ih,
+        Finset.prod_range_succ]
+      simp
+
+private lemma foldr_mul_denoteWith (L : List ℕ) (u : ℕ → EF) (ρ : List ℝ) (V : History) :
+    (L.foldr (fun j acc ↦ EF.mul (u j) acc) (EF.const 1)).denoteWith ρ V =
+      (L.map fun j ↦ (u j).denoteWith ρ V).prod := by
+  induction L with
+  | nil => simp [EF.denoteWith]
+  | cons j L ih =>
+      simp only [List.foldr_cons, List.map_cons, List.prod_cons, ← ih]
+      rfl
+
+private lemma foldr_mul_serialize (L : List ℕ) (u : ℕ → EF) :
+    (L.foldr (fun j acc ↦ EF.mul (u j) acc) (EF.const 1)).serialize =
+      (L.flatMap fun j ↦ (u j).serialize) ++ (EF.const 1).serialize ++
+        List.replicate L.length 3 := by
+  induction L with
+  | nil => simp
+  | cons j L ih =>
+      simp only [List.foldr_cons, List.flatMap_cons, List.length_cons]
+      rw [show (EF.mul (u j)
+            (L.foldr (fun j acc ↦ EF.mul (u j) acc) (EF.const 1))).serialize =
+          (u j).serialize ++
+            (L.foldr (fun j acc ↦ EF.mul (u j) acc) (EF.const 1)).serialize ++ [3] by
+        simp [EF.serialize, List.append_assoc]]
+      rw [ih]
+      simp [List.replicate_succ', List.append_assoc]
+
+private lemma foldr_mul_rank (L : List ℕ) (u : ℕ → EF) (n : ℕ)
+    (hu : ∀ j ∈ L, (u j).rank ≤ n) :
+    (L.foldr (fun j acc ↦ EF.mul (u j) acc) (EF.const 1)).rank ≤ n := by
+  induction L with
+  | nil => simp [EF.rank]
+  | cons j L ih =>
+      simp only [List.foldr_cons, EF.rank]
+      exact Nat.max_le.mpr ⟨hu j (by simp), ih fun i hi ↦ hu i (by simp [hi])⟩
+
+@[simp] private lemma selectorFactor_rank (g : ℕ → EF) (j : ℕ) :
+    (selectorFactor g j).rank = (g j).rank := by
+  simp [selectorFactor, EF.rank]
+
+private lemma selectorFactor_denoteWith (g : ℕ → EF) (j : ℕ) (ρ : List ℝ) (V : History) :
+    (selectorFactor g j).denoteWith ρ V = 1 - (g j).denoteWith ρ V := by
+  simp only [selectorFactor, EF.denoteWith, Rat.cast_one, Rat.cast_neg, neg_mul, one_mul]
+  ring
+
+private lemma selectorFactor_serialize (g : ℕ → EF) (j : ℕ) :
+    (selectorFactor g j).serialize =
+      (EF.const 1).serialize ++ (EF.const (-1)).serialize ++ (g j).serialize ++ [3, 2] := by
+  simp [selectorFactor, EF.serialize, List.append_assoc]
+
+private lemma selectorProd_denoteWith (g : ℕ → EF) (z : ℕ) (ρ : List ℝ) (V : History) :
+    (selectorProd g z).denoteWith ρ V =
+      ∏ j ∈ Finset.range z.unpair.2, (1 - (g (Nat.pair z.unpair.1 j)).denoteWith ρ V) := by
+  rw [selectorProd, foldr_mul_denoteWith, list_prod_range]
+  exact Finset.prod_congr rfl fun j _ ↦ selectorFactor_denoteWith _ _ ρ V
+
+lemma selectorFeature_denote (g : ℕ → EF) (m k : ℕ) (V : History) :
+    (selectorFeature g (Nat.pair m k)).denote V =
+      (g (Nat.pair m k)).denote V *
+        ∏ j ∈ Finset.range k, (1 - (g (Nat.pair m j)).denote V) := by
+  simp only [selectorFeature, EF.denote, EF.denoteWith]
+  rw [show (selectorProd g (Nat.pair m k)).denoteWith [] V =
+      ∏ j ∈ Finset.range k, (1 - (g (Nat.pair m j)).denoteWith [] V) by
+    simpa using selectorProd_denoteWith g (Nat.pair m k) [] V]
+
+lemma selectorFeature_closed {g : ℕ → EF}
+    (hg : ∀ z ρ V, (g z).denoteWith ρ V = (g z).denote V) (z : ℕ) (ρ : List ℝ)
+    (V : History) :
+    (selectorFeature g z).denoteWith ρ V = (selectorFeature g z).denote V := by
+  simp only [selectorFeature, EF.denoteWith, EF.denote_mul, Pi.mul_apply]
+  rw [show (g z).denoteWith ρ V = (g z).denote V from hg z ρ V,
+    selectorProd_denoteWith g z ρ V,
+    show (selectorProd g z).denote V =
+      ∏ j ∈ Finset.range z.unpair.2, (1 - (g (Nat.pair z.unpair.1 j)).denote V) from
+      selectorProd_denoteWith g z [] V]
+  exact congrArg _ (Finset.prod_congr rfl fun j _ ↦ by rw [hg])
+
+lemma selectorFeature_rank {g : ℕ → EF} {m k : ℕ}
+    (hg : ∀ j, j ≤ k → (g (Nat.pair m j)).rank ≤ m) :
+    (selectorFeature g (Nat.pair m k)).rank ≤ m := by
+  simp only [selectorFeature, EF.rank]
+  refine Nat.max_le.mpr ⟨hg k le_rfl, ?_⟩
+  rw [selectorProd]
+  simp only [Nat.unpair_pair]
+  exact foldr_mul_rank _ _ _ fun j hj ↦ by
+    rw [selectorFactor_rank]
+    exact hg j (le_of_lt (List.mem_range.1 hj))
+
+/-- Uniform emission of the selector weights. -/
+lemma selectorFeature_polySeg {g : ℕ → EF}
+    (hg : RpnSpliceStream fun z ↦ (g z).serialize) :
+    RpnSpliceStream fun z ↦ (selectorFeature g z).serialize := by
+  have hidx : PolyFueled _ (fun q : ℕ ↦ Nat.pair q.unpair.1.unpair.1 q.unpair.2) :=
+    (PolyFueled.left.comp PolyFueled.left).pair PolyFueled.right
+  have hfactor : RpnSpliceStream fun q ↦
+      (selectorFactor g (Nat.pair q.unpair.1.unpair.1 q.unpair.2)).serialize := by
+    refine RpnSpliceStream.of_eq
+      ((((RpnSpliceStream.serialize_const 1).append
+        (RpnSpliceStream.serialize_const (-1))).append (hg.comp hidx)).append
+        ((RpnSpliceStream.tag 3 (by norm_num)).append
+          (RpnSpliceStream.tag 2 (by norm_num)))) (fun q ↦ ?_)
+    rw [selectorFactor_serialize]
+    simp [List.append_assoc]
+  have hprod : RpnSpliceStream fun z ↦ (selectorProd g z).serialize := by
+    refine RpnSpliceStream.of_eq
+      (((hfactor.concatVar PolyFueled.right).append
+        ((RpnSpliceStream.serialize_const 1).append
+          (RpnSpliceStream.repeatTag 3 (by norm_num) PolyFueled.right)))) (fun z ↦ ?_)
+    rw [selectorProd, foldr_mul_serialize]
+    simp [List.append_assoc]
+  exact RpnSpliceStream.serialize_mul hg hprod
+
+private lemma list_sum_range {M : Type*} [AddCommMonoid M] (n : ℕ) (F : ℕ → M) :
+    ((List.range n).map F).sum = ∑ j ∈ Finset.range n, F j := by
+  induction n with
+  | zero => simp
+  | succ n ih =>
+      rw [List.range_succ, List.map_append, List.sum_append, ih, Finset.sum_range_succ]
+      simp
+
+/-! ## Deferral-fibre gating
+
+A day-`m` portfolio that is to settle a *deferred* obligation must carry one term per
+source day in the fibre `f⁻¹(m)`, whose size is unbounded when `f` is not injective.  The
+day's magnitude budget is one unit, and the gap convergence carries no rate, so no
+violation-independent weighting of the fibre can force its individual terms.  The device
+that does work is the division-free first-violator selector of `selectorFeature`: gate the
+source-`k` block by `ctsInd(δ; |dₖ|, δ)` damped by `Π_{j<k}(1 - …)`, take the whole
+package as a `δ`-indexed tower, and read the pointwise conclusion off the union of the
+towers' eventual bounds. -/
+
+/-- Emission certificate for a *paired-index* feature family: the member at `z = ⟨m,k⟩` is
+legal on the evaluation day `m` — rank `≤ z.unpair.1`, not merely `≤ z` — as well as
+polynomially emitted and environment-closed.  The day-indexed `PGenerableWeighting` cannot
+state that refinement, and it is exactly what a fibre gate needs in order to be a legal
+day-`m` affine coefficient. -/
+structure PairedWeighting (A : ℕ → EF) : Prop where
+  polySeg : RpnSpliceStream fun z ↦ (A z).serialize
+  rank_le : ∀ z, (A z).rank ≤ z.unpair.1
+  closed : ∀ z ρ V, (A z).denoteWith ρ V = (A z).denote V
+
+namespace PairedWeighting
+
+lemma ofRatCodes {q : ℕ → ℚ} (hq : PolyRatCodes q) :
+    PairedWeighting (fun z ↦ EF.const (q z)) where
+  polySeg := RpnSpliceStream.serialize_const_comp hq
+  rank_le := by intro z; simp [EF.rank]
+  closed := by intro z ρ V; simp [EF.denoteWith]
+
+lemma const (q : ℚ) : PairedWeighting (fun _ ↦ EF.const q) where
+  polySeg := RpnSpliceStream.serialize_const q
+  rank_le := by intro z; simp [EF.rank]
+  closed := by intro z ρ V; simp [EF.denoteWith]
+
+lemma mul {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
+    PairedWeighting (fun z ↦ EF.mul (A z) (B z)) where
+  polySeg := RpnSpliceStream.serialize_mul hA.polySeg hB.polySeg
+  rank_le := fun z ↦ Nat.max_le.mpr ⟨hA.rank_le z, hB.rank_le z⟩
+  closed := by
+    intro z ρ V
+    simp only [EF.denoteWith, EF.denote_mul, Pi.mul_apply]
+    rw [hA.closed z ρ V, hB.closed z ρ V]
+
+lemma add {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
+    PairedWeighting (fun z ↦ EF.add (A z) (B z)) where
+  polySeg := RpnSpliceStream.serialize_add hA.polySeg hB.polySeg
+  rank_le := fun z ↦ Nat.max_le.mpr ⟨hA.rank_le z, hB.rank_le z⟩
+  closed := by
+    intro z ρ V
+    simp only [EF.denoteWith, EF.denote_add, Pi.add_apply]
+    rw [hA.closed z ρ V, hB.closed z ρ V]
+
+lemma max {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
+    PairedWeighting (fun z ↦ EF.max (A z) (B z)) where
+  polySeg := RpnSpliceStream.serialize_max hA.polySeg hB.polySeg
+  rank_le := fun z ↦ Nat.max_le.mpr ⟨hA.rank_le z, hB.rank_le z⟩
+  closed := by
+    intro z ρ V
+    simp only [EF.denoteWith, EF.denote_max]
+    rw [hA.closed z ρ V, hB.closed z ρ V]
+
+lemma clip01 {A : ℕ → EF} (hA : PairedWeighting A) :
+    PairedWeighting (fun z ↦ _root_.LogicalInduction.clip01 (A z)) := by
+  have h := ((PairedWeighting.const 0).max
+    (((PairedWeighting.const (-1)).mul (((PairedWeighting.const (-1)).mul
+      (PairedWeighting.const 1)).max ((PairedWeighting.const (-1)).mul hA)))))
+  exact h
+
+lemma ctsInd {δ : ℚ} (hδinv : PolyRatCodes (fun _ : ℕ ↦ 1 / δ))
+    {x y : ℕ → EF} (hx : PairedWeighting x) (hy : PairedWeighting y) :
+    PairedWeighting (ctsIndFeature (fun _ ↦ δ) x y) :=
+  PairedWeighting.clip01
+    ((hx.add ((PairedWeighting.const (-1)).mul hy)).mul (PairedWeighting.ofRatCodes hδinv))
+
+lemma selector {A : ℕ → EF} (hA : PairedWeighting A) :
+    PairedWeighting (selectorFeature A) where
+  polySeg := selectorFeature_polySeg hA.polySeg
+  rank_le := by
+    intro z
+    have := selectorFeature_rank (g := A) (m := z.unpair.1) (k := z.unpair.2)
+      (fun j _ ↦ by simpa using hA.rank_le (Nat.pair z.unpair.1 j))
+    simpa using this
+  closed := selectorFeature_closed hA.closed
+
+end PairedWeighting
+
+namespace DeferralFibre
+
+/-- Day-`m` price feature of the source-`k` block, for `z = ⟨m,k⟩`. -/
+def priceFeat (Bs : ℕ → AffineCombination) (z : ℕ) : EF :=
+  (Bs z).priceFeature z.unpair.1
+
+/-- Positive part of the block's day-`m` price. -/
+def gapPos (Bs : ℕ → AffineCombination) (z : ℕ) : EF :=
+  EF.max (priceFeat Bs z) (EF.const 0)
+
+/-- Negative part of the block's day-`m` price. -/
+def gapNeg (Bs : ℕ → AffineCombination) (z : ℕ) : EF :=
+  EF.max (EF.mul (EF.const (-1)) (priceFeat Bs z)) (EF.const 0)
+
+/-- The `[f k = m]` fibre-membership flag as a closed constant feature. -/
+def matchFeat (f : DeferralFunction) (a degree z : ℕ) : EF :=
+  EF.const ((FeedbackEmission.scheduledMatch f a degree z : ℕ) : ℚ)
+
+/-- Fibre-gated continuous threshold on one side of the gap. -/
+def gateBase (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (d : ℕ → EF) (z : ℕ) : EF :=
+  EF.mul (matchFeat f a degree z)
+    (ctsIndFeature (fun _ ↦ δ) d (fun _ ↦ EF.const δ) z)
+
+/-- Two-sided first-violator coefficient: the positive-side selector minus the
+negative-side selector, normalised by `1/(2C)`. -/
+def gateCoeff (f : DeferralFunction) (a degree : ℕ) (δ C : ℚ)
+    (Bs : ℕ → AffineCombination) (z : ℕ) : EF :=
+  EF.mul (EF.const (1 / (2 * C)))
+    (EF.add (selectorFeature (gateBase f a degree δ (gapPos Bs)) z)
+      (EF.mul (EF.const (-1))
+        (selectorFeature (gateBase f a degree δ (gapNeg Bs)) z)))
+
+variable {Bs : ℕ → AffineCombination}
+
+lemma priceFeat_denote (Bs : ℕ → AffineCombination) (z : ℕ) (V : History) :
+    (priceFeat Bs z).denote V = (Bs z).price V z.unpair.1 :=
+  AffineCombination.priceFeature_denote _ _ _
+
+lemma priceFeat_paired (hB : AffineCombination.PolySequence Bs)
+    (hconstRank : ∀ z, (Bs z).const.rank ≤ z.unpair.1)
+    (htermRank : ∀ z, ∀ p ∈ (Bs z).terms, p.1.rank ≤ z.unpair.1) :
+    PairedWeighting (priceFeat Bs) where
+  polySeg := (hB.priceFeature_polySeg.comp
+    (PolyFueled.id.pair PolyFueled.left)).of_eq (fun z ↦ by simp [priceFeat])
+  rank_le := fun z ↦ AffineCombination.priceFeature_rank (Bs z) le_rfl
+    (hconstRank z) (htermRank z)
+  closed := fun z ρ V ↦ hB.priceFeature_closed z z.unpair.1 ρ V
+
+lemma gapPos_denote (Bs : ℕ → AffineCombination) (z : ℕ) (V : History) :
+    (gapPos Bs z).denote V = Max.max ((Bs z).price V z.unpair.1) 0 := by
+  simp [gapPos, priceFeat_denote]
+
+lemma gapNeg_denote (Bs : ℕ → AffineCombination) (z : ℕ) (V : History) :
+    (gapNeg Bs z).denote V = Max.max (-((Bs z).price V z.unpair.1)) 0 := by
+  simp [gapNeg, priceFeat_denote]
+
+lemma matchFeat_denote (f : DeferralFunction) (a degree z : ℕ) (V : History) :
+    (matchFeat f a degree z).denote V =
+      ((FeedbackEmission.scheduledMatch f a degree z : ℕ) : ℝ) := by
+  simp [matchFeat]
+
+lemma matchFeat_paired (f : DeferralFunction) (a degree : ℕ) :
+    PairedWeighting (matchFeat f a degree) :=
+  PairedWeighting.ofRatCodes
+    (ratNatCast_codes_of_polyFueled
+      (Classical.choose_spec (FeedbackEmission.scheduledMatch_polyFueled f a degree)))
+
+lemma gateBase_denote (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
+    (d : ℕ → EF) (z : ℕ) (V : History) :
+    (gateBase f a degree δ d z).denote V =
+      ((FeedbackEmission.scheduledMatch f a degree z : ℕ) : ℝ) *
+        ctsInd δ ((d z).denote V) (δ : ℝ) := by
+  simp only [gateBase, EF.denote_mul, Pi.mul_apply, matchFeat_denote]
+  rw [ctsIndFeature_denote (fun _ ↦ δ) d _ (fun _ ↦ hδ) V z]
+  simp
+
+lemma gateBase_mem (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
+    (d : ℕ → EF) (z : ℕ) (V : History) :
+    0 ≤ (gateBase f a degree δ d z).denote V ∧
+      (gateBase f a degree δ d z).denote V ≤ 1 := by
+  rw [gateBase_denote f a degree δ hδ d z V]
+  have hI := ctsInd_mem_Icc δ ((d z).denote V) (δ : ℝ)
+  rcases FeedbackEmission.scheduledMatch_zero_or_one f a degree z with h | h
+  · rw [h]; simp
+  · rw [h]; simpa using ⟨hI.1, hI.2⟩
+
+lemma gateBase_pos (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
+    (d : ℕ → EF) (z : ℕ) (V : History)
+    (h : 0 < (gateBase f a degree δ d z).denote V) :
+    (δ : ℝ) < (d z).denote V := by
+  rw [gateBase_denote f a degree δ hδ d z V] at h
+  by_contra hle
+  rw [ctsInd_eq_zero_of_le δ _ _ hδ (not_lt.1 hle), mul_zero] at h
+  exact absurd h (lt_irrefl 0)
+
+lemma gateBase_eq_one (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
+    (d : ℕ → EF) (z : ℕ) (V : History)
+    (hmatch : FeedbackEmission.scheduledMatch f a degree z = 1)
+    (hbig : 2 * (δ : ℝ) ≤ (d z).denote V) :
+    (gateBase f a degree δ d z).denote V = 1 := by
+  rw [gateBase_denote f a degree δ hδ d z V, hmatch,
+    ctsInd_eq_one_of_le_sub δ _ _ hδ (by linarith)]
+  simp
+
+lemma gateBase_paired (f : DeferralFunction) (a degree : ℕ) {δ : ℚ}
+    (hδinv : PolyRatCodes (fun _ : ℕ ↦ 1 / δ)) {d : ℕ → EF} (hd : PairedWeighting d) :
+    PairedWeighting (gateBase f a degree δ d) :=
+  (matchFeat_paired f a degree).mul
+    (PairedWeighting.ctsInd hδinv hd (PairedWeighting.const δ))
+
+lemma gateCoeff_paired (f : DeferralFunction) (a degree : ℕ) {δ C : ℚ}
+    (hδinv : PolyRatCodes (fun _ : ℕ ↦ 1 / δ))
+    (hB : AffineCombination.PolySequence Bs)
+    (hconstRank : ∀ z, (Bs z).const.rank ≤ z.unpair.1)
+    (htermRank : ∀ z, ∀ p ∈ (Bs z).terms, p.1.rank ≤ z.unpair.1) :
+    PairedWeighting (gateCoeff f a degree δ C Bs) := by
+  have hprice := priceFeat_paired hB hconstRank htermRank
+  have hpos : PairedWeighting (gapPos Bs) := hprice.max (PairedWeighting.const 0)
+  have hneg : PairedWeighting (gapNeg Bs) :=
+    ((PairedWeighting.const (-1)).mul hprice).max (PairedWeighting.const 0)
+  exact (PairedWeighting.const (1 / (2 * C))).mul
+    (((gateBase_paired f a degree hδinv hpos).selector).add
+      ((PairedWeighting.const (-1)).mul
+        ((gateBase_paired f a degree hδinv hneg).selector)))
+
+end DeferralFibre
+
 /-- Difference between two threshold meshes of the same represented LUV. -/
 def LUV.crossPrecisionAffine (X : ℕ → LUV) (low high : ℕ → ℕ)
     (n : ℕ) : AffineCombination where

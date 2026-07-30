@@ -320,6 +320,99 @@ def gateCoeff (f : DeferralFunction) (a degree : ℕ) (δ C : ℚ)
       (EF.mul (EF.const (-1))
         (selectorFeature (gateBase f a degree δ (gapNeg Bs)) z)))
 
+variable {Bs : ℕ → AffineCombination}
+
+lemma priceFeat_denote (Bs : ℕ → AffineCombination) (z : ℕ) (V : History) :
+    (priceFeat Bs z).denote V = (Bs z).price V z.unpair.1 :=
+  AffineCombination.priceFeature_denote _ _ _
+
+lemma priceFeat_paired (hB : AffineCombination.PolySequence Bs)
+    (hconstRank : ∀ z, (Bs z).const.rank ≤ z.unpair.1)
+    (htermRank : ∀ z, ∀ p ∈ (Bs z).terms, p.1.rank ≤ z.unpair.1) :
+    PairedWeighting (priceFeat Bs) where
+  polySeg := (hB.priceFeature_polySeg.comp
+    (PolyFueled.id.pair PolyFueled.left)).of_eq (fun z ↦ by simp [priceFeat])
+  rank_le := fun z ↦ AffineCombination.priceFeature_rank (Bs z) le_rfl
+    (hconstRank z) (htermRank z)
+  closed := fun z ρ V ↦ hB.priceFeature_closed z z.unpair.1 ρ V
+
+lemma gapPos_denote (Bs : ℕ → AffineCombination) (z : ℕ) (V : History) :
+    (gapPos Bs z).denote V = Max.max ((Bs z).price V z.unpair.1) 0 := by
+  simp [gapPos, priceFeat_denote]
+
+lemma gapNeg_denote (Bs : ℕ → AffineCombination) (z : ℕ) (V : History) :
+    (gapNeg Bs z).denote V = Max.max (-((Bs z).price V z.unpair.1)) 0 := by
+  simp [gapNeg, priceFeat_denote]
+
+lemma matchFeat_denote (f : DeferralFunction) (a degree z : ℕ) (V : History) :
+    (matchFeat f a degree z).denote V =
+      ((FeedbackEmission.scheduledMatch f a degree z : ℕ) : ℝ) := by
+  simp [matchFeat]
+
+lemma matchFeat_paired (f : DeferralFunction) (a degree : ℕ) :
+    PairedWeighting (matchFeat f a degree) :=
+  PairedWeighting.ofRatCodes
+    (ratNatCast_codes_of_polyFueled
+      (Classical.choose_spec (FeedbackEmission.scheduledMatch_polyFueled f a degree)))
+
+lemma gateBase_denote (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
+    (d : ℕ → EF) (z : ℕ) (V : History) :
+    (gateBase f a degree δ d z).denote V =
+      ((FeedbackEmission.scheduledMatch f a degree z : ℕ) : ℝ) *
+        ctsInd δ ((d z).denote V) (δ : ℝ) := by
+  simp only [gateBase, EF.denote_mul, Pi.mul_apply, matchFeat_denote]
+  rw [ctsIndFeature_denote (fun _ ↦ δ) d _ (fun _ ↦ hδ) V z]
+  simp
+
+lemma gateBase_mem (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
+    (d : ℕ → EF) (z : ℕ) (V : History) :
+    0 ≤ (gateBase f a degree δ d z).denote V ∧
+      (gateBase f a degree δ d z).denote V ≤ 1 := by
+  rw [gateBase_denote f a degree δ hδ d z V]
+  have hI := ctsInd_mem_Icc δ ((d z).denote V) (δ : ℝ)
+  rcases FeedbackEmission.scheduledMatch_zero_or_one f a degree z with h | h
+  · rw [h]; simp
+  · rw [h]; simpa using ⟨hI.1, hI.2⟩
+
+lemma gateBase_pos (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
+    (d : ℕ → EF) (z : ℕ) (V : History)
+    (h : 0 < (gateBase f a degree δ d z).denote V) :
+    (δ : ℝ) < (d z).denote V := by
+  rw [gateBase_denote f a degree δ hδ d z V] at h
+  by_contra hle
+  rw [ctsInd_eq_zero_of_le δ _ _ hδ (not_lt.1 hle), mul_zero] at h
+  exact absurd h (lt_irrefl 0)
+
+lemma gateBase_eq_one (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
+    (d : ℕ → EF) (z : ℕ) (V : History)
+    (hmatch : FeedbackEmission.scheduledMatch f a degree z = 1)
+    (hbig : 2 * (δ : ℝ) ≤ (d z).denote V) :
+    (gateBase f a degree δ d z).denote V = 1 := by
+  rw [gateBase_denote f a degree δ hδ d z V, hmatch,
+    ctsInd_eq_one_of_le_sub δ _ _ hδ (by linarith)]
+  simp
+
+lemma gateBase_paired (f : DeferralFunction) (a degree : ℕ) {δ : ℚ}
+    (hδinv : PolyRatCodes (fun _ : ℕ ↦ 1 / δ)) {d : ℕ → EF} (hd : PairedWeighting d) :
+    PairedWeighting (gateBase f a degree δ d) :=
+  (matchFeat_paired f a degree).mul
+    (PairedWeighting.ctsInd hδinv hd (PairedWeighting.const δ))
+
+lemma gateCoeff_paired (f : DeferralFunction) (a degree : ℕ) {δ C : ℚ}
+    (hδinv : PolyRatCodes (fun _ : ℕ ↦ 1 / δ))
+    (hB : AffineCombination.PolySequence Bs)
+    (hconstRank : ∀ z, (Bs z).const.rank ≤ z.unpair.1)
+    (htermRank : ∀ z, ∀ p ∈ (Bs z).terms, p.1.rank ≤ z.unpair.1) :
+    PairedWeighting (gateCoeff f a degree δ C Bs) := by
+  have hprice := priceFeat_paired hB hconstRank htermRank
+  have hpos : PairedWeighting (gapPos Bs) := hprice.max (PairedWeighting.const 0)
+  have hneg : PairedWeighting (gapNeg Bs) :=
+    ((PairedWeighting.const (-1)).mul hprice).max (PairedWeighting.const 0)
+  exact (PairedWeighting.const (1 / (2 * C))).mul
+    (((gateBase_paired f a degree hδinv hpos).selector).add
+      ((PairedWeighting.const (-1)).mul
+        ((gateBase_paired f a degree hδinv hneg).selector)))
+
 end DeferralFibre
 
 end LogicalInduction
