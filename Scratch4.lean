@@ -125,7 +125,7 @@ lemma fibre_price_eventually_small
   -- signed summand splits into two non-cancelling halves
   have hsplit : ∀ m k, (wP m k - wN m k) * pr m k = wP m k * pos m k + wN m k * neg m k := by
     intro m k
-    rcases le_or_lt 0 (pr m k) with hge | hlt
+    by_cases hge : 0 ≤ pr m k
     · have e1 : pos m k = pr m k := by rw [hpos m k]; exact max_eq_left hge
       have e2 : neg m k = 0 := by rw [hneg m k]; exact max_eq_right (by linarith)
       have hwN0 : wN m k = 0 := by
@@ -133,7 +133,8 @@ lemma fibre_price_eventually_small
         · rw [hwN m k, ← h0, zero_mul]
         · exact absurd (hbN_forces m k h0) (by rw [e2]; linarith)
       rw [e1, e2, hwN0]; ring
-    · have e1 : pos m k = 0 := by rw [hpos m k]; exact max_eq_right hlt.le
+    · have hlt : pr m k < 0 := by linarith [not_le.mp hge]
+      have e1 : pos m k = 0 := by rw [hpos m k]; exact max_eq_right hlt.le
       have e2 : neg m k = -(pr m k) := by rw [hneg m k]; exact max_eq_left (by linarith)
       have hwP0 : wP m k = 0 := by
         rcases eq_or_lt_of_le (hbPmem m k).1 with h0 | h0
@@ -274,7 +275,8 @@ lemma fibre_price_eventually_small
     rw [hfamPrice m m, mul_add, Finset.mul_sum, Finset.mul_sum,
       ← Finset.sum_add_distrib]
     refine Finset.sum_congr rfl fun j _ ↦ ?_
-    rw [hcoeffDen m j, show (Bs (Nat.pair m j)).price P m = pr m j from rfl, hsplit m j]
+    rw [hcoeffDen m j, show (Bs (Nat.pair m j)).price P m = pr m j from rfl, mul_assoc,
+      hsplit m j]
     ring
   have hlarge : ((1 / (2 * C) : ℚ) : ℝ) * (δ : ℝ) ≤ (family m).price P m := by
     rw [hsum_eq]
