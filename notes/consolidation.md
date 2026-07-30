@@ -196,6 +196,17 @@ Documentation notes: A) i'd like to split up the README into one overall README 
   `maxHeartbeats 1000000` (generated interior — acceptable, but say so at the site); the
   `attribute [local irreducible] Nat.sqrt` sections in the `Primrec` files want one
   shared comment explaining the whnf trap rather than bare repetition.
+- **No `LICENSE` file, and the repo is public.** Nobody can legally build on it as-is,
+  which matters for a repo meant to be built on (and partly upstreamed). Anson's call;
+  Apache 2.0 is the natural choice if any of this is Mathlib-bound, since Mathlib is
+  Apache 2.0. A `CITATION.cff` would also help, given the paper-formalization framing.
+- **Drop the Foundation fork.** `lakefile.lean` requires `A-M-Berns/Foundation` for one
+  patch (Matrix name clashes blocking Mathlib co-import). That patch is now **merged
+  upstream** (FormalizedFormalLogic/Foundation PR #835), so the fork is no longer needed:
+  point the requirement at upstream at a commit containing the rename and drop the
+  explanatory comment. Attempt with a fallback — Foundation moves fast, so a newer commit
+  may need unrelated fixes, and it forces a full dependency rebuild. Worth doing: a
+  personal fork in the dependency list reads as provisional.
 - **Structure-name legibility pass** over the Tier-2 boundary structures: review the ones
   named for their proof role rather than their content (`ExactTheoryPresentation` is now
   per-component completed-theory valuation; `PseudorandomFrequencyInfrastructureWithHistoricalVerifiers` is a mouthful that survived the wave). Renames are surface changes:
