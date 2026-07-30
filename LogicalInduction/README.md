@@ -9,15 +9,15 @@ is formalized, named after its paper label, and build-audited. How strong each o
 
 | | count | what it means |
 |---|---:|---|
-| **paper strength** | 37 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
-| **qualified** | 16 | proved with one explicitly named representation interface or class restriction retained |
+| **paper strength** | 39 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
+| **qualified** | 14 | proved with one explicitly named representation interface or class restriction retained |
 
 Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
 machine-checked against the endpoint inventory so a node cannot ship without a strength
 call.
 
-Separately, and beyond what the paper claims: **17 of the 37 are also instantiated over
+Separately, and beyond what the paper claims: **19 of the 39 are also instantiated over
 the concrete inductor constructed here**, so they hold of a specific algorithm rather
 than of a hypothetical one. The paper states no such theorems; these are a
 strengthening, not a different degree of faithfulness.
