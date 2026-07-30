@@ -1921,7 +1921,8 @@ towers' eventual bounds. -/
 legal on the evaluation day `m` — rank `≤ z.unpair.1`, not merely `≤ z` — as well as
 polynomially emitted and environment-closed.  The day-indexed `PGenerableWeighting` cannot
 state that refinement, and it is exactly what a fibre gate needs in order to be a legal
-day-`m` affine coefficient. -/
+day-`m` affine coefficient.
+Paper node: `def:ece` -/
 structure PairedWeighting (A : ℕ → EF) : Prop where
   polySeg : RpnSpliceStream fun z ↦ (A z).serialize
   rank_le : ∀ z, (A z).rank ≤ z.unpair.1
@@ -2421,11 +2422,11 @@ lemma fibre_price_eventually_small
   rw [Real.dist_eq, _root_.sub_zero, abs_lt] at hclose
   linarith [hclose.2]
 
-/-- **`def:deferralfunc`-faithful deferred price coherence.**  For every deferral function
+/-- **Deferred price coherence without injectivity.**  For every deferral function
 satisfying only `f n > n` plus poly-clocked emission — no injectivity, no monotonicity —
 a uniformly small completed-theory block family has vanishing deferred price along the
 diagonal `n ↦ ⟨f n, n⟩`. -/
-theorem deferred_block_price_tendsto_zero
+lemma deferred_block_price_tendsto_zero
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) {a degree : ℕ}
@@ -2676,10 +2677,10 @@ private lemma crossPrecisionBlocks_value (X : ℕ → LUV) (P : History) (w : Va
   simpa using LUV.crossPrecisionAffine_value (fun z ↦ X z.unpair.2)
     (fun z ↦ z.unpair.2 + 1) (fun z ↦ z.unpair.1 + 1) P w (Nat.pair m k)
 
-/-- **`def:deferralfunc`-faithful cross-precision correction.**  The deferred-day reading of
+/-- **Cross-precision correction without injectivity.**  The deferred-day reading of
 a source LUV's own-day expectation mesh agrees asymptotically with its deferred-day mesh,
 for every deferral function satisfying only `f n > n` plus poly-clocked emission. -/
-theorem crossPrecision_deferred_tendsto_zero
+lemma crossPrecision_deferred_tendsto_zero
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) {a degree : ℕ}

@@ -635,6 +635,8 @@ deliberately. -/
   threshold_sum_codes inverse_width_codes
 #assert_fields PGenerableWeighting
   polySeg rank_le closed
+#assert_fields PairedWeighting
+  polySeg rank_le closed
 #assert_fields ParadoxResistanceQuote
   sentence sentence_codes width width_codes width_pos width_tendsto_zero diagonal_reflected lower_affine upper_affine
 #assert_fields ParameterizedDiagonalQuoteCode
