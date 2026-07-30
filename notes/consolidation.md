@@ -200,13 +200,17 @@ Documentation notes: A) i'd like to split up the README into one overall README 
   which matters for a repo meant to be built on (and partly upstreamed). Anson's call;
   Apache 2.0 is the natural choice if any of this is Mathlib-bound, since Mathlib is
   Apache 2.0. A `CITATION.cff` would also help, given the paper-formalization framing.
-- **Drop the Foundation fork.** `lakefile.lean` requires `A-M-Berns/Foundation` for one
-  patch (Matrix name clashes blocking Mathlib co-import). That patch is now **merged
-  upstream** (FormalizedFormalLogic/Foundation PR #835), so the fork is no longer needed:
-  point the requirement at upstream at a commit containing the rename and drop the
-  explanatory comment. Attempt with a fallback — Foundation moves fast, so a newer commit
-  may need unrelated fixes, and it forces a full dependency rebuild. Worth doing: a
-  personal fork in the dependency list reads as provisional.
+- **Drop the Foundation fork — NOT a dependency swap; it is a toolchain upgrade.**
+  `lakefile.lean` requires `A-M-Berns/Foundation` for one patch (Matrix name clashes
+  blocking Mathlib co-import), and that patch is now merged upstream (PR #835). But every
+  upstream commit containing it is on Lean **v4.31+** (the merge commit v4.31.0, current
+  HEAD v4.32.2) while this project is on **v4.28.0-rc1**, and Lake requires one toolchain
+  across the tree. So switching means bumping Lean *and* moving to a Mathlib compatible
+  with it, recompiling ~90k lines against four minor versions of Mathlib API churn —
+  a multi-day project with real breakage risk, not an afternoon of hygiene. Queued as its
+  own project, to be done when there is no near-term demo or read-through at risk. The
+  lakefile comment now states that the fork carries no divergent mathematics, which
+  removes the "provisional" smell at zero cost.
 - **Structure-name legibility pass** over the Tier-2 boundary structures: review the ones
   named for their proof role rather than their content (`ExactTheoryPresentation` is now
   per-component completed-theory valuation; `PseudorandomFrequencyInfrastructureWithHistoricalVerifiers` is a mouthful that survived the wave). Renames are surface changes:

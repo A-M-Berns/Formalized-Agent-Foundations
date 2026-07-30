@@ -37,6 +37,11 @@ lean_lib ProvabilityLogic where
 -- `Matrix.*` decls that shadow Mathlib names (`map`, `forall_iff`, `exists_iff`) renamed
 -- (`vecMap`, `vecForall_iff`, `vecExists_iff`) so Foundation co-imports with Mathlib
 -- matrix/analysis theory (Bochner integration; EuclideanSpace via InnerProductSpace.PiL2,
--- needed by the Brouwer construction). Upstreamed as FormalizedFormalLogic/Foundation PR #835.
+-- needed by the Brouwer construction). The patch is **merged upstream**
+-- (FormalizedFormalLogic/Foundation PR #835), so this fork carries no divergent
+-- mathematics — it exists only to hold that rename on a base compatible with this
+-- project's Lean toolchain (v4.28.0-rc1). Every upstream commit containing the rename is
+-- on v4.31+, so switching to upstream is a Lean/Mathlib upgrade, not a dependency swap;
+-- it is queued as its own project (see notes/consolidation.md).
 require Foundation from git
   "https://github.com/A-M-Berns/Foundation" @ "aada66ef517064ce4fe025bb6c9072dacdf83991"
