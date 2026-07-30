@@ -78,7 +78,7 @@ Corollaries:
    `theorem` has a label-bearing docstring; no `private theorem`). Wired into CI as an
    advisory step until the theorem/lemma sweep lands, then flipped to blocking.
 4. **`example` is for uncited, axiom-irrelevant demonstrations only** (the
-   `IntegrationTest.lean` composition checks). The moment something needs to be cited,
+   the former integration-test composition checks). The moment something needs to be cited,
    audited, or `#print axioms`ed, it gets a name. In particular:
 5. **Non-vacuity (`N±`) witnesses stay named** (`*_nonempty` lemmas, or concrete defs
    like `ordinaryIndependentBitAtoms`), live in `AxiomAudit.lean` so the build vouches
@@ -117,7 +117,6 @@ the directory so `import LogicalInduction.Foo` works) — keep it, one roll-up p
                                     not belong in the library import graph)
    LogicalInduction.lean          — root roll-up, glossary, naming conventions
    LogicalInduction/
-     IntegrationTest.lean         — composition checks (stays top-level)
      Framework.lean + Framework/  — Asymptotics, Foundations, Computable, Criterion,
                                     Affine (with Engine folded in), ROI, Expectations
      Properties.lean + Properties/
@@ -135,15 +134,14 @@ the directory so `import LogicalInduction.Foo` works) — keep it, one roll-up p
 
 ## Pre-publication cleanup
 
-- **Delete `LogicalInduction/IntegrationTest.lean` before the repo is published** (Anson,
-  2026-07-22). It is the roadmap's M3 integration test — a build-enforced regression guard
-  that our `Asymptotics`/`Expectations` vocabulary is a definitional drop-in for the
-  downstream deference / dose-response corpus, and that the property-tail facts discharge
-  that corpus's named hypotheses end-to-end. Valuable *during development* (it catches
-  interface regressions), but it references the external corpus by name and is scaffolding,
-  not part of the paper formalization's trust surface — so it should not ship. Keep it until
-  the consolidation/read-through is otherwise done, then remove it (and drop it from any
-  `default_target`/build wiring) as one of the last pre-publish steps.
+- ~~Delete `LogicalInduction/IntegrationTest.lean`~~ — **done 2026-07-29**. It was the
+  regression guard that the downstream deference / dose-response corpus's hypotheses were
+  discharged by our objects with no adapter. Removed because the dependency direction has
+  flipped: that corpus is a draft and should now be developed against this library, not
+  guarded against by it. The one piece of library value it held — discharging `thm:ec`'s
+  grid hypothesis from exact world valuations — was promoted to
+  `LUV.expect_converges_of_valuesAt` in `Properties/ExpectationConvergence.lean` before
+  deletion.
 
 ## Style baseline
 
@@ -202,9 +200,6 @@ Documentation notes: A) i'd like to split up the README into one overall README 
   named for their proof role rather than their content (`ExactTheoryPresentation` is now
   per-component completed-theory valuation; `PseudorandomFrequencyInfrastructureWithHistoricalVerifiers` is a mouthful that survived the wave). Renames are surface changes:
   update `AxiomAudit` in the same commit.
-- **Pre-publication**: delete `LogicalInduction/IntegrationTest.lean` (see
-  "Pre-publication cleanup" above) — it references an external corpus by name and is
-  development scaffolding, not trust surface.
 
 ## Next lead item (Anson, 2026-07-29): relax injectivity
 

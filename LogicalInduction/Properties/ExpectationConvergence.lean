@@ -243,6 +243,22 @@ theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
 
 #print axioms LUV.expect_converges
 
+/-- `thm:ec` from the simpler premise that every stage-plausible world assigns `X` an
+exact value.  The grid-indexed hypothesis of `expect_converges` asks only for approximate
+values up to each precision, so an exact-valuation premise discharges it uniformly; this
+is the entry point a caller with genuine world values should use, and it witnesses that
+the grid hypothesis is satisfiable.  Kind `C`; hypotheses `(a)`. -/
+lemma LUV.expect_converges_of_valuesAt (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP] (X : LUV) (hcode : X.RpnThresholdCodes)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x) :
+    ∃ L : ℝ, ConvergesTo (X.expectSeq P) L :=
+  X.expect_converges P DP hcode hcons
+    (fun k => Filter.Eventually.of_forall
+      (fun n v hv => (hval n v hv).imp (fun _ hx => hx.approxValuesUpTo k)))
+
+#print axioms LUV.expect_converges_of_valuesAt
+
 /-- `𝔼_∞(X)` — the limiting expectation (`thm:ec`). -/
 noncomputable def LUV.expectInf (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV)

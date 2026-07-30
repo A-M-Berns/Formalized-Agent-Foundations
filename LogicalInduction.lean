@@ -95,4 +95,3 @@ strongest endpoint actually reaches.
 import LogicalInduction.Framework
 import LogicalInduction.Properties
 import LogicalInduction.Construction
-import LogicalInduction.IntegrationTest
