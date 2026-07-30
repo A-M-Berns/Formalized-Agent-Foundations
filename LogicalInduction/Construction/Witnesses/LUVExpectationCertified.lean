@@ -1,4 +1,5 @@
 import LogicalInduction.Construction.Witnesses.LUVDeductiveProcess
+import LogicalInduction.Construction.Witnesses.LUVSyntax
 import LogicalInduction.Properties.ExpectationAffine
 
 /-!
@@ -337,21 +338,20 @@ theorem lic_linearity_of_expectation_arith (P : History) [IsLogicalInductor P (L
 /-- **Certified `thm:exppolymax`.**  The sequence-level polynomial-max expectation identity for a
 `dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation* hypothesis
 discharged from arithmetic over `luvThresholdDP`, the process that reveals every `T`-provable
-threshold.  The residual `MeshSoftmaxOperationalWitness` is the disclosed operational/efficiency
-boundary the paper's own construction supplies.
+threshold, and the mesh-softmax operational witness derived from the sequence's compact syntax.
 Paper node: `thm:exppolymax` -/
 theorem exppolymax_arith {As : ℕ → LUVCombination} {P : History} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     [IsLogicalInductor P (L.luvThresholdDP T)]
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
-    (h : LUVCombination.BoundedSequence As P) (ops : LUVCombination.MeshSoftmaxOperationalWitness As P)
+    (h : LUVCombination.BoundedSequence As P) (S : LUVCombinationSyntax As)
     (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
      :
     liminf (fun n => (As n).expect P n) atTop =
         liminf (LUVCombination.futureHigh As P) atTop ∧
       limsup (fun n => (As n).expect P n) atTop =
         limsup (LUVCombination.futureLow As P) atTop :=
-  h.exppolymax ops (L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
+  h.exppolymax_ofSyntax S (L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
     b hb hshare (L.luvThresholdDP_hworld T)
 
 /-- **Certified `thm:wubexp`.**  Weighted unbiasedness of determined-value expectation for a
@@ -448,14 +448,14 @@ noncomputable def convergencePresentation_combinedDP {As : ℕ → LUVCombinatio
 
 /-- **Certified `thm:expcoh`.**  Completed/limiting/diagonal expectation coherence for
 a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` and `ConvergencePresentation`
-representation hypotheses discharged from arithmetic; only the disclosed mesh-softmax operational
-witness and threshold-code efficiency remain.
+representation hypotheses discharged from arithmetic and the mesh-softmax operational witness
+derived from the sequence's compact syntax; only threshold-code efficiency remains.
 Paper node: `thm:expcoh` -/
 theorem expcoh_arith {As : ℕ → LUVCombination} {P : History}
     [IsLogicalInductor P (L.combinedDP T)]
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
     (h : LUVCombination.BoundedSequence As P)
-    (ops : LUVCombination.MeshSoftmaxOperationalWitness As P)
+    (S : LUVCombinationSyntax As)
     (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
     (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
      :
@@ -467,7 +467,7 @@ theorem expcoh_arith {As : ℕ → LUVCombination} {P : History}
           limsup (fun n => (As n).expectInf P) atTop ∧
         limsup (fun n => (As n).expectInf P) atTop ≤
           limsup (LUVCombination.completedHigh As P (L.combinedDP T)) atTop) :=
-  h.expcoh ops (L.worldValued_combinedDP T hAs)
+  h.expcoh_ofSyntax S (L.worldValued_combinedDP T hAs)
     (L.convergencePresentation_combinedDP T hAs hcode) b hb hshare (L.combinedDP_hworld T)
 
 /-- **Certified `thm:perexpkno`.**  Persistence of expectation knowledge, with the
@@ -477,7 +477,7 @@ theorem perexpkno_arith {As : ℕ → LUVCombination} {P : History}
     [IsLogicalInductor P (L.combinedDP T)]
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
     (h : LUVCombination.BoundedSequence As P)
-    (ops : LUVCombination.MeshSoftmaxOperationalWitness As P)
+    (S : LUVCombinationSyntax As)
     (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
     (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
      :
@@ -485,7 +485,7 @@ theorem perexpkno_arith {As : ℕ → LUVCombination} {P : History}
         liminf (fun n => (As n).expectInf P) atTop ∧
       limsup (LUVCombination.futureHigh As P) atTop =
         limsup (fun n => (As n).expectInf P) atTop :=
-  h.perexpkno ops (L.worldValued_combinedDP T hAs)
+  h.perexpkno_ofSyntax S (L.worldValued_combinedDP T hAs)
     (L.convergencePresentation_combinedDP T hAs hcode) b hb hshare (L.combinedDP_hworld T)
 
 end Combined

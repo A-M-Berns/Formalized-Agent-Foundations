@@ -53,7 +53,7 @@ or a conventional complexity class.  A row marked *complete* claims the paper st
 | def:luv | qualified | threshold-sentence abstraction; the certified first-order bridge exists only for the `dd:luv-arith` class |
 | def:trader | complete | direct rendering |
 | def:tradestrat | complete | direct rendering, with the paper's rank/horizon bound on traded features |
-| lem:mesh | qualified | `LUVCombination.BoundedSequence.mesh_independence` is an inventory endpoint carrying the label; retained: `WorldValued` (the propositional-substrate world-value certificate) and the mesh-softmax operational witness, the latter dischargeable from `LUVCombinationSyntax` |
+| lem:mesh | qualified | strongest endpoint `LUVCombination.BoundedSequence.mesh_independence_ofSyntax`: the mesh-softmax operational witness is discharged from `LUVCombinationSyntax` (an emission certificate on the sequence's own data, so not tier-lowering); retained is `WorldValued`, the propositional-substrate world-value certificate |
 | lem:tfdom | complete | `trading_firm_dominance`: any efficiently computable exploiter is dominated, over any rational `[0,1]` market, with no inductor hypothesis |
 | thm:affcoh | conditional | analytic capstone over `[IsLogicalInductor]` with the paper's bounded-combination data |
 | thm:affpolymax | conditional | same, and the price/magnitude bounds are derived from the sequence rather than assumed |
@@ -69,8 +69,8 @@ or a conventional complexity class.  A row marked *complete* claims the paper st
 | thm:ei | conditional | genuine trader proof over `[IsLogicalInductor]`; `IsIndicator` is the paper's own `1(φ)` hypothesis rendered relationally by design, not a retained interface |
 | thm:epr | complete | unconditional over `LIA`; the quote code is constructed from the market program (`theoremPriceQuoteCode`), leaving only the sentence family and its codes |
 | thm:er | complete | unconditional over `LIA`; the expectation quote code is constructed via `expectQuote_computable`, leaving only the LUV family and its threshold codes |
-| thm:expcoh | qualified | representation discharged from arithmetic for `dd:luv-arith` (`expcoh_arith`); the mesh-softmax operational witness is retained even there, and general LUVs also retain `WorldValued`/`ConvergencePresentation` |
-| thm:exppolymax | qualified | same pattern (`exppolymax_arith`), mesh-softmax witness retained |
+| thm:expcoh | qualified | `expcoh_arith` discharges both representation hypotheses from arithmetic and the mesh-softmax operational witness from `LUVCombinationSyntax`, but restricts to the `dd:luv-arith` class; the general `expcoh_ofSyntax` covers arbitrary LUVs but retains `WorldValued`/`ConvergencePresentation` |
+| thm:exppolymax | qualified | same pattern (`exppolymax_arith` restricted to `dd:luv-arith`, `exppolymax_ofSyntax` general with `WorldValued` retained); mesh-softmax witness discharged in both |
 | thm:expprovind | qualified | **fully unconditional for certified `dd:luv-arith`** (all three comparison forms); general LUV-combination forms retain the exact-theory presentation |
 | thm:halts | complete | unconditional over `LIA` (Σ₁-sound `Θ ⊇ IΣ₁`) |
 | thm:ifp | qualified | efficiently-patchable perturbations only — the patch certificate is not inhabitable for every computable market; the paper's unrestricted statement has a recorded erratum (PE1) |
@@ -88,7 +88,7 @@ or a conventional complexity class.  A row marked *complete* claims the paper st
 | thm:pac | complete | unconditional over `LIA` (Σ₁-sound `Θ ⊇ IΣ₁`) |
 | thm:pazfc | complete | unconditional over `LIA` (Σ₁-sound `Θ ⊇ IΣ₁`) |
 | thm:peraffkno | conditional | analytic capstone over `[IsLogicalInductor]` |
-| thm:perexpkno | qualified | `perexpkno_arith` discharges the representation for `dd:luv-arith`; the mesh-softmax witness is retained, and general LUVs also retain the convergence presentation |
+| thm:perexpkno | qualified | `perexpkno_arith` discharges the representation for `dd:luv-arith` and the mesh-softmax witness from `LUVCombinationSyntax`, but restricts the class; the general `perexpkno_ofSyntax` retains `WorldValued`/`ConvergencePresentation` |
 | thm:perkno | conditional | over `[IsLogicalInductor]` with the paper's own probability sequence |
 | thm:prand | conditional | clock-free varied-frequency form; the target rationals enter as a market-generable feature (`def:ece`), as the paper requires |
 | thm:prandaff | conditional | clock-free: the patient settlement clock is constructed from the inductor, leaving exactly the paper's bounded-combination, determination and pseudorandomness premises |

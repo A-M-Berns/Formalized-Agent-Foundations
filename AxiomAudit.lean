@@ -440,9 +440,16 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_conditioned_fixed_unconditional
   lic_conditioned_growing_unconditional
 
--- Construction/Witnesses/LUVSyntax.lean — LUV-combination syntax and the mesh-softmax
--- operational witness it constructs (`lem:mesh`).
+-- Construction/Witnesses/LUVSyntax.lean — LUV-combination syntax, the mesh-softmax
+-- operational witness it constructs (`lem:mesh`), and the four expectation endpoints
+-- that consume that witness with the operational hypothesis discharged
+-- (`lem:mesh`, `thm:exppolymax`, `thm:expcoh`, `thm:perexpkno`).
 #assert_axioms_clean LUVCombinationSyntax.meshSoftmaxOperationalWitness
+#assert_axioms_clean
+  LUVCombination.BoundedSequence.mesh_independence_ofSyntax
+  LUVCombination.BoundedSequence.exppolymax_ofSyntax
+  LUVCombination.BoundedSequence.expcoh_ofSyntax
+  LUVCombination.BoundedSequence.perexpkno_ofSyntax
 
 -- Construction/Witnesses/ComputationSyntax.lean — represented semidecidable/decidable
 -- claims built from a bounded computation, discharging the meta-learning interfaces.

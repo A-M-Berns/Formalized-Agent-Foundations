@@ -1309,6 +1309,107 @@ noncomputable def meshSoftmaxOperationalWitness
 
 end LUVCombinationSyntax
 
+/-! ## Expectation endpoints with the mesh-softmax witness discharged
+
+`Properties/ExpectationProperties.lean` states the four mesh-driven expectation theorems
+against `MeshSoftmaxOperationalWitness`, the operational package certifying that the
+compiled threshold-mesh softmax is polynomially emitted and uniformly price-bounded.  That
+package is *derivable*, but only here: `meshSoftmaxOperationalWitness` needs the compact
+syntax `LUVCombinationSyntax`, which lives downstream of the properties layer.  The
+`_ofSyntax` endpoints below therefore restate the four theorems with the operational
+witness replaced by the paper's own efficient-computability premise on the sequence —
+the syntax naming its constants, coefficients, LUVs, and threshold sentences — the `def:blcp`
+bound already present in `BoundedSequence`, and the market's own `[0,1]` price range. -/
+
+namespace LUVCombination.BoundedSequence
+
+open Filter Topology
+
+/-- Appendix `lem:mesh` with the mesh-softmax operational witness discharged from the
+compact LUV syntax.  Proof kind `C`; every hypothesis is type `(a)`.
+Paper node: `lem:mesh` -/
+theorem mesh_independence_ofSyntax
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
+    [IsLogicalInductor P DP]
+    (h : LUVCombination.BoundedSequence As P)
+    (S : LUVCombinationSyntax As)
+    (hvalued : LUVCombination.WorldValued As DP)
+    (b : ℚ) (hb : 0 ≤ (b : ℝ))
+    (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    Tendsto (LUVCombination.meshTailError As P) atTop (𝓝 0) :=
+  h.mesh_independence (S.meshSoftmaxOperationalWitness h
+      (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
+    hvalued b hb hshare hworld
+
+/-- `thm:exppolymax` with the mesh-softmax operational witness discharged from the compact
+LUV syntax.  Proof kind `C`; every hypothesis is type `(a)`.
+Paper node: `thm:exppolymax` -/
+theorem exppolymax_ofSyntax
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
+    [IsLogicalInductor P DP]
+    (h : LUVCombination.BoundedSequence As P)
+    (S : LUVCombinationSyntax As)
+    (hvalued : LUVCombination.WorldValued As DP)
+    (b : ℚ) (hb : 0 ≤ (b : ℝ))
+    (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    liminf (fun n => (As n).expect P n) atTop =
+        liminf (futureHigh As P) atTop ∧
+      limsup (fun n => (As n).expect P n) atTop =
+        limsup (futureLow As P) atTop :=
+  h.exppolymax (S.meshSoftmaxOperationalWitness h
+      (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
+    hvalued b hb hshare hworld
+
+/-- `thm:expcoh` with the mesh-softmax operational witness discharged from the compact LUV
+syntax.  Proof kind `C`; every hypothesis is type `(a)`.
+Paper node: `thm:expcoh` -/
+theorem expcoh_ofSyntax
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
+    [IsLogicalInductor P DP]
+    (h : LUVCombination.BoundedSequence As P)
+    (S : LUVCombinationSyntax As)
+    (hvalued : LUVCombination.WorldValued As DP)
+    (hc : LUVCombination.ConvergencePresentation As DP)
+    (b : ℚ) (hb : 0 ≤ (b : ℝ))
+    (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    (liminf (completedLow As P DP) atTop ≤
+        liminf (fun n => (As n).expectInf P) atTop ∧
+      liminf (fun n => (As n).expectInf P) atTop ≤
+        liminf (fun n => (As n).expect P n) atTop) ∧
+      (limsup (fun n => (As n).expect P n) atTop ≤
+          limsup (fun n => (As n).expectInf P) atTop ∧
+        limsup (fun n => (As n).expectInf P) atTop ≤
+          limsup (completedHigh As P DP) atTop) :=
+  h.expcoh (S.meshSoftmaxOperationalWitness h
+      (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
+    hvalued hc b hb hshare hworld
+
+/-- `thm:perexpkno` with the mesh-softmax operational witness discharged from the compact
+LUV syntax.  Proof kind `C`; every hypothesis is type `(a)`.
+Paper node: `thm:perexpkno` -/
+theorem perexpkno_ofSyntax
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
+    [IsLogicalInductor P DP]
+    (h : LUVCombination.BoundedSequence As P)
+    (S : LUVCombinationSyntax As)
+    (hvalued : LUVCombination.WorldValued As DP)
+    (hc : LUVCombination.ConvergencePresentation As DP)
+    (b : ℚ) (hb : 0 ≤ (b : ℝ))
+    (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    liminf (futureLow As P) atTop =
+        liminf (fun n => (As n).expectInf P) atTop ∧
+      limsup (futureHigh As P) atTop =
+        limsup (fun n => (As n).expectInf P) atTop :=
+  h.perexpkno (S.meshSoftmaxOperationalWitness h
+      (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
+    hvalued hc b hb hshare hworld
+
+end LUVCombination.BoundedSequence
+
 #print axioms LUVCombinationSyntax.diagonalMeshPoly
 #print axioms LUVCombinationSyntax.polySequence
 #print axioms LUVCombinationSyntax.threshold_code
@@ -1318,5 +1419,9 @@ end LUVCombinationSyntax
 #print axioms LUVCombinationSyntax.meshSoftmaxPoly
 #print axioms LUVCombinationSyntax.meshSoftmaxLowerPoly
 #print axioms LUVCombinationSyntax.meshSoftmaxOperationalWitness
+#print axioms LUVCombination.BoundedSequence.mesh_independence_ofSyntax
+#print axioms LUVCombination.BoundedSequence.exppolymax_ofSyntax
+#print axioms LUVCombination.BoundedSequence.expcoh_ofSyntax
+#print axioms LUVCombination.BoundedSequence.perexpkno_ofSyntax
 
 end LogicalInduction
