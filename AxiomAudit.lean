@@ -693,3 +693,31 @@ clean below rather than via `#assert_axioms_clean_except`. -/
   fairBot_vs_defectBot prudentBot_vs_fairBot prudentBot_vs_defectBot
   prudentBot_vs_cooperateBot prudentBot_vs_prudentBot
   Cooperates.arithmeticLift modalAgent_behavioral
+
+/-! ## Concrete arithmetic instantiation — the one upstream gap
+
+Everything above is asserted of the endpoints **as stated**, and the arithmetic-quotation
+family (`thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`, `thm:ref`, `thm:epr`, `thm:er`,
+`thm:lp`, `thm:halts`, …) is stated parametrically over an arithmetic theory:
+`(T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]`. Those endpoints are
+axiom-clean, but only because the theory data are *hypotheses*.
+
+Instantiating them at a concrete theory is a different claim, and it currently costs one
+upstream axiom: Foundation supplies `Δ₁`-definability of `𝗜𝚺₁` and `𝗣𝗔` only as
+`axiom ISigma1_delta1Definable` / `axiom PA_delta1Definable`
+(`Foundation/FirstOrder/Incompleteness/Examples.lean`, marked *TODO: Prove*). That is an
+upstream gap, not a modeling choice of this development, and it is invisible to the
+parametric assertions above — so it is pinned here instead, at a concrete instantiation,
+where a regression would fail the build.
+
+If Foundation later proves `𝗜𝚺₁.Δ₁`, this block starts failing (the `except` axiom
+becomes unused) and should be promoted to `#assert_axioms_clean`. -/
+
+open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
+/-- `thm:ceu` at the concrete theory `𝗜𝚺₁`. -/
+noncomputable def concreteArithmeticInstantiation :=
+  @LogicalInduction.lic_no_expected_net_update_closed 𝗜𝚺₁ inferInstance inferInstance
+    inferInstance
+
+open LO.FirstOrder.Arithmetic in
+#assert_axioms_clean_except ISigma1_delta1Definable concreteArithmeticInstantiation

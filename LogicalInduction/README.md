@@ -25,9 +25,10 @@ strengthening, not a different degree of faithfulness.
 **Zero `sorry`, zero `axiom` declarations** — every public endpoint reports only Lean's
 standard `propext`, `Classical.choice`, `Quot.sound`, enforced by the build
 (`AxiomAudit.lean` enumerates the public surface and fails compilation on any
-regression), and every paper-label citation is verified two-way by script. The two
-declared modeling choices, and the planned future work that would tighten them further,
-are described below.
+regression), and every paper-label citation is verified two-way by script. One
+qualification to that, stated up front because it is easy to miss: see *One upstream
+gap* below. The two declared modeling choices, and the planned future work that would
+tighten them further, are described after it.
 
 ## The main theorem
 
@@ -53,6 +54,26 @@ computation-representing theories), that machinery is *constructed* over the con
 inductor wherever the model permits, yielding `_unconditional` and `_closed` endpoints
 with no hypotheses beyond the statement's own data; where a residual interface remains,
 the per-node table says which.
+
+## One upstream gap
+
+The theorems that quantify over an arithmetic theory — the quotation family (`thm:ref`,
+`thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`) and the
+computation family (`thm:halts`, `thm:pac`, …) — are stated parametrically:
+`(T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]`. As stated they are
+axiom-clean, and the paper's own hypothesis is the same ("Θ represents computations").
+
+But *instantiating* them at a concrete theory currently costs one upstream axiom:
+Foundation provides `Δ₁`-definability of `𝗜𝚺₁` and `𝗣𝗔` only as `axiom
+ISigma1_delta1Definable` / `axiom PA_delta1Definable`, marked *TODO: Prove* in
+Foundation's own source. So a concrete instance of, say, `thm:st` over `𝗜𝚺₁` reports that
+axiom, even though the parametric endpoint does not.
+
+This is an upstream gap rather than a modeling choice here, and nothing in this
+development assumes it — but it is invisible to a parametric axiom check, so
+`AxiomAudit.lean` now pins it explicitly: it builds one concrete instantiation and
+asserts it clean *except* for that named axiom. If Foundation proves `𝗜𝚺₁.Δ₁`, that
+assertion starts failing and gets promoted to a plain clean assertion.
 
 ## The two modeling boundaries
 
