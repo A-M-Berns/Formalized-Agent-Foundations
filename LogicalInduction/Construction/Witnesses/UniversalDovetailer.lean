@@ -812,9 +812,7 @@ def tabCol (c : Nat.Partrec.Code) (N : ℕ) : List Bool → List ℚ
 
 lemma getD_map_range {α : Type*} (f : ℕ → α) (d : α) {k m : ℕ} (h : m < k) :
     ((List.range k).map f).getD m d = f m := by
-  rw [List.getD_eq_getElem?_getD]
-  rw [List.getElem?_map, List.getElem?_range h]
-  rfl
+  rw [AffineCombination.getD_map_range_ite, if_pos h]
 
 lemma tabCol_eq (c : Nat.Partrec.Code) (N : ℕ) : ∀ r : List Bool,
     tabCol c N r = (List.range (N + 1)).map fun n ↦ trim c n r.reverse := by
