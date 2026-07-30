@@ -222,3 +222,14 @@ gated-sum plan is known unsound. What remains is volume, ~2.5–4k lines:
    (~2911/3038/3166/3318/3563) — mutually independent, so parallelizable — then delete
    the twelve `hinj` binders (mechanical).
 Estimate ~1 week of orchestrated work; stretch risk is item 1's interface bookkeeping.
+
+### Punch-list addition (2026-07-29, Anson)
+
+`scripts/coverage-classification.md`'s tier *names* bake in the same misleading hierarchy
+the README just dropped: calling the LIA-instantiated tier `complete` implies the
+`conditional` tier is an incomplete rendering of the paper, when in fact `conditional` IS
+paper strength (the paper states its §4 theorems for any logical inductor) and
+instantiation over the constructed inductor is a bonus the paper never claims. Rename the
+axis so the primary distinction is paper-strength vs. qualified, with instantiation as a
+separate flag — e.g. tiers `paper` / `qualified` / `interface` plus an `instantiated`
+marker. Touches the checker's accepted vocabulary and all 53 rows; do it in one commit.

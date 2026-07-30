@@ -9,15 +9,18 @@ is formalized, named after its paper label, and build-audited. How strong each o
 
 | | count | what it means |
 |---|---:|---|
-| **unconditional** | 14 | proved at paper strength *and* instantiated over the concrete inductor constructed here |
-| **conditional** | 20 | proved at paper strength for **every** logical inductor — exactly the form the paper states |
+| **paper strength** | 34 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
 | **qualified** | 19 | proved with one explicitly named representation interface or class restriction retained |
 
-So **34 of 53 are at the paper's own hypotheses** (the first two rows), and the 19
-qualified nodes each say in one line which premise they retain and why. The per-node
+Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
 machine-checked against the endpoint inventory so a node cannot ship without a strength
 call.
+
+Separately, and beyond what the paper claims: **14 of the 34 are also instantiated over
+the concrete inductor constructed here**, so they hold of a specific algorithm rather
+than of a hypothetical one. The paper states no such theorems; these are a
+strengthening, not a different degree of faithfulness.
 
 **Zero `sorry`, zero `axiom` declarations** — every public endpoint reports only Lean's
 standard `propext`, `Classical.choice`, `Quot.sound`, enforced by the build
