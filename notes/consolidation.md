@@ -202,23 +202,49 @@ Documentation notes: A) i'd like to split up the README into one overall README 
   mouthful that survived the wave). Renames are surface changes: update `AxiomAudit`
   in the same commit.
 
-## Next lead item (Anson, 2026-07-29): relax injectivity
+## Next lead item (Anson, 2026-07-29): relax injectivity — *in progress*
 
 Priority for the next work block: **remove `Function.Injective f.f` from the
 `thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` chain**, so `def:deferralfunc` matches the paper
 (`f n > n` only) across the whole self-trust family. This is the last non-fuel residual on
 the property surface and the only remaining item that changes what a reader sees.
 
-Starting position (from the 2026-07-29 attempt): design risk is *retired* — the
-first-violator selector's two analytic legs are verified Lean
-(`notes/first-violator-selector-check.lean.txt`), and the previously-registered
-gated-sum plan is known unsound. What remains is volume, ~2.5–4k lines:
-1. variable-width affine `PolySequence` combinator (flat-index ↔ (block, offset) inverse
-   prefix-sum as `PolyFueled`, `terms_eq` flattening, rank/closure bookkeeping) — the
-   serial bottleneck, everything else builds on it;
-2. variable-width gate-fold feature + `RpnSpliceStream` certificate;
-3. fibre enumeration, δ-indexed quote package, δ-tower → pointwise bridge;
-4. rebuild the five gap-shaped constructions in `QuotationAffine.lean`
-   (~2911/3038/3166/3318/3563) — mutually independent, so parallelizable — then delete
-   the twelve `hinj` binders (mechanical).
-Estimate ~1 week of orchestrated work; stretch risk is item 1's interface bookkeeping.
+Status after the 2026-07-29 build block: **items 1–3 are landed and green** in
+`QuotationAffine.lean`'s `DeferralFibre` section; items 3c and 4 remain.
+
+Landed:
+1. `AffineCombination.blockSum` + `AffineCombination.PolySequence.blockSum` — the
+   variable-width affine combinator. The interface bookkeeping that was flagged as the
+   stretch risk was **avoided, not solved**: blocks are padded to a common `width m`, so
+   the flat term index stays a plain `range` and the block/offset inverse is
+   `divmod1_polyFueled` rather than an inverse prefix-sum. This is the key simplification;
+   do not reintroduce a prefix-sum inverse.
+2. `selectorFeature` (division-free first-violator selector as `EF` syntax, with
+   `RpnSpliceStream` certificate) and `PairedWeighting` — the paired-index emission
+   certificate carrying `rank ≤ z.unpair.1` (the day-indexed `PGenerableWeighting` only
+   gives `rank ≤ z`, which is too weak for fibre gates).
+3. `DeferralFibre.deferred_block_price_tendsto_zero`: for **any** `DeferralFunction`,
+   a uniformly-small completed-theory block family has
+   `(Bs ⟨f n, n⟩).price P (f n) → 0`. `DeferralFibre.crossPrecision_deferred_tendsto_zero`
+   instantiates it for the cross-precision correction.
+
+Two design corrections found while building, both now in the code:
+* the notes' forcing lemma (`hearly : ∀ j < k₀, g j = 0`) is **not achievable** with a
+  continuous gate — a first violator can sit at the threshold with tiny weight. The
+  landed `firstSuccess_forces` needs no minimality at all: `Σ gₖπₖdₖ ≥ δ Σ gₖπₖ =
+  δ(1 − Π(1−gⱼ)) = δ` as soon as one gate saturates. Strictly simpler and stronger.
+* the summands are **signed**, so a single selector cancels. The landed device runs two
+  selectors (on `max(price,0)` and `max(−price,0)`) and takes their *difference* as the
+  one affine coefficient; the two halves are individually non-cancelling
+  (`hsplit` in `fibre_price_eventually_small`).
+
+Remaining:
+3c. two-index `numericQuoteAffine` blocks (the day-`m` expectation-mesh feature of `X k`
+    with `rank ≤ m`, i.e. a paired-index `currentExpectationFeature`) plus their
+    `hsmall`, giving a `numericQuote_deferred_tendsto_zero` companion.
+4.  rewire the five gap-shaped constructions in `QuotationAffine.lean` to consume 3b/3c
+    instead of `completedImageNumericQuote`/`completedImageCrossPrecisionQuote` + the
+    `deferralPreimage_at` specialization — the `future_coherent` bodies barely change,
+    since 3b/3c already deliver exactly the three `…Gap (f n)` limits those bodies use —
+    then delete the twelve `hinj` binders and the now-dead
+    `deferralPreimage`/`deferralImageFlag` layer.
