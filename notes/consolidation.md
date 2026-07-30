@@ -161,46 +161,50 @@ Hi Anson here. What I'd like is for the end result to be as immediately legible 
 
 Documentation notes: A) i'd like to split up the README into one overall README that says this is a project formalizing important agent foundations papers using agent orchestration and here's what we have so far without getting into details, and then separate detailed readmes for modalagents and li B) de-sloppify docstrings and comments. the purpose should be to aid in understanding, so cut out "blabbering." Also cut out "in-references" to like phase language we've been using in the project (e.g. M7.) C) it should be very clear what is intended future work and what is permanent modeling disclosure (e.g. in the readme and elsewhere.) Also please include a description of the fuel model and the propositional substrate, including a mention that the paper's explicit description of e.c. includes other models like this one.
 
-## De-slop punch list (running, 2026-07-29 — items noticed during the audit/fix/docs work)
+## De-slop punch list (2026-07-29)
 
-- **`scripts/coverage-classification.md` strength rows are stale** (pre-fix-wave:
-  `complete=19, conditional=18, qualified=28`). Several endpoints strengthened in the
-  wave (clock-free pseudorandomness family, hypothesis-free fixed `thm:scon`, per-grid
-  `thm:ec`, paper-hypothesis `wubexp`/`prandexp`, `thm:li` belief-sequence conjunct).
-  Reclassify each label; the counts currently undersell the repo. Also its header prose
-  still describes its old `notes/` home.
-- **CLAUDE.md references retired files and phase ontology**: `notes/logical-induction-roadmap.md`
-  ("read it before touching"), `notes/next-session.md` (gotcha log, scope/endpoint
-  section names), M2/M3/M7 milestone language, the sequencing override's step names.
-  Rewrite against the post-consolidation reality (README + audit ledger + this file).
-- **In-reference sweep in `.lean` docstrings**: ~34 files carry `M7-…` work-package
-  tags, "seam"/"route (A/B)"/"OPEN RISK"/"tranche" language, or pointers to
-  now-deleted notes sections. Replace with self-contained statements. The `dd:*`
-  design-decision labels are load-bearing disclosure vocabulary — keep them, but give
-  them a glossary in the root roll-up `LogicalInduction.lean` (planned there anyway)
-  so they stop being in-references.
-- **File rename**: `Construction/Witnesses/M7Witnesses.lean` is a pure phase-name.
-  Rename to something content-bearing (it hosts the bounded-evaln compiler, repetition
-  enumeration, settlement clocks, prefix-patch freeze). One dedicated import-churn
-  commit per the layout rules above.
-- **`#assert_fields` is weaker than its docstring claims** (found by the F10 fixer):
-  the macro compares field *names* only, so a boundary field's *type* can change
-  silently (it happened, benignly: `mesh_poly`'s index moved). Either extend the freeze
-  to hash field types, or correct the docstring so nobody trusts it for more than it
-  checks. Extending is preferable — it is the actual premise-smuggling guard.
-- **`maxHeartbeats`/`irreducible` tricks inventory** (Anson: as few tricks as
-  possible): `Brouwer.lean` sets `maxHeartbeats 1000000` (generated interior —
-  acceptable, but say so at the site); the `attribute [local irreducible] Nat.sqrt`
-  sections in the Primrec files deserve one shared comment explaining the whnf trap
-  rather than bare repetition.
-- **Audit-wave scaffolding cleanup**: remove merged `.claude/worktrees/agent-*`
-  worktrees (`git worktree remove`); they hold ~2.5 GB of dead build state each.
-- **Structure-name legibility pass** over the Tier-2 boundary structures: most are
-  fine, but review the ones named for their proof role rather than their content
-  (e.g. `ExactTheoryPresentation` vs. what it now is — per-component completed-theory
-  valuation; `PseudorandomFrequencyInfrastructureWithHistoricalVerifiers` is a
-  mouthful that survived the wave). Renames are surface changes: update `AxiomAudit`
-  in the same commit.
+**Done this pass:**
+- ~~`scripts/coverage-classification.md` strength rows stale~~ — all 53 rows re-derived
+  from signatures; header rewritten to its `scripts/` home and machine-read contract.
+- ~~CLAUDE.md references retired files and phase ontology~~ — rewritten against the
+  README / audit ledger / this file; the paper is named as the spec directly.
+- ~~In-reference sweep in `.lean` docstrings~~ — five-fixer wave over Framework,
+  Construction, Witnesses, Properties (~1,840 changed lines, 73 files): work-package
+  tags, seam/route/OPEN-RISK/tranche language, and dead notes pointers replaced by
+  self-contained statements. `dd:*` labels kept and now defined in the glossary at
+  `LogicalInduction.lean`.
+- ~~`M7Witnesses.lean` phase-name~~ — renamed `BoundedEvaluation.lean`, all importers
+  and both data files updated.
+- ~~Worktree scaffolding cleanup~~ — merged agent worktrees removed (~25 GB).
+- ~~`mesh_independence` off-surface~~ — annotated and added to the inventory; the last
+  `interface` row is gone, so every paper label is covered by a named endpoint.
+
+**Open:**
+- **`#assert_fields` is weaker than its docstring claims**: the macro compares field
+  *names* only, so a boundary field's *type* can change silently (it did, benignly:
+  `mesh_poly`'s index moved during the precision reindex). Extend the freeze to hash
+  field types — it is the actual premise-smuggling guard — or, second best, correct the
+  docstring so nobody trusts it for more than it checks.
+- **Tier names in `scripts/coverage-classification.md` bake in a misleading hierarchy**
+  (Anson, 2026-07-29): calling the LIA-instantiated tier `complete` implies
+  `conditional` is an incomplete rendering of the paper, when `conditional` **is** paper
+  strength (the paper states §4 for any logical inductor) and instantiation over the
+  constructed inductor is a bonus the paper never claims. Rename the axis so the primary
+  distinction is paper-strength vs. qualified, with instantiation as a separate flag
+  (e.g. `paper` / `qualified` plus an `instantiated` marker). Touches the checker's
+  accepted vocabulary and all 53 rows; one deliberate commit. The README already leads
+  with the corrected axis.
+- **Tricks inventory** (Anson: as few tricks as possible): `Brouwer.lean` sets
+  `maxHeartbeats 1000000` (generated interior — acceptable, but say so at the site); the
+  `attribute [local irreducible] Nat.sqrt` sections in the `Primrec` files want one
+  shared comment explaining the whnf trap rather than bare repetition.
+- **Structure-name legibility pass** over the Tier-2 boundary structures: review the ones
+  named for their proof role rather than their content (`ExactTheoryPresentation` is now
+  per-component completed-theory valuation; `PseudorandomFrequencyInfrastructureWithHistoricalVerifiers` is a mouthful that survived the wave). Renames are surface changes:
+  update `AxiomAudit` in the same commit.
+- **Pre-publication**: delete `LogicalInduction/IntegrationTest.lean` (see
+  "Pre-publication cleanup" above) — it references an external corpus by name and is
+  development scaffolding, not trust surface.
 
 ## Next lead item (Anson, 2026-07-29): relax injectivity
 
