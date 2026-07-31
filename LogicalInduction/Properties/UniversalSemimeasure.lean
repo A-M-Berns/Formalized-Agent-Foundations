@@ -64,19 +64,20 @@ conjunctions from `thm:dus`. `holds_prefix` fixes the exact Boolean semantics, w
 `finite_realizable` records compatibility with each finite deductive stage.  The
 enumeration/code fields record the paper's efficient list of all finite strings.
 
-**Unwitnessed premise.**  `prefix_codes` is *whole-value* metered (`PolySentenceCodes`), and
-no literal prefix conjunction meets that bound: `bitPrefixCodeComputation_isEmpty`
-(`Construction/Witnesses/BitPrefixSyntax.lean`) proves the repo's concrete instance of this
-field is uninhabited, so the only constructor for this structure is vacuous and no inhabitant
-is currently known.  The two repair routes — symbol-metered `RpnSentenceCodes` for this
-field, or a logarithmic-depth prefix syntax — are recorded at that lemma.
+`prefix_codes` is the paper's efficient naming of the prefix sentences, metered in
+**symbols** (`RpnSentenceCodes`, `dd:ec`) rather than in the whole pair-code value.  That
+choice is forced: a literal prefix conjunction's Gödel code grows as `2 ^ 4 ^ m` against an
+enumeration index `≤ 5 ^ 2 ^ m`, so the whole-value form of this field is *unsatisfiable*
+(`not_polySentenceCodes_bitPrefixSentence`, `Construction/Witnesses/BitPrefixSyntax.lean`)
+while its canonical Polish run is `Θ(m)` tiny tokens.  The structure is inhabited over the
+repo's concrete atoms by `ordinaryBitPrefixSentences`.
 Paper node: `thm:dus` -/
 structure BitPrefixSentences (DP : DeductiveProcess) where
   atom : ℕ → Sentence
   prefixSentence : List Bool → Sentence
   enumeration : ℕ → List Bool
   enumeration_covers : ∀ σ, ∃ i, enumeration i = σ
-  prefix_codes : PolySentenceCodes (fun i ↦ prefixSentence (enumeration i))
+  prefix_codes : RpnSentenceCodes (fun i ↦ prefixSentence (enumeration i))
   holds_prefix : ∀ (v : PCWorld) (σ : List Bool), v.Holds (prefixSentence σ) ↔
     ∀ k : Fin σ.length, (v.Holds (atom k) ↔ σ.get k = true)
   realizable : ∀ (n : ℕ) (f : ℕ → Bool), ∃ v : PCWorld,
@@ -562,14 +563,14 @@ lemma dusCostEF_closed {DP : DeductiveProcess}
 /-! ### Uniform syntax emission for the purchase inputs -/
 
 /-- Segment emission for the padded, scale-varying low-price signal. -/
-lemma dusSignal_polySegStream
+lemma dusSignal_rpnSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A)
     {ck cn : Nat.Partrec.Code} {kf nf : ℕ → ℕ}
     (hk : PolyFueled ck kf) (hn : PolyFueled cn nf) :
-    PolySegStream (fun x ↦ (dusSignal A (kf x) (nf x)).serialize) := by
+    RpnSpliceStream (fun x ↦ (dusSignal A (kf x) (nf x)).serialize) := by
   have hinput : PolyFueled _ (fun x ↦ Nat.pair (kf x) (nf x)) := hk.pair hn
   have hsumCodes : PolyRatCodes (fun x ↦
       dusBase A (kf x) (nf x) + dusBase A (kf x) (nf x)) := by
@@ -580,34 +581,31 @@ lemma dusSignal_polySegStream
     exact ⟨_, (hc.comp hinput).of_eq (fun x ↦ by simp [dusEmitBase])⟩
   have hidx : PolyFueled _ (fun x ↦ (nf x).unpair.2) :=
     PolyFueled.right.comp hn
-  have hprice := PolySegStream.serialize_price_sequence_at_comp
-    B.prefix_codes hidx hn
-  have hsum : PolySegStream (fun x ↦
+  have hprice := RpnSpliceStream.serialize_price B.prefix_codes hidx hn
+  have hsum : RpnSpliceStream (fun x ↦
       (EF.const (dusBase A (kf x) (nf x) +
         dusBase A (kf x) (nf x))).serialize) :=
-    PolySegStream.ofTokenStream
-      (PolyTokenStream.serialize_const_comp hsumCodes)
-  have hinv : PolySegStream (fun x ↦
+    RpnSpliceStream.serialize_const_comp hsumCodes
+  have hinv : RpnSpliceStream (fun x ↦
       (EF.const (1 / dusBase A (kf x) (nf x))).serialize) :=
-    PolySegStream.ofTokenStream
-      (PolyTokenStream.serialize_const_comp hinvCodes)
-  have hlive : PolySegStream (fun x ↦
+    RpnSpliceStream.serialize_const_comp hinvCodes
+  have hlive : RpnSpliceStream (fun x ↦
       (buyIndEF (dusSentence B (nf x))
         (dusBase A (kf x) (nf x)) (dusBase A (kf x) (nf x))
         (nf x)).serialize) := by
-    have hraw := PolySegStream.serialize_mul
-      (PolySegStream.serialize_add hsum
-        (PolySegStream.serialize_mul
-          (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1)))
+    have hraw := RpnSpliceStream.serialize_mul
+      (RpnSpliceStream.serialize_add hsum
+        (RpnSpliceStream.serialize_mul
+          (RpnSpliceStream.serialize_const (-1))
           hprice)) hinv
     simpa [buyIndEF, dusSentence, dusPrefix] using
-      PolySegStream.serialize_clip01 hraw
-  have hzero : PolySegStream (fun _ : ℕ ↦ (EF.const 0).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
+      RpnSpliceStream.serialize_clip01 hraw
+  have hzero : RpnSpliceStream (fun _ : ℕ ↦ (EF.const 0).serialize) :=
+    RpnSpliceStream.serialize_const 0
   have htest : PolyFueled _ (fun x ↦ nf x + 1 - kf x) :=
     (subc_polyFueled.comp (hn.succ_comp.pair hk)).of_eq
       (fun x ↦ by simp only [Nat.unpair_pair])
-  refine PolySegStream.of_eq (PolySegStream.ifZero hzero hlive htest) ?_
+  refine RpnSpliceStream.of_eq (RpnSpliceStream.ifZero hzero hlive htest) ?_
   intro x
   by_cases hpad : nf x < kf x
   · have ht : nf x + 1 - kf x = 0 := by omega
@@ -616,18 +614,17 @@ lemma dusSignal_polySegStream
     simp [ht, dusSignal, hpad]
 
 /-- Uniform emission of the per-event spent-fraction feature. -/
-lemma dusCostEF_polySegStream
+lemma dusCostEF_rpnSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) :
-    PolySegStream (fun z ↦ (dusCostEF A z.unpair.1 z.unpair.2).serialize) := by
-  have hsignal := dusSignal_polySegStream A emit PolyFueled.left PolyFueled.right
+    RpnSpliceStream (fun z ↦ (dusCostEF A z.unpair.1 z.unpair.2).serialize) := by
+  have hsignal := dusSignal_rpnSpliceStream A emit PolyFueled.left PolyFueled.right
   have hidx : PolyFueled _ (fun z ↦ z.unpair.2.unpair.2) :=
     PolyFueled.right.comp PolyFueled.right
-  have hprice := PolySegStream.serialize_price_sequence_at_comp
-    B.prefix_codes hidx PolyFueled.right
-  exact PolySegStream.serialize_mul hsignal hprice
+  have hprice := RpnSpliceStream.serialize_price B.prefix_codes hidx PolyFueled.right
+  exact RpnSpliceStream.serialize_mul hsignal hprice
 
 /-- All earlier purchases remain charged to the one unit of cash. -/
 def dusActive (_ _ : ℕ) : Bool := true
@@ -652,12 +649,12 @@ def dusSharesEF {DP : DeductiveProcess}
 
 /- Uniform emission of the all-open budget-recurrence body for input `⟨k,j⟩`. -/
 attribute [local irreducible] Nat.sqrt in
-lemma dusWeightBody_polySegStream
+lemma dusWeightBody_rpnSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) :
-    PolySegStream (fun z ↦
+    RpnSpliceStream (fun z ↦
       (ROIBudget.featureWeightBody dusActive (dusCostEF A z.unpair.1)
         z.unpair.2).serialize) := by
   have hk : PolyFueled _ (fun z ↦ z.unpair.1.unpair.1) :=
@@ -669,93 +666,93 @@ lemma dusWeightBody_polySegStream
     (subc_polyFueled.comp
       ((predc_polyFueled.comp hj).pair hi)).of_eq
         (fun z ↦ by simp [Nat.pred_eq_sub_one])
-  have hvar : PolySegStream (fun z ↦
+  have hvar : RpnSpliceStream (fun z ↦
       (EF.var (z.unpair.1.unpair.2 - 1 - z.unpair.2)).serialize) :=
-    PolySegStream.serialize_var hidx
+    RpnSpliceStream.serialize_var hidx
   have hcanonical : PolyFueled _ (fun z ↦
       Nat.pair z.unpair.1.unpair.1 z.unpair.2) := hk.pair hi
-  have hcost : PolySegStream (fun z ↦
+  have hcost : RpnSpliceStream (fun z ↦
       (dusCostEF A z.unpair.1.unpair.1 z.unpair.2).serialize) := by
-    refine PolySegStream.of_eq
-      ((dusCostEF_polySegStream A emit).comp hcanonical) ?_
+    refine RpnSpliceStream.of_eq
+      ((dusCostEF_rpnSpliceStream A emit).comp hcanonical) ?_
     intro z
     simp only [Nat.unpair_pair]
-  have hterm : PolySegStream (fun z ↦
+  have hterm : RpnSpliceStream (fun z ↦
       (EF.mul (EF.var (z.unpair.1.unpair.2 - 1 - z.unpair.2))
         (dusCostEF A z.unpair.1.unpair.1 z.unpair.2)).serialize) :=
-    PolySegStream.serialize_mul hvar hcost
-  have hterms : PolySegStream (fun z ↦
+    RpnSpliceStream.serialize_mul hvar hcost
+  have hterms : RpnSpliceStream (fun z ↦
       (List.range z.unpair.2).flatMap (fun i ↦
         (EF.mul (EF.var (z.unpair.2 - 1 - i))
           (dusCostEF A z.unpair.1 i)).serialize)) := by
-    refine PolySegStream.of_eq
-      (PolySegStream.concatVar hterm PolyFueled.right) ?_
+    refine RpnSpliceStream.of_eq
+      (RpnSpliceStream.concatVar hterm PolyFueled.right) ?_
     intro z
     simp only [Nat.unpair_pair]
-  have hzero : PolySegStream (fun _ : ℕ ↦ (EF.const 0).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
-  have htags : PolySegStream (fun z ↦ List.replicate z.unpair.2 2) :=
-    PolySegStream.repeatTag 2 PolyFueled.right
+  have hzero : RpnSpliceStream (fun _ : ℕ ↦ (EF.const 0).serialize) :=
+    RpnSpliceStream.serialize_const 0
+  have htags : RpnSpliceStream (fun z ↦ List.replicate z.unpair.2 2) :=
+    RpnSpliceStream.repeatTag 2 (by norm_num) PolyFueled.right
   have hsumRaw := (hterms.append hzero).append htags
-  have hsum : PolySegStream (fun z ↦
+  have hsum : RpnSpliceStream (fun z ↦
       (ROIBudget.sumFeatures (List.ofFn (fun i : Fin z.unpair.2 ↦
         EF.mul (EF.var (z.unpair.2 - 1 - i))
           (dusCostEF A z.unpair.1 i)))).serialize) := by
-    refine PolySegStream.of_eq hsumRaw ?_
+    refine RpnSpliceStream.of_eq hsumRaw ?_
     intro z
     rw [ROIBudget.serialize_sumFeatures]
     simp only [List.length_ofFn]
     congr 2
     rw [← List.map_coe_finRange_eq_range, List.flatMap_map]
     simp only [List.ofFn_eq_map, List.flatMap_map]
-  have hone : PolySegStream (fun _ : ℕ ↦ (EF.const 1).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)
-  have hneg : PolySegStream (fun _ : ℕ ↦ (EF.const (-1)).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1))
-  have hbody := PolySegStream.serialize_add hone
-    (PolySegStream.serialize_mul hneg hsum)
-  refine PolySegStream.of_eq hbody ?_
+  have hone : RpnSpliceStream (fun _ : ℕ ↦ (EF.const 1).serialize) :=
+    RpnSpliceStream.serialize_const 1
+  have hneg : RpnSpliceStream (fun _ : ℕ ↦ (EF.const (-1)).serialize) :=
+    RpnSpliceStream.serialize_const (-1)
+  have hbody := RpnSpliceStream.serialize_add hone
+    (RpnSpliceStream.serialize_mul hneg hsum)
+  refine RpnSpliceStream.of_eq hbody ?_
   intro z
   simp only [ROIBudget.featureWeightBody, dusActive, if_true]
 
 /-- The shared remaining-budget feature is uniformly polynomial across both scale and
 day; previous recurrence values are referenced by `EF.var`, not duplicated. -/
-lemma dusRemainingEF_polySegStream
+lemma dusRemainingEF_rpnSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) :
-    PolySegStream (fun z ↦ (dusRemainingEF A z.unpair.1 z.unpair.2).serialize) := by
-  have hbody := dusWeightBody_polySegStream A emit
+    RpnSpliceStream (fun z ↦ (dusRemainingEF A z.unpair.1 z.unpair.2).serialize) := by
+  have hbody := dusWeightBody_rpnSpliceStream A emit
   have hcanonical : PolyFueled _ (fun q ↦
       Nat.pair q.unpair.1.unpair.1 q.unpair.2) :=
     (PolyFueled.left.comp PolyFueled.left).pair PolyFueled.right
-  have hbodies : PolySegStream (fun z ↦
+  have hbodies : RpnSpliceStream (fun z ↦
       (List.range (z.unpair.2 + 1)).flatMap (fun j ↦
         (ROIBudget.featureWeightBody dusActive (dusCostEF A z.unpair.1) j).serialize)) := by
-    refine PolySegStream.of_eq
-      (PolySegStream.concatVar (hbody.comp hcanonical)
+    refine RpnSpliceStream.of_eq
+      (RpnSpliceStream.concatVar (hbody.comp hcanonical)
         PolyFueled.right.succ_comp) ?_
     intro z
     simp only [Nat.unpair_pair]
-  have hvar : PolySegStream (fun _ : ℕ ↦ (EF.var 0).serialize) :=
-    PolySegStream.serialize_var (PolyFueled.const 0)
-  have htags : PolySegStream (fun z ↦ List.replicate (z.unpair.2 + 1) 8) :=
-    PolySegStream.repeatTag 8 PolyFueled.right.succ_comp
-  refine PolySegStream.of_eq ((hbodies.append hvar).append htags) ?_
+  have hvar : RpnSpliceStream (fun _ : ℕ ↦ (EF.var 0).serialize) :=
+    RpnSpliceStream.serialize_var (PolyFueled.const 0)
+  have htags : RpnSpliceStream (fun z ↦ List.replicate (z.unpair.2 + 1) 8) :=
+    RpnSpliceStream.repeatTag 8 (by norm_num) PolyFueled.right.succ_comp
+  refine RpnSpliceStream.of_eq ((hbodies.append hvar).append htags) ?_
   intro z
   rw [dusRemainingEF, ROIBudget.sharedFeatureWeight,
     ROIBudget.sharedWeights_serialize, List.range_eq_range']
 
 /-- Uniform emission of the share coefficient. -/
-lemma dusSharesEF_polySegStream
+lemma dusSharesEF_rpnSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) :
-    PolySegStream (fun z ↦ (dusSharesEF A z.unpair.1 z.unpair.2).serialize) :=
-  PolySegStream.serialize_mul (dusRemainingEF_polySegStream A emit)
-    (dusSignal_polySegStream A emit PolyFueled.left PolyFueled.right)
+    RpnSpliceStream (fun z ↦ (dusSharesEF A z.unpair.1 z.unpair.2).serialize) :=
+  RpnSpliceStream.serialize_mul (dusRemainingEF_rpnSpliceStream A emit)
+    (dusSignal_rpnSpliceStream A emit PolyFueled.left PolyFueled.right)
 
 lemma dusRemainingEF_rank_le {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -1417,74 +1414,70 @@ lemma dusScaleTrader_zero_before
     ((dusScaleTrader A k).strat n).trades = [] := by
   simp [dusScaleTrader, h]
 
+/-- The scale family carries the structured emulation witness: trade boundaries, coefficient
+segments and sentence blocks are all polynomially emittable, and members trade nothing before
+launch. -/
+def dusScaleTrader_polyTradeEmulatable
+    {DP : DeductiveProcess}
+    {M : LowerSemicomputableContinuousSemimeasure}
+    {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
+    (emit : DUSThresholdEmission A) :
+    PolyTradeEmulatable (dusScaleTrader A) where
+  launchGated := fun _ _ h ↦ dusScaleTrader_zero_before A h
+  tradeCount w := if w.unpair.2 < w.unpair.1 then 0 else 1
+  coefficient z := dusSharesEF A z.unpair.1.unpair.1 z.unpair.1.unpair.2
+  sentence z := dusSentence B z.unpair.1.unpair.2
+  tradeCount_poly := by
+    have htest : PolyFueled _ (fun w ↦ w.unpair.2 + 1 - w.unpair.1) :=
+      (subc_polyFueled.comp
+        (PolyFueled.right.succ_comp.pair PolyFueled.left)).of_eq
+          (fun w ↦ by simp only [Nat.unpair_pair])
+    refine ⟨_, (ifzSel_polyFueled.comp
+      ((PolyFueled.const (Nat.pair 0 1)).pair htest)).of_eq (fun w ↦ ?_)⟩
+    simp only [Nat.unpair_pair, ifzSelFn]
+    by_cases h : w.unpair.2 < w.unpair.1
+    · rw [if_pos (by omega), if_pos h]
+    · rw [if_neg (by omega), if_neg h]
+  coefficient_poly :=
+    ((dusSharesEF_rpnSpliceStream A emit).comp PolyFueled.left).of_eq
+      (fun z ↦ by simp only [Nat.unpair_pair])
+  sentence_poly :=
+    (B.prefix_codes.comp
+      (PolyFueled.right.comp (PolyFueled.right.comp PolyFueled.left))).of_eq
+      (fun z ↦ by simp only [dusSentence, dusPrefix])
+  trades_eq := by
+    intro k n
+    by_cases h : n < k
+    · simp [dusScaleTrader, h]
+    · simp only [dusScaleTrader, dif_neg h, Nat.unpair_pair, if_neg h]
+      simp [Nat.unpair_pair]
+
 /-- Uniform token stream for the entire scale family. -/
-lemma dusScaleTrader_family_polySegStream
+lemma dusScaleTrader_family_rpnSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) :
-    PolySegStream (fun z ↦
-      serializeTrades ((dusScaleTrader A z.unpair.1).strat z.unpair.2).trades) := by
-  have hshares := dusSharesEF_polySegStream A emit
-  obtain ⟨cs, hs⟩ := B.prefix_codes
-  have hidx : PolyFueled _ (fun z ↦ z.unpair.2.unpair.2) :=
-    PolyFueled.right.comp PolyFueled.right
-  have htail : PolySegStream (fun z ↦
-      [6, Encodable.encode (dusSentence B z.unpair.2)]) := by
-    have htok : PolyTokenStream (fun z ↦
-        [6, Encodable.encode (dusSentence B z.unpair.2)]) :=
-      (PolyTokenStream.const 6).append
-        (PolyTokenStream.polyTok (hs.comp hidx))
-    refine PolySegStream.of_eq (PolySegStream.ofTokenStream htok) ?_
-    intro z
-    simp [dusSentence, dusPrefix]
-  have hlive : PolySegStream (fun z ↦ serializeTrades
-      [(dusSharesEF A z.unpair.1 z.unpair.2, dusSentence B z.unpair.2)]) := by
-    refine PolySegStream.of_eq (hshares.append htail) ?_
-    intro z
-    simp [serializeTrades]
-  have hzero : PolySegStream (fun _ : ℕ ↦ serializeTrades []) :=
-    PolySegStream.ofTokenStream PolyTokenStream.trades_nil
-  have htest : PolyFueled _ (fun z ↦ z.unpair.2 + 1 - z.unpair.1) :=
-    (subc_polyFueled.comp
-      (PolyFueled.right.succ_comp.pair PolyFueled.left)).of_eq
-        (fun z ↦ by simp only [Nat.unpair_pair])
-  refine PolySegStream.of_eq (PolySegStream.ifZero hzero hlive htest) ?_
-  intro z
-  by_cases hpad : z.unpair.2 < z.unpair.1
-  · have ht : z.unpair.2 + 1 - z.unpair.1 = 0 := by omega
-    simp [ht, dusScaleTrader, hpad]
-  · have ht : z.unpair.2 + 1 - z.unpair.1 ≠ 0 := by omega
-    simp [ht, dusScaleTrader, hpad]
+    RpnSpliceStream (fun z ↦
+      serializeTrades ((dusScaleTrader A z.unpair.1).strat z.unpair.2).trades) :=
+  (dusScaleTrader_polyTradeEmulatable A emit).polySeg
 
-/-- The scale family is uniformly emulatable from its segment stream; no whole-strategy
-oracle is used. -/
-lemma dusScaleTrader_emulatable
-    {DP : DeductiveProcess}
-    {M : LowerSemicomputableContinuousSemimeasure}
-    {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
-    (emit : DUSThresholdEmission A) :
-  EfficientlyEmulatable (dusScaleTrader A) :=
-  EfficientlyEmulatable.of_polySeg
-    (fun _ _ h ↦ dusScaleTrader_zero_before A h)
-    (dusScaleTrader_family_polySegStream A emit)
-
-/-- Every fixed scale member carries a token-indexed polynomial certificate. -/
-lemma dusScaleTrader_ecTok
+/-- Every fixed scale member is efficiently computable. -/
+lemma dusScaleTrader_ec
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) (k : ℕ) :
-    EfficientlyComputableTok (dusScaleTrader A k) := by
+    EfficientlyComputable (dusScaleTrader A k) := by
   have hinput : PolyFueled _ (fun n ↦ Nat.pair k n) :=
     (PolyFueled.const k).pair PolyFueled.id
-  have hseg : PolySegStream (fun n ↦
+  have hseg : RpnSpliceStream (fun n ↦
       serializeTrades ((dusScaleTrader A k).strat n).trades) := by
-    refine PolySegStream.of_eq
-      ((dusScaleTrader_family_polySegStream A emit).comp hinput) ?_
+    refine RpnSpliceStream.of_eq
+      ((dusScaleTrader_family_rpnSpliceStream A emit).comp hinput) ?_
     intro n
     rw [Nat.unpair_pair k n]
-  exact ecTok_of_segStream _ hseg
+  exact RpnSpliceStream.ec _ hseg
 
 lemma dusScaleTrader_value
     {DP : DeductiveProcess}
@@ -1885,73 +1878,68 @@ lemma dusDiagonalWeight_polyRatCodes
   refine ⟨_, ((PolyFueled.const 2).pair hsq).of_eq (fun x ↦ ?_)⟩
   rw [encode_dusDiagonalWeight]
 
-/-- Polynomial segment emitter for the inverse-square diagonal trader. -/
-lemma dusTrader_polySegStream
+/-- Symbol-metered emitter for the inverse-square diagonal trader. -/
+lemma dusTrader_rpnSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) :
-    PolySegStream (fun n ↦ serializeTrades ((dusTrader A).strat n).trades) := by
+    RpnSpliceStream (fun n ↦ serializeTrades ((dusTrader A).strat n).trades) := by
   have hday : PolyFueled _ (fun q ↦ q.unpair.1) := PolyFueled.left
   have hrung : PolyFueled _ (fun q ↦ q.unpair.2) := PolyFueled.right
   obtain ⟨cscale, hscale⟩ := dusDiagonalScale_polyFueled hrung
   have hcanonical : PolyFueled _ (fun q ↦
       Nat.pair (dusDiagonalScale q.unpair.2) q.unpair.1) :=
     hscale.pair hday
-  have hshares : PolySegStream (fun q ↦
+  have hshares : RpnSpliceStream (fun q ↦
       (dusSharesEF A (dusDiagonalScale q.unpair.2) q.unpair.1).serialize) := by
-    refine PolySegStream.of_eq
-      ((dusSharesEF_polySegStream A emit).comp hcanonical) ?_
+    refine RpnSpliceStream.of_eq
+      ((dusSharesEF_rpnSpliceStream A emit).comp hcanonical) ?_
     intro q
     simp only [Nat.unpair_pair]
-  have hweight : PolySegStream (fun q ↦
+  have hweight : RpnSpliceStream (fun q ↦
       (EF.const (dusDiagonalWeight q.unpair.2)).serialize) :=
-    PolySegStream.ofTokenStream
-      (PolyTokenStream.serialize_const_comp
-        (dusDiagonalWeight_polyRatCodes hrung))
-  have hscaled : PolySegStream (fun q ↦
+    RpnSpliceStream.serialize_const_comp
+      (dusDiagonalWeight_polyRatCodes hrung)
+  have hscaled : RpnSpliceStream (fun q ↦
       (EF.mul (EF.const (dusDiagonalWeight q.unpair.2))
         (dusSharesEF A (dusDiagonalScale q.unpair.2) q.unpair.1)).serialize) :=
-    PolySegStream.serialize_mul hweight hshares
-  have htag : PolySegStream (fun _ : ℕ ↦ [6]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 6)
-  obtain ⟨csentence, hsentenceCode⟩ := B.prefix_codes
+    RpnSpliceStream.serialize_mul hweight hshares
   have hidx : PolyFueled _ (fun q ↦ q.unpair.1.unpair.2) :=
     PolyFueled.right.comp hday
-  have hsentence : PolySegStream (fun q ↦
-      [Encodable.encode (dusSentence B q.unpair.1)]) := by
-    refine PolySegStream.of_eq
-      (PolySegStream.ofTokenStream
-        (PolyTokenStream.polyTok (hsentenceCode.comp hidx))) ?_
-    intro q
-    simp [dusSentence, dusPrefix]
-  have hlive : PolySegStream (fun q ↦ serializeTrades [
+  have hframe : RpnSpliceStream (fun q ↦
+      [6, Encodable.encode (dusSentence B q.unpair.1)]) :=
+    (RpnSpliceStream.tradeSlot B.prefix_codes hidx).of_eq
+      (fun q ↦ by simp [dusSentence, dusPrefix])
+  have hlive : RpnSpliceStream (fun q ↦ serializeTrades [
       (EF.mul (EF.const (dusDiagonalWeight q.unpair.2))
         (dusSharesEF A (dusDiagonalScale q.unpair.2) q.unpair.1),
       dusSentence B q.unpair.1)]) := by
-    refine PolySegStream.of_eq ((hscaled.append htag).append hsentence) ?_
+    refine RpnSpliceStream.of_eq (hscaled.append hframe) ?_
     intro q
     simp [serializeTrades, List.append_assoc]
-  have hzero : PolySegStream (fun _ : ℕ ↦ serializeTrades []) :=
-    PolySegStream.ofTokenStream PolyTokenStream.trades_nil
+  have hzero : RpnSpliceStream (fun _ : ℕ ↦ serializeTrades []) :=
+    RpnSpliceStream.ofTransparent
+      (PolySegStream.ofTokenStream PolyTokenStream.trades_nil)
+      (fun _ ↦ by simpa [serializeTrades] using UnRpnTransparent.nil)
   have htest : PolyFueled _ (fun q ↦
       q.unpair.1 + 1 - dusDiagonalScale q.unpair.2) :=
     (subc_polyFueled.comp (hday.succ_comp.pair hscale)).of_eq
       (fun q ↦ by simp only [Nat.unpair_pair])
-  have hone : PolySegStream (fun q ↦
+  have hone : RpnSpliceStream (fun q ↦
       serializeTrades
         ((Strategy.scaleBy (EF.const (dusDiagonalWeight q.unpair.2))
           (by simp [EF.rank])
           ((dusScaleTrader A (dusDiagonalScale q.unpair.2)).strat q.unpair.1)).trades)) := by
-    refine PolySegStream.of_eq (PolySegStream.ifZero hzero hlive htest) ?_
+    refine RpnSpliceStream.of_eq (RpnSpliceStream.ifZero hzero hlive htest) ?_
     intro q
     by_cases hpad : q.unpair.1 < dusDiagonalScale q.unpair.2
     · have ht : q.unpair.1 + 1 - dusDiagonalScale q.unpair.2 = 0 := by omega
       simp [ht, Strategy.scaleBy, dusScaleTrader, hpad]
     · have ht : q.unpair.1 + 1 - dusDiagonalScale q.unpair.2 ≠ 0 := by omega
       simp [ht, Strategy.scaleBy, dusScaleTrader, hpad]
-  have hall := PolySegStream.concatVar hone PolyFueled.id.succ_comp
-  refine PolySegStream.of_eq hall ?_
+  have hall := RpnSpliceStream.concatVar hone PolyFueled.id.succ_comp
+  refine RpnSpliceStream.of_eq hall ?_
   intro n
   rw [dusTrader]
   simp only [Strategy.join]
@@ -1963,14 +1951,14 @@ lemma dusTrader_polySegStream
   rw [hdayeq]
   simp
 
-/-- The diagonal trader carries a token-indexed polynomial certificate. -/
-lemma dusTrader_ecTok
+/-- The diagonal trader is efficiently computable. -/
+lemma dusTrader_ec
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) :
-    EfficientlyComputableTok (dusTrader A) :=
-  ecTok_of_segStream _ (dusTrader_polySegStream A emit)
+    EfficientlyComputable (dusTrader A) :=
+  RpnSpliceStream.ec _ (dusTrader_rpnSpliceStream A emit)
 
 /-! ### Paper-facing domination theorem -/
 
@@ -2017,20 +2005,20 @@ theorem lic_domination_universalSemimeasure
       obtain ⟨i, hi⟩ := B.enumeration_covers σ
       refine ⟨i, ?_⟩
       simpa only [hi] using hlow
-    exact IsLogicalInductor.noExploitTok (P := P) (DP := DP)
-      (dusTrader A) (dusTrader_ecTok A emit)
+    exact IsLogicalInductor.noExploit (P := P) (DP := DP)
+      (dusTrader A) (dusTrader_ec A emit)
       (dusTrader_exploits_of_failed_scales A P hworld hfail)
 
 
 #print axioms semimeasureMean_root_le_max
 #print axioms dusSpendThrough_le_one
 #print axioms dusScaleTrader_netWorth_ge_neg_one
-#print axioms dusScaleTrader_ecTok
+#print axioms dusScaleTrader_ec
 #print axioms exists_dusMeanPayout_ge_of_low_limit
 #print axioms exists_consistent_dusGrossPayout_ge_mean
 #print axioms dusTrader_netWorth_ge_neg_two
 #print axioms dusTrader_exploits_of_failed_scales
-#print axioms dusTrader_ecTok
+#print axioms dusTrader_ec
 #print axioms lic_domination_universalSemimeasure
 
 /-! ## Strict Domination of the Universal Semimeasure (`thm:strict`)
