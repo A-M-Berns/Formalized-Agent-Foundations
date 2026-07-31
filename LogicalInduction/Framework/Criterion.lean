@@ -792,6 +792,41 @@ def ConsistentWith (v : PCWorld) (D : Finset Sentence) : Prop :=
 
 end PCWorld
 
+/-! ### Finite conjunctions and disjunctions of sentences
+
+Right-associated folds with the neutral element at the empty list.  They live here,
+beside `PCWorld.Holds`, because both the syntactic emission layer (`Framework/RpnSplice`,
+which builds variable-width disjunction blocks) and the semantic coherence development
+(`Properties/LimitCoherence`) need them. -/
+
+/-- Right-associated conjunction, with `⊤` as the empty conjunction. -/
+def sentenceConjunction : List Sentence → Sentence
+  | [] => ⊤
+  | φ :: l => φ ⋏ sentenceConjunction l
+
+/-- Right-associated disjunction, with `⊥` as the empty disjunction. -/
+def sentenceDisjunction : List Sentence → Sentence
+  | [] => ⊥
+  | φ :: l => φ ⋎ sentenceDisjunction l
+
+@[simp] lemma holds_sentenceConjunction (v : PCWorld) (l : List Sentence) :
+    v.Holds (sentenceConjunction l) ↔ ∀ φ ∈ l, v.Holds φ := by
+  induction l with
+  | nil => simp [sentenceConjunction, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+  | cons φ l ih =>
+      have hstep : v.Holds (sentenceConjunction (φ :: l)) ↔
+          v.Holds φ ∧ v.Holds (sentenceConjunction l) := Iff.rfl
+      simp [hstep, ih]
+
+@[simp] lemma holds_sentenceDisjunction (v : PCWorld) (l : List Sentence) :
+    v.Holds (sentenceDisjunction l) ↔ ∃ φ ∈ l, v.Holds φ := by
+  induction l with
+  | nil => simp [sentenceDisjunction, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+  | cons φ l ih =>
+      have hstep : v.Holds (sentenceDisjunction (φ :: l)) ↔
+          v.Holds φ ∨ v.Holds (sentenceDisjunction l) := Iff.rfl
+      simp [hstep, ih]
+
 /-! ## `def:dedproc` — Deductive Process -/
 
 /-- `def:dedproc`. A nested sequence `D 0 ⊆ D 1 ⊆ ⋯` of finite sets of sentences,

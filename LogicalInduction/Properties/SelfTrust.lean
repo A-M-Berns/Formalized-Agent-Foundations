@@ -128,6 +128,17 @@ structure FuturePriceQuote (P : History) (DP : DeductiveProcess)
   affine : AffineQuoteEq P f (fun n => P n (φ n) - (Y n).expect P n)
 
 /-- Complete weighted-product quote certificate for `thm:ccee`.
+
+**Disclosed type-`(c)` modeling substitution (`dd:mesh`).**  The left quoted product is
+required to reflect `x · w (f n)` only to within a *vanishing* slack `slack n`, not
+exactly.  This is what makes the theorem available for an arbitrary e.c. source family
+`X`, as the paper states it: an exact product LUV would have to carry the threshold
+`⌜X > r / w (f n)⌝`, whose emitter would need the *value* of the deferred weight, which
+is unavailable (see the Part F note in `Construction/Witnesses/QuoteCodeOfMarket.lean`).
+The general-source construction instead reads the deferred weight through its own
+threshold atoms on a width-`n+1` mesh, which pins the product to within `1/(n+1)`.  The
+exact-reflection case is the `slack = 0` instance and is still inhabited (the indicator
+source), so this is a genuine weakening of the certificate, not a vacuous one.
 Paper node: `thm:ccee` -/
 structure ConditionalExpectationQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (X Z Z' : ℕ → LUV) (w : ℕ → ℚ) where
@@ -136,11 +147,14 @@ structure ConditionalExpectationQuote (P : History) (DP : DeductiveProcess)
   source_codes : LUV.RpnThresholdCodeSeq X
   left_codes : LUV.RpnThresholdCodeSeq Z
   right_codes : LUV.RpnThresholdCodeSeq Z'
+  /-- The per-day reflection slack of the left quoted product. -/
+  slack : ℕ → ℝ
+  slack_tendsto : Tendsto slack atTop (𝓝 0)
   source_valued : ∀ n (v : PCWorld),
     v.ConsistentWithTheory DP → ∃ x, v.ValuesAt (X n) x
   left_reflected : ∀ n (v : PCWorld),
     v.ConsistentWithTheory DP → ∀ x,
-      v.ValuesAt (X n) x → v.ValuesAt (Z n) (x * w (f n))
+      v.ValuesAt (X n) x → ∃ z, v.ValuesAt (Z n) z ∧ |z - x * w (f n)| ≤ slack n
   right_reflected : ∀ n (v : PCWorld),
     v.ConsistentWithTheory DP →
       v.ValuesAt (Z' n) ((X n).expect P (f n) * w (f n))
@@ -340,11 +354,13 @@ theorem lic_no_expected_net_update (P : History) (DP : DeductiveProcess)
 /-- **No Expected Net Update under Conditionals** (`thm:ccee`):
 `𝔼ₙ(⌜Xₙ·w_{f(n)}⌝) ≈ₙ 𝔼ₙ(⌜𝔼_{f(n)}(Xₙ)·w_{f(n)}⌝)`, for a weight sequence `w` in
 `[0,1]`. `Z n` and `Z' n` are the two quoted products, linked pointwise to the values of
-`X n`: in any world valuing `X n` at `x`, `Z n` is valued at `x · w (f n)`, and `Z' n` at
-the (world-independent) `𝔼_{f n}(Xₙ) · w (f n)`.
+`X n`: in any world valuing `X n` at `x`, `Z n` is valued within the certificate's
+vanishing slack of `x · w (f n)`, and `Z' n` at the (world-independent)
+`𝔼_{f n}(Xₙ) · w (f n)`.
 
 The bundled certificate records both `[0,1]` membership and paper-side P-generability
-(`def:pgen`) of `w`.
+(`def:pgen`) of `w`, and carries the left-product slack (disclosed type-`(c)`; see
+`ConditionalExpectationQuote`).
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (X Z Z' : ℕ → LUV)

@@ -703,10 +703,12 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation_unconditional
     (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w)
     (hX : LUV.RpnThresholdCodeSeq X) (hZ : LUV.RpnThresholdCodeSeq Z)
     (hZ' : LUV.RpnThresholdCodeSeq Z')
+    (slack : ℕ → ℝ) (slack_tendsto : Tendsto slack atTop (𝓝 0))
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       ∃ x, v.ValuesAt (X n) x)
     (left_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
-      ∀ x, v.ValuesAt (X n) x → v.ValuesAt (Z n) (x * w (f n)))
+      ∀ x, v.ValuesAt (X n) x →
+        ∃ z, v.ValuesAt (Z n) z ∧ |z - x * w (f n)| ≤ slack n)
     (right_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       v.ValuesAt (Z' n) ((X n).expect (liaHistory (theoremDP T)) (f n) * w (f n))) :
     (fun n ↦ (Z n).expect (liaHistory (theoremDP T)) n) ≈ₙ
@@ -714,7 +716,7 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation_unconditional
   haveI := theoremLIA T
   lic_no_expected_net_update_conditional_ofRepresentation (P := liaHistory (theoremDP T))
     (DP := theoremDP T) f X Z Z' w weight_mem weight_generable hX hZ hZ'
-    source_valued left_reflected right_reflected
+    slack slack_tendsto source_valued left_reflected right_reflected
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:st` (self-trust), unconditional over `LIA`.  The confidence threshold `p` is

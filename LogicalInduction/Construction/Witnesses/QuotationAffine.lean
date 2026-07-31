@@ -3010,10 +3010,13 @@ lemma numericQuote_deferred_tendsto_zero
       (hreflected m k hfk v hv).expectApprox_near (n := m + 1) m.succ_pos
 
 /-- **Deferred conditional-expectation quote without injectivity.**  If on the fibre
-`f k = m` every completed world reads `Z k` as `w m · X k` and `Z' k` as the numeral
-`w m · 𝔼ₘ(X k)`, then the two deferred market expectations agree asymptotically — for
-every deferral function satisfying only `f n > n` plus poly-clocked emission, with no
-injectivity or monotonicity assumption. -/
+`f k = m` every completed world reads `Z k` within the vanishing slack `slack k` of
+`w m · X k`, and `Z' k` as the numeral `w m · 𝔼ₘ(X k)`, then the two deferred market
+expectations agree asymptotically — for every deferral function satisfying only
+`f n > n` plus poly-clocked emission, with no injectivity or monotonicity assumption.
+
+The slack enters the block-price bound additively beside the three `1/(m+1)` grid errors,
+so it only has to vanish; it need not be tied to the grid. -/
 lemma conditional_deferred_tendsto_zero
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -3025,8 +3028,9 @@ lemma conditional_deferred_tendsto_zero
     (w : ℕ → ℚ) (W : ℕ → EF) (hW : PGenerableWeighting W)
     (hWdenote : ∀ m, (W m).denote P = (w m : ℝ))
     (hw : ∀ m, 0 ≤ w m ∧ w m ≤ 1)
+    (slack : ℕ → ℝ) (hslack : Tendsto slack atTop (𝓝 0))
     (hsemantic : ∀ m k, f k = m → ∀ v : PCWorld, v.ConsistentWithTheory DP →
-      ∃ x, v.ValuesAt (X k) x ∧ v.ValuesAt (Z k) (x * w m) ∧
+      ∃ x z, v.ValuesAt (X k) x ∧ v.ValuesAt (Z k) z ∧ |z - x * w m| ≤ slack k ∧
         v.ValuesAt (Z' k) ((X k).expect P m * w m))
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
     Tendsto (fun n ↦ (Z n).expect P (f n) - (Z' n).expect P (f n)) atTop (𝓝 0) := by
@@ -3149,9 +3153,15 @@ lemma conditional_deferred_tendsto_zero
     simp only [LUV.expect]
     ring
   · intro ε hε
-    obtain ⟨N, hN⟩ := exists_nat_gt (3 / ε)
-    refine ⟨N, fun m k hk hkm hfk v hv ↦ ?_⟩
-    obtain ⟨x, hx, hz, hz'⟩ := hsemantic m k hfk v hv
+    obtain ⟨N, hN⟩ := exists_nat_gt (6 / ε)
+    obtain ⟨Ns, hNs⟩ := Metric.tendsto_atTop.mp hslack (ε / 2) (by linarith)
+    refine ⟨max N Ns, fun m k hk hkm hfk v hv ↦ ?_⟩
+    have hkN : N ≤ k := le_trans (le_max_left _ _) hk
+    have hslackk : slack k ≤ ε / 2 := by
+      have := hNs k (le_trans (le_max_right _ _) hk)
+      rw [Real.dist_eq, _root_.sub_zero] at this
+      exact le_of_lt (lt_of_le_of_lt (le_abs_self _) this)
+    obtain ⟨x, z, hx, hz, hzslack, hz'⟩ := hsemantic m k hfk v hv
     have hmR : (0 : ℝ) < (m : ℝ) + 1 := by positivity
     have hgrid : ∀ {Y : LUV} {y : ℝ}, v.ValuesAt Y y →
         |Y.expectApprox v.payout (m + 1) - y| ≤ 1 / ((m : ℝ) + 1) := by
@@ -3169,11 +3179,11 @@ lemma conditional_deferred_tendsto_zero
           ≤ 1 * (1 / ((m : ℝ) + 1)) :=
             mul_le_mul hwabs hnearX (abs_nonneg _) (by positivity)
         _ = 1 / ((m : ℝ) + 1) := one_mul _
-    have hsmallε : 3 / ((m : ℝ) + 1) ≤ ε := by
-      have hNm : (3 : ℝ) / ε < (m : ℝ) + 1 := by
+    have hsmallε : 3 / ((m : ℝ) + 1) ≤ ε / 2 := by
+      have hNm : (6 : ℝ) / ε < (m : ℝ) + 1 := by
         refine hN.trans_le ?_
         have : (N : ℝ) ≤ (m : ℝ) := by
-          exact_mod_cast le_of_lt (lt_of_le_of_lt hk hkm)
+          exact_mod_cast le_of_lt (lt_of_le_of_lt hkN hkm)
         linarith
       rw [div_lt_iff₀ hε] at hNm
       rw [div_le_iff₀ hmR]
@@ -3190,15 +3200,23 @@ lemma conditional_deferred_tendsto_zero
         eZ - (w m : ℝ) * eX - eZ' := by
       rw [heZ, heX, heZ']; ring
     rw [hform]
-    have hbound : |eZ - (w m : ℝ) * eX - eZ'| ≤ 3 / ((m : ℝ) + 1) := by
+    have hnearZslack : |eZ| ≤ 1 / ((m : ℝ) + 1) + slack k := by
+      have hsplit : eZ = ((Z k).expectApprox v.payout (m + 1) - z) +
+          (z - x * (w m : ℝ)) := by rw [heZ]; ring
+      calc |eZ| = |((Z k).expectApprox v.payout (m + 1) - z) + (z - x * (w m : ℝ))| := by
+            rw [hsplit]
+        _ ≤ |(Z k).expectApprox v.payout (m + 1) - z| + |z - x * (w m : ℝ)| :=
+            abs_add_le _ _
+        _ ≤ 1 / ((m : ℝ) + 1) + slack k := add_le_add hnearZ hzslack
+    have hbound : |eZ - (w m : ℝ) * eX - eZ'| ≤ 3 / ((m : ℝ) + 1) + slack k := by
       calc |eZ - (w m : ℝ) * eX - eZ'|
           ≤ (|eZ| + |(w m : ℝ) * eX|) + |eZ'| :=
             (abs_sub _ _).trans (add_le_add (abs_sub eZ ((w m : ℝ) * eX)) (le_refl _))
         _ = (|eZ| + |(w m : ℝ)| * |eX|) + |eZ'| := by rw [abs_mul]
-        _ ≤ (1 / ((m : ℝ) + 1) + 1 / ((m : ℝ) + 1)) + 1 / ((m : ℝ) + 1) :=
-            add_le_add (add_le_add hnearZ hmul) hnearZ'
-        _ = 3 / ((m : ℝ) + 1) := by ring
-    exact hbound.trans hsmallε
+        _ ≤ ((1 / ((m : ℝ) + 1) + slack k) + 1 / ((m : ℝ) + 1)) + 1 / ((m : ℝ) + 1) :=
+            add_le_add (add_le_add hnearZslack hmul) hnearZ'
+        _ = 3 / ((m : ℝ) + 1) + slack k := by ring
+    linarith
 
 /-- **Deferred self-trust correction without injectivity.**  If every completed world
 values the confidence LUV `B k` at the paired gate `G ⟨f k, k⟩` and the product LUV `A k`
@@ -4278,7 +4296,9 @@ noncomputable def futurePriceQuoteOfRepresentation
     }
   }
 
-/-- Construct the complete `thm:ccee` conditional-expectation quote package. -/
+/-- Construct the complete `thm:ccee` conditional-expectation quote package.  The left
+product is reflected only to within the vanishing `slack` (disclosed type-`(c)`; see
+`ConditionalExpectationQuote`); `slack = 0` recovers exact reflection. -/
 noncomputable def conditionalExpectationQuoteOfRepresentation
     {P : History} {DP : DeductiveProcess}
     (f : DeferralFunction)
@@ -4288,10 +4308,12 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
     (hX : LUV.RpnThresholdCodeSeq X)
     (hZ : LUV.RpnThresholdCodeSeq Z)
     (hZ' : LUV.RpnThresholdCodeSeq Z')
+    (slack : ℕ → ℝ) (slack_tendsto : Tendsto slack atTop (𝓝 0))
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ x, v.ValuesAt (X n) x)
     (left_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
-      ∀ x, v.ValuesAt (X n) x → v.ValuesAt (Z n) (x * w (f n)))
+      ∀ x, v.ValuesAt (X n) x →
+        ∃ z, v.ValuesAt (Z n) z ∧ |z - x * w (f n)| ≤ slack n)
     (right_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       v.ValuesAt (Z' n) ((X n).expect P (f n) * w (f n)))
     [IsLogicalInductor P DP]
@@ -4309,23 +4331,25 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
   let hWgen := Classical.choose_spec weight_generable
   let hW := hWgen.toWeighting
   have hsemantic : ∀ m k, f k = m → ∀ v : PCWorld, v.ConsistentWithTheory DP →
-      ∃ x, v.ValuesAt (X k) x ∧ v.ValuesAt (Z k) (x * w m) ∧
+      ∃ x z, v.ValuesAt (X k) x ∧ v.ValuesAt (Z k) z ∧ |z - x * w m| ≤ slack k ∧
         v.ValuesAt (Z' k) ((X k).expect P m * w m) := by
     intro m k hfk v hv
     subst hfk
     obtain ⟨x, hx⟩ := source_valued k v hv
-    exact ⟨x, hx, left_reflected k v hv x hx, right_reflected k v hv⟩
+    obtain ⟨z, hz, hzs⟩ := left_reflected k v hv x hx
+    exact ⟨x, z, hx, hz, hzs, right_reflected k v hv⟩
   have Zvalued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ z, v.ValuesAt (Z n) z := by
     intro n v hv
     obtain ⟨x, hx⟩ := source_valued n v hv
-    exact ⟨x * w (f n), left_reflected n v hv x hx⟩
+    obtain ⟨z, hz, -⟩ := left_reflected n v hv x hx
+    exact ⟨z, hz⟩
   have Z'valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ z, v.ValuesAt (Z' n) z := by
     intro n v hv
     exact ⟨(X n).expect P (f n) * w (f n), right_reflected n v hv⟩
   have hhigh0 := DeferralFibre.conditional_deferred_tendsto_zero hworld f hspec
-    X Z Z' hX hZ hZ' w W hW hWgen.denote weight_mem hsemantic hP
+    X Z Z' hX hZ hZ' w W hW hWgen.denote weight_mem slack slack_tendsto hsemantic hP
   have hcrossZ0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
     Z hZ Zvalued hP
   have hcrossZ'0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
@@ -4341,6 +4365,8 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
     source_codes := hX
     left_codes := hZ
     right_codes := hZ'
+    slack := slack
+    slack_tendsto := slack_tendsto
     source_valued := source_valued
     left_reflected := left_reflected
     right_reflected := right_reflected
@@ -4649,6 +4675,8 @@ theorem lic_no_expected_net_update_ofRepresentation
     (futurePriceQuoteOfRepresentation f φ Y hφ hY reflected hworld)
 
 /-- Paper-facing `thm:ccee` entry point from completed-world product representations.
+The left quoted product need only reflect `x · w (f n)` to within the vanishing `slack`
+(disclosed type-`(c)`; see `ConditionalExpectationQuote`).
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
@@ -4659,18 +4687,20 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation
     (hX : LUV.RpnThresholdCodeSeq X)
     (hZ : LUV.RpnThresholdCodeSeq Z)
     (hZ' : LUV.RpnThresholdCodeSeq Z')
+    (slack : ℕ → ℝ) (slack_tendsto : Tendsto slack atTop (𝓝 0))
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ x, v.ValuesAt (X n) x)
     (left_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
-      ∀ x, v.ValuesAt (X n) x → v.ValuesAt (Z n) (x * w (f n)))
+      ∀ x, v.ValuesAt (X n) x →
+        ∃ z, v.ValuesAt (Z n) z ∧ |z - x * w (f n)| ≤ slack n)
     (right_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       v.ValuesAt (Z' n) ((X n).expect P (f n) * w (f n)))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n ↦ (Z n).expect P n) ≈ₙ fun n ↦ (Z' n).expect P n :=
   lic_no_expected_net_update_conditional P DP f X Z Z' w hworld
     (conditionalExpectationQuoteOfRepresentation f X Z Z' w
-      weight_mem weight_generable hX hZ hZ' source_valued left_reflected
-      right_reflected hworld)
+      weight_mem weight_generable hX hZ hZ' slack slack_tendsto
+      source_valued left_reflected right_reflected hworld)
 
 /-- Paper-facing `thm:st` entry point from completed-world confidence/product
 representations.  The confidence threshold `p` is P-generable (`def:ece`), presented by its
