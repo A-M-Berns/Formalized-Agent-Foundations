@@ -468,6 +468,267 @@ lemma indicatorProductLUV_polyThresholdCodeSeq {T : ArithmeticTheory} {value : �
   rw [indicatorProductLUV_gt, if_neg hmesh0, encode_and]
   rfl
 
+/-! ### The mesh product LUV — a quoted product for an *arbitrary* source family
+
+`indicatorProductLUV` prices `1(φ) · value` and needs the source to be an indicator.  For a
+general `[0,1]`-LUV source `X` the exact product LUV would have to carry the threshold
+`⌜X > r / value n⌝`, whose emitter would need the *value* of the quote — unavailable, and
+unbounded in output size even if it were (see the Part F note below).
+
+`meshProductLUV q X n` gets the product without ever naming the value: its `r`-threshold is
+the width-`(n+1)` disjunction
+
+  `⋁_{j<n+1} ( ⌜value n > j/(n+1)⌝ ⋏ ⌜X n > r(n+1)/(j+1)⌝ )`,
+
+built only from the quote's *own* threshold atoms and the source's, at rational thresholds
+whose sizes are polynomial in the index.  In a world reading `X n` at `x` and the quote at
+`c`, the disjunction is precisely `⌜x·J/(n+1) > r⌝`, where `J` counts the mesh atoms the
+world affirms; `J/(n+1)` brackets `c` from above within `1/(n+1)`.  So the product is
+realized to within `1/(n+1)` rather than exactly — the disclosed type-`(c)` substitution
+that buys `thm:ccee` for the paper's arbitrary e.c. source family.
+
+An *exact* scaled-threshold rendering would need `value n > 0`, which the paper's
+`w ∈ [0,1]` does not supply.  The mesh needs no such hypothesis, and does not silently
+acquire one: at `value n = 0` the count is `J = 0` for any world that denies the boundary
+atom `⌜value n > 0⌝`, and `J = 1` for a world that affirms it — `ValuesAt` deliberately
+leaves the threshold *at* the value undetermined — whose reading `x/(n+1)` is still inside
+the same `1/(n+1)` band.  The slack absorbs the boundary case; positivity is never assumed.
+Paper node: `thm:ccee` -/
+noncomputable def meshProductLUV {T : ArithmeticTheory} {value : ℕ → ℚ}
+    (q : RationalQuoteCode T value) (X : ℕ → LUV) (n : ℕ) : LUV where
+  gt r := if r < 0 then ⊤ else
+    sentenceDisjunction ((List.range (n + 1)).map fun j : ℕ =>
+      (q.luv n).gt ((j : ℚ) / ((n + 1 : ℕ) : ℚ)) ⋏
+        (X n).gt (r * ((n + 1 : ℕ) : ℚ) / ((j + 1 : ℕ) : ℚ)))
+
+@[simp] lemma meshProductLUV_gt {T : ArithmeticTheory} {value : ℕ → ℚ}
+    (q : RationalQuoteCode T value) (X : ℕ → LUV) (n : ℕ) (r : ℚ) :
+    (meshProductLUV q X n).gt r =
+      if r < 0 then ⊤ else
+        sentenceDisjunction ((List.range (n + 1)).map fun j : ℕ =>
+          (q.luv n).gt ((j : ℚ) / ((n + 1 : ℕ) : ℚ)) ⋏
+            (X n).gt (r * ((n + 1 : ℕ) : ℚ) / ((j + 1 : ℕ) : ℚ))) := rfl
+
+/-- **The mesh product law**: a completed-theory world that reads the source at `x` reads
+the mesh product at `x · J/(n+1)` for the mesh count `J` it affirms, and that value is
+within `1/(n+1)` of the intended product `x · value n`.
+Paper node: `thm:ccee` -/
+lemma meshProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory}
+    {value : ℕ → ℚ} (Q : QuotationTheoryPresentation DP T)
+    (q : RationalQuoteCode T value) (X : ℕ → LUV) (n : ℕ)
+    (v : PCWorld) (hv : v.ConsistentWithTheory DP) {x : ℝ} (hx : v.ValuesAt (X n) x) :
+    ∃ z, v.ValuesAt (meshProductLUV q X n) z ∧
+      |z - x * (value n : ℝ)| ≤ 1 / ((n : ℝ) + 1) := by
+  classical
+  obtain ⟨hx0, hx1, hxthr⟩ := hx
+  obtain ⟨hc0, hc1, hcthr⟩ := RationalQuoteCode.reflected Q q n v hv
+  have hNR : (0 : ℝ) < ((n : ℝ) + 1) := by positivity
+  set c : ℝ := (value n : ℝ) with hcdef
+  set cN : ℝ := c * ((n : ℝ) + 1) with hcN
+  have hcN0 : 0 ≤ cN := mul_nonneg hc0 (le_of_lt hNR)
+  have hcNle : cN ≤ (n : ℝ) + 1 := by nlinarith
+  -- the mesh atom at index `j`, and its two-sided reading in `v`
+  set A : ℕ → Prop := fun j => v.Holds ((q.luv n).gt ((j : ℚ) / ((n + 1 : ℕ) : ℚ)))
+    with hAdef
+  have hthrR : ∀ j : ℕ, (((j : ℚ) / ((n + 1 : ℕ) : ℚ) : ℚ) : ℝ) =
+      (j : ℝ) / ((n : ℝ) + 1) := by
+    intro j; push_cast; ring
+  have hAlow : ∀ j : ℕ, (j : ℝ) < cN → A j := by
+    intro j hj
+    refine (hcthr _).1 ?_
+    rw [hthrR, div_lt_iff₀ hNR]
+    exact hj
+  have hAle : ∀ j : ℕ, A j → (j : ℝ) ≤ cN := by
+    intro j hj
+    by_contra hcon
+    push_neg at hcon
+    refine (hcthr ((j : ℚ) / ((n + 1 : ℕ) : ℚ))).2 ?_ hj
+    rw [hthrR, lt_div_iff₀ hNR]
+    exact hcon
+  -- the affirmed mesh atoms form an initial segment `[0, J₀)`
+  have hexnot : ∃ j, ¬ A j := by
+    refine ⟨n + 2, fun hcon => ?_⟩
+    have := hAle (n + 2) hcon
+    push_cast at this
+    linarith
+  set J₀ : ℕ := Nat.find hexnot with hJ₀def
+  have hJ₀not : ¬ A J₀ := Nat.find_spec hexnot
+  have hJ₀lt : ∀ j, j < J₀ → A j := fun j hj => not_not.mp (Nat.find_min hexnot hj)
+  have hAiff : ∀ j, A j ↔ j < J₀ := by
+    intro j
+    refine ⟨fun hj => ?_, hJ₀lt j⟩
+    by_contra hcon
+    push_neg at hcon
+    refine hJ₀not (hAlow J₀ (lt_of_lt_of_le ?_ (hAle j hj)))
+    rcases eq_or_lt_of_le hcon with heq | hlt
+    · exfalso
+      exact hJ₀not (by rw [heq]; exact hj)
+    · exact_mod_cast hlt
+  -- cap the count at the mesh width
+  set J : ℕ := min J₀ (n + 1) with hJdef
+  have hJle : J ≤ n + 1 := min_le_right _ _
+  have hJJ₀ : J ≤ J₀ := min_le_left _ _
+  have hAJ : ∀ j, j < n + 1 → (A j ↔ j < J) := by
+    intro j hj
+    rw [hAiff, hJdef, lt_min_iff]
+    exact ⟨fun h => ⟨h, hj⟩, fun h => h.1⟩
+  have hupper : cN ≤ (J : ℝ) := by
+    rcases le_or_gt J₀ (n + 1) with hle | hgt
+    · have hJeq : J = J₀ := min_eq_left hle
+      rw [hJeq]
+      by_contra hcon
+      push_neg at hcon
+      exact hJ₀not (hAlow J₀ hcon)
+    · have hJeq : J = n + 1 := min_eq_right (le_of_lt hgt)
+      rw [hJeq]
+      push_cast
+      exact hcNle
+  have hlower : (J : ℝ) ≤ cN + 1 := by
+    rcases Nat.eq_zero_or_pos J with hJ0 | hJpos
+    · rw [hJ0]; push_cast; linarith
+    · have hprev : A (J - 1) := hJ₀lt (J - 1) (by omega)
+      have := hAle (J - 1) hprev
+      have hcast : ((J - 1 : ℕ) : ℝ) = (J : ℝ) - 1 := by
+        have : (1 : ℕ) ≤ J := hJpos
+        push_cast [Nat.cast_sub this]
+        ring
+      rw [hcast] at this
+      linarith
+  -- the world's reading of the mesh product
+  refine ⟨x * (J : ℝ) / ((n : ℝ) + 1), ?_, ?_⟩
+  · have hz0 : 0 ≤ x * (J : ℝ) / ((n : ℝ) + 1) := by positivity
+    have hJR : (J : ℝ) ≤ (n : ℝ) + 1 := by exact_mod_cast hJle
+    have hz1 : x * (J : ℝ) / ((n : ℝ) + 1) ≤ 1 := by
+      rw [div_le_one hNR]
+      nlinarith
+    refine ⟨hz0, hz1, fun r => ⟨?_, ?_⟩⟩
+    · -- below the value: exhibit the top affirmed disjunct
+      intro hr
+      rw [meshProductLUV_gt]
+      by_cases hr0 : r < 0
+      · rw [if_pos hr0]; exact PCWorld.holds_top v
+      rw [if_neg hr0]
+      have hrR : (0 : ℝ) ≤ (r : ℝ) := by
+        have : (0 : ℚ) ≤ r := not_lt.mp hr0
+        exact_mod_cast this
+      have hJpos : 0 < J := by
+        by_contra hcon
+        push_neg at hcon
+        have hJ0 : J = 0 := Nat.le_zero.mp hcon
+        have hzero : x * (J : ℝ) / ((n : ℝ) + 1) = 0 := by rw [hJ0]; simp
+        linarith
+      have hJR0 : (0 : ℝ) < (J : ℝ) := by exact_mod_cast hJpos
+      have hidx : (J - 1 : ℕ) + 1 = J := by omega
+      rw [holds_sentenceDisjunction]
+      refine ⟨(fun j : ℕ => (q.luv n).gt ((j : ℚ) / ((n + 1 : ℕ) : ℚ)) ⋏
+        (X n).gt (r * ((n + 1 : ℕ) : ℚ) / ((j + 1 : ℕ) : ℚ))) (J - 1), ?_, ?_⟩
+      · exact List.mem_map_of_mem (List.mem_range.mpr (by omega))
+      · show v.Holds ((q.luv n).gt (((J - 1 : ℕ) : ℚ) / ((n + 1 : ℕ) : ℚ)) ⋏
+          (X n).gt (r * ((n + 1 : ℕ) : ℚ) / (((J - 1 : ℕ) + 1 : ℕ) : ℚ)))
+        refine (PCWorld.holds_and v _ _).mpr
+          ⟨(hAJ (J - 1) (by omega)).mpr (by omega), ?_⟩
+        refine (hxthr _).1 ?_
+        rw [hidx]
+        push_cast
+        rw [div_lt_iff₀ hJR0]
+        rw [lt_div_iff₀ hNR] at hr
+        linarith
+    · -- above the value: every disjunct fails
+      intro hr
+      rw [meshProductLUV_gt]
+      have hz0' : (0 : ℝ) ≤ x * (J : ℝ) / ((n : ℝ) + 1) := hz0
+      have hrpos : (0 : ℝ) < (r : ℝ) := lt_of_le_of_lt hz0' hr
+      have hr0 : ¬ r < 0 := by
+        have : (0 : ℚ) < r := by exact_mod_cast hrpos
+        exact not_lt.mpr this.le
+      rw [if_neg hr0, holds_sentenceDisjunction]
+      rintro ⟨φ, hmem, hφ⟩
+      simp only [List.mem_map, List.mem_range] at hmem
+      obtain ⟨j, hjN, rfl⟩ := hmem
+      obtain ⟨hleft, hright⟩ := (PCWorld.holds_and v _ _).mp hφ
+      have hjJ : j < J := (hAJ j hjN).mp hleft
+      have hxge : (r : ℝ) * ((n : ℝ) + 1) / ((j : ℝ) + 1) ≤ x := by
+        by_contra hcon
+        push_neg at hcon
+        refine hxthr (r * ((n + 1 : ℕ) : ℚ) / ((j + 1 : ℕ) : ℚ)) |>.2 ?_ hright
+        push_cast
+        exact hcon
+      have hj1 : (0 : ℝ) < (j : ℝ) + 1 := by positivity
+      rw [div_le_iff₀ hj1] at hxge
+      have hjJR : (j : ℝ) + 1 ≤ (J : ℝ) := by
+        have : (j : ℕ) + 1 ≤ J := hjJ
+        exact_mod_cast this
+      rw [div_lt_iff₀ hNR] at hr
+      nlinarith
+  · -- the mesh value is within `1/(n+1)` of the intended product
+    have hne : ((n : ℝ) + 1) ≠ 0 := ne_of_gt hNR
+    have hdiff : x * (J : ℝ) / ((n : ℝ) + 1) - x * c =
+        x * ((J : ℝ) - cN) / ((n : ℝ) + 1) := by
+      rw [hcN]
+      field_simp
+    rw [hdiff, abs_div, abs_of_pos hNR, div_le_div_iff_of_pos_right hNR]
+    rw [abs_mul, abs_of_nonneg hx0]
+    have hnum : |(J : ℝ) - cN| ≤ 1 := by
+      rw [abs_le]
+      constructor <;> linarith
+    calc x * |(J : ℝ) - cN| ≤ 1 * 1 :=
+          mul_le_mul hx1 hnum (abs_nonneg _) zero_le_one
+      _ = 1 := one_mul 1
+
+/-- The mesh product's threshold family is 𝓔𝓒 (`def:ec`): a `RpnSentenceCodes.bigOr` of
+`⋏`-shells over the quote's own threshold blocks and the source's, at thresholds
+`j/(n+1)` and `i(n+1)/(k(j+1))` whose components are poly-fueled products of the index
+parts.  The width varies with the index, which is why this is a variable-width block
+(`PolySegStream.concatVar`) rather than a fixed tuple; and it is why the mesh lives at
+the block interface `RpnThresholdCodeSeq` rather than the whole-value one — the encoded
+pair code of a width-`n` disjunction is not polynomially bounded, its symbol count is.
+Paper node: `def:ec`, `thm:ccee` -/
+lemma meshProductLUV_rpnThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ → ℚ}
+    (q : RationalQuoteCode T value) {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X) :
+    LUV.RpnThresholdCodeSeq (meshProductLUV q X) := by
+  obtain ⟨cmul, hmul⟩ := mul_polyFueled
+  -- component projections of the paired index `z = ⟨⟨n,⟨k,i⟩⟩, j⟩`
+  have hn : PolyFueled _ (fun z : ℕ => z.unpair.1.unpair.1) :=
+    PolyFueled.left.comp PolyFueled.left
+  have hk : PolyFueled _ (fun z : ℕ => z.unpair.1.unpair.2.unpair.1) :=
+    PolyFueled.left.comp (PolyFueled.right.comp PolyFueled.left)
+  have hi : PolyFueled _ (fun z : ℕ => z.unpair.1.unpair.2.unpair.2) :=
+    PolyFueled.right.comp (PolyFueled.right.comp PolyFueled.left)
+  have hj : PolyFueled _ (fun z : ℕ => z.unpair.2) := PolyFueled.right
+  have hquote : RpnSentenceCodes (fun z : ℕ =>
+      (q.luv z.unpair.1.unpair.1).gt
+        ((z.unpair.2 : ℚ) / ((z.unpair.1.unpair.1 + 1 : ℕ) : ℚ))) :=
+    (q.poly.comp (hn.pair (hn.succ_comp.pair hj))).of_eq (fun z => by simp)
+  have hnum : PolyFueled _ (fun z : ℕ =>
+      z.unpair.1.unpair.2.unpair.2 * (z.unpair.1.unpair.1 + 1)) :=
+    (hmul.comp (hi.pair hn.succ_comp)).of_eq (fun z => by simp)
+  have hden : PolyFueled _ (fun z : ℕ =>
+      z.unpair.1.unpair.2.unpair.1 * (z.unpair.2 + 1)) :=
+    (hmul.comp (hk.pair hj.succ_comp)).of_eq (fun z => by simp)
+  have hsource : RpnSentenceCodes (fun z : ℕ =>
+      (X z.unpair.1.unpair.1).gt
+        (((z.unpair.1.unpair.2.unpair.2 * (z.unpair.1.unpair.1 + 1) : ℕ) : ℚ) /
+          ((z.unpair.1.unpair.2.unpair.1 * (z.unpair.2 + 1) : ℕ) : ℚ))) :=
+    (hX.comp (hn.pair (hden.pair hnum))).of_eq (fun z => by simp)
+  refine (RpnSentenceCodes.bigOr (D := fun m j =>
+      (q.luv m.unpair.1).gt ((j : ℚ) / ((m.unpair.1 + 1 : ℕ) : ℚ)) ⋏
+        (X m.unpair.1).gt
+          (((m.unpair.2.unpair.2 * (m.unpair.1 + 1) : ℕ) : ℚ) /
+            ((m.unpair.2.unpair.1 * (j + 1) : ℕ) : ℚ)))
+    (hquote.and hsource) PolyFueled.left.succ_comp).of_eq (fun m => ?_)
+  have hr0 : ¬ ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)) < 0 :=
+    not_lt.mpr (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _))
+  rw [meshProductLUV_gt, if_neg hr0]
+  congr 1
+  refine List.map_congr_left (fun j _ => ?_)
+  have hthr : (((m.unpair.2.unpair.2 * (m.unpair.1 + 1) : ℕ) : ℚ) /
+      ((m.unpair.2.unpair.1 * (j + 1) : ℕ) : ℚ)) =
+      (m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ) *
+        ((m.unpair.1 + 1 : ℕ) : ℚ) / ((j + 1 : ℕ) : ℚ) := by
+    push_cast
+    rw [div_mul_eq_mul_div, div_div]
+  rw [hthr]
+
 /-- A deferral function is (unclamped) computable: its certificate's clocked runs are
 sound for the unbounded semantics. -/
 lemma DeferralFunction.computable (f : DeferralFunction) : Computable f.f := by
@@ -738,29 +999,42 @@ theorem lic_self_trust_closed
       (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n v hv
     rwa [← theoremConfidence_value_cast T f φ δ p n] at h
 
-/-! ## Part F — the weighted conditional (`thm:ccee`), indicator-source closed form
+/-! ## Part F — the weighted conditional (`thm:ccee`), general-source closed form
 
-A closed form for fully general caller sources is out of reach **under exact reflection**,
-for a structural reason.  The scaled LUV's threshold must contain `X.gt (r / w (f n))`, so
-its emitter would have to produce the value `w (f n)`.  Two independent barriers block
-that: the weight is only P-generable, so its value at *any* index is unavailable to an
-emitter (deferral compounds this — `def:deferralfunc` bounds the clock by a polynomial in
-`f n`, which has no polynomial bound in `n`); and even granting the value, `PolyFueled`
-bounds the emitted output, while the block would have to spell the denominator of
-`r / w (f n)`, whose size is not polynomially bounded in `n`.
+The source family `X` is arbitrary, as in the paper.  What is *not* the paper's is the
+exactness of the left quoted product: it reflects `x · w (f n)` only to within `1/(n+1)`
+(the `meshProductLUV` above).  That substitution is forced, and this is where it is
+pinned down.
 
-The exactness caveat is load-bearing rather than decorative.  A *finite mesh* over the
-deferred weight's own threshold atoms is emittable and values the product to within `1/N`,
-so relaxing `left_reflected` to a vanishing slack reopens the general-source case; an
-exact product instead needs the infinite disjunction `⋁_{s∈ℚ} (⌜w > s⌝ ⋏ ⌜X > r/s⌝)` —
-the existential this propositional substrate lacks.  Both routes are recorded in
-`LogicalInduction/README.md`'s future-work list.  Note also that any exact scaled-threshold
-rendering needs `w (f n) > 0`, which the paper's `w ∈ [0,1]` does not supply; the indicator
-collapse carries the zero case for free.  The closed instance below is therefore the
-paper's motivating conditional-probability case: the source is a relational indicator
-family, the left quoted product is the `thm:st` indicator-product over a quote code
-*naming* the `w ∘ f` program, and the right quote names the market's own deferred
-weighted expectation program. -/
+**Exact reflection is unreachable.**  An exact scaled LUV's threshold must contain
+`X.gt (r / w (f n))`, so its emitter would have to produce the value `w (f n)`.  Two
+independent barriers block that: the weight is only P-generable, so its value at *any*
+index is unavailable to an emitter (deferral compounds this — `def:deferralfunc` bounds
+the clock by a polynomial in `f n`, which has no polynomial bound in `n`); and even
+granting the value, `PolyFueled` bounds the emitted output, while the block would have to
+spell the denominator of `r / w (f n)`, whose size is not polynomially bounded in `n`.
+An exact product *without* naming the value needs the infinite disjunction
+`⋁_{s∈ℚ} (⌜w > s⌝ ⋏ ⌜X > r/s⌝)` — the existential this propositional substrate lacks; that
+route (a world-dependent product-atom schema entered by the deductive process) is recorded
+in `LogicalInduction/README.md`'s future-work list.
+
+**What the mesh buys, and what it costs.**  Truncating that disjunction to the width-`n+1`
+grid of the weight's own threshold atoms *is* emittable, and values the product within
+`1/(n+1)` (`meshProductLUV_valuesAt`); the vanishing slack passes through the trader
+unharmed because it enters the block-price bound additively beside the three existing
+`1/(m+1)` grid errors.  The cost is that `ConditionalExpectationQuote.left_reflected` is a
+slack condition rather than an equation — a disclosed type-`(c)` substitution, recorded at
+that structure, in the README's modeling-boundary list, and in
+`scripts/coverage-classification.md`.  Note that an exact scaled-threshold rendering would
+additionally need `w (f n) > 0`, which the paper's `w ∈ [0,1]` does not supply; the mesh
+does not need it, and does not smuggle it in — see the zero-weight discussion at
+`meshProductLUV`.
+
+The residual hypotheses below are the paper's own: an e.c. LUV source with its
+completed-world values (`lem:conluvapprox`, exactly as in `thm:cee`'s closed form), a
+P-generable `[0,1]` weight, and a deferral function.  The left quoted product is the mesh
+over a quote code *naming* the `w ∘ f` program; the right quote names the market's own
+deferred weighted expectation program. -/
 
 /-- Quote code naming the deferred-weight program `n ↦ w (f n)`: the quotation atom
 quotes the program, so deferral costs nothing at strategy-emission time.  The weight is
@@ -801,44 +1075,76 @@ noncomputable def theoremConditionalExpectationQuoteCode (f : DeferralFunction)
       exact ⟨mul_nonneg he0 hw0, by nlinarith⟩)
 
 /-- **`thm:ccee` (no expected net update under conditionals), closed form over the
-constructed `LIA`** — the paper's conditional-probability instance, with both quoted
-products constructed.  The source `X` is supplied by its indicator relation to `φ` rather
-than as a concrete LUV term; `Z` is its indicator product with the deferred-weight quote
-code, and `Z'` the quote of the market's own deferred weighted expectation.  Only the
-sentence sequence, the source family and its indicator linkage, the weight data, and the
-deferral function remain.
+constructed `LIA`** — for an **arbitrary** e.c. source family `X`, as the paper states it,
+with both quoted products constructed.  `Z` is the mesh product of `X` with the
+deferred-weight quote code, and `Z'` the quote of the market's own deferred weighted
+expectation.  The remaining hypotheses are the paper's own: the source family with its
+threshold codes and completed-world values (`lem:conluvapprox`, as in `thm:cee`), the
+`[0,1]` P-generable weight, and the deferral function.
+
+**Disclosed type-`(c)`:** the left quoted product is realized to within `1/(n+1)`, not
+exactly — see the Part F note above and `ConditionalExpectationQuote`.  The conclusion
+is unaffected in form (it is still an `≈ₙ` between the two market expectations); what is
+weakened is the certificate that `Z` *is* the product.
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_closed
     (f : DeferralFunction)
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
     (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X)
-    (hind : ∀ n, (X n).IsIndicator (φ n) (theoremDP T))
+    (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      ∃ x, v.ValuesAt (X n) x)
     (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w) :
-    (fun n ↦ (indicatorProductLUV
-        (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) φ n).expect
+    (fun n ↦ (meshProductLUV
+        (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) X n).expect
           (liaHistory (theoremDP T)) n) ≈ₙ
       fun n ↦ ((theoremConditionalExpectationQuoteCode T f X hX w weight_generable
         weight_mem).luv n).expect (liaHistory (theoremDP T)) n := by
   refine lic_no_expected_net_update_conditional_ofRepresentation_unconditional (T := T)
     f X
-    (fun n => indicatorProductLUV
-      (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) φ n)
+    (fun n => meshProductLUV
+      (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) X n)
     ((theoremConditionalExpectationQuoteCode T f X hX w weight_generable weight_mem).luv)
     w weight_mem weight_generable (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq hX)
-    (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
-      (indicatorProductLUV_polyThresholdCodeSeq _ hφ))
+    (meshProductLUV_rpnThresholdCodeSeq _
+      (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq hX))
     (theoremConditionalExpectationQuoteCode T f X hX w weight_generable weight_mem).poly
-    (fun n v hv => ⟨v.payout (φ n), (hind n).valuesAt hv⟩)
-    (fun n v hv x hx => ?_) (fun n v hv => ?_)
-  · have hxeq : x = v.payout (φ n) := hx.eq ((hind n).valuesAt hv)
-    have h := indicatorProductLUV_valuesAt (quotationPresentation T)
-      (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) φ n v hv
-    rwa [hxeq]
-  · have h := RationalQuoteCode.reflected (quotationPresentation T)
-      (theoremConditionalExpectationQuoteCode T f X hX w weight_generable weight_mem) n v hv
-    rwa [Rat.cast_mul,
-      ← (theoremMarketComputation T).expectQuoteAt_cast X n (f.f n)] at h
+    (fun n => 1 / ((n : ℝ) + 1)) tendsto_one_div_add_atTop_nhds_zero_nat
+    source_valued
+    (fun n v hv x hx => meshProductLUV_valuesAt (quotationPresentation T)
+      (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) X n v hv hx)
+    (fun n v hv => ?_)
+  have h := RationalQuoteCode.reflected (quotationPresentation T)
+    (theoremConditionalExpectationQuoteCode T f X hX w weight_generable weight_mem) n v hv
+  rwa [Rat.cast_mul,
+    ← (theoremMarketComputation T).expectQuoteAt_cast X n (f.f n)] at h
+
+/-! ### Non-vacuity of the relaxed certificate
+
+Relaxing `left_reflected` to a slack condition must not turn the certificate into
+something nothing constructs.  Two witnesses, at both ends: the mesh above inhabits it for
+an arbitrary source, and the original indicator product still inhabits it — at `slack = 0`,
+i.e. satisfying the *exact* condition the relaxed field generalizes. -/
+
+/-- **N±.** The indicator-source product still constructs the `thm:ccee` certificate, at
+zero slack: the relaxation is a genuine weakening of an inhabited condition, not a
+replacement of it.
+Paper node: `thm:ccee` -/
+lemma indicatorProductLUV_exact_left_reflected
+    (f : DeferralFunction) (φ : ℕ → Sentence)
+    (X : ℕ → LUV) (hind : ∀ n, (X n).IsIndicator (φ n) (theoremDP T))
+    (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
+    (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w) :
+    ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) → ∀ x,
+      v.ValuesAt (X n) x →
+        ∃ z, v.ValuesAt (indicatorProductLUV
+            (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) φ n) z ∧
+          |z - x * w (f n)| ≤ 0 := by
+  intro n v hv x hx
+  refine ⟨x * (w (f n) : ℝ), ?_, by simp⟩
+  have hxeq : x = v.payout (φ n) := hx.eq ((hind n).valuesAt hv)
+  have h := indicatorProductLUV_valuesAt (quotationPresentation T)
+    (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) φ n v hv
+  rwa [hxeq]
 
 end
 
@@ -849,6 +1155,9 @@ end
 #print axioms lic_expectations_of_probabilities_closed
 #print axioms MarketComputation.expectQuote_computable
 #print axioms lic_iterated_expectations_closed
+#print axioms meshProductLUV_valuesAt
+#print axioms meshProductLUV_rpnThresholdCodeSeq
+#print axioms indicatorProductLUV_exact_left_reflected
 #print axioms lic_no_expected_net_update_conditional_closed
 
 end LogicalInduction

@@ -146,33 +146,39 @@ assertion starts failing and gets promoted to a plain clean assertion.
    threshold sentences `⌜X > r⌝`, with its world-value semantics carried as explicit,
    build-frozen certificate structures rather than derived from first-order syntax.
 
-   This boundary has one consequence sharp enough to name on its own, because it is the
-   only place a paper statement is genuinely narrowed rather than merely re-expressed.
-   **`thm:ccee`'s fully-closed endpoint requires the source LUV to be an indicator**,
-   where the paper takes any e.c. sequence of `[0,1]`-LUVs. The reason is structural: the
-   paper's quoted product `⌜Xₙ · w_{f(n)}⌝` is a first-order term, whereas here a product
-   LUV must be built from threshold sentences, and an *exact* one needs the infinite
-   disjunction `⋁_{s∈ℚ} (⌜w > s⌝ ∧ ⌜X > r/s⌝)` — the existential the propositional
-   substrate lacks. With an indicator source, `1(φ)·w > r` collapses to `φ ∧ (w > r)` and
-   the difficulty disappears. The abstract and `_ofRepresentation` endpoints are general
-   in the source; only the fully-constructed form carries the restriction.
+   This boundary has one consequence sharp enough to name on its own.
+   **`thm:ccee`'s quoted product is realized only to within `1/(n+1)`, not exactly.**
+   The paper's quoted product `⌜Xₙ · w_{f(n)}⌝` is a first-order term, whereas here a
+   product LUV must be built from threshold sentences, and an *exact* one needs either the
+   value of `w_{f(n)}` (unavailable to an emitter: the weight is only P-generable, and
+   deferred, and the resulting threshold's denominator is not polynomially sized) or the
+   infinite disjunction `⋁_{s∈ℚ} (⌜w > s⌝ ∧ ⌜X > r/s⌝)` — the existential the propositional
+   substrate lacks. What *is* emittable is the finite **mesh** product
+   `⋁_{j<n+1} (⌜w_{f(n)} > j/(n+1)⌝ ∧ ⌜Xₙ > r(n+1)/(j+1)⌝)`, built only from the deferred
+   weight's own threshold atoms; it values the product within `1/(n+1)`. So
+   `ConditionalExpectationQuote.left_reflected` is a **vanishing-slack** condition rather
+   than an equation — a declared type-`(c)` substitution — and in exchange the fully-closed
+   endpoint `lic_no_expected_net_update_conditional_closed` takes the paper's arbitrary
+   e.c. source family. The slack is inert downstream: it enters the exploiting trader's
+   block-price bound additively beside the existing `1/(m+1)` grid errors, and the
+   conclusion is unchanged in form. Non-vacuity is witnessed at both ends — the mesh
+   inhabits the relaxed field for a general source, and the indicator product still
+   inhabits it at zero slack (`indicatorProductLUV_exact_left_reflected`).
 
-Both are disclosed at every affected statement, not just here.
+All three are disclosed at every affected statement, not just here.
 
 ## Planned future work
 
 Each item has a verified obstruction on record; none blocks the results above.
 
-* **A general-source closed form for `thm:ccee`** — the restriction described under
-  boundary 2. Two routes are on record, neither cheap. A finite *mesh* product
-  (`⋁_{j≤N}` over the deferred weight's own threshold atoms) is emittable and values
-  within `1/N` of the true product, so it buys the paper's generality at the price of
-  relaxing exact reflection to a vanishing slack — i.e. a new declared substitution,
-  roughly a few focused sessions. An *exact* route needs a world-dependent LUV-atom
-  family and a compound-axiom entry on the quotation presentation, comparable in scale
-  to the existing quote-code layer. This is the one restriction with a known downstream
-  consumer: work on deference in logical induction uses `thm:ccee` at general
-  option-value LUVs.
+* **An *exactly* reflecting general-source `thm:ccee`** — would remove the vanishing-slack
+  substitution described under boundary 2. The mesh route (which landed, and which buys
+  the paper's arbitrary source family) is approximate by construction. The exact route
+  needs a world-dependent product-atom schema entered by the deductive process — a
+  compound-axiom entry on the quotation presentation, comparable in scale to the existing
+  quote-code layer. This is the one substitution with a known downstream consumer: work on
+  deference in logical induction uses `thm:ccee` at general option-value LUVs, where
+  whether the `1/(n+1)` slack is acceptable depends on the consuming argument.
 * **An efficient prefix patch over the constructed inductor** — would lift `thm:ifp`
   from the efficiently-patchable restriction to the paper's unrestricted statement. The
   obstruction is the same fuel-class closure gap as boundary 1 (the emitted freeze

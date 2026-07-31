@@ -276,29 +276,10 @@ lemma bot_eq_zero : L (⊥ : Sentence) = 0 := by
 
 end GaifmanCoherent
 
-/-! ## Finite Boolean laws -/
+/-! ## Finite Boolean laws
 
-/-- Right-associated conjunction, with `⊤` as the empty conjunction. -/
-def sentenceConjunction : List Sentence → Sentence
-  | [] => ⊤
-  | φ :: l => φ ⋏ sentenceConjunction l
-
-/-- Right-associated disjunction, with `⊥` as the empty disjunction. -/
-def sentenceDisjunction : List Sentence → Sentence
-  | [] => ⊥
-  | φ :: l => φ ⋎ sentenceDisjunction l
-
-@[simp] lemma holds_sentenceConjunction (v : PCWorld) (l : List Sentence) :
-    v.Holds (sentenceConjunction l) ↔ ∀ φ ∈ l, v.Holds φ := by
-  induction l with
-  | nil => simp [sentenceConjunction, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
-  | cons φ l ih => simp [sentenceConjunction, PCWorld.holds_and, ih]
-
-@[simp] lemma holds_sentenceDisjunction (v : PCWorld) (l : List Sentence) :
-    v.Holds (sentenceDisjunction l) ↔ ∃ φ ∈ l, v.Holds φ := by
-  induction l with
-  | nil => simp [sentenceDisjunction, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
-  | cons φ l ih => simp [sentenceDisjunction, PCWorld.holds_or, ih]
+`sentenceConjunction` / `sentenceDisjunction` and their `Holds` characterizations live
+upstream in `Framework/Criterion.lean`, beside `PCWorld.Holds`. -/
 
 namespace GaifmanCoherent
 

@@ -496,17 +496,22 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_self_trust_closed
   theoremIntervalQuoteCode lic_introspection_closed
 
--- `ccee`: the weighted conditional, indicator-source closed form.  The
--- deferred-weight quote code names the `w ∘ f` program (deferral costs nothing at
--- emission), and `PCWorld.ValuesAt.eq` links the caller's relational source value to
--- the payout.  Fully general caller sources are out of reach *under exact reflection*:
--- the scaled threshold would need the value `w (f n)`, which is neither available to an
--- emitter (P-generable, and deferred) nor polynomially sized.  A vanishing-slack mesh
--- would reopen the case; see the Part F header and the README's future-work list.
+-- `ccee`: the weighted conditional, **general-source** closed form.  The deferred-weight
+-- quote code names the `w ∘ f` program (deferral costs nothing at emission), and
+-- `meshProductLUV` renders the product from that quote's own threshold atoms on a
+-- width-`n+1` mesh, so no emitter ever needs the value `w (f n)` (which is neither
+-- available — P-generable, and deferred — nor polynomially sized).  The price is that the
+-- left product reflects only to within `1/(n+1)`: a **disclosed type-`(c)` substitution**
+-- carried by `ConditionalExpectationQuote.slack`.  `indicatorProductLUV_exact_left_reflected`
+-- is the non-vacuity witness at the exact (`slack = 0`) end.  See the Part F header and the
+-- README's modeling-boundary list; the exact route stays in future work.
 #assert_axioms_clean
   PCWorld.ValuesAt.eq
   theoremDeferredWeightQuoteCode
   theoremConditionalExpectationQuoteCode
+  meshProductLUV_valuesAt
+  meshProductLUV_rpnThresholdCodeSeq
+  indicatorProductLUV_exact_left_reflected
   lic_no_expected_net_update_conditional_closed
 
 -- Construction/Witnesses/ComputationDP.lean — unconditional-over-LIA capstones
@@ -583,7 +588,7 @@ deliberately. -/
 #assert_fields ComputationTheoryPresentation
   theory_deltaOne process halting_enters halting_refutes boundedHalting_enters boundedFailure_refutes inconsistency_enters inconsistency_refutesConsistency
 #assert_fields ConditionalExpectationQuote
-  weight_mem weight_generable source_codes left_codes right_codes source_valued left_reflected right_reflected affine
+  weight_mem weight_generable source_codes left_codes right_codes slack slack_tendsto source_valued left_reflected right_reflected affine
 #assert_fields ConditioningPresentation
   condition condition_codes holds_condition combined_computable
 #assert_fields ConditioningTraderCompiler

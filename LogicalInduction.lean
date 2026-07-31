@@ -61,6 +61,13 @@ list is exhaustive; a label appearing nowhere below is not in use.
   selector `code : ℕ` naming the program being quoted, instead of quantifying over an
   abstract quotation schema. This is what makes the quotation presentation satisfiable
   (an abstract free-schema version was not).
+* **`dd:mesh`** — `thm:ccee`'s quoted product `⌜Xₙ · w_{f(n)}⌝` is realized on a finite
+  *mesh* of the deferred weight's own threshold atoms, so it reflects the product only to
+  within `1/(n+1)` rather than exactly. This is a disclosed type-`(c)` substitution, not
+  merely a presentation choice: an exactly-reflecting product LUV would need either the
+  weight's *value* (unavailable to an emitter) or an infinite disjunction (absent from the
+  propositional substrate). It is what buys the paper's arbitrary e.c. source family; the
+  slack is carried explicitly by `ConditionalExpectationQuote.slack`.
 
 ## Naming conventions
 
