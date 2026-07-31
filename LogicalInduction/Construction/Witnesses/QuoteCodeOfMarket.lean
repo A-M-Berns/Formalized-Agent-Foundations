@@ -818,9 +818,9 @@ theorem lic_no_expected_net_update_conditional_closed
     (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
       (indicatorProductLUV_polyThresholdCodeSeq _ hφ))
     (theoremConditionalExpectationQuoteCode T f X hX w weight_generable weight_mem).poly
-    (fun n v hv => ⟨v.payout (φ n), (hind n).valuesAt (hv n)⟩)
+    (fun n v hv => ⟨v.payout (φ n), (hind n).valuesAt hv⟩)
     (fun n v hv x hx => ?_) (fun n v hv => ?_)
-  · have hxeq : x = v.payout (φ n) := hx.eq ((hind n).valuesAt (hv n))
+  · have hxeq : x = v.payout (φ n) := hx.eq ((hind n).valuesAt hv)
     have h := indicatorProductLUV_valuesAt (quotationPresentation T)
       (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) φ n v hv
     rwa [hxeq]

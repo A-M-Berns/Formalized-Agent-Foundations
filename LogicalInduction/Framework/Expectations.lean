@@ -341,10 +341,18 @@ provably linked to `φ`, and the theorem's content is the inductor learning that
 bundle of equivalences uniformly. -/
 
 /-- `Y` is an **indicator family for `φ`** (relational rendering of the paper's `1(φ)`):
-in every plausible world, `Y`'s thresholds below `0` hold, thresholds in `[0,1)` are
-equivalent to `φ`, and thresholds at `≥ 1` fail. -/
+in every **completed-theory** world — `v ∈ cworlds(Θ)`, the exact quantifier of the paper's
+`app:ei` argument — `Y`'s thresholds below `0` hold, thresholds in `[0,1)` are equivalent
+to `φ`, and thresholds at `≥ 1` fail.
+
+The quantifier is over `PCWorld.ConsistentWithTheory`, *not* over every finite stage
+`DP.D n`.  Requiring the equivalences already in `pcworlds(D n)` for every `n` — stage `0`
+included — would exclude the paper's own `1(φ)`: `Θ`'s threshold equivalences only enter
+`D n` at some finite stage, so a process whose early stages are small has plausible day-`0`
+worlds that break them.  `indicatorWitness_isIndicator` below exhibits exactly such a
+`Y`/`φ`/`DP`. -/
 def LUV.IsIndicator (Y : LUV) (φ : Sentence) (DP : DeductiveProcess) : Prop :=
-  ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∀ r : ℚ,
+  ∀ v : PCWorld, v.ConsistentWithTheory DP → ∀ r : ℚ,
     ((r : ℝ) < 0 → v.Holds (Y.gt r)) ∧
     (0 ≤ (r : ℝ) → (r : ℝ) < 1 → (v.Holds (Y.gt r) ↔ v.Holds φ)) ∧
     (1 ≤ (r : ℝ) → ¬ v.Holds (Y.gt r))
@@ -353,9 +361,9 @@ def LUV.IsIndicator (Y : LUV) (φ : Sentence) (DP : DeductiveProcess) : Prop :=
 `1` in `φ`-worlds and `0` otherwise. This is the world-side input to `thm:ei` in
 `Properties/ExpectationAffine.lean`. -/
 lemma LUV.IsIndicator.valuesAt {Y : LUV} {φ : Sentence} {DP : DeductiveProcess}
-    (hY : Y.IsIndicator φ DP) {n : ℕ} {v : PCWorld}
-    (hv : v.ConsistentWith (DP.D n)) : v.ValuesAt Y (v.payout φ) := by
-  have hlink := hY n v hv
+    (hY : Y.IsIndicator φ DP) {v : PCWorld}
+    (hv : v.ConsistentWithTheory DP) : v.ValuesAt Y (v.payout φ) := by
+  have hlink := hY v hv
   by_cases hφ : v.Holds φ
   · rw [PCWorld.payout, if_pos hφ]
     refine ⟨by norm_num, by norm_num, fun r => ?_⟩
@@ -378,5 +386,87 @@ lemma LUV.IsIndicator.valuesAt {Y : LUV} {φ : Sentence} {DP : DeductiveProcess}
       · exact hhi (le_of_not_gt hr1)
 
 #print axioms LUV.IsIndicator.valuesAt
+
+/-! #### Non-vacuity of `LUV.IsIndicator` (kind `N+`)
+
+The class is inhabited by a *non-degenerate* indicator: thresholds that are not the
+sentence `φ` itself, linked to it only by an equivalence the deductive process reveals.
+This is the paper's `1(φ)` situation, and it is exactly what the stage-quantified reading
+of `IsIndicator` excluded — the witness below fails the stage form at `n = 0` (`D 0` is
+empty, so a day-`0` plausible world may set `atom 1` freely) while satisfying the
+completed-theory form the paper's `app:ei` argument uses. -/
+
+/-- The equivalence `atom 0 ↔ atom 1` the witness process reveals. -/
+def indicatorWitnessLink : Sentence :=
+  ((LO.Propositional.Formula.atom 0).imp (LO.Propositional.Formula.atom 1)).and
+    ((LO.Propositional.Formula.atom 1).imp (LO.Propositional.Formula.atom 0))
+
+/-- The revealing process for the indicator witness: from day `1` on, the theory asserts
+`atom 0 ↔ atom 1`; day `0` asserts nothing. -/
+def indicatorWitnessDP : DeductiveProcess where
+  D := fun n => if n = 0 then ∅ else {indicatorWitnessLink}
+  mono := by
+    intro n
+    rcases Nat.eq_zero_or_pos n with rfl | hn
+    · simp
+    · have h1 : n ≠ 0 := by omega
+      simp [h1]
+
+/-- The witness LUV: thresholds below `0` are a tautology, thresholds in `[0,1)` are the
+atom `1`, thresholds at `≥ 1` are `⊥`.  Note the thresholds mention `atom 1`, never the
+indicated sentence `atom 0`. -/
+def indicatorWitnessLUV : LUV where
+  gt := fun r =>
+    if r < 0 then (LO.Propositional.Formula.falsum).imp LO.Propositional.Formula.falsum
+    else if r < 1 then LO.Propositional.Formula.atom 1
+    else LO.Propositional.Formula.falsum
+
+/-- **Non-vacuity for `LUV.IsIndicator` (kind `N+`).**  The witness really is an indicator
+family for `atom 0` over `indicatorWitnessDP`, with thresholds distinct from the indicated
+sentence. -/
+lemma indicatorWitness_isIndicator :
+    indicatorWitnessLUV.IsIndicator (LO.Propositional.Formula.atom 0) indicatorWitnessDP := by
+  intro v hv r
+  have hmem : indicatorWitnessLink ∈ indicatorWitnessDP.D 1 := by
+    simp [indicatorWitnessDP]
+  have hlink := hv 1 _ hmem
+  simp only [indicatorWitnessLink, PCWorld.Holds,
+    LO.Propositional.Formula.Boolean.val] at hlink
+  have hiff : v.Holds (LO.Propositional.Formula.atom 1) ↔
+      v.Holds (LO.Propositional.Formula.atom 0) := by
+    simp only [PCWorld.Holds, LO.Propositional.Formula.Boolean.val] at hlink ⊢
+    exact ⟨hlink.2, hlink.1⟩
+  have hr0 : ((r : ℝ) < 0) ↔ r < 0 := by exact_mod_cast Iff.rfl
+  have hr1 : ((r : ℝ) < 1) ↔ r < 1 := by exact_mod_cast Iff.rfl
+  refine ⟨fun h => ?_, fun hlo hhi => ?_, fun h => ?_⟩
+  · simp [indicatorWitnessLUV, hr0.mp h, PCWorld.Holds,
+      LO.Propositional.Formula.Boolean.val]
+  · have hnneg : ¬ (r < 0) := by
+      intro hc; exact absurd (hr0.mpr hc) (not_lt.mpr hlo)
+    simp only [indicatorWitnessLUV, if_neg hnneg, if_pos (hr1.mp hhi)]
+    exact hiff
+  · have hn1 : ¬ (r < 1) := fun hc => absurd (hr1.mpr hc) (not_lt.mpr h)
+    have hn0 : ¬ (r < 0) := fun hc => hn1 (hc.trans (by norm_num))
+    simp [indicatorWitnessLUV, if_neg hn0, if_neg hn1, PCWorld.Holds,
+      LO.Propositional.Formula.Boolean.val]
+
+#print axioms indicatorWitness_isIndicator
+
+/-- The stage-quantified reading — demanding the `[0,1)` equivalence already in
+`pcworlds(D n)` for *every* `n` — excludes the witness above, hence the paper's own
+`1(φ)`.  Recorded so the quantifier is not silently re-tightened. -/
+lemma indicatorWitness_not_stagewise :
+    ¬ ∀ n (v : PCWorld), v.ConsistentWith (indicatorWitnessDP.D n) → ∀ r : ℚ,
+      0 ≤ (r : ℝ) → (r : ℝ) < 1 →
+        (v.Holds (indicatorWitnessLUV.gt r) ↔
+          v.Holds (LO.Propositional.Formula.atom 0)) := by
+  intro h
+  have hv : (show PCWorld from fun i => i = 1).ConsistentWith (indicatorWitnessDP.D 0) := by
+    simp [indicatorWitnessDP, PCWorld.ConsistentWith]
+  have := h 0 _ hv 0 (by norm_num) (by norm_num)
+  simp [indicatorWitnessLUV, PCWorld.Holds,
+    LO.Propositional.Formula.Boolean.val] at this
+
+#print axioms indicatorWitness_not_stagewise
 
 end LogicalInduction

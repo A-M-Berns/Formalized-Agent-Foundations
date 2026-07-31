@@ -6,7 +6,7 @@ the expectation-level consequences of affine provability induction: expectations
 indicators, linearity of expectation, and expectation provability induction (in `≥`, `≤`
 and `=` forms).
 -/
-import LogicalInduction.Properties.AffineProvability
+import LogicalInduction.Properties.AffineCoherence
 
 namespace LogicalInduction
 
@@ -77,54 +77,6 @@ def indicatorAffine (Y : LUV) (φ : Sentence) (k : ℕ) : AffineCombination wher
       (.const (1 / (k : ℚ)), Y.gt ((j : ℚ) / (k : ℚ)))
     else (.const (-1), φ))
 
-noncomputable def indicatorAffine_polySequence (Y : LUV) (φ : Sentence)
-    (hcode : Y.RpnThresholdCodes) :
-    AffineCombination.PolySequence (Y.indicatorAffine φ) := by
-  let cinv := Classical.choose encode_inv_nat_polyFueled
-  have hinv := Classical.choose_spec encode_inv_nat_polyFueled
-  have htest := subc_polyFueled.comp (PolyFueled.left.pair PolyFueled.right)
-  have hInvSeg : RpnSpliceStream (fun z => (EF.const (1 / (z.unpair.1 : ℚ))).serialize) :=
-    RpnSpliceStream.serialize_const_comp
-      ⟨cinv.comp Nat.Partrec.Code.left, hinv.comp PolyFueled.left⟩
-  have hNegSeg : RpnSpliceStream (fun _ => (EF.const (-1)).serialize) :=
-    RpnSpliceStream.serialize_const (-1)
-  have hconst : RpnSentenceCodes (fun _ : ℕ => φ) :=
-    RpnSentenceCodes.ofPolySentenceCodes ⟨_, PolyFueled.const (Encodable.encode φ)⟩
-  have hsentence : RpnSentenceCodes (fun z => if z.unpair.2 < z.unpair.1 then
-      Y.gt ((z.unpair.2 : ℚ) / (z.unpair.1 : ℚ)) else φ) := by
-    refine (RpnSentenceCodes.ifZero hconst hcode htest).of_eq (fun z => ?_)
-    simp only [Nat.unpair_pair]
-    by_cases hj : z.unpair.2 < z.unpair.1
-    · rw [if_pos hj, if_neg (by omega)]
-    · rw [if_neg hj, if_pos (by omega)]
-  exact {
-    termCount := fun n => n + 1
-    coefficient := fun z => if z.unpair.2 < z.unpair.1
-      then .const (1 / (z.unpair.1 : ℚ)) else .const (-1)
-    sentence := fun z => if z.unpair.2 < z.unpair.1
-      then Y.gt ((z.unpair.2 : ℚ) / (z.unpair.1 : ℚ)) else φ
-    termCount_poly := ⟨_, PolyFueled.id.succ_comp⟩
-    const_poly := RpnSpliceStream.serialize_const 0
-    coefficient_poly := RpnSpliceStream.of_eq (RpnSpliceStream.ifZero hNegSeg hInvSeg htest) (by
-      intro z
-      simp only [Nat.unpair_pair]
-      by_cases hj : z.unpair.2 < z.unpair.1
-      · rw [if_pos hj, if_neg (by omega)]
-      · rw [if_neg hj, if_pos (by omega)])
-    sentence_poly := hsentence
-    terms_eq := by
-      intro n
-      simp only [indicatorAffine]
-      apply List.map_congr_left
-      intro j hj
-      simp only [Nat.unpair_pair]
-      split <;> rfl
-    const_rank := by intro n; simp [indicatorAffine]
-    coefficient_rank := by intro n j hj; split <;> simp [EF.rank]
-    const_closed := by intro n ρ V; simp [indicatorAffine]
-    coefficient_closed := by intro z ρ V; split <;> simp [EF.denoteWith]
-  }
-
 lemma indicatorAffine_terms (Y : LUV) (φ : Sentence) (k : ℕ) :
     (Y.indicatorAffine φ k).terms =
       (Y.expectAffine k).terms ++ [(EF.const (-1), φ)] := by
@@ -157,6 +109,88 @@ lemma indicatorAffine_value (Y : LUV) (φ : Sentence) (P : History)
   simp only [indicatorAffine, expectAffine, EF.denote_const, List.sum_singleton,
     Rat.cast_neg, Rat.cast_one] at hbase ⊢
   linarith
+
+lemma indicatorAffine_magnitude_le_two (Y : LUV) (φ : Sentence) (P : History) (k : ℕ) :
+    (Y.indicatorAffine φ k).magnitude P ≤ 2 := by
+  have hbase := Y.expectAffine_magnitude_le_one P k
+  rw [AffineCombination.magnitude, indicatorAffine_terms, List.map_append, List.sum_append]
+  rw [AffineCombination.magnitude] at hbase
+  simp only [List.map_singleton, List.sum_singleton, EF.denote_const, Rat.cast_neg,
+    Rat.cast_one, abs_neg, abs_one]
+  linarith
+
+/-! ### Varying indicator families
+
+`thm:ei` is stated in the paper for an **ec sequence** of sentences `⟨φ⟩`, so the affine
+family it needs is indexed by the day: at day `n`, the precision-`n+1` discrepancy between
+`𝔼ₙ(Yₙ)` and `Pₙ(φₙ)`.  The constant case is the `Y n = Y`, `φ n = φ` instance. -/
+
+/-- Day-`n` indicator discrepancy of a varying indicator family. -/
+def indicatorAffineSeq (Y : ℕ → LUV) (φ : ℕ → Sentence) (n : ℕ) : AffineCombination :=
+  (Y n).indicatorAffine (φ n) (n + 1)
+
+lemma indicatorAffineSeq_price (Y : ℕ → LUV) (φ : ℕ → Sentence) (P : History) (n : ℕ) :
+    (indicatorAffineSeq Y φ n).price P n = (Y n).expect P n - P n (φ n) :=
+  indicatorAffine_price _ _ P n
+
+lemma indicatorAffineSeq_value (Y : ℕ → LUV) (φ : ℕ → Sentence) (P : History)
+    (w : Valuation) (n : ℕ) :
+    (indicatorAffineSeq Y φ n).value P w = (Y n).expectApprox w (n + 1) - w (φ n) :=
+  indicatorAffine_value _ _ P w (n + 1)
+
+noncomputable def indicatorAffineSeq_polySequence (Y : ℕ → LUV) (φ : ℕ → Sentence)
+    (hY : LUV.RpnThresholdCodeSeq Y) (hφ : RpnSentenceCodes φ) :
+    AffineCombination.PolySequence (indicatorAffineSeq Y φ) := by
+  let cinv := Classical.choose encode_inv_nat_polyFueled
+  have hinv := Classical.choose_spec encode_inv_nat_polyFueled
+  have htest := subc_polyFueled.comp
+    (PolyFueled.left.succ_comp.pair PolyFueled.right)
+  have hInvSeg : RpnSpliceStream
+      (fun z => (EF.const (1 / ((z.unpair.1 + 1 : ℕ) : ℚ))).serialize) :=
+    RpnSpliceStream.serialize_const_comp
+      ⟨cinv.comp (Nat.Partrec.Code.succ.comp Nat.Partrec.Code.left),
+        hinv.comp PolyFueled.left.succ_comp⟩
+  have hNegSeg : RpnSpliceStream (fun _ : ℕ => (EF.const (-1)).serialize) :=
+    RpnSpliceStream.serialize_const (-1)
+  have hthr : RpnSentenceCodes (fun z => (Y z.unpair.1).gt
+      ((z.unpair.2 : ℚ) / ((z.unpair.1 + 1 : ℕ) : ℚ))) :=
+    (hY.comp (PolyFueled.left.pair
+      (PolyFueled.left.succ_comp.pair PolyFueled.right))).of_eq (fun z => by simp)
+  have hsen : RpnSentenceCodes (fun z => φ z.unpair.1) := hφ.comp PolyFueled.left
+  exact {
+    termCount := fun n => n + 2
+    coefficient := fun z => if z.unpair.2 < z.unpair.1 + 1
+      then .const (1 / ((z.unpair.1 + 1 : ℕ) : ℚ)) else .const (-1)
+    sentence := fun z => if z.unpair.2 < z.unpair.1 + 1
+      then (Y z.unpair.1).gt ((z.unpair.2 : ℚ) / ((z.unpair.1 + 1 : ℕ) : ℚ))
+      else φ z.unpair.1
+    termCount_poly := ⟨_, PolyFueled.id.succ_comp.succ_comp⟩
+    const_poly := RpnSpliceStream.serialize_const 0
+    coefficient_poly := RpnSpliceStream.of_eq
+      (RpnSpliceStream.ifZero hNegSeg hInvSeg htest) (by
+        intro z
+        simp only [Nat.unpair_pair]
+        by_cases hj : z.unpair.2 < z.unpair.1 + 1
+        · rw [if_pos hj, if_neg (by omega)]
+        · rw [if_neg hj, if_pos (by omega)])
+    sentence_poly := (RpnSentenceCodes.ifZero hsen hthr htest).of_eq (by
+      intro z
+      simp only [Nat.unpair_pair]
+      by_cases hj : z.unpair.2 < z.unpair.1 + 1
+      · rw [if_pos hj, if_neg (by omega)]
+      · rw [if_neg hj, if_pos (by omega)])
+    terms_eq := by
+      intro n
+      simp only [indicatorAffineSeq, indicatorAffine]
+      apply List.map_congr_left
+      intro j hj
+      simp only [Nat.unpair_pair]
+      split <;> rfl
+    const_rank := by intro n; simp [indicatorAffineSeq, indicatorAffine]
+    coefficient_rank := by intro n j hj; split <;> simp [EF.rank]
+    const_closed := by intro n ρ V; simp [indicatorAffineSeq, indicatorAffine]
+    coefficient_closed := by intro z ρ V; split <;> simp [EF.denoteWith]
+  }
 
 /-- The affine discrepancy witnessing linearity of expectation, at precision `k`. -/
 def linearityAffine (a b : ℚ) (X Y Z : LUV) (k : ℕ) : AffineCombination where
@@ -347,16 +381,33 @@ lemma linearityAffine_value (a b : ℚ) (X Y Z : LUV) (P : History)
 
 end LUV
 
-/-- **Expectations of indicators** (`thm:ei`).
+/-- **Expectations of indicators** (`thm:ei`).  For an efficiently computable sequence of
+sentences `⟨φ⟩` and an indicator family `Yₙ` for `φₙ` (the paper's `1(φₙ)`, rendered
+relationally over `cworlds(Θ)` by `LUV.IsIndicator`), the day-`n` expectation of the
+indicator tracks the day-`n` price of the sentence: `𝔼ₙ(1(φₙ)) ≈ₙ Pₙ(φₙ)`.
+
+The sequence — not a fixed sentence — is the paper's statement (tex:1719); the constant
+case is the instance `φ n = φ`, `Y n = Y`.
 Paper node: `thm:ei` -/
 theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (φ : Sentence) (Y : LUV) (hcode : Y.RpnThresholdCodes)
+    [IsLogicalInductor P DP] (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (Y : ℕ → LUV) (hcode : LUV.RpnThresholdCodeSeq Y)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hY : Y.IsIndicator φ DP) :
-    AsympEq (Y.expectSeq P) (fun n => P n φ) := by
+    (hY : ∀ n, (Y n).IsIndicator (φ n) DP) :
+    AsympEq (fun n => (Y n).expect P n) (fun n => P n (φ n)) := by
+  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
+    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
+  have hmagn : ∀ n, (LUV.indicatorAffineSeq Y φ n).magnitude P ≤ 2 :=
+    fun n => LUV.indicatorAffine_magnitude_le_two _ _ P _
+  have hbounded : BoundedAffinePrices (LUV.indicatorAffineSeq Y φ) P :=
+    ⟨2, by norm_num, fun n m =>
+      ((LUV.indicatorAffineSeq Y φ n).abs_price_le_l1Norm P m (fun ψ => hP m ψ)).trans (by
+        simp only [AffineCombination.l1Norm, LUV.indicatorAffineSeq, LUV.indicatorAffine,
+          EF.denote_const, Rat.cast_zero, abs_zero, zero_add]
+        exact hmagn n)⟩
   have hsemantic : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld,
-      v.ConsistentWith (DP.D n) →
-        |(Y.indicatorAffine φ (n + 1)).value P v.payout| ≤ ε := by
+      v.ConsistentWithTheory DP →
+        |(LUV.indicatorAffineSeq Y φ n).value P v.payout| ≤ ε := by
     intro ε hε
     obtain ⟨N, hN⟩ := exists_nat_gt (1 / ε)
     refine Filter.eventually_atTop.mpr ⟨N, fun n hnlarge v hv => ?_⟩
@@ -367,17 +418,12 @@ theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
       rw [div_lt_iff₀ hε] at hNn
       rw [div_lt_iff₀ hnR]
       nlinarith
-    have hnear := (hY.valuesAt hv).expectApprox_near n.succ_pos
-    rw [LUV.indicatorAffine_value]
+    have hnear := ((hY n).valuesAt hv).expectApprox_near n.succ_pos
+    rw [LUV.indicatorAffineSeq_value]
     exact hnear.trans hsmall.le
-  have hzero := ((Y.indicatorAffine_polySequence φ hcode).shift
-      (fun n => by simp [LUV.indicatorAffine])
-      (fun n p hp => by
-        simp only [LUV.indicatorAffine, List.mem_map] at hp
-        obtain ⟨j, _, rfl⟩ := hp
-        split <;> simp [EF.rank])).affine_tendsto_zero
-    P DP hcons hsemantic
-  simpa only [LUV.indicatorAffine_price, LUV.expectSeq, AsympEq, sub_zero] using hzero
+  have hzero := (LUV.indicatorAffineSeq_polySequence Y φ hcode
+    hφ).affine_provind_theory_tendsto_zero P DP hbounded ⟨2, hmagn⟩ hcons hsemantic
+  simpa only [LUV.indicatorAffineSeq_price, AsympEq, sub_zero] using hzero
 
 #print axioms lic_expectation_indicator
 
