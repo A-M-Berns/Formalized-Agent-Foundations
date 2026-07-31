@@ -1917,7 +1917,7 @@ lemma dusTrader_rpnSpliceStream
       dusSentence B q.unpair.1)]) := by
     refine RpnSpliceStream.of_eq (hscaled.append hframe) ?_
     intro q
-    simp [serializeTrades, List.append_assoc]
+    simp [serializeTrades]
   have hzero : RpnSpliceStream (fun _ : ℕ ↦ serializeTrades []) :=
     RpnSpliceStream.ofTransparent
       (PolySegStream.ofTokenStream PolyTokenStream.trades_nil)

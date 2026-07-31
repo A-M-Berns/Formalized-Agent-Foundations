@@ -9,16 +9,15 @@ is formalized, named after its paper label, and build-audited. How strong each o
 
 | | count | what it means |
 |---|---:|---|
-| **paper strength** | 39 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
+| **paper strength** | 41 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
 | **qualified** | 12 | proved with one explicitly named representation interface or class restriction retained |
-| **not yet witnessed** | 2 | proved, but from a premise that currently has no inhabitant — see below |
 
 Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
 machine-checked against the endpoint inventory so a node cannot ship without a strength
 call.
 
-Separately, and beyond what the paper claims: **19 of the 39 are also instantiated over
+Separately, and beyond what the paper claims: **21 of the 41 are also instantiated over
 the concrete inductor constructed here**, so they hold of a specific algorithm rather
 than of a hypothetical one. The paper states no such theorems; these are a
 strengthening, not a different degree of faithfulness.
@@ -56,29 +55,32 @@ inductor wherever the model permits, yielding `_unconditional` and `_closed` end
 with no hypotheses beyond the statement's own data; where a residual interface remains,
 the per-node table says which.
 
-## Two nodes are currently vacuous — domination of the universal semimeasure
+## Domination of the universal semimeasure — how it is witnessed
 
-`thm:dus` and `thm:strict` are proved, but from a premise we have since proved
-**uninhabited**, so as they stand they carry no content. This is disclosed here rather
-than buried in the per-node table because it is the most serious defect currently on the
-surface.
+`thm:dus` and `thm:strict` quantify over a *presentation* of finite bit prefixes as
+sentences: an independent atom family, an enumeration of all finite bit strings, and an
+efficient naming of the corresponding prefix conjunctions. Both nodes are now closed with
+**no caller input** (`lic_domination_everyLowerSemicomputable_unconditional`,
+`lic_strict_domination_universalSemimeasure_unconditional`), because that presentation is
+constructed: `ordinaryBitPrefixSentences`.
 
-The cause is a metering mismatch of our own making. `BitPrefixSentences.prefix_codes`
-requires `PolySentenceCodes` — *whole-value* metering, where the emitted Gödel **number**
-must be polynomially bounded in the enumeration index. But the sentences it meters are
-prefix conjunctions of unbounded depth: a binary connective costs two nested `Nat.pair`s
-(a fourth power) while a `List Bool` cons costs one (a square), so the sentence's code is
-about `2^(4^m)` at an index of about `5^(2^m)`. No polynomial closes that gap, for any
-atom family over any deductive process — `bitPrefixCodeComputation_isEmpty`
-(`Construction/Witnesses/BitPrefixSyntax.lean`) proves it.
+One point on the surface is worth stating plainly, since it constrains the interface.
+`BitPrefixSentences.prefix_codes` is metered in **symbols**, not in the Gödel *value* of the
+sentence code. That is forced, and the forcing is proved rather than asserted: a binary
+connective costs two nested `Nat.pair`s (a fourth power) while a `List Bool` cons costs one
+(a square), so the prefix conjunction's code is about `2^(4^m)` at an enumeration index of
+about `5^(2^m)`, and no polynomial closes that gap for any atom family over any deductive
+process (`not_polySentenceCodes_bitPrefixSentence`). Symbol metering — the repo's
+`RpnSentenceCodes`, built for exactly this pathology — is also the paper's own cost measure
+at `def:ec`, and the prefix conjunction's Polish run is `Θ(m)` small tokens.
 
-The repair is known and the tooling for it already exists in this repo: switch the field
-to the symbol-metered `RpnSentenceCodes` — the class built for exactly this pathology,
-whose own docstring names it — since the prefix conjunction's Polish form is `Θ(m)` small
-tokens. That also requires indexing the family length-lex rather than by list code (so the
-emitter never has to invert an exponential-valued index) and migrating the trader's
-emission chain onto the `RpnSpliceStream` mirrors. Until that lands, treat these two nodes
-as unproved.
+The emitter that discharges it (`BitChain`) walks the enumeration index's own `Nat.pair`
+chain: two fuel-clocked `prec` scans recover the string's length and a *global* head-validity
+flag, and a variable-width concatenation emits two- or four-token literal blocks. The
+validity scan is a correctness obligation, not a cost one — `Encodable Bool` sends every code
+`≥ 2` to `none` and the list decoder is applicative, so one malformed head collapses the whole
+string to `[]` (the sentence becomes `⊤`) rather than truncating it, and a position-local
+emitter would silently disagree with the enumeration on every malformed index.
 
 ## One upstream gap
 

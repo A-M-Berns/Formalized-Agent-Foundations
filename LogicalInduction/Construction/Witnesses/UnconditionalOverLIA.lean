@@ -2,6 +2,7 @@ import LogicalInduction.Construction.Witnesses.ComputationDP
 import LogicalInduction.Construction.Witnesses.BitPrefixSyntax
 import LogicalInduction.Construction.Witnesses.ConditioningCompiler
 import LogicalInduction.Construction.Witnesses.RpnConditioning
+import LogicalInduction.Construction.Witnesses.StrictSeparators
 import LogicalInduction.Construction.Witnesses.UniversalDovetailer
 
 /-!
@@ -47,41 +48,35 @@ The market / inductor / non-vacuity side is fully discharged — the inductor is
 constructed `LIA` over the (computable) empty process and `hworld` is trivial — so only the
 from-below approximation `A` and its threshold emission `emit` remain caller inputs.
 
-**Vacuous:** the hypothesis `C` is uninhabited — `bitPrefixCodeComputation_isEmpty`
-(`Construction/Witnesses/BitPrefixSyntax.lean`) proves that the whole-value code bound the
-literal prefix conjunction is asked for cannot hold.  The statement is true but empty, and so
-are the two `thm:dus` endpoints below, until that interface is repaired.
+The prefix-sentence presentation is the constructed `ordinaryBitPrefixSentences`, whose
+symbol-metered naming certificate is discharged by `ordinaryBitPrefixCodes`.
 Paper node: `thm:dus` -/
 theorem lic_domination_universalSemimeasure_unconditional
-    (C : BitPrefixCodeComputation ordinaryIndependentBitAtoms)
     {M : LowerSemicomputableContinuousSemimeasure}
-    (A : DUSApproximationPresentation M
-      (bitPrefixSentencesOfIndependentAtoms ordinaryIndependentBitAtoms C))
+    (A : DUSApproximationPresentation M ordinaryBitPrefixSentences)
     (emit : DUSThresholdEmission A) :
     ∃ K : ℝ, 0 < K ∧ ∀ σ,
       K * M.mass σ ≤ limitingBelief (liaHistory emptyBitDeductiveProcess)
         (bitPrefixSentence ordinaryIndependentBitAtoms.atom σ) :=
   haveI : IsLogicalInductor (liaHistory emptyBitDeductiveProcess) emptyBitDeductiveProcess :=
     LIA_is_logical_inductor emptyBitDeductiveProcess emptyBitDeductiveProcess_computable
-  lic_domination_universalSemimeasure_ofIndependentAtoms ordinaryIndependentBitAtoms C A emit
+  lic_domination_universalSemimeasure_ofIndependentAtoms ordinaryIndependentBitAtoms
+    ordinaryBitPrefixCodes A emit
     (liaHistory emptyBitDeductiveProcess)
     emptyBitDeductiveProcess_hworld
 
 /-- **`thm:dus` over the constructed dovetail, with no semimeasure input.**  `M` is
 `Construction/Witnesses/UniversalDovetailer.lean`'s explicit dovetail `M*`, and both the
 from-below approximation and its threshold emission are discharged there by the
-self-clamped stage table, so the only remaining caller input is the prefix-sentence code
-emitter `C` — which is **uninhabited** (`bitPrefixCodeComputation_isEmpty`), leaving this
-statement vacuous.
+self-clamped stage table, and the prefix-sentence naming certificate is discharged by
+`ordinaryBitPrefixCodes`, so **no caller input remains**.
 Paper node: `thm:dus` -/
-theorem lic_domination_dovetailSemimeasure_unconditional
-    (C : BitPrefixCodeComputation ordinaryIndependentBitAtoms) :
+theorem lic_domination_dovetailSemimeasure_unconditional :
     ∃ K : ℝ, 0 < K ∧ ∀ σ,
       K * Dovetail.universalMass σ ≤ limitingBelief (liaHistory emptyBitDeductiveProcess)
         (bitPrefixSentence ordinaryIndependentBitAtoms.atom σ) :=
-  lic_domination_universalSemimeasure_unconditional C
-    (Dovetail.dusApproximationPresentation
-      (bitPrefixSentencesOfIndependentAtoms ordinaryIndependentBitAtoms C) (fun _ ↦ rfl))
+  lic_domination_universalSemimeasure_unconditional
+    (Dovetail.dusApproximationPresentation ordinaryBitPrefixSentences (fun _ ↦ rfl))
     (Dovetail.dusThresholdEmission _ _)
 
 /-- **The paper's actual `thm:dus` conclusion, unconditional on the semimeasure side.**
@@ -89,21 +84,36 @@ Because the dovetail is *universal*, the constructed market's limiting beliefs d
 **every** lower-semicomputable continuous semimeasure, with a constant assembled from the
 dovetail weight of that semimeasure's own approximation program.
 
-**Vacuous** for the same reason as the two statements above: `C` is uninhabited.
 Paper node: `thm:dus` -/
 theorem lic_domination_everyLowerSemicomputable_unconditional
-    (C : BitPrefixCodeComputation ordinaryIndependentBitAtoms)
     (ν : LowerSemicomputableContinuousSemimeasure) :
     ∃ K : ℝ, 0 < K ∧ ∀ σ,
       K * ν.mass σ ≤ limitingBelief (liaHistory emptyBitDeductiveProcess)
         (bitPrefixSentence ordinaryIndependentBitAtoms.atom σ) := by
-  obtain ⟨K, hK, hbelief⟩ := lic_domination_dovetailSemimeasure_unconditional C
+  obtain ⟨K, hK, hbelief⟩ := lic_domination_dovetailSemimeasure_unconditional
   obtain ⟨c, hc, hdom⟩ := Dovetail.universalMass_dominates ν
   refine ⟨K * c, mul_pos hK hc, fun σ ↦ ?_⟩
   calc K * c * ν.mass σ = K * (c * ν.mass σ) := by ring
     _ ≤ K * Dovetail.universalMass σ := by
         exact mul_le_mul_of_nonneg_left (hdom σ) hK.le
     _ ≤ _ := hbelief σ
+
+/-- **`thm:strict` over the constructed dovetail, with no caller input.**  The separator
+argument is `strictSeparatorPresentationOfKleene`, its atom-code hypothesis is
+`ordinaryAtom_code_computable`, and the prefix-sentence presentation is the constructed
+`ordinaryBitPrefixSentences` — so the constructed market's limiting beliefs *strictly*
+dominate the dovetail: no constant multiple of the universal mass bounds them.
+Paper node: `thm:strict` -/
+theorem lic_strict_domination_universalSemimeasure_unconditional :
+    ∀ C : ℝ, 0 < C → ∃ σ : List Bool,
+      limitingBelief (liaHistory emptyBitDeductiveProcess)
+        (bitPrefixSentence ordinaryIndependentBitAtoms.atom σ) >
+          C * Dovetail.universalSemimeasure.mass σ :=
+  haveI : IsLogicalInductor (liaHistory emptyBitDeductiveProcess) emptyBitDeductiveProcess :=
+    LIA_is_logical_inductor emptyBitDeductiveProcess emptyBitDeductiveProcess_computable
+  lic_strict_domination_universalSemimeasure_ofAtomCodes
+    (M := Dovetail.universalSemimeasure) (B := ordinaryBitPrefixSentences)
+    ordinaryAtom_code_computable (liaHistory emptyBitDeductiveProcess)
 
 /-! ## Conditioning over the constructed `LIA` -/
 
@@ -168,6 +178,7 @@ theorem lic_conditioned_growing_unconditional
 #print axioms lic_domination_universalSemimeasure_unconditional
 #print axioms lic_domination_dovetailSemimeasure_unconditional
 #print axioms lic_domination_everyLowerSemicomputable_unconditional
+#print axioms lic_strict_domination_universalSemimeasure_unconditional
 #print axioms lic_conditioned_ofCompiler_unconditional
 #print axioms lic_conditioned_fixed_unconditional
 #print axioms lic_conditioned_growing_unconditional

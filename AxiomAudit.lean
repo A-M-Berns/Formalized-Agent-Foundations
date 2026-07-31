@@ -334,12 +334,14 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   luv_wubexp_ofComputation_unconditional
 
 -- Construction/Witnesses/BitPrefixSyntax.lean — the prefix-sentence family over
--- independent bit atoms, and the semimeasure-domination endpoint it feeds.  Both are
--- **vacuous**: `bitPrefixCodeComputation_isEmpty` proves the whole-value emission certificate
--- they consume is uninhabited (the literal conjunction's Gödel code outruns every polynomial
--- in its own enumeration index).  Repair routes are recorded in that file's docstring.
+-- independent bit atoms, its symbol-metered naming emitter, and the semimeasure-domination
+-- endpoint they feed.  `ordinaryBitPrefixSentences` is the **non-vacuity witness** for
+-- `BitPrefixSentences`; `not_polySentenceCodes_bitPrefixSentence` records why that field must
+-- be metered in symbols rather than in the pair-code value.
 #assert_axioms_clean
-  bitPrefixSentencesOfIndependentAtoms lic_domination_universalSemimeasure_ofIndependentAtoms
+  not_polySentenceCodes_bitPrefixSentence ordinaryBitPrefixCodes
+  bitPrefixSentencesOfIndependentAtoms ordinaryBitPrefixSentences
+  lic_domination_universalSemimeasure_ofIndependentAtoms
 
 -- Construction/Witnesses/UniversalDovetailer.lean — the universal continuous semimeasure.
 -- The universal continuous semimeasure is fully constructed: the semimeasure laws, the
@@ -439,6 +441,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_domination_universalSemimeasure_unconditional
   lic_domination_dovetailSemimeasure_unconditional
   lic_domination_everyLowerSemicomputable_unconditional
+  lic_strict_domination_universalSemimeasure_unconditional
   lic_conditioned_ofCompiler_unconditional
   lic_conditioned_fixed_unconditional
   lic_conditioned_growing_unconditional
@@ -555,8 +558,10 @@ deliberately. -/
   toAffineQuotePortfolio future_coherent
 #assert_fields AffineQuotePortfolio
   family poly scale scale_pos current_price bounded magnitude_le_one
-#assert_fields BitPrefixCodeComputation
-  code code_poly
+-- Tier-2 field change (2026-07-30): `prefix_codes` moved from the whole-value
+-- `PolySentenceCodes` to the symbol-metered `RpnSentenceCodes`.  `#assert_fields` freezes
+-- field *names* only, so the type change is recorded here explicitly; it is what makes the
+-- structure inhabitable (`ordinaryBitPrefixSentences`).
 #assert_fields BitPrefixSentences
   atom prefixSentence enumeration enumeration_covers prefix_codes holds_prefix realizable
 #assert_fields BooleanQuoteCode
