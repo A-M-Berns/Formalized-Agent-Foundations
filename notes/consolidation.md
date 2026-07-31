@@ -178,6 +178,22 @@ Documentation notes: A) i'd like to split up the README into one overall README 
   `interface` row is gone, so every paper label is covered by a named endpoint.
 
 **Open:**
+- **Standing audit lens: INHABITATION.** The two adversarial lenses used so far
+  (faithfulness — does the statement match the paper; integrity — is the proof honest)
+  both compare a statement to something *outside* the repo, and neither asks the question
+  that produced the worst defect found to date: **does this premise have an inhabitant?**
+  On 2026-07-30 that question found `BitPrefixCodeComputation` provably uninhabited, making
+  `thm:dus`'s and `thm:strict`'s endpoints vacuously true — a defect that had survived every
+  prior audit, the codex cross-check, and the whole fix wave, because a vacuous premise
+  looks *stronger*, not weaker, to a faithfulness reviewer. The same question also showed
+  `LUVCombinationSyntax` has no constructed inhabitant.
+  Make it a third lens, run over boundary structures rather than theorems, asking per field:
+  (i) is there a constructed inhabitant in-repo, (ii) if not, can one exist — try to prove
+  `IsEmpty`, and (iii) is the metering right for the objects (whole-value metering is
+  unsatisfiable whenever the index is asymptotically smaller than the code, i.e. for any
+  unbounded-depth family indexed compactly). Also propagate this to the orchestration
+  skill's audit fan-out.
+
 - **Standing check: grep every AxiomAudit inventory constructor for zero call sites.** Three
   times now a discharge constructor has been built, proved, audited — and never wired into
   the endpoint whose hypothesis it discharges: `PatientSettlementClock.ofComputations`
