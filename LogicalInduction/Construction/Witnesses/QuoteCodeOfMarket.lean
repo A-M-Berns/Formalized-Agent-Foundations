@@ -740,12 +740,23 @@ theorem lic_self_trust_closed
 
 /-! ## Part F — the weighted conditional (`thm:ccee`), indicator-source closed form
 
-A closed form for fully general caller sources is out of reach for a structural reason:
-the scaled LUV's mesh threshold must contain the sentence `X.gt (r / w (f n))` — a finite
-Boolean combination of `X` thresholds only jumps at the thresholds it uses — so its
-emitter would have to *compute* `w (f n)` within fuel polynomial in `n`, exactly what
-`def:deferralfunc` withholds (the paper's trader likewise never evaluates `w_{f(n)}` on
-day `n`; it names it inside quoted syntax).  The closed instance below is therefore the
+A closed form for fully general caller sources is out of reach **under exact reflection**,
+for a structural reason.  The scaled LUV's threshold must contain `X.gt (r / w (f n))`, so
+its emitter would have to produce the value `w (f n)`.  Two independent barriers block
+that: the weight is only P-generable, so its value at *any* index is unavailable to an
+emitter (deferral compounds this — `def:deferralfunc` bounds the clock by a polynomial in
+`f n`, which has no polynomial bound in `n`); and even granting the value, `PolyFueled`
+bounds the emitted output, while the block would have to spell the denominator of
+`r / w (f n)`, whose size is not polynomially bounded in `n`.
+
+The exactness caveat is load-bearing rather than decorative.  A *finite mesh* over the
+deferred weight's own threshold atoms is emittable and values the product to within `1/N`,
+so relaxing `left_reflected` to a vanishing slack reopens the general-source case; an
+exact product instead needs the infinite disjunction `⋁_{s∈ℚ} (⌜w > s⌝ ⋏ ⌜X > r/s⌝)` —
+the existential this propositional substrate lacks.  Both routes are recorded in
+`LogicalInduction/README.md`'s future-work list.  Note also that any exact scaled-threshold
+rendering needs `w (f n) > 0`, which the paper's `w ∈ [0,1]` does not supply; the indicator
+collapse carries the zero case for free.  The closed instance below is therefore the
 paper's motivating conditional-probability case: the source is a relational indicator
 family, the left quoted product is the `thm:st` indicator-product over a quote code
 *naming* the `w ∘ f` program, and the right quote names the market's own deferred

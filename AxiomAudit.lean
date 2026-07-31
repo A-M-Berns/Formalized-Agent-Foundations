@@ -499,8 +499,10 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- `ccee`: the weighted conditional, indicator-source closed form.  The
 -- deferred-weight quote code names the `w ∘ f` program (deferral costs nothing at
 -- emission), and `PCWorld.ValuesAt.eq` links the caller's relational source value to
--- the payout.  Fully general caller sources are impossible in the token model (the
--- scaled threshold would need `w (f n)` computed at emission time); see Part F header.
+-- the payout.  Fully general caller sources are out of reach *under exact reflection*:
+-- the scaled threshold would need the value `w (f n)`, which is neither available to an
+-- emitter (P-generable, and deferred) nor polynomially sized.  A vanishing-slack mesh
+-- would reopen the case; see the Part F header and the README's future-work list.
 #assert_axioms_clean
   PCWorld.ValuesAt.eq
   theoremDeferredWeightQuoteCode
