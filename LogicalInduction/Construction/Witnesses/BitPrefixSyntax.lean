@@ -545,7 +545,7 @@ lemma rpn_conj_ofFn : ∀ (σ : List Bool) (off : ℕ),
       rw [key, List.conj_cons, rpn_and, ih (off + 1),
         show List.range (b :: τ).length = List.range (τ.length + 1) from rfl,
         List.range_succ_eq_map, List.flatMap_cons]
-      simp only [List.flatMap_map, Function.comp_def, List.getD_cons_zero,
+      simp only [List.flatMap_map, List.getD_cons_zero,
         List.getD_cons_succ, Nat.add_zero]
       rw [← rpn_bitPrefixLiteral off b]
       simp only [List.cons_append, List.append_assoc]
