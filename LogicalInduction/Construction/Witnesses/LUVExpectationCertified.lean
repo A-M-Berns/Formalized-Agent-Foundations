@@ -31,12 +31,19 @@ open LO.FirstOrder LO.FirstOrder.Arithmetic Filter Topology
 
 /-- **Combination-level expectation provability induction, `≤` form.**  A bounded LUV-combination
 sequence whose completed-theory value stays `≤ c` has diagonal expectation `≲ₙ c`.
+
+The representation premises are the paper's own: `hwv` says each completed world assigns *some*
+coherent value to every LUV of `Aₙ` (which for `W ∈ cworlds(Θ)` the paper's `sup` definition of
+`W(X)` supplies by construction), and `hdet` is `def:affthmval` — the *combination* takes the
+same value `truth n` in every completed world.  Neither demands a canonical per-LUV value fixed
+independently of the world.
 Paper node: `thm:expprovind` -/
 theorem lic_expect_combination_provind_le
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
-    (hexact : LUVCombination.ExactTheoryPresentation As DP)
-    (c : ℝ) (hdet : ∀ n, (As n).value P (hexact.value n) ≤ c)
+    (hwv : LUVCombination.WorldValued As DP)
+    {truth : ℕ → ℝ} (hdet0 : LUVCombination.DeterminedViaTheory As P DP truth)
+    (c : ℝ) (hdet : ∀ n, truth n ≤ c)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≲ₙ (fun _ => c) := by
@@ -58,13 +65,14 @@ theorem lic_expect_combination_provind_le
     filter_upwards [Filter.eventually_ge_atTop (max 1 N)] with n hn v hv
     have hn0 : 0 < n := by omega
     have hnR : (0 : ℝ) < n := by exact_mod_cast hn0
+    obtain ⟨ν, hν⟩ := hwv n v hv
+    have hvalue : (As n).value P ν = truth n := hdet0 n v ν hv hν
     have hnear : |((As n).meshAffine (n + 1)).value P v.payout -
-        (As n).value P (hexact.value n)| ≤ (As n).shareNorm P * (1 / (n : ℝ)) := by
+        (As n).value P ν| ≤ (As n).shareNorm P * (1 / (n : ℝ)) := by
       have hstep : (1 : ℝ) / ((n : ℝ) + 1) ≤ 1 / (n : ℝ) :=
         one_div_le_one_div_of_le hnR (by linarith)
       refine LE.le.trans ?_ (mul_le_mul_of_nonneg_left hstep ((As n).shareNorm_nonneg P))
-      simpa using (As n).meshAffine_value_near (k := n + 1) P v (hexact.value n)
-        n.succ_pos (hexact.valuesAt n v hv)
+      simpa using (As n).meshAffine_value_near (k := n + 1) P v ν n.succ_pos hν
     rw [abs_le] at hnear
     have hbound : (As n).shareNorm P * (1 / n) ≤ (b : ℝ) * (1 / n) :=
       mul_le_mul_of_nonneg_right (hshare n) (by positivity)
@@ -72,7 +80,7 @@ theorem lic_expect_combination_provind_le
       rw [mul_one_div, div_le_iff₀ hnR]
       nlinarith [(div_lt_iff₀ hε).mp (hN.trans_le
         (show ((N : ℕ) : ℝ) ≤ n by exact_mod_cast le_trans (le_max_right 1 N) hn))]
-    linarith [hnear.2, hdet n, hbound, hsmall]
+    linarith [hnear.2, hdet n, hbound, hsmall, hvalue]
   simpa only [LUVCombination.meshAffine_price_diagonal] using
     (h.poly.mesh_poly).affine_provind_theory_le_const P DP hbounded hmag hworld c hval
 
@@ -81,8 +89,9 @@ Paper node: `thm:expprovind` -/
 theorem lic_expect_combination_provind_ge
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
-    (hexact : LUVCombination.ExactTheoryPresentation As DP)
-    (c : ℝ) (hdet : ∀ n, c ≤ (As n).value P (hexact.value n))
+    (hwv : LUVCombination.WorldValued As DP)
+    {truth : ℕ → ℝ} (hdet0 : LUVCombination.DeterminedViaTheory As P DP truth)
+    (c : ℝ) (hdet : ∀ n, c ≤ truth n)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≳ₙ (fun _ => c) := by
@@ -104,13 +113,14 @@ theorem lic_expect_combination_provind_ge
     filter_upwards [Filter.eventually_ge_atTop (max 1 N)] with n hn v hv
     have hn0 : 0 < n := by omega
     have hnR : (0 : ℝ) < n := by exact_mod_cast hn0
+    obtain ⟨ν, hν⟩ := hwv n v hv
+    have hvalue : (As n).value P ν = truth n := hdet0 n v ν hv hν
     have hnear : |((As n).meshAffine (n + 1)).value P v.payout -
-        (As n).value P (hexact.value n)| ≤ (As n).shareNorm P * (1 / (n : ℝ)) := by
+        (As n).value P ν| ≤ (As n).shareNorm P * (1 / (n : ℝ)) := by
       have hstep : (1 : ℝ) / ((n : ℝ) + 1) ≤ 1 / (n : ℝ) :=
         one_div_le_one_div_of_le hnR (by linarith)
       refine LE.le.trans ?_ (mul_le_mul_of_nonneg_left hstep ((As n).shareNorm_nonneg P))
-      simpa using (As n).meshAffine_value_near (k := n + 1) P v (hexact.value n)
-        n.succ_pos (hexact.valuesAt n v hv)
+      simpa using (As n).meshAffine_value_near (k := n + 1) P v ν n.succ_pos hν
     rw [abs_le] at hnear
     have hbound : (As n).shareNorm P * (1 / n) ≤ (b : ℝ) * (1 / n) :=
       mul_le_mul_of_nonneg_right (hshare n) (by positivity)
@@ -118,7 +128,7 @@ theorem lic_expect_combination_provind_ge
       rw [mul_one_div, div_le_iff₀ hnR]
       nlinarith [(div_lt_iff₀ hε).mp (hN.trans_le
         (show ((N : ℕ) : ℝ) ≤ n by exact_mod_cast le_trans (le_max_right 1 N) hn))]
-    linarith [hnear.1, hdet n, hbound, hsmall]
+    linarith [hnear.1, hdet n, hbound, hsmall, hvalue]
   simpa only [LUVCombination.meshAffine_price_diagonal] using
     (h.poly.mesh_poly).affine_provind_theory_ge_const P DP hbounded hmag hworld c hval
 
@@ -127,14 +137,15 @@ Paper node: `thm:expprovind` -/
 theorem lic_expect_combination_provind_eq
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
-    (hexact : LUVCombination.ExactTheoryPresentation As DP)
-    (c : ℝ) (hdet : ∀ n, (As n).value P (hexact.value n) = c)
+    (hwv : LUVCombination.WorldValued As DP)
+    {truth : ℕ → ℝ} (hdet0 : LUVCombination.DeterminedViaTheory As P DP truth)
+    (c : ℝ) (hdet : ∀ n, truth n = c)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≈ₙ (fun _ => c) := by
   rw [asympEq_iff_asympLE_asympGE]
-  exact ⟨lic_expect_combination_provind_le h hexact c (fun n => (hdet n).le) b hshare hworld,
-    lic_expect_combination_provind_ge h hexact c (fun n => (hdet n).ge) b hshare hworld⟩
+  exact ⟨lic_expect_combination_provind_le h hwv hdet0 c (fun n => (hdet n).le) b hshare hworld,
+    lic_expect_combination_provind_ge h hwv hdet0 c (fun n => (hdet n).ge) b hshare hworld⟩
 
 /-- **Combination-level expectation provability induction, `= 0` form** (`thm:loe` substrate).
 The paper's own route to linearity (`app:loe`): apply `thm:expprovind` to the combination
@@ -143,12 +154,12 @@ Paper node: `thm:loe` -/
 theorem lic_expect_combination_provind_zero
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
-    (hexact : LUVCombination.ExactTheoryPresentation As DP)
-    (hdet0 : ∀ n, (As n).value P (hexact.value n) = 0)
+    (hwv : LUVCombination.WorldValued As DP)
+    (hdet0 : LUVCombination.DeterminedViaTheory As P DP (fun _ => 0))
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≈ₙ (fun _ => 0) :=
-  lic_expect_combination_provind_eq h hexact 0 hdet0 b hshare hworld
+  lic_expect_combination_provind_eq h hwv hdet0 0 (fun _ => rfl) b hshare hworld
 
 /-- The paper's linearity LUV-combination `aₙXₙ + bₙYₙ − Zₙ`. -/
 def linearityLUVComb (a b : ℕ → ℚ) (X Y Z : ℕ → LUV) (n : ℕ) : LUVCombination where
@@ -167,21 +178,23 @@ efficiently generated bounded rational sequences `a, b` and ec sequences of `[0,
 with `Θ ⊢ Zₙ = aₙXₙ + bₙYₙ` (encoded as the combination being valued `0`), the diagonal
 expectations are asymptotically linear.  Derived, as in the paper's own proof (`app:loe`), from
 `thm:expprovind` for the LUV-combination `aX+bY−Z`.  Efficiency (`BoundedSequence`) and
-representation (`ExactTheoryPresentation`, discharged from compact syntax in `LUVSyntax.lean`)
-enter as the disclosed hypotheses.
+representation (`WorldValued`, discharged from compact syntax in `LUVSyntax.lean` and from
+arithmetic in `LUVPresentation.lean`) enter as the disclosed hypotheses; `hdet0` is the paper's
+`Θ ⊢ Zₙ = aₙXₙ + bₙYₙ` in the determined-value form of `def:affthmval`.
 Paper node: `thm:loe` -/
 theorem lic_linearity_of_expectation_seq
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (a b : ℕ → ℚ) (X Y Z : ℕ → LUV)
     (h : LUVCombination.BoundedSequence (linearityLUVComb a b X Y Z) P)
-    (hexact : LUVCombination.ExactTheoryPresentation (linearityLUVComb a b X Y Z) DP)
-    (hdet0 : ∀ n, (linearityLUVComb a b X Y Z n).value P (hexact.value n) = 0)
+    (hwv : LUVCombination.WorldValued (linearityLUVComb a b X Y Z) DP)
+    (hdet0 : LUVCombination.DeterminedViaTheory
+      (linearityLUVComb a b X Y Z) P DP (fun _ => 0))
     (bnd : ℚ)
     (hshare : ∀ n, (linearityLUVComb a b X Y Z n).shareNorm P ≤ (bnd : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     AsympEq (fun n => (a n : ℝ) * (X n).expect P n + (b n : ℝ) * (Y n).expect P n)
       (fun n => (Z n).expect P n) := by
-  have hzero := lic_expect_combination_provind_zero h hexact hdet0 bnd hshare hworld
+  have hzero := lic_expect_combination_provind_zero h hwv hdet0 bnd hshare hworld
   unfold AsympEq at hzero ⊢
   have hfun : (fun n => (a n : ℝ) * (X n).expect P n + (b n : ℝ) * (Y n).expect P n
       - (Z n).expect P n)

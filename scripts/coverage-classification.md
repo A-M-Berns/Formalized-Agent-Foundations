@@ -71,7 +71,7 @@ or a conventional complexity class.  A row marked *complete* claims the paper st
 | thm:er | complete | unconditional over `LIA`; the expectation quote code is constructed via `expectQuote_computable`, leaving only the LUV family and its threshold codes |
 | thm:expcoh | conditional | `expcoh_ofSyntax` retains `WorldValued` + `ConvergencePresentation`, both paper-implied (`daily_value` is provably entailed by `WorldValued` via Cantor-space compactness) |
 | thm:exppolymax | conditional | `exppolymax_ofSyntax` retains only `WorldValued` (= paper `def:luv`); `exppolymax_arith` additionally discharges it for the certified class |
-| thm:expprovind | qualified | **fully unconditional for certified `dd:luv-arith`** (all three comparison forms); general LUV-combination forms retain the exact-theory presentation |
+| thm:expprovind | conditional | **fully unconditional for certified `dd:luv-arith`** (all three comparison forms); the general LUV-combination forms retain only `WorldValued` (= paper `def:luv`) plus `DeterminedViaTheory` (= paper `def:affthmval`), both paper premises |
 | thm:halts | complete | unconditional over `LIA` (Σ₁-sound `Θ ⊇ IΣ₁`) |
 | thm:ifp | qualified | efficiently-patchable perturbations only — the patch certificate is not inhabitable for every computable market; the paper's unrestricted statement has a recorded erratum (PE1) |
 | thm:incons | complete | unconditional over `LIA` (Σ₁-sound `Θ ⊇ IΣ₁`) |
@@ -79,7 +79,7 @@ or a conventional complexity class.  A row marked *complete* claims the paper st
 | thm:lex | conditional | propositional rendering over `[IsLogicalInductor]` |
 | thm:li | complete | computable finite-support belief-sequence form, including the paper's `def:belseq` emission conjunct (`exists_liaEntries_code`) |
 | thm:lia | complete | the central construction, kernel-clean; the sole premise is a computable deductive process |
-| thm:loe | qualified | varying-sequence linearity retains a world-valuation premise (exact-theory presentation for the combination form); fully unconditional for `dd:luv-arith` fixed indices |
+| thm:loe | conditional | varying-sequence linearity retains only `WorldValued` (= paper `def:luv`) and the `Θ ⊢ Zₙ = aₙXₙ + bₙYₙ` relation in `DeterminedViaTheory` form (= paper `def:affthmval`); fully unconditional for `dd:luv-arith` fixed indices |
 | thm:loops | complete | unconditional over `LIA` (Σ₁-sound `Θ ⊇ IΣ₁`) |
 | thm:lp | complete | public diagonal constructed from the market computation; unconditional over `LIA` |
 | thm:nd | conditional | the plausibility premise is the paper's own |
