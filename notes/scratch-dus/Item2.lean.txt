@@ -1,0 +1,67 @@
+import LogicalInduction.Construction.Witnesses.BoundedEvaluation
+import LogicalInduction.Properties.UniversalSemimeasure
+
+namespace LogicalInduction
+
+def bitStringEnumeration (i : ℕ) : List Bool :=
+  (Encodable.decode (α := List Bool) i).getD []
+
+/-- One step down a stock `List Bool` code chain. -/
+def tailC (c : ℕ) : ℕ := (c - 1).unpair.2
+
+/-- The head bit-code of a stock `List Bool` code chain. -/
+def headC (c : ℕ) : ℕ := (c - 1).unpair.1
+
+lemma tailC_lt {c : ℕ} (h : c ≠ 0) : tailC c < c := by
+  have h1 : (c - 1).unpair.2 ≤ c - 1 := Nat.unpair_right_le _
+  unfold tailC; omega
+
+/-- Number of chain steps before the code reaches `0`. -/
+def chainLen : ℕ → ℕ
+  | 0 => 0
+  | (c + 1) => chainLen (tailC (c + 1)) + 1
+decreasing_by exact tailC_lt (Nat.succ_ne_zero c)
+
+/-- Every head along the chain is a legal `Bool` code. -/
+def chainValid : ℕ → Bool
+  | 0 => true
+  | (c + 1) => decide (headC (c + 1) ≤ 1) && chainValid (tailC (c + 1))
+decreasing_by exact tailC_lt (Nat.succ_ne_zero c)
+
+@[simp] lemma chainLen_zero : chainLen 0 = 0 := by simp [chainLen]
+@[simp] lemma chainValid_zero : chainValid 0 = true := by simp [chainValid]
+
+lemma chainLen_succ (c : ℕ) : chainLen (c + 1) = chainLen (tailC (c + 1)) + 1 := by
+  rw [chainLen]
+
+lemma chainValid_succ (c : ℕ) :
+    chainValid (c + 1) = (decide (headC (c + 1) ≤ 1) && chainValid (tailC (c + 1))) := by
+  rw [chainValid]
+
+lemma decode_succ_headC (c : ℕ) :
+    Encodable.decode (α := List Bool) (c + 1) =
+      (fun (b : Bool) (l : List Bool) => b :: l) <$>
+        Encodable.decode (α := Bool) (headC (c + 1)) <*>
+        Encodable.decode (α := List Bool) (tailC (c + 1)) := by
+  have h := Encodable.decode_list_succ (α := Bool) c
+  simpa [headC, tailC] using h
+
+lemma chainValid_iff (i : ℕ) :
+    chainValid i = true ↔ (Encodable.decode (α := List Bool) i).isSome := by
+  induction i using Nat.strong_induction_on with
+  | _ i ih =>
+    match i with
+    | 0 => simp
+    | (c + 1) =>
+      rw [chainValid_succ, decode_succ_headC]
+      have hlt : tailC (c + 1) < c + 1 := tailC_lt (Nat.succ_ne_zero c)
+      rcases Nat.lt_or_ge (headC (c + 1)) 2 with hh | hh
+      · interval_cases h : headC (c + 1) <;>
+          simp [Encodable.decode_zero, Encodable.decode_one, ih _ hlt,
+            Option.isSome_iff_exists] <;>
+          rcases hd : Encodable.decode (α := List Bool) (tailC (c + 1)) with _ | l <;>
+          simp [hd]
+      · rw [Encodable.decode_ge_two _ hh]
+        simp [Nat.not_le.mpr (by omega : 1 < headC (c + 1))]
+
+end LogicalInduction
