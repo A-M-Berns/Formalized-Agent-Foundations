@@ -146,12 +146,33 @@ assertion starts failing and gets promoted to a plain clean assertion.
    threshold sentences `⌜X > r⌝`, with its world-value semantics carried as explicit,
    build-frozen certificate structures rather than derived from first-order syntax.
 
+   This boundary has one consequence sharp enough to name on its own, because it is the
+   only place a paper statement is genuinely narrowed rather than merely re-expressed.
+   **`thm:ccee`'s fully-closed endpoint requires the source LUV to be an indicator**,
+   where the paper takes any e.c. sequence of `[0,1]`-LUVs. The reason is structural: the
+   paper's quoted product `⌜Xₙ · w_{f(n)}⌝` is a first-order term, whereas here a product
+   LUV must be built from threshold sentences, and an *exact* one needs the infinite
+   disjunction `⋁_{s∈ℚ} (⌜w > s⌝ ∧ ⌜X > r/s⌝)` — the existential the propositional
+   substrate lacks. With an indicator source, `1(φ)·w > r` collapses to `φ ∧ (w > r)` and
+   the difficulty disappears. The abstract and `_ofRepresentation` endpoints are general
+   in the source; only the fully-constructed form carries the restriction.
+
 Both are disclosed at every affected statement, not just here.
 
 ## Planned future work
 
 Each item has a verified obstruction on record; none blocks the results above.
 
+* **A general-source closed form for `thm:ccee`** — the restriction described under
+  boundary 2. Two routes are on record, neither cheap. A finite *mesh* product
+  (`⋁_{j≤N}` over the deferred weight's own threshold atoms) is emittable and values
+  within `1/N` of the true product, so it buys the paper's generality at the price of
+  relaxing exact reflection to a vanishing slack — i.e. a new declared substitution,
+  roughly a few focused sessions. An *exact* route needs a world-dependent LUV-atom
+  family and a compound-axiom entry on the quotation presentation, comparable in scale
+  to the existing quote-code layer. This is the one restriction with a known downstream
+  consumer: work on deference in logical induction uses `thm:ccee` at general
+  option-value LUVs.
 * **An efficient prefix patch over the constructed inductor** — would lift `thm:ifp`
   from the efficiently-patchable restriction to the paper's unrestricted statement. The
   obstruction is the same fuel-class closure gap as boundary 1 (the emitted freeze
