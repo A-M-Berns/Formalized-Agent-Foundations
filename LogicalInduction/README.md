@@ -9,15 +9,15 @@ is formalized, named after its paper label, and build-audited. How strong each o
 
 | | count | what it means |
 |---|---:|---|
-| **paper strength** | 41 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
-| **qualified** | 12 | proved with one explicitly named representation interface or class restriction retained |
+| **paper strength** | 49 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
+| **qualified** | 4 | proved with one explicitly named representation interface or class restriction retained |
 
 Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
 machine-checked against the endpoint inventory so a node cannot ship without a strength
 call.
 
-Separately, and beyond what the paper claims: **21 of the 41 are also instantiated over
+Separately, and beyond what the paper claims: **19 of the 49 are also instantiated over
 the concrete inductor constructed here**, so they hold of a specific algorithm rather
 than of a hypothetical one. The paper states no such theorems; these are a
 strengthening, not a different degree of faithfulness.
@@ -59,10 +59,20 @@ the per-node table says which.
 
 `thm:dus` and `thm:strict` quantify over a *presentation* of finite bit prefixes as
 sentences: an independent atom family, an enumeration of all finite bit strings, and an
-efficient naming of the corresponding prefix conjunctions. Both nodes are now closed with
-**no caller input** (`lic_domination_everyLowerSemicomputable_unconditional`,
-`lic_strict_domination_universalSemimeasure_unconditional`), because that presentation is
-constructed: `ordinaryBitPrefixSentences`.
+efficient naming of the corresponding prefix conjunctions. Both nodes are proved at paper strength for **any** deductive process and any logical
+inductor, and that presentation is now constructed (`ordinaryBitPrefixSentences`), so
+endpoints exist that take **no caller input** at all
+(`lic_domination_everyLowerSemicomputable_unconditional`,
+`lic_strict_domination_universalSemimeasure_unconditional`).
+
+One qualification on those input-free endpoints, because it is easy to miss and it is why
+these two nodes are not counted as instantiated over the arithmetic inductor: they hold
+over `emptyBitDeductiveProcess` — the constantly-empty theory — where the atoms'
+independence and the plausible-world hypothesis are discharged by "no stage asserts
+anything". That is a real logical inductor and a real theorem, but the paper frames these
+results as fresh symbols added *to* a theory Θ, so the reasoner handles empirical
+uncertainty *as well as* logical uncertainty (tex:1550, 1559); at Θ = ∅ there is no "as
+well as". The general forms carry the content.
 
 One point on the surface is worth stating plainly, since it constrains the interface.
 `BitPrefixSentences.prefix_codes` is metered in **symbols**, not in the Gödel *value* of the

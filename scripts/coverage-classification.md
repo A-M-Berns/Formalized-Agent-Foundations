@@ -53,7 +53,7 @@ or a conventional complexity class.  A row marked *complete* claims the paper st
 | def:luv | qualified | threshold-sentence abstraction; the certified first-order bridge exists only for the `dd:luv-arith` class |
 | def:trader | complete | direct rendering |
 | def:tradestrat | complete | direct rendering, with the paper's rank/horizon bound on traded features |
-| lem:mesh | qualified | strongest endpoint `LUVCombination.BoundedSequence.mesh_independence_ofSyntax`: the mesh-softmax operational witness is discharged from `LUVCombinationSyntax` (an emission certificate on the sequence's own data, so not tier-lowering); retained is `WorldValued`, the propositional-substrate world-value certificate |
+| lem:mesh | conditional | `mesh_independence_ofSyntax` retains only `WorldValued`, which is the paper's own `def:luv` world-value fact (tex:1642-1648) — the condition that cuts our over-general `LUV` type down to the paper's object, not a restriction |
 | lem:tfdom | complete | `trading_firm_dominance`: any efficiently computable exploiter is dominated, over any rational `[0,1]` market, with no inductor hypothesis |
 | thm:affcoh | conditional | analytic capstone over `[IsLogicalInductor]` with the paper's bounded-combination data |
 | thm:affpolymax | conditional | same, and the price/magnitude bounds are derived from the sequence rather than assumed |
@@ -64,13 +64,13 @@ or a conventional complexity class.  A row marked *complete* claims the paper st
 | thm:ceu | complete | `lic_no_expected_net_update_closed` is unconditional over `LIA` with the quote code constructed; it takes only the sentence sequence, its poly codes, and a bare `DeferralFunction` — no reflection data and no deferral narrowing |
 | thm:con | conditional | genuine trader proof over `[IsLogicalInductor]` |
 | thm:dontwait | complete | unconditional over `LIA` on the provability process (Σ₁-sound `Θ ⊇ IΣ₁`) |
-| thm:dus | complete | `lic_domination_everyLowerSemicomputable_unconditional` takes **no** input at all: the market is the constructed `LIA`, the semimeasure side is the constructed dovetail dominating every lower-semicomputable continuous semimeasure, and the prefix-sentence presentation is the constructed `ordinaryBitPrefixSentences` — its naming certificate discharged by an explicit emitter (`ordinaryBitPrefixCodes`) that walks the enumeration index's own `Nat.pair` chain and emits the canonical Polish run.  The naming field is symbol-metered (`RpnSentenceCodes`) because the whole-value form is *provably* unsatisfiable here (`not_polySentenceCodes_bitPrefixSentence`); symbol metering is the paper's own `def:ec` cost measure, charged once at `def:ec` |
-| thm:ec | qualified | retains the rate-free per-grid world-valuation `hval` (`ApproxValuesUpTo`, the paper's `lem:conluvapprox`) and the LUV threshold-code interface |
+| thm:dus | conditional | paper-strength for **any** `DP` and any inductor via `lic_domination_universalSemimeasure_ofIndependentAtoms` (prefix codes now symbol-metered and inhabited). NOT `complete`: the unconditional endpoints hold only over `emptyBitDeductiveProcess` (`D n = ∅`), where `realizable`/`hworld` are discharged by "no stage asserts anything" — the paper frames `thm:dus` as fresh symbols added *to* Θ (tex:1550,1559), so Θ = ∅ is the degenerate case |
+| thm:ec | conditional | `LUV.expect_converges` retains the per-grid `hval`, which is the single-LUV `daily_value` and provably entailed by the paper's `def:luv` world-value fact |
 | thm:ei | conditional | genuine trader proof over `[IsLogicalInductor]`; `IsIndicator` is the paper's own `1(φ)` hypothesis rendered relationally by design, not a retained interface |
 | thm:epr | complete | unconditional over `LIA`; the quote code is constructed from the market program (`theoremPriceQuoteCode`), leaving only the sentence family and its codes |
 | thm:er | complete | unconditional over `LIA`; the expectation quote code is constructed via `expectQuote_computable`, leaving only the LUV family and its threshold codes |
-| thm:expcoh | qualified | `expcoh_arith` discharges both representation hypotheses from arithmetic and the mesh-softmax operational witness from `LUVCombinationSyntax`, but restricts to the `dd:luv-arith` class; the general `expcoh_ofSyntax` covers arbitrary LUVs but retains `WorldValued`/`ConvergencePresentation` |
-| thm:exppolymax | qualified | same pattern (`exppolymax_arith` restricted to `dd:luv-arith`, `exppolymax_ofSyntax` general with `WorldValued` retained); mesh-softmax witness discharged in both |
+| thm:expcoh | conditional | `expcoh_ofSyntax` retains `WorldValued` + `ConvergencePresentation`, both paper-implied (`daily_value` is provably entailed by `WorldValued` via Cantor-space compactness) |
+| thm:exppolymax | conditional | `exppolymax_ofSyntax` retains only `WorldValued` (= paper `def:luv`); `exppolymax_arith` additionally discharges it for the certified class |
 | thm:expprovind | qualified | **fully unconditional for certified `dd:luv-arith`** (all three comparison forms); general LUV-combination forms retain the exact-theory presentation |
 | thm:halts | complete | unconditional over `LIA` (Σ₁-sound `Θ ⊇ IΣ₁`) |
 | thm:ifp | qualified | efficiently-patchable perturbations only — the patch certificate is not inhabitable for every computable market; the paper's unrestricted statement has a recorded erratum (PE1) |
@@ -88,21 +88,21 @@ or a conventional complexity class.  A row marked *complete* claims the paper st
 | thm:pac | complete | unconditional over `LIA` (Σ₁-sound `Θ ⊇ IΣ₁`) |
 | thm:pazfc | complete | unconditional over `LIA` (Σ₁-sound `Θ ⊇ IΣ₁`) |
 | thm:peraffkno | conditional | analytic capstone over `[IsLogicalInductor]` |
-| thm:perexpkno | qualified | `perexpkno_arith` discharges the representation for `dd:luv-arith` and the mesh-softmax witness from `LUVCombinationSyntax`, but restricts the class; the general `perexpkno_ofSyntax` retains `WorldValued`/`ConvergencePresentation` |
+| thm:perexpkno | conditional | `perexpkno_ofSyntax`, same premises as `expcoh` and same adjudication |
 | thm:perkno | conditional | over `[IsLogicalInductor]` with the paper's own probability sequence |
 | thm:prand | conditional | clock-free varied-frequency form; the target rationals enter as a market-generable feature (`def:ece`), as the paper requires |
 | thm:prandaff | conditional | clock-free: the patient settlement clock is constructed from the inductor, leaving exactly the paper's bounded-combination, determination and pseudorandomness premises |
-| thm:prandexp | qualified | clock-free (the mesh settlement checker is constructed against a vanishing tolerance); retains only the threshold-LUV world-valuation `WorldValued` and a share-norm bound |
+| thm:prandexp | conditional | retains `WorldValued` (paper `def:luv`) + `DeterminedViaTheory` (paper `def:affthmval`, tex:1807); clock constructed |
 | thm:provind | conditional | eventual completed-theory theoremhood, paper-shaped |
 | thm:recunbiasedaff | conditional | maturity constructed internally; no clock or verifier premise remains |
 | thm:recurringunbiasedness | conditional | same, over the sentence-affine family |
-| thm:recurringunbiasednessexp | qualified | takes the paper's combination-level determination (`def:affthmval`), repairing the PE2 hypothesis-swap erratum; retains `WorldValued` and a share-norm bound |
+| thm:recurringunbiasednessexp | conditional | same premises as `prandexp`, both the paper's own; repairs the PE2 hypothesis-swap erratum |
 | thm:ref | complete | unconditional over `LIA`; the interval quote is constructed from the market's exact rational quote, leaving only the paper's own generable interval/width data |
 | thm:scon | complete | growing-form `hjoint` deleted — derived by propositional compactness (`Framework/Compactness.lean`) or vacuous by the degenerate branch |
 | thm:simcal | conditional | maturity constructed internally; the calibration indicator's generability and divergence are the paper's premises |
 | thm:st | complete | the abstract endpoint takes P-generable `p` (`def:ece`) with `SelfTrustQuote` reflection data; `lic_self_trust_closed` discharges that data over `LIA` with `p` still P-generable — the quote code recovers `p`'s program from the feature presentation (`PGenerableRat.computable`: parse the emitted serialization, evaluate against the certified market, minimize over the interpreter clock) — and the deferral function is bare (`f n > n`, no injectivity), so nothing is retained beyond the global model |
-| thm:strict | complete | `lic_strict_domination_universalSemimeasure_unconditional` takes **no** input: the separator argument is constructed from Kleene inseparability (stage classes proved null), the atom-code half is discharged (`ordinaryAtom_code_computable`), the presentation is the constructed `ordinaryBitPrefixSentences`, and the semimeasure is the constructed dovetail |
+| thm:strict | conditional | paper-strength for any `DP` via `lic_strict_domination_universalSemimeasure_ofAtomCodes`; separator argument fully constructed. NOT `complete` for the same reason as `thm:dus` — the unconditional form is over the constantly-empty deductive process |
 | thm:tbo | conditional | over `[IsLogicalInductor]` |
 | thm:wub | complete | unconditional over `LIA`; the emitter and truth bridge are constructed, and the sole remaining premise `FeedbackTruthComputation` is the paper\'s own timed-feedback hypothesis ("`ThmInd(φ_{f(n)})` computable in `O(f(n+1))` time", tex:1250) — rendered here with a *polynomial* clock at `f(k+1)`, i.e. weaker than the paper asks |
 | thm:wubaff | complete | same: emitter and truth bridge constructed, leaving only the paper\'s own timed-feedback premise `FeedbackTruthComputation`; unconditional over `LIA` |
-| thm:wubexp | qualified | same plus the threshold-LUV world-valuation; `wubexp_arith` discharges the representation half for `dd:luv-arith` |
+| thm:wubexp | conditional | `WorldValued` + `DeterminedViaTheory` + the feedback emission/truth premises already adjudicated as the paper's own at `thm:wub` |
