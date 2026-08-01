@@ -314,3 +314,26 @@ live in the library (`firstSuccess_sum`, `firstSuccess_sum_le_one`,
 future design notes: a standalone compiled check certifies the algebra, not that the
 hypotheses are obtainable in situ — state the intended *call site* in the note, or skip
 the note and build in place.
+
+### Standing check: strength tiers are re-derived from signatures, never from prose (2026-07-31)
+
+Two consecutive adversarial passes over `scripts/coverage-classification.md` found mis-tier rates
+of ~39% and ~31%, and in both the dominant failure was the same: **a row's justification prose
+asserted something the Lean signature did not support, and later readers trusted the prose.** Two
+concrete instances, both corrected 2026-07-31:
+
+* Ten rows counted a whole-value metering hypothesis (`PolySentenceCodes` &co.) as a routine
+  `dd:fuel` certificate, which the table's own rule says does not lower a tier. It is a proved
+  class restriction and does. The rule is now spelled out in the file's header.
+* Three rows (`thm:ec`, `thm:expcoh`, `thm:perexpkno`) justified a retained premise as "provably
+  entailed by the paper's `def:luv` world-value fact". **No such entailment lemma existed.** A
+  one-line grep for the entailment would have caught it at any point.
+
+So: when touching a row, re-derive the tier from the endpoint's elaborated signature
+(`#check @…`), and when a justification claims a fact is *entailed* or *discharged*, name the
+lemma that does it — or say plainly that it is open. A justification that cites no lemma for an
+entailment claim should be treated as an unproved obligation, not as background.
+
+Related standing item: the tier vocabulary itself is still on the punch list to be renamed so that
+paper-strength-vs-qualified is the primary axis (`complete`/`conditional` currently read as a
+completeness gradient rather than two ways of being at paper strength).

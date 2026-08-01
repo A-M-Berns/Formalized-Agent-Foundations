@@ -134,11 +134,18 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_persistence_of_knowledge_upper lic_centered_persistence lic_limitingBelief_tendsto
 
 -- Properties/AffineCoherence.lean, AffinePreemptiveLearning.lean, AffinePersistence.lean:
--- the paper-facing analytic affine capstones (`thm:affcoh`, `thm:affpolymax`, `thm:peraffkno`).
+-- the paper-facing analytic affine capstones (`thm:affcoh`, `thm:affpolymax`, `thm:peraffkno`)
+-- and all three comparison forms of `thm:affprovind`.
+-- Tier note: `thm:affprovind` is the affine statement — a bounded combination sequence and a
+-- real bound `b`, in `≥`/`≤`/`=` forms.  It is these three, NOT `lic_provind_true`/`_false`,
+-- which are the sentence-level halves of `thm:provind` (the `k=1`, `b ∈ {0,1}` special case).
 #assert_axioms_clean
   AffineCombination.PolySequence.affcoh
   AffineCombination.BoundedCombinationSequence.affpolymax
   AffineCombination.PolySequence.peraffkno
+  AffineCombination.PolySequence.affine_provind_theory_ge
+  AffineCombination.PolySequence.affine_provind_theory_le
+  AffineCombination.PolySequence.affine_provind_theory_eq
 
 -- Properties/NonDogmatism.lean, Properties/UniformNonDogmatism.lean
 -- Tier note: `lic_nonDogmatism` / `lic_nonDogmatism_dual` are the paper-facing `thm:nd`;

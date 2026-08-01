@@ -3,24 +3,41 @@
 A Lean 4 formalization of Garrabrant, Benson-Tilsen, Critch, Soares, Taylor,
 [*Logical Induction*](https://arxiv.org/abs/1609.03543) (arXiv:1609.03543v5).
 
-This is a **near-complete formalization of the paper**: the existence theorem is proved
-in the paper's full sense, and every named theorem and lemma of the paper — 53 of them —
-is formalized, named after its paper label, and build-audited. How strong each one is:
+The existence theorem is proved in the paper's full sense, and every named theorem and
+lemma of the paper — 53 of them — is formalized, named after its paper label, and
+build-audited. How strong each one is:
 
 | | count | what it means |
 |---|---:|---|
-| **paper strength** | 51 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
-| **qualified** | 2 | proved with one explicitly named representation interface or class restriction retained |
+| **paper strength** | 37 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
+| **qualified** | 16 | proved with an explicitly named representation interface or class restriction retained |
 
 Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
 machine-checked against the endpoint inventory so a node cannot ship without a strength
 call.
 
-Separately, and beyond what the paper claims: **19 of the 51 are also instantiated over
-the concrete inductor constructed here**, so they hold of a specific algorithm rather
-than of a hypothetical one. The paper states no such theorems; these are a
-strengthening, not a different degree of faithfulness.
+Of the 37, **9 are also instantiated over the concrete inductor constructed here** at
+full paper strength, so they hold of a specific algorithm rather than a hypothetical
+one. The paper states no such theorems; that is a strengthening, not a different degree
+of faithfulness.
+
+**Two caveats on those counts, because both are easy to miss.** First, every tier is
+relative to the disclosed model — propositional sentences and fuel-clocked efficiency
+(see *The two modeling boundaries*); "paper strength" means the paper's statement is
+reached *within that model*, not that the model equivalence is proved. Second, more
+nodes have unconditional-over-`LIA` endpoints than the 9 counted above, but ten of them
+hold only for **whole-value-metered** sentence or step sequences — a class this repo
+*proves* is strictly narrower than the paper's `def:ec` (`ordinaryBitPrefixCodes`
+exhibits a paper-admissible e.c. family that no whole-value hypothesis admits). Those
+nodes are counted as qualified, and their `[IsLogicalInductor]`-conditional endpoints
+are the ones at paper strength.
+
+These numbers come from a signature-level re-derivation: 35 of the 53 nodes were
+re-derived from their elaborated final signatures against the paper text in a dedicated
+adversarial pass, which corrected 11 rows downward; the remainder carry classifications
+from earlier passes, two of which this pass then corrected by propagation. Where a
+count is uncertain we have rounded against ourselves.
 
 **Zero `sorry`, zero `axiom` declarations** — every public endpoint reports only Lean's
 standard `propext`, `Classical.choice`, `Quot.sound`, enforced by the build
@@ -129,6 +146,27 @@ assertion starts failing and gets promoted to a plain clean assertion.
    endpoint stays restricted to efficiently patchable market prefixes and has no
    instantiation over the constructed inductor.
 
+   The model bites in a second, subtler place, and it is what keeps most of the
+   qualified rows qualified. Within the fuel model there are two ways to meter a
+   sentence sequence: by **symbol count** (`RpnSentenceCodes`) — the faithful reading of
+   `def:ec`, and the paper's own cost measure — or by the **Gödel value** of the single
+   pair-code token (`PolySentenceCodes`). These are not interchangeable: the same
+   pathology proved in the domination section above (`not_polySentenceCodes_bitPrefixSentence`)
+   exhibits a paper-admissible e.c. sentence family that the whole-value class provably
+   excludes, so whole-value metering is a genuine restriction of the paper's class.
+
+   The property tail is stated at the faithful symbol-metered class throughout. But ten
+   of the *unconditional-over-`LIA`* endpoints — the quotation family (`thm:epr`,
+   `thm:er`, `thm:ref`, `thm:st`, `thm:cee`, `thm:ceu`, `thm:wub`) and the
+   metacomputation family (`thm:pac`, `thm:pazfc`, `thm:dontwait`, where the analogous
+   `PolyNatCodes` restricts the paper's "any computable function `f`" to polynomial-time
+   `f`) — are stated at the narrower class. The reason is structural rather than
+   incidental: the quote-code compiler feeds the sentence code as a *number* into the
+   market program, so the whole-value bound is consumed as data, not merely coerced. Each
+   of those nodes is at paper strength in its `[IsLogicalInductor]`-conditional form; it
+   is the instantiation over the constructed inductor that narrows. Closing this gap —
+   a symbol-metered quote-code compiler — is the largest single item of remaining work.
+
    Worth noting: the paper itself is explicit (remark after `def:ec`) that its
    framework is not wedded to polynomial time — any efficiency class with suitable
    closure properties yields logical inductors, with stricter classes giving weaker
@@ -179,6 +217,26 @@ Each item has a verified obstruction on record; none blocks the results above.
   quote-code layer. This is the one substitution with a known downstream consumer: work on
   deference in logical induction uses `thm:ccee` at general option-value LUVs, where
   whether the `1/(n+1)` slack is acceptable depends on the consuming argument.
+* **A symbol-metered quote-code compiler** — the largest single item by node count: it
+  would lift the ten unconditional endpoints described under boundary 1 (`thm:epr`,
+  `thm:er`, `thm:ref`, `thm:st`, `thm:cee`, `thm:ceu`, `thm:wub`, and the `f`-class
+  analogue at `thm:pac`, `thm:pazfc`, `thm:dontwait`) from the whole-value class to the
+  paper's own. The obstruction is that the quote code feeds the sentence's Gödel value
+  into the market program as a number; a symbol-metered compiler must instead thread the
+  Polish token run through the market's own indexing, which is the same machinery
+  `BitChain` builds for the domination family, applied one layer up.
+* **The compactness entailment for `daily_value`** — cheap relative to its value: it
+  would raise `thm:ec`, `thm:expcoh` and `thm:perexpkno` together. Those three retain a
+  stage-quantified world premise (`∀ v, v.ConsistentWith (DP.D n) → …`) where the paper
+  argues over `cworlds(Θ)`. Deriving the former from the latter is a propositional
+  compactness argument of the same shape as the one `Framework/Compactness.lean` already
+  runs for `thm:scon` — the entailment was previously *asserted* in the coverage table
+  and is not proved.
+* **A `c.e. → EfficientRepeatedEnumeration` constructor** — would lift `thm:obu` to the
+  paper's actual hypothesis. The paper does the padding-and-repeating transformation
+  inside its own proof (tex:5651-5656); here it is taken as data. Note the current
+  structure's `sound` field forbids ⊤-padding, so the constructor needs a relaxed
+  soundness condition alongside it.
 * **An efficient prefix patch over the constructed inductor** — would lift `thm:ifp`
   from the efficiently-patchable restriction to the paper's unrestricted statement. The
   obstruction is the same fuel-class closure gap as boundary 1 (the emitted freeze

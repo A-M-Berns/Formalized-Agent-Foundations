@@ -671,8 +671,10 @@ theorem PolySequence.affcoh {As : ℕ → AffineCombination} (h : PolySequence A
     · exact limsup_le_limsup (Eventually.of_forall htheoryHigh)
         hlimlo.isCobounded_flip hthhi
 
-/-- Paper-facing lower form of **Affine Provability Induction** (`thm:affprovind`): a
-uniform lower bound in every completed-theory world is learned on the main diagonal. -/
+/-- Lower form of **Affine Provability Induction**: for `⟨A⟩` a bounded combination
+sequence and `b : ℝ`, a uniform lower bound `b ≤ W(Aₙ)` in every completed-theory world
+`W ∈ cworlds(Θ)` is learned on the main diagonal.
+Paper node: `thm:affprovind` -/
 theorem PolySequence.affine_provind_theory_ge
     {As : ℕ → AffineCombination} (h : PolySequence As)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -707,8 +709,9 @@ theorem PolySequence.affine_provind_theory_ge
   filter_upwards [hevent] with n hn
   linarith
 
-/-- Upper form of paper-facing affine provability induction. -/
-lemma PolySequence.affine_provind_theory_le
+/-- Upper form of **Affine Provability Induction**: the `≤` variant, by negation.
+Paper node: `thm:affprovind` -/
+theorem PolySequence.affine_provind_theory_le
     {As : ℕ → AffineCombination} (h : PolySequence As)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
@@ -732,8 +735,10 @@ lemma PolySequence.affine_provind_theory_le
   rw [neg_price] at hn
   linarith
 
-/-- Equality form of paper-facing affine provability induction. -/
-lemma PolySequence.affine_provind_theory_eq
+/-- Equality form of **Affine Provability Induction**: the `=` variant, from the two
+one-sided forms.
+Paper node: `thm:affprovind` -/
+theorem PolySequence.affine_provind_theory_eq
     {As : ℕ → AffineCombination} (h : PolySequence As)
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hbounded : BoundedAffinePrices As P)
@@ -876,7 +881,7 @@ end AffineCombination
 /-- One-sided paper-facing provability induction for an efficiently codeable sequence of
 completed-theory theorems. Individual proofs may appear arbitrarily later than their
 sequence indices.
-Paper node: `thm:affprovind` -/
+Paper node: `thm:provind` -/
 theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
@@ -896,7 +901,7 @@ theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInducto
 
 /-- One-sided paper-facing provability induction for an efficiently codeable sequence
 whose negations are completed-theory theorems.
-Paper node: `thm:affprovind` -/
+Paper node: `thm:provind` -/
 theorem lic_provind_false (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ)
     (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)

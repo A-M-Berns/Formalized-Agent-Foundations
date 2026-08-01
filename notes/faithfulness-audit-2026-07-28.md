@@ -376,3 +376,82 @@ over Cantor space (`DeductiveProcess.exists_consistentWithTheory`), and `hjoint`
 from `lic_conditioned_growing_ofComputationsAndMarket` and
 `lic_conditioned_growing_unconditional`, which now case-split on per-stage satisfiability of
 the union process exactly as the fixed-sentence form does; `thm:scon` is complete.
+
+---
+
+## Completing strength pass (2026-07-31) — the headline count was wrong
+
+The `51 of 53 at paper strength` figure carried in the README until today was built on a
+prior audit that re-derived only ~28 of the 53 rows and flagged the rest as endpoint-level
+spot checks. A dedicated pass re-derived 35 rows from their *elaborated final signatures*
+against the paper text, instructed to assume the unchecked half was no better than the
+checked half (which had a ~39% mis-tier rate). It found 11 over-claims and 0 under-calls —
+a 31% mis-tier rate, confirming the prior.
+
+**Corrected: 37 of 53 at paper strength, 16 qualified.** The corrections fall into four
+groups, of which the first is by far the most consequential:
+
+1. **Whole-value metering is a class restriction, not a fuel certificate** (10 rows:
+   `thm:epr`, `thm:er`, `thm:ref`, `thm:st`, `thm:wub`, `thm:cee`, `thm:ceu`, plus
+   `thm:pac`, `thm:pazfc`, `thm:dontwait` on the `f`-class analogue). The classification
+   file's own rule says a `dd:fuel` certificate on the statement's own data does not lower
+   a row — the fuel model is charged once, globally, at `def:ec`. That rule is right for
+   `RpnSentenceCodes`, the symbol-metered faithful rendering. It is **wrong** for
+   `PolySentenceCodes`/`PolyThresholdCodeSeq`/`PolyNatCodes`, which meter the single
+   pair-code token, and which the repo *itself proves* strictly narrower:
+   `ordinaryBitPrefixCodes` + `not_polySentenceCodes_bitPrefixSentence` exhibit a
+   paper-admissible e.c. sentence family no whole-value hypothesis admits (executable check
+   re-run and confirmed compiling at this commit).
+
+   Why it was missed for so long: the two classes are one coercion apart
+   (`RpnSentenceCodes.ofPolySentenceCodes`) and every narrowed endpoint *opens by applying
+   that coercion*, so the hypothesis reads as an idiomatic fuel certificate. The tell is
+   that `hφ` is **also passed as data** to the quote-code constructor
+   (`theoremPriceQuoteCode T φ hφ`) — the quote compiler feeds the sentence code as a number
+   into the market program, which is what forces whole-value metering. So this is not a
+   one-line generalization; it is the fuel boundary biting the unconditional route. The
+   `[IsLogicalInductor]`-conditional endpoints for all ten are at paper strength.
+   The metering rule is now written into the classification file's header.
+
+2. **`thm:ec`, `thm:expcoh`, `thm:perexpkno` — an unearned entailment claim.** All three
+   rows justified a retained stage-quantified premise (`daily_value` / `hval`, over
+   `v.ConsistentWith (DP.D n)`) as "provably entailed by the paper's `def:luv` world-value
+   fact" (`WorldValued`, over `v.ConsistentWithTheory DP`). **No such entailment lemma
+   exists** — grep shows `daily_value` is only ever *supplied* by construction
+   (`LUVSyntax.lean:300`, `LUVExpectationCertified.lean:449`). The prose asserted a proof
+   obligation as discharged. Proving it (propositional compactness, as
+   `Framework/Compactness.lean` already does for `thm:scon`) would raise all three together
+   — this is the single highest-value open item on the count.
+
+3. **`thm:obu`** takes the paper's own WLOG preprocessing as data
+   (`EfficientRepeatedEnumeration`, the padding-and-repeating the paper performs *inside*
+   its proof at tex:5651-5656) while never assuming the source is c.e., which is the paper's
+   actual hypothesis. No `c.e. → EfficientRepeatedEnumeration` constructor exists, so the
+   interface is undischarged; and `sound : ∀ j, ∃ i, sequence j = source i` forbids the
+   paper's own ⊤-padding unless `⊤ ∈ range source`. → qualified.
+
+4. **`thm:affprovind` was mislabeled, not weak** — the one place the auditor's severity was
+   too harsh, and worth recording as a calibration note. Its two annotated endpoints
+   (`lic_provind_true`/`_false`) are sentence-level, i.e. the `k=1`, `b ∈ {0,1}` special
+   case, and `lic_provind` is literally their pair — so the node read as covered only by
+   `thm:provind`'s own theorems. But the genuine affine statements (real `b`, over
+   `cworlds(Θ)`, all three comparison forms) **do exist and are proved**:
+   `PolySequence.affine_provind_theory_ge/_le/_eq`. They simply carried no `Paper node:`
+   line and were absent from the audit inventory. Fixed by retagging rather than
+   downgrading: the three are now `theorem`s with `Paper node: thm:affprovind`, added to
+   `AxiomAudit.lean`; `lic_provind_true`/`_false` are retagged to `thm:provind`, matching
+   what the audit file's own tier note already said about them. Row stays `conditional`.
+
+   Calibration lesson for future passes: an auditor told to judge from annotated endpoints
+   will report a *labeling* defect as a *strength* defect, because from inside that lens the
+   two are indistinguishable. Always check whether the paper-strength statement exists
+   elsewhere in the file before accepting a tier drop.
+
+**Residual uncertainty, stated plainly.** 35 of 53 rows were re-derived in this pass; two
+more (`thm:expcoh`, `thm:perexpkno`) were corrected by propagating its `thm:ec` finding, and
+two (`thm:cee`, `thm:ceu`) were corrected by propagating its metering finding after I checked
+their signatures directly. The remaining rows carry classifications from earlier passes and
+have not been independently re-derived from signatures. Given two consecutive passes at a
+31–39% mis-tier rate, **37 should be read as an upper bound that has been rounded against
+ourselves, not a settled figure.** The next pass should take the un-re-derived remainder,
+starting with the `def:*` rows and `thm:ifp`/`thm:scon`/`thm:loe`.
