@@ -9,15 +9,15 @@ build-audited. How strong each one is:
 
 | | count | what it means |
 |---|---:|---|
-| **paper strength** | 37 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
-| **qualified** | 16 | proved with an explicitly named representation interface or class restriction retained |
+| **paper strength** | 43 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
+| **qualified** | 10 | proved with an explicitly named representation interface or class restriction retained |
 
 Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
 machine-checked against the endpoint inventory so a node cannot ship without a strength
 call.
 
-Of the 37, **9 are also instantiated over the concrete inductor constructed here** at
+Of the 43, **15 are also instantiated over the concrete inductor constructed here** at
 full paper strength, so they hold of a specific algorithm rather than a hypothetical
 one. The paper states no such theorems; that is a strengthening, not a different degree
 of faithfulness.
@@ -25,19 +25,20 @@ of faithfulness.
 **Two caveats on those counts, because both are easy to miss.** First, every tier is
 relative to the disclosed model — propositional sentences and fuel-clocked efficiency
 (see *The two modeling boundaries*); "paper strength" means the paper's statement is
-reached *within that model*, not that the model equivalence is proved. Second, more
-nodes have unconditional-over-`LIA` endpoints than the 9 counted above, but ten of them
-hold only for **whole-value-metered** sentence or step sequences — a class this repo
-*proves* is strictly narrower than the paper's `def:ec` (`ordinaryBitPrefixCodes`
-exhibits a paper-admissible e.c. family that no whole-value hypothesis admits). Those
-nodes are counted as qualified, and their `[IsLogicalInductor]`-conditional endpoints
-are the ones at paper strength.
+reached *within that model*, not that the model equivalence is proved. Second, four nodes
+still have unconditional-over-`LIA` endpoints stated at a **whole-value-metered** class,
+which this repo *proves* is strictly narrower than the paper's `def:ec`
+(`ordinaryBitPrefixCodes` exhibits a paper-admissible e.c. family that no whole-value
+hypothesis admits): `thm:st`, and the metacomputation family `thm:pac`/`thm:pazfc`/`thm:dontwait`.
+Those are counted as qualified. The rest of the quotation family has been restated at the
+paper's own symbol-metered class.
 
 These numbers come from a signature-level re-derivation: 35 of the 53 nodes were
 re-derived from their elaborated final signatures against the paper text in a dedicated
 adversarial pass, which corrected 11 rows downward; the remainder carry classifications
-from earlier passes, two of which this pass then corrected by propagation. Where a
-count is uncertain we have rounded against ourselves.
+from earlier passes, two of which that pass then corrected by propagation. Rows that have
+since moved were re-derived again from the merged signatures. Where a count is uncertain
+we have rounded against ourselves.
 
 **Zero `sorry`, zero `axiom` declarations** — every public endpoint reports only Lean's
 standard `propext`, `Classical.choice`, `Quot.sound`, enforced by the build
@@ -155,24 +156,27 @@ assertion starts failing and gets promoted to a plain clean assertion.
    exhibits a paper-admissible e.c. sentence family that the whole-value class provably
    excludes, so whole-value metering is a genuine restriction of the paper's class.
 
-   The property tail is stated at the faithful symbol-metered class throughout. But ten
-   of the *unconditional-over-`LIA`* endpoints — the quotation family (`thm:epr`,
-   `thm:er`, `thm:ref`, `thm:st`, `thm:cee`, `thm:ceu`, `thm:wub`) and the
-   metacomputation family (`thm:pac`, `thm:pazfc`, `thm:dontwait`, where the analogous
-   `PolyNatCodes` restricts the paper's "any computable function `f`" to polynomial-time
-   `f`) — are stated at the narrower class. Each is at paper strength in its
-   `[IsLogicalInductor]`-conditional form; it is the instantiation over the constructed
-   inductor that narrows.
+   The property tail is stated at the faithful symbol-metered class throughout, and so
+   now are the *unconditional-over-`LIA`* endpoints for `thm:epr`, `thm:er`, `thm:ref`,
+   `thm:cee`, `thm:ceu` and `thm:wub`. Four endpoints still sit at the narrower class:
+   `thm:st`, and the metacomputation family `thm:pac`/`thm:pazfc`/`thm:dontwait`, where
+   the analogous `PolyNatCodes` restricts the paper's "any computable function `f`" to
+   polynomial-time `f`.
 
-   For the quotation family this is **residue, not obstruction**, and the distinction
-   matters because it was got wrong once. What the quote-code constructors actually
-   consume from the hypothesis is a *computability* fact — `Primrec fun n => encode (φ n)`,
-   to key the market's quote table by sentence code — and the symbol-metered class already
-   supplies it (`RpnSentenceCodes.primrec`, written for exactly this boundary and noting
-   in its own docstring that the codes are *not* polynomially fueled). No poly bound on the
-   code value is needed downstream. So most of these are signature generalizations rather
-   than new mathematics; see *Planned future work* for the per-node breakdown of what
-   remains.
+   For the quotation family the gap turned out to be **residue, not obstruction**, and
+   the distinction is recorded because it was got wrong once — in this file. What the
+   quote-code constructors consume from the hypothesis is a *computability* fact,
+   `Primrec fun n => encode (φ n)`, used to key the market's quote table by sentence
+   code; no polynomial bound on the code value is needed anywhere downstream. The
+   symbol-metered class already supplies that fact (`RpnSentenceCodes.primrec`, written
+   for exactly this boundary, and noting in its own docstring that the codes are *not*
+   polynomially fueled). The six above were therefore signature generalizations. The
+   lesson generalizes past this instance: a hypothesis being consumed as *data* does not
+   establish that its strength is load-bearing — check what the consumer extracts.
+
+   `thm:st` is the one place in the quotation family with real content left: its product
+   LUV inlines the sentence's Gödel value into a `Nat.pair` shell, so it needs a
+   token-level `⋏` emitter rather than a restatement.
 
    The metacomputation family is a genuinely different defect, and a syntactic one: the
    paper's sentence names the *term* `⌜f⌝(⌜n⌝)`, whereas `BoundedComputation` carries the
@@ -230,16 +234,14 @@ Each item has a verified obstruction on record; none blocks the results above.
   quote-code layer. This is the one substitution with a known downstream consumer: work on
   deference in logical induction uses `thm:ccee` at general option-value LUVs, where
   whether the `1/(n+1)` slack is acceptable depends on the consuming argument.
-* **Restate the quotation family at the symbol-metered class** (`thm:epr`, `thm:ceu`,
-  `thm:ref`, `thm:wub`, then `thm:er`/`thm:cee`, then `thm:st`) — largest by node count
-  and mostly signature work, because `RpnSentenceCodes.primrec` already supplies the only
-  fact the quote-code constructors take from the hypothesis. `thm:wub`'s endpoint uses it
-  once, purely to coerce. `thm:er`/`thm:cee` additionally need `expectQuote_computable`
-  restated over `RpnThresholdCodeSeq` — which is *definitionally* `RpnSentenceCodes` of the
-  threshold family, so the same lemma applies. `thm:st` is the one with real content left:
-  it needs `indicatorProductLUV_rpnThresholdCodeSeq`, emitting the `⋏`-shell as tokens
-  rather than as a `Nat.pair`; `RpnSentenceCodes.and` and `meshProductLUV_rpnThresholdCodeSeq`
-  are the combinator and the worked template.
+* **`thm:st` at the symbol-metered class** — the remainder of the quotation-family work
+  (`thm:epr`, `thm:ceu`, `thm:ref`, `thm:wub`, `thm:er`, `thm:cee` have landed). It needs
+  `indicatorProductLUV_rpnThresholdCodeSeq`, emitting the `⋏`-shell as tokens rather than
+  as a `Nat.pair`; `RpnSentenceCodes.and` and `meshProductLUV_rpnThresholdCodeSeq` are the
+  combinator and a worked template for the harder version of the same job. This one is
+  worth more than its row count suggests: because `lic_self_trust_closed` already
+  discharges the `SelfTrustQuote` interface and already takes a P-generable `p` and a bare
+  deferral function, the single lemma moves `thm:st` from qualified straight to complete.
 * **An unevaluated-term claim schema for the metacomputation family** (`thm:pac`,
   `thm:pazfc`, `thm:dontwait`) — would restore the paper's "any computable function `f`".
   `computationClaimSentence` puts the claim's input *value* directly in the sentence code,
