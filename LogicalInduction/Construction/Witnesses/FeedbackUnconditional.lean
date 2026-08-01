@@ -40,7 +40,7 @@ are all constructed.  The caller supplies the paper's efficiently coded sentence
 completed-theory truth stream, weighting, schedule, and deadline-bounded truth program.
 Paper node: `thm:wub` -/
 theorem lic_wub_ofComputation_unconditional
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : TheoryTruth φ (theoremDP T) truth)
     (W : ℕ → EF) (hW : PGenerableWeighting W)
     (hWdiv : DivergentWeighting W (liaHistory (theoremDP T)))
@@ -51,7 +51,7 @@ theorem lic_wub_ofComputation_unconditional
       (fun i ↦ liaHistory (theoremDP T) i (φ i)) truth ≈ₙ (fun _ ↦ 0) := by
   haveI := feedbackLIA T
   exact lic_wub_ofComputation (liaHistory (theoremDP T)) (theoremDP T)
-    φ (RpnSentenceCodes.ofPolySentenceCodes hφ) truth htruth W hW hWdiv f hstrict
+    φ hφ truth htruth W hW hWdiv f hstrict
     C hsupport
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 

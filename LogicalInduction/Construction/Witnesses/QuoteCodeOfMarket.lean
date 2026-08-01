@@ -267,14 +267,19 @@ lemma ratNatCast_prim : Primrec fun n : ℕ => (n : ℚ) := by
   exact h.of_eq fun n => by rw [encode_rat_natCast, two_mul]
 
 set_option maxHeartbeats 1000000 in
-/-- **`expectQuoteAt` is computable** (uncurried over `⟨idx, day⟩`).  Threshold codes
-come from the LUV sequence's poly emitter, each cell quote from the market program, the
-bounded sum by `Nat.rec` on the day, and the final average by `ratDiv_prim`. -/
+/-- **`expectQuoteAt` is computable** (uncurried over `⟨idx, day⟩`).  Threshold codes come
+from the LUV sequence's symbol-metered block stream, via the whole-value naming program
+`RpnSentenceCodes.primrec` extracts from it; each cell quote from the market program, the
+bounded sum by `Nat.rec` on the day, and the final average by `ratDiv_prim`.  Only
+*computability* of the codes is used — never a polynomial bound on their values — which is
+why the symbol-metered class (`def:ec`) suffices here. -/
 lemma MarketComputation.expectQuoteAt_computable {P : History}
     (market : MarketComputation P)
-    {X : ℕ → LUV} (hX : LUV.PolyThresholdCodeSeq X) :
+    {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X) :
     Computable fun a : ℕ × ℕ => market.expectQuoteAt X a.1 a.2 := by
-  obtain ⟨cX, hcX⟩ := hX
+  have hcX : Primrec fun m : ℕ => Encodable.encode ((X m.unpair.1).gt
+      ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))) :=
+    RpnSentenceCodes.primrec hX
   -- The threshold-code function of `⟨⟨idx, day⟩, i⟩`.
   have hpack : Computable fun z : (ℕ × ℕ) × ℕ =>
       Nat.pair z.1.1 (Nat.pair (z.1.2 + 1) z.2) :=
@@ -284,7 +289,7 @@ lemma MarketComputation.expectQuoteAt_computable {P : History}
         Computable.snd)
   have hgt : Computable fun z : (ℕ × ℕ) × ℕ =>
       Encodable.encode ((X z.1.1).gt ((z.2 : ℚ) / ((z.1.2 + 1 : ℕ) : ℚ))) :=
-    (hcX.primrec.to_comp.comp hpack).of_eq fun z => by simp [Nat.unpair_pair]
+    (hcX.to_comp.comp hpack).of_eq fun z => by simp [Nat.unpair_pair]
   -- The per-cell exact quote.
   have hcell : Computable fun z : (ℕ × ℕ) × ℕ =>
       market.quote z.1.2
@@ -326,7 +331,7 @@ lemma MarketComputation.expectQuoteAt_computable {P : History}
 Paper node: `thm:er` -/
 lemma MarketComputation.expectQuote_computable {P : History}
     (market : MarketComputation P)
-    {X : ℕ → LUV} (hX : LUV.PolyThresholdCodeSeq X) :
+    {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X) :
     Computable (market.expectQuote X) :=
   ((market.expectQuoteAt_computable hX).comp
     (Computable.id.pair Computable.id)).of_eq fun n => rfl
@@ -745,26 +750,25 @@ variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarch
 efficiently codeable sentence sequence.  No caller-supplied semantic relation: the value
 program is the market program, and range comes from its certificate.
 Paper node: `thm:epr` -/
-noncomputable def theoremPriceQuoteCode (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
+noncomputable def theoremPriceQuoteCode (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
     RationalQuoteCode T (fun n =>
       (theoremMarketComputation T).quote n (Encodable.encode (φ n))) :=
   RationalQuoteCode.ofComputable T
     ((theoremMarketComputation T).quote_comp_computable Computable.id
-      hφ.choose_spec.primrec.to_comp)
+      hφ.primrec.to_comp)
     (fun n => (theoremMarketComputation T).quote_mem_Icc n (φ n))
 
 /-- **`thm:epr`, closed form over the constructed `LIA`** — no reflection hypotheses.
 For every efficiently codeable sentence sequence, the market's price agrees asymptotically
 with its own expectation of the *constructed* quoted-price LUV.  The quote object is
 `theoremPriceQuoteCode`; its exactness is the market certificate's `quote_exact`, so the
-only remaining hypotheses are the sequence and its poly codes.
+only remaining hypotheses are the sequence and its `def:ec` symbol-metered codes.
 Paper node: `thm:epr` -/
 theorem lic_expectations_of_probabilities_closed
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
     (fun n => liaHistory (theoremDP T) n (φ n)) ≈ₙ
       fun n => ((theoremPriceQuoteCode T φ hφ).luv n).expect (liaHistory (theoremDP T)) n :=
-  lic_expectations_of_probabilities_ofCode_unconditional (T := T) φ
-    (RpnSentenceCodes.ofPolySentenceCodes hφ)
+  lic_expectations_of_probabilities_ofCode_unconditional (T := T) φ hφ
     (theoremPriceQuoteCode T φ hφ)
     (fun n => (theoremMarketComputation T).quote_exact n (φ n))
 
@@ -773,7 +777,7 @@ an efficiently codeable LUV sequence.  The value program is the expectation comp
 the market program; range and exactness come from its certificate.
 Paper node: `thm:er` -/
 noncomputable def theoremExpectationQuoteCode (X : ℕ → LUV)
-    (hX : LUV.PolyThresholdCodeSeq X) :
+    (hX : LUV.RpnThresholdCodeSeq X) :
     RationalQuoteCode T ((theoremMarketComputation T).expectQuote X) :=
   RationalQuoteCode.ofComputable T
     ((theoremMarketComputation T).expectQuote_computable hX)
@@ -783,28 +787,28 @@ noncomputable def theoremExpectationQuoteCode (X : ℕ → LUV)
 price of the day-`n` sentence.  No caller-supplied semantic relation.
 Paper node: `thm:ceu` -/
 noncomputable def theoremFutureQuoteCode (f : DeferralFunction)
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
     RationalQuoteCode T (fun n =>
       (theoremMarketComputation T).quote (f.f n) (Encodable.encode (φ n))) :=
   RationalQuoteCode.ofComputable T
     ((theoremMarketComputation T).quote_comp_computable f.computable
-      hφ.choose_spec.primrec.to_comp)
+      hφ.primrec.to_comp)
     (fun n => (theoremMarketComputation T).quote_mem_Icc (f.f n) (φ n))
 
 /-- **`thm:ceu` (no expected net update), closed form over the constructed `LIA`** — no
 reflection hypotheses.  The quoted future-price LUV is constructed from the market
-program itself; only the sentence sequence, its poly codes, and the deferral function
-remain.
+program itself; only the sentence sequence, its `def:ec` symbol-metered codes, and the
+deferral function remain.
 Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update_closed
     (f : DeferralFunction)
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) :
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
     (fun n ↦ liaHistory (theoremDP T) n (φ n)) ≈ₙ
       fun n ↦ ((theoremFutureQuoteCode T f φ hφ).luv n).expect
         (liaHistory (theoremDP T)) n :=
   lic_no_expected_net_update_ofRepresentation_unconditional (T := T) f φ
     ((theoremFutureQuoteCode T f φ hφ).luv)
-    (RpnSentenceCodes.ofPolySentenceCodes hφ)
+    hφ
     (theoremFutureQuoteCode T f φ hφ).poly
     (fun n v hv => by
       have h := RationalQuoteCode.reflected (quotationPresentation T)
@@ -815,7 +819,7 @@ theorem lic_no_expected_net_update_closed
 market's own day-`f n` expectation of the day-`n` LUV.
 Paper node: `thm:cee` -/
 noncomputable def theoremDeferredExpectationQuoteCode (f : DeferralFunction)
-    (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X) :
+    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) :
     RationalQuoteCode T (fun n =>
       (theoremMarketComputation T).expectQuoteAt X n (f.f n)) :=
   -- The `( … : _)` ascription is load-bearing (see the Part B note).
@@ -828,12 +832,13 @@ noncomputable def theoremDeferredExpectationQuoteCode (f : DeferralFunction)
 
 /-- **`thm:cee` (expected future expectations), closed form over the constructed `LIA`**
 — the reflection data is constructed from the market program; only the source LUV
-sequence, its poly codes, its own theory-valuedness (`source_valued`, the paper's premise
-that `X` is a genuine LUV of the theory), and the deferral function remain.
+sequence, its `def:ec` symbol-metered threshold codes, its own theory-valuedness
+(`source_valued`, the paper's premise that `X` is a genuine LUV of the theory), and the
+deferral function remain.
 Paper node: `thm:cee` -/
 theorem lic_expected_future_expectations_closed
     (f : DeferralFunction)
-    (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X)
+    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       ∃ x, v.ValuesAt (X n) x) :
     (fun n ↦ (X n).expect (liaHistory (theoremDP T)) n) ≈ₙ
@@ -841,7 +846,7 @@ theorem lic_expected_future_expectations_closed
         (liaHistory (theoremDP T)) n :=
   lic_expected_future_expectations_ofRepresentation_unconditional (T := T) f X
     ((theoremDeferredExpectationQuoteCode T f X hX).luv)
-    (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq hX)
+    hX
     (theoremDeferredExpectationQuoteCode T f X hX).poly source_valued
     (fun n v hv => by
       have h := RationalQuoteCode.reflected (quotationPresentation T)
@@ -851,15 +856,14 @@ theorem lic_expected_future_expectations_closed
 /-- **`thm:er`, closed form over the constructed `LIA`** — no reflection hypotheses.
 For every efficiently codeable LUV sequence, the market's expectation agrees
 asymptotically with its expectation of the *constructed* quoted-expectation LUV.  Only
-the LUV sequence and its poly threshold codes remain.
+the LUV sequence and its `def:ec` symbol-metered threshold codes remain.
 Paper node: `thm:er` -/
 theorem lic_iterated_expectations_closed
-    (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X) :
+    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) :
     (fun n => (X n).expect (liaHistory (theoremDP T)) n) ≈ₙ
       fun n => ((theoremExpectationQuoteCode T X hX).luv n).expect
         (liaHistory (theoremDP T)) n :=
-  lic_iterated_expectations_ofCode_unconditional (T := T) X
-    (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq hX)
+  lic_iterated_expectations_ofCode_unconditional (T := T) X hX
     (theoremExpectationQuoteCode T X hX)
     ((theoremMarketComputation T).expectQuote_cast X)
 
@@ -900,7 +904,7 @@ set_option maxHeartbeats 1000000 in
 `a n < Pₙ(φ n) < b n`, computed from the market program's exact rational quote.  This is
 the introspection target sentence, constructed with no caller-supplied truth relation.
 Paper node: `thm:ref` -/
-noncomputable def theoremIntervalQuoteCode (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ)
+noncomputable def theoremIntervalQuoteCode (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (a b : ℕ → ℚ) (ha : PolyRatCodes a) (hb : PolyRatCodes b) :
     BooleanQuoteCode T (fun n ↦
       (a n : ℝ) < liaHistory (theoremDP T) n (φ n) ∧
@@ -914,7 +918,7 @@ noncomputable def theoremIntervalQuoteCode (φ : ℕ → Sentence) (hφ : PolySe
   · have hq : Computable fun n =>
         (theoremMarketComputation T).quote n (Encodable.encode (φ n)) :=
       ((theoremMarketComputation T).quote_comp_computable Computable.id
-        hφ.choose_spec.primrec.to_comp : _)
+        hφ.primrec.to_comp : _)
     have hleB : Primrec fun z : ℚ × ℚ => decide (z.1 ≤ z.2) := ratLE_prim.decide
     have h1 : Computable fun n => decide
         ((theoremMarketComputation T).quote n (Encodable.encode (φ n)) ≤ a n) :=
@@ -936,7 +940,7 @@ own (`a`/`b` e.c. interval bounds and their market-generated feature presentatio
 vanishing width, and the range side conditions).
 Paper node: `thm:ref` -/
 theorem lic_introspection_closed
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) (a b δ : ℕ → ℚ)
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (a b δ : ℕ → ℚ)
     (ha : PolyRatCodes a) (hb : PolyRatCodes b)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
@@ -957,7 +961,7 @@ theorem lic_introspection_closed
           liaHistory (theoremDP T) n
             ((theoremIntervalQuoteCode T φ hφ a b ha hb).sentence n) < (ε n : ℝ)) :=
   lic_introspection_ofCode_unconditional (T := T) φ
-    (RpnSentenceCodes.ofPolySentenceCodes hφ) a b δ lowerFeature hlower
+    hφ a b δ lowerFeature hlower
     upperFeature hupper hδ hδinv hδpos hδzero hab
     (theoremIntervalQuoteCode T φ hφ a b ha hb)
 
@@ -1061,7 +1065,8 @@ noncomputable def theoremConditionalExpectationQuoteCode (f : DeferralFunction)
   -- The `( … : _)` ascriptions are load-bearing (see the Part B note).
   have hexp : Computable fun n =>
       (theoremMarketComputation T).expectQuoteAt X n (f.f n) :=
-    (((theoremMarketComputation T).expectQuoteAt_computable hX).comp
+    (((theoremMarketComputation T).expectQuoteAt_computable
+      (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq hX)).comp
       (Computable.id.pair f.computable) : _)
   have hval : Computable fun n =>
       (theoremMarketComputation T).expectQuoteAt X n (f.f n) * w (f.f n) :=
