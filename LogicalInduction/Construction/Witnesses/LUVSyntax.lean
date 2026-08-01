@@ -265,18 +265,15 @@ noncomputable def polySequence {As : ℕ → LUVCombination}
 
 /-! ## Exact represented semantics -/
 
-/-- Stagewise and completed-theory truth laws for the threshold families named by a
-compact syntax presentation.  These are representation facts only. -/
+/-- Completed-theory truth laws for the threshold families named by a compact syntax
+presentation.  These are representation facts only, and they are quantified over
+`cworlds(Θ)` alone — no stage-indexed valuation is assumed. -/
 structure TheorySemantics {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (DP : DeductiveProcess) where
   value : ℕ → LUV → ℝ
   value_mem : ∀ n j, j < S.termCount n →
     0 ≤ value n (S.luv (Nat.pair n j)) ∧
       value n (S.luv (Nat.pair n j)) ≤ 1
-  stage_values : ∀ n j, j < S.termCount n → ∀ m (v : PCWorld),
-    v.ConsistentWith (DP.D m) →
-      v.ValuesAt (S.luv (Nat.pair n j))
-        (value n (S.luv (Nat.pair n j)))
   completed_threshold_iff : ∀ n j, j < S.termCount n →
     ∀ (v : PCWorld), v.ConsistentWithTheory DP → ∀ r : ℚ,
       v.Holds ((S.luv (Nat.pair n j)).gt r) ↔
@@ -291,19 +288,6 @@ lemma threshold_code {As : ℕ → LUVCombination}
   have hquery : PolyFueled _ (fun m : ℕ ↦
       Nat.pair (Nat.pair n j) m) := (PolyFueled.const (Nat.pair n j)).pair PolyFueled.id
   exact (S.threshold_poly.comp hquery).of_eq (fun m ↦ by simp)
-
-/-- Compact syntax plus stagewise representation discharges the convergence presentation. -/
-def convergencePresentation {As : ℕ → LUVCombination}
-    (S : LUVCombinationSyntax As) {DP : DeductiveProcess}
-    (H : S.TheorySemantics DP) : LUVCombination.ConvergencePresentation As DP where
-  threshold_code := S.threshold_code
-  daily_value := by
-    intro n p hp k
-    rw [S.terms_eq] at hp
-    simp only [List.mem_map, List.mem_range] at hp
-    obtain ⟨j, hj, rfl⟩ := hp
-    exact Filter.Eventually.of_forall (fun m v hv =>
-      ⟨H.value n (S.luv (Nat.pair n j)), (H.stage_values n j hj m v hv).approxValuesUpTo k⟩)
 
 /-- Compact syntax plus completed-theory representation discharges the exact presentation. -/
 def exactTheoryPresentation {As : ℕ → LUVCombination}
@@ -328,6 +312,14 @@ def worldValued {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) {DP : DeductiveProcess}
     (H : S.TheorySemantics DP) : LUVCombination.WorldValued As DP :=
   (S.exactTheoryPresentation H).toWorldValued
+
+/-- Compact syntax plus completed-theory representation discharges the convergence
+presentation: `thm:ec` reads world values only at `cworlds(Θ)`, which is exactly what
+`completed_threshold_iff` pins. -/
+def convergencePresentation {As : ℕ → LUVCombination}
+    (S : LUVCombinationSyntax As) {DP : DeductiveProcess}
+    (H : S.TheorySemantics DP) : LUVCombination.ConvergencePresentation As DP :=
+  (S.worldValued H).convergencePresentation S.threshold_code
 
 end LUVCombinationSyntax
 
