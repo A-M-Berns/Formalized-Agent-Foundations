@@ -16,10 +16,11 @@ Hence:
 3. **`lem:conluvapprox`** bounds `|𝔼ⁿ_v(X) − 𝔼ᵐ_v(X)|` by `1/n + 1/m` in every world that
    values `X`, making that average Cauchy.
 
-The world-value hypothesis is therefore consumed **per grid**: for each precision `k`,
-*some* stage after which all stage-consistent worlds value `X` on grid `k`.  No rate ties
-`k` to the stage — that is exactly what `Θ`-completeness delivers, and a completed-theory
-world (being consistent with every stage) is constrained on every grid at once.
+The world-value hypothesis is therefore consumed **only at completed-theory worlds**: step 2
+concentrates the limiting belief on `cworlds(Θ)`, so the sole place a world value is ever
+read is inside a `∀ᵐ v ∂μ` over worlds consistent with *every* stage.  The hypothesis is
+accordingly stated at the paper's own quantifier (`def:luv`: every `v ∈ cworlds(Θ)` values
+`X`), with no stage-indexed strengthening.
 
 Also proves `lem:conluvapprox` in difference form.
 -/
@@ -46,16 +47,6 @@ lemma PCWorld.ApproxValuesUpTo.abs_expectApprox_sub_le {v : PCWorld} {X : LUV} {
       ≤ |X.expectApprox v.payout n - x| + |x - X.expectApprox v.payout m| :=
         abs_sub_le _ _ _
     _ ≤ 1 / n + 1 / m := by rw [abs_sub_comm x]; linarith
-
-/-- A completed-theory world is consistent with *every* stage, so per-grid maturity —
-which pins grid `k` only at some unspecified stage — still constrains it on every grid. -/
-lemma PCWorld.approxValuesUpTo_of_consistentWithTheory {X : LUV} {DP : DeductiveProcess}
-    (hval : ∀ k, ∀ᶠ n in atTop, ∀ (v : PCWorld),
-      v.ConsistentWith (DP.D n) → ∃ x, v.ApproxValuesUpTo X x k)
-    {v : PCWorld} (hv : v.ConsistentWithTheory DP) (k : ℕ) :
-    ∃ x, v.ApproxValuesUpTo X x k := by
-  obtain ⟨n, hn⟩ := (hval k).exists
-  exact hn v (hv n)
 
 /-! ### Averaging the limiting belief over completed-theory worlds (`thm:lc`) -/
 
@@ -118,13 +109,12 @@ lemma expectApprox_limitingBelief_eq_integral (P : History) {μ : Measure PCWorl
   exact Finset.sum_congr rfl (fun i _ => (hpay _).symm)
 
 /-- The limiting belief's approximate expectations converge: they are averages over
-completed-theory worlds, each of which approximately values `X` on every grid, so the
-precision sequence is Cauchy with modulus `1/n + 1/m`. -/
+completed-theory worlds, each of which values `X`, so the precision sequence is Cauchy with
+modulus `1/n + 1/m`. -/
 lemma LUV.expectApprox_limitingBelief_converges (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hval : ∀ k, ∀ᶠ n in atTop, ∀ (v : PCWorld),
-      v.ConsistentWith (DP.D n) → ∃ x, v.ApproxValuesUpTo X x k) :
+    (hval : ∀ v : PCWorld, v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt X x) :
     ∃ L : ℝ, ConvergesTo (fun n => X.expectApprox (limitingBelief P) n) L := by
   obtain ⟨μ, hprob, hmeasure, hae⟩ := lic_limitCoherence P DP hcons
   haveI : IsProbabilityMeasure μ := hprob
@@ -143,10 +133,10 @@ lemma LUV.expectApprox_limitingBelief_converges (P : History) (DP : DeductivePro
     have hbound : ∀ᵐ v ∂μ, ‖X.expectApprox v.payout n - X.expectApprox v.payout m‖
         ≤ 1 / (n : ℝ) + 1 / (m : ℝ) := by
       filter_upwards [hae] with v hv
-      obtain ⟨x, hx⟩ :=
-        PCWorld.approxValuesUpTo_of_consistentWithTheory hval hv (max n m)
+      obtain ⟨x, hx⟩ := hval v hv
       simpa only [Real.norm_eq_abs] using
-        hx.abs_expectApprox_sub_le hn hm (le_max_left n m) (le_max_right n m)
+        (hx.approxValuesUpTo (max n m)).abs_expectApprox_sub_le hn hm
+          (le_max_left n m) (le_max_right n m)
     have hnorm := norm_integral_le_of_norm_le
       (integrable_const ((1 : ℝ) / n + 1 / m)) hbound
     simpa only [Real.norm_eq_abs, integral_const, probReal_univ, smul_eq_mul,
@@ -177,11 +167,11 @@ lemma LUV.expectApprox_limitingBelief_converges (P : History) (DP : DeductivePro
 
 /-- **Expectations Converge** (`thm:ec`): under a logical inductor, the day-`n`
 expectation of any `[0,1]`-LUV converges, provided plausible worlds keep existing
-(`hcons`) and every finite threshold grid is eventually pinned in all plausible worlds
-(`hval` — the `lem:conluvapprox` linkage, disclosed type-`(c)`: it imports "`Θ` represents
-computations" as a hypothesis).  `hval` is **per grid**: for each precision `k` there is
-some stage after which stage-consistent worlds value `X` on grid `k`, with *no rate* tying
-`k` to the stage.
+(`hcons`) and every **completed-theory** world values `X` (`hval` — the
+`lem:conluvapprox` linkage, disclosed type-`(c)`: it imports "`Θ` represents computations"
+as a hypothesis).  `hval` is stated at the paper's own quantifier: `v ∈ cworlds(Θ)`,
+i.e. `PCWorld.ConsistentWithTheory`.  No stage-indexed strengthening is needed — the proof
+reads a world value only under the `thm:lc` measure, which is concentrated on `cworlds(Θ)`.
 
 Proof kind `C` (composition): `thm:affcoh` traps the diagonal bundle price between the
 limiting belief's liminf/limsup; `thm:lc` averages the limiting belief over
@@ -197,8 +187,7 @@ theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (X : LUV)
     (hcode : X.RpnThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hval : ∀ k, ∀ᶠ n in atTop, ∀ (v : PCWorld),
-      v.ConsistentWith (DP.D n) → ∃ x, v.ApproxValuesUpTo X x k) :
+    (hval : ∀ v : PCWorld, v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt X x) :
     ∃ L : ℝ, ConvergesTo (X.expectSeq P) L := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
@@ -243,29 +232,12 @@ theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
 
 #print axioms LUV.expect_converges
 
-/-- `thm:ec` from the simpler premise that every stage-plausible world assigns `X` an
-exact value.  The grid-indexed hypothesis of `expect_converges` asks only for approximate
-values up to each precision, so an exact-valuation premise discharges it uniformly; this
-is the entry point a caller with genuine world values should use, and it witnesses that
-the grid hypothesis is satisfiable.  Kind `C`; hypotheses `(a)`. -/
-lemma LUV.expect_converges_of_valuesAt (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (X : LUV) (hcode : X.RpnThresholdCodes)
-    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hval : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) → ∃ x, v.ValuesAt X x) :
-    ∃ L : ℝ, ConvergesTo (X.expectSeq P) L :=
-  X.expect_converges P DP hcode hcons
-    (fun k => Filter.Eventually.of_forall
-      (fun n v hv => (hval n v hv).imp (fun _ hx => hx.approxValuesUpTo k)))
-
-#print axioms LUV.expect_converges_of_valuesAt
-
 /-- `𝔼_∞(X)` — the limiting expectation (`thm:ec`). -/
 noncomputable def LUV.expectInf (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV)
     (hcode : X.RpnThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hval : ∀ k, ∀ᶠ n in atTop, ∀ (v : PCWorld),
-      v.ConsistentWith (DP.D n) → ∃ x, v.ApproxValuesUpTo X x k) : ℝ :=
+    (hval : ∀ v : PCWorld, v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt X x) : ℝ :=
   (X.expect_converges P DP hcode hcons hval).choose
 
 end LogicalInduction
