@@ -497,7 +497,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   theoremFutureQuoteCode theoremDeferredExpectationQuoteCode
   theoremConfidenceQuoteCode
   PGenerableRat.computable
-  indicatorProductLUV_valuesAt indicatorProductLUV_polyThresholdCodeSeq
+  indicatorProductLUV_valuesAt indicatorProductLUV_rpnThresholdCodeSeq
   lic_no_expected_net_update_closed
   lic_expected_future_expectations_closed
   lic_self_trust_closed

@@ -61,8 +61,10 @@ attribute [local irreducible] Nat.sqrt in
 /-- One poly-fueled program emits the encoded quotation atom of selector `code` at day
 `m.unpair.1` and mesh threshold `i/k` from the packed query `⟨n,⟨k,i⟩⟩`: runtime `gcdc`
 reduction of the mesh rational, an `ifzSel` zero-denominator fallback, and the fixed atom
-shell around the selector constant.  Factored so both the plain threshold LUV and the
-indicator-product LUV (`thm:st`) can share it.
+shell around the selector constant.  This is the whole-value emitter for the quotation
+atom itself; the composite threshold families (`thm:st`'s indicator product, `thm:ccee`'s
+mesh) build on the quote's *block* stream instead, splicing this atom's block rather than
+its value.
 Paper node: `def:ec`, `thm:epr`, `thm:er`, `thm:st` -/
 lemma quoteAtom_mesh_encode_polyFueled (code : ℕ) :
     ∃ c, PolyFueled c (fun m => Encodable.encode (quoteAtom (Nat.pair code
@@ -451,27 +453,23 @@ lemma indicatorProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory
       intro hcon
       exact hφv ((PCWorld.holds_and v _ _).mp hcon).1
 
-/-- The encoded `⋏`-node shell of Foundation's propositional formulas. -/
-lemma encode_and (p q : Sentence) :
-    Encodable.encode (p ⋏ q) =
-      Nat.pair 3 (Nat.pair (Encodable.encode p) (Encodable.encode q)) + 1 := rfl
-
-/-- The indicator product's threshold family is polynomially codeable: the fixed
-`⋏`-shell around the sentence's poly code and the shared quotation-atom emitter (mesh
+/-- The indicator product's threshold family is 𝓔𝓒 (`def:ec`): the `⋏`-shell is emitted
+as a **token** — `RpnSentenceCodes.and`'s fixed `3` tag in front of the sentence block and
+the quotation-atom block — rather than as a `Nat.pair` around the two Gödel values, so the
+family is metered by symbol count and never by the code's magnitude.  The quotation side is
+the quote's own threshold stream `q.poly`, read at the paired index on the nose (mesh
 thresholds are nonnegative, so the `⊤` branch is never emitted).
 Paper node: `def:ec`, `thm:st` -/
-lemma indicatorProductLUV_polyThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ → ℚ}
-    (q : RationalQuoteCode T value) {φ : ℕ → Sentence} (hφ : PolySentenceCodes φ) :
-    LUV.PolyThresholdCodeSeq (fun n => indicatorProductLUV q φ n) := by
-  obtain ⟨cφ, hcφ⟩ := hφ
-  obtain ⟨ca, hca⟩ := quoteAtom_mesh_encode_polyFueled q.code
-  have hφAt := hcφ.comp PolyFueled.left
-  have fullPF := ((PolyFueled.const 3).pair (hφAt.pair hca)).succ_comp
-  refine ⟨_, fullPF.of_eq (fun m => ?_)⟩
+lemma indicatorProductLUV_rpnThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ → ℚ}
+    (q : RationalQuoteCode T value) {φ : ℕ → Sentence} (hφ : RpnSentenceCodes φ) :
+    LUV.RpnThresholdCodeSeq (fun n => indicatorProductLUV q φ n) := by
+  have hφAt : RpnSentenceCodes (fun m : ℕ => φ m.unpair.1) := hφ.comp PolyFueled.left
+  have hquote : RpnSentenceCodes (fun m : ℕ => (q.luv m.unpair.1).gt
+      ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))) := q.poly
+  refine (hφAt.and hquote).of_eq (fun m => ?_)
   have hmesh0 : ¬ ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)) < 0 :=
     not_lt.mpr (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _))
-  rw [indicatorProductLUV_gt, if_neg hmesh0, encode_and]
-  rfl
+  rw [indicatorProductLUV_gt, if_neg hmesh0]
 
 /-! ### The mesh product LUV — a quoted product for an *arbitrary* source family
 
@@ -877,14 +875,14 @@ a program for `p` from the feature presentation by parsing the emitted serializa
 (`PGenerableRat.computable`).
 Paper node: `thm:st` -/
 noncomputable def theoremConfidenceQuoteCode (f : DeferralFunction)
-    (φ : ℕ → Sentence) (hφ : PolySentenceCodes φ) (δ p : ℕ → ℚ)
+    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (δ p : ℕ → ℚ)
     (hδ : PolyRatCodes δ) (hp : PGenerableRat (liaHistory (theoremDP T)) p) :
     RationalQuoteCode T (fun n => ratCtsInd (δ n)
       ((theoremMarketComputation T).quote (f n) (Encodable.encode (φ n))) (p n)) :=
   have hquote : Computable fun n =>
       (theoremMarketComputation T).quote (f n) (Encodable.encode (φ n)) :=
     ((theoremMarketComputation T).quote_comp_computable f.computable
-      hφ.choose_spec.primrec.to_comp : _)
+      hφ.primrec.to_comp : _)
   have hval : Computable fun n => ratCtsInd (δ n)
       ((theoremMarketComputation T).quote (f n) (Encodable.encode (φ n))) (p n) :=
     (ratCtsInd_computable.comp (hδ.computable.pair
@@ -968,7 +966,8 @@ theorem lic_introspection_closed
 /-- **`thm:st` (self-trust), closed form over the constructed `LIA`** — no reflection
 hypotheses.  Both quoted LUVs are constructed: `B` is the confidence quote code of the
 market's own deferred-day price, and `A` is its indicator product with `φ n`.  Only the
-sentence sequence, the deferral function, and the threshold data remain.
+sentence sequence with its `def:ec` symbol-metered codes, the deferral function, and the
+threshold data remain.
 
 The threshold `p` is P-generable (`def:ece`), matching the paper: the quote code recovers
 a program for `p` from the feature presentation itself (`PGenerableRat.computable`).  An
@@ -979,7 +978,7 @@ theorem lic_self_trust_closed
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : PolySentenceCodes φ) (hδ : PolyRatCodes δ)
+    (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
     (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
     (hp : PGenerableRat (liaHistory (theoremDP T)) p) :
     (fun n ↦ (indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n).expect
@@ -990,10 +989,9 @@ theorem lic_self_trust_closed
   refine lic_self_trust_ofRepresentation_unconditional (T := T) f φ δ p
     (fun n => indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n)
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).luv
-    delta_pos probability_mem (RpnSentenceCodes.ofPolySentenceCodes hφ) hδ hδinv
+    delta_pos probability_mem hφ hδ hδinv
     hp.choose hp.choose_spec
-    (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
-      (indicatorProductLUV_polyThresholdCodeSeq _ hφ))
+    (indicatorProductLUV_rpnThresholdCodeSeq _ hφ)
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).poly
     (fun n v hv => ?_) (fun n v hv => ?_)
   · have h := RationalQuoteCode.reflected (quotationPresentation T)
@@ -1057,7 +1055,7 @@ noncomputable def theoremDeferredWeightQuoteCode (f : DeferralFunction) (w : ℕ
 `n ↦ 𝔼_{f n}(X n) · w (f n)`, in exact rational form.
 Paper node: `thm:ccee` -/
 noncomputable def theoremConditionalExpectationQuoteCode (f : DeferralFunction)
-    (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X) (w : ℕ → ℚ)
+    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) (w : ℕ → ℚ)
     (hw : PGenerableRat (liaHistory (theoremDP T)) w)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
     RationalQuoteCode T (fun n =>
@@ -1065,8 +1063,7 @@ noncomputable def theoremConditionalExpectationQuoteCode (f : DeferralFunction)
   -- The `( … : _)` ascriptions are load-bearing (see the Part B note).
   have hexp : Computable fun n =>
       (theoremMarketComputation T).expectQuoteAt X n (f.f n) :=
-    (((theoremMarketComputation T).expectQuoteAt_computable
-      (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq hX)).comp
+    (((theoremMarketComputation T).expectQuoteAt_computable hX).comp
       (Computable.id.pair f.computable) : _)
   have hval : Computable fun n =>
       (theoremMarketComputation T).expectQuoteAt X n (f.f n) * w (f.f n) :=
@@ -1084,7 +1081,8 @@ constructed `LIA`** — for an **arbitrary** e.c. source family `X`, as the pape
 with both quoted products constructed.  `Z` is the mesh product of `X` with the
 deferred-weight quote code, and `Z'` the quote of the market's own deferred weighted
 expectation.  The remaining hypotheses are the paper's own: the source family with its
-threshold codes and completed-world values (`lem:conluvapprox`, as in `thm:cee`), the
+`def:ec` symbol-metered threshold codes and completed-world values (`lem:conluvapprox`,
+as in `thm:cee`), the
 `[0,1]` P-generable weight, and the deferral function.
 
 **Disclosed type-`(c)`:** the left quoted product is realized to within `1/(n+1)`, not
@@ -1094,7 +1092,7 @@ weakened is the certificate that `Z` *is* the product.
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_closed
     (f : DeferralFunction)
-    (X : ℕ → LUV) (hX : LUV.PolyThresholdCodeSeq X)
+    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       ∃ x, v.ValuesAt (X n) x)
     (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
@@ -1109,9 +1107,8 @@ theorem lic_no_expected_net_update_conditional_closed
     (fun n => meshProductLUV
       (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) X n)
     ((theoremConditionalExpectationQuoteCode T f X hX w weight_generable weight_mem).luv)
-    w weight_mem weight_generable (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq hX)
-    (meshProductLUV_rpnThresholdCodeSeq _
-      (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq hX))
+    w weight_mem weight_generable hX
+    (meshProductLUV_rpnThresholdCodeSeq _ hX)
     (theoremConditionalExpectationQuoteCode T f X hX w weight_generable weight_mem).poly
     (fun n => 1 / ((n : ℝ) + 1)) tendsto_one_div_add_atTop_nhds_zero_nat
     source_valued
