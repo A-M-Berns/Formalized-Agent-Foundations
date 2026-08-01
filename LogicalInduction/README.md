@@ -9,15 +9,15 @@ build-audited. How strong each one is:
 
 | | count | what it means |
 |---|---:|---|
-| **paper strength** | 43 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
-| **qualified** | 10 | proved with an explicitly named representation interface or class restriction retained |
+| **paper strength** | 46 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
+| **qualified** | 7 | proved with an explicitly named representation interface or class restriction retained |
 
 Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
 machine-checked against the endpoint inventory so a node cannot ship without a strength
 call.
 
-Of the 43, **15 are also instantiated over the concrete inductor constructed here** at
+Of the 46, **15 are also instantiated over the concrete inductor constructed here** at
 full paper strength, so they hold of a specific algorithm rather than a hypothetical
 one. The paper states no such theorems; that is a strengthening, not a different degree
 of faithfulness.
@@ -25,13 +25,12 @@ of faithfulness.
 **Two caveats on those counts, because both are easy to miss.** First, every tier is
 relative to the disclosed model — propositional sentences and fuel-clocked efficiency
 (see *The two modeling boundaries*); "paper strength" means the paper's statement is
-reached *within that model*, not that the model equivalence is proved. Second, four nodes
+reached *within that model*, not that the model equivalence is proved. Second, three nodes
 still have unconditional-over-`LIA` endpoints stated at a **whole-value-metered** class,
 which this repo *proves* is strictly narrower than the paper's `def:ec`
 (`ordinaryBitPrefixCodes` exhibits a paper-admissible e.c. family that no whole-value
-hypothesis admits): `thm:st`, and the metacomputation family `thm:pac`/`thm:pazfc`/`thm:dontwait`.
-Those are counted as qualified. The rest of the quotation family has been restated at the
-paper's own symbol-metered class.
+hypothesis admits): the metacomputation family `thm:pac`/`thm:pazfc`/`thm:dontwait`. The
+whole quotation family has now been restated at the paper's own symbol-metered class.
 
 These numbers come from a signature-level re-derivation: 35 of the 53 nodes were
 re-derived from their elaborated final signatures against the paper text in a dedicated
@@ -234,14 +233,6 @@ Each item has a verified obstruction on record; none blocks the results above.
   quote-code layer. This is the one substitution with a known downstream consumer: work on
   deference in logical induction uses `thm:ccee` at general option-value LUVs, where
   whether the `1/(n+1)` slack is acceptable depends on the consuming argument.
-* **`thm:st` at the symbol-metered class** — the remainder of the quotation-family work
-  (`thm:epr`, `thm:ceu`, `thm:ref`, `thm:wub`, `thm:er`, `thm:cee` have landed). It needs
-  `indicatorProductLUV_rpnThresholdCodeSeq`, emitting the `⋏`-shell as tokens rather than
-  as a `Nat.pair`; `RpnSentenceCodes.and` and `meshProductLUV_rpnThresholdCodeSeq` are the
-  combinator and a worked template for the harder version of the same job. This one is
-  worth more than its row count suggests: because `lic_self_trust_closed` already
-  discharges the `SelfTrustQuote` interface and already takes a P-generable `p` and a bare
-  deferral function, the single lemma moves `thm:st` from qualified straight to complete.
 * **An unevaluated-term claim schema for the metacomputation family** (`thm:pac`,
   `thm:pazfc`, `thm:dontwait`) — would restore the paper's "any computable function `f`".
   `computationClaimSentence` puts the claim's input *value* directly in the sentence code,
@@ -250,13 +241,14 @@ Each item has a verified obstruction on record; none blocks the results above.
   claim schema whose input pairs `⌜f⌝` with `n` unevaluated, plus the corresponding
   `truth_iff` bridge — the sentence code is then polynomial in `n` for *any* computable
   `f`, which is exactly the paper's point.
-* **The compactness entailment for `daily_value`** — cheap relative to its value: it
-  would raise `thm:ec`, `thm:expcoh` and `thm:perexpkno` together. Those three retain a
-  stage-quantified world premise (`∀ v, v.ConsistentWith (DP.D n) → …`) where the paper
-  argues over `cworlds(Θ)`. Deriving the former from the latter is a propositional
-  compactness argument of the same shape as the one `Framework/Compactness.lean` already
-  runs for `thm:scon` — the entailment was previously *asserted* in the coverage table
-  and is not proved.
+* **`PolyRatCodes δ → (∀ n, 0 < δ n) → PolyRatCodes (1/δ)`** — the last thing between
+  `thm:st` and `complete`, and the cheapest item on this list. Its endpoint is otherwise
+  exactly the paper's (tex:2092-2110): unconditional over `LIA`, symbol-metered sentences,
+  P-generable `p`, bare deferral function — but it additionally requires `1/δ` to be
+  efficiently coded, where the paper asks only that `δ` be an e.c. sequence of *positive*
+  rationals. The premise is very likely redundant, since a rational's code is essentially
+  `pair num den` and the reciprocal swaps them, but no such lemma exists and the row does
+  not assume one. Proving it also removes ~8 threaded occurrences of `hδinv` repo-wide.
 * **A `c.e. → EfficientRepeatedEnumeration` constructor** — would lift `thm:obu` to the
   paper's actual hypothesis. The paper does the padding-and-repeating transformation
   inside its own proof (tex:5651-5656); here it is taken as data. Note the current

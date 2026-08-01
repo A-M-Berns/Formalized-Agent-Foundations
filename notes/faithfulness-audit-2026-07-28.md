@@ -455,3 +455,53 @@ have not been independently re-derived from signatures. Given two consecutive pa
 31–39% mis-tier rate, **37 should be read as an upper bound that has been rounded against
 ourselves, not a settled figure.** The next pass should take the un-re-derived remainder,
 starting with the `def:*` rows and `thm:ifp`/`thm:scon`/`thm:loe`.
+
+---
+
+## Repair wave (2026-08-01): 37 → 46 of 53 at paper strength
+
+Three packets landed against the completing pass's findings. Counts re-derived from the
+merged signatures each time, never from the fixers' reports.
+
+**Quotation family metering (6 rows → `complete`).** `thm:epr`, `thm:ceu`, `thm:ref`,
+`thm:wub`, `thm:er`, `thm:cee` restated at `RpnSentenceCodes` / `LUV.RpnThresholdCodeSeq`.
+The diagnosis in the 2026-07-31 entry above was itself wrong and is corrected there: the
+quote-code constructors take only `Primrec fun n => encode (φ n)` from the hypothesis, and
+`RpnSentenceCodes.primrec` already supplies it. `thm:wub` was separately re-derived against
+tex:1249-1258 rather than promoted on the metering change alone.
+
+**`thm:st` (metering fixed; row held at `qualified` on a new finding).**
+`indicatorProductLUV_rpnThresholdCodeSeq` emits the `⋏`-shell as tokens via
+`RpnSentenceCodes.and` instead of a `Nat.pair` on Gödel values — and turned out *simpler*
+than the whole-value original, because `RationalQuoteCode.poly` is definitionally the
+paired-index fact needed. The fixer recommended promoting the row to `complete`. **Not
+taken.** Re-deriving the signature showed a premise the paper does not ask for:
+`hδinv : PolyRatCodes (fun n ↦ 1 / δ n)`, where tex:2093 requires only that `δ` be an e.c.
+sequence of *positive* rationals. It is very likely redundant, but `exact?` finds no lemma,
+so the row does not claim it. Recorded as the cheapest open item.
+
+**`thm:ec` / `thm:expcoh` / `thm:perexpkno` (3 rows → `conditional`) — and the finding
+above was half wrong.** The 2026-07-31 entry said the fix was to prove a compactness
+entailment. There is nothing to prove: tracing where the premise is *consumed* shows
+`thm:ec` reads a world value only inside `filter_upwards [hae]`, with
+`hae : ∀ᵐ v ∂μ, v.ConsistentWithTheory DP` from `lic_limitCoherence`. Every world at which
+a value was ever demanded is already completed-theory, and the old helper
+`approxValuesUpTo_of_consistentWithTheory` was doing the *trivial* stage⇒theory direction.
+So the premise was not under-justified, it was **excess**: stating it at the paper's
+`cworlds(Θ)` quantifier and deleting the helper is strictly simpler and adds no surface.
+Upstream, `TheorySemantics.stage_values` — a stage-quantified field with no constructor
+anywhere in the repo — was deleted outright; that was the real smuggling site for the two
+`_ofSyntax` endpoints.
+
+**Two general lessons, both instances of the same error at different levels.** The
+metering misdiagnosis and the compactness misdiagnosis were both cases of reasoning from a
+hypothesis's *shape* instead of its *use*: "passed as data, therefore load-bearing" and
+"stated at a stronger quantifier, therefore needs a bridge". In each case the cheap check —
+grep the consumption site — settles it in minutes and was skipped. This is now a standing
+check in `notes/consolidation.md`.
+
+**Remaining 7 qualified:** `thm:ccee` (mesh slack, type-`(c)`), `thm:st` (`hδinv`),
+`thm:pac`/`thm:pazfc`/`thm:dontwait` (evaluated horizon in the claim code, needs an
+unevaluated-term schema), `thm:obu` (WLOG preprocessing taken as data), `thm:ifp` (fuel-class
+closure gap). Confidence caveat from the completing pass still stands: 46 is an upper bound
+rounded against ourselves, and the un-re-derived remainder is still worth a pass.
