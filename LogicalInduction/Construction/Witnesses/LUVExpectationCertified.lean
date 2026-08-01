@@ -417,10 +417,6 @@ noncomputable def combinedDP : DeductiveProcess where
   D m := L.gridStage m ∪ (L.luvThresholdDP T).D m
   mono m := Finset.union_subset_union (L.gridStage_mono m) ((L.luvThresholdDP T).mono m)
 
-lemma combinedDP_consistent_grid {v : PCWorld} {m : ℕ}
-    (hv : v.ConsistentWith ((L.combinedDP T).D m)) : v.ConsistentWith (L.gridStage m) :=
-  fun φ hφ => hv φ (Finset.mem_union_left _ hφ)
-
 lemma combinedDP_consistentWithTheory_luv {v : PCWorld}
     (hv : v.ConsistentWithTheory (L.combinedDP T)) :
     v.ConsistentWithTheory (L.luvThresholdDP T) :=
