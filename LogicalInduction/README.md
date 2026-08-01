@@ -160,12 +160,25 @@ assertion starts failing and gets promoted to a plain clean assertion.
    `thm:er`, `thm:ref`, `thm:st`, `thm:cee`, `thm:ceu`, `thm:wub`) and the
    metacomputation family (`thm:pac`, `thm:pazfc`, `thm:dontwait`, where the analogous
    `PolyNatCodes` restricts the paper's "any computable function `f`" to polynomial-time
-   `f`) — are stated at the narrower class. The reason is structural rather than
-   incidental: the quote-code compiler feeds the sentence code as a *number* into the
-   market program, so the whole-value bound is consumed as data, not merely coerced. Each
-   of those nodes is at paper strength in its `[IsLogicalInductor]`-conditional form; it
-   is the instantiation over the constructed inductor that narrows. Closing this gap —
-   a symbol-metered quote-code compiler — is the largest single item of remaining work.
+   `f`) — are stated at the narrower class. Each is at paper strength in its
+   `[IsLogicalInductor]`-conditional form; it is the instantiation over the constructed
+   inductor that narrows.
+
+   For the quotation family this is **residue, not obstruction**, and the distinction
+   matters because it was got wrong once. What the quote-code constructors actually
+   consume from the hypothesis is a *computability* fact — `Primrec fun n => encode (φ n)`,
+   to key the market's quote table by sentence code — and the symbol-metered class already
+   supplies it (`RpnSentenceCodes.primrec`, written for exactly this boundary and noting
+   in its own docstring that the codes are *not* polynomially fueled). No poly bound on the
+   code value is needed downstream. So most of these are signature generalizations rather
+   than new mathematics; see *Planned future work* for the per-node breakdown of what
+   remains.
+
+   The metacomputation family is a genuinely different defect, and a syntactic one: the
+   paper's sentence names the *term* `⌜f⌝(⌜n⌝)`, whereas `BoundedComputation` carries the
+   *evaluated* horizon `steps n` inside the claim's input, which is why its value must be
+   polynomially bounded. Restoring the paper's reading means an unevaluated-term claim
+   schema, not a better bound.
 
    Worth noting: the paper itself is explicit (remark after `def:ec`) that its
    framework is not wedded to polynomial time — any efficiency class with suitable
@@ -217,14 +230,24 @@ Each item has a verified obstruction on record; none blocks the results above.
   quote-code layer. This is the one substitution with a known downstream consumer: work on
   deference in logical induction uses `thm:ccee` at general option-value LUVs, where
   whether the `1/(n+1)` slack is acceptable depends on the consuming argument.
-* **A symbol-metered quote-code compiler** — the largest single item by node count: it
-  would lift the ten unconditional endpoints described under boundary 1 (`thm:epr`,
-  `thm:er`, `thm:ref`, `thm:st`, `thm:cee`, `thm:ceu`, `thm:wub`, and the `f`-class
-  analogue at `thm:pac`, `thm:pazfc`, `thm:dontwait`) from the whole-value class to the
-  paper's own. The obstruction is that the quote code feeds the sentence's Gödel value
-  into the market program as a number; a symbol-metered compiler must instead thread the
-  Polish token run through the market's own indexing, which is the same machinery
-  `BitChain` builds for the domination family, applied one layer up.
+* **Restate the quotation family at the symbol-metered class** (`thm:epr`, `thm:ceu`,
+  `thm:ref`, `thm:wub`, then `thm:er`/`thm:cee`, then `thm:st`) — largest by node count
+  and mostly signature work, because `RpnSentenceCodes.primrec` already supplies the only
+  fact the quote-code constructors take from the hypothesis. `thm:wub`'s endpoint uses it
+  once, purely to coerce. `thm:er`/`thm:cee` additionally need `expectQuote_computable`
+  restated over `RpnThresholdCodeSeq` — which is *definitionally* `RpnSentenceCodes` of the
+  threshold family, so the same lemma applies. `thm:st` is the one with real content left:
+  it needs `indicatorProductLUV_rpnThresholdCodeSeq`, emitting the `⋏`-shell as tokens
+  rather than as a `Nat.pair`; `RpnSentenceCodes.and` and `meshProductLUV_rpnThresholdCodeSeq`
+  are the combinator and the worked template.
+* **An unevaluated-term claim schema for the metacomputation family** (`thm:pac`,
+  `thm:pazfc`, `thm:dontwait`) — would restore the paper's "any computable function `f`".
+  `computationClaimSentence` puts the claim's input *value* directly in the sentence code,
+  so carrying the evaluated horizon `f(n)` forces `PolyNatCodes steps`. The paper instead
+  names the term `⌜f⌝(⌜n⌝)` and lets the arithmetic schema evaluate it. The change is a
+  claim schema whose input pairs `⌜f⌝` with `n` unevaluated, plus the corresponding
+  `truth_iff` bridge — the sentence code is then polynomial in `n` for *any* computable
+  `f`, which is exactly the paper's point.
 * **The compactness entailment for `daily_value`** — cheap relative to its value: it
   would raise `thm:ec`, `thm:expcoh` and `thm:perexpkno` together. Those three retain a
   stage-quantified world premise (`∀ v, v.ConsistentWith (DP.D n) → …`) where the paper
