@@ -966,16 +966,31 @@ structure BoundedSequence (As : ℕ → LUVCombination) (P : History) where
 
 /-- Propositional representation boundary needed to invoke `thm:ec` on every LUV
 appearing in a combination sequence.  It records only compact threshold codeability and
-per-grid world valuation; it does not assume convergence or any expectation theorem.
+completed-theory world valuation; it does not assume convergence or any expectation
+theorem.
 
-`daily_value` is **per grid**, matching `thm:ec`'s own `hval`: for each precision `k`
-there is some stage after which every stage-consistent world values the LUV on grid `k`,
-with *no rate* tying `k` to the stage. -/
+`world_value` sits at the paper's `def:luv` quantifier — `v ∈ cworlds(Θ)`, i.e.
+`PCWorld.ConsistentWithTheory` — matching `thm:ec`'s own `hval`.  It is exactly the
+per-LUV content of `WorldValued` (see `WorldValued.convergencePresentation`); no
+stage-indexed valuation is assumed. -/
 structure ConvergencePresentation (As : ℕ → LUVCombination)
     (DP : DeductiveProcess) where
   threshold_code : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes
-  daily_value : ∀ n p, p ∈ (As n).terms → ∀ k, ∀ᶠ m in atTop, ∀ (v : PCWorld),
-    v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo p.2 x k
+  world_value : ∀ n p, p ∈ (As n).terms → ∀ v : PCWorld,
+    v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt p.2 x
+
+/-- `WorldValued` — the completed-world valuation boundary the mesh theorems already
+carry — supplies a `ConvergencePresentation` outright once threshold codes are given.
+The two hypotheses of `thm:expcoh`/`thm:perexpkno` therefore share one world-value
+premise, at `cworlds(Θ)`. -/
+def WorldValued.convergencePresentation {As : ℕ → LUVCombination}
+    {DP : DeductiveProcess} (hvalued : WorldValued As DP)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes) :
+    ConvergencePresentation As DP where
+  threshold_code := hcode
+  world_value n p hp v hv := by
+    obtain ⟨ν, hν⟩ := hvalued n v hv
+    exact ⟨ν p.2, hν p hp⟩
 
 /-- The paper's future expectation extrema use each future day's own mesh. -/
 noncomputable def futureLow (As : ℕ → LUVCombination)
@@ -1551,8 +1566,8 @@ private lemma expectTerms_converge
     [IsLogicalInductor P DP]
     (hcode : ∀ p ∈ l, p.2.RpnThresholdCodes)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (hval : ∀ p ∈ l, ∀ k, ∀ᶠ m in atTop, ∀ (v : PCWorld),
-      v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo p.2 x k) :
+    (hval : ∀ p ∈ l, ∀ v : PCWorld,
+      v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt p.2 x) :
     ∃ L : ℝ, Tendsto (fun m =>
       (l.map (fun p => p.1.denote P * p.2.expect P m)).sum) atTop (𝓝 L) := by
   have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
@@ -1565,8 +1580,8 @@ private lemma expectTerms_converge
       have hcodeRest : ∀ q ∈ rest, q.2.RpnThresholdCodes := by
         intro q hq
         exact hcode q (by simp [hq])
-      have hvalRest : ∀ q ∈ rest, ∀ k, ∀ᶠ m in atTop, ∀ (v : PCWorld),
-          v.ConsistentWith (DP.D m) → ∃ x : ℝ, v.ApproxValuesUpTo q.2 x k := by
+      have hvalRest : ∀ q ∈ rest, ∀ v : PCWorld,
+          v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt q.2 x := by
         intro q hq
         exact hval q (by simp [hq])
       obtain ⟨LR, hLR⟩ := ih hcodeRest hvalRest
@@ -1585,7 +1600,7 @@ lemma ConvergencePresentation.expect_tendsto_expectInf
   have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
     fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   obtain ⟨L, hL⟩ := expectTerms_converge (As n).terms P DP
-    (hc.threshold_code n) hworld (hc.daily_value n)
+    (hc.threshold_code n) hworld (hc.world_value n)
   have hfull : Tendsto (fun m => (As n).expect P m) atTop
       (𝓝 ((As n).const.denote P + L)) := by
     simpa only [expect, expectAt] using tendsto_const_nhds.add hL

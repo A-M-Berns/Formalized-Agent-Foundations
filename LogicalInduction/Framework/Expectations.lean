@@ -160,8 +160,8 @@ Proved in `Properties/ExpectationConvergence.lean` (`LUV.expect_converges`): the
 expectation is the price of the precision-`n+1` threshold bundle, so `thm:affcoh` traps it
 between the limiting belief's liminf/limsup, and `thm:lc` averages the limiting belief
 over completed-theory worlds, where `lem:conluvapprox` makes the precision sequence
-Cauchy. The statement lives there (it needs the per-grid world-value linkage `hval` and
-daily plausible worlds, on top of the price bounds). -/
+Cauchy. The statement lives there (it needs the completed-theory world-value linkage `hval`,
+quantified over `cworlds(Θ)`, and daily plausible worlds, on top of the price bounds). -/
 
 end LUV
 

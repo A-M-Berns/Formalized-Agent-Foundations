@@ -405,10 +405,10 @@ theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : Arithmetic
 
 /-! ## Certified liminf/limsup coherence (`thm:expcoh`, `thm:perexpkno`)
 
-`expcoh`/`perexpkno` need both the **completed-world** values (`WorldValued`, all thresholds) and
-the **daily** finite-precision values (`ConvergencePresentation`).  No single scheduled process
-gives both, so we run them over `combinedDP`, the union of the scheduled grid process (for daily
-values) and the full provability enumerator `luvThresholdDP` (for completed-world values). -/
+`expcoh`/`perexpkno` need the **completed-world** values (`WorldValued`, all thresholds), which
+`ConvergencePresentation` now also consumes.  They are run over `combinedDP`, the union of the
+scheduled grid process and the full provability enumerator `luvThresholdDP` (the latter is what
+supplies the completed-world values). -/
 section Combined
 variable (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
 
@@ -438,26 +438,14 @@ lemma worldValued_combinedDP {As : ℕ → LUVCombination}
   fun n v hv => L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs n v
     (L.combinedDP_consistentWithTheory_luv T hv)
 
-/-- `ConvergencePresentation` over `combinedDP`: the daily finite-precision values come from the
-scheduled grid (eventually, once the stage reaches the LUV index); the threshold-code efficiency
-certificate is the disclosed `dd:fuel` hypothesis. -/
+/-- `ConvergencePresentation` over `combinedDP`: the world values come from the completed
+provability enumerator (`WorldValued`); the threshold-code efficiency certificate is the
+disclosed `dd:fuel` hypothesis. -/
 noncomputable def convergencePresentation_combinedDP {As : ℕ → LUVCombination}
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
     (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes) :
-    LUVCombination.ConvergencePresentation As (L.combinedDP T) where
-  threshold_code := hcode
-  daily_value := by
-    intro n p hp k
-    obtain ⟨i, hie⟩ := hAs n p hp
-    filter_upwards [Filter.eventually_ge_atTop (max i k)] with m hm v hv
-    have hmi : i ≤ m := le_of_max_le_left hm
-    have hmk : k ≤ m := le_of_max_le_right hm
-    rw [hie]
-    exact ⟨(L.value i : ℝ),
-      PCWorld.ApproxValuesUpTo.mono
-        ⟨by exact_mod_cast L.value_nonneg i, fun j hj hjm =>
-          L.expectApprox_near_gridDP hj (L.combinedDP_consistent_grid T hv) hmi
-            (by omega)⟩ hmk⟩
+    LUVCombination.ConvergencePresentation As (L.combinedDP T) :=
+  (L.worldValued_combinedDP T hAs).convergencePresentation hcode
 
 /-- **Certified `thm:expcoh`.**  Completed/limiting/diagonal expectation coherence for
 a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` and `ConvergencePresentation`
