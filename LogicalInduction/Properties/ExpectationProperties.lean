@@ -981,8 +981,8 @@ structure ConvergencePresentation (As : ℕ → LUVCombination)
 
 /-- `WorldValued` — the completed-world valuation boundary the mesh theorems already
 carry — supplies a `ConvergencePresentation` outright once threshold codes are given.
-The two hypotheses of `thm:expcoh`/`thm:perexpkno` therefore share one world-value
-premise, at `cworlds(Θ)`. -/
+`thm:expcoh`/`thm:perexpkno` therefore state a single world-value premise, at
+`cworlds(Θ)`, and build the presentation internally. -/
 def WorldValued.convergencePresentation {As : ℕ → LUVCombination}
     {DP : DeductiveProcess} (hvalued : WorldValued As DP)
     (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes) :
@@ -1642,7 +1642,7 @@ theorem BoundedSequence.limexpapprox
     (h : BoundedSequence As P)
     (ops : MeshSoftmaxOperationalWitness As P)
     (hvalued : WorldValued As DP)
-    (hc : ConvergencePresentation As DP)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
     (b : ℚ) (hb : 0 ≤ (b : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -1652,7 +1652,8 @@ theorem BoundedSequence.limexpapprox
   have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
     fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   exact squeeze_zero (fun n => abs_nonneg _)
-    (fun n => h.mesh_limitingValue_near_expectInf hc hworld n)
+    (fun n =>
+      h.mesh_limitingValue_near_expectInf (hvalued.convergencePresentation hcode) hworld n)
     (h.mesh_independence ops hvalued b hb hshare hworld)
 
 /-- A LUV-combination sequence is determined when every completed-theory world and every
@@ -2116,7 +2117,7 @@ theorem BoundedSequence.perexpkno
     (h : BoundedSequence As P)
     (ops : MeshSoftmaxOperationalWitness As P)
     (hvalued : WorldValued As DP)
-    (hc : ConvergencePresentation As DP)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
     (b : ℚ) (hb : 0 ≤ (b : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -2145,7 +2146,7 @@ theorem BoundedSequence.perexpkno
   have hlimNear : Tendsto (fun n => |(As n).expectInf P - Mlim n|)
       atTop (𝓝 0) := by
     simpa only [Mlim, Ms, abs_sub_comm] using
-      h.limexpapprox ops hvalued hc b hb hshare hworld
+      h.limexpapprox ops hvalued hcode b hb hshare hworld
   obtain ⟨hmlLo, hmlHi⟩ :=
     AffineCombination.BoundedAffinePrices.limitingValue_filterBounds
       (h.mesh_boundedPrices hP) DP hworld
@@ -2187,7 +2188,7 @@ theorem BoundedSequence.expcoh
     (h : BoundedSequence As P)
     (ops : MeshSoftmaxOperationalWitness As P)
     (hvalued : WorldValued As DP)
-    (hc : ConvergencePresentation As DP)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
     (b : ℚ) (hb : 0 ≤ (b : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -2216,7 +2217,7 @@ theorem BoundedSequence.expcoh
   have hlimNear : Tendsto (fun n => |(As n).expectInf P - Mlim n|)
       atTop (𝓝 0) := by
     simpa only [Mlim, Ms, abs_sub_comm] using
-      h.limexpapprox ops hvalued hc b hb hshare hworld
+      h.limexpapprox ops hvalued hcode b hb hshare hworld
   obtain ⟨hmlLo, hmlHi⟩ :=
     AffineCombination.BoundedAffinePrices.limitingValue_filterBounds
       (h.mesh_boundedPrices hP) DP hworld

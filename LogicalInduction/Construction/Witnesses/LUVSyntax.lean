@@ -1363,7 +1363,6 @@ theorem expcoh_ofSyntax
     (h : LUVCombination.BoundedSequence As P)
     (S : LUVCombinationSyntax As)
     (hvalued : LUVCombination.WorldValued As DP)
-    (hc : LUVCombination.ConvergencePresentation As DP)
     (b : ℚ) (hb : 0 ≤ (b : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -1377,7 +1376,7 @@ theorem expcoh_ofSyntax
           limsup (completedHigh As P DP) atTop) :=
   h.expcoh (S.meshSoftmaxOperationalWitness h
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
-    hvalued hc b hb hshare hworld
+    hvalued S.threshold_code b hb hshare hworld
 
 /-- `thm:perexpkno` with the mesh-softmax operational witness discharged from the compact
 LUV syntax.  Proof kind `C`; every hypothesis is type `(a)`.
@@ -1388,7 +1387,6 @@ theorem perexpkno_ofSyntax
     (h : LUVCombination.BoundedSequence As P)
     (S : LUVCombinationSyntax As)
     (hvalued : LUVCombination.WorldValued As DP)
-    (hc : LUVCombination.ConvergencePresentation As DP)
     (b : ℚ) (hb : 0 ≤ (b : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -1398,7 +1396,7 @@ theorem perexpkno_ofSyntax
         limsup (fun n => (As n).expectInf P) atTop :=
   h.perexpkno (S.meshSoftmaxOperationalWitness h
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
-    hvalued hc b hb hshare hworld
+    hvalued S.threshold_code b hb hshare hworld
 
 end LUVCombination.BoundedSequence
 

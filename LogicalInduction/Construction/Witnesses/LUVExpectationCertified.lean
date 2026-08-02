@@ -406,9 +406,10 @@ theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : Arithmetic
 /-! ## Certified liminf/limsup coherence (`thm:expcoh`, `thm:perexpkno`)
 
 `expcoh`/`perexpkno` need the **completed-world** values (`WorldValued`, all thresholds), which
-`ConvergencePresentation` now also consumes.  They are run over `combinedDP`, the union of the
-scheduled grid process and the full provability enumerator `luvThresholdDP` (the latter is what
-supplies the completed-world values). -/
+the full provability enumerator `luvThresholdDP` supplies.  They are run over `combinedDP`, the
+union of `luvThresholdDP` with the scheduled grid process.  The grid summand contributes nothing
+to either endpoint's premise set — both `worldValued_combinedDP` and `combinedDP_hworld` factor
+through `luvThresholdDP` alone — so the union is not load-bearing here. -/
 section Combined
 variable (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
 
@@ -434,26 +435,16 @@ lemma worldValued_combinedDP {As : ℕ → LUVCombination}
   fun n v hv => L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs n v
     (L.combinedDP_consistentWithTheory_luv T hv)
 
-/-- `ConvergencePresentation` over `combinedDP`: the world values come from the completed
-provability enumerator (`WorldValued`); the threshold-code efficiency certificate is the
-disclosed `dd:fuel` hypothesis. -/
-noncomputable def convergencePresentation_combinedDP {As : ℕ → LUVCombination}
-    (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes) :
-    LUVCombination.ConvergencePresentation As (L.combinedDP T) :=
-  (L.worldValued_combinedDP T hAs).convergencePresentation hcode
-
 /-- **Certified `thm:expcoh`.**  Completed/limiting/diagonal expectation coherence for
-a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` and `ConvergencePresentation`
-representation hypotheses discharged from arithmetic and the mesh-softmax operational witness
-derived from the sequence's compact syntax; only threshold-code efficiency remains.
+a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` representation hypothesis
+discharged from arithmetic and both the mesh-softmax operational witness and the threshold-code
+certificates derived from the sequence's compact syntax.
 Paper node: `thm:expcoh` -/
 theorem expcoh_arith {As : ℕ → LUVCombination} {P : History}
     [IsLogicalInductor P (L.combinedDP T)]
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
     (h : LUVCombination.BoundedSequence As P)
     (S : LUVCombinationSyntax As)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
     (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
      :
     (liminf (LUVCombination.completedLow As P (L.combinedDP T)) atTop ≤
@@ -464,8 +455,7 @@ theorem expcoh_arith {As : ℕ → LUVCombination} {P : History}
           limsup (fun n => (As n).expectInf P) atTop ∧
         limsup (fun n => (As n).expectInf P) atTop ≤
           limsup (LUVCombination.completedHigh As P (L.combinedDP T)) atTop) :=
-  h.expcoh_ofSyntax S (L.worldValued_combinedDP T hAs)
-    (L.convergencePresentation_combinedDP T hAs hcode) b hb hshare (L.combinedDP_hworld T)
+  h.expcoh_ofSyntax S (L.worldValued_combinedDP T hAs) b hb hshare (L.combinedDP_hworld T)
 
 /-- **Certified `thm:perexpkno`.**  Persistence of expectation knowledge, with the
 representation hypotheses discharged from arithmetic as in `expcoh_arith`.
@@ -475,15 +465,13 @@ theorem perexpkno_arith {As : ℕ → LUVCombination} {P : History}
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
     (h : LUVCombination.BoundedSequence As P)
     (S : LUVCombinationSyntax As)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
     (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
      :
     liminf (LUVCombination.futureLow As P) atTop =
         liminf (fun n => (As n).expectInf P) atTop ∧
       limsup (LUVCombination.futureHigh As P) atTop =
         limsup (fun n => (As n).expectInf P) atTop :=
-  h.perexpkno_ofSyntax S (L.worldValued_combinedDP T hAs)
-    (L.convergencePresentation_combinedDP T hAs hcode) b hb hshare (L.combinedDP_hworld T)
+  h.perexpkno_ofSyntax S (L.worldValued_combinedDP T hAs) b hb hshare (L.combinedDP_hworld T)
 
 end Combined
 
