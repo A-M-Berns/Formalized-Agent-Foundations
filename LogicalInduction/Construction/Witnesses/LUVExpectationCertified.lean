@@ -29,21 +29,28 @@ namespace LogicalInduction
 
 open LO.FirstOrder LO.FirstOrder.Arithmetic Filter Topology
 
-/-- **Combination-level expectation provability induction, `≤` form.**  A bounded LUV-combination
-sequence whose completed-theory value stays `≤ c` has diagonal expectation `≲ₙ c`.
+/-- **Combination-level expectation provability induction, `≤` form, at the paper's premise.**
 
-The representation premises are the paper's own: `hwv` says each completed world assigns *some*
-coherent value to every LUV of `Aₙ` (which for `W ∈ cworlds(Θ)` the paper's `sup` definition of
-`W(X)` supplies by construction), and `hdet` is `def:affthmval` — the *combination* takes the
-same value `truth n` in every completed world.  Neither demands a canonical per-LUV value fixed
-independently of the world.
+This is `thm:expprovind` as stated at tex:1753-1760: only the *one-sided* world bound is
+assumed — every `W ∈ cworlds(Θ)` values `Aₙ` at most `c`, and different completed worlds are
+free to disagree.  `hwv` is the paper's own representation premise (each completed world
+assigns *some* coherent value to every LUV of `Aₙ`, which the paper's `sup` definition of
+`W(X)` supplies by construction); it is what produces the valuation `ν` the bound is stated
+against.  No `def:affthmval` determinacy is required — contrast
+`lic_expect_combination_provind_le`, which assumes it and is a corollary of this.
+
+Proof kind `C`; hypotheses `(a)` throughout — the diagonal mesh of `⟨A⟩` is a polynomial
+affine sequence whose completed-theory values sit within `shareNorm · (1/n)` of the LUV
+values, so the paper's affine provability induction `thm:affprovind` applies with vanishing
+slack.
 Paper node: `thm:expprovind` -/
-theorem lic_expect_combination_provind_le
+theorem lic_expect_combination_provind_le_ofWorldBound
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
     (hwv : LUVCombination.WorldValued As DP)
-    {truth : ℕ → ℝ} (hdet0 : LUVCombination.DeterminedViaTheory As P DP truth)
-    (c : ℝ) (hdet : ∀ n, truth n ≤ c)
+    (c : ℝ)
+    (hval : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
+      ∀ ν, (As n).ValuesAt v ν → (As n).value P ν ≤ c)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≲ₙ (fun _ => c) := by
@@ -58,7 +65,7 @@ theorem lic_expect_combination_provind_le
   have hmag : ∃ C : ℝ, ∀ n, ((As n).meshAffine (n + 1)).magnitude P ≤ C :=
     ⟨(b : ℝ), fun n =>
       ((As n).meshAffine_magnitude_le_shareNorm P (n + 1)).trans (hshare n)⟩
-  have hval : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWithTheory DP →
+  have hmesh : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWithTheory DP →
       ((As n).meshAffine (n + 1)).value P v.payout ≤ c + ε := by
     intro ε hε
     obtain ⟨N, hN⟩ := exists_nat_gt ((b : ℝ) / ε)
@@ -66,7 +73,7 @@ theorem lic_expect_combination_provind_le
     have hn0 : 0 < n := by omega
     have hnR : (0 : ℝ) < n := by exact_mod_cast hn0
     obtain ⟨ν, hν⟩ := hwv n v hv
-    have hvalue : (As n).value P ν = truth n := hdet0 n v ν hv hν
+    have hvalue : (As n).value P ν ≤ c := hval n v hv ν hν
     have hnear : |((As n).meshAffine (n + 1)).value P v.payout -
         (As n).value P ν| ≤ (As n).shareNorm P * (1 / (n : ℝ)) := by
       have hstep : (1 : ℝ) / ((n : ℝ) + 1) ≤ 1 / (n : ℝ) :=
@@ -80,18 +87,21 @@ theorem lic_expect_combination_provind_le
       rw [mul_one_div, div_le_iff₀ hnR]
       nlinarith [(div_lt_iff₀ hε).mp (hN.trans_le
         (show ((N : ℕ) : ℝ) ≤ n by exact_mod_cast le_trans (le_max_right 1 N) hn))]
-    linarith [hnear.2, hdet n, hbound, hsmall, hvalue]
+    linarith [hnear.2, hbound, hsmall, hvalue]
   simpa only [LUVCombination.meshAffine_price_diagonal] using
-    (h.poly.mesh_poly).affine_provind_theory_le_const P DP hbounded hmag hworld c hval
+    (h.poly.mesh_poly).affine_provind_theory_le_const P DP hbounded hmag hworld c hmesh
 
-/-- **Combination-level expectation provability induction, `≥` form.**
+/-- **Combination-level expectation provability induction, `≥` form, at the paper's premise.**
+The `≥` dual of `lic_expect_combination_provind_le_ofWorldBound`: only a one-sided lower bound
+over `cworlds(Θ)` is assumed.  Proof kind `C`; hypotheses `(a)`.
 Paper node: `thm:expprovind` -/
-theorem lic_expect_combination_provind_ge
+theorem lic_expect_combination_provind_ge_ofWorldBound
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
     (hwv : LUVCombination.WorldValued As DP)
-    {truth : ℕ → ℝ} (hdet0 : LUVCombination.DeterminedViaTheory As P DP truth)
-    (c : ℝ) (hdet : ∀ n, c ≤ truth n)
+    (c : ℝ)
+    (hval : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
+      ∀ ν, (As n).ValuesAt v ν → c ≤ (As n).value P ν)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≳ₙ (fun _ => c) := by
@@ -106,7 +116,7 @@ theorem lic_expect_combination_provind_ge
   have hmag : ∃ C : ℝ, ∀ n, ((As n).meshAffine (n + 1)).magnitude P ≤ C :=
     ⟨(b : ℝ), fun n =>
       ((As n).meshAffine_magnitude_le_shareNorm P (n + 1)).trans (hshare n)⟩
-  have hval : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWithTheory DP →
+  have hmesh : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWithTheory DP →
       c - ε ≤ ((As n).meshAffine (n + 1)).value P v.payout := by
     intro ε hε
     obtain ⟨N, hN⟩ := exists_nat_gt ((b : ℝ) / ε)
@@ -114,7 +124,7 @@ theorem lic_expect_combination_provind_ge
     have hn0 : 0 < n := by omega
     have hnR : (0 : ℝ) < n := by exact_mod_cast hn0
     obtain ⟨ν, hν⟩ := hwv n v hv
-    have hvalue : (As n).value P ν = truth n := hdet0 n v ν hv hν
+    have hvalue : c ≤ (As n).value P ν := hval n v hv ν hν
     have hnear : |((As n).meshAffine (n + 1)).value P v.payout -
         (As n).value P ν| ≤ (As n).shareNorm P * (1 / (n : ℝ)) := by
       have hstep : (1 : ℝ) / ((n : ℝ) + 1) ≤ 1 / (n : ℝ) :=
@@ -128,11 +138,76 @@ theorem lic_expect_combination_provind_ge
       rw [mul_one_div, div_le_iff₀ hnR]
       nlinarith [(div_lt_iff₀ hε).mp (hN.trans_le
         (show ((N : ℕ) : ℝ) ≤ n by exact_mod_cast le_trans (le_max_right 1 N) hn))]
-    linarith [hnear.1, hdet n, hbound, hsmall, hvalue]
+    linarith [hnear.1, hbound, hsmall, hvalue]
   simpa only [LUVCombination.meshAffine_price_diagonal] using
-    (h.poly.mesh_poly).affine_provind_theory_ge_const P DP hbounded hmag hworld c hval
+    (h.poly.mesh_poly).affine_provind_theory_ge_const P DP hbounded hmag hworld c hmesh
 
-/-- **Combination-level expectation provability induction, `=` form.**
+/-- **Combination-level expectation provability induction, `=` form, at the paper's premise.**
+Two-sided world bound, from the two one-sided forms; worlds may still disagree with each other
+only up to the two bounds coinciding.  Proof kind `C`; hypotheses `(a)`.
+Paper node: `thm:expprovind` -/
+theorem lic_expect_combination_provind_eq_ofWorldBound
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    (h : LUVCombination.BoundedSequence As P)
+    (hwv : LUVCombination.WorldValued As DP)
+    (c : ℝ)
+    (hval : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
+      ∀ ν, (As n).ValuesAt v ν → (As n).value P ν = c)
+    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    (fun n => (As n).expect P n) ≈ₙ (fun _ => c) := by
+  rw [asympEq_iff_asympLE_asympGE]
+  exact ⟨lic_expect_combination_provind_le_ofWorldBound h hwv c
+      (fun n v hv ν hν => (hval n v hv ν hν).le) b hshare hworld,
+    lic_expect_combination_provind_ge_ofWorldBound h hwv c
+      (fun n v hv ν hν => (hval n v hv ν hν).ge) b hshare hworld⟩
+
+/-- **Combination-level expectation provability induction, `≤` form.**  A bounded LUV-combination
+sequence whose completed-theory value stays `≤ c` has diagonal expectation `≲ₙ c`.
+
+The representation premises are the paper's own: `hwv` says each completed world assigns *some*
+coherent value to every LUV of `Aₙ` (which for `W ∈ cworlds(Θ)` the paper's `sup` definition of
+`W(X)` supplies by construction), and `hdet` is `def:affthmval` — the *combination* takes the
+same value `truth n` in every completed world.  Neither demands a canonical per-LUV value fixed
+independently of the world.
+
+This determinacy form is what `thm:recurringunbiasednessexp` / `thm:wubexp` / `thm:prandexp`
+consume, where `def:affthmval` *is* the paper's premise.  `thm:expprovind` itself needs only the
+one-sided world bound; see `lic_expect_combination_provind_le_ofWorldBound`, of which this is a
+one-line corollary.
+Paper node: `thm:expprovind` -/
+theorem lic_expect_combination_provind_le
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    (h : LUVCombination.BoundedSequence As P)
+    (hwv : LUVCombination.WorldValued As DP)
+    {truth : ℕ → ℝ} (hdet0 : LUVCombination.DeterminedViaTheory As P DP truth)
+    (c : ℝ) (hdet : ∀ n, truth n ≤ c)
+    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    (fun n => (As n).expect P n) ≲ₙ (fun _ => c) :=
+  lic_expect_combination_provind_le_ofWorldBound h hwv c
+    (fun n v hv ν hν => (hdet0 n v ν hv hν).trans_le (hdet n)) b hshare hworld
+
+/-- **Combination-level expectation provability induction, `≥` form.**  The `def:affthmval`
+determinacy form, consumed by `thm:recurringunbiasednessexp` / `thm:wubexp` / `thm:prandexp`;
+a one-line corollary of `lic_expect_combination_provind_ge_ofWorldBound`, which carries
+`thm:expprovind` at the paper's weaker one-sided world bound.
+Paper node: `thm:expprovind` -/
+theorem lic_expect_combination_provind_ge
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    (h : LUVCombination.BoundedSequence As P)
+    (hwv : LUVCombination.WorldValued As DP)
+    {truth : ℕ → ℝ} (hdet0 : LUVCombination.DeterminedViaTheory As P DP truth)
+    (c : ℝ) (hdet : ∀ n, c ≤ truth n)
+    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    (fun n => (As n).expect P n) ≳ₙ (fun _ => c) :=
+  lic_expect_combination_provind_ge_ofWorldBound h hwv c
+    (fun n v hv ν hν => (hdet n).trans (hdet0 n v ν hv hν).ge) b hshare hworld
+
+/-- **Combination-level expectation provability induction, `=` form.**  The `def:affthmval`
+determinacy form; `lic_expect_combination_provind_eq_ofWorldBound` carries `thm:expprovind` at
+the paper's weaker two-sided world bound.
 Paper node: `thm:expprovind` -/
 theorem lic_expect_combination_provind_eq
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
