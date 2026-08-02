@@ -973,13 +973,16 @@ The threshold `p` is P-generable (`def:ece`), matching the paper: the quote code
 a program for `p` from the feature presentation itself (`PGenerableRat.computable`).  An
 e.c. rational sequence is the constant-feature special case — supply
 `⟨ratCodeFeature p, ratCodeFeature_generated _ p hp⟩` for `hp : PolyRatCodes p`.
+
+The tolerance sequence `δ` carries exactly the paper's hypotheses: efficiently codeable
+and positive.  Efficient codeability of the reciprocal `1/δ` is *derived* from those two
+(`PolyRatCodes.inv_of_pos`), not assumed.
 Paper node: `thm:st` -/
 theorem lic_self_trust_closed
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
     (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
-    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
     (hp : PGenerableRat (liaHistory (theoremDP T)) p) :
     (fun n ↦ (indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n).expect
         (liaHistory (theoremDP T)) n) ≳ₙ
@@ -989,7 +992,7 @@ theorem lic_self_trust_closed
   refine lic_self_trust_ofRepresentation_unconditional (T := T) f φ δ p
     (fun n => indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n)
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).luv
-    delta_pos probability_mem hφ hδ hδinv
+    delta_pos probability_mem hφ hδ (hδ.inv_of_pos delta_pos)
     hp.choose hp.choose_spec
     (indicatorProductLUV_rpnThresholdCodeSeq _ hφ)
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).poly

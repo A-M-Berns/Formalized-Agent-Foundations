@@ -985,6 +985,27 @@ lemma encode_rat_inv_natCast {n : ℕ} (hn : 0 < n) :
   rw [encode_rat_eq, Rat.inv_natCast_num_of_pos hn, Rat.inv_natCast_den_of_pos hn]
   rfl
 
+/-- Reciprocal of a **positive** rational, in closed arithmetic form on the codes: if
+`⌜q⌝ = ⟪2a, b⟫` (numerator `a > 0` sits on the `2n` branch of `ℤ`'s sign fold) then
+`⌜1/q⌝ = ⟪2b, a⟫`.  No normalization step is involved — `a/b` in lowest terms gives
+`b/a` in lowest terms. -/
+lemma encode_rat_inv_of_pos {q : ℚ} (hq : 0 < q) :
+    Encodable.encode (1 / q)
+      = Nat.pair (2 * (Encodable.encode q).unpair.2) ((Encodable.encode q).unpair.1 / 2) := by
+  have hnum : 0 < q.num := Rat.num_pos.mpr hq
+  have hq0 : q ≠ 0 := ne_of_gt hq
+  have hbase : Encodable.encode q = Nat.pair (2 * q.num.natAbs) q.den := by
+    rw [encode_rat_eq]
+    congr 1
+    conv_lhs => rw [← Int.natAbs_of_nonneg (le_of_lt hnum)]
+    exact encode_int_natCast _
+  have hinvnum : (q⁻¹).num = q.den := by
+    simp [Rat.num_inv, Int.sign_eq_one_iff_pos.mpr hnum]
+  have hinvden : (q⁻¹).den = q.num.natAbs := Rat.den_inv_of_ne_zero hq0
+  rw [one_div, encode_rat_eq, hinvnum, hinvden, hbase]
+  simp only [Nat.unpair_pair, Nat.mul_div_cancel_left _ (by norm_num : 0 < 2)]
+  rw [encode_int_natCast]
+
 /-- Token stream of a **varying**-constant family: `[1, ⌜q(m)⌝]` with the encoded
 value poly-fueled. The fixed-constant `serialize_const` is the special case. -/
 lemma PolyTokenStream.serialize_const_comp {qf : ℕ → ℚ}
@@ -2037,6 +2058,22 @@ def PolySentenceCodes (φ : ℕ → Sentence) : Prop :=
 /-- An efficiently codeable sequence of rational constants. -/
 def PolyRatCodes (q : ℕ → ℚ) : Prop :=
   ∃ c : Nat.Partrec.Code, PolyFueled c (fun n => Encodable.encode (q n))
+
+/-- **Efficient codeability is closed under reciprocals of positive sequences.** By
+`encode_rat_inv_of_pos` the reciprocal's code is `⟪2·snd, fst/2⟫` of the original's, so
+the program is `pair` over a constant-multiply and a constant-divide composed with the
+given one (`mulc_polyFueled`, `divmodc_polyFueled`). Callers therefore need only that
+`δ` is efficiently codeable and positive; the `1/δ` side is derived, not assumed. -/
+lemma PolyRatCodes.inv_of_pos {δ : ℕ → ℚ} (h : PolyRatCodes δ) (hpos : ∀ n, 0 < δ n) :
+    PolyRatCodes (fun n => 1 / δ n) := by
+  obtain ⟨c, hc⟩ := h
+  obtain ⟨cm, hm⟩ := mulc_polyFueled 2
+  obtain ⟨cd, hd⟩ := divmodc_polyFueled 2 (by norm_num)
+  have hhi := hm.comp (PolyFueled.right.comp hc)
+  have hlo := PolyFueled.left.comp (hd.comp (PolyFueled.left.comp hc))
+  refine ⟨_, (hhi.pair hlo).of_eq (fun n => ?_)⟩
+  simp only [Nat.unpair_pair]
+  rw [encode_rat_inv_of_pos (hpos n), Nat.mul_comm]
 
 /-! ### `PolySegStream` — segment-composable emission.
 
