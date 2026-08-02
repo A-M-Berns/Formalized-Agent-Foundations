@@ -337,3 +337,44 @@ entailment claim should be treated as an unproved obligation, not as background.
 Related standing item: the tier vocabulary itself is still on the punch list to be renamed so that
 paper-strength-vs-qualified is the primary axis (`complete`/`conditional` currently read as a
 completeness gradient rather than two ways of being at paper strength).
+
+### Freeze point (2026-08-02)
+
+The surface is frozen here for Anson's statement read-through. State: 46 of 53 at paper
+strength (16 instantiated, 30 universal), 7 qualified; `lake build AxiomAudit` green,
+all three script gates green, zero `sorry`, zero added axioms.
+
+Landed in the freeze pass:
+
+* **Tier vocabulary renamed** so paper-strength-vs-qualified is the primary axis:
+  `complete` → **`instantiated`**, `conditional` → **`universal`**. The old names read as a
+  completeness gradient and invited the false inference that a `conditional` row was a
+  weaker result — it was the paper's own theorem. `qualified` is now the only tier that
+  falls short of the paper. `scripts/check_endpoint_coverage.py`'s `TIERS` set moved with it.
+* **`thm:ref`'s extra premise removed.** `lic_introspection_closed` took
+  `hδinv : PolyRatCodes (1/δ)` where tex:1970 asks only for "any e.c. sequence of positive
+  rationals `δ → 0`". Found while auditing the `hδinv` sweep rather than by the strength
+  audit — the row claimed instantiated-tier while carrying a premise the paper does not
+  have. `hδpos` was already in scope, so `PolyRatCodes.inv_of_pos` discharges it at the call
+  site. No tier moved; a latent over-claim was removed.
+
+**Deliberately NOT done, and why** — each is real debt, none should move a frozen surface:
+
+* `hδinv` still binds on four non-closed paper-facing layers
+  (`lic_introspection_ofCode`, `lic_introspection_ofCode_unconditional`,
+  `lic_self_trust_ofRepresentation`, `_unconditional`) and ~10 internal lemmas. All are now
+  dischargeable from `hδ` + positivity; none affects a tier, since the rows rest on the
+  `_closed` endpoints. Sweep after the read-through.
+* **`combinedDP` → `luvThresholdDP` collapse** — investigated, no blocker, exactly two
+  endpoint statements change (`expcoh_arith`, `perexpkno_arith`) and none of `gridStage`
+  dies. Awaiting Anson: it changes which `DeductiveProcess` appears in paper-facing
+  statements.
+* **`LUVCombinationSyntax.convergencePresentation`** is now unreferenced; kept because it is
+  one of a coherent `exactTheoryPresentation`/`worldValued`/`convergencePresentation` trio.
+  Anson's call whether a dead-but-coherent API member survives.
+* `#assert_fields` freezes field *names* only, not types; tricks inventory; structure-name
+  legibility pass. All still open on the punch list.
+
+Next after the read-through: the final fresh-context adversarial audit (phase 3), then the
+work queue in `LogicalInduction/README.md` under *What is left* — metacomputation schema
+(3 rows, ~1 week) has the best ratio remaining.

@@ -944,7 +944,7 @@ theorem lic_introspection_closed
     (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
     (upperFeature : ℕ → EF)
     (hupper : GeneratedRatFeature (liaHistory (theoremDP T)) b upperFeature)
-    (hδ : PolyRatCodes δ) (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
+    (hδ : PolyRatCodes δ)
     (hδpos : ∀ n, 0 < δ n)
     (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1) :
@@ -960,7 +960,7 @@ theorem lic_introspection_closed
             ((theoremIntervalQuoteCode T φ hφ a b ha hb).sentence n) < (ε n : ℝ)) :=
   lic_introspection_ofCode_unconditional (T := T) φ
     hφ a b δ lowerFeature hlower
-    upperFeature hupper hδ hδinv hδpos hδzero hab
+    upperFeature hupper hδ (hδ.inv_of_pos hδpos) hδpos hδzero hab
     (theoremIntervalQuoteCode T φ hφ a b ha hb)
 
 /-- **`thm:st` (self-trust), closed form over the constructed `LIA`** — no reflection
