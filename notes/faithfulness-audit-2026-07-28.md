@@ -523,3 +523,35 @@ fold; Mathlib has `Rat.den_inv_of_ne_zero`/`num_inv`) rather than from the shape
 ~8 `hδinv` occurrences remain in `ComputationDP.lean`, `QuotationAffine.lean` and the
 `_ofRepresentation` layers. They are now all dischargeable from `hδ` + positivity and are
 scheduled as a consolidation pass; they affect no tier.
+
+### `thm:expprovind` to `conditional` (2026-08-02) — 46 of 53
+
+`lic_expect_combination_provind_ge/_le/_eq` now take exactly tex:1753-1760's premise: a
+one-sided bound over `cworlds(Θ)`, worlds free to disagree. `DeterminedViaTheory` is gone
+from them and survives as `_ofDetermined` corollaries, which `thm:recurringunbiasednessexp`
+/ `thm:wubexp` / `thm:prandexp` genuinely need (`def:affthmval`). Under the consolidation
+discipline the paper-matching form took the plain name and the determinacy form was
+suffixed, rather than leaving the paper's own statement behind an `_ofWorldBound` tag.
+
+`WorldValued` is retained and is *not* the over-restriction: it is the paper's own
+representation premise, and operationally it produces the valuation `ν` the bound is stated
+against.
+
+**Third estimate miss of the wave, same root cause — worth recording because the pattern is
+now unmistakable.** Predicted "1–2 sessions, filter-bound factoring as the swing factor";
+actual ~20 minutes of editing. I had verified that `expcoh` exists and supplies the needed
+liminf chain, which is true and irrelevant: **the combination endpoints never call `expcoh`.**
+They route through the diagonal mesh into `affine_provind_theory_ge_const`, which already
+absorbs `completedAffineExtrema_filterBounds` internally, so the hypothesis swap cost one
+`have` per endpoint.
+
+All three bad estimates this wave (whole-value metering "structural"; compactness entailment
+"needed"; this one) came from reasoning about a *hypothetical* implementation rather than
+reading the existing proof body. Checking that the ingredients for a plausible route exist
+is not the same as checking which route the code takes. The cheap discipline: before
+estimating a change to an endpoint, read that endpoint's proof body and see what it actually
+calls.
+
+Open, unmeasured: whether `completedLow`/`completedHigh` filter bounds factor cleanly out of
+`expcoh`. That question was never reached and still governs the cost of any node that *does*
+route through `expcoh`.

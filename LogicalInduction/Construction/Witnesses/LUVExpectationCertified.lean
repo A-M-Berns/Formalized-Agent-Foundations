@@ -37,14 +37,14 @@ free to disagree.  `hwv` is the paper's own representation premise (each complet
 assigns *some* coherent value to every LUV of `Aₙ`, which the paper's `sup` definition of
 `W(X)` supplies by construction); it is what produces the valuation `ν` the bound is stated
 against.  No `def:affthmval` determinacy is required — contrast
-`lic_expect_combination_provind_le`, which assumes it and is a corollary of this.
+`lic_expect_combination_provind_le_ofDetermined`, which assumes it and is a corollary of this.
 
 Proof kind `C`; hypotheses `(a)` throughout — the diagonal mesh of `⟨A⟩` is a polynomial
 affine sequence whose completed-theory values sit within `shareNorm · (1/n)` of the LUV
 values, so the paper's affine provability induction `thm:affprovind` applies with vanishing
 slack.
 Paper node: `thm:expprovind` -/
-theorem lic_expect_combination_provind_le_ofWorldBound
+theorem lic_expect_combination_provind_le
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
     (hwv : LUVCombination.WorldValued As DP)
@@ -92,10 +92,10 @@ theorem lic_expect_combination_provind_le_ofWorldBound
     (h.poly.mesh_poly).affine_provind_theory_le_const P DP hbounded hmag hworld c hmesh
 
 /-- **Combination-level expectation provability induction, `≥` form, at the paper's premise.**
-The `≥` dual of `lic_expect_combination_provind_le_ofWorldBound`: only a one-sided lower bound
+The `≥` dual of `lic_expect_combination_provind_le`: only a one-sided lower bound
 over `cworlds(Θ)` is assumed.  Proof kind `C`; hypotheses `(a)`.
 Paper node: `thm:expprovind` -/
-theorem lic_expect_combination_provind_ge_ofWorldBound
+theorem lic_expect_combination_provind_ge
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
     (hwv : LUVCombination.WorldValued As DP)
@@ -146,7 +146,7 @@ theorem lic_expect_combination_provind_ge_ofWorldBound
 Two-sided world bound, from the two one-sided forms; worlds may still disagree with each other
 only up to the two bounds coinciding.  Proof kind `C`; hypotheses `(a)`.
 Paper node: `thm:expprovind` -/
-theorem lic_expect_combination_provind_eq_ofWorldBound
+theorem lic_expect_combination_provind_eq
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
     (hwv : LUVCombination.WorldValued As DP)
@@ -157,9 +157,9 @@ theorem lic_expect_combination_provind_eq_ofWorldBound
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≈ₙ (fun _ => c) := by
   rw [asympEq_iff_asympLE_asympGE]
-  exact ⟨lic_expect_combination_provind_le_ofWorldBound h hwv c
+  exact ⟨lic_expect_combination_provind_le h hwv c
       (fun n v hv ν hν => (hval n v hv ν hν).le) b hshare hworld,
-    lic_expect_combination_provind_ge_ofWorldBound h hwv c
+    lic_expect_combination_provind_ge h hwv c
       (fun n v hv ν hν => (hval n v hv ν hν).ge) b hshare hworld⟩
 
 /-- **Combination-level expectation provability induction, `≤` form.**  A bounded LUV-combination
@@ -173,10 +173,10 @@ independently of the world.
 
 This determinacy form is what `thm:recurringunbiasednessexp` / `thm:wubexp` / `thm:prandexp`
 consume, where `def:affthmval` *is* the paper's premise.  `thm:expprovind` itself needs only the
-one-sided world bound; see `lic_expect_combination_provind_le_ofWorldBound`, of which this is a
+one-sided world bound; see `lic_expect_combination_provind_le`, of which this is a
 one-line corollary.
 Paper node: `thm:expprovind` -/
-theorem lic_expect_combination_provind_le
+theorem lic_expect_combination_provind_le_ofDetermined
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
     (hwv : LUVCombination.WorldValued As DP)
@@ -185,15 +185,15 @@ theorem lic_expect_combination_provind_le
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≲ₙ (fun _ => c) :=
-  lic_expect_combination_provind_le_ofWorldBound h hwv c
+  lic_expect_combination_provind_le h hwv c
     (fun n v hv ν hν => (hdet0 n v ν hv hν).trans_le (hdet n)) b hshare hworld
 
 /-- **Combination-level expectation provability induction, `≥` form.**  The `def:affthmval`
 determinacy form, consumed by `thm:recurringunbiasednessexp` / `thm:wubexp` / `thm:prandexp`;
-a one-line corollary of `lic_expect_combination_provind_ge_ofWorldBound`, which carries
+a one-line corollary of `lic_expect_combination_provind_ge`, which carries
 `thm:expprovind` at the paper's weaker one-sided world bound.
 Paper node: `thm:expprovind` -/
-theorem lic_expect_combination_provind_ge
+theorem lic_expect_combination_provind_ge_ofDetermined
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
     (hwv : LUVCombination.WorldValued As DP)
@@ -202,14 +202,14 @@ theorem lic_expect_combination_provind_ge
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≳ₙ (fun _ => c) :=
-  lic_expect_combination_provind_ge_ofWorldBound h hwv c
+  lic_expect_combination_provind_ge h hwv c
     (fun n v hv ν hν => (hdet n).trans (hdet0 n v ν hv hν).ge) b hshare hworld
 
 /-- **Combination-level expectation provability induction, `=` form.**  The `def:affthmval`
-determinacy form; `lic_expect_combination_provind_eq_ofWorldBound` carries `thm:expprovind` at
+determinacy form; `lic_expect_combination_provind_eq` carries `thm:expprovind` at
 the paper's weaker two-sided world bound.
 Paper node: `thm:expprovind` -/
-theorem lic_expect_combination_provind_eq
+theorem lic_expect_combination_provind_eq_ofDetermined
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
     (hwv : LUVCombination.WorldValued As DP)
@@ -219,8 +219,8 @@ theorem lic_expect_combination_provind_eq
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≈ₙ (fun _ => c) := by
   rw [asympEq_iff_asympLE_asympGE]
-  exact ⟨lic_expect_combination_provind_le h hwv hdet0 c (fun n => (hdet n).le) b hshare hworld,
-    lic_expect_combination_provind_ge h hwv hdet0 c (fun n => (hdet n).ge) b hshare hworld⟩
+  exact ⟨lic_expect_combination_provind_le_ofDetermined h hwv hdet0 c (fun n => (hdet n).le) b hshare hworld,
+    lic_expect_combination_provind_ge_ofDetermined h hwv hdet0 c (fun n => (hdet n).ge) b hshare hworld⟩
 
 /-- **Combination-level expectation provability induction, `= 0` form** (`thm:loe` substrate).
 The paper's own route to linearity (`app:loe`): apply `thm:expprovind` to the combination
@@ -234,7 +234,7 @@ theorem lic_expect_combination_provind_zero
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≈ₙ (fun _ => 0) :=
-  lic_expect_combination_provind_eq h hwv hdet0 0 (fun _ => rfl) b hshare hworld
+  lic_expect_combination_provind_eq_ofDetermined h hwv hdet0 0 (fun _ => rfl) b hshare hworld
 
 /-- The paper's linearity LUV-combination `aₙXₙ + bₙYₙ − Zₙ`. -/
 def linearityLUVComb (a b : ℕ → ℚ) (X Y Z : ℕ → LUV) (n : ℕ) : LUVCombination where

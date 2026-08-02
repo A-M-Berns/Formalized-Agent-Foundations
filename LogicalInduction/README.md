@@ -9,15 +9,15 @@ build-audited. How strong each one is:
 
 | | count | what it means |
 |---|---:|---|
-| **paper strength** | 45 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
-| **qualified** | 8 | proved with an explicitly named representation interface or class restriction retained |
+| **paper strength** | 46 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
+| **qualified** | 7 | proved with an explicitly named representation interface or class restriction retained |
 
 Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
 machine-checked against the endpoint inventory so a node cannot ship without a strength
 call.
 
-Of the 47, **16 are also instantiated over the concrete inductor constructed here** at
+Of the 46, **16 are also instantiated over the concrete inductor constructed here** at
 full paper strength, so they hold of a specific algorithm rather than a hypothetical
 one. The paper states no such theorems; that is a strengthening, not a different degree
 of faithfulness.
@@ -144,7 +144,11 @@ assertion starts failing and gets promoted to a plain clean assertion.
    (`thm:ifp`), whose transported trader needs a fuel-class closure property the model
    provably lacks (the inverse-operation ceiling on the digit calculus), so that
    endpoint stays restricted to efficiently patchable market prefixes and has no
-   instantiation over the constructed inductor.
+   instantiation over the constructed inductor. Sharper than that, and worth stating
+   because it is easy to read past: the restricting interface `EfficientPrefixPatch` has
+   **no inhabitant anywhere in this repo**, so that endpoint currently has no exhibited
+   witness for its own hypothesis. It is the one place on this page where a theorem is
+   stated but not yet shown to be about anything.
 
    The model bites in a second, subtler place, and it is what keeps most of the
    qualified rows qualified. Within the fuel model there are two ways to meter a
@@ -221,46 +225,71 @@ assertion starts failing and gets promoted to a plain clean assertion.
 
 All three are disclosed at every affected statement, not just here.
 
-## Planned future work
+## What is left, and what it is blocked on
 
-Each item has a verified obstruction on record; none blocks the results above.
+The 7 qualified nodes do **not** all trace back to the two modeling boundaries, and it
+would be easy to assume they do. Only two are genuinely boundary-blocked; the rest are
+unfinished implementation with a known route. Estimates are engineering judgment, not
+measurements — the ones marked *checked* were made after confirming the required lemmas
+exist, and the rest are structural reads that have twice moved upward on contact.
 
-* **An *exactly* reflecting general-source `thm:ccee`** — would remove the vanishing-slack
-  substitution described under boundary 2. The mesh route (which landed, and which buys
-  the paper's arbitrary source family) is approximate by construction. The exact route
-  needs a world-dependent product-atom schema entered by the deductive process — a
-  compound-axiom entry on the quotation presentation, comparable in scale to the existing
-  quote-code layer. This is the one substitution with a known downstream consumer: work on
-  deference in logical induction uses `thm:ccee` at general option-value LUVs, where
+**Blocked on a disclosed modeling boundary (2).**
+
+* **`thm:ccee` — the propositional substrate.** An *exactly* reflecting product LUV needs
+  either the deferred weight's value (unavailable to an emitter: only P-generable,
+  deferred, and the resulting threshold's denominator is not polynomially sized) or the
+  infinite disjunction `⋁_{s∈ℚ}(⌜w > s⌝ ∧ ⌜X > r/s⌝)`. Propositional logic has neither, so
+  the landed mesh product reflects only to within `1/(n+1)`. The exact route needs a
+  world-dependent product-atom schema entered by the deductive process — a compound-axiom
+  entry on the quotation presentation, comparable in scale to the existing quote-code
+  layer (~3–4 weeks). This is the one substitution with a known downstream consumer: work
+  on deference in logical induction uses `thm:ccee` at general option-value LUVs, where
   whether the `1/(n+1)` slack is acceptable depends on the consuming argument.
-* **An unevaluated-term claim schema for the metacomputation family** (`thm:pac`,
-  `thm:pazfc`, `thm:dontwait`) — would restore the paper's "any computable function `f`".
-  `computationClaimSentence` puts the claim's input *value* directly in the sentence code,
-  so carrying the evaluated horizon `f(n)` forces `PolyNatCodes steps`. The paper instead
-  names the term `⌜f⌝(⌜n⌝)` and lets the arithmetic schema evaluate it. The change is a
-  claim schema whose input pairs `⌜f⌝` with `n` unevaluated, plus the corresponding
-  `truth_iff` bridge — the sentence code is then polynomial in `n` for *any* computable
-  `f`, which is exactly the paper's point.
-* **A `c.e. → EfficientRepeatedEnumeration` constructor** — would lift `thm:obu` to the
-  paper's actual hypothesis. The paper does the padding-and-repeating transformation
-  inside its own proof (tex:5651-5656); here it is taken as data. Note the current
-  structure's `sound` field forbids ⊤-padding, so the constructor needs a relaxed
-  soundness condition alongside it.
-* **An efficient prefix patch over the constructed inductor** — would lift `thm:ifp`
-  from the efficiently-patchable restriction to the paper's unrestricted statement. The
-  obstruction is the same fuel-class closure gap as boundary 1 (the emitted freeze
-  stream's certificate needs a decode test on exponentially large codes, which the
-  digit calculus provably does not close under), so closing boundary 1 would also close
-  this. Note the paper's own proof of `thm:ifp` is separately invalid — see paper
-  erratum PE1.
-* **Close boundary 1** — the realistic route is a two-model architecture: define
-  efficiency at a genuine machine class, let the trading firm enumerate it via
-  poly-overhead universal simulation, and keep the fuel calculus as the certification
-  tool through the easy inclusion (fuel-poly ⟹ machine-poly). A direct bridge theorem
-  for the current class is judged unlikely: the fuel model lacks cheap poly-bit
-  random-access state. A staged plan with effort estimates, scoped against what
-  Mathlib actually provides, is in
-  [`notes/two-model-ec-feasibility.md`](../notes/two-model-ec-feasibility.md).
+* **`thm:ifp` — the fuel class.** The transported trader needs a closure property the
+  model provably lacks (the inverse-operation ceiling: the emitted freeze stream's
+  certificate needs a decode test on exponentially large codes, which the digit calculus
+  does not close under). Closing boundary 1 closes this and nothing smaller does. Stated
+  plainly, because it is the sharpest disclosure on this page: `EfficientPrefixPatch` has
+  **no inhabitant anywhere in the repo**, so `lic_iff_of_finitePerturbation` currently has
+  no exhibited witness for its hypothesis — the restricted statement must not be described
+  as non-vacuous until one is built. (An earlier version of the errata ledger did so, citing
+  a declaration that does not exist; corrected there.) The paper's own proof of `thm:ifp` is
+  separately invalid — see erratum PE1.
+
+**Unfinished work, not obstruction (5).**
+
+* **`thm:pac`, `thm:pazfc`, `thm:dontwait` — an encoding choice, not the fuel class**
+  (~1 week for all three). `computationClaimSentence` puts the claim input's *value* in the
+  sentence code, so carrying the evaluated horizon `f(n)` forces `PolyNatCodes steps`. The
+  paper names the *term* `⌜f⌝(⌜n⌝)` and lets the arithmetic schema evaluate it. The fix is a
+  claim schema whose input pairs `⌜f⌝` with `n` unevaluated, plus its `truth_iff` bridge;
+  the code is then polynomial in `n` for *any* computable `f`, which is the paper's point.
+  The fuel model is untouched by this.
+* **`thm:obu` — a missing constructor and a structure bug** (1–2 weeks).
+  `lic_uniform_nonDogmatism` takes `EfficientRepeatedEnumeration` as data — the
+  padding-and-repeating the paper performs *inside* its own proof (tex:5651-5656) — and
+  never assumes the source is c.e., which is the paper's actual hypothesis. Two parts:
+  relax `sound`, which as written forbids the paper's own ⊤-padding unless `⊤ ∈ range
+  source`; then prove that every c.e. sentence stream admits a poly-emittable ⊤-padded
+  repetition. That second half is a genuine fuel-model theorem about dovetailing under a
+  clock, not plumbing.
+* **`thm:wubexp` — a proof route stronger than the statement needs** (2+ weeks, least
+  scoped). Both endpoints reaching the paper's computability premise also take
+  `ExactTheoryPresentation`, which provably forces *each individual LUV* to be
+  Θ-determined, where tex:1822-1832 requires only that the *combination* be determined
+  (`def:affthmval`). The difficulty is that its consumers (`mesh_determined`,
+  `meshAffine_value_eq`) decompose the combination into per-LUV threshold atoms, so a
+  combination-level premise does not obviously survive the mesh route. Needs either a
+  non-mesh route to the combination's value or a mesh argument that holds without per-LUV
+  determinedness.
+
+**Closing boundary 1 itself** — the realistic route is a two-model architecture: define
+efficiency at a genuine machine class, let the trading firm enumerate it via poly-overhead
+universal simulation, and keep the fuel calculus as the certification tool through the easy
+inclusion (fuel-poly ⟹ machine-poly). A direct bridge theorem for the current class is
+judged unlikely: the fuel model lacks cheap poly-bit random-access state. A staged plan with
+effort estimates, scoped against what Mathlib actually provides, is in
+[`notes/two-model-ec-feasibility.md`](../notes/two-model-ec-feasibility.md).
 
 ## Faithfulness
 
