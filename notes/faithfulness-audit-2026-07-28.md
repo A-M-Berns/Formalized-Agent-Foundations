@@ -505,3 +505,21 @@ check in `notes/consolidation.md`.
 unevaluated-term schema), `thm:obu` (WLOG preprocessing taken as data), `thm:ifp` (fuel-class
 closure gap). Confidence caveat from the completing pass still stands: 46 is an upper bound
 rounded against ourselves, and the un-re-derived remainder is still worth a pass.
+
+### `thm:st` to `complete` (2026-08-01) — 47 of 53
+
+`PolyRatCodes.inv_of_pos` (`Framework/Computable.lean`) derives the reciprocal code from
+`PolyRatCodes δ` plus positivity, so `lic_self_trust_closed` drops the `hδinv` binder. Its
+hypotheses are now exactly tex:2093's four — deferral function, e.c. sentences, e.c.
+**positive** rationals, P-generable probabilities — with `SelfTrustQuote` constructed and the
+quoted product symbol-metered. Row moves `qualified` → `complete`.
+
+Estimate calibration, recorded because two estimates earlier in the same wave were wrong:
+predicted "~25 lines, no open question", actual ~30 lines and one scratch-file iteration.
+The prediction was accurate because it was made *after* checking the three ingredients
+(`encode_rat_eq` is `rfl`; positivity keeps the numerator on the `2n` branch of ℤ's sign
+fold; Mathlib has `Rat.den_inv_of_ne_zero`/`num_inv`) rather than from the shape of the goal.
+
+~8 `hδinv` occurrences remain in `ComputationDP.lean`, `QuotationAffine.lean` and the
+`_ofRepresentation` layers. They are now all dischargeable from `hδ` + positivity and are
+scheduled as a consolidation pass; they affect no tier.

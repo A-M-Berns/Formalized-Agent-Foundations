@@ -9,15 +9,15 @@ build-audited. How strong each one is:
 
 | | count | what it means |
 |---|---:|---|
-| **paper strength** | 46 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
-| **qualified** | 7 | proved with an explicitly named representation interface or class restriction retained |
+| **paper strength** | 47 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
+| **qualified** | 6 | proved with an explicitly named representation interface or class restriction retained |
 
 Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
 machine-checked against the endpoint inventory so a node cannot ship without a strength
 call.
 
-Of the 46, **15 are also instantiated over the concrete inductor constructed here** at
+Of the 47, **16 are also instantiated over the concrete inductor constructed here** at
 full paper strength, so they hold of a specific algorithm rather than a hypothetical
 one. The paper states no such theorems; that is a strengthening, not a different degree
 of faithfulness.
@@ -241,14 +241,6 @@ Each item has a verified obstruction on record; none blocks the results above.
   claim schema whose input pairs `⌜f⌝` with `n` unevaluated, plus the corresponding
   `truth_iff` bridge — the sentence code is then polynomial in `n` for *any* computable
   `f`, which is exactly the paper's point.
-* **`PolyRatCodes δ → (∀ n, 0 < δ n) → PolyRatCodes (1/δ)`** — the last thing between
-  `thm:st` and `complete`, and the cheapest item on this list. Its endpoint is otherwise
-  exactly the paper's (tex:2092-2110): unconditional over `LIA`, symbol-metered sentences,
-  P-generable `p`, bare deferral function — but it additionally requires `1/δ` to be
-  efficiently coded, where the paper asks only that `δ` be an e.c. sequence of *positive*
-  rationals. The premise is very likely redundant, since a rational's code is essentially
-  `pair num den` and the reciprocal swaps them, but no such lemma exists and the row does
-  not assume one. Proving it also removes ~8 threaded occurrences of `hδinv` repo-wide.
 * **A `c.e. → EfficientRepeatedEnumeration` constructor** — would lift `thm:obu` to the
   paper's actual hypothesis. The paper does the padding-and-repeating transformation
   inside its own proof (tex:5651-5656); here it is taken as data. Note the current
