@@ -9,8 +9,8 @@ build-audited. How strong each one is:
 
 | | count | what it means |
 |---|---:|---|
-| **paper strength** | 47 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
-| **qualified** | 6 | proved with an explicitly named representation interface or class restriction retained |
+| **paper strength** | 45 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
+| **qualified** | 8 | proved with an explicitly named representation interface or class restriction retained |
 
 Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),

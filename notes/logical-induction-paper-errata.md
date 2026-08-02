@@ -48,9 +48,19 @@ records the missing computational condition: freezing the exact early quote tabl
 must preserve efficient trader generation.
 
 The theorem `lic_iff_of_finitePerturbation` proves the paper's biconditional when both market
-prefixes carry this certificate. This is strictly weaker than unrestricted `thm:ifp`, but it
-is not vacuous. The constructed `liaHistory` has finite rational belief states, and
-`liaEfficientPrefixPatch` builds the required finite lookup compiler.
+prefixes carry this certificate. This is strictly weaker than unrestricted `thm:ifp`.
+
+**Correction (2026-08-02).** An earlier version of this paragraph asserted that the
+restricted statement "is not vacuous", on the strength of a declaration
+`liaEfficientPrefixPatch` said to build the required finite lookup compiler. **No such
+declaration exists** — the name appears nowhere in the repo outside prose, and
+`Properties/FinitePerturbations.lean` states the opposite in its own words: the efficiency
+certificate for the emitted stream is not discharged, so no `LIA` instance of
+`EfficientPrefixPatch` exists. `EfficientPrefixPatch` therefore has **zero inhabitants
+anywhere**, and `lic_iff_of_finitePerturbation`'s hypothesis has no exhibited witness. The
+restricted statement must not be described as non-vacuous until one is built. This is
+exactly the failure the inhabitation lens exists to catch, and it survived in the ledger
+that was supposed to be catching it.
 
 The informal large-output example in the Lean source shows why the certificate cannot be
 derived from `ComputableMarket` alone: an early pricing can assign a sentence of code `n` a
