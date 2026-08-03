@@ -149,7 +149,7 @@ pre.sig { font-family: var(--mono); font-size: 11.8px; line-height: 1.5; margin:
   text-transform: uppercase; color: var(--accent-ink); margin-right: 6px; }
 table.vocab { border-collapse: collapse; font-size: 13px; margin: 8px 0 4px; }
 table.vocab td { border-top: 1px solid var(--hair); padding: 5px 18px 5px 0; vertical-align: top; }
-table.vocab td:first-child { font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
+table.vocab td:first-child { font-family: var(--mono); font-size: 11.5px; max-width: 36ch; overflow-wrap: break-word; }
 .audit-note { padding: 10px 16px; border-top: 1px dashed var(--hair); font-size: 13px;
   color: var(--ink); background: var(--card-bg); }
 .audit-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
@@ -231,8 +231,8 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <p>Nodes appear in the paper's own order. Definitions come first and are load-bearing for
     everything after. The <span class="tier qualified" style="font-size:10px">qualified</span>
     rows deserve the slow pass: each one's note names exactly what is retained and why.
-    Where a node has several inventory endpoints, the \u2039 \u203a arrows page
-    through all of them \u2014 the strongest form is shown first. Check-boxes track progress
+    Where a node has several inventory endpoints, the ‹ › arrows page
+    through all of them — the strongest form is shown first. Check-boxes track progress
     and persist locally in the browser. Signatures are statements
     only, verbatim from source; file paths locate the full declaration. Paper statements are
     machine-converted from the arXiv TeX (custom macros expanded, rendered as MathML) — for
