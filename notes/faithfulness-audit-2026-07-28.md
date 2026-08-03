@@ -630,3 +630,47 @@ Repair (same day): `lic_uniform_nonDogmatism_ofCE` (BoundedEvaluation.lean) comp
 two; `thm:obu` moves qualified → **universal** (47 of 53 at paper strength, 6 qualified).
 `CEEnumeration` relabeled `thm:obu`; `ofCE` carries `def:ec, thm:obu`. README counts and
 future-work list updated (the obu bullet is gone — both of its halves were already built).
+
+---
+
+## 2026-08-03 — Definition-level scrutiny pass (hypothesis-side predicates)
+
+Run in parallel with Anson's statement read-through, targeting the residual-risk list
+from the same day's discussion: hypothesis-side semantic predicates on universal-only
+rows, where a silently-too-strong rendering weakens a theorem without any build signal.
+Method: definition beside paper text, clause by clause.
+
+Checked, all faithful — **zero findings requiring repair**:
+
+* **Pseudorandomness cluster** (`PseudorandomFrequency`/`Above`/`Below`, `Varied*`,
+  `DivergentWeighting`, `DeferralPatient`, `weightedAverage`/`weightedBias`,
+  `HasLimitPoint(In)`): quantifier class = generable ∧ [0,1]-divergent ∧ f-patient,
+  exactly the paper's set S; patience window `Icc n (f n)` inclusive as in the paper;
+  `≈ₙ` to a constant ⟺ the paper's "limit exists and equals p"; varied forms center the
+  truth stream as in `def:seqprand`. The one modeling remark: "generable" reads at the
+  fuel class — the standing global disclosure, not a new one.
+* **`TheoryTruth` / `DeterminedViaTheory` / `IsIndicator`**: agreement of all completed
+  worlds, the propositional rendering of Θ-decidedness / `def:affthmval` / `1(φ)`;
+  single definitions, no duplicates.
+* **`def:e`** (`expectApprox`): `(1/k)·Σ_{i<k} V(⌜X > i/k⌝)`, exact. Day-index
+  convention (Lean day n = paper day n+1, precision paired) centralized and documented.
+* **`def:ece`/`def:fuz`** (`GeneratedRatFeature`, `PGenerableWeighting`): rank clause
+  present as in the paper's 𝓔𝓕-progressions; `closed` is an artifact of the `letE`
+  binder, denotationally inert.
+* **`DeferralFunction`**: `f n > n` + fuel polynomial in `f n`, exact.
+* **`FeedbackTruthComputation`**: clocked at poly(f(k+1)) where the paper asks
+  O(f(n+1)) — a weaker hypothesis, already disclosed at the `thm:wub` row.
+* **`EF` grammar**: the paper's five formers exactly, plus `letE` sharing — the
+  arithmetic-circuit generalization the paper's own footnote names as the intent;
+  sharing enlarges the trader class, which *hardens* the existence theorem.
+* **`kappaU`/`prefixWeight`**: the +1 slack bit is absorbed by the existential
+  constant in `thm:ob`'s conclusion.
+* **`calibrationIndicator`**: the paper's `ctsInd[δ](a < ℙₙ(φₙ) < b)` via clip01;
+  its [0,1] clause inside `DivergentWeighting` is automatic, so no extra premise in
+  effect.
+
+Combined with the earlier same-day re-read of the core spine (`PCWorld`, `ValuesAt` +
+uniqueness, `limitingBelief` + its convergence theorem, the asymptotic operators,
+`Strategy`/`Exploits`), the definition layer has now had a full adversarial pass with
+the paper open. Residual trust concentrates where already disclosed: the fuel model,
+the propositional substrate, and Foundation's substrate meanings.
