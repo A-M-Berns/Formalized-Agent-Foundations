@@ -209,7 +209,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <div class="nav-sec">Non-Dogmatism</div>
 <a class="nav-item" href="#thm-ifp" data-node="thm-ifp"><span class="dot qualified"></span>thm:ifp</a>
 <a class="nav-item" href="#thm-nd" data-node="thm-nd"><span class="dot universal"></span>thm:nd</a>
-<a class="nav-item" href="#thm-obu" data-node="thm-obu"><span class="dot qualified"></span>thm:obu</a>
+<a class="nav-item" href="#thm-obu" data-node="thm-obu"><span class="dot universal"></span>thm:obu</a>
 <a class="nav-item" href="#thm-ob" data-node="thm-ob"><span class="dot universal"></span>thm:ob</a>
 <a class="nav-item" href="#thm-dus" data-node="thm-dus"><span class="dot universal"></span>thm:dus</a>
 <a class="nav-item" href="#thm-strict" data-node="thm-strict"><span class="dot universal"></span>thm:strict</a>
@@ -288,13 +288,13 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 
     <h3>Tiers</h3>
     <div class="legend">
-      <span class="tier universal">paper strength · universal</span><span class="count">30 — the paper's own statement, for every logical inductor</span>
+      <span class="tier universal">paper strength · universal</span><span class="count">31 — the paper's own statement, for every logical inductor</span>
     </div>
     <div class="legend">
       <span class="tier instantiated">paper strength · instantiated</span><span class="count">26 — additionally holds of the constructed LIA with obligations discharged</span>
     </div>
     <div class="legend">
-      <span class="tier qualified">qualified</span><span class="count">10 — a named interface or class restriction is retained; the note says which</span>
+      <span class="tier qualified">qualified</span><span class="count">9 — a named interface or class restriction is retained; the note says which</span>
     </div>
 
     <h3>Shared vocabulary</h3>
@@ -1681,7 +1681,7 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     <label class="check"><input type="checkbox" data-node="thm-obu" aria-label="mark thm:obu read"></label>
     <span class="node-label">thm:obu</span>
     <span class="node-title">Uniform Non-Dogmatism</span>
-    <span class="tier qualified">qualified</span>
+    <span class="tier universal">paper strength · universal</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -1691,7 +1691,12 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_uniform_nonDogmatism</code><span class="ep-file">LogicalInduction/Properties/UniformNonDogmatism.lean</span></div><pre class="sig">theorem lic_uniform_nonDogmatism
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="4">1 / 4</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_uniform_nonDogmatism_ofCE</code><span class="ep-file">LogicalInduction/Construction/Witnesses/BoundedEvaluation.lean</span></div><pre class="sig">theorem lic_uniform_nonDogmatism_ofCE
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (source : ℕ → Sentence) (h : CEEnumeration source)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (source i)) :
+    ∃ ε : ℝ, 0 &lt; ε ∧ ∀ i, ε ≤ limitingBelief P (source i)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_uniform_nonDogmatism</code><span class="ep-file">LogicalInduction/Properties/UniformNonDogmatism.lean</span></div><pre class="sig">theorem lic_uniform_nonDogmatism
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (source : ℕ → Sentence) (rep : EfficientRepeatedEnumeration source)
     (hjoint : ∀ n, ∃ v : PCWorld,
@@ -1702,12 +1707,13 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     (hrepeat : RepeatsEveryMember φ)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (φ i)) :
-    ∃ ε : ℝ, 0 &lt; ε ∧ ∀ i, ε ≤ limitingBelief P (φ i)</pre></div>
+    ∃ ε : ℝ, 0 &lt; ε ∧ ∀ i, ε ≤ limitingBelief P (φ i)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">EfficientRepeatedEnumeration.ofCE</code><span class="ep-file">LogicalInduction/Construction/Witnesses/BoundedEvaluation.lean</span></div><pre class="sig">noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
+    (h : CEEnumeration source) : EfficientRepeatedEnumeration source</pre></div>
       
     </section>
   </div>
-  <div class="reading-note"><span class="reading-tag">How the panes line up</span> The qualified row in one look: <code>rep : EfficientRepeatedEnumeration source</code> is the padded repetition the paper <em>builds inside its proof</em> from a c.e. source; here it enters as data, and its <code>sound</code> field even forbids the paper&#x27;s ⊤-padding unless ⊤ is in the source&#x27;s range.</div>
-  <footer class="audit-note"><span class="audit-tag">What to check</span> over <code>[IsLogicalInductor]</code>, but <code>lic_uniform_nonDogmatism</code> takes <code>EfficientRepeatedEnumeration source</code> as <strong>data</strong> — the padding-and-repeating transformation the paper performs <em>inside</em> its own proof (tex:5651-5656) — while never assuming the source is c.e., which is the paper&#x27;s actual hypothesis (tex:1540-1546).  No <code>c.e. → EfficientRepeatedEnumeration</code> constructor exists, so the interface is undischarged; and the structure&#x27;s <code>sound : ∀ j, ∃ i, sequence j = source i</code> forbids the paper&#x27;s own ⊤-padding unless <code>⊤ ∈ range source</code></footer>
+  <div class="reading-note"><span class="reading-tag">How the panes line up</span> The c.e. premise is <code>CEEnumeration</code>: a program whose dovetailed run returns ⌜source i⌝ at every index — no clock. The padded repetition the paper builds inside its proof is <code>EfficientRepeatedEnumeration.ofCE</code>, padding with <code>source 0</code> (the <code>sound</code> field forbids ⊤-padding); <code>hjoint</code> is Γ ∪ φ‾ consistent, stagewise.</div>
+  <footer class="audit-note"><span class="audit-tag">What to check</span> <code>lic_uniform_nonDogmatism_ofCE</code> takes the paper&#x27;s own premises (tex:1540-1546): a c.e. source — <code>CEEnumeration</code>, a program whose dovetailed run returns <code>⌜source i⌝</code> at every index, with no clock — and stagewise joint consistency of Γ ∪ φ̄.  The padded efficient repetition the paper builds <em>inside</em> its proof (tex:5651-5656) is constructed by <code>EfficientRepeatedEnumeration.ofCE</code>, padding with <code>source 0</code> because the <code>sound</code> field (correctly) forbids padding from outside the source&#x27;s range.  History: earlier revisions of this row asserted that no c.e.→repetition constructor existed, while <code>ofCE</code> existed and was consumed by <code>thm:strict</code> — the fourth unclaimed-discharge instance; see the 2026-08-03 ledger entry</footer>
 </article>
 
 <article class="node" id="thm-ob">
@@ -3898,4 +3904,4 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
 })();
 </script>
 
-<!-- trust-surface-sources: c506702f41bc589a1b17f33f16212364b219002723c87a269ba5b77f47f69237 -->
+<!-- trust-surface-sources: 4b0656327d8bd02fa208c82a2987e3d436caf43d8dd8159d17926ff5d1ec79dc -->

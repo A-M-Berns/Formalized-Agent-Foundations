@@ -9,8 +9,8 @@ build-audited. How strong each one is:
 
 | | count | what it means |
 |---|---:|---|
-| **paper strength** | 46 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
-| **qualified** | 7 | proved with an explicitly named representation interface or class restriction retained |
+| **paper strength** | 47 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
+| **qualified** | 6 | proved with an explicitly named representation interface or class restriction retained |
 
 Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
@@ -21,7 +21,7 @@ and audit note — is generated from the repository at
 [`docs/trust-surface.html`](../docs/trust-surface.html)
 (`python3 scripts/gen-trust-surface.py` to regenerate).
 
-Of the 46, **16 are also instantiated over the concrete inductor constructed here** at
+Of the 47, **16 are also instantiated over the concrete inductor constructed here** at
 full paper strength, so they hold of a specific algorithm rather than a hypothetical
 one. The paper states no such theorems; that is a strengthening, not a different degree
 of faithfulness.
@@ -233,7 +233,7 @@ All three are disclosed at every affected statement, not just here.
 
 ## What is left, and what it is blocked on
 
-The 7 qualified nodes do **not** all trace back to the two modeling boundaries, and it
+The 6 qualified nodes do **not** all trace back to the two modeling boundaries, and it
 would be easy to assume they do. Only two are genuinely boundary-blocked; the rest are
 unfinished implementation with a known route. Estimates are engineering judgment, not
 measurements — the ones marked *checked* were made after confirming the required lemmas
@@ -262,7 +262,7 @@ exist, and the rest are structural reads that have twice moved upward on contact
   a declaration that does not exist; corrected there.) The paper's own proof of `thm:ifp` is
   separately invalid — see erratum PE1.
 
-**Unfinished work, not obstruction (5).**
+**Unfinished work, not obstruction (4).**
 
 * **`thm:pac`, `thm:pazfc`, `thm:dontwait` — an encoding choice, not the fuel class**
   (~1 week for all three). `computationClaimSentence` puts the claim input's *value* in the
@@ -271,14 +271,6 @@ exist, and the rest are structural reads that have twice moved upward on contact
   claim schema whose input pairs `⌜f⌝` with `n` unevaluated, plus its `truth_iff` bridge;
   the code is then polynomial in `n` for *any* computable `f`, which is the paper's point.
   The fuel model is untouched by this.
-* **`thm:obu` — a missing constructor and a structure bug** (1–2 weeks).
-  `lic_uniform_nonDogmatism` takes `EfficientRepeatedEnumeration` as data — the
-  padding-and-repeating the paper performs *inside* its own proof (tex:5651-5656) — and
-  never assumes the source is c.e., which is the paper's actual hypothesis. Two parts:
-  relax `sound`, which as written forbids the paper's own ⊤-padding unless `⊤ ∈ range
-  source`; then prove that every c.e. sentence stream admits a poly-emittable ⊤-padded
-  repetition. That second half is a genuine fuel-model theorem about dovetailing under a
-  clock, not plumbing.
 * **`thm:wubexp` — a proof route stronger than the statement needs** (2+ weeks, least
   scoped). Both endpoints reaching the paper's computability premise also take
   `ExactTheoryPresentation`, which provably forces *each individual LUV* to be

@@ -313,6 +313,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 #assert_axioms_clean
   codeEvalnNat_polyFueled
   EfficientRepeatedEnumeration.ofRpn EfficientRepeatedEnumeration.ofCE
+  lic_uniform_nonDogmatism_ofCE
   SettlementChecker.ofComputations PatientSettlementClock.ofComputations
   liaFreezeBefore_preserves_ecTok
 

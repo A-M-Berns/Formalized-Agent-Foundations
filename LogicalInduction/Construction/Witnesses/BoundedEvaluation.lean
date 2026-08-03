@@ -467,8 +467,10 @@ lemma codeEvalnNat_pair_mono {code : Nat.Partrec.Code} {i fuel fuel' v : ℕ}
       rw [h2]; omega
 
 /-- A code-enumerable ("c.e.") sentence source: a program that halts on every index `i`
-returning `⌜source i⌝`, and whose every output lies in `source`'s range.
-Paper node: `def:ec` -/
+returning `⌜source i⌝`, and whose every output lies in `source`'s range.  This is
+*unrestricted* computable enumerability — no clock — rendering `thm:obu`'s "computably
+enumerable sequence" premise, not the `def:ec` efficiency class.
+Paper node: `thm:obu` -/
 structure CEEnumeration (source : ℕ → Sentence) where
   code : Nat.Partrec.Code
   halts : ∀ i, ∃ fuel,
@@ -512,7 +514,11 @@ lemma ceRepeatSeq_codes {source : ℕ → Sentence} (h : CEEnumeration source) :
 
 /-- **General efficient repetition.** Every code-enumerable source has an
 efficient-repetition witness — no polynomial-clock assumption on the source itself.
-Paper node: `def:ec` -/
+This is the padding-and-repeating transformation `thm:obu`'s paper proof performs
+internally (tex:5651-5656), dovetailed under the interpreter clock; the padding element
+is `source 0` rather than `⊤`, since `EfficientRepeatedEnumeration.sound` requires
+padding from the source's own range.
+Paper node: `def:ec`, `thm:obu` -/
 noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
     (h : CEEnumeration source) : EfficientRepeatedEnumeration source where
   sequence := ceRepeatSeq h
@@ -542,6 +548,20 @@ noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
     refine ⟨Nat.pair i fuel, ceRepeatSeq_eq_source h ?_⟩
     simp only [Nat.unpair_pair]
     exact hfuel
+
+/-- **Uniform Non-Dogmatism at the paper's own premise** (`thm:obu`, tex:1540-1546): the
+source enters as a c.e. sequence (`CEEnumeration`), and the padded efficient repetition
+the paper builds inside its proof is constructed here by `EfficientRepeatedEnumeration.ofCE`
+(dovetailing under the interpreter clock, padding with `source 0` rather than `⊤`).  The
+remaining hypothesis `hjoint` is the paper's "Γ ∪ φ‾ is consistent", stagewise.
+Paper node: `thm:obu` -/
+theorem lic_uniform_nonDogmatism_ofCE
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (source : ℕ → Sentence) (h : CEEnumeration source)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (source i)) :
+    ∃ ε : ℝ, 0 < ε ∧ ∀ i, ε ≤ limitingBelief P (source i) :=
+  lic_uniform_nonDogmatism P DP source (.ofCE h) hjoint
 
 /-! ## Compiling the settlement test
 
@@ -2824,6 +2844,7 @@ theorem liaFreezeBefore_preserves_ecTok (DP : DeductiveProcess) (cutoff : ℕ) :
 #print axioms triangularRepeat_repeats
 #print axioms EfficientRepeatedEnumeration.ofRpn
 #print axioms EfficientRepeatedEnumeration.ofCE
+#print axioms lic_uniform_nonDogmatism_ofCE
 #print axioms PrefixPatchCompile.freezeBefore_preserves_ec
 #print axioms liaFreezeBefore_preserves_ecTok
 

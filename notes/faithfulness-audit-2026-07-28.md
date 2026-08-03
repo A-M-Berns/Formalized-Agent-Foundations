@@ -600,3 +600,33 @@ Findings below the row level, all repaired in the same wave (see
 * **F-2026-08-02-5 (doc drift):** `LogicalInduction/README.md` contradicted itself on
   `thm:st`'s metering (three-node vs four-endpoint whole-value lists, and a "needs a
   token-level `⋏` emitter" paragraph describing work that had landed). Corrected.
+
+---
+
+## 2026-08-03 — F-2026-08-03-1: `thm:obu` was already at paper strength
+
+Surfaced by Anson asking whether every `def:ec`-labeled inventory member genuinely
+realizes an efficiency obligation. `CEEnumeration` does not — it renders *unrestricted*
+computable enumerability (thm:obu's own premise), and pulling on that thread exposed
+that `EfficientRepeatedEnumeration.ofCE : CEEnumeration source → EfficientRepeatedEnumeration source`
+has existed all along, discharging exactly the interface the `thm:obu` row called
+undischargeable. It evades the `sound`-field ⊤-padding obstacle by padding with
+`source 0` (an element of the source's own range), and it was already *consumed* — by
+`thm:strict`'s separator repetition — while its natural consumer
+`lic_uniform_nonDogmatism` never called it.
+
+This is the **fourth** unclaimed-discharge instance (after `PatientSettlementClock.ofComputations`,
+the EF parser/market evaluator, and `meshSoftmaxOperationalWitness`), and it survived
+the 2026-08-02 full re-audit: that pass verified the row's `sound`-field critique against
+the structure but accepted "no c.e. → repetition constructor exists" from the row prose
+without grepping for one — the exact trust-the-prose failure the 2026-07-31 standing
+check names. The zero-call-site sweep also missed it because `ofCE` *has* a call site
+(in `thm:strict`); the sweep checks for dead constructors, not for live constructors
+with an unclaimed second consumer. Lesson: when a row asserts an interface is
+undischargeable, grep for constructors *of that interface* directly, regardless of
+call-site liveness.
+
+Repair (same day): `lic_uniform_nonDogmatism_ofCE` (BoundedEvaluation.lean) composes the
+two; `thm:obu` moves qualified → **universal** (47 of 53 at paper strength, 6 qualified).
+`CEEnumeration` relabeled `thm:obu`; `ofCE` carries `def:ec, thm:obu`. README counts and
+future-work list updated (the obu bullet is gone — both of its halves were already built).
