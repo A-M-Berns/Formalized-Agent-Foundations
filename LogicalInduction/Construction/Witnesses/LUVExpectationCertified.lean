@@ -51,12 +51,16 @@ theorem lic_expect_combination_provind_le
     (c : ℝ)
     (hval : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∀ ν, (As n).ValuesAt v ν → (As n).value P ν ≤ c)
-    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≲ₙ (fun _ => c) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨B, hB⟩ := h.bounded
+  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
+  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
+    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
+      le_add_of_nonneg_left (abs_nonneg _)
+    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
   have hbounded : BoundedAffinePrices (fun n => (As n).meshAffine (n + 1)) P :=
     ⟨max B 0, le_max_right _ _, fun n m =>
       le_trans (le_trans ((((As n).meshAffine (n + 1)).abs_price_le_l1Norm P m
@@ -102,12 +106,16 @@ theorem lic_expect_combination_provind_ge
     (c : ℝ)
     (hval : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∀ ν, (As n).ValuesAt v ν → c ≤ (As n).value P ν)
-    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≳ₙ (fun _ => c) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨B, hB⟩ := h.bounded
+  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
+  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
+    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
+      le_add_of_nonneg_left (abs_nonneg _)
+    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
   have hbounded : BoundedAffinePrices (fun n => (As n).meshAffine (n + 1)) P :=
     ⟨max B 0, le_max_right _ _, fun n m =>
       le_trans (le_trans ((((As n).meshAffine (n + 1)).abs_price_le_l1Norm P m
@@ -153,14 +161,13 @@ theorem lic_expect_combination_provind_eq
     (c : ℝ)
     (hval : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∀ ν, (As n).ValuesAt v ν → (As n).value P ν = c)
-    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≈ₙ (fun _ => c) := by
   rw [asympEq_iff_asympLE_asympGE]
   exact ⟨lic_expect_combination_provind_le h hwv c
-      (fun n v hv ν hν => (hval n v hv ν hν).le) b hshare hworld,
+      (fun n v hv ν hν => (hval n v hv ν hν).le) hworld,
     lic_expect_combination_provind_ge h hwv c
-      (fun n v hv ν hν => (hval n v hv ν hν).ge) b hshare hworld⟩
+      (fun n v hv ν hν => (hval n v hv ν hν).ge) hworld⟩
 
 /-- **Combination-level expectation provability induction, `≤` form.**  A bounded LUV-combination
 sequence whose completed-theory value stays `≤ c` has diagonal expectation `≲ₙ c`.
@@ -182,11 +189,10 @@ theorem lic_expect_combination_provind_le_ofDetermined
     (hwv : LUVCombination.WorldValued As DP)
     {truth : ℕ → ℝ} (hdet0 : LUVCombination.DeterminedViaTheory As P DP truth)
     (c : ℝ) (hdet : ∀ n, truth n ≤ c)
-    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≲ₙ (fun _ => c) :=
   lic_expect_combination_provind_le h hwv c
-    (fun n v hv ν hν => (hdet0 n v ν hv hν).trans_le (hdet n)) b hshare hworld
+    (fun n v hv ν hν => (hdet0 n v ν hv hν).trans_le (hdet n)) hworld
 
 /-- **Combination-level expectation provability induction, `≥` form.**  The `def:affthmval`
 determinacy form, consumed by `thm:recurringunbiasednessexp` / `thm:wubexp` / `thm:prandexp`;
@@ -199,11 +205,10 @@ theorem lic_expect_combination_provind_ge_ofDetermined
     (hwv : LUVCombination.WorldValued As DP)
     {truth : ℕ → ℝ} (hdet0 : LUVCombination.DeterminedViaTheory As P DP truth)
     (c : ℝ) (hdet : ∀ n, c ≤ truth n)
-    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≳ₙ (fun _ => c) :=
   lic_expect_combination_provind_ge h hwv c
-    (fun n v hv ν hν => (hdet n).trans (hdet0 n v ν hv hν).ge) b hshare hworld
+    (fun n v hv ν hν => (hdet n).trans (hdet0 n v ν hv hν).ge) hworld
 
 /-- **Combination-level expectation provability induction, `=` form.**  The `def:affthmval`
 determinacy form; `lic_expect_combination_provind_eq` carries `thm:expprovind` at
@@ -215,12 +220,11 @@ theorem lic_expect_combination_provind_eq_ofDetermined
     (hwv : LUVCombination.WorldValued As DP)
     {truth : ℕ → ℝ} (hdet0 : LUVCombination.DeterminedViaTheory As P DP truth)
     (c : ℝ) (hdet : ∀ n, truth n = c)
-    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≈ₙ (fun _ => c) := by
   rw [asympEq_iff_asympLE_asympGE]
-  exact ⟨lic_expect_combination_provind_le_ofDetermined h hwv hdet0 c (fun n => (hdet n).le) b hshare hworld,
-    lic_expect_combination_provind_ge_ofDetermined h hwv hdet0 c (fun n => (hdet n).ge) b hshare hworld⟩
+  exact ⟨lic_expect_combination_provind_le_ofDetermined h hwv hdet0 c (fun n => (hdet n).le) hworld,
+    lic_expect_combination_provind_ge_ofDetermined h hwv hdet0 c (fun n => (hdet n).ge) hworld⟩
 
 /-- **Combination-level expectation provability induction, `= 0` form** (`thm:loe` substrate).
 The paper's own route to linearity (`app:loe`): apply `thm:expprovind` to the combination
@@ -231,10 +235,9 @@ theorem lic_expect_combination_provind_zero
     (h : LUVCombination.BoundedSequence As P)
     (hwv : LUVCombination.WorldValued As DP)
     (hdet0 : LUVCombination.DeterminedViaTheory As P DP (fun _ => 0))
-    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≈ₙ (fun _ => 0) :=
-  lic_expect_combination_provind_eq_ofDetermined h hwv hdet0 0 (fun _ => rfl) b hshare hworld
+  lic_expect_combination_provind_eq_ofDetermined h hwv hdet0 0 (fun _ => rfl) hworld
 
 /-- The paper's linearity LUV-combination `aₙXₙ + bₙYₙ − Zₙ`. -/
 def linearityLUVComb (a b : ℕ → ℚ) (X Y Z : ℕ → LUV) (n : ℕ) : LUVCombination where
@@ -264,12 +267,10 @@ theorem lic_linearity_of_expectation_seq
     (hwv : LUVCombination.WorldValued (linearityLUVComb a b X Y Z) DP)
     (hdet0 : LUVCombination.DeterminedViaTheory
       (linearityLUVComb a b X Y Z) P DP (fun _ => 0))
-    (bnd : ℚ)
-    (hshare : ∀ n, (linearityLUVComb a b X Y Z n).shareNorm P ≤ (bnd : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     AsympEq (fun n => (a n : ℝ) * (X n).expect P n + (b n : ℝ) * (Y n).expect P n)
       (fun n => (Z n).expect P n) := by
-  have hzero := lic_expect_combination_provind_zero h hwv hdet0 bnd hshare hworld
+  have hzero := lic_expect_combination_provind_zero h hwv hdet0 hworld
   unfold AsympEq at hzero ⊢
   have hfun : (fun n => (a n : ℝ) * (X n).expect P n + (b n : ℝ) * (Y n).expect P n
       - (Z n).expect P n)
@@ -432,15 +433,13 @@ theorem exppolymax_arith {As : ℕ → LUVCombination} {P : History} {T : Arithm
     [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     [IsLogicalInductor P (L.luvThresholdDP T)]
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
-    (h : LUVCombination.BoundedSequence As P) (S : LUVCombinationSyntax As)
-    (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-     :
+    (h : LUVCombination.BoundedSequence As P) (S : LUVCombinationSyntax As) :
     liminf (fun n => (As n).expect P n) atTop =
         liminf (LUVCombination.futureHigh As P) atTop ∧
       limsup (fun n => (As n).expect P n) atTop =
         limsup (LUVCombination.futureLow As P) atTop :=
   h.exppolymax_ofSyntax S (L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
-    b hb hshare (L.luvThresholdDP_hworld T)
+    (L.luvThresholdDP_hworld T)
 
 /-- **Certified `thm:wubexp`.**  Weighted unbiasedness of determined-value expectation for a
 `dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation* hypothesis
@@ -481,34 +480,9 @@ theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : Arithmetic
 /-! ## Certified liminf/limsup coherence (`thm:expcoh`, `thm:perexpkno`)
 
 `expcoh`/`perexpkno` need the **completed-world** values (`WorldValued`, all thresholds), which
-the full provability enumerator `luvThresholdDP` supplies.  They are run over `combinedDP`, the
-union of `luvThresholdDP` with the scheduled grid process.  The grid summand contributes nothing
-to either endpoint's premise set — both `worldValued_combinedDP` and `combinedDP_hworld` factor
-through `luvThresholdDP` alone — so the union is not load-bearing here. -/
+the full provability enumerator `luvThresholdDP` supplies. -/
 section Combined
 variable (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
-
-/-- The scheduled grid process unioned with the full provability enumerator. -/
-noncomputable def combinedDP : DeductiveProcess where
-  D m := L.gridStage m ∪ (L.luvThresholdDP T).D m
-  mono m := Finset.union_subset_union (L.gridStage_mono m) ((L.luvThresholdDP T).mono m)
-
-lemma combinedDP_consistentWithTheory_luv {v : PCWorld}
-    (hv : v.ConsistentWithTheory (L.combinedDP T)) :
-    v.ConsistentWithTheory (L.luvThresholdDP T) :=
-  fun k φ hφ => hv k φ (Finset.mem_union_right _ hφ)
-
-lemma combinedDP_hworld (m : ℕ) : ∃ v : PCWorld, v.ConsistentWith ((L.combinedDP T).D m) :=
-  ⟨L.luvWorld, fun φ hφ => (Finset.mem_union.mp hφ).elim
-    (L.luvWorld_consistent_gridStage m φ) (L.luvWorld_consistent T m φ)⟩
-
-/-- `WorldValued` over `combinedDP`, transported from the arithmetic presentation over the
-smaller provability enumerator `luvThresholdDP`. -/
-lemma worldValued_combinedDP {As : ℕ → LUVCombination}
-    (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i) :
-    LUVCombination.WorldValued As (L.combinedDP T) :=
-  fun n v hv => L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs n v
-    (L.combinedDP_consistentWithTheory_luv T hv)
 
 /-- **Certified `thm:expcoh`.**  Completed/limiting/diagonal expectation coherence for
 a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` representation hypothesis
@@ -516,37 +490,35 @@ discharged from arithmetic and both the mesh-softmax operational witness and the
 certificates derived from the sequence's compact syntax.
 Paper node: `thm:expcoh` -/
 theorem expcoh_arith {As : ℕ → LUVCombination} {P : History}
-    [IsLogicalInductor P (L.combinedDP T)]
+    [IsLogicalInductor P (L.luvThresholdDP T)]
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
     (h : LUVCombination.BoundedSequence As P)
-    (S : LUVCombinationSyntax As)
-    (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-     :
-    (liminf (LUVCombination.completedLow As P (L.combinedDP T)) atTop ≤
+    (S : LUVCombinationSyntax As) :
+    (liminf (LUVCombination.completedLow As P (L.luvThresholdDP T)) atTop ≤
         liminf (fun n => (As n).expectInf P) atTop ∧
       liminf (fun n => (As n).expectInf P) atTop ≤
         liminf (fun n => (As n).expect P n) atTop) ∧
       (limsup (fun n => (As n).expect P n) atTop ≤
           limsup (fun n => (As n).expectInf P) atTop ∧
         limsup (fun n => (As n).expectInf P) atTop ≤
-          limsup (LUVCombination.completedHigh As P (L.combinedDP T)) atTop) :=
-  h.expcoh_ofSyntax S (L.worldValued_combinedDP T hAs) b hb hshare (L.combinedDP_hworld T)
+          limsup (LUVCombination.completedHigh As P (L.luvThresholdDP T)) atTop) :=
+  h.expcoh_ofSyntax S (L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
+    (L.luvThresholdDP_hworld T)
 
 /-- **Certified `thm:perexpkno`.**  Persistence of expectation knowledge, with the
 representation hypotheses discharged from arithmetic as in `expcoh_arith`.
 Paper node: `thm:perexpkno` -/
 theorem perexpkno_arith {As : ℕ → LUVCombination} {P : History}
-    [IsLogicalInductor P (L.combinedDP T)]
+    [IsLogicalInductor P (L.luvThresholdDP T)]
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
     (h : LUVCombination.BoundedSequence As P)
-    (S : LUVCombinationSyntax As)
-    (b : ℚ) (hb : 0 ≤ (b : ℝ)) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-     :
+    (S : LUVCombinationSyntax As) :
     liminf (LUVCombination.futureLow As P) atTop =
         liminf (fun n => (As n).expectInf P) atTop ∧
       limsup (LUVCombination.futureHigh As P) atTop =
         limsup (fun n => (As n).expectInf P) atTop :=
-  h.perexpkno_ofSyntax S (L.worldValued_combinedDP T hAs) b hb hshare (L.combinedDP_hworld T)
+  h.perexpkno_ofSyntax S (L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
+    (L.luvThresholdDP_hworld T)
 
 end Combined
 
@@ -591,8 +563,8 @@ private lemma gridEmit_computable : Computable₂ (L.gridEmit) := by
     rw [← thresholdCodeNat_eq]
     by_cases h : L.ThresholdPred
         (thresholdCodeNat e.unpair.1 e.unpair.2.unpair.2 e.unpair.2.unpair.1)
-    · simp [h, thresholdSentence, thresholdCodeNat_eq]
-    · simp [h, thresholdSentence, thresholdCodeNat_eq]
+    · simp [thresholdSentence, thresholdCodeNat_eq]
+    · simp [thresholdSentence, thresholdCodeNat_eq]
   -- the range test is primitive recursive on the pair `(n, e)`
   have hc : Computable (fun p : ℕ × ℕ => decide (p.2.unpair.1 ≤ p.1
       ∧ p.2.unpair.2.unpair.1 ≤ p.1 + 1 ∧ p.2.unpair.2.unpair.2 < p.2.unpair.2.unpair.1)) := by
@@ -677,17 +649,6 @@ lemma gridDP_computable : ComputableDeductiveProcess (L.gridDP) := by
   refine ⟨code, fun n => ?_⟩
   rw [hcode]
   exact Part.mem_some _
-
-section CombinedComputable
-variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
-
-/-- **The combined process is computable** (union of the two computable stages). -/
-lemma combinedDP_computable : ComputableDeductiveProcess (L.combinedDP T) := by
-  have hgrid := (L.gridDP_computable).nonemptyComputation.some
-  have hluv := (L.luvThresholdDP_computable T).nonemptyComputation.some
-  exact (hgrid.union hluv).toComputable
-
-end CombinedComputable
 
 /-! ## Fully unconditional certified endpoints
 

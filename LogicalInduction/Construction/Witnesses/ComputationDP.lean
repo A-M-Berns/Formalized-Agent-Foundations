@@ -448,7 +448,7 @@ lemma theoremStage_encode_prim (c : Nat.Partrec.Code) :
       Primrec.cond hevaln (Primrec.option_some.comp (eventAtom_prim.comp Primrec.snd))
         (Primrec.const (none : Option Sentence))
     exact hb.of_eq (fun p => by
-      cases hbb : (Nat.Partrec.Code.evaln p.1 c p.2).isSome <;> simp [hbb])
+      cases (Nat.Partrec.Code.evaln p.1 c p.2).isSome <;> simp)
   have hlist : Primrec (fun n : ℕ => (List.range (n + 1)).filterMap
       (fun e => if (Nat.Partrec.Code.evaln n c e).isSome = true then some (eventAtom e)
         else none)) :=
@@ -625,7 +625,7 @@ theorem lic_introspection_ofCode_unconditional
     (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
     (upperFeature : ℕ → EF)
     (hupper : GeneratedRatFeature (liaHistory (theoremDP T)) b upperFeature)
-    (hδ : PolyRatCodes δ) (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
+    (hδ : PolyRatCodes δ)
     (hδpos : ∀ n, 0 < δ n)
     (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1)
@@ -642,7 +642,7 @@ theorem lic_introspection_ofCode_unconditional
           liaHistory (theoremDP T) n (q.sentence n) < (ε n : ℝ)) :=
   haveI := theoremLIA T
   lic_introspection_ofCode (quotationPresentation T) (liaHistory (theoremDP T))
-    φ hφ a b δ lowerFeature hlower upperFeature hupper hδ hδinv hδpos hδzero hab q
+    φ hφ a b δ lowerFeature hlower upperFeature hupper hδ hδpos hδzero hab q
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:lp` (paradox resistance), unconditional over `LIA`.  The named market program,
@@ -652,7 +652,6 @@ Paper node: `thm:lp` -/
 theorem lic_paradox_resistance_ofDiagonal_unconditional
     (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
     (width : ℕ → ℚ) (hwidth : PolyRatCodes width)
-    (hwidthInv : PolyRatCodes (fun n ↦ 1 / width n))
     (hwidthPos : ∀ n, 0 < width n)
     (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0)) :
     (fun n => liaHistory (theoremDP T) n
@@ -660,7 +659,7 @@ theorem lic_paradox_resistance_ofDiagonal_unconditional
       fun _ => (p : ℝ) :=
   haveI := theoremLIA T
   lic_paradox_resistance_ofDiagonal (quotationPresentation T) (liaHistory (theoremDP T))
-    (theoremMarketComputation T) p hp0 hp1 width hwidth hwidthInv hwidthPos hwidthZero
+    (theoremMarketComputation T) p hp0 hp1 width hwidth hwidthPos hwidthZero
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-- `thm:cee` (expected future expectations), unconditional over `LIA`.
@@ -728,7 +727,6 @@ theorem lic_self_trust_ofRepresentation_unconditional
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
     (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
-    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
     (pFeature : ℕ → EF)
     (hp : GeneratedRatFeature (liaHistory (theoremDP T)) p pFeature)
     (hA : LUV.RpnThresholdCodeSeq A) (hB : LUV.RpnThresholdCodeSeq B)
@@ -741,7 +739,7 @@ theorem lic_self_trust_ofRepresentation_unconditional
       fun n ↦ (p n : ℝ) * (B n).expect (liaHistory (theoremDP T)) n :=
   haveI := theoremLIA T
   lic_self_trust_ofRepresentation (P := liaHistory (theoremDP T)) (DP := theoremDP T)
-    f φ δ p A B delta_pos probability_mem hφ hδ hδinv pFeature hp hA hB
+    f φ δ p A B delta_pos probability_mem hφ hδ pFeature hp hA hB
     confidence_reflected product_reflected
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 

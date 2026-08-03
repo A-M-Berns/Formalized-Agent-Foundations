@@ -311,23 +311,6 @@ structure BoundedComputation (truth : ℕ → Prop) where
 
 /-! ## Constructors for the three MetaLearning boundaries -/
 
-/-- Constructor for the semidecidable-claims boundary from a concrete computation.
-Paper node: `thm:pac` -/
-noncomputable def representedSemidecidableClaimsOfComputation
-    {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
-    {truth : ℕ → Prop} (Q : ComputationTheoryPresentation DP T)
-    (C : SemidecidableComputation truth) :
-    RepresentedSemidecidableClaims DP truth where
-  sentence n := haltingClaimSentence (haltingClaimInput C.machine (C.input n))
-  sentence_poly := RpnSentenceCodes.ofPolySentenceCodes <| haltingClaimSentence_poly <|
-    haltingClaimInput_poly
-      ⟨_, PolyFueled.const (Encodable.encode C.machine)⟩ C.input_poly
-  provable_of_true n hn := by
-    apply Q.halting_enters
-    apply (re_complete (T := T) universalCodeHalts_re).mp
-    simpa using (C.truth_iff n).mp hn
-
 /-- Constructor for the decidable-claims boundary from a concrete computation.
 Paper node: `thm:pac` -/
 noncomputable def representedDecidableClaimsOfComputation
@@ -558,7 +541,6 @@ lemma computationRepresentation_negative_path
 #print axioms universalBoundedSchemas_complementary
 #print axioms ComputationClaim.godelCode_injective
 #print axioms computationClaimSentence_poly
-#print axioms representedSemidecidableClaimsOfComputation
 #print axioms representedDecidableClaimsOfComputation
 #print axioms inconsistentTheoryClaimsOfComputation
 #print axioms representedHaltingClaims

@@ -4,7 +4,7 @@ import LogicalInduction.Framework.Computable
 # Polynomial emission machinery (`dd:fuel`)
 
 Conclusion-free bounded-simulation compilers over `Nat.Partrec.Code`
-(`codeEvalBound`, `codeEvalnNat`, `BoundedEvalnCompiler`, dovetailing) and the
+(`codeEvalBound`, `codeEvalnNat`, dovetailing) and the
 clocked token-emission layer (`PrefixPatchCompile.ecClock` …
 `clockedTokens_polySegStream`), together with the token→digit inclusion
 `EfficientlyComputableTok.toDigit`.  No market-limit, exploitation, or
@@ -184,17 +184,6 @@ lemma codeEvalnNat_output_poly (code : Nat.Partrec.Code) :
   have hclock : IsPolyBounded fun z => codeEvalBound code z.unpair.1 :=
     (codeEvalBound_poly code).comp isPolyBounded_fst
   exact hclock.add_one.of_le (codeEvalnNat_le code)
-
-/-- A polynomial-clock program for the total bounded interpreter `codeEvalnNat simulated`.
-It stores only exact finite simulation and complexity data.  This is the shared operational
-core of the construction witnesses: the bounded-`evaln` history compiler
-(`Construction/Witnesses/HistoricalMaturity.lean`), efficient repetition over c.e. sources
-(`EfficientRepeatedEnumeration.ofCE`), the universal dovetailer's stage table
-(`Construction/Witnesses/UniversalDovetailer.lean`), and the computation-syntax witnesses.
-Paper node: `def:ec` -/
-structure BoundedEvalnCompiler (simulated : Nat.Partrec.Code) where
-  code : Nat.Partrec.Code
-  poly : PolyFueled code (codeEvalnNat simulated)
 
 /-- Direct iterative presentation of the clocked `prec` interpreter clause.  Fixing the
 target recursion depth `total`, iteration `j` uses exactly the residual clock
@@ -556,6 +545,13 @@ lemma rfindNat_le (cf : Nat.Partrec.Code) (A : ℕ) :
       · exact ih
 
 section PrecCompile
+-- `Nat.sqrt` is made locally irreducible here and in every other section doing deep
+-- `Primrec`/`PolyFueled` work over `Nat.pair`-encoded products: `Nat.pair`'s definition
+-- mentions `Nat.sqrt`, whose well-founded recursion makes `whnf` unfold it endlessly
+-- during defeq checks on nested pair codes, hanging elaboration. The attribute is scoped,
+-- so no global reasoning about `Nat.sqrt` is affected. This is the one recurring
+-- elaboration workaround in the repo; every `attribute [local irreducible] Nat.sqrt`
+-- below and in other files is this same fix.
 attribute [local irreducible] Nat.sqrt
 
 /-- Compile the `prec` case: `precNat` is a primitive recursion whose base/step call the
@@ -752,12 +748,6 @@ lemma codeEvalnNat_polyFueled :
     codeEvalnNat_prec_polyFueled (codeEvalnNat_polyFueled cf) (codeEvalnNat_polyFueled cg)
   | .rfind' cf =>
     codeEvalnNat_rfind_polyFueled (codeEvalnNat_polyFueled cf)
-
-/-- `BoundedEvalnCompiler` is inhabited for every simulated code.
-Paper node: `def:ec` -/
-noncomputable def boundedEvalnCompiler (simulated : Nat.Partrec.Code) :
-    BoundedEvalnCompiler simulated :=
-  ⟨_, (codeEvalnNat_polyFueled simulated).choose_spec⟩
 
 /-! ## The bounded dovetail
 

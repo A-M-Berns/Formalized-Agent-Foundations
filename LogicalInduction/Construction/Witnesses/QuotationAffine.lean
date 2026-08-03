@@ -1468,7 +1468,7 @@ private lemma foldr_addMul_rank (L : List ℕ) (u v : ℕ → EF) (n : ℕ)
     (hu : ∀ k ∈ L, (u k).rank ≤ n) (hv : ∀ k ∈ L, (v k).rank ≤ n) :
     (L.foldr (fun k acc => EF.add (EF.mul (u k) (v k)) acc) (EF.const 0)).rank ≤ n := by
   induction L with
-  | nil => simp [EF.rank]
+  | nil => simp
   | cons k L ih =>
       simp only [List.foldr_cons, EF.rank]
       refine Nat.max_le.mpr ⟨Nat.max_le.mpr ⟨hu k (by simp), hv k (by simp)⟩,
@@ -1480,7 +1480,7 @@ private lemma foldr_addMul_closed (L : List ℕ) (u v : ℕ → EF) (ρ : List �
     (L.foldr (fun k acc => EF.add (EF.mul (u k) (v k)) acc) (EF.const 0)).denoteWith ρ V =
       (L.foldr (fun k acc => EF.add (EF.mul (u k) (v k)) acc) (EF.const 0)).denote V := by
   induction L with
-  | nil => simp [EF.denoteWith, EF.denote]
+  | nil => simp [EF.denote]
   | cons k L ih =>
       simp only [List.foldr_cons, EF.denoteWith, EF.denote_add, EF.denote_mul,
         Pi.add_apply, Pi.mul_apply]
@@ -1702,7 +1702,7 @@ private lemma foldr_mul_denoteWith (L : List ℕ) (u : ℕ → EF) (ρ : List �
     (L.foldr (fun j acc ↦ EF.mul (u j) acc) (EF.const 1)).denoteWith ρ V =
       (L.map fun j ↦ (u j).denoteWith ρ V).prod := by
   induction L with
-  | nil => simp [EF.denoteWith]
+  | nil => simp
   | cons j L ih =>
       simp only [List.foldr_cons, List.map_cons, List.prod_cons, ← ih]
       rfl
@@ -1727,7 +1727,7 @@ private lemma foldr_mul_rank (L : List ℕ) (u : ℕ → EF) (n : ℕ)
     (hu : ∀ j ∈ L, (u j).rank ≤ n) :
     (L.foldr (fun j acc ↦ EF.mul (u j) acc) (EF.const 1)).rank ≤ n := by
   induction L with
-  | nil => simp [EF.rank]
+  | nil => simp
   | cons j L ih =>
       simp only [List.foldr_cons, EF.rank]
       exact Nat.max_le.mpr ⟨hu j (by simp), ih fun i hi ↦ hu i (by simp [hi])⟩
@@ -1914,8 +1914,8 @@ paired-index feature. -/
 lemma ofPGenerableFst {A : ℕ → EF} (h : PGenerableWeighting A) :
     PairedWeighting (fun z ↦ A z.unpair.1) where
   polySeg := h.polySeg.comp PolyFueled.left
-  rank_le := fun z ↦ h.rank_le _
-  closed := fun z ρ V ↦ h.closed _ ρ V
+  rank_le := fun _ ↦ h.rank_le _
+  closed := fun _ ρ V ↦ h.closed _ ρ V
 
 /-- The source index of a paired index, clamped to the evaluation day.  On the fibre the
 source is below the day, so the clamp is invisible there; off it, it keeps the emitted
@@ -1932,8 +1932,8 @@ a legal day-`z.unpair.1` coefficient. -/
 lemma ofPGenerableClamped {A : ℕ → EF} (h : PGenerableWeighting A) :
     PairedWeighting (fun z ↦ A (min z.unpair.2 z.unpair.1)) where
   polySeg := h.polySeg.comp (Classical.choose_spec clampedSource_polyFueled)
-  rank_le := fun z ↦ (h.rank_le _).trans (min_le_right _ _)
-  closed := fun z ρ V ↦ h.closed _ ρ V
+  rank_le := fun _ ↦ (h.rank_le _).trans (min_le_right _ _)
+  closed := fun _ ρ V ↦ h.closed _ ρ V
 
 
 end PairedWeighting
@@ -2648,7 +2648,7 @@ lemma crossPrecision_deferred_tendsto_zero
     exact ⟨ca, hca⟩
   have hkey := deferred_block_price_tendsto_zero (P := P) (DP := DP) hworld f hspec hB
     (hconstRank := fun z ↦ by
-      simp [crossPrecisionBlocks, LUV.crossPrecisionAffine, EF.rank])
+      simp [crossPrecisionBlocks, LUV.crossPrecisionAffine])
     (htermRank := crossPrecisionBlocks_terms_rank X)
     (width := fun m ↦ m * 2 + 2) (hwidth := hw)
     (hwidthPos := fun m ↦ by dsimp only; omega)
@@ -2814,7 +2814,7 @@ lemma pairedExpectationBlocks_terms_length (X : ℕ → LUV) (z : ℕ) :
 
 lemma pairedExpectationBlocks_const_rank (X : ℕ → LUV) (z : ℕ) :
     (pairedExpectationBlocks X z).const.rank ≤ z.unpair.1 := by
-  simp [pairedExpectationBlocks, LUV.expectAffine, EF.rank]
+  simp [pairedExpectationBlocks, LUV.expectAffine]
 
 lemma pairedExpectationBlocks_terms_rank (X : ℕ → LUV) (z : ℕ) :
     ∀ p ∈ (pairedExpectationBlocks X z).terms, p.1.rank ≤ z.unpair.1 := by
@@ -2934,7 +2934,7 @@ lemma numericQuoteBlocks_const_rank {H : ℕ → EF} (hH : PairedWeighting H)
     (numericQuoteBlocks H Y z).const.rank ≤ z.unpair.1 := by
   simp only [numericQuoteBlocks, AffineCombination.add, AffineCombination.neg,
     AffineCombination.scale, featureConstantAffine, EF.rank]
-  exact Nat.max_le.mpr ⟨hH.rank_le z, by simp [EF.rank,
+  exact Nat.max_le.mpr ⟨hH.rank_le z, by simp [
     pairedExpectationBlocks, LUV.expectAffine]⟩
 
 lemma numericQuoteBlocks_terms_rank (H : ℕ → EF) (Y : ℕ → LUV) (z : ℕ) :
@@ -4713,7 +4713,6 @@ theorem lic_self_trust_ofRepresentation
     (delta_pos : ∀ n, 0 < δ n)
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
     (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
-    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
     (pFeature : ℕ → EF) (hp : GeneratedRatFeature P p pFeature)
     (hA : LUV.RpnThresholdCodeSeq A)
     (hB : LUV.RpnThresholdCodeSeq B)
@@ -4729,8 +4728,8 @@ theorem lic_self_trust_ofRepresentation
       fun n ↦ (p n : ℝ) * (B n).expect P n :=
   lic_self_trust P DP f φ δ p A B hworld
     (selfTrustQuoteOfRepresentation f φ δ p A B delta_pos
-      probability_mem hφ hδ hδinv pFeature hp hA hB confidence_reflected
-      product_reflected hworld)
+      probability_mem hφ hδ (hδ.inv_of_pos delta_pos) pFeature hp hA hB
+      confidence_reflected product_reflected hworld)
 
 /-! ## Direct same-day consumers -/
 
@@ -4778,7 +4777,7 @@ theorem lic_introspection_ofCode
     (hlower : GeneratedRatFeature P a lowerFeature)
     (upperFeature : ℕ → EF)
     (hupper : GeneratedRatFeature P b upperFeature)
-    (hδ : PolyRatCodes δ) (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
+    (hδ : PolyRatCodes δ)
     (hδpos : ∀ n, 0 < δ n)
     (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1)
@@ -4798,7 +4797,7 @@ theorem lic_introspection_ofCode
   have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
     fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   let package := introspectionIntervalQuoteOfCode Q φ hφ a b δ
-    lowerFeature hlower upperFeature hupper hδ hδinv hδpos hδzero hab q hP
+    lowerFeature hlower upperFeature hupper hδ (hδ.inv_of_pos hδpos) hδpos hδzero hab q hP
   simpa only using lic_introspection P DP φ a b δ package hworld
 
 /-- Paper-facing `thm:lp` entry point.  Its genuine parameterized fixed point and public
@@ -4812,15 +4811,14 @@ theorem lic_paradox_resistance_ofDiagonal
     (market : MarketComputation P)
     (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
     (width : ℕ → ℚ) (hwidth : PolyRatCodes width)
-    (hwidthInv : PolyRatCodes (fun n ↦ 1 / width n))
     (hwidthPos : ∀ n, 0 < width n)
     (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n
       ((parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n)) ≈ₙ
       fun _ => (p : ℝ) := by
-  let package := paradoxResistanceQuoteOfDiagonal Q market p width hwidth hwidthInv
-    hwidthPos hwidthZero
+  let package := paradoxResistanceQuoteOfDiagonal Q market p width hwidth
+    (hwidth.inv_of_pos hwidthPos) hwidthPos hwidthZero
   simpa only using
     lic_paradox_resistance P DP p hp0 hp1 package hworld
 

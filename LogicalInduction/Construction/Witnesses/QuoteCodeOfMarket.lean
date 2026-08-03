@@ -1,5 +1,6 @@
 import LogicalInduction.Construction.Witnesses.ComputationDP
 import LogicalInduction.Construction.Witnesses.LUVArithmetic
+import LogicalInduction.Construction.Witnesses.LUVSyntax
 
 /-!
 # Rational quote codes built from the market program
@@ -336,7 +337,7 @@ lemma MarketComputation.expectQuote_computable {P : History}
     {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X) :
     Computable (market.expectQuote X) :=
   ((market.expectQuoteAt_computable hX).comp
-    (Computable.id.pair Computable.id)).of_eq fun n => rfl
+    (Computable.id.pair Computable.id)).of_eq fun _ => rfl
 
 /-! ## Part E — the ctsInd-composed confidence value and the indicator product
 (`thm:st`'s reflection data, constructed) -/
@@ -887,7 +888,7 @@ noncomputable def theoremConfidenceQuoteCode (f : DeferralFunction)
       ((theoremMarketComputation T).quote (f n) (Encodable.encode (φ n))) (p n) :=
     (ratCtsInd_computable.comp (hδ.computable.pair
       (hquote.pair (hp.computable (theoremMarketComputation T)))) : _)
-  RationalQuoteCode.ofComputable T hval (fun n => ratCtsInd_mem_Icc _ _ _)
+  RationalQuoteCode.ofComputable T hval (fun _ => ratCtsInd_mem_Icc _ _ _)
 
 /-- Cast identity for the confidence value against the real market. -/
 lemma theoremConfidence_value_cast (f : DeferralFunction) (φ : ℕ → Sentence)
@@ -929,7 +930,7 @@ noncomputable def theoremIntervalQuoteCode (φ : ℕ → Sentence) (hφ : RpnSen
     exact ((Primrec.dom_bool₂ Bool.and).to_comp.comp hn1 hn2 : _)
   · funext n
     rw [(theoremMarketComputation T).quote_exact n (φ n)]
-    simp only [eq_iff_iff, Bool.and_eq_true, Bool.not_eq_true',
+    simp only [Bool.and_eq_true, Bool.not_eq_true',
       decide_eq_false_iff_not, not_le, Rat.cast_lt]
 
 /-- **`thm:ref` (introspection), closed form over the constructed `LIA`** — the interval
@@ -960,7 +961,7 @@ theorem lic_introspection_closed
             ((theoremIntervalQuoteCode T φ hφ a b ha hb).sentence n) < (ε n : ℝ)) :=
   lic_introspection_ofCode_unconditional (T := T) φ
     hφ a b δ lowerFeature hlower
-    upperFeature hupper hδ (hδ.inv_of_pos hδpos) hδpos hδzero hab
+    upperFeature hupper hδ hδpos hδzero hab
     (theoremIntervalQuoteCode T φ hφ a b ha hb)
 
 /-- **`thm:st` (self-trust), closed form over the constructed `LIA`** — no reflection
@@ -992,7 +993,7 @@ theorem lic_self_trust_closed
   refine lic_self_trust_ofRepresentation_unconditional (T := T) f φ δ p
     (fun n => indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n)
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).luv
-    delta_pos probability_mem hφ hδ (hδ.inv_of_pos delta_pos)
+    delta_pos probability_mem hφ hδ
     hp.choose hp.choose_spec
     (indicatorProductLUV_rpnThresholdCodeSeq _ hφ)
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).poly
@@ -1154,6 +1155,44 @@ lemma indicatorProductLUV_exact_left_reflected
 end
 
 end
+
+/-! ## Non-vacuity of the compact combination syntax
+
+`LUVCombinationSyntax` is the caller-supplied data of the `_ofSyntax` expectation
+endpoints (`lem:mesh`, `thm:exppolymax`, `thm:expcoh`, `thm:perexpkno`), so it must be
+shown constructible — and by a non-degenerate, index-varying sequence, not a constant
+stand-in. -/
+
+/-- A concrete single-term combination sequence over the quotation-atom threshold LUVs:
+member `n` is `1 · X_{⟨n,0⟩} + 0` where `X` is the `arithmeticThresholdLUV` family for
+`code`.  The LUV genuinely varies with `n`.
+Paper node: `def:blcp` -/
+noncomputable def ordinaryLUVCombinationSeq (code : ℕ) : ℕ → LUVCombination :=
+  fun n => { const := .const 0
+             terms := [(.const 1, arithmeticThresholdLUV code (Nat.pair n 0))] }
+
+/-- **N+.** The compact combination syntax is inhabited by the construction, for the
+non-degenerate sequence `ordinaryLUVCombinationSeq`: every field — the term-count,
+coefficient and constant emitters, and the threshold-code certificate — is discharged
+from existing certified emitters, with no operational hypothesis.
+Paper node: `def:luv` -/
+noncomputable def ordinaryLUVCombinationSyntax (code : ℕ) :
+    LUVCombinationSyntax (ordinaryLUVCombinationSeq code) where
+  termCount _ := 1
+  coefficient _ := .const 1
+  luv z := arithmeticThresholdLUV code z
+  termCount_poly := ⟨_, PolyFueled.const 1⟩
+  const_poly := RpnSpliceStream.serialize_const 0
+  coefficient_poly := RpnSpliceStream.serialize_const 1
+  threshold_poly := LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
+    (arithmeticThresholdLUV_polyThresholdCodeSeq code)
+  terms_eq n := by simp [ordinaryLUVCombinationSeq]
+  const_rank n := Nat.zero_le n
+  coefficient_rank n j _ := Nat.zero_le n
+  const_closed n ρ V := by simp [ordinaryLUVCombinationSeq]
+  coefficient_closed z ρ V := by simp
+
+#print axioms ordinaryLUVCombinationSyntax
 
 #print axioms arithmeticThresholdLUV_polyThresholdCodeSeq
 #print axioms RationalQuoteCode.ofComputable

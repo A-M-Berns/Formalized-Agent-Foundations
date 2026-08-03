@@ -82,8 +82,11 @@ elab "#assert_axioms_clean_except " extra:ident ids:ident+ : command => do
 
 open Lean Elab Command in
 /-- Fail elaboration unless `struct` is a structure whose field-name set is exactly the
-listed idents. Freezes the hypothesis surface of a boundary structure: adding or removing
-a field fails the build. Order-insensitive. -/
+listed idents. Freezes the field *names* of a boundary structure — adding or removing a
+field fails the build — but NOT their types: a field's type can change without failing
+this check (it has, benignly: `mesh_poly`'s index moved during the precision reindex).
+A type change on a frozen structure is still a surface change and must be flagged in a
+comment here, as the `BitPrefixSentences.prefix_codes` note below does. Order-insensitive. -/
 elab "#assert_fields " struct:ident fields:ident* : command => do
   let name ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo struct
   unless Lean.isStructure (← getEnv) name do
@@ -308,7 +311,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- Construction/Witnesses/BoundedEvaluation.lean — the bounded-`evaln` compiler, repeated
 -- enumeration of a c.e. set, settlement/patient clocks, and the prefix-freeze certificate.
 #assert_axioms_clean
-  codeEvalnNat_polyFueled boundedEvalnCompiler
+  codeEvalnNat_polyFueled
   EfficientRepeatedEnumeration.ofRpn EfficientRepeatedEnumeration.ofCE
   SettlementChecker.ofComputations PatientSettlementClock.ofComputations
   liaFreezeBefore_preserves_ecTok
@@ -386,10 +389,10 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   conditioningPresentationOfComputations fixedConditioningPresentation
   lic_conditioned_gated_ofComputations
 
--- Construction/Witnesses/ConditioningCompiler.lean — the `def:ec`-preserving trader
--- translation across conditioning, and the eventual price floor it needs.
+-- Construction/Witnesses/ConditioningCompiler.lean — the eventual price floor the
+-- conditioning translation needs.  (The `def:ec`-preserving translations themselves are
+-- the `_ecRpn` endpoints below, at the criterion's own class.)
 #assert_axioms_clean
-  conditionedTranslation_preserves_ec eventualConditionedTranslation_preserves_ec
   exists_eventual_condition_price_floor
   eventualConditioningFloorOfJointConsistency
 
@@ -460,7 +463,11 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- operational witness it constructs (`lem:mesh`), and the four expectation endpoints
 -- that consume that witness with the operational hypothesis discharged
 -- (`lem:mesh`, `thm:exppolymax`, `thm:expcoh`, `thm:perexpkno`).
+-- `ordinaryLUVCombinationSyntax` (QuoteCodeOfMarket.lean) is the constructed
+-- non-vacuity witness for the `_ofSyntax` endpoints' caller data, over a
+-- non-degenerate index-varying sequence.
 #assert_axioms_clean LUVCombinationSyntax.meshSoftmaxOperationalWitness
+  ordinaryLUVCombinationSyntax
 #assert_axioms_clean
   LUVCombination.BoundedSequence.mesh_independence_ofSyntax
   LUVCombination.BoundedSequence.exppolymax_ofSyntax
@@ -470,7 +477,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- Construction/Witnesses/ComputationSyntax.lean — represented semidecidable/decidable
 -- claims built from a bounded computation, discharging the meta-learning interfaces.
 #assert_axioms_clean
-  representedSemidecidableClaimsOfComputation representedDecidableClaimsOfComputation
+  representedDecidableClaimsOfComputation
   inconsistentTheoryClaimsOfComputation
   lic_belief_finitistic_consistency_ofComputation
   lic_belief_stronger_theory_consistency_ofComputation
@@ -550,10 +557,11 @@ open AffineCombination LUVCombination in
 
 Each structure below appears in the *type* of a Tier-1 endpoint (directly, or
 transitively through structure fields), so its fields are hypotheses the statement
-read-through must audit. `#assert_fields` freezes that field set: adding or removing
-a field — smuggling a premise in or out of a boundary — fails the build. The set is
-order-insensitive. Regenerate with `SurfaceProbe`/`FieldProbe` if the surface changes
-deliberately. -/
+read-through must audit. `#assert_fields` freezes that field-name set: adding or removing
+a field — smuggling a premise in or out of a boundary — fails the build. It does not
+freeze field *types* (see the macro's docstring); deliberate type changes are recorded in
+comments beside the affected structure. The set is order-insensitive. Regenerate with
+`SurfaceProbe`/`FieldProbe` if the surface changes deliberately. -/
 
 #assert_fields AffineCombination
   const terms
@@ -585,8 +593,6 @@ deliberately. -/
   code pos_complete neg_complete
 #assert_fields BoundedComputation
   machine input steps input_poly steps_poly truth_iff
-#assert_fields BoundedEvalnCompiler
-  code poly
 #assert_fields CEEnumeration
   code halts outputs_sound
 #assert_fields CompactConditioningProcessComputation

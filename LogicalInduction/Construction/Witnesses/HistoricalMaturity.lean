@@ -1546,7 +1546,6 @@ theorem BoundedSequence.recurringunbiasednessexp
     (h : BoundedSequence As P)
     (hvalued : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
-    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
     (hWdiv : DivergentWeighting W P)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -1555,6 +1554,12 @@ theorem BoundedSequence.recurringunbiasednessexp
         (fun i => (As i).expect P i) truth) 0 := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
+  obtain ⟨B, hB⟩ := h.bounded
+  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
+  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
+    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
+      le_add_of_nonneg_left (abs_nonneg _)
+    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
   let w : ℕ → ℝ := fun i => (W i).denote P
   let market : ℕ → ℝ := fun i => (As i).expect P i
   let meshTruth : ℕ → ℝ := meshTheoryTruth As P DP hworld
@@ -1610,13 +1615,18 @@ theorem BoundedSequence.prandexp
     (h : BoundedSequence As P)
     (hvalued : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
-    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
     (hpseudo : PseudorandomAbove truth f P) :
     (fun n => (As n).expect P n) ≳ₙ (fun _ => 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
+  obtain ⟨B, hB⟩ := h.bounded
+  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
+  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
+    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
+      le_add_of_nonneg_left (abs_nonneg _)
+    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : 0 < q := meshNormScale_pos b
   have hpseudoMesh := hvalued.normalizedMeshTruth_pseudorandomAbove
@@ -1645,13 +1655,18 @@ theorem BoundedSequence.prandexp_below
     (h : BoundedSequence As P)
     (hvalued : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
-    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
     (hpseudo : PseudorandomBelow truth f P) :
     (fun n => (As n).expect P n) ≲ₙ (fun _ => 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
+  obtain ⟨B, hB⟩ := h.bounded
+  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
+  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
+    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
+      le_add_of_nonneg_left (abs_nonneg _)
+    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : 0 < q := meshNormScale_pos b
   have hpseudoMesh := hvalued.normalizedMeshTruth_pseudorandomBelow
@@ -1680,16 +1695,13 @@ theorem BoundedSequence.prandexp_eq
     (h : BoundedSequence As P)
     (hvalued : WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
-    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
     (hpseudo : Pseudorandom truth f P) :
     (fun n => (As n).expect P n) ≈ₙ (fun _ => 0) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   rw [asympEq_iff_asympLE_asympGE]
-  exact ⟨h.prandexp_below hvalued hdet b hshare hworld f hpseudo.2,
-    h.prandexp hvalued hdet b hshare hworld f hpseudo.1⟩
+  exact ⟨h.prandexp_below hvalued hdet hworld f hpseudo.2,
+    h.prandexp hvalued hdet hworld f hpseudo.1⟩
 
 end LUVCombination
 

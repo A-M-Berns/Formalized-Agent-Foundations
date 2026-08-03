@@ -313,14 +313,6 @@ def worldValued {As : ℕ → LUVCombination}
     (H : S.TheorySemantics DP) : LUVCombination.WorldValued As DP :=
   (S.exactTheoryPresentation H).toWorldValued
 
-/-- Compact syntax plus completed-theory representation discharges the convergence
-presentation: `thm:ec` reads world values only at `cworlds(Θ)`, which is exactly what
-`completed_threshold_iff` pins. -/
-def convergencePresentation {As : ℕ → LUVCombination}
-    (S : LUVCombinationSyntax As) {DP : DeductiveProcess}
-    (H : S.TheorySemantics DP) : LUVCombination.ConvergencePresentation As DP :=
-  (S.worldValued H).convergencePresentation S.threshold_code
-
 end LUVCombinationSyntax
 
 
@@ -1326,11 +1318,16 @@ theorem mesh_independence_ofSyntax
     (h : LUVCombination.BoundedSequence As P)
     (S : LUVCombinationSyntax As)
     (hvalued : LUVCombination.WorldValued As DP)
-    (b : ℚ) (hb : 0 ≤ (b : ℝ))
-    (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    Tendsto (LUVCombination.meshTailError As P) atTop (𝓝 0) :=
-  h.mesh_independence (S.meshSoftmaxOperationalWitness h
+    Tendsto (LUVCombination.meshTailError As P) atTop (𝓝 0) := by
+  obtain ⟨B, hB⟩ := h.bounded
+  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
+  have hb : (0 : ℝ) ≤ (b : ℝ) := (le_max_right B 0).trans hbB.le
+  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
+    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
+      le_add_of_nonneg_left (abs_nonneg _)
+    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
+  exact h.mesh_independence (S.meshSoftmaxOperationalWitness h
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
     hvalued b hb hshare hworld
 
@@ -1343,14 +1340,19 @@ theorem exppolymax_ofSyntax
     (h : LUVCombination.BoundedSequence As P)
     (S : LUVCombinationSyntax As)
     (hvalued : LUVCombination.WorldValued As DP)
-    (b : ℚ) (hb : 0 ≤ (b : ℝ))
-    (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (fun n => (As n).expect P n) atTop =
         liminf (futureHigh As P) atTop ∧
       limsup (fun n => (As n).expect P n) atTop =
-        limsup (futureLow As P) atTop :=
-  h.exppolymax (S.meshSoftmaxOperationalWitness h
+        limsup (futureLow As P) atTop := by
+  obtain ⟨B, hB⟩ := h.bounded
+  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
+  have hb : (0 : ℝ) ≤ (b : ℝ) := (le_max_right B 0).trans hbB.le
+  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
+    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
+      le_add_of_nonneg_left (abs_nonneg _)
+    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
+  exact h.exppolymax (S.meshSoftmaxOperationalWitness h
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
     hvalued b hb hshare hworld
 
@@ -1363,8 +1365,6 @@ theorem expcoh_ofSyntax
     (h : LUVCombination.BoundedSequence As P)
     (S : LUVCombinationSyntax As)
     (hvalued : LUVCombination.WorldValued As DP)
-    (b : ℚ) (hb : 0 ≤ (b : ℝ))
-    (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (liminf (completedLow As P DP) atTop ≤
         liminf (fun n => (As n).expectInf P) atTop ∧
@@ -1373,8 +1373,15 @@ theorem expcoh_ofSyntax
       (limsup (fun n => (As n).expect P n) atTop ≤
           limsup (fun n => (As n).expectInf P) atTop ∧
         limsup (fun n => (As n).expectInf P) atTop ≤
-          limsup (completedHigh As P DP) atTop) :=
-  h.expcoh (S.meshSoftmaxOperationalWitness h
+          limsup (completedHigh As P DP) atTop) := by
+  obtain ⟨B, hB⟩ := h.bounded
+  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
+  have hb : (0 : ℝ) ≤ (b : ℝ) := (le_max_right B 0).trans hbB.le
+  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
+    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
+      le_add_of_nonneg_left (abs_nonneg _)
+    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
+  exact h.expcoh (S.meshSoftmaxOperationalWitness h
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
     hvalued S.threshold_code b hb hshare hworld
 
@@ -1387,14 +1394,19 @@ theorem perexpkno_ofSyntax
     (h : LUVCombination.BoundedSequence As P)
     (S : LUVCombinationSyntax As)
     (hvalued : LUVCombination.WorldValued As DP)
-    (b : ℚ) (hb : 0 ≤ (b : ℝ))
-    (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (futureLow As P) atTop =
         liminf (fun n => (As n).expectInf P) atTop ∧
       limsup (futureHigh As P) atTop =
-        limsup (fun n => (As n).expectInf P) atTop :=
-  h.perexpkno (S.meshSoftmaxOperationalWitness h
+        limsup (fun n => (As n).expectInf P) atTop := by
+  obtain ⟨B, hB⟩ := h.bounded
+  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
+  have hb : (0 : ℝ) ≤ (b : ℝ) := (le_max_right B 0).trans hbB.le
+  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
+    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
+      le_add_of_nonneg_left (abs_nonneg _)
+    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
+  exact h.perexpkno (S.meshSoftmaxOperationalWitness h
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
     hvalued S.threshold_code b hb hshare hworld
 
@@ -1403,7 +1415,6 @@ end LUVCombination.BoundedSequence
 #print axioms LUVCombinationSyntax.diagonalMeshPoly
 #print axioms LUVCombinationSyntax.polySequence
 #print axioms LUVCombinationSyntax.threshold_code
-#print axioms LUVCombinationSyntax.convergencePresentation
 #print axioms LUVCombinationSyntax.exactTheoryPresentation
 #print axioms LUVCombinationSyntax.worldValued
 #print axioms LUVCombinationSyntax.meshSoftmaxPoly
