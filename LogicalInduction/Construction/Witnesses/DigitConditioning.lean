@@ -282,8 +282,7 @@ lemma hasDay_of_mode2_step {state next : EF.StreamState} {token : ℕ}
   simp only at hmode
   subst hmode
   simp only [EF.streamStep] at h
-  simp only [if_neg (by norm_num : ¬ (2:ℕ) = 0), if_neg (by norm_num : ¬ (2:ℕ) = 1),
-    if_pos rfl] at h
+  simp only [if_neg (by norm_num : ¬ (2:ℕ) = 0), if_neg (by norm_num : ¬ (2:ℕ) = 1)] at h
   rcases pending with _ | φ
   · exact absurd h (by simp)
   · obtain rfl := Option.some.inj h
@@ -1016,7 +1015,7 @@ lemma frameLegEmit_polySegStream (second : Bool) {src : ℕ → List ℕ}
       ((undigitize (src z.unpair.1)).getD z.unpair.2 0) (ψcF z.unpair.1)) := by
     have hshell := ((BigDigits.const 3).natPair
       (hbig.natPair (BigDigits.of_polyFueled hψz))).succ
-    exact hshell.of_eq fun z => by simp only [conjunctionCode, Nat.unpair_pair]
+    exact hshell.of_eq fun z => by simp only [conjunctionCode]
   have hmid := frameMid_polyTokenStream second hψz PolyFueled.left hbz hiz ε
   have hblock0 := PolySegStream.block (PolyFueled.const 0)
   have hconjSeg := hconj.blockSeg
@@ -1046,7 +1045,7 @@ lemma frameLegEmit_polySegStream (second : Bool) {src : ℕ → List ℕ}
       have hlong := ((hblock0.append hconjSeg).append hmidSeg).append hconjSeg
       refine (hempty.ifZero (hlong.ifZero hcopy heq4) hsel1).of_eq fun z => ?_
       rw [conditioningFrameTokenSegment_eq]
-      simp only [Nat.unpair_pair, Nat.reduceAdd, reduceIte]
+      simp only [Nat.unpair_pair, Nat.reduceAdd]
       by_cases hc1 : freezeMode4 (vpre
           (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
           z.unpair.1 z.unpair.2) = 0 ∧
@@ -1163,7 +1162,7 @@ lemma frameLegOutput_polySegStream (second : Bool) {src : ℕ → List ℕ}
   rw [hrunEq]
   simp only [digitize_append, digitize_flatMap]
   refine congrArg₂ (· ++ ·) ?_ ?_
-  · exact List.flatMap_congr fun j hj => by simp only [Nat.unpair_pair]
+  · exact List.flatMap_congr fun _ _ => rfl
   · rw [freezeTokenControlAt_fst]
     by_cases hm4 : freezeMode4 (vpre
         (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0) n

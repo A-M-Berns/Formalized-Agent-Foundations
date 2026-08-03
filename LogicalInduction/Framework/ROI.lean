@@ -1347,7 +1347,7 @@ lemma sharedBudgetedTrader_polySeg (Ts : ℕ → Trader)
         (EF.mul (sharedFeatureWeight active α k) (hTs.coefficient z), hTs.sentence z)]) := by
     refine RpnSpliceStream.of_eq (hscaled.append hframe) ?_
     intro q
-    simp [serializeTrades, List.append_assoc]
+    simp [serializeTrades]
   have hcountReindexed := hcount.comp (PolyFueled.right.pair PolyFueled.left)
   have hcomponent := RpnSpliceStream.concatVar hone hcountReindexed
   have hall := RpnSpliceStream.concatVar hcomponent PolyFueled.id.succ_comp
@@ -2009,7 +2009,7 @@ lemma fractionalBudgetedTrader_polySeg (Ts : ℕ → Trader)
           hTs.sentence z)]) := by
     refine RpnSpliceStream.of_eq (hscaled.append hframe) ?_
     intro q
-    simp [serializeTrades, List.append_assoc]
+    simp [serializeTrades]
   have hcountReindexed := hcount.comp (PolyFueled.right.pair PolyFueled.left)
   have hcomponent := RpnSpliceStream.concatVar hone hcountReindexed
   have hall := RpnSpliceStream.concatVar hcomponent PolyFueled.id.succ_comp

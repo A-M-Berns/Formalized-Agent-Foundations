@@ -1712,7 +1712,7 @@ private lemma meshAffine_zero_terms (A : LUVCombination) :
     List.map_nil]
   induction A.terms with
   | nil => rfl
-  | cons p rest ih => simpa using ih
+  | cons p rest ih => simp
 
 private lemma payout_eq_zero_or_one (u : PCWorld) (φ : Sentence) :
     u.payout φ = 0 ∨ u.payout φ = 1 := by

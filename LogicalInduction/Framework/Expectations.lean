@@ -324,7 +324,7 @@ lemma PCWorld.ApproxValuesUpTo.mono {v : PCWorld} {X : LUV} {x : ℝ} {M N : ℕ
 /-- Full `ValuesAt` implies the finite-precision agreement at every `N`. -/
 lemma PCWorld.ValuesAt.approxValuesUpTo {v : PCWorld} {X : LUV} {x : ℝ}
     (hx : v.ValuesAt X x) (N : ℕ) : v.ApproxValuesUpTo X x N :=
-  ⟨hx.1, fun n hn _ => hx.expectApprox_near hn⟩
+  ⟨hx.1, fun _ hn _ => hx.expectApprox_near hn⟩
 
 /-! ### Relational expectation-family substrate
 

@@ -628,7 +628,7 @@ theorem unRpn_rpnFreezeRun (quoteRun : List ℕ → ℕ → ℕ) (quoteCode : �
     (freezeTokens_price quoteCode cutoff)
     (freezeTokens_pricePair quoteCode cutoff)
     (freezeTokens_trade quoteCode cutoff)
-    (fun b φ hb D rest => unRpn_freeze_rewrite_chunk quoteRun quoteCode cutoff hq hb
+    (fun _ _ hb D rest => unRpn_freeze_rewrite_chunk quoteRun quoteCode cutoff hq hb
       D rest)
 
 /-! ### The poly-fueled side

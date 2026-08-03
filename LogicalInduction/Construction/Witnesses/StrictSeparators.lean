@@ -459,7 +459,7 @@ theorem kleene_recursively_inseparable (f : ℕ → Bool) (hf : Computable f)
       simp
     exact absurd (h0 e₀ hmem) (by simp [hfe])
   · have hmem : e₀ ∈ kleeneSet true := by
-      simp only [kleeneSet, Set.mem_setOf_eq, if_pos rfl]
+      simp only [kleeneSet, Set.mem_setOf_eq]
       rw [hval]
       simp [hfe]
     exact absurd (h1 e₀ hmem) (by simp [hfe])
@@ -619,7 +619,7 @@ lemma separatorConstraintCodeAux_eq (atom : ℕ → Sentence) (n : ℕ) :
       · have h0 : kleeneDecideNat n e = 0 := by rw [kleeneDecideNat_eq, hb]
         rw [show separatorConstraintAux atom n (e + 1) =
             separatorConstraintAux atom n e from by simp only [separatorConstraintAux, hb]]
-        simp only [separatorConstraintCodeAux, h0, if_pos rfl]
+        simp only [separatorConstraintCodeAux, h0]
         exact ih
       · have hlit : separatorConstraintAux atom n (e + 1) =
             separatorConstraintAux atom n e ⋏ bitPrefixLiteral atom e b := by
@@ -807,7 +807,7 @@ lemma mem_separatorConsistentAt {σ : List Bool} {n : ℕ} :
     simpa using this
   · rintro ⟨hlen, hall⟩
     refine ⟨hlen, ?_⟩
-    simp only [decide_eq_true_eq, List.all_eq_true]
+    simp only [List.all_eq_true]
     intro e he
     rcases hb : kleeneDecide n e with _ | b
     · rfl
@@ -970,7 +970,7 @@ private lemma sum_filter_add_sum_filter_not {α : Type*} (f : α → ℝ) (p : �
   | a :: L => by
       have ih := sum_filter_add_sum_filter_not f p L
       by_cases h : p a = true <;>
-        simp [List.filter_cons, h, Bool.not_eq_true] at ih ⊢ <;> linarith
+        simp [h] at ih ⊢ <;> linarith
 
 /-- The class splits into the part where bit `j` is `b` and the part where it is not. -/
 lemma classMass_bit_split (M : ContinuousSemimeasure) (j : ℕ) (b : Bool) (n : ℕ) :
@@ -1312,7 +1312,7 @@ private lemma tendsto_list_approx (M : LowerSemicomputableContinuousSemimeasure)
     ∀ L : List (List Bool),
       Tendsto (fun t ↦ (((L.map (M.approximation t)).sum : ℚ) : ℝ)) atTop
         (𝓝 ((L.map M.mass).sum))
-  | [] => by simpa using tendsto_const_nhds
+  | [] => by simp
   | σ :: L => by
       have ih := tendsto_list_approx M L
       have h := (M.approximation_tendsto σ).add ih

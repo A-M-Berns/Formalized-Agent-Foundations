@@ -121,7 +121,7 @@ lemma rpnCondStep_clamp (st t : ℕ) :
     have e234 : ¬ (t = 2 ∨ t = 3 ∨ t = 4) := by omega
     have e6 : ¬ t = 6 := by omega
     have e7 : ¬ t = 7 := by omega
-    simp only [e0, e1, e234, e6, e7, if_false, ite_false,
+    simp only [e0, e1, e234, e6, e7, if_false,
       show ((9 : ℕ) = 0) = False by simp, show ((9 : ℕ) = 1) = False by simp,
       show ((9 : ℕ) = 2 ∨ (9 : ℕ) = 3 ∨ (9 : ℕ) = 4) = False by simp,
       show ((9 : ℕ) = 6) = False by simp, show ((9 : ℕ) = 7) = False by simp]
@@ -200,7 +200,7 @@ lemma foldl_rpnCondStep_run {a b : ℕ} {exit : ℕ → ℕ}
                   | none => rw [hdec] at h; simp at h
                   | some ψ =>
                       rw [hdec] at h
-                      simp only [Option.bind_some, Option.map_some,
+                      simp only [Option.map_some,
                         List.tail_cons] at h
                       obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
                       subst h1
@@ -582,10 +582,10 @@ lemma rpnConditionRun_range (tf : ℕ → ℕ) (emit : List ℕ → ℕ → List
         (List.range count).flatMap fun j =>
           rpnConditionSegment tf emit (Nat.pair n j)) := by
   induction count with
-  | zero => simp [rpnConditionRun, rpnCondControlAt]
+  | zero => simp [rpnCondControlAt]
   | succ count ih =>
       rw [List.range_succ, List.map_append, rpnConditionRun_append, ih]
-      simp only [List.map_cons, List.map_nil, List.range_succ,
+      simp only [List.map_cons, List.map_nil,
         List.flatMap_append, List.flatMap_cons, List.flatMap_nil,
         List.append_nil]
       rw [show rpnConditionRun emit
@@ -1485,7 +1485,7 @@ lemma rcCnt_runWalk_step_ge {a b : ℕ} {exit : ℕ → ℕ}
     rcCnt st ≤ rcCnt (rpnCondStep st t) + 1 := by
   obtain ⟨m, c0, r0, rfl⟩ : ∃ m c0 r0, st = rcPack m c0 r0 :=
     ⟨rcMode st, rcCnt st, rcLen st, rcPack_surjective st⟩
-  simp only [rcMode_pack, rcCnt_pack, rcLen_pack] at hm hc ⊢
+  simp only [rcMode_pack, rcCnt_pack] at hm hc ⊢
   obtain ⟨c, rfl⟩ : ∃ c, c0 = c + 1 := ⟨c0 - 1, by omega⟩
   rcases hm with rfl | rfl
   · rw [hrun]
@@ -1523,11 +1523,11 @@ lemma runWalk_step_decrement {a b : ℕ} {exit : ℕ → ℕ}
     · simp only [rcCnt_pack] at hdec
       omega
     · omega
-    · simp only [rcCnt_pack, Nat.add_sub_cancel]
+    · simp only [Nat.add_sub_cancel]
   · rw [hesc] at hdec ⊢
     split_ifs at hdec ⊢ with hc0
     · omega
-    · simp only [rcCnt_pack, Nat.add_sub_cancel]
+    · simp only [Nat.add_sub_cancel]
 
 /-- **The generic converse walk lemma**: a token run the automaton walks from counter
 `c + 1` to its first return at counter `c` — staying strictly inside the run on every
@@ -1652,7 +1652,7 @@ lemma parse_of_runWalk {a b : ℕ} {exit : ℕ → ℕ}
                 rw [List.take_succ_cons, List.foldl_cons, hstep1]
               have htake : ∀ (l : List ℕ) (k : ℕ) (hk : k < l.length),
                   l.take (k + 1) = l.take k ++ [l[k]] := fun l k hk => by
-                rw [List.take_succ, List.getElem?_eq_getElem hk]
+                rw [List.take_add_one, List.getElem?_eq_getElem hk]
                 rfl
               have hW'succ : ∀ k (hk : k < u'.length),
                   W' (k + 1) = rpnCondStep (W' k) (u'[k]'hk) := fun k hk => by
@@ -2158,7 +2158,7 @@ lemma runWalk_inside {a b : ℕ} {exit : ℕ → ℕ}
       have hjlt : j < v.length := by omega
       obtain ⟨hm, hc, hl⟩ := ih (by omega) (fun i hi => hmods i (by omega))
       have htake : v.take (j + 1) = v.take j ++ [v[j]'hjlt] := by
-        rw [List.take_succ, List.getElem?_eq_getElem hjlt]
+        rw [List.take_add_one, List.getElem?_eq_getElem hjlt]
         rfl
       have hstep : List.foldl rpnCondStep (rcPack a 1 0) (v.take (j + 1)) =
           rpnCondStep (List.foldl rpnCondStep (rcPack a 1 0) (v.take j))
@@ -2211,7 +2211,7 @@ lemma runWalk_first_exit {a b : ℕ} {exit : ℕ → ℕ}
   have hklt : k₀ - 1 < v.length := by omega
   have htake : v.take k₀ = v.take (k₀ - 1) ++ [v[k₀ - 1]'hklt] := by
     conv_lhs => rw [show k₀ = (k₀ - 1) + 1 by omega]
-    rw [List.take_succ, List.getElem?_eq_getElem hklt]
+    rw [List.take_add_one, List.getElem?_eq_getElem hklt]
     rfl
   obtain ⟨hm, hc, hl⟩ := hinside (k₀ - 1) (by omega)
   rw [htake, List.foldl_append, List.foldl_cons, List.foldl_nil] at hexitAt ⊢
@@ -2467,7 +2467,7 @@ theorem unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : Lis
                       rw [rpnConditionRun_cons, if_neg (by simp),
                         rpnCondStep_base_price, rpnCondBuf_base,
                         rpnConditionRun_append]
-                      simp [hucopy, List.append_assoc]
+                      simp [hucopy]
                     have hunL : ∀ Y, unRpn (0 :: (rest.take k₀ ++ Y)) =
                         [0, 0] := fun Y => by
                       rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
@@ -2579,7 +2579,7 @@ theorem unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : Lis
                         rw [rpnConditionRun_cons, if_neg (by simp),
                           rpnCondStep_base_trade, rpnCondBuf_base,
                           rpnConditionRun_append]
-                        simp [hucopy, List.append_assoc]
+                        simp [hucopy]
                       have hunL : ∀ Y, unRpn (6 :: (rest.take k₀ ++ Y)) =
                           [6, 0] := fun Y => by
                         rw [unRpn, List.length_cons, unRpnTokens_cons,
@@ -3268,7 +3268,6 @@ theorem tradeRuns_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N �
                   obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_trade_block hblk
                   have hr1 : r1.length ≤ N := by
                     have hlt := parseRpn_length_lt _ _ _ _ hp
-                    simp only [List.length_cons] at hlt
                     simp only [List.length_append] at hts
                     omega
                   have hcount : rpnTradeRuns (rcPack 0 0 0) (6 :: (blk ++ r1)) =
@@ -3297,7 +3296,7 @@ theorem tradeRuns_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N �
                     refine Or.inl ?_
                     rcases ht1 with rfl | rfl <;>
                       simp [unRpn, unRpnTokens, rpnTradeRuns, tokTradeRuns,
-                        freezeMode4Step, rpnCondStep_base, rcMode, rcPack]
+                        rcMode, rcPack]
                 | c :: r =>
                     have hr : r.length ≤ N := by
                       simp only [List.length_cons] at hts
@@ -3348,7 +3347,7 @@ theorem tradeRuns_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N �
                 · refine Or.inl ?_
                   rw [show (t :: unRpn rest) = [t] ++ unRpn rest from rfl,
                     tokTradeRuns_append, hchunk, hEq]
-                  simp [tokTradeRuns, freezeMode4Step, ht0, ht1.1, ht6, ht1.2]
+                  simp [tokTradeRuns]
                 · refine Or.inr ?_
                   rw [show (t :: unRpn rest) = [t] ++ unRpn rest from rfl]
                   exact hU.cons_chunk hchunk

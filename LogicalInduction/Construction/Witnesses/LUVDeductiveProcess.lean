@@ -211,7 +211,7 @@ lemma luvStage_encode_prim [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy �
       Primrec.cond hevaln (Primrec.option_some.comp (luvEventAtom_prim.comp Primrec.snd))
         (Primrec.const (none : Option Sentence))
     exact hb.of_eq (fun p => by
-      cases hbb : (Nat.Partrec.Code.evaln p.1 c p.2).isSome <;> simp [hbb])
+      cases (Nat.Partrec.Code.evaln p.1 c p.2).isSome <;> simp)
   have hlist : Primrec (fun k : ℕ => (List.range (k + 1)).filterMap
       (fun e => if (Nat.Partrec.Code.evaln k c e).isSome = true then some (luvEventAtom e)
         else none)) :=

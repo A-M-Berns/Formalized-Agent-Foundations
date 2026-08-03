@@ -1440,7 +1440,7 @@ def dusScaleTrader_polyTradeEmulatable
     · rw [if_neg (by omega), if_neg h]
   coefficient_poly :=
     ((dusSharesEF_rpnSpliceStream A emit).comp PolyFueled.left).of_eq
-      (fun z ↦ by simp only [Nat.unpair_pair])
+      (fun _ ↦ rfl)
   sentence_poly :=
     (B.prefix_codes.comp
       (PolyFueled.right.comp (PolyFueled.right.comp PolyFueled.left))).of_eq
@@ -1450,7 +1450,7 @@ def dusScaleTrader_polyTradeEmulatable
     by_cases h : n < k
     · simp [dusScaleTrader, h]
     · simp only [dusScaleTrader, dif_neg h, Nat.unpair_pair, if_neg h]
-      simp [Nat.unpair_pair]
+      simp
 
 /-- Uniform token stream for the entire scale family. -/
 lemma dusScaleTrader_family_rpnSpliceStream

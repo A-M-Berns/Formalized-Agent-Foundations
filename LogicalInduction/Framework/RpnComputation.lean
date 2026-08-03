@@ -192,11 +192,8 @@ lemma parseGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List ℕ))
       rw [h2nd]
       rcases hb with rfl | rfl | rfl
       · rw [if_pos rfl]
-        try (rcases parseRpnC fuel' r1 with _ | ⟨e2, r2⟩ <;> rfl)
       · rw [if_neg (by norm_num), if_pos rfl]
-        try (rcases parseRpnC fuel' r1 with _ | ⟨e2, r2⟩ <;> rfl)
       · rw [if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
-        try (rcases parseRpnC fuel' r1 with _ | ⟨e2, r2⟩ <;> rfl)
   · rw [if_neg hb]
     push_neg at hb
     obtain ⟨hb2, hb3, hb4⟩ := hb

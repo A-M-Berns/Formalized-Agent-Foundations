@@ -394,7 +394,7 @@ lemma decode_succ_headC (c : ℕ) :
         Encodable.decode (α := Bool) (headC (c + 1)) <*>
         Encodable.decode (α := List Bool) (tailC (c + 1)) := by
   have h := Encodable.decode_list_succ (α := Bool) c
-  simpa [headC, tailC] using h
+  simp [headC, tailC] at h ⊢
 
 lemma decode_bool_of_le_one {h : ℕ} (hh : h ≤ 1) :
     Encodable.decode (α := Bool) h = some (decide (h = 1)) := by

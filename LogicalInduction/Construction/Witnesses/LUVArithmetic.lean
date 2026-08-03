@@ -178,7 +178,7 @@ lemma thresholdPred_code_iff (i : ℕ) (r : ℚ) :
     -- both sides nonneg: nat `<` matches ℚ cross-multiplication
     have hrnum : (r.num.natAbs : ℚ) = r * (r.den : ℚ) := by
       have h1 : (r.num.natAbs : ℚ) = (r.num : ℚ) := by
-        rw [Int.cast_natAbs, abs_of_nonneg (by exact_mod_cast Rat.num_nonneg.mpr hr)]
+        rw [Nat.cast_natAbs, abs_of_nonneg (by exact_mod_cast Rat.num_nonneg.mpr hr)]
       have h2 := Rat.num_div_den r
       have hd : (r.den : ℚ) ≠ 0 := by exact_mod_cast r.den_nz
       field_simp at h2

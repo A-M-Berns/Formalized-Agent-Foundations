@@ -88,7 +88,7 @@ lemma RpnSentenceCodes.and {φ ψ : ℕ → Sentence}
   refine ⟨fun z => 3 :: (a z ++ b z), ((h3.append ha).append hb).of_eq (fun z => by simp),
     fun z => ?_⟩
   have hlen : (3 :: (a z ++ b z)).length = (a z).length + (b z).length + 1 := by
-    simp [Nat.add_comm, Nat.add_left_comm]
+    simp
   rw [hlen, parseRpn_cons]
   rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
   rw [parseRpn_block_head (hpa z) (b z) (by omega)]
@@ -128,7 +128,7 @@ private lemma parseRpn_disjChain (blk : ℕ → List ℕ) (D : ℕ → Sentence)
       have hsplit : ((List.range (t + 1)).flatMap fun j => 4 :: blk (a + j)) =
           (4 :: blk a) ++ ((List.range t).flatMap fun j => 4 :: blk (a + 1 + j)) := by
         rw [List.range_succ_eq_map]
-        simp only [List.flatMap_cons, List.flatMap_map, Function.comp_def,
+        simp only [List.flatMap_cons, List.flatMap_map,
           Nat.add_zero]
         congr 1
         refine List.flatMap_congr (fun j _ => ?_)

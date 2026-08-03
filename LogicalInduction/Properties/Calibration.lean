@@ -3258,7 +3258,7 @@ lemma ApproxDeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVeri
   obtain ⟨K, hK⟩ := Metric.tendsto_atTop.mp hconv 1 (by norm_num)
   have hnear := hK (max N K) (le_max_right N K)
   have hlaunch : N ≤ max N K := le_max_left N K
-  simp [α, gateFeature, hlaunch, Real.dist_eq] at hnear
+  simp [α, gateFeature, hlaunch] at hnear
 
 /-- One-sided affine recurring unbiasedness from the isolated historical-verification
 interface.  This is the exact `limsup ≥ 0` half of the paper proof. -/

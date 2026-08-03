@@ -222,7 +222,7 @@ theorem EfficientlyComputable.ofDigitEmitter {Tr : Trader}
         escModeList (vpre
         (fun w => (undigitize (ds w.unpair.1)).getD w.unpair.2 0) n j) = 3
     · rw [if_pos (by
-        rcases hm with hm | hm <;> rw [hm] <;> norm_num), if_pos hm]
+        rcases hm with hm | hm <;> rw [hm]), if_pos hm]
       simp [digitize]
     · rw [if_neg (by
         push_neg at hm

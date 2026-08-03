@@ -1714,7 +1714,7 @@ lemma feedbackWeightedBias_asympEq_zero
     (emit : FeedbackTraderEmissionSigns hpoly hW hstrict)
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
-    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
+    (_hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hacc : DeferralFeedbackAccurate As truth P f)
     (hmass : Tendsto
       (feedbackPrefixSum (fun k ↦ (W (f k)).denote P)) atTop atTop)

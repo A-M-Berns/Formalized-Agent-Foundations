@@ -512,14 +512,14 @@ lemma prefixApprox_query_polyRat (h : PolyRatCodes prefixApprox) :
 /-- The threshold-sum token stream, derived from the weight emission. -/
 lemma prefixThresholdSum_polyRat (h : PolyRatCodes prefixApprox) :
     PolyRatCodes (fun z => prefixEmitBase z + prefixEmitBase z) :=
-  gateThresholdSum_polyRat (fun z => prefixApprox_eq_inv _)
-    (fun z => prefixDen_pos _) (prefixApprox_query_polyRat h)
+  gateThresholdSum_polyRat (fun _ => prefixApprox_eq_inv _)
+    (fun _ => prefixDen_pos _) (prefixApprox_query_polyRat h)
 
 /-- The inverse-width token stream, derived from the weight emission. -/
 lemma prefixInverseWidth_polyRat (h : PolyRatCodes prefixApprox) :
     PolyRatCodes (fun z => 1 / prefixEmitBase z) :=
-  gateInverseWidth_polyRat (fun z => prefixApprox_eq_inv _)
-    (fun z => prefixDen_pos _) (prefixApprox_query_polyRat h)
+  gateInverseWidth_polyRat (fun _ => prefixApprox_eq_inv _)
+    (fun _ => prefixDen_pos _) (prefixApprox_query_polyRat h)
 
 /-! ## Deriving the weight emission from the sentence emission
 
@@ -926,9 +926,9 @@ def validCode : ℕ → Bool
     if e.unpair.1 = 0 then decide (e.unpair.2 = 0)
     else if e.unpair.1 = 1 then true
     else if e.unpair.1 ≤ 4 then
-      have h1 : e.unpair.2.unpair.1 < e + 1 :=
+      have _h1 : e.unpair.2.unpair.1 < e + 1 :=
         Nat.lt_succ_iff.mpr (le_trans (Nat.unpair_left_le _) (Nat.unpair_right_le _))
-      have h2 : e.unpair.2.unpair.2 < e + 1 :=
+      have _h2 : e.unpair.2.unpair.2 < e + 1 :=
         Nat.lt_succ_iff.mpr (le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _))
       validCode e.unpair.2.unpair.1 && validCode e.unpair.2.unpair.2
     else false
@@ -1101,7 +1101,7 @@ lemma validCode_ch (m : ℕ) : validCode m = (validCode (chL m) && validCode (ch
       · simp [h0, hc, validCode_one]
       · simp [h0, hc, validCode_zero]
     · by_cases h1 : e.unpair.1 = 1
-      · simp [h0, h1, validCode_one]
+      · simp [h1, validCode_one]
       · by_cases h4 : e.unpair.1 ≤ 4
         · simp [h0, h1, h4]
         · simp [h0, h1, h4, validCode_zero]
@@ -1409,7 +1409,7 @@ def innerOutC (B B' CAP P : ℕ) : ℕ → ℕ
 
 lemma innerOutC_le_cap (B B' CAP P : ℕ) : ∀ k, innerOutC B B' CAP P k ≤ CAP
   | 0 => Nat.zero_le _
-  | k + 1 => Nat.min_le_right _ _
+  | _ + 1 => Nat.min_le_right _ _
 
 lemma innerOut_mono (B B' P : ℕ) (hB' : 0 < B') (k : ℕ) :
     innerOut B B' P k ≤ innerOut B B' P (k + 1) := by

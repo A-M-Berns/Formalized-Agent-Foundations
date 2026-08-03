@@ -501,7 +501,7 @@ lemma unRpn_trade_chunk (φ : Sentence) (rest : List ℕ) :
     if_neg (by norm_num), if_pos rfl,
     parseRpn_rpn φ rest (by simp)]
   simp only []
-  rw [unRpnTokens_congr rest (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
+  rw [unRpnTokens_congr rest (by simp only [List.length_append]; omega) le_rfl]
   rfl
 
 /-- A complete price chunk with an escaped canonical code contracts exactly. -/
@@ -511,7 +511,7 @@ lemma unRpn_price_escape_chunk (φ : Sentence) (d : ℕ) (rest : List ℕ) :
   rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
     parseRpn_escape φ (d :: rest) (by simp)]
   simp only []
-  rw [unRpnTokens_congr rest (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
+  rw [unRpnTokens_congr rest (by simp only [List.length_cons]; omega) le_rfl]
   rfl
 
 /-- A complete trade chunk with an escaped canonical code contracts exactly. -/
@@ -522,7 +522,7 @@ lemma unRpn_trade_escape_chunk (φ : Sentence) (rest : List ℕ) :
     if_neg (by norm_num), if_pos rfl,
     parseRpn_escape φ rest (by simp)]
   simp only []
-  rw [unRpnTokens_congr rest (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
+  rw [unRpnTokens_congr rest (by simp only [List.length_cons]; omega) le_rfl]
   rfl
 
 /-- The contraction never lengthens a stream by more than the one trailing
@@ -613,7 +613,7 @@ lemma unRpn_trade_chunk_block {b : List ℕ} {φ : Sentence}
     parseRpn_block_head hb rest (by simp)]
   simp only []
   rw [unRpnTokens_congr rest
-    (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
+    (by simp only [List.length_append]; omega) le_rfl]
   rfl
 
 /-- Opaque payload chunks (rational constants, variable indices) copy verbatim. -/
@@ -623,13 +623,13 @@ lemma unRpn_payload_chunk (t c : ℕ) (ht : t = 1 ∨ t = 7) (rest : List ℕ) :
   · rw [unRpn, List.length_cons, unRpnTokens_cons,
       if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
     simp only []
-    rw [unRpnTokens_congr rest (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
+    rw [unRpnTokens_congr rest (by simp only [List.length_cons]; omega) le_rfl]
     rfl
   · rw [unRpn, List.length_cons, unRpnTokens_cons,
       if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num),
       if_pos rfl]
     simp only []
-    rw [unRpnTokens_congr rest (by simp only [List.length_cons, List.length_append]; omega) le_rfl]
+    rw [unRpnTokens_congr rest (by simp only [List.length_cons]; omega) le_rfl]
     rfl
 
 /-- Bare operator/close tokens copy verbatim. -/
@@ -1060,7 +1060,7 @@ lemma streamReadFrom_unRpn_escExpand : ∀ (n : ℕ) (ts : List ℕ), ts.length 
             · rw [unRpn_trade_escape' hdec]
               rcases stack with _ | ⟨e, st'⟩
               · refine Or.inl ?_
-                simp [EF.streamReadFrom, EF.streamStep, hdec, Encodable.encodek,
+                simp [EF.streamReadFrom, EF.streamStep,
                   foldl_streamStep_none]
               · have hstep : ∀ ts' : List ℕ, ∀ ctok,
                     Encodable.decode (α := Sentence) ctok = some φ →
@@ -1133,7 +1133,7 @@ lemma streamReadFrom_unRpn_escExpand : ∀ (n : ℕ) (ts : List ℕ), ts.length 
             foldl_streamStep_none]
           exact Or.inl rfl
         · have hmode : st'.1.1 = 0 := by
-            simp only [EF.streamStep, if_pos rfl] at hstep
+            simp only [EF.streamStep] at hstep
             rw [if_neg h0] at hstep
             rw [if_neg h1] at hstep
             by_cases ht2 : t = 2
