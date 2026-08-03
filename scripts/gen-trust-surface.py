@@ -473,10 +473,84 @@ PRIMARY = {
  'thm:dontwait':['lic_does_not_anticipate_halting_unconditional'],
 }
 
+
+# Per-node correspondence notes: how the two panes line up. These complement the
+# shared-vocabulary legend in the template (which covers the recurring conventions:
+# hworld, Rpn*/Poly* codes, generability, the asymptotic operators, completed worlds).
+READING = {
+ 'def:lic': "The class bundles the criterion (`noExploit`, quantified over `EfficientlyComputable` traders) with two facts the paper leaves ambient: the market and the process are computable. `P n \u03c6` is the paper's \u2119\u2099(\u03c6).",
+ 'def:ec': "The paper's \u201ccomputable in O(poly(n))\u201d becomes: two fixed programs under one polynomial fuel clock emit the day-n strategy's serialized symbol stream. This is the `dd:fuel` substitution itself \u2014 the one place the model is chosen; everything downstream inherits it.",
+ 'def:dedproc': "`D` and `mono` are the paper's nondecreasing finite sets; the paper's \u201ccomputably enumerable\u201d lives in the separate certificate `DeductiveProcessComputation`, taken as a hypothesis exactly where the paper says \u2018computable deductive process\u2019.",
+ 'def:trader': "A trader is its day-indexed strategy function; all economic content (holdings, exploitation) is derived, matching the paper's reading of a trader as a strategy sequence.",
+ 'def:tradestrat': "`trades` is the affine combination (the paper's \u03be\u2081\u03c6\u2081+\u2026); `rank_le` is the paper's rank condition \u2014 an n-strategy mentions only prices of days \u2264 n.",
+ 'def:affcomsen': "`const` + `terms` = the paper's c + \u03a3 \u03be\u1d62\u03c6\u1d62, with features as `EF` expression trees so that generability is syntactic.",
+ 'def:bap': "Two fields for the paper's two clauses: `poly` is the e.c. certificate on the combination sequence, `bounded` the single uniform \u2113\u00b9 bound.",
+ 'def:deferralfunc': "`lt` is f(n) > n; `fueled` renders \u201cf computable in time polynomial in f(n)\u201d as a poly clock in the *output*, exactly as the paper demands (so f may grow fast).",
+ 'def:ece': "`GeneratedRatFeature` is \u2018\u2119\u203e-generable\u2019: a rank-bounded, polynomially emitted expression whose denotation against the market's own prices is the sequence. Compare clause by clause \u2014 nothing about the values themselves is assumed.",
+ 'def:fuz': "Same data as `def:ece` minus the denotation clause: the weighting enters as expressions, so a trader can trade on it without knowing its values.",
+ 'def:luv': "The trust-relevant delta: the paper's LUV is a first-order formula free in one variable; here a LUV *is* its family of threshold atoms `\u231cX > r\u231d` (field `gt`). World-value semantics is supplied per-world by `PCWorld.ValuesAt` \u2014 the disclosed propositional substitution.",
+ 'def:blcp': "`poly` says the compiled threshold mesh of the combination sequence is e.c.; `bounded` is the uniform \u2113\u00b9 bound \u2014 the paper's two clauses for \u2130\u2131-progressions in \u2112\u00b9.",
+ 'def:lia': "Compare the recursion's *shape*: day n is the market maker's fixed point against the trading firm run on the history so far. The three components are separate audited constructions; `thm:lia` certifies the assembly.",
+ 'thm:li': "The conjunction mirrors def:belseq: one program emits the day-n finite association list (`code` clause), supports are finite, quotes are rational in [0,1], and the induced valuation satisfies the criterion.",
+ 'thm:lia': "One hypothesis \u2014 the deductive process is computable \u2014 and the conclusion instantiates the criterion at the constructed market `liaHistory DP`. This is the paper's main theorem in its constructive form.",
+ 'lem:tfdom': "No inductor hypothesis: any rational [0,1]-market (`hP`, with `Q`/`hQ` naming its rational quotes) exploited by *some* e.c. trader is exploited by the firm. The enumeration covering the whole class is `exists_enumeratedTrader_eq`.",
+ 'thm:con': "The oscillation trader is constructed inside the proof; the statement carries only the criterion instance and stage consistency. The paper's \u2018the limit exists\u2019 is the explicit `ConvergesTo`.",
+ 'thm:lc': "The measure \u03bc plays the paper's Pr: it is a genuine probability measure on completed worlds, agrees with the limiting belief on every sentence event, and is supported (a.e.) on worlds consistent with \u0393.",
+ 'thm:provind': "\u2018Sequence of theorems\u2019 becomes `hthm : \u2200 n, \u2203 k, \u03c6 n \u2208 DP.D k` \u2014 each \u03c6\u2099 eventually appears in the process \u2014 and dually for the disprovable \u03c8\u2099. Both halves of the paper's statement are one theorem here.",
+ 'thm:tbo': "The sSup/sInf over `fun j => P (n + j) (\u03c6 n)` are the paper's sup/inf over m \u2265 n of \u2119\u2098(\u03c6\u2099); the conclusion is the same pair of liminf/limsup identities.",
+ 'thm:perkno': "`limitingBelief P (\u03c6 n)` is \u2119\u221e(\u03c6\u2099); `p` with `PolyRatCodes` is the e.c. probability sequence; the two implications match the paper's two displayed clauses (the `_lower`/`_upper` variants split them).",
+ 'thm:affcoh': "`BoundedAffinePrices`+`hmag` render the paper's bounded \u2130\u2131-progression; `completedAffineLow/High` are the inf/sup of the combination's value over completed worlds; the four chained inequalities are the paper's display.",
+ 'thm:affpolymax': "Same conclusion shape as the paper, but stated over the bare `BoundedCombinationSequence` \u2014 the price and magnitude bounds are derived from it rather than assumed.",
+ 'thm:peraffkno': "Future extrema (`affineFutureLow/High`) against the limiting value, the affine analogue of `thm:perkno`; premises are the BCS data only.",
+ 'thm:affprovind': "The paper's single \u2248-statement appears as its \u2265/\u2264/= comparison forms (`_ge`,`_le`,`_eq`); the world bound quantifies over completed worlds, matching \u2018value \u2265 b in every consistent world\u2019.",
+ 'thm:nd': "`h\u03c6` says every stage stays jointly consistent *with \u03c6* \u2014 the paper's \u2018\u03c6 consistent with \u0393\u2019 made stagewise. The conclusion (an eventual uniform \u03b5 \u2264 \u2119\u2099(\u03c6)) gives the paper's \u2119\u221e(\u03c6) > 0.",
+ 'thm:obu': "The qualified row in one look: `rep : EfficientRepeatedEnumeration source` is the padded repetition the paper *builds inside its proof* from a c.e. source; here it enters as data, and its `sound` field even forbids the paper's \u22a4-padding unless \u22a4 is in the source's range.",
+ 'thm:ob': "\u03ba is genuine prefix complexity: `PrefixMachinePresentation` carries the machine, Kraft bound and coverage; the `UPrefix` endpoints discharge all of it at the constructed universal machine (invariance = `kappaU_le_of_prefixMachine`), leaving the inductor and joint consistency.",
+ 'thm:dus': "`B.prefixSentence \u03c3` is the paper's conjunction of fresh-symbol literals for the bit string \u03c3; M ranges over lower-semicomputable continuous semimeasures. The caller inputs shown are discharged by constructed witnesses (see the audit note for the \u0398 = \u2205 caveat on the input-free forms).",
+ 'thm:strict': "The separator presentation (recursively inseparable pair, null stage classes) is constructed; the only input left is computability of the atom G\u00f6del codes. Conclusion: no constant C makes the domination reversible.",
+ 'thm:scon': "Fixed form adjoins one \u03c8, growing form a whole computable process; the conclusion is the criterion for the *conditioned* history over the union process \u2014 the paper's \u2119\u203e|\u03c8. No joint-consistency premise: the degenerate branch covers unsatisfiable stages.",
+ 'thm:ifp': "Read the `EfficientPrefixPatch` fields as the real statement: an exactly-quoted prefix patch whose translation preserves the e.c. class. The repo discloses that this interface has no inhabitant \u2014 the one theorem on this page not yet shown to be about anything.",
+ 'thm:lex': "The premise `payout`-sums to 1 over completed worlds = \u2018exactly one \u03c6\u02b2\u2099 true in each world\u2019; the conclusion sums the k prices to 1 asymptotically.",
+ 'thm:benford': "Fixed target probability p; `TheoryTruth` says \u0393 decides each \u03c6\u2099 (with truth value truth\u2099); `PseudorandomFrequency` packages the paper's divergent-subsequence frequency condition against a deferral function.",
+ 'thm:prand': "The varied form: the target sequence p\u2099 enters as a generated feature (`GeneratedRatFeature`), the paper's \u2119\u203e-generability \u2014 so the trader can express the target without computing it.",
+ 'thm:prandaff': "Affine version over a BCS; `DeterminedViaTheory` is def:affthmval (the combination takes value truth\u2099 in every completed world). Maturity/settlement clocks are constructed inside \u2014 no verifier premises remain.",
+ 'thm:recunbiasedaff': "Weighted-bias limit point at 0 for a BCS under a generable divergent weighting; premises are the paper's own (determination + weighting), clock-free.",
+ 'thm:recurringunbiasedness': "Sentence special case of the affine form: `sentenceAffine \u03c6` lifts \u03c6\u2099 to singleton combinations, `TheoryTruth` supplies the determined values.",
+ 'thm:simcal': "The calibration indicator (price in [a,b]) is itself the weighting; its generability and divergence are the paper's premises; conclusion pins limit points of the weighted truth-average to [a,b].",
+ 'thm:wub': "The three operational premises are tex's own: generable divergent weighting supported on the deferral image (`hsupport`), strictly increasing f, and `FeedbackTruthComputation` \u2014 the delayed-truth program clocked polynomially at f(k+1), a *weaker* demand than the paper's O(f(n+1)).",
+ 'thm:wubaff': "Affine version of `thm:wub`; the emitter turning the feedback schedule into an e.c. trade stream is constructed (`FeedbackEmission`), so only the paper's data remains.",
+ 'thm:recurringunbiasednessexp': "LUV-combination version: `WorldValued` is def:luv's world-value clause, `DeterminedViaTheory` def:affthmval \u2014 both the paper's own representation premises.",
+ 'thm:prandexp': "Expectation pseudorandomness; same premise pair as above plus the paper's pseudorandomness condition over a deferral function. The `_below`/`_eq` variants are the paper's other comparison directions.",
+ 'thm:ec': "`hval` is the lem:conluvapprox linkage at the paper's own quantifier (completed worlds); `expectSeq` is \u1d3c\u2099 via the def:e threshold mesh. The conclusion is bare convergence \u2014 the limit is constructed, not hypothesized.",
+ 'thm:ei': "`IsIndicator` is the paper's 1(\u03c6\u2099) read relationally at completed worlds: Y\u2099 values the truth value of \u03c6\u2099 in every such world. Inhabited by a non-degenerate witness (`indicatorWitness_isIndicator`).",
+ 'thm:loe': "The paper's \u0393 \u22a2 Z\u2099 = a\u2099X\u2099 + b\u2099Y\u2099 is encoded as: the combination a\u2099X\u2099+b\u2099Y\u2099\u2212Z\u2099 is determined with value 0 (`hdet0`). The conclusion is the paper's asymptotic linearity, unfolded.",
+ 'thm:expprovind': "`hval` is exactly tex's premise: a one-sided bound on the combination's value over completed worlds, each world free to choose its own valuation \u03bd. The paper's \u2273/\u2272/\u2248 statement appears as the `_ge`/`_le`/`_eq` trio.",
+ 'lem:mesh': "`S : LUVCombinationSyntax` is the paper's e.c. presentation of the combination sequence (constants, coefficients, LUVs, thresholds by name); the conclusion kills the mesh tail error. Inhabited non-degenerately by `ordinaryLUVCombinationSyntax`.",
+ 'thm:exppolymax': "Same reading as lem:mesh for the premises; conclusion equates diagonal-expectation extrema with future extrema \u2014 the LUV analogue of `thm:affpolymax`.",
+ 'thm:expcoh': "The four chained inequalities are the paper's display with `completedLow/High` as the completed-world expectation extrema; the single representation premise is `WorldValued` (def:luv).",
+ 'thm:perexpkno': "Future expectation extrema against the limiting expectation `expectInf`; same premise set as `thm:expcoh`.",
+ 'thm:wubexp': "The normalization bound b appears *inside* the feedback premises' types (`C`/`bridge` are about the normalized mesh) \u2014 that is the paper's own \u2018thmval of the combination computable by the deadline\u2019 premise, packaged operationally. See the audit note for the ExactTheoryPresentation qualification.",
+ 'thm:epr': "Closed over the constructed inductor: the quoted-price LUV is built from the market program itself (`theoremPriceQuoteCode`), so both sides of the paper's display are named objects; only \u03c6\u203e and its codes remain.",
+ 'thm:er': "Same pattern one level up: the quoted LUV is the market's own day-n expectation of X\u2099; premises are the LUV sequence and its threshold codes.",
+ 'thm:ceu': "The deferred-price quote `\u2119_f(n)(\u03c6\u2099)` is named by quoting the *program* (deferral costs nothing at emission); premises: \u03c6\u203e, codes, and a bare deferral function.",
+ 'thm:cee': "Deferred expectation version; `source_valued` is the paper's \u2018X\u2099 is an LUV of \u0393\u2019 (every completed world values it), the one semantic premise.",
+ 'thm:ccee': "Left side is the *mesh* product of X\u2099 with the deferred weight (exact to within 1/(n+1) \u2014 the disclosed substitution); right side quotes the market's deferred weighted expectation exactly. The premises are the paper's: arbitrary e.c. source + [0,1] generable weight + deferral function.",
+ 'thm:ref': "The interval sentence \u231ca\u2099 < \u2119\u2099(\u03c6\u2099) < b\u2099\u231d is constructed from the market's exact rational quote; a,b enter as generated features (the paper's \u2119\u203e-generable bounds), \u03b4 as the e.c. vanishing width; \u03b5\u203e is the paper's \u2018accuracy\u2019 sequence, existentially produced.",
+ 'thm:lp': "The self-referential \u03c7 \u2248 \u2018\u2119\u2099(\u03c7\u2099) < p\u2019 is the constructed public diagonal (`theoremDiagonalQuoteCode` at parameter p); the conclusion drives its price to p. Width premises are the paper's e.c. vanishing interval.",
+ 'thm:st': "A is the indicator product 1(\u03c6\u2099)\u00b7Ind, B the confidence indicator Ind(\u2119_f(n)(\u03c6\u2099) > p\u2099) \u2014 both constructed from the market program. The four hypotheses are tex's four: deferral function, e.c. sentences, e.c. positive \u03b4\u203e, generable p\u203e.",
+ 'thm:halts': "`theoremDP T` is \u0393's provability process (\u0393 = any \u03a3\u2081-sound T \u2287 I\u03a3\u2081, the paper's \u2018represents computations\u2019); machines/inputs with their codes are the e.c. sequences; the sentence is the halting claim, and its price \u2192 1.",
+ 'thm:loops': "Dual of `thm:halts`: `hloops` is the paper's premise that T *proves* each non-halting; price \u2192 0.",
+ 'thm:incons': "`SemidecidableComputation` presents the paper's e.c. sequence of inconsistency claims (one machine, varying inputs, truth \u21d4 halting); both conjuncts of the paper's display appear (belief in inconsistency \u2192 1, in consistency \u2192 0).",
+ 'thm:pac': "`BoundedComputation` carries the claim \u2018consistent up to horizon f(n)\u2019; its `steps_poly` field is the restriction the qualified tier records \u2014 the paper allows any computable f.",
+ 'thm:pazfc': "Same shape as `thm:pac` for a stronger theory's consistency claims, same `steps_poly` restriction.",
+ 'thm:dontwait': "The bounded-halting claim at horizon h(n) never fires (`hnever`), and the belief \u2192 0; `hh : PolyNatCodes horizons` restricts the paper's arbitrary computable horizon \u2014 the qualified tier's content.",
+}
+
 def md_inline(s):
     s = html.escape(s)
     s = re.sub(r'`([^`]*)`', r'<code>\1</code>', s)
     s = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', s)
+    s = re.sub(r'(?<![*\w])\*([^*\n]+)\*(?![*\w])', r'<em>\1</em>', s)
     return s
 
 # order labels by tex position, group by section
@@ -505,17 +579,24 @@ for sec, labs in groups:
         v = LB[lab]
         counts[v['tier']] += 1
         prim = [p for p in PRIMARY.get(lab, []) if p in EPS] or v['endpoints'][:1]
-        others = [e for e in v['endpoints'] if e not in prim]
-        sig_html = ''
-        for p in prim:
+        ordered = prim + [e for e in v['endpoints'] if e not in prim]
+        slides = ''
+        for i, p in enumerate(ordered):
             e = EPS[p]
-            sig_html += '<div class="ep-head"><code class="ep-name">%s</code><span class="ep-file">%s</span></div><pre class="sig">%s</pre>' % (
-                html.escape(p), html.escape(e['file']), html.escape(e['sig']))
+            slides += ('<div class="ep-slide%s"><div class="ep-head">'
+                       '<code class="ep-name">%s</code><span class="ep-file">%s</span></div>'
+                       '<pre class="sig">%s</pre></div>') % (
+                '' if i == 0 else ' hidden', html.escape(p), html.escape(e['file']),
+                html.escape(e['sig']))
+        controls = ''
+        if len(ordered) > 1:
+            controls = ('<div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button>'
+                        '<span class="ep-count" data-total="%d">1 / %d</span>'
+                        '<button class="ep-next" aria-label="next endpoint">&#8250;</button>'
+                        '<span class="ep-nav-hint">inventory endpoints for this node</span></div>') % (
+                len(ordered), len(ordered))
+        sig_html = controls + slides
         others_html = ''
-        if others:
-            others_html = '<details class="others"><summary>%d further inventory endpoint%s for this node</summary><ul>%s</ul></details>' % (
-                len(others), 's' if len(others)!=1 else '',
-                ''.join('<li><code>%s</code> <span class="ep-file">%s</span></li>' % (html.escape(o), html.escape(EPS[o]['file'])) for o in others))
         anchor = lab.replace(':','-')
         nav.append('<a class="nav-item" href="#%s" data-node="%s"><span class="dot %s"></span>%s</a>' % (anchor, anchor, v['tier'], lab))
         title = v['title'] or ''
@@ -538,10 +619,13 @@ for sec, labs in groups:
       %(others)s
     </section>
   </div>
+  %(reading)s
   <footer class="audit-note"><span class="audit-tag">What to check</span> %(just)s</footer>
 </article>''' % dict(anchor=anchor, lab=lab, title=html.escape(title), tier=v['tier'],
         tierlabel=TIER_LABEL[v['tier']], paper=texblock(v['paper']), sig=sig_html,
-        others=others_html, just=md_inline(v['just'])))
+        others=others_html, just=md_inline(v['just']),
+        reading=('<div class="reading-note"><span class="reading-tag">How the panes line up</span> %s</div>'
+                 % md_inline(READING[lab])) if lab in READING else ''))
 
 body_cards = '\n'.join(cards)
 nav_html = '\n'.join(nav)
@@ -551,5 +635,12 @@ page = (page.replace('%%NAV%%', nav_html).replace('%%CARDS%%', body_cards)
             .replace('%%T2ROWS%%', t2rows)
             .replace('%%NUNI%%', str(counts['universal'])).replace('%%NINS%%', str(counts['instantiated']))
             .replace('%%NQ%%', str(counts['qualified'])))
+import hashlib
+_h = hashlib.sha256()
+for _f in ['scripts/coverage-classification.md', 'AxiomAudit.lean',
+           'notes/1609.03543v5-main.tex', 'scripts/trust-surface-template.html',
+           'scripts/gen-trust-surface.py']:
+    _h.update(open(ROOT + _f, 'rb').read())
+page += '\n<!-- trust-surface-sources: %s -->\n' % _h.hexdigest()
 open(ROOT + 'docs/trust-surface.html', 'w').write(page)
 print('wrote docs/trust-surface.html —', sum(len(l) for _, l in groups), 'nodes in', len(groups), 'sections')

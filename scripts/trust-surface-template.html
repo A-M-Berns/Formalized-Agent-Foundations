@@ -133,9 +133,23 @@ math { font-size: 1.05em; }
 .ep-file { font-family: var(--mono); font-size: 10.5px; color: var(--ink-soft); }
 pre.sig { font-family: var(--mono); font-size: 11.8px; line-height: 1.5; margin: 0 0 10px;
   overflow-x: auto; white-space: pre; background: none; }
-details.others { font-size: 12px; color: var(--ink-soft); }
-details.others summary { cursor: pointer; }
-details.others code { font-size: 11px; }
+.ep-nav { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+.ep-nav button { font-family: var(--mono); font-size: 15px; line-height: 1;
+  width: 24px; height: 24px; border-radius: 4px; border: 1px solid var(--hair);
+  background: var(--card-bg); color: var(--accent-ink); cursor: pointer; padding: 0 0 2px; }
+.ep-nav button:hover { background: var(--code-bg); }
+.ep-count { font-family: var(--mono); font-size: 11px; font-variant-numeric: tabular-nums;
+  color: var(--ink-soft); }
+.ep-nav-hint { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--ink-soft); }
+.ep-slide.hidden { display: none; }
+.reading-note { padding: 10px 16px; border-top: 1px dashed var(--hair); font-size: 13px;
+  background: var(--card-bg); }
+.reading-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent-ink); margin-right: 6px; }
+table.vocab { border-collapse: collapse; font-size: 13px; margin: 8px 0 4px; }
+table.vocab td { border-top: 1px solid var(--hair); padding: 5px 18px 5px 0; vertical-align: top; }
+table.vocab td:first-child { font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
 .audit-note { padding: 10px 16px; border-top: 1px dashed var(--hair); font-size: 13px;
   color: var(--ink); background: var(--card-bg); }
 .audit-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
@@ -198,11 +212,28 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
       <span class="tier qualified">qualified</span><span class="count">%%NQ%% — a named interface or class restriction is retained; the note says which</span>
     </div>
 
+    <h3>Shared vocabulary</h3>
+    <p>These correspondences recur on nearly every card; each card's own note covers only
+    what is specific to that node.</p>
+    <div style="overflow-x:auto"><table class="vocab">
+      <tr><td><code>[IsLogicalInductor P DP]</code></td><td>“let ℙ‾ be a logical inductor over D‾”; <code>P n φ</code> is ℙₙ(φ)</td></tr>
+      <tr><td><code>hworld : ∀ n, ∃ v, v.ConsistentWith (DP.D n)</code></td><td>each stage is propositionally consistent — ambient in the paper’s notion of deductive process, explicit here</td></tr>
+      <tr><td><code>RpnSentenceCodes φ</code> / <code>LUV.RpnThresholdCodeSeq X</code> / <code>PolyRatCodes p</code></td><td>“e.c. sequence” of sentences / LUVs / rationals, at the symbol-metered rendering of <code>def:ec</code></td></tr>
+      <tr><td><code>GeneratedRatFeature</code>, <code>PGenerableRat</code>, <code>PGenerableWeighting</code></td><td>“ℙ‾-generable” (def:ece / def:fuz): the sequence enters as market expressions, not values</td></tr>
+      <tr><td><code>≈ₙ&ensp;≳ₙ&ensp;≲ₙ</code>, <code>limitingBelief P φ</code></td><td>the paper’s ≈ₙ, ≳ₙ, ≲ₙ and ℙ∞(φ)</td></tr>
+      <tr><td><code>PCWorld</code>, <code>v.ConsistentWithTheory DP</code></td><td>a world <code>v</code> is the paper’s 𝕎; <code>ConsistentWithTheory</code> is membership in 𝒫𝒞(Γ), the completed (theory-consistent) worlds</td></tr>
+      <tr><td><code>TheoryTruth φ DP truth</code>, <code>DeterminedViaTheory</code>, <code>WorldValued</code></td><td>Γ decides each φₙ with value truthₙ; def:affthmval (the combination has one value in every completed world); def:luv’s world-value clause</td></tr>
+      <tr><td><code>(X n).expect P n</code></td><td>𝔼ₙ(Xₙ), via the def:e threshold mesh</td></tr>
+      <tr><td><code>(T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]</code>, <code>theoremDP T</code>, <code>liaHistory (theoremDP T)</code></td><td>“Γ represents computations” (a Σ₁-sound T ⊇ IΣ₁); Γ’s provability process; the constructed inductor over it</td></tr>
+    </table></div>
+
     <h3>How to use this page</h3>
     <p>Nodes appear in the paper's own order. Definitions come first and are load-bearing for
     everything after. The <span class="tier qualified" style="font-size:10px">qualified</span>
     rows deserve the slow pass: each one's note names exactly what is retained and why.
-    Check-boxes track progress and persist locally in the browser. Signatures are statements
+    Where a node has several inventory endpoints, the \u2039 \u203a arrows page
+    through all of them \u2014 the strongest form is shown first. Check-boxes track progress
+    and persist locally in the browser. Signatures are statements
     only, verbatim from source; file paths locate the full declaration. Paper statements are
     machine-converted from the arXiv TeX (custom macros expanded, rendered as MathML) — for
     any formula that looks off, the arXiv PDF is the authority; the Lean pane is exact
@@ -258,5 +289,20 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     });
   });
   sync();
+
+  document.querySelectorAll('.lean-pane').forEach(function(pane){
+    var slides = pane.querySelectorAll('.ep-slide');
+    if (slides.length < 2) return;
+    var idx = 0;
+    var count = pane.querySelector('.ep-count');
+    function show(k) {
+      idx = (k + slides.length) % slides.length;
+      slides.forEach(function(sl, i){ sl.classList.toggle('hidden', i !== idx); });
+      if (count) count.textContent = (idx + 1) + ' / ' + slides.length;
+    }
+    var prev = pane.querySelector('.ep-prev'), next = pane.querySelector('.ep-next');
+    if (prev) prev.addEventListener('click', function(){ show(idx - 1); });
+    if (next) next.addEventListener('click', function(){ show(idx + 1); });
+  });
 })();
 </script>
