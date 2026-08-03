@@ -1,0 +1,262 @@
+<title>Logical Induction — trust-surface read-through</title>
+<style>
+:root {
+  --ground: #FAF9F5;
+  --ink: #22252A;
+  --ink-soft: #5A5E66;
+  --paper-bg: #F7F4EC;
+  --paper-ink: #2B2822;
+  --lean-bg: #EFF3F3;
+  --lean-ink: #1F2E2C;
+  --hair: #E2DFD6;
+  --accent: #3D6B66;
+  --accent-ink: #2E5450;
+  --qual: #9A6A2F;
+  --qual-bg: #F4EADB;
+  --uni-bg: #E4EEEC;
+  --ins-bg: #3D6B66;
+  --ins-ink: #F2F7F6;
+  --card-bg: #FFFFFF;
+  --code-bg: #E9EEEE;
+  --serif: 'Charter', 'Bitstream Charter', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #17191B; --ink: #D6D4CE; --ink-soft: #8F938F;
+    --paper-bg: #201E19; --paper-ink: #D8D2C4;
+    --lean-bg: #1B2222; --lean-ink: #CBD8D5;
+    --hair: #33362F; --accent: #7FB5AE; --accent-ink: #9CC8C2;
+    --qual: #C99A5B; --qual-bg: #2E2617;
+    --uni-bg: #223330; --ins-bg: #7FB5AE; --ins-ink: #14211F;
+    --card-bg: #1D1F21; --code-bg: #242A2A;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #17191B; --ink: #D6D4CE; --ink-soft: #8F938F;
+  --paper-bg: #201E19; --paper-ink: #D8D2C4;
+  --lean-bg: #1B2222; --lean-ink: #CBD8D5;
+  --hair: #33362F; --accent: #7FB5AE; --accent-ink: #9CC8C2;
+  --qual: #C99A5B; --qual-bg: #2E2617;
+  --uni-bg: #223330; --ins-bg: #7FB5AE; --ins-ink: #14211F;
+  --card-bg: #1D1F21; --code-bg: #242A2A;
+}
+:root[data-theme="light"] {
+  --ground: #FAF9F5; --ink: #22252A; --ink-soft: #5A5E66;
+  --paper-bg: #F7F4EC; --paper-ink: #2B2822;
+  --lean-bg: #EFF3F3; --lean-ink: #1F2E2C;
+  --hair: #E2DFD6; --accent: #3D6B66; --accent-ink: #2E5450;
+  --qual: #9A6A2F; --qual-bg: #F4EADB;
+  --uni-bg: #E4EEEC; --ins-bg: #3D6B66; --ins-ink: #F2F7F6;
+  --card-bg: #FFFFFF; --code-bg: #E9EEEE;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ground); color: var(--ink);
+  font-family: var(--sans); font-size: 15px; line-height: 1.55; }
+a { color: var(--accent-ink); }
+code { font-family: var(--mono); font-size: 0.88em; background: var(--code-bg);
+  padding: 0.08em 0.3em; border-radius: 3px; }
+.wrap { display: grid; grid-template-columns: 248px minmax(0,1fr); gap: 0;
+  max-width: 1340px; margin: 0 auto; }
+
+/* ---- left rail ---- */
+nav.rail { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+  padding: 20px 10px 40px 16px; border-right: 1px solid var(--hair); font-size: 12.5px; }
+.rail-title { font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  font-size: 11px; color: var(--ink-soft); margin: 4px 0 2px; }
+.rail-progress { font-variant-numeric: tabular-nums; color: var(--accent-ink);
+  font-weight: 600; margin-bottom: 10px; }
+.nav-sec { margin: 14px 0 3px; font-size: 10.5px; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--ink-soft); }
+.nav-item { display: flex; align-items: center; gap: 7px; padding: 2px 6px;
+  color: var(--ink); text-decoration: none; border-radius: 4px;
+  font-family: var(--mono); font-size: 11.5px; }
+.nav-item:hover { background: var(--code-bg); }
+.nav-item.done { color: var(--ink-soft); text-decoration: line-through; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.dot.universal { background: var(--accent); }
+.dot.instantiated { background: var(--accent); outline: 2px solid var(--accent); outline-offset: 1.5px; }
+.dot.qualified { background: var(--qual); }
+
+/* ---- main ---- */
+main { padding: 30px 34px 120px; min-width: 0; }
+h1 { font-family: var(--serif); font-size: 30px; line-height: 1.2; margin: 0 0 4px;
+  text-wrap: balance; }
+.subtitle { color: var(--ink-soft); margin: 0 0 26px; max-width: 62ch; }
+h2.sec { font-family: var(--serif); font-size: 21px; margin: 44px 0 6px;
+  padding-top: 18px; border-top: 2px solid var(--hair); }
+
+/* front matter */
+.method { max-width: 74ch; }
+.method h3 { font-size: 14px; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--accent-ink); margin: 24px 0 6px; }
+.method p, .method li { max-width: 70ch; }
+.lens { border-left: 3px solid var(--accent); padding: 2px 0 2px 14px; margin: 10px 0; }
+.lens b { color: var(--accent-ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 4px; }
+.tier { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; padding: 2px 9px;
+  border-radius: 999px; white-space: nowrap; }
+.tier.universal { background: var(--uni-bg); color: var(--accent-ink); }
+.tier.instantiated { background: var(--ins-bg); color: var(--ins-ink); }
+.tier.qualified { background: var(--qual-bg); color: var(--qual); }
+.count { font-variant-numeric: tabular-nums; }
+
+/* node card */
+.node { background: var(--card-bg); border: 1px solid var(--hair); border-radius: 6px;
+  margin: 16px 0; overflow: hidden; }
+.node.read { opacity: 0.62; }
+.node-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding: 10px 16px; border-bottom: 1px solid var(--hair); }
+.check input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+.node-label { font-family: var(--mono); font-weight: 700; font-size: 13.5px;
+  color: var(--accent-ink); }
+.node-title { font-family: var(--serif); font-style: italic; font-size: 15.5px; }
+.node-head .tier { margin-left: auto; }
+.panes { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+@media (max-width: 980px) { .panes { grid-template-columns: 1fr; } .wrap { grid-template-columns: 1fr; } nav.rail { display: none; } }
+.pane-tag { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-soft); margin-bottom: 8px; }
+.paper-pane { background: var(--paper-bg); color: var(--paper-ink);
+  font-family: var(--serif); font-size: 14.5px; padding: 14px 18px;
+  border-right: 1px solid var(--hair); }
+.paper-pane p { margin: 0 0 8px; }
+.paper-pane .dm { margin: 8px 0 8px 14px; font-size: 14.5px; }
+.im, .dm { font-style: italic; }
+.dmath { margin: 8px 0 8px 10px; overflow-x: auto; padding: 2px 0; }
+math { font-size: 1.05em; }
+.ov { text-decoration: overline; }
+.enc { text-decoration: underline; text-underline-offset: 2px; }
+.lean-pane { background: var(--lean-bg); color: var(--lean-ink); padding: 14px 18px; }
+.ep-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin: 4px 0 4px; }
+.ep-name { font-weight: 700; color: var(--accent-ink); background: none; padding: 0; font-size: 12.5px; }
+.ep-file { font-family: var(--mono); font-size: 10.5px; color: var(--ink-soft); }
+pre.sig { font-family: var(--mono); font-size: 11.8px; line-height: 1.5; margin: 0 0 10px;
+  overflow-x: auto; white-space: pre; background: none; }
+details.others { font-size: 12px; color: var(--ink-soft); }
+details.others summary { cursor: pointer; }
+details.others code { font-size: 11px; }
+.audit-note { padding: 10px 16px; border-top: 1px dashed var(--hair); font-size: 13px;
+  color: var(--ink); background: var(--card-bg); }
+.audit-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--qual); margin-right: 6px; }
+
+/* appendix table */
+table.t2 { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+table.t2 td { border-top: 1px solid var(--hair); padding: 6px 10px 6px 0; vertical-align: top; }
+code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="wrap">
+<nav class="rail" aria-label="node index">
+  <div class="rail-title">Read-through</div>
+  <div class="rail-progress" id="progress">0 / 66 read</div>
+  %%NAV%%
+</nav>
+<main>
+  <h1>Logical Induction, formalized — the trust-surface read-through</h1>
+  <p class="subtitle">Every paper node beside the Lean statement that carries it. The kernel
+  has already checked every proof body; what it cannot check is whether each <em>statement</em>
+  says what the paper says. That judgment requires a human reader — this page is the map for
+  making it.</p>
+
+  <div class="method">
+    <h3>What a read-through certifies</h3>
+    <p>A kernel-clean proof certifies that the body matches the statement, and nothing more.
+    The statement — its definitions, hypotheses, and conclusion — is the trust surface. Reading
+    a node means holding the two panes side by side and asking four questions:</p>
+    <div class="lens"><b>1 · Fidelity.</b> Does the Lean statement say what the paper node says —
+    same quantifiers, same conclusion shape, no strengthened premise doing hidden work?</div>
+    <div class="lens"><b>2 · Satisfiability.</b> Is every hypothesis inhabitable? Constructed
+    witnesses are named in the audit notes; a premise with no possible inhabitant makes the
+    theorem vacuously true, and this failure mode has occurred (and been repaired) before.</div>
+    <div class="lens"><b>3 · No smuggling.</b> Is the conclusion (or the forcing step) taken as
+    a hypothesis anywhere? Structures' fields are hypotheses too — see the field-freeze
+    appendix.</div>
+    <div class="lens"><b>4 · Metering.</b> <code>RpnSentenceCodes</code> / symbol-metered
+    classes are the faithful rendering of the paper's <code>def:ec</code>; whole-value classes
+    (<code>PolyNatCodes</code> &amp;c.) are provably narrower and appear only where a row is
+    marked qualified.</div>
+
+    <h3>The two standing disclosures (apply to every node)</h3>
+    <p>Sentences are propositional (<code>Formula ℕ</code>); the paper's first-order Θ enters
+    through explicit interfaces. Efficient computability is the fuel-clocked interpreter model
+    <code>dd:fuel</code>, not a machine complexity class. "Paper strength" always means
+    <em>within this disclosed model</em>. Details: <code>LogicalInduction/README.md</code>,
+    "The two modeling boundaries".</p>
+
+    <h3>Tiers</h3>
+    <div class="legend">
+      <span class="tier universal">paper strength · universal</span><span class="count">%%NUNI%% — the paper's own statement, for every logical inductor</span>
+    </div>
+    <div class="legend">
+      <span class="tier instantiated">paper strength · instantiated</span><span class="count">%%NINS%% — additionally holds of the constructed LIA with obligations discharged</span>
+    </div>
+    <div class="legend">
+      <span class="tier qualified">qualified</span><span class="count">%%NQ%% — a named interface or class restriction is retained; the note says which</span>
+    </div>
+
+    <h3>How to use this page</h3>
+    <p>Nodes appear in the paper's own order. Definitions come first and are load-bearing for
+    everything after. The <span class="tier qualified" style="font-size:10px">qualified</span>
+    rows deserve the slow pass: each one's note names exactly what is retained and why.
+    Check-boxes track progress and persist locally in the browser. Signatures are statements
+    only, verbatim from source; file paths locate the full declaration. Paper statements are
+    machine-converted from the arXiv TeX (custom macros expanded, rendered as MathML) — for
+    any formula that looks off, the arXiv PDF is the authority; the Lean pane is exact
+    source text.</p>
+
+    <p style="font-size:12.5px;color:var(--ink-soft)">Generated from the repository by
+    <code>scripts/gen-trust-surface.py</code>; the tier and note on every card are read from
+    <code>scripts/coverage-classification.md</code>, which is machine-checked against the
+    endpoint inventory on every build. Regenerate after any surface change.</p>
+  </div>
+
+  %%CARDS%%
+
+  <h2 class="sec" id="appendix-t2">Appendix — the frozen hypothesis surface (Tier-2 structures)</h2>
+  <p class="subtitle" style="margin-top:8px">Each structure below occurs in the type of a public
+  endpoint, so its fields are hypotheses the read-through must also audit.
+  <code>#assert_fields</code> freezes the field <em>names</em> (not types) — a premise cannot be
+  smuggled in or out without failing the build; deliberate type changes are logged beside the
+  structure in <code>AxiomAudit.lean</code>.</p>
+  <details><summary style="cursor:pointer;font-weight:600">Show all frozen structures</summary>
+  <div style="overflow-x:auto"><table class="t2">%%T2ROWS%%</table></div>
+  </details>
+</main>
+</div>
+
+<script>
+(function(){
+  var KEY = 'li-readthrough-v1';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch(e) {}
+  var boxes = document.querySelectorAll('input[type=checkbox][data-node]');
+  var total = boxes.length;
+  function sync() {
+    var done = 0;
+    boxes.forEach(function(b){
+      var id = b.getAttribute('data-node');
+      var on = !!state[id];
+      b.checked = on;
+      if (on) done++;
+      var card = document.getElementById(id);
+      if (card) card.classList.toggle('read', on);
+      var nav = document.querySelector('.nav-item[data-node="'+id+'"]');
+      if (nav) nav.classList.toggle('done', on);
+    });
+    var p = document.getElementById('progress');
+    if (p) p.textContent = done + ' / ' + total + ' read';
+  }
+  boxes.forEach(function(b){
+    b.addEventListener('change', function(){
+      state[b.getAttribute('data-node')] = b.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e) {}
+      sync();
+    });
+  });
+  sync();
+})();
+</script>

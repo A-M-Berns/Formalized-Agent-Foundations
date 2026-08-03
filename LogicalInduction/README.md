@@ -15,7 +15,11 @@ build-audited. How strong each one is:
 Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
 machine-checked against the endpoint inventory so a node cannot ship without a strength
-call.
+call. A browsable guide to the whole trust surface —
+every paper statement rendered beside the Lean endpoint that carries it, with its tier
+and audit note — is generated from the repository at
+[`docs/trust-surface.html`](../docs/trust-surface.html)
+(`python3 scripts/gen-trust-surface.py` to regenerate).
 
 Of the 46, **16 are also instantiated over the concrete inductor constructed here** at
 full paper strength, so they hold of a specific algorithm rather than a hypothetical
