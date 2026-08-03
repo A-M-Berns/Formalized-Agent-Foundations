@@ -1,0 +1,47 @@
+cff-version: 1.2.0
+message: "If you use this formalization, please cite it as below."
+title: "Formalized Agent Foundations"
+authors:
+  - family-names: "Berns"
+    given-names: "A. M."
+repository-code: "https://github.com/A-M-Berns/Formalized-Agent-Foundations"
+license: Apache-2.0
+keywords:
+  - Lean 4
+  - formal verification
+  - logical induction
+  - agent foundations
+  - open-source game theory
+references:
+  - type: article
+    title: "Logical Induction"
+    authors:
+      - family-names: "Garrabrant"
+        given-names: "Scott"
+      - family-names: "Benson-Tilsen"
+        given-names: "Tsvi"
+      - family-names: "Critch"
+        given-names: "Andrew"
+      - family-names: "Soares"
+        given-names: "Nate"
+      - family-names: "Taylor"
+        given-names: "Jessica"
+    year: 2016
+    url: "https://arxiv.org/abs/1609.03543"
+  - type: article
+    title: "Robust Cooperation in the Prisoner's Dilemma: Program Equilibrium via Provability Logic"
+    authors:
+      - family-names: "Barász"
+        given-names: "Mihály"
+      - family-names: "Christiano"
+        given-names: "Paul"
+      - family-names: "Fallenstein"
+        given-names: "Benja"
+      - family-names: "Herreshoff"
+        given-names: "Marcello"
+      - family-names: "LaVictoire"
+        given-names: "Patrick"
+      - family-names: "Yudkowsky"
+        given-names: "Eliezer"
+    year: 2014
+    url: "https://arxiv.org/abs/1401.5577"

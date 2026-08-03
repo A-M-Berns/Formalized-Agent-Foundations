@@ -555,3 +555,48 @@ calls.
 Open, unmeasured: whether `completedLow`/`completedHigh` filter bounds factor cleanly out of
 `expcoh`. That question was never reached and still governs the cost of any node that *does*
 route through `expcoh`.
+
+---
+
+## 2026-08-02 — Independent full re-audit of the frozen surface (all 66 rows)
+
+Fresh pass, distinct model family from the fix waves, run over the freeze point
+`aab35a8` before the pre-review consolidation wave. Method: every row's tier re-derived
+from the strongest endpoint's elaborated signature (never from row prose); entailment
+claims checked against a named lemma; plus the two standing mechanical checks
+(zero-call-site inventory constructors; inhabitation lens over Tier-2 structures).
+
+**Result: zero mis-tiered rows.** All 66 rows verified at their claimed tier — 46 of 53
+theorem nodes at paper strength (16 of those instantiated over the constructed inductor,
+counted per-label by the checker as instantiated=26/universal=30/qualified=10 including
+the 13 def nodes), 7 theorem nodes qualified with accurate one-line reasons. The three
+prior systemic failure modes (whole-value metering counted as routine fuel certificate;
+prose-asserted entailments with no lemma; discharge constructors never wired to their
+consumers) were each re-checked explicitly; none recurred at the row level.
+
+Findings below the row level, all repaired in the same wave (see
+`notes/consolidation.md`, "Post-freeze verification + consolidation wave"):
+
+* **F-2026-08-02-1 (dead code, standing-check round 4):** `BoundedEvalnCompiler` +
+  constructor, `representedSemidecidableClaimsOfComputation`, and the two Tok-class
+  conditioning translation lemmas had zero call sites. Deleted. None affected a tier.
+* **F-2026-08-02-2 (inhabitation):** `LUVCombinationSyntax` — caller data of the four
+  `_ofSyntax` expectation endpoints — still had no constructed inhabitant (open since
+  2026-07-30). Now witnessed by `ordinaryLUVCombinationSyntax`, non-degenerate
+  (index-varying LUV family). `BoundedComputation`, `SemidecidableComputation`,
+  `FeedbackTruthComputation` remain without ground-level N+ witnesses; all three are
+  trivially inhabitable (fixed halting machine, constant truth) and their endpoints'
+  tiers do not rest on them — recorded as nice-to-have, not defect.
+* **F-2026-08-02-3 (latent over-claim, thm:lp):** `lic_paradox_resistance_ofDiagonal`
+  and its `_unconditional` form carried `hwidthInv : PolyRatCodes (1/width)`, derivable
+  from `hwidthPos` — the same excess premise `thm:ref` shed at the freeze. Removed,
+  with the rest of the hδinv family (six paper-facing endpoints). No tier moved.
+* **F-2026-08-02-4 (redundant premise family):** the `(b, hshare)` share-norm bound on
+  ~20 expectation endpoints is derivable from `BoundedSequence.bounded`
+  (`shareNorm ≤ l1Norm` + `exists_rat_gt`). Removed wherever `b` is not load-bearing in
+  hypothesis types; the paper-facing statements now carry exactly `def:blcp`'s data. No
+  tier moved — a derivable premise never lowers strength — but several rows' "retains
+  only WorldValued" prose is now literally rather than approximately true.
+* **F-2026-08-02-5 (doc drift):** `LogicalInduction/README.md` contradicted itself on
+  `thm:st`'s metering (three-node vs four-endpoint whole-value lists, and a "needs a
+  token-level `⋏` emitter" paragraph describing work that had landed). Corrected.

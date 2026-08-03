@@ -160,11 +160,11 @@ assertion starts failing and gets promoted to a plain clean assertion.
    excludes, so whole-value metering is a genuine restriction of the paper's class.
 
    The property tail is stated at the faithful symbol-metered class throughout, and so
-   now are the *unconditional-over-`LIA`* endpoints for `thm:epr`, `thm:er`, `thm:ref`,
-   `thm:cee`, `thm:ceu` and `thm:wub`. Four endpoints still sit at the narrower class:
-   `thm:st`, and the metacomputation family `thm:pac`/`thm:pazfc`/`thm:dontwait`, where
-   the analogous `PolyNatCodes` restricts the paper's "any computable function `f`" to
-   polynomial-time `f`.
+   is the whole quotation family's *unconditional-over-`LIA`* layer (`thm:epr`, `thm:er`,
+   `thm:ref`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` and `thm:wub`). Only the
+   metacomputation family `thm:pac`/`thm:pazfc`/`thm:dontwait` still sits at a narrower
+   class, where the analogous `PolyNatCodes` restricts the paper's "any computable
+   function `f`" to polynomial-time `f`.
 
    For the quotation family the gap turned out to be **residue, not obstruction**, and
    the distinction is recorded because it was got wrong once — in this file. What the
@@ -177,9 +177,11 @@ assertion starts failing and gets promoted to a plain clean assertion.
    lesson generalizes past this instance: a hypothesis being consumed as *data* does not
    establish that its strength is load-bearing — check what the consumer extracts.
 
-   `thm:st` is the one place in the quotation family with real content left: its product
-   LUV inlines the sentence's Gödel value into a `Nat.pair` shell, so it needs a
-   token-level `⋏` emitter rather than a restatement.
+   `thm:st` was the one place in the quotation family where the generalization had real
+   content: its product LUV used to inline the sentence's Gödel value into a `Nat.pair`
+   shell. The token-level `⋏` emitter that repairs it is built
+   (`indicatorProductLUV_rpnThresholdCodeSeq`), so the closed endpoint now sits at the
+   symbol-metered class like the rest.
 
    The metacomputation family is a genuinely different defect, and a syntactic one: the
    paper's sentence names the *term* `⌜f⌝(⌜n⌝)`, whereas `BoundedComputation` carries the

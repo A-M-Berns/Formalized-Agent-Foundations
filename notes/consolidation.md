@@ -358,23 +358,55 @@ Landed in the freeze pass:
   have. `hδpos` was already in scope, so `PolyRatCodes.inv_of_pos` discharges it at the call
   site. No tier moved; a latent over-claim was removed.
 
-**Deliberately NOT done, and why** — each is real debt, none should move a frozen surface:
-
-* `hδinv` still binds on four non-closed paper-facing layers
-  (`lic_introspection_ofCode`, `lic_introspection_ofCode_unconditional`,
-  `lic_self_trust_ofRepresentation`, `_unconditional`) and ~10 internal lemmas. All are now
-  dischargeable from `hδ` + positivity; none affects a tier, since the rows rest on the
-  `_closed` endpoints. Sweep after the read-through.
-* **`combinedDP` → `luvThresholdDP` collapse** — investigated, no blocker, exactly two
-  endpoint statements change (`expcoh_arith`, `perexpkno_arith`) and none of `gridStage`
-  dies. Awaiting Anson: it changes which `DeductiveProcess` appears in paper-facing
-  statements.
-* **`LUVCombinationSyntax.convergencePresentation`** is now unreferenced; kept because it is
-  one of a coherent `exactTheoryPresentation`/`worldValued`/`convergencePresentation` trio.
-  Anson's call whether a dead-but-coherent API member survives.
-* `#assert_fields` freezes field *names* only, not types; tricks inventory; structure-name
-  legibility pass. All still open on the punch list.
+**Deliberately NOT done at the freeze** — every item in this list was subsequently closed
+by the 2026-08-02 verification + consolidation wave below (hδinv sweep including internal
+lemmas' paper-facing callers; combinedDP collapse, approved; convergencePresentation
+deleted, approved; `#assert_fields` docstring corrected; tricks inventory closed). Kept
+for the record of what the freeze deliberately excluded.
 
 Next after the read-through: the final fresh-context adversarial audit (phase 3), then the
 work queue in `LogicalInduction/README.md` under *What is left* — metacomputation schema
 (3 rows, ~1 week) has the best ratio remaining.
+
+### Post-freeze verification + consolidation wave (2026-08-02, pre-review pass)
+
+A fresh full re-audit of all 66 coverage rows from elaborated signatures found **no
+mis-tiered row** — the 46-of-53 claim stands (66 labels = 53 theorem + 13 def nodes; the
+strength counters in `check_endpoint_coverage.py` count per-label including defs).
+Systemic findings, all repaired in this wave:
+
+* **Zero-call-site sweep (standing check, round 4):** `BoundedEvalnCompiler` +
+  `boundedEvalnCompiler` deleted (never consumed; the witnesses use
+  `codeEvalnNat_polyFueled` directly); `representedSemidecidableClaimsOfComputation`
+  deleted (superseded by the sequence-specialized `representedHaltingClaims`); the
+  Tok-class `conditionedTranslation_preserves_ec` / `eventualConditionedTranslation_preserves_ec`
+  deleted (zero consumers; the criterion class is served by the `_ecRpn` versions).
+  `denominatorPatchedGatedConditioningOperationalWitness` and `Dovetail.continuousSemimeasure`
+  are intentional leaves and stay.
+* **Inhabitation lens (standing lens, round 2):** `LUVCombinationSyntax` now has its
+  constructed non-degenerate inhabitant `ordinaryLUVCombinationSyntax`
+  (QuoteCodeOfMarket.lean), closing the 2026-07-30 finding. `BitPrefixCodeComputation`
+  and the historical-verifier mouthful are confirmed gone.
+* **Derivable-premise sweeps:** every remaining caller-facing
+  `hδinv/hwidthInv : PolyRatCodes (1/·)` premise removed (six paper-facing endpoints in
+  `QuotationAffine.lean`/`ComputationDP.lean`, discharged by `PolyRatCodes.inv_of_pos`;
+  this includes `thm:lp`'s endpoint, the same latent over-claim `thm:ref` shed at the
+  freeze). The redundant `(b, hshare)` share-norm premise — derivable from
+  `BoundedSequence.bounded` since `shareNorm ≤ l1Norm` — removed from the four
+  `_ofSyntax` endpoints, the `thm:expprovind` family (8 endpoints), `lic_linearity_of_expectation_seq`,
+  `exppolymax_arith`/`expcoh_arith`/`perexpkno_arith`, and the
+  `recurringunbiasednessexp`/`prandexp` family (4 endpoints). It stays where `b` is
+  load-bearing in hypothesis *types* (the `wubexp` feedback family) and in the
+  operational (`ops`-witness) forms in `Properties/ExpectationProperties.lean`.
+* **`combinedDP` → `luvThresholdDP` collapse landed** (Anson approved 2026-08-02):
+  `expcoh_arith`/`perexpkno_arith` now state over `luvThresholdDP`; `combinedDP`, its three
+  helper lemmas and `combinedDP_computable` deleted.
+* **Dead API:** `LUVCombinationSyntax.convergencePresentation` deleted (Anson approved).
+* **Punch-list closures:** `#assert_fields` docstring corrected (names-only, with the
+  type-change logging convention stated); the `Nat.sqrt`-irreducible idiom now has one
+  canonical explanation at its first use (`Framework/Emission.lean`); Lean core linter
+  warnings fixed to zero (RpnSentence/RpnComputation/RpnSplice/Expectations);
+  `CITATION.cff` added (LICENSE already existed — that punch item was stale, as was the
+  Brouwer maxHeartbeats one, already commented at site). README's stale "four endpoints
+  still whole-value (incl. thm:st)" paragraph corrected to the three-node metacomputation
+  family.
