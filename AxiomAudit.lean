@@ -340,7 +340,10 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 
 -- Construction/Witnesses/FeedbackTruth.lean — the delayed-truth bridge: a computation of
 -- the feedback value, clocked to the deferral day, feeding the unbiasedness endpoints.
+-- `FeedbackTruth.ordinaryFeedbackTruthComputation` is the constructed non-vacuity
+-- witness for the delayed-truth premise (constant value stream — see its docstring).
 #assert_axioms_clean
+  FeedbackTruth.ordinaryFeedbackTruthComputation
   feedbackTruthSequence lic_wubaff_ofComputation lic_wub_ofComputation
   boundedCombination_wubaff_ofComputation luv_wubexp_ofComputation
   lic_wub_ofComputation_unconditional lic_wubaff_ofComputation_unconditional
@@ -477,7 +480,12 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 
 -- Construction/Witnesses/ComputationSyntax.lean — represented semidecidable/decidable
 -- claims built from a bounded computation, discharging the meta-learning interfaces.
+-- `ordinarySemidecidableComputation` / `ordinaryBoundedComputation` are the constructed
+-- non-vacuity witnesses for the two operational premises, over an index-varying truth
+-- predicate.
 #assert_axioms_clean
+  ordinarySemidecidableComputation
+  ordinaryBoundedComputation
   representedDecidableClaimsOfComputation
   inconsistentTheoryClaimsOfComputation
   lic_belief_finitistic_consistency_ofComputation

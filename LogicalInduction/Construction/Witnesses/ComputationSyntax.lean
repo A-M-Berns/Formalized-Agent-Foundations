@@ -309,6 +309,63 @@ structure BoundedComputation (truth : ℕ → Prop) where
   steps_poly : PolyNatCodes steps
   truth_iff : ∀ n, truth n ↔ CodeHaltsWithin machine (input n) (steps n)
 
+/-! ## Non-vacuity witnesses for the operational presentations -/
+
+/-- Halting on exactly the positive inputs, as a partial function. -/
+private def positiveHaltPartial : ℕ →. ℕ := fun n => Part.assert (0 < n) fun _ => Part.some 0
+
+private lemma positiveHaltPartial_partrec : Nat.Partrec positiveHaltPartial := by
+  rw [← Partrec.nat_iff]
+  have hdec : PrimrecPred fun n : ℕ => 0 < n :=
+    Primrec.nat_lt.comp (Primrec.const 0) Primrec.id
+  obtain ⟨_, hp⟩ := hdec
+  have hre : REPred fun n : ℕ => 0 < n :=
+    ComputablePred.to_re (ComputablePred.computable_iff.mpr ⟨_, hp.to_comp, by funext n; simp⟩)
+  refine (hre.map (Computable.const (0 : ℕ)).to₂).of_eq (fun n => Part.ext fun x => ?_)
+  simp [positiveHaltPartial, Part.mem_assert_iff, eq_comm]
+
+/-- A repository machine halting on exactly the positive inputs.  Existence of a code for a
+partial recursive function is `Nat.Partrec.Code.exists_code`; the machine itself is not a
+closed term, which is why the definition is `noncomputable`. -/
+noncomputable def positiveHaltMachine : Nat.Partrec.Code :=
+  (Nat.Partrec.Code.exists_code.mp positiveHaltPartial_partrec).choose
+
+lemma positiveHaltMachine_halts_iff (n : ℕ) : CodeHalts positiveHaltMachine n ↔ 0 < n := by
+  have hspec : positiveHaltMachine.eval = positiveHaltPartial :=
+    (Nat.Partrec.Code.exists_code.mp positiveHaltPartial_partrec).choose_spec
+  simp [CodeHalts, hspec, positiveHaltPartial, Part.assert]
+
+/-- **N+.** The semidecidable-computation premise is inhabited, with a genuinely
+index-varying truth predicate: the machine halts on input `n` exactly when `n` is
+positive, so `truth` is neither identically true nor identically false.  Kind `N+`,
+provenance (a): every field is discharged in-project, with no operational hypothesis.
+Paper node: `thm:incons` -/
+noncomputable def ordinarySemidecidableComputation :
+    SemidecidableComputation (fun n => 0 < n) where
+  machine := positiveHaltMachine
+  input n := n
+  input_poly := ⟨_, PolyFueled.id⟩
+  truth_iff n := (positiveHaltMachine_halts_iff n).symm
+
+/-- **N+.** The bounded-computation premise is inhabited, with a genuinely index-varying
+truth predicate: `Code.zero` on input `0` finishes within `n` interpreter steps exactly
+when `n` is positive (a zero clock always fails).  Kind `N+`, provenance (a): every field
+is discharged in-project, with no operational hypothesis.
+Paper node: `thm:pac`, `thm:pazfc` -/
+def ordinaryBoundedComputation : BoundedComputation (fun n => 0 < n) where
+  machine := Nat.Partrec.Code.zero
+  input _ := 0
+  steps n := n
+  input_poly := ⟨_, PolyFueled.const 0⟩
+  steps_poly := ⟨_, PolyFueled.id⟩
+  truth_iff n := by
+    cases n with
+    | zero => simp [CodeHaltsWithin, Nat.Partrec.Code.evaln]
+    | succ k => simp [CodeHaltsWithin, Nat.Partrec.Code.evaln]
+
+#print axioms ordinarySemidecidableComputation
+#print axioms ordinaryBoundedComputation
+
 /-! ## Constructors for the three MetaLearning boundaries -/
 
 /-- Constructor for the decidable-claims boundary from a concrete computation.
