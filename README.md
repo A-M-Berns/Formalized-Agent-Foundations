@@ -29,6 +29,32 @@ sequent-calculus proof of the de Jongh–Sambin GL fixed-point theorem, and four
 errata in the *Logical Induction* paper itself
 ([`notes/logical-induction-paper-errata.md`](notes/logical-induction-paper-errata.md)).
 
+## Building
+
+The toolchain is pinned in [`lean-toolchain`](lean-toolchain) (currently
+`leanprover/lean4:v4.28.0-rc1`); install [`elan`](https://github.com/leanprover/elan) and
+it will fetch that version automatically.
+
+```sh
+lake exe cache get      # prebuilt Mathlib oleans (a minute or two)
+lake build AxiomAudit   # the checked target: builds both libraries + the endpoint inventory
+```
+
+`lake build AxiomAudit` is *the* gate — it subsumes the libraries and fails if any listed
+endpoint gains a stray axiom or disappears. The three script gates run on the sources and
+need no build:
+
+```sh
+scripts/check-paper-nodes.sh          # `Paper node:` labels ↔ paper \label{…}, both directions
+python3 scripts/check_endpoint_coverage.py   # every annotated label has an inventory endpoint
+python3 scripts/lint_paper_labels.py         # every paper-facing theorem carries a label
+```
+
+Budget a few hours for the first build: Mathlib arrives prebuilt from the cache, but the
+Foundation dependency (~580 modules) and this repo (~110 modules, some with heavy
+`Primrec`/`Nat.Partrec` elaboration) are compiled from source. Rebuilds after that are
+incremental — seconds for a leaf file, minutes for a `Framework/` change.
+
 ## License
 
 Apache License 2.0 — see [`LICENSE`](LICENSE). The same license Mathlib uses, so material

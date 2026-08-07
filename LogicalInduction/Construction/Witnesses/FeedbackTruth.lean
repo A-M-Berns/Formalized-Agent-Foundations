@@ -36,6 +36,35 @@ structure FeedbackTruthComputation (truth : ℕ → ℝ) (f : DeferralFunction) 
     some (Encodable.encode (value k))
   agrees : ∀ k, (value k : ℝ) = truth (f k)
 
+/-! ## Non-vacuity witness -/
+
+/-- **N+.** The delayed-truth premise is inhabited, for every deferral schedule `f`: the
+constant program `Code.const ⌜1⌝` returns the code of `1` well inside the polynomial
+feedback clock, because `f (k+1) > k` forces the clock above the `k + ⌜1⌝ + 1` fuel that
+`fueled_const` needs.  Kind `N+`, provenance (a).
+
+Disclosure: this witness is **degenerate in the value stream** — `value` and `truth` are
+both constant.  A non-constant witness would have to fuel-certify a program emitting
+`Encodable.encode (q k)` for a varying rational `q`, and the `Encodable ℚ` encoding is a
+`Denumerable` bijection with no arithmetic normal form in the `PolyFueled` toolkit, so no
+such certificate is available in-repo.  The witness therefore establishes satisfiability of
+the premise, not the non-degeneracy of the values a real feedback stream would carry.
+Paper node: `thm:wub`, `thm:wubaff`, `thm:wubexp` -/
+def ordinaryFeedbackTruthComputation (f : DeferralFunction) :
+    FeedbackTruthComputation (fun _ => (1 : ℝ)) f where
+  value _ := 1
+  code := Nat.Partrec.Code.const (Encodable.encode (1 : ℚ))
+  a := Encodable.encode (1 : ℚ) + 1
+  degree := 1
+  computes k := by
+    refine Nat.Partrec.Code.evaln_mono ?_ (fueled_const (Encodable.encode (1 : ℚ)) k)
+    have hf : k + 1 < f (k + 1) := f.lt (k + 1)
+    simp only [ecClock, pow_one]
+    nlinarith [hf]
+  agrees k := by norm_num
+
+#print axioms ordinaryFeedbackTruthComputation
+
 /-! ## The shifted deferral schedule -/
 
 /-- The source component on a delayed feedback day: the preimage of `m`, minus one. -/
