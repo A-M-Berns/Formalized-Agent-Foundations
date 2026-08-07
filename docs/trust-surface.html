@@ -1023,7 +1023,7 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_wub_ofComputation_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackUnconditional.lean</span></div><pre class="sig">theorem lic_wub_ofComputation_unconditional
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="4">1 / 4</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_wub_ofComputation_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackUnconditional.lean</span></div><pre class="sig">theorem lic_wub_ofComputation_unconditional
     (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : TheoryTruth φ (theoremDP T) truth)
     (W : ℕ → EF) (hW : PGenerableWeighting W)
@@ -1045,7 +1045,8 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     (bridge : FeedbackTruthSequence (sentenceAffine φ) truth P DP f)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     weightedBias (fun i ↦ (W i).denote P)
-      (fun i ↦ P i (φ i)) truth ≈ₙ (fun _ ↦ 0)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_wub_ofComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackTruth.lean</span></div><pre class="sig">theorem lic_wub_ofComputation
+      (fun i ↦ P i (φ i)) truth ≈ₙ (fun _ ↦ 0)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FeedbackTruth.ordinaryFeedbackTruthComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackTruth.lean</span></div><pre class="sig">def ordinaryFeedbackTruthComputation (f : DeferralFunction) :
+    FeedbackTruthComputation (fun _ =&gt; (1 : ℝ)) f</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_wub_ofComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackTruth.lean</span></div><pre class="sig">theorem lic_wub_ofComputation
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : TheoryTruth φ DP truth)
@@ -1428,7 +1429,7 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="10">1 / 10</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_wubaff_ofComputation_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackUnconditional.lean</span></div><pre class="sig">theorem lic_wubaff_ofComputation_unconditional
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="11">1 / 11</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_wubaff_ofComputation_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackUnconditional.lean</span></div><pre class="sig">theorem lic_wubaff_ofComputation_unconditional
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W)
     {truth : ℕ → ℝ} {f : DeferralFunction}
@@ -1499,7 +1500,8 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     (hWdiv : DivergentWeighting W P)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     weightedBias (fun i ↦ (W i).denote P)
-      (fun i ↦ (As i).price P i) truth ≈ₙ (fun _ ↦ 0)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">feedbackTruthSequence</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackTruth.lean</span></div><pre class="sig">noncomputable def feedbackTruthSequence
+      (fun i ↦ (As i).price P i) truth ≈ₙ (fun _ ↦ 0)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FeedbackTruth.ordinaryFeedbackTruthComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackTruth.lean</span></div><pre class="sig">def ordinaryFeedbackTruthComputation (f : DeferralFunction) :
+    FeedbackTruthComputation (fun _ =&gt; (1 : ℝ)) f</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">feedbackTruthSequence</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackTruth.lean</span></div><pre class="sig">noncomputable def feedbackTruthSequence
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (hpoly : PolySequence As)
@@ -2689,7 +2691,7 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="6">1 / 6</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">luv_wubexp_ofComputation_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackUnconditional.lean</span></div><pre class="sig">theorem luv_wubexp_ofComputation_unconditional
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="7">1 / 7</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">luv_wubexp_ofComputation_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackUnconditional.lean</span></div><pre class="sig">theorem luv_wubexp_ofComputation_unconditional
     {As : ℕ → LUVCombination}
     (h : LUVCombination.BoundedSequence As (liaHistory (theoremDP T)))
     (hexact : LUVCombination.ExactTheoryPresentation As (theoremDP T))
@@ -2756,7 +2758,8 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
       (LUVCombination.normalizedMesh As b)
       (LUVCombination.normalizedMeshTruth As P DP hworld b) P DP f) :
     weightedBias (fun i ↦ (W i).denote P)
-      (fun i ↦ (As i).expect P i) truth ≈ₙ (fun _ ↦ 0)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">luv_wubexp_ofComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackTruth.lean</span></div><pre class="sig">theorem luv_wubexp_ofComputation
+      (fun i ↦ (As i).expect P i) truth ≈ₙ (fun _ ↦ 0)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FeedbackTruth.ordinaryFeedbackTruthComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackTruth.lean</span></div><pre class="sig">def ordinaryFeedbackTruthComputation (f : DeferralFunction) :
+    FeedbackTruthComputation (fun _ =&gt; (1 : ℝ)) f</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">luv_wubexp_ofComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackTruth.lean</span></div><pre class="sig">theorem luv_wubexp_ofComputation
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
@@ -2852,7 +2855,7 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="4">1 / 4</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_belief_finitistic_consistency_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationDP.lean</span></div><pre class="sig">theorem lic_belief_finitistic_consistency_unconditional [𝗥₀ ⪯ T]
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="5">1 / 5</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_belief_finitistic_consistency_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationDP.lean</span></div><pre class="sig">theorem lic_belief_finitistic_consistency_unconditional [𝗥₀ ⪯ T]
     (consistentWithin : ℕ → Prop) (C : BoundedComputation consistentWithin)
     (hconsistent : ∀ n, consistentWithin n) :
     (fun n =&gt; liaHistory (theoremDP T) n
@@ -2863,7 +2866,7 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     (R : RepresentedDecidableClaims DP consistentWithin)
     (hconsistent : ∀ n, consistentWithin n)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    (fun n =&gt; P n (R.sentence n)) ≈ₙ fun _ =&gt; 1</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">representedDecidableClaimsOfComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationSyntax.lean</span></div><pre class="sig">noncomputable def representedDecidableClaimsOfComputation
+    (fun n =&gt; P n (R.sentence n)) ≈ₙ fun _ =&gt; 1</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">ordinaryBoundedComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationSyntax.lean</span></div><pre class="sig">def ordinaryBoundedComputation : BoundedComputation (fun n =&gt; 0 &lt; n)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">representedDecidableClaimsOfComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationSyntax.lean</span></div><pre class="sig">noncomputable def representedDecidableClaimsOfComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     {truth : ℕ → Prop} (Q : ComputationTheoryPresentation DP T)
@@ -2900,7 +2903,7 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_belief_stronger_theory_consistency_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationDP.lean</span></div><pre class="sig">theorem lic_belief_stronger_theory_consistency_unconditional [𝗥₀ ⪯ T]
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="4">1 / 4</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_belief_stronger_theory_consistency_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationDP.lean</span></div><pre class="sig">theorem lic_belief_stronger_theory_consistency_unconditional [𝗥₀ ⪯ T]
     (strongerConsistentWithin : ℕ → Prop)
     (C : BoundedComputation strongerConsistentWithin)
     (hconsistent : ∀ n, strongerConsistentWithin n) :
@@ -2912,7 +2915,7 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     (R : RepresentedDecidableClaims DP strongerConsistentWithin)
     (hconsistent : ∀ n, strongerConsistentWithin n)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    (fun n =&gt; P n (R.sentence n)) ≈ₙ fun _ =&gt; 1</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_belief_stronger_theory_consistency_ofComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationSyntax.lean</span></div><pre class="sig">theorem lic_belief_stronger_theory_consistency_ofComputation
+    (fun n =&gt; P n (R.sentence n)) ≈ₙ fun _ =&gt; 1</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">ordinaryBoundedComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationSyntax.lean</span></div><pre class="sig">def ordinaryBoundedComputation : BoundedComputation (fun n =&gt; 0 &lt; n)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_belief_stronger_theory_consistency_ofComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationSyntax.lean</span></div><pre class="sig">theorem lic_belief_stronger_theory_consistency_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (Q : ComputationTheoryPresentation DP T)
@@ -2947,7 +2950,7 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="4">1 / 4</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_disbelief_inconsistent_theories_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationDP.lean</span></div><pre class="sig">theorem lic_disbelief_inconsistent_theories_unconditional [𝗥₀ ⪯ T]
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="5">1 / 5</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_disbelief_inconsistent_theories_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationDP.lean</span></div><pre class="sig">theorem lic_disbelief_inconsistent_theories_unconditional [𝗥₀ ⪯ T]
     (inconsistent : ℕ → Prop) (C : SemidecidableComputation inconsistent)
     (hall : ∀ n, inconsistent n) :
     ((fun n =&gt; liaHistory (theoremDP T) n
@@ -2961,7 +2964,8 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     (hall : ∀ n, inconsistent n)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ((fun n =&gt; P n (R.inconsistencySentence n)) ≈ₙ fun _ =&gt; 1) ∧
-      ((fun n =&gt; P n (R.consistencySentence n)) ≈ₙ fun _ =&gt; 0)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">inconsistentTheoryClaimsOfComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationSyntax.lean</span></div><pre class="sig">noncomputable def inconsistentTheoryClaimsOfComputation
+      ((fun n =&gt; P n (R.consistencySentence n)) ≈ₙ fun _ =&gt; 0)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">ordinarySemidecidableComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationSyntax.lean</span></div><pre class="sig">noncomputable def ordinarySemidecidableComputation :
+    SemidecidableComputation (fun n =&gt; 0 &lt; n)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">inconsistentTheoryClaimsOfComputation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationSyntax.lean</span></div><pre class="sig">noncomputable def inconsistentTheoryClaimsOfComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     {inconsistent : ℕ → Prop} (Q : ComputationTheoryPresentation DP T)
@@ -3904,4 +3908,4 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
 })();
 </script>
 
-<!-- trust-surface-sources: 4b0656327d8bd02fa208c82a2987e3d436caf43d8dd8159d17926ff5d1ec79dc -->
+<!-- trust-surface-sources: 53b44b6898a38d41b866f2e10998047d63cb44843f0de183e41593f7a7f1140d -->
