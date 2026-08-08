@@ -668,9 +668,9 @@ lemma productSchemaInstance_computable {X W : ℕ → LUV}
   · simp only [h0, hg0, decide_true, cond_true, productAtom]
     rfl
   · simp [h0, hg0]
-  · simp only [h0, h1, hg1, decide_true, decide_false, cond_true, cond_false, productAtom]
+  · simp only [h1, hg1, decide_true, cond_true, productAtom]
     rfl
-  · simp [h0, h1, hg1]
+  · simp [h1, hg1]
   · simp only [h0, h1, hneg, decide_true, decide_false, cond_true, cond_false, productAtom]
     rfl
   · simp [h0, h1, hneg]
