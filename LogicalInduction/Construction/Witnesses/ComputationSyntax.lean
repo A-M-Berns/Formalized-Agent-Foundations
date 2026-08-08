@@ -484,15 +484,16 @@ noncomputable def ordinarySemidecidableComputation :
 
 /-- **N+.** The bounded-computation premise is inhabited, with a genuinely index-varying
 truth predicate: `Code.zero` on input `0` finishes within `n` interpreter steps exactly
-when `n` is positive (a zero clock always fails).  Kind `N+`, provenance (a): every field
-is discharged in-project, with no operational hypothesis.
+when `n` is positive (a zero clock always fails).  The horizon is the identity `f n = n`,
+named by a program via `ComputableHorizon.of`.  Kind `N+`, provenance (a): every field is
+discharged in-project, with no operational hypothesis.
 Paper node: `thm:pac`, `thm:pazfc` -/
-def ordinaryBoundedComputation : BoundedComputation (fun n => 0 < n) where
+noncomputable def ordinaryBoundedComputation : BoundedComputation (fun n => 0 < n) where
   machine := Nat.Partrec.Code.zero
   input _ := 0
-  steps n := n
   input_poly := ⟨_, PolyFueled.const 0⟩
-  steps_poly := ⟨_, PolyFueled.id⟩
+  steps n := n
+  horizon := .of Computable.id
   truth_iff n := by
     cases n with
     | zero => simp [CodeHaltsWithin, Nat.Partrec.Code.evaln]
