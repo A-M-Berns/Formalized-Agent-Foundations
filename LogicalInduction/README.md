@@ -233,6 +233,14 @@ assertion starts failing and gets promoted to a plain clean assertion.
    inhabits the relaxed field for a general source, and the indicator product still
    inhabits it at zero slack (`indicatorProductLUV_exact_left_reflected`).
 
+   **The slack is invisible at the one known downstream interface.** The deference port
+   of "Deference Done Better" into this framework consumes `thm:ccee` as a hypothesis
+   `hCcee : Approx Exw Eew` — two abstract real sequences related by `≈ₙ`, with no LUV
+   structure, no deductive process, and no slack term crossing the boundary. The mesh
+   endpoint's conclusion has exactly that shape, so it discharges the hypothesis as well
+   as an exactly-reflecting one would. Details, and the rest of the compatibility
+   surface, in [`../notes/deference-compatibility.md`](../notes/deference-compatibility.md).
+
 All three are disclosed at every affected statement, not just here.
 
 ## What is left, and what it is blocked on
@@ -249,12 +257,24 @@ exist, and the rest are structural reads that have twice moved upward on contact
   either the deferred weight's value (unavailable to an emitter: only P-generable,
   deferred, and the resulting threshold's denominator is not polynomially sized) or the
   infinite disjunction `⋁_{s∈ℚ}(⌜w > s⌝ ∧ ⌜X > r/s⌝)`. Propositional logic has neither, so
-  the landed mesh product reflects only to within `1/(n+1)`. The exact route needs a
-  world-dependent product-atom schema entered by the deductive process — a compound-axiom
-  entry on the quotation presentation, comparable in scale to the existing quote-code
-  layer (~3–4 weeks). This is the one substitution with a known downstream consumer: work
-  on deference in logical induction uses `thm:ccee` at general option-value LUVs, where
-  whether the `1/(n+1)` slack is acceptable depends on the consuming argument.
+  the landed mesh product reflects only to within `1/(n+1)`. The exact route is a
+  definitional extension of the *deductive process* — fresh product atoms plus their
+  defining biconditionals — not of the theory, and its first four components are built
+  (`Construction/Witnesses/ProductDefinition.lean`: the process, its computability, the
+  world-extension lemma, threshold emission, and exact reflection at `slack = 0`). What
+  is not built is the closed endpoint, and the reason is named rather than estimated:
+  the weight's quote LUV needs `Computable (w ∘ f)`, which `PGenerableRat.computable`
+  supplies only from a market that is itself a function of the process. Escaping that
+  circle costs either a narrowing of `w` to `PolyRatCodes` — which would drop the
+  paper's own worked example at tex:2077, a continuous indicator of a market
+  expectation, and is therefore worse than the slack it removes — or a second
+  P-generability premise about the extended market. Two further costs are known: the
+  endpoint would be stated over `base ∪ product-definitions` (a rendering with Tier-1
+  precedent in `lic_conditioned_gated_ofComputations`, but not for this use), and an
+  atom-freshness premise the paper does not state. Full assessment in
+  [`../notes/ccee-exact-scope.md`](../notes/ccee-exact-scope.md). The one known
+  downstream consumer does **not** need exactness — see the interface note above — so
+  the mesh endpoint keeps the row.
 * **`thm:ifp` — the fuel class.** The transported trader needs a closure property the
   model provably lacks (the inverse-operation ceiling: the emitted freeze stream's
   certificate needs a decode test on exponentially large codes, which the digit calculus
