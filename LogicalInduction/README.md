@@ -9,8 +9,8 @@ build-audited. How strong each one is:
 
 | | count | what it means |
 |---|---:|---|
-| **paper strength** | 47 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
-| **qualified** | 6 | proved with an explicitly named representation interface or class restriction retained |
+| **paper strength** | 50 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
+| **qualified** | 3 | proved with an explicitly named representation interface or class restriction retained |
 
 Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
@@ -21,7 +21,7 @@ and audit note — is generated from the repository at
 [`docs/trust-surface.html`](../docs/trust-surface.html)
 (`python3 scripts/gen-trust-surface.py` to regenerate).
 
-Of the 47, **16 are also instantiated over the concrete inductor constructed here** at
+Of the 50, **19 are also instantiated over the concrete inductor constructed here** at
 full paper strength, so they hold of a specific algorithm rather than a hypothetical
 one. The paper states no such theorems; that is a strengthening, not a different degree
 of faithfulness.
@@ -29,12 +29,12 @@ of faithfulness.
 **Two caveats on those counts, because both are easy to miss.** First, every tier is
 relative to the disclosed model — propositional sentences and fuel-clocked efficiency
 (see *The two modeling boundaries*); "paper strength" means the paper's statement is
-reached *within that model*, not that the model equivalence is proved. Second, three nodes
-still have unconditional-over-`LIA` endpoints stated at a **whole-value-metered** class,
-which this repo *proves* is strictly narrower than the paper's `def:ec`
-(`ordinaryBitPrefixCodes` exhibits a paper-admissible e.c. family that no whole-value
-hypothesis admits): the metacomputation family `thm:pac`/`thm:pazfc`/`thm:dontwait`. The
-whole quotation family has now been restated at the paper's own symbol-metered class.
+reached *within that model*, not that the model equivalence is proved. Second, the computation
+family (`thm:halts`, `thm:loops`, `thm:pac`, `thm:pazfc`, `thm:dontwait`) still meters its
+machine and input sequences by the **whole-value** class `PolyMachineCodes`/`PolyNatCodes`
+rather than the symbol-metered `RpnSentenceCodes`; those are the paper's own e.c.
+`⟨m⟩`/`⟨x⟩` sequences and the family is tiered uniformly on that basis. The whole quotation
+family, and the horizon `f` of the metacomputation nodes, are at the paper's own class.
 
 These numbers come from a signature-level re-derivation: 35 of the 53 nodes were
 re-derived from their elaborated final signatures against the paper text in a dedicated
@@ -165,10 +165,14 @@ assertion starts failing and gets promoted to a plain clean assertion.
 
    The property tail is stated at the faithful symbol-metered class throughout, and so
    is the whole quotation family's *unconditional-over-`LIA`* layer (`thm:epr`, `thm:er`,
-   `thm:ref`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` and `thm:wub`). Only the
-   metacomputation family `thm:pac`/`thm:pazfc`/`thm:dontwait` still sits at a narrower
-   class, where the analogous `PolyNatCodes` restricts the paper's "any computable
-   function `f`" to polynomial-time `f`.
+   `thm:ref`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` and `thm:wub`). The
+   metacomputation family `thm:pac`/`thm:pazfc`/`thm:dontwait` used to sit at a narrower
+   class here too, because the analogous `PolyNatCodes` on the *horizon* restricted the
+   paper's "any computable function `f`" to polynomial-time `f`. That is now fixed: the
+   claim schema defers the horizon term (`ComputableHorizon` names `⌜f⌝`; the arithmetic
+   schema evaluates it), so any computable `f` is admissible and
+   `not_polyNatCodes_ack` exhibits one — diagonal Ackermann — that the old class
+   provably excluded.
 
    For the quotation family the gap turned out to be **residue, not obstruction**, and
    the distinction is recorded because it was got wrong once — in this file. What the
@@ -262,15 +266,8 @@ exist, and the rest are structural reads that have twice moved upward on contact
   a declaration that does not exist; corrected there.) The paper's own proof of `thm:ifp` is
   separately invalid — see erratum PE1.
 
-**Unfinished work, not obstruction (4).**
+**Unfinished work, not obstruction (3).**
 
-* **`thm:pac`, `thm:pazfc`, `thm:dontwait` — an encoding choice, not the fuel class**
-  (~1 week for all three). `computationClaimSentence` puts the claim input's *value* in the
-  sentence code, so carrying the evaluated horizon `f(n)` forces `PolyNatCodes steps`. The
-  paper names the *term* `⌜f⌝(⌜n⌝)` and lets the arithmetic schema evaluate it. The fix is a
-  claim schema whose input pairs `⌜f⌝` with `n` unevaluated, plus its `truth_iff` bridge;
-  the code is then polynomial in `n` for *any* computable `f`, which is the paper's point.
-  The fuel model is untouched by this.
 * **`thm:wubexp` — a proof route stronger than the statement needs** (2+ weeks, least
   scoped). Both endpoints reaching the paper's computability premise also take
   `ExactTheoryPresentation`, which provably forces *each individual LUV* to be

@@ -2,6 +2,7 @@ import LogicalInduction.Construction.Witnesses.BoundedEvaluation
 import LogicalInduction.Properties.MetaLearning
 import Foundation.FirstOrder.Arithmetic.R0.Representation
 import Foundation.FirstOrder.Bootstrapping.Syntax.Theory
+import Mathlib.Computability.Ackermann
 
 /-!
 # Concrete computation syntax and arithmetic-theory representation
@@ -42,46 +43,111 @@ lemma universalCodeHalts_re : REPred UniversalCodeHalts := by
       (Primrec.fst.comp Primrec.unpair).to_comp)
     (Primrec.snd.comp Primrec.unpair).to_comp
 
-/-- Decode `z = ⟨machine, ⟨input, steps⟩⟩` and run the clocked interpreter. -/
-def UniversalCodeHaltsWithin (z : ℕ) : Prop :=
-  (Nat.Partrec.Code.evaln z.unpair.2.unpair.2
-    (Denumerable.ofNat Nat.Partrec.Code z.unpair.1)
-    z.unpair.2.unpair.1).isSome = true
+/-! ### Bounded halting with a deferred horizon
 
-/-- Bounded universal halting is a computable predicate. -/
-lemma universalCodeHaltsWithin_computable : ComputablePred UniversalCodeHaltsWithin := by
-  apply ComputablePred.computable_iff.mpr
-  refine ⟨fun z => (Nat.Partrec.Code.evaln z.unpair.2.unpair.2
-    (Denumerable.ofNat Nat.Partrec.Code z.unpair.1)
-    z.unpair.2.unpair.1).isSome, ?_, by rfl⟩
-  apply Primrec.to_comp
-  apply Primrec.option_isSome.comp
-  let hsteps : Primrec fun z : ℕ => z.unpair.2.unpair.2 :=
+`thm:pac`, `thm:pazfc` and `thm:dontwait` quantify over *any* computable horizon function
+`f`, and the paper's claim names the **term** `⌜f⌝(⌜n⌝)`, leaving the arithmetic schema to
+evaluate it.  A bounded claim therefore carries `⌜f⌝` — a constant — paired with the day
+`n` unevaluated, so the claim's Gödel name is polynomial in `n` for *every* computable `f`,
+not only the polynomial-time ones.
+
+The price is that the positive and negative schemas are no longer exhaustive: if the
+horizon program diverges on `n`, neither fires.  They remain mutually exclusive
+(`universalBoundedClaims_exclusive`), which is what the deductive-process construction
+needs, and for a total `f` — the paper's setting — exactly one of them fires. -/
+
+/-- Decode `z = ⟨⟨machine, input⟩, ⟨horizon program, day⟩⟩` into its machine. -/
+def boundedClaimMachine (z : ℕ) : Nat.Partrec.Code :=
+  Denumerable.ofNat Nat.Partrec.Code z.unpair.1.unpair.1
+
+/-- Decode `z = ⟨⟨machine, input⟩, ⟨horizon program, day⟩⟩` into its machine input. -/
+def boundedClaimInput (z : ℕ) : ℕ := z.unpair.1.unpair.2
+
+/-- Decode `z = ⟨⟨machine, input⟩, ⟨horizon program, day⟩⟩` into its horizon program `⌜f⌝`. -/
+def boundedClaimHorizon (z : ℕ) : Nat.Partrec.Code :=
+  Denumerable.ofNat Nat.Partrec.Code z.unpair.2.unpair.1
+
+/-- Decode `z = ⟨⟨machine, input⟩, ⟨horizon program, day⟩⟩` into the day the horizon
+program is applied to.  It is *not* evaluated in the name. -/
+def boundedClaimDay (z : ℕ) : ℕ := z.unpair.2.unpair.2
+
+/-- `⌜machine⌝` halts on `⌜input⌝` within `⌜f⌝(⌜day⌝)` steps: run the horizon program on
+the day to obtain the step budget, then run the clocked interpreter under it. -/
+def UniversalBoundedHalts (z : ℕ) : Prop :=
+  ∃ m ∈ (boundedClaimHorizon z).eval (boundedClaimDay z),
+    CodeHaltsWithin (boundedClaimMachine z) (boundedClaimInput z) m
+
+/-- The complementary claim: the horizon term converges and the bounded run fails. -/
+def UniversalBoundedFailure (z : ℕ) : Prop :=
+  ∃ m ∈ (boundedClaimHorizon z).eval (boundedClaimDay z),
+    ¬CodeHaltsWithin (boundedClaimMachine z) (boundedClaimInput z) m
+
+/-- Both deferred-horizon claims are recursively enumerable: semi-decide by running the
+horizon program to convergence and then testing the (decidable) clocked run against `b`.
+Unlike the evaluated-horizon schema neither is *computable*, because the horizon term may
+diverge — but r.e. is all that FFL's `re_complete` consumes. -/
+private lemma universalBoundedRun_re (b : Bool) :
+    REPred (fun z : ℕ => ∃ m ∈ (boundedClaimHorizon z).eval (boundedClaimDay z),
+      (Nat.Partrec.Code.evaln m (boundedClaimMachine z) (boundedClaimInput z)).isSome = b) := by
+  have hmachP : Primrec boundedClaimMachine :=
+    (Primrec.ofNat Nat.Partrec.Code).comp
+      (Primrec.fst.comp (Primrec.unpair.comp (Primrec.fst.comp Primrec.unpair)))
+  have hinputP : Primrec boundedClaimInput :=
+    Primrec.snd.comp (Primrec.unpair.comp (Primrec.fst.comp Primrec.unpair))
+  have hhorP : Primrec boundedClaimHorizon :=
+    (Primrec.ofNat Nat.Partrec.Code).comp
+      (Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair)))
+  have hdayP : Primrec boundedClaimDay :=
     Primrec.snd.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))
-  let hcode : Primrec fun z : ℕ => Denumerable.ofNat Nat.Partrec.Code z.unpair.1 :=
-    (Primrec.ofNat Nat.Partrec.Code).comp (Primrec.fst.comp Primrec.unpair)
-  let hinput : Primrec fun z : ℕ => z.unpair.2.unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))
-  exact Nat.Partrec.Code.primrec_evaln.comp ((hsteps.pair hcode).pair hinput)
+  have heval : Partrec fun z : ℕ => (boundedClaimHorizon z).eval (boundedClaimDay z) :=
+    Nat.Partrec.Code.eval_part.comp hhorP.to_comp hdayP.to_comp
+  have hisSome : Primrec fun p : ℕ × ℕ =>
+      (Nat.Partrec.Code.evaln p.2 (boundedClaimMachine p.1) (boundedClaimInput p.1)).isSome :=
+    Primrec.option_isSome.comp
+      (Nat.Partrec.Code.primrec_evaln.comp
+        ((Primrec.snd.pair (hmachP.comp Primrec.fst)).pair (hinputP.comp Primrec.fst)))
+  have htest : Computable fun p : ℕ × ℕ =>
+      (if (Nat.Partrec.Code.evaln p.2 (boundedClaimMachine p.1)
+            (boundedClaimInput p.1)).isSome = b then some 0 else none : Option ℕ) :=
+    (Primrec.ite (Primrec.eq.comp hisSome (Primrec.const b))
+      (Primrec.const (some 0)) (Primrec.const none)).to_comp
+  refine (Partrec.dom_re (heval.bind (Computable.ofOption htest).to₂)).of_eq fun z => ?_
+  rw [Part.dom_iff_mem]
+  constructor
+  · rintro ⟨a, ha⟩
+    obtain ⟨m, hm, ha⟩ := Part.mem_bind_iff.mp ha
+    refine ⟨m, hm, ?_⟩
+    by_contra hb
+    rw [if_neg hb] at ha
+    simp at ha
+  · rintro ⟨m, hm, hb⟩
+    exact ⟨0, Part.mem_bind_iff.mpr ⟨m, hm, by rw [if_pos hb]; simp⟩⟩
 
-lemma universalCodeHaltsWithin_re : REPred UniversalCodeHaltsWithin :=
-  universalCodeHaltsWithin_computable.to_re
+lemma universalBoundedHalts_re : REPred UniversalBoundedHalts :=
+  (universalBoundedRun_re true).of_eq fun _ => Iff.rfl
 
-lemma universalCodeHaltsWithinFailure_re :
-    REPred (fun z => ¬UniversalCodeHaltsWithin z) :=
-  universalCodeHaltsWithin_computable.not.to_re
+lemma universalBoundedFailure_re : REPred UniversalBoundedFailure :=
+  (universalBoundedRun_re false).of_eq fun _ => by
+    simp only [UniversalBoundedFailure, CodeHaltsWithin, Bool.not_eq_true]
+
+/-- Determinism of the horizon program makes the two deferred claims mutually exclusive. -/
+lemma universalBoundedClaims_exclusive (z : ℕ) :
+    ¬(UniversalBoundedHalts z ∧ UniversalBoundedFailure z) := by
+  rintro ⟨⟨m, hm, hpos⟩, ⟨m', hm', hneg⟩⟩
+  cases Part.mem_unique hm hm'
+  exact hneg hpos
 
 /-- FFL's quoted arithmetic schema for universal unbounded halting. -/
 noncomputable def universalHaltingSchema : ArithmeticSemisentence 1 :=
   codeOfREPred UniversalCodeHalts
 
-/-- FFL's quoted arithmetic schema for bounded halting. -/
+/-- FFL's quoted arithmetic schema for bounded halting at a deferred horizon. -/
 noncomputable def universalBoundedHaltingSchema : ArithmeticSemisentence 1 :=
-  codeOfREPred UniversalCodeHaltsWithin
+  codeOfREPred UniversalBoundedHalts
 
 /-- The complementary FFL schema certifying failure of a bounded run. -/
 noncomputable def universalBoundedFailureSchema : ArithmeticSemisentence 1 :=
-  codeOfREPred (fun z => ¬UniversalCodeHaltsWithin z)
+  codeOfREPred UniversalBoundedFailure
 
 /-- The unbounded schema has exactly the intended standard-model meaning. -/
 lemma universalHaltingSchema_spec (z : ℕ) :
@@ -92,23 +158,24 @@ lemma universalHaltingSchema_spec (z : ℕ) :
 
 /-- The bounded schema has exactly the intended standard-model meaning. -/
 lemma universalBoundedHaltingSchema_spec (z : ℕ) :
-    ℕ ⊧ₘ universalBoundedHaltingSchema/[↑z] ↔ UniversalCodeHaltsWithin z := by
+    ℕ ⊧ₘ universalBoundedHaltingSchema/[↑z] ↔ UniversalBoundedHalts z := by
   simpa [universalBoundedHaltingSchema, models_iff, Semiformula.eval_substs,
     Matrix.constant_eq_singleton] using
-      (codeOfREPred_spec universalCodeHaltsWithin_re (x := z))
+      (codeOfREPred_spec universalBoundedHalts_re (x := z))
 
-/-- The failure schema is the exact standard-model complement of bounded halting. -/
+/-- The failure schema has exactly the intended standard-model meaning. -/
 lemma universalBoundedFailureSchema_spec (z : ℕ) :
-    ℕ ⊧ₘ universalBoundedFailureSchema/[↑z] ↔ ¬UniversalCodeHaltsWithin z := by
+    ℕ ⊧ₘ universalBoundedFailureSchema/[↑z] ↔ UniversalBoundedFailure z := by
   simpa [universalBoundedFailureSchema, models_iff, Semiformula.eval_substs,
     Matrix.constant_eq_singleton] using
-      (codeOfREPred_spec universalCodeHaltsWithinFailure_re (x := z))
+      (codeOfREPred_spec universalBoundedFailure_re (x := z))
 
-lemma universalBoundedSchemas_complementary (z : ℕ) :
-    (ℕ ⊧ₘ universalBoundedHaltingSchema/[↑z]) ↔
-      ¬(ℕ ⊧ₘ universalBoundedFailureSchema/[↑z]) := by
+/-- The two bounded schemas never both hold: the horizon term has at most one value. -/
+lemma universalBoundedSchemas_exclusive (z : ℕ) :
+    ¬((ℕ ⊧ₘ universalBoundedHaltingSchema/[↑z]) ∧
+      (ℕ ⊧ₘ universalBoundedFailureSchema/[↑z])) := by
   rw [universalBoundedHaltingSchema_spec, universalBoundedFailureSchema_spec]
-  simp
+  exact universalBoundedClaims_exclusive z
 
 /-! ## Concrete compact Gödel names -/
 
@@ -192,19 +259,52 @@ noncomputable def consistencyClaimSentence (z : ℕ) : Sentence :=
 def haltingClaimInput (machine : Nat.Partrec.Code) (input : ℕ) : ℕ :=
   Nat.pair (Encodable.encode machine) input
 
-/-- Pair a repository machine code, input, and clock without running the machine. -/
-def boundedHaltingClaimInput (machine : Nat.Partrec.Code) (input steps : ℕ) : ℕ :=
-  Nat.pair (Encodable.encode machine) (Nat.pair input steps)
+/-- Pair a repository machine code, an input, and the **unevaluated** horizon term
+`⌜f⌝(⌜day⌝)`.  Nothing is run: `horizon` is the program `⌜f⌝` and `day` is the numeral. -/
+def boundedHaltingClaimInput (machine : Nat.Partrec.Code) (input : ℕ)
+    (horizon : Nat.Partrec.Code) (day : ℕ) : ℕ :=
+  Nat.pair (Nat.pair (Encodable.encode machine) input)
+    (Nat.pair (Encodable.encode horizon) day)
 
 @[simp] theorem universalCodeHalts_claimInput (machine : Nat.Partrec.Code) (input : ℕ) :
     UniversalCodeHalts (haltingClaimInput machine input) ↔ CodeHalts machine input := by
   simp [UniversalCodeHalts, haltingClaimInput, CodeHalts]
 
-@[simp] theorem universalCodeHaltsWithin_claimInput
-    (machine : Nat.Partrec.Code) (input steps : ℕ) :
-    UniversalCodeHaltsWithin (boundedHaltingClaimInput machine input steps) ↔
+/-- The four projections invert the packing. -/
+lemma boundedClaimInput_decode (machine : Nat.Partrec.Code) (input : ℕ)
+    (horizon : Nat.Partrec.Code) (day : ℕ) :
+    boundedClaimMachine (boundedHaltingClaimInput machine input horizon day) = machine ∧
+      boundedClaimInput (boundedHaltingClaimInput machine input horizon day) = input ∧
+      boundedClaimHorizon (boundedHaltingClaimInput machine input horizon day) = horizon ∧
+      boundedClaimDay (boundedHaltingClaimInput machine input horizon day) = day := by
+  refine ⟨?_, ?_, ?_, ?_⟩ <;>
+    simp [boundedClaimMachine, boundedClaimInput, boundedClaimHorizon, boundedClaimDay,
+      boundedHaltingClaimInput]
+
+/-- The deferred claim is true exactly when the machine halts within the horizon
+program's *actual* value on the day. -/
+lemma universalBoundedHalts_claimInput (machine : Nat.Partrec.Code) (input : ℕ)
+    (horizon : Nat.Partrec.Code) (day steps : ℕ) (hsteps : steps ∈ horizon.eval day) :
+    UniversalBoundedHalts (boundedHaltingClaimInput machine input horizon day) ↔
       CodeHaltsWithin machine input steps := by
-  simp [UniversalCodeHaltsWithin, boundedHaltingClaimInput, CodeHaltsWithin]
+  obtain ⟨hm, hi, hh, hd⟩ := boundedClaimInput_decode machine input horizon day
+  simp only [UniversalBoundedHalts, hm, hi, hh, hd]
+  constructor
+  · rintro ⟨m, hmem, hrun⟩
+    rwa [Part.mem_unique hmem hsteps] at hrun
+  · exact fun h => ⟨steps, hsteps, h⟩
+
+/-- The complementary reading of the same claim input. -/
+lemma universalBoundedFailure_claimInput (machine : Nat.Partrec.Code) (input : ℕ)
+    (horizon : Nat.Partrec.Code) (day steps : ℕ) (hsteps : steps ∈ horizon.eval day) :
+    UniversalBoundedFailure (boundedHaltingClaimInput machine input horizon day) ↔
+      ¬CodeHaltsWithin machine input steps := by
+  obtain ⟨hm, hi, hh, hd⟩ := boundedClaimInput_decode machine input horizon day
+  simp only [UniversalBoundedFailure, hm, hi, hh, hd]
+  constructor
+  · rintro ⟨m, hmem, hrun⟩
+    rwa [Part.mem_unique hmem hsteps] at hrun
+  · exact fun h => ⟨steps, hsteps, h⟩
 
 /-! ## Honest polynomial naming -/
 
@@ -234,12 +334,16 @@ def haltingClaimInput_poly {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ �
     PolyNatCodes (fun n => haltingClaimInput (machines n) (inputs n)) :=
   ⟨_, (hm.code_poly.pair hi.code_poly).of_eq (fun _ => rfl)⟩
 
+/-- The deferred-horizon claim name is polynomial in the day for **every** computable
+horizon: `⌜f⌝` enters as a constant and the day enters unevaluated.  No hypothesis on `f`
+appears — this is the whole point of the deferred schema. -/
 def boundedHaltingClaimInput_poly
-    {machines : ℕ → Nat.Partrec.Code} {inputs steps : ℕ → ℕ}
+    {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ → ℕ}
     (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
-    (hs : PolyNatCodes steps) :
-    PolyNatCodes (fun n => boundedHaltingClaimInput (machines n) (inputs n) (steps n)) :=
-  ⟨_, (hm.code_poly.pair (hi.code_poly.pair hs.code_poly)).of_eq (fun _ => rfl)⟩
+    (horizon : Nat.Partrec.Code) :
+    PolyNatCodes (fun n => boundedHaltingClaimInput (machines n) (inputs n) horizon n) :=
+  ⟨_, ((hm.code_poly.pair hi.code_poly).pair
+    ((PolyFueled.const (Encodable.encode horizon)).pair PolyFueled.id)).of_eq (fun _ => rfl)⟩
 
 lemma haltingClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
     PolySentenceCodes (fun n => haltingClaimSentence (input n)) :=
@@ -299,14 +403,45 @@ structure SemidecidableComputation (truth : ℕ → Prop) where
   input_poly : PolyNatCodes input
   truth_iff : ∀ n, truth n ↔ CodeHalts machine (input n)
 
-/-- A decidable predicate reduced to a bounded run of one fixed repository machine.
+/-- The paper's `f` — an arbitrary computable step budget, presented by the program `⌜f⌝`
+that computes it.  The program is a *constant* in the day-indexed claim name, so no
+efficiency hypothesis on `f` is needed anywhere; `ComputableHorizon.of` shows every
+computable `f` has one.
+Paper node: `thm:pac`, `thm:pazfc`, `thm:dontwait` -/
+structure ComputableHorizon (steps : ℕ → ℕ) where
+  program : Nat.Partrec.Code
+  program_spec : ∀ n, steps n ∈ program.eval n
+
+/-- **Every** computable step budget is admissible — the paper's "let `f` be any computable
+function", with no polynomial restriction.  `N+` for `ComputableHorizon`. -/
+noncomputable def ComputableHorizon.of {steps : ℕ → ℕ} (h : Computable steps) :
+    ComputableHorizon steps :=
+  have hc : ∃ c : Nat.Partrec.Code, c.eval = (steps : ℕ →. ℕ) :=
+    Nat.Partrec.Code.exists_code.mp (Partrec.nat_iff.mp h)
+  ⟨hc.choose, fun n => by rw [hc.choose_spec]; exact Part.mem_some _⟩
+
+/-- A concrete `N+` witnessing that the deferred horizon is a *strict* strengthening: the
+diagonal Ackermann function is a legitimate `f`, and it is not even primitive recursive,
+so `PolyNatCodes` provably rejects it (`not_polyNatCodes_ack`). -/
+noncomputable def ComputableHorizon.ackermann : ComputableHorizon (fun n => _root_.ack n n) :=
+  .of (_root_.computable₂_ack.comp Computable.id Computable.id)
+
+/-- The evaluated-horizon schema could only ever name a `PolyNatCodes` step budget, and that
+class does not contain the diagonal Ackermann function — which `ComputableHorizon.ackermann`
+does.  This is the exact content of restoring the paper's "any computable `f`". -/
+lemma not_polyNatCodes_ack : ¬Nonempty (PolyNatCodes (fun n => _root_.ack n n)) := by
+  rintro ⟨⟨_, hpoly⟩⟩
+  exact _root_.not_primrec_ack_self hpoly.primrec
+
+/-- A decidable predicate reduced to a bounded run of one fixed repository machine, the
+step budget being an arbitrary computable `f` named by its program.
 Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 structure BoundedComputation (truth : ℕ → Prop) where
   machine : Nat.Partrec.Code
   input : ℕ → ℕ
-  steps : ℕ → ℕ
   input_poly : PolyNatCodes input
-  steps_poly : PolyNatCodes steps
+  steps : ℕ → ℕ
+  horizon : ComputableHorizon steps
   truth_iff : ∀ n, truth n ↔ CodeHaltsWithin machine (input n) (steps n)
 
 /-! ## Non-vacuity witnesses for the operational presentations -/
@@ -349,15 +484,16 @@ noncomputable def ordinarySemidecidableComputation :
 
 /-- **N+.** The bounded-computation premise is inhabited, with a genuinely index-varying
 truth predicate: `Code.zero` on input `0` finishes within `n` interpreter steps exactly
-when `n` is positive (a zero clock always fails).  Kind `N+`, provenance (a): every field
-is discharged in-project, with no operational hypothesis.
+when `n` is positive (a zero clock always fails).  The horizon is the identity `f n = n`,
+named by a program via `ComputableHorizon.of`.  Kind `N+`, provenance (a): every field is
+discharged in-project, with no operational hypothesis.
 Paper node: `thm:pac`, `thm:pazfc` -/
-def ordinaryBoundedComputation : BoundedComputation (fun n => 0 < n) where
+noncomputable def ordinaryBoundedComputation : BoundedComputation (fun n => 0 < n) where
   machine := Nat.Partrec.Code.zero
   input _ := 0
-  steps n := n
   input_poly := ⟨_, PolyFueled.const 0⟩
-  steps_poly := ⟨_, PolyFueled.id⟩
+  steps n := n
+  horizon := .of Computable.id
   truth_iff n := by
     cases n with
     | zero => simp [CodeHaltsWithin, Nat.Partrec.Code.evaln]
@@ -377,21 +513,20 @@ noncomputable def representedDecidableClaimsOfComputation
     (C : BoundedComputation truth) :
     RepresentedDecidableClaims DP truth where
   sentence n := boundedHaltingClaimSentence
-    (boundedHaltingClaimInput C.machine (C.input n) (C.steps n))
+    (boundedHaltingClaimInput C.machine (C.input n) C.horizon.program n)
   sentence_poly := RpnSentenceCodes.ofPolySentenceCodes <| boundedHaltingClaimSentence_poly <|
     boundedHaltingClaimInput_poly
-      ⟨_, PolyFueled.const (Encodable.encode C.machine)⟩ C.input_poly C.steps_poly
+      ⟨_, PolyFueled.const (Encodable.encode C.machine)⟩ C.input_poly C.horizon.program
   provable_of_true n hn := by
     apply Q.boundedHalting_enters
-    apply (re_complete (T := T) universalCodeHaltsWithin_re).mp
-    simpa using (C.truth_iff n).mp hn
+    apply (re_complete (T := T) universalBoundedHalts_re).mp
+    exact (universalBoundedHalts_claimInput _ _ _ _ _ (C.horizon.program_spec n)).mpr
+      ((C.truth_iff n).mp hn)
   disprovable_of_false n hn := by
     apply Q.boundedFailure_refutes
-    apply (re_complete (T := T) universalCodeHaltsWithinFailure_re).mp
-    intro hb
-    apply hn
-    apply (C.truth_iff n).mpr
-    exact (universalCodeHaltsWithin_claimInput C.machine (C.input n) (C.steps n)).mp hb
+    apply (re_complete (T := T) universalBoundedFailure_re).mp
+    exact (universalBoundedFailure_claimInput _ _ _ _ _ (C.horizon.program_spec n)).mpr
+      (fun hb => hn ((C.truth_iff n).mpr hb))
 
 /-- Constructor for the inconsistent-theory-claims boundary from a concrete computation.
 Paper node: `thm:incons` -/
@@ -437,32 +572,35 @@ noncomputable def representedHaltingClaims
     apply (re_complete (T := T) universalCodeHalts_re).mp
     simpa using hn
 
+/-- The `thm:dontwait` claim family: `⌜qₙ⌝ halts on ⌜yₙ⌝ within ⌜f⌝(⌜n⌝) steps`, with the
+horizon term deferred so that no growth bound on `f` is needed. -/
 noncomputable def representedBoundedHaltingClaims
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (Q : ComputationTheoryPresentation DP T)
-    (machines : ℕ → Nat.Partrec.Code) (inputs steps : ℕ → ℕ)
+    (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
     (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
-    (hs : PolyNatCodes steps) :
+    (hh : ComputableHorizon horizons) :
     RepresentedDecidableClaims DP
-      (fun n => CodeHaltsWithin (machines n) (inputs n) (steps n)) where
+      (fun n => CodeHaltsWithin (machines n) (inputs n) (horizons n)) where
   sentence n := boundedHaltingClaimSentence
-    (boundedHaltingClaimInput (machines n) (inputs n) (steps n))
+    (boundedHaltingClaimInput (machines n) (inputs n) hh.program n)
   sentence_poly := RpnSentenceCodes.ofPolySentenceCodes <| boundedHaltingClaimSentence_poly
-    (boundedHaltingClaimInput_poly hm hi hs)
+    (boundedHaltingClaimInput_poly hm hi hh.program)
   provable_of_true n hn := by
     apply Q.boundedHalting_enters
-    apply (re_complete (T := T) universalCodeHaltsWithin_re).mp
-    simpa using hn
+    apply (re_complete (T := T) universalBoundedHalts_re).mp
+    exact (universalBoundedHalts_claimInput _ _ _ _ _ (hh.program_spec n)).mpr hn
   disprovable_of_false n hn := by
     apply Q.boundedFailure_refutes
-    apply (re_complete (T := T) universalCodeHaltsWithinFailure_re).mp
-    simpa using hn
+    apply (re_complete (T := T) universalBoundedFailure_re).mp
+    exact (universalBoundedFailure_claimInput _ _ _ _ _ (hh.program_spec n)).mpr hn
 
 /-! ## Direct paper-facing consumers -/
 
 /-- Finitistic-consistency belief, with the representation boundary discharged by a
-concrete computation.
+concrete computation.  The horizon `f` of `C` is an arbitrary computable function, named in
+the claim by its program (`ComputableHorizon`) and left unevaluated — the paper's class.
 Paper node: `thm:pac` -/
 theorem lic_belief_finitistic_consistency_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
@@ -477,7 +615,8 @@ theorem lic_belief_finitistic_consistency_ofComputation
   lic_belief_finitistic_consistency P DP consistentWithin
     (representedDecidableClaimsOfComputation Q C) hconsistent hworld
 
-/--
+/-- Same statement and same arbitrary-computable-horizon class as `thm:pac`; only the
+supplied finite-consistency predicate differs.
 Paper node: `thm:pazfc` -/
 theorem lic_belief_stronger_theory_consistency_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
@@ -544,7 +683,8 @@ theorem lic_learns_provable_nonhalting_patterns_ofComputation
     (representedHaltingClaims Q machines inputs hm hi)
     (fun n => Q.halting_refutes _ (hloops n)) hworld
 
-/--
+/-- The horizon sequence is arbitrary computable — `hh` names its program rather than
+bounding its growth — which is the paper's "let `f` be any computable function".
 Paper node: `thm:dontwait` -/
 theorem lic_does_not_anticipate_halting_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
@@ -553,7 +693,7 @@ theorem lic_does_not_anticipate_halting_ofComputation
     (P : History) [IsLogicalInductor P DP]
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
     (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
-    (hh : PolyNatCodes horizons)
+    (hh : ComputableHorizon horizons)
     (hnever : ∀ n, ¬CodeHalts (machines n) (inputs n))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n
@@ -579,23 +719,27 @@ lemma computationRepresentation_positive_path
   refine ⟨0, Nat.Partrec.Code.evaln_sound (k := 1) ?_⟩
   simp [Nat.Partrec.Code.evaln]
 
-/-- `N+`: zero interpreter fuel supplies a concrete false bounded claim and exercises the
-separate complementary-schema/refutation path. -/
+/-- `N+`: the everywhere-zero program as horizon supplies a concrete false bounded claim
+(zero interpreter fuel) and exercises the separate complementary-schema/refutation path. -/
 lemma computationRepresentation_negative_path
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (Q : ComputationTheoryPresentation DP T) :
     ∃ k, (∼boundedHaltingClaimSentence
-      (boundedHaltingClaimInput Nat.Partrec.Code.zero 0 0)) ∈ DP.D k := by
+      (boundedHaltingClaimInput Nat.Partrec.Code.zero 0 Nat.Partrec.Code.zero 0)) ∈ DP.D k := by
   apply Q.boundedFailure_refutes
-  apply (re_complete (T := T) universalCodeHaltsWithinFailure_re).mp
-  rw [universalCodeHaltsWithin_claimInput]
-  simp [CodeHaltsWithin, Nat.Partrec.Code.evaln]
+  apply (re_complete (T := T) universalBoundedFailure_re).mp
+  refine (universalBoundedFailure_claimInput _ _ _ _ 0 ?_).mpr ?_
+  · exact Part.mem_some 0
+  · simp [CodeHaltsWithin, Nat.Partrec.Code.evaln]
 
 #print axioms universalCodeHalts_re
-#print axioms universalCodeHaltsWithin_computable
+#print axioms universalBoundedHalts_re
+#print axioms universalBoundedFailure_re
 #print axioms universalHaltingSchema_spec
-#print axioms universalBoundedSchemas_complementary
+#print axioms universalBoundedSchemas_exclusive
+#print axioms ComputableHorizon.ackermann
+#print axioms not_polyNatCodes_ack
 #print axioms ComputationClaim.godelCode_injective
 #print axioms computationClaimSentence_poly
 #print axioms representedDecidableClaimsOfComputation

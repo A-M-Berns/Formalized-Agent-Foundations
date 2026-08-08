@@ -541,9 +541,9 @@ READING = {
  'thm:halts': "`theoremDP T` is \u0393's provability process (\u0393 = any \u03a3\u2081-sound T \u2287 I\u03a3\u2081, the paper's \u2018represents computations\u2019); machines/inputs with their codes are the e.c. sequences; the sentence is the halting claim, and its price \u2192 1.",
  'thm:loops': "Dual of `thm:halts`: `hloops` is the paper's premise that T *proves* each non-halting; price \u2192 0.",
  'thm:incons': "`SemidecidableComputation` presents the paper's e.c. sequence of inconsistency claims (one machine, varying inputs, truth \u21d4 halting); both conjuncts of the paper's display appear (belief in inconsistency \u2192 1, in consistency \u2192 0).",
- 'thm:pac': "`BoundedComputation` carries the claim \u2018consistent up to horizon f(n)\u2019; its `steps_poly` field is the restriction the qualified tier records \u2014 the paper allows any computable f.",
- 'thm:pazfc': "Same shape as `thm:pac` for a stronger theory's consistency claims, same `steps_poly` restriction.",
- 'thm:dontwait': "The bounded-halting claim at horizon h(n) never fires (`hnever`), and the belief \u2192 0; `hh : PolyNatCodes horizons` restricts the paper's arbitrary computable horizon \u2014 the qualified tier's content.",
+ 'thm:pac': "`BoundedComputation` carries the claim \u2018consistent up to horizon f(n)\u2019; its `horizon : ComputableHorizon steps` field names the program \u231cf\u231d and asserts no growth bound, so any computable f is admissible \u2014 the paper's own class.",
+ 'thm:pazfc': "Same shape as `thm:pac` for a stronger theory's consistency claims, same arbitrary-computable-horizon class.",
+ 'thm:dontwait': "The bounded-halting claim at horizon f(n) never fires (`hnever`), and the belief \u2192 0; `hh : ComputableHorizon horizons` names \u231cf\u231d and leaves the term unevaluated in the claim, so the paper's arbitrary computable horizon is reached.",
 }
 
 def md_inline(s):
