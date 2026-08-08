@@ -1,3 +1,4 @@
+import LogicalInduction.Construction.Witnesses.PrefixMachine
 import LogicalInduction.Construction.Witnesses.QuoteCodeOfMarket
 
 /-!
@@ -558,6 +559,180 @@ Paper node: `def:ec`, `thm:ccee` -/
 lemma productLUV_rpnThresholdCodeSeq : LUV.RpnThresholdCodeSeq productLUV :=
   LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq productLUV_polyThresholdCodeSeq
 
+/-! ## Computability of the definitional-extension process
+
+`def:dedproc` asks only for computability — no clock — which is the whole reason the exact
+product is reachable here at all.  What the process does need is the two threshold families'
+emitters *as data*: `LUV.RpnThresholdCodeSeq` is `∃`-shaped and certifies efficient emission
+on the mesh index, whereas a process definition consumes a program.  This is the same
+named-beside-existential pattern as `DeductiveProcessComputation` beside
+`ComputableDeductiveProcess`. -/
+
+/-- A named program emitting a LUV family's threshold sentences at arbitrary encoded rational
+thresholds.
+Paper node: `def:dedproc` -/
+structure LUVThresholdComputation (X : ℕ → LUV) where
+  code : Nat.Partrec.Code
+  code_spec : ∀ m : ℕ,
+    Encodable.encode ((X m.unpair.1).gt (decodedQuotationRat m.unpair.2)) ∈ code.eval m
+
+lemma LUVThresholdComputation.computable {X : ℕ → LUV} (c : LUVThresholdComputation X) :
+    Computable fun m : ℕ =>
+      Encodable.encode ((X m.unpair.1).gt (decodedQuotationRat m.unpair.2)) := by
+  have heval : Partrec fun m : ℕ => c.code.eval m :=
+    Nat.Partrec.Code.eval_part.comp (Computable.const c.code) Computable.id
+  exact heval.of_eq fun m => Part.eq_some_iff.mpr (c.code_spec m)
+
+section
+attribute [local irreducible] Nat.sqrt
+
+/-- The schema instance is computable in its decoded arguments. -/
+lemma productSchemaInstance_computable {X W : ℕ → LUV}
+    (cX : LUVThresholdComputation X) (cW : LUVThresholdComputation W) :
+    Computable fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
+      productSchemaInstance X W p.1 p.2.1 p.2.2.1 p.2.2.2.1 p.2.2.2.2 := by
+  classical
+  refine Computable.encode_iff.mp ?_
+  have hn : Primrec fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.1 := Primrec.fst
+  have hkind : Primrec fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.1 := Primrec.fst.comp Primrec.snd
+  have hr : Primrec fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.2.1 :=
+    Primrec.fst.comp (Primrec.snd.comp Primrec.snd)
+  have hs : Primrec fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.2.2.1 :=
+    Primrec.fst.comp (Primrec.snd.comp (Primrec.snd.comp Primrec.snd))
+  have ht : Primrec fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.2.2.2 :=
+    Primrec.snd.comp (Primrec.snd.comp (Primrec.snd.comp Primrec.snd))
+  have heX : Computable fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
+      Encodable.encode ((X p.1).gt p.2.2.2.1) := by
+    have h := cX.computable.comp
+      (Primrec₂.natPair.to_comp.comp hn.to_comp (Primrec.encode.comp hs).to_comp)
+    simpa only [Nat.unpair_pair, decodedQuotationRat_encode] using h
+  have heW : Computable fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
+      Encodable.encode ((W p.1).gt p.2.2.2.2) := by
+    have h := cW.computable.comp
+      (Primrec₂.natPair.to_comp.comp hn.to_comp (Primrec.encode.comp ht).to_comp)
+    simpa only [Nat.unpair_pair, decodedQuotationRat_encode] using h
+  have heP : Primrec fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
+      Nat.pair 1 (Nat.pair productTag (Nat.pair p.1 (Encodable.encode p.2.2.1))) + 1 :=
+    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1)
+      (Primrec₂.natPair.comp (Primrec.const productTag)
+        (Primrec₂.natPair.comp hn (Primrec.encode.comp hr))))
+  have hk0 : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.1 = 0 :=
+    Primrec.eq.comp hkind (Primrec.const 0)
+  have hk1 : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.1 = 1 :=
+    Primrec.eq.comp hkind (Primrec.const 1)
+  have hmul : Primrec fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.2.2.1 * p.2.2.2.2 :=
+    ratMul_prim.comp hs ht
+  have hs0 : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ => (0 : ℚ) ≤ p.2.2.2.1 :=
+    ratLE_prim.comp (Primrec.const 0) hs
+  have ht0 : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ => (0 : ℚ) ≤ p.2.2.2.2 :=
+    ratLE_prim.comp (Primrec.const 0) ht
+  have hG0 : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
+      (0 : ℚ) ≤ p.2.2.2.1 ∧ (0 : ℚ) ≤ p.2.2.2.2 ∧ p.2.2.1 ≤ p.2.2.2.1 * p.2.2.2.2 :=
+    hs0.and (ht0.and (ratLE_prim.comp hr hmul))
+  have hG1 : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
+      (0 : ℚ) ≤ p.2.2.2.1 ∧ (0 : ℚ) ≤ p.2.2.2.2 ∧ p.2.2.2.1 * p.2.2.2.2 ≤ p.2.2.1 :=
+    hs0.and (ht0.and (ratLE_prim.comp hmul hr))
+  have hNeg : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.2.1 < 0 := by
+    have h : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ => (0 : ℚ) ≤ p.2.2.1 :=
+      ratLE_prim.comp (Primrec.const 0) hr
+    exact h.not.of_eq (fun p => by simp [not_le])
+  have hAnd : Computable fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
+      Nat.pair 2 (Nat.pair (Nat.pair 3
+        (Nat.pair (Encodable.encode ((X p.1).gt p.2.2.2.1))
+          (Encodable.encode ((W p.1).gt p.2.2.2.2))) + 1)
+        (Nat.pair 1 (Nat.pair productTag
+          (Nat.pair p.1 (Encodable.encode p.2.2.1))) + 1)) + 1 :=
+    Primrec.succ.to_comp.comp (Primrec₂.natPair.to_comp.comp (Computable.const 2)
+      (Primrec₂.natPair.to_comp.comp
+        (Primrec.succ.to_comp.comp (Primrec₂.natPair.to_comp.comp (Computable.const 3)
+          (Primrec₂.natPair.to_comp.comp heX heW)))
+        heP.to_comp))
+  have hOr : Computable fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
+      Nat.pair 2 (Nat.pair
+        (Nat.pair 1 (Nat.pair productTag
+          (Nat.pair p.1 (Encodable.encode p.2.2.1))) + 1)
+        (Nat.pair 4
+          (Nat.pair (Encodable.encode ((X p.1).gt p.2.2.2.1))
+            (Encodable.encode ((W p.1).gt p.2.2.2.2))) + 1)) + 1 :=
+    Primrec.succ.to_comp.comp (Primrec₂.natPair.to_comp.comp (Computable.const 2)
+      (Primrec₂.natPair.to_comp.comp heP.to_comp
+        (Primrec.succ.to_comp.comp (Primrec₂.natPair.to_comp.comp (Computable.const 4)
+          (Primrec₂.natPair.to_comp.comp heX heW)))))
+  have hTop : Computable fun _ : ℕ × ℕ × ℚ × ℚ × ℚ =>
+      Encodable.encode (⊤ : Sentence) := Computable.const _
+  refine ((hk0.decide.to_comp.cond (hG0.decide.to_comp.cond hAnd hTop)
+    (hk1.decide.to_comp.cond (hG1.decide.to_comp.cond hOr hTop)
+      (hNeg.decide.to_comp.cond heP.to_comp hTop))).of_eq (fun p => ?_))
+  rw [productSchemaInstance]
+  split_ifs with h0 hg0 h1 hg1 hneg
+  · simp only [h0, hg0, decide_true, cond_true, productAtom]
+    rfl
+  · simp [h0, hg0]
+  · simp only [h0, h1, hg1, decide_true, decide_false, cond_true, cond_false, productAtom]
+    rfl
+  · simp [h0, h1, hg1]
+  · simp only [h0, h1, hneg, decide_true, decide_false, cond_true, cond_false, productAtom]
+    rfl
+  · simp [h0, h1, hneg]
+
+/-- The job-code decoding is primitive recursive, so the schema enumerator is computable. -/
+lemma productDefSentence_computable {X W : ℕ → LUV}
+    (cX : LUVThresholdComputation X) (cW : LUVThresholdComputation W) :
+    Computable (productDefSentence X W) := by
+  have hn : Primrec fun e : ℕ => e.unpair.1 := Primrec.fst.comp Primrec.unpair
+  have h2 : Primrec fun e : ℕ => e.unpair.2 := Primrec.snd.comp Primrec.unpair
+  have hkind : Primrec fun e : ℕ => e.unpair.2.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp h2)
+  have h3 : Primrec fun e : ℕ => e.unpair.2.unpair.2 :=
+    Primrec.snd.comp (Primrec.unpair.comp h2)
+  have hcr : Primrec fun e : ℕ => e.unpair.2.unpair.2.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp h3)
+  have h4 : Primrec fun e : ℕ => e.unpair.2.unpair.2.unpair.2 :=
+    Primrec.snd.comp (Primrec.unpair.comp h3)
+  have hcs : Primrec fun e : ℕ => e.unpair.2.unpair.2.unpair.2.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp h4)
+  have hct : Primrec fun e : ℕ => e.unpair.2.unpair.2.unpair.2.unpair.2 :=
+    Primrec.snd.comp (Primrec.unpair.comp h4)
+  have hargs : Computable fun e : ℕ =>
+      ((e.unpair.1, e.unpair.2.unpair.1,
+        decodedQuotationRat e.unpair.2.unpair.2.unpair.1,
+        decodedQuotationRat e.unpair.2.unpair.2.unpair.2.unpair.1,
+        decodedQuotationRat e.unpair.2.unpair.2.unpair.2.unpair.2) :
+        ℕ × ℕ × ℚ × ℚ × ℚ) :=
+    (hn.pair (hkind.pair ((decodedQuotationRat_prim.comp hcr).pair
+      ((decodedQuotationRat_prim.comp hcs).pair
+        (decodedQuotationRat_prim.comp hct))))).to_comp
+  exact (productSchemaInstance_computable cX cW).comp hargs
+
+/-- **The product-definition process is computable** (`def:dedproc`).
+Paper node: `def:dedproc`, `thm:ccee` -/
+lemma productDefDP_computable {X W : ℕ → LUV}
+    (cX : LUVThresholdComputation X) (cW : LUVThresholdComputation W) :
+    ComputableDeductiveProcess (productDefDP X W) := by
+  have hlist : Computable (productStageList X W) := by
+    have hstep : Computable fun p : ℕ × List Sentence =>
+        productDefSentence X W (p.1 + 1) :: p.2 :=
+      Computable.list_cons.comp
+        ((productDefSentence_computable cX cW).comp
+          (Primrec.succ.to_comp.comp Computable.fst)) Computable.snd
+    refine (Computable.nat_rec Computable.id
+      (Computable.const [productDefSentence X W 0])
+      (hstep.comp₂ Computable.snd.to₂)).of_eq (fun k => ?_)
+    induction k with
+    | zero => rfl
+    | succ k ih => simpa [productStageList] using ih
+  have hkey : Computable fun k => Encodable.encode
+      ((sentenceDedup (productStageList X W k)).insertionSort sentenceCodeLE) :=
+    Computable.encode.comp
+      ((sentenceInsertionSort_prim.comp sentenceDedup_prim).to_comp.comp hlist)
+  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
+    (Partrec.nat_iff.mp hkey)
+  refine ⟨code, fun k => ?_⟩
+  rw [hcode]
+  exact Part.mem_some_iff.mpr (encode_toFinset_eq (productStageList X W k))
+
+end
+
 /-! ## The exact `thm:ccee` endpoint
 
 `lic_no_expected_net_update_conditional` is deductive-process generic and consumes the
@@ -607,6 +782,7 @@ theorem lic_no_expected_net_update_conditional_exact
 #print axioms productDefDP_union_consistentWithTheory
 #print axioms productLUV_valuesAt_union
 #print axioms productLUV_rpnThresholdCodeSeq
+#print axioms productDefDP_computable
 #print axioms lic_no_expected_net_update_conditional_exact
 
 end LogicalInduction
