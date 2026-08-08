@@ -501,10 +501,112 @@ theorem productLUV_valuesAt_union {B : DeductiveProcess} {X W : ℕ → LUV} {v 
     v.ValuesAt (productLUV n) (x * c) :=
   productLUV_valuesAt (PCWorld.consistentWithTheory_union_right hv) n hx hc
 
+/-! ## Threshold emission for the product family (`def:ec`)
+
+The product LUV's threshold *is* a single fresh atom, so its emitter is the same shape as
+the quotation atom's (`quoteAtom_mesh_encode_polyFueled`): a runtime `gcdc` reduction of the
+mesh rational under a fixed atom shell.  Crucially the family does not mention `X`, `W` or
+the weight at all — the emitted block is poly-sized in the index no matter what the weight
+is, which is exactly the barrier that forced the mesh substitution on the scaled-threshold
+route. -/
+
+attribute [local irreducible] Nat.sqrt in
+/-- One poly-fueled program emits the encoded product atom of day `m.unpair.1` at mesh
+threshold `i/k` from the packed query `⟨n,⟨k,i⟩⟩`.
+Paper node: `def:ec`, `thm:ccee` -/
+lemma productAtom_mesh_encode_polyFueled :
+    ∃ c, PolyFueled c (fun m => Encodable.encode (productAtom m.unpair.1
+      ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))) := by
+  obtain ⟨cg, hgcd⟩ := gcdc_polyFueled
+  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have hn := PolyFueled.left
+  have hk := PolyFueled.left.comp PolyFueled.right
+  have hi := PolyFueled.right.comp PolyFueled.right
+  have gPF := hgcd.comp (hi.pair hk)
+  have pgPF := predc_polyFueled.comp gPF
+  have numPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hi))
+  have denPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hk))
+  have h2num := had.comp (numPF.pair numPF)
+  have meshPF := ifzSel_polyFueled.comp
+    (((PolyFueled.const (Nat.pair 0 1)).pair (h2num.pair denPF)).pair hk)
+  have fullPF := ((PolyFueled.const 1).pair
+    ((PolyFueled.const productTag).pair (hn.pair meshPF))).succ_comp
+  refine ⟨_, fullPF.of_eq (fun m => ?_)⟩
+  rw [productAtom, encode_atom]
+  simp only [Nat.unpair_pair, ifzSelFn]
+  by_cases hk0 : m.unpair.2.unpair.1 = 0
+  · rw [if_pos hk0, hk0]
+    norm_num
+    rfl
+  · rw [if_neg hk0]
+    have hg : 0 < Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
+      Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
+    have hg1 : (Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1).pred + 1
+        = Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
+      Nat.succ_pred_eq_of_pos hg
+    rw [hg1, encode_rat_natCast_div hk0, two_mul]
+
+/-- The product family is polynomially threshold-codeable. -/
+lemma productLUV_polyThresholdCodeSeq : LUV.PolyThresholdCodeSeq productLUV := by
+  obtain ⟨c, hc⟩ := productAtom_mesh_encode_polyFueled
+  exact ⟨c, hc.of_eq (fun m => by rw [productLUV_gt])⟩
+
+/-- **`def:ec` for the quoted product.**  The block form used by
+`ConditionalExpectationQuote.left_codes`.
+Paper node: `def:ec`, `thm:ccee` -/
+lemma productLUV_rpnThresholdCodeSeq : LUV.RpnThresholdCodeSeq productLUV :=
+  LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq productLUV_polyThresholdCodeSeq
+
+/-! ## The exact `thm:ccee` endpoint
+
+`lic_no_expected_net_update_conditional` is deductive-process generic and consumes the
+reflection slack through `slack_tendsto`, so `slack ≡ 0` is a special case and neither the
+master theorem nor `ConditionalExpectationQuote` changes.  What changes is *which* process
+the endpoint is stated over: `base ∪ product-definitions` rather than bare base.  That is
+faithful — the paper's `Θ` contains the product term natively and a fresh-atom definitional
+extension is its propositional counterpart — but it is a different rendering from the mesh
+route's bare-base statement, and it is the honest cost of exactness here. -/
+
+/-- **`thm:ccee` at exact reflection**, for an **arbitrary** e.c. source family `X`, over the
+base process extended by the product definitions.  The left quoted product is the fresh atom
+family `productLUV`; every completed-theory world of the extended process values it at
+exactly `x · w (f n)`, with no slack and no positivity hypothesis on the weight.
+
+The weight enters as in the paper (`def:pgen`): `P`-generable against the market, presented
+through a LUV family `W` whose completed-world value *is* `w (f n)` — in the closed setting
+that family is the deferred-weight quote code's own LUV.
+Paper node: `thm:ccee` -/
+theorem lic_no_expected_net_update_conditional_exact
+    {P : History} {B : DeductiveProcess} {X W : ℕ → LUV}
+    [IsLogicalInductor P (B.union (productDefDP X W))]
+    (f : DeferralFunction) (Z' : ℕ → LUV) (w : ℕ → ℚ)
+    (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
+    (weight_generable : PGenerableRat P w)
+    (hX : LUV.RpnThresholdCodeSeq X) (hZ' : LUV.RpnThresholdCodeSeq Z')
+    (source_valued : ∀ n (v : PCWorld),
+      v.ConsistentWithTheory (B.union (productDefDP X W)) → ∃ x, v.ValuesAt (X n) x)
+    (weight_valued : ∀ n (v : PCWorld),
+      v.ConsistentWithTheory (B.union (productDefDP X W)) → v.ValuesAt (W n) (w (f n)))
+    (right_reflected : ∀ n (v : PCWorld),
+      v.ConsistentWithTheory (B.union (productDefDP X W)) →
+        v.ValuesAt (Z' n) ((X n).expect P (f n) * w (f n)))
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((B.union (productDefDP X W)).D n)) :
+    (fun n ↦ (productLUV n).expect P n) ≈ₙ fun n ↦ (Z' n).expect P n :=
+  lic_no_expected_net_update_conditional_ofRepresentation
+    (DP := B.union (productDefDP X W)) f X productLUV Z' w
+    weight_mem weight_generable hX productLUV_rpnThresholdCodeSeq hZ'
+    (fun _ => 0) tendsto_const_nhds source_valued
+    (fun n v hv x hx => ⟨x * (w (f n) : ℝ),
+      productLUV_valuesAt_union hv n hx (weight_valued n v hv), by simp⟩)
+    right_reflected hworld
+
 #print axioms PCWorld.holds_congr_atomCodes
 #print axioms productLUV_valuesAt
 #print axioms productExtensionWorld_holds_schema
 #print axioms productDefDP_union_consistentWithTheory
 #print axioms productLUV_valuesAt_union
+#print axioms productLUV_rpnThresholdCodeSeq
+#print axioms lic_no_expected_net_update_conditional_exact
 
 end LogicalInduction
