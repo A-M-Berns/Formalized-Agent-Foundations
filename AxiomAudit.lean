@@ -600,8 +600,12 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   atom prefixSentence enumeration enumeration_covers prefix_codes holds_prefix realizable
 #assert_fields BooleanQuoteCode
   code pos_complete neg_complete
+-- The step budget is now a `ComputableHorizon` (the paper's arbitrary computable `f`, named
+-- by its program) in place of the former `steps_poly : PolyNatCodes steps`, which restricted
+-- `f` to polynomial time.  `#assert_fields` freezes field *names* only, so the class change
+-- is recorded here explicitly.
 #assert_fields BoundedComputation
-  machine input steps input_poly steps_poly truth_iff
+  machine input input_poly steps horizon truth_iff
 #assert_fields CEEnumeration
   code halts outputs_sound
 #assert_fields CompactConditioningProcessComputation
@@ -610,6 +614,8 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   toAffineQuotePortfolio theory_coherent
 #assert_fields CompletedAffineQuoteEq
   toAffineQuotePortfolio theory_coherent
+#assert_fields ComputableHorizon
+  program program_spec
 #assert_fields ComputationTheoryPresentation
   theory_deltaOne process halting_enters halting_refutes boundedHalting_enters boundedFailure_refutes inconsistency_enters inconsistency_refutesConsistency
 #assert_fields ConditionalExpectationQuote

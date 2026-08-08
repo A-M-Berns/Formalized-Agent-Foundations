@@ -274,16 +274,14 @@ lemma theoremDP_hworld [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     simp only [eventFires, h] at hfires
     simpa only [eventAtom, h, boundedHaltingClaimSentence, computationClaimSentence, holds_atom,
       provabilityWorld_boundedHalting] using hfires
-  · -- tag 3: ∼bounded halting, via Σ₁-soundness
+  · -- tag 3: ∼bounded halting, via Σ₁-soundness and determinism of the horizon term
     simp only [eventFires, h] at hfires
     simp only [eventAtom, h, boundedHaltingClaimSentence, computationClaimSentence, holds_not,
       holds_atom, provabilityWorld_boundedHalting]
     intro hbh
-    have h1 : ¬ UniversalCodeHaltsWithin e.unpair.2 :=
-      (re_complete (T := T) universalCodeHaltsWithinFailure_re).mpr (by simpa using hfires)
-    have h2 : UniversalCodeHaltsWithin e.unpair.2 :=
-      (re_complete (T := T) universalCodeHaltsWithin_re).mpr (by simpa using hbh)
-    exact h1 h2
+    exact universalBoundedClaims_exclusive e.unpair.2
+      ⟨(re_complete (T := T) universalBoundedHalts_re).mpr (by simpa using hbh),
+        (re_complete (T := T) universalBoundedFailure_re).mpr (by simpa using hfires)⟩
   · -- tag 4: positive inconsistency
     simp only [eventFires, h] at hfires
     simpa only [eventAtom, h, inconsistencyClaimSentence, computationClaimSentence, holds_atom,
@@ -750,7 +748,9 @@ The other five `_ofComputation` meta-learning endpoints instantiate over `liaHis
 `theoremPresentation` + `theoremDP_hworld`. Only the caller's concrete computation and the
 (true) hypothesis about it remain. -/
 
-/-- `thm:pac`, unconditional over `LIA`.
+/-- `thm:pac`, unconditional over `LIA`, at the paper's horizon class: `C`'s step budget is
+any computable `f`, named by its program and evaluated by the arithmetic schema rather than
+by the sentence emitter.
 Paper node: `thm:pac` -/
 theorem lic_belief_finitistic_consistency_unconditional [𝗥₀ ⪯ T]
     (consistentWithin : ℕ → Prop) (C : BoundedComputation consistentWithin)
@@ -763,7 +763,8 @@ theorem lic_belief_finitistic_consistency_unconditional [𝗥₀ ⪯ T]
     (liaHistory (theoremDP T)) consistentWithin C hconsistent
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:pazfc`, unconditional over `LIA`.
+/-- `thm:pazfc`, unconditional over `LIA`, at the same arbitrary-computable-horizon class
+as `thm:pac`.
 Paper node: `thm:pazfc` -/
 theorem lic_belief_stronger_theory_consistency_unconditional [𝗥₀ ⪯ T]
     (strongerConsistentWithin : ℕ → Prop)
@@ -808,12 +809,13 @@ theorem lic_learns_provable_nonhalting_patterns_unconditional [𝗥₀ ⪯ T]
     (liaHistory (theoremDP T)) machines inputs hm hi hloops
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:dontwait`, unconditional over `LIA`.
+/-- `thm:dontwait`, unconditional over `LIA`.  `hh` supplies the horizon program for an
+arbitrary computable `f` — no growth bound — which is the paper's own quantifier.
 Paper node: `thm:dontwait` -/
 theorem lic_does_not_anticipate_halting_unconditional [𝗥₀ ⪯ T]
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
     (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
-    (hh : PolyNatCodes horizons)
+    (hh : ComputableHorizon horizons)
     (hnever : ∀ n, ¬CodeHalts (machines n) (inputs n)) :
     (fun n => liaHistory (theoremDP T) n
       ((representedBoundedHaltingClaims (theoremPresentation T) machines inputs horizons hm hi hh).sentence n))
