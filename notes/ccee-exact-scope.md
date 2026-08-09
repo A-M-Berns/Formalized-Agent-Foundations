@@ -1,9 +1,39 @@
-# `thm:ccee` exact valuation — feasibility assessment against the no-sacrifice bar
+# `thm:ccee` exact valuation — the route, what is built, and what it would cost to finish
 
-_2026-08-08, worktree `agent-af9bf8b7ea887acbd`. Written after landing components 1–4 of
-`notes/ccee-exact-valuation-plan.md` (commits `013a8a9`, `857e95d`, `ea28ab8`, `b80c610`);
-every claim below about what an endpoint takes or calls was made with the signature or the
-proof body open, and every named lemma was `rg`-confirmed to exist at the cited line._
+_2026-08-08. Written after landing the route's first four components (commits `013a8a9`,
+`857e95d`, `ea28ab8`, `b80c610`); every claim below about what an endpoint takes or calls
+was made with the signature or the proof body open, and every named lemma was
+`rg`-confirmed to exist at the cited line._
+
+## The route, and why it is shaped this way
+
+The goal is to replace the mesh product's `1/(n+1)` reflection slack — the one type-`(c)`
+substitution with a known downstream consumer — by **exact** left reflection for an
+arbitrary e.c. source family, i.e. a `ConditionalExpectationQuote` at `slack ≡ 0`.
+
+Three facts fix the shape, all verified against the code:
+
+1. **The master theorem needs no change.** `lic_no_expected_net_update_conditional`
+   (`Properties/SelfTrust.lean`) is deductive-process generic and consumes slack through
+   `slack_tendsto`; `slack ≡ 0` is a special case.
+2. **The certificate needs no change.** `ConditionalExpectationQuote`'s `slack` field
+   already admits `0` — `indicatorProductLUV_exact_left_reflected` inhabits it there for
+   indicator sources. No `#assert_fields` churn.
+3. **The extension is of the deductive process, not of the theory.** The blocker was
+   always the *emitter*: it cannot know `w (f n)`. But a deductive process is only
+   required computable, so it can enter defining biconditionals for fresh product atoms
+   directly. Propositionally this is exactly a definitional extension — fresh atoms plus
+   explicit definitions — which is why no new `T`-provability or internalization is
+   needed. The paper's first-order `Θ` contains the product *term* natively; this is its
+   propositional counterpart.
+
+What is built (`Construction/Witnesses/ProductDefinition.lean`): the fresh-tag process
+and its computability, the world-extension lemma, threshold emission, exact reflection at
+`slack = 0`, and the non-closed endpoint
+`lic_no_expected_net_update_conditional_exact`. The schema actually used is a **pair
+schema** over `(s,t)` guarded by `r ≤ s·t` / `s·t ≤ r`, which never names the weight's
+value — a change forced by the circularity described in (A2) below, and one that also
+removes the `w = 0` case split the obvious schema needs.
 
 ## The bar being assessed
 

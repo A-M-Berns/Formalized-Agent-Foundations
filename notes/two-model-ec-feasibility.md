@@ -85,8 +85,9 @@ there, the whole retrofit route should yield to the in-repo machine immediately.
 
 ## Incidental corrections fed back into the repo
 
-The spike surfaced two disclosure-prose defects, both queued to the de-slop wave: the
-model card's claim that Mathlib exposes no poly-time machine class (it exposes one
-with no theory — a materially different obstruction), and dangling citations of the
-retired `notes/next-session.md` at several disclosure sites (the substance survives in
-the adjacent docstrings; the pointers must become self-contained).
+The spike surfaced two disclosure-prose defects, both since fixed: the model card's
+claim that Mathlib exposes no poly-time machine class (it exposes one with no attached
+theory — a materially different obstruction, now stated that way in
+`Framework/Computable.lean`), and dangling citations of a retired planning note at
+several disclosure sites (the substance survived in the adjacent docstrings; the
+pointers are now self-contained).

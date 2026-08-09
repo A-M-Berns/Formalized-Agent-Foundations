@@ -7,8 +7,8 @@ import LogicalInduction.Properties.ExpectationProperties
 
 `Framework/Expectations.lean` and `Properties/ExpectationProperties.lean` state the world–value
 coherence of LUVs as **caller-supplied hypotheses** — `PCWorld.ValuesAt`, `WorldValued`, and
-`ExactTheoryPresentation` — with no arithmetic content behind them.  The M7-ERRATA-AUDIT finding
-**F7 item 3** asks for these to be *derived* from a certified LUV syntax rather than *assumed*.
+`ExactTheoryPresentation` — with no arithmetic content behind them.  This file derives them
+from a certified LUV syntax instead of assuming them.
 
 This file does exactly that for the `dd:luv-arith` class (`LUVArithmetic.lean`).  The one
 remaining premise is `ArithmeticLUVPresentation`: that the deductive process **reveals** the

@@ -130,7 +130,7 @@ def main() -> int:
         return 1
 
     # --- 3. per-label strength classification (F9, second half) ---------------
-    # notes/coverage-classification.md must classify exactly the non-excluded labels,
+    # scripts/coverage-classification.md must classify exactly the non-excluded labels,
     # each with a valid tier — no unclassified label, no stale row, no invented tier.
     classified: dict[str, str] = {}
     row = re.compile(r"^\|\s*([a-z]+:[a-zA-Z0-9_-]+)\s*\|\s*(\w+)\s*\|")

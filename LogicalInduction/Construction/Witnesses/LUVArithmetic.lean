@@ -4,10 +4,9 @@ import LogicalInduction.Construction.Witnesses.ComputationSyntax
 /-!
 # First-order arithmetic LUVs (`def:luv`, the certified threshold bridge)
 
-This file discharges the arithmetic half of the M7-ERRATA-AUDIT finding **F7**: it replaces
-the raw threshold-sentence abstraction (`Framework/Expectations.lean`'s `LUV.gt : ℚ → Sentence`
-with no internal meaning) by a *certified* first-order object, for the paper's own primary LUV
-class.
+This file replaces the raw threshold-sentence abstraction (`Framework/Expectations.lean`'s
+`LUV.gt : ℚ → Sentence`, which carries no internal meaning) by a *certified* first-order
+object, for the paper's own primary LUV class.
 
 ## Design decision `dd:luv-arith` (disclosed type-`(c)`)
 

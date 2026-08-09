@@ -12,8 +12,8 @@ Documentation quality was explicitly out of scope.
 In parallel, codex (gpt-5.6-sol, high reasoning, independent context) ran the same audit
 question over the same tree. Its findings were individually re-verified against the code
 before incorporation; attribution and my adjudication are marked per finding. This file
-**replaces** `notes/m7-errata-audit.md` (the 2026-07-24 pass), which was deleted at the
-start of this audit; nothing below is carried over from it.
+**replaces** the 2026-07-24 audit pass, whose file was deleted at the start of this
+audit; nothing below is carried over from it.
 
 Mechanical state at audit time: zero `sorry`, zero `axiom` declarations, no
 `native_decide`/`unsafe`/`@[implemented_by]` in the library; `AxiomAudit.lean` asserts
@@ -26,7 +26,7 @@ every listed endpoint clean of everything beyond `propext`/`Classical.choice`/
 
 Every finding below was triaged and, except where Anson ruled otherwise, **fixed** the
 same day by a parallel fixer wave (worktree branches, per-branch kernel gates, batched
-consolidation builds; details in `notes/next-session.md`). Outcomes:
+consolidation builds). Outcomes:
 
 * **F1** — docstring overclaim reverted; "Lower calibration — OPEN" recorded in the
   `dd:fuel` model card. The lower-calibration theorem itself remains the one deliberate

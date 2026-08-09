@@ -32,8 +32,8 @@ factors pins `productAtom n r` to exactly `x·c > r`, in both directions — i.e
 `ValuesAt (productLUV n) (x·c)`, with **no slack** and with no positivity hypothesis on `c`
 (the `c = 0` case is the `r < 0` axiom plus the negative schema, not a case split).
 
-This is a strict improvement on the route scoped in `notes/ccee-exact-valuation-plan.md`,
-which had the process compute `w (f n)` through `PGenerableRat.computable` and enter
+This is a strict improvement on the obvious schema, which has the process compute `w (f n)`
+through `PGenerableRat.computable` and enter
 `productAtom (n,r) ↔ (X n).gt (r / w (f n))`.  That is circular for a *closed* endpoint: the
 process must be fixed before the market it induces exists, so a process that consults its own
 market cannot be defined, and the weight would have to be narrowed from `def:pgen` to a

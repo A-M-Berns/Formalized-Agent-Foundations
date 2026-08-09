@@ -154,6 +154,18 @@ assertion starts failing and gets promoted to a plain clean assertion.
    witness for its own hypothesis. It is the one place on this page where a theorem is
    stated but not yet shown to be about anything.
 
+   One thing this boundary is *not*, and it is worth saying plainly because the word
+   "substitution" invites the opposite reading: choosing an efficiency notion is a
+   choice the paper explicitly leaves open. Immediately after `def:ec` it says its
+   framework "is not wedded to this definition," that stricter notions "would yield
+   'dumber' inductors with better runtimes, and vice versa," and that it picks
+   polynomial-time functions "because it has some closure properties that are convenient
+   for our purposes" (tex:757). So a different-but-honest efficiency class is a
+   variation the paper anticipates, not a departure from it. What is *not* thereby
+   licensed — and what the model card states as the open question — is the claim that
+   this particular class contains the paper's, which is why the calibration gap above is
+   disclosed rather than waved through.
+
    The model bites in a second, subtler place, and it is what keeps most of the
    qualified rows qualified. Within the fuel model there are two ways to meter a
    sentence sequence: by **symbol count** (`RpnSentenceCodes`) — the faithful reading of
@@ -245,8 +257,8 @@ All three are disclosed at every affected statement, not just here.
 
 ## What is left, and what it is blocked on
 
-The 6 qualified nodes do **not** all trace back to the two modeling boundaries, and it
-would be easy to assume they do. Only two are genuinely boundary-blocked; the rest are
+The 3 qualified nodes do **not** all trace back to the two modeling boundaries, and it
+would be easy to assume they do. Only two are genuinely boundary-blocked; the third is
 unfinished implementation with a known route. Estimates are engineering judgment, not
 measurements — the ones marked *checked* were made after confirming the required lemmas
 exist, and the rest are structural reads that have twice moved upward on contact.
@@ -286,7 +298,7 @@ exist, and the rest are structural reads that have twice moved upward on contact
   a declaration that does not exist; corrected there.) The paper's own proof of `thm:ifp` is
   separately invalid — see erratum PE1.
 
-**Unfinished work, not obstruction (3).**
+**Unfinished work, not obstruction (1).**
 
 * **`thm:wubexp` — a proof route stronger than the statement needs** (2+ weeks, least
   scoped). Both endpoints reaching the paper's computability premise also take

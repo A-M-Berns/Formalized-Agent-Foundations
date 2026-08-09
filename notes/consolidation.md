@@ -37,7 +37,7 @@ Corollaries:
 2. **Green at every stopping point** still holds (CLAUDE.md rule 3). Small compiling
    commits; a consolidation move that breaks the build doesn't get committed half-done.
 3. **Endpoint inventory before touching anything.** Enumerate the actual public surface —
-   every `lic_*` consumer, every public constructor named in `notes/next-session.md`,
+   every `lic_*` consumer, every public constructor,
    the existence result — into one list. That list is both the input to the axiom sweep
    and the table of contents for the read-through. If a theorem isn't on the list, it's
    internal and can be renamed/moved/inlined freely; if it is, changes to it are
