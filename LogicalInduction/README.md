@@ -1,4 +1,4 @@
-# Logical Induction, formalized
+# Logical Induction
 
 A Lean 4 formalization of Garrabrant, Benson-Tilsen, Critch, Soares, Taylor,
 [*Logical Induction*](https://arxiv.org/abs/1609.03543) (arXiv:1609.03543v5).
