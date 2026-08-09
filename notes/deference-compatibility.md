@@ -61,7 +61,7 @@ recorded ("whether the slack is acceptable depends on the consuming argument").
 Their weight is a softmax over day-`f(n)` market prices, which is market-generable and
 matches `thm:ccee`'s `\pgenable` hypothesis; it is *not* a fixed polynomial-time rational
 sequence. This is independent evidence for the finding in
-[`ccee-exact-scope.md`](ccee-exact-scope.md) that narrowing `w` to `PolyRatCodes` would be
+[`boundary-propositional-substrate.md`](boundary-propositional-substrate.md) that narrowing `w` to `PolyRatCodes` would be
 worse than the slack it removes — it would drop the actual downstream consumer as well as
 the paper's own worked example.
 

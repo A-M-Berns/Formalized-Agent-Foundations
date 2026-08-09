@@ -90,7 +90,7 @@ arithmetic, has formalized nothing we didn't already assume.
    A stop-and-report ("Foundation doesn't expose X", "Mathlib lacks Y"), stated
    self-containedly at the site, is a *success*, not a failure. The current verified
    obstructions live in `LogicalInduction/README.md` ("Planned future work") and
-   `notes/two-model-ec-feasibility.md`.
+   `notes/boundary-efficiency-model.md`.
 
 ### Human read-through
 

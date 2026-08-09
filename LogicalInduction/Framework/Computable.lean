@@ -1603,7 +1603,7 @@ against a machine class.  Mathlib does define one (`Turing.TM2ComputableInPolyTi
 it carries no theory to build on — no composition, pairing, or closure results, no link to
 `Partrec`/`Primrec`, and no timed simulation lemmas, since every simulation in Mathlib is
 stated through the step-count-discarding `Turing.Respects`.  The bridge therefore requires
-first developing that missing theory; `notes/two-model-ec-feasibility.md` is the
+first developing that missing theory; `notes/boundary-efficiency-model.md` is the
 plan of record. -/
 
 /-- Polynomials do not majorize `2 ^ n`: the fuel model's size bound genuinely bites

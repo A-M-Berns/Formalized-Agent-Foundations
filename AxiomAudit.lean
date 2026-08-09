@@ -540,6 +540,27 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   indicatorProductLUV_exact_left_reflected
   lic_no_expected_net_update_conditional_closed
 
+-- Construction/Witnesses/ProductDefinition.lean — the exact-reflection route for the quoted
+-- product.  Fresh product atoms are defined by the deductive process itself (a definitional
+-- extension of the *process*, not of the theory), so a completed world values the product at
+-- exactly `x · w` — `slack = 0`, no positivity hypothesis on the weight.
+--
+-- This does **not** carry the `thm:ccee` row, and is inventoried so that its axiom
+-- cleanliness is gated rather than left to the file's own `#print axioms`.  Its endpoint is
+-- the non-closed rung: it takes `[IsLogicalInductor]` over `base ∪ product-definitions`
+-- rather than constructing one, and an atom-freshness premise the paper does not state.
+-- `lic_no_expected_net_update_conditional_closed` above remains the `thm:ccee` endpoint, at
+-- the disclosed `1/(n+1)` slack.  Why the closed rung costs more than the slack it would
+-- remove — the weight's quote needs `Computable (w ∘ f)`, available only from a market that
+-- is itself a function of the process — is in `notes/boundary-propositional-substrate.md`.
+#assert_axioms_clean
+  productDefDP_computable
+  productDefDP_union_consistentWithTheory
+  productLUV_valuesAt
+  productLUV_valuesAt_union
+  productLUV_rpnThresholdCodeSeq
+  lic_no_expected_net_update_conditional_exact
+
 -- Construction/Witnesses/ComputationDP.lean — unconditional-over-LIA capstones
 -- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above).
 -- The quotation family below discharges market/inductor/presentation/hworld; the

@@ -1,7 +1,9 @@
-# Two-model `def:ec` — feasibility spike (2026-07-29)
+# Boundary 1 — the efficiency model: what closing it would cost
 
-Read-only scoping of the plan to close the fuel-model efficiency boundary (the
-"Planned future work" item 1 in `LogicalInduction/README.md`): define efficient
+_Read-only feasibility spike, 2026-07-29._
+
+Scoping of the plan to close the fuel-model efficiency boundary (boundary 1 of
+*The two modeling boundaries* in `LogicalInduction/README.md`): define efficient
 computability at a genuine machine class, enumerate that class in the trading firm via
 a poly-overhead universal simulator, and keep the fuel calculus as the certification
 tool through the inclusion fuel-poly ⟹ machine-poly. Conducted against the installed

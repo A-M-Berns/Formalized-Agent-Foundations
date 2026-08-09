@@ -284,7 +284,7 @@ exist, and the rest are structural reads that have twice moved upward on contact
   endpoint would be stated over `base ∪ product-definitions` (a rendering with Tier-1
   precedent in `lic_conditioned_gated_ofComputations`, but not for this use), and an
   atom-freshness premise the paper does not state. Full assessment in
-  [`../notes/ccee-exact-scope.md`](../notes/ccee-exact-scope.md). The one known
+  [`../notes/boundary-propositional-substrate.md`](../notes/boundary-propositional-substrate.md). The one known
   downstream consumer does **not** need exactness — see the interface note above — so
   the mesh endpoint keeps the row.
 * **`thm:ifp` — the fuel class.** The transported trader needs a closure property the
@@ -310,13 +310,39 @@ exist, and the rest are structural reads that have twice moved upward on contact
   non-mesh route to the combination's value or a mesh argument that holds without per-LUV
   determinedness.
 
-**Closing boundary 1 itself** — the realistic route is a two-model architecture: define
-efficiency at a genuine machine class, let the trading firm enumerate it via poly-overhead
-universal simulation, and keep the fuel calculus as the certification tool through the easy
-inclusion (fuel-poly ⟹ machine-poly). A direct bridge theorem for the current class is
-judged unlikely: the fuel model lacks cheap poly-bit random-access state. A staged plan with
-effort estimates, scoped against what Mathlib actually provides, is in
-[`notes/two-model-ec-feasibility.md`](../notes/two-model-ec-feasibility.md).
+## Closing the boundaries
+
+Each of the two modeling boundaries has a scoped feasibility note, written against what
+the installed toolchain actually provides rather than against what one might hope for.
+Both conclude that the boundary is real; they differ in what it would cost and in what
+closing it would buy.
+
+**Boundary 1 — the efficiency model.** The realistic route is a two-model architecture:
+define efficiency at a genuine machine class, let the trading firm enumerate it via
+poly-overhead universal simulation, and keep the fuel calculus as the certification tool
+through the easy inclusion (fuel-poly ⟹ machine-poly). A direct bridge theorem for the
+current class is judged unlikely — the fuel model lacks cheap poly-bit random-access
+state. Closing it would free `thm:ifp`, the one endpoint whose restricting interface has
+no inhabitant, and would retire the calibration caveat that qualifies every efficiency
+certificate on this page. The staged plan, the two places Mathlib stops short (no timed
+simulation theory; `FinTM2` not enumerable as-is), and the effort estimate are in
+[`notes/boundary-efficiency-model.md`](../notes/boundary-efficiency-model.md).
+
+**Boundary 2 — the propositional substrate.** Here the note reaches a sharper and less
+expected conclusion: upgrading the substrate to first-order sentences would be
+research-scale *and would not buy what it appears to buy*. The paper's own `def:world`
+builds worlds by Boolean algebra over **prime sentences**, so this repo's propositional
+worlds are a faithful rendering of the paper's, not an approximation of them; and the
+paper's quoted product `⌜Xₙ · w > r⌝` is itself a prime sentence, so what relates it to
+`⌜Xₙ > r/s⌝` is not first-order syntax but **Θ**. The tractable move is therefore to
+supply those relating facts through the deductive process, which is the exact-valuation
+route — built as far as its own binding constraint, with that constraint named. What
+closing this boundary would and would not free, and the worked `thm:ccee` instance, are in
+[`notes/boundary-propositional-substrate.md`](../notes/boundary-propositional-substrate.md).
+
+The third qualified node, `thm:wubexp`, is deliberately absent here: it is not
+boundary-blocked. Its route is known and its cost is implementation, which is why it sits
+under *unfinished work* above rather than carrying a feasibility note of its own.
 
 ## Faithfulness
 

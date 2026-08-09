@@ -347,7 +347,7 @@ All with verified obstructions, none blocking: (1) dd:fuel lower calibration —
 route is a two-model architecture (`def:ec` at a machine class, firm enumerates it via
 poly-overhead universal simulation, fuel calculus kept as certification tool via the easy
 inclusion); the pure bridge theorem is judged unlikely (~10–15%); staged plan in
-`notes/two-model-ec-feasibility.md`. (2) Injective deferral → bare `f n > n`: **DONE (2026-07-30)** — the
+`notes/boundary-efficiency-model.md`. (2) Injective deferral → bare `f n > n`: **DONE (2026-07-30)** — the
 `thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` chain now assumes only `def:deferralfunc`
 (`f n > n` plus poly-clocked emission) at all twelve endpoints. The originally-registered
 fix (sign-gated fibre sum forcing each `|dₖ| → 0`) was *unsound* and stays retired; the

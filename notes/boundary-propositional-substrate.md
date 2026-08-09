@@ -1,11 +1,41 @@
-# `thm:ccee` exact valuation — the route, what is built, and what it would cost to finish
+# Boundary 2 — the propositional substrate: what closing it would cost
 
-_2026-08-08. Written after landing the route's first four components (commits `013a8a9`,
-`857e95d`, `ea28ab8`, `b80c610`); every claim below about what an endpoint takes or calls
-was made with the signature or the proof body open, and every named lemma was
+_2026-08-08. Two questions, answered against the installed toolchain and the paper text:
+what would it take to close this boundary outright, and what does the one endpoint it
+blocks (`thm:ccee`) actually cost to fix? Every claim about what an endpoint takes or
+calls was made with the signature or the proof body open, and every named lemma was
 `rg`-confirmed to exist at the cited line._
 
-## The route, and why it is shaped this way
+## Part 1 — closing the boundary outright: expensive, and aimed at the wrong mechanism
+
+The obvious reading of this boundary is "sentences should be first-order, and then the
+quoted product would be a term, and `thm:ccee` would be exact for free." That reading is
+wrong twice over, and it is worth recording why before anyone prices the work.
+
+**The paper's own worlds are propositional.** `def:world` (tex:727) calls a world p.c.
+iff `W(φ)` "is determined by Boolean algebra from the truth values that `W` assigns to the
+prime sentences of `φ`", and `pcworlds`/`cworlds` are built from that. This repo's
+`Sentence := Propositional.Formula ℕ` and `PCWorld := Boolean.Valuation ℕ` — with atoms
+already being codes — render exactly that. The world notion is not the gap.
+
+**First-order syntax would not dissolve the `thm:ccee` obstruction.** In the paper,
+`⌜Xₙ · w_{f(n)} > r⌝` is a *prime* sentence — propositionally an atom, just as here. What
+relates it to `⌜Xₙ > r/s⌝` is not the term structure but **Θ**, which contains arithmetic
+and proves the relating facts. So the paper gets those facts free from its theory; this
+repo has to supply them. That is a question about the deductive process, not about the
+formula type, which is why Part 2's route is the tractable one.
+
+**And the cost would be research-scale.** `Sentence` is touched by 68 of 77 files;
+`PCWorld` occurs ~1250 times across 55; Foundation supplies **no** propositional-consistency
+or prime-sentence notion over first-order formulas (its first-order side is
+model-theoretic), so the p.c.-world layer would have to be built from scratch and the
+entire framework re-derived on it. Unlike boundary 1 this is not stageable — market,
+traders, and criterion all move together.
+
+**Verdict: do not close this boundary.** Supply the missing relating facts through the
+process instead. What that costs is Part 2.
+
+## Part 2 — the `thm:ccee` exact-valuation route, and why it is shaped this way
 
 The goal is to replace the mesh product's `1/(n+1)` reflection slack — the one type-`(c)`
 substitution with a known downstream consumer — by **exact** left reflection for an
