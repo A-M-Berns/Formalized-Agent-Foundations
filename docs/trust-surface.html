@@ -1717,7 +1717,7 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     </section>
   </div>
   <div class="reading-note"><span class="reading-tag">How the panes line up</span> The c.e. premise is <code>CEEnumeration</code>: a program whose dovetailed run returns ⌜source i⌝ at every index — no clock. The padded repetition the paper builds inside its proof is <code>EfficientRepeatedEnumeration.ofCE</code>, padding with <code>source 0</code> (the <code>sound</code> field forbids ⊤-padding); <code>hjoint</code> is Γ ∪ φ‾ consistent, stagewise.</div>
-  <footer class="audit-note"><span class="audit-tag">What to check</span> <code>lic_uniform_nonDogmatism_ofCE</code> takes the paper&#x27;s own premises (tex:1540-1546): a c.e. source — <code>CEEnumeration</code>, a program whose dovetailed run returns <code>⌜source i⌝</code> at every index, with no clock — and stagewise joint consistency of Γ ∪ φ̄.  The padded efficient repetition the paper builds <em>inside</em> its proof (tex:5651-5656) is constructed by <code>EfficientRepeatedEnumeration.ofCE</code>, padding with <code>source 0</code> because the <code>sound</code> field (correctly) forbids padding from outside the source&#x27;s range.  History: earlier revisions of this row asserted that no c.e.→repetition constructor existed, while <code>ofCE</code> existed and was consumed by <code>thm:strict</code> — the fourth unclaimed-discharge instance; see the 2026-08-03 ledger entry</footer>
+  <footer class="audit-note"><span class="audit-tag">What to check</span> <code>lic_uniform_nonDogmatism_ofCE</code> takes the paper&#x27;s own premises (tex:1540-1546): a c.e. source — <code>CEEnumeration</code>, a program whose dovetailed run returns <code>⌜source i⌝</code> at every index, with no clock — and stagewise joint consistency of Γ ∪ φ̄.  The padded efficient repetition the paper builds <em>inside</em> its proof (tex:5651-5656) is constructed by <code>EfficientRepeatedEnumeration.ofCE</code>, padding with <code>source 0</code> because the <code>sound</code> field (correctly) forbids padding from outside the source&#x27;s range</footer>
 </article>
 
 <article class="node" id="thm-ob">
@@ -3938,4 +3938,4 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
 })();
 </script>
 
-<!-- trust-surface-sources: a322eaa0feb9e58ad862634281b4666622850b136bf3ff1d2acc754171435538 -->
+<!-- trust-surface-sources: ffc55bda2749651f387a598cc275a1b1768c35ad053f2a6f28518d3f2e30f1f9 -->

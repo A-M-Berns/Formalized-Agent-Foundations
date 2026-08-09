@@ -6,7 +6,7 @@ on top of [Foundation](https://github.com/FormalizedFormalLogic/Foundation) and 
 The flagship formalization is **Logical Induction** (Garrabrant et al.,
 arXiv:1609.03543) in `LogicalInduction/` — near-complete; see
 `LogicalInduction/README.md` for the trust-surface summary and
-`notes/faithfulness-audit-2026-07-28.md` for the finding ledger. **The paper is the
+`notes/faithfulness-audit-2026-08-08.md` for the current audit. **The paper is the
 spec** (`notes/1609.03543v5-main.tex`); every paper-facing theorem carries the paper's
 real `\label` in a `Paper node:` docstring line, checked two-way by
 `scripts/check-paper-nodes.sh`. The `dd:*` design-decision labels used in docstrings
@@ -112,10 +112,9 @@ statement-level audit over the top-level theorems, hunting specifically for: vac
 theorems (hypotheses unsatisfiable/unrealizable); conclusion-in-hypothesis squeezes;
 oversold stubs; type-`(c)` substitutions; degenerate non-vacuity (constant-sequence
 witnesses); and off-loaded steps. Where possible, non-vacuity is discharged **by the
-construction** rather than a stand-in witness. The 2026-07-28 audit + fix wave
-(`notes/faithfulness-audit-2026-07-28.md`) is the model: every finding either repaired
-at the statement level or pinned to a verified obstruction, with the ledger keeping
-its own corrected misjudgments visible.
+construction** rather than a stand-in witness. The fresh 2026-08-08 audit
+(`notes/faithfulness-audit-2026-08-08.md`) is the current snapshot: every qualification
+is tied to the final statement surface or a verified obstruction.
 
 ### Consolidation discipline (Anson, standing — see `notes/consolidation.md`)
 

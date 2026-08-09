@@ -4,7 +4,7 @@ _Last reviewed: 2026-07-23 against arXiv:1609.03543v5._
 
 This ledger records defects in the source paper rather than discrepancies introduced by the
 Lean development. Paper errata are intentionally excluded from
-[`faithfulness-audit-2026-07-28.md`](faithfulness-audit-2026-07-28.md), whose scope is the
+[`faithfulness-audit-2026-08-08.md`](faithfulness-audit-2026-08-08.md), whose scope is the
 faithfulness and completeness of this repository.
 
 ## PE1 — Closure under Finite Perturbations (`thm:ifp`)

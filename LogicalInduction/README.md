@@ -346,11 +346,10 @@ under *unfinished work* above rather than carrying a feasibility note of its own
 
 ## Faithfulness
 
-The statement surface was hardened by fresh-context adversarial audit (independent
-auditors plus a cross-family model check) and a fix wave that repaired every finding at
-the statement level or pinned it to a verified obstruction; the finding-by-finding
-ledger — including its own corrected misjudgments — is
-[`notes/faithfulness-audit-2026-07-28.md`](../notes/faithfulness-audit-2026-07-28.md).
+The current statement surface was checked by a fresh, current-state adversarial audit.
+Its findings are a snapshot of the final signatures and verified obstructions, without
+the superseded diagnoses or repair history of earlier passes:
+[`notes/faithfulness-audit-2026-08-08.md`](../notes/faithfulness-audit-2026-08-08.md).
 The process surfaced five errata in the paper itself, recorded with repairs in
 [`notes/logical-induction-paper-errata.md`](../notes/logical-induction-paper-errata.md).
 
