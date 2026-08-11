@@ -19,7 +19,7 @@ inputs to the public constructor.
 namespace LogicalInduction
 namespace FeedbackTruth
 
-open AffineCombination PrefixPatchCompile
+open AffineCombination PrefixPatchCompile Filter Topology
 
 attribute [local irreducible] Nat.sqrt
 
@@ -393,41 +393,94 @@ noncomputable def sequencePoly
 
 /-! ## Semantic package -/
 
-lemma sequence_value_zero
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+/-- The value the sparse sequence takes in a completed world, on either branch: `0` off
+schedule, and the determination residual of `A_{f i}` on the active day `f (i+1)`. -/
+lemma sequence_value_eq
+    {As : ℕ → AffineCombination} {P : History}
     {truth : ℕ → ℝ} {f : DeferralFunction}
-    (hdet : DeterminedViaTheory As P DP truth)
     (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
     {fa fd : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k))
-    (m : ℕ) (v : PCWorld) (hv : v.ConsistentWithTheory DP) :
-    (sequence As C fa fd m).value P v.payout = 0 := by
+    {m : ℕ} (hm : feedbackFlag f fa fd m = 1) (v : PCWorld) :
+    (sequence As C fa fd m).value P v.payout =
+      (As (f (feedbackIndex f fa fd m))).value P v.payout -
+        truth (f (feedbackIndex f fa fd m)) := by
   unfold sequence
-  by_cases hm : feedbackFlag f fa fd m = 0
-  · simp [hm, AffineCombination.value]
-  · have hm1 : feedbackFlag f fa fd m = 1 :=
-      (feedbackFlag_zero_or_one f fa fd m).resolve_left hm
-    rw [if_neg hm]
-    have hsource := sourceIndex_eq_of_flag f hstrict hspec hm1
-    have heq :
-        (⟨EF.add (As (sourceIndex f fa fd m)).const
-            (EF.mul (EF.const (-1)) (EF.const (C.value (feedbackIndex f fa fd m)))),
-          (As (sourceIndex f fa fd m)).terms⟩ : AffineCombination).value P v.payout =
-          (As (sourceIndex f fa fd m)).value P v.payout -
-            (C.value (feedbackIndex f fa fd m) : ℝ) := by
-      simp [AffineCombination.value]
-      ring
-    rw [heq, hsource, hdet _ v hv, C.agrees]
+  rw [if_neg (by omega)]
+  have hsource := sourceIndex_eq_of_flag f hstrict hspec hm
+  have heq :
+      (⟨EF.add (As (sourceIndex f fa fd m)).const
+          (EF.mul (EF.const (-1)) (EF.const (C.value (feedbackIndex f fa fd m)))),
+        (As (sourceIndex f fa fd m)).terms⟩ : AffineCombination).value P v.payout =
+        (As (sourceIndex f fa fd m)).value P v.payout -
+          (C.value (feedbackIndex f fa fd m) : ℝ) := by
+    simp [AffineCombination.value]
     ring
+  rw [heq, hsource, C.agrees]
+
+/-- On an active day the source index is at least the tolerance launch index: the deadline
+identity `f (i + 1) = m` plus strict monotonicity reflects `m ≥ f (N + 1)` back to
+`i ≥ N`, and `f i > i` then puts the *affine* index `f i` past `N` too. -/
+lemma le_source_of_flag
+    (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
+    {fa fd : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k))
+    {N m : ℕ} (hm : feedbackFlag f fa fd m = 1) (hmN : f (N + 1) ≤ m) :
+    N ≤ f (feedbackIndex f fa fd m) := by
+  have hdeadline := feedbackFlag_spec f hstrict hspec hm
+  have hle : f (N + 1) ≤ f (feedbackIndex f fa fd m + 1) := by rw [hdeadline]; exact hmN
+  have hN : N ≤ feedbackIndex f fa fd m := by
+    have := hstrict.le_iff_le.1 hle
+    omega
+  exact hN.trans (f.lt (feedbackIndex f fa fd m)).le
+
+/-- **The sparse feedback sequence's completed-world value vanishes uniformly.**
+
+Only *approximate* determination of `As` is used, with a residual stream tending to zero.
+On the active day `f (i+1)` the sequence is `A_{f i}` centred at the computed value of
+`truth (f i)`, so a completed world values it at exactly the determination residual at
+index `f i` — and `f i → ∞` along the schedule, so the residual is eventually below any
+tolerance.  This is what lets the threshold mesh of a LUV combination, which
+`def:affthmval` determines only up to its `O(1/n)` mesh error, still supply a feedback
+bridge. -/
+lemma sequence_value_vanishing
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    {truth err : ℕ → ℝ} {f : DeferralFunction}
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (herr : Tendsto err atTop (𝓝 0))
+    (C : FeedbackTruthComputation truth f)
+    (hstrict : StrictlyIncreasingDeferral f)
+    {fa fd : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k)) :
+    ∀ ε > 0, ∀ᶠ m in atTop, ∀ v : PCWorld, v.ConsistentWithTheory DP →
+      |(sequence As C fa fd m).value P v.payout| ≤ ε := by
+  intro ε hε
+  obtain ⟨N, hN⟩ := Metric.tendsto_atTop.1 herr ε hε
+  rw [Filter.eventually_atTop]
+  refine ⟨f (N + 1), fun m hm v hv => ?_⟩
+  by_cases hflag : feedbackFlag f fa fd m = 0
+  · have hzero : (sequence As C fa fd m).value P v.payout = 0 := by
+      simp [sequence, hflag, AffineCombination.value]
+    rw [hzero, abs_zero]
+    exact hε.le
+  · have hm1 : feedbackFlag f fa fd m = 1 :=
+      (feedbackFlag_zero_or_one f fa fd m).resolve_left hflag
+    rw [sequence_value_eq C hstrict hspec hm1 v]
+    have hidx : N ≤ f (feedbackIndex f fa fd m) :=
+      le_source_of_flag f hstrict hspec hm1 hm
+    have hsmall := hN _ hidx
+    rw [Real.dist_eq, sub_zero] at hsmall
+    exact (hdet _ v hv).trans ((le_abs_self _).trans hsmall.le)
 
 lemma sequence_bounded
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth : ℕ → ℝ} {f : DeferralFunction}
+    {truth err : ℕ → ℝ} {f : DeferralFunction}
     (hpoly : PolySequence As)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ n, (As n).magnitude P ≤ 1)
-    (hdet : DeterminedViaTheory As P DP truth)
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (herr : Tendsto err atTop (𝓝 0))
     (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
     {fa fd : ℕ}
@@ -437,7 +490,11 @@ lemma sequence_bounded
     BoundedAffinePrices (sequence As C fa fd) P := by
   obtain ⟨B, hB0, hB⟩ := hbounded
   obtain ⟨v, hv⟩ := exists_consistentWithTheory DP hworld
-  refine ⟨2 * B + 1, by positivity, ?_⟩
+  obtain ⟨M0, hM0⟩ := herr.bddAbove_range
+  set M : ℝ := max M0 0 with hMdef
+  have hMerr : ∀ n, err n ≤ M := fun n => (hM0 ⟨n, rfl⟩).trans (le_max_left _ _)
+  have hM0le : (0 : ℝ) ≤ M := le_max_right _ _
+  refine ⟨2 * B + 1 + M, by positivity, ?_⟩
   intro m n
   unfold sequence
   by_cases hm : feedbackFlag f fa fd m = 0
@@ -447,9 +504,10 @@ lemma sequence_bounded
       (feedbackFlag_zero_or_one f fa fd m).resolve_left hm
     rw [if_neg hm]
     have hsource := sourceIndex_eq_of_flag f hstrict hspec hm1
-    have htruth : |(C.value (feedbackIndex f fa fd m) : ℝ)| ≤ B + 1 := by
-      rw [C.agrees, ← hdet _ v hv, ← hsource]
-      let i := sourceIndex f fa fd m
+    have htruth : |(C.value (feedbackIndex f fa fd m) : ℝ)| ≤ B + 1 + M := by
+      rw [C.agrees, ← hsource]
+      set i := sourceIndex f fa fd m with hi
+      have hres := hdet i v hv
       have hdiff := (As i).abs_value_sub_price_le_magnitude P v.payout i
         (hpoly.terms_rank i) (by
           intro φ
@@ -457,12 +515,19 @@ lemma sequence_bounded
           split <;> norm_num) (hP i)
       have hprice0 := hB i i
       have hmag0 := hmag i
-      calc
-        |(As i).value P v.payout| =
-            |((As i).value P v.payout - (As i).price P i) + (As i).price P i| := by ring_nf
-        _ ≤ |(As i).value P v.payout - (As i).price P i| +
-              |(As i).price P i| := abs_add_le _ _
-        _ ≤ B + 1 := by linarith
+      have hMi := hMerr i
+      have hval : |(As i).value P v.payout| ≤ B + 1 := by
+        calc
+          |(As i).value P v.payout| =
+              |((As i).value P v.payout - (As i).price P i) + (As i).price P i| := by ring_nf
+          _ ≤ |(As i).value P v.payout - (As i).price P i| +
+                |(As i).price P i| := abs_add_le _ _
+          _ ≤ B + 1 := by linarith
+      rw [abs_le] at hval hres
+      rw [abs_le]
+      obtain ⟨hv1, hv2⟩ := hval
+      obtain ⟨hr1, hr2⟩ := hres
+      constructor <;> linarith
     have hprice := hB (sourceIndex f fa fd m) n
     have heq :
         (⟨EF.add (As (sourceIndex f fa fd m)).const
@@ -476,16 +541,24 @@ lemma sequence_bounded
     rw [abs_le] at hprice htruth
     constructor <;> linarith
 
-/-- Public constructor for the `FeedbackTruthSequence` boundary.
-Normalization is deliberately external: `hA`, `hP`, and `hworld` provide the ordinary
-paper BCS/market premises, while `C` contains only the delayed computation.
+/-- **Public constructor for the `FeedbackTruthSequence` boundary.**
+Normalization is deliberately external: `hpoly`, `hbounded`, `hmag`, `hP`, and `hworld`
+provide the ordinary paper BCS/market premises, while `C` contains only the delayed
+computation.
+
+Determination enters only *approximately*: `hdet` bounds each completed world's
+disagreement with the advertised `truth n` by `err n`, and `herr` sends that residual to
+zero.  Exact determination is the `err = 0` instance (`feedbackTruthSequence_ofDetermined`).
+The slack is what carries the LUV mesh, which `def:affthmval` determines only to within
+its `O(1/n)` mesh error.
 Paper node: `thm:wubaff` -/
 noncomputable def feedbackTruthSequence
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth : ℕ → ℝ} {f : DeferralFunction}
+    {truth err : ℕ → ℝ} {f : DeferralFunction}
     (hpoly : PolySequence As)
     (hbounded : BoundedAffinePrices As P)
-    (hdet : DeterminedViaTheory As P DP truth)
+    (hdet : ApproxDeterminedViaTheory As P DP truth err)
+    (herr : Tendsto err atTop (𝓝 0))
     (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
     (hmag : ∀ n, (As n).magnitude P ≤ 1)
@@ -497,21 +570,37 @@ noncomputable def feedbackTruthSequence
   have hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k) := by
     simpa [fa, fd, ecClock] using Classical.choose_spec (Classical.choose_spec f.fueled)
   exact {
-    determined := ⟨0, tendsto_const_nhds, hdet.approx⟩
+    determined := ⟨err, herr, hdet⟩
     sequence := sequence As C fa fd
     poly := sequencePoly hpoly C hstrict fa fd hspec
-    bounded := sequence_bounded hpoly hbounded hmag hdet C hstrict hspec hP hworld
+    bounded := sequence_bounded hpoly hbounded hmag hdet herr C hstrict hspec hP hworld
     magnitude := by
       intro m
       rw [sequence_magnitude]
       split
       · simp
       · exact hmag _
-    zero_value := sequence_value_zero hdet C hstrict hspec
+    value_vanishing := sequence_value_vanishing hdet herr C hstrict hspec
     feedback_price := by
       intro k
       rw [sequence_price_at As C hstrict hspec P k, C.agrees]
   }
+
+/-- The exactly-determined instance of `feedbackTruthSequence`, at zero residual. -/
+noncomputable def feedbackTruthSequence_ofDetermined
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    {truth : ℕ → ℝ} {f : DeferralFunction}
+    (hpoly : PolySequence As)
+    (hbounded : BoundedAffinePrices As P)
+    (hdet : DeterminedViaTheory As P DP truth)
+    (C : FeedbackTruthComputation truth f)
+    (hstrict : StrictlyIncreasingDeferral f)
+    (hmag : ∀ n, (As n).magnitude P ≤ 1)
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    FeedbackTruthSequence As truth P DP f :=
+  feedbackTruthSequence hpoly hbounded hdet.approx tendsto_const_nhds C hstrict hmag hP
+    hworld
 
 /-! ## Consumers with both feedback boundaries discharged -/
 
@@ -536,7 +625,8 @@ theorem lic_wubaff_ofComputation
       (fun i ↦ (As i).price P i) truth ≈ₙ (fun _ ↦ 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
-  let bridge := feedbackTruthSequence hpoly hbounded hdet C hstrict hmag hP hworld
+  let bridge := feedbackTruthSequence_ofDetermined hpoly hbounded hdet C hstrict hmag hP
+    hworld
   exact AffineCombination.lic_wubaff hpoly hW hstrict hsupport
     (FeedbackEmission.feedbackTraderEmissionSigns hpoly hW hstrict)
     bridge hWdiv hmag hworld
@@ -597,19 +687,49 @@ theorem boundedCombination_wubaff_ofComputation
   have hboundedScaled : BoundedAffinePrices
       (fun n ↦ (As n).scale (.const q)) P :=
     (h.boundedPrices hP).scaleRat q
-  let bridge := feedbackTruthSequence (h.poly.scaleRat q) hboundedScaled
+  let bridge := feedbackTruthSequence_ofDetermined (h.poly.scaleRat q) hboundedScaled
     hdetScaled C hstrict h.unitNormalization.magnitude_le_one hP hworld
   exact FeedbackEmission.boundedCombination_wubaff_ofFeedbackTruth h hW hdet hstrict
     hsupport bridge hWdiv hworld
 
-/-- `thm:wubexp` with the normalized threshold mesh's delayed truth computation exposed
-directly.  The threshold mesh, feedback traders, and sparse truth sequence are all concrete.
+/-- **`thm:wubexp` from the paper's own premises.**  The threshold mesh, its feedback
+traders, and its sparse delayed-truth sequence are all constructed here; nothing about the
+sequence is assumed beyond what tex:1822-1832 assumes.
+
+The semantic premises are exactly the paper's: `hdet` is `def:affthmval` — every completed
+world assigns the *combination* `Aₙ` the same value `truth n` — and `hvalued` is the
+representation premise that each completed world values the component LUVs somehow
+(`W(X)` being a supremum, paper worlds always do).  Neither pins a component LUV's value
+across worlds, so `[(1, X), (-1, X)]` for a wholly undetermined `X` is covered.  `C` is
+the paper's operational premise: one program emits `thmval` of the mesh by the next
+deferral deadline.
+
+*Why the mesh route survives combination-level determination.*  Meshing is nonlinear
+(each LUV is replaced by a rounded threshold bundle), so the precision-`n` mesh of a
+combination-determined sequence is **not** determined: two completed worlds may split the
+determined total differently across components and mesh to different values.  What
+`lem:conluvapprox` gives is quantitative — each world's mesh value is within
+`shareNorm/n` of the determined value, hence any two agree to within twice that
+(`WorldValued.normalizedMesh_approxDetermined`), a residual that vanishes
+(`meshErrorBound_tendsto_zero`).  Affine provability induction needs no more than that:
+`affine_provind_theory_tendsto_zero` learns the price of a sequence whose completed-world
+values merely tend to zero uniformly.  So the feedback bridge is built at
+`ApproxDeterminedViaTheory`, not `DeterminedViaTheory`.
+
+This replaces the earlier route through `LUVCombination.ExactTheoryPresentation`, which
+forced *every component LUV* to be Θ-determined — strictly stronger than `def:affthmval`,
+and the qualification recorded against this node by the 2026-08-08 audit (finding B1).
+That structure is no longer used by any `thm:wubexp` endpoint.
+
+Kind `C`; provenance: `hdet`, `hvalued`, `hshare`, `hW`, `hWdiv`, `hstrict`, `hsupport`
+(a) — the paper's own hypotheses; `C` (a) — the paper's deadline-bounded truth program,
+in the `dd:fuel` efficiency model; `hworld` (a) — finite-stage plausible worlds.
 Paper node: `thm:wubexp` -/
 theorem luv_wubexp_ofComputation
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : LUVCombination.BoundedSequence As P)
-    (hexact : LUVCombination.ExactTheoryPresentation As DP)
+    (hvalued : LUVCombination.WorldValued As DP)
     {truth : ℕ → ℝ} (hdet : LUVCombination.DeterminedViaTheory As P DP truth)
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     {W : ℕ → EF} (hW : PGenerableWeighting W)
@@ -624,17 +744,17 @@ theorem luv_wubexp_ofComputation
       (fun i ↦ (As i).expect P i) truth ≈ₙ (fun _ ↦ 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
-  let meshTruth := LUVCombination.normalizedMeshTruth As P DP hworld b
-  have C' : FeedbackTruthComputation meshTruth f := by
-    simpa only [meshTruth] using C
-  have hmeshDet : AffineCombination.DeterminedViaTheory
-      (LUVCombination.normalizedMesh As b) P DP meshTruth := by
-    simpa only [meshTruth] using
-      (hexact.normalizedMesh_determined (P := P) hworld b)
+  have hmeshDet : AffineCombination.ApproxDeterminedViaTheory
+      (LUVCombination.normalizedMesh As b) P DP
+      (LUVCombination.normalizedMeshTruth As P DP hworld b)
+      (LUVCombination.meshErrorBound As P b) :=
+    hvalued.normalizedMesh_approxDetermined hdet hworld b
+  have herr : Tendsto (LUVCombination.meshErrorBound As P b) atTop (𝓝 0) :=
+    LUVCombination.meshErrorBound_tendsto_zero b hshare
   let bridge := feedbackTruthSequence (h.normalizedMesh_poly b)
-    (h.normalizedMesh_boundedPrices b hP) hmeshDet C' hstrict
+    (h.normalizedMesh_boundedPrices b hP) hmeshDet herr C hstrict
     (LUVCombination.normalizedMesh_magnitude_le_one b hshare) hP hworld
-  exact FeedbackEmission.luv_wubexp_ofFeedbackTruth h hexact.toWorldValued hdet b hshare
+  exact FeedbackEmission.luv_wubexp_ofFeedbackTruth h hvalued hdet b hshare
     hW hWdiv hstrict hsupport hworld bridge
 
 #print axioms feedbackTruthSequence

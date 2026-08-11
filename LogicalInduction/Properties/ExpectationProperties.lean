@@ -1747,8 +1747,23 @@ lemma normalizedMesh_errorNegligible (As : ℕ → LUVCombination) (P : History)
     rw [hrewrite]
     exact mul_le_mul_of_nonneg_right hci hmag0
 
-/-- Combination-level determination (`def:affthmval`) plus per-world LUV values make the
-diagonal mesh approximately determined, with the negligible `meshErrorBound`. -/
+/-- The diagonal mesh-error budget vanishes for a share-bounded sequence.  This is
+`lem:conluvapprox`'s `O(1/n)` in the form the feedback bridge consumes: the residual by
+which completed worlds may disagree about the *mesh* of a combination-determined sequence
+tends to zero, so affine provability induction still learns its price. -/
+lemma meshErrorBound_tendsto_zero {As : ℕ → LUVCombination} {P : History} (b : ℚ)
+    (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ)) :
+    Tendsto (meshErrorBound As P b) atTop (𝓝 0) := by
+  have hq := (meshNormScale_pos b).le
+  have h2q : (0 : ℝ) ≤ 2 * ((meshNormScale b : ℚ) : ℝ) := by
+    exact mul_nonneg (by norm_num) hq
+  refine squeeze_zero (fun n => (normalizedMesh_errorNegligible As P b).1 n)
+    (fun n => ?_)
+    (tendsto_const_div_succ_atTop_nhds_zero (2 * ((meshNormScale b : ℚ) : ℝ) * (b : ℝ)))
+  refine (min_le_right _ _).trans ?_
+  have hn : (0 : ℝ) < (n : ℝ) + 1 := by positivity
+  gcongr
+  exact hshare n
 lemma WorldValued.normalizedMesh_approxDetermined
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     (h : WorldValued As DP)

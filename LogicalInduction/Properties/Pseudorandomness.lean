@@ -1755,10 +1755,17 @@ lemma feedbackWeightedBias_asympEq_zero
 
 /-- Conclusion-free sparse sequence used to obtain delayed feedback from affine
 provability induction.  At day `f(k+1)` its diagonal price is exactly the delayed quote
-error for `A_{f k}`; every completed-theory world values it at zero.  The polynomial
-sequence and normalization data render the paper's premise that `ThmValue(A_{f k})` is
-computable within `poly(f(k+1))`: a bounded simulation of that program, combined with the
-deferral schedule, emits the sparse family literally.
+error for `A_{f k}`; completed-theory worlds value it within a tolerance that vanishes
+along the diagonal.  The polynomial sequence and normalization data render the paper's
+premise that `ThmValue(A_{f k})` is computable within `poly(f(k+1))`: a bounded simulation
+of that program, combined with the deferral schedule, emits the sparse family literally.
+
+`value_vanishing` is deliberately *not* exact zero-valuedness.  Affine provability
+induction only needs the completed-world value to tend to zero uniformly
+(`affine_provind_theory_tendsto_zero`), and the extra room is exactly what the threshold
+mesh of a LUV combination needs: `def:affthmval` determines a *combination*, so its mesh
+is determined only up to the `O(1/n)` mesh error, never exactly.  Every exactly
+zero-valued sequence satisfies this field trivially.
 Paper node: `thm:wubaff`, `thm:wubexp` -/
 structure FeedbackTruthSequence
     (As : ℕ → AffineCombination) (truth : ℕ → ℝ)
@@ -1769,14 +1776,14 @@ structure FeedbackTruthSequence
   poly : PolySequence sequence
   bounded : BoundedAffinePrices sequence P
   magnitude : ∀ n, (sequence n).magnitude P ≤ 1
-  zero_value : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
-    (sequence n).value P v.payout = 0
+  value_vanishing : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld,
+    v.ConsistentWithTheory DP → |(sequence n).value P v.payout| ≤ ε
   feedback_price : ∀ k,
     (sequence (f (k + 1))).price P (f (k + 1)) =
       (As (f k)).price P (f (k + 1)) - truth (f k)
 
-/-- Affine provability induction converts the explicit sparse zero-valued sequence into
-the delayed truth-price bridge needed by the feedback trader. -/
+/-- Affine provability induction converts the explicit sparse vanishing-valued sequence
+into the delayed truth-price bridge needed by the feedback trader. -/
 lemma FeedbackTruthSequence.accurate
     {As : ℕ → AffineCombination} {truth : ℕ → ℝ}
     {P : History} {DP : DeductiveProcess} {f : DeferralFunction}
@@ -1784,8 +1791,8 @@ lemma FeedbackTruthSequence.accurate
     (bridge : FeedbackTruthSequence As truth P DP f)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     DeferralFeedbackAccurate As truth P f := by
-  have hlearn := bridge.poly.affine_provind_theory_eq P DP bridge.bounded
-    ⟨1, bridge.magnitude⟩ hworld 0 bridge.zero_value
+  have hlearn := bridge.poly.affine_provind_theory_tendsto_zero P DP bridge.bounded
+    ⟨1, bridge.magnitude⟩ hworld bridge.value_vanishing
   apply asympEq_iff_eventuallyWithin.2
   intro ε hε
   have hevent := asympEq_iff_eventuallyWithin.1 hlearn ε hε

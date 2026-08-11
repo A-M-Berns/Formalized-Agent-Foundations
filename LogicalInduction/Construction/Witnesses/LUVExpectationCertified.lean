@@ -1,3 +1,4 @@
+import LogicalInduction.Construction.Witnesses.FeedbackTruth
 import LogicalInduction.Construction.Witnesses.LUVDeductiveProcess
 import LogicalInduction.Construction.Witnesses.LUVSyntax
 import LogicalInduction.Properties.ExpectationAffine
@@ -445,25 +446,22 @@ theorem exppolymax_arith {As : ℕ → LUVCombination} {P : History} {T : Arithm
 `dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation* hypothesis
 discharged from arithmetic over `luvThresholdDP`.
 
-Three inputs stay assumed.  `hdet` is determination via `Θ` (`def:affthmval`) together with the
-resulting truth stream — a semantic object, not a computable oracle, so it is given rather than
-derived; this one *is* the paper's premise, at the paper's combination level.  `emit` is the
-syntactic emission certificate for the positive and negative sign branches of the feedback
-trader — the literal coefficient and sentence streams witnessing that the trader is efficiently
-computable — constructed in `FeedbackEmission.lean`.
+Two inputs stay assumed, and both are the paper's own.  `hdet` is determination via `Θ`
+(`def:affthmval`) together with the resulting truth stream — a semantic object, not a
+computable oracle, so it is given rather than derived.  `C` is the paper's operational
+premise, "`thmval` computable by the next deferral deadline", at the normalized threshold
+mesh the trader actually quotes.
 
-`bridge` is **not** a paper premise, and this endpoint does not construct it: it is *assumed*
-here.  It is the sparse affine feedback sequence the paper builds inside `app:wub` (zero-valued
-in every completed world; day-`f (k+1)` price equal to `A_{f k}`'s price minus its truth value),
-lifted to the *normalized threshold mesh* of `As` rather than to `As` itself.  A constructor for
-it exists — `FeedbackTruth.feedbackTruthSequence`, fed by the paper's deadline-bounded truth
-program `FeedbackTruthComputation` — but applying it at the mesh needs the mesh to be
-`AffineCombination.DeterminedViaTheory`, and the only route to that in-repo
-(`ExactTheoryPresentation.normalizedMesh_determined`) assumes each *component* LUV is
-`Θ`-determined, which is strictly stronger than `def:affthmval`.  This endpoint takes `bridge`
-directly precisely so it does not carry that strengthening; the cost is that the premise is
-operational rather than the paper's.  See the `thm:wubexp` row of
-`scripts/coverage-classification.md` and finding B1 of `notes/faithfulness-audit-2026-08-08.md`.
+Everything else the argument needs is constructed: the feedback traders' emission
+certificates (`FeedbackEmission.feedbackTraderEmissionSigns`) and the sparse delayed-truth
+affine sequence (`FeedbackTruth.feedbackTruthSequence`).  The bridge is built at
+*approximate* determination, so no per-component-LUV determinedness is assumed anywhere;
+see `FeedbackTruth.luv_wubexp_ofComputation` for why the mesh route survives
+combination-level determination.  This retires the `LUVCombination.ExactTheoryPresentation`
+qualification recorded by finding B1 of `notes/faithfulness-audit-2026-08-08.md`.
+
+Kind `C`; provenance: `hAs`, `h`, `hdet`, `hshare`, `hWgen`, `hWdiv`, `hstrict`, `hsupport`
+(a); `C` (a), in the `dd:fuel` efficiency model.
 Paper node: `thm:wubexp` -/
 theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -476,16 +474,14 @@ theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : Arithmetic
     {W : ℕ → EF} (hWgen : PGenerableWeighting W) (hWdiv : DivergentWeighting W P)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (hsupport : WeightingSupportedOnDeferralImage W P f)
-    (emit : AffineCombination.FeedbackTraderEmissionSigns
-      (h.normalizedMesh_poly b) hWgen hstrict)
-    (bridge : AffineCombination.FeedbackTruthSequence
-      (LUVCombination.normalizedMesh As b)
+    (C : FeedbackTruth.FeedbackTruthComputation
       (LUVCombination.normalizedMeshTruth As P (L.luvThresholdDP T)
-        (L.luvThresholdDP_hworld T) b) P (L.luvThresholdDP T) f) :
+        (L.luvThresholdDP_hworld T) b) f) :
     weightedBias (fun i => (W i).denote P)
       (fun i => (As i).expect P i) truth ≈ₙ (fun _ => 0) :=
-  h.wubexp (L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
-    hdet b hshare hWgen hWdiv hstrict hsupport (L.luvThresholdDP_hworld T) emit bridge
+  FeedbackTruth.luv_wubexp_ofComputation h
+    (L.worldValued_ofArithmetic (L.luvArithmeticPresentation T) As hAs)
+    hdet b hshare hWgen hWdiv hstrict (L.luvThresholdDP_hworld T) C hsupport
 
 /-! ## Certified liminf/limsup coherence (`thm:expcoh`, `thm:perexpkno`)
 

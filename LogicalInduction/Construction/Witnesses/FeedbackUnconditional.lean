@@ -98,21 +98,21 @@ theorem boundedCombination_wubaff_ofComputation_unconditional
 
 /-- `thm:wubexp` over the constructed `LIA`: the concrete normalized threshold mesh, its
 feedback traders, and its delayed truth sequence yield recurring unbiasedness for bounded LUV
-combinations.  The deadline-bounded truth program `C` is the paper's explicit operational input.
+combinations.  The deadline-bounded truth program `C` is the paper's explicit operational
+input; `hdet` (`def:affthmval`) and `hvalued` (the representation premise) are its explicit
+semantic ones.
 
-`hexact` is **not** a paper input.  `LUVCombination.ExactTheoryPresentation` fixes one
-completed-theory value for every *component* LUV of every `As n`; the paper (`def:affthmval`,
-tex:1822-1832) requires only that the signed *combination* be determined via `Θ`, which `hdet`
-already supplies.  The two differ: `[(1, X), (-1, X)]` is combination-determined for a wholly
-undetermined `X`, yet admits no `ExactTheoryPresentation`.  It is assumed here only because it
-is the in-repo route to `AffineCombination.DeterminedViaTheory` for the normalized threshold
-mesh, which the feedback bridge needs.  See finding B1 of
-`notes/faithfulness-audit-2026-08-08.md`.
+The premises are now exactly tex:1822-1832's.  This endpoint previously assumed
+`LUVCombination.ExactTheoryPresentation`, which fixes one completed-theory value for every
+*component* LUV and is strictly stronger than determination of the signed combination —
+`[(1, X), (-1, X)]` is combination-determined for a wholly undetermined `X` yet admits no
+`ExactTheoryPresentation`.  The mesh feedback bridge is now built from approximate
+determination instead; see `FeedbackTruth.luv_wubexp_ofComputation`.
 Paper node: `thm:wubexp` -/
 theorem luv_wubexp_ofComputation_unconditional
     {As : ℕ → LUVCombination}
     (h : LUVCombination.BoundedSequence As (liaHistory (theoremDP T)))
-    (hexact : LUVCombination.ExactTheoryPresentation As (theoremDP T))
+    (hvalued : LUVCombination.WorldValued As (theoremDP T))
     {truth : ℕ → ℝ}
     (hdet : LUVCombination.DeterminedViaTheory
       As (liaHistory (theoremDP T)) (theoremDP T) truth)
@@ -127,7 +127,7 @@ theorem luv_wubexp_ofComputation_unconditional
     weightedBias (fun i ↦ (W i).denote (liaHistory (theoremDP T)))
       (fun i ↦ (As i).expect (liaHistory (theoremDP T)) i) truth ≈ₙ (fun _ ↦ 0) := by
   haveI := feedbackLIA T
-  exact luv_wubexp_ofComputation h hexact hdet b hshare hW hWdiv hstrict
+  exact luv_wubexp_ofComputation h hvalued hdet b hshare hW hWdiv hstrict
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩) C hsupport
 
 #print axioms lic_wubaff_ofComputation_unconditional

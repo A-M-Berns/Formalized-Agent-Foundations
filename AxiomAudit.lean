@@ -606,7 +606,7 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 #assert_fields AffineCombination.FeedbackTraderEmissionSigns
   positive negative
 #assert_fields AffineCombination.FeedbackTruthSequence
-  determined sequence poly bounded magnitude zero_value feedback_price
+  determined sequence poly bounded magnitude value_vanishing feedback_price
 #assert_fields AffineCombination.PolySequence
   termCount coefficient sentence termCount_poly const_poly coefficient_poly sentence_poly terms_eq const_rank coefficient_rank const_closed coefficient_closed
 #assert_fields AffineQuoteEq
