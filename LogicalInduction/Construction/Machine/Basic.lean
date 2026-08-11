@@ -99,7 +99,7 @@ def Act.apply : Act Γ → (Stack → List Γ) → Stack → List Γ
 /-- One action changes the length of any one stack by at most one. This is the whole
 content of "the step count is a time measure": it bounds output size by input size plus
 running time. -/
-theorem Act.length_apply_le (act : Act Γ) (S : Stack → List Γ) (k : Stack) :
+lemma Act.length_apply_le (act : Act Γ) (S : Stack → List Γ) (k : Stack) :
     (act.apply S k).length ≤ (S k).length + 1 := by
   cases act with
   | push j x =>
@@ -129,11 +129,11 @@ def runFor (M : Machine Γ) : ℕ → Cfg Γ M.Λ → Option (Cfg Γ M.Λ)
 
 @[simp] theorem runFor_zero (M : Machine Γ) (c : Cfg Γ M.Λ) : runFor M 0 c = some c := rfl
 
-theorem runFor_succ (M : Machine Γ) (t : ℕ) (c : Cfg Γ M.Λ) :
+lemma runFor_succ (M : Machine Γ) (t : ℕ) (c : Cfg Γ M.Λ) :
     runFor M (t + 1) c = (stepCfg M c).bind (runFor M t) := rfl
 
 /-- Runs concatenate, and their lengths add. -/
-theorem runFor_add (M : Machine Γ) (s t : ℕ) (c : Cfg Γ M.Λ) :
+lemma runFor_add (M : Machine Γ) (s t : ℕ) (c : Cfg Γ M.Λ) :
     runFor M (s + t) c = (runFor M s c).bind (runFor M t) := by
   induction s generalizing c with
   | zero => simp
@@ -163,20 +163,20 @@ makes `seq` (below) a construction on control states alone. -/
 def RunsInTime (M : Machine Γ) (x y : List Γ) (t : ℕ) : Prop :=
   ∃ s ≤ t, ∃ q : M.Λ, runFor M s (initCfg M x) = some ⟨q, layout y⟩ ∧ Halts M ⟨q, layout y⟩
 
-theorem RunsInTime.mono {M : Machine Γ} {x y : List Γ} {t t' : ℕ} (h : RunsInTime M x y t)
+lemma RunsInTime.mono {M : Machine Γ} {x y : List Γ} {t t' : ℕ} (h : RunsInTime M x y t)
     (ht : t ≤ t') : RunsInTime M x y t' := by
   obtain ⟨s, hs, q, hrun, hhalt⟩ := h
   exact ⟨s, hs.trans ht, q, hrun, hhalt⟩
 
 /-! ### Time bounds output size -/
 
-theorem length_store_stepCfg_le {M : Machine Γ} {c c' : Cfg Γ M.Λ} (h : stepCfg M c = some c')
+lemma length_store_stepCfg_le {M : Machine Γ} {c c' : Cfg Γ M.Λ} (h : stepCfg M c = some c')
     (k : Stack) : (c'.store k).length ≤ (c.store k).length + 1 := by
   rw [stepCfg, Option.map_eq_some_iff] at h
   obtain ⟨p, -, rfl⟩ := h
   exact Act.length_apply_le _ _ _
 
-theorem length_store_runFor_le {M : Machine Γ} : ∀ {t : ℕ} {c c' : Cfg Γ M.Λ},
+lemma length_store_runFor_le {M : Machine Γ} : ∀ {t : ℕ} {c c' : Cfg Γ M.Λ},
     runFor M t c = some c' → ∀ k : Stack, (c'.store k).length ≤ (c.store k).length + t
   | 0, c, c', h, k => by cases h; simp
   | t + 1, c, c', h, k => by
@@ -189,7 +189,7 @@ theorem length_store_runFor_le {M : Machine Γ} : ∀ {t : ℕ} {c c' : Cfg Γ M
 /-- A machine cannot write more than one symbol per step, so a time bound is also an output
 size bound. This is what makes the polynomial class closed under composition: the second
 machine's clock is evaluated at a polynomially bounded length. -/
-theorem RunsInTime.length_output_le {M : Machine Γ} {x y : List Γ} {t : ℕ}
+lemma RunsInTime.length_output_le {M : Machine Γ} {x y : List Γ} {t : ℕ}
     (h : RunsInTime M x y t) : y.length ≤ x.length + t := by
   obtain ⟨s, hs, q, hrun, -⟩ := h
   have := length_store_runFor_le hrun .main

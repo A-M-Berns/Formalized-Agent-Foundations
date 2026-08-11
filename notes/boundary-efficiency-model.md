@@ -153,7 +153,7 @@ dependency was added; this is a record of the state, not a rejection of CSlib on
 
 ## The de-risk probe (executed)
 
-`LogicalInduction/Construction/Machine/Scratch_TimedRespects.lean` — 224 lines, compiles
+`LogicalInduction/Construction/Machine/TimedRespectsProbe.lean` — 224 lines, compiles
 clean under the current toolchain, not imported by `LogicalInduction.lean`. It carries a
 step-count bound through the smallest Mathlib simulation, `Turing.TM1to0`:
 
