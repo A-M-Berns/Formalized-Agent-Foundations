@@ -6,32 +6,85 @@ blocks (`thm:ccee`) actually cost to fix? Every claim about what an endpoint tak
 calls was made with the signature or the proof body open, and every named lemma was
 `rg`-confirmed to exist at the cited line._
 
-## Status (2026-08-11) — §(D) is executed; the two gates are open
+## Resolution (2026-08-11) — the route is built, and adjudicated *not* a `thm:ccee` rendering
 
-The work plan in §(D) below has been carried out under the recommended defaults, so this
-note is now an *assessment of a built thing* rather than of a proposal. Delivered:
-`productDefDP_computable` from the source families' own `def:ec` certificates (the named
-`LUVThresholdComputation` of §(A1) is deleted), freshness by construction for the base
-stages and the weight quote LUV (§(B)), `QuotationTheoryPresentation.mono`, the
-market-parametric quote codes, and the closed endpoint
-`lic_no_expected_net_update_conditional_exact_closed`.
+**Read this before the rest of the note.** Everything below §(D) was written while the
+exact route was a proposal and while (C) and (A2) were open questions. Both have since been
+answered, and the answer to (C) is **no**. The assessment below remains useful as the
+engineering record; its *recommendation* is superseded by this section.
 
-**Neither gate is ruled.** The endpoint is built under (C)-favourable and (A2)-option-2, it
-carries `-- PROVISIONAL (pending ruling)` prose at its own statement, and it does **not**
-hold the `thm:ccee` row: `lic_no_expected_net_update_conditional_closed` and its row are
-untouched. If either gate is rejected the `ExactClosed` section of
-`Construction/Witnesses/ProductDefinition.lean` is deleted and nothing else moves — with one
-exception worth naming, because it is the part that is *not* cleanly droppable: the
-market-parametric `deferredWeightQuoteCode` / `conditionalExpectationQuoteCode` and
-`liaMarketComputation` are edits to `QuoteCodeOfMarket.lean` and `ComputationDP.lean`. They
-are pure generalisations — the `theorem…`-prefixed names survive as their specialisations at
-the base market, with unchanged signatures — so they can stay either way.
+### What was built
 
-The one place the assessment below is now known to be *pessimistic*: §(A2) says the plan's
-route "is circular in the closed setting". It is, and the escape is cheaper than the note
-implies — the weight quote is built against the **base** market, which exists before the
-extended process, so only the certificate's `weight_generable` field needs the extended
-market. That is exactly option 2, and it costs exactly one premise.
+§(D)'s work plan was carried out: `productDefDP_computable` now follows from the source
+families' own `def:ec` certificates (the named `LUVThresholdComputation` of §(A1) is
+deleted), freshness is proved by construction for the base stages and the weight quote LUV
+(§(B)), `QuotationTheoryPresentation.mono` lifts the presentation along `DP ⊆ DP'`, the
+market-dependent quote codes are market-parametric, and the closed statement
+`lic_no_expected_net_update_conditional_exact_closed` is green with clean axioms, with a
+jointly satisfiable premise set exhibited by `..._nonvacuous`.
+
+§(A2) was **pessimistic** on one point and it is worth recording: it says the plan's route
+"is circular in the closed setting", and it is, but the escape is cheaper than the note
+implies. The weight quote is built against the **base** market, which exists before the
+extended process does, so only the certificate's `weight_generable` field needs the extended
+market. That is option 2, and it costs exactly one premise.
+
+### The ruling on (C): rejected
+
+A cross-family adjudication on 2026-08-11 (question: certify or reject the union rendering
+as a representation of `thm:ccee`; rank the three renderings; name any missed route)
+returned **rejected**, on grounds this note's own §(C) "Against" column had gestured at but
+underweighted:
+
+> Rendering (2) proves an exact result for a different constructed inductor,
+> `LIA(base ∪ product-definitions)`, not for `LIA(base)`. **Conservativity of completed-world
+> truth does not imply equal logical-inductor prices or conditional expectations.** It also
+> retains `ProductAtomFresh`, a real restriction on arbitrary e.c. `X` in the flat-atom
+> model.
+
+This is correct and it is the decisive point. `productDefDP_union_consistentWithTheory`
+proves the extension adds no completed-world commitments in the base language; §(C)'s "For"
+column then slid from that to treating the extended endpoint as *about* the same subject
+matter. It is not. A logical inductor's prices are not determined by its process's
+completed-world truth, and no market-preservation correspondence for conservative extensions
+is proved anywhere in this repository — nor is one available cheaply.
+
+The ranking returned was **mesh > extension > weight-narrowing**: the mesh result "remains
+about the intended base inductor and arbitrary source class"; the extension is "a useful
+exact extended-process instance, but not a replacement"; narrowing `w` "excludes the paper's
+motivating P-generable weight example". That confirms §(A2)'s judgment against option 1 and
+overturns the recommendation ordering at the end of this note.
+
+The missed fourth route named by the adjudication, recorded here because it is the only
+identified way to actually move the row:
+
+> Retain the base-market theorem and formulate an abstract exact-product representation
+> theorem over that same base process, with exact reflection as an explicit premise. To
+> discharge it generally requires a richer typed/term syntax (or a proved
+> market-preservation correspondence for a conservative extension); merely changing the
+> deductive process cannot establish the base market's expectations.
+
+### What the built material is now for
+
+It is kept, and repositioned as the **obstruction-closure demonstration** for this boundary:
+proof that the mesh endpoint's `1/(n+1)` slack is an artifact of the propositional substrate
+rather than of logical induction, since the same trader and the same criterion give an exact
+conclusion the moment the product exists syntactically. Its docstrings, the `thm:ccee`
+coverage row, the README entry and the audit delta all now say — in those words — that it
+establishes nothing about the base inductor's conditional expectations, and all state the
+two costs it pays that the mesh endpoint does not (the freshness restriction on the source
+class, and `def:pgen` at the extended market).
+
+`lic_no_expected_net_update_conditional_closed` is and remains the `thm:ccee` endpoint of
+record. The row stays `qualified`. The boundary is now **fully mapped**: mesh = the maximal
+faithful statement about the inductor the paper is talking about; demonstration = proof that
+the residual is substrate-shaped. That is a settled state, not pending work.
+
+The one piece of the delivered work that is independent of all this, and stays regardless:
+the market-parametric `deferredWeightQuoteCode` / `conditionalExpectationQuoteCode` and
+`liaMarketComputation` in `QuoteCodeOfMarket.lean` / `ComputationDP.lean` are pure
+generalisations, with the `theorem…`-prefixed names surviving as their specialisations at
+the base market with unchanged signatures.
 
 ## Part 1 — closing the boundary outright: expensive, and aimed at the wrong mechanism
 
@@ -280,10 +333,17 @@ the *shape* is acceptable, not that this *use* of it is.
   is a fresh atom plus its defining axioms, and the deductive process is the only place
   axioms can be added (the theory interface is fixed). So the union is not a shortcut
   around a proof — it is the propositional *translation* of what the paper already has.
-* `thm:ccee` in the paper quantifies over deductive processes: it holds for every logical
+* ~~`thm:ccee` in the paper quantifies over deductive processes: it holds for every logical
   inductor over every computable Θ. `theoremDP T ∪ productDefDP` is a computable deductive
   process, so the exact endpoint is a legitimate instance of the paper's own theorem, not a
-  weakened variant of it.
+  weakened variant of it.~~ **This is the argument the 2026-08-11 adjudication overturned;
+  see the resolution section at the top.** It is a true statement about *which theorem is
+  being instantiated* and a false one about *what the instance tells you*: `thm:ccee` at
+  `D′ = base ∪ product-definitions` is a claim about `LIA(D′)`'s conditional expectations,
+  and nothing carries it to `LIA(base)`. Left struck through rather than deleted because the
+  slide it makes — from "the extension is conservative on completed-world truth" to "the
+  extension is about the same subject matter" — is the exact error a future reader is most
+  likely to repeat here.
 * Precedent for charging a boundary once and never downstream is explicit in the tiering
   header for `dd:fuel`, and the substrate boundary is stated in the same global-disclosure
   paragraph.
@@ -302,7 +362,7 @@ the *shape* is acceptable, not that this *use* of it is.
 * Zero precedent for a *definitional-extension* union (as opposed to `thm:scon`'s
   paper-mandated one).
 
-### My position
+### My position (superseded — see the resolution section at the top)
 
 The union rendering is defensible and I would argue for it — the "different market"
 objection proves too much, since the paper's theorem is universally quantified over
@@ -334,7 +394,9 @@ the "easy to exclude" property.
 
 ---
 
-## Recommendation
+## Recommendation (historical — superseded by the resolution section at the top)
+
+_Kept as the record of what was recommended before the ruling. Item 1 was followed and (C) came back **rejected**; item 2 is therefore moot — the exact statement does not take the row, and the material is kept as item 1 anticipated, "a verified statement of what the propositional substrate *can* reach". Item 3 was confirmed by the adjudication's ranking._
 
 Do not proceed on the assumption that this is a clean upgrade. It is not: (A2) forces
 either a class restriction on `w` that is worse than the slack, or a second P-generability

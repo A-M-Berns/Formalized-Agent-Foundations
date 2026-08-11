@@ -245,29 +245,33 @@ assertion starts failing and gets promoted to a plain clean assertion.
    inhabits the relaxed field for a general source, and the indicator product still
    inhabits it at zero slack (`indicatorProductLUV_exact_left_reflected`).
 
-   **PROVISIONAL — an exact route is now built, pending two rulings.**
-   `Construction/Witnesses/ProductDefinition.lean` closes the exact endpoint
-   `lic_no_expected_net_update_conditional_exact_closed`: the product is a family of
-   *fresh atoms* whose defining schema is entered by an extra computable **deductive
-   process**, which is the propositional counterpart of the product term the paper's `Θ`
-   has natively — nothing is added to the theory, and the extension is proved conservative
+   **The slack is known to be substrate-shaped, and the diagnosis is proved.**
+   `Construction/Witnesses/ProductDefinition.lean` gives the quoted product a syntactic
+   existence the propositional substrate otherwise denies it: a family of *fresh atoms*
+   whose defining schema is entered by an extra computable **deductive process** — nothing
+   is added to the theory, and the extension is proved conservative on the base language
    (`productDefDP_union_consistentWithTheory`). Over the constructed `LIA` on
-   `theoremDP T ∪ productDefDP` it reflects the product *exactly* (`slack = 0`, no
-   positivity hypothesis on the weight) at the paper's arbitrary e.c. source family, with
-   `hworld`, `source_valued`, `weight_valued` and `right_reflected` all discharged. It does
-   **not** yet carry the `thm:ccee` row, and will not until the human read-through rules on
-   two things: **(C)** that stating the endpoint over `base ∪ product-definitions` is a
-   faithful rendering rather than a second one — the paper's theorem is universally
-   quantified over computable processes and there is Tier-1 precedent for a union-DP
-   conclusion (`lic_conditioned_gated_ofComputations`), but the market in the conclusion is
-   not the incumbent's; and **(A2)** that one extra `def:pgen` premise about the *extended*
-   market is a milder cost than the slack — the alternative, narrowing `w` to `PolyRatCodes`,
-   would drop the paper's own worked example at tex:2077. The endpoint also carries an
-   atom-freshness premise (`ProductAtomFresh X`) that the paper does not state: with a
-   first-order signature the product's new function symbol makes freshness automatic, and a
-   flat propositional atom space has to say it instead. That premise is a theorem, not an
-   assumption, for every family this repository builds. Until both gates are ruled, the mesh
-   endpoint keeps the row and the slack disclosure above stands.
+   `theoremDP T ∪ productDefDP`, `lic_no_expected_net_update_conditional_exact_closed`
+   reflects the product *exactly* (`slack = 0`, no positivity hypothesis on the weight),
+   with `hworld`, `source_valued`, `weight_valued` and `right_reflected` all discharged and
+   a jointly satisfiable premise set exhibited. Same trader, same criterion, slack gone. So
+   the `1/(n+1)` is an artifact of the substrate's missing product term, not of logical
+   induction.
+
+   **That result is a diagnosis, not a stronger `thm:ccee`, and the mesh endpoint keeps the
+   row.** It establishes nothing about the base inductor's conditional expectations: `LIA`
+   over the extended process is a *different* inductor, and conservativity of completed-world
+   truth does not carry prices across — no market-preservation correspondence is proved
+   anywhere here, and none is implied by conservativity. It also pays two costs the mesh
+   endpoint does not: `ProductAtomFresh X`, which genuinely narrows the arbitrary e.c. source
+   class in a flat atom space (a theorem rather than an assumption for every family this
+   repository builds, but a restriction nonetheless), and `def:pgen` for the weight at the
+   *extended* market, carried separately because a generable feature's denotation is
+   evaluated at the history. A cross-family adjudication on 2026-08-11 rejected reading it as
+   `thm:ccee` at an instance and ranked the renderings mesh > extension > narrowing `w` to
+   `PolyRatCodes`. Both statements stand, and they are siblings rather than rungs: the mesh
+   endpoint is the maximal faithful statement about the base inductor, and the extension
+   result is the proof that what it gives up is substrate-shaped.
 
    **The slack is invisible at the one known downstream interface.** The deference port
    of "Deference Done Better" into this framework consumes `thm:ccee` as a hypothesis
@@ -285,38 +289,42 @@ Both remaining qualified nodes trace back to the two modeling boundaries; there 
 longer a third that is merely unfinished. (`thm:wubexp` was that third one. Its route —
 build the mesh feedback bridge from the *approximate* determination that combination-level
 `def:affthmval` actually supplies, rather than from a per-component-LUV strengthening — is
-now landed; see `FeedbackTruth.luv_wubexp_ofComputation`.) Estimates are engineering
-judgment, not measurements — the ones marked *checked* were made after confirming the
-required lemmas exist, and the rest are structural reads that have twice moved upward on
-contact.
+now landed; see `FeedbackTruth.luv_wubexp_ofComputation`.) The two are not alike: one
+(`thm:ccee`) is **settled** — the boundary is fully mapped, the qualification is understood
+rather than merely disclosed, and there is no pending work item; the other (`thm:ifp`) is
+genuinely open. Estimates are engineering judgment, not measurements — the ones marked
+*checked* were made after confirming the required lemmas exist, and the rest are structural
+reads that have twice moved upward on contact.
 
-**Blocked on a disclosed modeling boundary (2).**
+**Attributable to a disclosed modeling boundary (2).**
 
-* **`thm:ccee` — the propositional substrate.** An *exactly* reflecting product LUV needs
-  either the deferred weight's value (unavailable to an emitter: only P-generable,
+* **`thm:ccee` — the propositional substrate. Settled, not pending.** This entry no longer
+  names work to do; the boundary is fully mapped and the qualification is now understood
+  rather than merely disclosed. An *exactly* reflecting product LUV over the base inductor
+  needs either the deferred weight's value (unavailable to an emitter: only P-generable,
   deferred, and the resulting threshold's denominator is not polynomially sized) or the
   infinite disjunction `⋁_{s∈ℚ}(⌜w > s⌝ ∧ ⌜X > r/s⌝)`. Propositional logic has neither, so
-  the landed mesh product reflects only to within `1/(n+1)`. The exact route is a
-  definitional extension of the *deductive process* — fresh product atoms plus their
-  defining biconditionals — not of the theory, and its first four components are built
-  (`Construction/Witnesses/ProductDefinition.lean`: the process, its computability, the
-  world-extension lemma, threshold emission, and exact reflection at `slack = 0`). What
-  is now also built is the closed endpoint,
-  `lic_no_expected_net_update_conditional_exact_closed`, and the circularity that blocked it
-  is broken rather than assumed away: the weight's quote LUV needs `Computable (w ∘ f)`,
-  which `PGenerableRat.computable` supplies only from a market, so the quote is built
-  against the **base** market — which exists before the extended process does — and the
-  certificate's own `weight_generable` field is then supplied by a *second* `def:pgen`
-  premise about the extended market. That second premise, and an atom-freshness premise, are
-  the two things the paper does not state; the endpoint is stated over
-  `base ∪ product-definitions`. The alternative to the second premise — narrowing `w` to
-  `PolyRatCodes` — would drop the paper's own worked example at tex:2077, a continuous
-  indicator of a market expectation, and is therefore worse than the slack it removes. Full
-  assessment in
-  [`../notes/boundary-propositional-substrate.md`](../notes/boundary-propositional-substrate.md). Both the
-  union rendering and the extra premise are **PROVISIONAL**, unratified by the read-through,
-  so the mesh endpoint keeps the row for now; the one known downstream consumer does **not**
-  need exactness — see the interface note above.
+  the mesh product reflects only to within `1/(n+1)`, and
+  `lic_no_expected_net_update_conditional_closed` — arbitrary e.c. source family, no
+  freshness restriction, over the base `LIA` — is the **maximal faithful statement about the
+  inductor the paper is talking about**. Alongside it,
+  `lic_no_expected_net_update_conditional_exact_closed`
+  (`Construction/Witnesses/ProductDefinition.lean`) proves the residual is *substrate-shaped*:
+  give the deductive process fresh product atoms and their defining schema — a conservative
+  definitional extension of the process, not of the theory — and the same trader and the same
+  criterion yield the conclusion at `slack = 0`. The two are **siblings, not rungs**. The
+  extension result establishes nothing about the base inductor's conditional expectations
+  (`LIA` over the extended process is a different inductor, and conservativity of
+  completed-world truth does not carry prices across), and it pays a genuine freshness
+  restriction on the source class plus `def:pgen` at the extended market. A cross-family
+  adjudication on 2026-08-11 rejected reading it as `thm:ccee` at an instance and ranked the
+  renderings mesh > extension > narrowing `w` to `PolyRatCodes` (which would drop the paper's
+  own worked example at tex:2077). So the row stays `qualified` and stays with the mesh
+  endpoint; what would move it is a richer term syntax or a proved market-preservation
+  correspondence for conservative extensions, neither of which is cheap and neither of which
+  is scheduled. The one known downstream consumer does **not** need exactness — see the
+  interface note above. Full assessment and the adjudication outcome in
+  [`../notes/boundary-propositional-substrate.md`](../notes/boundary-propositional-substrate.md).
 * **`thm:ifp` — the fuel class.** The transported trader needs a closure property the
   model provably lacks (the inverse-operation ceiling: the emitted freeze stream's
   certificate needs a decode test on exponentially large codes, which the digit calculus

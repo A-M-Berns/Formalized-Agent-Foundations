@@ -281,47 +281,63 @@ analytic conclusion as the paper.
 
 ---
 
-## Delta since this pass — `thm:ccee`, the exact-product route (2026-08-11)
+## Delta since this pass — `thm:ccee`: the boundary is now mapped, and the row is settled (2026-08-11)
 
 _Appended after the audit, not part of it. The audit's B2 finding and its "required status:
-qualified" verdict are unchanged; what changed is that the route B2 describes as unbuilt is
-now built, on two decisions that are **PROVISIONAL** — not ratified by the human
-read-through — and that therefore do not move the row._
+qualified" verdict are unchanged. What changed is that the route B2 describes as unbuilt is
+now built, that a cross-family adjudication has ruled on what it does and does not
+establish, and that `thm:ccee` is consequently a **settled** qualified row rather than a
+pending one._
 
 B2 says: "`ProductDefinition.lean` now constructs the important parts of an exact route …
-It is not a closed replacement for the mesh endpoint over the constructed `LIA`." It now is
-one, `lic_no_expected_net_update_conditional_exact_closed`. What that costs, stated against
-the audit's own criteria:
+It is not a closed replacement for the mesh endpoint over the constructed `LIA`."
+`lic_no_expected_net_update_conditional_exact_closed` now closes that route — and B2's
+sentence remains true in the sense that matters, for a sharper reason than B2 gave:
+
+**The extension result is not a replacement for the mesh endpoint because it is about a
+different inductor.** `LIA` over `theoremDP T ∪ productDefDP` is not `LIA` over
+`theoremDP T`, and conservativity of completed-world truth does not carry prices across.
+`productDefDP_union_consistentWithTheory` proves the extension adds no completed-world
+commitments in the base language; it does not — and cannot, absent a market-preservation
+correspondence nobody has proved — show the two markets price the base language alike. A
+cross-family adjudication on 2026-08-11 was asked to certify the union rendering as a
+representation of `thm:ccee` and **rejected** it on exactly this ground, additionally noting
+that `ProductAtomFresh` is "a real restriction on arbitrary e.c. `X` in the flat-atom model".
+Its faithfulness ranking was mesh > extension > narrowing `w` to `PolyRatCodes`.
+
+Assessed against this audit's own criteria, the built material stands as follows:
 
 * **Not a squeeze, not a stub.** The exact reflection is `productLUV_valuesAt`, proved from
   density of ℚ in both factors against the defining schema, and it feeds
-  `ConditionalExpectationQuote.left_reflected` at `slack ≡ 0`. No hypothesis of the endpoint
-  is its own conclusion.
+  `ConditionalExpectationQuote.left_reflected` at `slack ≡ 0`. No hypothesis of the
+  statement is its own conclusion.
 * **Non-vacuity is by the construction.** `exactProductDP_hworld` extends the base
   construction's *own* plausible world (`provabilityWorld T`, the witness
   `theoremDP_hworld` already exhibits) through the product atoms, using the least assignment
   closed under the positive clauses. There is no stand-in witness and no constant sequence.
-  The joint satisfiability of the *whole* premise set — the two paper-absent premises
-  included — is separately exhibited by
+  The joint satisfiability of the *whole* premise set is separately exhibited by
   `lic_no_expected_net_update_conditional_exact_closed_nonvacuous`, at a provably
   non-constant weight and a source family whose day-`n` LUV is a distinct atom family.
 * **The circularity B2 names is broken, not assumed away.** The weight's quote LUV is built
   against the **base** market, which exists before the extended process does; the
   certificate's `weight_generable` field is then supplied by a second `def:pgen` premise
   about the extended market.
-* **Two premises the paper does not state**, both type-`(c)` and both disclosed at the
+* **Two costs the mesh endpoint does not pay**, both type-`(c)`, both now stated at the
   statement, in `LogicalInduction/README.md` and in `scripts/coverage-classification.md`:
-  the second P-generability premise just described, and `ProductAtomFresh X` — with a
-  first-order signature the product's new function symbol makes freshness automatic, and a
-  flat propositional atom space must state it. The latter is discharged by construction
-  (`arithmeticThresholdLUV_productAtomFresh`, `theoremDP_atomCodes_ne_productTag`) for every
-  family this repository builds, so it is not vacuous.
-* **A different market in the conclusion.** The endpoint is stated over
-  `theoremDP T ∪ productDefDP`, not `theoremDP T`. This is the decision an adversarial
-  reader should press on hardest, and it is the one a fresh-context audit should re-derive
-  independently rather than take from this note.
+  that extended-market `def:pgen` premise, and `ProductAtomFresh X` — which is a genuine
+  narrowing of the arbitrary e.c. source class in a flat atom space, not a formality, even
+  though it is discharged by construction (`arithmeticThresholdLUV_productAtomFresh`,
+  `theoremDP_atomCodes_ne_productTag`) for every family this repository builds.
+* **What it is for.** The demonstration's content is diagnostic: the same trader and the
+  same criterion give an exact conclusion once the product exists syntactically, so the mesh
+  endpoint's `1/(n+1)` is an artifact of the propositional substrate rather than of logical
+  induction. That is worth having and is now proved; it is not a `thm:ccee` rendering.
 
-**Required status: unchanged — qualified.** Recommended next action 4 above ("treat the
-exact endpoint as infrastructure, not the paper-facing closed endpoint, until the extended
-process inductor/weight circle is closed") is now actionable rather than blocked: the circle
-is closed, and what remains is a ruling, not an obstruction.
+**Required status: unchanged — qualified**, and now *settled*. Recommended next action 4
+above ("treat the exact `thm:ccee` definitional-extension endpoint as infrastructure, not the
+paper-facing closed endpoint") is **discharged, and was right**: it is infrastructure plus a
+diagnosis, the mesh endpoint keeps the row, and the disclosures now say so in those terms.
+The only identified route that would actually move this row — named by the adjudication — is
+an abstract exact-product representation theorem over the *base* process with exact
+reflection as an explicit premise, which needs either a richer term syntax or a proved
+market-preservation correspondence for conservative extensions. Neither is scheduled.

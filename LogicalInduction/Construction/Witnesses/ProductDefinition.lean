@@ -3,7 +3,7 @@ import LogicalInduction.Construction.Witnesses.PrefixMachine
 import LogicalInduction.Construction.Witnesses.QuoteCodeOfMarket
 
 /-!
-# Exact quoted products by definitional extension of the deductive process (`thm:ccee`)
+# Diagnosing the `thm:ccee` product slack: exact reflection under a definitional extension
 
 `QuoteCodeOfMarket.lean`'s Part F builds the `thm:ccee` left product as a width-`n+1` mesh,
 which reflects `x · w (f n)` only to within `1/(n+1)` — the one disclosed type-`(c)`
@@ -11,12 +11,23 @@ substitution of that endpoint.  The obstruction there is the *emitter*: a strate
 to be produced with polynomial fuel, and the exact threshold `⌜X > r / w (f n)⌝` names a
 value the emitter cannot have.
 
-A **deductive process** carries no such clock: it is only required computable.  So the exact
-product is available as a *definitional extension of the process*, not of the theory: fresh
-atoms `productAtom n r` standing for `⌜Xₙ · Wₙ > r⌝`, together with the defining schema
-entered stagewise by an extra process.  Nothing in the first-order theory changes; the paper's
-`Θ` contains the product term natively, and a fresh-atom definitional extension is the
-propositional counterpart.
+A **deductive process** carries no such clock: it is only required computable.  So an exact
+product *is* available as a *definitional extension of the process*, not of the theory:
+fresh atoms `productAtom n r` standing for `⌜Xₙ · Wₙ > r⌝`, together with the defining
+schema entered stagewise by an extra process.  Nothing in the first-order theory changes;
+the paper's `Θ` contains the product term natively, and a fresh-atom definitional extension
+is the propositional counterpart.
+
+**What this file is for.**  It is the *obstruction-closure demonstration* for the `thm:ccee`
+substrate boundary — evidence that the mesh endpoint's slack is an artifact of the
+propositional substrate rather than of logical induction, since the same trader and the same
+criterion give an exact conclusion as soon as the product exists syntactically.  It is **not**
+a rendering of `thm:ccee`, and nothing here supersedes
+`lic_no_expected_net_update_conditional_closed`, which remains the `thm:ccee` endpoint of
+record: the inductor here is `LIA` over the *extended* process, a different inductor, and
+conservativity of completed-world truth does not carry prices across.  A cross-family
+adjudication on 2026-08-11 ruled on exactly this point; see the resolution section of
+`notes/boundary-propositional-substrate.md`.
 
 ## The schema
 
@@ -848,24 +859,33 @@ lemma productDefDP_computable {X W : ℕ → LUV}
 
 end
 
-/-! ## The exact `thm:ccee` endpoint
+/-! ## Exact reflection over an extended process, process-generic form
 
 `lic_no_expected_net_update_conditional` is deductive-process generic and consumes the
 reflection slack through `slack_tendsto`, so `slack ≡ 0` is a special case and neither the
 master theorem nor `ConditionalExpectationQuote` changes.  What changes is *which* process
-the endpoint is stated over: `base ∪ product-definitions` rather than bare base.  That is
-faithful — the paper's `Θ` contains the product term natively and a fresh-atom definitional
-extension is its propositional counterpart — but it is a different rendering from the mesh
-route's bare-base statement, and it is the honest cost of exactness here. -/
+the statement is about: `base ∪ product-definitions` rather than bare base.
 
-/-- **`thm:ccee` at exact reflection**, for an **arbitrary** e.c. source family `X`, over the
-base process extended by the product definitions.  The left quoted product is the fresh atom
-family `productLUV`; every completed-theory world of the extended process values it at
-exactly `x · w (f n)`, with no slack and no positivity hypothesis on the weight.
+That is a statement about a **different inductor**, and it is not a rendering of `thm:ccee`
+— the `thm:ccee` endpoint of record is
+`lic_no_expected_net_update_conditional_closed`, at the disclosed `1/(n+1)` slack over the
+base `LIA`.  What the statement below is *for* is the diagnosis: it isolates the slack as an
+artifact of the propositional substrate by showing that the same trader and the same
+criterion give an exact conclusion the moment the product exists syntactically.  See the
+obstruction-closure section further down for the full framing and its two costs. -/
+
+/-- **Exact reflection over a definitional extension**, for a source family `X` with `def:ec`
+threshold codes, over any base process extended by the product definitions.  The left quoted
+product is the fresh atom family `productLUV`; every completed-theory world of the extended
+process values it at exactly `x · w (f n)`, with no slack and no positivity hypothesis on
+the weight.
 
 The weight enters as in the paper (`def:pgen`): `P`-generable against the market, presented
-through a LUV family `W` whose completed-world value *is* `w (f n)` — in the closed setting
-that family is the deferred-weight quote code's own LUV.
+through a LUV family `W` whose completed-world value *is* `w (f n)`.
+
+Note `[IsLogicalInductor P (B.union (productDefDP X W))]`: the conclusion is about the
+market `P` of the *extended* process.  It says nothing about a market over `B` alone —
+conservativity of completed-world truth does not carry prices across.
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_exact
     {P : History} {B : DeductiveProcess} {X W : ℕ → LUV}
@@ -891,34 +911,52 @@ theorem lic_no_expected_net_update_conditional_exact
       productLUV_valuesAt_union hv n hx (weight_valued n v hv), by simp⟩)
     right_reflected hworld
 
-/-! ## Closing the exact endpoint over the constructed `LIA`
+/-! ## The obstruction-closure demonstration
 
 Everything above is process-generic.  What follows discharges the four semantic premises
-over the *constructed* inductor, so that the exact endpoint takes no inductor, market,
-presentation or `hworld` hypothesis — leaving exactly the premises the mesh endpoint
-carries, plus the two that the propositional rendering costs and the paper does not state.
+over a *constructed* inductor, so that the exact statement stands with no inductor, market,
+presentation or `hworld` hypothesis left open.
 
-**PROVISIONAL (pending ruling).**  Two decisions in this section belong to Anson and are
-*not* ratified.  Everything below is built under the recommended defaults of
-`notes/boundary-propositional-substrate.md` so that the work is available for the ruling;
-if either is rejected, this section is deleted and nothing else moves.
+**What this section is for, and what it is not.**  It is **not** a rendering of `thm:ccee`,
+and it does not compete with `lic_no_expected_net_update_conditional_closed`, which remains
+the `thm:ccee` endpoint of record at the disclosed `1/(n+1)` slack.  It is the
+*obstruction-closure demonstration* for the `thm:ccee` substrate boundary: it establishes
+that the mesh endpoint's slack is an artifact of the **propositional substrate**, not of
+logical induction, because in any definitional extension where the quoted product exists
+syntactically the theorem holds *exactly* — same trader, same criterion, `slack = 0`.  What
+the paper's first-order `Θ` supplies by having a product term, this supplies by adding
+fresh atoms and their defining schema to the deductive process; the mathematics of
+`thm:ccee` does not notice the difference, and that is the whole content of the
+demonstration.
 
-* **Gate (C) — the union rendering.**  The endpoint is stated over
-  `theoremDP T ∪ productDefDP` rather than over `theoremDP T`.  The paper's `thm:ccee` is
-  universally quantified over computable deductive processes, and a fresh-atom definitional
-  extension is the propositional counterpart of the product *term* the paper's `Θ` has
-  natively; there is Tier-1 precedent for a union-DP conclusion in
-  `lic_conditioned_gated_ofComputations` (`thm:scon`, classified *instantiated*).  Against:
-  the conclusion is about a different market from the incumbent's, and the tiering header
-  counts "a structure the paper gets definitionally" as a downgrade.  Full argument in
-  `notes/boundary-propositional-substrate.md` §(C).
-* **Gate (A2) — the second P-generability premise.**  `weight_generable_extended` is a
-  premise about the *extended* market that the paper does not state, and it cannot be
-  derived from the base-market one (a `GeneratedRatFeature`'s `denote` is evaluated at the
-  history, and the two histories differ) nor from computability.  It is the price of
-  keeping `w` at `def:pgen`; the alternative — narrowing `w` to `PolyRatCodes` — would drop
-  the paper's own worked example for this theorem (tex:2077) and is judged worse than the
-  slack it removes.  Full argument in §(A2) of the same note. -/
+This theorem establishes nothing about the base inductor's conditional expectations: `LIA`
+over the extended process is a different inductor, and conservativity of completed-world
+truth does not carry prices across.  `productDefDP_union_consistentWithTheory` shows the
+extension adds no completed-world commitments in the base language; it does **not** show
+that the two markets price the base language alike, and no such market-preservation
+correspondence is proved anywhere in this repository.  A reader who wants a statement about
+the market `liaHistory (theoremDP T)` must use the mesh endpoint.
+
+Two further costs of the demonstration, stated plainly rather than buried:
+
+* **Freshness is a real restriction, not a formality.**  `ProductAtomFresh X` excludes
+  source families whose own threshold sentences mention the product tag, so the
+  demonstration does **not** run at a genuinely arbitrary e.c. `X` the way the mesh endpoint
+  does.  It is not an artifact — an adversarial `X` with `(X n).gt s = ∼productAtom n r`
+  makes a stage unsatisfiable — and it is discharged by construction for every family this
+  repository builds, but in the flat propositional atom space it is a genuine narrowing of
+  the source class.
+* **The weight needs generability at the extended market.**  `def:pgen` against
+  `liaHistory (theoremDP T)` does not give `def:pgen` against the extension's market: a
+  `GeneratedRatFeature`'s `denote` field is evaluated *at the history*, and the two
+  histories differ.  So the demonstration carries that premise separately.  Narrowing `w`
+  to `PolyRatCodes` would remove it, at the cost of dropping the paper's own worked example
+  for this theorem (tex:2077) — a strictly worse trade, and not taken.
+
+The cross-family adjudication of 2026-08-11 (`notes/boundary-propositional-substrate.md`,
+resolution section) rejected reading this section as `thm:ccee` at an instance, for exactly
+the price-transport reason above, and ranked the renderings mesh > this > weight-narrowing.
+The framing here is the ruled one. -/
 
 /-- Stages of the union constrain the base process in particular. -/
 lemma PCWorld.consistentWithTheory_union_left {v : PCWorld} {DP extra : DeductiveProcess}
@@ -1006,27 +1044,37 @@ lemma exactProductDP_hworld {X : ℕ → LUV} (hXfresh : ProductAtomFresh X)
       (fun m => ⟨(w (f m) : ℝ),
         RationalQuoteCode.reflected (quotationPresentation T) q m _ hbase⟩) n⟩
 
-/-- **`thm:ccee` at exact reflection, closed over the constructed `LIA`.**  For the paper's
-**arbitrary** e.c. source family `X`, over the constructed provability process extended by
-the product definitions: the left quoted product is the fresh atom family `productLUV`,
-every completed-theory world of the extended process values it at *exactly* `x · w (f n)` —
-`slack = 0`, no positivity hypothesis on the weight — and the right product is the extended
-market's own deferred weighted expectation, quoted.
+/-- **The `thm:ccee` slack is substrate-shaped: exact reflection over a definitional
+extension.**  Over the constructed provability process extended by the product definitions,
+the left quoted product is the fresh atom family `productLUV`, every completed-theory world
+of the extended process values it at *exactly* `x · w (f n)` — `slack = 0`, no positivity
+hypothesis on the weight — and the right product is the extended market's own deferred
+weighted expectation, quoted.  Same trader, same criterion, same conclusion shape as
+`lic_no_expected_net_update_conditional_closed`, with the slack gone.
 
-Premises 1–5 are exactly `lic_no_expected_net_update_conditional_closed`'s, hence the
-paper's own (`thm:cee`'s source premises, a `[0,1]` P-generable weight, a bare deferral
-function).  Two further premises are the propositional rendering's cost and are **not** in
-the paper — both flagged PROVISIONAL above:
+**This theorem establishes nothing about the base inductor's conditional expectations:
+`LIA` over the extended process is a different inductor, and conservativity of
+completed-world truth does not carry prices across.**  It is therefore not a replacement
+for, and not a strengthening of, `lic_no_expected_net_update_conditional_closed`, which
+remains the `thm:ccee` endpoint of record.  What it *does* establish is the diagnosis: the
+`1/(n+1)` reflection slack the mesh endpoint carries is forced by the propositional
+substrate's lack of a product term, not by anything in logical induction — give the process
+a syntactic product and the theorem is exact.
 
-* `atom_fresh`: no product atom occurs inside a source threshold sentence.  Not an artifact
-  — an adversarial `X` with `(X n).gt s = ∼productAtom n r` makes a stage unsatisfiable and
-  the endpoint vacuous.  In the paper the product is a term over a *new function symbol*,
-  so freshness is guaranteed by the language; a flat propositional atom space has to say
-  it.  Discharged by inspection for every family this repository builds
-  (`arithmeticThresholdLUV_productAtomFresh`, `theoremDP_atomCodes_ne_productTag`).
-* `weight_generable_extended`: `def:pgen` for `w` against the **extended** market.  Needed
-  because `ConditionalExpectationQuote.weight_generable` is a frozen field evaluated at the
-  endpoint's own history, and the extended market's prices differ from the base market's.
+Two costs of the demonstration, neither of which the mesh endpoint pays:
+
+* `atom_fresh` — a genuine narrowing of the source class, not a formality.  No product atom
+  may occur inside a source threshold sentence, so this does **not** run at the arbitrary
+  e.c. `X` the mesh endpoint takes.  It is also not an artifact: an adversarial `X` with
+  `(X n).gt s = ∼productAtom n r` makes a stage unsatisfiable.  In the paper the product is
+  a term over a *new function symbol*, so freshness comes from the language; a flat
+  propositional atom space has to state it.  Discharged by inspection for every family this
+  repository builds (`arithmeticThresholdLUV_productAtomFresh`,
+  `theoremDP_atomCodes_ne_productTag`).
+* `weight_generable_extended` — `def:pgen` for `w` against the **extended** market, carried
+  separately because a `GeneratedRatFeature`'s `denote` is evaluated at the history and the
+  two histories differ.  Narrowing `w` to `PolyRatCodes` would remove it and drop the
+  paper's own worked example at tex:2077; not taken.
 
 Proof kind `C` (composition over `lic_no_expected_net_update_conditional_ofRepresentation`).
 Provenance: `hworld` (a) `exactProductDP_hworld`; `source_valued` (a) transported along
@@ -1087,13 +1135,14 @@ theorem lic_no_expected_net_update_conditional_exact_closed
 
 end ExactClosed
 
-/-! ### Non-vacuity of the exact closed endpoint
+/-! ### Non-vacuity of the demonstration
 
-Two of the endpoint's premises are the propositional rendering's cost rather than the
-paper's, so the joint satisfiability of the whole premise set has to be exhibited, not
-argued.  It is, and by an **index-varying** construction at both ends: the weight is the
-harmonic sequence `1/(n+1)` (efficiently codeable, so `def:pgen` holds against *every*
-market, the extended one included) and the source is that sequence's own quotation
+A demonstration whose hypotheses nothing satisfies demonstrates nothing, and two of these
+hypotheses — the freshness restriction and generability at the extended market — are the
+substrate's cost rather than the paper's.  So the joint satisfiability of the whole premise
+set is exhibited, not argued, and by an **index-varying** construction at both ends: the
+weight is the harmonic sequence `1/(n+1)` (efficiently codeable, so `def:pgen` holds against
+*every* market, the extended one included) and the source is that sequence's own quotation
 threshold family, whose day-`n` LUV is a distinct family of atoms for each `n`. -/
 
 /-- The harmonic weight `n ↦ 1/(n+1)`: efficiently codeable, `[0,1]`-valued, and not
@@ -1119,13 +1168,18 @@ lemma PGenerableRat.ofPolyRatCodes {q : ℕ → ℚ} (hq : PolyRatCodes q) (P : 
     PGenerableRat P q :=
   ⟨ratCodeFeature q, ratCodeFeature_generated P q hq⟩
 
-/-- **N±.**  The exact closed endpoint's whole premise set is jointly satisfiable, by an
-index-varying construction rather than a stand-in witness: the `def:ec` threshold codes,
-the completed-world source values, the atom-freshness side condition and the second
-`def:pgen` premise about the **extended** market all hold at once, of a weight sequence that
-is provably non-constant and a source family whose day-`n` LUV is a distinct atom family.
-So neither of the two paper-absent premises is vacuous, and they are not jointly
-unsatisfiable with the paper's own.
+/-- **N±.**  The obstruction-closure demonstration's whole premise set is jointly
+satisfiable, by an index-varying construction rather than a stand-in witness: the `def:ec`
+threshold codes, the completed-world source values, the atom-freshness restriction and
+`def:pgen` at the **extended** market all hold at once, of a weight sequence that is
+provably non-constant and a source family whose day-`n` LUV is a distinct atom family.  So
+the demonstration is not vacuous — neither the freshness restriction nor the extended-market
+generability premise empties it, and neither is jointly unsatisfiable with the paper's own
+premises.
+
+This says nothing about the base inductor either; it witnesses that
+`lic_no_expected_net_update_conditional_exact_closed` has instances, not that its
+conclusion transfers to `liaHistory (theoremDP T)`.
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_exact_closed_nonvacuous
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] [𝗥₀ ⪯ T]

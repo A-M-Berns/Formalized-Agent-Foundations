@@ -550,23 +550,25 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 --
 -- This does **not** carry the `thm:ccee` row, and is inventoried so that its axiom
 -- cleanliness is gated rather than left to the file's own `#print axioms`.
--- `lic_no_expected_net_update_conditional_closed` above remains the `thm:ccee` row-holder,
--- at the disclosed `1/(n+1)` slack.
+-- `lic_no_expected_net_update_conditional_closed` above remains the `thm:ccee` endpoint of
+-- record, at the disclosed `1/(n+1)` slack over the base `LIA`.
 --
--- The route now reaches a *closed* rung, `lic_no_expected_net_update_conditional_exact_closed`:
+-- The route reaches a closed statement, `lic_no_expected_net_update_conditional_exact_closed`:
 -- exact reflection over the constructed `LIA` on `theoremDP T ∪ productDefDP`, with `hworld`,
--- `source_valued`, `weight_valued` and `right_reflected` all discharged.  It is listed here
--- for axiom gating only and does **not** take the row, because two decisions it rests on are
--- PROVISIONAL — unratified by the human read-through — and are stated at the theorem, in
--- `LogicalInduction/README.md` and in `scripts/coverage-classification.md`:
---   (C) the endpoint is stated over `base ∪ product-definitions`, a rendering with Tier-1
---       precedent (`lic_conditioned_gated_ofComputations`) but not for this use;
---   (A2) it carries a second P-generability premise, about the extended market, that the
---       paper does not state — the price of keeping `w` at `def:pgen` rather than narrowing
---       it to `PolyRatCodes` and dropping the paper's own worked example (tex:2077).
--- It also carries the atom-freshness premise, which the propositional substrate needs and
--- first-order syntax would supply by the language.  Full assessment in
--- `notes/boundary-propositional-substrate.md`.
+-- `source_valued`, `weight_valued` and `right_reflected` all discharged, and a jointly
+-- satisfiable premise set exhibited by `..._nonvacuous`.  Its role is **diagnostic**, not
+-- paper-facing: it shows the mesh endpoint's slack is an artifact of the propositional
+-- substrate rather than of logical induction, because the same trader and criterion give an
+-- exact conclusion once the product exists syntactically.
+--
+-- It establishes nothing about the base inductor's conditional expectations: `LIA` over the
+-- extended process is a different inductor, and conservativity of completed-world truth does
+-- not carry prices across.  This was adjudicated cross-family on 2026-08-11 (rejecting the
+-- reading of it as `thm:ccee` at an instance; ranking mesh > this > weight-narrowing), and
+-- the two costs it carries and the mesh endpoint does not — a genuine freshness restriction
+-- on the source class, and `def:pgen` at the extended market — are stated at the theorem, in
+-- `LogicalInduction/README.md` and in `scripts/coverage-classification.md`.  Full assessment
+-- and the adjudication outcome in `notes/boundary-propositional-substrate.md`.
 #assert_axioms_clean
   productDefDP_computable
   productDefDP_union_consistentWithTheory
