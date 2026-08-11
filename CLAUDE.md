@@ -16,16 +16,6 @@ The finished `ModalAgents/` formalization is the model for disclosure discipline
 clean proof with its unproved facts named, cited, and isolated in its README. Do the
 same kind of honest accounting everywhere.
 
-The **Cartesian Frames** formalization (Garrabrant, Herrmann, and Lopez-Wild,
-arXiv:2109.10996) lives in `CartesianFrames/`; begin with `CartesianFrames/README.md`
-and the harness ledger `CartesianFrames/KNOWLEDGE.md`. Its paper specification is
-committed as `notes/2109.10996v1-main.tex` and the matching PDF. Most nodes in that
-paper lack LaTeX labels, so their printed `Definition n` / `Claim n` / `Theorem n`
-identifiers are the provenance keys, checked by
-`scripts/check-cartesian-frames-nodes.py`. The same declaration rule applies:
-`theorem` iff the declaration renders a paper claim/theorem; supporting results are
-`lemma`s.
-
 ---
 
 ## The standard (non-negotiable)
