@@ -134,10 +134,47 @@ here are only the names harness agents for the efficiency-model program need.
   `PolyFueled` by output size. Write "not attempted; structurally blocked in the fuel
   calculus's toolkit", never "false as stated"/"provably fails". The model card's
   "Lower calibration — OPEN" wording is authoritative. (R2-F13)
-- The tranche-7 clamp lemma `undigitize ∘ map (min · 4) = undigitize` should be derived
-  from `Framework/DigitArith.lean:934` `undigitize_eq_blockSplit` + `blockStep` (:875,
+- The clamp lemma `undigitize ∘ map (min · 4) = undigitize` should be derived from
+  `Framework/DigitArith.lean:934` `undigitize_eq_blockSplit` + `blockStep` (:875,
   branches only on `d < 4`) — a one-line `blockSplit` invariance, not a from-scratch
-  induction. (Bridge.lean imports Framework, so the import question is settled there.)
+  induction. **Bridge.lean's import list is `Framework/Computable` +
+  `Framework/DigitArith`** (transitively Criterion): Framework import order is
+  `Criterion → Computable → DigitArith`, so importing Criterion alone reaches neither
+  `PolyFueled` nor `blockSplit`. Bridge is created at tranche 6 and houses both S2 and
+  S3. (R3-F08 ruling)
+- `lakefile.lean:5` sets `autoImplicit := false` package-wide, but `lake env lean` does
+  not apply package `leanOptions` — auto-implicit over-generalization is a *per-file
+  checking* hazard only; `lake build` would catch it. The concrete-alphabet pin's
+  ground (a) is a workflow argument, not a build-gate argument. (round 3)
+- The memo's "with binary input encoding the inclusion would be false" is a real but
+  unformalized complexity separation (value-poly vs poly-in-bit-length). Counterfactual
+  about a rejected design — fine to state as motivation, never cite as a repo-supported
+  fact.
+- `Nat.pair` monotonicity for guard arithmetic: `Nat.left_le_pair`, `Nat.right_le_pair`,
+  `Nat.pair_lt_pair_left`, `Nat.pair_lt_pair_right`, `Nat.add_le_pair`
+  (`Mathlib/Data/Nat/Pairing.lean:102-148`) — cite, don't re-derive.
+- `evaln`'s `prec` ladder never underflows and no intermediate guard fails once the
+  top-level `guard (n ≤ k)` passes (`y ≤ Nat.pair a y ≤ k`;
+  `Nat.pair a j + (y−j) ≤ Nat.pair a y`); the base `cf` guard is free too
+  (`a ≤ Nat.pair a 0`). Live `none` sources in a `prec` simulation: fuel 0, top guard,
+  `cf`/`cg` *internal* failure, and `cg`'s own guard on the assembled argument
+  `Nat.pair a (Nat.pair y i)` (NOT bounded by `n` — genuinely fails). `rfind'`
+  contrasts: its argument grows while fuel shrinks, so its guard failures are real.
+  No underflow test phase is needed. (R3-F03, compiled twice independently)
+- `MachineComputableTrader`'s totality-on-all-words costs proof work but no strength:
+  a machine correct on `unary n` becomes total by prepending the symbol-indifferent
+  normalization, same outputs, same polynomial. Matters when Stage 3 re-bases `thm:li`.
+- Concrete `evaln` spot checks must write arguments as `Nat.pair a y` and use
+  `simp only [evaln, Nat.unpair_pair, Nat.unpaired]` — numerals stick (`Nat.unpair 4`
+  does not reduce; the `Nat.sqrt` whnf gotcha). (round 3)
+- `IsPolyBounded` has `.of_le/.linear/.max/.add_one/.pair/.add/.comp` but **no
+  two-function `.mul`** — `exists_clock_loop` needs one (~10 lines, `nlinarith`,
+  verified compiling in scratch). The `IsPolyBounded f` conjunct of `PolyFueled` is
+  derivable from the other two (via `codeEvaln_result_le` + `codeEvalBound_poly` +
+  `.comp`) — S2's output-length constraint is satisfiable from the fuel bound alone.
+- Loop input delivery drains its source (`xfer`): anything the driver retains across
+  iterations (parked `a`, fuel word, counter) must be `dup`ed, never delivered by
+  transfer. (round 3)
 - `evaln`-fidelity nuance (round 2, re-derived independently): failure *order* within a
   level is irrelevant to extensional agreement — every branch is a total `Option`
   computation, so an upward `prec` loop need not mirror the downward recursion's
@@ -201,6 +238,19 @@ README and at their statement sites.)
   (R1-F19, R2-F03, corrected twice; trust this version.)
 - Pop-a-stack-to-empty is `pump src (fun _ => .nop) (fun _ => .nop)` — 3 steps/symbol,
   same induction shape as `xfer_run`.
+- `pump_halt` is only the ⇐ direction (`T src = [] → halts`); "pump halts *only when*
+  its source is empty" is true of the definition but NOT a repo lemma. What carries the
+  drained-stack arguments is `xfer_run`'s output store (sets `src := []`). If a proof
+  needs the 'only when' direction, it must be proved first. (round 3)
+- `MachinePolyEC` over `Fin 0` holds for every `f` (only word is `[]`, so `f = id`) —
+  never cite an empty/one-symbol instantiation as evidence a machine statement has
+  content. (round 3)
+- `lint_paper_labels.py` requires every `theorem` to carry a paper label — Machine/
+  results must stay `lemma` (no paper nodes there until Stage 3); promoting for
+  emphasis breaks the gate.
+- The 2026-07-29 survey section of `notes/boundary-efficiency-model.md` cites Mathlib
+  facts from the *previous* pin (old line numbers, `FinEncoding`-based signature). Only
+  the Stage-0 re-survey and later sections are current for Mathlib file/line facts.
 - `codeEvalBound c k` is polynomial in the fuel *per fixed code* (degree grows with the
   code: `pair` doubles it); the `n ≤ k` guard caps every value fed onward, which is why
   exponential-growth codes return `none` rather than break the bound.
@@ -214,8 +264,13 @@ README and at their statement sites.)
 - `Option.none_bind` does not exist in the installed Mathlib; `none.bind f = none` is
   definitional — use `rfl` after rewriting.
 - Build calibration for Machine-only changes (2026-08-11, this host): APFS `.lake` clone
-  25 s; `lake build LogicalInduction.Construction.Machine` warm 8 s; full `lake build`
-  incl. `AxiomAudit` from seeded cache 45 s at `LAKE_JOBS=2`. The full gate is cheap —
-  run it rather than the module target alone.
+  25 s; `lake build LogicalInduction.Construction.Machine` warm 8–30 s; full `lake
+  build` incl. `AxiomAudit` 45 s *when the cache came from the same worktree* but
+  several minutes when seeded from a different worktree (corrected round 3) — run the
+  full gate, budget minutes, start it `run_in_background`.
+- At a concrete finite alphabet, routing through `MachinePolyEC` buys **no anti-oracle
+  guard**: `Machine` bundles `Fintype K/Λ`, so at `Fin 9` the table is finite regardless
+  (compiled `Finite (Prog (Fin 9) …)`). The oracle argument applies only to
+  unconstrained `Γ`. S3's shape rests on closure inheritance + totality. (R3-F06)
 - Doc comments on `example` are legal in this toolchain (a corrected wrong belief —
   don't refactor away from them on the assumption they error).

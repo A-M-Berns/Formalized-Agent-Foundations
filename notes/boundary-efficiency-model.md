@@ -257,8 +257,8 @@ Both closure results are, to our knowledge, the first nontrivial theorems about
 polynomial-time machine computability in Lean — a priority claim we have not systematically
 checked, and nothing rests on it. The composition one is the machine-class **analogue** of
 the statement Mathlib records as open: Mathlib's `proof_wanted
-Turing.TM2ComputableInPolyTime.comp` is over `FinTM2` with its three `FinEncoding`s, and is
-not implied by ours.
+Turing.TM2ComputableInPolyTime.comp` is over `FinTM2` with three encoding functions into
+lists over `Fintype` alphabets, and is not implied by ours.
 
 ---
 
@@ -337,7 +337,12 @@ refutations plus a third that is a preference rather than an impossibility:
   lemma and every application; (c) proof simplicity throughout the stage. The generic
   `∀`-form remains viable, and is the likely shape for any later Mathlib upstreaming;
   alphabet-embedding transport lemmas are needed only to move *fixed*-alphabet theorems
-  upward to a larger alphabet, which is a different job (§2.4 item 1).
+  upward to a larger alphabet, which is a different job (§2.4 item 1). Ground (a) is a
+  **workflow** argument, not a build-gate one: the lakefile sets `autoImplicit := false`
+  for the package, and package `leanOptions` do not reach per-file checking, so the silent
+  over-generalization is a hazard of iterating with `lake env lean` — which is how these
+  proofs are actually developed — and not of `lake build`. It is a real cost of the generic
+  form, but it does not make the generic form unsound.
 
 **Resolution: the stage fixes one concrete alphabet up front, and every statement in it.**
 
@@ -393,7 +398,12 @@ unbound identifiers as implicit type variables — this repo's standing gotcha (
 `notes/consolidation.md`) — so a statement that *should* have failed to elaborate for want
 of a symbol or a `Fintype` instance instead elaborates silently into a strictly more
 general, and false, claim, which the per-file check will happily accept. A concrete alphabet
-removes that failure mode at the source rather than relying on review to catch it.
+removes that failure mode at the source rather than relying on review to catch it. Scope of
+the hazard, stated precisely so it is not over-read: it is a **`lake env lean`-only** one.
+The lakefile pins `autoImplicit := false` in the package's `leanOptions`, and those options
+do not apply when a file is checked individually, so `lake build` of the target never sees
+the over-general elaboration. This is therefore an argument about the medium in which these
+proofs get written, not about what the gate would accept.
 
 ### The three statements
 
@@ -466,17 +476,13 @@ def MachineComputableTrader (Tr : Trader) : Prop :=
 ```
 
 The two conjuncts *are* the design, and the reasons for this shape over the earlier
-`∃ w, RunsInTime M (unary n) w … ∧ interpret w = Tr.strat n` are three, none of them a
+`∃ w, RunsInTime M (unary n) w … ∧ interpret w = Tr.strat n` are two, neither of them a
 strengthening of what is asserted about a single input:
 
-1. **It inherits the model's guard.** Routing through `MachinePolyEC` — rather than
-   re-quantifying over a machine and a clock in place — carries the `[Fintype Γ_LI]`
-   instance that `RunsInTime` does not (see the first bullet of "The alphabet is pinned"),
-   so the definition cannot be satisfied by an oracle-shaped machine.
-2. **It inherits the Stage-1 closure theory.** `MachinePolyEC.comp` and `MachinePolyEC.pair`
+1. **It inherits the Stage-1 closure theory.** `MachinePolyEC.comp` and `MachinePolyEC.pair`
    apply to `F` directly, with no re-proof; a bespoke machine-and-clock existential would
    have to re-derive both.
-3. **`F` is total on all words** — this is the real content of the choice, and it is not
+2. **`F` is total on all words** — this is the real content of the choice, and it is not
    free. `MachinePolyEC F` constrains the machine at *every* input, while the earlier shape
    constrains it only at the canonical `unary n`. The price is the input-normalization phase
    (§2.0, and the standing risk bullet in §2.5): junk inputs must be given a defined,
@@ -487,7 +493,14 @@ earlier shape's `∃ w` was never satisfiable by a "lucky" store, because runs a
 deterministic and `RunsInTime.unique` (`Machine/Basic.lean`) already pins `w` as a function
 of the machine and the input. An earlier draft of this memo argued for the new shape on
 exactly that ground; the argument was self-refuting, since it cited the determinism lemma
-that makes the old shape unambiguous too. The three reasons above are the real ones.
+that makes the old shape unambiguous too. Nor does the shape buy an anti-oracle guard: a
+third reason once claimed that routing through `MachinePolyEC` supplies the `[Fintype Γ_LI]`
+instance `RunsInTime` lacks, and so excludes oracle-shaped machines. At the pinned alphabet
+it supplies nothing — `Machine` bundles `Fintype` on both `K` and `Λ`, so at `Γ_LI = Fin 9`
+the transition table is already a finite object (compiled, round-3 audit:
+`Finite (Prog (Fin 9) …)`), and the bare-`RunsInTime` shape is no more oracle-admitting
+than this one. That argument belongs where it is true — §2.0's unconstrained-`Γ` bullet,
+about `Machine ℕ` — and not here. The two reasons above are the real ones.
 
 The inclusion `EfficientlyComputable Tr → MachineComputableTrader Tr` supplies `F` on the
 canonical inputs by the concrete emitted word
@@ -526,12 +539,29 @@ nontrivial trader** — the first witness carrying content is the first exploiti
 pushed through the inclusion. Tranche 7 must present it that way; the `rfl` inhabitant is
 never to be offered as evidence that the bridge says something.
 
-### Where S3 lives
+### Where S2 and S3 live
 
-`MachineComputableTrader` and its inclusion go in a **new file**
-`LogicalInduction/Construction/Machine/Bridge.lean`, importing `Framework/Criterion` (for
-`Trader`, `EfficientlyComputable`, and the interpretation chain `strategyOfTokens ∘ unRpn ∘
-undigitize`) and the Machine core. Not in `Basic.lean`, and not in any of the existing three:
+Both live in one **new file**, `LogicalInduction/Construction/Machine/Bridge.lean`: S2
+(`PolyFueled.machinePolyEC`) and S3 (`MachineComputableTrader` together with the inclusion).
+S2 had no file home in an earlier draft of this plan, which is an omission and not a choice:
+it is the first statement in the repo naming a fuel-model class and a machine class in the
+same breath, so it can no more sit in the upstreamable core than S3 can, and it is far too
+small to warrant a file of its own. The file is therefore created at **tranche 6**, with S2,
+and gains S3 at tranche 7.
+
+Its imports are `Framework/Computable` and `Framework/DigitArith`, plus the Machine core.
+Those two reach `Framework/Criterion` transitively (`DigitArith` imports `Computable`, which
+imports `Criterion`), so `Trader`, `EfficientlyComputable`, and the interpretation chain
+`strategyOfTokens ∘ unRpn ∘ undigitize` all arrive with them; naming them rather than
+`Criterion` alone is what keeps two specific steps one-liners instead of re-derivations:
+
+* `Framework/Computable` supplies `PolyFueled` — S2's own hypothesis — and `Fueled.mono`
+  (:67), the majorant step of §2.0;
+* `Framework/DigitArith` supplies `undigitize_eq_blockSplit` (:934) and `blockStep` (:875),
+  from which the tranche-7 clamp lemma `undigitize ∘ map (min · 4) = undigitize` follows as
+  a one-line `blockSplit` invariance rather than a from-scratch induction.
+
+Not in `Basic.lean`, and not in any of the existing three:
 the directory's upstreamability invariant — a self-contained counted-machine development
 that could be offered to Mathlib — is scoped to `Basic`/`Closure`/`Pairing`, and pulling an
 LI `Framework` import into any of them would destroy it for all of them. `Bridge.lean` is
@@ -566,7 +596,9 @@ class.
 with `b` polynomial in the numeric input `n`. A machine reading base-`b` digits of `n` has
 input length `Θ(log n)`, so "poly in input length" would mean `poly(log n)` time — a
 strictly smaller class, and the inclusion would be **false** (fuel-poly permits `Θ(n)`-value
-work). Unary input makes value-poly and length-poly coincide. That argument is the whole
+work). That last step is a standard complexity separation, taken as known and **not
+formalized here**; nothing in the plan proves the binary-input variant false, it is simply
+not the variant we state. Unary input makes value-poly and length-poly coincide. That argument is the whole
 justification, and it is ours: it comes from what `PolyFueled` measures.
 
 The paper is *consistent with* the choice but is not its authority, and an earlier draft of
@@ -647,13 +679,55 @@ Verified against the installed `Mathlib/Computability/PartrecCode.lean` (`evaln`
 
 The simulator must reproduce the guards and decrements bit-for-bit. In particular the
 `prec` machine iterates *upward* from the base case while `evaln` recurses *downward*
-from the top; the upward loop must fail exactly when the downward recursion would have.
-Writing the descent out: the level-`j` unfolding (`0 ≤ j ≤ y`) runs at fuel
-`k + 1 − (y − j)`, guards its own argument `Nat.pair a j` against that fuel minus one, and
-bottoms out at level `0` with fuel `k + 1 − y`. If `y > k`, the ladder underflows before
-reaching the base and the whole call is `none` — the machine's fuel-counter stack must
-produce that too, from an underflow test, not from the top-level fuel. This is the single
-largest fidelity risk of the stage (see §2.5).
+from the top; the upward loop must agree with the downward recursion at every level, on
+values and on failures alike. Writing the descent out: the level-`j` unfolding
+(`0 ≤ j ≤ y`) runs at fuel `k + 1 − (y − j)`, guards its own argument `Nat.pair a j`
+against that fuel minus one, and bottoms out at level `0` with fuel `k + 1 − y`.
+
+**The ladder's own failure modes are unreachable, and the top-level guard is what makes
+them so.** Verified twice, with compiled lemmas (round-3 audit). Suppose the top-level
+`guard (n ≤ k)` has passed, at `n = Nat.pair a y`. Then:
+
+* `y ≤ k`, since `y ≤ Nat.pair a y` (`Nat.right_le_pair`) — so the ladder **cannot
+  underflow**: every level's fuel `k + 1 − (y − j)` is at least `1`, and level `0` is
+  reached;
+* **every level-`j` guard passes**, from `Nat.pair a j + (y − j) ≤ Nat.pair a y` — the
+  telescoped form of strict monotonicity in the second argument
+  (`Nat.pair_lt_pair_right`) — which is exactly `Nat.pair a j ≤ k − (y − j)`, the guard
+  that level `j` performs at fuel `k + 1 − (y − j)`;
+* **the base `cf` call's guard is free**, being that inequality at `j = 0` composed with
+  `a ≤ Nat.pair a 0` (`Nat.left_le_pair`): `a ≤ k − y`, and `cf` runs at fuel `k + 1 − y`.
+
+So the instruction this passage used to give — that the machine's fuel-counter stack must
+produce the `y > k` failure "from an underflow test, not from the top-level fuel" — was
+backwards. The top-level fuel guard **is** the mechanism; a dedicated underflow test would
+be dead code, testing a condition that guard has already excluded. The compiled helper
+shapes, `pair_add_sub_le` and `prec_ladder_no_underflow`, are **tranche-5 assets**: that
+tranche should land them under those names so the `prec` invariant can cite them rather
+than re-deriving the arithmetic inline.
+
+This **simplifies** the `prec` loop invariant, and is worth stating as a positive result
+rather than a correction. The invariant does not have to carry a live/dead flag for the
+ladder or a per-iteration guard test with a failure exit; liveness and every level guard
+are consequences of the entry condition, so the loop is a straight `y`-iteration count-down
+whose only failure exits are the ones below.
+
+Those exits are where the fidelity risk actually lives. A `prec` call returns `none` from
+exactly four places, none of them the ladder:
+
+* **fuel `0`** — `evaln 0 c n = none`, unconditionally, before anything else;
+* **the top-level `guard (n ≤ k)`** itself;
+* **`cf` or `cg` failing internally** — a `none` handed back by a sub-simulator, which must
+  propagate rather than be read as a value;
+* **`cg`'s own guard**, on the argument the step branch assembles:
+  `evaln (k+1) cg (Nat.pair a (Nat.pair y i))`. This is the one that genuinely bites,
+  because that argument is **not** bounded by `n`: it packs the previous level's *result*
+  `i`, about which the top-level guard says nothing, so it may exceed `k` and the call may
+  fail at any level. The machine must fail with it, at the same level.
+
+The `rfind'` contrast is unchanged, and it is why the two loops cannot share an invariant:
+`rfind' cf` recurses on `Nat.pair a (m + 1)` at fuel `k`, so its argument *grows* while its
+fuel *shrinks*. Its guard failures are reachable, and its loop must produce them.
 
 ### Per-constructor plan
 
@@ -665,14 +739,17 @@ largest fidelity risk of the stage (see §2.5).
 * `comp cf cg`: `seq` of the two simulators, same fuel word, result-marker plumbing
   between them (`cg` fails ⟹ whole fails).
 * `prec cf cg`: unpair `n` into `(a, y)`; descend the fuel ladder to the bottom level
-  `k + 1 − y` (failing on underflow); **run `cf`'s simulator there — at fuel `k + 1 − y`, on
-  the argument `a`** — and only then start the upward `cg` iteration. The base run is a
+  `k + 1 − y` — no underflow exit is needed, and none should be written (see the
+  unreachability above); **run `cf`'s simulator there — at fuel `k + 1 − y`, on the
+  argument `a`** — and only then start the upward `cg` iteration. The base run is a
   scheduled phase in its own right, before the loop, not the loop's zeroth iteration: it
   runs a *different* sub-simulator at a *different* argument from every `cg` step. The
   upward part is then the loop combinator (§2.4): `y` iterations, iteration `j` running
-  `cg`'s simulator on `Nat.pair a (Nat.pair (j−1) i_{j−1})` at fuel `k + 1 − y + j`, with the
-  level-`j` guard on `Nat.pair a j`, plus the unary bookkeeping that assembles the next
-  argument.
+  `cg`'s simulator on `Nat.pair a (Nat.pair (j−1) i_{j−1})` at fuel `k + 1 − y + j`, plus
+  the unary bookkeeping that assembles the next argument. The level-`j` guard on
+  `Nat.pair a j` is discharged once, up front, from the top-level guard; the one guard the
+  loop must implement and may see fail is `cg`'s, on the assembled
+  `Nat.pair a (Nat.pair (j−1) i_{j−1})`.
 * `rfind' cf`: the loop combinator; at most `fuel` iterations, argument second
   component incremented and fuel decremented per iteration, zero-test on `cf`'s output.
 
@@ -777,23 +854,47 @@ all unpair their input. The verification that this is no obstacle machine-side:
      on `T src = []`, and `xfer_run` returns the source at `[]`), so the extraction transfer
      of (iii) drains it as a side effect of running. The staging stacks of (i) and (iii) are
      drained the same way. Listing the relocated stack for sweeping — as an earlier sketch
-     did — would not merely be wasted work: it would need a dirt bound on a stack that does
-     *not* start empty, which `HaltsFrom.length_le` does not supply.
+     did — is simply wasted work, and nothing worse: `HaltsFrom.length_le`'s bound
+     `|T' k| ≤ |T k| + t` is unconditional, so a non-empty-start stack does have a dirt
+     bound (just `|T k| + t` rather than `t`). An earlier draft claimed the bound was
+     unavailable there; it is available, and the reason not to sweep is redundancy, not a
+     missing lemma.
 
-   The clock lemma sums those four: `exists_clock_loop` bounds
-   `Σ_{i<y} (6·|inᵢ| + bound(body) + 6·|outᵢ| + 3·|K_body|·bound(body))` uniformly by
-   `y ·` the per-iteration maximum and folds it into the `a·(len+1)^k + a` normal form,
-   extending the `exists_clock_comp`/`exists_clock_pair` pattern. The output lengths `|outᵢ|`
-   are themselves bounded by the body's clock through `RunsInTime.length_output_le`, so
-   nothing in the sum is unbounded. The alternative — strengthening the
-   body's spec to arbitrary initial private stores — is false in general (a body may read
-   leftover garbage) and is not attempted.
+   The clock lemma sums those four **plus the driver's own overhead**, which the prose
+   above announces and an earlier version of this sum quietly dropped: the driver pays a
+   per-iteration cost (counter decrement, the dispatch and re-entry around the body) and a
+   one-off initialization (counter set-up, staging stacks). Written out, `exists_clock_loop`
+   bounds
+
+   ```
+   c_init + Σ_{i<y} (c_driver + 6·|inᵢ| + bound(body) + 6·|outᵢ| + 3·|K_body|·bound(body))
+   ```
+
+   — equivalently `c_init + y·c_driver + Σ_{i<y}(…)` — with `c_init` and `c_driver`
+   per-machine constants, uniformly by `y ·` the per-iteration maximum, and folds it into
+   the `a·(len+1)^k + a` normal form, extending the `exists_clock_comp`/`exists_clock_pair`
+   pattern. Charging both explicitly is the Stage-1 precedent: `pairMachine_runsInTime`'s
+   clock `9|x| + 6|u| + t₁ + t₂ + 8` carries every handover as its own summand and is exact
+   with zero slack, and the loop's clock statement should be exact in the same way rather
+   than absorbing the driver into a fudge factor.
+
+   The output lengths `|outᵢ|` are bounded uniformly by `codeEvalBound c fuel`
+   (`codeEvaln_result_le` + `codeEvalBound_poly`, `Framework/Emission.lean`) — the same tool
+   §2.5 uses — so nothing in the sum is unbounded. Note which tool this is **not**:
+   `RunsInTime.length_output_le` bounds an iteration's output by *its own* input plus its
+   step count, and iteration `j`'s input is assembled from iteration `j − 1`'s output, so
+   chaining it compounds across the loop and gives a bound growing with `y`. The
+   `codeEvalBound` route does not compound, because it bounds every intermediate `evaln`
+   result against the fuel directly, independently of the iteration index. The alternative —
+   strengthening the body's spec to arbitrary initial private stores — is false in general
+   (a body may read leftover garbage) and is not attempted.
 
    **Consequence for the architecture, worth stating flatly.** Stage-1's `seq` chaining is
    cheap precisely because the I/O stack is shared and no data moves; that is available for
    **top-level phases only** — phases that run once, in order, in the composite's own I/O
    stack. **Anything iterated runs relocated**, and pays the overhead above: `6` steps per
-   symbol in, `6` per symbol out, plus the private-block sweep. The loop is not `seq` under a
+   symbol in, `6` per symbol out, the private-block sweep, and the driver's own `c_driver`
+   per iteration on top of a one-off `c_init`. The loop is not `seq` under a
    counter, and the Stage-2 cost estimates must be read with the relocation overhead
    included.
 3. **Branching**: dispatch on a read symbol is finite-control (one state per branch);
@@ -804,13 +905,22 @@ all unpair their input. The verification that this is no obstacle machine-side:
 
 ## 2.5 Risk register
 
-* **`prec` fuel-mirroring** (top risk): upward loop vs downward recursion — the failure
-  cases must agree exactly, at every level's guard and fuel, and the base run of `cf` must
-  land at fuel `k + 1 − y` on argument `a` rather than anywhere convenient. Mitigation:
-  state the loop-invariant of the `prec` machine directly against
-  `evaln (k+1-(y-j)) (prec cf cg) (Nat.pair a j)`, not against a paraphrase; audit lens told
-  to attack the `none` cases (ladder underflow when `y > k`, guard failures at intermediate
-  levels, and `cf` failing in the base).
+* **`prec` fuel-mirroring** (top risk): upward loop vs downward recursion — the values and
+  the failures must agree exactly, and the base run of `cf` must land at fuel `k + 1 − y` on
+  argument `a` rather than anywhere convenient. What the risk is **not**: the ladder's own
+  failure modes. Past the top-level `guard (n ≤ k)` the ladder cannot underflow and no
+  level-`j` guard can fail (§2.2, from `Nat.right_le_pair` and `Nat.pair_lt_pair_right`;
+  compiled, round-3 audit). Mitigation: state the loop-invariant of the `prec` machine
+  directly against `evaln (k+1-(y-j)) (prec cf cg) (Nat.pair a j)`, not against a
+  paraphrase — the unreachability makes that invariant *simpler*, since the entry condition
+  discharges the guards once instead of the loop testing them each pass — and land
+  `pair_add_sub_le` / `prec_ladder_no_underflow` in tranche 5 so the invariant cites them.
+  The audit lens is told to attack the `none` cases that are **reachable**: fuel `0`, the
+  top-level guard, an internal failure of `cf` or `cg`, and — the one that genuinely
+  bites — `cg`'s guard on the assembled argument `Nat.pair a (Nat.pair y i)`, which is not
+  bounded by `n` because it packs the previous level's result. For `rfind'` the guard
+  failures *are* reachable (argument growing while fuel shrinks) and the loop must produce
+  them.
 * **Time bookkeeping through nested loops**: per-iteration bounds vary as values grow;
   bound every iteration uniformly by `codeEvalBound c fuel` before summing, accepting
   the degree loss (absorbed by the per-code `(a, k)`), and remembering that each iteration
@@ -847,15 +957,26 @@ all unpair their input. The verification that this is no obstacle machine-side:
    machine (de-risk showcase, §2.3).
 4. `pair`, `comp` cases; phase-bundle factoring decision recorded here.
 5. `prec`, `rfind'` cases (the fidelity core: base run, ladder, guards — §2.2, §2.5).
-6. Assembly: S1 by induction; S2, with its normalization phase and the
-   `evaln_mono`/`Fueled.mono` majorant step.
-7. New file `Machine/Bridge.lean` (added to the `Machine.lean` aggregator, no `Paper node:`
-   line): `MachineComputableTrader`, the `min d 4` clamp lemma, S3; boundary-note update.
+   Lands the two arithmetic helpers the `prec` invariant cites, `pair_add_sub_le`
+   (`j ≤ y → Nat.pair a j + (y − j) ≤ Nat.pair a y`; induction on `y` off
+   `Nat.pair_lt_pair_right`) and `prec_ladder_no_underflow` (`Nat.pair a y ≤ k → y ≤ k`;
+   `Nat.right_le_pair`), so that the ladder's unreachable failure modes are settled by
+   citation and not re-argued per level (§2.2). Both are a handful of lines — the level-`j`
+   guard and the base guard then fall to `omega` from them plus `Nat.left_le_pair`
+   (compiled, round-3 fix wave).
+6. Assembly: S1 by induction. Then the **new file** `Machine/Bridge.lean` (added to the
+   `Machine.lean` aggregator, no `Paper node:` line; imports and rationale under "Where S2
+   and S3 live"), and S2 landed in it, with its normalization phase and the
+   `evaln_mono`/`Fueled.mono` majorant step. Creating the file here is also what puts the
+   directory's self-containedness caveat in play; the docstring sentences that record it are
+   listed under tranche 7 and land there, with S3.
+7. In `Bridge.lean`: `MachineComputableTrader`, the `min d 4` clamp lemma (one line from
+   `undigitize_eq_blockSplit` + `blockStep`), S3; boundary-note update.
    Non-vacuity is presented as **S3 applied to a nontrivial trader**; the one-line `rfl`
    inhabitant of §2.0 may be recorded as a sanity check but never as the class's evidence.
    Still no strength-claim changes anywhere — Stage 3 gates those.
 
-   **Docstring updates that land in the same commit as `Bridge.lean`**, because they are
+   **Docstring updates that land in the same commit as S3**, because they are
    statements of fact that this tranche falsifies (the standing rule freezes claims, not
    facts — see the preamble):
    * `Construction/Machine.lean` (the aggregator): "no theorem relates `MachinePolyEC` to

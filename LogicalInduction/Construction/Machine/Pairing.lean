@@ -348,7 +348,14 @@ immune.
 This is not a blanket rule against update-shaped statements. At a composite memory written
 as a type expression rather than a projection — `Stack (pairK M₁ M₂)` — both sides elaborate
 alike and the update forms work directly; `pairMachine_runsInTime` chains `pushOne_run` and
-`emitTagged_run` in exactly that shape. -/
+`emitTagged_run` in exactly that shape.
+
+That is also why two of the four have no consumer in this file: `xfer_run_val` and
+`dup_run_val` are used by `pairMachine_runsInTime` and `eraseMachine_runsInTime`, while
+`emitTagged_run_val` and `pushOne_run_val` are scaffolding for the concrete unary-toolkit
+machines of the next stage (tranche 1 of `notes/boundary-efficiency-model.md`), whose `K` is
+a literal type and which therefore hit exactly the projection-vs-literal mismatch above.
+They are scheduled, not orphaned. -/
 
 section Pointwise
 
