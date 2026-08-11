@@ -19,9 +19,11 @@ phase of a composite:
   untouched. This is the frame property, obtained from the definition rather than assumed.
 
 `MachinePolyEC.comp` combines the two: a composite machine over `K₁ ⊕ K₂` runs each
-component relabelled into its own private block, sharing the I/O stack. This is the closure
-Mathlib currently records as open for its own poly-time class
-(`proof_wanted Turing.TM2ComputableInPolyTime.comp`).
+component relabelled into its own private block, sharing the I/O stack. It is the
+machine-class *analogue* of the closure Mathlib records as open for its own poly-time class
+(`proof_wanted Turing.TM2ComputableInPolyTime.comp`) — not that statement: Mathlib's is
+about `FinTM2` machines computing between three encoded data types, and nothing here implies
+it.
 -/
 import LogicalInduction.Construction.Machine.Basic
 import Mathlib.Tactic.Ring
@@ -356,10 +358,15 @@ lemma exists_clock_comp (a₁ k₁ a₂ k₂ : ℕ) :
 
 /-- **The polynomial-time machine class is closed under composition.**
 
-This is the closure Mathlib records as open for its own poly-time class
-(`proof_wanted Turing.TM2ComputableInPolyTime.comp`, in
+This is the machine-class analogue of the closure Mathlib records as open for its own
+poly-time class (`proof_wanted Turing.TM2ComputableInPolyTime.comp`, in
 `Mathlib/Computability/TuringMachine/Computable.lean`); the shared I/O stack is what removes
-the "copy the output tape to the input tape" phase that makes the statement awkward there. -/
+the "copy the output tape to the input tape" phase that its informal proof sketch has to
+perform. It is emphatically *not* that statement, and does not imply it: Mathlib's is over
+`FinTM2` machines with three data-type encodings `eα, eβ, eγ` and a `Polynomial ℕ` clock,
+where this one is over the machines of this file, over words, with the clock normal form
+`fun n => a * (n + 1) ^ k + a`. Bridging the two would mean relating the models, which no
+theorem in this directory does. -/
 lemma MachinePolyEC.comp [Fintype Γ] {f g : List Γ → List Γ} (hf : MachinePolyEC f)
     (hg : MachinePolyEC g) : MachinePolyEC (fun x => g (f x)) := by
   obtain ⟨M₁, a₁, k₁, h₁⟩ := hf

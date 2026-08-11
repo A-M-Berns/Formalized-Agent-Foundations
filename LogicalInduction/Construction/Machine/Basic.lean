@@ -6,12 +6,23 @@ defines a machine whose steps are *counted by construction*, together with the p
 time class `MachinePolyEC` built over it.
 
 **Model.** A machine is a finite control (`Machine.Λ`, a `Fintype`) over a stack memory. One
-step reads the top symbol of every stack and performs exactly one memory action: push a
+step reads the top symbol of *every* stack and performs exactly one memory action: push a
 symbol onto one stack, pop one stack, or nothing (`Act`). The step function returning `none`
-is halting. This is Mathlib's `Turing.TM2` primitive set, restricted to one action per unit
-of time rather than one structured statement; two stacks already simulate a single-tape
-Turing machine with linear overhead, so it is a genuine machine class rather than a
-unit-cost RAM.
+is halting.
+
+The memory primitives are TM2-style stack actions — one action per unit of time, with all
+stack tops readable by the transition function. This is *not* Mathlib's `Turing.TM2`
+primitive set nor a restriction of it: a `TM2` transition executes a structured statement
+whose actions each name one stack and whose reads are one stack at a time, whereas a step
+here reads every top at once and then performs a single action. No theorem here relates the
+two models.
+
+The intended reading of the step count as a time measure rests on the classical fact that
+two stacks simulate a single-tape Turing machine with linear overhead, which is what makes
+this a machine class rather than a unit-cost RAM. That fact is **standard and is not
+formalized here** (see e.g. Hopcroft–Ullman, *Introduction to Automata Theory, Languages,
+and Computation*, on two-pushdown-stack machines); it is cited to say what the model is
+meant to be, and nothing below depends on it.
 
 **Memory shape: a private block over a shared I/O stack.** A machine declares a finite index
 type `Machine.K` of *private* stacks; its stacks are `Stack K = Option K`, where `none`
@@ -26,9 +37,18 @@ condition to discharge.
 **Halting convention.** A run starts with the input on the shared stack and every private
 stack empty, and ends with the output on the shared stack; private stacks may be left dirty
 (`RunsInTime`). Requiring them to be cleared would buy nothing and cost a cleanup phase in
-every construction: a machine's private stacks are invisible to anything it is embedded in,
-and each embedded machine is started once, on a block that is empty because the embedding
-gives it a fresh one.
+every construction — *for the embeddings this file's closure results use*, which are all
+**single-entry**: a machine's private stacks are invisible to anything it is embedded in,
+and each embedded machine is started exactly once, on a block that is empty because the
+embedding gives it a fresh one (`seq`, `pairMachine`).
+
+The justification is scoped to that case and does not generalize. An embedding that
+*re-enters* a sub-machine — a loop running it once per iteration, which is what a bounded
+search or an iterated construction needs — would find the block dirty on the second entry,
+so it must either clear the block between entries or carry a stronger "ends clean"
+contract. Whichever way that is settled, it is a Stage-2 question
+(`notes/boundary-efficiency-model.md`); the convention below stands as is, and the closure
+results here are unaffected.
 
 **Finiteness is what makes the class honest.** With `Fintype Γ`, `Fintype K` and `Fintype Λ`
 the transition function is a finite table, so no information can be smuggled into the
@@ -158,6 +178,43 @@ lemma HaltsFrom.mono [DecidableEq S] {P : Prog Γ S Λ} {q : Λ} {T T' : S → L
   obtain ⟨s, hs, r, hrun, hhalt⟩ := h
   exact ⟨s, hs.trans ht, r, hrun, hhalt⟩
 
+/-! ### Determinism
+
+`HaltsFrom` and `RunsInTime` are existentials over the final store, so on their face they
+are relations. They are in fact graphs of partial functions: the step function is a
+function, so a halted configuration is reached at most once. -/
+
+/-- A halted configuration stays halted: `runFor` past the halting step is `none`, never a
+stalled repetition of the final configuration. -/
+lemma runFor_succ_of_halted [DecidableEq S] {P : Prog Γ S Λ} {c : Cfg Γ S Λ}
+    (h : stepCfg P c = none) (t : ℕ) : runFor P (t + 1) c = none := by
+  rw [runFor_succ, h]
+  rfl
+
+/-- **The halting store is unique.** Two halting runs of the same program from the same state
+and store leave the same store; the proof shows en route that they also halt after the same
+number of steps. This is what makes the existential-over-stores form of `HaltsFrom`
+functional: the `t` in `HaltsFrom P q T T' t` is a bound on the running time, but `T'` is
+determined by `P`, `q` and `T` alone. -/
+lemma HaltsFrom.unique [DecidableEq S] {P : Prog Γ S Λ} {q : Λ} {T T₁ T₂ : S → List Γ}
+    {t₁ t₂ : ℕ} (h₁ : HaltsFrom P q T T₁ t₁) (h₂ : HaltsFrom P q T T₂ t₂) : T₁ = T₂ := by
+  have key : ∀ {s s' : ℕ} {r r' : Λ} {U U' : S → List Γ}, s ≤ s' →
+      runFor P s ⟨q, T⟩ = some ⟨r, U⟩ → stepCfg P ⟨r, U⟩ = none →
+      runFor P s' ⟨q, T⟩ = some ⟨r', U'⟩ → U = U' := by
+    intro s s' r r' U U' hle hrun hhalt hrun'
+    obtain ⟨d, rfl⟩ := Nat.exists_eq_add_of_le hle
+    rw [runFor_add, hrun, Option.bind_some] at hrun'
+    cases d with
+    | zero =>
+        rw [runFor_zero, Option.some_inj] at hrun'
+        exact congrArg Cfg.store hrun'
+    | succ d => rw [runFor_succ_of_halted hhalt] at hrun'; exact absurd hrun' (by simp)
+  obtain ⟨s₁, -, r₁, hrun₁, hhalt₁⟩ := h₁
+  obtain ⟨s₂, -, r₂, hrun₂, hhalt₂⟩ := h₂
+  rcases le_total s₁ s₂ with h | h
+  · exact key h hrun₁ hhalt₁ hrun₂
+  · exact (key h hrun₂ hhalt₂ hrun₁).symm
+
 /-! ### Time bounds output size -/
 
 lemma length_store_stepCfg_le [DecidableEq S] {P : Prog Γ S Λ} {c c' : Cfg Γ S Λ}
@@ -225,8 +282,12 @@ def layout {K : Type} (w : List Γ) : Stack K → List Γ
 
 /-- **`M` maps `x` to `y` within `t` steps.** The machine started on `x` in the canonical
 initial memory halts after at most `t` steps with `y` on the shared stack. Private stacks may
-be left dirty: they are invisible to any construction `M` is embedded in, so clearing them
-would be pure overhead. -/
+be left dirty: they are invisible to any construction `M` is embedded in (a single-entry
+one — see the halting convention in the module docstring), so clearing them would be pure
+overhead.
+
+Quantifying the final store away does not lose determinism: the halting store is unique
+(`HaltsFrom.unique`), so `y` is a function of `M` and `x` (`RunsInTime.unique`). -/
 def RunsInTime (M : Machine Γ) (x y : List Γ) (t : ℕ) : Prop :=
   ∃ T' : Stack M.K → List Γ, T' none = y ∧ HaltsFrom M.step M.init (layout x) T' t
 
@@ -234,6 +295,15 @@ lemma RunsInTime.mono {M : Machine Γ} {x y : List Γ} {t t' : ℕ} (h : RunsInT
     (ht : t ≤ t') : RunsInTime M x y t' := by
   obtain ⟨T', hout, hrun⟩ := h
   exact ⟨T', hout, hrun.mono ht⟩
+
+/-- **A machine's output is unique**: the time bounds may differ, the output cannot. Together
+with `MachinePolyEC`'s "for every input" quantifier this says that a machine of the class
+computes one function, not a relation. -/
+lemma RunsInTime.unique {M : Machine Γ} {x y z : List Γ} {t s : ℕ} (h : RunsInTime M x y t)
+    (h' : RunsInTime M x z s) : y = z := by
+  obtain ⟨T, hy, hrun⟩ := h
+  obtain ⟨T', hz, hrun'⟩ := h'
+  rw [← hy, ← hz, hrun.unique hrun']
 
 /-- A machine cannot write more than one symbol per step, so a time bound is also an output
 size bound. This is what makes the polynomial class closed under composition: the second
@@ -259,5 +329,33 @@ alphabet would let the transition function act as an oracle. -/
 def MachinePolyEC [Fintype Γ] (f : List Γ → List Γ) : Prop :=
   ∃ (M : Machine Γ) (a k : ℕ), ∀ x : List Γ,
     RunsInTime M x (f x) (a * (x.length + 1) ^ k + a)
+
+/-! ## Non-vacuity witnesses
+
+`Machine`, `RunsInTime` and `MachinePolyEC` are all inhabited, by machines exhibited here
+rather than assumed: without this the closure lemmas (`MachinePolyEC.comp`,
+`MachinePolyEC.pair`) would be conditionals with no known instance of their hypotheses. This
+one is the identity; the erasing machine, which needs the data-movement primitives, is at the
+end of `Pairing.lean`, as are the examples that exercise the closure lemmas on the two. -/
+
+/-- **The machine that halts at once**: no private stacks, one control state, and a
+transition function that never fires. It leaves the input where it found it, so it computes
+the identity in time `0`. -/
+def haltMachine (Γ : Type) : Machine Γ where
+  K := Empty
+  Λ := Unit
+  init := ()
+  step := fun _ _ => none
+
+/-- `haltMachine` computes the identity in zero steps.  Kind `N+`: a constructed inhabitant
+of `RunsInTime`. -/
+lemma haltMachine_runsInTime (Γ : Type) (x : List Γ) : RunsInTime (haltMachine Γ) x x 0 :=
+  ⟨layout x, rfl, 0, le_rfl, (), rfl, rfl⟩
+
+/-- **`MachinePolyEC` is inhabited**: the identity is machine-poly-computable, with the
+constant clock `0`.  Kind `N+`: the witness is `haltMachine`, constructed above, not an
+assumed machine. -/
+lemma MachinePolyEC.id [Fintype Γ] : MachinePolyEC (fun x : List Γ => x) :=
+  ⟨haltMachine Γ, 0, 0, fun x => by simpa using haltMachine_runsInTime Γ x⟩
 
 end LogicalInduction.Counted

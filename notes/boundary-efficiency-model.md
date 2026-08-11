@@ -67,9 +67,10 @@ top of the inclusion.
   `EfficientlyComputable`'s `(a,k)` shape. First standalone deliverable: composition
   and pairing closure — the first nontrivial theorems about poly-time TM
   computability in Lean, upstreamable to Mathlib.
-* **Stage 2 (2–4 months):** the inclusion `EfficientlyComputable → MachinePolyEC`.
-  Half-closes the lower-calibration boundary in the direction the property tail
-  uses; every existing fuel certificate is preserved as the certification tool.
+* **Stage 2 (2–4 months):** establishes fuel⟹machine — every fuel-certified trader is
+  genuinely machine-poly. This does **not** touch the model card's "Lower calibration —
+  OPEN" item, which is the (false-as-stated) converse; see the Stage-2 memo §2.0. Every
+  existing fuel certificate is preserved as the certification tool.
 * **Stage 3 (4–9 months):** enumeration + universal simulator; `thm:li` at the
   machine class. No partial credit before the end of this stage.
 * **Stage 4 — do not attempt:** the converse inclusion (machine-poly ⟹ fuel-poly) is
@@ -153,9 +154,11 @@ dependency was added; this is a record of the state, not a rejection of CSlib on
 
 ## The de-risk probe (executed)
 
-`LogicalInduction/Construction/Machine/TimedRespectsProbe.lean` — 224 lines, compiles
-clean under the current toolchain, not imported by `LogicalInduction.lean`. It carries a
-step-count bound through the smallest Mathlib simulation, `Turing.TM1to0`:
+`LogicalInduction/Construction/Machine/TimedRespectsProbe.lean` — 226 lines. It compiled
+clean under Lean v4.31.0 at the Stage-0 re-survey, 2026-08-11; it is reachable from no
+aggregator and therefore in no build target, and may rot — it is a record of the probe, not
+a maintained artifact. It carries a step-count bound through the smallest Mathlib
+simulation, `Turing.TM1to0`:
 
 * `ReachesIn f k a b` — counted reachability, with `reaches_iff_reachesIn` and
   `reaches₁_iff_reachesIn` pinning down exactly what `Reaches`/`Reaches₁` retain: the count
@@ -242,6 +245,484 @@ property is what pairing needs, and it now holds by construction.
   three instantiations `xfer`, `dup`, `emitTagged`; the eight-phase pairing machine; and
   `MachinePolyEC.pair` for the self-delimiting encoding `pairWord`.
 
-Both closure results are the first nontrivial theorems about polynomial-time machine
-computability in Lean; the composition one is the statement Mathlib records as open
-(`proof_wanted Turing.TM2ComputableInPolyTime.comp`).
+Both closure results are, to our knowledge, the first nontrivial theorems about
+polynomial-time machine computability in Lean — a priority claim we have not systematically
+checked, and nothing rests on it. The composition one is the machine-class **analogue** of
+the statement Mathlib records as open: Mathlib's `proof_wanted
+Turing.TM2ComputableInPolyTime.comp` is over `FinTM2` with its three `FinEncoding`s, and is
+not implied by ours.
+
+---
+
+# Stage 2 — design memo (2026-08-11)
+
+_The fuel⟹machine program, pinned before proving. Three statements, in the order they are
+built and with the role each actually plays: an **engine** (S1, the fixed-code `evaln`
+simulator), a **class-level milestone** (S2, `PolyFueled → MachinePolyEC`), and the
+**trader-level headline** (S3, `EfficientlyComputable → MachineComputableTrader`).
+Everything below was verified against the installed tree; consumer citations are to the
+current files. Standing rule restated: nothing in Stage 2 changes any strength claim, README
+text, model-card wording, or `AxiomAudit` endpoint — no partial credit before Stage 3._
+
+## 2.0 What the deliverable must say, and what it must not
+
+`EfficientlyComputable : Trader → Prop` and `MachinePolyEC : (List Γ → List Γ) → Prop` do
+not share a type, so "the inclusion" needs a bridge object. The consumer survey fixes what
+that object must be:
+
+* Every downstream consumer of `EfficientlyComputable` uses **class membership only**.
+  The enumeration half is definitional (`TraderProgram` *is* the witness quadruple;
+  `enumeratedTrader_ec` is `rfl`-shaped; `TradingFirm.lean` consumes only the coverage
+  fact `∃ j, enumeratedTrader j = Tr`). Nothing downstream inspects `evaln`.
+* The fuel model's certificate-realizing lemmas (`ecTok_of_*`, `ecDigit_of_*`,
+  `ec_of_raw*`, `EfficientlyComputable.ofTradeBlocks`, …) all *produce* class
+  membership from fuel certificates. Stage 2 sits after them: it consumes the class's
+  witness quadruple `(lengthCode, tokenCode, a, k)` and produces a machine.
+
+So the headline deliverable is a **trader-level** machine class plus the inclusion into it
+(S3), with a function-level simulation lemma as the engine (S1) and a class-level inclusion
+as the milestone that exercises it (S2).
+
+### The alphabet is pinned, concretely, once
+
+An earlier draft of this memo stated S1 over an abstract `Γ` with abstract distinguished
+symbols and no hypotheses on them. That is wrong three times over, and the first two
+refutations compile:
+
+* **The `Fintype` guard cannot be dropped.** `MachinePolyEC` carries `[Fintype Γ]`, and
+  `Machine/Basic.lean` says why: it is part of the model, since an infinite alphabet lets
+  the transition function act as an oracle. A `Γ`-generic S1 without the instance produces
+  a machine no `MachinePolyEC` statement can consume; *with* the instance but at an
+  arbitrary infinite-capable `Γ` the statement is oracle-shaped.
+* **The symbol hypotheses cannot be dropped.** With `u`, `r`, `s₀`, `s₁` unconstrained the
+  conclusion is false: at `Γ = Fin 1` they all collapse, and `pairWord s₀ s₁` stops being
+  injective (`pairWord_injective` needs `s₀ ≠ s₁`) while `encodeResult` stops separating
+  `none` from `some 0` (needs `r ≠ u`). `u = s₀` and `s₀ = s₁` are separate refutations of
+  the same shape.
+* **And repairing it by carrying the hypotheses still does not connect the statements.**
+  Transport along an injection `Γ ↪ Γ'` *widens* an alphabet; it cannot shrink one. An
+  alphabet-generic S1 therefore cannot be instantiated *down* to the small concrete
+  alphabet the trader-level statement needs — the plan's old "prove S1 generically, then
+  specialize to `Fin 5`" step does not exist.
+
+**Resolution: the stage fixes one concrete alphabet up front, and every statement in it.**
+
+```
+abbrev Γ_LI := Fin K
+```
+
+with `K` a literal pinned in tranche 1. The plan starts from `K = 8` with the illustrative
+table: values `0–4` are the digit symbols (digit `d` at value `d`, so the interpretation
+chain's `Fin.val` is the identity on digits — §2.1); `5` is the unary mark `u`; `6` is the
+result marker `r`; `7` is a spare/tag. The two pairing tags are two designated distinct
+values, e.g. `s₀ := 6`, `s₁ := 7`. Tranche 1 owns the exact assignments, and in particular
+owns one open question this table leaves: whether any phase ever holds a `pairWord`-tagged
+word and an `encodeResult` word in the same stack, which would force the tags disjoint from
+`r` and bump `K` to 9. That is a numbers question. What the memo commits to is the design:
+
+* one concrete `Γ_LI = Fin K`, `K` a literal, chosen before the first tranche;
+* every designated symbol a named **concrete value**, so that `s₀ ≠ s₁`, `u ≠ r`, … are
+  `by decide` facts and never hypotheses;
+* **every S1–S3 statement over this one alphabet**: no alphabet-generic statements
+  anywhere in the plan, and no downward transport anywhere in the plan.
+
+The "no free type variables" clause is not fastidiousness. `lake env lean` auto-binds
+unbound identifiers as implicit type variables — this repo's standing gotcha (gotcha log in
+`notes/consolidation.md`) — so a statement that *should* have failed to elaborate for want
+of a symbol or a `Fintype` instance instead elaborates silently into a strictly more
+general, and false, claim, which the per-file check will happily accept. A concrete alphabet
+removes that failure mode at the source rather than relying on review to catch it.
+
+### The three statements
+
+**(S1) The engine — the fixed-code `evaln` simulator.** Over `Γ_LI`, with the pinned
+symbols `u`, `r`, `s₀`, `s₁`:
+
+```
+lemma Code.machinePolyEC (c : Nat.Partrec.Code) :
+    ∃ (M : Machine Γ_LI) (a k : ℕ), ∀ fuel n : ℕ,
+      RunsInTime M (pairWord s₀ s₁ (unary fuel) (unary n))
+        (encodeResult (Nat.Partrec.Code.evaln fuel c n))
+        (a * ((pairWord s₀ s₁ (unary fuel) (unary n)).length + 1) ^ k + a)
+```
+
+with `unary m := List.replicate m u`, `encodeResult none := []`,
+`encodeResult (some v) := r :: unary v` (the marker separates `some 0` from `none`).
+The conclusion is **extensional equality with `evaln`, including every `none` case**
+(fuel `0`, guard failures, sub-computation failures). That is the spec; a simulator
+that is only right on `some` has simulated something else, and the audit lens for this
+stage should attack exactly that.
+
+**(S2) The class-level milestone — `PolyFueled ⟹ MachinePolyEC`.**
+
+```
+lemma PolyFueled.machinePolyEC {c : Nat.Partrec.Code} {f : ℕ → ℕ}
+    (h : PolyFueled c f) : MachinePolyEC (fun w : List Γ_LI => unary (f w.length))
+```
+
+Input convention: any word of length `n` denotes the day/value `n` (`MachinePolyEC` requires
+a *total* function on words; `w.length` is the canonical total reading, with `unary n` the
+canonical input). Two things the assembly must supply beyond S1, both easy to miss:
+
+*Input normalization is a phase, not a coercion.* S1 speaks **only** on the canonical input
+`pairWord s₀ s₁ (unary fuel) (unary n)`, while `MachinePolyEC` quantifies over **all** words
+`w : List Γ_LI` — including words full of `r`s, mixed digits, or nothing at all. So the S2
+witness machine opens with a normalization phase: pop `w` symbol by symbol *regardless of
+what the symbols are*, pushing one `u` per symbol onto a private stack (a symbol-indifferent
+`pump`, i.e. both symbol-dependent actions do the same thing), which computes `unary |w|`;
+then write the canonical S1 input `pairWord s₀ s₁ (unary (B |w|)) (unary |w|)` onto the
+shared stack. Its cost is linear in `|w|` plus the cost of writing the clock word, and it
+enters the S2 clock as its own summand. It is an explicit phase of the S2 assembly and of
+the tranche-6 plan.
+
+*Fuel monotonicity is cited, not re-derived.* The bound `b` bundled in `PolyFueled c f` need
+not be the polynomial the machine finds convenient to run; the machine runs at a polynomial
+**majorant** `B ≥ b` and the answer must be unchanged. The bridge already exists on both
+sides and is not to be re-derived: `Fueled.mono` (`Framework/Computable.lean:67`) transports
+a certificate along `∀ n, b n ≤ B n`, and it is nothing but Mathlib's
+`Nat.Partrec.Code.evaln_mono` (`Mathlib/Computability/PartrecCode.lean:612`) applied
+pointwise — so `Fueled.mono` is the citation at the certificate level and `evaln_mono` the
+one wherever the S1 simulation is confronted with a raised fuel word directly.
+
+Proof shape, then: normalize the input, write the clock word at `B`, S1, strip the result
+marker. `IsPolyBounded f` keeps the output length polynomial.
+
+**S2 is a milestone, not an interface.** An earlier draft billed S2 as "the consumer-facing
+inclusion". It is not: consumers consume *trader-level* class membership only (the survey
+above), and S3's proof reuses **S1 directly**, at the trader's two codes, rather than
+routing through S2's word-length convention. S2 is still worth landing — it is the first
+statement in the repo relating the fuel calculus to a machine class, and it exercises the
+whole engine end to end on a small target — but it is a stepping stone, and the memo should
+not have implied a consumer for it that does not exist.
+
+**(S3) The trader-level headline.** A new definition (placement below):
+
+```
+def MachineComputableTrader (Tr : Trader) : Prop :=
+    ∃ F : List Γ_LI → List Γ_LI, MachinePolyEC F ∧
+      ∀ n : ℕ, strategyOfTokens n (unRpn (undigitize ((F (unary n)).map Fin.val))) = Tr.strat n
+```
+
+The two conjuncts *are* the design. Routing the class through `MachinePolyEC` — rather than
+re-quantifying over a machine and a clock in place — is what makes the definition inherit
+the model's `[Fintype Γ_LI]` guard and the whole Stage-1 closure theory (`MachinePolyEC.comp`,
+`MachinePolyEC.pair`) for free, on `F`, with no re-proof.
+
+It also removes an ambiguity the earlier shape had. That shape was
+`∃ w, RunsInTime M (unary n) w … ∧ interpret w = Tr.strat n`, which asserts only that *some*
+word is an accepted output whose reading is right — a weaker claim, satisfiable in principle
+by a lucky store. Here the machine's behaviour is a function `F`, and the interpretation is
+of **the** machine output. That this is not a strengthening we are merely asserting is
+recorded by the fact that runs are deterministic: `HaltsFrom.unique` (landing in
+`Machine/Basic.lean` this round) says a machine cannot halt at two different stores, so
+"the output" is well defined and `MachinePolyEC F` pins it.
+
+The inclusion `EfficientlyComputable Tr → MachineComputableTrader Tr` supplies `F` on the
+canonical inputs by the concrete emitted word
+
+```
+F (unary n) = (clockedTokens lengthCode tokenCode (clock n) n).map (fun d => (⟨min d 4, by omega⟩ : Γ_LI))
+```
+
+— and, as in S2, `F` is total on all words via the same normalization phase, reading an
+arbitrary `w` as the day `|w|`. The `min d 4` clamp is semantics-preserving by design of
+`undigitize`: `undigitizeStep` accumulates `d < 4` and treats **every** `d ≥ 4` as a block
+terminator, so clamping changes nothing the interpretation chain can see
+(`undigitize ∘ map (min · 4) = undigitize` — a lemma of the tranche plan; audited: verified
+by compiled replica). The digit values `0–4` sit at values `0–4` of `Γ_LI` precisely so that
+`Fin.val` on the emitted word is the identity on digits. The day is unary on the input
+stack, so `MachinePolyEC`'s length-polynomial clock at `|unary n| = n` is exactly the fuel
+model's (and the paper's) day-polynomial clock.
+
+### Where S3 lives
+
+`MachineComputableTrader` and its inclusion go in a **new file**
+`LogicalInduction/Construction/Machine/Bridge.lean`, importing `Framework/Criterion` (for
+`Trader`, `EfficientlyComputable`, and the interpretation chain `strategyOfTokens ∘ unRpn ∘
+undigitize`) and the Machine core. Not in `Basic.lean`, and not in any of the existing three:
+the directory's upstreamability invariant — a self-contained counted-machine development
+that could be offered to Mathlib — is scoped to `Basic`/`Closure`/`Pairing`, and pulling an
+LI `Framework` import into any of them would destroy it for all of them. `Bridge.lean` is
+documented at its head as the **LI-facing, deliberately non-upstreamable boundary** of the
+directory, and is added to the `Machine.lean` aggregator, so the existing gate
+(`lake build LogicalInduction.Construction.Machine`) covers it with no new gate.
+
+**`Bridge.lean` carries no `Paper node:` line during Stage 2** — recorded here as the plan,
+so that it is a deliberate deferral and not an omission an auditor has to discover.
+`MachineComputableTrader` is a machine-class rendering of the paper's `def:ec` and would be
+the natural carrier of that label; but a paper node is a strength claim (the two-way check
+`scripts/check-paper-nodes.sh` reads it as "this is the formalization's rendering of that
+paper object"), and this note's staging rule is that no strength claim moves before Stage 3.
+While `EfficientlyComputable` is the class `thm:li` is proved over, `def:ec`'s node stays
+there. The annotation moves to `MachineComputableTrader`, if it moves at all, in Stage 3,
+together with the rest of the strength claims.
+
+### What the deliverable must NOT say
+
+The `dd:fuel` model card's *"Lower calibration — OPEN"* item is the **converse** direction
+(paper-machine-e.c. ⟹ `EfficientlyComputable`), which Stage 4 records as false as stated.
+Landing Stage 2 closes nothing in that paragraph and licenses no model-card edit. What
+Stage 2 buys is: every constructed exploiting trader in the property tail, certified in the
+fuel calculus, is thereby a genuine machine-poly trader — the direction the property tail
+consumes. The claim upgrade happens only when Stage 3 re-bases `thm:li` on the machine
+class.
+
+## 2.1 Representation of naturals: unary values, symbol-level streams
+
+**Unary input is forced by the fuel model.** `PolyFueled` meters the *value*: `Fueled c f b`
+with `b` polynomial in the numeric input `n`. A machine reading base-`b` digits of `n` has
+input length `Θ(log n)`, so "poly in input length" would mean `poly(log n)` time — a
+strictly smaller class, and the inclusion would be **false** (fuel-poly permits `Θ(n)`-value
+work). Unary input makes value-poly and length-poly coincide. That argument is the whole
+justification, and it is ours: it comes from what `PolyFueled` measures.
+
+The paper is *consistent with* the choice but is not its authority, and an earlier draft of
+this memo cited it as if it were. `def:ec` (§3.3 "Efficient Computability", `sec:efc`;
+`notes/1609.03543v5-main.tex` line 749, the `keydef` at line 753) requires "runtime
+polynomial in $n$ **(i.e. in the length of $n$ written in unary)**" — the parenthetical
+fixes how the *runtime bound* is measured, it does not prescribe an input encoding. Reading
+it as a prescription overclaims; reading it as compatible with unary day input is right, and
+is all the memo needs.
+
+**Every value the simulator manipulates is unary-representable.** Inside a run of
+`evaln fuel c n`: the guard `n ≤ k` keeps every value that is *fed onward* below the
+fuel; terminal outputs can exceed the fuel (`evaln_output_can_exceed_fuel`) but are
+bounded by `codeEvalBound c fuel` (`codeEvaln_result_le` + `codeEvalBound_poly`,
+`Framework/Emission.lean`) — polynomial in the fuel with degree depending on `c`. So
+all intermediate values have polynomial unary length, and every arithmetic step on them
+at value scale is polynomial-time.
+
+**The exponential-token trap (why S3 emits symbols, not values).** Reassembled tokens
+after `undigitize` are **not** value-bounded: a `tokenCode` may emit `clock n` many
+base-4 digits of one block, denoting a token of value `≈ 4^{clock n}` — and this is a
+feature, not an edge case (deep sentence codes are exactly what the digit layer exists
+to admit; cf. the `PolySentenceCodes` lesson that whole-value metering silently lowers
+a strength tier). Therefore the Stage-2 machine must never materialize a *token* value
+in unary. S3's emitted word is a per-symbol image of the raw digit stream — one output
+symbol per simulated `tokenCode` call, each call's *output value* being an `evaln`
+output and hence poly-bounded — and all block reassembly stays on the consumer side of
+the statement, in the interpretation chain `undigitize ∘ map Fin.val`. Base-4 digit
+material appears only at this interface (which is why `Γ_LI`'s values `0–4` are the digit
+symbols); the simulator's internals are unary throughout.
+
+## 2.2 Simulation route: per-constructor structural induction
+
+**Decision: prove S1 by structural induction on the eight constructors of
+`Nat.Partrec.Code`, one machine construction per constructor, chained store-to-store
+with `HaltsFrom`.** The rejected alternative is a universal clocked interpreter machine
+(one machine reading an encoded code from a stack).
+
+For the induction: (1) no code encoding or Fin-normal form is needed — that is Stage
+3's separate problem, and the 2026-07-29 survey already isolated it as fiddly; (2) each
+constructor case is a separately auditable certificate, matching the round structure of
+this repo's process; (3) the combinators the induction forces (iteration, branching) are
+exactly the toolkit Stage 3's universal interpreter will consume — nothing is thrown away;
+(4) the fuel calculus itself was built per-constructor
+(`codeEvalnNat_pair_polyFueled` / `_comp_` / `_prec_` / `_rfind_` culminating in
+`codeEvalnNat_polyFueled`, `Framework/Emission.lean` 382–729), so the machine-side
+induction has a proven structural precedent in-repo to mirror, invariant for invariant.
+
+Against, accepted: the per-code time polynomial has **degree depending on `c`** (nested
+`prec` multiplies: the call tree of `evaln fuel c n` for fixed `c` is of size
+`fuel^{O(depth c)}`). This is exactly the fixed-code concession the original survey made
+("a uniform bound in `|c|` needs memoisation, but the per-trader form only needs a
+fixed code"), and `MachinePolyEC`'s `(a, k)` are per-machine existentials, so the
+statement absorbs it. **Boundary for Stage 3:** the universal machine cannot be built
+by re-running this induction at a universal code; it needs the memoised/shared-work
+cost model from the start.
+
+### The fidelity spec: Mathlib's `evaln` fuel discipline, verbatim
+
+Verified against the installed `Mathlib/Computability/PartrecCode.lean` (`evaln`, :568):
+
+* `evaln 0 c n = none`, unconditionally.
+* At fuel `k + 1`, **every** constructor first checks `guard (n ≤ k)` on the *current
+  argument*.
+* `pair`/`comp` pass the same fuel `k + 1` to both children.
+* `prec cf cg` at fuel `k + 1`, with `n` unpaired as `(a, y)`, is
+  `n.casesOn (evaln (k+1) cf a) fun y => …`. Read the two branches separately, because
+  they behave differently:
+  - **base branch** (`y = 0`): `cf` runs at the **same-level** fuel `k + 1` of this
+    unfolding — *not* at a decremented fuel — and on the argument `a = (unpair n).1`,
+    *not* on `n`. Both halves of that are easy to get wrong in a way that agrees with
+    `evaln` on `some` and disagrees on `none`.
+  - **step branch** (`y + 1`): the self-call is `evaln k (prec cf cg) (Nat.pair a y)` — fuel
+    decremented — and then the step code runs as `evaln (k+1) cg (Nat.pair a (Nat.pair y i))`
+    at the undecremented fuel.
+* `rfind' cf` at fuel `k + 1` runs `cf` at `k + 1` and recurses on `Nat.pair a (m + 1)` at
+  fuel `k`.
+
+The simulator must reproduce the guards and decrements bit-for-bit. In particular the
+`prec` machine iterates *upward* from the base case while `evaln` recurses *downward*
+from the top; the upward loop must fail exactly when the downward recursion would have.
+Writing the descent out: the level-`j` unfolding (`0 ≤ j ≤ y`) runs at fuel
+`k + 1 − (y − j)`, guards its own argument `Nat.pair a j` against that fuel minus one, and
+bottoms out at level `0` with fuel `k + 1 − y`. If `y > k`, the ladder underflows before
+reaching the base and the whole call is `none` — the machine's fuel-counter stack must
+produce that too, from an underflow test, not from the top-level fuel. This is the single
+largest fidelity risk of the stage (see §2.5).
+
+### Per-constructor plan
+
+* `zero`, `succ`: guard-compare (unary), emit.
+* `left`, `right`: `Nat.unpair` at value scale — §2.3.
+* `pair cf cg`: park a copy of the input (Stage-1 pairing-machine pattern), run both
+  simulators, then compute `Nat.pair u v` in unary (`if u < v then v*v + u else
+  u*u + u + v`; unary multiplication by repeated addition, `O(value²)` steps).
+* `comp cf cg`: `seq` of the two simulators, same fuel word, result-marker plumbing
+  between them (`cg` fails ⟹ whole fails).
+* `prec cf cg`: unpair `n` into `(a, y)`; descend the fuel ladder to the bottom level
+  `k + 1 − y` (failing on underflow); **run `cf`'s simulator there — at fuel `k + 1 − y`, on
+  the argument `a`** — and only then start the upward `cg` iteration. The base run is a
+  scheduled phase in its own right, before the loop, not the loop's zeroth iteration: it
+  runs a *different* sub-simulator at a *different* argument from every `cg` step. The
+  upward part is then the loop combinator (§2.4): `y` iterations, iteration `j` running
+  `cg`'s simulator on `Nat.pair a (Nat.pair (j−1) i_{j−1})` at fuel `k + 1 − y + j`, with the
+  level-`j` guard on `Nat.pair a j`, plus the unary bookkeeping that assembles the next
+  argument.
+* `rfind' cf`: the loop combinator; at most `fuel` iterations, argument second
+  component incremented and fuel decremented per iteration, zero-test on `cf`'s output.
+
+## 2.3 The inverse-operation ceiling, cleared forward
+
+Stage 4's converse is false because the digit calculus (`PolyFueled.prec`'s
+poly-bounded-state requirement) provably cannot close under inverse operations
+(`sqrt`, `unpair`) whose carries exceed the bounded-state budget. The forward direction
+needs `unpair` too — `left`, `right`, and the argument decomposition of `prec`/`rfind'`
+all unpair their input. The verification that this is no obstacle machine-side:
+
+* `unpair m` at value scale needs `s = Nat.sqrt m`, obtainable by candidate search:
+  try `r = 0, 1, 2, …`, comparing `r · r ≤ m` with unary multiplication and comparison
+  — `O(m^{3/2})` machine steps, a polynomial in the unary input length. Then
+  `unpair m = if m - s*s < s then (m - s*s, s) else (s, m - s*s - s)` by unary
+  subtraction and comparison.
+* Nothing here touches digit carries at all: pseudo-polynomial search is an honest
+  polynomial at value scale. The ceiling is one-directional because the machine may
+  spend value-scale time freely, while `PolyFueled.prec` cannot even represent the
+  carry propagation of the inverse operations within poly-bounded state.
+* Proof-order consequence: the `left` case (with the `sqrt`-by-search machine) is
+  scheduled as the *first* nontrivial constructor tranche — it is the de-risk showcase
+  for the whole route. (Repo gotcha applies: scoped
+  `attribute [local irreducible] Nat.sqrt` if any proof touches `Nat.sqrt` reduction.)
+
+## 2.4 Stage-1 leftovers, and the one new combinator
+
+1. **Alphabet-embedding closure — wanted, but off Stage 2's critical path.** Transport of
+   `RunsInTime`/`MachinePolyEC` along an injection `Γ ↪ Γ'`: a machine over `Γ` is a machine
+   over `Γ'` computing the embedded function on embedded words. This was previously listed
+   as a Stage-2 prerequisite because S1/S2 were alphabet-generic and S3 fixed a small
+   alphabet; that plan is retired (§2.0) — **transport only widens, and Stage 2 now works in
+   one pinned alphabet throughout, so it needs no transport at all.** It remains a genuine
+   Stage-1 leftover, worth having for the upstreamable core (a widening-transport lemma is
+   what any external consumer of `MachinePolyEC` will want first), and it mirrors
+   `Prog.relabel` — which embeds *stacks* — on the symbol side. It is simply no longer
+   scheduled ahead of anything.
+2. **A counted iteration combinator** (`loop`) — the genuinely new closure, and the
+   only new control structure of the stage. Run an embedded sub-machine repeatedly
+   under a unary counter stack: initialize, run body, decrement, repeat until the
+   counter empties or a flag symbol fires; time = per-iteration bounds summed plus
+   per-iteration overhead. `prec` and `rfind'` are its two instantiations. Stage-1's
+   `pump` is the degenerate one-symbol-body case; `loop` embeds an arbitrary machine
+   per iteration, so it composes `Prog.relabel`'s frame property with a counter
+   discipline — the same architecture pairing used, plus recursion.
+
+   **Shared-stack alignment, and why the loop relocates its body.** The halting convention
+   lets a machine leave its private stacks dirty, justified in `Machine/Basic.lean` by
+   "each embedded machine is started once, on a block that is empty because the embedding
+   gives it a fresh one." A loop breaks that invariant twice over, and the second half is
+   the one the earlier sketch missed. First: iteration `j + 1` restarts the body on the
+   private block iteration `j` dirtied, while the body's specification (`RunsInTime`, and
+   S1 through it) speaks only from the canonical initial memory. Second — and this is about
+   the *shared* stack, not the private ones — `HaltsFrom.relabel`'s alignment hypothesis
+   ranges over **all** of `Stack M.K`, `none` included, and every Stage-1 embedding maps
+   `none → none`. So a body embedded that way demands that the *composite's* I/O stack hold
+   exactly this iteration's input and nothing else: fine for a phase that runs once at top
+   level, wrong inside a loop, where the shared stack is also where the driver keeps the
+   material it is iterating over.
+
+   Resolution: **the loop embeds the body under an injection that sends the body's `none`
+   to a driver-private work stack.** Nothing hardwires `none → none` — `Prog.relabel` takes
+   an arbitrary injection of stack indices, and `HaltsFrom.relabel` only asks that the
+   composite store agree with the body's along it — so the body can be made to run entirely
+   inside the driver's private block, on a relocated I/O stack the driver owns, leaving the
+   composite's shared stack alone. Per-iteration cost then has four parts, all bounded:
+
+   * (i) **xfer in** — move this iteration's input onto the body's relocated I/O stack
+     (`xfer`, linear in the input length);
+   * (ii) the **body run** — its own `RunsInTime` bound, now applied at a memory that
+     genuinely is the body's canonical initial one;
+   * (iii) **xfer out** — move the result off that stack;
+   * (iv) **cleanup sweep** — pop the body's private stacks *and its relocated I/O stack* to
+     empty, so iteration `j + 1` starts canonically. Pop-to-empty is expressible with the
+     Stage-1 primitive as `pump src nop nop`, 3 steps per symbol, and the dirt on any stack
+     after a `t`-step run from empty is at most `t` symbols (`HaltsFrom.length_le`), so the
+     sweep costs at most a constant times the body's own step bound times the (finite,
+     per-machine) number of stacks in its block.
+
+   The clock lemma sums those four: `exists_clock_loop` bounds
+   `Σ_{i<y} (xfer + bound(body) + sweep)` uniformly by `y ·` the per-iteration maximum and
+   folds it into the `a·(len+1)^k + a` normal form, extending the
+   `exists_clock_comp`/`exists_clock_pair` pattern. The alternative — strengthening the
+   body's spec to arbitrary initial private stores — is false in general (a body may read
+   leftover garbage) and is not attempted.
+
+   **Consequence for the architecture, worth stating flatly.** Stage-1's `seq` chaining is
+   cheap precisely because the I/O stack is shared and no data moves; that is available for
+   **top-level phases only** — phases that run once, in order, in the composite's own I/O
+   stack. **Anything iterated runs relocated**, and pays the xfer-in/xfer-out/cleanup
+   overhead above. The loop is not `seq` under a counter, and the Stage-2 cost estimates
+   must be read with the relocation overhead included.
+3. **Branching**: dispatch on a read symbol is finite-control (one state per branch);
+   no new combinator planned. **Phase-bundle factoring: not adopted.** The plan's
+   justification threshold: adopt only if a third construction repeats the
+   copy-run-copy phase pattern of `Pairing.lean` at comparable length — revisit after
+   the `pair cf cg` tranche, and record the decision either way.
+
+## 2.5 Risk register
+
+* **`prec` fuel-mirroring** (top risk): upward loop vs downward recursion — the failure
+  cases must agree exactly, at every level's guard and fuel, and the base run of `cf` must
+  land at fuel `k + 1 − y` on argument `a` rather than anywhere convenient. Mitigation:
+  state the loop-invariant of the `prec` machine directly against
+  `evaln (k+1-(y-j)) (prec cf cg) (Nat.pair a j)`, not against a paraphrase; audit lens told
+  to attack the `none` cases (ladder underflow when `y > k`, guard failures at intermediate
+  levels, and `cf` failing in the base).
+* **Time bookkeeping through nested loops**: per-iteration bounds vary as values grow;
+  bound every iteration uniformly by `codeEvalBound c fuel` before summing, accepting
+  the degree loss (absorbed by the per-code `(a, k)`), and remembering that each iteration
+  also pays relocation overhead (§2.4).
+* **Guard arithmetic off-by-ones**: `guard (n ≤ k)` at fuel `k + 1`; the unary
+  comparison machine must implement `≤` against `fuel − 1`. Regression `example`s at
+  small concrete fuels (0, 1, 2) for every constructor case, checking agreement with
+  `evaln` by `decide`-free evaluation, are part of each tranche's gate.
+* **Output-size vs clock**: `RunsInTime` forces `|output| ≤ |input| + t`, so S1's clock
+  must dominate `codeEvalBound c fuel` (the `encodeResult` length). The clock normal
+  form absorbs it, but the constructor cases must thread it explicitly.
+* **Normalization forgotten**: S1's canonical-input convention meeting `MachinePolyEC`'s
+  "all words" quantifier is a silent hole if the normalization phase (§2.0) is skipped —
+  the S2/S3 statements would then be unprovable at exactly the junk inputs nobody tests.
+  Flagged for the tranche-6/7 gates.
+* **Whole-value regression at the interface**: any future strengthening of S3 that
+  makes the machine *reassemble* tokens (rather than emit symbols) walks into the
+  exponential-token trap of §2.1. The statement shape is the guard; flagged for
+  auditors as a standing attack surface.
+
+## 2.6 Proof tranches (each round-audited before the next)
+
+1. **Pin the alphabet** — `Γ_LI := Fin K` with `K` a literal, and the symbol table
+   (`u`, `r`, `s₀`, `s₁`, digits `0–4` at values `0–4`) as concrete values with their
+   distinctness `by decide`; settle the `r`-vs-tag question of §2.0. Then the word/number
+   toolkit over it: `unary`, `encodeResult`, unary arithmetic machines (add, subtract,
+   compare, multiply, guard), I/O plumbing over `pairWord`, and the input-normalization
+   phase (length-count + canonical-input writer).
+2. `loop` combinator with `exists_clock_loop`, including the relocated-body embedding and
+   the cleanup sweep (§2.4).
+3. Base constructors `zero`/`succ`/`left`/`right` — including the `sqrt`-by-search
+   machine (de-risk showcase, §2.3).
+4. `pair`, `comp` cases; phase-bundle factoring decision recorded here.
+5. `prec`, `rfind'` cases (the fidelity core: base run, ladder, guards — §2.2, §2.5).
+6. Assembly: S1 by induction; S2, with its normalization phase and the
+   `evaln_mono`/`Fueled.mono` majorant step.
+7. New file `Machine/Bridge.lean` (added to the `Machine.lean` aggregator, no `Paper node:`
+   line): `MachineComputableTrader`, the `min d 4` clamp lemma, S3; boundary-note update.
+   Still no strength-claim changes anywhere — Stage 3 gates those.

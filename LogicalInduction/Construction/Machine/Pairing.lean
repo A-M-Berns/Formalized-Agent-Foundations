@@ -334,7 +334,15 @@ end Pair
 
 The phase lemmas above describe their output store as a nest of `Function.update`s. These
 restate them in terms of the store's *values*, which is the form a chain of phases can use
-without unfolding anything. -/
+without unfolding anything.
+
+These are the forms to use at a bundled machine's memory. A `Function.update`-shaped
+statement instantiated at `Stack M.K` mentions `DecidableEq (Stack M.K)`, which the
+elaborator may build from the ambient instance while the goal carries the one built from
+`Machine.decEqK`; the two are defeq but not syntactically equal, and `rw`/`simp` on the
+update nest then fails to fire. The `_val` forms mention no instance beyond the one
+`HaltsFrom` already carries, so they do not have that problem. Every phase lemma should
+therefore have one, and new phase lemmas should not be stated in update form only. -/
 
 section Pointwise
 
@@ -374,6 +382,33 @@ lemma dup_run_val (src d₁ d₂ : S) (k₁ : d₁ ≠ src) (k₂ : d₂ ≠ src
         by_cases hjs : j = src
         · subst hjs; rw [Function.update_self, h1]
         · rw [Function.update_of_ne hjs, h4 j hjs hj1 hj2]
+  rwa [heq] at h
+
+lemma emitTagged_run_val (src dst : S) (tag : Γ) (hne : dst ≠ src) (l : List Γ)
+    (T T' : S → List Γ) (hT : T src = l) (h1 : T' src = [])
+    (h2 : T' dst = l.reverse.flatMap (fun c => [tag, c]) ++ T dst)
+    (h3 : ∀ j, j ≠ src → j ≠ dst → T' j = T j) :
+    HaltsFrom (emitTagged src dst tag) none T T' (3 * l.length) := by
+  have h := emitTagged_run src dst tag hne l T hT
+  have heq : Function.update (Function.update T src []) dst
+      (l.reverse.flatMap (fun c => [tag, c]) ++ T dst) = T' := by
+    funext j
+    by_cases hjd : j = dst
+    · subst hjd; rw [Function.update_self, h2]
+    · rw [Function.update_of_ne hjd]
+      by_cases hjs : j = src
+      · subst hjs; rw [Function.update_self, h1]
+      · rw [Function.update_of_ne hjs, h3 j hjs hjd]
+  rwa [heq] at h
+
+lemma pushOne_run_val (dst : S) (x : Γ) (T T' : S → List Γ) (h1 : T' dst = x :: T dst)
+    (h2 : ∀ j, j ≠ dst → T' j = T j) : HaltsFrom (pushOne dst x) true T T' 1 := by
+  have h := pushOne_run dst x T
+  have heq : Function.update T dst (x :: T dst) = T' := by
+    funext j
+    by_cases hjd : j = dst
+    · subst hjd; rw [Function.update_self, h1]
+    · rw [Function.update_of_ne hjd, h2 j hjd]
   rwa [heq] at h
 
 end Pointwise
@@ -619,7 +654,17 @@ lemma exists_clock_pair (a₁ k₁ a₂ k₂ : ℕ) :
 Together with `MachinePolyEC.comp` this is the pair of closure results Stage 1 set out to
 prove. Unlike composition, this one genuinely needs the memory architecture: the machine
 keeps a copy of its input on a scratch stack across `f`'s run, and it is `HaltsFrom.relabel`
-— the frame half of the embedding — that says `f` cannot disturb it. -/
+— the frame half of the embedding — that says `f` cannot disturb it.
+
+**The tags are deliberately unconstrained here.** `s₀ ≠ s₁` is *not* a hypothesis: the
+machine emits `pairWord s₀ s₁ (f x) (g x)` within the clock whatever the two symbols are, and
+adding the hypothesis would weaken the statement for no gain. It is the *reading* of the
+output as a pair that needs distinct tags — with `s₀ = s₁` the encoding is not
+self-delimiting and the block boundary is lost. That is exactly the content of
+`pairWord_injective`, which does take `s₀ ≠ s₁`, and it is where a caller who needs to
+decode should get the separation from. So: this lemma says the class is closed under
+`fun x => pairWord s₀ s₁ (f x) (g x)`; it does not by itself say the class is closed under
+pairing *as an encoding of pairs*. -/
 lemma MachinePolyEC.pair {s₀ s₁ : Γ} {f g : List Γ → List Γ}
     (hf : MachinePolyEC f) (hg : MachinePolyEC g) :
     MachinePolyEC (fun x => pairWord s₀ s₁ (f x) (g x)) := by
@@ -632,5 +677,52 @@ lemma MachinePolyEC.pair {s₀ s₁ : Γ} {f g : List Γ → List Γ}
     (hclock x.length (f x).length hx.length_output_le)
 
 end Closure
+
+/-! ## Non-vacuity witnesses, and the closure lemmas exercised
+
+`MachinePolyEC.id` (`Basic.lean`) and `MachinePolyEC.const_nil` below are constructed
+inhabitants of the class: the two closure lemmas are therefore not conditionals about an
+empty class, and the examples below run each of them on a pair of real witnesses. The
+erasing machine lives here rather than beside the identity because it is built from `xfer`,
+which this file introduces. -/
+
+section Witnesses
+
+variable (Γ : Type) [Fintype Γ]
+
+/-- **The erasing machine**: one private stack, and a control that pumps the whole I/O stack
+onto it and halts. It computes `fun _ => []` in `3 * n` steps — the input is not destroyed
+but parked, which is all the halting convention asks (private stacks may be left dirty). -/
+def eraseMachine : Machine Γ where
+  K := Unit
+  Λ := Option (Γ × Bool)
+  init := none
+  step := xfer none (some ())
+
+variable {Γ}
+
+/-- The erasing machine empties the I/O stack in three steps per input symbol.  Kind `N+`: a
+constructed inhabitant of `RunsInTime` over a machine with a nonempty private block and a
+nontrivial control. -/
+lemma eraseMachine_runsInTime (x : List Γ) : RunsInTime (eraseMachine Γ) x [] (3 * x.length) := by
+  refine ⟨fun j => match j with | none => [] | some _ => x.reverse, rfl, ?_⟩
+  refine xfer_run_val none (some ()) (by simp) x _ _ rfl rfl (by simp [layout]) ?_
+  rintro (_ | j) h1 h2 <;> simp_all
+
+/-- **`MachinePolyEC` contains a function that moves data**: `fun _ => []`, computed by
+`eraseMachine` inside the clock `3 * (n + 1) + 3`.  Kind `N+`. Together with
+`MachinePolyEC.id` this gives the closure lemmas below two distinct witnesses to chew on. -/
+lemma MachinePolyEC.const_nil : MachinePolyEC (fun _ : List Γ => ([] : List Γ)) :=
+  ⟨eraseMachine Γ, 3, 1, fun x => (eraseMachine_runsInTime x).mono (by rw [pow_one]; omega)⟩
+
+-- The composition closure, exercised: erasing after the identity is in the class.
+example : MachinePolyEC ((fun _ : List Γ => ([] : List Γ)) ∘ (fun x : List Γ => x)) :=
+  MachinePolyEC.comp MachinePolyEC.id MachinePolyEC.const_nil
+
+-- The pairing closure, exercised: the input paired with the empty word is in the class.
+example (s₀ s₁ : Γ) : MachinePolyEC (fun x : List Γ => pairWord s₀ s₁ x []) :=
+  MachinePolyEC.pair MachinePolyEC.id MachinePolyEC.const_nil
+
+end Witnesses
 
 end LogicalInduction.Counted
