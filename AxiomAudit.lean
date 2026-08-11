@@ -56,7 +56,7 @@ import LogicalInduction.Construction
 import ModalAgents.Cooperation
 import ModalAgents.Behavioral
 import ModalAgents.FixedPoint
-import CartesianFrames.Biextensional
+import CartesianFrames.Examples
 
 open Lean Elab Command in
 /-- Fail elaboration unless every named declaration exists and depends on no axioms
@@ -824,20 +824,38 @@ Same contract as the Logical Induction inventory above, for `CartesianFrames/`
 (paper: arXiv:2109.10996). Most of that paper's nodes carry no LaTeX `\label`, so
 `Paper node:` lines cite the printed `Definition n` / `Claim n` / `Theorem n`
 numbers; `scripts/check-cartesian-frames-nodes.py` validates them against the
-committed TeX **and** checks that every node annotated in the library has at least
-one endpoint listed between the CF-INVENTORY markers below. -/
+committed TeX **and** checks that every *declaration* annotated in the library is
+itself listed between the CF-INVENTORY markers below — sharing a node with a listed
+declaration is not enough. The last block of names carries no annotation of its own:
+those are the non-vacuity witnesses of `CartesianFrames/Examples.lean`, listed here so
+that the separations they assert are axiom-checked alongside the definitions they
+constrain. -/
 
 open CartesianFrames in
 -- CF-INVENTORY-BEGIN
 #assert_axioms_clean
-  Frame Frame.image Frame.Hom Frame.Hom.comp
+  Frame Frame.image Frame.Hom Frame.Hom.comp Frame.instChuCategory
   Frame.dual Frame.Hom.dual Frame.dualFunctor
-  Frame.Hom.IsIsomorphism Frame.Biextensional
+  Frame.Hom.IsIsomorphism Frame.nonempty_iso_iff_exists_isIsomorphism
+  Frame.Biextensional
   Frame.agentSetoid Frame.envSetoid Frame.collapse Frame.BiextEquiv
   Frame.Homotopic Frame.HomotopyEquiv
+  Frame.Biextensional.nonempty_iso_collapse
   Frame.nonempty_iso_of_eq Frame.biextEquiv_of_nonempty_iso
   Frame.homotopyEquiv_iff_nonempty_iso_of_biextensional
   Frame.biextEquiv_iff_homotopyEquiv
+  -- Non-vacuity witnesses (CartesianFrames/Examples.lean).
+  Examples.driver_biextensional
+  Examples.seven_mem_driver_image Examples.two_not_mem_driver_image
+  Examples.dedup_biextensional Examples.not_dup_biextensional
+  Examples.homotopyEquiv_dedup_dup Examples.not_nonempty_iso_dedup_dup
+  Examples.homotopyEquiv_strictly_weaker_than_iso
+  Examples.biextEquiv_strictly_weaker_than_iso
+  Examples.homotopic_ne_eq Examples.not_homotopic_of_row_col
+  Examples.not_nonempty_hom_dedup_driver Examples.not_homotopyEquiv_dedup_driver
+  Examples.not_biextEquiv_dedup_driver
+  Examples.nonempty_iso_dup_collapse_dedup
+  Examples.not_nonempty_iso_dup_collapse
 -- CF-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Cartesian Frames surface (same contract as

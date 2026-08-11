@@ -71,7 +71,7 @@ def Hom.comp {C D E : Frame W} (g : Hom D E) (f : Hom C D) : Hom C E where
 `Chu(W)`; the category axioms are the ones checked in Appendix B (`dd:cat`).
 
 Paper node: Definition 2 (§2.1). -/
-instance : LargeCategory (Frame W) where
+instance instChuCategory : LargeCategory (Frame W) where
   Hom := Hom
   id := Hom.id
   comp f g := g.comp f

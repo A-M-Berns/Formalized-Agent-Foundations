@@ -6,10 +6,13 @@ This is the root import for the formalization.  The paper is the specification:
 `notes/2109.10996v1.pdf` is the matching PDF.
 
 Paper-facing declarations follow the Logical Induction labeling convention.  A
-declaration's docstring ends in `Paper node: Definition n`, `Claim n`, or
-`Theorem n`, with the paper section included for navigation.  Declarations marked
-`theorem` are reserved for the paper's claims and theorem; supporting mathematics is
-stated as `lemma`.
+declaration's docstring ends in a paper-node line naming the printed node — a
+`Definition`, `Claim`, or `Theorem` together with its number — with the paper section
+included for navigation.  That annotation is *reserved* for the audited surface:
+`scripts/check-cartesian-frames-nodes.py` requires every annotated declaration to be
+listed in `AxiomAudit.lean`'s CF-INVENTORY block, so internal lemmas and worked
+examples cite the paper in prose instead.  Declarations marked `theorem` are reserved
+for the paper's claims and theorem; supporting mathematics is stated as `lemma`.
 
 A `dd:` tag records a choice made by the formalization rather than by the paper.
 The standing choices (each also documented in `CartesianFrames/README.md`):
@@ -35,3 +38,4 @@ The standing choices (each also documented in `CartesianFrames/README.md`):
 -/
 import CartesianFrames.Basic
 import CartesianFrames.Biextensional
+import CartesianFrames.Examples

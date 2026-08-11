@@ -220,7 +220,12 @@ lemma trans (h₀ : HomotopyEquiv C D) (h₁ : HomotopyEquiv D E) :
     exact Homotopic.trans step (Homotopic.of_eq (by simp) |>.trans hψφ₁)
 
 /-- Isomorphic frames are homotopy equivalent: the inverse pair composes to the
-identities on the nose. -/
+identities on the nose.
+
+This is the *argument* the paper gives for Claim 40 (isomorphism implies homotopy
+equivalence, hence biextensional equivalence via Claim 39).  The annotated Claim 40
+statement is `biextEquiv_of_nonempty_iso` below; this lemma is the internal step it
+composes, so it carries no node annotation of its own. -/
 lemma ofIso (i : C ≅ D) : HomotopyEquiv C D :=
   ⟨i.hom, i.inv, Homotopic.of_eq i.hom_inv_id, Homotopic.of_eq i.inv_hom_id⟩
 
@@ -280,6 +285,15 @@ theorem homotopyEquiv_iff_nonempty_iso_of_biextensional
     exact ⟨asIso φ⟩
   · rintro ⟨i⟩
     exact HomotopyEquiv.ofIso i
+
+/-- A biextensional frame is isomorphic to its own collapse: with no duplicate rows
+or columns there is nothing for the collapse to delete.  Unnumbered in the paper —
+it is Claim 38 applied to `homotopyEquiv_collapse`, and is the step the paper uses
+silently whenever it replaces a biextensional frame by its collapse. -/
+lemma Biextensional.nonempty_iso_collapse (h : C.Biextensional) :
+    Nonempty (C ≅ C.collapse) :=
+  (homotopyEquiv_iff_nonempty_iso_of_biextensional h (collapse_biextensional C)).mp
+    (homotopyEquiv_collapse C)
 
 /-- Biextensional equivalence coincides with homotopy equivalence.
 

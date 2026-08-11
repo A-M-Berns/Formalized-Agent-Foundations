@@ -1,10 +1,20 @@
 #!/usr/bin/env python3
 """Enforce notes/consolidation.md declaration-keyword rules 1-2:
 
-* every `theorem` in a paper library carries a docstring naming its paper label
-  (LI label/App./section, or a Cartesian Frames numbered Claim/Theorem);
+* every `theorem` in a paper library carries a docstring naming its paper label;
 * `private theorem` does not occur (private statements are not paper statements —
-  use `private lemma`).
+  use `private lemma`).  This ban is global.
+
+The accepted label form is per library, because the two papers have different
+provenance keys:
+
+* `LogicalInduction/` — the paper labels its nodes, so a `thm:`/`lem:`/`cor:`/`def:`/
+  `app:` label, an `App.` reference, or a `§` section reference is the key.
+* `CartesianFrames/` — most nodes carry no LaTeX label, so the printed number is the
+  key and nothing else will do: the docstring must carry a `Paper node:` line naming a
+  numbered `Claim` or `Theorem`.  A bare `§` reference is *not* enough there; a
+  `theorem` in that library is by convention a paper claim or theorem, and
+  `scripts/check-cartesian-frames-nodes.py` inventories it by that annotation.
 
 Exit status is the number of offending files capped at 1. Run from the repo root.
 """
@@ -13,10 +23,8 @@ import re
 import sys
 from pathlib import Path
 
-LABEL = re.compile(
-    r"(thm|lem|cor|def|app):[a-zA-Z]+|App\.\s|§|"
-    r"Paper node:\s*(Claim|Theorem)\s+[0-9]+"
-)
+LI_LABEL = re.compile(r"(thm|lem|cor|def|app):[a-zA-Z]+|App\.\s|§")
+CF_LABEL = re.compile(r"Paper node:.*(Claim|Theorem)\s+[0-9]+")
 DECL = re.compile(r"^\s*(?P<private>private\s+)?(?:protected\s+)?theorem\s+(?P<name>[\w.]+)")
 
 def block_depth_after(line, depth):
@@ -34,9 +42,10 @@ def block_depth_after(line, depth):
     return depth
 
 violations = []
-libraries = [Path("LogicalInduction"), Path("CartesianFrames")]
-paths = [path for library in libraries for path in library.rglob("*.lean")]
-for path in sorted(paths):
+libraries = {Path("LogicalInduction"): LI_LABEL, Path("CartesianFrames"): CF_LABEL}
+paths = [(path, label) for library, label in libraries.items()
+         for path in library.rglob("*.lean")]
+for path, label in sorted(paths, key=lambda entry: entry[0]):
     lines = path.read_text().splitlines()
     depth = 0
     for i, line in enumerate(lines):
@@ -60,7 +69,7 @@ for path in sorted(paths):
         while "/--" not in doc[0] and j > 0:
             j -= 1
             doc.insert(0, lines[j])
-        if not LABEL.search("\n".join(doc)):
+        if not label.search("\n".join(doc)):
             violations.append(f"{path}:{i + 1}: theorem {m.group('name')} docstring names no paper label")
 
 for v in violations:

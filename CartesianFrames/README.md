@@ -12,6 +12,16 @@ World-level functors (§2.3) and the subagency calculus (§2.4, Appendix B) are
 staged next; see `KNOWLEDGE.md` for the settled design decisions and correspondence
 table.
 
+[`Examples.lean`](Examples.lean) carries the paper's two worked matrices — §2.1's
+driver and §2.2's duplicate-row pair — as concrete `Frame ℕ`s, together with the
+non-vacuity witnesses that keep the equivalence layer from being trivially true:
+biextensional and homotopy equivalence are *strictly* weaker than isomorphism,
+`Homotopic` is neither equality nor the total relation, `BiextEquiv` is not the total
+relation, and the collapse genuinely deletes (`dup.collapse ≅ dedup`, while `dup` is
+not isomorphic to its own collapse).  These are `lemma`s, not paper claims; they cite
+the paper's unnumbered examples in prose and are inventoried in `AxiomAudit.lean`
+alongside the definitions they constrain.
+
 The paper is committed verbatim as
 [`notes/2109.10996v1-main.tex`](../notes/2109.10996v1-main.tex), with the matching
 [`notes/2109.10996v1.pdf`](../notes/2109.10996v1.pdf).  Unlike the Logical Induction
@@ -21,14 +31,30 @@ paper-facing Lean declaration records that identifier in a final `Paper node:`
 docstring line; `scripts/check-cartesian-frames-nodes.py` checks it against the TeX
 source.  As in the Logical Induction development, `theorem` is reserved for a
 statement appearing as a paper claim or theorem, while supporting results are
-`lemma`s.
+`lemma`s — and for this library `scripts/lint_paper_labels.py` requires every
+`theorem` to name a numbered `Claim` or `Theorem`, since a bare section reference is
+not a provenance key here.
 
 There are currently no `sorry` terms and no `axiom` declarations in this library.
 The public surface is inventoried in `AxiomAudit.lean` (CF-INVENTORY block):
-`#assert_axioms_clean` over every endpoint, `#assert_fields` freezing the boundary
-structures (`Frame`, `Frame.Hom`, `Frame.Biextensional`), and
-`scripts/check-cartesian-frames-nodes.py` checking both that every cited node exists
-in the paper TeX and that every annotated node has an inventoried endpoint.
+`#assert_axioms_clean` over every endpoint and `#assert_fields` freezing the boundary
+structures (`Frame`, `Frame.Hom`, `Frame.Biextensional`).
+
+`scripts/check-cartesian-frames-nodes.py` enforces the annotation contract
+fail-closed, in three parts:
+
+1. **validity** — every node cited in a `Paper node:` line is numbered in the
+   committed TeX, and a line that parses to *no* node is itself a violation (so a
+   typo cannot silently disable the check);
+2. **anchoring** — the literal string `Paper node:` is reserved for the audited
+   surface: it must be the last line of a `/-- … -/` docstring attached to a *named*
+   declaration.  Anonymous instances therefore cannot carry annotations, and internal
+   lemmas and worked examples cite the paper in prose instead;
+3. **coverage, per declaration** — every annotated declaration is itself listed in
+   CF-INVENTORY.  Sharing a node with some other listed declaration is not enough:
+   the annotation claims the node for *that* statement, so that statement is what
+   gets axiom-checked.  Identity is namespace-aware and matched on fully qualified
+   names, with no bare-suffix matching.
 
 ## Modeling boundary
 
@@ -54,7 +80,7 @@ Three standing design decisions, tagged at their sites and defined in
 ## Build and source checks
 
 ```sh
-lake build CartesianFrames
+lake build                                        # library + AxiomAudit
 python3 scripts/check-cartesian-frames-nodes.py
 python3 scripts/lint_paper_labels.py
 ```
