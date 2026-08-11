@@ -13,8 +13,14 @@ Claim 22.
 
 The committing and externalizing definitions render the paper's "there exist sets
 X, Y, Z" as existentials over `Type u` (`dd:universe`).  A priori this bounds the
-witnesses' size; it is without loss of generality *by Claims 41–44*, whose currying
-witnesses are built from `D`'s own carriers, which live in `u`.
+witnesses' size.  For the additive bound the restriction is certified here, by
+Claims 41/42: Claim 42's currying witnesses are built from `D`'s own carriers, which
+live in `u`.  Claims 43/44 do *not* certify the multiplicative bound — their witnesses
+carry the given `X` and `Y` — but it holds without loss of generality all the same, by
+a collapse/cardinality argument (quotient the given carriers by outcome-equivalence;
+the quotients inject into collapse-carrier data, hence are `u`-small, and the image
+condition is restored by `exists_image_univ_curry`).  That argument is recorded in
+`KNOWLEDGE.md`; it is not formalized.
 
 **Paper erratum (Claim 43).** The printed proof chooses "some `b ∈ B` (it does not
 matter which)" when defining `h₃`, silently assuming `Agent(D)` is nonempty.  The

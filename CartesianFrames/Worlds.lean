@@ -94,10 +94,10 @@ def curry (C : Frame W) : Frame C.Agent ⥤ Frame W where
   map_id _ := rfl
   map_comp _ _ := rfl
 
-@[simp] lemma curry_obj_agent (C : Frame W) (Z : Frame C.Agent) :
+lemma curry_obj_agent (C : Frame W) (Z : Frame C.Agent) :
     ((C.curry).obj Z).Agent = Z.Agent := rfl
 
-@[simp] lemma curry_obj_env (C : Frame W) (Z : Frame C.Agent) :
+lemma curry_obj_env (C : Frame W) (Z : Frame C.Agent) :
     ((C.curry).obj Z).Env = (Z.Env × C.Env) := rfl
 
 @[simp] lemma curry_obj_outcome (C : Frame W) (Z : Frame C.Agent)

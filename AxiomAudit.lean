@@ -831,12 +831,15 @@ Same contract as the Logical Induction inventory above, for `CartesianFrames/`
 numbers; `scripts/check-cartesian-frames-nodes.py` validates them against the
 committed TeX **and** checks that every *declaration* annotated in the library is
 itself listed between the CF-INVENTORY markers below — sharing a node with a listed
-declaration is not enough. Two groups of listed names carry no annotation of their own:
+declaration is not enough. Three groups of listed names carry no annotation of their own:
 the constructive carriers of Appendix B's Claims 46 and 48 (`Frame.dualEquivalence`,
 `Frame.zeroIsInitial`, `Frame.topIsTerminal` — the `theorem`s state the paper's
-propositional content, these are the data behind them), and the last block, the
-non-vacuity witnesses of `CartesianFrames/Examples.lean`, listed here so that the
-separations they assert are axiom-checked alongside the definitions they constrain. -/
+propositional content, these are the data behind them); the two unnumbered
+`≃ᵇ`-invariants the paper uses silently (`Frame.image_eq_of_biextEquiv`,
+`Frame.exists_env_injective_of_biextEquiv`, the standard refuters for `◁ₓ` and `◁₊`);
+and the last two blocks, the non-vacuity and subagency witnesses of
+`CartesianFrames/Examples.lean`, listed here so that the separations they assert are
+axiom-checked alongside the definitions they constrain. -/
 
 open CartesianFrames in
 -- CF-INVENTORY-BEGIN
@@ -851,6 +854,7 @@ open CartesianFrames in
   Frame.nonempty_iso_of_eq Frame.biextEquiv_of_nonempty_iso
   Frame.homotopyEquiv_iff_nonempty_iso_of_biextensional
   Frame.biextEquiv_iff_homotopyEquiv
+  Frame.image_eq_of_biextEquiv Frame.exists_env_injective_of_biextEquiv
   Frame.mapWorlds Frame.BiextEquiv.mapWorlds Frame.curry
   Frame.botOf Frame.instBot Frame.botOfUnivIsoBot Frame.homBotEquiv
   Frame.Subagent Frame.SubagentCurry Frame.SubagentCovering
@@ -902,6 +906,17 @@ open CartesianFrames in
   Examples.not_biextEquiv_dedup_driver
   Examples.nonempty_iso_dup_collapse_dedup
   Examples.not_nonempty_iso_dup_collapse
+  -- Subagency witnesses (CartesianFrames/Examples.lean).
+  Examples.not_subagent_dedup_driver
+  Examples.driver3_biextensional Examples.driver_addSubagent_driver3
+  Examples.not_biextEquiv_driver_driver3
+  Examples.teamZ_image_univ Examples.teamC_multSubagent_teamD
+  Examples.teamC_biextensional Examples.teamD_biextensional
+  Examples.not_biextEquiv_teamC_teamD
+  Examples.not_subagent_driver3_driver Examples.not_subagent_teamD_teamC
+  Examples.bigC_biextensional Examples.bigC_subagent_bigD
+  Examples.not_bigC_multSubagent_bigD Examples.not_bigC_addSubagent_bigD
+  Examples.every_witness_nontrivial Examples.bigC_decomposes
 -- CF-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Cartesian Frames surface (same contract as

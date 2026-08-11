@@ -256,9 +256,33 @@ gap; do flag any attempt to formalize it without a new user ruling.
   disambiguates.  Qualify in client-facing docs.
 - `⊥` is a maximum for `◁` (`C ◁ ⊥` always) and `IsEmpty C.Env → C ◁ D` —
   faithful to the paper; subagency witnesses need nonempty `Env` and non-`⊥` RHS.
-- Two reusable `≃ᵇ`-invariants worth landing in Biextensional.lean (round-2 fix
-  queue): image invariance (`C ≃ᵇ D → C.image = D.image`) and env-injectivity
-  from a biextensional side — the standard refuters for `◁ₓ`/`◁₊`.
+- Two reusable `≃ᵇ`-invariants now LIVE in Biextensional.lean (round-2 fix):
+  `image_eq_of_biextEquiv` and `exists_env_injective_of_biextEquiv` — the standard
+  refuters for `◁ₓ`/`◁₊`.  Do not re-derive the one-sided subset form (internal).
+- Examples.lean's second half (round-2 fix) covers §2.4: `driver3`/`committed`/
+  `driver3Commit`, the paper's team example (`teamD`/`teamZ`/`teamC`), and
+  `bigD`/`bigZ`/`bigC`, with witnesses for non-totality, both refinements
+  non-degenerate on the paper's own examples, orientation guards both directions,
+  strictness of `◁₊`/`◁ₓ` below `◁`, and Theorem-24 content
+  (`every_witness_nontrivial`, non-vacuous via `bigC_decomposes`).  Reuse before
+  building new counterexample frames.
+- Concrete witnesses over the OPERATIONS must not use `C.commit B` etc. directly:
+  they are `def`s, so instance search can't find `Fintype` on their carriers and
+  `decide` fails.  Write the frame as a literal `abbrev` and pin the identity with
+  a checked `example : lit = C.commit B := rfl` (Examples.lean does this; its
+  import moved to CartesianFrames.Operations as a result — Examples is now the
+  leaf of the whole CF chain).
+- `Homotopic`-`.symm` clarification: `.symm` means `Homotopic.symm` (swaps which
+  argument supplies env vs agent map) — `Eq.symm` on the applied equation is a
+  DIFFERENT statement and won't typecheck against env-side goals.
+- Stale-olean trap, edit-time form: after editing an upstream CF module, `lake env
+  lean <downstream>` reports newly added upstream declarations as `Unknown
+  identifier` and `obtain` fails with a bogus "not an inductive datatype".
+  Rebuild the changed chain (`lake build CartesianFrames.<Mod>`, ~20 s) first.
+- The Type-u WLOG docstring in AdditiveMultiplicative.lean is now the corrected
+  honest version (additive certified by Claims 41/42; multiplicative by the
+  unformalized collapse/cardinality argument).  Do not re-assert "WLOG by Claims
+  41–44" — that exact sentence was findings R2-F02/F07.
 
 ## Cleared suspicions (round 1 — do not re-raise without new evidence)
 

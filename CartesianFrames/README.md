@@ -38,9 +38,17 @@ non-vacuity witnesses that keep the equivalence layer from being trivially true:
 biextensional and homotopy equivalence are *strictly* weaker than isomorphism,
 `Homotopic` is neither equality nor the total relation, `BiextEquiv` is not the total
 relation, and the collapse genuinely deletes (`dup.collapse ≅ dedup`, while `dup` is
-not isomorphic to its own collapse).  These are `lemma`s, not paper claims; they cite
-the paper's unnumbered examples in prose and are inventoried in `AxiomAudit.lean`
-alongside the definitions they constrain.
+not isomorphic to its own collapse).  The same file pins down the §2.4 subagency
+relations on the paper's own examples — the driver committing to skip a route, and the
+two-member team — showing that each sits *strictly* between biextensional equivalence
+and the total relation: `◁₊` and `◁ₓ` hold there between frames that are not
+biextensionally equivalent, both fail in the reverse direction (so the relations are
+oriented as the paper orients them), and on a four-option variant `◁` holds while
+neither `◁₊` nor `◁ₓ` does.  That last pair also makes Theorem 24's decomposition
+non-trivial: every intermediate frame it can produce is biextensionally distinct from
+both endpoints.  These are `lemma`s, not paper claims; they cite the paper's unnumbered
+examples in prose and are inventoried in `AxiomAudit.lean` alongside the definitions
+they constrain.
 
 The paper is committed verbatim as
 [`notes/2109.10996v1-main.tex`](../notes/2109.10996v1-main.tex), with the matching

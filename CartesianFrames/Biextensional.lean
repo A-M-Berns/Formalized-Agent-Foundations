@@ -321,6 +321,34 @@ theorem biextEquiv_of_nonempty_iso (h : Nonempty (C ≅ D)) : C ≃ᵇ D :=
 Paper node: Claim 8 (§2.2). -/
 theorem nonempty_iso_of_eq (h : C = D) : Nonempty (C ≅ D) := ⟨eqToIso h⟩
 
+/-! ## Two invariants of biextensional equivalence
+
+Unnumbered in the paper, which uses both silently: `Image` is a `≃ᵇ`-invariant, and a
+biextensional frame's environment carrier injects into that of any `≃ᵇ`-equivalent
+frame.  They are the two standard refuters for the subagency relations of §2.4 — an
+externalizing witness must reproduce the larger frame's image, and a committing
+witness must supply at least as many environment states — so they are stated here,
+next to Claim 39, rather than duplicated at each use site. -/
+
+/-- `Image` is invariant under biextensional equivalence. -/
+lemma image_eq_of_biextEquiv (h : C ≃ᵇ D) : C.image = D.image := by
+  have key : ∀ {C₀ D₀ : Frame W}, C₀ ≃ᵇ D₀ → D₀.image ⊆ C₀.image := by
+    intro C₀ D₀ h₀
+    obtain ⟨φ, ψ, _, hψφ⟩ := biextEquiv_iff_homotopyEquiv.mp h₀
+    rintro w ⟨b, e, rfl⟩
+    exact ⟨ψ.agent b, φ.env e, (φ.adjoint (ψ.agent b) e).trans (hψφ b e).symm⟩
+  exact Set.ext fun _ => ⟨fun hw => key h.symm hw, fun hw => key h hw⟩
+
+/-- If `C` is biextensional and `C ≃ᵇ D`, then `C.Env` injects into `D.Env`: the
+backward morphism's environment map is injective, because `C`'s environment carrier
+has no duplicate columns to collapse. -/
+lemma exists_env_injective_of_biextEquiv (hC : C.Biextensional) (h : C ≃ᵇ D) :
+    ∃ g : C.Env → D.Env, Function.Injective g := by
+  obtain ⟨φ, ψ, hφψ, -⟩ := biextEquiv_iff_homotopyEquiv.mp h
+  refine ⟨ψ.env, fun e₀ e₁ he => hC.env_ext fun a => ?_⟩
+  have h0 : ∀ e, C.outcome a (φ.env (ψ.env e)) = C.outcome a e := fun e => hφψ.symm a e
+  rw [← h0 e₀, ← h0 e₁, he]
+
 section RegressionExamples
 
 /- Client-side exercises of the endpoints above (endpoint-usability rule). -/

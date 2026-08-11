@@ -57,15 +57,19 @@ instance instBot : Bot (Frame W) :=
     (⊥ : Frame W).outcome w u = w := rfl
 
 /-- The paper writes `⊥ = ⊥_W`; across the subtype boundary this is the canonical
-isomorphism (`dd:eq-to-iso`). -/
+isomorphism (`dd:eq-to-iso`).
+
+Paper node: Definition 12 (§2.4). -/
 def botOfUnivIsoBot : botOf (Set.univ : Set W) ≅ (⊥ : Frame W) where
   hom := { agent := fun s => s.val, env := fun u => u, adjoint := fun _ _ => rfl }
   inv := { agent := fun w => ⟨w, trivial⟩, env := fun u => u, adjoint := fun _ _ => rfl }
   hom_inv_id := rfl
   inv_hom_id := rfl
 
-/-- Morphisms into `⊥` correspond exactly to environment states — the observation
-the paper makes directly after Definition 13 and leans on throughout Appendix B. -/
+/-- Morphisms into `⊥` correspond exactly to environment states — the display the
+paper makes directly after Definition 13 and leans on throughout Appendix B.
+
+Paper node: Definition 13 (§2.4). -/
 def homBotEquiv (C : Frame W) : (C ⟶ (⊥ : Frame W)) ≃ C.Env where
   toFun φ := φ.env PUnit.unit
   invFun e :=
@@ -109,7 +113,7 @@ def SubagentCurry : Prop :=
 
 Paper node: Definition 50 (App. B). -/
 def SubagentCovering : Prop :=
-  ∀ e : C.Env, ∃ (f : C ⟶ D) (x : D.Env), f.env x = e
+  ∀ e : C.Env, ∃ (φ : C ⟶ D) (f : D.Env), φ.env f = e
 
 variable {C D}
 
@@ -124,15 +128,15 @@ theorem subagent_iff_subagentCovering : C ◁ D ↔ SubagentCovering C D := by
     obtain ⟨φ₀, φ₁, hfac⟩ := h (C.homBotEquiv.symm e)
     exact ⟨φ₀, φ₁.env PUnit.unit,
       (congrArg (fun ψ : C ⟶ (⊥ : Frame W) => ψ.env PUnit.unit) hfac).symm⟩
-  · intro h φ
-    obtain ⟨f, x, hfx⟩ := h (φ.env PUnit.unit)
-    refine ⟨f, D.homBotEquiv.symm x, ?_⟩
+  · intro h ψ
+    obtain ⟨φ, f, hφf⟩ := h (ψ.env PUnit.unit)
+    refine ⟨φ, D.homBotEquiv.symm f, ?_⟩
     refine Hom.ext (funext fun a => ?_) (funext fun u => ?_)
-    · calc φ.agent a
-          = C.outcome a (φ.env PUnit.unit) := (φ.adjoint a PUnit.unit).symm
-        _ = C.outcome a (f.env x) := by rw [hfx]
-        _ = D.outcome (f.agent a) x := f.adjoint a x
-    · exact hfx.symm
+    · calc ψ.agent a
+          = C.outcome a (ψ.env PUnit.unit) := (ψ.adjoint a PUnit.unit).symm
+        _ = C.outcome a (φ.env f) := by rw [hφf]
+        _ = D.outcome (φ.agent a) f := φ.adjoint a f
+    · exact hφf.symm
 
 /-- The covering definition of subagent implies the currying definition, via the
 frame `Z = (Agent C, hom(C, D), ⋄)` over `D`'s agent, with `a ⋄ f = f.agent a`.
@@ -244,7 +248,7 @@ example {C D : Frame W} (i : C ≅ D) : C ◁ D :=
   Subagent.of_biextEquiv (biextEquiv_of_nonempty_iso ⟨i⟩)
 
 example {C D : Frame W} (h : C ◁ D) (e : C.Env) :
-    ∃ (f : C ⟶ D) (x : D.Env), f.env x = e :=
+    ∃ (φ : C ⟶ D) (f : D.Env), φ.env f = e :=
   subagent_iff_subagentCovering.mp h e
 
 example {C₀ C₁ C₂ : Frame W} (h₀ : SubagentCurry C₀ C₁) (h₁ : C₁ ◁ C₂) :
