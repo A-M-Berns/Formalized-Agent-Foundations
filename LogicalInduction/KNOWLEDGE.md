@@ -45,12 +45,23 @@ here are only the names harness agents for the efficiency-model program need.
   downstream — don't consolidate into Basic without moving `pump`/`xfer` upstream). Both
   closure endpoints are exercised by `example`s composing/pairing the two.
 - Determinism API (round 1, `Machine/Basic.lean`): `runFor_succ_of_halted`,
-  `HaltsFrom.unique`, `RunsInTime.unique` — cite these; don't re-derive.
+  `HaltsFrom.unique`, `RunsInTime.unique` — cite these; don't re-derive. Step-count
+  uniqueness is derivable from this exported API in ~8 lines (verified compiling,
+  round 2) — do not strengthen `HaltsFrom.unique`'s statement to get it.
+- `pairMachine_runsInTime`'s clock `9|x| + 6|u| + t₁ + t₂ + 8` is exact with zero
+  slack; adding/removing any phase forces editing the *statement*, not just the proof.
+- Loop-relocation support verified by compiled probe (round 2): `HaltsFrom.relabel`
+  accepts non-`none`-preserving injections; working pattern in the round-2 Lens-B
+  report (match-defined injection + `rintro (_|⟨⟩) … <;> simp_all` injectivity).
 - Mathlib's open composition item, for surface comparisons:
   `proof_wanted TM2ComputableInPolyTime.comp` at
   `Mathlib/Computability/TuringMachine/Computable.lean:284` — over `FinTM2` with three
-  `FinEncoding`s and a `Polynomial ℕ` clock, concluding `Nonempty (…)`.
-  `MachinePolyEC.comp` is an analogue, not that statement; neither implies the other.
+  bare encoding functions `α → List αΓ` over `Fintype` alphabets (not `FinEncoding`s —
+  corrected round 2) and a `Polynomial ℕ` clock evaluated at the encoded input length,
+  concluding `Nonempty (…)`. `MachinePolyEC.comp` is an analogue, not that statement;
+  neither implies the other. Mathlib's own note (same file, :26-31) says a TM2 step
+  executes multiple fundamental actions — cite it for the "not a restriction of TM2"
+  paragraph rather than re-deriving.
 
 ## Design decisions
 
@@ -91,6 +102,63 @@ here are only the names harness agents for the efficiency-model program need.
   phase in the witness machine (symbol-indifferent pump counting `|w|`, then write the
   canonical input) — a phase with a cost in the clock, not a coercion. Invisible unless
   junk inputs are tested. (R1-F03)
+- **Stage-2 alphabet ruling (round 2, closes tranche 1's open question): K = 9** —
+  digits 0–4, `u := 5`, tags `s₀ := 6`/`s₁ := 7`, result marker `r := 8`, all five roles
+  pairwise distinct so every separation is a `decide` fact. At the earlier illustrative
+  K=8 table (`r = s₀ = 6`), `encodeResult (some v) = pairWord s₀ s₁ [] (unary v)`
+  **by `rfl`** (compiled). A K=8 aliasing table (`s₁ = u = 5`, `s₀ = 7`, `r = 6`) is
+  *viable* — `pairWord` needs only `s₀ ≠ s₁`, and the fuel block stays `s₀`-delimited —
+  but rejected: slack is free, aliasing taxes every hand-written phase proof. The
+  collision class is a construction hazard, not a statement refutation: `RunsInTime`
+  forces exact outputs and `seq`/`pairMachine` hand exact inputs, so co-tenancy arises
+  only inside hand-written `pump`/`xfer` phases of a single machine. (R2-F07, R2-F16)
+- `encodeResult r u` (`none ↦ []`, `some v ↦ r :: replicate v u`) is injective with
+  **no hypothesis relating `r` and `u`** — `none` vs `some 0` is separated by emptiness
+  (compiled, even over `Fin 1`). `r ≠ u` matters only where an `encodeResult` word
+  shares a stack with other unary material (`pair`/`comp` result plumbing). Do not cite
+  none/some-0 separation as the reason for the symbol table. (R2-F08)
+- **Instantiation is not transport**: a `∀ (Γ : Type) [Fintype Γ] (symbols…), hyps → …`
+  statement instantiates directly at `Fin 9` by function application; `Γ ↪ Γ'` transport
+  is needed only to move a *fixed*-alphabet theorem to a larger alphabet. "Prove
+  generically, then specialize" is NOT blocked (compiled check, round 2) — the concrete
+  pin is justified by the auto-bound pitfall and proof simplicity, not impossibility.
+  The generic form remains viable for later upstreaming. (R2-F11)
+- Determinism cuts both ways: given `RunsInTime.unique`, an
+  `∃ w, RunsInTime M x w t ∧ P w` shape already pins `w` — never justify a functional
+  `MachinePolyEC F` shape by a "lucky store" argument; its real content is totality
+  over all words (the normalization burden). (R2-F12)
+- **The converse inclusion (machine-poly ⟹ fuel-poly) is NOT refuted in the repo.**
+  `RpnFreeze` records a *structural toolkit obstruction* (BigDigits closed under
+  forward poly-carry recurrences, open under inverses) and itself says "in the intended
+  complexity model the claim holds"; `not_polyFueled_two_pow` separates only
+  `PolyFueled` by output size. Write "not attempted; structurally blocked in the fuel
+  calculus's toolkit", never "false as stated"/"provably fails". The model card's
+  "Lower calibration — OPEN" wording is authoritative. (R2-F13)
+- The tranche-7 clamp lemma `undigitize ∘ map (min · 4) = undigitize` should be derived
+  from `Framework/DigitArith.lean:934` `undigitize_eq_blockSplit` + `blockStep` (:875,
+  branches only on `d < 4`) — a one-line `blockSplit` invariance, not a from-scratch
+  induction. (Bridge.lean imports Framework, so the import question is settled there.)
+- `evaln`-fidelity nuance (round 2, re-derived independently): failure *order* within a
+  level is irrelevant to extensional agreement — every branch is a total `Option`
+  computation, so an upward `prec` loop need not mirror the downward recursion's
+  detection order, only its value.
+- `rg -r` is the *replace* flag, not recursive: `rg -rn "foo"` rewrites matches to `n`
+  in displayed output (made `EfficientPrefixPatch.preserves_ec` display as a dangling
+  name). Use `rg -n --fixed-strings` when auditing names.
+- The clock normal form's `+ a` summand and `(n+1)` base are load-bearing for
+  satisfiability at degenerate inputs: `|output| ≤ |input| + t` at `w = []` needs
+  clock(0) ≥ output length, which `2a` provides and `a·n^k` would not. (round 2)
+- S2 degenerate instantiations: `f = const 0` is discharged by `MachinePolyEC.const_nil`;
+  `f = id` is NOT discharged by `MachinePolyEC.id` (`fun w => unary w.length ≠ id`,
+  refuted at `[r]`) — it genuinely needs the normalization phase. (round 2)
+- The interpretation chain's empty conventions cooperate: `undigitize [] = []`,
+  `unRpn [] = []`, `deserializeTrades [] = some []`, `strategyOfTokens n [] = ⟨[], _⟩`,
+  so `strategyOfTokens n (unRpn (undigitize [])) = Trader.zero.strat n` closes by `rfl`
+  — any `∃ F, MachinePolyEC F ∧ interp = Tr.strat` class is inhabited by
+  `⟨fun _ => [], MachinePolyEC.const_nil, fun _ => rfl⟩`. Degenerate: not evidence of
+  content. (R2-F10) Also: `simp [strategyOfTokens, …]` gets stuck on the dependent
+  `match hdecode :` — use bare `rfl`; and `native_decide` fails misleadingly on goals
+  with free variables there.
 
 ## Intentional deviations from the paper
 
@@ -121,10 +189,16 @@ README and at their statement sites.)
   whenever `enc` is non-injective and `out` isn't constant on its fibres.
 - `Nat.Partrec.Code.evaln` does not reduce under `decide` (stuck `Decidable` instance);
   use `simp [evaln]` for concrete evaluations.
-- `Function.update`-shaped phase lemmas fail to `rw` at a bundled machine's `Stack M.K`
-  (instance mismatch: ambient `DecidableEq` vs `Machine.decEqK`). Use the pointwise
-  `_val` forms (`xfer_run_val`, `dup_run_val`, and round-1's `emitTagged_run_val`/
-  `pushOne_run_val`); do not introduce new update-shaped statements. (R1-F19)
+- `Function.update`-shaped phase lemmas at a concrete bundled machine block `rw`/`simp`
+  but NOT `exact`/`refine`. Corrected mechanism (round-2 fix wave, `pp.explicit` probe):
+  the `DecidableEq` instances agree on both sides — what diverges is the *type
+  argument*, the goal's unreduced projection `Machine.K Γ (eraseMachine Γ)` vs the
+  literal (`Unit`) in a hand-written update nest; defeq but not syntactically equal, so
+  rewriting doesn't fire while term-mode application does. At composite memories
+  written as type expressions (`Stack (pairK M₁ M₂)`) update forms work outright
+  (`pairMachine_runsInTime` uses them). The `_val` forms are a rewriting convenience,
+  not a correctness requirement — don't rewrite working update-shaped proofs.
+  (R1-F19, R2-F03, corrected twice; trust this version.)
 - Pop-a-stack-to-empty is `pump src (fun _ => .nop) (fun _ => .nop)` — 3 steps/symbol,
   same induction shape as `xfer_run`.
 - `codeEvalBound c k` is polynomial in the fuel *per fixed code* (degree grows with the

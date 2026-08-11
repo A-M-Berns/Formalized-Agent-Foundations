@@ -336,13 +336,19 @@ The phase lemmas above describe their output store as a nest of `Function.update
 restate them in terms of the store's *values*, which is the form a chain of phases can use
 without unfolding anything.
 
-These are the forms to use at a bundled machine's memory. A `Function.update`-shaped
-statement instantiated at `Stack M.K` mentions `DecidableEq (Stack M.K)`, which the
-elaborator may build from the ambient instance while the goal carries the one built from
-`Machine.decEqK`; the two are defeq but not syntactically equal, and `rw`/`simp` on the
-update nest then fails to fire. The `_val` forms mention no instance beyond the one
-`HaltsFrom` already carries, so they do not have that problem. Every phase lemma should
-therefore have one, and new phase lemmas should not be stated in update form only. -/
+These are the forms to reach for at a *concrete* machine — one whose `K` is a literal type,
+like `eraseMachine` below or `haltMachine` in `Basic.lean`. There the goal's memory type is
+the unreduced projection `Stack M.K` and its `DecidableEq` is the one `Machine.decEqK`
+supplies, whereas a hand-written update nest naturally elaborates at the literal (`Stack
+Unit`, ambient instance). The two sides are defeq, so `exact`/`refine` close the gap, but
+they are not syntactically equal, so `rw`/`simp` on the update nest does not fire. The
+`_val` forms take pointwise equations instead, each discharged by `rfl`/`simp`, and so are
+immune.
+
+This is not a blanket rule against update-shaped statements. At a composite memory written
+as a type expression rather than a projection — `Stack (pairK M₁ M₂)` — both sides elaborate
+alike and the update forms work directly; `pairMachine_runsInTime` chains `pushOne_run` and
+`emitTagged_run` in exactly that shape. -/
 
 section Pointwise
 
@@ -702,15 +708,18 @@ def eraseMachine : Machine Γ where
 variable {Γ}
 
 /-- The erasing machine empties the I/O stack in three steps per input symbol.  Kind `N+`: a
-constructed inhabitant of `RunsInTime` over a machine with a nonempty private block and a
-nontrivial control. -/
+constructed inhabitant of `RunsInTime` over a machine with a nonempty private block, whose
+run performs one pop and one push per input symbol. (No claim about the control being
+nontrivial: `Option (Γ × Bool)` collapses to a single state at `Γ = Empty`.) -/
 lemma eraseMachine_runsInTime (x : List Γ) : RunsInTime (eraseMachine Γ) x [] (3 * x.length) := by
   refine ⟨fun j => match j with | none => [] | some _ => x.reverse, rfl, ?_⟩
   refine xfer_run_val none (some ()) (by simp) x _ _ rfl rfl (by simp [layout]) ?_
   rintro (_ | j) h1 h2 <;> simp_all
 
-/-- **`MachinePolyEC` contains a function that moves data**: `fun _ => []`, computed by
-`eraseMachine` inside the clock `3 * (n + 1) + 3`.  Kind `N+`. Together with
+/-- **`MachinePolyEC` is inhabited by a machine whose run moves data**: the function is the
+constant `fun _ => []`, but `eraseMachine` computes it by transferring the whole input onto a
+private stack, so the witnessing run does `3 * n` steps of real memory traffic rather than
+halting immediately — all inside the clock `3 * (n + 1) + 3`.  Kind `N+`. Together with
 `MachinePolyEC.id` this gives the closure lemmas below two distinct witnesses to chew on. -/
 lemma MachinePolyEC.const_nil : MachinePolyEC (fun _ : List Γ => ([] : List Γ)) :=
   ⟨eraseMachine Γ, 3, 1, fun x => (eraseMachine_runsInTime x).mono (by rw [pow_one]; omega)⟩

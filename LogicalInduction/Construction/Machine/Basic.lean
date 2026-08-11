@@ -17,9 +17,12 @@ whose actions each name one stack and whose reads are one stack at a time, where
 here reads every top at once and then performs a single action. No theorem here relates the
 two models.
 
-The intended reading of the step count as a time measure rests on the classical fact that
-two stacks simulate a single-tape Turing machine with linear overhead, which is what makes
-this a machine class rather than a unit-cost RAM. That fact is **standard and is not
+The intended reading of the step count as a time measure rests on the classical fact that a
+Turing machine simulates this stack model with polynomial overhead per counted step: one
+counted step is a bounded amount of real work, so the count is not a unit-cost RAM's
+free-lunch operation count. (The converse direction — two stacks simulate a single-tape
+Turing machine — is also classical, but it bounds the model's *power*, not the honesty of
+its clock, and so is not what is being appealed to.) That fact is **standard and is not
 formalized here** (see e.g. Hopcroft–Ullman, *Introduction to Automata Theory, Languages,
 and Computation*, on two-pushdown-stack machines); it is cited to say what the model is
 meant to be, and nothing below depends on it.
@@ -74,7 +77,6 @@ repository changes because of it.
 import Mathlib.Data.Fintype.Sum
 import Mathlib.Data.Fintype.Option
 import Mathlib.Data.Fintype.Prod
-import Mathlib.Tactic.DeriveFintype
 
 namespace LogicalInduction.Counted
 
