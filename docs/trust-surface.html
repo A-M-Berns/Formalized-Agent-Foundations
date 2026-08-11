@@ -383,7 +383,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
   mono : ∀ n, D n ⊆ D (n + 1)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">DeductiveProcessComputation</code><span class="ep-file">LogicalInduction/Framework/Criterion.lean</span></div><pre class="sig">structure DeductiveProcessComputation (DP : DeductiveProcess) where
   code : Nat.Partrec.Code
   code_spec : ∀ n, Encodable.encode (DP.D n) ∈ code.eval n</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">productDefDP_computable</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ProductDefinition.lean</span></div><pre class="sig">lemma productDefDP_computable {X W : ℕ → LUV}
-    (cX : LUVThresholdComputation X) (cW : LUVThresholdComputation W) :
+    (hX : LUV.RpnThresholdCodeSeq X) (hW : LUV.RpnThresholdCodeSeq W) :
     ComputableDeductiveProcess (productDefDP X W)</pre></div>
       
     </section>
@@ -1431,7 +1431,7 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="11">1 / 11</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_wubaff_ofComputation_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackUnconditional.lean</span></div><pre class="sig">theorem lic_wubaff_ofComputation_unconditional
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="12">1 / 12</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_wubaff_ofComputation_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackUnconditional.lean</span></div><pre class="sig">theorem lic_wubaff_ofComputation_unconditional
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W)
     {truth : ℕ → ℝ} {f : DeferralFunction}
@@ -1510,6 +1510,17 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     (hbounded : BoundedAffinePrices As P)
     (hdet : ApproxDeterminedViaTheory As P DP truth err)
     (herr : Tendsto err atTop (𝓝 0))
+    (C : FeedbackTruthComputation truth f)
+    (hstrict : StrictlyIncreasingDeferral f)
+    (hmag : ∀ n, (As n).magnitude P ≤ 1)
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    FeedbackTruthSequence As truth P DP f</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">feedbackTruthSequence_ofDetermined</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FeedbackTruth.lean</span></div><pre class="sig">noncomputable def feedbackTruthSequence_ofDetermined
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    {truth : ℕ → ℝ} {f : DeferralFunction}
+    (hpoly : PolySequence As)
+    (hbounded : BoundedAffinePrices As P)
+    (hdet : DeterminedViaTheory As P DP truth)
     (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
     (hmag : ∀ n, (As n).magnitude P ≤ 1)
@@ -3549,7 +3560,7 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="15">1 / 15</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_no_expected_net_update_conditional_closed</code><span class="ep-file">LogicalInduction/Construction/Witnesses/QuoteCodeOfMarket.lean</span></div><pre class="sig">theorem lic_no_expected_net_update_conditional_closed
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="18">1 / 18</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_no_expected_net_update_conditional_closed</code><span class="ep-file">LogicalInduction/Construction/Witnesses/QuoteCodeOfMarket.lean</span></div><pre class="sig">theorem lic_no_expected_net_update_conditional_closed
     (f : DeferralFunction)
     (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
@@ -3608,7 +3619,7 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
         ∃ z, v.ValuesAt (indicatorProductLUV
             (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) φ n) z ∧
           |z - x * w (f n)| ≤ 0</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">productDefDP_computable</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ProductDefinition.lean</span></div><pre class="sig">lemma productDefDP_computable {X W : ℕ → LUV}
-    (cX : LUVThresholdComputation X) (cW : LUVThresholdComputation W) :
+    (hX : LUV.RpnThresholdCodeSeq X) (hW : LUV.RpnThresholdCodeSeq W) :
     ComputableDeductiveProcess (productDefDP X W)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">productDefDP_union_consistentWithTheory</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ProductDefinition.lean</span></div><pre class="sig">theorem productDefDP_union_consistentWithTheory {B : DeductiveProcess} {X W : ℕ → LUV}
     (hX : ProductAtomFresh X) (hW : ProductAtomFresh W)
     (hB : ∀ k, ∀ φ ∈ B.D k, ∀ a ∈ sentenceAtomCodes φ, a.unpair.1 ≠ productTag)
@@ -3635,7 +3646,33 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
       v.ConsistentWithTheory (B.union (productDefDP X W)) →
         v.ValuesAt (Z&#x27; n) ((X n).expect P (f n) * w (f n)))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((B.union (productDefDP X W)).D n)) :
-    (fun n ↦ (productLUV n).expect P n) ≈ₙ fun n ↦ (Z&#x27; n).expect P n</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_no_expected_net_update_conditional_ofRepresentation_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationDP.lean</span></div><pre class="sig">theorem lic_no_expected_net_update_conditional_ofRepresentation_unconditional
+    (fun n ↦ (productLUV n).expect P n) ≈ₙ fun n ↦ (Z&#x27; n).expect P n</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">exactProductDP_hworld</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ProductDefinition.lean</span></div><pre class="sig">lemma exactProductDP_hworld {X : ℕ → LUV} (hXfresh : ProductAtomFresh X)
+    (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      ∃ x, v.ValuesAt (X n) x)
+    (n : ℕ) :
+    ∃ v : PCWorld,
+      v.ConsistentWith ((exactProductDP T f w weight_mem weight_generable X).D n)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_no_expected_net_update_conditional_exact_closed</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ProductDefinition.lean</span></div><pre class="sig">theorem lic_no_expected_net_update_conditional_exact_closed
+    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
+    (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      ∃ x, v.ValuesAt (X n) x)
+    (atom_fresh : ProductAtomFresh X)
+    (weight_generable_extended :
+      PGenerableRat (liaHistory (exactProductDP T f w weight_mem weight_generable X)) w) :
+    (fun n ↦ (productLUV n).expect
+        (liaHistory (exactProductDP T f w weight_mem weight_generable X)) n) ≈ₙ
+      fun n ↦ ((conditionalExpectationQuoteCode T
+          (exactProductMarket T f w weight_mem weight_generable hX) f X hX w
+          weight_generable_extended weight_mem).luv n).expect
+        (liaHistory (exactProductDP T f w weight_mem weight_generable X)) n</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_no_expected_net_update_conditional_exact_closed_nonvacuous</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ProductDefinition.lean</span></div><pre class="sig">theorem lic_no_expected_net_update_conditional_exact_closed_nonvacuous
+    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] [𝗥₀ ⪯ T]
+    (f : DeferralFunction) :
+    ∃ (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
+      (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w) (X : ℕ → LUV),
+      ¬ (∀ m n, w m = w n) ∧
+      LUV.RpnThresholdCodeSeq X ∧
+      (∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) → ∃ x, v.ValuesAt (X n) x) ∧
+      ProductAtomFresh X ∧
+      PGenerableRat (liaHistory (exactProductDP T f w weight_mem weight_generable X)) w</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_no_expected_net_update_conditional_ofRepresentation_unconditional</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ComputationDP.lean</span></div><pre class="sig">theorem lic_no_expected_net_update_conditional_ofRepresentation_unconditional
     (f : DeferralFunction)
     (X Z Z&#x27; : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
@@ -3656,7 +3693,7 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     </section>
   </div>
   <div class="reading-note"><span class="reading-tag">How the panes line up</span> Left side is the <em>mesh</em> product of Xₙ with the deferred weight (exact to within 1/(n+1) — the disclosed substitution); right side quotes the market&#x27;s deferred weighted expectation exactly. The premises are the paper&#x27;s: arbitrary e.c. source + [0,1] generable weight + deferral function.</div>
-  <footer class="audit-note"><span class="audit-tag">What to check</span> unconditional over <code>LIA</code> with both quoted products constructed, a bare <code>DeferralFunction</code>, and — as of the mesh product — the paper&#x27;s <strong>arbitrary</strong> e.c. source family (<code>lic_no_expected_net_update_conditional_closed</code> takes <code>X : ℕ → LUV</code> with <code>RpnThresholdCodeSeq</code> + <code>source_valued</code>, the same premises <code>thm:cee</code> carries). What keeps the row below <code>instantiated</code> is a declared type-<code>(c)</code> substitution rather than a class restriction: the left quoted product is reflected only to within <code>1/(n+1)</code> (<code>ConditionalExpectationQuote.slack</code>), because an exactly-reflecting product LUV would need either the value of the deferred weight or an infinite disjunction, neither available. Non-vacuity witnessed at both ends (<code>meshProductLUV_valuesAt</code>; <code>indicatorProductLUV_exact_left_reflected</code> at zero slack)</footer>
+  <footer class="audit-note"><span class="audit-tag">What to check</span> unconditional over <code>LIA</code> with both quoted products constructed, a bare <code>DeferralFunction</code>, and — as of the mesh product — the paper&#x27;s <strong>arbitrary</strong> e.c. source family (<code>lic_no_expected_net_update_conditional_closed</code> takes <code>X : ℕ → LUV</code> with <code>RpnThresholdCodeSeq</code> + <code>source_valued</code>, the same premises <code>thm:cee</code> carries). What keeps the row below <code>instantiated</code> is a declared type-<code>(c)</code> substitution rather than a class restriction: the left quoted product is reflected only to within <code>1/(n+1)</code> (<code>ConditionalExpectationQuote.slack</code>), because an exactly-reflecting product LUV built from the source&#x27;s <em>own</em> threshold atoms would need either the value of the deferred weight or an infinite disjunction, neither available. Non-vacuity witnessed at both ends (<code>meshProductLUV_valuesAt</code>; <code>indicatorProductLUV_exact_left_reflected</code> at zero slack). <strong>The slack is now known to be substrate-shaped, and that does not change this row.</strong> <code>lic_no_expected_net_update_conditional_exact_closed</code> proves the same conclusion with <code>slack = 0</code> — same trader, same criterion — over the constructed <code>LIA</code> on <code>theoremDP T ∪ productDefDP</code>, i.e. once the quoted product is given a syntactic existence the propositional substrate otherwise denies it. That is evidence about <em>where the slack comes from</em>: it is an artifact of the substrate, not of logical induction. It is <strong>not</strong> a stronger <code>thm:ccee</code> and does not take the endpoint-of-record role, because it establishes nothing about the base inductor&#x27;s conditional expectations: <code>LIA</code> over the extended process is a different inductor, and conservativity of completed-world truth does not carry prices across. It also pays two costs the mesh endpoint does not — <code>ProductAtomFresh X</code>, a genuine narrowing of the arbitrary e.c. source class in a flat atom space, and <code>def:pgen</code> at the extended market. Its premise set is exhibited jointly satisfiable by an index-varying witness (<code>..._nonvacuous</code>), and its <code>hworld</code> is discharged by extending the base construction&#x27;s own plausible world. Cross-family adjudication (2026-08-11) rejected the instance reading and ranked the renderings mesh &gt; extension &gt; weight-narrowing. Whether the row moves to <code>instantiated</code> is deferred to Anson&#x27;s read-through and turns on the slack alone, not on the demonstration. Assessment and adjudication outcome: <code>notes/boundary-propositional-substrate.md</code></footer>
 </article>
 
 <article class="node" id="thm-st">
@@ -3935,4 +3972,4 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
 })();
 </script>
 
-<!-- trust-surface-sources: de4fa485a68224bff476cafa6b888ed7c3ddf4b282b824f57211a8b6f7a0557b -->
+<!-- trust-surface-sources: 31206f06eb525e80a813c3609a99069bfc27b45f49cf42714991f9b1366c33a4 -->
