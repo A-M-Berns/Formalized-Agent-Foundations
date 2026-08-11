@@ -20,7 +20,8 @@ propositional counterpart.
 ## The schema
 
 Naming the *value* of the weight is what the emitter cannot do — but the schema never needs
-it.  For rationals `s, t ≥ 0` the process enters
+it.  For nonnegative rational factors `s, t` — indexed as `i/k`, exactly the way `def:ec`'s
+block interface already indexes threshold sentences — the process enters
 
 * `(⌜Xₙ > s⌝ ⋏ ⌜Wₙ > t⌝) 🡒 productAtom n r`   whenever `r ≤ s·t`,
 * `productAtom n r 🡒 (⌜Xₙ > s⌝ ⋎ ⌜Wₙ > t⌝)`   whenever `s·t ≤ r`,
@@ -31,6 +32,12 @@ which mentions only the two source families' own threshold sentences and is deci
 factors pins `productAtom n r` to exactly `x·c > r`, in both directions — i.e.
 `ValuesAt (productLUV n) (x·c)`, with **no slack** and with no positivity hypothesis on `c`
 (the `c = 0` case is the `r < 0` axiom plus the negative schema, not a case split).
+
+Indexing the factors by `⟨k,i⟩` rather than by an encoded rational is what makes the
+process's own emitter *derivable* from the two families' `def:ec` certificates
+(`LUV.RpnThresholdCodeSeq`, via `RpnSentenceCodes.primrec`) instead of an extra
+caller-facing datum: the schema's threshold queries land on exactly the packed index
+`⟨n,⟨k,i⟩⟩` that certificate is stated at.
 
 This is a strict improvement on the obvious schema, which has the process compute `w (f n)`
 through `PGenerableRat.computable` and enter
@@ -135,26 +142,51 @@ choice of `n` and `r` and is discharged by inspection for every family this repo
 def ProductAtomFresh (X : ℕ → LUV) : Prop :=
   ∀ (n : ℕ) (r : ℚ), ∀ a ∈ sentenceAtomCodes ((X n).gt r), a.unpair.1 ≠ productTag
 
+/-! ## Mesh indices for the schema's two factors
+
+`def:ec`'s block interface (`LUV.RpnThresholdCodeSeq`) emits `⌜Xₙ > i/k⌝` at the packed
+index `⟨n,⟨k,i⟩⟩`.  The schema only ever needs *nonnegative* factors, and every nonnegative
+rational is some `i/k`, so indexing the factors that way costs nothing and buys the
+process's emitter outright. -/
+
+/-- The nonnegative rational named by the packed mesh index `z = ⟨k,i⟩`, namely `i/k`.  The
+degenerate index `k = 0` names `0`; that is harmless, since the schema is sound at every
+nonnegative factor. -/
+def meshIndexRat (z : ℕ) : ℚ := (z.unpair.2 : ℚ) / (z.unpair.1 : ℚ)
+
+lemma meshIndexRat_nonneg (z : ℕ) : 0 ≤ meshIndexRat z := by
+  unfold meshIndexRat; positivity
+
+/-- Every nonnegative rational is named by a mesh index — the density fact the exact
+product law needs, in index form. -/
+lemma exists_meshIndexRat {q : ℚ} (hq : 0 ≤ q) : ∃ z, meshIndexRat z = q := by
+  refine ⟨Nat.pair q.den q.num.toNat, ?_⟩
+  have hnum : ((q.num.toNat : ℕ) : ℚ) = (q.num : ℚ) := by
+    exact_mod_cast congrArg (fun i : ℤ => (i : ℚ)) (Int.toNat_of_nonneg (Rat.num_nonneg.mpr hq))
+  simp only [meshIndexRat, Nat.unpair_pair, hnum]
+  exact q.num_div_den
+
 /-! ## The defining process -/
 
-/-- One instance of the defining schema, in decoded form.  Guards that fail emit `⊤`, which
-every world holds and no world is constrained by. -/
-def productSchemaInstance (X W : ℕ → LUV) (n kind : ℕ) (r s t : ℚ) : Sentence :=
+/-- One instance of the defining schema, in decoded form: the two factors arrive as mesh
+indices `zs, zt`.  Guards that fail emit `⊤`, which every world holds and no world is
+constrained by. -/
+def productSchemaInstance (X W : ℕ → LUV) (n kind : ℕ) (r : ℚ) (zs zt : ℕ) : Sentence :=
   if kind = 0 then
-    (if 0 ≤ s ∧ 0 ≤ t ∧ r ≤ s * t then
-      ((X n).gt s ⋏ (W n).gt t) 🡒 productAtom n r else ⊤)
+    (if r ≤ meshIndexRat zs * meshIndexRat zt then
+      ((X n).gt (meshIndexRat zs) ⋏ (W n).gt (meshIndexRat zt)) 🡒 productAtom n r else ⊤)
   else if kind = 1 then
-    (if 0 ≤ s ∧ 0 ≤ t ∧ s * t ≤ r then
-      productAtom n r 🡒 ((X n).gt s ⋎ (W n).gt t) else ⊤)
+    (if meshIndexRat zs * meshIndexRat zt ≤ r then
+      productAtom n r 🡒 ((X n).gt (meshIndexRat zs) ⋎ (W n).gt (meshIndexRat zt)) else ⊤)
   else
     (if r < 0 then productAtom n r else ⊤)
 
-/-- The schema instance at the job code `e = ⟨n, ⟨kind, ⟨⌜r⌝, ⟨⌜s⌝, ⌜t⌝⟩⟩⟩⟩`. -/
+/-- The schema instance at the job code `e = ⟨n, ⟨kind, ⟨⌜r⌝, ⟨zs, zt⟩⟩⟩⟩`. -/
 def productDefSentence (X W : ℕ → LUV) (e : ℕ) : Sentence :=
   productSchemaInstance X W e.unpair.1 e.unpair.2.unpair.1
     (decodedQuotationRat e.unpair.2.unpair.2.unpair.1)
-    (decodedQuotationRat e.unpair.2.unpair.2.unpair.2.unpair.1)
-    (decodedQuotationRat e.unpair.2.unpair.2.unpair.2.unpair.2)
+    e.unpair.2.unpair.2.unpair.2.unpair.1
+    e.unpair.2.unpair.2.unpair.2.unpair.2
 
 /-- Job codes revealed by day `k`: all of them up to `k`.  The schema is decidable, so no
 dovetailing clock is needed — the process is a plain enumeration. -/
@@ -198,37 +230,35 @@ section
 -- `Nat.unpair` unfolds `Nat.sqrt`, which loops `whnf` under the schema's decidable guards.
 attribute [local irreducible] Nat.sqrt
 
-lemma productDefSentence_pair (X W : ℕ → LUV) (n kind : ℕ) (r s t : ℚ) :
+lemma productDefSentence_pair (X W : ℕ → LUV) (n kind : ℕ) (r : ℚ) (zs zt : ℕ) :
     productDefSentence X W
         (Nat.pair n (Nat.pair kind (Nat.pair (Encodable.encode r)
-          (Nat.pair (Encodable.encode s) (Encodable.encode t))))) =
-      productSchemaInstance X W n kind r s t := by
+          (Nat.pair zs zt)))) =
+      productSchemaInstance X W n kind r zs zt := by
   rw [productDefSentence]
   simp only [Nat.unpair_pair, decodedQuotationRat_encode]
 
 lemma holds_productDef_pos {X W : ℕ → LUV} {v : PCWorld}
-    (hv : v.ConsistentWithTheory (productDefDP X W)) (n : ℕ) {r s t : ℚ}
-    (hs : 0 ≤ s) (ht : 0 ≤ t) (hst : r ≤ s * t)
-    (hX : v.Holds ((X n).gt s)) (hW : v.Holds ((W n).gt t)) :
+    (hv : v.ConsistentWithTheory (productDefDP X W)) (n : ℕ) {r : ℚ} {zs zt : ℕ}
+    (hst : r ≤ meshIndexRat zs * meshIndexRat zt)
+    (hX : v.Holds ((X n).gt (meshIndexRat zs)))
+    (hW : v.Holds ((W n).gt (meshIndexRat zt))) :
     v.Holds (productAtom n r) := by
   have h := holds_productDefSentence hv
-    (Nat.pair n (Nat.pair 0 (Nat.pair (Encodable.encode r)
-      (Nat.pair (Encodable.encode s) (Encodable.encode t)))))
-  rw [productDefSentence_pair, productSchemaInstance, if_pos rfl,
-    if_pos (⟨hs, ht, hst⟩ : 0 ≤ s ∧ 0 ≤ t ∧ r ≤ s * t)] at h
+    (Nat.pair n (Nat.pair 0 (Nat.pair (Encodable.encode r) (Nat.pair zs zt))))
+  rw [productDefSentence_pair, productSchemaInstance, if_pos rfl, if_pos hst] at h
   exact h ⟨hX, hW⟩
 
 lemma not_holds_productDef_neg {X W : ℕ → LUV} {v : PCWorld}
-    (hv : v.ConsistentWithTheory (productDefDP X W)) (n : ℕ) {r s t : ℚ}
-    (hs : 0 ≤ s) (ht : 0 ≤ t) (hst : s * t ≤ r)
-    (hX : ¬ v.Holds ((X n).gt s)) (hW : ¬ v.Holds ((W n).gt t)) :
+    (hv : v.ConsistentWithTheory (productDefDP X W)) (n : ℕ) {r : ℚ} {zs zt : ℕ}
+    (hst : meshIndexRat zs * meshIndexRat zt ≤ r)
+    (hX : ¬ v.Holds ((X n).gt (meshIndexRat zs)))
+    (hW : ¬ v.Holds ((W n).gt (meshIndexRat zt))) :
     ¬ v.Holds (productAtom n r) := by
   have h := holds_productDefSentence hv
-    (Nat.pair n (Nat.pair 1 (Nat.pair (Encodable.encode r)
-      (Nat.pair (Encodable.encode s) (Encodable.encode t)))))
+    (Nat.pair n (Nat.pair 1 (Nat.pair (Encodable.encode r) (Nat.pair zs zt))))
   rw [productDefSentence_pair, productSchemaInstance,
-    if_neg (by decide : ¬ (1 : ℕ) = 0), if_pos rfl,
-    if_pos (⟨hs, ht, hst⟩ : 0 ≤ s ∧ 0 ≤ t ∧ s * t ≤ r)] at h
+    if_neg (by decide : ¬ (1 : ℕ) = 0), if_pos rfl, if_pos hst] at h
   intro hcon
   rcases h hcon with hl | hr
   · exact hX hl
@@ -238,8 +268,7 @@ lemma holds_productDef_below {X W : ℕ → LUV} {v : PCWorld}
     (hv : v.ConsistentWithTheory (productDefDP X W)) (n : ℕ) {r : ℚ} (hr : r < 0) :
     v.Holds (productAtom n r) := by
   have h := holds_productDefSentence hv
-    (Nat.pair n (Nat.pair 2 (Nat.pair (Encodable.encode r)
-      (Nat.pair (Encodable.encode (0 : ℚ)) (Encodable.encode (0 : ℚ))))))
+    (Nat.pair n (Nat.pair 2 (Nat.pair (Encodable.encode r) (Nat.pair 0 0))))
   rw [productDefSentence_pair, productSchemaInstance,
     if_neg (by decide : ¬ (2 : ℕ) = 0), if_neg (by decide : ¬ (2 : ℕ) = 1),
     if_pos hr] at h
@@ -325,11 +354,15 @@ theorem productLUV_valuesAt {X W : ℕ → LUV} {v : PCWorld}
     rcases lt_or_ge r 0 with hneg | hpos
     · exact holds_productDef_below hv n hneg
     · obtain ⟨s, t, hs0, ht0, hst, hsx, htc⟩ := exists_rat_pair_lt_mul hx0 hc0 hpos hr
-      exact holds_productDef_pos hv n hs0 ht0 hst ((hxthr s).1 hsx) ((hcthr t).1 htc)
+      obtain ⟨zs, rfl⟩ := exists_meshIndexRat hs0
+      obtain ⟨zt, rfl⟩ := exists_meshIndexRat ht0
+      exact holds_productDef_pos hv n hst ((hxthr _).1 hsx) ((hcthr _).1 htc)
   · intro hr
     rw [productLUV_gt]
     obtain ⟨s, t, hs0, ht0, hst, hxs, hct⟩ := exists_rat_pair_mul_lt hx0 hc0 hr
-    exact not_holds_productDef_neg hv n hs0 ht0 hst ((hxthr s).2 hxs) ((hcthr t).2 hct)
+    obtain ⟨zs, rfl⟩ := exists_meshIndexRat hs0
+    obtain ⟨zt, rfl⟩ := exists_meshIndexRat ht0
+    exact not_holds_productDef_neg hv n hst ((hxthr _).2 hxs) ((hcthr _).2 hct)
 
 /-! ## Non-vacuity: every base world extends through the definitions
 
@@ -348,8 +381,8 @@ both. -/
 /-- The product-atom truth a base world already forces: the least assignment closed under the
 positive schema clauses. -/
 def ProductAtomTruth (X W : ℕ → LUV) (v₀ : PCWorld) (n : ℕ) (r : ℚ) : Prop :=
-  r < 0 ∨ ∃ s t : ℚ, 0 ≤ s ∧ 0 ≤ t ∧ r ≤ s * t ∧
-    v₀.Holds ((X n).gt s) ∧ v₀.Holds ((W n).gt t)
+  r < 0 ∨ ∃ zs zt : ℕ, r ≤ meshIndexRat zs * meshIndexRat zt ∧
+    v₀.Holds ((X n).gt (meshIndexRat zs)) ∧ v₀.Holds ((W n).gt (meshIndexRat zt))
 
 open Classical in
 /-- `v₀` extended to the fresh product atoms by their definitions; unchanged elsewhere. -/
@@ -397,8 +430,8 @@ Paper node: `thm:ccee` -/
 lemma productExtensionWorld_holds_schema {X W : ℕ → LUV} {v₀ : PCWorld}
     (hX : ProductAtomFresh X) (hW : ProductAtomFresh W)
     (hXval : ∀ n, ∃ x, v₀.ValuesAt (X n) x) (hWval : ∀ n, ∃ c, v₀.ValuesAt (W n) c)
-    (n kind : ℕ) (r s t : ℚ) :
-    (productExtensionWorld X W v₀).Holds (productSchemaInstance X W n kind r s t) := by
+    (n kind : ℕ) (r : ℚ) (zs zt : ℕ) :
+    (productExtensionWorld X W v₀).Holds (productSchemaInstance X W n kind r zs zt) := by
   have hXtr : ∀ (m : ℕ) (q : ℚ),
       (productExtensionWorld X W v₀).Holds ((X m).gt q) ↔ v₀.Holds ((X m).gt q) :=
     fun m q => productExtensionWorld_holds_iff X W v₀ (hX m q)
@@ -406,10 +439,14 @@ lemma productExtensionWorld_holds_schema {X W : ℕ → LUV} {v₀ : PCWorld}
       (productExtensionWorld X W v₀).Holds ((W m).gt q) ↔ v₀.Holds ((W m).gt q) :=
     fun m q => productExtensionWorld_holds_iff X W v₀ (hW m q)
   rw [productSchemaInstance]
+  set s : ℚ := meshIndexRat zs with hsdef
+  set t : ℚ := meshIndexRat zt with htdef
+  have hs0 : 0 ≤ s := meshIndexRat_nonneg zs
+  have ht0 : 0 ≤ t := meshIndexRat_nonneg zt
   split_ifs with _ hg0 _ hg1 hneg
   · intro hc
     exact (productExtensionWorld_productAtom X W v₀ n r).mpr
-      (Or.inr ⟨s, t, hg0.1, hg0.2.1, hg0.2.2, (hXtr n s).1 hc.1, (hWtr n t).1 hc.2⟩)
+      (Or.inr ⟨zs, zt, hg0, (hXtr n s).1 hc.1, (hWtr n t).1 hc.2⟩)
   · exact PCWorld.holds_top _
   · intro hp
     have hp' := (productExtensionWorld_productAtom X W v₀ n r).mp hp
@@ -418,7 +455,6 @@ lemma productExtensionWorld_holds_schema {X W : ℕ → LUV} {v₀ : PCWorld}
     by_contra hcon
     push_neg at hcon
     obtain ⟨hnX, hnW⟩ := hcon
-    obtain ⟨hs0, ht0, hst⟩ := hg1
     obtain ⟨x, hx0, _, hxthr⟩ := hXval n
     obtain ⟨c, hc0, _, hcthr⟩ := hWval n
     have hxs : x ≤ (s : ℝ) := by
@@ -429,9 +465,13 @@ lemma productExtensionWorld_holds_schema {X W : ℕ → LUV} {v₀ : PCWorld}
       by_contra hcc
       push_neg at hcc
       exact hnW ((hWtr n t).2 ((hcthr t).1 hcc))
-    rcases hp' with hrneg | ⟨s₁, t₁, hs₁, ht₁, hr₁, hXs₁, hWt₁⟩
+    rcases hp' with hrneg | ⟨zs₁, zt₁, hr₁, hXs₁, hWt₁⟩
     · nlinarith
-    · have hs₁x : (s₁ : ℝ) ≤ x := by
+    · set s₁ : ℚ := meshIndexRat zs₁ with hs₁def
+      set t₁ : ℚ := meshIndexRat zt₁ with ht₁def
+      have hs₁ : 0 ≤ s₁ := meshIndexRat_nonneg zs₁
+      have ht₁ : 0 ≤ t₁ := meshIndexRat_nonneg zt₁
+      have hs₁x : (s₁ : ℝ) ≤ x := by
         by_contra hcc
         push_neg at hcc
         exact (hxthr s₁).2 hcc hXs₁
@@ -562,108 +602,121 @@ lemma productLUV_rpnThresholdCodeSeq : LUV.RpnThresholdCodeSeq productLUV :=
 /-! ## Computability of the definitional-extension process
 
 `def:dedproc` asks only for computability — no clock — which is the whole reason the exact
-product is reachable here at all.  What the process does need is the two threshold families'
-emitters *as data*: `LUV.RpnThresholdCodeSeq` is `∃`-shaped and certifies efficient emission
-on the mesh index, whereas a process definition consumes a program.  This is the same
-named-beside-existential pattern as `DeductiveProcessComputation` beside
-`ComputableDeductiveProcess`. -/
-
-/-- A named program emitting a LUV family's threshold sentences at arbitrary encoded rational
-thresholds.
-Paper node: `def:dedproc` -/
-structure LUVThresholdComputation (X : ℕ → LUV) where
-  code : Nat.Partrec.Code
-  code_spec : ∀ m : ℕ,
-    Encodable.encode ((X m.unpair.1).gt (decodedQuotationRat m.unpair.2)) ∈ code.eval m
-
-lemma LUVThresholdComputation.computable {X : ℕ → LUV} (c : LUVThresholdComputation X) :
-    Computable fun m : ℕ =>
-      Encodable.encode ((X m.unpair.1).gt (decodedQuotationRat m.unpair.2)) := by
-  have heval : Partrec fun m : ℕ => c.code.eval m :=
-    Nat.Partrec.Code.eval_part.comp (Computable.const c.code) Computable.id
-  exact heval.of_eq fun m => Part.eq_some_iff.mpr (c.code_spec m)
+product is reachable here at all.  And because the schema's two factors are indexed the way
+`def:ec`'s block interface already indexes thresholds, the process's own emitter is
+*derived* from `LUV.RpnThresholdCodeSeq X` and `LUV.RpnThresholdCodeSeq W` — the very
+premises the mesh endpoint already carries — rather than assumed as a new caller-facing
+certificate.  `RpnSentenceCodes.primrec` turns the `∃`-shaped block certificate into the
+whole-value naming program a process definition consumes. -/
 
 section
 attribute [local irreducible] Nat.sqrt
 
-/-- The schema instance is computable in its decoded arguments. -/
-lemma productSchemaInstance_computable {X W : ℕ → LUV}
-    (cX : LUVThresholdComputation X) (cW : LUVThresholdComputation W) :
-    Computable fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
-      productSchemaInstance X W p.1 p.2.1 p.2.2.1 p.2.2.2.1 p.2.2.2.2 := by
+/-- The mesh-index rational is primitive recursive. -/
+lemma meshIndexRat_prim : Primrec meshIndexRat :=
+  ratDiv_prim.comp (ratNatCast_prim.comp (Primrec.snd.comp Primrec.unpair))
+    (ratNatCast_prim.comp (Primrec.fst.comp Primrec.unpair))
+
+/-- **The schema enumerator is computable**, with its two threshold emitters read off the
+source families' own `def:ec` block certificates at the packed index `⟨n,⟨k,i⟩⟩`. -/
+lemma productDefSentence_computable {X W : ℕ → LUV}
+    (hX : LUV.RpnThresholdCodeSeq X) (hW : LUV.RpnThresholdCodeSeq W) :
+    Computable (productDefSentence X W) := by
   classical
   refine Computable.encode_iff.mp ?_
-  have hn : Primrec fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.1 := Primrec.fst
-  have hkind : Primrec fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.1 := Primrec.fst.comp Primrec.snd
-  have hr : Primrec fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.2.1 :=
-    Primrec.fst.comp (Primrec.snd.comp Primrec.snd)
-  have hs : Primrec fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.2.2.1 :=
-    Primrec.fst.comp (Primrec.snd.comp (Primrec.snd.comp Primrec.snd))
-  have ht : Primrec fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.2.2.2 :=
-    Primrec.snd.comp (Primrec.snd.comp (Primrec.snd.comp Primrec.snd))
-  have heX : Computable fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
-      Encodable.encode ((X p.1).gt p.2.2.2.1) := by
-    have h := cX.computable.comp
-      (Primrec₂.natPair.to_comp.comp hn.to_comp (Primrec.encode.comp hs).to_comp)
-    simpa only [Nat.unpair_pair, decodedQuotationRat_encode] using h
-  have heW : Computable fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
-      Encodable.encode ((W p.1).gt p.2.2.2.2) := by
-    have h := cW.computable.comp
-      (Primrec₂.natPair.to_comp.comp hn.to_comp (Primrec.encode.comp ht).to_comp)
-    simpa only [Nat.unpair_pair, decodedQuotationRat_encode] using h
-  have heP : Primrec fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
-      Nat.pair 1 (Nat.pair productTag (Nat.pair p.1 (Encodable.encode p.2.2.1))) + 1 :=
+  -- Job-code components.
+  have hn : Primrec fun e : ℕ => e.unpair.1 := Primrec.fst.comp Primrec.unpair
+  have h2 : Primrec fun e : ℕ => e.unpair.2 := Primrec.snd.comp Primrec.unpair
+  have hkind : Primrec fun e : ℕ => e.unpair.2.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp h2)
+  have h3 : Primrec fun e : ℕ => e.unpair.2.unpair.2 :=
+    Primrec.snd.comp (Primrec.unpair.comp h2)
+  have hcr : Primrec fun e : ℕ => e.unpair.2.unpair.2.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp h3)
+  have h4 : Primrec fun e : ℕ => e.unpair.2.unpair.2.unpair.2 :=
+    Primrec.snd.comp (Primrec.unpair.comp h3)
+  have hzs : Primrec fun e : ℕ => e.unpair.2.unpair.2.unpair.2.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp h4)
+  have hzt : Primrec fun e : ℕ => e.unpair.2.unpair.2.unpair.2.unpair.2 :=
+    Primrec.snd.comp (Primrec.unpair.comp h4)
+  have hr : Primrec fun e : ℕ => decodedQuotationRat e.unpair.2.unpair.2.unpair.1 :=
+    decodedQuotationRat_prim.comp hcr
+  have hs : Primrec fun e : ℕ => meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.1 :=
+    meshIndexRat_prim.comp hzs
+  have ht : Primrec fun e : ℕ => meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2 :=
+    meshIndexRat_prim.comp hzt
+  -- The two threshold emitters, derived from the `def:ec` block certificates.
+  have heX : Primrec fun e : ℕ => Encodable.encode
+      ((X e.unpair.1).gt (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.1)) := by
+    have h := (RpnSentenceCodes.primrec hX).comp (Primrec₂.natPair.comp hn hzs)
+    simpa only [Nat.unpair_pair, meshIndexRat] using h
+  have heW : Primrec fun e : ℕ => Encodable.encode
+      ((W e.unpair.1).gt (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2)) := by
+    have h := (RpnSentenceCodes.primrec hW).comp (Primrec₂.natPair.comp hn hzt)
+    simpa only [Nat.unpair_pair, meshIndexRat] using h
+  -- The fresh product atom's code.
+  have heP : Primrec fun e : ℕ =>
+      Nat.pair 1 (Nat.pair productTag (Nat.pair e.unpair.1
+        (Encodable.encode (decodedQuotationRat e.unpair.2.unpair.2.unpair.1)))) + 1 :=
     Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1)
       (Primrec₂.natPair.comp (Primrec.const productTag)
         (Primrec₂.natPair.comp hn (Primrec.encode.comp hr))))
-  have hk0 : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.1 = 0 :=
+  -- The three decidable guards.
+  have hk0 : PrimrecPred fun e : ℕ => e.unpair.2.unpair.1 = 0 :=
     Primrec.eq.comp hkind (Primrec.const 0)
-  have hk1 : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.1 = 1 :=
+  have hk1 : PrimrecPred fun e : ℕ => e.unpair.2.unpair.1 = 1 :=
     Primrec.eq.comp hkind (Primrec.const 1)
-  have hmul : Primrec fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.2.2.1 * p.2.2.2.2 :=
-    ratMul_prim.comp hs ht
-  have hs0 : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ => (0 : ℚ) ≤ p.2.2.2.1 :=
-    ratLE_prim.comp (Primrec.const 0) hs
-  have ht0 : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ => (0 : ℚ) ≤ p.2.2.2.2 :=
-    ratLE_prim.comp (Primrec.const 0) ht
-  have hG0 : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
-      (0 : ℚ) ≤ p.2.2.2.1 ∧ (0 : ℚ) ≤ p.2.2.2.2 ∧ p.2.2.1 ≤ p.2.2.2.1 * p.2.2.2.2 :=
-    hs0.and (ht0.and (ratLE_prim.comp hr hmul))
-  have hG1 : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
-      (0 : ℚ) ≤ p.2.2.2.1 ∧ (0 : ℚ) ≤ p.2.2.2.2 ∧ p.2.2.2.1 * p.2.2.2.2 ≤ p.2.2.1 :=
-    hs0.and (ht0.and (ratLE_prim.comp hmul hr))
-  have hNeg : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ => p.2.2.1 < 0 := by
-    have h : PrimrecPred fun p : ℕ × ℕ × ℚ × ℚ × ℚ => (0 : ℚ) ≤ p.2.2.1 :=
+  have hmul : Primrec fun e : ℕ =>
+      meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.1 *
+        meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2 := ratMul_prim.comp hs ht
+  have hG0 : PrimrecPred fun e : ℕ =>
+      decodedQuotationRat e.unpair.2.unpair.2.unpair.1 ≤
+        meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.1 *
+          meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2 := ratLE_prim.comp hr hmul
+  have hG1 : PrimrecPred fun e : ℕ =>
+      meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.1 *
+          meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2 ≤
+        decodedQuotationRat e.unpair.2.unpair.2.unpair.1 := ratLE_prim.comp hmul hr
+  have hNeg : PrimrecPred fun e : ℕ =>
+      decodedQuotationRat e.unpair.2.unpair.2.unpair.1 < 0 := by
+    have h : PrimrecPred fun e : ℕ =>
+        (0 : ℚ) ≤ decodedQuotationRat e.unpair.2.unpair.2.unpair.1 :=
       ratLE_prim.comp (Primrec.const 0) hr
-    exact h.not.of_eq (fun p => by simp [not_le])
-  have hAnd : Computable fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
+    exact h.not.of_eq (fun e => by simp [not_le])
+  -- The two compound schema bodies.
+  have hAnd : Primrec fun e : ℕ =>
       Nat.pair 2 (Nat.pair (Nat.pair 3
-        (Nat.pair (Encodable.encode ((X p.1).gt p.2.2.2.1))
-          (Encodable.encode ((W p.1).gt p.2.2.2.2))) + 1)
+        (Nat.pair (Encodable.encode
+            ((X e.unpair.1).gt (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.1)))
+          (Encodable.encode
+            ((W e.unpair.1).gt (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2)))) + 1)
         (Nat.pair 1 (Nat.pair productTag
-          (Nat.pair p.1 (Encodable.encode p.2.2.1))) + 1)) + 1 :=
-    Primrec.succ.to_comp.comp (Primrec₂.natPair.to_comp.comp (Computable.const 2)
-      (Primrec₂.natPair.to_comp.comp
-        (Primrec.succ.to_comp.comp (Primrec₂.natPair.to_comp.comp (Computable.const 3)
-          (Primrec₂.natPair.to_comp.comp heX heW)))
-        heP.to_comp))
-  have hOr : Computable fun p : ℕ × ℕ × ℚ × ℚ × ℚ =>
+          (Nat.pair e.unpair.1
+            (Encodable.encode (decodedQuotationRat e.unpair.2.unpair.2.unpair.1)))) + 1)) + 1 :=
+    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
+      (Primrec₂.natPair.comp
+        (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 3)
+          (Primrec₂.natPair.comp heX heW)))
+        heP))
+  have hOr : Primrec fun e : ℕ =>
       Nat.pair 2 (Nat.pair
         (Nat.pair 1 (Nat.pair productTag
-          (Nat.pair p.1 (Encodable.encode p.2.2.1))) + 1)
+          (Nat.pair e.unpair.1
+            (Encodable.encode (decodedQuotationRat e.unpair.2.unpair.2.unpair.1)))) + 1)
         (Nat.pair 4
-          (Nat.pair (Encodable.encode ((X p.1).gt p.2.2.2.1))
-            (Encodable.encode ((W p.1).gt p.2.2.2.2))) + 1)) + 1 :=
-    Primrec.succ.to_comp.comp (Primrec₂.natPair.to_comp.comp (Computable.const 2)
-      (Primrec₂.natPair.to_comp.comp heP.to_comp
-        (Primrec.succ.to_comp.comp (Primrec₂.natPair.to_comp.comp (Computable.const 4)
-          (Primrec₂.natPair.to_comp.comp heX heW)))))
-  have hTop : Computable fun _ : ℕ × ℕ × ℚ × ℚ × ℚ =>
-      Encodable.encode (⊤ : Sentence) := Computable.const _
-  refine ((hk0.decide.to_comp.cond (hG0.decide.to_comp.cond hAnd hTop)
-    (hk1.decide.to_comp.cond (hG1.decide.to_comp.cond hOr hTop)
-      (hNeg.decide.to_comp.cond heP.to_comp hTop))).of_eq (fun p => ?_))
-  rw [productSchemaInstance]
+          (Nat.pair (Encodable.encode
+              ((X e.unpair.1).gt (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.1)))
+            (Encodable.encode
+              ((W e.unpair.1).gt (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2)))) + 1)) + 1 :=
+    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
+      (Primrec₂.natPair.comp heP
+        (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 4)
+          (Primrec₂.natPair.comp heX heW)))))
+  have hTop : Primrec fun _ : ℕ => Encodable.encode (⊤ : Sentence) := Primrec.const _
+  refine (((hk0.decide.cond (hG0.decide.cond hAnd hTop)
+    (hk1.decide.cond (hG1.decide.cond hOr hTop)
+      (hNeg.decide.cond heP hTop))).to_comp).of_eq (fun e => ?_))
+  rw [productDefSentence, productSchemaInstance]
   split_ifs with h0 hg0 h1 hg1 hneg
   · simp only [h0, hg0, decide_true, cond_true, productAtom]
     rfl
@@ -675,45 +728,17 @@ lemma productSchemaInstance_computable {X W : ℕ → LUV}
     rfl
   · simp [h0, h1, hneg]
 
-/-- The job-code decoding is primitive recursive, so the schema enumerator is computable. -/
-lemma productDefSentence_computable {X W : ℕ → LUV}
-    (cX : LUVThresholdComputation X) (cW : LUVThresholdComputation W) :
-    Computable (productDefSentence X W) := by
-  have hn : Primrec fun e : ℕ => e.unpair.1 := Primrec.fst.comp Primrec.unpair
-  have h2 : Primrec fun e : ℕ => e.unpair.2 := Primrec.snd.comp Primrec.unpair
-  have hkind : Primrec fun e : ℕ => e.unpair.2.unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp h2)
-  have h3 : Primrec fun e : ℕ => e.unpair.2.unpair.2 :=
-    Primrec.snd.comp (Primrec.unpair.comp h2)
-  have hcr : Primrec fun e : ℕ => e.unpair.2.unpair.2.unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp h3)
-  have h4 : Primrec fun e : ℕ => e.unpair.2.unpair.2.unpair.2 :=
-    Primrec.snd.comp (Primrec.unpair.comp h3)
-  have hcs : Primrec fun e : ℕ => e.unpair.2.unpair.2.unpair.2.unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp h4)
-  have hct : Primrec fun e : ℕ => e.unpair.2.unpair.2.unpair.2.unpair.2 :=
-    Primrec.snd.comp (Primrec.unpair.comp h4)
-  have hargs : Computable fun e : ℕ =>
-      ((e.unpair.1, e.unpair.2.unpair.1,
-        decodedQuotationRat e.unpair.2.unpair.2.unpair.1,
-        decodedQuotationRat e.unpair.2.unpair.2.unpair.2.unpair.1,
-        decodedQuotationRat e.unpair.2.unpair.2.unpair.2.unpair.2) :
-        ℕ × ℕ × ℚ × ℚ × ℚ) :=
-    (hn.pair (hkind.pair ((decodedQuotationRat_prim.comp hcr).pair
-      ((decodedQuotationRat_prim.comp hcs).pair
-        (decodedQuotationRat_prim.comp hct))))).to_comp
-  exact (productSchemaInstance_computable cX cW).comp hargs
-
-/-- **The product-definition process is computable** (`def:dedproc`).
+/-- **The product-definition process is computable** (`def:dedproc`), from nothing but the
+two source families' own `def:ec` threshold certificates.
 Paper node: `def:dedproc`, `thm:ccee` -/
 lemma productDefDP_computable {X W : ℕ → LUV}
-    (cX : LUVThresholdComputation X) (cW : LUVThresholdComputation W) :
+    (hX : LUV.RpnThresholdCodeSeq X) (hW : LUV.RpnThresholdCodeSeq W) :
     ComputableDeductiveProcess (productDefDP X W) := by
   have hlist : Computable (productStageList X W) := by
     have hstep : Computable fun p : ℕ × List Sentence =>
         productDefSentence X W (p.1 + 1) :: p.2 :=
       Computable.list_cons.comp
-        ((productDefSentence_computable cX cW).comp
+        ((productDefSentence_computable hX hW).comp
           (Primrec.succ.to_comp.comp Computable.fst)) Computable.snd
     refine (Computable.nat_rec Computable.id
       (Computable.const [productDefSentence X W 0])
