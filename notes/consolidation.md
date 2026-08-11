@@ -207,6 +207,19 @@ Documentation notes: A) i'd like to split up the README into one overall README 
   of the endpoint (Construction/ vs Properties/), so it cannot be wired in place — the fix
   is a downstream `_ofX` endpoint, per the `HistoricalMaturity` precedent.
 
+- **`stacks` is a reserved token, not an identifier** (found 2026-08-11 building
+  `Construction/Machine/`). Mathlib's `@[stacks]` attribute
+  (`Mathlib/Tactic/CrossRefAttribute.lean`) declares `"stacks"` as a syntax atom, so a
+  structure field or definition named `stacks` fails to parse with the useless message
+  `unexpected token 'stacks'; expected 'lemma'` — pointing at the *following* line, not at
+  the name. Symptom to recognise: a parse error naming a token you thought was an ordinary
+  identifier, in a file that compiles fine without Mathlib imported. Same class of trap as
+  any Mathlib-introduced atom; rename the field (`store`).
+- **`.git/info/exclude` silently swallows `Scratch*.lean`.** A spike file created as
+  `Scratch_Foo.lean` is neither tracked nor listed by `git status` — a `git add -A`
+  commit of "the spike plus its writeup" lands the writeup alone, citing a file that is
+  not in the repository. Check `git check-ignore -v` before citing a new file as evidence,
+  or just do not open a filename with `Scratch`.
 - **`#assert_fields` is weaker than its docstring claims**: the macro compares field
   *names* only, so a boundary field's *type* can change silently (it did, benignly:
   `mesh_poly`'s index moved during the precision reindex). Extend the freeze to hash
