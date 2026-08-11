@@ -92,18 +92,22 @@ Reuse these for future non-vacuity or counterexample work.
   expect this divergence; the *statement* is verbatim.
 - Claim 35 has a binder garble and an ill-typed External/Internal half (below).
 
-## Deferred interpretation question (do not resolve unilaterally)
+## Intentional deviations (user-ruled)
 
-**Claim 35 is partially ill-typed in the paper's own set theory.**  `Commit`/`Assume`
-idempotence is fine (`B ⊆ B`).  But `External^B(C)` has agent `A/B`, and `B` is a
-partition of `A`, not of `A/B`, so `External^B(External^B(C))` is not well-formed as
-written; likewise `Internal`.  The claim's binder line also garbles indices
-(`Assume^B` with `B ⊆ A`; `External^F` with `F` a partition of `E`, contradicting
-Definition 32).  Plan of record: before Stage 4, consult the original AI Alignment
-Forum sequence (Garrabrant 2020, paper footnote 1) for the intended statement,
-propose a reading, and **escalate to Anson** as a concrete decision + paper-errata
-note.  Auditors: flag any formalization of Claim 35's External/Internal half that
-was not preceded by that ruling.
+**Claim 35, External/Internal half: not formalized (Anson, 2026-08-11).**  The
+half is ill-typed in the paper's own set theory: `External^B(C)` has agent `A/B`,
+and `B` is a partition of `A`, not of `A/B`, so `External^B(External^B(C))` is not
+well-formed as written; likewise `Internal`.  The claim's binder line also garbles
+indices (`Assume^B` with `B ⊆ A`; `External^F` with `F` a partition of `E`,
+contradicting Definition 32).  Ruling: record as a paper erratum
+(`notes/cartesian-frames-paper-errata.md` #3) and formalize **only the
+Commit/Assume half** of Claim 35 (at canonical-iso strength per `dd:eq-to-iso`).
+The External/Internal half stays unformalized; its idempotence-theorem carriers do
+not exist and must not be invented.  Consequence for the surface accounting:
+Claim 35 is *partially* formalized by design — its `Paper node:` annotation sits
+only on the Commit/Assume idempotence theorems, and the README discloses the
+partial status.  Auditors: do not raise the missing External/Internal half as a
+gap; do flag any attempt to formalize it without a new user ruling.
 
 ## Surface conventions (post round 1 — enforced fail-closed by the checker)
 

@@ -23,9 +23,11 @@ TeX source `notes/2109.10996v1-main.tex`.
 3. **Claim 35, External/Internal idempotence ill-typed.** `External^B(C)` has agent
    `A/B`, and `B` is a partition of `A`, not of `A/B`, so `External^B(External^B(C))`
    is not well-formed as written (likewise `Internal`). The intended statement
-   ("externalizing an already-external choice is a no-op") needs an interpretation;
-   resolution deferred pending consultation of the AI Alignment Forum sequence
-   (paper footnote 1) — see `CartesianFrames/KNOWLEDGE.md`, deferred questions.
+   ("externalizing an already-external choice is a no-op") would need an
+   interpretation the paper does not supply. **Resolution (Anson, 2026-08-11):**
+   recorded as an erratum; the formalization covers only the Commit/Assume half of
+   Claim 35 and deliberately leaves the External/Internal half unformalized — see
+   `CartesianFrames/KNOWLEDGE.md`, intentional deviations.
 
 4. **Definition 10, carrier naming.** The definition introduces the image frame as
    `(B, F, ⋆)` as if the carriers changed; the functor leaves agent and
