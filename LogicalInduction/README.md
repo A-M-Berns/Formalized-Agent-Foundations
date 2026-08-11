@@ -354,17 +354,19 @@ certificate on this page. The staged plan, the two places Mathlib stops short (n
 simulation theory; `FinTM2` not enumerable as-is), and the effort estimate are in
 [`notes/boundary-efficiency-model.md`](../notes/boundary-efficiency-model.md).
 
-**Boundary 2 — the propositional substrate.** Here the note reaches a sharper and less
-expected conclusion: upgrading the substrate to first-order sentences would be
-research-scale *and would not buy what it appears to buy*. The paper's own `def:world`
-builds worlds by Boolean algebra over **prime sentences**, so this repo's propositional
-worlds are a faithful rendering of the paper's, not an approximation of them; and the
-paper's quoted product `⌜Xₙ · w > r⌝` is itself a prime sentence, so what relates it to
-`⌜Xₙ > r/s⌝` is not first-order syntax but **Θ**. The tractable move is therefore to
-supply those relating facts through the deductive process, which is the exact-valuation
-route — built as far as its own binding constraint, with that constraint named. What
-closing this boundary would and would not free, and the worked `thm:ccee` instance, are in
-[`notes/boundary-propositional-substrate.md`](../notes/boundary-propositional-substrate.md).
+**Boundary 2 — the propositional substrate.** The paper's own `def:world` builds worlds
+by Boolean algebra over **prime sentences**, so this repo's propositional worlds are a
+faithful rendering of the paper's, not an approximation of them. What the propositional
+substrate lacks is not the product *term* but **deferred denotation** — a sentence that
+names a value without computing it; a first-order `LUV` would supply exactly that, and
+with it exact `thm:ccee` over the base inductor. A dedicated feasibility spike
+([`notes/boundary-substrate-fol-scope.md`](../notes/boundary-substrate-fol-scope.md))
+scoped that migration and recommends against it: 10–20 months, roughly half of it
+Foundation-side, with a *regressive* middle (an empty emission class until the rebuilt
+first-order symbol calculus lands) and a payoff that is inert at the one known consumer.
+The boundary therefore stays, with its full map in
+[`notes/boundary-propositional-substrate.md`](../notes/boundary-propositional-substrate.md)
+(as amended by the spike) and the worked `thm:ccee` instance settled — see the row.
 
 ## Faithfulness
 

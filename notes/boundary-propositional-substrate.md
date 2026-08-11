@@ -98,22 +98,37 @@ prime sentences of `φ`", and `pcworlds`/`cworlds` are built from that. This rep
 `Sentence := Propositional.Formula ℕ` and `PCWorld := Boolean.Valuation ℕ` — with atoms
 already being codes — render exactly that. The world notion is not the gap.
 
-**First-order syntax would not dissolve the `thm:ccee` obstruction.** In the paper,
+**First-order syntax would not dissolve the `thm:ccee` obstruction.** ~~In the paper,
 `⌜Xₙ · w_{f(n)} > r⌝` is a *prime* sentence — propositionally an atom, just as here. What
 relates it to `⌜Xₙ > r/s⌝` is not the term structure but **Θ**, which contains arithmetic
 and proves the relating facts. So the paper gets those facts free from its theory; this
 repo has to supply them. That is a question about the deductive process, not about the
-formula type, which is why Part 2's route is the tractable one.
+formula type, which is why Part 2's route is the tractable one.~~
+*Corrected 2026-08-11 by the dedicated feasibility spike
+([`boundary-substrate-fol-scope.md`](boundary-substrate-fol-scope.md) §6.2): this claim
+is wrong on the emitter half.* What the propositional substrate lacks is not the product
+*term* but **deferred denotation** — a sentence that names a value without computing it.
+A first-order `LUV` (a formula free in one variable, `def:luv` verbatim) lets the emitter
+write `⌜Xₙ · w_{f(n)} > r⌝` as a sentence whose threshold family is emitter-computable
+even though `w`'s value is not, which is exactly what the A2 circularity below is about.
+The prime-sentence half of the old claim stands: worlds stay Boolean-over-primes either
+way, and Θ still supplies the relating facts.
 
-**And the cost would be research-scale.** `Sentence` is touched by 68 of 77 files;
-`PCWorld` occurs ~1250 times across 55; Foundation supplies **no** propositional-consistency
-or prime-sentence notion over first-order formulas (its first-order side is
-model-theoretic), so the p.c.-world layer would have to be built from scratch and the
-entire framework re-derived on it. Unlike boundary 1 this is not stageable — market,
-traders, and criterion all move together.
+**And the cost would be research-scale.** ~~`Sentence` is touched by 68 of 77 files~~ —
+*that figure counted mentions; the spike's structural census
+([`boundary-substrate-fol-scope.md`](boundary-substrate-fol-scope.md) §2.1) finds 36 of 82
+files carrying propositional structure (~2× smaller blast radius), concentrated in two
+clusters: the emission calculus (which cannot be deferred) and the Boolean-world layer
+(which transports along a change of atom type).* The migration **is** stageable in
+principle (the spike's plan has five stages) — but its middle is *regressive*: between
+prime-atom refinement and the rebuilt FO emission calculus, the repo would carry an
+**empty** emission class, an uninhabitable state worse than today's disclosed slack.
 
-**Verdict: do not close this boundary.** Supply the missing relating facts through the
-process instead. What that costs is Part 2.
+**Verdict: do not close this boundary** — unchanged, now for the spike's sharper reasons
+(10–20 months, half of it Foundation-side work; no green stopping point before the end;
+the payoff inert at the one known consumer). If the direction is ever taken, the first
+move is a Foundation PR for strong representability, not a repo refactor. Supply the
+missing relating facts through the process instead; what that costs is Part 2.
 
 ## Part 2 — the `thm:ccee` exact-valuation route, and why it is shaped this way
 
