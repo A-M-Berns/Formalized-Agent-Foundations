@@ -16,15 +16,19 @@ its equivalence claims, properties, and the Decomposition Theorem (Claims 22–2
 (Definitions 25–26) with the collapse of the multiplicative notions (Claim 27), and
 committing, assuming, externalizing, and internalizing (Definitions 28–33) with the
 subagency claims they generate (Claim 30, Claim 34 proved as Appendix A's Claim 45)
-and idempotence (Claim 35).  Two paper errata found so far — the printed proofs of
-Claims 53 and 43 are incomplete though both statements are sound; see
-`notes/cartesian-frames-paper-errata.md`, which also records the Claim 35
-ill-typedness.  **Claim 35 is formalized only in part, by ruling:** its
-Commit/Assume half is proved (at canonical-isomorphism strength, `dd:eq-to-iso`),
-while its External/Internal half is ill-typed as printed — `B` partitions `A`, not
-`A/B` — and is deliberately left unformalized.  The remaining Appendix B claims are
-staged next; see `KNOWLEDGE.md` for settled design decisions and the correspondence
-table.
+and idempotence (Claim 35), and Appendix B's categorical layer: the transpose
+equivalence with its composites definitionally the identity functors (Claim 46),
+initial and terminal frames (Definition 47, Claim 48), `1_S` (Definition 49), and
+the categorical characterization of additive subagents (Definitions 54, 57;
+Claims 55–56).  Remaining: Definition 58 and Claims 59–60.  Paper errata found so
+far are collected in `notes/cartesian-frames-paper-errata.md` (the printed proofs
+of Claims 53 and 43 are incomplete though both statements are sound; Definition
+50's "equivalently, `h` surjective" parenthetical is false; Claim 35 is partially
+ill-typed).  **Claim 35 is formalized only in part, by ruling:** its Commit/Assume
+half is proved (at canonical-isomorphism strength, `dd:eq-to-iso`), while its
+External/Internal half is ill-typed as printed — `B` partitions `A`, not `A/B` —
+and is deliberately left unformalized.  See `KNOWLEDGE.md` for settled design
+decisions and the correspondence table.
 
 [`Examples.lean`](Examples.lean) carries the paper's two worked matrices — §2.1's
 driver and §2.2's duplicate-row pair — as concrete `Frame ℕ`s, together with the
@@ -83,9 +87,12 @@ Three standing design decisions, tagged at their sites and defined in
   formalization adopts Mathlib's category theory from the start: `Chu(W)` is a
   `LargeCategory` instance on `Frame W`, and the paper's functors are bundled
   `Functor`s.  Mathlib's categorical vocabulary is therefore part of the trust
-  surface.  Mathlib has no strict "isomorphism of categories", so Appendix B's
-  Claim 46 will be stated as an `Equivalence` together with the definitional
-  involution `(C*)* = C`.
+  surface.  Mathlib has no strict "isomorphism of categories" type, so Appendix
+  B's Claim 46 is stated as an `Equivalence` (`Frame.dualEquivalence`, whose unit
+  and counit are both the identity natural isomorphism) — but the concession is
+  purely nominal: both composites are definitionally the identity functors
+  (`dualEquivalence_functor_comp_inverse` and its mirror, both `rfl`, carrying the
+  Claim 46 annotation), alongside the involution `(C*)* = C`.
 - **`dd:eq-to-iso`** — where the paper asserts a literal equality of frames that
   Lean's subtype/quotient encoding makes unstateable (e.g. Claim 35's idempotence),
   the declaration states the canonical isomorphism instead: one rung below equality,

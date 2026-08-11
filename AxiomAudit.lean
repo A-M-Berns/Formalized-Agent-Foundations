@@ -61,6 +61,7 @@ import CartesianFrames.Worlds
 import CartesianFrames.Subagent
 import CartesianFrames.AdditiveMultiplicative
 import CartesianFrames.Operations
+import CartesianFrames.Categorical
 
 open Lean Elab Command in
 /-- Fail elaboration unless every named declaration exists and depends on no axioms
@@ -830,10 +831,12 @@ Same contract as the Logical Induction inventory above, for `CartesianFrames/`
 numbers; `scripts/check-cartesian-frames-nodes.py` validates them against the
 committed TeX **and** checks that every *declaration* annotated in the library is
 itself listed between the CF-INVENTORY markers below — sharing a node with a listed
-declaration is not enough. The last block of names carries no annotation of its own:
-those are the non-vacuity witnesses of `CartesianFrames/Examples.lean`, listed here so
-that the separations they assert are axiom-checked alongside the definitions they
-constrain. -/
+declaration is not enough. Two groups of listed names carry no annotation of their own:
+the constructive carriers of Appendix B's Claims 46 and 48 (`Frame.dualEquivalence`,
+`Frame.zeroIsInitial`, `Frame.topIsTerminal` — the `theorem`s state the paper's
+propositional content, these are the data behind them), and the last block, the
+non-vacuity witnesses of `CartesianFrames/Examples.lean`, listed here so that the
+separations they assert are axiom-checked alongside the definitions they constrain. -/
 
 open CartesianFrames in
 -- CF-INVENTORY-BEGIN
@@ -876,6 +879,14 @@ open CartesianFrames in
   Frame.multSubagent_internal Frame.multSubagent_internalSect
   Frame.commit_commit_self Frame.commitCompl_commitCompl_self
   Frame.assume_assume_self Frame.assumeCompl_assumeCompl_self
+  Frame.dualEquivalence Frame.dualFunctor_isEquivalence
+  Frame.dualEquivalence_functor_comp_inverse Frame.dualEquivalence_inverse_comp_functor
+  Frame.instZero Frame.instTop
+  Frame.zeroIsInitial Frame.topIsTerminal
+  Frame.nonempty_isInitial_zero Frame.nonempty_isTerminal_top
+  Frame.oneOf Frame.instOne
+  Frame.AddSubagentCategorical Frame.MultSubagentCategorical
+  Frame.AddSubagentCategorical.addSubagent Frame.AddSubagent.addSubagentCategorical
   -- Non-vacuity witnesses (CartesianFrames/Examples.lean).
   Examples.driver_biextensional
   Examples.seven_mem_driver_image Examples.two_not_mem_driver_image

@@ -43,7 +43,23 @@ entries.  Scope of the formalization: **all 60 numbered nodes**, both appendices
 | Claim 38 | `Frame.homotopyEquiv_iff_nonempty_iso_of_biextensional` | proved |
 | Claim 39 | `Frame.biextEquiv_iff_homotopyEquiv` | proved |
 | Claim 40 | `Frame.biextEquiv_of_nonempty_iso` (shared with Claim 8) | proved |
-| Definitions 25–34, 47, 49, 54, 57, 58; Claims 27, 30, 34/45, 35 (Commit/Assume half), 46, 48, 55, 56, 59, 60 | — | not started (Stage 4) |
+| Definition 25 | `Frame.SubEnv` (`◁*`) | defined |
+| Definition 26 | `Frame.AddSubEnv` (`◁*₊`), `Frame.MultSubEnv` (`◁*ₓ`) | defined |
+| Claim 27 | `Frame.multSubagent_iff_multSubEnv` | proved |
+| Definitions 28–29 | `Frame.commit`/`commitCompl`, `Frame.assume`/`assumeCompl` | defined |
+| Claim 30 | `Frame.{commit,commitCompl}_addSubagent`, `Frame.addSubEnv_{assume,assumeCompl}` | proved |
+| Definition 31 | `Frame.partitionSections` (no Mathlib counterpart at this pin) | defined |
+| Definitions 32–33 | `Frame.external`/`externalQuot`, `Frame.internal`/`internalSect` | defined |
+| Claim 34 / Claim 45 | `Frame.{external,externalQuot}_multSubagent`, `Frame.multSubagent_{internal,internalSect}` | proved |
+| Claim 35 (Commit/Assume half only, by ruling) | `Frame.commit_commit_self` + 3 kin (iso-valued `def`s, dd:eq-to-iso) | proved |
+| Claim 46 | `Frame.dualFunctor_isEquivalence` + strict `Frame.dualEquivalence_functor_comp_inverse`/`_inverse_comp_functor` (both `rfl`; carrier `Frame.dualEquivalence`) | proved — concession purely nominal |
+| Definition 47 | `Frame.instZero`, `Frame.instTop` | defined |
+| Claim 48 | `Frame.nonempty_isInitial_zero`/`_isTerminal_top` (carriers `zeroIsInitial`/`topIsTerminal`) | proved |
+| Definition 49 | `Frame.oneOf`, `Frame.instOne` (`(⊥_S)* = 1_S` is `rfl`) | defined |
+| Definition 54 | `Frame.AddSubagentCategorical` | defined |
+| Claims 55–56 | `Frame.AddSubagentCategorical.addSubagent`, `Frame.AddSubagent.addSubagentCategorical` (+ iff package) | proved |
+| Definition 57 | `Frame.MultSubagentCategorical` | defined |
+| Definition 58; Claims 59–60 | — | not started (final follow-up) |
 
 Unnumbered but load-bearing: `Frame.Biextensional.nonempty_iso_collapse`
 (`C.Biextensional → Nonempty (C ≅ C.collapse)` — the step the paper takes silently
@@ -193,6 +209,51 @@ gap; do flag any attempt to formalize it without a new user ruling.
   integration `.lake` ≈ 100 s; incremental full `lake build` after touching
   CartesianFrames + AxiomAudit ≈ 8–12 min (AxiomAudit alone ~2 min).  Budget one
   background build, not several.
+
+## Stage 4 + round 2 lessons
+
+- **`lake build -j4` does not exist on this toolchain** (Lake 5.0.0/Lean 4.31.0)
+  and the flag error **exits 0 through a pipe** — a one-line log is the only tell.
+  Use `LEAN_NUM_THREADS=4 lake build`; always confirm the log ends in
+  "Build completed successfully".
+- **AxiomAudit imports CF modules individually**, not the root: a new CF module
+  needs BOTH the root import and an `AxiomAudit.lean` import line, else the audit
+  build fails late with a misleading `Unknown constant`.
+- **`dd:eq-to-iso` sites are `def`s**: `X ≅ Y` is Type-valued, so `theorem` is an
+  elaboration error; do not weaken to `Nonempty (≅)` (forgets which iso).  Same
+  for Claim 48's `IsInitial`/`IsTerminal` carriers (theorems state `Nonempty _`,
+  defs carry the data).
+- **`lint_paper_labels.py` requires a docstring ending `-/` immediately before
+  every `theorem`** — no shared docstrings across consecutive theorems.
+- **Claim 46 is strict**: both dual composites are definitionally `𝟭` (`rfl`);
+  `Functor.comp`/`Functor.id` have lambda fields with defeq bodies + proof fields.
+  No `eqToIso`/`aesop_cat`/op-unop plumbing needed anywhere in the equivalence.
+- **`Homotopic`'s useful direction is almost always `.symm`** (env-side rewrite
+  `C.outcome a ((α≫β).env e) = C.outcome a e`); the un-symmed form gives the
+  agent-side fact, true but useless for the App. B calc chains.  Dualizing a
+  homotopy pair also needs `.symm` plus swapped argument order.
+- **Definition 32/33 duals pair STRAIGHT**: `(C.internal s).dual = C.dual.external s`
+  and `(C.internalSect s).dual = C.dual.externalQuot s`, on the nose; likewise
+  `(C.assume F).dual = C.dual.commit F`.  The "crossed" intuition is wrong because
+  dual swaps carriers.
+- Claim 45's externalizing proofs need only per-`a` sections (`sec a ⟦a⟧ = a`,
+  classical `if`); keep them inside an `∃`-lemma to avoid a noncomputable def.
+- Concrete-witness toolbox (round 2, code in
+  `.harness/audit/round2-lensC-probe.lean`): `decide` can't see through
+  `Frame.image` (insert `show ∃ a e, …` first); product-`Env` frames need
+  `Mathlib.Data.Fintype.Prod`; subtype-agent `decide` recipe (re-`have` the
+  membership, `show` on the underlying `Fin`, revert, decide); prove `≃ᵇ`
+  obligations via `biextEquiv_iff_homotopyEquiv`, not `Iso`.
+- `AddSubagent`'s binder order is `Y Z X f` (superset first) — destructuring in
+  the paper's `X Y Z` order silently misbinds.
+- **Name collision**: `CartesianFrames.Frame` vs Mathlib's `Order.Frame` — with
+  both open Lean can silently pick `Order.Frame` when the expected type
+  disambiguates.  Qualify in client-facing docs.
+- `⊥` is a maximum for `◁` (`C ◁ ⊥` always) and `IsEmpty C.Env → C ◁ D` —
+  faithful to the paper; subagency witnesses need nonempty `Env` and non-`⊥` RHS.
+- Two reusable `≃ᵇ`-invariants worth landing in Biextensional.lean (round-2 fix
+  queue): image invariance (`C ≃ᵇ D → C.image = D.image`) and env-injectivity
+  from a biextensional side — the standard refuters for `◁ₓ`/`◁₊`.
 
 ## Cleared suspicions (round 1 — do not re-raise without new evidence)
 

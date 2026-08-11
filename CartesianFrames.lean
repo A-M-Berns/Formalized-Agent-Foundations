@@ -43,4 +43,5 @@ import CartesianFrames.Worlds
 import CartesianFrames.Subagent
 import CartesianFrames.AdditiveMultiplicative
 import CartesianFrames.Operations
+import CartesianFrames.Categorical
 import CartesianFrames.Examples
