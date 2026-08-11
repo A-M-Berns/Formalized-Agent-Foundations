@@ -98,8 +98,16 @@ theorem boundedCombination_wubaff_ofComputation_unconditional
 
 /-- `thm:wubexp` over the constructed `LIA`: the concrete normalized threshold mesh, its
 feedback traders, and its delayed truth sequence yield recurring unbiasedness for bounded LUV
-combinations.  The exact completed-theory presentation and deadline-bounded truth program
-remain the paper's explicit semantic and operational inputs.
+combinations.  The deadline-bounded truth program `C` is the paper's explicit operational input.
+
+`hexact` is **not** a paper input.  `LUVCombination.ExactTheoryPresentation` fixes one
+completed-theory value for every *component* LUV of every `As n`; the paper (`def:affthmval`,
+tex:1822-1832) requires only that the signed *combination* be determined via `Θ`, which `hdet`
+already supplies.  The two differ: `[(1, X), (-1, X)]` is combination-determined for a wholly
+undetermined `X`, yet admits no `ExactTheoryPresentation`.  It is assumed here only because it
+is the in-repo route to `AffineCombination.DeterminedViaTheory` for the normalized threshold
+mesh, which the feedback bridge needs.  See finding B1 of
+`notes/faithfulness-audit-2026-08-08.md`.
 Paper node: `thm:wubexp` -/
 theorem luv_wubexp_ofComputation_unconditional
     {As : ℕ → LUVCombination}

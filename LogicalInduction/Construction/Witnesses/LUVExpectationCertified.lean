@@ -445,15 +445,25 @@ theorem exppolymax_arith {As : ℕ → LUVCombination} {P : History} {T : Arithm
 `dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation* hypothesis
 discharged from arithmetic over `luvThresholdDP`.
 
-Three inputs stay assumed; together they are the paper's own hypotheses on the sequence, in
-operational form.  `hdet` is determination via `Θ` (`def:affthmval`) together with the resulting
-truth stream — a semantic object, not a computable oracle, so it is given rather than derived.
-`bridge` is the paper's "`thmval(Aₙ)` computable by the next deferral deadline" premise, packaged
-as an explicit sparse affine sequence that is zero-valued in every completed world and whose day
-`f (k+1)` price equals `A_{f k}`'s price minus its truth value; it is constructed in
-`FeedbackTruth.lean`.  `emit` is the syntactic emission certificate for the positive and negative
-sign branches of the feedback trader — the literal coefficient and sentence streams witnessing
-that the trader is efficiently computable — constructed in `FeedbackEmission.lean`.
+Three inputs stay assumed.  `hdet` is determination via `Θ` (`def:affthmval`) together with the
+resulting truth stream — a semantic object, not a computable oracle, so it is given rather than
+derived; this one *is* the paper's premise, at the paper's combination level.  `emit` is the
+syntactic emission certificate for the positive and negative sign branches of the feedback
+trader — the literal coefficient and sentence streams witnessing that the trader is efficiently
+computable — constructed in `FeedbackEmission.lean`.
+
+`bridge` is **not** a paper premise, and this endpoint does not construct it: it is *assumed*
+here.  It is the sparse affine feedback sequence the paper builds inside `app:wub` (zero-valued
+in every completed world; day-`f (k+1)` price equal to `A_{f k}`'s price minus its truth value),
+lifted to the *normalized threshold mesh* of `As` rather than to `As` itself.  A constructor for
+it exists — `FeedbackTruth.feedbackTruthSequence`, fed by the paper's deadline-bounded truth
+program `FeedbackTruthComputation` — but applying it at the mesh needs the mesh to be
+`AffineCombination.DeterminedViaTheory`, and the only route to that in-repo
+(`ExactTheoryPresentation.normalizedMesh_determined`) assumes each *component* LUV is
+`Θ`-determined, which is strictly stronger than `def:affthmval`.  This endpoint takes `bridge`
+directly precisely so it does not carry that strengthening; the cost is that the premise is
+operational rather than the paper's.  See the `thm:wubexp` row of
+`scripts/coverage-classification.md` and finding B1 of `notes/faithfulness-audit-2026-08-08.md`.
 Paper node: `thm:wubexp` -/
 theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
