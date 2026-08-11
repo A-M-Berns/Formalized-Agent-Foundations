@@ -3295,16 +3295,15 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     quoteNeg (Encodable.encode (diagonalPriceDecisionCode market p)) n ↔
       ¬diagonalPriceTruth market p n</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">diagonalPriceFixedpoint_spec</code><span class="ep-file">LogicalInduction/Construction/Witnesses/QuotationAffine.lean</span></div><pre class="sig">lemma diagonalPriceFixedpoint_spec
     {P : History} (market : MarketComputation P) (p : ℚ) (n : ℕ) :
-    (ℕ ⊧ₘ (parameterizedFixedpoint (diagonalPriceBody market p))/[↑n]) ↔
+    (parameterizedFixedpoint (diagonalPriceBody market p)).Evalb ![n] ↔
       diagonalPriceTruth market p n</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">parameterizedDiagonalQuoteCodeOfMarket</code><span class="ep-file">LogicalInduction/Construction/Witnesses/QuotationAffine.lean</span></div><pre class="sig">noncomputable def parameterizedDiagonalQuoteCodeOfMarket
     {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) :
     ParameterizedDiagonalQuoteCode T (diagonalPriceTruth market p)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">parameterizedDiagonalQuoteCodeOfMarket_public_fixedpoint</code><span class="ep-file">LogicalInduction/Construction/Witnesses/QuotationAffine.lean</span></div><pre class="sig">lemma parameterizedDiagonalQuoteCodeOfMarket_public_fixedpoint
     {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) (n : ℕ) :
-    (ℕ ⊧ₘ
-        (parameterizedFixedpoint
-          (parameterizedDiagonalQuoteCodeOfMarket market T p).body)/[↑n]) ↔
+    ((parameterizedFixedpoint
+          (parameterizedDiagonalQuoteCodeOfMarket market T p).body).Evalb ![n]) ↔
       P n
         ((parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n) &lt;
           (p : ℝ)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_paradox_resistance_ofDiagonal</code><span class="ep-file">LogicalInduction/Construction/Witnesses/QuotationAffine.lean</span></div><pre class="sig">theorem lic_paradox_resistance_ofDiagonal
@@ -3938,4 +3937,4 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
 })();
 </script>
 
-<!-- trust-surface-sources: ffc55bda2749651f387a598cc275a1b1768c35ad053f2a6f28518d3f2e30f1f9 -->
+<!-- trust-surface-sources: 0c56721aa4058cc6a2cc4f820c49df19c173d76ae86adabae2d41835039e320e -->
