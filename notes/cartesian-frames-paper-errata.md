@@ -29,7 +29,18 @@ TeX source `notes/2109.10996v1-main.tex`.
    Claim 35 and deliberately leaves the External/Internal half unformalized — see
    `CartesianFrames/KNOWLEDGE.md`, intentional deviations.
 
-4. **Definition 10, carrier naming.** The definition introduces the image frame as
+4. **Claim 43 (App. A), proof gap.** The printed proof defines
+   `h₃(y, z) = (y, b, h₀(z))` "for some `b ∈ B` (it does not matter which)"
+   (TeX ~L1009), silently assuming `Agent(D)` is nonempty; when `B = ∅` the
+   morphism cannot be constructed and the argument does not run. The claim is true
+   as stated: `B = ∅` forces `X × Y` empty (via the biextensional equivalence),
+   and every obligation in the required equivalence quantifies over an `X` while
+   reaching a `Y`, so a degenerate `M` (image vacuously all of `∅`) works. The
+   Lean proof (`Frame.MultSubagent.multSubagentCurry`) case-splits on
+   `Nonempty D.Agent`, reproducing the paper verbatim in the nonempty case. Same
+   shape as erratum 1: printed proof incomplete, statement sound.
+
+5. **Definition 10, carrier naming.** The definition introduces the image frame as
    `(B, F, ⋆)` as if the carriers changed; the functor leaves agent and
    environment carriers unchanged — only outcomes are mapped through `p`. (Benign
    once noticed; recorded because it misled a first reading.)

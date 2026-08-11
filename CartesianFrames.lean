@@ -40,4 +40,5 @@ import CartesianFrames.Basic
 import CartesianFrames.Biextensional
 import CartesianFrames.Worlds
 import CartesianFrames.Subagent
+import CartesianFrames.AdditiveMultiplicative
 import CartesianFrames.Examples

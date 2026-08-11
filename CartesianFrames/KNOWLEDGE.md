@@ -30,12 +30,20 @@ entries.  Scope of the formalization: **all 60 numbered nodes**, both appendices
 | Claim 51 | `Frame.subagent_iff_subagentCovering` | proved |
 | Claim 52 | `Frame.SubagentCovering.subagentCurry` | proved |
 | Claim 53 | `Frame.SubagentCurry.subagent` | proved (see erratum) |
+| Definition 18 | `Frame.AddSubagent`, scoped `◁₊` (primary) | defined |
+| Definition 19 | `Frame.MultSubagent`, scoped `◁ₓ` (primary) | defined |
+| Definition 20 | `Frame.AddSubagentCurry` | defined |
+| Definition 21 | `Frame.MultSubagentCurry` | defined |
+| Claim 22 | `Frame.addSubagent_iff_addSubagentCurry`, `Frame.multSubagent_iff_multSubagentCurry` | proved |
+| Claim 23 | `{Add,Mult}Subagent.{subagent, congr, refl, trans}` | proved |
+| Theorem 24 | `Frame.subagent_iff_exists_multSubagent_addSubagent` | proved |
+| Claims 41–44 | `AddSubagent.addSubagentCurry`, `AddSubagentCurry.addSubagent`, `MultSubagent.multSubagentCurry`, `MultSubagentCurry.multSubagent` | proved (43: see erratum) |
 | Definition 36 | `Frame.Homotopic` (+ equivalence/congruence lemmas) | defined |
 | Definition 37 | `Frame.HomotopyEquiv` | defined |
 | Claim 38 | `Frame.homotopyEquiv_iff_nonempty_iso_of_biextensional` | proved |
 | Claim 39 | `Frame.biextEquiv_iff_homotopyEquiv` | proved |
 | Claim 40 | `Frame.biextEquiv_of_nonempty_iso` (shared with Claim 8) | proved |
-| Definitions 10–35, 41–58, remaining Claims, Theorem 24 | — | not started |
+| Definitions 25–34, 47, 49, 54, 57, 58; Claims 27, 30, 34/45, 35 (Commit/Assume half), 46, 48, 55, 56, 59, 60 | — | not started (Stage 4) |
 
 Unnumbered but load-bearing: `Frame.Biextensional.nonempty_iso_collapse`
 (`C.Biextensional → Nonempty (C ≅ C.collapse)` — the step the paper takes silently
@@ -80,6 +88,19 @@ Reuse these for future non-vacuity or counterexample work.
 - Unnumbered load-bearing facts become named internal lemmas annotated to their
   surrounding definition: morphisms `C ⟶ ⊥` biject with `C.Env` (used by Claims 51,
   53, 55), and `p°` preserves biextensional equivalence (Def 10's footnote).
+
+## Stage 3b internal lemmas (private in `AdditiveMultiplicative.lean` — promote, don't re-derive)
+
+`nonempty_agent_of_biextEquiv` / `nonempty_env_of_biextEquiv` (carrier nonemptiness
+transports across `≃ᵇ`); `biextEquiv_botOf_image` (`[Unique M.Env] → M ≃ᵇ botOf
+M.image`); `biextEquiv_curry_transport` (`D°(Z) ≃ᵇ D'°(σ°(Z))` from a homotopy
+pair; `mapWorlds` keeps the env carrier so `Unique` survives); `curryCurryIso`
+(`(E°(M))°(N) ≅ E°(N∘M)`, all fields `rfl`); `exists_image_univ_curry`
+(class-hitting image patched to literally-full image without disturbing `E°(N)` up
+to `≃ᵇ`).  Consequence worth remembering: **`◁ₓ`-transitivity does NOT need App. B's
+Claim 60** — do not re-sequence it on that account.  Defeq-first rule extends to
+`curry`/`mapWorlds` composites: in Theorem 24 `C₂.curry.obj M` is *literally*
+`C₁.curry.obj D`; try `rfl`/plain hypothesis reuse before building an iso.
 
 ## Paper errata (details in `notes/cartesian-frames-paper-errata.md`)
 
@@ -139,6 +160,18 @@ gap; do flag any attempt to formalize it without a new user ruling.
   (35) and `¬` (40), so parenthesize — `(C ≃ᵇ D) ∧ P`, `¬ (C ≃ᵇ D)`.  It is scoped
   inside `CartesianFrames.Frame`; `open CartesianFrames` alone gives
   "expected token" — clients need `open Frame` or `open scoped CartesianFrames.Frame`.
+  The trap bites *inside definition bodies* too, and the downstream errors look
+  nothing like a precedence problem (`Iso.mk has 4 explicit fields…`, bogus
+  projection errors) — it cost Stage 3b an elaboration round.
+- Mathlib (current pin) has no `Unique (α × β)` instance (`Inhabited` and
+  `Subsingleton` products exist); build it with `Unique.mk' _`, as a `def` (it's
+  `Type`-valued) marked `@[reducible]`/`abbrev`.
+- `Set.eq_univ_of_forall`/`_iff_forall` need `import Mathlib.Data.Set.Basic` — the
+  CF import chain reaches `Set` only via `CategoryTheory.Opposites`.
+- Seeded `.lake` oleans can be stale relative to the worktree's HEAD, presenting as
+  a *missing name* (`Unknown constant` for a declaration that exists), not a type
+  error.  Rebuild the upstream module (`lake build CartesianFrames.<Mod>`) before
+  believing `lake env lean`.
 - Concrete `Frame` witnesses must be `abbrev`, not `def`, or `decide`/instance
   search cannot see the carriers.  `![…]` needs `Mathlib.Data.Fin.VecNotation`;
   deciding over an empty hom-type needs `Mathlib.Data.Fintype.Pi`.

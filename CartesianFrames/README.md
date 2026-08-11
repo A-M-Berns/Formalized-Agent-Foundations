@@ -8,12 +8,17 @@ checked layer covers frames, morphisms, the category `Chu(W)`, the transpose
 functor, the full equivalence layer (isomorphism, biextensionality, the collapse,
 biextensional equivalence, Appendix A's homotopy machinery — Claims 8, 38–40), the
 world-level functors of §2.3 (Definitions 10–11 with the footnote fact), and the
-general subagency layer: `⊥`-frames, the categorical/currying/covering definitions
-of `◁` (Definitions 12–14, 50) with their equivalences and basic properties proved
-(Claims 15–17, 51–53).  One paper erratum found so far (Claim 53's printed proof;
-see `notes/cartesian-frames-paper-errata.md`).  Additive/multiplicative subagents,
-the operations calculus, and the remaining Appendix B claims are staged next; see
-`KNOWLEDGE.md` for settled design decisions and the correspondence table.
+full subagency layer: `⊥`-frames, the categorical/currying/covering definitions of
+`◁` (Definitions 12–14, 50) with their equivalences and basic properties (Claims
+15–17, 51–53), and the additive/multiplicative refinement (Definitions 18–21) with
+its equivalence claims, properties, and the Decomposition Theorem (Claims 22–23,
+41–44, Theorem 24).  Two paper errata found so far — the printed proofs of Claims
+53 and 43 are incomplete though both statements are sound; see
+`notes/cartesian-frames-paper-errata.md`, which also records the Claim 35
+ill-typedness (its External/Internal half is deliberately not formalized, by
+ruling; the Commit/Assume half is staged).  The operations calculus (§2.4.1) and
+the remaining Appendix B claims are staged next; see `KNOWLEDGE.md` for settled
+design decisions and the correspondence table.
 
 [`Examples.lean`](Examples.lean) carries the paper's two worked matrices — §2.1's
 driver and §2.2's duplicate-row pair — as concrete `Frame ℕ`s, together with the
