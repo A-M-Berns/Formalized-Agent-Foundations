@@ -6,6 +6,33 @@ blocks (`thm:ccee`) actually cost to fix? Every claim about what an endpoint tak
 calls was made with the signature or the proof body open, and every named lemma was
 `rg`-confirmed to exist at the cited line._
 
+## Status (2026-08-11) — §(D) is executed; the two gates are open
+
+The work plan in §(D) below has been carried out under the recommended defaults, so this
+note is now an *assessment of a built thing* rather than of a proposal. Delivered:
+`productDefDP_computable` from the source families' own `def:ec` certificates (the named
+`LUVThresholdComputation` of §(A1) is deleted), freshness by construction for the base
+stages and the weight quote LUV (§(B)), `QuotationTheoryPresentation.mono`, the
+market-parametric quote codes, and the closed endpoint
+`lic_no_expected_net_update_conditional_exact_closed`.
+
+**Neither gate is ruled.** The endpoint is built under (C)-favourable and (A2)-option-2, it
+carries `-- PROVISIONAL (pending ruling)` prose at its own statement, and it does **not**
+hold the `thm:ccee` row: `lic_no_expected_net_update_conditional_closed` and its row are
+untouched. If either gate is rejected the `ExactClosed` section of
+`Construction/Witnesses/ProductDefinition.lean` is deleted and nothing else moves — with one
+exception worth naming, because it is the part that is *not* cleanly droppable: the
+market-parametric `deferredWeightQuoteCode` / `conditionalExpectationQuoteCode` and
+`liaMarketComputation` are edits to `QuoteCodeOfMarket.lean` and `ComputationDP.lean`. They
+are pure generalisations — the `theorem…`-prefixed names survive as their specialisations at
+the base market, with unchanged signatures — so they can stay either way.
+
+The one place the assessment below is now known to be *pessimistic*: §(A2) says the plan's
+route "is circular in the closed setting". It is, and the escape is cheaper than the note
+implies — the weight quote is built against the **base** market, which exists before the
+extended process, so only the certificate's `weight_generable` field needs the extended
+market. That is exactly option 2, and it costs exactly one premise.
+
 ## Part 1 — closing the boundary outright: expensive, and aimed at the wrong mechanism
 
 The obvious reading of this boundary is "sentences should be first-order, and then the

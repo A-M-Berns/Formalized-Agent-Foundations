@@ -278,3 +278,46 @@ analytic conclusion as the paper.
    paper-facing closed endpoint, until the extended-process inductor/weight circle is closed.
 5. Retain the concrete arithmetic axiom probe until Foundation discharges
    `ISigma1_delta1Definable`.
+
+---
+
+## Delta since this pass — `thm:ccee`, the exact-product route (2026-08-11)
+
+_Appended after the audit, not part of it. The audit's B2 finding and its "required status:
+qualified" verdict are unchanged; what changed is that the route B2 describes as unbuilt is
+now built, on two decisions that are **PROVISIONAL** — not ratified by the human
+read-through — and that therefore do not move the row._
+
+B2 says: "`ProductDefinition.lean` now constructs the important parts of an exact route …
+It is not a closed replacement for the mesh endpoint over the constructed `LIA`." It now is
+one, `lic_no_expected_net_update_conditional_exact_closed`. What that costs, stated against
+the audit's own criteria:
+
+* **Not a squeeze, not a stub.** The exact reflection is `productLUV_valuesAt`, proved from
+  density of ℚ in both factors against the defining schema, and it feeds
+  `ConditionalExpectationQuote.left_reflected` at `slack ≡ 0`. No hypothesis of the endpoint
+  is its own conclusion.
+* **Non-vacuity is by the construction.** `exactProductDP_hworld` extends the base
+  construction's *own* plausible world (`provabilityWorld T`, the witness
+  `theoremDP_hworld` already exhibits) through the product atoms, using the least assignment
+  closed under the positive clauses. There is no stand-in witness and no constant sequence.
+* **The circularity B2 names is broken, not assumed away.** The weight's quote LUV is built
+  against the **base** market, which exists before the extended process does; the
+  certificate's `weight_generable` field is then supplied by a second `def:pgen` premise
+  about the extended market.
+* **Two premises the paper does not state**, both type-`(c)` and both disclosed at the
+  statement, in `LogicalInduction/README.md` and in `scripts/coverage-classification.md`:
+  the second P-generability premise just described, and `ProductAtomFresh X` — with a
+  first-order signature the product's new function symbol makes freshness automatic, and a
+  flat propositional atom space must state it. The latter is discharged by construction
+  (`arithmeticThresholdLUV_productAtomFresh`, `theoremDP_atomCodes_ne_productTag`) for every
+  family this repository builds, so it is not vacuous.
+* **A different market in the conclusion.** The endpoint is stated over
+  `theoremDP T ∪ productDefDP`, not `theoremDP T`. This is the decision an adversarial
+  reader should press on hardest, and it is the one a fresh-context audit should re-derive
+  independently rather than take from this note.
+
+**Required status: unchanged — qualified.** Recommended next action 4 above ("treat the
+exact endpoint as infrastructure, not the paper-facing closed endpoint, until the extended
+process inductor/weight circle is closed") is now actionable rather than blocked: the circle
+is closed, and what remains is a ruling, not an obstruction.

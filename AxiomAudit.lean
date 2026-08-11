@@ -549,13 +549,24 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- exactly `x · w` — `slack = 0`, no positivity hypothesis on the weight.
 --
 -- This does **not** carry the `thm:ccee` row, and is inventoried so that its axiom
--- cleanliness is gated rather than left to the file's own `#print axioms`.  Its endpoint is
--- the non-closed rung: it takes `[IsLogicalInductor]` over `base ∪ product-definitions`
--- rather than constructing one, and an atom-freshness premise the paper does not state.
--- `lic_no_expected_net_update_conditional_closed` above remains the `thm:ccee` endpoint, at
--- the disclosed `1/(n+1)` slack.  Why the closed rung costs more than the slack it would
--- remove — the weight's quote needs `Computable (w ∘ f)`, available only from a market that
--- is itself a function of the process — is in `notes/boundary-propositional-substrate.md`.
+-- cleanliness is gated rather than left to the file's own `#print axioms`.
+-- `lic_no_expected_net_update_conditional_closed` above remains the `thm:ccee` row-holder,
+-- at the disclosed `1/(n+1)` slack.
+--
+-- The route now reaches a *closed* rung, `lic_no_expected_net_update_conditional_exact_closed`:
+-- exact reflection over the constructed `LIA` on `theoremDP T ∪ productDefDP`, with `hworld`,
+-- `source_valued`, `weight_valued` and `right_reflected` all discharged.  It is listed here
+-- for axiom gating only and does **not** take the row, because two decisions it rests on are
+-- PROVISIONAL — unratified by the human read-through — and are stated at the theorem, in
+-- `LogicalInduction/README.md` and in `scripts/coverage-classification.md`:
+--   (C) the endpoint is stated over `base ∪ product-definitions`, a rendering with Tier-1
+--       precedent (`lic_conditioned_gated_ofComputations`) but not for this use;
+--   (A2) it carries a second P-generability premise, about the extended market, that the
+--       paper does not state — the price of keeping `w` at `def:pgen` rather than narrowing
+--       it to `PolyRatCodes` and dropping the paper's own worked example (tex:2077).
+-- It also carries the atom-freshness premise, which the propositional substrate needs and
+-- first-order syntax would supply by the language.  Full assessment in
+-- `notes/boundary-propositional-substrate.md`.
 #assert_axioms_clean
   productDefDP_computable
   productDefDP_union_consistentWithTheory
@@ -563,6 +574,9 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   productLUV_valuesAt_union
   productLUV_rpnThresholdCodeSeq
   lic_no_expected_net_update_conditional_exact
+  QuotationTheoryPresentation.mono
+  exactProductDP_hworld
+  lic_no_expected_net_update_conditional_exact_closed
 
 -- Construction/Witnesses/ComputationDP.lean — unconditional-over-LIA capstones
 -- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above).

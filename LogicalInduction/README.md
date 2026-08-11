@@ -245,6 +245,30 @@ assertion starts failing and gets promoted to a plain clean assertion.
    inhabits the relaxed field for a general source, and the indicator product still
    inhabits it at zero slack (`indicatorProductLUV_exact_left_reflected`).
 
+   **PROVISIONAL — an exact route is now built, pending two rulings.**
+   `Construction/Witnesses/ProductDefinition.lean` closes the exact endpoint
+   `lic_no_expected_net_update_conditional_exact_closed`: the product is a family of
+   *fresh atoms* whose defining schema is entered by an extra computable **deductive
+   process**, which is the propositional counterpart of the product term the paper's `Θ`
+   has natively — nothing is added to the theory, and the extension is proved conservative
+   (`productDefDP_union_consistentWithTheory`). Over the constructed `LIA` on
+   `theoremDP T ∪ productDefDP` it reflects the product *exactly* (`slack = 0`, no
+   positivity hypothesis on the weight) at the paper's arbitrary e.c. source family, with
+   `hworld`, `source_valued`, `weight_valued` and `right_reflected` all discharged. It does
+   **not** yet carry the `thm:ccee` row, and will not until the human read-through rules on
+   two things: **(C)** that stating the endpoint over `base ∪ product-definitions` is a
+   faithful rendering rather than a second one — the paper's theorem is universally
+   quantified over computable processes and there is Tier-1 precedent for a union-DP
+   conclusion (`lic_conditioned_gated_ofComputations`), but the market in the conclusion is
+   not the incumbent's; and **(A2)** that one extra `def:pgen` premise about the *extended*
+   market is a milder cost than the slack — the alternative, narrowing `w` to `PolyRatCodes`,
+   would drop the paper's own worked example at tex:2077. The endpoint also carries an
+   atom-freshness premise (`ProductAtomFresh X`) that the paper does not state: with a
+   first-order signature the product's new function symbol makes freshness automatic, and a
+   flat propositional atom space has to say it instead. That premise is a theorem, not an
+   assumption, for every family this repository builds. Until both gates are ruled, the mesh
+   endpoint keeps the row and the slack disclosure above stands.
+
    **The slack is invisible at the one known downstream interface.** The deference port
    of "Deference Done Better" into this framework consumes `thm:ccee` as a hypothesis
    `hCcee : Approx Exw Eew` — two abstract real sequences related by `≈ₙ`, with no LUV
@@ -277,19 +301,22 @@ contact.
   defining biconditionals — not of the theory, and its first four components are built
   (`Construction/Witnesses/ProductDefinition.lean`: the process, its computability, the
   world-extension lemma, threshold emission, and exact reflection at `slack = 0`). What
-  is not built is the closed endpoint, and the reason is named rather than estimated:
-  the weight's quote LUV needs `Computable (w ∘ f)`, which `PGenerableRat.computable`
-  supplies only from a market that is itself a function of the process. Escaping that
-  circle costs either a narrowing of `w` to `PolyRatCodes` — which would drop the
-  paper's own worked example at tex:2077, a continuous indicator of a market
-  expectation, and is therefore worse than the slack it removes — or a second
-  P-generability premise about the extended market. Two further costs are known: the
-  endpoint would be stated over `base ∪ product-definitions` (a rendering with Tier-1
-  precedent in `lic_conditioned_gated_ofComputations`, but not for this use), and an
-  atom-freshness premise the paper does not state. Full assessment in
-  [`../notes/boundary-propositional-substrate.md`](../notes/boundary-propositional-substrate.md). The one known
-  downstream consumer does **not** need exactness — see the interface note above — so
-  the mesh endpoint keeps the row.
+  is now also built is the closed endpoint,
+  `lic_no_expected_net_update_conditional_exact_closed`, and the circularity that blocked it
+  is broken rather than assumed away: the weight's quote LUV needs `Computable (w ∘ f)`,
+  which `PGenerableRat.computable` supplies only from a market, so the quote is built
+  against the **base** market — which exists before the extended process does — and the
+  certificate's own `weight_generable` field is then supplied by a *second* `def:pgen`
+  premise about the extended market. That second premise, and an atom-freshness premise, are
+  the two things the paper does not state; the endpoint is stated over
+  `base ∪ product-definitions`. The alternative to the second premise — narrowing `w` to
+  `PolyRatCodes` — would drop the paper's own worked example at tex:2077, a continuous
+  indicator of a market expectation, and is therefore worse than the slack it removes. Full
+  assessment in
+  [`../notes/boundary-propositional-substrate.md`](../notes/boundary-propositional-substrate.md). Both the
+  union rendering and the extra premise are **PROVISIONAL**, unratified by the read-through,
+  so the mesh endpoint keeps the row for now; the one known downstream consumer does **not**
+  need exactness — see the interface note above.
 * **`thm:ifp` — the fuel class.** The transported trader needs a closure property the
   model provably lacks (the inverse-operation ceiling: the emitted freeze stream's
   certificate needs a decode test on exponentially large codes, which the digit calculus
