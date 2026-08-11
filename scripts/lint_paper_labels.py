@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Enforce notes/consolidation.md declaration-keyword rules 1-2:
 
-* every `theorem` in LogicalInduction/ carries a docstring naming its paper label
-  (thm:/lem:/cor:/def: node, an `App.` reference, or a § citation);
+* every `theorem` in a paper library carries a docstring naming its paper label
+  (LI label/App./section, or a Cartesian Frames numbered Claim/Theorem);
 * `private theorem` does not occur (private statements are not paper statements —
   use `private lemma`).
 
@@ -13,7 +13,10 @@ import re
 import sys
 from pathlib import Path
 
-LABEL = re.compile(r"(thm|lem|cor|def|app):[a-zA-Z]+|App\.\s|§")
+LABEL = re.compile(
+    r"(thm|lem|cor|def|app):[a-zA-Z]+|App\.\s|§|"
+    r"Paper node:\s*(Claim|Theorem)\s+[0-9]+"
+)
 DECL = re.compile(r"^\s*(?P<private>private\s+)?(?:protected\s+)?theorem\s+(?P<name>[\w.]+)")
 
 def block_depth_after(line, depth):
@@ -31,7 +34,9 @@ def block_depth_after(line, depth):
     return depth
 
 violations = []
-for path in sorted(Path("LogicalInduction").rglob("*.lean")):
+libraries = [Path("LogicalInduction"), Path("CartesianFrames")]
+paths = [path for library in libraries for path in library.rglob("*.lean")]
+for path in sorted(paths):
     lines = path.read_text().splitlines()
     depth = 0
     for i, line in enumerate(lines):

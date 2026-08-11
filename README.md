@@ -19,6 +19,7 @@ discovered by the reader.
 |---|---|---|
 | Garrabrant et al. (2016), [*Logical Induction*](https://arxiv.org/abs/1609.03543) | [`LogicalInduction/`](LogicalInduction/README.md) | Unconditional construction of a logical inductor + the full property tail: all 53 paper nodes formalized, 46 at paper strength and 7 with a named interface or class restriction retained. Two disclosed modeling substitutions. Zero `sorry`, zero `axiom`. |
 | Barász et al. (2014), [*Robust Cooperation in the Prisoner's Dilemma via Provability Logic*](https://arxiv.org/abs/1401.5577) | [`ModalAgents/`](ModalAgents/README.md) | Complete at the Gödel–Löb provability-logic level, including a proved (not axiomatized) GL fixed-point theorem. Zero `sorry`, zero `axiom`. |
+| Garrabrant, Herrmann, and Lopez-Wild (2021), [*Cartesian Frames*](https://arxiv.org/abs/2109.10996) | [`CartesianFrames/`](CartesianFrames/README.md) | Foundation stage: Definitions 1–4 and 9–12, with no `sorry` and numbered-node provenance checked against the committed paper source. |
 
 Each directory's README gives the detailed statement-level accounting: what is proved,
 what is modeled, and exactly where the trust boundary sits.
@@ -46,6 +47,7 @@ need no build:
 
 ```sh
 scripts/check-paper-nodes.sh          # `Paper node:` labels ↔ paper \label{…}, both directions
+python3 scripts/check-cartesian-frames-nodes.py  # numbered CF nodes ↔ committed TeX
 python3 scripts/check_endpoint_coverage.py   # every annotated label has an inventory endpoint
 python3 scripts/lint_paper_labels.py         # every paper-facing theorem carries a label
 ```
