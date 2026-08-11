@@ -423,3 +423,12 @@ Systemic findings, all repaired in this wave:
   Brouwer maxHeartbeats one, already commented at site). README's stale "four endpoints
   still whole-value (incl. thm:st)" paragraph corrected to the three-node metacomputation
   family.
+
+## Consolidation backlog (accumulated during the 2026-08-11 agent waves)
+
+- `LUVPresentation.lean:86` carries a `**F7 item 3, the payoff.**` work-package tag and a
+  "previously a raw hypothesis" history reference — both targets of the standing
+  no-in-references rule (flagged by the wubexp fixer).
+- `PolyEF` (`Framework/Computable.lean:258`) is a dead-end layer: consumed only by other
+  `PolyEF` lemmas, never converted to any emission class (flagged by the Stage-2
+  orchestrator's round-1 audit).
