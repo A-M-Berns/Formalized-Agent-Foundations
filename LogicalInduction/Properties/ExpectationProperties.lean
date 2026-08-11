@@ -111,8 +111,13 @@ def WorldValued (As : ℕ → LUVCombination) (DP : DeductiveProcess) : Prop :=
 /-- Strong, first-order-style representation boundary: every completed world agrees on
 the strict-threshold truth of each LUV in a sequence member, relative to one canonical
 value assignment for that member.  Unlike `WorldValued`, this records that the represented
-computations are individually determined, which is exactly what the statistical lifts
-need in order to apply affine determined-sequence theorems to the threshold mesh.
+computations are individually determined.
+
+That strength is *not* a premise of any paper node here — it is strictly more than
+`def:affthmval`, which determines only the combination.  This structure survives as the
+convenient shape in which an arithmetic presentation *produces* `WorldValued`
+(`exactTheoryPresentation_ofArithmetic` ⟶ `toWorldValued`), where per-LUV determinedness
+comes free from `Θ` deciding each threshold; no statement consumes it as a hypothesis.
 Paper node: `def:luv` -/
 structure ExactTheoryPresentation (As : ℕ → LUVCombination)
     (DP : DeductiveProcess) where
@@ -141,25 +146,6 @@ lemma ExactTheoryPresentation.toWorldValued
     (h : ExactTheoryPresentation As DP) : WorldValued As DP := by
   intro n v hv
   exact ⟨h.value n, h.valuesAt n v hv⟩
-
-lemma ExactTheoryPresentation.expectApprox_eq
-    {As : ℕ → LUVCombination} {DP : DeductiveProcess}
-    (h : ExactTheoryPresentation As DP) {n : ℕ}
-    (v u : PCWorld) (hv : v.ConsistentWithTheory DP)
-    (hu : u.ConsistentWithTheory DP) {p : EF × LUV}
-    (hp : p ∈ (As n).terms) (k : ℕ) :
-    p.2.expectApprox v.payout k = p.2.expectApprox u.payout k := by
-  unfold LUV.expectApprox
-  congr 1
-  apply Finset.sum_congr rfl
-  intro i hi
-  have heq : v.Holds (p.2.gt ((i : ℚ) / (k : ℚ))) ↔
-      u.Holds (p.2.gt ((i : ℚ) / (k : ℚ))) :=
-    (h.threshold_iff n v hv p hp _).trans (h.threshold_iff n u hu p hp _).symm
-  rw [PCWorld.payout, PCWorld.payout]
-  by_cases hvh : v.Holds (p.2.gt ((i : ℚ) / (k : ℚ)))
-  · rw [if_pos hvh, if_pos (heq.mp hvh)]
-  · rw [if_neg hvh, if_neg (fun huh => hvh (heq.mpr huh))]
 
 /-- A canonical completed world, used only to name the common mesh truth stream. -/
 noncomputable def theoryWorld (DP : DeductiveProcess)
@@ -310,24 +296,6 @@ noncomputable def meshTheoryTruth (As : ℕ → LUVCombination) (P : History)
     (DP : DeductiveProcess)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (n : ℕ) : ℝ :=
   ((As n).meshAffine (n + 1)).value P (theoryWorld DP hworld).payout
-
-lemma ExactTheoryPresentation.meshAffine_value_eq
-    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    (h : ExactTheoryPresentation As DP)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (n : ℕ) (v : PCWorld) (hv : v.ConsistentWithTheory DP) :
-    ((As n).meshAffine (n + 1)).value P v.payout = meshTheoryTruth As P DP hworld n := by
-  rw [meshAffine_value]
-  rw [meshTheoryTruth, meshAffine_value]
-  unfold LUVCombination.value
-  congr 1
-  apply congrArg List.sum
-  apply List.map_congr_left
-  intro p hp
-  show p.1.denote P * p.2.expectApprox v.payout (n + 1) =
-    p.1.denote P * p.2.expectApprox (theoryWorld DP hworld).payout (n + 1)
-  rw [h.expectApprox_eq v (theoryWorld DP hworld) hv
-    (theoryWorld_consistent DP hworld) hp (n + 1)]
 
 private lemma meshValue_near_list
     (l : List (EF × LUV)) (P : History) (v : PCWorld) (ν : LUV → ℝ)
@@ -1661,33 +1629,11 @@ def DeterminedViaTheory (As : ℕ → LUVCombination) (P : History)
   ∀ n (v : PCWorld) (ν : LUV → ℝ), v.ConsistentWithTheory DP →
     (As n).ValuesAt v ν → (As n).value P ν = truth n
 
-/-- Exact representation turns the diagonal threshold mesh into an affine sequence
-determined by the explicitly named `meshTheoryTruth` stream. -/
-lemma ExactTheoryPresentation.mesh_determined
-    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    (h : ExactTheoryPresentation As DP)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    AffineCombination.DeterminedViaTheory
-      (fun n => (As n).meshAffine (n + 1)) P DP (meshTheoryTruth As P DP hworld) := by
-  intro n v hv
-  exact h.meshAffine_value_eq hworld n v hv
-
 noncomputable def normalizedMeshTruth (As : ℕ → LUVCombination) (P : History)
     (DP : DeductiveProcess)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (b : ℚ) (n : ℕ) : ℝ :=
   ((meshNormScale b : ℚ) : ℝ) * meshTheoryTruth As P DP hworld n
-
-lemma ExactTheoryPresentation.normalizedMesh_determined
-    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    (h : ExactTheoryPresentation As DP)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (b : ℚ) :
-    AffineCombination.DeterminedViaTheory (normalizedMesh As b) P DP
-      (normalizedMeshTruth As P DP hworld b) := by
-  intro n v hv
-  rw [normalizedMesh, AffineCombination.scale_value, EF.denote_const,
-    h.meshAffine_value_eq hworld n v hv]
-  rfl
 
 /-! ### The mesh is only *approximately* determined
 
@@ -1696,7 +1642,14 @@ completed worlds may disagree about the individual threshold sentences the mesh 
 What survives is quantitative: two completed worlds each reproduce the determined
 combination value to within `shareNorm/n`, hence agree with each other to within twice
 that — and trivially to within the mesh's own coefficient sum.  That is exactly the
-`ApproxDeterminedViaTheory` + `ErrorNegligible` input of the affine bias-run economics. -/
+`ApproxDeterminedViaTheory` + `ErrorNegligible` input of the affine bias-run economics, and
+(via `meshErrorBound_tendsto_zero`) of the `thm:wubexp` feedback bridge.
+
+There is deliberately no *exact* mesh-determination lemma.  Exact mesh determination is
+available only from `ExactTheoryPresentation`, which fixes a value for each component LUV
+and so demands strictly more than `def:affthmval`; anything proved through it would carry
+that strengthening.  Nothing needs it — affine provability induction accepts a vanishing
+residual (`affine_provind_theory_tendsto_zero`). -/
 
 /-- Diagonal mesh-error budget for the normalized threshold mesh. -/
 noncomputable def meshErrorBound (As : ℕ → LUVCombination) (P : History) (b : ℚ)
@@ -1764,6 +1717,9 @@ lemma meshErrorBound_tendsto_zero {As : ℕ → LUVCombination} {P : History} (b
   have hn : (0 : ℝ) < (n : ℝ) + 1 := by positivity
   gcongr
   exact hshare n
+
+/-- Combination-level determination (`def:affthmval`) plus per-world LUV values make the
+diagonal mesh approximately determined, with the negligible `meshErrorBound`. -/
 lemma WorldValued.normalizedMesh_approxDetermined
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     (h : WorldValued As DP)

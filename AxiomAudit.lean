@@ -346,7 +346,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- witness for the delayed-truth premise (constant value stream — see its docstring).
 #assert_axioms_clean
   FeedbackTruth.ordinaryFeedbackTruthComputation
-  feedbackTruthSequence lic_wubaff_ofComputation lic_wub_ofComputation
+  feedbackTruthSequence feedbackTruthSequence_ofDetermined
+  lic_wubaff_ofComputation lic_wub_ofComputation
   boundedCombination_wubaff_ofComputation luv_wubexp_ofComputation
   lic_wub_ofComputation_unconditional lic_wubaff_ofComputation_unconditional
   boundedCombination_wubaff_ofComputation_unconditional

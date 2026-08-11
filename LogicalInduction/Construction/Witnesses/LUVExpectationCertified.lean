@@ -457,8 +457,7 @@ certificates (`FeedbackEmission.feedbackTraderEmissionSigns`) and the sparse del
 affine sequence (`FeedbackTruth.feedbackTruthSequence`).  The bridge is built at
 *approximate* determination, so no per-component-LUV determinedness is assumed anywhere;
 see `FeedbackTruth.luv_wubexp_ofComputation` for why the mesh route survives
-combination-level determination.  This retires the `LUVCombination.ExactTheoryPresentation`
-qualification recorded by finding B1 of `notes/faithfulness-audit-2026-08-08.md`.
+combination-level determination.
 
 Kind `C`; provenance: `hAs`, `h`, `hdet`, `hshare`, `hWgen`, `hWdiv`, `hstrict`, `hsupport`
 (a); `C` (a), in the `dd:fuel` efficiency model.

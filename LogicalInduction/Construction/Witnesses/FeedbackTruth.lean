@@ -586,7 +586,10 @@ noncomputable def feedbackTruthSequence
       rw [sequence_price_at As C hstrict hspec P k, C.agrees]
   }
 
-/-- The exactly-determined instance of `feedbackTruthSequence`, at zero residual. -/
+/-- The exactly-determined instance of `feedbackTruthSequence`, at zero residual.  This is
+what the sentence-indicator and affine feedback endpoints use, where `Θ` really does pin
+one value per member; only the LUV mesh needs the approximate form.
+Paper node: `thm:wubaff` -/
 noncomputable def feedbackTruthSequence_ofDetermined
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth : ℕ → ℝ} {f : DeferralFunction}
@@ -716,10 +719,9 @@ determined total differently across components and mesh to different values.  Wh
 values merely tend to zero uniformly.  So the feedback bridge is built at
 `ApproxDeterminedViaTheory`, not `DeterminedViaTheory`.
 
-This replaces the earlier route through `LUVCombination.ExactTheoryPresentation`, which
-forced *every component LUV* to be Θ-determined — strictly stronger than `def:affthmval`,
-and the qualification recorded against this node by the 2026-08-08 audit (finding B1).
-That structure is no longer used by any `thm:wubexp` endpoint.
+No endpoint of this node uses `LUVCombination.ExactTheoryPresentation`, and none should:
+that structure fixes a completed-theory value for *every component LUV*, which is strictly
+stronger than `def:affthmval` and would be a premise the paper does not state.
 
 Kind `C`; provenance: `hdet`, `hvalued`, `hshare`, `hW`, `hWdiv`, `hstrict`, `hsupport`
 (a) — the paper's own hypotheses; `C` (a) — the paper's deadline-bounded truth program,

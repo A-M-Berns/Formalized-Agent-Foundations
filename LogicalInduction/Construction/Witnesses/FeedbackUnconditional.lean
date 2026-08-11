@@ -102,12 +102,11 @@ combinations.  The deadline-bounded truth program `C` is the paper's explicit op
 input; `hdet` (`def:affthmval`) and `hvalued` (the representation premise) are its explicit
 semantic ones.
 
-The premises are now exactly tex:1822-1832's.  This endpoint previously assumed
-`LUVCombination.ExactTheoryPresentation`, which fixes one completed-theory value for every
-*component* LUV and is strictly stronger than determination of the signed combination —
-`[(1, X), (-1, X)]` is combination-determined for a wholly undetermined `X` yet admits no
-`ExactTheoryPresentation`.  The mesh feedback bridge is now built from approximate
-determination instead; see `FeedbackTruth.luv_wubexp_ofComputation`.
+The premises are exactly tex:1822-1832's.  In particular determination is at the
+*combination* level only: `[(1, X), (-1, X)]` for a wholly undetermined `X` is covered,
+which it would not be under `LUVCombination.ExactTheoryPresentation`.  The mesh feedback
+bridge is built from approximate determination; see
+`FeedbackTruth.luv_wubexp_ofComputation`.
 Paper node: `thm:wubexp` -/
 theorem luv_wubexp_ofComputation_unconditional
     {As : ℕ → LUVCombination}
