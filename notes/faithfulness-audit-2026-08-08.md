@@ -108,6 +108,18 @@ as `thm:ifp` without that sentence.
 
 ### B1 — `thm:wubexp` still strengthens combination-level determination, and local prose oversells it
 
+> **Resolved 2026-08-11, after this audit.** Both parts are closed and the node is
+> reclassified `instantiated`. The prose fixes landed first. The construction followed the
+> route recommended below (action 2): `FeedbackTruthSequence.zero_value` — exact
+> zero-valuedness — is replaced by `value_vanishing`, the eventual-`ε` form that
+> `affine_provind_theory_tendsto_zero` already suffices for, and
+> `FeedbackTruth.feedbackTruthSequence` is generalized to `ApproxDeterminedViaTheory` with a
+> vanishing residual. The mesh then supplies its own bridge through the pre-existing
+> `WorldValued.normalizedMesh_approxDetermined` plus a new `meshErrorBound_tendsto_zero`, so
+> `ExactTheoryPresentation` appears in no `thm:wubexp` endpoint and `wubexp_arith` now takes
+> the paper's `FeedbackTruthComputation` rather than a pre-built bridge and emitter. The
+> body below is preserved as the state this audit found.
+
 The paper assumes that each LUV **combination** `A_n` is determined via the theory and that
 its common value can be computed by the next feedback deadline. It does not require every
 component LUV in the combination to be individually determined.
@@ -244,6 +256,9 @@ correctly classified `universal`, not `instantiated`.
 | surface | paper strength | qualified | qualification |
 |---|---:|---:|---|
 | named theorem/lemma nodes | 50 | 3 | `thm:ccee`, `thm:ifp`, `thm:wubexp` |
+
+As of 2026-08-11 the first row reads 51 / 2 (`thm:ccee`, `thm:ifp`): `thm:wubexp` was
+closed after this audit — see the resolution banner on B1.
 | classified definition nodes | 10 | 3 | `def:ec`, `def:luv`, and derivative `def:blcp` |
 
 This accounting is relative to the repository model. It does not erase the global
@@ -252,10 +267,11 @@ analytic conclusion as the paper.
 
 ## Recommended next actions
 
-1. Correct the two `thm:wubexp` local docstring overclaims immediately.
-2. For `thm:wubexp`, construct a feedback bridge from a deadline-bounded computation of the
-   combination truth plus the existing vanishing mesh error, without
-   `ExactTheoryPresentation`.
+1. ~~Correct the two `thm:wubexp` local docstring overclaims immediately.~~ Done
+   2026-08-11.
+2. ~~For `thm:wubexp`, construct a feedback bridge from a deadline-bounded computation of
+   the combination truth plus the existing vanishing mesh error, without
+   `ExactTheoryPresentation`.~~ Done 2026-08-11, by exactly this route; see B1.
 3. Keep `thm:ifp` visibly qualified until an `EfficientPrefixPatch` inhabitant exists; do
    not treat the paper erratum as a proof of the restricted premise.
 4. Treat the exact `thm:ccee` definitional-extension endpoint as infrastructure, not the

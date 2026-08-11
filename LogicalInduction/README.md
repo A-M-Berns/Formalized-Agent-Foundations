@@ -9,8 +9,8 @@ build-audited. How strong each one is:
 
 | | count | what it means |
 |---|---:|---|
-| **paper strength** | 50 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
-| **qualified** | 3 | proved with an explicitly named representation interface or class restriction retained |
+| **paper strength** | 51 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
+| **qualified** | 2 | proved with an explicitly named representation interface or class restriction retained |
 
 Each qualified node says in one line which premise it retains and why. The per-node
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
@@ -21,7 +21,7 @@ and audit note — is generated from the repository at
 [`docs/trust-surface.html`](../docs/trust-surface.html)
 (`python3 scripts/gen-trust-surface.py` to regenerate).
 
-Of the 50, **19 are also instantiated over the concrete inductor constructed here** at
+Of the 51, **20 are also instantiated over the concrete inductor constructed here** at
 full paper strength, so they hold of a specific algorithm rather than a hypothetical
 one. The paper states no such theorems; that is a strengthening, not a different degree
 of faithfulness.
@@ -257,11 +257,14 @@ All three are disclosed at every affected statement, not just here.
 
 ## What is left, and what it is blocked on
 
-The 3 qualified nodes do **not** all trace back to the two modeling boundaries, and it
-would be easy to assume they do. Only two are genuinely boundary-blocked; the third is
-unfinished implementation with a known route. Estimates are engineering judgment, not
-measurements — the ones marked *checked* were made after confirming the required lemmas
-exist, and the rest are structural reads that have twice moved upward on contact.
+Both remaining qualified nodes trace back to the two modeling boundaries; there is no
+longer a third that is merely unfinished. (`thm:wubexp` was that third one. Its route —
+build the mesh feedback bridge from the *approximate* determination that combination-level
+`def:affthmval` actually supplies, rather than from a per-component-LUV strengthening — is
+now landed; see `FeedbackTruth.luv_wubexp_ofComputation`.) Estimates are engineering
+judgment, not measurements — the ones marked *checked* were made after confirming the
+required lemmas exist, and the rest are structural reads that have twice moved upward on
+contact.
 
 **Blocked on a disclosed modeling boundary (2).**
 
@@ -298,18 +301,6 @@ exist, and the rest are structural reads that have twice moved upward on contact
   a declaration that does not exist; corrected there.) The paper's own proof of `thm:ifp` is
   separately invalid — see erratum PE1.
 
-**Unfinished work, not obstruction (1).**
-
-* **`thm:wubexp` — a proof route stronger than the statement needs** (2+ weeks, least
-  scoped). Both endpoints reaching the paper's computability premise also take
-  `ExactTheoryPresentation`, which provably forces *each individual LUV* to be
-  Θ-determined, where tex:1822-1832 requires only that the *combination* be determined
-  (`def:affthmval`). The difficulty is that its consumers (`mesh_determined`,
-  `meshAffine_value_eq`) decompose the combination into per-LUV threshold atoms, so a
-  combination-level premise does not obviously survive the mesh route. Needs either a
-  non-mesh route to the combination's value or a mesh argument that holds without per-LUV
-  determinedness.
-
 ## Closing the boundaries
 
 Each of the two modeling boundaries has a scoped feasibility note, written against what
@@ -340,16 +331,15 @@ route — built as far as its own binding constraint, with that constraint named
 closing this boundary would and would not free, and the worked `thm:ccee` instance, are in
 [`notes/boundary-propositional-substrate.md`](../notes/boundary-propositional-substrate.md).
 
-The third qualified node, `thm:wubexp`, is deliberately absent here: it is not
-boundary-blocked. Its route is known and its cost is implementation, which is why it sits
-under *unfinished work* above rather than carrying a feasibility note of its own.
-
 ## Faithfulness
 
 The current statement surface was checked by a fresh, current-state adversarial audit.
 Its findings are a snapshot of the final signatures and verified obstructions, without
 the superseded diagnoses or repair history of earlier passes:
 [`notes/faithfulness-audit-2026-08-08.md`](../notes/faithfulness-audit-2026-08-08.md).
+One of its findings has since been closed rather than merely disclosed — `thm:wubexp`
+(B1), which is why the counts above read 51/2 where that snapshot reads 50/3; the finding
+carries a dated resolution banner.
 The process surfaced five errata in the paper itself, recorded with repairs in
 [`notes/logical-induction-paper-errata.md`](../notes/logical-induction-paper-errata.md).
 
