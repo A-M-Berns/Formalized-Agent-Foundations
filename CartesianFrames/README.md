@@ -5,12 +5,15 @@ A Lean 4 formalization of Garrabrant, Herrmann, and Lopez-Wild,
 
 Scope: all 60 numbered nodes of the paper, including both appendices.  The current
 checked layer covers frames, morphisms, the category `Chu(W)`, the transpose
-functor, and the full equivalence layer: isomorphism, biextensionality, the
-biextensional collapse, biextensional equivalence, and Appendix A's homotopy
-machinery, with Claims 8, 38, 39, and 40 proved (Definitions 1–7, 9, 36–37).
-World-level functors (§2.3) and the subagency calculus (§2.4, Appendix B) are
-staged next; see `KNOWLEDGE.md` for the settled design decisions and correspondence
-table.
+functor, the full equivalence layer (isomorphism, biextensionality, the collapse,
+biextensional equivalence, Appendix A's homotopy machinery — Claims 8, 38–40), the
+world-level functors of §2.3 (Definitions 10–11 with the footnote fact), and the
+general subagency layer: `⊥`-frames, the categorical/currying/covering definitions
+of `◁` (Definitions 12–14, 50) with their equivalences and basic properties proved
+(Claims 15–17, 51–53).  One paper erratum found so far (Claim 53's printed proof;
+see `notes/cartesian-frames-paper-errata.md`).  Additive/multiplicative subagents,
+the operations calculus, and the remaining Appendix B claims are staged next; see
+`KNOWLEDGE.md` for settled design decisions and the correspondence table.
 
 [`Examples.lean`](Examples.lean) carries the paper's two worked matrices — §2.1's
 driver and §2.2's duplicate-row pair — as concrete `Frame ℕ`s, together with the

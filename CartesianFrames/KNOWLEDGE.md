@@ -18,6 +18,18 @@ entries.  Scope of the formalization: **all 60 numbered nodes**, both appendices
 | Definition 7 | `Frame.BiextEquiv`, scoped `≃ᵇ` | defined |
 | Claim 8 | `Frame.nonempty_iso_of_eq`, `Frame.biextEquiv_of_nonempty_iso` | proved |
 | Definition 9 | `Frame.dual`, `Frame.Hom.dual`, `Frame.dualFunctor` | defined; `(C*)* = C` is `rfl` |
+| Definition 10 | `Frame.mapWorlds` (functor); footnote = `Frame.BiextEquiv.mapWorlds` | defined + footnote proved |
+| Definition 11 | `Frame.curry` (functor) | defined |
+| Definition 12 | `Frame.botOf`, `Frame.instBot` (`⊥`); `botOfUnivIsoBot` is the dd:eq-to-iso bridge | defined |
+| Definition 13 | `Frame.Subagent`, scoped `◁` (primary) | defined |
+| Definition 14 | `Frame.SubagentCurry` | defined |
+| Claim 15 | `Frame.subagent_iff_subagentCurry` | proved |
+| Claim 16 | `Frame.Subagent.trans` | proved |
+| Claim 17 | `Frame.Subagent.refl`, `Frame.Subagent.of_biextEquiv` | proved |
+| Definition 50 | `Frame.SubagentCovering` | defined |
+| Claim 51 | `Frame.subagent_iff_subagentCovering` | proved |
+| Claim 52 | `Frame.SubagentCovering.subagentCurry` | proved |
+| Claim 53 | `Frame.SubagentCurry.subagent` | proved (see erratum) |
 | Definition 36 | `Frame.Homotopic` (+ equivalence/congruence lemmas) | defined |
 | Definition 37 | `Frame.HomotopyEquiv` | defined |
 | Claim 38 | `Frame.homotopyEquiv_iff_nonempty_iso_of_biextensional` | proved |
@@ -68,6 +80,17 @@ Reuse these for future non-vacuity or counterexample work.
 - Unnumbered load-bearing facts become named internal lemmas annotated to their
   surrounding definition: morphisms `C ⟶ ⊥` biject with `C.Env` (used by Claims 51,
   53, 55), and `p°` preserves biextensional equivalence (Def 10's footnote).
+
+## Paper errata (details in `notes/cartesian-frames-paper-errata.md`)
+
+- **Claim 53's printed proof has a gap**: its final display checks only agent
+  components of `φ_e = φ_e ∘ τ ∘ σ`; the env components agree only up to duplicate
+  columns, while Definition 13 demands morphism equality.  The Lean proof of
+  `SubagentCurry.subagent` uses the env-redirect construction from the paper's
+  commented-out currying→covering proof (TeX L1334–1377).  The claim is true as
+  stated — auditors comparing the Lean proof against the printed proof should
+  expect this divergence; the *statement* is verbatim.
+- Claim 35 has a binder garble and an ill-typed External/Internal half (below).
 
 ## Deferred interpretation question (do not resolve unilaterally)
 
