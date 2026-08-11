@@ -1,4 +1,5 @@
-import CartesianFrames.Operations
+import CartesianFrames.Categorical
+import Mathlib.Data.Setoid.Basic
 import Mathlib.Data.Fin.VecNotation
 import Mathlib.Data.Fintype.Card
 import Mathlib.Data.Fintype.Pi
@@ -47,6 +48,21 @@ the two-member team) plus a four-row variant.  What those witnesses rule out:
 * and that factorization is **non-trivial**: on `bigC ◁ bigD` every intermediate it
   can produce is biextensionally distinct from both endpoints
   (`every_witness_nontrivial`, non-vacuous by `bigC_decomposes`).
+
+The last sections carry the same treatment to the operations of §2.4.1 and to
+Appendix B:
+
+* externalizing at a two-cell partition of `bigD` and assuming a sub-environment of
+  `driver3` each produce a frame that is genuinely smaller — related by `◁ₓ` (resp.
+  `◁*₊`) but *not* biextensionally equivalent (`ext_genuine`,
+  `assume_not_biextEquiv`), so `Definition 32` and `Definition 29` are not identities
+  in disguise;
+* `Definition 54`'s relaxation to factorization **up to homotopy** is load-bearing:
+  `cat54_holds` holds through a `φ₀` for which exact factorization fails
+  (`phi0_no_exact_factorization`), and the same frame has two distinct endomorphisms
+  (`two_distinct_endos`), so the definition's follow-up remark about "the" morphism
+  `C ⟶ D` cannot mean hom-set uniqueness — that reading would falsify `Claim 56`
+  (`notes/cartesian-frames-paper-errata.md`, erratum 7).
 
 None of these statements is a paper claim, so none carries a paper-node annotation; the
 matrices they are built from are the paper's own worked examples, cited above in prose.
@@ -492,6 +508,210 @@ lemma every_witness_nontrivial {C₂ : Frame ℕ} (hx : bigC ◁ₓ C₂) (ha : 
 applied to `bigC_subagent_bigD` exhibits such a pair. -/
 lemma bigC_decomposes : ∃ C₂, (bigC ◁ₓ C₂) ∧ (C₂ ◁₊ bigD) :=
   subagent_iff_exists_multSubagent_addSubagent.mp bigC_subagent_bigD
+
+/-! ## Externalizing at a concrete partition (Definitions 31–33)
+
+`bigD`'s four joint options split into two cells of two.  Externalizing at that
+partition is a `◁ₓ`-instance (Claim 34) between frames that are *not* biextensionally
+equivalent, so `Definition 32` is not the identity in disguise on a frame it can
+actually shrink. -/
+
+/-- The two-cell partition of `bigD`'s agent carrier: `{0, 1}` and `{2, 3}`. -/
+abbrev cellS : Setoid bigD.Agent := Setoid.ker (fun a : Fin 4 => a.val / 2)
+
+/-- The externalized frame's outcome is the paper's `q ⋆ (b, e) = q(b) · e`. -/
+example (q : partitionSections cellS) (c : Quotient cellS) (e : Fin 2) :
+    (bigD.external cellS).outcome q (c, e) = bigD.outcome (q.val c) e := rfl
+
+lemma ext_mult : bigD.external cellS ◁ₓ bigD := bigD.external_multSubagent cellS
+
+lemma bigD_biextensional : bigD.Biextensional := by
+  constructor
+  · intro a b h; revert h; revert a b; decide
+  · intro a b h; revert h; revert a b; decide
+
+lemma bigD_outcome_inj : ∀ (a a' : Fin 4) (e e' : Fin 2),
+    bigD.outcome a e = bigD.outcome a' e' → a = a' ∧ e = e' := by decide
+
+lemma cells_ne : Quotient.mk cellS 0 ≠ Quotient.mk cellS 2 := by
+  intro h
+  have : (0 : Fin 4).val / 2 = (2 : Fin 4).val / 2 := Quotient.exact h
+  exact absurd this (by decide)
+
+/-- A section of the partition, i.e. an agent of `External^S(bigD)`; `Definition 31`'s
+subtype is inhabited by `Quotient.out`. -/
+private noncomputable def cellSec : partitionSections cellS :=
+  ⟨Quotient.out, fun c => c.out_eq⟩
+
+lemma ext_biextensional : (bigD.external cellS).Biextensional := by
+  constructor
+  · intro q₀ q₁ h
+    refine Subtype.ext (funext fun c => ?_)
+    exact bigD_biextensional.agent_ext fun e => h (c, e)
+  · rintro ⟨c₀, e₀⟩ ⟨c₁, e₁⟩ h
+    have hq := h cellSec
+    obtain ⟨hval, he⟩ := bigD_outcome_inj _ _ _ _ hq
+    have hc : c₀ = c₁ :=
+      (cellSec.property c₀).symm.trans
+        ((congrArg (Quotient.mk cellS) hval).trans (cellSec.property c₁))
+    exact Prod.ext hc he
+
+/-- The externalized frame has four environment states where `bigD` has two, and it is
+biextensional, so no `≃ᵇ` can relate the two. -/
+lemma ext_not_biextEquiv : ¬ (bigD.external cellS ≃ᵇ bigD) := by
+  intro h
+  obtain ⟨g, hg⟩ := exists_env_injective_of_biextEquiv ext_biextensional h
+  have key : ∀ a b c : Fin 2, a = b ∨ a = c ∨ b = c := by decide
+  set x₀ : Quotient cellS × Fin 2 := (Quotient.mk cellS 0, 0)
+  set x₁ : Quotient cellS × Fin 2 := (Quotient.mk cellS 0, 1)
+  set x₂ : Quotient cellS × Fin 2 := (Quotient.mk cellS 2, 0)
+  rcases key (g x₀) (g x₁) (g x₂) with h' | h' | h'
+  · exact absurd (congrArg Prod.snd (hg h')) (by decide)
+  · exact cells_ne (congrArg Prod.fst (hg h'))
+  · exact cells_ne (congrArg Prod.fst (hg h'))
+
+/-- `Claim 34` at this instance is a genuine, non-reflexive `◁ₓ`. -/
+lemma ext_genuine : (bigD.external cellS ◁ₓ bigD) ∧ ¬ (bigD.external cellS ≃ᵇ bigD) :=
+  ⟨ext_mult, ext_not_biextEquiv⟩
+
+/- The internalizing side is the same instance read through the transpose
+(`Definition 33` dualizes `Definition 32` on the nose). -/
+
+example : bigD.dual ◁ₓ bigD.dual.internal cellS := bigD.dual.multSubagent_internal cellS
+
+example : (bigD.dual.internal cellS).dual = bigD.external cellS := rfl
+
+/-! ## Assuming a sub-environment (Definition 29)
+
+The driver of §2.4 assuming the weather is not sunny.  As with committing, the pair
+witnesses `Claim 30(2)` at a place where the two frames are not biextensionally
+equivalent. -/
+
+/-- The environment states the driver assumes: everything but the third. -/
+abbrev assumed : Set (Fin 3) := {e | e ≠ 2}
+
+/-- `driver3` after the assumption — `Definition 29`'s `Assume^F` at this instance
+(checked immediately below), spelled out so `decide` can see the carriers. -/
+abbrev driver3Assume : Frame ℕ where
+  Agent := Fin 3
+  Env := assumed
+  outcome := fun a f => driver3.outcome a f.val
+
+example : driver3Assume = driver3.assume assumed := rfl
+
+example : driver3 ◁*₊ driver3Assume := driver3.addSubEnv_assume assumed
+
+/-- Assuming really shrinks: the assumed frame is not biextensionally equivalent to the
+frame it came from, so `Claim 30(2)` is not the reflexive case in disguise. -/
+lemma assume_not_biextEquiv : ¬ (driver3 ≃ᵇ driver3Assume) := by
+  intro h
+  obtain ⟨g, hg⟩ := exists_env_injective_of_biextEquiv driver3_biextensional h
+  have hg2 : Function.Injective (fun x : Fin 3 => (g x).val) := fun x y hxy =>
+    hg (Subtype.ext hxy)
+  obtain ⟨x, hx⟩ := Finite.injective_iff_surjective.mp hg2 2
+  exact (g x).property hx
+
+/-! ## The dualized relations (Definitions 25–26)
+
+Every witness above transposes for free, since `(C*)* = C` holds definitionally: these
+are the same facts read as statements about sub-environments. -/
+
+example : driver3.dual ◁*₊ driver.dual := driver_addSubagent_driver3
+
+example : driver3.dual ◁* driver.dual := driver_addSubagent_driver3.subagent
+
+example : ¬ (driver.dual ◁* dedup.dual) := not_subagent_dedup_driver
+
+example : ¬ (driver.dual ◁* driver3.dual) := not_subagent_driver3_driver
+
+example : teamD.dual ◁*ₓ teamC.dual := teamC_multSubagent_teamD
+
+example : bigD.dual ◁* bigC.dual := bigC_subagent_bigD
+
+example : ¬ (bigD.dual ◁*ₓ bigC.dual) := not_bigC_multSubagent_bigD
+
+example : ¬ (bigD.dual ◁*₊ bigC.dual) := not_bigC_addSubagent_bigD
+
+/-! ## Appendix B's definitions on the worked frames (Definitions 54, 57, 58)
+
+Two things are checked here.  First, the appendix's relations hold and fail exactly
+where the main body's do, on the paper's own examples.  Second — and this is what the
+formalization's reading of `Definition 54` rests on — the definition's relaxation to
+factorization *up to homotopy* is load-bearing, and its follow-up remark about "the"
+morphism `C ⟶ D` cannot be read as uniqueness of the hom-set element (see
+`notes/cartesian-frames-paper-errata.md`, erratum 7). -/
+
+/-- A one-row frame with two identical columns: the smallest frame whose endomorphism
+monoid is not trivial. -/
+abbrev colDup : Frame ℕ where
+  Agent := Fin 1
+  Env := Fin 2
+  outcome := ![![0, 0]]
+
+/-- The endomorphism of `colDup` that collapses both columns onto the first. -/
+def phi0 : colDup ⟶ colDup where
+  agent := _root_.id
+  env := ![0, 0]
+  adjoint := by decide
+
+/-- Every `φ : colDup ⟶ ⊥` factors through `phi0` **up to homotopy**… -/
+lemma phi0_homotopy_factors :
+    ∀ φ : colDup ⟶ (⊥ : Frame ℕ), ∃ φ₁ : colDup ⟶ (⊥ : Frame ℕ),
+      Homotopic φ (phi0 ≫ φ₁) := by
+  intro φ
+  refine ⟨φ, fun a e => ?_⟩
+  have hadj := φ.adjoint a e
+  have hconst : ∀ (a : Fin 1) (x y : Fin 2), colDup.outcome a x = colDup.outcome a y := by
+    decide
+  exact (hconst a (phi0.env (φ.env e)) (φ.env e)).trans hadj
+
+/-- …so `Definition 54` holds with this `φ₀`. -/
+lemma cat54_holds : AddSubagentCategorical colDup colDup := ⟨phi0, phi0_homotopy_factors⟩
+
+/-- …but *exact* factorization through the same `φ₀` fails, so `Definition 54`'s
+homotopy relaxation is load-bearing rather than cosmetic: replacing `Homotopic` by
+equality would break `cat54_holds` at this `φ₀`. -/
+lemma phi0_no_exact_factorization :
+    ¬ ∃ φ₁ : colDup ⟶ (⊥ : Frame ℕ),
+      colDup.homBotEquiv.symm 1 = phi0 ≫ φ₁ := by
+  rintro ⟨φ₁, h⟩
+  have hthis := congrArg (fun f => Hom.env f PUnit.unit) h
+  have key : ∀ x : Fin 2, (1 : Fin 2) ≠ phi0.env x := by decide
+  exact key (φ₁.env PUnit.unit) hthis
+
+/-- `hom(colDup, colDup)` has at least two elements while `colDup ◁₊ colDup` holds, so
+`Definition 54`'s follow-up remark ("we require the morphism from `C` to `D` to be
+unique") cannot mean uniqueness of the hom-set element — that reading would falsify
+`Claim 56`.  The `∃`-rendering is the correct one. -/
+lemma two_distinct_endos : phi0 ≠ 𝟙 colDup := by
+  intro h
+  have key : Hom.env phi0 = Hom.env (𝟙 colDup) := congrArg Hom.env h
+  exact absurd (congrFun key 1) (by decide)
+
+example : colDup ◁₊ colDup := AddSubagent.refl colDup
+
+/- `Definition 54` and `Definition 57` land where the main body's relations land. -/
+
+example : AddSubagentCategorical driver driver3 :=
+  driver_addSubagent_driver3.addSubagentCategorical
+
+example : ¬ AddSubagentCategorical bigC bigD := fun h =>
+  not_bigC_addSubagent_bigD h.addSubagent
+
+example : MultSubagentSubEnv teamC teamD :=
+  multSubagentSubEnv_iff_multSubagent.mpr teamC_multSubagent_teamD
+
+example : MultSubagentCategorical teamC teamD :=
+  multSubagentCategorical_iff_multSubagentSubEnv.mpr
+    (multSubagentSubEnv_iff_multSubagent.mpr teamC_multSubagent_teamD)
+
+example : ¬ MultSubagentSubEnv bigC bigD := fun h =>
+  not_bigC_multSubagent_bigD (multSubagentSubEnv_iff_multSubagent.mp h)
+
+example : ¬ MultSubagentCategorical bigC bigD := fun h =>
+  not_bigC_multSubagent_bigD
+    (multSubagentSubEnv_iff_multSubagent.mp
+      (multSubagentCategorical_iff_multSubagentSubEnv.mp h))
 
 end Examples
 

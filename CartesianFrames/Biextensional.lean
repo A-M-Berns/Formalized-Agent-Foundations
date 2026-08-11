@@ -321,14 +321,15 @@ theorem biextEquiv_of_nonempty_iso (h : Nonempty (C ≅ D)) : C ≃ᵇ D :=
 Paper node: Claim 8 (§2.2). -/
 theorem nonempty_iso_of_eq (h : C = D) : Nonempty (C ≅ D) := ⟨eqToIso h⟩
 
-/-! ## Two invariants of biextensional equivalence
+/-! ## Invariants of biextensional equivalence
 
-Unnumbered in the paper, which uses both silently: `Image` is a `≃ᵇ`-invariant, and a
+Unnumbered in the paper, which uses all three silently: `Image` is a `≃ᵇ`-invariant, a
 biextensional frame's environment carrier injects into that of any `≃ᵇ`-equivalent
-frame.  They are the two standard refuters for the subagency relations of §2.4 — an
-externalizing witness must reproduce the larger frame's image, and a committing
-witness must supply at least as many environment states — so they are stated here,
-next to Claim 39, rather than duplicated at each use site. -/
+frame, and `≃ᵇ` transposes.  The first two are the standard refuters for the subagency
+relations of §2.4 — an externalizing witness must reproduce the larger frame's image,
+and a committing witness must supply at least as many environment states — and the
+third is what makes every dualized definition of §2.4.1 and Appendix B behave.  All
+three are stated here, next to Claim 39, rather than duplicated at each use site. -/
 
 /-- `Image` is invariant under biextensional equivalence. -/
 lemma image_eq_of_biextEquiv (h : C ≃ᵇ D) : C.image = D.image := by
@@ -348,6 +349,17 @@ lemma exists_env_injective_of_biextEquiv (hC : C.Biextensional) (h : C ≃ᵇ D)
   refine ⟨ψ.env, fun e₀ e₁ he => hC.env_ext fun a => ?_⟩
   have h0 : ∀ e, C.outcome a (φ.env (ψ.env e)) = C.outcome a e := fun e => hφψ.symm a e
   rw [← h0 e₀, ← h0 e₁, he]
+
+/-- Duality preserves biextensional equivalence.  Transposing a homotopy-equivalence
+pair swaps the two component maps of each morphism, so the *environment* half of
+Definition 36's condition discharges what the agent half discharged before; the
+homotopies therefore transpose with a single `symm` (`Homotopic.symm`, with the two
+arguments swapped).  Stated here, with the other `≃ᵇ`-invariants, since it needs
+nothing beyond Claim 39 and `Hom.dual`. -/
+lemma BiextEquiv.dual (h : C ≃ᵇ D) : C.dual ≃ᵇ D.dual := by
+  obtain ⟨φ, ψ, hφψ, hψφ⟩ := biextEquiv_iff_homotopyEquiv.mp h
+  exact biextEquiv_iff_homotopyEquiv.mpr
+    ⟨ψ.dual, φ.dual, fun a e => (hφψ.symm e a).symm, fun a e => (hψφ.symm e a).symm⟩
 
 section RegressionExamples
 

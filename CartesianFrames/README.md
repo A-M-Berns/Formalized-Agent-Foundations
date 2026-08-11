@@ -46,7 +46,14 @@ biextensionally equivalent, both fail in the reverse direction (so the relations
 oriented as the paper orients them), and on a four-option variant `◁` holds while
 neither `◁₊` nor `◁ₓ` does.  That last pair also makes Theorem 24's decomposition
 non-trivial: every intermediate frame it can produce is biextensionally distinct from
-both endpoints.  These are `lemma`s, not paper claims; they cite the paper's unnumbered
+both endpoints.  Its last sections carry the same treatment to §2.4.1's operations and
+to Appendix B: externalizing at a two-cell partition of the four-option frame, and
+assuming a sub-environment of the driver, each yield a frame that is genuinely smaller
+(related by the paper's relation but *not* biextensionally equivalent), while a
+one-row frame with duplicate columns shows that Definition 54's factorization *up to
+homotopy* is load-bearing and that the definition's "unique morphism" remark cannot
+mean uniqueness of the hom-set element (erratum 7).  These are `lemma`s, not paper
+claims; they cite the paper's unnumbered
 examples in prose and are inventoried in `AxiomAudit.lean` alongside the definitions
 they constrain.
 
@@ -107,8 +114,9 @@ Three standing design decisions, tagged at their sites and defined in
   Lean's subtype/quotient encoding makes unstateable (e.g. Claim 35's idempotence),
   the declaration states the canonical isomorphism instead: one rung below equality,
   and only the forced rung.  An `≅` is data rather than a proposition, so these
-  sites are `def`s (`Frame.commit_commit_self` and kin, `Frame.botOfUnivIsoBot`),
-  inventoried like any other endpoint.  Each site carries the tag.
+  sites are `def`s (`Frame.commit_commit_self` and kin, `Frame.botOfUnivIsoBot` and
+  its transpose `Frame.oneOfUnivIsoOne`), inventoried like any other endpoint.  Each
+  site carries the tag.
 
 ## Build and source checks
 

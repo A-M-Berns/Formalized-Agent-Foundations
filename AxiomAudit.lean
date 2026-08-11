@@ -831,13 +831,18 @@ Same contract as the Logical Induction inventory above, for `CartesianFrames/`
 numbers; `scripts/check-cartesian-frames-nodes.py` validates them against the
 committed TeX **and** checks that every *declaration* annotated in the library is
 itself listed between the CF-INVENTORY markers below — sharing a node with a listed
-declaration is not enough. Three groups of listed names carry no annotation of their own:
+declaration is not enough. Four groups of listed names carry no annotation of their own:
 the constructive carriers of Appendix B's Claims 46 and 48 (`Frame.dualEquivalence`,
 `Frame.zeroIsInitial`, `Frame.topIsTerminal` — the `theorem`s state the paper's
-propositional content, these are the data behind them); the two unnumbered
-`≃ᵇ`-invariants the paper uses silently (`Frame.image_eq_of_biextEquiv`,
-`Frame.exists_env_injective_of_biextEquiv`, the standard refuters for `◁ₓ` and `◁₊`);
-and the last two blocks, the non-vacuity and subagency witnesses of
+propositional content, these are the data behind them); the four unnumbered facts the
+paper uses silently (`Frame.Biextensional.nonempty_iso_collapse`, the step taken
+whenever a biextensional frame is replaced by its collapse, together with the three
+`≃ᵇ`-invariants `Frame.image_eq_of_biextEquiv`,
+`Frame.exists_env_injective_of_biextEquiv` — the standard refuters for `◁ₓ` and `◁₊` —
+and `Frame.BiextEquiv.dual`, which every dualized definition runs on); the one
+combined-iff convenience wrapper (`Frame.addSubagent_iff_addSubagentCategorical`,
+whose two halves are the annotated Claims 55 and 56); and the last three blocks, the
+non-vacuity, subagency, and operation/Appendix-B witnesses of
 `CartesianFrames/Examples.lean`, listed here so that the separations they assert are
 axiom-checked alongside the definitions they constrain. -/
 
@@ -855,6 +860,7 @@ open CartesianFrames in
   Frame.homotopyEquiv_iff_nonempty_iso_of_biextensional
   Frame.biextEquiv_iff_homotopyEquiv
   Frame.image_eq_of_biextEquiv Frame.exists_env_injective_of_biextEquiv
+  Frame.BiextEquiv.dual
   Frame.mapWorlds Frame.BiextEquiv.mapWorlds Frame.curry
   Frame.botOf Frame.instBot Frame.botOfUnivIsoBot Frame.homBotEquiv
   Frame.Subagent Frame.SubagentCurry Frame.SubagentCovering
@@ -888,9 +894,10 @@ open CartesianFrames in
   Frame.instZero Frame.instTop
   Frame.zeroIsInitial Frame.topIsTerminal
   Frame.nonempty_isInitial_zero Frame.nonempty_isTerminal_top
-  Frame.oneOf Frame.instOne
+  Frame.oneOf Frame.instOne Frame.oneOfUnivIsoOne
   Frame.AddSubagentCategorical Frame.MultSubagentCategorical
   Frame.AddSubagentCategorical.addSubagent Frame.AddSubagent.addSubagentCategorical
+  Frame.addSubagent_iff_addSubagentCategorical
   Frame.MultSubagentSubEnv
   Frame.multSubagentCategorical_iff_multSubagentSubEnv
   Frame.multSubagentSubEnv_iff_multSubagent
@@ -917,6 +924,12 @@ open CartesianFrames in
   Examples.bigC_biextensional Examples.bigC_subagent_bigD
   Examples.not_bigC_multSubagent_bigD Examples.not_bigC_addSubagent_bigD
   Examples.every_witness_nontrivial Examples.bigC_decomposes
+  -- Operation and Appendix-B witnesses (CartesianFrames/Examples.lean).
+  Examples.ext_mult Examples.bigD_biextensional Examples.bigD_outcome_inj
+  Examples.cells_ne Examples.ext_biextensional Examples.ext_not_biextEquiv
+  Examples.ext_genuine Examples.assume_not_biextEquiv
+  Examples.phi0_homotopy_factors Examples.cat54_holds
+  Examples.phi0_no_exact_factorization Examples.two_distinct_endos
 -- CF-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Cartesian Frames surface (same contract as

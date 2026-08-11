@@ -62,15 +62,6 @@ def MultSubEnv (C D : Frame W) : Prop := MultSubagent D.dual C.dual
 
 @[inherit_doc] scoped infixl:50 " ◁*ₓ " => MultSubEnv
 
-/-- Duality preserves biextensional equivalence.  Transposing a homotopy-equivalence
-pair swaps the two component maps of each morphism, so the *environment* half of
-Definition 36's condition discharges what the agent half discharged before; the
-homotopies therefore transpose with a single `symm`. -/
-lemma BiextEquiv.dual {C D : Frame W} (h : C ≃ᵇ D) : C.dual ≃ᵇ D.dual := by
-  obtain ⟨φ, ψ, hφψ, hψφ⟩ := biextEquiv_iff_homotopyEquiv.mp h
-  exact biextEquiv_iff_homotopyEquiv.mpr
-    ⟨ψ.dual, φ.dual, fun a e => (hφψ.symm e a).symm, fun a e => (hψφ.symm e a).symm⟩
-
 /-- Half of Claim 27, stated so that the converse is the same lemma applied to duals
 (`(C*)* = C` holds definitionally).  The externalizing data dualize by swapping the
 outer factors `X` and `Z` and flipping the products the middle factor sits in. -/
@@ -288,6 +279,12 @@ canonical isomorphism (`dd:eq-to-iso`).  Only the Commit/Assume half of Claim 35
 formalized — the External/Internal half is ill-typed as printed and excluded by
 ruling (see KNOWLEDGE.md, intentional deviations, and erratum 3).
 
+Disclosure: the second argument `Subtype.val ⁻¹' B` is provably `Set.univ` (every
+agent of `Commit^B(C)` already lies in `B`), so the subtype encoding has already
+absorbed the claim's set-theoretic content — the paper's `B ∩ B = B` — and the
+isomorphism is the entire remaining content.  This matches the paper, whose own
+proof of this half is likewise trivial.
+
 Paper node: Claim 35 (§2.4.1). -/
 def commit_commit_self (C : Frame W) (B : Set C.Agent) :
     (C.commit B).commit (Subtype.val ⁻¹' B) ≅ C.commit B where
@@ -308,6 +305,12 @@ the same `B` (its preimage in the new agent carrier) reproduces the frame up to 
 canonical isomorphism (`dd:eq-to-iso`).  Only the Commit/Assume half of Claim 35 is
 formalized — the External/Internal half is ill-typed as printed and excluded by
 ruling (see KNOWLEDGE.md, intentional deviations, and erratum 3).
+
+Disclosure: the set actually restricted to here, `(Subtype.val ⁻¹' B)ᶜ`, is provably
+`Set.univ` (no agent of `Commit^{∖B}(C)` lies in `B`), so the subtype encoding has
+already absorbed the claim's set-theoretic content — the paper's `B ∩ B = B` — and
+the isomorphism is the entire remaining content.  This matches the paper, whose own
+proof of this half is likewise trivial.
 
 Paper node: Claim 35 (§2.4.1). -/
 def commitCompl_commitCompl_self (C : Frame W) (B : Set C.Agent) :
@@ -330,6 +333,12 @@ isomorphism (`dd:eq-to-iso`).  Only the Commit/Assume half of Claim 35 is
 formalized — the External/Internal half is ill-typed as printed and excluded by
 ruling (see KNOWLEDGE.md, intentional deviations, and erratum 3).
 
+Disclosure: the second argument `Subtype.val ⁻¹' F` is provably `Set.univ` (every
+environment state of `Assume^F(C)` already lies in `F`), so the subtype encoding has
+already absorbed the claim's set-theoretic content — the paper's `F ∩ F = F` — and
+the isomorphism is the entire remaining content.  This matches the paper, whose own
+proof of this half is likewise trivial.
+
 Paper node: Claim 35 (§2.4.1). -/
 def assume_assume_self (C : Frame W) (F : Set C.Env) :
     (C.assume F).assume (Subtype.val ⁻¹' F) ≅ C.assume F where
@@ -350,6 +359,12 @@ states equality, which the subtype boundary makes unstateable; re-assuming the s
 isomorphism (`dd:eq-to-iso`).  Only the Commit/Assume half of Claim 35 is
 formalized — the External/Internal half is ill-typed as printed and excluded by
 ruling (see KNOWLEDGE.md, intentional deviations, and erratum 3).
+
+Disclosure: the set actually restricted to here, `(Subtype.val ⁻¹' F)ᶜ`, is provably
+`Set.univ` (no environment state of `Assume^{∖F}(C)` lies in `F`), so the subtype
+encoding has already absorbed the claim's set-theoretic content — the paper's
+`F ∩ F = F` — and the isomorphism is the entire remaining content.  This matches the
+paper, whose own proof of this half is likewise trivial.
 
 Paper node: Claim 35 (§2.4.1). -/
 def assumeCompl_assumeCompl_self (C : Frame W) (F : Set C.Env) :
@@ -381,8 +396,48 @@ example (C : Frame W) (s : Setoid C.Env) : C ◁* C.internal s :=
 example (C : Frame W) (F : Set C.Env) : (C.assume F).dual ◁₊ C.dual :=
   C.addSubEnv_assume F
 
+example (C : Frame W) (B : Set C.Agent) : C.commitCompl B ◁ C :=
+  (C.commitCompl_addSubagent B).subagent
+
+example (C : Frame W) (F : Set C.Env) : (C.assumeCompl F).dual ◁₊ C.dual :=
+  C.addSubEnv_assumeCompl F
+
+example (C : Frame W) (s : Setoid C.Env) : C ◁ C.internalSect s :=
+  (C.multSubagent_internalSect s).subagent
+
 example (C : Frame W) (B : Set C.Agent) : C.commit B ≃ᵇ (C.commit B).commit (Subtype.val ⁻¹' B) :=
   (biextEquiv_of_nonempty_iso ⟨C.commit_commit_self B⟩).symm
+
+example (C : Frame W) (B : Set C.Agent) :
+    (C.commitCompl B).commitCompl (Subtype.val ⁻¹' B) ⟶ C.commitCompl B :=
+  (C.commitCompl_commitCompl_self B).hom
+
+example (C : Frame W) (F : Set C.Env) :
+    (C.assume F).assume (Subtype.val ⁻¹' F) ⟶ C.assume F :=
+  (C.assume_assume_self F).hom
+
+example (C : Frame W) (F : Set C.Env) :
+    (C.assumeCompl F).assumeCompl (Subtype.val ⁻¹' F) ⟶ C.assumeCompl F :=
+  (C.assumeCompl_assumeCompl_self F).hom
+
+/- The idempotence disclosure, machine-checked: the re-restricted set is everything
+(and for the complement forms, the set restricted to is everything). -/
+
+example (C : Frame W) (B : Set C.Agent) :
+    (Subtype.val ⁻¹' B : Set (C.commit B).Agent) = Set.univ :=
+  Set.eq_univ_of_forall fun x => x.property
+
+example (C : Frame W) (B : Set C.Agent) :
+    (Subtype.val ⁻¹' B : Set (C.commitCompl B).Agent)ᶜ = Set.univ :=
+  Set.eq_univ_of_forall fun x => x.property
+
+example (C : Frame W) (F : Set C.Env) :
+    (Subtype.val ⁻¹' F : Set (C.assume F).Env) = Set.univ :=
+  Set.eq_univ_of_forall fun x => x.property
+
+example (C : Frame W) (F : Set C.Env) :
+    (Subtype.val ⁻¹' F : Set (C.assumeCompl F).Env)ᶜ = Set.univ :=
+  Set.eq_univ_of_forall fun x => x.property
 
 end RegressionExamples
 

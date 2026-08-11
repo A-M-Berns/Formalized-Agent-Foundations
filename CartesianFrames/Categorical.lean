@@ -5,10 +5,13 @@ import Mathlib.CategoryTheory.Limits.Shapes.IsTerminal
 # The categorical framework (Appendix B)
 
 Appendix B of Garrabrant, Herrmann, and Lopez-Wild, *Cartesian Frames*
-(arXiv:2109.10996), through Claim 56: the self-duality of `Chu(W)` (Claim 46), its
-initial and terminal objects (Definition 47, Claim 48), the frames `1_S` and `1`
-(Definition 49), and the categorical definition of additive subagent together with
-its equivalence to the committing definition (Definition 54, Claims 55–56).
+(arXiv:2109.10996): the self-duality of `Chu(W)` (Claim 46, together with the two
+strict composites behind it), its initial and terminal objects (Definition 47,
+Claim 48), the frames `1_S` and `1` (Definition 49), and the three alternative
+definitions of subagency the appendix contributes — categorical additive
+(Definition 54), categorical multiplicative (Definition 57), and sub-environment
+multiplicative (Definition 58) — each tied back to a main-body definition by
+Claims 55–56 (additive) and Claims 59–60 (multiplicative).
 
 The category structure itself is not proved here: `dd:cat` puts it in
 `CartesianFrames/Basic.lean`, since the paper's main body already states
@@ -33,8 +36,6 @@ up to isomorphism (any singleton will do); Mathlib's `Limits.IsInitial` and
 is *data*, so each of Claims 48's two halves is stated as the `Nonempty` of the
 corresponding witness type, with the constructive witness available separately as
 `zeroIsInitial` / `topIsTerminal`.
-
-Definition 58 (the sub-environment relation) and Claims 59–60 are not in this file.
 -/
 
 universe u
@@ -163,6 +164,16 @@ def oneOf (S : Set W) : Frame W := (botOf S).dual
 
 Paper node: Definition 49 (App. B). -/
 instance instOne : One (Frame W) := ⟨(⊥ : Frame W).dual⟩
+
+/-- The paper writes `1 = 1_W`; across the subtype boundary this is the canonical
+isomorphism (`dd:eq-to-iso`), the transpose of `botOfUnivIsoBot`.
+
+Paper node: Definition 49 (App. B). -/
+def oneOfUnivIsoOne : oneOf (Set.univ : Set W) ≅ (1 : Frame W) where
+  hom := { agent := fun a => a, env := fun w => ⟨w, trivial⟩, adjoint := fun _ _ => rfl }
+  inv := { agent := fun a => a, env := fun s => s.val, adjoint := fun _ _ => rfl }
+  hom_inv_id := rfl
+  inv_hom_id := rfl
 
 /-- The companion remark to Definition 49, `(1_S)* = ⊥_S`, an instance of
 `dual_dual`. -/

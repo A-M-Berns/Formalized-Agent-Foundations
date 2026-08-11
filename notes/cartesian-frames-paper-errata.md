@@ -54,3 +54,18 @@ TeX source `notes/2109.10996v1-main.tex`.
    `(B, F, ⋆)` as if the carriers changed; the functor leaves agent and
    environment carriers unchanged — only outcomes are mapped through `p`. (Benign
    once noticed; recorded because it misled a first reading.)
+
+7. **Definition 54 (App. B), loose "unique".** The follow-up remark to the
+   categorical definition of additive subagent — "we require the morphism from `C`
+   to `D` to be unique" (TeX ~L1387) — is loose prose for "a *single shared* `φ₀`
+   serves every `φ`", i.e. the quantifier order `∃ φ₀, ∀ φ, …` rather than
+   `∀ φ, ∃ φ₀, …`. Read literally, as uniqueness of the element of `hom(C, D)`, it
+   would falsify Claim 56: `colDup = (Fin 1, Fin 2, ![![0, 0]])` satisfies
+   `colDup ◁₊ colDup` (Claim 23's reflexivity) while its endomorphism monoid has at
+   least two elements — the identity and the column-collapsing `phi0`
+   (`CartesianFrames.Examples.two_distinct_endos`, compiled witness, round-3 audit).
+   `Frame.AddSubagentCategorical` formalizes the `∃`-reading. Note also that the
+   definition's relaxation to factorization *up to homotopy* is load-bearing rather
+   than cosmetic: at that same `φ₀`, exact factorization fails
+   (`Examples.phi0_no_exact_factorization`) while the homotopy condition holds
+   (`Examples.cat54_holds`).

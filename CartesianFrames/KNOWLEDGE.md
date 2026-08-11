@@ -256,9 +256,9 @@ gap; do flag any attempt to formalize it without a new user ruling.
   disambiguates.  Qualify in client-facing docs.
 - `⊥` is a maximum for `◁` (`C ◁ ⊥` always) and `IsEmpty C.Env → C ◁ D` —
   faithful to the paper; subagency witnesses need nonempty `Env` and non-`⊥` RHS.
-- Two reusable `≃ᵇ`-invariants now LIVE in Biextensional.lean (round-2 fix):
-  `image_eq_of_biextEquiv` and `exists_env_injective_of_biextEquiv` — the standard
-  refuters for `◁ₓ`/`◁₊`.  Do not re-derive the one-sided subset form (internal).
+- THREE reusable `≃ᵇ`-invariants now LIVE in Biextensional.lean:
+  `image_eq_of_biextEquiv`, `exists_env_injective_of_biextEquiv`, and (since round
+  3) `BiextEquiv.dual`.  Do not re-derive the one-sided subset form (internal).
 - Examples.lean's second half (round-2 fix) covers §2.4: `driver3`/`committed`/
   `driver3Commit`, the paper's team example (`teamD`/`teamZ`/`teamC`), and
   `bigD`/`bigZ`/`bigC`, with witnesses for non-totality, both refinements
@@ -283,6 +283,29 @@ gap; do flag any attempt to formalize it without a new user ruling.
   honest version (additive certified by Claims 41/42; multiplicative by the
   unformalized collapse/cardinality argument).  Do not re-assert "WLOG by Claims
   41–44" — that exact sentence was findings R2-F02/F07.
+
+## Round 3 additions
+
+- Examples.lean's third block ("Operation and Appendix-B witnesses"): `ext_genuine`
+  (external on a 2-cell partition of bigD is a genuine non-reflexive `◁ₓ`),
+  `driver3Assume` + `◁*₊` witness, `colDup`/`phi0` (smallest frame with nontrivial
+  endomorphism monoid; Def 54's homotopy relaxation load-bearing —
+  `phi0_no_exact_factorization` vs `cat54_holds`), App B relation instances and
+  non-totality examples, dualized Def 25/26 examples.  Second dd:eq-to-iso bridge:
+  `oneOfUnivIsoOne` (Def 49).  Claim 35's `= Set.univ` absorption is disclosed at
+  the sites AND pinned by four checked `example`s.
+- `Nonempty (partitionSections s)` in general is a KNOWN GAP as public surface (the
+  probe's one-liner exists only as a private specialized def in Examples); if
+  needed, it belongs beside `partitionSections` in Operations.lean.
+- Gate-script traps: `check_trust_surface.py` exits 0 even on FAIL — read its
+  output line, never its exit status (same class as the `lake build -j4` trap).
+  The CF-INVENTORY preamble's unannotated-groups enumeration has no script check —
+  recount it in the same edit as any inventory change.
+- Build calibration correction: documentation/witness-sized CF rounds rebuild the
+  whole chain in ~2 min total; only cold or Mathlib-touching builds need the long
+  budget.
+- Paper erratum 7 (Def 54 "unique" is loose prose; literal reading falsifies
+  Claim 56 — compiled falsifier `two_distinct_endos`).
 
 ## Cleared suspicions (round 1 — do not re-raise without new evidence)
 
