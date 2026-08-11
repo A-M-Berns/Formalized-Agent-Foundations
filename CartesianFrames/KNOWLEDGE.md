@@ -11,8 +11,19 @@ entries.  Scope of the formalization: **all 60 numbered nodes**, both appendices
 |---|---|---|
 | Definition 1 | `CartesianFrames.Frame`, `Frame.image` | defined |
 | Definition 2 | `Frame.Hom`, `Frame.Hom.comp`, `LargeCategory (Frame W)` instance | defined; category laws hold by `rfl` |
+| Definition 3 | `Frame.Hom.IsIsomorphism`; bridge `nonempty_iso_iff_exists_isIsomorphism` to Mathlib `C ≅ D` | defined + bridged |
+| Definition 4 | `Frame.Biextensional` | defined |
+| Definition 5 | `Frame.agentSetoid`, `Frame.envSetoid` | defined |
+| Definition 6 | `Frame.collapse` (+ internal `collapse_biextensional`) | defined |
+| Definition 7 | `Frame.BiextEquiv`, scoped `≃ᵇ` | defined |
+| Claim 8 | `Frame.nonempty_iso_of_eq`, `Frame.biextEquiv_of_nonempty_iso` | proved |
 | Definition 9 | `Frame.dual`, `Frame.Hom.dual`, `Frame.dualFunctor` | defined; `(C*)* = C` is `rfl` |
-| Definitions 3–8, 10–58, Claims, Theorem 24 | — | not started |
+| Definition 36 | `Frame.Homotopic` (+ equivalence/congruence lemmas) | defined |
+| Definition 37 | `Frame.HomotopyEquiv` | defined |
+| Claim 38 | `Frame.homotopyEquiv_iff_nonempty_iso_of_biextensional` | proved |
+| Claim 39 | `Frame.biextEquiv_iff_homotopyEquiv` | proved |
+| Claim 40 | `Frame.biextEquiv_of_nonempty_iso` (shared with Claim 8) | proved |
+| Definitions 10–35, 41–58, remaining Claims, Theorem 24 | — | not started |
 
 ## Design decisions (settled with Anson, 2026-08-11)
 

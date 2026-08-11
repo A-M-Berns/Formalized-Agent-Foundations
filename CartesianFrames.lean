@@ -34,3 +34,4 @@ The standing choices (each also documented in `CartesianFrames/README.md`):
   Claim 8/40 where downstream wants them.
 -/
 import CartesianFrames.Basic
+import CartesianFrames.Biextensional

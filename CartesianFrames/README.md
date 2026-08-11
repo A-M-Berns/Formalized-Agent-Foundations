@@ -4,10 +4,13 @@ A Lean 4 formalization of Garrabrant, Herrmann, and Lopez-Wild,
 [*Cartesian Frames*](https://arxiv.org/abs/2109.10996) (arXiv:2109.10996v1).
 
 Scope: all 60 numbered nodes of the paper, including both appendices.  The current
-checked layer covers frames, morphisms, the category `Chu(W)`, and the transpose
-functor (Definitions 1, 2, and 9).  Biextensional equivalence, world-level functors,
-and the subagency calculus are staged next; see `KNOWLEDGE.md` for the settled
-design decisions and correspondence table.
+checked layer covers frames, morphisms, the category `Chu(W)`, the transpose
+functor, and the full equivalence layer: isomorphism, biextensionality, the
+biextensional collapse, biextensional equivalence, and Appendix A's homotopy
+machinery, with Claims 8, 38, 39, and 40 proved (Definitions 1–7, 9, 36–37).
+World-level functors (§2.3) and the subagency calculus (§2.4, Appendix B) are
+staged next; see `KNOWLEDGE.md` for the settled design decisions and correspondence
+table.
 
 The paper is committed verbatim as
 [`notes/2109.10996v1-main.tex`](../notes/2109.10996v1-main.tex), with the matching
@@ -21,9 +24,11 @@ statement appearing as a paper claim or theorem, while supporting results are
 `lemma`s.
 
 There are currently no `sorry` terms and no `axiom` declarations in this library.
-The first paper theorem has not yet been claimed as formalized, so the Cartesian
-Frames surface has not yet been added to `AxiomAudit.lean`; it will be, in the same
-change that lands the first `theorem`.
+The public surface is inventoried in `AxiomAudit.lean` (CF-INVENTORY block):
+`#assert_axioms_clean` over every endpoint, `#assert_fields` freezing the boundary
+structures (`Frame`, `Frame.Hom`, `Frame.Biextensional`), and
+`scripts/check-cartesian-frames-nodes.py` checking both that every cited node exists
+in the paper TeX and that every annotated node has an inventoried endpoint.
 
 ## Modeling boundary
 

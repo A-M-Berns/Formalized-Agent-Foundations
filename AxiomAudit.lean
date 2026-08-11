@@ -56,6 +56,7 @@ import LogicalInduction.Construction
 import ModalAgents.Cooperation
 import ModalAgents.Behavioral
 import ModalAgents.FixedPoint
+import CartesianFrames.Biextensional
 
 open Lean Elab Command in
 /-- Fail elaboration unless every named declaration exists and depends on no axioms
@@ -816,3 +817,34 @@ noncomputable def concreteArithmeticInstantiation :=
 
 open LO.FirstOrder.Arithmetic in
 #assert_axioms_clean_except ISigma1_delta1Definable concreteArithmeticInstantiation
+
+/-! ## Cartesian Frames — endpoint inventory
+
+Same contract as the Logical Induction inventory above, for `CartesianFrames/`
+(paper: arXiv:2109.10996). Most of that paper's nodes carry no LaTeX `\label`, so
+`Paper node:` lines cite the printed `Definition n` / `Claim n` / `Theorem n`
+numbers; `scripts/check-cartesian-frames-nodes.py` validates them against the
+committed TeX **and** checks that every node annotated in the library has at least
+one endpoint listed between the CF-INVENTORY markers below. -/
+
+open CartesianFrames in
+-- CF-INVENTORY-BEGIN
+#assert_axioms_clean
+  Frame Frame.image Frame.Hom Frame.Hom.comp
+  Frame.dual Frame.Hom.dual Frame.dualFunctor
+  Frame.Hom.IsIsomorphism Frame.Biextensional
+  Frame.agentSetoid Frame.envSetoid Frame.collapse Frame.BiextEquiv
+  Frame.Homotopic Frame.HomotopyEquiv
+  Frame.nonempty_iso_of_eq Frame.biextEquiv_of_nonempty_iso
+  Frame.homotopyEquiv_iff_nonempty_iso_of_biextensional
+  Frame.biextEquiv_iff_homotopyEquiv
+-- CF-INVENTORY-END
+
+/-! Tier-2 boundary structures for the Cartesian Frames surface (same contract as
+the Logical Induction `#assert_fields` block). -/
+#assert_fields CartesianFrames.Frame
+  Agent Env outcome
+#assert_fields CartesianFrames.Frame.Hom
+  agent env adjoint
+#assert_fields CartesianFrames.Frame.Biextensional
+  agent_ext env_ext
