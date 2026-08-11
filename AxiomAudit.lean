@@ -57,6 +57,7 @@ import ModalAgents.Cooperation
 import ModalAgents.Behavioral
 import ModalAgents.FixedPoint
 import CartesianFrames.Examples
+import CartesianFrames.Worlds
 
 open Lean Elab Command in
 /-- Fail elaboration unless every named declaration exists and depends on no axioms
@@ -844,6 +845,7 @@ open CartesianFrames in
   Frame.nonempty_iso_of_eq Frame.biextEquiv_of_nonempty_iso
   Frame.homotopyEquiv_iff_nonempty_iso_of_biextensional
   Frame.biextEquiv_iff_homotopyEquiv
+  Frame.mapWorlds Frame.BiextEquiv.mapWorlds Frame.curry
   -- Non-vacuity witnesses (CartesianFrames/Examples.lean).
   Examples.driver_biextensional
   Examples.seven_mem_driver_image Examples.two_not_mem_driver_image

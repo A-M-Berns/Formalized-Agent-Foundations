@@ -38,4 +38,5 @@ The standing choices (each also documented in `CartesianFrames/README.md`):
 -/
 import CartesianFrames.Basic
 import CartesianFrames.Biextensional
+import CartesianFrames.Worlds
 import CartesianFrames.Examples
