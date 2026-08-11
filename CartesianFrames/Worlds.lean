@@ -104,6 +104,28 @@ def curry (C : Frame W) : Frame C.Agent ⥤ Frame W where
     (b : Z.Agent) (f : Z.Env) (e : C.Env) :
     ((C.curry).obj Z).outcome b (f, e) = C.outcome (Z.outcome b f) e := rfl
 
+/-- `C°` sends homotopic morphisms to homotopic morphisms. -/
+lemma Homotopic.curryMap (C : Frame W) {Z₀ Z₁ : Frame C.Agent} {g g' : Z₀ ⟶ Z₁}
+    (h : Homotopic g g') :
+    Homotopic (C.curry.map g) (C.curry.map g') :=
+  fun b p => congrArg (C.outcome · p.2) (h b p.1)
+
+/-- `C°` preserves homotopy equivalence. -/
+lemma HomotopyEquiv.curryObj (C : Frame W) {Z₀ Z₁ : Frame C.Agent}
+    (h : HomotopyEquiv Z₀ Z₁) :
+    HomotopyEquiv (C.curry.obj Z₀) (C.curry.obj Z₁) := by
+  obtain ⟨φ, ψ, hφψ, hψφ⟩ := h
+  exact ⟨C.curry.map φ, C.curry.map ψ,
+    by simpa [← Functor.map_comp] using hφψ.curryMap C,
+    by simpa [← Functor.map_comp] using hψφ.curryMap C⟩
+
+/-- `C°` preserves biextensional equivalence — used silently by the paper's proof
+of Claim 42 when replacing `M` by `⊥_{Image M}` under `D°`. -/
+lemma BiextEquiv.curryObj (C : Frame W) {Z₀ Z₁ : Frame C.Agent} (h : Z₀ ≃ᵇ Z₁) :
+    C.curry.obj Z₀ ≃ᵇ C.curry.obj Z₁ :=
+  biextEquiv_iff_homotopyEquiv.mpr
+    ((biextEquiv_iff_homotopyEquiv.mp h).curryObj C)
+
 section RegressionExamples
 
 /- Client-side exercises of the endpoints above (endpoint-usability rule). -/
