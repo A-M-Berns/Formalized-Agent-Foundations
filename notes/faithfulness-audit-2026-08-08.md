@@ -301,6 +301,10 @@ the audit's own criteria:
   construction's *own* plausible world (`provabilityWorld T`, the witness
   `theoremDP_hworld` already exhibits) through the product atoms, using the least assignment
   closed under the positive clauses. There is no stand-in witness and no constant sequence.
+  The joint satisfiability of the *whole* premise set — the two paper-absent premises
+  included — is separately exhibited by
+  `lic_no_expected_net_update_conditional_exact_closed_nonvacuous`, at a provably
+  non-constant weight and a source family whose day-`n` LUV is a distinct atom family.
 * **The circularity B2 names is broken, not assumed away.** The weight's quote LUV is built
   against the **base** market, which exists before the extended process does; the
   certificate's `weight_generable` field is then supplied by a second `def:pgen` premise

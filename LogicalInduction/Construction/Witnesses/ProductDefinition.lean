@@ -1087,6 +1087,65 @@ theorem lic_no_expected_net_update_conditional_exact_closed
 
 end ExactClosed
 
+/-! ### Non-vacuity of the exact closed endpoint
+
+Two of the endpoint's premises are the propositional rendering's cost rather than the
+paper's, so the joint satisfiability of the whole premise set has to be exhibited, not
+argued.  It is, and by an **index-varying** construction at both ends: the weight is the
+harmonic sequence `1/(n+1)` (efficiently codeable, so `def:pgen` holds against *every*
+market, the extended one included) and the source is that sequence's own quotation
+threshold family, whose day-`n` LUV is a distinct family of atoms for each `n`. -/
+
+/-- The harmonic weight `n ↦ 1/(n+1)`: efficiently codeable, `[0,1]`-valued, and not
+eventually constant. -/
+lemma harmonicWeight_polyRatCodes : PolyRatCodes (fun n : ℕ => 1 / ((n : ℚ) + 1)) := by
+  refine ⟨_, ((PolyFueled.const 2).pair PolyFueled.id.succ_comp).of_eq (fun n => ?_)⟩
+  have h : (1 : ℚ) / ((n : ℚ) + 1) = (((n + 1 : ℕ) : ℚ))⁻¹ := by push_cast; rw [one_div]
+  show Nat.pair 2 (n + 1) = Encodable.encode ((1 : ℚ) / ((n : ℚ) + 1))
+  rw [h, encode_rat_inv_natCast n.succ_pos]
+
+lemma harmonicWeight_mem (n : ℕ) : 0 ≤ 1 / ((n : ℚ) + 1) ∧ 1 / ((n : ℚ) + 1) ≤ 1 := by
+  have hpos : (0 : ℚ) < (n : ℚ) + 1 := by positivity
+  exact ⟨by positivity, by rw [div_le_one hpos]; linarith [Nat.cast_nonneg (α := ℚ) n]⟩
+
+lemma harmonicWeight_not_constant : ¬ ∀ m n : ℕ, 1 / ((m : ℚ) + 1) = 1 / ((n : ℚ) + 1) := by
+  intro h
+  have := h 0 1
+  norm_num at this
+
+/-- Every efficiently codeable rational sequence is `def:pgen` against **every** market,
+through its constant feature. -/
+lemma PGenerableRat.ofPolyRatCodes {q : ℕ → ℚ} (hq : PolyRatCodes q) (P : History) :
+    PGenerableRat P q :=
+  ⟨ratCodeFeature q, ratCodeFeature_generated P q hq⟩
+
+/-- **N±.**  The exact closed endpoint's whole premise set is jointly satisfiable, by an
+index-varying construction rather than a stand-in witness: the `def:ec` threshold codes,
+the completed-world source values, the atom-freshness side condition and the second
+`def:pgen` premise about the **extended** market all hold at once, of a weight sequence that
+is provably non-constant and a source family whose day-`n` LUV is a distinct atom family.
+So neither of the two paper-absent premises is vacuous, and they are not jointly
+unsatisfiable with the paper's own.
+Paper node: `thm:ccee` -/
+theorem lic_no_expected_net_update_conditional_exact_closed_nonvacuous
+    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] [𝗥₀ ⪯ T]
+    (f : DeferralFunction) :
+    ∃ (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
+      (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w) (X : ℕ → LUV),
+      ¬ (∀ m n, w m = w n) ∧
+      LUV.RpnThresholdCodeSeq X ∧
+      (∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) → ∃ x, v.ValuesAt (X n) x) ∧
+      ProductAtomFresh X ∧
+      PGenerableRat (liaHistory (exactProductDP T f w weight_mem weight_generable X)) w := by
+  classical
+  set w : ℕ → ℚ := fun n => 1 / ((n : ℚ) + 1) with hw
+  have hpoly : PolyRatCodes w := harmonicWeight_polyRatCodes
+  set q := RationalQuoteCode.ofComputable T hpoly.computable harmonicWeight_mem with hq
+  refine ⟨w, harmonicWeight_mem, PGenerableRat.ofPolyRatCodes hpoly _, q.luv,
+    harmonicWeight_not_constant, q.poly, fun n v hv => ⟨(w n : ℝ), ?_⟩,
+    q.productAtomFresh, PGenerableRat.ofPolyRatCodes hpoly _⟩
+  exact RationalQuoteCode.reflected (quotationPresentation T) q n v hv
+
 #print axioms PCWorld.holds_congr_atomCodes
 #print axioms productLUV_valuesAt
 #print axioms productExtensionWorld_holds_schema
@@ -1099,5 +1158,6 @@ end ExactClosed
 #print axioms QuotationTheoryPresentation.mono
 #print axioms exactProductDP_hworld
 #print axioms lic_no_expected_net_update_conditional_exact_closed
+#print axioms lic_no_expected_net_update_conditional_exact_closed_nonvacuous
 
 end LogicalInduction

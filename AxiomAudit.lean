@@ -577,6 +577,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   QuotationTheoryPresentation.mono
   exactProductDP_hworld
   lic_no_expected_net_update_conditional_exact_closed
+  lic_no_expected_net_update_conditional_exact_closed_nonvacuous
 
 -- Construction/Witnesses/ComputationDP.lean — unconditional-over-LIA capstones
 -- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above).
