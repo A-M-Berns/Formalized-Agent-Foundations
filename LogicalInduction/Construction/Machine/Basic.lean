@@ -158,6 +158,14 @@ ends could not be composed. -/
 def HaltsFrom [DecidableEq S] (P : Prog Γ S Λ) (q : Λ) (T T' : S → List Γ) (t : ℕ) : Prop :=
   ∃ s ≤ t, ∃ r : Λ, runFor P s ⟨q, T⟩ = some ⟨r, T'⟩ ∧ stepCfg P ⟨r, T'⟩ = none
 
+/-- A run that halts may be prefixed by any completed run: this is what lets a phase of a
+composite be analysed by its own induction and then spliced in. -/
+lemma HaltsFrom.prepend [DecidableEq S] {P : Prog Γ S Λ} {q q' : Λ} {T T' T'' : S → List Γ}
+    {s t : ℕ} (h : runFor P s ⟨q, T⟩ = some ⟨q', T'⟩) (h' : HaltsFrom P q' T' T'' t) :
+    HaltsFrom P q T T'' (s + t) := by
+  obtain ⟨s', hs', r, hrun, hhalt⟩ := h'
+  exact ⟨s + s', by omega, r, by rw [runFor_add, h, Option.bind_some]; exact hrun, hhalt⟩
+
 lemma HaltsFrom.mono [DecidableEq S] {P : Prog Γ S Λ} {q : Λ} {T T' : S → List Γ} {t t' : ℕ}
     (h : HaltsFrom P q T T' t) (ht : t ≤ t') : HaltsFrom P q T T' t' := by
   obtain ⟨s, hs, r, hrun, hhalt⟩ := h
