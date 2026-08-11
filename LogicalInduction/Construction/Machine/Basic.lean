@@ -15,7 +15,7 @@ unit-cost RAM.
 
 **Memory shape: a private block over a shared I/O stack.** A machine declares a finite index
 type `Machine.K` of *private* stacks; its stacks are `Stack K = Option K`, where `none`
-(`Stack.io`) is the input/output stack every machine shares and `some k` is private scratch.
+(the input/output stack every machine shares) and `some k` is private scratch.
 This is what makes machines composable. Two machines are combined by relabelling each into
 its own block of a larger index type (`Prog.relabel`, `Closure.lean`); a relabelled machine
 then *provably* cannot see or touch the other blocks, because its transition function is
@@ -95,19 +95,6 @@ lemma Act.length_apply_le [DecidableEq S] (act : Act S Γ) (T : S → List Γ) (
       · subst h; simp [Act.apply, Function.update_self]; omega
       · simp [Act.apply, Function.update_of_ne h]
   | nop => simp [Act.apply]
-
-/-- An action leaves untouched every stack it does not name. -/
-lemma Act.apply_of_ne [DecidableEq S] : ∀ (act : Act S Γ) (T : S → List Γ) {k : S},
-    (∀ j x, act ≠ .push j x ∨ j ≠ k) → (∀ j, act ≠ .pop j ∨ j ≠ k) → act.apply T k = T k
-  | .push j x, T, k, h₁, _ => by
-      rcases h₁ j x with h | h
-      · exact absurd rfl h
-      · simp [Act.apply, Function.update_of_ne (Ne.symm h)]
-  | .pop j, T, k, _, h₂ => by
-      rcases h₂ j with h | h
-      · exact absurd rfl h
-      · simp [Act.apply, Function.update_of_ne (Ne.symm h)]
-  | .nop, T, k, _, _ => rfl
 
 /-- A machine configuration: the control state and the contents of the stacks (each written
 top-first). -/
@@ -198,15 +185,9 @@ lemma HaltsFrom.length_le [DecidableEq S] {P : Prog Γ S Λ} {q : Λ} {T T' : S 
 
 /-! ## Machines -/
 
-/-- The stacks of a machine with private block `K`: the shared input/output stack
-(`Stack.io`) together with one private stack for each `k : K`. -/
+/-- The stacks of a machine with private block `K`: `none` is the input/output stack shared
+by every machine, and `some k` is the private stack `k`. -/
 abbrev Stack (K : Type) := Option K
-
-/-- The shared input/output stack. -/
-def Stack.io {K : Type} : Stack K := none
-
-/-- A private stack of the block `K`. -/
-def Stack.priv {K : Type} (k : K) : Stack K := some k
 
 /-- A counted-step machine over the alphabet `Γ`: a finite private stack block, a finite
 control, and a transition function over `Stack K`.
@@ -238,17 +219,16 @@ def layout {K : Type} (w : List Γ) : Stack K → List Γ
   | none => w
   | some _ => []
 
-@[simp] lemma layout_io {K : Type} (w : List Γ) : layout (K := K) w Stack.io = w := rfl
+@[simp] lemma layout_none {K : Type} (w : List Γ) : layout (K := K) w none = w := rfl
 
-@[simp] lemma layout_priv {K : Type} (w : List Γ) (k : K) :
-    layout w (Stack.priv k) = [] := rfl
+@[simp] lemma layout_some {K : Type} (w : List Γ) (k : K) : layout w (some k) = [] := rfl
 
 /-- **`M` maps `x` to `y` within `t` steps.** The machine started on `x` in the canonical
 initial memory halts after at most `t` steps with `y` on the shared stack. Private stacks may
 be left dirty: they are invisible to any construction `M` is embedded in, so clearing them
 would be pure overhead. -/
 def RunsInTime (M : Machine Γ) (x y : List Γ) (t : ℕ) : Prop :=
-  ∃ T' : Stack M.K → List Γ, T' Stack.io = y ∧ HaltsFrom M.step M.init (layout x) T' t
+  ∃ T' : Stack M.K → List Γ, T' none = y ∧ HaltsFrom M.step M.init (layout x) T' t
 
 lemma RunsInTime.mono {M : Machine Γ} {x y : List Γ} {t t' : ℕ} (h : RunsInTime M x y t)
     (ht : t ≤ t') : RunsInTime M x y t' := by
@@ -261,9 +241,9 @@ machine's clock is evaluated at a polynomially bounded length. -/
 lemma RunsInTime.length_output_le {M : Machine Γ} {x y : List Γ} {t : ℕ}
     (h : RunsInTime M x y t) : y.length ≤ x.length + t := by
   obtain ⟨T', hout, hrun⟩ := h
-  have h' := hrun.length_le Stack.io
+  have h' := hrun.length_le none
   rw [hout] at h'
-  simpa [Stack.io, layout] using h'
+  simpa [layout] using h'
 
 /-! ## The polynomial-time class -/
 

@@ -6,9 +6,11 @@ are in `notes/boundary-efficiency-model.md`.
 
 * `Machine/Basic.lean` — the machine, `RunsInTime`, and the polynomial class
   `MachinePolyEC`. Read its module docstring first: it is the model card.
-* `Machine/Closure.lean` — sequential composition and the composition closure
-  `MachinePolyEC.comp`; pairing is stated and open, with the design obstruction recorded at
-  the site.
+* `Machine/Closure.lean` — sequencing (`seqProg`), relabelling into a larger memory with
+  its frame lemma (`Prog.relabel`, `HaltsFrom.relabel`), and the composition closure
+  `MachinePolyEC.comp`.
+* `Machine/Pairing.lean` — the data-movement primitive `pump` and its three phases, the
+  eight-phase pairing machine, and the pairing closure `MachinePolyEC.pair`.
 * `Machine/TimedRespectsProbe.lean` — the Stage-0 de-risk probe (a timed
   `Turing.TM1to0`). A spike: evidence for the decision, not part of the development, and
   deliberately not imported here.
@@ -20,3 +22,4 @@ is not started. No strength claim in the repository changes until Stage 3 comple
 -/
 import LogicalInduction.Construction.Machine.Basic
 import LogicalInduction.Construction.Machine.Closure
+import LogicalInduction.Construction.Machine.Pairing

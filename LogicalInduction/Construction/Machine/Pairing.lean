@@ -15,6 +15,7 @@ one stack and performs two symbol-dependent actions. `xfer`, `dup` and `emitTagg
 three instantiations, and the pairing machine is eight phases chained by `HaltsFrom.seq`.
 -/
 import LogicalInduction.Construction.Machine.Closure
+import Mathlib.Tactic.FinCases
 
 namespace LogicalInduction.Counted
 
@@ -257,5 +258,379 @@ lemma pushOne_run (dst : S) (x : Γ) (T : S → List Γ) :
   · show (stepCfg (pushOne dst x) ⟨true, T⟩).bind (runFor (pushOne dst x) 0) = _
     simp [stepCfg, pushOne, Act.apply]
   · simp [stepCfg, pushOne]
+
+/-! ## The pairing encoding -/
+
+/-- Self-delimiting pairing of words over an alphabet with two distinguished symbols: each
+symbol of `u` is preceded by the tag `s₁`, and `s₀` terminates the `u` block. -/
+def pairWord (s₀ s₁ : Γ) (u v : List Γ) : List Γ :=
+  (u.flatMap fun x => [s₁, x]) ++ s₀ :: v
+
+/-- Pairing is injective in both arguments, given two distinct tags: `pairWord` really does
+encode the pair. -/
+lemma pairWord_injective {s₀ s₁ : Γ} (hs : s₀ ≠ s₁) {u u' v v' : List Γ}
+    (h : pairWord s₀ s₁ u v = pairWord s₀ s₁ u' v') : u = u' ∧ v = v' := by
+  induction u generalizing u' with
+  | nil =>
+      cases u' with
+      | nil => simpa [pairWord] using h
+      | cons x' u'' => simp [pairWord] at h; exact absurd h.1 hs
+  | cons x u ih =>
+      cases u' with
+      | nil => simp [pairWord] at h; exact absurd h.1.symm hs
+      | cons x' u'' =>
+          simp only [pairWord, List.flatMap_cons, List.cons_append, List.append_assoc,
+            List.cons.injEq] at h
+          obtain ⟨-, hx, hrest⟩ := h
+          obtain ⟨hu, hv⟩ := ih (by simpa [pairWord] using hrest)
+          exact ⟨by rw [hx, hu], hv⟩
+
+/-! ## The memory of the pairing machine
+
+Three scratch stacks of its own, plus a private block for each of the two component
+machines, so that a copy of the input can be parked outside both. -/
+
+section Pair
+
+variable (M₁ M₂ : Machine Γ)
+
+/-- The private stack block of the pairing machine. -/
+abbrev pairK : Type := Fin 3 ⊕ (M₁.K ⊕ M₂.K)
+
+/-- One of the pairing machine's own three scratch stacks. -/
+abbrev scratch (i : Fin 3) : Stack (pairK M₁ M₂) := some (Sum.inl i)
+
+/-- The first component machine's block, sharing the I/O stack. -/
+abbrev embF : Stack M₁.K → Stack (pairK M₁ M₂) :=
+  fun k => stackInr (Fin 3) (M₁.K ⊕ M₂.K) (stackInl M₁.K M₂.K k)
+
+/-- The second component machine's block, sharing the I/O stack. -/
+abbrev embG : Stack M₂.K → Stack (pairK M₁ M₂) :=
+  fun k => stackInr (Fin 3) (M₁.K ⊕ M₂.K) (stackInr M₁.K M₂.K k)
+
+lemma embF_injective : Function.Injective (embF M₁ M₂) :=
+  (stackInr_injective (Fin 3) (M₁.K ⊕ M₂.K)).comp (stackInl_injective M₁.K M₂.K)
+
+lemma embG_injective : Function.Injective (embG M₁ M₂) :=
+  (stackInr_injective (Fin 3) (M₁.K ⊕ M₂.K)).comp (stackInr_injective M₁.K M₂.K)
+
+@[simp] lemma scratch_ne_io (i : Fin 3) : scratch M₁ M₂ i ≠ none := by simp [scratch]
+
+@[simp] lemma embF_ne_scratch (k : Stack M₁.K) (i : Fin 3) :
+    embF M₁ M₂ k ≠ scratch M₁ M₂ i := by
+  cases k <;> simp [embF, scratch, stackInl, stackInr]
+
+@[simp] lemma embG_ne_scratch (k : Stack M₂.K) (i : Fin 3) :
+    embG M₁ M₂ k ≠ scratch M₁ M₂ i := by
+  cases k <;> simp [embG, scratch, stackInr]
+
+lemma embF_ne_embG_priv (k : Stack M₁.K) (j : M₂.K) :
+    embF M₁ M₂ k ≠ embG M₁ M₂ (some j) := by
+  cases k <;> simp [embF, embG, stackInl, stackInr]
+
+end Pair
+
+/-! ### Pointwise forms of the phase run lemmas
+
+The phase lemmas above describe their output store as a nest of `Function.update`s. These
+restate them in terms of the store's *values*, which is the form a chain of phases can use
+without unfolding anything. -/
+
+section Pointwise
+
+variable {Γ S : Type} [DecidableEq S]
+
+lemma xfer_run_val (src dst : S) (hne : dst ≠ src) (l : List Γ) (T T' : S → List Γ)
+    (hT : T src = l) (h1 : T' src = []) (h2 : T' dst = l.reverse ++ T dst)
+    (h3 : ∀ j, j ≠ src → j ≠ dst → T' j = T j) :
+    HaltsFrom (xfer src dst) none T T' (3 * l.length) := by
+  have h := xfer_run src dst hne l T hT
+  have heq : Function.update (Function.update T src []) dst (l.reverse ++ T dst) = T' := by
+    funext j
+    by_cases hjd : j = dst
+    · subst hjd; rw [Function.update_self, h2]
+    · rw [Function.update_of_ne hjd]
+      by_cases hjs : j = src
+      · subst hjs; rw [Function.update_self, h1]
+      · rw [Function.update_of_ne hjs, h3 j hjs hjd]
+  rwa [heq] at h
+
+lemma dup_run_val (src d₁ d₂ : S) (k₁ : d₁ ≠ src) (k₂ : d₂ ≠ src) (k₁₂ : d₁ ≠ d₂)
+    (l : List Γ) (T T' : S → List Γ) (hT : T src = l)
+    (h1 : T' src = []) (h2 : T' d₁ = l.reverse ++ T d₁) (h3 : T' d₂ = l.reverse ++ T d₂)
+    (h4 : ∀ j, j ≠ src → j ≠ d₁ → j ≠ d₂ → T' j = T j) :
+    HaltsFrom (dup src d₁ d₂) none T T' (3 * l.length) := by
+  have h := dup_run src d₁ d₂ k₁ k₂ k₁₂ l T hT
+  have heq : Function.update
+      (Function.update (Function.update T src []) d₁ (l.reverse ++ T d₁)) d₂
+      (l.reverse ++ T d₂) = T' := by
+    funext j
+    by_cases hj2 : j = d₂
+    · subst hj2; rw [Function.update_self, h3]
+    · rw [Function.update_of_ne hj2]
+      by_cases hj1 : j = d₁
+      · subst hj1; rw [Function.update_self, h2]
+      · rw [Function.update_of_ne hj1]
+        by_cases hjs : j = src
+        · subst hjs; rw [Function.update_self, h1]
+        · rw [Function.update_of_ne hjs, h4 j hjs hj1 hj2]
+  rwa [heq] at h
+
+end Pointwise
+
+section Pair
+
+variable {Γ : Type} (M₁ M₂ : Machine Γ)
+
+/-- Case analysis on the pairing machine's stacks: the I/O stack, the three scratch stacks,
+and the two component blocks. -/
+lemma pairStack_cases {motive : Stack (pairK M₁ M₂) → Prop} (hio : motive none)
+    (h0 : motive (scratch M₁ M₂ 0)) (h1 : motive (scratch M₁ M₂ 1))
+    (h2 : motive (scratch M₁ M₂ 2)) (hF : ∀ k, motive (embF M₁ M₂ (some k)))
+    (hG : ∀ k, motive (embG M₁ M₂ (some k))) : ∀ j, motive j := by
+  rintro (_ | (i | (k | k)))
+  · exact hio
+  · fin_cases i
+    · exact h0
+    · exact h1
+    · exact h2
+  · exact hF k
+  · exact hG k
+
+/-- The pairing machine's memory, described by the contents of the I/O stack and of its three
+scratch stacks, over whatever the two component blocks currently hold. -/
+def pairStore (m o t th : List Γ) (B : Stack (pairK M₁ M₂) → List Γ) :
+    Stack (pairK M₁ M₂) → List Γ := fun j =>
+  if j = none then m
+  else if j = scratch M₁ M₂ 0 then o
+  else if j = scratch M₁ M₂ 1 then t
+  else if j = scratch M₁ M₂ 2 then th
+  else B j
+
+variable {M₁ M₂}
+
+@[simp] lemma pairStore_io (m o t th : List Γ) (B : Stack (pairK M₁ M₂) → List Γ) :
+    pairStore M₁ M₂ m o t th B none = m := if_pos rfl
+
+@[simp] lemma pairStore_zero (m o t th : List Γ) (B : Stack (pairK M₁ M₂) → List Γ) :
+    pairStore M₁ M₂ m o t th B (scratch M₁ M₂ 0) = o := by
+  simp [pairStore, scratch]
+
+@[simp] lemma pairStore_one (m o t th : List Γ) (B : Stack (pairK M₁ M₂) → List Γ) :
+    pairStore M₁ M₂ m o t th B (scratch M₁ M₂ 1) = t := by
+  simp [pairStore, scratch]
+
+@[simp] lemma pairStore_two (m o t th : List Γ) (B : Stack (pairK M₁ M₂) → List Γ) :
+    pairStore M₁ M₂ m o t th B (scratch M₁ M₂ 2) = th := by
+  simp [pairStore, scratch]
+
+@[simp] lemma pairStore_embF (m o t th : List Γ) (B : Stack (pairK M₁ M₂) → List Γ)
+    (j : M₁.K) : pairStore M₁ M₂ m o t th B (embF M₁ M₂ (some j))
+      = B (embF M₁ M₂ (some j)) := by
+  simp [pairStore, scratch, embF, stackInl, stackInr]
+
+@[simp] lemma pairStore_embG (m o t th : List Γ) (B : Stack (pairK M₁ M₂) → List Γ)
+    (j : M₂.K) : pairStore M₁ M₂ m o t th B (embG M₁ M₂ (some j))
+      = B (embG M₁ M₂ (some j)) := by
+  simp [pairStore, scratch, embG, stackInr]
+
+end Pair
+
+/-! ## The pairing machine -/
+
+section PairMachine
+
+variable {Γ : Type} [Fintype Γ] (M₁ M₂ : Machine Γ) (s₀ s₁ : Γ)
+
+/-- **The pairing machine**: eight phases, chained by `seqProg`, over a memory holding three
+scratch stacks of its own and a private block for each component machine.
+
+`dup` copies the input onto two scratch stacks; `xfer` restores one copy to the I/O stack;
+`M₁` runs in its own block, leaving its output on the I/O stack while the second copy of the
+input sits untouched on a scratch stack it cannot reach; `xfer` parks that output; `xfer`
+restores the input; `M₂` runs; `pushOne` writes the separator; `emitTagged` writes the tagged
+block of `M₁`'s output on top. -/
+def pairMachine : Machine Γ where
+  K := pairK M₁ M₂
+  Λ := Option (Γ × Bool) ⊕ (Option (Γ × Bool) ⊕ (M₁.Λ ⊕ (Option (Γ × Bool) ⊕
+        (Option (Γ × Bool) ⊕ (M₂.Λ ⊕ (Bool ⊕ Option (Γ × Bool)))))))
+  init := Sum.inl none
+  step :=
+    seqProg (dup none (scratch M₁ M₂ 0) (scratch M₁ M₂ 1)) (Sum.inl none)
+      (seqProg (xfer (scratch M₁ M₂ 0) none) (Sum.inl M₁.init)
+        (seqProg (M₁.step.relabel (embF M₁ M₂)) (Sum.inl none)
+          (seqProg (xfer none (scratch M₁ M₂ 2)) (Sum.inl none)
+            (seqProg (xfer (scratch M₁ M₂ 1) none) (Sum.inl M₂.init)
+              (seqProg (M₂.step.relabel (embG M₁ M₂)) (Sum.inl true)
+                (seqProg (pushOne none s₀) none
+                  (emitTagged (scratch M₁ M₂ 2) none s₁)))))))
+
+variable {M₁ M₂ s₀ s₁}
+
+/-- **The pairing machine computes the pair, in time linear in the inputs plus the two
+component running times.** The `6 * u.length` term is the cost of moving `M₁`'s output out of
+the way and then emitting it tagged. -/
+lemma pairMachine_runsInTime {x u v : List Γ} {t₁ t₂ : ℕ} (hf : RunsInTime M₁ x u t₁)
+    (hg : RunsInTime M₂ x v t₂) :
+    RunsInTime (pairMachine M₁ M₂ s₀ s₁) x (pairWord s₀ s₁ u v)
+      (9 * x.length + 6 * u.length + t₁ + t₂ + 8) := by
+  obtain ⟨U₁, hU₁, hrun₁⟩ := hf
+  obtain ⟨U₂, hU₂, hrun₂⟩ := hg
+  have hs0 : scratch M₁ M₂ 0 ≠ (none : Stack (pairK M₁ M₂)) := by simp
+  have hs1 : scratch M₁ M₂ 1 ≠ (none : Stack (pairK M₁ M₂)) := by simp
+  have hs2 : scratch M₁ M₂ 2 ≠ (none : Stack (pairK M₁ M₂)) := by simp
+  have hs01 : scratch M₁ M₂ 0 ≠ scratch M₁ M₂ 1 := by simp [scratch]
+  set Z : Stack (pairK M₁ M₂) → List Γ := fun _ => [] with hZ
+  -- Phase A: duplicate the input onto the two scratch stacks.
+  have hA : HaltsFrom (dup none (scratch M₁ M₂ 0) (scratch M₁ M₂ 1)) none
+      (layout x) (pairStore M₁ M₂ [] x.reverse x.reverse [] Z) (3 * x.length) := by
+    refine dup_run_val _ _ _ hs0 hs1 hs01 x _ _ rfl (by simp) (by simp [layout])
+      (by simp [layout]) ?_
+    refine pairStack_cases M₁ M₂ ?_ ?_ ?_ ?_ ?_ ?_
+    · intro h; exact absurd rfl h
+    · intro _ h _; exact absurd rfl h
+    · intro _ _ h; exact absurd rfl h
+    · intro _ _ _; simp [layout]
+    · intro k _ _ _; simp only [pairStore_embF, hZ]; rfl
+    · intro k _ _ _; simp only [pairStore_embG, hZ]; rfl
+  -- Phase B: restore one copy to the I/O stack.
+  have hB : HaltsFrom (xfer (scratch M₁ M₂ 0) none)
+      none (pairStore M₁ M₂ [] x.reverse x.reverse [] Z)
+      (pairStore M₁ M₂ x [] x.reverse [] Z) (3 * x.reverse.length) := by
+    refine xfer_run_val _ _ (Ne.symm hs0) x.reverse _ _ (by simp) (by simp) (by simp) ?_
+    refine pairStack_cases M₁ M₂ ?_ ?_ ?_ ?_ ?_ ?_
+    · intro _ h; exact absurd rfl h
+    · intro h; exact absurd rfl h
+    · intro _ _; simp
+    · intro _ _; simp
+    · intro k _ _; simp
+    · intro k _ _; simp
+  -- Phase C: run the first machine in its own block.
+  have halignF : ∀ k : Stack M₁.K,
+      (pairStore M₁ M₂ x [] x.reverse [] Z) (embF M₁ M₂ k) = layout x k := by
+    rintro (_ | k)
+    · show pairStore M₁ M₂ x [] x.reverse [] Z none = x
+      simp
+    · simp only [pairStore_embF, hZ]; rfl
+  obtain ⟨T₃, hC, hCmem, hCframe⟩ := hrun₁.relabel (embF_injective M₁ M₂) halignF
+  have hT₃io : T₃ none = u := (hCmem none).trans hU₁
+  have hT₃s0 : T₃ (scratch M₁ M₂ 0) = [] := by
+    rw [hCframe _ (fun k => embF_ne_scratch M₁ M₂ k 0)]; simp
+  have hT₃s1 : T₃ (scratch M₁ M₂ 1) = x.reverse := by
+    rw [hCframe _ (fun k => embF_ne_scratch M₁ M₂ k 1)]; simp
+  have hT₃s2 : T₃ (scratch M₁ M₂ 2) = [] := by
+    rw [hCframe _ (fun k => embF_ne_scratch M₁ M₂ k 2)]; simp
+  have hT₃G : ∀ j : M₂.K, T₃ (embG M₁ M₂ (some j)) = [] := by
+    intro j
+    rw [hCframe _ (fun k => embF_ne_embG_priv M₁ M₂ k j)]; simp [hZ]
+  -- Phase D: park the first output on a scratch stack.
+  have hD : HaltsFrom (xfer none (scratch M₁ M₂ 2)) none T₃
+      (pairStore M₁ M₂ [] [] x.reverse u.reverse T₃) (3 * u.length) := by
+    refine xfer_run_val _ _ hs2 u _ _ hT₃io (by simp) (by simp [hT₃s2]) ?_
+    refine pairStack_cases M₁ M₂ ?_ ?_ ?_ ?_ ?_ ?_
+    · intro h; exact absurd rfl h
+    · intro _ _; simp [hT₃s0]
+    · intro _ _; simp [hT₃s1]
+    · intro _ h; exact absurd rfl h
+    · intro k _ _; simp
+    · intro k _ _; simp
+  -- Phase E: restore the second copy of the input.
+  have hE : HaltsFrom (xfer (scratch M₁ M₂ 1) none) none
+      (pairStore M₁ M₂ [] [] x.reverse u.reverse T₃)
+      (pairStore M₁ M₂ x [] [] u.reverse T₃) (3 * x.reverse.length) := by
+    refine xfer_run_val _ _ (Ne.symm hs1) x.reverse _ _ (by simp) (by simp) (by simp) ?_
+    refine pairStack_cases M₁ M₂ ?_ ?_ ?_ ?_ ?_ ?_
+    · intro _ h; exact absurd rfl h
+    · intro _ _; simp
+    · intro h; exact absurd rfl h
+    · intro _ _; simp
+    · intro k _ _; simp
+    · intro k _ _; simp
+  -- Phase F: run the second machine in its own block.
+  have halignG : ∀ k : Stack M₂.K,
+      (pairStore M₁ M₂ x [] [] u.reverse T₃) (embG M₁ M₂ k) = layout x k := by
+    rintro (_ | k)
+    · show pairStore M₁ M₂ x [] [] u.reverse T₃ none = x
+      simp
+    · simp only [pairStore_embG]; rw [hT₃G k]; rfl
+  obtain ⟨T₆, hF, hFmem, hFframe⟩ := hrun₂.relabel (embG_injective M₁ M₂) halignG
+  have hT₆io : T₆ none = v := (hFmem none).trans hU₂
+  have hT₆s2 : T₆ (scratch M₁ M₂ 2) = u.reverse := by
+    rw [hFframe _ (fun k => embG_ne_scratch M₁ M₂ k 2)]; simp
+  -- Phase G: the separator.
+  have hG := pushOne_run (none : Stack (pairK M₁ M₂)) s₀ T₆
+  have hT₇io : (Function.update T₆ none (s₀ :: T₆ none)) none = s₀ :: v := by
+    rw [Function.update_self, hT₆io]
+  have hT₇s2 : (Function.update T₆ none (s₀ :: T₆ none)) (scratch M₁ M₂ 2) = u.reverse := by
+    rw [Function.update_of_ne hs2, hT₆s2]
+  -- Phase H: emit the tagged block of the first output.
+  have hH := emitTagged_run (scratch M₁ M₂ 2) (none : Stack (pairK M₁ M₂)) s₁ (Ne.symm hs2)
+    u.reverse (Function.update T₆ none (s₀ :: T₆ none)) hT₇s2
+  refine ⟨_, ?_, ((hA.seq (hB.seq (hC.seq (hD.seq (hE.seq (hF.seq (hG.seq hH))))))).mono ?_)⟩
+  · rw [Function.update_self, List.reverse_reverse, hT₆io]
+    rfl
+  · simp only [List.length_reverse]
+    omega
+
+end PairMachine
+
+/-! ## Closure under pairing -/
+
+section Closure
+
+variable {Γ : Type} [Fintype Γ]
+
+/-- The clock normal form absorbs the pairing overhead: linear movement costs, the two
+component clocks, and the length of the first output (itself bounded by the first clock). -/
+lemma exists_clock_pair (a₁ k₁ a₂ k₂ : ℕ) :
+    ∃ a k : ℕ, ∀ n m : ℕ, m ≤ n + (a₁ * (n + 1) ^ k₁ + a₁) →
+      9 * n + 6 * m + (a₁ * (n + 1) ^ k₁ + a₁) + (a₂ * (n + 1) ^ k₂ + a₂) + 8
+        ≤ a * (n + 1) ^ k + a := by
+  refine ⟨23 + 7 * (2 * a₁ + 1) + (2 * a₂ + 1), max (max k₁ k₂) 1, fun n m hm => ?_⟩
+  have hNpos : 0 < n + 1 := Nat.succ_pos n
+  have hmono : ∀ i j : ℕ, i ≤ j → (n + 1) ^ i ≤ (n + 1) ^ j :=
+    fun _ _ h => Nat.pow_le_pow_right hNpos h
+  have hA1 : 1 ≤ (n + 1) ^ (max (max k₁ k₂) 1) := Nat.one_le_pow _ _ hNpos
+  have hn : n ≤ (n + 1) ^ (max (max k₁ k₂) 1) := by
+    have h := hmono 1 (max (max k₁ k₂) 1) (le_max_right _ _)
+    simp only [pow_one] at h; omega
+  have h1 : a₁ * (n + 1) ^ k₁ + a₁ ≤ (2 * a₁ + 1) * (n + 1) ^ (max (max k₁ k₂) 1) :=
+    (clock_le a₁ (Nat.one_le_pow _ _ hNpos)).trans
+      (Nat.mul_le_mul (le_refl _)
+        (hmono _ _ ((le_max_left k₁ k₂).trans (le_max_left _ 1))))
+  have h2 : a₂ * (n + 1) ^ k₂ + a₂ ≤ (2 * a₂ + 1) * (n + 1) ^ (max (max k₁ k₂) 1) :=
+    (clock_le a₂ (Nat.one_le_pow _ _ hNpos)).trans
+      (Nat.mul_le_mul (le_refl _)
+        (hmono _ _ ((le_max_right k₁ k₂).trans (le_max_left _ 1))))
+  have key : (23 + 7 * (2 * a₁ + 1) + (2 * a₂ + 1)) * (n + 1) ^ (max (max k₁ k₂) 1)
+      = 23 * (n + 1) ^ (max (max k₁ k₂) 1)
+        + 7 * ((2 * a₁ + 1) * (n + 1) ^ (max (max k₁ k₂) 1))
+        + (2 * a₂ + 1) * (n + 1) ^ (max (max k₁ k₂) 1) := by ring
+  calc 9 * n + 6 * m + (a₁ * (n + 1) ^ k₁ + a₁) + (a₂ * (n + 1) ^ k₂ + a₂) + 8
+      ≤ 23 * (n + 1) ^ (max (max k₁ k₂) 1)
+          + 7 * ((2 * a₁ + 1) * (n + 1) ^ (max (max k₁ k₂) 1))
+          + (2 * a₂ + 1) * (n + 1) ^ (max (max k₁ k₂) 1) := by omega
+    _ = (23 + 7 * (2 * a₁ + 1) + (2 * a₂ + 1)) * (n + 1) ^ (max (max k₁ k₂) 1) := key.symm
+    _ ≤ (23 + 7 * (2 * a₁ + 1) + (2 * a₂ + 1)) * (n + 1) ^ (max (max k₁ k₂) 1)
+          + (23 + 7 * (2 * a₁ + 1) + (2 * a₂ + 1)) := Nat.le_add_right _ _
+
+/-- **The polynomial-time machine class is closed under pairing.**
+
+Together with `MachinePolyEC.comp` this is the pair of closure results Stage 1 set out to
+prove. Unlike composition, this one genuinely needs the memory architecture: the machine
+keeps a copy of its input on a scratch stack across `f`'s run, and it is `HaltsFrom.relabel`
+— the frame half of the embedding — that says `f` cannot disturb it. -/
+lemma MachinePolyEC.pair {s₀ s₁ : Γ} {f g : List Γ → List Γ}
+    (hf : MachinePolyEC f) (hg : MachinePolyEC g) :
+    MachinePolyEC (fun x => pairWord s₀ s₁ (f x) (g x)) := by
+  obtain ⟨M₁, a₁, k₁, h₁⟩ := hf
+  obtain ⟨M₂, a₂, k₂, h₂⟩ := hg
+  obtain ⟨a, k, hclock⟩ := exists_clock_pair a₁ k₁ a₂ k₂
+  refine ⟨pairMachine M₁ M₂ s₀ s₁, a, k, fun x => ?_⟩
+  have hx := h₁ x
+  exact (pairMachine_runsInTime hx (h₂ x)).mono
+    (hclock x.length (f x).length hx.length_output_le)
+
+end Closure
 
 end LogicalInduction.Counted

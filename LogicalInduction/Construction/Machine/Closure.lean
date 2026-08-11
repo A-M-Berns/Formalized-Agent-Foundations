@@ -251,10 +251,6 @@ lemma stackInl_ne_inr {K₁ K₂ : Type} (k : Stack K₁) (m : K₂) :
     stackInl K₁ K₂ k ≠ some (Sum.inr m) := by
   cases k <;> simp [stackInl]
 
-lemma stackInr_ne_inl {K₁ K₂ : Type} (k : Stack K₂) (m : K₁) :
-    stackInr K₁ K₂ k ≠ some (Sum.inl m) := by
-  cases k <;> simp [stackInr]
-
 /-! ## Sequential composition of machines -/
 
 /-- **Sequential composition of machines.** Each component runs relabelled into its own

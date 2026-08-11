@@ -208,5 +208,40 @@ the build.
 
 `LogicalInduction/Construction/Machine/` — additive, imported by nothing in
 `LogicalInduction.lean`, so outside the checked gates by construction. See the directory's
-own module docstring for the model card. **No strength claim changes** anywhere in the
-repo: per this note's staging, there is no partial credit before Stage 3 completes.
+own module docstring for the model card. **No strength claim changes** anywhere in the repo:
+per this note's staging, there is no partial credit before Stage 3 completes.
+
+**The memory architecture, and why it is what it is.** A machine is a finite control over
+stacks, one memory action per step. Each machine declares a finite *private* stack block
+`Machine.K`; its stacks are `Stack K = Option K`, where `none` is an input/output stack that
+**every** machine shares and `some k` is private scratch. A run starts with the input on the
+shared stack and the private block empty, and ends with the output on the shared stack;
+private stacks may be left dirty, since nothing that embeds the machine can see them.
+
+The first attempt used a fixed four-stack memory shared by all machines, and it got
+composition but could not get pairing: with every machine free to touch every stack, there
+is nowhere to park a copy of the input across a sub-machine's run. The private-block design
+fixes that structurally rather than by side condition. Machines are combined by *relabelling*
+each into its own block of a larger index type (`Prog.relabel`); a relabelled program's
+transition function is precomposed with the restriction of the stack tops to its own block,
+so it cannot even read the other blocks, and `HaltsFrom.relabel` records both halves — the
+run mirrors the original on its block, and everything off the block is untouched. That frame
+property is what pairing needs, and it now holds by construction.
+
+**Landed, all `sorry`-free.**
+
+* `Machine/Basic.lean` — `Act`/`Cfg`/`Prog`/`stepCfg`/`runFor` over an arbitrary stack index;
+  `HaltsFrom` (store-to-store, the form multi-phase constructions chain); `Machine`;
+  `RunsInTime`; `MachinePolyEC`, whose clock is `fun n => a * (n + 1) ^ k + a`, the same
+  normal form as `EfficientlyComputable`'s. Time bounds output size (one symbol per step).
+* `Machine/Closure.lean` — `seqProg` and `HaltsFrom.seq` (additive time, one step of
+  handover, and no data movement because the I/O stack is shared); `Prog.relabel` and the
+  frame lemma; `seq`; `MachinePolyEC.comp`.
+* `Machine/Pairing.lean` — one data-movement primitive `pump` (a three-beat loop: pop a
+  symbol, then two symbol-dependent actions, the symbol carried in the control) with its
+  three instantiations `xfer`, `dup`, `emitTagged`; the eight-phase pairing machine; and
+  `MachinePolyEC.pair` for the self-delimiting encoding `pairWord`.
+
+Both closure results are the first nontrivial theorems about polynomial-time machine
+computability in Lean; the composition one is the statement Mathlib records as open
+(`proof_wanted Turing.TM2ComputableInPolyTime.comp`).
