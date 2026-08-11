@@ -40,7 +40,17 @@ TeX source `notes/2109.10996v1-main.tex`.
    `Nonempty D.Agent`, reproducing the paper verbatim in the nonempty case. Same
    shape as erratum 1: printed proof incomplete, statement sound.
 
-5. **Definition 10, carrier naming.** The definition introduces the image frame as
+5. **Definition 50 (App. B), false parenthetical.** After the covering definition
+   the paper writes "`E` is covered by `F`, or equivalently, there is a morphism
+   `(g, h)` with `h` surjective" (TeX ~L1209). The two are not equivalent:
+   different environment states of `C` may be hit by different morphisms.
+   Counterexample over `W = Bool`: `C = (PUnit, Bool, (_, e) ↦ e)`,
+   `D = (Bool, PUnit, (b, _) ↦ b)` — the covering condition holds, but every
+   morphism's `env` has singleton domain, so none is surjective onto `Bool`.
+   (Compiled witness, round-2 audit.) `Frame.SubagentCovering` formalizes the
+   correct per-`e` form.
+
+6. **Definition 10, carrier naming.** The definition introduces the image frame as
    `(B, F, ⋆)` as if the carriers changed; the functor leaves agent and
    environment carriers unchanged — only outcomes are mapped through `p`. (Benign
    once noticed; recorded because it misled a first reading.)

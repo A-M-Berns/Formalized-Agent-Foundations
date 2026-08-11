@@ -31,14 +31,16 @@ The standing choices (each also documented in `CartesianFrames/README.md`):
 
 * `dd:eq-to-iso` — where the paper asserts a literal *equality* of frames that
   Lean's subtype/quotient encoding makes unstateable (e.g. Claim 35's idempotence:
-  committing changes the agent's *type*), the theorem states the canonical
-  *isomorphism* instead — one rung below equality and only the forced rung.  Each
-  affected site carries this tag; biextensional-equivalence corollaries follow via
-  Claim 8/40 where downstream wants them.
+  committing changes the agent's *type*), the declaration states the canonical
+  *isomorphism* instead — one rung below equality and only the forced rung.  An `≅`
+  is data rather than a proposition, so such a site is a `def`, not a `theorem`.
+  Each affected site carries this tag; biextensional-equivalence corollaries follow
+  via Claim 8/40 where downstream wants them.
 -/
 import CartesianFrames.Basic
 import CartesianFrames.Biextensional
 import CartesianFrames.Worlds
 import CartesianFrames.Subagent
 import CartesianFrames.AdditiveMultiplicative
+import CartesianFrames.Operations
 import CartesianFrames.Examples

@@ -12,13 +12,19 @@ full subagency layer: `⊥`-frames, the categorical/currying/covering definition
 `◁` (Definitions 12–14, 50) with their equivalences and basic properties (Claims
 15–17, 51–53), and the additive/multiplicative refinement (Definitions 18–21) with
 its equivalence claims, properties, and the Decomposition Theorem (Claims 22–23,
-41–44, Theorem 24).  Two paper errata found so far — the printed proofs of Claims
-53 and 43 are incomplete though both statements are sound; see
+41–44, Theorem 24), and the operations calculus of §2.4.1: sub-environments
+(Definitions 25–26) with the collapse of the multiplicative notions (Claim 27), and
+committing, assuming, externalizing, and internalizing (Definitions 28–33) with the
+subagency claims they generate (Claim 30, Claim 34 proved as Appendix A's Claim 45)
+and idempotence (Claim 35).  Two paper errata found so far — the printed proofs of
+Claims 53 and 43 are incomplete though both statements are sound; see
 `notes/cartesian-frames-paper-errata.md`, which also records the Claim 35
-ill-typedness (its External/Internal half is deliberately not formalized, by
-ruling; the Commit/Assume half is staged).  The operations calculus (§2.4.1) and
-the remaining Appendix B claims are staged next; see `KNOWLEDGE.md` for settled
-design decisions and the correspondence table.
+ill-typedness.  **Claim 35 is formalized only in part, by ruling:** its
+Commit/Assume half is proved (at canonical-isomorphism strength, `dd:eq-to-iso`),
+while its External/Internal half is ill-typed as printed — `B` partitions `A`, not
+`A/B` — and is deliberately left unformalized.  The remaining Appendix B claims are
+staged next; see `KNOWLEDGE.md` for settled design decisions and the correspondence
+table.
 
 [`Examples.lean`](Examples.lean) carries the paper's two worked matrices — §2.1's
 driver and §2.2's duplicate-row pair — as concrete `Frame ℕ`s, together with the
@@ -82,8 +88,10 @@ Three standing design decisions, tagged at their sites and defined in
   involution `(C*)* = C`.
 - **`dd:eq-to-iso`** — where the paper asserts a literal equality of frames that
   Lean's subtype/quotient encoding makes unstateable (e.g. Claim 35's idempotence),
-  the theorem states the canonical isomorphism instead: one rung below equality,
-  and only the forced rung.  Each site carries the tag.
+  the declaration states the canonical isomorphism instead: one rung below equality,
+  and only the forced rung.  An `≅` is data rather than a proposition, so these
+  sites are `def`s (`Frame.commit_commit_self` and kin, `Frame.botOfUnivIsoBot`),
+  inventoried like any other endpoint.  Each site carries the tag.
 
 ## Build and source checks
 

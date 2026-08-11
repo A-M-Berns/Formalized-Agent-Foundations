@@ -60,6 +60,7 @@ import CartesianFrames.Examples
 import CartesianFrames.Worlds
 import CartesianFrames.Subagent
 import CartesianFrames.AdditiveMultiplicative
+import CartesianFrames.Operations
 
 open Lean Elab Command in
 /-- Fail elaboration unless every named declaration exists and depends on no axioms
@@ -864,6 +865,17 @@ open CartesianFrames in
   Frame.AddSubagent.refl Frame.MultSubagent.refl
   Frame.AddSubagent.trans Frame.MultSubagent.trans
   Frame.subagent_iff_exists_multSubagent_addSubagent
+  Frame.SubEnv Frame.AddSubEnv Frame.MultSubEnv
+  Frame.multSubagent_iff_multSubEnv
+  Frame.commit Frame.commitCompl Frame.assume Frame.assumeCompl
+  Frame.commit_addSubagent Frame.commitCompl_addSubagent
+  Frame.addSubEnv_assume Frame.addSubEnv_assumeCompl
+  Frame.partitionSections
+  Frame.external Frame.externalQuot Frame.internal Frame.internalSect
+  Frame.external_multSubagent Frame.externalQuot_multSubagent
+  Frame.multSubagent_internal Frame.multSubagent_internalSect
+  Frame.commit_commit_self Frame.commitCompl_commitCompl_self
+  Frame.assume_assume_self Frame.assumeCompl_assumeCompl_self
   -- Non-vacuity witnesses (CartesianFrames/Examples.lean).
   Examples.driver_biextensional
   Examples.seven_mem_driver_image Examples.two_not_mem_driver_image
