@@ -20,7 +20,9 @@ and idempotence (Claim 35), and Appendix B's categorical layer: the transpose
 equivalence with its composites definitionally the identity functors (Claim 46),
 initial and terminal frames (Definition 47, Claim 48), `1_S` (Definition 49), and
 the categorical characterization of additive subagents (Definitions 54, 57;
-Claims 55–56).  Remaining: Definition 58 and Claims 59–60.  Paper errata found so
+Claims 55–56), and the sub-environment characterization closing the appendix
+(Definition 58, Claims 59–60).  **Every numbered node of the paper now has a Lean
+carrier** (modulo the Claim 35 ruling below).  Paper errata found so
 far are collected in `notes/cartesian-frames-paper-errata.md` (the printed proofs
 of Claims 53 and 43 are incomplete though both statements are sound; Definition
 50's "equivalently, `h` surjective" parenthetical is false; Claim 35 is partially

@@ -59,7 +59,12 @@ entries.  Scope of the formalization: **all 60 numbered nodes**, both appendices
 | Definition 54 | `Frame.AddSubagentCategorical` | defined |
 | Claims 55–56 | `Frame.AddSubagentCategorical.addSubagent`, `Frame.AddSubagent.addSubagentCategorical` (+ iff package) | proved |
 | Definition 57 | `Frame.MultSubagentCategorical` | defined |
-| Definition 58; Claims 59–60 | — | not started (final follow-up) |
+| Definition 58 | `Frame.MultSubagentSubEnv` | defined |
+| Claim 59 | `Frame.multSubagentCategorical_iff_multSubagentSubEnv` | proved |
+| Claim 60 | `Frame.multSubagentSubEnv_iff_multSubagent` | proved |
+
+**All 60 numbered nodes of the paper now have Lean carriers** (Claim 35's
+External/Internal half excluded by ruling; see intentional deviations).
 
 Unnumbered but load-bearing: `Frame.Biextensional.nonempty_iso_collapse`
 (`C.Biextensional → Nonempty (C ≅ C.collapse)` — the step the paper takes silently

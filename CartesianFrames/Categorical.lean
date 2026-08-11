@@ -1,4 +1,4 @@
-import CartesianFrames.AdditiveMultiplicative
+import CartesianFrames.Operations
 import Mathlib.CategoryTheory.Limits.Shapes.IsTerminal
 
 /-!
@@ -294,6 +294,79 @@ example (S : Set W) : (oneOf S).Agent = PUnit := rfl
 example (W : Type u) : ((dualFunctor W).obj (0 : Frame W)).unop = (⊤ : Frame W) := rfl
 
 end RegressionExamples
+
+/-! ## The sub-environment definition of multiplicative subagent
+(Definition 58, Claims 59–60) -/
+
+variable {C D : Frame W}
+
+/-- Definition 58, the sub-environment definition of multiplicative subagent:
+`C` is both a subagent and a sub-environment of `D`.
+
+Paper node: Definition 58 (App. B). -/
+def MultSubagentSubEnv (C D : Frame W) : Prop := (C ◁ D) ∧ (C ◁* D)
+
+/-- The categorical definition of multiplicative subagent is equivalent to the
+sub-environment definition: the `1 ⟶ D` factorization clause dualizes exactly to
+the categorical subagent condition for the duals.
+
+Paper node: Claim 59 (App. B). -/
+theorem multSubagentCategorical_iff_multSubagentSubEnv :
+    MultSubagentCategorical C D ↔ MultSubagentSubEnv C D := by
+  refine and_congr Iff.rfl ?_
+  constructor
+  · intro h φ
+    obtain ⟨ψ₀, ψ₁, hfac⟩ := h φ.dual
+    exact ⟨ψ₁.dual, ψ₀.dual, congrArg Hom.dual hfac⟩
+  · intro h ψ
+    obtain ⟨φ₀, φ₁, hfac⟩ := h ψ.dual
+    exact ⟨φ₁.dual, φ₀.dual, congrArg Hom.dual hfac⟩
+
+/-- The sub-environment definition of multiplicative subagent is equivalent to the
+externalizing definition.
+
+Paper node: Claim 60 (App. B). -/
+theorem multSubagentSubEnv_iff_multSubagent :
+    MultSubagentSubEnv C D ↔ C ◁ₓ D := by
+  constructor
+  · rintro ⟨hsub, hsubenv⟩
+    classical
+    -- Covering data on both sides: environments of `C` and agents of `D` are both
+    -- reached by morphisms `C ⟶ D`, exactly as in the paper's proof.
+    choose covHom covEnv covSpec using subagent_iff_subagentCovering.mp hsub
+    have hagent : ∀ b : D.Agent, ∃ p : C.Agent × (C ⟶ D), p.2.agent p.1 = b := by
+      intro b
+      obtain ⟨f, a, hfa⟩ := subagent_iff_subagentCovering.mp hsubenv b
+      exact ⟨(a, f.dual), hfa⟩
+    choose pick pickSpec using hagent
+    refine ⟨C.Agent, C ⟶ D, D.Env, fun a g z => D.outcome (g.agent a) z, ?_, ?_⟩
+    · -- `C ≃ᵇ (Agent C, hom(C,D) × Env D, ⋄)`, agents the identity.
+      rw [biextEquiv_iff_homotopyEquiv]
+      exact ⟨{ agent := fun a => a
+               env := fun p => (p.1).env p.2
+               adjoint := fun a p => (p.1).adjoint a p.2 },
+        { agent := fun a => a
+          env := fun e => (covHom e, covEnv e)
+          adjoint := fun a e =>
+            ((covHom e).adjoint a (covEnv e)).symm.trans
+              (congrArg (C.outcome a) (covSpec e)) },
+        fun _ _ => rfl, fun _ _ => rfl⟩
+    · -- `D ≃ᵇ (Agent C × hom(C,D), Env D, •)`, environments the identity.
+      rw [biextEquiv_iff_homotopyEquiv]
+      refine ⟨{ agent := pick
+                env := fun z => z
+                adjoint := fun b z => by
+                  show D.outcome b z = D.outcome ((pick b).2.agent (pick b).1) z
+                  rw [pickSpec b] },
+        { agent := fun p => p.2.agent p.1
+          env := fun z => z
+          adjoint := fun p z => rfl },
+        fun b z => ?_, fun p z => ?_⟩
+      · show D.outcome b z = D.outcome ((pick b).2.agent (pick b).1) z
+        rw [pickSpec b]
+      · exact (congrArg (fun b => D.outcome b z) (pickSpec ((p.2).agent p.1))).symm
+  · intro h
+    exact ⟨h.subagent, (multSubagent_iff_multSubEnv.mp h).subagent⟩
 
 end Frame
 

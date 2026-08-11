@@ -887,6 +887,9 @@ open CartesianFrames in
   Frame.oneOf Frame.instOne
   Frame.AddSubagentCategorical Frame.MultSubagentCategorical
   Frame.AddSubagentCategorical.addSubagent Frame.AddSubagent.addSubagentCategorical
+  Frame.MultSubagentSubEnv
+  Frame.multSubagentCategorical_iff_multSubagentSubEnv
+  Frame.multSubagentSubEnv_iff_multSubagent
   -- Non-vacuity witnesses (CartesianFrames/Examples.lean).
   Examples.driver_biextensional
   Examples.seven_mem_driver_image Examples.two_not_mem_driver_image
