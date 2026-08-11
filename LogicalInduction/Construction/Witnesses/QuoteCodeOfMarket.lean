@@ -1045,18 +1045,48 @@ deferred weighted expectation program. -/
 /-- Quote code naming the deferred-weight program `n ↦ w (f n)`: the quotation atom
 quotes the program, so deferral costs nothing at strategy-emission time.  The weight is
 P-generable (`def:ece`); its program comes from the feature presentation
-(`PGenerableRat.computable`).
+(`PGenerableRat.computable`), which is what the market program is for.  Parametric in the
+market: `def:pgen` is stated against *a* market, and the exact-product route
+(`Construction/Witnesses/ProductDefinition.lean`) needs this quote at a different one.
+Paper node: `thm:ccee` -/
+noncomputable def deferredWeightQuoteCode {P : History} (market : MarketComputation P)
+    (f : DeferralFunction) (w : ℕ → ℚ) (hw : PGenerableRat P w)
+    (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
+    RationalQuoteCode T (fun n => w (f n)) :=
+  RationalQuoteCode.ofComputable T
+    ((hw.computable market).comp f.computable)
+    (fun n => weight_mem (f n))
+
+/-- Quote code for the market's own deferred weighted expectation
+`n ↦ 𝔼_{f n}(X n) · w (f n)`, in exact rational form.  Parametric in the market, for the
+same reason as `deferredWeightQuoteCode`.
+Paper node: `thm:ccee` -/
+noncomputable def conditionalExpectationQuoteCode {P : History}
+    (market : MarketComputation P) (f : DeferralFunction)
+    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) (w : ℕ → ℚ)
+    (hw : PGenerableRat P w)
+    (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
+    RationalQuoteCode T (fun n => market.expectQuoteAt X n (f.f n) * w (f.f n)) :=
+  -- The `( … : _)` ascriptions are load-bearing (see the Part B note).
+  have hexp : Computable fun n => market.expectQuoteAt X n (f.f n) :=
+    ((market.expectQuoteAt_computable hX).comp (Computable.id.pair f.computable) : _)
+  have hval : Computable fun n => market.expectQuoteAt X n (f.f n) * w (f.f n) :=
+    (ratMul_prim.to_comp.comp hexp ((hw.computable market).comp f.computable) : _)
+  RationalQuoteCode.ofComputable T hval
+    (fun n => by
+      obtain ⟨he0, he1⟩ := market.expectQuoteAt_mem_Icc X n (f.f n)
+      obtain ⟨hw0, hw1⟩ := weight_mem (f.f n)
+      exact ⟨mul_nonneg he0 hw0, by nlinarith⟩)
+
+/-- The deferred-weight quote at the constructed `LIA`'s own market.
 Paper node: `thm:ccee` -/
 noncomputable def theoremDeferredWeightQuoteCode (f : DeferralFunction) (w : ℕ → ℚ)
     (hw : PGenerableRat (liaHistory (theoremDP T)) w)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
     RationalQuoteCode T (fun n => w (f n)) :=
-  RationalQuoteCode.ofComputable T
-    ((hw.computable (theoremMarketComputation T)).comp f.computable)
-    (fun n => weight_mem (f n))
+  deferredWeightQuoteCode T (theoremMarketComputation T) f w hw weight_mem
 
-/-- Quote code for the market's own deferred weighted expectation
-`n ↦ 𝔼_{f n}(X n) · w (f n)`, in exact rational form.
+/-- The deferred weighted-expectation quote at the constructed `LIA`'s own market.
 Paper node: `thm:ccee` -/
 noncomputable def theoremConditionalExpectationQuoteCode (f : DeferralFunction)
     (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) (w : ℕ → ℚ)
@@ -1064,21 +1094,7 @@ noncomputable def theoremConditionalExpectationQuoteCode (f : DeferralFunction)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
     RationalQuoteCode T (fun n =>
       (theoremMarketComputation T).expectQuoteAt X n (f.f n) * w (f.f n)) :=
-  -- The `( … : _)` ascriptions are load-bearing (see the Part B note).
-  have hexp : Computable fun n =>
-      (theoremMarketComputation T).expectQuoteAt X n (f.f n) :=
-    (((theoremMarketComputation T).expectQuoteAt_computable hX).comp
-      (Computable.id.pair f.computable) : _)
-  have hval : Computable fun n =>
-      (theoremMarketComputation T).expectQuoteAt X n (f.f n) * w (f.f n) :=
-    (ratMul_prim.to_comp.comp hexp
-      ((hw.computable (theoremMarketComputation T)).comp f.computable) : _)
-  RationalQuoteCode.ofComputable T hval
-    (fun n => by
-      obtain ⟨he0, he1⟩ :=
-        (theoremMarketComputation T).expectQuoteAt_mem_Icc X n (f.f n)
-      obtain ⟨hw0, hw1⟩ := weight_mem (f.f n)
-      exact ⟨mul_nonneg he0 hw0, by nlinarith⟩)
+  conditionalExpectationQuoteCode T (theoremMarketComputation T) f X hX w hw weight_mem
 
 /-- **`thm:ccee` (no expected net update under conditionals), closed form over the
 constructed `LIA`** — for an **arbitrary** e.c. source family `X`, as the paper states it,

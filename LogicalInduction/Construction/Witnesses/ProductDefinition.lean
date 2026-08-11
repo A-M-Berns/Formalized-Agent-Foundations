@@ -1,3 +1,4 @@
+import LogicalInduction.Construction.Witnesses.ConditioningPresentation
 import LogicalInduction.Construction.Witnesses.PrefixMachine
 import LogicalInduction.Construction.Witnesses.QuoteCodeOfMarket
 
@@ -60,7 +61,8 @@ residue, replacing the mesh route's slack disclosure with a strictly milder one.
 
 namespace LogicalInduction
 
-open LO LO.Propositional
+open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+open Filter Topology
 
 /-! ## Atom occurrences
 
@@ -141,6 +143,94 @@ sentence.  Stated on the atom tag rather than on the exact index, so it is stabl
 choice of `n` and `r` and is discharged by inspection for every family this repo builds. -/
 def ProductAtomFresh (X : ℕ → LUV) : Prop :=
   ∀ (n : ℕ) (r : ℚ), ∀ a ∈ sentenceAtomCodes ((X n).gt r), a.unpair.1 ≠ productTag
+
+/-! ### Freshness by construction
+
+For a *genuinely arbitrary* e.c. family, `ProductAtomFresh` must be assumed: a
+`LUV.RpnThresholdCodeSeq` certificate constrains only the size of the emitted threshold
+blocks, never which atoms they mention, so a poly-fueled emitter is free to emit tag-`5`
+atoms.  For everything this repository constructs the condition is a *theorem*, and the
+lemmas below are what discharge it: the constructed process's stages are images of
+`eventAtom`, whose atoms carry the computation-claim tags `0`–`3` or the quotation tag `4`,
+and every quotation threshold family carries tag `4`.  Nothing but `productLUV` uses tag
+`productTag = 5`. -/
+
+@[simp] lemma sentenceAtomCodes_neg (φ : Sentence) :
+    sentenceAtomCodes (∼φ) = sentenceAtomCodes φ := by
+  rw [Formula.neg_def, sentenceAtomCodes_imp, sentenceAtomCodes_falsum, Finset.union_empty]
+
+@[simp] lemma sentenceAtomCodes_verum :
+    sentenceAtomCodes (⊤ : Sentence) = ∅ := rfl
+
+lemma sentenceAtomCodes_computationClaimSentence (c : ComputationClaim) :
+    ∀ a ∈ sentenceAtomCodes (computationClaimSentence c), a.unpair.1 = c.kind.godelCode := by
+  intro a ha
+  rw [computationClaimSentence, sentenceAtomCodes_atom, Finset.mem_singleton] at ha
+  subst ha
+  simp [ComputationClaim.godelCode]
+
+lemma sentenceAtomCodes_quoteAtom (w : ℕ) :
+    ∀ a ∈ sentenceAtomCodes (quoteAtom w), a.unpair.1 = 4 := by
+  intro a ha
+  rw [quoteAtom, quotationClaimSentence, sentenceAtomCodes_atom, Finset.mem_singleton] at ha
+  subst ha
+  simp [quotationClaimCode]
+
+/-- **The constructed process's literals never carry the product tag.**  Every atom of an
+`eventAtom` is a computation claim (tags `0`–`3`) or a quotation claim (tag `4`). -/
+lemma eventAtom_atomCodes_ne_productTag (e : ℕ) :
+    ∀ a ∈ sentenceAtomCodes (eventAtom e), a.unpair.1 ≠ productTag := by
+  intro a ha
+  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | _ | _ | m
+  all_goals simp only [eventAtom, h, sentenceAtomCodes_neg] at ha
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, haltingClaim,
+        ComputationClaimKind.godelCode, productTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, haltingClaim,
+        ComputationClaimKind.godelCode, productTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, boundedHaltingClaim,
+        ComputationClaimKind.godelCode, productTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, boundedHaltingClaim,
+        ComputationClaimKind.godelCode, productTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, inconsistencyClaim,
+        ComputationClaimKind.godelCode, productTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, consistencyClaim,
+        ComputationClaimKind.godelCode, productTag] at hc
+  · exact fun hc => by simp [sentenceAtomCodes_quoteAtom _ a ha, productTag] at hc
+  · exact fun hc => by simp [sentenceAtomCodes_quoteAtom _ a ha, productTag] at hc
+  · simp at ha
+
+/-- Every quotation threshold family is fresh for the product tag: its thresholds are
+quotation atoms (tag `4`). -/
+lemma arithmeticThresholdLUV_productAtomFresh (code : ℕ) :
+    ProductAtomFresh (arithmeticThresholdLUV code) := by
+  intro n r a ha
+  have h := sentenceAtomCodes_quoteAtom _ a ha
+  simp [h, productTag]
+
+/-- A rational quote code's LUV family is fresh for the product tag. -/
+lemma RationalQuoteCode.productAtomFresh {T : ArithmeticTheory} {value : ℕ → ℚ}
+    (q : RationalQuoteCode T value) : ProductAtomFresh q.luv :=
+  arithmeticThresholdLUV_productAtomFresh q.code
+
+/-- **The base process is fresh for the product tag**, by construction: every stage of the
+constructed provability process is an image of `eventAtom`.  This is the side condition
+`productDefDP_union_consistentWithTheory` takes on the base process, discharged rather than
+assumed. -/
+lemma theoremDP_atomCodes_ne_productTag (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+    [T.SoundOnHierarchy 𝚺 1] (k : ℕ) :
+    ∀ φ ∈ (theoremDP T).D k, ∀ a ∈ sentenceAtomCodes φ, a.unpair.1 ≠ productTag := by
+  classical
+  intro φ hφ
+  simp only [theoremDP, theoremStage, Finset.mem_image, Finset.mem_filter,
+    Finset.mem_range] at hφ
+  obtain ⟨e, _, rfl⟩ := hφ
+  exact eventAtom_atomCodes_ne_productTag e
 
 /-! ## Mesh indices for the schema's two factors
 
@@ -801,6 +891,202 @@ theorem lic_no_expected_net_update_conditional_exact
       productLUV_valuesAt_union hv n hx (weight_valued n v hv), by simp⟩)
     right_reflected hworld
 
+/-! ## Closing the exact endpoint over the constructed `LIA`
+
+Everything above is process-generic.  What follows discharges the four semantic premises
+over the *constructed* inductor, so that the exact endpoint takes no inductor, market,
+presentation or `hworld` hypothesis — leaving exactly the premises the mesh endpoint
+carries, plus the two that the propositional rendering costs and the paper does not state.
+
+**PROVISIONAL (pending ruling).**  Two decisions in this section belong to Anson and are
+*not* ratified.  Everything below is built under the recommended defaults of
+`notes/boundary-propositional-substrate.md` so that the work is available for the ruling;
+if either is rejected, this section is deleted and nothing else moves.
+
+* **Gate (C) — the union rendering.**  The endpoint is stated over
+  `theoremDP T ∪ productDefDP` rather than over `theoremDP T`.  The paper's `thm:ccee` is
+  universally quantified over computable deductive processes, and a fresh-atom definitional
+  extension is the propositional counterpart of the product *term* the paper's `Θ` has
+  natively; there is Tier-1 precedent for a union-DP conclusion in
+  `lic_conditioned_gated_ofComputations` (`thm:scon`, classified *instantiated*).  Against:
+  the conclusion is about a different market from the incumbent's, and the tiering header
+  counts "a structure the paper gets definitionally" as a downgrade.  Full argument in
+  `notes/boundary-propositional-substrate.md` §(C).
+* **Gate (A2) — the second P-generability premise.**  `weight_generable_extended` is a
+  premise about the *extended* market that the paper does not state, and it cannot be
+  derived from the base-market one (a `GeneratedRatFeature`'s `denote` is evaluated at the
+  history, and the two histories differ) nor from computability.  It is the price of
+  keeping `w` at `def:pgen`; the alternative — narrowing `w` to `PolyRatCodes` — would drop
+  the paper's own worked example for this theorem (tex:2077) and is judged worse than the
+  slack it removes.  Full argument in §(A2) of the same note. -/
+
+/-- Stages of the union constrain the base process in particular. -/
+lemma PCWorld.consistentWithTheory_union_left {v : PCWorld} {DP extra : DeductiveProcess}
+    (h : v.ConsistentWithTheory (DP.union extra)) : v.ConsistentWithTheory DP :=
+  fun n => ((v.consistentWith_union_iff DP extra n).mp (h n)).1
+
+/-- **`QuotationTheoryPresentation` lifts along a process extension.**  Every field is
+either theory-side or an "enters some stage" claim, and the latter is monotone in the
+process; only the stage program has to be supplied afresh for the larger process.
+Paper node: `thm:ccee` -/
+noncomputable def QuotationTheoryPresentation.mono {DP DP' : DeductiveProcess}
+    {T : ArithmeticTheory} (Q : QuotationTheoryPresentation DP T)
+    (hsub : ∀ k, DP.D k ⊆ DP'.D k) (proc : DeductiveProcessComputation DP') :
+    QuotationTheoryPresentation DP' T where
+  theory_deltaOne := Q.theory_deltaOne
+  process := proc
+  halting_enters z h := (Q.halting_enters z h).imp fun k hk => hsub k hk
+  halting_refutes z h := (Q.halting_refutes z h).imp fun k hk => hsub k hk
+  boundedHalting_enters z h := (Q.boundedHalting_enters z h).imp fun k hk => hsub k hk
+  boundedFailure_refutes z h := (Q.boundedFailure_refutes z h).imp fun k hk => hsub k hk
+  inconsistency_enters z h := (Q.inconsistency_enters z h).imp fun k hk => hsub k hk
+  inconsistency_refutesConsistency z h :=
+    (Q.inconsistency_refutesConsistency z h).imp fun k hk => hsub k hk
+  theory_sigmaOne := Q.theory_sigmaOne
+  quote_positive_enters c i h := (Q.quote_positive_enters c i h).imp fun k hk => hsub k hk
+  quote_negative_refutes c i h := (Q.quote_negative_refutes c i h).imp fun k hk => hsub k hk
+
+section ExactClosed
+
+variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+variable (f : DeferralFunction) (w : ℕ → ℚ)
+  (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
+  (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w)
+
+/-- The weight family of the exact route: the deferred-weight quote LUV, built against the
+**base** market.  This is where the circularity of §(A2) is broken — the quote code needs
+`Computable (w ∘ f)`, which `PGenerableRat.computable` supplies from a market, and the only
+market available before the extended process exists is the base one.
+Paper node: `thm:ccee` -/
+noncomputable def exactWeightLUV : ℕ → LUV :=
+  (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem).luv
+
+/-- **The definitional extension.**  The constructed provability process, extended by the
+schema defining the fresh product atoms for the source family `X` and the deferred-weight
+quote family.  Adding defining biconditionals for fresh atoms is a conservative
+*definitional* extension; `productDefDP_union_consistentWithTheory` is that conservativity,
+proved.
+Paper node: `thm:ccee` -/
+noncomputable def exactProductDP (X : ℕ → LUV) : DeductiveProcess :=
+  (theoremDP T).union (productDefDP X (exactWeightLUV T f w weight_mem weight_generable))
+
+lemma exactProductDP_computable {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X) :
+    ComputableDeductiveProcess (exactProductDP T f w weight_mem weight_generable X) :=
+  DeductiveProcessComputation.union_toComputable
+    (theoremDP_computable T).nonemptyComputation.some
+    (productDefDP_computable hX
+      (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem).poly
+        ).nonemptyComputation.some
+
+/-- The extended process's own exact market program. -/
+noncomputable def exactProductMarket {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X) :
+    MarketComputation (liaHistory (exactProductDP T f w weight_mem weight_generable X)) :=
+  liaMarketComputation _ (exactProductDP_computable T f w weight_mem weight_generable hX)
+
+/-- **`hworld` for the extension, by construction.**  The provability world of the base
+process — the very world `theoremDP_hworld` exhibits — extends through the product
+definitions, so the extended process is stage-wise satisfiable whenever the base one is.
+No stand-in witness: the world is the base construction's own.
+Paper node: `thm:ccee` -/
+lemma exactProductDP_hworld {X : ℕ → LUV} (hXfresh : ProductAtomFresh X)
+    (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      ∃ x, v.ValuesAt (X n) x)
+    (n : ℕ) :
+    ∃ v : PCWorld,
+      v.ConsistentWith ((exactProductDP T f w weight_mem weight_generable X).D n) := by
+  classical
+  set q := theoremDeferredWeightQuoteCode T f w weight_generable weight_mem with hq
+  have hbase : (provabilityWorld T).ConsistentWithTheory (theoremDP T) :=
+    fun k => theoremDP_hworld T k
+  exact ⟨productExtensionWorld X (exactWeightLUV T f w weight_mem weight_generable)
+      (provabilityWorld T),
+    productDefDP_union_consistentWithTheory hXfresh q.productAtomFresh
+      (theoremDP_atomCodes_ne_productTag T) hbase
+      (fun m => source_valued m _ hbase)
+      (fun m => ⟨(w (f m) : ℝ),
+        RationalQuoteCode.reflected (quotationPresentation T) q m _ hbase⟩) n⟩
+
+/-- **`thm:ccee` at exact reflection, closed over the constructed `LIA`.**  For the paper's
+**arbitrary** e.c. source family `X`, over the constructed provability process extended by
+the product definitions: the left quoted product is the fresh atom family `productLUV`,
+every completed-theory world of the extended process values it at *exactly* `x · w (f n)` —
+`slack = 0`, no positivity hypothesis on the weight — and the right product is the extended
+market's own deferred weighted expectation, quoted.
+
+Premises 1–5 are exactly `lic_no_expected_net_update_conditional_closed`'s, hence the
+paper's own (`thm:cee`'s source premises, a `[0,1]` P-generable weight, a bare deferral
+function).  Two further premises are the propositional rendering's cost and are **not** in
+the paper — both flagged PROVISIONAL above:
+
+* `atom_fresh`: no product atom occurs inside a source threshold sentence.  Not an artifact
+  — an adversarial `X` with `(X n).gt s = ∼productAtom n r` makes a stage unsatisfiable and
+  the endpoint vacuous.  In the paper the product is a term over a *new function symbol*,
+  so freshness is guaranteed by the language; a flat propositional atom space has to say
+  it.  Discharged by inspection for every family this repository builds
+  (`arithmeticThresholdLUV_productAtomFresh`, `theoremDP_atomCodes_ne_productTag`).
+* `weight_generable_extended`: `def:pgen` for `w` against the **extended** market.  Needed
+  because `ConditionalExpectationQuote.weight_generable` is a frozen field evaluated at the
+  endpoint's own history, and the extended market's prices differ from the base market's.
+
+Proof kind `C` (composition over `lic_no_expected_net_update_conditional_ofRepresentation`).
+Provenance: `hworld` (a) `exactProductDP_hworld`; `source_valued` (a) transported along
+`consistentWithTheory_union_left`; `left_reflected` (a) `productLUV_valuesAt_union` at zero
+slack; `weight_valued` (a) `RationalQuoteCode.reflected` through the lifted presentation;
+`right_reflected` (a) `MarketComputation.expectQuoteAt_cast`; `atom_fresh` and
+`weight_generable_extended` (c) — modeling substitutions disclosed at the statement, in
+`LogicalInduction/README.md`, and in `scripts/coverage-classification.md`.
+Paper node: `thm:ccee` -/
+theorem lic_no_expected_net_update_conditional_exact_closed
+    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
+    (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      ∃ x, v.ValuesAt (X n) x)
+    (atom_fresh : ProductAtomFresh X)
+    (weight_generable_extended :
+      PGenerableRat (liaHistory (exactProductDP T f w weight_mem weight_generable X)) w) :
+    (fun n ↦ (productLUV n).expect
+        (liaHistory (exactProductDP T f w weight_mem weight_generable X)) n) ≈ₙ
+      fun n ↦ ((conditionalExpectationQuoteCode T
+          (exactProductMarket T f w weight_mem weight_generable hX) f X hX w
+          weight_generable_extended weight_mem).luv n).expect
+        (liaHistory (exactProductDP T f w weight_mem weight_generable X)) n := by
+  classical
+  haveI : IsLogicalInductor
+      (liaHistory (exactProductDP T f w weight_mem weight_generable X))
+      (exactProductDP T f w weight_mem weight_generable X) :=
+    LIA_is_logical_inductor _ (exactProductDP_computable T f w weight_mem weight_generable hX)
+  -- The quotation presentation, lifted from the base process to the extension.
+  have hQ : QuotationTheoryPresentation
+      (exactProductDP T f w weight_mem weight_generable X) T :=
+    (quotationPresentation T).mono (fun _ => Finset.subset_union_left)
+      (exactProductDP_computable T f w weight_mem weight_generable hX).nonemptyComputation.some
+  have hweight : ∀ n (v : PCWorld),
+      v.ConsistentWithTheory (exactProductDP T f w weight_mem weight_generable X) →
+        v.ValuesAt (exactWeightLUV T f w weight_mem weight_generable n) (w (f n)) :=
+    fun n v hv => RationalQuoteCode.reflected hQ
+      (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) n v hv
+  refine lic_no_expected_net_update_conditional_ofRepresentation
+    (P := liaHistory (exactProductDP T f w weight_mem weight_generable X))
+    (DP := exactProductDP T f w weight_mem weight_generable X)
+    f X productLUV _ w weight_mem weight_generable_extended hX
+    productLUV_rpnThresholdCodeSeq
+    (conditionalExpectationQuoteCode T
+      (exactProductMarket T f w weight_mem weight_generable hX) f X hX w
+      weight_generable_extended weight_mem).poly
+    (fun _ => 0) tendsto_const_nhds
+    (fun n v hv => source_valued n v (PCWorld.consistentWithTheory_union_left hv))
+    (fun n v hv x hx => ⟨x * (w (f n) : ℝ),
+      productLUV_valuesAt_union hv n hx (hweight n v hv), by simp⟩)
+    (fun n v hv => ?_)
+    (exactProductDP_hworld T f w weight_mem weight_generable atom_fresh source_valued)
+  have h := RationalQuoteCode.reflected hQ
+    (conditionalExpectationQuoteCode T
+      (exactProductMarket T f w weight_mem weight_generable hX) f X hX w
+      weight_generable_extended weight_mem) n v hv
+  rwa [Rat.cast_mul, ← (exactProductMarket T f w weight_mem weight_generable hX).expectQuoteAt_cast
+    X n (f.f n)] at h
+
+end ExactClosed
+
 #print axioms PCWorld.holds_congr_atomCodes
 #print axioms productLUV_valuesAt
 #print axioms productExtensionWorld_holds_schema
@@ -809,5 +1095,9 @@ theorem lic_no_expected_net_update_conditional_exact
 #print axioms productLUV_rpnThresholdCodeSeq
 #print axioms productDefDP_computable
 #print axioms lic_no_expected_net_update_conditional_exact
+#print axioms eventAtom_atomCodes_ne_productTag
+#print axioms QuotationTheoryPresentation.mono
+#print axioms exactProductDP_hworld
+#print axioms lic_no_expected_net_update_conditional_exact_closed
 
 end LogicalInduction

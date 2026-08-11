@@ -575,12 +575,20 @@ unconditional quotation endpoint below. -/
 private noncomputable abbrev theoremLIA : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
   LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
 
+/-- A named exact market program for the `LIA` over **any** computable deductive process.
+`thm:lia` makes the constructed market a logical inductor over `DP`, and a logical
+inductor's market is computable, so the program exists uniformly in `DP`.
+Paper node: `thm:lia` -/
+noncomputable def liaMarketComputation (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP) : MarketComputation (liaHistory DP) :=
+  (LIA_is_logical_inductor DP hDP).marketComputable.nonemptyComputation.some
+
 /-- A named exact market program for the constructed `LIA`, used to derive its canonical
 paradox-resistance diagonal without any caller-supplied semantic relation.
 Paper node: `thm:lp` -/
 noncomputable def theoremMarketComputation :
     MarketComputation (liaHistory (theoremDP T)) :=
-  (theoremLIA T).marketComputable.nonemptyComputation.some
+  liaMarketComputation (theoremDP T) (theoremDP_computable T)
 
 /-- The canonical public diagonal quote for the constructed `LIA` at threshold `p`.
 Paper node: `thm:lp` -/
