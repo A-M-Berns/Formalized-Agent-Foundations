@@ -145,8 +145,10 @@ assertion starts failing and gets promoted to a plain clean assertion.
    paper's `thm:li` if the inclusion fails. For the property tail the choice is
    conservative wherever a theorem's exploiting trader is constructed and certified
    inside the class — which is everywhere except **closure under finite perturbations**
-   (`thm:ifp`), whose transported trader needs a fuel-class closure property the model
-   provably lacks (the inverse-operation ceiling on the digit calculus), so that
+   (`thm:ifp`), whose transported trader needs a fuel-class closure property the digit
+   calculus's toolkit does not provide (the inverse-operation ceiling; a structural
+   obstruction — no class-level refutation is proved, and the model card's *open*
+   wording is authoritative), so that
    endpoint stays restricted to efficiently patchable market prefixes and has no
    instantiation over the constructed inductor. Sharper than that, and worth stating
    because it is easy to read past: the restricting interface `EfficientPrefixPatch` has
@@ -326,9 +328,11 @@ reads that have twice moved upward on contact.
   interface note above. Full assessment and the adjudication outcome in
   [`../notes/boundary-propositional-substrate.md`](../notes/boundary-propositional-substrate.md).
 * **`thm:ifp` — the fuel class.** The transported trader needs a closure property the
-  model provably lacks (the inverse-operation ceiling: the emitted freeze stream's
-  certificate needs a decode test on exponentially large codes, which the digit calculus
-  does not close under). Closing boundary 1 closes this and nothing smaller does. Stated
+  digit calculus's toolkit does not provide (the inverse-operation ceiling: the emitted
+  freeze stream's certificate needs a decode test on exponentially large codes, which no
+  combinator in the calculus closes under — a structural obstruction, not a proved
+  class-level refutation; the model card's *open* wording is authoritative). Closing
+  boundary 1 closes this and nothing smaller does. Stated
   plainly, because it is the sharpest disclosure on this page: `EfficientPrefixPatch` has
   **no inhabitant anywhere in the repo**, so `lic_iff_of_finitePerturbation` currently has
   no exhibited witness for its hypothesis — the restricted statement must not be described
