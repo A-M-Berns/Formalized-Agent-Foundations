@@ -1,6 +1,7 @@
 import LogicalInduction.Construction.Witnesses.BoundedEvaluation
 import LogicalInduction.Properties.MetaLearning
 import Foundation.FirstOrder.Arithmetic.R0.Representation
+import Foundation.Syntax.Predicate.Rew
 import Foundation.FirstOrder.Bootstrapping.Syntax.Theory
 import Mathlib.Computability.Ackermann
 
@@ -151,29 +152,23 @@ noncomputable def universalBoundedFailureSchema : ArithmeticSemisentence 1 :=
 
 /-- The unbounded schema has exactly the intended standard-model meaning. -/
 lemma universalHaltingSchema_spec (z : ℕ) :
-    ℕ ⊧ₘ universalHaltingSchema/[↑z] ↔ UniversalCodeHalts z := by
-  simpa [universalHaltingSchema, models_iff, Semiformula.eval_substs,
-    Matrix.constant_eq_singleton] using
-      (codeOfREPred_spec universalCodeHalts_re (x := z))
+    universalHaltingSchema.Evalb ![z] ↔ UniversalCodeHalts z :=
+  codeOfREPred_spec universalCodeHalts_re (x := z)
 
 /-- The bounded schema has exactly the intended standard-model meaning. -/
 lemma universalBoundedHaltingSchema_spec (z : ℕ) :
-    ℕ ⊧ₘ universalBoundedHaltingSchema/[↑z] ↔ UniversalBoundedHalts z := by
-  simpa [universalBoundedHaltingSchema, models_iff, Semiformula.eval_substs,
-    Matrix.constant_eq_singleton] using
-      (codeOfREPred_spec universalBoundedHalts_re (x := z))
+    universalBoundedHaltingSchema.Evalb ![z] ↔ UniversalBoundedHalts z :=
+  codeOfREPred_spec universalBoundedHalts_re (x := z)
 
 /-- The failure schema has exactly the intended standard-model meaning. -/
 lemma universalBoundedFailureSchema_spec (z : ℕ) :
-    ℕ ⊧ₘ universalBoundedFailureSchema/[↑z] ↔ UniversalBoundedFailure z := by
-  simpa [universalBoundedFailureSchema, models_iff, Semiformula.eval_substs,
-    Matrix.constant_eq_singleton] using
-      (codeOfREPred_spec universalBoundedFailure_re (x := z))
+    universalBoundedFailureSchema.Evalb ![z] ↔ UniversalBoundedFailure z :=
+  codeOfREPred_spec universalBoundedFailure_re (x := z)
 
 /-- The two bounded schemas never both hold: the horizon term has at most one value. -/
 lemma universalBoundedSchemas_exclusive (z : ℕ) :
-    ¬((ℕ ⊧ₘ universalBoundedHaltingSchema/[↑z]) ∧
-      (ℕ ⊧ₘ universalBoundedFailureSchema/[↑z])) := by
+    ¬(universalBoundedHaltingSchema.Evalb ![z] ∧
+      universalBoundedFailureSchema.Evalb ![z]) := by
   rw [universalBoundedHaltingSchema_spec, universalBoundedFailureSchema_spec]
   exact universalBoundedClaims_exclusive z
 

@@ -8,17 +8,19 @@ public import ProvabilityLogic.LabelledGentzen.Completeness
 @[expose]
 public section
 
+open scoped Formula
+
 variable {α : Type u}
 
-abbrev LogicGL {α} : Logic α := { A | ⊢ʰ A }
+abbrev LogicGL {α} : Logic α := { A | ⊢ʰ[GL] A }
 
 namespace LogicGL
 
 theorem provability_TFAE [DecidableEq α] {A : Formula α} : [
   A ∈ LogicGL,
-  ⊢ʰ A,
-  ⊢ᵍ (∅ ⟹ {A}),
-  ⊢ᵍᶜ (∅ ⟹ {A}),
+  ⊢ʰ[GL] A,
+  ⊢ᵍ[GL] (∅ ⟹ {A}),
+  ⊢ᵍᶜ[GL] (∅ ⟹ {A}),
   ⊢ˡ (∅ ⸴ ∅ ⟹ˡ {(0 : LabelledGentzen.Label) ∶ A}),
   ∀ {κ : Type u}, [Nonempty κ] → ∀ M : Model κ α, [M.IsFiniteGL] → M ⊧ A,
   ∀ {κ : Type u}, [Nonempty κ] → ∀ M : RootedModel κ α, [M.IsFiniteGL] → M.root.1 ⊩ A,
@@ -51,13 +53,13 @@ theorem provability_TFAE [DecidableEq α] {A : Formula α} : [
     exact (RootedModel.unravelling.modal_equivalence_root (M := M)).mp $ h M.unravelling;
   tfae_finish;
 
-theorem iff_provableHilbert [DecidableEq α] {A : Formula α} : A ∈ LogicGL ↔ ⊢ʰ A :=
+theorem iff_provableHilbert [DecidableEq α] {A : Formula α} : A ∈ LogicGL ↔ ⊢ʰ[GL] A :=
   provability_TFAE.out 0 1
 
-theorem iff_provableGentzen [DecidableEq α] {A : Formula α} : A ∈ LogicGL ↔ ⊢ᵍ (∅ ⟹ {A}) :=
+theorem iff_provableGentzen [DecidableEq α] {A : Formula α} : A ∈ LogicGL ↔ ⊢ᵍ[GL] (∅ ⟹ {A}) :=
   provability_TFAE.out 0 2
 
-theorem iff_provableGentzenWithCut [DecidableEq α] {A : Formula α} : A ∈ LogicGL ↔ ⊢ᵍᶜ (∅ ⟹ {A}) :=
+theorem iff_provableGentzenWithCut [DecidableEq α] {A : Formula α} : A ∈ LogicGL ↔ ⊢ᵍᶜ[GL] (∅ ⟹ {A}) :=
   provability_TFAE.out 0 3
 
 theorem iff_provableLabelledGentzen [DecidableEq α] {A : Formula α} :
@@ -81,15 +83,15 @@ theorem iff_forces_root_tree [DecidableEq α] {A : Formula α} :
   provability_TFAE.out 0 7
 
 theorem provableHilbert_of_provableGentzen [DecidableEq α] {A : Formula α} :
-    ⊢ᵍ (∅ ⟹ {A}) → ⊢ʰ A :=
+    ⊢ᵍ[GL] (∅ ⟹ {A}) → ⊢ʰ[GL] A :=
   fun h => provability_TFAE.out 2 1 |>.mp h
 
 end LogicGL
 
-/-- Provability of a formula in the label-free Gentzen calculus `⊢ᵍ` is decidable,
+/-- Provability of a formula in the label-free Gentzen calculus `⊢ᵍ[GL]` is decidable,
 via the labelled proof search. -/
 instance decidable_provableGentzen_formula (A : Formula α) [DecidableEq α] :
-  Decidable (⊢ᵍ (∅ ⟹ {A})) :=
+  Decidable (⊢ᵍ[GL] (∅ ⟹ {A})) :=
   decidable_of_iff _ (iff_provableGentzen_provableLabelledGentzen (x := 0)).symm
 
 /-- Membership in `LogicGL` is decidable, via the labelled proof search. -/

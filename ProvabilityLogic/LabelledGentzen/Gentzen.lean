@@ -1,35 +1,28 @@
 module
 
-public import ProvabilityLogic.Gentzen.Kripke
+public import ProvabilityLogic.Gentzen.GL.Kripke
 public import ProvabilityLogic.LabelledGentzen.Kripke
+
+/-!
+Syntactic embedding of the label-free Gentzen calculus (`ProvableGentzen`/`⊢ᵍ[GL]`) into
+Negri's labelled sequent calculus (`ProvableLabelledGentzen`/`⊢ˡ`): every `ProvableGentzen`
+derivation of a label-free sequent gives a `ProvableLabelledGentzen` derivation of its
+translation `Sequent.toLabelled`.
+-/
 
 @[expose]
 public section
 
 open scoped Formula
 
-/-!
-Syntactic embedding of the label-free Gentzen calculus (`ProvableGentzen`/`⊢ᵍ`) into
-Negri's labelled sequent calculus (`ProvableLabelledGentzen`/`⊢ˡ`).
-
-The embedding is by structural induction on `ProvableGentzen` (via `ProvableGentzen.rec`),
-through the generalized statement `ProvableGentzen.toLabelledGentzenAux`: each antecedent
-formula `B` of the label-free sequent is represented in the labelled antecedent either
-directly as `z ∶ B`, or (for `B = □C`) as `x ∶ □C` at some `R`-predecessor `x` of `z`.
-The latter representation is what makes the `boxGL` case go through: after `R□^Löb`
-introduces a fresh label `y`, the boxed context `Γ.box` stays at `z`, and is transferred to
-`y` on demand by `Trans` (`ProvableLabelledGentzen.transMany`) and `L□`
-(`ProvableLabelledGentzen.boxLMany`), while a boxed formula meeting its succedent copy across
-a relational atom is closed by `loop`.
--/
-
+open LogicGL
 open LabelledGentzen
 
 variable {α : Type u} [DecidableEq α]
 
 /-- Translation of a label-free sequent into a labelled sequent: every formula
 is labelled with `z`, and the relational context is empty. -/
-def Sequent.toLabelled (z : Label) (S : Sequent α) : LabelledSequent α :=
+def LogicGL.Sequent.toLabelled (z : Label) (S : Sequent α) : LabelledSequent α :=
   ∅ ⸴ S.ant.image (z ∶ ·) ⟹ˡ S.suc.image (z ∶ ·)
 
 
@@ -114,7 +107,7 @@ namespace ProvableGentzen
   as `x ∶ □C` at some `R`-predecessor `x` of `z`, then the labelled sequent
   `R ⸴ Θ ⟹ˡ S.suc.image (z ∶ ·)` is `ProvableLabelledGentzen`.
 -/
-lemma toLabelledGentzenAux {S : Sequent α} (h : ⊢ᵍ S) :
+lemma toLabelledGentzenAux {S : Sequent α} (h : ⊢ᵍ[GL] S) :
   ∀ (z : Label) (R : Finset LabelRel) (Θ : Finset (LabelledFormula α)),
   (∀ B ∈ S.ant, (z ∶ B) ∈ Θ ∨ ∃ x C, B = □C ∧ (x, z) ∈ R ∧ (x ∶ □C) ∈ Θ) →
   ⊢ˡ (R ⸴ Θ ⟹ˡ S.suc.image (z ∶ ·)) := by
@@ -216,21 +209,21 @@ lemma toLabelledGentzenAux {S : Sequent α} (h : ⊢ᵍ S) :
 
 /-- Embedding of `ProvableGentzen` into `ProvableLabelledGentzen`: a proof of `S` yields a proof
 of `S.toLabelled z` for any label `z`. -/
-lemma toLabelledGentzen (z : Label) {S : Sequent α} (h : ⊢ᵍ S) : ⊢ˡ (S.toLabelled z) :=
+lemma toLabelledGentzen (z : Label) {S : Sequent α} (h : ⊢ᵍ[GL] S) : ⊢ˡ (S.toLabelled z) :=
   toLabelledGentzenAux h z ∅ (S.ant.image (z ∶ ·)) (fun _ hB => Or.inl (Finset.mem_image_of_mem _ hB))
 
 end ProvableGentzen
 
 
 /-- Embedding of `ProvableGentzen` into `ProvableLabelledGentzen`. -/
-theorem ProvableGentzen.toLabelled (z : Label) {S : Sequent α} (h : ⊢ᵍ S) : ⊢ˡ (S.toLabelled z) :=
+theorem ProvableGentzen.toLabelled (z : Label) {S : Sequent α} (h : ⊢ᵍ[GL] S) : ⊢ˡ (S.toLabelled z) :=
   ProvableGentzen.toLabelledGentzen z h
 
 
 /-- Converse embedding: a proof of `A` at label `x` in `ProvableLabelledGentzen`
 yields a proof of `A` in `ProvableGentzen`. -/
 theorem ProvableLabelledGentzen.toGentzen {x : Label} {A : Formula α}
-  (h : ⊢ˡ (∅ ⸴ ∅ ⟹ˡ {x ∶ A})) : ⊢ᵍ (∅ ⟹ {A}) := by
+  (h : ⊢ˡ (∅ ⸴ ∅ ⟹ˡ {x ∶ A})) : ⊢ᵍ[GL] (∅ ⟹ {A}) := by
   -- via Kripke semantics: soundness of `ProvableLabelledGentzen` on `GL` models
   -- (`LabelledGentzen.ProvableLabelledGentzen.Kripke.soundness_formula`) specialized to finite
   -- `GL` models, composed with completeness of `ProvableGentzen` for finite `GL` models
@@ -242,7 +235,7 @@ theorem ProvableLabelledGentzen.toGentzen {x : Label} {A : Formula α}
 
 /-- `ProvableGentzen` and `ProvableLabelledGentzen` agree, for a formula `A` at any label `x`. -/
 theorem iff_provableGentzen_provableLabelledGentzen {x : Label} {A : Formula α} :
-  ⊢ᵍ (∅ ⟹ {A}) ↔ ⊢ˡ (∅ ⸴ ∅ ⟹ˡ {x ∶ A}) := by
+  ⊢ᵍ[GL] (∅ ⟹ {A}) ↔ ⊢ˡ (∅ ⸴ ∅ ⟹ˡ {x ∶ A}) := by
   constructor;
   . intro h;
     simpa [Sequent.toLabelled] using ProvableGentzen.toLabelled x h;

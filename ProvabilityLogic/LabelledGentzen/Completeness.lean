@@ -3,26 +3,16 @@ module
 public import ProvabilityLogic.LabelledGentzen.Search
 public import ProvabilityLogic.LabelledGentzen.Kripke
 
-@[expose]
-public section
-
-open scoped Formula
-
 /-!
 Completeness of the proof search `search0` for `ProvableLabelledGentzen`: whenever `search0 R Γ Δ = none`,
 a finite Kripke countermodel of the labelled sequent `R.toFinset ⸴ Γ.toFinset ⟹ˡ Δ.toFinset`
 exists (`LabelledGentzen.exists_countermodel_of_search0_eq_none`).
-
-The proof follows the failure of the search: a run of `search`/`searchLeaves` that returns
-`none` must abandon some saturated leaf on which neither `loopTarget?` nor `lobTarget?`
-fires (`HasFailingLeaf`, extracted by `search_eq_none_hasFailingLeaf` along the same
-well-founded recursion as the search itself).  On such a leaf every boxed succedent
-formula `x ∶ □A` has an `R`-successor witness `y` with `y ∶ A` in the succedent — either
-recorded in `processed` (whose soundness invariant `ProcessedWitnessed` is threaded through
-the recursion) or refuted by saturation/looping — so the labels of the leaf, related by
-its (transitive, irreflexive) relational atoms and valued by its atomic antecedent members,
-form a finite `GL` countermodel (`countermodel`, truth lemma `countermodel_truthlemma`).
 -/
+
+@[expose]
+public section
+
+open scoped Formula
 
 namespace LabelledGentzen
 

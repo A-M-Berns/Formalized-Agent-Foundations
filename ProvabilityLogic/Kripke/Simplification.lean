@@ -4,12 +4,12 @@ public import ProvabilityLogic.Kripke.Cone
 public import ProvabilityLogic.Kripke.GraftOmega
 
 /-!
-# `P`-simplification of GL-models (Bek90 §4, item 3 + Lemmas 6, 8)
+# `P`-simplification of GL-models
 
-This file formalizes "removal of a redundant cone" from [Bek90] §4 and the
+This file formalizes "removal of a redundant cone" and the
 `P`-simplification lemmas (Lemma 6 for finite GL-models, Lemma 8 for ω-models).
 
-**A note on scope.** The classical "GL-model" of [Bek90]/[12] (going back to
+**A note on scope.** The classical "GL-model" of [Bek90] (going back to
 Segerberg/Boolos) is a finite irreflexive TREE frame, not an arbitrary finite transitive
 converse-well-founded frame. ProvabilityLogic's `Model.IsFiniteGL` class does not encode tree-ness
 (no requirement that ancestors of a point be linearly ordered), so we make this a
@@ -20,6 +20,8 @@ through as stated. Also, "cone `𝒳_a`, `𝒳_y` are `p̄`-isomorphic" from the
 formalized here via `Model.BisimulationUnder` (bisimilarity restricted to atoms in `P`)
 rather than a literal frame isomorphism -- the modally correct and sufficient notion,
 see `ProvabilityLogic/Kripke/Preservation.lean`.
+
+- [Bek90, §4, item 3, Lemma 6, Lemma 8]
 -/
 
 @[expose]
@@ -36,7 +38,7 @@ namespace RootedModel
 /--
   `M` has the tree property if the `≺`-ancestors of any point are linearly ordered:
   whenever `x ≺ z` and `y ≺ z`, `x` and `y` are comparable. This is the standing
-  assumption on "GL-models" in the classification literature (also see [12]).
+  assumption on "GL-models" in the classification literature.
 
   - [Bek90]
 -/
@@ -45,8 +47,8 @@ class IsTree (M : RootedModel κ α) : Prop where
 
 /--
   A *finite GL tree* model: a finite GL-model whose frame is a tree. This is the
-  model class of the classical "GL-models" in the classification literature (also
-  see [12]): finite irreflexive transitive trees.
+  model class of the classical "GL-models" in the classification literature:
+  finite irreflexive transitive trees.
 
   - [Bek90]
 -/
@@ -162,14 +164,14 @@ instance (a : M.NonRoot) : Std.Irrefl (M.removeCone a).Rel :=
 
 lemma isTree {a : M.NonRoot} [hTree : M.IsTree] :
   (M.removeCone a).IsTree := by
-  refine ⟨fun x y z hxz hyz => ?_⟩;
+  refine ⟨?_⟩;
+  intro x y z hxz hyz;
   rcases hTree.tree x.1 y.1 z.1 hxz hyz with h | h | h;
   . exact Or.inl (Subtype.ext h);
   . exact Or.inr (Or.inl h);
   . exact Or.inr (Or.inr h);
 
 section Finite
-
 
 lemma card_lt (a : M.NonRoot) [Fintype M.World] [Fintype (M.removeCone a).World] :
   Fintype.card (M.removeCone a).World < Fintype.card M.World :=
@@ -178,9 +180,15 @@ lemma card_lt (a : M.NonRoot) [Fintype M.World] [Fintype (M.removeCone a).World]
 
 variable [M.IsFiniteGL]
 
+-- `M.IsGL` and `M.IsFiniteGL` both imply `IsTrans M.World Model.Rel` here, but we keep
+-- the explicit `[M.IsGL]` from the section variables intentionally: it documents that
+-- `removeCone` is only meaningful for GL-models, independently of the finiteness
+-- hypothesis that happens to already carry that fact.
+set_option linter.overlappingInstances false in
 instance (a : M.NonRoot) : Finite (M.removeCone a).World :=
   Subtype.finite
 
+set_option linter.overlappingInstances false in
 instance (a : M.NonRoot) : (M.removeCone a).IsFiniteGL where
 
 end Finite
@@ -320,11 +328,8 @@ lemma graftOmega.not_redundant_chainPoint {M : RootedModel κ α} [M.IsFiniteGL]
   (a : M.NonRoot) (P : Finset α) (i : ℕ) :
   ¬ (M.graftOmega a).Redundant P ⟨Sum.inr i, inr_ne_root⟩ := by
   intro hred;
-  -- `chainPoint (i + 1)` is the unique point covering `chainPoint i` (its immediate
-  -- `≺`-predecessor), and every other successor of `chainPoint (i + 1)` already lies
-  -- inside `chainPoint i`'s own cone. So testing `Redundant` at `chainPoint (i + 1)`,
-  -- every candidate witness `u` is comparable to `chainPoint i`, contradicting the
-  -- mutual-incomparability clause.
+  -- test `Redundant` at `chainPoint (i + 1)`: every candidate witness is comparable
+  -- to `chainPoint i`, contradicting the mutual-incomparability clause.
   have hwa : (M.graftOmega a).Rel (Sum.inr (i + 1)) (Sum.inr i) := by
     show i < i + 1;
     omega;

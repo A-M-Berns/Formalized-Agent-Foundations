@@ -340,6 +340,7 @@ lemma tradingFirmWeight_tail_hasSum (j C : ℕ) :
   have hg := hasSum_geometric_of_abs_lt_one (r := (1 / 2 : ℝ)) (by norm_num)
   have hm := hg.mul_left ((1 / 2 : ℝ) ^ (j + 1 + (C + 1)))
   convert hm using 1
+  any_goals rfl
   · funext r
     rw [tradingFirmWeight_cast,
       show j + 1 + (C + 1 + r) = (j + 1 + (C + 1)) + r by omega,
@@ -360,6 +361,7 @@ lemma tradingFirmBudgetCost_hasSum (j : ℕ) :
   have hplus := hn.add hg
   have hm := hplus.mul_left ((1 / 2 : ℝ) ^ (j + 2))
   convert hm using 1
+  any_goals rfl
   · funext r
     rw [tradingFirmWeight_cast,
       show j + 1 + (r + 1) = (j + 2) + r by omega, pow_add]
@@ -754,7 +756,7 @@ lemma tradingFirmComponentAt_value_hasSum
   have hraw : HasSum (fun r : ℕ =>
       (tradingFirmWeight j (C + 1 + r) : ℝ) * raw)
       ((tradingFirmWeight j C : ℝ) * raw) := by
-    convert hweights.mul_left raw using 1 <;> simp [mul_comm]
+    convert hweights.mul_left raw using 1 <;> first | rfl | simp [mul_comm]
   have hbudget : HasSum (fun r : ℕ =>
       (tradingFirmWeight j (C + 1 + r) : ℝ) *
         (BudgeterAt DP (firmRawTrader j) (C + 1 + r) Q n).value P w)
@@ -768,9 +770,12 @@ lemma tradingFirmComponentAt_value_hasSum
       (BudgeterAt DP (firmRawTrader j) (r + 1) Q n).value P w
   have htail : HasSum (fun r => f (r + C))
       ((tradingFirmWeight j C : ℝ) * raw) := by
-    simpa only [f, Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using hbudget
+    first
+      | exact hbudget
+      | simpa only [f, Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using hbudget
   have hfull := (hasSum_nat_add_iff C).mp htail
   convert hfull using 1
+  any_goals rfl
   simp only [tradingFirmComponentAt, Strategy.join_value,
     tradingFirmBudgetComponents, List.map_append, List.sum_append,
     List.map_map, Function.comp_def, Strategy.scaleConst_value, List.map_singleton,
@@ -814,6 +819,7 @@ lemma tradingFirmComponentTrader_netWorth_hasSum
       · simp [tradingFirmComponentTrader, hjd, Trader.zero, Strategy.value]
   have hs := hasSum_sum hday
   convert hs using 1
+  any_goals rfl
   · funext r
     unfold Trader.netWorth budgetedTrader
     rw [Finset.mul_sum]

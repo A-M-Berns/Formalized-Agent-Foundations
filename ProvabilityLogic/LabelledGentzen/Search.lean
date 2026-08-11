@@ -4,11 +4,6 @@ public import ProvabilityLogic.LabelledGentzen.Basic
 public import Mathlib.Algebra.Order.BigOperators.Group.Finset
 meta import ProvabilityLogic.LabelledGentzen.Basic -- shake: keep
 
-@[expose]
-public section
-
-open scoped Formula
-
 /-!
 Saturation for proof search in the labelled sequent calculus (`ProofLabelledGentzen`/`⊢ˡ`).
 
@@ -24,6 +19,11 @@ Termination is measured by the number of facts still missing from the finite
 universe determined by the labels and the subformula closure of the sequent,
 both of which are invariant under saturation steps.
 -/
+
+@[expose]
+public section
+
+open scoped Formula
 
 namespace LabelledGentzen
 
@@ -332,16 +332,18 @@ structure Saturated (S : LabelledSequent α) : Prop where
 /-! ### Termination measure for the outer proof search (`lobMeasure`)
 
 The outer search (`search`/`searchLeaves`) records `R□^Löb` applications *per label*
-in `processed : Finset (LabelledFormula α)`.  Its termination follows `[Neg14]`,
-Theorem 5.5: along a single ancestry chain of labels the same `□A` is treated at most
-once (a second occurrence closes by `axm` or by `loop` before `R□^Löb` is consulted),
-so only sibling chains count independently, and the length of every chain is bounded
-by the number of boxed subformulas.  This is implemented by the weighted measure
+in `processed : Finset (LabelledFormula α)`. Its termination relies on the fact that,
+along a single ancestry chain of labels, the same `□A` is treated at most once (a
+second occurrence closes by `axm` or by `loop` before `R□^Löb` is consulted), so only
+sibling chains count independently, and the length of every chain is bounded by the
+number of boxed subformulas. This is implemented by the weighted measure
 `lobMeasure`: each label `x` carries the *blocked* boxed subformulas `blockedBoxes x`
 (present in the antecedent at `x` itself or at a direct `R`-predecessor of `x`), and
 a `R□^Löb` step at `x` creates one fresh label whose blocked set strictly contains
 the one of `x`, so its exponential weight drops by a factor that dominates the (at
 most `boxSf.card`) new pending boxes it brings.
+
+- [Neg14, Theorem 5.5]
 -/
 
 /-- The boxed formulas in the subformula closure of `S`. -/
@@ -1151,40 +1153,25 @@ regression tests for the label-aware redesign. -/
 -- (no shared witness world), so rejection here is the *correct* answer, not evidence of a bug.
 #guard (search0 (α := ℕ) [] [] [0 ∶ (□#0 : Formula ℕ), 1 ∶ (□#0 : Formula ℕ)]).isNone
 
-/-! ### The formula-only `processed` bookkeeping was incomplete (historical note)
+/-! ### Why `processed` must be label-aware
 
-An earlier version of `search`/`searchLeaves` recorded processed `R□^Löb` targets as a
-`processed : Finset (Formula α)`, ignoring at *which label* a boxed formula was treated.
-That made `search0` *incomplete*: there were sequents provable as `ProvableLabelledGentzen`
-on which it returned `none`.  Starting from the single-label sequent `⟹ˡ 0 ∶ ∼□a 🡒 □□a`,
-saturation puts both `0 ∶ □a` and `0 ∶ □□a` into the succedent (in this list order),
-so the search
+Recording processed `R□^Löb` targets merely as `processed : Finset (Formula α)`, ignoring
+at *which label* a boxed formula was treated, is unsound: two `R□^Löb` applications can
+create sibling labels that are incomparable in the transitive closure, so a witness
+recorded for one label may be unreachable from the other, and the boxed formula must be
+processed again at the sibling. `search0` therefore tracks
+`processed : Finset (LabelledFormula α)`, with the Negri-style termination measure
+`LabelledSequent.lobMeasure` accounting for this repeated processing across sibling
+labels. The example below, `□□⊥ 🡒 (∼□a 🡒 □□a)`, exercises exactly this pattern.
 
-1. processes `□a` at `0`, creating the fresh child `1` (`0R1`, `1 ∶ □a` left, `1 ∶ a` right);
-2. processes `□□a` at `0`, creating the fresh child `2` (`0R2`, `2 ∶ □□a` left,
-   `2 ∶ □a` right) — a *sibling* of `1`, incomparable with it in the transitive closure.
-
-Then `2 ∶ □a` sat in the succedent with `□a ∈ processed`, but the recorded witness
-(`1 ∶ a`) is unreachable from `2`: the boxed formula was *orphaned*, and neither
-`loopTarget?` nor `lobTarget?` fired, so the leaf was abandoned.  In particular the
-labels reached from a single-label root do **not** form a linear `R`-chain.
-
-For `∼□a 🡒 □□a` itself the rejection happened to be correct (it is not a `GL`-theorem),
-but the genuine `GL`-theorem `□□⊥ 🡒 (∼□a 🡒 □□a)` (provable outright, by `R□^Löb` at
-`2 ∶ □a` followed by `L□` on the inherited `2 ∶ □⊥`) ran into the very same orphaned
-leaf and was rejected.
-
-This incompleteness was fixed by making the bookkeeping label-aware
-(`processed : Finset (LabelledFormula α)`) with the Negri-style termination measure
-`LabelledSequent.lobMeasure` (`[Neg14]`, Thm 5.5): the sibling label `2` may now process
-`□a` independently of the earlier treatment at label `0` (see the `lobTarget?` check
-below), and the counterexample is found by `search0`, as the following `#guard`s verify.
+- [Neg14, Theorem 5.5]
 -/
 
 section incompleteness
 
-/-- A formula provable as `ProvableLabelledGentzen` that the earlier, formula-only
-`processed` bookkeeping rejected (see the section documentation): `□□⊥ 🡒 (∼□a 🡒 □□a)`. -/
+/-- A formula provable as `ProvableLabelledGentzen` whose derivation needs a boxed
+formula processed at two sibling labels (see the section documentation):
+`□□⊥ 🡒 (∼□a 🡒 □□a)`. -/
 def lobProcessedCounterexample : Formula ℕ := □□⊥ 🡒 (∼□#0 🡒 □□#0)
 
 /-- `lobProcessedCounterexample` is provable as `ProvableLabelledGentzen`. -/
@@ -1203,7 +1190,7 @@ lemma provable_lobProcessedCounterexample :
   apply ProvableLabelledGentzen.boxL (x := 1) (y := 2) (A := ⊥) (hxy := by grind) (hxA := by grind);
   exact ProvableLabelledGentzen.botL_mem 2 (by grind);
 
--- ... and, since the label-aware redesign of `processed`, `search0` finds it.
+-- ... and `search0` finds it.
 #guard (search0 [] [] [0 ∶ lobProcessedCounterexample]).isSome
 
 /-! The mechanism, machine-checked step by step on the subformula `∼□a 🡒 □□a`

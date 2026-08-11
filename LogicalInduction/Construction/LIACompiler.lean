@@ -24,6 +24,18 @@ namespace LogicalInduction
 
 open LO.Propositional
 
+/-! Encodable normal-form bridges. The v4.31-era `simp` no longer unfolds
+`Encodable.encode`/`Encodable.decode` through instance names listed as simp
+arguments; these `rfl` lemmas restore the concrete forms. -/
+private lemma encode_ef_eq_toNat (e : EF) : Encodable.encode e = e.toNat := rfl
+private lemma decode_ef_eq_ofNat (n : ℕ) :
+    (Encodable.decode n : Option EF) = EF.ofNat n := rfl
+private lemma encode_formula_eq_toNat (φ : LO.Propositional.Formula ℕ) :
+    Encodable.encode φ = φ.toNat := rfl
+private lemma decode_formula_eq_ofNat (n : ℕ) :
+    (Encodable.decode n : Option (LO.Propositional.Formula ℕ)) =
+      LO.Propositional.Formula.ofNat n := rfl
+
 private def formulaBinaryNorm (tag : ℕ) (prior : List ℕ) (children : ℕ) : ℕ :=
   let left := prior.getD children.unpair.1 0
   let right := prior.getD children.unpair.2 0
@@ -222,7 +234,7 @@ instance sentencePrimcodable : Primcodable Sentence where
       change sentenceDecodeNorm n = Encodable.encode
         ((@LO.Propositional.Formula.ofNat ℕ inferInstance n) : Option Sentence)
       cases h : (@LO.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) <;>
-        simp [sentenceDecodeNorm, h, LO.Propositional.Formula.instEncodable])
+        simp [sentenceDecodeNorm, h, LO.Propositional.Formula.instEncodable, encode_formula_eq_toNat, decode_formula_eq_ofNat])
 
 /-! ## Primitive-recursive normalization of the concrete `EF` decoder -/
 
@@ -408,19 +420,30 @@ private lemma ratDecodeNorm_eq (n : ℕ) :
       Int.encodable]
   have hencodeInt (k : ℕ) : Equiv.intEquivNat (Denumerable.ofNat ℤ k) = k := by
     exact @Denumerable.encode_ofNat ℤ Denumerable.int k
+  have hsymm : (Equiv.intEquivNat.symm n.unpair.1 : ℤ) =
+      Denumerable.ofNat ℤ n.unpair.1 :=
+    (Equiv.symm_apply_eq _).mpr (hencodeInt n.unpair.1).symm
+  have hstep : (Encodable.decode n.unpair.2 :
+      Option {d : ℕ // 0 < d ∧
+        (Equiv.intEquivNat.symm n.unpair.1 : ℤ).natAbs.Coprime d}) =
+      if hd : 0 < n.unpair.2 ∧
+          (Equiv.intEquivNat.symm n.unpair.1 : ℤ).natAbs.Coprime n.unpair.2 then
+        some ⟨n.unpair.2, hd⟩ else none := rfl
   by_cases h : ratCodeValid n
-  · have hc := hvalid.mp h
+  · have hc' : 0 < n.unpair.2 ∧
+        (Equiv.intEquivNat.symm n.unpair.1 : ℤ).natAbs.Coprime n.unpair.2 := by
+      rw [hsymm]; exact hvalid.mp h
     simp [ratDecodeNorm, h, Rat.instEncodable, Encodable.decode_ofEquiv,
-      Encodable.decode_sigma_val, Encodable.decodeSubtype, Subtype.encodable, hc.1]
-    rw [dif_pos hc.2]
-    simp [Encodable.encode_ofEquiv,
-      Encodable.encode_sigma_val]
-    rw [hencodeInt]
-    change n = Nat.pair n.unpair.1 n.unpair.2
-    exact (Nat.pair_unpair n).symm
-  · have hc := mt hvalid.mpr h
+      Encodable.decode_sigma_val, hstep, hc', Encodable.encode_ofEquiv,
+      Encodable.encode_sigma_val, Encodable.Subtype.encode_eq, hencodeInt]
+    rw [dif_pos hc'.2]
+    simp [Encodable.encode_ofEquiv, Encodable.encode_sigma_val,
+      Encodable.Subtype.encode_eq, hencodeInt, Nat.pair_unpair]
+  · have hc' : ¬(0 < n.unpair.2 ∧
+        (Equiv.intEquivNat.symm n.unpair.1 : ℤ).natAbs.Coprime n.unpair.2) := by
+      rw [hsymm]; exact mt hvalid.mpr h
     simp [ratDecodeNorm, h, Rat.instEncodable, Encodable.decode_ofEquiv,
-      Encodable.decode_sigma_val, Encodable.decodeSubtype, Subtype.encodable, hc]
+      Encodable.decode_sigma_val, hstep, hc']
 
 /-- Mathlib's concrete reduced-numerator/positive-denominator rational encoding is
 primitive-recursive.  Unlike the generic denumeration fallback, this is the same encoding
@@ -1076,7 +1099,7 @@ private lemma sentenceDecodeNorm_prim : Primrec sentenceDecodeNorm := by
         ((@LO.Propositional.Formula.ofNat ℕ inferInstance n) : Option Sentence) =
       sentenceDecodeNorm n
     cases h : (@LO.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) <;>
-      simp [sentenceDecodeNorm, h, LO.Propositional.Formula.instEncodable]
+      simp [sentenceDecodeNorm, h, LO.Propositional.Formula.instEncodable, encode_formula_eq_toNat, decode_formula_eq_ofNat]
 
 /-- Lift one normalized child code through an `EF` unary constructor. -/
 private def efUnaryNorm (tag childNorm : ℕ) : ℕ :=
@@ -1357,45 +1380,45 @@ private lemma efDecodeNormStep_history (n : ℕ) :
       rcases htag : code.unpair.1 with _ | tag
       · cases hq : (@Encodable.decode ℚ inferInstance code.unpair.2)
         <;> simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
-          ratDecodeNorm_eq, hq, efUnaryNorm, EF.instEncodable, EF.toNat]
+          ratDecodeNorm_eq, hq, efUnaryNorm, EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.toNat]
       · rcases tag with _ | tag
         · cases hs : (@LO.Propositional.Formula.ofNat ℕ inferInstance
               code.unpair.2.unpair.1 : Option Sentence)
           <;> simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
-            sentenceDecodeNorm, hs, efPriceNorm, EF.instEncodable, EF.toNat,
-            LO.Propositional.Formula.instEncodable]
+            sentenceDecodeNorm, hs, efPriceNorm, EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.toNat,
+            LO.Propositional.Formula.instEncodable, encode_formula_eq_toNat, decode_formula_eq_ofNat]
         · rcases tag with _ | tag
           · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
               cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
               simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
                 hprior _ hleft, hprior _ hright, efBinaryNorm,
-                EF.instEncodable, EF.toNat, hL, hR]
+                EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.toNat, hL, hR]
           · rcases tag with _ | tag
             · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
                 cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
                 simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
                   hprior _ hleft, hprior _ hright, efBinaryNorm,
-                  EF.instEncodable, EF.toNat, hL, hR]
+                  EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.toNat, hL, hR]
             · rcases tag with _ | tag
               · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
                   cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
                   simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
                     hprior _ hleft, hprior _ hright, efBinaryNorm,
-                    EF.instEncodable, EF.toNat, hL, hR]
+                    EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.toNat, hL, hR]
               · rcases tag with _ | tag
                 · cases hA : EF.ofNatAux fuel code.unpair.2 <;>
                     simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
-                      hprior _ hpayload, efUnaryNorm, EF.instEncodable,
+                      hprior _ hpayload, efUnaryNorm, EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat,
                       EF.toNat, hA]
                 · rcases tag with _ | tag
                   · simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
-                      EF.instEncodable, EF.toNat]
+                      EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.toNat]
                   · rcases tag with _ | tag
                     · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
                         cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
                         simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
                           hprior _ hleft, hprior _ hright, efBinaryNorm,
-                          EF.instEncodable, EF.toNat, hL, hR]
+                          EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.toNat, hL, hR]
                     · simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag]
 
 private lemma efAuxNormIndex_prim : Primrec efAuxNormIndex := by
@@ -1415,7 +1438,7 @@ instance efPrimcodable : Primcodable EF where
       Primrec₂.natPair.comp Primrec.id
         (Primrec.nat_add.comp Primrec.id (Primrec.const 1))
     exact Primrec.nat_iff.mp ((efAuxNormIndex_prim.comp hindex).of_eq fun n => by
-      simp [efAuxNormIndex, EF.ofNat, EF.instEncodable])
+      simp [efAuxNormIndex, EF.ofNat, EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat])
 
 /-! ## Primitive-recursive strategy validation -/
 
@@ -1645,7 +1668,7 @@ private lemma efRankNormStep_history (n : ℕ) :
         · cases hs : (@LO.Propositional.Formula.ofNat ℕ inferInstance
               code.unpair.2.unpair.1 : Option Sentence) <;>
             simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux, htag,
-              sentenceDecodeNorm, hs, LO.Propositional.Formula.instEncodable]
+              sentenceDecodeNorm, hs, LO.Propositional.Formula.instEncodable, encode_formula_eq_toNat, decode_formula_eq_ofNat]
         · rcases tag with _ | tag
           · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
               cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
@@ -1689,7 +1712,7 @@ private lemma efRank_prim : Primrec EF.rank := by
     Primrec₂.natPair.comp Primrec.encode
       (Primrec.nat_add.comp Primrec.encode (Primrec.const 1))
   exact (Primrec.pred.comp (efAuxRankNormIndex_prim.comp hindex)).of_eq fun e => by
-    simp [efAuxRankNormIndex, EF.instEncodable, EF.ofNatAux_toNat]
+    simp [efAuxRankNormIndex, EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.ofNatAux_toNat]
 
 /-! ## Primitive-recursive `EF.priceQueries`
 
@@ -1858,7 +1881,7 @@ private lemma efQueriesNormVal_history (n : ℕ) :
         · cases hs : (@LO.Propositional.Formula.ofNat ℕ inferInstance
               code.unpair.2.unpair.1 : Option Sentence) <;>
             simp [efQueriesNormVal, EF.ofNatAux, htag, hs, EF.priceQueries,
-              LO.Propositional.Formula.instEncodable]
+              LO.Propositional.Formula.instEncodable, encode_formula_eq_toNat, decode_formula_eq_ofNat]
         · rcases tag with _ | tag
           · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
               cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
@@ -1907,7 +1930,7 @@ lemma efPriceQueries_prim : Primrec EF.priceQueries := by
       (Primrec.nat_add.comp Primrec.encode (Primrec.const 1))
   exact (Primrec.option_getD.comp (efAuxQueriesVal_prim.comp hindex)
     (Primrec.const ([] : EFQueryList))).of_eq fun e => by
-      simp [efAuxQueriesVal, EF.instEncodable, EF.ofNatAux_toNat]
+      simp [efAuxQueriesVal, EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.ofNatAux_toNat]
 
 private def strategyOfTrades? (n : ℕ) (trades : List (EF × Sentence)) :
     Option (Strategy n) :=
@@ -2165,7 +2188,15 @@ private lemma sentenceFinsetDecodeNorm_eq (n : ℕ) :
           Multiset.encodable
           (fun s => @Multiset.nodupDecidable Sentence
             (Encodable.decidableEqOfEncodable Sentence) s)) n))
-  simp only [Subtype.encodable, Encodable.decodeSubtype]
+  change sentenceFinsetDecodeNorm n = Encodable.encode
+    (Option.map
+      (fun x : {s : Multiset Sentence // s.Nodup} =>
+        ({ val := x.1, nodup := x.2 } : Finset Sentence))
+      ((@Encodable.decode (Multiset Sentence) Multiset.encodable n).bind
+        fun a => @dite _ a.Nodup
+          (@Multiset.nodupDecidable Sentence
+            (Encodable.decidableEqOfEncodable Sentence) a)
+          (fun h => some ⟨a, h⟩) (fun _ => none)))
   rw [sentenceMultisetDecode_eq]
   cases h : Encodable.decode (α := List Sentence) n with
   | none => simp [sentenceFinsetDecodeNorm, h]
@@ -3781,7 +3812,7 @@ private lemma efRatMachine_correct {C : Type*} (V : C → ℕ → Sentence → �
           ((0, a.toNat, rho) :: (0, b.toNat, rho) :: efRatOpCommand 1 :: commands, values) =
           ((0, b.toNat, rho) :: efRatOpCommand 1 :: commands,
             a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           iha rho (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands) values]
       rw [iterate_add_forward f (efRatMachineSteps b) 1]
       rw [show f^[efRatMachineSteps b]
@@ -3789,7 +3820,7 @@ private lemma efRatMachine_correct {C : Type*} (V : C → ℕ → Sentence → �
             a.denoteRatWith rho (V ctx) :: values) =
           (efRatOpCommand 1 :: commands,
             b.denoteRatWith rho (V ctx) :: a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           ihb rho (efRatOpCommand 1 :: commands) (a.denoteRatWith rho (V ctx) :: values)]
       simp [f, efRatMachineStep, efRatOpCommand, EF.denoteRatWith]
   | mul a b iha ihb =>
@@ -3813,7 +3844,7 @@ private lemma efRatMachine_correct {C : Type*} (V : C → ℕ → Sentence → �
           ((0, a.toNat, rho) :: (0, b.toNat, rho) :: efRatOpCommand 2 :: commands, values) =
           ((0, b.toNat, rho) :: efRatOpCommand 2 :: commands,
             a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           iha rho (efRatEvalCommand b rho :: efRatOpCommand 2 :: commands) values]
       rw [iterate_add_forward f (efRatMachineSteps b) 1]
       rw [show f^[efRatMachineSteps b]
@@ -3821,7 +3852,7 @@ private lemma efRatMachine_correct {C : Type*} (V : C → ℕ → Sentence → �
             a.denoteRatWith rho (V ctx) :: values) =
           (efRatOpCommand 2 :: commands,
             b.denoteRatWith rho (V ctx) :: a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           ihb rho (efRatOpCommand 2 :: commands) (a.denoteRatWith rho (V ctx) :: values)]
       simp [f, efRatMachineStep, efRatOpCommand, EF.denoteRatWith]
   | max a b iha ihb =>
@@ -3845,7 +3876,7 @@ private lemma efRatMachine_correct {C : Type*} (V : C → ℕ → Sentence → �
           ((0, a.toNat, rho) :: (0, b.toNat, rho) :: efRatOpCommand 3 :: commands, values) =
           ((0, b.toNat, rho) :: efRatOpCommand 3 :: commands,
             a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           iha rho (efRatEvalCommand b rho :: efRatOpCommand 3 :: commands) values]
       rw [iterate_add_forward f (efRatMachineSteps b) 1]
       rw [show f^[efRatMachineSteps b]
@@ -3853,7 +3884,7 @@ private lemma efRatMachine_correct {C : Type*} (V : C → ℕ → Sentence → �
             a.denoteRatWith rho (V ctx) :: values) =
           (efRatOpCommand 3 :: commands,
             b.denoteRatWith rho (V ctx) :: a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           ihb rho (efRatOpCommand 3 :: commands) (a.denoteRatWith rho (V ctx) :: values)]
       simp [f, efRatMachineStep, efRatOpCommand, EF.denoteRatWith]
   | safeRecip a iha =>
@@ -3874,7 +3905,7 @@ private lemma efRatMachine_correct {C : Type*} (V : C → ℕ → Sentence → �
       rw [show f^[efRatMachineSteps a]
           ((0, a.toNat, rho) :: efRatOpCommand 4 :: commands, values) =
           (efRatOpCommand 4 :: commands, a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           iha rho (efRatOpCommand 4 :: commands) values]
       simp [f, efRatMachineStep, efRatOpCommand, EF.denoteRatWith]
   | letE x body ihx ihbody =>
@@ -3897,7 +3928,7 @@ private lemma efRatMachine_correct {C : Type*} (V : C → ℕ → Sentence → �
           ((0, x.toNat, rho) :: efRatLetBodyCommand body.toNat rho :: commands, values) =
           (efRatLetBodyCommand body.toNat rho :: commands,
             x.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           ihx rho (efRatLetBodyCommand body.toNat rho :: commands) values]
       rw [iterate_add_forward f 1 (efRatMachineSteps body)]
       simp only [Function.iterate_one]
@@ -6011,7 +6042,7 @@ private lemma efBoundMachine_correct (e : EF) (rho : List ℚ)
             efRatOpCommand 1 :: commands, values) =
           (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands,
             a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           iha rho (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands) values]
       rw [iterate_add_forward f (efRatMachineSteps b) 1]
       rw [show f^[efRatMachineSteps b]
@@ -6020,7 +6051,7 @@ private lemma efBoundMachine_correct (e : EF) (rho : List ℚ)
           (efRatOpCommand 1 :: commands,
             b.absBoundWith (rho.getD · 0) ::
               a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           ihb rho (efRatOpCommand 1 :: commands)
             (a.absBoundWith (rho.getD · 0) :: values)]
       simp [f, efBoundMachineStep, efBoundCommandStep, efRatCommandStep,
@@ -6049,7 +6080,7 @@ private lemma efBoundMachine_correct (e : EF) (rho : List ℚ)
             efRatOpCommand 2 :: commands, values) =
           (efRatEvalCommand b rho :: efRatOpCommand 2 :: commands,
             a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           iha rho (efRatEvalCommand b rho :: efRatOpCommand 2 :: commands) values]
       rw [iterate_add_forward f (efRatMachineSteps b) 1]
       rw [show f^[efRatMachineSteps b]
@@ -6058,7 +6089,7 @@ private lemma efBoundMachine_correct (e : EF) (rho : List ℚ)
           (efRatOpCommand 2 :: commands,
             b.absBoundWith (rho.getD · 0) ::
               a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           ihb rho (efRatOpCommand 2 :: commands)
             (a.absBoundWith (rho.getD · 0) :: values)]
       simp [f, efBoundMachineStep, efBoundCommandStep, efRatCommandStep,
@@ -6087,7 +6118,7 @@ private lemma efBoundMachine_correct (e : EF) (rho : List ℚ)
             efRatOpCommand 1 :: commands, values) =
           (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands,
             a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           iha rho (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands) values]
       rw [iterate_add_forward f (efRatMachineSteps b) 1]
       rw [show f^[efRatMachineSteps b]
@@ -6096,7 +6127,7 @@ private lemma efBoundMachine_correct (e : EF) (rho : List ℚ)
           (efRatOpCommand 1 :: commands,
             b.absBoundWith (rho.getD · 0) ::
               a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           ihb rho (efRatOpCommand 1 :: commands)
             (a.absBoundWith (rho.getD · 0) :: values)]
       simp [f, efBoundMachineStep, efBoundCommandStep, efRatCommandStep,
@@ -6121,7 +6152,7 @@ private lemma efBoundMachine_correct (e : EF) (rho : List ℚ)
           (efRatEvalCommand a rho :: efRatOpCommand 4 :: commands, values) =
           (efRatOpCommand 4 :: commands,
             a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           iha rho (efRatOpCommand 4 :: commands) values]
       simp [f, efBoundMachineStep, efBoundCommandStep,
         efRatOpCommand, efRatUnaryValueStep, EF.absBoundWith]
@@ -6149,7 +6180,7 @@ private lemma efBoundMachine_correct (e : EF) (rho : List ℚ)
             values) =
           (efRatLetBodyCommand body.toNat rho :: commands,
             x.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand] using
+        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
           ihx rho (efRatLetBodyCommand body.toNat rho :: commands) values]
       rw [iterate_add_forward f 1 (efRatMachineSteps body)]
       simp only [Function.iterate_one]

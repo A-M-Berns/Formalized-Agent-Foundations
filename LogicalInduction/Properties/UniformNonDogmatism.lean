@@ -358,7 +358,7 @@ lemma obuArmBlock_spliceStream (φ : ℕ → Sentence) (hφ : RpnSentenceCodes �
       (fun x ↦ obuArmBlock φ (x.unpair.1.unpair.2 + 1) x.unpair.2) := by
   have hbuy : RpnSpliceStream (fun x ↦
       (obuBuySig φ (x.unpair.1.unpair.2 + 1) x.unpair.2).serialize) := by
-    simpa only [obuBuySig] using
+    simpa only [obuBuySig, ndBuySig] using
       obuBuySig_spliceStream_comp hφ
         (af := fun x ↦ ndThr (x.unpair.1.unpair.2 + 1))
         (δf := fun x ↦ ndPadThr (x.unpair.1.unpair.2 + 1) x.unpair.2)
@@ -387,7 +387,7 @@ lemma obuChunkSeg_spliceStream
   have segC := (obuArmBlock_spliceStream φ hφ).concatVar PolyFueled.left
   have segD : RpnSpliceStream (fun m ↦
       (obuBuySig φ (m.unpair.2 + 1) m.unpair.1).serialize) := by
-    simpa only [obuBuySig] using
+    simpa only [obuBuySig, ndBuySig] using
       obuBuySig_spliceStream_comp hφ
         (af := fun m ↦ ndThr (m.unpair.2 + 1))
         (δf := fun m ↦ ndPadThr (m.unpair.2 + 1) m.unpair.1)

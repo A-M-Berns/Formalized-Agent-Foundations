@@ -100,7 +100,7 @@ lemma PolySequence.affine_provind {As : ℕ → AffineCombination}
     by_cases he : (entry n).denote P = 0
     · simp [w, he]
     have hepos : 0 < (entry n).denote P := lt_of_le_of_ne (by
-      simpa [entry, gateFeature, hs] using he0) (Ne.symm he)
+      simpa [entry, gateFeature, hs, gradualEntry] using he0) (Ne.symm he)
     have hp := buyIndF_pos_imp hδ (by
       simpa [entry, gateFeature, hs, gradualEntry] using hepos)
     rw [(As n).priceFeature_denote] at hp
@@ -133,7 +133,7 @@ lemma PolySequence.affine_provind {As : ℕ → AffineCombination}
     rw [h.buyBelowTrader_value]
     dsimp only [w, entry]
     exact mul_le_mul_of_nonneg_left (sub_le_sub_right hvi _) (by
-      simpa [gateFeature, his] using
+      simpa [gateFeature, his, gradualEntry] using
         (buyIndF_mem ((As i).priceFeature i) low δ P).1)
   exact hLI.noExploit _ (h.buyBelowTrader_ec start low δ)
     (exploits_of_ge_partialSums _ P DP w ε hε hnonneg hnet hfreqW hcons)

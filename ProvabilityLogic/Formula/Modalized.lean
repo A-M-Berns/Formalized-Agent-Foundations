@@ -7,11 +7,13 @@ public import ProvabilityLogic.Formula.Substitution
 
 This file collects purely syntactic notions around *modalization* of a `Formula`:
 
-- `Formula.ModalizedIn`: `p` occurs only in the scope of `□` in `A` ([SV82]: "`p` is
-  modalized in `A`").
+- `Formula.ModalizedIn`: `p` occurs only in the scope of `□` in `A` (termed "`p` is modalized
+  in `A`" in the source).
 - `Formula.Modalized`: every atom of `A` is modalized in `A`.
 - `Formula.modalize`: replace every non-modalized atom of `A` by `⊥`, turning `A` into a
   `Modalized` formula.
+
+- [SV82]
 -/
 
 @[expose]
@@ -25,13 +27,16 @@ namespace Formula
 
 variable {p q : α} {A B C : Formula α}
 
-/-- `p` occurs only in the scope of `□` in `A` ([SV82]: "`p` is modalized in `A`"). -/
+/-- `p` occurs only in the scope of `□` in `A` (termed "`p` is modalized in `A`" in the source).
+
+- [SV82]
+-/
 @[grind]
 def ModalizedIn (p : α) : Formula α → Prop
-  | #a    => a ≠ p
-  | ⊥     => True
-  | A 🡒 B => A.ModalizedIn p ∧ B.ModalizedIn p
-  | □_    => True
+  | .atom a    => a ≠ p
+  | .bot     => True
+  | .imp A B => A.ModalizedIn p ∧ B.ModalizedIn p
+  | .box _    => True
 
 lemma ModalizedIn.of_not_mem_atoms (h : p ∉ A.atoms) : A.ModalizedIn p := by
   induction A <;> grind [atoms]
@@ -56,10 +61,10 @@ maximal boxed subformulas. Turns `f(□C₁, …, □Cₙ, p₁, …, pₘ)` int
 -/
 @[grind]
 def modalize : Formula α → Formula α
-  | #_    => ⊥
-  | ⊥     => ⊥
-  | A 🡒 B => A.modalize 🡒 B.modalize
-  | □A    => □A
+  | .atom _    => ⊥
+  | .bot     => ⊥
+  | .imp A B => A.modalize 🡒 B.modalize
+  | .box A    => □A
 
 omit [DecidableEq α] in
 /-- The modalization of any formula is `Modalized`. -/

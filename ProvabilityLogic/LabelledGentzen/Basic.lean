@@ -2,17 +2,17 @@ module
 
 public import ProvabilityLogic.Formula.Basic
 
+/-!
+Labelled sequent calculus `G3KGL` for `GL`, following Negri's labelled
+sequent calculus for provability logic. World-labels are drawn from `ℕ`.
+
+- [MPB23, §2.2, §6]
+-/
+
 @[expose]
 public section
 
 open scoped Formula
-
-/-!
-Labelled sequent calculus `G3KGL` for `GL`, following Negri's labelled
-sequent calculus for provability logic as presented in `[MPB23]`,
-§2.2 (calculus `G3K`) and §6 (Fig. 2/3, calculus
-`G3KGL`). World-labels are drawn from `ℕ`.
--/
 
 namespace LabelledGentzen
 

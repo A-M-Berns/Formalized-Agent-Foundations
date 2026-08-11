@@ -47,13 +47,13 @@ scoped notation:max "⊤" => top
 
 @[match_pattern]
 abbrev dia (A : Formula α) : Formula α := ∼□(∼A)
-prefix:95 "◇" => dia
+scoped prefix:95 "◇" => dia
 
 @[grind]
 def boxItr (A : Formula α) (n : ℕ) : Formula α := match n with
   | 0 => A
   | n + 1 => □(boxItr A n)
-notation:95 "□^[" n "]" A:max => boxItr A n
+scoped notation:95 "□^[" n "]" A:max => boxItr A n
 
 @[grind =_]
 lemma boxItr_one : (□^[1]A) = □A := by grind;
@@ -65,7 +65,7 @@ lemma boxItr_comp {n m : ℕ} : (□^[n + m]A) = □^[n](□^[m]A) := by
 def diaItr (A : Formula α) (n : ℕ) : Formula α := match n with
   | 0 => A
   | n + 1 => ◇(diaItr A n)
-notation:95 "◇^[" n "]" A:max => diaItr A n
+scoped notation:95 "◇^[" n "]" A:max => diaItr A n
 
 @[grind =_]
 lemma diaItr_one : (◇^[1]A) = ◇A := by grind;
@@ -88,15 +88,15 @@ scoped prefix:95 "⊡" => boxdot
 /-- The boxdot translation: replaces `□` with `⊡`. -/
 @[grind]
 def boxdotTranslate : Formula α → Formula α
-  | #a => #a
-  | ⊥ => ⊥
-  | A 🡒 B => (boxdotTranslate A) 🡒 (boxdotTranslate B)
-  | □A => ⊡(boxdotTranslate A)
+  | .atom a => #a
+  | .bot => ⊥
+  | .imp A B => (boxdotTranslate A) 🡒 (boxdotTranslate B)
+  | .box A => ⊡(boxdotTranslate A)
 postfix:90 "ᵇ" => Formula.boxdotTranslate
 
 @[grind]
 def IsBox : Formula α → Prop
-| □_ => True
+| .box _ => True
 | _ => False
 
 instance : DecidablePred (Formula.IsBox (α := α)) := λ A => by
@@ -105,25 +105,25 @@ instance : DecidablePred (Formula.IsBox (α := α)) := λ A => by
   case atom | bot | imp => exact isFalse $ by grind;
 
 /-- Typst math-mode source for this formula, using `curryst`'s `class("unary", ·)` idiom
-for the modalities (see the `.notes/unpublished/*.typ` project notes). Always parenthesizes
+for the modalities. Always parenthesizes
 a `→`, since as a subformula its scope would otherwise be ambiguous; used for every
 subformula occurrence. `Formula.toString` (below) is the top-level entry point, which omits
 these parentheses around the formula's own outermost `→`, since nothing there needs
 disambiguating. -/
 protected def toStringAux [ToString α] : Formula α → String
-| #a    => s!"p_({a})"
+| .atom a    => s!"p_({a})"
 | ◇A    => s!"class(\"unary\", diamond) {Formula.toStringAux A}"
-| □A    => s!"class(\"unary\", square) {Formula.toStringAux A}"
-| ⊤     => "⊤"
-| ⊥     => "⊥"
+| .box A    => s!"class(\"unary\", square) {Formula.toStringAux A}"
+| .top     => "⊤"
+| .bot     => "⊥"
 | ∼A    => s!"not {Formula.toStringAux A}"
-| A 🡒 B => s!"({Formula.toStringAux A} -> {Formula.toStringAux B})"
+| .imp A B => s!"({Formula.toStringAux A} -> {Formula.toStringAux B})"
 
 /-- Typst math-mode source for this formula. See `Formula.toStringAux` for the
 parenthesization convention; this entry point omits the outermost parentheses around a
 top-level `→`. -/
 protected def toString [ToString α] : Formula α → String
-| A 🡒 B => s!"{Formula.toStringAux A} -> {Formula.toStringAux B}"
+| .imp A B => s!"{Formula.toStringAux A} -> {Formula.toStringAux B}"
 | A     => Formula.toStringAux A
 
 instance [ToString α] : ToString (Formula α) := ⟨Formula.toString⟩
@@ -133,10 +133,10 @@ variable [DecidableEq α]
 
 @[grind]
 def atoms : Formula α → Finset α
-| ⊥     => ∅
-| #a    => {a}
-| A 🡒 B => A.atoms ∪ B.atoms
-| □A    => A.atoms
+| .bot     => ∅
+| .atom a    => {a}
+| .imp A B => A.atoms ∪ B.atoms
+| .box A    => A.atoms
 
 @[simp, grind =]
 lemma atoms_and (A B : Formula α) : (A ⋏ B).atoms = A.atoms ∪ B.atoms := by
@@ -164,14 +164,12 @@ abbrev FormulaList (α) := List $ Formula α
 
 namespace FormulaList
 
-variable {A : Formula α}
-
 @[grind]
 protected def conj : FormulaList α → Formula α
 | [] => ⊤
 | [A] => A
 | A :: B :: Γ  => A ⋏ FormulaList.conj (B :: Γ)
-prefix:100 "⋀" => FormulaList.conj
+scoped prefix:100 "⋀" => FormulaList.conj
 
 @[simp, grind .] lemma conj_nil : FormulaList.conj (α := α) [] = ⊤ := rfl
 @[simp, grind .] lemma conj_singleton : FormulaList.conj [A] = A := rfl
@@ -181,7 +179,7 @@ protected def disj : FormulaList α → Formula α
 | [] => ⊥
 | [A] => A
 | A :: B :: Γ  => A ⋎ FormulaList.disj (B :: Γ)
-prefix:100 "⋁" => FormulaList.disj
+scoped prefix:100 "⋁" => FormulaList.disj
 
 @[simp, grind .] lemma disj_nil : FormulaList.disj (α := α) [] = ⊥ := rfl
 @[simp, grind .] lemma disj_singleton : FormulaList.disj [A] = A := rfl
@@ -197,10 +195,10 @@ variable {A B : Formula α}
 
 @[grind]
 def subfmls [DecidableEq α] : Formula α → FormulaFinset α
-| #a    => {#a}
-| ⊥     => {⊥}
-| A 🡒 B => insert (A 🡒 B) (A.subfmls ∪ B.subfmls)
-| □A    => insert (□A) A.subfmls
+| .atom a    => {#a}
+| .bot     => {⊥}
+| .imp A B => insert (A 🡒 B) (A.subfmls ∪ B.subfmls)
+| .box A    => insert (□A) A.subfmls
 
 @[grind .]
 lemma mem_subfmls_self [DecidableEq α] : A ∈ A.subfmls := by cases A <;> grind
@@ -223,10 +221,10 @@ lemma subfmls_trans [DecidableEq α] : A ∈ B.subfmls → A.subfmls ⊆ B.subfm
 
 @[grind]
 def complexity : Formula α → ℕ
-  | #_    => 0
-  | ⊥     => 0
-  | A 🡒 B => max A.complexity B.complexity + 1
-  | □A    => A.complexity + 1
+  | .atom _    => 0
+  | .bot     => 0
+  | .imp A B => max A.complexity B.complexity + 1
+  | .box A    => A.complexity + 1
 
 @[simp, grind .]
 lemma complexity_imp_left : A.complexity < (A 🡒 B).complexity := by grind;
@@ -244,10 +242,10 @@ lemma complexity_le_of_mem_subfmls [DecidableEq α] (h : A ∈ B.subfmls) : A.co
 /-- The modal degree of a formula: the maximal nesting depth of `□` (implication does not count). -/
 @[grind]
 def degree : Formula α → ℕ
-  | #_    => 0
-  | ⊥     => 0
-  | A 🡒 B => max A.degree B.degree
-  | □A    => A.degree + 1
+  | .atom _    => 0
+  | .bot     => 0
+  | .imp A B => max A.degree B.degree
+  | .box A    => A.degree + 1
 
 @[simp, grind .]
 lemma degree_imp_left : A.degree ≤ (A 🡒 B).degree := by grind;
@@ -270,11 +268,12 @@ lemma atoms_subset_of_mem_subfmls [DecidableEq α] (h : B ∈ A.subfmls) : B.ato
 end Formula
 
 
+open scoped FormulaList in
 private lemma atoms_lconj_subset [DecidableEq α] (L : FormulaList α) :
     (⋀L).atoms ⊆ L.toFinset.biUnion Formula.atoms := by
   match L with
   | [] => simp [FormulaList.conj, Formula.atoms, Formula.top, Formula.neg]
-  | [A] => intro x hx; simpa [FormulaList.conj] using hx
+  | [A] => simp
   | A :: B :: L =>
     simp only [FormulaList.conj, Formula.atoms_and]
     have ih := atoms_lconj_subset (B :: L)
@@ -288,11 +287,12 @@ private lemma atoms_lconj_subset [DecidableEq α] (L : FormulaList α) :
       exact Finset.mem_insert_of_mem hy
 
 
+open scoped FormulaList in
 private lemma atoms_ldisj_subset [DecidableEq α] (L : FormulaList α) :
     (⋁L).atoms ⊆ L.toFinset.biUnion Formula.atoms := by
   match L with
   | [] => simp [FormulaList.disj, Formula.atoms]
-  | [A] => intro x hx; simpa [FormulaList.disj] using hx
+  | [A] => simp
   | A :: B :: L =>
     simp only [FormulaList.disj, Formula.atoms_or]
     have ih := atoms_ldisj_subset (B :: L)
@@ -308,18 +308,16 @@ private lemma atoms_ldisj_subset [DecidableEq α] (L : FormulaList α) :
 
 namespace FormulaFinset
 
-variable {A : Formula α}
-
 @[grind]
 protected noncomputable def conj : FormulaFinset α → Formula α := FormulaList.conj ∘ Finset.toList
-prefix:100 "⋀" => FormulaFinset.conj
+scoped prefix:100 "⋀" => FormulaFinset.conj
 
 @[simp, grind .] lemma conj_empty : FormulaFinset.conj (α := α) ∅ = ⊤ := by simp [FormulaFinset.conj]
 @[simp, grind .] lemma conj_singleton : FormulaFinset.conj ({A} : FormulaFinset α) = A := by simp [FormulaFinset.conj]
 
 @[grind]
 protected noncomputable def disj : FormulaFinset α → Formula α := FormulaList.disj ∘ Finset.toList
-prefix:100 "⋁" => FormulaFinset.disj
+scoped prefix:100 "⋁" => FormulaFinset.disj
 
 @[simp, grind .] lemma disj_empty : FormulaFinset.disj (α := α) ∅ = ⊥ := by simp [FormulaFinset.disj]
 @[simp, grind .] lemma disj_singleton : FormulaFinset.disj ({A} : FormulaFinset α) = A := by simp [FormulaFinset.disj]

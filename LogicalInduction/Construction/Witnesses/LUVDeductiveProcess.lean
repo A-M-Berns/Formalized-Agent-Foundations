@@ -119,11 +119,11 @@ lemma luvWorld_consistent [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.Sound
   · -- positive literal: the atom holds because Θ proves the threshold, so it is true
     simp only [luvEventAtom, htag, if_pos, holds_atom]
     show (L.luvWorld) e.unpair.2
-    exact (re_complete L.thresholdPred_re).mpr (by simpa using hprov)
+    exact (re_complete L.thresholdPred_re).mpr hprov
   · -- refutation literal: the negated atom holds because Θ proves the failure schema
     simp only [luvEventAtom, htag, if_neg (_root_.one_ne_zero), holds_not, holds_atom]
     show ¬ (L.luvWorld) e.unpair.2
-    exact (re_complete L.thresholdPred_compl_re).mpr (by simpa using hprov)
+    exact (re_complete L.thresholdPred_compl_re).mpr hprov
 
 lemma luvWorld_consistentWithTheory [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
     (L.luvWorld).ConsistentWithTheory (L.luvThresholdDP T) :=

@@ -257,7 +257,7 @@ lemma continuous_denoteWith (e : EF) : ∀ (ρ : List (History → ℝ)),
           · exact hρ f hf)
 
 lemma continuous_denote (e : EF) : Continuous e.denote := by
-  simpa [denote] using continuous_denoteWith e [] (by simp)
+  exact continuous_denoteWith e [] (by simp)
 
 /-! ### `EF_n` is a commutative ring (`def:tf`).
 
@@ -1620,7 +1620,7 @@ lemma foldl_undigitizeStep_tokenBlock (out : List ℕ) (t : ℕ) :
 Paper node: `def:ec` -/
 lemma undigitize_digitize (ts : List ℕ) : undigitize (digitize ts) = ts := by
   suffices h : ∀ out, (List.foldl undigitizeStep (out, 0, 1) (digitize ts)).1 = out ++ ts by
-    simpa using h []
+    simpa [undigitize] using h []
   induction ts with
   | nil => intro out; simp [digitize]
   | cons t rest ih =>

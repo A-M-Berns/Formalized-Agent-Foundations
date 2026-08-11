@@ -32,7 +32,7 @@ errata in the *Logical Induction* paper itself
 ## Building
 
 The toolchain is pinned in [`lean-toolchain`](lean-toolchain) (currently
-`leanprover/lean4:v4.28.0-rc1`); install [`elan`](https://github.com/leanprover/elan) and
+`leanprover/lean4:v4.31.0`); install [`elan`](https://github.com/leanprover/elan) and
 it will fetch that version automatically.
 
 ```sh

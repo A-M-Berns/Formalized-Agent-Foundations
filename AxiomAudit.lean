@@ -23,7 +23,9 @@ paper node", not "the formalization is faithful". Faithfulness is the read-throu
 
 Scope is the whole repository, and it is now **strictly clean throughout**: the former
 sole intentional axiom `glFixedPoint_thm42` (GL fixed-point existence) has been discharged
-by the autoformalized `ProvabilityLogic/` sequent calculus (see `ModalAgents/FixedPoint.lean`),
+by the `ProvabilityLogic/` development (a vendored subset of
+FormalizedFormalLogic/ProvabilityLogic, pinned in `lakefile.lean`; see
+`ModalAgents/FixedPoint.lean`),
 so every ModalAgents endpoint — including the cooperation results that rest on the GL fixed
 point — is asserted under `#assert_axioms_clean`. (`#assert_axioms_clean_except` is retained
 as a reusable tool but is no longer needed.)
@@ -754,8 +756,9 @@ end LogicalInduction
 /-! ## ModalAgents — modal open-source game theory (Barász et al.)
 
 Every ModalAgents endpoint is now strictly clean. The former sole intentional axiom
-`glFixedPoint_thm42` (GL fixed-point existence) is discharged by the autoformalized
-`ProvabilityLogic/` sequent calculus (see `ModalAgents/FixedPoint.lean`); `glFixedPoint_thm42`
+`glFixedPoint_thm42` (GL fixed-point existence) is discharged by the `ProvabilityLogic/`
+development (vendored from FormalizedFormalLogic/ProvabilityLogic, pinned in
+`lakefile.lean`; see `ModalAgents/FixedPoint.lean`); `glFixedPoint_thm42`
 is a proved theorem, so the cooperation endpoints that rest on it are asserted strictly
 clean below rather than via `#assert_axioms_clean_except`. -/
 

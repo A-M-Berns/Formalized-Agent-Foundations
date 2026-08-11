@@ -6,7 +6,7 @@ public import ProvabilityLogic.ToFoundation.Vorspiel.Rel.CWF
 @[expose]
 public section
 
-open scoped Formula
+open scoped Formula FormulaList FormulaFinset
 
 structure Model (κ : Type u) [Nonempty κ] (α : Type v) where
   Rel' : κ → κ → Prop
@@ -145,10 +145,10 @@ variable {M : Model κ α} {x : M.World} {A B : Formula α} {n : ℕ}
 
 @[grind]
 def Forces (x : M.World) : Formula α → Prop
-| #a    => M x a
-| ⊥     => False
-| A 🡒 B => Forces x A → Forces x B
-| □A    => ∀ y, x ≺ y → Forces y A
+| .atom a    => M x a
+| .bot     => False
+| .imp A B => Forces x A → Forces x B
+| .box A    => ∀ y, x ≺ y → Forces y A
 infix:55 " ⊩ " => Forces
 
 abbrev NotForces (x : M.World) (A : Formula α) : Prop := ¬x ⊩ A

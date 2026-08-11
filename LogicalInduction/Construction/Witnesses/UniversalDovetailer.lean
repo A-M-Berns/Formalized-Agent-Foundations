@@ -181,12 +181,14 @@ def trimStage (prev rw : List Bool → ℚ) (σ : List Bool) : ℚ :=
   List.reverseRecOn σ (min (rw []) 1) (fun τ b ih ↦ childVal prev rw ih τ b)
 
 @[simp] lemma trimStage_nil (prev rw : List Bool → ℚ) :
-    trimStage prev rw [] = min (rw []) 1 :=
-  List.reverseRecOn_nil _ _
+    trimStage prev rw [] = min (rw []) 1 := by
+  unfold trimStage
+  exact List.reverseRecOn_nil _ _
 
 lemma trimStage_concat (prev rw : List Bool → ℚ) (σ : List Bool) (b : Bool) :
-    trimStage prev rw (σ ++ [b]) = childVal prev rw (trimStage prev rw σ) σ b :=
-  List.reverseRecOn_concat _ _ _ _
+    trimStage prev rw (σ ++ [b]) = childVal prev rw (trimStage prev rw σ) σ b := by
+  unfold trimStage
+  exact List.reverseRecOn_concat _ _ _ _
 
 /-- The stage table of the dovetail: stage `0` is empty, stage `n+1` trims the raw table at
 clock `n+1` against the previous stage. -/
@@ -1224,7 +1226,7 @@ lemma gridApprox_tendsto (σ : List Bool) :
     have hcast : ((1 / ((n : ℚ) + 1) : ℚ) : ℝ) = 1 / ((n : ℝ) + 1) := by push_cast; ring
     rw [hcast] at h'
     linarith
-  · exact_mod_cast gridApprox_le_universalApprox n σ
+  · exact Rat.cast_le.mpr (gridApprox_le_universalApprox n σ)
 
 /-! ### The output-size half of `PolyFueled` -/
 

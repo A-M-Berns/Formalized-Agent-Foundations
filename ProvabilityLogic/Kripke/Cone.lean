@@ -5,6 +5,8 @@ public import ProvabilityLogic.Kripke.RootExtension
 @[expose]
 public section
 
+open scoped Formula
+
 variable [Nonempty κ] {α}
 
 namespace Model

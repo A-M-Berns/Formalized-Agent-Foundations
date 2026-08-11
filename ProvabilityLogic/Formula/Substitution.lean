@@ -5,7 +5,7 @@ public import ProvabilityLogic.Formula.Basic
 @[expose]
 public section
 
-open scoped Formula
+open scoped Formula FormulaList FormulaFinset
 
 variable {α β γ : Type*}
 
@@ -19,10 +19,10 @@ abbrev Substitution (α β) := α → Formula β
 @[grind]
 def subst (s : Substitution α β) : Formula α → Formula β
   | atom a  => (s a)
-  | ⊥       => ⊥
-  | □A      => □(A.subst s)
-  | A 🡒 B   => A.subst s 🡒 B.subst s
-scoped notation:95 A "⟦" s "⟧" => Formula.subst s A
+  | bot     => bot
+  | box A   => box (A.subst s)
+  | imp A B => imp (A.subst s) (B.subst s)
+notation:95 A "⟦" s "⟧" => Formula.subst s A
 
 variable {s : Substitution α β} {A B : Formula α}
 
@@ -123,7 +123,7 @@ variable [DecidableEq α] {p q : α} {A B C : Formula α}
 /-- The substitution replacing the single atom `p` by `B`. -/
 def Substitution.single (p : α) (B : Formula α) : Substitution α α := fun a => if a = p then B else #a
 
-scoped notation:95 A "⟦" p " ↦ " B "⟧" => Formula.subst (Formula.Substitution.single p B) A
+notation:95 A "⟦" p " ↦ " B "⟧" => Formula.subst (Formula.Substitution.single p B) A
 
 @[simp, grind =] lemma Substitution.single_self : Substitution.single p B p = B := by
   simp [Substitution.single]

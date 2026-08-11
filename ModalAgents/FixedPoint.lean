@@ -6,16 +6,14 @@
   Barasz Thm 4.2 (the de Jongh–Sambin fixed-point theorem) is Lindström Thm 11,
   and Thm 4.3 (uniqueness of the fixed point) is Lindström Thm 12.
 
-  Thm 4.2 (existence) is a standard GL result not available in FFL/Foundation.
-  It is proved below (`glFixedPoint_thm42`) through the autoformalized
-  `ProvabilityLogic/` sequent-calculus development (Harmonic Aristotle; see the
-  `GlFixedPointBridge` section and the README): a de Jongh–Sambin construction via
-  Maehara interpolation and Löb's rule, transported back to Foundation's `Modal.GL`
-  through finite Kripke completeness. Like the Brouwer construction it is kernel-gated;
-  its `ProvabilityLogic/` interior has not had a human line-by-line read-through.
-  `ProvabilityLogic`'s `Formula`-level notations are `scoped`, so they do not collide
-  with Foundation's modal notation here; the bridge writes that development's operations
-  as explicit function calls.
+  Thm 4.2 (existence) is a standard GL result not available in Foundation itself.
+  It is proved below (`glFixedPoint_thm42`) through the upstream
+  FormalizedFormalLogic/ProvabilityLogic package (see the `GlFixedPointBridge`
+  section and the README): a de Jongh–Sambin construction via Maehara interpolation
+  and Löb's rule, transported back to Foundation's `Modal.GL` through finite Kripke
+  completeness. That package's `Formula` lives at the root namespace with `scoped`
+  notations, so it does not collide with Foundation's modal notation here; the
+  bridge writes its operations as explicit function calls.
   Thm 4.3 (uniqueness) is proved below from a boxed-equivalence substitution lemma
   and Löb's rule.
 
@@ -123,6 +121,23 @@ lemma provable_of_mem_logicGL {A : Modal.Formula ℕ}
     (κ := M.World) N
   exact (forces_translation M.root.1 A).mp (hv M.root.1)
 
+/-- The forward transport: a `Modal.GL` theorem lands in the sequent-calculus
+development's `LogicGL` after translation. Dual of `provable_of_mem_logicGL`,
+through the same finite-GL Kripke characterization on both sides. -/
+lemma mem_logicGL_of_provable {A : Modal.Formula ℕ} (h : Modal.GL ⊢ A) :
+    toSeq A ∈ (_root_.LogicGL : _root_.Logic ℕ) := by
+  apply (_root_.LogicGL.iff_forces (A := toSeq A)).mpr
+  intro κ _ N _ x
+  let M : LO.Modal.Kripke.Model :=
+    { World := κ, Rel := N.Rel, Val := fun a w => N.Val w a }
+  haveI : Finite M.World := inferInstanceAs (Finite N.World)
+  haveI : IsTrans M.World M.Rel := inferInstanceAs (IsTrans κ N.Rel)
+  haveI : Std.Irrefl M.Rel := inferInstanceAs (Std.Irrefl N.Rel)
+  haveI hGL : M.toFrame.IsFiniteGL := {}
+  have hM : LO.Modal.Kripke.FrameClass.finite_GL ⊧ A :=
+    LO.Modal.GL.Kripke.finite_completeness_TFAE.out 0 1 |>.mp h
+  exact (forces_translation (M := M) x A).mpr (hM hGL M.Val x)
+
 end GlFixedPointBridge
 
 /-- de Jongh–Sambin–Bernardi fixed-point theorem (Barasz, §4, Thm 4.2),
@@ -156,10 +171,10 @@ theorem glFixedPoint_thm42 {p : ℕ} {φ : Modal.Formula ℕ} (h : Modalized p �
             (GlFixedPointBridge.toSeq ψ) ∈ (_root_.LogicGL : _root_.Logic ℕ) := by
       simpa [ψ, GlFixedPointBridge.toSeq_diag] using hD
     apply _root_.LogicGL.iff_provableHilbert.mpr
-    apply _root_.ProvableHilbert.andIntroRule
-    · exact _root_.ProvableHilbert.andRRule
+    apply _root_.LogicGL.ProvableHilbert.andIntroRule
+    · exact _root_.LogicGL.ProvableHilbert.andRRule
         (_root_.LogicGL.iff_provableHilbert.mp hfix)
-    · exact _root_.ProvableHilbert.andLRule
+    · exact _root_.LogicGL.ProvableHilbert.andLRule
         (_root_.LogicGL.iff_provableHilbert.mp hfix)
   · intro a ha
     have haD : a ∈ D.atoms := by

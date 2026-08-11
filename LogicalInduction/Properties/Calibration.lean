@@ -2226,7 +2226,7 @@ lemma biasRunTrader_magnitude_eq_one_of_attemptedRisk
       (prefixSum (fun n => ((biasRunTrader h hWgen rate k).strat n).magnitude P))
       atTop (𝓝 ((biasRunTrader h hWgen rate k).magnitude P)) := by
     have hraw := hsummable.hasSum.tendsto_sum_nat.comp (tendsto_add_atTop_nat 1)
-    simpa [prefixSum, Trader.magnitude] using hraw
+    exact hraw
   exact tendsto_nhds_unique htoMagnitude hprefTrader
 
 /-- An approximately determined affine value differs from its diagonal market price by at
@@ -2952,12 +2952,13 @@ def unitMaturityCheckAtFuel_certificate
         simpa [hriskEq] using hfinite.1
       · intro u hu
         have hworld := hfinite.2 u (fun φ => hu φ.1 φ.2)
-        cases hworth : Tr.partialNetWorthRatAtFuel market fuel u.payoutRat m with
-        | none => simp [hworth] at hworld
-        | some worth =>
+        split at hworld
+        · exact hworld.elim
+        · next worth hworth =>
             have hworthEq :=
               Tr.partialNetWorthRatAtFuel_sound market fuel u.payoutRat m hworth
-            simpa [hworth, hworthEq] using hworld
+            rw [hworthEq] at hworld
+            exact hworld
 
 /-- Soundness of the finite rational/Boolean maturity certificate: exhaustive finite
 assignments imply the universal real-valued plausible-world payoff condition in
@@ -3141,8 +3142,12 @@ lemma unitMaturityCheckAtFuel_eventually_complete
   constructor
   · exact c.risk
   · intro u hu
-    rw [hnetWorth u]
-    exact c.payoff u (fun φ hφ => hu ⟨φ, hφ⟩)
+    split
+    · next hnone =>
+        exact (Option.some_ne_none _ ((hnetWorth u).symm.trans hnone)).elim
+    · next worth hsome =>
+        cases Option.some.inj ((hnetWorth u).symm.trans hsome)
+        exact c.payoff u (fun φ hφ => hu ⟨φ, hφ⟩)
 
 /-- The exact remaining operational boundary in the affine recurring-unbiasedness proof:
 for every alleged bias gap, a single polynomial Boolean table recognizes historical

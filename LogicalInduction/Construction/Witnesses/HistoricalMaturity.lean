@@ -1025,7 +1025,9 @@ lemma ApproxDeterminedViaTheory.not_eventually_weightedBias_lt_ofComputations
     have hs := HistoricalMaturityCompile.historicalScheduleOfComputations
       hTs market process (q / 4) roiToleranceRat roiToleranceRat_prim
       roiToleranceRat_pos N hunit hroi'
-    simpa [Ts, roiTolerance] using hs
+    have hcast : ((q / 4 : ℚ) : ℝ) = (q : ℝ) / 4 := by push_cast; ring
+    rw [← hcast]
+    exact hs
   have hnotQ := hdet.not_eventually_weightedBias_lt_of_historicalVerifier
     hpoly hWgen hnegl hWdiv hmag hworld
       (q : ℝ) hq0 roiTolerance
@@ -1573,8 +1575,15 @@ theorem BoundedSequence.recurringunbiasednessexp
       (fun n => q * weightedBias w market meshTruth n) 0 := by
     have haff' : HasLimitPoint
         (weightedBias w (fun i => q * market i) (fun i => q * meshTruth i)) 0 := by
-      simpa only [w, market, meshTruth, q, normalizedMesh, normalizedMeshTruth,
-        AffineCombination.scale_price, EF.denote_const, meshAffine_price_diagonal] using haff
+      have h1 : (fun i => q * market i) =
+          fun i => (normalizedMesh As b i).price P i := by
+        funext i
+        simp [normalizedMesh, market, q, AffineCombination.scale_price,
+          EF.denote_const, meshAffine_price_diagonal]
+      have h2 : (fun i => q * meshTruth i) =
+          normalizedMeshTruth As P DP hworld b := rfl
+      rw [h1, h2]
+      exact haff
     have heq : weightedBias w (fun i => q * market i) (fun i => q * meshTruth i) =
         fun n => q * weightedBias w market meshTruth n := by
       funext n

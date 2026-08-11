@@ -199,7 +199,10 @@ lemma continuous_affineValue (A : AffineCombination) (P : History) :
     induction l with
     | nil => simpa using (continuous_const : Continuous (fun _ : BoolPCWorld => (0 : ℝ)))
     | cons p ps ih =>
-        simpa using (continuous_const.mul (continuous_payout p.2)).add ih
+        have h := ((continuous_const (y := p.1.denote P)).mul (continuous_payout p.2)).add ih
+        convert h using 1
+        funext v
+        simp [mul_ite]
   exact continuous_const.add (hterms A.terms)
 
 /-- Boolean worlds plausible at one finite deductive stage form a closed set. -/

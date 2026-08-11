@@ -2612,15 +2612,17 @@ private lemma crossPrecisionBlocks_terms_length (X : ℕ → LUV) (m k : ℕ) :
 private lemma crossPrecisionBlocks_price (X : ℕ → LUV) (P : History) (m k day : ℕ) :
     (crossPrecisionBlocks X (Nat.pair m k)).price P day =
       (X k).expectApprox (P day) (k + 1) - (X k).expectApprox (P day) (m + 1) := by
-  simpa using LUV.crossPrecisionAffine_price (fun z ↦ X z.unpair.2)
-    (fun z ↦ z.unpair.2 + 1) (fun z ↦ z.unpair.1 + 1) P (Nat.pair m k) day
+  simpa [crossPrecisionBlocks] using
+    LUV.crossPrecisionAffine_price (fun z ↦ X z.unpair.2)
+      (fun z ↦ z.unpair.2 + 1) (fun z ↦ z.unpair.1 + 1) P (Nat.pair m k) day
 
 private lemma crossPrecisionBlocks_value (X : ℕ → LUV) (P : History) (w : Valuation)
     (m k : ℕ) :
     (crossPrecisionBlocks X (Nat.pair m k)).value P w =
       (X k).expectApprox w (k + 1) - (X k).expectApprox w (m + 1) := by
-  simpa using LUV.crossPrecisionAffine_value (fun z ↦ X z.unpair.2)
-    (fun z ↦ z.unpair.2 + 1) (fun z ↦ z.unpair.1 + 1) P w (Nat.pair m k)
+  simpa [crossPrecisionBlocks] using
+    LUV.crossPrecisionAffine_value (fun z ↦ X z.unpair.2)
+      (fun z ↦ z.unpair.2 + 1) (fun z ↦ z.unpair.1 + 1) P w (Nat.pair m k)
 
 /-- **Cross-precision correction without injectivity.**  The deferred-day reading of
 a source LUV's own-day expectation mesh agrees asymptotically with its deferred-day mesh,
@@ -2651,12 +2653,12 @@ lemma crossPrecision_deferred_tendsto_zero
       simp [crossPrecisionBlocks, LUV.crossPrecisionAffine])
     (htermRank := crossPrecisionBlocks_terms_rank X)
     (width := fun m ↦ m * 2 + 2) (hwidth := hw)
-    (hwidthPos := fun m ↦ by dsimp only; omega)
+    (hwidthPos := fun m ↦ by (try dsimp only); omega)
     (hwide := fun m k hk ↦ by
-      rw [crossPrecisionBlocks_terms_length]; dsimp only; omega)
+      rw [crossPrecisionBlocks_terms_length]; (try dsimp only); omega)
     (C := 2) (hC := by norm_num)
     (hmag := fun z ↦ by
-      simpa using LUV.crossPrecisionAffine_magnitude_le_two (fun z ↦ X z.unpair.2)
+      exact LUV.crossPrecisionAffine_magnitude_le_two (fun z ↦ X z.unpair.2)
         (fun z ↦ z.unpair.2 + 1) (fun z ↦ z.unpair.1 + 1) P z)
     (hbdd := fun z day ↦ by
       obtain ⟨m, k, rfl⟩ : ∃ m k, z = Nat.pair m k := ⟨z.unpair.1, z.unpair.2, by simp⟩
@@ -3105,7 +3107,7 @@ lemma conditional_deferred_tendsto_zero
           (pairedExpectationBlocks_terms_rank X z) p hp
       · exact numericQuoteBlocks_terms_rank target Z' z p hp)
     (width := fun m ↦ m * 3 + 3) (hwidth := hwidth)
-    (hwidthPos := fun m ↦ by dsimp only; omega)
+    (hwidthPos := fun m ↦ by (try dsimp only); omega)
     (hwide := fun m k hk ↦ by
       simp only [hBsDef, AffineCombination.add, AffineCombination.scale,
         List.length_append, List.length_map, pairedExpectationBlocks_terms_length,
@@ -3295,7 +3297,7 @@ lemma selfTrust_deferred_tendsto_zero
   have hkey := deferred_block_price_tendsto_zero (P := P) (DP := DP) hworld f hspec hBpoly
     (hconstRank := ?_) (htermRank := ?_)
     (width := fun m ↦ m * 2 + 3) (hwidth := hwidth)
-    (hwidthPos := fun m ↦ by dsimp only; omega)
+    (hwidthPos := fun m ↦ by (try dsimp only); omega)
     (hwide := ?_)
     (C := 4) (hC := by norm_num)
     (hmag := ?_) (hbdd := ?_) (hsmall := ?_)
@@ -3580,7 +3582,7 @@ structure ParameterizedDiagonalQuoteCode
     (T : ArithmeticTheory) (truth : ℕ → Prop)
     extends BooleanQuoteCode T truth where
   body : ArithmeticSemisentence 2
-  represents_fixedpoint : ∀ (z : ℕ), (ℕ ⊧ₘ (parameterizedFixedpoint body)/[↑z]) ↔ truth z
+  represents_fixedpoint : ∀ (z : ℕ), (parameterizedFixedpoint body).Evalb ![z] ↔ truth z
 
 /-- The genuine parameterized fixed point carried by a diagonal quote satisfies FFL's
 uniform diagonal law inside the presented arithmetic theory: a genuine self-referential
@@ -3769,9 +3771,9 @@ noncomputable def diagonalPriceBody
 
 lemma diagonalPriceBody_spec
     {P : History} (market : MarketComputation P) (p : ℚ) (x n : ℕ) :
-    (ℕ ⊧ₘ (diagonalPriceBody market p)/[↑x, ↑n]) ↔
+    (diagonalPriceBody market p).Evalb ![x, n] ↔
       diagonalPriceTruth market p n := by
-  simpa [diagonalPriceBody, models_iff, Semiformula.eval_substs,
+  simpa [diagonalPriceBody, Semiformula.eval_substs,
     Matrix.constant_eq_singleton] using
       (codeOfREPred_spec (diagonalPriceTruth_re market p) (x := n))
 
@@ -3779,18 +3781,14 @@ lemma diagonalPriceBody_spec
 Paper node: `thm:lp` -/
 lemma diagonalPriceFixedpoint_spec
     {P : History} (market : MarketComputation P) (p : ℚ) (n : ℕ) :
-    (ℕ ⊧ₘ (parameterizedFixedpoint (diagonalPriceBody market p))/[↑n]) ↔
+    (parameterizedFixedpoint (diagonalPriceBody market p)).Evalb ![n] ↔
       diagonalPriceTruth market p n := by
-  have hall : ℕ ⊧ₘ ∀⁰
-      (parameterizedFixedpoint (diagonalPriceBody market p) 🡘
-        (diagonalPriceBody market p)/[
-          ⌜parameterizedFixedpoint (diagonalPriceBody market p)⌝, #0]) :=
-    models_of_provable (T := 𝗜𝚺₁) inferInstance
-      (parameterized_diagonal₁ (T := 𝗜𝚺₁) (diagonalPriceBody market p))
+  have hall := models_of_provable (M := ℕ) (T := 𝗜𝚺₁) inferInstance
+    (parameterized_diagonal₁ (T := 𝗜𝚺₁) (diagonalPriceBody market p))
   have hdiag : ∀ n : ℕ,
-      (ℕ ⊧ₘ (parameterizedFixedpoint (diagonalPriceBody market p))/[↑n]) ↔
-        (ℕ ⊧ₘ (diagonalPriceBody market p)/[
-          ⌜parameterizedFixedpoint (diagonalPriceBody market p)⌝, ↑n]) := by
+      ((parameterizedFixedpoint (diagonalPriceBody market p)).Evalb ![n]) ↔
+        ((diagonalPriceBody market p).Evalb
+          ![⌜parameterizedFixedpoint (diagonalPriceBody market p)⌝, n]) := by
     simpa [models_iff, Matrix.comp_vecCons', Matrix.constant_eq_singleton] using hall
   exact (hdiag n).trans (diagonalPriceBody_spec market p _ n)
 
@@ -3829,9 +3827,8 @@ Paper node: `thm:lp` -/
 lemma parameterizedDiagonalQuoteCodeOfMarket_public_fixedpoint
     {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) (n : ℕ) :
-    (ℕ ⊧ₘ
-        (parameterizedFixedpoint
-          (parameterizedDiagonalQuoteCodeOfMarket market T p).body)/[↑n]) ↔
+    ((parameterizedFixedpoint
+          (parameterizedDiagonalQuoteCodeOfMarket market T p).body).Evalb ![n]) ↔
       P n
         ((parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n) <
           (p : ℝ) := by
@@ -3988,7 +3985,7 @@ lemma CompletedAffineQuoteApprox.future_price_tendsto_zero
       rcases hx with ⟨v, hv, rfl⟩
       have hinf' : completedAffineLow As P DP n ≤
           (As n).value P v.payout := by
-        simpa only [As] using hinf
+        exact hinf
       have hvnear := hall v hv
       rw [abs_le] at hvnear
       linarith
@@ -4008,7 +4005,7 @@ lemma CompletedAffineQuoteApprox.future_price_tendsto_zero
       rcases hx with ⟨v, hv, rfl⟩
       have hsup' : (As n).value P v.payout ≤
           completedAffineHigh As P DP n := by
-        simpa only [As] using hsup
+        exact hsup
       have hvnear := hall v hv
       rw [abs_le] at hvnear
       linarith
@@ -4798,7 +4795,7 @@ theorem lic_introspection_ofCode
     fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   let package := introspectionIntervalQuoteOfCode Q φ hφ a b δ
     lowerFeature hlower upperFeature hupper hδ (hδ.inv_of_pos hδpos) hδpos hδzero hab q hP
-  simpa only using lic_introspection P DP φ a b δ package hworld
+  exact lic_introspection P DP φ a b δ package hworld
 
 /-- Paper-facing `thm:lp` entry point.  Its genuine parameterized fixed point and public
 diagonal atom are constructed from `market`; no semantic diagonal premise is accepted.
@@ -4819,8 +4816,7 @@ theorem lic_paradox_resistance_ofDiagonal
       fun _ => (p : ℝ) := by
   let package := paradoxResistanceQuoteOfDiagonal Q market p width hwidth
     (hwidth.inv_of_pos hwidthPos) hwidthPos hwidthZero
-  simpa only using
-    lic_paradox_resistance P DP p hp0 hp1 package hworld
+  exact lic_paradox_resistance P DP p hp0 hp1 package hworld
 
 /-! ## Positive and complementary quotation paths -/
 

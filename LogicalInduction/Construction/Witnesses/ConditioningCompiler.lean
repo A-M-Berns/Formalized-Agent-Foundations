@@ -2899,7 +2899,7 @@ lemma deserializeTrades_safeSeparatedFrameTokenOutput
     (Encodable.encode q) (Encodable.encode q⁻¹) tokens
   have hfirst := deserializeTrades_conditioningFrameTokenRun false ψ ε q day tokens
   have hsecond := deserializeTrades_conditioningFrameTokenRun true ψ ε q day tokens
-  simp only at hfirst hsecond
+  try simp only at hfirst hsecond
   cases hsource : deserializeTrades tokens with
   | some trades =>
       have hready := streamReadFrom_eq_ready_of_deserializeTrades_eq_some

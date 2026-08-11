@@ -388,14 +388,12 @@ lemma prefixOffset_poly (count : ℕ → ℕ)
 lemma PolySequence.persistenceMember_poly {As : ℕ → AffineCombination}
     (h : PolySequence As) : ∃ c, PolyFueled c (fun z =>
       persistenceMember h z.unpair.1 z.unpair.2) := by
-  simpa [persistenceMember, persistenceMemberLength] using
-    prefixMember_poly h.termCount h.termCount_poly
+  exact prefixMember_poly h.termCount h.termCount_poly
 
 lemma PolySequence.persistenceOffset_poly {As : ℕ → AffineCombination}
     (h : PolySequence As) : ∃ c, PolyFueled c (fun z =>
       persistenceOffset h z.unpair.1 z.unpair.2) := by
-  simpa [persistenceOffset, persistenceMember, persistenceMemberLength] using
-    prefixOffset_poly h.termCount h.termCount_poly
+  exact prefixOffset_poly h.termCount h.termCount_poly
 
 lemma PolySequence.persistenceMember_lt {As : ℕ → AffineCombination} (h : PolySequence As)
     {k j : ℕ} (hj : j < persistenceTermCount h k) :

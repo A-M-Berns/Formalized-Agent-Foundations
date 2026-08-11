@@ -23,25 +23,35 @@ lean_lib AxiomAudit where
 lean_lib Scratchpad where
   srcDir := "."
 
--- Autoformalized (Harmonic Aristotle) sequent-calculus development of the GL fixed-point
--- theorem, discharging the former `glFixedPoint_thm42` axiom in `ModalAgents/FixedPoint.lean`.
--- Kernel-gated like the Brouwer construction: its interior has not had a human line-by-line
--- read-through. Its `Formula`-level notations are `scoped` so they do not collide with
--- Foundation's modal notation in `ModalAgents`.
+-- Upstream Foundation, pinned by commit. The Matrix-rename patch this project once
+-- carried on a fork (PR #835: `vecMap`/`vecForall_iff`/`vecExists_iff`, avoiding Mathlib
+-- name clashes that blocked co-importing matrix/analysis theory) is included upstream
+-- as of v4.31; the fork is retired.
+--
+-- The pin is the last upstream commit that still contains `Foundation.Modal` (removed
+-- upstream in #852 in favor of the separate FormalizedFormalLogic/ModalLogic repo).
+-- It sits in the four-day window (2026-07-18 → 2026-07-22) that has *both* the Matrix
+-- rename (#835, merged 07-18 — without it Foundation cannot co-import with Mathlib's
+-- matrix/analysis theory) *and* `Foundation.Modal`. `ModalAgents` is stated over
+-- `Foundation.Modal`, so moving past this pin means migrating it onto the ModalLogic
+-- repo — a scoped follow-up, not part of routine bumping. Mathlib and all other pins
+-- are transitive through Foundation's manifest; keep `lean-toolchain` matched to
+-- Foundation's.
+require Foundation from git
+  "https://github.com/FormalizedFormalLogic/Foundation" @ "41d20b5158e9331e9b8dd86e16dbf488cc688bdb"
+
+-- Vendored subset of FormalizedFormalLogic/ProvabilityLogic @ 7ed4a427 (2026-07-27,
+-- the last upstream commit in CI lockstep with the Foundation pin above): the
+-- sequent-calculus + Solovay development supplying the GL fixed-point theorem
+-- (`ModalAgents/FixedPoint.lean` bridge) and the arithmetical soundness of GL
+-- (`ModalAgents/Cooperation.lean`). Vendored rather than required as a package for one
+-- reason: upstream declares its `Formula` connective notations globally at precedences
+-- that capture the parse of Foundation's modal notation wherever the two are
+-- co-imported (upstream never co-imports them; we must). The patch class is exactly
+-- that: the clashing notation declarations are made `scoped` plus matching
+-- `open scoped Formula` lines — no mathematical divergence. Diff against the upstream
+-- commit to audit.
 lean_lib ProvabilityLogic where
   srcDir := "."
   globs := #[.submodules `ProvabilityLogic]
   leanOptions := #[⟨`autoImplicit, true⟩]
-
--- Fork of FormalizedFormalLogic/Foundation @ 83d98a36 with one patch class: three
--- `Matrix.*` decls that shadow Mathlib names (`map`, `forall_iff`, `exists_iff`) renamed
--- (`vecMap`, `vecForall_iff`, `vecExists_iff`) so Foundation co-imports with Mathlib
--- matrix/analysis theory (Bochner integration; EuclideanSpace via InnerProductSpace.PiL2,
--- needed by the Brouwer construction). The patch is **merged upstream**
--- (FormalizedFormalLogic/Foundation PR #835), so this fork carries no divergent
--- mathematics — it exists only to hold that rename on a base compatible with this
--- project's Lean toolchain (v4.28.0-rc1). Every upstream commit containing the rename is
--- on v4.31+, so switching to upstream is a Lean/Mathlib upgrade, not a dependency swap;
--- it is queued as its own project (see notes/consolidation.md).
-require Foundation from git
-  "https://github.com/A-M-Berns/Foundation" @ "aada66ef517064ce4fe025bb6c9072dacdf83991"

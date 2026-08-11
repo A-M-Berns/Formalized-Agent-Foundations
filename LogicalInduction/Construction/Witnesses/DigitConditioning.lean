@@ -1559,6 +1559,7 @@ lemma eventualConditionedTranslation_preserves_ecDigit
     rw [hout, T.eventualConditionedTranslation_strat_of_lt F hn]
     simp [strategyOfTokens, deserializeTrades,
       EF.streamReadFrom, EF.streamInitial, Trader.zero, undigitize]
+    rfl
   · have hcn : F.cutoff ≤ n := Nat.le_of_not_gt hn
     have hout : output n = framed n := by
       show (if F.cutoff ≤ n then framed n else []) = framed n

@@ -9,6 +9,8 @@ open scoped Formula
 
 variable {α : Type u} [DecidableEq α]
 
+namespace LogicGL
+
 namespace FormulaFinset
 
 variable {Γ Δ : FormulaFinset α} {A B : Formula α}
@@ -258,7 +260,7 @@ namespace ProofGentzen
 
 variable {S : Sequent α}
 
-def interpolant {S : Sequent α} (P : PartitionOf S) : ⊢ᵍ! S → Formula α
+def interpolant {S : Sequent α} (P : PartitionOf S) : ⊢ᵍ[GL]! S → Formula α
 | .botL     => if ⊥ ∈ P.Γ₁ then ⊥ else ⊤
 | .axm A    =>
   if A ∈ P.Γ₁ then (if A ∈ P.Δ₁ then ⊥ else A)
@@ -275,7 +277,7 @@ def interpolant {S : Sequent α} (P : PartitionOf S) : ⊢ᵍ! S → Formula α
   if □A ∈ P.Δ₁ then ∼□(∼(interpolant P.boxGLSplitL p))
   else □(interpolant P.boxGLSplitR p)
 
-theorem interpolant_provable_ant (P : PartitionOf S) (p : ⊢ᵍ! S) : ⊢ᵍ (P.Γ₁ ⟹ insert (interpolant P p) P.Δ₁) := by
+theorem interpolant_provable_ant (P : PartitionOf S) (p : ⊢ᵍ[GL]! S) : ⊢ᵍ[GL] (P.Γ₁ ⟹ insert (interpolant P p) P.Δ₁) := by
   induction p with
   | botL =>
     dsimp only [interpolant];
@@ -309,14 +311,14 @@ theorem interpolant_provable_ant (P : PartitionOf S) (p : ⊢ᵍ! S) : ⊢ᵍ (P
       set C2 := interpolant P.impLSplit₂L p₂ with hC2
       simp only [PartitionOf.impLSplit₁L] at ha1
       simp only [PartitionOf.impLSplit₂L] at ha2
-      have key : ⊢ᵍ (insert (A 🡒 B) P.Γ₁ ⟹ insert (C1 ⋎ C2) P.Δ₁) := by
+      have key : ⊢ᵍ[GL] (insert (A 🡒 B) P.Γ₁ ⟹ insert (C1 ⋎ C2) P.Δ₁) := by
         apply ProvableGentzen.impL
-        · have t1 : ⊢ᵍ (P.Γ₁ ∩ Γ ⟹ insert C1 (insert C2 (insert A P.Δ₁))) :=
+        · have t1 : ⊢ᵍ[GL] (P.Γ₁ ∩ Γ ⟹ insert C1 (insert C2 (insert A P.Δ₁))) :=
             ProvableGentzen.wkR ha1 (Finset.insert_subset_insert _ (Finset.subset_insert _ _))
           have t2 := ProvableGentzen.orR t1
           rw [Finset.insert_comm] at t2
           exact ProvableGentzen.wkL t2 Finset.inter_subset_left
-        · have t1 : ⊢ᵍ (insert B (P.Γ₁ ∩ Γ) ⟹ insert C1 (insert C2 P.Δ₁)) :=
+        · have t1 : ⊢ᵍ[GL] (insert B (P.Γ₁ ∩ Γ) ⟹ insert C1 (insert C2 P.Δ₁)) :=
             ProvableGentzen.wkR ha2 (Finset.subset_insert _ _)
           have t2 := ProvableGentzen.orR t1
           exact ProvableGentzen.wkL t2 (Finset.insert_subset_insert _ Finset.inter_subset_left)
@@ -378,11 +380,11 @@ theorem interpolant_provable_ant (P : PartitionOf S) (p : ⊢ᵍ! S) : ⊢ᵍ (P
       have ha := ih P.boxGLSplitL
       set C := interpolant P.boxGLSplitL p with hC
       simp only [PartitionOf.boxGLSplitL] at ha
-      have t1 : ⊢ᵍ (insert (∼C) (insert (□A) (Γ.filter (fun B => □B ∈ P.Γ₁) ∪ P.Γ₁)) ⟹
+      have t1 : ⊢ᵍ[GL] (insert (∼C) (insert (□A) (Γ.filter (fun B => □B ∈ P.Γ₁) ∪ P.Γ₁)) ⟹
           ({A} : FormulaFinset α)) := ProvableGentzen.negL ha
       have t2 := ProvableGentzen.wkL t1
         (Finset.subset_insert (□(∼C)) (insert (∼C) (insert (□A) (Γ.filter (fun B => □B ∈ P.Γ₁) ∪ P.Γ₁))))
-      have boxed : ⊢ᵍ (FormulaFinset.box (insert (∼C) (Γ.filter (fun B => □B ∈ P.Γ₁))) ⟹
+      have boxed : ⊢ᵍ[GL] (FormulaFinset.box (insert (∼C) (Γ.filter (fun B => □B ∈ P.Γ₁))) ⟹
           ({□A} : FormulaFinset α)) := by
         apply ProvableGentzen.boxGL
         have heq : insert (□A) (insert (∼C) (Γ.filter (fun B => □B ∈ P.Γ₁))
@@ -405,7 +407,7 @@ theorem interpolant_provable_ant (P : PartitionOf S) (p : ⊢ᵍ! S) : ⊢ᵍ (P
       have ha := ih P.boxGLSplitR
       set C := interpolant P.boxGLSplitR p with hC
       simp only [PartitionOf.boxGLSplitR] at ha
-      have boxed : ⊢ᵍ (FormulaFinset.box (Γ.filter (fun B => □B ∈ P.Γ₁)) ⟹ ({□C} : FormulaFinset α)) := by
+      have boxed : ⊢ᵍ[GL] (FormulaFinset.box (Γ.filter (fun B => □B ∈ P.Γ₁)) ⟹ ({□C} : FormulaFinset α)) := by
         apply ProvableGentzen.boxGL
         rw [hbF1]
         refine ProvableGentzen.wkL ?_ ((boxGL_compl (a := □A) hb).trans (Finset.subset_insert _ _))
@@ -415,11 +417,11 @@ theorem interpolant_provable_ant (P : PartitionOf S) (p : ⊢ᵍ! S) : ⊢ᵍ (P
       simpa using boxed
 
 
-theorem interpolant_provable_suc (P : PartitionOf S) (p : ⊢ᵍ! S) :
-  ⊢ᵍ (insert (interpolant P p) P.Γ₂ ⟹ P.Δ₂) := by
+theorem interpolant_provable_suc (P : PartitionOf S) (p : ⊢ᵍ[GL]! S) :
+  ⊢ᵍ[GL] (insert (interpolant P p) P.Γ₂ ⟹ P.Δ₂) := by
   induction p with
   | botL =>
-    show ⊢ᵍ (insert (if ⊥ ∈ P.Γ₁ then ⊥ else ⊤) P.Γ₂ ⟹ P.Δ₂)
+    show ⊢ᵍ[GL] (insert (if ⊥ ∈ P.Γ₁ then ⊥ else ⊤) P.Γ₂ ⟹ P.Δ₂)
     by_cases h : ⊥ ∈ P.Γ₁
     · rw [if_pos h]; exact ProvableGentzen.botL_mem (by grind)
     · rw [if_neg h]
@@ -476,7 +478,7 @@ theorem interpolant_provable_suc (P : PartitionOf S) (p : ⊢ᵍ! S) :
       set C2 := interpolant P.impLSplit₂R p₂ with hC2
       simp only [PartitionOf.impLSplit₁R] at hs1;
       unfold PartitionOf.impLSplit₂R at hs2;
-      have key : ⊢ᵍ (insert (A 🡒 B) (insert C1 (insert C2 P.Γ₂)) ⟹ P.Δ₂) := by
+      have key : ⊢ᵍ[GL] (insert (A 🡒 B) (insert C1 (insert C2 P.Γ₂)) ⟹ P.Δ₂) := by
         apply ProvableGentzen.impL
         · exact ProvableGentzen.wkL hs1
             (Finset.insert_subset_insert _ (Finset.inter_subset_left.trans (Finset.subset_insert _ _)))
@@ -532,16 +534,16 @@ theorem interpolant_provable_suc (P : PartitionOf S) (p : ⊢ᵍ! S) :
       have ha := ih P.boxGLSplitL
       set C := interpolant P.boxGLSplitL p with hC
       simp only [PartitionOf.boxGLSplitL] at ha
-      have t1 : ⊢ᵍ (insert (□A) (Γ ∪ Γ.box) \ insert (□A) (Γ.filter (fun B => □B ∈ P.Γ₁) ∪ P.Γ₁)
+      have t1 : ⊢ᵍ[GL] (insert (□A) (Γ ∪ Γ.box) \ insert (□A) (Γ.filter (fun B => □B ∈ P.Γ₁) ∪ P.Γ₁)
           ⟹ ({∼C} : FormulaFinset α)) := by simpa using ProvableGentzen.negR ha
-      have boxed : ⊢ᵍ (FormulaFinset.box (Γ.filter (fun B => □B ∈ P.Γ₂)) ⟹ ({□(∼C)} : FormulaFinset α)) := by
+      have boxed : ⊢ᵍ[GL] (FormulaFinset.box (Γ.filter (fun B => □B ∈ P.Γ₂)) ⟹ ({□(∼C)} : FormulaFinset α)) := by
         apply ProvableGentzen.boxGL
         rw [hbF2]
         exact ProvableGentzen.wkL t1
           ((boxGL_compl (a := □A) (hb.trans (Finset.union_comm _ _))).trans (Finset.subset_insert _ _))
       rw [hbF2] at boxed
       rw [hΔ2]
-      have boxed' : ⊢ᵍ (P.Γ₂ ⟹ insert (□(∼C)) ∅) := by simpa using boxed
+      have boxed' : ⊢ᵍ[GL] (P.Γ₂ ⟹ insert (□(∼C)) ∅) := by simpa using boxed
       exact ProvableGentzen.negL boxed'
     ·
       have hd2 : □A ∈ P.Δ₂ := by
@@ -551,7 +553,7 @@ theorem interpolant_provable_suc (P : PartitionOf S) (p : ⊢ᵍ! S) :
       have ha := ih P.boxGLSplitR
       set C := interpolant P.boxGLSplitR p with hC
       simp only [PartitionOf.boxGLSplitR] at ha
-      have boxed : ⊢ᵍ (FormulaFinset.box (insert C (Γ.filter (fun B => □B ∈ P.Γ₂))) ⟹ ({□A} : FormulaFinset α)) := by
+      have boxed : ⊢ᵍ[GL] (FormulaFinset.box (insert C (Γ.filter (fun B => □B ∈ P.Γ₂))) ⟹ ({□A} : FormulaFinset α)) := by
         apply ProvableGentzen.boxGL
         have heq : insert (□A) (insert C (Γ.filter (fun B => □B ∈ P.Γ₂))
                       ∪ FormulaFinset.box (insert C (Γ.filter (fun B => □B ∈ P.Γ₂))))
@@ -564,7 +566,7 @@ theorem interpolant_provable_suc (P : PartitionOf S) (p : ⊢ᵍ! S) :
       rw [hΔ2]
       exact boxed
 
-theorem interpolant_atoms {S : Sequent α} (P : PartitionOf S) (p : ⊢ᵍ! S) :
+theorem interpolant_atoms {S : Sequent α} (P : PartitionOf S) (p : ⊢ᵍ[GL]! S) :
   (interpolant P p).atoms ⊆ (P.Γ₁.atoms ∪ P.Δ₁.atoms) ∩ (P.Γ₂.atoms ∪ P.Δ₂.atoms) := by
   induction p with
   | botL =>
@@ -804,14 +806,14 @@ end ProofGentzen
 
 namespace ProvableGentzen
 
-variable {S : Sequent α} {P : PartitionOf S} {h : ⊢ᵍ S}
+variable {S : Sequent α} {P : PartitionOf S} {h : ⊢ᵍ[GL] S}
 
-noncomputable def interpolant (P : PartitionOf S) (h : ⊢ᵍ S) := ProofGentzen.interpolant P h.some
+noncomputable def interpolant (P : PartitionOf S) (h : ⊢ᵍ[GL] S) := ProofGentzen.interpolant P h.some
 
-lemma interpolant_provable_ant : ⊢ᵍ (P.Γ₁ ⟹ insert (interpolant P h) P.Δ₁)
+lemma interpolant_provable_ant : ⊢ᵍ[GL] (P.Γ₁ ⟹ insert (interpolant P h) P.Δ₁)
   := ProofGentzen.interpolant_provable_ant P h.some
 
-lemma interpolant_provable_suc : ⊢ᵍ (insert (interpolant P h) P.Γ₂ ⟹ P.Δ₂)
+lemma interpolant_provable_suc : ⊢ᵍ[GL] (insert (interpolant P h) P.Γ₂ ⟹ P.Δ₂)
   := ProofGentzen.interpolant_provable_suc P h.some
 
 lemma interpolant_atoms : (interpolant P h).atoms ⊆ (P.Γ₁.atoms ∪ P.Δ₁.atoms) ∩ (P.Γ₂.atoms ∪ P.Δ₂.atoms)
@@ -819,5 +821,7 @@ lemma interpolant_atoms : (interpolant P h).atoms ⊆ (P.Γ₁.atoms ∪ P.Δ₁
 
 end ProvableGentzen
 
+
+end LogicGL
 
 end

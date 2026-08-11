@@ -990,7 +990,7 @@ lemma feedbackStage_le (f : DeferralFunction) (n : ℕ) : feedbackStage f n ≤ 
 
 lemma feedbackStage_open {f : DeferralFunction} {n : ℕ} (h0 : f 0 ≤ n) :
     f (feedbackStage f n) ≤ n := by
-  exact Nat.findGreatest_spec (P := fun k ↦ f k ≤ n) (zero_le n) h0
+  exact Nat.findGreatest_spec (P := fun k ↦ f k ≤ n) (Nat.zero_le n) h0
 
 lemma feedbackStage_before_next {f : DeferralFunction} {n : ℕ} :
     n < f (feedbackStage f n + 1) := by
@@ -1012,7 +1012,7 @@ lemma feedbackTrader_netWorth_before_first
   apply Finset.sum_eq_zero
   intro k hk
   apply feedbackRoundTrip_netWorth_before_open hpoly hW hstrict δ P v
-  exact hn.trans_le (hstrict.monotone (zero_le k))
+  exact hn.trans_le (hstrict.monotone (Nat.zero_le k))
 
 /-- Exact arbitrary-day accounting after the first opening.  The bounded search stage
 identifies the sole live component without becoming part of the trader definition or its
@@ -1473,7 +1473,7 @@ lemma feedbackPrefixSum_tendsto_atTop
   have hpred : K ≤ k - 1 := by omega
   have hlarge := hK (k - 1) hpred
   rw [prefixSum_at_deferral_eq_feedbackPrefixSum hstrict
-    (by simpa only [w] using hsupport) (k - 1)] at hlarge
+    (by exact hsupport) (k - 1)] at hlarge
   simpa only [w, Nat.sub_add_cancel hkpos] using hlarge
 
 /-- Exact support transfer at an arbitrary day after the first feedback opening.  The
@@ -1653,7 +1653,7 @@ lemma feedbackWeightedBias_asympGE_zero
   have hquote : feedbackWeightedAverage w quoteError ≈ₙ (fun _ ↦ 0) := by
     apply feedbackWeightedAverage_asympEq_zero hw0
       (by simpa only [w] using hmass)
-    simpa only [quoteError] using hacc
+    exact hacc
   intro ε hε
   have hsmall : (0 : ℝ) < min (1 / 4) (ε / 8) :=
     lt_min (by norm_num) (by linarith)
@@ -1838,8 +1838,8 @@ theorem lic_wubaff
       hpoly hW hstrict emit hWdiv hmag hP hacc hmass hworld
   have hall : weightedAverage w bias ≈ₙ (fun _ ↦ 0) :=
     weightedAverage_supported_asympEq_zero_of_feedback hstrict
-      (by simpa only [w] using hsupport) hsparse
-  simpa only [weightedBias, w, bias] using hall
+      (by exact hsupport) hsparse
+  exact hall
 
 /-- Paper-facing `thm:wubaff` for an arbitrary `BCS`.  Its canonical positive rational
 normalization feeds the unit-risk feedback trader above; the operational emitter and

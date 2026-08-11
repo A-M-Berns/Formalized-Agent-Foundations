@@ -1279,7 +1279,7 @@ private lemma liminf_limsup_eq_of_abs_sub_tendsto_zero
     liminf f atTop = liminf g atTop ∧ limsup f atTop = limsup g atTop := by
   let d : ℕ → ℝ := fun n => f n - g n
   have hdabs : Tendsto (abs ∘ d) atTop (𝓝 0) := by
-    simpa only [d, Function.comp_apply] using hnear
+    exact hnear
   have hd : Tendsto d atTop (𝓝 0) :=
     (tendsto_zero_iff_abs_tendsto_zero d).2 hdabs
   have hdsmall : ∀ᶠ n in atTop, |d n| < 1 := by
@@ -1518,15 +1518,14 @@ noncomputable def BoundedSequence.normalizedMesh_poly
     {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P) (b : ℚ) :
     AffineCombination.PolySequence (normalizedMesh As b) := by
-  simpa only [normalizedMesh] using h.poly.mesh_poly.scaleRat (meshNormScale b)
+  exact h.poly.mesh_poly.scaleRat (meshNormScale b)
 
 lemma BoundedSequence.normalizedMesh_boundedPrices
     {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P) (b : ℚ)
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) :
     BoundedAffinePrices (normalizedMesh As b) P := by
-  simpa only [normalizedMesh] using
-    (h.mesh_boundedPrices hP).scaleRat (meshNormScale b)
+  exact (h.mesh_boundedPrices hP).scaleRat (meshNormScale b)
 
 lemma normalizedMesh_magnitude_le_one
     {As : ℕ → LUVCombination} {P : History}
@@ -1586,8 +1585,7 @@ private lemma expectTerms_converge
         exact hval q (by simp [hq])
       obtain ⟨LR, hLR⟩ := ih hcodeRest hvalRest
       refine ⟨p.1.denote P * LX + LR, ?_⟩
-      simpa only [List.map_cons, List.sum_cons] using
-        (tendsto_const_nhds.mul hLX).add hLR
+      exact (tendsto_const_nhds.mul hLX).add hLR
 
 /-- Each represented fixed LUV combination really converges to the canonical
 `expectInf`; the definition by `limsup` merely avoids carrying a chosen witness. -/
@@ -1603,7 +1601,7 @@ lemma ConvergencePresentation.expect_tendsto_expectInf
     (hc.threshold_code n) hworld (hc.world_value n)
   have hfull : Tendsto (fun m => (As n).expect P m) atTop
       (𝓝 ((As n).const.denote P + L)) := by
-    simpa only [expect, expectAt] using tendsto_const_nhds.add hL
+    exact tendsto_const_nhds.add hL
   have heq : (As n).expectInf P = (As n).const.denote P + L := by
     simpa only [expectInf] using hfull.limsup_eq
   simpa only [heq] using hfull
@@ -1936,7 +1934,8 @@ lemma hasLimitPoint_add_tendsto_zero
   have hdψ : Tendsto (d ∘ ψ) atTop (𝓝 0) := hd.comp hψmono.tendsto_atTop
   have hsum : Tendsto ((fun n => f n + d n) ∘ ψ) atTop (𝓝 0) := by
     convert hfψ.add hdψ using 1
-    simp
+    · rfl
+    · simp
   exact MapClusterPt.of_comp hψmono.tendsto_atTop hsum.mapClusterPt
 
 lemma completedValues_to_mesh
@@ -2384,8 +2383,15 @@ theorem BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
       (fun n => q * weightedBias w market meshTruth n) 0 := by
     have haff' : HasLimitPoint
         (weightedBias w (fun i => q * market i) (fun i => q * meshTruth i)) 0 := by
-      simpa only [w, market, meshTruth, q, normalizedMesh, normalizedMeshTruth,
-        AffineCombination.scale_price, EF.denote_const, meshAffine_price_diagonal] using haff
+      have h1 : (fun i => q * market i) =
+          fun i => (normalizedMesh As b i).price P i := by
+        funext i
+        simp [normalizedMesh, market, q, AffineCombination.scale_price,
+          EF.denote_const, meshAffine_price_diagonal]
+      have h2 : (fun i => q * meshTruth i) =
+          normalizedMeshTruth As P DP hworld b := rfl
+      rw [h1, h2]
+      exact haff
     have heq : weightedBias w (fun i => q * market i) (fun i => q * meshTruth i) =
         fun n => q * weightedBias w market meshTruth n := by
       funext n
@@ -2457,8 +2463,15 @@ theorem BoundedSequence.wubexp
       (fun _ => 0) := by
     have haff' : weightedBias w (fun i => q * market i) (fun i => q * meshTruth i) ≈ₙ
         (fun _ => 0) := by
-      simpa only [w, market, meshTruth, q, normalizedMesh, normalizedMeshTruth,
-        AffineCombination.scale_price, EF.denote_const, meshAffine_price_diagonal] using haff
+      have h1 : (fun i => q * market i) =
+          fun i => (normalizedMesh As b i).price P i := by
+        funext i
+        simp [normalizedMesh, market, q, AffineCombination.scale_price,
+          EF.denote_const, meshAffine_price_diagonal]
+      have h2 : (fun i => q * meshTruth i) =
+          normalizedMeshTruth As P DP hworld b := rfl
+      rw [h1, h2]
+      exact haff
     have heq : weightedBias w (fun i => q * market i) (fun i => q * meshTruth i) =
         fun n => q * weightedBias w market meshTruth n := by
       funext n

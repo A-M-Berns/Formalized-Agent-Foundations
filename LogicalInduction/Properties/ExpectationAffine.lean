@@ -38,7 +38,7 @@ lemma expectAffine_value (X : LUV) (P : History) (w : Valuation) (n : ℕ) :
   rw [zero_add, List.sum_map_mul_left, one_div]
   congr 1
 
-def expectAffine_polySequence (X : LUV) (hcode : X.RpnThresholdCodes) :
+noncomputable def expectAffine_polySequence (X : LUV) (hcode : X.RpnThresholdCodes) :
     AffineCombination.PolySequence X.expectAffine := by
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled

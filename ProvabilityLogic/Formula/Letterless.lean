@@ -5,7 +5,7 @@ public import ProvabilityLogic.Formula.Substitution
 @[expose]
 public section
 
-open scoped Formula
+open scoped Formula FormulaList FormulaFinset
 
 variable {α : Type*}
 
@@ -19,9 +19,9 @@ variable {A : LetterlessFormula}
 
 @[grind]
 def lift : LetterlessFormula → Formula α
-  | ⊥ => ⊥
-  | A 🡒 B => lift A 🡒 lift B
-  | □A => □(lift A)
+  | .bot => ⊥
+  | .imp A B => lift A 🡒 lift B
+  | .box A => □(lift A)
 instance : Coe LetterlessFormula (Formula α) := ⟨lift⟩
 
 @[simp, grind =] lemma eq_subst_self : A⟦s⟧ = A := by induction A <;> grind;
@@ -75,15 +75,15 @@ end LetterlessFormulaSet
 namespace Formula
 
 def Letterless : Formula α → Prop
-  | #_ => False
-  | ⊥ => True
-  | A 🡒 B => A.Letterless ∧ B.Letterless
-  | □A => A.Letterless
+  | .atom _ => False
+  | .bot => True
+  | .imp A B => A.Letterless ∧ B.Letterless
+  | .box A => A.Letterless
 
 def toLetterless : (A : Formula α) → (_ : Letterless A) → LetterlessFormula
-  | ⊥, _ => ⊥
-  | A 🡒 B, ⟨hA, hB⟩ => toLetterless A hA 🡒 toLetterless B hB
-  | □A, hA => □(toLetterless A hA)
+  | .bot, _ => ⊥
+  | .imp A B, ⟨hA, hB⟩ => toLetterless A hA 🡒 toLetterless B hB
+  | .box A, hA => □(toLetterless A hA)
 
 @[simp, grind! .]
 lemma letterless_boxItr_bot {n} : (□^[n]⊥ : Formula α).Letterless := by
@@ -101,9 +101,9 @@ lemma toLetterless_boxItr_bot {n} : (□^[n]⊥ : Formula α).toLetterless (by g
 (the "inverse direction" of `LetterlessFormula.lift`). -/
 def projectEmpty : Formula α → LetterlessFormula
   | .atom _ => ⊥
-  | ⊥       => ⊥
-  | A 🡒 B   => A.projectEmpty 🡒 B.projectEmpty
-  | □A      => □(A.projectEmpty)
+  | .bot       => ⊥
+  | .imp A B   => A.projectEmpty 🡒 B.projectEmpty
+  | .box A      => □(A.projectEmpty)
 
 @[simp] lemma projectEmpty_lift {B : LetterlessFormula} :
     (LetterlessFormula.lift B : Formula α).projectEmpty = B := by

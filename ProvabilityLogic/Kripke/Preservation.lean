@@ -6,6 +6,8 @@ public import ProvabilityLogic.Formula.Letterless
 @[expose]
 public section
 
+open scoped Formula
+
 variable [Nonempty κ₁] [Nonempty κ₂] [Nonempty κ₃] {α}
 
 namespace Model

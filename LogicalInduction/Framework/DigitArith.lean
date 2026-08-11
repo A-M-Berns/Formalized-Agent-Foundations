@@ -60,7 +60,7 @@ lemma lt_len4_of_dig4_ne {t j : ℕ} (h : dig4 t j ≠ 0) : j < len4 t :=
 lemma dig4_len4_pred_ne_zero {t : ℕ} (ht : 0 < t) :
     dig4 t (len4 t - 1) ≠ 0 := by
   have hlen : 0 < len4 t := by
-    have := (lt_len4_iff t 0).mpr (by simpa using ht)
+    have := (lt_len4_iff t 0).mpr (by simpa using Nat.one_le_iff_ne_zero.mpr ht.ne')
     omega
   have hle : 4 ^ (len4 t - 1) ≤ t := (lt_len4_iff t _).mp (by omega)
   have hlt : t < 4 ^ (len4 t - 1 + 1) := by
@@ -628,7 +628,7 @@ lemma mul {x y : ℕ → ℕ} (hx : BigDigits x) (hy : BigDigits y) :
       simp only [Nat.unpair_pair]
       rw [conv4Partial_succ])
     ⟨9, 1, fun z => by
-      simp only []
+      try simp only []
       have h1 := conv4Partial_le (x z.unpair.1.unpair.1) (y z.unpair.1.unpair.1)
         z.unpair.1.unpair.2 z.unpair.2
       have h2 := Nat.unpair_right_le z
@@ -654,7 +654,7 @@ lemma mul {x y : ℕ → ℕ} (hx : BigDigits x) (hy : BigDigits y) :
       simp only [Nat.unpair_pair]
       rw [mulCarry4_succ])
     ⟨3, 1, fun z => by
-      simp only []
+      try simp only []
       have h1 := mulCarry4_le (x z.unpair.1) (y z.unpair.1) z.unpair.2
       have h2 := Nat.unpair_right_le z
       rw [pow_one]
@@ -1333,8 +1333,7 @@ lemma blkDig_polyFueled {ct : Code} {tokenFn : ℕ → ℕ}
             if_pos (by omega : D - 3 = 0), if_neg (by omega : ¬ C - J + (J - C) = 0)]
       · rw [if_neg (show ¬ (D < 4 ∧ C = J) by tauto),
           if_neg (by omega : ¬ D - 3 = 0)]
-  · simp only []
-    have hpre : (vpre tokenFn z.unpair.1.unpair.1.unpair.1 z.unpair.2).length
+  · have hpre : (vpre tokenFn z.unpair.1.unpair.1.unpair.1 z.unpair.2).length
         = z.unpair.2 := by simp [vpre]
     have h1 : (blockSplit (vpre tokenFn z.unpair.1.unpair.1.unpair.1
         z.unpair.2)).1.length ≤ z := by
@@ -1549,7 +1548,6 @@ lemma PolySegStream.freezeModeScan {s : ℕ → List ℕ} (h : PolySegStream s) 
     (fun n j => ?_)
     ((IsPolyBounded.linear 5).of_le fun z =>
       le_trans (freezeMode4_le _) (by omega))⟩
-  simp only []
   rw [vpre_succ, freezeMode4_snoc, ← freezeMode4Step_clamp]
   simp only [freezeMode4Step, Nat.unpair_pair, ifzSelFn, Nat.reduceAdd]
   split_ifs <;> omega

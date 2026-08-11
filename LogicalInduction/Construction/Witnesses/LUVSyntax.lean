@@ -1152,8 +1152,7 @@ noncomputable def upperGapPoly {As : ℕ → LUVCombination}
     rank_le := by intro q; simp [e, LUVCombination.meshErrorFeature, EF.rank]
     closed := by intro q ρ V; simp [e, LUVCombination.meshErrorFeature, EF.denoteWith]
   }
-  simpa [upperGapFamily, LUVCombination.meshGap, AffineCombination.sub, e] using
-    hbase.addConstEF e he
+  exact hbase.addConstEF e he
 
 /-- Polynomial syntax for every lower cross-precision gap, stored at paired indices. -/
 noncomputable def lowerGapPoly {As : ℕ → LUVCombination}
@@ -1175,8 +1174,7 @@ noncomputable def lowerGapPoly {As : ℕ → LUVCombination}
     rank_le := by intro q; simp [e, LUVCombination.meshErrorFeature, EF.rank]
     closed := by intro q ρ V; simp [e, LUVCombination.meshErrorFeature, EF.denoteWith]
   }
-  simpa [lowerGapFamily, LUVCombination.meshGapLower, AffineCombination.sub, e] using
-    hbase.addConstEF e he
+  exact hbase.addConstEF e he
 
 /-- Exact polynomial emitter for the upper mesh softmax consumed by `mesh_upper_eventually`. -/
 noncomputable def meshSoftmaxPoly {As : ℕ → LUVCombination}
@@ -1186,9 +1184,14 @@ noncomputable def meshSoftmaxPoly {As : ℕ → LUVCombination}
     (ε / 2) (ε / 4)
     (fun m i hi ↦ (upperGap_rank_legal S b m i hi).1)
     (fun m i hi ↦ (upperGap_rank_legal S b m i hi).2)
-  simpa [LUVCombination.meshSoftmax, LUVCombination.meshGaps,
-    AffineCombination.triangularGaps, upperGapFamily,
-    AffineCombination.triangularIndex] using h
+  have hfun : (fun m => LUVCombination.softmaxAffine
+      (AffineCombination.triangularGaps (upperGapFamily As b) m) m (ε / 2) (ε / 4)
+      (EF.const 1)) = LUVCombination.meshSoftmax As b ε := by
+    funext m
+    simp [LUVCombination.meshSoftmax, LUVCombination.meshGaps,
+      AffineCombination.triangularGaps, upperGapFamily,
+      AffineCombination.triangularIndex]
+  exact hfun ▸ h
 
 /-- Exact polynomial emitter for the lower mesh softmax consumed by `mesh_lower_eventually`. -/
 noncomputable def meshSoftmaxLowerPoly {As : ℕ → LUVCombination}
@@ -1198,9 +1201,14 @@ noncomputable def meshSoftmaxLowerPoly {As : ℕ → LUVCombination}
     (ε / 2) (ε / 4)
     (fun m i hi ↦ (lowerGap_rank_legal S b m i hi).1)
     (fun m i hi ↦ (lowerGap_rank_legal S b m i hi).2)
-  simpa [LUVCombination.meshSoftmaxLower, LUVCombination.meshGapsLower,
-    AffineCombination.triangularGaps, lowerGapFamily,
-    AffineCombination.triangularIndex] using h
+  have hfun : (fun m => LUVCombination.softmaxAffine
+      (AffineCombination.triangularGaps (lowerGapFamily As b) m) m (ε / 2) (ε / 4)
+      (EF.const 1)) = LUVCombination.meshSoftmaxLower As b ε := by
+    funext m
+    simp [LUVCombination.meshSoftmaxLower, LUVCombination.meshGapsLower,
+      AffineCombination.triangularGaps, lowerGapFamily,
+      AffineCombination.triangularIndex]
+  exact hfun ▸ h
 
 /-- Compact LUV syntax and the sequence's `L¹` bound together discharge the operational
 witness — polynomial emission of the mesh softmax, plus a uniform price bound on it — that

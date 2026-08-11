@@ -8,7 +8,7 @@
 -/
 
 import ModalAgents.FixedPoint
-import Foundation.ProvabilityLogic.GL.Soundness
+import ProvabilityLogic.ProvabilityLogic.GL.Basic
 
 open LO LO.Modal
 open LO.Entailment LO.Modal.Entailment
@@ -216,8 +216,7 @@ for every Y. -/
 lemma outcome_prudentBot (Y : ModalAgent) :
     Modal.GL ⊢ outcome prudentBot Y 🡘
       □(outcome Y prudentBot) ⋏ □(∼□⊥ 🡒 ∼(outcome Y defectBot)) := by
-  have h := outcome_fixed_point prudentBot Y
-  simpa [prudentBot_formula_substFull] using h
+  exact outcome_fixed_point prudentBot Y
 
 /-- DefectBot defects against every opponent (Barasz, §2). -/
 theorem defectBot_defects (Y : ModalAgent) : Defects defectBot Y := by
@@ -375,15 +374,22 @@ theorem prudentBot_vs_prudentBot : Cooperates prudentBot prudentBot := by
 /-! ## Arithmetical lift (Barasz, §4, Thm 4.1) -/
 
 /-- Lift GL-provable cooperation through an arithmetical realization
-(Barasz, §4, Thm 4.1). -/
+(Barasz, §4, Thm 4.1). The realization comes from the upstream
+`ProvabilityLogic` package and consumes that development's formulas, so the
+conclusion interprets the translated outcome formula
+(`GlFixedPointBridge.toSeq`); the translation is the identity on the modal
+structure (see `GlFixedPointBridge.ofSeq_toSeq`/`toSeq_ofSeq`). -/
 theorem Cooperates.arithmeticLift {X Y : ModalAgent} (h : Cooperates X Y)
     {L : FirstOrder.Language} [L.ReferenceableBy L] [L.DecidableEq]
     {T U : FirstOrder.Theory L} [FirstOrder.ProvabilityAbstraction.Diagonalization T]
     [T ⪯ U] {𝔅 : FirstOrder.ProvabilityAbstraction.Provability T U} [𝔅.HBL]
-    {f : ProvabilityLogic.Realization 𝔅} : U ⊢ f (outcome X Y) :=
-  ProvabilityLogic.GL.arithmetical_soundness h
+    {f : _root_.Realization ℕ 𝔅} :
+    U ⊢ f (GlFixedPointBridge.toSeq (outcome X Y)) :=
+  _root_.LogicGL.arithmetical_soundness'
+    (GlFixedPointBridge.mem_logicGL_of_provable h)
 
 /-- Example: the GL proof that FairBot cooperates with itself lifts to PA
 under any standard arithmetical realization. -/
-example (f : 𝗣𝗔.StandardRealization) : 𝗣𝗔 ⊢ f (outcome fairBot fairBot) :=
+example (f : _root_.StandardRealization ℕ 𝗣𝗔) :
+    𝗣𝗔 ⊢ f (GlFixedPointBridge.toSeq (outcome fairBot fairBot)) :=
   Cooperates.arithmeticLift fairBot_vs_fairBot

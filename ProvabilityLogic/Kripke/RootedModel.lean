@@ -5,6 +5,8 @@ public import ProvabilityLogic.Kripke.Basic
 @[expose]
 public section
 
+open scoped Formula
+
 variable [Nonempty κ]
 
 abbrev Model.Root (M : Model κ α) := { r : M.World // ∀ x, x ≠ r → r ≺ x }

@@ -215,14 +215,12 @@ noncomputable def thresholdFailureSchema : ArithmeticSemisentence 1 :=
   codeOfREPred (fun m => ¬ L.ThresholdPred m)
 
 lemma thresholdSchema_spec (m : ℕ) :
-    ℕ ⊧ₘ L.thresholdSchema/[↑m] ↔ L.ThresholdPred m := by
-  simpa [thresholdSchema, models_iff, Semiformula.eval_substs,
-    Matrix.constant_eq_singleton] using (codeOfREPred_spec L.thresholdPred_re (x := m))
+    L.thresholdSchema.Evalb ![m] ↔ L.ThresholdPred m :=
+  codeOfREPred_spec L.thresholdPred_re (x := m)
 
 lemma thresholdFailureSchema_spec (m : ℕ) :
-    ℕ ⊧ₘ L.thresholdFailureSchema/[↑m] ↔ ¬ L.ThresholdPred m := by
-  simpa [thresholdFailureSchema, models_iff, Semiformula.eval_substs,
-    Matrix.constant_eq_singleton] using (codeOfREPred_spec L.thresholdPred_compl_re (x := m))
+    L.thresholdFailureSchema.Evalb ![m] ↔ ¬ L.ThresholdPred m :=
+  codeOfREPred_spec L.thresholdPred_compl_re (x := m)
 
 section Provability
 variable {T : ArithmeticTheory} [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
@@ -280,7 +278,9 @@ lemma natCast_div_num {b k : ℕ} (hk : k ≠ 0) :
     rw [hbQ, hkQ, mul_div_mul_right _ _ hgQ, Int.cast_natCast, Int.cast_natCast]
   rw [heq, Rat.num_div_eq_of_coprime (a := ((b / Nat.gcd b k : ℕ) : ℤ))
     (b := ((k / Nat.gcd b k : ℕ) : ℤ)) (by exact_mod_cast hkg)
-    (by simpa using Nat.coprime_div_gcd_div_gcd hg)]
+    (by
+      simp only [← Int.natCast_div, Int.natAbs_natCast]
+      exact Nat.coprime_div_gcd_div_gcd hg)]
 
 /-- Reduced denominator of a natural-cast quotient: `((b : ℚ) / k).den = k / gcd b k`. -/
 lemma natCast_div_den {b k : ℕ} (hk : k ≠ 0) :
@@ -300,7 +300,9 @@ lemma natCast_div_den {b k : ℕ} (hk : k ≠ 0) :
     rw [hbQ, hkQ, mul_div_mul_right _ _ hgQ, Int.cast_natCast, Int.cast_natCast]
   have hden := Rat.den_div_eq_of_coprime (a := ((b / Nat.gcd b k : ℕ) : ℤ))
     (b := ((k / Nat.gcd b k : ℕ) : ℤ))
-    (by exact_mod_cast hkg) (by simpa using Nat.coprime_div_gcd_div_gcd hg)
+    (by exact_mod_cast hkg) (by
+      simp only [← Int.natCast_div, Int.natAbs_natCast]
+      exact Nat.coprime_div_gcd_div_gcd hg)
   rw [heq]
   exact_mod_cast hden
 

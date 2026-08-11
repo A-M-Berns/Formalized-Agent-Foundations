@@ -17,10 +17,10 @@ namespace Model
 
 variable {M : Model κ α} [Fintype M.World] [M.IsGL] {x y : M.World} {n : ℕ}
 
-noncomputable def World.rank {M : Model κ α} [Fintype M.World] [M.IsGL] (x : M.World) : ℕ := fcwHeight (· ≺ ·) x
+noncomputable def World.rank {M : Model κ α} [Fintype M.World] [M.IsGL] (x : M.World) : ℕ := cwfHeight (· ≺ ·) x
 
 @[grind ->]
-lemma rank_lt_of_rel (hij : x ≺ y) : y.rank < x.rank:= fcwHeight_gt_of hij
+lemma rank_lt_of_rel (hij : x ≺ y) : y.rank < x.rank:= cwfHeight_gt_of hij
 
 @[grind =]
 lemma iff_rank_lt {n : ℕ} {x : M.World} : x.rank < n ↔ ∀ y, ¬x ≺^[n] y := by
@@ -36,8 +36,8 @@ lemma iff_rank_lt {n : ℕ} {x : M.World} : x.rank < n ↔ ∀ y, ¬x ≺^[n] y 
         _ ↔ ∀ j, ¬x ≺^[n + 1] j          := by simp;
     constructor
     · intro h y Rxy;
-      exact lt_of_lt_of_le (fcwHeight_gt_of Rxy) h;
-    · exact fcwHeight_le;
+      exact lt_of_lt_of_le (cwfHeight_gt_of Rxy) h;
+    · exact cwfHeight_le;
 
 lemma iff_le_rank : n ≤ x.rank ↔ ∃ y, x ≺^[n] y := calc
   _ ↔ ¬x.rank < n    := Iff.symm Nat.not_lt
@@ -61,7 +61,7 @@ lemma iff_rank_eq_zero : x.rank = 0 ↔ ∀ y, ¬x ≺ y := by
 
 
 
-lemma of_lt_rank (hn : n < x.rank) : ∃ y : M.World, x ≺ y ∧ y.rank = n := fcwHeight_lt hn
+lemma of_lt_rank (hn : n < x.rank) : ∃ y : M.World, x ≺ y ∧ y.rank = n := cwfHeight_lt hn
 
 lemma exists_rank_terminal (x : M.World) : ∃ y, x ≺^[x.rank] y := iff_le_rank.mp (by simp)
 
@@ -191,7 +191,7 @@ variable {M : RootedModel κ α} [Fintype M.World] [M.IsGL] {x y : M.World} {k :
 noncomputable def height (M : RootedModel κ α) [Fintype M.World] [M.IsGL] : ℕ := M.root.1.rank
 
 @[grind <=]
-lemma rank_lt_height (Rrx : M.root.1 ≺ x) : x.rank < M.height := fcwHeight_gt_of Rrx
+lemma rank_lt_height (Rrx : M.root.1 ≺ x) : x.rank < M.height := cwfHeight_gt_of Rrx
 
 @[grind .]
 lemma rank_le_height : x.rank ≤ M.height := by
@@ -227,7 +227,7 @@ lemma eq_extendRoot_height_extendRoot_root_rank : (M.extendRoot n).height = (M.e
   dsimp [height]
 
 @[simp, grind .]
-lemma height_pos : 0 < (M.extendRoot n).height := lt_fcwHeight (b := embed M.root.1) (by grind [embed]) (by omega)
+lemma height_pos : 0 < (M.extendRoot n).height := lt_cwfHeight (b := embed M.root.1) (by grind [embed]) (by omega)
 
 namespace Ext1
 

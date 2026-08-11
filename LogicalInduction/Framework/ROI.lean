@@ -577,12 +577,18 @@ lemma Trader.partialNetWorthRatDaysAtFuel_complete
       simp [partialNetWorthRatDaysAtFuel, Strategy.valueRatAtFuel,
         Strategy.valueRat, htoday, htail]
 
+private lemma sum_map_list_range {M : Type*} [AddCommMonoid M] (f : ℕ → M) (n : ℕ) :
+    ((List.range n).map f).sum = ∑ d ∈ Finset.range n, f d := by
+  induction n with
+  | zero => rfl
+  | succ n ih => rw [List.sum_range_succ, Finset.sum_range_succ, ih]
+
 lemma Trader.partialMagnitudeRatAtFuel_sound
     (Tr : Trader) {P : History} (market : MarketComputation P) (fuel n : ℕ)
     {q : ℚ} (h : Tr.partialMagnitudeRatAtFuel market fuel n = some q) :
     q = Tr.partialMagnitudeRat
       (fun d φ => market.quote d (Encodable.encode φ)) n := by
-  simpa [partialMagnitudeRatAtFuel, partialMagnitudeRat] using
+  simpa [partialMagnitudeRatAtFuel, partialMagnitudeRat, sum_map_list_range] using
     Tr.partialMagnitudeRatDaysAtFuel_sound market fuel (List.range (n + 1)) h
 
 lemma Trader.partialNetWorthRatAtFuel_sound
@@ -591,7 +597,7 @@ lemma Trader.partialNetWorthRatAtFuel_sound
     (h : Tr.partialNetWorthRatAtFuel market fuel w n = some q) :
     q = Tr.partialNetWorthRat
       (fun d φ => market.quote d (Encodable.encode φ)) w n := by
-  simpa [partialNetWorthRatAtFuel, partialNetWorthRat] using
+  simpa [partialNetWorthRatAtFuel, partialNetWorthRat, sum_map_list_range] using
     Tr.partialNetWorthRatDaysAtFuel_sound market fuel w (List.range (n + 1)) h
 
 lemma Trader.partialMagnitudeRatAtFuel_complete
@@ -603,7 +609,7 @@ lemma Trader.partialMagnitudeRatAtFuel_complete
       (Tr.partialMagnitudeRat
         (fun d φ => market.quote d (Encodable.encode φ)) n) := by
   simpa [partialMagnitudeRatAtFuel, partialMagnitudeRat,
-    partialMagnitudeRatQueries] using
+    partialMagnitudeRatQueries, sum_map_list_range] using
       Tr.partialMagnitudeRatDaysAtFuel_complete market fuel
         (List.range (n + 1)) hready
 
@@ -617,7 +623,7 @@ lemma Trader.partialNetWorthRatAtFuel_complete
       (Tr.partialNetWorthRat
         (fun d φ => market.quote d (Encodable.encode φ)) w n) := by
   simpa [partialNetWorthRatAtFuel, partialNetWorthRat,
-    partialNetWorthRatQueries] using
+    partialNetWorthRatQueries, sum_map_list_range] using
       Tr.partialNetWorthRatDaysAtFuel_complete market fuel w
         (List.range (n + 1)) hready
 

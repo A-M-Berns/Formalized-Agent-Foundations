@@ -95,7 +95,6 @@ lemma PolySegStream.escModeScan {s : ℕ → List ℕ} (h : PolySegStream s) :
     (fun n j => ?_)
     ((IsPolyBounded.linear 4).of_le fun z =>
       le_trans (escModeList_le _) (by omega))⟩
-  simp only []
   rw [vpre_succ, escModeList_snoc, ← escModeStep_clamp]
   simp only [escModeStep, Nat.unpair_pair, ifzSelFn, Nat.reduceAdd]
   split_ifs <;> omega

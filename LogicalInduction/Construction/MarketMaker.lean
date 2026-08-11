@@ -166,7 +166,7 @@ lemma continuous_strategyHistory {n : ℕ} (T : Strategy n) (prior : History) :
   intro φ
   by_cases hday : day = n
   · subst day
-    simpa [strategyHistory] using
+    simpa [strategyHistory, Function.comp_def] using
       ((continuous_apply φ).comp (continuous_strategyValuation T))
   · simpa [strategyHistory, Function.update, hday] using
       (continuous_const : Continuous
@@ -195,7 +195,7 @@ lemma continuous_strategyWorldValue {n : ℕ} (T : Strategy n) (prior : History)
   intro φ hφ
   have hprice : Continuous (fun x : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support)) =>
       strategyHistory T prior x n φ) := by
-    simpa [strategyHistory] using
+    simpa [strategyHistory, Function.comp_def] using
       ((continuous_apply φ).comp (continuous_strategyValuation T))
   exact (continuous_strategyShares T prior φ).mul
     (continuous_const.sub hprice)
@@ -462,16 +462,18 @@ lemma exists_rationalPriceVector_good {n : ℕ} (T : Strategy n) (prior : Histor
   have hxpre : x ∈ preU := by
     change clipPriceVector T x ∈ U
     rwa [clipPriceVector_eq_self T hxcube]
-  have hdensePi : DenseRange (fun q : Fin (Fintype.card ↥T.support) → ℚ =>
-      fun i => (q i : ℝ)) := by
-    simpa only [Pi.map_apply] using
-      (DenseRange.piMap (fun _ : Fin (Fintype.card ↥T.support) =>
-        (Rat.denseRange_cast : DenseRange ((↑) : ℚ → ℝ))))
+  have hdensePi : DenseRange
+      (Pi.map fun _ : Fin (Fintype.card ↥T.support) => ((↑) : ℚ → ℝ)) :=
+    DenseRange.piMap (fun _ : Fin (Fintype.card ↥T.support) =>
+      (Rat.denseRange_cast : DenseRange ((↑) : ℚ → ℝ)))
   have hdenseRaw : DenseRange (rawRationalPriceVector T) := by
-    simpa [rawRationalPriceVector, Function.comp_def] using
+    have h :=
       ((EuclideanSpace.equiv (Fin (Fintype.card ↥T.support)) ℝ).symm.surjective.denseRange.comp
         hdensePi
         (EuclideanSpace.equiv (Fin (Fintype.card ↥T.support)) ℝ).symm.continuous)
+    convert h using 1
+    funext q
+    rfl
   obtain ⟨y, hyrange, hy⟩ := Dense.exists_mem_open
     (s := Set.range (rawRationalPriceVector T)) (U := preU)
     hdenseRaw hpreOpen ⟨x, hxpre⟩

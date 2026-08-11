@@ -1196,6 +1196,7 @@ lemma separatorConsistentAt_primrec : Primrec separatorConsistentAt := by
   refine (hfilter.comp allBitStrings_primrec Primrec.id).of_eq fun n ↦ ?_
   simp only [id_eq]
   rw [separatorConsistentAt_eq]
+  rfl
 
 private lemma list_sum_primrec : Primrec fun L : List ℚ ↦ L.sum := by
   have h := Primrec.list_foldr (α := List ℚ) Primrec.id (Primrec.const (0 : ℚ))

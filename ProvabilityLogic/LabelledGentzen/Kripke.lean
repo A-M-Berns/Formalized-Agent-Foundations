@@ -3,18 +3,19 @@ module
 public import ProvabilityLogic.Kripke.Basic
 public import ProvabilityLogic.LabelledGentzen.Basic
 
+/-!
+Kripke semantics for the labelled sequent calculus `G3KGL` (`⊢ˡ!`). A label
+assignment `L : M.LabelMap` interprets the world-labels, and a labelled sequent
+is valid under `L` when, whenever all relational atoms and all antecedent
+formulas hold, some succedent formula holds.
+
+- [Neg14, Definition 5.3, Theorem 5.4]
+-/
+
 @[expose]
 public section
 
 open scoped Formula
-
-/-!
-Kripke semantics for the labelled sequent calculus `G3KGL` (`⊢ˡ!`), following
-`[Neg14]` §5 (Definition 5.3, Theorem 5.4). A label assignment `L : M.LabelMap`
-interprets the world-labels, and a labelled sequent is valid under `L` when,
-whenever all relational atoms and all antecedent formulas hold, some succedent
-formula holds.
--/
 
 open LabelledGentzen
 

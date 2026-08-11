@@ -49,13 +49,13 @@ lemma provable_instances_re (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     [T.SoundOnHierarchy 𝚺 1] (φ : ArithmeticSemisentence 1) :
     REPred (fun z : ℕ => T ⊢ φ/[↑z]) := by
   have hsig : 𝚺₁-Predicate fun b : ℕ ↦
-      T.Provable (Bootstrapping.subst ℒₒᵣ ?[Bootstrapping.Arithmetic.numeral b] ⌜φ⌝) := by
+      Bootstrapping.Provable T (Bootstrapping.subst ℒₒᵣ ?[Bootstrapping.Arithmetic.numeral b] ⌜φ⌝) := by
     definability
   apply REPred.of_eq (re_iff_sigma1.mpr hsig)
   intro a
   constructor
   · rintro hP
-    apply Theory.Provable.sound
+    apply Bootstrapping.Provable.sound
     simpa [Sentence.quote_def, Semiformula.quote_def,
       Rewriting.emb_subst_eq_subst_coe₁] using hP
   · rintro hφ
@@ -280,8 +280,8 @@ lemma theoremDP_hworld [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
       holds_atom, provabilityWorld_boundedHalting]
     intro hbh
     exact universalBoundedClaims_exclusive e.unpair.2
-      ⟨(re_complete (T := T) universalBoundedHalts_re).mpr (by simpa using hbh),
-        (re_complete (T := T) universalBoundedFailure_re).mpr (by simpa using hfires)⟩
+      ⟨(re_complete (T := T) universalBoundedHalts_re).mpr hbh,
+        (re_complete (T := T) universalBoundedFailure_re).mpr hfires⟩
   · -- tag 4: positive inconsistency
     simp only [eventFires, h] at hfires
     simpa only [eventAtom, h, inconsistencyClaimSentence, computationClaimSentence, holds_atom,
@@ -298,9 +298,9 @@ lemma theoremDP_hworld [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
       holds_atom, provabilityWorld_quote]
     intro hpos
     have hp : quotePos e.unpair.2.unpair.1 e.unpair.2.unpair.2 :=
-      (re_complete (T := T) universalQuotePos_re (x := e.unpair.2)).mpr (by simpa using hpos)
+      (re_complete (T := T) universalQuotePos_re (x := e.unpair.2)).mpr hpos
     have hn : quoteNeg e.unpair.2.unpair.1 e.unpair.2.unpair.2 :=
-      (re_complete (T := T) universalQuoteNeg_re (x := e.unpair.2)).mpr (by simpa using hfires)
+      (re_complete (T := T) universalQuoteNeg_re (x := e.unpair.2)).mpr hfires
     exact quotePos_quoteNeg_exclusive _ _ ⟨hp, hn⟩
   · -- default tag: atom is ⊤, always held
     simp only [eventAtom, h]

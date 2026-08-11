@@ -1,6 +1,8 @@
 import LogicalInduction.Construction.Witnesses.KraftInequality
 import LogicalInduction.Properties.OccamBounds
 import Mathlib.Data.Nat.Size
+import Mathlib.Data.Nat.Digits.Lemmas
+import Mathlib.Tactic.IntervalCases
 
 /-!
 # A concrete prefix machine for Occam Bounds (`thm:ob`)
@@ -980,7 +982,7 @@ lemma of_validCode : ∀ n, validCode n = true → ∃ φ : Sentence, Encodable.
         have he : e = 0 := by
           have := Nat.pair_unpair e
           rw [h0, hc] at this
-          simpa using this.symm
+          simpa [show Nat.pair 0 0 = 0 from rfl] using this.symm
         exact ⟨Formula.falsum, by rw [he]; rfl⟩
       · rw [if_neg h0] at h
         by_cases h1 : e.unpair.1 = 1

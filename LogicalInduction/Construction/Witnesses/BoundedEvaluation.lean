@@ -26,6 +26,12 @@ the property files that consume these interfaces.
 
 namespace LogicalInduction
 
+private lemma decode_sentence_eq_ofNat' (n : ℕ) :
+    (Encodable.decode n : Option Sentence) =
+      LO.Propositional.Formula.ofNat n := rfl
+private lemma encode_sentence_eq_toNat' (φ : Sentence) :
+    Encodable.encode φ = LO.Propositional.Formula.toNat φ := rfl
+
 section
 -- `PolyFueled` elaboration over deep product types unfolds `Nat.sqrt`'s well-founded
 -- definition during `whnf` (reached via `Nat.unpair` in the `Primcodable` instances) and
@@ -2440,39 +2446,39 @@ lemma sentenceMatches_eq_one_iff (target : Sentence) (code : ℕ) :
   induction target using LO.Propositional.Formula.rec' generalizing code with
   | hfalsum =>
       cases code with
-      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
           LO.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | tag
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
           · rcases tag with _ | _ | _ | _ | tag <;>
-              simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
                 LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
   | hatom a =>
       cases code with
-      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
           LO.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | _ | tag
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
           · rcases tag with _ | _ | _ | tag <;>
-              simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
                 LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
   | himp φ ψ ihφ ihψ =>
       cases code with
-      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
           LO.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | _ | _ | tag
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag, ihφ, ihψ,
               Option.bind_eq_some_iff]
             cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
@@ -2480,51 +2486,51 @@ lemma sentenceMatches_eq_one_iff (target : Sentence) (code : ℕ) :
                 e.unpair.2.unpair.2 <;>
               simp [LO.Propositional.Formula.imp_inj]
           · rcases tag with _ | _ | tag <;>
-              simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
                 LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
   | hand φ ψ ihφ ihψ =>
       cases code with
-      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
           LO.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | _ | _ | _ | tag
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
 
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag, ihφ, ihψ]
             cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
               cases hright : LO.Propositional.Formula.ofNat (α := ℕ)
                 e.unpair.2.unpair.2 <;>
               simp [LO.Propositional.Formula.and_inj]
           · rcases tag with _ | tag <;>
-              simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
                 LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
   | hor φ ψ ihφ ihψ =>
       cases code with
-      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
           LO.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | _ | _ | _ | _ | tag
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag, ihφ, ihψ]
             cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
               cases hright : LO.Propositional.Formula.ofNat (α := ℕ)
                 e.unpair.2.unpair.2 <;>
               simp [LO.Propositional.Formula.or_inj]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
 
 lemma sentenceMatches_polyFueled (target : Sentence) :

@@ -1657,7 +1657,7 @@ lemma parse_of_runWalk {a b : ℕ} {exit : ℕ → ℕ}
               have hW'succ : ∀ k (hk : k < u'.length),
                   W' (k + 1) = rpnCondStep (W' k) (u'[k]'hk) := fun k hk => by
                 rw [hW']
-                simp only []
+                try simp only []
                 rw [htake u' k hk, List.foldl_append, List.foldl_cons,
                   List.foldl_nil]
               have hW'0 : W' 0 = rcPack a (c + 2) (r + 1) := rfl
@@ -1755,7 +1755,7 @@ lemma parse_of_runWalk {a b : ℕ} {exit : ℕ → ℕ}
                   (rcPack a (c + 1) (r + 1 + k1)) (u2.take k) = W' (k1 + k) := by
                 intro k
                 rw [hW']
-                simp only []
+                try simp only []
                 rw [List.take_add, List.foldl_append, ← hu2]
                 congr 1
                 exact hk1state.symm
@@ -2693,7 +2693,7 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
     (fun t => conditionPriceTokenRun_one _ ε t)
     (fun t c L ht => conditionPriceTokenRun_payload _ ε t c ht L)
     (fun fc d L => by
-      simp only []
+      try simp only []
       rw [conditionPriceTokenRun_price]
       simp [List.append_assoc])
     (fun fc => conditionPriceTokenRun_price_pair _ ε fc)
@@ -6235,12 +6235,12 @@ theorem unRpn_rpnZeroAwareConditionRun (zeroDays : Finset ℕ) (blocks : ℕ →
     (fun t => zeroAwareConditionPriceTokenRun_one zeroDays _ ε t)
     (fun t c L ht => zeroAwareConditionPriceTokenRun_payload zeroDays _ ε t c ht L)
     (fun fc d L => by
-      simp only []
+      try simp only []
       rw [zeroAwareConditionPriceTokenRun_price])
     (fun fc => zeroAwareConditionPriceTokenRun_price_pair zeroDays _ ε fc)
     (fun fc L => zeroAwareConditionPriceTokenRun_trade zeroDays _ ε fc L)
     (fun b φ hb D rest => by
-      simp only []
+      try simp only []
       rw [rpnZeroAwareEmit]
       by_cases hD : D ∈ zeroDays
       · rw [if_pos hD, unRpn_zero_rewrite_chunk hb D rest, if_pos hD]
@@ -6573,6 +6573,7 @@ theorem eventualConditionedTranslation_preserves_ecRpn
     rw [hout, T.eventualConditionedTranslation_strat_of_lt F hn]
     simp [strategyOfTokens, deserializeTrades, unRpn, unRpnTokens,
       EF.streamReadFrom, EF.streamInitial, Trader.zero, undigitize]
+    rfl
   · have hcn : F.cutoff ≤ n := Nat.le_of_not_gt hn
     have hout : output n = framed n := by
       show (if F.cutoff ≤ n then framed n else []) = framed n

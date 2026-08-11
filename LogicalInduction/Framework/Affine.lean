@@ -1057,12 +1057,12 @@ lemma roundTrip_netWorth (A : AffineCombination) (V : History) (v : PCWorld)
   let f : ℕ → ℝ := fun i =>
     ((A.roundTrip buyDay sellDay hopen hrank).strat i).value V v.payout
   have hc : sellDay ∈ Finset.range (n + 1) := by simp; omega
-  rw [Finset.sum_eq_add_sum_diff_singleton hc]
+  rw [Finset.sum_eq_add_sum_sdiff_singleton_of_mem hc]
   rw [Finset.sdiff_singleton_eq_erase]
   have ho : buyDay ∈ (Finset.range (n + 1)).erase sellDay := by
     simp only [Finset.mem_erase, Finset.mem_range]
     exact ⟨ne_of_lt hopen, by omega⟩
-  rw [Finset.sum_eq_add_sum_diff_singleton ho]
+  rw [Finset.sum_eq_add_sum_sdiff_singleton_of_mem ho]
   rw [Finset.sdiff_singleton_eq_erase]
   have hz : ∑ x ∈ ((Finset.range (n + 1)).erase sellDay).erase buyDay, f x = 0 := by
     apply Finset.sum_eq_zero

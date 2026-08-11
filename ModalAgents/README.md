@@ -24,14 +24,17 @@ It covers:
 The one standard GL fact previously axiomatized — `glFixedPoint_thm42`, the de
 Jongh–Sambin–Bernardi modal fixed-point existence theorem (single-variable form; Barasz
 §4, Thm 4.2, which they state without proof, citing Lindström (1996) Thm 11) — is now
-**proved**. It is discharged through `ProvabilityLogic/`, an autoformalized (Harmonic
-Aristotle) sequent-calculus development: a de Jongh–Sambin construction via Maehara
+**proved**. It is discharged through the upstream
+[`FormalizedFormalLogic/ProvabilityLogic`](https://github.com/FormalizedFormalLogic/ProvabilityLogic)
+package (pinned by commit in `lakefile.lean`): a de Jongh–Sambin construction via Maehara
 interpolation and Löb's rule, transported to Foundation's `Modal.GL` through finite Kripke
-completeness, with the `GlFixedPointBridge` translation in `FixedPoint.lean`. Like the
-Brouwer construction, it is **kernel-gated**: its statement and axiom report are audited,
-but its roughly 9,500-line generated `ProvabilityLogic/` interior has not received a human
-line-by-line read-through. `ProvabilityLogic`'s `Formula`-level notations are `scoped` so
-they do not collide with Foundation's modal notation.
+completeness, with the `GlFixedPointBridge` translation in `FixedPoint.lean`. The same
+package supplies the arithmetical soundness of GL (Solovay-style realization machinery)
+behind `Cooperates.arithmeticLift`; that development's formulas are a separate syntax, so
+the lift's conclusion interprets the outcome formula through the (structure-preserving,
+invertible) bridge translation. Like Mathlib and Foundation, the package is dependency
+code: kernel-checked here against this toolchain, cited rather than read line-by-line.
+(An earlier vendored snapshot of the same development has been retired in its favor.)
 
 Fixed-point *uniqueness* (Barasz §4, Thm 4.3; Lindström Thm 12) is proved in
 `FixedPoint.lean` as `glFixedPoint_uniqueness`, via a boxed-equivalence substitution lemma
@@ -41,8 +44,7 @@ and Löb's rule.
 
 * `ModalAgents/GL.lean` — GL lemmas used by the agent proofs.
 * `ModalAgents/ModalAgent.lean` — modal agents and the four concrete agents.
-* `ModalAgents/FixedPoint.lean` — GL fixed-point existence/uniqueness theorems, the `ProvabilityLogic/` bridge, and substitution congruence.
-* `ProvabilityLogic/` — autoformalized sequent-calculus development discharging GL fixed-point existence (kernel-gated).
+* `ModalAgents/FixedPoint.lean` — GL fixed-point existence/uniqueness theorems, the bridge to the upstream `ProvabilityLogic` package, and substitution congruence.
 * `ModalAgents/Cooperation.lean` — outcomes, cooperation/defection, and the main cooperation theorems.
 * `ModalAgents/Behavioral.lean` — behavioral equivalence for modal agents.
 
