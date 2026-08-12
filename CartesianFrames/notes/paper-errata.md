@@ -47,8 +47,7 @@ TeX source `CartesianFrames/notes/2109.10996v1-main.tex`.
    Counterexample over `W = Bool`: `C = (PUnit, Bool, (_, e) ↦ e)`,
    `D = (Bool, PUnit, (b, _) ↦ b)` — the covering condition holds, but every
    morphism's `env` has singleton domain, so none is surjective onto `Bool`.
-   (Compiled witness, round-2 audit.) `Frame.SubagentCovering` formalizes the
-   correct per-`e` form.
+   (Compiled witness.) `Frame.SubagentCovering` formalizes the correct per-`e` form.
 
 6. **Definition 10, carrier naming.** The definition introduces the image frame as
    `(B, F, ⋆)` as if the carriers changed; the functor leaves agent and
@@ -62,14 +61,15 @@ TeX source `CartesianFrames/notes/2109.10996v1-main.tex`.
    `∀ φ, ∃ φ₀, …`. Read literally, as uniqueness of the element of `hom(C, D)`, it
    would falsify Claim 56: `colDup = (Fin 1, Fin 2, ![![0, 0]])` satisfies
    `colDup ◁₊ colDup` (Claim 23's reflexivity) while its endomorphism monoid has at
-   least two elements — the identity and the column-collapsing `phi0`
-   (`CartesianFrames.Examples.two_distinct_endos`, compiled witness, round-3 audit).
+   least two elements — the identity and the column-collapsing `colDupLoop`
+   (`CartesianFrames.Examples.colDup_two_distinct_endos`, compiled witness).
    `Frame.AddSubagentCategorical` formalizes the `∃`-reading. Note also that the
    definition's relaxation to factorization *up to homotopy* is load-bearing rather
    than cosmetic — but this has to be checked at the level of the *relation*, not at
    a single `φ₀`. The per-`φ₀` facts do **not** establish it:
-   `Examples.phi0_no_exact_factorization` shows only that exact factorization fails
-   at the particular `φ₀ = phi0`, and since the definition quantifies `∃ φ₀`, the
+   `Examples.colDupLoop_no_exact_factorization` shows only that exact factorization
+   fails at the particular `φ₀ = colDupLoop`, and since the definition quantifies
+   `∃ φ₀`, the
    choice `φ₀ = 𝟙 colDup` factors every `φ` exactly (`φ = 𝟙 ≫ φ`), so the
    exact-factorization variant of the relation holds for `colDup ◁₊ colDup` too and
    nothing is separated. The genuine separator is a different pair: the
@@ -80,8 +80,7 @@ TeX source `CartesianFrames/notes/2109.10996v1-main.tex`.
    (`Examples.not_exact_factorization_colDup_oneCol`), because morphisms into `⊥` are
    determined by their environment component and `oneCol`'s environment is a
    singleton, so `(φ₀ ≫ φ₁).env` is the constant `φ₀.env 0` while `φ.env` ranges over
-   both states of `colDup`'s environment. (Compiled witnesses, final adversarial
-   audit.)
+   both states of `colDup`'s environment. (Compiled witnesses.)
 
 8. **Claim 45 (App. A), false footnote.** The proof of part (1) constructs
    `(g₀, h₀) : C → (A/B × B, E, ⋄)` and `(g₁, h₁)` back, then adds in a footnote

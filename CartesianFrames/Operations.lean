@@ -15,7 +15,9 @@ Two renderings are worth flagging.
 `Y/X` — the choice functions picking one element of each cell — becomes the subtype
 `partitionSections` of functions `Quotient s → α` splitting `Quotient.mk s`.  Mathlib
 has no such type (`Setoid.IsPartition` is a predicate on `Set (Set α)` and there is no
-bundled section-of-a-quotient), so it is defined here.
+bundled section-of-a-quotient), so it is defined here, together with the fact that it is
+always inhabited (`partitionSectionsOut`): the paper takes for granted that a partition
+has choice functions, and over an arbitrary `Setoid` that is choice, via `Quotient.out`.
 
 *Idempotence.*  Claim 35 asserts frame *equality*; committing changes the agent's
 *type* (from `A` to `↥B`, then to `↥(Subtype.val ⁻¹' B)`), so equality is not even
@@ -163,6 +165,19 @@ functions selecting one element of each cell (`q(x) ∈ x` becomes `⟦q c⟧ = 
 Paper node: Definition 31 (§2.4.1). -/
 def partitionSections {α : Type u} (s : Setoid α) : Type u :=
   {q : Quotient s → α // ∀ c, Quotient.mk s (q c) = c}
+
+/-- The canonical choice function of a partition, sending each cell to
+`Quotient.out` of it.  Definition 31 assumes without comment that a partition has
+choice functions; over an arbitrary `Setoid` that assumption is the axiom of choice,
+which `Quotient.out` supplies. -/
+noncomputable def partitionSectionsOut {α : Type u} (s : Setoid α) :
+    partitionSections s :=
+  ⟨Quotient.out, fun c => c.out_eq⟩
+
+/-- Definition 31's `Y/X` is never empty, so `External^B` always has agents. -/
+instance instNonemptyPartitionSections {α : Type u} (s : Setoid α) :
+    Nonempty (partitionSections s) :=
+  ⟨partitionSectionsOut s⟩
 
 /-- Definition 32's `External^B`: the agent becomes the choice functions `A/B`, the
 environment gains the cell coordinate.
@@ -415,6 +430,12 @@ example (C : Frame W) (F : Set C.Env) : (C.assumeCompl F).dual ◁₊ C.dual :=
 
 example (C : Frame W) (s : Setoid C.Env) : C ◁ C.internalSect s :=
   (C.multSubagent_internalSect s).subagent
+
+example (s : Setoid W) (c : Quotient s) :
+    Quotient.mk s ((partitionSectionsOut s).val c) = c :=
+  (partitionSectionsOut s).property c
+
+example (s : Setoid W) : Nonempty (partitionSections s) := inferInstance
 
 example (C : Frame W) (B : Set C.Agent) : C.commit B ≃ᵇ (C.commit B).commit (Subtype.val ⁻¹' B) :=
   (biextEquiv_of_nonempty_iso ⟨C.commit_commit_self B⟩).symm

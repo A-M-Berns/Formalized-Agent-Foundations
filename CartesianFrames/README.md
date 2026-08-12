@@ -3,34 +3,41 @@
 A Lean 4 formalization of Garrabrant, Herrmann, and Lopez-Wild,
 [*Cartesian Frames*](https://arxiv.org/abs/2109.10996) (arXiv:2109.10996v1).
 
-Scope: all 60 numbered nodes of the paper, including both appendices.  The current
-checked layer covers frames, morphisms, the category `Chu(W)`, the transpose
-functor, the full equivalence layer (isomorphism, biextensionality, the collapse,
-biextensional equivalence, Appendix A's homotopy machinery — Claims 8, 38–40), the
-world-level functors of §2.3 (Definitions 10–11 with the footnote fact), and the
-full subagency layer: `⊥`-frames, the categorical/currying/covering definitions of
-`◁` (Definitions 12–14, 50) with their equivalences and basic properties (Claims
-15–17, 51–53), and the additive/multiplicative refinement (Definitions 18–21) with
-its equivalence claims, properties, and the Decomposition Theorem (Claims 22–23,
-41–44, Theorem 24), and the operations calculus of §2.4.1: sub-environments
-(Definitions 25–26) with the collapse of the multiplicative notions (Claim 27), and
-committing, assuming, externalizing, and internalizing (Definitions 28–33) with the
-subagency claims they generate (Claim 30, Claim 34 proved as Appendix A's Claim 45)
-and idempotence (Claim 35), and Appendix B's categorical layer: the transpose
-equivalence with its composites definitionally the identity functors (Claim 46),
-initial and terminal frames (Definition 47, Claim 48), `1_S` (Definition 49), and
-the categorical characterization of additive subagents (Definitions 54, 57;
-Claims 55–56), and the sub-environment characterization closing the appendix
-(Definition 58, Claims 59–60).  **Every numbered node of the paper now has a Lean
-carrier** (modulo the Claim 35 ruling below).  Paper errata found so
-far are collected in `notes/paper-errata.md` (the printed proofs
-of Claims 53 and 43 are incomplete though both statements are sound; Definition
-50's "equivalently, `h` surjective" parenthetical is false; Claim 35 is partially
-ill-typed).  **Claim 35 is formalized only in part, by ruling:** its Commit/Assume
-half is proved (at canonical-isomorphism strength, `dd:eq-to-iso`), while its
-External/Internal half is ill-typed as printed — `B` partitions `A`, not `A/B` —
-and is deliberately left unformalized.  See `KNOWLEDGE.md` for settled design
-decisions and the correspondence table.
+Scope: all 60 numbered nodes of the paper, including both appendices.  **Every
+numbered node has a Lean carrier** (modulo the Claim 35 ruling below).  One file per
+layer of the paper:
+
+- [`Basic.lean`](Basic.lean) — frames, morphisms, the category `Chu(W)`, and the
+  transpose functor (§2.1, Definitions 1–2, 9).
+- [`Biextensional.lean`](Biextensional.lean) — the equivalence layer: isomorphism,
+  biextensionality, the collapse, biextensional equivalence, and Appendix A's
+  homotopy machinery (Definitions 3–7, 36–37; Claims 8, 38–40).
+- [`Worlds.lean`](Worlds.lean) — the world-level functors of §2.3, with Definition
+  10's footnote fact (Definitions 10–11).
+- [`Subagent.lean`](Subagent.lean) — `⊥`-frames and the categorical, currying, and
+  covering definitions of `◁`, with their equivalences and basic properties
+  (Definitions 12–14, 50; Claims 15–17, 51–53).
+- [`AdditiveMultiplicative.lean`](AdditiveMultiplicative.lean) — the
+  additive/multiplicative refinement with its equivalence claims, properties, and the
+  Decomposition Theorem (Definitions 18–21; Claims 22–23, 41–44; Theorem 24).
+- [`Operations.lean`](Operations.lean) — the operations calculus of §2.4.1:
+  sub-environments with the collapse of the multiplicative notions, committing,
+  assuming, externalizing, internalizing, the subagency claims they generate, and
+  idempotence (Definitions 25–33; Claims 27, 30, 34/45, 35).
+- [`Categorical.lean`](Categorical.lean) — Appendix B's categorical layer: the
+  transpose equivalence with its composites definitionally the identity functors,
+  initial and terminal frames, `1_S`, and the categorical and sub-environment
+  characterizations of subagency (Definitions 47, 49, 54, 57, 58; Claims 46, 48,
+  55–56, 59–60).
+
+Paper errata found so far are collected in `notes/paper-errata.md` (the printed
+proofs of Claims 53 and 43 are incomplete though both statements are sound;
+Definition 50's "equivalently, `h` surjective" parenthetical is false; Claim 35 is
+partially ill-typed).  **Claim 35 is formalized only in part, by ruling:** its
+Commit/Assume half is proved (at canonical-isomorphism strength, `dd:eq-to-iso`),
+while its External/Internal half is ill-typed as printed — `B` partitions `A`, not
+`A/B` — and is deliberately left unformalized.  See `KNOWLEDGE.md` for settled
+design decisions and the correspondence table.
 
 [`Examples.lean`](Examples.lean) carries the paper's two worked matrices — §2.1's
 driver and §2.2's duplicate-row pair — as concrete `Frame ℕ`s, together with the
@@ -46,18 +53,18 @@ biextensionally equivalent, both fail in the reverse direction (so the relations
 oriented as the paper orients them), and on a four-option variant `◁` holds while
 neither `◁₊` nor `◁ₓ` does.  That last pair also makes Theorem 24's decomposition
 non-trivial: every intermediate frame it can produce is biextensionally distinct from
-both endpoints.  Its last sections carry the same treatment to §2.4.1's operations and
-to Appendix B: externalizing at a two-cell partition of the four-option frame, and
-assuming a sub-environment of the driver, each yield a frame that is genuinely smaller
-(related by the paper's relation but *not* biextensionally equivalent), while a
+both endpoints.  The file's last sections carry the same treatment to §2.4.1's
+operations and to Appendix B: externalizing at a two-cell partition of the four-option
+frame, and assuming a sub-environment of the driver, each yield a frame that is
+genuinely smaller (related by the paper's relation but *not* biextensionally
+equivalent), while a
 one-row frame with duplicate columns, paired with the one-by-one frame, shows that
 Definition 54's factorization *up to homotopy* is load-bearing at the level of the
 relation — the relation holds on that pair while the variant demanding exact
 factorization through a single morphism fails — and that the definition's "unique
-morphism" remark cannot mean uniqueness of the hom-set element (erratum 7).  These are `lemma`s, not paper
-claims; they cite the paper's unnumbered
-examples in prose and are inventoried in `AxiomAudit.lean` alongside the definitions
-they constrain.
+morphism" remark cannot mean uniqueness of the hom-set element (erratum 7).  These are
+`lemma`s, not paper claims; they cite the paper's unnumbered examples in prose and are
+inventoried in `AxiomAudit.lean` alongside the definitions they constrain.
 
 The paper is committed verbatim as
 [`notes/2109.10996v1-main.tex`](notes/2109.10996v1-main.tex), with the matching

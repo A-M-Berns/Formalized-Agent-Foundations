@@ -286,26 +286,6 @@ def MultSubagentCategorical (C D : Frame W) : Prop :=
   (∀ φ : C ⟶ (⊥ : Frame W), ∃ (φ₀ : C ⟶ D) (φ₁ : D ⟶ (⊥ : Frame W)), φ = φ₀ ≫ φ₁) ∧
   (∀ ψ : (1 : Frame W) ⟶ D, ∃ (ψ₀ : (1 : Frame W) ⟶ C) (ψ₁ : C ⟶ D), ψ = ψ₀ ≫ ψ₁)
 
-section RegressionExamples
-
-/- Client-side exercises of the endpoints above (endpoint-usability rule). -/
-
-example (C : Frame W) : (0 : Frame W) ⟶ C := zeroIsInitial.to C
-
-example (C : Frame W) : C ⟶ (⊤ : Frame W) := topIsTerminal.from C
-
-example {C D : Frame W} (h : AddSubagentCategorical C D) : C ◁ D :=
-  h.addSubagent.subagent
-
-example (C : Frame W) : AddSubagentCategorical C C :=
-  (AddSubagent.refl C).addSubagentCategorical
-
-example (S : Set W) : (oneOf S).Agent = PUnit := rfl
-
-example (W : Type u) : ((dualFunctor W).obj (0 : Frame W)).unop = (⊤ : Frame W) := rfl
-
-end RegressionExamples
-
 /-! ## The sub-environment definition of multiplicative subagent
 (Definition 58, Claims 59–60) -/
 
@@ -379,7 +359,29 @@ theorem multSubagentSubEnv_iff_multSubagent :
   · intro h
     exact ⟨h.subagent, (multSubagent_iff_multSubEnv.mp h).subagent⟩
 
+section RegressionExamples
+
+/- Client-side exercises of the endpoints above (endpoint-usability rule). -/
+
+example (C : Frame W) : (0 : Frame W) ⟶ C := zeroIsInitial.to C
+
+example (C : Frame W) : C ⟶ (⊤ : Frame W) := topIsTerminal.from C
+
+example {C D : Frame W} (h : AddSubagentCategorical C D) : C ◁ D :=
+  h.addSubagent.subagent
+
+example (C : Frame W) : AddSubagentCategorical C C :=
+  (AddSubagent.refl C).addSubagentCategorical
+
+example (S : Set W) : (oneOf S).Agent = PUnit := rfl
+
+example (W : Type u) : ((dualFunctor W).obj (0 : Frame W)).unop = (⊤ : Frame W) := rfl
+
+example {C D : Frame W} (h : MultSubagentSubEnv C D) : C ◁ₓ D :=
+  multSubagentSubEnv_iff_multSubagent.mp h
+
+end RegressionExamples
+
 end Frame
 
 end CartesianFrames
-

@@ -54,17 +54,18 @@ Appendix B:
 
 * externalizing at a two-cell partition of `bigD` and assuming a sub-environment of
   `driver3` each produce a frame that is genuinely smaller — related by `◁ₓ` (resp.
-  `◁*₊`) but *not* biextensionally equivalent (`ext_genuine`,
-  `assume_not_biextEquiv`), so `Definition 32` and `Definition 29` are not identities
-  in disguise;
+  `◁*₊`) but *not* biextensionally equivalent
+  (`externalBigD_multSubagent_not_biextEquiv`,
+  `not_biextEquiv_driver3_driver3Assume`), so `Definition 32` and `Definition 29` are
+  not identities in disguise;
 * `Definition 54`'s relaxation to factorization **up to homotopy** is load-bearing at
   the level of the *relation*: the relaxed relation holds between `colDup` and the
   one-by-one frame (`colDup_addSubagentCategorical_oneCol`), while the exactified
   variant — a single `φ₀` through which every `colDup ⟶ ⊥` factors on the nose —
   fails there (`not_exact_factorization_colDup_oneCol`).  The per-`φ₀` witness
-  `phi0_no_exact_factorization` does *not* establish this by itself, since
+  `colDupLoop_no_exact_factorization` does *not* establish this by itself, since
   `Definition 54` quantifies `∃ φ₀` and the choice `φ₀ = 𝟙` factors every `φ` exactly;
-* `colDup` carries two distinct endomorphisms (`two_distinct_endos`), so
+* `colDup` carries two distinct endomorphisms (`colDup_two_distinct_endos`), so
   `Definition 54`'s follow-up remark about "the" morphism `C ⟶ D` cannot mean hom-set
   uniqueness — that reading would falsify `Claim 56`
   (`CartesianFrames/notes/paper-errata.md`, erratum 7).
@@ -522,13 +523,14 @@ equivalent, so `Definition 32` is not the identity in disguise on a frame it can
 actually shrink. -/
 
 /-- The two-cell partition of `bigD`'s agent carrier: `{0, 1}` and `{2, 3}`. -/
-abbrev cellS : Setoid bigD.Agent := Setoid.ker (fun a : Fin 4 => a.val / 2)
+abbrev bigDCells : Setoid bigD.Agent := Setoid.ker (fun a : Fin 4 => a.val / 2)
 
 /-- The externalized frame's outcome is the paper's `q ⋆ (b, e) = q(b) · e`. -/
-example (q : partitionSections cellS) (c : Quotient cellS) (e : Fin 2) :
-    (bigD.external cellS).outcome q (c, e) = bigD.outcome (q.val c) e := rfl
+example (q : partitionSections bigDCells) (c : Quotient bigDCells) (e : Fin 2) :
+    (bigD.external bigDCells).outcome q (c, e) = bigD.outcome (q.val c) e := rfl
 
-lemma ext_mult : bigD.external cellS ◁ₓ bigD := bigD.external_multSubagent cellS
+lemma externalBigD_multSubagent_bigD : bigD.external bigDCells ◁ₓ bigD :=
+  bigD.external_multSubagent bigDCells
 
 lemma bigD_biextensional : bigD.Biextensional := by
   constructor
@@ -538,53 +540,51 @@ lemma bigD_biextensional : bigD.Biextensional := by
 lemma bigD_outcome_inj : ∀ (a a' : Fin 4) (e e' : Fin 2),
     bigD.outcome a e = bigD.outcome a' e' → a = a' ∧ e = e' := by decide
 
-lemma cells_ne : Quotient.mk cellS 0 ≠ Quotient.mk cellS 2 := by
+lemma bigDCells_ne : Quotient.mk bigDCells 0 ≠ Quotient.mk bigDCells 2 := by
   intro h
   have : (0 : Fin 4).val / 2 = (2 : Fin 4).val / 2 := Quotient.exact h
   exact absurd this (by decide)
 
-/-- A section of the partition, i.e. an agent of `External^S(bigD)`; `Definition 31`'s
-subtype is inhabited by `Quotient.out`. -/
-private noncomputable def cellSec : partitionSections cellS :=
-  ⟨Quotient.out, fun c => c.out_eq⟩
-
-lemma ext_biextensional : (bigD.external cellS).Biextensional := by
+lemma externalBigD_biextensional : (bigD.external bigDCells).Biextensional := by
   constructor
   · intro q₀ q₁ h
     refine Subtype.ext (funext fun c => ?_)
     exact bigD_biextensional.agent_ext fun e => h (c, e)
   · rintro ⟨c₀, e₀⟩ ⟨c₁, e₁⟩ h
-    have hq := h cellSec
-    obtain ⟨hval, he⟩ := bigD_outcome_inj _ _ _ _ hq
+    -- Any section of the partition separates the two cells; `Definition 31`'s subtype
+    -- is inhabited for every partition (`Frame.partitionSectionsOut`).
+    obtain ⟨sec⟩ : Nonempty (partitionSections bigDCells) := inferInstance
+    obtain ⟨hval, he⟩ := bigD_outcome_inj _ _ _ _ (h sec)
     have hc : c₀ = c₁ :=
-      (cellSec.property c₀).symm.trans
-        ((congrArg (Quotient.mk cellS) hval).trans (cellSec.property c₁))
+      (sec.property c₀).symm.trans
+        ((congrArg (Quotient.mk bigDCells) hval).trans (sec.property c₁))
     exact Prod.ext hc he
 
 /-- The externalized frame has four environment states where `bigD` has two, and it is
 biextensional, so no `≃ᵇ` can relate the two. -/
-lemma ext_not_biextEquiv : ¬ (bigD.external cellS ≃ᵇ bigD) := by
+lemma not_biextEquiv_externalBigD_bigD : ¬ (bigD.external bigDCells ≃ᵇ bigD) := by
   intro h
-  obtain ⟨g, hg⟩ := exists_env_injective_of_biextEquiv ext_biextensional h
+  obtain ⟨g, hg⟩ := exists_env_injective_of_biextEquiv externalBigD_biextensional h
   have key : ∀ a b c : Fin 2, a = b ∨ a = c ∨ b = c := by decide
-  set x₀ : Quotient cellS × Fin 2 := (Quotient.mk cellS 0, 0)
-  set x₁ : Quotient cellS × Fin 2 := (Quotient.mk cellS 0, 1)
-  set x₂ : Quotient cellS × Fin 2 := (Quotient.mk cellS 2, 0)
+  set x₀ : Quotient bigDCells × Fin 2 := (Quotient.mk bigDCells 0, 0)
+  set x₁ : Quotient bigDCells × Fin 2 := (Quotient.mk bigDCells 0, 1)
+  set x₂ : Quotient bigDCells × Fin 2 := (Quotient.mk bigDCells 2, 0)
   rcases key (g x₀) (g x₁) (g x₂) with h' | h' | h'
   · exact absurd (congrArg Prod.snd (hg h')) (by decide)
-  · exact cells_ne (congrArg Prod.fst (hg h'))
-  · exact cells_ne (congrArg Prod.fst (hg h'))
+  · exact bigDCells_ne (congrArg Prod.fst (hg h'))
+  · exact bigDCells_ne (congrArg Prod.fst (hg h'))
 
 /-- `Claim 34` at this instance is a genuine, non-reflexive `◁ₓ`. -/
-lemma ext_genuine : (bigD.external cellS ◁ₓ bigD) ∧ ¬ (bigD.external cellS ≃ᵇ bigD) :=
-  ⟨ext_mult, ext_not_biextEquiv⟩
+lemma externalBigD_multSubagent_not_biextEquiv :
+    (bigD.external bigDCells ◁ₓ bigD) ∧ ¬ (bigD.external bigDCells ≃ᵇ bigD) :=
+  ⟨externalBigD_multSubagent_bigD, not_biextEquiv_externalBigD_bigD⟩
 
 /- The internalizing side is the same instance read through the transpose
 (`Definition 33` dualizes `Definition 32` on the nose). -/
 
-example : bigD.dual ◁ₓ bigD.dual.internal cellS := bigD.dual.multSubagent_internal cellS
+example : bigD.dual ◁ₓ bigD.dual.internal bigDCells := bigD.dual.multSubagent_internal bigDCells
 
-example : (bigD.dual.internal cellS).dual = bigD.external cellS := rfl
+example : (bigD.dual.internal bigDCells).dual = bigD.external bigDCells := rfl
 
 /-! ## Assuming a sub-environment (Definition 29)
 
@@ -593,22 +593,22 @@ witnesses `Claim 30(2)` at a place where the two frames are not biextensionally
 equivalent. -/
 
 /-- The environment states the driver assumes: everything but the third. -/
-abbrev assumed : Set (Fin 3) := {e | e ≠ 2}
+abbrev assumedEnvs : Set (Fin 3) := {e | e ≠ 2}
 
 /-- `driver3` after the assumption — `Definition 29`'s `Assume^F` at this instance
 (checked immediately below), spelled out so `decide` can see the carriers. -/
 abbrev driver3Assume : Frame ℕ where
   Agent := Fin 3
-  Env := assumed
+  Env := assumedEnvs
   outcome := fun a f => driver3.outcome a f.val
 
-example : driver3Assume = driver3.assume assumed := rfl
+example : driver3Assume = driver3.assume assumedEnvs := rfl
 
-example : driver3 ◁*₊ driver3Assume := driver3.addSubEnv_assume assumed
+example : driver3 ◁*₊ driver3Assume := driver3.addSubEnv_assume assumedEnvs
 
 /-- Assuming really shrinks: the assumed frame is not biextensionally equivalent to the
 frame it came from, so `Claim 30(2)` is not the reflexive case in disguise. -/
-lemma assume_not_biextEquiv : ¬ (driver3 ≃ᵇ driver3Assume) := by
+lemma not_biextEquiv_driver3_driver3Assume : ¬ (driver3 ≃ᵇ driver3Assume) := by
   intro h
   obtain ⟨g, hg⟩ := exists_env_injective_of_biextEquiv driver3_biextensional h
   have hg2 : Function.Injective (fun x : Fin 3 => (g x).val) := fun x y hxy =>
@@ -645,7 +645,7 @@ formalization's reading of `Definition 54` rests on — the definition's relaxat
 factorization *up to homotopy* is load-bearing at the level of the relation
 (`colDup_addSubagentCategorical_oneCol` against
 `not_exact_factorization_colDup_oneCol`; the single-`φ₀` fact
-`phi0_no_exact_factorization` does not suffice, because `φ₀ = 𝟙` factors exactly), and
+`colDupLoop_no_exact_factorization` does not suffice, because `φ₀ = 𝟙` factors exactly), and
 its follow-up remark about "the" morphism `C ⟶ D` cannot be read as uniqueness of the
 hom-set element (see `CartesianFrames/notes/paper-errata.md`, erratum 7). -/
 
@@ -657,46 +657,47 @@ abbrev colDup : Frame ℕ where
   outcome := ![![0, 0]]
 
 /-- The endomorphism of `colDup` that collapses both columns onto the first. -/
-def phi0 : colDup ⟶ colDup where
+def colDupLoop : colDup ⟶ colDup where
   agent := _root_.id
   env := ![0, 0]
   adjoint := by decide
 
-/-- Every `φ : colDup ⟶ ⊥` factors through `phi0` **up to homotopy**… -/
-lemma phi0_homotopy_factors :
+/-- Every `φ : colDup ⟶ ⊥` factors through `colDupLoop` **up to homotopy**… -/
+lemma colDupLoop_homotopy_factors :
     ∀ φ : colDup ⟶ (⊥ : Frame ℕ), ∃ φ₁ : colDup ⟶ (⊥ : Frame ℕ),
-      Homotopic φ (phi0 ≫ φ₁) := by
+      Homotopic φ (colDupLoop ≫ φ₁) := by
   intro φ
   refine ⟨φ, fun a e => ?_⟩
   have hadj := φ.adjoint a e
   have hconst : ∀ (a : Fin 1) (x y : Fin 2), colDup.outcome a x = colDup.outcome a y := by
     decide
-  exact (hconst a (phi0.env (φ.env e)) (φ.env e)).trans hadj
+  exact (hconst a (colDupLoop.env (φ.env e)) (φ.env e)).trans hadj
 
 /-- …so `Definition 54` holds with this `φ₀`. -/
-lemma cat54_holds : AddSubagentCategorical colDup colDup := ⟨phi0, phi0_homotopy_factors⟩
+lemma colDup_addSubagentCategorical_self : AddSubagentCategorical colDup colDup :=
+  ⟨colDupLoop, colDupLoop_homotopy_factors⟩
 
 /-- …but *exact* factorization through this particular `φ₀` fails: replacing
-`Homotopic` by equality would break `cat54_holds` **at this `φ₀`**.  On its own this
-says nothing about `Definition 54` as a relation, since `Definition 54` quantifies
-`∃ φ₀` and `φ₀ = 𝟙 colDup` factors every `φ` exactly; the relation-level separation is
-`colDup_addSubagentCategorical_oneCol` together with
+`Homotopic` by equality would break `colDup_addSubagentCategorical_self` **at this
+`φ₀`**.  On its own this says nothing about `Definition 54` as a relation, since
+`Definition 54` quantifies `∃ φ₀` and `φ₀ = 𝟙 colDup` factors every `φ` exactly; the
+relation-level separation is `colDup_addSubagentCategorical_oneCol` together with
 `not_exact_factorization_colDup_oneCol` below. -/
-lemma phi0_no_exact_factorization :
+lemma colDupLoop_no_exact_factorization :
     ¬ ∃ φ₁ : colDup ⟶ (⊥ : Frame ℕ),
-      colDup.homBotEquiv.symm 1 = phi0 ≫ φ₁ := by
+      colDup.homBotEquiv.symm 1 = colDupLoop ≫ φ₁ := by
   rintro ⟨φ₁, h⟩
   have hthis := congrArg (fun f => Hom.env f PUnit.unit) h
-  have key : ∀ x : Fin 2, (1 : Fin 2) ≠ phi0.env x := by decide
+  have key : ∀ x : Fin 2, (1 : Fin 2) ≠ colDupLoop.env x := by decide
   exact key (φ₁.env PUnit.unit) hthis
 
 /-- `hom(colDup, colDup)` has at least two elements while `colDup ◁₊ colDup` holds, so
 `Definition 54`'s follow-up remark ("we require the morphism from `C` to `D` to be
 unique") cannot mean uniqueness of the hom-set element — that reading would falsify
 `Claim 56`.  The `∃`-rendering is the correct one. -/
-lemma two_distinct_endos : phi0 ≠ 𝟙 colDup := by
+lemma colDup_two_distinct_endos : colDupLoop ≠ 𝟙 colDup := by
   intro h
-  have key : Hom.env phi0 = Hom.env (𝟙 colDup) := congrArg Hom.env h
+  have key : Hom.env colDupLoop = Hom.env (𝟙 colDup) := congrArg Hom.env h
   exact absurd (congrFun key 1) (by decide)
 
 example : colDup ◁₊ colDup := AddSubagent.refl colDup
@@ -709,18 +710,18 @@ abbrev oneCol : Frame ℕ where
 
 /-- The morphism collapsing `colDup`'s two columns onto the single column of
 `oneCol` — the shared `φ₀` witnessing `Definition 54` between them. -/
-def psi0 : colDup ⟶ oneCol where
+def colDupToOneCol : colDup ⟶ oneCol where
   agent := _root_.id
   env := ![0]
   adjoint := by decide
 
 /-- `Definition 54` holds between `colDup` and the one-by-one frame: every
-`φ : colDup ⟶ ⊥` factors through `psi0` up to homotopy, because every obligation is
+`φ : colDup ⟶ ⊥` factors through `colDupToOneCol` up to homotopy, because every obligation is
 an equation between `colDup` outcomes and those are all `0`. -/
 lemma colDup_addSubagentCategorical_oneCol : AddSubagentCategorical colDup oneCol := by
   have hconst : ∀ (a : Fin 1) (x y : Fin 2), colDup.outcome a x = colDup.outcome a y := by
     decide
-  refine ⟨psi0, fun φ => ⟨oneCol.homBotEquiv.symm 0, fun a e => ?_⟩⟩
+  refine ⟨colDupToOneCol, fun φ => ⟨oneCol.homBotEquiv.symm 0, fun a e => ?_⟩⟩
   exact (hconst a _ (φ.env e)).trans (φ.adjoint a e)
 
 /-- The relation-level separation: `Definition 54`'s relaxation to factorization *up to

@@ -1,6 +1,6 @@
 # Formalization Knowledge — Cartesian Frames (arXiv:2109.10996)
 
-Permanent, curated facts for fresh-context harness agents.  Read
+Permanent, curated facts for anyone picking this library up cold.  Read
 `CartesianFrames/README.md`, `CartesianFrames.lean`, and the paper before adding
 entries.  Scope of the formalization: **all 60 numbered nodes**, both appendices
 (user ruling, 2026-08-11).
@@ -66,16 +66,13 @@ entries.  Scope of the formalization: **all 60 numbered nodes**, both appendices
 **All 60 numbered nodes of the paper now have Lean carriers** (Claim 35's
 External/Internal half excluded by ruling; see intentional deviations).
 
-Unnumbered but load-bearing: `Frame.Biextensional.nonempty_iso_collapse`
-(`C.Biextensional → Nonempty (C ≅ C.collapse)` — the step the paper takes silently
-whenever it replaces a biextensional frame by its collapse; use it, don't re-derive);
-`Frame.homotopyEquiv_collapse` (`C ≃ Ĉ`, inside Claim 39's proof); `Frame.dual_dual`
-(`(C*)* = C`, App. B prose near Claim 46).  `CartesianFrames/Examples.lean`
-(namespace `CartesianFrames.Examples`) holds the paper's worked matrices as concrete
-frames — `driver` (§2.1), `dedup`/`dup` (§2.2 duplicate-row pair), `row`/`col` — with
-morphisms and 15 non-vacuity witnesses (homotopy/biextensional equivalence strictly
-weaker than iso, `Homotopic` neither equality nor total, collapse genuinely deletes).
-Reuse these for future non-vacuity or counterexample work.
+Three unnumbered facts carry weight the paper never states outright:
+`Frame.Biextensional.nonempty_iso_collapse` (`C.Biextensional → Nonempty (C ≅ C.collapse)`
+— the step the paper takes silently whenever it replaces a biextensional frame by its
+collapse), `Frame.homotopyEquiv_collapse` (`C ≃ Ĉ`, inside Claim 39's proof), and
+`Frame.dual_dual` (`(C*)* = C`, Appendix B prose near Claim 46).  The concrete frames
+and separation witnesses live in `CartesianFrames/Examples.lean`; see *The witness
+library* below.
 
 ## Design decisions (settled with Anson, 2026-08-11)
 
@@ -109,31 +106,6 @@ Reuse these for future non-vacuity or counterexample work.
 - Unnumbered load-bearing facts become named internal lemmas annotated to their
   surrounding definition: morphisms `C ⟶ ⊥` biject with `C.Env` (used by Claims 51,
   53, 55), and `p°` preserves biextensional equivalence (Def 10's footnote).
-
-## Stage 3b internal lemmas (private in `AdditiveMultiplicative.lean` — promote, don't re-derive)
-
-`nonempty_agent_of_biextEquiv` / `nonempty_env_of_biextEquiv` (carrier nonemptiness
-transports across `≃ᵇ`); `biextEquiv_botOf_image` (`[Unique M.Env] → M ≃ᵇ botOf
-M.image`); `biextEquiv_curry_transport` (`D°(Z) ≃ᵇ D'°(σ°(Z))` from a homotopy
-pair; `mapWorlds` keeps the env carrier so `Unique` survives); `curryCurryIso`
-(`(E°(M))°(N) ≅ E°(N∘M)`, all fields `rfl`); `exists_image_univ_curry`
-(class-hitting image patched to literally-full image without disturbing `E°(N)` up
-to `≃ᵇ`).  Consequence worth remembering: **`◁ₓ`-transitivity does NOT need App. B's
-Claim 60** — do not re-sequence it on that account.  Defeq-first rule extends to
-`curry`/`mapWorlds` composites: in Theorem 24 `C₂.curry.obj M` is *literally*
-`C₁.curry.obj D`; try `rfl`/plain hypothesis reuse before building an iso.
-
-## Paper errata (details in `notes/paper-errata.md`)
-
-- **Claim 53's printed proof has a gap**: its final display checks only agent
-  components of `φ_e = φ_e ∘ τ ∘ σ`; the env components agree only up to duplicate
-  columns, while Definition 13 demands morphism equality.  The Lean proof of
-  `SubagentCurry.subagent` uses the env-redirect construction from the paper's
-  commented-out currying→covering proof (TeX L1334–1377).  The claim is true as
-  stated — auditors comparing the Lean proof against the printed proof should
-  expect this divergence; the *statement* is verbatim.
-- Claim 35 has a binder garble and an ill-typed External/Internal half (below).
-
 ## Intentional deviations (user-ruled)
 
 **Claim 35, External/Internal half: not formalized (Anson, 2026-08-11).**  The
@@ -151,172 +123,219 @@ only on the Commit/Assume idempotence theorems, and the README discloses the
 partial status.  Auditors: do not raise the missing External/Internal half as a
 gap; do flag any attempt to formalize it without a new user ruling.
 
-## Surface conventions (post round 1 — enforced fail-closed by the checker)
+## Paper errata (details in `notes/paper-errata.md`)
+
+- **Claim 53's printed proof has a gap**: its final display checks only agent
+  components of `φ_e = φ_e ∘ τ ∘ σ`; the env components agree only up to duplicate
+  columns, while Definition 13 demands morphism equality.  The Lean proof of
+  `SubagentCurry.subagent` uses the env-redirect construction from the paper's
+  commented-out currying→covering proof (TeX L1334–1377).  The claim is true as
+  stated — auditors comparing the Lean proof against the printed proof should
+  expect this divergence; the *statement* is verbatim.
+- Claim 35 has a binder garble and an ill-typed External/Internal half (below).
+
+## Reusable internal API — check here before deriving anything
+
+Private in `AdditiveMultiplicative.lean` (promote rather than re-derive):
+`nonempty_agent_of_biextEquiv` / `nonempty_env_of_biextEquiv` (carrier nonemptiness
+transports across `≃ᵇ`); `biextEquiv_botOf_image` (`[Unique M.Env] → M ≃ᵇ botOf
+M.image`); `biextEquiv_curry_transport` (`D°(Z) ≃ᵇ D'°(σ°(Z))` from a homotopy pair —
+`mapWorlds` keeps the env carrier, so `Unique` survives); `curryCurryIso`
+(`(E°(M))°(N) ≅ E°(N∘M)`, all fields `rfl`); `exists_image_univ_curry` (a
+class-hitting image patched to a literally-full one without disturbing `E°(N)` up to
+`≃ᵇ`).  A consequence worth keeping: **`◁ₓ`-transitivity does not need Appendix B's
+Claim 60** — do not re-sequence Claim 60 on its account.
+
+Public in `Biextensional.lean`, three invariants of `≃ᵇ` — the standard refuters when
+you need to show a subagency relation *fails*: `image_eq_of_biextEquiv`,
+`exists_env_injective_of_biextEquiv` (note the biextensionality hypothesis is on the
+frame whose `Env` is the injection's *source*), and `BiextEquiv.dual`.  Do not
+re-derive the one-sided image-subset form; it is internal to the equality's proof.
+
+Public in `Operations.lean` for Definition 31: `partitionSectionsOut` (the canonical
+`Quotient.out` section) and the `Nonempty (partitionSections s)` instance, so every
+`Setoid` visibly admits a section.  These do **not** subsume the private
+`exists_partitionSections_selecting`, which selects a *given* element from its own
+cell — that is what the Claim 34/45 proofs need.
+
+Defeq-first rule: this library is unusually rich in definitional equalities.  Category
+laws, `dual_dual`, `Hom.dual_dual`, both Claim 46 composites, `(C.internal s).dual =
+C.dual.external s`, `(C.assume F).dual = C.dual.commit F`, and Theorem 24's
+`C₂.curry.obj M = C₁.curry.obj D` are all `rfl`.  Try `rfl` and plain hypothesis reuse
+before constructing an isomorphism.
+
+## The witness library (`Examples.lean`)
+
+Concrete frames carrying every non-vacuity and separation fact, so that no endpoint
+rests on an uninhabited or degenerate hypothesis.  Reuse these before building new
+counterexample frames.
+
+- §2.1–2.2, the paper's own matrices: `driver`; the duplicate-row pair `dedup`/`dup`
+  with `dupLoop`; `row`/`col`.  They witness that biextensional and homotopy
+  equivalence are *strictly* weaker than isomorphism, that `Homotopic` is neither
+  equality nor the total relation, and that the collapse genuinely deletes.
+- §2.4 subagency: `driver3` with `committed`/`driver3Commit` (the paper's committing
+  example), the team example `teamD`/`teamZ`/`teamC`, and `bigD`/`bigZ`/`bigC`.  They
+  witness non-totality, both refinements non-degenerately on the paper's own
+  examples, orientation in *both* directions, strictness of `◁₊`/`◁ₓ` below `◁`, and
+  Theorem 24's decomposition content (`every_witness_nontrivial`, whose antecedent
+  `bigC_decomposes` exhibits).
+- Operations and Appendix B: `bigDCells` (a genuine 2-cell partition) with
+  `externalBigD_multSubagent_not_biextEquiv`; `assumedEnvs`/`driver3Assume`;
+  `colDup` with `colDupLoop` — the smallest frame here with a non-trivial
+  endomorphism monoid — and `oneCol` with `colDupToOneCol`.
+
+**The Definition 54 separator is the subtle one.**  A per-`φ₀` non-factorization fact
+never separates an `∃ φ₀`-quantified relation: `φ₀ = 𝟙` factors every `φ` exactly, so
+the exactified variant of Definition 54 holds trivially wherever `C ◁₊ C` does.  That
+error stood in this file and in the errata for three audit rounds before a
+fresh-context audit caught it.  The real separation is
+`colDup_addSubagentCategorical_oneCol` against `not_exact_factorization_colDup_oneCol`:
+the target's single environment state pins the composite while `colDup`'s duplicate
+columns keep the homotopy condition satisfiable.  `colDupLoop_no_exact_factorization`
+is the per-`φ₀` fact and does **not** establish the relation-level claim.
+
+## Surface conventions — enforced fail-closed by the checker
 
 - The literal string used for paper-node annotations is a **reserved string** in this
   library: every occurrence must be the last non-blank line of a `/-- … -/`
-  docstring, attached to a *named* declaration, and that declaration must be listed
-  in `AxiomAudit.lean`'s CF-INVENTORY (per-declaration coverage — sharing a node
-  with a listed declaration is not enough).  It may not appear in prose anywhere
-  under `CartesianFrames/` (not in `/-!` blocks, not in comments) — write
-  "paper-node line" instead.  Internal lemmas cite nodes in prose without the marker.
-- `scripts/lint_paper_labels.py` is library-sensitive: a CF `theorem` must name a
-  numbered Claim or Theorem on one line; the LI alternatives (`thm:`/`§`/`App.`) are
-  rejected for `CartesianFrames/`.  A `theorem` citing only a Definition also fails,
-  by design.
-- `scripts/check_trust_surface.py` hashes `AxiomAudit.lean`, so any CF-INVENTORY
-  edit makes it report stale even though the page is LI-only.  Regenerate
-  (`python3 scripts/gen-trust-surface.py`) LAST, after all AxiomAudit edits.
+  docstring, attached to a *named* declaration, and that declaration must itself be
+  listed in `AxiomAudit.lean`'s CF-INVENTORY (per-declaration coverage — sharing a
+  node with a listed declaration is not enough).  It may not appear in prose anywhere
+  under `CartesianFrames/`, not in `/-!` blocks and not in comments; write
+  "paper-node line" instead.  Internal lemmas cite nodes in prose, without the marker.
+- `theorem` is reserved for numbered paper claims and theorems; `lint_paper_labels.py`
+  additionally requires a CF `theorem` to name a numbered Claim or Theorem on one
+  line, and rejects the LogicalInduction alternatives (`thm:`/`§`/`App.`).  A
+  `theorem` citing only a Definition fails by design.
+- **Data-valued endpoints are `def`s, not `theorem`s.**  `X ≅ Y` is `Type`-valued, so
+  the `dd:eq-to-iso` sites and Claim 48's `IsInitial`/`IsTerminal` carriers are `def`s
+  (the theorems beside them state `Nonempty _`).  Do not weaken an iso to
+  `Nonempty (≅)` to make it a `theorem` — that forgets *which* isomorphism.
+- `#assert_axioms_clean` permits the three standard axioms, so `Quotient.out`-based
+  noncomputable definitions are inventoriable; do not avoid choice on cleanliness
+  grounds.
+- The CF-INVENTORY preamble enumerates the listed names that carry no annotation of
+  their own.  **No script checks that count** — recount it by hand in the same edit as
+  any inventory change.
 
 ## Pitfalls
 
-- A frame morphism's environment map reverses direction.  Consequently
-  `(f ≫ g).env = f.env ∘ g.env`.
-- Definition 10's TeX names the mapped carriers `B` and `F`, but the intended functor
-  leaves the agent and environment carriers unchanged; only outcomes are mapped by
-  `p`.
-- Category laws and `dual_dual` hold by `rfl` (definitional eta for structures and
-  functions).  Prefer `rfl` before reaching for `ext` in this layer.
-- `≃ᵇ` is `infixl:25` (matching Mathlib's `≃`; keep it): it binds looser than `∧`
-  (35) and `¬` (40), so parenthesize — `(C ≃ᵇ D) ∧ P`, `¬ (C ≃ᵇ D)`.  It is scoped
-  inside `CartesianFrames.Frame`; `open CartesianFrames` alone gives
-  "expected token" — clients need `open Frame` or `open scoped CartesianFrames.Frame`.
-  The trap bites *inside definition bodies* too, and the downstream errors look
-  nothing like a precedence problem (`Iso.mk has 4 explicit fields…`, bogus
-  projection errors) — it cost Stage 3b an elaboration round.
-- Mathlib (current pin) has no `Unique (α × β)` instance (`Inhabited` and
-  `Subsingleton` products exist); build it with `Unique.mk' _`, as a `def` (it's
-  `Type`-valued) marked `@[reducible]`/`abbrev`.
-- `Set.eq_univ_of_forall`/`_iff_forall` need `import Mathlib.Data.Set.Basic` — the
-  CF import chain reaches `Set` only via `CategoryTheory.Opposites`.
-- Seeded `.lake` oleans can be stale relative to the worktree's HEAD, presenting as
-  a *missing name* (`Unknown constant` for a declaration that exists), not a type
-  error.  Rebuild the upstream module (`lake build CartesianFrames.<Mod>`) before
-  believing `lake env lean`.
-- Concrete `Frame` witnesses must be `abbrev`, not `def`, or `decide`/instance
-  search cannot see the carriers.  `![…]` needs `Mathlib.Data.Fin.VecNotation`;
-  deciding over an empty hom-type needs `Mathlib.Data.Fintype.Pi`.
-  `Frame.Biextensional`'s fields use strict-implicit binders, so the anonymous
+### Notation and elaboration
+
+- A frame morphism's environment map reverses direction: `(f ≫ g).env = f.env ∘ g.env`.
+- `≃ᵇ` is `infixl:25` (matching Mathlib's `≃`; keep it), so it binds looser than `∧`
+  (35) and `¬` (40) — parenthesize as `(C ≃ᵇ D) ∧ P`, `¬ (C ≃ᵇ D)`.  The trap bites
+  *inside definition bodies* too, where the resulting errors look nothing like a
+  precedence problem (`Iso.mk has 4 explicit fields…`, bogus projection errors).
+- `≃ᵇ` and `◁` are scoped in `CartesianFrames.Frame`: `open CartesianFrames` alone
+  yields "expected token".  Clients need `open Frame` or
+  `open scoped CartesianFrames.Frame`.
+- **Name collision**: `CartesianFrames.Frame` vs Mathlib's `Order.Frame`.  With both
+  open, Lean can *silently* choose `Order.Frame` when the expected type disambiguates.
+  Qualify in client-facing docs.
+- `Homotopic f g` unfolds with the env map from `g` and the agent map from `f`, so the
+  useful direction is almost always `Homotopic.symm` — which is *not* `Eq.symm` on the
+  applied equation, a different statement that will not typecheck against env-side
+  goals.  Dualizing a homotopy pair needs `.symm` plus swapped argument order.
+- `Frame.Biextensional`'s fields use strict-implicit binders, so the anonymous
   constructor `⟨fun _ => rfl, …⟩` fails; use `constructor <;> intros`.
-- On a biextensional frame, `Homotopic f g → f = g` — homotopy is a genuine
-  weakening only on non-biextensional frames (`env_ext` also forces
-  `φ.env ∘ ψ.env = id`).  Any strictness witness must live on a frame with
-  duplicates (`Examples.dupLoop`); no Claim-38 forward witness with `φ ≫ ψ ≠ 𝟙`
-  exists on biextensional frames — do not hunt for one.
-- `Homotopic f g ↔ ∀ a e, D.outcome (f.agent a) e = D.outcome (g.agent a) e`
-  (pointwise `agentSetoid`-relatedness of the agent maps); Definition 36's
-  asymmetric phrasing is provably symmetric on bundled morphisms.
-- Boundary facts (checked): empty-`Agent` frame is biextensional iff its `Env` is a
-  subsingleton; over `W = Unit` a biextensional frame has ≤1 agent and ≤1 env;
-  `Frame W` is inhabited for every `W` (empty carriers), so no endpoint is vacuous
-  merely from `W`'s emptiness.
-- Build calibration (2026-08-11, this machine): seeding a worktree from the
-  integration `.lake` ≈ 100 s; incremental full `lake build` after touching
-  CartesianFrames + AxiomAudit ≈ 8–12 min (AxiomAudit alone ~2 min).  Budget one
-  background build, not several.
+- A `Type`-valued `example` needs `noncomputable` just as a `def` does.  To exercise a
+  noncomputable endpoint, state a `Prop` about it instead.
+- Mathlib at this pin has no `Unique (α × β)` instance (`Inhabited` and `Subsingleton`
+  products exist); build one with `Unique.mk' _`, as a `def` (it is `Type`-valued)
+  marked `@[reducible]`/`abbrev`.
 
-## Stage 4 + round 2 lessons
+### Concrete witnesses
 
-- **`lake build -j4` does not exist on this toolchain** (Lake 5.0.0/Lean 4.31.0)
-  and the flag error **exits 0 through a pipe** — a one-line log is the only tell.
-  Use `LEAN_NUM_THREADS=4 lake build`; always confirm the log ends in
-  "Build completed successfully".
-- **AxiomAudit imports CF modules individually**, not the root: a new CF module
-  needs BOTH the root import and an `AxiomAudit.lean` import line, else the audit
-  build fails late with a misleading `Unknown constant`.
-- **`dd:eq-to-iso` sites are `def`s**: `X ≅ Y` is Type-valued, so `theorem` is an
-  elaboration error; do not weaken to `Nonempty (≅)` (forgets which iso).  Same
-  for Claim 48's `IsInitial`/`IsTerminal` carriers (theorems state `Nonempty _`,
-  defs carry the data).
-- **`lint_paper_labels.py` requires a docstring ending `-/` immediately before
-  every `theorem`** — no shared docstrings across consecutive theorems.
-- **Claim 46 is strict**: both dual composites are definitionally `𝟭` (`rfl`);
-  `Functor.comp`/`Functor.id` have lambda fields with defeq bodies + proof fields.
-  No `eqToIso`/`aesop_cat`/op-unop plumbing needed anywhere in the equivalence.
-- **`Homotopic`'s useful direction is almost always `.symm`** (env-side rewrite
-  `C.outcome a ((α≫β).env e) = C.outcome a e`); the un-symmed form gives the
-  agent-side fact, true but useless for the App. B calc chains.  Dualizing a
-  homotopy pair also needs `.symm` plus swapped argument order.
-- **Definition 32/33 duals pair STRAIGHT**: `(C.internal s).dual = C.dual.external s`
-  and `(C.internalSect s).dual = C.dual.externalQuot s`, on the nose; likewise
-  `(C.assume F).dual = C.dual.commit F`.  The "crossed" intuition is wrong because
-  dual swaps carriers.
-- Claim 45's externalizing proofs need only per-`a` sections (`sec a ⟦a⟧ = a`,
-  classical `if`); keep them inside an `∃`-lemma to avoid a noncomputable def.
-- Concrete-witness toolbox (round 2, code in
-  `.harness/audit/round2-lensC-probe.lean`): `decide` can't see through
-  `Frame.image` (insert `show ∃ a e, …` first); product-`Env` frames need
-  `Mathlib.Data.Fintype.Prod`; subtype-agent `decide` recipe (re-`have` the
-  membership, `show` on the underlying `Fin`, revert, decide); prove `≃ᵇ`
-  obligations via `biextEquiv_iff_homotopyEquiv`, not `Iso`.
-- `AddSubagent`'s binder order is `Y Z X f` (superset first) — destructuring in
-  the paper's `X Y Z` order silently misbinds.
-- **Name collision**: `CartesianFrames.Frame` vs Mathlib's `Order.Frame` — with
-  both open Lean can silently pick `Order.Frame` when the expected type
-  disambiguates.  Qualify in client-facing docs.
-- `⊥` is a maximum for `◁` (`C ◁ ⊥` always) and `IsEmpty C.Env → C ◁ D` —
-  faithful to the paper; subagency witnesses need nonempty `Env` and non-`⊥` RHS.
-- THREE reusable `≃ᵇ`-invariants now LIVE in Biextensional.lean:
-  `image_eq_of_biextEquiv`, `exists_env_injective_of_biextEquiv`, and (since round
-  3) `BiextEquiv.dual`.  Do not re-derive the one-sided subset form (internal).
-- Examples.lean's second half (round-2 fix) covers §2.4: `driver3`/`committed`/
-  `driver3Commit`, the paper's team example (`teamD`/`teamZ`/`teamC`), and
-  `bigD`/`bigZ`/`bigC`, with witnesses for non-totality, both refinements
-  non-degenerate on the paper's own examples, orientation guards both directions,
-  strictness of `◁₊`/`◁ₓ` below `◁`, and Theorem-24 content
-  (`every_witness_nontrivial`, non-vacuous via `bigC_decomposes`).  Reuse before
-  building new counterexample frames.
-- Concrete witnesses over the OPERATIONS must not use `C.commit B` etc. directly:
-  they are `def`s, so instance search can't find `Fintype` on their carriers and
-  `decide` fails.  Write the frame as a literal `abbrev` and pin the identity with
-  a checked `example : lit = C.commit B := rfl` (Examples.lean does this; its
-  import moved to CartesianFrames.Operations as a result — Examples is now the
-  leaf of the whole CF chain).
-- `Homotopic`-`.symm` clarification: `.symm` means `Homotopic.symm` (swaps which
-  argument supplies env vs agent map) — `Eq.symm` on the applied equation is a
-  DIFFERENT statement and won't typecheck against env-side goals.
-- Stale-olean trap, edit-time form: after editing an upstream CF module, `lake env
-  lean <downstream>` reports newly added upstream declarations as `Unknown
-  identifier` and `obtain` fails with a bogus "not an inductive datatype".
-  Rebuild the changed chain (`lake build CartesianFrames.<Mod>`, ~20 s) first.
-- The Type-u WLOG docstring in AdditiveMultiplicative.lean is now the corrected
-  honest version (additive certified by Claims 41/42; multiplicative by the
-  unformalized collapse/cardinality argument).  Do not re-assert "WLOG by Claims
-  41–44" — that exact sentence was findings R2-F02/F07.
+- Concrete `Frame` witnesses must be `abbrev`, not `def`, or `decide` and instance
+  search cannot see through to the carriers.  For the same reason a witness over an
+  *operation* must not be written `C.commit B` (the operations are `def`s): write the
+  frame literally and pin the identity with a checked `example : lit = C.commit B := rfl`.
+- `decide` cannot see through `Frame.image`; insert `show ∃ a e, …` first.  Deciding
+  over an empty hom-type needs `Mathlib.Data.Fintype.Pi`; product-`Env` frames need
+  `Mathlib.Data.Fintype.Prod`; `![…]` needs `Mathlib.Data.Fin.VecNotation`;
+  `Set.eq_univ_of_forall` needs `Mathlib.Data.Set.Basic`.
+- `decide` refuses a goal mentioning a local free variable — hoist the fact into a
+  `∀`-quantified `have` first.  When the carrier is `Fin 1`, `Subsingleton.elim`
+  sidesteps the issue entirely and reads better.
+- Subtype-agent goals: re-`have` the membership, `show` the goal on the underlying
+  `Fin`, then revert and decide.  Prove `≃ᵇ` obligations through
+  `biextEquiv_iff_homotopyEquiv`, never by building an `Iso` (which would force
+  subtype-level coherence proofs).
+- `AddSubagent`'s binder order is `Y Z X f` — superset first.  Destructuring in the
+  paper's `X Y Z` reading order silently misbinds.
 
-## Round 3 additions
+### Mathematical gotchas
 
-- Examples.lean's third block ("Operation and Appendix-B witnesses"): `ext_genuine`
-  (external on a 2-cell partition of bigD is a genuine non-reflexive `◁ₓ`),
-  `driver3Assume` + `◁*₊` witness, `colDup`/`phi0` (smallest frame with nontrivial
-  endomorphism monoid; Def 54's homotopy relaxation load-bearing —
-  `phi0_no_exact_factorization` vs `cat54_holds`), App B relation instances and
-  non-totality examples, dualized Def 25/26 examples.  Second dd:eq-to-iso bridge:
-  `oneOfUnivIsoOne` (Def 49).  Claim 35's `= Set.univ` absorption is disclosed at
-  the sites AND pinned by four checked `example`s.
-- `Nonempty (partitionSections s)` in general is a KNOWN GAP as public surface (the
-  probe's one-liner exists only as a private specialized def in Examples); if
-  needed, it belongs beside `partitionSections` in Operations.lean.
-- Gate-script traps: `check_trust_surface.py` exits 0 even on FAIL — read its
-  output line, never its exit status (same class as the `lake build -j4` trap).
-  The CF-INVENTORY preamble's unannotated-groups enumeration has no script check —
-  recount it in the same edit as any inventory change.
-- Build calibration correction: documentation/witness-sized CF rounds rebuild the
-  whole chain in ~2 min total; only cold or Mathlib-touching builds need the long
-  budget.
-- Paper erratum 7 (Def 54 "unique" is loose prose; literal reading falsifies
-  Claim 56 — compiled falsifier `two_distinct_endos`).
+- On a biextensional frame, `Homotopic f g → f = g`, since `env_ext` also forces
+  `φ.env ∘ ψ.env = id`.  Homotopy is a genuine weakening only on frames with
+  duplicates — do not hunt for a Claim-38 forward witness with `φ ≫ ψ ≠ 𝟙` on
+  biextensional frames.
+- `⊥` is a maximum for `◁` (`C ◁ ⊥` always), and `IsEmpty C.Env → C ◁ D` for every
+  `D`.  Both are faithful to the paper, but any intended non-vacuity witness must
+  therefore have a nonempty `Env` and a right-hand side other than `⊥`.
+- Empty-`Agent` frames are biextensional iff their `Env` is a subsingleton; over
+  `W = Unit` a biextensional frame has at most one agent and one env; `Frame W` is
+  inhabited for every `W`.  So no endpoint is vacuous merely from `W` being empty.
+- Definition 32/33 duals pair **straight**, not crossed:
+  `(C.internal s).dual = C.dual.external s`.  The crossed intuition fails because
+  dualizing swaps the carriers.
+- Claim 45's externalizing proofs need only a per-`a` section (`sec a ⟦a⟧ = a`,
+  classical `if`); keep it inside an `∃`-lemma to avoid a noncomputable definition.
+- The `Type u` bound on Definitions 18/19's set existentials is WLOG, but only the
+  *additive* half is certified in-library (by Claims 41/42, whose witnesses are `D`'s
+  own carriers).  The multiplicative half holds by an unformalized collapse and
+  cardinality argument.  Do not re-assert "WLOG by Claims 41–44"; that sentence was an
+  audit finding.
 
-## Cleared suspicions (round 1 — do not re-raise without new evidence)
+### Toolchain
 
-- Mathlib has no Chu construction at the current pin; `Frame`/`Hom`/the category
-  instance duplicate nothing.  Re-check only on a pin move.
-- Definition 3's bijective-components condition coincides with Mathlib's `C ≅ D`
-  (inverse pair automatically satisfies adjointness); nothing hidden in stating
-  claims with `Nonempty (C ≅ D)`.
-- Claim 38's biextensionality hypotheses are load-bearing and satisfiable
-  (both directions falsifiable if either is dropped); Claim 8's second half is a
-  strict implication.  Witnesses live in `Examples.lean`.
-- `Homotopic` orientation, `HomotopyEquiv`'s `≫`-order, `collapse`'s
-  `Quotient.lift₂` binder order (positional, misleadingly named — do not "fix"
-  without re-checking), and `dual`-as-transpose were each hand-verified in round 1.
+- **Gate scripts and builds lie about their exit status.**  `lake build -j4` does not
+  exist on this toolchain and its flag error exits 0; a `lake build` piped through
+  `tee`/`tail` reports the *pipe's* status, so a failed build can look green; and
+  `check_trust_surface.py` exits 0 even when it prints FAIL.  Read the output — a
+  build is green only when its log ends "Build completed successfully".  Use
+  `LEAN_NUM_THREADS=n lake build` to cap parallelism.
+- `AxiomAudit.lean` imports the CF modules individually, not the root: a new module
+  needs both the root import and an `AxiomAudit.lean` import line, or the audit build
+  fails late with a misleading `Unknown constant`.
+- Seeded `.lake` oleans go stale relative to an edited source and present as a
+  *missing name* (`Unknown identifier`/`Unknown constant` for a declaration that
+  plainly exists), with `obtain` then failing with a bogus "not an inductive
+  datatype".  Rebuild the edited module before believing `lake env lean`.
+- `check_trust_surface.py` hashes `AxiomAudit.lean`, so any inventory edit makes it
+  report stale even though the generated page is LogicalInduction-only.  Regenerate
+  **last**, after every inventory edit is final.
+- Build calibration on this machine: seeding a worktree's `.lake` from the integration
+  checkout is 40–100 s, and a full incremental `lake build` after touching several CF
+  modules plus `AxiomAudit` is 2–3 minutes.  Budget the long estimate only for cold or
+  Mathlib-touching builds.
+- Style: `awk 'length > 100'` counts *bytes*, so it over-reports line length by 30–50%
+  on this library's notation-dense files.  Measure with Python's `len` on decoded text.
+
+## Cleared suspicions — do not re-raise without new evidence
+
+- Mathlib has no Chu-space construction at this pin, so `Frame`, `Hom`, and the
+  category instance duplicate nothing; there is likewise no bundled
+  section-of-a-quotient type, so `partitionSections` is not a duplicate.  Re-check
+  only on a pin move.
+- Definition 3's bijective-components condition really does coincide with Mathlib's
+  `C ≅ D`: the inverse pair automatically satisfies adjointness.  Nothing is hidden by
+  stating the claims with `Nonempty (C ≅ D)`.
+- Claim 38's biextensionality hypotheses are load-bearing and satisfiable — the `iff`
+  fails if either is dropped — and Claim 8's second half is a strict implication.
+- `Homotopic`'s orientation, `HomotopyEquiv`'s `≫`-order, `collapse`'s `Quotient.lift₂`
+  binder order (positional, and misleadingly named — do not "fix" it without
+  re-checking), and `dual`-as-transpose were each verified by hand.
+- Modeling Definition 31's partitions as `Setoid` is *safer* than a `Set (Set α)`
+  rendering, not merely more convenient: a set-theoretic partition containing an empty
+  cell would make `A/B` empty and falsify Claim 34.  `Setoid` cells are automatically
+  nonempty.
+- `AddSubagentCurry` uses `Unique M.Env`, not `Subsingleton` — the latter would admit
+  an empty environment and trivialize `◁₊`.
+- Claim 43's empty-`Agent(D)` branch is honest: `IsEmpty (X × Y)` is *derived* from the
+  hypothesis, not assumed, and `M.image = Set.univ` holds because the target is empty.
+- The subagency relations' orientation was checked in both directions on both of the
+  paper's worked examples: a reversed definition would still be inhabited, so
+  inhabitation alone proves nothing.

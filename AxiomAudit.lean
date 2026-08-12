@@ -831,7 +831,7 @@ Same contract as the Logical Induction inventory above, for `CartesianFrames/`
 numbers; `scripts/check-cartesian-frames-nodes.py` validates them against the
 committed TeX **and** checks that every *declaration* annotated in the library is
 itself listed between the CF-INVENTORY markers below — sharing a node with a listed
-declaration is not enough. Four groups of listed names carry no annotation of their own:
+declaration is not enough. Five groups of listed names carry no annotation of their own:
 the constructive carriers of Appendix B's Claims 46 and 48 (`Frame.dualEquivalence`,
 `Frame.zeroIsInitial`, `Frame.topIsTerminal` — the `theorem`s state the paper's
 propositional content, these are the data behind them); the four unnumbered facts the
@@ -839,7 +839,9 @@ paper uses silently (`Frame.Biextensional.nonempty_iso_collapse`, the step taken
 whenever a biextensional frame is replaced by its collapse, together with the three
 `≃ᵇ`-invariants `Frame.image_eq_of_biextEquiv`,
 `Frame.exists_env_injective_of_biextEquiv` — the standard refuters for `◁ₓ` and `◁₊` —
-and `Frame.BiextEquiv.dual`, which every dualized definition runs on); the one
+and `Frame.BiextEquiv.dual`, which every dualized definition runs on); the
+inhabitation of Definition 31's choice functions (`Frame.partitionSectionsOut` and the
+`Nonempty` instance built from it, which the paper assumes without comment); the one
 combined-iff convenience wrapper (`Frame.addSubagent_iff_addSubagentCategorical`,
 whose two halves are the annotated Claims 55 and 56); and the last three blocks, the
 non-vacuity, subagency, and operation/Appendix-B witnesses of
@@ -884,6 +886,7 @@ open CartesianFrames in
   Frame.commit_addSubagent Frame.commitCompl_addSubagent
   Frame.addSubEnv_assume Frame.addSubEnv_assumeCompl
   Frame.partitionSections
+  Frame.partitionSectionsOut Frame.instNonemptyPartitionSections
   Frame.external Frame.externalQuot Frame.internal Frame.internalSect
   Frame.external_multSubagent Frame.externalQuot_multSubagent
   Frame.multSubagent_internal Frame.multSubagent_internalSect
@@ -925,11 +928,13 @@ open CartesianFrames in
   Examples.not_bigC_multSubagent_bigD Examples.not_bigC_addSubagent_bigD
   Examples.every_witness_nontrivial Examples.bigC_decomposes
   -- Operation and Appendix-B witnesses (CartesianFrames/Examples.lean).
-  Examples.ext_mult Examples.bigD_biextensional Examples.bigD_outcome_inj
-  Examples.cells_ne Examples.ext_biextensional Examples.ext_not_biextEquiv
-  Examples.ext_genuine Examples.assume_not_biextEquiv
-  Examples.phi0_homotopy_factors Examples.cat54_holds
-  Examples.phi0_no_exact_factorization Examples.two_distinct_endos
+  Examples.externalBigD_multSubagent_bigD Examples.bigD_biextensional
+  Examples.bigD_outcome_inj Examples.bigDCells_ne
+  Examples.externalBigD_biextensional Examples.not_biextEquiv_externalBigD_bigD
+  Examples.externalBigD_multSubagent_not_biextEquiv
+  Examples.not_biextEquiv_driver3_driver3Assume
+  Examples.colDupLoop_homotopy_factors Examples.colDup_addSubagentCategorical_self
+  Examples.colDupLoop_no_exact_factorization Examples.colDup_two_distinct_endos
   Examples.colDup_addSubagentCategorical_oneCol
   Examples.not_exact_factorization_colDup_oneCol
 -- CF-INVENTORY-END
