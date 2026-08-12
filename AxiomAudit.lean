@@ -56,6 +56,7 @@ import LogicalInduction.Construction
 import ModalAgents.Cooperation
 import ModalAgents.Behavioral
 import ModalAgents.FixedPoint
+import ModalAgents.Arithmetic
 import CartesianFrames.Examples
 import CartesianFrames.Worlds
 import CartesianFrames.Subagent
@@ -800,12 +801,19 @@ numbered node of that paper. They are all `lemma`s, per the repo's keyword rule,
 they stay inventoried and axiom-checked regardless:
 
 * `subst_congr` — a GL-level substitution congruence; the paper's Lemma 4.5 is the
-  *arithmetic* statement, which this does not state.
+  *arithmetic* statement, carried by `arithmetic_modal_substitution`.
+* `glFixedPoint_uniqueness` — the *rule* form of Theorem 4.3, derived from the printed
+  internal form `glFixedPoint_uniqueness_internal` (which carries the annotation) by
+  necessitation; it is the form the modal-agent development consumes.
+* `arithInterp` and `Realization.update` — the definitions the arithmetic statements are
+  phrased in: `arithInterp f φ` is the paper's `φ(ψ₁,…,ψₙ)`, and `Realization.update`
+  substitutes for the diagonal variable. Listed because they are statement surface.
 * `defectBot_defects`, `defectBot_provably_defects` and `cooperateBot_cooperates` —
   the §2 remark that `PA ⊢ [CB(X)=C]` and `PA ⊢ [DB(X)=D]`, prose in an unnumbered
   `remark`.
-* `fairBot_vs_cooperateBot` and `fairBot_vs_defectBot` — §3 prose on FairBot's
-  unexploitability and its waste against CooperateBot, again unnumbered.
+* `fairBot_unexploitable`, `fairBot_vs_cooperateBot` and `fairBot_vs_defectBot` — §3
+  prose on FairBot's unexploitability ("by inspection") and its waste against
+  CooperateBot, again unnumbered.
 * `prudentBot_vs_defectBot` — the "in particular, PA+1 ⊢ [PB(DB)=D]" step *inside* the
   proof of Theorem 3.2, not one of that theorem's four conjuncts.
 * The defection-boundary block — `ProvablyDefects.defects`, the three outcome
@@ -825,11 +833,14 @@ they stay inventoried and axiom-checked regardless:
 
 -- MA-INVENTORY-BEGIN
 #assert_axioms_clean
-  subst_congr glFixedPoint_uniqueness glFixedPoint_thm42
+  subst_congr glFixedPoint_uniqueness glFixedPoint_uniqueness_internal glFixedPoint_thm42
   glFixedPoint_spec outcome_fixed_point
+  lob_theorem arithInterp Realization.update
+  arithmetic_modal_substitution arithmetic_fixedPoint_uniqueness
   defectBot_defects defectBot_provably_defects ProvablyDefects.defects
   cooperateBot_cooperates
-  fairBot_vs_fairBot fairBot_vs_cooperateBot rank0_fairBot_implies_cooperateBot
+  fairBot_vs_fairBot fairBot_unexploitable fairBot_vs_cooperateBot
+  rank0_fairBot_implies_cooperateBot
   fairBot_vs_defectBot prudentBot_vs_fairBot prudentBot_vs_defectBot
   prudentBot_vs_cooperateBot prudentBot_vs_prudentBot prudentBot_unexploitable
   outcome_fairBot_defectBot outcome_prudentBot_defectBot

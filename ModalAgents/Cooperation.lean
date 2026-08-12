@@ -287,6 +287,21 @@ theorem fairBot_vs_fairBot : Cooperates fairBot fairBot := by
     lobian_circle (and₂ ⨀ hα) (and₂ ⨀ hα)
   exact ⟨and₁ ⨀ h⟩
 
+/-- **FairBot is unexploitable.** Barasz asserts this in §3 "by inspection"
+(presuming `PA` sound, FairBot never cooperates with an opponent that defects against
+it), in unnumbered prose, so this carries no paper-node annotation.
+
+The statement is the same shape as `prudentBot_unexploitable`: "`Y` exploits FairBot" is
+`Cooperates fairBot Y ∧ Defects Y fairBot`, so unexploitability is the implication
+below.  As there, the paper's appeal to soundness of `PA` is discharged here by `GL`'s
+admissible unnecessitation rule `□φ / φ`, so the conclusion lands at `Cooperates` —
+arithmetically liftable — with no soundness side-hypothesis. -/
+lemma fairBot_unexploitable (Y : ModalAgent) :
+    Cooperates fairBot Y → Cooperates Y fairBot := by
+  intro h
+  have ⟨hα⟩ := outcome_fairBot Y
+  exact unnecessitation! ⟨and₁ ⨀ hα ⨀ h.some⟩
+
 /-- FairBot and CooperateBot mutually cooperate. Barasz notes this only as §3
 prose ("FairBot wastes utility by cooperating even with CooperateBot"), so it
 carries no paper-node annotation. -/

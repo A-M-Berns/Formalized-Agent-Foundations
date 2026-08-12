@@ -295,22 +295,49 @@ private def substCongrBox : ∀ {φ : Modal.Formula ℕ}, Modalized p φ →
   | .box φ, _ =>
     C_trans boxBoxdotOfBox (C_trans (implyBoxDistribute' (substCongrBoxdot φ)) EBoxOfBoxE)
 
-/-- Any two GL fixed points of a formula modalized in `p` are
-GL-equivalent (Lindström Thm 12). Proved from the boxed-equivalence
-substitution lemma and Löb's rule.
+/-- **Uniqueness of modal fixed points** (Lindström Thm 12), in the paper's printed
+*internal* form: the two fixed-point equations are hypotheses **inside** `GL`, under
+`⊡`, and the conclusion is the implication.  The paper writes its two fixed points as
+propositional variables `p`, `p'`; since `GL` is closed under substitution the
+statement for arbitrary `χ`, `χ'` is equivalent, and it is the form the corollaries
+consume.
+
+Proved by Löb's rule: `⊡`-premises are self-boxing (`H 🡒 □H`), which is exactly what
+lets the Löb step discharge them.
 
 Paper node: Theorem 4.3 (§4). -/
+theorem glFixedPoint_uniqueness_internal {p : ℕ} {φ : Modal.Formula ℕ}
+    (hmod : Modalized p φ) (χ χ' : Modal.Formula ℕ) :
+    Modal.GL ⊢ ⊡(χ 🡘 φ⟦diag p χ⟧) ⋏ ⊡(χ' 🡘 φ⟦diag p χ'⟧) 🡒 (χ 🡘 χ') := by
+  set X := χ 🡘 φ⟦diag p χ⟧
+  set X' := χ' 🡘 φ⟦diag p χ'⟧
+  set H := ⊡X ⋏ ⊡X'
+  set A := χ 🡘 χ'
+  have selfBox : Modal.GL ⊢! H 🡒 □H :=
+    C_trans (CK_of_C_of_C (C_trans and₁ (C_trans and₂ boxBoxdotOfBox))
+                          (C_trans and₂ (C_trans and₂ boxBoxdotOfBox))) collect_box_and
+  have step : Modal.GL ⊢! □A 🡒 (H 🡒 A) :=
+    FiniteContext.emptyPrf <| FiniteContext.deduct <| FiniteContext.deduct <|
+      E_trans
+        (E_trans (and₁ ⨀ (and₁ ⨀ FiniteContext.byAxm₀))
+          (FiniteContext.of (substCongrBox hmod) ⨀ FiniteContext.byAxm₁))
+        (E_symm (and₁ ⨀ (and₂ ⨀ FiniteContext.byAxm₀)))
+  exact ⟨lob_rule <| FiniteContext.emptyPrf <| FiniteContext.deduct <|
+    FiniteContext.deduct <|
+      (FiniteContext.of step ⨀
+        ((FiniteContext.of axiomK ⨀ FiniteContext.byAxm₁) ⨀
+          (FiniteContext.of selfBox ⨀ FiniteContext.byAxm₀))) ⨀ FiniteContext.byAxm₀⟩
+
+/-- Any two GL fixed points of a formula modalized in `p` are GL-equivalent — the rule
+form of `glFixedPoint_uniqueness_internal`, obtained from it by necessitation.  This is
+the form the modal-agent development uses; the paper's printed Theorem 4.3 is the
+internal one. -/
 theorem glFixedPoint_uniqueness {p : ℕ} {φ : Modal.Formula ℕ} (hmod : Modalized p φ)
     {ψ ψ' : Modal.Formula ℕ}
     (h₁ : Modal.GL ⊢ ψ 🡘 φ⟦diag p ψ⟧)
     (h₂ : Modal.GL ⊢ ψ' 🡘 φ⟦diag p ψ'⟧) :
-    Modal.GL ⊢ ψ 🡘 ψ' := by
-  obtain ⟨d₁⟩ := h₁
-  obtain ⟨d₂⟩ := h₂
-  exact ⟨lob_rule <| FiniteContext.emptyPrf <| FiniteContext.deduct <|
-    E_trans
-      (E_trans (FiniteContext.of d₁)
-        (FiniteContext.of (substCongrBox hmod) ⨀ FiniteContext.byAxm₀))
-      (E_symm (FiniteContext.of d₂))⟩
+    Modal.GL ⊢ ψ 🡘 ψ' :=
+  ⟨(glFixedPoint_uniqueness_internal hmod ψ ψ').some ⨀
+    (K_intro (K_intro h₁.some (nec h₁.some)) (K_intro h₂.some (nec h₂.some)))⟩
 
 end uniqueness
