@@ -1,169 +1,57 @@
 #!/usr/bin/env python3
 """Generate docs/trust-surface.html — the trust-surface read-through guide.
 
-Side-by-side of every annotated paper node (LogicalInduction/notes/1609.03543v5-main.tex) with the
-strongest Lean endpoint carrying it, plus the tier and justification from
-scripts/coverage-classification.md. Paper math is converted to MathML at build time
-(pip install latex2mathml); the page is self-contained, no runtime JS libraries.
+One page, one section per formalized paper (`scripts/papers.py` is the registry), each
+section putting every annotated paper node beside the Lean statement that carries it.
+Paper math is converted to MathML at build time (pip install latex2mathml); the page is
+self-contained, no runtime JS libraries and no external assets.
 
-Run from the repository root:  python3 scripts/gen-trust-surface.py
-Regenerate after any change to the endpoint surface, the coverage table, or the
-template (scripts/trust-surface-template.html).
+The mechanical half — locate a node in the paper source, locate the Lean declaration
+citing it, render the pair — is shared.  Node location comes from
+`scripts/paper_nodes.py`, the same module the per-paper provenance checkers use, so each
+citation scheme has exactly one implementation.  What differs per paper is *editorial*
+and lives in `PAPERS_EDITORIAL` below plus the page prose in
+`scripts/trust-surface-template.html`:
+
+* **Logical Induction** carries a machine-checked strength classification
+  (`scripts/coverage-classification.md`) and years of hand-written per-node reading
+  notes, so its cards show a tier badge, a "how the panes line up" note and a
+  "what to check" note.
+* **Cartesian Frames** and **ModalAgents** have neither.  Their sections are a
+  correspondence view: the paper node beside its Lean endpoints, carrying only what
+  genuinely exists — the Cartesian Frames errata cross-references and the Claim 35
+  intentional-deviation ruling; for ModalAgents, which nodes are out of scope and which
+  inventoried endpoints deliberately carry no annotation.  No tier is invented for them,
+  and their sections say so rather than omitting the column silently.
+
+Run from anywhere:  python3 scripts/gen-trust-surface.py
+Regenerate after any change to a paper source, a library's annotations, the registry,
+the coverage table, or the template; `scripts/check_trust_surface.py` enforces this.
 """
 
-import re, json, glob, os, html
+import glob
+import html
+import os
+import re
+import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/'
+sys.path.insert(0, ROOT + 'scripts')
 
-rows = {}
-for line in open(ROOT+'scripts/coverage-classification.md'):
-    m = re.match(r'\| (\S+) \| (\w+) \| (.*) \|\s*$', line)
-    if m and m.group(1) != 'label':
-        rows[m.group(1)] = {'tier': m.group(2), 'just': m.group(3).strip()}
+import paper_nodes  # noqa: E402
+from papers import PAPERS  # noqa: E402
 
-tex = open(ROOT+'LogicalInduction/notes/1609.03543v5-main.tex').read()
-def find_env(label):
-    pos = tex.find('\\label{%s}' % label)
-    if pos < 0: return None, None, None
-    start = tex.rfind('\\begin{', 0, pos)
-    m = re.match(r'\\begin\{(\w+)\}', tex[start:])
-    env = m.group(1)
-    end = tex.find('\\end{%s}' % env, pos)
-    body = tex[start:end]
-    tm = re.match(r'\\begin\{\w+\}(?:\[([^\]]*)\])?(?:\{(\w+)\})?', body)
-    title = tm.group(1) or ''
-    kind = tm.group(2) or env
-    body = re.sub(r'^\\begin\{\w+\}(\[[^\]]*\])?(\{\w+\})?(\{\w+\})?', '', body)
-    body = re.sub(r'\\label\{[^}]*\}', '', body)
-    return title, kind, body.strip()
+import latex2mathml.converter as _l2m  # noqa: E402
 
-# inventory names
-src = re.sub(r'/-.*?-/', '', open(ROOT+'AxiomAudit.lean').read(), flags=re.S)
-names = []
-lines = src.split('\n'); i = 0
-while i < len(lines):
-    m = re.match(r'\s*#assert_axioms_clean(_except)?\s*(.*)', lines[i])
-    if m:
-        block = [m.group(2)]; i += 1
-        while i < len(lines):
-            s = lines[i].strip()
-            if s == '' or s[0] in '#-/' or s.startswith('open'): break
-            block.append(s); i += 1
-        for b in block:
-            names += re.findall(r'[A-Za-z_][\w.]*', b)
-        continue
-    i += 1
-names = [n for n in dict.fromkeys(names)]
 
-files = {f: open(f).read().split('\n') for f in glob.glob(ROOT+'LogicalInduction/**/*.lean', recursive=True)}
-
-def find_decl(name):
-    short = name.split('.')[-1]
-    pat = re.compile(r'^\s*(?:private\s+)?(?:noncomputable\s+)?(theorem|lemma|def|structure|class|abbrev)\s+([\w.\x27]+)')
-    best = (None, None)
-    for f, ls in files.items():
-        for idx, l in enumerate(ls):
-            m = pat.match(l)
-            if not m: continue
-            written = m.group(2)
-            if written == name or name.endswith('.' + written):
-                return f, idx     # exact dotted match wins immediately
-            if written == short or written.endswith('.' + short):
-                if best[0] is None:
-                    best = (f, idx)
-    return best
-
-def extract(name):
-    f, idx = find_decl(name)
-    if f is None: return None
-    ls = files[f]
-    # docstring: scan back
-    doc = ''
-    j = idx - 1
-    # skip attribute/open/set_option lines
-    while j >= 0 and (ls[j].strip().startswith(('attribute','set_option','open','@[')) or ls[j].strip()==''):
-        j -= 1
-    if j >= 0 and ls[j].rstrip().endswith('-/'):
-        k = j
-        while k >= 0 and '/--' not in ls[k]:
-            k -= 1
-        doc = '\n'.join(ls[k:j+1])
-        doc = doc.strip().removeprefix('/--').removesuffix('-/').strip()
-    # signature: from idx forward until a line contains ':=' (cut there) or 'where'
-    is_struct = bool(re.match(r'\s*(?:private\s+)?(?:noncomputable\s+)?(structure|class)\b', ls[idx]))
-    sig_lines = []
-    if is_struct:
-        seen_where = False
-        for l in ls[idx:idx+80]:
-            if seen_where and l.strip() == '':
-                break
-            if re.search(r'\bwhere\s*$', l):
-                seen_where = True
-            sig_lines.append(l.rstrip())
-        sig = '\n'.join(sig_lines).rstrip()
-        labels = re.findall(r'`([\w:]+)`', re.search(r'Paper node:(.*)', doc).group(1)) if 'Paper node:' in doc else []
-        return {'name': name, 'file': f.replace(ROOT,''), 'sig': sig, 'labels': labels, 'doc': doc}
-    for l in ls[idx:idx+80]:
-        if ':=' in l:
-            cut = l[:l.index(':=')].rstrip()
-            if cut: sig_lines.append(cut)
-            break
-        if re.search(r'\bwhere\s*$', l):
-            sig_lines.append(re.sub(r'\bwhere\s*$','',l).rstrip())
-            break
-        sig_lines.append(l.rstrip())
-    sig = '\n'.join(sig_lines).rstrip()
-    labels = re.findall(r'`([\w:]+)`', re.search(r'Paper node:(.*)', doc).group(1)) if 'Paper node:' in doc else []
-    return {'name': name, 'file': f.replace(ROOT,''), 'sig': sig, 'labels': labels, 'doc': doc}
-
-MANUAL = {
- 'def:affcomsen': ['AffineCombination'],
- 'def:bap': ['AffineCombination.BoundedCombinationSequence'],
- 'def:blcp': ['LUVCombination.BoundedSequence'],
- 'def:dedproc': ['DeductiveProcess', 'DeductiveProcessComputation'],
- 'def:deferralfunc': ['DeferralFunction'],
- 'def:fuz': ['PGenerableWeighting'],
- 'def:lic': ['IsLogicalInductor'],
- 'def:trader': ['Trader'],
- 'def:tradestrat': ['Strategy'],
- 'def:luv': ['LUV'],
- 'def:ece': ['GeneratedRatFeature'],
- 'def:ec': ['EfficientlyComputable'],
- 'def:lia': ['liaStates'],
-}
-label_eps = {}
-eps_all = {}
-for extra in MANUAL.values():
-    for n in extra:
-        if n not in names: names.append(n)
-for n in names:
-    e = extract(n)
-    if e is None:
-        continue  # ModalAgents / AxiomAudit-local names — outside this page's scope
-    eps_all[n] = e
-    for lab in e['labels']:
-        label_eps.setdefault(lab, []).append(n)
-
-out = {}
-for lab, row in rows.items():
-    title, kind, body = find_env(lab)
-    eps = MANUAL.get(lab, []) + [e for e in label_eps.get(lab, []) if e not in MANUAL.get(lab, [])]
-    eps = [e for e in eps if e in eps_all]
-    out[lab] = {'tier': row['tier'], 'just': row['just'], 'title': title,
-                'kind': kind, 'paper': body,
-                'endpoints': eps}
-
-DATA = {'labels': out, 'eps': eps_all}
-missing = [l for l, v in out.items() if not v['endpoints']]
-assert not missing, 'labels with no endpoint: %s' % missing
+def read(rel):
+    return open(ROOT + rel, encoding='utf-8').read()
 
 
 # ======================================================================
-# Page generation
+# Shared: LaTeX -> HTML
 # ======================================================================
 
-LB, EPS = DATA['labels'], DATA['eps']
-# ---------------- tex -> html ----------------
 GREEK = {'phi':'φ','psi':'ψ','delta':'δ','epsilon':'ε','varepsilon':'ε','sigma':'σ','alpha':'α',
  'beta':'β','gamma':'γ','Gamma':'Γ','mu':'μ','nu':'ν','xi':'ξ','omega':'ω','Theta':'Θ','theta':'θ',
  'lambda':'λ','kappa':'κ','tau':'τ','rho':'ρ','pi':'π','chi':'χ','eta':'η','zeta':'ζ','iota':'ι'}
@@ -187,76 +75,8 @@ SIMPLE = {
  'Bayesian':'Pr','textsc':'','mathbb':'','displaystyle':'','ensuremath':'','xspace':'',
 }
 
-def replace_nested(s, macro, fmt):
-    """Replace \\macro{...} with fmt % inner, handling one nesting level robustly."""
-    pat = '\\\\' + macro + '{'
-    out = []
-    i = 0
-    while True:
-        j = s.find('\\' + macro + '{', i)
-        if j < 0:
-            out.append(s[i:]); break
-        out.append(s[i:j])
-        k = j + len(macro) + 2
-        depth = 1
-        while k < len(s) and depth:
-            if s[k] == '{': depth += 1
-            elif s[k] == '}': depth -= 1
-            k += 1
-        inner = s[j + len(macro) + 2 : k - 1]
-        out.append(fmt % inner if '%s' in fmt else fmt)
-        i = k
-    return ''.join(out)
-
-def texmath(s):
-    s = s.replace('\\{', '&#123;').replace('\\}', '&#125;')
-    # structural first
-    s = re.sub(r'\\(?:left|right|mleft|mright|big|Big|bigg|Bigg)\s*', '', s)
-    s = re.sub(r'\\(?:text|textrm|mathrm|operatorname|small)\s*\{([^{}]*)\}', r'\1', s)
-    s = re.sub(r'\\mathcal\{P\\-C\}', '𝒫𝒞', s)
-    s = re.sub(r'\\mathcal\{B\\-C\\-S\}', 'ℬ𝒞𝒮', s)
-    s = re.sub(r'\\mathcal\{B\\-L\\-C\\-S\}', 'ℬℒ𝒞𝒮', s)
-    s = re.sub(r'\\mathcal\{([^{}]*)\}', r'𝒞\1', s) if False else s
-    s = replace_nested(s, 'quot', '\u201c%s\u201d')
-    s = replace_nested(s, 'enc', '<span class="enc">%s</span>')
-    s = replace_nested(s, 'seq', '<span class="ov">%s</span>')
-    # composite macros
-    for _ in range(6):
-        s = re.sub(r'\\seq\{([^{}]*)\}', r'<span class="ov">\1</span>', s)
-        s = re.sub(r'\\enc\{([^{}]*)\}', r'<span class="enc">\1</span>', s)
-        s = re.sub(r'\\quot\{([^{}]*)\}', r'“\1”', s)
-        s = re.sub(r'\\ctsind\{([^{}]*)\}', r'Ind<sub>\1</sub>', s)
-        s = re.sub(r'\\frac\{([^{}]*)\}\{([^{}]*)\}', r'(\1)/(\2)', s)
-        s = re.sub(r'\\BCS(?:\[[^\]]*\])?', 'ℬ𝒞𝒮(ℙ‾)', s)
-        s = re.sub(r'\\BLCS(?:\[[^\]]*\])?', 'ℬℒ𝒞𝒮(ℙ‾)', s)
-    s = s.replace('\\MP', '<span class="ov">ℙ</span>')
-    s = s.replace('\\DP', '<span class="ov">D</span>')
-    s = s.replace('\\phis', '<span class="ov">φ</span>')
-    s = s.replace('\\psis', '<span class="ov">ψ</span>')
-    s = s.replace('\\deltas', '<span class="ov">δ</span>')
-    s = s.replace('\\probs', '<span class="ov">p</span>')
-    s = s.replace('\\pgenable', 'ℙ‾-generable')
-    # greek + simple
-    def repl(m):
-        w = m.group(1)
-        if w in GREEK: return GREEK[w]
-        if w in SIMPLE: return SIMPLE[w]
-        return w  # unknown macro: drop backslash, keep word
-    s = re.sub(r'\\([A-Za-z]+)', repl, s)
-    # subscripts / superscripts
-    for _ in range(4):
-        s = re.sub(r'_\{([^{}]*)\}', r'<sub>\1</sub>', s)
-        s = re.sub(r'\^\{([^{}]*)\}', r'<sup>\1</sup>', s)
-    s = re.sub(r'_([A-Za-z0-9φψδεσνξω∞]|𝟙)', r'<sub>\1</sub>', s)
-    s = re.sub(r'\^([A-Za-z0-9φψ])', r'<sup>\1</sup>', s)
-    s = s.replace('{','').replace('}','')
-    s = re.sub(r'\s+', ' ', s)
-    return s.strip()
-
-
-import latex2mathml.converter as _l2m
-
-MACRO_LATEX = [
+# Logical Induction's private macro layer, expanded before the MathML conversion.
+LI_MACRO_LATEX = [
  (r'\\fin(?![A-Za-z])', r'\\operatorname{Fin}'),
  (r'\\trade(?![A-Za-z])', 'T'), (r'\\cash(?![A-Za-z])', 'c'),
  (r'\\pf\[([^\]]*)\]', r'^{*\1}'), (r'\\pf(?![A-Za-z])', '^{*n}'),
@@ -310,7 +130,7 @@ MACRO_LATEX = [
  (r'\\lic(?![A-Za-z])', r'\\text{logical induction criterion}'),
  (r'\\li(?![A-Za-z])', r'\\text{logical inductor}'),
 ]
-PRE_LATEX = [
+LI_PRE_LATEX = [
  (r'\\seq\s*\{', r'\\overline{'),
  (r'\\seq\s*(\\[A-Za-z]+)', r'\\overline{\1}'),
  (r'\\seq\s+([A-Za-z])', r'\\overline{\1}'),
@@ -320,105 +140,491 @@ PRE_LATEX = [
  (r'\\gen\{([^{}]*)\}', r'{\1}^{\\dagger}'),
  (r'\\gen\s+([A-Za-z])', r'{\1}^{\\dagger}'),
 ]
-def expand_latex(seg):
-    for _ in range(3):
-        for pat, rep in PRE_LATEX:
-            seg = re.sub(pat, rep, seg)
-    for pat, rep in MACRO_LATEX:
-        if re.fullmatch(r'[A-Za-z0-9]+', rep):
-            rep = '{' + rep + '}'
-        seg = re.sub(pat, rep, seg)
-    return seg
 
-def quot_close(seg):
-    # \quot{X} was opened as \text{\u201c}{X ... need closing \u201d: handle via replace_nested instead
-    return seg
+# Cartesian Frames and ModalAgents use stock LaTeX in their statements; the handful of
+# operator names they write as plain words need no expansion, and anything unknown falls
+# through to the same degradation path as Logical Induction's.
+CF_MACRO_LATEX = [
+ (r'\\Image(?![A-Za-z])', r'\\operatorname{Image}'),
+ (r'\\Agent(?![A-Za-z])', r'\\operatorname{Agent}'),
+ (r'\\Env(?![A-Za-z])', r'\\operatorname{Env}'),
+]
+MA_MACRO_LATEX = [
+ (r'\\F(?![A-Za-z])', r'\\mathbb{F}'),
+ (r'\\R(?![A-Za-z])', r'\\mathbb{R}'),
+]
 
-def tex2mml(seg, display=False):
-    seg = replace_nested(seg, 'quot', '\\text{\u201c}%s\\text{\u201d}')
-    seg = replace_nested(seg, 'proofin', '')
-    seg = expand_latex(seg)
-    try:
-        out = _l2m.convert(seg, display='block' if display else 'inline')
-        return out
-    except Exception:
-        h = texmath(seg.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;'))
-        cls = 'dm' if display else 'im'
-        return '<span class="%s">%s</span>' % (cls, h)
+
+def replace_nested(s, macro, fmt):
+    """Replace \\macro{...} with fmt % inner, handling one nesting level robustly."""
+    out = []
+    i = 0
+    while True:
+        j = s.find('\\' + macro + '{', i)
+        if j < 0:
+            out.append(s[i:]); break
+        out.append(s[i:j])
+        k = j + len(macro) + 2
+        depth = 1
+        while k < len(s) and depth:
+            if s[k] == '{': depth += 1
+            elif s[k] == '}': depth -= 1
+            k += 1
+        inner = s[j + len(macro) + 2 : k - 1]
+        out.append(fmt % inner if '%s' in fmt else fmt)
+        i = k
+    return ''.join(out)
+
+
+def texmath(s):
+    s = s.replace('\\{', '&#123;').replace('\\}', '&#125;')
+    # structural first
+    s = re.sub(r'\\(?:left|right|mleft|mright|big|Big|bigg|Bigg)\s*', '', s)
+    s = re.sub(r'\\(?:text|textrm|mathrm|operatorname|small)\s*\{([^{}]*)\}', r'\1', s)
+    s = re.sub(r'\\mathcal\{P\\-C\}', '𝒫𝒞', s)
+    s = re.sub(r'\\mathcal\{B\\-C\\-S\}', 'ℬ𝒞𝒮', s)
+    s = re.sub(r'\\mathcal\{B\\-L\\-C\\-S\}', 'ℬℒ𝒞𝒮', s)
+    s = replace_nested(s, 'quot', '\u201c%s\u201d')
+    s = replace_nested(s, 'enc', '<span class="enc">%s</span>')
+    s = replace_nested(s, 'seq', '<span class="ov">%s</span>')
+    # composite macros
+    for _ in range(6):
+        s = re.sub(r'\\seq\{([^{}]*)\}', r'<span class="ov">\1</span>', s)
+        s = re.sub(r'\\enc\{([^{}]*)\}', r'<span class="enc">\1</span>', s)
+        s = re.sub(r'\\quot\{([^{}]*)\}', r'“\1”', s)
+        s = re.sub(r'\\ctsind\{([^{}]*)\}', r'Ind<sub>\1</sub>', s)
+        s = re.sub(r'\\frac\{([^{}]*)\}\{([^{}]*)\}', r'(\1)/(\2)', s)
+        s = re.sub(r'\\BCS(?:\[[^\]]*\])?', 'ℬ𝒞𝒮(ℙ‾)', s)
+        s = re.sub(r'\\BLCS(?:\[[^\]]*\])?', 'ℬℒ𝒞𝒮(ℙ‾)', s)
+    s = s.replace('\\MP', '<span class="ov">ℙ</span>')
+    s = s.replace('\\DP', '<span class="ov">D</span>')
+    s = s.replace('\\phis', '<span class="ov">φ</span>')
+    s = s.replace('\\psis', '<span class="ov">ψ</span>')
+    s = s.replace('\\deltas', '<span class="ov">δ</span>')
+    s = s.replace('\\probs', '<span class="ov">p</span>')
+    s = s.replace('\\pgenable', 'ℙ‾-generable')
+    # greek + simple
+    def repl(m):
+        w = m.group(1)
+        if w in GREEK: return GREEK[w]
+        if w in SIMPLE: return SIMPLE[w]
+        return w  # unknown macro: drop backslash, keep word
+    s = re.sub(r'\\([A-Za-z]+)', repl, s)
+    # subscripts / superscripts
+    for _ in range(4):
+        s = re.sub(r'_\{([^{}]*)\}', r'<sub>\1</sub>', s)
+        s = re.sub(r'\^\{([^{}]*)\}', r'<sup>\1</sup>', s)
+    s = re.sub(r'_([A-Za-z0-9φψδεσνξω∞]|𝟙)', r'<sub>\1</sub>', s)
+    s = re.sub(r'\^([A-Za-z0-9φψ])', r'<sup>\1</sup>', s)
+    s = s.replace('{','').replace('}','')
+    s = re.sub(r'\s+', ' ', s)
+    return s.strip()
+
 
 def unescape_html(x):
     return x.replace('&lt;','<').replace('&gt;','>').replace('&amp;','&')
 
-def texblock(s):
-    """Full statement body -> html (handles \\[ \\], $..$, itemize, text macros)."""
-    s = replace_nested(s, 'proofin', '')
-    s = re.sub(r'%[^\n]*', '', s)
-    s = re.sub(r'\\(?:noindent|smallskip|medskip|bigskip|par)\b', '', s)
-    s = replace_nested(s, 'proofin', '')
-    # protect html
-    s = s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-    out, i = [], 0
-    # split display math
-    parts = re.split(r'\\\[|\\\]', s)
-    htmlparts = []
-    for k, part in enumerate(parts):
-        if k % 2 == 1:
-            htmlparts.append('<div class="dmath">%s</div>' % tex2mml(unescape_html(part), display=True))
+
+class TexRenderer:
+    """Convert one paper's statement TeX to self-contained HTML + MathML.
+
+    The conversion pipeline is shared; `macros` and `pre_macros` are the paper's own
+    private macro layer, expanded before handing the segment to latex2mathml.  Anything
+    still unrecognised degrades to the `texmath` glyph substitution rather than being
+    dropped, so an unconverted formula is visibly approximate instead of silently absent.
+    """
+
+    # Environments with no honest HTML/MathML rendering.  A commutative diagram degraded
+    # to glyph soup would misrepresent the paper, so the card marks the gap instead.
+    UNRENDERABLE = re.compile(
+        r'(?:\\\[\s*)?\\begin\{(tikzcd|tikzpicture|blockarray)\}.*?\\end\{\1\}(?:\s*\\\])?',
+        re.S)
+    DIAGRAM_SENTINEL = '@@UNRENDERABLE@@'
+
+    def __init__(self, macros, pre_macros=()):
+        self.macros = list(macros)
+        self.pre_macros = list(pre_macros)
+        self.failures = []
+        self.omitted = []
+
+    def expand_latex(self, seg):
+        for _ in range(3):
+            for pat, rep in self.pre_macros:
+                seg = re.sub(pat, rep, seg)
+        for pat, rep in self.macros:
+            if re.fullmatch(r'[A-Za-z0-9]+', rep):
+                rep = '{' + rep + '}'
+            seg = re.sub(pat, rep, seg)
+        return seg
+
+    def tex2mml(self, seg, display=False):
+        seg = replace_nested(seg, 'quot', '\\text{\u201c}%s\\text{\u201d}')
+        seg = replace_nested(seg, 'proofin', '')
+        seg = self.expand_latex(seg)
+        try:
+            return _l2m.convert(seg, display='block' if display else 'inline')
+        except Exception:
+            self.failures.append(seg.strip()[:120])
+            h = texmath(seg.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;'))
+            cls = 'dm' if display else 'im'
+            return '<span class="%s">%s</span>' % (cls, h)
+
+    def block(self, s, label=None):
+        """Full statement body -> html (handles \\[ \\], $..$, itemize, text macros)."""
+        def mark(m):
+            self.omitted.append((label, m.group(1)))
+            return '\n\n%s\n\n' % self.DIAGRAM_SENTINEL
+        s = self.UNRENDERABLE.sub(mark, s)
+        # Footnotes are the paper's own text; keep them, parenthesised in place.
+        s = s.replace('\\footnotemark', '')
+        for macro in ('footnotetext', 'footnote'):
+            s = replace_nested(s, macro, ' (footnote: %s)')
+        s = replace_nested(s, 'proofin', '')
+        # Layout-only wrappers, and display-math environments spelled the long way.
+        s = re.sub(r'\\(?:begin|end)\{center\}', '', s)
+        s = re.sub(r'\\begin\{(?:displaymath|equation\*?)\}', r'\\[', s)
+        s = re.sub(r'\\end\{(?:displaymath|equation\*?)\}', r'\\]', s)
+        s = re.sub(r'%[^\n]*', '', s)
+        s = re.sub(r'\\(?:noindent|smallskip|medskip|bigskip|par)\b', '', s)
+        s = replace_nested(s, 'proofin', '')
+        # protect html
+        s = s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        # split display math
+        parts = re.split(r'\\\[|\\\]', s)
+        htmlparts = []
+        for k, part in enumerate(parts):
+            if k % 2 == 1:
+                htmlparts.append('<div class="dmath">%s</div>'
+                                 % self.tex2mml(unescape_html(part), display=True))
+            else:
+                # inline math
+                segs = re.split(r'\$', part)
+                buf = []
+                for j, seg in enumerate(segs):
+                    if j % 2 == 1:
+                        buf.append(self.tex2mml(unescape_html(seg)))
+                    else:
+                        t = seg
+                        t = re.sub(r'\\emph\{([^{}]*)\}', r'<em>\1</em>', t)
+                        t = re.sub(r'\\textbf\{([^{}]*)\}', r'<strong>\1</strong>', t)
+                        t = re.sub(r'\\textit\{([^{}]*)\}', r'<em>\1</em>', t)
+                        # Prose font switches carry no meaning here; keep the words.
+                        t = re.sub(r'\\(?:texttt|textsf|textrm|textnormal|mathsf|mathrm'
+                                   r'|text)\{([^{}]*)\}', r'\1', t)
+                        t = re.sub(r'\\ref\{[^{}]*\}', '[ref]', t)
+                        t = re.sub(r'\\(?:cref|Cref|eqref)\{[^{}]*\}', '[ref]', t)
+                        t = t.replace('\\ec[]', 'e.c.').replace('\\ec', 'e.c.')
+                        t = t.replace('\\pgenable', 'ℙ‾-generable')
+                        # List environments, with or without an options argument.
+                        t = re.sub(r'\\begin\{itemize\}(?:\[[^\]]*\])?', '<ul>', t)
+                        t = t.replace('\\end{itemize}', '</ul>')
+                        t = re.sub(r'\\begin\{enumerate\}(?:\[[^\]]*\])?', '<ol>', t)
+                        t = t.replace('\\end{enumerate}', '</ol>')
+                        t = re.sub(r'\\item\s*', '</li-mark><li>', t)
+                        t = t.replace('``', '“').replace("''", '”')
+                        t = re.sub(r'\\([A-Za-z]+)', lambda m: SIMPLE.get(m.group(1), GREEK.get(m.group(1), m.group(1))), t)
+                        t = t.replace('{','').replace('}','').replace('~',' ')
+                        buf.append(t)
+                htmlparts.append(''.join(buf))
+        res = ''.join(htmlparts)
+        # fix list item marks
+        res = re.sub(r'&lt;ul&gt;', '<ul>', res)
+        res = res.replace('<ul></li-mark>', '<ul>').replace('</li-mark>', '')
+        # paragraphs
+        paras = [p.strip() for p in res.split('\n\n') if p.strip()]
+        out = '\n'.join('<p>%s</p>' % p if not p.startswith('<div') and not p.startswith('<ul') else p
+                        for p in paras)
+        return out.replace(
+            '<p>%s</p>' % self.DIAGRAM_SENTINEL,
+            '<p class="omitted">[the paper prints a diagram here; it has no faithful '
+            'text rendering — see the arXiv PDF]</p>').replace(
+            self.DIAGRAM_SENTINEL,
+            '[diagram — see the arXiv PDF]')
+
+
+ACCENTS = {'"a':'ä','"o':'ö','"u':'ü','"e':'ë','\'e':'é','\'a':'á','\'o':'ó','`e':'è',
+           '`a':'à','^e':'ê','^o':'ô','~n':'ñ','cc':'ç','va':'ǎ','vs':'š'}
+
+
+def clean_title(t):
+    """A node's bracketed title as plain text: the papers write TeX in there."""
+    if not t:
+        return ''
+    t = re.sub(r'\\(["\'`^~cv])\s*\{?([A-Za-z])\}?',
+               lambda m: ACCENTS.get(m.group(1) + m.group(2), m.group(2)), t)
+    for _ in range(3):
+        t = re.sub(r'\\(?:textsf|texttt|textbf|textit|textrm|emph|mathsf|mathrm|text)'
+                   r'\{([^{}]*)\}', r'\1', t)
+    def inline_math(m):
+        # Titles are plain text, so the overline/underline spans become their glyphs.
+        s = texmath(m.group(1))
+        s = re.sub(r'<span class="ov">([^<]*)</span>', r'\1‾', s)
+        s = re.sub(r'<span class="enc">([^<]*)</span>', r'⌜\1⌝', s)
+        return re.sub(r'<[^>]+>', '', s)
+    t = re.sub(r'\$([^$]*)\$', inline_math, t)
+    t = re.sub(r'\\([A-Za-z]+)',
+               lambda m: SIMPLE.get(m.group(1), GREEK.get(m.group(1), m.group(1))), t)
+    return t.replace('{', '').replace('}', '').strip()
+
+
+def renderer_warnings(key, renderer):
+    """What a paper's conversion could not render, named so it can be checked by hand."""
+    out = ['%s: %s prints a %s the converter has no faithful rendering for — the card '
+           'marks the gap and points at the PDF rather than approximating it'
+           % (key, label or '(unlabelled node)', env)
+           for label, env in renderer.omitted]
+    out += ['%s: formula fell back to glyph substitution — %s' % (key, f)
+            for f in renderer.failures]
+    return out
+
+
+def md_inline(s):
+    s = html.escape(s)
+    s = re.sub(r'`([^`]*)`', r'<code>\1</code>', s)
+    s = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', s)
+    s = re.sub(r'(?<![*\w])\*([^*\n]+)\*(?![*\w])', r'<em>\1</em>', s)
+    return s
+
+
+# ======================================================================
+# Shared: Lean declaration extraction
+# ======================================================================
+
+DECL_PAT = re.compile(
+    r'^\s*(?:private\s+)?(?:noncomputable\s+)?'
+    r'(theorem|lemma|def|structure|class|abbrev)\s+([\w.\x27]+)')
+
+
+class LeanLibrary:
+    """The `.lean` sources of one library, with statement-level extraction."""
+
+    def __init__(self, lib):
+        self.files = {f: open(f, encoding='utf-8').read().split('\n')
+                      for f in glob.glob(ROOT + lib + '/**/*.lean', recursive=True)}
+        root_module = ROOT + lib + '.lean'
+        if os.path.exists(root_module):
+            self.files.setdefault(root_module,
+                                  open(root_module, encoding='utf-8').read().split('\n'))
+
+    def find_decl(self, name):
+        """Locate a declaration by (possibly unqualified) name; dotted match wins."""
+        short = name.split('.')[-1]
+        best = (None, None)
+        for f, ls in self.files.items():
+            for idx, l in enumerate(ls):
+                m = DECL_PAT.match(l)
+                if not m: continue
+                written = m.group(2)
+                if written == name or name.endswith('.' + written):
+                    return f, idx     # exact dotted match wins immediately
+                if written == short or written.endswith('.' + short):
+                    if best[0] is None:
+                        best = (f, idx)
+        return best
+
+    def extract_at(self, f, idx):
+        """Statement + docstring of the declaration starting at 0-based line `idx`."""
+        ls = self.files[f]
+        # docstring: scan back
+        doc = ''
+        j = idx - 1
+        # skip attribute/open/set_option lines
+        while j >= 0 and (ls[j].strip().startswith(('attribute','set_option','open','@['))
+                          or ls[j].strip() == ''):
+            j -= 1
+        if j >= 0 and ls[j].rstrip().endswith('-/'):
+            k = j
+            while k >= 0 and '/--' not in ls[k]:
+                k -= 1
+            doc = '\n'.join(ls[k:j+1])
+            doc = doc.strip().removeprefix('/--').removesuffix('-/').strip()
+        # signature: from idx forward until a line contains ':=' (cut there) or 'where'
+        is_struct = bool(re.match(r'\s*(?:private\s+)?(?:noncomputable\s+)?(structure|class)\b', ls[idx]))
+        sig_lines = []
+        if is_struct:
+            seen_where = False
+            for l in ls[idx:idx+80]:
+                if seen_where and l.strip() == '':
+                    break
+                if re.search(r'\bwhere\s*$', l):
+                    seen_where = True
+                sig_lines.append(l.rstrip())
+            sig = '\n'.join(sig_lines).rstrip()
         else:
-            # inline math
-            txt = part
-            segs = re.split(r'\$', txt)
-            buf = []
-            for j, seg in enumerate(segs):
-                if j % 2 == 1:
-                    buf.append(tex2mml(unescape_html(seg)))
-                else:
-                    t = seg
-                    t = re.sub(r'\\emph\{([^{}]*)\}', r'<em>\1</em>', t)
-                    t = re.sub(r'\\textbf\{([^{}]*)\}', r'<strong>\1</strong>', t)
-                    t = re.sub(r'\\textit\{([^{}]*)\}', r'<em>\1</em>', t)
-                    t = re.sub(r'\\ref\{[^{}]*\}', '[ref]', t)
-                    t = re.sub(r'\\(?:cref|Cref|eqref)\{[^{}]*\}', '[ref]', t)
-                    t = t.replace('\\ec[]', 'e.c.').replace('\\ec', 'e.c.')
-                    t = t.replace('\\pgenable', 'ℙ‾-generable')
-                    t = t.replace('\\begin{itemize}', '<ul>').replace('\\end{itemize}', '</ul>')
-                    t = t.replace('\\begin{enumerate}', '<ol>').replace('\\end{enumerate}', '</ol>')
-                    t = re.sub(r'\\item\s*', '</li-mark><li>', t)
-                    t = t.replace('``', '“').replace("''", '”')
-                    t = re.sub(r'\\([A-Za-z]+)', lambda m: SIMPLE.get(m.group(1), GREEK.get(m.group(1), m.group(1))), t)
-                    t = t.replace('{','').replace('}','').replace('~',' ')
-                    buf.append(t)
-            htmlparts.append(''.join(buf))
-    res = ''.join(htmlparts)
-    # fix list item marks
-    res = re.sub(r'&lt;ul&gt;', '<ul>', res)
-    res = res.replace('<ul></li-mark>', '<ul>').replace('</li-mark>', '</li>' if False else '')
-    res = res.replace('<ul><li>', '<ul><li>')
-    # paragraphs
-    paras = [p.strip() for p in res.split('\n\n') if p.strip()]
-    return '\n'.join('<p>%s</p>' % p if not p.startswith('<div') and not p.startswith('<ul') else p for p in paras)
+            for l in ls[idx:idx+80]:
+                if ':=' in l:
+                    cut = l[:l.index(':=')].rstrip()
+                    if cut: sig_lines.append(cut)
+                    break
+                if re.search(r'\bwhere\s*$', l):
+                    sig_lines.append(re.sub(r'\bwhere\s*$','',l).rstrip())
+                    break
+                sig_lines.append(l.rstrip())
+            sig = '\n'.join(sig_lines).rstrip()
+        labels = (re.findall(r'`([\w:]+)`', re.search(r'Paper node:(.*)', doc).group(1))
+                  if 'Paper node:' in doc else [])
+        return {'file': f.replace(ROOT, ''), 'sig': sig, 'labels': labels, 'doc': doc}
 
-# section titles by tex position
-sec_positions = [(m.start(), m.group(2)) for m in re.finditer(r'\\(section|subsection)\{([^\n]*)', tex)]
-def section_of(label):
-    pos = tex.find('\\label{%s}' % label)
+    def extract(self, name):
+        f, idx = self.find_decl(name)
+        if f is None:
+            return None
+        e = self.extract_at(f, idx)
+        e['name'] = name
+        return e
+
+
+def audit_inventory_names(audit_src):
+    """Every identifier listed under an `#assert_axioms_clean` command, in order."""
+    src = re.sub(r'/-.*?-/', '', audit_src, flags=re.S)
+    names = []
+    lines = src.split('\n'); i = 0
+    while i < len(lines):
+        m = re.match(r'\s*#assert_axioms_clean(_except)?\s*(.*)', lines[i])
+        if m:
+            block = [m.group(2)]; i += 1
+            while i < len(lines):
+                s = lines[i].strip()
+                if s == '' or s[0] in '#-/' or s.startswith('open'): break
+                block.append(s); i += 1
+            for b in block:
+                names += re.findall(r'[A-Za-z_][\w.]*', b)
+            continue
+        i += 1
+    return [n for n in dict.fromkeys(names)]
+
+
+# ======================================================================
+# Shared: card / nav rendering
+# ======================================================================
+
+CARD = '''
+<article class="node" id="%(anchor)s">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="%(anchor)s" aria-label="mark %(lab)s read"></label>
+    <span class="node-label">%(lab)s</span>
+    <span class="node-title">%(title)s</span>
+    %(badge)s
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · %(source)s</div>
+      %(paper)s
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      %(sig)s
+    </section>
+  </div>%(notes)s
+</article>'''
+
+
+def endpoint_pane(endpoints):
+    """The Lean pane's slide deck: one statement per inventory endpoint."""
+    slides = ''
+    for i, (name, e) in enumerate(endpoints):
+        slides += ('<div class="ep-slide%s"><div class="ep-head">'
+                   '<code class="ep-name">%s</code><span class="ep-file">%s</span></div>'
+                   '<pre class="sig">%s</pre></div>') % (
+            '' if i == 0 else ' hidden', html.escape(name), html.escape(e['file']),
+            html.escape(e['sig']))
+    controls = ''
+    if len(endpoints) > 1:
+        controls = ('<div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button>'
+                    '<span class="ep-count" data-total="%d">1 / %d</span>'
+                    '<button class="ep-next" aria-label="next endpoint">&#8250;</button>'
+                    '<span class="ep-nav-hint">inventory endpoints for this node</span></div>') % (
+            len(endpoints), len(endpoints))
+    return controls + slides
+
+
+def render_card(*, anchor, lab, title, badge, source, paper_html, endpoints, notes):
+    return CARD % dict(anchor=anchor, lab=lab, title=html.escape(clean_title(title)),
+                       badge=badge,
+                       source=source, paper=paper_html, sig=endpoint_pane(endpoints),
+                       notes=''.join('\n' + n for n in notes))
+
+
+def note(cls, tag, body_html):
+    return ('  <div class="%s"><span class="%s-tag">%s</span> %s</div>'
+            % (cls, cls.removesuffix('-note'), tag, body_html))
+
+
+def audit_footer(tag, body_html):
+    return ('  <footer class="audit-note"><span class="audit-tag">%s</span> %s</footer>'
+            % (tag, body_html))
+
+
+def section_titles(tex, pattern, appendix=False):
+    """(position, rendered title) for each sectioning command, in source order.
+
+    With `appendix=True` the sections after the source's `\\appendix` are relettered the
+    way the paper prints them, so a card's heading matches the citation an annotation
+    carries (`Claim 46 (App. B)`).
+    """
+    out = []
+    appendix_at = tex.find('\\appendix') if appendix else -1
+    letters = 0
+    for m in re.finditer(pattern, tex):
+        raw = m.group(2)
+        t = re.sub(r'\\texorpdfstring\{[^{}]*(?:\{[^{}]*\})?[^{}]*\}\{([^}]*)\}', r'\1', raw)
+        t = re.sub(r'\\label\{[^}]*\}', '', t)
+        t = t.replace('\\LICtitle', 'Logical Induction Criterion').replace('\\LItitle', 'Logical Inductor')
+        t = t.replace('\\LIA', 'LIA').replace('\\TradingFirm', 'Trading Firm')
+        t = re.sub(r'\\emph\{([^}]*)\}', r'\1', t)
+        t = re.sub(r'\$([^$]*)\$', r'\1', t)
+        t = re.sub(r'\\[A-Za-z]+ ?', '', t)
+        t = t.replace('{','').replace('}','').strip()
+        if appendix_at >= 0 and m.start() > appendix_at and m.group(1) == 'section':
+            letters += 1
+            t = 'Appendix %s — %s' % (chr(ord('A') + letters - 1), t)
+        out.append((m.start(), t or 'Front matter'))
+    return out
+
+
+def section_of(sections, position):
     best = 'Front matter'
-    for p, t in sec_positions:
-        if p < pos: best = t
+    for p, t in sections:
+        if p < position: best = t
         else: break
-    t = best
-    t = re.sub(r'\\texorpdfstring\{[^{}]*(?:\{[^{}]*\})?[^{}]*\}\{([^}]*)\}', r'\1', t)
-    t = re.sub(r'\\label\{[^}]*\}', '', t)
-    t = t.replace('\\LICtitle', 'Logical Induction Criterion').replace('\\LItitle', 'Logical Inductor')
-    t = t.replace('\\LIA', 'LIA').replace('\\TradingFirm', 'Trading Firm')
-    t = re.sub(r'\\emph\{([^}]*)\}', r'\1', t)
-    t = re.sub(r'\$([^$]*)\$', r'\1', t)
-    t = re.sub(r'\\[A-Za-z]+ ?', '', t)
-    t = t.replace('{','').replace('}','').strip()
-    return t or 'Front matter'
+    return best
 
-# curated primary endpoints (first shown with full signature)
-PRIMARY = {
+
+def group_by_section(nodes, sections):
+    """[(section title, [node, …])] in source order."""
+    groups = []
+    for n in sorted(nodes, key=lambda n: n.position):
+        sec = section_of(sections, n.position)
+        if not groups or groups[-1][0] != sec:
+            groups.append((sec, []))
+        groups[-1][1].append(n)
+    return groups
+
+
+# ======================================================================
+# Per-paper editorial data
+# ======================================================================
+
+# Logical Induction only.  Nodes whose strongest carriers are not reachable by the
+# label index (definitions realised as structures/classes named for the concept).
+LI_MANUAL = {
+ 'def:affcomsen': ['AffineCombination'],
+ 'def:bap': ['AffineCombination.BoundedCombinationSequence'],
+ 'def:blcp': ['LUVCombination.BoundedSequence'],
+ 'def:dedproc': ['DeductiveProcess', 'DeductiveProcessComputation'],
+ 'def:deferralfunc': ['DeferralFunction'],
+ 'def:fuz': ['PGenerableWeighting'],
+ 'def:lic': ['IsLogicalInductor'],
+ 'def:trader': ['Trader'],
+ 'def:tradestrat': ['Strategy'],
+ 'def:luv': ['LUV'],
+ 'def:ece': ['GeneratedRatFeature'],
+ 'def:ec': ['EfficientlyComputable'],
+ 'def:lia': ['liaStates'],
+}
+
+# Curated primary endpoints (first shown with full signature).
+LI_PRIMARY = {
  'def:lic':['IsLogicalInductor'],'def:ec':['EfficientlyComputable'],'def:trader':['Trader'],
  'def:tradestrat':['Strategy'],'def:affcomsen':['AffineCombination'],
  'def:bap':['AffineCombination.BoundedCombinationSequence'],'def:dedproc':['DeductiveProcess','DeductiveProcessComputation'],
@@ -473,11 +679,10 @@ PRIMARY = {
  'thm:dontwait':['lic_does_not_anticipate_halting_unconditional'],
 }
 
-
 # Per-node correspondence notes: how the two panes line up. These complement the
 # shared-vocabulary legend in the template (which covers the recurring conventions:
 # hworld, Rpn*/Poly* codes, generability, the asymptotic operators, completed worlds).
-READING = {
+LI_READING = {
  'def:lic': "The class bundles the criterion (`noExploit`, quantified over `EfficientlyComputable` traders) with two facts the paper leaves ambient: the market and the process are computable. `P n \u03c6` is the paper's \u2119\u2099(\u03c6).",
  'def:ec': "The paper's \u201ccomputable in O(poly(n))\u201d becomes: two fixed programs under one polynomial fuel clock emit the day-n strategy's serialized symbol stream. This is the `dd:fuel` substitution itself \u2014 the one place the model is chosen; everything downstream inherits it.",
  'def:dedproc': "`D` and `mono` are the paper's nondecreasing finite sets; the paper's \u201ccomputably enumerable\u201d lives in the separate certificate `DeductiveProcessComputation`, taken as a hypothesis exactly where the paper says \u2018computable deductive process\u2019.",
@@ -546,101 +751,381 @@ READING = {
  'thm:dontwait': "The bounded-halting claim at horizon f(n) never fires (`hnever`), and the belief \u2192 0; `hh : ComputableHorizon horizons` names \u231cf\u231d and leaves the term unevaluated in the claim, so the paper's arbitrary computable horizon is reached.",
 }
 
-def md_inline(s):
-    s = html.escape(s)
-    s = re.sub(r'`([^`]*)`', r'<code>\1</code>', s)
-    s = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', s)
-    s = re.sub(r'(?<![*\w])\*([^*\n]+)\*(?![*\w])', r'<em>\1</em>', s)
-    return s
+TIER_LABEL = {'universal':'paper strength · universal',
+              'instantiated':'paper strength · instantiated',
+              'qualified':'qualified'}
 
-# order labels by tex position, group by section
-order = sorted(LB.keys(), key=lambda l: tex.find('\\label{%s}' % l))
-groups = []
-for lab in order:
-    sec = section_of(lab)
-    if not groups or groups[-1][0] != sec:
-        groups.append((sec, []))
-    groups[-1][1].append(lab)
+PAPERS_EDITORIAL = {
+    'logical-induction': {
+        'macros': LI_MACRO_LATEX, 'pre_macros': LI_PRE_LATEX,
+        'sections': r'\\(section|subsection)\{([^\n]*)', 'appendix': False,
+    },
+    'cartesian-frames': {
+        'macros': CF_MACRO_LATEX, 'pre_macros': (),
+        'sections': r'\\(section|subsection|subsubsection)\{([^\n]*)', 'appendix': True,
+    },
+    'modal-agents': {
+        'macros': MA_MACRO_LATEX, 'pre_macros': (),
+        'sections': r'\\(section)\*?\{([^\n]*)', 'appendix': False,
+    },
+}
 
-TIER_LABEL = {'universal':'paper strength · universal','instantiated':'paper strength · instantiated','qualified':'qualified'}
 
-# Tier-2 structures from AxiomAudit
-t2 = re.findall(r'#assert_fields (\S+)\n((?:  [^\n]*\n)*)', open(ROOT+'AxiomAudit.lean').read())
-t2rows = ''.join('<tr><td><code>%s</code></td><td>%s</td></tr>' % (
-    html.escape(n), ' '.join('<code class="fld">%s</code>' % f for f in flds.split())) for n, flds in t2)
+def source_tag(paper):
+    """`arXiv:1609.03543v5` — the exact version committed, from the source filename."""
+    stem = os.path.basename(paper['source']).removesuffix('-main.tex')
+    return 'arXiv:' + stem
 
-cards = []
-nav = []
-counts = {'universal':0,'instantiated':0,'qualified':0}
-for sec, labs in groups:
-    nav.append('<div class="nav-sec">%s</div>' % html.escape(sec))
-    cards.append('<h2 class="sec" id="sec-%s">%s</h2>' % (re.sub(r'\W+','-',sec), html.escape(sec)))
-    for lab in labs:
-        v = LB[lab]
-        counts[v['tier']] += 1
-        prim = [p for p in PRIMARY.get(lab, []) if p in EPS] or v['endpoints'][:1]
-        ordered = prim + [e for e in v['endpoints'] if e not in prim]
-        slides = ''
-        for i, p in enumerate(ordered):
-            e = EPS[p]
-            slides += ('<div class="ep-slide%s"><div class="ep-head">'
-                       '<code class="ep-name">%s</code><span class="ep-file">%s</span></div>'
-                       '<pre class="sig">%s</pre></div>') % (
-                '' if i == 0 else ' hidden', html.escape(p), html.escape(e['file']),
-                html.escape(e['sig']))
-        controls = ''
-        if len(ordered) > 1:
-            controls = ('<div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button>'
-                        '<span class="ep-count" data-total="%d">1 / %d</span>'
-                        '<button class="ep-next" aria-label="next endpoint">&#8250;</button>'
-                        '<span class="ep-nav-hint">inventory endpoints for this node</span></div>') % (
-                len(ordered), len(ordered))
-        sig_html = controls + slides
-        others_html = ''
-        anchor = lab.replace(':','-')
-        nav.append('<a class="nav-item" href="#%s" data-node="%s"><span class="dot %s"></span>%s</a>' % (anchor, anchor, v['tier'], lab))
-        title = v['title'] or ''
-        cards.append('''
-<article class="node" id="%(anchor)s">
-  <header class="node-head">
-    <label class="check"><input type="checkbox" data-node="%(anchor)s" aria-label="mark %(lab)s read"></label>
-    <span class="node-label">%(lab)s</span>
-    <span class="node-title">%(title)s</span>
-    <span class="tier %(tier)s">%(tierlabel)s</span>
-  </header>
-  <div class="panes">
-    <section class="paper-pane">
-      <div class="pane-tag">Paper · arXiv:1609.03543v5</div>
-      %(paper)s
-    </section>
-    <section class="lean-pane">
-      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      %(sig)s
-      %(others)s
-    </section>
-  </div>
-  %(reading)s
-  <footer class="audit-note"><span class="audit-tag">What to check</span> %(just)s</footer>
-</article>''' % dict(anchor=anchor, lab=lab, title=html.escape(title), tier=v['tier'],
-        tierlabel=TIER_LABEL[v['tier']], paper=texblock(v['paper']), sig=sig_html,
-        others=others_html, just=md_inline(v['just']),
-        reading=('<div class="reading-note"><span class="reading-tag">How the panes line up</span> %s</div>'
-                 % md_inline(READING[lab])) if lab in READING else ''))
 
-body_cards = '\n'.join(cards)
-nav_html = '\n'.join(nav)
+def anchor_for(prefix, node_id):
+    return prefix + re.sub(r'[^A-Za-z0-9]+', '-', node_id).strip('-').lower()
 
-page = open(ROOT + 'scripts/trust-surface-template.html').read()
-page = (page.replace('%%NAV%%', nav_html).replace('%%CARDS%%', body_cards)
-            .replace('%%T2ROWS%%', t2rows)
-            .replace('%%NUNI%%', str(counts['universal'])).replace('%%NINS%%', str(counts['instantiated']))
-            .replace('%%NQ%%', str(counts['qualified'])))
-import hashlib
-_h = hashlib.sha256()
-for _f in ['scripts/coverage-classification.md', 'AxiomAudit.lean',
-           'LogicalInduction/notes/1609.03543v5-main.tex', 'scripts/trust-surface-template.html',
-           'scripts/gen-trust-surface.py']:
-    _h.update(open(ROOT + _f, 'rb').read())
-page += '\n<!-- trust-surface-sources: %s -->\n' % _h.hexdigest()
-open(ROOT + 'docs/trust-surface.html', 'w').write(page)
-print('wrote docs/trust-surface.html —', sum(len(l) for _, l in groups), 'nodes in', len(groups), 'sections')
+
+# ======================================================================
+# Logical Induction section — tiered, with reading and audit notes
+# ======================================================================
+
+def build_logical_induction(paper, warnings):
+    tex = read(paper['source'])
+    renderer = TexRenderer(LI_MACRO_LATEX, LI_PRE_LATEX)
+
+    rows = {}
+    for line in open(ROOT + paper['coverage_table'], encoding='utf-8'):
+        m = re.match(r'\| (\S+) \| (\w+) \| (.*) \|\s*$', line)
+        if m and m.group(1) != 'label':
+            rows[m.group(1)] = {'tier': m.group(2), 'just': m.group(3).strip()}
+
+    library = LeanLibrary(paper['library'])
+    names = audit_inventory_names(read('AxiomAudit.lean'))
+    for extra in LI_MANUAL.values():
+        for n in extra:
+            if n not in names: names.append(n)
+
+    label_eps, eps_all = {}, {}
+    for n in names:
+        e = library.extract(n)
+        if e is None:
+            continue  # names of other libraries, or AxiomAudit-local — out of scope here
+        eps_all[n] = e
+        for lab in e['labels']:
+            label_eps.setdefault(lab, []).append(n)
+
+    conf = PAPERS_EDITORIAL['logical-induction']
+    located = paper_nodes.latex_label_declarations(tex, list(rows))
+    sections = section_titles(tex, conf['sections'], conf['appendix'])
+
+    info = {}
+    for lab, row in rows.items():
+        node = located.get(lab)
+        if node is None:
+            warnings.append('logical-induction: %s has no \\label in the paper source' % lab)
+            continue
+        eps = LI_MANUAL.get(lab, []) + [e for e in label_eps.get(lab, [])
+                                        if e not in LI_MANUAL.get(lab, [])]
+        eps = [e for e in eps if e in eps_all]
+        if not eps:
+            warnings.append('logical-induction: %s has no inventory endpoint' % lab)
+            continue
+        info[lab] = (node, row, eps)
+
+    missing = [lab for lab in rows if lab not in info]
+    assert not missing, 'labels with no endpoint: %s' % missing
+
+    counts = {'universal': 0, 'instantiated': 0, 'qualified': 0}
+    nav, cards = [], []
+    tag = source_tag(paper)
+    for sec, group in group_by_section([n for n, _, _ in info.values()], sections):
+        nav.append('<div class="nav-sec">%s</div>' % html.escape(sec))
+        cards.append('<h2 class="sec" id="sec-%s">%s</h2>'
+                     % (re.sub(r'\W+', '-', sec), html.escape(sec)))
+        for node in group:
+            lab = node.id
+            _, row, eps = info[lab]
+            counts[row['tier']] += 1
+            prim = [p for p in LI_PRIMARY.get(lab, []) if p in eps_all] or eps[:1]
+            ordered = prim + [e for e in eps if e not in prim]
+            anchor = lab.replace(':', '-')
+            nav.append('<a class="nav-item" href="#%s" data-node="%s"><span class="dot %s"></span>%s</a>'
+                       % (anchor, anchor, row['tier'], lab))
+            notes = []
+            if lab in LI_READING:
+                notes.append(note('reading-note', 'How the panes line up', md_inline(LI_READING[lab])))
+            notes.append(audit_footer('What to check', md_inline(row['just'])))
+            cards.append(render_card(
+                anchor=anchor, lab=lab, title=node.title,
+                badge='<span class="tier %s">%s</span>' % (row['tier'], TIER_LABEL[row['tier']]),
+                source=tag, paper_html=renderer.block(node.body, lab),
+                endpoints=[(p, eps_all[p]) for p in ordered], notes=notes))
+
+    warnings += renderer_warnings('logical-induction', renderer)
+    return {'nav': nav, 'cards': cards, 'counts': counts, 'total': len(info)}
+
+
+# ======================================================================
+# Correspondence sections — Cartesian Frames and ModalAgents
+# ======================================================================
+
+def annotated_endpoints(paper, node_id_re):
+    """node id -> [(qualified name, extracted statement)], in source order."""
+    lib = paper['library']
+    library = LeanLibrary(lib)
+    anns = paper_nodes.collect_annotations(ROOT + lib + '.lean', ROOT + lib, node_id_re)
+    by_node = {}
+    carriers = set()
+    for a in sorted(anns, key=lambda a: (str(a.path), a.decl_line)):
+        f = str(a.path)
+        # `decl_line` is 1-based and may land on an attribute line.
+        idx = a.decl_line - 1
+        ls = library.files[f]
+        while idx < len(ls) and (ls[idx].strip().startswith('@[') or not ls[idx].strip()):
+            idx += 1
+        e = library.extract_at(f, idx)
+        carriers.add(a.qualified)
+        for node_id in a.nodes:
+            by_node.setdefault(node_id, []).append((a.qualified, e))
+    return by_node, carriers
+
+
+def cartesian_frames_errata(paper):
+    """Erratum headline per node, from the committed errata file."""
+    if not paper.get('errata'):
+        return {}
+    text = read(paper['errata'])
+    out = {}
+    for m in re.finditer(r'^\s*(\d+)\.\s+\*\*(.+?)\*\*', text, re.M):
+        number, headline = m.group(1), m.group(2)
+        ids = re.findall(r'(Definition|Claim|Theorem)s?\s+([0-9]+)(?:\s+and\s+([0-9]+))?',
+                         headline)
+        for kind, first, second in ids:
+            for n in (first, second):
+                if n:
+                    out.setdefault('%s %s' % (kind, n), []).append((number, headline))
+    return out
+
+
+def cartesian_frames_deviation(paper):
+    """The user-ruled intentional deviations, keyed by the node each one governs."""
+    if not paper.get('knowledge'):
+        return {}
+    text = read(paper['knowledge'])
+    m = re.search(r'^## Intentional deviations.*?$(.*?)^## ', text, re.S | re.M)
+    if not m:
+        return {}
+    out = {}
+    for block in re.split(r'\n(?=\*\*)', m.group(1).strip()):
+        head = re.match(r'\*\*(.+?)\*\*', block, re.S)
+        if not head:
+            continue
+        ids = re.findall(r'(Definition|Claim|Theorem)\s+([0-9]+)', head.group(1))
+        body = re.sub(r'\s+', ' ', block).strip()
+        for kind, number in ids:
+            out['%s %s' % (kind, number)] = body
+    return out
+
+
+def build_correspondence(key, paper, warnings, *, extras=None):
+    """A paper node beside its Lean endpoints, with no invented tier or audit note."""
+    conf = PAPERS_EDITORIAL[key]
+    tex = read(paper['source'])
+    renderer = TexRenderer(conf['macros'], conf['pre_macros'])
+    scheme = paper_nodes.SCHEMES[paper['scheme']]
+
+    located = scheme['declarations'](tex)
+    numbered = scheme['source_nodes'](tex)
+    by_node, carriers = annotated_endpoints(paper, scheme['node_id_re'])
+
+    renderable, unrenderable = [], []
+    for node_id in by_node:
+        if node_id in located:
+            renderable.append(node_id)
+        else:
+            unrenderable.append(node_id)
+    for node_id in sorted(unrenderable):
+        warnings.append(
+            '%s: %s is cited in Lean and numbered in the source, but its printed '
+            'statement could not be located — omitted from the page' % (key, node_id))
+
+    extras = extras or {}
+    prefix = {'cartesian-frames': 'cf-', 'modal-agents': 'ma-'}[key]
+    sections = section_titles(tex, conf['sections'], conf['appendix'])
+    tag = source_tag(paper)
+    nav, cards = [], []
+    for sec, group in group_by_section([located[n] for n in renderable], sections):
+        nav.append('<div class="nav-sec">%s</div>' % html.escape(sec))
+        cards.append('<h2 class="sec" id="sec-%s-%s">%s</h2>'
+                     % (prefix.rstrip('-'), re.sub(r'\W+', '-', sec), html.escape(sec)))
+        for node in group:
+            anchor = anchor_for(prefix, node.id)
+            nav.append('<a class="nav-item" href="#%s" data-node="%s"><span class="dot plain"></span>%s</a>'
+                       % (anchor, anchor, html.escape(node.id)))
+            notes = [n for n in (f(node) for f in extras.values()) if n]
+            cards.append(render_card(
+                anchor=anchor, lab=node.id, title=node.title,
+                badge='<span class="kind">%s</span>' % html.escape(node.kind.lower()),
+                source=tag, paper_html=renderer.block(node.body, node.id),
+                endpoints=by_node[node.id], notes=notes))
+
+    warnings += renderer_warnings(key, renderer)
+    return {'nav': nav, 'cards': cards, 'total': len(renderable),
+            'numbered': numbered, 'covered': set(renderable), 'carriers': carriers}
+
+
+# ======================================================================
+# Page assembly
+# ======================================================================
+
+def main():
+    warnings = []
+
+    li = build_logical_induction(PAPERS['logical-induction'], warnings)
+
+    cf_paper = PAPERS['cartesian-frames']
+    errata = cartesian_frames_errata(cf_paper)
+    deviation = cartesian_frames_deviation(cf_paper)
+
+    def cf_erratum_note(node):
+        entries = errata.get(node.id)
+        if not entries:
+            return ''
+        body = '; '.join('<strong>#%s</strong> %s' % (n, md_inline(h)) for n, h in entries)
+        return audit_footer('Paper erratum', body +
+                            ' <span class="cite">(%s)</span>' % html.escape(cf_paper['errata']))
+
+    def cf_deviation_note(node):
+        body = deviation.get(node.id)
+        if not body:
+            return ''
+        return note('deviation-note', 'Intentional deviation (user ruling)', md_inline(body))
+
+    cf = build_correspondence('cartesian-frames', cf_paper, warnings,
+                              extras={'deviation': cf_deviation_note,
+                                      'erratum': cf_erratum_note})
+
+    ma_paper = PAPERS['modal-agents']
+    ma = build_correspondence('modal-agents', ma_paper, warnings)
+
+    # --- ModalAgents: inventoried endpoints that deliberately carry no annotation ---
+    ma_inventory = paper_nodes.read_inventory(ROOT + 'AxiomAudit.lean', 'MA-INVENTORY') or set()
+    ma_bare = sorted(ma_inventory - ma['carriers'])
+    ma_reasons = {}
+    readme = read(ma_paper['readme'])
+    marker = readme.find('deliberately carry **no** annotation')
+    if marker >= 0:
+        started = False
+        for line in readme[marker:].splitlines():
+            stripped = line.strip()
+            if not stripped.startswith('|'):
+                if started and stripped:
+                    break        # the table has ended; stop before unrelated prose
+                continue
+            started = True
+            cells = [c.strip() for c in stripped.strip('|').split('|')]
+            if len(cells) != 2 or not cells[0].startswith('`'):
+                continue
+            for name in re.findall(r'`([^`]+)`', cells[0]):
+                ma_reasons[name] = cells[1]
+    rows = []
+    for name in ma_bare:
+        reason = ma_reasons.get(name)
+        if reason is None:
+            warnings.append('modal-agents: inventoried endpoint %s carries no annotation '
+                            'and no recorded reason in %s' % (name, ma_paper['readme']))
+        rows.append('<tr><td><code>%s</code></td><td>%s</td></tr>'
+                    % (html.escape(name),
+                       md_inline(reason) if reason
+                       else '<em class="unrecorded">no reason recorded</em>'))
+    ma_bare_rows = ''.join(rows)
+
+    ma_missing = sorted(ma['numbered'] - ma['covered'],
+                        key=lambda s: [int(p) for p in s.split()[1].split('.')])
+    ma_missing_html = ', '.join('<code>%s</code>' % html.escape(n) for n in ma_missing)
+
+    cf_missing = sorted(cf['numbered'] - cf['covered'],
+                        key=lambda s: int(s.split()[1]))
+    cf_missing_html = (', '.join('<code>%s</code>' % html.escape(n) for n in cf_missing)
+                       or 'none — every numbered node of the paper has a Lean statement')
+
+    # --- the Cartesian Frames inventory preamble, quoted rather than paraphrased ---
+    audit_src = read('AxiomAudit.lean')
+    m = re.search(r'/-!\s*## Cartesian Frames — endpoint inventory\s*(.*?)-/', audit_src, re.S)
+    cf_inventory_note = md_inline(re.sub(r'\s*\n\s*', ' ', m.group(1)).strip()) if m else ''
+
+    # --- Tier-2 frozen structures, split by the library they belong to ---
+    t2 = re.findall(r'#assert_fields (\S+)\n((?:  [^\n]*\n)*)', audit_src)
+    def t2rows(pred):
+        return ''.join('<tr><td><code>%s</code></td><td>%s</td></tr>' % (
+            html.escape(n), ' '.join('<code class="fld">%s</code>' % f for f in flds.split()))
+            for n, flds in t2 if pred(n))
+    t2_li = t2rows(lambda n: not n.startswith('CartesianFrames.'))
+    t2_cf = t2rows(lambda n: n.startswith('CartesianFrames.'))
+
+    # --- index table ---
+    index_rows = ''
+    for key, section, editorial in (
+            ('logical-induction', li,
+             'tier badge per node (universal / instantiated / qualified), a reading note '
+             'and a "what to check" note, from the machine-checked strength table'),
+            ('cartesian-frames', cf,
+             'errata cross-references and the Claim 35 intentional-deviation ruling; '
+             '<strong>no strength classification exists for this paper</strong>'),
+            ('modal-agents', ma,
+             'scope notes and the deliberately-unannotated inventory endpoints; '
+             '<strong>no strength classification exists for this paper</strong>')):
+        p = PAPERS[key]
+        index_rows += (
+            '<tr><td><a href="#paper-%s">%s</a><div class="idx-cite">%s (%d) · '
+            '<a href="https://arxiv.org/abs/%s">arXiv:%s</a></div></td>'
+            '<td class="count">%d</td><td><code>%s/</code></td><td>%s</td></tr>'
+            % (key, html.escape(p['title']), html.escape(p['authors']), p['year'],
+               p['arxiv'], p['arxiv'], section['total'], html.escape(p['library']),
+               editorial))
+
+    total_nodes = li['total'] + cf['total'] + ma['total']
+
+    page = read('scripts/trust-surface-template.html')
+    for placeholder, value in (
+            ('%%NAV_LI%%', '\n'.join(li['nav'])),
+            ('%%NAV_CF%%', '\n'.join(cf['nav'])),
+            ('%%NAV_MA%%', '\n'.join(ma['nav'])),
+            ('%%CARDS_LI%%', '\n'.join(li['cards'])),
+            ('%%CARDS_CF%%', '\n'.join(cf['cards'])),
+            ('%%CARDS_MA%%', '\n'.join(ma['cards'])),
+            ('%%INDEX%%', index_rows),
+            ('%%T2ROWS%%', t2_li),
+            ('%%T2ROWS_CF%%', t2_cf),
+            ('%%CF_INVENTORY_NOTE%%', cf_inventory_note),
+            ('%%CF_MISSING%%', cf_missing_html),
+            ('%%MA_BARE_ROWS%%', ma_bare_rows),
+            ('%%MA_MISSING%%', ma_missing_html),
+            ('%%NTOTAL%%', str(total_nodes)),
+            ('%%NLI%%', str(li['total'])),
+            ('%%NCF%%', str(cf['total'])),
+            ('%%NMA%%', str(ma['total'])),
+            ('%%NUNI%%', str(li['counts']['universal'])),
+            ('%%NINS%%', str(li['counts']['instantiated'])),
+            ('%%NQ%%', str(li['counts']['qualified']))):
+        assert placeholder in page, 'template is missing %s' % placeholder
+        page = page.replace(placeholder, value)
+    left = re.findall(r'%%[A-Z_]+%%', page)
+    assert not left, 'template placeholders never filled: %s' % sorted(set(left))
+
+    # Machine-readable coverage stamp: `check_paper_wiring.py` requires every registered
+    # paper to appear here with a positive node count, so "the guide covers this paper"
+    # is checked against what was actually rendered, not against a title string.
+    page += ('\n<!-- trust-surface-papers: %s -->\n'
+             % ' '.join('%s=%d' % (k, s['total']) for k, s in
+                        (('logical-induction', li), ('cartesian-frames', cf),
+                         ('modal-agents', ma))))
+    page += ('\n<!-- trust-surface-sources: %s -->\n'
+             % paper_nodes.trust_surface_hash(ROOT))
+    open(ROOT + 'docs/trust-surface.html', 'w', encoding='utf-8').write(page)
+
+    print('wrote docs/trust-surface.html — %d nodes (%d Logical Induction, '
+          '%d Cartesian Frames, %d ModalAgents)'
+          % (total_nodes, li['total'], cf['total'], ma['total']))
+    for w in warnings:
+        print('  note: %s' % w)
+
+
+if __name__ == '__main__':
+    main()

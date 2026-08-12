@@ -24,6 +24,19 @@ discovered by the reader.
 Each directory's README gives the detailed statement-level accounting: what is proved,
 what is modeled, and exactly where the trust boundary sits.
 
+The whole surface is also browsable in one place. [`docs/trust-surface.html`](docs/trust-surface.html)
+is a generated read-through guide covering **all three papers**: every annotated paper
+node rendered beside the Lean statement that carries it, in the paper's own order, with a
+section per paper. The three sections are not symmetric, and the page says why —
+*Logical Induction* carries a per-node strength tier and hand-written reading and audit
+notes, because it has a machine-checked strength classification; *Cartesian Frames* and
+*ModalAgents* have no such classification, so their sections are correspondence views
+carrying only what genuinely exists (the Cartesian Frames errata and the Claim 35 ruling;
+the ModalAgents scope boundaries and its deliberately unannotated endpoints). No tier is
+invented for a paper that does not have one. Regenerate with
+`python3 scripts/gen-trust-surface.py`; the page's freshness and its coverage of every
+registered paper are both blocking CI checks.
+
 Along the way the project has also produced some free-standing artifacts: a from-scratch
 Brouwer fixed-point theorem via Sperner's lemma (Mathlib has none), an autoformalized
 sequent-calculus proof of the de Jongh–Sambin GL fixed-point theorem, and four recorded
@@ -56,6 +69,8 @@ python3 scripts/check-cartesian-frames-nodes.py  # numbered CF nodes ↔ committ
 python3 scripts/check-modal-agents-nodes.py      # numbered ModalAgents nodes ↔ committed TeX
 python3 scripts/check_endpoint_coverage.py   # every annotated label has an inventory endpoint
 python3 scripts/lint_paper_labels.py         # every paper-facing theorem carries a label
+python3 scripts/check_trust_surface.py       # docs/trust-surface.html is not stale
+python3 scripts/check_paper_wiring.py        # every registered paper is fully wired up
 ```
 
 Budget a few hours for the first build: Mathlib arrives prebuilt from the cache, but the

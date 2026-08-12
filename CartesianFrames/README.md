@@ -39,6 +39,16 @@ while its External/Internal half is ill-typed as printed — `B` partitions `A`,
 `A/B` — and is deliberately left unformalized.  See `KNOWLEDGE.md` for settled
 design decisions and the correspondence table.
 
+The correspondence is also browsable as a generated page: all 60 numbered nodes, each
+printed statement beside the Lean statements annotated with it, with the errata
+cross-references and the Claim 35 ruling attached to the nodes they govern, in the
+Cartesian Frames section of
+[`docs/trust-surface.html`](../docs/trust-surface.html)
+(`python3 scripts/gen-trust-surface.py` to regenerate; its freshness is gated in CI).
+That section carries **no per-node strength tier and no audit notes**, and says so on
+the page: the machine-checked strength classification Logical Induction has does not
+exist for this paper, and none is invented for it.
+
 [`Examples.lean`](Examples.lean) carries the paper's two worked matrices — §2.1's
 driver and §2.2's duplicate-row pair — as concrete `Frame ℕ`s, together with the
 non-vacuity witnesses that keep the equivalence layer from being trivially true:

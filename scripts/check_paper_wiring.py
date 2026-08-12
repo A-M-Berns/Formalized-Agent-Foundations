@@ -16,7 +16,8 @@ verifies, for each registered paper, that:
   4. the library's node checker exists, is executable, and runs clean;
   5. that checker is a blocking step in CI;
   6. the library has a README;
-  7. the trust-surface guide covers the paper (see TRUST_SURFACE_ALL_PAPERS below).
+  7. the trust-surface guide renders at least one node for the paper, per the coverage
+     stamp `gen-trust-surface.py` writes into the page (see TRUST_SURFACE_ALL_PAPERS).
 
 and — the part that makes it hold in perpetuity — that **every `lean_lib` declared in
 `lakefile.lean` is either a registered paper or an explicitly excused non-paper
@@ -41,10 +42,9 @@ AUDIT = os.path.join(ROOT, "AxiomAudit.lean")
 LAKEFILE = os.path.join(ROOT, "lakefile.lean")
 TRUST_SURFACE = os.path.join(ROOT, "docs/trust-surface.html")
 
-# The trust-surface guide covers Logical Induction today; extending it to every paper
-# is tracked work.  Flip this to True once the generator is paper-generic, and the
-# check below becomes blocking for all papers instead of reporting a known gap.
-TRUST_SURFACE_ALL_PAPERS = False
+# The trust-surface guide is paper-generic and covers every registered paper, so the
+# requirement is blocking: a new paper must appear in the guide, not merely be registered.
+TRUST_SURFACE_ALL_PAPERS = True
 
 violations = []
 notes = []
@@ -128,11 +128,17 @@ for key, paper in sorted(PAPERS.items()):
                 "unchecked between harness runs"
                 % (tag, checker, os.path.relpath(CI, ROOT)))
 
+    # The guide stamps how many nodes it rendered for each registered paper, so this
+    # tests what the page actually contains rather than whether a title string occurs
+    # somewhere in it.
     if os.path.exists(TRUST_SURFACE):
         page = open(TRUST_SURFACE, encoding="utf-8", errors="replace").read()
-        covered = paper["title"].split(":")[0] in page or paper["arxiv"] in page
-        if not covered:
-            msg = ("%s: the trust-surface guide (%s) does not cover this paper"
+        stamp = re.search(r"<!-- trust-surface-papers: ([^>]*) -->", page)
+        rendered = dict(
+            (part.split("=")[0], int(part.split("=")[1]))
+            for part in (stamp.group(1).split() if stamp else []) if "=" in part)
+        if rendered.get(key, 0) < 1:
+            msg = ("%s: the trust-surface guide (%s) renders no node for this paper"
                    % (tag, os.path.relpath(TRUST_SURFACE, ROOT)))
             (violations if TRUST_SURFACE_ALL_PAPERS else notes).append(msg)
 

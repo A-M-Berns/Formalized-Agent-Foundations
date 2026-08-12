@@ -46,6 +46,14 @@ jobs:
       - name: Check trust-surface guide freshness
         run: python3 scripts/check_trust_surface.py
 
+      # Blocking: every paper registered in scripts/papers.py is fully wired — source
+      # and PDF committed, library inside the axiom gate, node checker present and in
+      # CI, README, and covered by the trust-surface guide — and every lean_lib in
+      # lakefile.lean is either a registered paper or an excused non-paper library.
+      # This is what stops a new formalization from shipping half-connected.
+      - name: Check paper wiring
+        run: python3 scripts/check_paper_wiring.py
+
       - name: Free runner disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL

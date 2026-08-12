@@ -1,4 +1,4 @@
-<title>Logical Induction — trust-surface read-through</title>
+<title>Formalized Agent Foundations — trust-surface read-through</title>
 <style>
 :root {
   --ground: #FAF9F5;
@@ -67,6 +67,11 @@ nav.rail { position: sticky; top: 0; align-self: start; height: 100vh; overflow-
   font-size: 11px; color: var(--ink-soft); margin: 4px 0 2px; }
 .rail-progress { font-variant-numeric: tabular-nums; color: var(--accent-ink);
   font-weight: 600; margin-bottom: 10px; }
+.nav-paper { display: block; margin: 20px 0 2px; padding: 3px 6px; border-radius: 4px;
+  font-family: var(--serif); font-size: 13.5px; font-weight: 700; color: var(--accent-ink);
+  text-decoration: none; border-top: 1px solid var(--hair); padding-top: 10px; }
+.nav-paper:first-of-type { border-top: none; margin-top: 6px; }
+.nav-paper:hover { background: var(--code-bg); }
 .nav-sec { margin: 14px 0 3px; font-size: 10.5px; letter-spacing: 0.07em;
   text-transform: uppercase; color: var(--ink-soft); }
 .nav-item { display: flex; align-items: center; gap: 7px; padding: 2px 6px;
@@ -78,6 +83,7 @@ nav.rail { position: sticky; top: 0; align-self: start; height: 100vh; overflow-
 .dot.universal { background: var(--accent); }
 .dot.instantiated { background: var(--accent); outline: 2px solid var(--accent); outline-offset: 1.5px; }
 .dot.qualified { background: var(--qual); }
+.dot.plain { background: none; border: 1px solid var(--ink-soft); }
 
 /* ---- main ---- */
 main { padding: 30px 34px 120px; min-width: 0; }
@@ -86,6 +92,10 @@ h1 { font-family: var(--serif); font-size: 30px; line-height: 1.2; margin: 0 0 4
 .subtitle { color: var(--ink-soft); margin: 0 0 26px; max-width: 62ch; }
 h2.sec { font-family: var(--serif); font-size: 21px; margin: 44px 0 6px;
   padding-top: 18px; border-top: 2px solid var(--hair); }
+section.paper-section { margin-top: 34px; }
+h2.paper-head { font-family: var(--serif); font-size: 26px; margin: 0 0 2px;
+  padding-top: 26px; border-top: 3px double var(--accent); text-wrap: balance; }
+.paper-cite { color: var(--ink-soft); font-size: 13px; margin: 0 0 14px; }
 
 /* front matter */
 .method { max-width: 74ch; }
@@ -101,6 +111,17 @@ h2.sec { font-family: var(--serif); font-size: 21px; margin: 44px 0 6px;
 .tier.instantiated { background: var(--ins-bg); color: var(--ins-ink); }
 .tier.qualified { background: var(--qual-bg); color: var(--qual); }
 .count { font-variant-numeric: tabular-nums; }
+.no-tier { border-left: 3px solid var(--qual); background: var(--qual-bg);
+  color: var(--paper-ink); padding: 10px 14px; margin: 14px 0; border-radius: 0 4px 4px 0; }
+.no-tier b { color: var(--qual); }
+
+/* index */
+table.index { border-collapse: collapse; width: 100%; font-size: 13.5px; margin: 10px 0 6px; }
+table.index td { border-top: 1px solid var(--hair); padding: 10px 14px 10px 0;
+  vertical-align: top; }
+table.index td:first-child { min-width: 22ch; }
+table.index td.count { text-align: right; font-weight: 700; color: var(--accent-ink); }
+.idx-cite { color: var(--ink-soft); font-size: 12px; }
 
 /* node card */
 .node { background: var(--card-bg); border: 1px solid var(--hair); border-radius: 6px;
@@ -113,6 +134,8 @@ h2.sec { font-family: var(--serif); font-size: 21px; margin: 44px 0 6px;
   color: var(--accent-ink); }
 .node-title { font-family: var(--serif); font-style: italic; font-size: 15.5px; }
 .node-head .tier { margin-left: auto; }
+.node-head .kind { margin-left: auto; font-size: 11px; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--ink-soft); }
 .panes { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
 @media (max-width: 980px) { .panes { grid-template-columns: 1fr; } .wrap { grid-template-columns: 1fr; } nav.rail { display: none; } }
 .pane-tag { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
@@ -147,6 +170,10 @@ pre.sig { font-family: var(--mono); font-size: 11.8px; line-height: 1.5; margin:
   background: var(--card-bg); }
 .reading-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--accent-ink); margin-right: 6px; }
+.deviation-note { padding: 10px 16px; border-top: 1px dashed var(--hair); font-size: 13px;
+  background: var(--qual-bg); color: var(--paper-ink); }
+.deviation-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--qual); margin-right: 6px; }
 table.vocab { border-collapse: collapse; font-size: 13px; margin: 8px 0 4px; }
 table.vocab td { border-top: 1px solid var(--hair); padding: 5px 18px 5px 0; vertical-align: top; }
 table.vocab td:first-child { font-family: var(--mono); font-size: 11.5px; max-width: 36ch; overflow-wrap: break-word; }
@@ -154,6 +181,12 @@ table.vocab td:first-child { font-family: var(--mono); font-size: 11.5px; max-wi
   color: var(--ink); background: var(--card-bg); }
 .audit-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--qual); margin-right: 6px; }
+.cite { color: var(--ink-soft); font-size: 11.5px; font-family: var(--mono); }
+.unrecorded { color: var(--qual); }
+/* A part of the printed statement with no faithful text rendering — marked, not faked. */
+p.omitted { font-family: var(--sans); font-size: 12px; font-style: normal;
+  color: var(--qual); border: 1px dashed var(--qual); border-radius: 4px;
+  padding: 6px 10px; margin: 8px 0; }
 
 /* appendix table */
 table.t2 { border-collapse: collapse; width: 100%; font-size: 12.5px; }
@@ -166,15 +199,20 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <div class="wrap">
 <nav class="rail" aria-label="node index">
   <div class="rail-title">Read-through</div>
-  <div class="rail-progress" id="progress">0 / 66 read</div>
-  %%NAV%%
+  <div class="rail-progress" id="progress">0 / %%NTOTAL%% read</div>
+  <a class="nav-paper" href="#paper-logical-induction">Logical Induction</a>
+  %%NAV_LI%%
+  <a class="nav-paper" href="#paper-cartesian-frames">Cartesian Frames</a>
+  %%NAV_CF%%
+  <a class="nav-paper" href="#paper-modal-agents">Robust Cooperation</a>
+  %%NAV_MA%%
 </nav>
 <main>
-  <h1>Logical Induction, formalized — the trust-surface read-through</h1>
-  <p class="subtitle">Every paper node beside the Lean statement that carries it. The kernel
-  has already checked every proof body; what it cannot check is whether each <em>statement</em>
-  says what the paper says. That judgment requires a human reader — this page is the map for
-  making it.</p>
+  <h1>Formalized Agent Foundations — the trust-surface read-through</h1>
+  <p class="subtitle">Every paper node beside the Lean statement that carries it, for all
+  three formalized papers. The kernel has already checked every proof body; what it cannot
+  check is whether each <em>statement</em> says what the paper says. That judgment requires
+  a human reader — this page is the map for making it.</p>
 
   <div class="method">
     <h3>What a read-through certifies</h3>
@@ -188,12 +226,53 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     theorem vacuously true, and this failure mode has occurred (and been repaired) before.</div>
     <div class="lens"><b>3 · No smuggling.</b> Is the conclusion (or the forcing step) taken as
     a hypothesis anywhere? Structures' fields are hypotheses too — see the field-freeze
-    appendix.</div>
-    <div class="lens"><b>4 · Metering.</b> <code>RpnSentenceCodes</code> / symbol-metered
-    classes are the faithful rendering of the paper's <code>def:ec</code>; whole-value classes
-    (<code>PolyNatCodes</code> &amp;c.) are provably narrower and appear only where a row is
-    marked qualified.</div>
+    appendices.</div>
+    <div class="lens"><b>4 · Metering.</b> Where a paper's own statement quantifies over an
+    efficiency class, check which class the Lean statement actually uses; the classes are not
+    interchangeable, and the narrower ones appear only where a node is marked qualified.</div>
 
+    <h3>What is on each card, and what is not</h3>
+    <p>Every card is the same mechanical pair: the paper's printed statement, machine-converted
+    from the committed TeX, beside the exact source text of the Lean statement (or statements)
+    annotated with that node. Beyond that pair, the three papers carry <em>different</em>
+    editorial material, because different material exists — and the difference is real, not a
+    presentational choice:</p>
+    <div style="overflow-x:auto"><table class="index">
+      <tr><td><strong>Paper</strong></td><td class="count"><strong>nodes</strong></td>
+          <td><strong>library</strong></td><td><strong>editorial data on its cards</strong></td></tr>
+      %%INDEX%%
+    </table></div>
+    <p><strong>Only Logical Induction has a strength classification and per-node reading
+    notes.</strong> They are the product of a dedicated re-derivation pass and a
+    machine-checked table; the other two libraries have had no such pass. No tier, audit note
+    or reading note is shown for a paper that does not have one — the correspondence is what
+    those sections claim, and it is all they claim.</p>
+
+    <h3>How to use this page</h3>
+    <p>Within each paper, nodes appear in that paper's own order, grouped by its own sections;
+    definitions come first and are load-bearing for everything after. Where a node has several
+    inventory endpoints, the ‹ › arrows page through all of them. Check-boxes track progress
+    across all three papers and persist locally in the browser. Signatures are statements only,
+    verbatim from source; file paths locate the full declaration. Paper statements are
+    machine-converted from the arXiv TeX (custom macros expanded, rendered as MathML) — for any
+    formula that looks off, the arXiv PDF is the authority; the Lean pane is exact source text.</p>
+
+    <p style="font-size:12.5px;color:var(--ink-soft)">Generated from the repository by
+    <code>scripts/gen-trust-surface.py</code>, driven by the paper registry
+    <code>scripts/papers.py</code>; node locations come from <code>scripts/paper_nodes.py</code>,
+    the same module the per-paper provenance checkers use. The page carries a hash over every
+    input — each paper's source, every library's Lean sources, the registry and the prose files
+    quoted here — and <code>scripts/check_trust_surface.py</code> fails CI if it is stale.</p>
+  </div>
+
+  <!-- =================== Logical Induction =================== -->
+  <section class="paper-section" id="paper-logical-induction">
+  <h2 class="paper-head">Logical Induction</h2>
+  <p class="paper-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) ·
+  <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543v5</a> ·
+  <code>LogicalInduction/</code> · %%NLI%% nodes</p>
+
+  <div class="method">
     <h3>The two standing disclosures (apply to every node)</h3>
     <p>Sentences are propositional (<code>Formula ℕ</code>); the paper's first-order Θ enters
     through explicit interfaces. Efficient computability is the fuel-clocked interpreter model
@@ -211,6 +290,16 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <div class="legend">
       <span class="tier qualified">qualified</span><span class="count">%%NQ%% — a named interface or class restriction is retained; the note says which</span>
     </div>
+    <p>The tier and note on every card are read from
+    <code>scripts/coverage-classification.md</code>, which is machine-checked against the
+    endpoint inventory on every build, so a node cannot ship without a strength call. The
+    <span class="tier qualified" style="font-size:10px">qualified</span> rows deserve the slow
+    pass: each one's note names exactly what is retained and why.</p>
+
+    <h3>Metering vocabulary</h3>
+    <p><code>RpnSentenceCodes</code> / symbol-metered classes are the faithful rendering of the
+    paper's <code>def:ec</code>; whole-value classes (<code>PolyNatCodes</code> &amp;c.) are
+    provably narrower and appear only where a row is marked qualified.</p>
 
     <h3>Shared vocabulary</h3>
     <p>These correspondences recur on nearly every card; each card's own note covers only
@@ -226,26 +315,9 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
       <tr><td><code>(X n).expect P n</code></td><td>𝔼ₙ(Xₙ), via the def:e threshold mesh</td></tr>
       <tr><td><code>(T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]</code>, <code>theoremDP T</code>, <code>liaHistory (theoremDP T)</code></td><td>“Γ represents computations” (a Σ₁-sound T ⊇ IΣ₁); Γ’s provability process; the constructed inductor over it</td></tr>
     </table></div>
-
-    <h3>How to use this page</h3>
-    <p>Nodes appear in the paper's own order. Definitions come first and are load-bearing for
-    everything after. The <span class="tier qualified" style="font-size:10px">qualified</span>
-    rows deserve the slow pass: each one's note names exactly what is retained and why.
-    Where a node has several inventory endpoints, the ‹ › arrows page
-    through all of them — the strongest form is shown first. Check-boxes track progress
-    and persist locally in the browser. Signatures are statements
-    only, verbatim from source; file paths locate the full declaration. Paper statements are
-    machine-converted from the arXiv TeX (custom macros expanded, rendered as MathML) — for
-    any formula that looks off, the arXiv PDF is the authority; the Lean pane is exact
-    source text.</p>
-
-    <p style="font-size:12.5px;color:var(--ink-soft)">Generated from the repository by
-    <code>scripts/gen-trust-surface.py</code>; the tier and note on every card are read from
-    <code>scripts/coverage-classification.md</code>, which is machine-checked against the
-    endpoint inventory on every build. Regenerate after any surface change.</p>
   </div>
 
-  %%CARDS%%
+  %%CARDS_LI%%
 
   <h2 class="sec" id="appendix-t2">Appendix — the frozen hypothesis surface (Tier-2 structures)</h2>
   <p class="subtitle" style="margin-top:8px">Each structure below occurs in the type of a public
@@ -256,14 +328,119 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
   <details><summary style="cursor:pointer;font-weight:600">Show all frozen structures</summary>
   <div style="overflow-x:auto"><table class="t2">%%T2ROWS%%</table></div>
   </details>
+  </section>
+
+  <!-- =================== Cartesian Frames =================== -->
+  <section class="paper-section" id="paper-cartesian-frames">
+  <h2 class="paper-head">Cartesian Frames</h2>
+  <p class="paper-cite">Garrabrant, Herrmann, Lopez-Wild (2021) ·
+  <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996v1</a> ·
+  <code>CartesianFrames/</code> · %%NCF%% nodes</p>
+
+  <div class="method">
+    <div class="no-tier"><b>No strength classification exists for this paper.</b> There is no
+    per-node tier and no per-node audit note below, because neither has been produced: the
+    dedicated re-derivation pass and the machine-checked strength table that Logical Induction
+    has were never run here. What the cards below assert is the <em>correspondence</em> — this
+    printed node, these Lean statements — and nothing about how strong each rendering is. Read
+    the statements.</div>
+
+    <h3>Scope</h3>
+    <p>All 60 numbered nodes of the paper carry Lean statements, across the main text and both
+    appendices, with no modeling substitutions. Numbered nodes with no Lean statement:
+    %%CF_MISSING%%. One node is formalized only in part, by user ruling — its card says so, in
+    the ruling's own words.</p>
+
+    <h3>How nodes are cited</h3>
+    <p>Most nodes of this paper carry no LaTeX <code>\label</code>, so the printed
+    <code>Definition n</code> / <code>Claim n</code> / <code>Theorem n</code> is the provenance
+    key. <code>scripts/check-cartesian-frames-nodes.py</code> validates every annotation against
+    the committed TeX fail-closed, and requires each annotated declaration to be listed in
+    <code>AxiomAudit.lean</code>'s CF-INVENTORY block. The cards below are built from those same
+    annotations, so a node's Lean pane shows exactly the declarations that claim it.</p>
+
+    <h3>Where the printed proof is the thing that is wrong</h3>
+    <p>Defects found in this paper during formalization are recorded in
+    <code>CartesianFrames/notes/paper-errata.md</code>; a node with an erratum carries it on its
+    card. Consult it before concluding that a Lean proof diverges from the printed one — in
+    several places the statement is sound and the printed proof is not.</p>
+
+    <h3>Inventoried endpoints that carry no annotation</h3>
+    <p>Not every axiom-checked endpoint of this library renders a numbered node. The inventory's
+    own preamble, quoted verbatim from <code>AxiomAudit.lean</code>:</p>
+    <p class="cite" style="font-size:13px;font-family:var(--sans)">%%CF_INVENTORY_NOTE%%</p>
+  </div>
+
+  %%CARDS_CF%%
+
+  <h2 class="sec" id="appendix-t2-cf">Appendix — the frozen hypothesis surface (Cartesian Frames)</h2>
+  <p class="subtitle" style="margin-top:8px">Same contract as the Logical Induction field freeze:
+  these structures occur in the types of public endpoints, so their fields are hypotheses the
+  read-through must audit.</p>
+  <div style="overflow-x:auto"><table class="t2">%%T2ROWS_CF%%</table></div>
+  </section>
+
+  <!-- =================== ModalAgents =================== -->
+  <section class="paper-section" id="paper-modal-agents">
+  <h2 class="paper-head">Robust Cooperation in the Prisoner's Dilemma</h2>
+  <p class="paper-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) ·
+  <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a> ·
+  <code>ModalAgents/</code> · %%NMA%% nodes</p>
+
+  <div class="method">
+    <div class="no-tier"><b>No strength classification exists for this paper.</b> As with
+    Cartesian Frames, the cards below carry no tier and no per-node audit note, because none has
+    been produced. They assert the correspondence only.</div>
+
+    <h3>Scope — and what is deliberately absent</h3>
+    <p>This formalization is scoped to <em>modal</em> agents rather than arbitrary arithmetic
+    agents, so not every numbered node of the paper is claimed here. The nodes with no Lean
+    statement annotated to them, computed from the source and the annotations: %%MA_MISSING%%.
+    Two of those absences are documented decisions — Corollary 4.9 on CliqueBot is out of scope
+    by design, as is Theorem 3.2's unexploitability conjunct, which quantifies over all
+    opponents (see <code>ModalAgents/README.md</code>); the rest are simply unclaimed, and this
+    page asserts nothing further about them. The provenance checker deliberately does not check
+    the converse direction for this reason.</p>
+
+    <h3>How nodes are cited</h3>
+    <p>The paper labels only 22 of its nodes and leaves several formalized ones unlabeled, so the
+    provenance key is the <em>printed</em> number, recomputed from the committed TeX by emulating
+    the paper's shared section-scoped theorem counter
+    (<code>scripts/check-modal-agents-nodes.py</code>). Note that the paper's
+    <code>definition</code> environment is an uncounted <code>trivlist</code>: <strong>this paper
+    numbers no definitions at all</strong>, so no definition can be cited and none appears below.
+    The definitional content — modal agents, the four concrete agents — lives in Lean
+    declarations attached to the theorems that use them.</p>
+
+    <h3>Inventoried endpoints that deliberately carry no annotation</h3>
+    <p>These endpoints are axiom-checked in <code>AxiomAudit.lean</code>'s MA-INVENTORY block but
+    claim no numbered node, because the fact each proves is unnumbered paper prose or a step
+    inside a proof. The list is computed from the inventory; each reason is quoted from
+    <code>ModalAgents/README.md</code>.</p>
+    <div style="overflow-x:auto"><table class="t2">%%MA_BARE_ROWS%%</table></div>
+
+    <h3>One dependency, cited rather than read</h3>
+    <p>The GL fixed-point theorem behind these results is <em>proved</em>, not axiomatized, but
+    through the upstream <code>FormalizedFormalLogic/ProvabilityLogic</code> package pinned in
+    <code>lakefile.lean</code>. Like Mathlib and Foundation, it is dependency code: kernel-checked
+    here against this toolchain, cited rather than read line by line.</p>
+  </div>
+
+  %%CARDS_MA%%
+  </section>
 </main>
 </div>
 
 <script>
 (function(){
-  var KEY = 'li-readthrough-v1';
+  var KEY = 'trust-readthrough-v2';
+  var LEGACY = 'li-readthrough-v1';
   var state = {};
-  try { state = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch(e) {}
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw === null) raw = localStorage.getItem(LEGACY);  // carry over earlier progress
+    state = JSON.parse(raw || '{}');
+  } catch(e) {}
   var boxes = document.querySelectorAll('input[type=checkbox][data-node]');
   var total = boxes.length;
   function sync() {

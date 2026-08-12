@@ -46,11 +46,20 @@ per-declaration inventory coverage). The same declaration rule applies: `theorem
 the declaration renders a paper claim/theorem; supporting results are `lemma`s — and
 note that iso-valued and data-valued carriers must be `def`s, since `≅` is not a Prop.
 
-Two accounting notes on that library, both deliberate: the read-through guide
-`docs/trust-surface.html` covers **LogicalInduction only** — Cartesian Frames has its
-own inventory and checker but no generated read-through page yet; and Claim 35 is
-formalized only in part, by ruling, because its External/Internal half is ill-typed as
-printed (see the intentional-deviations section of its KNOWLEDGE.md).
+Two accounting notes on that library: the read-through guide
+`docs/trust-surface.html` covers **all three papers**, one section each, but only
+LogicalInduction's section carries per-node strength tiers and audit notes — Cartesian
+Frames and ModalAgents have no strength classification, so their sections are
+correspondence views and say so on the page; and Claim 35 is formalized only in part, by
+ruling, because its External/Internal half is ill-typed as printed (see the
+intentional-deviations section of its KNOWLEDGE.md).
+
+**Adding a paper.** `scripts/papers.py` is the registry of what this repo formalizes;
+`scripts/check_paper_wiring.py` enforces that every `lean_lib` is either a registered
+paper — with its source committed, a node checker running in CI, endpoints inside the
+`AxiomAudit` import, and nodes rendered in the trust-surface guide — or an explicitly
+excused non-paper library. Register a new formalization there first; the gate will then
+tell you what is still unwired.
 
 ---
 

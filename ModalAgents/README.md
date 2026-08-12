@@ -74,6 +74,15 @@ opponent `Y`, not both `PB(Y) = C` and `Y(PB) = D` — is not formalized anywher
 library.**  It quantifies over all agents rather than the four named ones, and nothing
 in the current development states it.
 
+The correspondence is browsable as a generated page: each cited node's printed statement
+beside the Lean statements annotated with it, plus the numbered nodes deliberately left
+out of scope and the table above, in the ModalAgents section of
+[`docs/trust-surface.html`](../docs/trust-surface.html)
+(`python3 scripts/gen-trust-surface.py` to regenerate; its freshness is gated in CI).
+That section carries **no per-node strength tier and no audit notes**, and says so on the
+page: the machine-checked strength classification Logical Induction has does not exist
+for this paper, and none is invented for it.
+
 ### Axioms
 
 **None.** Every ModalAgents endpoint reports only `propext`, `Classical.choice`, and

@@ -16,10 +16,12 @@ Each qualified node says in one line which premise it retains and why. The per-n
 table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
 machine-checked against the endpoint inventory so a node cannot ship without a strength
 call. A browsable guide to the whole trust surface —
-every paper statement rendered beside the Lean endpoint that carries it, with its tier
-and audit note — is generated from the repository at
-[`docs/trust-surface.html`](../docs/trust-surface.html)
-(`python3 scripts/gen-trust-surface.py` to regenerate).
+every paper statement rendered beside the Lean endpoint that carries it — is generated
+from the repository at [`docs/trust-surface.html`](../docs/trust-surface.html)
+(`python3 scripts/gen-trust-surface.py` to regenerate). That guide covers **all three**
+formalized papers, one section each; only this paper's section carries per-node tiers,
+reading notes and audit notes, because only this paper has the strength classification
+they are read from. The others are correspondence views, and say so.
 
 Of the 51, **20 are also instantiated over the concrete inductor constructed here** at
 full paper strength, so they hold of a specific algorithm rather than a hypothetical
