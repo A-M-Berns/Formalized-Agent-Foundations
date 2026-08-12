@@ -50,9 +50,11 @@ both endpoints.  Its last sections carry the same treatment to §2.4.1's operati
 to Appendix B: externalizing at a two-cell partition of the four-option frame, and
 assuming a sub-environment of the driver, each yield a frame that is genuinely smaller
 (related by the paper's relation but *not* biextensionally equivalent), while a
-one-row frame with duplicate columns shows that Definition 54's factorization *up to
-homotopy* is load-bearing and that the definition's "unique morphism" remark cannot
-mean uniqueness of the hom-set element (erratum 7).  These are `lemma`s, not paper
+one-row frame with duplicate columns, paired with the one-by-one frame, shows that
+Definition 54's factorization *up to homotopy* is load-bearing at the level of the
+relation — the relation holds on that pair while the variant demanding exact
+factorization through a single morphism fails — and that the definition's "unique
+morphism" remark cannot mean uniqueness of the hom-set element (erratum 7).  These are `lemma`s, not paper
 claims; they cite the paper's unnumbered
 examples in prose and are inventoried in `AxiomAudit.lean` alongside the definitions
 they constrain.

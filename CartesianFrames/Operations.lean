@@ -281,9 +281,11 @@ ruling (see KNOWLEDGE.md, intentional deviations, and erratum 3).
 
 Disclosure: the second argument `Subtype.val ⁻¹' B` is provably `Set.univ` (every
 agent of `Commit^B(C)` already lies in `B`), so the subtype encoding has already
-absorbed the claim's set-theoretic content — the paper's `B ∩ B = B` — and the
-isomorphism is the entire remaining content.  This matches the paper, whose own
-proof of this half is likewise trivial.
+absorbed the claim's set-theoretic content — `B ∩ B = B` — and the isomorphism is
+the entire remaining content.  The paper proves no part of Claim 35: it states the
+claim and follows it with an intuition paragraph only, so there is no printed
+argument for this rendering to match.  That the absorbed set-theoretic content is
+trivial is our own observation.
 
 Paper node: Claim 35 (§2.4.1). -/
 def commit_commit_self (C : Frame W) (B : Set C.Agent) :
@@ -307,10 +309,13 @@ formalized — the External/Internal half is ill-typed as printed and excluded b
 ruling (see KNOWLEDGE.md, intentional deviations, and erratum 3).
 
 Disclosure: the set actually restricted to here, `(Subtype.val ⁻¹' B)ᶜ`, is provably
-`Set.univ` (no agent of `Commit^{∖B}(C)` lies in `B`), so the subtype encoding has
-already absorbed the claim's set-theoretic content — the paper's `B ∩ B = B` — and
-the isomorphism is the entire remaining content.  This matches the paper, whose own
-proof of this half is likewise trivial.
+`Set.univ` — no agent of `Commit^{∖B}(C)` lies in `B`, so the preimage of `B` in the
+already complement-restricted carrier is empty and its complement is everything.  The
+subtype encoding has therefore already absorbed the claim's set-theoretic content —
+here `Bᶜ ∩ Bᶜ = Bᶜ`, not `B ∩ B = B` — and the isomorphism is the entire remaining
+content.  The paper proves no part of Claim 35: it states the claim and follows it
+with an intuition paragraph only, so there is no printed argument for this rendering
+to match.  That the absorbed set-theoretic content is trivial is our own observation.
 
 Paper node: Claim 35 (§2.4.1). -/
 def commitCompl_commitCompl_self (C : Frame W) (B : Set C.Agent) :
@@ -335,9 +340,11 @@ ruling (see KNOWLEDGE.md, intentional deviations, and erratum 3).
 
 Disclosure: the second argument `Subtype.val ⁻¹' F` is provably `Set.univ` (every
 environment state of `Assume^F(C)` already lies in `F`), so the subtype encoding has
-already absorbed the claim's set-theoretic content — the paper's `F ∩ F = F` — and
-the isomorphism is the entire remaining content.  This matches the paper, whose own
-proof of this half is likewise trivial.
+already absorbed the claim's set-theoretic content — `F ∩ F = F` — and the
+isomorphism is the entire remaining content.  The paper proves no part of Claim 35:
+it states the claim and follows it with an intuition paragraph only, so there is no
+printed argument for this rendering to match.  That the absorbed set-theoretic
+content is trivial is our own observation.
 
 Paper node: Claim 35 (§2.4.1). -/
 def assume_assume_self (C : Frame W) (F : Set C.Env) :
@@ -361,10 +368,14 @@ formalized — the External/Internal half is ill-typed as printed and excluded b
 ruling (see KNOWLEDGE.md, intentional deviations, and erratum 3).
 
 Disclosure: the set actually restricted to here, `(Subtype.val ⁻¹' F)ᶜ`, is provably
-`Set.univ` (no environment state of `Assume^{∖F}(C)` lies in `F`), so the subtype
-encoding has already absorbed the claim's set-theoretic content — the paper's
-`F ∩ F = F` — and the isomorphism is the entire remaining content.  This matches the
-paper, whose own proof of this half is likewise trivial.
+`Set.univ` — no environment state of `Assume^{∖F}(C)` lies in `F`, so the preimage of
+`F` in the already complement-restricted carrier is empty and its complement is
+everything.  The subtype encoding has therefore already absorbed the claim's
+set-theoretic content — here `Fᶜ ∩ Fᶜ = Fᶜ`, not `F ∩ F = F` — and the isomorphism is
+the entire remaining content.  The paper proves no part of Claim 35: it states the
+claim and follows it with an intuition paragraph only, so there is no printed argument
+for this rendering to match.  That the absorbed set-theoretic content is trivial is
+our own observation.
 
 Paper node: Claim 35 (§2.4.1). -/
 def assumeCompl_assumeCompl_self (C : Frame W) (F : Set C.Env) :

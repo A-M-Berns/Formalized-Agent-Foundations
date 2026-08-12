@@ -17,14 +17,28 @@ clean proof with its unproved facts named, cited, and isolated in its README. Do
 same kind of honest accounting everywhere.
 
 The **Cartesian Frames** formalization (Garrabrant, Herrmann, and Lopez-Wild,
-arXiv:2109.10996) lives in `CartesianFrames/`; begin with `CartesianFrames/README.md`
-and the knowledge base `CartesianFrames/KNOWLEDGE.md` (settled design decisions and
-the correspondence table). Its paper specification is committed as
-`CartesianFrames/notes/2109.10996v1-main.tex` and the matching PDF. Most nodes in that paper lack
-LaTeX labels, so their printed `Definition n` / `Claim n` / `Theorem n` identifiers
-are the provenance keys, checked by `scripts/check-cartesian-frames-nodes.py`. The
-same declaration rule applies: `theorem` iff the declaration renders a paper
-claim/theorem; supporting results are `lemma`s.
+arXiv:2109.10996) lives in `CartesianFrames/` and is node-complete: all 60 numbered
+nodes carry Lean statements, with no modeling substitutions. Begin with
+`CartesianFrames/README.md` and the knowledge base `CartesianFrames/KNOWLEDGE.md`
+(settled design decisions, the correspondence table, and the pitfalls log — read the
+pitfalls before writing concrete `Frame` witnesses, the `decide`/transparency traps
+there are non-obvious). Its paper specification is committed as
+`CartesianFrames/notes/2109.10996v1-main.tex` and the matching PDF; defects found in
+that paper are recorded in `CartesianFrames/notes/paper-errata.md` — consult it before
+concluding that a Lean proof diverges from the printed one, because in several places
+the printed proof is the thing that is wrong. Most nodes in that paper lack LaTeX
+labels, so their printed `Definition n` / `Claim n` / `Theorem n` identifiers are the
+provenance keys, checked by `scripts/check-cartesian-frames-nodes.py`, which enforces
+the annotation contract fail-closed (validity, anchoring to a *named* declaration, and
+per-declaration inventory coverage). The same declaration rule applies: `theorem` iff
+the declaration renders a paper claim/theorem; supporting results are `lemma`s — and
+note that iso-valued and data-valued carriers must be `def`s, since `≅` is not a Prop.
+
+Two accounting notes on that library, both deliberate: the read-through guide
+`docs/trust-surface.html` covers **LogicalInduction only** — Cartesian Frames has its
+own inventory and checker but no generated read-through page yet; and Claim 35 is
+formalized only in part, by ruling, because its External/Internal half is ill-typed as
+printed (see the intentional-deviations section of its KNOWLEDGE.md).
 
 ---
 

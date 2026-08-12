@@ -10,6 +10,8 @@ keywords:
   - Lean 4
   - formal verification
   - logical induction
+  - Cartesian frames
+  - Chu spaces
   - agent foundations
   - open-source game theory
 references:
@@ -28,6 +30,17 @@ references:
         given-names: "Jessica"
     year: 2016
     url: "https://arxiv.org/abs/1609.03543"
+  - type: article
+    title: "Cartesian Frames"
+    authors:
+      - family-names: "Garrabrant"
+        given-names: "Scott"
+      - family-names: "Herrmann"
+        given-names: "Daniel A."
+      - family-names: "Lopez-Wild"
+        given-names: "Josiah"
+    year: 2021
+    url: "https://arxiv.org/abs/2109.10996"
   - type: article
     title: "Robust Cooperation in the Prisoner's Dilemma: Program Equilibrium via Provability Logic"
     authors:

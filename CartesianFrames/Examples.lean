@@ -57,11 +57,16 @@ Appendix B:
   `◁*₊`) but *not* biextensionally equivalent (`ext_genuine`,
   `assume_not_biextEquiv`), so `Definition 32` and `Definition 29` are not identities
   in disguise;
-* `Definition 54`'s relaxation to factorization **up to homotopy** is load-bearing:
-  `cat54_holds` holds through a `φ₀` for which exact factorization fails
-  (`phi0_no_exact_factorization`), and the same frame has two distinct endomorphisms
-  (`two_distinct_endos`), so the definition's follow-up remark about "the" morphism
-  `C ⟶ D` cannot mean hom-set uniqueness — that reading would falsify `Claim 56`
+* `Definition 54`'s relaxation to factorization **up to homotopy** is load-bearing at
+  the level of the *relation*: the relaxed relation holds between `colDup` and the
+  one-by-one frame (`colDup_addSubagentCategorical_oneCol`), while the exactified
+  variant — a single `φ₀` through which every `colDup ⟶ ⊥` factors on the nose —
+  fails there (`not_exact_factorization_colDup_oneCol`).  The per-`φ₀` witness
+  `phi0_no_exact_factorization` does *not* establish this by itself, since
+  `Definition 54` quantifies `∃ φ₀` and the choice `φ₀ = 𝟙` factors every `φ` exactly;
+* `colDup` carries two distinct endomorphisms (`two_distinct_endos`), so
+  `Definition 54`'s follow-up remark about "the" morphism `C ⟶ D` cannot mean hom-set
+  uniqueness — that reading would falsify `Claim 56`
   (`CartesianFrames/notes/paper-errata.md`, erratum 7).
 
 None of these statements is a paper claim, so none carries a paper-node annotation; the
@@ -637,9 +642,12 @@ example : ¬ (bigD.dual ◁*₊ bigC.dual) := not_bigC_addSubagent_bigD
 Two things are checked here.  First, the appendix's relations hold and fail exactly
 where the main body's do, on the paper's own examples.  Second — and this is what the
 formalization's reading of `Definition 54` rests on — the definition's relaxation to
-factorization *up to homotopy* is load-bearing, and its follow-up remark about "the"
-morphism `C ⟶ D` cannot be read as uniqueness of the hom-set element (see
-`CartesianFrames/notes/paper-errata.md`, erratum 7). -/
+factorization *up to homotopy* is load-bearing at the level of the relation
+(`colDup_addSubagentCategorical_oneCol` against
+`not_exact_factorization_colDup_oneCol`; the single-`φ₀` fact
+`phi0_no_exact_factorization` does not suffice, because `φ₀ = 𝟙` factors exactly), and
+its follow-up remark about "the" morphism `C ⟶ D` cannot be read as uniqueness of the
+hom-set element (see `CartesianFrames/notes/paper-errata.md`, erratum 7). -/
 
 /-- A one-row frame with two identical columns: the smallest frame whose endomorphism
 monoid is not trivial. -/
@@ -668,9 +676,12 @@ lemma phi0_homotopy_factors :
 /-- …so `Definition 54` holds with this `φ₀`. -/
 lemma cat54_holds : AddSubagentCategorical colDup colDup := ⟨phi0, phi0_homotopy_factors⟩
 
-/-- …but *exact* factorization through the same `φ₀` fails, so `Definition 54`'s
-homotopy relaxation is load-bearing rather than cosmetic: replacing `Homotopic` by
-equality would break `cat54_holds` at this `φ₀`. -/
+/-- …but *exact* factorization through this particular `φ₀` fails: replacing
+`Homotopic` by equality would break `cat54_holds` **at this `φ₀`**.  On its own this
+says nothing about `Definition 54` as a relation, since `Definition 54` quantifies
+`∃ φ₀` and `φ₀ = 𝟙 colDup` factors every `φ` exactly; the relation-level separation is
+`colDup_addSubagentCategorical_oneCol` together with
+`not_exact_factorization_colDup_oneCol` below. -/
 lemma phi0_no_exact_factorization :
     ¬ ∃ φ₁ : colDup ⟶ (⊥ : Frame ℕ),
       colDup.homBotEquiv.symm 1 = phi0 ≫ φ₁ := by
@@ -689,6 +700,52 @@ lemma two_distinct_endos : phi0 ≠ 𝟙 colDup := by
   exact absurd (congrFun key 1) (by decide)
 
 example : colDup ◁₊ colDup := AddSubagent.refl colDup
+
+/-- The one-by-one frame: `colDup` with its duplicate column deleted. -/
+abbrev oneCol : Frame ℕ where
+  Agent := Fin 1
+  Env := Fin 1
+  outcome := ![![0]]
+
+/-- The morphism collapsing `colDup`'s two columns onto the single column of
+`oneCol` — the shared `φ₀` witnessing `Definition 54` between them. -/
+def psi0 : colDup ⟶ oneCol where
+  agent := _root_.id
+  env := ![0]
+  adjoint := by decide
+
+/-- `Definition 54` holds between `colDup` and the one-by-one frame: every
+`φ : colDup ⟶ ⊥` factors through `psi0` up to homotopy, because every obligation is
+an equation between `colDup` outcomes and those are all `0`. -/
+lemma colDup_addSubagentCategorical_oneCol : AddSubagentCategorical colDup oneCol := by
+  have hconst : ∀ (a : Fin 1) (x y : Fin 2), colDup.outcome a x = colDup.outcome a y := by
+    decide
+  refine ⟨psi0, fun φ => ⟨oneCol.homBotEquiv.symm 0, fun a e => ?_⟩⟩
+  exact (hconst a _ (φ.env e)).trans (φ.adjoint a e)
+
+/-- The relation-level separation: `Definition 54`'s relaxation to factorization *up to
+homotopy* is load-bearing, not cosmetic.  Exactifying the definition — demanding a
+single `φ₀` through which every `φ : colDup ⟶ ⊥` factors *on the nose* — fails between
+`colDup` and `oneCol`, while `colDup_addSubagentCategorical_oneCol` shows the
+homotopy-relaxed relation holds there.
+
+The obstruction: a morphism into `⊥` is determined by its environment component
+(`homBotEquiv`), `oneCol.Env` is a singleton, so `(φ₀ ≫ φ₁).env` is the constant
+`φ₀.env 0` whatever `φ₁` is; but `φ` ranges over morphisms whose `env` takes both
+values of `colDup.Env = Fin 2`. -/
+lemma not_exact_factorization_colDup_oneCol :
+    ¬ ∃ φ₀ : colDup ⟶ oneCol, ∀ φ : colDup ⟶ (⊥ : Frame ℕ),
+      ∃ φ₁ : oneCol ⟶ (⊥ : Frame ℕ), φ = φ₀ ≫ φ₁ := by
+  rintro ⟨φ₀, hφ₀⟩
+  obtain ⟨φ₁, h₁⟩ := hφ₀ (colDup.homBotEquiv.symm 0)
+  obtain ⟨φ₂, h₂⟩ := hφ₀ (colDup.homBotEquiv.symm 1)
+  have e₁ := congrArg (fun f => Hom.env f PUnit.unit) h₁
+  have e₂ := congrArg (fun f => Hom.env f PUnit.unit) h₂
+  have e₁' : (0 : Fin 2) = φ₀.env (φ₁.env PUnit.unit) := e₁
+  have e₂' : (1 : Fin 2) = φ₀.env (φ₂.env PUnit.unit) := e₂
+  have hsub : φ₁.env PUnit.unit = φ₂.env PUnit.unit := Subsingleton.elim _ _
+  have h01 : (0 : Fin 2) = 1 := by rw [e₁', hsub, ← e₂']
+  exact absurd h01 (by decide)
 
 /- `Definition 54` and `Definition 57` land where the main body's relations land. -/
 

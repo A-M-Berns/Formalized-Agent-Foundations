@@ -66,6 +66,60 @@ TeX source `CartesianFrames/notes/2109.10996v1-main.tex`.
    (`CartesianFrames.Examples.two_distinct_endos`, compiled witness, round-3 audit).
    `Frame.AddSubagentCategorical` formalizes the `∃`-reading. Note also that the
    definition's relaxation to factorization *up to homotopy* is load-bearing rather
-   than cosmetic: at that same `φ₀`, exact factorization fails
-   (`Examples.phi0_no_exact_factorization`) while the homotopy condition holds
-   (`Examples.cat54_holds`).
+   than cosmetic — but this has to be checked at the level of the *relation*, not at
+   a single `φ₀`. The per-`φ₀` facts do **not** establish it:
+   `Examples.phi0_no_exact_factorization` shows only that exact factorization fails
+   at the particular `φ₀ = phi0`, and since the definition quantifies `∃ φ₀`, the
+   choice `φ₀ = 𝟙 colDup` factors every `φ` exactly (`φ = 𝟙 ≫ φ`), so the
+   exact-factorization variant of the relation holds for `colDup ◁₊ colDup` too and
+   nothing is separated. The genuine separator is a different pair: the
+   homotopy-relaxed relation holds between `colDup` and the 1×1 frame
+   `Examples.oneCol` (`Examples.colDup_addSubagentCategorical_oneCol`), while the
+   exact-factorization variant — a single `φ₀ : colDup ⟶ oneCol` through which every
+   `colDup ⟶ ⊥` factors on the nose — fails there
+   (`Examples.not_exact_factorization_colDup_oneCol`), because morphisms into `⊥` are
+   determined by their environment component and `oneCol`'s environment is a
+   singleton, so `(φ₀ ≫ φ₁).env` is the constant `φ₀.env 0` while `φ.env` ranges over
+   both states of `colDup`'s environment. (Compiled witnesses, final adversarial
+   audit.)
+
+8. **Claim 45 (App. A), false footnote.** The proof of part (1) constructs
+   `(g₀, h₀) : C → (A/B × B, E, ⋄)` and `(g₁, h₁)` back, then adds in a footnote
+   (TeX L1108): "In fact these morphisms are bijective and so establish an
+   isomorphism, as the reader can verify." They are not. `g₁ : A/B × B → A` is
+   `g₁(q, b) = q(b)`, and it is not injective as soon as some cell has more than one
+   element: for `A = {1, 2, 3, 4}` split into two 2-element cells there are four
+   choice functions, so `|A/B × B| = 4 · 2 = 8 > 4 = |A|`. What the proof actually
+   establishes — the two morphisms compose to something homotopic to the identity in
+   both orders — is all Claim 45 needs and all `Frame.external_multSubagent` /
+   `Frame.externalQuot_multSubagent` use; only the parenthetical strengthening to an
+   isomorphism is wrong.
+
+9. **Theorem 24 (§2.4), printed proof omits the reverse implication.** The statement
+   is an *iff* (`C₀ ◁ C₁` iff there is a `C₂` with `C₀ ◁ₓ C₂ ◁₊ C₁`), but the proof
+   (TeX L619–630) argues only the forward direction, constructing
+   `C₂ = (Image(D), E₁, ·₂)` from `C₀ ◁ C₁`. The converse is never argued. It does
+   follow from material the paper already has — Claim 23(1) turns `◁ₓ` and `◁₊` into
+   `◁`, and Claim 16 chains them — and that is the route
+   `Frame.subagent_iff_exists_multSubagent_addSubagent` takes; it proves both
+   directions.
+
+10. **Claim 38 (App. A), proof over-infers bijectivity.** From the single composite
+    identity `g_ψ ∘ g_φ = id_A` the proof concludes "and `g_ψ`, `g_φ` are bijective"
+    (TeX L849). That inference is invalid: one composite identity gives only
+    injectivity of `g_φ` and surjectivity of `g_ψ`. The other homotopy of the
+    equivalence, together with biextensionality of `D`, is what forces the reverse
+    composite `g_φ ∘ g_ψ = id_B`. The Lean proof
+    (`Frame.homotopyEquiv_iff_nonempty_iso_of_biextensional`) establishes both
+    identities before invoking a two-sided-inverse criterion. Statement sound;
+    printed proof incomplete, as in errata 1 and 4.
+
+11. **Claims 44 and 52 (App. A/B), ill-typed displayed calculations.** Two transcription
+    slips in otherwise-correct arguments. Claim 44's second display (TeX L1058–1069)
+    writes `g₁(x · y) ⋆ z` at L1066, although `g₁`'s domain is `X × Y` while `x · y`
+    lies in `B` — the intended line is `g₁(x, y) ⋆ z = g₁(g₀(b)) ⋆ z`. Claim 52's
+    first display (TeX L1257–1262) writes `a · f` at L1261, although `f` lies in `D`'s
+    environment `F` and `·` takes `C`'s environment `E`; the adjointness step is
+    `g(a) ⋆ f = a · h(f)`. Both Lean proofs
+    (`Frame.MultSubagentCurry.multSubagent`, `Frame.SubagentCovering.subagentCurry`)
+    use the well-typed equations.

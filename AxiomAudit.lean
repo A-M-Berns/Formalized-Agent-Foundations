@@ -930,6 +930,8 @@ open CartesianFrames in
   Examples.ext_genuine Examples.assume_not_biextEquiv
   Examples.phi0_homotopy_factors Examples.cat54_holds
   Examples.phi0_no_exact_factorization Examples.two_distinct_endos
+  Examples.colDup_addSubagentCategorical_oneCol
+  Examples.not_exact_factorization_colDup_oneCol
 -- CF-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Cartesian Frames surface (same contract as

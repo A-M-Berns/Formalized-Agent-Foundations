@@ -19,7 +19,7 @@ discovered by the reader.
 |---|---|---|
 | Garrabrant et al. (2016), [*Logical Induction*](https://arxiv.org/abs/1609.03543) | [`LogicalInduction/`](LogicalInduction/README.md) | Unconditional construction of a logical inductor + the full property tail: all 53 paper nodes formalized, 46 at paper strength and 7 with a named interface or class restriction retained. Two disclosed modeling substitutions. Zero `sorry`, zero `axiom`. |
 | Barász et al. (2014), [*Robust Cooperation in the Prisoner's Dilemma via Provability Logic*](https://arxiv.org/abs/1401.5577) | [`ModalAgents/`](ModalAgents/README.md) | Complete at the Gödel–Löb provability-logic level, including a proved (not axiomatized) GL fixed-point theorem. Zero `sorry`, zero `axiom`. |
-| Garrabrant, Herrmann, and Lopez-Wild (2021), [*Cartesian Frames*](https://arxiv.org/abs/2109.10996) | [`CartesianFrames/`](CartesianFrames/README.md) | In progress, targeting all 60 numbered nodes. Current layer: frames, morphisms, the category `Chu(W)`, and the transpose functor, with numbered-node provenance checked against the committed paper source. No `sorry`, no `axiom`. |
+| Garrabrant, Herrmann, and Lopez-Wild (2021), [*Cartesian Frames*](https://arxiv.org/abs/2109.10996) | [`CartesianFrames/`](CartesianFrames/README.md) | All 60 numbered nodes formalized — every definition, claim, and the Decomposition Theorem — across the main text and both appendices, at paper strength with no modeling substitutions. One node is formalized in part by ruling (Claim 35, whose External/Internal half is ill-typed as printed). Zero `sorry`, zero `axiom`. |
 
 Each directory's README gives the detailed statement-level accounting: what is proved,
 what is modeled, and exactly where the trust boundary sits.
@@ -28,7 +28,12 @@ Along the way the project has also produced some free-standing artifacts: a from
 Brouwer fixed-point theorem via Sperner's lemma (Mathlib has none), an autoformalized
 sequent-calculus proof of the de Jongh–Sambin GL fixed-point theorem, and four recorded
 errata in the *Logical Induction* paper itself
-([`LogicalInduction/notes/paper-errata.md`](LogicalInduction/notes/paper-errata.md)).
+([`LogicalInduction/notes/paper-errata.md`](LogicalInduction/notes/paper-errata.md)), and a
+further set in *Cartesian Frames*
+([`CartesianFrames/notes/paper-errata.md`](CartesianFrames/notes/paper-errata.md)) —
+including two printed proofs that establish less than their statements require, a false
+"equivalently" in a definition, and a footnote asserting an isomorphism that does not
+exist. Every affected statement is nonetheless true, and is proved here.
 
 ## Building
 
@@ -38,10 +43,10 @@ it will fetch that version automatically.
 
 ```sh
 lake exe cache get      # prebuilt Mathlib oleans (a minute or two)
-lake build AxiomAudit   # the checked target: builds both libraries + the endpoint inventory
+lake build AxiomAudit   # the checked target: builds every library + the endpoint inventory
 ```
 
-`lake build AxiomAudit` is *the* gate — it subsumes the libraries and fails if any listed
+`lake build AxiomAudit` is *the* gate — it subsumes all three libraries and fails if any listed
 endpoint gains a stray axiom or disappears. The three script gates run on the sources and
 need no build:
 
