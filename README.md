@@ -47,12 +47,13 @@ lake build AxiomAudit   # the checked target: builds every library + the endpoin
 ```
 
 `lake build AxiomAudit` is *the* gate — it subsumes all three libraries and fails if any listed
-endpoint gains a stray axiom or disappears. The three script gates run on the sources and
+endpoint gains a stray axiom or disappears. The script gates run on the sources and
 need no build:
 
 ```sh
 scripts/check-paper-nodes.sh          # `Paper node:` labels ↔ paper \label{…}, both directions
 python3 scripts/check-cartesian-frames-nodes.py  # numbered CF nodes ↔ committed TeX
+python3 scripts/check-modal-agents-nodes.py      # numbered ModalAgents nodes ↔ committed TeX
 python3 scripts/check_endpoint_coverage.py   # every annotated label has an inventory endpoint
 python3 scripts/lint_paper_labels.py         # every paper-facing theorem carries a label
 ```

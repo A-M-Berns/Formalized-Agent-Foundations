@@ -784,8 +784,28 @@ Every ModalAgents endpoint is now strictly clean. The former sole intentional ax
 development (vendored from FormalizedFormalLogic/ProvabilityLogic, pinned in
 `lakefile.lean`; see `ModalAgents/FixedPoint.lean`); `glFixedPoint_thm42`
 is a proved theorem, so the cooperation endpoints that rest on it are asserted strictly
-clean below rather than via `#assert_axioms_clean_except`. -/
+clean below rather than via `#assert_axioms_clean_except`.
 
+That paper numbers its nodes off a single section-scoped counter shared by
+`theorem`/`lemma`/`proposition`/`corollary`/`condition`, and only 22 of them carry a
+LaTeX `\label`, so — as for Cartesian Frames — the printed `Theorem 4.7` style number is
+the provenance key rather than a label. `Paper node:` lines on the endpoints below cite
+those numbers, and `scripts/check-modal-agents-nodes.py` validates them against the
+committed TeX (`ModalAgents/notes/1401.5577-main.tex`) **and** checks that every
+*declaration* annotated in `ModalAgents/` is itself listed between the MA-INVENTORY
+markers below.
+
+Six listed endpoints carry no annotation of their own, because they render no numbered
+node of that paper: `subst_congr` (a GL-level substitution congruence — the paper's
+Lemma 4.5 is the *arithmetic* statement, which this does not state);
+`defectBot_defects` and `cooperateBot_cooperates` (the §2 remark that `PA ⊢ [CB(X)=C]`
+and `PA ⊢ [DB(X)=D]`, prose in an unnumbered `remark`); `fairBot_vs_cooperateBot` and
+`fairBot_vs_defectBot` (§3 prose on FairBot's unexploitability and its waste against
+CooperateBot, again unnumbered); and `prudentBot_vs_defectBot` (the "in particular,
+PA+1 ⊢ [PB(DB)=D]" step *inside* the proof of Theorem 3.2, not one of that theorem's
+four conjuncts). They stay inventoried and axiom-checked regardless. -/
+
+-- MA-INVENTORY-BEGIN
 #assert_axioms_clean
   subst_congr glFixedPoint_uniqueness glFixedPoint_thm42
   glFixedPoint_spec outcome_fixed_point
@@ -794,6 +814,7 @@ clean below rather than via `#assert_axioms_clean_except`. -/
   fairBot_vs_defectBot prudentBot_vs_fairBot prudentBot_vs_defectBot
   prudentBot_vs_cooperateBot prudentBot_vs_prudentBot
   Cooperates.arithmeticLift modalAgent_behavioral
+-- MA-INVENTORY-END
 
 /-! ## Concrete arithmetic instantiation — the one upstream gap
 

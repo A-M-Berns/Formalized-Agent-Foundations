@@ -34,6 +34,13 @@ jobs:
       - name: Check Cartesian Frames node annotations
         run: python3 scripts/check-cartesian-frames-nodes.py
 
+      # Blocking: same contract for ModalAgents. That paper labels only 22 of its
+      # nodes and leaves several formalized ones unlabeled, so the provenance keys are
+      # the printed `<section>.<n>` numbers, recomputed from the committed TeX by
+      # emulating its shared section-scoped theorem counter.
+      - name: Check ModalAgents node annotations
+        run: python3 scripts/check-modal-agents-nodes.py
+
       # Blocking: docs/trust-surface.html (the read-through guide) must be regenerated
       # whenever any of its inputs changes; the page carries a hash stamp over them.
       - name: Check trust-surface guide freshness

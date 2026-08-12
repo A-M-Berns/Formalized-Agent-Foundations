@@ -16,6 +16,38 @@ It covers:
 * the rank-0 FairBot-to-CooperateBot result (§4, Thm 4.10);
 * the generic lift from GL-provability to arithmetical realizations (§4, Thm 4.1).
 
+### Paper source and node provenance
+
+The paper is committed as `ModalAgents/notes/1401.5577-main.tex` (with its `.bbl` and the
+matching PDF), so the spec travels with the formalization.
+
+Barász et al. number their nodes off a single section-scoped counter shared by
+`theorem`/`lemma`/`proposition`/`corollary`/`condition`, and only 22 of those nodes carry
+a LaTeX `\label` — several that this development proves are unlabeled. So, as in
+`CartesianFrames/`, the **printed number** is the provenance key: paper-facing endpoints
+carry a final docstring line `Paper node: Theorem 4.7 (§4).`, and
+`scripts/check-modal-agents-nodes.py` (blocking in CI) validates them fail-closed. It
+recomputes the node set from the committed TeX by emulating the counter rather than
+hard-coding a table, requires the cited *kind* to match the environment the paper used,
+requires the marker to be the last line of a docstring on a *named* declaration, and
+requires every annotated declaration to be listed in `AxiomAudit.lean`'s MA-INVENTORY
+block. (The paper's `definition` environment is an uncounted `trivlist`, so there are no
+numbered definitions to cite.)
+
+Six inventoried endpoints deliberately carry **no** annotation, because they render no
+numbered node — each says so in its own docstring:
+
+| declaration | what the paper actually says |
+|---|---|
+| `subst_congr` | GL-level substitution congruence; Lemma 4.5 is the *arithmetic* statement, which this does not state |
+| `defectBot_defects`, `cooperateBot_cooperates` | §2 prose in an unnumbered `remark` (`PA ⊢ [DB(X)=D]`, `PA ⊢ [CB(X)=C]`) |
+| `fairBot_vs_cooperateBot`, `fairBot_vs_defectBot` | §3 prose on FairBot's unexploitability "by inspection" and its waste against CooperateBot |
+| `prudentBot_vs_defectBot` | the "in particular, `PA+1 ⊢ [PB(DB)=D]`" step *inside* the proof of Thm 3.2, not one of its conjuncts |
+
+The converse direction is not checked, and should not be: the scope note below means
+several numbered nodes (Cor. 4.9, and Thm 3.2's unexploitability conjunct, which
+quantifies over all opponents) have no Lean statement here.
+
 ### Axioms
 
 **None.** Every ModalAgents endpoint reports only `propext`, `Classical.choice`, and

@@ -34,7 +34,10 @@ end BehavEquiv
 
 open scoped ModalAgent
 
-/-- GL-level modal-agent restriction of Barasz §4, Thm 4.8. -/
+/-- Modal agents are behavioral, in the GL-level modal-agent restriction:
+behaviorally equivalent opponents give GL-equivalent outcome formulas.
+
+Paper node: Theorem 4.8 (§4). -/
 theorem modalAgent_behavioral (X : ModalAgent) {Y Z : ModalAgent} (h : Y ≈ Z) :
     Modal.GL ⊢ outcome X Y 🡘 outcome X Z := by
   have hY := outcome_fixed_point X Y

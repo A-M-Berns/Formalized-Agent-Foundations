@@ -1,0 +1,116 @@
+\begin{thebibliography}{10}
+
+\bibitem{Altair}
+A.~Altair.
+\newblock A comparison of decision algorithms on newcomblike problems.
+
+\bibitem{Anderlini}
+L.~Anderlini.
+\newblock Some notes on church's thesis and the theory of games.
+\newblock {\em Theory and Decision}, 29(1):19--52, 1990.
+
+\bibitem{Binmore}
+K.~Binmore.
+\newblock Modeling rational players: Part i.
+\newblock {\em Economics and Philosophy}, 3(02):179--, 1987.
+
+\bibitem{Boolos}
+G.~Boolos.
+\newblock {\em The Logic of Provability}.
+\newblock Cambridge University Press, 1995.
+
+\bibitem{Canning}
+D.~Canning.
+\newblock Rationality, computability, and nash equilibrium.
+\newblock {\em Econometrica}, 60(4):877--88, July 1992.
+
+\bibitem{Critch}
+A.~Critch.
+\newblock A parametric, resource-bounded generalization of l\"ob's theorem, and
+  a robust cooperation criterion for open-source game theory.
+\newblock {\em The Journal of Symbolic Logic}, 84(4):1368--1381, December 2019.
+
+\bibitem{Drescher}
+G.L. Drescher.
+\newblock {\em Good And Real: Demystifying Paradoxes from Physics to Ethics}.
+\newblock A Bradford Book. Mit Press, 2006.
+
+\bibitem{Fortnow}
+L.~Fortnow.
+\newblock Program equilibria and discounted computation time.
+\newblock {\em Proc.\ 12th Conference on Theoretical Aspects of Rationality and
+  Knowledge}, pages 128--133, 2009.
+
+\bibitem{HWW}
+W.~Hoek, C.~Witteveen, and M~Wooldridge.
+\newblock Program equilibrium---a program reasoning approach.
+\newblock {\em International Journal of Game Theory}, pages 1--33, 2011.
+
+\bibitem{Metamagical}
+D.~R. Hofstadter.
+\newblock {\em Metamagical Themas: Questing for the Essence of Mind and
+  Pattern}.
+\newblock BasicBooks, 1985.
+
+\bibitem{Howard}
+J.V. Howard.
+\newblock Cooperation in the prisoner's dilemma.
+\newblock {\em Theory and Decision}, 24(3):203--213, 1988.
+
+\bibitem{KKLS}
+A.~T. Kalai, E.~Kalai, E.~Lehrer, and D.~Samet.
+\newblock A commitment folk theorem.
+\newblock {\em Games and Economic Behavior}, 69(1):127--137, 2010.
+\newblock Special Issue In Honor of Robert Aumann.
+
+\bibitem{Kleene}
+S.~C. Kleene.
+\newblock On notation for ordinal numbers.
+\newblock {\em J. Symb. Log.}, 3(4):150--155, 1938.
+
+\bibitem{Lindstrom}
+P.~Lindstr\"{o}m.
+\newblock Provability logic---a short introduction.
+\newblock {\em Theoria}, 62(1-2):19--61, 1996.
+
+\bibitem{Lob}
+M.~H. L\"{o}b.
+\newblock {Solution of a Problem of Leon Henkin}.
+\newblock {\em The Journal of Symbolic Logic}, 20(2):pp. 115--118, 1955.
+
+\bibitem{McAfee}
+R.~P. McAfee.
+\newblock Effective computability in economic decisions.
+
+\bibitem{MT}
+D.~Monderer and M.~Tennenholtz.
+\newblock Strong mediated equilibrium.
+\newblock {\em Artif. Intell.}, 173(1):180--195, January 2009.
+
+\bibitem{PS}
+M.~Peters and B.~Szentes.
+\newblock Definable and contractible contracts.
+\newblock {\em Econometrica}, 80(1):363--411, 2012.
+
+\bibitem{Pudlak}
+P.~Pudl\'ak.
+\newblock On the lengths of proofs of consistency.
+\newblock {\em Collegium Logicum (Annals of the Kurt-G\"odel-Society)}, 2,
+  1996.
+
+\bibitem{Rapoport}
+A.~Rapoport.
+\newblock {\em Two-Person Game Theory}.
+\newblock Dover Books on Mathematics Series. Dover, 1999.
+
+\bibitem{Slepnev}
+V.~Slepnev.
+\newblock Self-referential algorithms for cooperation in one-shot games
+  (unpublished draft).
+
+\bibitem{Tennenholtz}
+M.~Tennenholtz.
+\newblock Program equilibrium.
+\newblock {\em Games Econom. Behav.}, 49(2):363--373, 2004.
+
+\end{thebibliography}

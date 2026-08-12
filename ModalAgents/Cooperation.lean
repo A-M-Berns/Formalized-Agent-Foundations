@@ -141,8 +141,10 @@ lemma outcome_twoLevel (X Y : ModalAgent) :
   rw [← outcome_unfold, F_of_subst] at h
   exact h
 
-/-- GL-level form of the modal-agent fixed-point equation
-(Barasz, §4, Thm 4.7). -/
+/-- GL-level form of the modal-agent fixed-point equation: `outcome X Y` is
+the fixed point `ψ_{[X(Y)]}` of `X`'s modal formula applied to `Y`'s outcomes.
+
+Paper node: Theorem 4.7 (§4). -/
 theorem outcome_fixed_point (X Y : ModalAgent) :
     Modal.GL ⊢ outcome X Y 🡘
       X.formula⟦substFull (outcome Y X)
@@ -218,36 +220,46 @@ lemma outcome_prudentBot (Y : ModalAgent) :
       □(outcome Y prudentBot) ⋏ □(∼□⊥ 🡒 ∼(outcome Y defectBot)) := by
   exact outcome_fixed_point prudentBot Y
 
-/-- DefectBot defects against every opponent (Barasz, §2). -/
+/-- DefectBot defects against every opponent. Barasz states this as §2 prose
+(`PA ⊢ [DB(X)=D]`, in an unnumbered remark), so it carries no paper-node
+annotation. -/
 theorem defectBot_defects (Y : ModalAgent) : Defects defectBot Y := by
   intro ⟨hb⟩
   have ⟨hβ⟩ := outcome_defectBot Y
   exact (inferInstance : Consistent Modal.GL).not_inconsistent
     (fun _ => ⟨efq ⨀ (and₁ ⨀ hβ ⨀ hb)⟩)
 
-/-- CooperateBot cooperates with every opponent (Barasz, §2). -/
+/-- CooperateBot cooperates with every opponent. Barasz states this as §2 prose
+(`PA ⊢ [CB(X)=C]`, in an unnumbered remark), so it carries no paper-node
+annotation. -/
 theorem cooperateBot_cooperates (Y : ModalAgent) : Cooperates cooperateBot Y := by
   have ⟨h⟩ := outcome_cooperateBot Y
   exact ⟨and₂ ⨀ h ⨀ verum⟩
 
 /-! ## Concrete cooperation: rank 0 -/
 
-/-- FairBot cooperates with itself (Barasz, §3, Thm 3.1). -/
+/-- FairBot cooperates with itself, by the Löbian circle.
+
+Paper node: Theorem 3.1 (§3). -/
 theorem fairBot_vs_fairBot : Cooperates fairBot fairBot := by
   have ⟨hα⟩ := outcome_fairBot fairBot
   have h : Modal.GL ⊢! outcome fairBot fairBot ⋏ outcome fairBot fairBot :=
     lobian_circle (and₂ ⨀ hα) (and₂ ⨀ hα)
   exact ⟨and₁ ⨀ h⟩
 
-/-- FairBot and CooperateBot mutually cooperate (Barasz, §3). -/
+/-- FairBot and CooperateBot mutually cooperate. Barasz notes this only as §3
+prose ("FairBot wastes utility by cooperating even with CooperateBot"), so it
+carries no paper-node annotation. -/
 theorem fairBot_vs_cooperateBot :
     Cooperates fairBot cooperateBot ∧ Cooperates cooperateBot fairBot := by
   have ⟨hα⟩ := outcome_fairBot cooperateBot
   have ⟨h_cb⟩ := cooperateBot_cooperates fairBot
   exact ⟨⟨and₂ ⨀ hα ⨀ nec h_cb⟩, cooperateBot_cooperates fairBot⟩
 
-/-- GL-level form of Barasz §4, Thm 4.10: a rank-0 modal agent that
-cooperates with FairBot also cooperates with CooperateBot. -/
+/-- GL-level form: a rank-0 modal agent that cooperates with FairBot also
+cooperates with CooperateBot.
+
+Paper node: Theorem 4.10 (§4). -/
 theorem rank0_fairBot_implies_cooperateBot (X : ModalAgent) (h_rank : X.rank = 0) :
     Cooperates X fairBot → Cooperates X cooperateBot := by
   intro hXF
@@ -301,7 +313,9 @@ theorem rank0_fairBot_implies_cooperateBot (X : ModalAgent) (h_rank : X.rank = 0
       simpa using (and₂ ⨀ h_to_cb.some ⨀ h_phi_top)
     exact ⟨and₂ ⨀ hXCB_fp.some ⨀ h_rhs_cb⟩
 
-/-- FairBot and DefectBot mutually defect (Barasz, §3). -/
+/-- FairBot and DefectBot mutually defect. Barasz states FairBot's
+unexploitability as §3 prose ("by inspection"), so this carries no paper-node
+annotation. -/
 theorem fairBot_vs_defectBot :
     Defects fairBot defectBot ∧ Defects defectBot fairBot := by
   have ⟨hα⟩ := outcome_fairBot defectBot
@@ -313,7 +327,10 @@ theorem fairBot_vs_defectBot :
   have : Modal.GL ⊢! □(⊥ : Modal.Formula ℕ) := axiomK' (nec h_imp) ⨀ h_box
   exact unprovable_box_bot ⟨this⟩
 
-/-- PrudentBot and FairBot mutually cooperate (Barasz, §3, Thm 3.2). -/
+/-- PrudentBot and FairBot mutually cooperate — the "mutually cooperates …
+with FairBot" conjunct of the node below.
+
+Paper node: Theorem 3.2 (§3). -/
 theorem prudentBot_vs_fairBot :
     Cooperates prudentBot fairBot ∧ Cooperates fairBot prudentBot := by
   have ⟨hα⟩ := outcome_prudentBot fairBot
@@ -329,7 +346,11 @@ theorem prudentBot_vs_fairBot :
       (C_trans (CK_of_C_of_C C_id (C_of_conseq h_consist)) (and₂ ⨀ hα))
   exact ⟨⟨and₁ ⨀ h⟩, ⟨and₂ ⨀ h⟩⟩
 
-/-- PrudentBot and DefectBot mutually defect (Barasz, §3, Thm 3.2). -/
+/-- PrudentBot and DefectBot mutually defect. This is the "in particular,
+`PA+1 ⊢ [PB(DB)=D]`" step *inside* the proof of Barasz §3, Thm 3.2, not one of
+that theorem's four conjuncts, so it carries no paper-node annotation; Thm 3.2's
+unexploitability conjunct (which quantifies over all opponents) is not
+formalized here. -/
 theorem prudentBot_vs_defectBot :
     Defects prudentBot defectBot ∧ Defects defectBot prudentBot := by
   have ⟨hα⟩ := outcome_prudentBot defectBot
@@ -341,7 +362,10 @@ theorem prudentBot_vs_defectBot :
   exact unprovable_box_bot ⟨axiomK' (nec h_imp) ⨀ h_box⟩
 
 /-- PrudentBot defects against CooperateBot; CooperateBot cooperates
-with PrudentBot (Barasz, §3, Thm 3.2). -/
+with PrudentBot. The first component is the "defects against CooperateBot"
+conjunct of the node below.
+
+Paper node: Theorem 3.2 (§3). -/
 theorem prudentBot_vs_cooperateBot :
     Defects prudentBot cooperateBot ∧ Cooperates cooperateBot prudentBot := by
   have ⟨hα⟩ := outcome_prudentBot cooperateBot
@@ -356,7 +380,10 @@ theorem prudentBot_vs_cooperateBot :
     axiomK' h_flip ⨀ (nec h_cbdb)
   exact unprovable_box_box_bot ⟨h_boxbox⟩
 
-/-- PrudentBot cooperates with itself (Barasz, §3, Thm 3.2). -/
+/-- PrudentBot cooperates with itself — the "mutually cooperates with itself"
+conjunct of the node below.
+
+Paper node: Theorem 3.2 (§3). -/
 theorem prudentBot_vs_prudentBot : Cooperates prudentBot prudentBot := by
   have ⟨hα⟩ := outcome_prudentBot prudentBot
   have ⟨hg⟩ := outcome_prudentBot defectBot
@@ -374,11 +401,13 @@ theorem prudentBot_vs_prudentBot : Cooperates prudentBot prudentBot := by
 /-! ## Arithmetical lift (Barasz, §4, Thm 4.1) -/
 
 /-- Lift GL-provable cooperation through an arithmetical realization
-(Barasz, §4, Thm 4.1). The realization comes from the upstream
+The realization comes from the upstream
 `ProvabilityLogic` package and consumes that development's formulas, so the
 conclusion interprets the translated outcome formula
 (`GlFixedPointBridge.toSeq`); the translation is the identity on the modal
-structure (see `GlFixedPointBridge.ofSeq_toSeq`/`toSeq_ofSeq`). -/
+structure (see `GlFixedPointBridge.ofSeq_toSeq`/`toSeq_ofSeq`).
+
+Paper node: Theorem 4.1 (§4). -/
 theorem Cooperates.arithmeticLift {X Y : ModalAgent} (h : Cooperates X Y)
     {L : FirstOrder.Language} [L.ReferenceableBy L] [L.DecidableEq]
     {T U : FirstOrder.Theory L} [FirstOrder.ProvabilityAbstraction.Diagonalization T]

@@ -12,9 +12,21 @@ real `\label` in a `Paper node:` docstring line, checked two-way by
 `scripts/check-paper-nodes.sh`. The `dd:*` design-decision labels used in docstrings
 are defined in the glossary at `LogicalInduction.lean`.
 
-The finished `ModalAgents/` formalization is the model for disclosure discipline: a
-clean proof with its unproved facts named, cited, and isolated in its README. Do the
-same kind of honest accounting everywhere.
+The finished `ModalAgents/` formalization (Barász et al., arXiv:1401.5577) is the model
+for disclosure discipline: a clean proof with its unproved facts named, cited, and
+isolated in its README. Do the same kind of honest accounting everywhere. Its paper
+specification is committed as `ModalAgents/notes/1401.5577-main.tex` and the matching
+PDF. That paper labels only 22 of its nodes and leaves several formalized ones
+unlabeled, so — as in Cartesian Frames — the printed `Theorem 3.2` / `Lemma 4.5` numbers
+are the provenance keys, checked by `scripts/check-modal-agents-nodes.py`, which
+recomputes them from the TeX by emulating its shared section-scoped theorem counter and
+enforces the annotation contract fail-closed (validity including the node *kind*,
+anchoring to a *named* declaration, and per-declaration coverage in `AxiomAudit.lean`'s
+MA-INVENTORY block). Six inventoried endpoints there deliberately carry no annotation
+because the facts they prove are unnumbered paper prose or proof steps; the reasons are
+recorded at each declaration and in the MA-INVENTORY preamble. Note the paper's
+`definition` environment is an *uncounted* `trivlist`, so that paper has no numbered
+definitions to cite.
 
 The **Cartesian Frames** formalization (Garrabrant, Herrmann, and Lopez-Wild,
 arXiv:2109.10996) lives in `CartesianFrames/` and is node-complete: all 60 numbered

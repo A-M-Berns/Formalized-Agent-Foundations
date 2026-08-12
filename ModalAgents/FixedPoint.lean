@@ -34,7 +34,9 @@ abbrev diag (p : ℕ) (ψ : Modal.Formula ℕ) : Modal.Substitution ℕ :=
 /-! ## Substitution congruence -/
 
 /-- Pointwise GL-iff-equivalent substitutions yield GL-iff-equivalent
-formulas. This is the GL-level counterpart of Barasz §4, Lemma 4.5. -/
+formulas. This is the GL-level counterpart of Barasz §4, Lemma 4.5, and
+deliberately carries no paper-node annotation: Lemma 4.5 concludes about
+*arithmetic* formulas under `PA`, which this does not state. -/
 theorem subst_congr {σ σ' : Modal.Substitution ℕ}
     (h : ∀ a, Modal.GL ⊢ (σ a) 🡘 (σ' a)) (φ : Modal.Formula ℕ) :
     Modal.GL ⊢ φ⟦σ⟧ 🡘 φ⟦σ'⟧ := by
@@ -144,7 +146,9 @@ end GlFixedPointBridge
 single-variable form, with the strong form of the existence claim: the
 constructed fixed point uses only atoms from the input formula and not
 the diagonal variable (standard for the Craig-interpolant / Bernardi
-construction, Boolos Ch. 8). Proved through `ProvabilityLogic/` (see above). -/
+construction, Boolos Ch. 8). Proved through `ProvabilityLogic/` (see above).
+
+Paper node: Theorem 4.2 (§4). -/
 theorem glFixedPoint_thm42 {p : ℕ} {φ : Modal.Formula ℕ} (h : Modalized p φ) :
     ∃ ψ : Modal.Formula ℕ,
       (Modal.GL ⊢ ψ 🡘 φ⟦diag p ψ⟧) ∧
@@ -195,7 +199,10 @@ private lemma glFixedPoint_eq {p : ℕ} {φ : Modal.Formula ℕ} (h : Modalized 
     if h : Modalized p φ then (glFixedPoint_thm42 h).choose else φ) = _
   rw [dif_pos h]
 
-/-- Defining equation for the fixed point (Barasz, §4, Thm 4.2). -/
+/-- Defining equation for the fixed point: the Skolemized operator `glFixedPoint`
+satisfies the existence claim of the same node that `glFixedPoint_thm42` states.
+
+Paper node: Theorem 4.2 (§4). -/
 theorem glFixedPoint_spec {p : ℕ} {φ : Modal.Formula ℕ} (h : Modalized p φ) :
     Modal.GL ⊢ glFixedPoint p φ 🡘 φ⟦diag p (glFixedPoint p φ)⟧ := by
   rw [glFixedPoint_eq h]
@@ -289,8 +296,10 @@ private def substCongrBox : ∀ {φ : Modal.Formula ℕ}, Modalized p φ →
     C_trans boxBoxdotOfBox (C_trans (implyBoxDistribute' (substCongrBoxdot φ)) EBoxOfBoxE)
 
 /-- Any two GL fixed points of a formula modalized in `p` are
-GL-equivalent (Barasz, §4, Thm 4.3; Lindström Thm 12). Proved from the
-boxed-equivalence substitution lemma and Löb's rule. -/
+GL-equivalent (Lindström Thm 12). Proved from the boxed-equivalence
+substitution lemma and Löb's rule.
+
+Paper node: Theorem 4.3 (§4). -/
 theorem glFixedPoint_uniqueness {p : ℕ} {φ : Modal.Formula ℕ} (hmod : Modalized p φ)
     {ψ ψ' : Modal.Formula ℕ}
     (h₁ : Modal.GL ⊢ ψ 🡘 φ⟦diag p ψ⟧)
