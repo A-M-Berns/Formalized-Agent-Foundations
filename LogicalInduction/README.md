@@ -281,7 +281,7 @@ assertion starts failing and gets promoted to a plain clean assertion.
    structure, no deductive process, and no slack term crossing the boundary. The mesh
    endpoint's conclusion has exactly that shape, so it discharges the hypothesis as well
    as an exactly-reflecting one would. Details, and the rest of the compatibility
-   surface, in [`../notes/deference-compatibility.md`](../notes/deference-compatibility.md).
+   surface, in [`notes/deference-compatibility.md`](notes/deference-compatibility.md).
 
 All three are disclosed at every affected statement, not just here.
 
@@ -326,7 +326,7 @@ reads that have twice moved upward on contact.
   correspondence for conservative extensions, neither of which is cheap and neither of which
   is scheduled. The one known downstream consumer does **not** need exactness — see the
   interface note above. Full assessment and the adjudication outcome in
-  [`../notes/boundary-propositional-substrate.md`](../notes/boundary-propositional-substrate.md).
+  [`notes/boundary-propositional-substrate.md`](notes/boundary-propositional-substrate.md).
 * **`thm:ifp` — the fuel class.** The transported trader needs a closure property the
   digit calculus's toolkit does not provide (the inverse-operation ceiling: the emitted
   freeze stream's certificate needs a decode test on exponentially large codes, which no
@@ -356,7 +356,7 @@ state. Closing it would free `thm:ifp`, the one endpoint whose restricting inter
 no inhabitant, and would retire the calibration caveat that qualifies every efficiency
 certificate on this page. The staged plan, the two places Mathlib stops short (no timed
 simulation theory; `FinTM2` not enumerable as-is), and the effort estimate are in
-[`notes/boundary-efficiency-model.md`](../notes/boundary-efficiency-model.md).
+[`notes/boundary-efficiency-model.md`](notes/boundary-efficiency-model.md).
 
 **Boundary 2 — the propositional substrate.** The paper's own `def:world` builds worlds
 by Boolean algebra over **prime sentences**, so this repo's propositional worlds are a
@@ -364,12 +364,12 @@ faithful rendering of the paper's, not an approximation of them. What the propos
 substrate lacks is not the product *term* but **deferred denotation** — a sentence that
 names a value without computing it; a first-order `LUV` would supply exactly that, and
 with it exact `thm:ccee` over the base inductor. A dedicated feasibility spike
-([`notes/boundary-substrate-fol-scope.md`](../notes/boundary-substrate-fol-scope.md))
+([`notes/boundary-substrate-fol-scope.md`](notes/boundary-substrate-fol-scope.md))
 scoped that migration and recommends against it: 10–20 months, roughly half of it
 Foundation-side, with a *regressive* middle (an empty emission class until the rebuilt
 first-order symbol calculus lands) and a payoff that is inert at the one known consumer.
 The boundary therefore stays, with its full map in
-[`notes/boundary-propositional-substrate.md`](../notes/boundary-propositional-substrate.md)
+[`notes/boundary-propositional-substrate.md`](notes/boundary-propositional-substrate.md)
 (as amended by the spike) and the worked `thm:ccee` instance settled — see the row.
 
 ## Faithfulness
@@ -377,12 +377,12 @@ The boundary therefore stays, with its full map in
 The current statement surface was checked by a fresh, current-state adversarial audit.
 Its findings are a snapshot of the final signatures and verified obstructions, without
 the superseded diagnoses or repair history of earlier passes:
-[`notes/faithfulness-audit-2026-08-08.md`](../notes/faithfulness-audit-2026-08-08.md).
+[`notes/faithfulness-audit-2026-08-08.md`](notes/faithfulness-audit-2026-08-08.md).
 One of its findings has since been closed rather than merely disclosed — `thm:wubexp`
 (B1), which is why the counts above read 51/2 where that snapshot reads 50/3; the finding
 carries a dated resolution banner.
 The process surfaced five errata in the paper itself, recorded with repairs in
-[`notes/logical-induction-paper-errata.md`](../notes/logical-induction-paper-errata.md).
+[`notes/paper-errata.md`](notes/paper-errata.md).
 
 `brouwer_fixed_point`, used by the market maker, was proved from scratch via Sperner's
 lemma (Mathlib has no Brouwer theorem); its proof body was autoformalized by Harmonic's

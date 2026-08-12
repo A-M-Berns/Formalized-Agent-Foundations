@@ -62,7 +62,7 @@ Appendix B:
   (`phi0_no_exact_factorization`), and the same frame has two distinct endomorphisms
   (`two_distinct_endos`), so the definition's follow-up remark about "the" morphism
   `C ⟶ D` cannot mean hom-set uniqueness — that reading would falsify `Claim 56`
-  (`notes/cartesian-frames-paper-errata.md`, erratum 7).
+  (`CartesianFrames/notes/paper-errata.md`, erratum 7).
 
 None of these statements is a paper claim, so none carries a paper-node annotation; the
 matrices they are built from are the paper's own worked examples, cited above in prose.
@@ -639,7 +639,7 @@ where the main body's do, on the paper's own examples.  Second — and this is w
 formalization's reading of `Definition 54` rests on — the definition's relaxation to
 factorization *up to homotopy* is load-bearing, and its follow-up remark about "the"
 morphism `C ⟶ D` cannot be read as uniqueness of the hom-set element (see
-`notes/cartesian-frames-paper-errata.md`, erratum 7). -/
+`CartesianFrames/notes/paper-errata.md`, erratum 7). -/
 
 /-- A one-row frame with two identical columns: the smallest frame whose endomorphism
 monoid is not trivial. -/

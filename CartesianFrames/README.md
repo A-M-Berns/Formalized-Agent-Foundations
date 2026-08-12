@@ -23,7 +23,7 @@ the categorical characterization of additive subagents (Definitions 54, 57;
 Claims 55–56), and the sub-environment characterization closing the appendix
 (Definition 58, Claims 59–60).  **Every numbered node of the paper now has a Lean
 carrier** (modulo the Claim 35 ruling below).  Paper errata found so
-far are collected in `notes/cartesian-frames-paper-errata.md` (the printed proofs
+far are collected in `notes/paper-errata.md` (the printed proofs
 of Claims 53 and 43 are incomplete though both statements are sound; Definition
 50's "equivalently, `h` surjective" parenthetical is false; Claim 35 is partially
 ill-typed).  **Claim 35 is formalized only in part, by ruling:** its Commit/Assume
@@ -58,8 +58,8 @@ examples in prose and are inventoried in `AxiomAudit.lean` alongside the definit
 they constrain.
 
 The paper is committed verbatim as
-[`notes/2109.10996v1-main.tex`](../notes/2109.10996v1-main.tex), with the matching
-[`notes/2109.10996v1.pdf`](../notes/2109.10996v1.pdf).  Unlike the Logical Induction
+[`notes/2109.10996v1-main.tex`](notes/2109.10996v1-main.tex), with the matching
+[`notes/2109.10996v1.pdf`](notes/2109.10996v1.pdf).  Unlike the Logical Induction
 paper, most numbered nodes have no LaTeX `\label`.  Their stable source identifiers
 are therefore the printed `Definition n`, `Claim n`, and `Theorem n` numbers.  Every
 paper-facing Lean declaration records that identifier in a final `Paper node:`

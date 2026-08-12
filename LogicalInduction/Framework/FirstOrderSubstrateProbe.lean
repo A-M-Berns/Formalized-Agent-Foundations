@@ -2,7 +2,7 @@
 # Scoping probe — a first-order substrate for `Sentence`
 
 **Not part of the build.**  This file is a read-only feasibility probe for
-`notes/boundary-substrate-fol-scope.md`; it is imported by nothing, claims no paper node,
+`LogicalInduction/notes/boundary-substrate-fol-scope.md`; it is imported by nothing, claims no paper node,
 and is excluded from `AxiomAudit`.  It exists so that two claims in that note are backed
 by something the kernel checked rather than by prose.
 

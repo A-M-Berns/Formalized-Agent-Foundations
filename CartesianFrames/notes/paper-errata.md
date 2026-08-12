@@ -1,7 +1,7 @@
 # Cartesian Frames (arXiv:2109.10996v1) — paper errata noticed during formalization
 
 Curated during the Lean formalization in `CartesianFrames/`; each entry cites the
-TeX source `notes/2109.10996v1-main.tex`.
+TeX source `CartesianFrames/notes/2109.10996v1-main.tex`.
 
 1. **Claim 53 (App. B), proof gap.** The printed proof's final display
    (`φ_e = φ_e ∘ τ ∘ σ`, TeX ~L1323–1331) verifies only the *agent* components.

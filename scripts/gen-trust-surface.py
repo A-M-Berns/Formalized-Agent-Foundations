@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate docs/trust-surface.html — the trust-surface read-through guide.
 
-Side-by-side of every annotated paper node (notes/1609.03543v5-main.tex) with the
+Side-by-side of every annotated paper node (LogicalInduction/notes/1609.03543v5-main.tex) with the
 strongest Lean endpoint carrying it, plus the tier and justification from
 scripts/coverage-classification.md. Paper math is converted to MathML at build time
 (pip install latex2mathml); the page is self-contained, no runtime JS libraries.
@@ -21,7 +21,7 @@ for line in open(ROOT+'scripts/coverage-classification.md'):
     if m and m.group(1) != 'label':
         rows[m.group(1)] = {'tier': m.group(2), 'just': m.group(3).strip()}
 
-tex = open(ROOT+'notes/1609.03543v5-main.tex').read()
+tex = open(ROOT+'LogicalInduction/notes/1609.03543v5-main.tex').read()
 def find_env(label):
     pos = tex.find('\\label{%s}' % label)
     if pos < 0: return None, None, None
@@ -638,7 +638,7 @@ page = (page.replace('%%NAV%%', nav_html).replace('%%CARDS%%', body_cards)
 import hashlib
 _h = hashlib.sha256()
 for _f in ['scripts/coverage-classification.md', 'AxiomAudit.lean',
-           'notes/1609.03543v5-main.tex', 'scripts/trust-surface-template.html',
+           'LogicalInduction/notes/1609.03543v5-main.tex', 'scripts/trust-surface-template.html',
            'scripts/gen-trust-surface.py']:
     _h.update(open(ROOT + _f, 'rb').read())
 page += '\n<!-- trust-surface-sources: %s -->\n' % _h.hexdigest()

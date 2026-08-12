@@ -1,7 +1,7 @@
 /-
 # A counted-step machine and its polynomial-time class
 
-Stage 1 of the efficiency-model program (`notes/boundary-efficiency-model.md`). This file
+Stage 1 of the efficiency-model program (`LogicalInduction/notes/boundary-efficiency-model.md`). This file
 defines a machine whose steps are *counted by construction*, together with the polynomial
 time class `MachinePolyEC` built over it.
 
@@ -50,7 +50,7 @@ The justification is scoped to that case and does not generalize. An embedding t
 search or an iterated construction needs — would find the block dirty on the second entry,
 so it must either clear the block between entries or carry a stronger "ends clean"
 contract. Whichever way that is settled, it is a Stage-2 question
-(`notes/boundary-efficiency-model.md`); the convention below stands as is, and the closure
+(`LogicalInduction/notes/boundary-efficiency-model.md`); the convention below stands as is, and the closure
 results here are unaffected.
 
 **Finiteness is what makes the class honest.** With `Fintype Γ`, `Fintype K` and `Fintype Λ`
@@ -325,7 +325,7 @@ if one machine computes it on every input within a clock of the normal form
 
 This is deliberately the same shape as `LogicalInduction.EfficientlyComputable`: an
 existential over the program and over the clock's `(a, k)`. It is *not* related to it by any
-theorem — the inclusion is Stage 2 of `notes/boundary-efficiency-model.md` and is not
+theorem — the inclusion is Stage 2 of `LogicalInduction/notes/boundary-efficiency-model.md` and is not
 started. The `Fintype Γ` hypothesis is part of the model, not a convenience: an infinite
 alphabet would let the transition function act as an oracle. -/
 def MachinePolyEC [Fintype Γ] (f : List Γ → List Γ) : Prop :=

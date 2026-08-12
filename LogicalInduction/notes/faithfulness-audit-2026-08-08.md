@@ -2,14 +2,14 @@
 
 Fresh, current-state audit of `LogicalInduction/`, `AxiomAudit.lean`, and the public
 statement inventory at HEAD `bbef282`, against the paper source
-`notes/1609.03543v5-main.tex`.
+`LogicalInduction/notes/1609.03543v5-main.tex`.
 
 Completed by Codex using GPT-5.6 Sol.
 
 This is a snapshot, not a continuation ledger. It assigns findings from the current
 signatures and definitions only; it does not preserve old finding numbers, repair history,
 or superseded diagnoses. The prior 2026-07-28 report was deleted as part of this pass.
-Paper errata remain separate in `notes/logical-induction-paper-errata.md`.
+Paper errata remain separate in `LogicalInduction/notes/paper-errata.md`.
 
 ## Scope and method
 

@@ -33,7 +33,7 @@ import re
 import sys
 from pathlib import Path
 
-TEX = Path("notes/2109.10996v1-main.tex")
+TEX = Path("CartesianFrames/notes/2109.10996v1-main.tex")
 LIB = Path("CartesianFrames")
 ROOT_MODULE = Path("CartesianFrames.lean")
 AUDIT = Path("AxiomAudit.lean")

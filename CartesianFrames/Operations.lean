@@ -26,7 +26,7 @@ than `theorem`s — the same shape as the library's other `dd:eq-to-iso` site,
 External/Internal half is
 ill-typed as printed — `B` partitions `A`, not `A/B` — and is excluded by ruling; see
 `CartesianFrames/KNOWLEDGE.md` (intentional deviations) and
-`notes/cartesian-frames-paper-errata.md` erratum 3.
+`CartesianFrames/notes/paper-errata.md` erratum 3.
 -/
 
 universe u

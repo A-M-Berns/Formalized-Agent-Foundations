@@ -4,7 +4,7 @@
 **This file is a spike, not part of the formalization.**  It is not imported by
 `LogicalInduction.lean`, contributes to no endpoint, and carries no paper node.  Its only
 purpose is to supply *evidence* for the Stage-0 decision recorded in
-`notes/boundary-efficiency-model.md` ("in-repo counted machine vs. Mathlib retrofit").
+`LogicalInduction/notes/boundary-efficiency-model.md` ("in-repo counted machine vs. Mathlib retrofit").
 
 The question the probe answers: **can a step-count bound be carried through Mathlib's
 smallest TM simulation (`Turing.TM1to0`) without re-proving the file from scratch?**

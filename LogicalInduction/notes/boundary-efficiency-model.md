@@ -395,7 +395,7 @@ down. What the memo commits to beyond the table is the design:
 
 The "no free type variables" clause is not fastidiousness. `lake env lean` auto-binds
 unbound identifiers as implicit type variables — this repo's standing gotcha (gotcha log in
-`notes/consolidation.md`) — so a statement that *should* have failed to elaborate for want
+`LogicalInduction/notes/consolidation.md`) — so a statement that *should* have failed to elaborate for want
 of a symbol or a `Fintype` instance instead elaborates silently into a strictly more
 general, and false, claim, which the per-file check will happily accept. A concrete alphabet
 removes that failure mode at the source rather than relying on review to catch it. Scope of
@@ -603,7 +603,7 @@ justification, and it is ours: it comes from what `PolyFueled` measures.
 
 The paper is *consistent with* the choice but is not its authority, and an earlier draft of
 this memo cited it as if it were. `def:ec` (§3.3 "Efficient Computability", `sec:efc`;
-`notes/1609.03543v5-main.tex` line 749, the `keydef` at line 753) requires "runtime
+`LogicalInduction/notes/1609.03543v5-main.tex` line 749, the `keydef` at line 753) requires "runtime
 polynomial in $n$ **(i.e. in the length of $n$ written in unary)**" — the parenthetical
 fixes how the *runtime bound* is measured, it does not prescribe an input encoding. Reading
 it as a prescription overclaims; reading it as compatible with unary day input is right, and
@@ -988,7 +988,7 @@ all unpair their input. The verification that this is no obstacle machine-side:
      repository": "Nothing here is bridged to `LogicalInduction.EfficientlyComputable` —
      that inclusion is Stage 2 of the plan and is not started";
    * `MachinePolyEC`'s own docstring in `Basic.lean`: "It is *not* related to it by any
-     theorem — the inclusion is Stage 2 of `notes/boundary-efficiency-model.md` and is not
+     theorem — the inclusion is Stage 2 of `LogicalInduction/notes/boundary-efficiency-model.md` and is not
      started."
 
    Each becomes a statement of what S3 relates and at what strength, with the "no strength

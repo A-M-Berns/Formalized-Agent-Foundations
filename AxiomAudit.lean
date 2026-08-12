@@ -41,7 +41,7 @@ reading an endpoint means understanding every structure its hypotheses mention.
 
 **Annotation convention**: the last line of every inventory member's docstring is
 `Paper node: ` followed by backticked labels taken verbatim from `\label{…}` in
-`notes/1609.03543v5-main.tex`, comma-separated — no ranges, no glosses, so every label
+`LogicalInduction/notes/1609.03543v5-main.tex`, comma-separated — no ranges, no glosses, so every label
 is greppable. Members realizing the efficient-computability obligation without a node
 of their own carry `def:ec`; graded-strength endpoints share their theorem's node.
 
@@ -574,7 +574,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- the two costs it carries and the mesh endpoint does not — a genuine freshness restriction
 -- on the source class, and `def:pgen` at the extended market — are stated at the theorem, in
 -- `LogicalInduction/README.md` and in `scripts/coverage-classification.md`.  Full assessment
--- and the adjudication outcome in `notes/boundary-propositional-substrate.md`.
+-- and the adjudication outcome in `LogicalInduction/notes/boundary-propositional-substrate.md`.
 #assert_axioms_clean
   productDefDP_computable
   productDefDP_union_consistentWithTheory

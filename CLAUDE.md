@@ -6,8 +6,8 @@ on top of [Foundation](https://github.com/FormalizedFormalLogic/Foundation) and 
 The flagship formalization is **Logical Induction** (Garrabrant et al.,
 arXiv:1609.03543) in `LogicalInduction/` — near-complete; see
 `LogicalInduction/README.md` for the trust-surface summary and
-`notes/faithfulness-audit-2026-08-08.md` for the current audit. **The paper is the
-spec** (`notes/1609.03543v5-main.tex`); every paper-facing theorem carries the paper's
+`LogicalInduction/notes/faithfulness-audit-2026-08-08.md` for the current audit. **The paper is the
+spec** (`LogicalInduction/notes/1609.03543v5-main.tex`); every paper-facing theorem carries the paper's
 real `\label` in a `Paper node:` docstring line, checked two-way by
 `scripts/check-paper-nodes.sh`. The `dd:*` design-decision labels used in docstrings
 are defined in the glossary at `LogicalInduction.lean`.
@@ -20,7 +20,7 @@ The **Cartesian Frames** formalization (Garrabrant, Herrmann, and Lopez-Wild,
 arXiv:2109.10996) lives in `CartesianFrames/`; begin with `CartesianFrames/README.md`
 and the knowledge base `CartesianFrames/KNOWLEDGE.md` (settled design decisions and
 the correspondence table). Its paper specification is committed as
-`notes/2109.10996v1-main.tex` and the matching PDF. Most nodes in that paper lack
+`CartesianFrames/notes/2109.10996v1-main.tex` and the matching PDF. Most nodes in that paper lack
 LaTeX labels, so their printed `Definition n` / `Claim n` / `Theorem n` identifiers
 are the provenance keys, checked by `scripts/check-cartesian-frames-nodes.py`. The
 same declaration rule applies: `theorem` iff the declaration renders a paper
@@ -100,7 +100,7 @@ arithmetic, has formalized nothing we didn't already assume.
    A stop-and-report ("Foundation doesn't expose X", "Mathlib lacks Y"), stated
    self-containedly at the site, is a *success*, not a failure. The current verified
    obstructions live in `LogicalInduction/README.md` ("Planned future work") and
-   `notes/boundary-efficiency-model.md`.
+   `LogicalInduction/notes/boundary-efficiency-model.md`.
 
 ### Human read-through
 
@@ -112,7 +112,7 @@ read-through.
 > **Sequencing (Anson).** The read-through runs **once, over the consolidated frozen
 > surface** — not per-milestone. Order: **(1)** results green with disclosures in
 > place (done); **(2)** consolidation / de-slop / API surface (in progress; see
-> `notes/consolidation.md`), after which the surface re-freezes and the read-through
+> `LogicalInduction/notes/consolidation.md`), after which the surface re-freezes and the read-through
 > runs over it; **(3)** a final fresh-context adversarial audit, last.
 
 ### Scheduled adversarial audit
@@ -123,10 +123,10 @@ theorems (hypotheses unsatisfiable/unrealizable); conclusion-in-hypothesis squee
 oversold stubs; type-`(c)` substitutions; degenerate non-vacuity (constant-sequence
 witnesses); and off-loaded steps. Where possible, non-vacuity is discharged **by the
 construction** rather than a stand-in witness. The fresh 2026-08-08 audit
-(`notes/faithfulness-audit-2026-08-08.md`) is the current snapshot: every qualification
+(`LogicalInduction/notes/faithfulness-audit-2026-08-08.md`) is the current snapshot: every qualification
 is tied to the final statement surface or a verified obstruction.
 
-### Consolidation discipline (Anson, standing — see `notes/consolidation.md`)
+### Consolidation discipline (Anson, standing — see `LogicalInduction/notes/consolidation.md`)
 
 The end state must show **no structural evidence of previous versions**: no
 ₙ-suffixed public layers, no parallel classes that exist only because a definition was
@@ -150,7 +150,7 @@ The living gotcha log (tactic-level traps that repeatedly bite: `rcases h : e`
 substituting the goal, `Nat.sqrt` whnf loops in `Primrec` work — fix = scoped
 `irreducible Nat.sqrt`, `lake env lean`'s auto-bound implicits masking signature
 errors, stale upstream oleans under `lake env lean`, `#assert_fields` freezing field
-*names* only, …) is kept in `notes/consolidation.md`'s wave-gotchas section — check
+*names* only, …) is kept in `LogicalInduction/notes/consolidation.md`'s wave-gotchas section — check
 it before starting deep `Primrec`/`PolyFueled` work.
 
 ## Working conventions

@@ -11,7 +11,7 @@ import hashlib, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/'
 INPUTS = ['scripts/coverage-classification.md', 'AxiomAudit.lean',
-          'notes/1609.03543v5-main.tex', 'scripts/trust-surface-template.html',
+          'LogicalInduction/notes/1609.03543v5-main.tex', 'scripts/trust-surface-template.html',
           'scripts/gen-trust-surface.py']
 
 h = hashlib.sha256()

@@ -11,7 +11,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-TEX=notes/1609.03543v5-main.tex
+TEX=LogicalInduction/notes/1609.03543v5-main.tex
 LIB=LogicalInduction
 AUDIT=AxiomAudit.lean
 

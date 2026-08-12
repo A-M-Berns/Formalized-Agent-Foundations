@@ -28,7 +28,7 @@ Along the way the project has also produced some free-standing artifacts: a from
 Brouwer fixed-point theorem via Sperner's lemma (Mathlib has none), an autoformalized
 sequent-calculus proof of the de Jongh–Sambin GL fixed-point theorem, and four recorded
 errata in the *Logical Induction* paper itself
-([`notes/logical-induction-paper-errata.md`](notes/logical-induction-paper-errata.md)).
+([`LogicalInduction/notes/paper-errata.md`](LogicalInduction/notes/paper-errata.md)).
 
 ## Building
 

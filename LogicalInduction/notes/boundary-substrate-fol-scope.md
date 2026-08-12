@@ -5,8 +5,8 @@ v4.31.0; Foundation pinned at `41d20b5158e9331e9b8dd86e16dbf488cc688bdb`; Mathli
 transitively through Foundation). Every existence and non-existence claim below was checked
 by `rg`/`grep` against the installed source at the cited file and line, and every count is
 reproducible from the scans described in "How the counts were made". Companion to
-`notes/boundary-propositional-substrate.md` (which this note **corrects on one load-bearing
-point**) and `notes/boundary-efficiency-model.md` (the competing programme)._
+`LogicalInduction/notes/boundary-propositional-substrate.md` (which this note **corrects on one load-bearing
+point**) and `LogicalInduction/notes/boundary-efficiency-model.md` (the competing programme)._
 
 ---
 
@@ -369,7 +369,7 @@ FO sentences, the `Primrec` decoding step (`Formula.ofNat` at the new atom type)
 `Semiformula.ofNat`, which uses `Matrix.getM`/`natToVec` with well-founded recursion over a
 *variadic* term vector. `LIACompiler.lean` carries 104 uses of the current (binary, 5-tag)
 layout; redoing them at the FO layout is the known `Primrec`-blowup zone (see the `Nat.sqrt`
-whnf gotcha in `notes/consolidation.md`). **This is the highest-variance engineering item
+whnf gotcha in `LogicalInduction/notes/consolidation.md`). **This is the highest-variance engineering item
 after the emission calculus.**
 
 ---
@@ -438,11 +438,11 @@ completes**, so by CLAUDE.md rule 1 there is no partial credit until Stage 4 lan
 
 Two data points from this repo, both cited from the notes:
 
-* `notes/boundary-propositional-substrate.md` §D estimated **4.5–6 sessions** for the ccee
+* `LogicalInduction/notes/boundary-propositional-substrate.md` §D estimated **4.5–6 sessions** for the ccee
   exact route; it took **~1**. Estimate ran ~5× high. That estimate's table is entirely
   *lemma-confirmed* items ("re-index the schema", "lift along `DP ⊆ DP'`") — every row named a
   lemma that already existed.
-* `notes/boundary-efficiency-model.md` Stage 1 estimated **2–4 weeks** and landed on schedule
+* `LogicalInduction/notes/boundary-efficiency-model.md` Stage 1 estimated **2–4 weeks** and landed on schedule
   (see "What Stage 1 landed (2026-08-11)"). Also a well-scoped item, against a re-surveyed
   toolchain.
 * Against which, `LogicalInduction/README.md` records that its own estimates "have twice moved
@@ -549,7 +549,7 @@ finding **B4** closes with it, and the derivative `def:blcp` row follows. `thm:c
 **Does not move:** `def:ec` and `thm:ifp`. Both are `dd:fuel`. `thm:ifp`'s blocker is the
 digit calculus's failure to close under inverse operations — a property of the *efficiency
 model*, not the syntax; `EfficientPrefixPatch` remains uninhabited. Only
-`notes/boundary-efficiency-model.md`'s programme touches these.
+`LogicalInduction/notes/boundary-efficiency-model.md`'s programme touches these.
 
 **Gets worse before better:** `def:ec`'s own faithfulness. Between Stage 0 and Stage 4 the
 repo would have FO atoms with no symbol calculus for them, i.e. an *empty* emission class
@@ -627,7 +627,7 @@ The only viable route is (C) — prime-atom refinement plus a first-order `LUV`,
 
 **Stage 4's variadic symbol calculus, and specifically its `Primrec` mirror.** The current
 `parseRpnC`/`unRpnTokensC` proofs (`Framework/RpnComputation.lean`) already sit in the
-`Nat.sqrt`-whnf blowup zone recorded in `notes/consolidation.md`; the FO version must decode
+`Nat.sqrt`-whnf blowup zone recorded in `LogicalInduction/notes/consolidation.md`; the FO version must decode
 an arity-indexed term vector via `Matrix.natToVec` inside `Primrec`, and it must do so for a
 grammar whose self-delimiting proof (the pending-subtree counter) has to be re-established at
 variable arity. And unlike Stage 3, it is not upstreamable — nobody else wants it.
@@ -670,7 +670,7 @@ FO programme has a long regressive middle and no green stopping point until the 
    is no honest place to stop, which is exactly what the efficiency programme's staging was
    designed to provide.
 2. **The payoff is one paragraph, and its consumer does not need it.** `thm:ccee`'s slack is
-   inert at the one known downstream interface (`notes/deference-compatibility.md`), the mesh
+   inert at the one known downstream interface (`LogicalInduction/notes/deference-compatibility.md`), the mesh
    endpoint keeps the row, and the earlier note's non-vacuity witnesses stand at both ends.
    `def:luv`/`def:blcp`/B4 are disclosure-quality items, honestly recorded and stable.
 3. **The bulk of the work belongs upstream.** Strong representability, rational order in
@@ -682,7 +682,7 @@ FO programme has a long regressive middle and no green stopping point until the 
 **What to do instead, cheaply and now.** Three corrections this spike produced, none of which
 costs a refactor:
 
-* `notes/boundary-propositional-substrate.md` Part 1 should be amended: its claim that
+* `LogicalInduction/notes/boundary-propositional-substrate.md` Part 1 should be amended: its claim that
   "first-order syntax would not dissolve the `thm:ccee` obstruction" is wrong on the emitter
   half (§6.2), and its "68 of 77 files, not stageable" cost figure overstates the blast radius
   by ~2× (§2.1). The *conclusion* — do not close this boundary — survives, and is now better

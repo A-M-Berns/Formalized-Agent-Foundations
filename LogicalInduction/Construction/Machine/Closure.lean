@@ -1,7 +1,7 @@
 /-
 # Composing machines: sequencing, relabelling, and the composition closure
 
-Stage 1 of the efficiency-model program (`notes/boundary-efficiency-model.md`), continued
+Stage 1 of the efficiency-model program (`LogicalInduction/notes/boundary-efficiency-model.md`), continued
 from `Basic.lean`.
 
 Two independent constructions, both stated on `Prog` (a transition function over a bare

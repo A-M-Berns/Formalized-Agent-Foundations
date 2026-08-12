@@ -27,7 +27,7 @@ a rendering of `thm:ccee`, and nothing here supersedes
 record: the inductor here is `LIA` over the *extended* process, a different inductor, and
 conservativity of completed-world truth does not carry prices across.  A cross-family
 adjudication on 2026-08-11 ruled on exactly this point; see the resolution section of
-`notes/boundary-propositional-substrate.md`.
+`LogicalInduction/notes/boundary-propositional-substrate.md`.
 
 ## The schema
 
@@ -953,7 +953,7 @@ Two further costs of the demonstration, stated plainly rather than buried:
   to `PolyRatCodes` would remove it, at the cost of dropping the paper's own worked example
   for this theorem (tex:2077) — a strictly worse trade, and not taken.
 
-The cross-family adjudication of 2026-08-11 (`notes/boundary-propositional-substrate.md`,
+The cross-family adjudication of 2026-08-11 (`LogicalInduction/notes/boundary-propositional-substrate.md`,
 resolution section) rejected reading this section as `thm:ccee` at an instance, for exactly
 the price-transport reason above, and ranked the renderings mesh > this > weight-narrowing.
 The framing here is the ruled one. -/

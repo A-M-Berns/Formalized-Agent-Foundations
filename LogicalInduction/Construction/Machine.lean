@@ -2,7 +2,7 @@
 # `LogicalInduction.Construction.Machine` — the counted-step machine
 
 Stage 1 of the efficiency-model program; the plan and the Stage-0 decision that produced it
-are in `notes/boundary-efficiency-model.md`.
+are in `LogicalInduction/notes/boundary-efficiency-model.md`.
 
 * `Machine/Basic.lean` — the machine, `RunsInTime`, and the polynomial class
   `MachinePolyEC`. Read its module docstring first: it is the model card.

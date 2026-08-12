@@ -1,7 +1,7 @@
 /-
 # Data-movement phases, and closure of the machine class under pairing
 
-Stage 1 of the efficiency-model program (`notes/boundary-efficiency-model.md`), continued
+Stage 1 of the efficiency-model program (`LogicalInduction/notes/boundary-efficiency-model.md`), continued
 from `Closure.lean`.
 
 Composition needs no data movement, because the two machines share the I/O stack. Pairing
@@ -353,7 +353,7 @@ alike and the update forms work directly; `pairMachine_runsInTime` chains `pushO
 That is also why two of the four have no consumer in this file: `xfer_run_val` and
 `dup_run_val` are used by `pairMachine_runsInTime` and `eraseMachine_runsInTime`, while
 `emitTagged_run_val` and `pushOne_run_val` are scaffolding for the concrete unary-toolkit
-machines of the next stage (tranche 1 of `notes/boundary-efficiency-model.md`), whose `K` is
+machines of the next stage (tranche 1 of `LogicalInduction/notes/boundary-efficiency-model.md`), whose `K` is
 a literal type and which therefore hit exactly the projection-vs-literal mismatch above.
 They are scheduled, not orphaned. -/
 

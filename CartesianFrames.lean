@@ -2,8 +2,8 @@
 # Cartesian Frames (Garrabrant–Herrmann–Lopez-Wild, arXiv:2109.10996)
 
 This is the root import for the formalization.  The paper is the specification:
-`notes/2109.10996v1-main.tex` is the exact arXiv source and
-`notes/2109.10996v1.pdf` is the matching PDF.
+`CartesianFrames/notes/2109.10996v1-main.tex` is the exact arXiv source and
+`CartesianFrames/notes/2109.10996v1.pdf` is the matching PDF.
 
 Paper-facing declarations follow the Logical Induction labeling convention.  A
 declaration's docstring ends in a paper-node line naming the printed node — a

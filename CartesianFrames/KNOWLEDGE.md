@@ -123,7 +123,7 @@ Claim 60** — do not re-sequence it on that account.  Defeq-first rule extends 
 `curry`/`mapWorlds` composites: in Theorem 24 `C₂.curry.obj M` is *literally*
 `C₁.curry.obj D`; try `rfl`/plain hypothesis reuse before building an iso.
 
-## Paper errata (details in `notes/cartesian-frames-paper-errata.md`)
+## Paper errata (details in `notes/paper-errata.md`)
 
 - **Claim 53's printed proof has a gap**: its final display checks only agent
   components of `φ_e = φ_e ∘ τ ∘ σ`; the env components agree only up to duplicate
@@ -142,7 +142,7 @@ and `B` is a partition of `A`, not of `A/B`, so `External^B(External^B(C))` is n
 well-formed as written; likewise `Internal`.  The claim's binder line also garbles
 indices (`Assume^B` with `B ⊆ A`; `External^F` with `F` a partition of `E`,
 contradicting Definition 32).  Ruling: record as a paper erratum
-(`notes/cartesian-frames-paper-errata.md` #3) and formalize **only the
+(`notes/paper-errata.md` #3) and formalize **only the
 Commit/Assume half** of Claim 35 (at canonical-iso strength per `dd:eq-to-iso`).
 The External/Internal half stays unformalized; its idempotence-theorem carriers do
 not exist and must not be invented.  Consequence for the surface accounting:
