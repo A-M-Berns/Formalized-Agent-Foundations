@@ -191,8 +191,16 @@ theorem outcome_fixed_point (X Y : ModalAgent) :
 /-- X cooperates with Y: GL proves the outcome formula. -/
 def Cooperates (X Y : ModalAgent) : Prop := Modal.GL ⊢ outcome X Y
 
-/-- X defects against Y: GL does not prove the outcome formula. This is a
-modal-level proxy, not a PA unprovability statement. -/
+/-- X defects against Y, rendered as: GL does not prove the outcome formula.
+
+**This is weaker than the paper's notion of defection, and the gap is
+one-directional.** Barász et al. assert *provable defection* — e.g.
+`PA+2 ⊢ [PB(CB)=D]` for Theorem 3.2's last conjunct — whereas this predicate says
+only that cooperation is *unprovable* in `GL`. Unprovability of cooperation does not
+yield provability of defection, so no `Defects` result lifts to an arithmetical
+claim: `Cooperates` has `Cooperates.arithmeticLift` (Theorem 4.1) and `Defects` has
+no counterpart. Every use of this predicate inherits the weakening; see the modeling
+boundary in `ModalAgents/README.md`. -/
 def Defects (X Y : ModalAgent) : Prop := Modal.GL ⊬ outcome X Y
 
 /-! ## Cooperation theorems -/
@@ -364,6 +372,13 @@ theorem prudentBot_vs_defectBot :
 /-- PrudentBot defects against CooperateBot; CooperateBot cooperates
 with PrudentBot. The first component is the "defects against CooperateBot"
 conjunct of the node below.
+
+**Disclosed weakening.** That conjunct is `PA+2 ⊢ [PB(CB)=D]` in the paper —
+provable defection. Here it is `Defects`, i.e. `GL ⊬ outcome`, the unprovability of
+cooperation; see that definition. The cooperation component is at full strength and
+lifts through `Cooperates.arithmeticLift`. The node's remaining conjuncts are carried
+by `prudentBot_vs_prudentBot` and `prudentBot_vs_fairBot`; its unexploitability
+conjunct, which quantifies over all opponents, is not formalized.
 
 Paper node: Theorem 3.2 (§3). -/
 theorem prudentBot_vs_cooperateBot :

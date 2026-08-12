@@ -48,6 +48,32 @@ The converse direction is not checked, and should not be: the scope note below m
 several numbered nodes (Cor. 4.9, and Thm 3.2's unexploitability conjunct, which
 quantifies over all opponents) have no Lean statement here.
 
+## Modeling boundary
+
+Two things this formalization does not carry at the paper's full strength.  Neither is
+an axiom gap — the endpoints are clean — but both are statement-level, so they belong
+here rather than in a proof note.
+
+**Defection is rendered as unprovability of cooperation.**  `Defects X Y` is
+`Modal.GL ⊬ outcome X Y`.  The paper asserts *provable defection*: `PA+1 ⊢ [PB(DB)=D]`,
+`PA+2 ⊢ [PB(CB)=D]`.  Unprovability of cooperation does not give provability of
+defection, so the weakening is real and one-directional.  It is also asymmetric with
+the cooperation side: `Cooperates` is `Modal.GL ⊢ outcome`, which lifts to an
+arithmetical claim through `Cooperates.arithmeticLift` (Theorem 4.1), and no such lift
+exists or could exist for `Defects`.  The affected endpoints are `defectBot_defects`,
+`fairBot_vs_defectBot`, `prudentBot_vs_defectBot`, and the defection half of
+`prudentBot_vs_cooperateBot` — the last of which cites Theorem 3.2, and so is the one
+place the weakening sits underneath a paper-node claim.  The disclosure is repeated at
+that statement.
+
+**Theorem 3.2 is covered in part.**  Its four conjuncts are unexploitability, mutual
+cooperation with itself, mutual cooperation with FairBot, and defection against
+CooperateBot.  The last three are formalized (`prudentBot_vs_prudentBot`,
+`prudentBot_vs_fairBot`, `prudentBot_vs_cooperateBot`).  **Unexploitability — for every
+opponent `Y`, not both `PB(Y) = C` and `Y(PB) = D` — is not formalized anywhere in this
+library.**  It quantifies over all agents rather than the four named ones, and nothing
+in the current development states it.
+
 ### Axioms
 
 **None.** Every ModalAgents endpoint reports only `propext`, `Classical.choice`, and
