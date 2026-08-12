@@ -16,6 +16,17 @@ provenance keys:
   numbered `Claim` or `Theorem`.  A bare `§` reference is *not* enough there; a
   `theorem` in that library is by convention a paper claim or theorem, and
   `scripts/check-cartesian-frames-nodes.py` inventories it by that annotation.
+* `ModalAgents/` — same situation: only 22 of that paper's nodes are labelled, so the
+  printed number is again the key.  Its counter is section-scoped and shared across
+  `theorem`/`lemma`/`proposition`/`corollary`/`condition`, so node numbers read
+  `<section>.<n>` and a bare integer will not do.  Its `definition` environment is
+  uncounted, so `Definition` is not an accepted kind here (citing one is caught, with
+  a sharper message, by `scripts/check-modal-agents-nodes.py`).
+
+This linter enforces only that a `theorem` *names* a node in its library's format;
+that the node exists in the committed TeX, that the annotation is anchored to a named
+declaration, and that the declaration is inventoried in `AxiomAudit.lean` are the
+per-paper node checkers' job.
 
 Exit status is the number of offending files capped at 1. Run from the repo root.
 """
@@ -26,6 +37,9 @@ from pathlib import Path
 
 LI_LABEL = re.compile(r"(thm|lem|cor|def|app):[a-zA-Z]+|App\.\s|§")
 CF_LABEL = re.compile(r"Paper node:.*(Claim|Theorem)\s+[0-9]+")
+MA_LABEL = re.compile(
+    r"Paper node:.*(Theorem|Lemma|Proposition|Corollary|Condition)\s+[0-9]+\.[0-9]+"
+)
 DECL = re.compile(r"^\s*(?P<private>private\s+)?(?:protected\s+)?theorem\s+(?P<name>[\w.]+)")
 
 def block_depth_after(line, depth):
@@ -43,7 +57,11 @@ def block_depth_after(line, depth):
     return depth
 
 violations = []
-libraries = {Path("LogicalInduction"): LI_LABEL, Path("CartesianFrames"): CF_LABEL}
+libraries = {
+    Path("LogicalInduction"): LI_LABEL,
+    Path("CartesianFrames"): CF_LABEL,
+    Path("ModalAgents"): MA_LABEL,
+}
 paths = [(path, label) for library, label in libraries.items()
          for path in library.rglob("*.lean")]
 for path, label in sorted(paths, key=lambda entry: entry[0]):

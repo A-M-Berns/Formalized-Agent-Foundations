@@ -795,25 +795,49 @@ committed TeX (`ModalAgents/notes/1401.5577-main.tex`) **and** checks that every
 *declaration* annotated in `ModalAgents/` is itself listed between the MA-INVENTORY
 markers below.
 
-Six listed endpoints carry no annotation of their own, because they render no numbered
-node of that paper: `subst_congr` (a GL-level substitution congruence — the paper's
-Lemma 4.5 is the *arithmetic* statement, which this does not state);
-`defectBot_defects` and `cooperateBot_cooperates` (the §2 remark that `PA ⊢ [CB(X)=C]`
-and `PA ⊢ [DB(X)=D]`, prose in an unnumbered `remark`); `fairBot_vs_cooperateBot` and
-`fairBot_vs_defectBot` (§3 prose on FairBot's unexploitability and its waste against
-CooperateBot, again unnumbered); and `prudentBot_vs_defectBot` (the "in particular,
-PA+1 ⊢ [PB(DB)=D]" step *inside* the proof of Theorem 3.2, not one of that theorem's
-four conjuncts). They stay inventoried and axiom-checked regardless. -/
+Several listed endpoints carry no annotation of their own, because they render no
+numbered node of that paper. They are all `lemma`s, per the repo's keyword rule, and
+they stay inventoried and axiom-checked regardless:
+
+* `subst_congr` — a GL-level substitution congruence; the paper's Lemma 4.5 is the
+  *arithmetic* statement, which this does not state.
+* `defectBot_defects`, `defectBot_provably_defects` and `cooperateBot_cooperates` —
+  the §2 remark that `PA ⊢ [CB(X)=C]` and `PA ⊢ [DB(X)=D]`, prose in an unnumbered
+  `remark`.
+* `fairBot_vs_cooperateBot` and `fairBot_vs_defectBot` — §3 prose on FairBot's
+  unexploitability and its waste against CooperateBot, again unnumbered.
+* `prudentBot_vs_defectBot` — the "in particular, PA+1 ⊢ [PB(DB)=D]" step *inside* the
+  proof of Theorem 3.2, not one of that theorem's four conjuncts.
+* The defection-boundary block — `ProvablyDefects.defects`, the three outcome
+  reductions `outcome_fairBot_defectBot`, `outcome_prudentBot_defectBot`,
+  `outcome_prudentBot_cooperateBot`, and the three negative results
+  `fairBot_not_provably_defects_defectBot`,
+  `prudentBot_not_provably_defects_defectBot`,
+  `prudentBot_not_provably_defects_cooperateBot`. These are *this development's* own
+  accounting rather than paper nodes: they pin down exactly how far `Defects` (which
+  is `GL ⊬ outcome`, weaker than the paper's provable defection) can be strengthened
+  to `ProvablyDefects` (`GL ⊢ ∼outcome`, the paper's notion). The answer is: on
+  DefectBot's side, all the way; on the other three endpoints, not at all, because
+  their outcome formulas are GL-equivalent to `□⊥`, `□⊥` and `□□⊥`, so provable
+  defection would require `GL` to prove `Con(PA)` or `Con(PA+1)`. That is exactly why
+  the paper states those three in `PA+1`/`PA+2`. They are listed here so a regression
+  in the obstruction argument fails the build alongside the endpoints it excuses. -/
 
 -- MA-INVENTORY-BEGIN
 #assert_axioms_clean
   subst_congr glFixedPoint_uniqueness glFixedPoint_thm42
   glFixedPoint_spec outcome_fixed_point
-  defectBot_defects cooperateBot_cooperates
+  defectBot_defects defectBot_provably_defects ProvablyDefects.defects
+  cooperateBot_cooperates
   fairBot_vs_fairBot fairBot_vs_cooperateBot rank0_fairBot_implies_cooperateBot
   fairBot_vs_defectBot prudentBot_vs_fairBot prudentBot_vs_defectBot
-  prudentBot_vs_cooperateBot prudentBot_vs_prudentBot
-  Cooperates.arithmeticLift modalAgent_behavioral
+  prudentBot_vs_cooperateBot prudentBot_vs_prudentBot prudentBot_unexploitable
+  outcome_fairBot_defectBot outcome_prudentBot_defectBot
+  outcome_prudentBot_cooperateBot
+  fairBot_not_provably_defects_defectBot
+  prudentBot_not_provably_defects_defectBot
+  prudentBot_not_provably_defects_cooperateBot
+  Cooperates.arithmeticLift ProvablyDefects.arithmeticLift modalAgent_behavioral
 -- MA-INVENTORY-END
 
 /-! ## Concrete arithmetic instantiation — the one upstream gap

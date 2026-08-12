@@ -193,15 +193,43 @@ def Cooperates (X Y : ModalAgent) : Prop := Modal.GL ⊢ outcome X Y
 
 /-- X defects against Y, rendered as: GL does not prove the outcome formula.
 
-**This is weaker than the paper's notion of defection, and the gap is
-one-directional.** Barász et al. assert *provable defection* — e.g.
-`PA+2 ⊢ [PB(CB)=D]` for Theorem 3.2's last conjunct — whereas this predicate says
-only that cooperation is *unprovable* in `GL`. Unprovability of cooperation does not
-yield provability of defection, so no `Defects` result lifts to an arithmetical
-claim: `Cooperates` has `Cooperates.arithmeticLift` (Theorem 4.1) and `Defects` has
-no counterpart. Every use of this predicate inherits the weakening; see the modeling
-boundary in `ModalAgents/README.md`. -/
+This is strictly weaker than `ProvablyDefects` below, which is the paper's notion —
+`ProvablyDefects.defects` is the one-way implication, and there is no converse.
+Where the strong form is available it is stated and used instead
+(`defectBot_provably_defects`); this predicate remains the endpoint form in exactly
+the three places where the strong form is *not available in `GL` at all*, for a
+reason that is itself proved here:
+
+* `fairBot_vs_defectBot` — `outcome fairBot defectBot` is GL-equivalent to `□⊥`
+  (`outcome_fairBot_defectBot`), so the strong form is `GL ⊢ ∼□⊥`, i.e. `GL`
+  proving its own consistency;
+* `prudentBot_vs_defectBot` — likewise GL-equivalent to `□⊥`
+  (`outcome_prudentBot_defectBot`);
+* `prudentBot_vs_cooperateBot` — GL-equivalent to `□□⊥`
+  (`outcome_prudentBot_cooperateBot`), so the strong form is `GL ⊢ ∼□□⊥`,
+  i.e. `GL` proving `Con(PA+1)`.
+
+`unprovable_neg_box_bot` and `unprovable_neg_box_box_bot` show `GL` proves neither,
+and `fairBot_not_provably_defects_defectBot`,
+`prudentBot_not_provably_defects_defectBot` and
+`prudentBot_not_provably_defects_cooperateBot` land the consequence: on those three
+endpoints the weak form is forced, not a shortcut. This tracks the paper exactly,
+which states them as `PA+1 ⊢ [FB(DB)=D]`, `PA+1 ⊢ [PB(DB)=D]` and
+`PA+2 ⊢ [PB(CB)=D]` — one and two reflection steps above the `PA` that `GL` models.
+See the modeling boundary in `ModalAgents/README.md`. -/
 def Defects (X Y : ModalAgent) : Prop := Modal.GL ⊬ outcome X Y
+
+/-- X provably defects against Y: GL proves the outcome formula *false*. This is the
+paper's notion of defection (`PA ⊢ [X(Y)=D]`), and unlike `Defects` it is a positive
+`GL` claim, so it lifts to arithmetic through `ProvablyDefects.arithmeticLift`. -/
+def ProvablyDefects (X Y : ModalAgent) : Prop := Modal.GL ⊢ ∼(outcome X Y)
+
+/-- Provable defection implies defection, by consistency of `GL`. The converse fails,
+and for the three endpoints listed at `Defects` it fails unavoidably. -/
+lemma ProvablyDefects.defects {X Y : ModalAgent} (h : ProvablyDefects X Y) :
+    Defects X Y := fun hc =>
+  (inferInstance : Consistent Modal.GL).not_inconsistent
+    (fun _ => ⟨efq ⨀ (h.some ⨀ hc.some)⟩)
 
 /-! ## Cooperation theorems -/
 
@@ -228,19 +256,23 @@ lemma outcome_prudentBot (Y : ModalAgent) :
       □(outcome Y prudentBot) ⋏ □(∼□⊥ 🡒 ∼(outcome Y defectBot)) := by
   exact outcome_fixed_point prudentBot Y
 
-/-- DefectBot defects against every opponent. Barasz states this as §2 prose
-(`PA ⊢ [DB(X)=D]`, in an unnumbered remark), so it carries no paper-node
-annotation. -/
-theorem defectBot_defects (Y : ModalAgent) : Defects defectBot Y := by
-  intro ⟨hb⟩
+/-- DefectBot *provably* defects against every opponent — the paper's own
+`PA ⊢ [DB(X)=D]`, at full strength, since `outcome defectBot Y` is GL-equivalent to
+`⊥`. Barasz states this as §2 prose in an unnumbered remark, so it carries no
+paper-node annotation. -/
+lemma defectBot_provably_defects (Y : ModalAgent) : ProvablyDefects defectBot Y := by
   have ⟨hβ⟩ := outcome_defectBot Y
-  exact (inferInstance : Consistent Modal.GL).not_inconsistent
-    (fun _ => ⟨efq ⨀ (and₁ ⨀ hβ ⨀ hb)⟩)
+  exact ⟨and₁ ⨀ hβ⟩
+
+/-- DefectBot defects against every opponent — the weak form, for uniformity with the
+other defection endpoints. `defectBot_provably_defects` is the strong form. -/
+lemma defectBot_defects (Y : ModalAgent) : Defects defectBot Y :=
+  (defectBot_provably_defects Y).defects
 
 /-- CooperateBot cooperates with every opponent. Barasz states this as §2 prose
 (`PA ⊢ [CB(X)=C]`, in an unnumbered remark), so it carries no paper-node
 annotation. -/
-theorem cooperateBot_cooperates (Y : ModalAgent) : Cooperates cooperateBot Y := by
+lemma cooperateBot_cooperates (Y : ModalAgent) : Cooperates cooperateBot Y := by
   have ⟨h⟩ := outcome_cooperateBot Y
   exact ⟨and₂ ⨀ h ⨀ verum⟩
 
@@ -258,7 +290,7 @@ theorem fairBot_vs_fairBot : Cooperates fairBot fairBot := by
 /-- FairBot and CooperateBot mutually cooperate. Barasz notes this only as §3
 prose ("FairBot wastes utility by cooperating even with CooperateBot"), so it
 carries no paper-node annotation. -/
-theorem fairBot_vs_cooperateBot :
+lemma fairBot_vs_cooperateBot :
     Cooperates fairBot cooperateBot ∧ Cooperates cooperateBot fairBot := by
   have ⟨hα⟩ := outcome_fairBot cooperateBot
   have ⟨h_cb⟩ := cooperateBot_cooperates fairBot
@@ -323,8 +355,14 @@ theorem rank0_fairBot_implies_cooperateBot (X : ModalAgent) (h_rank : X.rank = 0
 
 /-- FairBot and DefectBot mutually defect. Barasz states FairBot's
 unexploitability as §3 prose ("by inspection"), so this carries no paper-node
-annotation. -/
-theorem fairBot_vs_defectBot :
+annotation.
+
+DefectBot's half is at the paper's strength (`defectBot_provably_defects`). FairBot's
+half is `Defects`, and it cannot be strengthened: `outcome fairBot defectBot` is
+GL-equivalent to `□⊥` (`outcome_fairBot_defectBot`), so provable defection would be
+`GL ⊢ ∼□⊥` — see `fairBot_not_provably_defects_defectBot`. The paper accordingly
+states this one in `PA+1`. -/
+lemma fairBot_vs_defectBot :
     Defects fairBot defectBot ∧ Defects defectBot fairBot := by
   have ⟨hα⟩ := outcome_fairBot defectBot
   have ⟨hβ⟩ := outcome_defectBot fairBot
@@ -334,6 +372,29 @@ theorem fairBot_vs_defectBot :
   have h_imp : Modal.GL ⊢! outcome defectBot fairBot 🡒 ⊥ := and₁ ⨀ hβ
   have : Modal.GL ⊢! □(⊥ : Modal.Formula ℕ) := axiomK' (nec h_imp) ⨀ h_box
   exact unprovable_box_bot ⟨this⟩
+
+/-- **PrudentBot is unexploitable** — the first conjunct of the node below, and the
+only one that quantifies over all opponents.
+
+"`Y` exploits PrudentBot" is `Cooperates prudentBot Y ∧ Defects Y prudentBot`: the
+sucker's payoff, PrudentBot cooperating into a defection. Its negation, for every `Y`,
+is the implication stated here, since `Defects Y prudentBot` is
+`Modal.GL ⊬ outcome Y prudentBot` and its classical negation is
+`Cooperates Y prudentBot`.
+
+The argument is the paper's, in modal form: PrudentBot cooperates only given a *proof*
+that its opponent cooperates back, and the paper cashes that proof out by soundness of
+`PA`. Here the corresponding step is `GL`'s unnecessitation rule `□φ / φ`, which is
+admissible in `GL` (Foundation's `unnecessitation!`). So the conclusion needs no
+soundness side-assumption and lands at full strength — `Cooperates`, hence liftable by
+`Cooperates.arithmeticLift` — rather than at the weakened `¬ Defects`.
+
+Paper node: Theorem 3.2 (§3). -/
+theorem prudentBot_unexploitable (Y : ModalAgent) :
+    Cooperates prudentBot Y → Cooperates Y prudentBot := by
+  intro h
+  have ⟨hα⟩ := outcome_prudentBot Y
+  exact unnecessitation! ⟨and₁ ⨀ (and₁ ⨀ hα ⨀ h.some)⟩
 
 /-- PrudentBot and FairBot mutually cooperate — the "mutually cooperates …
 with FairBot" conjunct of the node below.
@@ -356,10 +417,14 @@ theorem prudentBot_vs_fairBot :
 
 /-- PrudentBot and DefectBot mutually defect. This is the "in particular,
 `PA+1 ⊢ [PB(DB)=D]`" step *inside* the proof of Barasz §3, Thm 3.2, not one of
-that theorem's four conjuncts, so it carries no paper-node annotation; Thm 3.2's
-unexploitability conjunct (which quantifies over all opponents) is not
-formalized here. -/
-theorem prudentBot_vs_defectBot :
+that theorem's four conjuncts, so it carries no paper-node annotation.
+
+DefectBot's half is at the paper's strength (`defectBot_provably_defects`).
+PrudentBot's half is `Defects` and cannot be strengthened: `outcome prudentBot
+defectBot` is GL-equivalent to `□⊥` (`outcome_prudentBot_defectBot`), so provable
+defection would be `GL ⊢ ∼□⊥` — see `prudentBot_not_provably_defects_defectBot`.
+That is why the paper's own statement of this step is in `PA+1`. -/
+lemma prudentBot_vs_defectBot :
     Defects prudentBot defectBot ∧ Defects defectBot prudentBot := by
   have ⟨hα⟩ := outcome_prudentBot defectBot
   have ⟨hβ⟩ := outcome_defectBot prudentBot
@@ -373,12 +438,15 @@ theorem prudentBot_vs_defectBot :
 with PrudentBot. The first component is the "defects against CooperateBot"
 conjunct of the node below.
 
-**Disclosed weakening.** That conjunct is `PA+2 ⊢ [PB(CB)=D]` in the paper —
-provable defection. Here it is `Defects`, i.e. `GL ⊬ outcome`, the unprovability of
-cooperation; see that definition. The cooperation component is at full strength and
-lifts through `Cooperates.arithmeticLift`. The node's remaining conjuncts are carried
-by `prudentBot_vs_prudentBot` and `prudentBot_vs_fairBot`; its unexploitability
-conjunct, which quantifies over all opponents, is not formalized.
+**Disclosed weakening, and its cause.** That conjunct is `PA+2 ⊢ [PB(CB)=D]` in the
+paper — provable defection. Here it is `Defects`, i.e. `GL ⊬ outcome`. The gap is not
+a shortcut: `outcome prudentBot cooperateBot` is GL-equivalent to `□□⊥`
+(`outcome_prudentBot_cooperateBot`), so provable defection would be `GL ⊢ ∼□□⊥`, i.e.
+`GL` proving `Con(PA+1)`, which it does not
+(`prudentBot_not_provably_defects_cooperateBot`). `PA+2` is exactly the strength the
+paper needs and `GL` lacks. The cooperation component is at full strength and lifts
+through `Cooperates.arithmeticLift`. The node's remaining conjuncts are carried by
+`prudentBot_unexploitable`, `prudentBot_vs_prudentBot` and `prudentBot_vs_fairBot`.
 
 Paper node: Theorem 3.2 (§3). -/
 theorem prudentBot_vs_cooperateBot :
@@ -413,6 +481,76 @@ theorem prudentBot_vs_prudentBot : Cooperates prudentBot prudentBot := by
     CK_of_C_of_C C_id (C_of_conseq h_consist)
   exact ⟨lob_rule (C_trans h₁ (and₂ ⨀ hα))⟩
 
+/-! ## The defection boundary
+
+`defectBot_provably_defects` gives defection at the paper's strength. The three
+remaining defection endpoints cannot: each of their outcome formulas is GL-equivalent
+to an iterated `□⊥`, so the strong form asks `GL` for a consistency statement, and by
+Gödel's second incompleteness theorem it has none. The equivalences below make that
+exact, and the three `¬ ProvablyDefects` results are the consequence.
+
+The reflection depth matches the paper step for step: `□⊥` here is `PA+1` there
+(`PA+1 ⊢ [FB(DB)=D]`, `PA+1 ⊢ [PB(DB)=D]`) and `□□⊥` is `PA+2`
+(`PA+2 ⊢ [PB(CB)=D]`). PrudentBot's own definition already reads its opponent's
+behaviour against DefectBot under `∼□⊥ 🡒 ·` for precisely this reason — the paper's
+remark after Theorem 3.2 is that the extra reflection step is load-bearing. -/
+
+/-- Against DefectBot, FairBot's outcome is GL-equivalent to `□⊥`: FairBot cooperates
+exactly when it can prove DefectBot's (refutable) cooperation. -/
+lemma outcome_fairBot_defectBot :
+    Modal.GL ⊢ outcome fairBot defectBot 🡘 □(⊥ : Modal.Formula ℕ) := by
+  have ⟨hα⟩ := outcome_fairBot defectBot
+  have ⟨hβ⟩ := outcome_defectBot fairBot
+  exact ⟨E_trans hα (box_congruence hβ)⟩
+
+/-- Against DefectBot, PrudentBot's outcome is GL-equivalent to `□⊥` as well: `□⊥`
+already gives both of PrudentBot's conjuncts. -/
+lemma outcome_prudentBot_defectBot :
+    Modal.GL ⊢ outcome prudentBot defectBot 🡘 □(⊥ : Modal.Formula ℕ) := by
+  have ⟨hα⟩ := outcome_prudentBot defectBot
+  have ⟨hβ⟩ := outcome_defectBot prudentBot
+  exact ⟨E_intro
+    (C_trans (C_trans (and₁ ⨀ hα) and₁) (axiomK' (nec (and₁ ⨀ hβ))))
+    (C_trans (CK_of_C_of_C C_box_of_boxBot C_box_of_boxBot) (and₂ ⨀ hα))⟩
+
+/-- Against CooperateBot, PrudentBot's outcome is GL-equivalent to `□□⊥`: the first
+conjunct is outright provable, and the second — PrudentBot's `PA+1` check that
+CooperateBot defects against DefectBot — is what costs the second box. -/
+lemma outcome_prudentBot_cooperateBot :
+    Modal.GL ⊢ outcome prudentBot cooperateBot 🡘 □(□(⊥ : Modal.Formula ℕ)) := by
+  have ⟨hα⟩ := outcome_prudentBot cooperateBot
+  have ⟨hcbdb⟩ := cooperateBot_cooperates defectBot
+  have ⟨hcbpb⟩ := cooperateBot_cooperates prudentBot
+  refine ⟨E_intro (C_trans (C_trans (C_trans (and₁ ⨀ hα) and₂) (axiomK' (nec CCNNC)))
+      (C_swap axiomK ⨀ nec hcbdb)) ?_⟩
+  exact C_trans
+    (CK_of_C_of_C (C_of_conseq (nec hcbpb)) (axiomK' (nec (C_swap CNC))))
+    (and₂ ⨀ hα)
+
+/-- FairBot's defection against DefectBot is **not** available at the paper's
+strength: `GL ⊢ ∼(outcome fairBot defectBot)` is `GL ⊢ ∼□⊥`, which is `GL` proving
+its own consistency. Hence `fairBot_vs_defectBot` states the weak `Defects` by
+necessity, not by convenience. -/
+lemma fairBot_not_provably_defects_defectBot : ¬ ProvablyDefects fairBot defectBot :=
+  fun h => unprovable_neg_box_bot
+    ⟨C_trans (and₂ ⨀ outcome_fairBot_defectBot.some) h.some⟩
+
+/-- PrudentBot's defection against DefectBot is not available at the paper's strength,
+for the same reason as `fairBot_not_provably_defects_defectBot`: it too reduces to
+`GL ⊢ ∼□⊥`. The paper states this conjunct in `PA+1`. -/
+lemma prudentBot_not_provably_defects_defectBot :
+    ¬ ProvablyDefects prudentBot defectBot :=
+  fun h => unprovable_neg_box_bot
+    ⟨C_trans (and₂ ⨀ outcome_prudentBot_defectBot.some) h.some⟩
+
+/-- PrudentBot's defection against CooperateBot — Theorem 3.2's last conjunct — is not
+available at the paper's strength either: it reduces to `GL ⊢ ∼□□⊥`, i.e. `GL` proving
+`Con(PA+1)`. The paper states this conjunct in `PA+2`. -/
+lemma prudentBot_not_provably_defects_cooperateBot :
+    ¬ ProvablyDefects prudentBot cooperateBot :=
+  fun h => unprovable_neg_box_box_bot
+    ⟨C_trans (and₂ ⨀ outcome_prudentBot_cooperateBot.some) h.some⟩
+
 /-! ## Arithmetical lift (Barasz, §4, Thm 4.1) -/
 
 /-- Lift GL-provable cooperation through an arithmetical realization
@@ -432,8 +570,30 @@ theorem Cooperates.arithmeticLift {X Y : ModalAgent} (h : Cooperates X Y)
   _root_.LogicGL.arithmetical_soundness'
     (GlFixedPointBridge.mem_logicGL_of_provable h)
 
+/-- Lift GL-provable *defection* through an arithmetical realization, by the same
+soundness theorem. This is the payoff of stating defection as `ProvablyDefects` rather
+than `Defects`: a negative claim that `GL` actually proves is still a `GL` theorem, so
+it lifts, whereas `Defects` — a metatheoretic non-provability — has no counterpart
+here and could not have one.
+
+Paper node: Theorem 4.1 (§4). -/
+theorem ProvablyDefects.arithmeticLift {X Y : ModalAgent} (h : ProvablyDefects X Y)
+    {L : FirstOrder.Language} [L.ReferenceableBy L] [L.DecidableEq]
+    {T U : FirstOrder.Theory L} [FirstOrder.ProvabilityAbstraction.Diagonalization T]
+    [T ⪯ U] {𝔅 : FirstOrder.ProvabilityAbstraction.Provability T U} [𝔅.HBL]
+    {f : _root_.Realization ℕ 𝔅} :
+    U ⊢ f (GlFixedPointBridge.toSeq (∼(outcome X Y))) :=
+  _root_.LogicGL.arithmetical_soundness'
+    (GlFixedPointBridge.mem_logicGL_of_provable h)
+
 /-- Example: the GL proof that FairBot cooperates with itself lifts to PA
 under any standard arithmetical realization. -/
 example (f : _root_.StandardRealization ℕ 𝗣𝗔) :
     𝗣𝗔 ⊢ f (GlFixedPointBridge.toSeq (outcome fairBot fairBot)) :=
   Cooperates.arithmeticLift fairBot_vs_fairBot
+
+/-- Example: DefectBot's defection lifts to PA at the paper's strength — `PA` proves
+the outcome formula false, not merely that it is unprovable. -/
+example (Y : ModalAgent) (f : _root_.StandardRealization ℕ 𝗣𝗔) :
+    𝗣𝗔 ⊢ f (GlFixedPointBridge.toSeq (∼(outcome defectBot Y))) :=
+  ProvablyDefects.arithmeticLift (defectBot_provably_defects Y)

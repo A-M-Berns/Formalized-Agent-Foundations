@@ -37,7 +37,7 @@ abbrev diag (p : ℕ) (ψ : Modal.Formula ℕ) : Modal.Substitution ℕ :=
 formulas. This is the GL-level counterpart of Barasz §4, Lemma 4.5, and
 deliberately carries no paper-node annotation: Lemma 4.5 concludes about
 *arithmetic* formulas under `PA`, which this does not state. -/
-theorem subst_congr {σ σ' : Modal.Substitution ℕ}
+lemma subst_congr {σ σ' : Modal.Substitution ℕ}
     (h : ∀ a, Modal.GL ⊢ (σ a) 🡘 (σ' a)) (φ : Modal.Formula ℕ) :
     Modal.GL ⊢ φ⟦σ⟧ 🡘 φ⟦σ'⟧ := by
   induction φ with
