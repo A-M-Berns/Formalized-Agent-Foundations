@@ -5,7 +5,8 @@ Formalization of Scott Garrabrant, *Temporal Inference with Finite Factored Sets
 `notes/2109.11513-main.tex` is the exact arXiv source and `notes/2109.11513.pdf` the
 matching PDF.
 
-**Status: in progress — §2.1–§2.3 formalized (13 of the paper's 98 numbered nodes).**
+**Status: in progress — §2.1–§2.3 formalized (13 of the paper's 98 numbered nodes),
+with non-vacuity discharged by construction.**
 Nothing here is complete, and this file says what is claimed and what is not.
 
 ## What is claimed
@@ -15,6 +16,9 @@ Nothing here is complete, and this file says what is claimed and what is not.
 | 2.1 | Partitions, their order, common refinement | Definitions 3, 4, 8; Propositions 1, 2 |
 | 2.2 | Factorizations and factored sets | Definitions 10, 11; Proposition 3 |
 | 2.3 | The chimera function | Theorem 1; Corollary 1; Definitions 12, 13; Proposition 4 |
+
+Definition 13 has two halves and both are carried: `chimera` is `χ^F_C(s,t)` and
+`chimeraImage` is the setwise `χ^F_C(T,R)` that §3 onward quantifies over.
 
 Every one of those carries a `Paper node:` docstring line and an entry in
 `AxiomAudit.lean`'s FFS-INVENTORY block, checked both ways by
@@ -48,11 +52,19 @@ here rather than inventoried — there is no declaration of this project's to ax
 
 | Paper node | Rendered as | Tag |
 |---|---|---|
+| Definition 1 (disjoint union `⊔S`) | absorbed into `Setoid` / the dependent product; it appears in the paper only inside Definitions 2 and 9 | `dd:partition`, `dd:quotient` |
 | Definition 2 (partition) | `Setoid S` | `dd:partition` |
 | Definition 5 (`∼_X`) | the setoid relation | `dd:partition` |
 | Definition 6 (finer / coarser) | Mathlib's `≤` on `Setoid` | `dd:order-flip` |
 | Definition 7 (`Dis_S`, `Ind_S`) | `⊥`, `⊤` | `dd:order-flip` |
 | Definition 9 (`∏(B)`) | the dependent product `(b : B) → Quotient b` | `dd:quotient` |
+| Proposition 2, first sentence (`≥_S` is a partial order) | Mathlib's `PartialOrder (Setoid S)` instance | `dd:order-flip` |
+
+That last row is a *partial* entry, and the only one: `bot_le_and_le_top` carries the
+`Proposition 2` annotation but states only the proposition's second sentence (the `Dis`/`Ind`
+bounds). The first sentence is Mathlib's instance. Anyone reading the trust-surface card
+will see the full printed proposition beside a Lean statement covering half of it; that is
+why the row is here.
 
 ## Modeling decisions
 
@@ -87,7 +99,15 @@ has *no* blocks and is therefore not trivial. Rendering nontriviality as the mor
 
 ## Non-vacuity
 
-Not yet discharged: there is no constructed inhabitant of `FactoredSet` in the library.
-The spike built one (the discrete factorization of `Bool`) and it cost about fifteen
-lines, so this is a scheduled task, not a suspected obstruction — but until it lands, the
-`FactoredSet` endpoints are conditional on a structure nothing has been shown to satisfy.
+**Discharged by construction** in `FiniteFactoredSets/Examples.lean`, which is inventoried
+in the FFS-INVENTORY block alongside the nodes it de-vacuates. Four witnesses:
+
+| Witness | Shape | What it rules out |
+|---|---|---|
+| `boolFS` | `Bool`, `B = {⊥}` — size 2, dimension 1 | `FactoredSet` uninhabited |
+| `coordFS` | `Bool × Bool`, `B = {fstFactor, sndFactor}` — size 4, dimension 2 | Proposition 4 being near-tautologous: `not_subsingleton_coordFS_basis` shows the basis really has two factors, and `coordFS_chimera_corners` shows the four `C`-corners of `χ^F_C((true,true),(false,false))` are pairwise distinct |
+| `emptyFS` | `Empty`, `B = {⊥}` | the `|S| = 0` case; `not_isFactorization_empty_basis` confirms `B = ∅` is *not* a factorization of the empty set, matching Proposition 5 |
+| `unitFS` | `Unit`, `B = ∅` | the `|S| = 1` case; `unitFS_basis_unique` proves this is the *only* factorization of a one-element set, again matching Proposition 5 |
+
+The two structure fields are also independent: `fstFactor` alone satisfies `nontrivial`
+but not `bijective`, and `{⊤}` over `Unit` satisfies `bijective` but not `nontrivial`.

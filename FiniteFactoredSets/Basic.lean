@@ -1,5 +1,4 @@
 import Mathlib.Data.Setoid.Partition
-import Mathlib.Order.Interval.Set.Infinite
 
 /-!
 # Partitions, factorizations, and chimera functions
@@ -53,7 +52,9 @@ def part (b : Setoid S) (s : S) : Set S := {t | b t s}
 lemma self_mem_part (b : Setoid S) (s : S) : s ∈ part b s := b.refl' s
 
 lemma part_eq_of_mem {b : Setoid S} {s t : S} (h : t ∈ part b s) : part b t = part b s :=
-  Set.ext fun _ => ⟨fun hu => b.trans' hu h, fun hu => b.trans' hu (b.symm' h)⟩
+  -- `part b s` is definitionally Mathlib's equivalence class `{x | b x s}`, so this is
+  -- `Setoid.eq_of_mem_classes` with no glue — not a fact this development proves.
+  Setoid.eq_of_mem_classes (Setoid.mem_classes b t) (b.refl' t) (Setoid.mem_classes b s) h
 
 /-- Two elements lie in the same block exactly when they are related — Definition 5
 read through Definition 4. -/
@@ -232,6 +233,17 @@ Paper node: Definition 13 (§2.3). -/
 noncomputable def chimera (C : Set (Setoid S)) (s t : S) : S :=
   F.chimeraFun fun b => if (b : Setoid S) ∈ C then s else t
 
+/-- Definition 13's setwise extension `χ^F_C(T,R) = {χ^F_C(t,r) | t ∈ T, r ∈ R}`.  This is
+the form Definition 16 (generation) and Propositions 10 and 20 quantify over, so it is
+part of the node, not a convenience.
+
+Paper node: Definition 13 (§2.3). -/
+noncomputable def chimeraImage (C : Set (Setoid S)) (T R : Set S) : Set S :=
+  {u | ∃ t ∈ T, ∃ r ∈ R, F.chimera C t r = u}
+
+lemma mem_chimeraImage {C : Set (Setoid S)} {T R : Set S} {u : S} :
+    u ∈ F.chimeraImage C T R ↔ ∃ t ∈ T, ∃ r ∈ R, F.chimera C t r = u := Iff.rfl
+
 @[simp] lemma coord_chimera (C : Set (Setoid S)) (s t : S) (b : F.B) :
     F.coord (F.chimera C s t) b
       = if (b : Setoid S) ∈ C then F.coord s b else F.coord t b := by
@@ -257,6 +269,12 @@ private lemma chimera_ext {x y : S} (h : ∀ b : F.B, F.coord x b = F.coord y b)
   F.coord.injective (funext h)
 
 /-- **Proposition 4** — the eleven identities the paper lists for `χ^F_C`, in order.
+
+The paper fixes `C, D ⊆ B`; this statement leaves them arbitrary, which is *stronger*,
+not weaker: `chimera` consults `C` only at `b ∈ F.B`, so `chimera C = chimera (C ∩ F.B)`,
+and every clause survives the generalization.  The price is that clause 1 carries an
+explicit `c ∈ F.B` guard which the paper gets for free from `C ⊆ B`; a client holding
+`hC : C ⊆ F.B` discharges it as `hC hc`.
 
 Paper node: Proposition 4 (§2.3). -/
 theorem chimera_spec (C D : Set (Setoid S)) (s t r : S) :

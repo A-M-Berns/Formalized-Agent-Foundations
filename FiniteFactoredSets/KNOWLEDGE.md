@@ -115,11 +115,24 @@ Do not trust a node number recalled from memory. The spike miscited `factor2` as
 
 ## Intentional deviations
 
-None yet.
+**Proposition 4 is stated for unrestricted `C, D`.** The paper fixes `C, D ⊆ B`;
+`chimera_spec` leaves them arbitrary. This is *stronger*, not weaker: `chimera` consults
+`C` only at `b ∈ F.B`, so `chimera C = chimera (C ∩ F.B)`, and all eleven clauses survive
+(clauses 4 and 10 are the ones that could have broken; they don't). The price is that
+clause 1 carries an explicit `c ∈ F.B` guard the paper gets for free — a client holding
+`hC : C ⊆ F.B` discharges it as `hC hc`, and that implication is compiled. Raised as a
+faithfulness defect in round 1 (R1-F05) and refuted; do not re-raise.
+
+## Open trust-surface caveats
+
+**None outstanding.** Non-vacuity was the one open caveat and it is now discharged by
+construction in `Examples.lean` (round 1, R1-F01). This section exists so that a future
+session reading only this file learns of any caveat the README carries — round 1 found the
+two registers out of step, which is exactly the failure this heading prevents.
 
 ## Disclosures
 
-None yet. There are no type-`(c)` modeling substitutions in the current surface.
+None. There are no type-`(c)` modeling substitutions in the current surface.
 
 ## Paper errata
 
@@ -137,3 +150,44 @@ checked — budget for errata as §3–§5 land.
   set is finite-dimensional, so `Fintype F.B` should be *derived*, not assumed. Assuming
   it would be premise smuggling; prove Proposition 6 before the polynomial section needs
   finite products.
+
+## Round 1 audit — durable lessons
+
+* **`part b s` is definitionally Mathlib's equivalence class `{x | b x s}`**, so
+  `Setoid.mem_classes` and `Setoid.eq_of_mem_classes` apply with no glue. Before adding any
+  lemma about `part`, read `Mathlib/Data/Setoid/Partition.lean` first: `mem_classes`,
+  `eq_of_mem_classes`, `rel_iff_exists_classes`, `classes_inj`, `empty_notMem_classes` are
+  already there under different names. Round 1 found `part_eq_of_mem` re-deriving one of
+  them (R1-F09); it now cites Mathlib.
+* **`hB` in `isFactorization_iff_existsUnique` is load-bearing, not decoration**, even
+  though the forward direction never uses it. Drop it and the iff is *false*: take
+  `S = Unit`, `B = {⊤}` — the right-hand side holds, but `IsFactorization {⊤}` fails its
+  `nontrivial` field. Do not "simplify" it away.
+* **`Setoid α` is extensional** — `Equivalence r` is `Prop`-valued, so proof irrelevance
+  applies to `iseqv` and distinct `Setoid` terms cannot share a relation. This is what makes
+  `dd:partition` faithful to "a partition *is* its set of blocks". Consequence:
+  `(⊥ : Setoid Empty) = ⊤`, matching Definition 7's `Dis_∅ = Ind_∅ = {}`.
+* **Proving the `bijective` field's surjectivity**: `exact Eq.trans (Quotient.sound h)
+  (Quotient.out_eq _)` fails with an application-type mismatch (the `out_eq` metavariable is
+  solved too early). Use `refine Eq.trans (Quotient.sound (?_ : b _ _)) (Quotient.out_eq _)`
+  and close the side goal with `rfl`; postponement is what makes it elaborate.
+* **`b ∈ ({x} : Set (Setoid S))` does not `rintro rfl`.** Use
+  `simp only [Set.mem_singleton_iff] at hb; subst hb`. For a pair `{x, y}`,
+  `rcases hb with rfl | rfl` *does* work, since `Set.insert` membership unfolds to a
+  disjunction of equations definitionally.
+* **`open ... in` scopes to the next command only.** `AxiomAudit.lean`'s FFS-INVENTORY block
+  works because there is exactly one `#assert_axioms_clean` inside the markers. Adding a
+  second would silently lose the `open` and fail to resolve unqualified names.
+* **The trust-surface generator renders plain `def` cards as signature only**, while
+  `structure` cards show their fields. Seven of thirteen FFS nodes are Definitions, so a
+  human read-through of the guide alone cannot check an FFS *definition* against the paper —
+  including `IsTrivialPartition`, the one this file flags as the trap. Open the source. This
+  is repo-wide generator behaviour, not FFS-specific, but it bites hardest here.
+* **A concurrent session can switch the shared checkout out from under you**, with a clean
+  `git status` and no warning. `Scratch*.lean` is in `.git/info/exclude`, so scratch probes
+  survive the switch and look like they still belong to the branch you started on. Check
+  `git branch --show-current` before trusting a build result, and read shard files with
+  `git show <branch>:<path>`. This work now lives in its own worktree for that reason.
+* **When the first erratum lands**, create `notes/paper-errata.md` *and* point
+  `scripts/papers.py`'s `errata` field at it — the registry currently says `None`, and
+  `check_paper_wiring.py` does not look at this file's errata section.

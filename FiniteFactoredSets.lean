@@ -48,3 +48,4 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
   blocks of `b`, so this is a change of presentation, not of content.
 -/
 import FiniteFactoredSets.Basic
+import FiniteFactoredSets.Examples

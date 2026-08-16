@@ -5585,6 +5585,15 @@ Then
     <code>FiniteFactoredSets/README.md</code> rather than inventoried, because there is no
     declaration of this project's to axiom-check.</p>
 
+    <h3>One node carried only in part</h3>
+    <p><code>bot_le_and_le_top</code> carries the <code>Proposition 2</code> annotation but
+    states only that proposition's <em>second</em> sentence — the <code>Dis_S</code> /
+    <code>Ind_S</code> bounds. Its first sentence, that the order is a partial order on
+    <code>Part(S)</code>, is Mathlib's <code>PartialOrder (Setoid S)</code> instance and has
+    no declaration of this project's. So the card below pairs the whole printed proposition
+    with a Lean statement covering half of it, on purpose; the other half is recorded in
+    <code>FiniteFactoredSets/README.md</code>'s table of Mathlib-rendered nodes.</p>
+
     <h3>One inverted convention, stated once</h3>
     <p>The paper's order glyphs run opposite to Mathlib's: it writes <code>X ≥_S Y</code>
     for "<em>X</em> is finer than <em>Y</em>", so the paper's <code>≥_S</code> is Mathlib's
@@ -5834,7 +5843,7 @@ Given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><m
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.chimera</code><span class="ep-file">FiniteFactoredSets/Basic.lean</span></div><pre class="sig">noncomputable def chimera (C : Set (Setoid S)) (s t : S) : S</pre></div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.chimera</code><span class="ep-file">FiniteFactoredSets/Basic.lean</span></div><pre class="sig">noncomputable def chimera (C : Set (Setoid S)) (s t : S) : S</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.chimeraImage</code><span class="ep-file">FiniteFactoredSets/Basic.lean</span></div><pre class="sig">noncomputable def chimeraImage (C : Set (Setoid S)) (T R : Set S) : Set S</pre></div>
     </section>
   </div>
 </article>
@@ -5944,4 +5953,4 @@ Given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><m
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=8 finite-factored-sets=13 -->
 
-<!-- trust-surface-sources: 1f4d6f50a10c0dbdcd207a0e457365641b0aa31830dfe2783f45ea6ab45faf65 -->
+<!-- trust-surface-sources: 451f8b8ad2a3f4842910ee2b9852d1ba5007b0bf4884f677dc85d00fdfc606a2 -->

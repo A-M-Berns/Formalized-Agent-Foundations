@@ -8,8 +8,10 @@ SurfaceProbe.lean`. Two commands:
   given endpoints, transitively through structure fields. This is the Tier-2 boundary set:
   structures whose fields are hypotheses of a Tier-1 endpoint. Seed it with the full
   `#assert_axioms_clean` list from `AxiomAudit.lean`. Results are filtered to the
-  formalization namespaces (`LogicalInduction`, `CartesianFrames`), so it serves both
-  inventories in `AxiomAudit.lean`.
+  formalization namespaces (`LogicalInduction`, `CartesianFrames`, `FiniteFactoredSets`),
+  so it serves every inventory in `AxiomAudit.lean`.  `ModalAgents` declares its surface at
+  the root namespace and so has no prefix to filter on; its Tier-2 set is maintained by
+  hand.
 * `#dump_fields <structs…>` — prints each structure's field-name set, in the exact shape the
   `#assert_fields` assertions expect.
 
@@ -20,6 +22,7 @@ import Lean.Util.CollectAxioms
 import LogicalInduction.Properties
 import LogicalInduction.Construction
 import CartesianFrames.Examples
+import FiniteFactoredSets
 
 open Lean Elab Command Meta in
 /-- Structures appearing in the types of `ids`, closed transitively through the field
@@ -42,7 +45,7 @@ elab "#surface_types " ids:ident+ : command => do
         for c in info.type.getUsedConstants do
           if Lean.isStructure env0 c && !hits.contains c then
             hits := hits.insert c; frontier := c :: frontier
-  let libs : List Name := [`LogicalInduction, `CartesianFrames]
+  let libs : List Name := [`LogicalInduction, `CartesianFrames, `FiniteFactoredSets]
   let out := (hits.toList.filterMap fun h =>
     if libs.any (·.isPrefixOf h) then some h.toString else none).toArray.qsort (· < ·)
   logInfo m!"STRUCTS-IN-ENDPOINT-TYPES:\n{String.intercalate "\n" out.toList}"
@@ -73,3 +76,11 @@ namespace CartesianFrames
 --   #dump_fields Frame Frame.Hom Frame.Biextensional
 
 end CartesianFrames
+
+namespace FiniteFactoredSets
+
+-- Same, seeded from the FFS-INVENTORY block. Example:
+--   #surface_types FactoredSet.eq_of_part_eq FactoredSet.chimera_spec …
+--   #dump_fields FiniteFactoredSets.IsFactorization FiniteFactoredSets.FactoredSet
+
+end FiniteFactoredSets

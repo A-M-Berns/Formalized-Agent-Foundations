@@ -468,6 +468,15 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <code>FiniteFactoredSets/README.md</code> rather than inventoried, because there is no
     declaration of this project's to axiom-check.</p>
 
+    <h3>One node carried only in part</h3>
+    <p><code>bot_le_and_le_top</code> carries the <code>Proposition 2</code> annotation but
+    states only that proposition's <em>second</em> sentence — the <code>Dis_S</code> /
+    <code>Ind_S</code> bounds. Its first sentence, that the order is a partial order on
+    <code>Part(S)</code>, is Mathlib's <code>PartialOrder (Setoid S)</code> instance and has
+    no declaration of this project's. So the card below pairs the whole printed proposition
+    with a Lean statement covering half of it, on purpose; the other half is recorded in
+    <code>FiniteFactoredSets/README.md</code>'s table of Mathlib-rendered nodes.</p>
+
     <h3>One inverted convention, stated once</h3>
     <p>The paper's order glyphs run opposite to Mathlib's: it writes <code>X ≥_S Y</code>
     for "<em>X</em> is finer than <em>Y</em>", so the paper's <code>≥_S</code> is Mathlib's

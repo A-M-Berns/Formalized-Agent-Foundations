@@ -1015,7 +1015,18 @@ open FiniteFactoredSets in
   part equivalence_setoid IsTrivialPartition bot_le_and_le_top commonRefinement
   IsFactorization FactoredSet FactoredSet.eq_of_forall_rel
   isFactorization_iff_existsUnique FactoredSet.eq_of_part_eq
-  FactoredSet.chimeraFun FactoredSet.chimera FactoredSet.chimera_spec
+  FactoredSet.chimeraFun FactoredSet.chimera FactoredSet.chimeraImage
+  FactoredSet.chimera_spec
+  -- Non-vacuity witnesses (FiniteFactoredSets/Examples.lean).  Every §2.2-§2.3 endpoint
+  -- is stated over `FactoredSet`; these are what make those endpoints say something.
+  -- `coordFS` is the load-bearing one: with a single factor every `C` behaves as `∅` or
+  -- `B`, so Proposition 4 would be near-tautologous.
+  Examples.bool_isFactorization Examples.boolFS
+  Examples.coord_isFactorization Examples.coordFS
+  Examples.not_subsingleton_coordFS_basis Examples.coordFS_chimera_corners
+  Examples.empty_isFactorization Examples.emptyFS
+  Examples.not_isFactorization_empty_basis
+  Examples.unit_isFactorization Examples.unitFS Examples.unitFS_basis_unique
 -- FFS-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Finite Factored Sets surface. -/

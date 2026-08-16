@@ -37,6 +37,12 @@ from pathlib import Path
 
 LI_LABEL = re.compile(r"(thm|lem|cor|def|app):[a-zA-Z]+|App\.\s|§")
 CF_LABEL = re.compile(r"Paper node:.*(Claim|Theorem)\s+[0-9]+")
+# Finite Factored Sets numbers every environment on its own global counter, so a
+# paper-facing `theorem` there cites `Theorem n`, `Proposition n`, `Lemma n` or
+# `Corollary n` — never a `<section>.<n>` pair.
+FFS_LABEL = re.compile(
+    r"Paper node:.*(Theorem|Proposition|Lemma|Corollary)\s+[0-9]+")
+
 MA_LABEL = re.compile(
     r"Paper node:.*(Theorem|Lemma|Proposition|Corollary|Condition)\s+[0-9]+\.[0-9]+"
 )
@@ -61,6 +67,7 @@ libraries = {
     Path("LogicalInduction"): LI_LABEL,
     Path("CartesianFrames"): CF_LABEL,
     Path("ModalAgents"): MA_LABEL,
+    Path("FiniteFactoredSets"): FFS_LABEL,
 }
 paths = [(path, label) for library, label in libraries.items()
          for path in library.rglob("*.lean")]
