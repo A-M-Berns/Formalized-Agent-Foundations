@@ -61,3 +61,37 @@ theorem modalAgent_behavioral (X : ModalAgent) {Y Z : ModalAgent} (h : Y ≈ Z) 
       · simp only [dif_neg hk]
         exact E!_id
   exact E!_trans hY (E!_trans hcong (E!_symm hZ))
+
+namespace BehavEquiv
+
+/-- Behavioral equivalence transports an outcome in both agent positions. -/
+lemma outcome_congr {X X' Y Y' : ModalAgent} (hX : X ≈ X') (hY : Y ≈ Y') :
+    Modal.GL ⊢ outcome X Y 🡘 outcome X' Y' :=
+  E!_trans (hX Y) (modalAgent_behavioral X' hY)
+
+/-- Cooperation is invariant under behavioral equivalence in both positions. -/
+lemma cooperates_iff {X X' Y Y' : ModalAgent} (hX : X ≈ X') (hY : Y ≈ Y') :
+    Cooperates X Y ↔ Cooperates X' Y' := by
+  have h := outcome_congr hX hY
+  constructor
+  · intro hp
+    exact ⟨and₁ ⨀ h.some ⨀ hp.some⟩
+  · intro hp
+    exact ⟨and₂ ⨀ h.some ⨀ hp.some⟩
+
+/-- Defection-as-unprovability is invariant under behavioral equivalence. -/
+lemma defects_iff {X X' Y Y' : ModalAgent} (hX : X ≈ X') (hY : Y ≈ Y') :
+    Defects X Y ↔ Defects X' Y' :=
+  not_congr (cooperates_iff hX hY)
+
+/-- Provable defection is invariant under behavioral equivalence. -/
+lemma provablyDefects_iff {X X' Y Y' : ModalAgent} (hX : X ≈ X') (hY : Y ≈ Y') :
+    ProvablyDefects X Y ↔ ProvablyDefects X' Y' := by
+  have h := neg_congruence! (outcome_congr hX hY)
+  constructor
+  · intro hp
+    exact ⟨and₁ ⨀ h.some ⨀ hp.some⟩
+  · intro hp
+    exact ⟨and₂ ⨀ h.some ⨀ hp.some⟩
+
+end BehavEquiv

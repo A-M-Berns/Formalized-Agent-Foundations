@@ -359,6 +359,13 @@ theorem multSubagentSubEnv_iff_multSubagent :
   · intro h
     exact ⟨h.subagent, (multSubagent_iff_multSubEnv.mp h).subagent⟩
 
+/-- Direct consumer bridge between the categorical and externalizing presentations of
+multiplicative subagency. -/
+lemma multSubagent_iff_multSubagentCategorical :
+    C ◁ₓ D ↔ MultSubagentCategorical C D :=
+  multSubagentSubEnv_iff_multSubagent.symm.trans
+    multSubagentCategorical_iff_multSubagentSubEnv.symm
+
 section RegressionExamples
 
 /- Client-side exercises of the endpoints above (endpoint-usability rule). -/

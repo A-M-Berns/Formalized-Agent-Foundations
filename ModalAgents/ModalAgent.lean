@@ -104,6 +104,15 @@ def mkRank0 (φ : Formula ℕ)
     (h : Modalized 0 φ := by simp [Modalized]) : ModalAgent :=
   .mk φ 0 Fin.elim0 (rank0_modalized h)
 
+@[simp] lemma formula_mkRank0 (φ : Formula ℕ)
+    (h : Modalized 0 φ := by simp [Modalized]) : (mkRank0 φ h).formula = φ := rfl
+
+@[simp] lemma arity_mkRank0 (φ : Formula ℕ)
+    (h : Modalized 0 φ := by simp [Modalized]) : (mkRank0 φ h).arity = 0 := rfl
+
+@[simp] lemma rank_mkRank0 (φ : Formula ℕ)
+    (h : Modalized 0 φ := by simp [Modalized]) : (mkRank0 φ h).rank = 0 := rfl
+
 end ModalAgent
 
 /-! ## Concrete agents -/

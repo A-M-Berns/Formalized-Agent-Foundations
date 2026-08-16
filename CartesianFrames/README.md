@@ -3,6 +3,16 @@
 A Lean 4 formalization of Garrabrant, Herrmann, and Lopez-Wild,
 [*Cartesian Frames*](https://arxiv.org/abs/2109.10996) (arXiv:2109.10996v1).
 
+## Downstream use
+
+Use `import CartesianFrames.API` for frames and morphisms, duality and collapse,
+biextensional and homotopy equivalence, subagent relations, the operations calculus,
+decomposition, and the categorical characterizations. Open the relation notations with
+`open scoped CartesianFrames.Frame`; qualify `CartesianFrames.Frame` when Mathlib's
+order-theoretic `Frame` is also in scope. The API excludes concrete regression fixtures;
+import `CartesianFrames.Examples` explicitly when those witnesses are useful. The Claim
+35 ruling below remains unchanged.
+
 Scope: all 60 numbered nodes of the paper, including both appendices.  **Every
 numbered node has a Lean carrier** (modulo the Claim 35 ruling below).  One file per
 layer of the paper:

@@ -3,6 +3,19 @@
 A Lean 4 formalization of Garrabrant, Benson-Tilsen, Critch, Soares, Taylor,
 [*Logical Induction*](https://arxiv.org/abs/1609.03543) (arXiv:1609.03543v5).
 
+## Downstream use
+
+Use `import LogicalInduction.API` for the semantic framework and general property
+theorems: sentences, markets, deductive processes, features, traders and exploitation,
+the logical-induction criterion, affine combinations, LUVs, expectations, asymptotics,
+and the `lic_*` families. It intentionally excludes the concrete LIA construction and
+compiler. Some raw digit/RPN machinery is necessarily visible through transitive theorem
+imports, but is not thereby designated as supported API. Import
+`LogicalInduction.Construction.LIACompiler` for the concrete construction endpoints, or
+`LogicalInduction` for the complete rollup. The API module documents the supported
+high-level efficiency certificates and the unchanged `dd:fuel`, propositional-LUV, and
+finite-perturbation boundaries.
+
 The existence theorem is proved in the paper's full sense, and every named theorem and
 lemma of the paper — 53 of them — is formalized, named after its paper label, and
 build-audited. How strong each one is:
