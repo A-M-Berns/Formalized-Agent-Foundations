@@ -59,6 +59,13 @@ structure LUV where
   /-- The sentence `⌜X > r⌝`, for a rational threshold `r`. -/
   gt : ℚ → Sentence
 
+/-- LUVs are determined by their threshold-sentence families. -/
+@[ext] protected lemma LUV.ext {X Y : LUV} (h : X.gt = Y.gt) : X = Y := by
+  cases X
+  cases Y
+  cases h
+  rfl
+
 namespace LUV
 
 /-- A threshold presentation is **polynomially codeable** when the sentence code for

@@ -261,6 +261,15 @@ structure AffineCombination where
   const : EF
   terms : List (EF × Sentence)
 
+/-- Affine combinations are determined by their constant and term list. -/
+@[ext] protected lemma AffineCombination.ext {A B : AffineCombination}
+    (hconst : A.const = B.const) (hterms : A.terms = B.terms) : A = B := by
+  cases A
+  cases B
+  cases hconst
+  cases hterms
+  rfl
+
 namespace AffineCombination
 
 /-- Value of an affine combination under a history (for its feature coefficients) and an

@@ -13,6 +13,12 @@ Lean's standard three (`propext`, `Classical.choice`, `Quot.sound`) or silently
 disappears, and every modeling substitution is disclosed at the statement, not
 discovered by the reader.
 
+FAF has two complementary goals: faithful, auditable formalization of important
+agent-foundations papers, and reusable Lean infrastructure for research that builds on
+them. The first governs the trust surface; the second is expressed through a curated
+consumer surface. Faithfulness comes first, and the API never hides a modeling boundary
+or replaces paper-legible statements with unnecessary abstraction.
+
 ## What's here
 
 | Paper | Directory | Status |
@@ -23,6 +29,31 @@ discovered by the reader.
 
 Each directory's README gives the detailed statement-level accounting: what is proved,
 what is modeled, and exactly where the trust boundary sits.
+
+For downstream work, use the supported entrypoints below. Each deliberately avoids
+unnecessary construction or regression-test machinery; the module documentation names
+the deeper imports when those details are needed.
+
+| Library | Recommended import |
+|---|---|
+| Logical Induction | `import LogicalInduction.API` |
+| Modal Agents | `import ModalAgents.API` |
+| Cartesian Frames | `import CartesianFrames.API` |
+
+Consumer readiness is a checked completion criterion, and it is the intended end state
+for **every** paper this repository takes on — not a retrofit for the three that happen
+to be finished. A paper marked completed in `scripts/papers.py` must advertise an API and
+supply an isolated client smoke test that is built by default;
+`scripts/check_paper_wiring.py` fails closed if either is missing. A new formalization is
+registered `in-progress` and may land its statements first, but it is not finished until
+a separate research project could depend on a small, documented import — the same bar the
+three above meet. Proving the paper's nodes is necessary and not sufficient.
+
+The two surfaces stay conceptually distinct: the **trust surface** answers what we claim
+faithfully formalizes the paper, and the **consumer surface** answers what downstream work
+should depend on. They overlap heavily but need not coincide, and the API may never
+obscure an assumption the trust surface discloses. The detailed standing rule lives in
+[`CLAUDE.md`](CLAUDE.md#consumer-readiness-is-part-of-paper-completion).
 
 The whole surface is also browsable in one place. [`docs/trust-surface.html`](docs/trust-surface.html)
 is a generated read-through guide covering **all three papers**: every annotated paper
@@ -57,11 +88,12 @@ it will fetch that version automatically.
 ```sh
 lake exe cache get      # prebuilt Mathlib oleans (a minute or two)
 lake build AxiomAudit   # the checked target: builds every library + the endpoint inventory
+lake build APITests     # isolated downstream-style tests of the supported APIs
 ```
 
 `lake build AxiomAudit` is *the* gate — it subsumes all three libraries and fails if any listed
 endpoint gains a stray axiom or disappears. The script gates run on the sources and
-need no build:
+need no build. Both `AxiomAudit` and `APITests` are default targets in CI:
 
 ```sh
 scripts/check-paper-nodes.sh          # `Paper node:` labels ↔ paper \label{…}, both directions

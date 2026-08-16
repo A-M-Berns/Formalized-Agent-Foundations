@@ -18,6 +18,9 @@ verifies, for each registered paper, that:
   6. the library has a README;
   7. the trust-surface guide renders at least one node for the paper, per the coverage
      stamp `gen-trust-surface.py` writes into the page (see TRUST_SURFACE_ALL_PAPERS).
+  8. every paper marked `completed` has a documented consumer API entrypoint and a
+     client-style smoke test that imports only that API;
+  9. those smoke tests are collected in the default-built `APITests` library.
 
 and — the part that makes it hold in perpetuity — that **every `lean_lib` declared in
 `lakefile.lean` is either a registered paper or an explicitly excused non-paper
@@ -41,6 +44,7 @@ CI = os.path.join(ROOT, ".github/workflows/ci.yml")
 AUDIT = os.path.join(ROOT, "AxiomAudit.lean")
 LAKEFILE = os.path.join(ROOT, "lakefile.lean")
 TRUST_SURFACE = os.path.join(ROOT, "docs/trust-surface.html")
+API_TEST_ROOT = os.path.join(ROOT, "APITests.lean")
 
 # The trust-surface guide is paper-generic and covers every registered paper, so the
 # requirement is blocking: a new paper must appear in the guide, not merely be registered.
@@ -74,10 +78,26 @@ def run(cmd):
     return ok, (out[-1] if out else "(no output)")
 
 
+def lean_module(rel):
+    """Translate a repository-relative Lean source path to its import name."""
+    return rel.removesuffix(".lean").replace("/", ".")
+
+
+def imports(rel):
+    text = open(path(rel), encoding="utf-8").read()
+    return re.findall(r"^import\s+([^\s]+)\s*$", text, re.M)
+
+
 # ---------------------------------------------------------------- per-paper wiring
 for key, paper in sorted(PAPERS.items()):
     lib = paper["library"]
     tag = "%s (%s)" % (key, lib)
+    status = paper.get("status", "in-progress")
+
+    if status not in {"in-progress", "completed"}:
+        violations.append(
+            "%s: status %r is invalid (expected 'in-progress' or 'completed')"
+            % (tag, status))
 
     for field in ("source", "pdf", "readme"):
         rel = paper.get(field)
@@ -142,10 +162,67 @@ for key, paper in sorted(PAPERS.items()):
                    % (tag, os.path.relpath(TRUST_SURFACE, ROOT)))
             (violations if TRUST_SURFACE_ALL_PAPERS else notes).append(msg)
 
+    # Consumer readiness is a completion gate, not an obstacle to incremental work.
+    # A paper may be registered while in progress; changing its status to `completed`
+    # opts it into the supported-API contract below.
+    if status == "completed":
+        api = paper.get("api")
+        api_test = paper.get("api_test")
+        if not api:
+            violations.append("%s: completed paper has no api entrypoint" % tag)
+        elif not os.path.exists(path(api)):
+            violations.append("%s: API entrypoint missing at %s" % (tag, api))
+        else:
+            api_text = open(path(api), encoding="utf-8").read()
+            if not api.startswith(lib + "/"):
+                violations.append(
+                    "%s: API entrypoint %s is not inside %s/" % (tag, api, lib))
+            if "/-!" not in api_text:
+                violations.append(
+                    "%s: API entrypoint %s has no module documentation" % (tag, api))
+            api_imports = imports(api)
+            if not api_imports:
+                violations.append("%s: API entrypoint %s exports no Lean modules"
+                                  % (tag, api))
+            if "AxiomAudit" in api_imports:
+                violations.append("%s: API entrypoint %s imports AxiomAudit"
+                                  % (tag, api))
+
+        if not api_test:
+            violations.append("%s: completed paper has no api_test" % tag)
+        elif not os.path.exists(path(api_test)):
+            violations.append("%s: API smoke test missing at %s" % (tag, api_test))
+        elif api:
+            if not api_test.startswith("APITests/"):
+                violations.append(
+                    "%s: API smoke test %s is not isolated under APITests/"
+                    % (tag, api_test))
+            expected = lean_module(api)
+            actual = imports(api_test)
+            if actual != [expected]:
+                violations.append(
+                    "%s: %s must import only %s (found %s)"
+                    % (tag, api_test, expected, ", ".join(actual) or "no imports"))
+
+            aggregate = (open(API_TEST_ROOT, encoding="utf-8").read()
+                         if os.path.exists(API_TEST_ROOT) else "")
+            test_module = lean_module(api_test)
+            if not re.search(r"^import\s+%s\s*$" % re.escape(test_module),
+                             aggregate, re.M):
+                violations.append(
+                    "%s: APITests.lean does not import %s" % (tag, test_module))
+
 # ----------------------------------------------------- perpetuity: nothing unlisted
 declared = declared_libraries()
 registered = {p["library"] for p in PAPERS.values()}
 excused = set(NON_PAPER_LIBRARIES)
+
+if "APITests" not in declared:
+    violations.append("lakefile.lean does not declare the APITests client library")
+else:
+    lakefile = open(LAKEFILE, encoding="utf-8").read()
+    if not re.search(r"@\[default_target\]\s*\nlean_lib\s+APITests\b", lakefile):
+        violations.append("lean_lib APITests is not a default target, so CI may skip it")
 
 for lib in sorted(declared - registered - excused):
     violations.append(
@@ -177,6 +254,8 @@ if violations:
     print("\n%d violation(s)." % len(violations))
     sys.exit(1)
 
-print("paper-wiring check: OK (%d papers registered, %d non-paper libraries excused%s)"
-      % (len(PAPERS), len(NON_PAPER_LIBRARIES),
+completed = sum(p.get("status", "in-progress") == "completed" for p in PAPERS.values())
+print("paper-wiring check: OK (%d papers registered, %d completed APIs, "
+      "%d non-paper libraries excused%s)"
+      % (len(PAPERS), completed, len(NON_PAPER_LIBRARIES),
          "; %d note(s)" % len(notes) if notes else ""))

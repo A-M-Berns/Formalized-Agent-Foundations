@@ -5,6 +5,16 @@ Yudkowsky, [*Robust Cooperation in the Prisoner's Dilemma via Provability Logic*
 mainly at the level of Gödel–Löb provability logic, with the §4 statements that quantify
 over *arbitrary* agents carried at the arithmetic level they are printed at.
 
+## Downstream use
+
+Use `import ModalAgents.API` for modal agents, behavioral equivalence, outcomes,
+cooperation and defection predicates, the fixed-point interface, concrete bots, major
+cooperation theorems, and arithmetic lifts. It curates the research-facing content above
+the recursive fixed-point scaffolding and vendored provability-logic implementation;
+import `ModalAgents` only when the complete formalization rollup is wanted. The API does
+not blur the distinction between `Defects` and the stronger, arithmetically liftable
+`ProvablyDefects`, or the modal/arithmetic scope boundary documented below.
+
 
 It covers, at the GL level:
 

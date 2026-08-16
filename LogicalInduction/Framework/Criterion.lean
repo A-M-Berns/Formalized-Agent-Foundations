@@ -842,6 +842,14 @@ structure DeductiveProcess where
   /-- The revealed sets are nondecreasing. -/
   mono : ∀ n, D n ⊆ D (n + 1)
 
+/-- Deductive processes are determined by their revealed sentence sets. -/
+@[ext] protected lemma DeductiveProcess.ext {DP DQ : DeductiveProcess}
+    (h : DP.D = DQ.D) : DP = DQ := by
+  cases DP
+  cases DQ
+  cases h
+  rfl
+
 /-- Nestedness at arbitrary distance: `D m ⊆ D n` whenever `m ≤ n`. -/
 lemma DeductiveProcess.mono_le (DP : DeductiveProcess) {m n : ℕ} (h : m ≤ n) :
     DP.D m ⊆ DP.D n := by
@@ -1390,6 +1398,14 @@ structure Strategy (n : ℕ) where
   /-- Every coefficient has rank `≤ n` (the strategy sees only prices up to day `n`). -/
   rank_le : ∀ p ∈ trades, p.1.rank ≤ n
 
+/-- Strategies are determined by their trade lists; rank certificates are proofs. -/
+@[ext] protected lemma Strategy.ext {n : ℕ} {T U : Strategy n}
+    (h : T.trades = U.trades) : T = U := by
+  cases T
+  cases U
+  cases h
+  rfl
+
 namespace Strategy
 
 /-- The value of an `n`-strategy against a history `𝓥`, as assessed by a world with payout
@@ -1430,6 +1446,13 @@ Paper node: `def:trader` -/
 structure Trader where
   /-- The strategy the trader plays on day `n`. -/
   strat : (n : ℕ) → Strategy n
+
+/-- Traders are determined by their day-indexed strategies. -/
+@[ext] protected lemma Trader.ext {T U : Trader} (h : T.strat = U.strat) : T = U := by
+  cases T
+  cases U
+  cases h
+  rfl
 
 namespace Trader
 

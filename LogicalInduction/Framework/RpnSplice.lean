@@ -63,6 +63,13 @@ lemma RpnSentenceCodes.of_eq {φ ψ : ℕ → Sentence} (h : RpnSentenceCodes φ
   obtain ⟨s, hs, hp⟩ := h
   exact ⟨s, hs, fun n => (hφψ n) ▸ hp n⟩
 
+/-- A fixed sentence is a symbol-metered efficient sentence family.  This is the
+consumer constructor for constant propositions; it keeps callers above the raw clocked
+code layer. -/
+lemma RpnSentenceCodes.const (φ : Sentence) : RpnSentenceCodes (fun _ => φ) :=
+  RpnSentenceCodes.ofPolySentenceCodes
+    ⟨_, PolyFueled.const (Encodable.encode φ)⟩
+
 /-- Two-way dispatch of sentence-block streams along a poly-fueled test. -/
 lemma RpnSentenceCodes.ifZero {φ ψ : ℕ → Sentence}
     (hφ : RpnSentenceCodes φ) (hψ : RpnSentenceCodes ψ)

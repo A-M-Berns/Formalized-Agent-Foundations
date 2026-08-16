@@ -1033,3 +1033,27 @@ the Logical Induction `#assert_fields` block). -/
   agent env adjoint
 #assert_fields CartesianFrames.Frame.Biextensional
   agent_ext env_ext
+
+/-! ## Consumer API conveniences (not paper endpoint inventories)
+
+The trust-surface inventories above remain the paper-facing accounting.  These
+declarations instead belong to the supported consumer surface: they are small
+extensionality, simplification, certification, and transport tools exercised by
+`APITests`.  Axiom-checking them here does not designate them as paper claims or add them
+to any `*-INVENTORY` block. -/
+
+open LogicalInduction in
+#assert_axioms_clean
+  DeductiveProcess.ext Strategy.ext Trader.ext AffineCombination.ext LUV.ext
+  RpnSentenceCodes.const
+
+#assert_axioms_clean
+  ModalAgent.formula_mkRank0 ModalAgent.arity_mkRank0 ModalAgent.rank_mkRank0
+  BehavEquiv.outcome_congr BehavEquiv.cooperates_iff BehavEquiv.defects_iff
+  BehavEquiv.provablyDefects_iff
+
+open CartesianFrames in
+#assert_axioms_clean
+  Frame.Subagent.congr Frame.multSubagent_iff_multSubagentCategorical
+  Frame.commit_outcome Frame.assume_outcome Frame.external_outcome
+  Frame.externalQuot_outcome Frame.internal_outcome Frame.internalSect_outcome

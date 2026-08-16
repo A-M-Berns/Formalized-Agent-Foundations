@@ -11,6 +11,11 @@ neither registered below nor listed in `NON_PAPER_LIBRARIES` is itself a failure
 new formalization cannot quietly ship without its paper source, its provenance
 checker, its inventory coverage, and its place in the trust-surface guide.
 
+Register work in progress with `status: "in-progress"`. Before changing that status to
+`"completed"`, add `api` and `api_test`: the documented recommended Lean entrypoint and
+an isolated client test importing only that entrypoint. The wiring gate then makes both
+artifacts, their aggregation in `APITests.lean`, and their default CI build mandatory.
+
 **Node-citation schemes.** The three papers cite nodes differently, because the
 sources differ, not by preference:
 
@@ -33,6 +38,9 @@ PAPERS = {
         "year": 2016,
         "arxiv": "1609.03543",
         "library": "LogicalInduction",
+        "status": "completed",
+        "api": "LogicalInduction/API.lean",
+        "api_test": "APITests/LogicalInduction.lean",
         "source": "LogicalInduction/notes/1609.03543v5-main.tex",
         "pdf": "LogicalInduction/notes/1609.03543v5.pdf",
         "scheme": "latex-label",
@@ -50,6 +58,9 @@ PAPERS = {
         "year": 2014,
         "arxiv": "1401.5577",
         "library": "ModalAgents",
+        "status": "completed",
+        "api": "ModalAgents/API.lean",
+        "api_test": "APITests/ModalAgents.lean",
         "source": "ModalAgents/notes/1401.5577-main.tex",
         "pdf": "ModalAgents/notes/1401.5577.pdf",
         "scheme": "printed-counter",
@@ -64,6 +75,9 @@ PAPERS = {
         "year": 2021,
         "arxiv": "2109.10996",
         "library": "CartesianFrames",
+        "status": "completed",
+        "api": "CartesianFrames/API.lean",
+        "api_test": "APITests/CartesianFrames.lean",
         "source": "CartesianFrames/notes/2109.10996v1-main.tex",
         "pdf": "CartesianFrames/notes/2109.10996v1.pdf",
         "scheme": "printed-inline",
@@ -77,6 +91,7 @@ PAPERS = {
 # Libraries in `lakefile.lean` that are deliberately not paper formalizations.  The
 # reason is required: it is what stops this from becoming a place to silence the gate.
 NON_PAPER_LIBRARIES = {
+    "APITests": "client-style smoke tests for completed papers — a gate, not a formalization",
     "AxiomAudit": "the checked endpoint inventory itself — a gate, not a formalization",
     "Scratchpad": "scratch verification of the Mathlib/Foundation substrate; excluded "
                   "from the default target",
