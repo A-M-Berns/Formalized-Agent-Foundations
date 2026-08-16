@@ -34,4 +34,34 @@ example {X X' Y Y' : ModalAgent} (hX : X ≈ X') (hY : Y ≈ Y') :
     ProvablyDefects X Y ↔ ProvablyDefects X' Y' :=
   hX.provablyDefects_iff hY
 
+/-! ## The arithmetic layer (§4)
+
+Client-side use of the agents-as-`PA`-formulas surface: the theory is a parameter, so a
+client supplies it, and every result below is obtained by composing exported statements
+rather than restating one. -/
+
+section Arithmetic
+
+open LO.Entailment LO.FirstOrder LO.FirstOrder.Arithmetic
+
+variable {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔 ⪯ T]
+
+/-- A client transports a behavioral-equivalence hypothesis through an arbitrary modal
+agent — Theorem 4.8 used as the transport rule it is. -/
+example {k : ℕ} {X Y Z : Agent} (hX : IsModalAgentOfRank T k X)
+    (hYZ : BehaviorallyEquivalent T Y Z) : T ⊢ X.app Y 🡘 X.app Z :=
+  modalAgent_isBehavioral hX Y Z hYZ
+
+/-- CooperateBot is behavioral: the non-vacuity witness composed with Theorem 4.8. -/
+example : IsBehavioral T (⊤ : Agent) :=
+  modalAgent_isBehavioral cooperateBot_isModalAgentOfRank_zero
+
+/-- A fact neither paper endpoint states on its own: no modal agent *is* CliqueBot. -/
+example [Entailment.Consistent T] {k : ℕ} {X : Agent}
+    (hX : IsModalAgentOfRank T k X) : X ≠ cliqueBot := by
+  rintro rfl
+  exact cliqueBot_not_modalAgent ⟨k, hX⟩
+
+end Arithmetic
+
 end APITests.ModalAgents

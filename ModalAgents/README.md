@@ -13,7 +13,8 @@ cooperation theorems, and arithmetic lifts. It curates the research-facing conte
 the recursive fixed-point scaffolding and vendored provability-logic implementation;
 import `ModalAgents` only when the complete formalization rollup is wanted. The API does
 not blur the distinction between `Defects` and the stronger, arithmetically liftable
-`ProvablyDefects`, or the modal/arithmetic scope boundary documented below.
+`ProvablyDefects`, the theory parameter and the consistency hypothesis that the
+arithmetic layer carries, or the remaining scope boundary documented below.
 
 
 It covers, at the GL level:
