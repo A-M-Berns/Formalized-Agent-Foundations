@@ -95,6 +95,7 @@ PAPERS = {
         "authors": "Garrabrant",
         "year": 2021,
         "arxiv": "2109.11513",
+        "status": "in-progress",
         "library": "FiniteFactoredSets",
         "source": "FiniteFactoredSets/notes/2109.11513-main.tex",
         "pdf": "FiniteFactoredSets/notes/2109.11513.pdf",
@@ -103,6 +104,10 @@ PAPERS = {
         "readme": "FiniteFactoredSets/README.md",
         "knowledge": "FiniteFactoredSets/KNOWLEDGE.md",
         "errata": None,
+        # In progress, but the consumer surface is maintained incrementally from the
+        # start (root CLAUDE.md, "Consumer readiness is part of paper completion").
+        "api": "FiniteFactoredSets/API.lean",
+        "api_test": "APITests/FiniteFactoredSets.lean",
     },
 }
 
