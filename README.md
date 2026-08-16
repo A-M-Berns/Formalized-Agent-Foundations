@@ -40,9 +40,20 @@ the deeper imports when those details are needed.
 | Modal Agents | `import ModalAgents.API` |
 | Cartesian Frames | `import CartesianFrames.API` |
 
-Consumer readiness is a checked completion criterion: a paper marked completed in
-`scripts/papers.py` must advertise an API and supply an isolated client smoke test that
-is built by default. The detailed standing rule lives in [`CLAUDE.md`](CLAUDE.md#consumer-readiness-is-part-of-paper-completion).
+Consumer readiness is a checked completion criterion, and it is the intended end state
+for **every** paper this repository takes on — not a retrofit for the three that happen
+to be finished. A paper marked completed in `scripts/papers.py` must advertise an API and
+supply an isolated client smoke test that is built by default;
+`scripts/check_paper_wiring.py` fails closed if either is missing. A new formalization is
+registered `in-progress` and may land its statements first, but it is not finished until
+a separate research project could depend on a small, documented import — the same bar the
+three above meet. Proving the paper's nodes is necessary and not sufficient.
+
+The two surfaces stay conceptually distinct: the **trust surface** answers what we claim
+faithfully formalizes the paper, and the **consumer surface** answers what downstream work
+should depend on. They overlap heavily but need not coincide, and the API may never
+obscure an assumption the trust surface discloses. The detailed standing rule lives in
+[`CLAUDE.md`](CLAUDE.md#consumer-readiness-is-part-of-paper-completion).
 
 The whole surface is also browsable in one place. [`docs/trust-surface.html`](docs/trust-surface.html)
 is a generated read-through guide covering **all three papers**: every annotated paper
