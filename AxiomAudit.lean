@@ -57,6 +57,7 @@ import ModalAgents.Cooperation
 import ModalAgents.Behavioral
 import ModalAgents.FixedPoint
 import ModalAgents.Arithmetic
+import ModalAgents.ArithmeticAgent
 import CartesianFrames.Examples
 import CartesianFrames.Worlds
 import CartesianFrames.Subagent
@@ -797,8 +798,8 @@ committed TeX (`ModalAgents/notes/1401.5577-main.tex`) **and** checks that every
 markers below.
 
 Several listed endpoints carry no annotation of their own, because they render no
-numbered node of that paper. They are all `lemma`s, per the repo's keyword rule, and
-they stay inventoried and axiom-checked regardless:
+numbered node of that paper. They are all `lemma`s or definitions, per the repo's keyword
+rule, and they stay inventoried and axiom-checked regardless:
 
 * `subst_congr` — a GL-level substitution congruence; the paper's Lemma 4.5 is the
   *arithmetic* statement, carried by `arithmetic_modal_substitution`.
@@ -808,6 +809,28 @@ they stay inventoried and axiom-checked regardless:
 * `arithInterp` and `Realization.update` — the definitions the arithmetic statements are
   phrased in: `arithInterp f φ` is the paper's `φ(ψ₁,…,ψₙ)`, and `Realization.update`
   substitutes for the diagonal variable. Listed because they are statement surface.
+* The §4 arithmetic-agent vocabulary — `Agent`, `Agent.app`, `opponentRealization`,
+  `IsModalAgentOfRank`, `IsModalAgent`, `BehaviorallyEquivalent`, `IsBehavioral`,
+  `cliqueBotSpec`, `cliqueBot`, `cliqueBotVariant`. These are the paper's §4 and §2
+  definitions ("agent", "`[X(Y)]`", "modal agent of rank `k`", "behaviorally
+  equivalent", "behavioral agent", CliqueBot). That paper's `definition` environment is
+  an uncounted `trivlist`, so none of them *can* cite a node; they are listed because
+  they are the statement surface of `modalAgent_isBehavioral` and
+  `cliqueBot_not_modalAgent`, and reading either endpoint means reading them.
+* `cooperateBot_isModalAgentOfRank_zero` — the non-vacuity witness for
+  `IsModalAgentOfRank`: CooperateBot (action formula `⊤`) is a modal agent of rank 0, so
+  Theorem 4.8 is not a statement about an empty class and Corollary 4.9 separates
+  CliqueBot from a class that has members. The paper introduces CooperateBot in §2 and
+  never numbers this.
+* The Corollary 4.9 proof steps — `cliqueBot_app` (CliqueBot cooperates exactly with
+  agents carrying its own code, the quining that makes it CliqueBot at all),
+  `cliqueBotVariant_ne`, `cliqueBot_behaviorallyEquivalent_variant`,
+  `cliqueBot_cooperates_self`, `cliqueBot_defects_variant` and
+  `cliqueBot_not_isBehavioral`. These are the clauses of that corollary's one-sentence
+  printed proof, not numbered nodes. They are listed rather than left internal because
+  the corollary is a *negative* result: what makes it non-trivial is that `cliqueBot`
+  really is CliqueBot and the variant really is behaviorally equivalent to it, and those
+  are exactly the facts above.
 * `defectBot_defects`, `defectBot_provably_defects` and `cooperateBot_cooperates` —
   the §2 remark that `PA ⊢ [CB(X)=C]` and `PA ⊢ [DB(X)=D]`, prose in an unnumbered
   `remark`.
@@ -837,6 +860,13 @@ they stay inventoried and axiom-checked regardless:
   glFixedPoint_spec outcome_fixed_point
   lob_theorem arithInterp Realization.update
   arithmetic_modal_substitution arithmetic_fixedPoint_uniqueness
+  Agent Agent.app opponentRealization IsModalAgentOfRank IsModalAgent
+  cooperateBot_isModalAgentOfRank_zero
+  BehaviorallyEquivalent IsBehavioral modalAgent_isBehavioral
+  cliqueBotSpec cliqueBot cliqueBotVariant
+  cliqueBot_app cliqueBotVariant_ne cliqueBot_behaviorallyEquivalent_variant
+  cliqueBot_cooperates_self cliqueBot_defects_variant
+  cliqueBot_not_isBehavioral cliqueBot_not_modalAgent
   defectBot_defects defectBot_provably_defects ProvablyDefects.defects
   cooperateBot_cooperates
   fairBot_vs_fairBot fairBot_unexploitable fairBot_vs_cooperateBot

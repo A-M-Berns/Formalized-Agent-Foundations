@@ -8,8 +8,17 @@
   agents — not just modal ones — can be stated as printed.
 
   Main results:
-  - `modalAgent_isBehavioral` : modal agents are behavioral (§4, Thm 4.8)
+  - `modalAgent_isBehavioral`  : modal agents are behavioral (§4, Thm 4.8)
   - `cliqueBot_not_modalAgent` : CliqueBot is not a modal agent (§4, Cor 4.9)
+
+  A standing constraint shapes every proof below the CliqueBot heading: `cliqueBot` is a
+  `parameterizedFixedpoint`, so its Gödel numeral is astronomically large and *any*
+  tactic that lets the kernel reduce it costs more than 8 GB and does not return. The
+  discipline that avoids this is uniform — do the work generically, over abstract closed
+  terms and abstract sentences, and instantiate at `cliqueBot` by plain term application,
+  which is unification only. Where a propositional step is needed at the big term, it is
+  routed through `iff_of_E!` or a `private lemma` proved by `cl_prover` on abstract
+  sentences, never `cl_prover` on the goal itself.
 -/
 
 import ModalAgents.Arithmetic
@@ -73,6 +82,23 @@ inductive IsModalAgentOfRank (T : ArithmeticTheory) [T.Δ₁] : ℕ → Agent �
 def IsModalAgent (T : ArithmeticTheory) [T.Δ₁] (X : Agent) : Prop :=
   ∃ k, IsModalAgentOfRank T k X
 
+omit [𝗣𝗔 ⪯ T] in
+/-- **CooperateBot is a modal agent of rank 0.** The agent whose action formula is `⊤`
+cooperates with everyone, and it meets the definition with no reference agents and the
+modal formula `⊤`.
+
+This is here as the non-vacuity witness for the definition above: `IsModalAgentOfRank`
+and `IsModalAgent` are inhabited, so `modalAgent_isBehavioral` is not a statement about
+an empty class, and `cliqueBot_not_modalAgent` separates CliqueBot from a class that has
+members. -/
+lemma cooperateBot_isModalAgentOfRank_zero : IsModalAgentOfRank T 0 (⊤ : Agent) := by
+  refine .intro (n := 0) Fin.elim0 Fin.elim0 ⊤ (fun i _ => by simp [Modalized])
+    (fun i => i.elim0) (fun i => i.elim0) (fun Z => ?_)
+  have h : ((⊤ : Agent).app Z) = (⊤ : ArithmeticSentence) := by simp [Agent.app]
+  rw [h]
+  show T ⊢ (⊤ : ArithmeticSentence) 🡘 ((⊥ : ArithmeticSentence) 🡒 ⊥)
+  cl_prover
+
 /-! ## Behavioral agents (Barasz, §4) -/
 
 /-- Two agents are **behaviorally equivalent** when `PA` proves they act alike against
@@ -121,6 +147,7 @@ it "by the diagonal lemma"; here that is Foundation's *parameterized* diagonal l
 `parameterized_diagonal₁`, which produces a formula with a free variable that knows its
 own Gödel number — the sentence-level `Diagonalization.fixedpoint` is not enough. -/
 
+omit [T.Δ₁] in
 /-- Applying a quined agent: the parameterized fixed point of `θ`, run against `Z`, is
 `θ` with its self-reference filled in by the fixed point's own code and its argument by
 `Z`'s. -/
@@ -151,6 +178,7 @@ lemma cliqueBotSpec_subst (s t : ClosedTerm ℒₒᵣ) :
     cliqueBotSpec/[s, t] = “!!t = !!s” := by
   simp [cliqueBotSpec]
 
+omit [T.Δ₁] in
 /-- CliqueBot does what it says: `PA` proves it cooperates with `Z` exactly when `Z`'s
 code is CliqueBot's own. -/
 lemma cliqueBot_app (Z : Agent) :
@@ -178,14 +206,101 @@ lemma cliqueBotVariant_ne : (cliqueBotVariant : Agent) ≠ cliqueBot := by
   generalize (cliqueBot : Agent).complexity = c
   omega
 
-example (Z : Agent) : (cliqueBotVariant.app Z) = (cliqueBot.app Z ⋏ ⊤) := by
-  simp [cliqueBotVariant, Agent.app]
+omit [T.Δ₁] in
+/-- A closed term is provably equal to itself: the equality axiom `∀ x, x = x`,
+specialized.
 
-example (a b : ℕ) (h : a ≠ b) : T ⊢ “!!(↑a : ClosedTerm ℒₒᵣ) ≠ !!(↑b)” :=
-  Entailment.WeakerThan.pbl (𝓢 := (𝗥₀ : ArithmeticTheory)) (Entailment.by_axm (R0.Ω₃ a b h))
+Deliberately proved for an abstract closed term `t`, so that instantiating it at
+`⌜cliqueBot⌝` is an application and never a computation. -/
+lemma provable_eq_self (t : ClosedTerm ℒₒᵣ) : T ⊢ “!!t = !!t” := by
+  have hax : T ⊢ (“∀ x, x = x” : ArithmeticSentence) :=
+    Entailment.WeakerThan.pbl (𝓢 := (𝗘𝗤 ℒₒᵣ : ArithmeticTheory))
+      (Entailment.by_axm Theory.eqAxiom.refl)
+  have hsp := Theory.Proof.specialize (T := T) (“#0 = #0” : ArithmeticSemisentence 1) t
+  simpa using hsp ⨀ hax
 
-example (Z : Agent) : (⌜Z⌝ : ClosedTerm ℒₒᵣ) = ↑(Encodable.encode Z) :=
-  Arithmetic.gödelNumber'_eq_coe_encode Z
+omit [T.Δ₁] in
+/-- Distinct agents have provably distinct Gödel numbers. This is `R₀`'s axiom `Ω₃`
+(`n ≠ m → R₀ ⊢ ↑n ≠ ↑m`) read through `⌜X⌝ = ↑(encode X)`; it needs the *numerals* to
+differ, which injectivity of `Encodable.encode` supplies, and never their values. -/
+lemma provable_ne_of_ne {X Y : Agent} (hne : X ≠ Y) :
+    T ⊢ “!!(⌜X⌝ : ClosedTerm ℒₒᵣ) ≠ !!(⌜Y⌝)” := by
+  have henc : Encodable.encode X ≠ Encodable.encode Y :=
+    fun hc => hne (Encodable.encode_injective hc)
+  have hR : T ⊢ “!!(↑(Encodable.encode X) : ClosedTerm ℒₒᵣ) ≠ !!(↑(Encodable.encode Y))” :=
+    Entailment.WeakerThan.pbl (𝓢 := (𝗥₀ : ArithmeticTheory))
+      (Entailment.by_axm (R0.Ω₃ _ _ henc))
+  simpa only [← Arithmetic.gödelNumber'_eq_coe_encode] using hR
+
+omit [T.Δ₁] [𝗣𝗔 ⪯ T] in
+/-- Conjoining `⊤` changes nothing, propositionally. Stated over an abstract sentence so
+that the `cliqueBot`-sized instance is an application. -/
+private lemma iff_and_top (A : ArithmeticSentence) : T ⊢ A 🡘 A ⋏ ⊤ := by cl_prover
+
+omit [T.Δ₁] [𝗣𝗔 ⪯ T] in
+/-- Transporting a refutation across a provable equivalence. Abstract for the same
+reason as `iff_and_top`. -/
+private lemma neg_of_iff {A P : ArithmeticSentence} (h : T ⊢ A 🡘 P) (hn : T ⊢ ∼P) :
+    T ⊢ ∼A := by cl_prover [h, hn]
+
+omit [T.Δ₁] [𝗣𝗔 ⪯ T] in
+/-- CliqueBot and its variant are behaviorally equivalent: against every opponent they
+differ only by a conjoined `⊤`, so `PA` proves them equivalent. This is the paper's
+"logically (and therefore behaviorally) equivalent". -/
+lemma cliqueBot_behaviorallyEquivalent_variant :
+    BehaviorallyEquivalent T cliqueBot cliqueBotVariant := by
+  intro Z
+  have hv : (cliqueBotVariant.app Z) = (cliqueBot.app Z ⋏ ⊤) := by
+    simp [cliqueBotVariant, Agent.app]
+  rw [hv]
+  exact iff_and_top _
+
+omit [T.Δ₁] in
+/-- **CliqueBot cooperates with itself**: its own code is of course its own code. -/
+lemma cliqueBot_cooperates_self : T ⊢ cliqueBot.app cliqueBot :=
+  (iff_of_E! (cliqueBot_app (T := T) cliqueBot)).mpr (provable_eq_self _)
+
+omit [T.Δ₁] in
+/-- **CliqueBot defects against its variant**: the variant's code is not CliqueBot's,
+and `PA` proves it. -/
+lemma cliqueBot_defects_variant : T ⊢ ∼(cliqueBot.app cliqueBotVariant) :=
+  neg_of_iff (cliqueBot_app (T := T) cliqueBotVariant)
+    (provable_ne_of_ne cliqueBotVariant_ne)
+
+omit [T.Δ₁] in
+/-- **CliqueBot is not behavioral**: it cooperates with itself but defects against a
+behaviorally equivalent variant, and a behavioral agent would have to treat the two
+alike.
+
+The consistency hypothesis is what the paper leaves implicit when it treats "cooperates"
+and "defects" as exclusive: an inconsistent `T` proves both, and every agent is
+vacuously behavioral over it. It is a hypothesis of the printed argument, not a
+weakening of it. -/
+lemma cliqueBot_not_isBehavioral [Entailment.Consistent T] :
+    ¬ IsBehavioral T cliqueBot := by
+  intro hB
+  have hcoop : T ⊢ cliqueBot.app cliqueBotVariant :=
+    (iff_of_E!
+      (hB cliqueBot cliqueBotVariant cliqueBot_behaviorallyEquivalent_variant)).mp
+      cliqueBot_cooperates_self
+  exact Entailment.Consistent.not_bot inferInstance
+    (Entailment.neg_mdp cliqueBot_defects_variant hcoop)
+
+/-- **CliqueBot is not a modal agent.**
+
+This is the paper's proof verbatim: CliqueBot cooperates with itself but not with a
+syntactically different, logically — and therefore behaviorally — equivalent variant, so
+it is not a behavioral agent, and by Theorem 4.8 (`modalAgent_isBehavioral`) it is not a
+modal agent.
+
+The `[Entailment.Consistent T]` hypothesis is the paper's implicit one, discussed at
+`cliqueBot_not_isBehavioral`.
+
+Paper node: Corollary 4.9 (§4). -/
+theorem cliqueBot_not_modalAgent [Entailment.Consistent T] :
+    ¬ IsModalAgent T cliqueBot := by
+  rintro ⟨k, hk⟩
+  exact cliqueBot_not_isBehavioral (modalAgent_isBehavioral hk)
 
 end
 

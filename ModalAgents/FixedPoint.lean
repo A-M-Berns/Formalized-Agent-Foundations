@@ -332,7 +332,7 @@ theorem glFixedPoint_uniqueness_internal {p : ℕ} {φ : Modal.Formula ℕ}
 form of `glFixedPoint_uniqueness_internal`, obtained from it by necessitation.  This is
 the form the modal-agent development uses; the paper's printed Theorem 4.3 is the
 internal one. -/
-theorem glFixedPoint_uniqueness {p : ℕ} {φ : Modal.Formula ℕ} (hmod : Modalized p φ)
+lemma glFixedPoint_uniqueness {p : ℕ} {φ : Modal.Formula ℕ} (hmod : Modalized p φ)
     {ψ ψ' : Modal.Formula ℕ}
     (h₁ : Modal.GL ⊢ ψ 🡘 φ⟦diag p ψ⟧)
     (h₂ : Modal.GL ⊢ ψ' 🡘 φ⟦diag p ψ'⟧) :

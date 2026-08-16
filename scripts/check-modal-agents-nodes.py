@@ -48,8 +48,9 @@ The `printed-counter` scheme itself lives in `scripts/paper_nodes.py`, shared wi
 trust-surface generator so there is one implementation of the counter emulation.
 
 The converse direction (every *node* has a Lean statement) is deliberately not checked:
-this formalization is scoped to modal agents and consciously omits nodes such as
-Corollary 4.9 on CliqueBot.  See `ModalAgents/README.md`.
+this formalization does not claim node-completeness for that paper.  One numbered node
+is currently unformalized — Theorem 4.6, on self-referential modal agents.  See
+`ModalAgents/README.md`.
 
 Run from the repo root.
 """
