@@ -395,14 +395,14 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     been produced. They assert the correspondence only.</div>
 
     <h3>Scope — and what is deliberately absent</h3>
-    <p>This formalization is scoped to <em>modal</em> agents rather than arbitrary arithmetic
-    agents, so not every numbered node of the paper is claimed here. The nodes with no Lean
-    statement annotated to them, computed from the source and the annotations: %%MA_MISSING%%.
-    Two of those absences are documented decisions — Corollary 4.9 on CliqueBot is out of scope
-    by design, as is Theorem 3.2's unexploitability conjunct, which quantifies over all
-    opponents (see <code>ModalAgents/README.md</code>); the rest are simply unclaimed, and this
-    page asserts nothing further about them. The provenance checker deliberately does not check
-    the converse direction for this reason.</p>
+    <p>The cooperation results are carried at the Gödel–Löb level; the §1 and §4 nodes that
+    quantify over <em>arbitrary</em> agents are carried at the arithmetic level they are printed
+    at, so CliqueBot and its separation from the modal agents are in scope. Node-completeness is
+    still not claimed. The nodes with no Lean statement annotated to them, computed from the
+    source and the annotations: %%MA_MISSING%%. That is Theorem 4.6, on modal agents that may
+    refer to their own action — a genuine gap, and the only numbered node of the paper with no
+    Lean statement (see <code>ModalAgents/README.md</code>). The provenance checker deliberately
+    does not check the converse direction, so this page asserts nothing further about it.</p>
 
     <h3>How nodes are cited</h3>
     <p>The paper labels only 22 of its nodes and leaves several formalized ones unlabeled, so the

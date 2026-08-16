@@ -111,6 +111,9 @@ def commit (C : Frame W) (B : Set C.Agent) : Frame W where
   Env := C.Env
   outcome := fun b e => C.outcome b.val e
 
+@[simp] lemma commit_outcome (C : Frame W) (B : Set C.Agent) (b : B) (e : C.Env) :
+    (C.commit B).outcome b e = C.outcome b.val e := rfl
+
 /-- Definition 28's `Commit^{∖B}`: restrict the agent to the complement of `B`.
 
 Paper node: Definition 28 (§2.4.1). -/
@@ -123,6 +126,9 @@ def assume (C : Frame W) (F : Set C.Env) : Frame W where
   Agent := C.Agent
   Env := F
   outcome := fun a f => C.outcome a f.val
+
+@[simp] lemma assume_outcome (C : Frame W) (F : Set C.Env) (a : C.Agent) (f : F) :
+    (C.assume F).outcome a f = C.outcome a f.val := rfl
 
 /-- Definition 29's `Assume^{∖F}`.
 
@@ -188,6 +194,10 @@ def external (C : Frame W) (s : Setoid C.Agent) : Frame W where
   Env := Quotient s × C.Env
   outcome := fun q p => C.outcome (q.val p.1) p.2
 
+@[simp] lemma external_outcome (C : Frame W) (s : Setoid C.Agent)
+    (q : partitionSections s) (p : Quotient s × C.Env) :
+    (C.external s).outcome q p = C.outcome (q.val p.1) p.2 := rfl
+
 /-- Definition 32's `External^{/B}`: the agent becomes the cells, the environment
 gains the choice-function coordinate.
 
@@ -197,6 +207,10 @@ def externalQuot (C : Frame W) (s : Setoid C.Agent) : Frame W where
   Env := partitionSections s × C.Env
   outcome := fun c p => C.outcome (p.1.val c) p.2
 
+@[simp] lemma externalQuot_outcome (C : Frame W) (s : Setoid C.Agent)
+    (c : Quotient s) (p : partitionSections s × C.Env) :
+    (C.externalQuot s).outcome c p = C.outcome (p.1.val c) p.2 := rfl
+
 /-- Definition 33's `Internal^F`.
 
 Paper node: Definition 33 (§2.4.1). -/
@@ -205,6 +219,10 @@ def internal (C : Frame W) (s : Setoid C.Env) : Frame W where
   Env := partitionSections s
   outcome := fun p q => C.outcome p.2 (q.val p.1)
 
+@[simp] lemma internal_outcome (C : Frame W) (s : Setoid C.Env)
+    (p : Quotient s × C.Agent) (q : partitionSections s) :
+    (C.internal s).outcome p q = C.outcome p.2 (q.val p.1) := rfl
+
 /-- Definition 33's `Internal^{/F}`.
 
 Paper node: Definition 33 (§2.4.1). -/
@@ -212,6 +230,10 @@ def internalSect (C : Frame W) (s : Setoid C.Env) : Frame W where
   Agent := partitionSections s × C.Agent
   Env := Quotient s
   outcome := fun p c => C.outcome p.2 (p.1.val c)
+
+@[simp] lemma internalSect_outcome (C : Frame W) (s : Setoid C.Env)
+    (p : partitionSections s × C.Agent) (c : Quotient s) :
+    (C.internalSect s).outcome p c = C.outcome p.2 (p.1.val c) := rfl
 
 /-- Definition 31's choice functions are plentiful: some section selects `a` from
 `a`'s own cell, uniformly in `a`.  This is the paper's "let `g₀(a) = (q, b)` where

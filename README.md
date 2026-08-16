@@ -13,17 +13,48 @@ Lean's standard three (`propext`, `Classical.choice`, `Quot.sound`) or silently
 disappears, and every modeling substitution is disclosed at the statement, not
 discovered by the reader.
 
+FAF has two complementary goals: faithful, auditable formalization of important
+agent-foundations papers, and reusable Lean infrastructure for research that builds on
+them. The first governs the trust surface; the second is expressed through a curated
+consumer surface. Faithfulness comes first, and the API never hides a modeling boundary
+or replaces paper-legible statements with unnecessary abstraction.
+
 ## What's here
 
 | Paper | Directory | Status |
 |---|---|---|
 | Garrabrant et al. (2016), [*Logical Induction*](https://arxiv.org/abs/1609.03543) | [`LogicalInduction/`](LogicalInduction/README.md) | Unconditional construction of a logical inductor + the full property tail: all 53 paper nodes formalized, 51 at paper strength and 2 with a named interface or class restriction retained. Two disclosed modeling substitutions. Zero `sorry`, zero `axiom`. |
-| Barász et al. (2014), [*Robust Cooperation in the Prisoner's Dilemma via Provability Logic*](https://arxiv.org/abs/1401.5577) | [`ModalAgents/`](ModalAgents/README.md) | The cooperation results at the Gödel–Löb provability-logic level, including a proved (not axiomatized) GL fixed-point theorem. Cooperation lifts to arithmetic; defection is rendered as unprovability of cooperation, and one conjunct of Theorem 3.2 is unformalized — both disclosed. Zero `sorry`, zero `axiom`. |
+| Barász et al. (2014), [*Robust Cooperation in the Prisoner's Dilemma via Provability Logic*](https://arxiv.org/abs/1401.5577) | [`ModalAgents/`](ModalAgents/README.md) | The cooperation results at the Gödel–Löb provability-logic level, including a proved (not axiomatized) GL fixed-point theorem and all four conjuncts of Theorem 3.2, plus the §1/§4 arithmetic layer — agents as formulas of `PA`, Löb's Theorem, modal substitution, and the CliqueBot separation (Cor 4.9). Cooperation lifts to arithmetic; three stronger defection claims stop at explicit GL consistency boundaries. One numbered node (Thm 4.6) is unformalized. Zero `sorry`, zero `axiom`. |
 | Garrabrant, Herrmann, and Lopez-Wild (2021), [*Cartesian Frames*](https://arxiv.org/abs/2109.10996) | [`CartesianFrames/`](CartesianFrames/README.md) | All 60 numbered nodes formalized — every definition, claim, and the Decomposition Theorem — across the main text and both appendices, at paper strength with no modeling substitutions. One node is formalized in part by ruling (Claim 35, whose External/Internal half is ill-typed as printed). Zero `sorry`, zero `axiom`. |
 | Garrabrant (2021), [*Temporal Inference with Finite Factored Sets*](https://arxiv.org/abs/2109.11513) | [`FiniteFactoredSets/`](FiniteFactoredSets/README.md) | **In progress** — §2 and §3 (partitions, factorizations, chimera functions, generation, history, orthogonality, time): 34 of the 96 in-scope nodes, at paper strength with no modeling substitutions. Scope is 96 of the paper's 98 numbered nodes, settled by ruling and recorded in that README; §4–§7 are not yet claimed. Non-vacuity is discharged by construction — four factored sets are built and the §2.5 and §3 vocabulary is computed over them. Zero `sorry`, zero `axiom`. |
 
 Each directory's README gives the detailed statement-level accounting: what is proved,
 what is modeled, and exactly where the trust boundary sits.
+
+For downstream work, use the supported entrypoints below. Each deliberately avoids
+unnecessary construction or regression-test machinery; the module documentation names
+the deeper imports when those details are needed.
+
+| Library | Recommended import |
+|---|---|
+| Logical Induction | `import LogicalInduction.API` |
+| Modal Agents | `import ModalAgents.API` |
+| Cartesian Frames | `import CartesianFrames.API` |
+
+Consumer readiness is a checked completion criterion, and it is the intended end state
+for **every** paper this repository takes on — not a retrofit for the three that happen
+to be finished. A paper marked completed in `scripts/papers.py` must advertise an API and
+supply an isolated client smoke test that is built by default;
+`scripts/check_paper_wiring.py` fails closed if either is missing. A new formalization is
+registered `in-progress` and may land its statements first, but it is not finished until
+a separate research project could depend on a small, documented import — the same bar the
+three above meet. Proving the paper's nodes is necessary and not sufficient.
+
+The two surfaces stay conceptually distinct: the **trust surface** answers what we claim
+faithfully formalizes the paper, and the **consumer surface** answers what downstream work
+should depend on. They overlap heavily but need not coincide, and the API may never
+obscure an assumption the trust surface discloses. The detailed standing rule lives in
+[`CLAUDE.md`](CLAUDE.md#consumer-readiness-is-part-of-paper-completion).
 
 The whole surface is also browsable in one place. [`docs/trust-surface.html`](docs/trust-surface.html)
 is a generated read-through guide covering **all three papers**: every annotated paper
@@ -58,11 +89,12 @@ it will fetch that version automatically.
 ```sh
 lake exe cache get      # prebuilt Mathlib oleans (a minute or two)
 lake build AxiomAudit   # the checked target: builds every library + the endpoint inventory
+lake build APITests     # isolated downstream-style tests of the supported APIs
 ```
 
 `lake build AxiomAudit` is *the* gate — it subsumes all three libraries and fails if any listed
 endpoint gains a stray axiom or disappears. The script gates run on the sources and
-need no build:
+need no build. Both `AxiomAudit` and `APITests` are default targets in CI:
 
 ```sh
 scripts/check-paper-nodes.sh          # `Paper node:` labels ↔ paper \label{…}, both directions

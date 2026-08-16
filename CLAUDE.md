@@ -4,7 +4,7 @@ This repo formalizes papers in agent foundations / open-source game theory in Le
 on top of [Foundation](https://github.com/FormalizedFormalLogic/Foundation) and Mathlib.
 
 The flagship formalization is **Logical Induction** (Garrabrant et al.,
-arXiv:1609.03543) in `LogicalInduction/` — near-complete; see
+arXiv:1609.03543) in `LogicalInduction/`; see
 `LogicalInduction/README.md` for the trust-surface summary and
 `LogicalInduction/notes/faithfulness-audit-2026-08-08.md` for the current audit. **The paper is the
 spec** (`LogicalInduction/notes/1609.03543v5-main.tex`); every paper-facing theorem carries the paper's
@@ -80,6 +80,49 @@ paper — with its source committed, a node checker running in CI, endpoints ins
 `AxiomAudit` import, and nodes rendered in the trust-surface guide — or an explicitly
 excused non-paper library. Register a new formalization there first; the gate will then
 tell you what is still unwired.
+
+### Consumer readiness is part of paper completion
+
+A paper is not finished merely because its statements are proved, inventoried, and
+audited. A completed FAF formalization must also expose its important mathematical
+content through a small, documented Lean API that a separate research project can use,
+and demonstrate that interface with client-style tests. This is an additional standard,
+subordinate to faithfulness: API work may add convenient interfaces and lemmas, but may
+not obscure assumptions, weaken provenance, distort the source theory, or make the
+paper-facing statements harder to read against the paper.
+
+Keep the two public surfaces conceptually distinct:
+
+- The **trust surface** answers: what are we publicly claiming faithfully formalizes the
+  paper? Its paper-node provenance, disclosed modeling choices, endpoint inventory,
+  field freezes, and axiom accounting remain authoritative.
+- The **consumer surface** answers: what should downstream researchers depend on as the
+  supported mathematical interface? It is a curated import boundary, not a second
+  formalization and not everything Lean happens to make public.
+
+They overlap heavily but need not coincide. Construction witnesses and proof machinery
+can be trust-relevant without belonging in the default client import; conversely, small
+extensionality, simplification, congruence, and transport lemmas can be supported client
+tools without being paper endpoints. Never duplicate paper statements just to create an
+API, and never hide a load-bearing assumption in a convenience wrapper.
+
+Before changing a paper's registry status from `in-progress` to `completed`, require all
+of the following, as applicable:
+
+1. faithful paper coverage;
+2. explicit provenance and trust-surface accounting;
+3. axiom cleanliness and disclosed trust boundaries;
+4. one documented, recommended consumer import exposing a coherent, intentionally small
+   API, with deeper construction imports identified separately;
+5. client-style smoke tests which import only that API and use its objects, rewriting,
+   transport, and composition to prove useful facts beyond restating paper endpoints.
+
+Record the API and test paths in `scripts/papers.py`. `scripts/check_paper_wiring.py`
+permits incremental `in-progress` entries, but makes these artifacts and their default CI
+build mandatory for every `completed` paper. Perform this consumer pass before declaring
+a paper finished, including for formalizations already under development. Reusability is
+never a reason to genericize away the source mathematics: the priority order is
+faithfulness first, supported research interface second.
 
 ---
 
@@ -166,7 +209,8 @@ read-through.
 
 > **Sequencing (Anson).** The read-through runs **once, over the consolidated frozen
 > surface** — not per-milestone. Order: **(1)** results green with disclosures in
-> place (done); **(2)** consolidation / de-slop / API surface (in progress; see
+> place (done); **(2)** consolidation / de-slop / API surface (governed by the consumer
+> completion rule above; see
 > `LogicalInduction/notes/consolidation.md`), after which the surface re-freezes and the read-through
 > runs over it; **(3)** a final fresh-context adversarial audit, last.
 

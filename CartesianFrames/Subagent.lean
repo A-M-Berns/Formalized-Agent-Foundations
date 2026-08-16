@@ -240,6 +240,12 @@ Paper node: Claim 17 (§2.4). -/
 theorem Subagent.refl (C : Frame W) : C ◁ C :=
   Subagent.of_biextEquiv (BiextEquiv.refl C)
 
+/-- `◁` respects biextensional equivalence on both sides.  This is the direct
+consumer transport corresponding to the existing additive and multiplicative forms. -/
+lemma Subagent.congr {C C' D D' : Frame W} (h : C ◁ D) (hC : C ≃ᵇ C')
+    (hD : D ≃ᵇ D') : C' ◁ D' :=
+  (Subagent.of_biextEquiv hC.symm).trans (h.trans (Subagent.of_biextEquiv hD))
+
 section RegressionExamples
 
 /- Client-side exercises of the endpoints above (endpoint-usability rule). -/

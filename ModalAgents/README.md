@@ -2,10 +2,22 @@
 
 A Lean 4 formalization of Barász, Christiano, Fallenstein, Herreshoff, LaVictoire,
 Yudkowsky, [*Robust Cooperation in the Prisoner's Dilemma via Provability Logic*](https://arxiv.org/abs/1401.5577),
-at the level of Gödel–Löb provability logic.
+mainly at the level of Gödel–Löb provability logic, with the §4 statements that quantify
+over *arbitrary* agents carried at the arithmetic level they are printed at.
+
+## Downstream use
+
+Use `import ModalAgents.API` for modal agents, behavioral equivalence, outcomes,
+cooperation and defection predicates, the fixed-point interface, concrete bots, major
+cooperation theorems, and arithmetic lifts. It curates the research-facing content above
+the recursive fixed-point scaffolding and vendored provability-logic implementation;
+import `ModalAgents` only when the complete formalization rollup is wanted. The API does
+not blur the distinction between `Defects` and the stronger, arithmetically liftable
+`ProvablyDefects`, the theory parameter and the consistency hypothesis that the
+arithmetic layer carries, or the remaining scope boundary documented below.
 
 
-It covers:
+It covers, at the GL level:
 
 * the modal agent definition from §4;
 * CooperateBot, DefectBot, FairBot, and PrudentBot;
@@ -14,7 +26,19 @@ It covers:
 * the modal agent fixed-point equation (§4, Thm 4.7);
 * the modal agent behavioral result (§4, Thm 4.8, GL-level form);
 * the rank-0 FairBot-to-CooperateBot result (§4, Thm 4.10);
-* the generic lift from GL-provability to arithmetical realizations (§4, Thm 4.1).
+* the generic lift from GL-provability to arithmetical realizations (§4, Thm 4.1);
+
+and, at the arithmetic level — agents as formulas of `PA`, in a theory `T` with
+`𝗣𝗔 ⪯ T`, which is the level §1 and §4 are printed at:
+
+* Löb's Theorem (§1, Thm 1.1);
+* modal substitution (§4, Lemma 4.5) and uniqueness of arithmetic fixed points
+  (§4, Cor 4.4);
+* agents, `[X(Y)]`, modal agents of rank `k`, behavioral equivalence and behavioral
+  agents (§4 definitions), with `modalAgent_isBehavioral` the arithmetic form of
+  Thm 4.8;
+* CliqueBot, built by the parameterized diagonal lemma, and the separation
+  `cliqueBot_not_modalAgent` (§4, Cor 4.9).
 
 ### Paper source and node provenance
 
@@ -39,14 +63,20 @@ numbered node — each says so in its own docstring:
 
 | declaration | what the paper actually says |
 |---|---|
-| `subst_congr` | GL-level substitution congruence; Lemma 4.5 is the *arithmetic* statement, which this does not state |
+| `subst_congr` | GL-level substitution congruence; Lemma 4.5 is the *arithmetic* statement, carried by `arithmetic_modal_substitution` |
+| `glFixedPoint_uniqueness` | the *rule* form of Thm 4.3, got from the printed internal form `glFixedPoint_uniqueness_internal` by necessitation |
+| `arithInterp`, `Realization.update` | the definitions the arithmetic statements are phrased in — statement surface, not nodes |
 | `defectBot_defects`, `defectBot_provably_defects`, `cooperateBot_cooperates` | §2 prose in an unnumbered `remark` (`PA ⊢ [DB(X)=D]`, `PA ⊢ [CB(X)=C]`) |
-| `fairBot_vs_cooperateBot`, `fairBot_vs_defectBot` | §3 prose on FairBot's unexploitability "by inspection" and its waste against CooperateBot |
+| `fairBot_unexploitable`, `fairBot_vs_cooperateBot`, `fairBot_vs_defectBot` | §3 prose on FairBot's unexploitability "by inspection" and its waste against CooperateBot |
 | `prudentBot_vs_defectBot` | the "in particular, `PA+1 ⊢ [PB(DB)=D]`" step *inside* the proof of Thm 3.2, not one of its conjuncts |
 | `ProvablyDefects.defects`, the `outcome_*` reductions, the `*_not_provably_defects_*` results | this development's own accounting of how far defection can be strengthened — see *Modeling boundary* below |
+| `Agent`, `Agent.app`, `opponentRealization`, `IsModalAgentOfRank`, `IsModalAgent`, `BehaviorallyEquivalent`, `IsBehavioral`, `cliqueBotSpec`, `cliqueBot`, `cliqueBotVariant` | the §2 and §4 *definitions*; that paper's `definition` environment is uncounted, so there is no node to cite |
+| `cooperateBot_isModalAgentOfRank_zero` | the non-vacuity witness for `IsModalAgentOfRank` — CooperateBot is a rank-0 modal agent, so Thm 4.8 is not about an empty class |
+| `cliqueBot_app`, `cliqueBotVariant_ne`, `cliqueBot_behaviorallyEquivalent_variant`, `cliqueBot_cooperates_self`, `cliqueBot_defects_variant`, `cliqueBot_not_isBehavioral` | the clauses of Cor 4.9's one-sentence printed proof; inventoried because a negative result is only as strong as the objects it separates |
 
-The converse direction is not checked, and should not be: the scope note below means
-some numbered nodes (e.g. Cor. 4.9 on CliqueBot) have no Lean statement here.
+The converse direction is not checked, and should not be — though as of the arithmetic
+layer only one numbered node is missing: Thm 4.6, that a modal agent may refer to its
+own action `[X(Z)]` without leaving the class. See *Scope* below.
 
 ## Modeling boundary
 
@@ -142,8 +172,11 @@ code: kernel-checked here against this toolchain, cited rather than read line-by
 (An earlier vendored snapshot of the same development has been retired in its favor.)
 
 Fixed-point *uniqueness* (Barasz §4, Thm 4.3; Lindström Thm 12) is proved in
-`FixedPoint.lean` as `glFixedPoint_uniqueness`, via a boxed-equivalence substitution lemma
-and Löb's rule.
+`FixedPoint.lean` as `glFixedPoint_uniqueness_internal`, the paper's printed internal
+form, via a boxed-equivalence substitution lemma and Löb's rule;
+`glFixedPoint_uniqueness` is the rule form the rest of the development consumes. Its
+arithmetic counterpart, Cor 4.4, is `arithmetic_fixedPoint_uniqueness` in
+`Arithmetic.lean`.
 
 ### Files
 
@@ -152,10 +185,45 @@ and Löb's rule.
 * `ModalAgents/FixedPoint.lean` — GL fixed-point existence/uniqueness theorems, the bridge to the upstream `ProvabilityLogic` package, and substitution congruence.
 * `ModalAgents/Cooperation.lean` — outcomes, cooperation/defection, and the main cooperation theorems.
 * `ModalAgents/Behavioral.lean` — behavioral equivalence for modal agents.
+* `ModalAgents/Arithmetic.lean` — the arithmetic layer: Löb's Theorem, modal substitution (Lemma 4.5), uniqueness of arithmetic fixed points (Cor 4.4).
+* `ModalAgents/ArithmeticAgent.lean` — agents as formulas of `PA`: modal agents of rank `k`, behavioral agents, Thm 4.8, CliqueBot and Cor 4.9.
+
+### CliqueBot and the size of its Gödel numeral
+
+`cliqueBot` is `parameterizedFixedpoint cliqueBotSpec`: the quine produced by
+Foundation's parameterized diagonal lemma, a formula that knows its own Gödel number.
+Its numeral is astronomically large, and *any* tactic that lets the kernel reduce it
+costs more than 8 GB and does not return — `cl_prover` on a goal mentioning `cliqueBot`
+is the specific thing that hangs, and raising `maxRecDepth` does not help.
+
+Every proof in that part of `ArithmeticAgent.lean` is therefore written to keep the term
+opaque, and the shape is uniform: state the fact **generically** — over an abstract
+closed term (`provable_eq_self`, `cliqueBotSpec_subst`), an abstract sentence
+(`iff_and_top`, `neg_of_iff`), or an abstract complexity (`cliqueBotVariant_ne`) — and
+instantiate at `cliqueBot` by plain term application, which is unification and never
+computation. Where the argument needs a propositional step at the big term it goes
+through `iff_of_E!` rather than a tactic. This is a proof-engineering constraint, not a
+modeling choice: no statement is weakened by it.
+
+One hypothesis in that block *is* a statement-level choice, and it is deliberate:
+`cliqueBot_not_isBehavioral` and `cliqueBot_not_modalAgent` take `[Entailment.Consistent
+T]`. The paper writes Corollary 4.9 over a fixed `PA` and treats "cooperates" and
+"defects" as exclusive; over an inconsistent theory they are not, and every agent is
+vacuously behavioral. Since this development states the arithmetic layer parametrically
+in `T`, that background assumption has to be written down. It is the printed argument's
+own hypothesis made explicit, not an added one.
 
 ### Scope
 
-This formalization deals only with modal agents, rather than arbitrary
-arithmetic agents. Therefore, Corrollary 4.9 about `CliqueBot` (an algorithm 
-that only cooperates with syntactic copies of itself) is outside the scope.
+The GL-level development deals with modal agents; the arithmetic layer of
+`ArithmeticAgent.lean` is what lets the §4 nodes that quantify over *arbitrary* agents —
+Thm 4.8 and Cor 4.9 — be stated as printed, so CliqueBot is now in scope and
+`cliqueBot_not_modalAgent` is proved.
+
+One numbered node is still unformalized: **Theorem 4.6**, that an agent defined by a
+fully modalized formula in which it may refer to its *own* action `[X(Z)]` (and to
+`[Yᵢ(Z)]`) is still a rank-`k` modal agent. Its proof runs through the modal fixed-point
+theorem and Cor 4.4, both of which are available here; only the statement and the
+bookkeeping over the doubled atom list are missing.
+
 Game-theoretic program equilibrium framing is also left for a future paper.

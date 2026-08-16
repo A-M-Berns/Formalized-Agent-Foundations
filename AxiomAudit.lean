@@ -56,6 +56,8 @@ import LogicalInduction.Construction
 import ModalAgents.Cooperation
 import ModalAgents.Behavioral
 import ModalAgents.FixedPoint
+import ModalAgents.Arithmetic
+import ModalAgents.ArithmeticAgent
 import CartesianFrames.Examples
 import CartesianFrames.Worlds
 import CartesianFrames.Subagent
@@ -797,16 +799,45 @@ committed TeX (`ModalAgents/notes/1401.5577-main.tex`) **and** checks that every
 markers below.
 
 Several listed endpoints carry no annotation of their own, because they render no
-numbered node of that paper. They are all `lemma`s, per the repo's keyword rule, and
-they stay inventoried and axiom-checked regardless:
+numbered node of that paper. They are all `lemma`s or definitions, per the repo's keyword
+rule, and they stay inventoried and axiom-checked regardless:
 
 * `subst_congr` — a GL-level substitution congruence; the paper's Lemma 4.5 is the
-  *arithmetic* statement, which this does not state.
+  *arithmetic* statement, carried by `arithmetic_modal_substitution`.
+* `glFixedPoint_uniqueness` — the *rule* form of Theorem 4.3, derived from the printed
+  internal form `glFixedPoint_uniqueness_internal` (which carries the annotation) by
+  necessitation; it is the form the modal-agent development consumes.
+* `arithInterp` and `Realization.update` — the definitions the arithmetic statements are
+  phrased in: `arithInterp f φ` is the paper's `φ(ψ₁,…,ψₙ)`, and `Realization.update`
+  substitutes for the diagonal variable. Listed because they are statement surface.
+* The §4 arithmetic-agent vocabulary — `Agent`, `Agent.app`, `opponentRealization`,
+  `IsModalAgentOfRank`, `IsModalAgent`, `BehaviorallyEquivalent`, `IsBehavioral`,
+  `cliqueBotSpec`, `cliqueBot`, `cliqueBotVariant`. These are the paper's §4 and §2
+  definitions ("agent", "`[X(Y)]`", "modal agent of rank `k`", "behaviorally
+  equivalent", "behavioral agent", CliqueBot). That paper's `definition` environment is
+  an uncounted `trivlist`, so none of them *can* cite a node; they are listed because
+  they are the statement surface of `modalAgent_isBehavioral` and
+  `cliqueBot_not_modalAgent`, and reading either endpoint means reading them.
+* `cooperateBot_isModalAgentOfRank_zero` — the non-vacuity witness for
+  `IsModalAgentOfRank`: CooperateBot (action formula `⊤`) is a modal agent of rank 0, so
+  Theorem 4.8 is not a statement about an empty class and Corollary 4.9 separates
+  CliqueBot from a class that has members. The paper introduces CooperateBot in §2 and
+  never numbers this.
+* The Corollary 4.9 proof steps — `cliqueBot_app` (CliqueBot cooperates exactly with
+  agents carrying its own code, the quining that makes it CliqueBot at all),
+  `cliqueBotVariant_ne`, `cliqueBot_behaviorallyEquivalent_variant`,
+  `cliqueBot_cooperates_self`, `cliqueBot_defects_variant` and
+  `cliqueBot_not_isBehavioral`. These are the clauses of that corollary's one-sentence
+  printed proof, not numbered nodes. They are listed rather than left internal because
+  the corollary is a *negative* result: what makes it non-trivial is that `cliqueBot`
+  really is CliqueBot and the variant really is behaviorally equivalent to it, and those
+  are exactly the facts above.
 * `defectBot_defects`, `defectBot_provably_defects` and `cooperateBot_cooperates` —
   the §2 remark that `PA ⊢ [CB(X)=C]` and `PA ⊢ [DB(X)=D]`, prose in an unnumbered
   `remark`.
-* `fairBot_vs_cooperateBot` and `fairBot_vs_defectBot` — §3 prose on FairBot's
-  unexploitability and its waste against CooperateBot, again unnumbered.
+* `fairBot_unexploitable`, `fairBot_vs_cooperateBot` and `fairBot_vs_defectBot` — §3
+  prose on FairBot's unexploitability ("by inspection") and its waste against
+  CooperateBot, again unnumbered.
 * `prudentBot_vs_defectBot` — the "in particular, PA+1 ⊢ [PB(DB)=D]" step *inside* the
   proof of Theorem 3.2, not one of that theorem's four conjuncts.
 * The defection-boundary block — `ProvablyDefects.defects`, the three outcome
@@ -826,11 +857,21 @@ they stay inventoried and axiom-checked regardless:
 
 -- MA-INVENTORY-BEGIN
 #assert_axioms_clean
-  subst_congr glFixedPoint_uniqueness glFixedPoint_thm42
+  subst_congr glFixedPoint_uniqueness glFixedPoint_uniqueness_internal glFixedPoint_thm42
   glFixedPoint_spec outcome_fixed_point
+  lob_theorem arithInterp Realization.update
+  arithmetic_modal_substitution arithmetic_fixedPoint_uniqueness
+  Agent Agent.app opponentRealization IsModalAgentOfRank IsModalAgent
+  cooperateBot_isModalAgentOfRank_zero
+  BehaviorallyEquivalent IsBehavioral modalAgent_isBehavioral
+  cliqueBotSpec cliqueBot cliqueBotVariant
+  cliqueBot_app cliqueBotVariant_ne cliqueBot_behaviorallyEquivalent_variant
+  cliqueBot_cooperates_self cliqueBot_defects_variant
+  cliqueBot_not_isBehavioral cliqueBot_not_modalAgent
   defectBot_defects defectBot_provably_defects ProvablyDefects.defects
   cooperateBot_cooperates
-  fairBot_vs_fairBot fairBot_vs_cooperateBot rank0_fairBot_implies_cooperateBot
+  fairBot_vs_fairBot fairBot_unexploitable fairBot_vs_cooperateBot
+  rank0_fairBot_implies_cooperateBot
   fairBot_vs_defectBot prudentBot_vs_fairBot prudentBot_vs_defectBot
   prudentBot_vs_cooperateBot prudentBot_vs_prudentBot prudentBot_unexploitable
   outcome_fairBot_defectBot outcome_prudentBot_defectBot
@@ -1071,3 +1112,27 @@ open FiniteFactoredSets in
   nontrivial bijective
 #assert_fields FiniteFactoredSets.FactoredSet
   B isFactorization
+
+/-! ## Consumer API conveniences (not paper endpoint inventories)
+
+The trust-surface inventories above remain the paper-facing accounting.  These
+declarations instead belong to the supported consumer surface: they are small
+extensionality, simplification, certification, and transport tools exercised by
+`APITests`.  Axiom-checking them here does not designate them as paper claims or add them
+to any `*-INVENTORY` block. -/
+
+open LogicalInduction in
+#assert_axioms_clean
+  DeductiveProcess.ext Strategy.ext Trader.ext AffineCombination.ext LUV.ext
+  RpnSentenceCodes.const
+
+#assert_axioms_clean
+  ModalAgent.formula_mkRank0 ModalAgent.arity_mkRank0 ModalAgent.rank_mkRank0
+  BehavEquiv.outcome_congr BehavEquiv.cooperates_iff BehavEquiv.defects_iff
+  BehavEquiv.provablyDefects_iff
+
+open CartesianFrames in
+#assert_axioms_clean
+  Frame.Subagent.congr Frame.multSubagent_iff_multSubagentCategorical
+  Frame.commit_outcome Frame.assume_outcome Frame.external_outcome
+  Frame.externalQuot_outcome Frame.internal_outcome Frame.internalSect_outcome
