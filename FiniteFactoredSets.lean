@@ -59,3 +59,5 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
 -/
 import FiniteFactoredSets.Basic
 import FiniteFactoredSets.Examples
+import FiniteFactoredSets.History
+import FiniteFactoredSets.Orthogonality

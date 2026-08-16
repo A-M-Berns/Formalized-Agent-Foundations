@@ -1001,7 +1001,7 @@ Same contract as the CF-INVENTORY block above: every declaration carrying a
 FFS-INVENTORY markers below, and `scripts/check-finite-factored-sets-nodes.py` enforces
 that in both directions.
 
-This formalization is **in progress**: the list below covers §2.1–§2.3 only.  Several
+This formalization is **in progress**: the list below covers §2 and §3.  Several
 of the paper's §2.1 nodes have no Lean carrier at all because they are rendered by
 Mathlib vocabulary under the `dd:` tags in `FiniteFactoredSets.lean` — Definition 2
 (partition) is `Setoid`, Definition 5 (`∼_X`) is the setoid relation, Definition 6
@@ -1019,6 +1019,18 @@ open FiniteFactoredSets in
   FactoredSet.chimera_spec
   IsTrivialFactorization existsUnique_trivialFactorization
   FactoredSet.size FactoredSet.dim FactoredSet.finite_basis_of_finite
+  FactoredSet.size_eq_prod isTrivialFactorization_of_isFactorization
+  FactoredSet.dim_spec
+  -- §3.1-§3.2: generation and history (FiniteFactoredSets/History.lean).  `history_isLeast`
+  -- and `history_spec` are the endpoints that carry `[Finite F.B]` — finite *dimension*
+  -- only, per `dd:finiteness-minimal`; nothing here assumes `S` finite.
+  FactoredSet.Generates FactoredSet.generates_tfae FactoredSet.generates_spec
+  FactoredSet.history FactoredSet.history_isLeast FactoredSet.history_spec
+  -- §3.3-§3.4: orthogonality and time (FiniteFactoredSets/Orthogonality.lean).
+  FactoredSet.Orthogonal FactoredSet.orthogonal_iff_exists FactoredSet.orthogonal_spec
+  FactoredSet.Before FactoredSet.StrictlyBefore
+  FactoredSet.before_iff_forall_sInf FactoredSet.before_iff_forall_orthogonal
+  FactoredSet.before_spec FactoredSet.history_eq_setOf_before
   -- Non-vacuity witnesses (FiniteFactoredSets/Examples.lean).  Every §2.2-§2.3 endpoint
   -- is stated over `FactoredSet`; these are what make those endpoints say something.
   -- `coordFS` is the load-bearing one: with a single factor every `C` behaves as `∅` or

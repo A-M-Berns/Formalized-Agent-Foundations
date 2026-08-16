@@ -1,10 +1,13 @@
 import Mathlib.Data.Setoid.Partition
 import Mathlib.SetTheory.Cardinal.Basic
+import Mathlib.SetTheory.Cardinal.NatCard
+import Mathlib.Data.Nat.Prime.Defs
+import Mathlib.NumberTheory.ArithmeticFunction.Misc
 
 /-!
 # Partitions, factorizations, and chimera functions
 
-This file is §2.1–§2.3 of Garrabrant, *Temporal Inference with Finite Factored Sets*
+This file is §2.1–§2.5 of Garrabrant, *Temporal Inference with Finite Factored Sets*
 (arXiv:2109.11513): partitions of a set and their order, factorizations, factored sets,
 and the chimera function that splices two elements along a set of factors.
 
@@ -393,6 +396,59 @@ is what makes Proposition 6 a two-liner. -/
 instance instFiniteSetoid [Finite S] : Finite (Setoid S) :=
   Finite.of_injective (fun r : Setoid S => ⇑r) fun _ _ h => Setoid.eq_iff_rel_eq.2 h
 
+/-- Over a subsingleton there is only one partition.  `Setoid S` is extensional (see
+`instFiniteSetoid`), and any two elements are related by any equivalence relation because
+they are already equal.  This is the paper's "if `|S| = 0` or `|S| = 1` then
+`|Parts(S)| = 1`", which is the whole of Proposition 8's first two cases. -/
+lemma subsingleton_setoid [Subsingleton S] : Subsingleton (Setoid S) :=
+  ⟨fun r₁ r₂ => Setoid.ext fun a b => by
+    rw [Subsingleton.elim a b]
+    exact ⟨fun _ => r₂.refl' b, fun _ => r₁.refl' b⟩⟩
+
+/-- `Ω` is additive over a finite product of nonzero naturals.  Mathlib supplies the
+`Multiset` form (`ArithmeticFunction.cardFactors_multiset_prod`); this is its `Finset`
+transcription, used to count the factors of a factorization in Proposition 9. -/
+private lemma cardFactors_finsetProd {ι : Type*} (s : Finset ι) (f : ι → ℕ)
+    (h : ∀ i ∈ s, f i ≠ 0) :
+    ArithmeticFunction.cardFactors (∏ i ∈ s, f i)
+      = ∑ i ∈ s, ArithmeticFunction.cardFactors (f i) := by
+  have h0 : (Multiset.map f s.val).prod ≠ 0 := by
+    rw [← Finset.prod_eq_multiset_prod]
+    exact Finset.prod_ne_zero_iff.mpr h
+  rw [Finset.prod_eq_multiset_prod, ArithmeticFunction.cardFactors_multiset_prod h0,
+    Multiset.map_map, Finset.sum_eq_multiset_sum]
+  rfl
+
+/-- A list of primes has exactly as many prime factors, counted with multiplicity, as it
+has entries — the reading of "`|S| = p₀ ⋯ p_{k-1}` is a product of `k` primes" that
+Proposition 9's fourth clause needs. -/
+private lemma cardFactors_listProd (l : List ℕ) (hl : ∀ p ∈ l, p.Prime) :
+    ArithmeticFunction.cardFactors l.prod = l.length := by
+  induction l with
+  | nil => simp
+  | cons p t ih =>
+    have hp : p.Prime := hl p (List.mem_cons_self ..)
+    have ht : ∀ q ∈ t, q.Prime := fun q hq => hl q (List.mem_cons_of_mem _ hq)
+    have h0 : t.prod ≠ 0 := (List.prod_pos fun a ha => (ht a ha).pos).ne'
+    rw [List.prod_cons, ArithmeticFunction.cardFactors_mul hp.ne_zero h0,
+      ArithmeticFunction.cardFactors_apply_prime hp, ih ht, List.length_cons]
+    omega
+
+/-- The paper's "if `|B|` were greater than `k` we could express `|S|` as a product of more
+than `k` naturals `≥ 2`, which is impossible".  Counting with `Ω`, which is additive and at
+least `1` on every factor `≥ 2`, makes it a three-line computation. -/
+private lemma card_le_length_of_prod_eq {ι : Type*} [Fintype ι] (f : ι → ℕ)
+    (hf : ∀ i, 2 ≤ f i) (l : List ℕ) (hl : ∀ p ∈ l, p.Prime)
+    (heq : ∏ i, f i = l.prod) :
+    Fintype.card ι ≤ l.length :=
+  calc Fintype.card ι = ∑ _i : ι, 1 := by simp
+    _ ≤ ∑ i, ArithmeticFunction.cardFactors (f i) :=
+        Finset.sum_le_sum fun i _ => ArithmeticFunction.cardFactors_pos_iff_one_lt.mpr (hf i)
+    _ = ArithmeticFunction.cardFactors (∏ i, f i) :=
+        (cardFactors_finsetProd _ _ fun i _ => by have := hf i; omega).symm
+    _ = ArithmeticFunction.cardFactors l.prod := by rw [heq]
+    _ = l.length := cardFactors_listProd l hl
+
 namespace FactoredSet
 
 variable (F : FactoredSet S)
@@ -400,7 +456,7 @@ variable (F : FactoredSet S)
 /-- Definition 15's `size(F)`: the cardinality of the underlying set.
 
 Paper node: Definition 15 (§2.5). -/
-noncomputable def size : Cardinal := Cardinal.mk S
+noncomputable def size (_F : FactoredSet S) : Cardinal := Cardinal.mk S
 
 /-- Definition 15's `dim(F)`: the cardinality of the factorization.
 
@@ -417,6 +473,194 @@ conditions apart: a finite-dimensional factored set may have infinite size.
 
 Paper node: Proposition 6 (§2.5). -/
 theorem finite_basis_of_finite [Finite S] : Finite F.B := Subtype.finite
+
+/-- **Proposition 7** — `|S| = ∏_{b ∈ B} |b|`, where `|b|` is the number of blocks of `b`
+(under `dd:quotient`, the cardinality of `Quotient b`).  The paper states this for finite
+factored sets; it holds for all of them, being the cardinality of the coordinate
+bijection `S ≃ ∏(B)`, and `dd:finiteness-minimal` states it that way.
+
+Paper node: Proposition 7 (§2.5). -/
+theorem size_eq_prod : F.size = Cardinal.prod fun b : F.B => Cardinal.mk (Quotient (b : Setoid S)) :=
+  (Cardinal.mk_congr F.coord).trans (Cardinal.mk_pi _)
+
+private lemma size_eq_mk : F.size = Cardinal.mk S := rfl
+
+private lemma dim_eq_mk : F.dim = Cardinal.mk F.B := rfl
+
+private lemma dim_eq_zero_iff : F.dim = 0 ↔ F.B = ∅ := by
+  rw [dim_eq_mk]
+  exact Cardinal.mk_eq_zero_iff.trans Set.isEmpty_coe_sort
+
+/-- Proposition 7 counted in `ℕ`, which is the shape the arithmetic of Propositions 8 and 9
+runs on.  Only the *dimension* need be finite: `Nat.card_pi` holds for any `Fintype` index,
+and `Nat.card` of an infinite type is `0` on both sides. -/
+lemma natCard_eq_prod [Fintype F.B] :
+    Nat.card S = ∏ b : F.B, Nat.card (Quotient (b : Setoid S)) :=
+  (Nat.card_congr F.coord).trans Nat.card_pi
+
+/-- Every factor of a nonempty finite factored set has at least two blocks.  This is the
+one use Propositions 8 and 9 make of Definition 10's nontriviality condition; over the
+empty set it genuinely fails (there `Quotient b` is empty), which is why `Nonempty S` is a
+hypothesis and not decoration. -/
+lemma one_lt_natCard_quotient [Finite S] [Nonempty S] {b : Setoid S} (hb : b ∈ F.B) :
+    1 < Nat.card (Quotient b) := by
+  obtain ⟨s⟩ := ‹Nonempty S›
+  obtain ⟨u, hus⟩ := F.exists_not_rel hb s
+  exact Finite.one_lt_card_iff_nontrivial.2
+    ⟨⟨Quotient.mk b u, Quotient.mk b s, fun h => hus (Quotient.exact h)⟩⟩
+
+/-- Proposition 8's prime case, in the form Proposition 9 reuses.  By Proposition 7 each
+factor's block count divides `p`; nontriviality rules out `1`, so every factor has exactly
+`p` blocks and `p = p ^ dim(F)` forces at most one factor. -/
+lemma subsingleton_basis_of_card_prime {p : ℕ} (hp : p.Prime) (hS : Cardinal.mk S = p) :
+    F.B.Subsingleton := by
+  haveI : Finite S := Cardinal.lt_aleph0_iff_finite.1 (by rw [hS]; exact Cardinal.natCast_lt_aleph0)
+  haveI : Fintype S := Fintype.ofFinite S
+  haveI : Finite F.B := F.finite_basis_of_finite
+  haveI : Fintype F.B := Fintype.ofFinite _
+  have hcard : Nat.card S = p := by
+    rw [Nat.card_eq_fintype_card, ← Cardinal.mk_toNat_eq_card, hS, Cardinal.toNat_natCast]
+  haveI : Nonempty S := (Nat.card_pos_iff.1 (by rw [hcard]; exact hp.pos)).1
+  have hall : ∀ b : F.B, Nat.card (Quotient (b : Setoid S)) = p := by
+    intro b
+    have hdvd : Nat.card (Quotient (b : Setoid S)) ∣ p := by
+      rw [← hcard, F.natCard_eq_prod]
+      exact Finset.dvd_prod_of_mem _ (Finset.mem_univ b)
+    rcases hp.eq_one_or_self_of_dvd _ hdvd with h | h
+    · have := F.one_lt_natCard_quotient b.2
+      omega
+    · exact h
+  have hpow : p ^ 1 = p ^ Fintype.card F.B := by
+    rw [pow_one]
+    calc p = Nat.card S := hcard.symm
+      _ = ∏ b : F.B, Nat.card (Quotient (b : Setoid S)) := F.natCard_eq_prod
+      _ = ∏ _b : F.B, p := Finset.prod_congr rfl fun b _ => hall b
+      _ = p ^ Fintype.card F.B := by rw [Finset.prod_const, Finset.card_univ]
+  have hone : Fintype.card F.B = 1 := (Nat.pow_right_injective hp.two_le hpow).symm
+  exact (Set.subsingleton_coe F.B).1 (Fintype.card_le_one_iff_subsingleton.1 hone.le)
+
+end FactoredSet
+
+/-- **Proposition 8** — when `|S|` is `0`, `1`, or a prime, the trivial factorization is the
+only factorization of `S`: every factorization is trivial (and Proposition 5 makes it
+*the* trivial one).  Stated over `Cardinal.mk S` so that no separate finiteness hypothesis
+is needed — a set of cardinality `0`, `1`, or `p` is finite.
+
+Paper node: Proposition 8 (§2.5). -/
+theorem isTrivialFactorization_of_isFactorization
+    (h : Cardinal.mk S = 0 ∨ Cardinal.mk S = 1 ∨ ∃ p : ℕ, p.Prime ∧ Cardinal.mk S = p)
+    {B : Set (Setoid S)} (hB : IsFactorization B) : IsTrivialFactorization B := by
+  refine ⟨hB, ?_⟩
+  -- The `|S| ≤ 1` cases are the paper's `|Parts(S)| = 1`: with only one partition to
+  -- choose from, *every* subset of `Parts(S)` is a subsingleton.
+  have hsmall : Cardinal.mk S ≤ 1 → B.Subsingleton := fun hle => by
+    haveI : Subsingleton S := Cardinal.le_one_iff_subsingleton.1 hle
+    haveI := subsingleton_setoid (S := S)
+    exact fun a _ b _ => Subsingleton.elim a b
+  rcases h with h | h | ⟨p, hp, hS⟩
+  · exact hsmall (by rw [h]; exact zero_le_one)
+  · exact hsmall h.le
+  · exact (⟨B, hB⟩ : FactoredSet S).subsingleton_basis_of_card_prime hp hS
+
+namespace FactoredSet
+
+variable (F : FactoredSet S)
+
+/-- **Proposition 9** — size bounds dimension.  Clause 4 renders "`size(F)` is a product of
+`k ≥ 2` primes" as a list of primes of length `k ≥ 2` whose product is the size.  Stated
+over `size`/`dim` (`Cardinal`s), so the paper's standing "finite" hypothesis is implied by
+each clause's hypothesis rather than assumed.
+
+Paper node: Proposition 9 (§2.5). -/
+theorem dim_spec :
+    (F.size = 0 → F.dim = 1) ∧
+    (F.size = 1 → F.dim = 0) ∧
+    (∀ p : ℕ, p.Prime → F.size = p → F.dim = 1) ∧
+    (∀ l : List ℕ, (∀ p ∈ l, p.Prime) → 2 ≤ l.length → F.size = l.prod →
+      1 ≤ F.dim ∧ F.dim ≤ l.length) := by
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · -- `|S| = 0`: Proposition 8 leaves at most one factor, and the empty basis is barred
+    -- because it factors only the one-element sets (Proposition 5's `|S| = 1` branch).
+    intro h0
+    rw [size_eq_mk] at h0
+    haveI : IsEmpty S := Cardinal.mk_eq_zero_iff.1 h0
+    rcases (isTrivialFactorization_of_isFactorization (Or.inl h0)
+      F.isFactorization).2.eq_empty_or_singleton with hE | ⟨b, hb⟩
+    · have hfb : IsFactorization (∅ : Set (Setoid S)) := hE ▸ F.isFactorization
+      exact (IsEmpty.false (isFactorization_empty_iff.1 hfb).1.some).elim
+    · rw [dim_eq_mk, hb, Cardinal.mk_singleton]
+  · -- `|S| = 1`: a one-factor basis would have to be `{Dis_S}`, which is exactly what
+    -- Definition 10's nontriviality bars over a singleton.
+    intro h1
+    rw [size_eq_mk] at h1
+    rcases (isTrivialFactorization_of_isFactorization (Or.inr (Or.inl h1))
+      F.isFactorization).2.eq_empty_or_singleton with hE | ⟨b, hb⟩
+    · exact F.dim_eq_zero_iff.2 hE
+    · exfalso
+      have hfb : IsFactorization ({b} : Set (Setoid S)) := hb ▸ F.isFactorization
+      have hbot : IsFactorization ({⊥} : Set (Setoid S)) :=
+        eq_bot_of_isFactorization_singleton hfb ▸ hfb
+      exact isFactorization_singleton_bot_iff.1 hbot
+        ⟨Cardinal.mk_ne_zero_iff.1 (by rw [h1]; exact one_ne_zero),
+          Cardinal.le_one_iff_subsingleton.1 h1.le⟩
+  · -- `|S| = p` prime: Proposition 8 again, and now the empty basis is the barred one.
+    intro p hp hsize
+    rw [size_eq_mk] at hsize
+    rcases (isTrivialFactorization_of_isFactorization (Or.inr (Or.inr ⟨p, hp, hsize⟩))
+      F.isFactorization).2.eq_empty_or_singleton with hE | ⟨b, hb⟩
+    · exfalso
+      have hfb : IsFactorization (∅ : Set (Setoid S)) := hE ▸ F.isFactorization
+      obtain ⟨hne, hsub⟩ := isFactorization_empty_iff.1 hfb
+      have hone : (p : Cardinal) = 1 := hsize ▸ Cardinal.mk_eq_one S
+      exact hp.one_lt.ne' (by exact_mod_cast hone)
+    · rw [dim_eq_mk, hb, Cardinal.mk_singleton]
+  · -- `|S| = p₀ ⋯ p_{k-1}`: Proposition 7 writes `|S|` as a product of `dim(F)` naturals
+    -- each at least `2`, and `Ω` counts that against the `k` prime factors of `|S|`.
+    intro l hl hk hsize
+    rw [size_eq_mk] at hsize
+    have hΩ : ArithmeticFunction.cardFactors l.prod = l.length := cardFactors_listProd l hl
+    have hlt : 1 < l.prod := ArithmeticFunction.cardFactors_pos_iff_one_lt.1 (by omega)
+    haveI : Finite S :=
+      Cardinal.lt_aleph0_iff_finite.1 (by rw [hsize]; exact Cardinal.natCast_lt_aleph0)
+    haveI : Fintype S := Fintype.ofFinite S
+    haveI : Finite F.B := F.finite_basis_of_finite
+    haveI : Fintype F.B := Fintype.ofFinite _
+    have hcard : Nat.card S = l.prod := by
+      rw [Nat.card_eq_fintype_card, ← Cardinal.mk_toNat_eq_card, hsize, Cardinal.toNat_natCast]
+    haveI : Nonempty S := (Nat.card_pos_iff.1 (by rw [hcard]; omega)).1
+    have hprod : ∏ b : F.B, Nat.card (Quotient (b : Setoid S)) = l.prod := by
+      rw [← F.natCard_eq_prod, hcard]
+    have hle : Fintype.card F.B ≤ l.length :=
+      card_le_length_of_prod_eq _ (fun b => F.one_lt_natCard_quotient b.2) l hl hprod
+    have hpos : 0 < Fintype.card F.B := by
+      rw [Fintype.card_pos_iff]
+      by_contra hemp
+      rw [not_nonempty_iff] at hemp
+      rw [Finset.univ_eq_empty, Finset.prod_empty] at hprod
+      omega
+    rw [dim_eq_mk, Cardinal.mk_fintype]
+    exact ⟨by exact_mod_cast hpos, by exact_mod_cast hle⟩
+
+end FactoredSet
+
+/-! ### Client-style uses of the §2.5 endpoints -/
+
+namespace FactoredSet
+
+/-- Proposition 7, used the way a client would: if every factor is binary, the size is a
+power of two. -/
+example (F : FactoredSet S) [Fintype F.B]
+    (h : ∀ b : F.B, Nat.card (Quotient (b : Setoid S)) = 2) :
+    Nat.card S = 2 ^ Fintype.card F.B := by
+  rw [F.natCard_eq_prod, Finset.prod_congr rfl fun b _ => h b, Finset.prod_const,
+    Finset.card_univ]
+
+/-- Proposition 9, used the way a client would: a factored set of size `6` has at most two
+factors, because `6 = 2 · 3`. -/
+example (F : FactoredSet S) (h : F.size = ((6 : ℕ) : Cardinal)) : F.dim ≤ 2 := by
+  have hl : ∀ p ∈ [2, 3], Nat.Prime p := by decide
+  have := F.dim_spec.2.2.2 [2, 3] hl (by decide) (by simpa using h)
+  simpa using this.2
 
 end FactoredSet
 

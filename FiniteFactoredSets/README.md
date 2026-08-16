@@ -5,7 +5,7 @@ Formalization of Scott Garrabrant, *Temporal Inference with Finite Factored Sets
 `notes/2109.11513-main.tex` is the exact arXiv source and `notes/2109.11513.pdf` the
 matching PDF.
 
-**Status: in progress — §2.1–§2.5 formalized (17 of the 96 in-scope nodes),
+**Status: in progress — §2 and §3 formalized (34 of the 96 in-scope nodes),
 with non-vacuity discharged by construction.**
 Nothing here is complete, and this file says what is claimed and what is not.
 
@@ -17,7 +17,11 @@ Nothing here is complete, and this file says what is claimed and what is not.
 | 2.2 | Factorizations and factored sets | Definitions 10, 11; Proposition 3 |
 | 2.3 | The chimera function | Theorem 1; Corollary 1; Definitions 12, 13; Proposition 4 |
 | 2.4 | Trivial factorizations | Definition 14; Proposition 5 |
-| 2.5 | Finite factored sets | Definition 15; Proposition 6 |
+| 2.5 | Finite factored sets | Definition 15; Propositions 6, 7, 8, 9 |
+| 3.1 | Generating a partition with factors | Definition 16; Propositions 10, 11 |
+| 3.2 | History | Definition 17; Propositions 12, 13 |
+| 3.3 | Orthogonality | Definition 18; Propositions 14, 15 |
+| 3.4 | Time | Definition 19; Propositions 16, 17, 18, 19 |
 
 Definition 13 has two halves and both are carried: `chimera` is `χ^F_C(s,t)` and
 `chimeraImage` is the setwise `χ^F_C(T,R)` that §3 onward quantifies over.
@@ -29,10 +33,9 @@ Every one of those carries a `Paper node:` docstring line and an entry in
 
 ## What is not claimed
 
-Propositions 7–9 of §2.5 (the cardinality identity `|S| = ∏|b|`, its prime corollary, and
-the size/dimension table), §3 (orthogonality and time), §4 (subpartitions and conditional
-orthogonality), §5 (polynomials and probability, including the Fundamental Theorem), §6
-(inferring time), and §7's in-scope material have **no Lean statements yet**. The trust-surface
+§4 (subpartitions and conditional orthogonality), §5 (polynomials and probability,
+including the Fundamental Theorem), §6 (inferring time), and §7's in-scope material have
+**no Lean statements yet**. The trust-surface
 guide reports the shortfall by kind rather than listing it.
 
 An earlier feasibility spike proved several §5 results — the disjoint-support coefficient

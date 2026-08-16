@@ -12,6 +12,7 @@ trust surface and `FiniteFactoredSets.lean` for the `dd:` glossary.
 | `dd:partition` | Partitions are `Setoid S` | Matches `CartesianFrames/`; repo coherence beats a bespoke `Finpartition`-based encoding. Note Mathlib *does* now have a bundled `Setoid.Partitions` with a `CompleteLattice` instance (`Mathlib/Data/Setoid/Partition.lean`), which the CF library's comment predates — but `Setoid` is what the whole lattice API is stated over, so it stays. |
 | `dd:order-flip` | Use Mathlib's order, never the paper's glyphs | Carrying both conventions in one file is how sign errors get proved. |
 | `dd:quotient` | `∏(B)` is `(b : B) → Quotient b` | Canonical; a presentation change, not a content change. |
+| history | `history X := ⋂₀ {C | C ⊆ F.B ∧ Generates C X}` | Definition 17's "smallest generating subset". `history_isLeast` (Proposition 12) is what earns "smallest", and it needs `[Finite F.B]` **genuinely**: over `S = ℕ → Bool` with the coordinate factors, every cofinite subset of `B` generates the "eventually equal" partition, so the intersection of all generating subsets is `∅`, which generates nothing. All of §3 is stated with `Finite F.B` (finite *dimension*) and never `Finite S`. |
 
 ## The order inversion — read this before writing any order statement
 
@@ -63,6 +64,44 @@ factorization. This was the spike's main finding; see `notes/spike-2026-08-15.md
 * **`exact absurd (Finset.mem_antidiagonal.2 rfl) h` loops in `whnf`** (200k heartbeats)
   on the `Finsupp` antidiagonal instance. `simp only [Finset.mem_antidiagonal] at h`
   first is instant. This will matter again in §5.
+* **`lake build -j4` is not valid on this toolchain (Lake 5 / Lean 4.31 has no `-j`).** It
+  dies with `unknown short option '-j'`, and piped through `tee` the pipeline exits 0 — a
+  30-second "green build" that compiled nothing. Cap with
+  `LAKE_NUM_JOBS=4 LEAN_NUM_THREADS=4 lake build <target>`; if you pipe, read
+  `${PIPESTATUS[0]}`. (Same trap explains a fixer's report that
+  `check-finite-factored-sets-nodes.py` "exits 0 on violations" — it exits 1; `$?` after
+  `| tail` was `tail`'s.)
+* **`#assert_axioms_clean` reports only the first tainted declaration in its list.** One
+  error line does not mean one tainted endpoint; enumerate with `#print axioms` in a
+  scratch file when several could be affected.
+* **Never write the literal string `Paper node:` in prose** — not even in a `/-! -/` block
+  explaining the convention. The node checker greps the bare string and reports it as a
+  malformed, unanchored annotation. Say "the annotated paper statements" instead.
+* **All setoids on an empty type are equal**: `Setoid.ext fun a _ => (IsEmpty.false a).elim`
+  proves `X = Y` outright (this is stronger than the `(⊥ : Setoid Empty) = ⊤` note above),
+  which is how Proposition 17's "if `S` is empty then `X = Y`" branch is discharged.
+* **`Setoid.refl'` is `@[refl]`**, so the `rfl` that `rw` tries afterwards closes `X s s`
+  goals by itself; a following `exact X.refl' s` fails with "no goals".
+* **`List.TFAE.out` has autoparam arguments**: `((h.out 0 5).1 hyp) s t` fails to elaborate
+  in term mode. Bind with an explicitly typed `have h6 : ∀ s t, … := (h.out 0 5).1 hyp` first
+  (the in-file `example` in `History.lean` demonstrates it).
+* **`Set.Finite.induction_on`'s motive takes the set and its finiteness proof**, so every
+  hypothesis mentioning the set must be to the right of the colon (arrow form) — otherwise
+  `induction 𝒞, hfin using Set.Finite.induction_on` fails to generalize. Case names are
+  `empty` and `insert`, binders implicit: `| @insert a s _ _ ih =>`. Proposition 12 is proved
+  by threading a generating `D` through the induction (`generates_inter_sInter`) so the
+  empty base case is `D ∩ ⋂₀ ∅ = D`; that is how the paper's "nonempty collection, since
+  `B ⊢ X`" side condition is discharged (instantiate `D := F.B` at the end).
+* **`Setoid`'s `≤` is a bare `∀ ⦃x y⦄, r x y → s x y`**, not routed through an order-class
+  projection: `h : Y ≤ X` applies directly as `h hxy`, and `intro s t hst` works straight
+  off a `commonRefinement C ≤ X` goal. No `Setoid.le_def` glue needed.
+* **`part X s ∈ X.classes` is `X.mem_classes s` by delta** — no `show`, no rewrite.
+* **`Set.diff_subset` is deprecated** for `Set.sdiff_subset` in this Mathlib.
+* **A `def` under `variable (F : FactoredSet S)` that does not mention `F` in its body does
+  not take `F`.** `size` was stated that way in stage 2: it was inventoried, axiom-clean, and
+  unusable — `F.size` did not elaborate — and survived a full audit round because nothing
+  exercised it. Now `def size (_F : FactoredSet S)`. Every endpoint gets an in-file `example`
+  applying it the way a client would; this is the defect class that rule exists for.
 * **Do not `cd` into `.lake/packages/…` and run `lake` there.** It creates a nested
   `.lake` with its own package clones *inside* the dependency, and cleaning it up is easy
   to overdo — deleting `.lake/packages/mathlib/.lake` also deletes mathlib's built
@@ -92,6 +131,23 @@ Paper node → Lean declaration. Extended as nodes land.
 | Definition 15 (size, dimension) | `FactoredSet.size`, `FactoredSet.dim` | `Basic.lean` |
 | Proposition 5 | `existsUnique_trivialFactorization` | `Basic.lean` |
 | Proposition 6 | `FactoredSet.finite_basis_of_finite` | `Basic.lean` |
+| Proposition 7 | `FactoredSet.size_eq_prod` (ℕ form: `natCard_eq_prod`) | `Basic.lean` |
+| Proposition 8 | `isTrivialFactorization_of_isFactorization` | `Basic.lean` |
+| Proposition 9 | `FactoredSet.dim_spec` | `Basic.lean` |
+| Definition 16 (generates, `C ⊢^F X`) | `FactoredSet.Generates` | `History.lean` |
+| Proposition 10 | `FactoredSet.generates_tfae` (clause 6: `generates_iff_rel`; clause 7: `generates_iff_sInf_le`) | `History.lean` |
+| Proposition 11 | `FactoredSet.generates_spec` | `History.lean` |
+| Definition 17 (history `h^F`) | `FactoredSet.history` | `History.lean` |
+| Proposition 12 | `FactoredSet.history_isLeast` (helpers `generates_history`, `generates_iff_history_subset`, `le_iff_history_subset`) | `History.lean` |
+| Proposition 13 | `FactoredSet.history_spec` | `History.lean` |
+| Definition 18 (orthogonal, `X ⊥^F Y`) | `FactoredSet.Orthogonal` | `Orthogonality.lean` |
+| Proposition 14 | `FactoredSet.orthogonal_iff_exists` | `Orthogonality.lean` |
+| Proposition 15 | `FactoredSet.orthogonal_spec` | `Orthogonality.lean` |
+| Definition 19 (before, strictly before) | `FactoredSet.Before`, `FactoredSet.StrictlyBefore` | `Orthogonality.lean` |
+| Proposition 16 | `FactoredSet.before_iff_forall_sInf` | `Orthogonality.lean` |
+| Proposition 17 | `FactoredSet.before_iff_forall_orthogonal` | `Orthogonality.lean` |
+| Proposition 18 | `FactoredSet.before_spec` | `Orthogonality.lean` |
+| Proposition 19 | `FactoredSet.history_eq_setOf_before` | `Orthogonality.lean` |
 
 Nodes deliberately rendered by Mathlib vocabulary with no declaration of ours
 (Definitions 2, 5, 6, 7, 9) are tabulated in `README.md`.
@@ -126,6 +182,23 @@ Do not trust a node number recalled from memory. The spike miscited `factor2` as
 clause 1 carries an explicit `c ∈ F.B` guard the paper gets for free — a client holding
 `hC : C ⊆ F.B` discharges it as `hC hc`, and that implication is compiled. Raised as a
 faithfulness defect in round 1 (R1-F05) and refuted; do not re-raise.
+
+**Definition 16's `Generates C X` is likewise stated for unrestricted `C`** (the paper takes
+`C ⊆ B`), for the same reason: `chimera` ignores non-factors, so
+`Generates C = Generates (C ∩ F.B)`. All six clauses of Proposition 11 hold with `C`, `D`
+arbitrary — clause 5 (monotonicity) goes through Proposition 4's union clause rather than
+`sInf`-monotonicity. `C ⊆ B` is load-bearing in exactly one place: the `7 → 1` leg of
+Proposition 10 (`sInf C ≤ X → Generates C X`), which is why `generates_tfae` and
+`generates_iff_sInf_le` take `hC : C ⊆ F.B` and nothing else does. `6 → 7` needs no subset
+hypothesis. Do not add subset hypotheses to `generates_spec` "for symmetry".
+
+**Propositions 7–9 are stated over `size`/`dim` (`Cardinal`s) with no `[Finite S]`.** The
+paper's standing "finite factored set" hypothesis is implied by each clause's own
+hypothesis (`= 0`, `= 1`, `= p`, `= l.prod`), and Proposition 7 holds for every factored
+set (`size_eq_prod` is `Cardinal.mk_congr F.coord` + `Cardinal.mk_pi`). Proposition 9's
+"product of `k ≥ 2` primes" is a `List ℕ` of primes of length `≥ 2` whose product is the
+size. This is `dd:finiteness-minimal` applied to §2.5, not a strengthening anyone should
+re-audit as drift.
 
 ## Open trust-surface caveats
 
@@ -199,6 +272,21 @@ whereas Theorem 3 is conditional on a partition `Z`; and measurable structure is
 hypothesis a bare finite-dimensional factored set does not carry. So the accurate claim is
 **resolved in a measurable refinement, not as literally stated** — which is precisely why
 it belongs in the library as a stated open `Prop` with this note attached.
+
+## Stage 3 (Props 7–9, §3) — durable lessons
+
+* **`le_iff_history_subset`** (`History.lean`): for `C ⊆ B`, `commonRefinement C ≤ X ↔
+  F.history X ⊆ C` — Proposition 10 clause 7 composed with Proposition 12, and literally the
+  sentence the paper opens Proposition 16's proof with. Every §3.3–§3.4 proof runs on it plus
+  `orthogonal_iff_forall_notMem`; once they exist, §3.3–§3.4 is pure set algebra over
+  `history` and no finiteness argument is redone. Budget §4 similarly.
+* Proposition 15 clause 1 and the forward direction of Proposition 17 need neither
+  `Finite F.B` nor `Nonempty S`; the theorems carry `[Finite F.B]` uniformly for legibility.
+* Proposition 9 clause 4 counts with `Ω` (`ArithmeticFunction.cardFactors`), additive over
+  products and `≥ 1` on every factor `≥ 2`; `card_le_length_of_prod_eq` in `Basic.lean` is
+  the three-line version of the paper's "impossible since `|S|` is a product of `k` primes".
+* `one_lt_natCard_quotient` is the one place Propositions 8–9 use Definition 10's
+  nontriviality; it needs `Nonempty S` and genuinely fails over the empty set.
 
 ## Round 1 audit — durable lessons
 
