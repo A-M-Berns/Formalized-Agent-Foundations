@@ -1,4 +1,5 @@
 import Mathlib.Data.Setoid.Partition
+import Mathlib.SetTheory.Cardinal.Basic
 
 /-!
 # Partitions, factorizations, and chimera functions
@@ -298,6 +299,124 @@ theorem chimera_spec (C D : Set (Setoid S)) (s t r : S) :
     simp only [coord_chimera, Set.mem_sdiff, Set.mem_union, Set.mem_inter_iff,
       Set.mem_empty_iff_false, b.2, true_and] <;>
     split_ifs <;> tauto
+
+end FactoredSet
+
+/-! ## §2.4 Trivial factorizations
+
+Nothing here needs `S` finite; `dd:finiteness-minimal` (see `FiniteFactoredSets.lean`)
+keeps `Fintype`/`Finite` off every statement that does not actually require it. -/
+
+/-- Definition 14: a factorization is trivial when it has at most one factor.
+
+Paper node: Definition 14 (§2.4). -/
+def IsTrivialFactorization (B : Set (Setoid S)) : Prop :=
+  IsFactorization B ∧ B.Subsingleton
+
+/-- The empty basis factors exactly the one-element sets: with no factors the coordinate
+product is a single point, so `π` is a bijection precisely when `S` is one too. -/
+lemma isFactorization_empty_iff :
+    IsFactorization (∅ : Set (Setoid S)) ↔ (Nonempty S ∧ Subsingleton S) := by
+  constructor
+  · rintro ⟨-, hinj, hsurj⟩
+    obtain ⟨s, -⟩ := hsurj fun b => b.2.elim
+    exact ⟨⟨s⟩, ⟨fun x y => hinj (funext fun b => b.2.elim)⟩⟩
+  · rintro ⟨⟨s⟩, hsub⟩
+    refine ⟨by rintro b ⟨⟩, fun x y _ => hsub.elim x y, fun y => ⟨s, funext fun b => b.2.elim⟩⟩
+
+/-- The discrete basis `{Dis_S}` factors exactly the sets that are *not* one-element:
+over a singleton `Dis_S` is trivial and so barred as a factor, and everywhere else the
+coordinate map is the identity up to the canonical `S ≃ Quotient ⊥`. -/
+lemma isFactorization_singleton_bot_iff :
+    IsFactorization ({⊥} : Set (Setoid S)) ↔ ¬ (Nonempty S ∧ Subsingleton S) := by
+  constructor
+  · rintro ⟨hnt, -⟩ ⟨hne, hsub⟩
+    exact hnt ⊥ rfl ⟨hne, fun s t => hsub.elim s t⟩
+  · intro h
+    refine ⟨?_, ?_, ?_⟩
+    · rintro b rfl ⟨hne, hall⟩
+      exact h ⟨hne, ⟨fun s t => hall s t⟩⟩
+    · intro x y hxy
+      exact Quotient.exact (congrFun hxy ⟨⊥, rfl⟩)
+    · intro y
+      refine ⟨Quotient.out (y ⟨⊥, rfl⟩), funext fun b => ?_⟩
+      obtain ⟨b, hb⟩ := b
+      simp only [Set.mem_singleton_iff] at hb
+      subst hb
+      exact Quotient.out_eq _
+
+/-- A one-factor basis is a factorization only if that factor is `Dis_S`. -/
+lemma eq_bot_of_isFactorization_singleton {b : Setoid S}
+    (h : IsFactorization ({b} : Set (Setoid S))) : b = ⊥ := by
+  refine le_antisymm (fun {x y} hxy => ?_) bot_le
+  exact h.bijective.1 (funext fun c => by
+    obtain ⟨c, hc⟩ := c
+    simp only [Set.mem_singleton_iff] at hc
+    subst hc
+    exact Quotient.sound hxy)
+
+/-- **Proposition 5** — every set has exactly one trivial factorization, and it is `{Dis_S}`
+unless `S` has exactly one element, in which case it is the empty basis.
+
+The `|S| = 1` split is not an edge case bolted on: over a singleton `Dis_S` *is* the
+indiscrete partition, so Definition 10's nontriviality bars it, and the empty basis is
+what is left.
+
+Paper node: Proposition 5 (§2.4). -/
+theorem existsUnique_trivialFactorization (S : Type u) :
+    ∃! B : Set (Setoid S), IsTrivialFactorization B := by
+  by_cases h : Nonempty S ∧ Subsingleton S
+  · refine ⟨∅, ⟨isFactorization_empty_iff.2 h, Set.subsingleton_empty⟩, ?_⟩
+    rintro B ⟨hB, hsub⟩
+    by_contra hne
+    obtain ⟨b, hb⟩ := Set.nonempty_iff_ne_empty.2 hne
+    refine hB.nontrivial b hb ⟨h.1, fun s t => ?_⟩
+    have hst : s = t := h.2.elim s t
+    subst hst
+    exact b.refl' s
+  · refine ⟨{⊥}, ⟨isFactorization_singleton_bot_iff.2 h, Set.subsingleton_singleton⟩, ?_⟩
+    rintro B ⟨hB, hsub⟩
+    rcases Set.Subsingleton.eq_empty_or_singleton hsub with rfl | ⟨b, rfl⟩
+    · exact absurd (isFactorization_empty_iff.1 hB) h
+    · exact congrArg _ (eq_bot_of_isFactorization_singleton hB)
+
+/-! ## §2.5 Finite factored sets
+
+Definition 15 names two independent finiteness conditions, and the difference between
+them is the whole reason `dd:finiteness-minimal` exists: everything through §4 needs only
+finite *dimension*, and only §5's characteristic polynomials need finite *size*. -/
+
+/-- `Setoid α` is determined by its relation (`Equivalence` is `Prop`-valued, so proof
+irrelevance applies to `iseqv`), so it embeds in `α → α → Prop` and is finite whenever
+`α` is.  Mathlib has no such instance; this one is repo-generic and upstreamable, and it
+is what makes Proposition 6 a two-liner. -/
+instance instFiniteSetoid [Finite S] : Finite (Setoid S) :=
+  Finite.of_injective (fun r : Setoid S => ⇑r) fun _ _ h => Setoid.eq_iff_rel_eq.2 h
+
+namespace FactoredSet
+
+variable (F : FactoredSet S)
+
+/-- Definition 15's `size(F)`: the cardinality of the underlying set.
+
+Paper node: Definition 15 (§2.5). -/
+noncomputable def size : Cardinal := Cardinal.mk S
+
+/-- Definition 15's `dim(F)`: the cardinality of the factorization.
+
+Paper node: Definition 15 (§2.5). -/
+noncomputable def dim : Cardinal := Cardinal.mk F.B
+
+/-- **Proposition 6** — a finite factored set is finite-dimensional.
+
+The paper's proof is the cardinality bound `|B| ≤ 2^(2^|S|)`, `B` being a set of sets of
+subsets of `S`.  Under `dd:partition` the same fact is the finiteness of `Setoid S`.
+
+Note the converse fails, which is exactly why `dd:finiteness-minimal` keeps the two
+conditions apart: a finite-dimensional factored set may have infinite size.
+
+Paper node: Proposition 6 (§2.5). -/
+theorem finite_basis_of_finite [Finite S] : Finite F.B := Subtype.finite
 
 end FactoredSet
 

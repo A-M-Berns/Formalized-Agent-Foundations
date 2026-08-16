@@ -88,6 +88,10 @@ Paper node → Lean declaration. Extended as nodes land.
 | Proposition 4 | `FactoredSet.chimera_spec` | `Basic.lean` |
 | Theorem 1 | `isFactorization_iff_existsUnique` | `Basic.lean` |
 | Corollary 1 | `FactoredSet.eq_of_part_eq` | `Basic.lean` |
+| Definition 14 (trivial factorization) | `IsTrivialFactorization` | `Basic.lean` |
+| Definition 15 (size, dimension) | `FactoredSet.size`, `FactoredSet.dim` | `Basic.lean` |
+| Proposition 5 | `existsUnique_trivialFactorization` | `Basic.lean` |
+| Proposition 6 | `FactoredSet.finite_basis_of_finite` | `Basic.lean` |
 
 Nodes deliberately rendered by Mathlib vocabulary with no declaration of ours
 (Definitions 2, 5, 6, 7, 9) are tabulated in `README.md`.
@@ -143,10 +147,12 @@ checked — budget for errata as §3–§5 land.
 ## Open questions
 
 * ~~Scope of §7~~ — **settled by Anson, 2026-08-16.**  See "Scope" below.
-* **How `B`'s finiteness is carried** into §5. Proposition 6 proves that a finite factored
-  set is finite-dimensional, so `Fintype F.B` should be *derived*, not assumed. Assuming
-  it would be premise smuggling; prove Proposition 6 before the polynomial section needs
-  finite products.
+* ~~How `B`'s finiteness is carried into §5~~ — **settled.** Proposition 6 is proved
+  (`FactoredSet.finite_basis_of_finite`), so `Finite F.B` is *derived* from `Finite S`, not
+  assumed. The supporting `instFiniteSetoid` (`Finite α → Finite (Setoid α)`, absent from
+  Mathlib) is repo-generic and upstreamable. Note the converse fails — a finite-dimensional
+  factored set may have infinite size — which is exactly why `dd:finiteness-minimal` keeps
+  the two conditions apart rather than collapsing them into one `Fintype`.
 
 ## Scope (Anson's ruling, 2026-08-16): 96 of 98 nodes
 

@@ -1017,6 +1017,8 @@ open FiniteFactoredSets in
   isFactorization_iff_existsUnique FactoredSet.eq_of_part_eq
   FactoredSet.chimeraFun FactoredSet.chimera FactoredSet.chimeraImage
   FactoredSet.chimera_spec
+  IsTrivialFactorization existsUnique_trivialFactorization
+  FactoredSet.size FactoredSet.dim FactoredSet.finite_basis_of_finite
   -- Non-vacuity witnesses (FiniteFactoredSets/Examples.lean).  Every §2.2-§2.3 endpoint
   -- is stated over `FactoredSet`; these are what make those endpoints say something.
   -- `coordFS` is the load-bearing one: with a single factor every `C` behaves as `∅` or

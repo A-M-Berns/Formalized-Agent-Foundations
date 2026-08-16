@@ -199,7 +199,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <div class="wrap">
 <nav class="rail" aria-label="node index">
   <div class="rail-title">Read-through</div>
-  <div class="rail-progress" id="progress">0 / 147 read</div>
+  <div class="rail-progress" id="progress">0 / 151 read</div>
   <a class="nav-paper" href="#paper-logical-induction">Logical Induction</a>
   <div class="nav-sec">The Logical Induction Criterion</div>
 <a class="nav-item" href="#def-lic" data-node="def-lic"><span class="dot instantiated"></span>def:lic</a>
@@ -383,6 +383,12 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <a class="nav-item" href="#ffs-definition-12" data-node="ffs-definition-12"><span class="dot plain"></span>Definition 12</a>
 <a class="nav-item" href="#ffs-definition-13" data-node="ffs-definition-13"><span class="dot plain"></span>Definition 13</a>
 <a class="nav-item" href="#ffs-proposition-4" data-node="ffs-proposition-4"><span class="dot plain"></span>Proposition 4</a>
+<a class="nav-item" href="#ffs-definition-14" data-node="ffs-definition-14"><span class="dot plain"></span>Definition 14</a>
+<div class="nav-sec">Trivial Factorizations</div>
+<a class="nav-item" href="#ffs-proposition-5" data-node="ffs-proposition-5"><span class="dot plain"></span>Proposition 5</a>
+<a class="nav-item" href="#ffs-definition-15" data-node="ffs-definition-15"><span class="dot plain"></span>Definition 15</a>
+<div class="nav-sec">Finite Factored Sets</div>
+<a class="nav-item" href="#ffs-proposition-6" data-node="ffs-proposition-6"><span class="dot plain"></span>Proposition 6</a>
 </nav>
 <main>
   <h1>Formalized Agent Foundations — the trust-surface read-through</h1>
@@ -417,7 +423,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <div style="overflow-x:auto"><table class="index">
       <tr><td><strong>Paper</strong></td><td class="count"><strong>nodes</strong></td>
           <td><strong>library</strong></td><td><strong>editorial data on its cards</strong></td></tr>
-      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>tier badge per node (universal / instantiated / qualified), a reading note and a "what to check" note, from the machine-checked strength table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">8</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">13</td><td><code>FiniteFactoredSets/</code></td><td><strong>in progress</strong> — §2.1–§2.3 only, and no strength classification exists for this paper</td></tr>
+      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>tier badge per node (universal / instantiated / qualified), a reading note and a "what to check" note, from the machine-checked strength table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">8</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">17</td><td><code>FiniteFactoredSets/</code></td><td><strong>in progress</strong> — §2.1–§2.3 only, and no strength classification exists for this paper</td></tr>
     </table></div>
     <p><strong>Only Logical Induction has a strength classification and per-node reading
     notes.</strong> They are the product of a dedicated re-derivation pass and a
@@ -5552,14 +5558,14 @@ Then
   <h2 class="paper-head">Temporal Inference with Finite Factored Sets</h2>
   <p class="paper-cite">Garrabrant (2021) ·
   <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a> ·
-  <code>FiniteFactoredSets/</code> · 13 nodes</p>
+  <code>FiniteFactoredSets/</code> · 17 nodes</p>
 
   <div class="method">
     <div class="no-tier"><b>This formalization is in progress, and no strength
     classification exists for this paper.</b> The cards below cover §2.1–§2.3 only —
     partitions, factorizations, and chimera functions. They carry no tier and no per-node
     audit note, because none has been produced; they assert the correspondence only. Nodes
-    with no Lean statement annotated to them: 1 of the paper’s conjectures; 43 of the paper’s definitions; 4 of the paper’s examples; 3 of the paper’s lemmas; 32 of the paper’s propositions; 2 of the paper’s theorems.</div>
+    with no Lean statement annotated to them: 1 of the paper’s conjectures; 41 of the paper’s definitions; 4 of the paper’s examples; 3 of the paper’s lemmas; 30 of the paper’s propositions; 2 of the paper’s theorems.</div>
 
     <h3>How nodes are cited</h3>
     <p>The paper labels only 32 of its 98 numbered nodes, and the labels it does carry are
@@ -5894,6 +5900,85 @@ Given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><m
     </section>
   </div>
 </article>
+
+<article class="node" id="ffs-definition-14">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-definition-14" aria-label="mark Definition 14 read"></label>
+    <span class="node-label">Definition 14</span>
+    <span class="node-title">trivial factorization</span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>A factorization <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>B</mi></mrow></math> of a set <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math> is called trivial if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x0007C;</mo><mi>B</mi><mo stretchy="false">&#x0007C;</mo><mo>&#x02264;</mo><mn>1</mn></mrow></math>. A factored set <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math> is called trivial if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>B</mi></mrow></math> is trivial.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.IsTrivialFactorization</code><span class="ep-file">FiniteFactoredSets/Basic.lean</span></div><pre class="sig">def IsTrivialFactorization (B : Set (Setoid S)) : Prop</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-ffs-Trivial-Factorizations">Trivial Factorizations</h2>
+
+<article class="node" id="ffs-proposition-5">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-proposition-5" aria-label="mark Proposition 5 read"></label>
+    <span class="node-label">Proposition 5</span>
+    <span class="node-title"></span>
+    <span class="kind">proposition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>For every set <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>, there exists a unique trivial factorization <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>B</mi></mrow></math> of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>. If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x0007C;</mo><mi>S</mi><mo stretchy="false">&#x0007C;</mo><mo>&#x02260;</mo><mn>1</mn></mrow></math>, this trivial factorization is given by <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>B</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x0007B;</mo><msub><mtext>Dis</mtext><mi>S</mi></msub><mo stretchy="false">&#x0007D;</mo></mrow></math>, and if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x0007C;</mo><mi>S</mi><mo stretchy="false">&#x0007C;</mo><mo>&#x0003D;</mo><mn>1</mn></mrow></math>, it is given by <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>B</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x0007B;</mo><mo stretchy="false">&#x0007D;</mo></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.existsUnique_trivialFactorization</code><span class="ep-file">FiniteFactoredSets/Basic.lean</span></div><pre class="sig">theorem existsUnique_trivialFactorization (S : Type u) :
+    ∃! B : Set (Setoid S), IsTrivialFactorization B</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="ffs-definition-15">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-definition-15" aria-label="mark Definition 15 read"></label>
+    <span class="node-label">Definition 15</span>
+    <span class="node-title"></span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math> is a factored set, the size of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi></mrow></math>, written <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mtext>size</mtext><mo stretchy="false">&#x00028;</mo><mi>F</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, is the cardinality of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>. The dimension of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi></mrow></math>, written <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mtext>dim</mtext><mo stretchy="false">&#x00028;</mo><mi>F</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, is the cardinality of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>B</mi></mrow></math>. <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi></mrow></math> is called finite if its size is finite, and finite-dimensional if its dimension is finite.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.size</code><span class="ep-file">FiniteFactoredSets/Basic.lean</span></div><pre class="sig">noncomputable def size : Cardinal</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.dim</code><span class="ep-file">FiniteFactoredSets/Basic.lean</span></div><pre class="sig">noncomputable def dim : Cardinal</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-ffs-Finite-Factored-Sets">Finite Factored Sets</h2>
+
+<article class="node" id="ffs-proposition-6">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-proposition-6" aria-label="mark Proposition 6 read"></label>
+    <span class="node-label">Proposition 6</span>
+    <span class="node-title"></span>
+    <span class="kind">proposition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Every finite factored set is also finite-dimensional.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.finite_basis_of_finite</code><span class="ep-file">FiniteFactoredSets/Basic.lean</span></div><pre class="sig">theorem finite_basis_of_finite [Finite S] : Finite F.B</pre></div>
+    </section>
+  </div>
+</article>
   </section>
 </main>
 </div>
@@ -5951,6 +6036,6 @@ Given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><m
 })();
 </script>
 
-<!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=8 finite-factored-sets=13 -->
+<!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=8 finite-factored-sets=17 -->
 
-<!-- trust-surface-sources: 451f8b8ad2a3f4842910ee2b9852d1ba5007b0bf4884f677dc85d00fdfc606a2 -->
+<!-- trust-surface-sources: 3de07798fa56fefdd38f3fa4e7fb04bc6b7d821c28820679d058bd701ebe2631 -->

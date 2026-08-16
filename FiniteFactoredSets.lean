@@ -42,6 +42,16 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
   throughout and never introduces the paper's glyphs, so that no statement has to be
   read under two conventions at once.
 
+* `dd:finiteness-minimal` — finiteness hypotheses are carried only where they are used,
+  never globally.  `FactoredSet` takes an arbitrary `S : Type u` with no `Finite`
+  constraint; §3–§4 (history, orthogonality, time, subpartitions, conditional
+  orthogonality) are stated with `Finite B` alone; and `Finite S` enters only at §5.  The
+  boundary is exact: `Q^F_E = ∑_{s ∈ E} ∏_{b ∈ B} [s]_b` has monomials of finite degree
+  `|B|`, but its *sum* ranges over `E ⊆ S`, so once `S` is infinite it is not a polynomial
+  and none of §5 applies to it.  This is what the paper means by having assumed finiteness
+  "fairly gratuitously" (§7.2), and it is what makes Conjecture 1 — the
+  finite-*dimensional* fundamental theorem — statable in this library at all.
+
 * `dd:quotient` — Definition 9's Cartesian product `∏(B)` (functions choosing one block
   from each partition) is modeled as the dependent product `(b : B) → Quotient b`, and
   Definition 10's `π` as `fun s b => ⟦s⟧`.  `Quotient b` is canonically the set of
