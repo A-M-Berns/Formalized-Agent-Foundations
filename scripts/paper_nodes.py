@@ -520,6 +520,80 @@ def printed_counter_declarations(tex_text):
     return out
 
 
+# --- printed-independent (Finite Factored Sets): one global counter per environment ---
+#
+# Garrabrant (arXiv:2109.11513) declares its theorem environments *without* a `[section]`
+# argument and without sharing counters, so each environment numbers independently and
+# never resets: `Definition 1`…`Definition 50` run the length of the paper alongside
+# `Proposition 1`…`Proposition 36`.  That is a different counter discipline from
+# ModalAgents' single section-scoped counter, not a variant of it.
+#
+# The environment name is not the printed name.  That paper's `miritools.sty` declares a
+# `lemma` environment and `main.tex` declares a *second* one, `lemma2`, which also prints
+# "Lemma"; only `lemma2` is ever used, and all three printed Lemmas come from it.  A
+# checker that emulated `lemma` and ignored `lemma2` would silently find no lemmas at all,
+# so the map below is explicit and `_printed_independent_scan` fails closed if two
+# environments sharing a printed name are both used — that would make the printed number
+# genuinely ambiguous, and an ambiguous ID cannot be a provenance key.
+PRINTED_INDEPENDENT_ENVS = {
+    "definition": "Definition",
+    "theorem": "Theorem",
+    "proposition": "Proposition",
+    "corollary": "Corollary",
+    "lemma": "Lemma",
+    "lemma2": "Lemma",
+    "example": "Example",
+    "conjecture": "Conjecture",
+    "problem": "Problem",
+}
+PRINTED_INDEPENDENT_BEGIN = re.compile(
+    r"\\begin\{(" + "|".join(sorted(PRINTED_INDEPENDENT_ENVS, key=len, reverse=True)) + r")\}")
+PRINTED_INDEPENDENT_NODE_ID = re.compile(
+    r"(" + "|".join(sorted(set(PRINTED_INDEPENDENT_ENVS.values()))) + r")\s+([0-9]+)")
+
+
+def _printed_independent_scan(tex_text):
+    """Every counted environment in source order, as `(node_id, env, body_start, match)`."""
+    stripped = "\n".join(strip_tex_comment(raw) for raw in tex_text.splitlines())
+    counters: dict[str, int] = {}
+    seen_by_printed: dict[str, set[str]] = {}
+    out = []
+    for match in PRINTED_INDEPENDENT_BEGIN.finditer(stripped):
+        env = match.group(1)
+        printed = PRINTED_INDEPENDENT_ENVS[env]
+        seen_by_printed.setdefault(printed, set()).add(env)
+        if len(seen_by_printed[printed]) > 1:
+            raise ValueError(
+                f"ambiguous printed node kind {printed!r}: environments "
+                f"{sorted(seen_by_printed[printed])} both number independently and both "
+                f"print {printed!r}, so a printed number does not identify a node")
+        counters[env] = counters.get(env, 0) + 1
+        out.append((f"{printed} {counters[env]}", env, match))
+    return stripped, out
+
+
+def printed_independent_nodes(tex_text):
+    return {node_id for node_id, _env, _m in _printed_independent_scan(tex_text)[1]}
+
+
+def printed_independent_declarations(tex_text):
+    """Every counted environment with its number, optional title and body TeX."""
+    stripped, scanned = _printed_independent_scan(tex_text)
+    out = {}
+    for node_id, env, match in scanned:
+        end = stripped.find("\\end{%s}" % env, match.end())
+        body = stripped[match.end():end if end >= 0 else len(stripped)]
+        title = ""
+        tm = re.match(r"\s*\[((?:[^\[\]]|\[[^\]]*\])*)\]", body)
+        if tm:
+            title = tm.group(1).strip()
+            body = body[tm.end():]
+        body = re.sub(r"\\label\{[^}]*\}", "", body)
+        out[node_id] = Node(node_id, PRINTED_INDEPENDENT_ENVS[env],
+                            node_id.rsplit(" ", 1)[1], title, body.strip(), match.start())
+    return out
+
+
 SCHEMES = {
     "latex-label": {
         "node_id_re": LATEX_LABEL_NODE_ID,
@@ -535,6 +609,11 @@ SCHEMES = {
         "node_id_re": PRINTED_COUNTER_NODE_ID,
         "source_nodes": printed_counter_nodes,
         "declarations": printed_counter_declarations,
+    },
+    "printed-independent": {
+        "node_id_re": PRINTED_INDEPENDENT_NODE_ID,
+        "source_nodes": printed_independent_nodes,
+        "declarations": printed_independent_declarations,
     },
 }
 

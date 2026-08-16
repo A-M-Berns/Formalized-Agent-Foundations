@@ -16,6 +16,10 @@ lean_lib LogicalInduction where
 lean_lib CartesianFrames where
   srcDir := "."
 
+@[default_target]
+lean_lib FiniteFactoredSets where
+  srcDir := "."
+
 -- Checked axiom/endpoint audit over the public surface (see README "Axioms").
 -- A default target so `lake build` always runs it, but not part of the library.
 @[default_target]

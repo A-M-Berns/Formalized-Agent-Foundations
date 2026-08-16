@@ -755,6 +755,37 @@ TIER_LABEL = {'universal':'paper strength · universal',
               'instantiated':'paper strength · instantiated',
               'qualified':'qualified'}
 
+# Finite Factored Sets defines its notation as macros with *optional* first arguments
+# (`\newcommand{\ortho}[3][F]`), which the plain `macros` substitution cannot express, so
+# the whole layer lives in `pre_macros` with an explicit alternative per macro: the
+# bracketed form first, then the defaulted form.  Longest names are listed before their
+# prefixes so that `\coc` and `\cod` are not eaten by `\co`.
+FFS_PRE_LATEX = [
+ (r'\\coc\[([^\]]*)\]\{([^{}]*)\}\{([^{}]*)\}\{([^{}]*)\}\{([^{}]*)\}',
+  r'\2 \\mathbin{\\perp^{\1}_{\5}} \3 \\mid \4'),
+ (r'\\coc\{([^{}]*)\}\{([^{}]*)\}\{([^{}]*)\}\{([^{}]*)\}',
+  r'\1 \\mathbin{\\perp^{F}_{\4}} \2 \\mid \3'),
+ (r'\\ncod\[([^\]]*)\]\{([^{}]*)\}\{([^{}]*)\}\{([^{}]*)\}',
+  r'\2 \\mathbin{\\rightleftharpoons_{\1}} \3 \\mid \4'),
+ (r'\\ncod\{([^{}]*)\}\{([^{}]*)\}\{([^{}]*)\}',
+  r'\1 \\mathbin{\\rightleftharpoons_{D}} \2 \\mid \3'),
+ (r'\\cod\[([^\]]*)\]\{([^{}]*)\}\{([^{}]*)\}\{([^{}]*)\}',
+  r'\2 \\mathbin{\\perp_{\1}} \3 \\mid \4'),
+ (r'\\cod\{([^{}]*)\}\{([^{}]*)\}\{([^{}]*)\}',
+  r'\1 \\mathbin{\\perp_{D}} \2 \\mid \3'),
+ (r'\\co\[([^\]]*)\]\{([^{}]*)\}\{([^{}]*)\}\{([^{}]*)\}',
+  r'\2 \\mathbin{\\perp^{\1}} \3 \\mid \4'),
+ (r'\\co\{([^{}]*)\}\{([^{}]*)\}\{([^{}]*)\}',
+  r'\1 \\mathbin{\\perp^{F}} \2 \\mid \3'),
+ (r'\\ortho\[([^\]]*)\]\{([^{}]*)\}\{([^{}]*)\}', r'\2 \\mathbin{\\perp^{\1}} \3'),
+ (r'\\ortho\{([^{}]*)\}\{([^{}]*)\}', r'\1 \\mathbin{\\perp^{F}} \2'),
+ (r'\\parts\[([^\]]*)\]', r'\\text{Part}(\1)'),
+ (r'\\parts(?![A-Za-z])', r'\\text{Part}(S)'),
+ (r'\\du\{([^{}]*)\}', r'\\bigsqcup(\1)'),
+ (r'\\pr\{([^{}]*)\}', r'\\bigsqcap(\1)'),
+]
+
+
 PAPERS_EDITORIAL = {
     'logical-induction': {
         'macros': LI_MACRO_LATEX, 'pre_macros': LI_PRE_LATEX,
@@ -767,6 +798,10 @@ PAPERS_EDITORIAL = {
     'modal-agents': {
         'macros': MA_MACRO_LATEX, 'pre_macros': (),
         'sections': r'\\(section)\*?\{([^\n]*)', 'appendix': False,
+    },
+    'finite-factored-sets': {
+        'macros': (), 'pre_macros': FFS_PRE_LATEX,
+        'sections': r'\\(section|subsection)\{([^\n]*)', 'appendix': False,
     },
 }
 
@@ -946,7 +981,8 @@ def build_correspondence(key, paper, warnings, *, extras=None):
             'statement could not be located — omitted from the page' % (key, node_id))
 
     extras = extras or {}
-    prefix = {'cartesian-frames': 'cf-', 'modal-agents': 'ma-'}[key]
+    prefix = {'cartesian-frames': 'cf-', 'modal-agents': 'ma-',
+              'finite-factored-sets': 'ffs-'}[key]
     sections = section_titles(tex, conf['sections'], conf['appendix'])
     tag = source_tag(paper)
     nav, cards = [], []
@@ -1004,6 +1040,9 @@ def main():
     ma_paper = PAPERS['modal-agents']
     ma = build_correspondence('modal-agents', ma_paper, warnings)
 
+    ffs_paper = PAPERS['finite-factored-sets']
+    ffs = build_correspondence('finite-factored-sets', ffs_paper, warnings)
+
     # --- ModalAgents: inventoried endpoints that deliberately carry no annotation ---
     ma_inventory = paper_nodes.read_inventory(ROOT + 'AxiomAudit.lean', 'MA-INVENTORY') or set()
     ma_bare = sorted(ma_inventory - ma['carriers'])
@@ -1040,6 +1079,16 @@ def main():
                         key=lambda s: [int(p) for p in s.split()[1].split('.')])
     ma_missing_html = ', '.join('<code>%s</code>' % html.escape(n) for n in ma_missing)
 
+    ffs_missing = sorted(ffs['numbered'] - ffs['covered'],
+                         key=lambda t: (t.split()[0], int(t.split()[1])))
+    ffs_by_kind = {}
+    for node in ffs_missing:
+        ffs_by_kind.setdefault(node.split()[0], []).append(node.split()[1])
+    ffs_missing_html = (
+        '; '.join('%d of the paper\u2019s %ss' % (len(v), k.lower())
+                  for k, v in sorted(ffs_by_kind.items()))
+        or 'none — every numbered node of the paper has a Lean statement')
+
     cf_missing = sorted(cf['numbered'] - cf['covered'],
                         key=lambda s: int(s.split()[1]))
     cf_missing_html = (', '.join('<code>%s</code>' % html.escape(n) for n in cf_missing)
@@ -1070,7 +1119,10 @@ def main():
              '<strong>no strength classification exists for this paper</strong>'),
             ('modal-agents', ma,
              'scope notes and the deliberately-unannotated inventory endpoints; '
-             '<strong>no strength classification exists for this paper</strong>')):
+             '<strong>no strength classification exists for this paper</strong>'),
+            ('finite-factored-sets', ffs,
+             '<strong>in progress</strong> — §2.1–§2.3 only, and no strength '
+             'classification exists for this paper')):
         p = PAPERS[key]
         index_rows += (
             '<tr><td><a href="#paper-%s">%s</a><div class="idx-cite">%s (%d) · '
@@ -1080,16 +1132,18 @@ def main():
                p['arxiv'], p['arxiv'], section['total'], html.escape(p['library']),
                editorial))
 
-    total_nodes = li['total'] + cf['total'] + ma['total']
+    total_nodes = li['total'] + cf['total'] + ma['total'] + ffs['total']
 
     page = read('scripts/trust-surface-template.html')
     for placeholder, value in (
             ('%%NAV_LI%%', '\n'.join(li['nav'])),
             ('%%NAV_CF%%', '\n'.join(cf['nav'])),
             ('%%NAV_MA%%', '\n'.join(ma['nav'])),
+            ('%%NAV_FFS%%', '\n'.join(ffs['nav'])),
             ('%%CARDS_LI%%', '\n'.join(li['cards'])),
             ('%%CARDS_CF%%', '\n'.join(cf['cards'])),
             ('%%CARDS_MA%%', '\n'.join(ma['cards'])),
+            ('%%CARDS_FFS%%', '\n'.join(ffs['cards'])),
             ('%%INDEX%%', index_rows),
             ('%%T2ROWS%%', t2_li),
             ('%%T2ROWS_CF%%', t2_cf),
@@ -1097,10 +1151,12 @@ def main():
             ('%%CF_MISSING%%', cf_missing_html),
             ('%%MA_BARE_ROWS%%', ma_bare_rows),
             ('%%MA_MISSING%%', ma_missing_html),
+            ('%%FFS_MISSING%%', ffs_missing_html),
             ('%%NTOTAL%%', str(total_nodes)),
             ('%%NLI%%', str(li['total'])),
             ('%%NCF%%', str(cf['total'])),
             ('%%NMA%%', str(ma['total'])),
+            ('%%NFFS%%', str(ffs['total'])),
             ('%%NUNI%%', str(li['counts']['universal'])),
             ('%%NINS%%', str(li['counts']['instantiated'])),
             ('%%NQ%%', str(li['counts']['qualified']))):
@@ -1115,14 +1171,14 @@ def main():
     page += ('\n<!-- trust-surface-papers: %s -->\n'
              % ' '.join('%s=%d' % (k, s['total']) for k, s in
                         (('logical-induction', li), ('cartesian-frames', cf),
-                         ('modal-agents', ma))))
+                         ('modal-agents', ma), ('finite-factored-sets', ffs))))
     page += ('\n<!-- trust-surface-sources: %s -->\n'
              % paper_nodes.trust_surface_hash(ROOT))
     open(ROOT + 'docs/trust-surface.html', 'w', encoding='utf-8').write(page)
 
     print('wrote docs/trust-surface.html — %d nodes (%d Logical Induction, '
-          '%d Cartesian Frames, %d ModalAgents)'
-          % (total_nodes, li['total'], cf['total'], ma['total']))
+          '%d Cartesian Frames, %d ModalAgents, %d Finite Factored Sets)'
+          % (total_nodes, li['total'], cf['total'], ma['total'], ffs['total']))
     for w in warnings:
         print('  note: %s' % w)
 

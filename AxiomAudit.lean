@@ -62,6 +62,7 @@ import CartesianFrames.Subagent
 import CartesianFrames.AdditiveMultiplicative
 import CartesianFrames.Operations
 import CartesianFrames.Categorical
+import FiniteFactoredSets
 
 open Lean Elab Command in
 /-- Fail elaboration unless every named declaration exists and depends on no axioms
@@ -992,3 +993,33 @@ the Logical Induction `#assert_fields` block). -/
   agent env adjoint
 #assert_fields CartesianFrames.Frame.Biextensional
   agent_ext env_ext
+
+/-! ## Finite Factored Sets — the checked endpoint inventory
+
+Same contract as the CF-INVENTORY block above: every declaration carrying a
+`Paper node:` annotation in `FiniteFactoredSets/` must itself be listed between the
+FFS-INVENTORY markers below, and `scripts/check-finite-factored-sets-nodes.py` enforces
+that in both directions.
+
+This formalization is **in progress**: the list below covers §2.1–§2.3 only.  Several
+of the paper's §2.1 nodes have no Lean carrier at all because they are rendered by
+Mathlib vocabulary under the `dd:` tags in `FiniteFactoredSets.lean` — Definition 2
+(partition) is `Setoid`, Definition 5 (`∼_X`) is the setoid relation, Definition 6
+(finer) is `≤`, Definition 7 (`Dis_S`/`Ind_S`) is `⊥`/`⊤`, and Definition 9 (`∏(B)`) is
+the dependent product.  Those are recorded in `FiniteFactoredSets/README.md` rather than
+inventoried here, because there is no declaration of this project's to axiom-check. -/
+
+open FiniteFactoredSets in
+-- FFS-INVENTORY-BEGIN
+#assert_axioms_clean
+  part equivalence_setoid IsTrivialPartition bot_le_and_le_top commonRefinement
+  IsFactorization FactoredSet FactoredSet.eq_of_forall_rel
+  isFactorization_iff_existsUnique FactoredSet.eq_of_part_eq
+  FactoredSet.chimeraFun FactoredSet.chimera FactoredSet.chimera_spec
+-- FFS-INVENTORY-END
+
+/-! Tier-2 boundary structures for the Finite Factored Sets surface. -/
+#assert_fields FiniteFactoredSets.IsFactorization
+  nontrivial bijective
+#assert_fields FiniteFactoredSets.FactoredSet
+  B isFactorization

@@ -20,6 +20,7 @@ discovered by the reader.
 | Garrabrant et al. (2016), [*Logical Induction*](https://arxiv.org/abs/1609.03543) | [`LogicalInduction/`](LogicalInduction/README.md) | Unconditional construction of a logical inductor + the full property tail: all 53 paper nodes formalized, 51 at paper strength and 2 with a named interface or class restriction retained. Two disclosed modeling substitutions. Zero `sorry`, zero `axiom`. |
 | Barász et al. (2014), [*Robust Cooperation in the Prisoner's Dilemma via Provability Logic*](https://arxiv.org/abs/1401.5577) | [`ModalAgents/`](ModalAgents/README.md) | The cooperation results at the Gödel–Löb provability-logic level, including a proved (not axiomatized) GL fixed-point theorem. Cooperation lifts to arithmetic; defection is rendered as unprovability of cooperation, and one conjunct of Theorem 3.2 is unformalized — both disclosed. Zero `sorry`, zero `axiom`. |
 | Garrabrant, Herrmann, and Lopez-Wild (2021), [*Cartesian Frames*](https://arxiv.org/abs/2109.10996) | [`CartesianFrames/`](CartesianFrames/README.md) | All 60 numbered nodes formalized — every definition, claim, and the Decomposition Theorem — across the main text and both appendices, at paper strength with no modeling substitutions. One node is formalized in part by ruling (Claim 35, whose External/Internal half is ill-typed as printed). Zero `sorry`, zero `axiom`. |
+| Garrabrant (2021), [*Temporal Inference with Finite Factored Sets*](https://arxiv.org/abs/2109.11513) | [`FiniteFactoredSets/`](FiniteFactoredSets/README.md) | **In progress** — §2.1–§2.3 (partitions, factorizations, chimera functions): 13 of the paper's 98 numbered nodes, at paper strength with no modeling substitutions. §3–§7 are not yet claimed, and non-vacuity is not yet discharged by a constructed factored set. Zero `sorry`, zero `axiom`. |
 
 Each directory's README gives the detailed statement-level accounting: what is proved,
 what is modeled, and exactly where the trust boundary sits.
@@ -30,7 +31,7 @@ node rendered beside the Lean statement that carries it, in the paper's own orde
 section per paper. The three sections are not symmetric, and the page says why —
 *Logical Induction* carries a per-node strength tier and hand-written reading and audit
 notes, because it has a machine-checked strength classification; *Cartesian Frames* and
-*ModalAgents* have no such classification, so their sections are correspondence views
+*ModalAgents* and *Finite Factored Sets* have no such classification, so their sections are correspondence views
 carrying only what genuinely exists (the Cartesian Frames errata and the Claim 35 ruling;
 the ModalAgents scope boundaries and its deliberately unannotated endpoints). No tier is
 invented for a paper that does not have one. Regenerate with
@@ -67,6 +68,7 @@ need no build:
 scripts/check-paper-nodes.sh          # `Paper node:` labels ↔ paper \label{…}, both directions
 python3 scripts/check-cartesian-frames-nodes.py  # numbered CF nodes ↔ committed TeX
 python3 scripts/check-modal-agents-nodes.py      # numbered ModalAgents nodes ↔ committed TeX
+python3 scripts/check-finite-factored-sets-nodes.py  # numbered FFS nodes ↔ committed TeX
 python3 scripts/check_endpoint_coverage.py   # every annotated label has an inventory endpoint
 python3 scripts/lint_paper_labels.py         # every paper-facing theorem carries a label
 python3 scripts/check_trust_surface.py       # docs/trust-surface.html is not stale

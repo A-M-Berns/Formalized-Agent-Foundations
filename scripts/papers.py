@@ -11,7 +11,7 @@ neither registered below nor listed in `NON_PAPER_LIBRARIES` is itself a failure
 new formalization cannot quietly ship without its paper source, its provenance
 checker, its inventory coverage, and its place in the trust-surface guide.
 
-**Node-citation schemes.** The three papers cite nodes differently, because the
+**Node-citation schemes.** The papers cite nodes differently, because the
 sources differ, not by preference:
 
 * `latex-label`   — the source labels its results (`\\label{thm:foo}`) and the
@@ -22,6 +22,10 @@ sources differ, not by preference:
 * `printed-counter` — the source numbers results through LaTeX theorem counters, so
                     the printed number must be *derived* by emulating the counter
                     (`\\newtheorem{theorem}{Theorem}[section]` and friends).
+* `printed-independent` — likewise counter-derived, but each environment carries its
+                    own global counter that never resets (`\\newtheorem{theorem}{Theorem}`
+                    with no `[section]`), so numbers read `Definition 34` rather than
+                    `Theorem 4.5`.
 
 A paper's scheme is a fact about its source; do not "harmonize" them.
 """
@@ -71,6 +75,20 @@ PAPERS = {
         "readme": "CartesianFrames/README.md",
         "knowledge": "CartesianFrames/KNOWLEDGE.md",
         "errata": "CartesianFrames/notes/paper-errata.md",
+    },
+    "finite-factored-sets": {
+        "title": "Temporal Inference with Finite Factored Sets",
+        "authors": "Garrabrant",
+        "year": 2021,
+        "arxiv": "2109.11513",
+        "library": "FiniteFactoredSets",
+        "source": "FiniteFactoredSets/notes/2109.11513-main.tex",
+        "pdf": "FiniteFactoredSets/notes/2109.11513.pdf",
+        "scheme": "printed-independent",
+        "node_checker": "scripts/check-finite-factored-sets-nodes.py",
+        "readme": "FiniteFactoredSets/README.md",
+        "knowledge": "FiniteFactoredSets/KNOWLEDGE.md",
+        "errata": None,
     },
 }
 

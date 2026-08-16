@@ -48,10 +48,22 @@ per-declaration inventory coverage). The same declaration rule applies: `theorem
 the declaration renders a paper claim/theorem; supporting results are `lemma`s — and
 note that iso-valued and data-valued carriers must be `def`s, since `≅` is not a Prop.
 
+The **Finite Factored Sets** formalization (Garrabrant, arXiv:2109.11513) lives in
+`FiniteFactoredSets/` and is **in progress** — §2.1–§2.3 only, 13 of the paper's 98
+numbered nodes. Start with `FiniteFactoredSets/README.md` (what is and is not claimed)
+and `FiniteFactoredSets/KNOWLEDGE.md`. Two things there will bite anyone who skips them:
+the paper's order glyphs are *inverted* relative to Mathlib's (`≥_S` is Mathlib's `≤`;
+the common refinement `⋁_S(C)` is Mathlib's `sInf`), and `Setoid.trans`/`symm`/`refl`
+resolve the setoid by instance, so in a development about *sets of* partitions they pick
+the wrong one — use the primed forms. Its nodes are cited by printed number under a
+fourth scheme, `printed-independent`: each environment has its own global counter that
+never resets, so numbers read `Definition 34`, not `Theorem 4.5`. The checker is
+`scripts/check-finite-factored-sets-nodes.py`.
+
 Two accounting notes on that library: the read-through guide
-`docs/trust-surface.html` covers **all three papers**, one section each, but only
+`docs/trust-surface.html` covers **every registered paper**, one section each, but only
 LogicalInduction's section carries per-node strength tiers and audit notes — Cartesian
-Frames and ModalAgents have no strength classification, so their sections are
+Frames, ModalAgents, and Finite Factored Sets have no strength classification, so their sections are
 correspondence views and say so on the page; and Claim 35 is formalized only in part, by
 ruling, because its External/Internal half is ill-typed as printed (see the
 intentional-deviations section of its KNOWLEDGE.md).

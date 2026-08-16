@@ -206,6 +206,8 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
   %%NAV_CF%%
   <a class="nav-paper" href="#paper-modal-agents">Robust Cooperation</a>
   %%NAV_MA%%
+  <a class="nav-paper" href="#paper-finite-factored-sets">Finite Factored Sets</a>
+  %%NAV_FFS%%
 </nav>
 <main>
   <h1>Formalized Agent Foundations — the trust-surface read-through</h1>
@@ -427,6 +429,57 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
   </div>
 
   %%CARDS_MA%%
+  </section>
+
+  <section class="paper-section" id="paper-finite-factored-sets">
+  <h2 class="paper-head">Temporal Inference with Finite Factored Sets</h2>
+  <p class="paper-cite">Garrabrant (2021) ·
+  <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a> ·
+  <code>FiniteFactoredSets/</code> · %%NFFS%% nodes</p>
+
+  <div class="method">
+    <div class="no-tier"><b>This formalization is in progress, and no strength
+    classification exists for this paper.</b> The cards below cover §2.1–§2.3 only —
+    partitions, factorizations, and chimera functions. They carry no tier and no per-node
+    audit note, because none has been produced; they assert the correspondence only. Nodes
+    with no Lean statement annotated to them: %%FFS_MISSING%%.</div>
+
+    <h3>How nodes are cited</h3>
+    <p>The paper labels only 32 of its 98 numbered nodes, and the labels it does carry are
+    working names (<code>templabel1</code>, <code>templabel2</code>), so the provenance key
+    is the <em>printed</em> number, recomputed from the committed TeX
+    (<code>scripts/check-finite-factored-sets-nodes.py</code>). Unlike the other
+    counter-derived paper here, this one declares each environment <strong>without</strong>
+    a <code>[section]</code> argument and without sharing counters, so every environment
+    numbers independently and never resets: <code>Definition 1</code>…<code>Definition
+    50</code> run the length of the paper alongside <code>Proposition
+    1</code>…<code>Proposition 36</code>. Note also that the source declares a
+    <code>lemma</code> environment it never uses and a second <code>lemma2</code> that also
+    prints "Lemma" and carries all three printed Lemmas; the checker fails closed on that
+    ambiguity rather than guessing.</p>
+
+    <h3>Nodes rendered by Mathlib vocabulary rather than by a declaration</h3>
+    <p>Several §2.1 nodes have no Lean carrier of this project's, because the modeling
+    decisions in <code>FiniteFactoredSets.lean</code> render them with vocabulary Mathlib
+    already has: Definition 2 (partition) is <code>Setoid</code>, Definition 5
+    (<code>∼_X</code>) is the setoid relation, Definition 6 (finer) is <code>≤</code>,
+    Definition 7 (<code>Dis_S</code>/<code>Ind_S</code>) is <code>⊥</code>/<code>⊤</code>,
+    and Definition 9 (<code>∏(B)</code>) is the dependent product. They are recorded in
+    <code>FiniteFactoredSets/README.md</code> rather than inventoried, because there is no
+    declaration of this project's to axiom-check.</p>
+
+    <h3>One inverted convention, stated once</h3>
+    <p>The paper's order glyphs run opposite to Mathlib's: it writes <code>X ≥_S Y</code>
+    for "<em>X</em> is finer than <em>Y</em>", so the paper's <code>≥_S</code> is Mathlib's
+    <code>≤</code> on <code>Setoid</code>, and Definition 8's <em>common refinement</em>
+    <code>⋁_S(C)</code> — a join in the paper's notation — is Mathlib's <code>sInf</code>.
+    The Lean statements use Mathlib's convention throughout and never introduce the paper's
+    glyphs, so no statement has to be read under two conventions at once. When comparing a
+    card's paper statement against its Lean statement, this is the one place the two will
+    look like they disagree when they do not.</p>
+  </div>
+
+  %%CARDS_FFS%%
   </section>
 </main>
 </div>

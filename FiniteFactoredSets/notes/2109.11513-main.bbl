@@ -1,0 +1,372 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.1 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{cms/global//global/global}
+    \entry{Demski:2019:embedded}{article}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=12ada44c757a9d04bd469cf06c686aec}{%
+           family={Demski},
+           familyi={D\bibinitperiod},
+           given={Abram},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=e2e4b0b9de5356672d838fa5e944096f}{%
+           family={Garrabrant},
+           familyi={G\bibinitperiod},
+           given={Scott},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{b3a6499a6354525aea999eec2d675d54}
+      \strng{fullhash}{b3a6499a6354525aea999eec2d675d54}
+      \strng{bibnamehash}{b3a6499a6354525aea999eec2d675d54}
+      \strng{authorbibnamehash}{b3a6499a6354525aea999eec2d675d54}
+      \strng{authornamehash}{b3a6499a6354525aea999eec2d675d54}
+      \strng{authorfullhash}{b3a6499a6354525aea999eec2d675d54}
+      \field{sortinit}{D}
+      \field{sortinithash}{c438b3d5d027251ba63f5ed538d98af5}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{year}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{eprintclass}{cs.AI}
+      \field{eprinttype}{arXiv}
+      \field{title}{Embedded Agency}
+      \field{year}{2019}
+      \verb{eprint}
+      \verb 1902.09469
+      \endverb
+    \endentry
+    \entry{Drescher:2006}{book}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=487b70f6e13e70abe5916e3ca48f6bca}{%
+           family={Drescher},
+           familyi={D\bibinitperiod},
+           given={Gary\bibnamedelima L.},
+           giveni={G\bibinitperiod\bibinitdelim L\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {Cambridge, MA}%
+      }
+      \list{publisher}{1}{%
+        {MIT Press}%
+      }
+      \strng{namehash}{487b70f6e13e70abe5916e3ca48f6bca}
+      \strng{fullhash}{487b70f6e13e70abe5916e3ca48f6bca}
+      \strng{bibnamehash}{487b70f6e13e70abe5916e3ca48f6bca}
+      \strng{authorbibnamehash}{487b70f6e13e70abe5916e3ca48f6bca}
+      \strng{authornamehash}{487b70f6e13e70abe5916e3ca48f6bca}
+      \strng{authorfullhash}{487b70f6e13e70abe5916e3ca48f6bca}
+      \field{sortinit}{D}
+      \field{sortinithash}{c438b3d5d027251ba63f5ed538d98af5}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{year}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{subtitle}{Demystifying Paradoxes from Physics to Ethics}
+      \field{title}{Good and Real}
+      \field{year}{2006}
+    \endentry
+    \entry{Garrabrant:2020}{article}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=e2e4b0b9de5356672d838fa5e944096f}{%
+           family={Garrabrant},
+           familyi={G\bibinitperiod},
+           given={Scott},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {blog}%
+      }
+      \strng{namehash}{e2e4b0b9de5356672d838fa5e944096f}
+      \strng{fullhash}{e2e4b0b9de5356672d838fa5e944096f}
+      \strng{bibnamehash}{e2e4b0b9de5356672d838fa5e944096f}
+      \strng{authorbibnamehash}{e2e4b0b9de5356672d838fa5e944096f}
+      \strng{authornamehash}{e2e4b0b9de5356672d838fa5e944096f}
+      \strng{authorfullhash}{e2e4b0b9de5356672d838fa5e944096f}
+      \field{sortinit}{G}
+      \field{sortinithash}{62eb2aa29549e4fdbd3cb154ec5711cb}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{year}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{entrysubtype}{magazine}
+      \field{journaltitle}{Less Wrong}
+      \field{title}{Introduction to Cartesian Frames}
+      \field{year}{2020}
+      \verb{urlraw}
+      \verb https://www.lesswrong.com/s/2A7rrZ4ySx6R8mfoT/p/BSpdshJWGAW6TuNzZ
+      \endverb
+      \verb{url}
+      \verb https://www.lesswrong.com/s/2A7rrZ4ySx6R8mfoT/p/BSpdshJWGAW6TuNzZ
+      \endverb
+    \endentry
+    \entry{Garrabrant:2016:li}{article}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=e2e4b0b9de5356672d838fa5e944096f}{%
+           family={Garrabrant},
+           familyi={G\bibinitperiod},
+           given={Scott},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=d46ce8acbd6de1f9e33a35340bdc4552}{%
+           family={Benson-Tilsen},
+           familyi={B\bibinithyphendelim T\bibinitperiod},
+           given={Tsvi},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=045bea942c19f5861de09055c6a6187e}{%
+           family={Critch},
+           familyi={C\bibinitperiod},
+           given={Andrew},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=cbbde099df34ececed3687806331e238}{%
+           family={Soares},
+           familyi={S\bibinitperiod},
+           given={Nate},
+           giveni={N\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=4f534e661741899e8ffa6b3f819f1ec3}{%
+           family={Taylor},
+           familyi={T\bibinitperiod},
+           given={Jessica},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{03f013062925dfc055cc62372685c641}
+      \strng{fullhash}{15a650616424a8ff8e3475452881ceb5}
+      \strng{bibnamehash}{15a650616424a8ff8e3475452881ceb5}
+      \strng{authorbibnamehash}{15a650616424a8ff8e3475452881ceb5}
+      \strng{authornamehash}{03f013062925dfc055cc62372685c641}
+      \strng{authorfullhash}{15a650616424a8ff8e3475452881ceb5}
+      \field{sortinit}{G}
+      \field{sortinithash}{62eb2aa29549e4fdbd3cb154ec5711cb}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{year}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{eprintclass}{cs.AI}
+      \field{eprinttype}{arXiv}
+      \field{title}{Logical Induction}
+      \field{year}{2016}
+      \verb{eprint}
+      \verb 1609.03543
+      \endverb
+    \endentry
+    \entry{Goodman:1955}{book}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=69de5a1450433cb926b8b88d275347b0}{%
+           family={Goodman},
+           familyi={G\bibinitperiod},
+           given={Nelson},
+           giveni={N\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{publisher}{1}{%
+        {Harvard University Press}%
+      }
+      \strng{namehash}{69de5a1450433cb926b8b88d275347b0}
+      \strng{fullhash}{69de5a1450433cb926b8b88d275347b0}
+      \strng{bibnamehash}{69de5a1450433cb926b8b88d275347b0}
+      \strng{authorbibnamehash}{69de5a1450433cb926b8b88d275347b0}
+      \strng{authornamehash}{69de5a1450433cb926b8b88d275347b0}
+      \strng{authorfullhash}{69de5a1450433cb926b8b88d275347b0}
+      \field{sortinit}{G}
+      \field{sortinithash}{62eb2aa29549e4fdbd3cb154ec5711cb}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{year}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Fact, Fiction, and Forecast}
+      \field{year}{1955}
+    \endentry
+    \entry{Kolmogorov:1956}{book}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=ad140838a1d76746af1851d451345e1d}{%
+           family={Kolmogorov},
+           familyi={K\bibinitperiod},
+           given={Andrey},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {New York}%
+      }
+      \list{publisher}{1}{%
+        {Chelsea Publishing Company}%
+      }
+      \strng{namehash}{ad140838a1d76746af1851d451345e1d}
+      \strng{fullhash}{ad140838a1d76746af1851d451345e1d}
+      \strng{bibnamehash}{ad140838a1d76746af1851d451345e1d}
+      \strng{authorbibnamehash}{ad140838a1d76746af1851d451345e1d}
+      \strng{authornamehash}{ad140838a1d76746af1851d451345e1d}
+      \strng{authorfullhash}{ad140838a1d76746af1851d451345e1d}
+      \field{sortinit}{K}
+      \field{sortinithash}{d3edc18d54b9438a72c24c925bfb38f4}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{year}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{edition}{2}
+      \field{title}{Foundations of the Theory of Probability}
+      \field{year}{1956}
+    \endentry
+    \entry{Nesov:2009}{article}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=22d9f930b3a0478503af03bc3c6e1e77}{%
+           family={Nesov},
+           familyi={N\bibinitperiod},
+           given={Vladimir},
+           giveni={V\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {blog}%
+      }
+      \strng{namehash}{22d9f930b3a0478503af03bc3c6e1e77}
+      \strng{fullhash}{22d9f930b3a0478503af03bc3c6e1e77}
+      \strng{bibnamehash}{22d9f930b3a0478503af03bc3c6e1e77}
+      \strng{authorbibnamehash}{22d9f930b3a0478503af03bc3c6e1e77}
+      \strng{authornamehash}{22d9f930b3a0478503af03bc3c6e1e77}
+      \strng{authorfullhash}{22d9f930b3a0478503af03bc3c6e1e77}
+      \field{sortinit}{N}
+      \field{sortinithash}{98cf339a479c0454fe09153a08675a15}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{year}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{entrysubtype}{magazine}
+      \field{journaltitle}{Less Wrong}
+      \field{title}{Counterfactual Mugging}
+      \field{year}{2009}
+      \verb{urlraw}
+      \verb https://www.lesswrong.com/posts/mg6jDEuQEjBGtibX7/counterfactual-mugging
+      \endverb
+      \verb{url}
+      \verb https://www.lesswrong.com/posts/mg6jDEuQEjBGtibX7/counterfactual-mugging
+      \endverb
+    \endentry
+    \entry{OEIS:2021}{book}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=b55d426ea742b357abc8cde35a188875}{%
+           family={\text{OEIS\bibnamedelimb Foundation\bibnamedelimb Inc.}},
+           familyi={O\bibinitperiod\bibinitdelim F\bibinitperiod\bibinitdelim I\bibinitperiod}}}%
+      }
+      \strng{namehash}{b55d426ea742b357abc8cde35a188875}
+      \strng{fullhash}{b55d426ea742b357abc8cde35a188875}
+      \strng{bibnamehash}{b55d426ea742b357abc8cde35a188875}
+      \strng{authorbibnamehash}{b55d426ea742b357abc8cde35a188875}
+      \strng{authornamehash}{b55d426ea742b357abc8cde35a188875}
+      \strng{authorfullhash}{b55d426ea742b357abc8cde35a188875}
+      \field{sortinit}{O}
+      \field{sortinithash}{ff8d4eeb5101e3cf3809959b3592d942}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{year}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{The On-Line Encyclopedia of Integer Sequences}
+      \field{urlday}{26}
+      \field{urlmonth}{5}
+      \field{urlyear}{2021}
+      \field{year}{2021}
+      \field{urldateera}{ce}
+      \true{nocite}
+      \verb{urlraw}
+      \verb https://oeis.org/A338681
+      \endverb
+      \verb{url}
+      \verb https://oeis.org/A338681
+      \endverb
+    \endentry
+    \entry{Pearl:2000}{book}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=809f695b398afbb54b544c49e8d1bbbb}{%
+           family={Pearl},
+           familyi={P\bibinitperiod},
+           given={Judea},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {New York}%
+      }
+      \list{publisher}{1}{%
+        {Cambridge University Press}%
+      }
+      \strng{namehash}{809f695b398afbb54b544c49e8d1bbbb}
+      \strng{fullhash}{809f695b398afbb54b544c49e8d1bbbb}
+      \strng{bibnamehash}{809f695b398afbb54b544c49e8d1bbbb}
+      \strng{authorbibnamehash}{809f695b398afbb54b544c49e8d1bbbb}
+      \strng{authornamehash}{809f695b398afbb54b544c49e8d1bbbb}
+      \strng{authorfullhash}{809f695b398afbb54b544c49e8d1bbbb}
+      \field{sortinit}{P}
+      \field{sortinithash}{bb5b15f2db90f7aef79bb9e83defefcb}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{year}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{edition}{1}
+      \field{subtitle}{Models, Reasoning, and Inference}
+      \field{title}{Causality}
+      \field{year}{2000}
+      \true{nocite}
+    \endentry
+    \entry{Yudkowsky:2012}{article}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=549a1c22e1c5452641bfaff6196bd013}{%
+           family={Yudkowsky},
+           familyi={Y\bibinitperiod},
+           given={Eliezer},
+           giveni={E\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {blog}%
+      }
+      \strng{namehash}{549a1c22e1c5452641bfaff6196bd013}
+      \strng{fullhash}{549a1c22e1c5452641bfaff6196bd013}
+      \strng{bibnamehash}{549a1c22e1c5452641bfaff6196bd013}
+      \strng{authorbibnamehash}{549a1c22e1c5452641bfaff6196bd013}
+      \strng{authornamehash}{549a1c22e1c5452641bfaff6196bd013}
+      \strng{authorfullhash}{549a1c22e1c5452641bfaff6196bd013}
+      \field{sortinit}{Y}
+      \field{sortinithash}{6ae2ff5458ff901249c2745238c951b7}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{year}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{entrysubtype}{magazine}
+      \field{journaltitle}{Less Wrong}
+      \field{title}{Causal Universes}
+      \field{year}{2012}
+      \verb{urlraw}
+      \verb https://www.lesswrong.com/posts/o5F2p3krzT4JgzqQc/causal-universes
+      \endverb
+      \verb{url}
+      \verb https://www.lesswrong.com/posts/o5F2p3krzT4JgzqQc/causal-universes
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+
