@@ -129,7 +129,7 @@ Paper node → Lean declaration. Extended as nodes land.
 | Corollary 1 | `FactoredSet.eq_of_part_eq` | `Basic.lean` |
 | Definition 14 (trivial factorization) | `IsTrivialFactorization` | `Basic.lean` |
 | Definition 15 (size, dimension) | `FactoredSet.size`, `FactoredSet.dim` | `Basic.lean` |
-| Proposition 5 | `existsUnique_trivialFactorization` | `Basic.lean` |
+| Proposition 5 (both sentences: `.1` uniqueness, `.2.1`/`.2.2` the identification) | `existsUnique_trivialFactorization` | `Basic.lean` |
 | Proposition 6 | `FactoredSet.finite_basis_of_finite` | `Basic.lean` |
 | Proposition 7 | `FactoredSet.size_eq_prod` (ℕ form: `natCard_eq_prod`) | `Basic.lean` |
 | Proposition 8 | `isTrivialFactorization_of_isFactorization` | `Basic.lean` |
@@ -140,7 +140,7 @@ Paper node → Lean declaration. Extended as nodes land.
 | Definition 17 (history `h^F`) | `FactoredSet.history` | `History.lean` |
 | Proposition 12 | `FactoredSet.history_isLeast` (helpers `generates_history`, `generates_iff_history_subset`, `le_iff_history_subset`) | `History.lean` |
 | Proposition 13 | `FactoredSet.history_spec` | `History.lean` |
-| Definition 18 (orthogonal, `X ⊥^F Y`) | `FactoredSet.Orthogonal` | `Orthogonality.lean` |
+| Definition 18 (orthogonal, `X ⊥^F Y`; entangled) | `FactoredSet.Orthogonal`, `FactoredSet.Entangled` | `Orthogonality.lean` |
 | Proposition 14 | `FactoredSet.orthogonal_iff_exists` | `Orthogonality.lean` |
 | Proposition 15 | `FactoredSet.orthogonal_spec` | `Orthogonality.lean` |
 | Definition 19 (before, strictly before) | `FactoredSet.Before`, `FactoredSet.StrictlyBefore` | `Orthogonality.lean` |
@@ -187,12 +187,18 @@ faithfulness defect in round 1 (R1-F05) and refuted; do not re-raise.
 `C ⊆ B`), for the same reason: `chimera` ignores non-factors, so
 `Generates C = Generates (C ∩ F.B)`. All six clauses of Proposition 11 hold with `C`, `D`
 arbitrary — clause 5 (monotonicity) goes through Proposition 4's union clause rather than
-`sInf`-monotonicity. `C ⊆ B` is load-bearing in exactly one place: the `7 → 1` leg of
+`sInf`-monotonicity. `C ⊆ B` is load-bearing in exactly one *generation* step: the `7 → 1` leg of
 Proposition 10 (`sInf C ≤ X → Generates C X`), which is why `generates_tfae` and
-`generates_iff_sInf_le` take `hC : C ⊆ F.B` and nothing else does. `6 → 7` needs no subset
-hypothesis. Do not add subset hypotheses to `generates_spec` "for symmetry".
+`generates_iff_sInf_le` take `hC : C ⊆ F.B`; `6 → 7` needs no subset hypothesis. Executable
+witness (round 2): over `coordFS`, `C = {⊥} ⊄ B` satisfies clause 7 but not clause 1. The
+*history* lemmas `history_subset_of_generates`, `generates_iff_history_subset`,
+`le_iff_history_subset` also take `hC`, for a different reason — membership in `history`'s
+defining family `{C | C ⊆ F.B ∧ Generates C X}` requires it definitionally. Do not add subset
+hypotheses to `generates_spec` "for symmetry", and do not strip them from those three.
 
-**Propositions 7–9 are stated over `size`/`dim` (`Cardinal`s) with no `[Finite S]`.** The
+**Propositions 7–9 are stated over `Cardinal`s with no `[Finite S]`** (Props 7 and 9 over
+`size`/`dim`; Prop 8 over `Cardinal.mk S`, since it quantifies over a bare basis with no
+`FactoredSet` in scope — `size` is definitionally `Cardinal.mk S`, bridged by `size_eq_mk`). The
 paper's standing "finite factored set" hypothesis is implied by each clause's own
 hypothesis (`= 0`, `= 1`, `= p`, `= l.prod`), and Proposition 7 holds for every factored
 set (`size_eq_prod` is `Cardinal.mk_congr F.coord` + `Cardinal.mk_pi`). Proposition 9's
@@ -202,8 +208,9 @@ re-audit as drift.
 
 ## Open trust-surface caveats
 
-**None outstanding.** Non-vacuity was the one open caveat and it is now discharged by
-construction in `Examples.lean` (round 1, R1-F01). This section exists so that a future
+**None outstanding.** Non-vacuity was the one open caveat and it is discharged by
+construction in `Examples.lean` — §2 witnesses in round 1 (R1-F01), §3 witnesses on
+`coordFS` (history, orthogonality, time, the XOR partition) in round 2 (R2-F03). This section exists so that a future
 session reading only this file learns of any caveat the README carries — round 1 found the
 two registers out of step, which is exactly the failure this heading prevents.
 
@@ -285,8 +292,66 @@ it belongs in the library as a stated open `Prop` with this note attached.
 * Proposition 9 clause 4 counts with `Ω` (`ArithmeticFunction.cardFactors`), additive over
   products and `≥ 1` on every factor `≥ 2`; `card_le_length_of_prod_eq` in `Basic.lean` is
   the three-line version of the paper's "impossible since `|S|` is a product of `k` primes".
-* `one_lt_natCard_quotient` is the one place Propositions 8–9 use Definition 10's
-  nontriviality; it needs `Nonempty S` and genuinely fails over the empty set.
+* `one_lt_natCard_quotient` is where Propositions 8–9's *counting* uses Definition 10's
+  nontriviality (Prop 9's `size = 1` clause uses it again through
+  `isFactorization_singleton_bot_iff`); it needs `Nonempty S` and genuinely fails over the
+  empty set (`emptyFS`: `Nat.card (Quotient ⊥) = 0`).
+
+## Round 2 audit — durable lessons
+
+* **Round 2 verdict shape**: 22 findings, 0 blockers, all six MAJORs refuted or reduced by
+  cross-family adjudication (codex up this round; every channel ran); the residue was
+  register drift and unexercised endpoints. Both codex sweeps completed with JSON arrays.
+* **§3 order glyphs are executably pinned on `coordFS`** (lens A2): the reversed readings of
+  Prop 10(7), 13(1), 13(2) (`⊔` for `⊓`), 15(2), 18(3) are each refutable; discriminators
+  `X = fstFactor, Y = ⊤` (`h ⊤ = ∅`, `h fst = {fst}`), and for Prop 10(7) `C = {fstFactor},
+  X = ⊥` (the reversed reading is vacuous at `X = ⊥` via `bot_le` and both readings hold at
+  `⊤`). Reuse before re-litigating any §4 glyph.
+* **`coordFS` landmarks**: `history fst = {fst}`, `history ⊥ = {fst, snd}`, `history ⊤ = ∅`,
+  `Orthogonal fst snd`, `¬Orthogonal fst fst`, `¬Before ⊥ fst`, `¬Before fst snd`;
+  `fstFactor ⊓ sndFactor = ⊥` is `Setoid.ext fun p q => ⟨fun h => Prod.ext h.1 h.2, fun h =>
+  ⟨congrArg Prod.fst h, congrArg Prod.snd h⟩⟩`. **`history` is not injective**: the XOR
+  partition `Setoid.comap (fun p => p.1 != p.2) ⊥` has `history = B = history ⊥` while
+  `≠ ⊥`, so `Before` is a preorder that is genuinely not antisymmetric — do not "fix" it into
+  a partial order; Definition 19 is history-inclusion.
+* **`[Finite F.B]` is genuinely consumed by every §3.2–§3.4 theorem** (delete it and the
+  proofs fail at the first `history_spec`/`le_iff_history_subset` call), though Prop 13
+  clauses 1 and 4 and Prop 15(1)/Prop 17(→) are provable without it; uniform `[Finite F.B]`
+  is a legibility choice. `Finite F.B` resolves by instance search on every concrete witness
+  (`instFiniteSetoid` + `Subtype.finite`); `Fintype F.B` does NOT (`Setoid` has no
+  `DecidableEq`) — pass `Fintype.ofFinite _` explicitly to `natCard_eq_prod`.
+* **`Nonempty S` in Prop 13(4) and Prop 19 is load-bearing**: both are false on `emptyFS`
+  (`h ⊥ = ∅` there, yet `⊥ ∈ B`). Witnessed in `Examples.lean`.
+* Cleared suspicions (do not re-raise): `Setoid.classes` is the paper's block set including
+  empty `S` (`classes = ∅ = Ind_∅`); `isTrivialFactorization_of_isFactorization`'s
+  conclusion containing its hypothesis is Definition 14's shape; `natCard_eq_prod`'s
+  `[Fintype]` is forced by `∏` notation and it is an internal helper — `size_eq_prod` is the
+  Prop 7 endpoint; the FFS-INVENTORY block deliberately lists non-vacuity witnesses
+  alongside nodes (the checker enforces annotated ⊆ inventory, not equality);
+  `instFiniteSetoid`/`subsingleton_setoid`/`cardFactors_finsetProd` are genuinely absent
+  from Mathlib; the repo has no shared utility library, so repo-generic helpers living in a
+  paper directory is the existing convention.
+* Tactic traps: `decide` never works on a `Setoid` relation (no `DecidableRel`; with
+  `Classical` it whnf-sticks) — write relation facts by hand (`rfl` / `Bool.noConfusion`);
+  `commonRefinement {b} ≤ X` needs `commonRefinement_iff`, not `sInf_singleton`-by-`rfl`;
+  `Cardinal` arithmetic (`2 * 2 = 4`) is `norm_num`, not `rfl`; `List.TFAE.out` indices are
+  0-based (`.out 0 5` = clause 6) and need a typed `have` in both directions;
+  `obtain`-introduced class hypotheses are local instances (don't clean them to `-`);
+  `open scoped Classical` at Basic.lean's chimera block scopes to its `end FactoredSet` —
+  the later §2.5 block and client examples are outside it (which is why `by decide` on
+  `Nat.Prime` works there).
+* **`Cardinal.eq_one_iff_unique : #α = 1 ↔ Subsingleton α ∧ Nonempty α`** is the `|S| = 1`
+  bridge — do not write a local one; also `Cardinal.mk_eq_one`, `Nat.card_eq_one_iff_unique`,
+  and `Cardinal.prod_const'` (unprimed `prod_const` carries `lift`s and won't close a
+  same-universe goal). `rw [funext h]` turns `Cardinal.prod fun b => …` into a constant
+  product directly; there is no `Cardinal.prod_congr`.
+* `one_lt_natCard_quotient` takes `[Finite (Quotient b)]`, the minimal form (R2-F02); callers
+  with `Finite S` get it via `Quotient.finite`. `size_eq_mk`/`dim_eq_mk` (`@[simp]`) and
+  `dim_eq_zero_iff` are public (R2-F16) but deliberately uninventoried — the inventory lists
+  annotated endpoints + witnesses, not every public lemma.
+* Definition 15's third sentence (finite / finite-dimensional) has no Lean carrier — it is
+  `[Finite S]` / `Finite F.B` under `dd:finiteness-minimal`; record it in the README's
+  Mathlib-rendered table when the layered finite-`S` notion lands at §5.
 
 ## Round 1 audit — durable lessons
 

@@ -43,7 +43,7 @@ variable (F : FactoredSet S)
 
 `chimera_spec` is a single eleven-clause conjunction, so every use of it downstream would
 otherwise be a chain of `.2`s whose length is the only thing distinguishing clause 10 from
-clause 11.  These four names are exactly the clauses §3.1 uses; they add no mathematics. -/
+clause 11.  These five names are exactly the clauses §3.1 uses; they add no mathematics. -/
 
 private lemma chimera_self (C : Set (Setoid S)) (s : S) : F.chimera C s s = s := by
   obtain ⟨-, -, h, -⟩ := F.chimera_spec C C s s s
@@ -318,6 +318,19 @@ example {C : Set (Setoid S)} (hC : C ⊆ F.B) (X : Setoid S) (h : F.Generates C 
 example [Finite F.B] (X Y : Setoid S) :
     F.history (X ⊓ Y) = F.history X ∪ F.history Y :=
   (F.history_spec X Y).2.1
+
+/-- Proposition 11 read as a client would: enlarging the set of factors (clause 5) and
+coarsening the partition (clause 1) both preserve generation, so a client chains the two
+clauses it needs and never unfolds `Generates`. -/
+example {C D : Set (Setoid S)} (hCD : C ⊆ D) (X Y : Setoid S) (hYX : Y ≤ X)
+    (h : F.Generates C Y) : F.Generates D X :=
+  (F.generates_spec D D X Y).1 hYX ((F.generates_spec C D Y Y).2.2.2.2.1 hCD h)
+
+/-- Proposition 12 read as a client would: `IsLeast` is consumed by its two projections —
+the history generates, and it is below any other generating subset of `B`. -/
+example [Finite F.B] {C : Set (Setoid S)} (X : Setoid S) (hC : C ⊆ F.B)
+    (h : F.Generates C X) : F.Generates (F.history X) X ∧ F.history X ⊆ C :=
+  ⟨(F.history_isLeast X).1.2, (F.history_isLeast X).2 ⟨hC, h⟩⟩
 
 end FactoredSet
 

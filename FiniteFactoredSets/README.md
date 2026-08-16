@@ -5,8 +5,10 @@ Formalization of Scott Garrabrant, *Temporal Inference with Finite Factored Sets
 `notes/2109.11513-main.tex` is the exact arXiv source and `notes/2109.11513.pdf` the
 matching PDF.
 
-**Status: in progress — §2 and §3 formalized (34 of the 96 in-scope nodes),
-with non-vacuity discharged by construction.**
+**Status: in progress — §2 and §3 formalized (34 of the 96 in-scope nodes), with
+non-vacuity discharged by construction: four factored sets are built, and the §2.5 and §3
+vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`, `Entangled`, `Before`,
+`StrictlyBefore` — is computed over them rather than merely defined.**
 Nothing here is complete, and this file says what is claimed and what is not.
 
 ## What is claimed
@@ -23,8 +25,14 @@ Nothing here is complete, and this file says what is claimed and what is not.
 | 3.3 | Orthogonality | Definition 18; Propositions 14, 15 |
 | 3.4 | Time | Definition 19; Propositions 16, 17, 18, 19 |
 
-Definition 13 has two halves and both are carried: `chimera` is `χ^F_C(s,t)` and
-`chimeraImage` is the setwise `χ^F_C(T,R)` that §3 onward quantifies over.
+Three of those definitions have two halves apiece, and every half is carried, so those
+nodes appear in the inventory twice:
+
+| Node | Carriers |
+|---|---|
+| Definition 13 (chimera) | `chimera` is `χ^F_C(s,t)`; `chimeraImage` is the setwise `χ^F_C(T,R)` that §3 onward quantifies over |
+| Definition 18 (orthogonality) | `Orthogonal` is `X ⊥^F Y`; `Entangled` is the second sentence's negation of it |
+| Definition 19 (time) | `Before` is `≤^F`; `StrictlyBefore` is `<^F` |
 
 Every one of those carries a `Paper node:` docstring line and an entry in
 `AxiomAudit.lean`'s FFS-INVENTORY block, checked both ways by
@@ -72,11 +80,15 @@ here rather than inventoried — there is no declaration of this project's to ax
 | Definition 9 (`∏(B)`) | the dependent product `(b : B) → Quotient b` | `dd:quotient` |
 | Proposition 2, first sentence (`≥_S` is a partial order) | Mathlib's `PartialOrder (Setoid S)` instance | `dd:order-flip` |
 
-That last row is a *partial* entry, and the only one: `bot_le_and_le_top` carries the
+That last row is the only *partial* entry in the table: `bot_le_and_le_top` carries the
 `Proposition 2` annotation but states only the proposition's second sentence (the `Dis`/`Ind`
 bounds). The first sentence is Mathlib's instance. Anyone reading the trust-surface card
 will see the full printed proposition beside a Lean statement covering half of it; that is
 why the row is here.
+
+It is not to be confused with the three two-carrier nodes tabulated above (Definitions 13,
+18, 19): those are nodes stated in halves, with *every* half carried, not nodes stated in
+part.
 
 ## Modeling decisions
 
@@ -123,3 +135,24 @@ in the FFS-INVENTORY block alongside the nodes it de-vacuates. Four witnesses:
 
 The two structure fields are also independent: `fstFactor` alone satisfies `nontrivial`
 but not `bijective`, and `{⊤}` over `Unit` satisfies `bijective` but not `nontrivial`.
+
+**Constructing the factored sets is not on its own enough**, because §2.5 and §3 add
+vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`, `Entangled`, `Before`,
+`StrictlyBefore` — that a bare witness never exercises. The same file therefore runs that
+vocabulary over the witnesses, and every declaration below is inventoried:
+
+| Claim | Declarations | What it rules out |
+|---|---|---|
+| §2.5 has content on a witness | `size_coordFS`, `dim_coordFS`, `size_eq_prod_coordFS`, `dim_spec_coordFS`, `boolFS_trivial` | Propositions 7–9 never being applied: `coordFS` has size 4 and dimension 2, `∏_b \|b\| = 4`, and `4 = 2·2` puts `dim` in `[1,2]` |
+| Generation and history are computed, not just defined | `generates_singleton_fstFactor`, `history_fstFactor`, `history_sndFactor`, `history_top`, `history_bot`, `history_eq_basis_of` | `history` being an intersection nobody has ever evaluated. `h(fstFactor) = {fstFactor}`, `h(Ind_S) = {}`, `h(Dis_S) = B`. `history_fstFactor` is also re-derived in the file *without* Proposition 13 clause 4, so the witness does not merely echo the endpoint it tests |
+| Orthogonality is neither empty nor total | `orthogonal_fstFactor_sndFactor`, `not_orthogonal_fstFactor_self`, `not_orthogonal_bot_fstFactor`, `entangled_xorPart_fstFactor` | `Orthogonal` holding vacuously or universally; `Entangled` never being witnessed |
+| Time is neither empty nor total | `before_fstFactor_bot`, `strictlyBefore_fstFactor_bot`, `not_before_fstFactor_sndFactor`, `history_eq_setOf_before_coordFS` | `Before` / `StrictlyBefore` being trivial relations; Proposition 19's `[Finite F.B] [Nonempty S]` being unsatisfiable together |
+| `Before` really is only a preorder | `xorPart`, `history_xorPart`, `history_not_injective`, `before_xorPart_bot_and_back` | reading Proposition 18 as a partial order. The XOR partition and `Dis_S` are *distinct* partitions with the same history, so each is before the other — which is why Proposition 18 claims reflexivity and transitivity and stops |
+| `Nonempty S` in §3 is load-bearing | `emptyFS_history_bot`, `emptyFS_history_ne_singleton`, `emptyFS_history_ne_setOf_before` | reading the `Nonempty S` on Proposition 13 clause 4 and Proposition 19 as decoration. Over `Empty` both conclusions are false as stated |
+
+Two friction points a client will meet, recorded at the site: `Finite F.B` — the standing
+hypothesis of all of §3 — is discharged by instance search on every witness, but
+`Fintype F.B` is not (`Setoid (Bool × Bool)` has no `DecidableEq`, so membership in the
+basis is undecidable), and `natCard_eq_prod` needs the `Fintype` in scope at *statement*
+elaboration time. And `size` / `dim` unfold for a client only through `rfl`, since
+`size_eq_mk` and `dim_eq_mk` are `private`.

@@ -358,30 +358,41 @@ lemma eq_bot_of_isFactorization_singleton {b : Setoid S}
     subst hc
     exact Quotient.sound hxy)
 
-/-- **Proposition 5** — every set has exactly one trivial factorization, and it is `{Dis_S}`
-unless `S` has exactly one element, in which case it is the empty basis.
+/-- **Proposition 5** — both of its sentences.  Every set has exactly one trivial
+factorization; that factorization is `{Dis_S}` when `|S| ≠ 1`, and the empty basis when
+`|S| = 1`.
 
 The `|S| = 1` split is not an edge case bolted on: over a singleton `Dis_S` *is* the
 indiscrete partition, so Definition 10's nontriviality bars it, and the empty basis is
-what is left.
+what is left.  `Cardinal.eq_one_iff_unique` is what turns the paper's `|S| = 1` into the
+`Nonempty S ∧ Subsingleton S` the two branch lemmas are stated over.
 
 Paper node: Proposition 5 (§2.4). -/
 theorem existsUnique_trivialFactorization (S : Type u) :
-    ∃! B : Set (Setoid S), IsTrivialFactorization B := by
-  by_cases h : Nonempty S ∧ Subsingleton S
-  · refine ⟨∅, ⟨isFactorization_empty_iff.2 h, Set.subsingleton_empty⟩, ?_⟩
-    rintro B ⟨hB, hsub⟩
-    by_contra hne
-    obtain ⟨b, hb⟩ := Set.nonempty_iff_ne_empty.2 hne
-    refine hB.nontrivial b hb ⟨h.1, fun s t => ?_⟩
-    have hst : s = t := h.2.elim s t
-    subst hst
-    exact b.refl' s
-  · refine ⟨{⊥}, ⟨isFactorization_singleton_bot_iff.2 h, Set.subsingleton_singleton⟩, ?_⟩
-    rintro B ⟨hB, hsub⟩
-    rcases Set.Subsingleton.eq_empty_or_singleton hsub with rfl | ⟨b, rfl⟩
-    · exact absurd (isFactorization_empty_iff.1 hB) h
-    · exact congrArg _ (eq_bot_of_isFactorization_singleton hB)
+    (∃! B : Set (Setoid S), IsTrivialFactorization B) ∧
+      (Cardinal.mk S ≠ 1 → IsTrivialFactorization ({⊥} : Set (Setoid S))) ∧
+      (Cardinal.mk S = 1 → IsTrivialFactorization (∅ : Set (Setoid S))) := by
+  refine ⟨?_, ?_, ?_⟩
+  · by_cases h : Nonempty S ∧ Subsingleton S
+    · refine ⟨∅, ⟨isFactorization_empty_iff.2 h, Set.subsingleton_empty⟩, ?_⟩
+      rintro B ⟨hB, hsub⟩
+      by_contra hne
+      obtain ⟨b, hb⟩ := Set.nonempty_iff_ne_empty.2 hne
+      refine hB.nontrivial b hb ⟨h.1, fun s t => ?_⟩
+      have hst : s = t := h.2.elim s t
+      subst hst
+      exact b.refl' s
+    · refine ⟨{⊥}, ⟨isFactorization_singleton_bot_iff.2 h, Set.subsingleton_singleton⟩, ?_⟩
+      rintro B ⟨hB, hsub⟩
+      rcases Set.Subsingleton.eq_empty_or_singleton hsub with rfl | ⟨b, rfl⟩
+      · exact absurd (isFactorization_empty_iff.1 hB) h
+      · exact congrArg _ (eq_bot_of_isFactorization_singleton hB)
+  · intro h
+    exact ⟨isFactorization_singleton_bot_iff.2 fun hc =>
+      h (Cardinal.eq_one_iff_unique.2 hc.symm), Set.subsingleton_singleton⟩
+  · intro h
+    exact ⟨isFactorization_empty_iff.2 (Cardinal.eq_one_iff_unique.1 h).symm,
+      Set.subsingleton_empty⟩
 
 /-! ## §2.5 Finite factored sets
 
@@ -483,11 +494,15 @@ Paper node: Proposition 7 (§2.5). -/
 theorem size_eq_prod : F.size = Cardinal.prod fun b : F.B => Cardinal.mk (Quotient (b : Setoid S)) :=
   (Cardinal.mk_congr F.coord).trans (Cardinal.mk_pi _)
 
-private lemma size_eq_mk : F.size = Cardinal.mk S := rfl
+/-- Definition 15's `size` unfolded.  Public, so that a client can use the definition
+without `rfl`-unfolding a `noncomputable def`. -/
+@[simp] lemma size_eq_mk : F.size = Cardinal.mk S := rfl
 
-private lemma dim_eq_mk : F.dim = Cardinal.mk F.B := rfl
+/-- Definition 15's `dim` unfolded; see `size_eq_mk`. -/
+@[simp] lemma dim_eq_mk : F.dim = Cardinal.mk F.B := rfl
 
-private lemma dim_eq_zero_iff : F.dim = 0 ↔ F.B = ∅ := by
+/-- Dimension zero means no factors at all. -/
+lemma dim_eq_zero_iff : F.dim = 0 ↔ F.B = ∅ := by
   rw [dim_eq_mk]
   exact Cardinal.mk_eq_zero_iff.trans Set.isEmpty_coe_sort
 
@@ -498,12 +513,15 @@ lemma natCard_eq_prod [Fintype F.B] :
     Nat.card S = ∏ b : F.B, Nat.card (Quotient (b : Setoid S)) :=
   (Nat.card_congr F.coord).trans Nat.card_pi
 
-/-- Every factor of a nonempty finite factored set has at least two blocks.  This is the
-one use Propositions 8 and 9 make of Definition 10's nontriviality condition; over the
-empty set it genuinely fails (there `Quotient b` is empty), which is why `Nonempty S` is a
-hypothesis and not decoration. -/
-lemma one_lt_natCard_quotient [Finite S] [Nonempty S] {b : Setoid S} (hb : b ∈ F.B) :
-    1 < Nat.card (Quotient b) := by
+/-- Every factor of a nonempty factored set with finitely many blocks has at least two of
+them.  This is where the *counting* in Propositions 8 and 9 uses Definition 10's
+nontriviality condition; Proposition 9's `size = 1` clause uses it a second time, by a
+different route (through `isFactorization_singleton_bot_iff`).  Over the empty set the
+statement genuinely fails (there `Quotient b` is empty), which is why `Nonempty S` is a
+hypothesis and not decoration.  Only the factor's own block set need be finite; callers
+holding `Finite S` get `Finite (Quotient b)` by instance search. -/
+lemma one_lt_natCard_quotient [Nonempty S] {b : Setoid S} [Finite (Quotient b)]
+    (hb : b ∈ F.B) : 1 < Nat.card (Quotient b) := by
   obtain ⟨s⟩ := ‹Nonempty S›
   obtain ⟨u, hus⟩ := F.exists_not_rel hb s
   exact Finite.one_lt_card_iff_nontrivial.2
@@ -647,8 +665,16 @@ end FactoredSet
 
 namespace FactoredSet
 
-/-- Proposition 7, used the way a client would: if every factor is binary, the size is a
-power of two. -/
+/-- Proposition 7 in its `Cardinal` form (`size_eq_prod`), used the way a client would:
+if every factor is binary, the size is `2 ^ dim`, for a factored set of any size and any
+dimension. -/
+example (F : FactoredSet S)
+    (h : ∀ b : F.B, Cardinal.mk (Quotient (b : Setoid S)) = 2) :
+    F.size = 2 ^ F.dim := by
+  rw [F.size_eq_prod, funext h, Cardinal.prod_const', dim_eq_mk]
+
+/-- Proposition 7 in its `ℕ` form (`natCard_eq_prod`), used the way a client would: if
+every factor is binary, the size is a power of two. -/
 example (F : FactoredSet S) [Fintype F.B]
     (h : ∀ b : F.B, Nat.card (Quotient (b : Setoid S)) = 2) :
     Nat.card S = 2 ^ Fintype.card F.B := by

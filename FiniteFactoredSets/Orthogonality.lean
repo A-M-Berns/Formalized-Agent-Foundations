@@ -8,8 +8,19 @@ This file is §3.3–§3.4 of Garrabrant, *Temporal Inference with Finite Factor
 order (inclusion of histories), together with their characterizations that avoid
 mentioning history at all (Propositions 14, 16, 17).
 
-Everything is stated for a factored set of finite dimension, `[Finite F.B]`, and nothing
-here needs `S` finite (`dd:finiteness-minimal`).  Orientation is Mathlib's throughout
+## Finiteness
+
+The *definitions* here — `Orthogonal`, `Entangled`, `Before`, `StrictlyBefore` — carry no
+finiteness hypothesis at all: they read off `history`, which is defined for a factored set
+of any dimension.  The *theorems* carry `[Finite F.B]`, finite dimension and never finite
+`S` (`dd:finiteness-minimal`), because every one of them needs the history to actually
+generate, and for infinite `F.B` it need not — see the counterexample in `History.lean`'s
+module doc.  So an unrestricted `F.Orthogonal X Y` is a well-formed statement; it is just
+not one Propositions 14–19 say anything about.
+
+## Orientation
+
+Orientation is Mathlib's throughout
 (`dd:order-flip`): the paper's `X ≤_S Y` is `Y ≤ X`, `X ∨_S Y` is `X ⊓ Y`, `⋁_S(C)` is
 `sInf C`, and `Ind_S` is `⊤`.
 -/
@@ -28,8 +39,8 @@ variable (F : FactoredSet S)
 
 /-! ## §3.3 Orthogonality -/
 
-/-- Definition 18: `X` is orthogonal to `Y` (in `F`), written `X ⊥^F Y`, when their
-histories are disjoint.  The paper's *entangled* is the negation.
+/-- Definition 18, first sentence: `X` is orthogonal to `Y` (in `F`), written `X ⊥^F Y`,
+when their histories are disjoint.
 
 Paper node: Definition 18 (§3.3). -/
 def Orthogonal (X Y : Setoid S) : Prop := F.history X ∩ F.history Y = ∅
@@ -37,11 +48,21 @@ def Orthogonal (X Y : Setoid S) : Prop := F.history X ∩ F.history Y = ∅
 lemma orthogonal_def (X Y : Setoid S) :
     F.Orthogonal X Y ↔ F.history X ∩ F.history Y = ∅ := Iff.rfl
 
-/-- Orthogonality element-wise: no factor lies in both histories. -/
+/-- Definition 18, second sentence: `X` is *entangled* with `Y` (in `F`) when it is not
+orthogonal to it.  The paper names this in the same definition as `⊥^F`, so the node has
+two carriers, as Definition 19 does.
+
+Paper node: Definition 18 (§3.3). -/
+def Entangled (X Y : Setoid S) : Prop := ¬ F.Orthogonal X Y
+
+lemma entangled_iff (X Y : Setoid S) :
+    F.Entangled X Y ↔ ¬ F.Orthogonal X Y := Iff.rfl
+
+/-- Orthogonality element-wise: no factor lies in both histories.  Pure glue — the content
+is Mathlib's `Set.disjoint_left`, reached by recognizing the definition as `Disjoint`. -/
 lemma orthogonal_iff_forall_notMem (X Y : Setoid S) :
-    F.Orthogonal X Y ↔ ∀ b ∈ F.history X, b ∉ F.history Y := by
-  rw [orthogonal_def, Set.eq_empty_iff_forall_notMem]
-  exact ⟨fun h b hbX hbY => h b ⟨hbX, hbY⟩, fun h b hb => h b hb.1 hb.2⟩
+    F.Orthogonal X Y ↔ ∀ b ∈ F.history X, b ∉ F.history Y :=
+  Set.disjoint_iff_inter_eq_empty.symm.trans Set.disjoint_left
 
 /-- **Proposition 14** — orthogonality unpacked without history: `X ⊥^F Y` iff some
 `C ⊆ B` has `X ≤_S ⋁_S(C)` and `Y ≤_S ⋁_S(B \ C)`, i.e. (in Mathlib's order)
@@ -106,6 +127,13 @@ Paper node: Definition 19 (§3.4). -/
 def StrictlyBefore (X Y : Setoid S) : Prop := F.history X ⊂ F.history Y
 
 lemma before_def (X Y : Setoid S) : F.Before X Y ↔ F.history X ⊆ F.history Y := Iff.rfl
+
+lemma strictlyBefore_def (X Y : Setoid S) :
+    F.StrictlyBefore X Y ↔ F.history X ⊂ F.history Y := Iff.rfl
+
+/-- Strictly before implies before — the paper's `<^F` refines `≤^F`. -/
+lemma StrictlyBefore.before {X Y : Setoid S} (h : F.StrictlyBefore X Y) : F.Before X Y :=
+  h.subset
 
 /-- **Proposition 16** — time unpacked without history: `X ≤^F Y` iff every `C ⊆ B` with
 `Y ≤_S ⋁_S(C)` also has `X ≤_S ⋁_S(C)` (Mathlib's order: `sInf C ≤ Y → sInf C ≤ X`).
@@ -209,6 +237,31 @@ example (F : FactoredSet S) [Finite F.B] (X Y : Setoid S) (C : Set (Setoid S))
     (hC : C ⊆ F.B) (hX : commonRefinement C ≤ X) (hY : commonRefinement (F.B \ C) ≤ Y) :
     F.Orthogonal X Y :=
   (F.orthogonal_iff_exists X Y).2 ⟨C, hC, hX, hY⟩
+
+/-- Entanglement runs forward in time: Proposition 17 contraposed says whatever `X` is
+entangled with, everything `X` is before is entangled with too. -/
+example (F : FactoredSet S) [Finite F.B] (X Y Z : Setoid S) (hXY : F.Before X Y)
+    (h : F.Entangled X Z) : F.Entangled Y Z :=
+  fun hYZ => h ((F.before_iff_forall_orthogonal X Y).1 hXY Z hYZ)
+
+/-- `StrictlyBefore` used as a client would: it is `Before` with a witness of properness,
+so every consequence of `≤^F` is available from `<^F`. -/
+example (F : FactoredSet S) [Finite F.B] (X Y Z : Setoid S) (h : F.StrictlyBefore X Y)
+    (hYZ : F.Orthogonal Y Z) : F.Orthogonal X Z :=
+  (F.before_iff_forall_orthogonal X Y).1 h.before Z hYZ
+
+/-- Proposition 16 read as a client would: a set of factors computing `Y` computes
+everything before `Y`, with no history in sight. -/
+example (F : FactoredSet S) [Finite F.B] (X Y : Setoid S) (C : Set (Setoid S))
+    (hC : C ⊆ F.B) (hXY : F.Before X Y) (hY : commonRefinement C ≤ Y) :
+    commonRefinement C ≤ X :=
+  (F.before_iff_forall_sInf X Y).1 hXY C hC hY
+
+/-- Proposition 19 read as a client would: a factor before `X` is a factor *of* `X`. -/
+example (F : FactoredSet S) [Finite F.B] [Nonempty S] (X : Setoid S) {b : Setoid S}
+    (hb : b ∈ F.B) (h : F.Before b X) : b ∈ F.history X := by
+  rw [F.history_eq_setOf_before X]
+  exact ⟨hb, h⟩
 
 end FactoredSet
 

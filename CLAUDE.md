@@ -49,8 +49,14 @@ the declaration renders a paper claim/theorem; supporting results are `lemma`s �
 note that iso-valued and data-valued carriers must be `def`s, since `≅` is not a Prop.
 
 The **Finite Factored Sets** formalization (Garrabrant, arXiv:2109.11513) lives in
-`FiniteFactoredSets/` and is **in progress** — §2.1–§2.3 only, 13 of the paper's 98
-numbered nodes. Start with `FiniteFactoredSets/README.md` (what is and is not claimed)
+`FiniteFactoredSets/` and is **in progress** — §2 and §3, 34 of the 96 in-scope nodes
+(scope is 96 of the paper's 98, settled by ruling and recorded in that README). The
+statements live in three files that follow the paper's own order — `Basic.lean` (§2:
+partitions, factorizations, the chimera function, size and dimension), `History.lean`
+(§3.1–§3.2: generation and history), `Orthogonality.lean` (§3.3–§3.4: orthogonality,
+entanglement, time) — with `Examples.lean` carrying the non-vacuity witnesses, which are
+constructed factored sets with the §2.5 and §3 vocabulary computed over them rather than
+stand-ins. Start with `FiniteFactoredSets/README.md` (what is and is not claimed)
 and `FiniteFactoredSets/KNOWLEDGE.md`. Two things there will bite anyone who skips them:
 the paper's order glyphs are *inverted* relative to Mathlib's (`≥_S` is Mathlib's `≤`;
 the common refinement `⋁_S(C)` is Mathlib's `sInf`), and `Setoid.trans`/`symm`/`refl`

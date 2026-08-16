@@ -1027,12 +1027,14 @@ open FiniteFactoredSets in
   FactoredSet.Generates FactoredSet.generates_tfae FactoredSet.generates_spec
   FactoredSet.history FactoredSet.history_isLeast FactoredSet.history_spec
   -- §3.3-§3.4: orthogonality and time (FiniteFactoredSets/Orthogonality.lean).
-  FactoredSet.Orthogonal FactoredSet.orthogonal_iff_exists FactoredSet.orthogonal_spec
+  -- Definition 18 has two carriers, one per sentence: `Orthogonal` and `Entangled`.
+  FactoredSet.Orthogonal FactoredSet.Entangled
+  FactoredSet.orthogonal_iff_exists FactoredSet.orthogonal_spec
   FactoredSet.Before FactoredSet.StrictlyBefore
   FactoredSet.before_iff_forall_sInf FactoredSet.before_iff_forall_orthogonal
   FactoredSet.before_spec FactoredSet.history_eq_setOf_before
-  -- Non-vacuity witnesses (FiniteFactoredSets/Examples.lean).  Every §2.2-§2.3 endpoint
-  -- is stated over `FactoredSet`; these are what make those endpoints say something.
+  -- Non-vacuity witnesses (FiniteFactoredSets/Examples.lean).  Every §2-§3 endpoint is
+  -- stated over `FactoredSet`; these are what make those endpoints say something.
   -- `coordFS` is the load-bearing one: with a single factor every `C` behaves as `∅` or
   -- `B`, so Proposition 4 would be near-tautologous.
   Examples.bool_isFactorization Examples.boolFS
@@ -1041,6 +1043,27 @@ open FiniteFactoredSets in
   Examples.empty_isFactorization Examples.emptyFS
   Examples.not_isFactorization_empty_basis
   Examples.unit_isFactorization Examples.unitFS Examples.unitFS_basis_unique
+  -- §2.5 on `coordFS` / `boolFS`: Propositions 7-9 applied to a concrete factored set.
+  Examples.size_coordFS Examples.dim_coordFS
+  Examples.size_eq_prod_coordFS Examples.dim_spec_coordFS Examples.boolFS_trivial
+  -- §3 on `coordFS`: the three histories that pin the order down, then each §3 relation
+  -- exhibited both holding and failing, so that none of `Generates`, `Orthogonal`,
+  -- `Entangled`, `Before`, `StrictlyBefore` is silently empty or silently total.
+  Examples.generates_singleton_fstFactor
+  Examples.history_fstFactor Examples.history_sndFactor
+  Examples.history_top Examples.history_bot Examples.history_eq_basis_of
+  Examples.orthogonal_fstFactor_sndFactor Examples.not_orthogonal_fstFactor_self
+  Examples.not_orthogonal_bot_fstFactor
+  Examples.before_fstFactor_bot Examples.strictlyBefore_fstFactor_bot
+  Examples.not_before_fstFactor_sndFactor Examples.history_eq_setOf_before_coordFS
+  -- The XOR partition: `history` is not injective, so Proposition 18's `Before` is a
+  -- preorder and *not* antisymmetric — which is why Proposition 18 claims no more.
+  Examples.xorPart Examples.history_xorPart Examples.history_not_injective
+  Examples.before_xorPart_bot_and_back Examples.entangled_xorPart_fstFactor
+  -- `emptyFS`: the `Nonempty S` hypothesis on Proposition 13 clause 4 and Proposition 19
+  -- is load-bearing — both conclusions fail outright over the empty set.
+  Examples.emptyFS_history_bot Examples.emptyFS_history_ne_singleton
+  Examples.emptyFS_history_ne_setOf_before
 -- FFS-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Finite Factored Sets surface. -/
