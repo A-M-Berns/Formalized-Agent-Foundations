@@ -142,14 +142,57 @@ checked — budget for errata as §3–§5 land.
 
 ## Open questions
 
-* **Scope of §7** (for Anson). Conjecture 1 is unprovable by construction; Examples 3–4
-  are about *infinite* factored sets; Definitions 46–50 (embedded agency) are real
-  definitions with no theorems attached. Working assumption: §1–§6 in, Conjecture 1 and
-  Examples 3–4 out, Definitions 46–50 undecided.
+* ~~Scope of §7~~ — **settled by Anson, 2026-08-16.**  See "Scope" below.
 * **How `B`'s finiteness is carried** into §5. Proposition 6 proves that a finite factored
   set is finite-dimensional, so `Fintype F.B` should be *derived*, not assumed. Assuming
   it would be premise smuggling; prove Proposition 6 before the polynomial section needs
   finite products.
+
+## Scope (Anson's ruling, 2026-08-16): 96 of 98 nodes
+
+**In:** §1–§6 in full; §7's Definitions 46–50 (embedded agency); and **Conjecture 1,
+stated as a Lean `Prop` and deliberately not proved**, carrying a citation.
+
+**Out:** Examples 3 and 4 only. Both are about `S = 𝒫(ℕ)` — *infinite* factored sets —
+and the paper itself expects the fundamental theorem to fail there; Example 3 is its
+intended counterexample. Excluding exactly the case the paper predicts is false is a
+defensible line; "we stopped at §6" is not.
+
+### Consequence: keep finiteness minimal, starting now
+
+Stating Conjecture 1 at all requires the definitions to *admit* the finite-dimensional
+case — `B` finite, `S` possibly infinite. So:
+
+* `FactoredSet` stays over an arbitrary `S : Type u` with **no** `Fintype S`. It already
+  is; keep it that way.
+* §3–§4 (history, orthogonality, time, subpartitions, conditional orthogonality, the
+  semigraphoid axioms) must be stated with **`Finite B` only**. None of that material
+  touches polynomials, so none of it needs `|S|` finite.
+* A separate `FiniteFactoredSet` notion (finite `S`) is layered on top and introduced
+  only where §5 demands it — *not* as the primitive.
+
+Why §5 is the boundary, precisely: `Q^F_E = ∑_{s ∈ E} ∏_{b ∈ B} [s]_b`. With `|B|` finite
+each monomial still has finite degree `|B|`, but the **sum ranges over `E ⊆ S`**. If `S`
+is infinite, `Q^F_E` is not a polynomial — `MvPolynomial` is inapplicable, "divides" is
+meaningless, `Irr^F(E)` does not exist, and Theorem 3's "vanishes on an open set ⇒ zero
+polynomial" step has nothing to apply to. **The §5 apparatus is the sole reason `|S|`
+must be finite**, which is exactly what the paper means by having assumed finiteness
+"fairly gratuitously" (§7.2).
+
+### On Conjecture 1's status — state it, do not attempt it
+
+Do not spend prover time on it. Garrabrant expects it true and expects the
+*arbitrary*-dimensional version false. Matthias Georg Mayer has since proved the
+fundamental theorem for finitely factored **measurable** spaces — finitely many factors,
+infinite state space — in "The Fundamental Theorem for measurable factor spaces"
+(LessWrong, 2023-11-12) and, in mature form, *A Theory of Structural Independence*
+(arXiv:2412.00847), which carries a `history` function directly descended from this
+paper's. Two caveats before calling the conjecture closed: the published form is the
+*unconditional* statement (orthogonal iff independent in all product distributions),
+whereas Theorem 3 is conditional on a partition `Z`; and measurable structure is an extra
+hypothesis a bare finite-dimensional factored set does not carry. So the accurate claim is
+**resolved in a measurable refinement, not as literally stated** — which is precisely why
+it belongs in the library as a stated open `Prop` with this note attached.
 
 ## Round 1 audit — durable lessons
 

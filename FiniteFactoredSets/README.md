@@ -39,11 +39,17 @@ retired rather than kept alongside the real one; the code is preserved at commit
 `19a2254` and its findings are in `notes/spike-2026-08-15.md`. It is to be re-landed
 against `FactoredSet` in the §5 stage.
 
-**Open scope question (for Anson).** §7 contains Conjecture 1 (unprovable by
-construction), Examples 3–4 (about *infinite* factored sets, outside a development about
-finite ones), and Definitions 46–50 (embedded agency — real definitions with no theorems
-attached). The working assumption is that §1–§6 are in scope and §7's Conjecture 1 and
-Examples 3–4 are out, with Definitions 46–50 undecided. Not yet ruled on.
+**Scope (settled 2026-08-16): 96 of 98 nodes.** In: §1–§6 in full, §7's Definitions
+46–50, and Conjecture 1 stated as a `Prop` and deliberately not proved. Out: Examples 3
+and 4 only — both concern *infinite* factored sets, the case the paper itself expects the
+fundamental theorem to fail in (Example 3 is its intended counterexample).
+
+A consequence worth knowing before reading any §3–§4 statement: **finiteness is kept
+minimal.** `FactoredSet` carries no `Fintype S`, and §3–§4 are stated with `Finite B`
+only, because none of that material touches polynomials. `|S|` finite enters only at §5,
+where `Q^F_E = ∑_{s ∈ E} ∏_{b ∈ B} [s]_b` stops being a polynomial once `S` is infinite.
+That is what makes Conjecture 1 — the finite-*dimensional* fundamental theorem — statable
+here at all. See `KNOWLEDGE.md` for its status in the literature.
 
 ## Nodes rendered by Mathlib vocabulary, with no declaration of ours
 
