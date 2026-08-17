@@ -821,6 +821,32 @@ not arise: there is nothing to vendor.)
 Anchors: **Cartesian Frames** = 60 numbered nodes, node-complete, no modeling
 substitutions. **Finite Factored Sets** = 96 in-scope nodes, 14 files, complete.
 
+**What a CF/FFS multiple means here.** It is a measure of *total faithful-formalization
+effort*, not a ratio of node counts. Node counts would be actively misleading for this
+paper: FFS has 96 in-scope nodes and BIR has 19, yet BIR's computational layer alone is
+larger than all of FFS. The multiples below are built from, and should be read against,
+five things:
+
+1. **Representation difficulty** — how many load-bearing modeling decisions the paper
+   forces, and whether any is a research question rather than a choice. Rendering "the
+   record indexed by `B` tends to `−∞`" is a decision (settled, §C). Rendering `O(g(t))`
+   faithfully is a project (§E.2, §E.3).
+2. **Missing substrate** — what Mathlib and Foundation do not have and must be built
+   first. This dominates tranches 2 and 3 (§H).
+3. **Modeling substitutions forced** — each type-`(c)` substitution is both a cost and a
+   permanent trust-surface liability, so a tranche needing one is worse than its line
+   count suggests.
+4. **Source defects** — supplying mathematics the paper does not contain (E24) or ruling
+   on a definition that is unsatisfiable as printed (E6) is work, and must be recorded as
+   *supplied* rather than formalized.
+5. **FAF completion overhead** — provenance, node checker, trust surface, consumer API,
+   client tests, audits, read-through. For tranche 1, where the mathematics is already
+   written, this is most of what is left.
+
+The tranches are given separately rather than as one number because they differ by an
+order of magnitude, and the go/no-go decision is about *where to cut*, not about the
+total.
+
 | Tranche | Contents | Estimate |
 |---|---|---|
 | **1. Extensional core** | Defs 1–7, Lemma 6, Theorem 1a, Theorem 3, Theorem 5-converse, the asymptotic toolkit, non-vacuity witnesses — plus FAF completion overhead: provenance annotations, node checker (with the `\extendedonlybit` stripping), trust-surface entry, consumer API, client tests, adversarial audit, read-through. | **0.25–0.4 FFS** ≈ **0.4–0.6 CF**. The mathematics is already in `Spike.lean`; almost all remaining cost is the completion apparatus, not proving. |
