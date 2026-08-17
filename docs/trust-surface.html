@@ -144,6 +144,12 @@ table.index td.count { text-align: right; font-weight: 700; color: var(--accent-
   font-family: var(--serif); font-size: 14.5px; padding: 14px 18px;
   border-right: 1px solid var(--hair); }
 .paper-pane p { margin: 0 0 8px; }
+/* A statement read off a `pdftotext -layout` extraction rather than TeX (Condensation):
+   shown verbatim, so the printed line breaks and the alignment of displayed equations
+   are preserved rather than reflowed. */
+pre.extract { font-family: var(--mono); font-size: 11.5px; line-height: 1.55;
+  margin: 0; padding: 0; background: none; white-space: pre; overflow-x: auto;
+  color: var(--paper-ink); }
 .paper-pane .dm { margin: 8px 0 8px 14px; font-size: 14.5px; }
 .im, .dm { font-style: italic; }
 .dmath { margin: 8px 0 8px 10px; overflow-x: auto; padding: 2px 0; }
@@ -199,7 +205,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <div class="wrap">
 <nav class="rail" aria-label="node index">
   <div class="rail-title">Read-through</div>
-  <div class="rail-progress" id="progress">0 / 225 read</div>
+  <div class="rail-progress" id="progress">0 / 234 read</div>
   <a class="nav-paper" href="#paper-logical-induction">Logical Induction</a>
   <div class="nav-sec">The Logical Induction Criterion</div>
 <a class="nav-item" href="#def-lic" data-node="def-lic"><span class="dot instantiated"></span>def:lic</a>
@@ -481,11 +487,23 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <a class="nav-item" href="#ffs-definition-48" data-node="ffs-definition-48"><span class="dot plain"></span>Definition 48</a>
 <a class="nav-item" href="#ffs-definition-49" data-node="ffs-definition-49"><span class="dot plain"></span>Definition 49</a>
 <a class="nav-item" href="#ffs-definition-50" data-node="ffs-definition-50"><span class="dot plain"></span>Definition 50</a>
+  <a class="nav-paper" href="#paper-condensation">Condensation</a>
+  <div class="nav-sec">2. Background and notation</div>
+<a class="nav-item" href="#cd-definition-2-1" data-node="cd-definition-2-1"><span class="dot plain"></span>Definition 2.1</a>
+<a class="nav-item" href="#cd-definition-2-2" data-node="cd-definition-2-2"><span class="dot plain"></span>Definition 2.2</a>
+<a class="nav-item" href="#cd-definition-2-3" data-node="cd-definition-2-3"><span class="dot plain"></span>Definition 2.3</a>
+<a class="nav-item" href="#cd-definition-2-4" data-node="cd-definition-2-4"><span class="dot plain"></span>Definition 2.4</a>
+<a class="nav-item" href="#cd-proposition-2-5" data-node="cd-proposition-2-5"><span class="dot plain"></span>Proposition 2.5</a>
+<div class="nav-sec">3. Set-up</div>
+<a class="nav-item" href="#cd-definition-3-1" data-node="cd-definition-3-1"><span class="dot plain"></span>Definition 3.1</a>
+<a class="nav-item" href="#cd-definition-3-2" data-node="cd-definition-3-2"><span class="dot plain"></span>Definition 3.2</a>
+<a class="nav-item" href="#cd-definition-3-3" data-node="cd-definition-3-3"><span class="dot plain"></span>Definition 3.3</a>
+<a class="nav-item" href="#cd-definition-3-4" data-node="cd-definition-3-4"><span class="dot plain"></span>Definition 3.4</a>
 </nav>
 <main>
   <h1>Formalized Agent Foundations — the trust-surface read-through</h1>
-  <p class="subtitle">Every paper node beside the Lean statement that carries it, for all
-  three formalized papers. The kernel has already checked every proof body; what it cannot
+  <p class="subtitle">Every paper node beside the Lean statement that carries it, for every
+  paper this repository formalizes. The kernel has already checked every proof body; what it cannot
   check is whether each <em>statement</em> says what the paper says. That judgment requires
   a human reader — this page is the map for making it.</p>
 
@@ -507,15 +525,16 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     interchangeable, and the narrower ones appear only where a node is marked qualified.</div>
 
     <h3>What is on each card, and what is not</h3>
-    <p>Every card is the same mechanical pair: the paper's printed statement, machine-converted
-    from the committed TeX, beside the exact source text of the Lean statement (or statements)
-    annotated with that node. Beyond that pair, the three papers carry <em>different</em>
+    <p>Every card is the same mechanical pair: the paper's printed statement — machine-converted
+    from the committed TeX, or, where no TeX source for the paper exists, shown verbatim as
+    extracted from the committed PDF — beside the exact source text of the Lean statement (or
+    statements) annotated with that node. Beyond that pair, the papers carry <em>different</em>
     editorial material, because different material exists — and the difference is real, not a
     presentational choice:</p>
     <div style="overflow-x:auto"><table class="index">
       <tr><td><strong>Paper</strong></td><td class="count"><strong>nodes</strong></td>
           <td><strong>library</strong></td><td><strong>editorial data on its cards</strong></td></tr>
-      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>tier badge per node (universal / instantiated / qualified), a reading note and a "what to check" note, from the machine-checked strength table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">12</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">87</td><td><code>FiniteFactoredSets/</code></td><td><strong>complete</strong> — §2–§7; 87 nodes carried by declarations and nine rendered by Mathlib vocabulary, 96 in scope. Conjecture 1 is stated as a <code>Prop</code> and deliberately not proved, and Examples 3 and 4 are out of scope by ruling; <strong>no strength classification exists for this paper</strong></td></tr>
+      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>tier badge per node (universal / instantiated / qualified), a reading note and a "what to check" note, from the machine-checked strength table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">12</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">87</td><td><code>FiniteFactoredSets/</code></td><td><strong>complete</strong> — §2–§7; 87 nodes carried by declarations and nine rendered by Mathlib vocabulary, 96 in scope. Conjecture 1 is stated as a <code>Prop</code> and deliberately not proved, and Examples 3 and 4 are out of scope by ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-condensation">Condensation: A Theory of Concepts</a><div class="idx-cite">Eisenstat (2025) · <a href="https://openreview.net/forum?id=HwKFJ3odui">OpenReview:HwKFJ3odui</a></div></td><td class="count">9</td><td><code>Condensation/</code></td><td><strong>in progress (milestone M0)</strong> — nothing here is claimed proved. The cards show the paper statement beside whatever Lean statement currently carries it, so the section grows as the formalization lands; <strong>no strength classification exists for this paper</strong></td></tr>
     </table></div>
     <p><strong>Only Logical Induction has a strength classification and per-node reading
     notes.</strong> They are the product of a dedicated re-derivation pass and a
@@ -4115,7 +4134,7 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
   smuggled in or out without failing the build; deliberate type changes are logged beside the
   structure in <code>AxiomAudit.lean</code>.</p>
   <details><summary style="cursor:pointer;font-weight:600">Show all frozen structures</summary>
-  <div style="overflow-x:auto"><table class="t2"><tr><td><code>AffineCombination</code></td><td><code class="fld">const</code> <code class="fld">terms</code></td></tr><tr><td><code>AffineCombination.BoundedCombinationSequence</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmission</code></td><td><code class="fld">tradeCount</code> <code class="fld">coefficient</code> <code class="fld">sentence</code> <code class="fld">tradeCount_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">sentence_poly</code> <code class="fld">trades_eq</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmissionFamily</code></td><td><code class="fld">emit</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmissionSigns</code></td><td><code class="fld">positive</code> <code class="fld">negative</code></td></tr><tr><td><code>AffineCombination.FeedbackTruthSequence</code></td><td><code class="fld">determined</code> <code class="fld">sequence</code> <code class="fld">poly</code> <code class="fld">bounded</code> <code class="fld">magnitude</code> <code class="fld">value_vanishing</code> <code class="fld">feedback_price</code></td></tr><tr><td><code>AffineCombination.PolySequence</code></td><td><code class="fld">termCount</code> <code class="fld">coefficient</code> <code class="fld">sentence</code> <code class="fld">termCount_poly</code> <code class="fld">const_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">sentence_poly</code> <code class="fld">terms_eq</code> <code class="fld">const_rank</code> <code class="fld">coefficient_rank</code> <code class="fld">const_closed</code> <code class="fld">coefficient_closed</code></td></tr><tr><td><code>AffineQuoteEq</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">future_coherent</code></td></tr><tr><td><code>AffineQuoteGE</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">future_coherent</code></td></tr><tr><td><code>AffineQuotePortfolio</code></td><td><code class="fld">family</code> <code class="fld">poly</code> <code class="fld">scale</code> <code class="fld">scale_pos</code> <code class="fld">current_price</code> <code class="fld">bounded</code> <code class="fld">magnitude_le_one</code></td></tr><tr><td><code>BitPrefixSentences</code></td><td><code class="fld">atom</code> <code class="fld">prefixSentence</code> <code class="fld">enumeration</code> <code class="fld">enumeration_covers</code> <code class="fld">prefix_codes</code> <code class="fld">holds_prefix</code> <code class="fld">realizable</code></td></tr><tr><td><code>BooleanQuoteCode</code></td><td><code class="fld">code</code> <code class="fld">pos_complete</code> <code class="fld">neg_complete</code></td></tr><tr><td><code>BoundedComputation</code></td><td><code class="fld">machine</code> <code class="fld">input</code> <code class="fld">input_poly</code> <code class="fld">steps</code> <code class="fld">horizon</code> <code class="fld">truth_iff</code></td></tr><tr><td><code>CEEnumeration</code></td><td><code class="fld">code</code> <code class="fld">halts</code> <code class="fld">outputs_sound</code></td></tr><tr><td><code>CompactConditioningProcessComputation</code></td><td><code class="fld">toDeductiveProcessComputation</code> <code class="fld">condition_codes</code></td></tr><tr><td><code>CompletedAffineQuoteApprox</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">theory_coherent</code></td></tr><tr><td><code>CompletedAffineQuoteEq</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">theory_coherent</code></td></tr><tr><td><code>ComputableHorizon</code></td><td><code class="fld">program</code> <code class="fld">program_spec</code></td></tr><tr><td><code>ComputationTheoryPresentation</code></td><td><code class="fld">theory_deltaOne</code> <code class="fld">process</code> <code class="fld">halting_enters</code> <code class="fld">halting_refutes</code> <code class="fld">boundedHalting_enters</code> <code class="fld">boundedFailure_refutes</code> <code class="fld">inconsistency_enters</code> <code class="fld">inconsistency_refutesConsistency</code></td></tr><tr><td><code>ConditionalExpectationQuote</code></td><td><code class="fld">weight_mem</code> <code class="fld">weight_generable</code> <code class="fld">source_codes</code> <code class="fld">left_codes</code> <code class="fld">right_codes</code> <code class="fld">slack</code> <code class="fld">slack_tendsto</code> <code class="fld">source_valued</code> <code class="fld">left_reflected</code> <code class="fld">right_reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>ConditioningPresentation</code></td><td><code class="fld">condition</code> <code class="fld">condition_codes</code> <code class="fld">holds_condition</code> <code class="fld">combined_computable</code></td></tr><tr><td><code>ConditioningTraderCompiler</code></td><td><code class="fld">conditioned_computable</code> <code class="fld">translate</code> <code class="fld">translate_ec</code> <code class="fld">tracks_on_condition</code> <code class="fld">preserves_floor</code></td></tr><tr><td><code>ContinuousSemimeasure</code></td><td><code class="fld">mass</code> <code class="fld">nonneg</code> <code class="fld">root_le_one</code> <code class="fld">children_le</code></td></tr><tr><td><code>CurrentExpectationQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>CurrentPriceExpectationQuote</code></td><td><code class="fld">sentence_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>DUSApproximationPresentation</code></td><td><code class="fld">approximation</code> <code class="fld">approximation_codes</code> <code class="fld">nonneg</code> <code class="fld">le_mass</code> <code class="fld">tendsto</code></td></tr><tr><td><code>DUSThresholdEmission</code></td><td><code class="fld">threshold_sum_codes</code> <code class="fld">inverse_width_codes</code></td></tr><tr><td><code>DeductiveProcess</code></td><td><code class="fld">D</code> <code class="fld">mono</code></td></tr><tr><td><code>DeductiveProcessComputation</code></td><td><code class="fld">code</code> <code class="fld">code_spec</code></td></tr><tr><td><code>DeferralFunction</code></td><td><code class="fld">f</code> <code class="fld">lt</code> <code class="fld">code</code> <code class="fld">fueled</code></td></tr><tr><td><code>EfficientPrefixPatch</code></td><td><code class="fld">quote</code> <code class="fld">quote_exact</code> <code class="fld">preserves_ec</code></td></tr><tr><td><code>EfficientRepeatedEnumeration</code></td><td><code class="fld">sequence</code> <code class="fld">sequence_poly</code> <code class="fld">repeats</code> <code class="fld">sound</code> <code class="fld">covers</code></td></tr><tr><td><code>EventualConditioningFloor</code></td><td><code class="fld">cutoff</code> <code class="fld">zeroDays</code> <code class="fld">zeroDays_lt</code> <code class="fld">epsilon</code> <code class="fld">epsilon_pos</code> <code class="fld">zero_exact</code> <code class="fld">positive_floor</code></td></tr><tr><td><code>EventualConditioningOperationalWitness</code></td><td><code class="fld">floor</code> <code class="fld">conditioned_computable</code> <code class="fld">translation_ec</code></td></tr><tr><td><code>ExpectedFutureExpectationQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>FeedbackTruth.FeedbackTruthComputation</code></td><td><code class="fld">value</code> <code class="fld">code</code> <code class="fld">a</code> <code class="fld">degree</code> <code class="fld">computes</code> <code class="fld">agrees</code></td></tr><tr><td><code>FuturePriceQuote</code></td><td><code class="fld">sentence_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>GatedConditioningOperationalWitness</code></td><td><code class="fld">epsilon_pos</code> <code class="fld">denominator_floor</code> <code class="fld">conditioned_computable</code> <code class="fld">translation_ec</code></td></tr><tr><td><code>GeneratedRatFeature</code></td><td><code class="fld">rank_le</code> <code class="fld">polyTok</code> <code class="fld">closed</code> <code class="fld">denote</code></td></tr><tr><td><code>InconsistentTheoryClaims</code></td><td><code class="fld">inconsistencySentence</code> <code class="fld">consistencySentence</code> <code class="fld">inconsistency_poly</code> <code class="fld">consistency_poly</code> <code class="fld">inconsistency_provable</code> <code class="fld">consistency_disprovable</code></td></tr><tr><td><code>IndependentBitAtoms</code></td><td><code class="fld">atom</code> <code class="fld">realizable</code></td></tr><tr><td><code>IntrospectionIntervalQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">lower_feature</code> <code class="fld">lower_generated</code> <code class="fld">upper_feature</code> <code class="fld">upper_generated</code> <code class="fld">width_codes</code> <code class="fld">inverse_width_codes</code> <code class="fld">width_pos</code> <code class="fld">width_tendsto_zero</code> <code class="fld">probability_bounds</code> <code class="fld">quote</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">inside_affine</code> <code class="fld">outside_affine</code></td></tr><tr><td><code>IsLogicalInductor</code></td><td><code class="fld">marketComputable</code> <code class="fld">processComputable</code> <code class="fld">noExploit</code></td></tr><tr><td><code>LUV</code></td><td><code class="fld">gt</code></td></tr><tr><td><code>LUVCombination</code></td><td><code class="fld">const</code> <code class="fld">terms</code></td></tr><tr><td><code>LUVCombination.BoundedSequence</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code></td></tr><tr><td><code>LUVCombination.ExactTheoryPresentation</code></td><td><code class="fld">value</code> <code class="fld">value_mem</code> <code class="fld">threshold_iff</code></td></tr><tr><td><code>LUVCombination.MeshSoftmaxOperationalWitness</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code> <code class="fld">magnitude</code> <code class="fld">lower_poly</code> <code class="fld">lower_bounded</code> <code class="fld">lower_magnitude</code></td></tr><tr><td><code>LUVCombination.PolySequence</code></td><td><code class="fld">mesh_poly</code></td></tr><tr><td><code>LUVCombinationSyntax</code></td><td><code class="fld">termCount</code> <code class="fld">coefficient</code> <code class="fld">luv</code> <code class="fld">termCount_poly</code> <code class="fld">const_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">threshold_poly</code> <code class="fld">terms_eq</code> <code class="fld">const_rank</code> <code class="fld">coefficient_rank</code> <code class="fld">const_closed</code> <code class="fld">coefficient_closed</code></td></tr><tr><td><code>LowerSemicomputableContinuousSemimeasure</code></td><td><code class="fld">toContinuousSemimeasure</code> <code class="fld">approximation</code> <code class="fld">approximation_code</code> <code class="fld">approximation_computes</code> <code class="fld">approximation_nonneg</code> <code class="fld">approximation_mono</code> <code class="fld">approximation_le</code> <code class="fld">approximation_tendsto</code></td></tr><tr><td><code>MarketComputation</code></td><td><code class="fld">quote</code> <code class="fld">code</code> <code class="fld">quote_exact</code> <code class="fld">code_spec</code> <code class="fld">price_mem_Icc</code></td></tr><tr><td><code>OccamThresholdEmission</code></td><td><code class="fld">threshold_sum_codes</code> <code class="fld">inverse_width_codes</code></td></tr><tr><td><code>PGenerableWeighting</code></td><td><code class="fld">polySeg</code> <code class="fld">rank_le</code> <code class="fld">closed</code></td></tr><tr><td><code>PairedWeighting</code></td><td><code class="fld">polySeg</code> <code class="fld">rank_le</code> <code class="fld">closed</code></td></tr><tr><td><code>ParadoxResistanceQuote</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_codes</code> <code class="fld">width</code> <code class="fld">width_codes</code> <code class="fld">width_pos</code> <code class="fld">width_tendsto_zero</code> <code class="fld">diagonal_reflected</code> <code class="fld">lower_affine</code> <code class="fld">upper_affine</code></td></tr><tr><td><code>ParameterizedDiagonalQuoteCode</code></td><td><code class="fld">toBooleanQuoteCode</code> <code class="fld">body</code> <code class="fld">represents_fixedpoint</code></td></tr><tr><td><code>PatientSettlementClock</code></td><td><code class="fld">active</code> <code class="fld">active_codes</code> <code class="fld">antitone</code> <code class="fld">active_through_envelope</code> <code class="fld">eventually_inactive</code> <code class="fld">settled_of_inactive</code></td></tr><tr><td><code>PolyMachineCodes</code></td><td><code class="fld">code</code> <code class="fld">code_poly</code></td></tr><tr><td><code>PolyNatCodes</code></td><td><code class="fld">code</code> <code class="fld">code_poly</code></td></tr><tr><td><code>PrefixMachinePresentation</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_codes</code> <code class="fld">approximation</code> <code class="fld">approximation_codes</code> <code class="fld">approximation_nonneg</code> <code class="fld">approximation_le</code> <code class="fld">approximation_tendsto</code> <code class="fld">kraft</code> <code class="fld">covers</code></td></tr><tr><td><code>PrefixNegationCompiler</code></td><td><code class="fld">overhead</code> <code class="fld">complexity_neg_le</code></td></tr><tr><td><code>QuotationTheoryPresentation</code></td><td><code class="fld">toComputationTheoryPresentation</code> <code class="fld">theory_sigmaOne</code> <code class="fld">quote_positive_enters</code> <code class="fld">quote_negative_refutes</code></td></tr><tr><td><code>RationalQuoteCode</code></td><td><code class="fld">code</code> <code class="fld">value_mem</code> <code class="fld">pos_complete</code> <code class="fld">neg_complete</code> <code class="fld">threshold_poly</code></td></tr><tr><td><code>RepresentedDecidableClaims</code></td><td><code class="fld">toRepresentedSemidecidableClaims</code> <code class="fld">disprovable_of_false</code></td></tr><tr><td><code>RepresentedSemidecidableClaims</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_poly</code> <code class="fld">provable_of_true</code></td></tr><tr><td><code>SelfTrustQuote</code></td><td><code class="fld">delta_pos</code> <code class="fld">probability_mem</code> <code class="fld">sentence_codes</code> <code class="fld">delta_codes</code> <code class="fld">probability_generable</code> <code class="fld">product_codes</code> <code class="fld">confidence_codes</code> <code class="fld">confidence_reflected</code> <code class="fld">product_reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>SemidecidableComputation</code></td><td><code class="fld">machine</code> <code class="fld">input</code> <code class="fld">input_poly</code> <code class="fld">truth_iff</code></td></tr><tr><td><code>SettlementChecker</code></td><td><code class="fld">code</code> <code class="fld">spec</code></td></tr><tr><td><code>Strategy</code></td><td><code class="fld">trades</code> <code class="fld">rank_le</code></td></tr><tr><td><code>StrictSeparatorPresentation</code></td><td><code class="fld">constraint</code> <code class="fld">repetition</code> <code class="fld">jointly_possible</code> <code class="fld">consistentAt</code> <code class="fld">class_covers</code> <code class="fld">mass_class_tendsto_zero</code></td></tr><tr><td><code>Trader</code></td><td><code class="fld">strat</code></td></tr><tr><td><code>UniversalContinuousSemimeasure</code></td><td><code class="fld">toLowerSemicomputableContinuousSemimeasure</code> <code class="fld">universal</code></td></tr><tr><td><code>FiniteFactoredSets.IsFactorization</code></td><td><code class="fld">nontrivial</code> <code class="fld">bijective</code></td></tr><tr><td><code>FiniteFactoredSets.FactoredSet</code></td><td><code class="fld">B</code> <code class="fld">isFactorization</code></td></tr><tr><td><code>FiniteFactoredSets.Subpartition</code></td><td><code class="fld">r</code> <code class="fld">symm'</code> <code class="fld">trans'</code></td></tr><tr><td><code>FiniteFactoredSets.ProbDist</code></td><td><code class="fld">P</code> <code class="fld">nonneg</code> <code class="fld">empty</code> <code class="fld">univ</code> <code class="fld">additive</code></td></tr><tr><td><code>FiniteFactoredSets.Model</code></td><td><code class="fld">S</code> <code class="fld">F</code> <code class="fld">f</code> <code class="fld">finite</code></td></tr><tr><td><code>FiniteFactoredSets.OrthDatabase</code></td><td><code class="fld">O</code> <code class="fld">N</code></td></tr></table></div>
+  <div style="overflow-x:auto"><table class="t2"><tr><td><code>AffineCombination</code></td><td><code class="fld">const</code> <code class="fld">terms</code></td></tr><tr><td><code>AffineCombination.BoundedCombinationSequence</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmission</code></td><td><code class="fld">tradeCount</code> <code class="fld">coefficient</code> <code class="fld">sentence</code> <code class="fld">tradeCount_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">sentence_poly</code> <code class="fld">trades_eq</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmissionFamily</code></td><td><code class="fld">emit</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmissionSigns</code></td><td><code class="fld">positive</code> <code class="fld">negative</code></td></tr><tr><td><code>AffineCombination.FeedbackTruthSequence</code></td><td><code class="fld">determined</code> <code class="fld">sequence</code> <code class="fld">poly</code> <code class="fld">bounded</code> <code class="fld">magnitude</code> <code class="fld">value_vanishing</code> <code class="fld">feedback_price</code></td></tr><tr><td><code>AffineCombination.PolySequence</code></td><td><code class="fld">termCount</code> <code class="fld">coefficient</code> <code class="fld">sentence</code> <code class="fld">termCount_poly</code> <code class="fld">const_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">sentence_poly</code> <code class="fld">terms_eq</code> <code class="fld">const_rank</code> <code class="fld">coefficient_rank</code> <code class="fld">const_closed</code> <code class="fld">coefficient_closed</code></td></tr><tr><td><code>AffineQuoteEq</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">future_coherent</code></td></tr><tr><td><code>AffineQuoteGE</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">future_coherent</code></td></tr><tr><td><code>AffineQuotePortfolio</code></td><td><code class="fld">family</code> <code class="fld">poly</code> <code class="fld">scale</code> <code class="fld">scale_pos</code> <code class="fld">current_price</code> <code class="fld">bounded</code> <code class="fld">magnitude_le_one</code></td></tr><tr><td><code>BitPrefixSentences</code></td><td><code class="fld">atom</code> <code class="fld">prefixSentence</code> <code class="fld">enumeration</code> <code class="fld">enumeration_covers</code> <code class="fld">prefix_codes</code> <code class="fld">holds_prefix</code> <code class="fld">realizable</code></td></tr><tr><td><code>BooleanQuoteCode</code></td><td><code class="fld">code</code> <code class="fld">pos_complete</code> <code class="fld">neg_complete</code></td></tr><tr><td><code>BoundedComputation</code></td><td><code class="fld">machine</code> <code class="fld">input</code> <code class="fld">input_poly</code> <code class="fld">steps</code> <code class="fld">horizon</code> <code class="fld">truth_iff</code></td></tr><tr><td><code>CEEnumeration</code></td><td><code class="fld">code</code> <code class="fld">halts</code> <code class="fld">outputs_sound</code></td></tr><tr><td><code>CompactConditioningProcessComputation</code></td><td><code class="fld">toDeductiveProcessComputation</code> <code class="fld">condition_codes</code></td></tr><tr><td><code>CompletedAffineQuoteApprox</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">theory_coherent</code></td></tr><tr><td><code>CompletedAffineQuoteEq</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">theory_coherent</code></td></tr><tr><td><code>ComputableHorizon</code></td><td><code class="fld">program</code> <code class="fld">program_spec</code></td></tr><tr><td><code>ComputationTheoryPresentation</code></td><td><code class="fld">theory_deltaOne</code> <code class="fld">process</code> <code class="fld">halting_enters</code> <code class="fld">halting_refutes</code> <code class="fld">boundedHalting_enters</code> <code class="fld">boundedFailure_refutes</code> <code class="fld">inconsistency_enters</code> <code class="fld">inconsistency_refutesConsistency</code></td></tr><tr><td><code>ConditionalExpectationQuote</code></td><td><code class="fld">weight_mem</code> <code class="fld">weight_generable</code> <code class="fld">source_codes</code> <code class="fld">left_codes</code> <code class="fld">right_codes</code> <code class="fld">slack</code> <code class="fld">slack_tendsto</code> <code class="fld">source_valued</code> <code class="fld">left_reflected</code> <code class="fld">right_reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>ConditioningPresentation</code></td><td><code class="fld">condition</code> <code class="fld">condition_codes</code> <code class="fld">holds_condition</code> <code class="fld">combined_computable</code></td></tr><tr><td><code>ConditioningTraderCompiler</code></td><td><code class="fld">conditioned_computable</code> <code class="fld">translate</code> <code class="fld">translate_ec</code> <code class="fld">tracks_on_condition</code> <code class="fld">preserves_floor</code></td></tr><tr><td><code>ContinuousSemimeasure</code></td><td><code class="fld">mass</code> <code class="fld">nonneg</code> <code class="fld">root_le_one</code> <code class="fld">children_le</code></td></tr><tr><td><code>CurrentExpectationQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>CurrentPriceExpectationQuote</code></td><td><code class="fld">sentence_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>DUSApproximationPresentation</code></td><td><code class="fld">approximation</code> <code class="fld">approximation_codes</code> <code class="fld">nonneg</code> <code class="fld">le_mass</code> <code class="fld">tendsto</code></td></tr><tr><td><code>DUSThresholdEmission</code></td><td><code class="fld">threshold_sum_codes</code> <code class="fld">inverse_width_codes</code></td></tr><tr><td><code>DeductiveProcess</code></td><td><code class="fld">D</code> <code class="fld">mono</code></td></tr><tr><td><code>DeductiveProcessComputation</code></td><td><code class="fld">code</code> <code class="fld">code_spec</code></td></tr><tr><td><code>DeferralFunction</code></td><td><code class="fld">f</code> <code class="fld">lt</code> <code class="fld">code</code> <code class="fld">fueled</code></td></tr><tr><td><code>EfficientPrefixPatch</code></td><td><code class="fld">quote</code> <code class="fld">quote_exact</code> <code class="fld">preserves_ec</code></td></tr><tr><td><code>EfficientRepeatedEnumeration</code></td><td><code class="fld">sequence</code> <code class="fld">sequence_poly</code> <code class="fld">repeats</code> <code class="fld">sound</code> <code class="fld">covers</code></td></tr><tr><td><code>EventualConditioningFloor</code></td><td><code class="fld">cutoff</code> <code class="fld">zeroDays</code> <code class="fld">zeroDays_lt</code> <code class="fld">epsilon</code> <code class="fld">epsilon_pos</code> <code class="fld">zero_exact</code> <code class="fld">positive_floor</code></td></tr><tr><td><code>EventualConditioningOperationalWitness</code></td><td><code class="fld">floor</code> <code class="fld">conditioned_computable</code> <code class="fld">translation_ec</code></td></tr><tr><td><code>ExpectedFutureExpectationQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>FeedbackTruth.FeedbackTruthComputation</code></td><td><code class="fld">value</code> <code class="fld">code</code> <code class="fld">a</code> <code class="fld">degree</code> <code class="fld">computes</code> <code class="fld">agrees</code></td></tr><tr><td><code>FuturePriceQuote</code></td><td><code class="fld">sentence_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>GatedConditioningOperationalWitness</code></td><td><code class="fld">epsilon_pos</code> <code class="fld">denominator_floor</code> <code class="fld">conditioned_computable</code> <code class="fld">translation_ec</code></td></tr><tr><td><code>GeneratedRatFeature</code></td><td><code class="fld">rank_le</code> <code class="fld">polyTok</code> <code class="fld">closed</code> <code class="fld">denote</code></td></tr><tr><td><code>InconsistentTheoryClaims</code></td><td><code class="fld">inconsistencySentence</code> <code class="fld">consistencySentence</code> <code class="fld">inconsistency_poly</code> <code class="fld">consistency_poly</code> <code class="fld">inconsistency_provable</code> <code class="fld">consistency_disprovable</code></td></tr><tr><td><code>IndependentBitAtoms</code></td><td><code class="fld">atom</code> <code class="fld">realizable</code></td></tr><tr><td><code>IntrospectionIntervalQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">lower_feature</code> <code class="fld">lower_generated</code> <code class="fld">upper_feature</code> <code class="fld">upper_generated</code> <code class="fld">width_codes</code> <code class="fld">inverse_width_codes</code> <code class="fld">width_pos</code> <code class="fld">width_tendsto_zero</code> <code class="fld">probability_bounds</code> <code class="fld">quote</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">inside_affine</code> <code class="fld">outside_affine</code></td></tr><tr><td><code>IsLogicalInductor</code></td><td><code class="fld">marketComputable</code> <code class="fld">processComputable</code> <code class="fld">noExploit</code></td></tr><tr><td><code>LUV</code></td><td><code class="fld">gt</code></td></tr><tr><td><code>LUVCombination</code></td><td><code class="fld">const</code> <code class="fld">terms</code></td></tr><tr><td><code>LUVCombination.BoundedSequence</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code></td></tr><tr><td><code>LUVCombination.ExactTheoryPresentation</code></td><td><code class="fld">value</code> <code class="fld">value_mem</code> <code class="fld">threshold_iff</code></td></tr><tr><td><code>LUVCombination.MeshSoftmaxOperationalWitness</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code> <code class="fld">magnitude</code> <code class="fld">lower_poly</code> <code class="fld">lower_bounded</code> <code class="fld">lower_magnitude</code></td></tr><tr><td><code>LUVCombination.PolySequence</code></td><td><code class="fld">mesh_poly</code></td></tr><tr><td><code>LUVCombinationSyntax</code></td><td><code class="fld">termCount</code> <code class="fld">coefficient</code> <code class="fld">luv</code> <code class="fld">termCount_poly</code> <code class="fld">const_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">threshold_poly</code> <code class="fld">terms_eq</code> <code class="fld">const_rank</code> <code class="fld">coefficient_rank</code> <code class="fld">const_closed</code> <code class="fld">coefficient_closed</code></td></tr><tr><td><code>LowerSemicomputableContinuousSemimeasure</code></td><td><code class="fld">toContinuousSemimeasure</code> <code class="fld">approximation</code> <code class="fld">approximation_code</code> <code class="fld">approximation_computes</code> <code class="fld">approximation_nonneg</code> <code class="fld">approximation_mono</code> <code class="fld">approximation_le</code> <code class="fld">approximation_tendsto</code></td></tr><tr><td><code>MarketComputation</code></td><td><code class="fld">quote</code> <code class="fld">code</code> <code class="fld">quote_exact</code> <code class="fld">code_spec</code> <code class="fld">price_mem_Icc</code></td></tr><tr><td><code>OccamThresholdEmission</code></td><td><code class="fld">threshold_sum_codes</code> <code class="fld">inverse_width_codes</code></td></tr><tr><td><code>PGenerableWeighting</code></td><td><code class="fld">polySeg</code> <code class="fld">rank_le</code> <code class="fld">closed</code></td></tr><tr><td><code>PairedWeighting</code></td><td><code class="fld">polySeg</code> <code class="fld">rank_le</code> <code class="fld">closed</code></td></tr><tr><td><code>ParadoxResistanceQuote</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_codes</code> <code class="fld">width</code> <code class="fld">width_codes</code> <code class="fld">width_pos</code> <code class="fld">width_tendsto_zero</code> <code class="fld">diagonal_reflected</code> <code class="fld">lower_affine</code> <code class="fld">upper_affine</code></td></tr><tr><td><code>ParameterizedDiagonalQuoteCode</code></td><td><code class="fld">toBooleanQuoteCode</code> <code class="fld">body</code> <code class="fld">represents_fixedpoint</code></td></tr><tr><td><code>PatientSettlementClock</code></td><td><code class="fld">active</code> <code class="fld">active_codes</code> <code class="fld">antitone</code> <code class="fld">active_through_envelope</code> <code class="fld">eventually_inactive</code> <code class="fld">settled_of_inactive</code></td></tr><tr><td><code>PolyMachineCodes</code></td><td><code class="fld">code</code> <code class="fld">code_poly</code></td></tr><tr><td><code>PolyNatCodes</code></td><td><code class="fld">code</code> <code class="fld">code_poly</code></td></tr><tr><td><code>PrefixMachinePresentation</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_codes</code> <code class="fld">approximation</code> <code class="fld">approximation_codes</code> <code class="fld">approximation_nonneg</code> <code class="fld">approximation_le</code> <code class="fld">approximation_tendsto</code> <code class="fld">kraft</code> <code class="fld">covers</code></td></tr><tr><td><code>PrefixNegationCompiler</code></td><td><code class="fld">overhead</code> <code class="fld">complexity_neg_le</code></td></tr><tr><td><code>QuotationTheoryPresentation</code></td><td><code class="fld">toComputationTheoryPresentation</code> <code class="fld">theory_sigmaOne</code> <code class="fld">quote_positive_enters</code> <code class="fld">quote_negative_refutes</code></td></tr><tr><td><code>RationalQuoteCode</code></td><td><code class="fld">code</code> <code class="fld">value_mem</code> <code class="fld">pos_complete</code> <code class="fld">neg_complete</code> <code class="fld">threshold_poly</code></td></tr><tr><td><code>RepresentedDecidableClaims</code></td><td><code class="fld">toRepresentedSemidecidableClaims</code> <code class="fld">disprovable_of_false</code></td></tr><tr><td><code>RepresentedSemidecidableClaims</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_poly</code> <code class="fld">provable_of_true</code></td></tr><tr><td><code>SelfTrustQuote</code></td><td><code class="fld">delta_pos</code> <code class="fld">probability_mem</code> <code class="fld">sentence_codes</code> <code class="fld">delta_codes</code> <code class="fld">probability_generable</code> <code class="fld">product_codes</code> <code class="fld">confidence_codes</code> <code class="fld">confidence_reflected</code> <code class="fld">product_reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>SemidecidableComputation</code></td><td><code class="fld">machine</code> <code class="fld">input</code> <code class="fld">input_poly</code> <code class="fld">truth_iff</code></td></tr><tr><td><code>SettlementChecker</code></td><td><code class="fld">code</code> <code class="fld">spec</code></td></tr><tr><td><code>Strategy</code></td><td><code class="fld">trades</code> <code class="fld">rank_le</code></td></tr><tr><td><code>StrictSeparatorPresentation</code></td><td><code class="fld">constraint</code> <code class="fld">repetition</code> <code class="fld">jointly_possible</code> <code class="fld">consistentAt</code> <code class="fld">class_covers</code> <code class="fld">mass_class_tendsto_zero</code></td></tr><tr><td><code>Trader</code></td><td><code class="fld">strat</code></td></tr><tr><td><code>UniversalContinuousSemimeasure</code></td><td><code class="fld">toLowerSemicomputableContinuousSemimeasure</code> <code class="fld">universal</code></td></tr><tr><td><code>FiniteFactoredSets.IsFactorization</code></td><td><code class="fld">nontrivial</code> <code class="fld">bijective</code></td></tr><tr><td><code>FiniteFactoredSets.FactoredSet</code></td><td><code class="fld">B</code> <code class="fld">isFactorization</code></td></tr><tr><td><code>FiniteFactoredSets.Subpartition</code></td><td><code class="fld">r</code> <code class="fld">symm'</code> <code class="fld">trans'</code></td></tr><tr><td><code>FiniteFactoredSets.ProbDist</code></td><td><code class="fld">P</code> <code class="fld">nonneg</code> <code class="fld">empty</code> <code class="fld">univ</code> <code class="fld">additive</code></td></tr><tr><td><code>FiniteFactoredSets.Model</code></td><td><code class="fld">S</code> <code class="fld">F</code> <code class="fld">f</code> <code class="fld">finite</code></td></tr><tr><td><code>FiniteFactoredSets.OrthDatabase</code></td><td><code class="fld">O</code> <code class="fld">N</code></td></tr><tr><td><code>Condensation.RVModel</code></td><td><code class="fld">Ω</code> <code class="fld">mΩ</code> <code class="fld">countΩ</code> <code class="fld">singΩ</code> <code class="fld">P</code> <code class="fld">probP</code> <code class="fld">R</code> <code class="fld">mR</code> <code class="fld">countR</code> <code class="fld">singR</code> <code class="fld">X</code> <code class="fld">measurable_X</code> <code class="fld">finiteRange_X</code></td></tr><tr><td><code>Condensation.LatentModel</code></td><td><code class="fld">L</code> <code class="fld">π</code> <code class="fld">π_pres</code> <code class="fld">contributes</code></td></tr></table></div>
   </details>
   </section>
 
@@ -7754,6 +7773,345 @@ We say <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><
   </div>
 </article>
   </section>
+
+  <section class="paper-section" id="paper-condensation">
+  <h2 class="paper-head">Condensation: A Theory of Concepts</h2>
+  <p class="paper-cite">Eisenstat (2025) ·
+  <a href="https://openreview.net/forum?id=HwKFJ3odui">OpenReview:HwKFJ3odui</a> ·
+  <code>Condensation/</code> · 9 nodes</p>
+
+  <div class="method">
+    <div class="no-tier"><b>This formalization is in progress, and no strength
+    classification exists for this paper.</b> It is at milestone M0 — repository wiring
+    and the §2/§3 statements — so nothing in this section is claimed proved, and a card
+    appearing here asserts only that the Lean statement shown is the one intended to
+    carry that paper node. The paper's scope is settled at 42 numbered nodes; Examples
+    5.1–5.3 are <em>proposed</em> out of scope pending a ruling, and the standing
+    modelling narrowing <code>dd:finite-range</code> — every random variable of a model
+    has finite range, rather than merely countable discrete range with finite entropy —
+    is disclosed in <code>Condensation/README.md</code> and at every model structure.
+    Numbered nodes with no Lean statement annotated to them: <code>Definition 3.5</code>, <code>Definition 3.6</code>, <code>Proposition 3.7</code>, <code>Proposition 3.8</code>, <code>Definition 3.9</code>, <code>Definition 3.10</code>, <code>Proposition 3.11</code>, <code>Proposition 3.12</code>, <code>Example 4.1</code>, <code>Proposition 4.2</code>, <code>Definition 4.3</code>, <code>Example 4.4</code>, <code>Lemma 4.5</code>, <code>Corollary 4.6</code>, <code>Proposition 4.7</code>, <code>Definition 4.8</code>, <code>Theorem 4.9</code>, <code>Proposition 4.10</code>, <code>Definition 4.11</code>, <code>Definition 4.12</code>, <code>Lemma 4.13</code>, <code>Lemma 4.14</code>, <code>Theorem 4.15</code>, <code>Example 5.1</code>, <code>Example 5.2</code>, <code>Example 5.3</code>, <code>Lemma 5.4</code>, <code>Definition 5.5</code>, <code>Definition 5.6</code>, <code>Proposition 5.7</code>, <code>Theorem 5.8</code>, <code>Corollary 5.9</code>, <code>Corollary 5.10</code>.</div>
+
+    <h3>How nodes are cited</h3>
+    <p>This paper numbers its results through a single section-scoped counter shared by
+    every environment — definitions, propositions, lemmas, theorems, corollaries and
+    examples all draw from it — so node ids read <code>Definition 2.1</code> through
+    <code>Corollary 5.10</code>, and the printed number is the provenance key. What is
+    different here is the <em>source</em>. This paper has no arXiv record and its LaTeX
+    is not public, so unlike every other paper on this page there is no TeX in the
+    repository to recompute numbers from. The committed source is
+    <code>Condensation/notes/condensation-25-07.txt</code>, a
+    <code>pdftotext&nbsp;-layout</code> extraction of the committed PDF, and
+    <code>scripts/check-condensation-nodes.py</code> reads the printed numbers off its
+    header lines. Because the extraction is therefore itself provenance-bearing, that
+    checker additionally asserts that exactly the paper's 42 nodes are derived, so a
+    re-extraction that mangles a header fails the build instead of quietly shrinking the
+    set of nodes an annotation is allowed to name.</p>
+    <p>For the same reason the paper statements below are shown <strong>verbatim as
+    extracted</strong>, in a preformatted block, rather than converted to typeset
+    mathematics as the other four sections are: there is no markup to convert, and
+    reflowing the text would mean rewriting the paper's statement. The extraction keeps
+    the printed line breaks and the alignment of displayed equations, and the extractor's
+    f-ligature slots are resolved back to letters; nothing else is altered. Where a
+    statement is hard to read here, read the committed PDF.</p>
+  </div>
+
+  <h2 class="sec" id="sec-cd-2-Background-and-notation">2. Background and notation</h2>
+
+<article class="node" id="cd-definition-2-1">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="cd-definition-2-1" aria-label="mark Definition 2.1 read"></label>
+    <span class="node-label">Definition 2.1</span>
+    <span class="node-title"></span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · OpenReview:HwKFJ3odui</div>
+      <pre class="extract">A random variable is a measurable function X : Ω → R between
+measurable spaces. We will say that X is a random variable      on Ω and valued in R,
+or with    range R.</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.IsRandomVariable</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">abbrev IsRandomVariable [MeasurableSpace Ω] [MeasurableSpace S] (X : Ω → S) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.FunctionOf</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">def FunctionOf [MeasurableSpace S] [MeasurableSpace T] (X : Ω → S) (Y : Ω → T) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.AEFunctionOf</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">def AEFunctionOf [MeasurableSpace Ω] [MeasurableSpace S] [MeasurableSpace T]
+    (X : Ω → S) (Y : Ω → T) (μ : Measure Ω) : Prop</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="cd-definition-2-2">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="cd-definition-2-2" aria-label="mark Definition 2.2 read"></label>
+    <span class="node-label">Definition 2.2</span>
+    <span class="node-title"></span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · OpenReview:HwKFJ3odui</div>
+      <pre class="extract">The expression P + S will denote the nonempty power set of a set
+S , that is, the set of all nonempty subsets of S .</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.PPlus</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">def PPlus (I : Type u) : Type u</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="cd-definition-2-3">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="cd-definition-2-3" aria-label="mark Definition 2.3 read"></label>
+    <span class="node-label">Definition 2.3</span>
+    <span class="node-title"></span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · OpenReview:HwKFJ3odui</div>
+      <pre class="extract">We use the standard notations H (X) and H (X | Y ) for the en-
+tropy of a random variable X and the conditional entropy of a random variable
+X given a random variable Y . We also use I (X; Y | Z) to denote the mutual in-
+formation of random variables X and Y given a random variable Z . Sometimes
+we write multiple random variables in such an expression using commas, such as
+in H (X, Y ); this means the entropy of the product random variable (X, Y )—this
+quantity is known as the    joint entropy of X and Y . Other such expressions have
+corresponding meanings.</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.interactionInfo</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">noncomputable def interactionInfo (X : Ω → S) (Y : Ω → T) (Z : Ω → U) (μ : Measure Ω) : ℝ</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="cd-definition-2-4">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="cd-definition-2-4" aria-label="mark Definition 2.4 read"></label>
+    <span class="node-label">Definition 2.4</span>
+    <span class="node-title"></span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · OpenReview:HwKFJ3odui</div>
+      <pre class="extract">The space of probability measures on a measurable space Ω can
+itself be equipped with the structure of a measurable space, using the smallest
+σ -algebra such that for each measurable set E ⊆ Ω, the map
+(2.4)                                 P 7→ P (E)
+is measurable. This space will be denoted G (Ω).</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.GiryMeasurableSpace</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">abbrev GiryMeasurableSpace (Ω : Type*) [MeasurableSpace Ω] : MeasurableSpace (Measure Ω)</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="cd-proposition-2-5">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="cd-proposition-2-5" aria-label="mark Proposition 2.5 read"></label>
+    <span class="node-label">Proposition 2.5</span>
+    <span class="node-title"></span>
+    <span class="kind">proposition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · OpenReview:HwKFJ3odui</div>
+      <pre class="extract">Let X and Y be random variables with finite entropy and count-
+able discrete range on a countable discrete probability space (Ω, P), and suppose
+that H (Y | X) = 0. Then, then there is a measurable function f : RX → RY such
+that Y = f (X) almost everywhere.</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.aeFunctionOf_of_condEntropy_eq_zero</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">theorem aeFunctionOf_of_condEntropy_eq_zero [Countable Ω] [MeasurableSingletonClass Ω]
+    [IsProbabilityMeasure μ] (hX : Measurable X) (hY : Measurable Y)
+    [FiniteRange X] [FiniteRange Y] (h : H[Y | X ; μ] = 0) : AEFunctionOf X Y μ</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-cd-3-Set-up">3. Set-up</h2>
+
+<article class="node" id="cd-definition-3-1">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="cd-definition-3-1" aria-label="mark Definition 3.1 read"></label>
+    <span class="node-label">Definition 3.1</span>
+    <span class="node-title"></span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · OpenReview:HwKFJ3odui</div>
+      <pre class="extract">A random variable model is a countable discrete probability space
+Ω with finite entropy, together with a finite family of random variables Xi : Ω → Ri ,
+each of which has countable and discrete range.</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">structure RVModel (I : Type w) where
+  /-- The sample space `Ω`. -/
+  Ω : Type u
+  [mΩ : MeasurableSpace Ω]
+  [countΩ : Countable Ω]
+  [singΩ : MeasurableSingletonClass Ω]
+  /-- The probability measure `P` on `Ω`. -/
+  P : Measure Ω
+  [probP : IsProbabilityMeasure P]
+  /-- The range `Rᵢ` of the `i`-th variable. -/
+  R : I → Type v
+  [mR : ∀ i, MeasurableSpace (R i)]
+  [countR : ∀ i, Countable (R i)]
+  [singR : ∀ i, MeasurableSingletonClass (R i)]
+  /-- The random variables `Xᵢ : Ω → Rᵢ`. -/
+  X : ∀ i, Ω → R i
+  measurable_X : ∀ i, Measurable (X i)
+  finiteRange_X : ∀ i, FiniteRange (X i)</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="cd-definition-3-2">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="cd-definition-3-2" aria-label="mark Definition 3.2 read"></label>
+    <span class="node-label">Definition 3.2</span>
+    <span class="node-title"></span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · OpenReview:HwKFJ3odui</div>
+      <pre class="extract">A latent variable model for a random variable model Ω, (Xi )i∈I
+                                                                                        
+
+is an ordered pair consisting of a random variable model         Λ, (YA )A∈P + I   with
+its random variables indexed by the power set of I , together with a probability-
+                                                                                   ∗
+preserving map π : Λ → Ω such that for each random variable Xi the pullback π          Xi
+is almost everywhere a function of the random variables YA such that A ⊆ I and
+A ∋ i. In other words, π ∗ Xi is almost everywhere equal to fi (YA : A ⊆ I, A ∋ i) for
+some measurable function fi from the product of the ranges of the random variables
+(YA )A⊆I,A∋i to the range of Xi . We call the variables (YA )A∈P + I latent variables,
+and if i ∈ A, we say that index A contributes to i.</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">structure LatentModel {I : Type w} (M : RVModel.{u, v, w} I) where
+  /-- The latent random variable model `(Λ, (Y_A)_{A ∈ P⁺I})`. -/
+  L : RVModel.{u, v, w} (PPlus I)
+  /-- The probability-preserving map `π : Λ → Ω`. -/
+  π : L.Ω → M.Ω
+  π_pres : MeasurePreserving π L.P M.P
+  /-- Each `π^* Xᵢ` is a.e. a function of `Y_∋i`. -/
+  contributes : ∀ i, AEFunctionOf (L.jointOn (contribIdx i)) (M.X i ∘ π) L.P</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="cd-definition-3-3">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="cd-definition-3-3" aria-label="mark Definition 3.3 read"></label>
+    <span class="node-label">Definition 3.3</span>
+    <span class="node-title"></span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · OpenReview:HwKFJ3odui</div>
+      <pre class="extract">Let M be a random variable model, with random variables (Xi )i∈I ,
+and L an associated latent variable model with latent variables (YA )A∈P + I . The
+simple score of L at A ⊆ I is
+                                             X
+(3.1)                           σL (A) =            H (YB ) ,
+                                               +
+                                           B∈P I
+                                           B∩A̸=∅
+
+and correspondingly, the    conditioned score of L at A is
+                                     X        “             ”
+(3.2)                    χL (A) =            H YB | (YC )C⊋B .
+                                    B∩A̸=∅
+
+Finally, the   reconstruction score of L at A is
+                                    “                   ”
+(3.3)                     ϱL (A) = H (YB )B⊇A | (Xi )i∈A .
+
+
+   All these quantities are finite, since all the random variables of the form Xi
+and YA have finite entropy.       These scores are in some sense local, measuring the
+complexity of the latent model as it pertains to the product of the random variables
+(Xi )i∈A . To score the latent model L as a whole, we could perform an aggregation
+of these scores. For example, for a latent model L with latent variables (YA )A∈P + I ,
+                                       X
+                               λ
+(3.4)                         σL =             λA σL (A)
+                                     A∈P + I
+                                 =                      λA H (YB )
+                                     A∈P + I B∩A̸=∅
+                                                         
+                                 =                     λA  H (YB )
+                                     B⊆I       A∩B̸=∅
+
+and the analogous statements holds for the conditioned score as well. We will not
+pursue that route further here.</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.simpleScore</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">noncomputable def simpleScore (A : Finset I) : ℝ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.condScore</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">noncomputable def condScore (A : Finset I) : ℝ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.reconScore</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">noncomputable def reconScore (A : Finset I) : ℝ</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="cd-definition-3-4">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="cd-definition-3-4" aria-label="mark Definition 3.4 read"></label>
+    <span class="node-label">Definition 3.4</span>
+    <span class="node-title"></span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · OpenReview:HwKFJ3odui</div>
+      <pre class="extract">Let M be a random variable model with variables (Xi )i∈I and
+L an associated latent variable model with variables (YA )A∈P + I . We will write X
+                                                                              +
+and Y with certain subscripts other than elements, respectively, of I and P I to
+denote certain products of the random variables in these families. If A ⊆ I , we
+write XA to denote the joint random variable at A, which is the product random
+                                             +
+variable (Xi )i∈A . Similarly, for any F ⊆ P I , we write YF to denote the joint
+random variable (YA )A∈F . We also define the following notations:
+
+                         Y∩A = YB : B ∈ P + I, B ∩ A ̸= ∅
+                                                         
+(3.5)
+
+                         Y⊇A = YB : B ∈ P + I, A ⊆ B
+                                                       
+(3.6)
+
+                         Y⊋A = YB : B ∈ P + I, A ⊊ B
+                                                       
+(3.7)
+
+                          Y∋i = YB : B ∈ P + I, i ∈ B .
+                                                     
+(3.8)
+
+In particular, note that for any i ∈ I ,
+
+(3.9)                                Y∋i = Y∩{i} = Y⊇{i} .
+In words, we call the random variables Y∩A and Y∋i the latents that      contribute to
+A or i, respectively.</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="6">1 / 6</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.joint</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">def joint (M : RVModel I) (A : Finset I) : M.Ω → (∀ i : A, M.R i)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointOn</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointOn (F : Set (PPlus I)) : L.Λ → (∀ B : F, L.L.R B)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointContrib</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointContrib (A : Finset I)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointAbove</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointAbove (A : Finset I)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointStrictAbove</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointStrictAbove (A : Finset I)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointContribIdx</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointContribIdx (i : I)</pre></div>
+    </section>
+  </div>
+</article>
+  </section>
 </main>
 </div>
 
@@ -7810,6 +8168,6 @@ We say <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><
 })();
 </script>
 
-<!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 -->
+<!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 condensation=9 -->
 
-<!-- trust-surface-sources: c6a6d11dd819d0d6c0e57fa2ea28da4510710fe8c08234160e762d8e7458607c -->
+<!-- trust-surface-sources: 1e29ee38e7cecec4ec95a6980c36918c9d3ac6d55723eee7191e871d4fb5ed25 -->

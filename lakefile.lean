@@ -20,6 +20,16 @@ lean_lib CartesianFrames where
 lean_lib FiniteFactoredSets where
   srcDir := "."
 
+-- Condensation (Eisenstat, 2025), stated over the shared Shannon-information layer.
+-- Globbed because the formalization is split across files that the aggregator
+-- `Condensation.lean` re-exports; see `Condensation/notes/roadmap.md`.
+@[default_target]
+lean_lib Condensation where
+  srcDir := "."
+  -- `.andSubmodules`, not `.submodules`: the latter excludes the root module itself, which
+  -- would leave the aggregator `Condensation.lean` (and its `dd:` glossary) unbuilt.
+  globs := #[.andSubmodules `Condensation]
+
 -- Vendored Shannon-information substrate: the entropy import closure of
 -- teorth/pfr @ 01c9b666945eaf73b3f7d8b20ffe003f8640e630 (Apache-2.0), 25 modules, kept at
 -- upstream module paths so diffs against upstream stay readable. Two compatibility

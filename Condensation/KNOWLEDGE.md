@@ -31,6 +31,32 @@ See the `dd:` table in `notes/roadmap.md` — `dd:finite-range`, `dd:pplus`,
 `dd:category`, `dd:amalgamation`. Rationale lives there; this file records *changes* to
 them and the finding IDs that forced any.
 
+- **`dd:finite-range` generalization: costed and deferred (2026-08-17).** Generalizing the
+  substrate to countable range + finite entropy is ~1,450–2,400 lines / 3–4.5 focused
+  weeks in four phases; the abstract core (grouping bound, local chain rule, countable
+  Gibbs) was proved in ~90 lines against the pinned Mathlib as calibration; nothing in the
+  paper is false or different under finite range, only the model class shrinks; no upstream
+  help exists (PFR master's entropy files are byte-identical to the pin, Mathlib has no
+  Shannon entropy). Full plan with acceptance criteria: `notes/finite-range-generalization-plan.md`.
+  Consequence for the code: the finiteness condition lives in **exactly one field of
+  `RVModel`** (role-named, documented as the stand-in for Def 3.1's "finite entropy") and is
+  never taken as a separate theorem hypothesis, so a later swap to a `FiniteEntropy` class
+  is a one-field edit plus substrate re-proof. Auditors: do not re-litigate the deferral;
+  do flag any statement that reintroduces `FiniteRange` outside that field.
+- Registry: `scripts/papers.py` uses two axes for this paper — `scheme: printed-counter`
+  (how the paper numbers) and `source_format: text-extraction` (what the committed source
+  is). Resolve parsers via `paper_nodes.scheme_of(paper)`, never `SCHEMES[scheme]` (the TeX
+  parser returns an *empty* node set on a `.txt`, silently disarming the gate).
+- Wiring-gate order for this library: `lean_lib Condensation` → Lean under `Condensation/` →
+  `import Condensation` in `AxiomAudit.lean` → `-- CONDENSATION-INVENTORY-BEGIN/END` block
+  wrapping `#assert_axioms_clean` (mandatory from the first annotated declaration; fully
+  qualified names) → `python3 scripts/gen-trust-surface.py` after **any** change to a
+  Condensation Lean file, README, KNOWLEDGE, errata, extraction, `papers.py`,
+  `paper_nodes.py`, generator or template (the freshness hash covers all of them; CI blocks).
+- Scope completeness is not yet machine-checked: `check-condensation-nodes.py` checks cited
+  nodes are real, not that every in-scope node is cited. Once the Examples 5.1–5.3 ruling
+  lands, pass a `scope_manifest` (`out_of_scope`, `mathlib_rendered` = Def 2.1, Def 2.4) to
+  `paper_nodes.run_node_check` as the FFS checker does.
 - Substrate: `ShannonInformation.API` only. Never name `PFR.*`; never `import Mathlib`
   wholesale in a Condensation file (clashes with the vendored shims — see
   `ShannonInformation/README.md`).
@@ -57,12 +83,33 @@ None yet.
 - Thm 4.9 (B2): "is a function of `X_i`" drops the "almost everywhere" of (A2).
 - Lemma 4.5 proof cites "Corollary 2.5" — 2.5 is a Proposition.
 - Cor 4.6 proof cites only Prop 4.2; the argument needs Lemma 4.5.
-- `P I` written for `P⁺ I` in Lemma 4.5(2) and Cor 4.6.
+- `P I` written for `P⁺ I` in Lemma 4.5(2) and Cor 4.6 (the paper's omission, not the
+  extractor's — the extractor renders this paper's superscript `+` on its own line elsewhere).
+- Cor 5.10 uses `k` in its hypothesis one sentence before binding it; the degenerate
+  `k = 0` (`F = {∅}`) and `k > |A|` (`F = ∅`, `G = P⁺I`) cases are unaddressed — must be
+  resolved to state it in Lean.
+- The intersection tree's label function is `ℓ` in Def 5.6/Prop 5.7 but `I` in Thm 5.8 and
+  Cors 5.9–5.10, colliding with the index set and (inside (5.13)) with the mutual-information
+  operator. Part of why `dd:tree` computes labels from tree structure.
+
+Full list with line numbers: `notes/paper-errata.md`.
 
 ## Pitfalls
 
-- `pdftotext` drops `fi`/`ff` ligatures: the committed extraction reads `Denition`,
-  `nite`, `dierent`. The node checker's regex allows `De.?nition`.
+- `pdftotext` emits the font's f-ligature slots as C0 bytes (`\x1c`=fi, `\x1b`=ff,
+  `\x1d`=fl, `\x1e`=ffi), so `Definition` is stored as `De\x1cnition` (prints `Denition`).
+  **Python's `str.splitlines()` splits on `\x1c`/`\x1d`/`\x1e`** and silently deletes all
+  18 Definition headers — always `text.split("\n")` on this file (`paper_nodes.extraction_lines()`).
+  Ligature-tolerant regex is `De(?:fi)?.?nition` (`De.?nition` fails on the plain spelling).
+  Node headers are distinguished from line-initial cross-references only by the trailing
+  period after the number/title parenthetical.
+- Two `∑'`-style traps in the substrate: `H[X]` is `0` for a non-summable entropy series, and
+  `condEntropy` is a Bochner integral, silently `0` when non-integrable. Under
+  `dd:finite-range` neither can bite, but any generalization must carry both as proved
+  consequences of its finiteness class.
+- `SCOPE.md` §6 says `klDiv` is `EReal`-valued; at this pin it is `ℝ≥0∞`
+  (`Mathlib/InformationTheory/KullbackLeibler/Basic.lean`). Corrected on this branch;
+  the entropy-infrastructure owner should carry the same fix.
 - The paper's `π` in a latent variable model goes `Λ → Ω` (latent space onto the base),
   while §3.1's morphisms go source → target with `π : Ω → Λ`. Do not conflate the two
   directions when reading Def 4.12 (morphisms `ρ_k : L̃_k → L_k`).

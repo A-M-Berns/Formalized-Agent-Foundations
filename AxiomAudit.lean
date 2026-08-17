@@ -65,6 +65,7 @@ import CartesianFrames.AdditiveMultiplicative
 import CartesianFrames.Operations
 import CartesianFrames.Categorical
 import FiniteFactoredSets
+import Condensation
 
 open Lean Elab Command in
 /-- Fail elaboration unless every named declaration exists and depends on no axioms
@@ -1719,6 +1720,51 @@ open FiniteFactoredSets in
   S F f finite
 #assert_fields FiniteFactoredSets.OrthDatabase
   O N
+
+/-! ## Condensation (Eisenstat 2025) — endpoint inventory
+
+Nodes are cited by printed number (`Paper node: \`Definition 3.1\``) read off the committed
+text extraction `Condensation/notes/condensation-25-07.txt`; `scripts/check-condensation-nodes.py`
+enforces validity, anchoring, and that every annotated declaration appears in the block
+below.  Status: **in progress** (M0 — §2 conventions and Definitions 3.1–3.4).  Nothing here
+is claimed complete; the roadmap is `Condensation/notes/roadmap.md`.  The standing
+`dd:finite-range` narrowing (finite-range variables) is disclosed in `Condensation/README.md`. -/
+
+-- CONDENSATION-INVENTORY-BEGIN
+#assert_axioms_clean
+  -- §2 conventions (Condensation/Probability.lean).  Definition 2.1 has three carriers:
+  -- the Mathlib rendering `IsRandomVariable` and the "function of" conventions.
+  Condensation.IsRandomVariable Condensation.FunctionOf Condensation.AEFunctionOf
+  Condensation.AEFunctionOf.of_functionOf Condensation.AEFunctionOf.comp Condensation.AEFunctionOf.trans Condensation.AEFunctionOf.prodMk
+  Condensation.AEFunctionOf.comp_measurePreserving Condensation.aeFunctionOf_self
+  -- eq. (2.2): pullback invariance along probability-preserving maps.
+  Condensation.identDistrib_comp_measurePreserving Condensation.entropy_comp_measurePreserving
+  Condensation.mutualInfo_comp_measurePreserving Condensation.condEntropy_comp_measurePreserving
+  Condensation.PPlus Condensation.PPlus.toFinset Condensation.PPlus.single Condensation.PPlus.le_iff Condensation.PPlus.lt_iff
+  Condensation.interactionInfo Condensation.interactionInfo_comm Condensation.interactionInfo_swap Condensation.condInteractionInfo
+  Condensation.GiryMeasurableSpace
+  -- Proposition 2.5 (the determinism bridge), its converse and the iff, and the two
+  -- entropy consequences §4 uses.
+  Condensation.aeFunctionOf_of_condEntropy_eq_zero Condensation.condEntropy_eq_zero_of_aeFunctionOf
+  Condensation.aeFunctionOf_iff_condEntropy_eq_zero Condensation.entropy_le_of_aeFunctionOf Condensation.entropy_pair_of_aeFunctionOf
+  -- Definitions 3.1–3.4 (Condensation/Model.lean).
+  Condensation.RVModel Condensation.RVModel.joint Condensation.RVModel.jointOn Condensation.RVModel.measurable_joint Condensation.RVModel.measurable_jointOn
+  Condensation.finiteRange_pi
+  Condensation.contrib Condensation.above Condensation.strictAbove Condensation.contribIdx Condensation.mem_contrib_iff
+  Condensation.contribIdx_eq_contrib_singleton Condensation.contribIdx_eq_above_singleton Condensation.strictAbove_subset_above
+  Condensation.LatentModel Condensation.LatentModel.jointOn Condensation.LatentModel.jointContrib Condensation.LatentModel.jointAbove
+  Condensation.LatentModel.jointStrictAbove Condensation.LatentModel.jointContribIdx Condensation.LatentModel.pullbackJoint
+  Condensation.LatentModel.measurable_pullbackJoint
+  Condensation.LatentModel.simpleScore Condensation.LatentModel.condScore Condensation.LatentModel.reconScore
+  -- Non-vacuity witnesses (Condensation/Examples.lean): a constructed model and latent model.
+  Condensation.coinModel Condensation.coinLatent Condensation.coinModel_entropy_pos Condensation.coinLatent_nonempty
+-- CONDENSATION-INVENTORY-END
+
+/-! Tier-2 boundary structures for the Condensation surface. -/
+#assert_fields Condensation.RVModel
+  Ω mΩ countΩ singΩ P probP R mR countR singR X measurable_X finiteRange_X
+#assert_fields Condensation.LatentModel
+  L π π_pres contributes
 
 /-! ## Consumer API conveniences (not paper endpoint inventories)
 

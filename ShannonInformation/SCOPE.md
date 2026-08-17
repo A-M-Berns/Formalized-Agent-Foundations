@@ -59,7 +59,10 @@ Shannon quantities for any countable-discrete variable, finite range or not. Not
 to be redefined to generalize; a future extension adds theorems under a summability
 hypothesis and leaves every definition, and every already-proved statement, untouched.
 
-**One trap, and it is sharp.** Lean's `∑'` evaluates to `0` for a non-summable family. So
+**Two traps, and they are sharp.** The second: `condEntropy` is a Bochner integral over the
+conditioning variable's law, and Lean's integral is `0` for a non-integrable integrand — so
+any generalization must derive integrability from its finiteness class, never assume it. The
+first: Lean's `∑'` evaluates to `0` for a non-summable family. So
 for a variable of *infinite* entropy, `H[X ; μ]` is silently `0` rather than `∞` or an
 error. Any future generalization must carry an explicit finite-entropy hypothesis; a
 statement that merely drops `FiniteRange` and says nothing about summability would be
@@ -106,8 +109,9 @@ Roughly, in increasing order of effort:
 3. **Re-prove subadditivity / submodularity** in the same style, which gives back
    `mutualInfo_nonneg`, `entropy_submodular` and the independence characterizations.
 
-This is a substantial project — plausibly comparable in size to the vendored library
-itself — and it is emphatically **not** attempted here. It is also not obviously the right
+This is a substantial project — costed at roughly 1,450–2,400 lines / 3–4.5 focused weeks
+in `Condensation/notes/finite-range-generalization-plan.md` (2026-08-17), which also proves
+the abstract core in scratch — and it is emphatically **not** attempted here. It is also not obviously the right
 move: it may be cheaper to upstream a generalization into PFR than to fork one into FAF.
 
 ## 6. Is the current layer sufficient for the motivating consumers?
@@ -139,7 +143,8 @@ move: it may be cheaper to upstream a generalization into PFR than to fork one i
   Verified by probe: `ShannonInformation.API` and
   `Mathlib.InformationTheory.KullbackLeibler.Basic` **co-import cleanly**, and both NL
   primitives are expressible side by side. One impedance mismatch to expect: `klDiv` is
-  `EReal`-valued while PFR's entropy is `ℝ`-valued.
+  `ℝ≥0∞`-valued at this pin (`Mathlib/InformationTheory/KullbackLeibler/Basic.lean`) while
+  PFR's entropy is `ℝ`-valued.
 
 So the honest position is: **the current layer supports finite-valued information theory.
 Whether that suffices for a given paper is a question about that paper, to be answered
