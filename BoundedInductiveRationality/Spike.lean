@@ -484,6 +484,28 @@ theorem theorem3 {ι : Type*} {α : Agent DP} {r : ℕ → ℝ}
   exact theorem3_core hBRIA a L hL0 hL1 hguar i hia hiL
 
 
+/-! ## C.2 Theorem 3 on a concrete decision problem
+
+The paper's own worked example (§4.5, "Adversarial offers"): `DP_t = {a₀, a₁}`, where
+`a₀` pays `1/2` with certainty and `a₁` pays `1` if the agent chooses `a₀` and `0`
+otherwise — so, since the counterfactual is never realised, effectively `r_t = 1/2` when
+the agent takes `a₀` and `0` when it takes `a₁`. Encoding `a₀` as `false`, Theorem 3
+delivers the paper's conclusion: a BRIA averages at least `1/2`.
+
+Note what the hypothesis `hSAO` does *not* say. It constrains `r` only on the rounds the
+agent actually takes `a₀`. That is the paper's "counterfactual rewards are not defined"
+discipline, and it is why the SAO is not self-contradictory here the way it is for a
+logically omniscient agent. -/
+
+example {ι : Type*} {α : Agent boolDP} {r : ℕ → ℝ} {H : ι → Hypothesis boolDP}
+    {M : ι → Set ℕ} (hBRIA : IsBRIA α r H M)
+    (hSAO : ∀ t, α.choice t = false → r t = 1 / 2)
+    (hmem : ∃ i, (H i).choice = (fun _ => false) ∧
+      (H i).estimate = fun _ => (1 : ℝ) / 2) :
+    AsympGE (avg r) (avg fun _ => (1 : ℝ) / 2) :=
+  theorem3 hBRIA (fun _ => false) (fun _ => 1 / 2) (fun _ => by norm_num)
+    (fun _ => by norm_num) (fun t ht => le_of_eq (hSAO t ht).symm) hmem
+
 /-! # §D. Theorem 1 — the auction construction
 
 This is the load-bearing experiment. The claim being tested is the one the report calls
