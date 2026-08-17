@@ -112,9 +112,28 @@ re-check `SCOPE.md`, since a newer upstream may have relaxed hypotheses.
   **compatibility patches** (two, in `vendor/patches/`), **new FAF lemmas** (none yet), and
   **desired future generalization** (`SCOPE.md` §5).
 
+## Known constraint: do not `import Mathlib` alongside this
+
+A file that imports **all** of Mathlib and this layer fails to elaborate:
+
+```
+import PFR.Mathlib.Probability.IdentDistrib failed, environment already contains
+'ProbabilityTheory.IdentDistrib.prodMk' from Mathlib.Probability.IdentDistribIndep
+```
+
+PFR's `Mathlib/` shim modules re-declare lemmas that FAF's newer Mathlib pin has since
+acquired upstream. Targeted imports (`import Mathlib.Data.Finset.Basic`, …) are fine, and
+`APITests/ShannonInformation.lean` is unaffected because it imports only the API — but a
+downstream library whose first line is `import Mathlib` will hit this.
+
+Workaround: import the specific Mathlib modules you need. Possible real fix, not attempted
+here: a third vendor patch deleting the now-redundant shim declarations. Whoever does that
+must classify it as compatibility, not mathematics, and record it in `vendor/patches/`.
+
 ## How a future paper formalization should depend on this
 
-1. `import ShannonInformation.API`, and nothing from `PFR.*`.
+1. `import ShannonInformation.API`, and nothing from `PFR.*`. Do not `import Mathlib` in the
+   same file — see the constraint above.
 2. Read `SCOPE.md` first and decide, explicitly, whether the paper's statements live inside
    the finite-range fragment. If they do, disclose that as a modeling decision in the
    paper's own README — do not let a reader infer it from a `variable` block.
