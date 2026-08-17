@@ -86,16 +86,6 @@ lemma prob_eq_sum_subtype (P : Dist S) (A : Set S) [Fintype A] :
   rw [prob_eq_sum_filter]
   exact Finset.sum_subtype _ (by simp) _
 
-/-- Finite additivity along the fibres of a map: `P(E) = ∑_z P(E ∩ f⁻¹(z))`. -/
-lemma prob_eq_sum_prob_inter_preimage (P : Dist S) {γ : Type*} [Fintype γ] (f : S → γ)
-    (E : Set S) : P.prob E = ∑ z, P.prob (E ∩ f ⁻¹' {z}) := by
-  classical
-  simp only [prob, Set.indicator_apply, Set.mem_inter_iff, Set.mem_preimage,
-    Set.mem_singleton_iff]
-  rw [Finset.sum_comm]
-  refine Finset.sum_congr rfl fun s _ => ?_
-  by_cases hs : s ∈ E <;> simp [hs]
-
 /-- The support `supp(P) = {s | P(s) > 0}` (§C.3). -/
 def support (P : Dist S) : Set S := {s | 0 < P.mass s}
 
@@ -639,15 +629,41 @@ lemma CondIndep.of_prob_eq_zero {P : Dist (Pt Ω)} {A B C : Set (Pt Ω)} (h : P.
 def CondIndepAll (A B C : Set (Pt Ω)) : Prop :=
   ∀ P : Dist (Pt Ω), Factorizes P → CondIndep P A B C
 
+/-- Regrouping an event along the fibres of a variable: if `T` contains every attained
+value of `Z`, then `P(D) = ∑_{z ∈ T} P(D ∩ {Z = z})`.  Stated with an explicit `Finset`
+of values because `Val(Z)` carries no `Fintype` instance (`dd:variable`); take
+`T := Finset.univ` for a finite value type. -/
+lemma Dist.prob_eq_sum_fiber {S : Type w} [Fintype S] {κ : Type*} (P : Dist S)
+    (D : Set S) (Z : S → κ) (T : Finset κ) (hT : ∀ s, Z s ∈ T) :
+    P.prob D = ∑ z ∈ T, P.prob (D ∩ Z ⁻¹' {z}) := by
+  classical
+  have key : ∀ s : S, ∑ z ∈ T, (D ∩ Z ⁻¹' {z}).indicator P.mass s = D.indicator P.mass s := by
+    intro s
+    rw [Finset.sum_eq_single (Z s)]
+    · by_cases hs : s ∈ D
+      · rw [Set.indicator_of_mem (show s ∈ D ∩ Z ⁻¹' {Z s} from ⟨hs, rfl⟩),
+          Set.indicator_of_mem hs]
+      · rw [Set.indicator_of_notMem (fun h => hs h.1), Set.indicator_of_notMem hs]
+    · intro z _ hz
+      exact Set.indicator_of_notMem (fun h => hz h.2.symm) _
+    · intro h
+      exact absurd (hT s) h
+  simp only [Dist.prob]
+  rw [Finset.sum_comm]
+  exact Finset.sum_congr rfl fun s _ => (key s).symm
+
 /-! ## Lemmas C.13, C.14: decomposition of mixed independence -/
 
 /-- **Decomposition of mixed independence.** `B ⊥^P (Y, Z) | C` implies `B ⊥^P Y | C`.
 
 Paper node: Lemma C.13 (§C.3). -/
-theorem CondIndepEventVar.of_pair {β γ : Type*} [Fintype γ] {P : Dist (Pt Ω)} {B C : Set (Pt Ω)}
+theorem CondIndepEventVar.of_pair {β γ : Type*} {P : Dist (Pt Ω)} {B C : Set (Pt Ω)}
     {Y : Pt Ω → β} {Z : Pt Ω → γ} (h : CondIndepEventVar P B (pair Y Z) C) :
     CondIndepEventVar P B Y C := by
+  classical
   intro y
+  have hT : ∀ ω : Pt Ω, Z ω ∈ Finset.univ.image Z := fun ω =>
+    Finset.mem_image_of_mem Z (Finset.mem_univ ω)
   have h₁ : ∀ z : γ, fiber Y y ∩ C ∩ Z ⁻¹' {z} = fiber (pair Y Z) (y, z) ∩ C := by
     intro z
     ext ω
@@ -660,11 +676,13 @@ theorem CondIndepEventVar.of_pair {β γ : Type*} [Fintype γ] {P : Dist (Pt Ω)
     simp only [fiber, pair, Set.mem_inter_iff, Set.mem_setOf_eq, Set.mem_preimage,
       Set.mem_singleton_iff, Prod.ext_iff]
     tauto
-  have e₁ : P.prob (fiber Y y ∩ C) = ∑ z, P.prob (fiber (pair Y Z) (y, z) ∩ C) :=
-    (P.prob_eq_sum_prob_inter_preimage Z _).trans
+  have e₁ : P.prob (fiber Y y ∩ C)
+      = ∑ z ∈ Finset.univ.image Z, P.prob (fiber (pair Y Z) (y, z) ∩ C) :=
+    (P.prob_eq_sum_fiber _ Z _ hT).trans
       (Finset.sum_congr rfl fun z _ => by rw [h₁ z])
-  have e₂ : P.prob (B ∩ fiber Y y ∩ C) = ∑ z, P.prob (B ∩ fiber (pair Y Z) (y, z) ∩ C) :=
-    (P.prob_eq_sum_prob_inter_preimage Z _).trans
+  have e₂ : P.prob (B ∩ fiber Y y ∩ C)
+      = ∑ z ∈ Finset.univ.image Z, P.prob (B ∩ fiber (pair Y Z) (y, z) ∩ C) :=
+    (P.prob_eq_sum_fiber _ Z _ hT).trans
       (Finset.sum_congr rfl fun z _ => by rw [h₂ z])
   unfold CondIndep
   rw [e₁, e₂, Finset.mul_sum, Finset.sum_mul]
@@ -702,7 +720,7 @@ theorem CondIndepEventVar.of_proj_subset {P : Dist (Pt Ω)} {B C : Set (Pt Ω)} 
   have e : ∀ D : Set (Pt Ω), P.prob (D ∩ fiber (proj J') α' ∩ C) =
       ∑ α : PtOn Ω J, if restrict hJ α = α' then P.prob (D ∩ fiber (proj J) α ∩ C) else 0 := by
     intro D
-    refine (P.prob_eq_sum_prob_inter_preimage (proj J) _).trans
+    refine (P.prob_eq_sum_fiber _ (proj J) Finset.univ (fun _ => Finset.mem_univ _)).trans
       (Finset.sum_congr rfl fun α _ => ?_)
     rw [key D α]
     split_ifs
@@ -910,28 +928,6 @@ theorem condIndepVarEvent_proj_history (A C : Set (Pt Ω)) (P : Dist (Pt Ω)) (h
 lemma Dist.prob_eq_zero_of_subset {S : Type w} [Fintype S] {A B : Set S} (P : Dist S) (hAB : A ⊆ B)
     (h : P.prob B = 0) : P.prob A = 0 :=
   le_antisymm (h ▸ P.prob_mono hAB) (P.prob_nonneg _)
-
-/-- Regrouping an event along the fibres of a variable: if `T` contains every attained
-value of `Z`, then `P(D) = ∑_{z ∈ T} P(D ∩ {Z = z})`.  Stated with an explicit `Finset`
-of values because `Val(Z)` carries no `Fintype` instance (`dd:variable`). -/
-lemma Dist.prob_eq_sum_fiber {S : Type w} [Fintype S] {κ : Type*} [DecidableEq κ] (P : Dist S)
-    (D : Set S) (Z : S → κ) (T : Finset κ) (hT : ∀ s, Z s ∈ T) :
-    P.prob D = ∑ z ∈ T, P.prob (D ∩ Z ⁻¹' {z}) := by
-  classical
-  have key : ∀ s : S, ∑ z ∈ T, (D ∩ Z ⁻¹' {z}).indicator P.mass s = D.indicator P.mass s := by
-    intro s
-    rw [Finset.sum_eq_single (Z s)]
-    · by_cases hs : s ∈ D
-      · rw [Set.indicator_of_mem (show s ∈ D ∩ Z ⁻¹' {Z s} from ⟨hs, rfl⟩),
-          Set.indicator_of_mem hs]
-      · rw [Set.indicator_of_notMem (fun h => hs h.1), Set.indicator_of_notMem hs]
-    · intro z _ hz
-      exact Set.indicator_of_notMem (fun h => hz h.2.symm) _
-    · intro h
-      exact absurd (hT s) h
-  simp only [Dist.prob]
-  rw [Finset.sum_comm]
-  exact Finset.sum_congr rfl fun s _ => (key s).symm
 
 /-! ## Further `Dist` facts used by Appendix C.3
 

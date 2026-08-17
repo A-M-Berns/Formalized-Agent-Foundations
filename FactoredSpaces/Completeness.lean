@@ -476,14 +476,8 @@ Paper node: Lemma C.8 (§C.3). -/
 theorem cohistory_eq_compl_eventHistory (A C : Set (Pt Ω)) :
     cohistory A C = (eventHistory A C)ᶜ := by
   classical
-  have hcancel : ∀ x y z : ℝ, z ≠ 0 → x * z / (y * z) = x / y := by
-    intro x y z hz
-    rw [mul_comm x z, mul_comm y z, mul_div_mul_left _ _ hz]
-  have hposr : ∀ x y : ℝ, 0 ≤ y → 0 < x * y → 0 < y := by
-    intro x y hy hxy
-    rcases hy.lt_or_eq with h | h
-    · exact h
-    · rw [← h, mul_zero] at hxy; exact absurd hxy (lt_irrefl 0)
+  have hposr : ∀ x y : ℝ, 0 ≤ y → 0 < x * y → 0 < y := fun _ _ hy hxy =>
+    (mul_pos_iff.mp hxy).elim (·.2) fun h => absurd h.2 (not_lt.mpr hy)
   obtain ⟨⟨hdis, hsplice⟩, hmin⟩ := eventHistory_minimal_splice A C
   apply Finset.Subset.antisymm
   · -- `Cohistory(A | C) ⊆ (H(A | C))ᶜ`: the complement of the cohistory has the two
@@ -561,7 +555,7 @@ theorem cohistory_eq_compl_eventHistory (A C : Set (Pt Ω)) :
       hposr _ _ ((Q.marg _).prob_nonneg _) (hQCv ▸ hQC)
     show P.condProb A C = Q.condProb A C
     rw [Dist.condProb, Dist.condProb, hPAC, hPCv, hQAC, hQCv,
-      hcancel _ _ _ heP.ne', hcancel _ _ _ heQ.ne', hmargH]
+      mul_div_mul_right _ _ heP.ne', mul_div_mul_right _ _ heQ.ne', hmargH]
 
 /-! ## Lemma 6.4: completeness for events -/
 
