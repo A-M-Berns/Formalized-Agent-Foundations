@@ -1042,8 +1042,8 @@ Same contract as the CF-INVENTORY block above: every declaration carrying a
 FFS-INVENTORY markers below, and `scripts/check-finite-factored-sets-nodes.py` enforces
 that in both directions.
 
-This formalization is **in progress**: the list below covers §2, §3, §4 and §5.1–§5.2
-(§5.3 onwards and §6–§7 are not yet claimed).  Several
+This formalization is **in progress**: the list below covers §2, §3, §4 and §5
+(§6–§7 are not yet claimed).  Several
 of the paper's §2.1 nodes have no Lean carrier at all because they are rendered by
 Mathlib vocabulary under the `dd:` tags in `FiniteFactoredSets.lean` — Definition 2
 (partition) is `Setoid`, Definition 5 (`∼_X`) is the setoid relation, Definition 6
@@ -1110,6 +1110,15 @@ open FiniteFactoredSets in
   Poly FactoredSet.Q mono monos poly
   FactoredSet.Q_eq_poly FactoredSet.poly_union_chimeraImage
   FactoredSet.eq_C_mul_poly_of_dvd_Q
+  -- §5.3: characteristic polynomials and orthogonality
+  -- (FiniteFactoredSets/CharacteristicOrthogonality.lean).  Lemma 3 (`CPO`) is a single
+  -- three-clause `TFAE`, so it is one endpoint; the two isolated directions
+  -- `Q_mul_Q_eq_of_orthogonalGiven` and `orthogonalGiven_of_Q_mul_Q_eq` are projections of
+  -- it, on the consumer surface rather than the paper-node inventory.  The `2 → 1` leg is
+  -- the one place §5 uses that `Poly^F` is a unique factorization monoid (Mathlib's
+  -- `MvPolynomial.uniqueFactorizationMonoid`), which is what turns Proposition 31's
+  -- irreducible factor into a prime.
+  FactoredSet.orthogonalGiven_tfae
   -- Non-vacuity witnesses (FiniteFactoredSets/Examples.lean).  Every §2-§5.2 endpoint is
   -- stated over `FactoredSet`; these are what make those endpoints say something.
   -- `coordFS` is the load-bearing one: with a single factor every `C` behaves as `∅` or
@@ -1200,6 +1209,18 @@ open FiniteFactoredSets in
   -- over an infinite `S` — and, unlike the §5.1 relaxations, non-degenerately.
   FactoredSet.irr FactoredSet.irr_partition
   FactoredSet.Q_eq_finprod_poly_irr FactoredSet.irreducible_poly_of_mem_irr
+  -- §5.4-§5.5: probability and the fundamental theorem
+  -- (FiniteFactoredSets/Probability.lean).  Definition 36 is `ProbDist`, the paper's own
+  -- elementary four-clause structure on `𝒫(S) → ℝ` (`dd:probability`; no measure theory
+  -- stands in for it), and Definition 37 is the predicate `IsDistribution` on one.  Both
+  -- §5.4-§5.5 theorems carry `[Finite S]`: Proposition 32 sums over `E ⊆ S`, and Theorem 3
+  -- routes through Lemma 3, so this is the same `dd:poly` boundary as §5.1-§5.2 rather
+  -- than a new hypothesis.  Theorem 3's converse is the only place in the development
+  -- where a distribution is *constructed* rather than quantified over — the paper's `P_f`,
+  -- built from a strictly positive weight function — so the two directions have genuinely
+  -- different content.
+  ProbDist FactoredSet.IsDistribution
+  FactoredSet.isDistribution_iff FactoredSet.orthogonalGiven_iff_forall_isDistribution
   -- §5.1-§5.2 on `coordFS`: the characteristic polynomial computed outright.  `vfst`/`vsnd`
   -- are the four variables of `Poly^{coordFS}` that ever occur — under `dd:partition` a
   -- block *is* a subset of `S`, hence a variable of the ring verbatim.  `Q_coordFS_univ_eq`
@@ -1301,6 +1322,41 @@ open FiniteFactoredSets in
   -- that nobody reads a §5 statement as covering it: at `C = {Ind_S}` it is a single
   -- variable, and `Ind_S ∉ B`, so no §5.1-§5.2 hypothesis is satisfied by it.
   Examples.poly_top_univ_junk Examples.top_notMem_coordFS_basis
+  -- §5.3-§5.5 on `coordFS`: Definition 31 at the two remaining blocks Lemma 3 and Theorem
+  -- 3 quantify over — the singleton `{s}`, the `sndFactor` block `[·]₂ = true`, and the
+  -- diagonal `Ediag`, which is where both verdicts flip.
+  Examples.Q_coordFS_singleton Examples.Q_coordFS_vsnd_true Examples.Q_coordFS_Ediag
+  -- Lemma 3's clause 3 on the witness, as a cross-check pair plus a separate application,
+  -- and the negative that stops it being a triviality.  The cross-check expands both
+  -- products from Definition 31 and mentions no divisibility endpoint; the application
+  -- feeds the §4.3 fact `fstFactor ⊥^F sndFactor | Ind_S` to Lemma 3's 1 → 3 direction.
+  -- At the `xorPart` block `Ediag` clause 3 *fails*, separated by one `coordSep`
+  -- evaluation (310 against 100) — the polynomial shadow of §4.3's entanglement.
+  Examples.lemma3_clause3_coordFS_top_crosscheck
+  Examples.lemma3_clause3_coordFS_top_applied
+  Examples.lemma3_clause3_coordFS_Ediag_fails
+  -- Definitions 36 and 37 inhabited, and kept apart.  `uniform` (`P E = |E| / 4`) is a
+  -- distribution on the factored set; `diagDist` (`P E = |E ∩ Ediag| / 2`) is a
+  -- `ProbDist` and is *not* one, since it makes the two coordinates perfectly correlated
+  -- (`P {(t,t)} = 1/2` against `P([s]_fst) · P([s]_snd) = 1/4`).  Without the second,
+  -- Definition 37's product condition would be indistinguishable from decoration; without
+  -- the first, Proposition 32 and Theorem 3 would quantify over an empty family.
+  Examples.uniform Examples.uniform_isDistribution
+  Examples.diagDist Examples.not_isDistribution_diagDist
+  -- Proposition 32 at `E = Efst`, where `Q^F_{Efst}` has two terms so the evaluation is a
+  -- genuine sum: cross-checked by computing both sides from Definitions 31 and 36, and
+  -- separately applied.
+  Examples.prop32_coordFS_Efst_crosscheck Examples.prop32_coordFS_Efst_applied
+  -- Theorem 3 in both directions on the pair §4.3 already separates.  Forward at
+  -- `Z = Ind_S`: cross-checked (`1/2 · 1/2 = 1/4 · 1`, computed) and applied (from
+  -- `orthogonalGiven_fst_snd_top`, with no computation).  Backward at `Z = xorPart`:
+  -- `thm3_coordFS_Ediag_fails` computes the failure (`1/16` against `1/8`),
+  -- `thm3_coordFS_xorPart_witness` names the distribution and blocks realizing the
+  -- theorem's existential, and `thm3_coordFS_xorPart_applied` derives that same
+  -- existential from `not_orthogonalGiven_fst_snd_xorPart` through the endpoint.
+  Examples.thm3_coordFS_top_crosscheck Examples.thm3_coordFS_top_applied
+  Examples.thm3_coordFS_Ediag_fails
+  Examples.thm3_coordFS_xorPart_witness Examples.thm3_coordFS_xorPart_applied
 -- FFS-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Finite Factored Sets surface. -/
@@ -1310,6 +1366,8 @@ open FiniteFactoredSets in
   B isFactorization
 #assert_fields FiniteFactoredSets.Subpartition
   r symm' trans'
+#assert_fields FiniteFactoredSets.ProbDist
+  P nonneg empty univ additive
 
 /-! ## Consumer API conveniences (not paper endpoint inventories)
 
@@ -1376,3 +1434,7 @@ open FiniteFactoredSets in
   FactoredSet.degreeOf_Q_le FactoredSet.Q_ne_zero FactoredSet.vars_disjoint_of_mul_eq_Q
   coeff_add_mul_of_split
   FactoredSet.mem_irr FactoredSet.poly_dvd_Q FactoredSet.irr_isPartition
+  -- §5.3: the two directions of Lemma 3 isolated from its `TFAE`, which is how §5.5 and a
+  -- downstream client consume it.  Neither is a paper node of its own — the node is
+  -- `orthogonalGiven_tfae`, inventoried above, and each of these is one of its projections.
+  FactoredSet.Q_mul_Q_eq_of_orthogonalGiven FactoredSet.orthogonalGiven_of_Q_mul_Q_eq

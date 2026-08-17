@@ -322,4 +322,133 @@ example {S : Type u} [Finite S] (F : FactoredSet S) {E : Set S} (hE : E.Nonempty
   ⟨fun C => poly C E, fun _ hC => F.irreducible_poly_of_mem_irr hE hC,
     F.Q_eq_finprod_poly_irr hE⟩
 
+/-! ### §5.3–§5.5: divisibility, distributions, and the fundamental theorem
+
+The endpoints here are the ones a downstream project actually calls: Theorem 3 is a
+*test*, so the examples below run it in both directions — a combinatorial certificate in,
+a numerical identity out, and one failing distribution in, a refutation out. -/
+
+/-- Lemma 3's divisibility clause, which is reachable only through the `TFAE`: an
+orthogonality certificate makes `Q^F_z` divide the product `Q^F_{x∩z} · Q^F_{y∩z}`.
+`List.TFAE.out` carries autoparams, so the projection needs an explicitly typed `have`
+before it can be applied to the blocks — the same friction Proposition 10 has. -/
+example {S : Type u} [Finite S] (F : FactoredSet S) {X Y Z : Setoid S}
+    (h : F.OrthogonalGiven X Y Z) {x y z : Set S} (hx : x ∈ X.classes) (hy : y ∈ Y.classes)
+    (hz : z ∈ Z.classes) : F.Q z ∣ F.Q (x ∩ z) * F.Q (y ∩ z) := by
+  have h2 : ∀ x ∈ X.classes, ∀ y ∈ Y.classes, ∀ z ∈ Z.classes,
+      F.Q z ∣ F.Q (x ∩ z) * F.Q (y ∩ z) := ((F.orthogonalGiven_tfae X Y Z).out 0 1).1 h
+  exact h2 x hx y hy z hz
+
+/-- Propositions 26 and 32 composed: a client holding `poly^F_B(E)` — the form Proposition
+30 factors — reads a probability straight off it, without ever naming `Q^F_E`. -/
+example {S : Type u} [Finite S] (F : FactoredSet S) (P : ProbDist S)
+    (hP : F.IsDistribution P) (E : Set S) : P E = MvPolynomial.eval P.P (poly F.B E) := by
+  rw [← F.Q_eq_poly E]
+  exact (F.isDistribution_iff P).1 hP E
+
+/-- Proposition 24 composed with Theorem 3: *unconditional* orthogonality is ordinary
+independence in every distribution on `F`.  Conditioning on `Ind_S` collapses the three
+intersections and `P(S) = 1`, so the theorem's division-free identity becomes
+`P(x) · P(y) = P(x ∩ y)` — the sentence a client with no interest in conditioning wants,
+and one neither Proposition 24 nor Theorem 3 states alone. -/
+example {S : Type u} [Finite S] [Nonempty S] (F : FactoredSet S) {X Y : Setoid S}
+    (h : F.Orthogonal X Y) (P : ProbDist S) (hP : F.IsDistribution P) {x y : Set S}
+    (hx : x ∈ X.classes) (hy : y ∈ Y.classes) : P x * P y = P (x ∩ y) := by
+  have hz : (Set.univ : Set S) ∈ (⊤ : Setoid S).classes := by
+    rw [classes_top ‹Nonempty S›]; rfl
+  have hind := (F.orthogonalGiven_iff_forall_isDistribution X Y ⊤).1
+    ((F.orthogonal_iff_orthogonalGiven_top X Y).1 h) P hP x hx y hy Set.univ hz
+  rwa [Set.inter_univ, Set.inter_univ, Set.inter_univ, P.univ, mul_one] at hind
+
+/-- Theorem 3 used as a **refutation** tool, which is the direction the paper's open-set
+argument buys: one distribution and one triple of blocks where the identity fails is a
+proof that `X ⊥^F Y | Z` is false.  A client testing a causal hypothesis calls it in this
+form, and it needs no computation of histories at all. -/
+example {S : Type u} [Finite S] (F : FactoredSet S) (X Y Z : Setoid S) (P : ProbDist S)
+    (hP : F.IsDistribution P) {x y z : Set S} (hx : x ∈ X.classes) (hy : y ∈ Y.classes)
+    (hz : z ∈ Z.classes) (hne : P (x ∩ z) * P (y ∩ z) ≠ P (x ∩ y ∩ z) * P z) :
+    ¬ F.OrthogonalGiven X Y Z :=
+  fun h => hne ((F.orthogonalGiven_iff_forall_isDistribution X Y Z).1 h P hP x hx y hy z hz)
+
+/-- Lemma 3 into Theorem 3, skipping orthogonality entirely: a client who has verified the
+*polynomial* identity of clause 3 gets probabilistic independence in every distribution on
+`F`.  Neither endpoint says this on its own — Lemma 3's clause 3 → clause 1 direction is
+the isolated `orthogonalGiven_of_Q_mul_Q_eq`, and Theorem 3 supplies the rest. -/
+example {S : Type u} [Finite S] (F : FactoredSet S) (X Y Z : Setoid S)
+    (hQ : ∀ x ∈ X.classes, ∀ y ∈ Y.classes, ∀ z ∈ Z.classes,
+      F.Q z * F.Q (x ∩ y ∩ z) = F.Q (x ∩ z) * F.Q (y ∩ z))
+    (P : ProbDist S) (hP : F.IsDistribution P) {x y z : Set S} (hx : x ∈ X.classes)
+    (hy : y ∈ Y.classes) (hz : z ∈ Z.classes) :
+    P (x ∩ z) * P (y ∩ z) = P (x ∩ y ∩ z) * P z :=
+  (F.orthogonalGiven_iff_forall_isDistribution X Y Z).1
+    (F.orthogonalGiven_of_Q_mul_Q_eq hQ) P hP x hx y hy z hz
+
+/-! ### A client's own distribution, and why the theorem is stated without division
+
+Definition 36 is a bare structure, so a downstream project has to be able to build one.
+The point mass below is the degenerate case worth having at the boundary: it *is* a
+distribution on the client's factored set — a product distribution whose two marginals are
+point masses — and it assigns probability zero to two of the four blocks.  Any statement
+of the fundamental theorem phrased with conditional probabilities would be undefined
+there; the paper's division-free form is not. -/
+
+/-- The client's point mass at `(true, true)`. -/
+noncomputable def dirac : ProbDist (Bool × Bool) where
+  P E := if ((true, true) : Bool × Bool) ∈ E then 1 else 0
+  nonneg _ := by split_ifs <;> norm_num
+  empty := by simp
+  univ := by simp
+  additive E₀ E₁ h := by
+    by_cases h0 : ((true, true) : Bool × Bool) ∈ E₀
+    · rw [if_pos (Set.mem_union_left _ h0), if_pos h0,
+        if_neg (Set.disjoint_left.1 h h0), add_zero]
+    · by_cases h1 : ((true, true) : Bool × Bool) ∈ E₁
+      · rw [if_pos (Set.mem_union_right _ h1), if_neg h0, if_pos h1, zero_add]
+      · rw [if_neg (fun hm => ((Set.mem_union _ _ _).1 hm).elim h0 h1), if_neg h0, if_neg h1,
+          add_zero]
+
+lemma dirac_apply (E : Set (Bool × Bool)) :
+    dirac E = if ((true, true) : Bool × Bool) ∈ E then 1 else 0 := rfl
+
+/-- Definition 37 for the point mass: its singleton probabilities do factor through the two
+observables, so it is a distribution on `clientPairFS` and not merely on `Bool × Bool`. -/
+lemma dirac_isDistribution : clientPairFS.IsDistribution dirac := by
+  intro s
+  have hne : obsFst ≠ obsSnd := by
+    intro hEq
+    have hr : obsFst (true, true) (true, false) := rfl
+    rw [hEq] at hr
+    exact Bool.noConfusion (hr : (true : Bool) = false)
+  have hbasis : clientPairFS.B = ({obsFst, obsSnd} : Set (Setoid (Bool × Bool))) := rfl
+  rw [hbasis, finprod_mem_pair hne, dirac_apply, dirac_apply, dirac_apply]
+  obtain ⟨a, b⟩ := s
+  have hfst : ((true, true) : Bool × Bool) ∈ part obsFst (a, b) ↔ (true : Bool) = a := Iff.rfl
+  have hsnd : ((true, true) : Bool × Bool) ∈ part obsSnd (a, b) ↔ (true : Bool) = b := Iff.rfl
+  rw [if_congr hfst rfl rfl, if_congr hsnd rfl rfl]
+  cases a <;> cases b <;> norm_num [Set.mem_singleton_iff]
+
+/-- The `obsFst` block on which the client's point mass vanishes. -/
+def obsFstFalse : Set (Bool × Bool) := {p | p.1 = false}
+
+lemma obsFstFalse_mem_classes : obsFstFalse ∈ obsFst.classes :=
+  obsFst.mem_classes (false, false)
+
+/-- Theorem 3 at a block the client's distribution gives probability **zero**.  Proposition
+25 makes `obsFst ⊥^F obsFst | obsFst` true, so the theorem's identity has to hold at every
+`obsFst` block — including `[·]₁ = false`, where `P(z) = 0` and every conditional
+probability is undefined.  That is exactly what the division-free phrasing of Theorem 3
+buys, and it is why the uniform distribution is not the only case worth having at the
+boundary. -/
+example :
+    dirac obsFstFalse = 0 ∧
+      dirac (obsFstFalse ∩ obsFstFalse) * dirac (obsFstFalse ∩ obsFstFalse)
+        = dirac (obsFstFalse ∩ obsFstFalse ∩ obsFstFalse) * dirac obsFstFalse := by
+  refine ⟨?_, ?_⟩
+  · rw [dirac_apply]
+    exact if_neg (fun h => Bool.noConfusion (h : (true : Bool) = false))
+  · exact (clientPairFS.orthogonalGiven_iff_forall_isDistribution obsFst obsFst obsFst).1
+      ((clientPairFS.orthogonalGiven_self_iff obsFst obsFst).2 le_rfl)
+      dirac dirac_isDistribution _ obsFstFalse_mem_classes _ obsFstFalse_mem_classes _
+      obsFstFalse_mem_classes
+
 end APITests.FiniteFactoredSets

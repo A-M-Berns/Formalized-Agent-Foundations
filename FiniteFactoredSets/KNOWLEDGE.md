@@ -13,6 +13,7 @@ trust surface and `FiniteFactoredSets.lean` for the `dd:` glossary.
 | `dd:order-flip` | Use Mathlib's order, never the paper's glyphs | Carrying both conventions in one file is how sign errors get proved. |
 | `dd:quotient` | `∏(B)` is `(b : B) → Quotient b` | Canonical; a presentation change, not a content change. |
 | `dd:poly` | `Poly S := MvPolynomial (Set S) ℝ`; eval = `MvPolynomial.eval`, supp = `vars`, irreducible = Mathlib `Irreducible`; set sums via `finsum`/`finprod` | Blocks are variables verbatim under `dd:partition`. Definitions carry no finiteness; `[Finite S]` sits on the §5.1–5.2 *theorems* and helper lemmas whose statements quantify over `E ⊆ S` (the exact list is in API.lean, maintained per round — round 6 caught an undercount). `mono`/`monos`/`poly` take no `F` (paper superscript notational) — the `size` trap avoided at design time. |
+| `dd:probability` | Definition 36 = `structure ProbDist S` (`P : Set S → ℝ`, nonneg, `P ∅ = 0`, `P univ = 1`, finitely additive); Definition 37 = predicate `FactoredSet.IsDistribution F P := ∀ s, P {s} = ∏ᶠ b ∈ F.B, P (part b s)`; `Q^F_E(P)` = `MvPolynomial.eval P.P (F.Q E)`; Theorem 3 stated division-free | Verbatim the paper's elementary definitions — no measure theory, no type-(c) substitution; a Mathlib-probability bridge would be a separate lemma, never a stand-in. Definitions carry no finiteness (finprod). A Dirac point mass IS a distribution on every factored set (product of point-mass marginals) — the non-distribution witness is `diagDist` (uniform on the diagonal). |
 | `dd:subpartition` | A subpartition of `S` is a partial equivalence relation on `S` (`structure Subpartition`), domain `{s | r s s}` | Mathlib has no PER structure and `Σ E, Setoid E` would put dependent subtypes and domain transports into every §4 statement. The correspondence is exhibited (`toSetoid`, `ofSetoidOn`, round-trip lemmas). Payoff observed by the §4.1 shard: `X (χ_C s t) s` already implies `χ_C s t ∈ dom X` (`mem_dom_of_rel`), so half of Proposition 20's "extra condition" is free and Prop 21 clause 5 needs no `χ(E,E) = E` bookkeeping. |
 | history | `history X := ⋂₀ {C | C ⊆ F.B ∧ Generates C X}` | Definition 17's "smallest generating subset". `history_isLeast` (Proposition 12) is what earns "smallest", and it needs `[Finite F.B]` **genuinely**: over `S = ℕ → Bool` with the coordinate factors, every cofinite subset of `B` generates the "eventually equal" partition, so the intersection of all generating subsets is `∅`, which generates nothing. All of §3 is stated with `Finite F.B` (finite *dimension*) and never `Finite S`. |
 
@@ -181,6 +182,11 @@ Paper node → Lean declaration. Extended as nodes land.
 | Proposition 29 | `FactoredSet.irr_partition` (§4 restatement `irr_isPartition`) | `Factoring.lean` |
 | Proposition 30 | `FactoredSet.Q_eq_finprod_poly_irr` (divisibility form `poly_dvd_Q`) | `Factoring.lean` |
 | Proposition 31 | `FactoredSet.irreducible_poly_of_mem_irr` | `Factoring.lean` |
+| Lemma 3 (`CPO`) | `FactoredSet.orthogonalGiven_tfae` (isolated: `Q_mul_Q_eq_of_orthogonalGiven` = `.out 0 2`, `orthogonalGiven_of_Q_mul_Q_eq` = `.out 2 0`) | `CharacteristicOrthogonality.lean` |
+| Definition 36 (probability distribution on `S`) | `ProbDist` (fields frozen) | `Probability.lean` |
+| Definition 37 (distribution on `F`) | `FactoredSet.IsDistribution` | `Probability.lean` |
+| Proposition 32 | `FactoredSet.isDistribution_iff` | `Probability.lean` |
+| Theorem 3 (fundamental theorem) | `FactoredSet.orthogonalGiven_iff_forall_isDistribution` | `Probability.lean` |
 
 Nodes deliberately rendered by Mathlib vocabulary with no declaration of ours
 (Definitions 2, 5, 6, 7, 9) are tabulated in `README.md`.
@@ -438,6 +444,50 @@ it belongs in the library as a stated open `Prop` with this note attached.
   upstream — `lake build` first.
 * The node checker is whole-directory: during parallel shards it stays red until the last
   shard's inventory rows land; read the file names in its output, not the count.
+
+## Stage 5b (§5.3–5.5) — durable lessons
+
+* All five nodes proved first pass, no stalls; the cost centre was again *choosing which
+  lemmas carry the paper's steps*, not tactics. Theorem 3's converse: the paper's `P_f`
+  (`E ↦ Q^F_E(f)/Q^F_S(f)`, positive `f`) built as a genuine `ProbDist` (private
+  `normalized`); its `IsDistribution` needs one lemma the paper glosses — `poly C univ =
+  ∏ᶠ b ∈ C, poly {b} univ` for `C ⊆ B` (private `poly_univ_finprod`, Prop 27 iterated at
+  `C₀ = {b}`) — the only genuinely new mathematics beyond §5.1–5.3; the analytic step is
+  `MvPolynomial.funext_set` at `Set.Ioi 0` (`eq_zero_of_eval_pos_eq_zero`, private in
+  Probability.lean; needs `import Mathlib.Order.Interval.Set.Infinite` for `Set.Ioi_infinite`).
+  The paper's `isEmpty_or_nonempty S` split is absorbed: `x ∈ X.classes` yields a point of `S`.
+* Lemma 3: `MvPolynomial σ R` is a `UniqueFactorizationMonoid` for ARBITRARY `σ`
+  (`Mathlib.RingTheory.Polynomial.UniqueFactorization`, not transitively imported) — no
+  `Fintype (Set S)` detour; `Irreducible.prime` applies. `B \ h(X|z) ⊢ Y|z` is one
+  application of the public `generatesSub_iff_historySub_subset`. The paper's `x ∩ z = ∅`
+  branch has no counterpart (`classes_restrict` yields only nonempty traces). Private
+  `eq_of_Q_eq : Q E = Q E' → E = E'` (via `monos_eq_of_support_eq` + injectivity) is the
+  polynomial→set step; promotion candidate.
+* **Duplication debt (round-8 de-slop):** three private §5.1–5.2 helpers were restated in
+  CharacteristicOrthogonality.lean because `private` is module-scoped —
+  `subset_chimeraImage_self` (as `mem_chimeraImage_self`), `mem_iff_part_mem_vars`,
+  `mono_basis_injective` (inside `eq_of_Q_eq`). Promote the originals to public and delete
+  the copies. `ProbDist.eq_sum_singleton{,_of_finite}` are public-but-uninventoried helpers
+  (Prop 32's finite additivity) — add to API.lean + conveniences block together.
+* Registers: 68 carriers / 74 annotations; §5 binder register 41 public decls =
+  19 `[Finite S]` / 5 `[Finite F.B]` / 17 free (recount mechanically). Two shards edited the
+  same AxiomAudit preamble line — pre-assign the preamble to one shard next stage.
+* Witnesses (Examples.lean, four subsets + `xorPart`): Lemma 3 clause 3 holds at `z = S`
+  and FAILS at `Ediag` (`coordSep` 310 vs 100); `uniform` (`P E = ncard E / 4`) is a
+  distribution on `coordFS`; `diagDist` is a `ProbDist` but not one on `coordFS`
+  (`P{(t,t)} = 1/2 ≠ 1/4`); Theorem 3 at `Ind_S` reads `1/2·1/2 = 1/4·1`, at `Ediag`
+  **1/16 ≠ 1/8** — conditional independence genuinely fails given the diagonal; the Dirac
+  point mass is used only for the zero-probability-block case (why Theorem 3 is division-free).
+* Traps: `rw [set_eq]` also rewrites a variable `X set` on the RHS — use `conv_lhs`; set-membership
+  `if_congr` rewrites fail on Decidable-instance mismatch (`cases … <;> norm_num`); `push_neg`
+  is deprecated (`push Not at h`); `dsimp only` as first tactic in a structure-field proof
+  errors "no progress"; `Set.union_diff_cancel` → `Set.union_sdiff_cancel`;
+  `Set.disjoint_sdiff_right` exists; `Set.Finite.induction_on` takes `s` and `hs` explicit
+  (`| @insert b C hbC hfin ih`); prefer `Finset.induction_on` when the carrier is a Finset;
+  `mul_div_mul_right (hc : c ≠ 0)` (GroupWithZero) for the `P_f([s]_b)` cancellation;
+  `Set.ncard_union_eq` autoparams discharge over a Fintype; `lake env lean` ignores
+  `autoImplicit := false`; the node checker does not scan `APITests/`; UTF-8-dense lines
+  break byte-length lint (`awk length`).
 
 ## Round 7 audit — durable lessons (§5.1–5.2 convergence round)
 

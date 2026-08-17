@@ -83,6 +83,26 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
   `mono`/`monos`/`poly` take no `F` (the paper's superscript is notational; they depend on
   `C` only); `Q` and `Irr` do.
 
+* `dd:probability` — §5.4's probability distributions are formalized **elementarily, as
+  the paper writes them**, with no measure theory anywhere in the statement.  Definition
+  36's distribution on a set is the structure `ProbDist S`: a function `P : Set S → ℝ`
+  together with `nonneg`, `empty` (`P ∅ = 0`), `univ` (`P Set.univ = 1`) and `additive`
+  (`P (E₀ ∪ E₁) = P E₀ + P E₁` for `Disjoint E₀ E₁`) — the paper's four clauses, in order.
+  Definition 37's distribution on a factored set is the predicate
+  `FactoredSet.IsDistribution P`, namely `P {s} = ∏ᶠ b ∈ B, P (part b s)`, and Definition
+  29's evaluation `Q^F_E(P)` is `MvPolynomial.eval P.P (F.Q E)` under `dd:poly`.
+
+  Three consequences worth stating.  A `MeasureTheory.ProbabilityMeasure` would **not** be
+  faithful here: the paper's `P` is a function on the full powerset with finite additivity
+  and no σ-algebra, and Theorem 3 quantifies over *all* such `P` — a measure-theoretic
+  rendering would silently change what the theorem ranges over.  A bridge to Mathlib's
+  probability vocabulary is extra credit and must stay a separate lemma, never a stand-in.
+  Second, the paper's standing "finite set `S`" is carried by the *statements* that need it
+  (Proposition 32 and Theorem 3), not by the structure, per `dd:finiteness-minimal`;
+  `ProbDist S` typechecks over any `S`.  Third, Theorem 3's independence conclusion is the
+  paper's own **division-free** `P(x∩z) · P(y∩z) = P(x∩y∩z) · P(z)`, so it is meaningful
+  when `P(z) = 0` and never introduces a conditional probability.
+
 * `dd:quotient` — Definition 9's Cartesian product `∏(B)` (functions choosing one block
   from each partition) is modeled as the dependent product `(b : B) → Quotient b`, and
   Definition 10's `π` as `fun s b => ⟦s⟧`.  `Quotient b` is canonically the set of
@@ -97,3 +117,5 @@ import FiniteFactoredSets.SubpartitionHistory
 import FiniteFactoredSets.ConditionalOrthogonality
 import FiniteFactoredSets.Polynomial
 import FiniteFactoredSets.Factoring
+import FiniteFactoredSets.CharacteristicOrthogonality
+import FiniteFactoredSets.Probability

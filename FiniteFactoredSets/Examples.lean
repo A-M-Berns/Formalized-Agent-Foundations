@@ -1,5 +1,6 @@
 import FiniteFactoredSets.ConditionalOrthogonality
 import FiniteFactoredSets.Factoring
+import FiniteFactoredSets.Probability
 
 /-!
 # Worked factored sets — the non-vacuity witnesses
@@ -7,10 +8,11 @@ import FiniteFactoredSets.Factoring
 Every §2–§5 endpoint is stated over `FactoredSet`, so until something exhibits one those
 endpoints say nothing about anything.  This file exhibits four factored sets, covering the
 degenerate sizes Proposition 5 singles out and one genuinely two-dimensional example that
-makes the chimera function actually splice, and then runs the §2.5, §3, §4 and §5.1–§5.2
+makes the chimera function actually splice, and then runs the §2.5, §3, §4 and §5
 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`, `Entangled`, `Before`,
 `StrictlyBefore`, `Subpartition`, `GeneratesSub`, `historySub`, `OrthogonalSub`,
-`OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`, `monos`, `poly`, `irr` — over them.
+`OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`, `monos`, `poly`, `irr`, `ProbDist`,
+`IsDistribution` — over them.
 
 `coordFS` is the load-bearing one: with a single factor every `C` behaves as `∅` or `B`,
 so Proposition 4 would be a family of near-tautologies.  `not_subsingleton_coordFS_basis`
@@ -76,6 +78,20 @@ Propositions 28, 30 and 31 are each shown load-bearing at `E = ∅` (Proposition
 consumed; and `poly_top_univ_junk` records what the total function `poly` does at a `C`
 outside `B`, so nobody reads a §5 statement as covering that value.
 
+The §5.3–§5.5 half turns all of that into probability.  It builds the first two
+inhabitants of Definition 36 — `uniform`, `P(E) = |E| / 4`, and `diagDist`,
+`P(E) = |E ∩ Ediag| / 2` — and separates Definitions 36 and 37 with them: `uniform` is a
+distribution on `coordFS` while `diagDist` is a distribution on the *set* only, since it
+makes the two coordinates perfectly correlated.  Lemma 3's clause 3, Proposition 32 and
+Theorem 3 are then each cross-checked and separately applied, and each is computed at both
+of the conditioning partitions §4.3 already separates: at `Ind_S` the coordinate factors
+are orthogonal, clause 3 holds and `uniform` makes them independent (`1/2 · 1/2 = 1/4 · 1`);
+at the `xorPart` block `Ediag` the pair is entangled, clause 3 fails by one separating
+evaluation (`310` against `100`), and `uniform` breaks independence (`1/16` against `1/8`).
+That last computation is the concrete form of the existential Theorem 3's hard direction
+promises, and `thm3_coordFS_xorPart_witness` and `thm3_coordFS_xorPart_applied` are the
+cross-check/application pair for it.
+
 One negative record deserves its name here: Proposition 28's conclusion, asserted at a
 `poly^F_C(E)`, is a triviality — provable for every `C ⊆ B` and every `E` with none of the
 proposition's hypotheses, as the `example` beside
@@ -101,7 +117,14 @@ variables, the separating evaluation `coordSep` with its four `coordSep_*` value
 `univ_nonempty_coord`, `chimeraImage_basis_Ediag`, `chimeraImage_Efst`,
 `chimeraImage_fst_Efst_univ`, `chimeraImage_empty`, `part_top_eq_univ`,
 `singleton_fst_union_snd_eq_basis`, `disjoint_singleton_fst_snd`,
-`two_mul_poly_fst_dvd_Q_coordFS_univ` and `singleton_fst_ne_singleton_snd`) are
+`two_mul_poly_fst_dvd_Q_coordFS_univ` and `singleton_fst_ne_singleton_snd`, and in
+§5.3–§5.5 the block descriptions `vfst_eq`, `vsnd_eq`, the four intersection computations
+`Efst_inter_vsnd_true`, `Efst_inter_Ediag`, `vsnd_true_inter_Ediag`,
+`Efst_inter_vsnd_true_inter_Ediag` with `singleton_tt_subset_Ediag`, the three
+`Setoid.classes` memberships `Efst_mem_fstFactor_classes`,
+`vsnd_true_mem_sndFactor_classes`, `univ_mem_top_classes`, and the numeric unfoldings
+`uniform_apply`, `uniform_singleton`, `uniform_vfst`, `uniform_vsnd`, `uniform_Efst`,
+`uniform_Ediag`, `diagDist_apply`) are
 not, since they claim nothing about the paper.  The witnesses cite the paper in prose
 rather than carrying the reserved node annotation: the paper's Examples 1 and 2 are §6
 orthogonality databases, not these.
@@ -2154,6 +2177,381 @@ lemma top_notMem_coordFS_basis : (⊤ : Setoid (Bool × Bool)) ∉ coordFS.B := 
   · have hr : (⊤ : Setoid (Bool × Bool)) (false, true) (false, false) := trivial
     rw [h] at hr
     exact Bool.noConfusion (hr : (true : Bool) = false)
+
+/-! ## §5.3–§5.5 over `coordFS`: divisibility, distributions, and the fundamental theorem
+
+§5.3–§5.5 add the last layer of vocabulary — the divisibility characterization of
+conditional orthogonality (Lemma 3), probability distributions on a set and on a factored
+set (Definitions 36–37), their characterization by evaluation (Proposition 32), and the
+fundamental theorem (Theorem 3) — and none of the §2–§5.2 witnesses touch any of it.
+`ProbDist` in particular is a bare structure: until something builds one, every statement
+quantified over distributions is vacuously satisfiable and Theorem 3's right-hand side
+says nothing.
+
+The section is organized around a single discriminating pair of conditioning partitions,
+already established in §4.3 and §5.2 on this witness: `coordFS`'s two coordinate factors
+are orthogonal given `Ind_S` (`orthogonalGiven_fst_snd_top`) and entangled given `xorPart`
+(`not_orthogonalGiven_fst_snd_xorPart`, via the diagonal block `Ediag`).  Every §5.3–§5.5
+notion below is computed at *both*, and in each case the two answers differ:
+
+* **Lemma 3 clause 3** holds at `z = S` — `Q^F_S · Q^F_{x∩y}` and `Q^F_x · Q^F_y` are the
+  same polynomial — and **fails** at `z = Ediag`, where the two products are separated by
+  one evaluation (`310` against `100`).  So clause 3 is neither vacuous nor total on this
+  witness, and its failure sits exactly where §4.3 says the pair is entangled.
+* **Definitions 36–37 are inhabited and the second is not implied by the first.**
+  `uniform` — `P(E) = |E| / 4` — is a `ProbDist` and a distribution on `coordFS`
+  (`P{s} = 1/4 = 1/2 · 1/2`).  `diagDist` — `P(E) = |E ∩ Ediag| / 2`, the distribution
+  concentrated on the diagonal — is a `ProbDist` and **not** a distribution on `coordFS`:
+  at `s = (true, true)` it gives `P{s} = 1/2` while `P([s]_fst) · P([s]_snd) = 1/4`.  That
+  is what stops Definition 37's product condition from being decoration, and it is the
+  same failure of the diagonal that §4.3 and §5.2 see combinatorially.
+* **Theorem 3** applied forward at `Z = Ind_S` gives `P(x)·P(y) = P(x∩y)·P(S)`, which
+  `uniform` satisfies as `1/2 · 1/2 = 1/4 · 1`; applied backward at `Z = xorPart` it turns
+  `¬ (fst ⊥^F snd | xorPart)` into the *existence* of a distribution and blocks whose
+  independence fails, and `thm3_coordFS_xorPart_witness` exhibits that existential
+  concretely — `uniform` at `z = Ediag`, where `1/4 · 1/4 = 1/16` but
+  `1/4 · 1/2 = 1/8`.  Conditional independence genuinely fails given the diagonal.
+
+The cross-check discipline of §5.1–§5.2 runs here too: `lemma3_clause3_coordFS_top_crosscheck`,
+`prop32_coordFS_Efst_crosscheck`, `thm3_coordFS_top_crosscheck` and
+`thm3_coordFS_xorPart_witness` compute their claims from Definitions 31–37, while the four
+`*_applied` twins — which state the *same* propositions — instantiate the endpoint.  (While
+the endpoints were still `sorry`d during drafting, `#print axioms` split the two groups
+exactly; now that they are proved the separation is textual, as in §5.1–§5.2:
+no cross-check names `orthogonalGiven_tfae`, `Q_mul_Q_eq_of_orthogonalGiven`,
+`isDistribution_iff` or `orthogonalGiven_iff_forall_isDistribution`.) -/
+
+/-! ### The blocks Lemma 3 and Theorem 3 quantify over
+
+`Efst = {p | p.1 = true}` is a block of `fstFactor` and `vsnd true` is a block of
+`sndFactor` (both are `part b s` on the nose, so `Setoid.mem_classes` applies with no
+glue), `Set.univ` is the single block of `Ind_S`, and `Ediag` is a block of `xorPart`
+(`Ediag_mem_xorPart_classes`, §4.3).  Their pairwise intersections all collapse to the
+single point `(true, true)`, which is what makes the two verdicts computable. -/
+
+lemma vfst_eq (a : Bool) : vfst a = ({(a, true), (a, false)} : Set (Bool × Bool)) := by
+  ext ⟨x, y⟩
+  constructor
+  · intro h
+    have hx : x = a := h
+    subst hx
+    cases y
+    · exact Or.inr rfl
+    · exact Or.inl rfl
+  · rintro (h | h) <;> exact congrArg Prod.fst h
+
+lemma vsnd_eq (b : Bool) : vsnd b = ({(true, b), (false, b)} : Set (Bool × Bool)) := by
+  ext ⟨x, y⟩
+  constructor
+  · intro h
+    have hy : y = b := h
+    subst hy
+    cases x
+    · exact Or.inr rfl
+    · exact Or.inl rfl
+  · rintro (h | h) <;> exact congrArg Prod.snd h
+
+lemma Efst_inter_vsnd_true : Efst ∩ vsnd true = ({((true, true) : Bool × Bool)} : Set _) := by
+  ext ⟨x, y⟩
+  constructor
+  · rintro ⟨h1, h2⟩
+    have hx : x = true := h1
+    have hy : y = true := h2
+    subst hx; subst hy; rfl
+  · intro h
+    have h' : (x, y) = ((true, true) : Bool × Bool) := h
+    rw [h']
+    exact ⟨rfl, rfl⟩
+
+lemma singleton_tt_subset_Ediag :
+    ({((true, true) : Bool × Bool)} : Set _) ⊆ Ediag := by
+  intro p hp
+  have h' : p = ((true, true) : Bool × Bool) := hp
+  rw [h']
+  rfl
+
+lemma Efst_inter_Ediag : Efst ∩ Ediag = ({((true, true) : Bool × Bool)} : Set _) := by
+  ext ⟨x, y⟩
+  constructor
+  · rintro ⟨h1, h2⟩
+    have hx : x = true := h1
+    have hy : x = y := h2
+    subst hx
+    have hy' : true = y := hy
+    subst hy'
+    rfl
+  · intro h
+    have h' : (x, y) = ((true, true) : Bool × Bool) := h
+    rw [h']
+    exact ⟨rfl, rfl⟩
+
+lemma vsnd_true_inter_Ediag : vsnd true ∩ Ediag = ({((true, true) : Bool × Bool)} : Set _) := by
+  ext ⟨x, y⟩
+  constructor
+  · rintro ⟨h1, h2⟩
+    have hy : y = true := h1
+    have hx : x = y := h2
+    subst hy
+    have hx' : x = true := hx
+    subst hx'
+    rfl
+  · intro h
+    have h' : (x, y) = ((true, true) : Bool × Bool) := h
+    rw [h']
+    exact ⟨rfl, rfl⟩
+
+lemma Efst_inter_vsnd_true_inter_Ediag :
+    Efst ∩ vsnd true ∩ Ediag = ({((true, true) : Bool × Bool)} : Set _) := by
+  rw [Efst_inter_vsnd_true, Set.inter_eq_self_of_subset_left singleton_tt_subset_Ediag]
+
+lemma Efst_mem_fstFactor_classes : Efst ∈ fstFactor.classes :=
+  fstFactor.mem_classes (true, true)
+
+lemma vsnd_true_mem_sndFactor_classes : vsnd true ∈ sndFactor.classes :=
+  sndFactor.mem_classes (true, true)
+
+lemma univ_mem_top_classes :
+    (Set.univ : Set (Bool × Bool)) ∈ (⊤ : Setoid (Bool × Bool)).classes := by
+  rw [classes_top ⟨(true, true)⟩]
+  rfl
+
+/-! ### Definition 31 at the two remaining blocks -/
+
+lemma Q_coordFS_singleton (s : Bool × Bool) :
+    coordFS.Q {s} = (X (vfst s.1) * X (vsnd s.2) : Poly (Bool × Bool)) := by
+  rw [coordFS.Q_eq_finsum_mono, finsum_mem_singleton, mono_coordFS_basis]
+
+lemma Q_coordFS_vsnd_true :
+    coordFS.Q (vsnd true)
+      = (X (vfst true) * X (vsnd true) + X (vfst false) * X (vsnd true) :
+          Poly (Bool × Bool)) := by
+  rw [coordFS.Q_eq_finsum_mono]
+  conv_lhs => rw [vsnd_eq true]
+  rw [finsum_mem_pair (show ((true, true) : Bool × Bool) ≠ (false, true) by
+      intro h; exact Bool.noConfusion (congrArg Prod.fst h)),
+    mono_coordFS_basis, mono_coordFS_basis]
+
+lemma Q_coordFS_Ediag :
+    coordFS.Q Ediag
+      = (X (vfst false) * X (vsnd false) + X (vfst true) * X (vsnd true) :
+          Poly (Bool × Bool)) := by
+  rw [coordFS.Q_eq_finsum_mono, Ediag_eq,
+    finsum_mem_pair (show ((false, false) : Bool × Bool) ≠ (true, true) by
+      intro h; exact Bool.noConfusion (congrArg Prod.fst h)),
+    mono_coordFS_basis, mono_coordFS_basis]
+
+/-! ### §5.3: Lemma 3's clause 3 holds at `Ind_S` and fails on the diagonal -/
+
+/-- **Lemma 3 clause 3, cross-checked** at `z = S` for the blocks `x = Efst` of
+`fstFactor` and `y = [·]₂ = true` of `sndFactor`: both products expand, from Definition 31
+alone, to `(X_{[·]₁=t} + X_{[·]₁=f})(X_{[·]₂=t} + X_{[·]₂=f}) · X_{[·]₁=t} X_{[·]₂=t}`.
+No divisibility endpoint is mentioned. -/
+lemma lemma3_clause3_coordFS_top_crosscheck :
+    coordFS.Q Set.univ * coordFS.Q (Efst ∩ vsnd true ∩ Set.univ)
+      = coordFS.Q (Efst ∩ Set.univ) * coordFS.Q (vsnd true ∩ Set.univ) := by
+  rw [Set.inter_univ, Set.inter_univ, Set.inter_univ, Efst_inter_vsnd_true,
+    Q_coordFS_univ_eq, Q_coordFS_singleton, Q_coordFS_Efst_eq, Q_coordFS_vsnd_true]
+  ring
+
+/-- …and the same proposition **applied**: Lemma 3's clause 1 → clause 3 direction fed the
+§4.3 fact `fstFactor ⊥^F sndFactor | Ind_S`. -/
+lemma lemma3_clause3_coordFS_top_applied :
+    coordFS.Q Set.univ * coordFS.Q (Efst ∩ vsnd true ∩ Set.univ)
+      = coordFS.Q (Efst ∩ Set.univ) * coordFS.Q (vsnd true ∩ Set.univ) :=
+  coordFS.Q_mul_Q_eq_of_orthogonalGiven orthogonalGiven_fst_snd_top
+    Efst_mem_fstFactor_classes vsnd_true_mem_sndFactor_classes univ_mem_top_classes
+
+/-- **Lemma 3 clause 3 fails on the diagonal**, which is what stops it being a triviality:
+at `z = Ediag` — a block of `xorPart` — the three intersections all collapse to the point
+`(true, true)`, so the left product is `(X_{[·]₁=f}X_{[·]₂=f} + X_{[·]₁=t}X_{[·]₂=t}) ·
+X_{[·]₁=t}X_{[·]₂=t}` while the right is its square.  One separating evaluation
+(`coordSep`) sends them to `310` and `100`.  By Lemma 3 this is the polynomial shadow of
+`¬ (fstFactor ⊥^F sndFactor | xorPart)`. -/
+lemma lemma3_clause3_coordFS_Ediag_fails :
+    coordFS.Q Ediag * coordFS.Q (Efst ∩ vsnd true ∩ Ediag)
+      ≠ coordFS.Q (Efst ∩ Ediag) * coordFS.Q (vsnd true ∩ Ediag) := by
+  rw [Efst_inter_vsnd_true_inter_Ediag, Efst_inter_Ediag, vsnd_true_inter_Ediag,
+    Q_coordFS_Ediag, Q_coordFS_singleton]
+  intro h
+  have h' := congrArg (MvPolynomial.eval coordSep) h
+  simp only [map_add, map_mul, eval_X, coordSep_vfst_true, coordSep_vfst_false,
+    coordSep_vsnd_true, coordSep_vsnd_false] at h'
+  norm_num at h'
+
+/-! ### §5.4: Definitions 36 and 37 inhabited, and kept apart
+
+Definition 36 is a bare structure and Definition 37 a predicate on it, so a client's first
+question is whether either is inhabited and whether the second is stronger than the first.
+`uniform` answers the first and `diagDist` the second. -/
+
+/-- **Definition 36 on the witness**: the uniform distribution on the four points of
+`Bool × Bool`, `P(E) = |E| / 4`.  Additivity is `Set.ncard_union_eq`; the three constant
+fields are `Set.ncard_empty` and `|Bool × Bool| = 4`. -/
+noncomputable def uniform : ProbDist (Bool × Bool) where
+  P E := (E.ncard : ℝ) / 4
+  nonneg _ := by positivity
+  empty := by rw [Set.ncard_empty]; norm_num
+  univ := by
+    rw [Set.ncard_univ, Nat.card_eq_fintype_card]
+    norm_num
+  additive E₀ E₁ h := by
+    rw [Set.ncard_union_eq h]
+    push_cast
+    ring
+
+lemma uniform_apply (E : Set (Bool × Bool)) : uniform E = (E.ncard : ℝ) / 4 := rfl
+
+lemma uniform_singleton (s : Bool × Bool) : uniform {s} = 1 / 4 := by
+  rw [uniform_apply, Set.ncard_singleton]
+  norm_num
+
+lemma uniform_vfst (a : Bool) : uniform (vfst a) = 1 / 2 := by
+  rw [uniform_apply, vfst_eq,
+    Set.ncard_pair (show ((a, true) : Bool × Bool) ≠ (a, false) by
+      intro h; exact Bool.noConfusion (congrArg Prod.snd h))]
+  norm_num
+
+lemma uniform_vsnd (b : Bool) : uniform (vsnd b) = 1 / 2 := by
+  rw [uniform_apply, vsnd_eq,
+    Set.ncard_pair (show ((true, b) : Bool × Bool) ≠ (false, b) by
+      intro h; exact Bool.noConfusion (congrArg Prod.fst h))]
+  norm_num
+
+lemma uniform_Efst : uniform Efst = 1 / 2 := uniform_vfst true
+
+lemma uniform_Ediag : uniform Ediag = 1 / 2 := by
+  rw [uniform_apply, Ediag_eq,
+    Set.ncard_pair (show ((false, false) : Bool × Bool) ≠ (true, true) by
+      intro h; exact Bool.noConfusion (congrArg Prod.fst h))]
+  norm_num
+
+/-- **Definition 37 on the witness**: `uniform` is a distribution on the factored set, not
+merely on the set — each factor contributes `1/2` and `1/4 = 1/2 · 1/2`.  This is the
+first inhabitant of `IsDistribution`, so Proposition 32 and Theorem 3 stop quantifying
+over an empty family here. -/
+lemma uniform_isDistribution : coordFS.IsDistribution uniform := by
+  intro s
+  rw [coordFS_basis_eq, finprod_mem_pair fstFactor_ne_sndFactor, part_fstFactor,
+    part_sndFactor, uniform_vfst, uniform_vsnd, uniform_singleton]
+  norm_num
+
+/-- The distribution concentrated on the diagonal: `P(E) = |E ∩ Ediag| / 2`, so
+`P{(f,f)} = P{(t,t)} = 1/2` and the two off-diagonal points have probability `0`. -/
+noncomputable def diagDist : ProbDist (Bool × Bool) where
+  P E := ((E ∩ Ediag).ncard : ℝ) / 2
+  nonneg _ := by positivity
+  empty := by rw [Set.empty_inter, Set.ncard_empty]; norm_num
+  univ := by
+    rw [Set.univ_inter, Ediag_eq,
+      Set.ncard_pair (show ((false, false) : Bool × Bool) ≠ (true, true) by
+        intro h; exact Bool.noConfusion (congrArg Prod.fst h))]
+    norm_num
+  additive E₀ E₁ h := by
+    rw [Set.union_inter_distrib_right,
+      Set.ncard_union_eq (h.mono Set.inter_subset_left Set.inter_subset_left)]
+    push_cast
+    ring
+
+lemma diagDist_apply (E : Set (Bool × Bool)) : diagDist E = ((E ∩ Ediag).ncard : ℝ) / 2 := rfl
+
+/-- **Definition 37 is strictly stronger than Definition 36.**  `diagDist` is a
+probability distribution on `S` — all four fields hold — and is *not* a distribution on
+`coordFS`: at `s = (true, true)` the singleton has probability `1/2` while the product
+over the factors is `1/2 · 1/2 = 1/4`.  So the product condition of Definition 37 is doing
+work, and the counterexample is the diagonal again: `diagDist` is exactly the distribution
+under which the two coordinate factors are perfectly correlated. -/
+lemma not_isDistribution_diagDist : ¬ coordFS.IsDistribution diagDist := by
+  intro h
+  have hs := h (true, true)
+  rw [coordFS_basis_eq, finprod_mem_pair fstFactor_ne_sndFactor, part_fstFactor,
+    part_sndFactor] at hs
+  rw [diagDist_apply, diagDist_apply, diagDist_apply,
+    Set.inter_eq_self_of_subset_left singleton_tt_subset_Ediag, Set.ncard_singleton] at hs
+  rw [show vfst (true, true).1 = Efst from rfl, Efst_inter_Ediag, Set.ncard_singleton,
+    show vsnd (true, true).2 = vsnd true from rfl, vsnd_true_inter_Ediag,
+    Set.ncard_singleton] at hs
+  norm_num at hs
+
+/-! ### §5.4: Proposition 32 at a subset where the two sides are not the same expression -/
+
+/-- **Proposition 32, cross-checked** at `E = Efst`: the polynomial `Q^F_{Efst}` evaluated
+at `uniform` is `1/2 · 1/2 + 1/2 · 1/2`, and `uniform(Efst)` is `2/4` — computed from
+Definitions 31 and 36, mentioning no characterization endpoint.  `Efst` is chosen because
+`Q^F_{Efst}` has two terms while `Efst` has two points, so the evaluation is a genuine sum
+rather than a restatement. -/
+lemma prop32_coordFS_Efst_crosscheck :
+    uniform Efst = eval uniform.P (coordFS.Q Efst) := by
+  rw [Q_coordFS_Efst_eq]
+  simp only [map_add, map_mul, eval_X]
+  rw [show uniform.P (vfst true) = 1 / 2 from uniform_vfst true,
+    show uniform.P (vsnd true) = 1 / 2 from uniform_vsnd true,
+    show uniform.P (vsnd false) = 1 / 2 from uniform_vsnd false, uniform_Efst]
+  norm_num
+
+/-- …and the same proposition **applied**: Proposition 32's forward direction at
+`uniform`. -/
+lemma prop32_coordFS_Efst_applied :
+    uniform Efst = eval uniform.P (coordFS.Q Efst) :=
+  (coordFS.isDistribution_iff uniform).1 uniform_isDistribution Efst
+
+/-! ### §5.5: the fundamental theorem, both directions, on the discriminating pair -/
+
+/-- **Theorem 3's right-hand side, cross-checked** at `Z = Ind_S`: under `uniform` the two
+coordinate factors are independent, `1/2 · 1/2 = 1/4 · 1`, computed from Definition 36. -/
+lemma thm3_coordFS_top_crosscheck :
+    uniform (Efst ∩ Set.univ) * uniform (vsnd true ∩ Set.univ)
+      = uniform (Efst ∩ vsnd true ∩ Set.univ) * uniform Set.univ := by
+  rw [Set.inter_univ, Set.inter_univ, Set.inter_univ, Efst_inter_vsnd_true,
+    uniform_Efst, uniform_vsnd, uniform_singleton, uniform.univ]
+  norm_num
+
+/-- …and the same proposition **applied**: Theorem 3's forward direction turns the §4.3
+combinatorial fact `fstFactor ⊥^F sndFactor | Ind_S` into that numerical independence,
+with no computation of `uniform` at all. -/
+lemma thm3_coordFS_top_applied :
+    uniform (Efst ∩ Set.univ) * uniform (vsnd true ∩ Set.univ)
+      = uniform (Efst ∩ vsnd true ∩ Set.univ) * uniform Set.univ :=
+  (coordFS.orthogonalGiven_iff_forall_isDistribution fstFactor sndFactor ⊤).1
+    orthogonalGiven_fst_snd_top uniform uniform_isDistribution
+    Efst Efst_mem_fstFactor_classes (vsnd true) vsnd_true_mem_sndFactor_classes
+    Set.univ univ_mem_top_classes
+
+/-- **Conditional independence fails given the diagonal.**  Conditioning `uniform` on
+`Ediag`: `P(x ∩ z) = P(y ∩ z) = P(x ∩ y ∩ z) = 1/4` and `P(z) = 1/2`, so the left side is
+`1/16` and the right is `1/8`.  This is the numerical form of the entanglement §4.3 sees
+combinatorially and §5.3 sees in the polynomials. -/
+lemma thm3_coordFS_Ediag_fails :
+    uniform (Efst ∩ Ediag) * uniform (vsnd true ∩ Ediag)
+      ≠ uniform (Efst ∩ vsnd true ∩ Ediag) * uniform Ediag := by
+  rw [Efst_inter_Ediag, vsnd_true_inter_Ediag, Efst_inter_vsnd_true_inter_Ediag,
+    uniform_singleton, uniform_Ediag]
+  norm_num
+
+/-- **The existential Theorem 3's hard direction promises, exhibited.**  Since
+`¬ (fstFactor ⊥^F sndFactor | xorPart)`, the theorem says *some* distribution on `coordFS`
+and *some* blocks break independence; this names them — `uniform`, the blocks `Efst`,
+`[·]₂ = true`, and the `xorPart` block `Ediag` — without invoking the theorem. -/
+lemma thm3_coordFS_xorPart_witness :
+    ∃ P : ProbDist (Bool × Bool), coordFS.IsDistribution P ∧
+      ∃ x ∈ fstFactor.classes, ∃ y ∈ sndFactor.classes, ∃ z ∈ xorPart.classes,
+        P (x ∩ z) * P (y ∩ z) ≠ P (x ∩ y ∩ z) * P z :=
+  ⟨uniform, uniform_isDistribution, Efst, Efst_mem_fstFactor_classes,
+    vsnd true, vsnd_true_mem_sndFactor_classes, Ediag, Ediag_mem_xorPart_classes,
+    thm3_coordFS_Ediag_fails⟩
+
+/-- …and the same proposition **applied**: Theorem 3's *backward* direction, contraposed
+against `not_orthogonalGiven_fst_snd_xorPart`, produces that existential from the §4.3
+fact alone.  This is the direction the paper's "vanishes on an open set" argument proves,
+and it is the one that makes conditional orthogonality *testable*. -/
+lemma thm3_coordFS_xorPart_applied :
+    ∃ P : ProbDist (Bool × Bool), coordFS.IsDistribution P ∧
+      ∃ x ∈ fstFactor.classes, ∃ y ∈ sndFactor.classes, ∃ z ∈ xorPart.classes,
+        P (x ∩ z) * P (y ∩ z) ≠ P (x ∩ y ∩ z) * P z := by
+  by_contra hcon
+  push Not at hcon
+  exact not_orthogonalGiven_fst_snd_xorPart
+    ((coordFS.orthogonalGiven_iff_forall_isDistribution fstFactor sndFactor xorPart).2
+      fun P hP x hx y hy z hz => hcon P hP x hx y hy z hz)
 
 end Examples
 end FiniteFactoredSets

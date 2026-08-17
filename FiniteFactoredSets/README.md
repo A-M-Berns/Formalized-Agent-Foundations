@@ -5,14 +5,15 @@ Formalization of Scott Garrabrant, *Temporal Inference with Finite Factored Sets
 `notes/2109.11513-main.tex` is the exact arXiv source and `notes/2109.11513.pdf` the
 matching PDF.
 
-**Status: in progress — §2, §3, §4 and §5.1–§5.2 formalized (63 of the 96 in-scope nodes
+**Status: in progress — §2, §3, §4 and §5 formalized (68 of the 96 in-scope nodes
 carry a Lean declaration of ours; two more, §5.1's Definitions 29 and 30, are rendered by
 Mathlib vocabulary and are tabulated below with the six such nodes of §2.1), with
-non-vacuity discharged by construction: four factored sets are built, and the §2.5, §3,
-§4 and §5.1–§5.2 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`,
+non-vacuity discharged by construction: four factored sets and two probability
+distributions are built, and the §2.5, §3,
+§4 and §5 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`,
 `Entangled`, `Before`, `StrictlyBefore`, `Subpartition`, `GeneratesSub`, `historySub`,
 `OrthogonalSub`, `OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`, `monos`, `poly`,
-`irr` — is computed over them rather than merely defined.**
+`irr`, `ProbDist`, `IsDistribution` — is computed over them rather than merely defined.**
 Nothing here is complete, and this file says what is claimed and what is not.
 
 ## What is claimed
@@ -33,14 +34,17 @@ Nothing here is complete, and this file says what is claimed and what is not.
 | 4.3 | Conditional orthogonality, the semigraphoid axioms | Definitions 25, 26, 27; Propositions 24, 25; Theorem 2 |
 | 5.1 | The polynomial ring, characteristic polynomials, `factor1` and `factor2` | Definitions 28, 31, 32, 33, 34; Propositions 26, 27, 28 |
 | 5.2 | Factoring characteristic polynomials into irreducibles | Definition 35; Propositions 29, 30, 31 |
+| 5.3 | Characteristic polynomials and conditional orthogonality | Lemma 3 |
+| 5.4 | Probability distributions on finite factored sets | Definitions 36, 37; Proposition 32 |
+| 5.5 | The fundamental theorem of finite factored sets | Theorem 3 |
 
 §5.1's Definitions 29 (evaluation) and 30 (support) are the two nodes of these sections
 with no declaration of ours; they are in the Mathlib-rendered table below, which is why
-the rows above sum to 63 rather than 65.
+the rows above sum to 68 rather than 70.
 
 Five of those nodes are stated in halves — four in two, one in three — and every half is
-carried, so those nodes appear in the inventory more than once. The 63 nodes above are
-cited by 69 annotations:
+carried, so those nodes appear in the inventory more than once. The 68 nodes above are
+cited by 74 annotations:
 
 | Node | Carriers |
 |---|---|
@@ -57,10 +61,9 @@ Every one of those carries a `Paper node:` docstring line and an entry in
 
 ## What is not claimed
 
-§5.3 onwards (characteristic polynomials and orthogonality, probability, and the
-Fundamental Theorem), §6 (inferring time), and §7's in-scope material have **no Lean
-statements yet**. The trust-surface guide reports the shortfall by kind rather than
-listing it.
+§6 (inferring time) and §7's in-scope material have **no Lean statements yet**. The
+trust-surface guide reports the shortfall by kind rather than listing it. §5.3–§5.5 have
+final statements whose proofs are still outstanding, as the paragraph above records.
 
 An earlier feasibility spike proved several §5 results — the disjoint-support coefficient
 lemma behind Proposition 28, multilinearity of `Q^F_E`, and the Fundamental Theorem's
@@ -68,8 +71,8 @@ lemma behind Proposition 28, multilinearity of `Q^F_E`, and the Fundamental Theo
 retired rather than kept alongside the real one; the code is preserved at commit
 `19a2254` and its findings are in `notes/spike-2026-08-15.md`. The first of the three has
 been re-landed against `FactoredSet` as `coeff_add_mul_of_split` in `Polynomial.lean`
-(generic in the index type, and upstreamable); the third belongs to §5.3 and is still to
-come.
+(generic in the index type, and upstreamable); the third is the step Theorem 3's hard
+direction needs and is still to come.
 
 **Scope (settled 2026-08-16): 96 of 98 nodes.** In: §1–§6 in full, §7's Definitions
 46–50, and Conjecture 1 stated as a `Prop` and deliberately not proved. Out: Examples 3
@@ -83,15 +86,18 @@ only, because none of that material touches polynomials. `|S|` finite enters at 
 infinite — the `finsum` collapses to `0`.
 
 It does not enter across the board, and it would be wrong to read §5 as a
-finite-`S`-only section. Of the 33 public §5 declarations, fourteen carry `[Finite S]`,
-five carry `[Finite F.B]` only, and fourteen carry no finiteness at all. So there are
+finite-`S`-only section. Of the 41 public §5 declarations, nineteen carry `[Finite S]`,
+five carry `[Finite F.B]` only, and seventeen carry no finiteness at all. So there are
 statements of ours that *do* apply over an infinite `S`, and a client working there gets
 more than the definitions:
 
 * with no hypothesis whatever — `poly_empty`, `mono_eq_prod`, `mono_congr`, `mono_union`,
-  `Q_eq_finsum_mono`, `mem_irr`, the upstreamable `coeff_add_mul_of_split`, and
+  `Q_eq_finsum_mono`, `mem_irr`, the upstreamable `coeff_add_mul_of_split`,
   `degreeOf_poly_le` (every variable has degree at most one in `poly^F_C(E)` for `C ⊆ B`,
-  junk values included);
+  junk values included), and all three §5.4 definitions — `ProbDist`, its `CoeFun`
+  instance, and `IsDistribution`, which are stated over an arbitrary `S` on purpose
+  (`dd:probability`), so that `[Finite S]` sits on Proposition 32 and Theorem 3 rather
+  than on every statement that merely mentions a distribution;
 * with `Finite B` alone — `mono_eq_iff`, `Q_eq_poly` (Proposition 26), `degreeOf_Q_le`,
   and Proposition 29 with its §4 restatement (`irr_partition`, `irr_isPartition`), so
   `Irr^F(E)` partitions `B` over an infinite `S` too.
@@ -99,7 +105,9 @@ more than the definitions:
 Of those, the three §5.1 `Finite B` statements are degenerate over an infinite `E` — both
 sides are junk values — while Proposition 29 is not. The rest of §5 genuinely needs `|S|`
 finite: an infinite `E` makes `Q_ne_zero`, `coeff_poly`, `mem_vars_poly` and Propositions
-27, 28, 30 and 31 false rather than merely unproved. The exact per-declaration register,
+27, 28, 30 and 31 false rather than merely unproved, and every §5.3–§5.5 *statement* has a
+`Q^F_E` in it (Theorem 3 consumes finiteness a second time, to build the paper's auxiliary
+distribution `P_f` from a positive assignment). The exact per-declaration register,
 with what each hypothesis is consumed for, is the "Finiteness" section of `API.lean`. That
 boundary is also what makes Conjecture 1 — the finite-*dimensional* fundamental theorem —
 statable here at all. See `KNOWLEDGE.md` for its status in the literature.
@@ -171,6 +179,19 @@ Defined in full in the glossary at `FiniteFactoredSets.lean`. In brief:
   (`∑_{s ∈ E}`, `∏_{b ∈ B}`) are `finsum`/`finprod`, which is what lets the *definitions*
   carry no finiteness while `[Finite S]` sits on exactly the statements the paper makes
   for finite factored sets. Irreducibility is Mathlib's `Irreducible` in this ring.
+* **`dd:probability`** — §5.4's probability distributions are elementary, exactly as the
+  paper writes them. Definition 36 is the structure `ProbDist S` — a function
+  `P : Set S → ℝ` with the paper's four clauses as fields (`nonneg`, `empty`, `univ`,
+  `additive`) — and Definition 37 is the predicate `IsDistribution` saying
+  `P {s} = ∏_{b ∈ B} P([s]_b)`. **No measure theory appears, and none is a substitute
+  here**: the paper's `P` is defined on the whole powerset with finite additivity and no
+  σ-algebra, and Theorem 3 quantifies over *all* such `P`, so a
+  `MeasureTheory.ProbabilityMeasure` rendering would change what the theorem ranges over.
+  A bridge to Mathlib's probability vocabulary would be extra credit and would have to be
+  a separate lemma. Two further consequences: the paper's "finite set `S`" is carried by
+  the statements that consume it, not by the structure; and Theorem 3's conclusion is the
+  paper's **division-free** `P(x∩z)·P(y∩z) = P(x∩y∩z)·P(z)`, so it stays meaningful when
+  `P(z) = 0` and never introduces a conditional probability.
 
 There are **no type-`(c)` modeling substitutions** so far: nothing weaker stands in for
 one of the paper's objects.
@@ -267,6 +288,23 @@ hypotheses visibly load-bearing. Every declaration below is inventoried:
 | The `E.Nonempty` hypotheses of §5 are load-bearing, and Proposition 29's disclosed exception is real | `poly_empty_eq_zero`, `Q_coordFS_empty`, `prop28_hE_loadbearing`, `prop30_hE_loadbearing`, `prop31_hE_loadbearing`, `irr_partition_holds_at_empty` | reading `hE` as decoration. At `E = ∅` both `Q^F_∅` and every `poly^F_C(∅)` are `0`, and Propositions 28, 30 and 31 each fail outright — 30's on the zero-dimensional `unitFS`, where `Irr^F(∅) = ∅` makes the empty product `1`. Proposition 29 is the exception its docstring discloses, and the computation at `E = ∅` is what backs that — `irr_partition_holds_at_empty` states all three of the proposition's conjuncts there, not just the cover |
 | `poly^F_C(E)` is total in `C`, so it has junk values off the paper's `C ⊆ B` | `poly_top_univ_junk`, `top_notMem_coordFS_basis` | reading a §5 statement as covering every `C`. At `C = {Ind_S}` the value is a single variable, and `Ind_S ∉ B`, so no `C ⊆ B` hypothesis of §5.1–§5.2 is satisfied by it |
 
+§5.3–§5.5 adds the last layer — the divisibility characterization of conditional
+orthogonality, probability distributions on a set and on a factored set, and the
+fundamental theorem — and `ProbDist` in particular is a bare structure that nothing built
+before this stage. The same file therefore constructs two distributions on `Bool × Bool`
+and runs every §5.3–§5.5 notion at *both* of the conditioning partitions §4.3 already
+separates on `coordFS`: `Ind_S`, where the two coordinate factors are orthogonal, and the
+`xorPart` block `Ediag`, where they are entangled. In every case the two answers differ.
+Every declaration below is inventoried:
+
+| Claim | Declarations | What it rules out |
+|---|---|---|
+| Definition 31 is computed at the remaining blocks Lemma 3 and Theorem 3 range over | `Q_coordFS_singleton`, `Q_coordFS_vsnd_true`, `Q_coordFS_Ediag` | the §5.3 witnesses quantifying over blocks whose characteristic polynomial nobody has evaluated. `Q^F_{Ediag}` is the two-term polynomial that makes the diagonal's failure computable |
+| Lemma 3's clause 3 is cross-checked, separately applied, and **fails** where §4.3 says it must | `lemma3_clause3_coordFS_top_crosscheck`, `lemma3_clause3_coordFS_top_applied`, `lemma3_clause3_coordFS_Ediag_fails` | clause 3 being vacuous or total. At `z = S` both products expand, from Definition 31 alone, to the same polynomial; at the `xorPart` block `Ediag` one separating `coordSep` evaluation sends them to `310` and `100`. That failure is the polynomial shadow of `¬ (fstFactor ⊥^F sndFactor \| xorPart)` |
+| Definitions 36 and 37 are inhabited, and the second is strictly stronger | `uniform`, `uniform_isDistribution`, `diagDist`, `not_isDistribution_diagDist` | `ProbDist` being uninhabited — which would make Theorem 3's right-hand side vacuously true and Proposition 32 unexercised — and Definition 37's product condition being decoration. `uniform` (`P(E) = \|E\|/4`) is a distribution on `coordFS`; `diagDist` (`P(E) = \|E ∩ Ediag\|/2`) satisfies all four of Definition 36's clauses and is **not** a distribution on `coordFS`, since `P{(t,t)} = 1/2` while `P([s]_fst)·P([s]_snd) = 1/4` |
+| Proposition 32 is cross-checked, and separately applied | `prop32_coordFS_Efst_crosscheck`, `prop32_coordFS_Efst_applied` | a witness that "checks" the characterization by applying it. `E = Efst` is chosen because `Q^F_{Efst}` has two terms, so the evaluation is a genuine sum (`1/2·1/2 + 1/2·1/2`) rather than a restatement |
+| Theorem 3 runs in **both** directions on the discriminating pair | `thm3_coordFS_top_crosscheck`, `thm3_coordFS_top_applied`, `thm3_coordFS_Ediag_fails`, `thm3_coordFS_xorPart_witness`, `thm3_coordFS_xorPart_applied` | the fundamental theorem being exercised only where it degenerates, and its existential being exhibited at its own witness form. Forward at `Z = Ind_S`: `uniform` makes the factors independent, `1/2·1/2 = 1/4·1`, computed and separately derived from `orthogonalGiven_fst_snd_top`. Backward at `Z = xorPart`: `¬ (fst ⊥^F snd \| xorPart)` yields, through the endpoint, the existence of a distribution and blocks breaking independence — and the cross-check *names* them, `uniform` at `z = Ediag`, where `1/4 · 1/4 = 1/16` but `1/4 · 1/2 = 1/8`. Conditional independence genuinely fails given the diagonal |
+
 Several of those rows carry a discipline worth naming, since it is the defect an earlier
 audit round caught here: **a witness advertised as a cross-check must not mention the
 endpoint it checks.** `prop26_coordFS_crosscheck`, `prop26_coordFS_Efst_crosscheck`,
@@ -284,15 +322,24 @@ applications, recorded as the separate claims they are, are `prop26_coordFS_appl
 `prop29_coordFS_univ_applied`, `prop29_coordFS_Ediag_applied`, `prop31_coordFS_*_applied`
 and the `prop28_*_applied` pair.
 
+§5.3–§5.5 runs the same discipline: `lemma3_clause3_coordFS_top_crosscheck`,
+`prop32_coordFS_Efst_crosscheck`, `thm3_coordFS_top_crosscheck` and
+`thm3_coordFS_xorPart_witness` compute their claims from Definitions 31–37 and mention
+none of `orthogonalGiven_tfae`, `Q_mul_Q_eq_of_orthogonalGiven`, `isDistribution_iff` or
+`orthogonalGiven_iff_forall_isDistribution`; `lemma3_clause3_coordFS_top_applied`,
+`prop32_coordFS_Efst_applied`, `thm3_coordFS_top_applied` and
+`thm3_coordFS_xorPart_applied` are the applications, each stating the *same* proposition
+as its partner.
+
 **How that separation is checked, and how it is not.** The check is *textual*: a
 cross-check names no endpoint, so reading the declaration — or grepping the file for the
-endpoint's name — is what verifies it. `#print axioms` does **not** verify it now that the
-§5 endpoints are proved: every declaration in both groups reports the same
-`[propext, Classical.choice, Quot.sound]`, so the command separates the two groups only
+endpoint's name — is what verifies it. `#print axioms` does **not** verify it once an
+endpoint is proved: both groups then report the same
+`[propext, Classical.choice, Quot.sound]`, so the command separates them only
 while an endpoint is still `sorry`d, when the applications pick up `sorryAx` and the
-cross-checks do not. It is a useful regression tripwire during development and an inert
-one afterwards; do not read a clean `#print axioms` as evidence that a witness is
-independent of the endpoint it checks.
+cross-checks do not (during stage 5b's drafting it split the four §5.3–§5.5 pairs
+exactly; with every endpoint now proved it is inert throughout §5). Do not read a clean
+`#print axioms` as evidence that a witness is independent of the endpoint it checks.
 
 One friction point a client will meet, recorded at the site: `Finite F.B` — the
 hypothesis every §3.2–§3.4 theorem carries (Propositions 10 and 11 need none, and nothing
