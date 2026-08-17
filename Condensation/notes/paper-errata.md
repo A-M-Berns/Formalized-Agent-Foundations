@@ -138,3 +138,60 @@ cannot be attached to it on the generated page.
    calligraphic `ℐ` — both extract as `I` — so the collision may be visual-only in the PDF.
    Either way the formalization cannot reuse the letter, and `dd:tree` computes the label
    from the tree structure instead of carrying a named labelling function.
+
+10. **Definition 4.12: nothing ties `π̃₁` to `π̃₂`, yet Theorem 4.15 needs them to agree.**
+    *(Found while formalizing §4's amalgamation.)* Definition 4.12 asks for "two latent
+    variable models `L̃₁` and `L̃₂`, both of which have underlying probability space `Λ₀`"
+    together with morphisms `ρₖ : L̃ₖ → Lₖ` of the forms (4.44)/(4.45). A latent variable
+    model carries its *own* map to `Ω` (Definition 3.2), so the definition as printed
+    supplies two maps `π̃₁, π̃₂ : Λ₀ → Ω` and says nothing relating them. The commuting
+    square (4.43) of Definition 4.11 — which *is* the relation — is stated for an
+    amalgamation of a cospan of bare probability spaces, and Definition 4.12 does not
+    restate it. In the construction of Lemma 4.13 the two agree on the nose, by (4.51).
+    Theorem 4.15's proof needs them to agree at least almost everywhere: the step "`Y_A` is
+    a.e. a function of `X_i`, and `X_i` is a.e. a function of `Z_∋i`, hence `Y_A` is a.e. a
+    function of `Z_∋i`" composes a dependence witnessed through `π̃₁` with one witnessed
+    through `π̃₂`, which is only legal when the two maps agree a.e. The Lean rendering
+    therefore carries the a.e. commutation as an explicit field, `LatentAmalgamation.comm`
+    (`∀ᵐ l ∂P₀, π₁ l = π₂ l`), and this entry records that the field is *added*, not read
+    off the printed clause. It is not a strengthening in substance: the paper's own
+    construction satisfies it, and without it Definition 4.12 does not support the theorem
+    that consumes it.
+
+11. **Example 4.1, equations (4.4) and (4.5): false at `A = ∅`.** *(Found while
+    constructing the example.)* Example 4.1's second latent variable model `L₂` puts all of
+    `M`'s information into the single top latent `Z_I` and makes every other latent
+    constant; (4.4) then reads `σ_{L₂}(A) = H(Z_I) = H(X_I)` and (4.5) reads
+    `χ_{L₂}(A) = H(X_I)`. Both are stated "for any `A`", and Proposition 4.2 — which these
+    equations are illustrating — does quantify over all `A ⊆ I` including `A = ∅`. At
+    `A = ∅` the index family `{B : B ∩ A ≠ ∅}` is empty, so both scores are the empty sum
+    `0`, while the right-hand side is `H(X_I)`, which is nonzero for any non-degenerate `M`.
+    The intended hypothesis is `A ≠ ∅`, i.e. `A ∈ P⁺I`, which is what the sentence
+    introducing `L₂` is about. The Lean statements (`Condensation.Example41.L₂_simpleScore`,
+    `.L₂_condScore`) therefore carry an explicit `A.Nonempty` hypothesis. Harmless in the
+    paper's own use — every consumer of (4.4)–(4.5) has `A` nonempty — but it cannot be
+    transcribed as printed.
+
+12. **Theorem 5.8: the `Z`-side contribution condition is used but not stated as a
+    hypothesis.** *(Found while formalizing §5.)* Theorem 5.8 is stated for "an
+    amalgamation of two latent variable models" and then, at (5.18), uses that each `X_i`
+    is almost everywhere a function of `Z_∋i` — Definition 3.2's contribution condition for
+    the *second* model. That is legitimate, because Definition 4.12 makes `L̃₂` a latent
+    variable model for `M` and so carries the condition; but the theorem's own statement
+    lists no hypothesis about `Z` beyond it being "the" second family, and a reader
+    checking (5.13) against the statement will not find where (5.18) is licensed. Recorded
+    because the Lean statement drops the hypothesis for exactly this reason: it quantifies
+    over `LatentAmalgamation L₁ L₂`, whose field `contributes₂` supplies it. Nothing is
+    lost, but the licence comes from Definition 4.12 rather than from Theorem 5.8.
+
+13. **Definition 5.6: the "parents" of a vertex are its children under the usual
+    convention.** *(Found while formalizing §5.)* Definition 5.6's intersection tree is a
+    directed rooted tree in which edges point *towards* the root, so the vertices it calls
+    the parents `v, w` of an internal vertex `u` — the ones whose labels are intersected to
+    give `ℓ(u) = ℓ(v) ∩ ℓ(w)` — are what the inductive-tree convention (and most of graph
+    theory) calls the *children* of `u`, and the paper's "ancestors of `v`" are the
+    vertices of the subtree above `v`. Not an error, and the paper's convention is
+    internally consistent, but it inverts the reading a formalizer will bring to it and
+    caused one wrong first draft here. `dd:tree` renders the tree as an inductive binary
+    tree whose `node l r` has `l`, `r` as its *children*; those are Definition 5.6's
+    parents.

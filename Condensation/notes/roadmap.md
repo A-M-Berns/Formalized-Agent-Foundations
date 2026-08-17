@@ -32,8 +32,8 @@ the (4.41) discussion) is unnumbered prose and gets no carrier.
 | Tag | Decision | Why |
 |---|---|---|
 | `dd:finite-range` | Every random variable of a model carries `FiniteRange` (finitely many attained values), on a countable discrete sample space (`Countable Ω`, `MeasurableSingletonClass Ω`, `IsProbabilityMeasure P`). The paper's "countable discrete range with finite entropy" and "probability space with finite entropy" become: countable-discrete range types (`Countable`, `MeasurableSingletonClass`), finite range per variable, and **no** hypothesis on the entropy of `Ω` itself. | The vendored entropy library proves its theorems only in the finite-range fragment (`ShannonInformation/SCOPE.md`); generalizing it is new mathematics (summability arguments), out of this paper's scope. Finite range implies finite entropy, so every quantity in the paper is finite as required. This is a genuine (c)-type narrowing — a geometric variable on `ℕ` is countable-discrete with finite entropy and is excluded — and is disclosed at the statement level (every model structure), in `README.md`, and here. Ω's own finite entropy is used by the paper only to make the variables' entropies finite, which finite range already does. |
-| `dd:pplus` | `P⁺I` is the subtype `PPlus I := {A : Finset I // A.Nonempty}`; `I` carries `[Fintype I] [DecidableEq I]` (Def 3.1: *finite* family). Subfamilies `F ⊆ P⁺I` are `Set (PPlus I)` (finite automatically), and the joint variable `Y_F` is `fun ω (B : F) => Y B ω`, a dependent product over the subtype `↥F` with `MeasurableSpace.pi`. | Faithful to Def 2.2 (nonempty subsets only, no phantom `Y_∅`); `Set` keeps upward-closure/polar/intersection algebra (§4.10, §5) as plain set algebra; finiteness of `↥F` is by instance. |
-| `dd:bundled-model` | `RVModel I` bundles the sample space `Ω : Type u`, its σ-algebra/countability/singleton-class instances, the probability measure, the range family `R : I → Type v` with their instances, the variables `X i : Ω → R i`, their measurability and finite range. `LatentModel M` bundles a `RVModel (PPlus I)` plus `π : Λ → Ω` (`MeasurePreserving`) plus the a.e.-function condition of Def 3.2. | Def 3.5–3.12 need models as objects of a category, and 3.2/4.12 need "two latent models with the same underlying space" — bundling with explicit `Ω`/`R` fields is what makes those statable. Universe pins (`Type u`, `Type v`) are recorded as a disclosed narrowing in KNOWLEDGE. |
+| `dd:pplus` | `P⁺I` is the subtype `PPlus I := {A : Finset I // A.Nonempty}`. The index type's finiteness is carried by the *model* — `RVModel` takes `[Finite I]` as a class parameter (Def 3.1: *finite* family) — so `PPlus I` is the paper's `P⁺I` (every subset of a finite set is finite) and no `Fintype`/`DecidableEq` data appears anywhere. Subfamilies `F ⊆ P⁺I` are `Set (PPlus I)` (finite automatically, from `instFiniteFinset` → `PPlus.instFinite` → `Subtype.finite`), and the joint variable `Y_F` is `fun ω (B : F) => Y B ω`, a dependent product over the subtype `↥F` with `MeasurableSpace.pi`. | Faithful to Def 2.2 (nonempty subsets only, no phantom `Y_∅`); `Set` keeps upward-closure/polar/intersection algebra (§4.10, §5) as plain set algebra; finiteness of `↥F` is by instance. Mathlib has `Finset.fintype` for `[Fintype α]` but no `Finite (Finset α)` at this pin, so `Condensation.instFiniteFinset` supplies it. |
+| `dd:bundled-model` | `RVModel (I : Type w) [Finite I]` bundles the sample space `Ω : Type u`, its σ-algebra/countability/singleton-class instances, the probability measure, the range family `R : I → Type v` with their instances, the variables `X i : Ω → R i`, their measurability and finite range; Def 3.1's *finite* family is the class parameter `[Finite I]`, not a field. `LatentModel M` bundles a `RVModel.{u', v', w} (PPlus I)` plus `π : Λ → Ω` (`MeasurePreserving`) plus the a.e.-function condition of Def 3.2, with the latent universes `u' v'` **independent** of `M`'s. | Def 3.5–3.12 need models as objects of a category, and 3.2/4.12 need "two latent models with the same underlying space" — bundling with explicit `Ω`/`R` fields is what makes those statable. `[Finite I]` must be a parameter, not a field: `Finite I` does not mention the model, so a field would never be found by instance search and a score over `I = ℕ` would elaborate with every sum silently empty. Independent latent universes are what makes Ex 4.4 (`X_i := Y_∋i`, given ranges in `Type (max v' w)`) statable in its printed generality; the cost is that existence statements name universes explicitly (`Nonempty (LatentModel.{u,v,w,u,v} M)`), exactly as `Nonempty (RVModel.{u,v,w} I)` already must. `RVModel`'s own `Type u`/`Type v` stratification is recorded as a disclosed narrowing in KNOWLEDGE. |
 | `dd:ae-function` | "`Y` is a function of `X` almost everywhere" is `AEFunctionOf X Y P := ∃ f, Measurable f ∧ ∀ᵐ ω ∂P, Y ω = f (X ω)`; the everywhere version `FunctionOf` likewise without `∀ᵐ`. Measurability of `f` is kept in the definition (paper: "measurable function") and discharged by `measurable_of_countable` on countable discrete ranges. | Verbatim Def 2.1's fifth convention; the measurability conjunct is free in our setting but keeping it stops the definition drifting from the paper. |
 | `dd:pullback` | Pullback `π^* X` is plain composition `X ∘ π`; probability-preserving = Mathlib `MeasureTheory.MeasurePreserving π P_Λ P_Ω`. Equation (2.2) invariance is `IdentDistrib`-based (`MeasurePreserving` gives `IdentDistrib (X ∘ π) X`). | Repo rule: never redefine what Mathlib has. |
 | `dd:interaction` | Def 2.3's `I(X;Y;Z) := I[X : Y] − I[X : Y | Z]` and its conditional form `I(X;Y;Z | C) := I[X : Y | C] − I[X : Y | ⟨Z, C⟩]` (needed by Lemma 5.4 / Thm 5.8) are FAF-authored `def`s over the vendored `mutualInfo`/`condMutualInfo`; symmetry is a lemma. | The API deliberately adds no definitions; interaction information is paper-specific until a second client needs it. |
@@ -50,13 +50,13 @@ never a stand-in.
 | file | content |
 |---|---|
 | `Probability.lean` | §2: `AEFunctionOf`/`FunctionOf`, pullback lemmas (2.2), `PPlus`, interaction information, Def 2.4 alias, **Prop 2.5** (`H[Y \| X] = 0 → AEFunctionOf X Y`) — proved over the vendored entropy, not the spike's |
-| `Model.lean` | Def 3.1–3.4: `RVModel`, `LatentModel`, joint variables, the four `Y_∩A`/`Y_⊇A`/`Y_⊋A`/`Y_∋i` families, (3.9), scores σ/χ/ϱ |
+| `Model.lean` | Def 3.1–3.4: `RVModel`, `LatentModel`, joint variables, the four `Y_∩A`/`Y_⊇A`/`Y_⊋A`/`Y_∋i` families plus `incomparable`, (3.9), scores σ/χ/ϱ, and the generic joint-variable / upward-closure lemmas §4 and §5 run on |
 | `Morphism.lean` | §3.1: Def 3.5, 3.6, Prop 3.7, 3.8, Def 3.9, 3.10, Prop 3.11, 3.12 |
 | `Perfect.lean` | §4: Prop 4.2, Def 4.3, Lemma 4.5, Cor 4.6, Prop 4.7, Def 4.8, **Thm 4.9**, Prop 4.10 |
 | `Amalgamation.lean` | Def 4.11, 4.12, **Lemma 4.13** (the measure construction) |
 | `Comparison.lean` | Lemma 4.14, **Thm 4.15** |
 | `Quantitative.lean` | Lemma 5.4, Def 5.5, 5.6, Prop 5.7, **Thm 5.8**, Cor 5.9, 5.10 |
-| `Examples.lean` | Ex 4.1, 4.4 + inhabitants of every boundary structure |
+| `Examples.lean` | Ex 4.1, 4.4 + inhabitants of every boundary structure, including the §3.1 witnesses (which cannot live in `Morphism.lean`: `Perfect.lean` imports it, so a witness there would close a cycle) |
 | `Condensation.lean` | aggregator + `dd:` glossary |
 | `README.md`, `KNOWLEDGE.md`, `notes/paper-errata.md` | trust surface, institutional memory, errata |
 
@@ -71,8 +71,15 @@ never a stand-in.
   `LatentModel` invalidates everything after it, so it is audited before anything is
   built on it.
 - **M1 (round 2)** — statements for §3.1, §4, §5 in full (proofs may be `sorry`), Ex
-  4.1/4.4 constructed. Audit round 2 attacks the theorem statements.
-- **M2+** — proofs: Prop 2.5, 4.2, 4.5–4.7, 4.9, 4.10 (chain-rule tranche); Lemma 4.13
+  4.1/4.4 constructed. Audit round 2 attacks the theorem statements. **Landed**: all 39
+  in-scope nodes have carriers, twenty proofs are `sorry`, and sixteen annotated endpoints
+  are staged in `AxiomAudit.lean`'s `CONDENSATION-PENDING` block. §3.1 came out complete —
+  all ten endpoints are proved and axiom-clean — as did Lemma 4.5, Prop 4.7, Lemma 5.4,
+  Prop 5.7 and Cor 5.10's (5.24).
+- **M2+** — proofs: Prop 4.2's second inequality, Prop 4.10 and both halves of Thm 4.9
+  (one tranche: they share a single missing piece of infrastructure, a chain rule for a
+  *finite family* along a linear extension of the inclusion order — build it once and four
+  endpoints unblock together); Lemma 4.13
   (measure construction); 4.14, 4.15; Lemma 5.4, 5.7, 5.8–5.10; then hardening rounds.
   Aristotle offload for stalled goals.
 
@@ -81,8 +88,10 @@ never a stand-in.
 1. `dd:finite-range` as the standing type-(c) narrowing (assumed yes — the alternative is
    generalizing the vendored entropy library, months of work outside this paper).
 2. Examples 5.1–5.3 out of scope (assumed yes).
-3. Universe pinning of `RVModel` (`Ω : Type u`, `R : I → Type v`) — assumed acceptable as a
-   documented narrowing.
+3. Universe *stratification* of `RVModel` (`Ω : Type u`, `R : I → Type v`) — assumed
+   acceptable as a documented narrowing. (The separate question of *pinning* `LatentModel`
+   to `M`'s universes was settled in round 1: it is not pinned. See KNOWLEDGE
+   design-decisions.)
 
 ## Paper errata (running list; see `notes/paper-errata.md` once created)
 

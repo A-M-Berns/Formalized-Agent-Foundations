@@ -1725,10 +1725,36 @@ open FiniteFactoredSets in
 
 Nodes are cited by printed number (`Paper node: \`Definition 3.1\``) read off the committed
 text extraction `Condensation/notes/condensation-25-07.txt`; `scripts/check-condensation-nodes.py`
-enforces validity, anchoring, and that every annotated declaration appears in the block
-below.  Status: **in progress** (M0 — §2 conventions and Definitions 3.1–3.4).  Nothing here
-is claimed complete; the roadmap is `Condensation/notes/roadmap.md`.  The standing
-`dd:finite-range` narrowing (finite-range variables) is disclosed in `Condensation/README.md`. -/
+enforces validity, anchoring, and that every annotated declaration appears in one of the
+two blocks below.  Status: **in progress** (M1 — statements for §2, §3, §3.1, §4 and §5;
+twenty proofs still `sorry`).  Nothing here is claimed complete; the roadmap is
+`Condensation/notes/roadmap.md`.  The standing `dd:finite-range` narrowing (finite-range
+variables) is disclosed in `Condensation/README.md`.
+
+**Why there are two blocks: the staged inventory.**  This formalization reaches the
+paper's endpoints statement-first.  Several declarations already carry a `Paper node:`
+annotation because their *statement* is final and is the paper's real endpoint, while the
+proof is still `sorry` — milestone M2's work.  Such a declaration cannot be listed in
+`#assert_axioms_clean`: that command exists to catch exactly a `sorryAx` dependency, and
+listing it would either fail the build or tempt someone to weaken the check.  Dropping the
+`Paper node:` annotation instead would be a lie about the statement's provenance, and the
+node checker would then also stop guarding the statement.
+
+So the annotated surface is split.  The `CONDENSATION-INVENTORY` block below is the
+ordinary axiom gate.  The `CONDENSATION-PENDING` block that follows it is **pure Lean
+comment** — it compiles to nothing and asserts nothing — and names, one per line with a
+reason, every annotated endpoint that is not yet axiom-clean.  It is a declaration of
+intent, not a discharge.
+
+`scripts/check-condensation-nodes.py` (via the generic `pending_block` support in
+`scripts/paper_nodes.py`, available to any paper) accepts an annotated declaration listed
+in *either* block, and fences the staging with four hard failures: a name in both blocks,
+a pending entry naming no annotated declaration (a stale entry outliving its endpoint), a
+malformed pending line, and a non-empty pending block once `scripts/papers.py` registers
+the paper `completed`.  A surviving non-empty block prints as a note carrying the count,
+which is the number to watch shrink.  **Moving a name from the pending block to the
+inventory block is what "M2 proved this endpoint" means**; the two edits belong in the
+same commit as the proof. -/
 
 -- CONDENSATION-INVENTORY-BEGIN
 #assert_axioms_clean
@@ -1758,13 +1784,117 @@ is claimed complete; the roadmap is `Condensation/notes/roadmap.md`.  The standi
   Condensation.LatentModel.simpleScore Condensation.LatentModel.condScore Condensation.LatentModel.reconScore
   -- Non-vacuity witnesses (Condensation/Examples.lean): a constructed model and latent model.
   Condensation.coinModel Condensation.coinLatent Condensation.coinModel_entropy_pos Condensation.coinLatent_nonempty
+  -- §3.1 (Condensation/Morphism.lean).  All ten endpoints of the section are proved:
+  -- Definitions 3.5, 3.6, 3.9, 3.10 and Propositions 3.7, 3.8, 3.11, 3.12.  `RVModel.Hom`
+  -- carries no measurability field for `f` -- Definition 3.5's own remark is that it is
+  -- automatic on countable discrete ranges -- and the category laws (3.17)-(3.20) hold by
+  -- `rfl`.  Definition 3.10 has two carriers, the pair predicate and the existential.
+  Condensation.RVModel.Hom Condensation.RVModel.Hom.comp
+  Condensation.RVModelObj.instCategory Condensation.RVModel.Hom.isIso_iff
+  Condensation.RVModel.Hom.AEEq
+  Condensation.RVModel.IsEquivalence Condensation.RVModel.Equivalent
+  Condensation.RVModel.Hom.aeEq_equivalence Condensation.RVModel.Hom.comp_aeEq_congr
+  Condensation.RVModelObj.equivalent_equivalence
+  -- §4 (Condensation/Perfect.lean, Amalgamation.lean, Examples.lean): the endpoints whose
+  -- proofs are finished.  Proposition 4.2 is three separate inequalities and only two of
+  -- them are here -- the middle one, (4.7)-(4.9), is staged below, and Corollary 4.6 with
+  -- it, since Corollary 4.6's proof consumes it.  Definitions 4.11 and 4.12 are structures
+  -- and are clean as such; Lemma 4.13's *construction* over them is staged below.
+  Condensation.LatentModel.simpleScore_ge_condScore
+  Condensation.LatentModel.entropy_jointContrib_ge_entropy_joint
+  Condensation.LatentModel.PerfectlyCondenses Condensation.LatentModel.SimplyPerfectlyCondenses
+  Condensation.LatentModel.perfect_entropy_iff_aeFunctionOf
+  Condensation.LatentModel.aeFunctionOf_iff_isEquivalence_contribModel
+  Condensation.RVModel.OrderedMarkov
+  Condensation.Amalgamation Condensation.LatentAmalgamation
+  Condensation.Example41.L₁ Condensation.Example41.L₂
+  Condensation.Example44.M44 Condensation.Example44.L44
+  -- §5 (Condensation/Quantitative.lean): Lemma 5.4 in both printed forms, Definition 5.5's
+  -- polar, Definition 5.6's intersection tree with its computed labels and its family of
+  -- intersections (5.11), Proposition 5.7 in full (existence and uniqueness of the
+  -- extension of a leaf labelling), and Corollary 5.10's (5.24).  Theorem 5.8, Corollary
+  -- 5.9 and Corollary 5.10's (5.25) are staged below.
+  Condensation.condEntropy_eq_of_pair Condensation.condEntropy_le_of_pair
+  Condensation.polar
+  Condensation.ITree Condensation.ITree.label Condensation.ITree.intersections
+  Condensation.ITree.LabelsIn
+  Condensation.ITree.label_eq_leaves_foldr
+  Condensation.eq_decorate_of_isIntersectionTree Condensation.existsUnique_intersectionTree
+  Condensation.polar_kSubsets
 -- CONDENSATION-INVENTORY-END
 
-/-! Tier-2 boundary structures for the Condensation surface. -/
+-- The staged half of the Condensation annotated surface: endpoints whose *statements* are
+-- final and carry a `Paper node:` line, but which are not yet axiom-clean -- either their
+-- own proof is `sorry` or they consume one.  This block is pure comment; it compiles to
+-- nothing and asserts nothing.  See the preamble above for the four failure modes
+-- `scripts/check-condensation-nodes.py` fences it with.  Moving a name from here into the
+-- `#assert_axioms_clean` block above is what "M2 proved this endpoint" means, and the two
+-- edits belong in the same commit as the proof.
+--
+-- CONDENSATION-PENDING-BEGIN
+-- Condensation.LatentModel.condScore_ge_entropy_jointContrib   -- M2: Proposition 4.2 (4.7)-(4.9); needs the finite-family chain rule
+-- Condensation.LatentModel.aeFunctionOf_of_perfectlyCondenses  -- M2: Corollary 4.6; proof complete, but consumes Proposition 4.2's staged inequality
+-- Condensation.RVModel.orderedMarkov_iff                       -- M2: Proposition 4.10 (4.38); same chain rule
+-- Condensation.LatentModel.perfect_tfae_A                      -- M2: Theorem 4.9 (A1)-(A3); same chain rule
+-- Condensation.LatentModel.perfect_tfae_B                      -- M2: Theorem 4.9 (B1) iff (B2); same chain rule
+-- Condensation.Amalgamation.canonical                          -- M2: Lemma 4.13; consumes the three staged measure lemmas of (4.53)
+-- Condensation.nonempty_amalgamation                           -- M2: Lemma 4.13, existence for a cospan
+-- Condensation.LatentAmalgamation.canonical                    -- M2: Lemma 4.13, the latent-model form
+-- Condensation.nonempty_latentAmalgamation                     -- M2: Lemma 4.13, existence for two latent models
+-- Condensation.aeFunctionOf_of_condIndepFun                    -- M2: Lemma 4.14
+-- Condensation.aeFunctionOf_jointAbove_of_perfectlyCondenses   -- M2: Theorem 4.15; the induction is not in the paper (errata 5)
+-- Condensation.condEntropy_jointAbove_le                       -- M2: Theorem 5.8 (5.13)
+-- Condensation.condEntropy_jointAbove_eq                       -- M2: Theorem 5.8 (5.14)
+-- Condensation.condEntropy_jointAbove_le_reconScore            -- M2: Corollary 5.9 (5.21)
+-- Condensation.condEntropy_jointAbove_le_reconScore_of_orderedMarkov -- M2: Corollary 5.9 (5.22)
+-- Condensation.condEntropy_jointAbove_le_choose                -- M2: Corollary 5.10 (5.25)
+-- CONDENSATION-PENDING-END
+
+/-! Tier-2 boundary structures for the Condensation surface.
+
+Two things a reader should not mistake for omissions.  `RVModel`'s index type carries
+`[Finite I]` — Definition 3.1's *finite* family — as a **class parameter of the structure**,
+not as a field, so it is correctly absent from the freeze below; it has to be a parameter,
+because `Finite I` does not mention the model and instance search would never find it as a
+field (the concrete symptom was `reconScore` elaborating at `I = ℕ` with every sum silently
+empty).  And `LatentModel`'s universes are independent of its model's — the full parameter
+list is `LatentModel.{u, v, w, u', v'}` — which likewise changes no field. -/
 #assert_fields Condensation.RVModel
   Ω mΩ countΩ singΩ P probP R mR countR singR X measurable_X finiteRange_X
 #assert_fields Condensation.LatentModel
   L π π_pres contributes
+
+/-! The §3.1 and §4 boundary structures.
+
+`RVModel.Hom` has **no measurability field for `f`**, and that absence is load-bearing
+rather than an omission: Definition 3.5's own remark is that `f_j` is automatically
+measurable because the ranges are countable and discrete, so a field would be a
+strengthening of the paper's data.  `RVModel.Hom.measurable_f` supplies it as a lemma.
+`RVModelObj` carries the index type `I` as a **field**, with `Finite I` as an instance
+field beside it, because Definition 3.5 lets a morphism change the index set and a
+`Category` instance needs a single object type — the opposite of `RVModel`, where the same
+`Finite I` must be a *parameter*.  `IsEquivalence` is a `Prop`-valued structure, so
+freezing its two fields freezes the two clauses of Definition 3.10.
+
+`LatentAmalgamation`'s field list is long because Definition 4.12's "two latent variable
+models with underlying probability space `Λ₀`" is rendered with `Λ₀` primary and the two
+models *derived* (`lat₁`, `lat₂`), which is what makes their carrier `Λ₀` definitionally
+rather than by a transported type equality.  Its last field, `comm`, is **not** read off
+Definition 4.12: nothing in the printed clause ties `π̃₁` to `π̃₂`, and Theorem 4.15 needs
+them to agree almost everywhere (`Condensation/notes/paper-errata.md` entry 10). -/
+#assert_fields Condensation.RVModel.Hom
+  π π_pres ι f eq_ae
+#assert_fields Condensation.RVModelObj
+  I finI M
+#assert_fields Condensation.RVModel.IsEquivalence
+  comp_left comp_right
+#assert_fields Condensation.Amalgamation
+  π₁_pres π₂_pres Λ₀ mΛ₀ countΛ₀ singΛ₀ P₀ probP₀ «ρ₁» «ρ₂» ρ₁_pres ρ₂_pres comm
+#assert_fields Condensation.LatentAmalgamation
+  Λ₀ mΛ₀ countΛ₀ singΛ₀ P₀ probP₀
+  Y₁ measurable_Y₁ finiteRange_Y₁ «π₁» π₁_pres contributes₁
+  Y₂ measurable_Y₂ finiteRange_Y₂ «π₂» π₂_pres contributes₂
+  «ρ₁» ρ₁_pres ρ₁_Y ρ₁_π «ρ₂» ρ₂_pres ρ₂_Y ρ₂_π comm
 
 /-! ## Consumer API conveniences (not paper endpoint inventories)
 
@@ -1890,3 +2020,101 @@ open FiniteFactoredSets in
   -- Neither is a paper node; the paper's positive instances are Propositions 34 and 36.
   Model.pullback Model.pullback_apply
   OrthDatabase.not_strictlyBefore_self_of_consistent OrthDatabase.strictlyBefore_of_not_consistent
+
+-- Condensation: the consumer-surface conveniences of the M0 layer, and the constructed
+-- non-vacuity witnesses added in the round-1 fix wave.  None of these carries a
+-- `Paper node:` annotation and none belongs in the CONDENSATION-INVENTORY block above:
+-- the instances and `famFinset`/`AEFunctionOf.pi`/`condEntropy_eq_entropy_of_subsingleton`
+-- are plumbing a client needs but the paper never states, and the witnesses are what makes
+-- Definitions 3.1-3.3 non-vacuous rather than statements *of* the paper.  (The two earlier
+-- witnesses `coinModel`/`coinLatent` remain in the inventory block above, where they were
+-- first listed.)  Two of the witness facts exist to correct a specific over-claim:
+-- `coinLatent_reconScore` and `twoCoinLatent_reconScore` prove the reconstruction score is
+-- *zero* on the easy witnesses -- perfect reconstruction is exactly what a vanishing
+-- `ϱ_L` means -- and `noisyLatent_reconScore_pos` is the witness that it is not identically
+-- zero.
+open Condensation in
+#assert_axioms_clean
+  Condensation.instFiniteFinset Condensation.PPlus.instFinite
+  Condensation.AEFunctionOf.pi Condensation.condEntropy_eq_entropy_of_subsingleton
+  Condensation.RVModel.finiteRange_joint Condensation.RVModel.finiteRange_jointOn
+  Condensation.famFinset Condensation.mem_famFinset
+  Condensation.RVModel.jointFamily Condensation.LatentModel.ofJoint
+  Condensation.LatentModel.nonempty
+  Condensation.coinLatent_reconScore
+  Condensation.twoCoinModel Condensation.twoCoinLatent Condensation.twoCoin_famFinset_contrib
+  Condensation.twoCoinLatent_simpleScore Condensation.twoCoinLatent_condScore
+  Condensation.twoCoinLatent_condScore_lt_simpleScore Condensation.twoCoinLatent_reconScore
+  Condensation.noisyModel Condensation.noisyLatent Condensation.noisyLatent_reconScore
+  Condensation.noisyLatent_reconScore_pos Condensation.noisyLatent_simpleScore
+  Condensation.noisyLatent_condScore
+  -- M1 additions, none of which carries a `Paper node:` annotation.
+  --
+  -- `Model.lean`: the generic joint-variable and index-family companions of
+  -- `measurable_joint(On)` / `finiteRange_joint(On)` that §4 and §5 run on.  `jointAll` is
+  -- `X_A` at `A = I` spelled as the dependent product over `I` itself, so that naming
+  -- `X_I` in a statement needs only `[Finite I]` and not a `Fintype` datum to write
+  -- `Finset.univ`; equations (4.4)-(4.5) of Example 4.1 use it for exactly that.
+  -- `incomparable` is the auxiliary index family of Definition 4.8, beside
+  -- `contrib`/`above`/`strictAbove`/`contribIdx` and carrying no node for the same reason.
+  -- `isUpperSet_contrib`/`isUpperSet_above` are stated with Mathlib's `IsUpperSet` -- the
+  -- library defines no synonym for "upward closed" -- and `contrib_injective` is what makes
+  -- Theorem 5.8's leaf-bijection hypothesis equivalent to the multiset equation it is
+  -- stated as.
+  Condensation.RVModel.jointAll Condensation.RVModel.measurable_jointAll
+  Condensation.RVModel.finiteRange_jointAll
+  Condensation.RVModel.functionOf_jointOn_mono Condensation.RVModel.aeFunctionOf_jointOn_mono
+  Condensation.RVModel.functionOf_joint Condensation.RVModel.entropy_joint_singleton
+  Condensation.LatentModel.entropy_pullbackJoint
+  Condensation.contribIdx_subset_contrib Condensation.incomparable
+  Condensation.isUpperSet_contrib Condensation.isUpperSet_above Condensation.contrib_injective
+  -- `Morphism.lean`: the §3.1 machinery around the endpoints.  `Hom.ofSameIndex` and
+  -- `isEquivalence_ofSameIndex_iff` are the "laid out" characterization the paragraph after
+  -- Definition 3.10 gives, which is the shape Proposition 4.7 consumes; `Hom.ext` needs
+  -- `HEq` on the `f` component because `f`'s type mentions `ι`.
+  Condensation.RVModelObj Condensation.RVModel.Hom.id
+  Condensation.RVModel.Hom.measurable_f Condensation.RVModel.Hom.pullback_eq
+  Condensation.RVModel.Hom.aeFunctionOf Condensation.RVModel.Hom.eq_ae_all
+  Condensation.RVModel.Hom.ext
+  Condensation.RVModel.Hom.IsMeasurableIso Condensation.RVModel.Hom.isMeasurableIso_of_bijective
+  Condensation.RVModel.Hom.ofSameIndex Condensation.RVModel.isEquivalence_ofSameIndex_iff
+  Condensation.RVModel.Equivalent.refl Condensation.RVModel.Equivalent.symm
+  Condensation.RVModel.Equivalent.trans
+  Condensation.RVModelObj.Equivalent Condensation.RVModelObj.id_eq Condensation.RVModelObj.comp_eq
+  -- `Perfect.lean`: the two random variable models Proposition 4.7 compares.  They are the
+  -- objects the `↔` is *about*, and the `↔` is the node, so they carry no annotation of
+  -- their own.
+  Condensation.LatentModel.pullbackModel Condensation.LatentModel.contribModel
+  Condensation.LatentModel.aeFunctionOf_jointContrib_pullbackJoint
+  -- `Amalgamation.lean`: the derived halves of Definition 4.12.  `lat₁`/`lat₂` are the two
+  -- latent variable models the definition names; their underlying space is `Λ₀`
+  -- definitionally, which is what Theorem 4.15 needs.  `comm_ρ` is the square (4.43) as it
+  -- survives inside Definition 4.12 -- a.e., because Definition 3.5's conditions are a.e.
+  Condensation.LatentAmalgamation.rv₁ Condensation.LatentAmalgamation.rv₂
+  Condensation.LatentAmalgamation.lat₁ Condensation.LatentAmalgamation.lat₂
+  Condensation.LatentAmalgamation.comm_ρ
+  -- `Comparison.lean`: the set identity (4.62) that Theorem 4.15's missing induction runs
+  -- on.  The paper writes `F_i` for `contribIdx i` and never defines it (errata entry 5).
+  Condensation.iInter_contribIdx_eq_above
+  -- `Quantitative.lean`: the conditional interaction-information symmetries Lemma 5.4 is
+  -- proved through, the polar's lattice facts, and the `ITree`/`LTree` machinery behind
+  -- Definition 5.6 and Proposition 5.7.  `kSubsets` is Corollary 5.10's family `F`; the
+  -- node is `polar_kSubsets`, inventoried above.
+  Condensation.condEntropy_pair_rotate Condensation.condInteractionInfo_comm
+  Condensation.condInteractionInfo_swap Condensation.condInteractionInfo_rotate
+  Condensation.mem_polar Condensation.mem_polar_iff Condensation.isUpperSet_polar
+  Condensation.polar_antitone Condensation.polar_singleton Condensation.polar_eq_iInter
+  Condensation.isUpperSet_inf_closed
+  Condensation.ITree.leaves Condensation.ITree.subtrees
+  Condensation.ITree.label_mem_of_labelsIn Condensation.ITree.label_eq_polar
+  Condensation.ITree.decorate
+  Condensation.LTree Condensation.LTree.rootLabel Condensation.LTree.erase
+  Condensation.LTree.IsIntersectionTree
+  Condensation.kSubsets
+  -- `Examples.lean`, §3.1 witnesses.  `coinCollapse` is a morphism that genuinely changes
+  -- the index set; `pairCoinHom₁`/`pairCoinHom₂` are Definition 3.9's remark made concrete
+  -- -- a.e.-equal morphisms whose `f` components differ, which is possible because `X` need
+  -- not be surjective onto its range type.
+  Condensation.coinCollapse Condensation.coinObj Condensation.twoCoinObj
+  Condensation.coinCollapseArrow
+  Condensation.pairCoinModel Condensation.pairCoinHom₁ Condensation.pairCoinHom₂

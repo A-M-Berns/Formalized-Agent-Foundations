@@ -165,6 +165,84 @@ def read_inventory(audit_path, block):
     return inventory
 
 
+class Pending:
+    """The parse of one `-- <BLOCK>-BEGIN/END` staging block.
+
+    `entries` maps each staged declaration name to the reason given for it (the rest of
+    its line, with a leading `--` peeled off).  `problems` is a list of ready-to-print
+    violation messages, one per malformed line, already carrying `path:line:` — a caller
+    reports them as violations rather than silently dropping the lines, so the block
+    cannot degrade into a place to hide things.
+    """
+
+    __slots__ = ("entries", "problems")
+
+    def __init__(self, entries, problems):
+        self.entries = entries
+        self.problems = problems
+
+
+def read_pending(audit_path, block):
+    """Declaration names staged in `block`'s `-- <block>-BEGIN/END` comment block.
+
+    The block is *pure comment* — it holds declarations that are annotated endpoints but
+    whose proofs are still `sorry`, so they cannot be listed in `#assert_axioms_clean`:
+
+        -- CONDENSATION-PENDING-BEGIN
+        -- Condensation.LatentModel.perfect_tfae_A     -- M2: proof pending
+        -- CONDENSATION-PENDING-END
+
+    Returns `None` when the markers are absent (which is *not* the same as an empty
+    block, which returns a `Pending` with no entries), otherwise a `Pending`.  Every
+    non-blank line strictly between the markers must be a `--` comment whose first token
+    is identifier-shaped (that token is the declaration name) and which gives a non-empty
+    reason after that name, and names no declaration twice; each line failing any of
+    those is reported in `Pending.problems` rather than skipped.
+    """
+    audit_text = Path(audit_path).read_text()
+    match = re.search(rf"-- {block}-BEGIN(.*?)-- {block}-END", audit_text, re.S)
+    if match is None:
+        return None
+    first_line = audit_text.count("\n", 0, match.start(1)) + 1
+    entries: dict[str, str] = {}
+    problems: list[str] = []
+    for offset, raw in enumerate(match.group(1).split("\n")):
+        lineno = first_line + offset
+        line = raw.strip()
+        if not line:
+            continue
+        if not line.startswith("--"):
+            problems.append(
+                f"{audit_path}:{lineno}: MALFORMED PENDING ENTRY: every line of the "
+                f"{block} block must be a `--` comment, but this one is code"
+            )
+            continue
+        content = line[2:].strip()
+        name_match = re.match(rf"({IDENT})", content)
+        if name_match is None:
+            problems.append(
+                f"{audit_path}:{lineno}: MALFORMED PENDING ENTRY: no declaration name "
+                f"at the start of this {block} entry"
+            )
+            continue
+        name = name_match.group(1)
+        reason = re.sub(r"^--\s*", "", content[name_match.end():].strip()).strip()
+        if not reason:
+            problems.append(
+                f"{audit_path}:{lineno}: MALFORMED PENDING ENTRY: {name!r} is staged in "
+                f"the {block} block with no reason given"
+            )
+            continue
+        if name in entries:
+            problems.append(
+                f"{audit_path}:{lineno}: DUPLICATE PENDING ENTRY: {name!r} is staged "
+                f"twice in the {block} block"
+            )
+            continue
+        entries[name] = reason
+    return Pending(entries, problems)
+
+
 def library_sources(root_module, lib_dir):
     """The Lean files of a library, in the order the checkers walk them.
 
@@ -232,7 +310,8 @@ def collect_annotations(root_module, lib_dir, node_id_re):
 
 def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
                    source_nodes, node_shape, root_prefix=None, empty_source_message=None,
-                   summary, scope_manifest=None, inventory_required=True):
+                   summary, scope_manifest=None, inventory_required=True,
+                   pending_block=None, paper_status=None):
     """Drive one paper's provenance check; returns the process exit status.
 
     Every message this emits is the message the per-paper checkers emitted before the
@@ -250,6 +329,24 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
     declaration carries an annotation the block is demanded again, and each annotated
     declaration is an uninventoried endpoint until it is listed.  So this loosens the
     gate exactly over the window in which there is nothing for the gate to protect.
+
+    `pending_block`, when given, names a second block in the same `audit` file — a pure
+    comment block, read by `read_pending` — that stages endpoints whose statements are
+    final but whose proofs are still `sorry`.  Such a declaration is a real endpoint and
+    must carry its annotation, yet it cannot go into `#assert_axioms_clean`, which would
+    fail on the `sorry`; without somewhere to say so it reads as an uninventoried
+    endpoint, which is a false alarm.  An annotated declaration therefore satisfies the
+    coverage rule by appearing in *either* block, and the staging is fenced so that it
+    buys nothing else: a name in both blocks is a violation (an endpoint is
+    axiom-checked or proof-pending, never both), a pending entry naming no annotated
+    declaration is a violation (staging must not outlive the endpoint it stages), and a
+    malformed pending line is a violation rather than a skipped line.  A non-empty
+    pending block that survives all of that is reported as a *note*, never a failure;
+    an absent block is a note too, since a paper may legitimately stage nothing.
+
+    `paper_status`, when given, is the paper's registered status.  `'completed'` with a
+    non-empty pending set is a violation: staging is a mid-flight device, and a finished
+    paper has every endpoint inside the axiom gate.
     """
     violations: list[str] = []
     notes: list[str] = []
@@ -266,8 +363,30 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
     resolved = inventory if root_prefix is None else (
         inventory | {f"{root_prefix}.{entry}" for entry in inventory})
 
+    def forms_of(entry):
+        """The qualified names a listed entry may resolve to, per `root_prefix`."""
+        return {entry} if root_prefix is None else {entry, f"{root_prefix}.{entry}"}
+
+    pending_names: set[str] = set()
+    resolved_pending: set[str] = set()
+    if pending_block is not None:
+        pending = read_pending(audit, pending_block)
+        if pending is None:
+            notes.append(
+                f"note: {audit} has no {pending_block}-BEGIN/END block, so nothing is "
+                f"staged as proof-pending."
+            )
+        else:
+            violations += pending.problems
+            pending_names = set(pending.entries)
+            for entry in pending_names:
+                resolved_pending |= forms_of(entry)
+
+    accepted = resolved | resolved_pending
+
     citations = 0
     annotated_nodes: set[str] = set()
+    annotated_qualified: set[str] = set()
     annotated_carriers = 0
 
     for path in library_sources(root_module, lib):
@@ -326,12 +445,37 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
             prefix = prefixes.get(decl_line, "")
             qualified = f"{prefix}.{name}" if prefix else name
             annotated_carriers += 1
-            if qualified not in resolved:
+            annotated_qualified.add(qualified)
+            if qualified not in accepted:
+                where = (f"{inventory_block} block" if pending_block is None else
+                         f"{inventory_block} block, nor staged in its "
+                         f"{pending_block} block")
                 violations.append(
                     f"{path}:{decl_line}: UNINVENTORIED ENDPOINT: {qualified!r} carries a "
-                    f"'{MARKER}' annotation but is not listed in {audit}'s "
-                    f"{inventory_block} block"
+                    f"'{MARKER}' annotation but is not listed in {audit}'s {where}"
                 )
+
+    for entry in sorted(pending_names):
+        if forms_of(entry) & resolved:
+            violations.append(
+                f"{audit}: PENDING ENTRY ALSO INVENTORIED: {entry!r} is listed in both "
+                f"the {inventory_block} block and the {pending_block} block of {audit}; "
+                f"an endpoint is either axiom-checked or proof-pending, not both"
+            )
+        if not (forms_of(entry) & annotated_qualified):
+            violations.append(
+                f"{audit}: STALE PENDING ENTRY: {entry!r} is listed in the "
+                f"{pending_block} block but names no declaration carrying a '{MARKER}' "
+                f"annotation under {lib}/; staging must not outlive the endpoint it "
+                f"stages"
+            )
+
+    if paper_status == "completed" and pending_names:
+        violations.append(
+            f"{audit}: PENDING BLOCK NON-EMPTY: paper status is 'completed' but "
+            f"{len(pending_names)} endpoint(s) are staged as proof-pending; a completed "
+            f"paper has no pending endpoints"
+        )
 
     if scope_manifest is not None:
         mpath = scope_manifest.get("path", "scope manifest")
@@ -369,6 +513,10 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
                 f"endpoint to inventory. The block is required from the first annotated "
                 f"declaration onwards."
             )
+
+    if pending_names and not violations:
+        notes.append(
+            f"note: {len(pending_names)} endpoints pending (sorry) — not axiom-checked")
 
     for entry in notes:
         print(entry)

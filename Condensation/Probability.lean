@@ -1,4 +1,5 @@
 import ShannonInformation.API
+import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
 
 /-!
 # Condensation §2 — probabilistic conventions
@@ -16,7 +17,8 @@ Contents:
 * Definition 2.3 — interaction information (`interactionInfo`) and its conditional form
   (`condInteractionInfo`), over the entropy vocabulary re-exported by
   `ShannonInformation.API`;
-* Definition 2.4 — the Giry σ-algebra on the space of measures (`GiryMeasurableSpace`);
+* Definition 2.4 — the Giry σ-algebra on the space of *probability* measures
+  (`GiryMeasurableSpace`);
 * **Proposition 2.5** — the determinism bridge `H(Y | X) = 0 → Y = f(X)` a.e., and its
   converse, which §4 uses in both directions.
 
@@ -24,11 +26,24 @@ Contents:
 
 `dd:ae-function`, `dd:pullback`, `dd:pplus`, `dd:interaction`, `dd:finite-range` — see the
 `dd:` glossary in `Condensation.lean` and `Condensation/notes/roadmap.md`.  The one that
-shapes every statement here is `dd:finite-range`: the vendored entropy library proves its
-theorems only for finite-range variables (`ShannonInformation/SCOPE.md`), so every
-statement with entropy content carries `FiniteRange`, which is strictly narrower than the
-paper's "countable discrete range with finite entropy".  This is a disclosed narrowing,
-recorded in `Condensation/KNOWLEDGE.md`.
+shapes the statements here is `dd:finite-range`: the vendored entropy library proves the
+theorems this file needs only for finite-range variables
+(`ShannonInformation/SCOPE.md`), which is narrower than the paper's "countable discrete
+range with finite entropy".  This is a disclosed narrowing, recorded in
+`Condensation/KNOWLEDGE.md`.
+
+`FiniteRange` is **not** carried by every statement with entropy content, and it is worth
+knowing which: exactly eight declarations here take it, namely
+`condEntropy_comp_measurePreserving`, `interactionInfo_swap`,
+`condEntropy_eq_entropy_of_subsingleton`, `entropy_le_of_aeFunctionOf`,
+`entropy_pair_of_aeFunctionOf`, `condEntropy_eq_zero_of_aeFunctionOf`,
+`aeFunctionOf_of_condEntropy_eq_zero` and `aeFunctionOf_iff_condEntropy_eq_zero`.  The pullback identities
+`entropy_comp_measurePreserving` and `mutualInfo_comp_measurePreserving` and the
+first symmetry `interactionInfo_comm` are `IdentDistrib`-based and hold with no
+finiteness at all; `interactionInfo` and `condInteractionInfo` are definitions and
+carry none either.  These are §2 substrate lemmas over bare variables, so the hypothesis
+is explicit here rather than supplied by a model structure (see `dd:finite-range` in
+`Condensation/KNOWLEDGE.md`).
 
 Entropy, conditional entropy, mutual information and conditional mutual information are
 **not** defined here: they are PFR's, re-exported through `ShannonInformation.API`.  No
@@ -126,6 +141,18 @@ lemma AEFunctionOf.prodMk (h : AEFunctionOf X Y μ) (h' : AEFunctionOf X Z μ) :
   filter_upwards [hfX, hgX] with ω hω hω'
   simp [hω, hω']
 
+/-- A family of variables each of which is a.e. a function of `X`, indexed by a countable
+type, is jointly a.e. a function of `X`.  This is the form §4 needs: `X_A` is a.e. a
+function of `Y_∩A` because each `X_i`, `i ∈ A`, is a.e. a function of `Y_∋i`. -/
+lemma AEFunctionOf.pi {ι : Type*} [Countable ι] {R : ι → Type*} [∀ i, MeasurableSpace (R i)]
+    {Z : ∀ i, Ω → R i} (h : ∀ i, AEFunctionOf X (Z i) μ) :
+    AEFunctionOf X (fun ω i => Z i ω) μ := by
+  choose f hf hfX using h
+  refine ⟨fun s i => f i s, measurable_pi_lambda _ hf, ?_⟩
+  rw [← ae_all_iff] at hfX
+  filter_upwards [hfX] with ω hω
+  exact funext hω
+
 /-- **Pullback of an a.e. functional dependence** (Definition 2.1, `dd:pullback`).  If `Y`
 is a.e. a function of `X` on `Ω` and `π : Λ → Ω` is measure preserving, then `π^* Y` is
 a.e. a function of `π^* X` on `Λ`. -/
@@ -158,13 +185,20 @@ lemma identDistrib_comp_measurePreserving (hπ : MeasurePreserving π μΛ μΩ)
     (hX : Measurable X) : IdentDistrib (X ∘ π) X μΛ μΩ :=
   (hπ.identDistrib hX.aemeasurable).symm
 
-/-- Entropy is invariant under pullback along a measure-preserving map. -/
+/-- Entropy is invariant under pullback along a measure-preserving map — the entropy
+companion of the displayed identity (2.2), which sits inside Definition 2.1's discussion
+of the pullback convention.
+
+Paper node: `Definition 2.1` -/
 lemma entropy_comp_measurePreserving (hπ : MeasurePreserving π μΛ μΩ) (hX : Measurable X) :
     H[X ∘ π ; μΛ] = H[X ; μΩ] :=
   (identDistrib_comp_measurePreserving hπ hX).entropy_congr
 
 /-- **Equation (2.2)**: mutual information is invariant under pullback along a
-measure-preserving map. -/
+measure-preserving map.  The equation is displayed inside Definition 2.1, as the
+justification of that definition's pullback convention.
+
+Paper node: `Definition 2.1` -/
 lemma mutualInfo_comp_measurePreserving (hπ : MeasurePreserving π μΛ μΩ)
     (hX : Measurable X) (hY : Measurable Y) :
     I[X ∘ π : Y ∘ π ; μΛ] = I[X : Y ; μΩ] := by
@@ -172,13 +206,20 @@ lemma mutualInfo_comp_measurePreserving (hπ : MeasurePreserving π μΛ μΩ)
     identDistrib_comp_measurePreserving hπ (hX.prodMk hY)
   exact h.mutualInfo_eq
 
-/-- Conditional entropy is invariant under pullback along a measure-preserving map. -/
+/-- Conditional entropy is invariant under pullback along a measure-preserving map — the
+conditional-entropy companion of the displayed identity (2.2), which sits inside
+Definition 2.1's discussion of the pullback convention.
+
+`μΩ` needs no probability hypothesis of its own: it is the pushforward of `μΛ` along `π`.
+
+Paper node: `Definition 2.1` -/
 lemma condEntropy_comp_measurePreserving [Countable S] [MeasurableSingletonClass S]
-    [Countable T] [MeasurableSingletonClass T]
-    [IsProbabilityMeasure μΛ] [IsProbabilityMeasure μΩ]
+    [Countable T] [MeasurableSingletonClass T] [IsProbabilityMeasure μΛ]
     (hπ : MeasurePreserving π μΛ μΩ) (hX : Measurable X) (hY : Measurable Y)
     [FiniteRange X] [FiniteRange Y] :
     H[X ∘ π | Y ∘ π ; μΛ] = H[X | Y ; μΩ] := by
+  haveI : IsProbabilityMeasure μΩ :=
+    hπ.map_eq ▸ Measure.isProbabilityMeasure_map hπ.measurable.aemeasurable
   have h : IdentDistrib (⟨X ∘ π, Y ∘ π⟩ : Λ → S × T) (⟨X, Y⟩ : Ω → S × T) μΛ μΩ :=
     identDistrib_comp_measurePreserving hπ (hX.prodMk hY)
   exact IdentDistrib.condEntropy_eq (hX.comp hπ.measurable) (hY.comp hπ.measurable) hX hY h
@@ -186,6 +227,13 @@ lemma condEntropy_comp_measurePreserving [Countable S] [MeasurableSingletonClass
 end Pullback
 
 /-! ## Definition 2.2 — the nonempty power set `P⁺ S` -/
+
+/-- `Finset I` is finite when `I` is.  Mathlib carries `Finset.fintype` for `[Fintype I]`
+but no `Finite (Finset I)` instance at this pin, and `[Finite I]` does not yield
+`Fintype I` by instance search (`Fintype.ofFinite` is noncomputable and deliberately not
+an instance), so this is a genuine gap rather than an inference detail. -/
+instance instFiniteFinset {I : Type u} [Finite I] : Finite (Finset I) :=
+  Finite.of_injective (fun s : Finset I => (s : Set I)) Finset.coe_injective
 
 /-- `P⁺ I`, the **nonempty power set** of `I`: the nonempty finite subsets of `I`.  For the
 finite index sets of Definition 3.1 this is exactly the paper's set of nonempty subsets
@@ -227,6 +275,13 @@ instance [DecidableEq I] : DecidableEq (PPlus I) := fun A B =>
   decidable_of_iff (A.toFinset = B.toFinset) ⟨ext, fun h => by rw [h]⟩
 
 instance [Fintype I] [DecidableEq I] : Fintype (PPlus I) := Subtype.fintype _
+
+/-- `P⁺ I` is finite whenever `I` is — no `Fintype`/`DecidableEq` data needed.  Definition
+3.1 asks for a *finite* family of random variables, so `[Finite I]` is carried by every
+model in this development, and this instance is what makes every subfamily `F ⊆ P⁺ I`
+finite (`Set.toFinite`), which is what the sums of (3.1)–(3.2) and the joint variables
+`Y_F` of Definition 3.4 range over. -/
+instance instFinite [Finite I] : Finite (PPlus I) := Subtype.finite
 
 instance [Countable I] : Countable (PPlus I) := Subtype.countable
 
@@ -273,15 +328,21 @@ variable [Countable S] [MeasurableSingletonClass S] [Countable T] [MeasurableSin
   {μ : Measure Ω} {X : Ω → S} {Y : Ω → T} {Z : Ω → U}
 
 omit [Countable U] [MeasurableSingletonClass U] in
-/-- Interaction information is symmetric in its first two arguments. -/
+/-- Interaction information is symmetric in its first two arguments — half of the remark
+displayed with Definition 2.3 that `I (X; Y; Z)` is invariant under permutation of its
+arguments.
+
+Paper node: `Definition 2.3` -/
 lemma interactionInfo_comm (hX : Measurable X) (hY : Measurable Y) (Z : Ω → U)
     (μ : Measure Ω) : interactionInfo X Y Z μ = interactionInfo Y X Z μ := by
   rw [interactionInfo, interactionInfo, mutualInfo_comm hX hY, condMutualInfo_comm hX hY]
 
 /-- Interaction information is symmetric in its last two arguments — the second half of
-the paper's remark that `I(X; Y; Z)` is invariant under permutation of its arguments.
-Together with `interactionInfo_comm` this generates the full symmetric group on the three
-arguments. -/
+Definition 2.3's remark that `I (X; Y; Z)` is invariant under permutation of its
+arguments.  Together with `interactionInfo_comm` this generates the full symmetric group
+on the three arguments.
+
+Paper node: `Definition 2.3` -/
 lemma interactionInfo_swap [IsZeroOrProbabilityMeasure μ]
     (hX : Measurable X) (hY : Measurable Y) (hZ : Measurable Z)
     [FiniteRange X] [FiniteRange Y] [FiniteRange Z] :
@@ -298,14 +359,43 @@ end Interaction
 
 /-! ## Definition 2.4 — the Giry σ-algebra -/
 
-/-- **`G (Ω)`**: the space of measures on `Ω`, equipped with the smallest σ-algebra making
-every evaluation map `P ↦ P E` (for `E ⊆ Ω` measurable) measurable.  This is Mathlib's
-`MeasureTheory.Measure.instMeasurableSpace`; the alias exists only to name the paper's
-`G (Ω)` and is not a new definition.
+/-- **`G (Ω)`**: the space of *probability* measures on `Ω`, equipped with the smallest
+σ-algebra making every evaluation map `P ↦ P E` (for `E ⊆ Ω` measurable) measurable.  This
+is Mathlib's σ-algebra on `MeasureTheory.ProbabilityMeasure Ω`, inherited from
+`MeasureTheory.Measure.instMeasurableSpace` by comap along the coercion; the alias exists
+only to name the paper's `G (Ω)` and is not a new definition.
+
+The carrier is `ProbabilityMeasure Ω`, not `Measure Ω`: Definition 2.4 equips *the space
+of probability measures* on `Ω`, and the proof of Proposition 2.5 reads "each such
+probability distribution is a Dirac measure in `G (Ω)`", which is a statement about a
+point of that space.
 
 Paper node: `Definition 2.4` -/
-abbrev GiryMeasurableSpace (Ω : Type*) [MeasurableSpace Ω] : MeasurableSpace (Measure Ω) :=
+abbrev GiryMeasurableSpace (Ω : Type*) [MeasurableSpace Ω] :
+    MeasurableSpace (ProbabilityMeasure Ω) :=
   inferInstance
+
+/-! ## An auxiliary: conditioning on a constant -/
+
+/-- Conditioning on a variable whose range is a subsingleton leaves entropy unchanged:
+such a variable is literally constant, and mutual information with a constant vanishes.
+
+Not a paper statement — the paper never says it, because on paper "conditioning on nothing"
+needs no lemma.  In Lean it does: Definition 3.4's `Y_⊋B` is a dependent product over a
+possibly *empty* index family, and at the maximal `B` it is exactly such a subsingleton, so
+`χ_L`'s top term is an unconditioned entropy.  The vendored library has `entropy_const` and
+`mutualInfo_const` but no `condEntropy_const`; this is the missing form.  It is generic
+enough to belong in `ShannonInformation/API.lean` if a second client ever wants it. -/
+lemma condEntropy_eq_entropy_of_subsingleton {Ω S T : Type*} [MeasurableSpace Ω]
+    [MeasurableSpace S] [MeasurableSpace T] [Countable S] [MeasurableSingletonClass S]
+    [Countable T] [MeasurableSingletonClass T] [Subsingleton T] [Nonempty T]
+    {μ : Measure Ω} [IsProbabilityMeasure μ] {X : Ω → S} (hX : Measurable X) [FiniteRange X]
+    (Y : Ω → T) : H[X | Y ; μ] = H[X ; μ] := by
+  have hY : Y = fun _ => (Classical.arbitrary T) := funext fun _ => Subsingleton.elim _ _
+  subst hY
+  have h0 := mutualInfo_const (μ := μ) hX (Classical.arbitrary T)
+  rw [mutualInfo_eq_entropy_sub_condEntropy hX measurable_const] at h0
+  linarith
 
 /-! ## Proposition 2.5 — the determinism bridge -/
 
@@ -353,8 +443,12 @@ This is what turns every entropy inequality of §4 into the paper's "is a functi
 conclusions (Lemma 4.5, Corollary 4.6, Theorem 4.9, Theorem 4.15).
 
 `dd:finite-range`: the paper's hypothesis is countable discrete range with finite entropy;
-here the variables carry `FiniteRange`, which is strictly stronger.  See
-`Condensation/KNOWLEDGE.md`.
+here the variables carry `FiniteRange` instead.  The two hypothesis sets are *not*
+comparable as printed.  This statement is stronger where it matters — `FiniteRange X` and
+`FiniteRange Y` exclude a countable-range variable of finite entropy, which the paper
+admits — and incidentally weaker in one respect the proof does not need: `Countable R_Y`
+is omitted (`omit [Countable T]`), only `MeasurableSingletonClass T` being used.  The
+narrowing is the standing one; see `Condensation/KNOWLEDGE.md`.
 
 Paper node: `Proposition 2.5` -/
 theorem aeFunctionOf_of_condEntropy_eq_zero [Countable Ω] [MeasurableSingletonClass Ω]

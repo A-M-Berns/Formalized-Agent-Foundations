@@ -57,6 +57,43 @@ a gate, so an in-progress paper must not fail it spuriously.  The block becomes 
 with the first annotated declaration, and until it is listed each annotated declaration
 is an uninventoried endpoint.
 
+**Staged endpoints, and why rule 3 has a second door.**  This formalization is
+mid-flight, and it reaches the paper's endpoints statement-first: several declarations
+already carry a `Paper node:` line because their *statement* is final and is the paper's
+real endpoint, while their proof is still `sorry`.  Such a declaration cannot be listed
+in the CONDENSATION-INVENTORY block — that block wraps `#assert_axioms_clean`, and a
+`sorry` is exactly what that command exists to catch, so listing it would either fail the
+axiom gate or, worse, tempt someone to weaken it.  Dropping the annotation instead would
+be a lie about the statement's provenance.  So the audit file carries a second block,
+
+    -- CONDENSATION-PENDING-BEGIN
+    -- Condensation.LatentModel.perfect_tfae_A            -- M2: proof pending
+    -- CONDENSATION-PENDING-END
+
+which is pure Lean comment — it compiles to nothing and asserts nothing.  It is a
+*declaration of intent*, not a discharge: an annotated endpoint satisfies rule 3 by being
+listed in either block, and the pending block says out loud, in the same file as the
+axiom gate and under review with it, that this endpoint is claimed but not yet proved.
+
+The staging is fenced so it buys nothing beyond that, and every fence is a hard failure:
+
+* a name listed in **both** blocks fails — an endpoint is axiom-checked or proof-pending,
+  never both, and this is what stops one being quietly "proved" in one place while it is
+  still excused in the other;
+* a pending entry naming **no annotated declaration** fails — a stale entry left behind
+  when an endpoint is renamed or retired would otherwise sit there excusing nothing;
+* a **malformed** pending line (not a `--` comment, no declaration name, no reason given)
+  fails rather than being skipped, so the block cannot degrade into a place to hide
+  things;
+* and a non-empty pending block on a paper registered **`completed`** fails — staging is
+  a mid-flight device, and a finished paper has every endpoint inside the axiom gate.
+  The status is read from `scripts/papers.py` below rather than asserted here, so that
+  gate arms itself the moment the registry says the paper is done.
+
+A surviving non-empty block prints as a note (`N endpoints pending (sorry) — not
+axiom-checked`), never as a violation: the situation it describes is honest work in
+progress, and the count is the thing to watch shrink.
+
 The keyword rules for this library — every `theorem` carries a `Paper node:` line, and
 `private theorem` never occurs — are *not* duplicated here.  `scripts/lint_paper_labels.py`
 already takes a per-library list of accepted label forms; `Condensation` is registered
@@ -78,12 +115,17 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import paper_nodes  # noqa: E402
+from papers import PAPERS  # noqa: E402
 
 SOURCE = Path("Condensation/notes/condensation-25-07.txt")
 LIB = Path("Condensation")
 ROOT_MODULE = Path("Condensation.lean")
 AUDIT = Path("AxiomAudit.lean")
 INVENTORY_BLOCK = "CONDENSATION-INVENTORY"
+PENDING_BLOCK = "CONDENSATION-PENDING"
+# Read the status from the registry rather than restating it here: the completed-paper
+# gate on the pending block must arm itself when `papers.py` says the paper is done.
+STATUS = PAPERS["condensation"]["status"]
 
 # The paper's node inventory, counted off the PDF.  This is the extraction-drift guard
 # described above; it is a statement about the *paper*, so it changes only if the paper
@@ -174,6 +216,8 @@ def main():
         empty_source_message=f"{SOURCE}: no numbered nodes found — is the source intact?",
         summary=report,
         inventory_required=False,
+        pending_block=PENDING_BLOCK,
+        paper_status=STATUS,
     )
 
 
