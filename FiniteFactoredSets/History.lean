@@ -39,34 +39,6 @@ open scoped Classical
 
 variable (F : FactoredSet S)
 
-/-! ### Named projections of Proposition 4
-
-`chimera_spec` is a single eleven-clause conjunction, so every use of it downstream would
-otherwise be a chain of `.2`s whose length is the only thing distinguishing clause 10 from
-clause 11.  These five names are exactly the clauses §3.1 uses; they add no mathematics. -/
-
-private lemma chimera_self (C : Set (Setoid S)) (s : S) : F.chimera C s s = s := by
-  obtain ⟨-, -, h, -⟩ := F.chimera_spec C C s s s
-  exact h
-
-private lemma chimera_basis (s t : S) : F.chimera F.B s t = s := by
-  obtain ⟨-, -, -, -, -, -, -, -, -, h, -⟩ := F.chimera_spec F.B F.B s t t
-  exact h
-
-private lemma chimera_empty (s t : S) : F.chimera ∅ s t = t := by
-  obtain ⟨-, -, -, -, -, -, -, -, -, -, h⟩ := F.chimera_spec ∅ ∅ s t t
-  exact h
-
-private lemma chimera_union (C D : Set (Setoid S)) (s t : S) :
-    F.chimera (C ∪ D) s t = F.chimera C s (F.chimera D s t) := by
-  obtain ⟨-, -, -, -, h, -⟩ := F.chimera_spec C D s t t
-  exact h
-
-private lemma chimera_inter (C D : Set (Setoid S)) (s t : S) :
-    F.chimera (C ∩ D) s t = F.chimera C (F.chimera D s t) t := by
-  obtain ⟨-, -, -, -, -, h, -⟩ := F.chimera_spec C D s t t
-  exact h
-
 /-! ## §3.1 Generating a partition with factors -/
 
 /-- Definition 16: `C` generates `X` (in `F`), written `C ⊢^F X`, when `χ^F_C(x, S) = x`

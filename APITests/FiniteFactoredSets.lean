@@ -130,14 +130,16 @@ example : clientFS.Orthogonal ⊤ ⊥ ∧ clientFS.Entangled ⊥ ⊥ := by
 
 /-! ### Subpartitions and conditional orthogonality — §4 composed with §3 -/
 
-/-- Theorem 2's symmetry and decomposition composed: from `(Y ∨_S W) ⊥^F X | Z` a client
-reads off `X ⊥^F W | Z` without ever naming a block of `Z`.  Note the argument order —
-`orthogonalGiven_semigraphoid X Y Z W` fixes which partition plays which role in every
-clause at once, so the two invocations differ in their instantiation, not their clause. -/
+/-- Theorem 2's contraction and decomposition composed, which is how a client *coarsens*
+the conditioning partition: `X ⊥^F W | (Z ∨_S Y)` on its own says nothing about `Z`, but
+together with `X ⊥^F Y | Z` contraction bundles the two into `X ⊥^F (Y ∨_S W) | Z` and
+decomposition then splits `W` back out over the coarser `Z`.  Neither clause alone gives
+this, and the round trip is not the identity — the `Y` premise is what is consumed. -/
 example {S : Type u} (F : FactoredSet S) [Finite F.B] (X Y Z W : Setoid S)
-    (h : F.OrthogonalGiven (Y ⊓ W) X Z) : F.OrthogonalGiven X W Z :=
+    (h₁ : F.OrthogonalGiven X Y Z) (h₂ : F.OrthogonalGiven X W (Z ⊓ Y)) :
+    F.OrthogonalGiven X W Z :=
   ((F.orthogonalGiven_semigraphoid X Y Z W).2.1
-    ((F.orthogonalGiven_semigraphoid (Y ⊓ W) X Z W).1 h)).2
+    ((F.orthogonalGiven_semigraphoid X Y Z W).2.2.2.1 h₁ h₂)).2
 
 /-- Proposition 24 feeds Theorem 2: an *unconditional* `X ⊥^F (Y ∨_S W)` becomes the
 conditional `X ⊥^F Y | W` by reading Proposition 24 forwards and then applying weak union,
@@ -174,17 +176,83 @@ example {S : Type u} (F : FactoredSet S) [Finite F.B] (E : Set S) (Y Y' : Setoid
         (Subpartition.ofSetoidOn E Y')
         (by rw [Subpartition.dom_ofSetoidOn, Subpartition.dom_ofSetoidOn])).1 h)⟩
 
-/-- On the client factored set, Proposition 24 turns the two §3 facts established above
-into conditional ones — and it does so both ways, so `OrthogonalGiven` is neither empty nor
-total on a concrete factored set: `Ind ⊥^F Dis | Ind` holds while `Dis ⊥^F Dis | Ind`
-fails. -/
-example : clientFS.OrthogonalGiven ⊤ ⊥ ⊤ ∧ ¬ clientFS.OrthogonalGiven ⊥ ⊥ ⊤ := by
-  have htop : clientFS.history ⊤ = ∅ := (clientFS.history_spec ⊤ ⊤).2.2.1.2 rfl
-  refine ⟨(clientFS.orthogonal_iff_orthogonalGiven_top ⊤ ⊥).1 ?_, fun h => ?_⟩
-  · rw [orthogonal_def, htop, Set.empty_inter]
-  · have hbt : (⊥ : Setoid Bool) = ⊤ :=
-      (clientFS.orthogonal_spec ⊥ ⊥ ⊥).2.2.2.1
-        ((clientFS.orthogonal_iff_orthogonalGiven_top ⊥ ⊥).2 h)
-    exact Bool.noConfusion (show (⊥ : Setoid Bool) true false by rw [hbt]; trivial)
+/-! ### A two-dimensional client factored set, where conditioning has something to do
+
+`clientFS` is one-dimensional, so every §4.3 fact about it reduces to §3: over a single
+factor the only partitions in sight are `Ind_S` and `Dis_S`, and conditioning on `Ind_S` is
+Proposition 24 while conditioning on `Dis_S` trivializes Proposition 25.  A test that only
+conditions on `Ind_S` therefore exercises nothing §4.3 adds.  The observables below are a
+client's own two independent measurements of a two-bit state — the smallest setting in
+which conditioning on one *nontrivial* partition rather than another can flip the verdict.
+
+`FiniteFactoredSets.Examples` builds the same factored set as `coordFS`; rebuilding it
+here is a deliberate reconstruction, not a missed reuse.  These tests import only the API
+boundary, and `Examples` is explicitly outside it (a regression fixture, not a dependency
+surface), so putting a two-dimensional factored set together from `IsFactorization` alone
+is exactly the work a downstream project has to do. -/
+
+/-- The client's first observable: the first bit. -/
+def obsFst : Setoid (Bool × Bool) := Setoid.comap Prod.fst ⊥
+
+/-- The client's second observable: the second bit. -/
+def obsSnd : Setoid (Bool × Bool) := Setoid.comap Prod.snd ⊥
+
+/-- The two observables are a basis: reading both bits determines the state. -/
+def clientPairBasis : Set (Setoid (Bool × Bool)) := {obsFst, obsSnd}
+
+lemma clientPairBasis_isFactorization : IsFactorization clientPairBasis where
+  nontrivial := by
+    rintro b (rfl | rfl) ⟨-, h⟩
+    · exact Bool.noConfusion (h (true, true) (false, true))
+    · exact Bool.noConfusion (h (true, true) (true, false))
+  bijective := by
+    refine ⟨fun s t h => Prod.ext (Quotient.exact (congrFun h ⟨obsFst, Or.inl rfl⟩))
+      (Quotient.exact (congrFun h ⟨obsSnd, Or.inr rfl⟩)), fun y => ?_⟩
+    refine ⟨((Quotient.out (y ⟨obsFst, Or.inl rfl⟩)).1,
+            (Quotient.out (y ⟨obsSnd, Or.inr rfl⟩)).2), funext fun b => ?_⟩
+    obtain ⟨b, hb⟩ := b
+    rcases hb with rfl | rfl
+    · refine Eq.trans (Quotient.sound (?_ : obsFst _ _)) (Quotient.out_eq _); rfl
+    · refine Eq.trans (Quotient.sound (?_ : obsSnd _ _)) (Quotient.out_eq _); rfl
+
+/-- A client's two-dimensional factored set. -/
+def clientPairFS : FactoredSet (Bool × Bool) := ⟨clientPairBasis, clientPairBasis_isFactorization⟩
+
+example : Finite clientPairFS.B := inferInstance
+
+/-- Neither observable is the one-block partition, so all three conditioning partitions
+used below are genuinely different: `obsFst` and `obsSnd` have two blocks each, `Ind_S` has
+one. -/
+example : ¬ IsTrivialPartition obsFst ∧ ¬ IsTrivialPartition obsSnd :=
+  ⟨clientPairFS.nontrivial_of_mem (Or.inl rfl), clientPairFS.nontrivial_of_mem (Or.inr rfl)⟩
+
+/-- **The conditioning partition changes the verdict.**  Proposition 25 says `X ⊥^F X | Z`
+is the refinement `Z ≤ X`, so on a two-dimensional factored set the *same* pair `obsFst`,
+`obsFst` is conditionally orthogonal given `obsFst` and conditionally entangled given
+`obsSnd` — two partitions with two blocks apiece, neither of them `Ind_S`.  Conditioning on
+`Ind_S` fails too, which is the only one of the three Proposition 24 can account for: it is
+`¬ obsFst ⊥^F obsFst`, whereas the `obsFst` and `obsSnd` cases are statements §3 cannot
+make. -/
+example :
+    clientPairFS.OrthogonalGiven obsFst obsFst obsFst ∧
+      ¬ clientPairFS.OrthogonalGiven obsFst obsFst obsSnd ∧
+      ¬ clientPairFS.OrthogonalGiven obsFst obsFst ⊤ := by
+  refine ⟨(clientPairFS.orthogonalGiven_self_iff obsFst obsFst).2 le_rfl, fun h => ?_,
+    fun h => ?_⟩
+  · have hle : obsSnd ≤ obsFst := (clientPairFS.orthogonalGiven_self_iff obsFst obsSnd).1 h
+    have hsnd : obsSnd (true, true) (false, true) := rfl
+    exact Bool.noConfusion (hle hsnd : obsFst (true, true) (false, true))
+  · have hle : (⊤ : Setoid (Bool × Bool)) ≤ obsFst :=
+      (clientPairFS.orthogonalGiven_self_iff obsFst ⊤).1 h
+    exact Bool.noConfusion (hle trivial : obsFst (true, true) (false, true))
+
+/-- And the `Ind_S` case really is the §3 statement, by Proposition 24 read backwards: the
+failure above is exactly the failure of unconditional self-orthogonality, which Proposition
+15 clause 4 pins to `obsFst ≠ Ind_S`. -/
+example : ¬ clientPairFS.Orthogonal obsFst obsFst := by
+  intro h
+  have htop : obsFst = (⊤ : Setoid (Bool × Bool)) :=
+    (clientPairFS.orthogonal_spec obsFst obsFst obsFst).2.2.2.1 h
+  exact Bool.noConfusion (show obsFst (true, true) (false, true) by rw [htop]; trivial)
 
 end APITests.FiniteFactoredSets

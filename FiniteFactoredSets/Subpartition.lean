@@ -147,6 +147,27 @@ lemma classes_restrict (X : Subpartition S) (E : Set S) :
       exact ⟨mem_dom_of_rel hr, hrE⟩
     · rw [restrict_part hrE, part_eq_of_rel hr]
 
+/-- Restricting to all of `S` changes nothing: `X|S = X`. -/
+@[simp] lemma restrict_univ (X : Subpartition S) : X.restrict Set.univ = X :=
+  ext fun _ _ => ⟨fun h => h.2.2, fun h => ⟨trivial, trivial, h⟩⟩
+
+/-- Nested restrictions collapse: `(X|E)|E' = X|E'` when `E' ⊆ E`. -/
+lemma restrict_restrict_of_subset (X : Subpartition S) {E E' : Set S} (h : E' ⊆ E) :
+    (X.restrict E).restrict E' = X.restrict E' :=
+  ext fun _ _ => ⟨fun hst => ⟨hst.1, hst.2.1, hst.2.2.2.2⟩,
+    fun hst => ⟨hst.1, hst.2.1, h hst.1, h hst.2.1, hst.2.2⟩⟩
+
+/-- A partition of `S` restricted to `E` has domain `E`. -/
+@[simp] lemma dom_restrict_ofSetoid (X : Setoid S) (E : Set S) :
+    ((ofSetoid X).restrict E).dom = E := by
+  rw [dom_restrict, dom_ofSetoid, Set.univ_inter]
+
+/-- The block of `X|E` through `s ∈ E` is the trace `E ∩ [s]_X`. -/
+lemma part_restrict_ofSetoid (X : Setoid S) {E : Set S} {s : S} (hs : s ∈ E) :
+    ((ofSetoid X).restrict E).part s = E ∩ {x | X x s} := by
+  ext t
+  exact ⟨fun h => ⟨h.1, h.2.2⟩, fun h => ⟨h.1, hs, h.2⟩⟩
+
 /-- The indiscrete partition of `E`, `Ind_E`. -/
 def indiscrete (E : Set S) : Subpartition S :=
   ⟨fun s t => s ∈ E ∧ t ∈ E, fun h => ⟨h.2, h.1⟩, fun h₁ h₂ => ⟨h₁.1, h₂.2⟩⟩
@@ -185,6 +206,14 @@ instance : SemilatticeInf (Subpartition S) where
   inf_le_left _ _ _ _ h := h.1
   inf_le_right _ _ _ _ h := h.2
   le_inf _ _ _ h₁ h₂ _ _ h := ⟨h₁ h, h₂ h⟩
+
+/-- Restriction distributes over the common refinement: `(X ∨_S Y)|E = (X|E) ∨_E (Y|E)`,
+which under `dd:order-flip` is `(ofSetoid (X ⊓ Y)).restrict E = X|E ⊓ Y|E`.  This is the
+identity the paper's proof of Theorem 2 opens with. -/
+lemma restrict_ofSetoid_inf (X Y : Setoid S) (E : Set S) :
+    (ofSetoid (X ⊓ Y)).restrict E = (ofSetoid X).restrict E ⊓ (ofSetoid Y).restrict E :=
+  ext fun _ _ => ⟨fun h => ⟨⟨h.1, h.2.1, h.2.2.1⟩, ⟨h.1, h.2.1, h.2.2.2⟩⟩,
+    fun h => ⟨h.1.1, h.1.2.1, h.1.2.2, h.2.2.2⟩⟩
 
 /-- The paper's "`X ⊆ Z`" between subpartitions: every block of `X` is a block of `Z`
 (inclusion as sets of blocks — "a slightly unnatural relation", the paper notes, but the
@@ -225,6 +254,20 @@ lemma restrict_part_subset_inf {X Y : Subpartition S} (hE : X.dom = Y.dom) {s : 
     exact ⟨X.trans' htX (X.symm' huX), hY⟩
   · rintro ⟨hX, hY⟩
     exact ⟨X.trans' hX huX, huX, hY⟩
+
+/-- Restricting `Y|z` further to a block of `W` lands inside `(Y ∨_S W)|z` as a set of
+blocks — the `Subset` that Proposition 23 clause 3 consumes in §4.3's weak-union argument
+(`dd:order-flip`: the paper's `Y ∨_S W` is `Y ⊓ W`). -/
+lemma restrict_inter_subset_restrict_inf (Y W : Setoid S) (z : Set S) (s : S) :
+    ((ofSetoid Y).restrict (z ∩ {x | W x s})).Subset ((ofSetoid (Y ⊓ W)).restrict z) := by
+  intro a ha t
+  rw [dom_restrict_ofSetoid] at ha
+  obtain ⟨haz, has⟩ := ha
+  constructor
+  · rintro ⟨⟨htz, hts⟩, -, hY⟩
+    exact ⟨htz, haz, hY, W.trans' hts (W.symm' has)⟩
+  · rintro ⟨htz, -, hY, hW⟩
+    exact ⟨⟨htz, W.trans' hW has⟩, ⟨haz, has⟩, hY⟩
 
 /-! ### The correspondence with `Σ E, Setoid E` — the content of `dd:subpartition` -/
 
@@ -273,34 +316,6 @@ open scoped Classical
 open Subpartition
 
 variable (F : FactoredSet S)
-
-/-! ### Named projections of Proposition 4
-
-The same five clauses of `chimera_spec` that §3.1 uses.  `History.lean`'s copies are
-`private` to that module, so they cannot be imported; these are the identical projections,
-and they add no mathematics. -/
-
-private lemma chimera_self (C : Set (Setoid S)) (s : S) : F.chimera C s s = s := by
-  obtain ⟨-, -, h, -⟩ := F.chimera_spec C C s s s
-  exact h
-
-private lemma chimera_basis (s t : S) : F.chimera F.B s t = s := by
-  obtain ⟨-, -, -, -, -, -, -, -, -, h, -⟩ := F.chimera_spec F.B F.B s t t
-  exact h
-
-private lemma chimera_empty (s t : S) : F.chimera ∅ s t = t := by
-  obtain ⟨-, -, -, -, -, -, -, -, -, -, h⟩ := F.chimera_spec ∅ ∅ s t t
-  exact h
-
-private lemma chimera_union (C D : Set (Setoid S)) (s t : S) :
-    F.chimera (C ∪ D) s t = F.chimera C s (F.chimera D s t) := by
-  obtain ⟨-, -, -, -, h, -⟩ := F.chimera_spec C D s t t
-  exact h
-
-private lemma chimera_inter (C D : Set (Setoid S)) (s t : S) :
-    F.chimera (C ∩ D) s t = F.chimera C (F.chimera D s t) t := by
-  obtain ⟨-, -, -, -, -, h, -⟩ := F.chimera_spec C D s t t
-  exact h
 
 /-- Definition 23: `C` generates the subpartition `X` (in `F`), `C ⊢^F X`, when
 `χ^F_C(x, dom X) = x` for every block `x` of `X`.  As with `Generates` (Definition 16), `C`

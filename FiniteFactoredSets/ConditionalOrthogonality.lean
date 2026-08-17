@@ -17,12 +17,15 @@ Orientation is `dd:order-flip` throughout: the paper's `X ∨_S Y` is `X ⊓ Y`,
 
 ## The glue this section runs on
 
-Every proof below is set algebra over `historySub` once three facts about `restrict` are
-available, and they are collected under `Subpartition` at the top of the file:
-`restrict_univ`, `restrict_restrict_of_subset`, and `restrict_ofSetoid_inf` — the last of
-which is the identity `(Y ∨_S W)|z = (Y|z) ∨_z (W|z)` that the paper's proof of Theorem 2
-opens with.  With those, decomposition and composition are Proposition 23 clause 2, weak
+Every proof below is set algebra over `historySub` once the `Subpartition.restrict` glue
+of `Subpartition.lean` is available — `restrict_univ`, `restrict_restrict_of_subset`,
+`dom_restrict_ofSetoid`, `part_restrict_ofSetoid`, `restrict_ofSetoid_inf` (the identity
+`(Y ∨_S W)|z = (Y|z) ∨_z (W|z)` that the paper's proof of Theorem 2 opens with), and
+`restrict_inter_subset_restrict_inf` (the block inclusion Proposition 23 clause 3
+consumes).  With those, decomposition and composition are Proposition 23 clause 2, weak
 union is Lemma 1 plus Proposition 23 clause 3, and contraction is Lemma 2 plus Lemma 1.
+`classes_top` — the blocks of `Ind_S`, which Mathlib does not supply — lives with the §2.1
+partition material in `Basic.lean` and is what Proposition 24 runs on.
 
 The blocks of `Z ⊓ W` (the paper's `Z ∨_S W`) are exactly the nonempty intersections
 `z ∩ w` of a block of `Z` with a block of `W`; in Mathlib's `Setoid.classes` presentation
@@ -36,56 +39,6 @@ universe u
 namespace FiniteFactoredSets
 
 variable {S : Type u}
-
-/-! ## Restriction glue
-
-Three facts about `Subpartition.restrict` (Definition 22) that §4.3 needs and §4.1 does
-not state.  They are stated here rather than in `Subpartition.lean` so that the §4.1 file
-carries exactly the paper's own material. -/
-
-namespace Subpartition
-
-/-- Restricting to all of `S` changes nothing: `X|S = X`. -/
-@[simp] lemma restrict_univ (X : Subpartition S) : X.restrict Set.univ = X :=
-  ext fun _ _ => ⟨fun h => h.2.2, fun h => ⟨trivial, trivial, h⟩⟩
-
-/-- Nested restrictions collapse: `(X|E)|E' = X|E'` when `E' ⊆ E`. -/
-lemma restrict_restrict_of_subset (X : Subpartition S) {E E' : Set S} (h : E' ⊆ E) :
-    (X.restrict E).restrict E' = X.restrict E' :=
-  ext fun _ _ => ⟨fun hst => ⟨hst.1, hst.2.1, hst.2.2.2.2⟩,
-    fun hst => ⟨hst.1, hst.2.1, h hst.1, h hst.2.1, hst.2.2⟩⟩
-
-/-- A partition of `S` restricted to `E` has domain `E`. -/
-@[simp] lemma dom_restrict_ofSetoid (X : Setoid S) (E : Set S) :
-    ((ofSetoid X).restrict E).dom = E := by
-  rw [dom_restrict, dom_ofSetoid, Set.univ_inter]
-
-/-- The block of `X|E` through `s ∈ E` is the trace `E ∩ [s]_X`. -/
-lemma part_restrict_ofSetoid (X : Setoid S) {E : Set S} {s : S} (hs : s ∈ E) :
-    ((ofSetoid X).restrict E).part s = E ∩ {x | X x s} := by
-  ext t
-  exact ⟨fun h => ⟨h.1, h.2.2⟩, fun h => ⟨h.1, hs, h.2⟩⟩
-
-/-- Restriction distributes over the common refinement: `(X ∨_S Y)|E = (X|E) ∨_E (Y|E)`,
-which under `dd:order-flip` is `(ofSetoid (X ⊓ Y)).restrict E = X|E ⊓ Y|E`.  This is the
-identity the paper's proof of Theorem 2 opens with. -/
-lemma restrict_ofSetoid_inf (X Y : Setoid S) (E : Set S) :
-    (ofSetoid (X ⊓ Y)).restrict E = (ofSetoid X).restrict E ⊓ (ofSetoid Y).restrict E :=
-  ext fun _ _ => ⟨fun h => ⟨⟨h.1, h.2.1, h.2.2.1⟩, ⟨h.1, h.2.1, h.2.2.2⟩⟩,
-    fun h => ⟨h.1.1, h.1.2.1, h.1.2.2, h.2.2.2⟩⟩
-
-end Subpartition
-
-/-- The blocks of `Ind_S` over a nonempty `S`: the single block `S`.  Mathlib has no
-`Setoid.classes_top`; note the `Nonempty` hypothesis is genuinely needed, since over the
-empty type `(⊤ : Setoid S).classes = ∅` (Definition 7's `Ind_∅ = {}`). -/
-lemma classes_top (hS : Nonempty S) : (⊤ : Setoid S).classes = {Set.univ} := by
-  ext c
-  constructor
-  · rintro ⟨y, rfl⟩
-    exact Set.eq_univ_of_forall fun _ => trivial
-  · rintro rfl
-    exact ⟨Classical.arbitrary S, (Set.eq_univ_of_forall fun _ => trivial).symm⟩
 
 namespace FactoredSet
 
@@ -168,9 +121,9 @@ lemma orthogonalGiven_def (X Y Z : Setoid S) :
 
 `historySub_restrict_inf` is Proposition 23 clause 2 pushed through
 `restrict_ofSetoid_inf`; it is the paper's `h^F((Y ∨_S W)|z) = h^F(Y|z) ∪ h^F(W|z)`, from
-which decomposition and composition are immediate.  `restrict_inter_subset_restrict_inf`
-is the `Subset` (inclusion as sets of blocks) that Proposition 23 clause 3 consumes in the
-weak-union argument. -/
+which decomposition and composition are immediate.  The `Subset` (inclusion as sets of
+blocks) that Proposition 23 clause 3 consumes in the weak-union argument is
+`Subpartition.restrict_inter_subset_restrict_inf`, in `Subpartition.lean`. -/
 
 lemma historySub_restrict_inf [Finite F.B] (X Y : Setoid S) (E : Set S) :
     F.historySub ((ofSetoid (X ⊓ Y)).restrict E) =
@@ -178,17 +131,6 @@ lemma historySub_restrict_inf [Finite F.B] (X Y : Setoid S) (E : Set S) :
   rw [restrict_ofSetoid_inf]
   exact (F.historySub_spec ((ofSetoid X).restrict E) ((ofSetoid Y).restrict E)
     ((ofSetoid X).restrict E) (by simp)).2.1
-
-lemma restrict_inter_subset_restrict_inf (Y W : Setoid S) (z : Set S) (s : S) :
-    ((ofSetoid Y).restrict (z ∩ {x | W x s})).Subset ((ofSetoid (Y ⊓ W)).restrict z) := by
-  intro a ha t
-  rw [dom_restrict_ofSetoid] at ha
-  obtain ⟨haz, has⟩ := ha
-  constructor
-  · rintro ⟨⟨htz, hts⟩, -, hY⟩
-    exact ⟨htz, haz, hY, W.trans' hts (W.symm' has)⟩
-  · rintro ⟨htz, -, hY, hW⟩
-    exact ⟨⟨htz, W.trans' hW has⟩, ⟨haz, has⟩, hY⟩
 
 /-- **Proposition 24** — unconditional orthogonality is orthogonality given `Ind_S`.
 

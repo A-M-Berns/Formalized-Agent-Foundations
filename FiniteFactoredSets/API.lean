@@ -26,7 +26,8 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   its `⋁_S(C)` is `commonRefinement C = sInf C` — whose defining property is
   `commonRefinement_iff` — and `Dis_S`/`Ind_S` are `⊥`/`⊤`.  `IsTrivialPartition` is the
   one-block partition (Definition 3).  Propositions 1 and 2 are `equivalence_setoid` and
-  `bot_le_and_le_top`.
+  `bot_le_and_le_top`, and `classes_top` names the blocks of `Ind_S` over a nonempty `S`
+  (a single block; Mathlib has no `Setoid.classes_top`).
 * **Factorizations and factored sets**: `IsFactorization B` (Definition 10),
   `FactoredSet S` with fields `B` and `isFactorization` (Definition 11), the coordinate
   equivalence `FactoredSet.coord : S ≃ ((b : F.B) → Quotient b)`, `IsTrivialFactorization`,
@@ -40,7 +41,10 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   reaches for when building a concrete `FactoredSet`.
 * **Chimera functions**: `chimeraFun`, `chimera C s t`, `chimeraImage C T R` and their
   specification `chimera_spec` (Proposition 4's eleven clauses) with the pointwise
-  `chimera_rel_of_mem`/`chimera_rel_of_notMem` and `coord_chimera`.
+  `chimera_rel_of_mem`/`chimera_rel_of_notMem` and `coord_chimera`.  Clauses 3–8, 10 and 11
+  are also available one at a time as `chimera_self`, `chimera_sdiff`, `chimera_union`,
+  `chimera_inter`, `chimera_left_idem`, `chimera_right_idem`, `chimera_left_comm`,
+  `chimera_basis` and `chimera_empty`, which is what a rewrite wants.
 * **Generation and history** (§3.1–§3.2): `Generates C X` (Definition 16),
   `generates_tfae` (Proposition 10; `generates_iff_rel` and `generates_iff_sInf_le` are its
   clauses 6 and 7 isolated), `generates_spec` (Proposition 11), `history X`
@@ -62,8 +66,9 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   again (`X ⊓ Y` is the paper's `X ∨_E Y`, `Y ≤ X` its `X ≤_E Y`), and `Subset` is the
   paper's inclusion *as sets of blocks*, which is a different relation from `≤`.  The
   restriction glue a client actually reaches for is `restrict_univ`,
-  `restrict_restrict_of_subset`, `dom_restrict_ofSetoid`, `part_restrict_ofSetoid`, and
-  `restrict_ofSetoid_inf` — the last being `(X ∨_S Y)|E = (X|E) ∨_E (Y|E)`.  Generation is
+  `restrict_restrict_of_subset`, `dom_restrict_ofSetoid`, `part_restrict_ofSetoid`,
+  `restrict_ofSetoid_inf` — that one being `(X ∨_S Y)|E = (X|E) ∨_E (Y|E)` — and
+  `restrict_inter_subset_restrict_inf`, all of them in `Subpartition.lean`.  Generation is
   `GeneratesSub C X` (Definition 23) with `generatesSub_tfae` (Proposition 20; the working
   form is `generatesSub_iff_rel`), `generatesSub_spec` (Proposition 21), and
   `generatesSub_ofSetoid` identifying it with `Generates` on partitions of `S`.
@@ -84,8 +89,7 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   bridging lemmas: `orthogonalSub_def`, `beforeSub_def`, `strictlyBeforeSub_def`,
   `StrictlyBeforeSub.beforeSub`, `orthogonalSub_iff_forall_notMem`,
   `orthogonalSub_ofSetoid`, `beforeSub_ofSetoid`, `orthogonalGivenSet_def`,
-  `orthogonalGiven_def`, `historySub_restrict_inf`, and `classes_top` (the blocks of `⊤`
-  over a nonempty `S`, which Mathlib does not supply).
+  `orthogonalGiven_def`, and `historySub_restrict_inf`.
 
 ## Finiteness
 

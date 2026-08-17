@@ -1094,10 +1094,12 @@ open FiniteFactoredSets in
   FactoredSet.OrthogonalGivenSet FactoredSet.OrthogonalGiven
   FactoredSet.orthogonal_iff_orthogonalGiven_top FactoredSet.orthogonalGiven_semigraphoid
   FactoredSet.orthogonalGiven_self_iff
-  -- Non-vacuity witnesses (FiniteFactoredSets/Examples.lean).  Every §2-§3 endpoint is
+  -- Non-vacuity witnesses (FiniteFactoredSets/Examples.lean).  Every §2-§4 endpoint is
   -- stated over `FactoredSet`; these are what make those endpoints say something.
   -- `coordFS` is the load-bearing one: with a single factor every `C` behaves as `∅` or
-  -- `B`, so Proposition 4 would be near-tautologous.
+  -- `B`, so Proposition 4 would be near-tautologous — and with a single factor there is no
+  -- subset of `S` on which the §4 restrictions can pull apart or entangle two factors,
+  -- which is what the §4 block at the end of this list needs.
   Examples.bool_isFactorization Examples.boolFS
   Examples.coord_isFactorization Examples.coordFS
   Examples.not_subsingleton_coordFS_basis Examples.coordFS_chimera_corners
@@ -1129,6 +1131,45 @@ open FiniteFactoredSets in
   -- is load-bearing — both conclusions fail outright over the empty set.
   Examples.emptyFS_history_bot Examples.emptyFS_history_ne_singleton
   Examples.emptyFS_history_ne_setOf_before
+  -- §4 on `coordFS`: the two coordinate factors restricted to a block of `fstFactor`
+  -- (`Efst`, where they stay independent) and to the diagonal (`Ediag`, a block of
+  -- `xorPart`, where the first coordinate determines the second).  Domains, blocks,
+  -- `GeneratesSub`, `historySub` and conditional orthogonality are computed over both.
+  Examples.Efst Examples.Ediag Examples.sndOnEfst
+  Examples.classes_sndOnEfst Examples.generatesSub_sndOnEfst
+  Examples.not_generatesSub_fst_sndOnEfst Examples.historySub_sndOnEfst
+  Examples.generatesSub_tfae_on_sndOnEfst Examples.generatesSub_iff_on_sndOnEfst
+  -- Generation of a subpartition is not monotone in `C` (the paper's remark after
+  -- Proposition 21), so Proposition 20 clause 7's second conjunct is load-bearing.
+  Examples.indDiag Examples.historySub_indDiag Examples.generatesSub_empty_indDiag
+  Examples.not_generatesSub_fst_indDiag Examples.generatesSub_not_superset_monotone
+  Examples.clause7_second_conjunct_loadbearing
+  -- `hE : X.dom = Y.dom` in Proposition 23 clause 2 is load-bearing, and the history it
+  -- computes is the nondegenerate `{sndFactor}` rather than `∅`.
+  Examples.Efalse Examples.botInfIndEfalse Examples.historySub_botInfIndEfalse
+  Examples.historySub_spec_hE_loadbearing
+  -- `Subset` (inclusion as sets of blocks) both ways, and `dd:subpartition`'s bijection
+  -- with `Σ E, Setoid E` exhibited on a concrete `E`.
+  Examples.subset_indDiag_xorPart Examples.not_subset_sndOnEfst_snd
+  Examples.ofSetoidOn_bot_Efst Examples.roundtrip_sndOnEfst Examples.roundtrip_bot_Efst
+  Examples.restrict_restrict_sndOnEfst
+  -- Lemmas 1 and 2 instantiated: their hypothesis sets are satisfiable, and Lemma 2's two
+  -- sides are computed independently to `B`.
+  Examples.historySub_ofSetoid_fstFactor Examples.historySub_ofSetoid_sndFactor
+  Examples.historySub_disjoint_coord Examples.lemma1_coordFS Examples.lemma1_coordFS'
+  Examples.lemma2_lhs_coordFS Examples.lemma2_rhs_coordFS
+  -- §4.3: restriction can entangle, so `OrthogonalGiven` is neither empty nor total and is
+  -- not implied by Definition 18; Proposition 25 and Theorem 2 exhibited on the witness.
+  Examples.fstOnEdiag Examples.sndOnEdiag
+  Examples.historySub_fstOnEdiag Examples.historySub_sndOnEdiag
+  Examples.not_orthogonalGivenSet_Ediag Examples.Ediag_mem_xorPart_classes
+  Examples.not_orthogonalGiven_fst_snd_xorPart Examples.orthogonalGiven_fst_snd_top
+  Examples.orthogonalGiven_nondegenerate Examples.not_orthogonalGiven_fst_fst_top
+  Examples.orthogonalGiven_fst_fst_fst
+  Examples.thm2_decomposition_coordFS Examples.thm2_weakUnion_coordFS
+  -- The degenerate corners of Definitions 26-27, recorded so a client does not rediscover
+  -- them: conditioning on `∅` or on `Dis_S` makes every pair orthogonal.
+  Examples.orthogonalGivenSet_empty Examples.orthogonalGiven_bot
 -- FFS-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Finite Factored Sets surface. -/
@@ -1171,12 +1212,17 @@ open FiniteFactoredSets in
   FactoredSet.dim_eq_zero_iff FactoredSet.generates_iff_rel
   FactoredSet.generates_iff_sInf_le FactoredSet.generates_iff_history_subset
   FactoredSet.le_iff_history_subset FactoredSet.commonRefinement_history_le
+  FactoredSet.chimera_self FactoredSet.chimera_sdiff FactoredSet.chimera_union
+  FactoredSet.chimera_inter FactoredSet.chimera_left_idem FactoredSet.chimera_right_idem
+  FactoredSet.chimera_left_comm FactoredSet.chimera_basis FactoredSet.chimera_empty
+  Subpartition.ofSetoidOn Subpartition.dom_ofSetoidOn
   Subpartition.restrict_univ Subpartition.restrict_restrict_of_subset
   Subpartition.dom_restrict_ofSetoid Subpartition.part_restrict_ofSetoid
-  Subpartition.restrict_ofSetoid_inf classes_top
+  Subpartition.restrict_ofSetoid_inf
+  Subpartition.restrict_inter_subset_restrict_inf classes_top
+  FactoredSet.generatesSub_iff_historySub_subset
   FactoredSet.orthogonalSub_def FactoredSet.beforeSub_def
   FactoredSet.strictlyBeforeSub_def FactoredSet.StrictlyBeforeSub.beforeSub
   FactoredSet.orthogonalSub_iff_forall_notMem FactoredSet.orthogonalSub_ofSetoid
   FactoredSet.beforeSub_ofSetoid FactoredSet.orthogonalGivenSet_def
   FactoredSet.orthogonalGiven_def FactoredSet.historySub_restrict_inf
-  FactoredSet.restrict_inter_subset_restrict_inf

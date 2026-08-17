@@ -98,6 +98,17 @@ partial-order half is Mathlib's `PartialOrder (Setoid S)` instance.
 Paper node: Proposition 2 (§2.1). -/
 theorem bot_le_and_le_top (b : Setoid S) : ⊥ ≤ b ∧ b ≤ ⊤ := ⟨bot_le, le_top⟩
 
+/-- The blocks of `Ind_S` over a nonempty `S`: the single block `S`.  Mathlib has no
+`Setoid.classes_top`; note the `Nonempty` hypothesis is genuinely needed, since over the
+empty type `(⊤ : Setoid S).classes = ∅` (Definition 7's `Ind_∅ = {}`). -/
+lemma classes_top (hS : Nonempty S) : (⊤ : Setoid S).classes = {Set.univ} := by
+  ext c
+  constructor
+  · rintro ⟨y, rfl⟩
+    exact Set.eq_univ_of_forall fun _ => trivial
+  · rintro rfl
+    exact ⟨Classical.arbitrary S, (Set.eq_univ_of_forall fun _ => trivial).symm⟩
+
 /-- Definition 8's common refinement `⋁_S(C)`.  In Mathlib's order this is `sInf`, not a
 supremum (`dd:order-flip`); `Setoid.sInf_iff` is exactly the paper's defining property.
 
@@ -302,6 +313,57 @@ theorem chimera_spec (C D : Set (Setoid S)) (s t r : S) :
     simp only [coord_chimera, Set.mem_sdiff, Set.mem_union, Set.mem_inter_iff,
       Set.mem_empty_iff_false, b.2, true_and] <;>
     split_ifs <;> tauto
+
+/-! ### Named projections of Proposition 4
+
+`chimera_spec` is a single eleven-clause conjunction, so a downstream use of one clause
+would otherwise be a chain of `.2`s whose length is the only thing distinguishing clause
+10 from clause 11.  These nine names are the clauses §3 and §4 consume; they add no
+mathematics, and they live here once rather than being restated per file. -/
+
+/-- Clause 3 of Proposition 4: `χ^F_C(s,s) = s`. -/
+lemma chimera_self (C : Set (Setoid S)) (s : S) : F.chimera C s s = s :=
+  (F.chimera_spec C C s s s).2.2.1
+
+/-- Clause 4 of Proposition 4: `χ^F_{B∖C}(s,t) = χ^F_C(t,s)`. -/
+lemma chimera_sdiff (C : Set (Setoid S)) (s t : S) :
+    F.chimera (F.B \ C) s t = F.chimera C t s :=
+  (F.chimera_spec C C s t t).2.2.2.1
+
+/-- Clause 5 of Proposition 4: `χ^F_{C∪D}(s,t) = χ^F_C(s, χ^F_D(s,t))`. -/
+lemma chimera_union (C D : Set (Setoid S)) (s t : S) :
+    F.chimera (C ∪ D) s t = F.chimera C s (F.chimera D s t) :=
+  (F.chimera_spec C D s t t).2.2.2.2.1
+
+/-- Clause 6 of Proposition 4: `χ^F_{C∩D}(s,t) = χ^F_C(χ^F_D(s,t), t)`. -/
+lemma chimera_inter (C D : Set (Setoid S)) (s t : S) :
+    F.chimera (C ∩ D) s t = F.chimera C (F.chimera D s t) t :=
+  (F.chimera_spec C D s t t).2.2.2.2.2.1
+
+/-- Clause 7 of Proposition 4, first half: `χ^F_C(χ^F_C(s,t), r) = χ^F_C(s,r)`. -/
+lemma chimera_left_idem (C : Set (Setoid S)) (s t r : S) :
+    F.chimera C (F.chimera C s t) r = F.chimera C s r :=
+  (F.chimera_spec C C s t r).2.2.2.2.2.2.1.1
+
+/-- Clause 7 of Proposition 4, second half: `χ^F_C(s, χ^F_C(t,r)) = χ^F_C(s,r)`. -/
+lemma chimera_right_idem (C : Set (Setoid S)) (s t r : S) :
+    F.chimera C s (F.chimera C t r) = F.chimera C s r :=
+  (F.chimera_spec C C s t r).2.2.2.2.2.2.1.2
+
+/-- Clause 8 of Proposition 4:
+`χ^F_C(s, χ^F_D(t,r)) = χ^F_D(χ^F_C(s,t), χ^F_C(s,r))`. -/
+lemma chimera_left_comm (C D : Set (Setoid S)) (s t r : S) :
+    F.chimera C s (F.chimera D t r)
+      = F.chimera D (F.chimera C s t) (F.chimera C s r) :=
+  (F.chimera_spec C D s t r).2.2.2.2.2.2.2.1
+
+/-- Clause 10 of Proposition 4: `χ^F_B(s,t) = s`. -/
+lemma chimera_basis (s t : S) : F.chimera F.B s t = s :=
+  (F.chimera_spec F.B F.B s t t).2.2.2.2.2.2.2.2.2.1
+
+/-- Clause 11 of Proposition 4: `χ^F_∅(s,t) = t`. -/
+lemma chimera_empty (s t : S) : F.chimera ∅ s t = t :=
+  (F.chimera_spec ∅ ∅ s t t).2.2.2.2.2.2.2.2.2.2
 
 end FactoredSet
 

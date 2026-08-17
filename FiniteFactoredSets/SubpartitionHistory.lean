@@ -38,47 +38,6 @@ open Subpartition
 
 variable (F : FactoredSet S)
 
-/-! ### Named projections of Proposition 4
-
-`chimera_spec` is a single eleven-clause conjunction; these seven names are the clauses
-§4.2 uses.  `History.lean` names five of them for §3.1, but privately, so they are not
-visible here; they add no mathematics. -/
-
-private lemma chimera_self (C : Set (Setoid S)) (s : S) : F.chimera C s s = s := by
-  obtain ⟨-, -, h, -⟩ := F.chimera_spec C C s s s
-  exact h
-
-private lemma chimera_sdiff (C : Set (Setoid S)) (s t : S) :
-    F.chimera (F.B \ C) s t = F.chimera C t s := by
-  obtain ⟨-, -, -, h, -⟩ := F.chimera_spec C C s t t
-  exact h
-
-private lemma chimera_union (C D : Set (Setoid S)) (s t : S) :
-    F.chimera (C ∪ D) s t = F.chimera C s (F.chimera D s t) := by
-  obtain ⟨-, -, -, -, h, -⟩ := F.chimera_spec C D s t t
-  exact h
-
-private lemma chimera_inter (C D : Set (Setoid S)) (s t : S) :
-    F.chimera (C ∩ D) s t = F.chimera C (F.chimera D s t) t := by
-  obtain ⟨-, -, -, -, -, h, -⟩ := F.chimera_spec C D s t t
-  exact h
-
-private lemma chimera_left_idem (C : Set (Setoid S)) (s t r : S) :
-    F.chimera C (F.chimera C s t) r = F.chimera C s r := by
-  obtain ⟨-, -, -, -, -, -, h, -⟩ := F.chimera_spec C C s t r
-  exact h.1
-
-private lemma chimera_right_idem (C : Set (Setoid S)) (s t r : S) :
-    F.chimera C s (F.chimera C t r) = F.chimera C s r := by
-  obtain ⟨-, -, -, -, -, -, h, -⟩ := F.chimera_spec C C s t r
-  exact h.2
-
-private lemma chimera_left_comm (C D : Set (Setoid S)) (s t r : S) :
-    F.chimera C s (F.chimera D t r)
-      = F.chimera D (F.chimera C s t) (F.chimera C s r) := by
-  obtain ⟨-, -, -, -, -, -, -, h, -⟩ := F.chimera_spec C D s t r
-  exact h
-
 /-! ### Two working forms of Proposition 21
 
 Generation of a subpartition is closed under union but *not* under supersets, so the two
@@ -508,6 +467,23 @@ example [Finite F.B] (X : Setoid S) (hX : F.history X = ∅) :
 example [Finite F.B] (X Y : Subpartition S) (hE : X.dom = Y.dom) :
     F.historySub (X ⊓ Y) = F.historySub X ∪ F.historySub Y :=
   (F.historySub_spec X Y X hE).2.1
+
+/-- `generatesSub_iff_historySub_subset` used the way a client enlarges a generating set:
+adjoining `D ⊆ B` to the history still generates, *provided* the chimera condition is
+rechecked at the enlarged set.  There is no monotonicity lemma to reach for instead — the
+second conjunct is exactly what fails in the module docstring's counterexample. -/
+example [Finite F.B] {D : Set (Setoid S)} (X : Subpartition S) (hD : D ⊆ F.B)
+    (hχ : ∀ s ∈ X.dom, ∀ t ∈ X.dom, F.chimera (F.historySub X ∪ D) s t ∈ X.dom) :
+    F.GeneratesSub (F.historySub X ∪ D) X :=
+  (F.generatesSub_iff_historySub_subset
+    (Set.union_subset (F.historySub_subset X) hD) X).2 ⟨Set.subset_union_left, hχ⟩
+
+/-- The same lemma read contrapositively, which is how it certifies a *non*-generating
+set: containing the history is not enough if some chimera escapes the domain. -/
+example [Finite F.B] {C : Set (Setoid S)} (X : Subpartition S) (hC : C ⊆ F.B)
+    {s t : S} (hs : s ∈ X.dom) (ht : t ∈ X.dom) (hesc : F.chimera C s t ∉ X.dom) :
+    ¬ F.GeneratesSub C X :=
+  fun h => hesc (((F.generatesSub_iff_historySub_subset hC X).1 h).2 s hs t ht)
 
 /-- Lemmas 1 and 2 composed the way §4.3 composes them: when `X` and `Y` have disjoint
 histories, Lemma 1 collapses every term of Lemma 2's union to `h^F(Y)`. -/

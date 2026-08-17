@@ -226,9 +226,13 @@ re-audit as drift.
 
 ## Open trust-surface caveats
 
-**None outstanding.** Non-vacuity was the one open caveat and it is discharged by
-construction in `Examples.lean` — §2 witnesses in round 1 (R1-F01), §3 witnesses on
-`coordFS` (history, orthogonality, time, the XOR partition) in round 2 (R2-F03). This section exists so that a future
+**None outstanding after round 4.** Non-vacuity is discharged by construction in
+`Examples.lean` — §2 witnesses in round 1 (R1-F01), §3 witnesses on `coordFS` (history,
+orthogonality, time, the XOR partition) in round 2 (R2-F03), §4 witnesses (subpartition
+histories, the superset-non-monotonicity counterexample, conditioning on the XOR partition
+entangling the coordinate factors, Lemmas 1–2 / Theorem 2 instantiated) in round 4
+(R4-F01 — every stage that lands new vocabulary reopens this caveat until its witnesses
+land; the stage commit itself does not close it). This section exists so that a future
 session reading only this file learns of any caveat the README carries — round 1 found the
 two registers out of step, which is exactly the failure this heading prevents.
 
@@ -385,7 +389,7 @@ it belongs in the library as a stated open `Prop` with this note attached.
   `↔ historySub X ⊆ C ∧ ∀ s ∈ X.dom, ∀ t ∈ X.dom, χ_C s t ∈ X.dom`. **Never reason as if
   `GeneratesSub` were monotone in `C`.** The reusable replacement for monotonicity is
   `generatesSub_union_of_dom_eq` (private, `SubpartitionHistory.lean`): `C ⊢ X`, `D ⊢ Z`,
-  `X.dom = Z.dom` ⇒ `C ∪ D ⊢ X`. Land the counterexample in `Examples.lean` (todo).
+  `X.dom = Z.dom` ⇒ `C ∪ D ⊢ X`. Landed in `Examples.lean` in round 4 (R4-F01).
 * **Lemma 2 needs no `|X| = 2` / `|X| ≥ 3` split**: run the paper's two-block computation as
   the step of an induction adjoining one `h(Y|x)` at a time (`A ⊢ X`, `r ∈ X.dom` ⇒
   `A ∪ h(Y|[r]_X) ⊢ X`); the family `{h(Y|[r]_X)}` is finite because each member ⊆ `B`, so
@@ -400,13 +404,9 @@ it belongs in the library as a stated open `Prop` with this note attached.
 * Finiteness in §4: all of §4.1 is finiteness-free; `[Finite F.B]` starts at Def 24's
   well-definedness (`historySub_isLeast_and_eq_history`) and is carried by everything
   downstream of it, including all three §4.3 endpoints.
-* Duplication debt (de-slop candidates): the private `chimera_*` projections of Prop 4 now
-  exist in History.lean, Subpartition.lean and SubpartitionHistory.lean (the last adds
-  `chimera_sdiff`, `chimera_left_idem`, `chimera_right_idem`, `chimera_left_comm`) — promote
-  one shared public block into Basic.lean; and six `Subpartition` restriction lemmas
-  (`restrict_univ`, `restrict_restrict_of_subset`, `dom_restrict_ofSetoid`,
-  `part_restrict_ofSetoid`, `restrict_ofSetoid_inf`, `classes_top`) live in
-  ConditionalOrthogonality.lean and belong in Subpartition.lean.
+* Duplication debt paid in round 4 (R4-F04/F05): the nine `chimera_*` projections of Prop 4
+  are one public block in Basic.lean after `chimera_spec` (clauses 3,4,5,6,7a,7b,8,10,11);
+  the `Subpartition.restrict_*` glue lives in Subpartition.lean; `classes_top` in Basic.lean.
 * Tactic traps: `intro -` is a syntax error (use `intro _`; `rintro -` is fine) and the parse
   error is reported at the enclosing block; `fun ⟨-, -, h⟩ => …` likewise — use `_`;
   dot notation `h.before hb` fails because `F` is explicit (write `StrictlyBefore.before F h`);
@@ -417,6 +417,61 @@ it belongs in the library as a stated open `Prop` with this note attached.
   upstream — `lake build` first.
 * The node checker is whole-directory: during parallel shards it stays red until the last
   shard's inventory rows land; read the file names in its output, not the count.
+
+## Round 4 audit — durable lessons (first audit of §4)
+
+* Verdict shape: both codex sweeps clean (`[]`, valid); no mathematical finding from any
+  channel; three Opus lenses independently raised the same MAJOR (no §4 witnesses landed
+  with the stage) plus two structural debts (three private `chimera_*` copies; restriction
+  lemmas parked in the §4.3 file). **Rule for future stages: witnesses land in the stage
+  commit, not the round after** — Lens C's compiled file should be folded in before the
+  squash.
+* §4 order glyphs executably pinned on `coordFS`: Prop 21(1) reversed fails at
+  `C = {fst}, X = ofSetoid ⊥, Y = ofSetoid fst`; Prop 23(1) reversed at `X = ofSetoid ⊥,
+  Y = ofSetoid ⊤`; Prop 25 reversed (`↔ X ≤ Y`) at `X = ⊥, Y = ⊤`; Theorem 2's weak union
+  with `⊔` at `X = Y = Z = ⊥, W = ⊤`.
+* `hE : X.dom = Y.dom` is load-bearing in Prop 23 clause 2 (not just clause 1): `X = ofSetoid ⊥`,
+  `Y = indiscrete {(f,f),(f,t)}` gives `historySub (X ⊓ Y) = {sndFactor}` while
+  `historySub X ∪ historySub Y = B`.
+* Landmarks: `sndFactor` restricted to the `fst = true` block is the discrete subpartition
+  of that block with `historySub = {sndFactor}`; `historySub (indiscrete Ediag) = ∅`;
+  restricting either coordinate factor to the diagonal `Ediag = {(f,f),(t,t)}` gives
+  `historySub = B`, so `Orthogonal fst snd` but `¬ OrthogonalGivenSet fst snd Ediag` and
+  `¬ OrthogonalGiven fst snd xorPart` (`Ediag ∈ xorPart.classes`) — conditioning entangles.
+  Degenerate corners (faithful, but client traps): `OrthogonalGivenSet X Y ∅` and
+  `OrthogonalGiven X Y ⊥` hold for all `X, Y`, so `OrthogonalGiven` does not refine
+  `Orthogonal` (`OrthogonalGiven fst fst ⊥` holds while `¬ Orthogonal fst fst`).
+* Computing `historySub` *upward* cannot go through `generatesSub_iff_historySub_subset`
+  contrapositively (non-monotonicity); prove `∀ C, GeneratesSub C X → b ∈ C` from
+  `generatesSub_iff_rel` and use `Set.mem_sInter`.
+* Lemmas 1–2 take `X`, `Y` implicit (determined only via `hE`): clients pass `(X := …) (Y := …)`.
+* Lemma 2's union and Lemma 1's block are indexed by *points* (`s ∈ dom`), which is why
+  Theorem 2's contraction needs no `y ∩ z = ∅` branch.
+* Cleared: the `Min` + `SemilatticeInf` pair on `Subpartition` is not a harmful diamond
+  (`#synth Min` → `instMin`; `dom_inf`/`inf_apply` fire); `hC` in
+  `generatesSub_iff_historySub_subset` is used forward only (not unused);
+  `restrict_part_subset_inf`'s redundant binders are a disclosed readability choice;
+  errata E1–E3 re-verified; Lemma 1's hypothesis set is satisfiable (`X = ofSetoid fst`,
+  `Y = ofSetoid snd`) and Lemma 2 cross-checks on both sides.
+* Prop 21 clauses 3–6 and Prop 23 clauses 3–5 are unconditional in the paper but bundled
+  under `hE`; recover the unconditional clause with `Y := X`, `hE := rfl`.
+* `xorPart p q` unfolds by delta to `(p.1 != p.2) = (q.1 != q.2)`; to show `Ediag ∈
+  xorPart.classes` supply witness `(false,false)` and close with `show … ; simp`.
+* Round-4 fixes: the nine `chimera_*` projections are public in Basic.lean (and listed in
+  the AxiomAudit conveniences block + API doc — ratified: promoting private lemmas creates
+  public endpoints, which the hygiene rule says AxiomAudit tracks in the same change);
+  `Subpartition.restrict_*` glue and `restrict_inter_subset_restrict_inf` live in
+  Subpartition.lean, `classes_top` in Basic.lean §2.1. §4 witnesses in Examples.lean:
+  `sndOnEfst`, `indDiag`, `fstOnEdiag`, `sndOnEdiag`, `botInfIndEfalse` over
+  `Efst`/`Ediag`/`Efalse` — reuse before building new ones. APITests deliberately rebuilds a
+  two-dimensional client factored set (`clientPairFS`) rather than importing Examples (the
+  API boundary excludes Examples; §4.3 needs dimension ≥ 2) — not a rule-2b duplication.
+* Traps: `hle h` with `hle : X ≤ Y` on `Setoid` in argument position without an expected
+  type mis-assigns the strict-implicits — ascribe `(hle h : X a b)`; term-mode projection
+  `h.2 s hs t ht` in argument position needs parentheses; `ofSetoid X ⊓ indiscrete E` needs
+  no `noncomputable`; `check_trust_surface.py` is staled by any Examples/AxiomAudit/README
+  change — regenerate at merge (not in the four-script fixer gate); a piped `lake build`'s
+  reported exit code is `tail`'s even in the harness's own task notification.
 
 ## Round 3 audit — durable lessons (convergence round)
 
