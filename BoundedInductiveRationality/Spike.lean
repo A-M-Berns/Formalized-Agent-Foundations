@@ -329,6 +329,25 @@ theorem noOverestimation_iff_limsup (α : Agent DP) (r : ℕ → ℝ)
   · intro h ε hε
     exact eventually_lt_of_limsup_lt (lt_of_le_of_lt h hε) hbdd |>.mono fun T hT => hT.le
 
+/-- **Finite exceptional sets do not affect Cesàro limits.** Mathlib has
+`Filter.Tendsto.cesaro` (a converging sequence's averages converge) but not this: two
+sequences agreeing eventually have the same Cesàro behaviour, with *no* boundedness
+hypothesis, because the difference of partial sums is eventually constant. Fifteen lines,
+and the paper leans on it in every proof that says "for all but finitely many `t`". -/
+theorem avg_sub_tendsto_zero_of_eventuallyEq {f g : ℕ → ℝ}
+    (h : ∀ᶠ t in atTop, f t = g t) :
+    Tendsto (fun T => avg f T - avg g T) atTop (𝓝 0) := by
+  obtain ⟨N, hN⟩ := eventually_atTop.1 h
+  set K : ℝ := ∑ t ∈ range N, (f t - g t) with hK
+  have hconst : ∀ T, N ≤ T → ∑ t ∈ range T, (f t - g t) = K := by
+    intro T hT
+    rw [hK, ← Finset.sum_range_add_sum_Ico _ hT, add_eq_left]
+    exact Finset.sum_eq_zero fun t ht => by rw [hN t (Finset.mem_Ico.1 ht).1, sub_self]
+  refine Tendsto.congr' ?_ (tendsto_const_div_atTop_nhds_zero_nat K)
+  filter_upwards [eventually_ge_atTop N] with T hT
+  unfold avg
+  rw [div_sub_div_same, ← Finset.sum_sub_distrib, hconst T hT]
+
 /-- **The transfer step of Theorems 3, 4, 8 and 9**, isolated: if the agent's estimate
 eventually dominates a `[0,1]`-valued sequence `L`, and the agent does not overestimate,
 then its average reward eventually dominates the average of `L`.
@@ -1419,6 +1438,7 @@ example (H : ℕ → Hypothesis boolDP) :
 every Mathlib-based development carries. No `sorryAx`, no bespoke axiom. -/
 
 #print axioms covers_iff_forall
+#print axioms avg_sub_tendsto_zero_of_eventuallyEq
 #print axioms avg_ge_of_eventually_estimate_ge
 #print axioms theorem3
 #print axioms exists_max_of_tendsto_zero

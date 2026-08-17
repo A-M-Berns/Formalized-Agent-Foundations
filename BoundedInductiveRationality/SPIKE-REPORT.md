@@ -5,7 +5,7 @@ Caspar Oesterheld, Abram Demski, Vincent Conitzer, TARK 2023 (EPTCS 379, pp. 421
 Feasibility / representation probe. Not a formalization, not registered in
 `scripts/papers.py`, not on the trust surface, not in `AxiomAudit`.
 
-Compiled artifact: `BoundedInductiveRationality/Spike.lean` — 1360 lines, **zero
+Compiled artifact: `BoundedInductiveRationality/Spike.lean` — 1434 lines, 98 top-level declarations, **zero
 `sorry`**, every listed endpoint axiom-clean (`propext`, `Classical.choice`, `Quot.sound`
 only; the `#print axioms` block at the end of the file is part of the build).
 Build it with `./BoundedInductiveRationality/spike-build.sh
