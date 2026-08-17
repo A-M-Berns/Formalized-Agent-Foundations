@@ -131,4 +131,9 @@ def fiber {α : Type*} (X : Pt Ω → α) (x : α) : Set (Pt Ω) := {ω | X ω =
 (`dd:event-indicator`); the history of an event `A` is the history of `1_A`. -/
 def indic (A : Set (Pt Ω)) : Pt Ω → Prop := fun ω => ω ∈ A
 
+/-- The fibre of a joint variable is the intersection of the fibres. -/
+lemma fiber_pair {α β : Type*} (X : Pt Ω → α) (Y : Pt Ω → β) (x : α) (y : β) :
+    fiber (pair X Y) (x, y) = fiber X x ∩ fiber Y y := by
+  ext ω; simp [fiber, pair, Prod.ext_iff, Set.mem_inter_iff]
+
 end FactoredSpaces
