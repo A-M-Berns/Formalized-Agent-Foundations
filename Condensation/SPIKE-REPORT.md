@@ -63,26 +63,101 @@ additive-combinatorics tail. The `ForMathlib/` naming is a genuine advantage: th
 were written to be extracted and upstreamed, so they are not entangled with PFR's main
 argument.
 
-**Three things to know before counting on this.**
-
-1. **Toolchain gap.** PFR is on `leanprover/lean4:v4.34.0-rc1`; this repo is pinned at
-   **v4.31.0** by Foundation, and `lakefile.lean` documents why that pin is load-bearing
-   (it is the last upstream commit that still contains `Foundation.Modal`, which
-   `ModalAgents` is stated over). So vendoring PFR entropy means either back-porting
-   across three toolchain versions, or moving the Foundation pin — which the lakefile
-   already flags as "a scoped follow-up, not part of routine bumping". **This is the first
-   thing to test, and it is a real risk, not a formality.**
-2. **It is not upstream yet and may not be soon.** As of the October 2025 Mathlib
-   probability survey, only the *definition* of KL divergence had been ported; entropy
-   "and other divergences have not yet been the object of pull requests". So there is no
-   near-term "just wait for Mathlib" option.
-3. **PFR's entropy is measure-theoretic**, over `Measure Ω` with kernels and
-   `FiniteRange` side conditions. Condensation only ever needs the countable-discrete
-   finite-entropy case. Vendoring buys correctness and completeness at the cost of
-   carrying measure-theoretic hypotheses through every statement in a paper that never
-   needs them.
-
 **The paper itself is not formalized anywhere** — searched; nothing exists.
+
+## 2a. The vendoring experiment — RUN, and it works
+
+The first version of this report flagged the toolchain gap (PFR on `v4.34.0-rc1`, this
+repo pinned at **v4.31.0** by Foundation) as the top risk and said to test it before
+anything else. **That experiment has now been run, and the risk evaporated.**
+
+**Key move: don't port from PFR `master`.** PFR was itself on `v4.31.0` — this repo's exact
+toolchain — from `38e9417` (2026-06-16) to `b56e834^` (2026-07-03). Vendor from the last
+such commit, **`01c9b666945eaf73b3f7d8b20ffe003f8640e630`** (2026-06-27), and the
+three-toolchain-version gap does not exist at all. That revision pins Mathlib `e1d1de3b`
+against our `fabf563a` (the v4.31.0 release tag) — same toolchain, weeks of drift.
+
+### Result
+
+| measure | value |
+|---|---|
+| PFR-internal modules in the entropy import closure | **25** |
+| lines vendored | **6,074** |
+| modules compiling against *this repo's* Mathlib | **25 / 25** |
+| genuine porting edits required | **2** |
+| `sorry` in the vendored closure | **0** |
+| full closure build time | **~41 s** |
+
+The two edits, in full:
+
+1. **`ForMathlib/Entropy/Measure.lean`** — a `positivity` tactic extension for
+   `measureMutualInfo` fails to elaborate: `PositivityExt.eval`'s `pα?` argument changed
+   from `Option _` to `Q(PartialOrder $α)`. **Deleted** (~20 lines). Pure tactic plumbing;
+   `measureMutualInfo_nonneg` itself is untouched and nothing downstream needs `positivity`
+   to know about `Im[μ]`.
+2. **`ForMathlib/Entropy/Kernel/Basic.lean:211`**, in `entropy_prodMkLeft_unit` —
+   `rw [← MeasurableEquiv.map_symm]` does not fire because in our Mathlib that lemma is
+   stated *applied to a measure* (`μ.map ⇑e.symm = μ.comap ⇑e`) while the goal is an
+   equality of the *functions* `Measure.map` / `Measure.comap`. **Fixed by inserting
+   `funext ν`** — three lines.
+
+That is the entire cost. Everything else — the 948-line kernel disintegration shim, the
+independence and `IdentDistrib` shims, `Uniform`, `ConditionalIndependence`,
+`FiniteRange` — compiled untouched on the first attempt.
+
+**Correction to the earlier estimate in this report:** I had put the vendorable core at
+~2,850 lines by counting only the four entropy files. The true import closure is
+**6,074 lines across 25 modules** — the `PFR/Mathlib/` shim layer is bigger than the
+entropy library itself. The good news is that none of it needed work.
+
+### And it is usable, not merely compilable
+
+Compiling is necessary but not sufficient. `Condensation/VendorSmokeTest.lean` proves
+**Lemma 5.4 of *Condensation*** — the quantitative core of its §5 — directly against the
+vendored library, in both the exact form (5.6) and the inequality form (5.5):
+
+```
+H(X | C) = H(X | Y₁,C) + H(X | Y₂,C) − H(X | Y₁,Y₂,C) + I(Y₁; Y₂; X | C)
+H(X | C) ≤ H(X | Y₁,C) + H(X | Y₂,C) + I(Y₁; Y₂; X | C)
+```
+
+The paper calls its own proof of (5.6) "a straightforward if unenlightening calculation".
+Against the vendored substrate it is `rw [condMutualInfo_eq', condMutualInfo_eq']; ring`.
+Both are axiom-clean (`propext, Classical.choice, Quot.sound`). Definition 2.3's
+interaction information is a one-line `def` over PFR's `condMutualInfo`.
+
+That is a paper result, not a restatement of a PFR lemma, and it is the strongest evidence
+available that the API fits this paper.
+
+### Reproducing
+
+```
+Condensation/vendor-pfr.sh                                        # 25/25, ~40 s
+Condensation/vendor-build.sh Condensation/VendorSmokeTest.lean    # Lemma 5.4
+```
+
+`vendor-pfr.sh` clones PFR, checks out `01c9b66`, computes the import closure
+(`vendor-closure.py`), applies both patches, and compiles the closure against the parent
+checkout's oleans. **The vendored source is deliberately not committed** — it is
+third-party (Apache-2.0) and the script regenerates it exactly.
+
+### What is still true, and what changed
+
+- Still true: entropy is **not upstream in Mathlib** and had no open PRs as of the
+  October 2025 probability survey, so there is no near-term "wait for Mathlib" option.
+- Still true: **PFR's entropy is measure-theoretic**, over `Measure Ω` with kernels and
+  `FiniteRange`/`MeasurableSingletonClass` side conditions. Condensation only needs the
+  countable-discrete case, so every statement will carry hypotheses the paper never
+  mentions. The smoke test shows this is livable — four typeclass blocks in the `variable`
+  line — but it is a real, permanent ergonomic tax, and it should be disclosed as a
+  modeling decision rather than discovered later.
+- **Changed:** the Foundation pin does not have to move. That was the thing that made this
+  look expensive, and it is simply not a problem if you vendor from the v4.31.0 window
+  rather than from `master`.
+- **New risk, small:** vendoring from a June 2026 PFR commit means the vendored copy is
+  frozen at that revision. Any future toolchain bump of this repo re-opens the port —
+  though the evidence here (two edits across three toolchain versions' worth of drift,
+  both mechanical) suggests that cost is low and roughly linear.
 
 ## 3. What the spike established
 
@@ -198,38 +273,45 @@ or Finite Factored Sets.
 
 | Tranche | Lines | Risk |
 |---|---|---|
-| Entropy substrate — **vendor PFR** | ~3,000 vendored + integration | **high** (toolchain) |
-| Entropy substrate — **build bespoke discrete** | 1,200–2,000 | medium (subadditivity unprobed) |
+| Entropy substrate — **vendor PFR @ `01c9b66`** | 6,074 vendored, **2 edits** | **low — measured** |
 | §2 conventions + Prop 2.5 | 300 | low — done |
 | §3 category | 700–1,000 | medium-low |
 | §4 perfect condensation | 1,500–2,200 | medium (4.13, 4.15) |
-| §5 quantitative comparison | 800–1,200 | medium |
-| **Total (excl. substrate)** | **3,300–4,700** | |
+| §5 quantitative comparison | 800–1,200 | medium — Lemma 5.4 already proved |
+| **Total new Lean to write** | **3,300–4,700** | |
 
-With the substrate, this is comfortably the **largest of the three papers spiked** —
-plausibly comparable to FiniteFactoredSets in total effort, and with a genuine external
-dependency that the other two do not have.
+The substrate line was the whole risk, and the experiment retired it. What remains is
+**3,300–4,700 lines of ordinary work** on a vendored foundation that builds in 40 seconds
+and has no `sorry` in it.
 
 ## 8. Recommendation
 
-**Do the substrate decision first, and do it as a one-day experiment, before anything
-else.** Specifically: try to build PFR's `ForMathlib/Entropy/{Measure,Basic}.lean` and
-`Kernel/{Basic,MutualInfo}.lean` against this repo's pinned toolchain. That single
-experiment determines the shape of the whole project:
+**Vendor PFR's entropy closure from commit `01c9b66`.** This is no longer a judgement
+call — it was tested. 25/25 modules compile against this repo's pinned Mathlib after two
+mechanical edits, neither of which touches mathematics, and the resulting API proves a real
+Condensation lemma in three tactics. Rule 2b in `CLAUDE.md` — *search before you prove* —
+points the same way: re-deriving submodularity, the chain rules, and kernel disintegration
+by hand to avoid a dependency would be exactly the duplicated-work failure that rule exists
+to prevent.
 
-- **If it ports cleanly** (or the Foundation pin can move without disturbing
-  `ModalAgents`), vendor it. Rule 2b in `CLAUDE.md` — *search before you prove* — points
-  hard this way, and re-deriving submodularity and the chain rules by hand to save a
-  dependency would be exactly the duplicated-work failure that rule exists to prevent.
-- **If it does not port**, build the bespoke finite-discrete layer. My probe is evidence
-  that the discrete case is much cheaper than PFR's generality — the determinism bridge
-  came out of one elementary lemma — but measure the subadditivity/Gibbs step before
-  committing to a number, since I did not.
+Concretely, for whoever picks this up:
 
-Either way, vendored entropy would be a **shared asset**, not Condensation-specific: it is
-the same substrate any future information-theoretic agent-foundations paper needs, natural
-latents included. That materially changes the cost/benefit — it is the first spike here
-where the substrate is worth building even if the paper is deferred.
+1. Add the vendored closure as a `lean_lib` with its own directory and a README recording
+   the upstream commit, the Apache-2.0 licence, and the two patches — the same treatment
+   `lakefile.lean` already gives the vendored `ProvabilityLogic` subset, which is the
+   established precedent in this repo for exactly this situation.
+2. Register the patches as a diff against `01c9b66` so they can be audited and re-applied
+   on any future bump.
+3. Disclose the measure-theoretic setting as a modeling decision (`dd:measure-entropy`):
+   the paper says "countable discrete with finite entropy", the substrate says
+   `Measure Ω` + `MeasurableSingletonClass` + `FiniteRange`. These agree, but the Lean
+   statements will carry hypotheses the paper does not write, and a reader must be told
+   that up front rather than inferring it from a `variable` block.
+
+And note the strategic point, now backed by a working build: vendored entropy is a
+**shared asset**, not Condensation-specific. It is the substrate any future
+information-theoretic agent-foundations paper needs — natural latents included. It is
+worth landing even if Condensation itself is deferred.
 
 Send the §5 errata to Eisenstat, and ask for the LaTeX source at the same time.
 
