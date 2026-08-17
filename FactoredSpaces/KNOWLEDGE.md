@@ -175,6 +175,22 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
 * `ConditionalHistory.lean` sets `linter.unusedSectionVars false` file-wide (the ambient
   instance bundle would otherwise demand `omit` on ~50 declarations).
 
+* **Prop 5.8(1)'s missing step (E7) is `factorizesOverDAG_of_isIMapDAG`** (PerfectMap.lean),
+  stated for the weaker `IsIMapDAG` (K–F Thm 3.1's honest generality). Its chain rule needs
+  no linear order: `Digraph.depth` (strictly increasing along edges) + `Finset.strongInductionOn`
+  over ancestrally closed sets (`Digraph.AncClosed`) removing a max-depth node; the
+  zero-probability branch needs no separate argument (the IH already yields `∏ = 0`). Its
+  graph half `Digraph.dSeparated_singleton_parents` (local Markov) is ~35 lines via the
+  `Z`-closure criterion, not trails — prefer the closure criterion for any new d-separation
+  fact. `cpdOfDist` uses a uniform fallback at zero-probability parent configurations
+  (exactly the freedom behind E5).
+* **Prop 5.8(2)'s witness** (`Prop58Witness`, PerfectMap.lean): `V = Bool`, `Val false =
+  Fin 3`, `Val true = Bool`, one factor `Fin 3`, `P` = uniform pushed along the joint; both
+  sides of the perfect-map iff are shown equal to one decision predicate `ind`, collapsing
+  64 cases; the probabilistic `⟹` needs no numeric probability (`decide` cannot evaluate
+  `ℝ`). `history_eq_empty_iff` (`H(X|C) = ∅ ↔ X` constant on `C`) and
+  `condIndepVar_map_famJoint` are general facts hoisted there.
+
 ## Intentional deviations from the paper
 
 * **`tauInv_condCPD_strictlyPositive` takes `hG : G.IsAcyclic`** (non-paper helper): false
@@ -263,6 +279,16 @@ load-bearing (E8).
 * Definitional bridges: `parentConfig G Val (jointVar hG ω) v p` ≡ `nodeVar hG p.1 ω`;
   `nodesVar hG A ω a` ≡ `nodeVar hG a.1 ω`; `unblockedDesc`/`unblockedAnc` membership are
   `Iff.rfl` duals.
+* `famVar`/`famJoint`/`IsPerfectMapFSM` bind `I, Ω, W, Val` all in the SAME universe `u`; a
+  general lemma about them must use `Type u` (not `Type*`) or application fails with a
+  universe mismatch that reads like an instance error.
+* `push Not` on `¬(s = ∅ ∨ t = ∅)` for `Finset` yields `s.Nonempty ∧ t.Nonempty`.
+* `rw [f, dif_pos h]` fails when `h` matches the `dite` condition only definitionally; use a
+  term-mode `have he : … := dif_pos h`.
+* A dependent `abbrev Val : Bool → Type | false => Fin 3 | true => Bool` works verbatim
+  with pattern-matching instances (`inferInstanceAs`); no constant-`Val` fallback needed.
+* Concrete finite witnesses over dependent value families cost MORE than general theorems
+  with good lemma support (Prop 5.8(2) witness ≈360 lines vs the I-map theorem ≈140).
 * Iteration cost calibration: with warm oleans `lake env lean` on a 600-line file is 3–7 s;
   a §C.3-sized lemma is tens of minutes, not hours; the Appendix-C probability bookkeeping
   (28 obligations) took ~1 h wall clock once the two transports (`splitEquiv`, `unionEquiv`)
