@@ -16,6 +16,7 @@ trust surface and `FiniteFactoredSets.lean` for the `dd:` glossary.
 | `dd:probability` | Definition 36 = `structure ProbDist S` (`P : Set S → ℝ`, nonneg, `P ∅ = 0`, `P univ = 1`, finitely additive); Definition 37 = predicate `FactoredSet.IsDistribution F P := ∀ s, P {s} = ∏ᶠ b ∈ F.B, P (part b s)`; `Q^F_E(P)` = `MvPolynomial.eval P.P (F.Q E)`; Theorem 3 stated division-free | Verbatim the paper's elementary definitions — no measure theory, no type-(c) substitution; a Mathlib-probability bridge would be a separate lemma, never a stand-in. Definitions carry no finiteness (finprod). A Dirac point mass IS a distribution on every factored set (product of point-mass marginals) — the non-distribution witness is `diagDist` (uniform on the diagonal). |
 | `dd:subpartition` | A subpartition of `S` is a partial equivalence relation on `S` (`structure Subpartition`), domain `{s | r s s}` | Mathlib has no PER structure and `Σ E, Setoid E` would put dependent subtypes and domain transports into every §4 statement. The correspondence is exhibited (`toSetoid`, `ofSetoidOn`, round-trip lemmas). Payoff observed by the §4.1 shard: `X (χ_C s t) s` already implies `χ_C s t ∈ dom X` (`mem_dom_of_rel`), so half of Proposition 20's "extra condition" is free and Prop 21 clause 5 needs no `χ(E,E) = E` bookkeeping. |
 | `dd:model` | Definition 38's model is `structure Model Ω`: implicit carrier `S`, a `FactoredSet S`, `f : S → Ω`, and — because Definition 38 says *finite* factored set — a `Finite S` **field**, registered as an instance | Finiteness is part of the object, not a hypothesis on statements: the one place §6 departs from `dd:finiteness-minimal`, and it departs in the strict direction, since Definitions 43 and 45 quantify over models, so "for all models" must already mean "for all finite ones". Consequence to carry: **no §6 declaration carries a finiteness binder**, and `Finite M.F.B` is found by instance search wherever `M : Model Ω` is in scope (`Model.finite` → `instFiniteSetoid` → `Subtype.finite`). `Ω` is unconstrained. Definition 39 is Mathlib-rendered (`Set.preimage`, `Setoid.comap`); `Model.pullback` is a named alias for its third clause carrying no node annotation. Definition 41's `NotOrth` is a positive assertion *of the database*, not the negation of `Orth` — a database may assert both (Definition 43 then fails) or neither (Definition 44 fails). Disclosed narrowing: `Model : Type u → Type (u+1)` pins the carrier to `Ω`'s universe, so Defs 43/45 quantify over `Type u`-carried models only — forced by Lean, empty in content (every carrier is finite), but no transport lemma along that equivalence exists here. |
+| `dd:conjecture` | §7.2's Conjecture 1 is a universe-polymorphic `def FundamentalTheoremFiniteDim : Prop` — Theorem 3's statement (`orthogonalGiven_iff_forall_isDistribution`) with `[Finite S]` weakened to `[Finite F.B]`, quantified over every carrier, factored set and triple of partitions, nothing else changed — **stated and deliberately not proved** | It is the paper's own open question, and the scope ruling puts it in as a statement, not a target: **no declaration anywhere has that type, and none should acquire one.** An unproved `Prop` is a definition, not a `sorry` — no `sorryAx`, no axiom, invisible to the axiom check — so the only way it could weaken a statement of ours is by appearing in that statement's hypotheses, which nothing in §2–§7 does. It is statable at all only because `dd:finiteness-minimal` + `dd:probability` keep `ProbDist` and `IsDistribution` free of finiteness, so both sides are meaningful over an infinite carrier. The one proved fact is `fundamentalTheoremFiniteDim_of_finite` (= Theorem 3 at a `[Finite S]` carrier): a consistency check on the wording, not progress. Status in the literature: see "On Conjecture 1's status" below — resolved in a *measurable* refinement (Mayer, arXiv:2412.00847) of the *unconditional* statement, not as literally stated. §7.3's renderings need no tag of their own: `eventPartition E = Setoid.comap (· ∈ E) ⊥` absorbs Definition 46's case split into `Setoid.classes` (and takes no `F`), Definition 47's sub-agent family is indexed by `X.classes` with `⋁_S {Aᵢ} = sInf (Set.range As)`, and none of Definitions 46–50 carries a finiteness binder. |
 | history | `history X := ⋂₀ {C | C ⊆ F.B ∧ Generates C X}` | Definition 17's "smallest generating subset". `history_isLeast` (Proposition 12) is what earns "smallest", and it needs `[Finite F.B]` **genuinely**: over `S = ℕ → Bool` with the coordinate factors, every cofinite subset of `B` generates the "eventually equal" partition, so the intersection of all generating subsets is `∅`, which generates nothing. All of §3 is stated with `Finite F.B` (finite *dimension*) and never `Finite S`. |
 
 ## The order inversion — read this before writing any order statement
@@ -203,9 +204,22 @@ Paper node → Lean declaration. Extended as nodes land.
 | Example 2 | `Example2.D` | `InferenceExamples.lean` |
 | Proposition 35 | `Example2.D_consistent` | `InferenceExamples.lean` |
 | Proposition 36 | `Example2.before_X_Y_Z` | `InferenceExamples.lean` |
+| Conjecture 1 (fundamental theorem, finite-dimensional) | `FundamentalTheoremFiniteDim` — a `def … : Prop`, **stated and deliberately not proved**; `dd:conjecture`. Finite case: `fundamentalTheoremFiniteDim_of_finite` (= Theorem 3) | `Conjecture.lean` |
+| Definition 46 (`A` observes the event `E` wrt `W`) | `FactoredSet.Observes`; the auxiliary `X_E` is `FactoredSet.eventPartition` (takes no `F`, no node annotation) | `EmbeddedAgency.lean` |
+| Definition 47 (`A` observes the partition `X` wrt `W`) | `FactoredSet.ObservesPartition` (sub-agent family indexed by `X.classes`, not by a numbering) | `EmbeddedAgency.lean` |
+| Definition 48 (counterfactable) | `FactoredSet.Counterfactable` | `EmbeddedAgency.lean` |
+| Definition 49 (counterfactable relative to `W`) | `FactoredSet.CounterfactableRel` | `EmbeddedAgency.lean` |
+| Definition 50 (`X ≤^F Y | E`, conditional time) | `FactoredSet.BeforeGivenSet` | `EmbeddedAgency.lean` |
 
 Nodes deliberately rendered by Mathlib vocabulary with no declaration of ours
-(Definitions 2, 5, 6, 7, 9) are tabulated in `README.md`.
+(Definitions 1, 2, 5, 6, 7, 9, and — with rows above — 29, 30, 39) are tabulated in
+`README.md`.
+
+Witness files, which carry no paper-node annotations: `Examples.lean` (finite factored
+sets, the §2.5–§7 vocabulary computed over them) and `InfiniteExamples.lean` (`infFS` on
+`ℕ → Bool` = the paper's `𝒫(ℕ)` factored set, infinite-dimensional; `natBoolFS` on
+`ℕ × Bool`, finite-dimensional with an infinite carrier). Examples 3 and 4 are out of scope,
+so `infFS` is a witness pinning finiteness hypotheses, **not** a carrier for either example.
 
 ## Node numbering — how to cite
 
@@ -279,6 +293,13 @@ land; the stage commit itself does not close it). This section exists so that a 
 session reading only this file learns of any caveat the README carries — round 1 found the
 two registers out of step, which is exactly the failure this heading prevents.
 
+**Stage 7 closed it in the same stage**, deliberately: Definitions 46–50 got their
+`Examples.lean` witnesses and Conjecture 1 got `InfiniteExamples.lean` alongside the
+statements, rather than in a following round. The one thing a §7 auditor should check
+specifically is that the `Observes` witnesses include *negatives* — §7.3's content is that
+an agent can fail to observe an event, so a positive-only witness set would leave the
+interesting half unexercised.
+
 ## Disclosures
 
 None. There are no type-`(c)` modeling substitutions in the current surface.
@@ -317,6 +338,17 @@ stated as a Lean `Prop` and deliberately not proved**, carrying a citation.
 and the paper itself expects the fundamental theorem to fail there; Example 3 is its
 intended counterexample. Excluding exactly the case the paper predicts is false is a
 defensible line; "we stopped at §6" is not.
+
+**Stage 7 landed (2026-08-17), so the scope is now fully realized: 87 node carriers + 9
+Mathlib-rendered whole nodes = 96.** §7.3 is `EmbeddedAgency.lean` (Definitions 46–50,
+definitions only — the paper states no theorem about them) and §7.2 is `Conjecture.lean`.
+The infinite factored set the round-9 audit had sitting in scratch is now committed as
+`InfiniteExamples.infFS` (`ℕ → Bool`, coordinate factorization), alongside `natBoolFS` on
+`ℕ × Bool` (finite dimension, infinite carrier — the class Conjecture 1 ranges over and
+Theorem 3 does not). Read those as *witnesses pinning finiteness hypotheses*, carrying no
+paper-node annotation: they are not a formalization of Examples 3 or 4, which remain out of
+scope. `Examples.lean` stays finite by construction; that is why the infinite witnesses got
+their own file rather than being folded in.
 
 ### Consequence: keep finiteness minimal, starting now
 
@@ -468,9 +500,202 @@ it belongs in the library as a stated open `Prop` with this note attached.
   `lake env lean` on an *importing* scratch file sees the stale olean of a just-edited
   upstream — `lake build` first (bit again in stage 6 wearing a new costume: `Model` and
   `OrthDatabase` reported as *unknown identifiers* with autoImplicit hints, purely because
-  `API.lean`'s olean predated its new `Inference` import — it reads as a missing `open`).
+  `API.lean`'s olean predated its new `Inference` import — it reads as a missing `open`; and
+  again in stage 7 on an *APITests* file: after adding the `Conjecture`/`EmbeddedAgency`
+  imports to `API.lean`, `lake env lean APITests/FiniteFactoredSets.lean` reported twelve
+  bogus `invalidField`/not-in-environment errors on the new §7 names — `lake build
+  FiniteFactoredSets.API` first, and do not "fix" names on the strength of such a run).
 * The node checker is whole-directory: during parallel shards it stays red until the last
   shard's inventory rows land; read the file names in its output, not the count.
+
+## Stage 7 (§7) — durable lessons
+
+* **`dd:finiteness-minimal` is now discharged by construction, not by inspection.**
+  `InfiniteExamples.natBoolFS` — two factors over the infinite carrier `ℕ × Bool` — runs
+  `history_spec` clause 4, `orthogonal_iff_forall_notMem`, `orthogonal_iff_exists`,
+  `orthogonal_spec` clause 4, `orthogonal_iff_orthogonalGiven_top` and
+  `isDistribution_diracAt` with `Finite F.B` alone. **Nothing broke**: every one applied
+  verbatim, first try, with no workaround and no `Finite S` leaking in through instance
+  search. A future session asking "does §3–§4 really work at an infinite carrier?" can stop
+  asking — the answer is compiled in that file.
+* **`Finite ↥natBoolFS.B` must be supplied by hand from `Set.Finite.to_subtype`** — *not*
+  from Proposition 6 (`finite_basis_of_finite` derives `Finite F.B` from `Finite S`, so it is
+  unavailable here) and *not* from `instFiniteSetoid`, which needs the carrier finite too.
+  Concretely `natBoolFS_B_finite : natBoolFS.B.Finite := Set.Finite.insert _
+  (Set.finite_singleton _)`, then `.to_subtype` as an `instance`. Note `Set.finite_insert` in
+  this Mathlib is an **iff** (`(insert a s).Finite ↔ s.Finite`), not the constructor;
+  `Set.Finite.insert (a : α) {s} (hs : s.Finite)` is, and that is the argument order.
+* **Build a new factored set through `isFactorization_iff_existsUnique`, not through
+  `IsFactorization.bijective`.** Markedly cheaper than what `Examples.coord_isFactorization`
+  does (`Quotient.out`/`Quotient.out_eq` gymnastics); `natBoolFS` and `infFS` each take a
+  handful of lines. Two facts make it painless: basis subtype elements differ only in a
+  membership proof and proof irrelevance is definitional, so `⟨natFactor, hb⟩` and
+  `⟨natFactor, Or.inl rfl⟩` are closed by bare `rfl`; and `rintro ⟨b, rfl | rfl⟩` destructs
+  membership in a two-element insert/singleton `Set` directly. Prefer this route for any new
+  witness.
+* **Nontriviality of a `Setoid.comap` factor over `ℕ` is term mode, never `decide`.** The
+  `Bool.noConfusion (h x y)` idiom transfers in shape, but the `ℕ` analogue through a type
+  ascription does not: `exact absurd (h (0, true) (1, true) : (0 : ℕ) = 1) (by decide)` fails
+  with `failed to synthesize Decidable ¬natFactor (0, true) (1, true)`, because the ascription
+  does not survive into the `by decide` goal, which stays at the un-unfolded `natFactor`
+  application. `exact Nat.zero_ne_one (h (0, true) (1, true))` works — term-mode application
+  unfolds `Setoid.comap` by unification, the same reason `Bool.noConfusion (h …)` works in
+  `Examples.lean`. A second instance of the standing "`decide` never works on a `Setoid`
+  relation" pitfall; do not reach for `norm_num` either.
+* **`FundamentalTheoremFiniteDim` is universe-polymorphic, so a client at a `Type 0` carrier
+  must write `FundamentalTheoremFiniteDim.{0}` in the hypothesis binder.** Left bare in an
+  `example` it elaborates at a fresh universe metavariable that the application then fails to
+  solve against `natBoolFS`. Both `InfiniteExamples` non-vacuity examples and both APITests §7
+  conjecture examples pin it explicitly.
+* **`isDistribution_diracAt`'s `[Finite F.B]` is refuted at infinite dimension, not merely
+  unused** (`InfiniteExamples.not_isDistribution_diracAt_infFS`; refute-by-finprod-junk idiom
+  as recorded in the round-9 bullet). Mechanism worth knowing before anyone relaxes a
+  finiteness binder: Definition 37 is `P {s} = ∏ᶠ b ∈ F.B, P (part b s)`, and at a point other
+  than the mass's own *every* factor contributes `0`, so the family's `mulSupport` is all of
+  `B` and `finprod_of_infinite_mulSupport` returns the junk value `1` against a left-hand side
+  of `0`. So past finite dimension Definition 37's product is **not** the elementary product it
+  is written as — which is the second concrete reason Conjecture 1 sits at finite dimension,
+  independent of the §5 "`Q^F_E` is not a polynomial" reason recorded above under Scope.
+* **The §7.3 witnesses, by definition** (end of `Examples.lean`, section `## §7.3 over the
+  witnesses`, which now imports `EmbeddedAgency` — no cycle, `EmbeddedAgency` imports only
+  `ConditionalOrthogonality`). Def 46: `observes_fst_snd_vsnd_true`;
+  `not_observes_snd_vsnd_true` (∀ `W`; clause 1 fails, the transparent-Newcomb shape where the
+  action *is* the event); `not_observes_snd_snd_Efalse` (clause 2 fails, the
+  counterfactual-mugging shape — clause 1 genuinely holds there, so the two clauses are shown
+  independent in both directions). Def 47: `observesPartition_fst_snd`,
+  `observes_and_observesPartition_vsnd_true` (Defs 46 and 47 related by instance, at the same
+  `A`, `W`), `not_observesPartition_snd`, `observesPartition_top`. Def 48:
+  `counterfactable_fstFactor` / `_top` / `_bot`, and `not_counterfactable_xorPart` — the
+  paper's own reason, the agreement partition is too coarse (`h(xorPart) = B`, so
+  `⋁_S(h X) = ⊥ ≠ X`); reuses the existing `xorPart` rather than a fresh bleen/grue def. Def
+  49: `counterfactableRel_of_counterfactable` (general), `counterfactableRel_fstFactor`,
+  `counterfactableRel_top`, `not_counterfactable_but_counterfactableRel_xorPart` (Def 49 is
+  *strictly weaker* than Def 48), `not_counterfactableRel_xorPart_fstFactor` — so Def 49 is
+  neither empty nor total. Def 50: `beforeGivenSet_univ_iff`, `beforeGivenSet_fst_bot_univ`,
+  `beforeGivenSet_fst_snd_Ediag`, `not_beforeGivenSet_fst_top_Ediag`, `beforeGivenSet_empty`,
+  `beforeGivenSet_corners`. `X_E` computations: `eventPartition_empty` / `_univ` / `_compl` /
+  `_classes` / `_vsnd` / `_vfst`.
+* **Definition 50 at `E = S` IS Definition 19, in three rewrites** — `restrict_univ` (already
+  `@[simp]` in `Subpartition.lean`) twice, then Proposition 22's
+  `historySub_isLeast_and_eq_history.2` (`beforeGivenSet_univ_iff`). No transport lemma is
+  needed, contrary to expectation. The `rw` chain leaves `history X ⊆ history Y ↔ Before X Y`,
+  which `rw`'s trailing `rfl` does **not** close (`Before` is a `def` and the goal is an `Iff`
+  of it) — finish with an explicit `exact Iff.rfl`. And the conditional order genuinely differs
+  from the unconditional one: `beforeGivenSet_fst_snd_Ediag` has `fst` and `snd` incomparable
+  in `≤^F` yet each before the other given the diagonal (both restricted histories are `B`) —
+  the §7.3 shadow of §4.3's "restriction entangles".
+* **Four §7 corners are vacuously total and will fool an auditor reading a single positive
+  witness.** (i) Definition 49 holds of *every* partition relative to `Ind_S`
+  (`counterfactableRel_top`, general), so a `CounterfactableRel X ⊤` witness certifies
+  nothing. (ii) Definition 47 holds of `A = Ind_S` for every `X` and `W`
+  (`observesPartition_top`) — an agent with no options "observes" everything. (iii) Definition
+  50 given `∅` orders every pair, and (iv) `Ind_S` is before everything given anything
+  (`beforeGivenSet_corners`). All four are recorded as witnesses precisely so that the
+  informative instances are the ones stated at a *factor*. The cheap route to the `⊤` corners
+  is Proposition 23 clause 4 plus the observation that `(ofSetoid ⊤).restrict E = indiscrete E`
+  is one `Subpartition.ext` (`restrict` is `s ∈ E ∧ t ∈ E ∧ X s t`, so the third conjunct is
+  `trivial` at `X = ⊤`): that gives `Observes ⊤ W E` and `BeforeGivenSet ⊤ Y E` at *arbitrary*
+  `E` in two lines each, with no §4 computation.
+* **`rw … at hyp` cannot see through a `def`-wrapped conjunction.** With
+  `hyp : F.Observes A W E` (a `def` unfolding to an `And`), `rw [eventPartition_vsnd] at hyp`
+  fails with "did not find an occurrence" even though the pattern is there after delta. Extract
+  the clause with an ascribed `have h1 : F.Orthogonal A (FactoredSet.eventPartition E) := hyp.1`
+  and rewrite `h1`. The projections themselves elaborate fine against an ascribed target type —
+  only `rw`'s syntactic matching is blind. Same trick reads Defs 49/50 obligations:
+  `have h : F.historySub _ ⊆ F.historySub _ := hyp`.
+* **`eventPartition E` relates points by an equality of *Props*, not an `Iff` and not of
+  `Bool`s.** It is `Setoid.comap (· ∈ E) ⊥` with `⊥ : Setoid Prop`, so the relation is
+  `(s ∈ E) = (t ∈ E)` and `simp`/`rw` on membership will not fire directly; the working
+  incantations are `(show (s ∈ E) = (t ∈ E) from h).to_iff` and
+  `show (s ∈ E) = (t ∈ E) from propext h`. `Examples.eventPartition_iff` packages that once and
+  every §7.3 computation runs on it. Two corollaries: `eventPartition ∅ = ⊤` is
+  `Setoid.ext fun _ _ => ⟨fun _ => trivial, fun _ => rfl⟩` (both sides `False` definitionally);
+  and `X_E` is complement-invariant (`eventPartition_compl`), which is *why* Definition 46's
+  clause 2 conditions on `Eᶜ` rather than being derivable from clause 1. Computing `X_E` at a
+  concrete Boolean event (e.g. `eventPartition {p | p.1 = true} = obsFst`) is **not**
+  `decide`-able — `propext`-style reasoning one way, Boolean case analysis the other; budget for
+  it, or route a witness via `E = ∅` / `A = ⊤`.
+* **`F.OrthogonalGiven X W X` is true for EVERY `W`** (`Examples.orthogonalGiven_given_self`,
+  `[Finite F.B]`): `X` restricted to a block of `X` is indiscrete, and Proposition 23 clause 4
+  makes its history empty. This is **not** Proposition 25 (`orthogonalGiven_self_iff :
+  OrthogonalGiven X X Y ↔ Y ≤ X`), which covers only `W = X`, and it is not a one-step
+  consequence of the semigraphoid axioms either — do not go looking there first. With it,
+  Definition 48 → Definition 49 (`counterfactableRel_of_counterfactable`) is three lines.
+* **Six general helpers are parked in `Examples` and are relocation candidates**, in the style
+  of stage 6's helper relocations: `orthogonalGiven_given_self`, `historySub_top_restrict`,
+  `historySub_restrict_empty`, `orthogonalGivenSet_comm`, `orthogonalGivenSet_top_left`/`_right`
+  → `ConditionalOrthogonality.lean` / `SubpartitionHistory.lean`. `historySub_restrict_empty` in
+  particular duplicates a computation done inline inside §4's `orthogonalGivenSet_empty`.
+* **For §7 the client-facing content is *reductions*, not endpoints** — the paper states no
+  theorem about Definitions 46–50 — and an auditor meeting a §7 statement should apply these
+  first, to check it is not silently a §3 statement. The four in APITests:
+  `Observes A W ∅ ↔ Orthogonal A W` (Definition 46 at the impossible event is Definition 18;
+  Prop 24 + Prop 13 clause 3 + `classes_top`, needs `[Nonempty S]`);
+  `BeforeGivenSet X Y Set.univ ↔ Before X Y` (Prop 22's second half + `restrict_univ`);
+  `Observes ⊤ W E` for all `W`, `E` (so an `Observes` hypothesis constrains `A` and nothing
+  else); and `Counterfactable b` for every `b ∈ F.B` (Prop 13 clause 4 + `sInf_singleton`).
+* **`historySub_spec` cannot infer its `Z` argument.** `(F.historySub_spec _ _ _ rfl).2.2.2.1.2 h`
+  fails with four "don't know how to synthesize" errors, because clause 3 (`X.Subset Z → …`)
+  leaves `Z` unconstrained once you project past it. Pass all three subpartitions explicitly
+  (the same one three times is fine, with `rfl` for `hE`). Clause indices: `.1` mono, `.2.1`
+  inf, `.2.2.1` `Subset`, `.2.2.2.1` `historySub X = ∅ ↔ X = indiscrete X.dom`, `.2.2.2.2`
+  factors.
+* **Helper lemmas declared in the `APITests.FiniteFactoredSets` namespace get no `F.`
+  dot-notation**, even under the file's `open FiniteFactoredSets.FactoredSet`: dot notation
+  resolves against the *head symbol's* namespace, so `F.orthogonal_top_left` looks for
+  `FiniteFactoredSets.FactoredSet.orthogonal_top_left`. Write `orthogonal_top_left F _`. Twelve
+  of shard C's first-pass errors were this one mistake, and its error text ("The environment
+  does not contain …") is indistinguishable from a genuinely missing declaration *and* from the
+  stale-olean failure recorded in stage 4's traps — check the namespace before believing either
+  diagnosis.
+* **`orthogonal_spec`'s clauses are keyed on the lemma's own arguments, and reading them
+  backwards costs a compile cycle.** Clause 1 is `Orthogonal X Y → Orthogonal Y X`, so to get
+  `Orthogonal A ⊤` from `Orthogonal ⊤ A` you write `(F.orthogonal_spec ⊤ A A).1`, not
+  `(F.orthogonal_spec A ⊤ ⊤).1`. Clause 2 (`Orthogonal X Z → X ≤ Y → Orthogonal Y Z`) is
+  *coarsening in the first argument* — read it as "orthogonality survives making a partition
+  coarser"; it is what turns `¬ Orthogonal obsFst obsFst` into `¬ Orthogonal ⊥ obsFst` in one
+  step. (Companion to the stage-6 note that Prop 15 clause 4 is keyed on the *first* argument.)
+* **§7.3 of the TeX labels only Definitions 46 and 47** (`obse`, `obsp`); Definitions 48–50
+  carry no `\label{}`, so label-based linting has nothing to check there — not an erratum, but
+  do not read the absence as a missing citation. The two failure modes of Definition 46 are
+  named in the paper's own prose: Drescher's transparent Newcomb violates clause 1, Nesov's
+  counterfactual mugging violates clause 2. The paper reads `A` as the agent's options, `E` as
+  a fact about the world, `W` as a high-level world model of everything the agent cares about,
+  and glosses Definition 49 as "`X` screens off the history of `X` from `W`". The witness sets
+  are written to those readings.
+* **`Examples.lean` defines six orthogonality databases, not five** (`emptyDB`,
+  `contradictoryDB`, `totalDB`, `completeInconsistentDB`, `nonconstDB`, `coordDB`) and five
+  probability distributions (`uniform`, `diagDist`, `biased`, `unitDist`, `boolUniform`). The
+  FFS README's status paragraph said five while its own §6 prose said six; corrected in stage
+  7. Recount witness inventories mechanically (`grep -n '^def .*: OrthDatabase'`,
+  `'^noncomputable def .*: ProbDist'`) before copying a count forward — this register drifted
+  the same way the §5 declaration count did three times.
+* **Flipping FFS to complete has three knock-on edits in the *root* README**, all stale counts
+  rather than FFS prose, and all easy to miss: the recommended-import table needed a
+  `FiniteFactoredSets.API` row (a completed paper must advertise one); "the same bar the three
+  above meet" became four; and the trust-surface paragraph's "covering all three papers"
+  contradicted the very next sentence, which already named Finite Factored Sets. Root
+  `CLAUDE.md`'s parallel paragraph was already correct, which is why the README one went
+  unnoticed.
+* **Registers after stage 7: 87 carriers / 94 annotations, and 87 + 9 = 96.** Recount as ever
+  with `grep -rho "Paper node: [A-Za-z]* [0-9]*" FiniteFactoredSets/*.lean | sort -u | wc -l`
+  (87), and without `sort -u` (94). The 7-annotation excess is the six known multi-carrier nodes
+  (Definitions 13, 15, 18, 19, 41 with two carriers each; Definition 25 with three). §7 adds
+  exactly six carriers, one per node — Defs 46–50 and Conjecture 1 — to stage 6's 81; the nine
+  Mathlib-rendered whole nodes (Defs 1, 2, 5, 6, 7, 9, 29, 30, 39) make up the in-scope 96.
+  `eventPartition` is deliberately uninventoried and unannotated: it is an auxiliary.
+* Calibration for future §7-style shards. **The design pass is the cost centre, not the tactic
+  pass** — the same lesson as stages 5a and 6. Shard A's ~500 lines of witnesses over five
+  definitions took two compiler iterations, both failures trivial (a missing `exact Iff.rfl`
+  and the `rw`-through-a-`def` blindness above); what cost time was *choosing* witnesses that
+  reuse §3.3/§4.3 computations already on `coordFS` (taking `E = Efalse`, so `Eᶜ = Efst`,
+  reuses `historySub_sndOnEfst` outright; `botOnEdiag_eq` reuses `historySub_fstOnEdiag`).
+  Shard B compiled essentially first-try, including the ~150 lines of §3–§4 computation at the
+  infinite carrier: if a future stage budgets heavily for "making the vocabulary work at an
+  infinite carrier", that budget is wrong. What it should budget for is **environment loss** —
+  shard B lost two sessions to machine sleep before writing a file, which is the standing
+  argument for the repo's commit-completed-work-as-you-go discipline even inside a single-file
+  shard.
 
 ## Round 10 audit — durable lessons (§6 convergence round)
 
@@ -618,7 +843,8 @@ it belongs in the library as a stated open `Prop` with this note attached.
   **`check_endpoint_coverage.py` scans `LogicalInduction/` only** (`LIB =
   Path("LogicalInduction")` is hard-coded; its output "68 labels have an inventory endpoint,
   0 uncovered" looks project-wide and is not — adding three FFS inventory rows left the count
-  at 68, which is the tell). The FFS gate is `scripts/check-finite-factored-sets-nodes.py`.
+  at 68, which is the tell; still 68 through stage 7's six new endpoints). The FFS gate is
+  `scripts/check-finite-factored-sets-nodes.py`.
   And **`lake build AxiomAudit` stays green with sorried declarations in the same file as
   long as they are not listed** — a green AxiomAudit is a claim about the *listed* names
   only; `grep -rn sorry FiniteFactoredSets/` separately before believing a directory is clean.
@@ -705,8 +931,9 @@ it belongs in the library as a stated open `Prop` with this note attached.
   `dirac` duplication (now paid), one byte-identical in-module/APITests example pair (Lemma 3
   clause 2), and three register sentences. Cross-check discipline mechanically verified for all
   seven §5.3–5.5 pairs.
-* **Infinite-dimensional factored set exists in compiled form** (`ScratchR9A_inf.lean` →
-  land it in Examples when Conjecture 1 is stated): `W = ℕ → Bool`, `coordSetoid n =
+* **Infinite-dimensional factored set exists in compiled form** — **landed in stage 7 as
+  `InfiniteExamples.infFS`**, not in `Examples.lean` (which stays finite by construction);
+  the scratch file this came from is gone, so use the committed one: `W = ℕ → Bool`, `coordSetoid n =
   Setoid.comap (· n) ⊥`, `B = Set.range coordSetoid`, via `isFactorization_iff_existsUnique`.
   It pins: `isDistribution_diracAt`'s `[Finite F.B]` (false there); `[Finite S]` on Lemma 3
   (`S = ℕ × ℕ`, `X = Y = fst`, `Z = ⊤`: all `Q`s junk `0`, clause 3 holds, clause 1 fails by

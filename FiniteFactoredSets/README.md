@@ -5,20 +5,23 @@ Formalization of Scott Garrabrant, *Temporal Inference with Finite Factored Sets
 `notes/2109.11513-main.tex` is the exact arXiv source and `notes/2109.11513.pdf` the
 matching PDF.
 
-**Status: in progress — §2, §3, §4, §5 and §6 formalized (81 of the 96 in-scope nodes
-carry a Lean declaration of ours; three more — §5.1's Definitions 29 and 30 and §6.1's
-Definition 39 — are rendered by
-Mathlib vocabulary and are tabulated below with the six such nodes of §2.1), with
-non-vacuity discharged by construction: four factored sets, five probability
-distributions, four factored set models and five orthogonality databases are built, and
-the §2.5, §3,
-§4, §5 and §6 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`,
-`Entangled`, `Before`, `StrictlyBefore`, `Subpartition`, `GeneratesSub`, `historySub`,
-`OrthogonalSub`, `OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`, `monos`, `poly`,
-`irr`, `ProbDist`, `IsDistribution`, `Model`, `Model.pullback`, `OrthDatabase`, `Models`,
-`Consistent`, `Complete`, `OrthDatabase.Before` — is computed over them rather than merely
-defined.**
-Nothing here is complete, and this file says what is claimed and what is not.
+**Status: complete — §2 through §7 formalized. All 96 in-scope nodes are accounted for:
+87 carry a Lean declaration of ours, and the remaining nine are rendered outright by
+Mathlib vocabulary (Definitions 1, 2, 5, 6, 7, 9, 29, 30 and 39 — tabulated below), so
+87 + 9 = 96.** Non-vacuity is discharged by construction: four finite factored sets, two
+factored sets outside §5's finiteness boundary, five probability distributions, four
+factored set models and six orthogonality databases are built, and the §2.5, §3, §4, §5,
+§6 and §7 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`, `Entangled`,
+`Before`, `StrictlyBefore`, `Subpartition`, `GeneratesSub`, `historySub`, `OrthogonalSub`,
+`OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`, `monos`, `poly`, `irr`, `ProbDist`,
+`IsDistribution`, `Model`, `Model.pullback`, `OrthDatabase`, `Models`, `Consistent`,
+`Complete`, `OrthDatabase.Before`, `eventPartition`, `Observes`, `ObservesPartition`,
+`Counterfactable`, `CounterfactableRel`, `BeforeGivenSet` — is computed over them rather
+than merely defined.
+
+Two things are deliberately *not* claimed and are set out below: Examples 3 and 4 are out
+of scope by ruling, and Conjecture 1 is stated as a `Prop` and deliberately left unproved.
+This file says what is claimed and what is not.
 
 ## What is claimed
 
@@ -43,15 +46,24 @@ Nothing here is complete, and this file says what is claimed and what is not.
 | 5.5 | The fundamental theorem of finite factored sets | Theorem 3 |
 | 6.1 | Factored set models, orthogonality databases, consistency, completeness, inferred time | Definitions 38, 40, 41, 42, 43, 44, 45 |
 | 6.2 | The two worked examples | Examples 1, 2; Propositions 33, 34, 35, 36 |
+| 7.2 | The fundamental theorem for finite-dimensional factored sets, **stated as a `Prop` and deliberately not proved** | Conjecture 1 |
+| 7.3 | Embedded observations, counterfactability, conditional time | Definitions 46, 47, 48, 49, 50 |
 
 §5.1's Definitions 29 (evaluation) and 30 (support) and §6.1's Definition 39 (preimages)
 are the three nodes of these sections
 with no declaration of ours. All three are left out of the rows above and appear in the
-Mathlib-rendered table below instead, which is why those rows name 81 nodes rather than 84.
+Mathlib-rendered table below instead, which is why those rows name 87 nodes rather than 90.
+
+§7's two rows are of different kinds and should not be read together. §7.3 is *definitions
+only* — the paper states no theorem about Definitions 46–50 — so what is claimed there is
+that each definition is rendered faithfully through the §3–§4 vocabulary, in
+`EmbeddedAgency.lean`. §7.2's row claims that Conjecture 1's *statement* is formalized, in
+`Conjecture.lean`, and nothing more: see "What is not claimed" below before reading that
+row as a result.
 
 Six of those nodes are stated in halves — five in two, one in three — and every half is
-carried, so those nodes appear in the inventory more than once. The 81 nodes above are
-cited by 88 annotations:
+carried, so those nodes appear in the inventory more than once. The 87 nodes above are
+cited by 94 annotations:
 
 | Node | Carriers |
 |---|---|
@@ -64,19 +76,48 @@ cited by 88 annotations:
 
 Every one of those carries a `Paper node:` docstring line and an entry in
 `AxiomAudit.lean`'s FFS-INVENTORY block, checked both ways by
-`scripts/check-finite-factored-sets-nodes.py`. Every endpoint — §2–§6, witnesses included —
+`scripts/check-finite-factored-sets-nodes.py`. Every endpoint — §2–§7, witnesses included —
 is `sorry`-free and clean at `[propext, Classical.choice, Quot.sound]`; the library has no
-open proof obligation. Zero `sorry`, zero `axiom`.
+open proof obligation. **Zero `sorry`, zero `axiom`.** Conjecture 1 is not an exception to
+that and should not be read as one: `FundamentalTheoremFiniteDim` is a `def … : Prop` with
+no proof anywhere, which is a *definition* and not a `sorry` — it carries no `sorryAx`, adds
+no axiom, and cannot weaken any statement of ours except by appearing among that statement's
+hypotheses, which nothing in §2–§7 does.
 
 ## What is not claimed
 
-§7's in-scope material — Definitions 46–50, and Conjecture 1 stated as a `Prop` and
-deliberately not proved — has **no Lean statements yet**. The
-trust-surface guide reports the shortfall by kind rather than listing it. §5 and §6 are
-complete: all five §5.3–§5.5 nodes and all fourteen §6 nodes are stated and proved —
-Definitions 38–45, Examples 1 and 2 as constructed databases, and Propositions 33–36
+Two things, and both are rulings rather than gaps.
+
+**Examples 3 and 4 are out of scope.** Both concern `S = 𝒫(ℕ)` — *infinite* factored sets
+— and the paper itself expects the fundamental theorem to fail there; Example 3 is its
+intended counterexample. Excluding exactly the case the paper predicts is false is the
+line; there is no partial formalization of either example hiding anywhere. That said, the
+factored set they are about is built, as a *witness* with no paper-node annotation:
+`InfiniteExamples.lean` carries `infFS` on `ℕ → Bool`, the coordinate factorization that is
+the paper's `𝒫(ℕ)` factored set, and uses it to pin the finiteness hypotheses of §5 (see
+the non-vacuity section). Reading that file as a formalization of Examples 3 or 4 would be
+a misreading: it exhibits the object, and claims nothing the paper claims about it.
+
+**Conjecture 1 is stated and deliberately not proved.**
+`FundamentalTheoremFiniteDim` in `Conjecture.lean` is a `def … : Prop` — Theorem 3's
+statement with `[Finite S]` weakened to `[Finite F.B]` — and **no declaration anywhere in
+this library has that type**. The development takes no position on it and no prover time
+should be spent on it. The one thing proved about it is its finite case,
+`fundamentalTheoremFiniteDim_of_finite`, which is Theorem 3 and is a consistency check on
+how the `Prop` is written rather than progress on the conjecture. On its status in the
+literature (recorded at length in `KNOWLEDGE.md`): Matthias Georg Mayer has since proved
+the fundamental theorem for finitely factored *measurable* spaces (*A Theory of Structural
+Independence*, arXiv:2412.00847), but that is the **unconditional** statement and it carries
+measurable structure a bare finite-dimensional factored set does not, so the accurate claim
+is **resolved in a measurable refinement, not as literally stated**. That is precisely why
+it sits here as an open `Prop` with the note attached.
+
+§5, §6 and §7 are otherwise complete: all five §5.3–§5.5 nodes, all fourteen §6 nodes and
+all five §7.3 nodes are stated and — where the paper states a result about them — proved.
+§6 is Definitions 38–45, Examples 1 and 2 as constructed databases, and Propositions 33–36
 with the paper's own models (`Example1.idModel`, `Example2.model`) discharging the two
-consistency claims.
+consistency claims. §7.3 is *definitions only*, because the paper proves nothing about
+them; that is faithfulness, not a shortfall.
 
 An earlier feasibility spike proved several §5 results — the disjoint-support coefficient
 lemma behind Proposition 28, multilinearity of `Q^F_E`, and the Fundamental Theorem's
@@ -89,10 +130,9 @@ re-landed against `FactoredSet`: the first as `coeff_add_mul_of_split` in
 direction needs — as the private `eq_zero_of_eval_pos_eq_zero` in `Probability.lean`,
 which is `MvPolynomial.funext_set` at `Set.Ioi 0`.
 
-**Scope (settled 2026-08-16): 96 of 98 nodes.** In: §1–§6 in full, §7's Definitions
-46–50, and Conjecture 1 stated as a `Prop` and deliberately not proved. Out: Examples 3
-and 4 only — both concern *infinite* factored sets, the case the paper itself expects the
-fundamental theorem to fail in (Example 3 is its intended counterexample).
+**Scope (settled 2026-08-16): 96 of 98 nodes**, all now landed. In: §1–§6 in full, §7's
+Definitions 46–50, and Conjecture 1 stated as a `Prop` and deliberately not proved. Out:
+Examples 3 and 4 only, as above.
 
 A consequence worth knowing before reading any §3–§4 statement: **finiteness is kept
 minimal.** `FactoredSet` carries no `Fintype S`, and §3–§4 are stated with `Finite B`
@@ -255,6 +295,31 @@ Defined in full in the glossary at `FiniteFactoredSets.lean`. In brief:
   hold on to is that `NotOrth` is a positive assertion *of the database*, not the negation
   of `Orth` — so a database may assert both (Definition 43 then fails) or neither
   (Definition 44 then fails). Both are witnessed in `Examples.lean`.
+* **`dd:conjecture`** — §7.2's Conjecture 1 is a `def … : Prop`,
+  `FundamentalTheoremFiniteDim`, universe-polymorphic and quantifying over every carrier,
+  every factored set on it and every triple of partitions. Its body is Theorem 3's
+  statement with `[Finite S]` weakened to `[Finite F.B]` and **nothing else changed**, which
+  is the whole content of the conjecture — the paper's §7.2 asks exactly whether the
+  finiteness it assumed "fairly gratuitously" can be dropped to finite *dimension*.
+  Stating it costs nothing and claims nothing: no declaration has that type, the finite case
+  is separately recorded as `fundamentalTheoremFiniteDim_of_finite` (which is Theorem 3), and
+  the reason the `Prop` can be written down at all is that `dd:finiteness-minimal` and
+  `dd:probability` between them keep `ProbDist` and `IsDistribution` free of any finiteness
+  of their own. See "What is not claimed" for its status in the literature.
+
+  §7.3's renderings are consequences of `dd:partition` and `dd:order-flip` rather than
+  decisions of their own, and two are worth stating here because they change how a
+  definition reads. Definition 46's auxiliary `X_E` is `eventPartition E`, namely
+  `Setoid.comap (· ∈ E) ⊥` — related iff you agree on membership in `E` — whose blocks are
+  the *nonempty* ones among `E` and `S \ E`, so the paper's case split (`{S}` when `E` is
+  empty or all of `S`, `{E, S \ E}` otherwise) is absorbed by `Setoid.classes` rather than
+  written out; `eventPartition` takes no `F` and carries no paper-node annotation, Definition
+  46's carrier being `Observes`. And Definition 47's sub-agents `Aᵢ` are indexed by the
+  **blocks** of `X` (`As : X.classes → Setoid S`) rather than by a numbering
+  `X = {x₀, …, xₙ₋₁}`, with `⋁_S {Aᵢ}` as `sInf (Set.range As)`; that is what keeps
+  Definition 47 free of the finiteness its printed notation implies. Definition 50's
+  `h^F(X | E)` is `historySub ((ofSetoid X).restrict E)`, Definition 26's own spelling, and
+  none of Definitions 46–50 carries a finiteness binder.
 
 There are **no type-`(c)` modeling substitutions** so far: nothing weaker stands in for
 one of the paper's objects.
@@ -274,8 +339,11 @@ has *no* blocks and is therefore not trivial. Rendering nontriviality as the mor
 
 ## Non-vacuity
 
-**Discharged by construction** in `FiniteFactoredSets/Examples.lean`, which is inventoried
-in the FFS-INVENTORY block alongside the nodes it de-vacuates. Four witnesses:
+**Discharged by construction** in `FiniteFactoredSets/Examples.lean` — with
+`FiniteFactoredSets/InfiniteExamples.lean` carrying the witnesses that live outside §5's
+finiteness boundary, kept separate because everything in `Examples.lean` is finite by
+construction — both inventoried in the FFS-INVENTORY block alongside the nodes
+they de-vacuate. Four finite witnesses:
 
 | Witness | Shape | What it rules out |
 |---|---|---|
@@ -442,6 +510,38 @@ The informative *positive* instances of Definition 45 — an actual inferred `X 
 Propositions 34 and 36 themselves. Nothing in `Examples.lean` stands in for them, and the
 degenerate `contradictoryDB_before_all` is recorded precisely so that no reader mistakes a
 vacuous `Before` for one.
+
+§7 adds the last layer, and it splits in two. §7.3's five definitions are stated over the
+§3–§4 vocabulary, so nothing in §2–§6 exercises them; `Examples.lean` therefore runs them
+over `coordFS` and its partitions. §7.2's Conjecture 1 is a `Prop` about
+finite-*dimensional* factored sets, and **every factored set built for §2–§6 has a finite
+carrier**, so none of them is in the part of the conjecture's range that Theorem 3 does not
+already cover; a separate file, `InfiniteExamples.lean`, supplies factored sets outside §5's
+finiteness boundary. The claims below are what those two files discharge; the rows name the
+claim rather than every declaration, since the §7 witness sets are read most usefully as
+claims (every name below exists once in the witness files and once in the FFS-INVENTORY
+block):
+
+| Claim | Witnesses | What it rules out |
+|---|---|---|
+| Definition 46's case split is real, and `eventPartition` computes on **both** sides of it | `eventPartition` evaluated on `coordFS` at an event that is neither empty nor all of `S` and at one that is (`Examples.lean`) | reading the `Setoid.comap (· ∈ E) ⊥` rendering as a reformulation nobody checked. The paper's two cases — `{S}`, and `{E, S \ E}` — are both realized by `Setoid.classes` of the same definition, which is the entire content of absorbing the split |
+| Definition 46 is neither empty nor total, and its negative side is the paper's own reading | a positive `Observes` instance on `coordFS`, together with the paper's Newcomb and counterfactual-mugging configurations as *negative* instances (`Examples.lean`) | `Observes` holding vacuously or universally. The negatives matter more than the positive here: §7.3's point is that an agent may fail to observe an event it "knows", and a witness file that only exhibited positives would leave that unexercised |
+| Definition 47 is inhabited over a block-indexed family, so the reindexing is not vacuous | an `ObservesPartition` instance on `coordFS` (`Examples.lean`) | the `As : X.classes → Setoid S` rendering being unsatisfiable, or satisfiable only at a one-block `X` where the family carries no information |
+| Definition 48 separates partitions, and the separating example is the paper's | `Counterfactable` holding at a factor of `coordFS` and **failing** at the XOR / bleen-grue partition (`Examples.lean`) | `Counterfactable` being total. `X = ⋁_S(h^F(X))` is an equation, and the XOR partition is exactly the paper's illustration of a partition whose history recovers strictly more than itself |
+| Definition 49 is inhabited, and separately from Definition 48 | a `CounterfactableRel` instance on `coordFS` (`Examples.lean`) | reading the relative notion as the absolute one with a spectator argument |
+| Definition 50 is computed at a conditioning set that is not `S` | a `BeforeGivenSet` instance on `coordFS` (`Examples.lean`) | conditional time being exercised only where `restrict` is the identity, which is where it reduces to Definition 19 |
+| Conjecture 1's range contains factored sets Theorem 3 does not reach — and factored sets *it* does not reach either | `natBoolFS` on `ℕ × Bool` (finite dimension, infinite carrier: inside the conjecture, outside Theorem 3) and `infFS` on `ℕ → Bool` (infinite dimension: outside both) (`InfiniteExamples.lean`) | reading Conjecture 1 as a restatement of Theorem 3, and reading it as a claim about arbitrary factored sets. The paper expects the *arbitrary*-dimensional version to be **false**, so the second witness marks a boundary rather than a gap |
+| `isDistribution_diracAt`'s `[Finite F.B]` is load-bearing, not decorative | `infFS` (`InfiniteExamples.lean`) | reading that binder as a proof convenience. Over an infinite basis Definition 37's `∏ᶠ b ∈ B` returns the junk value `1` as soon as infinitely many factors separate two points, while the singleton probability there is `0` — so the statement is *false*, not merely unproved |
+| Conjecture 1's finite instance is exercised, not just stated | `fundamentalTheoremFiniteDim_of_finite` applied at a concrete factored set (`InfiniteExamples.lean`, and through the API boundary in `APITests/FiniteFactoredSets.lean`) | the consistency check between the `Prop` and Theorem 3 being asserted rather than run |
+
+`APITests/FiniteFactoredSets.lean` carries the client-side half of the §7 non-vacuity, and
+it is deliberately a different half: it consumes `FundamentalTheoremFiniteDim` as a
+*hypothesis* and composes it with Proposition 24, applies
+`fundamentalTheoremFiniteDim_of_finite` against Proposition 25, and records the reductions
+a client needs before reading a §7.3 fact as a §7 fact — Definition 46 at `E = ∅` is
+Definition 18, Definition 50 at `E = S` is Definition 19, `Ind_S` observes everything, and
+every factor is counterfactable. Those are compositions, not restatements, and none of them
+imports `Examples.lean` or `InfiniteExamples.lean`.
 
 One friction point a client will meet, recorded at the site: `Finite F.B` — the
 hypothesis every §3.2–§3.4 theorem carries (Propositions 10 and 11 need none, and nothing

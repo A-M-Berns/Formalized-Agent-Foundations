@@ -26,7 +26,7 @@ or replaces paper-legible statements with unnecessary abstraction.
 | Garrabrant et al. (2016), [*Logical Induction*](https://arxiv.org/abs/1609.03543) | [`LogicalInduction/`](LogicalInduction/README.md) | Unconditional construction of a logical inductor + the full property tail: all 53 paper nodes formalized, 51 at paper strength and 2 with a named interface or class restriction retained. Two disclosed modeling substitutions. Zero `sorry`, zero `axiom`. |
 | Barász et al. (2014), [*Robust Cooperation in the Prisoner's Dilemma via Provability Logic*](https://arxiv.org/abs/1401.5577) | [`ModalAgents/`](ModalAgents/README.md) | The cooperation results at the Gödel–Löb provability-logic level, including a proved (not axiomatized) GL fixed-point theorem and all four conjuncts of Theorem 3.2, plus the §1/§4 arithmetic layer — agents as formulas of `PA`, Löb's Theorem, modal substitution, and the CliqueBot separation (Cor 4.9). Cooperation lifts to arithmetic; three stronger defection claims stop at explicit GL consistency boundaries. One numbered node (Thm 4.6) is unformalized. Zero `sorry`, zero `axiom`. |
 | Garrabrant, Herrmann, and Lopez-Wild (2021), [*Cartesian Frames*](https://arxiv.org/abs/2109.10996) | [`CartesianFrames/`](CartesianFrames/README.md) | All 60 numbered nodes formalized — every definition, claim, and the Decomposition Theorem — across the main text and both appendices, at paper strength with no modeling substitutions. One node is formalized in part by ruling (Claim 35, whose External/Internal half is ill-typed as printed). Zero `sorry`, zero `axiom`. |
-| Garrabrant (2021), [*Temporal Inference with Finite Factored Sets*](https://arxiv.org/abs/2109.11513) | [`FiniteFactoredSets/`](FiniteFactoredSets/README.md) | **In progress** — §2–§6 (partitions, factorizations, chimera functions, generation, history, orthogonality, time, subpartitions, conditional orthogonality and the semigraphoid axioms, characteristic polynomials and their factorization, the fundamental theorem — conditional orthogonality is conditional independence in every distribution on the factored set — and temporal inference from orthogonality databases, including both worked examples): 81 of the 96 in-scope nodes carried by declarations of ours (Mathlib renders three), at paper strength with no modeling substitutions. Scope is 96 of the paper's 98 numbered nodes, settled by ruling and recorded in that README; §7 is not yet claimed. Non-vacuity is discharged by construction — factored sets and models are built and the §2.5, §3 and §6 vocabulary is computed over them. Zero `sorry`, zero `axiom`. |
+| Garrabrant (2021), [*Temporal Inference with Finite Factored Sets*](https://arxiv.org/abs/2109.11513) | [`FiniteFactoredSets/`](FiniteFactoredSets/README.md) | **Complete** — §2–§7 (partitions, factorizations, chimera functions, generation, history, orthogonality, time, subpartitions, conditional orthogonality and the semigraphoid axioms, characteristic polynomials and their factorization, the fundamental theorem — conditional orthogonality is conditional independence in every distribution on the factored set — temporal inference from orthogonality databases including both worked examples, and §7's embedded observations, counterfactability and conditional time): 87 of the 96 in-scope nodes carried by declarations of ours (Mathlib renders nine), at paper strength with no modeling substitutions. Conjecture 1 — the fundamental theorem for finite-*dimensional* factored sets — is stated as a `Prop` and deliberately unproved, and no declaration has that type. Examples 3 and 4 (infinite factored sets, the case the paper expects the theorem to fail in) are out of scope by ruling, so scope is 96 of the paper's 98 numbered nodes; the ruling is recorded in that README. Non-vacuity is discharged by construction — factored sets and models are built, inside and outside the finiteness boundary, and the §2.5, §3, §4, §5, §6 and §7 vocabulary is computed over them. Zero `sorry`, zero `axiom`. |
 
 Each directory's README gives the detailed statement-level accounting: what is proved,
 what is modeled, and exactly where the trust boundary sits.
@@ -40,6 +40,7 @@ the deeper imports when those details are needed.
 | Logical Induction | `import LogicalInduction.API` |
 | Modal Agents | `import ModalAgents.API` |
 | Cartesian Frames | `import CartesianFrames.API` |
+| Finite Factored Sets | `import FiniteFactoredSets.API` |
 
 Consumer readiness is a checked completion criterion, and it is the intended end state
 for **every** paper this repository takes on — not a retrofit for the three that happen
@@ -48,7 +49,7 @@ supply an isolated client smoke test that is built by default;
 `scripts/check_paper_wiring.py` fails closed if either is missing. A new formalization is
 registered `in-progress` and may land its statements first, but it is not finished until
 a separate research project could depend on a small, documented import — the same bar the
-three above meet. Proving the paper's nodes is necessary and not sufficient.
+four above meet. Proving the paper's nodes is necessary and not sufficient.
 
 The two surfaces stay conceptually distinct: the **trust surface** answers what we claim
 faithfully formalizes the paper, and the **consumer surface** answers what downstream work
@@ -57,9 +58,9 @@ obscure an assumption the trust surface discloses. The detailed standing rule li
 [`CLAUDE.md`](CLAUDE.md#consumer-readiness-is-part-of-paper-completion).
 
 The whole surface is also browsable in one place. [`docs/trust-surface.html`](docs/trust-surface.html)
-is a generated read-through guide covering **all three papers**: every annotated paper
+is a generated read-through guide covering **every registered paper**: every annotated paper
 node rendered beside the Lean statement that carries it, in the paper's own order, with a
-section per paper. The three sections are not symmetric, and the page says why —
+section per paper. The sections are not symmetric, and the page says why —
 *Logical Induction* carries a per-node strength tier and hand-written reading and audit
 notes, because it has a machine-checked strength classification; *Cartesian Frames* and
 *ModalAgents* and *Finite Factored Sets* have no such classification, so their sections are correspondence views

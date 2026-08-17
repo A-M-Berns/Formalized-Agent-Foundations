@@ -1,4 +1,5 @@
 import FiniteFactoredSets.ConditionalOrthogonality
+import FiniteFactoredSets.EmbeddedAgency
 import FiniteFactoredSets.Factoring
 import FiniteFactoredSets.Inference
 import FiniteFactoredSets.Probability
@@ -6,15 +7,17 @@ import FiniteFactoredSets.Probability
 /-!
 # Worked factored sets — the non-vacuity witnesses
 
-Every §2–§6 endpoint is stated over `FactoredSet` or, in §6, over `Model`, so until
+Every §2–§7 endpoint is stated over `FactoredSet` or, in §6, over `Model`, so until
 something exhibits one those endpoints say nothing about anything.  This file exhibits four
 factored sets, covering the degenerate sizes Proposition 5 singles out and one genuinely
 two-dimensional example that makes the chimera function actually splice, and then runs the
-§2.5, §3, §4, §5 and §6 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`,
-`Entangled`, `Before`, `StrictlyBefore`, `Subpartition`, `GeneratesSub`, `historySub`,
-`OrthogonalSub`, `OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`, `monos`, `poly`,
-`irr`, `ProbDist`, `IsDistribution`, `Model`, `Model.pullback`, `OrthDatabase`, `Models`,
-`Consistent`, `Complete` and `OrthDatabase.Before` — over them.
+§2.5, §3, §4, §5, §6 and §7.3 vocabulary — `size`, `dim`, `Generates`, `history`,
+`Orthogonal`, `Entangled`, `Before`, `StrictlyBefore`, `Subpartition`, `GeneratesSub`,
+`historySub`, `OrthogonalSub`, `OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`,
+`monos`, `poly`, `irr`, `ProbDist`, `IsDistribution`, `Model`, `Model.pullback`,
+`OrthDatabase`, `Models`, `Consistent`, `Complete`, `OrthDatabase.Before`,
+`eventPartition`, `Observes`, `ObservesPartition`, `Counterfactable`, `CounterfactableRel`
+and `BeforeGivenSet` — over them.
 
 `coordFS` is the load-bearing one: with a single factor every `C` behaves as `∅` or `B`,
 so Proposition 4 would be a family of near-tautologies.  `not_subsingleton_coordFS_basis`
@@ -141,6 +144,20 @@ database whose consistency is computed here rather than cited from §6.2).  The 
 positive instances — an actual inferred `X <_D Y` — are Propositions 34 and 36, which live
 in `InferenceExamples.lean`; nothing here stands in for them.
 
+The §7.3 half adds the embedded-agency vocabulary, which §7 states no theorem about, so
+witnesses are all there is.  Definition 46's `X_E` is computed on both sides of the paper's
+case split — `Ind_S` at `∅` and at `S`, blocks exactly `E` and `S \ E` otherwise — and on
+`coordFS` it lands on a coordinate factor.  Both clauses of Definition 46 are then shown
+load-bearing at the two failure shapes the paper names: the agent's action *being* the event
+(Drescher's transparent Newcomb, clause 1) and the action still moving the world model on the
+branch where the event fails (Nesov's counterfactual mugging, clause 2).  Definition 47 is
+inhabited at a two-block partition and tied to Definition 46 on an instance rather than by a
+general lemma.  The agreement partition `xorPart` separates Definitions 48 and 49: it is not
+counterfactable, it is counterfactable relative to `Ind_S`, and it is not counterfactable
+relative to `fstFactor`.  Definition 50 agrees with Definition 19 at `E = S` and genuinely
+differs from it elsewhere — the coordinate factors are incomparable in `≤^F`, yet on the
+diagonal each is before the other.
+
 One negative record deserves its name here: Proposition 28's conclusion, asserted at a
 `poly^F_C(E)`, is a triviality — provable for every `C ⊆ B` and every `E` with none of the
 proposition's hypotheses, as the `example` beside
@@ -179,7 +196,14 @@ evaluation `coordZero` with its four `coordZero_*` values, the point weights `w`
 `uniform_Ediag`, `diagDist_apply`, `biased_apply`, `biased_singleton`, `biased_vfst`,
 `biased_vsnd`, `biased_Efst`, `eval_biased_Q_Efst`, `biased_E3`, `eval_biased_Q_E3`, and in
 §6 the identity-pullback unfoldings `pullback_coordModel` and `pullback_boolModel` together
-with `historySub_unitFS` and `orthogonalGiven_unitFS`) are
+with `historySub_unitFS` and `orthogonalGiven_unitFS`, and in §7.3 the relation unfoldings
+`eventPartition_iff` and `eventPartition_part`, the empty-history computations
+`historySub_top_restrict`, `historySub_restrict_empty` and `historySub_snd_restrict_vsnd`,
+the Definition 26 conveniences `orthogonalGivenSet_comm`, `orthogonalGivenSet_top_left`,
+`orthogonalGivenSet_top_right` and `orthogonalGiven_given_self`, the set identities
+`Efst_eq_vfst`, `Efalse_eq_vfst`, `compl_vsnd_true`, `compl_vsnd_false` and `compl_Efalse`,
+and the common-refinement computations `commonRefinement_singleton`,
+`commonRefinement_coordBasis` and `botOnEdiag_eq`) are
 not, since they claim nothing about the paper.  The witnesses cite the paper in prose
 rather than carrying the reserved node annotation: the paper's own Examples 1 and 2 are the
 two §6.2 orthogonality databases, formalized in `InferenceExamples.lean`, and none of the
@@ -3252,6 +3276,501 @@ every pair is "inferred" both ways. -/
 lemma contradictoryDB_before_all (X Y : Setoid (Bool × Bool)) :
     contradictoryDB.Before X Y :=
   OrthDatabase.before_of_not_consistent not_contradictoryDB_consistent X Y
+
+/-! ## §7.3 over the witnesses: observations, counterfactability, conditional time
+
+§7 states no theorem about Definitions 46–50, so a witness is the only thing that can stop
+any of them from being an empty formula.  All five are inhabited below on the same
+`coordFS`, read as the paper reads its `A`, `E` and `W`: the first coordinate is the agent's
+action, an event about the second coordinate is the fact about the world, and a partition
+is the agent's high-level world model.
+
+Definition 46's auxiliary `X_E` comes first, because the paper writes it as a case split
+(`{S}` when `E` is `∅` or `S`, `{E, S \ E}` otherwise) while `EmbeddedAgency.lean` writes it
+as one formula.  `eventPartition_empty`, `eventPartition_univ` and
+`eventPartition_classes` recover that case split, and `eventPartition_compl` records that
+`X_E` cannot tell `E` from its complement.  On the witness `X_E` lands on a coordinate
+factor, which is what makes the Definition 46 instances computable from §3.3 and §4.3
+material already in this file.
+
+Both clauses of Definition 46 are then shown load-bearing, at the two failure shapes the
+paper itself names.  `not_observes_snd_vsnd_true` is the transparent-Newcomb shape
+(Drescher): the agent's action *is* the event, so clause 1 fails for every world model.
+`not_observes_snd_snd_Efalse` is the counterfactual-mugging shape (Nesov): clause 1 holds —
+the action is orthogonal to `X_E` — but on the branch where `E` fails the action still
+determines the whole world model, so clause 2 fails.
+
+The agreement partition `xorPart` is what separates Definitions 48 and 49.  It is not
+counterfactable, and for the paper's own reason: it is too coarse to specify the
+counterfactual, its history being the whole basis, so `⋁_S(h^F(X)) = Dis_S ≠ X`.  It *is*
+counterfactable relative to `Ind_S` (nothing is at stake when the world model distinguishes
+nothing — `counterfactableRel_top` shows that corner is general), and it is *not*
+counterfactable relative to `fstFactor`, so Definition 49 is neither empty nor total.
+Definition 50 finally agrees with Definition 19 at `E = S` (`beforeGivenSet_univ_iff`) and
+genuinely differs from it elsewhere: the coordinate factors are incomparable in `≤^F`, yet
+on the diagonal each is before the other. -/
+
+section EmbeddedAgency
+
+variable {S : Type u}
+
+/-! ### Definition 46's `X_E`, on both sides of the paper's case split -/
+
+/-- `X_E` relates two points exactly when they agree on membership in `E`.  The relation is
+a *`Prop` equality*, so this unfolding into an `Iff` is what every computation below runs
+on. -/
+lemma eventPartition_iff (E : Set S) (s t : S) :
+    FactoredSet.eventPartition E s t ↔ (s ∈ E ↔ t ∈ E) := by
+  constructor
+  · intro h
+    exact (show (s ∈ E) = (t ∈ E) from h).to_iff
+  · intro h
+    exact show (s ∈ E) = (t ∈ E) from propext h
+
+/-- The paper's case split, first degenerate branch: `X_∅ = Ind_S`. -/
+lemma eventPartition_empty : FactoredSet.eventPartition (∅ : Set S) = ⊤ :=
+  Setoid.ext fun s t =>
+    ⟨fun _ => trivial, fun _ => (eventPartition_iff (∅ : Set S) s t).2 (by simp)⟩
+
+/-- …and its second: `X_S = Ind_S`. -/
+lemma eventPartition_univ : FactoredSet.eventPartition (Set.univ : Set S) = ⊤ :=
+  Setoid.ext fun s t =>
+    ⟨fun _ => trivial, fun _ => (eventPartition_iff (Set.univ : Set S) s t).2 (by simp)⟩
+
+/-- `X_E` cannot tell `E` from its complement, which is why Definition 46's two clauses do
+not simply repeat each other. -/
+lemma eventPartition_compl (E : Set S) :
+    FactoredSet.eventPartition Eᶜ = FactoredSet.eventPartition E :=
+  Setoid.ext fun s t => by
+    rw [eventPartition_iff, eventPartition_iff]
+    simp only [Set.mem_compl_iff, not_iff_not]
+
+/-- The block of `X_E` through a point: `E` if the point is in `E`, and `S \ E` otherwise. -/
+lemma eventPartition_part (E : Set S) (y : S) :
+    {x | FactoredSet.eventPartition E x y} = if y ∈ E then E else Eᶜ := by
+  split_ifs with hy
+  · exact Set.ext fun x => ⟨fun hx => ((eventPartition_iff E x y).1 hx).2 hy,
+      fun hx => (eventPartition_iff E x y).2 ⟨fun _ => hy, fun _ => hx⟩⟩
+  · exact Set.ext fun x => ⟨fun hx hxE => hy (((eventPartition_iff E x y).1 hx).1 hxE),
+      fun hx => (eventPartition_iff E x y).2
+        ⟨fun hxE => absurd hxE hx, fun hyE => absurd hyE hy⟩⟩
+
+/-- The paper's non-degenerate branch: at a proper nonempty `E` the blocks of `X_E` are
+exactly `E` and `S \ E`.  Together with `eventPartition_empty` and `eventPartition_univ`
+this is the whole of the case split `EmbeddedAgency.lean` absorbs into one formula. -/
+lemma eventPartition_classes {E : Set S} (hE : E.Nonempty) (hEc : Eᶜ.Nonempty) :
+    (FactoredSet.eventPartition E).classes = {E, Eᶜ} := by
+  ext c
+  constructor
+  · rintro ⟨y, rfl⟩
+    rw [eventPartition_part]
+    split_ifs
+    · exact Or.inl rfl
+    · exact Or.inr rfl
+  · rintro (rfl | rfl)
+    · obtain ⟨y, hy⟩ := hE
+      exact ⟨y, by rw [eventPartition_part, if_pos hy]⟩
+    · obtain ⟨y, hy⟩ := hEc
+      exact ⟨y, by rw [eventPartition_part, if_neg hy]⟩
+
+/-! ### The general facts the §7.3 witnesses run on -/
+
+variable (F : FactoredSet S)
+
+/-- `Ind_S` restricted to any subset is `Ind_E`, so its Definition 24 history is empty. -/
+lemma historySub_top_restrict [Finite F.B] (E : Set S) :
+    F.historySub ((ofSetoid (⊤ : Setoid S)).restrict E) = ∅ := by
+  refine (F.historySub_spec ((ofSetoid (⊤ : Setoid S)).restrict E)
+    ((ofSetoid (⊤ : Setoid S)).restrict E) ((ofSetoid (⊤ : Setoid S)).restrict E)
+    rfl).2.2.2.1.2 ?_
+  rw [dom_restrict_ofSetoid]
+  exact Subpartition.ext fun s t => ⟨fun h => ⟨h.1, h.2.1⟩, fun h => ⟨h.1, h.2, trivial⟩⟩
+
+/-- Restricting to `∅` leaves nothing to generate. -/
+lemma historySub_restrict_empty [Finite F.B] (X : Setoid S) :
+    F.historySub ((ofSetoid X).restrict (∅ : Set S)) = ∅ := by
+  refine (F.historySub_spec ((ofSetoid X).restrict (∅ : Set S))
+    ((ofSetoid X).restrict (∅ : Set S)) ((ofSetoid X).restrict (∅ : Set S)) rfl).2.2.2.1.2 ?_
+  rw [dom_restrict_ofSetoid]
+  exact Subpartition.ext fun s t => ⟨fun hst => ⟨hst.1, hst.2.1⟩, fun hst => hst.1.elim⟩
+
+/-- Definition 26 is symmetric in its two partitions. -/
+lemma orthogonalGivenSet_comm (X Y : Setoid S) (E : Set S) :
+    F.OrthogonalGivenSet X Y E ↔ F.OrthogonalGivenSet Y X E := by
+  rw [F.orthogonalGivenSet_def, F.orthogonalGivenSet_def, Set.inter_comm]
+
+lemma orthogonalGivenSet_top_left [Finite F.B] (X : Setoid S) (E : Set S) :
+    F.OrthogonalGivenSet (⊤ : Setoid S) X E := by
+  rw [F.orthogonalGivenSet_def, historySub_top_restrict F E, Set.empty_inter]
+
+lemma orthogonalGivenSet_top_right [Finite F.B] (X : Setoid S) (E : Set S) :
+    F.OrthogonalGivenSet X (⊤ : Setoid S) E :=
+  (orthogonalGivenSet_comm F (⊤ : Setoid S) X E).1 (orthogonalGivenSet_top_left F X E)
+
+/-- Every partition is orthogonal to every other **given itself**: a block of `X` is a
+single block of `X|x`, so `h^F(X|x) = {}`.  This is the mechanism behind Definition 49's
+being implied by Definition 48. -/
+lemma orthogonalGiven_given_self [Finite F.B] (X W : Setoid S) : F.OrthogonalGiven X W X := by
+  rintro z ⟨r, rfl⟩
+  refine (F.orthogonalGivenSet_def X W _).2 ?_
+  have h : F.historySub ((ofSetoid X).restrict {x | X x r}) = ∅ := by
+    refine (F.historySub_spec ((ofSetoid X).restrict {x | X x r})
+      ((ofSetoid X).restrict {x | X x r}) ((ofSetoid X).restrict {x | X x r})
+      rfl).2.2.2.1.2 ?_
+    rw [dom_restrict_ofSetoid]
+    refine Subpartition.ext fun s t => ⟨fun h => ⟨h.1, h.2.1⟩, fun h => ⟨h.1, h.2, ?_⟩⟩
+    exact X.trans' (show X s r from h.1) (X.symm' (show X t r from h.2))
+  rw [h, Set.empty_inter]
+
+/-- **Definition 48 implies Definition 49, for every `W`.**  A counterfactable `X` *is*
+`⋁_S(h^F(X))`, so the screening-off Definition 49 asks for degenerates to `X ⊥^F W | X`,
+which holds for every `W`.  Short enough to be worth stating in general rather than
+instantiating. -/
+lemma counterfactableRel_of_counterfactable [Finite F.B] {X : Setoid S}
+    (h : F.Counterfactable X) (W : Setoid S) : F.CounterfactableRel X W := by
+  show F.OrthogonalGiven (commonRefinement (F.history X)) W X
+  rw [← h]
+  exact orthogonalGiven_given_self F X W
+
+/-- The degenerate corner of Definition 49, recorded so it is not mistaken for content:
+*every* partition is counterfactable relative to `Ind_S`, counterfactable or not. -/
+lemma counterfactableRel_top [Finite F.B] (X : Setoid S) :
+    F.CounterfactableRel X (⊤ : Setoid S) :=
+  fun z _ => orthogonalGivenSet_top_right F (commonRefinement (F.history X)) z
+
+/-- **Definition 50 at `E = S` is Definition 19**, since `X|S = X` and Proposition 22
+identifies the two histories. -/
+lemma beforeGivenSet_univ_iff [Finite F.B] (X Y : Setoid S) :
+    F.BeforeGivenSet X Y Set.univ ↔ F.Before X Y := by
+  show F.historySub ((ofSetoid X).restrict Set.univ)
+      ⊆ F.historySub ((ofSetoid Y).restrict Set.univ) ↔ _
+  rw [restrict_univ, restrict_univ, F.historySub_isLeast_and_eq_history.2 X,
+    F.historySub_isLeast_and_eq_history.2 Y]
+  exact Iff.rfl
+
+/-- The degenerate corner of Definition 50, matching `orthogonalGivenSet_empty` in §4:
+given `∅`, everything is before everything. -/
+lemma beforeGivenSet_empty [Finite F.B] (X Y : Setoid S) : F.BeforeGivenSet X Y ∅ := by
+  show F.historySub ((ofSetoid X).restrict (∅ : Set S)) ⊆ _
+  rw [historySub_restrict_empty]
+  exact Set.empty_subset _
+
+end EmbeddedAgency
+
+/-! ### Definition 46: an agent observing an event, and both ways it can fail -/
+
+/-- `X_E` at a block of `sndFactor` is `sndFactor` itself: agreeing on "is the second
+coordinate `b`?" is agreeing on the second coordinate. -/
+lemma eventPartition_vsnd (b : Bool) : FactoredSet.eventPartition (vsnd b) = sndFactor :=
+  Setoid.ext fun s t => by
+    obtain ⟨s1, s2⟩ := s
+    obtain ⟨t1, t2⟩ := t
+    rw [eventPartition_iff]
+    constructor
+    · intro h
+      show s2 = t2
+      cases s2 <;> cases t2 <;> cases b <;> simp_all [vsnd]
+    · intro h
+      have h' : s2 = t2 := h
+      subst h'
+      exact Iff.rfl
+
+/-- …and at a block of `fstFactor` it is `fstFactor`. -/
+lemma eventPartition_vfst (a : Bool) : FactoredSet.eventPartition (vfst a) = fstFactor :=
+  Setoid.ext fun s t => by
+    obtain ⟨s1, s2⟩ := s
+    obtain ⟨t1, t2⟩ := t
+    rw [eventPartition_iff]
+    constructor
+    · intro h
+      show s1 = t1
+      cases s1 <;> cases t1 <;> cases a <;> simp_all [vfst]
+    · intro h
+      have h' : s1 = t1 := h
+      subst h'
+      exact Iff.rfl
+
+lemma Efst_eq_vfst : Efst = vfst true := rfl
+
+lemma Efalse_eq_vfst : Efalse = vfst false := rfl
+
+lemma compl_vsnd_true : (vsnd true)ᶜ = vsnd false := by
+  ext ⟨x, y⟩; cases y <;> simp [vsnd]
+
+lemma compl_vsnd_false : (vsnd false)ᶜ = vsnd true := by
+  ext ⟨x, y⟩; cases y <;> simp [vsnd]
+
+lemma compl_Efalse : Efalseᶜ = Efst := by
+  ext ⟨x, y⟩; cases x <;> simp [Efalse, Efst]
+
+/-- On a block of `sndFactor` the restriction of `sndFactor` is indiscrete, so its
+Definition 24 history is empty — the computation both Definition 46 instances turn on. -/
+lemma historySub_snd_restrict_vsnd (b : Bool) :
+    coordFS.historySub ((ofSetoid sndFactor).restrict (vsnd b)) = ∅ := by
+  refine (coordFS.historySub_spec ((ofSetoid sndFactor).restrict (vsnd b))
+    ((ofSetoid sndFactor).restrict (vsnd b)) ((ofSetoid sndFactor).restrict (vsnd b))
+    rfl).2.2.2.1.2 ?_
+  rw [dom_restrict_ofSetoid]
+  refine Subpartition.ext fun s t => ⟨fun h => ⟨h.1, h.2.1⟩, fun h => ⟨h.1, h.2, ?_⟩⟩
+  show s.2 = t.2
+  rw [show s.2 = b from h.1, show t.2 = b from h.2]
+
+/-- **Definition 46 inhabited.**  The agent is the first coordinate, the event is "the
+second coordinate is `true`", and the world model is the second coordinate — so `X_E = W`,
+i.e. all the agent cares about is whether `E` holds.  Clause 1 is §3.3's `fst ⊥^F snd`;
+clause 2 holds because on `S \ E` the world model is constant, so its restriction is
+indiscrete and has empty history. -/
+lemma observes_fst_snd_vsnd_true : coordFS.Observes fstFactor sndFactor (vsnd true) := by
+  refine ⟨?_, ?_⟩
+  · rw [eventPartition_vsnd]
+    exact orthogonal_fstFactor_sndFactor
+  · rw [coordFS.orthogonalGivenSet_def, compl_vsnd_true, historySub_snd_restrict_vsnd,
+      Set.inter_empty]
+
+/-- Definition 46 as a client reads it: two clauses, the first about `X_E` and the second
+conditioned on the complement of `E`. -/
+example : coordFS.Observes fstFactor sndFactor (vsnd true) ↔
+    coordFS.Orthogonal fstFactor (FactoredSet.eventPartition (vsnd true)) ∧
+      coordFS.OrthogonalGivenSet fstFactor sndFactor (vsnd true)ᶜ := Iff.rfl
+
+/-- **Clause 1 is load-bearing, in the shape the paper attributes to Drescher's transparent
+Newcomb problem**: the agent's action *is* the event, so the agent cannot assume the event
+— and no world model rescues it, since only `Ind_S` is orthogonal to itself. -/
+lemma not_observes_snd_vsnd_true (W : Setoid (Bool × Bool)) :
+    ¬ coordFS.Observes sndFactor W (vsnd true) := by
+  intro h
+  have h1 : coordFS.Orthogonal sndFactor (FactoredSet.eventPartition (vsnd true)) := h.1
+  rw [eventPartition_vsnd] at h1
+  have h' : coordFS.history sndFactor ∩ coordFS.history sndFactor = ∅ := h1
+  rw [Set.inter_self, history_sndFactor] at h'
+  exact Set.singleton_ne_empty _ h'
+
+/-- **Clause 2 is load-bearing too, in the shape the paper attributes to Nesov's
+counterfactual mugging**: clause 1 holds — the action is orthogonal to `X_E` — but on the
+branch where `E` fails the agent's action still determines the whole world model, so the
+agent cannot assume `E` either. -/
+lemma not_observes_snd_snd_Efalse :
+    coordFS.Orthogonal sndFactor (FactoredSet.eventPartition Efalse) ∧
+      ¬ coordFS.Observes sndFactor sndFactor Efalse := by
+  refine ⟨?_, ?_⟩
+  · rw [Efalse_eq_vfst, eventPartition_vfst]
+    exact (coordFS.orthogonal_spec fstFactor sndFactor ⊤).1 orthogonal_fstFactor_sndFactor
+  · intro h
+    have h2 : coordFS.historySub ((ofSetoid sndFactor).restrict Efalseᶜ)
+        ∩ coordFS.historySub ((ofSetoid sndFactor).restrict Efalseᶜ) = ∅ := h.2
+    rw [Set.inter_self, compl_Efalse] at h2
+    have h3 : coordFS.historySub sndOnEfst = ∅ := h2
+    rw [historySub_sndOnEfst] at h3
+    exact Set.singleton_ne_empty _ h3
+
+/-! ### Definition 47: an agent observing a partition -/
+
+/-- The blocks of `sndFactor`, which is what Definition 47's family is indexed by. -/
+lemma classes_sndFactor : sndFactor.classes = {vsnd true, vsnd false} := by
+  ext c
+  constructor
+  · rintro ⟨y, rfl⟩
+    obtain ⟨a, b⟩ := y
+    cases b
+    · exact Or.inr rfl
+    · exact Or.inl rfl
+  · rintro (rfl | rfl)
+    · exact ⟨(true, true), rfl⟩
+    · exact ⟨(true, false), rfl⟩
+
+/-- **Definition 47 inhabited**, at the two-block partition `X = sndFactor`: `fstFactor`
+observes it with respect to `W = sndFactor`, with the constant family `A_x = fstFactor`.
+The paper's `⋁_S({A_i})` is `sInf (Set.range ·)` (`dd:order-flip`), which at a constant
+family is the agent itself. -/
+lemma observesPartition_fst_snd :
+    coordFS.ObservesPartition fstFactor sndFactor sndFactor := by
+  haveI : Nonempty ↥sndFactor.classes := ⟨⟨vsnd true, vsnd_true_mem_sndFactor_classes⟩⟩
+  refine ⟨orthogonal_fstFactor_sndFactor, fun _ => fstFactor, ?_, ?_⟩
+  · rw [Set.range_const, sInf_singleton]
+  · rintro ⟨x, hx⟩
+    rw [classes_sndFactor] at hx
+    rcases hx with rfl | rfl
+    · show coordFS.OrthogonalGivenSet fstFactor sndFactor (vsnd true)ᶜ
+      rw [coordFS.orthogonalGivenSet_def, compl_vsnd_true, historySub_snd_restrict_vsnd,
+        Set.inter_empty]
+    · show coordFS.OrthogonalGivenSet fstFactor sndFactor (vsnd false)ᶜ
+      rw [coordFS.orthogonalGivenSet_def, compl_vsnd_false, historySub_snd_restrict_vsnd,
+        Set.inter_empty]
+
+/-- Definition 47 as a client reads it: orthogonality to `X`, plus a family of sub-agents
+indexed by the blocks of `X` whose common refinement is the agent. -/
+example : coordFS.ObservesPartition fstFactor sndFactor sndFactor ↔
+    coordFS.Orthogonal fstFactor sndFactor ∧
+      ∃ As : sndFactor.classes → Setoid (Bool × Bool),
+        fstFactor = sInf (Set.range As) ∧
+          ∀ x : sndFactor.classes,
+            coordFS.OrthogonalGivenSet (As x) sndFactor (↑x)ᶜ := Iff.rfl
+
+/-- Definition 47 at a two-block partition is Definition 46 at the corresponding event —
+the paper's "we can extend this definition", exhibited on an instance rather than proved in
+general: the same agent and world model observe the event `E` and the partition `X_E`. -/
+lemma observes_and_observesPartition_vsnd_true :
+    coordFS.Observes fstFactor sndFactor (vsnd true) ∧
+      coordFS.ObservesPartition fstFactor sndFactor
+        (FactoredSet.eventPartition (vsnd true)) :=
+  ⟨observes_fst_snd_vsnd_true, by rw [eventPartition_vsnd]; exact observesPartition_fst_snd⟩
+
+/-- Definition 47's first clause is load-bearing exactly as Definition 46's is: an agent
+entangled with the partition it would observe fails whatever family is offered. -/
+lemma not_observesPartition_snd (W : Setoid (Bool × Bool)) :
+    ¬ coordFS.ObservesPartition sndFactor W sndFactor := by
+  intro h
+  have h' : coordFS.history sndFactor ∩ coordFS.history sndFactor = ∅ := h.1
+  rw [Set.inter_self, history_sndFactor] at h'
+  exact Set.singleton_ne_empty _ h'
+
+/-- The degenerate corner of Definition 47: `Ind_S` observes *every* partition with respect
+to *every* world model, with the constant family `A_x = Ind_S`.  An agent with no options
+can safely assume anything, so a positive instance of Definition 47 says something only
+once its agent is nontrivial — which is why `observesPartition_fst_snd` is stated at a
+factor. -/
+lemma observesPartition_top (W X : Setoid (Bool × Bool)) :
+    coordFS.ObservesPartition ⊤ W X := by
+  haveI : Nonempty ↥X.classes := ⟨⟨_, X.mem_classes (true, true)⟩⟩
+  refine ⟨?_, fun _ => ⊤, ?_, ?_⟩
+  · rw [coordFS.orthogonal_def, history_top, Set.empty_inter]
+  · rw [Set.range_const, sInf_singleton]
+  · exact fun x => orthogonalGivenSet_top_left coordFS W (↑x)ᶜ
+
+/-! ### Definitions 48–49: counterfactability, absolute and relative -/
+
+/-- `⋁_S({X}) = X`: the common refinement of a singleton is the partition itself. -/
+lemma commonRefinement_singleton (X : Setoid (Bool × Bool)) :
+    commonRefinement {X} = X := sInf_singleton
+
+/-- `⋁_S(B) = Dis_S` on the witness — Proposition 3 in one line. -/
+lemma commonRefinement_coordBasis :
+    commonRefinement coordFS.B = (⊥ : Setoid (Bool × Bool)) :=
+  Setoid.ext fun s t =>
+    ⟨fun h => Prod.ext (commonRefinement_iff.1 h fstFactor fstFactor_mem)
+      (commonRefinement_iff.1 h sndFactor sndFactor_mem),
+     fun h => commonRefinement_iff.2 (by rintro b (rfl | rfl) <;> exact congrArg _ h)⟩
+
+/-- **Definition 48 inhabited**: a factor is counterfactable, since `h^F(b) = {b}`. -/
+lemma counterfactable_fstFactor : coordFS.Counterfactable fstFactor := by
+  show fstFactor = commonRefinement (coordFS.history fstFactor)
+  rw [history_fstFactor, commonRefinement_singleton]
+
+/-- `Ind_S` is counterfactable: its history is empty and `⋁_S({}) = Ind_S`. -/
+lemma counterfactable_top : coordFS.Counterfactable (⊤ : Setoid (Bool × Bool)) := by
+  show (⊤ : Setoid (Bool × Bool)) = commonRefinement (coordFS.history ⊤)
+  rw [history_top]
+  exact sInf_empty.symm
+
+/-- `Dis_S` is counterfactable: its history is the whole basis. -/
+lemma counterfactable_bot : coordFS.Counterfactable (⊥ : Setoid (Bool × Bool)) := by
+  show (⊥ : Setoid (Bool × Bool)) = commonRefinement (coordFS.history ⊥)
+  rw [history_bot, commonRefinement_coordBasis]
+
+/-- **Definition 48 is not total**, and for the paper's own reason: the agreement partition
+"do the two coordinates match?" is too coarse to specify the counterfactual.  Its history is
+the whole basis, so `⋁_S(h^F(X)) = Dis_S`, which is not `X`. -/
+lemma not_counterfactable_xorPart : ¬ coordFS.Counterfactable xorPart := by
+  intro h
+  have h' : xorPart = commonRefinement (coordFS.history xorPart) := h
+  rw [history_xorPart, commonRefinement_coordBasis] at h'
+  exact xorPart_ne_bot h'
+
+/-- Definitions 48 and 49 as a client reads them. -/
+example : coordFS.Counterfactable fstFactor ↔
+    fstFactor = commonRefinement (coordFS.history fstFactor) := Iff.rfl
+
+example : coordFS.CounterfactableRel xorPart ⊤ ↔
+    coordFS.OrthogonalGiven (commonRefinement (coordFS.history xorPart)) ⊤ xorPart := Iff.rfl
+
+/-- Definition 49 on the witness at a counterfactable partition, for every world model. -/
+lemma counterfactableRel_fstFactor (W : Setoid (Bool × Bool)) :
+    coordFS.CounterfactableRel fstFactor W :=
+  counterfactableRel_of_counterfactable coordFS counterfactable_fstFactor W
+
+/-- **Definition 49 is strictly weaker than Definition 48**: `xorPart` is not
+counterfactable, yet it is counterfactable relative to `Ind_S`. -/
+lemma not_counterfactable_but_counterfactableRel_xorPart :
+    ¬ coordFS.Counterfactable xorPart ∧ coordFS.CounterfactableRel xorPart ⊤ :=
+  ⟨not_counterfactable_xorPart, counterfactableRel_top coordFS xorPart⟩
+
+/-- On the diagonal `Dis_S` and `fstFactor` restrict to the same subpartition: there the
+first coordinate determines the second. -/
+lemma botOnEdiag_eq :
+    (ofSetoid (⊥ : Setoid (Bool × Bool))).restrict Ediag = fstOnEdiag :=
+  Subpartition.ext fun s t => by
+    refine ⟨fun h => ⟨h.1, h.2.1, ?_⟩, fun h => ⟨h.1, h.2.1, ?_⟩⟩
+    · exact congrArg Prod.fst (show s = t from h.2.2)
+    · have hs : s.1 = s.2 := h.1
+      have ht : t.1 = t.2 := h.2.1
+      have hfst : s.1 = t.1 := h.2.2
+      exact Prod.ext hfst (by rw [← hs, ← ht]; exact hfst)
+
+/-- **…and Definition 49 is not total either**: relative to the first coordinate factor,
+`xorPart` is not counterfactable.  On the diagonal block the finer partition
+`⋁_S(h^F(X)) = Dis_S` restricts to the same subpartition as `fstFactor` does, whose history
+is the whole basis, so nothing is screened off. -/
+lemma not_counterfactableRel_xorPart_fstFactor :
+    ¬ coordFS.CounterfactableRel xorPart fstFactor := by
+  intro h
+  have h1 := h Ediag Ediag_mem_xorPart_classes
+  rw [history_xorPart, commonRefinement_coordBasis] at h1
+  have h2 : coordFS.historySub fstOnEdiag ∩ coordFS.historySub fstOnEdiag = ∅ := by
+    have h3 := (coordFS.orthogonalGivenSet_def ⊥ fstFactor Ediag).1 h1
+    rwa [botOnEdiag_eq] at h3
+  rw [Set.inter_self, historySub_fstOnEdiag] at h2
+  have hmem : fstFactor ∈ (∅ : Set (Setoid (Bool × Bool))) := h2 ▸ fstFactor_mem
+  exact hmem
+
+/-! ### Definition 50: conditional time -/
+
+example : coordFS.BeforeGivenSet fstFactor ⊥ Set.univ ↔ coordFS.Before fstFactor ⊥ :=
+  beforeGivenSet_univ_iff coordFS fstFactor ⊥
+
+/-- Definition 50 as a client reads it: an inclusion of Definition 24 histories of
+restrictions. -/
+example : coordFS.BeforeGivenSet fstFactor sndFactor Ediag ↔
+    coordFS.historySub ((ofSetoid fstFactor).restrict Ediag)
+      ⊆ coordFS.historySub ((ofSetoid sndFactor).restrict Ediag) := Iff.rfl
+
+/-- Definition 50 at `E = S` on the witness: `fstFactor ≤^F Dis_S | S`, which is §3.4's
+unconditional verdict transported by `beforeGivenSet_univ_iff`. -/
+lemma beforeGivenSet_fst_bot_univ : coordFS.BeforeGivenSet fstFactor ⊥ Set.univ :=
+  (beforeGivenSet_univ_iff coordFS fstFactor ⊥).2 before_fstFactor_bot
+
+/-- **Conditional time is not unconditional time.**  The two coordinate factors are
+incomparable in `≤^F` (§3.4), but on the diagonal each restriction needs both factors
+(§4.3), so each is before the other given `Ediag`.  This is what makes Definition 50 a new
+notion rather than a rephrasing of Definition 19. -/
+lemma beforeGivenSet_fst_snd_Ediag :
+    coordFS.BeforeGivenSet fstFactor sndFactor Ediag ∧
+      coordFS.BeforeGivenSet sndFactor fstFactor Ediag ∧
+      ¬ coordFS.Before fstFactor sndFactor := by
+  refine ⟨?_, ?_, not_before_fstFactor_sndFactor⟩
+  · show coordFS.historySub fstOnEdiag ⊆ coordFS.historySub sndOnEdiag
+    rw [historySub_fstOnEdiag, historySub_sndOnEdiag]
+  · show coordFS.historySub sndOnEdiag ⊆ coordFS.historySub fstOnEdiag
+    rw [historySub_sndOnEdiag, historySub_fstOnEdiag]
+
+/-- …and Definition 50 is not total: given the diagonal, `fstFactor` is not before `Ind_S`,
+whose restriction has empty history. -/
+lemma not_beforeGivenSet_fst_top_Ediag :
+    ¬ coordFS.BeforeGivenSet fstFactor (⊤ : Setoid (Bool × Bool)) Ediag := by
+  intro h
+  have h1 : coordFS.historySub fstOnEdiag
+      ⊆ coordFS.historySub ((ofSetoid (⊤ : Setoid (Bool × Bool))).restrict Ediag) := h
+  rw [historySub_fstOnEdiag, historySub_top_restrict] at h1
+  have hmem : fstFactor ∈ (∅ : Set (Setoid (Bool × Bool))) := h1 fstFactor_mem
+  exact hmem
+
+/-- The two degenerate corners of Definition 50 on the witness, so neither is rediscovered:
+given `∅` every pair is ordered, and `Ind_S` is before everything given anything. -/
+lemma beforeGivenSet_corners (X Y : Setoid (Bool × Bool)) (E : Set (Bool × Bool)) :
+    coordFS.BeforeGivenSet X Y ∅ ∧ coordFS.BeforeGivenSet ⊤ Y E := by
+  refine ⟨beforeGivenSet_empty coordFS X Y, ?_⟩
+  show coordFS.historySub ((ofSetoid (⊤ : Setoid (Bool × Bool))).restrict E) ⊆ _
+  rw [historySub_top_restrict]
+  exact Set.empty_subset _
 
 end Examples
 end FiniteFactoredSets

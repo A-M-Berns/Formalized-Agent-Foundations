@@ -34,6 +34,20 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
   Definition 4's `[s]_X` is `part`.  Proposition 1 is then discharged by the setoid's
   own `iseqv` rather than reproved.
 
+  Two §7.3 renderings follow from this choice and are recorded here rather than given
+  tags of their own, because neither is a decision beyond `dd:partition`.  Definition
+  46's auxiliary partition `X_E` is `eventPartition E = Setoid.comap (· ∈ E) ⊥`: two
+  points are related iff they agree on membership in `E`, so its blocks
+  (`Setoid.classes`) are the *nonempty* ones among `E` and `S \ E`, and the paper's case
+  split — `{S}` when `E = ∅` or `E = S`, `{E, S \ E}` otherwise — is absorbed rather than
+  written out.  `eventPartition` is an auxiliary of ours, takes no `F`, and carries no
+  paper-node annotation; Definition 46's carrier is `Observes`.  And Definition 47 lists
+  `X = {x₀, …, xₙ₋₁}` and indexes the sub-agents `Aᵢ` by `i`, where `ObservesPartition`
+  indexes the family by the **blocks themselves**, `As : X.classes → Setoid S`, with the
+  paper's `⋁_S {Aᵢ}` as `sInf (Set.range As)` (`dd:order-flip`).  Indexing by blocks
+  rather than by a numbering of them changes nothing and is what keeps the definition
+  free of the finiteness the paper's notation implies (`dd:finiteness-minimal`).
+
 * `dd:order-flip` — **the paper's order glyphs are inverted relative to Mathlib's.**
   The paper writes `X ≥_S Y` for "`X` is finer than `Y`" (Definition 6), so the paper's
   `≥_S` is Mathlib's `≤` on `Setoid`; and Definition 8's *common refinement* `⋁_S(C)` —
@@ -134,6 +148,27 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
   `Orth` and `NotOrth`, and it is worth stating that `NotOrth` is a positive assertion *of
   the database* and not the negation of `Orth` — a database may assert both, in which case
   Definition 43 fails, or neither, in which case Definition 44 fails.
+
+* `dd:conjecture` — §7.2's Conjecture 1 is **stated as a `Prop` and deliberately left
+  unproved**.  `FundamentalTheoremFiniteDim` is a universe-polymorphic `def … : Prop`
+  quantifying over every carrier `S : Type u`, every factored set on it, and every triple
+  of partitions; its body is Theorem 3's statement
+  (`orthogonalGiven_iff_forall_isDistribution`) with the hypothesis `[Finite S]` weakened
+  to `[Finite F.B]` — finite *dimension*, arbitrary carrier — and nothing else changed.
+  **No declaration anywhere in this library has that type**, and none should acquire one:
+  the development takes no position on the conjecture, and that is a scope ruling rather
+  than a gap awaiting a proof.  An unproved `Prop` is a definition, not a `sorry`: it adds
+  no axiom and appears in no axiom check, and a client consumes it as an ordinary
+  hypothesis, `(h : FundamentalTheoremFiniteDim)`.  Two things are worth carrying.  It is
+  statable here only because `dd:finiteness-minimal` was followed through §5 — `ProbDist`
+  (Definition 36) and `IsDistribution` (Definition 37) carry no finiteness of their own,
+  so both sides of the biconditional are meaningful over an infinite carrier.  And the
+  only thing proved about it is the finite case, `fundamentalTheoremFiniteDim_of_finite`,
+  which restates the biconditional at a `[Finite S]` carrier and is discharged by
+  Theorem 3 — a consistency check on how the `Prop` is written, not progress on it.
+  `KNOWLEDGE.md` records the status in the literature: a *measurable* refinement of the
+  *unconditional* statement has since been proved (Mayer, arXiv:2412.00847), so the honest
+  claim is resolved in a measurable refinement, not as literally stated here.
 -/
 import FiniteFactoredSets.Basic
 import FiniteFactoredSets.Examples
@@ -148,3 +183,6 @@ import FiniteFactoredSets.CharacteristicOrthogonality
 import FiniteFactoredSets.Probability
 import FiniteFactoredSets.Inference
 import FiniteFactoredSets.InferenceExamples
+import FiniteFactoredSets.EmbeddedAgency
+import FiniteFactoredSets.Conjecture
+import FiniteFactoredSets.InfiniteExamples

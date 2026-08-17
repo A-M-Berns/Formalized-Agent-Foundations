@@ -543,4 +543,199 @@ example {D' : OrthDatabase Example2.Ω} (hO : Example2.D.O ⊆ D'.O) (hN : Examp
     fun M hM => Example2.before_X_Y_Z.2 M fun A B C =>
       ⟨fun hA => (hM A B C).1 (hO hA), fun hB => (hM A B C).2 (hN hB)⟩⟩
 
+/-! ### §7: embedded agency and Conjecture 1
+
+The last two layers are of different kinds and are used differently.  §7.3's five
+definitions (46–50) are vocabulary with no theorem attached — the paper states none — so
+what a client wants from the API is not an endpoint but the *reductions*: which §3–§4 fact
+each §7 definition collapses to at its degenerate arguments, plus a positive and a negative
+instance so that neither predicate is silently total.  §7.2's Conjecture 1 is an unproved
+`Prop`, so what a client wants is to *assume* it and get something out, and to know that
+its finite case is already a theorem.
+
+Two small computations are shared below and factored out, because they are the only place
+`historySub_spec` gets projected: a partition restricted to a set on which it makes no
+distinction *is* the indiscrete subpartition there, and Proposition 23 clause 4 then makes
+its history empty. -/
+
+/-- `Ind_S` restricted to any `E` is `Ind_E`: Definition 22 adds the two domain conjuncts,
+and Definition 7's relation contributes nothing. -/
+lemma restrict_top_eq_indiscrete {S : Type u} (E : Set S) :
+    (Subpartition.ofSetoid (⊤ : Setoid S)).restrict E = Subpartition.indiscrete E :=
+  Subpartition.ext fun _ _ => ⟨fun h => ⟨h.1, h.2.1⟩, fun h => ⟨h.1, h.2, trivial⟩⟩
+
+/-- Proposition 23 clause 4 in the direction §7 consumes: where `Y|E` is `Ind_E`, the
+history `h^F(Y|E)` is empty.  Definitions 46 and 50 are both read off this. -/
+lemma historySub_restrict_eq_empty {S : Type u} (F : FactoredSet S) [Finite F.B]
+    (Y : Setoid S) {E : Set S}
+    (hY : (Subpartition.ofSetoid Y).restrict E = Subpartition.indiscrete E) :
+    F.historySub ((Subpartition.ofSetoid Y).restrict E) = ∅ :=
+  (F.historySub_spec ((Subpartition.ofSetoid Y).restrict E)
+      ((Subpartition.ofSetoid Y).restrict E) ((Subpartition.ofSetoid Y).restrict E)
+      rfl).2.2.2.1.2
+    (by rw [Subpartition.dom_restrict_ofSetoid]; exact hY)
+
+/-- `Ind_S` is orthogonal to everything, by Proposition 13 clause 3 read backwards: its
+history is empty, so Definition 18's intersection is. -/
+lemma orthogonal_top_left {S : Type u} (F : FactoredSet S) [Finite F.B] (Y : Setoid S) :
+    F.Orthogonal ⊤ Y := by
+  rw [F.orthogonal_def ⊤ Y, (F.history_spec ⊤ Y).2.2.1.2 rfl, Set.empty_inter]
+
+/-- **Definition 46 has a universal corner, and it is `Ind_S`.**  The agent that makes no
+distinctions observes *every* event with respect to *every* world model, on every factored
+set: the first conjunct is `orthogonal_top_left` and the second is Definition 26 against an
+empty history.  Worth knowing before reading an `Observes` hypothesis as informative — it
+constrains `A`, and `A = Ind_S` discharges it for free. -/
+example {S : Type u} (F : FactoredSet S) [Finite F.B] (W : Setoid S) (E : Set S) :
+    F.Observes ⊤ W E := by
+  refine ⟨orthogonal_top_left F _, ?_⟩
+  rw [F.orthogonalGivenSet_def ⊤ W Eᶜ,
+    historySub_restrict_eq_empty F ⊤ (restrict_top_eq_indiscrete Eᶜ), Set.empty_inter]
+
+/-- **Definition 46 at the impossible event is Definition 18.**  With `E = ∅` the auxiliary
+partition `X_E` collapses to `Ind_S` — every point agrees on membership in `∅` — and the
+conditioning set `S \ E` is all of `S`, where Proposition 24 identifies Definition 26 with
+unconditional orthogonality.  So `A` observes `∅` with respect to `W` exactly when
+`A ⊥^F W`, and the §7 predicate says nothing new there.  This is the reduction to reach for
+before believing an `Observes` fact is about §7 rather than §3. -/
+lemma observes_empty_iff {S : Type u} [Nonempty S] (F : FactoredSet S) [Finite F.B]
+    (A W : Setoid S) : F.Observes A W ∅ ↔ F.Orthogonal A W := by
+  have hev : eventPartition (∅ : Set S) = ⊤ :=
+    Setoid.ext fun _ _ => ⟨fun _ => trivial, fun _ => rfl⟩
+  have hcl : (⊤ : Setoid S).classes = {Set.univ} := classes_top ‹Nonempty S›
+  constructor
+  · rintro ⟨-, h2⟩
+    refine (F.orthogonal_iff_orthogonalGiven_top A W).2 ?_
+    rw [F.orthogonalGiven_def A W ⊤, hcl]
+    rintro z rfl
+    simpa using h2
+  · intro h
+    refine ⟨by rw [hev]; exact (F.orthogonal_spec ⊤ A A).1 (orthogonal_top_left F A), ?_⟩
+    have h' := (F.orthogonal_iff_orthogonalGiven_top A W).1 h
+    rw [F.orthogonalGiven_def A W ⊤, hcl] at h'
+    simpa using h' _ rfl
+
+/-- The client's own two observables are orthogonal, by Proposition 14 at `C = {obsFst}`:
+reading the first bit and reading the second use disjoint halves of the basis.  The §4.3
+examples above are all about *conditional* orthogonality and the one unconditional
+statement there is a refutation, so this positive fact is new here. -/
+lemma orthogonal_obsFst_obsSnd : clientPairFS.Orthogonal obsFst obsSnd := by
+  have hne : obsFst ≠ obsSnd := by
+    intro h
+    have h2 : obsSnd (true, true) (false, true) := rfl
+    rw [← h] at h2
+    exact Bool.noConfusion h2
+  have hdiff : clientPairFS.B \ {obsFst} = {obsSnd} := by
+    ext x
+    simp only [show clientPairFS.B = {obsFst, obsSnd} from rfl, Set.mem_sdiff,
+      Set.mem_insert_iff, Set.mem_singleton_iff]
+    exact ⟨fun h => h.1.resolve_left h.2, fun h => ⟨Or.inr h, fun hx => hne (hx.symm.trans h)⟩⟩
+  refine (clientPairFS.orthogonal_iff_exists obsFst obsSnd).2
+    ⟨{obsFst}, Set.singleton_subset_iff.2 (Or.inl rfl), ?_, ?_⟩
+  · rw [commonRefinement, sInf_singleton]
+  · rw [hdiff, commonRefinement, sInf_singleton]
+
+/-- **Definition 46 is neither empty nor total on the client's own factored set.**  Through
+the reduction above: `obsFst` observes `∅` with respect to `obsSnd`, while `Dis_S` observes
+`∅` with respect to `obsFst` not at all.  The negative half runs Proposition 15's clauses 2
+and 4 in series — coarsening `Dis_S` up to `obsFst` would make `obsFst` orthogonal to
+itself, hence equal to `Ind_S`, which it is not — so it is a statement about a *factor*,
+not the self-orthogonality corner. -/
+example : clientPairFS.Observes obsFst obsSnd ∅ ∧ ¬ clientPairFS.Observes ⊥ obsFst ∅ := by
+  refine ⟨(observes_empty_iff clientPairFS obsFst obsSnd).2 orthogonal_obsFst_obsSnd,
+    fun h => ?_⟩
+  have hself : clientPairFS.Orthogonal obsFst obsFst :=
+    (clientPairFS.orthogonal_spec ⊥ obsFst obsFst).2.1
+      ((observes_empty_iff clientPairFS ⊥ obsFst).1 h) bot_le
+  have htop : obsFst = ⊤ := (clientPairFS.orthogonal_spec obsFst obsFst obsFst).2.2.2.1 hself
+  have hrel : obsFst (true, true) (false, true) := by rw [htop]; trivial
+  exact Bool.noConfusion hrel
+
+/-- **Definition 48 is inhabited, and its cheapest witness is `Ind_S`.**  Proposition 13
+clause 3 gives `h^F(Ind_S) = {}`, and Definition 8's common refinement of nothing is `Ind_S`
+again (`sInf ∅ = ⊤`), so Definition 48's equation closes.  Read as: an agent that
+distinguishes nothing is counterfactable for free. -/
+example {S : Type u} (F : FactoredSet S) [Finite F.B] : F.Counterfactable (⊤ : Setoid S) := by
+  rw [FactoredSet.Counterfactable, (F.history_spec ⊤ ⊤).2.2.1.2 rfl, commonRefinement,
+    sInf_empty]
+
+/-- **Every factor is counterfactable** — the informative positive instance.  Proposition 13
+clause 4 computes `h^F(b) = {b}` for `b ∈ B` over a nonempty carrier, and the common
+refinement of a single partition is that partition, so Definition 48's equation is an
+identity.  Neither endpoint states this. -/
+lemma counterfactable_of_mem_basis {S : Type u} [Nonempty S] (F : FactoredSet S) [Finite F.B]
+    {b : Setoid S} (hb : b ∈ F.B) : F.Counterfactable b := by
+  rw [FactoredSet.Counterfactable, (F.history_spec b b).2.2.2 ‹Nonempty S› b hb,
+    commonRefinement, sInf_singleton]
+
+/-- The same on the client's own basis: both of its observables are counterfactable. -/
+example : clientPairFS.Counterfactable obsFst ∧ clientPairFS.Counterfactable obsSnd :=
+  ⟨counterfactable_of_mem_basis clientPairFS (Or.inl rfl),
+    counterfactable_of_mem_basis clientPairFS (Or.inr rfl)⟩
+
+/-- **Definition 50 at `E = S` is Definition 19.**  Restriction to all of `S` is the
+identity on subpartitions, and Proposition 22's second half identifies `h^F` on a total
+subpartition with §3.2's `h^F`, so conditional time over the whole space is ordinary time.
+The reduction to apply before reading a `BeforeGivenSet` fact as conditional. -/
+lemma beforeGivenSet_univ_iff {S : Type u} (F : FactoredSet S) [Finite F.B] (X Y : Setoid S) :
+    F.BeforeGivenSet X Y Set.univ ↔ F.Before X Y := by
+  rw [FactoredSet.BeforeGivenSet, Subpartition.restrict_univ, Subpartition.restrict_univ,
+    F.historySub_isLeast_and_eq_history.2 X, F.historySub_isLeast_and_eq_history.2 Y,
+    F.before_def X Y]
+
+/-- **Definition 50 is neither empty nor total, at `E = S` on the client's factored set.**
+`Ind_S` is before `obsFst` given `S` and `obsFst` is not before `Ind_S` given `S`: through
+the reduction above that is `{} ⊆ {obsFst}` against `{obsFst} ⊆ {}`, with the two histories
+computed by Proposition 13 clauses 3 and 4.  So conditional time is a genuine ordering here
+and not the total relation. -/
+example : clientPairFS.BeforeGivenSet ⊤ obsFst Set.univ ∧
+    ¬ clientPairFS.BeforeGivenSet obsFst ⊤ Set.univ := by
+  have htop : clientPairFS.history ⊤ = ∅ := (clientPairFS.history_spec ⊤ ⊤).2.2.1.2 rfl
+  have hfst : clientPairFS.history obsFst = {obsFst} :=
+    (clientPairFS.history_spec obsFst obsFst).2.2.2 inferInstance obsFst (Or.inl rfl)
+  refine ⟨(beforeGivenSet_univ_iff clientPairFS ⊤ obsFst).2 ?_, fun h => ?_⟩
+  · rw [clientPairFS.before_def, htop]
+    exact Set.empty_subset _
+  · have h' := (beforeGivenSet_univ_iff clientPairFS obsFst ⊤).1 h
+    rw [clientPairFS.before_def, htop, hfst] at h'
+    exact absurd (h' rfl) (Set.notMem_empty obsFst)
+
+/-- **Definition 50 at a proper conditioning set, where §3.2's `h^F` cannot reach.**  `Ind_S`
+is before every partition given *any* `E`, because `Ind_S|E` is `Ind_E`, whose history is
+empty by Proposition 23 clause 4 — a statement about `historySub` at a set that need be
+neither `S` nor a block of anything, so the reduction above does not cover it. -/
+example {S : Type u} (F : FactoredSet S) [Finite F.B] (Y : Setoid S) (E : Set S) :
+    F.BeforeGivenSet ⊤ Y E := by
+  rw [FactoredSet.BeforeGivenSet,
+    historySub_restrict_eq_empty F ⊤ (restrict_top_eq_indiscrete E)]
+  exact Set.empty_subset _
+
+/-- **Conjecture 1 consumed as a hypothesis, composed with Proposition 24.**  A client
+willing to *assume* the finite-dimensional fundamental theorem gets more than the
+conjecture states at face value: instantiated at `Z = Ind_S` and read against
+Proposition 24, it turns *unconditional* `⊥^F` into a numerical test over distributions, on
+the client's own factored set.  This is the shape a downstream project wants — the unproved
+`Prop` is an ordinary hypothesis, and no declaration of the library claims it. -/
+example (h : FundamentalTheoremFiniteDim.{0}) (X Y : Setoid (Bool × Bool)) :
+    clientPairFS.Orthogonal X Y ↔
+      ∀ P : ProbDist (Bool × Bool), clientPairFS.IsDistribution P →
+        ∀ x ∈ X.classes, ∀ y ∈ Y.classes, ∀ z ∈ (⊤ : Setoid (Bool × Bool)).classes,
+          P (x ∩ z) * P (y ∩ z) = P (x ∩ y ∩ z) * P z :=
+  (clientPairFS.orthogonal_iff_orthogonalGiven_top X Y).trans (h clientPairFS X Y ⊤)
+
+/-- **The conjecture's proved finite instance, composed with Proposition 25.**  No hypothesis
+at all this time: `fundamentalTheoremFiniteDim_of_finite` is Theorem 3, and against
+Proposition 25 it turns the *order* relation `Z ≤ X` — the paper's `X ≤_S Z`, by
+`dd:order-flip` — into a numerical test, satisfied exactly when every distribution on the
+client's factored set makes `X` independent of itself given `Z`.  Neither endpoint says
+that, and the two together are what a client checking a refinement claim against data
+needs. -/
+example (X Z : Setoid (Bool × Bool)) :
+    Z ≤ X ↔
+      ∀ P : ProbDist (Bool × Bool), clientPairFS.IsDistribution P →
+        ∀ x ∈ X.classes, ∀ y ∈ X.classes, ∀ z ∈ Z.classes,
+          P (x ∩ z) * P (y ∩ z) = P (x ∩ y ∩ z) * P z :=
+  (clientPairFS.orthogonalGiven_self_iff X Z).symm.trans
+    (fundamentalTheoremFiniteDim_of_finite clientPairFS X X Z)
+
 end APITests.FiniteFactoredSets

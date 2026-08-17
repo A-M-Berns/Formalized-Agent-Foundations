@@ -1042,8 +1042,9 @@ Same contract as the CF-INVENTORY block above: every declaration carrying a
 FFS-INVENTORY markers below, and `scripts/check-finite-factored-sets-nodes.py` enforces
 that in both directions.
 
-This formalization is **in progress**: the list below covers §2, §3, §4, §5 and §6
-(§7 is not yet claimed).  Several
+This formalization is **complete** for its ruled scope: the list below covers §2–§7 —
+every in-scope node has a carrier or is Mathlib-rendered; Conjecture 1 (§7.2) is listed as
+a stated `Prop` that nothing proves, and Examples 3–4 are out of scope by ruling.  Several
 of the paper's §2.1 nodes have no Lean carrier at all because they are rendered by
 Mathlib vocabulary under the `dd:` tags in `FiniteFactoredSets.lean` — Definition 2
 (partition) is `Setoid`, Definition 5 (`∼_X`) is the setoid relation, Definition 6
@@ -1406,6 +1407,58 @@ open FiniteFactoredSets in
   -- Ind_S` — `1/2 · 1/2` against `0 · 1`.
   Examples.boolUniform Examples.boolFS_isDistribution
   Examples.not_orthogonalGiven_bot_bot_top_boolFS
+  -- §7.2: Conjecture 1 (FiniteFactoredSets/Conjecture.lean) and its finite-dimensional /
+  -- infinite-dimensional witnesses (FiniteFactoredSets/InfiniteExamples.lean).
+  -- `FundamentalTheoremFiniteDim` is a `def … : Prop` — Theorem 3 with `[Finite S]` weakened
+  -- to `[Finite F.B]` — and is deliberately **not proved**: no declaration in the repo has
+  -- that type, the only uses being the two `example`s in `InfiniteExamples` that take it
+  -- *as a hypothesis* and instantiate it at a witness.  So listing it here
+  -- checks the statement's own axiom profile, exactly as the block already does for the
+  -- other `def … : Prop`s above (`OrthDatabase.Consistent`, `FactoredSet.Generates`).  Its
+  -- finite restriction `fundamentalTheoremFiniteDim_of_finite` is the only thing proved
+  -- about it and sits in the consumer-conveniences block below, since it is not a node.
+  FundamentalTheoremFiniteDim
+  -- The witnesses.  `natBoolFS` is dimension 2 over the *infinite* carrier `ℕ × Bool`, so
+  -- `Finite natBoolFS.B` holds (by `Set.Finite.to_subtype`, not by Proposition 6, which
+  -- runs the other way) while `¬ Finite (ℕ × Bool)`: it is inside Conjecture 1's scope and
+  -- outside Theorem 3's, which is what stops the conjecture from being a restatement of
+  -- the theorem.  §3-§4 is then run on it — Proposition 13 clause 4 for both factor
+  -- histories, Definition 18 computed from those histories, Proposition 14 as an
+  -- independent re-derivation, Proposition 15 clause 4 as the negative, Proposition 24 for
+  -- Definition 27 at `Ind_S` — with `Finite B` alone and no `Finite S` anywhere, which is
+  -- `dd:finiteness-minimal` discharged by construction rather than by inspection.
+  -- `isDistribution_diracAt_natBoolFS` makes Definition 37 inhabited there, so the
+  -- conjecture's right-hand side quantifies over a nonempty family.
+  InfiniteExamples.natFactor InfiniteExamples.boolFactor
+  InfiniteExamples.natFactor_ne_boolFactor InfiniteExamples.natBoolBasis
+  InfiniteExamples.natBoolBasis_nontrivial InfiniteExamples.natBoolBasis_existsUnique
+  InfiniteExamples.natBool_isFactorization InfiniteExamples.natBoolFS
+  InfiniteExamples.natBoolFS_B InfiniteExamples.natFactor_mem
+  InfiniteExamples.boolFactor_mem InfiniteExamples.singleton_natFactor_subset
+  InfiniteExamples.singleton_boolFactor_subset InfiniteExamples.natBoolFS_B_finite
+  InfiniteExamples.not_finite_natBool
+  InfiniteExamples.history_natFactor InfiniteExamples.history_boolFactor
+  InfiniteExamples.orthogonal_natFactor_boolFactor
+  InfiniteExamples.not_orthogonal_natFactor_self
+  InfiniteExamples.orthogonalGiven_natFactor_boolFactor_top
+  InfiniteExamples.isDistribution_diracAt_natBoolFS
+  -- `infFS` is the other side of the line: the coordinate factorization of `ℕ → Bool`,
+  -- whose basis is infinite (`infFS_B_infinite`, `not_finite_B`).  Up to
+  -- `𝒫(ℕ) ≃ (ℕ → Bool)` it is the factored set §7.2 uses to say it does *not* expect the
+  -- fundamental theorem past finite dimension; the paper's §7.2 examples are out of scope
+  -- by the ruling in `KNOWLEDGE.md`, so no node is claimed for it and it carries no
+  -- annotation.  `not_isDistribution_diracAt_infFS` is what makes it earn its place: the
+  -- `[Finite F.B]` on `FactoredSet.isDistribution_diracAt` is load-bearing, because with
+  -- `B` infinite the family in Definition 37 has infinite multiplicative support and
+  -- `finprod` returns `1` rather than the elementary product.  So past finite dimension
+  -- Definition 37's product is not the product it is written as — the concrete reason the
+  -- conjecture is stated at finite dimension and not beyond.
+  InfiniteExamples.memFactor InfiniteExamples.infBasis
+  InfiniteExamples.memFactor_injective InfiniteExamples.infBasis_nontrivial
+  InfiniteExamples.infBasis_existsUnique InfiniteExamples.infFS
+  InfiniteExamples.infFS_B InfiniteExamples.infFS_B_infinite
+  InfiniteExamples.not_finite_B
+  InfiniteExamples.not_isDistribution_diracAt_infFS
   -- §6.1: factored set models and orthogonality databases
   -- (FiniteFactoredSets/Inference.lean).  Definition 38's `Model` bundles the carrier, its
   -- factored set, the map to `Ω`, and — because the paper says *finite* factored set — a
@@ -1485,6 +1538,80 @@ open FiniteFactoredSets in
   -- statements these instantiate are `OrthDatabase.not_before_self_of_consistent` and
   -- `OrthDatabase.before_of_not_consistent`, on the consumer surface below.
   Examples.not_nonconstDB_before_self Examples.contradictoryDB_before_all
+  -- §7.3: embedded observations, counterfactability, conditional time
+  -- (FiniteFactoredSets/EmbeddedAgency.lean).  Five definitions and no theorem: §7 states
+  -- nothing about them, so the whole non-vacuity burden falls on the witnesses below.
+  -- Definition 46's auxiliary `X_E` is `FactoredSet.eventPartition`, which carries no node
+  -- annotation and is therefore not listed here — the paper introduces it inside the
+  -- statement of Definition 46 rather than as a numbered node, and it is an auxiliary in the
+  -- same sense `Model.pullback` is.  Two renderings to record.  First, `eventPartition E` is
+  -- `Setoid.comap (· ∈ E) ⊥` — agreement on membership in `E` — so the paper's case split
+  -- (`{S}` when `E` is `∅` or `S`, `{E, S \ E}` otherwise) is absorbed into one formula and
+  -- recovered by computation on the witnesses.  Second, Definition 47's family `A_i` is
+  -- indexed by the *blocks* of `X` rather than by a numbering `{x_0, …, x_{n-1}}` of them,
+  -- and the paper's `⋁_S({A_i})` is `sInf (Set.range ·)` (`dd:order-flip`); indexing by
+  -- blocks changes nothing and needs no finiteness.  Per `dd:finiteness-minimal` none of the
+  -- five carries a finiteness hypothesis — each is a formula in
+  -- `history`/`historySub`/`Orthogonal`/`OrthogonalGiven`, all defined for every factored
+  -- set — and Definition 50's `h^F(X | E)` is `historySub ((ofSetoid X).restrict E)`, the
+  -- Definition 26 rendering reused.
+  FactoredSet.Observes FactoredSet.ObservesPartition FactoredSet.Counterfactable
+  FactoredSet.CounterfactableRel FactoredSet.BeforeGivenSet
+  -- §7.3 on the witnesses (FiniteFactoredSets/Examples.lean).  The paper's case split for
+  -- `X_E` is recovered in three pieces: `Ind_S` at both degenerate ends, and at a proper
+  -- nonempty `E` the blocks are exactly `E` and `S \ E`.  `eventPartition_compl` records
+  -- that `X_E` cannot tell `E` from its complement, which is why Definition 46's two clauses
+  -- do not repeat each other; on `coordFS`, `X_E` at a block of a coordinate factor is that
+  -- factor, which is what makes the Definition 46 instances computable from §3.3 and §4.3
+  -- material already on the witness.
+  Examples.eventPartition_empty Examples.eventPartition_univ
+  Examples.eventPartition_classes Examples.eventPartition_compl
+  Examples.eventPartition_vsnd Examples.eventPartition_vfst
+  -- Definition 46 inhabited, and **both** clauses shown load-bearing at the two failure
+  -- shapes the paper itself names.  The positive instance reads the first coordinate as the
+  -- agent's action, "the second coordinate is `true`" as the event, and the second
+  -- coordinate as the world model.  `not_observes_snd_vsnd_true` is the transparent-Newcomb
+  -- shape (Drescher): the action *is* the event, so clause 1 fails for every world model.
+  -- `not_observes_snd_snd_Efalse` is the counterfactual-mugging shape (Nesov): clause 1
+  -- holds and clause 2 fails, because on the branch where the event fails the action still
+  -- determines the whole world model.  Neither clause therefore implies the other.
+  Examples.observes_fst_snd_vsnd_true Examples.not_observes_snd_vsnd_true
+  Examples.not_observes_snd_snd_Efalse
+  -- Definition 47 inhabited at a two-block partition, with the constant family
+  -- `A_x = fstFactor`, and tied to Definition 46 on an instance —
+  -- `observes_and_observesPartition_vsnd_true` exhibits the same agent and world model
+  -- observing the event `E` and the partition `X_E` — rather than by a general lemma, which
+  -- the paper does not state either.  `observesPartition_top` is the corner that keeps the
+  -- positive instance honest: `Ind_S` observes every partition with respect to every world
+  -- model, so a Definition 47 witness says something only once its agent is nontrivial.
+  Examples.classes_sndFactor Examples.observesPartition_fst_snd
+  Examples.observes_and_observesPartition_vsnd_true Examples.not_observesPartition_snd
+  Examples.observesPartition_top
+  -- Definitions 48-49 separated by the agreement partition ("do the two coordinates
+  -- match?").  Definition 48 holds at a factor, at `Ind_S` and at `Dis_S`, and fails at the
+  -- agreement partition for the paper's own reason: it is too coarse to specify the
+  -- counterfactual, its history being the whole basis, so `⋁_S(h^F(X)) = Dis_S ≠ X`.
+  -- Definition 49 is then implied by Definition 48 for every `W`
+  -- (`counterfactableRel_of_counterfactable`, general and short: a counterfactable `X` *is*
+  -- `⋁_S(h^F(X))`, so the screening-off degenerates to `X ⊥^F W | X`), holds of the
+  -- agreement partition relative to `Ind_S` — where `counterfactableRel_top` shows the
+  -- corner is general, so that instance alone would certify nothing — and *fails* of it
+  -- relative to `fstFactor`, which is what makes Definition 49 neither empty nor total.
+  Examples.counterfactable_fstFactor Examples.counterfactable_top
+  Examples.counterfactable_bot Examples.not_counterfactable_xorPart
+  Examples.counterfactableRel_of_counterfactable Examples.counterfactableRel_fstFactor
+  Examples.counterfactableRel_top
+  Examples.not_counterfactable_but_counterfactableRel_xorPart
+  Examples.not_counterfactableRel_xorPart_fstFactor
+  -- Definition 50 against Definition 19.  At `E = S` the two agree
+  -- (`beforeGivenSet_univ_iff`, general: `X|S = X` plus Proposition 22), and away from it
+  -- they genuinely differ — the coordinate factors are incomparable in `≤^F`, yet on the
+  -- diagonal each is before the other, which is the §7.3 shadow of §4.3's "restriction can
+  -- entangle".  The negative and the two degenerate corners keep it from being read as
+  -- total: given `∅` every pair is ordered, and `Ind_S` is before everything given anything.
+  Examples.beforeGivenSet_univ_iff Examples.beforeGivenSet_fst_bot_univ
+  Examples.beforeGivenSet_fst_snd_Ediag Examples.not_beforeGivenSet_fst_top_Ediag
+  Examples.beforeGivenSet_empty Examples.beforeGivenSet_corners
 -- FFS-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Finite Factored Sets surface. -/
@@ -1599,4 +1726,10 @@ open FiniteFactoredSets in
   -- trusting it: irreflexive wherever `D` has a model, vacuously total where it has none.
   -- Neither is a paper node; the paper's positive instances are Propositions 34 and 36.
   Model.pullback Model.pullback_apply
+  -- §7.2: the conjecture's finite instance.  `fundamentalTheoremFiniteDim_of_finite` is
+  -- Theorem 3 restated in the shape `FundamentalTheoremFiniteDim` quantifies over, so a
+  -- client can see the `Prop` is not stronger than the theorem where both apply.  It is a
+  -- consistency check on the statement, not progress on the conjecture, and carries no
+  -- paper-node annotation of its own — the node is Theorem 3, inventoried above.
+  fundamentalTheoremFiniteDim_of_finite
   OrthDatabase.not_before_self_of_consistent OrthDatabase.before_of_not_consistent

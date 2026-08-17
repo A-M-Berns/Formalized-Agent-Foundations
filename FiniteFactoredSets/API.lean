@@ -1,4 +1,6 @@
 import FiniteFactoredSets.ConditionalOrthogonality
+import FiniteFactoredSets.Conjecture
+import FiniteFactoredSets.EmbeddedAgency
 import FiniteFactoredSets.Factoring
 import FiniteFactoredSets.Inference
 import FiniteFactoredSets.InferenceExamples
@@ -13,11 +15,15 @@ The supported downstream import for factored-set research is:
 import FiniteFactoredSets.API
 ```
 
-**Status: the formalization is in progress** (§2–§6 of Garrabrant, arXiv:2109.11513, are
-formalized; §7 is not yet claimed).  This
-boundary is therefore an *incremental* consumer surface: it is stable in shape but grows
-as sections land.  What is here is supported now; consult
-`FiniteFactoredSets/README.md` for the exact trust surface.
+**Status: complete** — §2–§7 of Garrabrant, arXiv:2109.11513, are formalized: all 96
+in-scope nodes are carried, 87 by declarations of ours and nine by Mathlib vocabulary.
+This boundary is therefore the whole consumer surface rather than an incremental one.
+Two things it deliberately does not hand you, both recorded in
+`FiniteFactoredSets/README.md`: Examples 3 and 4 are out of scope by ruling — they concern
+*infinite* factored sets, the case the paper itself expects the fundamental theorem to
+fail in — and **Conjecture 1 is stated and deliberately not proved**, so
+`FundamentalTheoremFiniteDim` is a `Prop` that no declaration of ours has as its type.
+Consult that README for the exact trust surface.
 
 ## Vocabulary
 
@@ -222,6 +228,49 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   `Example1.X/Y/V` and `Example2.X/Y/Z/V` the partitions they are stated over, and
   Propositions 33–36 (`D_consistent`, `before_X_Y`, `before_X_Y_Z`) the paper's own
   consistency and inference results on them.
+* **Embedded agency: observations, counterfactability, conditional time** (§7.3,
+  `EmbeddedAgency.lean`): `Observes A W E` (Definition 46), `ObservesPartition A W X`
+  (Definition 47), `Counterfactable X` (Definition 48), `CounterfactableRel X W`
+  (Definition 49) and `BeforeGivenSet X Y E` (Definition 50) — all `FactoredSet`
+  operations, and all of them *definitions*: §7 states no theorem about this vocabulary,
+  so this layer adds nothing to prove with and everything to state with.  Four points
+  about the rendering, each of which changes how a statement reads.  Definition 46's
+  auxiliary partition `X_E` is `eventPartition E`, namely `Setoid.comap (· ∈ E) ⊥` — two
+  points are related exactly when they agree on membership in `E` — whose blocks are the
+  *nonempty* ones among `E` and `S \ E`; the paper's case split (`{S}` when `E` is empty
+  or all of `S`, `{E, S \ E}` otherwise) is therefore absorbed by `Setoid.classes` rather
+  than written out.  `eventPartition` is an auxiliary of ours: it carries no paper-node
+  annotation (Definition 46's carrier is `Observes`) and, like `mono`/`monos`/`poly`, it
+  **takes no `F`** — write `eventPartition E`, never `F.eventPartition E`, and reach for
+  `Observes` when you want the node.  Definition 47 numbers the blocks
+  `X = {x₀, …, xₙ₋₁}` and indexes the sub-agents `Aᵢ` by `i`; here the family is indexed
+  by the **blocks themselves**,
+  `As : X.classes → Setoid S`, and the paper's `⋁_S {Aᵢ}` is `sInf (Set.range As)` under
+  `dd:order-flip`.  That reindexing is what keeps the definition free of a finiteness
+  hypothesis the paper's notation would smuggle in, and it changes nothing else.
+  Definition 50's `h^F(X | E)` is `historySub ((ofSetoid X).restrict E)`, Definition 26's
+  own spelling of the same thing.  And **none of the five carries a finiteness binder** —
+  see the register below for what that does and does not mean.
+* **Conjecture 1** (§7.2, `Conjecture.lean`, `dd:conjecture`):
+  `FundamentalTheoremFiniteDim` is Theorem 3's statement with `[Finite S]` weakened to
+  `[Finite F.B]` — finite *dimension*, arbitrary carrier — quantified over every
+  `S : Type u`, every factored set on it, and every triple of partitions.  It is a
+  `def … : Prop`, **stated and deliberately not proved**: no declaration in this library
+  has that type, and this development takes no position on it.  `KNOWLEDGE.md` records the
+  status in the literature, and the short form is that a *measurable* refinement of the
+  *unconditional* statement has since been proved (Mayer, arXiv:2412.00847) while the
+  conditional statement over a bare finite-dimensional factored set, which is what is
+  written here, is not known to this library to be settled.  A client consumes it the way
+  one consumes any open hypothesis — take `(h : FundamentalTheoremFiniteDim)` as an
+  assumption and apply it at a factored set to obtain the biconditional there;
+  `APITests/FiniteFactoredSets.lean` does exactly that at its own factored set.  The
+  finite case *is* proved: `fundamentalTheoremFiniteDim_of_finite` states the same
+  biconditional at a `[Finite S]` carrier, and its proof is
+  `orthogonalGiven_iff_forall_isDistribution` — a consistency check on how the `Prop` is
+  written, not progress on the conjecture.  An unproved `Prop` is a definition, not a
+  `sorry`: it acquires no axiom, appears in no axiom check, and can only weaken a
+  statement of ours by appearing in that statement's hypotheses, which nothing in §2–§7
+  does.
 
 ## Finiteness
 
@@ -367,6 +416,30 @@ its own, because the models it quantifies over each carry their own.  Read a §6
 accordingly: "for all models" already means "for all *finite* factored sets with a map to
 `Ω`", and the sample space `Ω` itself is unconstrained.
 
+**§7 carries no finiteness binder either, for two unrelated reasons.**  §7.3's five
+definitions are each a formula in `history`, `historySub`, `Orthogonal` or
+`OrthogonalGiven`, every one of which is defined over an arbitrary factored set, so
+`Observes`, `ObservesPartition`, `Counterfactable`, `CounterfactableRel` and
+`BeforeGivenSet` are stated with no `Finite` hypothesis at all (`dd:finiteness-minimal`).
+Read that as availability, not as strength: it says the *definitions* mean something over
+an infinite `S` or an infinite basis, not that anything is true of them there — the
+§3–§4 endpoints a client reasons with (`history_isLeast` onwards) still carry
+`[Finite F.B]`, and it is at those call sites that the client supplies it.
+
+§7.2 is the other reason, and it is the opposite one: `FundamentalTheoremFiniteDim` has no
+binder because it **quantifies over its own**.  The `[Finite F.B]` sits as an
+instance-implicit binder *inside* the `Prop`, and no `[Finite S]` appears anywhere in it.
+That is the entire content of the conjecture — it is
+`orthogonalGiven_iff_forall_isDistribution` verbatim with `[Finite S]` replaced by
+`[Finite F.B]`, nothing else changed — and it is statable here only because
+`dd:finiteness-minimal` was followed through §5: `ProbDist` (Definition 36) and
+`IsDistribution` (Definition 37) carry no finiteness of their own, `IsDistribution`'s
+product is a `finprod` over `B` and `ProbDist` is elementary, so both sides of the
+biconditional are meaningful with `S` infinite.  Had either carried `[Finite S]`, the
+conjecture could not have been written down in this library at all.  The one proved fact
+about it, `fundamentalTheoremFiniteDim_of_finite`, does carry `[Finite S]` — it is
+Theorem 3.
+
 ## What this boundary excludes
 
 `FiniteFactoredSets.Examples` — the constructed witnesses (`boolFS`, `coordFS`, `emptyFS`,
@@ -378,4 +451,20 @@ the databases `emptyDB`, `contradictoryDB`, `totalDB`, `completeInconsistentDB`,
 explicitly when a concrete factored set or model is useful; it is a regression fixture, not
 a dependency surface.  §6.2's `Example1` and `Example2` are *not* excluded — they are the
 paper's own numbered examples and part of this boundary.
+
+`FiniteFactoredSets.InfiniteExamples` — the witnesses that live *outside* §5's finiteness
+boundary, kept out of `Examples.lean` because everything there is finite by construction.
+`infFS` is the coordinate factorization of `ℕ → Bool`: the paper's own `𝒫(ℕ)` factored
+set, infinite-dimensional, and therefore outside Conjecture 1's scope as well as §5's — it
+is what pins `isDistribution_diracAt`'s `[Finite F.B]`, which is *false* over an infinite
+basis rather than merely unproved.  `natBoolFS` on `ℕ × Bool` is the other corner: finite
+dimension, infinite carrier, which is exactly the class Conjecture 1 quantifies over.
+Import it explicitly if a factored set outside the finite world is what you need.
+
+Neither of those is a paper node, and the omission is deliberate: **Examples 3 and 4 are
+out of scope by ruling.**  Both concern infinite factored sets — the case the paper itself
+expects the fundamental theorem to fail in, Example 3 being its intended counterexample —
+so the `𝒫(ℕ)` factored set appears in this library as a *witness* pinning finiteness
+hypotheses, carrying no paper-node annotation, and not as a claim to have formalized those
+two examples.
 -/
