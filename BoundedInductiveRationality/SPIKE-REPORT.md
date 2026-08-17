@@ -39,7 +39,7 @@ Per-layer:
 | Computability (Thm 1 part 4, Thm 2, "e.c." in Thms 3/4) | **RED/YELLOW — LI-like** | No machine model in the paper; LI's `dd:fuel` class is hardwired *polynomial* and its lower-calibration is the open direction Theorem 2 needs. |
 | Runtime complexity (`O(g(t)q(t))`) | **RED — not presently formalizable faithfully** | The printed bound is not a well-formed claim: `q` is defined to contain a factor `g`, so "arbitrarily slow-growing `q`" is false whenever `g` is unbounded (E16), and there is no input-size convention (E17). |
 | vMWC randomness (Def 8, Thm 4; Defs 9–10, Thm 9) | **RED/YELLOW** | **Definition 8 as printed is unsatisfiable** on binary sequences with mean 1/2 — the paper's own π-digits example (E6, proved). The corrected notion is formalizable, but its quantifier ranges over sets "decidable from available information", a phrase never defined (E15). |
-| Game theory (Thm 5) | **GREEN/YELLOW** | The minimax theorem is stated as Lemma 7 and **never used** (E11). The converse half is a corollary of Theorem 3 — compiled, with a Prisoner's Dilemma instance. The constructive half needs a probability layer and is, as printed, an almost-sure claim dressed as plain existence (E12). |
+| Game theory (Thm 5) | **YELLOW** | The converse half is a corollary of Theorem 3 — compiled, with a Prisoner's Dilemma instance — and the minimax theorem, stated as Lemma 7, is **never used and is malformed as printed** (E11, E26). But the folk theorem's *headline* claim, that the empirical distribution converges to `c′`, **is never proved in the paper at all** (E24): the printed proof establishes only no-overestimation and coverage. That is missing mathematics, not missing formalization. |
 
 ---
 
@@ -54,9 +54,12 @@ scheme. Some but not all nodes carry `\label`s (`def:BRIA`, `thm:computable-BRIA
 Cartesian Frames and ModalAgents the **printed numbers are the provenance key**.
 
 **A provenance trap worth knowing before anyone writes a checker.** The committed
-`main.tex` builds *two different papers*. `\extendedonlybit{…}` / `\abridgedonlybit{…}`
+`main.tex` can build *two different papers*. `\extendedonlybit{…}` / `\abridgedonlybit{…}`
 (tex lines 91/94) and the `extendedonlyblock` environment switch on an `extendedversion`
-boolean; the arXiv v1 PDF and the published EPTCS version are the **abridged** build.
+boolean, which the committed source sets to `false` (tex line 86) — so the file as
+committed *does* build the published abridged paper, and the PDF matches it. But the
+extended-only material is still physically present in the file, and a checker that
+emulates LaTeX counters by scanning `\begin{theorem}` will count it.
 The extended build contains two further conjectures, three further theorems and six
 further propositions (tex lines 755–1240) that do not exist in the published paper —
 and, because the counters are global, it **renumbers everything after them**. The
@@ -459,9 +462,10 @@ and LI's separation is by output size where BIR's Theorem 2 needs one by time.
 
 ## G. Source ambiguities and errata
 
-Twenty-three findings. Each is classified as **typo**, **harmless omitted convention**,
-**missing hypothesis**, **genuine mathematical gap**, **formalization choice**, or
-**theorem-strength reduction**. References are to the arXiv v1 PDF / the committed
+Thirty-four findings — twenty-three from the spike, eleven more from an independent
+fresh-context re-reading (§M), which also confirmed all twenty-three. Each is classified
+as **typo**, **harmless omitted convention**, **missing hypothesis**, **genuine
+mathematical gap**, **formalization choice**, or **theorem-strength reduction**. References are to the arXiv v1 PDF / the committed
 `main.tex`.
 
 ### Genuine mathematical gaps
@@ -480,7 +484,9 @@ is unsatisfiable.** §6 / App A.5 (`def:bounded-vMWC-randomness`, tex 410). Prin
 (Downey–Hirschfeldt Def 7.4.1, cited) is a limiting relative *frequency*, and Theorem
 4's own proof divides by `|M_{i,≤T}|`. Under the literal reading the partial sums along
 `S` converge, so the increments vanish, so `y_t → μ_t` along every selectable set — a
-`{0,1}`-valued sequence with means `1/2` can never satisfy it. That is the paper's own
+`{0,1}`-valued sequence with means `1/2` can never satisfy it. The cheapest instance
+needs no computability at all: take `S = ℕ`, which is infinite and decidable under any
+reading of "decidable from available information". That is the paper's own
 motivating example (the `2^t`-th binary digits of π, §4.5). **Proved**
 (`vmwcPrinted_forces_pointwise`, `vmwcPrinted_vacuous_on_bits`). The proof of Theorem 4
 happens to survive under *either* reading, which is why the slip went unnoticed: it only
@@ -517,9 +523,13 @@ over `B*` and `B^ω`; the martingale in the proof bets on bits and the conclusio
 sentence (missing `= a_t`), and the success bound `(1+δ)^{T+εT}(1−δ)^T` is written in
 `T` where it must be in `|M_{≤T}|`. *Missing hypothesis + typos.*
 
-**E19. `g ∈ Ω(log)` is assumed and never used.** Theorem 1. Presumably it lets the
-machine handle indices and wealth variables of `log t` bits, but the proof never
-mentions it. *Unexplained hypothesis.*
+**E19. `g ∈ Ω(log)` is silently used but never invoked.** Theorem 1. The phrase occurs
+exactly once in the source, in the statement; the four-part proof never mentions it. It
+is not idle, though: part 4 indexes `h_b(t)` hypotheses and performs `O(h_b(t))`
+additions on `Θ(log t)`-bit quantities, which cannot fit in `O(g·q)` unless
+`g ∈ Ω(log)`. So the honest description is *silently used, never invoked* — which is
+worse than an idle hypothesis for a formalizer, because the place it is needed is
+exactly the place the paper's cost accounting is least explicit. *Unstated dependency.*
 
 ### Undefined computational terms
 
@@ -580,10 +590,18 @@ negative. The conclusion holds; the displayed intermediate does not follow. It i
 law-of-large-numbers statement written as a deterministic one. *Typo + missing "almost
 surely".*
 
-**E20. Theorem 2's diagonal hypothesis has no specified recommendation on the rounds it
-promises `0`.** App A.3: "promises 0 otherwise" says nothing about `hᶜ`. Both natural
-completions work — the spike takes `α`'s own choice and the argument goes through, since
-the record on those rounds is `∑ r_t ≥ 0`. *Harmless omitted convention (verified).*
+**E20. Theorem 2's proof has a gap that the abridgement introduced.** App A.3 says the
+diagonal hypothesis "promises 0 otherwise" without specifying `hᶜ` there — so as printed
+it is not a total hypothesis, since §4.1 requires a choice `hᶜ_t ∈ DP_t` at *every* `t`.
+Worse, the proof's conclusion "but is never tested" is **false** as printed: nothing
+stops the agent testing it on the promises-`0` rounds. The tex shows why — the
+justification is extended-only
+(`\extendedonlybit{, see Lemma \Cref{lemma:testing-positive-estimate}}`), so the
+abridged build deleted the citation to Lemma 6 that closes the hole, while keeping Lemma
+6 itself in the paper. The repair is one line and the spike carries it: the record on
+the promises-`0` rounds is `∑ r_t ≥ 0`, so coverage fails either way
+(`theorem2_extensional`). *Missing hypothesis + a genuine gap in the published proof,
+both repairable.*
 
 **E22. `B⁺_T` is vestigial and part 2 has a stray quantifier.** App A.2 part 2 introduces
 `B⁺_T`, the hypotheses with positive wealth at some time `≤ T`. With the example
@@ -638,6 +656,111 @@ puzzling features of the statement and they price the constructive half:
 
 ---
 
+### Found by the independent fresh-context check
+
+The claims above were re-adjudicated by a reviewer who was given the paper and the claim
+list but not this report or the Lean file (§M). All were confirmed. The reviewer also
+found ten further defects of its own, four of which are more serious than anything in the
+original list.
+
+**E24. Theorem 5's headline conclusion is never proved.** §7 claims "the empirical
+distribution of `(αᶜ₁, αᶜ₂)` converges to `c′`, i.e. for all `a`,
+`1/T ∑_{t=1}^T 1[(αᶜ₁,αᶜ₂) = a] → c′_a`". The Appendix A.6 proof consists of the
+construction, a no-overestimation paragraph, and a coverage paragraph. It **never argues
+that the empirical distribution converges**, never identifies `c′`, and never shows `c′`
+can be taken arbitrarily close to `c`. Those are the folk theorem's actual content. This
+is missing mathematics, not missing formalization — and it is what downgrades the game
+layer from GREEN/YELLOW to YELLOW. (The argument is not hard: the `p_c`/`p_{a_i}`
+randomisation gives an i.i.d. round-type sequence, so the empirical distribution
+converges a.s. by the SLLN to a mixture whose `c`-component has weight `p_c`, and `c′` is
+that mixture. But it has to be written, and it needs the probability layer.) *Genuine
+mathematical gap — the headline claim.*
+
+**E25. Theorems 4 and 9 are missing the efficient-identifiability assumption that
+Theorems 3 and 8 carry.** Theorem 3 says "We require also that the `a_t` are efficiently
+identifiable from the sets `DP_t`", and Theorem 8 repeats it. Theorem 4 (tex 420) and
+Theorem 9 (tex 1188) do not — yet both proofs construct a hypothesis "that … recommends
+`a_t`" and need it to lie in the covered e.c. class. Without the assumption the
+constructed hypothesis need not be in `H` and the proof collapses. *Missing hypothesis,
+in two theorems.*
+
+**E26. Lemma 7 is malformed as printed.** `max_{σ_i ∈ Δ(A_i)} min_{a_{-i} ∈ A_{-i}}
+u_i(σ_i, σ_{-i}) = min_{σ_{-i} ∈ Δ(A_{-i})} max_{a_i ∈ A_i} u_i(σ_i, σ_{-i})`: the
+left-hand side binds `a_{-i}` but the body mentions `σ_{-i}`; the right-hand side binds
+`a_i` but the body mentions `σ_i`. Both bound variables are free in the body on both
+sides. And "Let `(A₁, A₂, u₁, u₂)` be **any** game" invites a general-sum reading of a
+statement that is only true as minimax for the zero-sum game `(u_i, −u_i)`. Combined with
+E11 — the lemma is never used and carries no `\label`, so it is not even referenceable —
+the right disposition is: **delete it from scope**. *Malformed + unused.*
+
+**E27. Definition 10 defines computable randomness, not Schnorr randomness.**
+Definition 9 says `d` succeeds on `w` if `limsup d(w₁…w_n) = ∞`; Definition 10 forbids
+success by any computable `d`. Schnorr randomness additionally requires success to be
+*fast* relative to a computable order function; without that clause the notion defined is
+computable randomness, which is strictly stronger. The section title, the name, and the
+citations [26, 1, 33, 30] are all misapplied. Theorem 9 is presumably still true (the
+notion is stronger, so the hypothesis is stronger), but it is a theorem about a different
+concept from the one it names. *Definitional misnaming with a citation error.*
+
+**E28. The martingale in Appendix E is not well-defined on `B*`.** Definition 9 requires
+`d : B* → [0,∞)`. The proof defines `d` by cases on "whether `T` is not in `M`" — but its
+argument is the *compressed* subsequence `(r_t)_{t<T : αᶜ_t = a_t}`, from which the real
+time `T` is not recoverable, and it is specified only along prefixes of the actual reward
+sequence rather than on all of `B*`. "Clearly, `d` thus defined is a martingale that is
+computable based on `ᾱ, M`" is carrying the whole construction. *Genuine gap.*
+
+**E29. Theorem 5's converse does not literally follow from Theorem 3 as stated.**
+Appendix A.6 says it "follows directly from Theorem 3", but Theorem 3 is stated for a
+BRIA "for `DP, r̄` and **the set of e.c. hypotheses**", whereas Theorem 5's converse
+assumes only that `H_i` "contain at least the constant-time deterministic hypotheses".
+The substance is fine — Theorem 3's proof needs only the single hypothesis `(a_t, L_t)` to
+be covered — but the printed implication does not typecheck. **This is exactly the defect
+the spike's `theorem3_core` fixes by construction**: it takes an index `i` rather than a
+class, so the constant-hypothesis instance applies directly, which is why
+`theorem5_converse` compiles as a one-line corollary. *Statement/proof mismatch, repaired
+by the right representation.*
+
+**E30. Theorem 5's construction misdescribes what is tested.** "Player `i` … tests every
+hypothesis that estimates more than `v_i`." By Definition 4 a round `t` tests only
+hypotheses with `hᶜ_{i,t} = αᶜ_{i,t} = a_i`; a hypothesis promising more than `v_i` but
+recommending a different action is not tested that round. The coverage argument later
+silently uses the correct, restricted version. *Typo in the construction, corrected
+implicitly.*
+
+**E31. `H`'s countability is asserted in Definition 7 and dropped in Theorem 5.**
+Definition 7 writes `H = {h₁, h₂, …}` and hangs the test-set list `M₁, M₂, …` off that
+enumeration. Theorem 5 assumes "any sets of hypotheses `H₁, H₂`", which need not be
+countable — in which case Definition 7's `M₁, M₂, …` is undefined. The spike's `IsBRIA`
+indexes by an arbitrary `ι`, which makes the uncountable case well-formed; Theorem 1
+separately needs `ι = ℕ`. *Missing hypothesis / representation mismatch.*
+
+**E32. Appendix B repeats the Definition 8 normalization slip.** One line establishes
+`(1/|M_{i,≤T}|) l_T = (1/|M_{i,≤T}|) ∑_{t∈M_{i,≤T}} r_t − (μ_t − ε)`; the next asserts
+`∑_{t∈M_{i,≤T}} r_t − (μ_t − ε) → ε` with the `1/|M_{i,≤T}|` dropped. As written the
+limit is `+∞`, not `ε`. Same family as E6. *Typo, but the second instance of the same
+confusion.*
+
+**E33. A cluster of index and wording slips**, none load-bearing individually, listed so
+a formalizer does not stop to wonder: `h_b(t)` is introduced as "**the set** of active
+hypotheses" and then used as a number throughout; part 4 says "compute a **minimum** of a
+finite set in line 2" where display (2) is an `arg max`; the wealth recursion accumulates
+`∑_{n=1}^{T−1} A(n,i)` but both displays write `∑_{n=1}^{T}`; Theorem 8's conclusion
+prints `∑ r_r/T` for `∑ r_t/T`; Theorem 4's display carries a stray "w.p. 1" under a
+limit arrow in a theorem with no probability space, and indexes objects as `M_i, h̄_i`
+though the proof introduced them as `M` and `h̄_{a,ε}` (copy-paste residue from Appendix
+B); Theorem 9 defines `M_ε` and then uses only `M`, and re-binds `ε` to a different value
+mid-proof.
+
+**E34. The conclusion overclaims.** §9: "we demonstrated the theory's utility by using it
+to **justify Nash equilibrium play**." The paper proves a folk theorem about *correlated*
+strategy profiles and a pure-maximin lower bound. Nash equilibrium is never established —
+and is listed two sentences later as open: "Do the frequencies with which BRIAs play the
+given pure strategies of a game converge to mixed Nash and correlated equilibria?"
+*Overclaim in prose, not in a theorem; relevant only to how the formalization's README
+should describe the paper.*
+
+---
+
 ## H. External dependencies
 
 | Dependency | Needed by | Status at the pin | Classification |
@@ -663,13 +786,14 @@ substitutions. **Finite Factored Sets** = 96 in-scope nodes, 14 files, complete.
 | Tranche | Contents | Estimate |
 |---|---|---|
 | **1. Extensional core** | Defs 1–7, Lemma 6, Theorem 1a, Theorem 3, Theorem 5-converse, the asymptotic toolkit, non-vacuity witnesses — plus FAF completion overhead: provenance annotations, node checker (with the `\extendedonlybit` stripping), trust-surface entry, consumer API, client tests, adversarial audit, read-through. | **0.25–0.4 FFS** ≈ **0.4–0.6 CF**. The mathematics is already in `Spike.lean`; almost all remaining cost is the completion apparatus, not proving. |
-| **2. All mathematical theorems, complexity abstracted** | Adds Theorem 4 in full, Theorem 8, Theorem 9 (martingales over `B*` + Schnorr), and Theorem 5's constructive half. Binding constraints: a probability space and empirical-frequency layer for Theorems 5 and 8; the non-iid SLLN along a predictable selection (+ Kronecker) for Theorem 8; a bespoke martingale/Schnorr layer for Theorem 9; and a **ruling on Definition 8** (E6) before Theorem 4 means anything. | **+0.5–0.9 FFS**. Cumulative: **0.75–1.3 FFS** ≈ **1.2–2.0 CF**. |
+| **2. All mathematical theorems, complexity abstracted** | Adds Theorem 4 in full, Theorem 8, Theorem 9 (martingales over `B*` + Schnorr), and Theorem 5's constructive half. Binding constraints: a probability space and empirical-frequency layer for Theorems 5 and 8; the non-iid SLLN along a predictable selection (+ Kronecker) for Theorem 8; a bespoke martingale/Schnorr layer for Theorem 9; a **ruling on Definition 8** (E6) before Theorem 4 means anything; and — the item the fresh-context check added — **supplying the folk theorem's empirical-distribution argument, which the paper does not contain** (E24), plus repairing Definitions 9/10 (E27) and the Appendix E martingale (E28). | **+0.7–1.2 FFS** (raised from +0.5–0.9 by E24, E27, E28). Cumulative: **0.95–1.6 FFS** ≈ **1.5–2.4 CF**. |
 | **3. Literal computational and runtime claims** | Theorem 1b, Theorem 1c, Theorem 2 at paper strength, the "e.c." closure conditions of Theorems 3/4, and Definition 8's selector quantifier. Requires: a counted machine model; an `O(g)` class parametric in `g`; a c.e. enumeration with a cost-accounted universal simulator; a promise representation with decidable order; an input-size convention; and — for Theorem 2 — a genuine **time lower bound**. | **+2–4 FFS minimum, realistically research-scale.** LI's boundary memo prices the machine-model retrofit at 8–15 months for polynomial time alone, and BIR needs strictly more (parametric `g`, and the lower-bound direction LI declared out of scope). **Do not attempt.** |
 
 Restated in the format the brief asked for:
 
 > extensional paper: **0.3 FFS**
-> all mathematics with complexity abstracted: **1.0 FFS**
+> all mathematics with complexity abstracted: **1.2 FFS** — and this figure now includes
+> writing mathematics the paper does not contain (E24)
 > paper-strength computational theorems: **+3 FFS of new infrastructure, and that is a
 > floor, not an estimate**
 
@@ -677,10 +801,15 @@ Restated in the format the brief asked for:
 
 ## J. Critical path
 
+0. **Settle the three source defects that are not formalization questions**, ideally by
+   asking the authors: Definition 8's missing normalization (E6), Theorem 5's unproved
+   empirical-distribution claim (E24), and Definition 10's misnaming (E27). Each changes
+   what there is to formalize, not merely how.
 1. **Rule on Definition 8 first.** Adopt the averaged reading, record E6 in
    `paper-errata.md`, and note that the printed reading makes Theorem 4 vacuous. Nothing
    in the randomness layer should be written before this ruling, because the printed
-   reading is *provably* the wrong one.
+   reading is *provably* the wrong one. In the same pass, **drop Lemma 7 from scope**: it
+   is unused (E11) and malformed as printed (E26).
 2. **Land the extensional layer** (Defs 1–7 with the three reading lemmas, Lemma 6, the
    asymptotic toolkit, the non-vacuity witnesses). Straight lift from `Spike.lean`.
 3. **Theorem 3**, with the class-membership condition as an explicit named hypothesis.
@@ -703,7 +832,9 @@ Restated in the format the brief asked for:
    explicit hypothesis (never a class named `EfficientlyDecidable`).
 9. **The probability layer**: probability space, empirical frequencies, Kronecker,
    non-iid SLLN along a predictable selection. Then **Theorem 8**, then **Theorem 5's
-   constructive half** (as an almost-sure statement, disclosed per E12).
+   constructive half** (as an almost-sure statement, disclosed per E12) — including the
+   empirical-distribution argument the paper omits (E24), which must be written and
+   attributed as *supplied*, not formalized.
 10. **Theorem 9** (martingales over `B*`, Schnorr randomness) last — it is self-contained
     and the least connected.
 11. **Stop.** Tranche 3 is out of scope; state the computational claims relative to named
@@ -732,10 +863,17 @@ to scope rather than to proceed:
    Confirmed (E15), *and* the definition as printed is unsatisfiable in the paper's own
    motivating case (E6).
 
-An additional criterion this spike would add: **a headline definition that is provably
-vacuous is a source problem, not a formalization problem.** E6 must be resolved by
-ruling — ideally by asking the authors — before Theorem 4 is registered as formalized at
-any strength.
+Two additional criteria this spike would add:
+
+5. **A headline definition that is provably vacuous is a source problem, not a
+   formalization problem.** E6 must be resolved by ruling — ideally by asking the
+   authors — before Theorem 4 is registered as formalized at any strength.
+6. **A headline theorem whose conclusion the paper never argues is a source problem
+   too.** Theorem 5's empirical-distribution claim (E24) has no proof in the paper. FAF
+   can supply one, but supplying it is *doing the authors' mathematics*, which under this
+   repository's provenance rules must be marked as such rather than recorded as
+   formalizing a paper result. If we are not willing to write and own that argument,
+   Theorem 5's constructive half should be out of scope.
 
 ---
 
@@ -755,6 +893,9 @@ Concretely:
   honest version is achievable.
 * Record Theorem 1c as **out of scope by ruling, with the source defect (E16) as the
   reason**, in the README and the errata. Do not declare an axiom for it.
+* Raise E6, E24 and E27 with the authors before scoping Theorem 4, Theorem 5's
+  constructive half, or Theorem 9. All three are cheap to fix at source and expensive to
+  work around downstream.
 * Write the boundary memo before anyone is tempted.
 
 The paper is worth formalizing. Its extensional half is clean, short, genuinely
