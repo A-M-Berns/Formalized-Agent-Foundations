@@ -1,0 +1,15 @@
+% Emitted by `render detDiagram detLayout [0,1,2]` in ../Spike.lean.
+% Do not edit by hand; regenerate from the Lean value (requirement R1.5).
+%
+% Note: $\Lambda'$ appears at TWO DISTINCT NODES (1 and 2) carrying the SAME random
+% variable.  That is requirement R2.1; an encoding that identified nodes with variables
+% could not produce this picture.
+\begin{tikzpicture}[every node/.style={draw=none}]
+  % Determinism: Lambda' <- Lambda -> Lambda'
+  \node (0) at (0, -0) {$\Lambda$};
+  \node (1) at (1, -1) {$\Lambda'$};
+  \node (2) at (2, -1) {$\Lambda'$};
+  \draw[->] (0) -- (1);
+  \draw[->] (0) -- (2);
+  \node at (1, -2.2) {$\varepsilon \geq \varepsilon_{\mathrm{red}}$};
+\end{tikzpicture}
