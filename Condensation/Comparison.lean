@@ -17,8 +17,8 @@ Lemma 4.14 and Theorem 4.15 of Eisenstat, *Condensation: A Theory of Concepts*:
 * Lemma 4.14 is stated over **bare random variables**, not over a model: the paper states
   it for "random variables on some countable discrete probability space", and it is used
   inside Theorem 4.15's induction at variables (`Z_F`, `Z_G`, `Z_{F∩G}`) that are joints
-  over *set-indexed* subfamilies rather than model variables.  `dd:finite-range` supplies
-  `FiniteRange` on each; the paper's separate "`C` has discrete range" hypothesis is the
+  over *set-indexed* subfamilies rather than model variables.  Each carries the paper's own finiteness
+  hypothesis, `ShannonInformation.FiniteEntropyOf`; the "`C` has discrete range" hypothesis is the
   `[Countable U] [MeasurableSingletonClass U]` pair, which is what makes the witnessing
   function automatically measurable (the last line of the printed proof).
 * Theorem 4.15 quantifies over an arbitrary `LatentAmalgamation L₁ L₂`, not over the
@@ -79,8 +79,9 @@ theorem aeFunctionOf_of_condIndepFun {Ω S T₁ T₂ U : Type*} [MeasurableSpace
     [MeasurableSingletonClass T₂] [MeasurableSpace U] [Countable U]
     [MeasurableSingletonClass U] {μ : Measure Ω} [IsProbabilityMeasure μ] {X : Ω → S}
     {Y₁ : Ω → T₁} {Y₂ : Ω → T₂} {C : Ω → U} (hX : Measurable X) (hY₁ : Measurable Y₁)
-    (hY₂ : Measurable Y₂) (hC : Measurable C) [FiniteRange X] [FiniteRange Y₁]
-    [FiniteRange Y₂] [FiniteRange C] (hindep : CondIndepFun Y₁ Y₂ C μ)
+    (hY₂ : Measurable Y₂) (hC : Measurable C) [ShannonInformation.FiniteEntropyOf X μ]
+    [ShannonInformation.FiniteEntropyOf Y₁ μ] [ShannonInformation.FiniteEntropyOf Y₂ μ]
+    [ShannonInformation.FiniteEntropyOf C μ] (hindep : CondIndepFun Y₁ Y₂ C μ)
     (h₁ : AEFunctionOf (⟨C, Y₁⟩ : Ω → U × T₁) X μ)
     (h₂ : AEFunctionOf (⟨C, Y₂⟩ : Ω → U × T₂) X μ) :
     AEFunctionOf C X μ := by

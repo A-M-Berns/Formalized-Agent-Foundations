@@ -116,13 +116,17 @@ version is provable through ours, and not conversely.
 | conditional mutual information | `ProbabilityTheory.condMutualInfo_eq`, `.condMutualInfo_eq'` | `ShannonInformation.` same names |
 | entropy under maps | `ProbabilityTheory.condEntropy_comp_self`, `.condEntropy_of_injective'`, `.entropy_of_comp_eq_of_comp` | `ShannonInformation.` same names |
 | identically distributed | `ProbabilityTheory.IdentDistrib.condEntropy_eq` | `ShannonInformation.IdentDistrib.condEntropy_eq` |
+| information with a constant | `ProbabilityTheory.mutualInfo_const` | `ShannonInformation.mutualInfo_const` |
+| conditioning on an independent variable | `ProbabilityTheory.IndepFun.condEntropy_eq_entropy` | `ShannonInformation.IndepFun.condEntropy_eq_entropy` (not reachable by dot notation) |
+| zero entropy forces a constant | `ProbabilityTheory.const_of_nonpos_entropy` | `ShannonInformation.const_of_nonpos_entropy` (**plus `[Countable S]`** — see below) |
 | everything hypothesis-free | `ProbabilityTheory.entropy_nonneg`, `.condEntropy_nonneg`, `.entropy_comm`, `.entropy_assoc`, `.entropy_comp_of_injective`, `.condEntropy_comp_of_injective`, `.entropy_prod_comp`, `.mutualInfo_comm`, `.condMutualInfo_comm`, `.IdentDistrib.entropy_congr`, `.IdentDistrib.mutualInfo_eq` | — *no FAF version, and none needed*: these carry no `FiniteRange` upstream |
 
 Not restated at `FiniteEntropyOf` (still `FiniteRange`-only): `ent_of_cond_indep`,
-`mutualInfo_const`, `const_of_nonpos_entropy`, `condEntropy_of_injective`,
-`condMutualInfo_of_inj`/`_of_inj'`/`_of_inj_map`, `mutual_comp_comp_le`,
-`condMutual_comp_comp_le`, `IndepFun.condEntropy_eq_entropy`.  Each would generalize by the
-same rewrite chain as its neighbours; see `FiniteEntropy/Derived.lean`'s header.
+`condEntropy_of_injective`, `condMutualInfo_of_inj`/`_of_inj'`/`_of_inj_map`,
+`mutual_comp_comp_le`, `condMutual_comp_comp_le`.  Each would generalize by the same rewrite
+chain as its neighbours; see `FiniteEntropy/Derived.lean`'s header.  (`mutualInfo_const`,
+`const_of_nonpos_entropy` and `IndepFun.condEntropy_eq_entropy` were on this list until
+Phase 4b, when `Condensation`'s Proposition 2.5 and its witnesses needed them.)
 
 ### Three hazards when both surfaces are open
 
@@ -151,7 +155,18 @@ same rewrite chain as its neighbours; see `FiniteEntropy/Derived.lean`'s header.
    those for a non-probability measure must keep the vendored version.  One further
    direction of loss: `ShannonInformation.condMutualInfo_eq` requires `FiniteEntropyOf` on
    all three variables where `ProbabilityTheory.condMutualInfo_eq` requires `FiniteRange`
-   only on `Z`.
+   only on `Z`.  And one genuine *strengthening*:
+   `ShannonInformation.const_of_nonpos_entropy` asks for `[Countable S]`, which PFR's does
+   not.  That is forced — `FiniteRange X` makes `μ.map X` atomic for free and
+   `FiniteEntropyOf X μ` does not (Lebesgue on `[0, 1]` has entropy series identically `0`
+   with no atom) — and every consumer carries `Countable S` anyway.
+
+4. **`finiteEntropyOf_pair` needs `IsProbabilityMeasure`.**  It is stated in `Defs.lean`'s
+   closure section under `[IsProbabilityMeasure μ]`, while most endpoints of this layer are
+   at `[IsZeroOrProbabilityMeasure μ]`.  A proof that builds a pair instance under the
+   weaker hypothesis has to open with
+   `rcases eq_zero_or_isProbabilityMeasure μ with rfl | hμ` and discharge the zero branch by
+   `simp`; several `Condensation` §2/§5 proofs now do exactly that.
 
 `#print axioms` on anything reachable from here reports only `propext`,
 `Classical.choice`, `Quot.sound`; see `AxiomAudit.lean`.
@@ -192,7 +207,9 @@ not a definition — entropy is still PFR's `measureEntropy`:
   `finiteEntropyOf_comp`, `finiteEntropyOf_fst`, `finiteEntropyOf_snd`,
   `finiteEntropyOf_pair`, `finiteEntropyOf_pullback`, and — for a **finite** index only,
   since countable products genuinely fail — `finiteEntropyOf_measurableEquiv`,
-  `finiteEntropyOf_piFin`, `finiteEntropyOf_pi`.
+  `finiteEntropyOf_piFin`, `finiteEntropyOf_pi`.  One closure runs the other way:
+  `finiteEntropyMeasure_of_injective` (`Derived.lean`) takes finite entropy back along an
+  injective measurable relabelling.
 * the abstract nonnegative-family core they rest on, in
   `ShannonInformation/FiniteEntropy/Summable.lean`: `negMulLog_tsum_le`,
   `tsum_negMulLog_eq_add`, `tsum_mul_log_div_nonneg`, `negMulLog_le_add_of_le`,
@@ -234,7 +251,11 @@ zero mutual information for an independent pair — are demonstrated in
 `APITests/ShannonInformation.lean` rather than pre-packaged here, so that those tests
 actually test the surface instead of restating it.  The non-vacuity witness for
 `FiniteEntropyOf` — a geometric variable on `ℕ`, which has finite entropy and *no* finite
-range — lives in `APITests/ShannonInformationFiniteEntropy.lean`.
+range — is constructed in `ShannonInformation/FiniteEntropy/Examples.lean` and exercised from
+outside the layer in `APITests/ShannonInformationFiniteEntropy.lean`.  That module is
+deliberately **not** re-exported here: a client wanting only the entropy corpus should not pay
+for `Mathlib.Probability.Distributions.Geometric`.  Import it directly if you want the witness
+(`Condensation/Examples.lean` does, for `Condensation.Example.geomModel`).
 -/
 
 end ShannonInformation

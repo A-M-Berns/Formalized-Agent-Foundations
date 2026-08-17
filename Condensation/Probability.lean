@@ -24,26 +24,33 @@ Contents:
 
 ## Modeling decisions
 
-`dd:ae-function`, `dd:pullback`, `dd:pplus`, `dd:interaction`, `dd:finite-range` — see the
-`dd:` glossary in `Condensation.lean` and `Condensation/notes/roadmap.md`.  The one that
-shapes the statements here is `dd:finite-range`: the vendored entropy library proves the
-theorems this file needs only for finite-range variables
-(`ShannonInformation/SCOPE.md`), which is narrower than the paper's "countable discrete
-range with finite entropy".  This is a disclosed narrowing, recorded in
-`Condensation/KNOWLEDGE.md`.
+`dd:ae-function`, `dd:pullback`, `dd:pplus`, `dd:interaction` — see the `dd:` glossary in
+`Condensation.lean` and `Condensation/notes/roadmap.md`.  The finiteness hypothesis is the
+paper's own: a variable of **finite entropy** with countable discrete range, rendered as
+`[ShannonInformation.FiniteEntropyOf X μ]` over the FAF finite-entropy layer of
+`ShannonInformation.API`.  `dd:finite-range` — the standing narrowing to `FiniteRange`
+variables, forced while the vendored theorems existed only in the finite-range fragment —
+was **retired on 2026-08-17**; there is no modeling substitution in this file.
 
-`FiniteRange` is **not** carried by every statement with entropy content, and it is worth
-knowing which: exactly eight declarations here take it, namely
+Finiteness is **not** carried by every statement with entropy content, and it is worth
+knowing which: exactly seven declarations here take it, namely
 `condEntropy_comp_measurePreserving`, `interactionInfo_swap`,
 `condEntropy_eq_entropy_of_subsingleton`, `entropy_le_of_aeFunctionOf`,
-`entropy_pair_of_aeFunctionOf`, `condEntropy_eq_zero_of_aeFunctionOf`,
-`aeFunctionOf_of_condEntropy_eq_zero` and `aeFunctionOf_iff_condEntropy_eq_zero`.  The pullback identities
-`entropy_comp_measurePreserving` and `mutualInfo_comp_measurePreserving` and the
-first symmetry `interactionInfo_comm` are `IdentDistrib`-based and hold with no
-finiteness at all; `interactionInfo` and `condInteractionInfo` are definitions and
-carry none either.  These are §2 substrate lemmas over bare variables, so the hypothesis
-is explicit here rather than supplied by a model structure (see `dd:finite-range` in
-`Condensation/KNOWLEDGE.md`).
+`condEntropy_eq_zero_of_aeFunctionOf`, `aeFunctionOf_of_condEntropy_eq_zero` and
+`aeFunctionOf_iff_condEntropy_eq_zero`.  The pullback identities
+`entropy_comp_measurePreserving` and `mutualInfo_comp_measurePreserving`, the first
+symmetry `interactionInfo_comm` and `entropy_pair_of_aeFunctionOf` are `IdentDistrib`- or
+injectivity-based and hold with no finiteness at all (`entropy_pair_of_aeFunctionOf` lost
+its hypothesis in the same change; `ProbabilityTheory.entropy_prod_comp` never needed
+one); `interactionInfo` and `condInteractionInfo` are definitions and carry none either.
+These are §2 substrate lemmas over **bare variables**, so the hypothesis is explicit here
+rather than supplied by a model structure — `RVModel` (Definition 3.1) hands it to every
+statement quantifying over a model.
+
+**Namespace hazard.**  With `ProbabilityTheory` open, a bare entropy lemma name resolves by
+elaboration success, not by namespace, and can silently pick the vendored `FiniteRange`
+version.  Every FAF-layer citation below is written `ShannonInformation.foo` in full; see
+`ShannonInformation/API.lean`'s "which version to cite" table.
 
 Entropy, conditional entropy, mutual information and conditional mutual information are
 **not** defined here: they are PFR's, re-exported through `ShannonInformation.API`.  No
@@ -216,13 +223,18 @@ Paper node: `Definition 2.1` -/
 lemma condEntropy_comp_measurePreserving [Countable S] [MeasurableSingletonClass S]
     [Countable T] [MeasurableSingletonClass T] [IsProbabilityMeasure μΛ]
     (hπ : MeasurePreserving π μΛ μΩ) (hX : Measurable X) (hY : Measurable Y)
-    [FiniteRange X] [FiniteRange Y] :
+    [ShannonInformation.FiniteEntropyOf X μΩ] [ShannonInformation.FiniteEntropyOf Y μΩ] :
     H[X ∘ π | Y ∘ π ; μΛ] = H[X | Y ; μΩ] := by
   haveI : IsProbabilityMeasure μΩ :=
     hπ.map_eq ▸ Measure.isProbabilityMeasure_map hπ.measurable.aemeasurable
+  haveI : ShannonInformation.FiniteEntropyOf (X ∘ π) μΛ :=
+    ShannonInformation.finiteEntropyOf_pullback hπ hX
+  haveI : ShannonInformation.FiniteEntropyOf (Y ∘ π) μΛ :=
+    ShannonInformation.finiteEntropyOf_pullback hπ hY
   have h : IdentDistrib (⟨X ∘ π, Y ∘ π⟩ : Λ → S × T) (⟨X, Y⟩ : Ω → S × T) μΛ μΩ :=
     identDistrib_comp_measurePreserving hπ (hX.prodMk hY)
-  exact IdentDistrib.condEntropy_eq (hX.comp hπ.measurable) (hY.comp hπ.measurable) hX hY h
+  exact ShannonInformation.IdentDistrib.condEntropy_eq (hX.comp hπ.measurable)
+    (hY.comp hπ.measurable) hX hY h
 
 end Pullback
 
@@ -345,14 +357,21 @@ on the three arguments.
 Paper node: `Definition 2.3` -/
 lemma interactionInfo_swap [IsZeroOrProbabilityMeasure μ]
     (hX : Measurable X) (hY : Measurable Y) (hZ : Measurable Z)
-    [FiniteRange X] [FiniteRange Y] [FiniteRange Z] :
+    [ShannonInformation.FiniteEntropyOf X μ] [ShannonInformation.FiniteEntropyOf Y μ]
+    [ShannonInformation.FiniteEntropyOf Z μ] :
     interactionInfo X Y Z μ = interactionInfo X Z Y μ := by
+  rcases eq_zero_or_isProbabilityMeasure μ with rfl | hμ
+  · simp [interactionInfo, mutualInfo_def]
+  haveI : ShannonInformation.FiniteEntropyOf (⟨Y, Z⟩ : Ω → T × U) μ :=
+    ShannonInformation.finiteEntropyOf_pair hY hZ
   have hcond : H[X | ⟨Z, Y⟩ ; μ] = H[X | ⟨Y, Z⟩ ; μ] :=
-    condEntropy_of_injective' μ hX (hY.prodMk hZ) Prod.swap Prod.swap_injective
-      (hZ.prodMk hY)
+    ShannonInformation.condEntropy_of_injective' μ hX (hY.prodMk hZ) Prod.swap
+      Prod.swap_injective (hZ.prodMk hY)
   rw [interactionInfo, interactionInfo,
-    mutualInfo_eq_entropy_sub_condEntropy hX hY μ, mutualInfo_eq_entropy_sub_condEntropy hX hZ μ,
-    condMutualInfo_eq' hX hY hZ μ, condMutualInfo_eq' hX hZ hY μ, hcond]
+    ShannonInformation.mutualInfo_eq_entropy_sub_condEntropy hX hY μ,
+    ShannonInformation.mutualInfo_eq_entropy_sub_condEntropy hX hZ μ,
+    ShannonInformation.condMutualInfo_eq' hX hY hZ μ,
+    ShannonInformation.condMutualInfo_eq' hX hZ hY μ, hcond]
   ring
 
 end Interaction
@@ -389,12 +408,13 @@ enough to belong in `ShannonInformation/API.lean` if a second client ever wants 
 lemma condEntropy_eq_entropy_of_subsingleton {Ω S T : Type*} [MeasurableSpace Ω]
     [MeasurableSpace S] [MeasurableSpace T] [Countable S] [MeasurableSingletonClass S]
     [Countable T] [MeasurableSingletonClass T] [Subsingleton T] [Nonempty T]
-    {μ : Measure Ω} [IsProbabilityMeasure μ] {X : Ω → S} (hX : Measurable X) [FiniteRange X]
+    {μ : Measure Ω} [IsProbabilityMeasure μ] {X : Ω → S} (hX : Measurable X)
+    [ShannonInformation.FiniteEntropyOf X μ]
     (Y : Ω → T) : H[X | Y ; μ] = H[X ; μ] := by
   have hY : Y = fun _ => (Classical.arbitrary T) := funext fun _ => Subsingleton.elim _ _
   subst hY
-  have h0 := mutualInfo_const (μ := μ) hX (Classical.arbitrary T)
-  rw [mutualInfo_eq_entropy_sub_condEntropy hX measurable_const] at h0
+  have h0 := ShannonInformation.mutualInfo_const (μ := μ) hX (Classical.arbitrary T)
+  rw [ShannonInformation.mutualInfo_eq_entropy_sub_condEntropy hX measurable_const μ] at h0
   linarith
 
 /-! ## Proposition 2.5 — the determinism bridge -/
@@ -408,16 +428,20 @@ variable {Ω S T : Type*} [MeasurableSpace Ω] [MeasurableSpace S] [MeasurableSp
 /-- An a.e. function of `X` has no more entropy than `X` — the data-processing inequality
 in the form §4 uses it. -/
 lemma entropy_le_of_aeFunctionOf [IsZeroOrProbabilityMeasure μ]
-    (hX : Measurable X) [FiniteRange X] (h : AEFunctionOf X Y μ) : H[Y ; μ] ≤ H[X ; μ] := by
+    (hX : Measurable X) [ShannonInformation.FiniteEntropyOf X μ] (h : AEFunctionOf X Y μ) :
+    H[Y ; μ] ≤ H[X ; μ] := by
   obtain ⟨f, hf, hfX⟩ := h
   have hae : Y =ᵐ[μ] f ∘ X := hfX
   rw [entropy_congr hae]
-  exact entropy_comp_le μ hX f
+  exact ShannonInformation.entropy_comp_le μ hX f
 
 omit [Countable T] in
-/-- Adjoining an a.e. function of `X` to `X` does not change the joint entropy. -/
+/-- Adjoining an a.e. function of `X` to `X` does not change the joint entropy.
+
+No finiteness hypothesis: `ProbabilityTheory.entropy_prod_comp` is an injective-relabelling
+identity and carries none. -/
 lemma entropy_pair_of_aeFunctionOf [IsZeroOrProbabilityMeasure μ]
-    (hX : Measurable X) [FiniteRange X] (h : AEFunctionOf X Y μ) :
+    (hX : Measurable X) (h : AEFunctionOf X Y μ) :
     H[⟨X, Y⟩ ; μ] = H[X ; μ] := by
   obtain ⟨f, hf, hfX⟩ := h
   have hae : (⟨X, Y⟩ : Ω → S × T) =ᵐ[μ] (fun ω => (X ω, f (X ω))) := by
@@ -430,11 +454,12 @@ lemma entropy_pair_of_aeFunctionOf [IsZeroOrProbabilityMeasure μ]
 This is the converse of Proposition 2.5; the paper does not number it, but §4 uses both
 directions constantly (for instance at (4.13)–(4.14)). -/
 lemma condEntropy_eq_zero_of_aeFunctionOf [IsProbabilityMeasure μ]
-    (hX : Measurable X) (hY : Measurable Y) [FiniteRange X] [FiniteRange Y]
+    (hX : Measurable X) (hY : Measurable Y) [ShannonInformation.FiniteEntropyOf X μ]
+    [ShannonInformation.FiniteEntropyOf Y μ]
     (h : AEFunctionOf X Y μ) : H[Y | X ; μ] = 0 := by
-  rw [chain_rule'' μ hY hX, entropy_comm hY hX, entropy_pair_of_aeFunctionOf hX h, sub_self]
+  rw [ShannonInformation.chain_rule'' μ hY hX, entropy_comm hY hX,
+    entropy_pair_of_aeFunctionOf hX h, sub_self]
 
-omit [Countable T] in
 /-- **Proposition 2.5** (the determinism bridge).  On a countable discrete probability
 space, a variable of zero conditional entropy given `X` is almost everywhere a measurable
 function of `X`.
@@ -442,38 +467,38 @@ function of `X`.
 This is what turns every entropy inequality of §4 into the paper's "is a function of"
 conclusions (Lemma 4.5, Corollary 4.6, Theorem 4.9, Theorem 4.15).
 
-`dd:finite-range`: the paper's hypothesis is countable discrete range with finite entropy;
-here the variables carry `FiniteRange` instead.  The two hypothesis sets are *not*
-comparable as printed.  This statement is stronger where it matters — `FiniteRange X` and
-`FiniteRange Y` exclude a countable-range variable of finite entropy, which the paper
-admits — and incidentally weaker in one respect the proof does not need: `Countable R_Y`
-is omitted (`omit [Countable T]`), only `MeasurableSingletonClass T` being used.  The
-narrowing is the standing one; see `Condensation/KNOWLEDGE.md`.
+The hypotheses are now the paper's own: countable discrete ranges with finite entropy.  (Up
+to 2026-08-17 they were `FiniteRange X`/`FiniteRange Y` — the `dd:finite-range` narrowing —
+and `Countable R_Y` was `omit`ted because the finite-range proof did not need it.  Both
+changed in the same edit: the `tsum` form of the conditional entropy and
+`ShannonInformation.const_of_nonpos_entropy` both require `Countable R_Y`, and the paper
+assumes it, so the statement is now neither stronger nor weaker than the printed one.)
 
 Paper node: `Proposition 2.5` -/
 theorem aeFunctionOf_of_condEntropy_eq_zero [Countable Ω] [MeasurableSingletonClass Ω]
     [IsProbabilityMeasure μ] (hX : Measurable X) (hY : Measurable Y)
-    [FiniteRange X] [FiniteRange Y] (h : H[Y | X ; μ] = 0) : AEFunctionOf X Y μ := by
+    [ShannonInformation.FiniteEntropyOf X μ] [ShannonInformation.FiniteEntropyOf Y μ]
+    (h : H[Y | X ; μ] = 0) : AEFunctionOf X Y μ := by
   classical
   have : Nonempty T := Nonempty.map Y μ.nonempty_of_neZero
-  have hsum : ∑ x ∈ FiniteRange.toFinset X, ((μ.map X).real {x}) * H[Y | X ← x; μ] = 0 := by
-    rw [← condEntropy_eq_sum Y X μ hX, h]
-  have hterm : ∀ x ∈ FiniteRange.toFinset X, ((μ.map X).real {x}) * H[Y | X ← x; μ] = 0 :=
-    (Finset.sum_eq_zero_iff_of_nonneg fun x _ =>
-      mul_nonneg measureReal_nonneg (entropy_nonneg _ _)).mp hsum
+  have hsummable : Summable fun x : S ↦ ((μ.map X).real {x}) * H[Y | X ← x; μ] :=
+    ShannonInformation.summable_measureReal_mul_entropy_cond hY hX μ
+  have hnonneg : ∀ x : S, 0 ≤ ((μ.map X).real {x}) * H[Y | X ← x; μ] := fun x ↦
+    mul_nonneg measureReal_nonneg (entropy_nonneg _ _)
+  have hsum : ∑' x : S, ((μ.map X).real {x}) * H[Y | X ← x; μ] = 0 := by
+    rw [← ShannonInformation.condEntropy_eq_tsum hY hX μ, h]
+  have hterm : ∀ x : S, ((μ.map X).real {x}) * H[Y | X ← x; μ] = 0 := fun x ↦
+    le_antisymm (hsum ▸ hsummable.le_tsum x fun j _ ↦ hnonneg j) (hnonneg x)
   have key : ∀ x : S, μ (X ⁻¹' {x}) ≠ 0 → ∃ t : T, (μ[|X ⁻¹' {x}]).real (Y ⁻¹' {t}) = 1 := by
     intro x hx
     haveI : IsProbabilityMeasure (μ[|X ⁻¹' {x}]) := cond_isProbabilityMeasure hx
-    obtain ⟨ω, hω⟩ : (X ⁻¹' {x}).Nonempty := by
-      rw [Set.nonempty_iff_ne_empty]
-      rintro he
-      exact hx (by rw [he, measure_empty])
-    have hmem : x ∈ FiniteRange.toFinset X := (FiniteRange.mem_iff X x).2 ⟨ω, hω⟩
+    haveI : ShannonInformation.FiniteEntropyOf Y (μ[|X ⁻¹' {x}]) :=
+      ShannonInformation.finiteEntropyOf_cond (μ := μ) (Z := X) hY x
     have hmass : ((μ.map X).real {x}) ≠ 0 := by
       rw [map_measureReal_apply hX (MeasurableSet.singleton x)]
       exact (measureReal_ne_zero_iff (measure_ne_top μ _)).2 hx
-    refine const_of_nonpos_entropy hY (le_of_eq ?_)
-    exact (mul_eq_zero.1 (hterm x hmem)).resolve_left hmass
+    refine ShannonInformation.const_of_nonpos_entropy hY (le_of_eq ?_)
+    exact (mul_eq_zero.1 (hterm x)).resolve_left hmass
   refine ⟨fun x => if hx : μ (X ⁻¹' {x}) ≠ 0 then (key x hx).choose else Classical.arbitrary T,
     measurable_of_countable _, ?_⟩
   rw [ae_iff_of_countable]
@@ -499,7 +524,8 @@ theorem aeFunctionOf_of_condEntropy_eq_zero [Countable Ω] [MeasurableSingletonC
 /-- Proposition 2.5 and its converse, as the equivalence §4 actually uses. -/
 lemma aeFunctionOf_iff_condEntropy_eq_zero [Countable Ω] [MeasurableSingletonClass Ω]
     [IsProbabilityMeasure μ] (hX : Measurable X) (hY : Measurable Y)
-    [FiniteRange X] [FiniteRange Y] : AEFunctionOf X Y μ ↔ H[Y | X ; μ] = 0 :=
+    [ShannonInformation.FiniteEntropyOf X μ] [ShannonInformation.FiniteEntropyOf Y μ] :
+    AEFunctionOf X Y μ ↔ H[Y | X ; μ] = 0 :=
   ⟨condEntropy_eq_zero_of_aeFunctionOf hX hY, aeFunctionOf_of_condEntropy_eq_zero hX hY⟩
 
 end Prop25

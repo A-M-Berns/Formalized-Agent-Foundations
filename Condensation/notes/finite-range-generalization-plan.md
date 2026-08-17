@@ -1,17 +1,34 @@
 # Generalizing the Shannon substrate from finite range to countable range with finite entropy
 
-> **Status (2026-08-17, after Phase 1 landed at `ca3d7fb`):** ruled a desired endpoint by Anson; Phases 2
-> and 3 dispatched in parallel. Two corrections from Phase 1: (i) §3/§7's claim that `Summable.tsum_prod`
-> is absent is wrong — Mathlib has the nonneg-family product/fibre summability under `to_additive`
-> names in `Mathlib/Topology/Algebra/InfiniteSum/{Constructions,Real,Order}.lean` (grep the target
-> names, not `theorem`), so the ℝ-vs-`ℝ≥0∞` hazard for Phase 2 is small; (ii) the plumbing multiplier
-> observed was ~2–2.5×, not 3–5× (Phase 1: 712 lines of Lean incl. docs, under an hour with three
-> agents). Substrate-thread pitfalls are collected in `ShannonInformation/KNOWLEDGE.md`.
+> **STATUS: DONE (2026-08-17). All four phases complete; `dd:finite-range` is retired.**
+> The recommendation in the TL;DR below — *do not fund the generalization now* — was
+> overruled by Anson on the day it was written, in favour of pursuing it in parallel with
+> the paper. It then landed the same day. What shipped: `ShannonInformation/FiniteEntropy/`
+> (2,371 lines in seven modules — `Summable`, `Defs`, `ChainRule`, `Inequalities`,
+> `Derived`, `Pi`, `Examples`) proving the §1.0 need-table at
+> `ShannonInformation.FiniteEntropyOf`, plus Phase 4b, the consumer migration, which swapped
+> `Condensation.RVModel`'s finiteness field, added Definition 3.1's `Ω` clause
+> (`finiteEntropy_Ω`), and rebound the §2 substrate lemmas, Lemma 4.14, the Lemma 5.4 block
+> and `LatentAmalgamation`. **No §3–§5 theorem statement changed and the `sorry` count is
+> unchanged at twenty.** Substrate commits: `ca3d7fb` (Phase 1), `7d02a7f` (Phases 2–4a).
+> §9 below is the post-hoc calibration — read it before trusting §7's day estimates for work
+> of this shape.
+>
+> Two corrections recorded from Phase 1, kept here because they are facts about the pin:
+> (i) §3/§7's claim that `Summable.tsum_prod` is absent is wrong — Mathlib has the
+> nonneg-family product/fibre summability under `to_additive` names in
+> `Mathlib/Topology/Algebra/InfiniteSum/{Constructions,Real,Order}.lean` (grep the target
+> names, not `theorem`), so the ℝ-vs-`ℝ≥0∞` hazard §7 Phase 2 flags never materialised;
+> (ii) the plumbing multiplier observed was ~2–2.5×, not 3–5×. Substrate-thread pitfalls
+> are collected in `ShannonInformation/KNOWLEDGE.md`.
 
-**Status:** research/planning note. No Lean was written into the repo for this; the
-calibration experiments live in a scratch directory (paths given in §3) and are
-reproduced inline. Nothing here is committed as a decision — it is input to Anson's
-ruling on `dd:finite-range`.
+**Status of the document itself:** research/planning note, and **the body below (§1–§8) is
+left as written on 2026-08-17 before any of the work happened.** It is the record of what
+was planned and predicted, which is the only thing that makes §9's calibration worth
+anything. The calibration experiments it cites live in a scratch directory (paths in §3)
+and are reproduced inline. Where the body says "recommend against", "deferred", or "input
+to Anson's ruling", read it as the state of belief at the time of writing, not as the
+current state.
 
 **Date:** 2026-08-17. **Substrate pin:** PFR `01c9b666945eaf73b3f7d8b20ffe003f8640e630`,
 Mathlib `fabf563a7c95a166b8d7b6efca11c8b4dc9d911f` (`v4.31.0`), toolchain
@@ -834,3 +851,98 @@ independent given Phase 1's `Summable.lean`).
   Anson's view is that a formalization that silently drops Def 3.1's finite-entropy
   hypothesis is not acceptable, the calculus flips and Phases 1–2 become prerequisites
   rather than deferred work.
+
+---
+
+## 9. Post-hoc calibration (written 2026-08-17, after all four phases landed)
+
+Everything above this line is the plan as written *before* the work. This section is the
+comparison, and it is the reason the note is kept in the repo at all. Ratings are mine, on
+the work as it actually shipped.
+
+**The line estimate was good; the day estimate was not.** §7 predicted 1,450–2,400 lines
+across Phases 1–4 and 14.5–22.5 days (3–4.5 focused weeks, "2–3 with harness parallelism").
+`ShannonInformation/FiniteEntropy/` came out at **2,371 lines** — `Summable.lean` 228,
+`Defs.lean` 360, `ChainRule.lean` 404, `Inequalities.lean` 675, `Derived.lean` 437,
+`Pi.lean` 124, `Examples.lean` 143 — plus edits to `API.lean`, `ShannonInformation/AxiomAudit.lean`,
+`README.md` and `KNOWLEDGE.md`, and Phase 4b's ~500 changed lines across seven Condensation
+files (much of that docstrings). That is the **top of the predicted range**, so §8's
+"plumbing multiplier" worry — that the estimate might be low by 2× — did not materialise;
+the 3–5× multiplier assumption held, and Phase 1's observed 2–2.5× was the better figure.
+The calendar estimate was off by **more than an order of magnitude**: all four phases landed
+on 2026-08-17, in two substrate commits plus the migration, under harness parallelism with
+several agents. The lesson for the next estimate of this shape is to quote lines and let the
+orchestrator convert; a day figure derived from serial single-worker throughput is not a
+prediction about how this repo actually executes.
+
+**C4 was proved, and it was the right thing to worry about anyway.** §3's "the single
+hardest lemma" and §7 Phase 3's medium-high risk both pointed at the equality case of Gibbs,
+the one item in the report with no calibration behind it. It is
+`ShannonInformation.mutualInfo_eq_zero` at `FiniteEntropyOf`, and route 1 (termwise) worked
+as sketched. The Phase 3 contingency — ship the inequalities, keep `mutualInfo_eq_zero` at
+`FiniteRange` for one milestone — was never invoked.
+
+**§4.4's prediction about the Condensation side was accurate.** It said the swap would be
+`finiteRange : ∀ i, FiniteRange (X i)` → `finiteEntropy : ∀ i, FiniteEntropyOf (X i) P`
+plus a new field for Def 3.1's `Ω` clause, that no statement of Def 3.5–Cor 5.10 would need
+touching, and that the citation sites would be the ~20 endpoints of §1.0's table rather than
+42 nodes. All three held: the fields are `finiteEntropy_X` and `finiteEntropy_Ω`, and the
+sites were seven `Probability.lean` signatures, Lemma 4.14, the five-lemma Lemma 5.4 block,
+and the two structures. The "keep the finiteness field singular and named for its role"
+hedge of Phase 0 is what made that true, and it is worth taking again.
+
+**Four things the plan did not anticipate.**
+
+1. **`finiteEntropy_X` is redundant and is kept anyway.** §4.4 treated the per-variable
+   condition and the `Ω` condition as independent fields. They are not: every `Xᵢ` is a
+   measurable function of `Ω`, so `RVModel.finiteEntropyOf` derives the former from the
+   latter in one step. The field survives as a deliberate role-named redundancy — see
+   `Condensation/KNOWLEDGE.md` design decisions — because it is what the §2 lemmas literally
+   consume. Nobody should "clean it up" on the strength of §4.4's framing.
+2. **Proposition 2.5 got narrower in one respect while getting wider in another.** §6.2 calls
+   it "the cheapest possible win" and says its natural proof "never wanted `FiniteRange`".
+   True, but the `tsum` proof *does* want `Countable R_Y`, which the finite-range proof did
+   not, so the statement's `omit [Countable T] in` had to go. The result is the printed
+   statement exactly — before, it was stronger in one respect and weaker in another — but a
+   generalization that adds a hypothesis somewhere is not the shape §6.2 leads you to expect.
+3. **The file layout grew from three modules to seven.** §5 proposed
+   `Summable.lean` / `Defs.lean` / `Basic.lean`. What shipped splits the Phase 3 corpus into
+   `Inequalities.lean`, the chain rule into `ChainRule.lean`, the finite dependent-product
+   closure into `Pi.lean` (§4.3 predicted its *content* — finite products close, countable
+   ones do not — but placed it in `Defs.lean`), and the geometric witness into `Examples.lean`.
+   No `Basic.lean` exists.
+4. **§4.2's "every currently-provable Condensation goal stays provable" is false as stated,
+   and the failure is instructive.** The reasoning was that the existing `FiniteRange`
+   instance graph feeds `FiniteEntropyOf` through the priority-100 bridge, so the
+   generalization is strictly additive. That holds for *bare* variables and fails behind a
+   bundled model: once `RVModel.finiteRange_X` is gone there is no structure instance for
+   `FiniteRange (M.X i)`, and instance search will not unfold a concrete model
+   (`noisyLatent` → `noisyLatentRV` → `R = fun _ => Bool × Bool`) to rediscover that the
+   range happens to be finite — the same blindness that already forces a hand-written
+   `Finite noisyLatent.Λ`. So a witness on `Bool × Bool` cannot go on citing the vendored
+   lemmas, and Phase 4b had to add a fourth `Derived.lean` lemma,
+   `ShannonInformation.IndepFun.condEntropy_eq_entropy`, to migrate one score computation.
+   `Condensation.finiteRange_pi` was retired in the same pass, for the related reason that
+   the swap left it with zero callers. Budget a consumer migration as "every `FiniteRange`
+   citation reachable from a model must go", not as "the additive bridge covers it".
+
+**§6.2's Lemma 4.13 row was right.** It predicted that under the general setting one would
+have to *prove* `H(Λ₀) < ∞` — an obligation that simply did not arise under `dd:finite-range`
+— and that the proof would be the pair-closure lemma applied to the injection into `Λ₁ × Λ₂`.
+That is `Condensation.Amalgamation.finiteEntropyMeasure_canonicalMeasure`, via
+`ShannonInformation.finiteEntropyMeasure_of_injective`.
+
+**The fork risk of §5 is real and is now the live hazard.** The layer does contain two
+versions of several facts, and with `ProbabilityTheory` open a bare citation resolves by
+elaboration success rather than by namespace. The mitigation that matters in practice is
+the one §5 listed third: write `ShannonInformation.foo` in full, everywhere. `API.lean`'s
+"which version to cite" table and `Condensation/KNOWLEDGE.md`'s pitfalls both carry it.
+
+**Phase 4's acceptance criteria were met**: the §1.0 need-table is green at
+`FiniteEntropyOf`, `RVModel`'s field is swapped and the paper library builds,
+`ShannonInformation/AxiomAudit.lean` is extended, and `ShannonInformation/README.md` lists
+the FAF-authored lemmas. Phase 1's non-vacuity criterion — "a geometric variable on `ℕ` with
+a `FiniteEntropyOf` instance and no `FiniteRange` instance, constructed, not asserted" — is
+met twice over: `ShannonInformation.finiteEntropyOf_id_geom` / `not_finiteRange_id` in the
+substrate, and `Condensation.Example.geomModel` / `geomModel_not_finiteRange` as a random
+variable model.

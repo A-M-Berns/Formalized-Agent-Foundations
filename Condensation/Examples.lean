@@ -1,4 +1,5 @@
 import Condensation.Perfect
+import ShannonInformation.FiniteEntropy.Examples
 
 /-!
 # Condensation — constructed inhabitants
@@ -28,6 +29,18 @@ What is here, and what each witness is *for*:
   variable model has a latent variable model, namely the tautological `LatentModel.ofJoint`
   with `Λ = Ω`, `π = id` and `Y_A = X_A`.  This is the statement that Definition 3.2
   constrains nothing away.
+* `Example.geomModel` / `Example.geomLatent` — the witness with an **infinite-range**
+  variable: `Ω = ℕ` under `Geometric(1/2)`, `X_() = id`.  Every witness above has a finite
+  sample space, so none of them can tell Definition 3.1's actual hypothesis apart from the
+  narrowing `dd:finite-range` this library carried until 2026-08-17.  `geomModel` can:
+  `geomModel_not_finiteRange` proves it is outside the narrowed class, and
+  `geomModel_entropy` proves it is not degenerate (`H = 2 log 2`).
+
+This file is the one place in `Condensation/` that imports outside
+`Condensation.Perfect`'s closure: `ShannonInformation.FiniteEntropy.Examples`, for the
+geometric law `geomModel` is built on.  That module is deliberately not re-exported by
+`ShannonInformation.API` (it would cost every client
+`Mathlib.Probability.Distributions.Geometric`), so the import has to be named here.
 
 A caution the earlier draft of this file got wrong: it is **not** true that every score is
 positive on `coinLatent`.  `coinLatent.reconScore {()} = 0`, proved below — perfect
@@ -75,7 +88,7 @@ noncomputable def coinModel : RVModel Unit where
   R := fun _ => Bool
   X := fun _ => id
   measurable_X := fun _ => measurable_id
-  finiteRange_X := fun _ => inferInstance
+  finiteEntropy_X := fun _ => inferInstance
 
 @[simp] lemma coinModel_X (i : Unit) : coinModel.X i = id := rfl
 
@@ -107,7 +120,7 @@ noncomputable def coinLatentRV : RVModel (PPlus Unit) where
   R := fun _ => Bool
   X := fun _ => id
   measurable_X := fun _ => measurable_id
-  finiteRange_X := fun _ => inferInstance
+  finiteEntropy_X := fun _ => inferInstance
 
 /-- The `L₁`-shaped latent variable model for `coinModel` (Example 4.1's first recipe,
 `Y_{i} = X_i`): `Λ = Ω`, `π = id`, and the latents recover the given variables exactly. -/
@@ -155,7 +168,7 @@ noncomputable def twoCoinModel : RVModel Bool where
   R := fun _ => Bool
   X := fun _ => id
   measurable_X := fun _ => measurable_id
-  finiteRange_X := fun _ => inferInstance
+  finiteEntropy_X := fun _ => inferInstance
 
 /-- The latent random variable model: one latent per element of `P⁺ Bool`, each the coin. -/
 noncomputable def twoCoinLatentRV : RVModel (PPlus Bool) where
@@ -164,7 +177,7 @@ noncomputable def twoCoinLatentRV : RVModel (PPlus Bool) where
   R := fun _ => Bool
   X := fun _ => id
   measurable_X := fun _ => measurable_id
-  finiteRange_X := fun _ => inferInstance
+  finiteEntropy_X := fun _ => inferInstance
 
 /-- The latent variable model for `twoCoinModel`: `Λ = Ω`, `π = id`, every latent is the
 coin. -/
@@ -295,7 +308,7 @@ noncomputable def noisyModel : RVModel Unit where
   R := fun _ => Bool
   X := fun _ => id
   measurable_X := fun _ => measurable_id
-  finiteRange_X := fun _ => inferInstance
+  finiteEntropy_X := fun _ => inferInstance
 
 /-- The latent model: `Λ = Bool × Bool` uniform, the single latent being the identity. -/
 noncomputable def noisyLatentRV : RVModel (PPlus Unit) where
@@ -304,7 +317,7 @@ noncomputable def noisyLatentRV : RVModel (PPlus Unit) where
   R := fun _ => Bool × Bool
   X := fun _ => id
   measurable_X := fun _ => measurable_id
-  finiteRange_X := fun _ => inferInstance
+  finiteEntropy_X := fun _ => inferInstance
 
 /-- The latent variable model whose latent keeps a bit that `π` discards. -/
 noncomputable def noisyLatent : LatentModel noisyModel where
@@ -351,15 +364,12 @@ lemma noisy_entropy_id :
 /-- Instance search does not unfold `noisyLatentRV` to see that `Λ` is finite. -/
 instance : Finite noisyLatent.Λ := inferInstanceAs (Finite (Bool × Bool))
 
-instance noisyFiniteRange_pullback :
-    FiniteRange (noisyLatent.pullbackJoint ({()} : Finset Unit)) := ⟨Set.finite_range _⟩
-
 /-- The pullback `π^* X_{()}` is the first coordinate, up to a bijective relabelling. -/
 lemma noisy_entropy_pullback :
     H[noisyLatent.pullbackJoint ({()} : Finset Unit) ; noisyLatent.P] = Real.log 2 := by
   have h : H[noisyLatent.pullbackJoint ({()} : Finset Unit) ; noisyLatent.P]
       = H[(Prod.fst : Bool × Bool → Bool) ; noisyMeasure] :=
-    (entropy_of_comp_eq_of_comp (μ := noisyLatent.P) measurable_fst
+    (ShannonInformation.entropy_of_comp_eq_of_comp (μ := noisyLatent.P) measurable_fst
       (noisyLatent.measurable_pullbackJoint _) (fun b _ => b)
       (fun t => t ⟨(), Finset.mem_singleton_self ()⟩) rfl rfl).symm
   rw [h, noisy_entropy_fst]
@@ -368,10 +378,17 @@ lemma noisy_entropy_pullback :
 lemma noisy_entropy_pair :
     H[⟨noisyLatent.jointAbove ({()} : Finset Unit),
         noisyLatent.pullbackJoint ({()} : Finset Unit)⟩ ; noisyLatent.P] = 2 * Real.log 2 := by
+  -- The conditioning variable is a *pair*, and `finiteEntropyOf_pair` is a lemma, not an
+  -- instance; `RVModel.finiteEntropyOf` gets it in one step from Definition 3.1's `Ω`.
+  haveI : ShannonInformation.FiniteEntropyOf
+      (fun ω => (noisyLatent.L.jointOn (above ({()} : Finset Unit)) ω,
+        noisyLatent.pullbackJoint ({()} : Finset Unit) ω)) noisyLatent.P :=
+    noisyLatent.L.finiteEntropyOf
+      ((noisyLatent.L.measurable_jointOn _).prodMk (noisyLatent.measurable_pullbackJoint _))
   have h : H[⟨noisyLatent.jointAbove ({()} : Finset Unit),
         noisyLatent.pullbackJoint ({()} : Finset Unit)⟩ ; noisyLatent.P]
       = H[(id : Bool × Bool → Bool × Bool) ; noisyMeasure] :=
-    (entropy_of_comp_eq_of_comp (μ := noisyLatent.P) measurable_id
+    (ShannonInformation.entropy_of_comp_eq_of_comp (μ := noisyLatent.P) measurable_id
       ((noisyLatent.L.measurable_jointOn _).prodMk (noisyLatent.measurable_pullbackJoint _))
       (fun ω => (fun _ => ω, fun _ => ω.1))
       (fun p => p.1 ⟨PPlus.single (), by simp⟩) rfl rfl).symm
@@ -381,7 +398,7 @@ lemma noisy_entropy_pair :
 lemma noisyLatent_reconScore :
     noisyLatent.reconScore ({()} : Finset Unit) = Real.log 2 := by
   rw [LatentModel.reconScore,
-    chain_rule'' _ (noisyLatent.L.measurable_jointOn _)
+    ShannonInformation.chain_rule'' _ (noisyLatent.L.measurable_jointOn _)
       (noisyLatent.measurable_pullbackJoint _),
     noisy_entropy_pair, noisy_entropy_pullback]
   ring
@@ -438,13 +455,18 @@ lemma noisy_jointStrictAbove_const (ω ω' : noisyLatent.Λ) :
 lemma noisyLatent_condScore :
     noisyLatent.condScore ({()} : Finset Unit) = 2 * Real.log 2 := by
   rw [LatentModel.condScore, noisy_famFinset, Finset.sum_singleton]
+  -- Cite the FAF version in full: `h.condEntropy_eq_entropy` resolves in the head symbol's
+  -- namespace, `ProbabilityTheory`, and so always finds the `FiniteRange` original — which
+  -- no longer has a structure instance to feed it, `RVModel`'s finiteness field being
+  -- `FiniteEntropyOf` (and instance search will not unfold `noisyLatentRV` to see that the
+  -- latent range is `Bool × Bool`).
   have hconst : noisyLatent.jointStrictAbove (PPlus.single () : PPlus Unit).toFinset
       = fun _ => noisyLatent.jointStrictAbove (PPlus.single () : PPlus Unit).toFinset
           ((true, true) : Bool × Bool) :=
     funext fun ω => noisy_jointStrictAbove_const ω _
   rw [hconst,
-    (indepFun_const_right _ _).condEntropy_eq_entropy (noisyLatent.L.measurable_X _)
-      measurable_const,
+    ShannonInformation.IndepFun.condEntropy_eq_entropy (indepFun_const_right _ _)
+      (noisyLatent.L.measurable_X (PPlus.single ())) measurable_const,
     noisy_entropy_Y]
 
 /-! ## Non-vacuity in general: every model has a latent variable model
@@ -473,7 +495,7 @@ noncomputable def jointFamily (M : RVModel.{u, v, w} I) : RVModel.{u, max v w, w
   R := fun A => ∀ i : A.toFinset, M.R i
   X := fun A => M.joint A.toFinset
   measurable_X := fun _ => M.measurable_joint _
-  finiteRange_X := fun _ => inferInstance
+  finiteEntropy_X := fun _ => inferInstance
 
 end RVModel
 
@@ -505,6 +527,87 @@ lemma nonempty (M : RVModel.{u, v, w} I) :
 
 end LatentModel
 
+/-! ## A witness Definition 3.1 admits and `dd:finite-range` excluded
+
+Every witness above lives on a finite sample space, so every variable in it has finite
+range.  That makes them silent on exactly the point Definition 3.1 turns on: the definition
+asks for a countable discrete probability space **with finite entropy**, carrying variables
+with countable discrete range — it does *not* ask for finite range.  Until 2026-08-17 this
+library narrowed it to `FiniteRange` variables (`dd:finite-range`, now retired), and no
+witness above can tell the two readings apart.
+
+`geomModel` can.  It is `Ω = ℕ` under the geometric law with success probability `1/2`,
+with one variable reading off the sample point: a model in Definition 3.1's sense
+(`ShannonInformation.finiteEntropyMeasure_geom`) and **not** one in the narrowed sense
+(`geomModel_not_finiteRange`).  So it is the evidence that retiring the narrowing has
+content rather than being a re-spelling.  `geomModel_entropy` rules out the degenerate
+reading in which the witness is admitted only because it carries no information: the
+entropy is `2 log 2`, the textbook two bits of `Geometric(1/2)`.
+
+The section sits here, after `LatentModel.ofJoint`, rather than beside the fair coin,
+because `geomLatent` *is* `ofJoint geomModel` — there is nothing model-specific to say
+about the latent side of this witness, and spelling the tautological construction out again
+by hand would only obscure that.
+
+The geometric law itself, its finite-entropy instances and the entropy computation live in
+`ShannonInformation/FiniteEntropy/Examples.lean`, shared with
+`APITests/ShannonInformationFiniteEntropy.lean`; none of it is restated here. -/
+
+namespace Example
+
+/-- **A random variable model with an infinite-range variable**: `Ω = ℕ` carrying the
+geometric law with success probability `1/2`, indexed by `Unit`, with `X () = id`.
+
+Definition 3.1 asks for a countable discrete probability space with finite entropy and
+variables with countable discrete range.  `ℕ` is countable and discrete, `geom` has finite
+entropy, and `id` has countable discrete range — but *not* finite range.  This is therefore
+a model Definition 3.1 admits and the retired `dd:finite-range` narrowing excluded. -/
+noncomputable def geomModel : RVModel Unit where
+  Ω := ℕ
+  P := ShannonInformation.geom
+  R := fun _ => ℕ
+  X := fun _ => id
+  measurable_X := fun _ => measurable_id
+  finiteEntropy_X := fun _ => ShannonInformation.finiteEntropyOf_id_geom
+
+@[simp] lemma geomModel_X (i : Unit) : geomModel.X i = id := rfl
+
+@[simp] lemma geomModel_P : geomModel.P = ShannonInformation.geom := rfl
+
+/-- **The point of the witness**: `geomModel` is not a model of the retired
+`dd:finite-range` class.  Its variable is injective on an infinite sample space, so its
+range is infinite and no `FiniteRange`-gated theorem applies to it. -/
+lemma geomModel_not_finiteRange : ¬ FiniteRange (geomModel.X ()) :=
+  ShannonInformation.not_finiteRange_id
+
+/-- …and the witness is not degenerate: its entropy is `2 log 2`, so it is not admitted
+merely for carrying no information.  The finite-sample-space counterpart is
+`coinModel_entropy`. -/
+lemma geomModel_entropy : H[geomModel.X () ; geomModel.P] = 2 * Real.log 2 :=
+  ShannonInformation.entropy_geom
+
+lemma geomModel_entropy_pos : 0 < H[geomModel.X () ; geomModel.P] :=
+  ShannonInformation.entropy_geom_pos
+
+/-- A latent variable model over the infinite-range witness, so that Definition 3.2 is
+exhibited outside the finite-range fragment too.  It is the tautological `ofJoint`
+construction, which applies to any model at all; nothing here is special to `geomModel`. -/
+noncomputable def geomLatent : LatentModel geomModel := LatentModel.ofJoint geomModel
+
+/-- The scores of Definition 3.3 are real numbers on this witness, and computable: `ϱ_L`
+degenerates here for the same reason it does on `coinLatent`, since `Y_⊇{()}` is built from
+the observables on `Λ = Ω`.  (`noisyLatent` remains the witness that `ϱ_L` is not
+identically zero; that phenomenon is orthogonal to finite range.) -/
+lemma geomLatent_reconScore : geomLatent.reconScore {()} = 0 := by
+  refine condEntropy_eq_zero_of_aeFunctionOf
+    (geomLatent.measurable_pullbackJoint _)
+    (geomLatent.L.measurable_jointOn _) ?_
+  refine ⟨fun g _ _ => g ⟨(), by simp⟩, measurable_of_countable _, ?_⟩
+  filter_upwards with ω
+  rfl
+
+end Example
+
 /-! ## Example 4.1 — the two uninformative latent variable models of an arbitrary `M`
 
 Example 4.1 is stated for an *arbitrary* random variable model `M = (Ω, (Xᵢ)ᵢ∈I)`, so
@@ -531,8 +634,9 @@ one-point index type rather than `X_i` itself — is entropy-invariant, and equa
 (4.2)–(4.5) below are stated in the paper's own terms, `H[M.X i ; M.P]`, so nothing of the
 example's content is displaced into the encoding.
 
-`dd:finite-range` makes every entropy occurring in (4.2)–(4.5) finite, so the paper's hedge
-"if all the following quantities are defined" needs no counterpart here. -/
+Definition 3.1's finite-entropy sample space makes every entropy occurring in (4.2)–(4.5)
+finite — `RVModel.finiteEntropyOf` derives it for each of them — so the paper's hedge "if
+all the following quantities are defined" needs no counterpart here. -/
 
 namespace Example41
 
@@ -547,7 +651,8 @@ noncomputable def L₁RV (M : RVModel.{u, v, w} I) : RVModel.{u, max v w, w} (PP
   R := fun A => ∀ j : {i : I // A.toFinset = {i}}, M.R j.1
   X := fun _ ω j => M.X j.1 ω
   measurable_X := fun _ => measurable_pi_lambda _ fun j => M.measurable_X j.1
-  finiteRange_X := fun _ => finiteRange_pi _
+  finiteEntropy_X := fun _ =>
+    M.finiteEntropyOf (measurable_pi_lambda _ fun j => M.measurable_X j.1)
 
 /-- **Example 4.1's `L₁`**, for an arbitrary random variable model `M`: the latent variable
 model `(Ω, (Y_A)_{A ∈ P⁺I}, idΩ)` of (4.1) with `Y_{i} = X_i` for `i ∈ I` and `Y_A`
@@ -578,7 +683,8 @@ noncomputable def L₂RV (M : RVModel.{u, v, w} I) : RVModel.{u, max v w, w} (PP
   R := fun A => ∀ j : {_i : I // ∀ k : I, k ∈ A.toFinset}, M.R j.1
   X := fun _ ω j => M.X j.1 ω
   measurable_X := fun _ => measurable_pi_lambda _ fun j => M.measurable_X j.1
-  finiteRange_X := fun _ => finiteRange_pi _
+  finiteEntropy_X := fun _ =>
+    M.finiteEntropyOf (measurable_pi_lambda _ fun j => M.measurable_X j.1)
 
 /-- **Example 4.1's `L₂`**, for an arbitrary random variable model `M`: the latent variable
 model `(Ω, (Z_A)_{A ∈ P⁺I}, idΩ)` of (4.1) with `Z_I = X_I` and `Z_A` constant for
@@ -670,7 +776,7 @@ noncomputable def M44 (L : RVModel.{u, v, w} (PPlus I)) : RVModel.{u, max v w, w
   R := fun i => ∀ B : contribIdx i, L.R B
   X := fun i => L.jointOn (contribIdx i)
   measurable_X := fun _ => L.measurable_jointOn _
-  finiteRange_X := fun _ => inferInstance
+  finiteEntropy_X := fun _ => inferInstance
 
 /-- **Example 4.4's latent variable model**: `L` itself, related to `M44 L` by the identity
 map.  The contribution condition of Definition 3.2 is a tautology here — `Xᵢ` *is* `Y_∋i`,
@@ -785,7 +891,7 @@ noncomputable def pairCoinModel : RVModel Unit where
   R := fun _ => Bool × Bool
   X := fun _ ω => (ω, false)
   measurable_X := fun _ => measurable_of_countable _
-  finiteRange_X := fun _ => ⟨Set.finite_range _⟩
+  finiteEntropy_X := fun _ => inferInstance
 
 /-- The morphism reading off the first coordinate. -/
 noncomputable def pairCoinHom₁ : RVModel.Hom pairCoinModel coinModel where

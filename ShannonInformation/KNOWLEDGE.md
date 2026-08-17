@@ -3,7 +3,9 @@
 Institutional memory for the FAF-authored layer over the vendored PFR entropy library — in
 particular the countable-range / finite-entropy generalization (`FiniteEntropy/`), planned in
 `Condensation/notes/finite-range-generalization-plan.md` and ruled a desired endpoint on
-2026-08-17. Phases 1–4a of that plan have landed; consumer migration (Phase 4b) has not.
+2026-08-17. **All four phases have landed**, including the consumer migration (Phase 4b):
+`Condensation.RVModel` is Definition 3.1 verbatim — a finite-entropy sample space and
+countable discrete ranges — and the `dd:finite-range` narrowing is retired.
 Vendored mathematics is documented in `README.md`/`SCOPE.md`; this file records
 what the FAF-authored work learned. Add an entry only if a future agent would act differently
 for knowing it.
@@ -88,10 +90,30 @@ upstream: `ProbabilityTheory.entropy_eq_sum` — do not re-derive it.
 `mutualInfo_eq_entropy_sub_condEntropy'`, `condEntropy_comp_ge`, `mutual_comp_le`,
 `condMutualInfo_eq'`, `IdentDistrib.condEntropy_eq`.
 
+## Correspondence (Phase 4b names)
+
+Phase 4b is the **consumer migration**: `Condensation` moved off `FiniteRange` entirely
+(2026-08-17). Three declarations were added to `FiniteEntropy/Derived.lean` because that
+migration needed them, and one new module was created.
+
+`FiniteEntropy/Derived.lean` — `mutualInfo_const`, `IndepFun.condEntropy_eq_entropy`,
+`const_of_nonpos_entropy`, `finiteEntropyMeasure_of_injective`.
+
+`FiniteEntropy/Examples.lean` (new module) — `half`, `geom`, `geom_real_singleton`,
+`negMulLog_geom_real_singleton`, `summable_negMulLog_geom`, `finiteEntropyMeasure_geom`,
+`finiteEntropyOf_id_geom`, `not_finiteRange_id`, `finiteEntropyOf_strictly_weaker`,
+`entropy_geom_eq_tsum`, `entropy_geom`, `entropy_geom_pos`. These were **moved out of**
+`APITests/ShannonInformationFiniteEntropy.lean`, which now imports them; `Condensation/Examples.lean`
+is the second client (`Condensation.Example.geomModel`). `API.lean` does **not** re-export
+this module — importing it costs `Mathlib.Probability.Distributions.Geometric`. Anything that
+used to write `APITests.ShannonInformationFiniteEntropy.geom` must now write
+`ShannonInformation.geom` (`APITests/ShannonInformationInequalities.lean` did, and was fixed
+in the same change).
+
 Deliberately **not** restated (all still `FiniteRange`-only upstream, each a one-screen rewrite
-chain away): `ent_of_cond_indep`, `mutualInfo_const`, `const_of_nonpos_entropy`,
-`condEntropy_of_injective`, `condMutualInfo_of_inj`/`_of_inj'`/`_of_inj_map`,
-`mutual_comp_comp_le`, `condMutual_comp_comp_le`, `IndepFun.condEntropy_eq_entropy`.
+chain away): `ent_of_cond_indep`, `condEntropy_of_injective`,
+`condMutualInfo_of_inj`/`_of_inj'`/`_of_inj_map`, `mutual_comp_comp_le`,
+`condMutual_comp_comp_le`.
 `Derived.lean`'s header is the authoritative list; `API.lean`'s "which version to cite" table
 is the client-facing one.
 

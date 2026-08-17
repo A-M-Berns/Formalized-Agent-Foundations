@@ -40,7 +40,9 @@ the intersection algebra of §5 are plain set algebra; `Set (PPlus I)` is a
 `SemilatticeInf` (indeed a complete lattice) with `⊓ = ∩`, which is what `ITree.label`
 ranges over.
 
-`dd:finite-range` — every variable carries `FiniteRange`; see `Condensation/KNOWLEDGE.md`.
+Finiteness — Lemma 5.4's raw variables carry `ShannonInformation.FiniteEntropyOf`, the
+paper's own hypothesis; the `dd:finite-range` narrowing was retired on 2026-08-17.  Every
+statement quantifying over a model or an amalgamation gets it from the structure.
 
 ## Definition 4.12's amalgamation is the ambient data
 
@@ -98,20 +100,27 @@ variable {Ω S T₁ T₂ V : Type*}
   [Countable S] [Countable T₁] [Countable T₂] [Countable V]
   {X : Ω → S} {Y₁ : Ω → T₁} {Y₂ : Ω → T₂} {C : Ω → V}
   {μ : Measure Ω} [IsZeroOrProbabilityMeasure μ]
-  [FiniteRange X] [FiniteRange Y₁] [FiniteRange Y₂] [FiniteRange C]
+  [ShannonInformation.FiniteEntropyOf X μ] [ShannonInformation.FiniteEntropyOf Y₁ μ]
+  [ShannonInformation.FiniteEntropyOf Y₂ μ] [ShannonInformation.FiniteEntropyOf C μ]
 
 /-- Conditioning on `(Y₁, Y₂, C)` and on `(Y₂, Y₁, C)` gives the same conditional entropy:
 the two conditioning variables differ by an injective relabelling of the range. -/
 lemma condEntropy_pair_rotate (hX : Measurable X) (hY₁ : Measurable Y₁)
     (hY₂ : Measurable Y₂) (hC : Measurable C) :
-    H[X | ⟨Y₁, ⟨Y₂, C⟩⟩ ; μ] = H[X | ⟨Y₂, ⟨Y₁, C⟩⟩ ; μ] :=
-  condEntropy_of_injective' μ hX (hY₂.prodMk (hY₁.prodMk hC))
+    H[X | ⟨Y₁, ⟨Y₂, C⟩⟩ ; μ] = H[X | ⟨Y₂, ⟨Y₁, C⟩⟩ ; μ] := by
+  rcases eq_zero_or_isProbabilityMeasure μ with rfl | hμ
+  · simp
+  haveI : ShannonInformation.FiniteEntropyOf (⟨Y₁, C⟩ : Ω → T₁ × V) μ :=
+    ShannonInformation.finiteEntropyOf_pair (μ := μ) hY₁ hC
+  haveI : ShannonInformation.FiniteEntropyOf (⟨Y₂, ⟨Y₁, C⟩⟩ : Ω → T₂ × T₁ × V) μ :=
+    ShannonInformation.finiteEntropyOf_pair (μ := μ) hY₂ (hY₁.prodMk hC)
+  exact ShannonInformation.condEntropy_of_injective' μ hX (hY₂.prodMk (hY₁.prodMk hC))
     (fun p : T₂ × T₁ × V ↦ (p.2.1, p.1, p.2.2))
     (by rintro ⟨a, b, c⟩ ⟨a', b', c'⟩ h; simp_all)
     (hY₁.prodMk (hY₂.prodMk hC))
 
 omit [MeasurableSingletonClass T₂] [MeasurableSingletonClass V] [Countable T₂] [Countable V]
-  [FiniteRange X] [FiniteRange Y₁] in
+  [ShannonInformation.FiniteEntropyOf X μ] [ShannonInformation.FiniteEntropyOf Y₁ μ] in
 /-- `I (X; Y; Z | C)` is symmetric in `X` and `Y`.  Like its unconditional companion
 `interactionInfo_comm`, this needs no finiteness at all. -/
 lemma condInteractionInfo_comm (hX : Measurable X) (hY₁ : Measurable Y₁)
@@ -127,11 +136,17 @@ chain rules produce. -/
 lemma condInteractionInfo_swap (hX : Measurable X) (hY₁ : Measurable Y₁)
     (hY₂ : Measurable Y₂) (hC : Measurable C) :
     condInteractionInfo X Y₁ Y₂ C μ = condInteractionInfo X Y₂ Y₁ C μ := by
+  rcases eq_zero_or_isProbabilityMeasure μ with rfl | hμ
+  · simp [condInteractionInfo]
+  haveI : ShannonInformation.FiniteEntropyOf (⟨Y₂, C⟩ : Ω → T₂ × V) μ :=
+    ShannonInformation.finiteEntropyOf_pair (μ := μ) hY₂ hC
+  haveI : ShannonInformation.FiniteEntropyOf (⟨Y₁, C⟩ : Ω → T₁ × V) μ :=
+    ShannonInformation.finiteEntropyOf_pair (μ := μ) hY₁ hC
   rw [condInteractionInfo, condInteractionInfo,
-    condMutualInfo_eq' hX hY₁ hC μ,
-    condMutualInfo_eq' (Z := ⟨Y₂, C⟩) hX hY₁ (hY₂.prodMk hC) μ,
-    condMutualInfo_eq' hX hY₂ hC μ,
-    condMutualInfo_eq' (Z := ⟨Y₁, C⟩) hX hY₂ (hY₁.prodMk hC) μ,
+    ShannonInformation.condMutualInfo_eq' hX hY₁ hC μ,
+    ShannonInformation.condMutualInfo_eq' (Z := ⟨Y₂, C⟩) hX hY₁ (hY₂.prodMk hC) μ,
+    ShannonInformation.condMutualInfo_eq' hX hY₂ hC μ,
+    ShannonInformation.condMutualInfo_eq' (Z := ⟨Y₁, C⟩) hX hY₂ (hY₁.prodMk hC) μ,
     condEntropy_pair_rotate hX hY₁ hY₂ hC]
   ring
 
@@ -156,9 +171,13 @@ theorem condEntropy_eq_of_pair (hX : Measurable X) (hY₁ : Measurable Y₁)
     (hY₂ : Measurable Y₂) (hC : Measurable C) :
     H[X | C ; μ] = H[X | ⟨Y₁, C⟩ ; μ] + H[X | ⟨Y₂, C⟩ ; μ] - H[X | ⟨Y₁, ⟨Y₂, C⟩⟩ ; μ]
       + condInteractionInfo Y₁ Y₂ X C μ := by
+  rcases eq_zero_or_isProbabilityMeasure μ with rfl | hμ
+  · simp [condInteractionInfo]
+  haveI : ShannonInformation.FiniteEntropyOf (⟨Y₂, C⟩ : Ω → T₂ × V) μ :=
+    ShannonInformation.finiteEntropyOf_pair (μ := μ) hY₂ hC
   rw [condInteractionInfo_rotate hX hY₁ hY₂ hC, condInteractionInfo,
-    condMutualInfo_eq' hX hY₁ hC μ,
-    condMutualInfo_eq' (Z := ⟨Y₂, C⟩) hX hY₁ (hY₂.prodMk hC) μ]
+    ShannonInformation.condMutualInfo_eq' hX hY₁ hC μ,
+    ShannonInformation.condMutualInfo_eq' (Z := ⟨Y₂, C⟩) hX hY₁ (hY₂.prodMk hC) μ]
   ring
 
 /-- **Lemma 5.4**, equation (5.5) — the inequality form
@@ -175,7 +194,8 @@ theorem condEntropy_le_of_pair (hX : Measurable X) (hY₁ : Measurable Y₁)
   have h := condEntropy_eq_of_pair (μ := μ) hX hY₁ hY₂ hC
   rw [condInteractionInfo] at h
   have h1 : (0 : ℝ) ≤ H[X | ⟨Y₁, ⟨Y₂, C⟩⟩ ; μ] := condEntropy_nonneg _ _ _
-  have h2 : (0 : ℝ) ≤ I[Y₁ : Y₂ | ⟨X, C⟩ ; μ] := condMutualInfo_nonneg hY₁ hY₂
+  have h2 : (0 : ℝ) ≤ I[Y₁ : Y₂ | ⟨X, C⟩ ; μ] :=
+    ShannonInformation.condMutualInfo_nonneg hY₁ hY₂
   linarith
 
 end Lemma54

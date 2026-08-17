@@ -25,22 +25,38 @@ wholesale, which fails to elaborate against the vendored shims (see
 `ShannonInformation/README.md`).
 
 **Scope boundary, read this first.**  `ShannonInformation/SCOPE.md` is required reading.
-The vendored *theorems* are proved only for **finite-range** variables, which is narrower
+The *vendored* theorems are proved only for **finite-range** variables, which is narrower
 than the paper's standing assumption of countable discrete ranges with finite entropy.
-That is a disclosed narrowing (`dd:finite-range` below), not an oversight.
+This library no longer cites them for anything load-bearing: it cites the FAF-authored
+corpus in `ShannonInformation/FiniteEntropy/`, which proves the same facts at
+`ShannonInformation.FiniteEntropyOf` — countable discrete range with finite entropy, the
+paper's own hypothesis.  The narrowing `dd:finite-range` was retired on 2026-08-17 and
+there is no modeling substitution left here (`Condensation/README.md`, *Modeling
+boundary*).
 
-Where the narrowing actually sits: `FiniteRange` is a **field of `RVModel`**
-(`finiteRange_X`), so every statement quantifying over a model or a latent model gets it
-from the structure and never as a separate hypothesis.  The §2 substrate lemmas of
-`Condensation/Probability.lean` are stated over bare variables rather than models, and
-those carry `FiniteRange` explicitly — eight of them do
-(`condEntropy_comp_measurePreserving`, `interactionInfo_swap`,
+Where the finiteness now sits: **fields of `RVModel`** — `finiteEntropy_Ω`, which is
+Definition 3.1's own "with finite entropy" clause on the sample space, and
+`finiteEntropy_X` for the variables — so every statement quantifying over a model or a
+latent model gets it from the structure and never as a separate hypothesis.  Any
+measurable variable derived from a model's sample space gets it in one step from
+`RVModel.finiteEntropyOf`.  The §2 substrate lemmas of `Condensation/Probability.lean` are
+stated over bare variables rather than models, and those carry the hypothesis explicitly —
+seven of them do (`condEntropy_comp_measurePreserving`, `interactionInfo_swap`,
 `condEntropy_eq_entropy_of_subsingleton`, `entropy_le_of_aeFunctionOf`,
-`entropy_pair_of_aeFunctionOf`, `condEntropy_eq_zero_of_aeFunctionOf`,
-`aeFunctionOf_of_condEntropy_eq_zero`, `aeFunctionOf_iff_condEntropy_eq_zero`), while the
-`IdentDistrib`-based pullback
-identities and `interactionInfo_comm` need no finiteness at all.  It is *not* the case
-that every statement with entropy content carries `FiniteRange`.
+`condEntropy_eq_zero_of_aeFunctionOf`, `aeFunctionOf_of_condEntropy_eq_zero`,
+`aeFunctionOf_iff_condEntropy_eq_zero`), while the `IdentDistrib`-based pullback
+identities, `interactionInfo_comm` and `entropy_pair_of_aeFunctionOf` need no finiteness at
+all.  It is *not* the case that every statement with entropy content carries it.
+
+**Namespace hazard, and it is the one most likely to cost you an hour.**  Both versions of
+several entropy facts are reachable through the single import, and with `ProbabilityTheory`
+open a bare lemma name resolves by elaboration success rather than by namespace — so a bare
+citation can silently pick the `FiniteRange`-gated vendored version and fail later with a
+missing instance.  Write `ShannonInformation.foo` in full; see `ShannonInformation/API.lean`'s
+"which version to cite" table.  Dot notation is the case no `open` can rescue:
+`h.condEntropy_eq_entropy` and `hid.condEntropy_eq` resolve in the *head symbol's* namespace
+(`ProbabilityTheory.IndepFun`, `ProbabilityTheory.IdentDistrib`) and so always find the
+vendored original — write those two out and pass the hypothesis as an argument.
 
 ## `dd:` glossary — standing design decisions
 
@@ -48,16 +64,22 @@ A `dd:` tag records a choice made by the formalization rather than by the paper.
 rationale for each lives in `Condensation/notes/roadmap.md`; changes to them and the
 finding IDs that forced any are recorded in `Condensation/KNOWLEDGE.md`.
 
-* `dd:finite-range` — every random variable of a model carries `FiniteRange` (finitely
-  many attained values), on a countable discrete sample space (`Countable Ω`,
-  `MeasurableSingletonClass Ω`, `IsProbabilityMeasure P`).  The paper's "countable
-  discrete range with finite entropy" and "probability space with finite entropy" become:
-  countable-discrete range types, finite range per variable, and **no** hypothesis on the
-  entropy of `Ω` itself.  This is a genuine type-(c) narrowing — a geometric variable on
-  `ℕ` is countable-discrete with finite entropy and is excluded — forced by the fact that
-  the vendored entropy theorems are proved only in the finite-range fragment.  Finite
-  range implies finite entropy, so every quantity the paper names is finite as required,
-  and `Ω`'s own finite entropy is used by the paper only to secure exactly that.
+* `dd:finite-range` — **RETIRED 2026-08-17.  Kept in this glossary under its old key
+  because older commits, the audit ledger and `Condensation/notes/finite-range-generalization-plan.md`
+  refer to it by name; it is not a live decision and nothing in the library is tagged with
+  it.**  It read: every random variable of a model carries `FiniteRange` (finitely many
+  attained values) and `Ω` carries **no** hypothesis on its own entropy — a genuine
+  type-(c) narrowing, since a geometric variable on `ℕ` is countable-discrete with finite
+  entropy and was excluded, forced by the vendored entropy theorems existing only in the
+  finite-range fragment.  It now reads, verbatim from Definition 3.1: a countable discrete
+  probability space **with finite entropy** (`[Countable Ω] [MeasurableSingletonClass Ω]
+  [IsProbabilityMeasure P]` plus the field `finiteEntropy_Ω :
+  ShannonInformation.FiniteEntropyMeasure P`) carrying variables of countable discrete
+  range and finite entropy (`finiteEntropy_X`).  The `Ω` clause is new — the narrowed
+  version dropped it outright.  What made the retirement possible was the FAF-authored
+  `ShannonInformation/FiniteEntropy/` corpus; what shows it has content is
+  `Condensation.Example.geomModel`, a model of this library whose variable provably has
+  infinite range.
 
 * `dd:pplus` — `P⁺I` is the subtype `PPlus I = {A : Finset I // A.Nonempty}` (Definition
   2.2), faithful to "nonempty subsets only" with no phantom `Y_∅`.  Subfamilies
@@ -70,9 +92,10 @@ finding IDs that forced any are recorded in `Condensation/KNOWLEDGE.md`.
   `Fintype`/`DecidableEq` data is needed anywhere.
 
 * `dd:bundled-model` — `RVModel I` bundles the sample space `Ω : Type u`, its
-  σ-algebra/countability/singleton-class instances, the probability measure, the range
-  family `R : I → Type v` with their instances, the variables `X i`, their measurability
-  and their finite range, over a **finite** index type: `[Finite I]` is a class parameter
+  σ-algebra/countability/singleton-class instances, the probability measure, its finite
+  entropy (Definition 3.1's clause on `Ω`), the range family `R : I → Type v` with their
+  instances, the variables `X i`, their measurability and their finite entropy, over a
+  **finite** index type: `[Finite I]` is a class parameter
   of the structure, which is Definition 3.1's "finite family".  It is a parameter rather
   than a field because `Finite I` does not mention the model, so as a field instance
   search would never find it and a score over `I = ℕ` would elaborate with every sum
@@ -151,13 +174,13 @@ library.
 | file | content |
 |---|---|
 | `Condensation/Probability.lean` | §2: `FunctionOf`/`AEFunctionOf`, pullback invariance (2.2), `PPlus`, interaction information, the Giry alias, **Proposition 2.5** |
-| `Condensation/Model.lean` | Definitions 3.1–3.4: `RVModel`, `LatentModel`, joint variables, the four families `∩A`/`⊇A`/`⊋A`/`∋i` plus `incomparable`, (3.9), the scores σ/χ/ϱ, and the generic joint-variable and upward-closure lemmas §4 and §5 run on |
+| `Condensation/Model.lean` | Definitions 3.1–3.4: `RVModel` (Definition 3.1 verbatim, both finite-entropy clauses) with `RVModel.finiteEntropyOf`, `LatentModel`, joint variables, the four families `∩A`/`⊇A`/`⊋A`/`∋i` plus `incomparable`, (3.9), the scores σ/χ/ϱ, and the generic joint-variable and upward-closure lemmas §4 and §5 run on |
 | `Condensation/Morphism.lean` | §3.1: Definitions 3.5, 3.6, Propositions 3.7, 3.8, Definitions 3.9, 3.10, Propositions 3.11, 3.12 |
 | `Condensation/Perfect.lean` | §4 up to Proposition 4.10: Proposition 4.2, Definition 4.3, Lemma 4.5, Corollary 4.6, Proposition 4.7, Definition 4.8, **Theorem 4.9**, Proposition 4.10 |
 | `Condensation/Amalgamation.lean` | Definitions 4.11, 4.12, **Lemma 4.13** (the measure construction of (4.49)–(4.53)) |
 | `Condensation/Comparison.lean` | Lemma 4.14, **Theorem 4.15** |
 | `Condensation/Quantitative.lean` | §5: Lemma 5.4, Definitions 5.5, 5.6, Proposition 5.7, **Theorem 5.8**, Corollaries 5.9, 5.10 |
-| `Condensation/Examples.lean` | Examples 4.1 and 4.4, constructed inhabitants of every boundary structure, the general non-vacuity result `LatentModel.nonempty`, and the §3.1 witnesses |
+| `Condensation/Examples.lean` | Examples 4.1 and 4.4, constructed inhabitants of every boundary structure, the general non-vacuity result `LatentModel.nonempty`, the §3.1 witnesses, and `Example.geomModel` — the infinite-range model that the retired `dd:finite-range` narrowing excluded |
 
 ## Status at milestone M1
 

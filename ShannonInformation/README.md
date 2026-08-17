@@ -159,21 +159,42 @@ over the two modules above; there is no new mathematics in it.
 | `condMutualInfo_eq'` | `I[X : Y \| Z] = H[X \| Z] - H[X \| ⟨Y, Z⟩]` |
 | `IdentDistrib.condEntropy_eq` | equal joint laws give `H[X \| Y ; μ] = H[X' \| Y' ; μ']` (not reachable by dot notation — see below) |
 
+Phase 4b added three more to the same file, driven by the consumer migration in
+`Condensation`:
+
+| declaration | statement |
+| --- | --- |
+| `mutualInfo_const` | `I[X : fun _ ↦ c] = 0` |
+| `IndepFun.condEntropy_eq_entropy` | `X ⟂ Y` gives `H[X \| Y] = H[X]` (not reachable by dot notation) |
+| `const_of_nonpos_entropy` | `H[X] ≤ 0` gives some `s` with `μ.real (X ⁻¹' {s}) = 1` — **needs `[Countable S]`**, which PFR's does not |
+| `finiteEntropyMeasure_of_injective` | finite entropy passes *back* along an injective measurable relabelling |
+
+`const_of_nonpos_entropy` is the one statement in the layer that asks for *more* than its
+vendored twin, and it is forced: `FiniteRange X` makes `μ.map X` atomic for free and
+`FiniteEntropyOf X μ` does not (Lebesgue on `[0, 1]` has entropy series identically `0` and
+no atom). It is also the one proof here that is not a rewrite chain — PFR routes through
+`prob_ge_exp_neg_entropy'`, a finite-sum argument with nothing to transport.
+
 Two things about the boundary. The vendored *theorems* are no longer `FiniteRange`-only:
 the chain rules, subadditivity, the independence characterizations and the derived corpus
 above have all been restated at `FiniteEntropyOf`. What has **not** moved is the tail listed
-in `FiniteEntropy/Derived.lean`'s header — `ent_of_cond_indep`, `mutualInfo_const`,
-`const_of_nonpos_entropy`, `condEntropy_of_injective`,
+in `FiniteEntropy/Derived.lean`'s header — `ent_of_cond_indep`, `condEntropy_of_injective`,
 `condMutualInfo_of_inj`/`_of_inj'`/`_of_inj_map`, `mutual_comp_comp_le`,
-`condMutual_comp_comp_le`, `IndepFun.condEntropy_eq_entropy` — left `FiniteRange`-gated
+`condMutual_comp_comp_le` — left `FiniteRange`-gated
 because no consumer has asked for them, not because they are hard. And the product closure
 is still stated for a **finite** index only: countable products genuinely fail (independent
 `X n` with `H[X n] = 1` each are finite-entropy, their joint over `ℕ` is not), so nobody
 should "generalize" it to `Π i : ι` for countable `ι`.
 
-The non-vacuity witness — a geometric variable on `ℕ`, which has `FiniteEntropyOf` and
-provably no `FiniteRange` — is in `APITests/ShannonInformationFiniteEntropy.lean`,
-constructed rather than asserted, per the repository standard. The Phase 2, 3 and 4a
+`ShannonInformation/FiniteEntropy/Examples.lean` — the non-vacuity witness. A geometric
+variable on `ℕ` (`geom`, `Geometric(1/2)`), with `FiniteEntropyOf`, provably no
+`FiniteRange`, and entropy computed to `2 log 2`. It is library rather than test because it
+has two clients: `APITests/ShannonInformationFiniteEntropy.lean`, which checks the claims
+from outside, and `Condensation/Examples.lean`, whose `Condensation.Example.geomModel` is
+the random variable model that Definition 3.1 admits and the retired `dd:finite-range`
+narrowing excluded. `API.lean` deliberately does **not** re-export it — importing it costs
+`Mathlib.Probability.Distributions.Geometric`, which a client of the entropy corpus should
+not pay for. The Phase 2, 3 and 4a
 endpoints are exercised from outside the layer in
 `APITests/ShannonInformationChainRule.lean`,
 `APITests/ShannonInformationInequalities.lean` and

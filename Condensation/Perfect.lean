@@ -110,7 +110,7 @@ Definition 3.4 that this file runs on — `RVModel.functionOf_jointOn_mono`,
 `RVModel.aeFunctionOf_jointOn_mono`, `contribIdx_subset_contrib`,
 `RVModel.functionOf_joint`, `RVModel.entropy_joint_singleton` and
 `LatentModel.entropy_pullbackJoint` — live in `Condensation/Model.lean`, beside the
-`measurable_joint(On)` / `finiteRange_joint(On)` companions they belong with. -/
+`measurable_joint(On)` / `finiteEntropy_joint(On)` companions they belong with. -/
 
 namespace LatentModel
 
@@ -132,7 +132,8 @@ paper — termwise, each summand of `χ_L` conditions the corresponding summand 
 Paper node: `Proposition 4.2` -/
 theorem simpleScore_ge_condScore (A : Finset I) : L.condScore A ≤ L.simpleScore A :=
   Finset.sum_le_sum fun B _ =>
-    condEntropy_le_entropy (μ := L.P) (L.L.measurable_X B) (L.L.measurable_jointOn _)
+    ShannonInformation.condEntropy_le_entropy (μ := L.P) (L.L.measurable_X B)
+      (L.L.measurable_jointOn _)
 
 /-- The second inequality of **(4.6)**: `χ_L(A) ≥ H(Y_∩A)`.  The paper's proof extends the
 reverse-inclusion partial order on `{B : B ∩ A ≠ ∅}` to a total order `⪯`, drops from
@@ -214,13 +215,15 @@ theorem perfect_entropy_iff_aeFunctionOf :
   -- 2.5 turns that into a functional dependence, and `Y_A` is a coordinate of `Y_∋i`.
   · have hWmeas : Measurable (L.jointContrib ({i} : Finset I)) := L.L.measurable_jointOn _
     have hZmeas : Measurable (M.X i ∘ L.π) := (M.measurable_X i).comp L.π_pres.measurable
+    haveI : ShannonInformation.FiniteEntropyOf (M.X i ∘ L.π) L.P := L.L.finiteEntropyOf hZmeas
     have hZW : AEFunctionOf (L.jointContrib ({i} : Finset I)) (M.X i ∘ L.π) L.P :=
       (L.L.aeFunctionOf_jointOn_mono
         (contribIdx_subset_contrib (Finset.mem_singleton_self i)) L.P).trans (L.contributes i)
     have hent1 := hent (PPlus.single i)
     rw [PPlus.toFinset_single] at hent1
     have hzero : H[L.jointContrib ({i} : Finset I) | M.X i ∘ L.π ; L.P] = 0 := by
-      rw [chain_rule'' L.P hWmeas hZmeas, entropy_pair_of_aeFunctionOf hWmeas hZW, hent1,
+      rw [ShannonInformation.chain_rule'' L.P hWmeas hZmeas,
+        entropy_pair_of_aeFunctionOf hWmeas hZW, hent1,
         entropy_comp_measurePreserving L.π_pres (M.measurable_X i),
         M.entropy_joint_singleton i, sub_self]
     have hA : A ∈ contrib ({i} : Finset I) := ⟨i, Finset.mem_singleton_self i, hiA⟩
@@ -270,7 +273,8 @@ def pullbackModel : RVModel I where
   R := M.R
   X := fun i => M.X i ∘ L.π
   measurable_X := fun i => (M.measurable_X i).comp L.π_pres.measurable
-  finiteRange_X := fun _ => inferInstance
+  finiteEntropy_X := fun i =>
+    L.L.finiteEntropyOf ((M.measurable_X i).comp L.π_pres.measurable)
 
 /-- The random variable model `(Λ, (Y_∩{i})_{i ∈ I})` that Proposition 4.7 (2) compares:
 the latent space, carrying at each index `i` the joint latent variable `Y_∋i` of (3.8).
@@ -287,7 +291,7 @@ def contribModel : RVModel I where
   R := fun i => ∀ B : contribIdx i, L.L.R B
   X := L.jointContribIdx
   measurable_X := fun _ => L.L.measurable_jointOn _
-  finiteRange_X := fun _ => inferInstance
+  finiteEntropy_X := fun _ => L.L.finiteEntropyOf (L.L.measurable_jointOn _)
 
 @[simp] lemma pullbackModel_X (i : I) : L.pullbackModel.X i = M.X i ∘ L.π := rfl
 

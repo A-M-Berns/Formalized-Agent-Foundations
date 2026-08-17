@@ -83,6 +83,14 @@ precisely, as of this commit:
   in §5 Lemma 5.4 in both forms, Definition 5.5's polar with its lattice facts, Definition
   5.6 and Proposition 5.7 in full, and Corollary 5.10's (5.24).
 * **No `axiom` declarations are introduced at any milestone**, and none is.
+* **No modeling substitutions.** As of 2026-08-17 the model class is Definition 3.1
+  verbatim — including the "with finite entropy" clause on `Ω`, which this library did not
+  carry at all before that date — and the disclosures list in
+  [`KNOWLEDGE.md`](KNOWLEDGE.md) is empty. The one standing narrowing, `dd:finite-range`,
+  is retired; *Modeling boundary* below says what it was and what replaced it. The two
+  restrictions that remain are universe stratification (presentational, open ruling 3) and
+  the Examples 5.1–5.3 scope ruling. What is *not* claimed is anything about the twenty
+  `sorry`s: this section, not the modeling boundary, is where the incompleteness lives.
 
 ### The twenty `sorry`s, by file
 
@@ -151,47 +159,45 @@ Corollary 5.10's (5.24).
 
 ## Modeling boundary
 
-### `dd:finite-range` — the standing type-(c) narrowing
+### `dd:finite-range` — retired 2026-08-17
 
-**Learn this here rather than from a `variable` block.** The decision, in the roadmap's
-words:
+**Definition 3.1 is now carried verbatim, and there is no modeling substitution left in
+this library.** A random variable model is a countable discrete probability space *with
+finite entropy* (`[Countable Ω] [MeasurableSingletonClass Ω] [IsProbabilityMeasure P]`
+plus the field `finiteEntropy_Ω : ShannonInformation.FiniteEntropyMeasure P`) together
+with a finite family of variables of countable discrete range and finite entropy
+(`finiteEntropy_X : ∀ i, ShannonInformation.FiniteEntropyOf (X i) P`).
 
-> Every random variable of a model carries `FiniteRange` (finitely many attained values),
-> on a countable discrete sample space (`Countable Ω`, `MeasurableSingletonClass Ω`,
-> `IsProbabilityMeasure P`). The paper's "countable discrete range with finite entropy"
-> and "probability space with finite entropy" become: countable-discrete range types
-> (`Countable`, `MeasurableSingletonClass`), finite range per variable, and **no**
-> hypothesis on the entropy of `Ω` itself.
+**What the state was, and when it changed.** Until 2026-08-17 every variable of a model
+carried `FiniteRange` (finitely many *attained* values) and `Ω` carried no entropy
+hypothesis at all. That was a genuine type-(c) narrowing — a geometric variable on `ℕ` is
+countable-discrete with finite entropy and was excluded — and it was forced, because the
+vendored PFR theorems are proved only in the finite-range fragment. It was disclosed here,
+in `KNOWLEDGE.md`, in the roadmap, and at every model structure. It was costed on
+2026-08-17 (`notes/finite-range-generalization-plan.md`: ~1,450–2,400 lines, 3–4.5 focused
+weeks in four phases), ruled a desired endpoint by Anson the same day rather than deferred,
+and retired the same day.
 
-and the reason, likewise verbatim:
+**What replaced it.** A FAF-authored finite-entropy layer, `ShannonInformation/FiniteEntropy/`,
+proving the §2–§5 corpus this paper consumes — the chain rules, subadditivity, mutual- and
+conditional-mutual-information nonnegativity, the independence characterizations, data
+processing — at `ShannonInformation.FiniteEntropyOf` rather than `FiniteRange`. The consumer
+migration then swapped `RVModel`'s finiteness field, added Definition 3.1's `Ω` clause, and
+rebound the §2 substrate lemmas and the bare-variable lemmas of §5's Lemma 5.4 and §4's
+Lemma 4.14. **No statement of any §3–§5 theorem changed, and the `sorry` count is unchanged
+at twenty.** The one node whose *shape* changed is Proposition 2.5, which gained `Countable
+R_Y` at the same time it lost `FiniteRange` (its `omit [Countable T] in` is gone, forced by
+the `tsum` form of conditional entropy). Before, it was stronger than printed in one respect
+and weaker in another, so it was not comparable as printed; now it is the printed statement.
+The [`KNOWLEDGE.md`](KNOWLEDGE.md) correspondence table records this per declaration.
 
-> The vendored entropy library proves its theorems only in the finite-range fragment
-> (`ShannonInformation/SCOPE.md`); generalizing it is new mathematics (summability
-> arguments), out of this paper's scope. Finite range implies finite entropy, so every
-> quantity in the paper is finite as required. This is a genuine (c)-type narrowing — a
-> geometric variable on `ℕ` is countable-discrete with finite entropy and is excluded —
-> and is disclosed at the statement level (every model structure), in `README.md`, and
-> here. Ω's own finite entropy is used by the paper only to make the variables' entropies
-> finite, which finite range already does.
-
-Two consequences to state flatly, because they are what a reader is owed:
-
-* **What is excluded.** A random variable with countably infinite attained range and finite
-  entropy — the standard example is a geometric variable on `ℕ` — satisfies the paper's
-  hypotheses and does **not** satisfy ours. Every §4 and §5 statement in this library is
-  therefore narrower than printed. The restriction is on the *variables*, not on the value
-  types: `X : Ω → ℕ` attaining finitely many values is fine.
-* **What Ω carries.** The paper assumes the probability space itself has finite entropy;
-  we assume `Countable Ω`, `MeasurableSingletonClass Ω`, `IsProbabilityMeasure P` and
-  **nothing about the entropy of `Ω`**. That is a *dropped* hypothesis rather than a
-  narrowing, and it is sound only because the paper uses `Ω`'s finite entropy solely to
-  make the variables' entropies finite, which per-variable finite range already delivers.
-  If some argument turns out to need finite `H(Ω)` for its own sake, that is a finding,
-  not a detail.
-
-This decision is an **open ruling** (see *Open rulings* below): work proceeds under the
-assumption that Anson accepts it, because the alternative is generalizing the vendored
-entropy library — months of work outside this paper.
+**The class genuinely grew, and there is a witness for it.** `Condensation.Example.geomModel`
+is an `RVModel Unit` on `Ω = ℕ` with the `Geometric(1/2)` law and `X_() = id`, with
+`geomModel_entropy : H(X_()) = 2 log 2` and `geomModel_not_finiteRange : ¬ FiniteRange
+(geomModel.X ())`. It is a random variable model of this library today and was not
+expressible before the swap; every other witness in `Examples.lean` lives on a finite sample
+space and so cannot distinguish Definition 3.1's reading from the narrowed one. Per the
+repo's non-vacuity discipline it is constructed, not asserted.
 
 ### The `dd:` design decisions
 
@@ -200,9 +206,9 @@ Mirrors the table in [`notes/roadmap.md`](notes/roadmap.md); the same glossary s
 
 | Tag | Decision | Why |
 |---|---|---|
-| `dd:finite-range` | Every random variable of a model carries `FiniteRange` (finitely many attained values), on a countable discrete sample space (`Countable Ω`, `MeasurableSingletonClass Ω`, `IsProbabilityMeasure P`). The paper's "countable discrete range with finite entropy" and "probability space with finite entropy" become: countable-discrete range types (`Countable`, `MeasurableSingletonClass`), finite range per variable, and **no** hypothesis on the entropy of `Ω` itself. | **See the callout above** — this is the standing type-(c) narrowing, disclosed there in full, with the roadmap's reason quoted verbatim. |
+| `dd:finite-range` | **Retired 2026-08-17.** It read: every random variable of a model carries `FiniteRange`, and `Ω` carries no entropy hypothesis. It now reads: `finiteEntropy_Ω : ShannonInformation.FiniteEntropyMeasure P` and `finiteEntropy_X : ∀ i, ShannonInformation.FiniteEntropyOf (X i) P` — Definition 3.1 verbatim. The tag is kept in the glossary, marked retired, because older commits, the audit ledger and `notes/finite-range-generalization-plan.md` refer to it by name. | **See the callout above** for what the state was, what replaced it, and the witness (`Example.geomModel`) that shows the model class genuinely grew. No longer a narrowing, and no longer an open ruling. |
 | `dd:pplus` | `P⁺I` is the subtype `PPlus I := {A : Finset I // A.Nonempty}`. Finiteness of the index type is carried by the model — `RVModel` takes `[Finite I]` as a class parameter (Def 3.1: *finite* family) — so no `Fintype`/`DecidableEq` data appears anywhere and `PPlus I` is exactly the paper's `P⁺I`. Subfamilies `F ⊆ P⁺I` are `Set (PPlus I)` (finite automatically), and the joint variable `Y_F` is `fun ω (B : F) => Y B ω`, a dependent product over the subtype `↥F` with `MeasurableSpace.pi`. | Faithful to Def 2.2 (nonempty subsets only, no phantom `Y_∅`); `Set` keeps upward-closure/polar/intersection algebra (§4.10, §5) as plain set algebra; finiteness of `↥F` is by instance. |
-| `dd:bundled-model` | `RVModel (I : Type w) [Finite I]` bundles the sample space `Ω : Type u`, its σ-algebra/countability/singleton-class instances, the probability measure, the range family `R : I → Type v` with their instances, the variables `X i : Ω → R i`, their measurability and finite range; Def 3.1's *finite* family is the class parameter `[Finite I]`, not a field, so instance search finds it. `LatentModel M` bundles a `RVModel.{u', v', w} (PPlus I)` plus `π : Λ → Ω` (`MeasurePreserving`) plus the a.e.-function condition of Def 3.2, with the latent universes `u'`/`v'` **independent** of `M`'s. | Def 3.5–3.12 need models as objects of a category, and 3.2/4.12 need "two latent models with the same underlying space" — bundling with explicit `Ω`/`R` fields is what makes those statable. **`RVModel`'s `Type u`/`Type v` stratification is a disclosed narrowing** — see below. |
+| `dd:bundled-model` | `RVModel (I : Type w) [Finite I]` bundles the sample space `Ω : Type u`, its σ-algebra/countability/singleton-class instances, the probability measure, the range family `R : I → Type v` with their instances, the variables `X i : Ω → R i`, their measurability and their finite entropy, plus Def 3.1's finite entropy of `Ω` itself; Def 3.1's *finite* family is the class parameter `[Finite I]`, not a field, so instance search finds it. `LatentModel M` bundles a `RVModel.{u', v', w} (PPlus I)` plus `π : Λ → Ω` (`MeasurePreserving`) plus the a.e.-function condition of Def 3.2, with the latent universes `u'`/`v'` **independent** of `M`'s. | Def 3.5–3.12 need models as objects of a category, and 3.2/4.12 need "two latent models with the same underlying space" — bundling with explicit `Ω`/`R` fields is what makes those statable. **`RVModel`'s `Type u`/`Type v` stratification is a disclosed narrowing** — see below. |
 | `dd:ae-function` | "`Y` is a function of `X` almost everywhere" is `AEFunctionOf X Y P := ∃ f, Measurable f ∧ ∀ᵐ ω ∂P, Y ω = f (X ω)`; the everywhere version `FunctionOf` likewise without `∀ᵐ`. Measurability of `f` is kept in the definition (paper: "measurable function") and discharged by `measurable_of_countable` on countable discrete ranges. | Verbatim Def 2.1's fifth convention; the measurability conjunct is free in our setting but keeping it stops the definition drifting from the paper. |
 | `dd:pullback` | Pullback `π^* X` is plain composition `X ∘ π`; probability-preserving = Mathlib `MeasureTheory.MeasurePreserving π P_Λ P_Ω`. Equation (2.2) invariance is `IdentDistrib`-based (`MeasurePreserving` gives `IdentDistrib (X ∘ π) X`). | Repo rule: never redefine what Mathlib has. |
 | `dd:interaction` | Def 2.3's `I(X;Y;Z) := I[X : Y] − I[X : Y \| Z]` and its conditional form `I(X;Y;Z \| C) := I[X : Y \| C] − I[X : Y \| ⟨Z, C⟩]` (needed by Lemma 5.4 / Thm 5.8) are FAF-authored `def`s over the vendored `mutualInfo`/`condMutualInfo`; symmetry is a lemma. | The API deliberately adds no definitions; interaction information is paper-specific until a second client needs it. |
@@ -267,13 +273,16 @@ after Def 3.10, the (4.41) discussion — is unnumbered prose and gets no carrie
 
 ### Open rulings
 
-Three questions are open for Anson. Work proceeds under the stated assumption in each
-case; **none of these is a settled ruling, and this file does not present any of them as
-one.** If a ruling comes back the other way, the affected work is redone.
+Two questions are open for Anson, and one is closed. Work proceeds under the stated
+assumption in each open case; **neither of those is a settled ruling, and this file does
+not present either as one.** If a ruling comes back the other way, the affected work is
+redone.
 
-1. **`dd:finite-range`** as the standing type-(c) narrowing — *assumed yes*. The
-   alternative is generalizing the vendored entropy library, months of work outside this
-   paper.
+1. ~~**`dd:finite-range`** as the standing type-(c) narrowing~~ — **CLOSED, 2026-08-17.**
+   It was assumed yes; Anson ruled the other way, that the generalization was a desired
+   endpoint to be pursued in parallel with the paper rather than deferred, and it landed
+   the same day. `Condensation/` now carries Definition 3.1 verbatim. See the callout
+   under *Modeling boundary*. Nothing here is waiting on this question.
 2. **Examples 5.1–5.3 out of scope** — *assumed yes*, for the reason in the §5 row above:
    5.1 and 5.2 posit `[0,1]`-valued latents, outside the paper's own countable-discrete
    framework and only bucketed into it informally, and 5.3 is a prose translation of
@@ -329,17 +338,40 @@ Two standing rules, both inherited from that layer:
    'ProbabilityTheory.IdentDistrib.prodMk'`). Import the specific `Mathlib.*` modules you
    need.
 
-And the fact that makes `dd:finite-range` necessary rather than convenient: **the vendored
-theorems hold only in the finite-range fragment.** The *definitions* there are correct for
-any countable-discrete variable, but every statement with content — the chain rules,
-`mutualInfo_nonneg`, the independence characterizations, submodularity, data processing —
-carries a `FiniteRange` hypothesis that is load-bearing *in the proof*, not a typeclass
-artefact. `SCOPE.md` §2 records that this is strictly narrower than
-countable-discrete-with-finite-entropy, and its §6 assesses this very paper: the generality
-it states is not covered, its substance is. That is exactly what `dd:finite-range`
-discloses. `SCOPE.md` also flags one sharp trap worth carrying while reading any statement
-here: Lean's `∑'` is `0` on a non-summable family, so `H[X]` for an infinite-entropy
-variable is silently `0` rather than `∞`.
+And a third rule, new since 2026-08-17 and the one most likely to bite: **cite
+`ShannonInformation.foo` by its full name, never bare.** The *vendored* theorems still hold
+only in the finite-range fragment — the chain rules, `mutualInfo_nonneg`, the independence
+characterizations, submodularity, data processing all carry a `FiniteRange` hypothesis that
+is load-bearing in PFR's proof, not a typeclass artefact, and `SCOPE.md` §2 still records
+that this is strictly narrower than countable-discrete-with-finite-entropy. What changed is
+that this library no longer cites them for anything load-bearing. It cites the FAF-authored
+`ShannonInformation.*` corpus in `ShannonInformation/FiniteEntropy/`, which proves the same
+facts at `ShannonInformation.FiniteEntropyOf`. Both versions are reachable through the one
+import, and with `ProbabilityTheory` open a bare lemma name resolves by elaboration success
+rather than by namespace — so a bare citation can silently pick the narrow one and fail
+several lines later with a missing `FiniteRange` instance. `ShannonInformation/API.lean`'s
+module docstring carries the "which version to cite" table. Dot notation is the sharp case,
+because opening a namespace cannot fix it: `h.condEntropy_eq_entropy` and
+`hid.condEntropy_eq` resolve in the head symbol's namespace (`ProbabilityTheory.IndepFun`,
+`ProbabilityTheory.IdentDistrib`) and so always find the vendored original. Write those two
+out in full.
+
+**No `FiniteRange` citation remains anywhere in `Condensation/`,** including the concrete
+witnesses. The reason is worth knowing, because the obvious guess is wrong: one might expect
+a witness built on `Bool × Bool` to keep citing the vendored lemmas, the range being finite.
+It cannot. With `RVModel`'s finiteness field now `FiniteEntropyOf` there is no structure
+instance for `FiniteRange (M.X i)`, and instance search will not unfold a concrete model to
+rediscover that its range type happens to be a `Fintype`. `FiniteRange` survives in
+`Condensation/` in exactly one statement, `Example.geomModel_not_finiteRange`, where it is
+negated. A citation anywhere else is a finding.
+
+`SCOPE.md` also flags a trap worth carrying while reading any statement here, and it is now
+live rather than hypothetical: Lean's `∑'` is `0` on a non-summable family, so `H[X]` for an
+infinite-entropy variable is silently `0` rather than `∞`, and `condEntropy` is a Bochner
+integral, silently `0` when non-integrable. Under the old narrowing neither could bite. What
+keeps them from biting now is that the finiteness class carries both as *proved consequences*
+(`ShannonInformation.FiniteEntropyOf.summable`, `ShannonInformation.integrable_entropy_cond`)
+rather than as side hypotheses on statements.
 
 ## Numbering and provenance
 
@@ -487,6 +519,7 @@ What is actually constructed and proved at M0, so that no reader has to take the
 | `twoCoinLatent` | two indices (`I = Bool`), `P⁺I` of size 3, all latents equal to one fair coin | `σ_L({true}) = 2 log 2`, `χ_L({true}) = log 2`, hence `0 < χ_L < σ_L`; and `ϱ_L({true}) = 0` |
 | `noisyLatent` | `I = Unit`, `Λ = Bool × Bool`, `π = fst`, `Y_{()} = id` — the latent keeps a bit that `π` throws away | `ϱ_L({()}) = log 2`, hence `0 < ϱ_L({()})`: the reconstruction score is **not** identically zero. Also `σ_L({()}) = χ_L({()}) = 2 log 2` |
 | `LatentModel.ofJoint` / `.nonempty` | the tautological latent model `Y_A = X_A` of an arbitrary `M` | `Nonempty (LatentModel M)` for **every** random variable model `M` |
+| `Example.geomModel` / `.geomLatent` (added 2026-08-17) | `I = Unit`, `Ω = ℕ` with the `Geometric(1/2)` law, `X_() = id : ℕ → ℕ`; `geomLatent` is `LatentModel.ofJoint geomModel` | `geomModel_entropy : H(X_()) = 2 log 2` (the textbook two bits) and `geomModel_not_finiteRange : ¬ FiniteRange (geomModel.X ())`. This is the witness that retiring `dd:finite-range` has content rather than being a re-spelling: every other witness here lives on a finite sample space and so cannot tell Definition 3.1's reading from the narrowed one. `geomLatent_reconScore = 0` for the same reason `coinLatent`'s does |
 
 Two of those exist to correct a specific over-claim. An earlier draft of `Examples.lean`
 asserted that *every* score is positive on the coin witness; that is false —

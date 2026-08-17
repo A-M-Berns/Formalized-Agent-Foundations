@@ -1728,8 +1728,11 @@ text extraction `Condensation/notes/condensation-25-07.txt`; `scripts/check-cond
 enforces validity, anchoring, and that every annotated declaration appears in one of the
 two blocks below.  Status: **in progress** (M1 — statements for §2, §3, §3.1, §4 and §5;
 twenty proofs still `sorry`).  Nothing here is claimed complete; the roadmap is
-`Condensation/notes/roadmap.md`.  The standing `dd:finite-range` narrowing (finite-range
-variables) is disclosed in `Condensation/README.md`.
+`Condensation/notes/roadmap.md`.  There are **no** residual modeling substitutions: the
+`dd:finite-range` narrowing was retired on 2026-08-17, and `Condensation.RVModel` is now
+Definition 3.1 verbatim — a countable discrete probability space *with finite entropy*
+(`ShannonInformation.FiniteEntropyMeasure`) carrying countable-discrete-range variables of
+finite entropy.  See `Condensation/README.md`.
 
 **Why there are two blocks: the staged inventory.**  This formalization reaches the
 paper's endpoints statement-first.  Several declarations already carry a `Paper node:`
@@ -1775,7 +1778,6 @@ same commit as the proof. -/
   Condensation.aeFunctionOf_iff_condEntropy_eq_zero Condensation.entropy_le_of_aeFunctionOf Condensation.entropy_pair_of_aeFunctionOf
   -- Definitions 3.1–3.4 (Condensation/Model.lean).
   Condensation.RVModel Condensation.RVModel.joint Condensation.RVModel.jointOn Condensation.RVModel.measurable_joint Condensation.RVModel.measurable_jointOn
-  Condensation.finiteRange_pi
   Condensation.contrib Condensation.above Condensation.strictAbove Condensation.contribIdx Condensation.mem_contrib_iff
   Condensation.contribIdx_eq_contrib_singleton Condensation.contribIdx_eq_above_singleton Condensation.strictAbove_subset_above
   Condensation.LatentModel Condensation.LatentModel.jointOn Condensation.LatentModel.jointContrib Condensation.LatentModel.jointAbove
@@ -1860,7 +1862,7 @@ field (the concrete symptom was `reconScore` elaborating at `I = ℕ` with every
 empty).  And `LatentModel`'s universes are independent of its model's — the full parameter
 list is `LatentModel.{u, v, w, u', v'}` — which likewise changes no field. -/
 #assert_fields Condensation.RVModel
-  Ω mΩ countΩ singΩ P probP R mR countR singR X measurable_X finiteRange_X
+  Ω mΩ countΩ singΩ P probP finiteEntropy_Ω R mR countR singR X measurable_X finiteEntropy_X
 #assert_fields Condensation.LatentModel
   L π π_pres contributes
 
@@ -1891,9 +1893,9 @@ them to agree almost everywhere (`Condensation/notes/paper-errata.md` entry 10).
 #assert_fields Condensation.Amalgamation
   π₁_pres π₂_pres Λ₀ mΛ₀ countΛ₀ singΛ₀ P₀ probP₀ «ρ₁» «ρ₂» ρ₁_pres ρ₂_pres comm
 #assert_fields Condensation.LatentAmalgamation
-  Λ₀ mΛ₀ countΛ₀ singΛ₀ P₀ probP₀
-  Y₁ measurable_Y₁ finiteRange_Y₁ «π₁» π₁_pres contributes₁
-  Y₂ measurable_Y₂ finiteRange_Y₂ «π₂» π₂_pres contributes₂
+  Λ₀ mΛ₀ countΛ₀ singΛ₀ P₀ probP₀ finiteEntropy_Λ₀
+  Y₁ measurable_Y₁ finiteEntropy_Y₁ «π₁» π₁_pres contributes₁
+  Y₂ measurable_Y₂ finiteEntropy_Y₂ «π₂» π₂_pres contributes₂
   «ρ₁» ρ₁_pres ρ₁_Y ρ₁_π «ρ₂» ρ₂_pres ρ₂_Y ρ₂_π comm
 
 /-! ## Consumer API conveniences (not paper endpoint inventories)
@@ -2037,7 +2039,9 @@ open Condensation in
 #assert_axioms_clean
   Condensation.instFiniteFinset Condensation.PPlus.instFinite
   Condensation.AEFunctionOf.pi Condensation.condEntropy_eq_entropy_of_subsingleton
-  Condensation.RVModel.finiteRange_joint Condensation.RVModel.finiteRange_jointOn
+  Condensation.RVModel.finiteEntropyOf
+  Condensation.RVModel.finiteEntropy_joint Condensation.RVModel.finiteEntropy_jointOn
+  Condensation.LatentModel.finiteEntropy_pullbackJoint
   Condensation.famFinset Condensation.mem_famFinset
   Condensation.RVModel.jointFamily Condensation.LatentModel.ofJoint
   Condensation.LatentModel.nonempty
@@ -2048,10 +2052,20 @@ open Condensation in
   Condensation.noisyModel Condensation.noisyLatent Condensation.noisyLatent_reconScore
   Condensation.noisyLatent_reconScore_pos Condensation.noisyLatent_simpleScore
   Condensation.noisyLatent_condScore
+  -- Phase 4b (2026-08-17): the witness with an **infinite-range** variable, which the
+  -- retired `dd:finite-range` narrowing excluded and Definition 3.1 admits.  `Ω = ℕ` under
+  -- the geometric law of `ShannonInformation/FiniteEntropy/Examples.lean`, `X () = id`.
+  -- `geomModel_not_finiteRange` is what makes the retirement demonstrably more than a
+  -- re-spelling; `geomModel_entropy` rules out the degenerate reading in which the class
+  -- grew only by variables of zero entropy.
+  Condensation.Example.geomModel Condensation.Example.geomModel_X
+  Condensation.Example.geomModel_P Condensation.Example.geomModel_not_finiteRange
+  Condensation.Example.geomModel_entropy Condensation.Example.geomModel_entropy_pos
+  Condensation.Example.geomLatent Condensation.Example.geomLatent_reconScore
   -- M1 additions, none of which carries a `Paper node:` annotation.
   --
   -- `Model.lean`: the generic joint-variable and index-family companions of
-  -- `measurable_joint(On)` / `finiteRange_joint(On)` that §4 and §5 run on.  `jointAll` is
+  -- `measurable_joint(On)` / `finiteEntropy_joint(On)` that §4 and §5 run on.  `jointAll` is
   -- `X_A` at `A = I` spelled as the dependent product over `I` itself, so that naming
   -- `X_I` in a statement needs only `[Finite I]` and not a `Fintype` datum to write
   -- `Finset.univ`; equations (4.4)-(4.5) of Example 4.1 use it for exactly that.
@@ -2062,7 +2076,7 @@ open Condensation in
   -- Theorem 5.8's leaf-bijection hypothesis equivalent to the multiset equation it is
   -- stated as.
   Condensation.RVModel.jointAll Condensation.RVModel.measurable_jointAll
-  Condensation.RVModel.finiteRange_jointAll
+  Condensation.RVModel.finiteEntropy_jointAll
   Condensation.RVModel.functionOf_jointOn_mono Condensation.RVModel.aeFunctionOf_jointOn_mono
   Condensation.RVModel.functionOf_joint Condensation.RVModel.entropy_joint_singleton
   Condensation.LatentModel.entropy_pullbackJoint

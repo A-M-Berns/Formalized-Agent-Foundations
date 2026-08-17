@@ -128,7 +128,8 @@ attribute [instance] Amalgamation.mΛ₀ Amalgamation.countΛ₀ Amalgamation.si
 /-- An **amalgamation of two latent variable models** `L₁` and `L₂` for the same random
 variable model `M` (Definition 4.12).  It consists of
 
-1. a countable discrete probability space `Λ₀` (`Λ₀`, `P₀`);
+1. a countable discrete probability space `Λ₀` (`Λ₀`, `P₀`) — with finite entropy, since
+   clause (2) makes it the sample space of two random variable models (Definition 3.1);
 2. two latent variable models for `M` with underlying probability space `Λ₀` — carried
    here as the latent families `Y₁`, `Y₂` over `Λ₀` together with their maps `πₖ : Λ₀ → Ω`
    and Definition 3.2's contribution conditions, and assembled into honest
@@ -151,11 +152,14 @@ structure LatentAmalgamation {I : Type w} [Finite I] {M : RVModel.{u, v, w} I}
   /-- The probability measure on `Λ₀`. -/
   P₀ : Measure Λ₀
   [probP₀ : IsProbabilityMeasure P₀]
+  /-- Definition 3.1's "with finite entropy", inherited by `Λ₀` from clause (2): `L̃₁` and
+  `L̃₂` are latent variable models, hence random variable models on `Λ₀`. -/
+  [finiteEntropy_Λ₀ : ShannonInformation.FiniteEntropyMeasure P₀]
   /-- (2) the latent variables of `L̃₁`, valued in `L₁`'s ranges — the morphism (4.44)
   acts as the identity on those ranges, which forces the range families to agree. -/
   Y₁ : ∀ A : PPlus I, Λ₀ → L₁.L.R A
   measurable_Y₁ : ∀ A, Measurable (Y₁ A)
-  finiteRange_Y₁ : ∀ A, FiniteRange (Y₁ A)
+  finiteEntropy_Y₁ : ∀ A, ShannonInformation.FiniteEntropyOf (Y₁ A) P₀
   /-- The map `π₁ : Λ₀ → Ω` making `L̃₁` a latent variable model *for `M`*. -/
   π₁ : Λ₀ → M.Ω
   π₁_pres : MeasurePreserving π₁ P₀ M.P
@@ -165,7 +169,7 @@ structure LatentAmalgamation {I : Type w} [Finite I] {M : RVModel.{u, v, w} I}
   /-- (2) the latent variables of `L̃₂`, valued in `L₂`'s ranges. -/
   Y₂ : ∀ A : PPlus I, Λ₀ → L₂.L.R A
   measurable_Y₂ : ∀ A, Measurable (Y₂ A)
-  finiteRange_Y₂ : ∀ A, FiniteRange (Y₂ A)
+  finiteEntropy_Y₂ : ∀ A, ShannonInformation.FiniteEntropyOf (Y₂ A) P₀
   /-- The map `π₂ : Λ₀ → Ω` making `L̃₂` a latent variable model *for `M`*. -/
   π₂ : Λ₀ → M.Ω
   π₂_pres : MeasurePreserving π₂ P₀ M.P
@@ -201,8 +205,8 @@ structure LatentAmalgamation {I : Type w} [Finite I] {M : RVModel.{u, v, w} I}
   comm : ∀ᵐ l ∂P₀, π₁ l = π₂ l
 
 attribute [instance] LatentAmalgamation.mΛ₀ LatentAmalgamation.countΛ₀
-  LatentAmalgamation.singΛ₀ LatentAmalgamation.probP₀ LatentAmalgamation.finiteRange_Y₁
-  LatentAmalgamation.finiteRange_Y₂
+  LatentAmalgamation.singΛ₀ LatentAmalgamation.probP₀ LatentAmalgamation.finiteEntropy_Λ₀
+  LatentAmalgamation.finiteEntropy_Y₁ LatentAmalgamation.finiteEntropy_Y₂
 
 namespace LatentAmalgamation
 
@@ -217,7 +221,7 @@ def rv₁ (Am : LatentAmalgamation L₁ L₂) : RVModel.{u₀, v₁, w} (PPlus I
   R := fun A => L₁.L.R A
   X := Am.Y₁
   measurable_X := Am.measurable_Y₁
-  finiteRange_X := Am.finiteRange_Y₁
+  finiteEntropy_X := Am.finiteEntropy_Y₁
 
 /-- Clause (2) of Definition 4.12, the other half. -/
 def rv₂ (Am : LatentAmalgamation L₁ L₂) : RVModel.{u₀, v₂, w} (PPlus I) where
@@ -226,7 +230,7 @@ def rv₂ (Am : LatentAmalgamation L₁ L₂) : RVModel.{u₀, v₂, w} (PPlus I
   R := fun A => L₂.L.R A
   X := Am.Y₂
   measurable_X := Am.measurable_Y₂
-  finiteRange_X := Am.finiteRange_Y₂
+  finiteEntropy_X := Am.finiteEntropy_Y₂
 
 /-- The latent variable model `L̃₁` of Definition 4.12(2).  Its underlying probability
 space is `Λ₀` *definitionally*, which is what makes Theorem 4.15 statable. -/
@@ -364,6 +368,41 @@ lemma measurePreserving_snd (h₁ : MeasurePreserving π₁ P₁ PΩ)
     MeasurePreserving (carrier.snd π₁ π₂) (canonicalMeasure PΩ P₁ P₂ π₁ π₂) P₂ := by
   sorry
 
+/-- The fibre product inherits Definition 3.1's **finite entropy** from the two spaces it
+amalgamates.  The fibre product embeds in `Λ₁ × Λ₂`, whose law has finite entropy by
+subadditivity, and finite entropy passes back along an injection
+(`ShannonInformation.finiteEntropyMeasure_of_injective`).
+
+Not a paper node: Definition 4.11 says "countable discrete probability space", and it is
+Definition 3.1 — applied to the latent variable models of Definition 4.12(2), which live on
+`Λ₀` — that asks for finite entropy.  This lemma is what discharges that field for the
+construction of Lemma 4.13. -/
+lemma finiteEntropyMeasure_canonicalMeasure
+    [ShannonInformation.FiniteEntropyMeasure P₁] [ShannonInformation.FiniteEntropyMeasure P₂]
+    (h₁ : MeasurePreserving π₁ P₁ PΩ) (h₂ : MeasurePreserving π₂ P₂ PΩ) :
+    ShannonInformation.FiniteEntropyMeasure (canonicalMeasure PΩ P₁ P₂ π₁ π₂) := by
+  haveI : IsProbabilityMeasure (canonicalMeasure PΩ P₁ P₂ π₁ π₂) :=
+    isProbabilityMeasure_canonicalMeasure PΩ P₁ P₂ π₁ π₂ h₁ h₂
+  haveI hfst : ShannonInformation.FiniteEntropyOf (carrier.fst π₁ π₂)
+      (canonicalMeasure PΩ P₁ P₂ π₁ π₂) := by
+    show ShannonInformation.FiniteEntropyMeasure _
+    rw [(measurePreserving_fst PΩ P₁ P₂ π₁ π₂ h₁ h₂).map_eq]
+    infer_instance
+  haveI hsnd : ShannonInformation.FiniteEntropyOf (carrier.snd π₁ π₂)
+      (canonicalMeasure PΩ P₁ P₂ π₁ π₂) := by
+    show ShannonInformation.FiniteEntropyMeasure _
+    rw [(measurePreserving_snd PΩ P₁ P₂ π₁ π₂ h₁ h₂).map_eq]
+    infer_instance
+  haveI hval : ShannonInformation.FiniteEntropyOf
+      (Subtype.val : carrier π₁ π₂ → Λ₁ × Λ₂) (canonicalMeasure PΩ P₁ P₂ π₁ π₂) := by
+    have hv : (Subtype.val : carrier π₁ π₂ → Λ₁ × Λ₂)
+        = fun p ↦ (carrier.fst π₁ π₂ p, carrier.snd π₁ π₂ p) := funext fun _ ↦ rfl
+    rw [ShannonInformation.FiniteEntropyOf, hv]
+    exact ShannonInformation.finiteEntropyOf_pair (carrier.measurable_fst (Ω := Ω) π₁ π₂)
+      (carrier.measurable_snd (Ω := Ω) π₁ π₂)
+  exact ShannonInformation.finiteEntropyMeasure_of_injective measurable_subtype_coe
+    Subtype.val_injective
+
 /-- The canonical amalgamation of a cospan: the fibre product (4.49) with the measure
 (4.53).  This is the *construction* half of Lemma 4.13; `nonempty_amalgamation` is the
 existence statement it witnesses.
@@ -414,10 +453,15 @@ noncomputable def canonical : LatentAmalgamation.{u, v, w, max u₁ u₂, u₁, 
   P₀ := Amalgamation.canonicalMeasure M.P L₁.P L₂.P L₁.π L₂.π
   probP₀ := Amalgamation.isProbabilityMeasure_canonicalMeasure M.P L₁.P L₂.P L₁.π L₂.π
     L₁.π_pres L₂.π_pres
+  finiteEntropy_Λ₀ := Amalgamation.finiteEntropyMeasure_canonicalMeasure M.P L₁.P L₂.P
+    L₁.π L₂.π L₁.π_pres L₂.π_pres
   Y₁ := fun A => L₁.Y A ∘ Amalgamation.carrier.fst L₁.π L₂.π
   measurable_Y₁ := fun A =>
     (L₁.L.measurable_X A).comp (Amalgamation.carrier.measurable_fst L₁.π L₂.π)
-  finiteRange_Y₁ := fun _ => inferInstance
+  finiteEntropy_Y₁ := fun A =>
+    ShannonInformation.finiteEntropyOf_pullback
+      (Amalgamation.measurePreserving_fst M.P L₁.P L₂.P L₁.π L₂.π L₁.π_pres L₂.π_pres)
+      (L₁.L.measurable_X A)
   π₁ := L₁.π ∘ Amalgamation.carrier.fst L₁.π L₂.π
   π₁_pres := L₁.π_pres.comp (Amalgamation.measurePreserving_fst M.P L₁.P L₂.P L₁.π L₂.π
     L₁.π_pres L₂.π_pres)
@@ -427,7 +471,10 @@ noncomputable def canonical : LatentAmalgamation.{u, v, w, max u₁ u₂, u₁, 
   Y₂ := fun A => L₂.Y A ∘ Amalgamation.carrier.snd L₁.π L₂.π
   measurable_Y₂ := fun A =>
     (L₂.L.measurable_X A).comp (Amalgamation.carrier.measurable_snd L₁.π L₂.π)
-  finiteRange_Y₂ := fun _ => inferInstance
+  finiteEntropy_Y₂ := fun A =>
+    ShannonInformation.finiteEntropyOf_pullback
+      (Amalgamation.measurePreserving_snd M.P L₁.P L₂.P L₁.π L₂.π L₁.π_pres L₂.π_pres)
+      (L₂.L.measurable_X A)
   π₂ := L₂.π ∘ Amalgamation.carrier.snd L₁.π L₂.π
   π₂_pres := L₂.π_pres.comp (Amalgamation.measurePreserving_snd M.P L₁.P L₂.P L₁.π L₂.π
     L₁.π_pres L₂.π_pres)

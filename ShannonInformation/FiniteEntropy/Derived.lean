@@ -48,9 +48,8 @@ right thing to do:
 it asks for `Fintype S` instead, which is strictly stronger; there is nothing to generalize.
 
 Also absent: `ProbabilityTheory.condEntropy_of_injective` (the per-fibre-injective
-`H[f (Y, X) \| Y] = H[X \| Y]`), `.mutualInfo_const`, `.const_of_nonpos_entropy`,
-`.condMutualInfo_of_inj`/`_of_inj'`/`_of_inj_map`, `.mutual_comp_comp_le`,
-`.condMutual_comp_comp_le`, `.IndepFun.condEntropy_eq_entropy` and `.ent_of_cond_indep`.
+`H[f (Y, X) \| Y] = H[X \| Y]`), `.condMutualInfo_of_inj`/`_of_inj'`/`_of_inj_map`,
+`.mutual_comp_comp_le`, `.condMutual_comp_comp_le` and `.ent_of_cond_indep`.
 Each is `FiniteRange`-gated upstream and each would generalize by the same one-screen rewrite
 chain as its neighbours below; they are left out only because no consumer has asked, and
 adding one is a ten-minute exercise, not a research problem.
@@ -61,9 +60,15 @@ adding one is a ten-minute exercise, not a research problem.
   `condEntropy_comp_ge` (`H[Y | f ∘ X] ≥ H[Y | X]`), `mutual_comp_le`;
 * conditional entropy under maps — `condEntropy_comp_self` (`H[X | f ∘ X] = H[X] - H[f ∘ X]`),
   `condEntropy_of_injective'`;
+* almost-sure constancy — `const_of_nonpos_entropy` (`H[X] ≤ 0` forces some value to have
+  full mass);
 * mutual information — `mutualInfo_eq_entropy_sub_condEntropy` and its primed twin,
-  `condMutualInfo_eq'`;
-* invariance — `IdentDistrib.condEntropy_eq`.
+  `mutualInfo_const` (`I[X : c] = 0`), `IndepFun.condEntropy_eq_entropy`
+  (`H[X | Y] = H[X]` for independent `X`, `Y`), `condMutualInfo_eq'`;
+* invariance — `IdentDistrib.condEntropy_eq`;
+* backward closure — `finiteEntropyMeasure_of_injective` (finite entropy passes back along
+  an injective measurable relabelling; the one closure statement that runs against the
+  arrows of `Defs.lean`).
 
 `condMutualInfo_eq` (`I[X : Y | Z] = H[X | Z] + H[Y | Z] - H[⟨X, Y⟩ | Z]`) belongs to this
 corpus mathematically but lives in `ChainRule.lean`, because it is the splitting of
@@ -85,6 +90,17 @@ PFR's counterpart in every case (`IsProbabilityMeasure` is an instance of it, so
 that had the narrower hypothesis still elaborates).  Three of PFR's — `mutual_comp_le`,
 `condEntropy_comp_self` and `IdentDistrib.condEntropy_eq` — are stated at
 `IsProbabilityMeasure` upstream and are genuinely weakened here.
+
+## One genuine strengthening
+
+`const_of_nonpos_entropy` is the single statement below that asks for *more* than its vendored
+twin: PFR's needs only `MeasurableSingletonClass S`, ours also needs `Countable S`.  That is
+forced, not laziness.  `FiniteRange X` makes `μ.map X` atomic for free, whereas
+`FiniteEntropyOf X μ` does not: on `S = ℝ` with `μ.map X` Lebesgue on `[0, 1]` every singleton
+is null, so the entropy series is identically `0` — summable, with sum `0` — and yet no value
+of `X` carries positive mass.  Without `Countable S` the conclusion is false.  Every consumer
+already carries `Countable S`; see the class's own header for why the countability conjunct of
+PFR's unused `FiniteEntropy` was dropped in favour of a `Countable` value type.
 -/
 
 @[expose] public section
@@ -177,6 +193,109 @@ lemma condEntropy_of_injective' {T : Type*} [MeasurableSpace T] [Countable T]
 
 end CondEntropyComp
 
+/-! ### Almost-sure constancy
+
+The only statement in this module that is not a rewrite chain: PFR routes
+`const_of_nonpos_entropy` through `prob_ge_exp_neg_entropy'`, whose proof is a finite-sum
+argument over `FiniteRange.toFinset X`, so there is nothing to transport.  The countable
+replacement is direct — a nonnegative summable family summing to `0` is identically `0`, and
+`negMulLog` vanishes on `[0, 1]` only at the endpoints. -/
+
+section Constancy
+
+variable {Ω S : Type*} [MeasurableSpace Ω] [MeasurableSpace S] [Countable S]
+  [MeasurableSingletonClass S] {X : Ω → S} {μ : Measure Ω}
+
+/-- **A variable of non-positive entropy is almost surely constant**: some value carries all
+the mass.
+
+This is `ProbabilityTheory.const_of_nonpos_entropy` with `[FiniteRange X]` replaced by
+`[FiniteEntropyOf X μ]` *and* `[Countable S]` added.  The extra countability is not slack:
+`FiniteRange X` forces `μ.map X` to be atomic, `FiniteEntropyOf X μ` does not, and for a
+non-atomic law the entropy series is identically `0` while no value has positive mass.  See
+this module's header.
+
+Since `0 ≤ H[X]` always (`ProbabilityTheory.entropy_nonneg`), the hypothesis is equivalent to
+`H[X ; μ] = 0`; it is stated at `≤ 0` to match PFR and to save consumers an `le_of_eq`. -/
+lemma const_of_nonpos_entropy [IsProbabilityMeasure μ] (hX : Measurable X)
+    [FiniteEntropyOf X μ] (hent : H[X ; μ] ≤ 0) :
+    ∃ s : S, μ.real (X ⁻¹' {s}) = 1 := by
+  haveI : IsProbabilityMeasure (μ.map X) := Measure.isProbabilityMeasure_map hX.aemeasurable
+  have hnn : ∀ x : S, 0 ≤ negMulLog ((μ.map X).real {x}) := fun x ↦
+    negMulLog_nonneg measureReal_nonneg (measureReal_singleton_le_one _ x)
+  have hsum : Summable fun x : S ↦ negMulLog ((μ.map X).real {x}) :=
+    FiniteEntropyOf.summable μ hX
+  -- the entropy series is a nonnegative sum pinned to `0`, hence termwise `0`
+  have hzero : ∑' x : S, negMulLog ((μ.map X).real {x}) = 0 := by
+    have h1 : H[X ; μ] = ∑' x : S, negMulLog ((μ.map X).real {x}) := entropy_eq_sum μ
+    have h2 : (0 : ℝ) ≤ ∑' x : S, negMulLog ((μ.map X).real {x}) := tsum_nonneg hnn
+    linarith [h1 ▸ hent]
+  have hterm : ∀ x : S, negMulLog ((μ.map X).real {x}) = 0 := fun x ↦
+    le_antisymm (hzero ▸ hsum.le_tsum x fun j _ ↦ hnn j) (hnn x)
+  -- countability of `S` is what produces a value of positive mass
+  obtain ⟨x, hx⟩ : ∃ x : S, (μ.map X).real {x} ≠ 0 := by
+    by_contra hcon
+    have hcover : (⋃ x : S, ({x} : Set S)) = Set.univ :=
+      Set.eq_univ_of_forall fun y ↦ Set.mem_iUnion.2 ⟨y, rfl⟩
+    have huniv : (μ.map X) Set.univ = 0 := by
+      rw [← hcover]
+      refine measure_iUnion_null fun x ↦ ?_
+      have hx0 : (μ.map X).real {x} = 0 := not_not.1 fun hx ↦ hcon ⟨x, hx⟩
+      rwa [Measure.real, ENNReal.toReal_eq_zero_iff, or_iff_left (measure_ne_top _ _)] at hx0
+    simp at huniv
+  refine ⟨x, ?_⟩
+  have hone : (μ.map X).real {x} = 1 := by
+    have hx0 := hterm x
+    rw [Real.negMulLog, neg_mul, neg_eq_zero, mul_eq_zero] at hx0
+    rcases hx0 with h | h
+    · exact absurd h hx
+    · rcases Real.log_eq_zero.1 h with h | h | h
+      · exact absurd h hx
+      · exact h
+      · linarith [(measureReal_nonneg : (0 : ℝ) ≤ (μ.map X).real {x})]
+  rwa [map_measureReal_apply hX (MeasurableSet.singleton x)] at hone
+
+end Constancy
+
+/-! ### Finite entropy passes back along an injection
+
+The closure lemmas of `Defs.lean` all go *forward* along a map (`finiteEntropyMeasure_map`,
+`finiteEntropyOf_pair`, …).  This is the one backward direction that is true without
+qualification: an injective measurable relabelling loses no entropy, so if the image law has
+finite entropy then so does the source.
+
+The consumer is the fibre product of `Condensation/Amalgamation.lean`, which embeds in a
+product of two finite-entropy spaces; it is stated here rather than in `Defs.lean` only
+because it arrived later. -/
+
+section Injective
+
+variable {Ω S : Type*} [MeasurableSpace Ω] [MeasurableSpace S]
+
+/-- **Finite entropy transfers back along an injection.**  If `f` is injective and `f ∘ id`
+— that is, `f` read as a variable on `(Ω, μ)` — has finite entropy, then `μ` itself has.
+
+This is `H[X] = H[f ∘ X]` for injective `f` in its summability form: the entropy series of
+`μ` is the entropy series of `μ.map f` composed with `f`, and a subfamily of a summable
+nonnegative family is summable. -/
+lemma finiteEntropyMeasure_of_injective [Countable Ω] [MeasurableSingletonClass Ω]
+    [MeasurableSingletonClass S] {μ : Measure Ω} [IsProbabilityMeasure μ] {f : Ω → S}
+    (hf : Measurable f) (hinj : Function.Injective f) [FiniteEntropyOf f μ] :
+    FiniteEntropyMeasure μ := by
+  haveI : IsProbabilityMeasure (μ.map f) := Measure.isProbabilityMeasure_map hf.aemeasurable
+  refine FiniteEntropyMeasure.of_summable_real ?_
+  have hsum : Summable fun s ↦ negMulLog ((μ.map f).real {s}) :=
+    FiniteEntropyMeasure.summable_real _
+  refine (hsum.comp_injective hinj).congr fun ω ↦ ?_
+  have hpre : f ⁻¹' {f ω} = {ω} := by
+    ext ω'
+    simp only [Set.mem_preimage, Set.mem_singleton_iff]
+    exact ⟨fun h ↦ hinj h, fun h ↦ by rw [h]⟩
+  simp only [Function.comp_apply]
+  rw [map_measureReal_apply hf (MeasurableSet.singleton (f ω)), hpre]
+
+end Injective
+
 /-! ### Mutual information -/
 
 section MutualInfo
@@ -200,6 +319,33 @@ lemma mutualInfo_eq_entropy_sub_condEntropy' (hX : Measurable X) (hY : Measurabl
     I[X : Y ; μ] = H[Y ; μ] - H[Y | X ; μ] := by
   rw [mutualInfo_comm hX hY,
     ShannonInformation.mutualInfo_eq_entropy_sub_condEntropy hY hX μ]
+
+/-- **A variable carries no information about a constant**: `I[X : fun _ ↦ c] = 0`.
+
+This is `ProbabilityTheory.mutualInfo_const` at `FiniteEntropyOf`.  Only `X` needs the
+hypothesis: the constant is `FiniteRange` outright, so `finiteEntropy_of_finiteRange`
+supplies its instance and it is never asked of a caller. -/
+lemma mutualInfo_const (hX : Measurable X) (c : T) {μ : Measure Ω}
+    [IsZeroOrProbabilityMeasure μ] [FiniteEntropyOf X μ] :
+    I[X : fun _ ↦ c ; μ] = 0 := by
+  haveI : FiniteEntropyOf (fun _ : Ω ↦ c) μ := finiteEntropy_of_finiteRange μ
+  exact (ShannonInformation.mutualInfo_eq_zero hX measurable_const).2 (indepFun_const c)
+
+/-- **Conditioning on an independent variable changes nothing**: `H[X | Y] = H[X]` when
+`X ⟂ Y`.  This is `ProbabilityTheory.IndepFun.condEntropy_eq_entropy` at `FiniteEntropyOf`.
+
+**Dot notation does not reach this lemma.**  `h.condEntropy_eq_entropy` on
+`h : ProbabilityTheory.IndepFun _ _ _` resolves in the head symbol's namespace,
+`ProbabilityTheory`, so it always finds PFR's `FiniteRange` version.  Write
+`ShannonInformation.IndepFun.condEntropy_eq_entropy h …` in full — the same hazard as
+`IdentDistrib.condEntropy_eq` below. -/
+lemma IndepFun.condEntropy_eq_entropy {μ : Measure Ω} (h : ProbabilityTheory.IndepFun X Y μ)
+    (hX : Measurable X) (hY : Measurable Y) [IsZeroOrProbabilityMeasure μ]
+    [FiniteEntropyOf X μ] [FiniteEntropyOf Y μ] :
+    H[X | Y ; μ] = H[X ; μ] := by
+  have h0 := (ShannonInformation.mutualInfo_eq_zero hX hY).mpr h
+  rw [ShannonInformation.mutualInfo_eq_entropy_sub_condEntropy hX hY μ] at h0
+  linarith
 
 end MutualInfo
 

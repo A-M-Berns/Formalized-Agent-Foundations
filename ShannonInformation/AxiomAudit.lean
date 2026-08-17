@@ -32,6 +32,7 @@ mathematical scope question that no axiom check can answer.
 module
 
 public import ShannonInformation.API
+public import ShannonInformation.FiniteEntropy.Examples
 
 /-!
 The assertion elaborator is a verbatim copy of the ten-line command in the repository's
@@ -231,3 +232,26 @@ resolve to the vendored version instead.  Every public declaration of `ChainRule
   ShannonInformation.mutual_comp_le
   ShannonInformation.condMutualInfo_eq'
   ShannonInformation.IdentDistrib.condEntropy_eq
+
+-- Phase 4b, `FiniteEntropy/Derived.lean`: the three statements the consumer migration
+-- (`Condensation`, Phase 4b of the generalization plan) turned out to need and Phase 4a had
+-- left at `FiniteRange`.  `const_of_nonpos_entropy` is the only one that is not a rewrite
+-- chain, and the only statement in the layer that asks for *more* than its vendored twin
+-- (`Countable S`); `finiteEntropyMeasure_of_injective` is the layer's one backward closure.
+#assert_axioms_clean_si
+  ShannonInformation.mutualInfo_const
+  ShannonInformation.IndepFun.condEntropy_eq_entropy
+  ShannonInformation.const_of_nonpos_entropy
+  ShannonInformation.finiteEntropyMeasure_of_injective
+
+-- Phase 4b, `FiniteEntropy/Examples.lean`: the constructed witness separating
+-- `FiniteEntropyOf` from `FiniteRange`.  It is library, not test, because
+-- `Condensation/Examples.lean`'s `geomModel` is a second client.
+#assert_axioms_clean_si
+  ShannonInformation.geom
+  ShannonInformation.finiteEntropyMeasure_geom
+  ShannonInformation.finiteEntropyOf_id_geom
+  ShannonInformation.not_finiteRange_id
+  ShannonInformation.finiteEntropyOf_strictly_weaker
+  ShannonInformation.entropy_geom
+  ShannonInformation.entropy_geom_pos

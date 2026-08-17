@@ -26,12 +26,11 @@ variables.  The paper's own order is 3.1, 3.2, 3.3, 3.4; nothing in the content 
   range family and the variables as *fields*, because Definitions 3.5–3.12 need models as
   objects of a category and Definition 3.2 needs "a random variable model together with a
   map to another one".
-* `dd:finite-range` — every variable of a model carries `FiniteRange`.  The paper asks for
-  countable discrete range and finite entropy; this is strictly stronger, and is the
-  standing disclosed narrowing forced by the vendored entropy library
-  (`ShannonInformation/SCOPE.md`).  The paper's separate hypothesis that `Ω` itself has
-  finite entropy is *not* carried: it is used in the paper only to make the variables'
-  entropies finite, which finite range already does.
+* Definition 3.1's finiteness is carried **verbatim**: the sample space has finite entropy
+  (`ShannonInformation.FiniteEntropyMeasure`) and the variables have countable discrete
+  range.  `dd:finite-range`, the standing narrowing to `FiniteRange` variables, was
+  **retired** on 2026-08-17 when the substrate `ShannonInformation/FiniteEntropy/` reached
+  the corpus this development needs; there is no modeling substitution left here.
 * `dd:pplus` — subfamilies `F ⊆ P⁺I` are `Set (PPlus I)`, and `Y_F` is the dependent
   product over the subtype `↥F`.
 * Definition 3.1's "**finite** family of random variables" is part of the model:
@@ -65,33 +64,36 @@ namespace Condensation
 
 open MeasureTheory ProbabilityTheory
 
-/-! ### A finite-range lemma for dependent products
+/-! ## Definition 3.1 — random variable models
 
-`FiniteRange` has no instance for a dependent product of finite-range variables in the
-vendored `FiniteRange/Defs.lean` (it has the binary product one).  This supplies it. -/
+There used to be a `Condensation.finiteRange_pi` here — `FiniteRange` for a dependent
+product of finitely many finite-range variables, which the vendored `FiniteRange/Defs.lean`
+lacks.  It was retired on 2026-08-17 with `dd:finite-range`: the joint variables get their
+finiteness from `RVModel.finiteEntropyOf`, in one step from Definition 3.1's finite-entropy
+sample space, and after the swap nothing called it.  If a `FiniteRange` product is ever
+wanted again it is six lines (`Set.Finite.pi` over the ranges). -/
 
-/-- A dependent product of finitely many finite-range variables has finite range. -/
-lemma finiteRange_pi {Ω' ι : Type*} [Finite ι] {R : ι → Type*} (Z : ∀ i, Ω' → R i)
-    [∀ i, FiniteRange (Z i)] : FiniteRange (fun ω i => Z i ω) where
-  finite := by
-    refine Set.Finite.subset (Set.Finite.pi (t := fun i => Set.range (Z i))
-      fun i => (FiniteRange.finite (X := Z i))) ?_
-    rintro _ ⟨ω, rfl⟩ i -
-    exact Set.mem_range_self ω
+/-- A **random variable model**: a countable discrete probability space `Ω` *with finite
+entropy*, together with a finite family of random variables `Xᵢ : Ω → Rᵢ` with countable
+discrete ranges.
 
-/-! ## Definition 3.1 — random variable models -/
+`dd:bundled-model`.  This is Definition 3.1 verbatim.  "Countable discrete probability
+space with finite entropy" is `[Countable Ω] [MeasurableSingletonClass Ω]
+[IsProbabilityMeasure P]` together with the field `finiteEntropy_Ω :
+ShannonInformation.FiniteEntropyMeasure P`; "countable and discrete range" is
+`[Countable (R i)] [MeasurableSingletonClass (R i)]`.
 
-/-- A **random variable model**: a countable discrete probability space `Ω` together with
-a family of random variables `Xᵢ : Ω → Rᵢ` with countable discrete ranges.
+The variables' own finite entropy (`finiteEntropy_X`) is carried as a role-named field
+even though it is *implied* by `finiteEntropy_Ω` — every `Xᵢ` is a measurable function of
+`Ω`, so `RVModel.finiteEntropyOf` derives it — because it is the hypothesis every §2
+substrate lemma actually consumes, and having it as a field puts it one instance step from
+the goal rather than behind a lemma with a measurability side condition.  It is therefore
+a redundant, not a strengthening, field: a model is exactly Definition 3.1's data.
 
-`dd:bundled-model`, `dd:finite-range`.  The paper's "countable discrete probability space
-with finite entropy" becomes `[Countable Ω] [MeasurableSingletonClass Ω]` plus
-`[IsProbabilityMeasure P]` — with no hypothesis on the entropy of `Ω` itself — and the
-paper's "countable and discrete range" becomes `[Countable (R i)]
-[MeasurableSingletonClass (R i)]` *plus* `FiniteRange (X i)`.  The last conjunct is
-strictly stronger than the paper (a geometric variable on `ℕ` is excluded); it is the
-standing narrowing recorded in `Condensation/KNOWLEDGE.md`, forced by the fact that the
-vendored entropy theorems are proved only in the finite-range fragment.
+Until 2026-08-17 the second field read `finiteRange_X : ∀ i, FiniteRange (X i)` and the
+`Ω` clause was dropped; that was the disclosed narrowing `dd:finite-range`, retired when
+`ShannonInformation/FiniteEntropy/` reached the corpus §2–§5 need.  A geometric variable on
+`ℕ` is now a model (`Condensation.Example.geomModel`).
 
 The index type is **finite** — Definition 3.1's "finite family".  It is a class parameter
 of the structure rather than a field: `Finite I` does not mention the model, so as a field
@@ -108,6 +110,8 @@ structure RVModel (I : Type w) [Finite I] where
   /-- The probability measure `P` on `Ω`. -/
   P : Measure Ω
   [probP : IsProbabilityMeasure P]
+  /-- Definition 3.1's "with finite entropy": the sample space itself has finite entropy. -/
+  [finiteEntropy_Ω : ShannonInformation.FiniteEntropyMeasure P]
   /-- The range `Rᵢ` of the `i`-th variable. -/
   R : I → Type v
   [mR : ∀ i, MeasurableSpace (R i)]
@@ -116,14 +120,26 @@ structure RVModel (I : Type w) [Finite I] where
   /-- The random variables `Xᵢ : Ω → Rᵢ`. -/
   X : ∀ i, Ω → R i
   measurable_X : ∀ i, Measurable (X i)
-  finiteRange_X : ∀ i, FiniteRange (X i)
+  finiteEntropy_X : ∀ i, ShannonInformation.FiniteEntropyOf (X i) P
 
 attribute [instance] RVModel.mΩ RVModel.countΩ RVModel.singΩ RVModel.probP
-  RVModel.mR RVModel.countR RVModel.singR RVModel.finiteRange_X
+  RVModel.finiteEntropy_Ω RVModel.mR RVModel.countR RVModel.singR RVModel.finiteEntropy_X
 
 namespace RVModel
 
 variable {I J : Type*} [Finite I] [Finite J]
+
+/-- **Every measurable variable on a model's sample space has finite entropy.**  This is
+what Definition 3.1's hypothesis on `Ω` buys: the finiteness condition need never be
+re-established for a derived variable, only its measurability.
+
+It is a lemma rather than an instance because instance search cannot discharge the
+`Measurable` side condition; the joint variables below register the instances that are
+actually wanted. -/
+lemma finiteEntropyOf (M : RVModel I) {S : Type*} [MeasurableSpace S]
+    [MeasurableSingletonClass S] {Z : M.Ω → S} (hZ : Measurable Z) :
+    ShannonInformation.FiniteEntropyOf Z M.P :=
+  ShannonInformation.finiteEntropyMeasure_map M.P hZ
 
 /-! ## Definition 3.4 — joint variables -/
 
@@ -151,12 +167,13 @@ lemma measurable_joint (M : RVModel I) (A : Finset I) : Measurable (M.joint A) :
 lemma measurable_jointOn (M : RVModel J) (F : Set J) : Measurable (M.jointOn F) :=
   measurable_pi_lambda _ fun B => M.measurable_X B
 
-instance finiteRange_joint (M : RVModel I) (A : Finset I) : FiniteRange (M.joint A) := by
-  exact finiteRange_pi (fun (i : A) => M.X (i : I))
+instance finiteEntropy_joint (M : RVModel I) (A : Finset I) :
+    ShannonInformation.FiniteEntropyOf (M.joint A) M.P :=
+  M.finiteEntropyOf (M.measurable_joint A)
 
-instance finiteRange_jointOn (M : RVModel J) (F : Set J) :
-    FiniteRange (M.jointOn F) := by
-  exact finiteRange_pi (fun (B : F) => M.X (B : J))
+instance finiteEntropy_jointOn (M : RVModel J) (F : Set J) :
+    ShannonInformation.FiniteEntropyOf (M.jointOn F) M.P :=
+  M.finiteEntropyOf (M.measurable_jointOn F)
 
 /-- The joint variable over **all** of the index type, `X_I` — the top element of the
 `X_A` family.  Spelled as the dependent product over `I` itself rather than as
@@ -173,12 +190,13 @@ def jointAll (M : RVModel I) : M.Ω → ∀ i, M.R i := fun ω i => M.X i ω
 lemma measurable_jointAll (M : RVModel I) : Measurable M.jointAll :=
   measurable_pi_lambda _ fun i => M.measurable_X i
 
-instance finiteRange_jointAll (M : RVModel I) : FiniteRange M.jointAll :=
-  finiteRange_pi (fun i => M.X i)
+instance finiteEntropy_jointAll (M : RVModel I) :
+    ShannonInformation.FiniteEntropyOf M.jointAll M.P :=
+  M.finiteEntropyOf M.measurable_jointAll
 
 /-! ### Restriction and projection of joint variables
 
-The companions of `measurable_joint(On)` / `finiteRange_joint(On)` that §4 and §5 run on.
+The companions of `measurable_joint(On)` / `finiteEntropy_joint(On)` that §4 and §5 run on.
 They are generic facts about `joint`/`jointOn`, not about any numbered node. -/
 
 /-- Restriction of a joint variable along an inclusion of index families: `Y_G` is
@@ -390,6 +408,10 @@ abbrev pullbackJoint (A : Finset I) : L.Λ → (∀ i : A, M.R i) := M.joint A �
 lemma measurable_pullbackJoint (A : Finset I) : Measurable (L.pullbackJoint A) :=
   (M.measurable_joint A).comp L.π_pres.measurable
 
+instance finiteEntropy_pullbackJoint (A : Finset I) :
+    ShannonInformation.FiniteEntropyOf (L.pullbackJoint A) L.P :=
+  L.L.finiteEntropyOf (L.measurable_pullbackJoint A)
+
 /-- Convention (2.2) for the joint variable `X_A`: its entropy is the same computed on `Ω`
 or pulled back to `Λ`. -/
 lemma entropy_pullbackJoint (A : Finset I) :
@@ -398,8 +420,8 @@ lemma entropy_pullbackJoint (A : Finset I) :
 
 /-! ## Definition 3.3 — the three scores
 
-All three are real numbers: `dd:finite-range` makes every entropy appearing in them
-finite, which is the paper's own remark after (3.3). -/
+All three are real numbers: Definition 3.1's finite-entropy sample space makes every
+entropy appearing in them finite, which is the paper's own remark after (3.3). -/
 
 section Scores
 

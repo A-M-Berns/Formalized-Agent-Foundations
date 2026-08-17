@@ -1,6 +1,6 @@
 import ShannonInformation.API
 import ShannonInformation.FiniteEntropy.Inequalities
-import APITests.ShannonInformationFiniteEntropy
+import ShannonInformation.FiniteEntropy.Examples
 
 /-! # Client-style tests for the finite-entropy inequality layer
 
@@ -13,7 +13,7 @@ nonnegativity and the independence equality case over `FiniteEntropyOf` rather t
   versions do;
 * **something was gained** — the statements apply to a genuinely infinite-range pair.  The
   witness is two independent copies of the geometric law on `ℕ` from
-  `APITests/ShannonInformationFiniteEntropy.lean`, carried on the product measure; its mutual
+  `ShannonInformation/FiniteEntropy/Examples.lean`, carried on the product measure; its mutual
   information is computed to be `0` and its joint entropy to be `4 * log 2`, neither of which
   is reachable through any `FiniteRange` instance.
 
@@ -22,7 +22,7 @@ Every declaration used from the layer is named in full (`ShannonInformation.…`
 resolved to those would test nothing. -/
 
 open MeasureTheory ProbabilityTheory Real
-open APITests.ShannonInformationFiniteEntropy (geom entropy_geom)
+open ShannonInformation (geom entropy_geom)
 
 namespace APITests.ShannonInformationInequalities
 

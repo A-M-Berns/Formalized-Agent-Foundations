@@ -33,11 +33,19 @@ data processing, entropy under maps, `condMutualInfo_eq'`, `IdentDistrib.condEnt
 §4's table names, fact by fact, which `ShannonInformation.*` lemma is available and which
 vendored statements were left at `FiniteRange`.
 
-**What has not happened.** No consumer has been migrated: `Condensation`'s `RVModel` still
-carries its `FiniteRange` field, and swapping it for `FiniteEntropyOf` is Phase 4b of the
-plan, not done here. The `FiniteRange` re-exports are not deprecated either, so both
+**Consumer migration (Phase 4b) landed 2026-08-17.** `Condensation`'s `RVModel` no longer
+carries a `FiniteRange` field: it is Definition 3.1 verbatim — a countable discrete
+probability space *with finite entropy* (`FiniteEntropyMeasure`) carrying countable-discrete-range
+variables of finite entropy — and `Condensation.Example.geomModel` (`Ω = ℕ`, geometric law,
+`X = id`) is a model the old field excluded. Four further lemmas were added to
+`FiniteEntropy/Derived.lean` for that migration (`mutualInfo_const`,
+`IndepFun.condEntropy_eq_entropy`, `const_of_nonpos_entropy`,
+`finiteEntropyMeasure_of_injective`), and `FiniteEntropy/Examples.lean` now holds the
+separating witness as library rather than test code.
+
+The `FiniteRange` re-exports are **not** deprecated, so both
 surfaces are live at once — `ShannonInformation/API.lean`'s "which version to cite" table
-is the mapping, and it also records the three ways a client can be bitten by having both in
+is the mapping, and it also records the ways a client can be bitten by having both in
 scope.
 
 ---
