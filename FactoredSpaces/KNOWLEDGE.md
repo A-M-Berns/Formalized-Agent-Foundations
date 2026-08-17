@@ -90,12 +90,12 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   universes inside one `Prop`; `before_iff_forall_structIndep` lets `Val(Z)` range over
   `Type v` (the factors' universe, where the witnesses `U_i` live), and the ⟹ direction
   `structIndep_of_before` is stated separately, universe-polymorphic in `Val(Z)`.
-* **Semigraphoid axioms via Theorem 6.2.** Proposition 5.2's axioms 1–4 are proved, as in
-  the paper, from soundness+completeness and the semigraphoid axioms of probabilistic
-  conditional independence — but the latter are *proved* for the paper's Definition 6.1
-  (product-identity form, `P(C) = 0 ⟹ independent`), not cited from Pearl, so no
-  citation boundary remains. Composition (axiom 6) is Lemma B.1, proved directly from
-  `history_pair`. (Stage 3.)
+* **Semigraphoid axioms via Theorem 6.2.** Proposition 5.2's axioms 2–4 (decomposition,
+  weak union, contraction) are proved, as in the paper, from soundness+completeness and the
+  semigraphoid axioms of probabilistic conditional independence — the latter *proved* for
+  Definition 6.1's product form (`isSemigraphoid_condIndepRel`), not cited from Pearl, so no
+  citation boundary remains. Symmetry (axiom 1) is `Disjoint.symm` directly, and composition
+  (axiom 6) is Lemma B.1 from `history_pair`. (Corrected in round 1, R1-F30.)
 
 * **`Dist` rather than `FiniteFactoredSets.ProbDist` (`dd:dist`).** FFS's distribution is
   event-based (`Set S → ℝ`, additivity) because Garrabrant's Definition 36 is; this paper's
@@ -105,11 +105,15 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   `Common/` probability layer is ever created.
 * **Factorization over a DAG is the CPD form (`dd:cpd`).** Eq. (4)'s `P(x_v | x_pa(v))`
   are conditional probability distributions specified per node and parent configuration
-  (Koller–Friedman Def 3.5, which the paper follows). Reading them as `P`'s own
-  conditionals fails at parent configurations of probability zero (`0/0`), and that is
-  precisely what breaks Lemma 5.3's bijectivity (errata E5). For strictly positive `P` the
-  CPDs *are* the conditionals (`condCPD`), which is the regime in which Lemma 5.3 is true
-  and stated (`tauPos_bijective`, `tauInv_condCPD_tau`).
+  (Koller–Friedman Def 3.5, which the paper follows). Round-1 audit (A4a) checked that this
+  is extensionally a no-op: with Lean's `condProb = 0` at zero-probability conditions, the
+  literal reading `P(x) = ∏ P(x_v | x_pa(v))` defines the *same* `Δ^*(G)` (⟸ both sides `0`
+  when a parent configuration has probability `0`; ⟹ ancestral-closure marginals plus
+  extension of the CPDs, `Val v` nonempty from `Dist (Pt Val)`), so no disclosure is owed.
+  The `0/0` problem bites in `τ⁻¹` — whose formula needs a factor at *every* `(v, y) ∈ I` —
+  not in the definition of `Δ^*(G)`; that is what breaks Lemma 5.3's bijectivity (errata
+  E5). For strictly positive `P` the CPDs *are* the conditionals (`condCPD`), the regime in
+  which Lemma 5.3 is true and stated (`tauPos_bijective`, `tauInv_condCPD_tau`).
 * **d-separation is defined here, with the endpoint convention (`dd:dsep`).** Trails are
   distinct-vertex skeleton paths; colliders are interior vertices with both trail edges
   incoming; endpoints are non-colliders and so block when in `Z`. Prop 5.5 is false for
