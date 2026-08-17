@@ -20,6 +20,10 @@ lean_lib CartesianFrames where
 lean_lib FiniteFactoredSets where
   srcDir := "."
 
+@[default_target]
+lean_lib FactoredSpaces where
+  srcDir := "."
+
 -- Consumer-style smoke tests. Each paper test imports only its supported API module.
 @[default_target]
 lean_lib APITests where

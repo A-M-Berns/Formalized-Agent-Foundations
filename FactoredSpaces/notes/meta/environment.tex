@@ -1,0 +1,244 @@
+\usepackage[utf8]{inputenc}%(only for the pdftex engine)
+% \usepackage[big]{dgruyter}
+\usepackage{PRIMEarxiv}
+ \makeatletter
+\newcommand\schapter[1]{%
+    \if@openright\cleardoublepage\else\clearpage\fi
+    \phantomsection % Ensures hyperref creates a link
+    \@schapter{#1}%
+    \addcontentsline{toc}{chapter}{#1} % Adds the schapter to the TOC as a chapter
+}
+\providecommand*\toclevel@schapter{0} % Set as a top-level (like chapter)
+\providecommand*\Hy@toclevel@schapter{0} % Ensure hyperref recognizes it at the same level
+\makeatother
+
+% \usepackage[nonatbib]{neurips_2023}
+% LINE numbers
+% \usepackage[modulo]{lineno}
+% \linenumbers
+% \modulolinenumbers[1]
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{xparse}
+\usepackage{graphicx}
+\usepackage{cancel}
+\usepackage{comment}
+\usepackage{pifont}% http://ctan.org/pkg/pifont
+\usepackage{mathtools}
+\usepackage[noabbrev,nameinlink]{cleveref}
+\usepackage{enumitem}
+\setlist[enumerate]{leftmargin=2em}
+\setlist[itemize]{leftmargin=2em}
+\setlist[description]{leftmargin=*}
+\usepackage{tcolorbox}
+
+\RequirePackage{fix-cm}  % Allows more flexible sizes for Computer Modern
+\usepackage{anyfontsize}  % Allows arbitrary font sizes
+
+\usepackage{thm-restate} % Allows restating theorems
+
+\hypersetup{
+    breaklinks=true,
+    pdfencoding=unicode,
+    bookmarksnumbered,
+    pdfborder={0 0 0},
+}%
+
+\newcommand{\cmark}{\ding{51}}%
+\newcommand{\xmark}{\ding{55}}%
+\definecolor{lightblue}{rgb}{0.6 , 0.7, 0.9}
+\definecolor{lightpurple}{rgb}{0.65 , 0.6, 0.9}
+\definecolor{lightcyan}{rgb}{0.5 , 0.85, 0.8}
+\definecolor{darkpurple}{rgb}{0.35 , 0.15, 0.6}
+
+% Define the theorem-like environment
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{summary}[theorem]{Summary}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{proposition}[theorem]{Proposition}
+% \newtheorem{conjecture}[theorem]{Conjecture}
+% \newtheorem{observation}[theorem]{Observation}
+
+\NewDocumentCommand{\optionalbracket}{m m}{%
+    \NewDocumentCommand{#1}{g}{%
+        \IfNoValueTF{##1}{%
+            #2%
+        }{%
+            #2(##1)%
+        }%
+    }%
+}
+
+
+\NewDocumentCommand{\oneortwo}{m m m}{%
+    \NewDocumentCommand{#1}{g}{%
+        \IfNoValueTF{##2}{%
+            #3(##1)%
+        }{%
+            #3(##1,##2)%
+        }%
+    }%
+}
+
+\newcommand{\distrsym}{\bigtriangleup}
+\optionalbracket{\distributions}{\distrsym}
+\optionalbracket{\distributionsO}{\distrsym_0}
+\optionalbracket{\distributionsF}{\distrsym^\otimes}
+\optionalbracket{\distributionsFO}{\distrsym^*_0}
+\newcommand{\distributionsFC}[2]{\distrsym^*_{#2}(#1)}
+\newcommand{\distributionsFi}[2]{\distrsym^*_{#2}(#1)}
+\newcommand{\distributionsFCi}[3]{\distrsym^*_{#2,#3}(#1)}
+\newcommand{\distributionsFOi}[2]{\distrsym^*_{0,#2}(#1)}
+
+
+\newcommand{\differenton}[1]{\tildenot^(#1)}
+\newcommand{\factors}{\Omega}
+\newcommand{\indep}{\mathrel{\perp\!\!\!\perp}}
+\newcommand{\orth}{\mathrel{\perp}}
+\newcommand{\orthF}{\mathrel{\perp}^\FS}
+\newcommand{\orthnot}{\not\orth}%{\cancel{\orth}}
+\newcommand{\orthnotF}{\not\orth^\FS}%{\cancel{\orth}}
+\newcommand{\sect}{\cap}
+\newcommand{\sectbig}{\bigcap}
+\newcommand{\union}{\cup}
+\newcommand{\unionbig}{\bigcup}
+\newcommand{\indepstar}{\indep^\otimes}
+\newcommand{\timesbig}{\mathop{\text{\Large$\times$}}}%
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\comp}[1]{{\overline{#1}}}
+\newcommand{\abs}[1]{|#1|}
+\newcommand{\ifff}{\Leftrightarrow}
+\newcommand{\impl}{\Rightarrow}
+\newcommand{\implied}{\Leftarrow}
+\newcommand{\nothing}{\varnothing}
+\newcommand{\given}{\mid}
+\optionalbracket{\interiorset}{S'}
+\optionalbracket{\dirac}{\delta_x}
+\newcommand{\generates}{\vdash}
+\newcommand{\generatesNot}{\cancel{\vdash}}
+\newcommand{\cond}[2]{#1(#2|C)}
+\newcommand{\thick}{\;}
+
+\newcommand{\disintegrates}{\div}
+\newcommand{\functionOf}{\triangleleft}
+\newcommand{\functionTo}{\triangleright}
+\newcommand{\without}{\setminus}
+
+\optionalbracket{\PA}{\text{Pa}}
+\newcommand{\pa}{\text{pa}}
+\optionalbracket{\range}{\text{range}}
+
+\newcommand{\product}{\bigotimes}%
+
+% definitions added by Magdalena
+\newcommand{\FS}{\Omega} %\mathcal{F}} % factored space model
+\newcommand{\FSModel}{\mathcal{M}} % factored space model
+\newcommand{\Omg}{\Omega} % factors and their product
+\newcommand{\omg}{\omega} % factors and their product
+\newcommand{\U}{U} % projections/exogenous variables
+\newcommand{\Obs}{{\textnormal{Obs}}} % observation space
+\newcommand{\A}{\text{an}} % Ancestors
+\newcommand{\Val}{\textnormal{Val}} % Value Space/Range
+\newcommand{\Ainc}{\A_{\text{inc}}} % Inclusive Ancestors
+\newcommand{\Vpriv}{{V}}%^{\textnormal{Priv}}}} % privileged variables
+\newcommand{\Bayes}{\mathcal{B}}% bayes net
+\newcommand{\Vars}{\text{Var}}%
+\newcommand{\V}{\mathbf{V}}%
+\newcommand{\Xb}{X}%\mathbf{X}}%
+\newcommand{\pav}{{\pa(v)}}%
+\newcommand{\xpav}{x_\pav}%
+\newcommand{\xpavstar}{\xpav^*}%
+\newcommand{\Xpav}{X_\pav}%
+\newcommand{\vxpavstar}{{(v,\xpav^*)}}%
+\newcommand{\vxpav}{{(v,\xpav)}}%
+\newcommand{\Pomg}{P^\Omg}%
+\newcommand{\iinI}{{i\in I}}%
+\newcommand{\Ieq}{{I_{=}^x}}%
+\newcommand{\Ineq}{{I_{\ne}^x}}%
+\newcommand{\iinIeq}{{i\in \Ieq}}%
+\newcommand{\iinIneq}{{i\in \Ineq}}%
+\newcommand{\vinV}{{v\in V}}%
+\newcommand{\merge}{\cdot}%
+\newcommand{\timesOmg}{\bigtimes_\iinI\Omg_i}%
+\newcommand{\FSG}{\FS}%
+\newcommand{\x}{\alpha}%
+\newcommand{\y}{\beta}%
+\newcommand{\FSMG}{\FSModel^G}%
+\newcommand{\Acal}{\mathcal{A}}%
+
+
+\renewcommand{\epsilon}{\varepsilon}%
+
+
+\makeatletter
+\renewcommand{\paragraph}{\@ifstar\@paragraphbold\@paragraphbold}
+\newcommand{\@paragraphbold}[1]{\vspace{4mm}\noindent\textbf{{#1}.}}
+\makeatother
+
+
+\optionalbracket{\cvar}{C}
+\optionalbracket{\base}{\text{Base}}
+\optionalbracket{\history}{\mathcal{H}}
+\optionalbracket{\relevant}{\mathcal{R}}
+\optionalbracket{\supp}{\mathrm{supp}}
+\optionalbracket{\proj}{\pi}
+\optionalbracket{\marg}{\textnormal{marg}}
+
+
+
+\newcommand{\flatunion}{\union}
+\newcommand{\flatunionbig}{\product}
+\newcommand{\flattimes}{\times}
+\newcommand{\flattimesbig}{\times}
+\newcommand{\proddistr}{\product}
+\newcommand{\condvar}[2]{#2}
+\newcommand{\inrange}[2]{#1}
+\newcommand{\casesinline}[2]{\begin{cases}#1\end{cases}}
+\newcommand{\ms}{-measurable}
+\newcommand{\NR}[1]{\NN_{#1}}
+\newcommand{\num}[1]{#1}
+\newcommand{\compose}{\circ}
+
+
+
+
+\newcommand{\MS}{\mathcal{M}}
+\newcommand{\emb}{\mathfrak{e}}
+\newcommand{\xor}{\oplus}
+\newcommand{\before}{\leq}
+\newcommand{\strictlybefore}{<}
+\newcommand{\strictlybeforeF}{\strictlybefore^\FS}
+\newcommand{\beforeF}{\before^\FS}
+\newcommand{\equivalent}{\simeq}
+\newcommand{\Var}[1]{V_{#1}}
+\newcommand{\model}{m}
+
+
+\DeclareMathOperator{\historyC}{Cohistory}
+
+
+
+\newtcolorbox{definitiontext}[1][]{
+  colback=white,
+  colframe=darkgray,
+  boxrule=0.5mm,
+  #1
+}

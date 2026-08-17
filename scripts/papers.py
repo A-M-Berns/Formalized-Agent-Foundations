@@ -111,6 +111,24 @@ PAPERS = {
         "api": "FiniteFactoredSets/API.lean",
         "api_test": "APITests/FiniteFactoredSets.lean",
     },
+    "factored-space-models": {
+        "title": "Factored space models: Towards causality between levels of abstraction",
+        "authors": "Garrabrant, Mayer, Wache, Lang, Eisenstat, Dell",
+        "year": 2024,
+        "arxiv": "2412.02579",
+        "status": "in-progress",
+        "library": "FactoredSpaces",
+        "source": "FactoredSpaces/notes/2412.02579v2-main.tex",
+        "pdf": "FactoredSpaces/notes/2412.02579v2.pdf",
+        # Section-scoped shared counter (definitions, lemmas, propositions, theorem,
+        # corollary all share it), lettered appendix sections, thmtools `restatable`
+        # wrappers; five of the fifty nodes are unlabeled, so the printed number is the key.
+        "scheme": "printed-counter-appendix",
+        "node_checker": "scripts/check-factored-spaces-nodes.py",
+        "readme": "FactoredSpaces/README.md",
+        "knowledge": "FactoredSpaces/KNOWLEDGE.md",
+        "errata": "FactoredSpaces/notes/paper-errata.md",
+    },
 }
 
 # Libraries in `lakefile.lean` that are deliberately not paper formalizations.  The

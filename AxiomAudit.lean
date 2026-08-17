@@ -65,6 +65,7 @@ import CartesianFrames.AdditiveMultiplicative
 import CartesianFrames.Operations
 import CartesianFrames.Categorical
 import FiniteFactoredSets
+import FactoredSpaces
 
 open Lean Elab Command in
 /-- Fail elaboration unless every named declaration exists and depends on no axioms
@@ -1719,6 +1720,37 @@ open FiniteFactoredSets in
   S F f finite
 #assert_fields FiniteFactoredSets.OrthDatabase
   O N
+
+/-! ## Factored Space Models — the checked endpoint inventory
+
+Same contract as the FFS-INVENTORY block above: every declaration carrying a
+`Paper node:` annotation in `FactoredSpaces/` must itself be listed between the
+FS-INVENTORY markers below, and `scripts/check-factored-spaces-nodes.py` enforces that
+direction, together with the validity of each cited node against the committed TeX
+(`printed-counter-appendix` scheme: section-scoped shared counter, lettered appendix,
+`restatable` wrappers) and the anchoring of each annotation to a named declaration.  The
+converse (every listed name is a real declaration) is caught only when this file is
+elaborated.
+
+This formalization is **in progress** (`scripts/papers.py`: `in-progress`); the list
+below grows with each stage and the README's coverage table is the accounting of what is
+and is not yet claimed. -/
+
+open FactoredSpaces in
+-- FS-INVENTORY-BEGIN
+#assert_axioms_clean
+  -- §4.1: Definitions 4.1, 4.2 and Lemma C.3
+  Pt bg DerivedOn derivedOn_iff
+  -- §4.2 / Appendix A: Definitions 4.5, 4.6; Lemmas 4.7, 4.8, 4.9, A.1, A.2, C.4
+  Disintegrates disintegrates_iff_splice Disintegrates.union Disintegrates.inter
+  Generates history generates_history history_subset_of_generates history_unique_minimal
+  Generates.inter history_pair history_eq_iUnion_fibers history_eq_biUnion_fibers
+  generates_indic_iff_agree generates_indic_iff_splice eventHistory_minimal_splice
+  -- §4.3–4.4 / Appendix B: Definitions 4.10, 4.11; Lemmas 4.12, B.1
+  StructIndep StructIndepGiven Before StrictlyBefore
+  structIndep_of_before before_of_forall_bg before_iff_forall_structIndep
+  structIndepGiven_pair
+-- FS-INVENTORY-END
 
 /-! ## Consumer API conveniences (not paper endpoint inventories)
 

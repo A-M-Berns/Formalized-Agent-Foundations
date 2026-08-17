@@ -199,7 +199,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <div class="wrap">
 <nav class="rail" aria-label="node index">
   <div class="rail-title">Read-through</div>
-  <div class="rail-progress" id="progress">0 / 225 read</div>
+  <div class="rail-progress" id="progress">0 / 240 read</div>
   <a class="nav-paper" href="#paper-logical-induction">Logical Induction</a>
   <div class="nav-sec">The Logical Induction Criterion</div>
 <a class="nav-item" href="#def-lic" data-node="def-lic"><span class="dot instantiated"></span>def:lic</a>
@@ -481,6 +481,30 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <a class="nav-item" href="#ffs-definition-48" data-node="ffs-definition-48"><span class="dot plain"></span>Definition 48</a>
 <a class="nav-item" href="#ffs-definition-49" data-node="ffs-definition-49"><span class="dot plain"></span>Definition 49</a>
 <a class="nav-item" href="#ffs-definition-50" data-node="ffs-definition-50"><span class="dot plain"></span>Definition 50</a>
+  <a class="nav-paper" href="#paper-factored-space-models">Factored Space Models</a>
+  <div class="nav-sec">Factored space models</div>
+<a class="nav-item" href="#fsm-definition-4-1" data-node="fsm-definition-4-1"><span class="dot plain"></span>Definition 4.1</a>
+<div class="nav-sec">Factored spaces and factored space models</div>
+<a class="nav-item" href="#fsm-definition-4-2" data-node="fsm-definition-4-2"><span class="dot plain"></span>Definition 4.2</a>
+<a class="nav-item" href="#fsm-definition-4-5" data-node="fsm-definition-4-5"><span class="dot plain"></span>Definition 4.5</a>
+<a class="nav-item" href="#fsm-definition-4-6" data-node="fsm-definition-4-6"><span class="dot plain"></span>Definition 4.6</a>
+<a class="nav-item" href="#fsm-lemma-4-7" data-node="fsm-lemma-4-7"><span class="dot plain"></span>Lemma 4.7</a>
+<a class="nav-item" href="#fsm-lemma-4-8" data-node="fsm-lemma-4-8"><span class="dot plain"></span>Lemma 4.8</a>
+<a class="nav-item" href="#fsm-lemma-4-9" data-node="fsm-lemma-4-9"><span class="dot plain"></span>Lemma 4.9</a>
+<div class="nav-sec">Structural independence</div>
+<a class="nav-item" href="#fsm-definition-4-10" data-node="fsm-definition-4-10"><span class="dot plain"></span>Definition 4.10</a>
+<div class="nav-sec">Structural time</div>
+<a class="nav-item" href="#fsm-definition-4-11" data-node="fsm-definition-4-11"><span class="dot plain"></span>Definition 4.11</a>
+<a class="nav-item" href="#fsm-lemma-4-12" data-node="fsm-lemma-4-12"><span class="dot plain"></span>Lemma 4.12</a>
+<div class="nav-sec">History as the minimal generating partition</div>
+<a class="nav-item" href="#fsm-lemma-a-1" data-node="fsm-lemma-a-1"><span class="dot plain"></span>Lemma A.1</a>
+<a class="nav-item" href="#fsm-lemma-a-2" data-node="fsm-lemma-a-2"><span class="dot plain"></span>Lemma A.2</a>
+<div class="nav-sec">Compositional semigraphoid</div>
+<a class="nav-item" href="#fsm-lemma-b-1" data-node="fsm-lemma-b-1"><span class="dot plain"></span>Lemma B.1</a>
+<div class="nav-sec">Appendix C — Proofs for Section sec:soundcomplete % Cref gives warnings when used in titles.</div>
+<a class="nav-item" href="#fsm-lemma-c-3" data-node="fsm-lemma-c-3"><span class="dot plain"></span>Lemma C.3</a>
+<div class="nav-sec">Proof of soundness for events</div>
+<a class="nav-item" href="#fsm-lemma-c-4" data-node="fsm-lemma-c-4"><span class="dot plain"></span>Lemma C.4</a>
 </nav>
 <main>
   <h1>Formalized Agent Foundations — the trust-surface read-through</h1>
@@ -515,7 +539,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <div style="overflow-x:auto"><table class="index">
       <tr><td><strong>Paper</strong></td><td class="count"><strong>nodes</strong></td>
           <td><strong>library</strong></td><td><strong>editorial data on its cards</strong></td></tr>
-      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>tier badge per node (universal / instantiated / qualified), a reading note and a "what to check" note, from the machine-checked strength table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">12</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">87</td><td><code>FiniteFactoredSets/</code></td><td><strong>complete</strong> — §2–§7; 87 nodes carried by declarations and nine rendered by Mathlib vocabulary, 96 in scope. Conjecture 1 is stated as a <code>Prop</code> and deliberately not proved, and Examples 3 and 4 are out of scope by ruling; <strong>no strength classification exists for this paper</strong></td></tr>
+      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>tier badge per node (universal / instantiated / qualified), a reading note and a "what to check" note, from the machine-checked strength table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">12</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">87</td><td><code>FiniteFactoredSets/</code></td><td><strong>complete</strong> — §2–§7; 87 nodes carried by declarations and nine rendered by Mathlib vocabulary, 96 in scope. Conjecture 1 is stated as a <code>Prop</code> and deliberately not proved, and Examples 3 and 4 are out of scope by ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-factored-space-models">Factored space models: Towards causality between levels of abstraction</a><div class="idx-cite">Garrabrant, Mayer, Wache, Lang, Eisenstat, Dell (2024) · <a href="https://arxiv.org/abs/2412.02579">arXiv:2412.02579</a></div></td><td class="count">15</td><td><code>FactoredSpaces/</code></td><td><strong>in progress</strong> — the correspondence view of what is landed so far; <strong>no strength classification exists for this paper</strong></td></tr>
     </table></div>
     <p><strong>Only Logical Induction has a strength classification and per-node reading
     notes.</strong> They are the product of a dedicated re-derivation pass and a
@@ -7754,6 +7778,386 @@ We say <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><
   </div>
 </article>
   </section>
+
+  <section class="paper-section" id="paper-factored-space-models">
+  <h2 class="paper-head">Factored space models: Towards causality between levels of abstraction</h2>
+  <p class="paper-cite">Garrabrant, Mayer, Wache, Lang, Eisenstat, Dell (2024) ·
+  <a href="https://arxiv.org/abs/2412.02579">arXiv:2412.02579</a> ·
+  <code>FactoredSpaces/</code> · 15 nodes</p>
+
+  <div class="method">
+    <div class="no-tier"><b>This formalization is in progress, and no strength
+    classification exists for this paper.</b> The cards below are the correspondence view
+    of what has landed so far — every paper node beside the Lean statement that carries
+    it — and assert the correspondence only. Nodes with no Lean statement annotated to
+    them yet: <code>Lemma B.2</code>, <code>Definition C.1</code>, <code>Definition C.2</code>, <code>Lemma C.5</code>, <code>Definition C.6</code>, <code>Lemma C.7</code>, <code>Lemma C.8</code>, <code>Lemma C.9</code>, <code>Lemma C.10</code>, <code>Lemma C.11</code>, <code>Lemma C.12</code>, <code>Lemma C.13</code>, <code>Corollary C.14</code>, <code>Lemma C.15</code>, <code>Lemma C.16</code>, <code>Lemma C.17</code>, <code>Lemma C.18</code>, <code>Lemma C.19</code>, <code>Lemma C.20</code>, <code>Definition 4.3</code>, <code>Definition 4.4</code>, <code>Definition 5.1</code>, <code>Proposition 5.2</code>, <code>Lemma 5.3</code>, <code>Proposition 5.4</code>, <code>Proposition 5.5</code>, <code>Proposition 5.6</code>, <code>Definition 5.7</code>, <code>Proposition 5.8</code>, <code>Definition 6.1</code>, <code>Theorem 6.2</code>, <code>Lemma 6.3</code>, <code>Lemma 6.4</code>, <code>Lemma 6.5</code>, <code>Proposition 6.6</code>.</div>
+
+    <h3>How nodes are cited</h3>
+    <p>The paper labels 45 of its 50 numbered nodes and leaves five unlabeled — among them
+    Definition 4.2, the factored space itself — so the provenance key is the
+    <em>printed</em> number, recomputed from the committed TeX
+    (<code>scripts/check-factored-spaces-nodes.py</code>). The source declares one
+    section-scoped counter shared by <code>theorem</code>, <code>definition</code>,
+    <code>lemma</code>, <code>proposition</code> and <code>corollary</code> (so numbers
+    read <code>Lemma 4.7</code>, <code>Definition 6.1</code>), wraps several results in
+    thmtools' <code>restatable</code> — counted where first stated, not where restated —
+    and letters its appendix sections, so appendix nodes read <code>Lemma A.1</code>,
+    <code>Definition C.6</code>.</p>
+
+    <h3>Reading the statements</h3>
+    <p>The factored space <code>Ω = ×<sub>i∈I</sub> Ω<sub>i</sub></code> is the dependent
+    function type <code>Pt Ω</code>; the paper's product <code>C<sub>J</sub> ×
+    C<sub>I∖J</sub></code> is stated literally (<code>prodSplit</code>) and worked with
+    through its proved equivalent, closure under splicing two points at <code>J</code>
+    (<code>Finset.piecewise</code>). The design decisions are tagged <code>dd:</code> in
+    <code>FactoredSpaces.lean</code>.</p>
+  </div>
+
+  <h2 class="sec" id="sec-fsm-Factored-space-models">Factored space models</h2>
+
+<article class="node" id="fsm-definition-4-1">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-definition-4-1" aria-label="mark Definition 4.1 read"></label>
+    <span class="node-label">Definition 4.1</span>
+    <span class="node-title">Derived Variable</span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mi>&#x0003A;</mi><mi>&#x003A9;</mi><mo>&#x02192;</mo><mtext>Val</mtext><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi><mi>&#x0003A;</mi><mi>&#x003A9;</mi><mo>&#x02192;</mo><mtext>Val</mtext><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be two random variables, and let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><mo>&#x02286;</mo><mi>&#x003A9;</mi></mrow></math> be an event. Then, we say that emph<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math> is derived from <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> on <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math>, or that it is a <em>deterministic function of</em> <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> on <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math> if there is a function <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>f</mi><mi>&#x0003A;</mi><mtext>Val</mtext><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02192;</mo><mtext>Val</mtext><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, such that for all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003C9;</mi><mo>&#x02208;</mo><mi>C</mi></mrow></math>, it holds that <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003C9;</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mi>f</mi><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003C9;</mi><mo stretchy="false">&#x00029;</mo><mo stretchy="false">&#x00029;</mo></mrow></math>. We also write this as <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><msub><mi>&#x025B7;</mi><mi>C</mi></msub><mi>Y</mi></mrow></math>. We write <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mi>&#x025B7;</mi><mi>Y</mi></mrow></math> as a shorthand for <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><msub><mi>&#x025B7;</mi><mi>&#x003A9;</mi></msub><mi>Y</mi></mrow></math>, and say that <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math> is derived from <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> or a deterministic function of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.DerivedOn</code><span class="ep-file">FactoredSpaces/Basic.lean</span></div><pre class="sig">def DerivedOn (C : Set (Pt Ω)) (X : Pt Ω → α) (Y : Pt Ω → β) : Prop</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-fsm-Factored-spaces-and-factored-space-models">Factored spaces and factored space models</h2>
+
+<article class="node" id="fsm-definition-4-2">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-definition-4-2" aria-label="mark Definition 4.2 read"></label>
+    <span class="node-label">Definition 4.2</span>
+    <span class="node-title">Factored Space</span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>A finite sample space <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi></mrow></math> is called a <em>factored space</em> if there is a finite emphindex set <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>I</mi></mrow></math> and finite sets <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>&#x003A9;</mi><mi>i</mi></msub></mrow></math> for all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>i</mi><mo>&#x02208;</mo><mi>I</mi></mrow></math> such that \(Omg = timesOmg\) holds.
+    The sets <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>&#x003A9;</mi><mi>i</mi></msub></mrow></math> are called the <em>factors</em> of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi></mrow></math>.
+    Moreover, the random variables <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>U</mi><mi>i</mi></msub><mi>&#x0003A;</mi><mi>&#x003A9;</mi><mo>&#x02192;</mo><msub><mi>&#x003A9;</mi><mi>i</mi></msub></mrow></math> with <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>U</mi><mi>i</mi></msub><mo stretchy="false">&#x00028;</mo><mi>&#x003C9;</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><msub><mi>&#x003C0;</mi><mi>i</mi></msub><mo stretchy="false">&#x00028;</mo><mi>&#x003C9;</mi><mo stretchy="false">&#x00029;</mo></mrow></math> are called the <em>background variables</em> of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi></mrow></math>, and we write <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>U</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><msub><mi>U</mi><mi>i</mi></msub><msub><mo stretchy="false">&#x00029;</mo><mrow><mi>i</mi><mo>&#x02208;</mo><mi>I</mi></mrow></msub></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.Pt</code><span class="ep-file">FactoredSpaces/Basic.lean</span></div><pre class="sig">abbrev Pt (Ω : I → Type v) : Type max u v</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.bg</code><span class="ep-file">FactoredSpaces/Basic.lean</span></div><pre class="sig">def bg (i : I) : Pt Ω → Ω i</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="fsm-definition-4-5">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-definition-4-5" aria-label="mark Definition 4.5 read"></label>
+    <span class="node-label">Definition 4.5</span>
+    <span class="node-title">Disintegration</span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi><mo>&#x0003D;</mo><msub><mi>&#x02A09;</mi><mrow><mi>i</mi><mo>&#x02208;</mo><mi>I</mi></mrow></msub><msub><mi>&#x003A9;</mi><mi>i</mi></msub></mrow></math> be a factored space, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><mo>&#x02286;</mo><mi>&#x003A9;</mi></mrow></math> be an event and let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi><mo>&#x02286;</mo><mi>I</mi></mrow></math>. Then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi></mrow></math> <em>disintegrates</em> <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math> if
+    <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><mo>&#x0003D;</mo><msub><mi>C</mi><mi>J</mi></msub><mi>&#x000D7;</mi><msub><mi>C</mi><mrow><mi>I</mi><mi>&#x0005C;</mi><mi>J</mi></mrow></msub><mspace width="0.167em" /><mo>&#x0002E;</mo></mrow></math></p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.Disintegrates</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">def Disintegrates (J : Finset I) (C : Set (Pt Ω)) : Prop</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="fsm-definition-4-6">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-definition-4-6" aria-label="mark Definition 4.6 read"></label>
+    <span class="node-label">Definition 4.6</span>
+    <span class="node-title">History, Generation</span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi><mo>&#x0003D;</mo><msub><mi>&#x02A09;</mi><mrow><mi>i</mi><mo>&#x02208;</mo><mi>I</mi></mrow></msub><msub><mi>&#x003A9;</mi><mi>i</mi></msub></mrow></math> be a factored space with the background variables <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>U</mi></mrow></math>. Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi><mo>&#x02286;</mo><mi>I</mi></mrow></math>, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mi>&#x0003A;</mi><mi>&#x003A9;</mi><mo>&#x02192;</mo><mtext>Val</mtext><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, and let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><mo>&#x02286;</mo><mi>&#x003A9;</mi></mrow></math>. Then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi></mrow></math> generates <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math> if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>U</mi><mi>J</mi></msub><msub><mi>&#x025B7;</mi><mrow><mi>C</mi></mrow></msub><mi>X</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><mo>&#x0003D;</mo><msub><mi>C</mi><mi>J</mi></msub><mi>&#x000D7;</mi><msub><mi>C</mi><mrow><mi>I</mi><mi>&#x0005C;</mi><mi>J</mi></mrow></msub></mrow></math>.
+The history <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo>&#x02223;</mo><mi>C</mi><mo stretchy="false">&#x00029;</mo></mrow></math> of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math> is the intersection of all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi><mo>&#x02286;</mo><mi>I</mi></mrow></math> 
+that generate <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math>. That is,
+beginalign
+history(X| C)coloneqq sectbig big\J ⊆ I: J   generates  X  given  Cbig\\,.
+endalign</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.Generates</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">def Generates (J : Finset I) (X : Pt Ω → α) (C : Set (Pt Ω)) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.history</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">noncomputable def history (X : Pt Ω → α) (C : Set (Pt Ω)) : Finset I</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="fsm-lemma-4-7">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-lemma-4-7" aria-label="mark Lemma 4.7 read"></label>
+    <span class="node-label">Lemma 4.7</span>
+    <span class="node-title">History is minimal generating set</span>
+    <span class="kind">lemma</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>For a factored space <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi><mo>&#x0003D;</mo><msub><mi>&#x02A09;</mi><mrow><mi>i</mi><mo>&#x02208;</mo><mi>I</mi></mrow></msub><msub><mi>&#x003A9;</mi><mi>i</mi></msub></mrow></math>, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mi>&#x0003A;</mi><mi>&#x003A9;</mi><mo>&#x02192;</mo><mtext>Val</mtext><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, and let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><mo>&#x02286;</mo><mi>&#x003A9;</mi></mrow></math>. Then, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo>&#x02223;</mo><mi>C</mi><mo stretchy="false">&#x00029;</mo></mrow></math> is the unique minimal set which generates <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.generates_history</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem generates_history [Nonempty α] (X : Pt Ω → α) (C : Set (Pt Ω)) :
+    Generates (history X C) X C</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.history_subset_of_generates</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem history_subset_of_generates {J : Finset I} {X : Pt Ω → α} {C : Set (Pt Ω)}
+    (hJ : Generates J X C) : history X C ⊆ J</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.history_unique_minimal</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem history_unique_minimal [Nonempty α] (X : Pt Ω → α) (C : Set (Pt Ω)) :
+    ∃! J : Finset I, Generates J X C ∧ ∀ K, Generates K X C → J ⊆ K</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="fsm-lemma-4-8">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-lemma-4-8" aria-label="mark Lemma 4.8 read"></label>
+    <span class="node-label">Lemma 4.8</span>
+    <span class="node-title">History of joint variable</span>
+    <span class="kind">lemma</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math> be  variables defined on a factored space <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi><mo>&#x0003D;</mo><msub><mi>&#x02A09;</mi><mrow><mi>i</mi><mo>&#x02208;</mo><mi>I</mi></mrow></msub><msub><mi>&#x003A9;</mi><mi>i</mi></msub></mrow></math>. For all events <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><mo>&#x02286;</mo><mi>&#x003A9;</mi></mrow></math>, we have
+<div class="dmath"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo>&#x0002C;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02223;</mo><mi>C</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo>&#x02223;</mo><mi>C</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0222A;</mo><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo>&#x02223;</mo><mi>C</mi><mo stretchy="false">&#x00029;</mo><mspace width="0.167em" /><mo>&#x0002E;</mo></mrow></math></div></p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.history_pair</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem history_pair [Nonempty α] [Nonempty β] (X : Pt Ω → α) (Y : Pt Ω → β)
+    (C : Set (Pt Ω)) : history (pair X Y) C = history X C ∪ history Y C</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="fsm-lemma-4-9">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-lemma-4-9" aria-label="mark Lemma 4.9 read"></label>
+    <span class="node-label">Lemma 4.9</span>
+    <span class="node-title">History of a variable is the union of the histories of events</span>
+    <span class="kind">lemma</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> be a random variable defined on a factored space <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi></mrow></math>. For all events <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><mo>&#x02286;</mo><mi>&#x003A9;</mi></mrow></math>, we have
+<div class="dmath"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo>&#x02223;</mo><mi>C</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><msub><mo>&#x022C3;</mo><mrow><mi>x</mi><mo>&#x02208;</mo><mtext>Val</mtext><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo></mrow></msub><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>x</mi><mo>&#x02223;</mo><mi>C</mi><mo stretchy="false">&#x00029;</mo><mspace width="0.167em" /><mo>&#x0002E;</mo></mrow></math></div></p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.history_eq_iUnion_fibers</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem history_eq_iUnion_fibers [Nonempty α] (X : Pt Ω → α) (C : Set (Pt Ω)) :
+    (history X C : Set I) = ⋃ x : α, (eventHistory (fiber X x) C : Set I)</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-fsm-Structural-independence">Structural independence</h2>
+
+<article class="node" id="fsm-definition-4-10">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-definition-4-10" aria-label="mark Definition 4.10 read"></label>
+    <span class="node-label">Definition 4.10</span>
+    <span class="node-title">Structural Independence</span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math>, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math>, and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Z</mi></mrow></math> be random variables in a factored space <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi></mrow></math>. Then, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math> are <em>structurally independent</em> in <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi></mrow></math>, denoted as <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><msup><mi>&#x027C2;</mi><mrow><mi>&#x003A9;</mi></mrow></msup><mi>Y</mi></mrow></math>, if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02229;</mo><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mo>&#x02205;</mo></mrow></math>.
+  Moreover, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math> are emphstructurally independent given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Z</mi></mrow></math>, denoted as
+  <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><msup><mi>&#x027C2;</mi><mrow><mi>&#x003A9;</mi></mrow></msup><mi>Y</mi><mo>&#x02223;</mo><mi>Z</mi></mrow></math>, if we have
+  <div class="dmath"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo>&#x02223;</mo><mi>z</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02229;</mo><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo>&#x02223;</mo><mi>z</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mo>&#x02205;</mo><mtext>&#x000A0;for&#x000A0;all&#x000A0;</mtext><mi>z</mi><mo>&#x02208;</mo><mtext>Val</mtext><mo stretchy="false">&#x00028;</mo><mi>Z</mi><mo stretchy="false">&#x00029;</mo><mspace width="0.167em" /><mo>&#x0002E;</mo></mrow></math></div></p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.StructIndep</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">def StructIndep (X : Pt Ω → α) (Y : Pt Ω → β) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.StructIndepGiven</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">def StructIndepGiven (X : Pt Ω → α) (Y : Pt Ω → β) (Z : Pt Ω → γ) : Prop</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-fsm-Structural-time">Structural time</h2>
+
+<article class="node" id="fsm-definition-4-11">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-definition-4-11" aria-label="mark Definition 4.11 read"></label>
+    <span class="node-label">Definition 4.11</span>
+    <span class="node-title">Structural Time</span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>The <em>structural time</em> <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mo>&#x02264;</mo><mrow><mi>&#x003A9;</mi></mrow></msup></mrow></math> of a factored space <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi></mrow></math> compares two variables <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math> on <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi></mrow></math>. We say that emph<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> is before <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math> in <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi></mrow></math>, denoted <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><msup><mo>&#x02264;</mo><mrow><mi>&#x003A9;</mi></mrow></msup><mi>Y</mi></mrow></math>, if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02286;</mo><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo></mrow></math>.
+We say that <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> is <em>strictly before</em> <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math>, denoted <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><msup><mo>&#x0003C;</mo><mrow><mi>&#x003A9;</mi></mrow></msup><mi>Y</mi></mrow></math> if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0228A;</mo><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.Before</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">def Before (X : Pt Ω → α) (Y : Pt Ω → β) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.StrictlyBefore</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">def StrictlyBefore (X : Pt Ω → α) (Y : Pt Ω → β) : Prop</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="fsm-lemma-4-12">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-lemma-4-12" aria-label="mark Lemma 4.12 read"></label>
+    <span class="node-label">Lemma 4.12</span>
+    <span class="node-title">Structural time and structural independence</span>
+    <span class="kind">lemma</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math> be random variables on <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi></mrow></math>. Then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> is structurally before <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math> if and only if</p>
+<p>\(Y orthF Z impl XorthF Z  holds for all variables Z on Omg.\)</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.structIndep_of_before</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">theorem structIndep_of_before {X : Pt Ω → α} {Y : Pt Ω → β} (h : Before X Y)
+    (Z : Pt Ω → γ) (hYZ : StructIndep Y Z) : StructIndep X Z</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.before_of_forall_bg</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">theorem before_of_forall_bg [Nonempty α] [Nonempty β] {X : Pt Ω → α} {Y : Pt Ω → β}
+    (h : ∀ i : I, StructIndep Y (bg (Ω</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.before_iff_forall_structIndep</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">theorem before_iff_forall_structIndep [Nonempty α] [Nonempty β] (X : Pt Ω → α)
+    (Y : Pt Ω → β) :
+    Before X Y ↔ ∀ (γ : Type v) (Z : Pt Ω → γ), StructIndep Y Z → StructIndep X Z</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-fsm-History-as-the-minimal-generating-partition">History as the minimal generating partition</h2>
+
+<article class="node" id="fsm-lemma-a-1">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-lemma-a-1" aria-label="mark Lemma A.1 read"></label>
+    <span class="node-label">Lemma A.1</span>
+    <span class="node-title">Disintegration closed under intersection and union</span>
+    <span class="kind">lemma</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>In a factored space <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi><mo>&#x0003D;</mo><msub><mi>&#x02A09;</mi><mrow><mi>i</mi><mo>&#x02208;</mo><mi>I</mi></mrow></msub><msub><mi>&#x003A9;</mi><mi>i</mi></msub></mrow></math>, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><mo>&#x02286;</mo><mi>&#x003A9;</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi><mo>&#x0002C;</mo><mi>K</mi><mo>&#x02286;</mo><mi>I</mi></mrow></math> such that <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi></mrow></math> disintegrates <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>K</mi></mrow></math> also disintegrates <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math>. Then, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi><mo>&#x02229;</mo><mi>K</mi></mrow></math> disintegrates <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math>, and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi><mo>&#x0222A;</mo><mi>K</mi></mrow></math> disintegrates <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math> as well.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.Disintegrates.union</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem Disintegrates.union {J K : Finset I} {C : Set (Pt Ω)}
+    (hJ : Disintegrates J C) (hK : Disintegrates K C) : Disintegrates (J ∪ K) C</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.Disintegrates.inter</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem Disintegrates.inter {J K : Finset I} {C : Set (Pt Ω)}
+    (hJ : Disintegrates J C) (hK : Disintegrates K C) : Disintegrates (J ∩ K) C</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="fsm-lemma-a-2">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-lemma-a-2" aria-label="mark Lemma A.2 read"></label>
+    <span class="node-label">Lemma A.2</span>
+    <span class="node-title">Generation closed under intersection</span>
+    <span class="kind">lemma</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>In a factored space <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi><mo>&#x0003D;</mo><msub><mi>&#x02A09;</mi><mrow><mi>i</mi><mo>&#x02208;</mo><mi>I</mi></mrow></msub><msub><mi>&#x003A9;</mi><mi>i</mi></msub></mrow></math>, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mi>&#x0003A;</mi><mi>&#x003A9;</mi><mo>&#x02192;</mo><mtext>Val</mtext><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><mo>&#x02286;</mo><mi>&#x003A9;</mi></mrow></math>, and let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi><mo>&#x0002C;</mo><mi>K</mi><mo>&#x02286;</mo><mi>I</mi></mrow></math> be such that <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi></mrow></math> generates <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>K</mi></mrow></math> generates <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math>. Then, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi><mo>&#x02229;</mo><mi>K</mi></mrow></math> generates <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math> as well.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.Generates.inter</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem Generates.inter [Nonempty α] {J K : Finset I} {X : Pt Ω → α}
+    {C : Set (Pt Ω)} (hJ : Generates J X C) (hK : Generates K X C) :
+    Generates (J ∩ K) X C</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-fsm-Compositional-semigraphoid">Compositional semigraphoid</h2>
+
+<article class="node" id="fsm-lemma-b-1">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-lemma-b-1" aria-label="mark Lemma B.1 read"></label>
+    <span class="node-label">Lemma B.1</span>
+    <span class="node-title">Composition axiom</span>
+    <span class="kind">lemma</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math>, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math>, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Z</mi></mrow></math>, and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>W</mi></mrow></math> be random variables in a factored space <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi><mo>&#x0003D;</mo><msub><mi>&#x02A09;</mi><mrow><mi>i</mi><mo>&#x02208;</mo><mi>I</mi></mrow></msub><msub><mi>&#x003A9;</mi><mi>i</mi></msub></mrow></math>.
+  If \(XorthF Y given W\) and \(XorthF Zgiven W\) hold, then \(XorthF (Y,Z)given W\) holds.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.structIndepGiven_pair</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">theorem structIndepGiven_pair [Nonempty β] [Nonempty γ] {X : Pt Ω → α} {Y : Pt Ω → β}
+    {Z : Pt Ω → γ} {W : Pt Ω → δ} (hY : StructIndepGiven X Y W) (hZ : StructIndepGiven X Z W) :
+    StructIndepGiven X (pair Y Z) W</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-fsm-Appendix-C-Proofs-for-Section-sec-soundcomplete-Cref-gives-warnings-when-used-in-titles-">Appendix C — Proofs for Section sec:soundcomplete % Cref gives warnings when used in titles.</h2>
+
+<article class="node" id="fsm-lemma-c-3">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-lemma-c-3" aria-label="mark Lemma C.3 read"></label>
+    <span class="node-label">Lemma C.3</span>
+    <span class="node-title"></span>
+    <span class="kind">lemma</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mi>&#x0003A;</mi><mi>&#x003A9;</mi><mo>&#x02192;</mo><mtext>Val</mtext><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi><mi>&#x0003A;</mi><mi>&#x003A9;</mi><mo>&#x02192;</mo><mtext>Val</mtext><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be two random variables and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><mo>&#x02286;</mo><mi>&#x003A9;</mi></mrow></math>.
+  Then the following statements are equivalent:
+  <ol>
+     <li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><msub><mi>&#x025B7;</mi><mi>C</mi></msub><mi>Y</mi></mrow></math>.
+     <li>For all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003C9;</mi><mo>&#x0002C;</mo><msup><mi>&#x003C9;</mi><mi>&#x02032;</mi></msup><mo>&#x02208;</mo><mi>C</mi></mrow></math>, we have that <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003C9;</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mi>X</mi><mo stretchy="false">&#x00028;</mo><msup><mi>&#x003C9;</mi><mi>&#x02032;</mi></msup><mo stretchy="false">&#x00029;</mo></mrow></math> implies <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003C9;</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mi>Y</mi><mo stretchy="false">&#x00028;</mo><msup><mi>&#x003C9;</mi><mi>&#x02032;</mi></msup><mo stretchy="false">&#x00029;</mo></mrow></math>.
+  </ol></p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.derivedOn_iff</code><span class="ep-file">FactoredSpaces/Basic.lean</span></div><pre class="sig">theorem derivedOn_iff [Nonempty β] {C : Set (Pt Ω)} (X : Pt Ω → α) (Y : Pt Ω → β) :
+    DerivedOn C X Y ↔ ∀ ω ∈ C, ∀ ω&#x27; ∈ C, X ω = X ω&#x27; → Y ω = Y ω&#x27;</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-fsm-Proof-of-soundness-for-events">Proof of soundness for events</h2>
+
+<article class="node" id="fsm-lemma-c-4">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="fsm-lemma-c-4" aria-label="mark Lemma C.4 read"></label>
+    <span class="node-label">Lemma C.4</span>
+    <span class="node-title">Alternative characterization of generation</span>
+    <span class="kind">lemma</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2412.02579v2</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003A9;</mi><mo>&#x0003D;</mo><msub><mi>&#x02A09;</mi><mrow><mi>i</mi><mo>&#x02208;</mo><mi>I</mi></mrow></msub><msub><mi>&#x003A9;</mi><mi>i</mi></msub></mrow></math> be a factored space, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>A</mi><mo>&#x0002C;</mo><mi>C</mi><mo>&#x02286;</mo><mi>&#x003A9;</mi></mrow></math>, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi><mo>&#x02286;</mo><mi>I</mi></mrow></math> be a set with complement <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mrow><mover><mrow><mi>J</mi></mrow><mo accent="true">&#x02015;</mo></mover></mrow><mo>&#x0003D;</mo><mi>I</mi><mi>&#x029F5;</mi><mi>J</mi></mrow></math>, and suppose that <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi></mrow></math> disintegrates <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math>.
+  The following statements are equivalent:
+  <ol>
+    <li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi></mrow></math> generates <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>A</mi></mrow></math> given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math>.
+    <li>For all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003C9;</mi><mo>&#x0002C;</mo><msup><mi>&#x003C9;</mi><mi>&#x02032;</mi></msup><mo>&#x02208;</mo><mi>C</mi></mrow></math> with <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>&#x003C9;</mi><mi>J</mi></msub><mo>&#x0003D;</mo><msubsup><mi>&#x003C9;</mi><mi>J</mi><mi>&#x02032;</mi></msubsup></mrow></math>, we have <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003C9;</mi><mo>&#x02208;</mo><mi>A</mi></mrow></math> if and only if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>&#x003C9;</mi><mi>&#x02032;</mi></msup><mo>&#x02208;</mo><mi>A</mi></mrow></math>.
+    <li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>A</mi><mo>&#x02229;</mo><mi>C</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>A</mi><mo>&#x02229;</mo><mi>C</mi><msub><mo stretchy="false">&#x00029;</mo><mi>J</mi></msub><mi>&#x000D7;</mi><msub><mi>C</mi><mrow><mrow><mover><mrow><mi>J</mi></mrow><mo accent="true">&#x02015;</mo></mover></mrow></mrow></msub></mrow></math>.
+  </ol>
+  Moreover, the history <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x0210B;</mi><mo stretchy="false">&#x00028;</mo><mi>A</mi><mo>&#x02223;</mo><mi>C</mi><mo stretchy="false">&#x00029;</mo></mrow></math> is the smallest set <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>J</mi></mrow></math> that disintegrates <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math> and that satisfies <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>A</mi><mo>&#x02229;</mo><mi>C</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>A</mi><mo>&#x02229;</mo><mi>C</mi><msub><mo stretchy="false">&#x00029;</mo><mi>J</mi></msub><mi>&#x000D7;</mi><msub><mi>C</mi><mrow><mrow><mover><mrow><mi>J</mi></mrow><mo accent="true">&#x02015;</mo></mover></mrow></mrow></msub></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.generates_indic_iff_agree</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem generates_indic_iff_agree {J : Finset I} {A C : Set (Pt Ω)} (hd : Disintegrates J C) :
+    Generates J (indic A) C ↔
+      ∀ a ∈ C, ∀ b ∈ C, (∀ i ∈ J, a i = b i) → (a ∈ A ↔ b ∈ A)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.generates_indic_iff_splice</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem generates_indic_iff_splice {J : Finset I} {A C : Set (Pt Ω)} (hd : Disintegrates J C) :
+    Generates J (indic A) C ↔ A ∩ C = splice J (A ∩ C) C</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.eventHistory_minimal_splice</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem eventHistory_minimal_splice (A C : Set (Pt Ω)) :
+    (Disintegrates (eventHistory A C) C ∧
+        A ∩ C = splice (eventHistory A C) (A ∩ C) C) ∧
+      ∀ J : Finset I, Disintegrates J C → A ∩ C = splice J (A ∩ C) C →
+        eventHistory A C ⊆ J</pre></div>
+    </section>
+  </div>
+</article>
+  </section>
 </main>
 </div>
 
@@ -7810,6 +8214,6 @@ We say <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><
 })();
 </script>
 
-<!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 -->
+<!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 factored-space-models=15 -->
 
-<!-- trust-surface-sources: 863565857c2f671c27eccfd1e1414716331fcdb944a79435e6241ae8323b0580 -->
+<!-- trust-surface-sources: c7bbaaf128851d8ca5fa094767c731140a29354daa744c7fe41c5549e30c890b -->

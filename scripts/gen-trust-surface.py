@@ -786,6 +786,74 @@ FFS_PRE_LATEX = [
 ]
 
 
+# Factored Space Models keeps its notation in `meta/environment.tex` as ~100 ordinary
+# `\newcommand`s (fixed arity, no optional arguments), so the layer is *derived* from
+# that file rather than transcribed: each `\newcommand{\name}[n]{body}` becomes one
+# `pre_macros` entry (they are applied repeatedly, so bodies may use other macros).  A
+# few bodies are typographic (`\text{\Large$\times$}`, `\ding`) and are overridden with a
+# MathML-renderable equivalent below.
+FSM_MACRO_OVERRIDES = {
+    'timesbig': r'\bigtimes',
+    'indep': r'\perp\!\!\!\perp',
+    'Obs': r'\text{Obs}',
+    'Val': r'\text{Val}',
+    'orthF': r'\perp^{\Omega}',
+    'orthnotF': r'\not\perp^{\Omega}',
+    'orthnot': r'\not\perp',
+    'beforeF': r'\leq^{\Omega}',
+    'strictlybeforeF': r'<^{\Omega}',
+    'FSMG': r'\mathcal{M}^G',
+    'timesOmg': r'\bigtimes_{i\in I}\Omega_i',
+    'historyC': r'\operatorname{Cohistory}',
+    'history': r'\mathcal{H}',
+    'thick': r'\;',
+    'cmark': r'\checkmark', 'xmark': r'\times',
+}
+
+
+def macros_from_environment(path, overrides):
+    """`pre_macros` entries derived from a paper's `\newcommand`s (see FSM_MACRO_OVERRIDES)."""
+    text = read(path)
+    text = '\n'.join(paper_nodes.strip_tex_comment(l) for l in text.splitlines())
+    out = []
+    pat = re.compile(r'\\(?:newcommand|renewcommand|DeclareMathOperator)\*?\{?\\([A-Za-z@]+)\}?'
+                     r'(?:\[([0-9])\])?\{')
+    for m in pat.finditer(text):
+        name, arity = m.group(1), int(m.group(2) or 0)
+        if '@' in name:
+            continue
+        # balanced-brace body
+        depth, k = 1, m.end()
+        while k < len(text) and depth:
+            depth += {'{': 1, '}': -1}.get(text[k], 0)
+            k += 1
+        body = text[m.end():k - 1]
+        if text[m.start():m.end()].startswith('\\DeclareMathOperator'):
+            body = r'\operatorname{' + body + '}'
+        body = overrides.get(name, body)
+        if name in ('paragraph', 'schapter', 'epsilon'):
+            continue
+        rep = body.replace('\\', '\\\\')
+        for k_ in range(1, arity + 1):
+            rep = rep.replace('#%d' % k_, '\\%d' % k_)
+        args = ''.join(r'\{([^{}]*)\}' for _ in range(arity))
+        out.append((r'\\' + name + (args if arity else r'(?![A-Za-z])'), rep))
+    # `\optionalbracket{\name}{body}` (this paper's `environment.tex`): `\name{arg}` prints
+    # as `body(arg)` and a bare `\name` as `body`.
+    for m in re.finditer(r'\\optionalbracket\{\\([A-Za-z]+)\}\{', text):
+        name = m.group(1)
+        depth, k = 1, m.end()
+        while k < len(text) and depth:
+            depth += {'{': 1, '}': -1}.get(text[k], 0)
+            k += 1
+        body = overrides.get(name, text[m.end():k - 1]).replace('\\', '\\\\')
+        out.append((r'\\' + name + r'\{([^{}]*)\}', body + r'(\1)'))
+        out.append((r'\\' + name + r'(?![A-Za-z])', body))
+    # longest names first, so `\orthF` is not eaten by `\orth`
+    out.sort(key=lambda pr: -len(pr[0]))
+    return out
+
+
 PAPERS_EDITORIAL = {
     'logical-induction': {
         'macros': LI_MACRO_LATEX, 'pre_macros': LI_PRE_LATEX,
@@ -802,6 +870,12 @@ PAPERS_EDITORIAL = {
     'finite-factored-sets': {
         'macros': (), 'pre_macros': FFS_PRE_LATEX,
         'sections': r'\\(section|subsection)\{([^\n]*)', 'appendix': False,
+    },
+    'factored-space-models': {
+        'macros': (),
+        'pre_macros': macros_from_environment('FactoredSpaces/notes/meta/environment.tex',
+                                              FSM_MACRO_OVERRIDES),
+        'sections': r'\\(section|subsection)\*?\{([^\n]*)', 'appendix': True,
     },
 }
 
@@ -982,7 +1056,7 @@ def build_correspondence(key, paper, warnings, *, extras=None):
 
     extras = extras or {}
     prefix = {'cartesian-frames': 'cf-', 'modal-agents': 'ma-',
-              'finite-factored-sets': 'ffs-'}[key]
+              'finite-factored-sets': 'ffs-', 'factored-space-models': 'fsm-'}[key]
     sections = section_titles(tex, conf['sections'], conf['appendix'])
     tag = source_tag(paper)
     nav, cards = [], []
@@ -1043,6 +1117,9 @@ def main():
     ffs_paper = PAPERS['finite-factored-sets']
     ffs = build_correspondence('finite-factored-sets', ffs_paper, warnings)
 
+    fsm_paper = PAPERS['factored-space-models']
+    fsm = build_correspondence('factored-space-models', fsm_paper, warnings)
+
     # --- ModalAgents: inventoried endpoints that deliberately carry no annotation ---
     ma_inventory = paper_nodes.read_inventory(ROOT + 'AxiomAudit.lean', 'MA-INVENTORY') or set()
     ma_bare = sorted(ma_inventory - ma['carriers'])
@@ -1089,6 +1166,13 @@ def main():
                   for k, v in sorted(ffs_by_kind.items()))
         or 'none — every numbered node of the paper has a Lean statement')
 
+    def fsm_key(t):
+        sec, n = t.split()[1].split('.')
+        return (sec.isdigit(), sec if not sec.isdigit() else int(sec), int(n))
+    fsm_missing = sorted(fsm['numbered'] - fsm['covered'], key=fsm_key)
+    fsm_missing_html = (', '.join('<code>%s</code>' % html.escape(n) for n in fsm_missing)
+                        or 'none — every numbered node of the paper has a Lean statement')
+
     cf_missing = sorted(cf['numbered'] - cf['covered'],
                         key=lambda s: int(s.split()[1]))
     cf_missing_html = (', '.join('<code>%s</code>' % html.escape(n) for n in cf_missing)
@@ -1125,7 +1209,10 @@ def main():
              'nine rendered by Mathlib vocabulary, 96 in scope. Conjecture 1 is stated '
              'as a <code>Prop</code> and deliberately not proved, and Examples 3 and 4 '
              'are out of scope by ruling; <strong>no strength classification exists for '
-             'this paper</strong>')):
+             'this paper</strong>'),
+            ('factored-space-models', fsm,
+             '<strong>in progress</strong> — the correspondence view of what is landed so '
+             'far; <strong>no strength classification exists for this paper</strong>')):
         p = PAPERS[key]
         index_rows += (
             '<tr><td><a href="#paper-%s">%s</a><div class="idx-cite">%s (%d) · '
@@ -1135,7 +1222,7 @@ def main():
                p['arxiv'], p['arxiv'], section['total'], html.escape(p['library']),
                editorial))
 
-    total_nodes = li['total'] + cf['total'] + ma['total'] + ffs['total']
+    total_nodes = li['total'] + cf['total'] + ma['total'] + ffs['total'] + fsm['total']
 
     page = read('scripts/trust-surface-template.html')
     for placeholder, value in (
@@ -1143,10 +1230,12 @@ def main():
             ('%%NAV_CF%%', '\n'.join(cf['nav'])),
             ('%%NAV_MA%%', '\n'.join(ma['nav'])),
             ('%%NAV_FFS%%', '\n'.join(ffs['nav'])),
+            ('%%NAV_FSM%%', '\n'.join(fsm['nav'])),
             ('%%CARDS_LI%%', '\n'.join(li['cards'])),
             ('%%CARDS_CF%%', '\n'.join(cf['cards'])),
             ('%%CARDS_MA%%', '\n'.join(ma['cards'])),
             ('%%CARDS_FFS%%', '\n'.join(ffs['cards'])),
+            ('%%CARDS_FSM%%', '\n'.join(fsm['cards'])),
             ('%%INDEX%%', index_rows),
             ('%%T2ROWS%%', t2_li),
             ('%%T2ROWS_CF%%', t2_cf),
@@ -1155,11 +1244,13 @@ def main():
             ('%%MA_BARE_ROWS%%', ma_bare_rows),
             ('%%MA_MISSING%%', ma_missing_html),
             ('%%FFS_MISSING%%', ffs_missing_html),
+            ('%%FSM_MISSING%%', fsm_missing_html),
             ('%%NTOTAL%%', str(total_nodes)),
             ('%%NLI%%', str(li['total'])),
             ('%%NCF%%', str(cf['total'])),
             ('%%NMA%%', str(ma['total'])),
             ('%%NFFS%%', str(ffs['total'])),
+            ('%%NFSM%%', str(fsm['total'])),
             ('%%NUNI%%', str(li['counts']['universal'])),
             ('%%NINS%%', str(li['counts']['instantiated'])),
             ('%%NQ%%', str(li['counts']['qualified']))):
@@ -1174,14 +1265,17 @@ def main():
     page += ('\n<!-- trust-surface-papers: %s -->\n'
              % ' '.join('%s=%d' % (k, s['total']) for k, s in
                         (('logical-induction', li), ('cartesian-frames', cf),
-                         ('modal-agents', ma), ('finite-factored-sets', ffs))))
+                         ('modal-agents', ma), ('finite-factored-sets', ffs),
+                         ('factored-space-models', fsm))))
     page += ('\n<!-- trust-surface-sources: %s -->\n'
              % paper_nodes.trust_surface_hash(ROOT))
     open(ROOT + 'docs/trust-surface.html', 'w', encoding='utf-8').write(page)
 
     print('wrote docs/trust-surface.html — %d nodes (%d Logical Induction, '
-          '%d Cartesian Frames, %d ModalAgents, %d Finite Factored Sets)'
-          % (total_nodes, li['total'], cf['total'], ma['total'], ffs['total']))
+          '%d Cartesian Frames, %d ModalAgents, %d Finite Factored Sets, '
+          '%d Factored Space Models)'
+          % (total_nodes, li['total'], cf['total'], ma['total'], ffs['total'],
+             fsm['total']))
     for w in warnings:
         print('  note: %s' % w)
 

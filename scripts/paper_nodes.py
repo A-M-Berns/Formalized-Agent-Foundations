@@ -483,6 +483,25 @@ PRINTED_COUNTER_NODE_ID = re.compile(
     r"(Definition|Theorem|Lemma|Proposition|Corollary|Condition)\s+([0-9]+(?:\.[0-9]+)?)"
 )
 
+# --- printed-counter-appendix (Factored Space Models): the same section-scoped counter,
+# but (a) `definition`/`example`/`remark`/`summary`/`notation` share it too, (b) results
+# may be wrapped in thmtools' `\begin{restatable}[title]{lemma}{name}` — which counts as
+# the wrapped environment, while the later `\name*` restatement re-prints the SAME number
+# and must not count — and (c) after `\appendix` the section counter restarts and prints
+# as a letter, so nodes read `Lemma A.1`, `Definition C.6`.  Garrabrant et al.
+# (arXiv:2412.02579) label 45 of their 50 nodes and leave five unlabeled (Definitions 4.2,
+# 5.1, 5.7, C.6, Proposition 5.6), so the printed number is the provenance key.
+PRINTED_COUNTER_APPENDIX_ENVS = ("theorem", "definition", "example", "lemma", "corollary",
+                                 "remark", "summary", "notation", "proposition")
+PRINTED_COUNTER_APPENDIX_BEGIN = re.compile(
+    r"\\begin\{(" + "|".join(PRINTED_COUNTER_APPENDIX_ENVS) + r")\}"
+    r"|\\begin\{restatable\}(?:\[(?:[^\[\]]|\[[^\]]*\])*\])?\{("
+    + "|".join(PRINTED_COUNTER_APPENDIX_ENVS) + r")\}")
+PRINTED_COUNTER_APPENDIX_NODE_ID = re.compile(
+    r"(Theorem|Definition|Example|Lemma|Corollary|Remark|Summary|Notation|Proposition)"
+    r"\s+((?:[0-9]+|[A-Z])\.[0-9]+)"
+)
+
 
 def strip_tex_comment(line):
     """Drop a TeX line's comment, respecting `\\%`."""
@@ -500,56 +519,82 @@ def strip_tex_comment(line):
     return "".join(out)
 
 
-def printed_counter_nodes(tex_text):
+def _printed_counter_section_name(section, in_appendix):
+    return chr(ord("A") + section - 1) if in_appendix else str(section)
+
+
+def printed_counter_nodes(tex_text, *, begin=PRINTED_COUNTER_BEGIN, appendix=False):
     """The paper's printed node IDs, by emulating its LaTeX counters.
 
     `\\newtheorem{theorem}{Theorem}[section]` resets the theorem counter whenever the
     section counter steps, and `lemma`/`proposition`/`corollary`/`condition` are declared
     `[theorem]`, so they share it.  A starred `\\section*` does not step the section
     counter, so it does not reset the theorem counter either.
+
+    With `appendix=True`, `\\appendix` restarts the section counter and sections print as
+    letters (`A.1`); the `begin` pattern may also match `restatable` wrappers (its second
+    group is then the wrapped environment).
     """
-    nodes = set()
-    section = theorem = 0
-    for raw in tex_text.splitlines():
-        line = strip_tex_comment(raw)
-        for match in re.finditer(r"\\section(\*?)|" + PRINTED_COUNTER_BEGIN.pattern, line):
-            if match.group(0).startswith("\\section"):
-                if match.group(1) != "*":
-                    section += 1
-                    theorem = 0
-                continue
-            theorem += 1
-            nodes.add(f"{match.group(2).capitalize()} {section}.{theorem}")
-    return nodes
+    return set(printed_counter_declarations(tex_text, begin=begin, appendix=appendix))
 
 
-def printed_counter_declarations(tex_text):
+def printed_counter_declarations(tex_text, *, begin=PRINTED_COUNTER_BEGIN, appendix=False):
     """Every counted environment with its number, optional title and body TeX."""
     stripped = "\n".join(strip_tex_comment(raw) for raw in tex_text.splitlines())
     out = {}
     section = theorem = 0
-    pattern = re.compile(r"\\section(\*?)|" + PRINTED_COUNTER_BEGIN.pattern)
+    in_appendix = False
+    parts = [r"\\section(\*?)", begin.pattern]
+    if appendix:
+        parts.insert(0, r"\\appendix\b")
+    pattern = re.compile("|".join(parts))
     for match in pattern.finditer(stripped):
-        if match.group(0).startswith("\\section"):
+        whole = match.group(0)
+        if appendix and whole == "\\appendix":
+            in_appendix = True
+            section = theorem = 0
+            continue
+        if whole.startswith("\\section"):
             if match.group(1) != "*":
                 section += 1
                 theorem = 0
             continue
-        env = match.group(2)
+        env = next(g for g in match.groups()[1:] if g)
         theorem += 1
-        node_id = f"{env.capitalize()} {section}.{theorem}"
-        end = stripped.find("\\end{%s}" % env, match.end())
-        body = stripped[match.end():end if end >= 0 else len(stripped)]
+        number = "%s.%d" % (_printed_counter_section_name(section, in_appendix), theorem)
+        node_id = f"{env.capitalize()} {number}"
+        is_restatable = whole.startswith("\\begin{restatable}")
         title = ""
-        tm = re.match(r"\s*\[((?:[^\[\]]|\[[^\]]*\])*)\]", body)
-        if tm:
-            title = tm.group(1).strip()
-            body = body[tm.end():]
+        body_start = match.end()
+        if is_restatable:
+            end = stripped.find("\\end{restatable}", match.end())
+            nm = re.match(r"\s*\{[^}]*\}", stripped[body_start:])  # the `{name}` argument
+            if nm:
+                body_start += nm.end()
+            rt = re.match(r"\\begin\{restatable\}\[((?:[^\[\]]|\[[^\]]*\])*)\]", whole)
+            if rt:
+                title = rt.group(1).strip()
+        else:
+            end = stripped.find("\\end{%s}" % env, match.end())
+        body = stripped[body_start:end if end >= 0 else len(stripped)]
+        if not is_restatable:
+            tm = re.match(r"\s*\[((?:[^\[\]]|\[[^\]]*\])*)\]", body)
+            if tm:
+                title = tm.group(1).strip()
+                body = body[tm.end():]
         body = re.sub(r"\\label\{[^}]*\}", "", body)
-        out[node_id] = Node(node_id, env.capitalize(),
-                            "%d.%d" % (section, theorem), title, body.strip(),
+        out[node_id] = Node(node_id, env.capitalize(), number, title, body.strip(),
                             match.start())
     return out
+
+
+def printed_counter_appendix_nodes(tex_text):
+    return printed_counter_nodes(tex_text, begin=PRINTED_COUNTER_APPENDIX_BEGIN, appendix=True)
+
+
+def printed_counter_appendix_declarations(tex_text):
+    return printed_counter_declarations(tex_text, begin=PRINTED_COUNTER_APPENDIX_BEGIN,
+                                        appendix=True)
 
 
 # --- printed-independent (Finite Factored Sets): one global counter per environment ---
@@ -641,6 +686,11 @@ SCHEMES = {
         "node_id_re": PRINTED_COUNTER_NODE_ID,
         "source_nodes": printed_counter_nodes,
         "declarations": printed_counter_declarations,
+    },
+    "printed-counter-appendix": {
+        "node_id_re": PRINTED_COUNTER_APPENDIX_NODE_ID,
+        "source_nodes": printed_counter_appendix_nodes,
+        "declarations": printed_counter_appendix_declarations,
     },
     "printed-independent": {
         "node_id_re": PRINTED_INDEPENDENT_NODE_ID,
