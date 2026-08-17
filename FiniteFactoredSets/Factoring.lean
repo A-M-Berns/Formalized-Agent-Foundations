@@ -42,8 +42,9 @@ variable (F : FactoredSet S)
 
 /-- Reading a factor set off the support of its polynomial: for `b ∈ B` and any `s ∈ E`,
 `b ∈ C` iff `[s]_b` is a variable of `poly^F_C(E)`.  This is the paper's "`b ∈ C` if and
-only if `[s]_b ∈ supp(poly^F_C(E))`" step in Proposition 31. -/
-private lemma mem_iff_part_mem_vars [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B)
+only if `[s]_b ∈ supp(poly^F_C(E))`" step in Proposition 31, and it is what §5.3 recovers
+`h^F(X|z)` from a polynomial with, so it is public. -/
+lemma mem_iff_part_mem_vars [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B)
     {E : Set S} {s : S} (hs : s ∈ E) {b : Setoid S} (hb : b ∈ F.B) :
     b ∈ C ↔ part b s ∈ (poly C E).vars := by
   constructor
@@ -60,9 +61,13 @@ The paper's proof of Proposition 29 runs on three facts about the sets `C` with
 under complementation in `B`.  These are the three lemmas below; none of them needs `E`
 nonempty. -/
 
-private lemma subset_chimeraImage_self (C : Set (Setoid S)) (E : Set S) :
+/-- The `⊇` half of `χ^F_C(E,E) = E`, which holds for every `C`: the diagonal
+`mem_chimeraImage_self` read as a set inclusion.  Definition 35's condition is therefore
+always an antisymmetry argument in one direction only, which is how every proof below and
+in §5.3 uses it. -/
+lemma subset_chimeraImage_self (C : Set (Setoid S)) (E : Set S) :
     E ⊆ F.chimeraImage C E E :=
-  fun u hu => F.mem_chimeraImage.2 ⟨u, hu, u, hu, F.chimera_self C u⟩
+  fun _ hu => F.mem_chimeraImage_self C hu hu
 
 private lemma chimeraImage_inter_eq {C D : Set (Setoid S)} {E : Set S}
     (hC : F.chimeraImage C E E = E) (hD : F.chimeraImage D E E = E) :

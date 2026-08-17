@@ -47,7 +47,11 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   `chimera_rel_of_mem`/`chimera_rel_of_notMem` and `coord_chimera`.  Clauses 3–8, 10 and 11
   are also available one at a time as `chimera_self`, `chimera_sdiff`, `chimera_union`,
   `chimera_inter`, `chimera_left_idem`, `chimera_right_idem`, `chimera_left_comm`,
-  `chimera_basis` and `chimera_empty`, which is what a rewrite wants.
+  `chimera_basis` and `chimera_empty`, which is what a rewrite wants.  Since §3–§5 quantify
+  over the *setwise* `chimeraImage`, the three setwise facts they run on are here too:
+  `mem_chimeraImage_self` (clause 3 setwise — `u ∈ T` and `u ∈ R` put `u` in `χ^F_C(T,R)`),
+  `chimeraImage_univ_univ` (`χ^F_C(S,S) = S`) and `chimeraImage_sdiff` (clause 4 setwise —
+  `χ^F_{B∖C}(T,R) = χ^F_C(R,T)`).
 * **Generation and history** (§3.1–§3.2): `Generates C X` (Definition 16),
   `generates_tfae` (Proposition 10; `generates_iff_rel` and `generates_iff_sInf_le` are its
   clauses 6 and 7 isolated), `generates_spec` (Proposition 11), `history X`
@@ -118,7 +122,9 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   and `1` exactly on `monos^F_C(E)`), `mem_support_poly`, `poly_ne_zero`,
   `monos_eq_of_support_eq` (the monomial set is recoverable from the polynomial), and — for
   `C ⊆ B`, where Corollary 1 makes the monomials squarefree — `mono_eq_iff`,
-  `degreeOf_poly_le` and `mem_vars_poly`.  A trap worth knowing before computing:
+  `degreeOf_poly_le` and `mem_vars_poly`.  `mono_basis_injective` is the separation
+  underneath Proposition 26: distinct elements of `S` have distinct `B`-monomials.  A trap
+  worth knowing before computing:
   `monos C E` is an *image*, so coincident monomials collapse and `poly^F_C(E)` can have
   strictly fewer summands than `E` has elements — Proposition 26 is the statement that this
   does not happen at `C = B`.
@@ -133,7 +139,11 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   `Irreducible`, whose units over `ℝ` are the nonzero constants, which is the paper's
   "no factorization into two polynomials of nonempty support".  Definition 35's minimality
   clause is vacuous at a singleton (`∅` is the only strict subset of `{b}`, and it is not
-  nonempty), so a one-element `C` is in `Irr^F(E)` as soon as `χ^F_C(E,E) = E`.
+  nonempty), so a one-element `C` is in `Irr^F(E)` as soon as `χ^F_C(E,E) = E`.  Two
+  working lemmas come with it: `subset_chimeraImage_self` (`E ⊆ χ^F_C(E,E)` always, so
+  Definition 35's condition is only ever the `⊆` half) and `mem_iff_part_mem_vars`
+  (Proposition 31's opening step, which recovers `C` from `poly^F_C(E)`: for `C ⊆ B`,
+  `b ∈ B` and any `s ∈ E`, `b ∈ C ↔ [s]_b ∈ supp(poly^F_C(E))`).
 * **Characteristic polynomials and orthogonality** (§5.3): `orthogonalGiven_tfae` is
   Lemma 3 (`CPO`), the bridge from §4's combinatorics to §5.4–§5.5's probability — for
   partitions `X, Y, Z` of `S`, the three conditions `X ⊥^F Y | Z`,
@@ -143,16 +153,26 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   `Q_mul_Q_eq_of_orthogonalGiven` (1 → 3) and `orthogonalGiven_of_Q_mul_Q_eq` (3 → 1), so
   a client who wants one of them does not have to project a `TFAE` — and does not hit the
   autoparam trap that `List.TFAE.out` has in term position.  The divisibility clause 2 is
-  reachable only through the `TFAE`.
+  reachable only through the `TFAE`.  `eq_of_Q_eq` is the injectivity of `E ↦ Q^F_E` that
+  the `2 → 1` direction runs on: a characteristic polynomial determines its set.
 * **Probability distributions** (§5.4): `ProbDist S` (Definition 36) is the paper's
   *elementary* distribution under `dd:probability` — a structure bundling `P : Set S → ℝ`
   with `nonneg`, `empty` (`P ∅ = 0`), `univ` (`P Set.univ = 1`) and `additive` (finite
   additivity on `Disjoint` sets).  There is no measure theory here and nothing stands in
   for it; a `CoeFun` instance lets a client write `P E` for `P.P E`.  Note the paper's
   "given a finite set `S`" is carried by the *statements*, not the structure, so
-  `ProbDist S` typechecks over any `S`.  `FactoredSet.IsDistribution P` (Definition 37) is
+  `ProbDist S` typechecks over any `S`.  Definition 36's additivity iterated is
+  `ProbDist.eq_sum_singleton` (`P ↑T = ∑ s ∈ T, P {s}` for a `Finset T`) and
+  `ProbDist.eq_sum_singleton_of_finite` (the `Set` form, taking `hE : E.Finite` as a
+  hypothesis rather than an instance) — the sentence Proposition 32 quotes, and neither
+  carries any finiteness of its own.  `FactoredSet.IsDistribution P` (Definition 37) is
   the predicate that makes it a distribution on the factored set:
-  `P {s} = ∏ᶠ b ∈ F.B, P (part b s)` for every `s`.  `isDistribution_iff` (Proposition 32)
+  `P {s} = ∏ᶠ b ∈ F.B, P (part b s)` for every `s`.  `ProbDist.diracAt s₀` is the point
+  mass, with `diracAt_apply` its unfolding, and `isDistribution_diracAt` says it is a
+  distribution on **every** factored set of finite dimension — which is the general reason
+  the family the next two statements quantify over is nonempty whenever `S` is, and the
+  first distribution a client can reach for without building one.
+  `isDistribution_iff` (Proposition 32)
   is the characterization by evaluation — `IsDistribution P ↔ ∀ E, P E = eval P.P (F.Q E)`,
   with `eval` Definition 29 and `F.Q` Definition 31 — which is the sentence that lets a
   client compute a probability by evaluating a polynomial and vice versa.
@@ -206,54 +226,75 @@ an infinite support it collapses to `0`, and divisibility, `Irr^F(E)` and irredu
 have nothing to say about that junk value.
 
 It does **not** enter uniformly, though, and the register below is the exact split.  The
-three §5 statements that carry no sum over `E` — Proposition 26's monomial bijection,
+§5 statements that carry no sum over `E` — Proposition 26's monomial bijection,
 Proposition 29's minimal-element argument over subsets of `B`, and the squarefreeness of a
 single monomial — need only the *dimension* to be finite, and are stated that way.
 
-The count is **41 public §5 declarations**: 26 in `Polynomial.lean`, 7 in
-`Factoring.lean`, 3 in `CharacteristicOrthogonality.lean` and 5 in `Probability.lean` —
-the last five being `ProbDist`, its `CoeFun` instance, `IsDistribution`,
-`isDistribution_iff` and `orthogonalGiven_iff_forall_isDistribution`.  Auto-generated
+The count is **50 public §5 declarations**: 27 in `Polynomial.lean`, 9 in
+`Factoring.lean`, 4 in `CharacteristicOrthogonality.lean` and 10 in `Probability.lean` —
+the last ten being `ProbDist`, its `CoeFun` instance, `eq_sum_singleton`,
+`eq_sum_singleton_of_finite`, `diracAt`, `diracAt_apply`, `IsDistribution`,
+`isDistribution_diracAt`, `isDistribution_iff` and
+`orthogonalGiven_iff_forall_isDistribution`.  Auto-generated
 field projections (`ProbDist.P`, `.nonneg`, `.empty`, `.univ`, `.additive`) are not
 counted, matching how `FactoredSet.B` is not counted in §2.  Recount mechanically before
-editing this register; it has drifted twice.  Of those 41:
+editing this register; it has drifted three times.  The mechanical count is
+`grep -cE '^(noncomputable )?(abbrev|def|lemma|theorem|structure|instance|class) |^instance :'`
+per file — `private` and attribute-prefixed declarations do not start a line with the
+keyword, which is exactly the filter wanted here.  Of those 50:
 
-* `[Finite S]` is carried by **nineteen** of them, and no others.  In §5.1: the paper
+* `[Finite S]` is carried by **twenty-one** of them, and no others.  In §5.1: the paper
   endpoints `poly_union_chimeraImage` (Proposition 27) and `eq_C_mul_poly_of_dvd_Q`
   (Proposition 28); the `Q`-level supporting facts `Q_eq_sum`, `Q_ne_zero` and
   `vars_disjoint_of_mul_eq_Q`; and the monomial-level description of `poly^F_C(E)` —
   `poly_eq_sum_image`, `coeff_poly`, `mem_support_poly`, `poly_ne_zero`,
   `monos_eq_of_support_eq` and `mem_vars_poly`.  In §5.2: `Q_eq_finprod_poly_irr`
-  (Proposition 30), `poly_dvd_Q` and `irreducible_poly_of_mem_irr` (Proposition 31).  In
-  §5.3: all three of `orthogonalGiven_tfae` (Lemma 3) and its two isolated directions
-  `Q_mul_Q_eq_of_orthogonalGiven` and `orthogonalGiven_of_Q_mul_Q_eq`.  In §5.4–§5.5:
+  (Proposition 30), `poly_dvd_Q`, `irreducible_poly_of_mem_irr` (Proposition 31) and
+  `mem_iff_part_mem_vars`.  In §5.3: all four of `orthogonalGiven_tfae` (Lemma 3), its two
+  isolated directions `Q_mul_Q_eq_of_orthogonalGiven` and `orthogonalGiven_of_Q_mul_Q_eq`,
+  and `eq_of_Q_eq`.  In §5.4–§5.5:
   `isDistribution_iff` (Proposition 32) and
-  `orthogonalGiven_iff_forall_isDistribution` (Theorem 3).  The five §5.3–§5.5 statements
-  consume it for the same reason the §5.1 ones do — every one of them has a `Q^F_E` in it,
-  so an infinite `E` replaces the polynomial by the junk value `0` — with Theorem 3
-  consuming it a second time, in the paper's own proof, to build the distribution `P_f`
-  from a positive assignment `f` (the sum `Q^F_S(f)` has to be a finite positive number).
-  Two different things are being consumed here, and it is worth keeping them apart.
-  `Q_eq_sum` and `poly_eq_sum_image` need `Set.toFinite E` *in the statement itself*, to
+  `orthogonalGiven_iff_forall_isDistribution` (Theorem 3).  Five of those six §5.3–§5.5
+  statements consume it for the same reason the §5.1 ones do — each has a `Q^F_E` in it,
+  so an infinite `E` replaces the polynomial by the junk value `0`.  **Theorem 3 is the
+  exception**: its statement mentions no polynomial at all, only `P(x∩z) · P(y∩z) =
+  P(x∩y∩z) · P(z)`, and its `[Finite S]` is consumed entirely in the proof — by Lemma 3,
+  whose statement does have a `Q^F_E`, and by the construction of the auxiliary
+  distribution `P_f` from a positive assignment `f` (the sum `Q^F_S(f)` has to be a finite
+  positive number).  So relaxing Theorem 3's hypothesis to `[Finite F.B]` is not a matter
+  of tightening the proof: the resulting statement is literally Conjecture 1, the
+  finite-*dimensional* fundamental theorem, which the paper leaves open and which this
+  development's scope ruling puts in as a stated-and-deliberately-unproved `Prop` (see
+  `KNOWLEDGE.md` for its status in the literature).
+  Back in §5.1, two different things are being consumed, and it is worth keeping them
+  apart.  `Q_eq_sum` and `poly_eq_sum_image` need `Set.toFinite E` *in the statement*, to
   write the `Finset`.  The rest need `E` finite in the proof — an infinite `E` sends the
   `finsum` to `0` and makes each of them false, not merely unproved.  The five
   monomial-layer lemmas additionally quantify over an **arbitrary** `C : Set (Setoid S)`
   with no `C ⊆ B` hypothesis, so they consume `Finite (Setoid S)` as well; that too comes
   from `Finite S`, via `instFiniteSetoid`.
-* `[Finite F.B]` — finite dimension, `S` unrestricted — is carried by **five**: `mono_eq_iff`
-  and `Q_eq_poly` (Proposition 26) and `degreeOf_Q_le` in §5.1, and `irr_partition`
-  (Proposition 29) and `irr_isPartition` in §5.2.  Read the extra content honestly: over an
-  infinite `E` all three §5.1 statements are `0 = 0`-style identities between junk values,
-  so what the relaxation really records is that their *proofs* never touch `|S|`.
+* `[Finite F.B]` — finite dimension, `S` unrestricted — is carried by **seven**: `mono_eq_iff`,
+  `mono_basis_injective`, `Q_eq_poly` (Proposition 26) and `degreeOf_Q_le` in §5.1,
+  `irr_partition` (Proposition 29) and `irr_isPartition` in §5.2, and
+  `isDistribution_diracAt` in §5.4.  Read the extra content
+  honestly: over an infinite `E` the `Q`-level §5.1 statements are `0 = 0`-style identities
+  between junk values, so what the relaxation really records is that their *proofs* never
+  touch `|S|`.
   Proposition 29 is not degenerate in that way — `Irr^F(E)` is a genuine partition of `B`
-  for every `E`, finite or not.  Nothing in §5 carries `[Finite F.B]` on top of
+  for every `E`, finite or not; nor is `mono_basis_injective`, which is about elements of
+  `S` and not about `E` at all.  Nor is `isDistribution_diracAt`, whose binder is
+  load-bearing in the strongest sense: over an infinite basis it is *false*, because
+  Definition 37's `∏ᶠ b ∈ F.B` returns the junk value `1` as soon as infinitely many
+  factors separate `s` from `s₀`, while `P {s}` is `0` there.
+  Nothing in §5 carries `[Finite F.B]` on top of
   `[Finite S]`, because it does not have to: `Finite F.B` is synthesized from `Finite S` by
-  instance search (see below), so these five, and the §3–§4 endpoints the §5 proofs call,
+  instance search (see below), so these six, and the §3–§4 endpoints the §5 proofs call,
   are supplied automatically to a client who has only `[Finite S]`.
-* Finiteness is carried by **none** of the remaining seventeen — every §5 definition,
-  unfolding and elementary identity, plus one proved statement.  `Poly`, `mono`, `monos`,
+* Finiteness is carried by **none** of the remaining twenty-two — every §5 definition,
+  unfolding and elementary identity, plus a few proved statements.  `Poly`, `mono`, `monos`,
   `poly`, `Q`, `Q_eq_finsum_mono`, `poly_empty`, `mono_eq_prod`, `mono_congr`, `mono_union`,
-  `irr`, `mem_irr` and the generic, upstreamable `coeff_add_mul_of_split` are
+  `irr`, `mem_irr`, `subset_chimeraImage_self` and the generic, upstreamable
+  `coeff_add_mul_of_split` are
   finiteness-free, so a client may write down `Q^F_E` over an infinite `S` and get the junk
   value.  So are all three §5.4 *definitions* — `ProbDist`, its `CoeFun` instance, and
   `IsDistribution` — which is a deliberate `dd:probability` choice and not an oversight:
@@ -261,7 +302,12 @@ editing this register; it has drifted twice.  Of those 41:
   product `∏ᶠ b ∈ F.B` is a `finprod`, so an infinite basis gives `1` rather than a type
   error), and putting `[Finite S]` on the structure would force it onto every statement
   that merely *mentions* a distribution.  Finiteness sits on Proposition 32 and Theorem 3
-  instead, where it is genuinely consumed.  So is `degreeOf_poly_le`: every variable has
+  instead, where it is genuinely consumed.  So are the point mass `diracAt` and its
+  unfolding `diracAt_apply`, which are a construction on an arbitrary `S` — the finiteness
+  enters only at `isDistribution_diracAt`, one bullet up.  So are `eq_sum_singleton` and
+  `eq_sum_singleton_of_finite`, which iterate Definition 36's additivity over a `Finset`
+  and over a set carrying a `Set.Finite` *hypothesis*: the finiteness they need is the
+  set's, not `S`'s.  So is `degreeOf_poly_le`: every variable has
   degree at most one in `poly^F_C(E)`
   for `C ⊆ B` whatever the cardinalities, because both junk values respect the bound (an
   infinite `C` gives the empty-product `1`, an infinite monomial set the empty-sum `0`).
@@ -280,7 +326,8 @@ elaboration time — if the ℕ form of Proposition 7 (`natCard_eq_prod`) is wan
 ## What this boundary excludes
 
 `FiniteFactoredSets.Examples` — the constructed witnesses (`boolFS`, `coordFS`, `emptyFS`,
-`unitFS`, and the two distributions `uniform` and `diagDist`) and the §2.5, §3, §4 and §5
+`unitFS`, and the distributions `uniform`, `biased`, `diagDist`, `unitDist` and
+`boolUniform`) and the §2.5, §3, §4 and §5
 vocabulary computed over them.  Import it
 explicitly when a concrete factored set is useful; it is a regression fixture, not a
 dependency surface.

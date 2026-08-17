@@ -365,6 +365,34 @@ lemma chimera_basis (s t : S) : F.chimera F.B s t = s :=
 lemma chimera_empty (s t : S) : F.chimera ∅ s t = t :=
   (F.chimera_spec ∅ ∅ s t t).2.2.2.2.2.2.2.2.2.2
 
+/-! ### Setwise forms
+
+`chimeraImage` is what §3–§5 quantify over, so the three facts about it that recur —
+the diagonal `χ^F_C(s,s) = s` read setwise, its specialization at `T = R = S`, and
+clause 4 read setwise — live here beside the pointwise projections rather than being
+restated per section. -/
+
+/-- Clause 3 of Proposition 4 setwise: an element of both `T` and `R` is in
+`χ^F_C(T,R)`, being its own chimera. -/
+lemma mem_chimeraImage_self (C : Set (Setoid S)) {T R : Set S} {u : S}
+    (hT : u ∈ T) (hR : u ∈ R) : u ∈ F.chimeraImage C T R :=
+  ⟨u, hT, u, hR, F.chimera_self C u⟩
+
+/-- `χ^F_C(S,S) = S` for every `C` — `mem_chimeraImage_self` at `T = R = Set.univ`. -/
+lemma chimeraImage_univ_univ (C : Set (Setoid S)) :
+    F.chimeraImage C Set.univ Set.univ = (Set.univ : Set S) :=
+  Set.eq_univ_of_forall fun u => F.mem_chimeraImage_self C (Set.mem_univ u) (Set.mem_univ u)
+
+/-- Clause 4 of Proposition 4 setwise: `χ^F_{B∖C}(T,R) = χ^F_C(R,T)`. -/
+lemma chimeraImage_sdiff (C : Set (Setoid S)) (T R : Set S) :
+    F.chimeraImage (F.B \ C) T R = F.chimeraImage C R T := by
+  ext u
+  constructor
+  · rintro ⟨t, ht, r, hr, rfl⟩
+    exact ⟨r, hr, t, ht, (F.chimera_sdiff C t r).symm⟩
+  · rintro ⟨r, hr, t, ht, rfl⟩
+    exact ⟨t, ht, r, hr, F.chimera_sdiff C t r⟩
+
 end FactoredSet
 
 /-! ## §2.4 Trivial factorizations

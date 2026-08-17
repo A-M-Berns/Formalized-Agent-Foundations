@@ -60,51 +60,24 @@ open scoped Classical
 
 variable (F : FactoredSet S)
 
-/-! ### Local glue
+/-! ### Injectivity of `E ↦ Q^F_E`
 
-Four private facts §5.3 runs on.  `mem_chimeraImage_self` and `mem_iff_part_mem_vars`
-restate §5.2's own `private` helpers (`Factoring.lean`'s `subset_chimeraImage_self`,
-generalized to two sets, and its `mem_iff_part_mem_vars` verbatim); `private` is
-module-scoped, and they are restated rather than promoted so that this section changes no
-part of the §5.1–§5.2 surface.  `chimeraImage_sdiff` is the setwise form of Proposition 4
-clause 4, and `eq_of_Q_eq` is the injectivity of `E ↦ Q^F_E`, whose one ingredient beyond
-Proposition 26 — injectivity of `mono^F_B` — is the public `mono_eq_iff` at `C = B`. -/
-
-private lemma mem_chimeraImage_self (C : Set (Setoid S)) {T R : Set S} {u : S}
-    (hT : u ∈ T) (hR : u ∈ R) : u ∈ F.chimeraImage C T R :=
-  ⟨u, hT, u, hR, F.chimera_self C u⟩
-
-/-- Proposition 4 clause 4 setwise: `χ^F_{B∖C}(T,R) = χ^F_C(R,T)`. -/
-private lemma chimeraImage_sdiff (C : Set (Setoid S)) (T R : Set S) :
-    F.chimeraImage (F.B \ C) T R = F.chimeraImage C R T := by
-  ext u
-  constructor
-  · rintro ⟨t, ht, r, hr, rfl⟩
-    exact ⟨r, hr, t, ht, (F.chimera_sdiff C t r).symm⟩
-  · rintro ⟨r, hr, t, ht, rfl⟩
-    exact ⟨t, ht, r, hr, F.chimera_sdiff C t r⟩
-
-/-- Reading a factor set off the variables of its polynomial (Proposition 31's opening
-step): for `b ∈ B` and any `s ∈ E`, `b ∈ C` iff `[s]_b ∈ supp(poly^F_C(E))`. -/
-private lemma mem_iff_part_mem_vars [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B)
-    {E : Set S} {s : S} (hs : s ∈ E) {b : Setoid S} (hb : b ∈ F.B) :
-    b ∈ C ↔ part b s ∈ (poly C E).vars := by
-  refine ⟨fun hbC => (F.mem_vars_poly hC E).2 ⟨b, hbC, s, hs, rfl⟩, fun hv => ?_⟩
-  obtain ⟨b', hb', s', hs', heq⟩ := (F.mem_vars_poly hC E).1 hv
-  exact F.eq_of_part_eq (hC hb') hb heq ▸ hb'
+The setwise chimera facts §5.3 runs on (`mem_chimeraImage_self`, `chimeraImage_sdiff`) are
+public in `Basic.lean` beside the other Proposition 4 projections, and reading a factor set
+off a polynomial's variables is `Factoring.lean`'s `mem_iff_part_mem_vars`.  The one fact
+this section adds is below: `Q^F_E` determines `E`, whose only ingredient beyond
+Proposition 26 is `mono_basis_injective`. -/
 
 /-- `E ↦ Q^F_E` is injective: `mono^F_B` is injective (Proposition 3 with Corollary 1) and
 `Q^F_E` is the sum over its image (Proposition 26), so the monomial set recovers `E`. -/
-private lemma eq_of_Q_eq [Finite S] {E E' : Set S} (h : F.Q E = F.Q E') : E = E' := by
-  have hinj : ∀ s t : S, mono F.B s = mono F.B t → s = t := fun _ _ hst =>
-    F.eq_of_forall_rel fun b hb => part_eq_iff.1 ((F.mono_eq_iff le_rfl).1 hst b hb)
+lemma eq_of_Q_eq [Finite S] {E E' : Set S} (h : F.Q E = F.Q E') : E = E' := by
   rw [F.Q_eq_poly, F.Q_eq_poly] at h
   have hmonos : monos F.B E = monos F.B E' := monos_eq_of_support_eq (by rw [h])
   have himg : ∀ E₁ E₂ : Set S, monos F.B E₁ = monos F.B E₂ → E₁ ⊆ E₂ := by
     intro E₁ E₂ hm u hu
     have hmem : mono F.B u ∈ monos F.B E₂ := by rw [← hm]; exact ⟨u, hu, rfl⟩
     obtain ⟨v, hv, hvu⟩ := hmem
-    rwa [hinj v u hvu] at hv
+    rwa [F.mono_basis_injective hvu] at hv
   exact Set.Subset.antisymm (himg E E' hmonos) (himg E' E hmonos.symm)
 
 /-! ## §5.3 Characteristic polynomials and orthogonality -/

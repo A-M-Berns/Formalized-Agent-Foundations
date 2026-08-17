@@ -406,7 +406,7 @@ lemma mem_vars_poly [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B) (E : Set S)
 /-- The paper's first paragraph in Proposition 26: distinct elements of `S` have distinct
 `B`-monomials.  Proposition 3 supplies a factor separating them, Corollary 1 keeps that
 factor's block out of the other monomial. -/
-private lemma mono_basis_injective [Finite F.B] : Function.Injective (mono F.B) := fun _ _ h =>
+lemma mono_basis_injective [Finite F.B] : Function.Injective (mono F.B) := fun _ _ h =>
   F.eq_of_forall_rel fun b hb => part_eq_iff.1 ((F.mono_eq_iff le_rfl).1 h b hb)
 
 /-- **Proposition 26** — `Q^F_E = poly^F_B(E)`: distinct elements have distinct

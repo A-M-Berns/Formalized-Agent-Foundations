@@ -445,6 +445,51 @@ it belongs in the library as a stated open `Prop` with this note attached.
 * The node checker is whole-directory: during parallel shards it stays red until the last
   shard's inventory rows land; read the file names in its output, not the count.
 
+## Round 8 audit — durable lessons (first audit of §5.3–5.5)
+
+* Verdict shape: codex statement sweep `[]`; Lens A found no statement drift; the residue was
+  private-scoping duplication (the recorded three, plus a fourth: `chimeraImage_univ_univ`
+  private in Probability.lean vs public coordFS copy in Examples — a bare-name collision) and
+  register drift (public §5 count 43 not 41 — `ProbDist.eq_sum_singleton{,_of_finite}` were
+  public but on neither surface; README still said "proofs outstanding" after they landed;
+  the finiteness register said every §5.3–5.5 statement has a `Q^F_E` — **Theorem 3's has
+  none**: its `[Finite S]` is consumed in the proof, and relaxing it to `Finite F.B` is
+  literally Conjecture 1). Rule for stage commits: grep the README for "outstanding/still to
+  come/stated" before squashing.
+* Executable pins: Theorem 3's trailing `* P z` is load-bearing (drifted reading false at
+  `Z = ⊥` on `coordFS`/`uniform`, 1/16 vs 1/4; NOT refutable at `z = univ`); `ProbDist Empty`
+  is uninhabited, so over empty `S` Theorem 3's RHS and LHS are both vacuous — consistent.
+* Cleared: `IsDistribution`'s finprod junk unreachable; `isDistribution_iff`'s `[Finite S]`
+  genuinely consumed (`S = ℕ`: `Q univ = 0` vs `P univ = 1`); CoeFun transparent; the paper's
+  `x ∩ z = ∅` branch absorbed by nonempty classes; `Irreducible.prime` rests on the
+  arbitrary-σ UFD instance; the set-quantified prime dichotomy is honest; `eq_of_Q_eq`
+  non-circular; `generatesSub_sdiff_of_dvd` uses `hCirr` only for `C ⊆ B` (fine, matches paper);
+  `Q_mul_Q_eq_of_orthogonalGiven`/`orthogonalGiven_of_Q_mul_Q_eq` are TFAE projections in the
+  conveniences block (mirrors §3). `ProbDist.eq_sum_singleton` is not a Mathlib duplicate
+  (Mathlib's additivity lemmas are for `Measure`).
+* Mechanical public-count: `grep -cE '^(noncomputable )?(abbrev|def|lemma|theorem|structure|instance|class) |^instance :'` per file
+  (after round 8: 47 public §5 decls = 27/9/4/7, split 21 `[Finite S]` / 6 `[Finite F.B]` /
+  20 free — the register had drifted a THIRD time). Round-8 promotions: `mem_chimeraImage_self`
+  (two-set form, load-bearing), `chimeraImage_univ_univ`, `chimeraImage_sdiff` in Basic.lean;
+  `subset_chimeraImage_self`, `mem_iff_part_mem_vars` public in Factoring; `mono_basis_injective`
+  public in Polynomial; `eq_of_Q_eq` public in CharacteristicOrthogonality; all in the
+  conveniences block + API doc. **Conjecture 1 is not yet stated in Lean** — the scope ruling
+  is a plan; doc text must not say it is stated until §7 lands. `ProbDist S` inhabited iff `S`
+  nonempty; the point mass `diracAt s₀` is a distribution on every `[Finite F.B]` factored set
+  (so Theorem 3's RHS is non-vacuous over every nonempty `S`); a product of biased coins is a
+  distribution on `coordFS` (Def 37 ≠ uniform); `boolFS` makes Def 37 a tautology yet Theorem 3
+  still discriminates there (`¬ OrthogonalGiven ⊥ ⊥ ⊤` via uniform on `Bool`); divisibility of
+  characteristic polynomials is refuted by a separating *zero* of the divisor (`coordZero`),
+  not by evaluation into nonzero reals; `Set.ncard_coe_Finset` does not exist; `decide +kernel`
+  sticks on `MvPolynomial` equations. After fixer B: register = **50** public §5 decls
+  (27/9/4/10; 21 `[Finite S]` / 7 `[Finite F.B]` / 22 free); `ProbDist.diracAt`,
+  `diracAt_apply`, `isDistribution_diracAt [Finite F.B]` public in Probability.lean (the
+  latter's `[Finite F.B]` is load-bearing — FALSE for infinite bases, like Prop 29's; do not
+  relax); Lemma 3 clause 2's cross-check must state the `∣` with the cofactor as the
+  `Dvd.dvd` witness (half (ii) again); three independent derivations of
+  `OrthogonalGiven fst snd ⊤` are deliberate. **Debt:** `APITests`' hand-built `dirac`
+  now duplicates `diracAt` — de-slop next round.
+
 ## Stage 5b (§5.3–5.5) — durable lessons
 
 * All five nodes proved first pass, no stalls; the cost centre was again *choosing which

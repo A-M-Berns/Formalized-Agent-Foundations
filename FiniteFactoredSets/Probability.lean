@@ -69,6 +69,42 @@ lemma eq_sum_singleton_of_finite (P : ProbDist S) {E : Set S} (hE : E.Finite) :
 
 end ProbDist
 
+/-! ### The point mass
+
+Definition 36 is a bare structure, so the first question about it is whether it is
+inhabited.  It is, whenever `S` is: the point mass at `s₀` satisfies all four clauses, and
+`isDistribution_diracAt` below shows it satisfies Definition 37 on *every* factored set of
+finite dimension.  Together those say that the family Proposition 32 and Theorem 3
+quantify over is empty only when `S` is — where Theorem 3's left-hand side holds too. -/
+
+section Dirac
+
+open scoped Classical
+
+namespace ProbDist
+
+/-- The point mass at `s₀`: `P E = 1` if `s₀ ∈ E` and `0` otherwise.  Definition 36's
+`additive` clause is the observation that a disjoint pair contains `s₀` at most once. -/
+noncomputable def diracAt (s₀ : S) : ProbDist S where
+  P E := if s₀ ∈ E then 1 else 0
+  nonneg _ := by split <;> norm_num
+  empty := by simp
+  univ := by simp
+  additive E₀ E₁ h := by
+    by_cases h0 : s₀ ∈ E₀
+    · rw [if_pos (Set.mem_union_left _ h0), if_pos h0,
+        if_neg (Set.disjoint_left.1 h h0), add_zero]
+    · by_cases h1 : s₀ ∈ E₁
+      · rw [if_pos (Set.mem_union_right _ h1), if_neg h0, if_pos h1, zero_add]
+      · rw [if_neg (fun hm => ((Set.mem_union _ _ _).1 hm).elim h0 h1), if_neg h0, if_neg h1,
+          add_zero]
+
+lemma diracAt_apply (s₀ : S) (E : Set S) : diracAt s₀ E = if s₀ ∈ E then 1 else 0 := rfl
+
+end ProbDist
+
+end Dirac
+
 /-! ### Evaluating `mono`, `poly` and `Q` at a weight function
 
 Definition 29's evaluation is `MvPolynomial.eval`, so these are all instances of `map_sum`
@@ -164,11 +200,8 @@ private lemma eval_Q_nonneg [Finite S] {f : Set S → ℝ} (hf : ∀ v, 0 < f v)
 /-! ### The two instances of Proposition 27 that Theorem 3 uses
 
 The paper's proof of Theorem 3 applies Proposition 27 (`factor1`) at `C = {b}` twice, using
-`χ^F_{b}([s]_b, S) = [s]_b` and `χ^F_{b}(S,S) = S`. -/
-
-private lemma chimeraImage_univ_univ (C : Set (Setoid S)) :
-    F.chimeraImage C Set.univ Set.univ = (Set.univ : Set S) :=
-  Set.eq_univ_of_forall fun u => ⟨u, Set.mem_univ u, u, Set.mem_univ u, F.chimera_self C u⟩
+`χ^F_{b}([s]_b, S) = [s]_b` and `χ^F_{b}(S,S) = S` — the latter being `Basic.lean`'s
+`chimeraImage_univ_univ`. -/
 
 private lemma chimeraImage_singleton_part {b : Setoid S} (hb : b ∈ F.B) (s : S) :
     F.chimeraImage {b} (part b s) Set.univ = part b s := by
@@ -227,6 +260,28 @@ private lemma poly_univ_finprod [Finite S] [Nonempty S] :
 Paper node: Definition 37 (§5.4). -/
 def IsDistribution (P : ProbDist S) : Prop :=
   ∀ s : S, P {s} = ∏ᶠ b ∈ F.B, P (part b s)
+
+/-- The point mass at `s₀` is a distribution on **every** factored set of finite
+dimension: at `s = s₀` every factor's block contains `s₀`, so the product is the empty-free
+product of ones, and at `s ≠ s₀` Proposition 3 supplies a factor separating them, whose
+block contributes `0`.  So Definition 37 is inhabited over every nonempty `S`, and the
+family Proposition 32 and Theorem 3 quantify over is never empty there. -/
+lemma isDistribution_diracAt [Finite F.B] (s₀ : S) :
+    F.IsDistribution (ProbDist.diracAt s₀) := by
+  intro s
+  rw [finprod_mem_eq_finite_toFinset_prod _ (Set.toFinite F.B)]
+  by_cases hs : s = s₀
+  · subst hs
+    rw [ProbDist.diracAt_apply, if_pos (Set.mem_singleton _)]
+    refine (Finset.prod_eq_one fun b _ => ?_).symm
+    rw [ProbDist.diracAt_apply, if_pos (show s ∈ part b s from Setoid.refl' b s)]
+  · rw [ProbDist.diracAt_apply, if_neg (fun h => hs (Set.eq_of_mem_singleton h).symm)]
+    obtain ⟨b, hbB, hb⟩ : ∃ b ∈ F.B, ¬ b s₀ s := by
+      by_contra hno
+      push Not at hno
+      exact hs (F.eq_of_forall_rel fun b hb => hno b hb).symm
+    refine (Finset.prod_eq_zero ((Set.Finite.mem_toFinset _).2 hbB) ?_).symm
+    rw [ProbDist.diracAt_apply, if_neg (show s₀ ∉ part b s from hb)]
 
 /-- **Proposition 32** — a distribution on `S` is a distribution on `F` iff `P E = Q^F_E(P)`
 for every `E ⊆ S` (Definition 29's evaluation).

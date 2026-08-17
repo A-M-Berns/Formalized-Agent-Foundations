@@ -1322,10 +1322,12 @@ open FiniteFactoredSets in
   -- that nobody reads a §5 statement as covering it: at `C = {Ind_S}` it is a single
   -- variable, and `Ind_S ∉ B`, so no §5.1-§5.2 hypothesis is satisfied by it.
   Examples.poly_top_univ_junk Examples.top_notMem_coordFS_basis
-  -- §5.3-§5.5 on `coordFS`: Definition 31 at the two remaining blocks Lemma 3 and Theorem
-  -- 3 quantify over — the singleton `{s}`, the `sndFactor` block `[·]₂ = true`, and the
-  -- diagonal `Ediag`, which is where both verdicts flip.
-  Examples.Q_coordFS_singleton Examples.Q_coordFS_vsnd_true Examples.Q_coordFS_Ediag
+  -- §5.3-§5.5 on `coordFS`: Definition 31 at the remaining blocks Lemma 3 and Theorem
+  -- 3 quantify over — the singleton `{s}`, every block of each coordinate factor (with the
+  -- `sndFactor` block `[·]₂ = true` named separately, since the §5.3 witnesses run at it),
+  -- and the diagonal `Ediag`, which is where both verdicts flip.
+  Examples.Q_coordFS_singleton Examples.Q_coordFS_vfst Examples.Q_coordFS_vsnd
+  Examples.Q_coordFS_vsnd_true Examples.Q_coordFS_Ediag
   -- Lemma 3's clause 3 on the witness, as a cross-check pair plus a separate application,
   -- and the negative that stops it being a triviality.  The cross-check expands both
   -- products from Definition 31 and mentions no divisibility endpoint; the application
@@ -1335,18 +1337,42 @@ open FiniteFactoredSets in
   Examples.lemma3_clause3_coordFS_top_crosscheck
   Examples.lemma3_clause3_coordFS_top_applied
   Examples.lemma3_clause3_coordFS_Ediag_fails
-  -- Definitions 36 and 37 inhabited, and kept apart.  `uniform` (`P E = |E| / 4`) is a
-  -- distribution on the factored set; `diagDist` (`P E = |E ∩ Ediag| / 2`) is a
-  -- `ProbDist` and is *not* one, since it makes the two coordinates perfectly correlated
-  -- (`P {(t,t)} = 1/2` against `P([s]_fst) · P([s]_snd) = 1/4`).  Without the second,
+  -- Lemma 3's clause 2 — the divisibility, which is reachable only through the `TFAE` —
+  -- at the same two conditionings.  The cross-check exhibits the cofactor `Q^F_{(t,t)}`
+  -- computed from Definition 31 and states the same divisibility the application projects
+  -- with `.out 0 1`; on the diagonal divisibility fails, refuted by a single *zero* of the
+  -- divisor (`coordZero`) rather than by the separating value `coordSep` supplies for
+  -- clause 3.
+  Examples.lemma3_clause2_top_crosscheck Examples.lemma3_clause2_top_applied
+  Examples.lemma3_clause2_Ediag_fails
+  -- Lemma 3's `3 → 1` direction run FORWARD, with its hypothesis discharged by computing
+  -- clause 3 at every pair of blocks rather than assumed or contraposed.  This is the
+  -- direction §5.5 consumes, and `orthogonalGiven_from_clause3` reaches
+  -- `fstFactor ⊥^F sndFactor | Ind_S` by a route independent of Proposition 24's.
+  Examples.clause3_fst_snd_top Examples.orthogonalGiven_from_clause3
+  -- Definitions 36 and 37 inhabited, kept apart, and kept from naming one distribution.
+  -- `uniform` (`P E = |E| / 4`) and `biased` (a product of two `1/3`-biased coins) are two
+  -- *different* distributions on the factored set; `diagDist` (`P E = |E ∩ Ediag| / 2`) is
+  -- a `ProbDist` and is *not* one, since it makes the two coordinates perfectly correlated
+  -- (`P {(t,t)} = 1/2` against `P([s]_fst) · P([s]_snd) = 1/4`).  Without `diagDist`,
   -- Definition 37's product condition would be indistinguishable from decoration; without
-  -- the first, Proposition 32 and Theorem 3 would quantify over an empty family.
+  -- `uniform` and `biased`, Proposition 32 and Theorem 3 would have no exhibited
+  -- inhabitant to quantify over here.  (The family is not in fact empty for any nonempty
+  -- `S`: the point mass is a distribution on every factored set of finite dimension,
+  -- `FactoredSet.isDistribution_diracAt` in the conveniences block below.  What the
+  -- witnesses supply is a *computed* inhabitant, and a second one that is not the first.)
   Examples.uniform Examples.uniform_isDistribution
+  Examples.biased Examples.biased_isDistribution Examples.biased_ne_uniform
   Examples.diagDist Examples.not_isDistribution_diagDist
-  -- Proposition 32 at `E = Efst`, where `Q^F_{Efst}` has two terms so the evaluation is a
-  -- genuine sum: cross-checked by computing both sides from Definitions 31 and 36, and
-  -- separately applied.
+  -- Proposition 32 at two subsets and under two distributions.  At `E = Efst` the
+  -- polynomial has two terms, so the evaluation is a genuine sum — equal summands under
+  -- `uniform`, unequal ones under `biased`; at the three-element `E3` it has three terms
+  -- taking two distinct values.  Each is cross-checked by computing both sides from
+  -- Definitions 31 and 36, and separately applied.
   Examples.prop32_coordFS_Efst_crosscheck Examples.prop32_coordFS_Efst_applied
+  Examples.prop32_biased_Efst_crosscheck Examples.prop32_biased_Efst_applied
+  Examples.E3 Examples.Q_coordFS_E3
+  Examples.prop32_biased_E3_crosscheck Examples.prop32_biased_E3_applied
   -- Theorem 3 in both directions on the pair §4.3 already separates.  Forward at
   -- `Z = Ind_S`: cross-checked (`1/2 · 1/2 = 1/4 · 1`, computed) and applied (from
   -- `orthogonalGiven_fst_snd_top`, with no computation).  Backward at `Z = xorPart`:
@@ -1357,6 +1383,25 @@ open FiniteFactoredSets in
   Examples.thm3_coordFS_top_crosscheck Examples.thm3_coordFS_top_applied
   Examples.thm3_coordFS_Ediag_fails
   Examples.thm3_coordFS_xorPart_witness Examples.thm3_coordFS_xorPart_applied
+  -- Theorem 3's converse run FORWARD as well: independence in every distribution on
+  -- `coordFS`, obtained from `clause3_fst_snd_top` through Proposition 32 without invoking
+  -- Lemma 3 or Theorem 3's forward direction, yields conditional orthogonality.  This is
+  -- the third independent derivation of `fstFactor ⊥^F sndFactor | Ind_S` in the file.
+  Examples.orthogonalGiven_from_independence
+  -- The degenerate carriers of Definitions 36-37, which say where the quantifiers of
+  -- Proposition 32 and Theorem 3 are and are not vacuous.  Over `Empty` there is no
+  -- distribution at all, and both sides of Theorem 3 hold there (a partition of `∅` has no
+  -- blocks) — so the theorem is consistent, not informative.  Over `Unit` there is exactly
+  -- one distribution, and it *is* a distribution on the zero-dimensional `unitFS`, the
+  -- empty product being `1`.
+  Examples.isEmpty_probDist_empty Examples.orthogonalGiven_emptyFS
+  Examples.unitDist Examples.subsingleton_probDist_unit Examples.unitDist_isDistribution
+  -- …and Theorem 3's right-hand side is not universally true: one dimension suffices.  On
+  -- `boolFS` every `ProbDist Bool` is a distribution on the factored set (`B = {Dis_S}`
+  -- makes Definition 37 no constraint), and the uniform one refutes `Dis_S ⊥^F Dis_S |
+  -- Ind_S` — `1/2 · 1/2` against `0 · 1`.
+  Examples.boolUniform Examples.boolFS_isDistribution
+  Examples.not_orthogonalGiven_bot_bot_top_boolFS
 -- FFS-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Finite Factored Sets surface. -/
@@ -1407,6 +1452,11 @@ open FiniteFactoredSets in
   FactoredSet.chimera_self FactoredSet.chimera_sdiff FactoredSet.chimera_union
   FactoredSet.chimera_inter FactoredSet.chimera_left_idem FactoredSet.chimera_right_idem
   FactoredSet.chimera_left_comm FactoredSet.chimera_basis FactoredSet.chimera_empty
+  -- The setwise companions of those projections, which §3-§5 quantify over:
+  -- `mem_chimeraImage_self` is clause 3 read setwise, `chimeraImage_univ_univ` its
+  -- specialization at `T = R = S`, and `chimeraImage_sdiff` is clause 4 read setwise.
+  FactoredSet.mem_chimeraImage_self FactoredSet.chimeraImage_univ_univ
+  FactoredSet.chimeraImage_sdiff
   Subpartition.ofSetoidOn Subpartition.dom_ofSetoidOn Subpartition.toSetoid_ofSetoidOn
   Subpartition.restrict_univ Subpartition.restrict_restrict_of_subset
   Subpartition.dom_restrict_ofSetoid Subpartition.part_restrict_ofSetoid
@@ -1424,17 +1474,32 @@ open FiniteFactoredSets in
   -- and `monos_eq_of_support_eq` describe `poly^F_C(E)` monomial by monomial; and
   -- `mono_eq_iff`, `degreeOf_poly_le`, `mem_vars_poly`, `degreeOf_Q_le`, `Q_ne_zero`,
   -- `vars_disjoint_of_mul_eq_Q` are the squarefreeness facts Corollary 1 buys, with
-  -- `coeff_add_mul_of_split` the generic, upstreamable one.  `mem_irr` and `poly_dvd_Q`
-  -- are §5.2's unfolding and divisibility corollary; `irr_isPartition` restates
-  -- Proposition 29 in §4's vocabulary.  None of these is a paper node.
+  -- `mono_basis_injective` the separation of distinct elements underneath Proposition 26
+  -- and `coeff_add_mul_of_split` the generic, upstreamable one.  `mem_irr` and
+  -- `poly_dvd_Q` are §5.2's unfolding and divisibility corollary; `irr_isPartition`
+  -- restates Proposition 29 in §4's vocabulary; `subset_chimeraImage_self` and
+  -- `mem_iff_part_mem_vars` are the two §5.2 helpers §5.3 also runs on.  None of these is
+  -- a paper node.
   FactoredSet.Q_eq_finsum_mono FactoredSet.Q_eq_sum poly_eq_sum_image
   mono_eq_prod mono_congr mono_union poly_empty
   coeff_poly mem_support_poly poly_ne_zero monos_eq_of_support_eq
   FactoredSet.mono_eq_iff FactoredSet.degreeOf_poly_le FactoredSet.mem_vars_poly
   FactoredSet.degreeOf_Q_le FactoredSet.Q_ne_zero FactoredSet.vars_disjoint_of_mul_eq_Q
-  coeff_add_mul_of_split
+  FactoredSet.mono_basis_injective coeff_add_mul_of_split
   FactoredSet.mem_irr FactoredSet.poly_dvd_Q FactoredSet.irr_isPartition
+  FactoredSet.subset_chimeraImage_self FactoredSet.mem_iff_part_mem_vars
   -- §5.3: the two directions of Lemma 3 isolated from its `TFAE`, which is how §5.5 and a
   -- downstream client consume it.  Neither is a paper node of its own — the node is
   -- `orthogonalGiven_tfae`, inventoried above, and each of these is one of its projections.
+  -- `eq_of_Q_eq` is the injectivity of `E ↦ Q^F_E` the `2 → 1` direction runs on.
   FactoredSet.Q_mul_Q_eq_of_orthogonalGiven FactoredSet.orthogonalGiven_of_Q_mul_Q_eq
+  FactoredSet.eq_of_Q_eq
+  -- §5.4: `ProbDist` is finitely additive, so a distribution is determined by its
+  -- singletons on any finite set; these are the two forms of that, and they carry no
+  -- finiteness of their own.  `diracAt` is the point mass, and `isDistribution_diracAt`
+  -- is the general non-vacuity fact behind §5.4-§5.5: it is a distribution on *every*
+  -- factored set of finite dimension, so the family Proposition 32 and Theorem 3 quantify
+  -- over is empty only over an empty `S` — where Theorem 3's other side holds too.
+  -- None of these is a paper node.
+  ProbDist.eq_sum_singleton ProbDist.eq_sum_singleton_of_finite
+  ProbDist.diracAt ProbDist.diracAt_apply FactoredSet.isDistribution_diracAt
