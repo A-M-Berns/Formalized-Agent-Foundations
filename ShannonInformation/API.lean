@@ -12,6 +12,8 @@ public import PFR.ForMathlib.Entropy.Basic
 public import PFR.ForMathlib.Entropy.Measure
 public import PFR.ForMathlib.FiniteRange.Defs
 public import PFR.ForMathlib.ConditionalIndependence
+public import ShannonInformation.FiniteEntropy.Defs
+public import ShannonInformation.FiniteEntropy.Pi
 
 /-!
 # `ShannonInformation.API` — the FAF-facing Shannon-information surface
@@ -52,7 +54,9 @@ The vendored API is stated for **finite-range** random variables on measure spac
 "countable discrete with finite entropy" setting some agent-foundations papers assume.
 This is a real mathematical boundary, not a presentational one, and it is analysed in
 `ShannonInformation/SCOPE.md`.  **Read that file before assuming a result applies to a
-variable with infinite range.**
+variable with infinite range.**  The hypothesis class those theorems should eventually be
+stated over — `ShannonInformation.FiniteEntropyOf` — exists as of this commit, with its
+instances and closure lemmas; the theorems themselves have not moved yet.
 
 ## Vocabulary exposed
 
@@ -63,6 +67,8 @@ variable with infinite range.**
 | mutual information | `ProbabilityTheory.mutualInfo` | `I[X : Y ; μ]` |
 | conditional mutual information | `ProbabilityTheory.condMutualInfo` | `I[X : Y \| Z ; μ]` |
 | finite-range variables | `FiniteRange` | — |
+| finite-entropy measures | `ShannonInformation.FiniteEntropyMeasure` | — |
+| finite-entropy variables | `ShannonInformation.FiniteEntropyOf` | — |
 | conditional independence | `ProbabilityTheory.CondIndepFun` | — |
 
 Selected facts, by the category the task cares about:
@@ -89,25 +95,57 @@ public section
 namespace ShannonInformation
 
 /-!
-## Deliberately empty of new mathematics
+## No new entropy *definitions*; one FAF-authored generalization layer
 
-This module adds **no** entropy definitions and, as of this commit, **no** lemmas.  That is
-a decision, not an omission:
+This module adds **no** entropy definitions.  Every information quantity a client reads
+through it is upstream's, verbatim, so a statement here cannot drift from the statement
+that was actually proved, nothing has to be re-audited when the vendored tree is re-pinned,
+and FAF's authorship claim stays honest: this repository has not re-formalized Shannon
+information theory, it is consuming PFR's.
 
-* every statement a client reads through this module is upstream's, verbatim, so a
-  statement here cannot drift from the statement that was actually proved;
-* nothing has to be re-audited when the vendored tree is re-pinned;
-* it keeps FAF honest about authorship — this repository has not re-formalized Shannon
-  information theory, it is consuming PFR's.
+It is, however, **no longer empty of new mathematics**.  Re-exported alongside the vendored
+surface is one FAF-authored layer, `ShannonInformation/FiniteEntropy/`, which exists
+because the vendored theorems are stated for `FiniteRange` variables and several FAF
+consumers are not inside that fragment (`SCOPE.md` §2, and
+`Condensation/notes/finite-range-generalization-plan.md`).  It adds a *hypothesis class*,
+not a definition — entropy is still PFR's `measureEntropy`:
 
-If a genuinely generic convenience lemma turns out to be needed by more than one client,
-it belongs here, inside this namespace, marked FAF-authored, proved (never `sorry`ed), and
-listed in `ShannonInformation/README.md`.  Paper-specific material never belongs here.
+* `ShannonInformation.FiniteEntropyMeasure` — a `Prop`-valued class asserting that the
+  series defining `Hm[μ]` converges.  Its summand is `measureEntropy`'s summand verbatim.
+* `ShannonInformation.FiniteEntropyOf X μ` — abbreviation for
+  `FiniteEntropyMeasure (μ.map X)`.
+* `ShannonInformation.finiteEntropy_of_finiteSupport`,
+  `ShannonInformation.finiteEntropy_of_finiteRange` — instances, so the entire existing
+  `FiniteRange` instance graph discharges the new class automatically.  Nothing that was
+  provable before stops being provable.
+* `ShannonInformation.FiniteEntropyOf.summable` — the bridge to `entropy_eq_sum`: under
+  the class, the `∑'` that lemma writes `H[X ; μ]` as is a genuine sum, not the junk value
+  `0` that `∑'` returns on a non-summable family.
+* closure lemmas: `finiteEntropyMeasure_map`, `finiteEntropyMeasure_prod`,
+  `finiteEntropyOf_comp`, `finiteEntropyOf_fst`, `finiteEntropyOf_snd`,
+  `finiteEntropyOf_pair`, `finiteEntropyOf_pullback`, and — for a **finite** index only,
+  since countable products genuinely fail — `finiteEntropyOf_measurableEquiv`,
+  `finiteEntropyOf_piFin`, `finiteEntropyOf_pi`.
+* the abstract nonnegative-family core they rest on, in
+  `ShannonInformation/FiniteEntropy/Summable.lean`: `negMulLog_tsum_le`,
+  `tsum_negMulLog_eq_add`, `tsum_mul_log_div_nonneg`, `negMulLog_le_add_of_le`,
+  `summable_negMulLog_tsum_fiber`, `tsum_negMulLog_tsum_fiber_le`.
+
+The vendored *theorems* are still stated at `FiniteRange`; restating them at
+`FiniteEntropyOf` is later phases of that plan.  Every declaration above is proved here
+(never `sorry`ed, never axiomatized), listed in `ShannonInformation/README.md`, and covered
+by `ShannonInformation/AxiomAudit.lean`.
+
+Any further genuinely generic convenience lemma needed by more than one client belongs
+here, inside this namespace, under the same conditions.  Paper-specific material never
+belongs here.
 
 Derivations that clients can do in a line or two — `H[X | X] = 0`, entropy of a constant,
 zero mutual information for an independent pair — are demonstrated in
 `APITests/ShannonInformation.lean` rather than pre-packaged here, so that those tests
-actually test the surface instead of restating it.
+actually test the surface instead of restating it.  The non-vacuity witness for
+`FiniteEntropyOf` — a geometric variable on `ℕ`, which has finite entropy and *no* finite
+range — lives in `APITests/ShannonInformationFiniteEntropy.lean`.
 -/
 
 end ShannonInformation

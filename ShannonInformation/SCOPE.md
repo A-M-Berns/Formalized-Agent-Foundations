@@ -10,6 +10,23 @@ The short version:
 > only for finite-range ones.** Generalizing means re-proving theorems under a summability
 > hypothesis; it does not mean redefining anything.
 
+## Generalization in progress
+
+**Phase 1 of that generalization has landed** (`ShannonInformation/FiniteEntropy/`,
+re-exported through `ShannonInformation.API`). The summability hypothesis §5 calls for now
+exists as a class, `ShannonInformation.FiniteEntropyOf X μ`, together with its instances —
+`FiniteRange X` and `FiniteSupport μ` both discharge it, so nothing that was provable
+before stops being provable — and its closure lemmas: marginals, functions of a variable,
+pairs, and transport along a measure-preserving map. A geometric variable on `ℕ` is
+constructed in `APITests/ShannonInformationFiniteEntropy.lean` with the class instance and
+a proof of `¬ FiniteRange`, so the generalization is provably strict rather than nominal.
+
+**Everything below still describes the current state of the *theorems*.** They are still
+stated at `FiniteRange`; restating them at `FiniteEntropyOf` is Phases 2–4 of
+`Condensation/notes/finite-range-generalization-plan.md`, which is the authoritative plan
+(and which corrects §5's cost estimate — see there, not here). Read §4's table as: those
+hypotheses are what you get *today*.
+
 ---
 
 ## 1. What class of variables does the API support?
@@ -102,7 +119,8 @@ Roughly, in increasing order of effort:
 
 1. **A `FiniteEntropy`-style hypothesis** — a class asserting summability of the entropy
    series (PFR's `FiniteSupport` is the finite-range analogue). Everything downstream keys
-   off this instead of `FiniteRange`.
+   off this instead of `FiniteRange`. **Done**: `ShannonInformation.FiniteEntropyOf`, with
+   instances and closure lemmas — see "Generalization in progress" at the top of this file.
 2. **Re-prove the chain rules** by a limiting argument over an exhausting sequence of
    finite sets, rather than PFR's direct `Finset` manipulation. This is the bulk of the
    work and it is where the mathematics actually lives.

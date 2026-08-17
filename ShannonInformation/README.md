@@ -32,19 +32,78 @@ two compatibility patches, this consumer surface, the scope analysis, and the te
 | --- | --- | --- |
 | **vendor** | `PFR/` | audited upstream implementation, at upstream module paths. Third-party. Do not edit. |
 | **consumer** | `ShannonInformation/API.lean` | the FAF-facing surface. What downstream work imports. |
+| **FAF-authored** | `ShannonInformation/FiniteEntropy/` | the one place in this layer where the mathematics is ours. Re-exported by `API.lean`. |
 
 A downstream paper formalization should import `ShannonInformation.API` and **never name a
 `PFR.*` module**. The point of the split is that re-pinning the vendored tree — a routine
 maintenance event — must not ripple through paper libraries.
 
-The API is a **pure re-export layer**: it adds no entropy definitions and, currently, no
-lemmas. That is a decision. Every statement a client reads through it is upstream's
-verbatim, so an API statement cannot drift from the statement that was actually proved,
-and nothing has to be re-audited when the vendor tree moves. If a genuinely generic
-convenience lemma is ever needed by more than one client it belongs in `API.lean`, inside
-the `ShannonInformation` namespace, marked FAF-authored and proved — and listed here.
+The API adds **no entropy definitions**: every information quantity a client reads through
+it is upstream's verbatim, so an API statement cannot drift from the statement that was
+actually proved, and nothing has to be re-audited when the vendor tree moves.
 
-*Currently FAF-authored lemmas in the API: none.*
+It is no longer *empty of mathematics*, though. `ShannonInformation/FiniteEntropy/` is
+FAF-authored and adds a **hypothesis class**, not a definition — see "Currently
+FAF-authored" below and `SCOPE.md`. Any further genuinely generic convenience lemma needed
+by more than one client belongs in this namespace under the same conditions: proved, never
+`sorry`ed, listed here, and covered by `AxiomAudit.lean`.
+
+## Currently FAF-authored declarations in the API
+
+All in namespace `ShannonInformation`; all proved, `sorry`-free, and asserted axiom-clean in
+`ShannonInformation/AxiomAudit.lean`. They exist to lift the vendored library out of its
+`FiniteRange` fragment (`SCOPE.md` §2, §5); Phase 1 of
+`Condensation/notes/finite-range-generalization-plan.md`.
+
+`ShannonInformation/FiniteEntropy/Summable.lean` — the abstract nonnegative-family core. No
+measure theory; statements are about a family `p : ι → ℝ`.
+
+| declaration | statement |
+| --- | --- |
+| `negMulLog_tsum_le` | grouping bound `negMulLog (∑' t, p t) ≤ ∑' t, negMulLog (p t)` |
+| `negMulLog_div` | `negMulLog (p / P)` split into unnormalised term plus normalisation |
+| `tsum_negMulLog_eq_add` | local chain rule for one row of a joint distribution |
+| `tsum_mul_log_div_nonneg` | Gibbs' inequality, countable form (termwise, no Jensen) |
+| `negMulLog_le_add_of_le` | the termwise pair bound |
+| `summable_tsum_fiber`, `tsum_tsum_fiber` | regrouping a summable family along `g : ι → κ` |
+| `summable_negMulLog_tsum_fiber` | grouping preserves finite entropy |
+| `tsum_negMulLog_tsum_fiber_le` | `H[g ∘ X] ≤ H[X]` in atomic form |
+
+`ShannonInformation/FiniteEntropy/Defs.lean` — the class and its closure.
+
+| declaration | statement |
+| --- | --- |
+| `FiniteEntropyMeasure` | class: the series defining `Hm[μ]` converges (`measureEntropy`'s summand verbatim) |
+| `FiniteEntropyOf X μ` | abbreviation for `FiniteEntropyMeasure (μ.map X)` |
+| `FiniteEntropyMeasure.summable_real`, `.of_summable_real`, `finiteEntropyMeasure_iff` | unfolding, for a probability measure |
+| `FiniteEntropyOf.summable` | the series PFR's `entropy_eq_sum` writes `H[X ; μ]` as converges |
+| `finiteEntropy_of_finiteSupport` | **instance** `FiniteSupport μ → FiniteEntropyMeasure μ` |
+| `finiteEntropy_of_finiteRange` | **instance** `FiniteRange X → FiniteEntropyOf X μ` |
+| `summable_measureReal_singleton`, `tsum_measureReal_singleton_le_one`, `measureReal_singleton_le_one` | point-mass bookkeeping |
+| `measureReal_map_singleton_eq_tsum_fiber`, `measureReal_map_fst_singleton`, `measureReal_map_snd_singleton` | point masses of a pushforward / of a marginal |
+| `finiteEntropyMeasure_map` | pushforward closure — the workhorse |
+| `finiteEntropyMeasure_prod`, `finiteEntropyOf_pair` | pair closure |
+| `finiteEntropyOf_comp`, `finiteEntropyOf_fst`, `finiteEntropyOf_snd` | function of a variable; marginals of a pair |
+| `finiteEntropyOf_pullback` | transport along a measure-preserving map |
+
+`ShannonInformation/FiniteEntropy/Pi.lean` — the finite-product closure.
+
+| declaration | statement |
+| --- | --- |
+| `finiteEntropyOf_measurableEquiv` | transport along a measurable equivalence of the value type |
+| `finiteEntropyOf_piFin` | `Fin n`-indexed dependent product closure |
+| `finiteEntropyOf_pi` | the same for any `Fintype` index |
+
+Two things this layer deliberately does **not** do. It does not restate the vendored
+*theorems* at `FiniteEntropyOf` — chain rules, subadditivity and the independence
+characterizations are still `FiniteRange`-gated, and moving them is Phases 2–4 of the plan.
+And its product closure is stated for a **finite** index only: countable products genuinely
+fail (independent `X n` with `H[X n] = 1` each are finite-entropy, their joint over `ℕ` is
+not), so nobody should "generalize" it to `Π i : ι` for countable `ι`.
+
+The non-vacuity witness — a geometric variable on `ℕ`, which has `FiniteEntropyOf` and
+provably no `FiniteRange` — is in `APITests/ShannonInformationFiniteEntropy.lean`,
+constructed rather than asserted, per the repository standard.
 
 ## Supported concepts
 
@@ -109,8 +168,10 @@ re-check `SCOPE.md`, since a newer upstream may have relaxed hypotheses.
   `Paper node:` annotations and per-paper regeneration procedures, and a non-paper library
   has no place in it. The enforcement is the same; the bookkeeping is kept where it belongs.
 - Distinguish carefully when reading: **mathematics inherited from PFR** (all of `PFR/`),
-  **compatibility patches** (two, in `vendor/patches/`), **new FAF lemmas** (none yet), and
-  **desired future generalization** (`SCOPE.md` §5).
+  **compatibility patches** (two, in `vendor/patches/`), **new FAF lemmas** (all of
+  `ShannonInformation/FiniteEntropy/`, inventoried above), and **desired future
+  generalization** (`SCOPE.md` §5, and Phases 2–4 of
+  `Condensation/notes/finite-range-generalization-plan.md`).
 
 ## Known constraint: do not `import Mathlib` alongside this
 
@@ -140,7 +201,8 @@ must classify it as compatibility, not mathematics, and record it in `vendor/pat
 3. Do not define entropy, conditional entropy, mutual information or conditional mutual
    information. If a needed fact is missing, prefer proving it in the paper library from
    re-exported endpoints; promote it here only when a second client needs it.
-4. Client-style examples of exactly this live in `APITests/ShannonInformation.lean`.
+4. Client-style examples of exactly this live in `APITests/ShannonInformation.lean`, and
+   for the finite-entropy layer in `APITests/ShannonInformationFiniteEntropy.lean`.
 
 ## Motivation, and what this is not
 

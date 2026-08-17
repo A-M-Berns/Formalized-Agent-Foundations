@@ -103,3 +103,63 @@ open ProbabilityTheory
 #assert_axioms_clean_si
   FiniteRange
   FiniteRange.toFinset
+
+/-!
+## The FAF-authored generalization layer
+
+Everything below is *ours*, not PFR's, so the axiom check here is a check on this
+repository's own proofs rather than a transitive check on the vendored closure.  Every
+public declaration of `ShannonInformation/FiniteEntropy/` is listed; adding one without
+listing it is the omission this block exists to catch.
+-/
+
+-- The class, its abbreviation, and the two unfolding lemmas.
+#assert_axioms_clean_si
+  ShannonInformation.FiniteEntropyMeasure
+  ShannonInformation.FiniteEntropyOf
+  ShannonInformation.FiniteEntropyMeasure.summable_real
+  ShannonInformation.FiniteEntropyMeasure.of_summable_real
+  ShannonInformation.finiteEntropyMeasure_iff
+  ShannonInformation.FiniteEntropyOf.summable
+
+-- The instances that make the existing `FiniteRange` graph discharge the new class.
+#assert_axioms_clean_si
+  ShannonInformation.finiteEntropy_of_finiteSupport
+  ShannonInformation.finiteEntropy_of_finiteRange
+
+-- Measure-theoretic bookkeeping.
+#assert_axioms_clean_si
+  ShannonInformation.summable_measureReal_singleton
+  ShannonInformation.tsum_measureReal_singleton_le_one
+  ShannonInformation.measureReal_singleton_le_one
+  ShannonInformation.measureReal_map_singleton_eq_tsum_fiber
+  ShannonInformation.measureReal_map_fst_singleton
+  ShannonInformation.measureReal_map_snd_singleton
+
+-- Closure.
+#assert_axioms_clean_si
+  ShannonInformation.finiteEntropyMeasure_map
+  ShannonInformation.finiteEntropyMeasure_prod
+  ShannonInformation.finiteEntropyOf_pullback
+  ShannonInformation.finiteEntropyOf_comp
+  ShannonInformation.finiteEntropyOf_fst
+  ShannonInformation.finiteEntropyOf_snd
+  ShannonInformation.finiteEntropyOf_pair
+
+-- Finite-product closure.  `Fintype`, never `Countable` — see the source comment there.
+#assert_axioms_clean_si
+  ShannonInformation.finiteEntropyOf_measurableEquiv
+  ShannonInformation.finiteEntropyOf_piFin
+  ShannonInformation.finiteEntropyOf_pi
+
+-- The abstract nonnegative-family core the closure proofs rest on.
+#assert_axioms_clean_si
+  ShannonInformation.negMulLog_tsum_le
+  ShannonInformation.negMulLog_div
+  ShannonInformation.tsum_negMulLog_eq_add
+  ShannonInformation.tsum_mul_log_div_nonneg
+  ShannonInformation.negMulLog_le_add_of_le
+  ShannonInformation.summable_tsum_fiber
+  ShannonInformation.tsum_tsum_fiber
+  ShannonInformation.summable_negMulLog_tsum_fiber
+  ShannonInformation.tsum_negMulLog_tsum_fiber_le
