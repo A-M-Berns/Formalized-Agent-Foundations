@@ -107,6 +107,29 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
   from each partition) is modeled as the dependent product `(b : B) → Quotient b`, and
   Definition 10's `π` as `fun s b => ⟦s⟧`.  `Quotient b` is canonically the set of
   blocks of `b`, so this is a change of presentation, not of content.
+
+* `dd:model` — Definition 38's model `M = (F, f)` of a sample space is the structure
+  `Model Ω`, bundling four things: an implicit carrier `S`, a `FactoredSet S`, the map
+  `f : S → Ω`, and — because Definition 38 says *finite* factored set — a `Finite S`
+  **field**, registered as an instance.  The finiteness is therefore part of the object
+  rather than a hypothesis on statements, which is the one place §6 departs from
+  `dd:finiteness-minimal` and does so deliberately: Definitions 43 and 45 quantify over
+  models, so "for all models" must already mean "for all finite ones" or the definitions
+  say something else.  The consequence a reader should carry is that **no §6 declaration
+  carries a finiteness binder of its own**, and `Finite M.F.B` is found by instance search
+  wherever an `M : Model Ω` is in scope, which is what lets §6 proofs call the §3–§4
+  endpoints unencumbered.
+
+  Definition 39 is rendered by Mathlib and has no carrier: `f⁻¹(ω)` and `f⁻¹(E)` are
+  `Set.preimage`, and `f⁻¹(X)` for a partition `X` of `Ω` is `Setoid.comap f X`, whose
+  blocks are exactly the nonempty preimages of blocks of `X` — the paper's
+  `{f⁻¹(x) | x ∈ X, f⁻¹(x) ≠ {}}` verbatim, with the emptiness side condition supplied by
+  `Setoid.classes` rather than written out.  `Model.pullback` is a named alias for that
+  third clause and carries no paper-node annotation.  Definition 40's database is the
+  structure `OrthDatabase Ω` with two sets of triples; Definition 41's two notations are
+  `Orth` and `NotOrth`, and it is worth stating that `NotOrth` is a positive assertion *of
+  the database* and not the negation of `Orth` — a database may assert both, in which case
+  Definition 43 fails, or neither, in which case Definition 44 fails.
 -/
 import FiniteFactoredSets.Basic
 import FiniteFactoredSets.Examples
@@ -119,3 +142,5 @@ import FiniteFactoredSets.Polynomial
 import FiniteFactoredSets.Factoring
 import FiniteFactoredSets.CharacteristicOrthogonality
 import FiniteFactoredSets.Probability
+import FiniteFactoredSets.Inference
+import FiniteFactoredSets.InferenceExamples

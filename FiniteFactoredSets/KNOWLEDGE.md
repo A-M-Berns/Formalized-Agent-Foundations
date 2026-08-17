@@ -15,6 +15,7 @@ trust surface and `FiniteFactoredSets.lean` for the `dd:` glossary.
 | `dd:poly` | `Poly S := MvPolynomial (Set S) ℝ`; eval = `MvPolynomial.eval`, supp = `vars`, irreducible = Mathlib `Irreducible`; set sums via `finsum`/`finprod` | Blocks are variables verbatim under `dd:partition`. Definitions carry no finiteness; `[Finite S]` sits on the §5.1–5.2 *theorems* and helper lemmas whose statements quantify over `E ⊆ S` (the exact list is in API.lean, maintained per round — round 6 caught an undercount). `mono`/`monos`/`poly` take no `F` (paper superscript notational) — the `size` trap avoided at design time. |
 | `dd:probability` | Definition 36 = `structure ProbDist S` (`P : Set S → ℝ`, nonneg, `P ∅ = 0`, `P univ = 1`, finitely additive); Definition 37 = predicate `FactoredSet.IsDistribution F P := ∀ s, P {s} = ∏ᶠ b ∈ F.B, P (part b s)`; `Q^F_E(P)` = `MvPolynomial.eval P.P (F.Q E)`; Theorem 3 stated division-free | Verbatim the paper's elementary definitions — no measure theory, no type-(c) substitution; a Mathlib-probability bridge would be a separate lemma, never a stand-in. Definitions carry no finiteness (finprod). A Dirac point mass IS a distribution on every factored set (product of point-mass marginals) — the non-distribution witness is `diagDist` (uniform on the diagonal). |
 | `dd:subpartition` | A subpartition of `S` is a partial equivalence relation on `S` (`structure Subpartition`), domain `{s | r s s}` | Mathlib has no PER structure and `Σ E, Setoid E` would put dependent subtypes and domain transports into every §4 statement. The correspondence is exhibited (`toSetoid`, `ofSetoidOn`, round-trip lemmas). Payoff observed by the §4.1 shard: `X (χ_C s t) s` already implies `χ_C s t ∈ dom X` (`mem_dom_of_rel`), so half of Proposition 20's "extra condition" is free and Prop 21 clause 5 needs no `χ(E,E) = E` bookkeeping. |
+| `dd:model` | Definition 38's model is `structure Model Ω`: implicit carrier `S`, a `FactoredSet S`, `f : S → Ω`, and — because Definition 38 says *finite* factored set — a `Finite S` **field**, registered as an instance | Finiteness is part of the object, not a hypothesis on statements: the one place §6 departs from `dd:finiteness-minimal`, and it departs in the strict direction, since Definitions 43 and 45 quantify over models, so "for all models" must already mean "for all finite ones". Consequence to carry: **no §6 declaration carries a finiteness binder**, and `Finite M.F.B` is found by instance search wherever `M : Model Ω` is in scope (`Model.finite` → `instFiniteSetoid` → `Subtype.finite`). `Ω` is unconstrained. Definition 39 is Mathlib-rendered (`Set.preimage`, `Setoid.comap`); `Model.pullback` is a named alias for its third clause carrying no node annotation. Definition 41's `NotOrth` is a positive assertion *of the database*, not the negation of `Orth` — a database may assert both (Definition 43 then fails) or neither (Definition 44 fails). |
 | history | `history X := ⋂₀ {C | C ⊆ F.B ∧ Generates C X}` | Definition 17's "smallest generating subset". `history_isLeast` (Proposition 12) is what earns "smallest", and it needs `[Finite F.B]` **genuinely**: over `S = ℕ → Bool` with the coordinate factors, every cofinite subset of `B` generates the "eventually equal" partition, so the intersection of all generating subsets is `∅`, which generates nothing. All of §3 is stated with `Finite F.B` (finite *dimension*) and never `Finite S`. |
 
 ## The order inversion — read this before writing any order statement
@@ -84,7 +85,8 @@ factorization. This was the spike's main finding; see `notes/spike-2026-08-15.md
   proves `X = Y` outright (this is stronger than the `(⊥ : Setoid Empty) = ⊤` note above),
   which is how Proposition 17's "if `S` is empty then `X = Y`" branch is discharged.
 * **`Setoid.refl'` is `@[refl]`**, so the `rfl` that `rw` tries afterwards closes `X s s`
-  goals by itself; a following `exact X.refl' s` fails with "no goals".
+  goals by itself; a following `exact X.refl' s` fails with "no goals".  Bit again in
+  stage 6 — the failure is confusing because the error points at the *next* tactic, not the `rw`.
 * **`List.TFAE.out` has autoparam arguments**: `((h.out 0 5).1 hyp) s t` fails to elaborate
   in term mode. Bind with an explicitly typed `have h6 : ∀ s t, … := (h.out 0 5).1 hyp` first
   (the in-file `example` in `History.lean` demonstrates it).
@@ -187,6 +189,20 @@ Paper node → Lean declaration. Extended as nodes land.
 | Definition 37 (distribution on `F`) | `FactoredSet.IsDistribution` | `Probability.lean` |
 | Proposition 32 | `FactoredSet.isDistribution_iff` | `Probability.lean` |
 | Theorem 3 (fundamental theorem) | `FactoredSet.orthogonalGiven_iff_forall_isDistribution` | `Probability.lean` |
+| Definition 38 (model of a sample space) | `Model` (`dd:model`; `Finite S` is a field) | `Inference.lean` |
+| Definition 39 (preimages under `f`) | Mathlib `Set.preimage` (points, subsets) and `Setoid.comap` (partitions), rendered — README table; convenience alias `Model.pullback` (`pullback_apply`), no node line | — |
+| Definition 40 (orthogonality database) | `OrthDatabase` | `Inference.lean` |
+| Definition 41 (asserted orthogonal / asserted not orthogonal) | `OrthDatabase.Orth`, `OrthDatabase.NotOrth` (two carriers, one per written form) | `Inference.lean` |
+| Definition 42 (a model models a database) | `OrthDatabase.Models` | `Inference.lean` |
+| Definition 43 (consistent) | `OrthDatabase.Consistent` | `Inference.lean` |
+| Definition 44 (complete) | `OrthDatabase.Complete` | `Inference.lean` |
+| Definition 45 (`X <_D Y`) | `OrthDatabase.Before` | `Inference.lean` |
+| Example 1 | `Example1.D` | `InferenceExamples.lean` |
+| Proposition 33 | `Example1.D_consistent` | `InferenceExamples.lean` |
+| Proposition 34 | `Example1.before_X_Y` | `InferenceExamples.lean` |
+| Example 2 | `Example2.D` | `InferenceExamples.lean` |
+| Proposition 35 | `Example2.D_consistent` | `InferenceExamples.lean` |
+| Proposition 36 | `Example2.before_X_Y_Z` | `InferenceExamples.lean` |
 
 Nodes deliberately rendered by Mathlib vocabulary with no declaration of ours
 (Definitions 2, 5, 6, 7, 9) are tabulated in `README.md`.
@@ -269,9 +285,16 @@ None. There are no type-`(c)` modeling substitutions in the current surface.
 
 ## Paper errata
 
-Recorded in `notes/paper-errata.md` (registered in `scripts/papers.py`). Three typos in
-§4.2 so far (E1 `h^Y(Y)` for `h^F(Y)` in Prop 23(1); E2 `x_0` for `x_1` in Lemma 2's
-proof; E3 `⋁_E` for `⋁_S` in Prop 23(2)'s proof), none changing a statement.
+Recorded in `notes/paper-errata.md` (registered in `scripts/papers.py`) — that file is
+canonical; read it before concluding a Lean proof diverges from the printed one. Seven
+typos so far, none changing a statement. E1–E3 in §4.2 (E1 `h^Y(Y)` for `h^F(Y)` in Prop
+23(1); E2 `x_0` for `x_1` in Lemma 2's proof; E3 `⋁_E` for `⋁_S` in Prop 23(2)'s proof).
+E4–E7 in §6.2's proofs: E4 Prop 36 cites `X ⊥_D Y | {Ω}` for `H_X ∩ H_V = {}` where the
+database asserts `X ⊥_D V | {Ω}`; E5 Prop 36 cites `¬(Y ⊥_D Z | {Ω})` where `N` contains
+`(V,Z,{Ω})`; E6 `h_Z` for `H_Z`; E7 Prop 34's proof writes `H_Y ∩ H_V` where Prop 13
+clause 2 gives the union (Prop 36 states the same step correctly). E4, E5 and E7 matter to
+anyone diffing the Lean against the page — the Lean cites different database entries, and
+uses the union; do not re-raise as divergences.
 
 ## Open questions
 
@@ -441,9 +464,170 @@ it belongs in the library as a stated open `Prop` with this note attached.
   rewriting a chimera chain in place makes `chimera_sdiff` fire on the outer occurrence —
   extract the inner step as a `have`; `Set.union_empty_iff` (not `union_eq_empty`);
   `lake env lean` on an *importing* scratch file sees the stale olean of a just-edited
-  upstream — `lake build` first.
+  upstream — `lake build` first (bit again in stage 6 wearing a new costume: `Model` and
+  `OrthDatabase` reported as *unknown identifiers* with autoImplicit hints, purely because
+  `API.lean`'s olean predated its new `Inference` import — it reads as a missing `open`).
 * The node checker is whole-directory: during parallel shards it stays red until the last
   shard's inventory rows land; read the file names in its output, not the count.
+
+## Stage 6 (§6) — durable lessons
+
+* **Registers after stage 6: 81 carriers / 88 annotations — 81 of the 96 in-scope nodes.**
+  Recount mechanically before editing any register:
+  `grep -rho "Paper node: [A-Za-z]* [0-9]*" FiniteFactoredSets/*.lean | sort -u | wc -l`.
+  The stage-6 fix packet itself carried an off-by-one (it said 82) because **Definition 39
+  has no carrier** — `Model.pullback` is a named alias with no node line — so §6 adds 13
+  carriers, not 14: Defs 38, 40–45 (7), Examples 1–2 (2), Props 33–36 (4). Definition 41 is
+  the sixth multi-carrier node (`Orth`, `NotOrth`); Defs 29, 30, 39 are the three
+  Mathlib-rendered nodes that still get a correspondence row.
+* **`Consistent` is cheap on `O` alone, and this is the §6 fact most likely to be
+  mis-audited.** A database asserting *every* triple orthogonal (`O = univ`, `N = ∅`) IS
+  consistent, witnessed by a one-point model: on `unitFS` the basis is `∅`, so
+  `historySub X ⊆ B = ∅` for every subpartition and `OrthogonalGiven` holds for all triples.
+  All of Definition 43's content lives in `N`. Minimal mechanism:
+  `nonconstDB_forces_nonconstant` — the single `N`-entry `(⊥, ⊥, ⊤)` gives, through
+  Proposition 25 at `X = f⁻¹(⊥) = ker f`, `Y = f⁻¹(⊤) = ⊤`, exactly "`f` is not constant".
+  Do not write a witness asserting `O = univ, N = ∅` is inconsistent.
+* **Definition 45 (`X <_D Y`) is vacuously TOTAL on an inconsistent database**
+  (`before_of_not_consistent`: it quantifies over models, and there are none); on a
+  consistent one it is irreflexive (`not_before_self_of_consistent` — `StrictlyBefore` is
+  `history X ⊂ history Y` and `Set`'s `⊂` is defeq to `<`, so `lt_irrefl` applies directly).
+  Both witnessed in Examples.lean. This is why the paper proves consistency (Props 33, 35)
+  before it infers time (Props 34, 36): a `<_D` claim read without a consistency proof beside
+  it certifies nothing, and an auditor meeting a positive `Before` witness should check which
+  side of that line it is on first.
+* **Proposition 36's `r_ij` family is symmetric in `X` and `V`, and exploiting that halves the
+  proof.** The paper says "symmetrically, …" twice and the naive reading is that the whole
+  `r_ij = χ^F_{H_X}(s_i, t_j)` construction must be redone with `χ^F_{H_V}(t_j, s_i)`. It need
+  not: package the family as five properties — first bit `i`, agreement `j`, all four
+  `∼_b` for `b ∈ B \ {b_X, b_V}`, `b_X` sees only `i`, `b_V` only `j` — and the `H_V`-oriented
+  construction satisfies exactly the same five. The only residual asymmetry is which of `b_X`,
+  `b_V` lies in `C`: a two-branch case split giving `χ^F_C(r_ij, r_i'j') = r_ij'` or `= r_i'j`,
+  both landing in the opposite `f⁻¹(Y)`-block at `(i',j') = (!i,!j)`, so the block argument is
+  written once. The `y`-block bookkeeping runs on **one Bool identity — the second bit of
+  `f (r i j)` is `(i == j)`** — from which four `by decide` lemmas suffice; deriving block
+  membership from it rather than by ad-hoc case analysis is what keeps it short.
+* **Proposition 35 needs only the ⊆ halves** of the paper's conditional histories
+  (`h(X'|y_i) = h(V'|y_i) = {X',V'}`, `h(f⁻¹Z|y_i) = {Z'}`): all six verdicts consume those
+  plus one nonemptiness (`historySub_spec` clause 4). That matters because the ⊇ halves are
+  genuinely harder than in the unconditional case — `generatesSub_iff_historySub_subset`
+  carries the extra `χ^F_C(E,E) = E` conjunct (§4 non-monotonicity), so there is no
+  subpartition analogue of `le_iff_history_subset` to refute with. Budget separately if a
+  future round wants the exact equalities as landmarks. Proposition 36 by contrast *does*
+  prove an exact conditional history (`histSub_restrict_X_eq : h^F(f⁻¹X|y) = H_Y`), whose
+  lower bound comes from the block dichotomy, not from generation.
+* **Definition 39's pullbacks are definitional in the §6.2 examples.** `M.pullback A = A'`
+  for comap-of-`⊥` partitions is `Setoid.ext fun _ _ => Iff.rfl`; `M.pullback ⊤ = ⊤` and
+  `Model.pullback ⟨F, id⟩ X = X` are `rfl` (both `@[simp]` in `Inference.lean`), so inside a
+  `Models` obligation for a model built as `⟨F, id⟩` a bare `show F.OrthogonalGiven X V ⊤`
+  discharges the defeq check — no `Setoid.ext`-based transport lemma is needed, contrary to
+  the natural expectation. Mathlib has **no `Setoid.comap_id` and no `Setoid.comap_top`**;
+  do not go looking, the one-liners are shorter than the search. (For a constant map into a
+  subsingleton carrier, `M.pullback X = ⊤` does need `cases` on both points first.)
+* **`show <plain equation> from h` is the reliable way to unfold a `Setoid.comap g ⊥`
+  relation.** For a factor `b := Setoid.comap g ⊥`, `hr : b p q` is definitionally
+  `g p = g q`, but `simp [b]` cannot see it and `decide` is banned on `Setoid` relations
+  (existing entry); the ascription converts it to a `noConfusion`-able goal in one step, and
+  dually `have hr : b p q := rfl` proves the relation from the equation. Every
+  factor-distinctness and nontriviality proof in Example 2's model runs on this. Refuting a
+  `Setoid` equality is a one-liner with `Setoid.ext_iff`: `X ≠ V` is
+  `fun h => Bool.noConfusion ((Setoid.ext_iff.1 h (true, true) (true, false)).1 rfl)`, and
+  `V ≠ ⊤` the same with `.2 trivial`.
+* **Four general §2.3/§3 helpers are parked in `Inference.lean`** under a block headed "§3
+  working forms of Definition 17" — `FactoredSet.rel_of_forall_mem_history`,
+  `exists_not_rel_of_mem_history`, `mem_history_of_not_rel`, `chimera_eq_right` — only
+  because §6.2 was the first consumer and no stage-6 fixer owned `History.lean`/`Basic.lean`.
+  Public and uninventoried. **Relocation candidates**: the first three to `History.lean`
+  (after `le_iff_history_subset`), `chimera_eq_right` to `Basic.lean`'s `chimera_*`
+  conveniences block. Same shape: `not_before_self_of_consistent` and
+  `before_of_not_consistent` are general facts about any `Ω`, `D` but live in `Examples.lean`,
+  which the API deliberately does not export — so the §6 APITests examples re-derive them.
+  That is not a rule-2b duplicate (the client genuinely cannot reach them), but both belong
+  on the consumer surface in `Inference.lean` beside `pullback_apply`. Proposal for the
+  convergence round, not done in stage 6 (`Inference.lean` was declared final).
+* **`mem_history_of_not_rel` needs NO `b ∈ F.B` hypothesis** — and Lean's `unusedVariables`
+  linter is what found that. If `b ∉ B` the hypothesis `∀ c ∈ B, c ≠ b → c s t` degenerates
+  to `∀ c ∈ B, c s t`, forcing `s = t` by Proposition 3 and contradicting `¬ X s t`. Do not
+  add the binder back "for symmetry" with `exists_not_rel_of_mem_history`.
+* Gate facts, both of which make a green run mean less than it looks:
+  **`check_endpoint_coverage.py` scans `LogicalInduction/` only** (`LIB =
+  Path("LogicalInduction")` is hard-coded; its output "68 labels have an inventory endpoint,
+  0 uncovered" looks project-wide and is not — adding three FFS inventory rows left the count
+  at 68, which is the tell). The FFS gate is `scripts/check-finite-factored-sets-nodes.py`.
+  And **`lake build AxiomAudit` stays green with sorried declarations in the same file as
+  long as they are not listed** — a green AxiomAudit is a claim about the *listed* names
+  only; `grep -rn sorry FiniteFactoredSets/` separately before believing a directory is clean.
+* **A single `instance : Finite carrierFS.B := basis_finite.to_subtype` right after the
+  model's `def carrierFS` suffices** — it is found for goals about `carrierFS.B` *and*
+  through `model.F.B` inside `Models model D`, so the model need not be an `abbrev` and no
+  `haveI` sprinkling is needed (the opposite was budgeted for). In the model-generic half,
+  by contrast, every lemma opens with `haveI : Finite M.F.B := M.F.finite_basis_of_finite`,
+  since `Model` carries `[Finite S]` and Proposition 6 is what converts it.
+* **Extracting a triple from a database set literal:** `h : D.Orth A B C` is definitionally
+  the disjunction, so `have h' : (A,B,C) = (X,V,⊤) ∨ … := h` type-ascribes it with no
+  `unfold` and no `Set.mem_insert_iff`; per branch,
+  `simp only [Prod.mk.injEq] at h'; obtain ⟨rfl, rfl, rfl⟩ := h'` handles both nesting levels
+  at once (`rw [Prod.mk.injEq]` has to be repeated). Asserting membership in the other
+  direction is just `Or.inl rfl` / `Or.inr (Or.inl rfl)`.
+* **State restriction lemmas over an explicit block representative, not an abstract block.**
+  `lemma … (v : Carrier) : F.GeneratesSub C ((ofSetoid A).restrict {x | Y' x v})` makes
+  `hs : s ∈ {x | Y' x v}` definitionally `s.2.1 = v.2.1`, usable as
+  `show s.2.1 = v.2.1 from hs`; at the call site `rintro z ⟨v, rfl⟩` on `z ∈ Y'.classes`
+  produces exactly that shape (`Setoid.classes r = {s | ∃ y, s = {x | r x y}}`). Each chimera
+  argument becomes three `have`s. The model-generic half uses `obtain ⟨v, rfl⟩ := hy`.
+* Clause indices used constantly in §6.2, worth memorizing: `(F.history_spec A B).1` is Prop
+  13(1) `B ≤ A → history A ⊆ history B`; `.2.1` is clause 2
+  `history (A ⊓ B) = history A ∪ history B`; `.2.2.1` is clause 3 `history A = ∅ ↔ A = ⊤`;
+  `.2.2.2` is clause 4, which takes `Nonempty S` *then* `∀ b ∈ F.B`. And
+  `(F.orthogonal_spec A B C).2.2.2` is Prop 15(4) `Orthogonal A A ↔ A = ⊤`, keyed on the
+  *first* argument.
+* Naming: the Example-2 model is **`Example2.carrierFS` / `Example2.model`, not `F` / `M`** —
+  Proposition 36's section binds `variable {M : Model Ω}` in the same namespace, and a section
+  variable shadowing a namespace-level `def` is a readability hazard even where it elaborates.
+  Matches `Examples.lean`'s `coordFS`/`boolFS`. Example 1's factored set is `{X, V}` (first
+  bit, agreement), **not** `coordFS`'s `{fstFactor, sndFactor}`; `Example1.V` and
+  `Examples.xorPart` are the same partition mathematically but different Lean terms (no lemma
+  about one applies to the other without a `Setoid.ext`) — moot in practice, since
+  `InferenceExamples.lean` imports only `FiniteFactoredSets.Inference`, which does not reach
+  `Examples.lean`. Build the §6.2 witnesses locally.
+* Inventory: **the bare name `Model` is ambiguous inside AxiomAudit's FFS-INVENTORY block** —
+  under its `open FiniteFactoredSets in`, `ProvabilityLogic/Kripke/Basic.lean`'s root-namespace
+  `structure Model` collides and the build fails with `ambiguous identifier 'Model'`. Write
+  `FiniteFactoredSets.Model`; the node checker allows (but does not require) the root prefix.
+* Tactic traps (stage 6): `have : b ∈ _ ∩ _ := ⟨hb, hb'⟩` fails ("the expected type … is not
+  an inductive type") when the sets are metavariables — `Set.mem_inter hb hb'` elaborates
+  instantly (this bit twice in one file); `rw [if_pos h]` cannot see through the beta-redex
+  left by `refine ⟨fun i => if P s₀ = i then s₀ else s₁, …⟩` ("did not find an occurrence") —
+  prefix each branch with an explicit `show`, which is also the standard shape for a
+  `Bool`-indexed WLOG (`exists_boolIndexed`): discharge "without loss of generality, assume
+  `f(s₀) ∈ x₀`" by re-indexing the separated pair by the statistic that separates it;
+  `Option.noConfusion` fails in `exact` position where `Bool.noConfusion` succeeds (with
+  `exact`'s expected type still a metavariable its universe/motive metavariables never get
+  solved) — use `exact absurd (show (none : Option Bool) = some true from h) (by simp)`;
+  `rw [pullback_coordModel, pullback_coordModel, pullback_coordModel]` fails when two of the
+  three pullbacks are at the *same* partition (`rw` instantiates the explicit `X` from the
+  first match, then rewrites all occurrences of that instance) — `simp only
+  [pullback_coordModel]` is instance-count-independent; under `InferenceExamples.lean`'s
+  file-level `open scoped Classical`, `revert`-then-`decide` also reverts a hypothesis whose
+  `Decidable` instance goes through `Classical.propDecidable` and sticks on `Classical.choice`
+  — `clear h` first (the error names `Classical.choice` and reads as "decide can't do this at
+  all"; it can, you dragged a classical hypothesis into the goal).
+* Merge and registers: the three stage-6 fixers merged with **only disjoint AxiomAudit-row
+  conflicts** — stage 5b's rule (pre-assign the AxiomAudit preamble to one shard) plus
+  per-shard row blocks was enough, and no statement file conflicted. Surfaces a stage's counts
+  stale, all of which must be swept at merge: `FiniteFactoredSets/README.md`, `API.lean`'s
+  status line, this file, and the **repo-root `CLAUDE.md`**, which carries its own FFS register
+  (node count *and* file count) and appears in no shard packet. `docs/trust-surface.html` needs
+  `python3 scripts/gen-trust-surface.py` (requires `latex2mathml`) and should be assigned an
+  owner at merge, or every shard re-reports it stale.
+* Calibration: both §6.2 shards came in well under budget — one to two compile iterations each
+  (Proposition 36's ~460 lines took four trivial fixes: beta-redex `rw`, `@[refl]`
+  double-close, two `Set.mem_inter`s, one `set`-vs-`show` mismatch). The cost was entirely in
+  writing the proof plan — which lemma carries which paragraph, and spotting the `r_ij`
+  symmetry — not in tactics. Same lesson as stage 5a: for §4–§6 the cost centre is *choosing
+  which lemmas carry the paper's steps*. Everything in Example 1 lives on `Bool × Bool`, so
+  `revert`-then-`decide` discharges the factorization's injectivity, the surjectivity witness,
+  and both order facts (`Y ⊓ V ≤ X`, `Y ⊓ X ≤ V`) outright.
 
 ## Round 9 audit — durable lessons (§5.3–5.5 convergence round)
 
@@ -886,7 +1070,10 @@ it belongs in the library as a stated open `Prop` with this note attached.
 * **`b ∈ ({x} : Set (Setoid S))` does not `rintro rfl`.** Use
   `simp only [Set.mem_singleton_iff] at hb; subst hb`. For a pair `{x, y}`,
   `rcases hb with rfl | rfl` *does* work, since `Set.insert` membership unfolds to a
-  disjunction of equations definitionally.
+  disjunction of equations definitionally.  Stage-6 refinement: this is specific to
+  *singletons* — `rintro b (rfl | rfl | rfl)` works on membership in a `def`-wrapped
+  `insert`-shaped literal too (`def basis : Set (Setoid S) := {X', V', Z'}`), since rcases
+  whnfs through both the `def` and `Set.insert`.
 * **`open ... in` scopes to the next command only.** `AxiomAudit.lean`'s FFS-INVENTORY block
   works because there is exactly one `#assert_axioms_clean` inside the markers. Adding a
   second would silently lose the `open` and fail to resolve unqualified names.

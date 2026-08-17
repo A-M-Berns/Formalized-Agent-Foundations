@@ -5,15 +5,19 @@ Formalization of Scott Garrabrant, *Temporal Inference with Finite Factored Sets
 `notes/2109.11513-main.tex` is the exact arXiv source and `notes/2109.11513.pdf` the
 matching PDF.
 
-**Status: in progress — §2, §3, §4 and §5 formalized (68 of the 96 in-scope nodes
-carry a Lean declaration of ours; two more, §5.1's Definitions 29 and 30, are rendered by
+**Status: in progress — §2, §3, §4, §5 and §6 formalized (81 of the 96 in-scope nodes
+carry a Lean declaration of ours; three more — §5.1's Definitions 29 and 30 and §6.1's
+Definition 39 — are rendered by
 Mathlib vocabulary and are tabulated below with the six such nodes of §2.1), with
-non-vacuity discharged by construction: four factored sets and five probability
-distributions are built, and the §2.5, §3,
-§4 and §5 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`,
+non-vacuity discharged by construction: four factored sets, five probability
+distributions, four factored set models and five orthogonality databases are built, and
+the §2.5, §3,
+§4, §5 and §6 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`,
 `Entangled`, `Before`, `StrictlyBefore`, `Subpartition`, `GeneratesSub`, `historySub`,
 `OrthogonalSub`, `OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`, `monos`, `poly`,
-`irr`, `ProbDist`, `IsDistribution` — is computed over them rather than merely defined.**
+`irr`, `ProbDist`, `IsDistribution`, `Model`, `Model.pullback`, `OrthDatabase`, `Models`,
+`Consistent`, `Complete`, `OrthDatabase.Before` — is computed over them rather than merely
+defined.**
 Nothing here is complete, and this file says what is claimed and what is not.
 
 ## What is claimed
@@ -37,14 +41,17 @@ Nothing here is complete, and this file says what is claimed and what is not.
 | 5.3 | Characteristic polynomials and conditional orthogonality | Lemma 3 |
 | 5.4 | Probability distributions on finite factored sets | Definitions 36, 37; Proposition 32 |
 | 5.5 | The fundamental theorem of finite factored sets | Theorem 3 |
+| 6.1 | Factored set models, orthogonality databases, consistency, completeness, inferred time | Definitions 38, 39, 40, 41, 42, 43, 44, 45 |
+| 6.2 | The two worked examples | Examples 1, 2; Propositions 33, 34, 35, 36 |
 
-§5.1's Definitions 29 (evaluation) and 30 (support) are the two nodes of these sections
+§5.1's Definitions 29 (evaluation) and 30 (support) and §6.1's Definition 39 (preimages)
+are the three nodes of these sections
 with no declaration of ours; they are in the Mathlib-rendered table below, which is why
-the rows above sum to 68 rather than 70.
+the rows above sum to 81 rather than 84.
 
-Five of those nodes are stated in halves — four in two, one in three — and every half is
-carried, so those nodes appear in the inventory more than once. The 68 nodes above are
-cited by 74 annotations:
+Six of those nodes are stated in halves — five in two, one in three — and every half is
+carried, so those nodes appear in the inventory more than once. The 81 nodes above are
+cited by 88 annotations:
 
 | Node | Carriers |
 |---|---|
@@ -53,18 +60,23 @@ cited by 74 annotations:
 | Definition 18 (orthogonality) | `Orthogonal` is `X ⊥^F Y`; `Entangled` is the second sentence's negation of it |
 | Definition 19 (time) | `Before` is `≤^F`; `StrictlyBefore` is `<^F` |
 | Definition 25 (subpartition orthogonality and time) | three clauses, three carriers: `OrthogonalSub` is `⊥^F` on subpartitions, `BeforeSub` is `≤^F`, `StrictlyBeforeSub` is `<^F` |
+| Definition 41 (database notation) | `Orth` is `X ⊥_D Y \| Z`; `NotOrth` is `¬(X ⊥_D Y \| Z)`. These are two *independent* assertions of the database, not a proposition and its negation — a database may make both (and then has no model) or neither (and then is not complete) |
 
 Every one of those carries a `Paper node:` docstring line and an entry in
 `AxiomAudit.lean`'s FFS-INVENTORY block, checked both ways by
-`scripts/check-finite-factored-sets-nodes.py`. Zero `sorry`; every endpoint is clean at
-`[propext, Classical.choice, Quot.sound]`.
+`scripts/check-finite-factored-sets-nodes.py`. Every endpoint — §2–§6, witnesses included —
+is `sorry`-free and clean at `[propext, Classical.choice, Quot.sound]`; the library has no
+open proof obligation. Zero `sorry`, zero `axiom`.
 
 ## What is not claimed
 
-§6 (inferring time) and §7's in-scope material have **no Lean statements yet**. The
-trust-surface guide reports the shortfall by kind rather than listing it. §5 is complete:
-all five §5.3–§5.5 nodes — Lemma 3, Definitions 36 and 37, Proposition 32 and Theorem 3 —
-are stated and proved.
+§7's in-scope material — Definitions 46–50, and Conjecture 1 stated as a `Prop` and
+deliberately not proved — has **no Lean statements yet**. The
+trust-surface guide reports the shortfall by kind rather than listing it. §5 and §6 are
+complete: all five §5.3–§5.5 nodes and all fourteen §6 nodes are stated and proved —
+Definitions 38–45, Examples 1 and 2 as constructed databases, and Propositions 33–36
+with the paper's own models (`Example1.idModel`, `Example2.model`) discharging the two
+consistency claims.
 
 An earlier feasibility spike proved several §5 results — the disjoint-support coefficient
 lemma behind Proposition 28, multilinearity of `Q^F_E`, and the Fundamental Theorem's
@@ -86,7 +98,11 @@ A consequence worth knowing before reading any §3–§4 statement: **finiteness
 minimal.** `FactoredSet` carries no `Fintype S`, and §3–§4 are stated with `Finite B`
 only, because none of that material touches polynomials. `|S|` finite enters at §5, where
 `Q^F_E = ∑_{s ∈ E} ∏_{b ∈ B} [s]_b` stops being the intended polynomial once `E` is
-infinite — the `finsum` collapses to `0`.
+infinite — the `finsum` collapses to `0`. §6 is the one place the per-statement discipline
+does not apply, and it departs in the strict direction: Definition 38 says *finite*
+factored set and Definitions 43 and 45 quantify over models, so `dd:model` puts `Finite S`
+in the `Model` structure as a field and **no §6 statement carries a finiteness binder at
+all**.
 
 It does not enter across the board, and it would be wrong to read §5 as a
 finite-`S`-only section. Of the 50 public §5 declarations, twenty-one carry `[Finite S]`,
@@ -150,11 +166,13 @@ here rather than inventoried — there is no declaration of this project's to ax
 | Definition 15, third sentence (finite / finite-dimensional factored set) | the typeclass hypotheses `[Finite S]` and `Finite F.B`, carried per statement | `dd:finiteness-minimal` |
 | Definition 29 (`p(f)`, evaluation) | `MvPolynomial.eval f p` | `dd:poly` |
 | Definition 30 (`supp(p)`, support) | `MvPolynomial.vars p` | `dd:poly` |
+| Definition 39 (`f⁻¹(ω)`, `f⁻¹(E)`, `f⁻¹(X)`) | `Set.preimage` for the first two; `Setoid.comap f X` for the partition, whose blocks are exactly the nonempty preimages of blocks of `X` — the definition's own side condition, supplied by `Setoid.classes` rather than written out. `Model.pullback` is a *named alias* for that third clause and deliberately carries no node annotation | `dd:model` |
 | Proposition 31's "irreducible" (no factorization into two polynomials of nonempty support) | Mathlib's `Irreducible` in `Poly S`; over `ℝ` its units are the nonzero constants, so the two readings coincide | `dd:poly` |
 | Proposition 2, first sentence (`≥_S` is a partial order) | Mathlib's `PartialOrder (Setoid S)` instance | `dd:order-flip` |
 
-Eight of those eleven rows are whole nodes (Definitions 1, 2, 5, 6, 7, 9, 29, 30 — the last
-two of §5.1 rather than §2.1, where Mathlib's `eval` and `vars` render them outright); the
+Nine of those twelve rows are whole nodes (Definitions 1, 2, 5, 6, 7, 9, 29, 30, 39 — the
+last three outside §2.1, where Mathlib's `eval`, `vars`, `Set.preimage` and `Setoid.comap`
+render them outright); the
 other three are *partial* entries — a clause of a node whose remaining clauses do have a
 carrier, recorded here so that nothing in a printed node is silently unaccounted for:
 
@@ -173,8 +191,8 @@ carrier, recorded here so that nothing in a printed node is silently unaccounted
   (`irreducible_poly_of_mem_irr`); it is the *meaning* of the word that is Mathlib's, and
   the two readings agreeing is a fact about `ℝ` worth stating rather than assuming.
 
-None of this is to be confused with the five multi-carrier nodes tabulated above
-(Definitions 13, 15, 18, 19, 25): those are nodes stated in halves, with *every* half
+None of this is to be confused with the six multi-carrier nodes tabulated above
+(Definitions 13, 15, 18, 19, 25, 41): those are nodes stated in halves, with *every* half
 carried, not nodes stated in part. Definition 15 appears in both lists, because two of its
 sentences have carriers and the third does not.
 
@@ -213,6 +231,25 @@ Defined in full in the glossary at `FiniteFactoredSets.lean`. In brief:
   the statements that consume it, not by the structure; and Theorem 3's conclusion is the
   paper's **division-free** `P(x∩z)·P(y∩z) = P(x∩y∩z)·P(z)`, so it stays meaningful when
   `P(z) = 0` and never introduces a conditional probability.
+
+* **`dd:model`** — §6.1's model of a sample space is the structure `Model Ω`: an implicit
+  carrier `S`, a `FactoredSet S`, the map `f : S → Ω`, and a `Finite S` **field**,
+  registered as an instance. Definition 38 says *finite* factored set, and Definitions 43
+  and 45 quantify over models, so the finiteness has to be part of the object — otherwise
+  "for all models" would range over the wrong class. This is the one place the library
+  departs from `dd:finiteness-minimal`, and it is a departure in the strict direction: **no
+  §6 declaration carries a finiteness binder of its own**, because every model it quantifies
+  over carries one. `Finite M.F.B` is then found by instance search wherever an
+  `M : Model Ω` is in scope, which is what lets a §6 proof call a §3–§4 endpoint
+  (Proposition 25, in the case of `nonconstDB_forces_nonconstant`) with no hypothesis of
+  its own. The sample space `Ω` is unconstrained.
+
+  Definition 39 has no carrier and is in the Mathlib-rendered table above.
+  Definition 40's database is `OrthDatabase Ω`, a pair of sets of triples of partitions;
+  Definition 41's two notations are the memberships `Orth` and `NotOrth`, and the point to
+  hold on to is that `NotOrth` is a positive assertion *of the database*, not the negation
+  of `Orth` — so a database may assert both (Definition 43 then fails) or neither
+  (Definition 44 then fails). Both are witnessed in `Examples.lean`.
 
 There are **no type-`(c)` modeling substitutions** so far: nothing weaker stands in for
 one of the paper's objects.
@@ -377,6 +414,29 @@ while an endpoint is still `sorry`d, when the applications pick up `sorryAx` and
 cross-checks do not (during stage 5b's drafting it split the four §5.3–§5.5 pairs
 exactly; with every endpoint now proved it is inert throughout §5). Do not read a clean
 `#print axioms` as evidence that a witness is independent of the endpoint it checks.
+
+§6 changes what is quantified over rather than adding vocabulary to `FactoredSet`:
+Definitions 42–45 range over **models** of a sample space, so none of the §2–§5 witnesses
+touches them. The same file therefore builds four models of two sample spaces and five
+databases, and uses them to separate `Consistent`, `Complete` and `<_D` from each other.
+The paper's own Examples 1 and 2 are *not* among them — those are §6.2's numbered nodes,
+formalized in `InferenceExamples.lean`, and `Examples.lean` deliberately does not import
+that file, so no witness below can lean on a §6.2 proof. Every declaration below is
+inventoried:
+
+| Claim | Declarations | What it rules out |
+|---|---|---|
+| Definition 38 is inhabited, including where `f` is not a bijection | `coordModel`, `boolModel`, `fstModel`, `pointModel` | `Model` being uninhabited, and being read as "a factorization of `Ω`". `fstModel` is `coordFS` observed through `Prod.fst`: `S` has four points where `Ω` has two, which is the latent structure Definition 38 exists to allow. `pointModel` is the opposite extreme, a one-point carrier |
+| Definition 39 is computed, and moves in both directions | `pullback_fstModel_bot`, `history_pullback_fstModel_bot`, `pullback_pointModel` | `f⁻¹` being a formality. Under `fstModel` the pullback of `Dis_Ω` — the *finest* partition of the sample space — is a *factor* of `S`, whose §3 history is the singleton `{fstFactor}`; under `pointModel` every partition of `Ω` pulls back to `Ind_S`. So a §6 statement is a statement about `S`, not about `Ω` |
+| Definition 43 is a real condition, and Definition 42's two clauses are both exercised | `emptyDB`, `models_emptyDB`, `emptyDB_consistent`, `contradictoryDB`, `not_contradictoryDB_consistent`, `coordDB`, `models_coordDB`, `coordDB_consistent` | `Consistent` holding of everything, or of nothing. The empty database is modeled by every model; the database asserting one triple *both* ways has no model at all; and `models_coordDB` discharges both clauses of Definition 42 at once on the identity model of `coordFS`, from §4.3's own computations (`orthogonalGiven_fst_snd_top` and `not_orthogonalGiven_fst_fst_top`) rather than from anything in §6 |
+| `Consistent` is **cheap on `O` alone** — it is `N` that constrains | `totalDB`, `totalDB_complete`, `totalDB_consistent`, `nonconstDB`, `nonconstDB_consistent`, `nonconstDB_forces_nonconstant`, `pullback_pointModel` | reading a large `O` as hard to satisfy. A database asserting *every* triple orthogonal is consistent, because a one-point model satisfies all of `O` simultaneously (a zero-dimensional factored set has no factors). What excludes that model is a single `N` entry: `(Dis_Ω, Dis_Ω, Ind_Ω)` forces every model's map to be non-constant, through Proposition 25 |
+| `Consistent` and `Complete` are independent | `not_emptyDB_complete`, `totalDB_complete` with `totalDB_consistent`, `not_coordDB_complete` with `coordDB_consistent` | reading Definition 44 as a strengthening of Definition 43 or as incompatible with it. `emptyDB` is consistent and not complete, `totalDB` is both, `coordDB` is consistent and not complete with both of its clauses non-empty |
+| Definition 45 is irreflexive where it is informative and **vacuously total** where it is not | `not_before_self_of_consistent`, `not_nonconstDB_before_self`, `before_of_not_consistent`, `contradictoryDB_before_all` | `X <_D Y` being read as an inference regardless of `D`. It quantifies over models of `D`, so on an inconsistent database it holds of *every* pair; on a consistent one it is irreflexive, `<^F` being a strict inclusion of histories. This is why the paper proves consistency (Propositions 33 and 35) before it infers time (Propositions 34 and 36), and the consistency the second witness uses is computed here rather than cited from §6.2 |
+
+The informative *positive* instances of Definition 45 — an actual inferred `X <_D Y` — are
+Propositions 34 and 36 themselves. Nothing in `Examples.lean` stands in for them, and the
+degenerate `contradictoryDB_before_all` is recorded precisely so that no reader mistakes a
+vacuous `Before` for one.
 
 One friction point a client will meet, recorded at the site: `Finite F.B` — the
 hypothesis every §3.2–§3.4 theorem carries (Propositions 10 and 11 need none, and nothing

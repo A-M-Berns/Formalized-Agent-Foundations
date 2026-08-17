@@ -1404,6 +1404,72 @@ open FiniteFactoredSets in
   -- Ind_S` — `1/2 · 1/2` against `0 · 1`.
   Examples.boolUniform Examples.boolFS_isDistribution
   Examples.not_orthogonalGiven_bot_bot_top_boolFS
+  -- §6.1: factored set models and orthogonality databases
+  -- (FiniteFactoredSets/Inference.lean).  Definition 38's `Model` bundles the carrier, its
+  -- factored set, the map to `Ω`, and — because the paper says *finite* factored set — a
+  -- `Finite` field, so Definition 45's quantifier over models is the paper's (`dd:model`).
+  -- Definition 39's three preimages are Mathlib-rendered (README table); `Model.pullback`
+  -- names the partition one and is a convenience, not a paper endpoint.  Definition 41 has
+  -- two carriers, one per written form, as Definitions 18 and 19 do.  `Model` is spelled
+  -- with its root prefix: `ProvabilityLogic/Kripke/Basic.lean` declares a root-namespace
+  -- `Model`, so the bare name is ambiguous under this block's `open FiniteFactoredSets in`.
+  FiniteFactoredSets.Model OrthDatabase OrthDatabase.Orth OrthDatabase.NotOrth
+  OrthDatabase.Models OrthDatabase.Consistent OrthDatabase.Complete OrthDatabase.Before
+  -- §6.2, Example 1 (FiniteFactoredSets/InferenceExamples.lean).  `Example1.D` is the
+  -- database of the worked example; Propositions 33 and 34 are consistency (witnessed by
+  -- the identity model on `(Ω, {X, V})`) and the inferred order `X <_D Y`, which quantifies
+  -- over *every* model of `D` and so is a universal claim, not an instantiated one.
+  Example1.D Example1.D_consistent Example1.before_X_Y
+  -- §6.2, Example 2 (FiniteFactoredSets/InferenceExamples.lean).  `Example2.D` is the
+  -- database of the paper's second worked example; Propositions 35 and 36 are its
+  -- consistency and the temporal order it forces.  Proposition 35 is discharged by the
+  -- paper's own twelve-point model — `Example2.model`, on the carrier
+  -- `Bool × Bool × Option Bool` whose `none` third coordinate is the paper's two-bit
+  -- string — so the existential of Definition 43 is met by a construction, not a
+  -- stand-in.  Proposition 36 quantifies over *every* model of `D`, so it needs no
+  -- witness of its own; what makes it non-vacuous is Proposition 35, which supplies one.
+  Example2.D Example2.D_consistent Example2.before_X_Y_Z
+  -- §6.1 on the witnesses (FiniteFactoredSets/Examples.lean).  Definitions 42-45 quantify
+  -- over *models* of a sample space, not over factored sets, so none of the §2-§5 witnesses
+  -- above touches them.  Definition 38 is inhabited four ways: the two identity models, the
+  -- non-injective `fstModel` (`coordFS` observed through `Prod.fst`, where `S` has four
+  -- points and `Ω` two — the latent structure Definition 38 exists to allow), and the
+  -- one-point `pointModel`.  Definition 39 is computed on the two that are not the
+  -- identity, and it moves in both directions: `f⁻¹(Dis_Ω)` can be a *factor* of `S`
+  -- (`pullback_fstModel_bot`, whose §3 history is the singleton) and it can collapse every
+  -- partition of `Ω` to `Ind_S` (`pullback_pointModel`).
+  Examples.coordModel Examples.boolModel Examples.fstModel Examples.pointModel
+  Examples.pullback_fstModel_bot Examples.history_pullback_fstModel_bot
+  Examples.pullback_pointModel
+  -- Definitions 40-44 on four databases.  Two natural misreadings are ruled out here.
+  -- First, `Consistent` is cheap on `O` alone: `totalDB` asserts *every* triple orthogonal
+  -- and is still consistent, because the one-point model satisfies all of `O` at once
+  -- (`unitFS` has no factors) — so it is `N` that constrains, and
+  -- `nonconstDB_forces_nonconstant` is the mechanism in its simplest form, a single
+  -- `N`-entry forcing every model's map to be non-constant through Proposition 25.
+  -- Second, `Consistent` and `Complete` are independent: `emptyDB` is consistent and not
+  -- complete, `totalDB` is both, `coordDB` is consistent and not complete with both clauses
+  -- non-empty, and `contradictoryDB` — asserting one triple both ways — has no model at
+  -- all, which is what makes Definition 43's existential a real condition.
+  -- `models_coordDB` is the Definition 42 computation proper, discharging both clauses on
+  -- the identity model of `coordFS` from §4.3's own computations on that witness.
+  Examples.emptyDB Examples.models_emptyDB Examples.emptyDB_consistent
+  Examples.not_emptyDB_complete
+  Examples.contradictoryDB Examples.not_contradictoryDB_consistent
+  Examples.totalDB Examples.totalDB_complete Examples.totalDB_consistent
+  Examples.nonconstDB Examples.nonconstDB_consistent
+  Examples.nonconstDB_forces_nonconstant
+  Examples.coordDB Examples.models_coordDB Examples.coordDB_consistent
+  Examples.not_coordDB_complete
+  -- Definition 45 from both sides.  On a *consistent* database it is irreflexive, since
+  -- `<^F` is a strict inclusion of histories; on an *inconsistent* one it is vacuously
+  -- total, quantifying over models that do not exist.  That second fact is the trap the
+  -- paper's own ordering guards against — Propositions 33 and 35 (consistency) come before
+  -- Propositions 34 and 36 (the inference).  The informative positive instances of
+  -- Definition 45 are those two propositions in `InferenceExamples.lean`; nothing here
+  -- stands in for them, and `Examples.lean` does not import that file.
+  Examples.not_before_self_of_consistent Examples.not_nonconstDB_before_self
+  Examples.before_of_not_consistent Examples.contradictoryDB_before_all
 -- FFS-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Finite Factored Sets surface. -/
@@ -1415,6 +1481,10 @@ open FiniteFactoredSets in
   r symm' trans'
 #assert_fields FiniteFactoredSets.ProbDist
   P nonneg empty univ additive
+#assert_fields FiniteFactoredSets.Model
+  S F f finite
+#assert_fields FiniteFactoredSets.OrthDatabase
+  O N
 
 /-! ## Consumer API conveniences (not paper endpoint inventories)
 
@@ -1505,3 +1575,9 @@ open FiniteFactoredSets in
   -- None of these is a paper node.
   ProbDist.eq_sum_singleton ProbDist.eq_sum_singleton_of_finite
   ProbDist.diracAt ProbDist.diracAt_apply FactoredSet.isDistribution_diracAt
+  -- §6.1: Definition 39's third clause named for legibility.  The node itself is rendered
+  -- by Mathlib — `f⁻¹(ω)` and `f⁻¹(E)` are `Set.preimage` and `f⁻¹(X)` is `Setoid.comap` —
+  -- so `Model.pullback` carries no paper-node annotation and belongs here rather than in
+  -- the inventory above; `pullback_apply` is its unfolding, which is how a client reads a
+  -- Definition 42 or 45 statement pointwise.
+  Model.pullback Model.pullback_apply

@@ -49,9 +49,9 @@ the declaration renders a paper claim/theorem; supporting results are `lemma`s �
 note that iso-valued and data-valued carriers must be `def`s, since `≅` is not a Prop.
 
 The **Finite Factored Sets** formalization (Garrabrant, arXiv:2109.11513) lives in
-`FiniteFactoredSets/` and is **in progress** — §2–§5, 68 of the 96 in-scope nodes carried by declarations (plus Mathlib-rendered nodes)
+`FiniteFactoredSets/` and is **in progress** — §2–§6, 81 of the 96 in-scope nodes carried by declarations (plus Mathlib-rendered nodes)
 (scope is 96 of the paper's 98, settled by ruling and recorded in that README). The
-statements live in ten files that follow the paper's own order — `Basic.lean` (§2:
+statements live in twelve files that follow the paper's own order — `Basic.lean` (§2:
 partitions, factorizations, the chimera function, size and dimension), `History.lean`
 (§3.1–§3.2: generation and history), `Orthogonality.lean` (§3.3–§3.4: orthogonality,
 entanglement, time), `Subpartition.lean` (§4.1: subpartitions as partial equivalence
@@ -61,7 +61,9 @@ Theorem 2), `Polynomial.lean` (§5.1: characteristic polynomials, `dd:poly`, the
 Proposition 28), `Factoring.lean` (§5.2: `Irr^F(E)` and the factorization into irreducibles),
 `CharacteristicOrthogonality.lean` (§5.3: Lemma 3), `Probability.lean` (§5.4–§5.5:
 elementary probability distributions, `dd:probability`, and Theorem 3, the fundamental
-theorem) — with `Examples.lean` carrying the non-vacuity witnesses, which are
+theorem), `Inference.lean` (§6.1: models of a sample space, orthogonality databases,
+`dd:model`) and `InferenceExamples.lean` (§6.2: the two worked examples, Propositions
+33–36) — with `Examples.lean` carrying the non-vacuity witnesses, which are
 constructed factored sets with the §2.5 and §3 vocabulary computed over them rather than
 stand-ins. Start with `FiniteFactoredSets/README.md` (what is and is not claimed)
 and `FiniteFactoredSets/KNOWLEDGE.md`. Two things there will bite anyone who skips them:

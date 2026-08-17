@@ -1,5 +1,7 @@
 import FiniteFactoredSets.ConditionalOrthogonality
 import FiniteFactoredSets.Factoring
+import FiniteFactoredSets.Inference
+import FiniteFactoredSets.InferenceExamples
 import FiniteFactoredSets.Probability
 
 /-!
@@ -11,8 +13,8 @@ The supported downstream import for factored-set research is:
 import FiniteFactoredSets.API
 ```
 
-**Status: the formalization is in progress** (§2–§5 of Garrabrant, arXiv:2109.11513, are
-formalized; §6–§7 are not yet claimed).  This
+**Status: the formalization is in progress** (§2–§6 of Garrabrant, arXiv:2109.11513, are
+formalized; §7 is not yet claimed).  This
 boundary is therefore an *incremental* consumer surface: it is stable in shape but grows
 as sections land.  What is here is supported now; consult
 `FiniteFactoredSets/README.md` for the exact trust surface.
@@ -187,6 +189,38 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   distribution, and the backward direction turns a single failing distribution — which is
   what `Examples` exhibits on the diagonal — into a refutation of conditional
   orthogonality.
+* **Factored set models and temporal inference** (§6.1, `dd:model`): `Model Ω`
+  (Definition 38) is a *model of a sample space* — a carrier `S` (an implicit field, so
+  `M.S` is read off the model rather than supplied), a `FactoredSet S`, a map `f : S → Ω`,
+  and a `Finite S` **field**.  That last point is the one to know before writing any §6
+  statement: the paper's Definition 38 says *finite* factored set, so under `dd:model` the
+  finiteness is part of the object and not a hypothesis on statements.  A client
+  constructing a `Model` has it discharged by instance search at the construction site and
+  never carries `[Finite S]` afterwards — and `Finite M.F.B` is then found by instance
+  search too, which is what lets a §6 proof call the §3–§4 endpoints (Proposition 25, say)
+  with no binder of its own.  `Model.finite` is a registered instance, so `M.S` is a
+  `Finite` type wherever an `M : Model Ω` is in scope.
+  Definition 39 has no declaration of ours: `f⁻¹(ω)` and `f⁻¹(E)` are `Set.preimage` and
+  `f⁻¹(X)` for a partition `X` of `Ω` is `Setoid.comap M.f X`, whose blocks are exactly the
+  nonempty preimages of blocks of `X` — the paper's set-builder verbatim.  `Model.pullback`
+  is a named alias for that third clause, with `pullback_apply` (`M.pullback X s t ↔
+  X (M.f s) (M.f t)`) the unfolding a client rewrites with; neither is a paper node.
+  `OrthDatabase Ω` (Definition 40) is the pair of sets of triples, with `Orth` and `NotOrth`
+  (Definition 41) their memberships — note `NotOrth` is a *positive assertion of the
+  database*, not the negation of `Orth`, so a database may assert both (and then has no
+  model) or neither (and then is not `Complete`).  `Models M D` (Definition 42),
+  `Consistent` (Definition 43), `Complete` (Definition 44) and `OrthDatabase.Before`
+  (Definition 45, the paper's `X <_D Y`) are the four predicates a temporal-inference
+  client works in.  Three facts about their shape are worth having before use, each
+  exhibited on a witness in `Examples`: `Consistent` is cheap on `O` alone (a one-point
+  model satisfies every orthogonality assertion at once, since a zero-dimensional factored
+  set has no factors), so it is `N` that constrains a model; `Consistent` and `Complete`
+  are independent; and `Before` quantifies over models of `D`, so on an *inconsistent* `D`
+  it holds of every pair vacuously — `X <_D Y` is an inference only once `D` is known
+  consistent.  §6.2's two worked databases are `Example1.D` and `Example2.D`, with
+  `Example1.X/Y/V` and `Example2.X/Y/Z/V` the partitions they are stated over, and
+  Propositions 33–36 (`D_consistent`, `before_X_Y`, `before_X_Y_Z`) the paper's own
+  consistency and inference results on them.
 
 ## Finiteness
 
@@ -323,12 +357,23 @@ which instance search will not unfold to find the `insert`/`singleton` structure
 underneath.  Pass `Fintype.ofFinite _` explicitly — and have it in scope at *statement*
 elaboration time — if the ℕ form of Proposition 7 (`natCard_eq_prod`) is wanted.
 
+**§6 carries no finiteness hypothesis anywhere**, and that is not a relaxation but a
+relocation: Definition 38 says *finite* factored set, so `dd:model` puts `Finite S` in the
+structure as a field.  Every §6 declaration — `Model`, `pullback`, `pullback_apply`,
+`OrthDatabase`, `Orth`, `NotOrth`, `Models`, `Consistent`, `Complete`,
+`OrthDatabase.Before`, and §6.2's databases and propositions — is stated with no binder of
+its own, because the models it quantifies over each carry their own.  Read a §6 statement
+accordingly: "for all models" already means "for all *finite* factored sets with a map to
+`Ω`", and the sample space `Ω` itself is unconstrained.
+
 ## What this boundary excludes
 
 `FiniteFactoredSets.Examples` — the constructed witnesses (`boolFS`, `coordFS`, `emptyFS`,
-`unitFS`, and the distributions `uniform`, `biased`, `diagDist`, `unitDist` and
-`boolUniform`) and the §2.5, §3, §4 and §5
-vocabulary computed over them.  Import it
-explicitly when a concrete factored set is useful; it is a regression fixture, not a
-dependency surface.
+`unitFS`, the distributions `uniform`, `biased`, `diagDist`, `unitDist` and
+`boolUniform`, and the §6 models `coordModel`, `boolModel`, `fstModel`, `pointModel` with
+the databases `emptyDB`, `contradictoryDB`, `totalDB`, `nonconstDB`, `coordDB`) and the
+§2.5, §3, §4, §5 and §6 vocabulary computed over them.  Import it
+explicitly when a concrete factored set or model is useful; it is a regression fixture, not
+a dependency surface.  §6.2's `Example1` and `Example2` are *not* excluded — they are the
+paper's own numbered examples and part of this boundary.
 -/

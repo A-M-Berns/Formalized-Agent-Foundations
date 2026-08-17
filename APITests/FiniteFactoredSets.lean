@@ -431,4 +431,61 @@ example :
       _ (clientPairFS.isDistribution_diracAt _) _ obsFstFalse_mem_classes _
       obsFstFalse_mem_classes _ obsFstFalse_mem_classes
 
+/-! ### §6: models of a sample space, databases, and inferred time
+
+A downstream project doing temporal inference works one level up from a `FactoredSet`: it
+has a sample space `Ω`, builds a `Model Ω` of it — Definition 38's pair `(F, f)` — and
+records what it knows in an `OrthDatabase Ω`.  Two things about that boundary are worth a
+client's attention, and the examples below exercise both.
+
+First, `Model` bundles `Finite S` as a *field* (`dd:model`), so the finiteness obligation
+is discharged once, by instance search, at the point the client constructs its model — and
+no §6 statement afterwards carries a `[Finite …]` binder.  Second, Definition 45's
+`X <_D Y` quantifies over *models of `D`*, which makes it monotone in the database and
+irreflexive whenever the database is consistent; both of those are what a client needs in
+order to accumulate observations without accidentally "inferring" everything. -/
+
+/-- A client's model of the sample space `Bool`: its own two-dimensional factored set,
+observed through the first coordinate.  Definition 38's `Finite S` field is supplied by
+instance search and never appears again. -/
+def clientModel : Model Bool := ⟨clientPairFS, Prod.fst⟩
+
+/-- Definition 39 read pointwise through `pullback_apply`: the client's finest partition of
+the sample space pulls back to the *first coordinate factor* of its own factored set, not
+to `Dis_S`.  That is the whole reason §6 is about models rather than about factorizations
+of `Ω`. -/
+example : clientModel.pullback ⊥ = obsFst :=
+  Setoid.ext fun s t => by rw [Model.pullback_apply]; exact Iff.rfl
+
+/-- Definition 43 at the database that asserts nothing: Definition 42 is vacuous there, so
+the client's own model witnesses consistency.  This is the base case a client starts from
+before adding observations. -/
+example : (⟨∅, ∅⟩ : OrthDatabase Bool).Consistent := by
+  refine ⟨clientModel, fun _ _ _ => ⟨fun h => ?_, fun h => ?_⟩⟩ <;>
+    simp only [OrthDatabase.Orth, OrthDatabase.NotOrth, Set.mem_empty_iff_false] at h
+
+/-- Definition 44 at the other extreme: a database asserting every triple orthogonal is
+`Complete` by construction.  Completeness is a statement about `O ∪ N` covering the
+triples, not about any model — so it neither implies nor is implied by consistency. -/
+example : (⟨Set.univ, ∅⟩ : OrthDatabase Bool).Complete :=
+  fun _ _ _ => Or.inl (Set.mem_univ _)
+
+/-- **Definition 45 is monotone in the database.**  Extending `O` and `N` can only shrink
+the family of models, so an inferred `X <_D Y` survives every extension of `D`.  This is
+the fact that lets a client accumulate observations incrementally instead of re-deriving
+its temporal conclusions from scratch. -/
+example {Ω : Type u} {D D' : OrthDatabase Ω} (hO : D.O ⊆ D'.O) (hN : D.N ⊆ D'.N)
+    {X Y : Setoid Ω} (h : D.Before X Y) : D'.Before X Y :=
+  fun M hM => h M fun A B C => ⟨fun hA => (hM A B C).1 (hO hA), fun hB => (hM A B C).2 (hN hB)⟩
+
+/-- …and it never holds reflexively on a *consistent* database, because `<^F` is a strict
+inclusion of histories in whichever model witnesses consistency.  Read with the
+monotonicity above: piling on assertions can only produce `X <_D X` by making `D`
+inconsistent, and there Definition 45 holds of everything vacuously.  So "is `D`
+consistent?" is the question a client must answer before reading anything off `<_D`. -/
+example {Ω : Type u} {D : OrthDatabase Ω} (hD : D.Consistent) (X : Setoid Ω) :
+    ¬ D.Before X X := by
+  obtain ⟨M, hM⟩ := hD
+  exact fun h => lt_irrefl _ (h M hM)
+
 end APITests.FiniteFactoredSets

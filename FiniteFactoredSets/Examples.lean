@@ -1,18 +1,20 @@
 import FiniteFactoredSets.ConditionalOrthogonality
 import FiniteFactoredSets.Factoring
+import FiniteFactoredSets.Inference
 import FiniteFactoredSets.Probability
 
 /-!
 # Worked factored sets — the non-vacuity witnesses
 
-Every §2–§5 endpoint is stated over `FactoredSet`, so until something exhibits one those
-endpoints say nothing about anything.  This file exhibits four factored sets, covering the
-degenerate sizes Proposition 5 singles out and one genuinely two-dimensional example that
-makes the chimera function actually splice, and then runs the §2.5, §3, §4 and §5
-vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`, `Entangled`, `Before`,
-`StrictlyBefore`, `Subpartition`, `GeneratesSub`, `historySub`, `OrthogonalSub`,
-`OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`, `monos`, `poly`, `irr`, `ProbDist`,
-`IsDistribution` — over them.
+Every §2–§6 endpoint is stated over `FactoredSet` or, in §6, over `Model`, so until
+something exhibits one those endpoints say nothing about anything.  This file exhibits four
+factored sets, covering the degenerate sizes Proposition 5 singles out and one genuinely
+two-dimensional example that makes the chimera function actually splice, and then runs the
+§2.5, §3, §4, §5 and §6 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`,
+`Entangled`, `Before`, `StrictlyBefore`, `Subpartition`, `GeneratesSub`, `historySub`,
+`OrthogonalSub`, `OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`, `monos`, `poly`,
+`irr`, `ProbDist`, `IsDistribution`, `Model`, `Model.pullback`, `OrthDatabase`, `Models`,
+`Consistent`, `Complete` and `OrthDatabase.Before` — over them.
 
 `coordFS` is the load-bearing one: with a single factor every `C` behaves as `∅` or `B`,
 so Proposition 4 would be a family of near-tautologies.  `not_subsingleton_coordFS_basis`
@@ -108,6 +110,37 @@ discharged by computation rather than under a `by_contra`
 universally true, on the one-dimensional `boolFS`, where `boolFS_isDistribution` makes
 every `ProbDist Bool` a distribution on the factored set.
 
+The §6 half changes what is being quantified over: Definitions 42–45 range over *models*
+of a sample space, not over factored sets, so none of the §2–§5 witnesses touches them.
+Definition 38 is inhabited four ways — the identity models `coordModel` and `boolModel`,
+the non-injective `fstModel` (`coordFS` observed through `Prod.fst`, so `S` has four points
+where `Ω` has two: the latent structure Definition 38 exists to allow), and the one-point
+`pointModel`.  Definition 39 is then computed on the two that are not the identity:
+`pullback_fstModel_bot` shows `f⁻¹(Dis_Ω)` is the *first coordinate factor* rather than
+`Dis_S` (with `history_pullback_fstModel_bot` giving its §3 history), and
+`pullback_pointModel` shows the pullback can collapse every partition of `Ω` to `Ind_S`.
+
+Four databases then separate Definitions 43 and 44 from each other and from Definition 45,
+and the separation runs against the two readings a client is most likely to arrive with.
+`Consistent` is *cheap on `O` alone*: `totalDB`, which asserts every triple orthogonal, is
+consistent — the one-point model satisfies all of `O` at once, because `unitFS` has no
+factors — so a database is never ruled out by what it puts in `O`.  It is `N` that
+constrains, and `nonconstDB_forces_nonconstant` is the mechanism in its simplest form: a
+single `N`-entry `(Dis_Ω, Dis_Ω, Ind_Ω)` forces every model's map to be non-constant.  The
+other reading to rule out is that `Consistent` and `Complete` might travel together:
+`emptyDB` is consistent and not complete, `totalDB` is both, and `contradictoryDB` — which
+asserts one triple both ways — is neither model-satisfiable nor, being inconsistent,
+informative.  `models_coordDB` is the Definition-42 computation proper, discharging both
+clauses on the identity model of `coordFS` from §4.3's own computations.
+
+Definition 45 gets the same two-sided treatment, and the trap there is worth stating
+plainly: `X <_D Y` quantifies over models of `D`, so on an **inconsistent** database it is
+vacuously *total* (`before_of_not_consistent`, instantiated at `contradictoryDB`), while on
+a consistent one it is irreflexive (`not_before_self_of_consistent`, instantiated at a
+database whose consistency is computed here rather than cited from §6.2).  The informative
+positive instances — an actual inferred `X <_D Y` — are Propositions 34 and 36, which live
+in `InferenceExamples.lean`; nothing here stands in for them.
+
 One negative record deserves its name here: Proposition 28's conclusion, asserted at a
 `poly^F_C(E)`, is a triviality — provable for every `C ⊆ B` and every `E` with none of the
 proposition's hypotheses, as the `example` beside
@@ -144,10 +177,13 @@ evaluation `coordZero` with its four `coordZero_*` values, the point weights `w`
 `w_nonneg`, and the numeric unfoldings
 `uniform_apply`, `uniform_singleton`, `uniform_vfst`, `uniform_vsnd`, `uniform_Efst`,
 `uniform_Ediag`, `diagDist_apply`, `biased_apply`, `biased_singleton`, `biased_vfst`,
-`biased_vsnd`, `biased_Efst`, `eval_biased_Q_Efst`, `biased_E3`, `eval_biased_Q_E3`) are
+`biased_vsnd`, `biased_Efst`, `eval_biased_Q_Efst`, `biased_E3`, `eval_biased_Q_E3`, and in
+§6 the identity-pullback unfoldings `pullback_coordModel` and `pullback_boolModel` together
+with `historySub_unitFS` and `orthogonalGiven_unitFS`) are
 not, since they claim nothing about the paper.  The witnesses cite the paper in prose
-rather than carrying the reserved node annotation: the paper's Examples 1 and 2 are §6
-orthogonality databases, not these.
+rather than carrying the reserved node annotation: the paper's own Examples 1 and 2 are the
+two §6.2 orthogonality databases, formalized in `InferenceExamples.lean`, and none of the
+databases built here is one of them.
 -/
 
 universe u
@@ -2997,6 +3033,217 @@ lemma not_orthogonalGiven_bot_bot_top_boolFS :
   rw [show boolUniform {true} = 1 / 2 from by simp [boolUniform], zero_mul] at key
   rw [show boolUniform {false} = 1 / 2 from by simp [boolUniform]] at key
   norm_num at key
+
+/-! ## §6.1 over the witnesses: models, orthogonality databases, and inferred time
+
+Definitions 42–45 quantify over **models** of a sample space rather than over factored
+sets, so this is a family none of the §2–§5 witnesses inhabits.  What follows builds four
+models and four databases, and uses them to separate `Consistent`, `Complete` and `<_D`
+from each other.
+
+Two readings are ruled out along the way, because both are natural and both are wrong.
+The first is that a rich `O` makes a database hard to satisfy: it does not — a database
+asserting *every* triple orthogonal is consistent, because a one-point model satisfies all
+of them at once.  The second is that `X <_D Y` is a substantive claim whatever `D` is: on
+an inconsistent `D` it is vacuously true of every pair, since it quantifies over models
+that do not exist.
+
+The informative positive instances of Definition 45 are Propositions 34 and 36 in
+`InferenceExamples.lean`; nothing here is a stand-in for them, and this file deliberately
+does not import that one, so that no witness below can lean on a §6.2 proof. -/
+
+/-! ### Definition 38: four models, and Definition 39 computed on them -/
+
+/-- The identity model of `Bool × Bool`: the coordinate factored set with `f = id`.  This
+is the shape the paper's own Example 1 model has — a factorization of `Ω` itself, with no
+latent structure. -/
+def coordModel : Model (Bool × Bool) := ⟨coordFS, id⟩
+
+/-- The identity model of `Bool`, on the one-dimensional `boolFS`. -/
+def boolModel : Model Bool := ⟨boolFS, id⟩
+
+/-- Under an identity model Definition 39's `f⁻¹(X)` is `X` itself. -/
+lemma pullback_coordModel (X : Setoid (Bool × Bool)) : coordModel.pullback X = X :=
+  Setoid.ext fun _ _ => Iff.rfl
+
+lemma pullback_boolModel (X : Setoid Bool) : boolModel.pullback X = X :=
+  Setoid.ext fun _ _ => Iff.rfl
+
+/-- A model whose map is **not** a bijection: `coordFS` over the sample space `Bool`, with
+`f = Prod.fst`.  This is the case Definition 38 exists for — `S` has four points where `Ω`
+has two, so the model carries latent structure that `Ω` does not distinguish. -/
+def fstModel : Model Bool := ⟨coordFS, Prod.fst⟩
+
+/-- **Definition 39 on a non-identity model.**  The pullback of `Dis_Ω` — the *finest*
+partition of the sample space — is the first coordinate *factor* of `S`, not `Dis_S`.  So
+`f⁻¹` genuinely coarsens, which is what makes Definitions 42 and 45 statements about `S`
+rather than about `Ω`. -/
+lemma pullback_fstModel_bot : fstModel.pullback ⊥ = fstFactor := rfl
+
+/-- …and the partition it lands on is one whose §3 history is already computed here: a
+singleton, so `f⁻¹(Dis_Ω)` is generated by a single factor of `S`. -/
+lemma history_pullback_fstModel_bot :
+    fstModel.F.history (fstModel.pullback ⊥) = {fstFactor} := history_fstFactor
+
+/-- The **one-point model** of `Bool × Bool`: the zero-dimensional `unitFS` with the
+constant map.  Definition 38 asks nothing of `f` beyond being a function, so this is a
+legal model of every sample space — which is what makes Definition 43 cheap on `O` alone
+(`totalDB_consistent` below). -/
+def pointModel : Model (Bool × Bool) := ⟨unitFS, fun _ => (true, true)⟩
+
+/-- **Definition 39 collapses** under the one-point model: every partition of `Ω`, however
+fine, pulls back to `Ind_S`.  Together with `pullback_fstModel_bot` this pins `f⁻¹` between
+its two extremes on concrete models. -/
+lemma pullback_pointModel (X : Setoid (Bool × Bool)) : pointModel.pullback X = ⊤ :=
+  Setoid.ext fun a b => by
+    cases a; cases b; exact ⟨fun _ => trivial, fun _ => X.refl' _⟩
+
+/-- With `B = ∅` every Definition 24 history is a subset of `∅`. -/
+lemma historySub_unitFS (X : Subpartition Unit) : unitFS.historySub X = ∅ :=
+  Set.subset_empty_iff.1 (unitFS.historySub_subset X)
+
+/-- …so on the zero-dimensional `unitFS` *every* triple is conditionally orthogonal.  This
+is the fact that makes a one-point model satisfy an arbitrary `O`. -/
+lemma orthogonalGiven_unitFS (X Y Z : Setoid Unit) : unitFS.OrthogonalGiven X Y Z := by
+  intro z _
+  rw [unitFS.orthogonalGivenSet_def, historySub_unitFS, Set.empty_inter]
+
+/-! ### Definitions 40–44: four databases, and what `Consistent` and `Complete` each cost -/
+
+/-- The **empty** database on `Bool × Bool`: it asserts nothing at all. -/
+def emptyDB : OrthDatabase (Bool × Bool) := ⟨∅, ∅⟩
+
+/-- Definition 42 is vacuous at the empty database, so *every* model models it. -/
+lemma models_emptyDB (M : Model (Bool × Bool)) : OrthDatabase.Models M emptyDB := by
+  intro X Y Z
+  constructor <;> intro h <;>
+    simp only [OrthDatabase.Orth, OrthDatabase.NotOrth, emptyDB, Set.mem_empty_iff_false] at h
+
+/-- Definition 43 therefore holds of it, witnessed by the identity model. -/
+lemma emptyDB_consistent : emptyDB.Consistent := ⟨coordModel, models_emptyDB _⟩
+
+/-- Definition 44 does **not**: nothing is asserted about `(Ind_Ω, Ind_Ω, Ind_Ω)`.  So
+`Consistent` and `Complete` are independent conditions, and a database can be the first
+without being the second. -/
+lemma not_emptyDB_complete : ¬ emptyDB.Complete := by
+  intro h
+  rcases h ⊤ ⊤ ⊤ with h | h <;>
+    simp only [OrthDatabase.Orth, OrthDatabase.NotOrth, emptyDB, Set.mem_empty_iff_false] at h
+
+/-- A database asserting **one triple both ways**.  Definition 42's two clauses then
+contradict each other on that triple. -/
+def contradictoryDB : OrthDatabase (Bool × Bool) :=
+  ⟨{(fstFactor, fstFactor, ⊤)}, {(fstFactor, fstFactor, ⊤)}⟩
+
+/-- **Definition 43 is not automatic**: `contradictoryDB` has no model at all, so the
+existential in Definition 43 is a real condition rather than a formality. -/
+lemma not_contradictoryDB_consistent : ¬ contradictoryDB.Consistent := by
+  rintro ⟨M, hM⟩
+  exact (hM fstFactor fstFactor ⊤).2 rfl ((hM fstFactor fstFactor ⊤).1 rfl)
+
+/-- The **totally asserting** database: `O` is everything, `N` is empty. -/
+def totalDB : OrthDatabase (Bool × Bool) := ⟨Set.univ, ∅⟩
+
+/-- It is `Complete` by construction… -/
+lemma totalDB_complete : totalDB.Complete := fun _ _ _ => Or.inl (Set.mem_univ _)
+
+/-- …and, against first appearances, `Consistent`: the one-point model satisfies **every**
+orthogonality assertion simultaneously, because `unitFS` has no factors.  So a rich `O`
+never rules a database out — it is `N` that carries the content of Definition 43, which
+`nonconstDB_forces_nonconstant` exhibits in its simplest form.  Note also that this
+database is both consistent and complete, so those two conditions are not in tension
+either. -/
+lemma totalDB_consistent : totalDB.Consistent := by
+  refine ⟨pointModel, fun X Y Z => ⟨fun _ => orthogonalGiven_unitFS _ _ _, fun h => ?_⟩⟩
+  simp only [OrthDatabase.NotOrth, totalDB, Set.mem_empty_iff_false] at h
+
+/-- A database whose whole content sits in `N`: it asserts that `Dis_Ω` is **not**
+orthogonal to itself given `Ind_Ω`. -/
+def nonconstDB : OrthDatabase Bool := ⟨∅, {(⊥, ⊥, ⊤)}⟩
+
+/-- It is consistent, witnessed by the identity model of the one-dimensional `boolFS` —
+where the assertion is exactly the §5.5 computation `not_orthogonalGiven_bot_bot_top_boolFS`
+already made on this file's own witnesses. -/
+lemma nonconstDB_consistent : nonconstDB.Consistent := by
+  refine ⟨boolModel, fun X Y Z => ⟨fun h => ?_, fun h => ?_⟩⟩
+  · simp only [OrthDatabase.Orth, nonconstDB, Set.mem_empty_iff_false] at h
+  · simp only [OrthDatabase.NotOrth, nonconstDB, Set.mem_singleton_iff, Prod.mk.injEq] at h
+    obtain ⟨rfl, rfl, rfl⟩ := h
+    simp only [pullback_boolModel]
+    exact not_orthogonalGiven_bot_bot_top_boolFS
+
+/-- **Definition 42's second clause is the one with teeth.**  A single `N`-entry forces
+every model's map to be non-constant, via Proposition 25 (`X ⊥^F X | Y ↔ Y ≤ X`) at
+`X = f⁻¹(Dis_Ω)` and `Y = f⁻¹(Ind_Ω) = Ind_S`.  In particular the one-point model — which
+satisfies an arbitrary `O` — is excluded, so this is the mechanism by which a database
+constrains the latent structure `Ω` does not see. -/
+lemma nonconstDB_forces_nonconstant {M : Model Bool}
+    (hM : OrthDatabase.Models M nonconstDB) : ¬ ∀ s t : M.S, M.f s = M.f t := by
+  intro hconst
+  exact (hM ⊥ ⊥ ⊤).2 rfl
+    ((M.F.orthogonalGiven_self_iff (M.pullback ⊥) (M.pullback ⊤)).2 fun s t _ => hconst s t)
+
+/-- A database on `Bool × Bool` with both clauses non-empty, stated over this file's own
+`coordFS` vocabulary: `O` asserts the two coordinate factors orthogonal given `Ind_Ω`, `N`
+asserts the first factor is *not* orthogonal to itself given `Ind_Ω`. -/
+def coordDB : OrthDatabase (Bool × Bool) :=
+  ⟨{(fstFactor, sndFactor, ⊤)}, {(fstFactor, fstFactor, ⊤)}⟩
+
+/-- **Definition 42 computed at a database with both clauses non-empty.**  The identity
+model of `coordFS` models `coordDB`, both clauses discharged from §4.3's computations on
+this witness — `orthogonalGiven_fst_snd_top` and `not_orthogonalGiven_fst_fst_top`. -/
+lemma models_coordDB : OrthDatabase.Models coordModel coordDB := by
+  intro X Y Z
+  constructor
+  · intro h
+    simp only [OrthDatabase.Orth, coordDB, Set.mem_singleton_iff, Prod.mk.injEq] at h
+    obtain ⟨rfl, rfl, rfl⟩ := h
+    simp only [pullback_coordModel]
+    exact orthogonalGiven_fst_snd_top
+  · intro h
+    simp only [OrthDatabase.NotOrth, coordDB, Set.mem_singleton_iff, Prod.mk.injEq] at h
+    obtain ⟨rfl, rfl, rfl⟩ := h
+    simp only [pullback_coordModel]
+    exact not_orthogonalGiven_fst_fst_top
+
+/-- …so `coordDB` is consistent, and unlike `totalDB` its consistency is not carried by a
+degenerate model: this one is witnessed by a two-dimensional factored set on which the two
+clauses take different truth values. -/
+lemma coordDB_consistent : coordDB.Consistent := ⟨coordModel, models_coordDB⟩
+
+/-- …and it is not complete: it says nothing about `sndFactor` against itself. -/
+lemma not_coordDB_complete : ¬ coordDB.Complete := by
+  intro h
+  rcases h sndFactor sndFactor ⊤ with h | h <;>
+    simp only [OrthDatabase.Orth, OrthDatabase.NotOrth, coordDB, Set.mem_singleton_iff,
+      Prod.mk.injEq, Ne.symm fstFactor_ne_sndFactor, false_and, and_false] at h
+
+/-! ### Definition 45: irreflexive where it is informative, vacuous where it is not -/
+
+/-- **Definition 45 is irreflexive on every consistent database.**  A model of `D` supplies
+a factored set on which `<^F` is a *strict* inclusion of histories, which no partition
+bears to itself.  So `X <_D Y` is not the total relation. -/
+lemma not_before_self_of_consistent {Ω : Type u} {D : OrthDatabase Ω} (hD : D.Consistent)
+    (X : Setoid Ω) : ¬ D.Before X X := by
+  obtain ⟨M, hM⟩ := hD
+  exact fun h => lt_irrefl _ (h M hM)
+
+/-- …instantiated at a database whose consistency is computed in this file, so the witness
+does not depend on §6.2. -/
+lemma not_nonconstDB_before_self (X : Setoid Bool) : ¬ nonconstDB.Before X X :=
+  not_before_self_of_consistent nonconstDB_consistent X
+
+/-- The other side of the same coin, and the trap worth recording: on an **inconsistent**
+database Definition 45 is vacuously *total*, because it quantifies over models that do not
+exist.  `X <_D Y` is therefore an inference only once `D` is known consistent — which is
+why Propositions 33 and 35 come before Propositions 34 and 36 in the paper. -/
+lemma before_of_not_consistent {Ω : Type u} {D : OrthDatabase Ω} (hD : ¬ D.Consistent)
+    (X Y : Setoid Ω) : D.Before X Y := fun M hM => absurd ⟨M, hM⟩ hD
+
+/-- …exhibited on the contradictory database, where every pair is "inferred" both ways. -/
+lemma contradictoryDB_before_all (X Y : Setoid (Bool × Bool)) :
+    contradictoryDB.Before X Y :=
+  before_of_not_consistent not_contradictoryDB_consistent X Y
 
 end Examples
 end FiniteFactoredSets
