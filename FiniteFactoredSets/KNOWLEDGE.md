@@ -12,6 +12,7 @@ trust surface and `FiniteFactoredSets.lean` for the `dd:` glossary.
 | `dd:partition` | Partitions are `Setoid S` | Matches `CartesianFrames/`; repo coherence beats a bespoke `Finpartition`-based encoding. Note Mathlib *does* now have a bundled `Setoid.Partitions` with a `CompleteLattice` instance (`Mathlib/Data/Setoid/Partition.lean`), which the CF library's comment predates — but `Setoid` is what the whole lattice API is stated over, so it stays. |
 | `dd:order-flip` | Use Mathlib's order, never the paper's glyphs | Carrying both conventions in one file is how sign errors get proved. |
 | `dd:quotient` | `∏(B)` is `(b : B) → Quotient b` | Canonical; a presentation change, not a content change. |
+| `dd:poly` | `Poly S := MvPolynomial (Set S) ℝ`; eval = `MvPolynomial.eval`, supp = `vars`, irreducible = Mathlib `Irreducible`; set sums via `finsum`/`finprod` | Blocks are variables verbatim under `dd:partition`. Definitions carry no finiteness; `[Finite S]` sits on exactly ten §5.1–5.2 statements (listed in API.lean). `mono`/`monos`/`poly` take no `F` (paper superscript notational) — the `size` trap avoided at design time. |
 | `dd:subpartition` | A subpartition of `S` is a partial equivalence relation on `S` (`structure Subpartition`), domain `{s | r s s}` | Mathlib has no PER structure and `Σ E, Setoid E` would put dependent subtypes and domain transports into every §4 statement. The correspondence is exhibited (`toSetoid`, `ofSetoidOn`, round-trip lemmas). Payoff observed by the §4.1 shard: `X (χ_C s t) s` already implies `χ_C s t ∈ dom X` (`mem_dom_of_rel`), so half of Proposition 20's "extra condition" is free and Prop 21 clause 5 needs no `χ(E,E) = E` bookkeeping. |
 | history | `history X := ⋂₀ {C | C ⊆ F.B ∧ Generates C X}` | Definition 17's "smallest generating subset". `history_isLeast` (Proposition 12) is what earns "smallest", and it needs `[Finite F.B]` **genuinely**: over `S = ℕ → Bool` with the coordinate factors, every cofinite subset of `B` generates the "eventually equal" partition, so the intersection of all generating subsets is `∅`, which generates nothing. All of §3 is stated with `Finite F.B` (finite *dimension*) and never `Finite S`. |
 
@@ -166,6 +167,20 @@ Paper node → Lean declaration. Extended as nodes land.
 | Proposition 24 | `FactoredSet.orthogonal_iff_orthogonalGiven_top` | `ConditionalOrthogonality.lean` |
 | Theorem 2 (semigraphoid) | `FactoredSet.orthogonalGiven_semigraphoid` | `ConditionalOrthogonality.lean` |
 | Proposition 25 | `FactoredSet.orthogonalGiven_self_iff` | `ConditionalOrthogonality.lean` |
+| Definition 28 (`Poly^F`) | `Poly` (abbrev; depends on `S` only) | `Polynomial.lean` |
+| Definition 29 (evaluation) | Mathlib `MvPolynomial.eval` (rendered, README table) | — |
+| Definition 30 (support) | Mathlib `MvPolynomial.vars` (rendered, README table) | — |
+| Definition 31 (`Q^F_E`) | `FactoredSet.Q` (`Q_eq_finsum_mono`, `Q_eq_sum`) | `Polynomial.lean` |
+| Definition 32 (`mono^F_C(s)`) | `mono` (no `F`) | `Polynomial.lean` |
+| Definition 33 (`monos^F_C(E)`) | `monos` (no `F`; an *image*, so coincident monomials collapse) | `Polynomial.lean` |
+| Definition 34 (`poly^F_C(E)`) | `poly` (no `F`; `poly_eq_sum_image`, `poly_empty`) | `Polynomial.lean` |
+| Proposition 26 | `FactoredSet.Q_eq_poly` | `Polynomial.lean` |
+| Proposition 27 (`factor1`) | `FactoredSet.poly_union_chimeraImage` | `Polynomial.lean` |
+| Proposition 28 (`factor2`) | `FactoredSet.eq_C_mul_poly_of_dvd_Q` | `Polynomial.lean` |
+| Definition 35 (`Irr^F(E)`) | `FactoredSet.irr` (`mem_irr`) | `Factoring.lean` |
+| Proposition 29 | `FactoredSet.irr_partition` (§4 restatement `irr_isPartition`) | `Factoring.lean` |
+| Proposition 30 | `FactoredSet.Q_eq_finprod_poly_irr` (divisibility form `poly_dvd_Q`) | `Factoring.lean` |
+| Proposition 31 | `FactoredSet.irreducible_poly_of_mem_irr` | `Factoring.lean` |
 
 Nodes deliberately rendered by Mathlib vocabulary with no declaration of ours
 (Definitions 2, 5, 6, 7, 9) are tabulated in `README.md`.
@@ -417,6 +432,59 @@ it belongs in the library as a stated open `Prop` with this note attached.
   upstream — `lake build` first.
 * The node checker is whole-directory: during parallel shards it stays red until the last
   shard's inventory rows land; read the file names in its output, not the count.
+
+## Stage 5a (§5.1–5.2) — durable lessons
+
+* **Proposition 28 (`factor2`) was not the crux it was budgeted as**: with the (A)–(G)
+  decomposition written out first (disjoint supports via `coeff_add_mul_of_split`; all
+  p-coefficients equal one `r`; each factor's variables lie entirely in one side; the
+  witness set `C := {b ∈ B | part b s₀ ∈ p.vars}`; supports as images; `C_mul_monomial`) it
+  compiled first try. The cost centre of §5 is *designing the monomial layer*, not proving.
+* **Two parallel private exponent-vector layers now exist** (de-slop debt for round 6):
+  Polynomial.lean's `ev`/`vset` (`mono_eq_monomial`, `mono_eq_iff`, `mono_basis_injective`)
+  and Factoring.lean's `monoExp` (`monoExp_apply`, `coeff_poly`, `mem_support_poly`,
+  `poly_ne_zero`, `mono_eq_iff` again, `degreeOf_poly_le`, `mem_vars_poly`). Both are
+  correct; unify into one public block in Polynomial.lean (Factoring's `mono_eq_iff`,
+  `degreeOf_poly_le`, `mem_vars_poly`, `poly_ne_zero` are the reusable statements) and delete
+  the other. `poly_empty` was deduplicated at merge (now public, finiteness-free, in
+  Polynomial.lean).
+* Prop 27's proof deviates from the printed support-intersection argument (uses
+  `mono_eq_iff` at `C₀ ∪ C₁`) — proof route only, disclosed in the docstring, no
+  disclosure warranted. Prop 29's `E.Nonempty` is not needed (`Irr(∅) = {{b} | b ∈ B}`)
+  and is kept for faithfulness with a disclosed linter silence — same route as
+  `restrict_part_subset_inf`; and Definition 35's minimality clause is *vacuous at a
+  singleton* (`∅ ⊂ {b}` but `∅` is not nonempty).
+* Prop 26's subtlety is real and witnessed: `monos` is an image, so `poly {fst} S` has two
+  summands over the four-point `S`; `Q_eq_poly` needs `mono F.B` injective (Prop 3 + Cor 1).
+* Mathlib workhorses: `degreeOf_mul_eq` (NoZeroDivisors) gives `IsUnit p → p.vars = ∅`,
+  `vars (p*q) = vars p ∪ vars q` (nonzero p, q), and the degree-2 contradiction;
+  `Set.Finite.exists_minimal` needs `(s := {x | P x})` explicit; `Minimal.eq_of_subset`;
+  `MvPolynomial.support_nonempty`; `prod_X_pow`; `finprod_mem_pair`, `finsum_mem_image`,
+  `Fintype.sum_prod_type`, `Fintype.sum_bool`; `Set.ssubset_singleton_iff`;
+  `degreeOf_X i j : if i = j` (first argument on the left).
+* Traps: `Set.Finite` is a Prop, so `(Set.toFinite C).toFinset` = `hC.toFinset` by proof
+  irrelevance — internal lemmas can take an explicit `hC : C.Finite`; `example`s do NOT warn
+  on `sorry` use — grep textually; `Finset.sum_nbij` needs a type-ascribed bijection and a
+  beta-reduced `heq`; `rw [Finset.sum_image h]` fails (implicit `s`/`g`) — shape the goal
+  then `exact`; ℕ-`Finsupp` support membership via values + `omega`, not `support_add`;
+  `Finsupp.filter_apply` leaves a `Decidable` instance mismatch — `simp [h]`; `open
+  MvPolynomial` makes a local named `C` shadow `MvPolynomial.C` — the statement's `C r`
+  is fully qualified; `obtain ⟨s, hs⟩ := hE` clears `hE` — use `id hE`; `congr 1` on
+  `monomial d₁ 1 = monomial d₂ 1` descends to coefficients — prove `d₁ = d₂` separately;
+  `set_option … in` precedes the docstring; scratch full-file copies inside
+  `FiniteFactoredSets/` double every `Paper node:` for the checker — delete before commit.
+* Witness technique: prove monomials distinct by ONE separating `MvPolynomial.eval` into ℝ
+  (variables ↦ 2,3,5,7) — ten lines for `Function.Injective (mono coordFS.B)`. Cross-check
+  pairs (`prop26_coordFS_crosscheck`, `Q_coordFS_univ_eq_mul_poly`,
+  `dvd_Q_coordFS_univ_prop28_shape`) vs applications (`prop26_coordFS_applied`,
+  `prop30_coordFS_*_applied`): while the endpoints were sorried, `#print axioms` split them
+  exactly — a mechanical certificate of independence. `subset_coordFS_basis_cases` enumerates
+  the four subsets of `coordFS.B`.
+* Landmarks on `coordFS`: `Q S = X(vfst t)X(vsnd t) + X(vfst t)X(vsnd f) + X(vfst f)X(vsnd t)
+  + X(vfst f)X(vsnd f)`; `poly {fst} S = X(vfst t) + X(vfst f)`; `Irr(S) = {{fst},{snd}}`;
+  `Irr(Ediag) = {B}` (restriction entangles, §5 shadow of §4).
+* Node accounting convention (confirmed): counts are *carriers*, so §5.1–5.2 add 12 (Defs
+  29–30 rendered): 63 carriers / 69 annotations after stage 5a.
 
 ## Round 5 audit — durable lessons (§4 convergence round)
 

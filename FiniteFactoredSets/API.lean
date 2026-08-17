@@ -1,4 +1,5 @@
 import FiniteFactoredSets.ConditionalOrthogonality
+import FiniteFactoredSets.Factoring
 
 /-!
 # Finite Factored Sets consumer API
@@ -9,10 +10,11 @@ The supported downstream import for factored-set research is:
 import FiniteFactoredSets.API
 ```
 
-**Status: the formalization is in progress** (§2–§4 of Garrabrant, arXiv:2109.11513, are
-formalized; §5–§7 are not yet claimed).  This boundary is therefore an *incremental*
-consumer surface: it is stable in shape but grows as sections land.  What is here is
-supported now; consult `FiniteFactoredSets/README.md` for the exact trust surface.
+**Status: the formalization is in progress** (§2–§4 and §5.1–§5.2 of Garrabrant,
+arXiv:2109.11513, are formalized; §5.3 onwards and §6–§7 are not yet claimed).  This
+boundary is therefore an *incremental* consumer surface: it is stable in shape but grows
+as sections land.  What is here is supported now; consult
+`FiniteFactoredSets/README.md` for the exact trust surface.
 
 ## Vocabulary
 
@@ -92,6 +94,36 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   `StrictlyBeforeSub.beforeSub`, `orthogonalSub_iff_forall_notMem`,
   `orthogonalSub_ofSetoid`, `beforeSub_ofSetoid`, `orthogonalGivenSet_def`,
   `orthogonalGiven_def`, and `historySub_restrict_inf`.
+* **Characteristic polynomials** (§5.1): `Poly S` (Definition 28) is
+  `MvPolynomial (Set S) ℝ` under `dd:poly` — an `abbrev`, so the whole `MvPolynomial` API
+  applies to it unchanged, and a block `part b s` is a *variable* of the ring verbatim
+  (`MvPolynomial.X (part b s)`).  Definitions 29 and 30 have no declaration of ours:
+  evaluation `p(f)` is `MvPolynomial.eval f p` and the support `supp(p)` is
+  `MvPolynomial.vars p`.  `FactoredSet.Q E` is the characteristic polynomial `Q^F_E`
+  (Definition 31), with `Q_eq_finsum_mono` unfolding it.  **`mono C s`, `monos C E` and
+  `poly C E` (Definitions 32–34) are namespace-level and take no `F`** — the paper's
+  superscript `F` on them is vestigial, exactly as on `size` (`FiniteFactoredSets.mono`,
+  not `FactoredSet.mono`; write `poly C E`, never `F.poly C E`).  `Q` and
+  `irr` do take `F`.  The endpoints are `Q_eq_poly` (Proposition 26:
+  `Q^F_E = poly^F_B(E)`), `poly_union_chimeraImage` (Proposition 27, the paper's
+  `factor1`) and `eq_C_mul_poly_of_dvd_Q` (Proposition 28, `factor2` — every divisor of
+  `Q^F_E` is `r · poly^F_C(E)` for some real `r` and some `C ⊆ B`), with the supporting
+  `degreeOf_Q_le`, `Q_ne_zero`, `vars_disjoint_of_mul_eq_Q` and the upstreamable generic
+  `coeff_add_mul_of_split`.  A trap worth knowing before computing: `monos C E` is an
+  *image*, so coincident monomials collapse and `poly^F_C(E)` can have strictly fewer
+  summands than `E` has elements — Proposition 26 is the statement that this does not
+  happen at `C = B`.
+* **Factoring characteristic polynomials** (§5.2): `FactoredSet.irr E` is `Irr^F(E)`
+  (Definition 35), the minimal nonempty `C ⊆ B` with `χ^F_C(E,E) = E`, unfolded by
+  `mem_irr`.  `irr_partition` (Proposition 29) says those sets partition `B`, with
+  `irr_isPartition` restating it in §4's vocabulary as a `Subpartition` of `Setoid S`
+  with domain `B`; `Q_eq_finprod_poly_irr` (Proposition 30) factors
+  `Q^F_E = ∏_{C ∈ Irr^F(E)} poly^F_C(E)`; and `irreducible_poly_of_mem_irr`
+  (Proposition 31) says each factor is `Irreducible` in `Poly S` — Mathlib's
+  `Irreducible`, whose units over `ℝ` are the nonzero constants, which is the paper's
+  "no factorization into two polynomials of nonempty support".  Definition 35's minimality
+  clause is vacuous at a singleton (`∅` is the only strict subset of `{b}`, and it is not
+  nonempty), so a one-element `C` is in `Irr^F(E)` as soon as `χ^F_C(E,E) = E`.
 
 ## Finiteness
 
@@ -117,11 +149,32 @@ Definition 24's well-definedness and stays: it is carried by
 relations, Definitions 26 and 27, their unfolding lemmas, and the `Subpartition`
 restriction glue carry none.
 
-Hypotheses of the form `[Finite S]` are never global here: one appears only where the
-paper's own statement has it, on `finite_basis_of_finite` (Proposition 6, which *derives*
-`Finite F.B` from it).  The `Cardinal` forms of Propositions 7–9 (`size_eq_prod`,
-`isTrivialFactorization_of_isFactorization`, `dim_spec`) take none, deriving what
-finiteness they need from their own hypotheses.
+Hypotheses of the form `[Finite S]` are not global here either, and through §2–§4 exactly
+one appears, where the paper's own statement has it: on `finite_basis_of_finite`
+(Proposition 6, which *derives* `Finite F.B` from it).  The `Cardinal` forms of
+Propositions 7–9 (`size_eq_prod`, `isTrivialFactorization_of_isFactorization`,
+`dim_spec`) take none, deriving what finiteness they need from their own hypotheses.
+
+**§5 is where `[Finite S]` genuinely enters** — the first place the paper's standing
+"finite factored set" is doing mathematical work rather than sitting in the preamble, and
+the reason `dd:finiteness-minimal` draws its line here.  `Q^F_E = ∑_{s ∈ E} ∏_{b ∈ B}
+[s]_b` sums over `E ⊆ S`, so with `S` infinite it is not a polynomial at all: as a
+`finsum` over an infinite support it collapses to `0`, and divisibility, `Irr^F(E)` and
+irreducibility have nothing to say about that junk value.  The exact carriers:
+
+* `[Finite S]` **is** carried by, in §5.1, `Q_eq_poly` (Proposition 26),
+  `poly_union_chimeraImage` (Proposition 27), `degreeOf_Q_le`, `Q_ne_zero`,
+  `vars_disjoint_of_mul_eq_Q` and `eq_C_mul_poly_of_dvd_Q` (Proposition 28); and in §5.2,
+  `irr_partition` (Proposition 29), `irr_isPartition`, `Q_eq_finprod_poly_irr`
+  (Proposition 30) and `irreducible_poly_of_mem_irr` (Proposition 31).  That is every §5
+  statement that proves something — ten of them, and no others.
+* It is **not** carried by any §5 *definition* or unfolding: `Poly`, `mono`, `monos`,
+  `poly`, `Q`, `Q_eq_finsum_mono`, `irr`, `mem_irr` and the generic, upstreamable
+  `coeff_add_mul_of_split` are all finiteness-free, so a client may write down `Q^F_E`
+  over an infinite `S` — and gets the junk value, with no theorem of ours applying to it.
+* No §5 statement carries `[Finite F.B]` on top of `[Finite S]`, because it does not have
+  to: `Finite F.B` is synthesized from `Finite S` by instance search (see below), so the
+  §3–§4 endpoints those proofs call are supplied automatically.
 
 `Finite F.B` is found by instance search whenever `Finite S` is.  `Fintype F.B` is not —
 and not for the reason one first suspects: under `open scoped Classical`, `Setoid` does
@@ -134,6 +187,7 @@ elaboration time — if the ℕ form of Proposition 7 (`natCard_eq_prod`) is wan
 ## What this boundary excludes
 
 `FiniteFactoredSets.Examples` — the constructed witnesses (`boolFS`, `coordFS`, `emptyFS`,
-`unitFS`) and the §2.5/§3 vocabulary computed over them.  Import it explicitly when a
-concrete factored set is useful; it is a regression fixture, not a dependency surface.
+`unitFS`) and the §2.5, §3, §4 and §5.1–§5.2 vocabulary computed over them.  Import it
+explicitly when a concrete factored set is useful; it is a regression fixture, not a
+dependency surface.
 -/

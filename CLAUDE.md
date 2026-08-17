@@ -49,15 +49,16 @@ the declaration renders a paper claim/theorem; supporting results are `lemma`s �
 note that iso-valued and data-valued carriers must be `def`s, since `≅` is not a Prop.
 
 The **Finite Factored Sets** formalization (Garrabrant, arXiv:2109.11513) lives in
-`FiniteFactoredSets/` and is **in progress** — §2–§4, 51 of the 96 in-scope nodes
+`FiniteFactoredSets/` and is **in progress** — §2–§4 and §5.1–§5.2, 63 of the 96 in-scope nodes carried by declarations (plus Mathlib-rendered nodes)
 (scope is 96 of the paper's 98, settled by ruling and recorded in that README). The
-statements live in six files that follow the paper's own order — `Basic.lean` (§2:
+statements live in eight files that follow the paper's own order — `Basic.lean` (§2:
 partitions, factorizations, the chimera function, size and dimension), `History.lean`
 (§3.1–§3.2: generation and history), `Orthogonality.lean` (§3.3–§3.4: orthogonality,
 entanglement, time), `Subpartition.lean` (§4.1: subpartitions as partial equivalence
 relations, `dd:subpartition`), `SubpartitionHistory.lean` (§4.2, incl. Lemmas 1–2),
 `ConditionalOrthogonality.lean` (§4.3: conditional orthogonality, the semigraphoid
-Theorem 2) — with `Examples.lean` carrying the non-vacuity witnesses, which are
+Theorem 2), `Polynomial.lean` (§5.1: characteristic polynomials, `dd:poly`, the load-bearing
+Proposition 28), `Factoring.lean` (§5.2: `Irr^F(E)` and the factorization into irreducibles) — with `Examples.lean` carrying the non-vacuity witnesses, which are
 constructed factored sets with the §2.5 and §3 vocabulary computed over them rather than
 stand-ins. Start with `FiniteFactoredSets/README.md` (what is and is not claimed)
 and `FiniteFactoredSets/KNOWLEDGE.md`. Two things there will bite anyone who skips them:

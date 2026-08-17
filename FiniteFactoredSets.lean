@@ -63,6 +63,18 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
   (`X ≤ Y` is relation inclusion; the paper's `X ∨_E Y` is `X ⊓ Y`); the paper's block
   inclusion "`X ⊆ Z`" is `Subpartition.Subset`.
 
+* `dd:poly` — §5's `Poly^F` is `MvPolynomial (Set S) ℝ` (`Poly S`): the paper's variables
+  are the subsets `𝒫(S)` themselves, and under `dd:partition` a block `[s]_b` *is* the set
+  `part b s`, hence a variable verbatim.  Definition 29's evaluation `p(f)` is
+  `MvPolynomial.eval f p` and Definition 30's support `supp(p)` is `MvPolynomial.vars p`
+  (both Mathlib-rendered, no declaration of ours); Proposition 31's "irreducible" is
+  Mathlib's `Irreducible` (over `ℝ` the units are the nonzero constants, so it coincides
+  with the paper's "no factorization into two polynomials of nonempty support").  Sums and
+  products over sets are `finsum`/`finprod`, so the definitions carry no finiteness and
+  `[Finite S]` sits exactly on the §5 statements the paper makes for finite factored sets —
+  this is where finite *size* genuinely enters.  `mono`/`monos`/`poly` take no `F` (the
+  paper's superscript is notational; they depend on `C` only); `Q` and `Irr` do.
+
 * `dd:quotient` — Definition 9's Cartesian product `∏(B)` (functions choosing one block
   from each partition) is modeled as the dependent product `(b : B) → Quotient b`, and
   Definition 10's `π` as `fun s b => ⟦s⟧`.  `Quotient b` is canonically the set of
@@ -75,3 +87,5 @@ import FiniteFactoredSets.Orthogonality
 import FiniteFactoredSets.Subpartition
 import FiniteFactoredSets.SubpartitionHistory
 import FiniteFactoredSets.ConditionalOrthogonality
+import FiniteFactoredSets.Polynomial
+import FiniteFactoredSets.Factoring

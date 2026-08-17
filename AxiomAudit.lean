@@ -1094,6 +1094,17 @@ open FiniteFactoredSets in
   FactoredSet.OrthogonalGivenSet FactoredSet.OrthogonalGiven
   FactoredSet.orthogonal_iff_orthogonalGiven_top FactoredSet.orthogonalGiven_semigraphoid
   FactoredSet.orthogonalGiven_self_iff
+  -- §5.1: characteristic polynomials (FiniteFactoredSets/Polynomial.lean).  `dd:poly` fixes
+  -- the ring: `Poly^F` is `MvPolynomial (Set S) ℝ`, because under `dd:partition` a block
+  -- `[s]_b` *is* the set `part b s` and so is a variable verbatim.  Definitions 29 and 30
+  -- (evaluation `p(f)`, support `supp(p)`) have no declaration of ours — they are
+  -- `MvPolynomial.eval` and `MvPolynomial.vars`, so they belong in the README's table of
+  -- Mathlib-rendered nodes.  This is the first block that needs `[Finite S]` rather than
+  -- `Finite F.B`: `Q^F_E` sums over `E ⊆ S`, so it is a polynomial only for finite `S`.
+  -- Proposition 28 (`factor2`) is the load-bearing result the rest of §5 routes through.
+  Poly FactoredSet.Q mono monos poly
+  FactoredSet.Q_eq_poly FactoredSet.poly_union_chimeraImage
+  FactoredSet.eq_C_mul_poly_of_dvd_Q
   -- Non-vacuity witnesses (FiniteFactoredSets/Examples.lean).  Every §2-§4 endpoint is
   -- stated over `FactoredSet`; these are what make those endpoints say something.
   -- `coordFS` is the load-bearing one: with a single factor every `C` behaves as `∅` or
@@ -1171,6 +1182,60 @@ open FiniteFactoredSets in
   -- The degenerate corners of Definitions 26-27, recorded so a client does not rediscover
   -- them: conditioning on `∅` or on `Dis_S` makes every pair orthogonal.
   Examples.orthogonalGivenSet_empty Examples.orthogonalGiven_bot
+  -- §5.2: factoring the characteristic polynomial (FiniteFactoredSets/Factoring.lean).
+  -- `irr` is Definition 35; Proposition 29 is the triple "members nonempty, pairwise
+  -- disjoint, cover `B`", which under `dd:partition` is what "is a partition of the set
+  -- `B`" means (`irr_isPartition` restates it as a `Subpartition`, and is machinery rather
+  -- than a node).  Propositions 30 and 31 together are the factorization of `Q^F_E` into
+  -- irreducibles.  This is the block where `[Finite S]` — finite *size*, not just finite
+  -- dimension — is genuinely consumed, for the reason recorded under `dd:poly`.
+  FactoredSet.irr FactoredSet.irr_partition
+  FactoredSet.Q_eq_finprod_poly_irr FactoredSet.irreducible_poly_of_mem_irr
+  -- §5.1-§5.2 on `coordFS`: the characteristic polynomial computed outright.  `vfst`/`vsnd`
+  -- are the four variables of `Poly^{coordFS}` that ever occur — under `dd:partition` a
+  -- block *is* a subset of `S`, hence a variable of the ring verbatim.  `Q_coordFS_univ_eq`
+  -- expands Definition 31 to a four-term polynomial with no `finsum`/`finprod` left, and
+  -- the two facts beside it rule out the degenerate readings: `Q^F_S` is not `0`, and no
+  -- variable has degree above one in it (Corollary 1 at work).
+  Examples.vfst Examples.vsnd
+  Examples.Q_coordFS_univ_eq Examples.Q_coordFS_univ_ne_zero
+  Examples.degreeOf_Q_coordFS_univ_le_one
+  -- Definition 33 is an *image*, so coincident monomials collapse: `S` has four points and
+  -- `poly^F_{fst}(S)` has two summands.  That collapse is the subtlety Proposition 26 has
+  -- to rule out at `C = B`, and `mono_coordFS_basis_injective` is the ruling-out on the
+  -- witness (proved by separating evaluation, not by citing Proposition 3).
+  Examples.mono_singleton_fst_true_false
+  Examples.poly_singleton_fst_univ Examples.poly_singleton_snd_univ
+  Examples.mono_coordFS_basis_injective
+  -- Proposition 26 on the witness, as a cross-check pair plus a separate application:
+  -- `Q_coordFS_univ_eq` and `poly_coordFS_basis_univ_eq` each compute their own side to
+  -- the same explicit polynomial and neither mentions `Q_eq_poly`, so
+  -- `prop26_coordFS_crosscheck` re-derives the proposition rather than echoing it;
+  -- `prop26_coordFS_applied` is the endpoint instantiated, which is a different claim.
+  Examples.poly_coordFS_basis_univ_eq
+  Examples.prop26_coordFS_crosscheck Examples.prop26_coordFS_applied
+  -- Definition 35 computed at two subsets, with different answers.  At `E = S` the
+  -- irreducible parts are the two singletons (the minimality clause is *vacuous* at a
+  -- singleton — `∅` is the only strict subset and it is not nonempty — so what excludes
+  -- `C = B` is that `{fstFactor}` already fixes `S`).  On the diagonal neither coordinate
+  -- alone fixes `Ediag`, so the only irreducible part is the whole basis: the §5 shadow of
+  -- the §4 fact that restriction entangles.
+  Examples.mem_irr_singleton_fst_univ Examples.mem_irr_singleton_snd_univ
+  Examples.irr_coordFS_univ
+  Examples.chimeraImage_singleton_fst_Ediag_ne Examples.chimeraImage_singleton_snd_Ediag_ne
+  Examples.irr_coordFS_Ediag
+  -- Proposition 30 on the witness, the same cross-check shape: the factorization at `E = S`
+  -- computed by expanding both sides (no mention of `Q_eq_finprod_poly_irr`), beside the
+  -- endpoint applied at `S` and at `Ediag`, where the product degenerates to one factor and
+  -- so agrees with Proposition 26 there.
+  Examples.Q_coordFS_univ_eq_mul_poly
+  Examples.prop30_coordFS_univ_applied Examples.prop30_coordFS_Ediag_applied
+  -- Propositions 28 and 31 are not vacuous on the witness: `poly^F_{fst}(S)` really divides
+  -- `Q^F_S` and has Proposition 28's `r · poly^F_C(E)` shape at `r = 1`, `C = {fstFactor}`
+  -- (computed, not via the endpoint); and it is not a unit, so calling it irreducible says
+  -- something.
+  Examples.dvd_Q_coordFS_univ_prop28_shape
+  Examples.not_isUnit_poly_singleton_fst_univ
 -- FFS-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Finite Factored Sets surface. -/

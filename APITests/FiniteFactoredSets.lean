@@ -256,4 +256,49 @@ example : ¬ clientPairFS.Orthogonal obsFst obsFst := fun hO =>
       ((clientPairFS.orthogonal_iff_orthogonalGiven_top obsFst obsFst).1 hO)
       trivial : obsFst (true, true) (false, true))
 
+/-! ### §5.1–§5.2: characteristic polynomials through the API
+
+`Finite S` enters here and nowhere earlier, so these examples are the first in this file
+to carry it.  The polynomial operations `mono`, `monos` and `poly` are namespace-level and
+take no `F` — the paper's superscript is vestigial on them — while `Q` and `irr` are
+`FactoredSet` operations; the examples below exercise both spellings. -/
+
+/-- Propositions 26 and 30 rewrite the *same* polynomial two ways, so a client who has
+`poly^F_B(E)` in hand can hand it straight to the irreducible factorization without ever
+naming `Q^F_E`.  Neither endpoint alone gives this equation. -/
+example {S : Type u} [Finite S] (F : FactoredSet S) {E : Set S} (hE : E.Nonempty) :
+    poly F.B E = ∏ᶠ C ∈ F.irr E, poly C E := by
+  rw [← F.Q_eq_poly E, F.Q_eq_finprod_poly_irr hE]
+
+/-- Proposition 28 read through Proposition 26: the divisors of `poly^F_B(E)` — the form a
+client is likelier to be holding than `Q^F_E` — are exactly the real multiples of the
+`poly^F_C(E)` for `C ⊆ B`, and the `r` and `C` come back out of the endpoint's existential
+for the client to use. -/
+example {S : Type u} [Finite S] (F : FactoredSet S) {E : Set S} (hE : E.Nonempty)
+    {p : Poly S} (hp : p ∣ poly F.B E) :
+    ∃ (r : ℝ) (C : Set (Setoid S)), C ⊆ F.B ∧ p = MvPolynomial.C r * poly C E := by
+  rw [← F.Q_eq_poly E] at hp
+  exact F.eq_C_mul_poly_of_dvd_Q hE hp
+
+/-- Proposition 27 at `C₁ = ∅`, which is where it stops being a factorization and becomes
+an *invariance*: splicing `E₀` against any nonempty `E₁` outside `C` leaves
+`poly^F_C(E₀)` unchanged.  The `C₁ = ∅` instance is legal because `∅ ⊆ B` and `∅` is
+disjoint from everything, and it is the form a client reaches for when `E₁` is a
+"don't care" set. -/
+example {S : Type u} [Finite S] (F : FactoredSet S) {C : Set (Setoid S)} (hC : C ⊆ F.B)
+    (E₀ E₁ : Set S) (h₁ : E₁.Nonempty) :
+    poly C (F.chimeraImage C E₀ E₁) = poly C E₀ := by
+  have h := F.poly_union_chimeraImage hC (Set.empty_subset _) disjoint_bot_right E₀ E₁
+  rw [Set.union_empty] at h
+  rw [h, poly_empty h₁, mul_one]
+
+/-- Propositions 30 and 31 composed into the sentence a client actually wants: `Q^F_E` is
+a product of *irreducibles*, indexed by `Irr^F(E)`.  Neither proposition says that on its
+own — 30 gives the product, 31 gives the irreducibility of each factor. -/
+example {S : Type u} [Finite S] (F : FactoredSet S) {E : Set S} (hE : E.Nonempty) :
+    ∃ f : Set (Setoid S) → Poly S,
+      (∀ C ∈ F.irr E, Irreducible (f C)) ∧ F.Q E = ∏ᶠ C ∈ F.irr E, f C :=
+  ⟨fun C => poly C E, fun _ hC => F.irreducible_poly_of_mem_irr hE hC,
+    F.Q_eq_finprod_poly_irr hE⟩
+
 end APITests.FiniteFactoredSets

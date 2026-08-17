@@ -1,15 +1,16 @@
 import FiniteFactoredSets.ConditionalOrthogonality
+import FiniteFactoredSets.Factoring
 
 /-!
 # Worked factored sets — the non-vacuity witnesses
 
-Every §2–§4 endpoint is stated over `FactoredSet`, so until something exhibits one those
+Every §2–§5 endpoint is stated over `FactoredSet`, so until something exhibits one those
 endpoints say nothing about anything.  This file exhibits four factored sets, covering the
 degenerate sizes Proposition 5 singles out and one genuinely two-dimensional example that
-makes the chimera function actually splice, and then runs the §2.5, §3 and §4 vocabulary —
-`size`, `dim`, `Generates`, `history`, `Orthogonal`, `Entangled`, `Before`,
+makes the chimera function actually splice, and then runs the §2.5, §3, §4 and §5.1–§5.2
+vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`, `Entangled`, `Before`,
 `StrictlyBefore`, `Subpartition`, `GeneratesSub`, `historySub`, `OrthogonalSub`,
-`OrthogonalGivenSet`, `OrthogonalGiven` — over them.
+`OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`, `monos`, `poly`, `irr` — over them.
 
 `coordFS` is the load-bearing one: with a single factor every `C` behaves as `∅` or `B`,
 so Proposition 4 would be a family of near-tautologies.  `not_subsingleton_coordFS_basis`
@@ -36,6 +37,27 @@ restriction can **entangle** two unconditionally orthogonal partitions
 (`not_orthogonalGivenSet_Ediag`, `not_orthogonalGiven_fst_snd_xorPart`) — which is what
 stops `OrthogonalGiven` from being silently total.
 
+The §5 half computes the characteristic polynomial of `coordFS` outright.  `Q^F_{S}` is
+the four-term multilinear polynomial `∑_{a,b} X_{[·]₁=a} X_{[·]₂=b}`; it is nonzero, every
+variable has degree at most one in it, and it factors as
+`poly^F_{fst}(S) · poly^F_{snd}(S)` — all of that computed from Definitions 31–34 alone.
+Three things there are worth calling out.  First, `poly^F_{fst}(S)` has *two* summands
+where `S` has four elements, because `monos` is an image and coincident monomials
+collapse; that collapse is exactly the subtlety Proposition 26 has to rule out at
+`C = B`, and `mono_coordFS_basis_injective` is the instance of the ruling-out.  Second,
+`Q_coordFS_univ_eq` and `poly_coordFS_basis_univ_eq` are a **cross-check pair** for
+Proposition 26 on this witness: each computes its own side to the same explicit
+polynomial, and neither mentions `Q_eq_poly`, so `prop26_coordFS_crosscheck` re-derives the
+proposition here rather than echoing it (`prop26_coordFS_applied` is the separate, honest
+*application* of the endpoint).  The same pairing runs for Proposition 30
+(`Q_coordFS_univ_eq_mul_poly` computed, `prop30_coordFS_univ_applied` applied).  Third,
+`Irr^F` is computed at two subsets and the answers differ: at `S` the irreducible parts
+are the two singletons `{fstFactor}`, `{sndFactor}`, while on the diagonal `Ediag` the
+first coordinate determines the second, `χ^F_{fst}(Ediag, Ediag) ≠ Ediag`, and the only
+irreducible part is the whole basis — the §5 shadow of the §4 fact that restriction
+entangles.  Note the minimality clause of Definition 35 is *vacuous* at a singleton: the
+only strict subset of `{b}` is `∅`, which is not nonempty.
+
 No declaration here is a paper node, so all of them are `lemma`s: the `theorem` keyword is
 reserved for the paper's numbered nodes.  Every *witness* lemma — the ones that carry a
 non-vacuity claim, kind `N±` — is inventoried in `AxiomAudit.lean` alongside the nodes it
@@ -45,7 +67,13 @@ de-vacuates; the proof helpers that only exist to shorten those proofs
 in §4 the `mem_*`, `dom_*`, `*_apply` unfoldings together with `Ediag_eq`,
 `generatesSub_snd_botInfIndEfalse`, `botInfIndEfalse_ne_indiscrete`,
 `generatesSub_fstOnEdiag_forces`, `generatesSub_sndOnEdiag_forces` and
-`inf_ofSetoid_coord`) are
+`inf_ofSetoid_coord`, and in §5 the `part_*` unfoldings and distinctness lemmas for the
+variables, the separating evaluation `coordSep` with its four `coordSep_*` values,
+`eval_coordSep_mono_coordFS`, `mono_coordFS_basis`, `mono_singleton_fst`,
+`mono_singleton_snd`, `monos_singleton_fst_univ`, `monos_singleton_snd_univ`,
+`degreeOf_X_mul_X_le_one`, `subset_coordFS_basis_cases`, `chimeraImage_univ_univ`,
+`singleton_mem_irr_univ`, `Ediag_nonempty`, `chimeraImage_basis_Ediag` and
+`singleton_fst_ne_singleton_snd`) are
 not, since they claim nothing about the paper.  The witnesses cite the paper in prose
 rather than carrying the reserved node annotation: the paper's Examples 1 and 2 are §6
 orthogonality databases, not these.
@@ -1121,6 +1149,414 @@ example : IsLeast {C | C ⊆ coordFS.B ∧ coordFS.GeneratesSub C sndOnEfst}
 example : coordFS.OrthogonalSub fstOnEdiag sndOnEdiag ↔
     coordFS.historySub fstOnEdiag ∩ coordFS.historySub sndOnEdiag = ∅ :=
   coordFS.orthogonalSub_def fstOnEdiag sndOnEdiag
+
+/-! ## §5.1–§5.2 over `coordFS`
+
+§5 adds a third layer of vocabulary — the polynomial ring `Poly^F`, the characteristic
+polynomial `Q^F_E`, the monomials `mono^F_C(s)`, `monos^F_C(E)`, `poly^F_C(E)`, and the
+irreducible parts `Irr^F(E)` — none of which the §2–§4 witnesses touch.  `coordFS` is
+again the load-bearing example: over a one-dimensional factored set `Q^F_E` is a sum of
+single variables, so `mono`'s product is a one-factor product and Propositions 26–31 all
+degenerate.
+
+`Finite S` is what §5 needs and §2–§4 never did (`dd:finiteness-minimal`), and it is
+discharged here by instance search: `Bool × Bool` is a `Fintype`.
+
+Everything in this section is computed from Definitions 28 and 31–35 alone unless its
+docstring says it *applies* a proposition. -/
+
+open MvPolynomial
+
+/-- The variable `[s]_fstFactor` of `Poly^{coordFS}` for any `s` with `s.1 = a` — the
+block `{p | p.1 = a}` of `fstFactor`, which under `dd:partition` *is* a subset of `S` and
+so is a variable of the ring verbatim. -/
+def vfst (a : Bool) : Set (Bool × Bool) := {p | p.1 = a}
+
+/-- The variable `[s]_sndFactor` for any `s` with `s.2 = b`. -/
+def vsnd (b : Bool) : Set (Bool × Bool) := {p | p.2 = b}
+
+lemma part_fstFactor (s : Bool × Bool) : part fstFactor s = vfst s.1 := rfl
+lemma part_sndFactor (s : Bool × Bool) : part sndFactor s = vsnd s.2 := rfl
+
+lemma vfst_ne_vsnd (a b : Bool) : vfst a ≠ vsnd b := by
+  intro h
+  have hm : ((a, !b) : Bool × Bool) ∈ vfst a := rfl
+  rw [h] at hm
+  exact (Bool.not_ne_self b) hm
+
+lemma vfst_true_ne_false : vfst true ≠ vfst false := by
+  intro h
+  have hm : ((true, true) : Bool × Bool) ∈ vfst true := rfl
+  rw [h] at hm
+  exact Bool.noConfusion hm
+
+lemma vsnd_true_ne_false : vsnd true ≠ vsnd false := by
+  intro h
+  have hm : ((true, true) : Bool × Bool) ∈ vsnd true := rfl
+  rw [h] at hm
+  exact Bool.noConfusion hm
+
+/-! ### Definitions 31–34 computed -/
+
+/-- Definition 32 at `C = B`: the `B`-monomial of a point is the product of its two
+coordinate blocks. -/
+lemma mono_coordFS_basis (s : Bool × Bool) :
+    mono coordFS.B s = (X (vfst s.1) * X (vsnd s.2) : Poly (Bool × Bool)) := by
+  simp only [mono, coordFS_basis_eq, finprod_mem_pair fstFactor_ne_sndFactor,
+    part_fstFactor, part_sndFactor]
+
+lemma mono_singleton_fst (s : Bool × Bool) :
+    mono ({fstFactor} : Set (Setoid (Bool × Bool))) s = (X (vfst s.1) : Poly (Bool × Bool)) := by
+  simp only [mono, finprod_mem_singleton, part_fstFactor]
+
+lemma mono_singleton_snd (s : Bool × Bool) :
+    mono ({sndFactor} : Set (Setoid (Bool × Bool))) s = (X (vsnd s.2) : Poly (Bool × Bool)) := by
+  simp only [mono, finprod_mem_singleton, part_sndFactor]
+
+/-- Definition 32 on the nose at a concrete point: `mono^F_{fst}((true, false))` is the
+single variable `{p | p.1 = true}`, and in particular `mono` is not the empty product. -/
+lemma mono_singleton_fst_true_false :
+    mono ({fstFactor} : Set (Setoid (Bool × Bool))) (true, false)
+      = (X (vfst true) : Poly (Bool × Bool)) :=
+  mono_singleton_fst _
+
+/-- **Definition 31 computed.**  `Q^F_S` is the four-term multilinear polynomial
+`∑_{a, b} X_{[·]₁ = a} · X_{[·]₂ = b}` — the sum over the four points of `S` of the
+product over the two factors, with nothing left folded up in a `finsum`/`finprod`. -/
+lemma Q_coordFS_univ_eq :
+    coordFS.Q Set.univ =
+      (X (vfst true) * X (vsnd true) + X (vfst true) * X (vsnd false) +
+        X (vfst false) * X (vsnd true) + X (vfst false) * X (vsnd false) :
+          Poly (Bool × Bool)) := by
+  rw [coordFS.Q_eq_finsum_mono, finsum_mem_univ, finsum_eq_sum_of_fintype]
+  simp only [mono_coordFS_basis, Fintype.sum_prod_type, Fintype.sum_bool]
+  ring
+
+/-- `Q^F_S` is not the zero polynomial, so Definition 31 is not a definition of `0` in
+disguise: evaluating every variable at `1` gives `4`. -/
+lemma Q_coordFS_univ_ne_zero : coordFS.Q Set.univ ≠ 0 := by
+  intro h
+  have h' := congrArg (MvPolynomial.eval fun _ => (1 : ℝ)) h
+  rw [Q_coordFS_univ_eq] at h'
+  simp only [map_add, map_mul, eval_X, map_zero, mul_one] at h'
+  norm_num at h'
+
+lemma degreeOf_X_mul_X_le_one {a b : Set (Bool × Bool)} (hab : a ≠ b) (v : Set (Bool × Bool)) :
+    ((X a : Poly (Bool × Bool)) * X b).degreeOf v ≤ 1 := by
+  refine le_trans (MvPolynomial.degreeOf_mul_le v (X a) (X b)) ?_
+  rw [MvPolynomial.degreeOf_X, MvPolynomial.degreeOf_X]
+  rcases eq_or_ne v a with rfl | hva
+  · rw [if_pos rfl, if_neg hab]
+  · rw [if_neg hva]; split_ifs <;> simp
+
+/-- The squarefreeness Proposition 28's proof turns on, exhibited: **every** variable has
+degree at most one in `Q^F_S`.  This is Corollary 1 doing its work — the four monomials
+each pick one block from each of the two factors, so no variable can appear twice. -/
+lemma degreeOf_Q_coordFS_univ_le_one (v : Set (Bool × Bool)) :
+    (coordFS.Q Set.univ).degreeOf v ≤ 1 := by
+  rw [Q_coordFS_univ_eq]
+  refine (MvPolynomial.degreeOf_add_le v _ _).trans
+    (max_le ?_ (degreeOf_X_mul_X_le_one (vfst_ne_vsnd _ _) v))
+  refine (MvPolynomial.degreeOf_add_le v _ _).trans
+    (max_le ?_ (degreeOf_X_mul_X_le_one (vfst_ne_vsnd _ _) v))
+  exact (MvPolynomial.degreeOf_add_le v _ _).trans
+    (max_le (degreeOf_X_mul_X_le_one (vfst_ne_vsnd _ _) v)
+      (degreeOf_X_mul_X_le_one (vfst_ne_vsnd _ _) v))
+
+/-! ### Definition 33 collapses, and Proposition 26 says when it does not
+
+`monos^F_C(E)` is an *image*, so coincident monomials collapse: `S` has four points but
+`monos^F_{fst}(S)` has two elements, and `poly^F_{fst}(S)` accordingly has two summands
+rather than four.  That collapse is precisely what Proposition 26 has to rule out at
+`C = B`, and `mono_coordFS_basis_injective` is the instance of the ruling-out. -/
+
+lemma monos_singleton_fst_univ :
+    monos ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ
+      = ({X (vfst true), X (vfst false)} : Set (Poly (Bool × Bool))) := by
+  ext m
+  simp only [monos, Set.image_univ, Set.mem_range, Set.mem_insert_iff, Set.mem_singleton_iff]
+  constructor
+  · rintro ⟨⟨a, b⟩, rfl⟩
+    rw [mono_singleton_fst]
+    cases a
+    · exact Or.inr rfl
+    · exact Or.inl rfl
+  · rintro (rfl | rfl)
+    · exact ⟨(true, true), mono_singleton_fst _⟩
+    · exact ⟨(false, false), mono_singleton_fst _⟩
+
+lemma monos_singleton_snd_univ :
+    monos ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ
+      = ({X (vsnd true), X (vsnd false)} : Set (Poly (Bool × Bool))) := by
+  ext m
+  simp only [monos, Set.image_univ, Set.mem_range, Set.mem_insert_iff, Set.mem_singleton_iff]
+  constructor
+  · rintro ⟨⟨a, b⟩, rfl⟩
+    rw [mono_singleton_snd]
+    cases b
+    · exact Or.inr rfl
+    · exact Or.inl rfl
+  · rintro (rfl | rfl)
+    · exact ⟨(true, true), mono_singleton_snd _⟩
+    · exact ⟨(false, false), mono_singleton_snd _⟩
+
+/-- **Definition 34 computed, with the collapse visible.**  `S` has four points, yet
+`poly^F_{fst}(S)` is a sum of *two* monomials — the two blocks of `fstFactor`. -/
+lemma poly_singleton_fst_univ :
+    poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ
+      = (X (vfst true) + X (vfst false) : Poly (Bool × Bool)) := by
+  rw [poly, monos_singleton_fst_univ,
+    finsum_mem_pair (fun h => vfst_true_ne_false (MvPolynomial.X_injective h))]
+
+lemma poly_singleton_snd_univ :
+    poly ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ
+      = (X (vsnd true) + X (vsnd false) : Poly (Bool × Bool)) := by
+  rw [poly, monos_singleton_snd_univ,
+    finsum_mem_pair (fun h => vsnd_true_ne_false (MvPolynomial.X_injective h))]
+
+/-- A separating evaluation: four pairwise-distinct values on the four variables of
+`Poly^{coordFS}` that this file ever uses, chosen so that the four `B`-monomials evaluate
+to the four distinct products `10`, `14`, `15`, `21`. -/
+noncomputable def coordSep : Set (Bool × Bool) → ℝ := fun v =>
+  if v = vfst true then 2 else if v = vfst false then 3 else if v = vsnd true then 5 else 7
+
+lemma coordSep_vfst_true : coordSep (vfst true) = 2 := if_pos rfl
+
+lemma coordSep_vfst_false : coordSep (vfst false) = 3 := by
+  rw [coordSep, if_neg (Ne.symm vfst_true_ne_false), if_pos rfl]
+
+lemma coordSep_vsnd_true : coordSep (vsnd true) = 5 := by
+  rw [coordSep, if_neg (Ne.symm (vfst_ne_vsnd true true)),
+    if_neg (Ne.symm (vfst_ne_vsnd false true)), if_pos rfl]
+
+lemma coordSep_vsnd_false : coordSep (vsnd false) = 7 := by
+  rw [coordSep, if_neg (Ne.symm (vfst_ne_vsnd true false)),
+    if_neg (Ne.symm (vfst_ne_vsnd false false)), if_neg (Ne.symm vsnd_true_ne_false)]
+
+lemma eval_coordSep_mono_coordFS (s : Bool × Bool) :
+    MvPolynomial.eval coordSep (mono coordFS.B s) = coordSep (vfst s.1) * coordSep (vsnd s.2) := by
+  rw [mono_coordFS_basis]; simp only [map_mul, eval_X]
+
+/-- **The hypothesis of Proposition 26's proof, on the witness**: distinct points of `S`
+have distinct `B`-monomials, so `monos^F_B(S)` does *not* collapse the way
+`monos^F_{fst}(S)` does.  Proved by separating evaluation, not by citing Proposition 3. -/
+lemma mono_coordFS_basis_injective : Function.Injective (mono coordFS.B) := by
+  rintro ⟨a, b⟩ ⟨c, d⟩ h
+  have h' := congrArg (MvPolynomial.eval coordSep) h
+  rw [eval_coordSep_mono_coordFS, eval_coordSep_mono_coordFS] at h'
+  cases a <;> cases b <;> cases c <;> cases d <;>
+    simp only [coordSep_vfst_true, coordSep_vfst_false, coordSep_vsnd_true,
+      coordSep_vsnd_false] at h' <;>
+    first
+      | rfl
+      | norm_num at h'
+
+/-- Definition 34 at `C = B`, computed to the same explicit polynomial
+`Q_coordFS_univ_eq` computes `Q^F_S` to.  Together the two are a **cross-check pair** for
+Proposition 26 on this witness: neither mentions `Q_eq_poly`. -/
+lemma poly_coordFS_basis_univ_eq :
+    poly coordFS.B Set.univ =
+      (X (vfst true) * X (vsnd true) + X (vfst true) * X (vsnd false) +
+        X (vfst false) * X (vsnd true) + X (vfst false) * X (vsnd false) :
+          Poly (Bool × Bool)) := by
+  rw [poly, monos, finsum_mem_image mono_coordFS_basis_injective.injOn, finsum_mem_univ,
+    finsum_eq_sum_of_fintype]
+  simp only [mono_coordFS_basis, Fintype.sum_prod_type, Fintype.sum_bool]
+  ring
+
+/-- **Proposition 26 cross-checked** on `coordFS` at `E = S`: the two sides are computed
+separately and agree.  This declaration does not mention `Q_eq_poly`. -/
+lemma prop26_coordFS_crosscheck : coordFS.Q Set.univ = poly coordFS.B Set.univ :=
+  Q_coordFS_univ_eq.trans poly_coordFS_basis_univ_eq.symm
+
+/-- Proposition 26 **applied** on `coordFS` at `E = S` — the endpoint instantiated, which
+is a different claim from cross-checking it, and is recorded separately for that reason. -/
+lemma prop26_coordFS_applied : coordFS.Q Set.univ = poly coordFS.B Set.univ :=
+  coordFS.Q_eq_poly Set.univ
+
+/-! ### Definition 35: the irreducible parts of `S` and of the diagonal
+
+At `E = S` the two coordinate factors are independent and `Irr^F(S)` is the two
+singletons.  Note that Definition 35's minimality clause is *vacuous* at a singleton: the
+only strict subset of `{b}` is `∅`, which is not nonempty — so what does the work at `S`
+is ruling out `C = B`, which fails minimality because `{fstFactor}` already fixes `S`.
+
+On the diagonal `Ediag = {p | p.1 = p.2}` the picture inverts: neither coordinate alone
+fixes `Ediag` (`χ^F_{fst}(Ediag, Ediag) ∋ (true, false) ∉ Ediag`), so the only irreducible
+part is the whole basis.  This is the §5 shadow of the §4 fact that restricting to `Ediag`
+entangles two orthogonal factors. -/
+
+lemma subset_coordFS_basis_cases {C : Set (Setoid (Bool × Bool))} (h : C ⊆ coordFS.B) :
+    C = ∅ ∨ C = {fstFactor} ∨ C = {sndFactor} ∨ C = coordFS.B := by
+  by_cases hf : fstFactor ∈ C <;> by_cases hs : sndFactor ∈ C
+  · refine Or.inr (Or.inr (Or.inr (Set.Subset.antisymm h ?_)))
+    rintro x (rfl | rfl)
+    exacts [hf, hs]
+  · refine Or.inr (Or.inl (Set.Subset.antisymm ?_ (Set.singleton_subset_iff.2 hf)))
+    intro x hx
+    rcases h hx with rfl | rfl
+    · rfl
+    · exact absurd hx hs
+  · refine Or.inr (Or.inr (Or.inl (Set.Subset.antisymm ?_ (Set.singleton_subset_iff.2 hs))))
+    intro x hx
+    rcases h hx with rfl | rfl
+    · exact absurd hx hf
+    · rfl
+  · refine Or.inl (Set.eq_empty_iff_forall_notMem.2 fun x hx => ?_)
+    rcases h hx with rfl | rfl
+    · exact hf hx
+    · exact hs hx
+
+lemma chimeraImage_univ_univ (C : Set (Setoid (Bool × Bool))) :
+    coordFS.chimeraImage C Set.univ Set.univ = Set.univ :=
+  Set.eq_univ_iff_forall.2 fun u =>
+    ⟨u, Set.mem_univ u, u, Set.mem_univ u, coordFS.chimera_self C u⟩
+
+lemma singleton_mem_irr_univ {b : Setoid (Bool × Bool)} (hb : b ∈ coordFS.B) :
+    ({b} : Set (Setoid (Bool × Bool))) ∈ coordFS.irr Set.univ := by
+  refine ⟨⟨b, rfl⟩, Set.singleton_subset_iff.2 hb, chimeraImage_univ_univ _, ?_⟩
+  intro D hD hne
+  rw [Set.ssubset_singleton_iff] at hD
+  exact absurd hne (hD ▸ Set.not_nonempty_empty)
+
+/-- Definition 35 is inhabited: `{fstFactor}` is an irreducible part of `S`. -/
+lemma mem_irr_singleton_fst_univ :
+    ({fstFactor} : Set (Setoid (Bool × Bool))) ∈ coordFS.irr Set.univ :=
+  singleton_mem_irr_univ fstFactor_mem
+
+/-- …and so is `{sndFactor}`, so `Irr^F(S)` has more than one member. -/
+lemma mem_irr_singleton_snd_univ :
+    ({sndFactor} : Set (Setoid (Bool × Bool))) ∈ coordFS.irr Set.univ :=
+  singleton_mem_irr_univ sndFactor_mem
+
+/-- **Definition 35 computed at `E = S`**: `Irr^F(S) = {{fstFactor}, {sndFactor}}`.  The
+whole basis is excluded by minimality, and `∅` by nonemptiness. -/
+lemma irr_coordFS_univ : coordFS.irr Set.univ = {{fstFactor}, {sndFactor}} := by
+  ext C
+  constructor
+  · rintro ⟨⟨c, hc⟩, hsub, -, hmin⟩
+    rcases subset_coordFS_basis_cases hsub with rfl | rfl | rfl | rfl
+    · exact absurd hc (Set.notMem_empty c)
+    · exact Or.inl rfl
+    · exact Or.inr rfl
+    · refine absurd (chimeraImage_univ_univ ({fstFactor} : Set (Setoid (Bool × Bool))))
+        (hmin {fstFactor} ⟨Set.singleton_subset_iff.2 fstFactor_mem, ?_⟩ ⟨fstFactor, rfl⟩)
+      intro hcon
+      exact fstFactor_ne_sndFactor (Set.mem_singleton_iff.1 (hcon sndFactor_mem)).symm
+  · rintro (rfl | rfl)
+    · exact mem_irr_singleton_fst_univ
+    · exact mem_irr_singleton_snd_univ
+
+lemma Ediag_nonempty : Ediag.Nonempty := ⟨(false, false), rfl⟩
+
+lemma chimeraImage_basis_Ediag : coordFS.chimeraImage coordFS.B Ediag Ediag = Ediag := by
+  ext u
+  constructor
+  · rintro ⟨t, ht, r, -, rfl⟩
+    rwa [coordFS.chimera_basis]
+  · intro hu
+    exact ⟨u, hu, (false, false), rfl, coordFS.chimera_basis _ _⟩
+
+/-- Restricting to the diagonal entangles: `χ^F_{fst}(Ediag, Ediag)` contains
+`(true, false)`, which is not on the diagonal. -/
+lemma chimeraImage_singleton_fst_Ediag_ne :
+    coordFS.chimeraImage ({fstFactor} : Set (Setoid (Bool × Bool))) Ediag Ediag ≠ Ediag := by
+  intro h
+  have hmem : ((true, false) : Bool × Bool) ∈
+      coordFS.chimeraImage ({fstFactor} : Set (Setoid (Bool × Bool))) Ediag Ediag :=
+    ⟨(true, true), rfl, (false, false), rfl, coordFS_chimera_corners.2.1⟩
+  rw [h] at hmem
+  exact Bool.noConfusion (hmem : (true : Bool) = false)
+
+lemma chimeraImage_singleton_snd_Ediag_ne :
+    coordFS.chimeraImage ({sndFactor} : Set (Setoid (Bool × Bool))) Ediag Ediag ≠ Ediag := by
+  intro h
+  have hmem : ((false, true) : Bool × Bool) ∈
+      coordFS.chimeraImage ({sndFactor} : Set (Setoid (Bool × Bool))) Ediag Ediag :=
+    ⟨(true, true), rfl, (false, false), rfl, coordFS_chimera_corners.2.2.1⟩
+  rw [h] at hmem
+  exact Bool.noConfusion (hmem : (false : Bool) = true)
+
+/-- **Definition 35 computed at `E = Ediag`**: `Irr^F(Ediag) = {B}`.  So `Irr^F` is not a
+constant of `F` — it genuinely depends on `E`, and the dependence is the §4 entanglement
+seen through §5. -/
+lemma irr_coordFS_Ediag : coordFS.irr Ediag = {coordFS.B} := by
+  ext C
+  simp only [Set.mem_singleton_iff]
+  constructor
+  · rintro ⟨⟨c, hc⟩, hsub, hchi, -⟩
+    rcases subset_coordFS_basis_cases hsub with rfl | rfl | rfl | rfl
+    · exact absurd hc (Set.notMem_empty c)
+    · exact absurd hchi chimeraImage_singleton_fst_Ediag_ne
+    · exact absurd hchi chimeraImage_singleton_snd_Ediag_ne
+    · rfl
+  · rintro rfl
+    refine ⟨⟨fstFactor, fstFactor_mem⟩, subset_rfl, chimeraImage_basis_Ediag, ?_⟩
+    intro D hD hne
+    rcases subset_coordFS_basis_cases hD.1 with rfl | rfl | rfl | rfl
+    · exact absurd hne Set.not_nonempty_empty
+    · exact chimeraImage_singleton_fst_Ediag_ne
+    · exact chimeraImage_singleton_snd_Ediag_ne
+    · exact absurd subset_rfl hD.2
+
+/-! ### The factorization of `Q^F_S`, computed and applied -/
+
+/-- **Proposition 30's factorization at `E = S`, computed.**  Both sides are expanded from
+Definitions 31 and 34 and compared as polynomials; this declaration does not mention
+`Q_eq_finprod_poly_irr`. -/
+lemma Q_coordFS_univ_eq_mul_poly :
+    coordFS.Q Set.univ
+      = poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ
+        * poly ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ := by
+  rw [Q_coordFS_univ_eq, poly_singleton_fst_univ, poly_singleton_snd_univ]
+  ring
+
+lemma singleton_fst_ne_singleton_snd :
+    ({fstFactor} : Set (Setoid (Bool × Bool))) ≠ {sndFactor} := by
+  intro h
+  exact fstFactor_ne_sndFactor (Set.mem_singleton_iff.1 (h ▸ Set.mem_singleton fstFactor))
+
+/-- Proposition 30 **applied** at `E = S`, using the computed `Irr^F(S)`.  It lands on the
+same product `Q_coordFS_univ_eq_mul_poly` computes, so the two cross-check the endpoint. -/
+lemma prop30_coordFS_univ_applied :
+    coordFS.Q Set.univ
+      = poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ
+        * poly ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ := by
+  rw [coordFS.Q_eq_finprod_poly_irr ⟨(true, true), Set.mem_univ _⟩, irr_coordFS_univ,
+    finprod_mem_pair singleton_fst_ne_singleton_snd]
+
+/-- Proposition 30 **applied** at `E = Ediag`, where the product has a single factor: it
+degenerates into Proposition 26's statement at `Ediag`, which is a consistency check
+between two endpoints rather than a factorization. -/
+lemma prop30_coordFS_Ediag_applied : coordFS.Q Ediag = poly coordFS.B Ediag := by
+  rw [coordFS.Q_eq_finprod_poly_irr Ediag_nonempty, irr_coordFS_Ediag, finprod_mem_singleton]
+
+/-- **Proposition 28's conclusion exhibited, computed.**  `poly^F_{fst}(S)` divides
+`Q^F_S`, and it is `r · poly^F_C(S)` for `r = 1` and `C = {fstFactor} ⊆ B` — so the
+proposition's existential is satisfiable at a nondegenerate divisor.  Nothing here cites
+`eq_C_mul_poly_of_dvd_Q`. -/
+lemma dvd_Q_coordFS_univ_prop28_shape :
+    poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ ∣ coordFS.Q Set.univ ∧
+      ∃ (r : ℝ) (C : Set (Setoid (Bool × Bool))), C ⊆ coordFS.B ∧
+        poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ
+          = MvPolynomial.C r * poly C Set.univ :=
+  ⟨⟨_, Q_coordFS_univ_eq_mul_poly⟩,
+    1, {fstFactor}, singleton_fstFactor_subset, by rw [map_one, one_mul]⟩
+
+/-- **Proposition 31's conclusion is not vacuous on the witness**: `poly^F_{fst}(S)` is not
+a unit, so calling it irreducible says something.  (In `Poly^F` over `ℝ` the units are the
+nonzero constants; this polynomial has no constant term, so evaluating every variable at
+`0` gives `0`.) -/
+lemma not_isUnit_poly_singleton_fst_univ :
+    ¬ IsUnit (poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ) := by
+  intro h
+  have h0 : MvPolynomial.eval (fun _ => (0 : ℝ))
+      (poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ) = 0 := by
+    rw [poly_singleton_fst_univ]
+    simp
+  have hu := h.map (MvPolynomial.eval (fun _ => (0 : ℝ)))
+  rw [h0] at hu
+  exact zero_ne_one (isUnit_zero_iff.1 hu)
 
 end Examples
 end FiniteFactoredSets

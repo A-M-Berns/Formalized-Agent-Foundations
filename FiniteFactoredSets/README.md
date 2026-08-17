@@ -5,12 +5,14 @@ Formalization of Scott Garrabrant, *Temporal Inference with Finite Factored Sets
 `notes/2109.11513-main.tex` is the exact arXiv source and `notes/2109.11513.pdf` the
 matching PDF.
 
-**Status: in progress — §2, §3 and §4 formalized (51 of the 96 in-scope nodes), with
-non-vacuity discharged by construction: four factored sets are built, and the §2.5, §3 and
-§4 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`, `Entangled`, `Before`,
-`StrictlyBefore`, `Subpartition`, `GeneratesSub`, `historySub`, `OrthogonalSub`,
-`OrthogonalGivenSet`, `OrthogonalGiven` — is computed over them rather than merely
-defined.**
+**Status: in progress — §2, §3, §4 and §5.1–§5.2 formalized (63 of the 96 in-scope nodes
+carry a Lean declaration of ours; two more, §5.1's Definitions 29 and 30, are rendered by
+Mathlib vocabulary and are tabulated below with the six such nodes of §2.1), with
+non-vacuity discharged by construction: four factored sets are built, and the §2.5, §3,
+§4 and §5.1–§5.2 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`,
+`Entangled`, `Before`, `StrictlyBefore`, `Subpartition`, `GeneratesSub`, `historySub`,
+`OrthogonalSub`, `OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`, `monos`, `poly`,
+`irr` — is computed over them rather than merely defined.**
 Nothing here is complete, and this file says what is claimed and what is not.
 
 ## What is claimed
@@ -29,15 +31,21 @@ Nothing here is complete, and this file says what is claimed and what is not.
 | 4.1 | Subpartitions, restriction, generating a subpartition | Definitions 20, 21, 22, 23; Propositions 20, 21 |
 | 4.2 | History of a subpartition | Definition 24; Propositions 22, 23; Lemmas 1, 2 |
 | 4.3 | Conditional orthogonality, the semigraphoid axioms | Definitions 25, 26, 27; Propositions 24, 25; Theorem 2 |
+| 5.1 | The polynomial ring, characteristic polynomials, `factor1` and `factor2` | Definitions 28, 31, 32, 33, 34; Propositions 26, 27, 28 |
+| 5.2 | Factoring characteristic polynomials into irreducibles | Definition 35; Propositions 29, 30, 31 |
+
+§5.1's Definitions 29 (evaluation) and 30 (support) are the two nodes of these sections
+with no declaration of ours; they are in the Mathlib-rendered table below, which is why
+the rows above sum to 63 rather than 65.
 
 Five of those nodes are stated in halves — four in two, one in three — and every half is
-carried, so those nodes appear in the inventory more than once. The 51 nodes above are
-cited by 57 annotations:
+carried, so those nodes appear in the inventory more than once. The 63 nodes above are
+cited by 69 annotations:
 
 | Node | Carriers |
 |---|---|
 | Definition 13 (chimera) | `chimera` is `χ^F_C(s,t)`; `chimeraImage` is the setwise `χ^F_C(T,R)` that §3 onward quantifies over |
-| Definition 15 (size, dimension) | `size` is `\|S\|`; `dim` is `dim(F)`. Its third sentence — "finite" / "finite-dimensional" — has no carrier at all: under `dd:finiteness-minimal` those are the typeclass hypotheses `[Finite S]` and `Finite F.B`, and they get a row in the Mathlib-rendered table below once the layered finite-`S` notion lands at §5 |
+| Definition 15 (size, dimension) | `size` is `\|S\|`; `dim` is `dim(F)`. Its third sentence — "finite" / "finite-dimensional" — has no carrier at all: under `dd:finiteness-minimal` those are the typeclass hypotheses `[Finite S]` and `Finite F.B`, and they now have a row in the Mathlib-rendered table below, `[Finite S]` having become load-bearing at §5.1 |
 | Definition 18 (orthogonality) | `Orthogonal` is `X ⊥^F Y`; `Entangled` is the second sentence's negation of it |
 | Definition 19 (time) | `Before` is `≤^F`; `StrictlyBefore` is `<^F` |
 | Definition 25 (subpartition orthogonality and time) | three clauses, three carriers: `OrthogonalSub` is `⊥^F` on subpartitions, `BeforeSub` is `≤^F`, `StrictlyBeforeSub` is `<^F` |
@@ -49,16 +57,19 @@ Every one of those carries a `Paper node:` docstring line and an entry in
 
 ## What is not claimed
 
-§5 (polynomials and probability, including the Fundamental Theorem), §6 (inferring
-time), and §7's in-scope material have **no Lean statements yet**. The trust-surface
-guide reports the shortfall by kind rather than listing it.
+§5.3 onwards (characteristic polynomials and orthogonality, probability, and the
+Fundamental Theorem), §6 (inferring time), and §7's in-scope material have **no Lean
+statements yet**. The trust-surface guide reports the shortfall by kind rather than
+listing it.
 
 An earlier feasibility spike proved several §5 results — the disjoint-support coefficient
 lemma behind Proposition 28, multilinearity of `Q^F_E`, and the Fundamental Theorem's
 "vanishes on an open set" step — against a throwaway structure. That file has been
 retired rather than kept alongside the real one; the code is preserved at commit
-`19a2254` and its findings are in `notes/spike-2026-08-15.md`. It is to be re-landed
-against `FactoredSet` in the §5 stage.
+`19a2254` and its findings are in `notes/spike-2026-08-15.md`. The first of the three has
+been re-landed against `FactoredSet` as `coeff_add_mul_of_split` in `Polynomial.lean`
+(generic in the index type, and upstreamable); the third belongs to §5.3 and is still to
+come.
 
 **Scope (settled 2026-08-16): 96 of 98 nodes.** In: §1–§6 in full, §7's Definitions
 46–50, and Conjecture 1 stated as a `Prop` and deliberately not proved. Out: Examples 3
@@ -68,9 +79,13 @@ fundamental theorem to fail in (Example 3 is its intended counterexample).
 A consequence worth knowing before reading any §3–§4 statement: **finiteness is kept
 minimal.** `FactoredSet` carries no `Fintype S`, and §3–§4 are stated with `Finite B`
 only, because none of that material touches polynomials. `|S|` finite enters only at §5,
-where `Q^F_E = ∑_{s ∈ E} ∏_{b ∈ B} [s]_b` stops being a polynomial once `S` is infinite.
-That is what makes Conjecture 1 — the finite-*dimensional* fundamental theorem — statable
-here at all. See `KNOWLEDGE.md` for its status in the literature.
+where `Q^F_E = ∑_{s ∈ E} ∏_{b ∈ B} [s]_b` stops being a polynomial once `S` is infinite —
+and with §5.1–§5.2 landed it now does: `[Finite S]` sits on every §5 *proved* statement
+and on none of the §5 *definitions*, which is why a client can write `Q^F_E` over an
+infinite `S` and simply have no theorem of ours apply to the result. The exact list is in
+the "Finiteness" section of `API.lean`. That boundary is also what makes Conjecture 1 — the
+finite-*dimensional* fundamental theorem — statable here at all. See `KNOWLEDGE.md` for
+its status in the literature.
 
 ## Nodes rendered by Mathlib vocabulary, with no declaration of ours
 
@@ -85,17 +100,35 @@ here rather than inventoried — there is no declaration of this project's to ax
 | Definition 6 (finer / coarser) | Mathlib's `≤` on `Setoid` | `dd:order-flip` |
 | Definition 7 (`Dis_S`, `Ind_S`) | `⊥`, `⊤` | `dd:order-flip` |
 | Definition 9 (`∏(B)`) | the dependent product `(b : B) → Quotient b` | `dd:quotient` |
+| Definition 15, third sentence (finite / finite-dimensional factored set) | the typeclass hypotheses `[Finite S]` and `Finite F.B`, carried per statement | `dd:finiteness-minimal` |
+| Definition 29 (`p(f)`, evaluation) | `MvPolynomial.eval f p` | `dd:poly` |
+| Definition 30 (`supp(p)`, support) | `MvPolynomial.vars p` | `dd:poly` |
+| Proposition 31's "irreducible" (no factorization into two polynomials of nonempty support) | Mathlib's `Irreducible` in `Poly S`; over `ℝ` its units are the nonzero constants, so the two readings coincide | `dd:poly` |
 | Proposition 2, first sentence (`≥_S` is a partial order) | Mathlib's `PartialOrder (Setoid S)` instance | `dd:order-flip` |
 
-That last row is the only *partial* entry in the table: `bot_le_and_le_top` carries the
-`Proposition 2` annotation but states only the proposition's second sentence (the `Dis`/`Ind`
-bounds). The first sentence is Mathlib's instance. Anyone reading the trust-surface card
-will see the full printed proposition beside a Lean statement covering half of it; that is
-why the row is here.
+Six of those rows are whole nodes (Definitions 1, 2, 5, 6, 7, 9); the other four are
+*partial* entries — a clause of a node whose remaining clauses do have a carrier, recorded
+here so that nothing in a printed node is silently unaccounted for:
 
-It is not to be confused with the five multi-carrier nodes tabulated above (Definitions 13,
-15, 18, 19, 25): those are nodes stated in halves, with *every* half carried, not nodes
-stated in part.
+* **Proposition 2, first sentence.** `bot_le_and_le_top` carries the `Proposition 2`
+  annotation but states only the proposition's second sentence (the `Dis`/`Ind` bounds).
+  Anyone reading the trust-surface card will see the full printed proposition beside a Lean
+  statement covering half of it; that is why the row is here.
+* **Definition 15, third sentence.** "Finite" and "finite-dimensional" are not a
+  definition this library makes: under `dd:finiteness-minimal` they are the typeclass
+  hypotheses `[Finite S]` and `Finite F.B`, carried on the individual statements that use
+  them rather than bundled into a `FiniteFactoredSet` structure. `[Finite S]` is what §5.1
+  and §5.2 carry throughout; §3–§4 carry `Finite F.B` only.
+* **Definition 29 and Definition 30.** Evaluation and support are `MvPolynomial.eval` and
+  `MvPolynomial.vars` — whole nodes, but of §5.1 rather than §2.1.
+* **Proposition 31's word "irreducible."** The proposition itself is carried
+  (`irreducible_poly_of_mem_irr`); it is the *meaning* of the word that is Mathlib's, and
+  the two readings agreeing is a fact about `ℝ` worth stating rather than assuming.
+
+None of this is to be confused with the five multi-carrier nodes tabulated above
+(Definitions 13, 15, 18, 19, 25): those are nodes stated in halves, with *every* half
+carried, not nodes stated in part. Definition 15 appears in both lists, because two of its
+sentences have carriers and the third does not.
 
 ## Modeling decisions
 
@@ -111,6 +144,14 @@ Defined in full in the glossary at `FiniteFactoredSets.lean`. In brief:
   notation — is Mathlib's `sInf`. The library uses Mathlib's convention throughout and
   never introduces the paper's glyphs.
 * **`dd:quotient`** — Definition 9's `∏(B)` is the dependent product of the quotients.
+* **`dd:poly`** — Definition 28's `Poly^F` is `MvPolynomial (Set S) ℝ`. The paper's
+  variables are the subsets of `S`, and under `dd:partition` a block `[s]_b` *is* the set
+  `part b s`, so a block is a variable of the ring verbatim — no indexing type is
+  introduced and no correspondence has to be maintained. `Poly` is an `abbrev`, so the
+  whole `MvPolynomial` API applies to it unchanged. Sums and products over sets
+  (`∑_{s ∈ E}`, `∏_{b ∈ B}`) are `finsum`/`finprod`, which is what lets the *definitions*
+  carry no finiteness while `[Finite S]` sits on exactly the statements the paper makes
+  for finite factored sets. Irreducibility is Mathlib's `Irreducible` in this ring.
 
 There are **no type-`(c)` modeling substitutions** so far: nothing weaker stands in for
 one of the paper's objects.
@@ -179,6 +220,34 @@ coordinate determines the second. Every declaration below is inventoried:
 | Restriction can **entangle**, so §4.3 is not §3.3 | `not_orthogonalGivenSet_Ediag`, `Ediag_mem_xorPart_classes`, `not_orthogonalGiven_fst_snd_xorPart`, `orthogonalGiven_nondegenerate` | `OrthogonalGiven` being silently total, or implied by Definition 18. `fstFactor ⊥^F sndFactor` holds, yet conditioning on `xorPart` fails — and Proposition 24 explains only the `Ind_S` case |
 | Proposition 25 and Theorem 2 hold and fail on a witness | `orthogonalGiven_fst_snd_top`, `orthogonalGiven_fst_fst_fst`, `not_orthogonalGiven_fst_fst_top`, `thm2_decomposition_coordFS`, `thm2_weakUnion_coordFS` | `X ⊥^F X \| Z` being trivially true or trivially false, and Theorem 2's clauses never being instantiated |
 | Definitions 26–27 have degenerate corners a client should know about | `orthogonalGivenSet_empty`, `orthogonalGiven_bot` | reading `OrthogonalGivenSet` as always meaningful. Conditioning on `∅`, or on `Dis_S`, makes every pair orthogonal — faithful to the paper (a block is never empty), but a trap |
+
+§5.1–§5.2 adds a third layer — the ring `Poly^F`, the characteristic polynomial `Q^F_E`,
+the monomials `mono`/`monos`/`poly`, and the irreducible parts `Irr^F(E)` — and again the
+§2–§4 witnesses touch none of it. The same file therefore computes `coordFS`'s
+characteristic polynomial outright: `Q^{coordFS}_S` is the four-term multilinear
+polynomial `∑_{a,b} X_{[·]₁=a} · X_{[·]₂=b}` over the four variables `vfst true`,
+`vfst false`, `vsnd true`, `vsnd false`. `[Finite S]` — the hypothesis §5 introduces and
+§2–§4 never needed — is discharged by instance search on `Bool × Bool`. Every declaration
+below is inventoried:
+
+| Claim | Declarations | What it rules out |
+|---|---|---|
+| Definition 31 is computed, not just written down | `vfst`, `vsnd`, `Q_coordFS_univ_eq`, `Q_coordFS_univ_ne_zero`, `degreeOf_Q_coordFS_univ_le_one` | `Q^F_E` being an unevaluated `finsum` of `finprod`s, or being `0`. The `finsum`/`finprod` are eliminated, the polynomial evaluates to `4` at all-ones, and every variable has degree ≤ 1 in it — Corollary 1 doing the work Proposition 28's proof needs |
+| Definition 33's image *collapses*, and Proposition 26 is the statement that it does not at `C = B` | `mono_singleton_fst_true_false`, `poly_singleton_fst_univ`, `poly_singleton_snd_univ`, `mono_coordFS_basis_injective` | reading `monos^F_C(E)` as indexed by `E`. `S` has four points but `poly^F_{fst}(S)` has *two* summands; at `C = B` the collapse does not happen, and `mono_coordFS_basis_injective` proves that on the witness by separating evaluation rather than by citing Proposition 3 |
+| Proposition 26 is cross-checked, and separately applied | `poly_coordFS_basis_univ_eq`, `prop26_coordFS_crosscheck`, `prop26_coordFS_applied` | a witness that "checks" an endpoint by applying it. `Q_coordFS_univ_eq` and `poly_coordFS_basis_univ_eq` compute their own sides to the same explicit polynomial and neither mentions `Q_eq_poly`, so the cross-check re-derives Proposition 26 here; the application is recorded as the separate claim it is |
+| Definition 35 takes different values at different `E` | `mem_irr_singleton_fst_univ`, `mem_irr_singleton_snd_univ`, `irr_coordFS_univ`, `chimeraImage_singleton_fst_Ediag_ne`, `chimeraImage_singleton_snd_Ediag_ne`, `irr_coordFS_Ediag` | `Irr^F` being empty, a singleton by construction, or independent of `E`. `Irr^{coordFS}(S) = {{fstFactor}, {sndFactor}}` while `Irr^{coordFS}(Ediag) = {B}` — the §5 shadow of the §4 fact that restricting to the diagonal entangles two orthogonal factors. Note the minimality clause of Definition 35 is *vacuous* at a singleton, `∅` being the only strict subset and not nonempty |
+| Proposition 30's factorization is cross-checked, and separately applied | `Q_coordFS_univ_eq_mul_poly`, `prop30_coordFS_univ_applied`, `prop30_coordFS_Ediag_applied` | the same defect as above one section on. The factorization `Q^F_S = poly^F_{fst}(S) · poly^F_{snd}(S)` is obtained by expanding both sides from Definitions 31 and 34, mentioning neither `Q_eq_finprod_poly_irr` nor `Irr^F`; the applications land on the same product, and at `Ediag` degenerate into Proposition 26's statement |
+| Propositions 28 and 31 have satisfiable, nondegenerate instances | `dvd_Q_coordFS_univ_prop28_shape`, `not_isUnit_poly_singleton_fst_univ` | Proposition 28 quantifying over divisors that do not exist, and Proposition 31 calling units irreducible. A real divisor of `Q^F_S` is exhibited with Proposition 28's `r · poly^F_C(E)` shape at `r = 1`, `C = {fstFactor}` — computed, not read off the endpoint — and that polynomial is not a unit |
+
+Three of those rows carry a discipline worth naming, since it is the defect an earlier
+audit round caught here: **a witness advertised as a cross-check must not mention the
+endpoint it checks.** `prop26_coordFS_crosscheck`, `Q_coordFS_univ_eq_mul_poly` and
+`dvd_Q_coordFS_univ_prop28_shape` are axiom-clean at
+`[propext, Classical.choice, Quot.sound]` and stay clean no matter what happens to the
+§5 proofs; `prop26_coordFS_applied`, `prop30_coordFS_univ_applied` and
+`prop30_coordFS_Ediag_applied` are the honest applications and inherit whatever those
+proofs depend on. Reading `#print axioms` on the two groups is the mechanical check that
+the separation is real.
 
 One friction point a client will meet, recorded at the site: `Finite F.B` — the
 hypothesis every §3.2–§3.4 theorem carries (Propositions 10 and 11 need none, and nothing
