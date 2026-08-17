@@ -77,6 +77,23 @@ standing choices (each also documented in `FactoredSpaces/README.md`):
   distance `euclDist`: every `Q ∈ S` has an `ε`-ball within `Δ^F(Ω)` contained in `S`.
   In a metric subspace that *is* openness, and it is the form Lemma 6.5 consumes.
 
+* `dd:cpd` — "`P` factorizes over `G`" (§5.2, eq. (4)) is the Koller–Friedman form the
+  paper follows: `P(x) = ∏_v φ_v(x_v | x_pa(v))` for some family `φ` of conditional
+  probability distributions, one per node and parent configuration (`FactorizesOverDAG`).
+  Reading `P(x_v | x_pa(v))` as `P`'s own conditionals is undefined at parent
+  configurations of probability zero, and that is exactly where Lemma 5.3's "bijective"
+  fails (`notes/paper-errata.md`, E5); for strictly positive `P` the CPDs are the
+  conditionals (`condCPD`) and Lemma 5.3 holds as stated (`tauPos_bijective`).
+
+* `dd:dsep` — the paper uses d-separation without defining it. `Digraph.DSeparated` is
+  the textbook notion over trails (distinct-vertex skeleton paths, colliders = interior
+  vertices with both trail edges incoming) with the *endpoint convention*: endpoints are
+  non-colliders and block when in `Z`, so the zero-edge trail `v — v` is blocked iff
+  `v ∈ Z`. This is the reading the paper's own proof of Proposition 5.8 uses, and the only
+  one under which Proposition 5.5 holds for arbitrary `V₁, V₂, V₃` (E8). Proposition 5.5
+  is proved directly (`ConditionalHistory.lean`, `ActiveTrails.lean`), not through the
+  cited soundness/completeness of d-separation.
+
 * `dd:finiteness-minimal` — as in the sibling formalizations: finiteness and
   decidability hypotheses are carried only where they are used.
 -/
