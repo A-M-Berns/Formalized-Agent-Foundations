@@ -89,3 +89,9 @@ import FactoredSpaces.LocalToGlobal
 import FactoredSpaces.Completeness
 import FactoredSpaces.MainTheorem
 import FactoredSpaces.Semigraphoid
+import FactoredSpaces.BayesNet
+import FactoredSpaces.DSeparation
+import FactoredSpaces.ConditionalHistory
+import FactoredSpaces.ActiveTrails
+import FactoredSpaces.Separation
+import FactoredSpaces.PerfectMap

@@ -54,7 +54,7 @@ lemma exists_ne_of_mem_history [Nonempty α] {X : Pt Ω → α} {i : I}
     (hi : i ∈ history X (Set.univ : Set (Pt Ω))) :
     ∃ a b : Pt Ω, (∀ j, j ≠ i → a j = b j) ∧ a i ≠ b i := by
   by_contra h
-  push_neg at h
+  push Not at h
   have hgen : Generates (Finset.univ.erase i) X (Set.univ : Set (Pt Ω)) := by
     rw [generates_iff]
     refine ⟨disintegrates_univ_set _, fun a _ b _ hab => ?_⟩
@@ -86,7 +86,7 @@ lemma mem_history_bg_of_mem_history [Nonempty α] {X : Pt Ω → α} {i : I}
 Paper node: Lemma 4.12 (§4.4). -/
 theorem structIndep_of_before {X : Pt Ω → α} {Y : Pt Ω → β} (h : Before X Y)
     (Z : Pt Ω → γ) (hYZ : StructIndep Y Z) : StructIndep X Z :=
-  Finset.disjoint_left.mpr fun i hi hiZ => (Finset.disjoint_left.mp hYZ) (h hi) hiZ
+  Finset.disjoint_left.mpr fun _ hi hiZ => (Finset.disjoint_left.mp hYZ) (h hi) hiZ
 
 /-- **Structural time and structural independence**, the direction "if `Y ⊥ Z ⟹ X ⊥ Z`
 for every variable `Z`, then `X ≤ Y`".  Only the background variables `U_i` are needed
