@@ -123,4 +123,10 @@ NON_PAPER_LIBRARIES = {
     "ProvabilityLogic": "vendored subset of FormalizedFormalLogic/ProvabilityLogic "
                         "(pinned in lakefile.lean) — dependency code, not a paper "
                         "formalized by this project",
+    "PFR": "vendored subset of teorth/pfr @ 01c9b66 (Apache-2.0) supplying Shannon "
+           "information theory, which the pinned Mathlib lacks — dependency code, not a "
+           "paper formalized by this project; see ShannonInformation/vendor/PROVENANCE.md",
+    "ShannonInformation": "shared, paper-neutral consumer surface over the vendored PFR "
+                          "entropy substrate — infrastructure used by paper libraries, "
+                          "not itself a paper; see ShannonInformation/README.md",
 }
