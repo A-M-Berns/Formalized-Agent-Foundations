@@ -191,6 +191,24 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   `ℝ`). `history_eq_empty_iff` (`H(X|C) = ∅ ↔ X` constant on `C`) and
   `condIndepVar_map_famJoint` are general facts hoisted there.
 
+* **Oriented walks (`dd:owalk`, `ActiveTrails.lean`).** `Digraph.Walk`/`Trail` read collider
+  status off `verts[k±1]?` — right for the *statement*, bad to construct in. All proofs run
+  in the inductive `Digraph.OWalk` (`nil`/`consF`/`consB` recording orientation), converting
+  once at each boundary (`exists_owalk_of_chain` in, `OWalk.toTrail` out); the bridge
+  `activeFrom_iff_activeBi` is the only place acyclicity is used (a `Skel` edge fixes its
+  orientation only in a DAG). Key: `ActiveBi p Z b c := p.ActiveOpen Z b ∧ vertCond Z (c &&
+  p.endDir b) t` (derived, not recursive) gives one-line `activeBi_append`/`activeBi_reverse`.
+  Hard-direction certificate: `∃ p : OWalk s u, p.ActiveBi Z false true` (the memo's "leaves
+  `u` forwards" is unsatisfiable when `u = w ∈ Z` is reached as a collider). Easy direction:
+  one structural induction with `reachCond Z S b u` — no collider/fork enumeration. Walk→trail
+  shortcut is ~30 lines given `OWalk.colliderOK_of_activeOpen`; the real cost was the
+  `Walk ↔ OWalk` bridge (~110 lines).
+* Relocation debts (harmless, for a consolidation pass): `Digraph.depth`/`AncClosed` and the
+  local-Markov `dSeparated_singleton_parents` sit in `PerfectMap.lean`; several `unblockedAnc`/
+  `zClosure` facts sit in `ActiveTrails.lean` rather than `ConditionalHistory.lean`;
+  `Digraph.IsAcyclic.not_adj_symm` belongs next to `IsAcyclic`; `Digraph.prevOf` is a pure
+  list helper in the `Digraph` namespace.
+
 ## Intentional deviations from the paper
 
 * **`tauInv_condCPD_strictlyPositive` takes `hG : G.IsAcyclic`** (non-paper helper): false
@@ -289,6 +307,10 @@ load-bearing (E8).
   with pattern-matching instances (`inferInstanceAs`); no constant-`Val` fallback needed.
 * Concrete finite witnesses over dependent value families cost MORE than general theorems
   with good lemma support (Prop 5.8(2) witness ≈360 lines vs the I-map theorem ≈140).
+* `cases h : e with | false | true` on a `Bool` expression rewrites the goal, not
+  hypotheses; `rintro ⟨-, -, -, hx, -⟩` clearing an existential witness renames later
+  hypotheses; on an indexed inductive use `| @consF u v w h p ih` to name implicit vertices;
+  `subst hh : v = s` eliminates `s`. `List.isChain_cons` states its head condition via `head?`.
 * Iteration cost calibration: with warm oleans `lake env lean` on a 600-line file is 3–7 s;
   a §C.3-sized lemma is tens of minutes, not hours; the Appendix-C probability bookkeeping
   (28 obligations) took ~1 h wall clock once the two transports (`splitEquiv`, `unionEquiv`)
