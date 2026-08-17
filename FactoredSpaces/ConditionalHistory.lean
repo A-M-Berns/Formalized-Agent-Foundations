@@ -210,56 +210,6 @@ namespace FactoredSpaces
 -- otherwise demand an `omit` line on nearly every declaration.
 set_option linter.unusedSectionVars false
 
-section Generic
-
-variable {I : Type*} [DecidableEq I] [Fintype I] {Ω : I → Type*} {α : Type*}
-
-/-- **Relevance criterion for membership in a history.**  If two members of `C` differ only
-at `i` and are separated by `X`, then `i ∈ H(X | C)`.  (The conditional form of
-`exists_ne_of_mem_history`; belongs with `History.lean`.) -/
-lemma mem_history_of_sep [Nonempty α] {X : Pt Ω → α} {C : Set (Pt Ω)} {i : I} {a b : Pt Ω}
-    (ha : a ∈ C) (hb : b ∈ C) (hagree : ∀ j, j ≠ i → a j = b j) (hne : X a ≠ X b) :
-    i ∈ history X C := by
-  by_contra hi
-  have hg := generates_history X C
-  rw [generates_iff] at hg
-  exact hne (hg.2 a ha b hb fun j hj => hagree j fun h => hi (h ▸ hj))
-
-/-- **The mixing criterion.**  If two members of `C` differ only inside `{i, k}` and one of
-their two mixed points falls outside `C`, then no set disintegrating `C` separates `i`
-from `k`. -/
-lemma mem_iff_mem_of_mix {C : Set (Pt Ω)} {J : Finset I} (hJ : Disintegrates J C) {i k : I}
-    {a b : Pt Ω} (ha : a ∈ C) (hb : b ∈ C) (hagree : ∀ j, j ≠ i → j ≠ k → a j = b j)
-    (hmix : Function.update a k (b k) ∉ C) : i ∈ J ↔ k ∈ J := by
-  constructor
-  · intro hi
-    by_contra hk
-    refine hmix ?_
-    have heq : J.piecewise a b = Function.update a k (b k) := by
-      funext j
-      by_cases hj : j ∈ J
-      · have hjk : j ≠ k := fun h => hk (h ▸ hj)
-        simp [Finset.piecewise, hj, Function.update_of_ne hjk]
-      · have hji : j ≠ i := fun h => hj (h ▸ hi)
-        by_cases hjk : j = k
-        · subst hjk; simp [Finset.piecewise, hj]
-        · simp [Finset.piecewise, hj, Function.update_of_ne hjk, (hagree j hji hjk).symm]
-    exact heq ▸ hJ.splice_mem ha hb
-  · intro hk
-    by_contra hi
-    refine hmix ?_
-    have heq : J.piecewise b a = Function.update a k (b k) := by
-      funext j
-      by_cases hj : j ∈ J
-      · by_cases hjk : j = k
-        · subst hjk; simp [Finset.piecewise, hj]
-        · have hji : j ≠ i := fun h => hi (h ▸ hj)
-          simp [Finset.piecewise, hj, Function.update_of_ne hjk, hagree j hji hjk]
-      · have hjk : j ≠ k := fun h => hj (h ▸ hk)
-        simp [Finset.piecewise, hj, Function.update_of_ne hjk]
-    exact heq ▸ hJ.splice_mem hb ha
-
-end Generic
 
 variable {V : Type u} [Fintype V] [DecidableEq V] {G : Digraph V} [DecidableRel G.Adj]
   {Val : V → Type u} [∀ v, Fintype (Val v)] [∀ v, DecidableEq (Val v)]
