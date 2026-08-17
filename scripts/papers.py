@@ -103,7 +103,7 @@ PAPERS = {
         "node_checker": "scripts/check-finite-factored-sets-nodes.py",
         "readme": "FiniteFactoredSets/README.md",
         "knowledge": "FiniteFactoredSets/KNOWLEDGE.md",
-        "errata": None,
+        "errata": "FiniteFactoredSets/notes/paper-errata.md",
         # In progress, but the consumer surface is maintained incrementally from the
         # start (root CLAUDE.md, "Consumer readiness is part of paper completion").
         "api": "FiniteFactoredSets/API.lean",

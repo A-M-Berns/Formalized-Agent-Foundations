@@ -52,6 +52,17 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
   "fairly gratuitously" (§7.2), and it is what makes Conjecture 1 — the
   finite-*dimensional* fundamental theorem — statable in this library at all.
 
+* `dd:subpartition` — Definition 20's subpartition (a partition of a subset `E ⊆ S`) is
+  modeled as a **partial equivalence relation** on `S` — a symmetric, transitive relation —
+  whose domain (Definition 21) is `{s | r s s}`, rather than as `Σ E : Set S, Setoid E`.
+  The two are in canonical bijection, exhibited by `Subpartition.toSetoid`,
+  `Subpartition.ofSetoidOn` and their round-trip lemmas; the payoff is that every §4
+  statement is free of dependent subtypes and domain transports.  A partition of `S` is
+  the total case (`Subpartition.ofSetoid`); Definition 22's `X|E` is
+  `Subpartition.restrict`; the order and common refinement follow `dd:order-flip`
+  (`X ≤ Y` is relation inclusion; the paper's `X ∨_E Y` is `X ⊓ Y`); the paper's block
+  inclusion "`X ⊆ Z`" is `Subpartition.Subset`.
+
 * `dd:quotient` — Definition 9's Cartesian product `∏(B)` (functions choosing one block
   from each partition) is modeled as the dependent product `(b : B) → Quotient b`, and
   Definition 10's `π` as `fun s b => ⟦s⟧`.  `Quotient b` is canonically the set of
@@ -61,3 +72,6 @@ import FiniteFactoredSets.Basic
 import FiniteFactoredSets.Examples
 import FiniteFactoredSets.History
 import FiniteFactoredSets.Orthogonality
+import FiniteFactoredSets.Subpartition
+import FiniteFactoredSets.SubpartitionHistory
+import FiniteFactoredSets.ConditionalOrthogonality

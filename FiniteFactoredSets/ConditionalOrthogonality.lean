@@ -1,0 +1,420 @@
+import FiniteFactoredSets.SubpartitionHistory
+import FiniteFactoredSets.Orthogonality
+
+/-!
+# Conditional orthogonality
+
+This file is §4.3 of Garrabrant, *Temporal Inference with Finite Factored Sets*
+(arXiv:2109.11513): orthogonality and time on subpartitions (Definition 25), conditional
+orthogonality given a subset and given a partition (Definitions 26–27), its agreement with
+unconditional orthogonality (Proposition 24), the compositional-semigraphoid axioms
+(Theorem 2), and the characterization of `X ⊥ X | Y` (Proposition 25).
+
+Orientation is `dd:order-flip` throughout: the paper's `X ∨_S Y` is `X ⊓ Y`, its
+`X ≤_S Y` is `Y ≤ X`, and `Ind_S` is `⊤`.  The blocks `z ∈ Z` of a partition of `S` are
+`Setoid.classes`, as in Definition 16.  Definition 22's `X|E` for a partition `X` of `S` is
+`(Subpartition.ofSetoid X).restrict E`.
+
+## The glue this section runs on
+
+Every proof below is set algebra over `historySub` once three facts about `restrict` are
+available, and they are collected under `Subpartition` at the top of the file:
+`restrict_univ`, `restrict_restrict_of_subset`, and `restrict_ofSetoid_inf` — the last of
+which is the identity `(Y ∨_S W)|z = (Y|z) ∨_z (W|z)` that the paper's proof of Theorem 2
+opens with.  With those, decomposition and composition are Proposition 23 clause 2, weak
+union is Lemma 1 plus Proposition 23 clause 3, and contraction is Lemma 2 plus Lemma 1.
+
+The blocks of `Z ⊓ W` (the paper's `Z ∨_S W`) are exactly the nonempty intersections
+`z ∩ w` of a block of `Z` with a block of `W`; in Mathlib's `Setoid.classes` presentation
+that is automatic, since a class is `{x | (Z ⊓ W) x s}` for some `s`, and `s` witnesses the
+nonemptiness.  This is why the `y ∩ z = {}` case of the paper's contraction argument has
+no counterpart here.
+-/
+
+universe u
+
+namespace FiniteFactoredSets
+
+variable {S : Type u}
+
+/-! ## Restriction glue
+
+Three facts about `Subpartition.restrict` (Definition 22) that §4.3 needs and §4.1 does
+not state.  They are stated here rather than in `Subpartition.lean` so that the §4.1 file
+carries exactly the paper's own material. -/
+
+namespace Subpartition
+
+/-- Restricting to all of `S` changes nothing: `X|S = X`. -/
+@[simp] lemma restrict_univ (X : Subpartition S) : X.restrict Set.univ = X :=
+  ext fun _ _ => ⟨fun h => h.2.2, fun h => ⟨trivial, trivial, h⟩⟩
+
+/-- Nested restrictions collapse: `(X|E)|E' = X|E'` when `E' ⊆ E`. -/
+lemma restrict_restrict_of_subset (X : Subpartition S) {E E' : Set S} (h : E' ⊆ E) :
+    (X.restrict E).restrict E' = X.restrict E' :=
+  ext fun _ _ => ⟨fun hst => ⟨hst.1, hst.2.1, hst.2.2.2.2⟩,
+    fun hst => ⟨hst.1, hst.2.1, h hst.1, h hst.2.1, hst.2.2⟩⟩
+
+/-- A partition of `S` restricted to `E` has domain `E`. -/
+@[simp] lemma dom_restrict_ofSetoid (X : Setoid S) (E : Set S) :
+    ((ofSetoid X).restrict E).dom = E := by
+  rw [dom_restrict, dom_ofSetoid, Set.univ_inter]
+
+/-- The block of `X|E` through `s ∈ E` is the trace `E ∩ [s]_X`. -/
+lemma part_restrict_ofSetoid (X : Setoid S) {E : Set S} {s : S} (hs : s ∈ E) :
+    ((ofSetoid X).restrict E).part s = E ∩ {x | X x s} := by
+  ext t
+  exact ⟨fun h => ⟨h.1, h.2.2⟩, fun h => ⟨h.1, hs, h.2⟩⟩
+
+/-- Restriction distributes over the common refinement: `(X ∨_S Y)|E = (X|E) ∨_E (Y|E)`,
+which under `dd:order-flip` is `(ofSetoid (X ⊓ Y)).restrict E = X|E ⊓ Y|E`.  This is the
+identity the paper's proof of Theorem 2 opens with. -/
+lemma restrict_ofSetoid_inf (X Y : Setoid S) (E : Set S) :
+    (ofSetoid (X ⊓ Y)).restrict E = (ofSetoid X).restrict E ⊓ (ofSetoid Y).restrict E :=
+  ext fun _ _ => ⟨fun h => ⟨⟨h.1, h.2.1, h.2.2.1⟩, ⟨h.1, h.2.1, h.2.2.2⟩⟩,
+    fun h => ⟨h.1.1, h.1.2.1, h.1.2.2, h.2.2.2⟩⟩
+
+end Subpartition
+
+/-- The blocks of `Ind_S` over a nonempty `S`: the single block `S`.  Mathlib has no
+`Setoid.classes_top`; note the `Nonempty` hypothesis is genuinely needed, since over the
+empty type `(⊤ : Setoid S).classes = ∅` (Definition 7's `Ind_∅ = {}`). -/
+lemma classes_top (hS : Nonempty S) : (⊤ : Setoid S).classes = {Set.univ} := by
+  ext c
+  constructor
+  · rintro ⟨y, rfl⟩
+    exact Set.eq_univ_of_forall fun _ => trivial
+  · rintro rfl
+    exact ⟨Classical.arbitrary S, (Set.eq_univ_of_forall fun _ => trivial).symm⟩
+
+namespace FactoredSet
+
+open scoped Classical
+open Subpartition
+
+variable (F : FactoredSet S)
+
+/-! ## §4.3 Orthogonality and time on subpartitions -/
+
+/-- Definition 25, first clause: `X ⊥^F Y` for subpartitions — disjoint histories.
+
+Paper node: Definition 25 (§4.3). -/
+def OrthogonalSub (X Y : Subpartition S) : Prop := F.historySub X ∩ F.historySub Y = ∅
+
+/-- Definition 25, second clause: `X ≤^F Y` for subpartitions — history inclusion.
+
+Paper node: Definition 25 (§4.3). -/
+def BeforeSub (X Y : Subpartition S) : Prop := F.historySub X ⊆ F.historySub Y
+
+/-- Definition 25, third clause: `X <^F Y` for subpartitions — strict history inclusion.
+
+Paper node: Definition 25 (§4.3). -/
+def StrictlyBeforeSub (X Y : Subpartition S) : Prop := F.historySub X ⊂ F.historySub Y
+
+lemma orthogonalSub_def (X Y : Subpartition S) :
+    F.OrthogonalSub X Y ↔ F.historySub X ∩ F.historySub Y = ∅ := Iff.rfl
+
+lemma beforeSub_def (X Y : Subpartition S) :
+    F.BeforeSub X Y ↔ F.historySub X ⊆ F.historySub Y := Iff.rfl
+
+lemma strictlyBeforeSub_def (X Y : Subpartition S) :
+    F.StrictlyBeforeSub X Y ↔ F.historySub X ⊂ F.historySub Y := Iff.rfl
+
+/-- Strictly before implies before, as for partitions (Definition 19). -/
+lemma StrictlyBeforeSub.beforeSub {X Y : Subpartition S} (h : F.StrictlyBeforeSub X Y) :
+    F.BeforeSub X Y := h.subset
+
+/-- Orthogonality of subpartitions element-wise: no factor lies in both histories. -/
+lemma orthogonalSub_iff_forall_notMem (X Y : Subpartition S) :
+    F.OrthogonalSub X Y ↔ ∀ b ∈ F.historySub X, b ∉ F.historySub Y :=
+  Set.disjoint_iff_inter_eq_empty.symm.trans Set.disjoint_left
+
+/-- Definition 25 restricted to partitions of `S` is Definition 18: on `ofSetoid X` the
+subpartition history is the §3.2 history (Proposition 22). -/
+lemma orthogonalSub_ofSetoid [Finite F.B] (X Y : Setoid S) :
+    F.OrthogonalSub (ofSetoid X) (ofSetoid Y) ↔ F.Orthogonal X Y := by
+  rw [orthogonalSub_def, F.historySub_isLeast_and_eq_history.2 X,
+    F.historySub_isLeast_and_eq_history.2 Y, orthogonal_def]
+
+/-- Definition 25's `≤^F` restricted to partitions of `S` is Definition 19's. -/
+lemma beforeSub_ofSetoid [Finite F.B] (X Y : Setoid S) :
+    F.BeforeSub (ofSetoid X) (ofSetoid Y) ↔ F.Before X Y := by
+  rw [beforeSub_def, F.historySub_isLeast_and_eq_history.2 X,
+    F.historySub_isLeast_and_eq_history.2 Y, before_def]
+
+/-- Definition 26: `X` and `Y` are orthogonal given the subset `E`, `X ⊥^F Y | E`, when
+their restrictions to `E` are orthogonal as subpartitions.
+
+Paper node: Definition 26 (§4.3). -/
+def OrthogonalGivenSet (X Y : Setoid S) (E : Set S) : Prop :=
+  F.OrthogonalSub ((ofSetoid X).restrict E) ((ofSetoid Y).restrict E)
+
+/-- Definition 27: `X` and `Y` are orthogonal given the partition `Z`, `X ⊥^F Y | Z`, when
+they are orthogonal given every block `z ∈ Z`.
+
+Paper node: Definition 27 (§4.3). -/
+def OrthogonalGiven (X Y Z : Setoid S) : Prop :=
+  ∀ z ∈ Z.classes, F.OrthogonalGivenSet X Y z
+
+lemma orthogonalGivenSet_def (X Y : Setoid S) (E : Set S) :
+    F.OrthogonalGivenSet X Y E ↔
+      F.historySub ((ofSetoid X).restrict E) ∩ F.historySub ((ofSetoid Y).restrict E) = ∅ :=
+  Iff.rfl
+
+lemma orthogonalGiven_def (X Y Z : Setoid S) :
+    F.OrthogonalGiven X Y Z ↔ ∀ z ∈ Z.classes, F.OrthogonalGivenSet X Y z := Iff.rfl
+
+/-! ### Glue: how a restricted common refinement's history splits
+
+`historySub_restrict_inf` is Proposition 23 clause 2 pushed through
+`restrict_ofSetoid_inf`; it is the paper's `h^F((Y ∨_S W)|z) = h^F(Y|z) ∪ h^F(W|z)`, from
+which decomposition and composition are immediate.  `restrict_inter_subset_restrict_inf`
+is the `Subset` (inclusion as sets of blocks) that Proposition 23 clause 3 consumes in the
+weak-union argument. -/
+
+lemma historySub_restrict_inf [Finite F.B] (X Y : Setoid S) (E : Set S) :
+    F.historySub ((ofSetoid (X ⊓ Y)).restrict E) =
+      F.historySub ((ofSetoid X).restrict E) ∪ F.historySub ((ofSetoid Y).restrict E) := by
+  rw [restrict_ofSetoid_inf]
+  exact (F.historySub_spec ((ofSetoid X).restrict E) ((ofSetoid Y).restrict E)
+    ((ofSetoid X).restrict E) (by simp)).2.1
+
+lemma restrict_inter_subset_restrict_inf (Y W : Setoid S) (z : Set S) (s : S) :
+    ((ofSetoid Y).restrict (z ∩ {x | W x s})).Subset ((ofSetoid (Y ⊓ W)).restrict z) := by
+  intro a ha t
+  rw [dom_restrict_ofSetoid] at ha
+  obtain ⟨haz, has⟩ := ha
+  constructor
+  · rintro ⟨⟨htz, hts⟩, -, hY⟩
+    exact ⟨htz, haz, hY, W.trans' hts (W.symm' has)⟩
+  · rintro ⟨htz, -, hY, hW⟩
+    exact ⟨⟨htz, W.trans' hW has⟩, ⟨haz, has⟩, hY⟩
+
+/-- **Proposition 24** — unconditional orthogonality is orthogonality given `Ind_S`.
+
+Paper node: Proposition 24 (§4.3). -/
+theorem orthogonal_iff_orthogonalGiven_top [Finite F.B] (X Y : Setoid S) :
+    F.Orthogonal X Y ↔ F.OrthogonalGiven X Y ⊤ := by
+  rcases isEmpty_or_nonempty S with hS | hS
+  · -- Over the empty type every partition is `Ind_S`, so the left side holds; and
+    -- `Ind_∅ = {}` has no blocks, so the right side holds vacuously.
+    constructor
+    · rintro - z ⟨y, rfl⟩
+      exact (IsEmpty.false y).elim
+    · intro _
+      have hXt : X = ⊤ := Setoid.ext fun a _ => (IsEmpty.false a).elim
+      rw [orthogonal_def, (F.history_spec X X).2.2.1.2 hXt, Set.empty_inter]
+  · -- Otherwise `Ind_S` has the single block `S`, and `X|S = X`.
+    have hclasses : (⊤ : Setoid S).classes = {Set.univ} := classes_top hS
+    constructor
+    · intro h z hz
+      rw [hclasses, Set.mem_singleton_iff] at hz
+      subst hz
+      refine (F.orthogonalGivenSet_def X Y Set.univ).2 ?_
+      simp only [restrict_univ]
+      rw [F.historySub_isLeast_and_eq_history.2 X, F.historySub_isLeast_and_eq_history.2 Y]
+      exact h
+    · intro h
+      have hz := h Set.univ (by rw [hclasses]; rfl)
+      rw [F.orthogonalGivenSet_def] at hz
+      simp only [restrict_univ] at hz
+      rwa [F.historySub_isLeast_and_eq_history.2 X,
+        F.historySub_isLeast_and_eq_history.2 Y] at hz
+
+/-- **Theorem 2** — conditional orthogonality satisfies the compositional-semigraphoid
+axioms: symmetry, decomposition, weak union, contraction, composition.  The paper's
+`∨_S` is `⊓` (`dd:order-flip`).
+
+Paper node: Theorem 2 (§4.3). -/
+theorem orthogonalGiven_semigraphoid [Finite F.B] (X Y Z W : Setoid S) :
+    (F.OrthogonalGiven X Y Z → F.OrthogonalGiven Y X Z) ∧
+    (F.OrthogonalGiven X (Y ⊓ W) Z → F.OrthogonalGiven X Y Z ∧ F.OrthogonalGiven X W Z) ∧
+    (F.OrthogonalGiven X (Y ⊓ W) Z → F.OrthogonalGiven X Y (Z ⊓ W)) ∧
+    (F.OrthogonalGiven X Y Z → F.OrthogonalGiven X W (Z ⊓ Y) → F.OrthogonalGiven X (Y ⊓ W) Z) ∧
+    (F.OrthogonalGiven X Y Z → F.OrthogonalGiven X W Z → F.OrthogonalGiven X (Y ⊓ W) Z) := by
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
+  · -- Symmetry: the definition is symmetric in `X` and `Y`, block by block.
+    intro h z hz
+    exact (F.orthogonalGivenSet_def Y X z).2
+      (by rw [Set.inter_comm]; exact (F.orthogonalGivenSet_def X Y z).1 (h z hz))
+  · -- Decomposition: `h^F((Y ∨_S W)|z)` is the union `h^F(Y|z) ∪ h^F(W|z)`, so a set
+    -- disjoint from it is disjoint from each side.
+    intro h
+    have key : ∀ z ∈ Z.classes,
+        F.historySub ((ofSetoid X).restrict z) ∩ F.historySub ((ofSetoid Y).restrict z) = ∅ ∧
+        F.historySub ((ofSetoid X).restrict z) ∩
+          F.historySub ((ofSetoid W).restrict z) = ∅ := by
+      intro z hz
+      have hzz := (F.orthogonalGivenSet_def X (Y ⊓ W) z).1 (h z hz)
+      rwa [F.historySub_restrict_inf Y W z, Set.inter_union_distrib_left,
+        Set.union_empty_iff] at hzz
+    exact ⟨fun z hz => (F.orthogonalGivenSet_def X Y z).2 (key z hz).1,
+      fun z hz => (F.orthogonalGivenSet_def X W z).2 (key z hz).2⟩
+  · -- Weak union: a block of `Z ∨_S W` is `z ∩ w`; Lemma 1 moves `h^F(X|z)` onto it
+    -- (the histories of `X|z` and `W|z` being disjoint by decomposition), and
+    -- `Y|(z ∩ w) ⊆ (Y ∨_S W)|z` as sets of blocks.
+    rintro h u ⟨s, rfl⟩
+    have hsz : s ∈ {x | Z x s} := Z.refl' s
+    have hzc : {x | Z x s} ∈ Z.classes := Z.mem_classes s
+    have hu' : {x | (Z ⊓ W) x s} = {x | Z x s} ∩ {x | W x s} := rfl
+    have horig := (F.orthogonalGivenSet_def X (Y ⊓ W) {x | Z x s}).1 (h _ hzc)
+    have hzz := horig
+    rw [F.historySub_restrict_inf Y W, Set.inter_union_distrib_left,
+      Set.union_empty_iff] at hzz
+    have hL1 := F.historySub_restrict_part_eq
+      (X := (ofSetoid X).restrict {x | Z x s}) (Y := (ofSetoid W).restrict {x | Z x s})
+      (by simp) hzz.2 (by rw [dom_restrict_ofSetoid]; exact hsz)
+    rw [part_restrict_ofSetoid W hsz,
+      restrict_restrict_of_subset _ Set.inter_subset_left] at hL1
+    have hsub : F.historySub ((ofSetoid Y).restrict ({x | Z x s} ∩ {x | W x s})) ⊆
+        F.historySub ((ofSetoid (Y ⊓ W)).restrict {x | Z x s}) :=
+      (F.historySub_spec ((ofSetoid Y).restrict ({x | Z x s} ∩ {x | W x s}))
+        ((ofSetoid Y).restrict ({x | Z x s} ∩ {x | W x s}))
+        ((ofSetoid (Y ⊓ W)).restrict {x | Z x s}) rfl).2.2.1
+        (restrict_inter_subset_restrict_inf Y W {x | Z x s} s)
+    refine (F.orthogonalGivenSet_def X Y _).2 ?_
+    rw [hu', ← hL1]
+    have hmono : F.historySub ((ofSetoid X).restrict {x | Z x s}) ∩
+        F.historySub ((ofSetoid Y).restrict ({x | Z x s} ∩ {x | W x s})) ⊆
+        F.historySub ((ofSetoid X).restrict {x | Z x s}) ∩
+          F.historySub ((ofSetoid (Y ⊓ W)).restrict {x | Z x s}) :=
+      Set.inter_subset_inter subset_rfl hsub
+    rw [horig] at hmono
+    exact Set.subset_empty_iff.1 hmono
+  · -- Contraction: Lemma 2 expands `h^F((Y ∨_S W)|z)` as `h^F(Y|z)` together with the
+    -- histories of `W|(z ∩ [t]_Y)`; the first is handled by `X ⊥ Y | Z`, and each of the
+    -- rest by `X ⊥ W | (Z ∨_S Y)` after Lemma 1 moves `h^F(X|z)` onto `z ∩ [t]_Y`.
+    rintro h₁ h₂ z ⟨s₀, rfl⟩
+    have hs₀ : s₀ ∈ {x | Z x s₀} := Z.refl' s₀
+    have hzc : {x | Z x s₀} ∈ Z.classes := Z.mem_classes s₀
+    have hXY : F.historySub ((ofSetoid X).restrict {x | Z x s₀}) ∩
+        F.historySub ((ofSetoid Y).restrict {x | Z x s₀}) = ∅ :=
+      (F.orthogonalGivenSet_def X Y _).1 (h₁ _ hzc)
+    have hL2 := F.historySub_inf_eq (X := (ofSetoid Y).restrict {x | Z x s₀})
+      (Y := (ofSetoid W).restrict {x | Z x s₀}) (by simp)
+    refine (F.orthogonalGivenSet_def X (Y ⊓ W) _).2 ?_
+    rw [restrict_ofSetoid_inf, hL2, Set.eq_empty_iff_forall_notMem]
+    rintro b ⟨hb1, hb2⟩
+    rw [Set.mem_union] at hb2
+    rcases hb2 with hb2 | hb2
+    · exact Set.eq_empty_iff_forall_notMem.1 hXY b ⟨hb1, hb2⟩
+    · rw [dom_restrict_ofSetoid] at hb2
+      simp only [Set.mem_iUnion, exists_prop] at hb2
+      obtain ⟨t, ht, hbt⟩ := hb2
+      rw [part_restrict_ofSetoid Y ht,
+        restrict_restrict_of_subset _ Set.inter_subset_left] at hbt
+      have hzt : {x | Z x s₀} ∩ {x | Y x t} = {x | (Z ⊓ Y) x t} := by
+        ext a
+        exact ⟨fun hh => ⟨Z.trans' hh.1 (Z.symm' ht), hh.2⟩,
+          fun hh => ⟨Z.trans' hh.1 ht, hh.2⟩⟩
+      have hXW := (F.orthogonalGivenSet_def X W _).1 (h₂ _ ((Z ⊓ Y).mem_classes t))
+      have hL1 := F.historySub_restrict_part_eq
+        (X := (ofSetoid X).restrict {x | Z x s₀})
+        (Y := (ofSetoid Y).restrict {x | Z x s₀}) (by simp) hXY
+        (by rw [dom_restrict_ofSetoid]; exact ht)
+      rw [part_restrict_ofSetoid Y ht,
+        restrict_restrict_of_subset _ Set.inter_subset_left, hzt] at hL1
+      rw [hzt] at hbt
+      rw [hL1] at hb1
+      exact Set.eq_empty_iff_forall_notMem.1 hXW b ⟨hb1, hbt⟩
+  · -- Composition: the converse reading of decomposition's union split.
+    intro h₁ h₂ z hz
+    refine (F.orthogonalGivenSet_def X (Y ⊓ W) z).2 ?_
+    rw [F.historySub_restrict_inf Y W z, Set.inter_union_distrib_left,
+      (F.orthogonalGivenSet_def X Y z).1 (h₁ z hz),
+      (F.orthogonalGivenSet_def X W z).1 (h₂ z hz), Set.union_empty]
+
+/-- **Proposition 25** — `X ⊥^F X | Y` exactly when `X ≤_S Y`, i.e. (Mathlib's order)
+`Y ≤ X`.
+
+Paper node: Proposition 25 (§4.3). -/
+theorem orthogonalGiven_self_iff [Finite F.B] (X Y : Setoid S) :
+    F.OrthogonalGiven X X Y ↔ Y ≤ X := by
+  constructor
+  · -- Each `X|y` has empty history, hence is `Ind_y` (Proposition 23 clause 4), so any
+    -- two `Y`-equivalent points are `X`-equivalent.
+    intro h s t hst
+    have hy := (F.orthogonalGivenSet_def X X {x | Y x t}).1 (h _ (Y.mem_classes t))
+    rw [Set.inter_self] at hy
+    have hdom : ((ofSetoid X).restrict {x | Y x t}).dom = {x | Y x t} :=
+      dom_restrict_ofSetoid X _
+    have hind := (F.historySub_spec ((ofSetoid X).restrict {x | Y x t})
+      ((ofSetoid X).restrict {x | Y x t}) ((ofSetoid X).restrict {x | Y x t})
+      rfl).2.2.2.1.1 hy
+    rw [hdom] at hind
+    have hA : ((ofSetoid X).restrict {x | Y x t}) s t := by
+      rw [hind]
+      exact ⟨hst, Y.refl' t⟩
+    exact hA.2.2
+  · -- Conversely `Y ≤ X` makes every `X|y` indiscrete outright.
+    rintro h z ⟨r, rfl⟩
+    refine (F.orthogonalGivenSet_def X X _).2 ?_
+    rw [Set.inter_self]
+    refine (F.historySub_spec ((ofSetoid X).restrict {x | Y x r})
+      ((ofSetoid X).restrict {x | Y x r}) ((ofSetoid X).restrict {x | Y x r})
+      rfl).2.2.2.1.2 ?_
+    rw [dom_restrict_ofSetoid]
+    ext a b
+    exact ⟨fun hh => ⟨hh.1, hh.2.1⟩,
+      fun hh => ⟨hh.1, hh.2, h (Y.trans' hh.1 (Y.symm' hh.2))⟩⟩
+
+/-! ## Client-side sanity checks
+
+These `example`s use the §4.3 endpoints the way a downstream file will: through the
+annotated paper statements, never by unfolding `OrthogonalGiven` or `historySub`. -/
+
+/-- Theorem 2 clauses 1 and 2 chained: from `X ⊥ (Y ∨_S W) | Z` a client gets `W ⊥ X | Z`
+without ever naming a block. -/
+example (F : FactoredSet S) [Finite F.B] (X Y Z W : Setoid S)
+    (h : F.OrthogonalGiven X (Y ⊓ W) Z) : F.OrthogonalGiven W X Z :=
+  (F.orthogonalGiven_semigraphoid X W Z Y).1 ((F.orthogonalGiven_semigraphoid X Y Z W).2.1 h).2
+
+/-- Decomposition and composition are inverse to each other (Theorem 2 clauses 2 and 5),
+so conditioning on a fixed `Z` makes `⊥ | Z` additive in its second argument. -/
+example (F : FactoredSet S) [Finite F.B] (X Y Z W : Setoid S) :
+    F.OrthogonalGiven X (Y ⊓ W) Z ↔ (F.OrthogonalGiven X Y Z ∧ F.OrthogonalGiven X W Z) :=
+  ⟨(F.orthogonalGiven_semigraphoid X Y Z W).2.1,
+   fun h => (F.orthogonalGiven_semigraphoid X Y Z W).2.2.2.2 h.1 h.2⟩
+
+/-- Proposition 24 as a transport: an unconditional orthogonality certified by
+Proposition 14's basis split (§3.3) is a conditional one given `Ind_S`. -/
+example (F : FactoredSet S) [Finite F.B] (X Y : Setoid S) (C : Set (Setoid S))
+    (hC : C ⊆ F.B) (hX : commonRefinement C ≤ X) (hY : commonRefinement (F.B \ C) ≤ Y) :
+    F.OrthogonalGiven X Y ⊤ :=
+  (F.orthogonal_iff_orthogonalGiven_top X Y).1 ((F.orthogonal_iff_exists X Y).2 ⟨C, hC, hX, hY⟩)
+
+/-- Proposition 25 composed with Theorem 2's weak union: `X ⊥ X | Z` and `Z ∨_S W` a
+refinement of `Z` give `X ⊥ X | (Z ∨_S W)` by the order characterization alone. -/
+example (F : FactoredSet S) [Finite F.B] (X Z W : Setoid S)
+    (h : F.OrthogonalGiven X X Z) : F.OrthogonalGiven X X (Z ⊓ W) :=
+  (F.orthogonalGiven_self_iff X (Z ⊓ W)).2 (le_trans inf_le_left
+    ((F.orthogonalGiven_self_iff X Z).1 h))
+
+/-- Definition 25 on partitions of `S` is Definition 19: `BeforeSub` on `ofSetoid` is
+`Before`, so §3.4's Proposition 18 transitivity is available on subpartition time. -/
+example (F : FactoredSet S) [Finite F.B] (X Y Z : Setoid S)
+    (h₁ : F.BeforeSub (ofSetoid X) (ofSetoid Y)) (h₂ : F.BeforeSub (ofSetoid Y) (ofSetoid Z)) :
+    F.BeforeSub (ofSetoid X) (ofSetoid Z) :=
+  (F.beforeSub_ofSetoid X Z).2 ((F.before_spec X Y Z).2.1 ((F.beforeSub_ofSetoid X Y).1 h₁)
+    ((F.beforeSub_ofSetoid Y Z).1 h₂))
+
+/-- `OrthogonalSub` and `StrictlyBeforeSub` used as a client would: a strict predecessor of
+`Y` inherits `Y`'s subpartition orthogonalities, because both are read off the same
+history inclusion. -/
+example (F : FactoredSet S) (A B C : Subpartition S) (h : F.StrictlyBeforeSub A B)
+    (hBC : F.OrthogonalSub B C) : F.OrthogonalSub A C :=
+  (F.orthogonalSub_iff_forall_notMem A C).2 fun b hb =>
+    (F.orthogonalSub_iff_forall_notMem B C).1 hBC b (StrictlyBeforeSub.beforeSub F h hb)
+
+/-- Definition 26 read directly: orthogonality given the whole of `S` is unconditional
+orthogonality, which is Proposition 24 with its single block already supplied. -/
+example (F : FactoredSet S) [Finite F.B] (X Y : Setoid S)
+    (h : F.OrthogonalGivenSet X Y Set.univ) : F.Orthogonal X Y := by
+  rw [F.orthogonalGivenSet_def] at h
+  simp only [restrict_univ] at h
+  rwa [F.historySub_isLeast_and_eq_history.2 X,
+    F.historySub_isLeast_and_eq_history.2 Y] at h
+
+end FactoredSet
+
+end FiniteFactoredSets

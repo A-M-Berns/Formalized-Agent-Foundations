@@ -12,6 +12,7 @@ trust surface and `FiniteFactoredSets.lean` for the `dd:` glossary.
 | `dd:partition` | Partitions are `Setoid S` | Matches `CartesianFrames/`; repo coherence beats a bespoke `Finpartition`-based encoding. Note Mathlib *does* now have a bundled `Setoid.Partitions` with a `CompleteLattice` instance (`Mathlib/Data/Setoid/Partition.lean`), which the CF library's comment predates — but `Setoid` is what the whole lattice API is stated over, so it stays. |
 | `dd:order-flip` | Use Mathlib's order, never the paper's glyphs | Carrying both conventions in one file is how sign errors get proved. |
 | `dd:quotient` | `∏(B)` is `(b : B) → Quotient b` | Canonical; a presentation change, not a content change. |
+| `dd:subpartition` | A subpartition of `S` is a partial equivalence relation on `S` (`structure Subpartition`), domain `{s | r s s}` | Mathlib has no PER structure and `Σ E, Setoid E` would put dependent subtypes and domain transports into every §4 statement. The correspondence is exhibited (`toSetoid`, `ofSetoidOn`, round-trip lemmas). Payoff observed by the §4.1 shard: `X (χ_C s t) s` already implies `χ_C s t ∈ dom X` (`mem_dom_of_rel`), so half of Proposition 20's "extra condition" is free and Prop 21 clause 5 needs no `χ(E,E) = E` bookkeeping. |
 | history | `history X := ⋂₀ {C | C ⊆ F.B ∧ Generates C X}` | Definition 17's "smallest generating subset". `history_isLeast` (Proposition 12) is what earns "smallest", and it needs `[Finite F.B]` **genuinely**: over `S = ℕ → Bool` with the coordinate factors, every cofinite subset of `B` generates the "eventually equal" partition, so the intersection of all generating subsets is `∅`, which generates nothing. All of §3 is stated with `Finite F.B` (finite *dimension*) and never `Finite S`. |
 
 ## The order inversion — read this before writing any order statement
@@ -148,6 +149,23 @@ Paper node → Lean declaration. Extended as nodes land.
 | Proposition 17 | `FactoredSet.before_iff_forall_orthogonal` | `Orthogonality.lean` |
 | Proposition 18 | `FactoredSet.before_spec` | `Orthogonality.lean` |
 | Proposition 19 | `FactoredSet.history_eq_setOf_before` | `Orthogonality.lean` |
+| Definition 20 (subpartition) | `Subpartition` (`dd:subpartition`) | `Subpartition.lean` |
+| Definition 21 (domain) | `Subpartition.dom` | `Subpartition.lean` |
+| Definition 22 (`X|E`) | `Subpartition.restrict` (for a partition of `S`: `(ofSetoid X).restrict E`) | `Subpartition.lean` |
+| Definition 23 (generating a subpartition) | `FactoredSet.GeneratesSub` (working clause 5: `generatesSub_iff_rel`) | `Subpartition.lean` |
+| Proposition 20 | `FactoredSet.generatesSub_tfae` | `Subpartition.lean` |
+| Proposition 21 | `FactoredSet.generatesSub_spec` | `Subpartition.lean` |
+| Definition 24 (history of a subpartition) | `FactoredSet.historySub` | `SubpartitionHistory.lean` |
+| Proposition 22 | `FactoredSet.historySub_isLeast_and_eq_history` (`.1 X` least; `.2 X` agrees with `history` on `ofSetoid X`) | `SubpartitionHistory.lean` |
+| Proposition 23 | `FactoredSet.historySub_spec` | `SubpartitionHistory.lean` |
+| Lemma 1 | `FactoredSet.historySub_restrict_part_eq` | `SubpartitionHistory.lean` |
+| Lemma 2 | `FactoredSet.historySub_inf_eq` | `SubpartitionHistory.lean` |
+| Definition 25 (`⊥`, `≤`, `<` on subpartitions) | `FactoredSet.OrthogonalSub`, `BeforeSub`, `StrictlyBeforeSub` | `ConditionalOrthogonality.lean` |
+| Definition 26 (`X ⊥ Y | E`) | `FactoredSet.OrthogonalGivenSet` | `ConditionalOrthogonality.lean` |
+| Definition 27 (`X ⊥ Y | Z`) | `FactoredSet.OrthogonalGiven` | `ConditionalOrthogonality.lean` |
+| Proposition 24 | `FactoredSet.orthogonal_iff_orthogonalGiven_top` | `ConditionalOrthogonality.lean` |
+| Theorem 2 (semigraphoid) | `FactoredSet.orthogonalGiven_semigraphoid` | `ConditionalOrthogonality.lean` |
+| Proposition 25 | `FactoredSet.orthogonalGiven_self_iff` | `ConditionalOrthogonality.lean` |
 
 Nodes deliberately rendered by Mathlib vocabulary with no declaration of ours
 (Definitions 2, 5, 6, 7, 9) are tabulated in `README.md`.
@@ -220,9 +238,9 @@ None. There are no type-`(c)` modeling substitutions in the current surface.
 
 ## Paper errata
 
-None found yet. The source's labels are working names (`templabel1`, `templabel2`,
-`templabel4`), which is not the label hygiene of a paper whose proofs have all been
-checked — budget for errata as §3–§5 land.
+Recorded in `notes/paper-errata.md` (registered in `scripts/papers.py`). Three typos in
+§4.2 so far (E1 `h^Y(Y)` for `h^F(Y)` in Prop 23(1); E2 `x_0` for `x_1` in Lemma 2's
+proof; E3 `⋁_E` for `⋁_S` in Prop 23(2)'s proof), none changing a statement.
 
 ## Open questions
 
@@ -355,6 +373,50 @@ it belongs in the library as a stated open `Prop` with this note attached.
 * Definition 15's third sentence (finite / finite-dimensional) has no Lean carrier — it is
   `[Finite S]` / `Finite F.B` under `dd:finiteness-minimal`; record it in the README's
   Mathlib-rendered table when the layered finite-`S` notion lands at §5.
+
+## Stage 4 (§4) — durable lessons
+
+* **A skeleton helper was false and a fixer caught it**: `GeneratesSub C X ↔ historySub X ⊆ C`
+  (the naive §4 analogue of `generates_iff_history_subset`) is FALSE — subpartition
+  generation is closed under union but **not under supersets** (the paper says so after
+  Prop 21). Compiled counterexample on `coordFS`: `E = {(false,false),(true,true)}`,
+  `X = indiscrete E`: `historySub X = ∅ ⊆ {fstFactor}` but `χ_{fst}((f,f),(t,t)) = (f,t) ∉ E`.
+  The true form carries Prop 20 clause 7's second half:
+  `↔ historySub X ⊆ C ∧ ∀ s ∈ X.dom, ∀ t ∈ X.dom, χ_C s t ∈ X.dom`. **Never reason as if
+  `GeneratesSub` were monotone in `C`.** The reusable replacement for monotonicity is
+  `generatesSub_union_of_dom_eq` (private, `SubpartitionHistory.lean`): `C ⊢ X`, `D ⊢ Z`,
+  `X.dom = Z.dom` ⇒ `C ∪ D ⊢ X`. Land the counterexample in `Examples.lean` (todo).
+* **Lemma 2 needs no `|X| = 2` / `|X| ≥ 3` split**: run the paper's two-block computation as
+  the step of an induction adjoining one `h(Y|x)` at a time (`A ⊢ X`, `r ∈ X.dom` ⇒
+  `A ∪ h(Y|[r]_X) ⊢ X`); the family `{h(Y|[r]_X)}` is finite because each member ⊆ `B`, so
+  `X` may have infinitely many blocks and `S` stays arbitrary. Theorem 2's contraction needs
+  no `y ∩ z = ∅` branch either (`Setoid.classes` blocks come with a witness).
+* Prop 21 clause 1 (`Y ≤ X → C ⊢ Y → C ⊢ X`) **genuinely needs `hE : X.dom = Y.dom`**
+  (`Y ≤ X` gives only `Y.dom ⊆ X.dom`), and so does `historySub_mono`. Prop 23 clause 3
+  (`Subset`, block inclusion) is the tool when domains differ (weak union in Theorem 2) — not
+  clause 1.
+* `restrict_part_subset_inf`'s `hE`/`hs` are provably redundant (`X.part s = ∅` off the
+  domain) and kept for readability with a local `set_option linter.unusedVariables false`.
+* Finiteness in §4: all of §4.1 is finiteness-free; `[Finite F.B]` starts at Def 24's
+  well-definedness (`historySub_isLeast_and_eq_history`) and is carried by everything
+  downstream of it, including all three §4.3 endpoints.
+* Duplication debt (de-slop candidates): the private `chimera_*` projections of Prop 4 now
+  exist in History.lean, Subpartition.lean and SubpartitionHistory.lean (the last adds
+  `chimera_sdiff`, `chimera_left_idem`, `chimera_right_idem`, `chimera_left_comm`) — promote
+  one shared public block into Basic.lean; and six `Subpartition` restriction lemmas
+  (`restrict_univ`, `restrict_restrict_of_subset`, `dom_restrict_ofSetoid`,
+  `part_restrict_ofSetoid`, `restrict_ofSetoid_inf`, `classes_top`) live in
+  ConditionalOrthogonality.lean and belong in Subpartition.lean.
+* Tactic traps: `intro -` is a syntax error (use `intro _`; `rintro -` is fine) and the parse
+  error is reported at the enclosing block; `fun ⟨-, -, h⟩ => …` likewise — use `_`;
+  dot notation `h.before hb` fails because `F` is explicit (write `StrictlyBefore.before F h`);
+  `Subpartition.ext` proves by `cases; cases; congr 1; funext; propext` (not `mk.injEq`);
+  rewriting a chimera chain in place makes `chimera_sdiff` fire on the outer occurrence —
+  extract the inner step as a `have`; `Set.union_empty_iff` (not `union_eq_empty`);
+  `lake env lean` on an *importing* scratch file sees the stale olean of a just-edited
+  upstream — `lake build` first.
+* The node checker is whole-directory: during parallel shards it stays red until the last
+  shard's inventory rows land; read the file names in its output, not the count.
 
 ## Round 3 audit — durable lessons (convergence round)
 

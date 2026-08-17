@@ -1,4 +1,4 @@
-import FiniteFactoredSets.Orthogonality
+import FiniteFactoredSets.ConditionalOrthogonality
 
 /-!
 # Finite Factored Sets consumer API
@@ -9,8 +9,8 @@ The supported downstream import for factored-set research is:
 import FiniteFactoredSets.API
 ```
 
-**Status: the formalization is in progress** (§2–§3 of Garrabrant, arXiv:2109.11513, are
-formalized; §4–§7 are not yet claimed).  This boundary is therefore an *incremental*
+**Status: the formalization is in progress** (§2–§4 of Garrabrant, arXiv:2109.11513, are
+formalized; §5–§7 are not yet claimed).  This boundary is therefore an *incremental*
 consumer surface: it is stable in shape but grows as sections land.  What is here is
 supported now; consult `FiniteFactoredSets/README.md` for the exact trust surface.
 
@@ -52,6 +52,40 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   `before_iff_forall_orthogonal`, `before_spec`, `history_eq_setOf_before`), with the
   unfolding lemmas `orthogonal_def`, `orthogonal_iff_forall_notMem`, `entangled_iff`,
   `before_def`, `strictlyBefore_def`, `StrictlyBefore.before`.
+* **Subpartitions** (§4.1): `Subpartition S` (Definition 20) is a *partial equivalence
+  relation* on `S` under `dd:subpartition`, not a `Σ E, Setoid E`; `X.dom` (Definition 21)
+  is `{s | X s s}`, `X.classes` its blocks, and `X.restrict E` (Definition 22) the paper's
+  `X|E`.  The bridge to partitions is `ofSetoid : Setoid S → Subpartition S` (total PERs),
+  with `ofSetoidOn E Y : Subpartition S` for a partition `Y : Setoid E` of a client's own
+  subset and `toSetoid : Setoid X.dom` the inverse; `ofSetoidOn_toSetoid` and
+  `ofSetoidOn_univ` are the round trips.  `indiscrete E` is `Ind_E`; the order is Mathlib's
+  again (`X ⊓ Y` is the paper's `X ∨_E Y`, `Y ≤ X` its `X ≤_E Y`), and `Subset` is the
+  paper's inclusion *as sets of blocks*, which is a different relation from `≤`.  The
+  restriction glue a client actually reaches for is `restrict_univ`,
+  `restrict_restrict_of_subset`, `dom_restrict_ofSetoid`, `part_restrict_ofSetoid`, and
+  `restrict_ofSetoid_inf` — the last being `(X ∨_S Y)|E = (X|E) ∨_E (Y|E)`.  Generation is
+  `GeneratesSub C X` (Definition 23) with `generatesSub_tfae` (Proposition 20; the working
+  form is `generatesSub_iff_rel`), `generatesSub_spec` (Proposition 21), and
+  `generatesSub_ofSetoid` identifying it with `Generates` on partitions of `S`.
+* **History of a subpartition** (§4.2): `historySub X` (Definition 24),
+  `historySub_isLeast_and_eq_history` (Proposition 22 — both halves: least generating
+  subset, and agreement with `history` on `ofSetoid X`), `historySub_spec`
+  (Proposition 23), and the two facts Theorem 2 runs on,
+  `historySub_restrict_part_eq` (Lemma 1) and `historySub_inf_eq` (Lemma 2), together with
+  `generatesSub_historySub` and `generatesSub_iff_historySub_subset`.
+* **Conditional orthogonality** (§4.3): `OrthogonalSub`, `BeforeSub`, `StrictlyBeforeSub`
+  (Definition 25's three clauses on subpartitions), `OrthogonalGivenSet X Y E`
+  (Definition 26, the paper's `X ⊥^F Y | E`) and `OrthogonalGiven X Y Z` (Definition 27,
+  quantified over `Z.classes`).  The endpoints are
+  `orthogonal_iff_orthogonalGiven_top` (Proposition 24: `X ⊥^F Y ↔ X ⊥^F Y | Ind_S`),
+  `orthogonalGiven_semigraphoid` (Theorem 2: symmetry, decomposition, weak union,
+  contraction, composition, in that order — the paper's `∨_S` being `⊓`), and
+  `orthogonalGiven_self_iff` (Proposition 25: `X ⊥^F X | Y ↔ Y ≤ X`).  Unfolding and
+  bridging lemmas: `orthogonalSub_def`, `beforeSub_def`, `strictlyBeforeSub_def`,
+  `StrictlyBeforeSub.beforeSub`, `orthogonalSub_iff_forall_notMem`,
+  `orthogonalSub_ofSetoid`, `beforeSub_ofSetoid`, `orthogonalGivenSet_def`,
+  `orthogonalGiven_def`, `historySub_restrict_inf`, and `classes_top` (the blocks of `⊤`
+  over a nonempty `S`, which Mathlib does not supply).
 
 ## Finiteness
 
@@ -62,6 +96,20 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
 proofs use it, from Proposition 12 (`history_isLeast`) onwards: the history is shown to
 generate by writing it as a *finite* intersection of generating subsets, and that step
 genuinely fails for an infinite basis.
+
+§4 keeps the same boundary, and it falls in the same place: **all of §4.1 is
+finiteness-free** — `GeneratesSub`, `generatesSub_ofSetoid`, `generatesSub_iff_rel`,
+`generatesSub_tfae` (Proposition 20) and `generatesSub_spec` (Proposition 21) take no
+`Finite` hypothesis, exactly as Propositions 10 and 11 do not.  `[Finite F.B]` reappears at
+Definition 24's well-definedness and stays: it is carried by
+`historySub_isLeast_and_eq_history` (Proposition 22), `generatesSub_historySub`,
+`generatesSub_iff_historySub_subset`, `historySub_spec` (Proposition 23),
+`historySub_restrict_part_eq` (Lemma 1), `historySub_inf_eq` (Lemma 2),
+`historySub_restrict_inf`, `orthogonalSub_ofSetoid`, `beforeSub_ofSetoid`, and all three
+§4.3 endpoints — `orthogonal_iff_orthogonalGiven_top`, `orthogonalGiven_semigraphoid`,
+`orthogonalGiven_self_iff`.  The `historySub` *definition*, Definition 25's three
+relations, Definitions 26 and 27, their unfolding lemmas, and the `Subpartition`
+restriction glue carry none.
 
 Hypotheses of the form `[Finite S]` are never global here: one appears only where the
 paper's own statement has it, on `finite_basis_of_finite` (Proposition 6, which *derives*

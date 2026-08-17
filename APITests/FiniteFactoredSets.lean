@@ -128,4 +128,63 @@ example : clientFS.Orthogonal ⊤ ⊥ ∧ clientFS.Entangled ⊥ ⊥ := by
     have hrel : (⊥ : Setoid Bool) true false := by rw [hbt]; trivial
     exact Bool.noConfusion hrel
 
+/-! ### Subpartitions and conditional orthogonality — §4 composed with §3 -/
+
+/-- Theorem 2's symmetry and decomposition composed: from `(Y ∨_S W) ⊥^F X | Z` a client
+reads off `X ⊥^F W | Z` without ever naming a block of `Z`.  Note the argument order —
+`orthogonalGiven_semigraphoid X Y Z W` fixes which partition plays which role in every
+clause at once, so the two invocations differ in their instantiation, not their clause. -/
+example {S : Type u} (F : FactoredSet S) [Finite F.B] (X Y Z W : Setoid S)
+    (h : F.OrthogonalGiven (Y ⊓ W) X Z) : F.OrthogonalGiven X W Z :=
+  ((F.orthogonalGiven_semigraphoid X Y Z W).2.1
+    ((F.orthogonalGiven_semigraphoid (Y ⊓ W) X Z W).1 h)).2
+
+/-- Proposition 24 feeds Theorem 2: an *unconditional* `X ⊥^F (Y ∨_S W)` becomes the
+conditional `X ⊥^F Y | W` by reading Proposition 24 forwards and then applying weak union,
+because conditioning on `Ind_S ∨_S W` is conditioning on `W` (`⊤ ⊓ W = W`).  This is the
+composition a downstream project wants: §3 certificates are §4 certificates. -/
+example {S : Type u} (F : FactoredSet S) [Finite F.B] (X Y W : Setoid S)
+    (h : F.Orthogonal X (Y ⊓ W)) : F.OrthogonalGiven X Y W := by
+  have hwu := (F.orthogonalGiven_semigraphoid X Y ⊤ W).2.2.1
+    ((F.orthogonal_iff_orthogonalGiven_top X (Y ⊓ W)).1 h)
+  rwa [top_inf_eq] at hwu
+
+/-- Proposition 25 composed with Proposition 18 clause 3: `X ⊥^F X | Y` is exactly the
+refinement `Y ≤ X` (the paper's `X ≤_S Y`, `dd:order-flip`), which puts `X` before `Y` in
+the §3.4 temporal order.  So a self-orthogonality-given-`Y` certificate is a *timing*
+certificate, and by Proposition 17 it transports every orthogonality of `Y` onto `X`. -/
+example {S : Type u} (F : FactoredSet S) [Finite F.B] (X Y Z : Setoid S)
+    (h : F.OrthogonalGiven X X Y) (hYZ : F.Orthogonal Y Z) :
+    F.Before X Y ∧ F.Orthogonal X Z := by
+  have hb : F.Before X Y := (F.before_spec X Y Y).2.2.1 ((F.orthogonalGiven_self_iff X Y).1 h)
+  exact ⟨hb, (F.before_iff_forall_orthogonal X Y).1 hb Z hYZ⟩
+
+/-- A subpartition built the way a client builds one — `ofSetoidOn E Y`, from the client's
+own partition `Y : Setoid E` of its own subset `E ⊆ S` — lands in the §4.2 machinery with
+no transport: its domain is `E` on the nose, and coarsening it (relation inclusion, the
+paper's `≤_E` inverted by `dd:order-flip`) shrinks its history by Proposition 23 clause 1,
+which is precisely `BeforeSub`. -/
+example {S : Type u} (F : FactoredSet S) [Finite F.B] (E : Set S) (Y Y' : Setoid E)
+    (h : Subpartition.ofSetoidOn E Y ≤ Subpartition.ofSetoidOn E Y') :
+    (Subpartition.ofSetoidOn E Y').dom = E ∧
+      F.BeforeSub (Subpartition.ofSetoidOn E Y') (Subpartition.ofSetoidOn E Y) :=
+  ⟨Subpartition.dom_ofSetoidOn E Y',
+   (F.beforeSub_def _ _).2
+     ((F.historySub_spec (Subpartition.ofSetoidOn E Y') (Subpartition.ofSetoidOn E Y)
+        (Subpartition.ofSetoidOn E Y')
+        (by rw [Subpartition.dom_ofSetoidOn, Subpartition.dom_ofSetoidOn])).1 h)⟩
+
+/-- On the client factored set, Proposition 24 turns the two §3 facts established above
+into conditional ones — and it does so both ways, so `OrthogonalGiven` is neither empty nor
+total on a concrete factored set: `Ind ⊥^F Dis | Ind` holds while `Dis ⊥^F Dis | Ind`
+fails. -/
+example : clientFS.OrthogonalGiven ⊤ ⊥ ⊤ ∧ ¬ clientFS.OrthogonalGiven ⊥ ⊥ ⊤ := by
+  have htop : clientFS.history ⊤ = ∅ := (clientFS.history_spec ⊤ ⊤).2.2.1.2 rfl
+  refine ⟨(clientFS.orthogonal_iff_orthogonalGiven_top ⊤ ⊥).1 ?_, fun h => ?_⟩
+  · rw [orthogonal_def, htop, Set.empty_inter]
+  · have hbt : (⊥ : Setoid Bool) = ⊤ :=
+      (clientFS.orthogonal_spec ⊥ ⊥ ⊥).2.2.2.1
+        ((clientFS.orthogonal_iff_orthogonalGiven_top ⊥ ⊥).2 h)
+    exact Bool.noConfusion (show (⊥ : Setoid Bool) true false by rw [hbt]; trivial)
+
 end APITests.FiniteFactoredSets

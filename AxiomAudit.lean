@@ -1042,7 +1042,7 @@ Same contract as the CF-INVENTORY block above: every declaration carrying a
 FFS-INVENTORY markers below, and `scripts/check-finite-factored-sets-nodes.py` enforces
 that in both directions.
 
-This formalization is **in progress**: the list below covers §2 and §3.  Several
+This formalization is **in progress**: the list below covers §2, §3 and §4.  Several
 of the paper's §2.1 nodes have no Lean carrier at all because they are rendered by
 Mathlib vocabulary under the `dd:` tags in `FiniteFactoredSets.lean` — Definition 2
 (partition) is `Setoid`, Definition 5 (`∼_X`) is the setoid relation, Definition 6
@@ -1074,6 +1074,26 @@ open FiniteFactoredSets in
   FactoredSet.Before FactoredSet.StrictlyBefore
   FactoredSet.before_iff_forall_sInf FactoredSet.before_iff_forall_orthogonal
   FactoredSet.before_spec FactoredSet.history_eq_setOf_before
+  -- §4.1: subpartitions and generating a subpartition
+  -- (FiniteFactoredSets/Subpartition.lean).  Definition 20's `Subpartition` is a partial
+  -- equivalence relation on `S` (`dd:subpartition`), Definition 21 is its `dom`, and
+  -- Definition 22 is `restrict`; `GeneratesSub` is Definition 23.  As in §3.1, `C ⊆ B` is a
+  -- hypothesis only where it is load-bearing — the `7 → 1` leg of Proposition 20.
+  Subpartition Subpartition.dom Subpartition.restrict
+  FactoredSet.GeneratesSub FactoredSet.generatesSub_tfae FactoredSet.generatesSub_spec
+  -- §4.2: the history of a subpartition (FiniteFactoredSets/SubpartitionHistory.lean).
+  -- `historySub` is Definition 24; Proposition 22 is the pair "least generating subset"
+  -- plus "agrees with Definition 17 on partitions of `S`", so it is one endpoint with two
+  -- conjuncts.  Lemmas 1 and 2 are the paper's two `lemma2`-numbered results.
+  FactoredSet.historySub FactoredSet.historySub_isLeast_and_eq_history
+  FactoredSet.historySub_spec FactoredSet.historySub_restrict_part_eq
+  FactoredSet.historySub_inf_eq
+  -- §4.3: conditional orthogonality (FiniteFactoredSets/ConditionalOrthogonality.lean).
+  -- Definition 25 has three carriers, one per clause, as Definition 19 does.
+  FactoredSet.OrthogonalSub FactoredSet.BeforeSub FactoredSet.StrictlyBeforeSub
+  FactoredSet.OrthogonalGivenSet FactoredSet.OrthogonalGiven
+  FactoredSet.orthogonal_iff_orthogonalGiven_top FactoredSet.orthogonalGiven_semigraphoid
+  FactoredSet.orthogonalGiven_self_iff
   -- Non-vacuity witnesses (FiniteFactoredSets/Examples.lean).  Every §2-§3 endpoint is
   -- stated over `FactoredSet`; these are what make those endpoints say something.
   -- `coordFS` is the load-bearing one: with a single factor every `C` behaves as `∅` or
@@ -1116,6 +1136,8 @@ open FiniteFactoredSets in
   nontrivial bijective
 #assert_fields FiniteFactoredSets.FactoredSet
   B isFactorization
+#assert_fields FiniteFactoredSets.Subpartition
+  r symm' trans'
 
 /-! ## Consumer API conveniences (not paper endpoint inventories)
 
@@ -1149,3 +1171,12 @@ open FiniteFactoredSets in
   FactoredSet.dim_eq_zero_iff FactoredSet.generates_iff_rel
   FactoredSet.generates_iff_sInf_le FactoredSet.generates_iff_history_subset
   FactoredSet.le_iff_history_subset FactoredSet.commonRefinement_history_le
+  Subpartition.restrict_univ Subpartition.restrict_restrict_of_subset
+  Subpartition.dom_restrict_ofSetoid Subpartition.part_restrict_ofSetoid
+  Subpartition.restrict_ofSetoid_inf classes_top
+  FactoredSet.orthogonalSub_def FactoredSet.beforeSub_def
+  FactoredSet.strictlyBeforeSub_def FactoredSet.StrictlyBeforeSub.beforeSub
+  FactoredSet.orthogonalSub_iff_forall_notMem FactoredSet.orthogonalSub_ofSetoid
+  FactoredSet.beforeSub_ofSetoid FactoredSet.orthogonalGivenSet_def
+  FactoredSet.orthogonalGiven_def FactoredSet.historySub_restrict_inf
+  FactoredSet.restrict_inter_subset_restrict_inf

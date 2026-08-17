@@ -199,7 +199,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <div class="wrap">
 <nav class="rail" aria-label="node index">
   <div class="rail-title">Read-through</div>
-  <div class="rail-progress" id="progress">0 / 172 read</div>
+  <div class="rail-progress" id="progress">0 / 189 read</div>
   <a class="nav-paper" href="#paper-logical-induction">Logical Induction</a>
   <div class="nav-sec">The Logical Induction Criterion</div>
 <a class="nav-item" href="#def-lic" data-node="def-lic"><span class="dot instantiated"></span>def:lic</a>
@@ -416,6 +416,27 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <a class="nav-item" href="#ffs-proposition-17" data-node="ffs-proposition-17"><span class="dot plain"></span>Proposition 17</a>
 <a class="nav-item" href="#ffs-proposition-18" data-node="ffs-proposition-18"><span class="dot plain"></span>Proposition 18</a>
 <a class="nav-item" href="#ffs-proposition-19" data-node="ffs-proposition-19"><span class="dot plain"></span>Proposition 19</a>
+<div class="nav-sec">Subpartitions and Conditional Orthogonality</div>
+<a class="nav-item" href="#ffs-definition-20" data-node="ffs-definition-20"><span class="dot plain"></span>Definition 20</a>
+<a class="nav-item" href="#ffs-definition-21" data-node="ffs-definition-21"><span class="dot plain"></span>Definition 21</a>
+<div class="nav-sec">Generating a Subpartition</div>
+<a class="nav-item" href="#ffs-definition-22" data-node="ffs-definition-22"><span class="dot plain"></span>Definition 22</a>
+<a class="nav-item" href="#ffs-definition-23" data-node="ffs-definition-23"><span class="dot plain"></span>Definition 23</a>
+<a class="nav-item" href="#ffs-proposition-20" data-node="ffs-proposition-20"><span class="dot plain"></span>Proposition 20</a>
+<a class="nav-item" href="#ffs-proposition-21" data-node="ffs-proposition-21"><span class="dot plain"></span>Proposition 21</a>
+<a class="nav-item" href="#ffs-definition-24" data-node="ffs-definition-24"><span class="dot plain"></span>Definition 24</a>
+<div class="nav-sec">History of a Subpartition</div>
+<a class="nav-item" href="#ffs-proposition-22" data-node="ffs-proposition-22"><span class="dot plain"></span>Proposition 22</a>
+<a class="nav-item" href="#ffs-proposition-23" data-node="ffs-proposition-23"><span class="dot plain"></span>Proposition 23</a>
+<a class="nav-item" href="#ffs-lemma-1" data-node="ffs-lemma-1"><span class="dot plain"></span>Lemma 1</a>
+<a class="nav-item" href="#ffs-lemma-2" data-node="ffs-lemma-2"><span class="dot plain"></span>Lemma 2</a>
+<a class="nav-item" href="#ffs-definition-25" data-node="ffs-definition-25"><span class="dot plain"></span>Definition 25</a>
+<div class="nav-sec">Conditional Orthogonality</div>
+<a class="nav-item" href="#ffs-definition-26" data-node="ffs-definition-26"><span class="dot plain"></span>Definition 26</a>
+<a class="nav-item" href="#ffs-definition-27" data-node="ffs-definition-27"><span class="dot plain"></span>Definition 27</a>
+<a class="nav-item" href="#ffs-proposition-24" data-node="ffs-proposition-24"><span class="dot plain"></span>Proposition 24</a>
+<a class="nav-item" href="#ffs-theorem-2" data-node="ffs-theorem-2"><span class="dot plain"></span>Theorem 2</a>
+<a class="nav-item" href="#ffs-proposition-25" data-node="ffs-proposition-25"><span class="dot plain"></span>Proposition 25</a>
 </nav>
 <main>
   <h1>Formalized Agent Foundations — the trust-surface read-through</h1>
@@ -450,7 +471,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <div style="overflow-x:auto"><table class="index">
       <tr><td><strong>Paper</strong></td><td class="count"><strong>nodes</strong></td>
           <td><strong>library</strong></td><td><strong>editorial data on its cards</strong></td></tr>
-      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>tier badge per node (universal / instantiated / qualified), a reading note and a "what to check" note, from the machine-checked strength table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">12</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">34</td><td><code>FiniteFactoredSets/</code></td><td><strong>in progress</strong> — §2.1–§2.3 only, and no strength classification exists for this paper</td></tr>
+      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>tier badge per node (universal / instantiated / qualified), a reading note and a "what to check" note, from the machine-checked strength table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">12</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">51</td><td><code>FiniteFactoredSets/</code></td><td><strong>in progress</strong> — §2.1–§2.3 only, and no strength classification exists for this paper</td></tr>
     </table></div>
     <p><strong>Only Logical Induction has a strength classification and per-node reading
     notes.</strong> They are the product of a dedicated re-derivation pass and a
@@ -4050,7 +4071,7 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
   smuggled in or out without failing the build; deliberate type changes are logged beside the
   structure in <code>AxiomAudit.lean</code>.</p>
   <details><summary style="cursor:pointer;font-weight:600">Show all frozen structures</summary>
-  <div style="overflow-x:auto"><table class="t2"><tr><td><code>AffineCombination</code></td><td><code class="fld">const</code> <code class="fld">terms</code></td></tr><tr><td><code>AffineCombination.BoundedCombinationSequence</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmission</code></td><td><code class="fld">tradeCount</code> <code class="fld">coefficient</code> <code class="fld">sentence</code> <code class="fld">tradeCount_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">sentence_poly</code> <code class="fld">trades_eq</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmissionFamily</code></td><td><code class="fld">emit</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmissionSigns</code></td><td><code class="fld">positive</code> <code class="fld">negative</code></td></tr><tr><td><code>AffineCombination.FeedbackTruthSequence</code></td><td><code class="fld">determined</code> <code class="fld">sequence</code> <code class="fld">poly</code> <code class="fld">bounded</code> <code class="fld">magnitude</code> <code class="fld">value_vanishing</code> <code class="fld">feedback_price</code></td></tr><tr><td><code>AffineCombination.PolySequence</code></td><td><code class="fld">termCount</code> <code class="fld">coefficient</code> <code class="fld">sentence</code> <code class="fld">termCount_poly</code> <code class="fld">const_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">sentence_poly</code> <code class="fld">terms_eq</code> <code class="fld">const_rank</code> <code class="fld">coefficient_rank</code> <code class="fld">const_closed</code> <code class="fld">coefficient_closed</code></td></tr><tr><td><code>AffineQuoteEq</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">future_coherent</code></td></tr><tr><td><code>AffineQuoteGE</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">future_coherent</code></td></tr><tr><td><code>AffineQuotePortfolio</code></td><td><code class="fld">family</code> <code class="fld">poly</code> <code class="fld">scale</code> <code class="fld">scale_pos</code> <code class="fld">current_price</code> <code class="fld">bounded</code> <code class="fld">magnitude_le_one</code></td></tr><tr><td><code>BitPrefixSentences</code></td><td><code class="fld">atom</code> <code class="fld">prefixSentence</code> <code class="fld">enumeration</code> <code class="fld">enumeration_covers</code> <code class="fld">prefix_codes</code> <code class="fld">holds_prefix</code> <code class="fld">realizable</code></td></tr><tr><td><code>BooleanQuoteCode</code></td><td><code class="fld">code</code> <code class="fld">pos_complete</code> <code class="fld">neg_complete</code></td></tr><tr><td><code>BoundedComputation</code></td><td><code class="fld">machine</code> <code class="fld">input</code> <code class="fld">input_poly</code> <code class="fld">steps</code> <code class="fld">horizon</code> <code class="fld">truth_iff</code></td></tr><tr><td><code>CEEnumeration</code></td><td><code class="fld">code</code> <code class="fld">halts</code> <code class="fld">outputs_sound</code></td></tr><tr><td><code>CompactConditioningProcessComputation</code></td><td><code class="fld">toDeductiveProcessComputation</code> <code class="fld">condition_codes</code></td></tr><tr><td><code>CompletedAffineQuoteApprox</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">theory_coherent</code></td></tr><tr><td><code>CompletedAffineQuoteEq</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">theory_coherent</code></td></tr><tr><td><code>ComputableHorizon</code></td><td><code class="fld">program</code> <code class="fld">program_spec</code></td></tr><tr><td><code>ComputationTheoryPresentation</code></td><td><code class="fld">theory_deltaOne</code> <code class="fld">process</code> <code class="fld">halting_enters</code> <code class="fld">halting_refutes</code> <code class="fld">boundedHalting_enters</code> <code class="fld">boundedFailure_refutes</code> <code class="fld">inconsistency_enters</code> <code class="fld">inconsistency_refutesConsistency</code></td></tr><tr><td><code>ConditionalExpectationQuote</code></td><td><code class="fld">weight_mem</code> <code class="fld">weight_generable</code> <code class="fld">source_codes</code> <code class="fld">left_codes</code> <code class="fld">right_codes</code> <code class="fld">slack</code> <code class="fld">slack_tendsto</code> <code class="fld">source_valued</code> <code class="fld">left_reflected</code> <code class="fld">right_reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>ConditioningPresentation</code></td><td><code class="fld">condition</code> <code class="fld">condition_codes</code> <code class="fld">holds_condition</code> <code class="fld">combined_computable</code></td></tr><tr><td><code>ConditioningTraderCompiler</code></td><td><code class="fld">conditioned_computable</code> <code class="fld">translate</code> <code class="fld">translate_ec</code> <code class="fld">tracks_on_condition</code> <code class="fld">preserves_floor</code></td></tr><tr><td><code>ContinuousSemimeasure</code></td><td><code class="fld">mass</code> <code class="fld">nonneg</code> <code class="fld">root_le_one</code> <code class="fld">children_le</code></td></tr><tr><td><code>CurrentExpectationQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>CurrentPriceExpectationQuote</code></td><td><code class="fld">sentence_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>DUSApproximationPresentation</code></td><td><code class="fld">approximation</code> <code class="fld">approximation_codes</code> <code class="fld">nonneg</code> <code class="fld">le_mass</code> <code class="fld">tendsto</code></td></tr><tr><td><code>DUSThresholdEmission</code></td><td><code class="fld">threshold_sum_codes</code> <code class="fld">inverse_width_codes</code></td></tr><tr><td><code>DeductiveProcess</code></td><td><code class="fld">D</code> <code class="fld">mono</code></td></tr><tr><td><code>DeductiveProcessComputation</code></td><td><code class="fld">code</code> <code class="fld">code_spec</code></td></tr><tr><td><code>DeferralFunction</code></td><td><code class="fld">f</code> <code class="fld">lt</code> <code class="fld">code</code> <code class="fld">fueled</code></td></tr><tr><td><code>EfficientPrefixPatch</code></td><td><code class="fld">quote</code> <code class="fld">quote_exact</code> <code class="fld">preserves_ec</code></td></tr><tr><td><code>EfficientRepeatedEnumeration</code></td><td><code class="fld">sequence</code> <code class="fld">sequence_poly</code> <code class="fld">repeats</code> <code class="fld">sound</code> <code class="fld">covers</code></td></tr><tr><td><code>EventualConditioningFloor</code></td><td><code class="fld">cutoff</code> <code class="fld">zeroDays</code> <code class="fld">zeroDays_lt</code> <code class="fld">epsilon</code> <code class="fld">epsilon_pos</code> <code class="fld">zero_exact</code> <code class="fld">positive_floor</code></td></tr><tr><td><code>EventualConditioningOperationalWitness</code></td><td><code class="fld">floor</code> <code class="fld">conditioned_computable</code> <code class="fld">translation_ec</code></td></tr><tr><td><code>ExpectedFutureExpectationQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>FeedbackTruth.FeedbackTruthComputation</code></td><td><code class="fld">value</code> <code class="fld">code</code> <code class="fld">a</code> <code class="fld">degree</code> <code class="fld">computes</code> <code class="fld">agrees</code></td></tr><tr><td><code>FuturePriceQuote</code></td><td><code class="fld">sentence_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>GatedConditioningOperationalWitness</code></td><td><code class="fld">epsilon_pos</code> <code class="fld">denominator_floor</code> <code class="fld">conditioned_computable</code> <code class="fld">translation_ec</code></td></tr><tr><td><code>GeneratedRatFeature</code></td><td><code class="fld">rank_le</code> <code class="fld">polyTok</code> <code class="fld">closed</code> <code class="fld">denote</code></td></tr><tr><td><code>InconsistentTheoryClaims</code></td><td><code class="fld">inconsistencySentence</code> <code class="fld">consistencySentence</code> <code class="fld">inconsistency_poly</code> <code class="fld">consistency_poly</code> <code class="fld">inconsistency_provable</code> <code class="fld">consistency_disprovable</code></td></tr><tr><td><code>IndependentBitAtoms</code></td><td><code class="fld">atom</code> <code class="fld">realizable</code></td></tr><tr><td><code>IntrospectionIntervalQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">lower_feature</code> <code class="fld">lower_generated</code> <code class="fld">upper_feature</code> <code class="fld">upper_generated</code> <code class="fld">width_codes</code> <code class="fld">inverse_width_codes</code> <code class="fld">width_pos</code> <code class="fld">width_tendsto_zero</code> <code class="fld">probability_bounds</code> <code class="fld">quote</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">inside_affine</code> <code class="fld">outside_affine</code></td></tr><tr><td><code>IsLogicalInductor</code></td><td><code class="fld">marketComputable</code> <code class="fld">processComputable</code> <code class="fld">noExploit</code></td></tr><tr><td><code>LUV</code></td><td><code class="fld">gt</code></td></tr><tr><td><code>LUVCombination</code></td><td><code class="fld">const</code> <code class="fld">terms</code></td></tr><tr><td><code>LUVCombination.BoundedSequence</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code></td></tr><tr><td><code>LUVCombination.ExactTheoryPresentation</code></td><td><code class="fld">value</code> <code class="fld">value_mem</code> <code class="fld">threshold_iff</code></td></tr><tr><td><code>LUVCombination.MeshSoftmaxOperationalWitness</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code> <code class="fld">magnitude</code> <code class="fld">lower_poly</code> <code class="fld">lower_bounded</code> <code class="fld">lower_magnitude</code></td></tr><tr><td><code>LUVCombination.PolySequence</code></td><td><code class="fld">mesh_poly</code></td></tr><tr><td><code>LUVCombinationSyntax</code></td><td><code class="fld">termCount</code> <code class="fld">coefficient</code> <code class="fld">luv</code> <code class="fld">termCount_poly</code> <code class="fld">const_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">threshold_poly</code> <code class="fld">terms_eq</code> <code class="fld">const_rank</code> <code class="fld">coefficient_rank</code> <code class="fld">const_closed</code> <code class="fld">coefficient_closed</code></td></tr><tr><td><code>LowerSemicomputableContinuousSemimeasure</code></td><td><code class="fld">toContinuousSemimeasure</code> <code class="fld">approximation</code> <code class="fld">approximation_code</code> <code class="fld">approximation_computes</code> <code class="fld">approximation_nonneg</code> <code class="fld">approximation_mono</code> <code class="fld">approximation_le</code> <code class="fld">approximation_tendsto</code></td></tr><tr><td><code>MarketComputation</code></td><td><code class="fld">quote</code> <code class="fld">code</code> <code class="fld">quote_exact</code> <code class="fld">code_spec</code> <code class="fld">price_mem_Icc</code></td></tr><tr><td><code>OccamThresholdEmission</code></td><td><code class="fld">threshold_sum_codes</code> <code class="fld">inverse_width_codes</code></td></tr><tr><td><code>PGenerableWeighting</code></td><td><code class="fld">polySeg</code> <code class="fld">rank_le</code> <code class="fld">closed</code></td></tr><tr><td><code>PairedWeighting</code></td><td><code class="fld">polySeg</code> <code class="fld">rank_le</code> <code class="fld">closed</code></td></tr><tr><td><code>ParadoxResistanceQuote</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_codes</code> <code class="fld">width</code> <code class="fld">width_codes</code> <code class="fld">width_pos</code> <code class="fld">width_tendsto_zero</code> <code class="fld">diagonal_reflected</code> <code class="fld">lower_affine</code> <code class="fld">upper_affine</code></td></tr><tr><td><code>ParameterizedDiagonalQuoteCode</code></td><td><code class="fld">toBooleanQuoteCode</code> <code class="fld">body</code> <code class="fld">represents_fixedpoint</code></td></tr><tr><td><code>PatientSettlementClock</code></td><td><code class="fld">active</code> <code class="fld">active_codes</code> <code class="fld">antitone</code> <code class="fld">active_through_envelope</code> <code class="fld">eventually_inactive</code> <code class="fld">settled_of_inactive</code></td></tr><tr><td><code>PolyMachineCodes</code></td><td><code class="fld">code</code> <code class="fld">code_poly</code></td></tr><tr><td><code>PolyNatCodes</code></td><td><code class="fld">code</code> <code class="fld">code_poly</code></td></tr><tr><td><code>PrefixMachinePresentation</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_codes</code> <code class="fld">approximation</code> <code class="fld">approximation_codes</code> <code class="fld">approximation_nonneg</code> <code class="fld">approximation_le</code> <code class="fld">approximation_tendsto</code> <code class="fld">kraft</code> <code class="fld">covers</code></td></tr><tr><td><code>PrefixNegationCompiler</code></td><td><code class="fld">overhead</code> <code class="fld">complexity_neg_le</code></td></tr><tr><td><code>QuotationTheoryPresentation</code></td><td><code class="fld">toComputationTheoryPresentation</code> <code class="fld">theory_sigmaOne</code> <code class="fld">quote_positive_enters</code> <code class="fld">quote_negative_refutes</code></td></tr><tr><td><code>RationalQuoteCode</code></td><td><code class="fld">code</code> <code class="fld">value_mem</code> <code class="fld">pos_complete</code> <code class="fld">neg_complete</code> <code class="fld">threshold_poly</code></td></tr><tr><td><code>RepresentedDecidableClaims</code></td><td><code class="fld">toRepresentedSemidecidableClaims</code> <code class="fld">disprovable_of_false</code></td></tr><tr><td><code>RepresentedSemidecidableClaims</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_poly</code> <code class="fld">provable_of_true</code></td></tr><tr><td><code>SelfTrustQuote</code></td><td><code class="fld">delta_pos</code> <code class="fld">probability_mem</code> <code class="fld">sentence_codes</code> <code class="fld">delta_codes</code> <code class="fld">probability_generable</code> <code class="fld">product_codes</code> <code class="fld">confidence_codes</code> <code class="fld">confidence_reflected</code> <code class="fld">product_reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>SemidecidableComputation</code></td><td><code class="fld">machine</code> <code class="fld">input</code> <code class="fld">input_poly</code> <code class="fld">truth_iff</code></td></tr><tr><td><code>SettlementChecker</code></td><td><code class="fld">code</code> <code class="fld">spec</code></td></tr><tr><td><code>Strategy</code></td><td><code class="fld">trades</code> <code class="fld">rank_le</code></td></tr><tr><td><code>StrictSeparatorPresentation</code></td><td><code class="fld">constraint</code> <code class="fld">repetition</code> <code class="fld">jointly_possible</code> <code class="fld">consistentAt</code> <code class="fld">class_covers</code> <code class="fld">mass_class_tendsto_zero</code></td></tr><tr><td><code>Trader</code></td><td><code class="fld">strat</code></td></tr><tr><td><code>UniversalContinuousSemimeasure</code></td><td><code class="fld">toLowerSemicomputableContinuousSemimeasure</code> <code class="fld">universal</code></td></tr><tr><td><code>FiniteFactoredSets.IsFactorization</code></td><td><code class="fld">nontrivial</code> <code class="fld">bijective</code></td></tr><tr><td><code>FiniteFactoredSets.FactoredSet</code></td><td><code class="fld">B</code> <code class="fld">isFactorization</code></td></tr></table></div>
+  <div style="overflow-x:auto"><table class="t2"><tr><td><code>AffineCombination</code></td><td><code class="fld">const</code> <code class="fld">terms</code></td></tr><tr><td><code>AffineCombination.BoundedCombinationSequence</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmission</code></td><td><code class="fld">tradeCount</code> <code class="fld">coefficient</code> <code class="fld">sentence</code> <code class="fld">tradeCount_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">sentence_poly</code> <code class="fld">trades_eq</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmissionFamily</code></td><td><code class="fld">emit</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmissionSigns</code></td><td><code class="fld">positive</code> <code class="fld">negative</code></td></tr><tr><td><code>AffineCombination.FeedbackTruthSequence</code></td><td><code class="fld">determined</code> <code class="fld">sequence</code> <code class="fld">poly</code> <code class="fld">bounded</code> <code class="fld">magnitude</code> <code class="fld">value_vanishing</code> <code class="fld">feedback_price</code></td></tr><tr><td><code>AffineCombination.PolySequence</code></td><td><code class="fld">termCount</code> <code class="fld">coefficient</code> <code class="fld">sentence</code> <code class="fld">termCount_poly</code> <code class="fld">const_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">sentence_poly</code> <code class="fld">terms_eq</code> <code class="fld">const_rank</code> <code class="fld">coefficient_rank</code> <code class="fld">const_closed</code> <code class="fld">coefficient_closed</code></td></tr><tr><td><code>AffineQuoteEq</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">future_coherent</code></td></tr><tr><td><code>AffineQuoteGE</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">future_coherent</code></td></tr><tr><td><code>AffineQuotePortfolio</code></td><td><code class="fld">family</code> <code class="fld">poly</code> <code class="fld">scale</code> <code class="fld">scale_pos</code> <code class="fld">current_price</code> <code class="fld">bounded</code> <code class="fld">magnitude_le_one</code></td></tr><tr><td><code>BitPrefixSentences</code></td><td><code class="fld">atom</code> <code class="fld">prefixSentence</code> <code class="fld">enumeration</code> <code class="fld">enumeration_covers</code> <code class="fld">prefix_codes</code> <code class="fld">holds_prefix</code> <code class="fld">realizable</code></td></tr><tr><td><code>BooleanQuoteCode</code></td><td><code class="fld">code</code> <code class="fld">pos_complete</code> <code class="fld">neg_complete</code></td></tr><tr><td><code>BoundedComputation</code></td><td><code class="fld">machine</code> <code class="fld">input</code> <code class="fld">input_poly</code> <code class="fld">steps</code> <code class="fld">horizon</code> <code class="fld">truth_iff</code></td></tr><tr><td><code>CEEnumeration</code></td><td><code class="fld">code</code> <code class="fld">halts</code> <code class="fld">outputs_sound</code></td></tr><tr><td><code>CompactConditioningProcessComputation</code></td><td><code class="fld">toDeductiveProcessComputation</code> <code class="fld">condition_codes</code></td></tr><tr><td><code>CompletedAffineQuoteApprox</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">theory_coherent</code></td></tr><tr><td><code>CompletedAffineQuoteEq</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">theory_coherent</code></td></tr><tr><td><code>ComputableHorizon</code></td><td><code class="fld">program</code> <code class="fld">program_spec</code></td></tr><tr><td><code>ComputationTheoryPresentation</code></td><td><code class="fld">theory_deltaOne</code> <code class="fld">process</code> <code class="fld">halting_enters</code> <code class="fld">halting_refutes</code> <code class="fld">boundedHalting_enters</code> <code class="fld">boundedFailure_refutes</code> <code class="fld">inconsistency_enters</code> <code class="fld">inconsistency_refutesConsistency</code></td></tr><tr><td><code>ConditionalExpectationQuote</code></td><td><code class="fld">weight_mem</code> <code class="fld">weight_generable</code> <code class="fld">source_codes</code> <code class="fld">left_codes</code> <code class="fld">right_codes</code> <code class="fld">slack</code> <code class="fld">slack_tendsto</code> <code class="fld">source_valued</code> <code class="fld">left_reflected</code> <code class="fld">right_reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>ConditioningPresentation</code></td><td><code class="fld">condition</code> <code class="fld">condition_codes</code> <code class="fld">holds_condition</code> <code class="fld">combined_computable</code></td></tr><tr><td><code>ConditioningTraderCompiler</code></td><td><code class="fld">conditioned_computable</code> <code class="fld">translate</code> <code class="fld">translate_ec</code> <code class="fld">tracks_on_condition</code> <code class="fld">preserves_floor</code></td></tr><tr><td><code>ContinuousSemimeasure</code></td><td><code class="fld">mass</code> <code class="fld">nonneg</code> <code class="fld">root_le_one</code> <code class="fld">children_le</code></td></tr><tr><td><code>CurrentExpectationQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>CurrentPriceExpectationQuote</code></td><td><code class="fld">sentence_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>DUSApproximationPresentation</code></td><td><code class="fld">approximation</code> <code class="fld">approximation_codes</code> <code class="fld">nonneg</code> <code class="fld">le_mass</code> <code class="fld">tendsto</code></td></tr><tr><td><code>DUSThresholdEmission</code></td><td><code class="fld">threshold_sum_codes</code> <code class="fld">inverse_width_codes</code></td></tr><tr><td><code>DeductiveProcess</code></td><td><code class="fld">D</code> <code class="fld">mono</code></td></tr><tr><td><code>DeductiveProcessComputation</code></td><td><code class="fld">code</code> <code class="fld">code_spec</code></td></tr><tr><td><code>DeferralFunction</code></td><td><code class="fld">f</code> <code class="fld">lt</code> <code class="fld">code</code> <code class="fld">fueled</code></td></tr><tr><td><code>EfficientPrefixPatch</code></td><td><code class="fld">quote</code> <code class="fld">quote_exact</code> <code class="fld">preserves_ec</code></td></tr><tr><td><code>EfficientRepeatedEnumeration</code></td><td><code class="fld">sequence</code> <code class="fld">sequence_poly</code> <code class="fld">repeats</code> <code class="fld">sound</code> <code class="fld">covers</code></td></tr><tr><td><code>EventualConditioningFloor</code></td><td><code class="fld">cutoff</code> <code class="fld">zeroDays</code> <code class="fld">zeroDays_lt</code> <code class="fld">epsilon</code> <code class="fld">epsilon_pos</code> <code class="fld">zero_exact</code> <code class="fld">positive_floor</code></td></tr><tr><td><code>EventualConditioningOperationalWitness</code></td><td><code class="fld">floor</code> <code class="fld">conditioned_computable</code> <code class="fld">translation_ec</code></td></tr><tr><td><code>ExpectedFutureExpectationQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>FeedbackTruth.FeedbackTruthComputation</code></td><td><code class="fld">value</code> <code class="fld">code</code> <code class="fld">a</code> <code class="fld">degree</code> <code class="fld">computes</code> <code class="fld">agrees</code></td></tr><tr><td><code>FuturePriceQuote</code></td><td><code class="fld">sentence_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>GatedConditioningOperationalWitness</code></td><td><code class="fld">epsilon_pos</code> <code class="fld">denominator_floor</code> <code class="fld">conditioned_computable</code> <code class="fld">translation_ec</code></td></tr><tr><td><code>GeneratedRatFeature</code></td><td><code class="fld">rank_le</code> <code class="fld">polyTok</code> <code class="fld">closed</code> <code class="fld">denote</code></td></tr><tr><td><code>InconsistentTheoryClaims</code></td><td><code class="fld">inconsistencySentence</code> <code class="fld">consistencySentence</code> <code class="fld">inconsistency_poly</code> <code class="fld">consistency_poly</code> <code class="fld">inconsistency_provable</code> <code class="fld">consistency_disprovable</code></td></tr><tr><td><code>IndependentBitAtoms</code></td><td><code class="fld">atom</code> <code class="fld">realizable</code></td></tr><tr><td><code>IntrospectionIntervalQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">lower_feature</code> <code class="fld">lower_generated</code> <code class="fld">upper_feature</code> <code class="fld">upper_generated</code> <code class="fld">width_codes</code> <code class="fld">inverse_width_codes</code> <code class="fld">width_pos</code> <code class="fld">width_tendsto_zero</code> <code class="fld">probability_bounds</code> <code class="fld">quote</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">inside_affine</code> <code class="fld">outside_affine</code></td></tr><tr><td><code>IsLogicalInductor</code></td><td><code class="fld">marketComputable</code> <code class="fld">processComputable</code> <code class="fld">noExploit</code></td></tr><tr><td><code>LUV</code></td><td><code class="fld">gt</code></td></tr><tr><td><code>LUVCombination</code></td><td><code class="fld">const</code> <code class="fld">terms</code></td></tr><tr><td><code>LUVCombination.BoundedSequence</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code></td></tr><tr><td><code>LUVCombination.ExactTheoryPresentation</code></td><td><code class="fld">value</code> <code class="fld">value_mem</code> <code class="fld">threshold_iff</code></td></tr><tr><td><code>LUVCombination.MeshSoftmaxOperationalWitness</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code> <code class="fld">magnitude</code> <code class="fld">lower_poly</code> <code class="fld">lower_bounded</code> <code class="fld">lower_magnitude</code></td></tr><tr><td><code>LUVCombination.PolySequence</code></td><td><code class="fld">mesh_poly</code></td></tr><tr><td><code>LUVCombinationSyntax</code></td><td><code class="fld">termCount</code> <code class="fld">coefficient</code> <code class="fld">luv</code> <code class="fld">termCount_poly</code> <code class="fld">const_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">threshold_poly</code> <code class="fld">terms_eq</code> <code class="fld">const_rank</code> <code class="fld">coefficient_rank</code> <code class="fld">const_closed</code> <code class="fld">coefficient_closed</code></td></tr><tr><td><code>LowerSemicomputableContinuousSemimeasure</code></td><td><code class="fld">toContinuousSemimeasure</code> <code class="fld">approximation</code> <code class="fld">approximation_code</code> <code class="fld">approximation_computes</code> <code class="fld">approximation_nonneg</code> <code class="fld">approximation_mono</code> <code class="fld">approximation_le</code> <code class="fld">approximation_tendsto</code></td></tr><tr><td><code>MarketComputation</code></td><td><code class="fld">quote</code> <code class="fld">code</code> <code class="fld">quote_exact</code> <code class="fld">code_spec</code> <code class="fld">price_mem_Icc</code></td></tr><tr><td><code>OccamThresholdEmission</code></td><td><code class="fld">threshold_sum_codes</code> <code class="fld">inverse_width_codes</code></td></tr><tr><td><code>PGenerableWeighting</code></td><td><code class="fld">polySeg</code> <code class="fld">rank_le</code> <code class="fld">closed</code></td></tr><tr><td><code>PairedWeighting</code></td><td><code class="fld">polySeg</code> <code class="fld">rank_le</code> <code class="fld">closed</code></td></tr><tr><td><code>ParadoxResistanceQuote</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_codes</code> <code class="fld">width</code> <code class="fld">width_codes</code> <code class="fld">width_pos</code> <code class="fld">width_tendsto_zero</code> <code class="fld">diagonal_reflected</code> <code class="fld">lower_affine</code> <code class="fld">upper_affine</code></td></tr><tr><td><code>ParameterizedDiagonalQuoteCode</code></td><td><code class="fld">toBooleanQuoteCode</code> <code class="fld">body</code> <code class="fld">represents_fixedpoint</code></td></tr><tr><td><code>PatientSettlementClock</code></td><td><code class="fld">active</code> <code class="fld">active_codes</code> <code class="fld">antitone</code> <code class="fld">active_through_envelope</code> <code class="fld">eventually_inactive</code> <code class="fld">settled_of_inactive</code></td></tr><tr><td><code>PolyMachineCodes</code></td><td><code class="fld">code</code> <code class="fld">code_poly</code></td></tr><tr><td><code>PolyNatCodes</code></td><td><code class="fld">code</code> <code class="fld">code_poly</code></td></tr><tr><td><code>PrefixMachinePresentation</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_codes</code> <code class="fld">approximation</code> <code class="fld">approximation_codes</code> <code class="fld">approximation_nonneg</code> <code class="fld">approximation_le</code> <code class="fld">approximation_tendsto</code> <code class="fld">kraft</code> <code class="fld">covers</code></td></tr><tr><td><code>PrefixNegationCompiler</code></td><td><code class="fld">overhead</code> <code class="fld">complexity_neg_le</code></td></tr><tr><td><code>QuotationTheoryPresentation</code></td><td><code class="fld">toComputationTheoryPresentation</code> <code class="fld">theory_sigmaOne</code> <code class="fld">quote_positive_enters</code> <code class="fld">quote_negative_refutes</code></td></tr><tr><td><code>RationalQuoteCode</code></td><td><code class="fld">code</code> <code class="fld">value_mem</code> <code class="fld">pos_complete</code> <code class="fld">neg_complete</code> <code class="fld">threshold_poly</code></td></tr><tr><td><code>RepresentedDecidableClaims</code></td><td><code class="fld">toRepresentedSemidecidableClaims</code> <code class="fld">disprovable_of_false</code></td></tr><tr><td><code>RepresentedSemidecidableClaims</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_poly</code> <code class="fld">provable_of_true</code></td></tr><tr><td><code>SelfTrustQuote</code></td><td><code class="fld">delta_pos</code> <code class="fld">probability_mem</code> <code class="fld">sentence_codes</code> <code class="fld">delta_codes</code> <code class="fld">probability_generable</code> <code class="fld">product_codes</code> <code class="fld">confidence_codes</code> <code class="fld">confidence_reflected</code> <code class="fld">product_reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>SemidecidableComputation</code></td><td><code class="fld">machine</code> <code class="fld">input</code> <code class="fld">input_poly</code> <code class="fld">truth_iff</code></td></tr><tr><td><code>SettlementChecker</code></td><td><code class="fld">code</code> <code class="fld">spec</code></td></tr><tr><td><code>Strategy</code></td><td><code class="fld">trades</code> <code class="fld">rank_le</code></td></tr><tr><td><code>StrictSeparatorPresentation</code></td><td><code class="fld">constraint</code> <code class="fld">repetition</code> <code class="fld">jointly_possible</code> <code class="fld">consistentAt</code> <code class="fld">class_covers</code> <code class="fld">mass_class_tendsto_zero</code></td></tr><tr><td><code>Trader</code></td><td><code class="fld">strat</code></td></tr><tr><td><code>UniversalContinuousSemimeasure</code></td><td><code class="fld">toLowerSemicomputableContinuousSemimeasure</code> <code class="fld">universal</code></td></tr><tr><td><code>FiniteFactoredSets.IsFactorization</code></td><td><code class="fld">nontrivial</code> <code class="fld">bijective</code></td></tr><tr><td><code>FiniteFactoredSets.FactoredSet</code></td><td><code class="fld">B</code> <code class="fld">isFactorization</code></td></tr><tr><td><code>FiniteFactoredSets.Subpartition</code></td><td><code class="fld">r</code> <code class="fld">symm'</code> <code class="fld">trans'</code></td></tr></table></div>
   </details>
   </section>
 
@@ -5672,14 +5693,14 @@ Then
   <h2 class="paper-head">Temporal Inference with Finite Factored Sets</h2>
   <p class="paper-cite">Garrabrant (2021) ·
   <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a> ·
-  <code>FiniteFactoredSets/</code> · 34 nodes</p>
+  <code>FiniteFactoredSets/</code> · 51 nodes</p>
 
   <div class="method">
     <div class="no-tier"><b>This formalization is in progress, and no strength
     classification exists for this paper.</b> The cards below cover §2.1–§2.3 only —
     partitions, factorizations, and chimera functions. They carry no tier and no per-node
     audit note, because none has been produced; they assert the correspondence only. Nodes
-    with no Lean statement annotated to them: 1 of the paper’s conjectures; 37 of the paper’s definitions; 4 of the paper’s examples; 3 of the paper’s lemmas; 17 of the paper’s propositions; 2 of the paper’s theorems.</div>
+    with no Lean statement annotated to them: 1 of the paper’s conjectures; 29 of the paper’s definitions; 4 of the paper’s examples; 1 of the paper’s lemmas; 11 of the paper’s propositions; 1 of the paper’s theorems.</div>
 
     <h3>How nodes are cited</h3>
     <p>The paper labels only 32 of its 98 numbered nodes, and the labels it does carry are
@@ -6504,6 +6525,401 @@ Given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><m
     </section>
   </div>
 </article>
+<h2 class="sec" id="sec-ffs-Subpartitions-and-Conditional-Orthogonality">Subpartitions and Conditional Orthogonality</h2>
+
+<article class="node" id="ffs-definition-20">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-definition-20" aria-label="mark Definition 20 read"></label>
+    <span class="node-label">Definition 20</span>
+    <span class="node-title">subpartition</span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>A subpartition of a set <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math> is a partition of a subset of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>. Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mtext>SubPart</mtext><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><msub><mo>&#x022C3;</mo><mrow><mi>E</mi><mo>&#x02286;</mo><mi>S</mi></mrow></msub><mtext>Part</mtext><mo stretchy="false">&#x00028;</mo><mi>E</mi><mo stretchy="false">&#x00029;</mo></mrow></math> denote the set of all subpartitions of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.Subpartition</code><span class="ep-file">FiniteFactoredSets/Subpartition.lean</span></div><pre class="sig">structure Subpartition (S : Type u) where
+  r : S → S → Prop
+  symm&#x27; : ∀ {s t : S}, r s t → r t s
+  trans&#x27; : ∀ {s t u : S}, r s t → r t u → r s u</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="ffs-definition-21">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-definition-21" aria-label="mark Definition 21 read"></label>
+    <span class="node-label">Definition 21</span>
+    <span class="node-title">domain</span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>The domain of a subpartition <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>, written <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mtext>dom</mtext><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, is the unique <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>E</mi><mo>&#x02286;</mo><mi>S</mi></mrow></math> such that <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x02208;</mo><mtext>Part</mtext><mo stretchy="false">&#x00028;</mo><mi>E</mi><mo stretchy="false">&#x00029;</mo></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.Subpartition.dom</code><span class="ep-file">FiniteFactoredSets/Subpartition.lean</span></div><pre class="sig">def dom (X : Subpartition S) : Set S</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-ffs-Generating-a-Subpartition">Generating a Subpartition</h2>
+
+<article class="node" id="ffs-definition-22">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-definition-22" aria-label="mark Definition 22 read"></label>
+    <span class="node-label">Definition 22</span>
+    <span class="node-title">restricted partitions</span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Given sets <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>E</mi></mrow></math> and a partition <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo stretchy="false">&#x0007C;</mo><mi>E</mi></mrow></math> denote the partition of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi><mo>&#x02229;</mo><mi>E</mi></mrow></math> given by <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo stretchy="false">&#x0007C;</mo><mi>E</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x0007B;</mo><mo stretchy="false">[</mo><mi>e</mi><msub><mo stretchy="false">]</mo><mi>X</mi></msub><mo>&#x02229;</mo><mi>E</mi><mo>&#x02223;</mo><mi>e</mi><mo>&#x02208;</mo><mi>E</mi><mo stretchy="false">&#x0007D;</mo></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.Subpartition.restrict</code><span class="ep-file">FiniteFactoredSets/Subpartition.lean</span></div><pre class="sig">def restrict (X : Subpartition S) (E : Set S) : Subpartition S</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="ffs-definition-23">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-definition-23" aria-label="mark Definition 23 read"></label>
+    <span class="node-label">Definition 23</span>
+    <span class="node-title">generating a subpartition</span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Given a finite factored set <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x02208;</mo><mtext>SubPart</mtext><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, and a <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><mo>&#x02286;</mo><mi>B</mi></mrow></math>, we say <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math> generates <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> (in <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi></mrow></math>), written <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>X</mi></mrow></math>, if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msubsup><mi>&#x003C7;</mi><mi>C</mi><mi>F</mi></msubsup><mo stretchy="false">&#x00028;</mo><mi>x</mi><mo>&#x0002C;</mo><mtext>dom</mtext><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mi>x</mi></mrow></math> for all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>x</mi><mo>&#x02208;</mo><mi>X</mi></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.GeneratesSub</code><span class="ep-file">FiniteFactoredSets/Subpartition.lean</span></div><pre class="sig">def GeneratesSub (C : Set (Setoid S)) (X : Subpartition S) : Prop</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="ffs-proposition-20">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-proposition-20" aria-label="mark Proposition 20 read"></label>
+    <span class="node-label">Proposition 20</span>
+    <span class="node-title"></span>
+    <span class="kind">proposition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be a finite factored set, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x02208;</mo><mtext>SubPart</mtext><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be a subpartition of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>E</mi><mo>&#x0003D;</mo><mtext>dom</mtext><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be the domain of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math>, and let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math> be a subset of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>B</mi></mrow></math>. The following are equivalent.
+<ol>
+    <li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>X</mi></mrow></math>.
+    <li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msubsup><mi>&#x003C7;</mi><mi>C</mi><mi>F</mi></msubsup><mo stretchy="false">&#x00028;</mo><mi>x</mi><mo>&#x0002C;</mo><mi>E</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mi>x</mi></mrow></math> for all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>x</mi><mo>&#x02208;</mo><mi>X</mi></mrow></math>.
+    <li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msubsup><mi>&#x003C7;</mi><mi>C</mi><mi>F</mi></msubsup><mo stretchy="false">&#x00028;</mo><mi>x</mi><mo>&#x0002C;</mo><mi>E</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02286;</mo><mi>x</mi></mrow></math> for all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>x</mi><mo>&#x02208;</mo><mi>X</mi></mrow></math>.
+    <li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msubsup><mi>&#x003C7;</mi><mi>C</mi><mi>F</mi></msubsup><mo stretchy="false">&#x00028;</mo><mi>x</mi><mo>&#x0002C;</mo><mi>y</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02286;</mo><mi>x</mi></mrow></math> for all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>x</mi><mo>&#x0002C;</mo><mi>y</mi><mo>&#x02208;</mo><mi>X</mi></mrow></math>.
+    <li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msubsup><mi>&#x003C7;</mi><mi>C</mi><mi>F</mi></msubsup><mo stretchy="false">&#x00028;</mo><mi>s</mi><mo>&#x0002C;</mo><mi>t</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02208;</mo><mo stretchy="false">[</mo><mi>s</mi><msub><mo stretchy="false">]</mo><mi>X</mi></msub></mrow></math> for all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>s</mi><mo>&#x0002C;</mo><mi>t</mi><mo>&#x02208;</mo><mi>E</mi></mrow></math>.
+    <li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msubsup><mi>&#x003C7;</mi><mi>C</mi><mi>F</mi></msubsup><mo stretchy="false">&#x00028;</mo><mi>s</mi><mo>&#x0002C;</mo><mi>t</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02208;</mo><mi>E</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msubsup><mi>&#x003C7;</mi><mi>C</mi><mi>F</mi></msubsup><mo stretchy="false">&#x00028;</mo><mi>s</mi><mo>&#x0002C;</mo><mi>t</mi><mo stretchy="false">&#x00029;</mo><msub><mi>&#x0007E;</mi><mi>X</mi></msub><mi>s</mi></mrow></math> for all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>s</mi><mo>&#x0002C;</mo><mi>t</mi><mo>&#x02208;</mo><mi>E</mi></mrow></math>.
+    <li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><msub><mo>&#x02264;</mo><mi>E</mi></msub><mo stretchy="false">&#x00028;</mo><msub><mo>&#x022C1;</mo><mi>S</mi></msub><mo stretchy="false">&#x00028;</mo><mi>C</mi><mo stretchy="false">&#x00029;</mo><mo stretchy="false">&#x0007C;</mo><mi>E</mi><mo stretchy="false">&#x00029;</mo></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msubsup><mi>&#x003C7;</mi><mi>C</mi><mi>F</mi></msubsup><mo stretchy="false">&#x00028;</mo><mi>E</mi><mo>&#x0002C;</mo><mi>E</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mi>E</mi></mrow></math>.
+</ol></p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.generatesSub_tfae</code><span class="ep-file">FiniteFactoredSets/Subpartition.lean</span></div><pre class="sig">theorem generatesSub_tfae {C : Set (Setoid S)} (hC : C ⊆ F.B) (X : Subpartition S) :
+    [F.GeneratesSub C X,
+     ∀ x ∈ X.classes, F.chimeraImage C x X.dom = x,
+     ∀ x ∈ X.classes, F.chimeraImage C x X.dom ⊆ x,
+     ∀ x ∈ X.classes, ∀ y ∈ X.classes, F.chimeraImage C x y ⊆ x,
+     ∀ s ∈ X.dom, ∀ t ∈ X.dom, F.chimera C s t ∈ X.part s,
+     ∀ s ∈ X.dom, ∀ t ∈ X.dom, F.chimera C s t ∈ X.dom ∧ X (F.chimera C s t) s,
+     (ofSetoid (commonRefinement C)).restrict X.dom ≤ X ∧
+       F.chimeraImage C X.dom X.dom = X.dom].TFAE</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="ffs-proposition-21">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-proposition-21" aria-label="mark Proposition 21 read"></label>
+    <span class="node-label">Proposition 21</span>
+    <span class="node-title"></span>
+    <span class="kind">proposition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be a finite factored set, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>D</mi></mrow></math> be subsets of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>B</mi></mrow></math>, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x0002C;</mo><mi>Y</mi><mo>&#x0002C;</mo><mi>Z</mi><mo>&#x02208;</mo><mtext>SubPart</mtext><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be subpartitions of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>, and let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mtext>dom</mtext><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mtext>dom</mtext><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mi>E</mi></mrow></math>.
+<ol>
+    <li>If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><msub><mo>&#x02264;</mo><mi>E</mi></msub><mi>Y</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>Y</mi></mrow></math>, then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>X</mi></mrow></math>.
+    <li>If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>X</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>Y</mi></mrow></math>, then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>X</mi><msub><mo>&#x02228;</mo><mi>E</mi></msub><mi>Y</mi></mrow></math>.
+    <li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>B</mi><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>X</mi></mrow></math>.
+    <li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x0007B;</mo><mo stretchy="false">&#x0007D;</mo><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>X</mi></mrow></math> if and only if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x0003D;</mo><msub><mtext>Ind</mtext><mi>E</mi></msub></mrow></math>.
+    <li>If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>X</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>D</mi><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>X</mi></mrow></math>, then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><mo>&#x02229;</mo><mi>D</mi><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>X</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><mo>&#x0222A;</mo><mi>D</mi><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>X</mi></mrow></math>.
+    <li>If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x02286;</mo><mi>Z</mi></mrow></math>, and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>Z</mi></mrow></math>, then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>X</mi></mrow></math>.
+</ol></p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.generatesSub_spec</code><span class="ep-file">FiniteFactoredSets/Subpartition.lean</span></div><pre class="sig">theorem generatesSub_spec (C D : Set (Setoid S)) (X Y Z : Subpartition S)
+    (hE : X.dom = Y.dom) :
+    (Y ≤ X → F.GeneratesSub C Y → F.GeneratesSub C X) ∧
+    (F.GeneratesSub C X → F.GeneratesSub C Y → F.GeneratesSub C (X ⊓ Y)) ∧
+    F.GeneratesSub F.B X ∧
+    (F.GeneratesSub ∅ X ↔ X = indiscrete X.dom) ∧
+    (F.GeneratesSub C X → F.GeneratesSub D X →
+      F.GeneratesSub (C ∩ D) X ∧ F.GeneratesSub (C ∪ D) X) ∧
+    (X.Subset Z → F.GeneratesSub C Z → F.GeneratesSub C X)</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="ffs-definition-24">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-definition-24" aria-label="mark Definition 24 read"></label>
+    <span class="node-label">Definition 24</span>
+    <span class="node-title">history of a subpartition</span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Given a finite factored set <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math> and a subpartition <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x02208;</mo><mtext>SubPart</mtext><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo></mrow></math> denote the smallest (according to the subset ordering) subset of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>B</mi></mrow></math> such that <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><msup><mo>&#x022A2;</mo><mi>F</mi></msup><mi>X</mi></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.historySub</code><span class="ep-file">FiniteFactoredSets/SubpartitionHistory.lean</span></div><pre class="sig">def historySub (X : Subpartition S) : Set (Setoid S)</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-ffs-History-of-a-Subpartition">History of a Subpartition</h2>
+
+<article class="node" id="ffs-proposition-22">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-proposition-22" aria-label="mark Proposition 22 read"></label>
+    <span class="node-label">Proposition 22</span>
+    <span class="node-title"></span>
+    <span class="kind">proposition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Given a finite factored set <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>h</mi><mi>F</mi></msup><mi>:</mi><mtext>SubPart</mtext><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02192;</mo><mi>&#x1D4AB;</mi><mo stretchy="false">&#x00028;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math> is well-defined, and if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> is a partition of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>, this definition coincides with Definition [ref].</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.historySub_isLeast_and_eq_history</code><span class="ep-file">FiniteFactoredSets/SubpartitionHistory.lean</span></div><pre class="sig">theorem historySub_isLeast_and_eq_history [Finite F.B] :
+    (∀ X : Subpartition S, IsLeast {C | C ⊆ F.B ∧ F.GeneratesSub C X} (F.historySub X)) ∧
+    ∀ X : Setoid S, F.historySub (ofSetoid X) = F.history X</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="ffs-proposition-23">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-proposition-23" aria-label="mark Proposition 23 read"></label>
+    <span class="node-label">Proposition 23</span>
+    <span class="node-title"></span>
+    <span class="kind">proposition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be a finite factored set, let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x0002C;</mo><mi>Y</mi><mo>&#x0002C;</mo><mi>Z</mi><mo>&#x02208;</mo><mtext>SubPart</mtext><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be subpartitions of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>, and let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mtext>dom</mtext><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mtext>dom</mtext><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mi>E</mi></mrow></math>.
+<ol>
+    <li>If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><msub><mo>&#x02264;</mo><mi>E</mi></msub><mi>Y</mi></mrow></math>, then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02286;</mo><msup><mi>h</mi><mi>Y</mi></msup><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo></mrow></math>.
+    <li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><msub><mo>&#x02228;</mo><mi>E</mi></msub><mi>Y</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0222A;</mo><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo></mrow></math>.
+    <li>If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x02286;</mo><mi>Z</mi></mrow></math>, then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02286;</mo><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>Z</mi><mo stretchy="false">&#x00029;</mo></mrow></math>.
+    <li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mo stretchy="false">&#x0007B;</mo><mo stretchy="false">&#x0007D;</mo></mrow></math> if and only if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x0003D;</mo><msub><mtext>Ind</mtext><mi>E</mi></msub></mrow></math>.
+    <li>If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math> is nonempty, then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>b</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mo stretchy="false">&#x0007B;</mo><mi>b</mi><mo stretchy="false">&#x0007D;</mo></mrow></math> for all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>b</mi><mo>&#x02208;</mo><mi>B</mi></mrow></math>.
+</ol></p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.historySub_spec</code><span class="ep-file">FiniteFactoredSets/SubpartitionHistory.lean</span></div><pre class="sig">theorem historySub_spec [Finite F.B] (X Y Z : Subpartition S) (hE : X.dom = Y.dom) :
+    (Y ≤ X → F.historySub X ⊆ F.historySub Y) ∧
+    F.historySub (X ⊓ Y) = F.historySub X ∪ F.historySub Y ∧
+    (X.Subset Z → F.historySub X ⊆ F.historySub Z) ∧
+    (F.historySub X = ∅ ↔ X = indiscrete X.dom) ∧
+    (Nonempty S → ∀ b ∈ F.B, F.historySub (ofSetoid b) = {b})</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="ffs-lemma-1">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-lemma-1" aria-label="mark Lemma 1 read"></label>
+    <span class="node-label">Lemma 1</span>
+    <span class="node-title"></span>
+    <span class="kind">lemma</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be a finite factored set, and let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x0002C;</mo><mi>Y</mi><mo>&#x02208;</mo><mtext>Part</mtext><mo stretchy="false">&#x00028;</mo><mi>E</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be subpartitions of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math> with the same domain. If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02229;</mo><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mo stretchy="false">&#x0007B;</mo><mo stretchy="false">&#x0007D;</mo></mrow></math>, then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x0007C;</mo><mi>y</mi><mo stretchy="false">&#x00029;</mo></mrow></math> for all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>y</mi><mo>&#x02208;</mo><mi>Y</mi></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.historySub_restrict_part_eq</code><span class="ep-file">FiniteFactoredSets/SubpartitionHistory.lean</span></div><pre class="sig">theorem historySub_restrict_part_eq [Finite F.B] {X Y : Subpartition S} (hE : X.dom = Y.dom)
+    (h : F.historySub X ∩ F.historySub Y = ∅) {s : S} (hs : s ∈ Y.dom) :
+    F.historySub X = F.historySub (X.restrict (Y.part s))</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="ffs-lemma-2">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-lemma-2" aria-label="mark Lemma 2 read"></label>
+    <span class="node-label">Lemma 2</span>
+    <span class="node-title"></span>
+    <span class="kind">lemma</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be a finite factored set. Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>E</mi><mo>&#x02286;</mo><mi>S</mi></mrow></math> and let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x0002C;</mo><mi>Y</mi><mo>&#x02208;</mo><mtext>Part</mtext><mo stretchy="false">&#x00028;</mo><mi>E</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be subpartitions of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math> with the same domain. Then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><msub><mo>&#x02228;</mo><mi>E</mi></msub><mi>Y</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0222A;</mo><msub><mo>&#x022C3;</mo><mrow><mi>x</mi><mo>&#x02208;</mo><mi>X</mi></mrow></msub><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x0007C;</mo><mi>x</mi><mo stretchy="false">&#x00029;</mo></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.historySub_inf_eq</code><span class="ep-file">FiniteFactoredSets/SubpartitionHistory.lean</span></div><pre class="sig">theorem historySub_inf_eq [Finite F.B] {X Y : Subpartition S} (hE : X.dom = Y.dom) :
+    F.historySub (X ⊓ Y) =
+      F.historySub X ∪ ⋃ s ∈ X.dom, F.historySub (Y.restrict (X.part s))</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="ffs-definition-25">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-definition-25" aria-label="mark Definition 25 read"></label>
+    <span class="node-label">Definition 25</span>
+    <span class="node-title"></span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be a finite factored set. Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x0002C;</mo><mi>Y</mi><mo>&#x02208;</mo><mtext>SubPart</mtext><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be subpartitions of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>. We write <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><msup><mi>&#x027C2;</mi><mi>F</mi></msup><mi>Y</mi></mrow></math> if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02229;</mo><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mo stretchy="false">&#x0007B;</mo><mo stretchy="false">&#x0007D;</mo></mrow></math>, we write <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><msup><mo>&#x02264;</mo><mi>F</mi></msup><mi>Y</mi></mrow></math> if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02286;</mo><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, and we write <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><msup><mo>&#x0003C;</mo><mi>F</mi></msup><mi>Y</mi></mrow></math> if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02282;</mo><msup><mi>h</mi><mi>F</mi></msup><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x00029;</mo></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.OrthogonalSub</code><span class="ep-file">FiniteFactoredSets/ConditionalOrthogonality.lean</span></div><pre class="sig">def OrthogonalSub (X Y : Subpartition S) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.BeforeSub</code><span class="ep-file">FiniteFactoredSets/ConditionalOrthogonality.lean</span></div><pre class="sig">def BeforeSub (X Y : Subpartition S) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.StrictlyBeforeSub</code><span class="ep-file">FiniteFactoredSets/ConditionalOrthogonality.lean</span></div><pre class="sig">def StrictlyBeforeSub (X Y : Subpartition S) : Prop</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-ffs-Conditional-Orthogonality">Conditional Orthogonality</h2>
+
+<article class="node" id="ffs-definition-26">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-definition-26" aria-label="mark Definition 26 read"></label>
+    <span class="node-label">Definition 26</span>
+    <span class="node-title">conditional orthogonality given a subset</span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Given a finite factored set <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, partitions <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x0002C;</mo><mi>Y</mi><mo>&#x02208;</mo><mtext>Part</mtext><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>E</mi><mo>&#x02286;</mo><mi>S</mi></mrow></math>, we say <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math> are orthogonal given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>E</mi></mrow></math> (in <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi></mrow></math>), written <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mi>Y</mi><mo>&#x02223;</mo><mi>E</mi></mrow></math>, if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x00028;</mo><mi>X</mi><mo stretchy="false">&#x0007C;</mo><mi>E</mi><mo stretchy="false">&#x00029;</mo><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mo stretchy="false">&#x00028;</mo><mi>Y</mi><mo stretchy="false">&#x0007C;</mo><mi>E</mi><mo stretchy="false">&#x00029;</mo></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.OrthogonalGivenSet</code><span class="ep-file">FiniteFactoredSets/ConditionalOrthogonality.lean</span></div><pre class="sig">def OrthogonalGivenSet (X Y : Setoid S) (E : Set S) : Prop</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="ffs-definition-27">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-definition-27" aria-label="mark Definition 27 read"></label>
+    <span class="node-label">Definition 27</span>
+    <span class="node-title">conditional orthogonality</span>
+    <span class="kind">definition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Given a finite factored set <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, and partitions <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x0002C;</mo><mi>Y</mi><mo>&#x0002C;</mo><mi>Z</mi><mo>&#x02208;</mo><mtext>Part</mtext><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mi>Y</mi><mo>&#x02223;</mo><mi>z</mi></mrow></math> for all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>z</mi><mo>&#x02208;</mo><mi>Z</mi></mrow></math>, then we say <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math> are orthogonal given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Z</mi></mrow></math> (in <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi></mrow></math>), written <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mi>Y</mi><mo>&#x02223;</mo><mi>Z</mi></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.OrthogonalGiven</code><span class="ep-file">FiniteFactoredSets/ConditionalOrthogonality.lean</span></div><pre class="sig">def OrthogonalGiven (X Y Z : Setoid S) : Prop</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="ffs-proposition-24">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-proposition-24" aria-label="mark Proposition 24 read"></label>
+    <span class="node-label">Proposition 24</span>
+    <span class="node-title"></span>
+    <span class="kind">proposition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Given a finite factored set <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math> and partitions <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x0002C;</mo><mi>Y</mi><mo>&#x02208;</mo><mtext>Part</mtext><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mi>Y</mi></mrow></math> if and only if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>\co</mi><mrow><mi>X</mi></mrow><mrow><mi>Y</mi></mrow><mrow><msub><mtext>Ind</mtext><mi>S</mi></msub></mrow></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.orthogonal_iff_orthogonalGiven_top</code><span class="ep-file">FiniteFactoredSets/ConditionalOrthogonality.lean</span></div><pre class="sig">theorem orthogonal_iff_orthogonalGiven_top [Finite F.B] (X Y : Setoid S) :
+    F.Orthogonal X Y ↔ F.OrthogonalGiven X Y ⊤</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="ffs-theorem-2">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-theorem-2" aria-label="mark Theorem 2 read"></label>
+    <span class="node-label">Theorem 2</span>
+    <span class="node-title"></span>
+    <span class="kind">theorem</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be a finite factored set, and let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x0002C;</mo><mi>Y</mi><mo>&#x0002C;</mo><mi>Z</mi><mo>&#x0002C;</mo><mi>W</mi><mo>&#x02208;</mo><mtext>Part</mtext><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be partitions of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>.
+<ol>
+    <li>If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mi>Y</mi><mo>&#x02223;</mo><mi>Z</mi></mrow></math>, then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mi>X</mi><mo>&#x02223;</mo><mi>Z</mi></mrow></math>. (symmetry)
+    <li>If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mo stretchy="false">&#x00028;</mo><mi>Y</mi><msub><mo>&#x02228;</mo><mi>S</mi></msub><mi>W</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02223;</mo><mi>Z</mi></mrow></math>, then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mi>Y</mi><mo>&#x02223;</mo><mi>Z</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mi>W</mi><mo>&#x02223;</mo><mi>Z</mi></mrow></math>. (decomposition)
+    <li>If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mo stretchy="false">&#x00028;</mo><mi>Y</mi><msub><mo>&#x02228;</mo><mi>S</mi></msub><mi>W</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02223;</mo><mi>Z</mi></mrow></math>, then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mi>Y</mi><mo>&#x02223;</mo><mo stretchy="false">&#x00028;</mo><mi>Z</mi><msub><mo>&#x02228;</mo><mi>S</mi></msub><mi>W</mi><mo stretchy="false">&#x00029;</mo></mrow></math>. (weak union)
+    <li>If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mi>Y</mi><mo>&#x02223;</mo><mi>Z</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mi>W</mi><mo>&#x02223;</mo><mo stretchy="false">&#x00028;</mo><mi>Z</mi><msub><mo>&#x02228;</mo><mi>S</mi></msub><mi>Y</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mo stretchy="false">&#x00028;</mo><mi>Y</mi><msub><mo>&#x02228;</mo><mi>S</mi></msub><mi>W</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02223;</mo><mi>Z</mi></mrow></math>. (contraction)
+    <li>If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mi>Y</mi><mo>&#x02223;</mo><mi>Z</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mi>W</mi><mo>&#x02223;</mo><mi>Z</mi></mrow></math>, then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mo stretchy="false">&#x00028;</mo><mi>Y</mi><msub><mo>&#x02228;</mo><mi>S</mi></msub><mi>W</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02223;</mo><mi>Z</mi></mrow></math>. (composition)
+</ol></p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.orthogonalGiven_semigraphoid</code><span class="ep-file">FiniteFactoredSets/ConditionalOrthogonality.lean</span></div><pre class="sig">theorem orthogonalGiven_semigraphoid [Finite F.B] (X Y Z W : Setoid S) :
+    (F.OrthogonalGiven X Y Z → F.OrthogonalGiven Y X Z) ∧
+    (F.OrthogonalGiven X (Y ⊓ W) Z → F.OrthogonalGiven X Y Z ∧ F.OrthogonalGiven X W Z) ∧
+    (F.OrthogonalGiven X (Y ⊓ W) Z → F.OrthogonalGiven X Y (Z ⊓ W)) ∧
+    (F.OrthogonalGiven X Y Z → F.OrthogonalGiven X W (Z ⊓ Y) → F.OrthogonalGiven X (Y ⊓ W) Z) ∧
+    (F.OrthogonalGiven X Y Z → F.OrthogonalGiven X W Z → F.OrthogonalGiven X (Y ⊓ W) Z)</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="ffs-proposition-25">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="ffs-proposition-25" aria-label="mark Proposition 25 read"></label>
+    <span class="node-label">Proposition 25</span>
+    <span class="node-title"></span>
+    <span class="kind">proposition</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · arXiv:2109.11513</div>
+      <p>Let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>F</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002C;</mo><mi>B</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be a finite factored set, and let <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mo>&#x0002C;</mo><mi>Y</mi><mo>&#x02208;</mo><mtext>Part</mtext><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo stretchy="false">&#x00029;</mo></mrow></math> be partitions of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>. <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><mrow><msup><mi>&#x027C2;</mi><mrow><mi>F</mi></mrow></msup></mrow><mi>X</mi><mo>&#x02223;</mo><mi>Y</mi></mrow></math> if and only if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>X</mi><msub><mo>&#x02264;</mo><mi>S</mi></msub><mi>Y</mi></mrow></math>.</p>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.orthogonalGiven_self_iff</code><span class="ep-file">FiniteFactoredSets/ConditionalOrthogonality.lean</span></div><pre class="sig">theorem orthogonalGiven_self_iff [Finite F.B] (X Y : Setoid S) :
+    F.OrthogonalGiven X X Y ↔ Y ≤ X</pre></div>
+    </section>
+  </div>
+</article>
   </section>
 </main>
 </div>
@@ -6561,6 +6977,6 @@ Given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><m
 })();
 </script>
 
-<!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=34 -->
+<!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=51 -->
 
-<!-- trust-surface-sources: 25bd7ef40f8f875d454958794f26935662336a9fb5118e1d1c0b33b4981b21e5 -->
+<!-- trust-surface-sources: 2169a1ff4ecba1547ab7415d6b602bc7b35f1a8c3429a6be38d268c38e42fd14 -->

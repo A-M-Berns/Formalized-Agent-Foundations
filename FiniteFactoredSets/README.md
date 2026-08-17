@@ -5,7 +5,7 @@ Formalization of Scott Garrabrant, *Temporal Inference with Finite Factored Sets
 `notes/2109.11513-main.tex` is the exact arXiv source and `notes/2109.11513.pdf` the
 matching PDF.
 
-**Status: in progress — §2 and §3 formalized (34 of the 96 in-scope nodes), with
+**Status: in progress — §2, §3 and §4 formalized (51 of the 96 in-scope nodes), with
 non-vacuity discharged by construction: four factored sets are built, and the §2.5 and §3
 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`, `Entangled`, `Before`,
 `StrictlyBefore` — is computed over them rather than merely defined.**
@@ -24,6 +24,9 @@ Nothing here is complete, and this file says what is claimed and what is not.
 | 3.2 | History | Definition 17; Propositions 12, 13 |
 | 3.3 | Orthogonality | Definition 18; Propositions 14, 15 |
 | 3.4 | Time | Definition 19; Propositions 16, 17, 18, 19 |
+| 4.1 | Subpartitions, restriction, generating a subpartition | Definitions 20, 21, 22, 23; Propositions 20, 21 |
+| 4.2 | History of a subpartition | Definition 24; Propositions 22, 23; Lemmas 1, 2 |
+| 4.3 | Conditional orthogonality, the semigraphoid axioms | Definitions 25, 26, 27; Propositions 24, 25; Theorem 2 |
 
 Three of those definitions have two halves apiece, and every half is carried, so those
 nodes appear in the inventory twice:
@@ -41,9 +44,8 @@ Every one of those carries a `Paper node:` docstring line and an entry in
 
 ## What is not claimed
 
-§4 (subpartitions and conditional orthogonality), §5 (polynomials and probability,
-including the Fundamental Theorem), §6 (inferring time), and §7's in-scope material have
-**no Lean statements yet**. The trust-surface
+§5 (polynomials and probability, including the Fundamental Theorem), §6 (inferring
+time), and §7's in-scope material have **no Lean statements yet**. The trust-surface
 guide reports the shortfall by kind rather than listing it.
 
 An earlier feasibility spike proved several §5 results — the disjoint-support coefficient
