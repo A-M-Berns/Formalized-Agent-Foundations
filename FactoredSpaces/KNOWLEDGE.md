@@ -155,6 +155,26 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
 * **Lemma C.20's statement is unconditional**: the empty-`Ω` and empty-`C` cases are
   vacuous via `disintegrates_iff_splice`; do not add `[Nonempty (Pt Ω)]` downstream.
 
+* **The table-construction API of `ConditionalHistory.lean`.** `propTable G Val Z x bad D`
+  returns `x q` at node `q` unless `q ∈ D` and some parent `p ∈ D ∖ Z` deviates from `x p`
+  in the consulted configuration (then `bad q`); lookups `propTable_of_good/of_not_mem/
+  of_bad`; evaluation principles `nodeVar_eq_of_diag` (a table returning `x q` at every
+  index `x` realizes has `X = x` — needs nothing off-diagonal) and `nodeVar_ne_of_prop`
+  (badness propagates along `D` from a source, `hstep` from `Digraph.unblockedDesc_step`).
+  Every constructed point in the file is this table plus one or two `Function.update`s.
+  Reuse it; do not build tables by hand.
+* **Memo simplifications found in proof:** (i) the copy-chain-along-a-path construction is
+  not needed — take `D` = the whole unblocked-descendant set and let the table detect "any
+  live parent deviates" (no path lists, no `DecidableEq` on lists); note `D` must EXCLUDE
+  `Z` for relevance (L3⇒) and INCLUDE the `Z`-sinks for the adjacent step (L5a); (ii) L5's
+  `~`-relation + closure is not needed — fix the disintegrating `J` and prove `i ∈ J ↔ k ∈ J`
+  directly (`mem_iff_mem_of_mix`, one mixed point suffices for both orderings), chaining
+  with `Iff.trans`. Memo estimate ≈1400 lines, actual ≈800.
+* `disintegrates_zcIdx` (L4) proves a conjunction at every vertex in one induction; the
+  `Z`-parent case needs both conjuncts of the IH.
+* `ConditionalHistory.lean` sets `linter.unusedSectionVars false` file-wide (the ambient
+  instance bundle would otherwise demand `omit` on ~50 declarations).
+
 ## Intentional deviations from the paper
 
 * **`tauInv_condCPD_strictlyPositive` takes `hG : G.IsAcyclic`** (non-paper helper): false
@@ -232,6 +252,17 @@ load-bearing (E8).
   `∑ x, g (e x)`; `rw [← Fintype.sum_prod_type]` needs the function given — use `calc`.
 * Stating a helper with a bare `if s ∈ A then …` over a `Set` forces `Decidable` into the
   statement; use `Set.indicator` and `Set.indicator_apply` in proofs.
+* NEVER `rw` an index inside a dependent lookup `ω i` (motive check fails); use
+  `table_congr` by `exact`/`.trans`. Sigma-index disequalities: `idx_ne_of_node_ne`,
+  `idx_ne_of_config_ne` (`Sigma.mk.injEq` + `eq_of_heq`; `injection` misbehaves here).
+* Prefer `obtain ⟨a, ha⟩ : ∃ a, a = e := ⟨_, rfl⟩` over `set` for constructed points of
+  `Pt (bnFactor G Val)`; `Finset.piecewise` under an eta-expanded index: keep it folded and
+  use `Finset.piecewise_eq_of_mem/of_notMem` explicitly; `subst h : a = b` replaces `b` by
+  `a`; `clear` stale hypotheses before `ReflTransGen.head_induction_on`;
+  `nodeVar_ne_of_prop` needs `(Z := Z)`.
+* Definitional bridges: `parentConfig G Val (jointVar hG ω) v p` ≡ `nodeVar hG p.1 ω`;
+  `nodesVar hG A ω a` ≡ `nodeVar hG a.1 ω`; `unblockedDesc`/`unblockedAnc` membership are
+  `Iff.rfl` duals.
 * Iteration cost calibration: with warm oleans `lake env lean` on a 600-line file is 3–7 s;
   a §C.3-sized lemma is tens of minutes, not hours; the Appendix-C probability bookkeeping
   (28 obligations) took ~1 h wall clock once the two transports (`splitEquiv`, `unionEquiv`)
