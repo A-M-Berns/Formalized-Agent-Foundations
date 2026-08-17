@@ -1,0 +1,18 @@
+--- a/PFR/ForMathlib/Entropy/Kernel/Basic.lean
++++ b/PFR/ForMathlib/Entropy/Kernel/Basic.lean
+@@ -208,8 +208,14 @@
+     Hk[prodMkLeft Unit κ, μ.map (Prod.mk ())] = Hk[κ, μ] := by
+   convert entropy_comap_equiv κ (.punitProd) (μ := μ)
+   · rfl
++  -- FAF VENDOR PATCH 2 (compatibility only; see ShannonInformation/vendor/PROVENANCE.md).
++  -- `MeasurableEquiv.map_symm` is stated *applied to a measure* in FAF's pinned Mathlib
++  -- (`μ.map ⇑e.symm = μ.comap ⇑e`), while this goal is an equality of the *functions*
++  -- `Measure.map` / `Measure.comap`, so the rewrite cannot fire until the goal is
++  -- `funext`-ed.  The statement being proved is unchanged.
++  funext ν
+   rw [← MeasurableEquiv.map_symm]
+-  congr
++  rfl
+ 
+ lemma entropy_compProd_aux [MeasurableSingletonClass S] [MeasurableSingletonClass T]
+     [MeasurableSingletonClass U] {μ} [IsFiniteMeasure μ] {κ : Kernel T S} [IsZeroOrMarkovKernel κ]

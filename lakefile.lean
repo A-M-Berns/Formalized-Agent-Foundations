@@ -20,6 +20,25 @@ lean_lib CartesianFrames where
 lean_lib FiniteFactoredSets where
   srcDir := "."
 
+-- Vendored Shannon-information substrate: the entropy import closure of
+-- teorth/pfr @ 01c9b666945eaf73b3f7d8b20ffe003f8640e630 (Apache-2.0), 25 modules, kept at
+-- upstream module paths so diffs against upstream stay readable. Two compatibility
+-- patches, both recorded as diffs; no mathematics altered. This is dependency code, not a
+-- paper this project formalizes — see `ShannonInformation/vendor/PROVENANCE.md`.
+-- Do not edit these files: re-vendor with `ShannonInformation/vendor/vendor-pfr.sh`.
+@[default_target]
+lean_lib PFR where
+  srcDir := "."
+  globs := #[.submodules `PFR]
+
+-- The FAF-facing consumer surface over that substrate. Paper-agnostic shared
+-- infrastructure; downstream formalizations import `ShannonInformation.API` and should
+-- never need to name a `PFR.*` module. See `ShannonInformation/README.md`.
+@[default_target]
+lean_lib ShannonInformation where
+  srcDir := "."
+  globs := #[.submodules `ShannonInformation]
+
 -- Consumer-style smoke tests. Each paper test imports only its supported API module.
 @[default_target]
 lean_lib APITests where
