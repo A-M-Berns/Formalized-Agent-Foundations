@@ -388,6 +388,49 @@ Three by-products worth recording:
 * **Paper-strength?** **No**, and not because of Lean. The statement needs repair at
   source first.
 
+### E.4 Two strategies for a computational Theorem 1, compared
+
+**Strategy 1 — extensional theorem plus an abstract-complexity interface.**
+Prove Theorem 1a as it stands (done), then bundle the computational side into a
+structure whose fields are the properties the paper's proof actually uses: a type of
+programs, a denotation into `Hypothesis DP`, a cost function, a `RunsIn g` predicate, a
+surjection from `ℕ` onto the programs (c.e. enumeration), and the closure lemmas
+Theorems 3 and 4 need. State 1b and 1c as theorems *taking that structure as a
+hypothesis*.
+
+* Proves: 1a in full; 1b and 1c **conditionally**.
+* Becomes assumptions: every field — in particular the closure properties, which are
+  where the real content is.
+* Modeling substitutions: **none**, provided the structure is never instantiated by a
+  dummy and never named something that reads as a proof (`EfficientlyComputable` is
+  exactly the name not to use). A conditional theorem honestly labelled is not a
+  substitution.
+* Paper-strength: 1a yes, 1b/1c no.
+* Cost: days. This is the spike's `PromiseRepresentation` / `DiagonalObligations` pattern
+  scaled up.
+* Risk, and it is the real one: a reader takes the conditional theorem for the paper's.
+  Mitigation is FAF's existing discipline — the interface must be listed as an
+  *uninhabited* trust boundary in the README, not merely disclosed in a docstring.
+
+**Strategy 2 — an actual executable machine model.**
+Build a machine with counted steps, an `O(g)` class parametric in `g`, a c.e.
+enumeration with a cost-accounted universal simulator, and a fixed promise
+representation with decidable order.
+
+* Proves: 1b in full, and 1c *after* the source defects are repaired.
+* Becomes assumptions: the input-size convention (E17) and the promise representation
+  (E18). Neither is in the paper, so both are **rulings**, and both are type-`(c)`
+  substitutions requiring a model card.
+* Paper-strength: 1b yes within the chosen conventions; 1c **no**, because the printed
+  statement does not typecheck as written (E16) — no amount of Lean fixes that.
+* Cost: research-scale. See §H.
+
+**Recommendation: Strategy 1**, with the interface left uninhabited and marked as such.
+Strategy 2 buys 1b at the price of a multi-year substrate and still does not buy 1c,
+which is the claim anyone actually cares about. That asymmetry — the expensive path does
+not reach the interesting statement — is the single strongest argument for scoping BIR
+to its extensional half.
+
 ---
 
 ## F. LI reuse assessment
