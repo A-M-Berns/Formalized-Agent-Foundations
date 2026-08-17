@@ -80,16 +80,33 @@ def Trail.nil (s : V) : G.Trail s s := ⟨[s], List.isChain_singleton s, rfl, rf
 
 /-- The zero-edge trail is active given `Z` iff `s ∉ Z` (endpoints are non-colliders). -/
 lemma Trail.nil_active_iff (s : V) (Z : Finset V) : (Trail.nil (G := G) s).Active Z ↔ s ∉ Z := by
-  sorry
+  have hnc : ∀ k, ¬ (Trail.nil (G := G) s).toWalk.IsColliderAt k := by
+    rintro k ⟨a, b, c, -, -, hc, -⟩
+    simp [Trail.nil, Trail.toWalk] at hc
+  constructor
+  · intro h
+    exact (h 0 s rfl).2 (hnc 0)
+  · intro hs k v hv
+    refine ⟨fun hcol => absurd hcol (hnc k), fun _ => ?_⟩
+    rcases k with _ | k
+    · simp only [Trail.nil, Trail.toWalk, List.getElem?_cons_zero, Option.some.injEq] at hv
+      exact hv ▸ hs
+    · simp [Trail.nil, Trail.toWalk] at hv
 
 /-- A vertex is never d-separated from itself given a set not containing it. -/
 lemma not_dSeparated_self {V₁ V₂ V₃ : Finset V} {v : V} (h₁ : v ∈ V₁) (h₂ : v ∈ V₂)
-    (h₃ : v ∉ V₃) : ¬ G.DSeparated V₁ V₂ V₃ := by
-  sorry
+    (h₃ : v ∉ V₃) : ¬ G.DSeparated V₁ V₂ V₃ := fun h =>
+  h v h₁ v h₂ (Trail.nil v) ((Trail.nil_active_iff v V₃).2 h₃)
 
 /-- d-separation of sets is d-separation of their members pairwise. -/
 lemma dSeparated_iff_forall_singleton (V₁ V₂ V₃ : Finset V) :
     G.DSeparated V₁ V₂ V₃ ↔ ∀ s ∈ V₁, ∀ t ∈ V₂, G.DSeparated {s} {t} V₃ := by
-  sorry
+  constructor
+  · intro h s hs t ht s' hs' t' ht' p
+    simp only [Finset.mem_singleton] at hs' ht'
+    subst hs'; subst ht'
+    exact h _ hs _ ht p
+  · intro h s hs t ht p
+    exact h s hs t ht s (Finset.mem_singleton_self s) t (Finset.mem_singleton_self t) p
 
 end Digraph
