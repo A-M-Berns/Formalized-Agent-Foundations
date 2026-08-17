@@ -66,11 +66,15 @@ Proposition 28), `Factoring.lean` (§5.2: `Irr^F(E)` and the factorization into 
 elementary probability distributions, `dd:probability`, and Theorem 3, the fundamental
 theorem), `Inference.lean` (§6.1: models of a sample space, orthogonality databases,
 `dd:model`), `InferenceExamples.lean` (§6.2: the two worked examples, Propositions
-33–36), `Conjecture.lean` (§7.2: Conjecture 1 as an unproved `Prop`, plus
-`fundamentalTheoremFiniteDim_of_finite`, its Theorem-3 instance) and `EmbeddedAgency.lean`
-(§7.3: Definitions 46–50 — `eventPartition`, `Observes`, `ObservesPartition`,
-`Counterfactable`, `CounterfactableRel`, `BeforeGivenSet`; definitions only, since §7 states
-no theorem about them) — with `Examples.lean` carrying the non-vacuity witnesses, which are
+33–36), `Conjecture.lean` (§7.2: Conjecture 1 as an unproved `Prop`; its finite instance needs no
+declaration of its own, being Theorem 3 itself) and `EmbeddedAgency.lean`
+(§7.3: Definitions 46–50 — `Observes`, `ObservesPartition`,
+`Counterfactable`, `CounterfactableRel`, `BeforeGivenSet`, with `eventPartition` an
+unannotated *auxiliary* rather than a sixth carrier: Definition 46's carrier is `Observes`,
+and `eventPartition` takes no `F` and must be spelled `FactoredSet.eventPartition`;
+definitions only, since §7 states
+no theorem about them, though the general relations among them are proved and sit on the
+consumer surface) — with `Examples.lean` carrying the non-vacuity witnesses, which are
 constructed factored sets with the §2.5–§7 vocabulary computed over them rather than
 stand-ins, and `InfiniteExamples.lean` the witnesses that live outside §5's finiteness
 boundary (`infFS` on `ℕ → Bool`, the paper's `𝒫(ℕ)` factored set and infinite-dimensional;

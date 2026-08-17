@@ -11,9 +11,11 @@ order recovers `X <_D Y` (Example 1) and `X <_D Y <_D Z` (Example 2).
 Bit strings are tuples of `Bool`; the paper's `x_i`, `y_i`, `z_i` are the coordinate
 partitions (`Setoid.comap Prod.fst ⊥` etc.), `V` is the "first two bits agree" partition,
 and `{Ω}` is `⊤`.  Example 2's model lives on `Bool × Bool × Option Bool`: the paper's
-two-bit strings are the points with third coordinate `none`, so `Z'` (Definition 39's third
-factor, "the third bit exists and is `i`" / "there are only two bits") is the third-coordinate
-partition and `f` copies the second bit into a missing third one.
+two-bit strings are the points with third coordinate `none`, so `Z'` (the third factor,
+introduced in Proposition 35's *proof* — "the third bit exists and is `i`" / "there are only
+two bits") is the third-coordinate partition and `f` copies the second bit into a missing
+third one.  Definition 39 is the preimage vocabulary `f⁻¹(ω)` / `f⁻¹(E)` / `f⁻¹(X)`, used
+below for `Y'` and `ZP`.
 -/
 
 universe u
@@ -160,7 +162,7 @@ lemma inf_Y_X_le_V : Y ⊓ X ≤ V := by
 strictly before the second.
 
 Paper node: Proposition 34 (§6.2). -/
-theorem before_X_Y : D.Before X Y := by
+theorem strictlyBefore_X_Y : D.StrictlyBefore X Y := by
   intro M hM
   -- `f⁻¹(X) ≤_S f⁻¹(Y) ∨_S f⁻¹(V)` and its `X`/`V` swap, pulled back pointwise.
   have hXle : M.pullback Y ⊓ M.pullback V ≤ M.pullback X := by
@@ -208,10 +210,10 @@ exhibited on a named factored set. -/
 example : D.Orth X V ⊤ := rfl
 
 example : idModel.F.StrictlyBefore (idModel.pullback X) (idModel.pullback Y) :=
-  before_X_Y idModel models_D
+  strictlyBefore_X_Y idModel models_D
 
 example : ∃ M : Model Ω, M.F.StrictlyBefore (M.pullback X) (M.pullback Y) :=
-  ⟨idModel, before_X_Y idModel models_D⟩
+  ⟨idModel, strictlyBefore_X_Y idModel models_D⟩
 
 end Example1
 
@@ -293,8 +295,11 @@ third coordinate, with *three* blocks — "the third bit is `0`", "…is `1`", a
 only two bits").  `Y'` and `ZP` are not factors: they are the pullbacks `f⁻¹(Y)` and
 `f⁻¹(Z)`, named because the paper's proof computes their histories.
 
-All six verdicts go through *upper* bounds on the restricted histories — the only lower
-bound anyone needs is that `h^F(f⁻¹(Z)|y)` is nonempty, for `¬(Z ⊥_D Z | Y)`. -/
+The six verdicts split.  The three *conditional* ones go through **upper** bounds on the
+restricted histories, plus one nonemptiness — that `h^F(f⁻¹(Z)|y)` is nonempty, for
+`¬(Z ⊥_D Z | Y)`.  The three verdicts against `ZP` (`¬(X ⊥_D Z | {Ω})` and its `V`
+counterpart) are unconditional and run the other way: they consume the **lower** bound
+`history_ZP : h^F(ZP) = B`, whose `⊇` half is the longest computation in this section. -/
 
 /-! #### The carrier and its factorization -/
 
@@ -1144,7 +1149,7 @@ end Prop36
 /-- **Proposition 36** — in Example 2, `X <_D Y <_D Z`.
 
 Paper node: Proposition 36 (§6.2). -/
-theorem before_X_Y_Z : D.Before X Y ∧ D.Before Y Z :=
+theorem strictlyBefore_X_Y_Z : D.StrictlyBefore X Y ∧ D.StrictlyBefore Y Z :=
   ⟨fun _ hM => strictlyBefore_X_Y hM, fun _ hM => strictlyBefore_Y_Z hM⟩
 
 /-! ### Client's-eye checks
@@ -1159,14 +1164,14 @@ example : Nat.card Carrier = 12 := by
   rfl
 
 /-- Definition 45 composes: `X <_D Z`. -/
-example : D.Before X Z := fun M hM =>
-  ⟨(before_X_Y_Z.1 M hM).1.trans (before_X_Y_Z.2 M hM).1,
-    fun h => (before_X_Y_Z.1 M hM).2 ((before_X_Y_Z.2 M hM).1.trans h)⟩
+example : D.StrictlyBefore X Z := fun M hM =>
+  ⟨(strictlyBefore_X_Y_Z.1 M hM).1.trans (strictlyBefore_X_Y_Z.2 M hM).1,
+    fun h => (strictlyBefore_X_Y_Z.1 M hM).2 ((strictlyBefore_X_Y_Z.2 M hM).1.trans h)⟩
 
 /-- The inferred order is not vacuous — `Y <_D X` fails — precisely because Proposition 35
 supplies a model at which Proposition 36's first inclusion is strict. -/
-example : ¬ D.Before Y X := fun h =>
-  (h model models_D).2 (before_X_Y_Z.1 model models_D).1
+example : ¬ D.StrictlyBefore Y X := fun h =>
+  (h model models_D).2 (strictlyBefore_X_Y_Z.1 model models_D).1
 
 end Example2
 

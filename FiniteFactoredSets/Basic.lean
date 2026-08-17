@@ -118,6 +118,21 @@ def commonRefinement (C : Set (Setoid S)) : Setoid S := sInf C
 lemma commonRefinement_iff {C : Set (Setoid S)} {s t : S} :
     commonRefinement C s t ↔ ∀ b ∈ C, b s t := Setoid.sInf_iff
 
+/-- Definition 8's second sentence, the binary common refinement `X ∨_S Y = ⋁_S({X, Y})`: it
+is Mathlib's `X ⊓ Y` (`dd:order-flip` again — the paper's join glyph is Mathlib's meet).
+This is the bridge Propositions 11, 13, 15 and 18 are stated across: each of them writes the
+binary join as `⊓`, and this lemma is what says that is Definition 8. -/
+lemma commonRefinement_pair (X Y : Setoid S) : commonRefinement {X, Y} = X ⊓ Y := by
+  ext s t
+  simp only [commonRefinement_iff, Set.mem_insert_iff, Set.mem_singleton_iff]
+  aesop
+
+/-- Client's-eye use: a clause stated with `⊓` reads back as the paper's `⋁_S({X, Y})`. -/
+example (X Y : Setoid S) (s t : S) :
+    commonRefinement {X, Y} s t ↔ (X s t ∧ Y s t) := by
+  rw [commonRefinement_pair]
+  exact Iff.rfl
+
 /-! ## §2.2 Factorizations -/
 
 /-- Definition 10: a factorization of `S` is a set of nontrivial partitions whose
@@ -365,10 +380,12 @@ lemma chimera_basis (s t : S) : F.chimera F.B s t = s :=
 lemma chimera_empty (s t : S) : F.chimera ∅ s t = t :=
   (F.chimera_spec ∅ ∅ s t t).2.2.2.2.2.2.2.2.2.2
 
-/-- The degenerate case of clause 1 that §4 and §6 both run on, and the one fact of this
+/-- The degenerate case of clause 1 that §3, §4 and §6 all run on, and the one fact of this
 block that is not a projection of `chimera_spec`: if `s` already agrees with `t` on every
 factor of `C`, splicing changes nothing, `χ^F_C(s,t) = t`.  (Clause 11 is the special case
-`C = ∅`; clause 3 is `s = t`.) -/
+`C = ∅`; clause 3 is `s = t`.)  The `6 → 7` legs of both Proposition 10
+(`generates_tfae`) and Proposition 20 (`generatesSub_tfae`) are this lemma applied to
+`commonRefinement_iff.1`. -/
 lemma chimera_eq_right {C : Set (Setoid S)} {s t : S} (h : ∀ b ∈ C, b ∈ F.B → b s t) :
     F.chimera C s t = t := by
   refine F.eq_of_forall_rel fun b hb => ?_

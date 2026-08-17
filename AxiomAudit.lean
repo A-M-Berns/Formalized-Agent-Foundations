@@ -1040,17 +1040,31 @@ the Logical Induction `#assert_fields` block). -/
 Same contract as the CF-INVENTORY block above: every declaration carrying a
 `Paper node:` annotation in `FiniteFactoredSets/` must itself be listed between the
 FFS-INVENTORY markers below, and `scripts/check-finite-factored-sets-nodes.py` enforces
-that in both directions.
+that direction, together with the validity of each cited node against the committed TeX and
+the anchoring of each annotation to a named declaration.
+
+Read that as the one direction it is.  The checker does **not** enforce the converse — that
+every name listed below is a real, annotated declaration — and could not: this block also
+carries the non-vacuity witnesses, so it holds several times as many entries as there are
+annotations.  A line naming a declaration that does not exist passes the Python checker and
+is caught only when this file is elaborated, by `#assert_axioms_clean` failing to resolve
+the name.  `lake build AxiomAudit` is part of the contract, not an independent check of it.
+Nor does anything mechanically check that the paper's in-scope nodes are all covered; that
+accounting is prose in `FiniteFactoredSets/README.md`, to be re-derived by hand (compare
+`grep -rho "Paper node: [A-Za-z]* [0-9]*" FiniteFactoredSets/*.lean | sort -u` against
+`scripts/paper_nodes.py`'s `printed_independent_declarations`).
 
 This formalization is **complete** for its ruled scope: the list below covers §2–§7 —
 every in-scope node has a carrier or is Mathlib-rendered; Conjecture 1 (§7.2) is listed as
-a stated `Prop` that nothing proves, and Examples 3–4 are out of scope by ruling.  Several
-of the paper's §2.1 nodes have no Lean carrier at all because they are rendered by
-Mathlib vocabulary under the `dd:` tags in `FiniteFactoredSets.lean` — Definition 2
-(partition) is `Setoid`, Definition 5 (`∼_X`) is the setoid relation, Definition 6
-(finer) is `≤`, Definition 7 (`Dis_S`/`Ind_S`) is `⊥`/`⊤`, and Definition 9 (`∏(B)`) is
-the dependent product; §5.1's Definitions 29 (evaluation) and 30 (support) and §6.1's
-Definition 39 (preimages) are rendered the same way.  Those are recorded in
+a stated `Prop` that nothing proves, and Examples 3–4 are out of scope by ruling.  Nine of
+the paper's nodes have no Lean carrier at all because they are rendered by
+Mathlib vocabulary under the `dd:` tags in `FiniteFactoredSets.lean`.  Six are in §2.1 —
+Definition 1 (the disjoint union `⊔S`) is absorbed into `Setoid` and the dependent product,
+Definition 2 (partition) is `Setoid`, Definition 5 (`∼_X`) is the setoid relation,
+Definition 6 (finer) is `≤`, Definition 7 (`Dis_S`/`Ind_S`) is `⊥`/`⊤`, and Definition 9
+(`∏(B)`) is the dependent product — and three are outside it: §5.1's Definitions 29
+(evaluation) and 30 (support) and §6.1's Definition 39 (preimages).  Nine plus the 87
+carried below is the 96 in-scope nodes.  Those nine are recorded in
 `FiniteFactoredSets/README.md` rather than
 inventoried here, because there is no declaration of this project's to axiom-check. -/
 
@@ -1189,7 +1203,12 @@ open FiniteFactoredSets in
   Examples.historySub_disjoint_coord Examples.lemma1_coordFS Examples.lemma1_coordFS'
   Examples.lemma2_lhs_coordFS Examples.lemma2_rhs_coordFS
   -- §4.3: restriction can entangle, so `OrthogonalGiven` is neither empty nor total and is
-  -- not implied by Definition 18; Proposition 25 and Theorem 2 exhibited on the witness.
+  -- not implied by Definition 18; Proposition 25 exhibited on the witness, and Theorem 2
+  -- partly so.  Read the Theorem 2 witnesses for exactly what they are: only decomposition
+  -- and weak union have concrete instances, and `thm2_weakUnion_coordFS` takes `W = Y`, so
+  -- contraction, composition and symmetry have no concrete instantiation here.  The
+  -- endpoint `orthogonalGiven_semigraphoid` carries all five clauses; the witnesses meter
+  -- two of them.
   Examples.fstOnEdiag Examples.sndOnEdiag
   Examples.historySub_fstOnEdiag Examples.historySub_sndOnEdiag
   Examples.not_orthogonalGivenSet_Ediag Examples.Ediag_mem_xorPart_classes
@@ -1197,6 +1216,24 @@ open FiniteFactoredSets in
   Examples.orthogonalGiven_nondegenerate Examples.not_orthogonalGiven_fst_fst_top
   Examples.orthogonalGiven_fst_fst_fst
   Examples.thm2_decomposition_coordFS Examples.thm2_weakUnion_coordFS
+  -- Those two are instantiated at degenerate arguments (`W = ⊤`, resp. `W = Y`), so each
+  -- of their conclusions is a fact §4.3 already has; their docstrings say so.  The
+  -- non-degenerate instance conditions on `xorPart` and needs partitions of *mixed* type,
+  -- because `fstFactor`, `sndFactor`, `xorPart`, `Dis_S` and `Ind_S` each restrict
+  -- uniformly — all-discrete or all-indiscrete — to the two blocks of any 2+2 partition, so
+  -- no two of them can trade roles across blocks.  `diagPart`, `orPart` and `andPart` do
+  -- trade: `orthogonalGiven_diagPart_orAnd_xorPart` is `X ⊥^F (Y ∨_S W) | Z` with the left
+  -- argument carrying the diagonal block and the right the antidiagonal one, certified
+  -- two-sided by `orthogonalGiven_diagPart_orAnd_xorPart_two_sided` — neither restricted
+  -- history is empty on both blocks — so Theorem 2's decomposition, contraction and
+  -- composition clauses all do work on it.  Clauses 4 and 5 had no concrete instance
+  -- before; their second input is the auxiliary `diagPart ⊥^F xorPart | Z`, so neither is
+  -- the decomposition run backwards.
+  Examples.diagPart Examples.orPart Examples.andPart
+  Examples.orthogonalGiven_diagPart_orAnd_xorPart
+  Examples.orthogonalGiven_diagPart_orAnd_xorPart_two_sided
+  Examples.thm2_decomposition_coordFS_xorPart Examples.thm2_contraction_coordFS
+  Examples.thm2_composition_coordFS
   -- The degenerate corners of Definitions 26-27, recorded so a client does not rediscover
   -- them: conditioning on `∅` or on `Dis_S` makes every pair orthogonal.
   Examples.orthogonalGivenSet_empty Examples.orthogonalGiven_bot
@@ -1411,12 +1448,13 @@ open FiniteFactoredSets in
   -- infinite-dimensional witnesses (FiniteFactoredSets/InfiniteExamples.lean).
   -- `FundamentalTheoremFiniteDim` is a `def … : Prop` — Theorem 3 with `[Finite S]` weakened
   -- to `[Finite F.B]` — and is deliberately **not proved**: no declaration in the repo has
-  -- that type, the only uses being the two `example`s in `InfiniteExamples` that take it
-  -- *as a hypothesis* and instantiate it at a witness.  So listing it here
+  -- that type.  It is used in exactly three places, each an `example` that takes it *as a
+  -- hypothesis* and instantiates it at a witness: two in `InfiniteExamples` and one in
+  -- `APITests/FiniteFactoredSets.lean`, the last being the client-side half.  So listing it here
   -- checks the statement's own axiom profile, exactly as the block already does for the
   -- other `def … : Prop`s above (`OrthDatabase.Consistent`, `FactoredSet.Generates`).  Its
-  -- finite restriction `fundamentalTheoremFiniteDim_of_finite` is the only thing proved
-  -- about it and sits in the consumer-conveniences block below, since it is not a node.
+  -- finite restriction needs no declaration of its own: it *is* Theorem 3
+  -- (`FactoredSet.orthogonalGiven_iff_forall_isDistribution`, inventoried above).
   FundamentalTheoremFiniteDim
   -- The witnesses.  `natBoolFS` is dimension 2 over the *infinite* carrier `ℕ × Bool`, so
   -- `Finite natBoolFS.B` holds (by `Set.Finite.to_subtype`, not by Proposition 6, which
@@ -1427,8 +1465,17 @@ open FiniteFactoredSets in
   -- independent re-derivation, Proposition 15 clause 4 as the negative, Proposition 24 for
   -- Definition 27 at `Ind_S` — with `Finite B` alone and no `Finite S` anywhere, which is
   -- `dd:finiteness-minimal` discharged by construction rather than by inspection.
-  -- `isDistribution_diracAt_natBoolFS` makes Definition 37 inhabited there, so the
-  -- conjecture's right-hand side quantifies over a nonempty family.
+  -- `isDistribution_diracAt_natBoolFS` makes Definition 37 inhabited there, but
+  -- inhabitation is not what makes the conjecture's right-hand side a constraint:
+  -- `diracAt_rhs_trivial` shows a point mass satisfies Theorem 3's right-hand-side identity
+  -- for *arbitrary* sets, so a dirac-only family would make that side constantly true and,
+  -- against `not_orthogonal_natFactor_self`, would refute Conjecture 1 rather than exhibit
+  -- it.  `rich` — uniform on the four points `{0,1} × Bool` — is the discriminating member:
+  -- a Definition-37 distribution on `natBoolFS` (`rich_isDistribution`) that falsifies the
+  -- right-hand-side clause in the shape the conjecture quantifies it
+  -- (`rich_discriminates`), so `both_sides_fail_at_natFactor_self` computes both sides of
+  -- the biconditional at one triple.  This is the infinite-carrier counterpart of
+  -- `Examples.not_orthogonalGiven_bot_bot_top_boolFS`.
   InfiniteExamples.natFactor InfiniteExamples.boolFactor
   InfiniteExamples.natFactor_ne_boolFactor InfiniteExamples.natBoolBasis
   InfiniteExamples.natBoolBasis_nontrivial InfiniteExamples.natBoolBasis_existsUnique
@@ -1442,6 +1489,9 @@ open FiniteFactoredSets in
   InfiniteExamples.not_orthogonal_natFactor_self
   InfiniteExamples.orthogonalGiven_natFactor_boolFactor_top
   InfiniteExamples.isDistribution_diracAt_natBoolFS
+  InfiniteExamples.diracAt_rhs_trivial InfiniteExamples.richSupport InfiniteExamples.rich
+  InfiniteExamples.rich_apply InfiniteExamples.rich_isDistribution
+  InfiniteExamples.rich_discriminates InfiniteExamples.both_sides_fail_at_natFactor_self
   -- `infFS` is the other side of the line: the coordinate factorization of `ℕ → Bool`,
   -- whose basis is infinite (`infFS_B_infinite`, `not_finite_B`).  Up to
   -- `𝒫(ℕ) ≃ (ℕ → Bool)` it is the factored set §7.2 uses to say it does *not* expect the
@@ -1452,13 +1502,22 @@ open FiniteFactoredSets in
   -- `B` infinite the family in Definition 37 has infinite multiplicative support and
   -- `finprod` returns `1` rather than the elementary product.  So past finite dimension
   -- Definition 37's product is not the product it is written as — the concrete reason the
-  -- conjecture is stated at finite dimension and not beyond.
+  -- conjecture is stated at finite dimension and not beyond.  The second reason is
+  -- `not_isLeast_history_evEq`: **Proposition 12's conclusion is false** on `infFS`.  For
+  -- the eventually-equal partition `evEq`, dropping any single coordinate from `B` still
+  -- generates it, so `h^F(evEq) = ∅` (`history_evEq`) while `∅` generates only `Ind_S` and
+  -- `evEq ≠ Ind_S` (`evEq_ne_top`).  So `[Finite F.B]` on `FactoredSet.history_isLeast` is
+  -- load-bearing, and past finite dimension `history` is defined but is no longer the
+  -- object §3.2 onwards reasons about — the justification `History.lean`'s module doc gives
+  -- for that binder is now compiled rather than asserted.
   InfiniteExamples.memFactor InfiniteExamples.infBasis
   InfiniteExamples.memFactor_injective InfiniteExamples.infBasis_nontrivial
   InfiniteExamples.infBasis_existsUnique InfiniteExamples.infFS
   InfiniteExamples.infFS_B InfiniteExamples.infFS_B_infinite
   InfiniteExamples.not_finite_B
   InfiniteExamples.not_isDistribution_diracAt_infFS
+  InfiniteExamples.evEq InfiniteExamples.evEq_ne_top InfiniteExamples.history_evEq
+  InfiniteExamples.not_generates_history_evEq InfiniteExamples.not_isLeast_history_evEq
   -- §6.1: factored set models and orthogonality databases
   -- (FiniteFactoredSets/Inference.lean).  Definition 38's `Model` bundles the carrier, its
   -- factored set, the map to `Ω`, and — because the paper says *finite* factored set — a
@@ -1474,13 +1533,13 @@ open FiniteFactoredSets in
   -- with its root prefix: `ProvabilityLogic/Kripke/Basic.lean` declares a root-namespace
   -- `Model`, so the bare name is ambiguous under this block's `open FiniteFactoredSets in`.
   FiniteFactoredSets.Model OrthDatabase OrthDatabase.Orth OrthDatabase.NotOrth
-  OrthDatabase.Models OrthDatabase.Consistent OrthDatabase.Complete OrthDatabase.Before
+  OrthDatabase.Models OrthDatabase.Consistent OrthDatabase.Complete OrthDatabase.StrictlyBefore
   -- §6.2, Example 1 (FiniteFactoredSets/InferenceExamples.lean).  `Example1.D` is the
   -- database of the worked example; Propositions 33 and 34 are consistency (witnessed by
   -- the identity model on `(Ω, {X, V})`) and the inferred order `X <_D Y`, which quantifies
   -- over every model of `D` — in the §6.1 sense above, `Type u` carriers — and so is a
   -- universal claim, not an instantiated one.
-  Example1.D Example1.D_consistent Example1.before_X_Y
+  Example1.D Example1.D_consistent Example1.strictlyBefore_X_Y
   -- §6.2, Example 2 (FiniteFactoredSets/InferenceExamples.lean).  `Example2.D` is the
   -- database of the paper's second worked example; Propositions 35 and 36 are its
   -- consistency and the temporal order it forces.  Proposition 35 is discharged by the
@@ -1490,7 +1549,7 @@ open FiniteFactoredSets in
   -- stand-in.  Proposition 36 quantifies over every model of `D` in that same sense, so it
   -- needs no witness of its own; what makes it non-vacuous is Proposition 35, which
   -- supplies one.
-  Example2.D Example2.D_consistent Example2.before_X_Y_Z
+  Example2.D Example2.D_consistent Example2.strictlyBefore_X_Y_Z
   -- §6.1 on the witnesses (FiniteFactoredSets/Examples.lean).  Definitions 42-45 quantify
   -- over *models* of a sample space, not over factored sets, so none of the §2-§5 witnesses
   -- above touches them.  Definition 38 is inhabited four ways: the two identity models, the
@@ -1500,7 +1559,14 @@ open FiniteFactoredSets in
   -- identity, and it moves in both directions: `f⁻¹(Dis_Ω)` can be a *factor* of `S`
   -- (`pullback_fstModel_bot`, whose §3 history is the singleton) and it can collapse every
   -- partition of `Ω` to `Ind_S` (`pullback_pointModel`).
+  -- `voidModel` is the fifth and degenerate end of Definition 38: the empty carrier, legal
+  -- because `Model`'s `Finite S` field is satisfied by `Empty`.  It is what makes
+  -- `not_strictlyBefore_of_notOrth_empty` true — it models every database whose `N` is
+  -- empty, and over it every history is `∅`, so Definition 45 infers nothing.  That is the
+  -- exact dual of `totalDB_consistent`: `O` costs a database no consistency and buys it no
+  -- inferences, `N` does both.
   Examples.coordModel Examples.boolModel Examples.fstModel Examples.pointModel
+  Examples.voidModel
   Examples.pullback_fstModel_bot Examples.history_pullback_fstModel_bot
   Examples.pullback_pointModel
   -- Definitions 40-44 on six databases.  Two natural misreadings are ruled out here.
@@ -1520,6 +1586,7 @@ open FiniteFactoredSets in
   -- the identity model of `coordFS` from §4.3's own computations on that witness.
   Examples.emptyDB Examples.models_emptyDB Examples.emptyDB_consistent
   Examples.not_emptyDB_complete
+  Examples.not_strictlyBefore_of_notOrth_empty Examples.not_emptyDB_strictlyBefore
   Examples.contradictoryDB Examples.not_contradictoryDB_consistent
   Examples.totalDB Examples.totalDB_complete Examples.totalDB_consistent
   Examples.completeInconsistentDB Examples.completeInconsistentDB_complete
@@ -1535,9 +1602,9 @@ open FiniteFactoredSets in
   -- Propositions 34 and 36 (the inference).  The informative positive instances of
   -- Definition 45 are those two propositions in `InferenceExamples.lean`; nothing here
   -- stands in for them, and `Examples.lean` does not import that file.  The two generic
-  -- statements these instantiate are `OrthDatabase.not_before_self_of_consistent` and
-  -- `OrthDatabase.before_of_not_consistent`, on the consumer surface below.
-  Examples.not_nonconstDB_before_self Examples.contradictoryDB_before_all
+  -- statements these instantiate are `OrthDatabase.not_strictlyBefore_self_of_consistent` and
+  -- `OrthDatabase.strictlyBefore_of_not_consistent`, on the consumer surface below.
+  Examples.not_nonconstDB_strictlyBefore_self Examples.contradictoryDB_strictlyBefore_all
   -- §7.3: embedded observations, counterfactability, conditional time
   -- (FiniteFactoredSets/EmbeddedAgency.lean).  Five definitions and no theorem: §7 states
   -- nothing about them, so the whole non-vacuity burden falls on the witnesses below.
@@ -1577,6 +1644,14 @@ open FiniteFactoredSets in
   -- determines the whole world model.  Neither clause therefore implies the other.
   Examples.observes_fst_snd_vsnd_true Examples.not_observes_snd_vsnd_true
   Examples.not_observes_snd_snd_Efalse
+  -- What `observes_fst_snd_vsnd_true` does *not* pin: at that `(W, E)` the complement is a
+  -- block of `W`, so `W|Eᶜ` is indiscrete and clause 2 holds of **every** agent —
+  -- `observes_snd_vsnd_true_iff` proves the collapse to clause 1 outright.  The witness
+  -- with a substantive clause 2 is `observes_fst_snd_empty`: at `E = ∅` the complement is
+  -- all of `S`, so clause 2 is the unconditional `fstFactor ⊥^F sndFactor` against a
+  -- nonempty restricted history, and `not_observes_snd_snd_empty` is the matching failure.
+  Examples.observes_snd_vsnd_true_iff Examples.observes_fst_snd_empty
+  Examples.not_observes_snd_snd_empty
   -- Definition 47 inhabited at a two-block partition, with the constant family
   -- `A_x = fstFactor`, and tied to Definition 46 on an instance —
   -- `observes_and_observesPartition_vsnd_true` exhibits the same agent and world model
@@ -1584,34 +1659,51 @@ open FiniteFactoredSets in
   -- the paper does not state either.  `observesPartition_top` is the corner that keeps the
   -- positive instance honest: `Ind_S` observes every partition with respect to every world
   -- model, so a Definition 47 witness says something only once its agent is nontrivial.
+  -- A second honesty corner, disclosed rather than discharged by the two positive instances
+  -- above: in both `observes_fst_snd_vsnd_true` and `observesPartition_fst_snd` the set the
+  -- second clause conditions on is a *block* of the world model `W`, so `W|Eᶜ` is
+  -- indiscrete, its history is empty, and clause 2 holds for **every** agent and every
+  -- sub-agent family.  Those two therefore meter clause 1 and the inhabitation of
+  -- Definition 47's `∃ As`, not the sub-agent decomposition.  A witness that meters clause 2
+  -- needs `h^F(W|Eᶜ) ≠ ∅`, and a witness that meters the decomposition needs a
+  -- *non-constant* family — at a constant family `sInf (Set.range As) = A` by
+  -- `sInf_singleton`, so the `∃ As` does no work.
   Examples.classes_sndFactor Examples.observesPartition_fst_snd
   Examples.observes_and_observesPartition_vsnd_true Examples.not_observesPartition_snd
   Examples.observesPartition_top
+  -- Both of those use a *constant* sub-agent family, where `⋁_S {Aᵢ} = A` is
+  -- `sInf_singleton` and the decomposition does nothing; and at `W = X = sndFactor` clause
+  -- 2 again collapses to clause 1 for every agent (`observesPartition_snd_snd_iff`).
+  -- `observesPartition_fst_snd_nonconstant` is the instance where the family genuinely
+  -- varies, with the non-constancy in the statement.  Its two values are comparable, and
+  -- that is forced rather than lazy: clause 1 admits only `fstFactor` and `Ind_S` as agents
+  -- for a two-block `X` on this carrier, and `Ind_S` is the only partition strictly coarser
+  -- than a factor there — an incomparable family needs more than two factors.
+  Examples.observesPartition_snd_snd_iff Examples.observesPartition_fst_snd_nonconstant
   -- Definitions 48-49 separated by the agreement partition ("do the two coordinates
   -- match?").  Definition 48 holds at a factor, at `Ind_S` and at `Dis_S`, and fails at the
   -- agreement partition for the paper's own reason: it is too coarse to specify the
   -- counterfactual, its history being the whole basis, so `⋁_S(h^F(X)) = Dis_S ≠ X`.
   -- Definition 49 is then implied by Definition 48 for every `W`
-  -- (`counterfactableRel_of_counterfactable`, general and short: a counterfactable `X` *is*
-  -- `⋁_S(h^F(X))`, so the screening-off degenerates to `X ⊥^F W | X`), holds of the
-  -- agreement partition relative to `Ind_S` — where `counterfactableRel_top` shows the
-  -- corner is general, so that instance alone would certify nothing — and *fails* of it
-  -- relative to `fstFactor`, which is what makes Definition 49 neither empty nor total.
+  -- (`FactoredSet.counterfactableRel_of_counterfactable`, general, in `EmbeddedAgency.lean`
+  -- with the other §7.3 reductions), holds of the agreement partition relative to `Ind_S` —
+  -- where `FactoredSet.counterfactableRel_top` shows the corner is general, so that instance
+  -- alone would certify nothing — and *fails* of it relative to `fstFactor`, which is what
+  -- makes Definition 49 neither empty nor total.
   Examples.counterfactable_fstFactor Examples.counterfactable_top
   Examples.counterfactable_bot Examples.not_counterfactable_xorPart
-  Examples.counterfactableRel_of_counterfactable Examples.counterfactableRel_fstFactor
-  Examples.counterfactableRel_top
+  Examples.counterfactableRel_fstFactor
   Examples.not_counterfactable_but_counterfactableRel_xorPart
   Examples.not_counterfactableRel_xorPart_fstFactor
   -- Definition 50 against Definition 19.  At `E = S` the two agree
-  -- (`beforeGivenSet_univ_iff`, general: `X|S = X` plus Proposition 22), and away from it
-  -- they genuinely differ — the coordinate factors are incomparable in `≤^F`, yet on the
-  -- diagonal each is before the other, which is the §7.3 shadow of §4.3's "restriction can
-  -- entangle".  The negative and the two degenerate corners keep it from being read as
+  -- (`FactoredSet.beforeGivenSet_univ_iff`, general, in `EmbeddedAgency.lean`), and away
+  -- from it they genuinely differ — the coordinate factors are incomparable in `≤^F`, yet on
+  -- the diagonal each is before the other, which is the §7.3 shadow of §4.3's "restriction
+  -- can entangle".  The negative and the two degenerate corners keep it from being read as
   -- total: given `∅` every pair is ordered, and `Ind_S` is before everything given anything.
-  Examples.beforeGivenSet_univ_iff Examples.beforeGivenSet_fst_bot_univ
+  Examples.beforeGivenSet_fst_bot_univ
   Examples.beforeGivenSet_fst_snd_Ediag Examples.not_beforeGivenSet_fst_top_Ediag
-  Examples.beforeGivenSet_empty Examples.beforeGivenSet_corners
+  Examples.beforeGivenSet_corners
 -- FFS-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Finite Factored Sets surface. -/
@@ -1682,6 +1774,31 @@ open FiniteFactoredSets in
   FactoredSet.orthogonalSub_iff_forall_notMem FactoredSet.orthogonalSub_ofSetoid
   FactoredSet.beforeSub_ofSetoid FactoredSet.orthogonalGivenSet_def
   FactoredSet.orthogonalGiven_def FactoredSet.historySub_restrict_inf
+  -- Definition 24 agrees with Definition 17 on a partition of `S` with no finiteness at
+  -- all (`historySub_ofSetoid`: two `⋂₀`s over the same family), which is what lets
+  -- Proposition 24, the two `*_ofSetoid` identifications above and
+  -- `beforeGivenSet_univ_iff` below drop `[Finite F.B]`; Proposition 22's *least*-element
+  -- sentence still needs it.  The two empty-history
+  -- computations and the Definition 26 corners are the §4.3/§7.3 facts every consumer
+  -- needs and no paper node states — `orthogonalGiven_given_self` in particular is NOT
+  -- Proposition 25 (which covers only `W = X`) and is the mechanism behind Definition 48
+  -- implying Definition 49.
+  FactoredSet.historySub_ofSetoid
+  FactoredSet.historySub_top_restrict FactoredSet.historySub_restrict_empty
+  FactoredSet.historySub_restrict_eq_empty_iff
+  FactoredSet.orthogonalGivenSet_comm FactoredSet.orthogonalGivenSet_top_left
+  FactoredSet.orthogonalGivenSet_top_right FactoredSet.orthogonalGiven_given_self
+  -- §2.1: Definition 8's second sentence, the binary common refinement.  The set form
+  -- `commonRefinement` is the node; `commonRefinement_pair` is the bridge saying that the
+  -- `⊓` in which Propositions 11, 13, 15 and 18 are stated *is* the paper's `X ∨_S Y`.
+  commonRefinement_pair
+  -- §7.3: the four reductions a client applies before reading a Definition 48-50 fact as
+  -- §7 content rather than §3/§4 content.  `beforeGivenSet_univ_iff` is Definition 50 at
+  -- `E = S` being Definition 19; the two `*_top`/`_empty` corners are vacuously total and
+  -- are listed so a positive witness at them is not mistaken for content.  No paper node:
+  -- §7 states no theorem about Definitions 46-50.
+  FactoredSet.counterfactableRel_of_counterfactable FactoredSet.counterfactableRel_top
+  FactoredSet.beforeGivenSet_univ_iff FactoredSet.beforeGivenSet_empty
   -- §5.1-§5.2: the polynomial surface.  `Q_eq_finsum_mono`, `Q_eq_sum`,
   -- `poly_eq_sum_image`, `mono_eq_prod`, `mono_congr`, `mono_union` and `poly_empty` are
   -- the unfoldings of Definitions 31-34; `coeff_poly`, `mem_support_poly`, `poly_ne_zero`
@@ -1721,15 +1838,9 @@ open FiniteFactoredSets in
   -- by Mathlib — `f⁻¹(ω)` and `f⁻¹(E)` are `Set.preimage` and `f⁻¹(X)` is `Setoid.comap` —
   -- so `Model.pullback` carries no paper-node annotation and belongs here rather than in
   -- the inventory above; `pullback_apply` is its unfolding, which is how a client reads a
-  -- Definition 42 or 45 statement pointwise.  `not_before_self_of_consistent` and
-  -- `before_of_not_consistent` are the two ways a client reads Definition 45 before
+  -- Definition 42 or 45 statement pointwise.  `not_strictlyBefore_self_of_consistent` and
+  -- `strictlyBefore_of_not_consistent` are the two ways a client reads Definition 45 before
   -- trusting it: irreflexive wherever `D` has a model, vacuously total where it has none.
   -- Neither is a paper node; the paper's positive instances are Propositions 34 and 36.
   Model.pullback Model.pullback_apply
-  -- §7.2: the conjecture's finite instance.  `fundamentalTheoremFiniteDim_of_finite` is
-  -- Theorem 3 restated in the shape `FundamentalTheoremFiniteDim` quantifies over, so a
-  -- client can see the `Prop` is not stronger than the theorem where both apply.  It is a
-  -- consistency check on the statement, not progress on the conjecture, and carries no
-  -- paper-node annotation of its own — the node is Theorem 3, inventoried above.
-  fundamentalTheoremFiniteDim_of_finite
-  OrthDatabase.not_before_self_of_consistent OrthDatabase.before_of_not_consistent
+  OrthDatabase.not_strictlyBefore_self_of_consistent OrthDatabase.strictlyBefore_of_not_consistent

@@ -5,8 +5,10 @@ import FiniteFactoredSets.Examples
 # Witnesses for Conjecture 1 — the two sides of the finiteness boundary
 
 `Conjecture.lean` states Conjecture 1 as a `Prop` over *finite-dimensional* factored sets:
-`F.B` finite, `S` arbitrary.  That statement says nothing unless both of its sides are
-inhabited, so this file exhibits them.
+`F.B` finite, `S` arbitrary.  That statement is only about something if both of its sides
+are, so this file exhibits them — and on the right-hand side an *inhabited* family of
+distributions is not enough, since the obvious inhabitants satisfy its identity
+unconditionally (`diracAt_rhs_trivial`); what is exhibited there is a discriminating one.
 
 * `natBoolFS` is **inside** the conjecture's scope and outside Theorem 3's: two factors on
   the infinite carrier `ℕ × Bool`.  `Finite natBoolFS.B` holds by instance while
@@ -14,19 +16,34 @@ inhabited, so this file exhibits them.
   fundamental theorem cannot reach.  The §3–§4 vocabulary is then run on it — histories
   through Proposition 13 clause 4, orthogonality through Proposition 14 and Definition 18,
   conditional orthogonality through Proposition 24 — and none of it needs `Finite S`,
-  which is `dd:finiteness-minimal` doing its job.  `isDistribution_diracAt` supplies a
-  distribution there, so the conjecture's right-hand side quantifies over a nonempty
-  family.
+  which is `dd:finiteness-minimal` doing its job.  The conjecture's right-hand side is a
+  real constraint there, and *inhabitation* is not what makes it one: `isDistribution_diracAt`
+  does supply distributions, but a point mass satisfies Theorem 3's right-hand-side identity
+  for arbitrary sets (`diracAt_rhs_trivial`), so a family of point masses leaves that side
+  constantly true and — against `not_orthogonal_natFactor_self` — would refute the conjecture
+  rather than exhibit it.  The family has to contain a *discriminating* member, and `rich`,
+  the uniform distribution on `{0,1} × Bool`, is one (`rich_isDistribution`,
+  `rich_discriminates`).
 * `infFS` is **outside** it: the coordinate factorization of `ℕ → Bool`, whose basis is
   infinite.  Up to the bijection `𝒫(ℕ) ≃ (ℕ → Bool)` this is the factored set §7.2 uses
   when it says it does *not* expect the fundamental theorem to generalize past finite
   dimension — `S = 𝒫(ℕ)`, `b_n` the partition by membership of `n`.  The paper's two §7.2
   examples are out of scope by the ruling in `KNOWLEDGE.md`, so nothing here claims a node
-  for them; `infFS` lands only as the witness that the conjecture's `Finite F.B` hypothesis
-  excludes something.
+  for them; `infFS` lands as the witness that the conjecture's `Finite F.B` hypothesis
+  excludes something, and that it excludes it for a reason.
 
-What `infFS` shows concretely is that the hypothesis is load-bearing rather than
-inherited: `FactoredSet.isDistribution_diracAt` — the point mass is a distribution on every
+What `infFS` shows concretely is that `[Finite F.B]` is load-bearing rather than inherited,
+in two independent places.
+
+First, **Proposition 12 itself fails there**.  For the "eventually equal" partition `evEq`
+of `ℕ → Bool`, dropping any single coordinate from `B` still generates it, so `h^F(evEq)`
+is empty (`history_evEq`); but the empty set of factors generates only `Ind_S`, and `evEq`
+is not `Ind_S`.  So the history does not generate (`not_generates_history_evEq`) and is not
+the least generating subset (`not_isLeast_history_evEq`).  Proposition 12 is what earns the
+word "smallest" in Definition 17, so past finite dimension `history` is still defined but
+is no longer the object §3.2 onwards reasons about.
+
+Second, `FactoredSet.isDistribution_diracAt` — the point mass is a distribution on every
 factored set of finite dimension — is **false** on `infFS`
 (`not_isDistribution_diracAt_infFS`).  The reason is the finprod junk value.  Definition 37
 reads `P {s} = ∏ᶠ b ∈ B, P [s]_b`; with `B` infinite the multiplicative support of that
@@ -159,17 +176,174 @@ lemma orthogonalGiven_natFactor_boolFactor_top :
     orthogonal_natFactor_boolFactor
 
 /-- Definition 37 is inhabited on `natBoolFS`: `Finite natBoolFS.B` is all
-`FactoredSet.isDistribution_diracAt` needs, so the family Conjecture 1's right-hand side
-quantifies over is nonempty at an infinite carrier. -/
+`FactoredSet.isDistribution_diracAt` needs, so there are distributions to quantify over at
+an infinite carrier.  Inhabitation is not by itself what makes Conjecture 1's right-hand
+side a constraint; `diracAt_rhs_trivial` and `rich` below say what is. -/
 lemma isDistribution_diracAt_natBoolFS (s₀ : ℕ × Bool) :
     natBoolFS.IsDistribution (ProbDist.diracAt s₀) :=
   natBoolFS.isDistribution_diracAt s₀
 
-/-! #### Conjecture 1 is not vacuous at `natBoolFS`
+/-! #### Conjecture 1's right-hand side discriminates at `natBoolFS`
 
 The `Prop` unfolds at this factored set to a biconditional between a computed left-hand
-side and a quantification over an inhabited family — so it is a statement about something,
-not a claim whose hypothesis is never met. -/
+side and a quantification over the Definition-37 distributions.  That the family is
+*inhabited* buys nothing.  A point mass satisfies Theorem 3's right-hand-side identity for
+arbitrary sets (`diracAt_rhs_trivial`) — the identity never mentions the factored set, let
+alone the triple — so a family consisting only of point masses would make the right-hand
+side constantly true; and since the left-hand side is false at `X = Y = natFactor`,
+`Z = Ind_S` (`not_orthogonal_natFactor_self`), such a family would *refute* Conjecture 1
+rather than exhibit it.
+
+The content is therefore that the family contains a **discriminating** member.  `rich`, the
+uniform distribution on the four points `{0,1} × Bool`, is one: it is a Definition-37
+distribution on `natBoolFS` (`rich_isDistribution`) and it falsifies the right-hand side at
+that same triple (`rich_discriminates`), so both sides of the biconditional are genuinely
+computed there and agree (`both_sides_fail_at_natFactor_self`).  This is the
+infinite-carrier counterpart of `Examples.not_orthogonalGiven_bot_bot_top_boolFS`, which
+guards the same failure mode on the finite side. -/
+
+section Discriminating
+
+/-- A point mass satisfies Theorem 3's right-hand-side identity for **arbitrary** sets
+`x`, `y`, `z`: the identity reads `1 = 1` or `0 = 0` according to which of them contain
+`s₀`.  Nothing about a factored set, a block, or conditional orthogonality enters, so a
+`diracAt` witness certifies nothing about that side of Conjecture 1. -/
+lemma diracAt_rhs_trivial {T : Type*} (s₀ : T) (x y z : Set T) :
+    (ProbDist.diracAt s₀) (x ∩ z) * (ProbDist.diracAt s₀) (y ∩ z)
+      = (ProbDist.diracAt s₀) (x ∩ y ∩ z) * (ProbDist.diracAt s₀) z := by
+  simp only [ProbDist.diracAt_apply, Set.mem_inter_iff]
+  by_cases hx : s₀ ∈ x <;> by_cases hy : s₀ ∈ y <;> by_cases hz : s₀ ∈ z <;>
+    simp [hx, hy, hz]
+
+/-- The support of `rich`: the four points `{0,1} × Bool`. -/
+def richSupport : Set (ℕ × Bool) := {(0, true), (0, false), (1, true), (1, false)}
+
+private lemma richSupport_finite : richSupport.Finite := by
+  simp only [richSupport]
+  exact ((((Set.finite_singleton _).insert _).insert _).insert _)
+
+private lemma richSupport_ncard : richSupport.ncard = 4 := by
+  simp only [richSupport]
+  rw [Set.ncard_insert_of_notMem (by decide)
+        (((Set.finite_singleton _).insert _).insert _),
+      Set.ncard_insert_of_notMem (by decide) ((Set.finite_singleton _).insert _),
+      Set.ncard_insert_of_notMem (by decide) (Set.finite_singleton _),
+      Set.ncard_singleton]
+
+/-- A Definition-37 distribution on `natBoolFS` that is **not** a point mass: uniform on
+the four points `{0,1} × Bool`, i.e. `P(E) = |E ∩ richSupport| / 4`.  This is the witness
+that makes Conjecture 1's right-hand side a constraint at an infinite carrier rather than a
+tautology; see `rich_isDistribution` and `rich_discriminates`. -/
+noncomputable def rich : ProbDist (ℕ × Bool) where
+  P E := ((E ∩ richSupport).ncard : ℝ) / 4
+  nonneg _ := by positivity
+  empty := by rw [Set.empty_inter, Set.ncard_empty]; norm_num
+  univ := by rw [Set.univ_inter, richSupport_ncard]; norm_num
+  additive E₀ E₁ h := by
+    rw [Set.union_inter_distrib_right,
+      Set.ncard_union_eq (h.mono Set.inter_subset_left Set.inter_subset_left)
+        (richSupport_finite.subset Set.inter_subset_right)
+        (richSupport_finite.subset Set.inter_subset_right)]
+    push_cast; ring
+
+/-- `rich` counts its support: `P(E) = |E ∩ richSupport| / 4`. -/
+lemma rich_apply (E : Set (ℕ × Bool)) : rich E = ((E ∩ richSupport).ncard : ℝ) / 4 := rfl
+
+private lemma part_natFactor (s : ℕ × Bool) :
+    part natFactor s = {p : ℕ × Bool | p.1 = s.1} := rfl
+
+private lemma part_boolFactor (s : ℕ × Bool) :
+    part boolFactor s = {p : ℕ × Bool | p.2 = s.2} := rfl
+
+private lemma natRow_inter (n : ℕ) : {p : ℕ × Bool | p.1 = n} ∩ richSupport
+    = if n = 0 then {((0:ℕ), true), ((0:ℕ), false)}
+      else if n = 1 then {((1:ℕ), true), ((1:ℕ), false)} else ∅ := by
+  split_ifs with h0 h1 <;> subst_vars <;>
+    (ext p; obtain ⟨n, b⟩ := p; cases b <;> simp [richSupport, Set.mem_inter_iff] <;> omega)
+
+/-- A block of `natFactor` has mass `1/2` when it meets the support, `0` otherwise. -/
+private lemma rich_natRow (n : ℕ) :
+    rich {p : ℕ × Bool | p.1 = n} = if n = 0 ∨ n = 1 then (1:ℝ)/2 else 0 := by
+  rw [rich_apply, natRow_inter]
+  split_ifs with h0 h1 h2 h3 h4 <;>
+    first
+      | (exfalso; omega)
+      | (exfalso; tauto)
+      | (rw [Set.ncard_pair (by decide)]; norm_num)
+      | (rw [Set.ncard_empty]; norm_num)
+
+private lemma boolCol_inter (b : Bool) :
+    {p : ℕ × Bool | p.2 = b} ∩ richSupport = {((0:ℕ), b), ((1:ℕ), b)} := by
+  cases b <;>
+    (ext p; obtain ⟨n, c⟩ := p; cases c <;> simp [richSupport, Set.mem_inter_iff])
+
+/-- Every block of `boolFactor` has mass `1/2`. -/
+private lemma rich_boolCol (b : Bool) : rich {p : ℕ × Bool | p.2 = b} = (1:ℝ)/2 := by
+  rw [rich_apply, boolCol_inter, Set.ncard_pair (by simp)]
+  norm_num
+
+private lemma singleton_inter_richSupport (n : ℕ) (c : Bool) :
+    ({((n, c) : ℕ × Bool)} ∩ richSupport)
+      = if n = 0 ∨ n = 1 then {((n, c) : ℕ × Bool)} else ∅ := by
+  split_ifs with h
+  · rw [Set.inter_eq_self_of_subset_left]
+    rcases h with h | h <;> subst h <;> cases c <;> simp [richSupport]
+  · ext p
+    simp only [Set.mem_inter_iff, Set.mem_singleton_iff, Set.mem_empty_iff_false, iff_false,
+      not_and]
+    rintro rfl hp
+    simp only [richSupport, Set.mem_insert_iff, Set.mem_singleton_iff, Prod.mk.injEq] at hp
+    omega
+
+private lemma rich_singleton (n : ℕ) (c : Bool) :
+    rich {((n, c) : ℕ × Bool)} = if n = 0 ∨ n = 1 then (1:ℝ)/4 else 0 := by
+  rw [rich_apply, singleton_inter_richSupport]
+  split_ifs <;> simp [Set.ncard_singleton]
+
+/-- `rich` **is** a Definition-37 distribution on `natBoolFS`: at a point of the support
+`1/4 = 1/2 · 1/2`, and off it `0 = 0 · 1/2`.  So the discriminating witness lies inside the
+family Conjecture 1's right-hand side quantifies over. -/
+lemma rich_isDistribution : natBoolFS.IsDistribution rich := by
+  intro s
+  rw [natBoolFS_B, show natBoolBasis = {natFactor, boolFactor} from rfl,
+    finprod_mem_pair natFactor_ne_boolFactor, part_natFactor, part_boolFactor,
+    rich_natRow, rich_boolCol, rich_singleton]
+  split_ifs <;> norm_num
+
+/-- `rich` falsifies Theorem 3's right-hand-side clause **in the shape Conjecture 1
+quantifies it**, at `X = Y = natFactor` and `Z = Ind_S`: taking `x = y` the block
+`{p | p.1 = 0}` and `z = S`, the identity would read `1/2 · 1/2 = 1/2 · 1`.  Together with
+`diracAt_rhs_trivial` this is what says the right-hand side is a constraint at `natBoolFS`
+rather than a tautology. -/
+lemma rich_discriminates :
+    ¬ ∀ x ∈ natFactor.classes, ∀ y ∈ natFactor.classes,
+        ∀ z ∈ (⊤ : Setoid (ℕ × Bool)).classes,
+          rich (x ∩ z) * rich (y ∩ z) = rich (x ∩ y ∩ z) * rich z := by
+  intro h
+  have hx : {p : ℕ × Bool | p.1 = 0} ∈ natFactor.classes := natFactor.mem_classes (0, true)
+  have hz : (Set.univ : Set (ℕ × Bool)) ∈ (⊤ : Setoid (ℕ × Bool)).classes := by
+    rw [classes_top ⟨(0, true)⟩]; rfl
+  have key := h _ hx _ hx _ hz
+  simp only [Set.inter_univ, Set.inter_self] at key
+  rw [rich_natRow, rich.univ] at key
+  norm_num at key
+
+/-- The payoff, and the shape a non-vacuity claim has to have: at the triple
+`X = Y = natFactor`, `Z = Ind_S` **both** sides of Conjecture 1's biconditional are false —
+the left by Proposition 15 clause 4, the right because `rich` is a Definition-37
+distribution violating the identity.  A family of point masses could not have supplied the
+second conjunct (`diracAt_rhs_trivial`), which is why an inhabited family is not enough. -/
+lemma both_sides_fail_at_natFactor_self :
+    ¬ natBoolFS.OrthogonalGiven natFactor natFactor ⊤ ∧
+      ¬ (∀ P : ProbDist (ℕ × Bool), natBoolFS.IsDistribution P →
+          ∀ x ∈ natFactor.classes, ∀ y ∈ natFactor.classes,
+            ∀ z ∈ (⊤ : Setoid (ℕ × Bool)).classes,
+              P (x ∩ z) * P (y ∩ z) = P (x ∩ y ∩ z) * P z) :=
+  ⟨fun h => not_orthogonal_natFactor_self
+      ((natBoolFS.orthogonal_iff_orthogonalGiven_top natFactor natFactor).2 h),
+   fun h => rich_discriminates (h rich rich_isDistribution)⟩
+
+end Discriminating
 
 example (h : FundamentalTheoremFiniteDim.{0}) :
     natBoolFS.OrthogonalGiven natFactor boolFactor ⊤ ↔
@@ -188,15 +362,17 @@ example (h : FundamentalTheoremFiniteDim.{0}) :
           P (x ∩ z) * P (y ∩ z) = P (x ∩ y ∩ z) * P z :=
   (h natBoolFS natFactor boolFactor ⊤).1 orthogonalGiven_natFactor_boolFactor_top
 
-/-- The conjecture's finite instance is Theorem 3, exercised on the four-point witness
-`Examples.coordFS`: this is what `fundamentalTheoremFiniteDim_of_finite` buys a client. -/
+/-- The conjecture's finite instance **is** Theorem 3
+(`orthogonalGiven_iff_forall_isDistribution`), exercised here on the four-point witness
+`Examples.coordFS` — the same statement the `Prop` above weakens, at a carrier where it is
+proved. -/
 example :
     Examples.coordFS.OrthogonalGiven Examples.fstFactor Examples.sndFactor ⊤ ↔
       ∀ P : ProbDist (Bool × Bool), Examples.coordFS.IsDistribution P →
         ∀ x ∈ Examples.fstFactor.classes, ∀ y ∈ Examples.sndFactor.classes,
           ∀ z ∈ (⊤ : Setoid (Bool × Bool)).classes,
             P (x ∩ z) * P (y ∩ z) = P (x ∩ y ∩ z) * P z :=
-  fundamentalTheoremFiniteDim_of_finite Examples.coordFS _ _ _
+  Examples.coordFS.orthogonalGiven_iff_forall_isDistribution _ _ _
 
 /-! ### Infinite dimension: `infFS` on `ℕ → Bool`, outside the conjecture's scope
 
@@ -252,7 +428,8 @@ lemma infFS_B_infinite : infFS.B.Infinite :=
 /-- So `infFS` is outside Conjecture 1's scope — and outside §3's, since every §3–§4
 statement carries `[Finite F.B]`.  `FactoredSet.history_isLeast` genuinely fails here: every
 cofinite subset of `B` generates the "eventually equal" partition, so the intersection of
-all generating subsets generates nothing (`KNOWLEDGE.md`). -/
+all generating subsets generates nothing.  That is proved below, at
+`not_isLeast_history_evEq`. -/
 lemma not_finite_B : ¬ Finite infFS.B := fun h => infFS_B_infinite (Set.finite_coe_iff.1 h)
 
 /-- The `[Finite F.B]` on `FactoredSet.isDistribution_diracAt` is load-bearing, not
@@ -288,9 +465,86 @@ lemma not_isDistribution_diracAt_infFS :
     rw [Function.mem_mulSupport, Set.mulIndicator_of_mem hb, hzero b hb]
     norm_num
 
+/-! #### Proposition 12 fails at infinite dimension
+
+`FactoredSet.history_isLeast` carries `[Finite F.B]` because the paper's proof writes
+`h^F(X)` as a *finite* intersection of generating subsets.  At infinite dimension that
+argument has nothing to fall back on, and the conclusion is false, not merely unproved.
+
+The witness is the "eventually equal" partition `evEq` on `ℕ → Bool` — the one the paper's
+`𝒫(ℕ)` example suggests.  Dropping a single coordinate from `B` still generates it, because
+the chimera then differs from `s` in at most that one place; so `h^F(evEq)` is contained in
+`B \ {b_m}` for every `m`, hence empty.  But the empty set generates only `Ind_S`, and
+`evEq` is not `Ind_S`.  So the history of `evEq` does not generate it, and is therefore not
+the least generating subset. -/
+
+/-- The "eventually equal" partition of `ℕ → Bool`: `s ≈ t` when `s` and `t` differ at only
+finitely many coordinates. -/
+def evEq : Setoid (ℕ → Bool) where
+  r s t := {n | s n ≠ t n}.Finite
+  iseqv :=
+    { refl := fun _ => Set.Finite.subset Set.finite_empty fun _ hn => absurd rfl hn
+      symm := fun {_ _} h => Set.Finite.subset h fun _ hn he => hn he.symm
+      trans := fun {s t _} h₁ h₂ =>
+        Set.Finite.subset (h₁.union h₂) fun n hn => by
+          by_cases hst : s n = t n
+          · exact Or.inr fun htu => hn (hst.trans htu)
+          · exact Or.inl hst }
+
+/-- `evEq` is not `Ind_S`: the all-`false` and all-`true` sequences differ everywhere. -/
+lemma evEq_ne_top : evEq ≠ ⊤ := by
+  intro h
+  have hrel : evEq (fun _ => false) (fun _ => true) := by rw [h]; trivial
+  have hfin : {_n : ℕ | (false : Bool) ≠ true}.Finite := hrel
+  rw [show {_n : ℕ | (false : Bool) ≠ true} = (Set.univ : Set ℕ) from by ext n; simp] at hfin
+  exact Set.infinite_univ hfin
+
+/-- On `infFS` the empty set of factors splices out the first argument entirely. -/
+private lemma chimera_empty_infFS (s t : ℕ → Bool) : infFS.chimera ∅ s t = t := by
+  funext n
+  exact infFS.chimera_rel_of_notMem s t ⟨n, rfl⟩ (Set.notMem_empty _)
+
+/-- Every *cofinite* subset of `B` generates `evEq`, and one missing coordinate already
+suffices: the chimera along `B \ {b_m}` agrees with `s` away from `m`. -/
+private lemma generates_sdiff_singleton (m : ℕ) :
+    infFS.Generates (infFS.B \ {memFactor m}) evEq := by
+  rw [infFS.generates_iff_rel]
+  intro s t
+  refine Set.Finite.subset (Set.finite_singleton m) fun n hn => ?_
+  by_contra hnm
+  exact hn (infFS.chimera_rel_of_mem s t ⟨n, rfl⟩
+    ⟨⟨n, rfl⟩, fun hc => hnm (memFactor_injective (Set.mem_singleton_iff.1 hc))⟩)
+
+/-- Definition 17's intersection collapses: no factor survives in `h^F(evEq)`. -/
+lemma history_evEq : infFS.history evEq = ∅ := by
+  refine Set.eq_empty_of_forall_notMem fun b hb => ?_
+  obtain ⟨m, rfl⟩ := infFS.history_subset evEq hb
+  exact (infFS.history_subset_of_generates Set.sdiff_subset
+    (generates_sdiff_singleton m) hb).2 rfl
+
+/-- **Proposition 12's conclusion is false at infinite dimension.**  The history of `evEq`
+is empty, and the empty set of factors generates only `Ind_S`, which `evEq` is not.  So the
+`[Finite F.B]` on `FactoredSet.history_isLeast` is load-bearing rather than inherited from
+the paper's finite setting. -/
+lemma not_generates_history_evEq : ¬ infFS.Generates (infFS.history evEq) evEq := by
+  rw [history_evEq, infFS.generates_iff_rel]
+  intro h
+  refine evEq_ne_top (Setoid.ext fun s t => ⟨fun _ => trivial, fun _ => ?_⟩)
+  have hts := h s t
+  rw [chimera_empty_infFS] at hts
+  exact evEq.symm' hts
+
+/-- The same failure in Proposition 12's own shape: `h^F(evEq)` is not the least subset of
+`B` generating `evEq`, because it does not generate `evEq` at all. -/
+lemma not_isLeast_history_evEq :
+    ¬ IsLeast {C | C ⊆ infFS.B ∧ infFS.Generates C evEq} (infFS.history evEq) :=
+  fun h => not_generates_history_evEq h.1.2
+
 -- A sample of the axiom profile; the full inventory is gated in `AxiomAudit.lean`.
 #print axioms orthogonalGiven_natFactor_boolFactor_top
+#print axioms rich_isDistribution
 #print axioms not_isDistribution_diracAt_infFS
+#print axioms not_isLeast_history_evEq
 
 end InfiniteExamples
 end FiniteFactoredSets

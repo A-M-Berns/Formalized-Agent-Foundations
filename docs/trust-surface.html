@@ -515,7 +515,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <div style="overflow-x:auto"><table class="index">
       <tr><td><strong>Paper</strong></td><td class="count"><strong>nodes</strong></td>
           <td><strong>library</strong></td><td><strong>editorial data on its cards</strong></td></tr>
-      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>tier badge per node (universal / instantiated / qualified), a reading note and a "what to check" note, from the machine-checked strength table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">12</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">87</td><td><code>FiniteFactoredSets/</code></td><td><strong>in progress</strong> — §2.1–§2.3 only, and no strength classification exists for this paper</td></tr>
+      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>tier badge per node (universal / instantiated / qualified), a reading note and a "what to check" note, from the machine-checked strength table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">12</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">87</td><td><code>FiniteFactoredSets/</code></td><td><strong>complete</strong> — §2–§7; 87 nodes carried by declarations and nine rendered by Mathlib vocabulary, 96 in scope. Conjecture 1 is stated as a <code>Prop</code> and deliberately not proved, and Examples 3 and 4 are out of scope by ruling; <strong>no strength classification exists for this paper</strong></td></tr>
     </table></div>
     <p><strong>Only Logical Induction has a strength classification and per-node reading
     notes.</strong> They are the product of a dedicated re-derivation pass and a
@@ -5740,14 +5740,27 @@ Then
   <code>FiniteFactoredSets/</code> · 87 nodes</p>
 
   <div class="method">
-    <div class="no-tier"><b>This formalization is in progress, and no strength
-    classification exists for this paper.</b> The cards below cover §2.1–§2.3 only —
-    partitions, factorizations, and chimera functions. They carry no tier and no per-node
-    audit note, because none has been produced; they assert the correspondence only. Nodes
-    with no Lean statement annotated to them: 9 of the paper’s definitions; 2 of the paper’s examples.</div>
+    <div class="no-tier"><b>This formalization is complete for its ruled scope, and no
+    strength classification exists for this paper.</b> The cards below cover §2 through §7
+    — partitions and factorizations, the chimera function, generation and history,
+    orthogonality and time, subpartitions and conditional orthogonality, characteristic
+    polynomials and their factorization, the fundamental theorem, temporal inference from
+    orthogonality databases including both worked examples, and §7's embedded observations,
+    counterfactability and conditional time. All 96 in-scope nodes are accounted for: 87
+    carry a Lean declaration of this project's and the remaining nine are rendered outright
+    by Mathlib vocabulary (listed below), so 87 + 9 = 96. Two things are deliberately
+    <em>not</em> claimed, and both are rulings rather than gaps: <b>Conjecture 1 (§7.2) is
+    stated as a <code>Prop</code> and deliberately not proved</b> — no declaration anywhere
+    in the library has that type — and <b>Examples 3 and 4 are out of scope</b>, both
+    concerning infinite factored sets, which is the case the paper itself expects the
+    fundamental theorem to fail in. The cards carry no tier and no per-node audit note,
+    because none has been produced; they assert the correspondence only. Nodes with no Lean
+    statement annotated to them: 9 of the paper’s definitions; 2 of the paper’s examples.</div>
 
     <h3>How nodes are cited</h3>
-    <p>The paper labels only 32 of its 98 numbered nodes, and the labels it does carry are
+    <p>The paper carries only 32 <code>\label</code> commands, two of which are not on
+    numbered nodes at all (one labels a table, one labels a section), so exactly 30 of its
+    98 numbered nodes are labelled — and the labels it does carry are
     working names (<code>templabel1</code>, <code>templabel2</code>), so the provenance key
     is the <em>printed</em> number, recomputed from the committed TeX
     (<code>scripts/check-finite-factored-sets-nodes.py</code>). Unlike the other
@@ -5761,23 +5774,46 @@ Then
     ambiguity rather than guessing.</p>
 
     <h3>Nodes rendered by Mathlib vocabulary rather than by a declaration</h3>
-    <p>Several §2.1 nodes have no Lean carrier of this project's, because the modeling
+    <p>Nine nodes have no Lean carrier of this project's, because the modeling
     decisions in <code>FiniteFactoredSets.lean</code> render them with vocabulary Mathlib
-    already has: Definition 2 (partition) is <code>Setoid</code>, Definition 5
+    already has. Six are in §2.1: Definition 1 (the disjoint union <code>⊔S</code>) is
+    absorbed into <code>Setoid</code> and the dependent product, Definition 2 (partition) is
+    <code>Setoid</code>, Definition 5
     (<code>∼_X</code>) is the setoid relation, Definition 6 (finer) is <code>≤</code>,
     Definition 7 (<code>Dis_S</code>/<code>Ind_S</code>) is <code>⊥</code>/<code>⊤</code>,
-    and Definition 9 (<code>∏(B)</code>) is the dependent product. They are recorded in
+    and Definition 9 (<code>∏(B)</code>) is the dependent product. The other three are
+    outside §2.1: §5.1's Definition 29 (evaluation <code>p(f)</code>) is
+    <code>MvPolynomial.eval</code> and Definition 30 (support <code>supp(p)</code>) is
+    <code>MvPolynomial.vars</code>; §6.1's Definition 39 (preimages) is
+    <code>Set.preimage</code>, with <code>Setoid.comap</code> for the partition clause. They
+    are recorded in
     <code>FiniteFactoredSets/README.md</code> rather than inventoried, because there is no
     declaration of this project's to axiom-check.</p>
 
-    <h3>One node carried only in part</h3>
-    <p><code>bot_le_and_le_top</code> carries the <code>Proposition 2</code> annotation but
-    states only that proposition's <em>second</em> sentence — the <code>Dis_S</code> /
-    <code>Ind_S</code> bounds. Its first sentence, that the order is a partial order on
-    <code>Part(S)</code>, is Mathlib's <code>PartialOrder (Setoid S)</code> instance and has
-    no declaration of this project's. So the card below pairs the whole printed proposition
-    with a Lean statement covering half of it, on purpose; the other half is recorded in
+    <h3>Four nodes carried only in part</h3>
+    <p>Four cards pair a whole printed node with a Lean statement covering part of it, on
+    purpose, because the remaining clause is Mathlib's vocabulary rather than a declaration
+    of this project's. Each is recorded in
     <code>FiniteFactoredSets/README.md</code>'s table of Mathlib-rendered nodes.</p>
+    <ul>
+    <li><b>Proposition 2, first sentence.</b> <code>bot_le_and_le_top</code> carries the
+    <code>Proposition 2</code> annotation but states only that proposition's <em>second</em>
+    sentence — the <code>Dis_S</code> / <code>Ind_S</code> bounds. Its first sentence, that
+    the order is a partial order on <code>Part(S)</code>, is Mathlib's
+    <code>PartialOrder (Setoid S)</code> instance.</li>
+    <li><b>Definition 8, second sentence.</b> The set form <code>⋁_S(C)</code> is
+    <code>commonRefinement</code>; the binary <code>X ∨_S Y</code> is Mathlib's
+    <code>X ⊓ Y</code>, which is how §3 onward states it. The identification of the two is
+    <code>commonRefinement_pair</code>, a bridge lemma rather than a node carrier.</li>
+    <li><b>Definition 15, third sentence.</b> "Finite" and "finite-dimensional" factored
+    sets are not a definition this library makes: under <code>dd:finiteness-minimal</code>
+    they are the typeclass hypotheses <code>[Finite S]</code> and <code>Finite F.B</code>,
+    carried on the individual statements that consume them.</li>
+    <li><b>Proposition 31's word "irreducible."</b> The proposition itself is carried
+    (<code>irreducible_poly_of_mem_irr</code>); it is the <em>meaning</em> of the word that
+    is Mathlib's <code>Irreducible</code>, which over <code>ℝ</code> is strictly stronger
+    than the paper's phrasing and agrees with it on every case the proposition asserts.</li>
+    </ul>
 
     <h3>One inverted convention, stated once</h3>
     <p>The paper's order glyphs run opposite to Mathlib's: it writes <code>X ≥_S Y</code>
@@ -6908,7 +6944,7 @@ Given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><m
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.orthogonal_iff_orthogonalGiven_top</code><span class="ep-file">FiniteFactoredSets/ConditionalOrthogonality.lean</span></div><pre class="sig">theorem orthogonal_iff_orthogonalGiven_top [Finite F.B] (X Y : Setoid S) :
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.orthogonal_iff_orthogonalGiven_top</code><span class="ep-file">FiniteFactoredSets/ConditionalOrthogonality.lean</span></div><pre class="sig">theorem orthogonal_iff_orthogonalGiven_top (X Y : Setoid S) :
     F.Orthogonal X Y ↔ F.OrthogonalGiven X Y ⊤</pre></div>
     </section>
   </div>
@@ -7467,7 +7503,7 @@ Given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><m
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.OrthDatabase.Before</code><span class="ep-file">FiniteFactoredSets/Inference.lean</span></div><pre class="sig">def Before (D : OrthDatabase Ω) (X Y : Setoid Ω) : Prop</pre></div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.OrthDatabase.StrictlyBefore</code><span class="ep-file">FiniteFactoredSets/Inference.lean</span></div><pre class="sig">def StrictlyBefore (D : OrthDatabase Ω) (X Y : Setoid Ω) : Prop</pre></div>
     </section>
   </div>
 </article>
@@ -7527,7 +7563,7 @@ Given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><m
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.Example1.before_X_Y</code><span class="ep-file">FiniteFactoredSets/InferenceExamples.lean</span></div><pre class="sig">theorem before_X_Y : D.Before X Y</pre></div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.Example1.strictlyBefore_X_Y</code><span class="ep-file">FiniteFactoredSets/InferenceExamples.lean</span></div><pre class="sig">theorem strictlyBefore_X_Y : D.StrictlyBefore X Y</pre></div>
     </section>
   </div>
 </article>
@@ -7586,7 +7622,7 @@ Given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><m
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.Example2.before_X_Y_Z</code><span class="ep-file">FiniteFactoredSets/InferenceExamples.lean</span></div><pre class="sig">theorem before_X_Y_Z : D.Before X Y ∧ D.Before Y Z</pre></div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.Example2.strictlyBefore_X_Y_Z</code><span class="ep-file">FiniteFactoredSets/InferenceExamples.lean</span></div><pre class="sig">theorem strictlyBefore_X_Y_Z : D.StrictlyBefore X Y ∧ D.StrictlyBefore Y Z</pre></div>
     </section>
   </div>
 </article>
@@ -7776,4 +7812,4 @@ We say <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 -->
 
-<!-- trust-surface-sources: 99434be5a467e346c0a790ddeabaa0dfd5703dbd5d7bfb5aab9d20268f518574 -->
+<!-- trust-surface-sources: e8a8de5951b2f8e89caab258743ae3b29ce8f82500fbc25274bad7d5b19957b2 -->

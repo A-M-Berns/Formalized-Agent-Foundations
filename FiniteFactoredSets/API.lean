@@ -35,7 +35,9 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   the paper's finer/coarser order is Mathlib's `≤` on `Setoid` **with the paper's glyphs
   inverted** (`dd:order-flip`): the paper's `X ≤_S Y` is `Y ≤ X`, its `X ∨_S Y` is `X ⊓ Y`,
   its `⋁_S(C)` is `commonRefinement C = sInf C` — whose defining property is
-  `commonRefinement_iff` — and `Dis_S`/`Ind_S` are `⊥`/`⊤`.  `IsTrivialPartition` is the
+  `commonRefinement_iff`, with `commonRefinement_pair` the bridge to the binary form
+  (`commonRefinement {X, Y} = X ⊓ Y`, Definition 8's second sentence, which is how §3
+  onward writes it) — and `Dis_S`/`Ind_S` are `⊥`/`⊤`.  `IsTrivialPartition` is the
   one-block partition (Definition 3).  Propositions 1 and 2 are `equivalence_setoid` and
   `bot_le_and_le_top`, and `classes_top` names the blocks of `Ind_S` over a nonempty `S`
   (a single block; Mathlib has no `Setoid.classes_top`).
@@ -74,12 +76,17 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
 * **Subpartitions** (§4.1): `Subpartition S` (Definition 20) is a *partial equivalence
   relation* on `S` under `dd:subpartition`, not a `Σ E, Setoid E`; `X.dom` (Definition 21)
   is `{s | X s s}`, `X.classes` its blocks, and `X.restrict E` (Definition 22) the paper's
-  `X|E`.  The bridge to partitions is `ofSetoid : Setoid S → Subpartition S` (total PERs),
-  with `ofSetoidOn E Y : Subpartition S` for a partition `Y : Setoid E` of a client's own
-  subset and `toSetoid : Setoid X.dom` the inverse; `ofSetoidOn_toSetoid` and
+  `X|E`.  The bridge to partitions is `Subpartition.ofSetoid : Setoid S → Subpartition S`
+  (total PERs), with `Subpartition.ofSetoidOn E Y : Subpartition S` for a partition
+  `Y : Setoid E` of a client's own
+  subset and `X.toSetoid : Setoid X.dom` the inverse; `ofSetoidOn_toSetoid` and
   `toSetoid_ofSetoidOn` are the two round trips, `dom_ofSetoidOn` computes
-  `(ofSetoidOn E Y).dom = E`, and `ofSetoidOn_univ` is the compatibility with `ofSetoid`
-  on `Set.univ`.  `indiscrete E` is `Ind_E`; the order is Mathlib's
+  `(Subpartition.ofSetoidOn E Y).dom = E`, and `ofSetoidOn_univ` is the compatibility with
+  `Subpartition.ofSetoid`
+  on `Set.univ`.  `Subpartition.indiscrete E` is `Ind_E`.  Those three take no
+  `FactoredSet`, so dot notation cannot reach them and `open FiniteFactoredSets` does not
+  either: they live in `FiniteFactoredSets.Subpartition` and must be written qualified (or
+  reached by `open FiniteFactoredSets.Subpartition`).  The order is Mathlib's
   again (`X ⊓ Y` is the paper's `X ∨_E Y`, `Y ≤ X` its `X ≤_E Y`), and `Subset` is the
   paper's inclusion *as sets of blocks*, which is a different relation from `≤`.  The
   restriction glue a client actually reaches for is `restrict_univ`,
@@ -215,33 +222,60 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   (Definition 41) their memberships — note `NotOrth` is a *positive assertion of the
   database*, not the negation of `Orth`, so a database may assert both (and then has no
   model) or neither (and then is not `Complete`).  `Models M D` (Definition 42),
-  `Consistent` (Definition 43), `Complete` (Definition 44) and `OrthDatabase.Before`
+  `Consistent` (Definition 43), `Complete` (Definition 44) and
+  `OrthDatabase.StrictlyBefore`
   (Definition 45, the paper's `X <_D Y`) are the four predicates a temporal-inference
-  client works in.  Three facts about their shape are worth having before use, each
+  client works in.  The name carries a warning worth heeding: Definition 45 is **strict**,
+  where `FactoredSet.Before` (Definition 19) is the paper's non-strict `≤^F`, so the two
+  must not be chained as though they were the same relation.  Three facts about their shape are worth having before use, each
   exhibited on a witness in `Examples`: `Consistent` is cheap on `O` alone (a one-point
   model satisfies every orthogonality assertion at once, since a zero-dimensional factored
   set has no factors), so it is `N` that constrains a model; `Consistent` and `Complete`
   are independent in both directions (`completeInconsistentDB` is the complete but
-  inconsistent corner); and `Before` quantifies over models of `D`, so on an *inconsistent*
+  inconsistent corner); and `StrictlyBefore` quantifies over models of `D`, so on an
+  *inconsistent*
   `D` it holds of every pair vacuously — `X <_D Y` is an inference only once `D` is known
-  consistent.  §6.2's two worked databases are `Example1.D` and `Example2.D`, with
+  consistent.  The two facts a client reads Definition 45 through are
+  `OrthDatabase.not_strictlyBefore_self_of_consistent` (irreflexive wherever `D` has a
+  model) and `OrthDatabase.strictlyBefore_of_not_consistent` (vacuously total where it has
+  none).  §6.2's two worked databases are `Example1.D` and `Example2.D`, with
   `Example1.X/Y/V` and `Example2.X/Y/Z/V` the partitions they are stated over, and
-  Propositions 33–36 (`D_consistent`, `before_X_Y`, `before_X_Y_Z`) the paper's own
-  consistency and inference results on them.
+  Propositions 33–36 (`D_consistent`, `strictlyBefore_X_Y`, `strictlyBefore_X_Y_Z`) the
+  paper's own consistency and inference results on them.
 * **Embedded agency: observations, counterfactability, conditional time** (§7.3,
   `EmbeddedAgency.lean`): `Observes A W E` (Definition 46), `ObservesPartition A W X`
   (Definition 47), `Counterfactable X` (Definition 48), `CounterfactableRel X W`
   (Definition 49) and `BeforeGivenSet X Y E` (Definition 50) — all `FactoredSet`
-  operations, and all of them *definitions*: §7 states no theorem about this vocabulary,
-  so this layer adds nothing to prove with and everything to state with.  Four points
+  operations, and all of them *definitions*: §7 states no theorem about this vocabulary.
+
+  That does not leave the layer bare of facts to reason with.  The general relations
+  *among* the five are provable even where the paper states none, and the ones a client
+  reaches for are on this boundary: `counterfactableRel_of_counterfactable` (Definition 48
+  implies Definition 49 for every `W` — a counterfactable `X` *is* `⋁_S(h^F(X))`, so the
+  screening-off degenerates to `X ⊥^F W | X`), `counterfactableRel_top` (that degenerate
+  case in general — `X ⊥^F W | X` for *every* `W`, which is why a `CounterfactableRel X ⊤`
+  instance on its own certifies nothing), `beforeGivenSet_univ_iff` (Definition 50 at
+  `E = S` is Definition 19) and `beforeGivenSet_empty` (given `∅`, every pair is ordered).
+  The §4 glue the §7.3 definitions unfold through is here too — `historySub_top_restrict`,
+  `historySub_restrict_empty`, `orthogonalGivenSet_comm`, `orthogonalGivenSet_top_left` and
+  `_top_right`, and `orthogonalGiven_given_self`.  None of those is a paper node; they are
+  `FactoredSet.*` in `ConditionalOrthogonality.lean`, `SubpartitionHistory.lean` and
+  `EmbeddedAgency.lean`, on the consumer surface rather than in the witness file.
+
+  Four points
   about the rendering, each of which changes how a statement reads.  Definition 46's
   auxiliary partition `X_E` is `eventPartition E`, namely `Setoid.comap (· ∈ E) ⊥` — two
   points are related exactly when they agree on membership in `E` — whose blocks are the
   *nonempty* ones among `E` and `S \ E`; the paper's case split (`{S}` when `E` is empty
   or all of `S`, `{E, S \ E}` otherwise) is therefore absorbed by `Setoid.classes` rather
   than written out.  `eventPartition` is an auxiliary of ours: it carries no paper-node
-  annotation (Definition 46's carrier is `Observes`) and, like `mono`/`monos`/`poly`, it
-  **takes no `F`** — write `eventPartition E`, never `F.eventPartition E`, and reach for
+  annotation (Definition 46's carrier is `Observes`) and it
+  **takes no `F`**.  Spell it `FactoredSet.eventPartition E`: it is declared inside
+  `namespace FactoredSet`, so a bare `eventPartition E` does not resolve under
+  `open FiniteFactoredSets`, and `F.eventPartition E` does not typecheck either, there
+  being no `FactoredSet` argument for dot notation to land on.  `mono`/`monos`/`poly` take
+  no `F` in the same way but are *not* the same case — those really do sit at
+  `FiniteFactoredSets.*` and resolve unqualified.  Reach for
   `Observes` when you want the node.  Definition 47 numbers the blocks
   `X = {x₀, …, xₙ₋₁}` and indexes the sub-agents `Aᵢ` by `i`; here the family is indexed
   by the **blocks themselves**,
@@ -263,14 +297,37 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   written here, is not known to this library to be settled.  A client consumes it the way
   one consumes any open hypothesis — take `(h : FundamentalTheoremFiniteDim)` as an
   assumption and apply it at a factored set to obtain the biconditional there;
-  `APITests/FiniteFactoredSets.lean` does exactly that at its own factored set.  The
-  finite case *is* proved: `fundamentalTheoremFiniteDim_of_finite` states the same
-  biconditional at a `[Finite S]` carrier, and its proof is
-  `orthogonalGiven_iff_forall_isDistribution` — a consistency check on how the `Prop` is
-  written, not progress on the conjecture.  An unproved `Prop` is a definition, not a
-  `sorry`: it acquires no axiom, appears in no axiom check, and can only weaken a
+  `APITests/FiniteFactoredSets.lean` does exactly that at its own factored set, as do two
+  `example`s in `InfiniteExamples.lean`; those three hypothesis-form uses are the only
+  places the `Prop` is consumed anywhere, and they are what would break if its shape were
+  ever edited.  The finite case *is* proved, and needs no restatement of the `Prop`: the
+  finite instance of Conjecture 1 simply **is** Theorem 3,
+  `orthogonalGiven_iff_forall_isDistribution`.
+
+  An unproved `Prop` is a definition, not a
+  `sorry`: it acquires no axiom and can only weaken a
   statement of ours by appearing in that statement's hypotheses, which nothing in §2–§7
-  does.
+  does.  It is *not* invisible to the axiom accounting, though — `FundamentalTheoremFiniteDim`
+  is listed in `AxiomAudit.lean`'s FFS-INVENTORY `#assert_axioms_clean` block and reports
+  the standard three (`propext`, `Classical.choice`, `Quot.sound`), exactly as the other
+  `def … : Prop`s there do.  What is checked is the *statement's* axiom profile; there is
+  no proof to check.
+
+  One thing the `Prop` does that the paper's one sentence does not, disclosed here because
+  it changes what a proof or refutation would mean.  §7.2 asks whether Theorem 3 survives
+  at finite dimension; it does not say what a probability distribution on an infinite
+  carrier is, and Definition 36 defines one only "given a finite set `S`".  Weakening
+  `[Finite S]` to `[Finite F.B]` therefore also changes *what `ProbDist S` ranges over*:
+  over an infinite `S` it is the merely finitely-additive functions on the full powerset —
+  no countable additivity, no σ-algebra — which include objects the paper never
+  contemplated (a finitely-additive density with every singleton `0`, say, which satisfies
+  Definition 37 vacuously).  Such objects strengthen the `→` direction of the biconditional
+  and weaken the `←` direction.  So `FundamentalTheoremFiniteDim` is one particular
+  sharpening of an informal conjecture, and **proving or refuting it would not by itself
+  settle the paper's §7.2 question**.  The alternative sharpenings all require a
+  measure-theoretic `P`, which `dd:probability` rules out as a substitution for
+  Definition 36; a bridge to Mathlib's probability vocabulary would have to be a separate
+  statement.
 
 ## Finiteness
 
@@ -290,11 +347,21 @@ Definition 24's well-definedness and stays: it is carried by
 `historySub_isLeast_and_eq_history` (Proposition 22), `generatesSub_historySub`,
 `generatesSub_iff_historySub_subset`, `historySub_spec` (Proposition 23),
 `historySub_restrict_part_eq` (Lemma 1), `historySub_inf_eq` (Lemma 2),
-`historySub_restrict_inf`, `orthogonalSub_ofSetoid`, `beforeSub_ofSetoid`, and all three
-§4.3 endpoints — `orthogonal_iff_orthogonalGiven_top`, `orthogonalGiven_semigraphoid`,
-`orthogonalGiven_self_iff`.  The `historySub` *definition*, Definition 25's three
+`historySub_restrict_inf`, and two of the three
+§4.3 endpoints — `orthogonalGiven_semigraphoid` (Theorem 2) and
+`orthogonalGiven_self_iff` (Proposition 25).  The `historySub` *definition*, Definition
+25's three
 relations, Definitions 26 and 27, their unfolding lemmas, and the `Subpartition`
 restriction glue carry none.
+
+Three §4.3 statements that once carried `[Finite F.B]` no longer do, and the relaxation is
+worth reading precisely.  `orthogonal_iff_orthogonalGiven_top` (Proposition 24,
+`X ⊥^F Y ↔ X ⊥^F Y | Ind_S`) and the two bridges `orthogonalSub_ofSetoid` and
+`beforeSub_ofSetoid` are identities between two spellings of the *same* intersection of
+histories, so they hold whatever the dimension.  Read that as availability, not strength:
+over an infinite basis `history` is still the intersection of generating subsets but need
+not generate, so both sides of Proposition 24 are the un-paper-like notion there, and it is
+the §3 endpoints a client chains them with that supply `[Finite F.B]`.
 
 Hypotheses of the form `[Finite S]` are not global here either, and through §2–§4 exactly
 one appears, where the paper's own statement has it: on `finite_basis_of_finite`
@@ -411,7 +478,8 @@ elaboration time — if the ℕ form of Proposition 7 (`natCard_eq_prod`) is wan
 relocation: Definition 38 says *finite* factored set, so `dd:model` puts `Finite S` in the
 structure as a field.  Every §6 declaration — `Model`, `pullback`, `pullback_apply`,
 `OrthDatabase`, `Orth`, `NotOrth`, `Models`, `Consistent`, `Complete`,
-`OrthDatabase.Before`, and §6.2's databases and propositions — is stated with no binder of
+`OrthDatabase.StrictlyBefore`, and §6.2's databases and propositions — is stated with no
+binder of
 its own, because the models it quantifies over each carry their own.  Read a §6 statement
 accordingly: "for all models" already means "for all *finite* factored sets with a map to
 `Ω`", and the sample space `Ω` itself is unconstrained.
@@ -436,20 +504,26 @@ That is the entire content of the conjecture — it is
 `IsDistribution` (Definition 37) carry no finiteness of their own, `IsDistribution`'s
 product is a `finprod` over `B` and `ProbDist` is elementary, so both sides of the
 biconditional are meaningful with `S` infinite.  Had either carried `[Finite S]`, the
-conjecture could not have been written down in this library at all.  The one proved fact
-about it, `fundamentalTheoremFiniteDim_of_finite`, does carry `[Finite S]` — it is
-Theorem 3.
+conjecture could not have been written down in this library at all.  The finite instance of
+it is `orthogonalGiven_iff_forall_isDistribution` itself — Theorem 3, `[Finite S]` and all
+— rather than any separate restatement; the checks that exercise the `Prop`'s *shape* are
+the three hypothesis-form `example`s (two in `InfiniteExamples.lean`, one in
+`APITests/FiniteFactoredSets.lean`).
 
 ## What this boundary excludes
 
 `FiniteFactoredSets.Examples` — the constructed witnesses (`boolFS`, `coordFS`, `emptyFS`,
 `unitFS`, the distributions `uniform`, `biased`, `diagDist`, `unitDist` and
-`boolUniform`, and the §6 models `coordModel`, `boolModel`, `fstModel`, `pointModel` with
+`boolUniform`, and the §6 models `coordModel`, `boolModel`, `fstModel`, `pointModel`,
+`voidModel` with
 the databases `emptyDB`, `contradictoryDB`, `totalDB`, `completeInconsistentDB`,
 `nonconstDB`, `coordDB`) and the
-§2.5, §3, §4, §5 and §6 vocabulary computed over them.  Import it
+§2.5, §3, §4, §5, §6 and §7 vocabulary computed over them.  Import it
 explicitly when a concrete factored set or model is useful; it is a regression fixture, not
-a dependency surface.  §6.2's `Example1` and `Example2` are *not* excluded — they are the
+a dependency surface.  Everything in it is *about* a named witness: the general facts
+about an arbitrary `F : FactoredSet S` that used to sit there — the §7.3 relations listed
+in the §7.3 bullet above, and the §4 glue they unfold through — are on this boundary
+instead, so a client never has to import the fixture to reach a lemma.  §6.2's `Example1` and `Example2` are *not* excluded — they are the
 paper's own numbered examples and part of this boundary.
 
 `FiniteFactoredSets.InfiniteExamples` — the witnesses that live *outside* §5's finiteness

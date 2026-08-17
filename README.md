@@ -93,7 +93,7 @@ lake build AxiomAudit   # the checked target: builds every library + the endpoin
 lake build APITests     # isolated downstream-style tests of the supported APIs
 ```
 
-`lake build AxiomAudit` is *the* gate — it subsumes all three libraries and fails if any listed
+`lake build AxiomAudit` is *the* gate — it subsumes all four paper libraries and fails if any listed
 endpoint gains a stray axiom or disappears. The script gates run on the sources and
 need no build. Both `AxiomAudit` and `APITests` are default targets in CI:
 

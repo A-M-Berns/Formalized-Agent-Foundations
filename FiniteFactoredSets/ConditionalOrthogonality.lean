@@ -83,17 +83,18 @@ lemma orthogonalSub_iff_forall_notMem (X Y : Subpartition S) :
   Set.disjoint_iff_inter_eq_empty.symm.trans Set.disjoint_left
 
 /-- Definition 25 restricted to partitions of `S` is Definition 18: on `ofSetoid X` the
-subpartition history is the §3.2 history (Proposition 22). -/
-lemma orthogonalSub_ofSetoid [Finite F.B] (X Y : Setoid S) :
+subpartition history is the §3.2 history.  No finiteness — `historySub_ofSetoid` is the
+identification of two `⋂₀`s over the same family, not Proposition 22's *least*-element
+sentence. -/
+lemma orthogonalSub_ofSetoid (X Y : Setoid S) :
     F.OrthogonalSub (ofSetoid X) (ofSetoid Y) ↔ F.Orthogonal X Y := by
-  rw [orthogonalSub_def, F.historySub_isLeast_and_eq_history.2 X,
-    F.historySub_isLeast_and_eq_history.2 Y, orthogonal_def]
+  rw [orthogonalSub_def, F.historySub_ofSetoid X, F.historySub_ofSetoid Y, orthogonal_def]
 
-/-- Definition 25's `≤^F` restricted to partitions of `S` is Definition 19's. -/
-lemma beforeSub_ofSetoid [Finite F.B] (X Y : Setoid S) :
+/-- Definition 25's `≤^F` restricted to partitions of `S` is Definition 19's, again with no
+finiteness. -/
+lemma beforeSub_ofSetoid (X Y : Setoid S) :
     F.BeforeSub (ofSetoid X) (ofSetoid Y) ↔ F.Before X Y := by
-  rw [beforeSub_def, F.historySub_isLeast_and_eq_history.2 X,
-    F.historySub_isLeast_and_eq_history.2 Y, before_def]
+  rw [beforeSub_def, F.historySub_ofSetoid X, F.historySub_ofSetoid Y, before_def]
 
 /-- Definition 26: `X` and `Y` are orthogonal given the subset `E`, `X ⊥^F Y | E`, when
 their restrictions to `E` are orthogonal as subpartitions.
@@ -117,6 +118,49 @@ lemma orthogonalGivenSet_def (X Y : Setoid S) (E : Set S) :
 lemma orthogonalGiven_def (X Y Z : Setoid S) :
     F.OrthogonalGiven X Y Z ↔ ∀ z ∈ Z.classes, F.OrthogonalGivenSet X Y z := Iff.rfl
 
+/-! ### Corners and symmetries of Definitions 26-27
+
+Four facts that every consumer of §4.3 and §7.3 needs and that no paper node states:
+Definition 26 is symmetric; `Ind_S` is orthogonal to everything given anything; and every
+partition is orthogonal to everything **given itself**.  The last is the mechanism behind
+Definition 48 implying Definition 49, and it is *not* Proposition 25
+(`orthogonalGiven_self_iff` covers only `W = X`) nor a one-step consequence of Theorem 2. -/
+
+/-- Definition 26 is symmetric in its two partitions. -/
+lemma orthogonalGivenSet_comm (X Y : Setoid S) (E : Set S) :
+    F.OrthogonalGivenSet X Y E ↔ F.OrthogonalGivenSet Y X E := by
+  rw [F.orthogonalGivenSet_def, F.orthogonalGivenSet_def, Set.inter_comm]
+
+/-- `Ind_S` is orthogonal to everything given any subset: its restricted history is empty. -/
+lemma orthogonalGivenSet_top_left [Finite F.B] (X : Setoid S) (E : Set S) :
+    F.OrthogonalGivenSet (⊤ : Setoid S) X E := by
+  rw [F.orthogonalGivenSet_def, F.historySub_top_restrict E, Set.empty_inter]
+
+/-- The same on the right, by symmetry. -/
+lemma orthogonalGivenSet_top_right [Finite F.B] (X : Setoid S) (E : Set S) :
+    F.OrthogonalGivenSet X (⊤ : Setoid S) E :=
+  (F.orthogonalGivenSet_comm (⊤ : Setoid S) X E).1 (F.orthogonalGivenSet_top_left X E)
+
+/-- Every partition is orthogonal to every other **given itself**: a block of `X` is a
+single block of `X|x`, so `h^F(X|x) = {}`.  This is the mechanism behind Definition 49's
+being implied by Definition 48. -/
+lemma orthogonalGiven_given_self [Finite F.B] (X W : Setoid S) : F.OrthogonalGiven X W X := by
+  rintro z ⟨r, rfl⟩
+  refine (F.orthogonalGivenSet_def X W _).2 ?_
+  have h : F.historySub ((ofSetoid X).restrict {x | X x r}) = ∅ := by
+    refine (F.historySub_spec ((ofSetoid X).restrict {x | X x r})
+      ((ofSetoid X).restrict {x | X x r}) ((ofSetoid X).restrict {x | X x r})
+      rfl).2.2.2.1.2 ?_
+    rw [dom_restrict_ofSetoid]
+    refine Subpartition.ext fun s t => ⟨fun h => ⟨h.1, h.2.1⟩, fun h => ⟨h.1, h.2, ?_⟩⟩
+    exact X.trans' (show X s r from h.1) (X.symm' (show X t r from h.2))
+  rw [h, Set.empty_inter]
+
+/-- Client's-eye use: conditioning on `X` itself makes any Definition 27 obligation with
+`X` on the left automatic, whatever the world model. -/
+example [Finite F.B] (X W : Setoid S) : F.OrthogonalGiven W X X :=
+  fun z hz => (F.orthogonalGivenSet_comm X W z).1 (F.orthogonalGiven_given_self X W z hz)
+
 /-! ### Glue: how a restricted common refinement's history splits
 
 `historySub_restrict_inf` is Proposition 23 clause 2 pushed through
@@ -134,8 +178,12 @@ lemma historySub_restrict_inf [Finite F.B] (X Y : Setoid S) (E : Set S) :
 
 /-- **Proposition 24** — unconditional orthogonality is orthogonality given `Ind_S`.
 
+The paper's Proposition 24 stands under its standing finite-factored-set hypothesis, but the
+statement needs none: both cases run on `historySub_ofSetoid`, which is finiteness-free
+(`dd:finiteness-minimal`).
+
 Paper node: Proposition 24 (§4.3). -/
-theorem orthogonal_iff_orthogonalGiven_top [Finite F.B] (X Y : Setoid S) :
+theorem orthogonal_iff_orthogonalGiven_top (X Y : Setoid S) :
     F.Orthogonal X Y ↔ F.OrthogonalGiven X Y ⊤ := by
   rcases isEmpty_or_nonempty S with hS | hS
   · -- Over the empty type every partition is `Ind_S`, so the left side holds; and
@@ -144,8 +192,14 @@ theorem orthogonal_iff_orthogonalGiven_top [Finite F.B] (X Y : Setoid S) :
     · rintro - z ⟨y, rfl⟩
       exact (IsEmpty.false y).elim
     · intro _
-      have hXt : X = ⊤ := Setoid.ext fun a _ => (IsEmpty.false a).elim
-      rw [orthogonal_def, (F.history_spec X X).2.2.1.2 hXt, Set.empty_inter]
+      have h : F.history X = ∅ := by
+        have hmem : (∅ : Set (Setoid S))
+            ∈ {C : Set (Setoid S) | C ⊆ F.B ∧ F.Generates C X} := by
+          refine ⟨Set.empty_subset _, ?_⟩
+          rintro x ⟨y, rfl⟩
+          exact (IsEmpty.false y).elim
+        exact Set.subset_empty_iff.mp (Set.sInter_subset_of_mem hmem)
+      rw [orthogonal_def, h, Set.empty_inter]
   · -- Otherwise `Ind_S` has the single block `S`, and `X|S = X`.
     have hclasses : (⊤ : Setoid S).classes = {Set.univ} := classes_top hS
     constructor
@@ -154,14 +208,13 @@ theorem orthogonal_iff_orthogonalGiven_top [Finite F.B] (X Y : Setoid S) :
       subst hz
       refine (F.orthogonalGivenSet_def X Y Set.univ).2 ?_
       simp only [restrict_univ]
-      rw [F.historySub_isLeast_and_eq_history.2 X, F.historySub_isLeast_and_eq_history.2 Y]
+      rw [F.historySub_ofSetoid X, F.historySub_ofSetoid Y]
       exact h
     · intro h
       have hz := h Set.univ (by rw [hclasses]; rfl)
       rw [F.orthogonalGivenSet_def] at hz
       simp only [restrict_univ] at hz
-      rwa [F.historySub_isLeast_and_eq_history.2 X,
-        F.historySub_isLeast_and_eq_history.2 Y] at hz
+      rwa [F.historySub_ofSetoid X, F.historySub_ofSetoid Y] at hz
 
 /-- **Theorem 2** — conditional orthogonality satisfies the compositional-semigraphoid
 axioms: symmetry, decomposition, weak union, contraction, composition.  The paper's

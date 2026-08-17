@@ -16,9 +16,11 @@ the definitions carry no finiteness at all, and `Finite F.B` (finite *dimension*
 finite size) appears exactly where the paper's proofs use it: Proposition 12 shows the
 history is itself generating by expressing it as a *finite* intersection of generating
 sets, and this genuinely fails for infinite `B` — over `S = ℕ → Bool` with the coordinate
-factors, every cofinite subset of `B` generates the "eventually equal" partition, so the
-intersection of all generating subsets is empty and generates nothing.  Nothing in this
-file requires `S` finite.
+factors, dropping any single factor still generates the "eventually equal" partition, so
+the intersection of all generating subsets is empty and generates nothing.  That is
+compiled, not asserted: `InfiniteExamples.not_isLeast_history_evEq` refutes Proposition
+12's conclusion on that factored set (with `history_evEq` and
+`not_generates_history_evEq`).  Nothing in this file requires `S` finite.
 
 ## Orientation
 
@@ -101,10 +103,8 @@ theorem generates_tfae {C : Set (Setoid S)} (hC : C ⊆ F.B) (X : Setoid S) :
   -- needed: `b ∈ C` already supplies `s ∼_b t`, and `b ∉ C` supplies `χ^F_C(s,t) ∼_b t`.
   tfae_have 6 → 7 := by
     intro h s t hst
-    have heq : F.chimera C s t = t := F.eq_of_forall_rel fun b hb => by
-      by_cases hbC : b ∈ C
-      · exact b.trans' (F.chimera_rel_of_mem s t hb hbC) (commonRefinement_iff.1 hst b hbC)
-      · exact F.chimera_rel_of_notMem s t hb hbC
+    have heq : F.chimera C s t = t :=
+      F.chimera_eq_right fun b hbC _ => commonRefinement_iff.1 hst b hbC
     have hrel := h s t
     rw [heq] at hrel
     exact X.symm' hrel

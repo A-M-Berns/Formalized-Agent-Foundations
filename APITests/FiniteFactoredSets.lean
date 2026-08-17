@@ -489,7 +489,7 @@ the family of models, so an inferred `X <_D Y` survives every extension of `D`. 
 the fact that lets a client accumulate observations incrementally instead of re-deriving
 its temporal conclusions from scratch. -/
 example {Ω : Type u} {D D' : OrthDatabase Ω} (hO : D.O ⊆ D'.O) (hN : D.N ⊆ D'.N)
-    {X Y : Setoid Ω} (h : D.Before X Y) : D'.Before X Y :=
+    {X Y : Setoid Ω} (h : D.StrictlyBefore X Y) : D'.StrictlyBefore X Y :=
   fun M hM => h M fun A B C => ⟨fun hA => (hM A B C).1 (hO hA), fun hB => (hM A B C).2 (hN hB)⟩
 
 /-- …and it never holds reflexively on a *consistent* database, because `<^F` is a strict
@@ -498,21 +498,21 @@ monotonicity above: piling on assertions can only produce `X <_D X` by making `D
 inconsistent, and there Definition 45 holds of everything vacuously.  So "is `D`
 consistent?" is the question a client must answer before reading anything off `<_D`. -/
 example {Ω : Type u} {D : OrthDatabase Ω} (hD : D.Consistent) (X : Setoid Ω) :
-    ¬ D.Before X X := by
+    ¬ D.StrictlyBefore X X := by
   obtain ⟨M, hM⟩ := hD
   exact fun h => lt_irrefl _ (h M hM)
 
 /-! ### §6.2's worked examples, consumed through the API boundary
 
 Propositions 33–36 are exported, so a client does not re-derive them: it *uses* them.  The
-four examples below apply each of `Example1.D_consistent`, `Example1.before_X_Y`,
-`Example2.D_consistent` and `Example2.before_X_Y_Z` to prove something the paper does not
+four examples below apply each of `Example1.D_consistent`, `Example1.strictlyBefore_X_Y`,
+`Example2.D_consistent` and `Example2.strictlyBefore_X_Y_Z` to prove something the paper does not
 state, which is the only way to check that those endpoints are usable from outside. -/
 
 /-- Proposition 33 is what makes Proposition 34's inference more than a vacuity: read
 together with the irreflexivity above, `Example1.D` infers `X <_D Y` and does *not* infer
 `X <_D X`. -/
-example : ¬ Example1.D.Before Example1.X Example1.X := by
+example : ¬ Example1.D.StrictlyBefore Example1.X Example1.X := by
   obtain ⟨M, hM⟩ := Example1.D_consistent
   exact fun h => lt_irrefl _ (h M hM)
 
@@ -522,13 +522,13 @@ partitions themselves.  This is the shape of client reasoning §6 is for — a t
 conclusion used to derive a structural one. -/
 example : Example1.X ≠ Example1.Y := fun h => by
   obtain ⟨M, hM⟩ := Example1.D_consistent
-  have hlt := Example1.before_X_Y M hM
+  have hlt := Example1.strictlyBefore_X_Y M hM
   rw [h] at hlt
   exact lt_irrefl _ hlt
 
 /-- Proposition 35 in the same role for Example 2: `Example2.D` orders `X`, `Y`, `Z` and
 still infers nothing about `Z` against itself. -/
-example : ¬ Example2.D.Before Example2.Z Example2.Z := by
+example : ¬ Example2.D.StrictlyBefore Example2.Z Example2.Z := by
   obtain ⟨M, hM⟩ := Example2.D_consistent
   exact fun h => lt_irrefl _ (h M hM)
 
@@ -537,10 +537,10 @@ A client that keeps accumulating observations on top of `Example2.D` never loses
 `X <_D Y <_D Z`, which is what makes the worked example a usable starting point rather
 than a closed computation. -/
 example {D' : OrthDatabase Example2.Ω} (hO : Example2.D.O ⊆ D'.O) (hN : Example2.D.N ⊆ D'.N) :
-    D'.Before Example2.X Example2.Y ∧ D'.Before Example2.Y Example2.Z :=
-  ⟨fun M hM => Example2.before_X_Y_Z.1 M fun A B C =>
+    D'.StrictlyBefore Example2.X Example2.Y ∧ D'.StrictlyBefore Example2.Y Example2.Z :=
+  ⟨fun M hM => Example2.strictlyBefore_X_Y_Z.1 M fun A B C =>
       ⟨fun hA => (hM A B C).1 (hO hA), fun hB => (hM A B C).2 (hN hB)⟩,
-    fun M hM => Example2.before_X_Y_Z.2 M fun A B C =>
+    fun M hM => Example2.strictlyBefore_X_Y_Z.2 M fun A B C =>
       ⟨fun hA => (hM A B C).1 (hO hA), fun hB => (hM A B C).2 (hN hB)⟩⟩
 
 /-! ### §7: embedded agency and Conjecture 1
@@ -553,27 +553,9 @@ instance so that neither predicate is silently total.  §7.2's Conjecture 1 is a
 `Prop`, so what a client wants is to *assume* it and get something out, and to know that
 its finite case is already a theorem.
 
-Two small computations are shared below and factored out, because they are the only place
-`historySub_spec` gets projected: a partition restricted to a set on which it makes no
-distinction *is* the indiscrete subpartition there, and Proposition 23 clause 4 then makes
-its history empty. -/
-
-/-- `Ind_S` restricted to any `E` is `Ind_E`: Definition 22 adds the two domain conjuncts,
-and Definition 7's relation contributes nothing. -/
-lemma restrict_top_eq_indiscrete {S : Type u} (E : Set S) :
-    (Subpartition.ofSetoid (⊤ : Setoid S)).restrict E = Subpartition.indiscrete E :=
-  Subpartition.ext fun _ _ => ⟨fun h => ⟨h.1, h.2.1⟩, fun h => ⟨h.1, h.2, trivial⟩⟩
-
-/-- Proposition 23 clause 4 in the direction §7 consumes: where `Y|E` is `Ind_E`, the
-history `h^F(Y|E)` is empty.  Definitions 46 and 50 are both read off this. -/
-lemma historySub_restrict_eq_empty {S : Type u} (F : FactoredSet S) [Finite F.B]
-    (Y : Setoid S) {E : Set S}
-    (hY : (Subpartition.ofSetoid Y).restrict E = Subpartition.indiscrete E) :
-    F.historySub ((Subpartition.ofSetoid Y).restrict E) = ∅ :=
-  (F.historySub_spec ((Subpartition.ofSetoid Y).restrict E)
-      ((Subpartition.ofSetoid Y).restrict E) ((Subpartition.ofSetoid Y).restrict E)
-      rfl).2.2.2.1.2
-    (by rw [Subpartition.dom_restrict_ofSetoid]; exact hY)
+The one computation §7.3 keeps needing — `Ind_S` restricted anywhere has empty history — is
+`FactoredSet.historySub_top_restrict`, exported by the API, so nothing below projects
+`historySub_spec` by hand. -/
 
 /-- `Ind_S` is orthogonal to everything, by Proposition 13 clause 3 read backwards: its
 history is empty, so Definition 18's intersection is. -/
@@ -589,8 +571,7 @@ constrains `A`, and `A = Ind_S` discharges it for free. -/
 example {S : Type u} (F : FactoredSet S) [Finite F.B] (W : Setoid S) (E : Set S) :
     F.Observes ⊤ W E := by
   refine ⟨orthogonal_top_left F _, ?_⟩
-  rw [F.orthogonalGivenSet_def ⊤ W Eᶜ,
-    historySub_restrict_eq_empty F ⊤ (restrict_top_eq_indiscrete Eᶜ), Set.empty_inter]
+  rw [F.orthogonalGivenSet_def ⊤ W Eᶜ, F.historySub_top_restrict Eᶜ, Set.empty_inter]
 
 /-- **Definition 46 at the impossible event is Definition 18.**  With `E = ∅` the auxiliary
 partition `X_E` collapses to `Ind_S` — every point agrees on membership in `∅` — and the
@@ -673,19 +654,10 @@ example : clientPairFS.Counterfactable obsFst ∧ clientPairFS.Counterfactable o
   ⟨counterfactable_of_mem_basis clientPairFS (Or.inl rfl),
     counterfactable_of_mem_basis clientPairFS (Or.inr rfl)⟩
 
-/-- **Definition 50 at `E = S` is Definition 19.**  Restriction to all of `S` is the
-identity on subpartitions, and Proposition 22's second half identifies `h^F` on a total
-subpartition with §3.2's `h^F`, so conditional time over the whole space is ordinary time.
-The reduction to apply before reading a `BeforeGivenSet` fact as conditional. -/
-lemma beforeGivenSet_univ_iff {S : Type u} (F : FactoredSet S) [Finite F.B] (X Y : Setoid S) :
-    F.BeforeGivenSet X Y Set.univ ↔ F.Before X Y := by
-  rw [FactoredSet.BeforeGivenSet, Subpartition.restrict_univ, Subpartition.restrict_univ,
-    F.historySub_isLeast_and_eq_history.2 X, F.historySub_isLeast_and_eq_history.2 Y,
-    F.before_def X Y]
-
 /-- **Definition 50 is neither empty nor total, at `E = S` on the client's factored set.**
 `Ind_S` is before `obsFst` given `S` and `obsFst` is not before `Ind_S` given `S`: through
-the reduction above that is `{} ⊆ {obsFst}` against `{obsFst} ⊆ {}`, with the two histories
+`FactoredSet.beforeGivenSet_univ_iff` (the library's reduction of Definition 50 at `E = S`
+to Definition 19) that is `{} ⊆ {obsFst}` against `{obsFst} ⊆ {}`, with the two histories
 computed by Proposition 13 clauses 3 and 4.  So conditional time is a genuine ordering here
 and not the total relation. -/
 example : clientPairFS.BeforeGivenSet ⊤ obsFst Set.univ ∧
@@ -693,7 +665,7 @@ example : clientPairFS.BeforeGivenSet ⊤ obsFst Set.univ ∧
   have htop : clientPairFS.history ⊤ = ∅ := (clientPairFS.history_spec ⊤ ⊤).2.2.1.2 rfl
   have hfst : clientPairFS.history obsFst = {obsFst} :=
     (clientPairFS.history_spec obsFst obsFst).2.2.2 inferInstance obsFst (Or.inl rfl)
-  refine ⟨(beforeGivenSet_univ_iff clientPairFS ⊤ obsFst).2 ?_, fun h => ?_⟩
+  refine ⟨(clientPairFS.beforeGivenSet_univ_iff ⊤ obsFst).2 ?_, fun h => ?_⟩
   · rw [clientPairFS.before_def, htop]
     exact Set.empty_subset _
   · have h' := (beforeGivenSet_univ_iff clientPairFS obsFst ⊤).1 h
@@ -703,11 +675,10 @@ example : clientPairFS.BeforeGivenSet ⊤ obsFst Set.univ ∧
 /-- **Definition 50 at a proper conditioning set, where §3.2's `h^F` cannot reach.**  `Ind_S`
 is before every partition given *any* `E`, because `Ind_S|E` is `Ind_E`, whose history is
 empty by Proposition 23 clause 4 — a statement about `historySub` at a set that need be
-neither `S` nor a block of anything, so the reduction above does not cover it. -/
+neither `S` nor a block of anything, so the `E = S` reduction does not cover it. -/
 example {S : Type u} (F : FactoredSet S) [Finite F.B] (Y : Setoid S) (E : Set S) :
     F.BeforeGivenSet ⊤ Y E := by
-  rw [FactoredSet.BeforeGivenSet,
-    historySub_restrict_eq_empty F ⊤ (restrict_top_eq_indiscrete E)]
+  rw [FactoredSet.BeforeGivenSet, F.historySub_top_restrict E]
   exact Set.empty_subset _
 
 /-- **Conjecture 1 consumed as a hypothesis, composed with Proposition 24.**  A client
@@ -724,7 +695,8 @@ example (h : FundamentalTheoremFiniteDim.{0}) (X Y : Setoid (Bool × Bool)) :
   (clientPairFS.orthogonal_iff_orthogonalGiven_top X Y).trans (h clientPairFS X Y ⊤)
 
 /-- **The conjecture's proved finite instance, composed with Proposition 25.**  No hypothesis
-at all this time: `fundamentalTheoremFiniteDim_of_finite` is Theorem 3, and against
+at all this time: the conjecture's finite case is Theorem 3 itself
+(`orthogonalGiven_iff_forall_isDistribution`), and against
 Proposition 25 it turns the *order* relation `Z ≤ X` — the paper's `X ≤_S Z`, by
 `dd:order-flip` — into a numerical test, satisfied exactly when every distribution on the
 client's factored set makes `X` independent of itself given `Z`.  Neither endpoint says
@@ -736,6 +708,6 @@ example (X Z : Setoid (Bool × Bool)) :
         ∀ x ∈ X.classes, ∀ y ∈ X.classes, ∀ z ∈ Z.classes,
           P (x ∩ z) * P (y ∩ z) = P (x ∩ y ∩ z) * P z :=
   (clientPairFS.orthogonalGiven_self_iff X Z).symm.trans
-    (fundamentalTheoremFiniteDim_of_finite clientPairFS X X Z)
+    (clientPairFS.orthogonalGiven_iff_forall_isDistribution X X Z)
 
 end APITests.FiniteFactoredSets

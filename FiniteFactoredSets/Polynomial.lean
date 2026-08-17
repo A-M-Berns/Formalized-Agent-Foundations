@@ -38,8 +38,11 @@ read off the single exponent vector `monoExp C s`.
   and `degreeOf_poly_le` needs no finiteness at all.  The exact carrier list is maintained
   in the "Finiteness" section of `API.lean`.
 * Irreducibility (Proposition 31, next file) is Mathlib's `Irreducible` in this ring; over
-  the field `ℝ` its units are the nonzero constants, so it coincides with the paper's
-  "no factorization into two polynomials of nonempty support".
+  the field `ℝ` its units are the nonzero constants, so it is *strictly stronger* than the
+  paper's "no factorization into two polynomials of nonempty support" — which every
+  nonzero constant, and `0`, satisfy — rather than equivalent to it.  The two agree exactly
+  on nonzero non-units, which is all Proposition 31 ranges over, so the Lean statement is
+  the safe reading.
 -/
 
 universe u
@@ -415,9 +418,13 @@ lemma mono_basis_injective [Finite F.B] : Function.Injective (mono F.B) := fun _
 Only the *dimension* has to be finite (`dd:finiteness-minimal`): the argument is
 `finsum_mem_image` applied to `mono_basis_injective`, and injectivity of `mono^F_B` needs
 `Finite F.B` alone.  The extra content this buys over the paper's `[Finite S]` form is
-degenerate and is not oversold: for an infinite `E` both sides are the `finsum` junk value
-`0` — `Q^F_E` sums a family of nonzero monomials over an infinite set, and so does
-`poly^F_B(E)`, `mono^F_B` being injective — so the statement is `0 = 0` there.
+partly degenerate and partly real, and the two halves are worth keeping apart.  For an
+infinite `E` both sides are the `finsum` junk value `0` — `Q^F_E` sums a family of nonzero
+monomials over an infinite set, and so does `poly^F_B(E)`, `mono^F_B` being injective — so
+the statement is `0 = 0` there.  But `[Finite F.B]` also admits a *finite* `E` inside an
+*infinite* `S`, where nothing is junk: `InfiniteExamples.natBoolFS` is dimension 2 over the
+infinite carrier `ℕ × Bool`, and `natBoolFS.Q {(0, true)} = poly natBoolFS.B {(0, true)}`
+holds with both sides nonzero.
 
 Paper node: Proposition 26 (§5.1). -/
 theorem Q_eq_poly [Finite F.B] (E : Set S) : F.Q E = poly F.B E := by
@@ -427,8 +434,9 @@ theorem Q_eq_poly [Finite F.B] (E : Set S) : F.Q E = poly F.B E := by
 
 /-- Every variable has degree at most one in `Q^F_E` — Proposition 26 followed by
 `degreeOf_poly_le` at `C = B`.  Both of those now need at most `[Finite F.B]`, so this does
-too; as with Proposition 26, the extra content over `[Finite S]` is degenerate, an infinite
-`E` giving `Q^F_E = 0` and degree `0`. -/
+too; as with Proposition 26, the extra content over `[Finite S]` is degenerate only in the
+infinite-`E` corner (`Q^F_E = 0`, degree `0`), and genuine for a finite `E` inside an
+infinite `S`. -/
 lemma degreeOf_Q_le [Finite F.B] (E : Set S) (v : Set S) : (F.Q E).degreeOf v ≤ 1 := by
   rw [F.Q_eq_poly E]
   exact F.degreeOf_poly_le le_rfl E v

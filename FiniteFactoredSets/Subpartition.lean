@@ -16,8 +16,15 @@ subtypes and domain-equality transports.  Instead a subpartition of `S` is model
 domain (Definition 21) is `{s | r s s}`.  The two presentations are in canonical
 bijection (a partition of `E` is exactly a PER with domain `E`), and the bijection is
 exhibited below: `Subpartition.toSetoid : Setoid X.dom`, `Subpartition.ofSetoidOn E Y`,
-and the round-trip lemmas.  Mathlib has no partial-equivalence-relation structure to
-reuse, so this one is repo-generic.
+and the round-trip lemmas.  Mathlib does have partitions of a subset —
+`Mathlib/Order/Partition/Basic.lean`'s `Partition (E : Set α)`, with `Partition.Rel` (the
+induced partial equivalence relation), `rel_rfl_iff`, `partOf`, the refinement
+`PartialOrder` in this same orientation, and a `SemilatticeInf` whose `⊓` is the paper's
+`∨_E` — but it is indexed by its support, so `SubPart(S)` would be `Σ E, Partition E` with
+no restriction across supports, and §4's pervasive equal-domain hypotheses would become
+type-level transports rather than ordinary equations.  That, not an absence of API, is why
+the carrier here is an un-indexed PER; anyone upstreaming §4 should start from Mathlib's
+`Partition`.
 
 Consequences a reader should hold in mind:
 
@@ -239,13 +246,12 @@ lemma subset_iff_classes_subset {X Z : Subpartition S} :
   have key : X.part s = Z.part s := hxu.trans (part_eq_of_rel hsu).symm
   exact Set.ext_iff.1 key t
 
--- Both hypotheses below are redundant for this inclusion (`X.part s` is empty unless
--- `s ∈ dom X`); they are kept because Lemma 2 supplies them and reads with them.
-set_option linter.unusedVariables false in
 /-- Restricting to a block of another subpartition yields a `Subset` of the common
-refinement — the shape Lemma 2's `Y|x ⊆ X ∨_E Y` has. -/
-lemma restrict_part_subset_inf {X Y : Subpartition S} (hE : X.dom = Y.dom) {s : S}
-    (hs : s ∈ X.dom) : (Y.restrict (X.part s)).Subset (X ⊓ Y) := by
+refinement — the shape Lemma 2's `Y|x ⊆ X ∨_E Y` has.  No same-domain side condition and no
+`s ∈ X.dom`: off the domain `X.part s` is empty and the restriction is the empty
+subpartition, which is a `Subset` of everything. -/
+lemma restrict_part_subset_inf {X Y : Subpartition S} {s : S} :
+    (Y.restrict (X.part s)).Subset (X ⊓ Y) := by
   intro u hu t
   rw [dom_restrict] at hu
   obtain ⟨-, huX⟩ := hu
@@ -300,11 +306,11 @@ lemma ofSetoidOn_univ (X : Setoid S) :
     ofSetoidOn Set.univ (Setoid.comap Subtype.val X) = ofSetoid X :=
   ext fun _ _ => ⟨fun ⟨_, _, h⟩ => h, fun h => ⟨trivial, trivial, h⟩⟩
 
-/-- Client's-eye use of the `Subset` API: restricting to a block of a subpartition with the
-same domain lands inside the common refinement, block by block (the shape Lemma 2 uses). -/
-example {X Y : Subpartition S} (hE : X.dom = Y.dom) {s : S} (hs : s ∈ X.dom) :
+/-- Client's-eye use of the `Subset` API: restricting to a block of a subpartition lands
+inside the common refinement, block by block (the shape Lemma 2 uses). -/
+example {X Y : Subpartition S} {s : S} :
     (Y.restrict (X.part s)).classes ⊆ (X ⊓ Y).classes :=
-  Subset.classes_subset (restrict_part_subset_inf hE hs)
+  Subset.classes_subset restrict_part_subset_inf
 
 end Subpartition
 
@@ -380,10 +386,8 @@ theorem generatesSub_tfae {C : Set (Setoid S)} (hC : C ⊆ F.B) (X : Subpartitio
     refine ⟨?_, ?_⟩
     · rintro s t ⟨hs, ht, hrel⟩
       have hrel' : commonRefinement C s t := hrel
-      have heq : F.chimera C s t = t := F.eq_of_forall_rel fun b hb => by
-        by_cases hbC : b ∈ C
-        · exact b.trans' (F.chimera_rel_of_mem s t hb hbC) (commonRefinement_iff.1 hrel' b hbC)
-        · exact F.chimera_rel_of_notMem s t hb hbC
+      have heq : F.chimera C s t = t :=
+        F.chimera_eq_right fun b hbC _ => commonRefinement_iff.1 hrel' b hbC
       have hX := (h s hs t ht).2
       rw [heq] at hX
       exact X.symm' hX

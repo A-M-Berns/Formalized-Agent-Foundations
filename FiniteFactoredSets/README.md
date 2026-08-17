@@ -9,15 +9,19 @@ matching PDF.
 87 carry a Lean declaration of ours, and the remaining nine are rendered outright by
 Mathlib vocabulary (Definitions 1, 2, 5, 6, 7, 9, 29, 30 and 39 — tabulated below), so
 87 + 9 = 96.** Non-vacuity is discharged by construction: four finite factored sets, two
-factored sets outside §5's finiteness boundary, five probability distributions, four
+factored sets outside §5's finiteness boundary, five probability distributions on the
+finite witnesses and one on an infinite carrier, five
 factored set models and six orthogonality databases are built, and the §2.5, §3, §4, §5,
 §6 and §7 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`, `Entangled`,
-`Before`, `StrictlyBefore`, `Subpartition`, `GeneratesSub`, `historySub`, `OrthogonalSub`,
+`Before`, `StrictlyBefore`, `Subpartition`, `GeneratesSub`, `historySub`,
 `OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`, `monos`, `poly`, `irr`, `ProbDist`,
 `IsDistribution`, `Model`, `Model.pullback`, `OrthDatabase`, `Models`, `Consistent`,
-`Complete`, `OrthDatabase.Before`, `eventPartition`, `Observes`, `ObservesPartition`,
+`Complete`, `OrthDatabase.StrictlyBefore`, `eventPartition`, `Observes`,
+`ObservesPartition`,
 `Counterfactable`, `CounterfactableRel`, `BeforeGivenSet` — is computed over them rather
-than merely defined.
+than merely defined. `OrthogonalSub` is deliberately *not* in that list: the witness file
+unfolds it on `coordFS` (an anonymous `example` restating `orthogonalSub_def`) but computes
+no verdict from it, so it is exercised rather than evaluated.
 
 Two things are deliberately *not* claimed and are set out below: Examples 3 and 4 are out
 of scope by ruling, and Conjecture 1 is stated as a `Prop` and deliberately left unproved.
@@ -75,8 +79,17 @@ cited by 94 annotations:
 | Definition 41 (database notation) | `Orth` is `X ⊥_D Y \| Z`; `NotOrth` is `¬(X ⊥_D Y \| Z)`. These are two *independent* assertions of the database, not a proposition and its negation — a database may make both (and then has no model) or neither (and then is not complete) |
 
 Every one of those carries a `Paper node:` docstring line and an entry in
-`AxiomAudit.lean`'s FFS-INVENTORY block, checked both ways by
-`scripts/check-finite-factored-sets-nodes.py`. Every endpoint — §2–§7, witnesses included —
+`AxiomAudit.lean`'s FFS-INVENTORY block. `scripts/check-finite-factored-sets-nodes.py`
+enforces that one direction — annotation ⇒ inventory — together with the validity of each
+cited node against the committed TeX and the anchoring of each annotation to a named
+declaration. It does **not** enforce the converse: the inventory also holds the
+non-vacuity witnesses, so it has far more entries than there are annotations, and a line
+naming a declaration that does not exist passes the checker and is caught only when
+`AxiomAudit.lean` is elaborated, by `#assert_axioms_clean` failing to resolve the name.
+Nothing machine-checks that all 96 in-scope nodes are covered either; the accounting above
+is prose, re-derivable by comparing
+`grep -rho "Paper node: [A-Za-z]* [0-9]*" FiniteFactoredSets/*.lean | sort -u` against
+`scripts/paper_nodes.py`. Every endpoint — §2–§7, witnesses included —
 is `sorry`-free and clean at `[propext, Classical.choice, Quot.sound]`; the library has no
 open proof obligation. **Zero `sorry`, zero `axiom`.** Conjecture 1 is not an exception to
 that and should not be read as one: `FundamentalTheoremFiniteDim` is a `def … : Prop` with
@@ -102,9 +115,27 @@ a misreading: it exhibits the object, and claims nothing the paper claims about 
 `FundamentalTheoremFiniteDim` in `Conjecture.lean` is a `def … : Prop` — Theorem 3's
 statement with `[Finite S]` weakened to `[Finite F.B]` — and **no declaration anywhere in
 this library has that type**. The development takes no position on it and no prover time
-should be spent on it. The one thing proved about it is its finite case,
-`fundamentalTheoremFiniteDim_of_finite`, which is Theorem 3 and is a consistency check on
-how the `Prop` is written rather than progress on the conjecture. On its status in the
+should be spent on it. Its finite instance needs no separate statement: it simply **is**
+Theorem 3, `orthogonalGiven_iff_forall_isDistribution`. What exercises the `Prop`'s shape
+is the three `example`s that take it *as a hypothesis* and instantiate it at a witness —
+two in `InfiniteExamples.lean` and one in `APITests/FiniteFactoredSets.lean` — and those
+are the only uses of it anywhere.
+
+A second thing is not claimed here, and it is a boundary of the *statement* rather than of
+the effort. Weakening Theorem 3's `[Finite S]` to `[Finite F.B]` does not only change the
+hypothesis; it changes what `ProbDist S` ranges over. Definition 36 defines a probability
+distribution only "given a finite set `S`", and §7.2's one sentence says nothing about
+what one is on an infinite carrier, so over an infinite `S` the Lean `Prop` quantifies over
+the merely finitely-additive functions on the full powerset — no countable additivity, no
+σ-algebra — including objects the paper never contemplated (a finitely-additive density
+with every singleton `0` satisfies Definitions 36 and 37 vacuously). Those strengthen the
+`→` direction of the biconditional and weaken the `←` direction. So
+`FundamentalTheoremFiniteDim` is one particular *sharpening* of an informal conjecture, and
+**proving or refuting it would not by itself settle the paper's §7.2 question.** The
+alternative sharpenings all want a measure-theoretic `P`, which `dd:probability` rules out
+as a substitution for Definition 36.
+
+On its status in the
 literature (recorded at length in `KNOWLEDGE.md`): Matthias Georg Mayer has since proved
 the fundamental theorem for finitely factored *measurable* spaces (*A Theory of Structural
 Independence*, arXiv:2412.00847), but that is the **unconditional** statement and it carries
@@ -203,23 +234,30 @@ here rather than inventoried — there is no declaration of this project's to ax
 | Definition 6 (finer / coarser) | Mathlib's `≤` on `Setoid` | `dd:order-flip` |
 | Definition 7 (`Dis_S`, `Ind_S`) | `⊥`, `⊤` | `dd:order-flip` |
 | Definition 9 (`∏(B)`) | the dependent product `(b : B) → Quotient b` | `dd:quotient` |
+| Definition 8, second sentence (`X ∨_S Y`) | Mathlib's `X ⊓ Y` on `Setoid`, which is how §3 onward states it; `commonRefinement_pair` is the bridge to the set form `⋁_S({X, Y})` that Definition 8's carrier `commonRefinement` renders | `dd:order-flip` |
 | Definition 15, third sentence (finite / finite-dimensional factored set) | the typeclass hypotheses `[Finite S]` and `Finite F.B`, carried per statement | `dd:finiteness-minimal` |
 | Definition 29 (`p(f)`, evaluation) | `MvPolynomial.eval f p` | `dd:poly` |
 | Definition 30 (`supp(p)`, support) | `MvPolynomial.vars p` | `dd:poly` |
 | Definition 39 (`f⁻¹(ω)`, `f⁻¹(E)`, `f⁻¹(X)`) | `Set.preimage` for the first two; `Setoid.comap f X` for the partition, whose blocks are exactly the nonempty preimages of blocks of `X` — the definition's own side condition, supplied by `Setoid.classes` rather than written out. `Model.pullback` is a *named alias* for that third clause and deliberately carries no node annotation | `dd:model` |
-| Proposition 31's "irreducible" (no factorization into two polynomials of nonempty support) | Mathlib's `Irreducible` in `Poly S`; over `ℝ` its units are the nonzero constants, so the two readings coincide | `dd:poly` |
+| Proposition 31's "irreducible" (no factorization into two polynomials of nonempty support) | Mathlib's `Irreducible` in `Poly S`. The two readings do **not** coincide: over `ℝ` the units are the nonzero constants, and `Irreducible` demands `¬ IsUnit p` on top of the paper's condition, which every nonzero constant and `0` satisfy. They agree exactly on nonzero non-units, which is all Proposition 31 ranges over — so the Lean statement is the strictly stronger, safe reading | `dd:poly` |
 | Proposition 2, first sentence (`≥_S` is a partial order) | Mathlib's `PartialOrder (Setoid S)` instance | `dd:order-flip` |
 
-Nine of those twelve rows are whole nodes (Definitions 1, 2, 5, 6, 7, 9, 29, 30, 39 — the
+Nine of those thirteen rows are whole nodes (Definitions 1, 2, 5, 6, 7, 9, 29, 30, 39 — the
 last three outside §2.1, where Mathlib's `eval`, `vars`, `Set.preimage` and `Setoid.comap`
 render them outright); the
-other three are *partial* entries — a clause of a node whose remaining clauses do have a
+other four are *partial* entries — a clause of a node whose remaining clauses do have a
 carrier, recorded here so that nothing in a printed node is silently unaccounted for:
 
 * **Proposition 2, first sentence.** `bot_le_and_le_top` carries the `Proposition 2`
   annotation but states only the proposition's second sentence (the `Dis`/`Ind` bounds).
   Anyone reading the trust-surface card will see the full printed proposition beside a Lean
   statement covering half of it; that is why the row is here.
+* **Definition 8, second sentence.** `commonRefinement` carries the `Definition 8`
+  annotation and renders the set form `⋁_S(C)`. The binary `X ∨_S Y = ⋁_S({X, Y})` is
+  Mathlib's `X ⊓ Y`, which is what Propositions 11, 13, 15 and 18 are stated with; the
+  identification of the two is `commonRefinement_pair`, a bridge lemma with no annotation
+  of its own. Before it landed this was the one order translation in §3 asserted only in
+  prose.
 * **Definition 15, third sentence.** "Finite" and "finite-dimensional" are not a
   definition this library makes: under `dd:finiteness-minimal` they are the typeclass
   hypotheses `[Finite S]` and `Finite F.B`, carried on the individual statements that use
@@ -233,8 +271,10 @@ carrier, recorded here so that nothing in a printed node is silently unaccounted
 
 None of this is to be confused with the six multi-carrier nodes tabulated above
 (Definitions 13, 15, 18, 19, 25, 41): those are nodes stated in halves, with *every* half
-carried, not nodes stated in part. Definition 15 appears in both lists, because two of its
-sentences have carriers and the third does not.
+carried by an *annotated* declaration, not nodes stated in part. Definition 15 appears in
+both lists, because two of its sentences have carriers and the third does not; Definition 8
+appears only here, because its second sentence's Lean fact (`commonRefinement_pair`) is a
+bridge lemma rather than a second carrier.
 
 ## Modeling decisions
 
@@ -250,6 +290,19 @@ Defined in full in the glossary at `FiniteFactoredSets.lean`. In brief:
   notation — is Mathlib's `sInf`. The library uses Mathlib's convention throughout and
   never introduces the paper's glyphs.
 * **`dd:quotient`** — Definition 9's `∏(B)` is the dependent product of the quotients.
+* **`dd:subpartition`** — Definition 20's subpartition (a partition of a subset `E ⊆ S`) is
+  a **partial equivalence relation** on `S`, with Definition 21's domain as `{s | r s s}`,
+  rather than a `Σ E : Set S, Setoid E`. Record the reason accurately, because the obvious
+  one is wrong: Mathlib **does** have partitions of a subset —
+  `Mathlib/Order/Partition/Basic.lean`'s `Partition (E : Set α)`, with `Partition.Rel` (the
+  induced partial equivalence relation), `rel_rfl_iff` (the domain), `partOf`, the
+  refinement order in the same orientation as `Subpartition`'s `≤`, and a `SemilatticeInf`
+  whose `⊓` is the paper's `∨_E`. What it does not have is an *un-indexed* carrier: its
+  `Partition E` carries its support in the type, so `SubPart(S)` would be `Σ E, Partition E`
+  with no restriction across supports, and §4's pervasive equal-domain hypotheses
+  (`X.dom = Y.dom` in Proposition 23, Lemmas 1 and 2) would become type-level transports.
+  That, not an absence of API, is why the PER carrier was chosen; anyone upstreaming §4
+  should start from Mathlib's `Partition`.
 * **`dd:poly`** — Definition 28's `Poly^F` is `MvPolynomial (Set S) ℝ`. The paper's
   variables are the subsets of `S`, and under `dd:partition` a block `[s]_b` *is* the set
   `part b s`, so a block is a variable of the ring verbatim — no indexing type is
@@ -257,7 +310,9 @@ Defined in full in the glossary at `FiniteFactoredSets.lean`. In brief:
   whole `MvPolynomial` API applies to it unchanged. Sums and products over sets
   (`∑_{s ∈ E}`, `∏_{b ∈ B}`) are `finsum`/`finprod`, which is what lets the *definitions*
   carry no finiteness while `[Finite S]` sits on exactly the statements the paper makes
-  for finite factored sets. Irreducibility is Mathlib's `Irreducible` in this ring.
+  for finite factored sets. Irreducibility is Mathlib's `Irreducible` in this ring —
+  strictly stronger than the paper's Proposition 31 phrasing rather than equivalent to it
+  (see the Mathlib-rendered table above), so the Lean statement is the safe reading.
 * **`dd:probability`** — §5.4's probability distributions are elementary, exactly as the
   paper writes them. Definition 36 is the structure `ProbDist S` — a function
   `P : Set S → ℝ` with the paper's four clauses as fields (`nonneg`, `empty`, `univ`,
@@ -301,11 +356,15 @@ Defined in full in the glossary at `FiniteFactoredSets.lean`. In brief:
   statement with `[Finite S]` weakened to `[Finite F.B]` and **nothing else changed**, which
   is the whole content of the conjecture — the paper's §7.2 asks exactly whether the
   finiteness it assumed "fairly gratuitously" can be dropped to finite *dimension*.
-  Stating it costs nothing and claims nothing: no declaration has that type, the finite case
-  is separately recorded as `fundamentalTheoremFiniteDim_of_finite` (which is Theorem 3), and
+  Stating it costs nothing and claims nothing: no declaration has that type, its finite
+  instance is Theorem 3 itself rather than a separate restatement, and
   the reason the `Prop` can be written down at all is that `dd:finiteness-minimal` and
   `dd:probability` between them keep `ProbDist` and `IsDistribution` free of any finiteness
-  of their own. See "What is not claimed" for its status in the literature.
+  of their own. One thing the tag owes a disclosure for, spelled out under "What is not
+  claimed": because Definition 36 is stated by the paper only for a finite `S`, dropping
+  `[Finite S]` also widens the family the biconditional quantifies over, so the `Prop` is a
+  sharpening of §7.2's sentence rather than a transcription of it. See "What is not
+  claimed" for that and for its status in the literature.
 
   §7.3's renderings are consequences of `dd:partition` and `dd:order-flip` rather than
   decisions of their own, and two are worth stating here because they change how a
@@ -389,8 +448,18 @@ coordinate determines the second. Every declaration below is inventoried:
 | `Subset` is exhibited both ways, and `dd:subpartition`'s bijection runs | `subset_indDiag_xorPart`, `not_subset_sndOnEfst_snd`, `ofSetoidOn_bot_Efst`, `roundtrip_sndOnEfst`, `roundtrip_bot_Efst` | Proposition 21 clause 6 / Proposition 23 clause 3 being vacuous, and the `Σ E, Setoid E` correspondence of `dd:subpartition` being asserted rather than exhibited on a concrete `E` |
 | Lemmas 1 and 2 apply to a real factored set | `historySub_disjoint_coord`, `lemma1_coordFS`, `lemma1_coordFS'`, `lemma2_lhs_coordFS`, `lemma2_rhs_coordFS` | their hypothesis sets (`X.dom = Y.dom`, disjoint histories, a point of the domain) being jointly unsatisfiable. Lemma 2's two sides are each computed to `B` *without* invoking Lemma 2 — the left from Proposition 22, the right from Lemma 1 — so the pair cross-checks Lemma 2 on `coordFS` |
 | Restriction can **entangle**, so §4.3 is not §3.3 | `not_orthogonalGivenSet_Ediag`, `Ediag_mem_xorPart_classes`, `not_orthogonalGiven_fst_snd_xorPart`, `orthogonalGiven_nondegenerate` | `OrthogonalGiven` being silently total, or implied by Definition 18. `fstFactor ⊥^F sndFactor` holds, yet conditioning on `xorPart` fails — and Proposition 24 explains only the `Ind_S` case |
-| Proposition 25 and Theorem 2 hold and fail on a witness | `orthogonalGiven_fst_snd_top`, `orthogonalGiven_fst_fst_fst`, `not_orthogonalGiven_fst_fst_top`, `thm2_decomposition_coordFS`, `thm2_weakUnion_coordFS` | `X ⊥^F X \| Z` being trivially true or trivially false, and Theorem 2's clauses never being instantiated |
+| Proposition 25 and Theorem 2 hold and fail on a witness | `orthogonalGiven_fst_snd_top`, `orthogonalGiven_fst_fst_fst`, `not_orthogonalGiven_fst_fst_top`, `thm2_decomposition_coordFS`, `thm2_weakUnion_coordFS`, and a third decomposition instance at a genuinely non-degenerate `W` (`Examples.lean`) | `X ⊥^F X \| Z` being trivially true or trivially false, and Theorem 2's clauses never being instantiated |
 | Definitions 26–27 have degenerate corners a client should know about | `orthogonalGivenSet_empty`, `orthogonalGiven_bot` | reading `OrthogonalGivenSet` as always meaningful. Conditioning on `∅`, or on `Dis_S`, makes every pair orthogonal — faithful to the paper (a block is never empty), but a trap |
+
+Read the Theorem 2 row for exactly what it says, since two of its three instances are
+degenerate on purpose and one is not. `thm2_decomposition_coordFS` takes `W = ⊤`, which
+makes its first conjunct the already-proved `orthogonalGiven_fst_snd_top` and its second a
+consequence of Proposition 23 clause 4 alone; `thm2_weakUnion_coordFS` takes `W = Y`. The
+third instance is the one that meters decomposition, at `Z = ⊤`, `Y = fstFactor`,
+`W = sndFactor` and `X` the XOR partition. Contraction, composition and symmetry —
+Theorem 2's remaining clauses, and the two whose proofs consume Lemma 2 and Proposition 23
+clause 2 — have no concrete instantiation here; `orthogonalGiven_semigraphoid` carries all
+five, and the witnesses meter three.
 
 §5.1–§5.2 adds a third layer — the ring `Poly^F`, the characteristic polynomial `Q^F_E`,
 the monomials `mono`/`monos`/`poly`, and the irreducible parts `Irr^F(E)` — and again the
@@ -494,22 +563,29 @@ touches them. The same file therefore builds four models of two sample spaces an
 databases, and uses them to separate `Consistent`, `Complete` and `<_D` from each other.
 The paper's own Examples 1 and 2 are *not* among them — those are §6.2's numbered nodes,
 formalized in `InferenceExamples.lean`, and `Examples.lean` deliberately does not import
-that file, so no witness below can lean on a §6.2 proof. Every declaration below is
-inventoried:
+that file, so no witness below can lean on a §6.2 proof. Every *witness* below is in the
+FFS-INVENTORY block; the two general statements the last row instantiates
+(`OrthDatabase.not_strictlyBefore_self_of_consistent` and
+`OrthDatabase.strictlyBefore_of_not_consistent`) are in the consumer-conveniences
+`#assert_axioms_clean` block near the end of `AxiomAudit.lean` instead, since neither is a
+paper node:
 
 | Claim | Declarations | What it rules out |
 |---|---|---|
-| Definition 38 is inhabited, including where `f` is not a bijection | `coordModel`, `boolModel`, `fstModel`, `pointModel` | `Model` being uninhabited, and being read as "a factorization of `Ω`". `fstModel` is `coordFS` observed through `Prod.fst`: `S` has four points where `Ω` has two, which is the latent structure Definition 38 exists to allow. `pointModel` is the opposite extreme, a one-point carrier |
+| Definition 38 is inhabited, including where `f` is not a bijection and where the carrier is empty | `coordModel`, `boolModel`, `fstModel`, `pointModel`, `voidModel` | `Model` being uninhabited, and being read as "a factorization of `Ω`". `fstModel` is `coordFS` observed through `Prod.fst`: `S` has four points where `Ω` has two, which is the latent structure Definition 38 exists to allow. `pointModel` is the opposite extreme, a one-point carrier, and `voidModel` the degenerate end Definition 38 also admits — an empty carrier, where `<^F` is empty because there are no blocks to compare |
 | Definition 39 is computed, and moves in both directions | `pullback_fstModel_bot`, `history_pullback_fstModel_bot`, `pullback_pointModel` | `f⁻¹` being a formality. Under `fstModel` the pullback of `Dis_Ω` — the *finest* partition of the sample space — is a *factor* of `S`, whose §3 history is the singleton `{fstFactor}`; under `pointModel` every partition of `Ω` pulls back to `Ind_S`. So a §6 statement is a statement about `S`, not about `Ω` |
 | Definition 43 is a real condition, and Definition 42's two clauses are both exercised | `emptyDB`, `models_emptyDB`, `emptyDB_consistent`, `contradictoryDB`, `not_contradictoryDB_consistent`, `coordDB`, `models_coordDB`, `coordDB_consistent` | `Consistent` holding of everything, or of nothing. The empty database is modeled by every model; the database asserting one triple *both* ways has no model at all; and `models_coordDB` discharges both clauses of Definition 42 at once on the identity model of `coordFS`, from §4.3's own computations (`orthogonalGiven_fst_snd_top` and `not_orthogonalGiven_fst_fst_top`) rather than from anything in §6 |
 | `Consistent` is **cheap on `O` alone** — it is `N` that constrains | `totalDB`, `totalDB_complete`, `totalDB_consistent`, `nonconstDB`, `nonconstDB_consistent`, `nonconstDB_forces_nonconstant`, `pullback_pointModel` | reading a large `O` as hard to satisfy. A database asserting *every* triple orthogonal is consistent, because a one-point model satisfies all of `O` simultaneously (a zero-dimensional factored set has no factors). What excludes that model is a single `N` entry: `(Dis_Ω, Dis_Ω, Ind_Ω)` forces every model's map to be non-constant, through Proposition 25 |
 | `Consistent` and `Complete` are independent, in **both** directions | `not_emptyDB_complete`, `completeInconsistentDB` with `completeInconsistentDB_complete` and `not_completeInconsistentDB_consistent`, `totalDB_complete` with `totalDB_consistent`, `not_coordDB_complete` with `coordDB_consistent` | reading Definition 44 as a strengthening of Definition 43, as its converse, or as incompatible with it. `emptyDB` is consistent and not complete; `completeInconsistentDB` — asserting every triple *both* ways — is complete and not consistent, which is the direction the other witnesses leave open; `totalDB` is both; `coordDB` repeats the consistent-and-not-complete corner with both of its clauses non-empty |
-| Definition 45 is irreflexive where it is informative and **vacuously total** where it is not | `OrthDatabase.not_before_self_of_consistent` and `OrthDatabase.before_of_not_consistent` (`Inference.lean`), instantiated by `not_nonconstDB_before_self`, `contradictoryDB_before_all` | `X <_D Y` being read as an inference regardless of `D`. It quantifies over models of `D`, so on an inconsistent database it holds of *every* pair; on a consistent one it is irreflexive, `<^F` being a strict inclusion of histories. This is why the paper proves consistency (Propositions 33 and 35) before it infers time (Propositions 34 and 36), and the consistency the second witness uses is computed here rather than cited from §6.2 |
+| Definition 45 is irreflexive where it is informative and **vacuously total** where it is not, and infers nothing from an empty `N` | `OrthDatabase.not_strictlyBefore_self_of_consistent` and `OrthDatabase.strictlyBefore_of_not_consistent` (`Inference.lean`), instantiated by `not_nonconstDB_strictlyBefore_self`, `contradictoryDB_strictlyBefore_all`, together with `not_emptyDB_strictlyBefore` | `X <_D Y` being read as an inference regardless of `D`. It quantifies over models of `D`, so on an inconsistent database it holds of *every* pair; on a consistent one it is irreflexive, `<^F` being a strict inclusion of histories. This is why the paper proves consistency (Propositions 33 and 35) before it infers time (Propositions 34 and 36), and the consistency the second witness uses is computed here rather than cited from §6.2 |
 
 The informative *positive* instances of Definition 45 — an actual inferred `X <_D Y` — are
 Propositions 34 and 36 themselves. Nothing in `Examples.lean` stands in for them, and the
-degenerate `contradictoryDB_before_all` is recorded precisely so that no reader mistakes a
-vacuous `Before` for one.
+degenerate `contradictoryDB_strictlyBefore_all` is recorded precisely so that no reader
+mistakes a vacuous `<_D` for one. At the other end, `not_emptyDB_strictlyBefore` closes the
+loop on `emptyDB_consistent`: a database with `N = ∅` is consistent and infers *nothing*,
+because `voidModel` — the empty-carrier model Definition 38 admits — models it and kills
+`<^F` outright. Consistency is therefore not evidence of inferential content.
 
 §7 adds the last layer, and it splits in two. §7.3's five definitions are stated over the
 §3–§4 vocabulary, so nothing in §2–§6 exercises them; `Examples.lean` therefore runs them
@@ -519,25 +595,33 @@ carrier**, so none of them is in the part of the conjecture's range that Theorem
 already cover; a separate file, `InfiniteExamples.lean`, supplies factored sets outside §5's
 finiteness boundary. The claims below are what those two files discharge; the rows name the
 claim rather than every declaration, since the §7 witness sets are read most usefully as
-claims (every name below exists once in the witness files and once in the FFS-INVENTORY
-block):
+claims. Two names in this section are *not* in the FFS-INVENTORY block, and neither is an
+omission: `eventPartition` is an unannotated auxiliary and is inventoried nowhere (see the
+§7.3 register in `AxiomAudit.lean`), and the general §7.3 relations a client reasons with
+(`counterfactableRel_of_counterfactable`, `counterfactableRel_top`,
+`beforeGivenSet_univ_iff`, `beforeGivenSet_empty`) live on the consumer surface — in
+`EmbeddedAgency.lean` and `ConditionalOrthogonality.lean` — rather than in the witness
+files:
 
 | Claim | Witnesses | What it rules out |
 |---|---|---|
 | Definition 46's case split is real, and `eventPartition` computes on **both** sides of it | `eventPartition` evaluated on `coordFS` at an event that is neither empty nor all of `S` and at one that is (`Examples.lean`) | reading the `Setoid.comap (· ∈ E) ⊥` rendering as a reformulation nobody checked. The paper's two cases — `{S}`, and `{E, S \ E}` — are both realized by `Setoid.classes` of the same definition, which is the entire content of absorbing the split |
 | Definition 46 is neither empty nor total, and its negative side is the paper's own reading | a positive `Observes` instance on `coordFS`, together with the paper's Newcomb and counterfactual-mugging configurations as *negative* instances (`Examples.lean`) | `Observes` holding vacuously or universally. The negatives matter more than the positive here: §7.3's point is that an agent may fail to observe an event it "knows", and a witness file that only exhibited positives would leave that unexercised |
+| Definition 46's **second** clause is metered, not merely satisfied | a positive `Observes` instance whose conditioning set is not a block of the world model, so `h^F(W\|Eᶜ) ≠ ∅` (`Examples.lean`) | a positive witness that discharges clause 2 for a reason independent of the agent. Where `Eᶜ` *is* a block of `W`, `W\|Eᶜ` is indiscrete and clause 2 holds for **every** agent — which is the shape of the first positive instance, disclosed rather than repaired |
 | Definition 47 is inhabited over a block-indexed family, so the reindexing is not vacuous | an `ObservesPartition` instance on `coordFS` (`Examples.lean`) | the `As : X.classes → Setoid S` rendering being unsatisfiable, or satisfiable only at a one-block `X` where the family carries no information |
+| Definition 47's sub-agent decomposition does work, so it is not Definition 46 read blockwise | an `ObservesPartition` instance with a **non-constant** family `As`, and one whose clause-2 obligations are not automatic (`Examples.lean`) | reading `∃ As, A = ⋁_S(range As) ∧ …` as decoration. At a constant family `sInf (Set.range As) = A` by `sInf_singleton`, so the existential carries no information, and the earlier positive instance is exactly that case |
 | Definition 48 separates partitions, and the separating example is the paper's | `Counterfactable` holding at a factor of `coordFS` and **failing** at the XOR / bleen-grue partition (`Examples.lean`) | `Counterfactable` being total. `X = ⋁_S(h^F(X))` is an equation, and the XOR partition is exactly the paper's illustration of a partition whose history recovers strictly more than itself |
 | Definition 49 is inhabited, and separately from Definition 48 | a `CounterfactableRel` instance on `coordFS` (`Examples.lean`) | reading the relative notion as the absolute one with a spectator argument |
 | Definition 50 is computed at a conditioning set that is not `S` | a `BeforeGivenSet` instance on `coordFS` (`Examples.lean`) | conditional time being exercised only where `restrict` is the identity, which is where it reduces to Definition 19 |
 | Conjecture 1's range contains factored sets Theorem 3 does not reach — and factored sets *it* does not reach either | `natBoolFS` on `ℕ × Bool` (finite dimension, infinite carrier: inside the conjecture, outside Theorem 3) and `infFS` on `ℕ → Bool` (infinite dimension: outside both) (`InfiniteExamples.lean`) | reading Conjecture 1 as a restatement of Theorem 3, and reading it as a claim about arbitrary factored sets. The paper expects the *arbitrary*-dimensional version to be **false**, so the second witness marks a boundary rather than a gap |
 | `isDistribution_diracAt`'s `[Finite F.B]` is load-bearing, not decorative | `infFS` (`InfiniteExamples.lean`) | reading that binder as a proof convenience. Over an infinite basis Definition 37's `∏ᶠ b ∈ B` returns the junk value `1` as soon as infinitely many factors separate two points, while the singleton probability there is `0` — so the statement is *false*, not merely unproved |
-| Conjecture 1's finite instance is exercised, not just stated | `fundamentalTheoremFiniteDim_of_finite` applied at a concrete factored set (`InfiniteExamples.lean`, and through the API boundary in `APITests/FiniteFactoredSets.lean`) | the consistency check between the `Prop` and Theorem 3 being asserted rather than run |
+| Conjecture 1's right-hand side **discriminates** at `natBoolFS`, so its two sides are not identified there | `rich`, `rich_isDistribution`, `rich_discriminates` (`InfiniteExamples.lean`) | the conjecture's distribution family being inhabited only by point masses. `ProbDist.diracAt` satisfies `P(x∩z)·P(y∩z) = P(x∩y∩z)·P(z)` for **arbitrary** sets, so a family of point masses makes the right-hand side true at every triple and separates nothing — and, taken as the whole of `IsDistribution`, would make the right-hand side hold at a triple whose left-hand side `not_orthogonal_natFactor_self` refutes. `rich` is a non-point-mass Definition-37 distribution on `natBoolFS` at which the identity fails, which is the finite side's `not_orthogonalGiven_bot_bot_top_boolFS` moved outside the finiteness boundary |
+| Conjecture 1's shape is exercised as a hypothesis, not just written down | the three `example`s that take `FundamentalTheoremFiniteDim` as a hypothesis and instantiate it at a witness (two in `InfiniteExamples.lean`, one in `APITests/FiniteFactoredSets.lean`) | the `Prop` being stated in a shape nothing ever applies. Its finite instance needs no separate declaration — that is Theorem 3 itself — so these three uses are the only check that the `Prop`'s binders are usable |
 
 `APITests/FiniteFactoredSets.lean` carries the client-side half of the §7 non-vacuity, and
 it is deliberately a different half: it consumes `FundamentalTheoremFiniteDim` as a
-*hypothesis* and composes it with Proposition 24, applies
-`fundamentalTheoremFiniteDim_of_finite` against Proposition 25, and records the reductions
+*hypothesis* and composes it with Proposition 24, applies Theorem 3 against Proposition 25,
+and records the reductions
 a client needs before reading a §7.3 fact as a §7 fact — Definition 46 at `E = ∅` is
 Definition 18, Definition 50 at `E = S` is Definition 19, `Ind_S` observes everything, and
 every factor is counterfactable. Those are compositions, not restatements, and none of them

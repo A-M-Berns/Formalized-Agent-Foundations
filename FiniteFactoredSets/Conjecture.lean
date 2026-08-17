@@ -18,13 +18,19 @@ it, and no declaration here or elsewhere claims it.
   a finite product over `B` and `ProbDist` (Definition 36) is elementary, so both are
   meaningful with `S` infinite — which is exactly why the statement can be *written* here
   at all (`dd:finiteness-minimal`).
-* The finite case of the conjecture is Theorem 3, and `fundamentalTheoremFiniteDim_of_finite`
-  records that the `Prop` restricts to the proved theorem when `S` is finite.  That lemma is
-  the only thing proved about it.  `FiniteFactoredSets/InfiniteExamples.lean` carries the
-  witnesses that make both sides of this statement mean something: a two-factor factored
-  set on the infinite carrier `ℕ × Bool` — inside the conjecture's scope, outside
-  Theorem 3's, with an inhabited family of distributions — and an infinite-dimensional one
-  showing that the `Finite F.B` hypothesis excludes something, and why.
+* The finite case of the conjecture **is** Theorem 3
+  (`FactoredSet.orthogonalGiven_iff_forall_isDistribution`) — same statement, `[Finite S]`
+  in place of `[Finite F.B]` — so it needs no restatement here, and nothing else about the
+  `Prop` is proved.  What *does* exercise the `Prop`'s shape is taking it as a hypothesis
+  and applying it: `FiniteFactoredSets/InfiniteExamples.lean` and
+  `APITests/FiniteFactoredSets.lean` each bind `(h : FundamentalTheoremFiniteDim.{0})` and
+  discharge a conclusion Theorem 3 cannot reach.
+* `FiniteFactoredSets/InfiniteExamples.lean` carries the witnesses that make both sides of
+  this statement mean something: a two-factor factored set on the infinite carrier
+  `ℕ × Bool` — inside the conjecture's scope, outside Theorem 3's, carrying both a point
+  mass and a genuinely spread-out distribution, the latter *refuting* the right-hand side at
+  a triple where the left-hand side fails — and an infinite-dimensional one showing that the
+  `Finite F.B` hypothesis excludes something, and why.
 * Status in the literature (see `KNOWLEDGE.md`, "On Conjecture 1's status"): a measurable
   refinement of the *unconditional* statement has since been proved (Mayer, arXiv:2412.00847);
   the conditional statement over bare finite-dimensional factored sets, as written here,
@@ -48,16 +54,5 @@ def FundamentalTheoremFiniteDim : Prop :=
       ∀ P : ProbDist S, F.IsDistribution P →
         ∀ x ∈ X.classes, ∀ y ∈ Y.classes, ∀ z ∈ Z.classes,
           P (x ∩ z) * P (y ∩ z) = P (x ∩ y ∩ z) * P z
-
-/-- The conjecture's instance at a finite carrier is Theorem 3: the `Prop` above restricts to
-the proved fundamental theorem when `S` is finite.  This is a consistency check on the
-statement, not progress on the conjecture. -/
-lemma fundamentalTheoremFiniteDim_of_finite {S : Type u} [Finite S] (F : FactoredSet S)
-    (X Y Z : Setoid S) :
-    F.OrthogonalGiven X Y Z ↔
-      ∀ P : ProbDist S, F.IsDistribution P →
-        ∀ x ∈ X.classes, ∀ y ∈ Y.classes, ∀ z ∈ Z.classes,
-          P (x ∩ z) * P (y ∩ z) = P (x ∩ y ∩ z) * P z :=
-  F.orthogonalGiven_iff_forall_isDistribution X Y Z
 
 end FiniteFactoredSets

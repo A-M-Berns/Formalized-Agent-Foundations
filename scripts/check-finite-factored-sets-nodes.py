@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Check Finite Factored Sets `Paper node:` annotations against the arXiv source.
 
-Garrabrant (arXiv:2109.11513) labels only 32 of its 98 numbered nodes, and the labels it
-does carry are working names (`templabel1`, `templabel2`, `templabel4`), so a label-based
-checker cannot cover this paper.  The stable source ID here is the *printed* number.
+Garrabrant (arXiv:2109.11513) carries only 32 `\\label` commands, and two of those are not
+on numbered nodes at all (`tab:my_label` labels a table, `inftime` labels
+`\\section{Inferring Time}`), so exactly 30 of its 98 numbered nodes are labelled.  The
+labels it does carry are working names (`templabel1`, `templabel2`, `templabel4`), so a
+label-based checker cannot cover this paper.  The stable source ID here is the *printed*
+number.
 
 That paper declares its theorem environments **without** a `[section]` argument and
 without sharing counters, so every environment numbers independently and never resets:
@@ -55,9 +58,20 @@ inventory exactly (inventory entries may omit the `FiniteFactoredSets.` root pre
 since the block is elaborated under `open FiniteFactoredSets in`).  There is no
 bare-suffix matching — `foo` in the inventory never covers `A.B.foo` in the library.
 
-The converse direction (every *node* has a Lean statement) is deliberately not checked
-here: the formalization is in progress, and its scope — in particular whether §7's
-speculative material is in — is recorded in `FiniteFactoredSets/README.md`.
+Two things this checker deliberately does **not** enforce, both of which a reader has
+mistaken for enforced in the past:
+
+* **The converse node direction** — that every *numbered node of the paper* has a Lean
+  statement.  Coverage of the paper's 98 nodes, and the scope ruling that puts Examples 3
+  and 4 out of it, are prose in `FiniteFactoredSets/README.md`, re-derived by hand rather
+  than machine-checked here.
+* **The converse inventory direction** — that every name listed between the FFS-INVENTORY
+  markers is a real, annotated declaration.  The block holds far more entries than there
+  are annotations (it also carries the non-vacuity witnesses), so no such correspondence
+  could be enforced; an inventory line naming a declaration that does not exist passes this
+  checker and is caught only when `AxiomAudit.lean` is elaborated, by
+  `#assert_axioms_clean` failing to resolve the name.  `lake build AxiomAudit` is therefore
+  part of this contract, not an independent one.
 
 Run from the repo root.
 """

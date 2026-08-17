@@ -108,11 +108,15 @@ Paper node: Definition 44 (§6.1). -/
 def Complete (D : OrthDatabase Ω) : Prop :=
   ∀ X Y Z : Setoid Ω, D.Orth X Y Z ∨ D.NotOrth X Y Z
 
-/-- Definition 45: `X <_D Y` — in every model of `Ω` that models `D`, the pullback of `X` is
-strictly before the pullback of `Y`.
+/-- Definition 45: `X <_D Y` — `X` is *strictly before* `Y` according to `D`: in every model
+of `Ω` that models `D`, the pullback of `X` is strictly before the pullback of `Y`.
+
+The paper gives the relation no word, only the glyph `<_D`; the name says `Strictly` because
+Definition 45 unfolds to `<^F` (`FactoredSet.StrictlyBefore`), *not* to Definition 19's
+non-strict `≤^F` (`FactoredSet.Before`), and both base names occur in §6 expressions.
 
 Paper node: Definition 45 (§6.1). -/
-def Before (D : OrthDatabase Ω) (X Y : Setoid Ω) : Prop :=
+def StrictlyBefore (D : OrthDatabase Ω) (X Y : Setoid Ω) : Prop :=
   ∀ M : Model Ω, Models M D → M.F.StrictlyBefore (M.pullback X) (M.pullback Y)
 
 /-! ### Reading Definition 45
@@ -125,8 +129,9 @@ inference. -/
 /-- **Definition 45 is irreflexive on every consistent database.**  A model of `D` supplies
 a factored set on which `<^F` is a *strict* inclusion of histories, which no partition
 bears to itself.  So `X <_D Y` is not the total relation. -/
-lemma not_before_self_of_consistent {D : OrthDatabase Ω} (hD : D.Consistent) (X : Setoid Ω) :
-    ¬ D.Before X X := by
+lemma not_strictlyBefore_self_of_consistent {D : OrthDatabase Ω} (hD : D.Consistent)
+    (X : Setoid Ω) :
+    ¬ D.StrictlyBefore X X := by
   obtain ⟨M, hM⟩ := hD
   exact fun h => lt_irrefl _ (h M hM)
 
@@ -134,21 +139,22 @@ lemma not_before_self_of_consistent {D : OrthDatabase Ω} (hD : D.Consistent) (X
 database Definition 45 is vacuously *total*, because it quantifies over models that do not
 exist.  `X <_D Y` is therefore an inference only once `D` is known consistent — which is
 why Propositions 33 and 35 come before Propositions 34 and 36 in the paper. -/
-lemma before_of_not_consistent {D : OrthDatabase Ω} (hD : ¬ D.Consistent) (X Y : Setoid Ω) :
-    D.Before X Y := fun M hM => absurd ⟨M, hM⟩ hD
+lemma strictlyBefore_of_not_consistent {D : OrthDatabase Ω} (hD : ¬ D.Consistent)
+    (X Y : Setoid Ω) :
+    D.StrictlyBefore X Y := fun M hM => absurd ⟨M, hM⟩ hD
 
 /-- Client's-eye use of the first: against a consistent database an inferred order
 separates its two partitions. -/
-example {D : OrthDatabase Ω} (hD : D.Consistent) {X Y : Setoid Ω} (h : D.Before X Y) :
+example {D : OrthDatabase Ω} (hD : D.Consistent) {X Y : Setoid Ω} (h : D.StrictlyBefore X Y) :
     X ≠ Y := by
   rintro rfl
-  exact not_before_self_of_consistent hD X h
+  exact not_strictlyBefore_self_of_consistent hD X h
 
 /-- …and of the second: against an inconsistent one it separates nothing, inferring every
 pair in both directions. -/
 example {D : OrthDatabase Ω} (hD : ¬ D.Consistent) (X Y : Setoid Ω) :
-    D.Before X Y ∧ D.Before Y X :=
-  ⟨before_of_not_consistent hD X Y, before_of_not_consistent hD Y X⟩
+    D.StrictlyBefore X Y ∧ D.StrictlyBefore Y X :=
+  ⟨strictlyBefore_of_not_consistent hD X Y, strictlyBefore_of_not_consistent hD Y X⟩
 
 end OrthDatabase
 

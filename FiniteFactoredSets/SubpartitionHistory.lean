@@ -86,6 +86,14 @@ lemma historySub_subset_of_generatesSub {C : Set (Setoid S)} {X : Subpartition S
     (hC : C ⊆ F.B) (h : F.GeneratesSub C X) : F.historySub X ⊆ C :=
   Set.sInter_subset_of_mem (show C ∈ {C | C ⊆ F.B ∧ F.GeneratesSub C X} from ⟨hC, h⟩)
 
+/-- Definition 24 agrees with Definition 17 on a partition of `S`, and does so **without any
+finiteness**: both sides are `⋂₀` over the *same* family, since `generatesSub_ofSetoid`
+identifies the two generation predicates set by set.  Proposition 22's second sentence is
+this lemma; its *first* sentence — that the intersection is itself generating, so that
+"smallest" is earned — is what needs `[Finite F.B]`. -/
+lemma historySub_ofSetoid (X : Setoid S) : F.historySub (ofSetoid X) = F.history X := by
+  simp only [FactoredSet.historySub, FactoredSet.history, FactoredSet.generatesSub_ofSetoid]
+
 /-- The paper's "we can express `h^F(X)` as a composition of finitely many binary
 intersections", as an induction: a finite family of generating sets, intersected into any
 generating `D`, still generates.  Clause 5 of Proposition 21 is the induction step and `D`
@@ -117,16 +125,9 @@ generating subset of `B`), and on a partition of `S` it coincides with Definitio
 Paper node: Proposition 22 (§4.2). -/
 theorem historySub_isLeast_and_eq_history [Finite F.B] :
     (∀ X : Subpartition S, IsLeast {C | C ⊆ F.B ∧ F.GeneratesSub C X} (F.historySub X)) ∧
-    ∀ X : Setoid S, F.historySub (ofSetoid X) = F.history X := by
-  refine ⟨fun X => ⟨⟨F.historySub_subset X, F.generatesSub_historySub X⟩,
-    fun C hC => F.historySub_subset_of_generatesSub hC.1 hC.2⟩, fun X => ?_⟩
-  have hfam : {C : Set (Setoid S) | C ⊆ F.B ∧ F.GeneratesSub C (ofSetoid X)}
-      = {C : Set (Setoid S) | C ⊆ F.B ∧ F.Generates C X} := by
-    ext C
-    simp only [Set.mem_setOf_eq, F.generatesSub_ofSetoid]
-  show ⋂₀ {C : Set (Setoid S) | C ⊆ F.B ∧ F.GeneratesSub C (ofSetoid X)} = F.history X
-  rw [hfam]
-  rfl
+    ∀ X : Setoid S, F.historySub (ofSetoid X) = F.history X :=
+  ⟨fun X => ⟨⟨F.historySub_subset X, F.generatesSub_historySub X⟩,
+    fun _C hC => F.historySub_subset_of_generatesSub hC.1 hC.2⟩, F.historySub_ofSetoid⟩
 
 /-- For `C ⊆ B`, `C` generates `X` exactly when it contains the history **and** satisfies
 the second half of Proposition 20 clause 7, `χ^F_C(E,E) = E`.
@@ -203,6 +204,53 @@ theorem historySub_spec [Finite F.B] (X Y Z : Subpartition S) (hE : X.dom = Y.do
   · intro hS b hb
     rw [F.historySub_isLeast_and_eq_history.2 b]
     exact (F.history_spec b b).2.2.2 hS b hb
+
+/-! ### Two restrictions with nothing left to generate
+
+Both are Proposition 23 clause 4 (`h^F(X) = ∅ ↔ X` is indiscrete on its domain) at a
+restriction that collapses: `Ind_S` restricted anywhere, and anything restricted to `∅`.
+They are stated here rather than at their §4.3/§7.3 use sites because they are facts about
+Definition 24 alone, and §4.3, §7.3 and the witnesses all consume them. -/
+
+/-- `Ind_S` restricted to any subset is `Ind_E`, so its Definition 24 history is empty. -/
+lemma historySub_top_restrict [Finite F.B] (E : Set S) :
+    F.historySub ((ofSetoid (⊤ : Setoid S)).restrict E) = ∅ := by
+  refine (F.historySub_spec ((ofSetoid (⊤ : Setoid S)).restrict E)
+    ((ofSetoid (⊤ : Setoid S)).restrict E) ((ofSetoid (⊤ : Setoid S)).restrict E)
+    rfl).2.2.2.1.2 ?_
+  rw [dom_restrict_ofSetoid]
+  exact Subpartition.ext fun s t => ⟨fun h => ⟨h.1, h.2.1⟩, fun h => ⟨h.1, h.2, trivial⟩⟩
+
+/-- Restricting to `∅` leaves nothing to generate. -/
+lemma historySub_restrict_empty [Finite F.B] (X : Setoid S) :
+    F.historySub ((ofSetoid X).restrict (∅ : Set S)) = ∅ := by
+  refine (F.historySub_spec ((ofSetoid X).restrict (∅ : Set S))
+    ((ofSetoid X).restrict (∅ : Set S)) ((ofSetoid X).restrict (∅ : Set S)) rfl).2.2.2.1.2 ?_
+  rw [dom_restrict_ofSetoid]
+  exact Subpartition.ext fun s t => ⟨fun hst => ⟨hst.1, hst.2.1⟩, fun hst => hst.1.elim⟩
+
+/-- The block-level criterion the §4.3 and §7.3 computations actually run on: a restricted
+history is empty exactly when the partition makes no distinction inside the conditioning
+set.  Proposition 23 clause 4 with `dom_restrict_ofSetoid`, packaged so that each
+conditional-orthogonality obligation becomes a check on the block.  The two lemmas above
+are its `⊤` and `∅` corners. -/
+lemma historySub_restrict_eq_empty_iff [Finite F.B] (X : Setoid S) (E : Set S) :
+    F.historySub ((ofSetoid X).restrict E) = ∅ ↔ ∀ s ∈ E, ∀ t ∈ E, X s t := by
+  rw [(F.historySub_spec ((ofSetoid X).restrict E) ((ofSetoid X).restrict E)
+    ((ofSetoid X).restrict E) rfl).2.2.2.1, dom_restrict_ofSetoid]
+  constructor
+  · intro h s hs t ht
+    have hst : ((ofSetoid X).restrict E) s t := by rw [h]; exact ⟨hs, ht⟩
+    exact hst.2.2
+  · intro h
+    exact Subpartition.ext fun s t =>
+      ⟨fun hst => ⟨hst.1, hst.2.1⟩, fun hst => ⟨hst.1, hst.2, h s hst.1 t hst.2⟩⟩
+
+/-- Client's-eye use: conditioning a Definition 26 statement on `∅` is automatic. -/
+example [Finite F.B] (X : Setoid S) :
+    F.historySub ((ofSetoid X).restrict (∅ : Set S))
+      ∩ F.historySub ((ofSetoid (⊤ : Setoid S)).restrict (∅ : Set S)) = ∅ := by
+  rw [F.historySub_restrict_empty X, Set.empty_inter]
 
 /-! ### Lemma 1
 
@@ -447,7 +495,7 @@ theorem historySub_inf_eq [Finite F.B] {X Y : Subpartition S} (hE : X.dom = Y.do
     exact F.historySub_subset_of_generatesSub (F.historySub_subset _)
       ((F.generatesSub_spec (F.historySub (X ⊓ Y)) (F.historySub (X ⊓ Y))
         (Y.restrict (X.part r)) (Y.restrict (X.part r)) (X ⊓ Y) rfl).2.2.2.2.2
-        (restrict_part_subset_inf hE hr) (F.generatesSub_historySub (X ⊓ Y)))
+        restrict_part_subset_inf (F.generatesSub_historySub (X ⊓ Y)))
 
 /-- Proposition 22 read as a client would: `IsLeast` is consumed by its two projections —
 the history generates, and it is below every generating subset of `B`. -/

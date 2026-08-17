@@ -41,8 +41,9 @@ jobs:
       - name: Check ModalAgents node annotations
         run: python3 scripts/check-modal-agents-nodes.py
 
-      # Blocking: same contract for Finite Factored Sets. That paper labels only 32 of
-      # its 98 nodes and its labels are working names, so the provenance keys are the
+      # Blocking: same contract for Finite Factored Sets. That paper carries 32 \label
+      # commands, only 30 of them on numbered nodes (of 98), and its labels are working
+      # names, so the provenance keys are the
       # printed numbers — recomputed from the committed TeX by emulating its
       # *independent, never-resetting* per-environment counters (a different discipline
       # from ModalAgents' single section-scoped counter).

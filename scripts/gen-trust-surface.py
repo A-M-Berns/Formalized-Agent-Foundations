@@ -1121,8 +1121,11 @@ def main():
              'scope notes and the deliberately-unannotated inventory endpoints; '
              '<strong>no strength classification exists for this paper</strong>'),
             ('finite-factored-sets', ffs,
-             '<strong>in progress</strong> — §2.1–§2.3 only, and no strength '
-             'classification exists for this paper')):
+             '<strong>complete</strong> — §2–§7; 87 nodes carried by declarations and '
+             'nine rendered by Mathlib vocabulary, 96 in scope. Conjecture 1 is stated '
+             'as a <code>Prop</code> and deliberately not proved, and Examples 3 and 4 '
+             'are out of scope by ruling; <strong>no strength classification exists for '
+             'this paper</strong>')):
         p = PAPERS[key]
         index_rows += (
             '<tr><td><a href="#paper-%s">%s</a><div class="idx-cite">%s (%d) · '

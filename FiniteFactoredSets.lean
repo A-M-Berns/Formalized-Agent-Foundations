@@ -41,7 +41,10 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
   (`Setoid.classes`) are the *nonempty* ones among `E` and `S \ E`, and the paper's case
   split — `{S}` when `E = ∅` or `E = S`, `{E, S \ E}` otherwise — is absorbed rather than
   written out.  `eventPartition` is an auxiliary of ours, takes no `F`, and carries no
-  paper-node annotation; Definition 46's carrier is `Observes`.  And Definition 47 lists
+  paper-node annotation; Definition 46's carrier is `Observes`.  It is nevertheless
+  declared inside `namespace FactoredSet`, so it is spelled `FactoredSet.eventPartition E`
+  — neither `F.eventPartition E` (there is no `FactoredSet` argument for dot notation) nor
+  a bare `eventPartition E` under `open FiniteFactoredSets` will resolve.  And Definition 47 lists
   `X = {x₀, …, xₙ₋₁}` and indexes the sub-agents `Aᵢ` by `i`, where `ObservesPartition`
   indexes the family by the **blocks themselves**, `As : X.classes → Setoid S`, with the
   paper's `⋁_S {Aᵢ}` as `sInf (Set.range As)` (`dd:order-flip`).  Indexing by blocks
@@ -51,8 +54,11 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
 * `dd:order-flip` — **the paper's order glyphs are inverted relative to Mathlib's.**
   The paper writes `X ≥_S Y` for "`X` is finer than `Y`" (Definition 6), so the paper's
   `≥_S` is Mathlib's `≤` on `Setoid`; and Definition 8's *common refinement* `⋁_S(C)` —
-  a join in the paper's notation — is Mathlib's `sInf`.  Mathlib's `⊥` (equality) is the
-  paper's `Dis_S`, and `⊤` is `Ind_S`.  The formalization uses Mathlib's order
+  a join in the paper's notation — is Mathlib's `sInf`.  Definition 8's second sentence,
+  the binary `X ∨_S Y = ⋁_S({X, Y})`, is therefore Mathlib's `X ⊓ Y`, which is how §3
+  onward states it; `commonRefinement_pair` is the bridge, and it is a bridge lemma rather
+  than a node carrier (Definition 8's carrier is `commonRefinement`).  Mathlib's `⊥`
+  (equality) is the paper's `Dis_S`, and `⊤` is `Ind_S`.  The formalization uses Mathlib's order
   throughout and never introduces the paper's glyphs, so that no statement has to be
   read under two conventions at once.
 
@@ -83,13 +89,33 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
   (`X ≤ Y` is relation inclusion; the paper's `X ∨_E Y` is `X ⊓ Y`); the paper's block
   inclusion "`X ⊆ Z`" is `Subpartition.Subset`.
 
+  Record the reason accurately, because the obvious one is wrong.  Mathlib **does** have
+  partitions of a subset: `Mathlib/Order/Partition/Basic.lean` defines
+  `Partition (E : Set α)`, whose own module docstring says it is equivalent to a symmetric
+  transitive relation, together with `Partition.Rel` (the induced partial equivalence
+  relation), `rel_rfl_iff` (the domain as the self-related points), `partOf`, the
+  refinement `PartialOrder` in the same orientation as `Subpartition`'s `≤`, and a
+  `SemilatticeInf` whose `⊓` is the paper's `∨_E`.  What Mathlib does not have is an
+  *un-indexed* carrier: its `Partition E` carries its support in the type, so Definition
+  20's `SubPart(S)` would be `Σ E, Partition E` and there is no restriction across
+  supports.  The equal-domain hypotheses that §4.2–§4.3 are full of (`X.dom = Y.dom` in
+  Proposition 23, Lemma 1, Lemma 2) would then be type-level transports rather than
+  ordinary equations, and Definition 22's `X|E` would have no home at all.  That is the
+  reason for the PER carrier — not an absence of API to reuse.  Anyone upstreaming §4
+  should start from Mathlib's `Partition`.
+
 * `dd:poly` — §5's `Poly^F` is `MvPolynomial (Set S) ℝ` (`Poly S`): the paper's variables
   are the subsets `𝒫(S)` themselves, and under `dd:partition` a block `[s]_b` *is* the set
   `part b s`, hence a variable verbatim.  Definition 29's evaluation `p(f)` is
   `MvPolynomial.eval f p` and Definition 30's support `supp(p)` is `MvPolynomial.vars p`
   (both Mathlib-rendered, no declaration of ours); Proposition 31's "irreducible" is
-  Mathlib's `Irreducible` (over `ℝ` the units are the nonzero constants, so it coincides
-  with the paper's "no factorization into two polynomials of nonempty support").  Sums and
+  Mathlib's `Irreducible`.  The two readings do not *coincide*: over `ℝ` the units are the
+  nonzero constants, and Mathlib's `Irreducible` demands `¬ IsUnit p` on top of the paper's
+  "no factorization into two polynomials of nonempty support" — which every nonzero
+  constant, and `0`, satisfy.  They agree exactly on nonzero non-units, which is all
+  Proposition 31 ever ranges over (`C` and `E` are both nonempty there), so
+  `irreducible_poly_of_mem_irr` proves the strictly stronger statement and the endpoint is
+  safe; only the word "coincide" was wrong.  Sums and
   products over sets are `finsum`/`finprod`, so the definitions carry no finiteness and
   each statement carries the weakest finiteness its own proof consumes — this is where
   finite *size* genuinely enters, for the sum over `E ⊆ S`, but not on every §5 statement
@@ -158,14 +184,33 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
   **No declaration anywhere in this library has that type**, and none should acquire one:
   the development takes no position on the conjecture, and that is a scope ruling rather
   than a gap awaiting a proof.  An unproved `Prop` is a definition, not a `sorry`: it adds
-  no axiom and appears in no axiom check, and a client consumes it as an ordinary
-  hypothesis, `(h : FundamentalTheoremFiniteDim)`.  Two things are worth carrying.  It is
+  no axiom, and a client consumes it as an ordinary
+  hypothesis, `(h : FundamentalTheoremFiniteDim)` — which the three hypothesis-form
+  `example`s (two in `InfiniteExamples.lean`, one in `APITests/FiniteFactoredSets.lean`)
+  are the only uses of.  It is *not* absent from the axiom accounting: it is listed in
+  `AxiomAudit.lean`'s FFS-INVENTORY `#assert_axioms_clean` block and reports the standard
+  three, which checks the *statement's* axiom profile, there being no proof to check.
+  Three things are worth carrying.  It is
   statable here only because `dd:finiteness-minimal` was followed through §5 — `ProbDist`
   (Definition 36) and `IsDistribution` (Definition 37) carry no finiteness of their own,
-  so both sides of the biconditional are meaningful over an infinite carrier.  And the
-  only thing proved about it is the finite case, `fundamentalTheoremFiniteDim_of_finite`,
-  which restates the biconditional at a `[Finite S]` carrier and is discharged by
-  Theorem 3 — a consistency check on how the `Prop` is written, not progress on it.
+  so both sides of the biconditional are meaningful over an infinite carrier.  The finite
+  instance of it is Theorem 3 (`orthogonalGiven_iff_forall_isDistribution`) itself, not a
+  separate restatement.
+
+  And — the disclosure this tag owes the reader — the `Prop` is one particular *sharpening*
+  of the paper's one-sentence conjecture, not a transcription of it.  Definition 36 defines
+  a probability distribution only "given a finite set `S`", and §7.2 says nothing about
+  what one is on an infinite carrier.  Weakening `[Finite S]` to `[Finite F.B]` therefore
+  changes not only the hypothesis but *what `ProbDist S` ranges over*: over an infinite `S`
+  it is the merely finitely-additive functions on the full powerset (no countable
+  additivity, no σ-algebra), including objects the paper never contemplated — a
+  finitely-additive density with every singleton `0` satisfies Definitions 36 and 37
+  vacuously.  Those strengthen the `→` direction of the biconditional and weaken the `←`
+  direction, so **proving or refuting `FundamentalTheoremFiniteDim` would not by itself
+  settle the paper's §7.2 question.**  The alternative sharpenings all want a
+  measure-theoretic `P`, which `dd:probability` rules out as a substitution for Definition
+  36; a bridge to Mathlib's probability vocabulary would have to be a separate statement.
+
   `KNOWLEDGE.md` records the status in the literature: a *measurable* refinement of the
   *unconditional* statement has since been proved (Mayer, arXiv:2412.00847), so the honest
   claim is resolved in a measurable refinement, not as literally stated here.

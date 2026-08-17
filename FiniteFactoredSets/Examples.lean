@@ -13,11 +13,11 @@ factored sets, covering the degenerate sizes Proposition 5 singles out and one g
 two-dimensional example that makes the chimera function actually splice, and then runs the
 §2.5, §3, §4, §5, §6 and §7.3 vocabulary — `size`, `dim`, `Generates`, `history`,
 `Orthogonal`, `Entangled`, `Before`, `StrictlyBefore`, `Subpartition`, `GeneratesSub`,
-`historySub`, `OrthogonalSub`, `OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`,
+`historySub`, `OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`,
 `monos`, `poly`, `irr`, `ProbDist`, `IsDistribution`, `Model`, `Model.pullback`,
-`OrthDatabase`, `Models`, `Consistent`, `Complete`, `OrthDatabase.Before`,
+`OrthDatabase`, `Models`, `Consistent`, `Complete`, `OrthDatabase.StrictlyBefore`,
 `eventPartition`, `Observes`, `ObservesPartition`, `Counterfactable`, `CounterfactableRel`
-and `BeforeGivenSet` — over them.
+and `BeforeGivenSet` — over them (`OrthogonalSub` is only unfolded here, not computed).
 
 `coordFS` is the load-bearing one: with a single factor every `C` behaves as `∅` or `B`,
 so Proposition 4 would be a family of near-tautologies.  `not_subsingleton_coordFS_basis`
@@ -43,6 +43,21 @@ of Proposition 23 clause 2 is load-bearing (`historySub_spec_hE_loadbearing`), a
 restriction can **entangle** two unconditionally orthogonal partitions
 (`not_orthogonalGivenSet_Ediag`, `not_orthogonalGiven_fst_snd_xorPart`) — which is what
 stops `OrthogonalGiven` from being silently total.
+
+Theorem 2 is then instantiated twice over, and the difference between the two is the point.
+Conditioned on `Ind_S`, Definition 27 is Definition 18 and the semigraphoid clauses read off
+`fst ⊥^F snd`: in `thm2_decomposition_coordFS` the first conjunct *is*
+`orthogonalGiven_fst_snd_top` and the second holds of every pair, since `h^F(Ind_S | z)` is
+empty on every block.  Conditioned on `xorPart` the same clauses do work, because
+`orthogonalGiven_diagPart_orAnd_xorPart` is **two-sided**: on the diagonal block the empty
+restricted history is the left argument's and on the antidiagonal block it is the right
+one's, and `orthogonalGiven_diagPart_orAnd_xorPart_two_sided` shows neither side is empty on
+both.  Decomposition, contraction and composition (clauses 2, 4 and 5) then each deliver a
+conditional orthogonality that is computed nowhere else here.  That instance needs three partitions of `Bool × Bool` past the
+coordinate factors — `diagPart`, `orPart`, `andPart` — and the need is structural rather
+than a matter of taste: each of `fstFactor`, `sndFactor`, `xorPart`, `Dis_S` and `Ind_S`
+restricts to the two blocks of `xorPart` the same way on both, so no two of them can trade
+roles across the blocks.
 
 The §5 half computes the characteristic polynomial of `coordFS` outright.  `Q^F_{S}` is
 the four-term multilinear polynomial `∑_{a,b} X_{[·]₁=a} X_{[·]₂=b}`; it is nonzero, every
@@ -115,10 +130,12 @@ every `ProbDist Bool` a distribution on the factored set.
 
 The §6 half changes what is being quantified over: Definitions 42–45 range over *models*
 of a sample space, not over factored sets, so none of the §2–§5 witnesses touches them.
-Definition 38 is inhabited four ways — the identity models `coordModel` and `boolModel`,
+Definition 38 is inhabited five ways — the identity models `coordModel` and `boolModel`,
 the non-injective `fstModel` (`coordFS` observed through `Prod.fst`, so `S` has four points
-where `Ω` has two: the latent structure Definition 38 exists to allow), and the one-point
-`pointModel`.  Definition 39 is then computed on the two that are not the identity:
+where `Ω` has two: the latent structure Definition 38 exists to allow), the one-point
+`pointModel`, and the **empty-carrier** `voidModel`, which is the degenerate end of the
+definition and the one Definition 45 turns on.  Definition 39 is then computed on the two
+that are not the identity:
 `pullback_fstModel_bot` shows `f⁻¹(Dis_Ω)` is the *first coordinate factor* rather than
 `Dis_S` (with `history_pullback_fstModel_bot` giving its §3 history), and
 `pullback_pointModel` shows the pullback can collapse every partition of `Ω` to `Ind_S`.
@@ -138,9 +155,16 @@ clauses on the identity model of `coordFS` from §4.3's own computations.
 
 Definition 45 gets the same two-sided treatment, and the trap there is worth stating
 plainly: `X <_D Y` quantifies over models of `D`, so on an **inconsistent** database it is
-vacuously *total* (`before_of_not_consistent`, instantiated at `contradictoryDB`), while on
-a consistent one it is irreflexive (`not_before_self_of_consistent`, instantiated at a
-database whose consistency is computed here rather than cited from §6.2).  The informative
+vacuously *total* (`strictlyBefore_of_not_consistent`, instantiated at `contradictoryDB`), while on
+a consistent one it is irreflexive (`not_strictlyBefore_self_of_consistent`, instantiated at a
+database whose consistency is computed here rather than cited from §6.2).  Between the two
+sits the case a client will actually meet: a database that is consistent and asserts
+nothing.  `not_strictlyBefore_of_notOrth_empty` shows Definition 45 infers *no* pair from
+any database whose `N` is empty — `not_emptyDB_strictlyBefore` is its instance — and the
+mechanism is `voidModel`: an empty carrier has no partitions but `Ind_S`, whose history is
+empty, so `<^F` is the empty relation over it, and it models every such database at once.
+That is the exact counterpart of `totalDB_consistent`.  A rich `O` costs a database no
+consistency and buys it no inferences either; `N` is what does both.  The informative
 positive instances — an actual inferred `X <_D Y` — are Propositions 34 and 36, which live
 in `InferenceExamples.lean`; nothing here stands in for them.
 
@@ -150,9 +174,22 @@ case split — `Ind_S` at `∅` and at `S`, blocks exactly `E` and `S \ E` other
 `coordFS` it lands on a coordinate factor.  Both clauses of Definition 46 are then shown
 load-bearing at the two failure shapes the paper names: the agent's action *being* the event
 (Drescher's transparent Newcomb, clause 1) and the action still moving the world model on the
-branch where the event fails (Nesov's counterfactual mugging, clause 2).  Definition 47 is
-inhabited at a two-block partition and tied to Definition 46 on an instance rather than by a
-general lemma.  The agreement partition `xorPart` separates Definitions 48 and 49: it is not
+branch where the event fails (Nesov's counterfactual mugging, clause 2).  Which clause a
+given instance actually exercises is recorded at each instance, because it is not visible
+from the statement: at `W = sndFactor`, `E = vsnd true` the complement of `E` is a block of
+`W`, so `W|Eᶜ` is indiscrete and clause 2 holds for *every* agent —
+`observes_snd_vsnd_true_iff` says that instance of Definition 46 is exactly
+`A ⊥^F sndFactor` — while at `E = ∅` clause 1 is free and clause 2 carries the whole
+condition against a nonempty restricted history (`observes_fst_snd_empty` positive,
+`not_observes_snd_snd_empty` negative).  A four-point carrier admits no `(A, W, E)` making
+both clauses substantive at once: a nondegenerate `E` leaves `Eᶜ` with two points, where a
+restriction is either indiscrete, and clause 2 free, or discrete, and clause 2 false.
+Definition 47 is inhabited at a two-block partition and tied to Definition 46 on an instance
+rather than by a general lemma; there too `observesPartition_snd_snd_iff` records that at
+`W = X` the second clause is free, and `observesPartition_fst_snd_nonconstant` supplies the
+non-constant sub-agent family that the definition's `⋁_S({A_x})` exists for and that the
+constant-family instance leaves untested.  The agreement partition `xorPart` separates
+Definitions 48 and 49: it is not
 counterfactable, it is counterfactable relative to `Ind_S`, and it is not counterfactable
 relative to `fstFactor`.  Definition 50 agrees with Definition 19 at `E = S` and genuinely
 differs from it elsewhere — the coordinate factors are incomparable in `≤^F`, yet on the
@@ -173,7 +210,10 @@ de-vacuates; the proof helpers that only exist to shorten those proofs
 in §4 the `mem_*`, `dom_*`, `*_apply` unfoldings together with `Ediag_eq`,
 `generatesSub_snd_botInfIndEfalse`, `botInfIndEfalse_ne_indiscrete`,
 `generatesSub_fstOnEdiag_forces`, `generatesSub_sndOnEdiag_forces` and
-`inf_ofSetoid_coord`, and in §5 the `part_*` unfoldings and distinctness lemmas for the
+`inf_ofSetoid_coord`, together with the block criterion
+the four computations feeding the two-sided Theorem 2 instance — `diagMerge`, `diagPart_of_xorPart_block`, `orAnd_of_xorPart_block`,
+`historySub_xorPart_restrict_block` and `orthogonalGiven_diagPart_xorPart_of_le`, and in §5
+the `part_*` unfoldings and distinctness lemmas for the
 variables, the separating evaluation `coordSep` with its four `coordSep_*` values,
 `eval_coordSep_mono_coordFS`, `eval_coordSep_poly_fst`, `eval_coordSep_poly_snd`,
 `eval_coordSep_poly_basis`, `mono_coordFS_basis`, `mono_singleton_fst`,
@@ -196,11 +236,13 @@ evaluation `coordZero` with its four `coordZero_*` values, the point weights `w`
 `uniform_Ediag`, `diagDist_apply`, `biased_apply`, `biased_singleton`, `biased_vfst`,
 `biased_vsnd`, `biased_Efst`, `eval_biased_Q_Efst`, `biased_E3`, `eval_biased_Q_E3`, and in
 §6 the identity-pullback unfoldings `pullback_coordModel` and `pullback_boolModel` together
-with `historySub_unitFS` and `orthogonalGiven_unitFS`, and in §7.3 the relation unfoldings
-`eventPartition_iff` and `eventPartition_part`, the empty-history computations
-`historySub_top_restrict`, `historySub_restrict_empty` and `historySub_snd_restrict_vsnd`,
-the Definition 26 conveniences `orthogonalGivenSet_comm`, `orthogonalGivenSet_top_left`,
-`orthogonalGivenSet_top_right` and `orthogonalGiven_given_self`, the set identities
+with `historySub_unitFS`, `orthogonalGiven_unitFS`, `history_voidModel` and
+`models_voidModel_of_notOrth_empty`, and in §7.3 the
+relation unfoldings
+`eventPartition_iff` and `eventPartition_part`, the history computations
+`historySub_snd_restrict_vsnd` and `historySub_snd_restrict_compl_empty`, the
+distinctness lemmas `fstFactor_ne_top` and `vsnd_false_mem_sndFactor_classes`,
+the set identities
 `Efst_eq_vfst`, `Efalse_eq_vfst`, `compl_vsnd_true`, `compl_vsnd_false` and `compl_Efalse`,
 and the common-refinement computations `commonRefinement_singleton`,
 `commonRefinement_coordBasis` and `botOnEdiag_eq`) are
@@ -1231,7 +1273,12 @@ lemma orthogonalGiven_fst_fst_fst :
     coordFS.OrthogonalGiven fstFactor fstFactor fstFactor :=
   (coordFS.orthogonalGiven_self_iff fstFactor fstFactor).2 le_rfl
 
-/-- Theorem 2's decomposition on the witness. -/
+/-- Theorem 2's decomposition on the witness, at the degenerate corner `W = Ind_S`.  Both
+conjuncts are cheap there, and a reader should not take them for evidence that the clause
+constrains anything: the first is `orthogonalGiven_fst_snd_top` restated (`snd ∨_S Ind_S`
+is `snd`), and the second holds for *every* pair of partitions, since `h^F(Ind_S | z) = ∅`
+on every block.  `thm2_decomposition_coordFS_xorPart` below is the instance where the
+clause does work. -/
 lemma thm2_decomposition_coordFS :
     coordFS.OrthogonalGiven fstFactor sndFactor ⊤ ∧
       coordFS.OrthogonalGiven fstFactor ⊤ ⊤ := by
@@ -1247,6 +1294,155 @@ lemma thm2_weakUnion_coordFS :
   have h2 := (coordFS.orthogonalGiven_semigraphoid fstFactor sndFactor ⊤ sndFactor).2.2.1 h
   rwa [top_inf_eq] at h2
 
+/-! ### Theorem 2 where both sides of its hypothesis do work
+
+The two instances above condition on `Ind_S`, where Definition 27 collapses to Definition
+18 and every clause of Theorem 2 reads off §3.3's `fst ⊥^F snd`.  Conditioning on `xorPart`
+instead gives an instance whose hypothesis is **two-sided**: on the diagonal block it is the
+*left* argument whose restricted history is empty, and on the antidiagonal block the
+*right* one, so neither argument alone discharges the hypothesis and Theorem 2's
+conclusions are not readable off either side.
+
+Three further partitions of `Bool × Bool` are what make that possible, and the reason they
+are needed is structural: a partition of the four-point carrier that is uniformly discrete
+or uniformly indiscrete on the blocks of `xorPart` cannot mix, so `fstFactor`, `sndFactor`,
+`Dis_S` and `Ind_S` between them cannot produce a two-sided instance.  The three are
+`diagPart` — the diagonal as one block, the two antidiagonal points as singletons — and
+`orPart`, `andPart`, which isolate `(false, false)` and `(true, true)` respectively; their
+meet is `{{(false,false)}, {(true,true)}, {(true,false),(false,true)}}`.  None of the three
+is a factor of `coordFS`, and none of them is `Ind_S`, so no clause below is an instance of
+`orthogonalGivenSet_top_left` or of Proposition 25. -/
+
+/-- The map collapsing the diagonal to a point and fixing everything else. -/
+def diagMerge : Bool × Bool → Bool × Bool := fun p => if p.1 = p.2 then (true, true) else p
+
+/-- `{{(false,false),(true,true)}, {(true,false)}, {(false,true)}}`: indiscrete on the
+diagonal block of `xorPart`, discrete on the antidiagonal one. -/
+def diagPart : Setoid (Bool × Bool) := Setoid.comap diagMerge ⊥
+
+/-- `{{(false,false)}, {(true,false),(false,true),(true,true)}}` — the partition isolating
+`(false, false)`. -/
+def orPart : Setoid (Bool × Bool) := Setoid.comap (fun p : Bool × Bool => p.1 || p.2) ⊥
+
+/-- `{{(true,true)}, {(true,false),(false,true),(false,false)}}` — the partition isolating
+`(true, true)`. -/
+def andPart : Setoid (Bool × Bool) := Setoid.comap (fun p : Bool × Bool => p.1 && p.2) ⊥
+
+/-- On a diagonal block of `xorPart`, `diagPart` relates everything. -/
+lemma diagPart_of_xorPart_block {y : Bool × Bool} (hy : y.1 = y.2) {s t : Bool × Bool}
+    (hs : xorPart s y) (ht : xorPart t y) : diagPart s t := by
+  obtain ⟨a, b⟩ := s
+  obtain ⟨c, d⟩ := t
+  obtain ⟨e, f⟩ := y
+  replace hs : (a != b) = (e != f) := hs
+  replace ht : (c != d) = (e != f) := ht
+  replace hy : e = f := hy
+  show diagMerge (a, b) = diagMerge (c, d)
+  revert hs ht hy
+  revert a b c d e f
+  decide
+
+/-- …and on an antidiagonal block, `orPart ∨_S andPart` does. -/
+lemma orAnd_of_xorPart_block {y : Bool × Bool} (hy : ¬ y.1 = y.2) {s t : Bool × Bool}
+    (hs : xorPart s y) (ht : xorPart t y) : (orPart ⊓ andPart) s t := by
+  obtain ⟨a, b⟩ := s
+  obtain ⟨c, d⟩ := t
+  obtain ⟨e, f⟩ := y
+  replace hs : (a != b) = (e != f) := hs
+  replace ht : (c != d) = (e != f) := ht
+  replace hy : ¬ e = f := hy
+  show ((a || b) = (c || d)) ∧ ((a && b) = (c && d))
+  revert hs ht hy
+  revert a b c d e f
+  decide
+
+/-- A partition is indiscrete on the blocks of anything finer than it, so `h^F(xorPart | z)`
+is empty for every block `z` of every refinement `Z` of `xorPart`. -/
+lemma historySub_xorPart_restrict_block {Z : Setoid (Bool × Bool)} (hZ : Z ≤ xorPart)
+    (y : Bool × Bool) :
+    coordFS.historySub ((ofSetoid xorPart).restrict {x | Z x y}) = ∅ :=
+  (coordFS.historySub_restrict_eq_empty_iff xorPart _).2 fun _ hs _ ht =>
+    xorPart.trans' (hZ hs) (xorPart.symm' (hZ ht))
+
+/-- …which is the second hypothesis Theorem 2's contraction and composition clauses need
+below.  This one *is* one-sided, and is used only as the auxiliary input. -/
+lemma orthogonalGiven_diagPart_xorPart_of_le {Z : Setoid (Bool × Bool)} (hZ : Z ≤ xorPart) :
+    coordFS.OrthogonalGiven diagPart xorPart Z := by
+  rintro z ⟨y, rfl⟩
+  rw [coordFS.orthogonalGivenSet_def, historySub_xorPart_restrict_block hZ, Set.inter_empty]
+
+/-- **The two-sided hypothesis.**  `diagPart ⊥^F (orPart ∨_S andPart) | xorPart`: on the
+diagonal block the left argument is indiscrete, on the antidiagonal block the right one is.
+Neither fact alone proves the statement, which is what
+`orthogonalGiven_diagPart_orAnd_xorPart_two_sided` records. -/
+lemma orthogonalGiven_diagPart_orAnd_xorPart :
+    coordFS.OrthogonalGiven diagPart (orPart ⊓ andPart) xorPart := by
+  rintro z ⟨y, rfl⟩
+  by_cases hy : y.1 = y.2
+  · have h : coordFS.historySub ((ofSetoid diagPart).restrict {x | xorPart x y}) = ∅ :=
+      (coordFS.historySub_restrict_eq_empty_iff diagPart _).2 fun s hs t ht =>
+        diagPart_of_xorPart_block hy hs ht
+    rw [coordFS.orthogonalGivenSet_def, h, Set.empty_inter]
+  · have h : coordFS.historySub
+        ((ofSetoid (orPart ⊓ andPart)).restrict {x | xorPart x y}) = ∅ :=
+      (coordFS.historySub_restrict_eq_empty_iff _ _).2 fun s hs t ht =>
+        orAnd_of_xorPart_block hy hs ht
+    rw [coordFS.orthogonalGivenSet_def, h, Set.inter_empty]
+
+/-- **Neither argument discharges the hypothesis by itself.**  `h^F(diagPart | z)` is
+nonempty on the antidiagonal block and `h^F(orPart ∨_S andPart | z)` is nonempty on the
+diagonal one, so `orthogonalGiven_diagPart_orAnd_xorPart` — and with it every conclusion
+Theorem 2 draws from it below — is not an instance of "one side has empty history
+everywhere", the shape that makes a conditional-orthogonality claim hold for an arbitrary
+partner.  It does *not* say the two restricted histories are disjoint block by block for a
+common reason; the mechanism genuinely alternates between the two blocks. -/
+lemma orthogonalGiven_diagPart_orAnd_xorPart_two_sided :
+    coordFS.historySub ((ofSetoid diagPart).restrict {x | xorPart x (true, false)}) ≠ ∅ ∧
+      coordFS.historySub ((ofSetoid (orPart ⊓ andPart)).restrict
+        {x | xorPart x (true, true)}) ≠ ∅ := by
+  constructor
+  · intro h
+    have hrel := (coordFS.historySub_restrict_eq_empty_iff diagPart _).1 h
+      (true, false) (xorPart.refl' _) (false, true) rfl
+    have hne : ¬ (diagMerge (true, false) = diagMerge (false, true)) := by decide
+    exact hne hrel
+  · intro h
+    have hrel := (coordFS.historySub_restrict_eq_empty_iff _ _).1 h
+      (false, false) rfl (true, true) (xorPart.refl' _)
+    have hne : ¬ ((false || false) = (true || true)) := by decide
+    exact hne hrel.1
+
+/-- **Theorem 2's decomposition, doing work.**  Neither conclusion is proved anywhere else
+in this file, and neither is available from the hypothesis by inspection: `orPart` is
+discrete on the diagonal block and `andPart` is discrete there too, so each conclusion needs
+the diagonal block handled by `diagPart` and the antidiagonal block by its own second
+argument. -/
+lemma thm2_decomposition_coordFS_xorPart :
+    coordFS.OrthogonalGiven diagPart orPart xorPart ∧
+      coordFS.OrthogonalGiven diagPart andPart xorPart :=
+  (coordFS.orthogonalGiven_semigraphoid diagPart orPart xorPart andPart).2.1
+    orthogonalGiven_diagPart_orAnd_xorPart
+
+/-- **Theorem 2's contraction (clause 4) on the witness**: from
+`diagPart ⊥^F andPart | xorPart` and `diagPart ⊥^F xorPart | (xorPart ∨_S andPart)` it
+delivers `diagPart ⊥^F (andPart ∨_S xorPart) | xorPart`, a statement about a partition this
+file computes nothing else about. -/
+lemma thm2_contraction_coordFS :
+    coordFS.OrthogonalGiven diagPart (andPart ⊓ xorPart) xorPart :=
+  (coordFS.orthogonalGiven_semigraphoid diagPart andPart xorPart xorPart).2.2.2.1
+    thm2_decomposition_coordFS_xorPart.2
+    (orthogonalGiven_diagPart_xorPart_of_le inf_le_left)
+
+/-- **Theorem 2's composition (clause 5) on the witness** — and note it is *not* the
+converse of `thm2_decomposition_coordFS_xorPart` run backwards:
+its second input is the auxiliary `diagPart ⊥^F xorPart | xorPart`, so its conclusion is a
+new orthogonality rather than the hypothesis it started from. -/
+lemma thm2_composition_coordFS :
+    coordFS.OrthogonalGiven diagPart (orPart ⊓ xorPart) xorPart :=
+  (coordFS.orthogonalGiven_semigraphoid diagPart orPart xorPart xorPart).2.2.2.2
+    thm2_decomposition_coordFS_xorPart.1
+    (orthogonalGiven_diagPart_xorPart_of_le le_rfl)
+
 /-! ### Degenerate corners of Definitions 26–27
 
 Conditioning on the empty set, or on `Dis_S`, makes *every* pair orthogonal — including a
@@ -1256,13 +1452,7 @@ know, so both corners are recorded here rather than left to be rediscovered. -/
 
 lemma orthogonalGivenSet_empty : coordFS.OrthogonalGivenSet fstFactor fstFactor ∅ := by
   refine (coordFS.orthogonalGivenSet_def fstFactor fstFactor ∅).2 ?_
-  have h : coordFS.historySub ((ofSetoid fstFactor).restrict (∅ : Set (Bool × Bool)))
-      = ∅ := by
-    refine (coordFS.historySub_spec ((ofSetoid fstFactor).restrict ∅)
-      ((ofSetoid fstFactor).restrict ∅) ((ofSetoid fstFactor).restrict ∅) rfl).2.2.2.1.2 ?_
-    rw [dom_restrict_ofSetoid]
-    exact Subpartition.ext fun s t => ⟨fun hst => ⟨hst.1, hst.2.1⟩, fun hst => hst.1.elim⟩
-  rw [h, Set.empty_inter]
+  rw [coordFS.historySub_restrict_empty, Set.empty_inter]
 
 /-- Conditioning on `Dis_S` trivializes conditional orthogonality (Proposition 25 at
 `Y = ⊥`), even though `fstFactor` is not orthogonal to itself. -/
@@ -2305,8 +2495,10 @@ forward**: Lemma 3's `3 → 1` and Theorem 3's converse are applied with their h
 discharged by computation (`clause3_fst_snd_top`, then `orthogonalGiven_from_clause3` and
 `orthogonalGiven_from_independence`) rather than only under a `by_contra`, so the two
 directions §5.5 actually consumes are exercised in the direction a client would use them;
-the three derivations of `coordFS.OrthogonalGiven fstFactor sndFactor ⊤` in this file take
-three independent routes on purpose.  And the **degenerate carriers** are recorded: there
+the three derivations of `coordFS.OrthogonalGiven fstFactor sndFactor ⊤` in this file are
+textually separate on purpose — separate proof *texts* reaching one fact from Proposition
+24, from Lemma 3 and from Theorem 3, not three disjoint dependency cones (routes 2 and 3
+share their last step; see the note at `orthogonalGiven_from_independence`).  And the **degenerate carriers** are recorded: there
 is no distribution at all over `Empty` (`isEmpty_probDist_empty`), where Theorem 3's two
 sides are both vacuously true (`orthogonalGiven_emptyFS`); there is exactly one over `Unit`
 and it *is* a distribution on the zero-dimensional `unitFS`; and on the one-dimensional
@@ -2749,8 +2941,11 @@ and `orthogonalGiven_of_Q_mul_Q_eq` turns it into conditional orthogonality.
 `orthogonalGiven_from_clause3` therefore reproves `orthogonalGiven_fst_snd_top` by a
 different route — that is the point, not duplication: the first goes through Proposition
 24 and §3's combinatorics, this one through §5's polynomials, and
-`orthogonalGiven_from_independence` below through Theorem 3's converse.  Three independent
-derivations of one fact are three exercised endpoints. -/
+`orthogonalGiven_from_independence` below through Theorem 3's converse.  Three proof texts
+for one fact are three exercised endpoints.  The separation is textual, not one of
+dependency cones: routes 2 and 3 share their final step, since Theorem 3's converse itself
+lands on `orthogonalGiven_of_Q_mul_Q_eq`, which is Lemma 3's TFAE.  Only route 1 is
+independent of Lemma 3. -/
 
 /-- Lemma 3's clause 3 at `Z = Ind_S`, for *every* pair of blocks: the four cases of
 `(s.1, t.2)` all reduce to the same polynomial identity, since a block of `fstFactor` meets
@@ -2995,18 +3190,21 @@ lemma unitDist_isDistribution : unitFS.IsDistribution unitDist := by
 `by_contra`; nothing runs it forward with its hypothesis discharged.
 `orthogonalGiven_from_independence` does, deriving conditional orthogonality from
 independence in *every* distribution — the hypothesis being obtained from
-`clause3_fst_snd_top` through Proposition 32, so the argument never invokes Lemma 3 or
-Theorem 3's forward direction.
+`clause3_fst_snd_top` through Proposition 32, so the proof text never mentions Lemma 3 or
+Theorem 3's forward direction.  Its *dependencies* are another matter: Theorem 3's converse
+is `orthogonalGiven_of_Q_mul_Q_eq`, i.e. Lemma 3's TFAE, so this route and
+`orthogonalGiven_from_clause3` reach the goal through the same last endpoint.
 
 The last pair rules out the remaining way Theorem 3 could be trivial: that its right-hand
 side might hold for every triple of partitions.  On the one-dimensional `boolFS` every
 `ProbDist Bool` is a distribution on the factored set, and the uniform one separates
 `{true}` from `{false}` given `Ind_S`. -/
 
-/-- **Theorem 3's converse with its hypothesis genuinely discharged.**  A third,
-independent route to `coordFS.OrthogonalGiven fstFactor sndFactor ⊤` — the first is
-Proposition 24 (`orthogonalGiven_fst_snd_top`), the second Lemma 3's `3 → 1`
-(`orthogonalGiven_from_clause3`), and this one the fundamental theorem itself. -/
+/-- **Theorem 3's converse with its hypothesis genuinely discharged.**  A third proof text
+for `coordFS.OrthogonalGiven fstFactor sndFactor ⊤` — the first is Proposition 24
+(`orthogonalGiven_fst_snd_top`), the second Lemma 3's `3 → 1`
+(`orthogonalGiven_from_clause3`), and this one the fundamental theorem itself, whose
+converse branch is in turn Lemma 3's `3 → 1`. -/
 lemma orthogonalGiven_from_independence : coordFS.OrthogonalGiven fstFactor sndFactor ⊤ := by
   refine (coordFS.orthogonalGiven_iff_forall_isDistribution fstFactor sndFactor ⊤).2 ?_
   intro P hP x hx y hy z hz
@@ -3061,7 +3259,7 @@ lemma not_orthogonalGiven_bot_bot_top_boolFS :
 /-! ## §6.1 over the witnesses: models, orthogonality databases, and inferred time
 
 Definitions 42–45 quantify over **models** of a sample space rather than over factored
-sets, so this is a family none of the §2–§5 witnesses inhabits.  What follows builds four
+sets, so this is a family none of the §2–§5 witnesses inhabits.  What follows builds five
 models and six databases, and uses them to separate `Consistent`, `Complete` and `<_D`
 from each other.
 
@@ -3076,7 +3274,7 @@ The informative positive instances of Definition 45 are Propositions 34 and 36 i
 `InferenceExamples.lean`; nothing here is a stand-in for them, and this file deliberately
 does not import that one, so that no witness below can lean on a §6.2 proof. -/
 
-/-! ### Definition 38: four models, and Definition 39 computed on them -/
+/-! ### Definition 38: five models, and Definition 39 computed on them -/
 
 /-- The identity model of `Bool × Bool`: the coordinate factored set with `f = id`.  This
 is the shape the paper's own Example 1 model has — a factorization of `Ω` itself, with no
@@ -3132,6 +3330,35 @@ lemma orthogonalGiven_unitFS (X Y Z : Setoid Unit) : unitFS.OrthogonalGiven X Y 
   intro z _
   rw [unitFS.orthogonalGivenSet_def, historySub_unitFS, Set.empty_inter]
 
+/-- The degenerate end of Definition 38: a model whose **carrier is empty**.  Definition 38
+asks only for a finite factored set and a map into the sample space, and `emptyFS` supplies
+the first while `Empty.elim` supplies the second, so this is a legal model of `Bool × Bool`
+— and it is the model that makes Definition 45 say nothing.  Every §3 history over it is
+empty, so `<^F` is the empty relation there, and it models every database that asserts no
+non-orthogonality; that is the mechanism behind `not_emptyDB_strictlyBefore`, and the
+companion `emptyDB_consistent` has to be read with, since consistency of `emptyDB` is cheap
+in exactly the same way. -/
+def voidModel : Model (Bool × Bool) := ⟨emptyFS, fun s => s.elim⟩
+
+/-- Every partition of an empty carrier is `Ind_S`, whose Definition 17 history is empty. -/
+lemma history_voidModel (X : Setoid (Bool × Bool)) :
+    voidModel.F.history (voidModel.pullback X) = ∅ := by
+  have h : voidModel.pullback X = (⊤ : Setoid Empty) := Setoid.ext fun a _ => a.elim
+  rw [h]
+  exact (emptyFS.history_spec ⊤ ⊤).2.2.1.2 rfl
+
+/-- **An empty carrier models every database whose `N` is empty.**  Definition 42's first
+clause is free over `emptyFS`, where every triple is conditionally orthogonal, and its
+second clause is vacuous exactly when nothing is asserted non-orthogonal.  So `N` is the
+only part of a database that can rule a model out. -/
+lemma models_voidModel_of_notOrth_empty {D : OrthDatabase (Bool × Bool)} (hD : D.N = ∅) :
+    OrthDatabase.Models voidModel D := by
+  intro X Y Z
+  refine ⟨fun _ => orthogonalGiven_emptyFS _ _ _, fun h => ?_⟩
+  have h' : (X, Y, Z) ∈ D.N := h
+  rw [hD] at h'
+  exact h'.elim
+
 /-! ### Definitions 40–44: six databases, and what `Consistent` and `Complete` each cost -/
 
 /-- The **empty** database on `Bool × Bool`: it asserts nothing at all. -/
@@ -3153,6 +3380,27 @@ lemma not_emptyDB_complete : ¬ emptyDB.Complete := by
   intro h
   rcases h ⊤ ⊤ ⊤ with h | h <;>
     simp only [OrthDatabase.Orth, OrthDatabase.NotOrth, emptyDB, Set.mem_empty_iff_false] at h
+
+/-- **Definition 45 infers nothing from a database that asserts no non-orthogonality.**
+`X <_D Y` quantifies over the models of `D`, and `voidModel` is one of them whenever `N` is
+empty; over it both histories are `∅`, which is not a strict inclusion.  So a rich `O` buys
+a database no inferences whatever, just as it costs it no consistency
+(`totalDB_consistent`) — the informative positive instances of Definition 45 are
+Propositions 34 and 36, and both of their databases assert non-orthogonalities.  This does
+*not* say `<_D` is empty because Definition 45 is weak; it says one admissible model already
+refutes every pair. -/
+lemma not_strictlyBefore_of_notOrth_empty {D : OrthDatabase (Bool × Bool)} (hD : D.N = ∅)
+    (X Y : Setoid (Bool × Bool)) : ¬ D.StrictlyBefore X Y := by
+  intro h
+  have hlt := h voidModel (models_voidModel_of_notOrth_empty hD)
+  rw [FactoredSet.strictlyBefore_def, history_voidModel, history_voidModel] at hlt
+  exact absurd hlt (by simp)
+
+/-- …in particular the empty database, whose `Consistent`/`¬ Complete` pair is recorded
+above: it is consistent, and it orders nothing. -/
+lemma not_emptyDB_strictlyBefore (X Y : Setoid (Bool × Bool)) :
+    ¬ emptyDB.StrictlyBefore X Y :=
+  not_strictlyBefore_of_notOrth_empty rfl X Y
 
 /-- A database asserting **one triple both ways**.  Definition 42's two clauses then
 contradict each other on that triple. -/
@@ -3261,21 +3509,21 @@ lemma not_coordDB_complete : ¬ coordDB.Complete := by
 
 /-! ### Definition 45: irreflexive where it is informative, vacuous where it is not -/
 
-/-- `OrthDatabase.not_before_self_of_consistent` — Definition 45 is irreflexive wherever
+/-- `OrthDatabase.not_strictlyBefore_self_of_consistent` — Definition 45 is irreflexive wherever
 `D` has a model — instantiated at a database whose consistency is computed in this file, so
 the witness does not depend on §6.2. -/
-lemma not_nonconstDB_before_self (X : Setoid Bool) : ¬ nonconstDB.Before X X :=
-  OrthDatabase.not_before_self_of_consistent nonconstDB_consistent X
+lemma not_nonconstDB_strictlyBefore_self (X : Setoid Bool) : ¬ nonconstDB.StrictlyBefore X X :=
+  OrthDatabase.not_strictlyBefore_self_of_consistent nonconstDB_consistent X
 
 /-- The other side of the same coin, and the trap worth recording: on an **inconsistent**
 database Definition 45 is vacuously *total*, because it quantifies over models that do not
-exist (`OrthDatabase.before_of_not_consistent`).  `X <_D Y` is therefore an inference only
+exist (`OrthDatabase.strictlyBefore_of_not_consistent`).  `X <_D Y` is therefore an inference only
 once `D` is known consistent — which is why Propositions 33 and 35 come before
 Propositions 34 and 36 in the paper.  Exhibited here on the contradictory database, where
 every pair is "inferred" both ways. -/
-lemma contradictoryDB_before_all (X Y : Setoid (Bool × Bool)) :
-    contradictoryDB.Before X Y :=
-  OrthDatabase.before_of_not_consistent not_contradictoryDB_consistent X Y
+lemma contradictoryDB_strictlyBefore_all (X Y : Setoid (Bool × Bool)) :
+    contradictoryDB.StrictlyBefore X Y :=
+  OrthDatabase.strictlyBefore_of_not_consistent not_contradictoryDB_consistent X Y
 
 /-! ## §7.3 over the witnesses: observations, counterfactability, conditional time
 
@@ -3299,6 +3547,24 @@ paper itself names.  `not_observes_snd_vsnd_true` is the transparent-Newcomb sha
 `not_observes_snd_snd_Efalse` is the counterfactual-mugging shape (Nesov): clause 1 holds —
 the action is orthogonal to `X_E` — but on the branch where `E` fails the action still
 determines the whole world model, so clause 2 fails.
+
+Which clause a *positive* instance exercises is a separate question, and the answer differs
+between the two events used here, so each instance says which.  At `E = vsnd true` with
+`W = sndFactor` the complement of `E` is a block of `W`; `W|Eᶜ` is therefore indiscrete, its
+Definition 24 history is empty, and clause 2 holds of every agent —
+`observes_snd_vsnd_true_iff` collapses Definition 46 at that `(W, E)` to `A ⊥^F sndFactor`
+outright.  At `E = ∅` it is the other way round: `X_∅ = Ind_S` makes clause 1 free, while
+clause 2 conditions on all of `S`, where the world model's restricted history is the
+nonempty `{sndFactor}` and the clause is `fst ⊥^F snd` itself (`observes_fst_snd_empty`,
+with `not_observes_snd_snd_empty` as its negative).  On a four-point carrier the two cannot
+be combined: a nondegenerate `E` leaves `Eᶜ` with two points, on which every restriction is
+indiscrete (clause 2 free) or discrete (clause 2 false for the only agents clause 1 admits).
+The same disclosure runs for Definition 47 — `observesPartition_snd_snd_iff` — and there is
+a second one there: `observesPartition_fst_snd` decomposes its agent along a *constant*
+family, where `⋁_S({A_x})` is `sInf_singleton`, so
+`observesPartition_fst_snd_nonconstant` exhibits a family taking two distinct values, which
+is what the definition's per-block indexing is for.  Its two values are comparable, and that
+is forced: on `coordFS` the only partition strictly coarser than a factor is `Ind_S`.
 
 The agreement partition `xorPart` is what separates Definitions 48 and 49.  It is not
 counterfactable, and for the paper's own reason: it is too coarse to specify the
@@ -3373,88 +3639,6 @@ lemma eventPartition_classes {E : Set S} (hE : E.Nonempty) (hEc : Eᶜ.Nonempty)
     · obtain ⟨y, hy⟩ := hEc
       exact ⟨y, by rw [eventPartition_part, if_neg hy]⟩
 
-/-! ### The general facts the §7.3 witnesses run on -/
-
-variable (F : FactoredSet S)
-
-/-- `Ind_S` restricted to any subset is `Ind_E`, so its Definition 24 history is empty. -/
-lemma historySub_top_restrict [Finite F.B] (E : Set S) :
-    F.historySub ((ofSetoid (⊤ : Setoid S)).restrict E) = ∅ := by
-  refine (F.historySub_spec ((ofSetoid (⊤ : Setoid S)).restrict E)
-    ((ofSetoid (⊤ : Setoid S)).restrict E) ((ofSetoid (⊤ : Setoid S)).restrict E)
-    rfl).2.2.2.1.2 ?_
-  rw [dom_restrict_ofSetoid]
-  exact Subpartition.ext fun s t => ⟨fun h => ⟨h.1, h.2.1⟩, fun h => ⟨h.1, h.2, trivial⟩⟩
-
-/-- Restricting to `∅` leaves nothing to generate. -/
-lemma historySub_restrict_empty [Finite F.B] (X : Setoid S) :
-    F.historySub ((ofSetoid X).restrict (∅ : Set S)) = ∅ := by
-  refine (F.historySub_spec ((ofSetoid X).restrict (∅ : Set S))
-    ((ofSetoid X).restrict (∅ : Set S)) ((ofSetoid X).restrict (∅ : Set S)) rfl).2.2.2.1.2 ?_
-  rw [dom_restrict_ofSetoid]
-  exact Subpartition.ext fun s t => ⟨fun hst => ⟨hst.1, hst.2.1⟩, fun hst => hst.1.elim⟩
-
-/-- Definition 26 is symmetric in its two partitions. -/
-lemma orthogonalGivenSet_comm (X Y : Setoid S) (E : Set S) :
-    F.OrthogonalGivenSet X Y E ↔ F.OrthogonalGivenSet Y X E := by
-  rw [F.orthogonalGivenSet_def, F.orthogonalGivenSet_def, Set.inter_comm]
-
-lemma orthogonalGivenSet_top_left [Finite F.B] (X : Setoid S) (E : Set S) :
-    F.OrthogonalGivenSet (⊤ : Setoid S) X E := by
-  rw [F.orthogonalGivenSet_def, historySub_top_restrict F E, Set.empty_inter]
-
-lemma orthogonalGivenSet_top_right [Finite F.B] (X : Setoid S) (E : Set S) :
-    F.OrthogonalGivenSet X (⊤ : Setoid S) E :=
-  (orthogonalGivenSet_comm F (⊤ : Setoid S) X E).1 (orthogonalGivenSet_top_left F X E)
-
-/-- Every partition is orthogonal to every other **given itself**: a block of `X` is a
-single block of `X|x`, so `h^F(X|x) = {}`.  This is the mechanism behind Definition 49's
-being implied by Definition 48. -/
-lemma orthogonalGiven_given_self [Finite F.B] (X W : Setoid S) : F.OrthogonalGiven X W X := by
-  rintro z ⟨r, rfl⟩
-  refine (F.orthogonalGivenSet_def X W _).2 ?_
-  have h : F.historySub ((ofSetoid X).restrict {x | X x r}) = ∅ := by
-    refine (F.historySub_spec ((ofSetoid X).restrict {x | X x r})
-      ((ofSetoid X).restrict {x | X x r}) ((ofSetoid X).restrict {x | X x r})
-      rfl).2.2.2.1.2 ?_
-    rw [dom_restrict_ofSetoid]
-    refine Subpartition.ext fun s t => ⟨fun h => ⟨h.1, h.2.1⟩, fun h => ⟨h.1, h.2, ?_⟩⟩
-    exact X.trans' (show X s r from h.1) (X.symm' (show X t r from h.2))
-  rw [h, Set.empty_inter]
-
-/-- **Definition 48 implies Definition 49, for every `W`.**  A counterfactable `X` *is*
-`⋁_S(h^F(X))`, so the screening-off Definition 49 asks for degenerates to `X ⊥^F W | X`,
-which holds for every `W`.  Short enough to be worth stating in general rather than
-instantiating. -/
-lemma counterfactableRel_of_counterfactable [Finite F.B] {X : Setoid S}
-    (h : F.Counterfactable X) (W : Setoid S) : F.CounterfactableRel X W := by
-  show F.OrthogonalGiven (commonRefinement (F.history X)) W X
-  rw [← h]
-  exact orthogonalGiven_given_self F X W
-
-/-- The degenerate corner of Definition 49, recorded so it is not mistaken for content:
-*every* partition is counterfactable relative to `Ind_S`, counterfactable or not. -/
-lemma counterfactableRel_top [Finite F.B] (X : Setoid S) :
-    F.CounterfactableRel X (⊤ : Setoid S) :=
-  fun z _ => orthogonalGivenSet_top_right F (commonRefinement (F.history X)) z
-
-/-- **Definition 50 at `E = S` is Definition 19**, since `X|S = X` and Proposition 22
-identifies the two histories. -/
-lemma beforeGivenSet_univ_iff [Finite F.B] (X Y : Setoid S) :
-    F.BeforeGivenSet X Y Set.univ ↔ F.Before X Y := by
-  show F.historySub ((ofSetoid X).restrict Set.univ)
-      ⊆ F.historySub ((ofSetoid Y).restrict Set.univ) ↔ _
-  rw [restrict_univ, restrict_univ, F.historySub_isLeast_and_eq_history.2 X,
-    F.historySub_isLeast_and_eq_history.2 Y]
-  exact Iff.rfl
-
-/-- The degenerate corner of Definition 50, matching `orthogonalGivenSet_empty` in §4:
-given `∅`, everything is before everything. -/
-lemma beforeGivenSet_empty [Finite F.B] (X Y : Setoid S) : F.BeforeGivenSet X Y ∅ := by
-  show F.historySub ((ofSetoid X).restrict (∅ : Set S)) ⊆ _
-  rw [historySub_restrict_empty]
-  exact Set.empty_subset _
-
 end EmbeddedAgency
 
 /-! ### Definition 46: an agent observing an event, and both ways it can fail -/
@@ -3519,7 +3703,14 @@ lemma historySub_snd_restrict_vsnd (b : Bool) :
 second coordinate is `true`", and the world model is the second coordinate — so `X_E = W`,
 i.e. all the agent cares about is whether `E` holds.  Clause 1 is §3.3's `fst ⊥^F snd`;
 clause 2 holds because on `S \ E` the world model is constant, so its restriction is
-indiscrete and has empty history. -/
+indiscrete and has empty history.
+
+**What this witness does not pin.**  At this `(W, E)` clause 2 is discharged for a reason
+that has nothing to do with the agent: `Eᶜ` is a block of `W`, so `W|Eᶜ` is indiscrete,
+`h^F(W|Eᶜ) = ∅`, and clause 2 holds for *every* `A` — `observes_snd_vsnd_true_iff` states
+exactly that.  Read this instance as a witness for clause 1 only.
+`observes_fst_snd_empty` is the complementary instance, where clause 2 carries the
+content. -/
 lemma observes_fst_snd_vsnd_true : coordFS.Observes fstFactor sndFactor (vsnd true) := by
   refine ⟨?_, ?_⟩
   · rw [eventPartition_vsnd]
@@ -3563,6 +3754,65 @@ lemma not_observes_snd_snd_Efalse :
     rw [historySub_sndOnEfst] at h3
     exact Set.singleton_ne_empty _ h3
 
+/-- **At `W = sndFactor`, `E = vsnd true`, Definition 46's clause 2 is free.**  The
+complement of `E` is a block of `W`, so `W|Eᶜ` is indiscrete and its Definition 24 history
+is empty whatever the agent is; only clause 1 survives, and it is §3.3's `A ⊥^F sndFactor`.
+So a positive `Observes` instance at this `(W, E)` — `observes_fst_snd_vsnd_true` — certifies
+nothing about clause 2, and a negative one refutes nothing about it either. -/
+lemma observes_snd_vsnd_true_iff (A : Setoid (Bool × Bool)) :
+    coordFS.Observes A sndFactor (vsnd true) ↔ coordFS.Orthogonal A sndFactor := by
+  constructor
+  · intro h
+    have h1 : coordFS.Orthogonal A (FactoredSet.eventPartition (vsnd true)) := h.1
+    rwa [eventPartition_vsnd] at h1
+  · intro h
+    refine ⟨by rwa [eventPartition_vsnd], ?_⟩
+    rw [coordFS.orthogonalGivenSet_def, compl_vsnd_true, historySub_snd_restrict_vsnd,
+      Set.inter_empty]
+
+/-- At `E = ∅` the second clause of Definition 46 conditions on all of `S`, so the
+world model's restricted history is its §3.2 history — here `{sndFactor}`, and in
+particular **not** empty.  This is what makes `observes_fst_snd_empty` a real obligation
+rather than an empty intersection. -/
+lemma historySub_snd_restrict_compl_empty :
+    coordFS.historySub ((ofSetoid sndFactor).restrict (∅ : Set (Bool × Bool))ᶜ) =
+      {sndFactor} := by
+  rw [Set.compl_empty, restrict_univ, coordFS.historySub_ofSetoid, history_sndFactor]
+
+/-- **Definition 46 inhabited with clause 2 doing the work.**  At the impossible event
+`E = ∅` the auxiliary partition `X_∅` is `Ind_S`, so clause 1 is free; clause 2 conditions
+on `Eᶜ = S`, where Definition 26 is Definition 18, and it says `fst ⊥^F snd` outright —
+against a world model whose restricted history is the nonempty `{sndFactor}`
+(`historySub_snd_restrict_compl_empty`).  It is the complement of
+`observes_fst_snd_vsnd_true`, whose clause 2 is free and whose clause 1 does the work, and
+the two together are the best a four-point carrier allows: no single `(A, W, E)` makes both
+clauses substantive at once, because a
+nondegenerate `E` leaves `Eᶜ` with two points, on which a restriction is either indiscrete
+(empty history, clause 2 free) or discrete (history `{fstFactor}`, clause 2 false for the
+agent `fstFactor`).
+
+An agent is *not* free to assume `∅`: `not_observes_snd_snd_empty` shows the same
+`(W, E)` failing for `sndFactor`. -/
+lemma observes_fst_snd_empty : coordFS.Observes fstFactor sndFactor ∅ := by
+  refine ⟨?_, ?_⟩
+  · rw [eventPartition_empty, coordFS.orthogonal_def, history_top, Set.inter_empty]
+  · have horth : coordFS.history fstFactor ∩ coordFS.history sndFactor = ∅ :=
+      orthogonal_fstFactor_sndFactor
+    rw [coordFS.orthogonalGivenSet_def, Set.compl_empty, restrict_univ, restrict_univ,
+      coordFS.historySub_ofSetoid, coordFS.historySub_ofSetoid]
+    exact horth
+
+/-- …and the same clause 2, at the same `(W, E)`, **fails** for an agent entangled with the
+world model.  Together with `observes_fst_snd_empty` this pins Definition 46 at `E = ∅` as
+a nonempty, non-total condition on the agent, decided entirely by clause 2. -/
+lemma not_observes_snd_snd_empty : ¬ coordFS.Observes sndFactor sndFactor ∅ := by
+  intro h
+  have h2 : coordFS.historySub ((ofSetoid sndFactor).restrict (∅ : Set (Bool × Bool))ᶜ)
+      ∩ coordFS.historySub ((ofSetoid sndFactor).restrict (∅ : Set (Bool × Bool))ᶜ)
+      = ∅ := h.2
+  rw [Set.inter_self, historySub_snd_restrict_compl_empty] at h2
+  exact Set.singleton_ne_empty _ h2
+
 /-! ### Definition 47: an agent observing a partition -/
 
 /-- The blocks of `sndFactor`, which is what Definition 47's family is indexed by. -/
@@ -3581,7 +3831,16 @@ lemma classes_sndFactor : sndFactor.classes = {vsnd true, vsnd false} := by
 /-- **Definition 47 inhabited**, at the two-block partition `X = sndFactor`: `fstFactor`
 observes it with respect to `W = sndFactor`, with the constant family `A_x = fstFactor`.
 The paper's `⋁_S({A_i})` is `sInf (Set.range ·)` (`dd:order-flip`), which at a constant
-family is the agent itself. -/
+family is the agent itself.
+
+**What this witness does not pin.**  Two things, both recorded below rather than left to be
+rediscovered.  The family is constant, so the decomposition `A = ⋁_S({A_x})` is
+`sInf_singleton` and says nothing about Definition 47's distinctive content, that the
+sub-agents may *differ* block by block — `observesPartition_fst_snd_nonconstant` supplies a
+family that does.  And at `W = X = sndFactor` the second clause is discharged for a reason
+independent of the sub-agents: each `(↑x)ᶜ` is the other block of `W`, on which `W` is
+indiscrete, so the clause holds for every family whatever — `observesPartition_snd_snd_iff`
+states that this instance of Definition 47 *is* §3.3's `A ⊥^F sndFactor`. -/
 lemma observesPartition_fst_snd :
     coordFS.ObservesPartition fstFactor sndFactor sndFactor := by
   haveI : Nonempty ↥sndFactor.classes := ⟨⟨vsnd true, vsnd_true_mem_sndFactor_classes⟩⟩
@@ -3596,6 +3855,84 @@ lemma observesPartition_fst_snd :
     · show coordFS.OrthogonalGivenSet fstFactor sndFactor (vsnd false)ᶜ
       rw [coordFS.orthogonalGivenSet_def, compl_vsnd_false, historySub_snd_restrict_vsnd,
         Set.inter_empty]
+
+/-- **At `W = X = sndFactor`, Definition 47 is Definition 18.**  Each block's complement is
+the other block of `W`, where `W` is indiscrete, so the second clause holds of the constant
+family for every agent and the whole definition collapses to `A ⊥^F sndFactor`.  So
+`observesPartition_fst_snd` is a witness for the first clause only; nothing in it constrains
+the sub-agent family. -/
+lemma observesPartition_snd_snd_iff (A : Setoid (Bool × Bool)) :
+    coordFS.ObservesPartition A sndFactor sndFactor ↔ coordFS.Orthogonal A sndFactor := by
+  haveI : Nonempty ↥sndFactor.classes := ⟨⟨vsnd true, vsnd_true_mem_sndFactor_classes⟩⟩
+  refine ⟨fun h => h.1, fun h => ⟨h, fun _ => A, ?_, ?_⟩⟩
+  · rw [Set.range_const, sInf_singleton]
+  · rintro ⟨x, hx⟩
+    rw [classes_sndFactor] at hx
+    rcases hx with rfl | rfl
+    · show coordFS.OrthogonalGivenSet A sndFactor (vsnd true)ᶜ
+      rw [coordFS.orthogonalGivenSet_def, compl_vsnd_true, historySub_snd_restrict_vsnd,
+        Set.inter_empty]
+    · show coordFS.OrthogonalGivenSet A sndFactor (vsnd false)ᶜ
+      rw [coordFS.orthogonalGivenSet_def, compl_vsnd_false, historySub_snd_restrict_vsnd,
+        Set.inter_empty]
+
+/-- A coordinate factor is not `Ind_S`: its history is a singleton, not `∅`. -/
+lemma fstFactor_ne_top : fstFactor ≠ (⊤ : Setoid (Bool × Bool)) := by
+  intro h
+  have hemp : coordFS.history fstFactor = ∅ := by rw [h, history_top]
+  rw [history_fstFactor] at hemp
+  exact Set.singleton_ne_empty _ hemp
+
+/-- The second block of `sndFactor`. -/
+lemma vsnd_false_mem_sndFactor_classes : vsnd false ∈ sndFactor.classes := by
+  rw [classes_sndFactor]; exact Or.inr rfl
+
+/-- **Definition 47's family need not be constant.**  The same agent `fstFactor` and world
+model `sndFactor` are witnessed by the family that answers `fstFactor` on one block of
+`sndFactor` and `Ind_S` on the other: two distinct values, whose common refinement
+`⋁_S({A_x})` is a genuine two-element `sInf` rather than `sInf_singleton`.  Definition 47
+therefore does not silently force `A_x = A`, which `observesPartition_fst_snd` alone would
+leave open.
+
+**What it does not pin, and why not.**  The two sub-agents here are comparable, `Ind_S`
+being the neutral element of `⋁_S`.  That is forced on this witness rather than chosen: an
+agent orthogonal to a two-block `X` must have history `∅` or a single factor, and on
+`coordFS` the only partitions coarser than `fstFactor` are `fstFactor` and `Ind_S`, so no
+family of two *incomparable* sub-agents meets to an agent that clause 1 admits.  A witness
+for that would need a carrier with more than two factors. -/
+lemma observesPartition_fst_snd_nonconstant :
+    ∃ As : sndFactor.classes → Setoid (Bool × Bool),
+      (∃ x y, As x ≠ As y) ∧ fstFactor = sInf (Set.range As) ∧
+        ∀ x : sndFactor.classes, coordFS.OrthogonalGivenSet (As x) sndFactor (↑x)ᶜ := by
+  have hne : (vsnd false) ≠ vsnd true := Ne.symm vsnd_true_ne_false
+  refine ⟨fun x => if (x : Set (Bool × Bool)) = vsnd true then fstFactor else ⊤, ?_, ?_, ?_⟩
+  · refine ⟨⟨vsnd true, vsnd_true_mem_sndFactor_classes⟩,
+      ⟨vsnd false, vsnd_false_mem_sndFactor_classes⟩, ?_⟩
+    show (if (vsnd true) = vsnd true then fstFactor else ⊤)
+        ≠ (if (vsnd false) = vsnd true then fstFactor else ⊤)
+    rw [if_pos rfl, if_neg hne]
+    exact fstFactor_ne_top
+  · refine le_antisymm ?_ ?_
+    · refine le_sInf ?_
+      rintro y ⟨x, rfl⟩
+      show fstFactor ≤ if (x : Set (Bool × Bool)) = vsnd true then fstFactor else ⊤
+      split_ifs
+      · exact le_rfl
+      · exact le_top
+    · refine sInf_le ⟨⟨vsnd true, vsnd_true_mem_sndFactor_classes⟩, ?_⟩
+      show (if (vsnd true) = vsnd true then fstFactor else ⊤) = fstFactor
+      rw [if_pos rfl]
+  · rintro ⟨x, hx⟩
+    rw [classes_sndFactor] at hx
+    rcases hx with rfl | rfl
+    · show coordFS.OrthogonalGivenSet
+        (if (vsnd true) = vsnd true then fstFactor else ⊤) sndFactor (vsnd true)ᶜ
+      rw [if_pos rfl, coordFS.orthogonalGivenSet_def, compl_vsnd_true,
+        historySub_snd_restrict_vsnd, Set.inter_empty]
+    · show coordFS.OrthogonalGivenSet
+        (if (vsnd false) = vsnd true then fstFactor else ⊤) sndFactor (vsnd false)ᶜ
+      rw [if_neg hne]
+      exact coordFS.orthogonalGivenSet_top_left sndFactor _
 
 /-- Definition 47 as a client reads it: orthogonality to `X`, plus a family of sub-agents
 indexed by the blocks of `X` whose common refinement is the agent. -/
@@ -3635,7 +3972,7 @@ lemma observesPartition_top (W X : Setoid (Bool × Bool)) :
   refine ⟨?_, fun _ => ⊤, ?_, ?_⟩
   · rw [coordFS.orthogonal_def, history_top, Set.empty_inter]
   · rw [Set.range_const, sInf_singleton]
-  · exact fun x => orthogonalGivenSet_top_left coordFS W (↑x)ᶜ
+  · exact fun x => coordFS.orthogonalGivenSet_top_left W (↑x)ᶜ
 
 /-! ### Definitions 48–49: counterfactability, absolute and relative -/
 
@@ -3686,13 +4023,13 @@ example : coordFS.CounterfactableRel xorPart ⊤ ↔
 /-- Definition 49 on the witness at a counterfactable partition, for every world model. -/
 lemma counterfactableRel_fstFactor (W : Setoid (Bool × Bool)) :
     coordFS.CounterfactableRel fstFactor W :=
-  counterfactableRel_of_counterfactable coordFS counterfactable_fstFactor W
+  coordFS.counterfactableRel_of_counterfactable counterfactable_fstFactor W
 
 /-- **Definition 49 is strictly weaker than Definition 48**: `xorPart` is not
 counterfactable, yet it is counterfactable relative to `Ind_S`. -/
 lemma not_counterfactable_but_counterfactableRel_xorPart :
     ¬ coordFS.Counterfactable xorPart ∧ coordFS.CounterfactableRel xorPart ⊤ :=
-  ⟨not_counterfactable_xorPart, counterfactableRel_top coordFS xorPart⟩
+  ⟨not_counterfactable_xorPart, coordFS.counterfactableRel_top xorPart⟩
 
 /-- On the diagonal `Dis_S` and `fstFactor` restrict to the same subpartition: there the
 first coordinate determines the second. -/
@@ -3725,7 +4062,7 @@ lemma not_counterfactableRel_xorPart_fstFactor :
 /-! ### Definition 50: conditional time -/
 
 example : coordFS.BeforeGivenSet fstFactor ⊥ Set.univ ↔ coordFS.Before fstFactor ⊥ :=
-  beforeGivenSet_univ_iff coordFS fstFactor ⊥
+  coordFS.beforeGivenSet_univ_iff fstFactor ⊥
 
 /-- Definition 50 as a client reads it: an inclusion of Definition 24 histories of
 restrictions. -/
@@ -3736,7 +4073,7 @@ example : coordFS.BeforeGivenSet fstFactor sndFactor Ediag ↔
 /-- Definition 50 at `E = S` on the witness: `fstFactor ≤^F Dis_S | S`, which is §3.4's
 unconditional verdict transported by `beforeGivenSet_univ_iff`. -/
 lemma beforeGivenSet_fst_bot_univ : coordFS.BeforeGivenSet fstFactor ⊥ Set.univ :=
-  (beforeGivenSet_univ_iff coordFS fstFactor ⊥).2 before_fstFactor_bot
+  (coordFS.beforeGivenSet_univ_iff fstFactor ⊥).2 before_fstFactor_bot
 
 /-- **Conditional time is not unconditional time.**  The two coordinate factors are
 incomparable in `≤^F` (§3.4), but on the diagonal each restriction needs both factors
@@ -3759,7 +4096,7 @@ lemma not_beforeGivenSet_fst_top_Ediag :
   intro h
   have h1 : coordFS.historySub fstOnEdiag
       ⊆ coordFS.historySub ((ofSetoid (⊤ : Setoid (Bool × Bool))).restrict Ediag) := h
-  rw [historySub_fstOnEdiag, historySub_top_restrict] at h1
+  rw [historySub_fstOnEdiag, coordFS.historySub_top_restrict] at h1
   have hmem : fstFactor ∈ (∅ : Set (Setoid (Bool × Bool))) := h1 fstFactor_mem
   exact hmem
 
@@ -3767,9 +4104,9 @@ lemma not_beforeGivenSet_fst_top_Ediag :
 given `∅` every pair is ordered, and `Ind_S` is before everything given anything. -/
 lemma beforeGivenSet_corners (X Y : Setoid (Bool × Bool)) (E : Set (Bool × Bool)) :
     coordFS.BeforeGivenSet X Y ∅ ∧ coordFS.BeforeGivenSet ⊤ Y E := by
-  refine ⟨beforeGivenSet_empty coordFS X Y, ?_⟩
+  refine ⟨coordFS.beforeGivenSet_empty X Y, ?_⟩
   show coordFS.historySub ((ofSetoid (⊤ : Setoid (Bool × Bool))).restrict E) ⊆ _
-  rw [historySub_top_restrict]
+  rw [coordFS.historySub_top_restrict]
   exact Set.empty_subset _
 
 end Examples
