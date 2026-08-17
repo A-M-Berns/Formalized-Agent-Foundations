@@ -38,8 +38,17 @@ components are identities can only exist if `L̃ₖ` and `Lₖ` have the *same* 
 `Yₖ A` is valued in `Lₖ.L.R A` by construction and the range-component data of the morphism
 carries no information.  What is left of Definition 3.5's morphism conditions is then just:
 `ρₖ` is probability preserving (`ρₖ_pres`), and `(Lₖ.Y A) ∘ ρₖ = Yₖ A` almost everywhere
-(`ρₖ_Y`) — the paper's `fⱼ(X_{ι(j)}) = π^* Yⱼ` a.e. of (3.24) with `fⱼ = id`.  The
-compatibility of the morphism with the latent models' own maps to `Ω` is `ρₖ_π`.
+(`ρₖ_Y`) — the paper's `fⱼ(X_{ι(j)}) = π^* Yⱼ` a.e. of (3.24) with `fⱼ = id`.
+
+**And that is all of clause (3).**  The morphisms (4.44)/(4.45) are morphisms in the sense
+of Definition 3.5, which is a morphism of the underlying *random variable* models; the
+paper never defines a morphism of *latent* variable models, and Definition 3.5 imposes
+exactly two conditions — "`π` is probability preserving" and `fⱼ(X_{ι(j)}) = π^* Yⱼ` a.e.
+Nothing in Definition 4.12 relates `Lₖ.π ∘ ρₖ` to `πₖ`, so this structure carries no such
+field: `ρₖ_pres` and `ρₖ_Y` are the whole of clause (3).  The `π`-compatibility that
+Theorem 4.15's proof genuinely needs is the one *between* `π₁` and `π₂`, and it is carried
+separately, and only almost everywhere, by the field `comm` — an addition justified as an
+erratum against Definition 4.12 (see below), not something read off clause (3).
 
 Note the two directions of `π`, which `KNOWLEDGE.md` warns about: a latent variable model's
 `π` goes `Λ → Ω`, while §3.1's morphisms go source → target.  Here `ρₖ : Λ₀ → Λₖ` is both:
@@ -134,10 +143,10 @@ variable model `M` (Definition 4.12).  It consists of
    here as the latent families `Y₁`, `Y₂` over `Λ₀` together with their maps `πₖ : Λ₀ → Ω`
    and Definition 3.2's contribution conditions, and assembled into honest
    `LatentModel M`s by `LatentAmalgamation.lat₁` and `.lat₂`;
-3. two morphisms `ρₖ : L̃ₖ → Lₖ` of the forms (4.44)/(4.45) — identity on the index set
-   `P⁺I` and on every range, so all that remains of Definition 3.5 is a
-   probability-preserving `ρₖ : Λ₀ → Λₖ` with `(Lₖ.Y A) ∘ ρₖ = Yₖ A` almost everywhere and
-   `Lₖ.π ∘ ρₖ = πₖ` almost everywhere.
+3. two morphisms `ρₖ : L̃ₖ → Lₖ` of the forms (4.44)/(4.45) — Definition 3.5 morphisms of
+   the *underlying random variable models*, identity on the index set `P⁺I` and on every
+   range, so all that remains is a probability-preserving `ρₖ : Λ₀ → Λₖ` with
+   `(Lₖ.Y A) ∘ ρₖ = Yₖ A` almost everywhere.
 
 See this file's header for why `Λ₀` is primary and the two `L̃ₖ` are derived.
 
@@ -181,15 +190,11 @@ structure LatentAmalgamation {I : Type w} [Finite I] {M : RVModel.{u, v, w} I}
   ρ₁_pres : MeasurePreserving ρ₁ P₀ L₁.P
   /-- (3) the morphism condition (3.24) for `ρ₁`, with identity range components. -/
   ρ₁_Y : ∀ A : PPlus I, ∀ᵐ l ∂P₀, L₁.Y A (ρ₁ l) = Y₁ A l
-  /-- (3) `ρ₁` is a morphism *of latent variable models*: it commutes with the maps to `Ω`. -/
-  ρ₁_π : ∀ᵐ l ∂P₀, L₁.π (ρ₁ l) = π₁ l
   /-- (3) the underlying map of the morphism `ρ₂ : L̃₂ → L₂` of (4.45). -/
   ρ₂ : Λ₀ → L₂.Λ
   ρ₂_pres : MeasurePreserving ρ₂ P₀ L₂.P
   /-- (3) the morphism condition (3.24) for `ρ₂`, with identity range components. -/
   ρ₂_Y : ∀ A : PPlus I, ∀ᵐ l ∂P₀, L₂.Y A (ρ₂ l) = Y₂ A l
-  /-- (3) `ρ₂` is a morphism *of latent variable models*: it commutes with the maps to `Ω`. -/
-  ρ₂_π : ∀ᵐ l ∂P₀, L₂.π (ρ₂ l) = π₂ l
   /-- The commuting square (4.43) of Definition 4.11, carried into Definition 4.12: the
   two derived latent variable models observe `M` through the *same* map.
 
@@ -261,14 +266,42 @@ def lat₂ (Am : LatentAmalgamation L₁ L₂) : LatentModel.{u, v, w, u₀, v�
 @[simp] lemma lat₂_Y (Am : LatentAmalgamation L₁ L₂) (A : PPlus I) :
     Am.lat₂.Y A = Am.Y₂ A := rfl
 
-/-- The square (4.43) of Definition 4.11, as it survives inside Definition 4.12: it
-commutes only *almost everywhere*, because the morphism conditions of Definition 3.5 are
-a.e. conditions.  (`Amalgamation.comm` is on the nose, which is why this is a lemma about
-`LatentAmalgamation` rather than a projection to `Amalgamation`.) -/
-lemma comm_ρ (Am : LatentAmalgamation L₁ L₂) :
-    ∀ᵐ l ∂Am.P₀, L₁.π (Am.ρ₁ l) = L₂.π (Am.ρ₂ l) := by
-  filter_upwards [Am.ρ₁_π, Am.ρ₂_π, Am.comm] with l h₁ h₂ h
-  rw [h₁, h₂, h]
+/-- The **non-vacuity witness for Definition 4.12**: every latent variable model is
+amalgamated with itself along the identity.  `Λ₀` is `L`'s own latent space `Λ`, both
+latent families are `L`'s own `(Y_A)`, both maps to `Ω` are `L.π`, and both morphisms
+`ρₖ : L̃ₖ → Lₖ` are the identity — so Definition 3.5's conditions hold on the nose and
+`comm` is `rfl`.
+
+It is the cheap non-vacuity witness for Theorem 4.15 and the whole of §5: it needs none of
+Lemma 4.13's measure machinery — no fibre product, no (4.53) weight, no `MeasurePreserving`
+computation — so a reader checking that the §5 hypotheses are satisfiable at all need only
+read this definition.  (`LatentAmalgamation.canonical` is the paper's general construction
+and is also axiom-clean; `diagonal` is the short path, not the only one.)
+
+Machinery, not a paper node — Definition 4.12 is the node it witnesses. -/
+def diagonal (L : LatentModel.{u, v, w, u₁, v₁} M) :
+    LatentAmalgamation.{u, v, w, u₁, u₁, v₁, u₁, v₁} L L where
+  Λ₀ := L.Λ
+  P₀ := L.P
+  Y₁ := L.Y
+  measurable_Y₁ := L.L.measurable_X
+  finiteEntropy_Y₁ := L.L.finiteEntropy_X
+  π₁ := L.π
+  π₁_pres := L.π_pres
+  contributes₁ := L.contributes
+  Y₂ := L.Y
+  measurable_Y₂ := L.L.measurable_X
+  finiteEntropy_Y₂ := L.L.finiteEntropy_X
+  π₂ := L.π
+  π₂_pres := L.π_pres
+  contributes₂ := L.contributes
+  ρ₁ := id
+  ρ₁_pres := MeasurePreserving.id _
+  ρ₁_Y := fun _ => Filter.Eventually.of_forall fun _ => rfl
+  ρ₂ := id
+  ρ₂_pres := MeasurePreserving.id _
+  ρ₂_Y := fun _ => Filter.Eventually.of_forall fun _ => rfl
+  comm := Filter.Eventually.of_forall fun _ => rfl
 
 end LatentAmalgamation
 
@@ -289,18 +322,6 @@ category of measurable spaces, carrying the subspace σ-algebra. -/
 abbrev carrier : Type (max u₁ u₂) := {p : Λ₁ × Λ₂ // π₁ p.1 = π₂ p.2}
 
 namespace carrier
-
-/-- The subspace of a countable discrete measurable space is countable discrete.  Mathlib
-has no `Subtype` instance for `MeasurableSingletonClass` at this pin; a singleton of the
-subtype is the preimage of a singleton under the (measurable) coercion. -/
-instance : MeasurableSingletonClass (carrier π₁ π₂) where
-  measurableSet_singleton x := by
-    have h : ({x} : Set (carrier π₁ π₂))
-        = (Subtype.val : {p : Λ₁ × Λ₂ // π₁ p.1 = π₂ p.2} → Λ₁ × Λ₂) ⁻¹' {(x : Λ₁ × Λ₂)} := by
-      ext y
-      simp [Set.mem_preimage, Subtype.ext_iff, eq_comm]
-    rw [h]
-    exact measurable_subtype_coe (measurableSet_singleton _)
 
 /-- `ρ₁` of (4.50). -/
 def fst (p : carrier π₁ π₂) : Λ₁ := (p : Λ₁ × Λ₂).1
@@ -342,32 +363,202 @@ omit [Countable Ω] [MeasurableSingletonClass Ω] [Countable Λ₁] [Countable �
 sanity check that the `Measure.sum`-of-Diracs spelling is the intended object, and the
 form in which the remaining proofs of Lemma 4.13 will use it. -/
 @[simp] lemma canonicalMeasure_singleton (p : carrier π₁ π₂) :
-    canonicalMeasure PΩ P₁ P₂ π₁ π₂ {p} = canonicalWeight PΩ P₁ P₂ π₁ π₂ p := by
-  rw [canonicalMeasure, Measure.sum_apply _ (measurableSet_singleton p), tsum_eq_single p]
-  · simp
-  · intro q hq
-    simp [Measure.dirac_apply' _ (measurableSet_singleton p), hq]
+    canonicalMeasure PΩ P₁ P₂ π₁ π₂ {p} = canonicalWeight PΩ P₁ P₂ π₁ π₂ p :=
+  Measure.sum_smul_dirac_singleton
 
 variable [IsProbabilityMeasure PΩ] [IsProbabilityMeasure P₁] [IsProbabilityMeasure P₂]
 
+/-- The weight (4.53), as a function on all of `Λ₁ × Λ₂` (zero off the fibre product).
+Writing it this way is what lets the sums of (4.54)–(4.57) be iterated sums over `Λ₁` and
+`Λ₂` rather than sums over a subtype. -/
+private noncomputable def offWeight (a : Λ₁) (b : Λ₂) : ENNReal :=
+  Set.indicator {q : Λ₁ × Λ₂ | π₁ q.1 = π₂ q.2}
+    (fun q => P₁ {q.1} * P₂ {q.2} / PΩ {π₁ q.1}) (a, b)
+
+omit [Countable Ω] [MeasurableSingletonClass Ω] [Countable Λ₁] [MeasurableSingletonClass Λ₁]
+  [Countable Λ₂] [MeasurableSingletonClass Λ₂] [IsProbabilityMeasure PΩ]
+  [IsProbabilityMeasure P₁] [IsProbabilityMeasure P₂] in
+private lemma offWeight_of_eq {a : Λ₁} {b : Λ₂} (h : π₁ a = π₂ b) :
+    offWeight PΩ P₁ P₂ π₁ π₂ a b = P₁ {a} * P₂ {b} / PΩ {π₁ a} :=
+  Set.indicator_of_mem (s := {q : Λ₁ × Λ₂ | π₁ q.1 = π₂ q.2}) (a := (a, b)) h _
+
+omit [Countable Ω] [MeasurableSingletonClass Ω] [Countable Λ₁] [MeasurableSingletonClass Λ₁]
+  [Countable Λ₂] [MeasurableSingletonClass Λ₂] [IsProbabilityMeasure PΩ]
+  [IsProbabilityMeasure P₁] [IsProbabilityMeasure P₂] in
+private lemma offWeight_of_ne {a : Λ₁} {b : Λ₂} (h : ¬ π₁ a = π₂ b) :
+    offWeight PΩ P₁ P₂ π₁ π₂ a b = 0 :=
+  Set.indicator_of_notMem (s := {q : Λ₁ × Λ₂ | π₁ q.1 = π₂ q.2}) (a := (a, b)) h _
+
+omit [Countable Ω] [Countable Λ₁] [MeasurableSingletonClass Λ₁] [IsProbabilityMeasure P₁]
+  [IsProbabilityMeasure P₂] in
+/-- The weight (4.53) summed over a `π₂`-fibre: (4.54).  This is the one computation the
+rest of Lemma 4.13 runs on — the total mass (4.55)–(4.56) and both halves of (4.57) are
+one further `tsum` step from it and from its mirror `tsum_offWeight_left`. -/
+private lemma tsum_offWeight_right (h₁ : MeasurePreserving π₁ P₁ PΩ)
+    (h₂ : MeasurePreserving π₂ P₂ PΩ) (a : Λ₁) :
+    ∑' b : Λ₂, offWeight PΩ P₁ P₂ π₁ π₂ a b = P₁ {a} := by
+  have hstep : ∀ b : Λ₂, offWeight PΩ P₁ P₂ π₁ π₂ a b
+      = P₁ {a} / PΩ {π₁ a} * (π₂ ⁻¹' {π₁ a}).indicator (fun b => P₂ {b}) b := by
+    intro b
+    by_cases h : π₁ a = π₂ b
+    · rw [offWeight_of_eq PΩ P₁ P₂ π₁ π₂ h,
+        Set.indicator_of_mem (by simpa [Set.mem_preimage] using h.symm)]
+      simp only [div_eq_mul_inv]
+      ring
+    · rw [offWeight_of_ne PΩ P₁ P₂ π₁ π₂ h,
+        Set.indicator_of_notMem (by simpa [Set.mem_preimage, eq_comm] using h), mul_zero]
+  rw [tsum_congr hstep, ENNReal.tsum_mul_left,
+    Measure.tsum_indicator_apply_singleton P₂ _ (Set.to_countable _).measurableSet,
+    h₂.measure_preimage (measurableSet_singleton _).nullMeasurableSet]
+  by_cases h0 : PΩ {π₁ a} = 0
+  · have hz : P₁ {a} = 0 := by
+      have hle : P₁ {a} ≤ P₁ (π₁ ⁻¹' {π₁ a}) := measure_mono (Set.singleton_subset_iff.2 rfl)
+      rw [h₁.measure_preimage (measurableSet_singleton _).nullMeasurableSet, h0] at hle
+      simpa using hle
+    simp [hz, h0]
+  · exact ENNReal.div_mul_cancel h0 (measure_ne_top _ _)
+
+omit [Countable Ω] [Countable Λ₂] [MeasurableSingletonClass Λ₂] [IsProbabilityMeasure P₁]
+  [IsProbabilityMeasure P₂] in
+/-- (4.54) on the other side: the weight (4.53) summed over a `π₁`-fibre. -/
+private lemma tsum_offWeight_left (h₁ : MeasurePreserving π₁ P₁ PΩ)
+    (h₂ : MeasurePreserving π₂ P₂ PΩ) (b : Λ₂) :
+    ∑' a : Λ₁, offWeight PΩ P₁ P₂ π₁ π₂ a b = P₂ {b} := by
+  have hstep : ∀ a : Λ₁, offWeight PΩ P₁ P₂ π₁ π₂ a b
+      = P₂ {b} / PΩ {π₂ b} * (π₁ ⁻¹' {π₂ b}).indicator (fun a => P₁ {a}) a := by
+    intro a
+    by_cases h : π₁ a = π₂ b
+    · rw [offWeight_of_eq PΩ P₁ P₂ π₁ π₂ h,
+        Set.indicator_of_mem (by simpa [Set.mem_preimage] using h), h]
+      simp only [div_eq_mul_inv]
+      ring
+    · rw [offWeight_of_ne PΩ P₁ P₂ π₁ π₂ h,
+        Set.indicator_of_notMem (by simpa [Set.mem_preimage] using h), mul_zero]
+  rw [tsum_congr hstep, ENNReal.tsum_mul_left,
+    Measure.tsum_indicator_apply_singleton P₁ _ (Set.to_countable _).measurableSet,
+    h₁.measure_preimage (measurableSet_singleton _).nullMeasurableSet]
+  by_cases h0 : PΩ {π₂ b} = 0
+  · have hz : P₂ {b} = 0 := by
+      have hle : P₂ {b} ≤ P₂ (π₂ ⁻¹' {π₂ b}) := measure_mono (Set.singleton_subset_iff.2 rfl)
+      rw [h₂.measure_preimage (measurableSet_singleton _).nullMeasurableSet, h0] at hle
+      simpa using hle
+    simp [hz, h0]
+  · exact ENNReal.div_mul_cancel h0 (measure_ne_top _ _)
+
+omit [Countable Ω] [MeasurableSingletonClass Ω] [Countable Λ₁] [MeasurableSingletonClass Λ₁]
+  [Countable Λ₂] [MeasurableSingletonClass Λ₂] [IsProbabilityMeasure PΩ]
+  [IsProbabilityMeasure P₁] [IsProbabilityMeasure P₂] in
+/-- A sum of (4.53)'s weight over the fibre product, reindexed as an iterated sum over
+`Λ₁` and `Λ₂` with the off-fibre terms killed by `offWeight`. -/
+private lemma tsum_carrier (g : Λ₁ × Λ₂ → ENNReal) :
+    ∑' p : carrier π₁ π₂, canonicalWeight PΩ P₁ P₂ π₁ π₂ p * g (p : Λ₁ × Λ₂)
+      = ∑' (a : Λ₁) (b : Λ₂), offWeight PΩ P₁ P₂ π₁ π₂ a b * g (a, b) := by
+  have hsub : ∑' p : carrier π₁ π₂, canonicalWeight PΩ P₁ P₂ π₁ π₂ p * g (p : Λ₁ × Λ₂)
+      = ∑' q : Λ₁ × Λ₂, Set.indicator {q : Λ₁ × Λ₂ | π₁ q.1 = π₂ q.2}
+          (fun q => P₁ {q.1} * P₂ {q.2} / PΩ {π₁ q.1} * g q) q := by
+    refine (tsum_subtype {q : Λ₁ × Λ₂ | π₁ q.1 = π₂ q.2}
+      (fun q => P₁ {q.1} * P₂ {q.2} / PΩ {π₁ q.1} * g q)).symm.symm.trans ?_
+    rfl
+  rw [hsub, ENNReal.tsum_prod (f := fun a b => Set.indicator {q : Λ₁ × Λ₂ | π₁ q.1 = π₂ q.2}
+    (fun q => P₁ {q.1} * P₂ {q.2} / PΩ {π₁ q.1} * g q) (a, b))]
+  refine tsum_congr fun a => tsum_congr fun b => ?_
+  by_cases h : π₁ a = π₂ b
+  · rw [Set.indicator_of_mem (s := {q : Λ₁ × Λ₂ | π₁ q.1 = π₂ q.2}) (a := (a, b)) h,
+      offWeight_of_eq PΩ P₁ P₂ π₁ π₂ h]
+  · rw [Set.indicator_of_notMem (s := {q : Λ₁ × Λ₂ | π₁ q.1 = π₂ q.2}) (a := (a, b)) h,
+      offWeight_of_ne PΩ P₁ P₂ π₁ π₂ h, zero_mul]
+
+omit [Countable Ω] [IsProbabilityMeasure P₂] in
 /-- (4.55)–(4.56): the total mass of `canonicalMeasure` is `1`. -/
 lemma isProbabilityMeasure_canonicalMeasure
     (h₁ : MeasurePreserving π₁ P₁ PΩ) (h₂ : MeasurePreserving π₂ P₂ PΩ) :
     IsProbabilityMeasure (canonicalMeasure PΩ P₁ P₂ π₁ π₂) := by
-  sorry
+  refine ⟨?_⟩
+  rw [canonicalMeasure, Measure.sum_apply _ MeasurableSet.univ]
+  simp only [Measure.smul_apply, smul_eq_mul, measure_univ, mul_one]
+  have h := tsum_carrier PΩ P₁ P₂ π₁ π₂ (fun _ => 1)
+  simp only [mul_one] at h
+  rw [h, tsum_congr fun a => tsum_offWeight_right PΩ P₁ P₂ π₁ π₂ h₁ h₂ a]
+  simpa using Measure.tsum_indicator_apply_singleton P₁ Set.univ MeasurableSet.univ
 
+omit [Countable Ω] [IsProbabilityMeasure P₁] [IsProbabilityMeasure P₂] in
+/-- The mass `canonicalMeasure` puts on a `ρ₁`-fibre is `P₁` of the point below it: the
+computation behind (4.57). -/
+private lemma canonicalMeasure_preimage_fst (h₁ : MeasurePreserving π₁ P₁ PΩ)
+    (h₂ : MeasurePreserving π₂ P₂ PΩ) (a : Λ₁) :
+    canonicalMeasure PΩ P₁ P₂ π₁ π₂ (carrier.fst π₁ π₂ ⁻¹' {a}) = P₁ {a} := by
+  have hT : MeasurableSet (carrier.fst π₁ π₂ ⁻¹' {a}) :=
+    carrier.measurable_fst (Ω := Ω) π₁ π₂ (measurableSet_singleton a)
+  rw [canonicalMeasure, Measure.sum_apply _ hT]
+  simp only [Measure.smul_apply, smul_eq_mul, Measure.dirac_apply' _ hT]
+  have hind : ∀ p : carrier π₁ π₂,
+      canonicalWeight PΩ P₁ P₂ π₁ π₂ p *
+          (carrier.fst π₁ π₂ ⁻¹' {a}).indicator (1 : carrier π₁ π₂ → ENNReal) p
+      = canonicalWeight PΩ P₁ P₂ π₁ π₂ p *
+          (fun q : Λ₁ × Λ₂ => ({a} : Set Λ₁).indicator (1 : Λ₁ → ENNReal) q.1) (p : Λ₁ × Λ₂) := by
+    intro p
+    by_cases h : carrier.fst π₁ π₂ p = a
+    · simp only [Set.indicator_of_mem (s := carrier.fst π₁ π₂ ⁻¹' {a}) (a := p) h,
+        Set.indicator_of_mem (s := ({a} : Set Λ₁)) (a := (p : Λ₁ × Λ₂).1) h, Pi.one_apply]
+    · simp only [Set.indicator_of_notMem (s := carrier.fst π₁ π₂ ⁻¹' {a}) (a := p) h,
+        Set.indicator_of_notMem (s := ({a} : Set Λ₁)) (a := (p : Λ₁ × Λ₂).1) h]
+  rw [tsum_congr hind,
+    tsum_carrier PΩ P₁ P₂ π₁ π₂ (fun q => ({a} : Set Λ₁).indicator (1 : Λ₁ → ENNReal) q.1),
+    tsum_eq_single a]
+  · simp only [Set.indicator_of_mem (s := ({a} : Set Λ₁)) (a := a) rfl, Pi.one_apply, mul_one]
+    exact tsum_offWeight_right PΩ P₁ P₂ π₁ π₂ h₁ h₂ a
+  · intro c hc
+    simp [Set.indicator_of_notMem (s := ({a} : Set Λ₁)) (a := c) (by simpa using hc)]
+
+omit [Countable Ω] [IsProbabilityMeasure P₁] [IsProbabilityMeasure P₂] in
+/-- The mass `canonicalMeasure` puts on a `ρ₂`-fibre. -/
+private lemma canonicalMeasure_preimage_snd (h₁ : MeasurePreserving π₁ P₁ PΩ)
+    (h₂ : MeasurePreserving π₂ P₂ PΩ) (b : Λ₂) :
+    canonicalMeasure PΩ P₁ P₂ π₁ π₂ (carrier.snd π₁ π₂ ⁻¹' {b}) = P₂ {b} := by
+  have hT : MeasurableSet (carrier.snd π₁ π₂ ⁻¹' {b}) :=
+    carrier.measurable_snd (Ω := Ω) π₁ π₂ (measurableSet_singleton b)
+  rw [canonicalMeasure, Measure.sum_apply _ hT]
+  simp only [Measure.smul_apply, smul_eq_mul, Measure.dirac_apply' _ hT]
+  have hind : ∀ p : carrier π₁ π₂,
+      canonicalWeight PΩ P₁ P₂ π₁ π₂ p *
+          (carrier.snd π₁ π₂ ⁻¹' {b}).indicator (1 : carrier π₁ π₂ → ENNReal) p
+      = canonicalWeight PΩ P₁ P₂ π₁ π₂ p *
+          (fun q : Λ₁ × Λ₂ => ({b} : Set Λ₂).indicator (1 : Λ₂ → ENNReal) q.2) (p : Λ₁ × Λ₂) := by
+    intro p
+    by_cases h : carrier.snd π₁ π₂ p = b
+    · simp only [Set.indicator_of_mem (s := carrier.snd π₁ π₂ ⁻¹' {b}) (a := p) h,
+        Set.indicator_of_mem (s := ({b} : Set Λ₂)) (a := (p : Λ₁ × Λ₂).2) h, Pi.one_apply]
+    · simp only [Set.indicator_of_notMem (s := carrier.snd π₁ π₂ ⁻¹' {b}) (a := p) h,
+        Set.indicator_of_notMem (s := ({b} : Set Λ₂)) (a := (p : Λ₁ × Λ₂).2) h]
+  rw [tsum_congr hind,
+    tsum_carrier PΩ P₁ P₂ π₁ π₂ (fun q => ({b} : Set Λ₂).indicator (1 : Λ₂ → ENNReal) q.2),
+    ENNReal.tsum_comm, tsum_eq_single b]
+  · simp only [Set.indicator_of_mem (s := ({b} : Set Λ₂)) (a := b) rfl, Pi.one_apply, mul_one]
+    exact tsum_offWeight_left PΩ P₁ P₂ π₁ π₂ h₁ h₂ b
+  · intro c hc
+    simp [Set.indicator_of_notMem (s := ({b} : Set Λ₂)) (a := c) (by simpa using hc)]
+
+omit [Countable Ω] [IsProbabilityMeasure P₁] [IsProbabilityMeasure P₂] in
 /-- (4.57): `ρ₁` is probability preserving. -/
 lemma measurePreserving_fst (h₁ : MeasurePreserving π₁ P₁ PΩ)
     (h₂ : MeasurePreserving π₂ P₂ PΩ) :
     MeasurePreserving (carrier.fst π₁ π₂) (canonicalMeasure PΩ P₁ P₂ π₁ π₂) P₁ := by
-  sorry
+  refine ⟨carrier.measurable_fst (Ω := Ω) π₁ π₂, ?_⟩
+  rw [Measure.map_eq_sum _ _ (carrier.measurable_fst (Ω := Ω) π₁ π₂)]
+  simp_rw [canonicalMeasure_preimage_fst PΩ P₁ P₂ π₁ π₂ h₁ h₂]
+  exact P₁.sum_smul_dirac
 
+omit [Countable Ω] [IsProbabilityMeasure P₁] [IsProbabilityMeasure P₂] in
 /-- (4.57), the other side: `ρ₂` is probability preserving. -/
 lemma measurePreserving_snd (h₁ : MeasurePreserving π₁ P₁ PΩ)
     (h₂ : MeasurePreserving π₂ P₂ PΩ) :
     MeasurePreserving (carrier.snd π₁ π₂) (canonicalMeasure PΩ P₁ P₂ π₁ π₂) P₂ := by
-  sorry
+  refine ⟨carrier.measurable_snd (Ω := Ω) π₁ π₂, ?_⟩
+  rw [Measure.map_eq_sum _ _ (carrier.measurable_snd (Ω := Ω) π₁ π₂)]
+  simp_rw [canonicalMeasure_preimage_snd PΩ P₁ P₂ π₁ π₂ h₁ h₂]
+  exact P₂.sum_smul_dirac
 
+omit [Countable Ω] [IsProbabilityMeasure P₂] in
 /-- The fibre product inherits Definition 3.1's **finite entropy** from the two spaces it
 amalgamates.  The fibre product embeds in `Λ₁ × Λ₂`, whose law has finite entropy by
 subadditivity, and finite entropy passes back along an injection
@@ -484,11 +675,9 @@ noncomputable def canonical : LatentAmalgamation.{u, v, w, max u₁ u₂, u₁, 
   ρ₁ := Amalgamation.carrier.fst L₁.π L₂.π
   ρ₁_pres := Amalgamation.measurePreserving_fst M.P L₁.P L₂.P L₁.π L₂.π L₁.π_pres L₂.π_pres
   ρ₁_Y := fun _ => Filter.Eventually.of_forall fun _ => rfl
-  ρ₁_π := Filter.Eventually.of_forall fun _ => rfl
   ρ₂ := Amalgamation.carrier.snd L₁.π L₂.π
   ρ₂_pres := Amalgamation.measurePreserving_snd M.P L₁.P L₂.P L₁.π L₂.π L₁.π_pres L₂.π_pres
   ρ₂_Y := fun _ => Filter.Eventually.of_forall fun _ => rfl
-  ρ₂_π := Filter.Eventually.of_forall fun _ => rfl
   comm := Filter.Eventually.of_forall fun p => p.2
 
 end LatentAmalgamation

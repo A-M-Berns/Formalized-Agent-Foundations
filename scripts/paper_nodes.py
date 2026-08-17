@@ -148,38 +148,197 @@ def following_declaration(code, end_line, last_line):
     return first_line, None, None
 
 
+INVENTORY_COMMAND = re.compile(r"#assert_[A-Za-z_][A-Za-z0-9_]*")
+
+# Tokens that are identifier-shaped but are Lean syntax, not declaration names.  A
+# declaration accidentally written inside the marker block is the failure this list
+# exists to catch: `lemma foo : True := trivial` is four identifier-shaped tokens, and
+# an inventory reader that merely filters on `IDENT` absorbs all four — after which the
+# gate believes `foo` is axiom-checked when nothing checks it.  A *qualified* name is
+# never bare-equal to one of these (`Condensation.end` is one token, not `end`), so
+# rejecting the bare forms cannot reject a real entry.
+INVENTORY_KEYWORDS = frozenset({
+    "abbrev", "attribute", "axiom", "by", "class", "declare_syntax_cat", "def",
+    "deriving", "do", "elab", "else", "end", "example", "extends", "fun", "have",
+    "if", "import", "in", "inductive", "infix", "infixl", "infixr", "initialize",
+    "instance", "let", "local", "macro", "macro_rules", "match", "mutual",
+    "namespace", "nonrec", "notation", "noncomputable", "opaque", "open", "partial",
+    "postfix", "prefix", "private", "protected", "scoped", "section", "set_option",
+    "structure", "syntax", "then", "theorem", "lemma", "unsafe", "variable",
+    "variables", "where", "with",
+})
+
+
+class Inventory:
+    """The parse of one `-- <BLOCK>-BEGIN/END` `#assert_axioms_clean` block.
+
+    `names` is the set of declaration names the block's `#assert_axioms_clean` command
+    checks.  `problems` is a list of ready-to-print violation messages, one per token
+    that is not legitimately part of an `#assert_*` command, already carrying
+    `path:line:` — a caller reports them as violations rather than absorbing them, so a
+    Lean declaration written inside the markers cannot silently disarm the gate.
+    """
+
+    __slots__ = ("names", "problems")
+
+    def __init__(self, names, problems):
+        self.names = names
+        self.problems = problems
+
+
 def read_inventory(audit_path, block):
-    """Identifier tokens of `block`'s (`CF`/`MA`) `#assert_axioms_clean` command."""
+    """Parse `block`'s `#assert_axioms_clean` command into an `Inventory`.
+
+    Returns `None` when the markers are absent, otherwise an `Inventory`.  The block
+    body (comments stripped) is tokenised and every token must be one of:
+
+    * an `#assert_*` command;
+    * an identifier-shaped declaration name inside such a command's argument list — the
+      names of `#assert_axioms_clean` are what `Inventory.names` collects, and the
+      arguments of any other `#assert_*` command are accepted but not collected, exactly
+      as before;
+    * a well-formed `open <Namespace>… in` prefix group immediately preceding an
+      `#assert_*` command.
+
+    Anything else — a Lean keyword, an `@[…]` attribute, a non-identifier token, a
+    stray name before any command — is a violation reported in `Inventory.problems`,
+    and it *disarms* the command it interrupted: every following token is rejected too
+    until the next `#assert_*` command.  That cascade is the point.  Rejecting only the
+    keyword of a smuggled `lemma foo : True := trivial` would still let `foo`, `True`
+    and `trivial` into `names`, which is most of the original hole; disarming rejects
+    all four and collects none.
+
+    No `-BEGIN/-END` block in this repository contains an `open … in` prefix today; it
+    is permitted (only in that strict prefix position, never inside an argument list)
+    because `#assert_axioms_clean` may legitimately need one, and rejecting it there
+    would be a trap for a later editor rather than a protection.
+    """
     audit_text = Path(audit_path).read_text()
     match = re.search(rf"-- {block}-BEGIN(.*?)-- {block}-END", audit_text, re.S)
     if match is None:
         return None
-    body = re.sub(r"--[^\n]*", "", match.group(1))
-    inventory: set[str] = set()
+    first_line = audit_text.count("\n", 0, match.start(1)) + 1
+    names: set[str] = set()
+    problems: list[str] = []
+
+    def reject(lineno, token, why):
+        # One contaminating token disarms the rest of the command, so a smuggled
+        # declaration reports many lines.  Spell the rationale out on the first one
+        # only; repeating it fourteen times buries the token that actually caused it.
+        rationale = "" if problems else (
+            f".  The {block} block may hold nothing but `#assert_*` commands, the "
+            f"declaration names they check, and an `open … in` prefix before a command; "
+            f"anything else — a Lean declaration written inside the markers, say — "
+            f"would be absorbed into the inventory and silently disarm the gate.  Every "
+            f"token after this one is rejected too, until the next `#assert_*` command"
+        )
+        problems.append(
+            f"{audit_path}:{lineno}: INVENTORY BLOCK CONTAMINATED: {token!r} {why}"
+            f"{rationale}"
+        )
+
     command = None
-    for token in body.split():
-        if token.startswith("#"):
-            command = token
-        elif command == "#assert_axioms_clean" and re.fullmatch(IDENT, token):
-            inventory.add(token)
-    return inventory
+    # Set once a token has been rejected, and cleared by the next `#assert_*` command.
+    # Rejecting the keyword alone is not enough: `lemma foo : True := trivial` would
+    # still contribute `foo`, `True` and `trivial`, which is most of the original hole.
+    # A contaminating token therefore disarms the rest of the command's argument list,
+    # so every token of the smuggled declaration is reported and none is collected.
+    disarmed = False
+    # `None` outside an `open … in` prefix; `'names'` while consuming the namespaces;
+    # `'in'` once `in` is seen and the next token must be the command it prefixes.
+    open_state = None
+    for offset, raw in enumerate(match.group(1).split("\n")):
+        lineno = first_line + offset
+        for token in re.sub(r"--[^\n]*", "", raw).split():
+            if open_state == "names":
+                if token == "in":
+                    open_state = "in"
+                elif re.fullmatch(IDENT, token) and token not in INVENTORY_KEYWORDS:
+                    pass  # a namespace being opened
+                else:
+                    open_state, disarmed = None, True
+                    reject(lineno, token,
+                           "is not a namespace name inside an `open … in` prefix")
+                continue
+            if open_state == "in":
+                open_state = None
+                if INVENTORY_COMMAND.fullmatch(token):
+                    command, disarmed = token, False
+                else:
+                    disarmed = True
+                    reject(lineno, token, "follows an `open … in` prefix but is not an "
+                                          "`#assert_*` command")
+                continue
+            if token.startswith("#"):
+                if INVENTORY_COMMAND.fullmatch(token):
+                    command, disarmed = token, False
+                else:
+                    command, disarmed = None, True
+                    reject(lineno, token, "is not an `#assert_*` command")
+                continue
+            if token == "open":
+                command, disarmed = None, False
+                open_state = "names"
+                continue
+            if token.startswith("@[") or token in INVENTORY_KEYWORDS:
+                command, disarmed = None, True
+                reject(lineno, token,
+                       "is Lean syntax (a keyword or attribute), not a declaration name")
+                continue
+            if not re.fullmatch(IDENT, token):
+                command, disarmed = None, True
+                reject(lineno, token, "is not identifier-shaped")
+                continue
+            if command is None:
+                reject(lineno, token,
+                       "follows a rejected token, so it is not inside an `#assert_*` "
+                       "command's argument list" if disarmed else
+                       "appears before any `#assert_*` command")
+                continue
+            if command == "#assert_axioms_clean":
+                names.add(token)
+    if open_state is not None:
+        problems.append(
+            f"{audit_path}:{first_line}: INVENTORY BLOCK CONTAMINATED: the {block} "
+            f"block ends inside an unfinished `open … in` prefix"
+        )
+    return Inventory(names, problems)
 
 
 class Pending:
     """The parse of one `-- <BLOCK>-BEGIN/END` staging block.
 
     `entries` maps each staged declaration name to the reason given for it (the rest of
-    its line, with a leading `--` peeled off).  `problems` is a list of ready-to-print
-    violation messages, one per malformed line, already carrying `path:line:` — a caller
-    reports them as violations rather than silently dropping the lines, so the block
-    cannot degrade into a place to hide things.
+    its line, with a leading `--` peeled off).  `consumers` is the same mapping for the
+    block's `SECTION: consumers` half: declarations that depend on a `sorry` but carry
+    no `Paper node:` annotation of their own, so they are not endpoints and the
+    endpoint-coverage rules do not apply to them, yet the ledger must still name them.
+    A block with no section marker leaves `consumers` empty.
+
+    `problems` is a list of ready-to-print violation messages, one per malformed line,
+    already carrying `path:line:` — a caller reports them as violations rather than
+    silently dropping the lines, so the block cannot degrade into a place to hide
+    things.
     """
 
-    __slots__ = ("entries", "problems")
+    __slots__ = ("entries", "consumers", "problems")
 
-    def __init__(self, entries, problems):
+    def __init__(self, entries, problems, consumers=None):
         self.entries = entries
         self.problems = problems
+        self.consumers = {} if consumers is None else consumers
+
+
+PENDING_SECTION = re.compile(r"^SECTION:\s*(\S.*)$")
+# The section a `-- SECTION: <label>` line switches to, keyed by the label's first word
+# (so `SECTION: consumers (un-annotated)` and a bare `SECTION: consumers` are the same
+# section, and the parenthetical is free prose).
+PENDING_SECTIONS = {
+    "annotated": "entries",
+    "consumers": "consumers",
+    "endpoints": "entries",
+    "main": "entries",
+}
 
 
 def read_pending(audit_path, block):
@@ -198,6 +357,20 @@ def read_pending(audit_path, block):
     is identifier-shaped (that token is the declaration name) and which gives a non-empty
     reason after that name, and names no declaration twice; each line failing any of
     those is reported in `Pending.problems` rather than skipped.
+
+    The block has a second, optional half, opened by a section line:
+
+        -- SECTION: consumers (un-annotated)
+        -- Condensation.LatentModel.entropy_joint_le_condScore  -- consumes (4.7)-(4.9)
+
+    Its lines obey exactly the same rules and land in `Pending.consumers` instead, and
+    a name may not be repeated across the two halves.  The section is for declarations
+    that depend on a `sorry` but carry *no* `Paper node:` annotation: they are not
+    endpoints, so the endpoint rules do not apply to them, but the sorry-ledger must
+    still be able to name them.  The section-line test runs *before* the declaration-name
+    test, since `SECTION` is itself identifier-shaped and would otherwise parse as a
+    staged declaration called `SECTION`.  A block with no section line parses exactly as
+    it did before this half existed.
     """
     audit_text = Path(audit_path).read_text()
     match = re.search(rf"-- {block}-BEGIN(.*?)-- {block}-END", audit_text, re.S)
@@ -205,7 +378,9 @@ def read_pending(audit_path, block):
         return None
     first_line = audit_text.count("\n", 0, match.start(1)) + 1
     entries: dict[str, str] = {}
+    consumers: dict[str, str] = {}
     problems: list[str] = []
+    current = entries
     for offset, raw in enumerate(match.group(1).split("\n")):
         lineno = first_line + offset
         line = raw.strip()
@@ -218,6 +393,20 @@ def read_pending(audit_path, block):
             )
             continue
         content = line[2:].strip()
+        section_match = PENDING_SECTION.match(content)
+        if section_match is not None:
+            label = section_match.group(1).strip()
+            key = re.split(r"[^A-Za-z]", label, 1)[0].lower()
+            target = PENDING_SECTIONS.get(key)
+            if target is None:
+                problems.append(
+                    f"{audit_path}:{lineno}: UNKNOWN PENDING SECTION: {label!r} is not a "
+                    f"section of the {block} block; the known sections are "
+                    + ", ".join(sorted(PENDING_SECTIONS))
+                )
+                continue
+            current = consumers if target == "consumers" else entries
+            continue
         name_match = re.match(rf"({IDENT})", content)
         if name_match is None:
             problems.append(
@@ -233,14 +422,14 @@ def read_pending(audit_path, block):
                 f"the {block} block with no reason given"
             )
             continue
-        if name in entries:
+        if name in entries or name in consumers:
             problems.append(
                 f"{audit_path}:{lineno}: DUPLICATE PENDING ENTRY: {name!r} is staged "
                 f"twice in the {block} block"
             )
             continue
-        entries[name] = reason
-    return Pending(entries, problems)
+        current[name] = reason
+    return Pending(entries, problems, consumers)
 
 
 def library_sources(root_module, lib_dir):
@@ -344,9 +533,18 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
     pending block that survives all of that is reported as a *note*, never a failure;
     an absent block is a note too, since a paper may legitimately stage nothing.
 
+    The pending block's optional `SECTION: consumers` half is checked by its own rules,
+    since its names are by construction *not* endpoints: a consumer must name a real
+    declaration under `lib`, must **not** carry a `Paper node:` annotation (one that
+    acquires an annotation is an endpoint and moves into the main section — a
+    violation), and must not be inventoried.  Consumers never satisfy the annotated
+    endpoints' coverage rule; they only keep the ledger complete, so
+    `scripts/check_sorry_ledger.py` can demand that every `sorryAx`-dependent
+    declaration is named somewhere.
+
     `paper_status`, when given, is the paper's registered status.  `'completed'` with a
-    non-empty pending set is a violation: staging is a mid-flight device, and a finished
-    paper has every endpoint inside the axiom gate.
+    non-empty pending set (in *either* section) is a violation: staging is a mid-flight
+    device, and a finished paper has every endpoint inside the axiom gate.
     """
     violations: list[str] = []
     notes: list[str] = []
@@ -354,12 +552,15 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
     if empty_source_message is not None and not source_nodes:
         violations.append(empty_source_message)
 
-    inventory = read_inventory(audit, inventory_block)
-    inventory_missing = inventory is None
+    inventory_parse = read_inventory(audit, inventory_block)
+    inventory_missing = inventory_parse is None
     if inventory_missing:
         inventory = set()
         if inventory_required:
             violations.append(f"{audit}: missing {inventory_block}-BEGIN/END markers")
+    else:
+        inventory = inventory_parse.names
+        violations += inventory_parse.problems
     resolved = inventory if root_prefix is None else (
         inventory | {f"{root_prefix}.{entry}" for entry in inventory})
 
@@ -368,6 +569,7 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
         return {entry} if root_prefix is None else {entry, f"{root_prefix}.{entry}"}
 
     pending_names: set[str] = set()
+    consumer_names: set[str] = set()
     resolved_pending: set[str] = set()
     if pending_block is not None:
         pending = read_pending(audit, pending_block)
@@ -379,6 +581,7 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
         else:
             violations += pending.problems
             pending_names = set(pending.entries)
+            consumer_names = set(pending.consumers)
             for entry in pending_names:
                 resolved_pending |= forms_of(entry)
 
@@ -388,12 +591,27 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
     annotated_nodes: set[str] = set()
     annotated_qualified: set[str] = set()
     annotated_carriers = 0
+    # Every declaration name under the library, collected only when the pending block
+    # has a consumers section to check against it — the consumers rule is the one check
+    # that needs the *unannotated* declarations too.
+    declared_qualified: set[str] = set()
 
     for path in library_sources(root_module, lib):
         text = path.read_text()
         lines = text.splitlines()
         code, docs = scan(text)
         prefixes = namespace_prefixes(code, len(lines))
+
+        if consumer_names:
+            for lineno in range(1, len(lines) + 1):
+                chunk = code.get(lineno, "").strip()
+                if not chunk or not DECL.match(chunk):
+                    continue
+                decl_line, _, name = following_declaration(code, lineno, len(lines))
+                if not name:
+                    continue
+                prefix = prefixes.get(decl_line, "")
+                declared_qualified.add(f"{prefix}.{name}" if prefix else name)
 
         # Every `Paper node:` occurrence, and the docstring (if any) containing it.
         for lineno, line in enumerate(lines, start=1):
@@ -470,11 +688,35 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
                 f"stages"
             )
 
-    if paper_status == "completed" and pending_names:
+    for entry in sorted(consumer_names):
+        if forms_of(entry) & resolved:
+            violations.append(
+                f"{audit}: PENDING ENTRY ALSO INVENTORIED: {entry!r} is listed in both "
+                f"the {inventory_block} block and the {pending_block} block of {audit}; "
+                f"an endpoint is either axiom-checked or proof-pending, not both"
+            )
+        if forms_of(entry) & annotated_qualified:
+            violations.append(
+                f"{audit}: ANNOTATED CONSUMER: {entry!r} is listed in the "
+                f"{pending_block} block's consumers section, which is for declarations "
+                f"carrying no '{MARKER}' annotation, but it now carries one; a consumer "
+                f"that becomes an endpoint moves into the block's main section"
+            )
+        elif not (forms_of(entry) & declared_qualified):
+            violations.append(
+                f"{audit}: STALE PENDING ENTRY: {entry!r} is listed in the "
+                f"{pending_block} block's consumers section but names no declaration "
+                f"under {lib}/; staging must not outlive what it stages"
+            )
+
+    if paper_status == "completed" and (pending_names or consumer_names):
+        staged = (f"{len(pending_names)} endpoint(s) are staged as proof-pending"
+                  if not consumer_names else
+                  f"{len(pending_names)} endpoint(s) are staged as proof-pending and "
+                  f"{len(consumer_names)} un-annotated consumer(s) are listed")
         violations.append(
             f"{audit}: PENDING BLOCK NON-EMPTY: paper status is 'completed' but "
-            f"{len(pending_names)} endpoint(s) are staged as proof-pending; a completed "
-            f"paper has no pending endpoints"
+            f"{staged}; a completed paper has no pending endpoints"
         )
 
     if scope_manifest is not None:
@@ -514,9 +756,12 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
                 f"declaration onwards."
             )
 
-    if pending_names and not violations:
+    if (pending_names or consumer_names) and not violations:
         notes.append(
-            f"note: {len(pending_names)} endpoints pending (sorry) — not axiom-checked")
+            f"note: {len(pending_names)} endpoints pending (sorry)"
+            + (f" + {len(consumer_names)} un-annotated consumers" if consumer_names
+               else "")
+            + " — not axiom-checked")
 
     for entry in notes:
         print(entry)

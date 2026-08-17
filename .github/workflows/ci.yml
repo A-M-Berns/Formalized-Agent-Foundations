@@ -16,6 +16,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Blocking, and first: the unit tests for scripts/paper_nodes.py, the shared
+      # reader that every node checker below depends on. Needs neither Lean nor network.
+      # These guard two silently-disarming holes that reviews did not catch. The audit
+      # inventory reader used to absorb *every* identifier-shaped token after
+      # `#assert_axioms_clean`, so a declaration written inside the marker block --
+      # `lemma foo : True := trivial` -- contributed `lemma`, `foo`, `True` and
+      # `trivial` to the inventory, after which the gate believed `foo` was axiom-checked
+      # when nothing checked it. The pending-block reader had the mirror hazard once the
+      # block grew a `SECTION:` line, `SECTION` being identifier-shaped itself. A checker
+      # that passes because it is checking nothing is worse than no checker, so the
+      # reader's own tests gate the run before the checkers that trust it.
+      - name: Test paper-node readers
+        run: python3 scripts/test_paper_nodes.py
+
       # Blocking: the theorem/lemma sweep has landed and the linter is clean
       # (CLAUDE.md "Working conventions"). Every `theorem` in LogicalInduction/ must
       # carry a paper label, every CF `theorem` a numbered node, and no `private
@@ -85,3 +99,24 @@ jobs:
         with:
           use-mathlib-cache: true
           use-github-cache: true
+
+      # Blocking, and it MUST run after the build: this gate asks Lean itself which
+      # Condensation declarations depend on `sorryAx`, and fails unless every one of
+      # them is named in AxiomAudit.lean's CONDENSATION-PENDING block (either section).
+      # It only *reads* the oleans the build step produced — it never invokes `lake
+      # build` — so before that step there is nothing to read and it would report an
+      # infrastructure failure. That is why it cannot sit with the other Python checkers
+      # above, which need neither Lean nor a build.
+      #
+      # Why it exists: `#assert_axioms_clean` reaches exactly the names someone
+      # remembered to type into it, so a `sorry` in a fresh lemma, in an un-annotated
+      # helper, or reintroduced into a finished proof was invisible to every other gate
+      # here. It checks both directions — an unrecorded `sorry`, and a ledger entry that
+      # outlived the `sorry` it excused (which would leave a proved endpoint parked
+      # outside the axiom gate).
+      #
+      # Exit 2 means infrastructure, not a ledger violation: Lean did not run, produced
+      # no parseable report, or an olean was momentarily absent because a build was
+      # writing the same checkout concurrently. Re-run rather than editing the ledger.
+      - name: Check Condensation sorry ledger (post-build; reads the built oleans)
+        run: python3 scripts/check_sorry_ledger.py

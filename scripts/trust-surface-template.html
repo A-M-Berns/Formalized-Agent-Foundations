@@ -105,11 +105,20 @@ h2.paper-head { font-family: var(--serif); font-size: 26px; margin: 0 0 2px;
 .lens { border-left: 3px solid var(--accent); padding: 2px 0 2px 14px; margin: 10px 0; }
 .lens b { color: var(--accent-ink); }
 .legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 4px; }
-.tier { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; padding: 2px 9px;
+.tier, .staged { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; padding: 2px 9px;
   border-radius: 999px; white-space: nowrap; }
 .tier.universal { background: var(--uni-bg); color: var(--accent-ink); }
 .tier.instantiated { background: var(--ins-bg); color: var(--ins-ink); }
 .tier.qualified { background: var(--qual-bg); color: var(--qual); }
+/* A declaration whose *statement* is final but whose proof is still `sorry`, staged in
+   the paper's `-PENDING` comment block of AxiomAudit.lean rather than gated by
+   `#assert_axioms_clean`.  Same pill as a tier badge, in the page's warning colour;
+   `.proved` is its axiom-checked opposite, and both are drawn on every declaration of a
+   paper that stages anything, so neither state is the absence of a mark. */
+.staged { background: var(--qual-bg); color: var(--qual); font-size: 10px; }
+.staged.proved { background: var(--uni-bg); color: var(--accent-ink); }
+.node-head .staged { font-size: 11px; }
+.dot.staged { background: var(--qual); }
 .count { font-variant-numeric: tabular-nums; }
 .no-tier { border-left: 3px solid var(--qual); background: var(--qual-bg);
   color: var(--paper-ink); padding: 10px 14px; margin: 14px 0; border-radius: 0 4px 4px 0; }
@@ -544,14 +553,22 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 
   <div class="method">
     <div class="no-tier"><b>This formalization is in progress, and no strength
-    classification exists for this paper.</b> It is at milestone M0 — repository wiring
-    and the §2/§3 statements — so nothing in this section is claimed proved, and a card
-    appearing here asserts only that the Lean statement shown is the one intended to
-    carry that paper node. The paper's scope is settled at 42 numbered nodes; Examples
-    5.1–5.3 are <em>proposed</em> out of scope pending a ruling, and the standing
-    modelling narrowing <code>dd:finite-range</code> — every random variable of a model
-    has finite range, rather than merely countable discrete range with finite entropy —
-    is disclosed in <code>Condensation/README.md</code> and at every model structure.
+    classification exists for this paper.</b> It is at milestone M1 — a final statement
+    for every in-scope node, with a tranche of the proofs still <code>sorry</code> — so a
+    card appearing here asserts that the Lean statement shown is the one intended to
+    carry that paper node, and no more than that until the badge on its declaration says
+    <span class="staged proved">axiom-clean</span>. The legend below the fold says what
+    each badge means and counts both. The paper's scope is settled at 42 numbered nodes; Examples
+    5.1–5.3 are <em>proposed</em> out of scope pending a ruling. There is <b>no modelling
+    substitution</b>: <code>Condensation.RVModel</code> is Definition 3.1 verbatim,
+    including its "with finite entropy" clause on the sample space. The narrowing
+    <code>dd:finite-range</code> — every random variable of a model has finite range,
+    rather than merely countable discrete range with finite entropy — was disclosed here
+    until 2026-08-17 and was <b>retired</b> that day, when the substrate
+    <code>ShannonInformation/FiniteEntropy/</code> reached the corpus this development
+    needs; <code>Condensation/KNOWLEDGE.md</code>'s disclosures list is empty, and
+    <code>Condensation.Example.geomModel</code> (a geometric variable on <code>ℕ</code>,
+    provably not finite-range) is the witness that the model class genuinely grew.
     Numbered nodes with no Lean statement annotated to them: %%CD_MISSING%%.</div>
 
     <h3>How nodes are cited</h3>

@@ -1727,7 +1727,8 @@ Nodes are cited by printed number (`Paper node: \`Definition 3.1\``) read off th
 text extraction `Condensation/notes/condensation-25-07.txt`; `scripts/check-condensation-nodes.py`
 enforces validity, anchoring, and that every annotated declaration appears in one of the
 two blocks below.  Status: **in progress** (M1 — statements for §2, §3, §3.1, §4 and §5;
-twenty proofs still `sorry`).  Nothing here is claimed complete; the roadmap is
+seventeen proofs still `sorry`, every one of them inside a declaration that carries a
+paper-node annotation, and `scripts/check_sorry_ledger.py` is what asserts that).  Nothing here is claimed complete; the roadmap is
 `Condensation/notes/roadmap.md`.  There are **no** residual modeling substitutions: the
 `dd:finite-range` narrowing was retired on 2026-08-17, and `Condensation.RVModel` is now
 Definition 3.1 verbatim — a countable discrete probability space *with finite entropy*
@@ -1748,6 +1749,17 @@ ordinary axiom gate.  The `CONDENSATION-PENDING` block that follows it is **pure
 comment** — it compiles to nothing and asserts nothing — and names, one per line with a
 reason, every annotated endpoint that is not yet axiom-clean.  It is a declaration of
 intent, not a discharge.
+
+The pending block has **two sections**, separated by a `-- SECTION: …` marker line.  The
+first names annotated endpoints.  The second, `consumers (un-annotated)`, names
+declarations that depend on `sorryAx` but carry no `Paper node:` line at all — small
+consequences of a staged theorem, which are not claims about the paper and so cannot be
+annotated, but which a reader must still not mistake for proved.  Round 2 found three of
+them living outside both blocks (R2-F22), which is precisely the drift the ledger exists to
+prevent; `scripts/check_sorry_ledger.py` now enumerates every `sorryAx`-dependent
+declaration of the library from the compiled environment and fails on any that is named in
+neither section, so the two sections together are mechanically complete rather than
+maintained by hand.
 
 `scripts/check-condensation-nodes.py` (via the generic `pending_block` support in
 `scripts/paper_nodes.py`, available to any paper) accepts an annotated declaration listed
@@ -1801,7 +1813,16 @@ same commit as the proof. -/
   -- proofs are finished.  Proposition 4.2 is three separate inequalities and only two of
   -- them are here -- the middle one, (4.7)-(4.9), is staged below, and Corollary 4.6 with
   -- it, since Corollary 4.6's proof consumes it.  Definitions 4.11 and 4.12 are structures
-  -- and are clean as such; Lemma 4.13's *construction* over them is staged below.
+  -- and are clean as such.
+  --
+  -- **Lemma 4.13 is complete as of 2026-08-17.**  Its three supporting measure lemmas --
+  -- (4.55)-(4.56) total mass and both halves of (4.57) -- were the library's last
+  -- un-annotated `sorry`s, and were discharged against Mathlib's
+  -- `Measure.sum_smul_dirac_singleton` / `Measure.sum_smul_dirac` and the (4.53) weight
+  -- rewritten as an indicator on `Λ₁ × Λ₂`.  All four of its carriers -- the two `canonical`
+  -- constructions and the two existence statements -- are therefore inventoried here
+  -- rather than staged, and every remaining `sorry` in the library now sits inside a
+  -- declaration that carries a paper-node annotation.
   Condensation.LatentModel.simpleScore_ge_condScore
   Condensation.LatentModel.entropy_jointContrib_ge_entropy_joint
   Condensation.LatentModel.PerfectlyCondenses Condensation.LatentModel.SimplyPerfectlyCondenses
@@ -1809,6 +1830,8 @@ same commit as the proof. -/
   Condensation.LatentModel.aeFunctionOf_iff_isEquivalence_contribModel
   Condensation.RVModel.OrderedMarkov
   Condensation.Amalgamation Condensation.LatentAmalgamation
+  Condensation.Amalgamation.canonical Condensation.nonempty_amalgamation
+  Condensation.LatentAmalgamation.canonical Condensation.nonempty_latentAmalgamation
   Condensation.Example41.L₁ Condensation.Example41.L₂
   Condensation.Example44.M44 Condensation.Example44.L44
   -- §5 (Condensation/Quantitative.lean): Lemma 5.4 in both printed forms, Definition 5.5's
@@ -1816,6 +1839,14 @@ same commit as the proof. -/
   -- intersections (5.11), Proposition 5.7 in full (existence and uniqueness of the
   -- extension of a leaf labelling), and Corollary 5.10's (5.24).  Theorem 5.8, Corollary
   -- 5.9 and Corollary 5.10's (5.25) are staged below.
+  --
+  -- Proposition 5.7 is the **`M`-version** since 2026-08-17 (R2-F08/F11): the paper's `ℓ̃`
+  -- maps the leaves *into an intersection-closed collection `M`* and the unique extension
+  -- is a function `ℓ : V → M`, so `existsUnique_intersectionTree` now takes `M`, its
+  -- closure under `⊓`, and `t.LabelsIn M`, and concludes with `d.LabelsIn M` as a third
+  -- conjunct.  The earlier ambient-lattice statement is kept, un-annotated, as
+  -- `existsUnique_intersectionTree_ambient` in the machinery block below; it is not
+  -- Proposition 5.7.
   Condensation.condEntropy_eq_of_pair Condensation.condEntropy_le_of_pair
   Condensation.polar
   Condensation.ITree Condensation.ITree.label Condensation.ITree.intersections
@@ -1839,10 +1870,6 @@ same commit as the proof. -/
 -- Condensation.RVModel.orderedMarkov_iff                       -- M2: Proposition 4.10 (4.38); same chain rule
 -- Condensation.LatentModel.perfect_tfae_A                      -- M2: Theorem 4.9 (A1)-(A3); same chain rule
 -- Condensation.LatentModel.perfect_tfae_B                      -- M2: Theorem 4.9 (B1) iff (B2); same chain rule
--- Condensation.Amalgamation.canonical                          -- M2: Lemma 4.13; consumes the three staged measure lemmas of (4.53)
--- Condensation.nonempty_amalgamation                           -- M2: Lemma 4.13, existence for a cospan
--- Condensation.LatentAmalgamation.canonical                    -- M2: Lemma 4.13, the latent-model form
--- Condensation.nonempty_latentAmalgamation                     -- M2: Lemma 4.13, existence for two latent models
 -- Condensation.aeFunctionOf_of_condIndepFun                    -- M2: Lemma 4.14
 -- Condensation.aeFunctionOf_jointAbove_of_perfectlyCondenses   -- M2: Theorem 4.15; the induction is not in the paper (errata 5)
 -- Condensation.condEntropy_jointAbove_le                       -- M2: Theorem 5.8 (5.13)
@@ -1850,6 +1877,16 @@ same commit as the proof. -/
 -- Condensation.condEntropy_jointAbove_le_reconScore            -- M2: Corollary 5.9 (5.21)
 -- Condensation.condEntropy_jointAbove_le_reconScore_of_orderedMarkov -- M2: Corollary 5.9 (5.22)
 -- Condensation.condEntropy_jointAbove_le_choose                -- M2: Corollary 5.10 (5.25)
+-- Condensation.Example41.L₁_simpleScore                        -- M2: Example 4.1, equation (4.2)
+-- Condensation.Example41.L₁_condScore                          -- M2: Example 4.1, equation (4.3)
+-- Condensation.Example41.L₂_simpleScore                        -- M2: Example 4.1, equation (4.4) (errata 11: takes A.Nonempty)
+-- Condensation.Example41.L₂_condScore                          -- M2: Example 4.1, equation (4.5) (errata 11: takes A.Nonempty)
+-- Condensation.Example44.entropy_joint_eq                      -- M2: Example 4.4, equation (4.11); needs joint independence
+-- Condensation.Example44.simplyPerfectlyCondenses              -- M2: Example 4.4's conclusion; immediate from (4.11)
+-- SECTION: consumers (un-annotated)
+-- Condensation.LatentModel.entropy_joint_le_condScore          -- consumes Proposition 4.2's staged inequality (4.7)-(4.9)
+-- Condensation.LatentModel.entropy_joint_le_simpleScore        -- consumes Proposition 4.2's staged inequality, via entropy_joint_le_condScore
+-- Condensation.LatentModel.PerfectlyCondenses.of_simply        -- consumes Proposition 4.2's staged inequality, via entropy_joint_le_condScore
 -- CONDENSATION-PENDING-END
 
 /-! Tier-2 boundary structures for the Condensation surface.
@@ -1881,9 +1918,19 @@ freezing its two fields freezes the two clauses of Definition 3.10.
 `LatentAmalgamation`'s field list is long because Definition 4.12's "two latent variable
 models with underlying probability space `Λ₀`" is rendered with `Λ₀` primary and the two
 models *derived* (`lat₁`, `lat₂`), which is what makes their carrier `Λ₀` definitionally
-rather than by a transported type equality.  Its last field, `comm`, is **not** read off
-Definition 4.12: nothing in the printed clause ties `π̃₁` to `π̃₂`, and Theorem 4.15 needs
-them to agree almost everywhere (`Condensation/notes/paper-errata.md` entry 10). -/
+rather than by a transported type equality.  Its last field, `comm`, is the **only** one
+not read off Definition 4.12: nothing in the printed clause ties `π̃₁` to `π̃₂`, and Theorem
+4.15 needs them to agree almost everywhere (`Condensation/notes/paper-errata.md` entry 10).
+
+What the list no longer contains is the point of the 2026-08-17 freeze (R2-F12/F20).  Two
+fields `ρ₁_π`/`ρ₂_π`, saying `Lₖ.π ∘ ρₖ = π̃ₖ` almost everywhere, were deleted: Definition
+4.12(3)'s `ρₖ` are morphisms in the sense of **Definition 3.5**, i.e. of the underlying
+*random variable* models, whose only conditions are "probability preserving" and
+`fⱼ(X_{ι(j)}) = ρₖ^* Yⱼ` a.e.  The paper defines no morphism of *latent* variable models
+and asks for no compatibility with the maps to `Ω`, so those fields were a strengthening of
+the printed data.  What survives of clause (3) is exactly `ρₖ_pres` and `ρₖ_Y`.  A future
+change that reintroduces either field is a faithfulness regression, and this freeze is what
+catches it. -/
 #assert_fields Condensation.RVModel.Hom
   π π_pres ι f eq_ae
 #assert_fields Condensation.RVModelObj
@@ -1896,7 +1943,7 @@ them to agree almost everywhere (`Condensation/notes/paper-errata.md` entry 10).
   Λ₀ mΛ₀ countΛ₀ singΛ₀ P₀ probP₀ finiteEntropy_Λ₀
   Y₁ measurable_Y₁ finiteEntropy_Y₁ «π₁» π₁_pres contributes₁
   Y₂ measurable_Y₂ finiteEntropy_Y₂ «π₂» π₂_pres contributes₂
-  «ρ₁» ρ₁_pres ρ₁_Y ρ₁_π «ρ₂» ρ₂_pres ρ₂_Y ρ₂_π comm
+  «ρ₁» ρ₁_pres ρ₁_Y «ρ₂» ρ₂_pres ρ₂_Y comm
 
 /-! ## Consumer API conveniences (not paper endpoint inventories)
 
@@ -2100,13 +2147,20 @@ open Condensation in
   -- their own.
   Condensation.LatentModel.pullbackModel Condensation.LatentModel.contribModel
   Condensation.LatentModel.aeFunctionOf_jointContrib_pullbackJoint
-  -- `Amalgamation.lean`: the derived halves of Definition 4.12.  `lat₁`/`lat₂` are the two
-  -- latent variable models the definition names; their underlying space is `Λ₀`
-  -- definitionally, which is what Theorem 4.15 needs.  `comm_ρ` is the square (4.43) as it
-  -- survives inside Definition 4.12 -- a.e., because Definition 3.5's conditions are a.e.
+  -- `Amalgamation.lean`: the derived halves of Definition 4.12, and the constructed
+  -- non-vacuity witness.  `lat₁`/`lat₂` are the two latent variable models the definition
+  -- names; their underlying space is `Λ₀` definitionally, which is what Theorem 4.15 needs.
+  -- `diagonal` amalgamates a latent variable model with itself along the identity: it is
+  -- the *axiom-clean* inhabitant of `LatentAmalgamation`, and therefore what makes Theorem
+  -- 4.15 and every §5 statement non-vacuous today.  Lemma 4.13's `canonical` /
+  -- `nonempty_latentAmalgamation` are the paper's own, stronger, existence claim and are
+  -- staged below; a non-vacuity argument must not cite them (R2-F19).
+  -- (The lemma `comm_ρ` stood here until 2026-08-17.  It said the square (4.43) commutes
+  -- a.e. inside Definition 4.12, and was provable only from the fields `ρ₁_π`/`ρ₂_π`, which
+  -- are not in Definition 4.12 and were deleted with it -- R2-F12/F20.)
   Condensation.LatentAmalgamation.rv₁ Condensation.LatentAmalgamation.rv₂
   Condensation.LatentAmalgamation.lat₁ Condensation.LatentAmalgamation.lat₂
-  Condensation.LatentAmalgamation.comm_ρ
+  Condensation.LatentAmalgamation.diagonal
   -- `Comparison.lean`: the set identity (4.62) that Theorem 4.15's missing induction runs
   -- on.  The paper writes `F_i` for `contribIdx i` and never defines it (errata entry 5).
   Condensation.iInter_contribIdx_eq_above
@@ -2123,7 +2177,8 @@ open Condensation in
   Condensation.ITree.label_mem_of_labelsIn Condensation.ITree.label_eq_polar
   Condensation.ITree.decorate
   Condensation.LTree Condensation.LTree.rootLabel Condensation.LTree.erase
-  Condensation.LTree.IsIntersectionTree
+  Condensation.LTree.IsIntersectionTree Condensation.LTree.LabelsIn
+  Condensation.ITree.labelsIn_decorate Condensation.existsUnique_intersectionTree_ambient
   Condensation.kSubsets
   -- `Examples.lean`, §3.1 witnesses.  `coinCollapse` is a morphism that genuinely changes
   -- the index set; `pairCoinHom₁`/`pairCoinHom₂` are Definition 3.9's remark made concrete

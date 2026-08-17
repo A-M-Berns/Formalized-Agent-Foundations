@@ -159,10 +159,22 @@ theorem entropy_jointContrib_ge_entropy_joint (A : Finset I) :
   exact entropy_le_of_aeFunctionOf (L.L.measurable_jointOn _)
     (L.aeFunctionOf_jointContrib_pullbackJoint A)
 
-/-- The full chain **(4.6)**, `σ_L(A) ≥ χ_L(A) ≥ H(Y_∩A) ≥ H(X_A)`, as a conjunction. -/
+/-- The **outer two ends** of the chain (4.6): `H(X_A) ≤ χ_L(A)`, obtained by composing the
+last two of the three inequalities above.  This is a single inequality, not the chain
+itself — the chain `σ_L(A) ≥ χ_L(A) ≥ H(Y_∩A) ≥ H(X_A)` is the three theorems
+`simpleScore_ge_condScore`, `condScore_ge_entropy_jointContrib` and
+`entropy_jointContrib_ge_entropy_joint`, which are what carry the paper-node annotation
+for Proposition 4.2.
+
+Depends on Proposition 4.2's staged middle inequality, so it is not axiom-clean; it is
+listed in `AxiomAudit.lean`'s `CONDENSATION-PENDING` block among the un-annotated
+consumers. -/
 lemma entropy_joint_le_condScore (A : Finset I) : H[M.joint A ; M.P] ≤ L.condScore A :=
   (L.entropy_jointContrib_ge_entropy_joint A).trans (L.condScore_ge_entropy_jointContrib A)
 
+/-- The two outer ends of (4.6) again, one step further out: `H(X_A) ≤ σ_L(A)`.  Like
+`entropy_joint_le_condScore`, a consequence of the chain rather than a node of the paper,
+and staged for the same reason. -/
 lemma entropy_joint_le_simpleScore (A : Finset I) : H[M.joint A ; M.P] ≤ L.simpleScore A :=
   (L.entropy_joint_le_condScore A).trans (L.simpleScore_ge_condScore A)
 
@@ -186,7 +198,12 @@ Paper node: `Definition 4.3` -/
 def SimplyPerfectlyCondenses : Prop := ∀ A : Finset I, L.simpleScore A = H[M.joint A ; M.P]
 
 /-- A simple-perfect condensation is a perfect condensation: this is the squeeze
-`σ_L(A) ≥ χ_L(A) ≥ H(X_A) = σ_L(A)` of (4.21). -/
+`σ_L(A) ≥ χ_L(A) ≥ H(X_A) = σ_L(A)` of (4.21).
+
+Carries no paper-node annotation — (4.21) is a step inside a proof, not a numbered node — and
+consumes Proposition 4.2's staged middle inequality through
+`entropy_joint_le_condScore`, so it is staged among the un-annotated consumers of
+`AxiomAudit.lean`'s `CONDENSATION-PENDING` block. -/
 lemma PerfectlyCondenses.of_simply (h : L.SimplyPerfectlyCondenses) : L.PerfectlyCondenses :=
   fun A => le_antisymm ((h A) ▸ L.simpleScore_ge_condScore A) (L.entropy_joint_le_condScore A)
 
@@ -326,9 +343,9 @@ theorem aeFunctionOf_iff_isEquivalence_contribModel :
         (hh : ∀ i, ∀ᵐ l ∂L.contribModel.P,
           L.pullbackModel.X i (_root_.id l) = h i (L.contribModel.X i l)),
         RVModel.IsEquivalence
-          (RVModel.Hom.ofSameIndex (M := L.pullbackModel) (N := L.contribModel)
+          (RVModel.Hom.ofSameIndex L.pullbackModel L.contribModel
             _root_.id (MeasurePreserving.id L.P) g hg)
-          (RVModel.Hom.ofSameIndex (M := L.contribModel) (N := L.pullbackModel)
+          (RVModel.Hom.ofSameIndex L.contribModel L.pullbackModel
             _root_.id (MeasurePreserving.id L.P) h hh) := by
   constructor
   · intro hf

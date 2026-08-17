@@ -1,4 +1,5 @@
 import Condensation.Probability
+import Mathlib.Order.Comparable
 import Mathlib.Order.UpperLower.Basic
 import Mathlib.Order.Extension.Linear
 
@@ -262,9 +263,14 @@ def contribIdx (i : I) : Set (PPlus I) := {B | i ∈ B}
 /-- `{B ∈ P⁺I : B` is incomparable to `A}` — neither a subset nor a superset of `A`.  This
 is the family `F` of Definition 4.8's ordered Markov condition and of Proposition 4.10 (1).
 
+"Incomparable" is Mathlib's `IncompRel`, not a local synonym: `IncompRel r a b` is
+`¬ r a b ∧ ¬ r b a`, so `IncompRel (· ≤ ·) B A` is `rfl`-equal to the hand-written
+`¬ B ≤ A ∧ ¬ A ≤ B` and `mem_incomparable` stays `Iff.rfl` (R2-F27).  Same policy as
+"upward closed", which is Mathlib's `IsUpperSet` here and nothing of this library's own.
+
 An *auxiliary index family* like `contrib`/`above`/`strictAbove`/`contribIdx`: it carries
 no paper node, because Definition 4.8 is the independence statement, not the set. -/
-def incomparable (A : PPlus I) : Set (PPlus I) := {B | ¬ B ≤ A ∧ ¬ A ≤ B}
+def incomparable (A : PPlus I) : Set (PPlus I) := {B | IncompRel (· ≤ ·) B A}
 
 @[simp] lemma mem_contrib {A : Finset I} {B : PPlus I} : B ∈ contrib A ↔ ∃ i ∈ A, i ∈ B :=
   Iff.rfl

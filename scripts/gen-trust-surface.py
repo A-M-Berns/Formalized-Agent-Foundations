@@ -23,6 +23,12 @@ and lives in `PAPERS_EDITORIAL` below plus the page prose in
   intentional-deviation ruling; for ModalAgents, which nodes are out of scope and which
   inventoried endpoints deliberately carry no annotation.  No tier is invented for them,
   and their sections say so rather than omitting the column silently.
+* **Condensation** is mid-flight, so its editorial entry names the two blocks of
+  `AxiomAudit.lean` that partition its annotated surface — the `#assert_axioms_clean`
+  inventory and the proof-pending staging block — and every declaration of its section is
+  badged *axiom-clean* or *staged*, with the node's own verdict on the card header.  Any
+  paper reaching a milestone statement-first opts into the same treatment by naming those
+  two blocks; a paper that names neither renders exactly as it always has.
 
 Run from anywhere:  python3 scripts/gen-trust-surface.py
 Regenerate after any change to a paper source, a library's annotations, the registry,
@@ -542,14 +548,20 @@ CARD = '''
 </article>'''
 
 
-def endpoint_pane(endpoints):
-    """The Lean pane's slide deck: one statement per inventory endpoint."""
+def endpoint_pane(endpoints, staging=None):
+    """The Lean pane's slide deck: one statement per inventory endpoint.
+
+    `staging`, for a paper that stages proof-pending endpoints (see `Staging`), badges
+    each declaration axiom-clean or staged.  A paper that stages nothing passes `None`
+    and its pane renders exactly as before.
+    """
     slides = ''
     for i, (name, e) in enumerate(endpoints):
         slides += ('<div class="ep-slide%s"><div class="ep-head">'
-                   '<code class="ep-name">%s</code><span class="ep-file">%s</span></div>'
+                   '<code class="ep-name">%s</code>%s<span class="ep-file">%s</span></div>'
                    '<pre class="sig">%s</pre></div>') % (
-            '' if i == 0 else ' hidden', html.escape(name), html.escape(e['file']),
+            '' if i == 0 else ' hidden', html.escape(name),
+            '' if staging is None else staging.badge(name), html.escape(e['file']),
             html.escape(e['sig']))
     controls = ''
     if len(endpoints) > 1:
@@ -561,10 +573,12 @@ def endpoint_pane(endpoints):
     return controls + slides
 
 
-def render_card(*, anchor, lab, title, badge, source, paper_html, endpoints, notes):
+def render_card(*, anchor, lab, title, badge, source, paper_html, endpoints, notes,
+                staging=None):
     return CARD % dict(anchor=anchor, lab=lab, title=html.escape(clean_title(title)),
                        badge=badge,
-                       source=source, paper=paper_html, sig=endpoint_pane(endpoints),
+                       source=source, paper=paper_html,
+                       sig=endpoint_pane(endpoints, staging),
                        notes=''.join('\n' + n for n in notes))
 
 
@@ -576,6 +590,161 @@ def note(cls, tag, body_html):
 def audit_footer(tag, body_html):
     return ('  <footer class="audit-note"><span class="audit-tag">%s</span> %s</footer>'
             % (tag, body_html))
+
+
+def inventory_names(block, warnings):
+    """The declaration names `block`'s `#assert_axioms_clean` gate checks.
+
+    `paper_nodes.read_inventory` returns an `Inventory` (names plus ready-to-print
+    problems); a bare set is accepted too, so this generator does not break in either
+    direction while that module's shape settles.  Problems are surfaced as page
+    warnings rather than absorbed: a token the parser cannot account for is exactly the
+    way the gate would be silently disarmed.
+    """
+    parsed = paper_nodes.read_inventory(ROOT + 'AxiomAudit.lean', block)
+    if parsed is None:
+        return set()
+    warnings += list(getattr(parsed, 'problems', None) or ())
+    return set(getattr(parsed, 'names', parsed))
+
+
+class Staging:
+    """Which of a paper's declarations are proved, and which only have a statement.
+
+    A paper still in flight splits its annotated surface across two blocks of
+    `AxiomAudit.lean`: the inventory block is the `#assert_axioms_clean` gate, and the
+    pending block is *pure comment* naming every annotated endpoint whose proof is still
+    `sorry`, plus — in its `SECTION: consumers` half — un-annotated declarations that
+    consume one.  Rendering both alike would show a `sorry` as a proof, so every
+    declaration of such a paper carries its state as a badge and every card its verdict.
+
+    A paper that declares no `pending_block` in `PAPERS_EDITORIAL` has no `Staging` at
+    all and renders exactly as it did before this existed.
+    """
+
+    def __init__(self, key, lib, pending_block, inventory_block, staged, consumers,
+                 inventory):
+        self.key = key
+        self.lib = lib
+        self.pending_block = pending_block
+        self.inventory_block = inventory_block
+        self.n_staged = len(staged)
+        self.n_consumers = len(consumers)
+        self.staged = {}
+        for table in (staged, consumers):
+            for name, reason in table.items():
+                for form in self.forms(name):
+                    self.staged[form] = reason
+        self.inventory = {form for name in inventory for form in self.forms(name)}
+
+    def forms(self, name):
+        """The qualified names a block entry may resolve to — bare, or under the root."""
+        return {name, '%s.%s' % (self.lib, name)}
+
+    def state(self, name):
+        """`'staged'`, `'proved'`, or `None` when the name is in neither block."""
+        if name in self.staged:
+            return 'staged'
+        if name in self.inventory:
+            return 'proved'
+        return None
+
+    def badge(self, name):
+        """The per-declaration badge shown beside its name in the Lean pane."""
+        state = self.state(name)
+        if state == 'staged':
+            return ('<span class="staged" title="%s">staged &middot; sorry</span>'
+                    % html.escape(self.staged[name], quote=True))
+        if state == 'proved':
+            return '<span class="staged proved">axiom-clean</span>'
+        return ''
+
+    def node_badge(self, names):
+        """The card header's verdict over all the declarations carrying one node."""
+        states = [self.state(n) for n in names]
+        if not states or None in states:
+            return ''
+        if all(s == 'staged' for s in states):
+            return '<span class="staged">proof staged</span>'
+        if any(s == 'staged' for s in states):
+            return '<span class="staged">partly staged</span>'
+        return '<span class="staged proved">axiom-clean</span>'
+
+    def dot(self, names):
+        """The left rail's dot class, so a staged node is visible without scrolling."""
+        return 'staged' if any(self.state(n) == 'staged' for n in names) else 'plain'
+
+    def note(self, names):
+        """A card footer naming what each staged declaration is still waiting on."""
+        rows = [n for n in names if self.state(n) == 'staged']
+        if not rows:
+            return []
+        body = '; '.join('<code>%s</code> — %s'
+                         % (html.escape(n), md_inline(self.staged[n])) for n in rows)
+        return [audit_footer('Proof staged — not axiom-checked', body)]
+
+    def counts(self, names):
+        """(proved, staged) over the distinct declarations rendered in the section."""
+        states = [self.state(n) for n in set(names)]
+        return states.count('proved'), states.count('staged')
+
+    def legend(self, names):
+        """The section's legend: what each badge means, with this build's counts."""
+        proved, staged = self.counts(names)
+        consumers = ''
+        if self.n_consumers:
+            consumers = (
+                ' A further %d declaration%s carr%s no <code>Paper node:</code> '
+                'annotation but consume%s a staged result, and are listed in the same '
+                'block\u2019s consumers section.'
+                % (self.n_consumers, '' if self.n_consumers == 1 else 's',
+                   'ies' if self.n_consumers == 1 else 'y',
+                   's' if self.n_consumers == 1 else ''))
+        return (
+            '<div class="method">\n'
+            '<h3>Proved and staged endpoints</h3>\n'
+            '<div class="legend"><span class="staged proved">axiom-clean</span>'
+            '<span class="count">%d — listed in <code>AxiomAudit.lean</code>\u2019s '
+            '<code>%s</code> block, so <code>#assert_axioms_clean</code> has checked that '
+            'the proof depends on no <code>sorry</code> and no added axiom.</span></div>\n'
+            '<div class="legend"><span class="staged">staged &middot; sorry</span>'
+            '<span class="count">%d — the <em>statement</em> is final, the proof is not: '
+            'staged in the <code>%s</code> block, which is pure comment and asserts '
+            'nothing. Each card\u2019s footer names what it waits on.%s</span></div>\n'
+            '<p>Every declaration below carries one of these two badges, and each card\u2019s '
+            'header carries the node\u2019s own verdict — <em>axiom-clean</em>, '
+            '<em>partly staged</em> (some carrier of that node is proved and some is not), '
+            'or <em>proof staged</em>. A staged endpoint is a claim about the statement '
+            'only; nothing badged staged is claimed proved.</p>\n'
+            '</div>'
+            % (proved, html.escape(self.inventory_block), staged,
+               html.escape(self.pending_block), consumers))
+
+
+def staging_for(key, paper, warnings):
+    """The paper's `Staging`, or `None` when it stages no proof-pending endpoints.
+
+    Driven entirely by `PAPERS_EDITORIAL[key]`: a paper opts in by naming its
+    `pending_block` (and the `inventory_block` its proved endpoints are gated by), so a
+    second paper reaching statement-first for a milestone gets the same treatment by
+    adding two keys, and every other paper keeps rendering as it always has.
+    """
+    conf = PAPERS_EDITORIAL[key]
+    block = conf.get('pending_block')
+    if not block:
+        return None
+    audit = ROOT + 'AxiomAudit.lean'
+    pending = paper_nodes.read_pending(audit, block)
+    if pending is None:
+        warnings.append('%s: %s names no %s-BEGIN/END block in AxiomAudit.lean, so no '
+                        'endpoint could be marked staged' % (key, 'PAPERS_EDITORIAL', block))
+        return None
+    warnings += list(pending.problems)
+    inventory_block = conf.get('inventory_block')
+    inventory = inventory_names(inventory_block, warnings) if inventory_block else set()
+    return Staging(key, paper['library'], block, inventory_block or '(none)',
+                   dict(pending.entries), dict(getattr(pending, 'consumers', None) or {}),
+                   inventory)
 
 
 def section_titles(tex, pattern, appendix=False):
@@ -832,6 +1001,14 @@ PAPERS_EDITORIAL = {
         'macros': (), 'pre_macros': (),
         'sections': paper_nodes.printed_extraction_sections, 'appendix': False,
         'renderer': ExtractionRenderer,
+        # Statement-first at milestone M1: the statements are final, a good many of the
+        # proofs are not.  No count here on purpose — the generator reads both blocks of
+        # `AxiomAudit.lean` at run time, so a number written into this comment buys
+        # nothing and goes stale the moment a proof lands.  Naming the two blocks here is
+        # the whole opt-in — see `staging_for` — and it is what stops a `sorry` from
+        # rendering indistinguishably from a proof.
+        'inventory_block': 'CONDENSATION-INVENTORY',
+        'pending_block': 'CONDENSATION-PENDING',
     },
 }
 
@@ -1022,6 +1199,7 @@ def build_correspondence(key, paper, warnings, *, extras=None):
             '%s: %s is cited in Lean and numbered in the source, but its printed '
             'statement could not be located — omitted from the page' % (key, node_id))
 
+    staging = staging_for(key, paper, warnings)
     extras = extras or {}
     prefix = {'cartesian-frames': 'cf-', 'modal-agents': 'ma-',
               'finite-factored-sets': 'ffs-', 'condensation': 'cd-'}[key]
@@ -1035,18 +1213,35 @@ def build_correspondence(key, paper, warnings, *, extras=None):
                      % (prefix.rstrip('-'), re.sub(r'\W+', '-', sec), html.escape(sec)))
         for node in group:
             anchor = anchor_for(prefix, node.id)
-            nav.append('<a class="nav-item" href="#%s" data-node="%s"><span class="dot plain"></span>%s</a>'
-                       % (anchor, anchor, html.escape(node.id)))
+            names = [n for n, _ in by_node[node.id]]
+            dot = 'plain' if staging is None else staging.dot(names)
+            nav.append('<a class="nav-item" href="#%s" data-node="%s"><span class="dot %s"></span>%s</a>'
+                       % (anchor, anchor, dot, html.escape(node.id)))
             notes = [n for n in (f(node) for f in extras.values()) if n]
+            badge = '<span class="kind">%s</span>' % html.escape(node.kind.lower())
+            if staging is not None:
+                badge += staging.node_badge(names)
+                notes += staging.note(names)
             cards.append(render_card(
-                anchor=anchor, lab=node.id, title=node.title,
-                badge='<span class="kind">%s</span>' % html.escape(node.kind.lower()),
+                anchor=anchor, lab=node.id, title=node.title, badge=badge,
                 source=tag, paper_html=renderer.block(node.body, node.id),
-                endpoints=by_node[node.id], notes=notes))
+                endpoints=by_node[node.id], notes=notes, staging=staging))
+
+    rendered = sorted({n for node_id in renderable for n, _ in by_node[node_id]})
+    if staging is not None:
+        for name in rendered:
+            if staging.state(name) is None:
+                warnings.append(
+                    '%s: %s carries an annotation but is in neither the %s nor the %s '
+                    'block of AxiomAudit.lean, so the page cannot say whether it is '
+                    'proved — rendered unbadged' % (key, name, staging.inventory_block,
+                                                    staging.pending_block))
+        cards.insert(0, staging.legend(rendered))
 
     warnings += renderer_warnings(key, renderer)
     return {'nav': nav, 'cards': cards, 'total': len(renderable),
-            'numbered': numbered, 'covered': set(renderable), 'carriers': carriers}
+            'numbered': numbered, 'covered': set(renderable), 'carriers': carriers,
+            'staging': staging, 'rendered': rendered}
 
 
 # ======================================================================
@@ -1095,7 +1290,7 @@ def main():
         if cd_uncited else 'none — every numbered node carries a Lean statement')
 
     # --- ModalAgents: inventoried endpoints that deliberately carry no annotation ---
-    ma_inventory = paper_nodes.read_inventory(ROOT + 'AxiomAudit.lean', 'MA-INVENTORY') or set()
+    ma_inventory = inventory_names('MA-INVENTORY', warnings)
     ma_bare = sorted(ma_inventory - ma['carriers'])
     ma_reasons = {}
     readme = read(ma_paper['readme'])
@@ -1160,6 +1355,23 @@ def main():
     t2_cf = t2rows(lambda n: n.startswith('CartesianFrames.'))
 
     # --- index table ---
+    # The Condensation row's editorial is generated rather than written, so the number
+    # of staged endpoints it quotes cannot drift from the pending block it counts.
+    if cd['staging'] is None:
+        cd_editorial = (
+            '<strong>in progress (milestone M1)</strong> — nothing here is claimed '
+            'proved')
+    else:
+        cd_proved, cd_staged = cd['staging'].counts(cd['rendered'])
+        cd_editorial = (
+            '<strong>in progress (milestone M1)</strong> — statements for every in-scope '
+            'node have landed, and each declaration is badged: %d <em>axiom-clean</em>, '
+            '%d <em>staged</em> (statement final, proof still <code>sorry</code>). '
+            'Nothing badged staged is claimed proved'
+            % (cd_proved, cd_staged))
+    cd_editorial += ('. The cards show the paper statement beside the Lean statement '
+                     'that carries it, so the section grows as the formalization lands; '
+                     '<strong>no strength classification exists for this paper</strong>')
     index_rows = ''
     for key, section, editorial in (
             ('logical-induction', li,
@@ -1177,11 +1389,7 @@ def main():
              'as a <code>Prop</code> and deliberately not proved, and Examples 3 and 4 '
              'are out of scope by ruling; <strong>no strength classification exists for '
              'this paper</strong>'),
-            ('condensation', cd,
-             '<strong>in progress (milestone M0)</strong> — nothing here is claimed '
-             'proved. The cards show the paper statement beside whatever Lean statement '
-             'currently carries it, so the section grows as the formalization lands; '
-             '<strong>no strength classification exists for this paper</strong>')):
+            ('condensation', cd, cd_editorial)):
         p = PAPERS[key]
         if p.get('arxiv'):
             cite_link = ('<a href="https://arxiv.org/abs/%s">arXiv:%s</a>'

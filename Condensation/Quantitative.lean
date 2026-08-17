@@ -12,7 +12,8 @@ This file is §5.2–§5.3 of Eisenstat, *Condensation: A Theory of Concepts*:
   facts §5 uses: `polar F` is upward-closed and `polar` is antitone.
 * **Definition 5.6** — the intersection tree (`ITree`, `ITree.label`,
   `ITree.intersections`), and **Proposition 5.7** — existence and uniqueness of the
-  extension of a leaf labeling to a labeling of every vertex satisfying (5.10).
+  extension of a leaf labeling by members of an intersection-closed collection `M` to a
+  labeling `ℓ : V → M` of every vertex satisfying (5.10).
 * **Theorem 5.8** — the general comparison theorem, in both the inequality form (5.13) and
   the exact form (5.14).
 * **Corollary 5.9** ((5.21), (5.22)) and **Corollary 5.10** ((5.24), (5.25)).
@@ -28,8 +29,8 @@ tree in which every vertex has a unique directed path to the root *is* an induct
 tree, so nothing is lost; the `(V, E, ℓ)` presentation would import graph theory for no
 content.  Proposition 5.7 is then the statement that an arbitrary labeling of *all* the
 vertices (rendered as a fully-decorated tree `LTree`) which restricts to the given leaf
-labeling and satisfies (5.10) everywhere is the computed one — existence and uniqueness,
-exactly as printed.  Definition 5.6's family of intersections (5.11) is a `List`, not a
+labeling, satisfies (5.10) everywhere and lands in `M` everywhere (`LTree.LabelsIn`) is the
+computed one — existence and uniqueness of a function `ℓ : V → M`, exactly as printed.  Definition 5.6's family of intersections (5.11) is a `List`, not a
 `Finset`: the paper explicitly warns that the same intersection may occur more than once.
 
 `dd:interaction` — Theorem 5.8's `I (Z_{L(v)} ; Z_{R(v)} ; Y_⊇A | Z_{I(v)})` is
@@ -443,6 +444,20 @@ def IsIntersectionTree [SemilatticeInf α] : LTree α → Prop
       a = l.rootLabel ⊓ r.rootLabel ∧ l.IsIntersectionTree ∧ r.IsIntersectionTree :=
   Iff.rfl
 
+/-- Definition 5.6(2) at the level of a candidate labelling: `ℓ` takes **every** vertex
+into the intersection-closed collection `M`, i.e. `ℓ` is a function `V → M`.  This is the
+`LTree` counterpart of `ITree.LabelsIn`, which carries the same condition on the leaves
+alone; `ITree.label_mem_of_labelsIn` is what makes the two agree on the canonical
+decoration (`ITree.labelsIn_decorate`). -/
+def LabelsIn (M : Set α) : LTree α → Prop
+  | leaf a => a ∈ M
+  | node a l r => a ∈ M ∧ l.LabelsIn M ∧ r.LabelsIn M
+
+@[simp] lemma labelsIn_leaf {M : Set α} (a : α) : (leaf a).LabelsIn M ↔ a ∈ M := Iff.rfl
+
+@[simp] lemma labelsIn_node {M : Set α} (a : α) (l r : LTree α) :
+    (node a l r).LabelsIn M ↔ a ∈ M ∧ l.LabelsIn M ∧ r.LabelsIn M := Iff.rfl
+
 end LTree
 
 namespace ITree
@@ -482,6 +497,20 @@ lemma isIntersectionTree_decorate [SemilatticeInf α] (t : ITree α) :
     refine ⟨?_, ihl, ihr⟩
     rw [rootLabel_decorate, rootLabel_decorate]
 
+/-- The canonical decoration of a tree whose *leaf* labels lie in an intersection-closed
+`M` labels **every** vertex by a member of `M`.  This is `ITree.label_mem_of_labelsIn` read
+along `decorate`, and it is the existence half of Proposition 5.7's "a function
+`ℓ : V → M`". -/
+lemma labelsIn_decorate [SemilatticeInf α] {M : Set α}
+    (hM : ∀ a ∈ M, ∀ b ∈ M, a ⊓ b ∈ M) (t : ITree α) (h : t.LabelsIn M) :
+    t.decorate.LabelsIn M := by
+  induction t with
+  | leaf a => simpa using h
+  | node l r ihl ihr =>
+    have h' := h
+    rw [labelsIn_node] at h'
+    exact ⟨label_mem_of_labelsIn hM (node l r) h _ (mem_subtrees_self _), ihl h'.1, ihr h'.2⟩
+
 end ITree
 
 /-- The uniqueness half of Proposition 5.7, in the form the induction wants: a labelling
@@ -508,17 +537,34 @@ theorem eq_decorate_of_isIntersectionTree {α : Type*} [SemilatticeInf α] {t : 
   subst herase
   exact LTree.eq_decorate_erase hd
 
-/-- **Proposition 5.7**: given a directed binary tree `(V, E)` and a labelling `ℓ̃` of its
-leaves by members of an intersection-closed collection `M` — together, an `ITree` — there
-is a unique extension of `ℓ̃` to a function `ℓ : V → M` making `(V, E, ℓ)` an intersection
-tree.  See `ITree.label_eq_leaves_foldr` for the paper's description of that extension and
-`ITree.label_mem_of_labelsIn` for the fact that it lands in `M`.
-
-Paper node: `Proposition 5.7` -/
-theorem existsUnique_intersectionTree {α : Type*} [SemilatticeInf α] (t : ITree α) :
+/-- The `M`-free machinery form of Proposition 5.7: over the *ambient* lattice `α`, the
+labelling of every vertex which restricts to the given leaf labelling and satisfies (5.10)
+exists and is unique.  Proposition 5.7's actual claim is the `M`-version
+(`existsUnique_intersectionTree`), whose uniqueness half is read off from this one — the
+extra "every label lies in `M`" conjunct only narrows the candidate set, and any candidate
+is already `t.decorate` by `eq_decorate_of_isIntersectionTree`. -/
+lemma existsUnique_intersectionTree_ambient {α : Type*} [SemilatticeInf α] (t : ITree α) :
     ∃! d : LTree α, d.erase = t ∧ d.IsIntersectionTree :=
   ⟨t.decorate, ⟨t.decorate_erase, t.isIntersectionTree_decorate⟩,
     fun _ hd => eq_decorate_of_isIntersectionTree hd.1 hd.2⟩
+
+/-- **Proposition 5.7**: given a directed binary tree `(V, E)`, an intersection-closed
+collection of sets `M` (`hM`), and a labelling `ℓ̃` of the leaves of `V` **by members of
+`M`** (`ht`) — the tree together with `ℓ̃` being an `ITree` with `ITree.LabelsIn M` — there
+is a unique extension of `ℓ̃` to a function **`ℓ : V → M`** making `(V, E, ℓ)` an
+intersection tree.  `LTree.LabelsIn M` is the "`ℓ` is a function `V → M`" clause of
+Definition 5.6(2), so the conjunction is exactly the paper's conclusion.  See
+`ITree.label_eq_leaves_foldr` for the paper's description of that extension, and
+`existsUnique_intersectionTree_ambient` for the `M`-free form the uniqueness half comes
+from.
+
+Paper node: `Proposition 5.7` -/
+theorem existsUnique_intersectionTree {α : Type*} [SemilatticeInf α] {M : Set α}
+    (hM : ∀ a ∈ M, ∀ b ∈ M, a ⊓ b ∈ M) (t : ITree α) (ht : t.LabelsIn M) :
+    ∃! d : LTree α, d.erase = t ∧ d.IsIntersectionTree ∧ d.LabelsIn M :=
+  ⟨t.decorate,
+    ⟨t.decorate_erase, t.isIntersectionTree_decorate, ITree.labelsIn_decorate hM t ht⟩,
+    fun _ hd => eq_decorate_of_isIntersectionTree hd.1 hd.2.1⟩
 
 /-! ### An intersection-closed collection of sets -/
 
@@ -713,12 +759,20 @@ Two things the printed statement leaves open, resolved here (see
 `Condensation/notes/paper-errata.md`).  First, (5.24) is printed with `n − 1`, but the
 parameter is `k`; this is the paper's typo.  Second, `k` is used in the hypothesis one
 sentence before it is bound, and the degenerate values are unaddressed.  `k = 0` is
-**excluded** (`1 ≤ k`): with `k = 0` the paper's `F` would be `{∅}`, which is not a
-subfamily of `P⁺I` at all, so in this rendering `F = ∅`, `G = P⁺I`, and (5.24)'s right-hand
-side is empty — the identity is simply false.  `k > |A|` is **allowed**: then `F = ∅` and
-both sides are all of `P⁺I` (every `C` has `|A \ C| ≤ |A| ≤ k − 1`), so (5.24) holds.
-Note that (5.25) is vacuous in that case, since an `ITree` always has at least one leaf and
-so no tree can satisfy the bijection hypothesis with `F = ∅`.
+**excluded** (`1 ≤ k`), because the identity is false there.  With `k = 0` the paper's `F`
+would be `{∅}`, which is not a subfamily of `P⁺I` at all, so in this rendering
+`kSubsets A 0 = ∅` — no member of `P⁺I` has cardinality `0` — and the left-hand side is
+`polar ∅ = P⁺I` (`polar_empty`).  The right-hand side, on the other hand, is **not** empty:
+`k - 1` is truncated subtraction on `ℕ`, so at `k = 0` it reads `0`, and the condition
+`(A \ C).card ≤ 0` says `A ⊆ C`.  The right-hand side is therefore the upward cone
+`{C : A ⊆ C}` (`above A.toFinset`), and the two sides differ as soon as some `C ∈ P⁺I`
+fails to contain `A` — for instance any `C = {i}` with `A` not a subset of `{i}`.  (They do
+coincide in the degenerate case where every member of `P⁺I` contains `A`, so the failure is
+general rather than universal.)  `k > |A|` is **allowed**: then `F = ∅` again and the
+left-hand side is `P⁺I`, but now `k - 1 ≥ |A|` bounds `(A \ C).card ≤ |A|` for every `C`,
+so the right-hand side is `P⁺I` too and (5.24) holds.  Note that (5.25) is vacuous in that
+case, since an `ITree` always has at least one leaf and so no tree can satisfy the
+bijection hypothesis with `F = ∅`.
 
 `DecidableEq I` appears only to write the `Finset` difference `A \ C`; it is classical
 data, not a restriction on `I`.
@@ -753,9 +807,17 @@ theorem polar_kSubsets [DecidableEq I] (A : PPlus I) {k : ℕ} (hk : 1 ≤ k) :
 `ϱ_Y(C) ≤ α` for every `C` of cardinality `k`, the leaf sum of (5.21) is at most
 `(|A| choose k) · α`.
 
+Unlike `polar_kSubsets` (5.24), this statement carries **no** `1 ≤ k` hypothesis, and that
+is deliberate: at `k = 0` the family `kSubsets A 0` is empty, so `hleaves` would force
+`T.leaves` to be the empty multiset, which no `ITree` satisfies (`ITree.leaves_ne_nil` — a
+tree always has at least one leaf).  The tree hypothesis is thus unsatisfiable at `k = 0`,
+(5.25) holds vacuously there, and `1 ≤ k` would be dead weight.  In `polar_kSubsets` there
+is no tree to make the degenerate case vacuous and `1 ≤ k` is load-bearing: see that
+statement's docstring for what goes wrong at `k = 0`.
+
 Paper node: `Corollary 5.10` -/
 theorem condEntropy_jointAbove_le_choose
-    {k : ℕ} (hk : 1 ≤ k) {α : ℝ}
+    {k : ℕ} {α : ℝ}
     (hϱ : ∀ C : PPlus I, C.toFinset.card = k → Am.lat₁.reconScore C.toFinset ≤ α)
     (A : PPlus I) (T : ITree (Set (PPlus I))) (hupper : T.LabelsIn {s | IsUpperSet s})
     (hleaves : (T.leaves : Multiset (Set (PPlus I)))

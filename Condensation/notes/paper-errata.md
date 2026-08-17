@@ -114,9 +114,10 @@ cannot be attached to it on the generated page.
    slip, but it has to be resolved to state the corollary in Lean at all. A related
    loose end in the same sentence, recorded here rather than as its own entry: `F` is
    required to be a subset of `P⁺I`, so the degenerate `k = 0` (which would give
-   `F = {∅} ⊄ P⁺I`) is excluded, and `k > |A|` gives `F = ∅` and hence `G = P⁺I`, making
-   (5.25) hold trivially. The paper does not say which of these it means to exclude.
-   **Confirmed in the committed extraction.**
+   `F = {∅} ⊄ P⁺I`) is excluded, and `k > |A|` gives `F = ∅`. The paper does not say which
+   of these it means to exclude. **Confirmed in the committed extraction.** For what
+   actually happens at those two corners — the tree hypothesis becomes *unsatisfiable*, so
+   (5.25) is vacuous rather than trivially true — see entry 14.
 
 9. **Definition 5.6 versus Theorem 5.8 and Corollaries 5.9, 5.10: the intersection tree's
    label function is renamed from `ℓ` to `I`, colliding with the index set and with the
@@ -158,6 +159,19 @@ cannot be attached to it on the generated page.
     construction satisfies it, and without it Definition 4.12 does not support the theorem
     that consumes it.
 
+    **What clause (3) does *not* supply, corrected 2026-08-17 (R2-F12/F20).** An earlier
+    reading of this entry took clause (3) to also relate `Lₖ.π ∘ ρₖ` to `π̃ₖ`, and the Lean
+    structure carried two extra fields `ρ₁_π`/`ρ₂_π` saying so. That is not in Definition
+    4.12. Clause (3)'s `ρₖ : L̃ₖ → Lₖ` are morphisms in the sense of **Definition 3.5**,
+    which is a morphism of the underlying *random variable* models and imposes exactly two
+    conditions — `ρₖ` probability preserving, and `fⱼ(X_{ι(j)}) = ρₖ^* Yⱼ` a.e. with
+    `fⱼ = id` here. The paper never defines a morphism of *latent* variable models, and so
+    never asks for compatibility with the maps to `Ω`. The fields were deleted; what
+    survives of clause (3) is `ρₖ_pres` and `ρₖ_Y`, and `comm` (this entry) is the only
+    added field. The derived lemma `LatentAmalgamation.comm_ρ`, which said the square
+    (4.43) commutes a.e. inside Definition 4.12, went with them: it was provable only from
+    the deleted fields, and it is not a consequence of the printed definition.
+
 11. **Example 4.1, equations (4.4) and (4.5): false at `A = ∅`.** *(Found while
     constructing the example.)* Example 4.1's second latent variable model `L₂` puts all of
     `M`'s information into the single top latent `Z_I` and makes every other latent
@@ -195,3 +209,28 @@ cannot be attached to it on the generated page.
     caused one wrong first draft here. `dd:tree` renders the tree as an inductive binary
     tree whose `node l r` has `l`, `r` as its *children*; those are Definition 5.6's
     parents.
+
+14. **Theorem 5.8 and Corollaries 5.9, 5.10: at `F = ∅` (equivalently `k > |A|` in
+    Corollary 5.10, and `k = 0` under the reading that admits it) the tree hypothesis is
+    unsatisfiable, so the statements are vacuous — in the paper, not only in the Lean.**
+    *(Found during the round-2 audit of §5; the Lean already documents it in
+    `Condensation/Quantitative.lean`, and this entry records that it is a property of the
+    printed statement.)* Theorem 5.8 requires an intersection tree `T` whose label function
+    "restricts to a bijection between the leaves of `T` and the set of sets
+    `{C ∈ P⁺I : B ∩ C ≠ ∅}` ranging over `B ∈ F`" (L1398–1402). Definition 5.6(1) says
+    `(V, E)` is a directed binary tree with a **root** to which every vertex has a unique
+    directed path; such a tree is nonempty and therefore has at least one leaf (the root
+    itself, if the tree is a single vertex). So when `F = ∅` the right-hand side of the
+    required bijection is empty while the left-hand side is not, and no such `T` exists.
+    The hypothesis cannot be discharged, and Theorem 5.8, Corollary 5.9 and Corollary
+    5.10's (5.25) are all vacuously true there.
+
+    This is worth recording for two reasons. First, it is *not* what entry 8's
+    "`k > |A|` gives `F = ∅` and hence `G = P⁺I`" suggests: `G = P⁺I` would make the
+    conclusion cheap but the statement still contentful, whereas in fact the *hypothesis*
+    fails and the statement says nothing at all. Second, it is why the Lean
+    `Condensation.condEntropy_jointAbove_le_choose` (5.25) needs no `1 ≤ k` hypothesis
+    (R2-F21): the degenerate `k` is already excluded by the tree hypothesis, so adding
+    `hk` would be dead weight rather than a faithfulness fix. `Condensation.polar_kSubsets`
+    (5.24) keeps `1 ≤ k`, because there it is load-bearing — (5.24) is an identity of
+    index families with no tree in sight.

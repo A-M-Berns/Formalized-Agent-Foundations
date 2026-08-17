@@ -55,7 +55,7 @@ approximate hypotheses buy an approximate correspondence rather than none.
 
 ## Status
 
-**In progress — milestone M1. Statements for every in-scope node have landed; twenty
+**In progress — milestone M1. Statements for every in-scope node have landed; seventeen
 proofs are still `sorry`.**
 
 This is not a completed formalization and must not be read as one. What that means
@@ -65,13 +65,24 @@ precisely, as of this commit:
   at least one annotated declaration. The three that are not are Examples 5.1–5.3, out of
   scope by the proposed ruling in *Open rulings* below. `scripts/check-condensation-nodes.py`
   reports the coverage per section.
-* **Twenty proofs are `sorry`**, listed exhaustively below. **Sixteen annotated endpoints
-  are not axiom-clean** — thirteen because their own proof is `sorry`, three because they
-  consume one (Corollary 4.6 is fully proved but runs through Proposition 4.2's staged
-  inequality; Lemma 4.13's two `canonical` constructions and their two existence statements
-  run through three staged measure lemmas). Those sixteen are staged in `AxiomAudit.lean`'s
-  `CONDENSATION-PENDING` block, which is pure comment and asserts nothing. Nothing outside
-  that set depends on a `sorry`.
+* **Seventeen proofs are `sorry`**, listed exhaustively below, and every one of them now
+  sits inside a declaration that carries a paper-node annotation — the library has no
+  un-annotated `sorry` left. **Eighteen annotated endpoints are not axiom-clean**:
+  seventeen because their own proof is `sorry`, and Corollary 4.6 because it is fully
+  proved but runs through Proposition 4.2's staged inequality. Three further declarations
+  depend on a `sorry` without being endpoints at all — `LatentModel.entropy_joint_le_condScore`,
+  `.entropy_joint_le_simpleScore` and `PerfectlyCondenses.of_simply`, small consequences of
+  Proposition 4.2's staged inequality that state nothing the paper states and so cannot be
+  annotated. All twenty-one are staged in `AxiomAudit.lean`'s `CONDENSATION-PENDING` block
+  — the eighteen endpoints in its main section, the three consumers in its
+  `SECTION: consumers (un-annotated)` section — which is pure comment and asserts nothing.
+
+  **"Nothing outside that set depends on a `sorry`" is now a machine-checked claim, not a
+  promise.** It used to be neither: the three consumers above sat outside every block for
+  the whole of M1, and nothing noticed (R2-F22). `scripts/check_sorry_ledger.py` asks Lean
+  itself, from the compiled environment, which Condensation declarations depend on
+  `sorryAx`, and fails if any is absent from either section of the pending block — or if a
+  ledger entry outlives its `sorry`, which is what caught Lemma 4.13 becoming clean.
 * **Everything not in that list is proved and axiom-checked.** `AxiomAudit.lean`'s
   `CONDENSATION-INVENTORY` block asserts that each listed endpoint uses no axiom beyond
   `propext`, `Classical.choice`, `Quot.sound`. That includes all of §2 (Proposition 2.5 and
@@ -79,9 +90,12 @@ precisely, as of this commit:
   information), all of Definitions 3.1–3.4, **all ten §3.1 endpoints** (Definitions 3.5,
   3.6, 3.9, 3.10 and Propositions 3.7, 3.8, 3.11, 3.12), and in §4/§5: Proposition 4.2's
   first and third inequalities, Definition 4.3, Lemma 4.5, Proposition 4.7, Definition 4.8,
-  Definitions 4.11 and 4.12 as structures, Examples 4.1 and 4.4 as constructed models, and
-  in §5 Lemma 5.4 in both forms, Definition 5.5's polar with its lattice facts, Definition
-  5.6 and Proposition 5.7 in full, and Corollary 5.10's (5.24).
+  Definitions 4.11 and 4.12 as structures, **Lemma 4.13 in full** — both `canonical`
+  constructions and both existence statements, the (4.53) measure built explicitly —
+  Examples 4.1 and 4.4 as constructed models, and in §5 Lemma 5.4 in both forms, Definition
+  5.5's polar with its lattice facts, Definition 5.6 and Proposition 5.7 in full (the
+  `M`-version, with the extension landing in the intersection-closed collection as the
+  paper says), and Corollary 5.10's (5.24).
 * **No `axiom` declarations are introduced at any milestone**, and none is.
 * **No modeling substitutions.** As of 2026-08-17 the model class is Definition 3.1
   verbatim — including the "with finite entropy" clause on `Ω`, which this library did not
@@ -89,24 +103,24 @@ precisely, as of this commit:
   [`KNOWLEDGE.md`](KNOWLEDGE.md) is empty. The one standing narrowing, `dd:finite-range`,
   is retired; *Modeling boundary* below says what it was and what replaced it. The two
   restrictions that remain are universe stratification (presentational, open ruling 3) and
-  the Examples 5.1–5.3 scope ruling. What is *not* claimed is anything about the twenty
+  the Examples 5.1–5.3 scope ruling. What is *not* claimed is anything about the seventeen
   `sorry`s: this section, not the modeling boundary, is where the incompleteness lives.
 
-### The twenty `sorry`s, by file
+### The seventeen `sorry`s, by file
 
 `sorry` remains allowed and expected mid-flight under the repo standard (`../CLAUDE.md`,
 load-bearing rule 3 — `sorry` is honest, an arithmetic stub standing in for content is
-not). A ✱ marks a declaration that carries a `Paper node:` annotation, i.e. a claimed
-endpoint of the paper rather than a supporting lemma.
+not). Every row below is a claimed endpoint of the paper: as of 2026-08-17 the library
+has no `sorry` in a supporting lemma, the last three having been Lemma 4.13's measure
+lemmas.
 
-Note that the table below lists `sorry` *sites*, while the `CONDENSATION-PENDING` block
-lists *endpoints that are not axiom-clean* — a longer list, because an endpoint whose own
-proof is complete still fails the axiom check if it consumes a staged one. The three that
-differ are `LatentModel.aeFunctionOf_of_perfectlyCondenses` (Corollary 4.6, proved but
-running through Proposition 4.2's staged inequality) and, in `Amalgamation.lean`,
-`Amalgamation.canonical` / `nonempty_amalgamation` / `LatentAmalgamation.canonical` /
-`nonempty_latentAmalgamation` (Lemma 4.13, whose three `sorry`s sit in supporting measure
-lemmas rather than in the annotated declarations themselves).
+Note that the table below lists `sorry` *sites* (seventeen), while the
+`CONDENSATION-PENDING` block lists *declarations that are not axiom-clean* (twenty-one) —
+a longer list, because a declaration whose own proof is complete still fails the axiom
+check if it consumes a staged one. The four that differ are
+`LatentModel.aeFunctionOf_of_perfectlyCondenses` (Corollary 4.6) and the three
+un-annotated consumers named in the Status section, all four of them running through
+Proposition 4.2's staged second inequality.
 
 | file | declaration | what is unproved |
 |---|---|---|
@@ -114,17 +128,14 @@ lemmas rather than in the annotated declarations themselves).
 | `Perfect.lean` | ✱ `RVModel.orderedMarkov_iff` | **Proposition 4.10** (4.38): the ordered Markov condition is equivalent to conditional independence of `Y_F`, `Y_G` given `Y_{F∩G}` for upward-closed `F`, `G`. Same linear-extension machinery. |
 | `Perfect.lean` | ✱ `LatentModel.perfect_tfae_A` | **Theorem 4.9**, the (A1)–(A3) `TFAE`. |
 | `Perfect.lean` | ✱ `LatentModel.perfect_tfae_B` | **Theorem 4.9**, the (B1) ⟺ (B2) equivalence. |
-| `Amalgamation.lean` | `isProbabilityMeasure_canonicalMeasure` | the measure of (4.53) is a probability measure |
-| `Amalgamation.lean` | `measurePreserving_fst` | `ρ₁` is probability preserving |
-| `Amalgamation.lean` | `measurePreserving_snd` | `ρ₂` is probability preserving |
 | `Comparison.lean` | ✱ `aeFunctionOf_of_condIndepFun` | **Lemma 4.14** |
 | `Comparison.lean` | ✱ `aeFunctionOf_jointAbove_of_perfectlyCondenses` | **Theorem 4.15** — the induction the printed proof only gestures at (errata entry 5) |
-| `Examples.lean` | `Example41.L₁_simpleScore` | equation (4.2) |
-| `Examples.lean` | `Example41.L₁_condScore` | equation (4.3) |
-| `Examples.lean` | `Example41.L₂_simpleScore` | equation (4.4) |
-| `Examples.lean` | `Example41.L₂_condScore` | equation (4.5) |
-| `Examples.lean` | `Example44.entropy_joint_eq` | equation (4.11) |
-| `Examples.lean` | `Example44.simplyPerfectlyCondenses` | Example 4.4's conclusion |
+| `Examples.lean` | ✱ `Example41.L₁_simpleScore` | **Example 4.1**, equation (4.2) |
+| `Examples.lean` | ✱ `Example41.L₁_condScore` | **Example 4.1**, equation (4.3) |
+| `Examples.lean` | ✱ `Example41.L₂_simpleScore` | **Example 4.1**, equation (4.4) |
+| `Examples.lean` | ✱ `Example41.L₂_condScore` | **Example 4.1**, equation (4.5) |
+| `Examples.lean` | ✱ `Example44.entropy_joint_eq` | **Example 4.4**, equation (4.11) |
+| `Examples.lean` | ✱ `Example44.simplyPerfectlyCondenses` | **Example 4.4**, Example 4.4's conclusion |
 | `Quantitative.lean` | ✱ `condEntropy_jointAbove_le` | **Theorem 5.8** (5.13), the inequality |
 | `Quantitative.lean` | ✱ `condEntropy_jointAbove_eq` | **Theorem 5.8** (5.14), the exact identity |
 | `Quantitative.lean` | ✱ `condEntropy_jointAbove_le_reconScore` | **Corollary 5.9** (5.21) |
@@ -147,7 +158,7 @@ What each milestone gates, from [`notes/roadmap.md`](notes/roadmap.md):
 | milestone | what it delivers | what it gates |
 |---|---|---|
 | **M0** (harness round 1) | `Probability.lean` (§2) and `Model.lean` (Defs 3.1–3.4) complete *statements*, definitions total, theorem bodies may be `sorry`; `Examples.lean` inhabitants for `RVModel` and `LatentModel`; wiring — `lean_lib Condensation`, a `scripts/papers.py` entry marked `in-progress`, `scripts/check-condensation-nodes.py`, the CI branch, the `CONDENSATION-INVENTORY` block in `AxiomAudit.lean`, this README, `KNOWLEDGE.md` | audit round 1 attacks **the core definitions only**. A wrong `RVModel` or `LatentModel` invalidates everything built on it, so it is audited before anything is built on it. **Landed**, with no `sorry` at all. |
-| **M1** (round 2) | statements for §3.1, §4 and §5 in full (proofs may still be `sorry`); Examples 4.1 and 4.4 constructed | audit round 2 attacks **the theorem statements**. **Landed** — the twenty `sorry`s above are what "proofs may still be `sorry`" bought. |
+| **M1** (round 2) | statements for §3.1, §4 and §5 in full (proofs may still be `sorry`); Examples 4.1 and 4.4 constructed | audit round 2 attacks **the theorem statements**. **Landed** — the seventeen `sorry`s above are what "proofs may still be `sorry`" bought. |
 | **M2+** | proofs: Props 4.2, 4.10, Thm 4.9 (the chain-rule tranche); Lemma 4.13 (the measure construction); Lemma 4.14 and Thm 4.15; Thm 5.8, Cors 5.9–5.10; equations (4.2)–(4.5) and (4.11) of the examples — then hardening rounds, with Aristotle offload for stalled goals | the point at which the paper's §4 and §5 theorems are claimed *proved*. |
 
 Two corrections to that table as it stood when it was written. Proposition 2.5 was
@@ -184,8 +195,9 @@ conditional-mutual-information nonnegativity, the independence characterizations
 processing — at `ShannonInformation.FiniteEntropyOf` rather than `FiniteRange`. The consumer
 migration then swapped `RVModel`'s finiteness field, added Definition 3.1's `Ω` clause, and
 rebound the §2 substrate lemmas and the bare-variable lemmas of §5's Lemma 5.4 and §4's
-Lemma 4.14. **No statement of any §3–§5 theorem changed, and the `sorry` count is unchanged
-at twenty.** The one node whose *shape* changed is Proposition 2.5, which gained `Countable
+Lemma 4.14. **No statement of any §3–§5 theorem changed, and the `sorry` count was
+unchanged at twenty** (it fell to seventeen later the same day, when the round-2 fix wave
+discharged Lemma 4.13's three measure lemmas — unrelated to the generalization). The one node whose *shape* changed is Proposition 2.5, which gained `Countable
 R_Y` at the same time it lost `FiniteRange` (its `omit [Countable T] in` is gone, forced by
 the `tsum` form of conditional entropy). Before, it was stronger than printed in one respect
 and weaker in another, so it was not comparable as printed; now it is the printed statement.
@@ -198,6 +210,17 @@ is an `RVModel Unit` on `Ω = ℕ` with the `Geometric(1/2)` law and `X_() = id`
 expressible before the swap; every other witness in `Examples.lean` lives on a finite sample
 space and so cannot distinguish Definition 3.1's reading from the narrowed one. Per the
 repo's non-vacuity discipline it is constructed, not asserted.
+
+**Every §5 statement quantifies over a `LatentAmalgamation`, and there is a constructed
+witness for that too.** Theorem 4.15, Theorem 5.8 and both corollaries are stated about an
+arbitrary `Am : LatentAmalgamation L₁ L₂`, so an uninhabited `LatentAmalgamation` would
+make all of §5 vacuous. Until round 2 the only inhabitant was Lemma 4.13's
+`LatentAmalgamation.canonical`, which was `sorry`-dependent — so nothing axiom-clean
+witnessed the hypothesis (R2-F19). `Condensation.LatentAmalgamation.diagonal` now does:
+it amalgamates a latent variable model with *itself* along the identity (`Λ₀ = L.Λ`,
+`ρ₁ = ρ₂ = id`), which satisfies Definition 4.12 on the nose. Lemma 4.13 has since been
+proved as well, so both routes are available; `diagonal` is the one that does not depend
+on it.
 
 ### The `dd:` design decisions
 
@@ -310,9 +333,9 @@ morphisms, the category objects, the a.e.-equal-but-different-`f` pair) live at 
 | `Model.lean` | Def 3.1–3.4: `RVModel`, `LatentModel`, joint variables, the four `Y_∩A`/`Y_⊇A`/`Y_⊋A`/`Y_∋i` families plus `incomparable`, (3.9), scores σ/χ/ϱ, and the generic joint-variable / upward-closure lemmas §4 and §5 run on | complete, no `sorry` |
 | `Morphism.lean` | §3.1: Def 3.5, 3.6, Prop 3.7, 3.8, Def 3.9, 3.10, Prop 3.11, 3.12 | complete, no `sorry` — all ten endpoints axiom-clean |
 | `Perfect.lean` | §4: Prop 4.2, Def 4.3, Lemma 4.5, Cor 4.6, Prop 4.7, Def 4.8, **Thm 4.9**, Prop 4.10 | statements complete; 4 `sorry` |
-| `Amalgamation.lean` | Def 4.11, 4.12, **Lemma 4.13** (the measure construction) | statements complete; 3 `sorry` |
+| `Amalgamation.lean` | Def 4.11, 4.12, **Lemma 4.13** (the measure construction), and `LatentAmalgamation.diagonal` | complete, no `sorry` — Lemma 4.13's three measure lemmas landed 2026-08-17 |
 | `Comparison.lean` | Lemma 4.14, **Thm 4.15** | statements complete; 2 `sorry` |
-| `Quantitative.lean` | Lemma 5.4, Def 5.5, 5.6, Prop 5.7, **Thm 5.8**, Cor 5.9, 5.10 | statements complete; 5 `sorry` |
+| `Quantitative.lean` | Lemma 5.4, Def 5.5, 5.6, Prop 5.7 (the `M`-version), **Thm 5.8**, Cor 5.9, 5.10 | statements complete; 5 `sorry` |
 | `Examples.lean` | Ex 4.1, 4.4, inhabitants of every boundary structure, `LatentModel.nonempty`, and the §3.1 witnesses | constructions complete; 6 `sorry` (the score equations (4.2)–(4.5), (4.11) and Ex 4.4's conclusion) |
 | `Condensation.lean` | aggregator + `dd:` glossary | imports all eight |
 | `README.md`, `KNOWLEDGE.md`, `notes/paper-errata.md` | trust surface, institutional memory, errata | all three exist |
@@ -426,8 +449,8 @@ The annotation contract is the repo's standard one, enforced fail-closed:
 
 ### The staged inventory (`CONDENSATION-PENDING`)
 
-The coverage rule above collides with reaching the paper statement-first. At M1 sixteen
-declarations carry a `Paper node:` annotation — their *statements* are final and are the
+The coverage rule above collides with reaching the paper statement-first. At M1 eighteen
+declarations carry a paper-node annotation — their *statements* are final and are the
 paper's real endpoints — while their proofs are not yet axiom-clean. Such a declaration
 cannot be listed in `#assert_axioms_clean`: that command exists to catch exactly a
 `sorryAx` dependency, so listing it would either fail the build or invite someone to weaken
@@ -443,8 +466,17 @@ axiom-clean:
 ```
 -- CONDENSATION-PENDING-BEGIN
 -- Condensation.LatentModel.perfect_tfae_A   -- M2: Theorem 4.9 (A1)-(A3); same chain rule
+-- SECTION: consumers (un-annotated)
+-- Condensation.LatentModel.entropy_joint_le_condScore  -- consumes Proposition 4.2's staged inequality
 -- CONDENSATION-PENDING-END
 ```
+
+The block has **two sections**. The main one names annotated endpoints. The second, opened
+by a `-- SECTION: consumers (un-annotated)` marker, names declarations that depend on
+`sorryAx` but carry no annotation at all — small consequences of a staged theorem, which
+are not claims about the paper and so must not be annotated, but which a reader must still
+not mistake for proved. Round 2 found three of these living outside both blocks, which is
+exactly the drift the ledger exists to prevent (R2-F22).
 
 It is a declaration of intent, not a discharge, and the checker fences it so it buys
 nothing else. `scripts/check-condensation-nodes.py` accepts an annotated declaration listed
@@ -461,12 +493,22 @@ in *either* block, and **fails** if:
   staging is a mid-flight device, and the gate arms itself the moment the registry says the
   paper is done.
 
-A surviving non-empty block prints as a note (`note: 16 endpoints pending (sorry) — not
-axiom-checked`), never as a violation. **Moving a name from the pending block into the
+A surviving non-empty block prints as a note (`note: 18 endpoints pending (sorry) + 3
+un-annotated consumers — not axiom-checked`), never as a violation. **Moving a name from the pending block into the
 inventory block is what "M2 proved this endpoint" means**, and the two edits belong in the
 same commit as the proof. The mechanism lives in `scripts/paper_nodes.py` as a generic
 `pending_block` keyword argument, so any paper in this repo can opt into it; Condensation
 is currently the only one that does.
+
+**The ledger is mechanically complete, in both directions.** `scripts/check_sorry_ledger.py`
+runs one `lake env lean` elaboration against the built oleans, enumerates every declaration
+of the Condensation library that depends on `sorryAx` (de-mangling `private` names rather
+than dropping them, and reporting an ORPHAN violation if its filter of compiler-generated
+names would swallow a real declaration), and fails on either direction of drift: a
+`sorry`-dependent declaration named in neither section, or a ledger entry that no longer
+depends on `sorryAx`. The second half is what makes "moving a name from the pending block
+into the inventory block is what M2 proved this endpoint means" non-optional — it is the
+check that caught Lemma 4.13's four carriers becoming clean.
 
 Per the repo's surface-hygiene rule, `theorem` is reserved for paper-facing statements;
 supporting results are `lemma` (or `private lemma`), and data-valued carriers are `def`s.
@@ -474,18 +516,22 @@ supporting results are `lemma` (or `private lemma`), and data-valued carriers ar
 ## Errata
 
 Defects found in the printed paper while formalizing are recorded in
-[`notes/paper-errata.md`](notes/paper-errata.md) — thirteen entries as of M1: a wrong
+[`notes/paper-errata.md`](notes/paper-errata.md) — fourteen entries as of M1: a wrong
 equation reference in Theorem 5.8's proof, an undefined symbol in Theorem 4.15's proof, a
 leftover parameter name in Corollary 5.10, a dropped "almost everywhere" in Theorem 4.9,
 and several citation and notation slips.
 
-Four of the thirteen bite hard enough to change a Lean statement, and all four were found
+Four of the fourteen bite hard enough to change a Lean statement, and all four were found
 by trying to write the statement down:
 
 * **entry 10 — Definition 4.12 does not tie `π̃₁` to `π̃₂`.** Each `L̃ₖ` carries its own map
   to `Ω`, and the commuting square (4.43) that would relate them belongs to Definition
   4.11, which Definition 4.12 does not restate. Theorem 4.15's proof needs them to agree
-  almost everywhere. Carried as the explicit field `LatentAmalgamation.comm`.
+  almost everywhere. Carried as the explicit field `LatentAmalgamation.comm` — the *only*
+  added field. Round 2 removed two others, `ρ₁_π`/`ρ₂_π`, that had been read into clause
+  (3): its morphisms `ρₖ` are morphisms in the sense of Definition **3.5**, i.e. of the
+  underlying random variable models, and the paper defines no morphism of latent models and
+  so asks for no compatibility between `Lₖ.π ∘ ρₖ` and `π̃ₖ`. Entry 10 records both halves.
 * **entry 11 — Example 4.1's (4.4) and (4.5) are false at `A = ∅`.** Both scores are then
   the empty sum `0` while the right-hand side is `H(X_I)`. The Lean statements take
   `A.Nonempty`.

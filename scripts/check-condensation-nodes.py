@@ -94,6 +94,26 @@ A surviving non-empty block prints as a note (`N endpoints pending (sorry) — n
 axiom-checked`), never as a violation: the situation it describes is honest work in
 progress, and the count is the thing to watch shrink.
 
+**The block's second section, and the declarations that are not endpoints.**  A `sorry`
+does not stop at the endpoint that contains it: anything that *consumes* a staged
+endpoint depends on `sorryAx` too, and some of those consumers carry no `Paper node:`
+line of their own, so none of the rules above reaches them.  They are still outside the
+axiom gate, and a ledger that cannot name them is a ledger that drifts.  The pending
+block therefore has a second half, opened by a section line:
+
+    -- SECTION: consumers (un-annotated)
+    -- Condensation.LatentModel.entropy_joint_le_condScore  -- consumes (4.7)-(4.9)
+
+Its entries obey the same line discipline (a `--` comment, a declaration name, a
+non-empty reason, no name twice across *either* section) and their own two fences: a
+consumer must name a real declaration under `Condensation/`, and it must **not** carry a
+`Paper node:` annotation — one that acquires an annotation has become an endpoint and
+belongs in the main section, which fails as an `ANNOTATED CONSUMER`.  Consumers never
+satisfy the endpoint-coverage rule; they exist so that
+`scripts/check_sorry_ledger.py` can demand, mechanically, that *every* declaration
+depending on `sorryAx` is named in this block.  A block with no section line parses
+exactly as it did before the section existed.
+
 The keyword rules for this library — every `theorem` carries a `Paper node:` line, and
 `private theorem` never occurs — are *not* duplicated here.  `scripts/lint_paper_labels.py`
 already takes a per-library list of accepted label forms; `Condensation` is registered
@@ -101,7 +121,7 @@ there with the `<section>.<n>` form, so a bare integer will not do.
 
 The converse direction (every *node* carries a Lean statement) is not yet checked: the
 scope is settled (42 nodes, with Examples 5.1–5.3 proposed out pending a ruling) but the
-formalization is at milestone M0.  The per-section coverage readout below is the
+formalization is at milestone M1.  The per-section coverage readout below is the
 progress view in the meantime; when the scope ruling lands it should become a
 `scope_manifest` passed to `paper_nodes.run_node_check`, as Finite Factored Sets does.
 

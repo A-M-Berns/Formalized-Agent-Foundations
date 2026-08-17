@@ -159,7 +159,12 @@ finding IDs that forced any are recorded in `Condensation/KNOWLEDGE.md`.
   (`lat₁`, `lat₂`), so that their underlying space is `Λ₀` definitionally rather than by a
   transported type equality.  Definition 4.12 does not tie `π̃₁` to `π̃₂`, which Theorem
   4.15 needs, so the a.e. commutation is carried as the field `comm` and recorded as
-  erratum 10.
+  erratum 10 — and that is the *only* added field: clause (3)'s `ρₖ` are morphisms in the
+  sense of Definition 3.5, i.e. of the underlying random variable models, so all that
+  survives of it is `ρₖ_pres` and `ρₖ_Y` (two further fields relating `Lₖ.π ∘ ρₖ` to `π̃ₖ`
+  were an over-reading and were deleted).  `LatentAmalgamation.diagonal` — a latent
+  variable model amalgamated with itself along the identity — is the constructed,
+  axiom-clean inhabitant that makes Theorem 4.15 and all of §5 non-vacuous.
 
 ## Files
 
@@ -177,14 +182,14 @@ library.
 | `Condensation/Model.lean` | Definitions 3.1–3.4: `RVModel` (Definition 3.1 verbatim, both finite-entropy clauses) with `RVModel.finiteEntropyOf`, `LatentModel`, joint variables, the four families `∩A`/`⊇A`/`⊋A`/`∋i` plus `incomparable`, (3.9), the scores σ/χ/ϱ, and the generic joint-variable and upward-closure lemmas §4 and §5 run on |
 | `Condensation/Morphism.lean` | §3.1: Definitions 3.5, 3.6, Propositions 3.7, 3.8, Definitions 3.9, 3.10, Propositions 3.11, 3.12 |
 | `Condensation/Perfect.lean` | §4 up to Proposition 4.10: Proposition 4.2, Definition 4.3, Lemma 4.5, Corollary 4.6, Proposition 4.7, Definition 4.8, **Theorem 4.9**, Proposition 4.10 |
-| `Condensation/Amalgamation.lean` | Definitions 4.11, 4.12, **Lemma 4.13** (the measure construction of (4.49)–(4.53)) |
+| `Condensation/Amalgamation.lean` | Definitions 4.11, 4.12, **Lemma 4.13** (the measure construction of (4.49)–(4.53), proved), and `LatentAmalgamation.diagonal` |
 | `Condensation/Comparison.lean` | Lemma 4.14, **Theorem 4.15** |
 | `Condensation/Quantitative.lean` | §5: Lemma 5.4, Definitions 5.5, 5.6, Proposition 5.7, **Theorem 5.8**, Corollaries 5.9, 5.10 |
 | `Condensation/Examples.lean` | Examples 4.1 and 4.4, constructed inhabitants of every boundary structure, the general non-vacuity result `LatentModel.nonempty`, the §3.1 witnesses, and `Example.geomModel` — the infinite-range model that the retired `dd:finite-range` narrowing excluded |
 
 ## Status at milestone M1
 
-**Statements for every in-scope node have landed; twenty proofs are still `sorry`.**  All
+**Statements for every in-scope node have landed; seventeen proofs are still `sorry`.**  All
 39 in-scope nodes of the paper's 42 carry at least one annotated declaration; the three
 that do not are Examples 5.1–5.3, which are out of scope by the proposed ruling recorded
 in `Condensation/notes/roadmap.md` (5.1 and 5.2 posit `[0,1]`-valued latents, outside the
@@ -192,14 +197,20 @@ paper's own countable-discrete framework; 5.3 is a prose translation of structur
 models with no claim, and nothing downstream cites any of the three).
 
 The `sorry`s are milestone M2's and are enumerated, per file and per declaration, in
-`Condensation/README.md`.  They are staged in `AxiomAudit.lean`'s
-`CONDENSATION-PENDING` block: an annotated endpoint whose proof is not finished cannot go
-into `#assert_axioms_clean` (that command exists to catch exactly a `sorry`), so it is
-listed in a comment block beside the inventory instead, and `scripts/check-condensation-nodes.py`
-accepts an endpoint listed in *either* block while failing if a name appears in both, if a
-pending entry names no annotated declaration, or if the pending block is non-empty once
-`scripts/papers.py` registers the paper `completed`.  Everything not in that block is
-axiom-checked in the ordinary way.
+`Condensation/README.md`.  Every one of them now sits inside a declaration that carries a
+paper-node annotation; the library has no `sorry` in a supporting lemma.  They are staged
+in `AxiomAudit.lean`'s `CONDENSATION-PENDING` block: an annotated endpoint whose proof is
+not finished cannot go into `#assert_axioms_clean` (that command exists to catch exactly a
+`sorry`), so it is listed in a comment block beside the inventory instead, and
+`scripts/check-condensation-nodes.py` accepts an endpoint listed in *either* block while
+failing if a name appears in both, if a pending entry names no annotated declaration, or if
+the pending block is non-empty once `scripts/papers.py` registers the paper `completed`.
+The block has a second section for declarations that depend on a `sorry` without being
+endpoints — three of them today, small consequences of Proposition 4.2's staged inequality.
+That the two sections together are *complete* is itself machine-checked, by
+`scripts/check_sorry_ledger.py`, which asks Lean from the compiled environment which
+declarations depend on `sorryAx` and fails on drift in either direction.  Everything not in
+that block is axiom-checked in the ordinary way.
 
 `Condensation/README.md` is the trust surface, `Condensation/KNOWLEDGE.md` the
 institutional memory, and `Condensation/notes/roadmap.md` the plan and full `dd:` table.

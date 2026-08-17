@@ -59,9 +59,13 @@ them:
   direction: from a family `L = (Ω, (Y_A)_{A ∈ P⁺I})` of jointly independent variables, the
   model with `Xᵢ = Y_∋i` of (4.10), which `L` simply-perfectly condenses.
 
-Those four declarations are the only node-annotated ones in this file.  The equation
-lemmas are not annotated: they are the examples' content, and an annotated `theorem` is
-reserved for the paper's numbered Propositions, Lemmas, Corollaries and Theorems.
+Those four constructions and the six equations they carry — (4.2)–(4.5), (4.11) and
+Example 4.4's conclusion — are the node-annotated declarations of this file, and the only
+`theorem`s in it.  The equations *are* the examples' content, so they are paper-facing
+statements in the sense the surface rule means, not internal lemmas; while their proofs
+are `sorry` they are staged in `AxiomAudit.lean`'s CONDENSATION-PENDING block rather than
+inventoried.  Everything else here is a `lemma`: the non-vacuity witnesses and their
+supporting computations state nothing the paper states.
 -/
 
 universe u v w
@@ -712,15 +716,19 @@ noncomputable def L₂ (M : RVModel.{u, v, w} I) : LatentModel M where
     rfl
 
 /-- **Equation (4.2)**: `σ_{L₁}(A) = ∑_{B ∩ A ≠ ∅} H(Y_B) = ∑_{i ∈ A} H(Xᵢ)`.  The latents
-that contribute to `A` and are not constant are exactly the singletons `{i}`, `i ∈ A`. -/
-lemma L₁_simpleScore (M : RVModel.{u, v, w} I) (A : Finset I) :
+that contribute to `A` and are not constant are exactly the singletons `{i}`, `i ∈ A`.
+
+Paper node: `Example 4.1` -/
+theorem L₁_simpleScore (M : RVModel.{u, v, w} I) (A : Finset I) :
     (L₁ M).simpleScore A = ∑ i ∈ A, H[M.X i ; M.P] := by
   sorry
 
 /-- **Equation (4.3)**: `χ_{L₁}(A) = ∑_{B ∩ A ≠ ∅} H(Y_B | Y_⊋B) = ∑_{i ∈ A} H(Xᵢ)`.  The
 conditioning does nothing here: everything strictly above a singleton has `|B| ≠ 1` and is
-therefore constant, so `Y_⊋{i}` is constant and `H(Y_{i} | Y_⊋{i}) = H(Xᵢ)`. -/
-lemma L₁_condScore (M : RVModel.{u, v, w} I) (A : Finset I) :
+therefore constant, so `Y_⊋{i}` is constant and `H(Y_{i} | Y_⊋{i}) = H(Xᵢ)`.
+
+Paper node: `Example 4.1` -/
+theorem L₁_condScore (M : RVModel.{u, v, w} I) (A : Finset I) :
     (L₁ M).condScore A = ∑ i ∈ A, H[M.X i ; M.P] := by
   sorry
 
@@ -732,8 +740,10 @@ right side is `H(X_I)`, which is not in general zero.  (`notes/paper-errata.md` 
 the corresponding (4.2)–(4.3) hold at `A = ∅` because both sides are then empty sums.)
 
 `X_I` is `RVModel.jointAll`, the joint variable over the whole index type, so that no
-`[Fintype I]` binder is needed to name it. -/
-lemma L₂_simpleScore (M : RVModel.{u, v, w} I) {A : Finset I} (hA : A.Nonempty) :
+`[Fintype I]` binder is needed to name it.
+
+Paper node: `Example 4.1` -/
+theorem L₂_simpleScore (M : RVModel.{u, v, w} I) {A : Finset I} (hA : A.Nonempty) :
     (L₂ M).simpleScore A = H[M.jointAll ; M.P] := by
   sorry
 
@@ -741,8 +751,10 @@ lemma L₂_simpleScore (M : RVModel.{u, v, w} I) {A : Finset I} (hA : A.Nonempty
 strictly contains the top element of `P⁺I`, so `Z_⊋I` is a variable into a one-point type
 and its term is the unconditioned `H(Z_I)`; every other term is the entropy of a constant.
 
-`A` nonempty for the same reason as in (4.4). -/
-lemma L₂_condScore (M : RVModel.{u, v, w} I) {A : Finset I} (hA : A.Nonempty) :
+`A` nonempty for the same reason as in (4.4).
+
+Paper node: `Example 4.1` -/
+theorem L₂_condScore (M : RVModel.{u, v, w} I) {A : Finset I} (hA : A.Nonempty) :
     (L₂ M).condScore A = H[M.jointAll ; M.P] := by
   sorry
 
@@ -795,8 +807,10 @@ noncomputable def L44 (L : RVModel.{u, v, w} (PPlus I)) : LatentModel (M44 L) wh
 /-- **Equation (4.11)**:
 `H(X_A) = H(Xᵢ : i ∈ A) = H(Y_B : B ∩ A ≠ ∅) = ∑_{B ∩ A ≠ ∅} H(Y_B)`.  The first two
 equalities are re-indexings; the last is where "the variables `Y_A` are jointly
-independent" is used. -/
-lemma entropy_joint_eq (L : RVModel.{u, v, w} (PPlus I))
+independent" is used.
+
+Paper node: `Example 4.4` -/
+theorem entropy_joint_eq (L : RVModel.{u, v, w} (PPlus I))
     (hindep : iIndepFun L.X L.P) (A : Finset I) :
     H[(M44 L).joint A ; (M44 L).P] = ∑ B ∈ famFinset (contrib A), H[L.X B ; L.P] := by
   sorry
@@ -806,8 +820,10 @@ lemma entropy_joint_eq (L : RVModel.{u, v, w} (PPlus I))
 definition the right-hand sum of (4.11).
 
 This is Definition 4.3's `LatentModel.SimplyPerfectlyCondenses`, which unfolds to exactly
-that universally quantified equation. -/
-lemma simplyPerfectlyCondenses (L : RVModel.{u, v, w} (PPlus I))
+that universally quantified equation.
+
+Paper node: `Example 4.4` -/
+theorem simplyPerfectlyCondenses (L : RVModel.{u, v, w} (PPlus I))
     (hindep : iIndepFun L.X L.P) : (L44 L).SimplyPerfectlyCondenses := by
   sorry
 

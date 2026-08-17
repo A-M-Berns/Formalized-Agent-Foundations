@@ -9,10 +9,11 @@ This file is §3.1 of Eisenstat, *Condensation: A Theory of Concepts*:
 
 * Definition 3.5 — a **morphism** `(π, ι, (f_j)_{j∈J}) : (Ω, (X_i)_{i∈I}) → (Λ, (Y_j)_{j∈J})`
   (`RVModel.Hom`), equation (3.10);
-* Definition 3.6 — the **composite** (3.13) (`RVModel.Hom.comp`) and the identity morphism
-  (3.16) (`RVModel.Hom.id`);
+* Definition 3.6 — the **composite** (3.13) (`RVModel.Hom.comp`);
 * **Proposition 3.7** — random variable models and morphisms form a category
-  (`RVModelObj.instCategory`);
+  (`RVModelObj.instCategory`), whose *proof* supplies the identity morphism (3.16)
+  (`RVModel.Hom.id`) — (3.16) sits inside Proposition 3.7's proof, not in Definition 3.6,
+  and `RVModel.Hom.id` accordingly carries no paper-node annotation of its own;
 * **Proposition 3.8** — the characterization of the isomorphisms (`RVModel.Hom.isIso_iff`);
 * Definition 3.9 — **equality almost everywhere** of morphisms (`RVModel.Hom.AEEq`);
 * Definition 3.10 — **equivalence** of random variable models (`RVModel.IsEquivalence`,
@@ -138,7 +139,14 @@ lemma eq_ae_all (φ : Hom M N) :
     ∀ᵐ ω ∂M.P, ∀ j, N.X j (φ.π ω) = φ.f j (M.X (φ.ι j) ω) :=
   (ae_all_iff (p := fun ω j => N.X j (φ.π ω) = φ.f j (M.X (φ.ι j) ω))).2 φ.eq_ae
 
-/-! ## Definition 3.6 — composition, and the identity morphism (3.16) -/
+/-! ## Definition 3.6 — composition; and the identity morphism (3.16)
+
+Definition 3.6 defines only the *composite* (3.13).  Equation (3.16), the identity
+morphism, is displayed inside the **proof of Proposition 3.7** ("On a random variable model
+`(Ω, (Xᵢ))` we have the morphism (3.16), which we can see serves as an identity
+morphism"), so `RVModel.Hom.id` is machinery for that proposition rather than a node
+carrier of its own.  It is placed here because composition and the identity are what the
+`Category` instance below is assembled from. -/
 
 /-- The **composite** of two morphisms, equation (3.13):
 `(ρ ∘ π, ι ∘ ν, (g_k ∘ f_{ν(k)})_{k∈K})`.
@@ -165,7 +173,9 @@ def comp (φ : Hom M N) (ψ : Hom N P) : Hom M P where
     simp only [Function.comp_apply] at hω hω' ⊢
     rw [hω, hω']
 
-/-- The **identity morphism** `(id_Ω, id_I, (id_{R X_i})_{i∈I})` of equation (3.16). -/
+/-- The **identity morphism** `(id_Ω, id_I, (id_{R X_i})_{i∈I})` of equation (3.16), which
+the paper displays in the proof of Proposition 3.7.  Not a node carrier: the node is
+Proposition 3.7 itself (`RVModelObj.instCategory`), which consumes this. -/
 def id (M : RVModel.{u, v, w} I) : Hom M M where
   π := _root_.id
   π_pres := MeasurePreserving.id _
@@ -464,8 +474,13 @@ condition (1) holds.  Proposition 4.7 uses precisely this shape. -/
 
 /-- The "obvious triple" `(π, id_I, (f_i)_{i∈I})` over a fixed index set: a morphism as
 soon as `f_i (X_i) = π^* Y_i` almost everywhere for every `i`, which is half of the
-paper's condition (2) after Definition 3.10. -/
-def Hom.ofSameIndex {M : RVModel.{u, v, w} I} {N : RVModel.{u₁, v₁, w} I}
+paper's condition (2) after Definition 3.10.
+
+The two models are **explicit** arguments.  They are not inferrable from the remaining
+ones — every occurrence of `M` and `N` in the types of `π`, `hπ`, `f`, `hf` is behind a
+projection (`M.Ω`, `M.P`, `M.R`, `M.X`), which unification will not invert — so with them
+implicit every call site had to write `(M := …) (N := …)` anyway (R2-F10). -/
+def Hom.ofSameIndex (M : RVModel.{u, v, w} I) (N : RVModel.{u₁, v₁, w} I)
     (π : M.Ω → N.Ω) (hπ : MeasurePreserving π M.P N.P) (f : ∀ i, M.R i → N.R i)
     (hf : ∀ i, ∀ᵐ ω ∂M.P, N.X i (π ω) = f i (M.X i ω)) : Hom M N where
   π := π
@@ -474,10 +489,10 @@ def Hom.ofSameIndex {M : RVModel.{u, v, w} I} {N : RVModel.{u₁, v₁, w} I}
   f := f
   eq_ae := hf
 
-@[simp] lemma Hom.ofSameIndex_π {M : RVModel.{u, v, w} I} {N : RVModel.{u₁, v₁, w} I}
+@[simp] lemma Hom.ofSameIndex_π (M : RVModel.{u, v, w} I) (N : RVModel.{u₁, v₁, w} I)
     (π : M.Ω → N.Ω) (hπ : MeasurePreserving π M.P N.P) (f : ∀ i, M.R i → N.R i)
     (hf : ∀ i, ∀ᵐ ω ∂M.P, N.X i (π ω) = f i (M.X i ω)) :
-    (Hom.ofSameIndex π hπ f hf).π = π := rfl
+    (Hom.ofSameIndex M N π hπ f hf).π = π := rfl
 
 /-- The characterization the paper lays out after Definition 3.10.  Given two random
 variable models over the same index set `I`, probability-preserving maps `π : Ω → Λ` and
@@ -493,7 +508,7 @@ lemma isEquivalence_ofSameIndex_iff {M : RVModel.{u, v, w} I} {N : RVModel.{u₁
     (hρ : MeasurePreserving ρ N.P M.P) {f : ∀ i, M.R i → N.R i} {g : ∀ i, N.R i → M.R i}
     (hf : ∀ i, ∀ᵐ ω ∂M.P, N.X i (π ω) = f i (M.X i ω))
     (hg : ∀ i, ∀ᵐ l ∂N.P, M.X i (ρ l) = g i (N.X i l)) :
-    IsEquivalence (Hom.ofSameIndex π hπ f hf) (Hom.ofSameIndex ρ hρ g hg) ↔
+    IsEquivalence (Hom.ofSameIndex M N π hπ f hf) (Hom.ofSameIndex N M ρ hρ g hg) ↔
       ((∀ᵐ ω ∂M.P, ρ (π ω) = ω) ∧ ∀ᵐ l ∂N.P, π (ρ l) = l) := by
   constructor
   · rintro ⟨⟨h₁, -⟩, ⟨h₂, -⟩⟩

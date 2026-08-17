@@ -26,36 +26,37 @@ in full, and `Condensation.lean` for the glossary as shipped.
 | Def 3.4 `X_A`, `Y_F`, `Y_∩A`, `Y_⊇A`, `Y_⊋A`, `Y_∋i` | `RVModel.joint`, `LatentModel.jointOn`, `LatentModel.jointContrib`, `.jointAbove`, `.jointStrictAbove`, `.jointContribIdx` | the carriers are the **joint variables**; `RVModel.jointOn` is the machinery `LatentModel.jointOn` is built from and carries no node |
 | Def 3.4 index families `{B : B ∩ A ≠ ∅}`, `{B : A ⊆ B}`, `{B : A ⊊ B}`, `{B : i ∈ B}` | `Condensation.contrib`, `.above`, `.strictAbove`, `.contribIdx` | *auxiliaries*: subsets of `P⁺I`, not random variables. They index the joint variables above; annotating them would claim (3.5)–(3.8) for a set rather than for the variable the equations define (R1-F26) |
 | Def 3.5 morphism `(π, ι, (f_j))` | `Condensation.RVModel.Hom` | fields `π`, `π_pres`, `ι`, `f`, `eq_ae`; **no** measurability field for `f` — the paper's own remark is that it is automatic on countable discrete ranges (`Hom.measurable_f`). `ι : J → I` runs target → source. `dd:category` |
-| Def 3.6 composite (3.13), identity (3.16) | `RVModel.Hom.comp`, `RVModel.Hom.id` | index maps compose the other way round |
+| Def 3.6 composite (3.13) | `RVModel.Hom.comp` | index maps compose the other way round |
+| Prop 3.7 proof, identity morphism (3.16) | `RVModel.Hom.id` | **(3.16) is displayed inside the *proof* of Proposition 3.7, not in Definition 3.6** (paper L391–395); `Hom.id` is machinery for `RVModelObj.instCategory` and carries **no** `Paper node:` line of its own. An earlier docstring and an earlier version of this row attributed it to Def 3.6 — R2-F17/F18 |
 | Prop 3.7 category | `Condensation.RVModelObj.instCategory` | objects are `RVModelObj`, which carries its index type as a **field** (a morphism may change it); (3.17)–(3.20) hold by `rfl` |
 | Prop 3.8 iso characterization | `RVModel.Hom.isIso_iff` | uses `CategoryTheory.IsIso`; "isomorphism of measurable spaces" is `RVModel.Hom.IsMeasurableIso` |
 | Def 3.9 a.e.-equal morphisms | `RVModel.Hom.AEEq` (+ `Hom.instSetoid`) | |
-| Def 3.10 equivalence | `RVModel.IsEquivalence` (the pair), `RVModel.Equivalent` (the ∃) | the "laid out" characterization is `RVModel.Hom.ofSameIndex` + `RVModel.isEquivalence_ofSameIndex_iff`; Prop 4.7 consumes exactly that shape |
+| Def 3.10 equivalence | `RVModel.IsEquivalence` (the pair), `RVModel.Equivalent` (the ∃) | the "laid out" characterization is `RVModel.Hom.ofSameIndex` + `RVModel.isEquivalence_ofSameIndex_iff`; Prop 4.7 consumes exactly that shape. Since 2026-08-17 `Hom.ofSameIndex` takes its two models as **explicit** arguments (`ofSameIndex M N π hπ f hf`): every occurrence of `M`/`N` in the other arguments is behind a projection (`M.Ω`, `M.P`, `M.R`, `M.X`), which unification cannot invert, so with them implicit every call site wrote `(M := …) (N := …)` anyway — R2-F10 |
 | Prop 3.11 congruence | `RVModel.Hom.aeEq_equivalence`, `RVModel.Hom.comp_aeEq_congr` | |
 | Prop 3.12 equivalence relation | `RVModelObj.equivalent_equivalence` | over `RVModelObj.Equivalent`; the universe-polymorphic `RVModel.Equivalent.refl/symm/trans` are the pieces |
-| Ex 4.1 `L₁`, `L₂` | `Condensation.Example41.L₁`, `.L₂` (+ `L₁RV`, `L₂RV`) | guarded-subtype encoding of "let `Y_A` be constant"; (4.2)–(4.5) are `L₁_simpleScore`, `L₁_condScore`, `L₂_simpleScore`, `L₂_condScore`, un-annotated and `sorry` at M1. (4.4)/(4.5) take `A.Nonempty` (errata 11) and name `X_I` as `RVModel.jointAll` |
+| Ex 4.1 `L₁`, `L₂` | `Condensation.Example41.L₁`, `.L₂` (+ `L₁RV`, `L₂RV`) | guarded-subtype encoding of "let `Y_A` be constant"; (4.2)–(4.5) are `L₁_simpleScore`, `L₁_condScore`, `L₂_simpleScore`, `L₂_condScore` — **annotated `theorem`s citing `Example 4.1` since 2026-08-17 (R2-F15) and staged in CONDENSATION-PENDING**; `sorry` at M1. (4.4)/(4.5) take `A.Nonempty` (errata 11) and name `X_I` as `RVModel.jointAll` |
 | Prop 4.2 (4.6) | `LatentModel.simpleScore_ge_condScore`, `.condScore_ge_entropy_jointContrib`, `.entropy_jointContrib_ge_entropy_joint` | three separate inequalities; the middle one is `sorry` (needs the finite-family chain rule) |
 | Def 4.3 perfect / simply-perfect | `LatentModel.PerfectlyCondenses`, `.SimplyPerfectlyCondenses` | quantified over `Finset I`, not `PPlus I` — nothing degenerates at `A = ∅` |
 | Lemma 4.5 | `LatentModel.perfect_entropy_iff_aeFunctionOf` | proved |
 | Cor 4.6 | `LatentModel.aeFunctionOf_of_perfectlyCondenses` | proved, but *depends on* Prop 4.2's `sorry` |
-| Ex 4.4 | `Condensation.Example44.M44`, `.L44` | `X_i := Y_∋i`; this is why latent universes are unpinned |
+| Ex 4.4 | `Condensation.Example44.M44`, `.L44` (+ (4.11) `.entropy_joint_eq` and the conclusion `.simplyPerfectlyCondenses`) | `X_i := Y_∋i`; this is why latent universes are unpinned. The last two are annotated `theorem`s citing `Example 4.4` since 2026-08-17 (R2-F15), `sorry` at M1, staged in CONDENSATION-PENDING |
 | Prop 4.7 | `LatentModel.aeFunctionOf_iff_isEquivalence_contribModel` | the two models it compares are `LatentModel.pullbackModel` (`(Λ, (X_i))`) and `LatentModel.contribModel` (`(Λ, (Y_∩{i}))`); clause (2) is `RVModel.IsEquivalence` of two `Hom.ofSameIndex` triples at `π = ρ = id_Λ`. Proved |
 | Def 4.8 ordered Markov | `Condensation.RVModel.OrderedMarkov` | stated over a bare `RVModel (PPlus I)`, as the paper does |
 | Thm 4.9 | `LatentModel.perfect_tfae_A` (A1–A3), `.perfect_tfae_B` (B1 ⟺ B2) | both `sorry` |
 | Prop 4.10 | `RVModel.orderedMarkov_iff` | "upward closed" is Mathlib's `IsUpperSet`, not a synonym; `sorry` |
 | Def 4.11 amalgamation of a cospan | `Condensation.Amalgamation` | `dd:amalgamation`; **unchanged** by the 2026-08-17 generalization — it builds no random variable model, so Definition 3.1's clauses never reach it |
-| Def 4.12 amalgamation of two latent models | `Condensation.LatentAmalgamation` | `Λ₀` primary, `lat₁`/`lat₂` derived (`.Λ` definitionally `Λ₀`); `comm` is an added field (errata 10). Carries `[finiteEntropy_Λ₀ : ShannonInformation.FiniteEntropyMeasure P₀]` since 2026-08-17 — Definition 4.12(1) asks for a random variable model on `Λ₀`, and Definition 3.1 now really demands the `Ω`-clause — and its `finiteRange_Y₁`/`finiteRange_Y₂` fields are `finiteEntropy_Y₁`/`finiteEntropy_Y₂` |
-| Lemma 4.13 | `Amalgamation.canonical`, `nonempty_amalgamation`, `LatentAmalgamation.canonical`, `nonempty_latentAmalgamation` | the (4.49)–(4.53) construction; all four `sorry` at M1 (three supporting measure lemmas). `Amalgamation.finiteEntropyMeasure_canonicalMeasure` (new 2026-08-17, proved) is what discharges `finiteEntropy_Λ₀` in `LatentAmalgamation.canonical`: the fibre product of (4.49) injects into `Λ₁ × Λ₂`, so `ShannonInformation.finiteEntropyMeasure_of_injective` applied to the pair `⟨fst, snd⟩` inherits finite entropy. Under `dd:finite-range` this obligation did not arise at all |
-| Lemma 4.14 | `Condensation.aeFunctionOf_of_condIndepFun` | `sorry` |
+| Def 4.12 amalgamation of two latent models | `Condensation.LatentAmalgamation` | `Λ₀` primary, `lat₁`/`lat₂` derived (`.Λ` definitionally `Λ₀`); `comm` is the **only** added field (errata 10) — the fields `ρ₁_π`/`ρ₂_π` (`Lₖ.π ∘ ρₖ =ᵐ π̃ₖ`) and the lemma `comm_ρ` derived from them were **deleted on 2026-08-17 (R2-F12/F20)**: Definition 4.12(3)'s morphisms are Definition 3.5 morphisms of the underlying *random variable* models, and the paper never defines a morphism of latent models, so nothing relates `Lₖ.π ∘ ρₖ` to `π̃ₖ`. Carries `[finiteEntropy_Λ₀ : ShannonInformation.FiniteEntropyMeasure P₀]` since 2026-08-17 — Definition 4.12(1) asks for a random variable model on `Λ₀`, and Definition 3.1 now really demands the `Ω`-clause — and its `finiteRange_Y₁`/`finiteRange_Y₂` fields are `finiteEntropy_Y₁`/`finiteEntropy_Y₂` |
+| Lemma 4.13 | `Amalgamation.canonical`, `nonempty_amalgamation`, `LatentAmalgamation.canonical`, `nonempty_latentAmalgamation` | the (4.49)–(4.53) construction. **All four PROVED on 2026-08-17 (round-2 fix wave); they are in the inventory block, not staged.** The three supporting measure lemmas — (4.55)–(4.56) total mass (`isProbabilityMeasure_canonicalMeasure`), and both halves of (4.57) (`measurePreserving_fst`/`_snd`) — were the library's last un-annotated `sorry`s. **Beware a real off-by-one in the prose here: THREE is the count of `sorry` *sites*, but FOUR supporting lemmas were `sorryAx`-dependent** — `finiteEntropyMeasure_canonicalMeasure` had a complete proof that *consumed* the other three, so it carried no `sorry` of its own and still failed an axiom check. Both numbers are correct about different things; say which you mean. For non-vacuity of `LatentAmalgamation` prefer `Condensation.LatentAmalgamation.diagonal` (R2-F19) — a latent model amalgamated with itself along the identity — which is independent of Lemma 4.13 entirely. (Until 2026-08-17 that preference was a *requirement*: these four were `sorry`-dependent, so citing them proved nothing, which is what R2-F19 found.) `Amalgamation.finiteEntropyMeasure_canonicalMeasure` (new 2026-08-17, proved) is what discharges `finiteEntropy_Λ₀` in `LatentAmalgamation.canonical`: the fibre product of (4.49) injects into `Λ₁ × Λ₂`, so `ShannonInformation.finiteEntropyMeasure_of_injective` applied to the pair `⟨fst, snd⟩` inherits finite entropy. Under `dd:finite-range` this obligation did not arise at all. **The proof factors through six `private` declarations** in `Amalgamation.lean`: `offWeight` (the (4.53) weight extended by zero to all of `Λ₁ × Λ₂`, so the sums become iterated sums over `Λ₁` and `Λ₂` rather than sums over a subtype), `offWeight_of_eq`/`_of_ne`, `tsum_offWeight_right`/`_left` (equation (4.54) — the only real mathematical content; the paper's `0/0 = 0` case is where `PΩ {π₁ a} = 0`, closed by `P₁ {a} ≤ P₁ (π₁ ⁻¹' {π₁ a}) = 0`), `tsum_carrier` (the subtype-to-product reindexing, `tsum_subtype` then `ENNReal.tsum_prod`), and `canonicalMeasure_preimage_fst`/`_snd`. **A new fact about `canonicalMeasure` should be phrased as a `g`-instance of `tsum_carrier`, not reproved from `Measure.sum_apply`.** Note the route is *not* `HasSum.isProbabilityMeasure_sum_dirac_ennreal`; the Dirac lemmas do the plumbing at the ends only |
+| Lemma 4.14 | `Condensation.aeFunctionOf_of_condIndepFun` | `sorry`. **Binders are minimal since 2026-08-17 (R2-F01/F23)**: countable discrete `Ω` with `[IsProbabilityMeasure μ]`, `[Countable] [MeasurableSingletonClass]` on **`C`'s range only** (that is what makes the witnessing function measurable, the last line of the printed proof), measurability of `X`, `Y₁`, `Y₂`, `C`, and the three hypotheses. The ranges of `X`/`Y₁`/`Y₂` carry only `MeasurableSpace`, and there is **no** finiteness binder of any kind — the printed proof is measure-theoretic and forms no entropy. Phase 4b had swapped four `FiniteRange` binders for four `FiniteEntropyOf` ones; round 2 established that neither belonged. A `FiniteEntropyOf` binder on this statement is a finding |
 | Thm 4.15 | `Condensation.aeFunctionOf_jointAbove_of_perfectlyCondenses` | `sorry`; the induction is not in the paper (errata 5) |
 | Lemma 5.4 (5.5), (5.6) | `Condensation.condEntropy_le_of_pair`, `.condEntropy_eq_of_pair` | proved; the `condInteractionInfo` symmetries `condInteractionInfo_comm/_swap/_rotate` and `condEntropy_pair_rotate` are the machinery |
 | Def 5.5 polar `F°` | `Condensation.polar` | with `mem_polar_iff`, `isUpperSet_polar`, `polar_antitone`, `polar_singleton`, `polar_eq_iInter` |
 | Def 5.6 intersection tree | `Condensation.ITree`, `.label`, `.intersections`, `.LabelsIn` | `dd:tree`; `ITree.leaves`, `.subtrees`, `.label_eq_polar` are the machinery |
-| Prop 5.7 | `ITree.label_eq_leaves_foldr`, `Condensation.eq_decorate_of_isIntersectionTree`, `.existsUnique_intersectionTree` | over `LTree` (an arbitrary labelling of every position) and `ITree.decorate`; proved |
+| Prop 5.7 | `ITree.label_eq_leaves_foldr`, `Condensation.eq_decorate_of_isIntersectionTree`, `.existsUnique_intersectionTree` | over `LTree` (an arbitrary labelling of every position) and `ITree.decorate`; proved. **`existsUnique_intersectionTree` is the `M`-version since 2026-08-17 (R2-F08/F11)**: the paper's `ℓ̃` maps the leaves *into* an intersection-closed collection `M` and the unique extension is `ℓ : V → M`, so the statement now takes `{M : Set α}`, `hM : ∀ a ∈ M, ∀ b ∈ M, a ⊓ b ∈ M` and `ht : t.LabelsIn M`, and concludes `∃! d, d.erase = t ∧ d.IsIntersectionTree ∧ d.LabelsIn M`. Three explicit arguments where there was one — a call site written against the old arity breaks. The old `M`-free statement survives, un-annotated, as `existsUnique_intersectionTree_ambient`. New machinery: `LTree.LabelsIn` (+ `labelsIn_leaf`/`labelsIn_node`) and `ITree.labelsIn_decorate` |
 | Thm 5.8 (5.13), (5.14) | `Condensation.condEntropy_jointAbove_le`, `.condEntropy_jointAbove_eq` | stated over `LatentAmalgamation L₁ L₂`: `Y_⊇A` = `Am.lat₁.jointAbove`, `Z_G` = `Am.lat₂.jointOn`, `X_B` = `Am.lat₁.pullbackJoint`; the two contribution conditions are *fields*, not hypotheses. Both `sorry` |
 | Cor 5.9 (5.21), (5.22) | `Condensation.condEntropy_jointAbove_le_reconScore`, `.condEntropy_jointAbove_le_reconScore_of_orderedMarkov` | both `sorry` |
-| Cor 5.10 (5.24), (5.25) | `Condensation.polar_kSubsets` (proved), `.condEntropy_jointAbove_le_choose` (`sorry`) | `kSubsets` is `F`; `1 ≤ k` is required, `k > \|A\|` is allowed (errata 8) |
-| auxiliary: `{B : B incomparable to A}` | `Condensation.incomparable` | in `Model.lean` beside `contrib`/`above`; no paper node, like them |
+| Cor 5.10 (5.24), (5.25) | `Condensation.polar_kSubsets` (proved), `.condEntropy_jointAbove_le_choose` (`sorry`) | `kSubsets` is `F`. **The `1 ≤ k` binder is asymmetric on purpose (R2-F21)**: `polar_kSubsets` (5.24) keeps it — the identity is genuinely false at `k = 0`, where the LHS is `polar ∅ = P⁺I` and the RHS is the upward cone `above A.toFinset` (truncated `ℕ` subtraction makes `k - 1 = 0`) — while `condEntropy_jointAbove_le_choose` (5.25) has **no** `hk`, because its tree hypothesis is unsatisfiable at `k = 0` and the statement is vacuous there. See errata 8 and the new errata 14 |
+| auxiliary: `{B : B incomparable to A}` | `Condensation.incomparable` | in `Model.lean` beside `contrib`/`above`; no paper node, like them. Defined **via Mathlib's `IncompRel (· ≤ ·)`** since 2026-08-17 (`Mathlib.Order.Comparable`, imported by `Model.lean`): `IncompRel r a b` unfolds to `¬ r a b ∧ ¬ r b a`, so `mem_incomparable` stays `Iff.rfl`. Same policy as "upward closed" = `IsUpperSet`: no local synonym (R2-F27) |
 | auxiliary: "upward closed" | Mathlib `IsUpperSet` on `PPlus I` | **not** a FAF definition — an earlier local `IsUpwardClosed` in `Perfect.lean` was a synonym and is retired |
 | auxiliary: `FiniteRange` of a dependent product | ~~`Condensation.finiteRange_pi`~~ | **retired 2026-08-17**, and removed from `AxiomAudit.lean`'s inventory. It supplied `FiniteRange` for a dependent product of finitely many finite-range variables, which the vendored `FiniteRange/Defs.lean` still lacks. After the swap it had *zero* callers — `Example41.L₁RV`/`L₂RV` were the last two and now go through `M.finiteEntropyOf (measurable_pi_lambda _ fun j => M.measurable_X j.1)` — and an unused inventoried declaration is what this library's own rule says not to keep. `Model.lean` carries a paragraph where it stood; reinstating it is six lines of `Set.Finite.pi` |
 | witness: a model the old class could not contain | in `namespace Condensation.Example` (singular): `geomModel`, `geomModel_X`, `geomModel_P`, `geomModel_not_finiteRange`, `geomModel_entropy`, `geomModel_entropy_pos`, `geomLatent`, `geomLatent_reconScore` | no paper node; all proved, none `sorry`. `geomModel : RVModel Unit` has `Ω = ℕ`, `P = ShannonInformation.geom` (the `Geometric(1/2)` law), `X () = id`, entropy `2 log 2`, together with a proof that `id` does **not** have finite range; `geomLatent = LatentModel.ofJoint geomModel` and its reconstruction score is `0`. They sit after `LatentModel.ofJoint` in `Examples.lean` rather than beside the fair-coin witnesses, precisely because `geomLatent` *is* `ofJoint geomModel` and there is nothing model-specific to say about the latent side. It is the evidence that retiring `dd:finite-range` has content rather than being a bookkeeping change — every other witness lives on a finite sample space and cannot tell the two readings apart. The law, its instances and the entropy computation live in `ShannonInformation/FiniteEntropy/Examples.lean` and are not restated; `geomLatent` is just `LatentModel.ofJoint geomModel` |
@@ -136,8 +137,29 @@ below.
   which is what makes Theorem 4.15 statable (it compares `Y_A` with `Z_⊇A` on one space).
   The latent families `Yₖ` are valued in `Lₖ`'s ranges because clause (3)'s morphisms act
   as the identity on ranges, which forces the range families to agree; what survives of
-  Definition 3.5 is then just `ρₖ_pres` and `ρₖ_Y`. **`comm` is an added field** — Definition
-  4.12 does not tie `π̃₁` to `π̃₂` and Theorem 4.15 needs them to agree a.e. (errata 10).
+  Definition 3.5 is then just `ρₖ_pres` and `ρₖ_Y`. **That sentence is now literally true of
+  the structure, and was not before.** Until 2026-08-17 the structure also carried
+  `ρ₁_π`/`ρ₂_π` (`Lₖ.π ∘ ρₖ =ᵐ π̃ₖ`), and a derived lemma `comm_ρ`. They were an
+  over-reading of clause (3) and were deleted (R2-F12/F20): the morphisms `ρₖ` of
+  (4.44)/(4.45) are morphisms in the sense of **Definition 3.5**, i.e. of the underlying
+  *random variable* models, and Definition 3.5 imposes exactly "π is probability
+  preserving" and "`fⱼ(X_{ι(j)}) = π^* Yⱼ` a.e."; the paper never defines a morphism of
+  *latent* variable models and so never asks for compatibility with the maps to `Ω`. If you
+  find yourself wanting `Lₖ.π ∘ ρₖ =ᵐ π̃ₖ` in a proof, that is a finding, not a missing
+  field — say so rather than reintroducing it. **`comm` is the one added field** —
+  Definition 4.12 does not tie `π̃₁` to `π̃₂` and Theorem 4.15 needs them to agree a.e.
+  (errata 10).
+- **Non-vacuity of `LatentAmalgamation` is witnessed by `diagonal`, independently of
+  Lemma 4.13.** `Condensation.LatentAmalgamation.diagonal (L : LatentModel M) :
+  LatentAmalgamation L L` amalgamates a latent variable model with itself at `Λ₀ = L.Λ`,
+  `ρₖ = id`; Definition 4.12's clauses then hold on the nose and `comm` is `rfl`. This
+  matters because *every* §5 statement, and Theorem 4.15, quantifies over a
+  `LatentAmalgamation`, so an uninhabited one would make the whole tranche vacuous — and
+  until 2026-08-17 the only inhabitant was `LatentAmalgamation.canonical`, which was
+  `sorry`-dependent, so nothing axiom-clean witnessed the hypothesis (R2-F19). Lemma 4.13
+  has since been proved too, so both routes exist; `diagonal` is the one that stays valid
+  if Lemma 4.13's proof is ever disturbed, and it is a two-line construction rather than a
+  measure-theoretic one. Keep it, and keep citing it in non-vacuity prose.
 - **`dd:tree` as landed (M1).** `ITree` is an inductive binary tree with labels *computed*
   (`ITree.label`, the meet of the children's labels); `LTree` is the separate type of trees
   with a label at *every* position, which is what Proposition 5.7 quantifies over
@@ -254,9 +276,126 @@ in for a paper claim it does not make.
   point towards the root). Not an error, but it inverts a formalizer's reading and cost one
   wrong first draft.
 
-Full list (thirteen entries) with line numbers: `notes/paper-errata.md`.
+Full list (fourteen entries) with line numbers: `notes/paper-errata.md`.
 
 ## Pitfalls
+
+- **"`sorry` count" and "`sorryAx`-dependent count" are different numbers, and this repo
+  quotes both.** The compiler's `declaration uses 'sorry'` warnings count declarations
+  *containing* a `sorry` (17 as of 2026-08-17). The ledger counts declarations *depending
+  on* `sorryAx` (21), which also picks up complete proofs that consume a staged one: the
+  three un-annotated consumers, plus Corollary 4.6
+  (`aeFunctionOf_of_perfectlyCondenses`, an annotated endpoint whose own proof is finished),
+  and historically `Amalgamation.finiteEntropyMeasure_canonicalMeasure`. 17 + 1 + 3 = 21. Do not reconcile them by "fixing"
+  one; state which you mean. This gap is the whole reason the `CONDENSATION-PENDING` block
+  needed its `SECTION: consumers (un-annotated)` second section.
+- **`scripts/check_trust_surface.py` is a freshness hash over ~156 inputs and says nothing
+  about correctness.** In a multi-agent session it fails constantly on pure staleness. The
+  only meaningful reading is "regenerate with `gen-trust-surface.py`, then immediately
+  re-run the check" — and, since the hash covers every Condensation Lean file, README,
+  KNOWLEDGE, errata, extraction and the generator itself, it must be the *last* thing you
+  do before committing.
+- **`scripts/trust-surface-template.html` is a second, easily-missed home for every
+  modelling-boundary ruling, and it drifts silently.** Retiring a `dd:` deviation is not
+  finished when the Lean, README, KNOWLEDGE and roadmap are updated: the template's
+  `.no-tier` box for that paper carries the same disclosure in its own prose, and nothing
+  cross-checks the two. `dd:finite-range` was retired on 2026-08-17 and the template still
+  published it as "the standing modelling narrowing" until the round-2 fix wave — a page
+  contradicting the README it links to. Grep the template whenever a disclosure changes.
+- **A CI step that runs `lake` in a plain `run:` block after `leanprover/lean-action@v1`
+  may not find it on `PATH`.** `scripts/check_sorry_ledger.py` is wired as a post-build
+  step for exactly this reason (it reads oleans and must follow the build). If the first CI
+  run fails with `lake: command not found`, prepend `~/.elan/bin` to `PATH` in that step
+  rather than changing the script.
+
+- **`Set.indicator_of_mem` / `_of_notMem` cannot infer `s` from a membership proof that is
+  only *definitionally* `x ∈ s`.** Given `h : π₁ a = π₂ b`, `Set.indicator_of_mem h _`
+  cheerfully unifies `s := Eq (π₁ a)` and the point `:= π₂ b` — a nonsense set that then
+  fails several lines later with an opaque "did not find an occurrence of the pattern".
+  Always name both: `Set.indicator_of_mem (s := {q : Λ₁ × Λ₂ | π₁ q.1 = π₂ q.2}) (a := (a, b)) h _`.
+  Cost ~15 minutes, three times in one session, during Lemma 4.13.
+- **`rw` will not fire under an unreduced beta-redex; `simp only` will.** Lemmas of the
+  `tsum_carrier` shape leave summands as `(fun q => …) ↑p`, and a `rw [Set.indicator_of_mem …]`
+  reports a pattern failure that reads like a real mismatch. The same lemma list under
+  `simp only [...]` works, because simp beta-reduces first. When `Measure.dirac_apply'` has
+  produced `s.indicator 1 p`, add `Pi.one_apply` to that list too.
+- **`omit … in` goes *before* the docstring, not between the docstring and the
+  declaration.** `/-- doc -/` then `omit [X] in` then `lemma foo` fails with the misleading
+  `unexpected token 'omit'; expected 'lemma'`. `carrier.comm` in `Amalgamation.lean` shows
+  the right order.
+- **`le_antisymm hle (zero_le _)` does not elaborate in `ℝ≥0∞`** — the ambient `zero_le`
+  takes its argument implicitly, so the `_` is an over-application and the error is the
+  unhelpful `Function expected at zero_le`. Where `hle : x ≤ 0`, `simpa using hle` is the
+  one-token fix.
+- **The `Measure.sum`-of-Diracs vocabulary has four entry points, all in
+  `Mathlib/MeasureTheory/Measure/Dirac.lean`, and they are easy to confuse.**
+  `Measure.sum_smul_dirac_singleton` (:142) evaluates such a sum at a singleton and needs
+  **no** `Countable`; `Measure.sum_smul_dirac` (:138) says `∑ μ{a} • dirac a = μ` and does;
+  `Measure.map_eq_sum` (:129) turns `μ.map f` into that shape; and
+  `Measure.tsum_indicator_apply_singleton` (:187) converts a fibre sum back into a measure
+  of a preimage. The clean recipe for a `MeasurePreserving` on a countable discrete space is
+  `map_eq_sum` + `sum_smul_dirac`: it reduces the goal to the pointwise
+  `μ (f ⁻¹' {b}) = ν {b}` and avoids `Measure.ext` entirely.
+- **Calibration: `Condensation/Amalgamation.lean` round-trips under `lake env lean` in
+  ~7.5 seconds on a warm `.lake`**, because its whole import closure is `Condensation.Model`.
+  Lemma 4.13's three measure lemmas were budgeted at "1–3 hours, probably won't fit a
+  one-hour box" and took ~50 minutes — iteration speed, not proof difficulty, was the
+  deciding factor. Budget generously for *editing* this file and stingily for *waiting* on
+  it, and prefer many small `lake env lean` cycles to reasoning about a goal offline.
+
+- **Never write the literal string `Paper node` followed by a colon inside a docstring
+  except as a real annotation.** `paper_nodes.MARKER` is that exact substring, so a
+  docstring *talking about* the convention ("carries no <that string> of its own") is
+  parsed as an annotation and fails the checker twice over -- MALFORMED (it names no node)
+  and, in a `/-! ... -/` module header, UNANCHORED. Round 2 hit this three times in one
+  pass while writing prose explaining why something is un-annotated. Write "paper-node
+  annotation" instead.
+- **`~/.claude/scripts/safe-lake.sh` exits 0 even when the underlying `lake build` FAILS.**
+  The wrapper's exit status reports the wrapper, not the build. A green-looking
+  `[exited with code 0]` at the bottom of the teed log can sit directly under
+  `error: build failed`. Always grep the log for `error:` before believing a build is
+  green -- a fixer that trusts the exit code will report a red build as green.
+- **`ITree.LabelsIn` and `LTree.LabelsIn` are different predicates with near-identical
+  names.** The `ITree` one constrains only the **leaves**; the `LTree` one constrains
+  **every** vertex. Their `@[simp]` node lemmas also take different arguments --
+  `LTree.labelsIn_node` takes the vertex label `a` explicitly (`node a l r`),
+  `ITree.labelsIn_node` does not (`node l r`). `ITree.label_mem_of_labelsIn` (leaves-in-`M`
+  plus meet-closure gives every vertex's label in `M`) and `ITree.labelsIn_decorate` are
+  what reconcile them; do not add a third "labels of every `ITree` vertex" predicate.
+- **Truncated natural subtraction inside a set-builder *in a statement* is a faithfulness
+  hazard, not just a proof nuisance.** `{C | (A \\ C).card <= k - 1}` silently reads
+  `<= 0` at `k = 0`, i.e. `A subset C`, where the prose "all but at most `k-1` elements"
+  suggests a vacuous condition. `polar_kSubsets`'s docstring got the `k = 0` degeneracy
+  backwards for exactly this reason (R2-F16). The one-line settler:
+  `simp only [Nat.zero_sub, Nat.le_zero, Finset.card_eq_zero, Finset.sdiff_eq_empty_iff_subset]`.
+- **Do not *reason* about a degenerate case in a docstring -- compute it.** Both §5
+  docstring findings of round 2 were settled by a throwaway `-- TEMPCHECK-BEGIN/END` block
+  of `example`s after `end Condensation`, elaborated in one `lake env lean` run and then
+  deleted. A docstring claim about a boundary value is cheap to check and expensive to get
+  wrong, because nothing downstream type-checks prose.
+
+- **Mathlib *does* have `Subtype.instMeasurableSingletonClass` at this pin, and an earlier
+  docstring in `Amalgamation.lean` said it does not.** The claim ("Mathlib has no `Subtype`
+  instance for `MeasurableSingletonClass` at this pin; a singleton of the subtype is the
+  preimage of a singleton under the (measurable) coercion") sat above a hand-rolled instance
+  for `Amalgamation.carrier`, which was deleted in round 2 (R2-F09). It is at
+  `Mathlib/MeasureTheory/MeasurableSpace/Constructions.lean:196`. The general lesson, which
+  cost real time twice on this branch: a "Mathlib lacks X" comment is a *claim about a
+  moving target* and ages badly — re-check it with `exact?`/`grep` in `.lake/packages/mathlib`
+  before building around it, and if you write one, write the search you ran.
+- **The `Paper node:` line is the ledger's only hook, so an un-annotated declaration that
+  states a paper claim is invisible to every gate.** Six `sorry`'d equations of Examples 4.1
+  and 4.4 sat outside `check-condensation-nodes.py` and outside the `CONDENSATION-PENDING`
+  block for the whole of M1 for exactly this reason (R2-F15). A paper's displayed
+  *equations* are paper-facing endpoints: annotate them with the **enclosing** node's
+  printed header (`Example 4.1`), and promote them `lemma` → `theorem`. Never invent an
+  equation-level node id like `Example 4.1 (4.2)`; the checker matches printed headers in
+  `notes/condensation-25-07.txt` and a node string that parses to nothing is a hard failure.
+- **Mentioning `sorry` in docstring prose is normal here, so `grep -c sorry <file>`
+  overcounts.** `Amalgamation.lean`, `Quantitative.lean`, `Perfect.lean` and `Examples.lean`
+  all discuss `sorry` in prose. The authoritative count is the compiler's
+  `declaration uses 'sorry'` warnings in the build log, which are per-declaration and report
+  the *declaration's* line, not the tactic's.
 
 - `pdftotext` emits the font's f-ligature slots as C0 bytes (`\x1c`=fi, `\x1b`=ff,
   `\x1d`=fl, `\x1e`=ffi), so `Definition` is stored as `De\x1cnition` (prints `Denition`).

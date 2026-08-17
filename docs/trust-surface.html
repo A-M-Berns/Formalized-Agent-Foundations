@@ -105,11 +105,20 @@ h2.paper-head { font-family: var(--serif); font-size: 26px; margin: 0 0 2px;
 .lens { border-left: 3px solid var(--accent); padding: 2px 0 2px 14px; margin: 10px 0; }
 .lens b { color: var(--accent-ink); }
 .legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 4px; }
-.tier { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; padding: 2px 9px;
+.tier, .staged { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; padding: 2px 9px;
   border-radius: 999px; white-space: nowrap; }
 .tier.universal { background: var(--uni-bg); color: var(--accent-ink); }
 .tier.instantiated { background: var(--ins-bg); color: var(--ins-ink); }
 .tier.qualified { background: var(--qual-bg); color: var(--qual); }
+/* A declaration whose *statement* is final but whose proof is still `sorry`, staged in
+   the paper's `-PENDING` comment block of AxiomAudit.lean rather than gated by
+   `#assert_axioms_clean`.  Same pill as a tier badge, in the page's warning colour;
+   `.proved` is its axiom-checked opposite, and both are drawn on every declaration of a
+   paper that stages anything, so neither state is the absence of a mark. */
+.staged { background: var(--qual-bg); color: var(--qual); font-size: 10px; }
+.staged.proved { background: var(--uni-bg); color: var(--accent-ink); }
+.node-head .staged { font-size: 11px; }
+.dot.staged { background: var(--qual); }
 .count { font-variant-numeric: tabular-nums; }
 .no-tier { border-left: 3px solid var(--qual); background: var(--qual-bg);
   color: var(--paper-ink); padding: 10px 14px; margin: 14px 0; border-radius: 0 4px 4px 0; }
@@ -509,30 +518,30 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <a class="nav-item" href="#cd-proposition-3-11" data-node="cd-proposition-3-11"><span class="dot plain"></span>Proposition 3.11</a>
 <a class="nav-item" href="#cd-proposition-3-12" data-node="cd-proposition-3-12"><span class="dot plain"></span>Proposition 3.12</a>
 <div class="nav-sec">4. Perfect condensation</div>
-<a class="nav-item" href="#cd-example-4-1" data-node="cd-example-4-1"><span class="dot plain"></span>Example 4.1</a>
-<a class="nav-item" href="#cd-proposition-4-2" data-node="cd-proposition-4-2"><span class="dot plain"></span>Proposition 4.2</a>
+<a class="nav-item" href="#cd-example-4-1" data-node="cd-example-4-1"><span class="dot staged"></span>Example 4.1</a>
+<a class="nav-item" href="#cd-proposition-4-2" data-node="cd-proposition-4-2"><span class="dot staged"></span>Proposition 4.2</a>
 <a class="nav-item" href="#cd-definition-4-3" data-node="cd-definition-4-3"><span class="dot plain"></span>Definition 4.3</a>
-<a class="nav-item" href="#cd-example-4-4" data-node="cd-example-4-4"><span class="dot plain"></span>Example 4.4</a>
+<a class="nav-item" href="#cd-example-4-4" data-node="cd-example-4-4"><span class="dot staged"></span>Example 4.4</a>
 <a class="nav-item" href="#cd-lemma-4-5" data-node="cd-lemma-4-5"><span class="dot plain"></span>Lemma 4.5</a>
-<a class="nav-item" href="#cd-corollary-4-6" data-node="cd-corollary-4-6"><span class="dot plain"></span>Corollary 4.6</a>
+<a class="nav-item" href="#cd-corollary-4-6" data-node="cd-corollary-4-6"><span class="dot staged"></span>Corollary 4.6</a>
 <a class="nav-item" href="#cd-proposition-4-7" data-node="cd-proposition-4-7"><span class="dot plain"></span>Proposition 4.7</a>
 <a class="nav-item" href="#cd-definition-4-8" data-node="cd-definition-4-8"><span class="dot plain"></span>Definition 4.8</a>
-<a class="nav-item" href="#cd-theorem-4-9" data-node="cd-theorem-4-9"><span class="dot plain"></span>Theorem 4.9</a>
-<a class="nav-item" href="#cd-proposition-4-10" data-node="cd-proposition-4-10"><span class="dot plain"></span>Proposition 4.10</a>
+<a class="nav-item" href="#cd-theorem-4-9" data-node="cd-theorem-4-9"><span class="dot staged"></span>Theorem 4.9</a>
+<a class="nav-item" href="#cd-proposition-4-10" data-node="cd-proposition-4-10"><span class="dot staged"></span>Proposition 4.10</a>
 <a class="nav-item" href="#cd-definition-4-11" data-node="cd-definition-4-11"><span class="dot plain"></span>Definition 4.11</a>
 <a class="nav-item" href="#cd-definition-4-12" data-node="cd-definition-4-12"><span class="dot plain"></span>Definition 4.12</a>
 <a class="nav-item" href="#cd-lemma-4-13" data-node="cd-lemma-4-13"><span class="dot plain"></span>Lemma 4.13</a>
-<a class="nav-item" href="#cd-lemma-4-14" data-node="cd-lemma-4-14"><span class="dot plain"></span>Lemma 4.14</a>
-<a class="nav-item" href="#cd-theorem-4-15" data-node="cd-theorem-4-15"><span class="dot plain"></span>Theorem 4.15</a>
+<a class="nav-item" href="#cd-lemma-4-14" data-node="cd-lemma-4-14"><span class="dot staged"></span>Lemma 4.14</a>
+<a class="nav-item" href="#cd-theorem-4-15" data-node="cd-theorem-4-15"><span class="dot staged"></span>Theorem 4.15</a>
 <div class="nav-sec">5.2. Comparison of latent variable models</div>
 <a class="nav-item" href="#cd-lemma-5-4" data-node="cd-lemma-5-4"><span class="dot plain"></span>Lemma 5.4</a>
 <a class="nav-item" href="#cd-definition-5-5" data-node="cd-definition-5-5"><span class="dot plain"></span>Definition 5.5</a>
 <a class="nav-item" href="#cd-definition-5-6" data-node="cd-definition-5-6"><span class="dot plain"></span>Definition 5.6</a>
 <a class="nav-item" href="#cd-proposition-5-7" data-node="cd-proposition-5-7"><span class="dot plain"></span>Proposition 5.7</a>
-<a class="nav-item" href="#cd-theorem-5-8" data-node="cd-theorem-5-8"><span class="dot plain"></span>Theorem 5.8</a>
+<a class="nav-item" href="#cd-theorem-5-8" data-node="cd-theorem-5-8"><span class="dot staged"></span>Theorem 5.8</a>
 <div class="nav-sec">5.3. Variation</div>
-<a class="nav-item" href="#cd-corollary-5-9" data-node="cd-corollary-5-9"><span class="dot plain"></span>Corollary 5.9</a>
-<a class="nav-item" href="#cd-corollary-5-10" data-node="cd-corollary-5-10"><span class="dot plain"></span>Corollary 5.10</a>
+<a class="nav-item" href="#cd-corollary-5-9" data-node="cd-corollary-5-9"><span class="dot staged"></span>Corollary 5.9</a>
+<a class="nav-item" href="#cd-corollary-5-10" data-node="cd-corollary-5-10"><span class="dot staged"></span>Corollary 5.10</a>
 </nav>
 <main>
   <h1>Formalized Agent Foundations — the trust-surface read-through</h1>
@@ -568,7 +577,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <div style="overflow-x:auto"><table class="index">
       <tr><td><strong>Paper</strong></td><td class="count"><strong>nodes</strong></td>
           <td><strong>library</strong></td><td><strong>editorial data on its cards</strong></td></tr>
-      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>tier badge per node (universal / instantiated / qualified), a reading note and a "what to check" note, from the machine-checked strength table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">12</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">87</td><td><code>FiniteFactoredSets/</code></td><td><strong>complete</strong> — §2–§7; 87 nodes carried by declarations and nine rendered by Mathlib vocabulary, 96 in scope. Conjecture 1 is stated as a <code>Prop</code> and deliberately not proved, and Examples 3 and 4 are out of scope by ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-condensation">Condensation: A Theory of Concepts</a><div class="idx-cite">Eisenstat (2025) · <a href="https://openreview.net/forum?id=HwKFJ3odui">OpenReview:HwKFJ3odui</a></div></td><td class="count">39</td><td><code>Condensation/</code></td><td><strong>in progress (milestone M0)</strong> — nothing here is claimed proved. The cards show the paper statement beside whatever Lean statement currently carries it, so the section grows as the formalization lands; <strong>no strength classification exists for this paper</strong></td></tr>
+      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>tier badge per node (universal / instantiated / qualified), a reading note and a "what to check" note, from the machine-checked strength table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">12</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">87</td><td><code>FiniteFactoredSets/</code></td><td><strong>complete</strong> — §2–§7; 87 nodes carried by declarations and nine rendered by Mathlib vocabulary, 96 in scope. Conjecture 1 is stated as a <code>Prop</code> and deliberately not proved, and Examples 3 and 4 are out of scope by ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-condensation">Condensation: A Theory of Concepts</a><div class="idx-cite">Eisenstat (2025) · <a href="https://openreview.net/forum?id=HwKFJ3odui">OpenReview:HwKFJ3odui</a></div></td><td class="count">39</td><td><code>Condensation/</code></td><td><strong>in progress (milestone M1)</strong> — statements for every in-scope node have landed, and each declaration is badged: 61 <em>axiom-clean</em>, 18 <em>staged</em> (statement final, proof still <code>sorry</code>). Nothing badged staged is claimed proved. The cards show the paper statement beside the Lean statement that carries it, so the section grows as the formalization lands; <strong>no strength classification exists for this paper</strong></td></tr>
     </table></div>
     <p><strong>Only Logical Induction has a strength classification and per-node reading
     notes.</strong> They are the product of a dedicated re-derivation pass and a
@@ -4168,7 +4177,7 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
   smuggled in or out without failing the build; deliberate type changes are logged beside the
   structure in <code>AxiomAudit.lean</code>.</p>
   <details><summary style="cursor:pointer;font-weight:600">Show all frozen structures</summary>
-  <div style="overflow-x:auto"><table class="t2"><tr><td><code>AffineCombination</code></td><td><code class="fld">const</code> <code class="fld">terms</code></td></tr><tr><td><code>AffineCombination.BoundedCombinationSequence</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmission</code></td><td><code class="fld">tradeCount</code> <code class="fld">coefficient</code> <code class="fld">sentence</code> <code class="fld">tradeCount_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">sentence_poly</code> <code class="fld">trades_eq</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmissionFamily</code></td><td><code class="fld">emit</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmissionSigns</code></td><td><code class="fld">positive</code> <code class="fld">negative</code></td></tr><tr><td><code>AffineCombination.FeedbackTruthSequence</code></td><td><code class="fld">determined</code> <code class="fld">sequence</code> <code class="fld">poly</code> <code class="fld">bounded</code> <code class="fld">magnitude</code> <code class="fld">value_vanishing</code> <code class="fld">feedback_price</code></td></tr><tr><td><code>AffineCombination.PolySequence</code></td><td><code class="fld">termCount</code> <code class="fld">coefficient</code> <code class="fld">sentence</code> <code class="fld">termCount_poly</code> <code class="fld">const_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">sentence_poly</code> <code class="fld">terms_eq</code> <code class="fld">const_rank</code> <code class="fld">coefficient_rank</code> <code class="fld">const_closed</code> <code class="fld">coefficient_closed</code></td></tr><tr><td><code>AffineQuoteEq</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">future_coherent</code></td></tr><tr><td><code>AffineQuoteGE</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">future_coherent</code></td></tr><tr><td><code>AffineQuotePortfolio</code></td><td><code class="fld">family</code> <code class="fld">poly</code> <code class="fld">scale</code> <code class="fld">scale_pos</code> <code class="fld">current_price</code> <code class="fld">bounded</code> <code class="fld">magnitude_le_one</code></td></tr><tr><td><code>BitPrefixSentences</code></td><td><code class="fld">atom</code> <code class="fld">prefixSentence</code> <code class="fld">enumeration</code> <code class="fld">enumeration_covers</code> <code class="fld">prefix_codes</code> <code class="fld">holds_prefix</code> <code class="fld">realizable</code></td></tr><tr><td><code>BooleanQuoteCode</code></td><td><code class="fld">code</code> <code class="fld">pos_complete</code> <code class="fld">neg_complete</code></td></tr><tr><td><code>BoundedComputation</code></td><td><code class="fld">machine</code> <code class="fld">input</code> <code class="fld">input_poly</code> <code class="fld">steps</code> <code class="fld">horizon</code> <code class="fld">truth_iff</code></td></tr><tr><td><code>CEEnumeration</code></td><td><code class="fld">code</code> <code class="fld">halts</code> <code class="fld">outputs_sound</code></td></tr><tr><td><code>CompactConditioningProcessComputation</code></td><td><code class="fld">toDeductiveProcessComputation</code> <code class="fld">condition_codes</code></td></tr><tr><td><code>CompletedAffineQuoteApprox</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">theory_coherent</code></td></tr><tr><td><code>CompletedAffineQuoteEq</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">theory_coherent</code></td></tr><tr><td><code>ComputableHorizon</code></td><td><code class="fld">program</code> <code class="fld">program_spec</code></td></tr><tr><td><code>ComputationTheoryPresentation</code></td><td><code class="fld">theory_deltaOne</code> <code class="fld">process</code> <code class="fld">halting_enters</code> <code class="fld">halting_refutes</code> <code class="fld">boundedHalting_enters</code> <code class="fld">boundedFailure_refutes</code> <code class="fld">inconsistency_enters</code> <code class="fld">inconsistency_refutesConsistency</code></td></tr><tr><td><code>ConditionalExpectationQuote</code></td><td><code class="fld">weight_mem</code> <code class="fld">weight_generable</code> <code class="fld">source_codes</code> <code class="fld">left_codes</code> <code class="fld">right_codes</code> <code class="fld">slack</code> <code class="fld">slack_tendsto</code> <code class="fld">source_valued</code> <code class="fld">left_reflected</code> <code class="fld">right_reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>ConditioningPresentation</code></td><td><code class="fld">condition</code> <code class="fld">condition_codes</code> <code class="fld">holds_condition</code> <code class="fld">combined_computable</code></td></tr><tr><td><code>ConditioningTraderCompiler</code></td><td><code class="fld">conditioned_computable</code> <code class="fld">translate</code> <code class="fld">translate_ec</code> <code class="fld">tracks_on_condition</code> <code class="fld">preserves_floor</code></td></tr><tr><td><code>ContinuousSemimeasure</code></td><td><code class="fld">mass</code> <code class="fld">nonneg</code> <code class="fld">root_le_one</code> <code class="fld">children_le</code></td></tr><tr><td><code>CurrentExpectationQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>CurrentPriceExpectationQuote</code></td><td><code class="fld">sentence_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>DUSApproximationPresentation</code></td><td><code class="fld">approximation</code> <code class="fld">approximation_codes</code> <code class="fld">nonneg</code> <code class="fld">le_mass</code> <code class="fld">tendsto</code></td></tr><tr><td><code>DUSThresholdEmission</code></td><td><code class="fld">threshold_sum_codes</code> <code class="fld">inverse_width_codes</code></td></tr><tr><td><code>DeductiveProcess</code></td><td><code class="fld">D</code> <code class="fld">mono</code></td></tr><tr><td><code>DeductiveProcessComputation</code></td><td><code class="fld">code</code> <code class="fld">code_spec</code></td></tr><tr><td><code>DeferralFunction</code></td><td><code class="fld">f</code> <code class="fld">lt</code> <code class="fld">code</code> <code class="fld">fueled</code></td></tr><tr><td><code>EfficientPrefixPatch</code></td><td><code class="fld">quote</code> <code class="fld">quote_exact</code> <code class="fld">preserves_ec</code></td></tr><tr><td><code>EfficientRepeatedEnumeration</code></td><td><code class="fld">sequence</code> <code class="fld">sequence_poly</code> <code class="fld">repeats</code> <code class="fld">sound</code> <code class="fld">covers</code></td></tr><tr><td><code>EventualConditioningFloor</code></td><td><code class="fld">cutoff</code> <code class="fld">zeroDays</code> <code class="fld">zeroDays_lt</code> <code class="fld">epsilon</code> <code class="fld">epsilon_pos</code> <code class="fld">zero_exact</code> <code class="fld">positive_floor</code></td></tr><tr><td><code>EventualConditioningOperationalWitness</code></td><td><code class="fld">floor</code> <code class="fld">conditioned_computable</code> <code class="fld">translation_ec</code></td></tr><tr><td><code>ExpectedFutureExpectationQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>FeedbackTruth.FeedbackTruthComputation</code></td><td><code class="fld">value</code> <code class="fld">code</code> <code class="fld">a</code> <code class="fld">degree</code> <code class="fld">computes</code> <code class="fld">agrees</code></td></tr><tr><td><code>FuturePriceQuote</code></td><td><code class="fld">sentence_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>GatedConditioningOperationalWitness</code></td><td><code class="fld">epsilon_pos</code> <code class="fld">denominator_floor</code> <code class="fld">conditioned_computable</code> <code class="fld">translation_ec</code></td></tr><tr><td><code>GeneratedRatFeature</code></td><td><code class="fld">rank_le</code> <code class="fld">polyTok</code> <code class="fld">closed</code> <code class="fld">denote</code></td></tr><tr><td><code>InconsistentTheoryClaims</code></td><td><code class="fld">inconsistencySentence</code> <code class="fld">consistencySentence</code> <code class="fld">inconsistency_poly</code> <code class="fld">consistency_poly</code> <code class="fld">inconsistency_provable</code> <code class="fld">consistency_disprovable</code></td></tr><tr><td><code>IndependentBitAtoms</code></td><td><code class="fld">atom</code> <code class="fld">realizable</code></td></tr><tr><td><code>IntrospectionIntervalQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">lower_feature</code> <code class="fld">lower_generated</code> <code class="fld">upper_feature</code> <code class="fld">upper_generated</code> <code class="fld">width_codes</code> <code class="fld">inverse_width_codes</code> <code class="fld">width_pos</code> <code class="fld">width_tendsto_zero</code> <code class="fld">probability_bounds</code> <code class="fld">quote</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">inside_affine</code> <code class="fld">outside_affine</code></td></tr><tr><td><code>IsLogicalInductor</code></td><td><code class="fld">marketComputable</code> <code class="fld">processComputable</code> <code class="fld">noExploit</code></td></tr><tr><td><code>LUV</code></td><td><code class="fld">gt</code></td></tr><tr><td><code>LUVCombination</code></td><td><code class="fld">const</code> <code class="fld">terms</code></td></tr><tr><td><code>LUVCombination.BoundedSequence</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code></td></tr><tr><td><code>LUVCombination.ExactTheoryPresentation</code></td><td><code class="fld">value</code> <code class="fld">value_mem</code> <code class="fld">threshold_iff</code></td></tr><tr><td><code>LUVCombination.MeshSoftmaxOperationalWitness</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code> <code class="fld">magnitude</code> <code class="fld">lower_poly</code> <code class="fld">lower_bounded</code> <code class="fld">lower_magnitude</code></td></tr><tr><td><code>LUVCombination.PolySequence</code></td><td><code class="fld">mesh_poly</code></td></tr><tr><td><code>LUVCombinationSyntax</code></td><td><code class="fld">termCount</code> <code class="fld">coefficient</code> <code class="fld">luv</code> <code class="fld">termCount_poly</code> <code class="fld">const_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">threshold_poly</code> <code class="fld">terms_eq</code> <code class="fld">const_rank</code> <code class="fld">coefficient_rank</code> <code class="fld">const_closed</code> <code class="fld">coefficient_closed</code></td></tr><tr><td><code>LowerSemicomputableContinuousSemimeasure</code></td><td><code class="fld">toContinuousSemimeasure</code> <code class="fld">approximation</code> <code class="fld">approximation_code</code> <code class="fld">approximation_computes</code> <code class="fld">approximation_nonneg</code> <code class="fld">approximation_mono</code> <code class="fld">approximation_le</code> <code class="fld">approximation_tendsto</code></td></tr><tr><td><code>MarketComputation</code></td><td><code class="fld">quote</code> <code class="fld">code</code> <code class="fld">quote_exact</code> <code class="fld">code_spec</code> <code class="fld">price_mem_Icc</code></td></tr><tr><td><code>OccamThresholdEmission</code></td><td><code class="fld">threshold_sum_codes</code> <code class="fld">inverse_width_codes</code></td></tr><tr><td><code>PGenerableWeighting</code></td><td><code class="fld">polySeg</code> <code class="fld">rank_le</code> <code class="fld">closed</code></td></tr><tr><td><code>PairedWeighting</code></td><td><code class="fld">polySeg</code> <code class="fld">rank_le</code> <code class="fld">closed</code></td></tr><tr><td><code>ParadoxResistanceQuote</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_codes</code> <code class="fld">width</code> <code class="fld">width_codes</code> <code class="fld">width_pos</code> <code class="fld">width_tendsto_zero</code> <code class="fld">diagonal_reflected</code> <code class="fld">lower_affine</code> <code class="fld">upper_affine</code></td></tr><tr><td><code>ParameterizedDiagonalQuoteCode</code></td><td><code class="fld">toBooleanQuoteCode</code> <code class="fld">body</code> <code class="fld">represents_fixedpoint</code></td></tr><tr><td><code>PatientSettlementClock</code></td><td><code class="fld">active</code> <code class="fld">active_codes</code> <code class="fld">antitone</code> <code class="fld">active_through_envelope</code> <code class="fld">eventually_inactive</code> <code class="fld">settled_of_inactive</code></td></tr><tr><td><code>PolyMachineCodes</code></td><td><code class="fld">code</code> <code class="fld">code_poly</code></td></tr><tr><td><code>PolyNatCodes</code></td><td><code class="fld">code</code> <code class="fld">code_poly</code></td></tr><tr><td><code>PrefixMachinePresentation</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_codes</code> <code class="fld">approximation</code> <code class="fld">approximation_codes</code> <code class="fld">approximation_nonneg</code> <code class="fld">approximation_le</code> <code class="fld">approximation_tendsto</code> <code class="fld">kraft</code> <code class="fld">covers</code></td></tr><tr><td><code>PrefixNegationCompiler</code></td><td><code class="fld">overhead</code> <code class="fld">complexity_neg_le</code></td></tr><tr><td><code>QuotationTheoryPresentation</code></td><td><code class="fld">toComputationTheoryPresentation</code> <code class="fld">theory_sigmaOne</code> <code class="fld">quote_positive_enters</code> <code class="fld">quote_negative_refutes</code></td></tr><tr><td><code>RationalQuoteCode</code></td><td><code class="fld">code</code> <code class="fld">value_mem</code> <code class="fld">pos_complete</code> <code class="fld">neg_complete</code> <code class="fld">threshold_poly</code></td></tr><tr><td><code>RepresentedDecidableClaims</code></td><td><code class="fld">toRepresentedSemidecidableClaims</code> <code class="fld">disprovable_of_false</code></td></tr><tr><td><code>RepresentedSemidecidableClaims</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_poly</code> <code class="fld">provable_of_true</code></td></tr><tr><td><code>SelfTrustQuote</code></td><td><code class="fld">delta_pos</code> <code class="fld">probability_mem</code> <code class="fld">sentence_codes</code> <code class="fld">delta_codes</code> <code class="fld">probability_generable</code> <code class="fld">product_codes</code> <code class="fld">confidence_codes</code> <code class="fld">confidence_reflected</code> <code class="fld">product_reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>SemidecidableComputation</code></td><td><code class="fld">machine</code> <code class="fld">input</code> <code class="fld">input_poly</code> <code class="fld">truth_iff</code></td></tr><tr><td><code>SettlementChecker</code></td><td><code class="fld">code</code> <code class="fld">spec</code></td></tr><tr><td><code>Strategy</code></td><td><code class="fld">trades</code> <code class="fld">rank_le</code></td></tr><tr><td><code>StrictSeparatorPresentation</code></td><td><code class="fld">constraint</code> <code class="fld">repetition</code> <code class="fld">jointly_possible</code> <code class="fld">consistentAt</code> <code class="fld">class_covers</code> <code class="fld">mass_class_tendsto_zero</code></td></tr><tr><td><code>Trader</code></td><td><code class="fld">strat</code></td></tr><tr><td><code>UniversalContinuousSemimeasure</code></td><td><code class="fld">toLowerSemicomputableContinuousSemimeasure</code> <code class="fld">universal</code></td></tr><tr><td><code>FiniteFactoredSets.IsFactorization</code></td><td><code class="fld">nontrivial</code> <code class="fld">bijective</code></td></tr><tr><td><code>FiniteFactoredSets.FactoredSet</code></td><td><code class="fld">B</code> <code class="fld">isFactorization</code></td></tr><tr><td><code>FiniteFactoredSets.Subpartition</code></td><td><code class="fld">r</code> <code class="fld">symm'</code> <code class="fld">trans'</code></td></tr><tr><td><code>FiniteFactoredSets.ProbDist</code></td><td><code class="fld">P</code> <code class="fld">nonneg</code> <code class="fld">empty</code> <code class="fld">univ</code> <code class="fld">additive</code></td></tr><tr><td><code>FiniteFactoredSets.Model</code></td><td><code class="fld">S</code> <code class="fld">F</code> <code class="fld">f</code> <code class="fld">finite</code></td></tr><tr><td><code>FiniteFactoredSets.OrthDatabase</code></td><td><code class="fld">O</code> <code class="fld">N</code></td></tr><tr><td><code>Condensation.RVModel</code></td><td><code class="fld">Ω</code> <code class="fld">mΩ</code> <code class="fld">countΩ</code> <code class="fld">singΩ</code> <code class="fld">P</code> <code class="fld">probP</code> <code class="fld">finiteEntropy_Ω</code> <code class="fld">R</code> <code class="fld">mR</code> <code class="fld">countR</code> <code class="fld">singR</code> <code class="fld">X</code> <code class="fld">measurable_X</code> <code class="fld">finiteEntropy_X</code></td></tr><tr><td><code>Condensation.LatentModel</code></td><td><code class="fld">L</code> <code class="fld">π</code> <code class="fld">π_pres</code> <code class="fld">contributes</code></td></tr><tr><td><code>Condensation.RVModel.Hom</code></td><td><code class="fld">π</code> <code class="fld">π_pres</code> <code class="fld">ι</code> <code class="fld">f</code> <code class="fld">eq_ae</code></td></tr><tr><td><code>Condensation.RVModelObj</code></td><td><code class="fld">I</code> <code class="fld">finI</code> <code class="fld">M</code></td></tr><tr><td><code>Condensation.RVModel.IsEquivalence</code></td><td><code class="fld">comp_left</code> <code class="fld">comp_right</code></td></tr><tr><td><code>Condensation.Amalgamation</code></td><td><code class="fld">π₁_pres</code> <code class="fld">π₂_pres</code> <code class="fld">Λ₀</code> <code class="fld">mΛ₀</code> <code class="fld">countΛ₀</code> <code class="fld">singΛ₀</code> <code class="fld">P₀</code> <code class="fld">probP₀</code> <code class="fld">«ρ₁»</code> <code class="fld">«ρ₂»</code> <code class="fld">ρ₁_pres</code> <code class="fld">ρ₂_pres</code> <code class="fld">comm</code></td></tr><tr><td><code>Condensation.LatentAmalgamation</code></td><td><code class="fld">Λ₀</code> <code class="fld">mΛ₀</code> <code class="fld">countΛ₀</code> <code class="fld">singΛ₀</code> <code class="fld">P₀</code> <code class="fld">probP₀</code> <code class="fld">finiteEntropy_Λ₀</code> <code class="fld">Y₁</code> <code class="fld">measurable_Y₁</code> <code class="fld">finiteEntropy_Y₁</code> <code class="fld">«π₁»</code> <code class="fld">π₁_pres</code> <code class="fld">contributes₁</code> <code class="fld">Y₂</code> <code class="fld">measurable_Y₂</code> <code class="fld">finiteEntropy_Y₂</code> <code class="fld">«π₂»</code> <code class="fld">π₂_pres</code> <code class="fld">contributes₂</code> <code class="fld">«ρ₁»</code> <code class="fld">ρ₁_pres</code> <code class="fld">ρ₁_Y</code> <code class="fld">ρ₁_π</code> <code class="fld">«ρ₂»</code> <code class="fld">ρ₂_pres</code> <code class="fld">ρ₂_Y</code> <code class="fld">ρ₂_π</code> <code class="fld">comm</code></td></tr></table></div>
+  <div style="overflow-x:auto"><table class="t2"><tr><td><code>AffineCombination</code></td><td><code class="fld">const</code> <code class="fld">terms</code></td></tr><tr><td><code>AffineCombination.BoundedCombinationSequence</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmission</code></td><td><code class="fld">tradeCount</code> <code class="fld">coefficient</code> <code class="fld">sentence</code> <code class="fld">tradeCount_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">sentence_poly</code> <code class="fld">trades_eq</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmissionFamily</code></td><td><code class="fld">emit</code></td></tr><tr><td><code>AffineCombination.FeedbackTraderEmissionSigns</code></td><td><code class="fld">positive</code> <code class="fld">negative</code></td></tr><tr><td><code>AffineCombination.FeedbackTruthSequence</code></td><td><code class="fld">determined</code> <code class="fld">sequence</code> <code class="fld">poly</code> <code class="fld">bounded</code> <code class="fld">magnitude</code> <code class="fld">value_vanishing</code> <code class="fld">feedback_price</code></td></tr><tr><td><code>AffineCombination.PolySequence</code></td><td><code class="fld">termCount</code> <code class="fld">coefficient</code> <code class="fld">sentence</code> <code class="fld">termCount_poly</code> <code class="fld">const_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">sentence_poly</code> <code class="fld">terms_eq</code> <code class="fld">const_rank</code> <code class="fld">coefficient_rank</code> <code class="fld">const_closed</code> <code class="fld">coefficient_closed</code></td></tr><tr><td><code>AffineQuoteEq</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">future_coherent</code></td></tr><tr><td><code>AffineQuoteGE</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">future_coherent</code></td></tr><tr><td><code>AffineQuotePortfolio</code></td><td><code class="fld">family</code> <code class="fld">poly</code> <code class="fld">scale</code> <code class="fld">scale_pos</code> <code class="fld">current_price</code> <code class="fld">bounded</code> <code class="fld">magnitude_le_one</code></td></tr><tr><td><code>BitPrefixSentences</code></td><td><code class="fld">atom</code> <code class="fld">prefixSentence</code> <code class="fld">enumeration</code> <code class="fld">enumeration_covers</code> <code class="fld">prefix_codes</code> <code class="fld">holds_prefix</code> <code class="fld">realizable</code></td></tr><tr><td><code>BooleanQuoteCode</code></td><td><code class="fld">code</code> <code class="fld">pos_complete</code> <code class="fld">neg_complete</code></td></tr><tr><td><code>BoundedComputation</code></td><td><code class="fld">machine</code> <code class="fld">input</code> <code class="fld">input_poly</code> <code class="fld">steps</code> <code class="fld">horizon</code> <code class="fld">truth_iff</code></td></tr><tr><td><code>CEEnumeration</code></td><td><code class="fld">code</code> <code class="fld">halts</code> <code class="fld">outputs_sound</code></td></tr><tr><td><code>CompactConditioningProcessComputation</code></td><td><code class="fld">toDeductiveProcessComputation</code> <code class="fld">condition_codes</code></td></tr><tr><td><code>CompletedAffineQuoteApprox</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">theory_coherent</code></td></tr><tr><td><code>CompletedAffineQuoteEq</code></td><td><code class="fld">toAffineQuotePortfolio</code> <code class="fld">theory_coherent</code></td></tr><tr><td><code>ComputableHorizon</code></td><td><code class="fld">program</code> <code class="fld">program_spec</code></td></tr><tr><td><code>ComputationTheoryPresentation</code></td><td><code class="fld">theory_deltaOne</code> <code class="fld">process</code> <code class="fld">halting_enters</code> <code class="fld">halting_refutes</code> <code class="fld">boundedHalting_enters</code> <code class="fld">boundedFailure_refutes</code> <code class="fld">inconsistency_enters</code> <code class="fld">inconsistency_refutesConsistency</code></td></tr><tr><td><code>ConditionalExpectationQuote</code></td><td><code class="fld">weight_mem</code> <code class="fld">weight_generable</code> <code class="fld">source_codes</code> <code class="fld">left_codes</code> <code class="fld">right_codes</code> <code class="fld">slack</code> <code class="fld">slack_tendsto</code> <code class="fld">source_valued</code> <code class="fld">left_reflected</code> <code class="fld">right_reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>ConditioningPresentation</code></td><td><code class="fld">condition</code> <code class="fld">condition_codes</code> <code class="fld">holds_condition</code> <code class="fld">combined_computable</code></td></tr><tr><td><code>ConditioningTraderCompiler</code></td><td><code class="fld">conditioned_computable</code> <code class="fld">translate</code> <code class="fld">translate_ec</code> <code class="fld">tracks_on_condition</code> <code class="fld">preserves_floor</code></td></tr><tr><td><code>ContinuousSemimeasure</code></td><td><code class="fld">mass</code> <code class="fld">nonneg</code> <code class="fld">root_le_one</code> <code class="fld">children_le</code></td></tr><tr><td><code>CurrentExpectationQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>CurrentPriceExpectationQuote</code></td><td><code class="fld">sentence_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>DUSApproximationPresentation</code></td><td><code class="fld">approximation</code> <code class="fld">approximation_codes</code> <code class="fld">nonneg</code> <code class="fld">le_mass</code> <code class="fld">tendsto</code></td></tr><tr><td><code>DUSThresholdEmission</code></td><td><code class="fld">threshold_sum_codes</code> <code class="fld">inverse_width_codes</code></td></tr><tr><td><code>DeductiveProcess</code></td><td><code class="fld">D</code> <code class="fld">mono</code></td></tr><tr><td><code>DeductiveProcessComputation</code></td><td><code class="fld">code</code> <code class="fld">code_spec</code></td></tr><tr><td><code>DeferralFunction</code></td><td><code class="fld">f</code> <code class="fld">lt</code> <code class="fld">code</code> <code class="fld">fueled</code></td></tr><tr><td><code>EfficientPrefixPatch</code></td><td><code class="fld">quote</code> <code class="fld">quote_exact</code> <code class="fld">preserves_ec</code></td></tr><tr><td><code>EfficientRepeatedEnumeration</code></td><td><code class="fld">sequence</code> <code class="fld">sequence_poly</code> <code class="fld">repeats</code> <code class="fld">sound</code> <code class="fld">covers</code></td></tr><tr><td><code>EventualConditioningFloor</code></td><td><code class="fld">cutoff</code> <code class="fld">zeroDays</code> <code class="fld">zeroDays_lt</code> <code class="fld">epsilon</code> <code class="fld">epsilon_pos</code> <code class="fld">zero_exact</code> <code class="fld">positive_floor</code></td></tr><tr><td><code>EventualConditioningOperationalWitness</code></td><td><code class="fld">floor</code> <code class="fld">conditioned_computable</code> <code class="fld">translation_ec</code></td></tr><tr><td><code>ExpectedFutureExpectationQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>FeedbackTruth.FeedbackTruthComputation</code></td><td><code class="fld">value</code> <code class="fld">code</code> <code class="fld">a</code> <code class="fld">degree</code> <code class="fld">computes</code> <code class="fld">agrees</code></td></tr><tr><td><code>FuturePriceQuote</code></td><td><code class="fld">sentence_codes</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>GatedConditioningOperationalWitness</code></td><td><code class="fld">epsilon_pos</code> <code class="fld">denominator_floor</code> <code class="fld">conditioned_computable</code> <code class="fld">translation_ec</code></td></tr><tr><td><code>GeneratedRatFeature</code></td><td><code class="fld">rank_le</code> <code class="fld">polyTok</code> <code class="fld">closed</code> <code class="fld">denote</code></td></tr><tr><td><code>InconsistentTheoryClaims</code></td><td><code class="fld">inconsistencySentence</code> <code class="fld">consistencySentence</code> <code class="fld">inconsistency_poly</code> <code class="fld">consistency_poly</code> <code class="fld">inconsistency_provable</code> <code class="fld">consistency_disprovable</code></td></tr><tr><td><code>IndependentBitAtoms</code></td><td><code class="fld">atom</code> <code class="fld">realizable</code></td></tr><tr><td><code>IntrospectionIntervalQuote</code></td><td><code class="fld">source_codes</code> <code class="fld">lower_feature</code> <code class="fld">lower_generated</code> <code class="fld">upper_feature</code> <code class="fld">upper_generated</code> <code class="fld">width_codes</code> <code class="fld">inverse_width_codes</code> <code class="fld">width_pos</code> <code class="fld">width_tendsto_zero</code> <code class="fld">probability_bounds</code> <code class="fld">quote</code> <code class="fld">quote_codes</code> <code class="fld">reflected</code> <code class="fld">inside_affine</code> <code class="fld">outside_affine</code></td></tr><tr><td><code>IsLogicalInductor</code></td><td><code class="fld">marketComputable</code> <code class="fld">processComputable</code> <code class="fld">noExploit</code></td></tr><tr><td><code>LUV</code></td><td><code class="fld">gt</code></td></tr><tr><td><code>LUVCombination</code></td><td><code class="fld">const</code> <code class="fld">terms</code></td></tr><tr><td><code>LUVCombination.BoundedSequence</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code></td></tr><tr><td><code>LUVCombination.ExactTheoryPresentation</code></td><td><code class="fld">value</code> <code class="fld">value_mem</code> <code class="fld">threshold_iff</code></td></tr><tr><td><code>LUVCombination.MeshSoftmaxOperationalWitness</code></td><td><code class="fld">poly</code> <code class="fld">bounded</code> <code class="fld">magnitude</code> <code class="fld">lower_poly</code> <code class="fld">lower_bounded</code> <code class="fld">lower_magnitude</code></td></tr><tr><td><code>LUVCombination.PolySequence</code></td><td><code class="fld">mesh_poly</code></td></tr><tr><td><code>LUVCombinationSyntax</code></td><td><code class="fld">termCount</code> <code class="fld">coefficient</code> <code class="fld">luv</code> <code class="fld">termCount_poly</code> <code class="fld">const_poly</code> <code class="fld">coefficient_poly</code> <code class="fld">threshold_poly</code> <code class="fld">terms_eq</code> <code class="fld">const_rank</code> <code class="fld">coefficient_rank</code> <code class="fld">const_closed</code> <code class="fld">coefficient_closed</code></td></tr><tr><td><code>LowerSemicomputableContinuousSemimeasure</code></td><td><code class="fld">toContinuousSemimeasure</code> <code class="fld">approximation</code> <code class="fld">approximation_code</code> <code class="fld">approximation_computes</code> <code class="fld">approximation_nonneg</code> <code class="fld">approximation_mono</code> <code class="fld">approximation_le</code> <code class="fld">approximation_tendsto</code></td></tr><tr><td><code>MarketComputation</code></td><td><code class="fld">quote</code> <code class="fld">code</code> <code class="fld">quote_exact</code> <code class="fld">code_spec</code> <code class="fld">price_mem_Icc</code></td></tr><tr><td><code>OccamThresholdEmission</code></td><td><code class="fld">threshold_sum_codes</code> <code class="fld">inverse_width_codes</code></td></tr><tr><td><code>PGenerableWeighting</code></td><td><code class="fld">polySeg</code> <code class="fld">rank_le</code> <code class="fld">closed</code></td></tr><tr><td><code>PairedWeighting</code></td><td><code class="fld">polySeg</code> <code class="fld">rank_le</code> <code class="fld">closed</code></td></tr><tr><td><code>ParadoxResistanceQuote</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_codes</code> <code class="fld">width</code> <code class="fld">width_codes</code> <code class="fld">width_pos</code> <code class="fld">width_tendsto_zero</code> <code class="fld">diagonal_reflected</code> <code class="fld">lower_affine</code> <code class="fld">upper_affine</code></td></tr><tr><td><code>ParameterizedDiagonalQuoteCode</code></td><td><code class="fld">toBooleanQuoteCode</code> <code class="fld">body</code> <code class="fld">represents_fixedpoint</code></td></tr><tr><td><code>PatientSettlementClock</code></td><td><code class="fld">active</code> <code class="fld">active_codes</code> <code class="fld">antitone</code> <code class="fld">active_through_envelope</code> <code class="fld">eventually_inactive</code> <code class="fld">settled_of_inactive</code></td></tr><tr><td><code>PolyMachineCodes</code></td><td><code class="fld">code</code> <code class="fld">code_poly</code></td></tr><tr><td><code>PolyNatCodes</code></td><td><code class="fld">code</code> <code class="fld">code_poly</code></td></tr><tr><td><code>PrefixMachinePresentation</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_codes</code> <code class="fld">approximation</code> <code class="fld">approximation_codes</code> <code class="fld">approximation_nonneg</code> <code class="fld">approximation_le</code> <code class="fld">approximation_tendsto</code> <code class="fld">kraft</code> <code class="fld">covers</code></td></tr><tr><td><code>PrefixNegationCompiler</code></td><td><code class="fld">overhead</code> <code class="fld">complexity_neg_le</code></td></tr><tr><td><code>QuotationTheoryPresentation</code></td><td><code class="fld">toComputationTheoryPresentation</code> <code class="fld">theory_sigmaOne</code> <code class="fld">quote_positive_enters</code> <code class="fld">quote_negative_refutes</code></td></tr><tr><td><code>RationalQuoteCode</code></td><td><code class="fld">code</code> <code class="fld">value_mem</code> <code class="fld">pos_complete</code> <code class="fld">neg_complete</code> <code class="fld">threshold_poly</code></td></tr><tr><td><code>RepresentedDecidableClaims</code></td><td><code class="fld">toRepresentedSemidecidableClaims</code> <code class="fld">disprovable_of_false</code></td></tr><tr><td><code>RepresentedSemidecidableClaims</code></td><td><code class="fld">sentence</code> <code class="fld">sentence_poly</code> <code class="fld">provable_of_true</code></td></tr><tr><td><code>SelfTrustQuote</code></td><td><code class="fld">delta_pos</code> <code class="fld">probability_mem</code> <code class="fld">sentence_codes</code> <code class="fld">delta_codes</code> <code class="fld">probability_generable</code> <code class="fld">product_codes</code> <code class="fld">confidence_codes</code> <code class="fld">confidence_reflected</code> <code class="fld">product_reflected</code> <code class="fld">affine</code></td></tr><tr><td><code>SemidecidableComputation</code></td><td><code class="fld">machine</code> <code class="fld">input</code> <code class="fld">input_poly</code> <code class="fld">truth_iff</code></td></tr><tr><td><code>SettlementChecker</code></td><td><code class="fld">code</code> <code class="fld">spec</code></td></tr><tr><td><code>Strategy</code></td><td><code class="fld">trades</code> <code class="fld">rank_le</code></td></tr><tr><td><code>StrictSeparatorPresentation</code></td><td><code class="fld">constraint</code> <code class="fld">repetition</code> <code class="fld">jointly_possible</code> <code class="fld">consistentAt</code> <code class="fld">class_covers</code> <code class="fld">mass_class_tendsto_zero</code></td></tr><tr><td><code>Trader</code></td><td><code class="fld">strat</code></td></tr><tr><td><code>UniversalContinuousSemimeasure</code></td><td><code class="fld">toLowerSemicomputableContinuousSemimeasure</code> <code class="fld">universal</code></td></tr><tr><td><code>FiniteFactoredSets.IsFactorization</code></td><td><code class="fld">nontrivial</code> <code class="fld">bijective</code></td></tr><tr><td><code>FiniteFactoredSets.FactoredSet</code></td><td><code class="fld">B</code> <code class="fld">isFactorization</code></td></tr><tr><td><code>FiniteFactoredSets.Subpartition</code></td><td><code class="fld">r</code> <code class="fld">symm'</code> <code class="fld">trans'</code></td></tr><tr><td><code>FiniteFactoredSets.ProbDist</code></td><td><code class="fld">P</code> <code class="fld">nonneg</code> <code class="fld">empty</code> <code class="fld">univ</code> <code class="fld">additive</code></td></tr><tr><td><code>FiniteFactoredSets.Model</code></td><td><code class="fld">S</code> <code class="fld">F</code> <code class="fld">f</code> <code class="fld">finite</code></td></tr><tr><td><code>FiniteFactoredSets.OrthDatabase</code></td><td><code class="fld">O</code> <code class="fld">N</code></td></tr><tr><td><code>Condensation.RVModel</code></td><td><code class="fld">Ω</code> <code class="fld">mΩ</code> <code class="fld">countΩ</code> <code class="fld">singΩ</code> <code class="fld">P</code> <code class="fld">probP</code> <code class="fld">finiteEntropy_Ω</code> <code class="fld">R</code> <code class="fld">mR</code> <code class="fld">countR</code> <code class="fld">singR</code> <code class="fld">X</code> <code class="fld">measurable_X</code> <code class="fld">finiteEntropy_X</code></td></tr><tr><td><code>Condensation.LatentModel</code></td><td><code class="fld">L</code> <code class="fld">π</code> <code class="fld">π_pres</code> <code class="fld">contributes</code></td></tr><tr><td><code>Condensation.RVModel.Hom</code></td><td><code class="fld">π</code> <code class="fld">π_pres</code> <code class="fld">ι</code> <code class="fld">f</code> <code class="fld">eq_ae</code></td></tr><tr><td><code>Condensation.RVModelObj</code></td><td><code class="fld">I</code> <code class="fld">finI</code> <code class="fld">M</code></td></tr><tr><td><code>Condensation.RVModel.IsEquivalence</code></td><td><code class="fld">comp_left</code> <code class="fld">comp_right</code></td></tr><tr><td><code>Condensation.Amalgamation</code></td><td><code class="fld">π₁_pres</code> <code class="fld">π₂_pres</code> <code class="fld">Λ₀</code> <code class="fld">mΛ₀</code> <code class="fld">countΛ₀</code> <code class="fld">singΛ₀</code> <code class="fld">P₀</code> <code class="fld">probP₀</code> <code class="fld">«ρ₁»</code> <code class="fld">«ρ₂»</code> <code class="fld">ρ₁_pres</code> <code class="fld">ρ₂_pres</code> <code class="fld">comm</code></td></tr><tr><td><code>Condensation.LatentAmalgamation</code></td><td><code class="fld">Λ₀</code> <code class="fld">mΛ₀</code> <code class="fld">countΛ₀</code> <code class="fld">singΛ₀</code> <code class="fld">P₀</code> <code class="fld">probP₀</code> <code class="fld">finiteEntropy_Λ₀</code> <code class="fld">Y₁</code> <code class="fld">measurable_Y₁</code> <code class="fld">finiteEntropy_Y₁</code> <code class="fld">«π₁»</code> <code class="fld">π₁_pres</code> <code class="fld">contributes₁</code> <code class="fld">Y₂</code> <code class="fld">measurable_Y₂</code> <code class="fld">finiteEntropy_Y₂</code> <code class="fld">«π₂»</code> <code class="fld">π₂_pres</code> <code class="fld">contributes₂</code> <code class="fld">«ρ₁»</code> <code class="fld">ρ₁_pres</code> <code class="fld">ρ₁_Y</code> <code class="fld">«ρ₂»</code> <code class="fld">ρ₂_pres</code> <code class="fld">ρ₂_Y</code> <code class="fld">comm</code></td></tr></table></div>
   </details>
   </section>
 
@@ -7816,14 +7825,22 @@ We say <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><
 
   <div class="method">
     <div class="no-tier"><b>This formalization is in progress, and no strength
-    classification exists for this paper.</b> It is at milestone M0 — repository wiring
-    and the §2/§3 statements — so nothing in this section is claimed proved, and a card
-    appearing here asserts only that the Lean statement shown is the one intended to
-    carry that paper node. The paper's scope is settled at 42 numbered nodes; Examples
-    5.1–5.3 are <em>proposed</em> out of scope pending a ruling, and the standing
-    modelling narrowing <code>dd:finite-range</code> — every random variable of a model
-    has finite range, rather than merely countable discrete range with finite entropy —
-    is disclosed in <code>Condensation/README.md</code> and at every model structure.
+    classification exists for this paper.</b> It is at milestone M1 — a final statement
+    for every in-scope node, with a tranche of the proofs still <code>sorry</code> — so a
+    card appearing here asserts that the Lean statement shown is the one intended to
+    carry that paper node, and no more than that until the badge on its declaration says
+    <span class="staged proved">axiom-clean</span>. The legend below the fold says what
+    each badge means and counts both. The paper's scope is settled at 42 numbered nodes; Examples
+    5.1–5.3 are <em>proposed</em> out of scope pending a ruling. There is <b>no modelling
+    substitution</b>: <code>Condensation.RVModel</code> is Definition 3.1 verbatim,
+    including its "with finite entropy" clause on the sample space. The narrowing
+    <code>dd:finite-range</code> — every random variable of a model has finite range,
+    rather than merely countable discrete range with finite entropy — was disclosed here
+    until 2026-08-17 and was <b>retired</b> that day, when the substrate
+    <code>ShannonInformation/FiniteEntropy/</code> reached the corpus this development
+    needs; <code>Condensation/KNOWLEDGE.md</code>'s disclosures list is empty, and
+    <code>Condensation.Example.geomModel</code> (a geometric variable on <code>ℕ</code>,
+    provably not finite-range) is the witness that the model class genuinely grew.
     Numbered nodes with no Lean statement annotated to them: <code>Example 5.1</code>, <code>Example 5.2</code>, <code>Example 5.3</code>.</div>
 
     <h3>How nodes are cited</h3>
@@ -7850,14 +7867,20 @@ We say <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><
     statement is hard to read here, read the committed PDF.</p>
   </div>
 
-  <h2 class="sec" id="sec-cd-2-Background-and-notation">2. Background and notation</h2>
+  <div class="method">
+<h3>Proved and staged endpoints</h3>
+<div class="legend"><span class="staged proved">axiom-clean</span><span class="count">61 — listed in <code>AxiomAudit.lean</code>’s <code>CONDENSATION-INVENTORY</code> block, so <code>#assert_axioms_clean</code> has checked that the proof depends on no <code>sorry</code> and no added axiom.</span></div>
+<div class="legend"><span class="staged">staged &middot; sorry</span><span class="count">18 — the <em>statement</em> is final, the proof is not: staged in the <code>CONDENSATION-PENDING</code> block, which is pure comment and asserts nothing. Each card’s footer names what it waits on. A further 3 declarations carry no <code>Paper node:</code> annotation but consume a staged result, and are listed in the same block’s consumers section.</span></div>
+<p>Every declaration below carries one of these two badges, and each card’s header carries the node’s own verdict — <em>axiom-clean</em>, <em>partly staged</em> (some carrier of that node is proved and some is not), or <em>proof staged</em>. A staged endpoint is a claim about the statement only; nothing badged staged is claimed proved.</p>
+</div>
+<h2 class="sec" id="sec-cd-2-Background-and-notation">2. Background and notation</h2>
 
 <article class="node" id="cd-definition-2-1">
   <header class="node-head">
     <label class="check"><input type="checkbox" data-node="cd-definition-2-1" aria-label="mark Definition 2.1 read"></label>
     <span class="node-label">Definition 2.1</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -7868,11 +7891,11 @@ or with    range R.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="6">1 / 6</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.IsRandomVariable</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">abbrev IsRandomVariable [MeasurableSpace Ω] [MeasurableSpace S] (X : Ω → S) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.FunctionOf</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">def FunctionOf [MeasurableSpace S] [MeasurableSpace T] (X : Ω → S) (Y : Ω → T) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.AEFunctionOf</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">def AEFunctionOf [MeasurableSpace Ω] [MeasurableSpace S] [MeasurableSpace T]
-    (X : Ω → S) (Y : Ω → T) (μ : Measure Ω) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.entropy_comp_measurePreserving</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">lemma entropy_comp_measurePreserving (hπ : MeasurePreserving π μΛ μΩ) (hX : Measurable X) :
-    H[X ∘ π ; μΛ] = H[X ; μΩ]</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.mutualInfo_comp_measurePreserving</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">lemma mutualInfo_comp_measurePreserving (hπ : MeasurePreserving π μΛ μΩ)
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="6">1 / 6</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.IsRandomVariable</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">abbrev IsRandomVariable [MeasurableSpace Ω] [MeasurableSpace S] (X : Ω → S) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.FunctionOf</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">def FunctionOf [MeasurableSpace S] [MeasurableSpace T] (X : Ω → S) (Y : Ω → T) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.AEFunctionOf</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">def AEFunctionOf [MeasurableSpace Ω] [MeasurableSpace S] [MeasurableSpace T]
+    (X : Ω → S) (Y : Ω → T) (μ : Measure Ω) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.entropy_comp_measurePreserving</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">lemma entropy_comp_measurePreserving (hπ : MeasurePreserving π μΛ μΩ) (hX : Measurable X) :
+    H[X ∘ π ; μΛ] = H[X ; μΩ]</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.mutualInfo_comp_measurePreserving</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">lemma mutualInfo_comp_measurePreserving (hπ : MeasurePreserving π μΛ μΩ)
     (hX : Measurable X) (hY : Measurable Y) :
-    I[X ∘ π : Y ∘ π ; μΛ] = I[X : Y ; μΩ]</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_comp_measurePreserving</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">lemma condEntropy_comp_measurePreserving [Countable S] [MeasurableSingletonClass S]
+    I[X ∘ π : Y ∘ π ; μΛ] = I[X : Y ; μΩ]</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_comp_measurePreserving</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">lemma condEntropy_comp_measurePreserving [Countable S] [MeasurableSingletonClass S]
     [Countable T] [MeasurableSingletonClass T] [IsProbabilityMeasure μΛ]
     (hπ : MeasurePreserving π μΛ μΩ) (hX : Measurable X) (hY : Measurable Y)
     [ShannonInformation.FiniteEntropyOf X μΩ] [ShannonInformation.FiniteEntropyOf Y μΩ] :
@@ -7886,7 +7909,7 @@ or with    range R.</pre>
     <label class="check"><input type="checkbox" data-node="cd-definition-2-2" aria-label="mark Definition 2.2 read"></label>
     <span class="node-label">Definition 2.2</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -7896,7 +7919,7 @@ S , that is, the set of all nonempty subsets of S .</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.PPlus</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">def PPlus (I : Type u) : Type u</pre></div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.PPlus</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">def PPlus (I : Type u) : Type u</pre></div>
     </section>
   </div>
 </article>
@@ -7906,7 +7929,7 @@ S , that is, the set of all nonempty subsets of S .</pre>
     <label class="check"><input type="checkbox" data-node="cd-definition-2-3" aria-label="mark Definition 2.3 read"></label>
     <span class="node-label">Definition 2.3</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -7922,8 +7945,8 @@ corresponding meanings.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.interactionInfo</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">noncomputable def interactionInfo (X : Ω → S) (Y : Ω → T) (Z : Ω → U) (μ : Measure Ω) : ℝ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.interactionInfo_comm</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">lemma interactionInfo_comm (hX : Measurable X) (hY : Measurable Y) (Z : Ω → U)
-    (μ : Measure Ω) : interactionInfo X Y Z μ = interactionInfo Y X Z μ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.interactionInfo_swap</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">lemma interactionInfo_swap [IsZeroOrProbabilityMeasure μ]
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.interactionInfo</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">noncomputable def interactionInfo (X : Ω → S) (Y : Ω → T) (Z : Ω → U) (μ : Measure Ω) : ℝ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.interactionInfo_comm</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">lemma interactionInfo_comm (hX : Measurable X) (hY : Measurable Y) (Z : Ω → U)
+    (μ : Measure Ω) : interactionInfo X Y Z μ = interactionInfo Y X Z μ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.interactionInfo_swap</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">lemma interactionInfo_swap [IsZeroOrProbabilityMeasure μ]
     (hX : Measurable X) (hY : Measurable Y) (hZ : Measurable Z)
     [ShannonInformation.FiniteEntropyOf X μ] [ShannonInformation.FiniteEntropyOf Y μ]
     [ShannonInformation.FiniteEntropyOf Z μ] :
@@ -7937,7 +7960,7 @@ corresponding meanings.</pre>
     <label class="check"><input type="checkbox" data-node="cd-definition-2-4" aria-label="mark Definition 2.4 read"></label>
     <span class="node-label">Definition 2.4</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -7950,7 +7973,7 @@ is measurable. This space will be denoted G (Ω).</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.GiryMeasurableSpace</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">abbrev GiryMeasurableSpace (Ω : Type*) [MeasurableSpace Ω] :
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.GiryMeasurableSpace</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">abbrev GiryMeasurableSpace (Ω : Type*) [MeasurableSpace Ω] :
     MeasurableSpace (ProbabilityMeasure Ω)</pre></div>
     </section>
   </div>
@@ -7961,7 +7984,7 @@ is measurable. This space will be denoted G (Ω).</pre>
     <label class="check"><input type="checkbox" data-node="cd-proposition-2-5" aria-label="mark Proposition 2.5 read"></label>
     <span class="node-label">Proposition 2.5</span>
     <span class="node-title"></span>
-    <span class="kind">proposition</span>
+    <span class="kind">proposition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -7973,7 +7996,7 @@ that Y = f (X) almost everywhere.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.aeFunctionOf_of_condEntropy_eq_zero</code><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">theorem aeFunctionOf_of_condEntropy_eq_zero [Countable Ω] [MeasurableSingletonClass Ω]
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.aeFunctionOf_of_condEntropy_eq_zero</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Probability.lean</span></div><pre class="sig">theorem aeFunctionOf_of_condEntropy_eq_zero [Countable Ω] [MeasurableSingletonClass Ω]
     [IsProbabilityMeasure μ] (hX : Measurable X) (hY : Measurable Y)
     [ShannonInformation.FiniteEntropyOf X μ] [ShannonInformation.FiniteEntropyOf Y μ]
     (h : H[Y | X ; μ] = 0) : AEFunctionOf X Y μ</pre></div>
@@ -7987,7 +8010,7 @@ that Y = f (X) almost everywhere.</pre>
     <label class="check"><input type="checkbox" data-node="cd-definition-3-1" aria-label="mark Definition 3.1 read"></label>
     <span class="node-label">Definition 3.1</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -7998,7 +8021,7 @@ each of which has countable and discrete range.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">structure RVModel (I : Type w) [Finite I] where
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">structure RVModel (I : Type w) [Finite I] where
   /-- The sample space `Ω`. -/
   Ω : Type u
   [mΩ : MeasurableSpace Ω]
@@ -8027,7 +8050,7 @@ each of which has countable and discrete range.</pre>
     <label class="check"><input type="checkbox" data-node="cd-definition-3-2" aria-label="mark Definition 3.2 read"></label>
     <span class="node-label">Definition 3.2</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8047,7 +8070,7 @@ and if i ∈ A, we say that index A contributes to i.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">structure LatentModel {I : Type w} [Finite I] (M : RVModel.{u, v, w} I) where
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">structure LatentModel {I : Type w} [Finite I] (M : RVModel.{u, v, w} I) where
   /-- The latent random variable model `(Λ, (Y_A)_{A ∈ P⁺I})`. -/
   L : RVModel.{u&#x27;, v&#x27;, w} (PPlus I)
   /-- The probability-preserving map `π : Λ → Ω`. -/
@@ -8064,7 +8087,7 @@ and if i ∈ A, we say that index A contributes to i.</pre>
     <label class="check"><input type="checkbox" data-node="cd-definition-3-3" aria-label="mark Definition 3.3 read"></label>
     <span class="node-label">Definition 3.3</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8108,7 +8131,7 @@ pursue that route further here.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.simpleScore</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">noncomputable def simpleScore (A : Finset I) : ℝ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.condScore</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">noncomputable def condScore (A : Finset I) : ℝ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.reconScore</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">noncomputable def reconScore (A : Finset I) : ℝ</pre></div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.simpleScore</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">noncomputable def simpleScore (A : Finset I) : ℝ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.condScore</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">noncomputable def condScore (A : Finset I) : ℝ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.reconScore</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">noncomputable def reconScore (A : Finset I) : ℝ</pre></div>
     </section>
   </div>
 </article>
@@ -8118,7 +8141,7 @@ pursue that route further here.</pre>
     <label class="check"><input type="checkbox" data-node="cd-definition-3-4" aria-label="mark Definition 3.4 read"></label>
     <span class="node-label">Definition 3.4</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8157,7 +8180,7 @@ A or i, respectively.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="6">1 / 6</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.joint</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">def joint (M : RVModel I) (A : Finset I) : M.Ω → (∀ i : A, M.R i)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointOn</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointOn (F : Set (PPlus I)) : L.Λ → (∀ B : F, L.L.R B)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointContrib</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointContrib (A : Finset I)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointAbove</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointAbove (A : Finset I)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointStrictAbove</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointStrictAbove (A : Finset I)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointContribIdx</code><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointContribIdx (i : I)</pre></div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="6">1 / 6</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.joint</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">def joint (M : RVModel I) (A : Finset I) : M.Ω → (∀ i : A, M.R i)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointOn</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointOn (F : Set (PPlus I)) : L.Λ → (∀ B : F, L.L.R B)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointContrib</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointContrib (A : Finset I)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointAbove</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointAbove (A : Finset I)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointStrictAbove</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointStrictAbove (A : Finset I)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.jointContribIdx</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Model.lean</span></div><pre class="sig">abbrev jointContribIdx (i : I)</pre></div>
     </section>
   </div>
 </article>
@@ -8168,7 +8191,7 @@ A or i, respectively.</pre>
     <label class="check"><input type="checkbox" data-node="cd-definition-3-5" aria-label="mark Definition 3.5 read"></label>
     <span class="node-label">Definition 3.5</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8195,7 +8218,7 @@ Yj = fj Xι(j) for all j ∈ J .</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.Hom</code><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">structure RVModel.Hom {I : Type w} [Finite I] {J : Type w₁} [Finite J]
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.Hom</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">structure RVModel.Hom {I : Type w} [Finite I] {J : Type w₁} [Finite J]
     (M : RVModel.{u, v, w} I) (N : RVModel.{u₁, v₁, w₁} J) where
   /-- The probability-preserving map `π : Ω → Λ`. -/
   π : M.Ω → N.Ω
@@ -8216,7 +8239,7 @@ Yj = fj Xι(j) for all j ∈ J .</pre>
     <label class="check"><input type="checkbox" data-node="cd-definition-3-6" aria-label="mark Definition 3.6 read"></label>
     <span class="node-label">Definition 3.6</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8233,7 +8256,7 @@ their   composite is the morphism
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.Hom.comp</code><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">def comp (φ : Hom M N) (ψ : Hom N P) : Hom M P</pre></div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.Hom.comp</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">def comp (φ : Hom M N) (ψ : Hom N P) : Hom M P</pre></div>
     </section>
   </div>
 </article>
@@ -8243,7 +8266,7 @@ their   composite is the morphism
     <label class="check"><input type="checkbox" data-node="cd-proposition-3-7" aria-label="mark Proposition 3.7 read"></label>
     <span class="node-label">Proposition 3.7</span>
     <span class="node-title"></span>
-    <span class="kind">proposition</span>
+    <span class="kind">proposition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8252,7 +8275,7 @@ their   composite is the morphism
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModelObj.instCategory</code><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">instance instCategory : CategoryTheory.Category.{max u v w} RVModelObj.{u, v, w}</pre></div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModelObj.instCategory</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">instance instCategory : CategoryTheory.Category.{max u v w} RVModelObj.{u, v, w}</pre></div>
     </section>
   </div>
 </article>
@@ -8262,7 +8285,7 @@ their   composite is the morphism
     <label class="check"><input type="checkbox" data-node="cd-proposition-3-8" aria-label="mark Proposition 3.8 read"></label>
     <span class="node-label">Proposition 3.8</span>
     <span class="node-title"></span>
-    <span class="kind">proposition</span>
+    <span class="kind">proposition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8275,7 +8298,7 @@ bijection; and for every j ∈ J , the map fj is an isomorphism of measurable sp
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.Hom.isIso_iff</code><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">theorem isIso_iff {A B : RVModelObj.{u, v, w}} (φ : A ⟶ B) :
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.Hom.isIso_iff</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">theorem isIso_iff {A B : RVModelObj.{u, v, w}} (φ : A ⟶ B) :
     CategoryTheory.IsIso φ ↔
       IsMeasurableIso (RVModel.Hom.π φ) ∧ Function.Bijective (RVModel.Hom.ι φ) ∧
         ∀ j, IsMeasurableIso (RVModel.Hom.f φ j)</pre></div>
@@ -8288,7 +8311,7 @@ bijection; and for every j ∈ J , the map fj is an isomorphism of measurable sp
     <label class="check"><input type="checkbox" data-node="cd-definition-3-9" aria-label="mark Definition 3.9 read"></label>
     <span class="node-label">Definition 3.9</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8304,7 +8327,7 @@ are   equal almost everywhere if
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.Hom.AEEq</code><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">def AEEq (φ ψ : Hom M N) : Prop</pre></div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.Hom.AEEq</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">def AEEq (φ ψ : Hom M N) : Prop</pre></div>
     </section>
   </div>
 </article>
@@ -8314,7 +8337,7 @@ are   equal almost everywhere if
     <label class="check"><input type="checkbox" data-node="cd-definition-3-10" aria-label="mark Definition 3.10 read"></label>
     <span class="node-label">Definition 3.10</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8348,11 +8371,11 @@ potential for ambiguity.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.IsEquivalence</code><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">structure IsEquivalence (φ : Hom M N) (ψ : Hom N M) : Prop where
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.IsEquivalence</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">structure IsEquivalence (φ : Hom M N) (ψ : Hom N M) : Prop where
   /-- `ψ ∘ φ` is a.e. equal to the identity on `M`. -/
   comp_left : Hom.AEEq (φ.comp ψ) (Hom.id M)
   /-- `φ ∘ ψ` is a.e. equal to the identity on `N`. -/
-  comp_right : Hom.AEEq (ψ.comp φ) (Hom.id N)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.RVModel.Equivalent</code><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">def Equivalent (M : RVModel.{u, v, w} I) (N : RVModel.{u₁, v₁, w₁} J) : Prop</pre></div>
+  comp_right : Hom.AEEq (ψ.comp φ) (Hom.id N)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.RVModel.Equivalent</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">def Equivalent (M : RVModel.{u, v, w} I) (N : RVModel.{u₁, v₁, w₁} J) : Prop</pre></div>
     </section>
   </div>
 </article>
@@ -8362,7 +8385,7 @@ potential for ambiguity.</pre>
     <label class="check"><input type="checkbox" data-node="cd-proposition-3-11" aria-label="mark Proposition 3.11 read"></label>
     <span class="node-label">Proposition 3.11</span>
     <span class="node-title"></span>
-    <span class="kind">proposition</span>
+    <span class="kind">proposition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8379,7 +8402,7 @@ models is a congruence with respect to composition. That is,
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.Hom.aeEq_equivalence</code><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">theorem aeEq_equivalence : Equivalence (AEEq (M</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.RVModel.Hom.comp_aeEq_congr</code><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">theorem comp_aeEq_congr {φ ψ : Hom M N} {χ ξ : Hom N P}
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.Hom.aeEq_equivalence</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">theorem aeEq_equivalence : Equivalence (AEEq (M</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.RVModel.Hom.comp_aeEq_congr</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">theorem comp_aeEq_congr {φ ψ : Hom M N} {χ ξ : Hom N P}
     (h : AEEq φ ψ) (h&#x27; : AEEq χ ξ) : AEEq (φ.comp χ) (ψ.comp ξ)</pre></div>
     </section>
   </div>
@@ -8390,7 +8413,7 @@ models is a congruence with respect to composition. That is,
     <label class="check"><input type="checkbox" data-node="cd-proposition-3-12" aria-label="mark Proposition 3.12 read"></label>
     <span class="node-label">Proposition 3.12</span>
     <span class="node-title"></span>
-    <span class="kind">proposition</span>
+    <span class="kind">proposition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8400,7 +8423,7 @@ tion.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModelObj.equivalent_equivalence</code><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">theorem equivalent_equivalence : Equivalence (Equivalent.{u, v, w})</pre></div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModelObj.equivalent_equivalence</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Morphism.lean</span></div><pre class="sig">theorem equivalent_equivalence : Equivalence (Equivalent.{u, v, w})</pre></div>
     </section>
   </div>
 </article>
@@ -8411,7 +8434,7 @@ tion.</pre>
     <label class="check"><input type="checkbox" data-node="cd-example-4-1" aria-label="mark Example 4.1 read"></label>
     <span class="node-label">Example 4.1</span>
     <span class="node-title"></span>
-    <span class="kind">example</span>
+    <span class="kind">example</span><span class="staged">partly staged</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8446,9 +8469,14 @@ irrelevant to determining the variables Xi .</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.Example41.L₁</code><span class="ep-file">Condensation/Examples.lean</span></div><pre class="sig">noncomputable def L₁ (M : RVModel.{u, v, w} I) : LatentModel M</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.Example41.L₂</code><span class="ep-file">Condensation/Examples.lean</span></div><pre class="sig">noncomputable def L₂ (M : RVModel.{u, v, w} I) : LatentModel M</pre></div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="6">1 / 6</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.Example41.L₁</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Examples.lean</span></div><pre class="sig">noncomputable def L₁ (M : RVModel.{u, v, w} I) : LatentModel M</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.Example41.L₂</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Examples.lean</span></div><pre class="sig">noncomputable def L₂ (M : RVModel.{u, v, w} I) : LatentModel M</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.Example41.L₁_simpleScore</code><span class="staged" title="M2: Example 4.1, equation (4.2)">staged &middot; sorry</span><span class="ep-file">Condensation/Examples.lean</span></div><pre class="sig">theorem L₁_simpleScore (M : RVModel.{u, v, w} I) (A : Finset I) :
+    (L₁ M).simpleScore A = ∑ i ∈ A, H[M.X i ; M.P]</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.Example41.L₁_condScore</code><span class="staged" title="M2: Example 4.1, equation (4.3)">staged &middot; sorry</span><span class="ep-file">Condensation/Examples.lean</span></div><pre class="sig">theorem L₁_condScore (M : RVModel.{u, v, w} I) (A : Finset I) :
+    (L₁ M).condScore A = ∑ i ∈ A, H[M.X i ; M.P]</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.Example41.L₂_simpleScore</code><span class="staged" title="M2: Example 4.1, equation (4.4) (errata 11: takes A.Nonempty)">staged &middot; sorry</span><span class="ep-file">Condensation/Examples.lean</span></div><pre class="sig">theorem L₂_simpleScore (M : RVModel.{u, v, w} I) {A : Finset I} (hA : A.Nonempty) :
+    (L₂ M).simpleScore A = H[M.jointAll ; M.P]</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.Example41.L₂_condScore</code><span class="staged" title="M2: Example 4.1, equation (4.5) (errata 11: takes A.Nonempty)">staged &middot; sorry</span><span class="ep-file">Condensation/Examples.lean</span></div><pre class="sig">theorem L₂_condScore (M : RVModel.{u, v, w} I) {A : Finset I} (hA : A.Nonempty) :
+    (L₂ M).condScore A = H[M.jointAll ; M.P]</pre></div>
     </section>
   </div>
+  <footer class="audit-note"><span class="audit-tag">Proof staged — not axiom-checked</span> <code>Condensation.Example41.L₁_simpleScore</code> — M2: Example 4.1, equation (4.2); <code>Condensation.Example41.L₁_condScore</code> — M2: Example 4.1, equation (4.3); <code>Condensation.Example41.L₂_simpleScore</code> — M2: Example 4.1, equation (4.4) (errata 11: takes A.Nonempty); <code>Condensation.Example41.L₂_condScore</code> — M2: Example 4.1, equation (4.5) (errata 11: takes A.Nonempty)</footer>
 </article>
 
 <article class="node" id="cd-proposition-4-2">
@@ -8456,7 +8484,7 @@ irrelevant to determining the variables Xi .</pre>
     <label class="check"><input type="checkbox" data-node="cd-proposition-4-2" aria-label="mark Proposition 4.2 read"></label>
     <span class="node-label">Proposition 4.2</span>
     <span class="node-title"></span>
-    <span class="kind">proposition</span>
+    <span class="kind">proposition</span><span class="staged">partly staged</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8470,11 +8498,12 @@ have
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.simpleScore_ge_condScore</code><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem simpleScore_ge_condScore (A : Finset I) : L.condScore A ≤ L.simpleScore A</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.condScore_ge_entropy_jointContrib</code><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem condScore_ge_entropy_jointContrib (A : Finset I) :
-    H[L.jointContrib A ; L.P] ≤ L.condScore A</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.entropy_jointContrib_ge_entropy_joint</code><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem entropy_jointContrib_ge_entropy_joint (A : Finset I) :
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.simpleScore_ge_condScore</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem simpleScore_ge_condScore (A : Finset I) : L.condScore A ≤ L.simpleScore A</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.condScore_ge_entropy_jointContrib</code><span class="staged" title="M2: Proposition 4.2 (4.7)-(4.9); needs the finite-family chain rule">staged &middot; sorry</span><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem condScore_ge_entropy_jointContrib (A : Finset I) :
+    H[L.jointContrib A ; L.P] ≤ L.condScore A</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.entropy_jointContrib_ge_entropy_joint</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem entropy_jointContrib_ge_entropy_joint (A : Finset I) :
     H[M.joint A ; M.P] ≤ H[L.jointContrib A ; L.P]</pre></div>
     </section>
   </div>
+  <footer class="audit-note"><span class="audit-tag">Proof staged — not axiom-checked</span> <code>Condensation.LatentModel.condScore_ge_entropy_jointContrib</code> — M2: Proposition 4.2 (4.7)-(4.9); needs the finite-family chain rule</footer>
 </article>
 
 <article class="node" id="cd-definition-4-3">
@@ -8482,7 +8511,7 @@ have
     <label class="check"><input type="checkbox" data-node="cd-definition-4-3" aria-label="mark Definition 4.3 read"></label>
     <span class="node-label">Definition 4.3</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8493,7 +8522,7 @@ perfectly condenses M if σL (A) = H (XA ) for all A ⊆ I .</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.PerfectlyCondenses</code><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">def PerfectlyCondenses : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.SimplyPerfectlyCondenses</code><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">def SimplyPerfectlyCondenses : Prop</pre></div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.PerfectlyCondenses</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">def PerfectlyCondenses : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.SimplyPerfectlyCondenses</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">def SimplyPerfectlyCondenses : Prop</pre></div>
     </section>
   </div>
 </article>
@@ -8503,7 +8532,7 @@ perfectly condenses M if σL (A) = H (XA ) for all A ⊆ I .</pre>
     <label class="check"><input type="checkbox" data-node="cd-example-4-4" aria-label="mark Example 4.4 read"></label>
     <span class="node-label">Example 4.4</span>
     <span class="node-title"></span>
-    <span class="kind">example</span>
+    <span class="kind">example</span><span class="staged">partly staged</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8529,9 +8558,13 @@ so L simply-perfectly condenses M.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.Example44.M44</code><span class="ep-file">Condensation/Examples.lean</span></div><pre class="sig">noncomputable def M44 (L : RVModel.{u, v, w} (PPlus I)) : RVModel.{u, max v w, w} I</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.Example44.L44</code><span class="ep-file">Condensation/Examples.lean</span></div><pre class="sig">noncomputable def L44 (L : RVModel.{u, v, w} (PPlus I)) : LatentModel (M44 L)</pre></div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="4">1 / 4</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.Example44.M44</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Examples.lean</span></div><pre class="sig">noncomputable def M44 (L : RVModel.{u, v, w} (PPlus I)) : RVModel.{u, max v w, w} I</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.Example44.L44</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Examples.lean</span></div><pre class="sig">noncomputable def L44 (L : RVModel.{u, v, w} (PPlus I)) : LatentModel (M44 L)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.Example44.entropy_joint_eq</code><span class="staged" title="M2: Example 4.4, equation (4.11); needs joint independence">staged &middot; sorry</span><span class="ep-file">Condensation/Examples.lean</span></div><pre class="sig">theorem entropy_joint_eq (L : RVModel.{u, v, w} (PPlus I))
+    (hindep : iIndepFun L.X L.P) (A : Finset I) :
+    H[(M44 L).joint A ; (M44 L).P] = ∑ B ∈ famFinset (contrib A), H[L.X B ; L.P]</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.Example44.simplyPerfectlyCondenses</code><span class="staged" title="M2: Example 4.4&#x27;s conclusion; immediate from (4.11)">staged &middot; sorry</span><span class="ep-file">Condensation/Examples.lean</span></div><pre class="sig">theorem simplyPerfectlyCondenses (L : RVModel.{u, v, w} (PPlus I))
+    (hindep : iIndepFun L.X L.P) : (L44 L).SimplyPerfectlyCondenses</pre></div>
     </section>
   </div>
+  <footer class="audit-note"><span class="audit-tag">Proof staged — not axiom-checked</span> <code>Condensation.Example44.entropy_joint_eq</code> — M2: Example 4.4, equation (4.11); needs joint independence; <code>Condensation.Example44.simplyPerfectlyCondenses</code> — M2: Example 4.4&#x27;s conclusion; immediate from (4.11)</footer>
 </article>
 
 <article class="node" id="cd-lemma-4-5">
@@ -8539,7 +8572,7 @@ so L simply-perfectly condenses M.</pre>
     <label class="check"><input type="checkbox" data-node="cd-lemma-4-5" aria-label="mark Lemma 4.5 read"></label>
     <span class="node-label">Lemma 4.5</span>
     <span class="node-title"></span>
-    <span class="kind">lemma</span>
+    <span class="kind">lemma</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8555,7 +8588,7 @@ the following are equivalent.
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.perfect_entropy_iff_aeFunctionOf</code><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem perfect_entropy_iff_aeFunctionOf :
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.perfect_entropy_iff_aeFunctionOf</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem perfect_entropy_iff_aeFunctionOf :
     (∀ A : PPlus I, H[L.jointContrib A.toFinset ; L.P] = H[M.joint A.toFinset ; M.P]) ↔
       ∀ (i : I) (A : PPlus I), i ∈ A → AEFunctionOf (M.X i ∘ L.π) (L.Y A) L.P</pre></div>
     </section>
@@ -8567,7 +8600,7 @@ the following are equivalent.
     <label class="check"><input type="checkbox" data-node="cd-corollary-4-6" aria-label="mark Corollary 4.6 read"></label>
     <span class="node-label">Corollary 4.6</span>
     <span class="node-title"></span>
-    <span class="kind">corollary</span>
+    <span class="kind">corollary</span><span class="staged">proof staged</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8579,10 +8612,11 @@ surable function fAi : R Xi → R YA such that YA = fAi (Xi ) almost everywhere.
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.aeFunctionOf_of_perfectlyCondenses</code><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem aeFunctionOf_of_perfectlyCondenses (h : L.PerfectlyCondenses) :
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.aeFunctionOf_of_perfectlyCondenses</code><span class="staged" title="M2: Corollary 4.6; proof complete, but consumes Proposition 4.2&#x27;s staged inequality">staged &middot; sorry</span><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem aeFunctionOf_of_perfectlyCondenses (h : L.PerfectlyCondenses) :
     ∀ (i : I) (A : PPlus I), i ∈ A → AEFunctionOf (M.X i ∘ L.π) (L.Y A) L.P</pre></div>
     </section>
   </div>
+  <footer class="audit-note"><span class="audit-tag">Proof staged — not axiom-checked</span> <code>Condensation.LatentModel.aeFunctionOf_of_perfectlyCondenses</code> — M2: Corollary 4.6; proof complete, but consumes Proposition 4.2&#x27;s staged inequality</footer>
 </article>
 
 <article class="node" id="cd-proposition-4-7">
@@ -8590,7 +8624,7 @@ surable function fAi : R Xi → R YA such that YA = fAi (Xi ) almost everywhere.
     <label class="check"><input type="checkbox" data-node="cd-proposition-4-7" aria-label="mark Proposition 4.7 read"></label>
     <span class="node-label">Proposition 4.7</span>
     <span class="node-title"></span>
-    <span class="kind">proposition</span>
+    <span class="kind">proposition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8614,7 +8648,7 @@ equivalent.
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.aeFunctionOf_iff_isEquivalence_contribModel</code><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem aeFunctionOf_iff_isEquivalence_contribModel :
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.aeFunctionOf_iff_isEquivalence_contribModel</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem aeFunctionOf_iff_isEquivalence_contribModel :
     (∀ (i : I) (A : PPlus I), i ∈ A → AEFunctionOf (M.X i ∘ L.π) (L.Y A) L.P) ↔
       ∃ (g : ∀ i, L.pullbackModel.R i → L.contribModel.R i)
         (hg : ∀ i, ∀ᵐ l ∂L.pullbackModel.P,
@@ -8623,7 +8657,10 @@ equivalent.
         (hh : ∀ i, ∀ᵐ l ∂L.contribModel.P,
           L.pullbackModel.X i (_root_.id l) = h i (L.contribModel.X i l)),
         RVModel.IsEquivalence
-          (RVModel.Hom.ofSameIndex (M</pre></div>
+          (RVModel.Hom.ofSameIndex L.pullbackModel L.contribModel
+            _root_.id (MeasurePreserving.id L.P) g hg)
+          (RVModel.Hom.ofSameIndex L.contribModel L.pullbackModel
+            _root_.id (MeasurePreserving.id L.P) h hh)</pre></div>
     </section>
   </div>
 </article>
@@ -8633,7 +8670,7 @@ equivalent.
     <label class="check"><input type="checkbox" data-node="cd-definition-4-8" aria-label="mark Definition 4.8 read"></label>
     <span class="node-label">Definition 4.8</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8650,7 +8687,7 @@ condition if the following statement holds.
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.OrderedMarkov</code><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">def RVModel.OrderedMarkov (N : RVModel (PPlus I)) : Prop</pre></div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.OrderedMarkov</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">def RVModel.OrderedMarkov (N : RVModel (PPlus I)) : Prop</pre></div>
     </section>
   </div>
 </article>
@@ -8660,7 +8697,7 @@ condition if the following statement holds.
     <label class="check"><input type="checkbox" data-node="cd-theorem-4-9" aria-label="mark Theorem 4.9 read"></label>
     <span class="node-label">Theorem 4.9</span>
     <span class="node-title"></span>
-    <span class="kind">theorem</span>
+    <span class="kind">theorem</span><span class="staged">proof staged</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8684,17 +8721,18 @@ Further, the following are also equivalent:
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.perfect_tfae_A</code><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem perfect_tfae_A :
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.perfect_tfae_A</code><span class="staged" title="M2: Theorem 4.9 (A1)-(A3); same chain rule">staged &middot; sorry</span><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem perfect_tfae_A :
     List.TFAE
       [L.SimplyPerfectlyCondenses,
         (∀ (i : I) (A : PPlus I), i ∈ A → AEFunctionOf (M.X i ∘ L.π) (L.Y A) L.P) ∧
           iIndepFun L.Y L.P,
-        L.PerfectlyCondenses ∧ iIndepFun L.Y L.P]</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.perfect_tfae_B</code><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem perfect_tfae_B :
+        L.PerfectlyCondenses ∧ iIndepFun L.Y L.P]</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentModel.perfect_tfae_B</code><span class="staged" title="M2: Theorem 4.9 (B1) iff (B2); same chain rule">staged &middot; sorry</span><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem perfect_tfae_B :
     L.PerfectlyCondenses ↔
       ((∀ (i : I) (A : PPlus I), i ∈ A → AEFunctionOf (M.X i ∘ L.π) (L.Y A) L.P) ∧
         L.L.OrderedMarkov)</pre></div>
     </section>
   </div>
+  <footer class="audit-note"><span class="audit-tag">Proof staged — not axiom-checked</span> <code>Condensation.LatentModel.perfect_tfae_A</code> — M2: Theorem 4.9 (A1)-(A3); same chain rule; <code>Condensation.LatentModel.perfect_tfae_B</code> — M2: Theorem 4.9 (B1) iff (B2); same chain rule</footer>
 </article>
 
 <article class="node" id="cd-proposition-4-10">
@@ -8702,7 +8740,7 @@ Further, the following are also equivalent:
     <label class="check"><input type="checkbox" data-node="cd-proposition-4-10" aria-label="mark Proposition 4.10 read"></label>
     <span class="node-label">Proposition 4.10</span>
     <span class="node-title"></span>
-    <span class="kind">proposition</span>
+    <span class="kind">proposition</span><span class="staged">proof staged</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8722,11 +8760,12 @@ equivalent.
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.orderedMarkov_iff</code><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem RVModel.orderedMarkov_iff (N : RVModel (PPlus I)) :
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.RVModel.orderedMarkov_iff</code><span class="staged" title="M2: Proposition 4.10 (4.38); same chain rule">staged &middot; sorry</span><span class="ep-file">Condensation/Perfect.lean</span></div><pre class="sig">theorem RVModel.orderedMarkov_iff (N : RVModel (PPlus I)) :
     N.OrderedMarkov ↔ ∀ F G : Set (PPlus I), IsUpperSet F → IsUpperSet G →
       CondIndepFun (N.jointOn F) (N.jointOn G) (N.jointOn (F ∩ G)) N.P</pre></div>
     </section>
   </div>
+  <footer class="audit-note"><span class="audit-tag">Proof staged — not axiom-checked</span> <code>Condensation.RVModel.orderedMarkov_iff</code> — M2: Proposition 4.10 (4.38); same chain rule</footer>
 </article>
 
 <article class="node" id="cd-definition-4-11">
@@ -8734,7 +8773,7 @@ equivalent.
     <label class="check"><input type="checkbox" data-node="cd-definition-4-11" aria-label="mark Definition 4.11 read"></label>
     <span class="node-label">Definition 4.11</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8759,7 +8798,7 @@ of probability-preserving maps commutes.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.Amalgamation</code><span class="ep-file">Condensation/Amalgamation.lean</span></div><pre class="sig">structure Amalgamation {Ω : Type u} [MeasurableSpace Ω] (PΩ : Measure Ω)
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.Amalgamation</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Amalgamation.lean</span></div><pre class="sig">structure Amalgamation {Ω : Type u} [MeasurableSpace Ω] (PΩ : Measure Ω)
     {Λ₁ : Type u₁} [MeasurableSpace Λ₁] (P₁ : Measure Λ₁)
     {Λ₂ : Type u₂} [MeasurableSpace Λ₂] (P₂ : Measure Λ₂)
     (π₁ : Λ₁ → Ω) (π₂ : Λ₂ → Ω) where
@@ -8792,7 +8831,7 @@ of probability-preserving maps commutes.</pre>
     <label class="check"><input type="checkbox" data-node="cd-definition-4-12" aria-label="mark Definition 4.12 read"></label>
     <span class="node-label">Definition 4.12</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8817,7 +8856,7 @@ models associated with M. An amalgamation of L1 and L2 consists of
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentAmalgamation</code><span class="ep-file">Condensation/Amalgamation.lean</span></div><pre class="sig">structure LatentAmalgamation {I : Type w} [Finite I] {M : RVModel.{u, v, w} I}
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.LatentAmalgamation</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Amalgamation.lean</span></div><pre class="sig">structure LatentAmalgamation {I : Type w} [Finite I] {M : RVModel.{u, v, w} I}
     (L₁ : LatentModel.{u, v, w, u₁, v₁} M) (L₂ : LatentModel.{u, v, w, u₂, v₂} M) where
   /-- (1) the countable discrete probability space `Λ₀`. -/
   Λ₀ : Type u₀
@@ -8856,15 +8895,11 @@ models associated with M. An amalgamation of L1 and L2 consists of
   ρ₁_pres : MeasurePreserving ρ₁ P₀ L₁.P
   /-- (3) the morphism condition (3.24) for `ρ₁`, with identity range components. -/
   ρ₁_Y : ∀ A : PPlus I, ∀ᵐ l ∂P₀, L₁.Y A (ρ₁ l) = Y₁ A l
-  /-- (3) `ρ₁` is a morphism *of latent variable models*: it commutes with the maps to `Ω`. -/
-  ρ₁_π : ∀ᵐ l ∂P₀, L₁.π (ρ₁ l) = π₁ l
   /-- (3) the underlying map of the morphism `ρ₂ : L̃₂ → L₂` of (4.45). -/
   ρ₂ : Λ₀ → L₂.Λ
   ρ₂_pres : MeasurePreserving ρ₂ P₀ L₂.P
   /-- (3) the morphism condition (3.24) for `ρ₂`, with identity range components. -/
   ρ₂_Y : ∀ A : PPlus I, ∀ᵐ l ∂P₀, L₂.Y A (ρ₂ l) = Y₂ A l
-  /-- (3) `ρ₂` is a morphism *of latent variable models*: it commutes with the maps to `Ω`. -/
-  ρ₂_π : ∀ᵐ l ∂P₀, L₂.π (ρ₂ l) = π₂ l
   /-- The commuting square (4.43) of Definition 4.11, carried into Definition 4.12: the
   two derived latent variable models observe `M` through the *same* map.</pre></div>
     </section>
@@ -8876,7 +8911,7 @@ models associated with M. An amalgamation of L1 and L2 consists of
     <label class="check"><input type="checkbox" data-node="cd-lemma-4-13" aria-label="mark Lemma 4.13 read"></label>
     <span class="node-label">Lemma 4.13</span>
     <span class="node-title"></span>
-    <span class="kind">lemma</span>
+    <span class="kind">lemma</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8905,16 +8940,16 @@ and
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="4">1 / 4</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.Amalgamation.canonical</code><span class="ep-file">Condensation/Amalgamation.lean</span></div><pre class="sig">noncomputable def canonical (h₁ : MeasurePreserving π₁ P₁ PΩ)
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="4">1 / 4</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.Amalgamation.canonical</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Amalgamation.lean</span></div><pre class="sig">noncomputable def canonical (h₁ : MeasurePreserving π₁ P₁ PΩ)
     (h₂ : MeasurePreserving π₂ P₂ PΩ) :
-    Amalgamation.{u, max u₁ u₂, u₁, u₂} PΩ P₁ P₂ π₁ π₂</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.nonempty_amalgamation</code><span class="ep-file">Condensation/Amalgamation.lean</span></div><pre class="sig">theorem nonempty_amalgamation {Ω : Type u} [MeasurableSpace Ω] [Countable Ω]
+    Amalgamation.{u, max u₁ u₂, u₁, u₂} PΩ P₁ P₂ π₁ π₂</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.nonempty_amalgamation</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Amalgamation.lean</span></div><pre class="sig">theorem nonempty_amalgamation {Ω : Type u} [MeasurableSpace Ω] [Countable Ω]
     [MeasurableSingletonClass Ω] {Λ₁ : Type u₁} [MeasurableSpace Λ₁] [Countable Λ₁]
     [MeasurableSingletonClass Λ₁] {Λ₂ : Type u₂} [MeasurableSpace Λ₂] [Countable Λ₂]
     [MeasurableSingletonClass Λ₂] (PΩ : Measure Ω) (P₁ : Measure Λ₁) (P₂ : Measure Λ₂)
     [IsProbabilityMeasure PΩ] [IsProbabilityMeasure P₁] [IsProbabilityMeasure P₂]
     {π₁ : Λ₁ → Ω} {π₂ : Λ₂ → Ω} (h₁ : MeasurePreserving π₁ P₁ PΩ)
     (h₂ : MeasurePreserving π₂ P₂ PΩ) :
-    Nonempty (Amalgamation.{u, max u₁ u₂, u₁, u₂} PΩ P₁ P₂ π₁ π₂)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentAmalgamation.canonical</code><span class="ep-file">Condensation/Amalgamation.lean</span></div><pre class="sig">noncomputable def canonical : LatentAmalgamation.{u, v, w, max u₁ u₂, u₁, v₁, u₂, v₂} L₁ L₂</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.nonempty_latentAmalgamation</code><span class="ep-file">Condensation/Amalgamation.lean</span></div><pre class="sig">theorem nonempty_latentAmalgamation {I : Type w} [Finite I] {M : RVModel.{u, v, w} I}
+    Nonempty (Amalgamation.{u, max u₁ u₂, u₁, u₂} PΩ P₁ P₂ π₁ π₂)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.LatentAmalgamation.canonical</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Amalgamation.lean</span></div><pre class="sig">noncomputable def canonical : LatentAmalgamation.{u, v, w, max u₁ u₂, u₁, v₁, u₂, v₂} L₁ L₂</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.nonempty_latentAmalgamation</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Amalgamation.lean</span></div><pre class="sig">theorem nonempty_latentAmalgamation {I : Type w} [Finite I] {M : RVModel.{u, v, w} I}
     (L₁ : LatentModel.{u, v, w, u₁, v₁} M) (L₂ : LatentModel.{u, v, w, u₂, v₂} M) :
     Nonempty (LatentAmalgamation.{u, v, w, max u₁ u₂, u₁, v₁, u₂, v₂} L₁ L₂)</pre></div>
     </section>
@@ -8926,7 +8961,7 @@ and
     <label class="check"><input type="checkbox" data-node="cd-lemma-4-14" aria-label="mark Lemma 4.14 read"></label>
     <span class="node-label">Lemma 4.14</span>
     <span class="node-title"></span>
-    <span class="kind">lemma</span>
+    <span class="kind">lemma</span><span class="staged">proof staged</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8939,21 +8974,18 @@ of (C, Y2 ). Then, X is almost everywhere a function of C .</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.aeFunctionOf_of_condIndepFun</code><span class="ep-file">Condensation/Comparison.lean</span></div><pre class="sig">theorem aeFunctionOf_of_condIndepFun {Ω S T₁ T₂ U : Type*} [MeasurableSpace Ω] [Countable Ω]
-    [MeasurableSingletonClass Ω] [MeasurableSpace S] [Countable S]
-    [MeasurableSingletonClass S] [MeasurableSpace T₁] [Countable T₁]
-    [MeasurableSingletonClass T₁] [MeasurableSpace T₂] [Countable T₂]
-    [MeasurableSingletonClass T₂] [MeasurableSpace U] [Countable U]
-    [MeasurableSingletonClass U] {μ : Measure Ω} [IsProbabilityMeasure μ] {X : Ω → S}
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.aeFunctionOf_of_condIndepFun</code><span class="staged" title="M2: Lemma 4.14">staged &middot; sorry</span><span class="ep-file">Condensation/Comparison.lean</span></div><pre class="sig">theorem aeFunctionOf_of_condIndepFun {Ω S T₁ T₂ U : Type*} [MeasurableSpace Ω] [Countable Ω]
+    [MeasurableSingletonClass Ω] [MeasurableSpace S] [MeasurableSpace T₁] [MeasurableSpace T₂]
+    [MeasurableSpace U] [Countable U] [MeasurableSingletonClass U]
+    {μ : Measure Ω} [IsProbabilityMeasure μ] {X : Ω → S}
     {Y₁ : Ω → T₁} {Y₂ : Ω → T₂} {C : Ω → U} (hX : Measurable X) (hY₁ : Measurable Y₁)
-    (hY₂ : Measurable Y₂) (hC : Measurable C) [ShannonInformation.FiniteEntropyOf X μ]
-    [ShannonInformation.FiniteEntropyOf Y₁ μ] [ShannonInformation.FiniteEntropyOf Y₂ μ]
-    [ShannonInformation.FiniteEntropyOf C μ] (hindep : CondIndepFun Y₁ Y₂ C μ)
+    (hY₂ : Measurable Y₂) (hC : Measurable C) (hindep : CondIndepFun Y₁ Y₂ C μ)
     (h₁ : AEFunctionOf (⟨C, Y₁⟩ : Ω → U × T₁) X μ)
     (h₂ : AEFunctionOf (⟨C, Y₂⟩ : Ω → U × T₂) X μ) :
     AEFunctionOf C X μ</pre></div>
     </section>
   </div>
+  <footer class="audit-note"><span class="audit-tag">Proof staged — not axiom-checked</span> <code>Condensation.aeFunctionOf_of_condIndepFun</code> — M2: Lemma 4.14</footer>
 </article>
 
 <article class="node" id="cd-theorem-4-15">
@@ -8961,7 +8993,7 @@ of (C, Y2 ). Then, X is almost everywhere a function of C .</pre>
     <label class="check"><input type="checkbox" data-node="cd-theorem-4-15" aria-label="mark Theorem 4.15 read"></label>
     <span class="node-label">Theorem 4.15</span>
     <span class="node-title">Comparison of perfect condensations</span>
-    <span class="kind">theorem</span>
+    <span class="kind">theorem</span><span class="staged">proof staged</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -8984,13 +9016,14 @@ and reciprocally ZA is a function of Y⊇A almost everywhere.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.aeFunctionOf_jointAbove_of_perfectlyCondenses</code><span class="ep-file">Condensation/Comparison.lean</span></div><pre class="sig">theorem aeFunctionOf_jointAbove_of_perfectlyCondenses
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.aeFunctionOf_jointAbove_of_perfectlyCondenses</code><span class="staged" title="M2: Theorem 4.15; the induction is not in the paper (errata 5)">staged &middot; sorry</span><span class="ep-file">Condensation/Comparison.lean</span></div><pre class="sig">theorem aeFunctionOf_jointAbove_of_perfectlyCondenses
     (h₁ : L₁.PerfectlyCondenses) (h₂ : L₂.PerfectlyCondenses)
     (Am : LatentAmalgamation.{u, v, w, u₀, u₁, v₁, u₂, v₂} L₁ L₂) (A : PPlus I) :
     AEFunctionOf (Am.lat₂.jointAbove A.toFinset) (Am.lat₁.Y A) Am.P₀ ∧
       AEFunctionOf (Am.lat₁.jointAbove A.toFinset) (Am.lat₂.Y A) Am.P₀</pre></div>
     </section>
   </div>
+  <footer class="audit-note"><span class="audit-tag">Proof staged — not axiom-checked</span> <code>Condensation.aeFunctionOf_jointAbove_of_perfectlyCondenses</code> — M2: Theorem 4.15; the induction is not in the paper (errata 5)</footer>
 </article>
 <h2 class="sec" id="sec-cd-5-2-Comparison-of-latent-variable-models">5.2. Comparison of latent variable models</h2>
 
@@ -8999,7 +9032,7 @@ and reciprocally ZA is a function of Y⊇A almost everywhere.</pre>
     <label class="check"><input type="checkbox" data-node="cd-lemma-5-4" aria-label="mark Lemma 5.4 read"></label>
     <span class="node-label">Lemma 5.4</span>
     <span class="node-title"></span>
-    <span class="kind">lemma</span>
+    <span class="kind">lemma</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -9013,10 +9046,10 @@ and further, we can make the exact statement
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_eq_of_pair</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem condEntropy_eq_of_pair (hX : Measurable X) (hY₁ : Measurable Y₁)
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_eq_of_pair</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem condEntropy_eq_of_pair (hX : Measurable X) (hY₁ : Measurable Y₁)
     (hY₂ : Measurable Y₂) (hC : Measurable C) :
     H[X | C ; μ] = H[X | ⟨Y₁, C⟩ ; μ] + H[X | ⟨Y₂, C⟩ ; μ] - H[X | ⟨Y₁, ⟨Y₂, C⟩⟩ ; μ]
-      + condInteractionInfo Y₁ Y₂ X C μ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_le_of_pair</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem condEntropy_le_of_pair (hX : Measurable X) (hY₁ : Measurable Y₁)
+      + condInteractionInfo Y₁ Y₂ X C μ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_le_of_pair</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem condEntropy_le_of_pair (hX : Measurable X) (hY₁ : Measurable Y₁)
     (hY₂ : Measurable Y₂) (hC : Measurable C) :
     H[X | C ; μ] ≤ H[X | ⟨Y₁, C⟩ ; μ] + H[X | ⟨Y₂, C⟩ ; μ] + I[Y₁ : Y₂ | C ; μ]</pre></div>
     </section>
@@ -9028,7 +9061,7 @@ and further, we can make the exact statement
     <label class="check"><input type="checkbox" data-node="cd-definition-5-5" aria-label="mark Definition 5.5 read"></label>
     <span class="node-label">Definition 5.5</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -9047,7 +9080,7 @@ of an intersection tree as follows.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.polar</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">def polar (F : Set (PPlus I)) : Set (PPlus I)</pre></div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.polar</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">def polar (F : Set (PPlus I)) : Set (PPlus I)</pre></div>
     </section>
   </div>
 </article>
@@ -9057,7 +9090,7 @@ of an intersection tree as follows.</pre>
     <label class="check"><input type="checkbox" data-node="cd-definition-5-6" aria-label="mark Definition 5.6 read"></label>
     <span class="node-label">Definition 5.6</span>
     <span class="node-title"></span>
-    <span class="kind">definition</span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -9084,16 +9117,16 @@ assigned to different internal vertices.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="4">1 / 4</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.ITree</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">inductive ITree (α : Type*)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.ITree.label</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">def label [SemilatticeInf α] : ITree α → α
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="4">1 / 4</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.ITree</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">inductive ITree (α : Type*)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.ITree.label</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">def label [SemilatticeInf α] : ITree α → α
   | leaf a =&gt; a
   | node l r =&gt; l.label ⊓ r.label
 
-@[simp] lemma label_leaf [SemilatticeInf α] (a : α) : (leaf a).label = a</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.ITree.intersections</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">def intersections [SemilatticeInf α] : ITree α → List (α × α × α)
+@[simp] lemma label_leaf [SemilatticeInf α] (a : α) : (leaf a).label = a</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.ITree.intersections</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">def intersections [SemilatticeInf α] : ITree α → List (α × α × α)
   | leaf _ =&gt; []
   | node l r =&gt; (l.label, r.label, l.label ⊓ r.label) :: (l.intersections ++ r.intersections)
 
 @[simp] lemma intersections_leaf [SemilatticeInf α] (a : α) :
-    (leaf a).intersections = []</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.ITree.LabelsIn</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">def LabelsIn (M : Set α) (t : ITree α) : Prop</pre></div>
+    (leaf a).intersections = []</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.ITree.LabelsIn</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">def LabelsIn (M : Set α) (t : ITree α) : Prop</pre></div>
     </section>
   </div>
 </article>
@@ -9103,7 +9136,7 @@ assigned to different internal vertices.</pre>
     <label class="check"><input type="checkbox" data-node="cd-proposition-5-7" aria-label="mark Proposition 5.7 read"></label>
     <span class="node-label">Proposition 5.7</span>
     <span class="node-title"></span>
-    <span class="kind">proposition</span>
+    <span class="kind">proposition</span><span class="staged proved">axiom-clean</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -9116,10 +9149,11 @@ all the labels of the leaves which are its ancestors.</pre>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.ITree.label_eq_leaves_foldr</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem label_eq_leaves_foldr [SemilatticeInf α] [OrderTop α] (t : ITree α) :
-    t.label = t.leaves.foldr (· ⊓ ·) ⊤</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.eq_decorate_of_isIntersectionTree</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem eq_decorate_of_isIntersectionTree {α : Type*} [SemilatticeInf α] {t : ITree α}
-    {d : LTree α} (herase : d.erase = t) (hd : d.IsIntersectionTree) : d = t.decorate</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.existsUnique_intersectionTree</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem existsUnique_intersectionTree {α : Type*} [SemilatticeInf α] (t : ITree α) :
-    ∃! d : LTree α, d.erase = t ∧ d.IsIntersectionTree</pre></div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.ITree.label_eq_leaves_foldr</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem label_eq_leaves_foldr [SemilatticeInf α] [OrderTop α] (t : ITree α) :
+    t.label = t.leaves.foldr (· ⊓ ·) ⊤</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.eq_decorate_of_isIntersectionTree</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem eq_decorate_of_isIntersectionTree {α : Type*} [SemilatticeInf α] {t : ITree α}
+    {d : LTree α} (herase : d.erase = t) (hd : d.IsIntersectionTree) : d = t.decorate</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.existsUnique_intersectionTree</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem existsUnique_intersectionTree {α : Type*} [SemilatticeInf α] {M : Set α}
+    (hM : ∀ a ∈ M, ∀ b ∈ M, a ⊓ b ∈ M) (t : ITree α) (ht : t.LabelsIn M) :
+    ∃! d : LTree α, d.erase = t ∧ d.IsIntersectionTree ∧ d.LabelsIn M</pre></div>
     </section>
   </div>
 </article>
@@ -9129,7 +9163,7 @@ all the labels of the leaves which are its ancestors.</pre>
     <label class="check"><input type="checkbox" data-node="cd-theorem-5-8" aria-label="mark Theorem 5.8 read"></label>
     <span class="node-label">Theorem 5.8</span>
     <span class="node-title">Comparison of latent variable models</span>
-    <span class="kind">theorem</span>
+    <span class="kind">theorem</span><span class="staged">proof staged</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -9166,7 +9200,7 @@ of T as L, its set of internal vertices as N , and its family of intersections a
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_jointAbove_le</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem condEntropy_jointAbove_le
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_jointAbove_le</code><span class="staged" title="M2: Theorem 5.8 (5.13)">staged &middot; sorry</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem condEntropy_jointAbove_le
     (A : PPlus I) (F : Set (PPlus I)) (T : ITree (Set (PPlus I)))
     (hupper : T.LabelsIn {s | IsUpperSet s})
     (hleaves : (T.leaves : Multiset (Set (PPlus I)))
@@ -9176,7 +9210,7 @@ of T as L, its set of internal vertices as N , and its family of intersections a
             H[Am.lat₁.jointAbove A.toFinset | Am.lat₁.pullbackJoint B.toFinset ; Am.P₀])
         + (T.intersections.map fun p =&gt;
             I[Am.lat₂.jointOn p.1 : Am.lat₂.jointOn p.2.1 | Am.lat₂.jointOn p.2.2 ;
-              Am.P₀]).sum</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_jointAbove_eq</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem condEntropy_jointAbove_eq
+              Am.P₀]).sum</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_jointAbove_eq</code><span class="staged" title="M2: Theorem 5.8 (5.14)">staged &middot; sorry</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem condEntropy_jointAbove_eq
     (A : PPlus I) (F : Set (PPlus I)) (T : ITree (Set (PPlus I)))
     (hupper : T.LabelsIn {s | IsUpperSet s})
     (hleaves : (T.leaves : Multiset (Set (PPlus I)))
@@ -9191,6 +9225,7 @@ of T as L, its set of internal vertices as N , and its family of intersections a
               (Am.lat₁.jointAbove A.toFinset) (Am.lat₂.jointOn p.2.2) Am.P₀).sum</pre></div>
     </section>
   </div>
+  <footer class="audit-note"><span class="audit-tag">Proof staged — not axiom-checked</span> <code>Condensation.condEntropy_jointAbove_le</code> — M2: Theorem 5.8 (5.13); <code>Condensation.condEntropy_jointAbove_eq</code> — M2: Theorem 5.8 (5.14)</footer>
 </article>
 <h2 class="sec" id="sec-cd-5-3-Variation">5.3. Variation</h2>
 
@@ -9199,7 +9234,7 @@ of T as L, its set of internal vertices as N , and its family of intersections a
     <label class="check"><input type="checkbox" data-node="cd-corollary-5-9" aria-label="mark Corollary 5.9 read"></label>
     <span class="node-label">Corollary 5.9</span>
     <span class="node-title"></span>
-    <span class="kind">corollary</span>
+    <span class="kind">corollary</span><span class="staged">proof staged</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -9223,7 +9258,7 @@ In particular, if Z satisfies the ordered Markov condition, then we have simply
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_jointAbove_le_reconScore</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem condEntropy_jointAbove_le_reconScore
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_jointAbove_le_reconScore</code><span class="staged" title="M2: Corollary 5.9 (5.21)">staged &middot; sorry</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem condEntropy_jointAbove_le_reconScore
     (A : PPlus I) (F : Set (PPlus I)) (hFA : ∀ B ∈ F, B ≤ A)
     (T : ITree (Set (PPlus I))) (hupper : T.LabelsIn {s | IsUpperSet s})
     (hleaves : (T.leaves : Multiset (Set (PPlus I)))
@@ -9232,7 +9267,7 @@ In particular, if Z satisfies the ordered Markov condition, then we have simply
       ≤ (∑ B ∈ famFinset F, Am.lat₁.reconScore B.toFinset)
         + (T.intersections.map fun p =&gt;
             I[Am.lat₂.jointOn p.1 : Am.lat₂.jointOn p.2.1 | Am.lat₂.jointOn p.2.2 ;
-              Am.P₀]).sum</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_jointAbove_le_reconScore_of_orderedMarkov</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem condEntropy_jointAbove_le_reconScore_of_orderedMarkov
+              Am.P₀]).sum</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_jointAbove_le_reconScore_of_orderedMarkov</code><span class="staged" title="M2: Corollary 5.9 (5.22)">staged &middot; sorry</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem condEntropy_jointAbove_le_reconScore_of_orderedMarkov
     (hmarkov : Am.rv₂.OrderedMarkov)
     (A : PPlus I) (F : Set (PPlus I)) (hFA : ∀ B ∈ F, B ≤ A)
     (T : ITree (Set (PPlus I))) (hupper : T.LabelsIn {s | IsUpperSet s})
@@ -9242,6 +9277,7 @@ In particular, if Z satisfies the ordered Markov condition, then we have simply
       ≤ ∑ B ∈ famFinset F, Am.lat₁.reconScore B.toFinset</pre></div>
     </section>
   </div>
+  <footer class="audit-note"><span class="audit-tag">Proof staged — not axiom-checked</span> <code>Condensation.condEntropy_jointAbove_le_reconScore</code> — M2: Corollary 5.9 (5.21); <code>Condensation.condEntropy_jointAbove_le_reconScore_of_orderedMarkov</code> — M2: Corollary 5.9 (5.22)</footer>
 </article>
 
 <article class="node" id="cd-corollary-5-10">
@@ -9249,7 +9285,7 @@ In particular, if Z satisfies the ordered Markov condition, then we have simply
     <label class="check"><input type="checkbox" data-node="cd-corollary-5-10" aria-label="mark Corollary 5.10 read"></label>
     <span class="node-label">Corollary 5.10</span>
     <span class="node-title"></span>
-    <span class="kind">corollary</span>
+    <span class="kind">corollary</span><span class="staged">partly staged</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -9281,9 +9317,9 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.polar_kSubsets</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem polar_kSubsets [DecidableEq I] (A : PPlus I) {k : ℕ} (hk : 1 ≤ k) :
-    polar (kSubsets A k) = {C : PPlus I | (A.toFinset \ C.toFinset).card ≤ k - 1}</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_jointAbove_le_choose</code><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem condEntropy_jointAbove_le_choose
-    {k : ℕ} (hk : 1 ≤ k) {α : ℝ}
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Condensation.polar_kSubsets</code><span class="staged proved">axiom-clean</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem polar_kSubsets [DecidableEq I] (A : PPlus I) {k : ℕ} (hk : 1 ≤ k) :
+    polar (kSubsets A k) = {C : PPlus I | (A.toFinset \ C.toFinset).card ≤ k - 1}</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Condensation.condEntropy_jointAbove_le_choose</code><span class="staged" title="M2: Corollary 5.10 (5.25)">staged &middot; sorry</span><span class="ep-file">Condensation/Quantitative.lean</span></div><pre class="sig">theorem condEntropy_jointAbove_le_choose
+    {k : ℕ} {α : ℝ}
     (hϱ : ∀ C : PPlus I, C.toFinset.card = k → Am.lat₁.reconScore C.toFinset ≤ α)
     (A : PPlus I) (T : ITree (Set (PPlus I))) (hupper : T.LabelsIn {s | IsUpperSet s})
     (hleaves : (T.leaves : Multiset (Set (PPlus I)))
@@ -9295,6 +9331,7 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
               Am.P₀]).sum</pre></div>
     </section>
   </div>
+  <footer class="audit-note"><span class="audit-tag">Proof staged — not axiom-checked</span> <code>Condensation.condEntropy_jointAbove_le_choose</code> — M2: Corollary 5.10 (5.25)</footer>
 </article>
   </section>
 </main>
@@ -9355,4 +9392,4 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 condensation=39 -->
 
-<!-- trust-surface-sources: c1589df204e8e215c786b6538f44e8dcf1f8d31ed118b9d7e1bab29d8a7b3627 -->
+<!-- trust-surface-sources: 5d82c6ae4dda012255a0dd0757c285a7fbf111b20dab495a900a21363abbab8c -->
