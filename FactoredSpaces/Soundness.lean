@@ -14,17 +14,6 @@ universe u v
 
 variable {I : Type u} [DecidableEq I] [Fintype I] {Ω : I → Type v} [∀ i, Fintype (Ω i)]
 
-omit [∀ i, Fintype (Ω i)] in
-/-- Splicing at `Jᶜ` swaps the two factors: `S_{I∖J} × T_J = T_J × S_{I∖J}`. -/
-private lemma splice_compl (J : Finset I) (S T : Set (Pt Ω)) :
-    splice Jᶜ S T = splice J T S := by
-  ext ω
-  constructor
-  · rintro ⟨a, ha, b, hb, rfl⟩
-    exact ⟨b, hb, a, ha, piecewise_compl J a b⟩
-  · rintro ⟨a, ha, b, hb, rfl⟩
-    exact ⟨b, hb, a, ha, (piecewise_compl J b a).symm⟩
-
 /-- **Soundness for events.** If `H(A | C) ∩ H(B | C) = ∅` then `A ⊥^P B | C` holds
 for all `P ∈ Δ^F(Ω)`.
 

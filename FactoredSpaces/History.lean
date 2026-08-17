@@ -53,6 +53,16 @@ lemma piecewise_compl (J : Finset I) (a b : Pt Ω) : Jᶜ.piecewise a b = J.piec
   funext i
   by_cases hJ : i ∈ J <;> simp [Finset.piecewise, hJ]
 
+/-- Splicing at `Jᶜ` swaps the two factors: `S_{I∖J} × T_J = T_J × S_{I∖J}` (the paper's
+"commutativity of the Cartesian product over indexed families"). -/
+lemma splice_compl (J : Finset I) (S T : Set (Pt Ω)) : splice Jᶜ S T = splice J T S := by
+  ext ω
+  constructor
+  · rintro ⟨a, ha, b, hb, rfl⟩
+    exact ⟨b, hb, a, ha, piecewise_compl J a b⟩
+  · rintro ⟨a, ha, b, hb, rfl⟩
+    exact ⟨b, hb, a, ha, (piecewise_compl J b a).symm⟩
+
 /-- The paper's product `C_J × C_{I∖J}` of the two projections of `C`, read back inside
 `Ω = Ω_J × Ω_{I∖J}`: the points whose `J`-part is the `J`-part of some member of `C` and
 whose `(I∖J)`-part is the `(I∖J)`-part of some member of `C` (`dd:splice`). -/
