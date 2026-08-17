@@ -565,7 +565,9 @@ it belongs in the library as a stated open `Prop` with this note attached.
   node); (5) — README wording kept modest for `OrthogonalSub` (round 11).
 * **Still open, and whose:** (1) the read-through — `notes/statement-readthrough-checklist.md`
   is the checklist (51 Tier-A definitions, 43 Tier-B theorems, file:line, generated from the
-  annotations); it is Anson's to perform and sign. (3) cross-family adjudication of the 38
+  annotations); it is Anson's to perform and sign — **deferred by Anson on 2026-08-17, not
+  waived**, until he understands the mathematics well enough to review the statements himself
+  (same ruling for Cartesian Frames). (3) cross-family adjudication of the 38
   round-11 findings — prompts parked, codex quota resets 2026-08-20; note that the external
   review is whole-artifact cross-family coverage of the *fixed* surface, which is the
   stronger property, but not per-finding adjudication.

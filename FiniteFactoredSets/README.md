@@ -110,8 +110,8 @@ cross-family sweeps that could not run — codex quota; re-run when it resets), 
 `external-audit-gpt56sol-2026-08-17.md` (GPT-5.6 Sol's read-only review of head `4cbb1a7`:
 mathematical PASS, process CONDITIONAL PASS). Two of its conditions are still open and are
 recorded rather than hidden: **the human read-through of the frozen statement surface** —
-`notes/statement-readthrough-checklist.md` is the checklist, unsigned until Anson performs
-it — and the per-finding cross-family adjudication of round 11. Neither is a mathematical
+`notes/statement-readthrough-checklist.md` is the checklist, **deferred by Anson on
+2026-08-17 (not waived)** until he can review the mathematics himself — and the per-finding cross-family adjudication of round 11. Neither is a mathematical
 gap; both are trust-accounting obligations of the repo's own standard.
 
 ## What is not claimed
