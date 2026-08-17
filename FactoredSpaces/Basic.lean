@@ -15,6 +15,34 @@ The paper's factored space `Ω = ×_{i∈I} Ω_i` is the dependent function type
 the glossary of `dd:` tags.
 -/
 
+/-! ## Generic `Finset.piecewise` algebra
+
+Two lemmas about `Finset.piecewise` over a union and an intersection of index sets.  They
+carry no factored-space content — they hold for an arbitrary family `π : ι → Sort*` — and
+Mathlib has no counterpart, so they are stated in the root `Finset` namespace. -/
+
+namespace Finset
+
+variable {ι : Type*} {π : ι → Sort*} [DecidableEq ι]
+
+/-- Splicing at a union splices twice: `(s ∪ t).piecewise f g` takes `f` on `s` and
+`t.piecewise f g` off `s`. -/
+lemma piecewise_union (s t : Finset ι) (f g : ∀ i, π i) [∀ i, Decidable (i ∈ s)]
+    [∀ i, Decidable (i ∈ t)] [∀ i, Decidable (i ∈ s ∪ t)] :
+    (s ∪ t).piecewise f g = s.piecewise f (t.piecewise f g) := by
+  funext i
+  by_cases hs : i ∈ s <;> by_cases ht : i ∈ t <;> simp [Finset.piecewise, hs, ht]
+
+/-- Splicing at an intersection splices twice: `(s ∩ t).piecewise f g` takes
+`t.piecewise f g` on `s` and `g` off `s`. -/
+lemma piecewise_inter (s t : Finset ι) (f g : ∀ i, π i) [∀ i, Decidable (i ∈ s)]
+    [∀ i, Decidable (i ∈ t)] [∀ i, Decidable (i ∈ s ∩ t)] :
+    (s ∩ t).piecewise f g = s.piecewise (t.piecewise f g) g := by
+  funext i
+  by_cases hs : i ∈ s <;> by_cases ht : i ∈ t <;> simp [Finset.piecewise, hs, ht]
+
+end Finset
+
 namespace FactoredSpaces
 
 universe u v

@@ -21,18 +21,10 @@ variable {I : Type u} [DecidableEq I] {Ω : I → Type v}
 def splice (J : Finset I) (S T : Set (Pt Ω)) : Set (Pt Ω) :=
   {ω | ∃ a ∈ S, ∃ b ∈ T, ω = J.piecewise a b}
 
-lemma piecewise_self (J : Finset I) (a : Pt Ω) : J.piecewise a a = a := by
-  funext i; by_cases hi : i ∈ J <;> simp [Finset.piecewise, hi]
-
-lemma piecewise_union (J K : Finset I) (a b : Pt Ω) :
-    (J ∪ K).piecewise a b = J.piecewise a (K.piecewise a b) := by
-  funext i
-  by_cases hJ : i ∈ J <;> by_cases hK : i ∈ K <;> simp [Finset.piecewise, hJ, hK]
-
-lemma piecewise_inter (J K : Finset I) (a b : Pt Ω) :
-    (J ∩ K).piecewise a b = J.piecewise (K.piecewise a b) b := by
-  funext i
-  by_cases hJ : i ∈ J <;> by_cases hK : i ∈ K <;> simp [Finset.piecewise, hJ, hK]
+/-- `Finset.piecewise_same` at `Pt Ω`, retained only for the call site in
+`Completeness.lean`; use `Finset.piecewise_same` directly. -/
+lemma piecewise_self (J : Finset I) (a : Pt Ω) : J.piecewise a a = a :=
+  Finset.piecewise_same J a
 
 lemma mem_splice_iff {J : Finset I} {S T : Set (Pt Ω)} {ω : Pt Ω} :
     ω ∈ splice J S T ↔ (∃ a ∈ S, ∀ i ∈ J, ω i = a i) ∧ (∃ b ∈ T, ∀ i ∉ J, ω i = b i) := by
@@ -49,19 +41,15 @@ lemma mem_splice_iff {J : Finset I} {S T : Set (Pt Ω)} {ω : Pt Ω} :
 
 variable [Fintype I]
 
-lemma piecewise_compl (J : Finset I) (a b : Pt Ω) : Jᶜ.piecewise a b = J.piecewise b a := by
-  funext i
-  by_cases hJ : i ∈ J <;> simp [Finset.piecewise, hJ]
-
 /-- Splicing at `Jᶜ` swaps the two factors: `S_{I∖J} × T_J = T_J × S_{I∖J}` (the paper's
 "commutativity of the Cartesian product over indexed families"). -/
 lemma splice_compl (J : Finset I) (S T : Set (Pt Ω)) : splice Jᶜ S T = splice J T S := by
   ext ω
   constructor
   · rintro ⟨a, ha, b, hb, rfl⟩
-    exact ⟨b, hb, a, ha, piecewise_compl J a b⟩
+    exact ⟨b, hb, a, ha, Finset.piecewise_compl J a b⟩
   · rintro ⟨a, ha, b, hb, rfl⟩
-    exact ⟨b, hb, a, ha, (piecewise_compl J b a).symm⟩
+    exact ⟨b, hb, a, ha, (Finset.piecewise_compl J b a).symm⟩
 
 /-- The paper's product `C_J × C_{I∖J}` of the two projections of `C`, read back inside
 `Ω = Ω_J × Ω_{I∖J}`: the points whose `J`-part is the `J`-part of some member of `C` and
@@ -101,7 +89,7 @@ lemma disintegrates_iff_splice (J : Finset I) (C : Set (Pt Ω)) :
     exact ⟨a, ha, b, hb, rfl⟩
   · intro h
     apply Set.Subset.antisymm
-    · exact fun ω hω => ⟨ω, hω, ω, hω, (piecewise_self J ω).symm⟩
+    · exact fun ω hω => ⟨ω, hω, ω, hω, (Finset.piecewise_same J ω).symm⟩
     · rintro ω ⟨a, ha, b, hb, rfl⟩
       exact h a ha b hb
 
@@ -116,7 +104,7 @@ theorem Disintegrates.union {J K : Finset I} {C : Set (Pt Ω)}
     (hJ : Disintegrates J C) (hK : Disintegrates K C) : Disintegrates (J ∪ K) C := by
   rw [disintegrates_iff_splice] at *
   intro a ha b hb
-  rw [piecewise_union]
+  rw [Finset.piecewise_union]
   exact hJ a ha _ (hK a ha b hb)
 
 /-- **Disintegration is closed under intersection** (the intersection half of Lemma A.1).
@@ -126,7 +114,7 @@ theorem Disintegrates.inter {J K : Finset I} {C : Set (Pt Ω)}
     (hJ : Disintegrates J C) (hK : Disintegrates K C) : Disintegrates (J ∩ K) C := by
   rw [disintegrates_iff_splice] at *
   intro a ha b hb
-  rw [piecewise_inter]
+  rw [Finset.piecewise_inter]
   exact hJ _ (hK a ha b hb) b hb
 
 /-- The complement of a disintegrating set disintegrates (used in Lemma 6.3's proof). -/
@@ -134,7 +122,7 @@ lemma Disintegrates.compl {J : Finset I} {C : Set (Pt Ω)} (hJ : Disintegrates J
     Disintegrates Jᶜ C := by
   rw [disintegrates_iff_splice] at *
   intro a ha b hb
-  rw [piecewise_compl]
+  rw [Finset.piecewise_compl]
   exact hJ b hb a ha
 
 lemma disintegrates_univ (C : Set (Pt Ω)) : Disintegrates (Finset.univ : Finset I) C := by
@@ -217,20 +205,6 @@ noncomputable def history (X : Pt Ω → α) (C : Set (Pt Ω)) : Finset I := by
   classical
   exact (Finset.univ.filter (fun J : Finset I => Generates J X C)).inf id
 
-/-- A nonempty `∩`-closed family of `Finset I` contains its infimum. -/
-lemma inf_mem_of_inter_closed {S : Finset (Finset I)} (hne : S.Nonempty)
-    (hcl : ∀ J ∈ S, ∀ K ∈ S, J ∩ K ∈ S) : S.inf id ∈ S := by
-  obtain ⟨M, hM, hmin⟩ := S.exists_min_image Finset.card hne
-  have hle : ∀ J ∈ S, M ⊆ J := by
-    intro J hJ
-    have h1 : M ∩ J ∈ S := hcl M hM J hJ
-    have h2 : M.card ≤ (M ∩ J).card := hmin _ h1
-    have h3 : M ∩ J = M := Finset.eq_of_subset_of_card_le Finset.inter_subset_left h2
-    exact h3 ▸ Finset.inter_subset_right
-  have hEq : S.inf id = M :=
-    le_antisymm (Finset.inf_le hM) (Finset.le_inf fun J hJ => hle J hJ)
-  rw [hEq]; exact hM
-
 /-- **History is the minimal generating set** — the history generates.
 
 Paper node: Lemma 4.7 (§4.2). -/
@@ -245,8 +219,12 @@ theorem generates_history [Nonempty α] (X : Pt Ω → α) (C : Set (Pt Ω)) :
     intro J hJ K hK
     simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hJ hK ⊢
     exact hJ.inter hK
-  have := inf_mem_of_inter_closed hne hcl
-  simpa [history] using (Finset.mem_filter.mp this).2
+  -- a nonempty `⊓`-closed family of `Finset I` contains its infimum
+  have hmem := Finset.inf'_mem
+    (↑(Finset.univ.filter (fun J : Finset I => Generates J X C)) : Set (Finset I))
+    (fun x hx y hy => hcl x hx y hy) _ hne id fun i hi => hi
+  rw [Finset.inf'_eq_inf] at hmem
+  simpa [history] using (Finset.mem_filter.mp hmem).2
 
 /-- **History is the minimal generating set** — every generating set contains the history.
 
@@ -329,7 +307,7 @@ theorem generates_indic_iff_splice {J : Finset I} {A C : Set (Pt Ω)} (hd : Disi
   constructor
   · intro hf
     apply Set.Subset.antisymm
-    · exact fun ω hω => ⟨ω, hω, ω, hω.2, (piecewise_self J ω).symm⟩
+    · exact fun ω hω => ⟨ω, hω, ω, hω.2, (Finset.piecewise_same J ω).symm⟩
     · rintro ω ⟨a, ⟨haA, haC⟩, b, hbC, rfl⟩
       have hmem : J.piecewise a b ∈ C := hd.splice_mem haC hbC
       refine ⟨?_, hmem⟩
@@ -418,7 +396,7 @@ lemma inter_eq_splice {J : Finset I} {A B C : Set (Pt Ω)}
     A ∩ B ∩ C = splice J (A ∩ C) (B ∩ C) := by
   apply Set.Subset.antisymm
   · rintro ω ⟨⟨hA', hB'⟩, hC⟩
-    exact ⟨ω, ⟨hA', hC⟩, ω, ⟨hB', hC⟩, (piecewise_self J ω).symm⟩
+    exact ⟨ω, ⟨hA', hC⟩, ω, ⟨hB', hC⟩, (Finset.piecewise_same J ω).symm⟩
   · rintro ω ⟨a, ⟨haA, haC⟩, b, ⟨hbB, hbC⟩, rfl⟩
     have h1 : J.piecewise a b ∈ A ∩ C := hA ▸ ⟨a, ⟨haA, haC⟩, b, hbC, rfl⟩
     have h2 : J.piecewise a b ∈ B ∩ C := hB ▸ ⟨a, haC, b, ⟨hbB, hbC⟩, rfl⟩
@@ -427,8 +405,8 @@ lemma inter_eq_splice {J : Finset I} {A B C : Set (Pt Ω)}
 /-! ## Membership criteria for the history (used by the §5.2 development) -/
 
 /-- **Relevance criterion for membership in a history.**  If two members of `C` differ only
-at `i` and are separated by `X`, then `i ∈ H(X | C)`.  (The conditional form of
-`exists_ne_of_mem_history`.) -/
+at `i` and are separated by `X`, then `i ∈ H(X | C)`.  (The conditional form of the
+`←` direction of `mem_history_iff_exists_ne`, which is this lemma at `C = Ω`.) -/
 lemma mem_history_of_sep [Nonempty α] {X : Pt Ω → α} {C : Set (Pt Ω)} {i : I} {a b : Pt Ω}
     (ha : a ∈ C) (hb : b ∈ C) (hagree : ∀ j, j ≠ i → a j = b j) (hne : X a ≠ X b) :
     i ∈ history X C := by
@@ -436,6 +414,22 @@ lemma mem_history_of_sep [Nonempty α] {X : Pt Ω → α} {C : Set (Pt Ω)} {i :
   have hg := generates_history X C
   rw [generates_iff] at hg
   exact hne (hg.2 a ha b hb fun j hj => hagree j fun h => hi (h ▸ hj))
+
+/-- A factor lies in the (unconditional) history of `X` exactly when `X` is sensitive to
+it: two points agreeing off `i` with different `X`-values exist.  The `←` direction is
+`mem_history_of_sep` at `C = Ω`. -/
+lemma mem_history_iff_exists_ne [Nonempty α] (X : Pt Ω → α) (i : I) :
+    i ∈ history X (Set.univ : Set (Pt Ω)) ↔
+      ∃ a b : Pt Ω, (∀ j, j ≠ i → a j = b j) ∧ X a ≠ X b := by
+  refine ⟨fun hi => ?_, fun ⟨a, b, hab, hne⟩ =>
+    mem_history_of_sep (Set.mem_univ a) (Set.mem_univ b) hab hne⟩
+  by_contra hcon
+  push Not at hcon
+  have hgen : Generates (Finset.univ.erase i) X (Set.univ : Set (Pt Ω)) := by
+    rw [generates_iff]
+    refine ⟨disintegrates_univ_set _, fun a _ b _ hab => ?_⟩
+    exact hcon a b fun j hj => hab j (Finset.mem_erase.mpr ⟨hj, Finset.mem_univ j⟩)
+  exact (Finset.mem_erase.mp (history_subset_of_generates hgen hi)).1 rfl
 
 /-- **The mixing criterion.**  If two members of `C` differ only inside `{i, k}` and one of
 their two mixed points falls outside `C`, then no set disintegrating `C` separates `i`

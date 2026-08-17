@@ -49,24 +49,16 @@ lemma history_bg_subset (i : I) (C : Set (Pt Ω)) (hC : Disintegrates {i} C) :
   history_subset_of_generates ⟨⟨fun a => a ⟨i, Finset.mem_singleton_self i⟩, fun _ _ => rfl⟩, hC⟩
 
 /-- If `i ∈ H(X)` then the factor `Ω_i` genuinely varies: two points agreeing off `i`
-and differing at `i` exist. -/
+and differing at `i` exist.  The weaker form of `mem_history_iff_exists_ne`, whose
+separating pair must already differ at `i`. -/
 lemma exists_ne_of_mem_history [Nonempty α] {X : Pt Ω → α} {i : I}
     (hi : i ∈ history X (Set.univ : Set (Pt Ω))) :
     ∃ a b : Pt Ω, (∀ j, j ≠ i → a j = b j) ∧ a i ≠ b i := by
-  by_contra h
-  push Not at h
-  have hgen : Generates (Finset.univ.erase i) X (Set.univ : Set (Pt Ω)) := by
-    rw [generates_iff]
-    refine ⟨disintegrates_univ_set _, fun a _ b _ hab => ?_⟩
-    have hoff : ∀ j, j ≠ i → a j = b j := fun j hj =>
-      hab j (Finset.mem_erase.mpr ⟨hj, Finset.mem_univ j⟩)
-    have : a = b := funext fun j => by
-      by_cases hj : j = i
-      · subst hj; exact h a b hoff
-      · exact hoff j hj
-    rw [this]
-  have := history_subset_of_generates hgen hi
-  exact (Finset.mem_erase.mp this).1 rfl
+  obtain ⟨a, b, hab, hne⟩ := (mem_history_iff_exists_ne X i).mp hi
+  refine ⟨a, b, hab, fun h => hne (congrArg X (funext fun j => ?_))⟩
+  by_cases hj : j = i
+  · exact hj ▸ h
+  · exact hab j hj
 
 /-- If `i ∈ H(X)` then `i ∈ H(U_i)` (and so `H(U_i) = {i}` by `history_bg_subset`). -/
 lemma mem_history_bg_of_mem_history [Nonempty α] {X : Pt Ω → α} {i : I}
@@ -79,32 +71,6 @@ lemma mem_history_bg_of_mem_history [Nonempty α] {X : Pt Ω → α} {i : I}
   rw [generates_iff] at hgen
   refine hne (hgen.2 a (Set.mem_univ _) b (Set.mem_univ _) fun j hj => ?_)
   exact hab j (fun h => hnot (h ▸ hj))
-
-/-- A factor lies in the (unconditional) history of `X` exactly when `X` is sensitive to
-it: two points agreeing off `i` with different `X`-values exist.  (Both directions of
-`exists_ne_of_mem_history`, which gives the weaker conclusion `a i ≠ b i`.) -/
-lemma mem_history_iff_exists_ne [Nonempty α] (X : Pt Ω → α) (i : I) :
-    i ∈ history X (Set.univ : Set (Pt Ω)) ↔
-      ∃ a b : Pt Ω, (∀ j, j ≠ i → a j = b j) ∧ X a ≠ X b := by
-  classical
-  constructor
-  · intro hi
-    by_contra hcon
-    push Not at hcon
-    have hgen : Generates (Finset.univ.erase i) X (Set.univ : Set (Pt Ω)) := by
-      rw [generates_iff]
-      refine ⟨disintegrates_univ_set _, fun a _ b _ hab => ?_⟩
-      exact hcon a b fun j hj => hab j (Finset.mem_erase.mpr ⟨hj, Finset.mem_univ j⟩)
-    exact (Finset.mem_erase.mp (history_subset_of_generates hgen hi)).1 rfl
-  · rintro ⟨a, b, hab, hne⟩
-    by_contra hi
-    have hsub : history X (Set.univ : Set (Pt Ω)) ⊆ Finset.univ.erase i := fun j hj =>
-      Finset.mem_erase.mpr ⟨fun h => hi (h ▸ hj), Finset.mem_univ j⟩
-    have hgen : Generates (Finset.univ.erase i) X (Set.univ : Set (Pt Ω)) :=
-      (generates_iff_history_subset (disintegrates_univ_set _)).mpr hsub
-    rw [generates_iff] at hgen
-    exact hne (hgen.2 a (Set.mem_univ _) b (Set.mem_univ _) fun j hj =>
-      hab j (Finset.mem_erase.mp hj).1)
 
 /-- **Structural time and structural independence**, the direction "`X ≤ Y` implies
 `Y ⊥ Z ⟹ X ⊥ Z` for every variable `Z`" (universe-polymorphic in `Val(Z)`).
@@ -119,7 +85,7 @@ for every variable `Z`, then `X ≤ Y`".  Only the background variables `U_i` ar
 as witnesses, so the hypothesis is stated for them.
 
 Paper node: Lemma 4.12 (§4.4). -/
-theorem before_of_forall_bg [Nonempty α] [Nonempty β] {X : Pt Ω → α} {Y : Pt Ω → β}
+theorem before_of_forall_bg [Nonempty α] {X : Pt Ω → α} {Y : Pt Ω → β}
     (h : ∀ i : I, StructIndep Y (bg (Ω := Ω) i) → StructIndep X (bg i)) : Before X Y := by
   intro i hi
   by_contra hiY
@@ -135,8 +101,7 @@ theorem before_of_forall_bg [Nonempty α] [Nonempty β] {X : Pt Ω → α} {Y : 
 factors' universe, which is where the witnesses `U_i` live).
 
 Paper node: Lemma 4.12 (§4.4). -/
-theorem before_iff_forall_structIndep [Nonempty α] [Nonempty β] (X : Pt Ω → α)
-    (Y : Pt Ω → β) :
+theorem before_iff_forall_structIndep [Nonempty α] (X : Pt Ω → α) (Y : Pt Ω → β) :
     Before X Y ↔ ∀ (γ : Type v) (Z : Pt Ω → γ), StructIndep Y Z → StructIndep X Z :=
   ⟨fun h _ Z hYZ => structIndep_of_before h Z hYZ,
    fun h => before_of_forall_bg fun i => h (Ω i) (bg i)⟩
