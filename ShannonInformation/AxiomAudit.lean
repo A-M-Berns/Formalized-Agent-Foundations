@@ -163,3 +163,71 @@ listing it is the omission this block exists to catch.
   ShannonInformation.tsum_tsum_fiber
   ShannonInformation.summable_negMulLog_tsum_fiber
   ShannonInformation.tsum_negMulLog_tsum_fiber_le
+
+/-!
+### The restated theorems
+
+Phases 2–4a of `Condensation/notes/finite-range-generalization-plan.md`: the vendored
+theorems, re-proved at `FiniteEntropyOf`.  Unlike the blocks above these are not plumbing —
+each is a statement a client will cite, and each shadows a `ProbabilityTheory` declaration
+of the same name, so an omission here would be invisible at a call site that happened to
+resolve to the vendored version instead.  Every public declaration of `ChainRule.lean`,
+`Inequalities.lean` and `Derived.lean` is listed.
+-/
+
+-- Phase 2, `FiniteEntropy/ChainRule.lean`: the chain rules, and the integrability facts
+-- that keep them from being vacuous (`condEntropy` is a Bochner integral, `0` when the
+-- integrand is not integrable).
+#assert_axioms_clean_si
+  ShannonInformation.integrable_of_summable_measureReal_mul_norm
+  ShannonInformation.map_cond_measureReal_singleton
+  ShannonInformation.measureReal_mul_entropy_cond
+  ShannonInformation.summable_measureReal_mul_entropy_cond
+  ShannonInformation.integrable_entropy_cond
+  ShannonInformation.condEntropy_eq_tsum
+  ShannonInformation.chain_rule''
+  ShannonInformation.chain_rule
+  ShannonInformation.chain_rule'
+  ShannonInformation.condEntropy_eq_entropy_pair_sub
+  ShannonInformation.cond_chain_rule'
+  ShannonInformation.cond_chain_rule
+  ShannonInformation.condMutualInfo_eq
+
+-- Phase 3, `FiniteEntropy/Inequalities.lean`: the abstract and law-level pair layers.
+#assert_axioms_clean_si
+  ShannonInformation.tsum_negMulLog_prod_le
+  ShannonInformation.tsum_negMulLog_prod_eq_add_iff
+  ShannonInformation.measureEntropy_prod_le_add
+  ShannonInformation.measureEntropy_prod_eq_add_iff
+
+-- Phase 3: conditioning stays inside the class.
+#assert_axioms_clean_si
+  ShannonInformation.finiteEntropyMeasure_zero
+  ShannonInformation.measureReal_map_cond_singleton
+  ShannonInformation.finiteEntropyOf_cond
+
+-- Phase 3: subadditivity, mutual information, and the independence equality case.
+#assert_axioms_clean_si
+  ShannonInformation.entropy_pair_le_add
+  ShannonInformation.mutualInfo_nonneg
+  ShannonInformation.mutualInfo_eq_zero
+  ShannonInformation.entropy_pair_eq_add
+  ShannonInformation.condMutualInfo_nonneg
+  ShannonInformation.condMutualInfo_eq_zero
+  ShannonInformation.condEntropy_le_entropy
+  ShannonInformation.condEntropy_pair_le_add
+  ShannonInformation.entropy_submodular
+  ShannonInformation.entropy_triple_add_entropy_le
+
+-- Phase 4a, `FiniteEntropy/Derived.lean`: the corpus that follows by rewriting.
+#assert_axioms_clean_si
+  ShannonInformation.entropy_comp_le
+  ShannonInformation.entropy_of_comp_eq_of_comp
+  ShannonInformation.condEntropy_comp_self
+  ShannonInformation.condEntropy_of_injective'
+  ShannonInformation.mutualInfo_eq_entropy_sub_condEntropy
+  ShannonInformation.mutualInfo_eq_entropy_sub_condEntropy'
+  ShannonInformation.condEntropy_comp_ge
+  ShannonInformation.mutual_comp_le
+  ShannonInformation.condMutualInfo_eq'
+  ShannonInformation.IdentDistrib.condEntropy_eq

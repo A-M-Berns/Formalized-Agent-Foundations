@@ -4,10 +4,17 @@ import APITests.CartesianFrames
 import APITests.FiniteFactoredSets
 import APITests.ShannonInformation
 import APITests.ShannonInformationFiniteEntropy
+import APITests.ShannonInformationChainRule
+import APITests.ShannonInformationInequalities
+import APITests.ShannonInformationDerived
 
 /-! Client-style compilation tests for every completed paper's supported API, plus the
 shared (non-paper) `ShannonInformation` layer.
 
 `APITests.ShannonInformationFiniteEntropy` is split out from `APITests.ShannonInformation`
 because it needs a targeted `Mathlib.Probability.Distributions.Geometric` import that the
-rest of the API tests deliberately do without. -/
+rest of the API tests deliberately do without.  `APITests.ShannonInformationChainRule`
+builds on it — it reuses that file's constructed geometric witness rather than rebuilding
+one — so it imports it rather than `APITests.ShannonInformation`.  `…Inequalities` and
+`…Derived` continue the same chain: `…Derived` reuses `…Inequalities`' infinite-range
+`geomPair`. -/
