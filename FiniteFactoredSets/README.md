@@ -153,9 +153,10 @@ here rather than inventoried — there is no declaration of this project's to ax
 | Proposition 31's "irreducible" (no factorization into two polynomials of nonempty support) | Mathlib's `Irreducible` in `Poly S`; over `ℝ` its units are the nonzero constants, so the two readings coincide | `dd:poly` |
 | Proposition 2, first sentence (`≥_S` is a partial order) | Mathlib's `PartialOrder (Setoid S)` instance | `dd:order-flip` |
 
-Six of those rows are whole nodes (Definitions 1, 2, 5, 6, 7, 9); the other four are
-*partial* entries — a clause of a node whose remaining clauses do have a carrier, recorded
-here so that nothing in a printed node is silently unaccounted for:
+Eight of those eleven rows are whole nodes (Definitions 1, 2, 5, 6, 7, 9, 29, 30 — the last
+two of §5.1 rather than §2.1, where Mathlib's `eval` and `vars` render them outright); the
+other three are *partial* entries — a clause of a node whose remaining clauses do have a
+carrier, recorded here so that nothing in a printed node is silently unaccounted for:
 
 * **Proposition 2, first sentence.** `bot_le_and_le_top` carries the `Proposition 2`
   annotation but states only the proposition's second sentence (the `Dis`/`Ind` bounds).
@@ -168,8 +169,6 @@ here so that nothing in a printed node is silently unaccounted for:
   only; §5.1–§5.2 carry whichever of the two each statement's proof consumes, which is
   `[Finite S]` for most of them but `Finite F.B` for Propositions 26 and 29 (see the
   finiteness paragraph above and `API.lean`'s register).
-* **Definition 29 and Definition 30.** Evaluation and support are `MvPolynomial.eval` and
-  `MvPolynomial.vars` — whole nodes, but of §5.1 rather than §2.1.
 * **Proposition 31's word "irreducible."** The proposition itself is carried
   (`irreducible_poly_of_mem_irr`); it is the *meaning* of the word that is Mathlib's, and
   the two readings agreeing is a fact about `ℝ` worth stating rather than assuming.

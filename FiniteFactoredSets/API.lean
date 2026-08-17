@@ -288,7 +288,7 @@ keyword, which is exactly the filter wanted here.  Of those 50:
   factors separate `s` from `s₀`, while `P {s}` is `0` there.
   Nothing in §5 carries `[Finite F.B]` on top of
   `[Finite S]`, because it does not have to: `Finite F.B` is synthesized from `Finite S` by
-  instance search (see below), so these six, and the §3–§4 endpoints the §5 proofs call,
+  instance search (see below), so these seven, and the §3–§4 endpoints the §5 proofs call,
   are supplied automatically to a client who has only `[Finite S]`.
 * Finiteness is carried by **none** of the remaining twenty-two — every §5 definition,
   unfolding and elementary identity, plus a few proved statements.  `Poly`, `mono`, `monos`,

@@ -445,6 +445,33 @@ it belongs in the library as a stated open `Prop` with this note attached.
 * The node checker is whole-directory: during parallel shards it stays red until the last
   shard's inventory rows land; read the file names in its output, not the count.
 
+## Round 9 audit — durable lessons (§5.3–5.5 convergence round)
+
+* Verdict: codex statement sweep `[]`; Lens A no drift; residue = the recorded APITests
+  `dirac` duplication (now paid), one byte-identical in-module/APITests example pair (Lemma 3
+  clause 2), and three register sentences. Cross-check discipline mechanically verified for all
+  seven §5.3–5.5 pairs.
+* **Infinite-dimensional factored set exists in compiled form** (`ScratchR9A_inf.lean` →
+  land it in Examples when Conjecture 1 is stated): `W = ℕ → Bool`, `coordSetoid n =
+  Setoid.comap (· n) ⊥`, `B = Set.range coordSetoid`, via `isFactorization_iff_existsUnique`.
+  It pins: `isDistribution_diracAt`'s `[Finite F.B]` (false there); `[Finite S]` on Lemma 3
+  (`S = ℕ × ℕ`, `X = Y = fst`, `Z = ⊤`: all `Q`s junk `0`, clause 3 holds, clause 1 fails by
+  Prop 25) and on `eq_of_Q_eq` (`Q ℕ = 0 = Q ∅`). Refute-by-finprod-junk idiom:
+  `rw [finprod_mem_def]; finprod_of_infinite_mulSupport`.
+* **Untracked files in `FiniteFactoredSets/` redden three gates for everyone auditing the
+  checkout** (node checker, wiring, trust surface glob every `.lean`) — do not hold a stage
+  skeleton uncommitted in the paper directory during an audit round; keep it in scratch or
+  commit it transiently. Also `ProbDist.diracAt` needs `open scoped Classical` in a client.
+* Lemma 3 clause 3 and Theorem 3 present their sides in opposite orders — the paper's own.
+  `mem_chimeraImage_self` is a consequence of clause 3, not the clause. A
+  `ProbDist.ofWeights` constructor would collapse `uniform`/`biased`/`boolUniform`/`diracAt`'s
+  near-identical `additive` proofs — a deliberate future de-slop, not a rule-2b defect now.
+  No instance in FiniteFactoredSets is axiom-checked (established convention). Round-9 fix:
+  the APITests §5.3 example is now *uniqueness of the divisibility cofactor*
+  (`Q_ne_zero` + `mul_left_cancel₀`); the README's rendered-node table accounting is 8 whole
+  + 3 partial = 11; API's `[Finite F.B]` bullet says seven at both ends (grep the whole
+  bullet for the numeral when it changes).
+
 ## Round 8 audit — durable lessons (first audit of §5.3–5.5)
 
 * Verdict shape: codex statement sweep `[]`; Lens A found no statement drift; the residue was
@@ -487,8 +514,8 @@ it belongs in the library as a stated open `Prop` with this note attached.
   latter's `[Finite F.B]` is load-bearing — FALSE for infinite bases, like Prop 29's; do not
   relax); Lemma 3 clause 2's cross-check must state the `∣` with the cofactor as the
   `Dvd.dvd` witness (half (ii) again); three independent derivations of
-  `OrthogonalGiven fst snd ⊤` are deliberate. **Debt:** `APITests`' hand-built `dirac`
-  now duplicates `diracAt` — de-slop next round.
+  `OrthogonalGiven fst snd ⊤` are deliberate. (The APITests `dirac` duplication was retired in round 9;
+  its examples now consume `ProbDist.diracAt`/`isDistribution_diracAt`.)
 
 ## Stage 5b (§5.3–5.5) — durable lessons
 

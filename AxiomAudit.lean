@@ -1215,10 +1215,12 @@ open FiniteFactoredSets in
   -- stands in for it), and Definition 37 is the predicate `IsDistribution` on one.  Both
   -- §5.4-§5.5 theorems carry `[Finite S]`: Proposition 32 sums over `E ⊆ S`, and Theorem 3
   -- routes through Lemma 3, so this is the same `dd:poly` boundary as §5.1-§5.2 rather
-  -- than a new hypothesis.  Theorem 3's converse is the only place in the development
-  -- where a distribution is *constructed* rather than quantified over — the paper's `P_f`,
-  -- built from a strictly positive weight function — so the two directions have genuinely
-  -- different content.
+  -- than a new hypothesis.  Theorem 3's converse is the only paper-node proof that
+  -- *constructs* a distribution rather than quantifying over one — the paper's `P_f`, built
+  -- from a strictly positive weight function — so the two directions have genuinely
+  -- different content.  (The consumer surface also supplies `ProbDist.diracAt`, and
+  -- `Examples` builds `uniform`, `biased`, `diagDist`, `unitDist` and `boolUniform`; none
+  -- of those is a paper node.)
   ProbDist FactoredSet.IsDistribution
   FactoredSet.isDistribution_iff FactoredSet.orthogonalGiven_iff_forall_isDistribution
   -- §5.1-§5.2 on `coordFS`: the characteristic polynomial computed outright.  `vfst`/`vsnd`
