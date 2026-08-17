@@ -821,6 +821,66 @@ theorem noOverestimation_auction (hr : ∀ t, 0 ≤ r t) :
         exact hbound T
     _ ≤ ε := hT.le
 
+/-! ### Part 3A — the winning set is infinite
+
+The paper proves this separately. It is **not needed** for Definition 7: `covers_all`
+above establishes coverage without it, and `theorem1_extensional` compiles without any
+infinitude claim. It is proved here anyway, because it is the step where requirement (i)
+— "each hypothesis must get infinite overall allowance" — does its intended work, and
+because a test set that is never used would make the construction uninteresting even
+where it is formally adequate. -/
+
+/-- Between two times at which a hypothesis never wins, its wealth changes only by
+allowance. -/
+theorem wealth_eq_of_no_win {i T₀ : ℕ} (hno : ∀ t, T₀ ≤ t → winner Al H r t ≠ i) :
+    ∀ T, T₀ ≤ T → wealth Al H r T i
+      = wealth Al H r T₀ i + ∑ n ∈ Finset.Ico T₀ T, Al.A n i := by
+  intro T hT
+  induction T, hT using Nat.le_induction with
+  | base => simp
+  | succ T hT ih =>
+    rw [wealth_succ, if_neg (fun hc => hno T hT hc.symm), ih,
+      Finset.sum_Ico_succ_top hT]
+    ring
+
+/-- **Theorem 1, part 3A.** A hypothesis that wins only finitely often is eventually
+rich enough that its bid is never wealth-constrained, so it eventually stops
+outpromising the agent. Contrapositive: a hypothesis that outpromises infinitely often
+wins infinitely often. -/
+theorem winSet_infinite_of_rejected_infinitely (hr : ∀ t, 0 ≤ r t) (i : ℕ)
+    (hrej : (rejectionSet (auctionAgent Al H r hr) (H i)).Infinite) :
+    (winSet Al H r i).Infinite := by
+  by_contra hfin
+  rw [Set.not_infinite] at hfin
+  obtain ⟨T₀, hT₀⟩ := hfin.bddAbove
+  have hno : ∀ t, T₀ + 1 ≤ t → winner Al H r t ≠ i := by
+    intro t ht hc
+    exact absurd (hT₀ (show t ∈ winSet Al H r i from hc)) (by omega)
+  -- wealth grows without bound past `T₀ + 1`
+  have hgrow : Tendsto (fun T => ∑ n ∈ Finset.Ico (T₀ + 1) T, Al.A n i) atTop atTop := by
+    have hsplit : ∀ T, T₀ + 1 ≤ T →
+        ∑ n ∈ Finset.Ico (T₀ + 1) T, Al.A n i
+          = (∑ n ∈ range T, Al.A n i) - ∑ n ∈ range (T₀ + 1), Al.A n i := by
+      intro T hT
+      rw [eq_sub_iff_add_eq, add_comm, Finset.sum_range_add_sum_Ico _ hT]
+    refine Tendsto.congr' ?_ (tendsto_atTop_add_const_right atTop
+      (-(∑ n ∈ range (T₀ + 1), Al.A n i)) (Al.colSums_tendsto_atTop i))
+    filter_upwards [eventually_ge_atTop (T₀ + 1)] with T hT
+    rw [hsplit T hT, sub_eq_add_neg]
+  obtain ⟨T₁, hT₁⟩ := eventually_atTop.1 (tendsto_atTop.1 hgrow 1)
+  -- past `max (T₀+1) T₁` the wealth constraint is inactive, so `i` never rejects
+  have hnorej : ∀ T, max (T₀ + 1) T₁ ≤ T → T ∉ rejectionSet (auctionAgent Al H r hr) (H i) := by
+    intro T hT hmem
+    have hge1 : (1 : ℝ) ≤ wealth Al H r T i := by
+      rw [wealth_eq_of_no_win Al H r hno T (le_trans (le_max_left _ _) hT)]
+      have h1 := hT₁ T (le_trans (le_max_right _ _) hT)
+      have h2 := wealth_nonneg Al H r hr (T₀ + 1) i
+      linarith
+    have := wealth_lt_one_of_rejects Al H r hr hmem
+    linarith
+  exact hrej (Set.Finite.subset (Set.finite_Iio (max (T₀ + 1) T₁)) fun T hT =>
+    lt_of_not_ge fun hc => hnorej T hc hT)
+
 /-- **Theorem 1a — the extensional existence theorem.** For any countably enumerated
 family of hypotheses and any allowance schedule satisfying the paper's three
 requirements, the auction construction is a BRIA covering the family, with the winning
@@ -1362,6 +1422,7 @@ every Mathlib-based development carries. No `sorryAx`, no bespoke axiom. -/
 #print axioms avg_ge_of_eventually_estimate_ge
 #print axioms theorem3
 #print axioms exists_max_of_tendsto_zero
+#print axioms winSet_infinite_of_rejected_infinitely
 #print axioms theorem1_extensional
 #print axioms harmonicSquare
 #print axioms lemma6

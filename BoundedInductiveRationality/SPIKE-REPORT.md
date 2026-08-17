@@ -247,8 +247,13 @@ built from `wealth`, `bid`, `winner`, `auctionAgent`, `winSet`, and proved via
 `wealth_nonneg`, `wealth_tendsto_zero`, `exists_max_of_tendsto_zero`, `exists_max_bid`,
 `winner_isMax`, `isTestSet_winSet` (part 3B), `wealth_eq_allowance_add_net`,
 `record_le_wealth_sub_allowance`, `wealth_lt_one_of_rejects`, `covers_all` (part 3C),
-`summable_wealth`, `tsum_wealth_eq`, `noOverestimation_auction` (part 2). Non-vacuity
-witnessed by an explicit instantiation at `harmonicSquare`.
+`summable_wealth`, `tsum_wealth_eq`, `noOverestimation_auction` (part 2). Part 3A is
+proved separately (`wealth_eq_of_no_win`, `winSet_infinite_of_rejected_infinitely`) even
+though it is not needed — see E21. Non-vacuity witnessed by an explicit instantiation at
+`harmonicSquare`.
+
+So **all four numbered parts of the printed proof are covered except part 4**, which is
+the computability and complexity argument. That is the seam.
 
 **Allowance schedule.** `harmonicSquare` with `summable_invSq`, `not_summable_invLin`.
 
@@ -313,9 +318,10 @@ Three by-products worth recording:
 
 * **Part 3A is redundant.** The paper separately proves that `M_i` is infinite. Nothing
   in Definitions 6 or 7 requires it, and part 3C alone establishes coverage —
-  `theorem1_extensional` compiles without any infinitude claim. (3A remains meaningful
-  if one wants the test sets to be *informative*, and it does follow from 3C by
-  contradiction.)
+  `theorem1_extensional` compiles without any infinitude claim. It is nevertheless
+  proved (`winSet_infinite_of_rejected_infinitely`), because it is the step where
+  requirement (i) does its intended work, and because a test set that is never used
+  would make the construction uninteresting even where it is formally adequate.
 * **`B⁺_T` is vestigial.** Wealth is nonnegative from round zero (`wealth_nonneg`), so
   part 2's bookkeeping over "hypotheses with positive wealth at some time" is
   unnecessary; the whole argument is one telescoping `tsum` identity
