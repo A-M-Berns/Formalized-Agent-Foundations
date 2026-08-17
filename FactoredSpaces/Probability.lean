@@ -81,7 +81,19 @@ lemma prob_eq_sum_filter (P : Dist S) (A : Set S) [DecidablePred (· ∈ A)] :
 
 lemma prob_eq_sum_subtype (P : Dist S) (A : Set S) [Fintype A] :
     P.prob A = ∑ s : A, P.mass s := by
-  sorry
+  classical
+  rw [prob_eq_sum_filter]
+  exact Finset.sum_subtype _ (by simp) _
+
+/-- Finite additivity along the fibres of a map: `P(E) = ∑_z P(E ∩ f⁻¹(z))`. -/
+lemma prob_eq_sum_prob_inter_preimage (P : Dist S) {γ : Type*} [Fintype γ] (f : S → γ)
+    (E : Set S) : P.prob E = ∑ z, P.prob (E ∩ f ⁻¹' {z}) := by
+  classical
+  simp only [prob, Set.indicator_apply, Set.mem_inter_iff, Set.mem_preimage,
+    Set.mem_singleton_iff]
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl fun s _ => ?_
+  by_cases hs : s ∈ E <;> simp [hs]
 
 /-- The support `supp(P) = {s | P(s) > 0}` (§C.3). -/
 def support (P : Dist S) : Set S := {s | 0 < P.mass s}
@@ -89,13 +101,40 @@ def support (P : Dist S) : Set S := {s | 0 < P.mass s}
 lemma mem_support_iff (P : Dist S) (s : S) : s ∈ P.support ↔ 0 < P.mass s := Iff.rfl
 
 lemma prob_pos_iff (P : Dist S) (A : Set S) : 0 < P.prob A ↔ (A ∩ P.support).Nonempty := by
-  sorry
+  classical
+  constructor
+  · intro h
+    by_contra hne
+    rw [Set.not_nonempty_iff_eq_empty] at hne
+    have hzero : ∀ s ∈ (Finset.univ : Finset S), A.indicator P.mass s = 0 := by
+      intro s _
+      by_cases hs : s ∈ A
+      · have hns : s ∉ P.support := fun hsp => by
+          simpa [hne] using (Set.mem_inter hs hsp)
+        have hle : P.mass s ≤ 0 := not_lt.mp hns
+        simp [hs, le_antisymm hle (P.nonneg s)]
+      · simp [hs]
+    rw [prob, Finset.sum_congr rfl hzero, Finset.sum_const_zero] at h
+    exact lt_irrefl 0 h
+  · rintro ⟨s, hsA, hsp⟩
+    refine Finset.sum_pos' (fun t _ => Set.indicator_nonneg (fun u _ => P.nonneg u) t)
+      ⟨s, Finset.mem_univ s, ?_⟩
+    rw [Set.indicator_of_mem hsA]
+    exact hsp
 
 lemma prob_eq_zero_iff (P : Dist S) (A : Set S) : P.prob A = 0 ↔ Disjoint A P.support := by
-  sorry
+  rw [Set.disjoint_iff_inter_eq_empty, ← Set.not_nonempty_iff_eq_empty, ← prob_pos_iff,
+    not_lt]
+  exact ⟨fun h => h.le, fun h => le_antisymm h (P.prob_nonneg A)⟩
 
 lemma prob_support (P : Dist S) : P.prob P.support = 1 := by
-  sorry
+  classical
+  rw [prob, ← P.sum_eq_one]
+  refine Finset.sum_congr rfl fun s _ => ?_
+  by_cases hs : s ∈ P.support
+  · simp [hs]
+  · have hle : P.mass s ≤ 0 := not_lt.mp hs
+    simp [hs, le_antisymm hle (P.nonneg s)]
 
 /-- The conditional probability `P(A | C) = P(A ∩ C) / P(C)` (`0` when `P(C) = 0`,
 by Lean's convention for division; the paper only uses it when `P(C) > 0`). -/
@@ -109,16 +148,40 @@ noncomputable def map (f : S → T) (P : Dist S) : Dist T where
   mass t := P.prob (f ⁻¹' {t})
   nonneg t := P.prob_nonneg _
   sum_eq_one := by
-    sorry
+    classical
+    simp only [prob, Set.indicator_apply, Set.mem_preimage, Set.mem_singleton_iff]
+    rw [Finset.sum_comm]
+    simpa using P.sum_eq_one
 
 lemma map_mass (f : S → T) (P : Dist S) (t : T) : (P.map f).mass t = P.prob (f ⁻¹' {t}) := rfl
 
 lemma map_prob (f : S → T) (P : Dist S) (B : Set T) : (P.map f).prob B = P.prob (f ⁻¹' B) := by
-  sorry
+  classical
+  simp only [prob, map, Set.indicator_apply, Set.mem_preimage, Set.mem_singleton_iff]
+  have h : ∀ t : T, (if t ∈ B then (∑ s, if f s = t then P.mass s else 0) else 0)
+      = ∑ s, (if f s = t then (if f s ∈ B then P.mass s else 0) else 0) := by
+    intro t
+    by_cases ht : t ∈ B
+    · simp only [ht, if_true]
+      refine Finset.sum_congr rfl fun s _ => ?_
+      by_cases hs : f s = t <;> simp [hs, ht]
+    · simp only [ht, if_false]
+      refine (Finset.sum_eq_zero fun s _ => ?_).symm
+      by_cases hs : f s = t <;> simp [hs, ht]
+  rw [Finset.sum_congr rfl fun t _ => h t, Finset.sum_comm]
+  simp
 
 lemma map_map {U : Type w''} [Fintype U] (f : S → T) (g : T → U) (P : Dist S) :
     (P.map f).map g = P.map (g ∘ f) := by
-  sorry
+  ext u
+  simp [map_mass, map_prob, Set.preimage_comp]
+
+/-- Pushing forward along a bijection just relabels the mass. -/
+lemma map_equiv_mass (e : S ≃ T) (P : Dist S) (t : T) : (P.map e).mass t = P.mass (e.symm t) := by
+  rw [map_mass]
+  have h : (e : S → T) ⁻¹' {t} = {e.symm t} := by
+    ext s; simp [Equiv.eq_symm_apply]
+  rw [h, prob_singleton]
 
 open scoped Classical in
 /-- The delta distribution `δ_s` at a point (§C.3). -/
@@ -132,10 +195,17 @@ lemma delta_mass (s t : S) : (delta s).mass t = if t = s then 1 else 0 := rfl
 
 open scoped Classical in
 lemma delta_prob (s : S) (A : Set S) : (delta s).prob A = if s ∈ A then 1 else 0 := by
-  sorry
+  classical
+  simp only [prob, Set.indicator_apply, delta_mass]
+  rw [Finset.sum_congr rfl (g := fun t => if t = s then (if s ∈ A then (1 : ℝ) else 0) else 0)
+    fun t _ => by by_cases ht : t = s <;> simp [ht]]
+  simp
 
 lemma support_delta (s : S) : (delta s).support = {s} := by
-  sorry
+  classical
+  ext t
+  simp only [support, Set.mem_setOf_eq, delta_mass, Set.mem_singleton_iff]
+  by_cases ht : t = s <;> simp [ht]
 
 /-- The uniform distribution on a nonempty finite type. -/
 noncomputable def uniform [Nonempty S] : Dist S where
@@ -202,22 +272,69 @@ def factorizing (Ω : I → Type v) [∀ i, Fintype (Ω i)] : Set (Dist (Pt Ω))
 
 lemma mem_factorizing {P : Dist (Pt Ω)} : P ∈ factorizing Ω ↔ Factorizes P := Iff.rfl
 
+omit [∀ i, Fintype (Ω i)] in
+/-- A product over `I` splits off the factor at `i`. -/
+private lemma prod_split_at (i : I) (f : ∀ j, Ω j → ℝ) (ω : Pt Ω) :
+    ∏ j, f j (ω j) = f i (ω i) * ∏ j : {j : I // j ≠ i}, f j (ω j) := by
+  classical
+  rw [← Finset.prod_subtype (Finset.univ.erase i) (fun j => by simp) fun j => f j (ω j)]
+  exact (Finset.mul_prod_erase Finset.univ (fun j => f j (ω j)) (Finset.mem_univ i)).symm
+
 /-- The marginal on factor `i` of a product is the `i`-th component. -/
 lemma Dist.margAt_prod (p : ∀ i, Dist (Ω i)) (i : I) : (Dist.prod p).margAt i = p i := by
-  sorry
+  classical
+  ext x
+  have h0 : ((Dist.prod p).margAt i).mass x
+      = ∑ ω : Pt Ω, (if ω i = x then ∏ j, (p j).mass (ω j) else 0) := by
+    simp only [Dist.margAt, Dist.map_mass, Dist.prob, Set.indicator_apply, Set.mem_preimage,
+      Set.mem_singleton_iff, Dist.prod_mass, bg]
+  have hone : ∑ g : (∀ j : {j : I // j ≠ i}, Ω j), ∏ j : {j : I // j ≠ i}, (p j).mass (g j)
+      = 1 := by
+    rw [← Fintype.prod_sum]
+    simp [Dist.sum_eq_one]
+  have hstep := Fintype.sum_equiv (Equiv.piSplitAt i Ω)
+    (fun ω : Pt Ω => if ω i = x then ∏ j, (p j).mass (ω j) else 0)
+    (fun q : Ω i × (∀ j : {j : I // j ≠ i}, Ω j) =>
+      if q.1 = x then (p i).mass q.1 * ∏ j : {j : I // j ≠ i}, (p j).mass (q.2 j) else 0)
+    (fun ω => by
+      show (if ω i = x then ∏ j, (p j).mass (ω j) else 0)
+          = (if ω i = x then
+              (p i).mass (ω i) * ∏ j : {j : I // j ≠ i}, (p j).mass (ω j) else 0)
+      rw [prod_split_at i (fun j => (p j).mass) ω])
+  rw [h0, hstep, Fintype.sum_prod_type]
+  have hinner : ∀ a : Ω i,
+      (∑ g : (∀ j : {j : I // j ≠ i}, Ω j),
+        if a = x then (p i).mass a * ∏ j : {j : I // j ≠ i}, (p j).mass (g j) else 0)
+        = if a = x then (p i).mass a else 0 := by
+    intro a
+    by_cases ha : a = x
+    · rw [if_pos ha]
+      calc (∑ g : (∀ j : {j : I // j ≠ i}, Ω j),
+              if a = x then (p i).mass a * ∏ j : {j : I // j ≠ i}, (p j).mass (g j) else 0)
+          = ∑ g : (∀ j : {j : I // j ≠ i}, Ω j),
+              (p i).mass a * ∏ j : {j : I // j ≠ i}, (p j).mass (g j) := by simp [ha]
+        _ = (p i).mass a := by rw [← Finset.mul_sum, hone, mul_one]
+    · simp [ha]
+  rw [Finset.sum_congr rfl fun a _ => hinner a]
+  simp
 
 lemma factorizes_prod (p : ∀ i, Dist (Ω i)) : Factorizes (Dist.prod p) := by
-  sorry
+  intro ω
+  simp only [Dist.margAt_prod, Dist.prod_mass]
+
+lemma Factorizes.eq_prod_margAt {P : Dist (Pt Ω)} (h : Factorizes P) :
+    P = Dist.prod fun i => P.margAt i := by
+  ext ω
+  exact h ω
 
 /-- The remark after Definition C.2: `P` factorizes iff it is the outer product of its
 one-factor marginals, `P = ⨂_{i∈I} P_i`. -/
 lemma factorizes_iff_exists_prod (P : Dist (Pt Ω)) :
     Factorizes P ↔ ∃ p : ∀ i, Dist (Ω i), P = Dist.prod p := by
-  sorry
-
-lemma Factorizes.eq_prod_margAt {P : Dist (Pt Ω)} (h : Factorizes P) :
-    P = Dist.prod fun i => P.margAt i := by
-  sorry
+  constructor
+  · exact fun h => ⟨_, h.eq_prod_margAt⟩
+  · rintro ⟨p, rfl⟩
+    exact factorizes_prod p
 
 /-- The set `Δ^F_C(Ω)` of factorizing distributions with `P(C) > 0` (§C.3). -/
 def factorizingPos (C : Set (Pt Ω)) : Set (Dist (Pt Ω)) :=
@@ -245,6 +362,94 @@ lemma Dist.marg_mass (P : Dist (Pt Ω)) (J : Finset I) (α : PtOn Ω J) :
 /-- Restriction of a family over `K` to a subset `J ⊆ K`. -/
 def restrict {J K : Finset I} (h : J ⊆ K) (α : PtOn Ω K) : PtOn Ω J := fun i => α ⟨i, h i.2⟩
 
+/-- The bridge between the two encodings of `Ω = Ω_J × Ω_{I∖J}` (`dd:splice`). -/
+def splitEquiv (J : Finset I) : Pt Ω ≃ PtOn Ω J × PtOn Ω Jᶜ where
+  toFun ω := (proj J ω, proj Jᶜ ω)
+  invFun p i := if h : i ∈ J then p.1 ⟨i, h⟩ else p.2 ⟨i, Finset.mem_compl.mpr h⟩
+  left_inv ω := by
+    funext i
+    by_cases h : i ∈ J <;> simp [proj, h]
+  right_inv p := by
+    ext ⟨i, hi⟩
+    · simp [proj, hi]
+    · simp [proj, Finset.mem_compl.mp hi]
+
+omit [∀ i, Fintype (Ω i)] in
+@[simp] lemma proj_splitEquiv_symm (J : Finset I) (α : PtOn Ω J) (β : PtOn Ω Jᶜ) :
+    proj J ((splitEquiv J).symm (α, β)) = α :=
+  congrArg Prod.fst ((splitEquiv J).apply_symm_apply (α, β))
+
+omit [∀ i, Fintype (Ω i)] in
+@[simp] lemma proj_compl_splitEquiv_symm (J : Finset I) (α : PtOn Ω J) (β : PtOn Ω Jᶜ) :
+    proj Jᶜ ((splitEquiv J).symm (α, β)) = β :=
+  congrArg Prod.snd ((splitEquiv J).apply_symm_apply (α, β))
+
+omit [∀ i, Fintype (Ω i)] in
+lemma splitEquiv_symm_proj (J : Finset I) (ω : Pt Ω) :
+    (splitEquiv J).symm (proj J ω, proj Jᶜ ω) = ω :=
+  (splitEquiv J).symm_apply_apply ω
+
+/-- `Ω_{J ∪ K} = Ω_J × Ω_K` for disjoint `J`, `K`: the dependent-subtype transport behind
+Definition C.1. -/
+def unionEquiv {J K : Finset I} (h : Disjoint J K) :
+    PtOn Ω (J ∪ K) ≃ PtOn Ω J × PtOn Ω K where
+  toFun α := (restrict Finset.subset_union_left α, restrict Finset.subset_union_right α)
+  invFun q i := if hi : (i : I) ∈ J then q.1 ⟨i, hi⟩
+    else q.2 ⟨i, (Finset.mem_union.mp i.2).resolve_left hi⟩
+  left_inv α := by
+    funext i
+    by_cases hi : (i : I) ∈ J <;> simp [restrict, hi]
+  right_inv q := by
+    ext ⟨i, hi⟩
+    · simp [restrict, hi]
+    · have hnJ : i ∉ J := fun hc => Finset.disjoint_left.mp h hc hi
+      simp [restrict, hnJ]
+
+/-- Summing over `Ω` is summing over `Ω_J × Ω_{I∖J}` (`dd:splice`). -/
+private lemma sum_eq_sum_split (J : Finset I) (F : Pt Ω → ℝ) :
+    ∑ ω : Pt Ω, F ω
+      = ∑ α : PtOn Ω J, ∑ β : PtOn Ω Jᶜ, F ((splitEquiv J).symm (α, β)) :=
+  calc ∑ ω : Pt Ω, F ω
+      = ∑ q : PtOn Ω J × PtOn Ω Jᶜ, F ((splitEquiv J).symm q) :=
+        Fintype.sum_equiv (splitEquiv J) _ _ fun ω => by rw [Equiv.symm_apply_apply]
+    _ = _ := Fintype.sum_prod_type _
+
+omit [∀ i, Fintype (Ω i)] in
+/-- A product over `I` splits as a product over `J` times a product over `I ∖ J`. -/
+private lemma prod_split (J : Finset I) (f : ∀ i, Ω i → ℝ) (α : PtOn Ω J) (β : PtOn Ω Jᶜ) :
+    ∏ i, f i ((splitEquiv J).symm (α, β) i)
+      = (∏ i : J, f i (α i)) * ∏ i : (Jᶜ : Finset I), f i (β i) := by
+  classical
+  rw [← Finset.prod_mul_prod_compl J fun i => f i ((splitEquiv J).symm (α, β) i)]
+  congr 1
+  · rw [← Finset.prod_coe_sort J]
+    exact Finset.prod_congr rfl fun i _ => by simp [splitEquiv, i.2]
+  · rw [← Finset.prod_coe_sort Jᶜ]
+    exact Finset.prod_congr rfl fun i _ => by
+      simp [splitEquiv, Finset.mem_compl.mp i.2]
+
+lemma Dist.prob_eq_sum_split (P : Dist (Pt Ω)) (J : Finset I) (A : Set (Pt Ω)) :
+    P.prob A = ∑ α : PtOn Ω J, ∑ β : PtOn Ω Jᶜ,
+      A.indicator P.mass ((splitEquiv J).symm (α, β)) :=
+  sum_eq_sum_split J _
+
+lemma Dist.marg_mass_eq_sum (P : Dist (Pt Ω)) (J : Finset I) (α : PtOn Ω J) :
+    (P.marg J).mass α = ∑ β : PtOn Ω Jᶜ, P.mass ((splitEquiv J).symm (α, β)) := by
+  classical
+  rw [marg_mass, prob_eq_sum_split P J]
+  have key : ∀ α' : PtOn Ω J,
+      (∑ β : PtOn Ω Jᶜ, (proj J ⁻¹' {α}).indicator P.mass ((splitEquiv J).symm (α', β)))
+        = if α' = α then ∑ β : PtOn Ω Jᶜ, P.mass ((splitEquiv J).symm (α', β)) else 0 := by
+    intro α'
+    by_cases h : α' = α
+    · subst h
+      rw [if_pos rfl]
+      exact Finset.sum_congr rfl fun β _ => Set.indicator_of_mem (by simp) _
+    · rw [if_neg h]
+      exact Finset.sum_eq_zero fun β _ => Set.indicator_of_notMem (by simp [h]) _
+  rw [Finset.sum_congr rfl fun α' _ => key α']
+  simp
+
 /-- **Outer product.** For disjoint `J`, `K` and distributions `P_J`, `P_K` on `Ω_J`,
 `Ω_K`, the distribution `P_J ⊗ P_K` on `Ω_{J ∪ K}` with
 `(P_J ⊗ P_K)(α) = P_J(α_J) · P_K(α_K)`.
@@ -256,7 +461,12 @@ noncomputable def Dist.outer {J K : Finset I} (h : Disjoint J K) (PJ : Dist (PtO
     PK.mass (restrict Finset.subset_union_right α)
   nonneg α := mul_nonneg (PJ.nonneg _) (PK.nonneg _)
   sum_eq_one := by
-    sorry
+    have hsplit := Fintype.sum_equiv (unionEquiv h)
+      (fun α : PtOn Ω (J ∪ K) => PJ.mass (restrict Finset.subset_union_left α) *
+        PK.mass (restrict Finset.subset_union_right α))
+      (fun q : PtOn Ω J × PtOn Ω K => PJ.mass q.1 * PK.mass q.2) fun _ => rfl
+    rw [hsplit, Fintype.sum_prod_type]
+    simp_rw [← Finset.mul_sum, PK.sum_eq_one, mul_one, PJ.sum_eq_one]
 
 /-- `Ω_{J ∪ (I∖J)} = Ω`. -/
 def unionComplEquiv (J : Finset I) : PtOn Ω (J ∪ Jᶜ) ≃ Pt Ω where
@@ -274,39 +484,59 @@ noncomputable def Dist.outerCompl {J : Finset I} (PJ : Dist (PtOn Ω J)) (PK : D
 
 lemma Dist.outerCompl_mass {J : Finset I} (PJ : Dist (PtOn Ω J)) (PK : Dist (PtOn Ω Jᶜ))
     (ω : Pt Ω) : (Dist.outerCompl PJ PK).mass ω = PJ.mass (proj J ω) * PK.mass (proj Jᶜ ω) := by
-  sorry
+  rw [Dist.outerCompl, Dist.map_equiv_mass]
+  rfl
 
 /-- The cylinder over a set of `J`-families: `π_J⁻¹(A)`.  The paper's `A_J × B_{I∖J}` for
 `A ⊆ Ω_J`, `B ⊆ Ω_{I∖J}` is `cyl J A ∩ cyl Jᶜ B`. -/
 def cyl (J : Finset I) (A : Set (PtOn Ω J)) : Set (Pt Ω) := proj J ⁻¹' A
 
+omit [∀ i, Fintype (Ω i)] in
 lemma splice_eq_cyl_inter (J : Finset I) (S T : Set (Pt Ω)) :
     splice J S T = cyl J (projSet J S) ∩ cyl Jᶜ (projSet Jᶜ T) := by
-  sorry
+  ext ω
+  rw [mem_splice_iff]
+  simp only [cyl, projSet, Set.mem_inter_iff, Set.mem_preimage, Set.mem_image]
+  constructor
+  · rintro ⟨⟨a, ha, hJa⟩, ⟨b, hb, hJb⟩⟩
+    exact ⟨⟨a, ha, proj_eq_iff.mpr fun i hi => (hJa i hi).symm⟩,
+      ⟨b, hb, proj_eq_iff.mpr fun i hi => (hJb i (Finset.mem_compl.mp hi)).symm⟩⟩
+  · rintro ⟨⟨a, ha, hJa⟩, ⟨b, hb, hJb⟩⟩
+    exact ⟨⟨a, ha, fun i hi => (congrFun hJa ⟨i, hi⟩).symm⟩,
+      ⟨b, hb, fun i hi => (congrFun hJb ⟨i, Finset.mem_compl.mpr hi⟩).symm⟩⟩
 
-/-- The bridge between the two encodings of `Ω = Ω_J × Ω_{I∖J}` (`dd:splice`). -/
-def splitEquiv (J : Finset I) : Pt Ω ≃ PtOn Ω J × PtOn Ω Jᶜ where
-  toFun ω := (proj J ω, proj Jᶜ ω)
-  invFun p i := if h : i ∈ J then p.1 ⟨i, h⟩ else p.2 ⟨i, Finset.mem_compl.mpr h⟩
-  left_inv ω := by
-    funext i
-    by_cases h : i ∈ J <;> simp [proj, h]
-  right_inv p := by
-    ext ⟨i, hi⟩
-    · simp [proj, hi]
-    · simp [proj, Finset.mem_compl.mp hi]
-
-/-- If `P` factorizes over `Ω` then `P = P_J ⊗ P_{I∖J}` for every `J`
-(the remark after Definition C.2). -/
-lemma Factorizes.eq_outerCompl {P : Dist (Pt Ω)} (h : Factorizes P) (J : Finset I) :
-    P = Dist.outerCompl (P.marg J) (P.marg Jᶜ) := by
-  sorry
+omit [DecidableEq I] [Fintype I] [∀ i, Fintype (Ω i)] in
+/-- Two cylinders over the same index set intersect as a cylinder. -/
+lemma cyl_inter (J : Finset I) (S T : Set (PtOn Ω J)) :
+    cyl J S ∩ cyl J T = cyl J (S ∩ T) := Set.preimage_inter.symm
 
 /-- The marginal of a factorizing distribution factorizes over `Ω_J` in the same sense:
 `P_J = ⨂_{i∈J} P_i` (remark after Definition C.2), stated pointwise. -/
 lemma Factorizes.marg_mass {P : Dist (Pt Ω)} (h : Factorizes P) (J : Finset I) (α : PtOn Ω J) :
     (P.marg J).mass α = ∏ i : J, (P.margAt i).mass (α i) := by
-  sorry
+  classical
+  rw [Dist.marg_mass_eq_sum]
+  have hterm : ∀ β : PtOn Ω Jᶜ, P.mass ((splitEquiv J).symm (α, β))
+      = (∏ i : J, (P.margAt i).mass (α i)) *
+        ∏ i : (Jᶜ : Finset I), (P.margAt i).mass (β i) := by
+    intro β
+    rw [h ((splitEquiv J).symm (α, β))]
+    exact prod_split J (fun i => (P.margAt i).mass) α β
+  rw [Finset.sum_congr rfl fun β _ => hterm β, ← Finset.mul_sum]
+  have hone : ∑ β : PtOn Ω Jᶜ, ∏ i : (Jᶜ : Finset I), (P.margAt i).mass (β i) = 1 := by
+    rw [← Fintype.prod_sum]
+    simp [Dist.sum_eq_one]
+  rw [hone, mul_one]
+
+/-- If `P` factorizes over `Ω` then `P = P_J ⊗ P_{I∖J}` for every `J`
+(the remark after Definition C.2). -/
+lemma Factorizes.eq_outerCompl {P : Dist (Pt Ω)} (h : Factorizes P) (J : Finset I) :
+    P = Dist.outerCompl (P.marg J) (P.marg Jᶜ) := by
+  ext ω
+  rw [Dist.outerCompl_mass, h.marg_mass J (proj J ω), h.marg_mass Jᶜ (proj Jᶜ ω), h ω]
+  have hp := prod_split J (fun i => (P.margAt i).mass) (proj J ω) (proj Jᶜ ω)
+  rw [splitEquiv_symm_proj] at hp
+  exact hp
 
 /-! ## Lemma C.11: supports -/
 
@@ -315,7 +545,9 @@ lemma Factorizes.marg_mass {P : Dist (Pt Ω)} (h : Factorizes P) (J : Finset I) 
 Paper node: Lemma C.11 (§C.3). -/
 theorem Dist.prob_pos_of_support_subset {P Q : Dist (Pt Ω)} (h : P.support ⊆ Q.support)
     {C : Set (Pt Ω)} (hC : 0 < P.prob C) : 0 < Q.prob C := by
-  sorry
+  rw [Dist.prob_pos_iff] at hC ⊢
+  obtain ⟨ω, hωC, hωP⟩ := hC
+  exact ⟨ω, hωC, h hωP⟩
 
 /-- **Support statements (2).** If `P = P_J ⊗ P_{I∖J}` then
 `supp(P) = supp(P_J) × supp(P_{I∖J})`.
@@ -323,7 +555,16 @@ theorem Dist.prob_pos_of_support_subset {P Q : Dist (Pt Ω)} (h : P.support ⊆ 
 Paper node: Lemma C.11 (§C.3). -/
 theorem Dist.support_outerCompl {J : Finset I} (PJ : Dist (PtOn Ω J)) (PK : Dist (PtOn Ω Jᶜ)) :
     (Dist.outerCompl PJ PK).support = cyl J PJ.support ∩ cyl Jᶜ PK.support := by
-  sorry
+  ext ω
+  simp only [Dist.mem_support_iff, cyl, Set.mem_inter_iff, Set.mem_preimage,
+    Dist.outerCompl_mass]
+  constructor
+  · intro hpos
+    rcases mul_pos_iff.mp hpos with ⟨h1, h2⟩ | ⟨h1, _⟩
+    · exact ⟨h1, h2⟩
+    · exact absurd h1 (not_lt.mpr (PJ.nonneg _))
+  · rintro ⟨h1, h2⟩
+    exact mul_pos h1 h2
 
 /-- **Support statements (3).** If `P = P_J ⊗ P_{I∖J}`, `Q = Q_J ⊗ Q_{I∖J}`,
 `supp(P_J) ⊆ supp(Q_J)`, `supp(P_{I∖J}) ⊆ supp(Q_{I∖J})` and `P(C) > 0`, then `Q(C) > 0`.
@@ -340,7 +581,15 @@ theorem Dist.prob_pos_of_marg_support_subset {J : Finset I} {P Q : Dist (Pt Ω)}
     (h₁ : (P.marg J).support ⊆ (Q.marg J).support)
     (h₂ : (P.marg Jᶜ).support ⊆ (Q.marg Jᶜ).support)
     {C : Set (Pt Ω)} (hC : 0 < P.prob C) : 0 < Q.prob C := by
-  sorry
+  have hPs : P.support = cyl J (P.marg J).support ∩ cyl Jᶜ (P.marg Jᶜ).support := by
+    conv_lhs => rw [hP]
+    exact Dist.support_outerCompl _ _
+  have hQs : Q.support = cyl J (Q.marg J).support ∩ cyl Jᶜ (Q.marg Jᶜ).support := by
+    conv_lhs => rw [hQ]
+    exact Dist.support_outerCompl _ _
+  refine Dist.prob_pos_of_support_subset ?_ hC
+  rw [hPs, hQs]
+  exact Set.inter_subset_inter (Set.preimage_mono h₁) (Set.preimage_mono h₂)
 
 /-! ## Definition 6.1: conditional independence -/
 
@@ -381,7 +630,9 @@ lemma CondIndep.symm {P : Dist (Pt Ω)} {A B C : Set (Pt Ω)} (h : CondIndep P A
 
 lemma CondIndep.of_prob_eq_zero {P : Dist (Pt Ω)} {A B C : Set (Pt Ω)} (h : P.prob C = 0) :
     CondIndep P A B C := by
-  sorry
+  have hz : ∀ D : Set (Pt Ω), P.prob (D ∩ C) = 0 := fun D =>
+    le_antisymm (h ▸ P.prob_mono Set.inter_subset_right) (P.prob_nonneg _)
+  simp [CondIndep, hz A, hz B, h]
 
 /-- The paper's `A ⊥^⊗ B | C`: independence in every factorizing distribution (§C.3). -/
 def CondIndepAll (A B C : Set (Pt Ω)) : Prop :=
@@ -395,14 +646,76 @@ Paper node: Lemma C.13 (§C.3). -/
 theorem CondIndepEventVar.of_pair {β γ : Type*} [Fintype γ] {P : Dist (Pt Ω)} {B C : Set (Pt Ω)}
     {Y : Pt Ω → β} {Z : Pt Ω → γ} (h : CondIndepEventVar P B (pair Y Z) C) :
     CondIndepEventVar P B Y C := by
-  sorry
+  intro y
+  have h₁ : ∀ z : γ, fiber Y y ∩ C ∩ Z ⁻¹' {z} = fiber (pair Y Z) (y, z) ∩ C := by
+    intro z
+    ext ω
+    simp only [fiber, pair, Set.mem_inter_iff, Set.mem_setOf_eq, Set.mem_preimage,
+      Set.mem_singleton_iff, Prod.ext_iff]
+    tauto
+  have h₂ : ∀ z : γ, B ∩ fiber Y y ∩ C ∩ Z ⁻¹' {z} = B ∩ fiber (pair Y Z) (y, z) ∩ C := by
+    intro z
+    ext ω
+    simp only [fiber, pair, Set.mem_inter_iff, Set.mem_setOf_eq, Set.mem_preimage,
+      Set.mem_singleton_iff, Prod.ext_iff]
+    tauto
+  have e₁ : P.prob (fiber Y y ∩ C) = ∑ z, P.prob (fiber (pair Y Z) (y, z) ∩ C) :=
+    (P.prob_eq_sum_prob_inter_preimage Z _).trans
+      (Finset.sum_congr rfl fun z _ => by rw [h₁ z])
+  have e₂ : P.prob (B ∩ fiber Y y ∩ C) = ∑ z, P.prob (B ∩ fiber (pair Y Z) (y, z) ∩ C) :=
+    (P.prob_eq_sum_prob_inter_preimage Z _).trans
+      (Finset.sum_congr rfl fun z _ => by rw [h₂ z])
+  unfold CondIndep
+  rw [e₁, e₂, Finset.mul_sum, Finset.sum_mul]
+  exact Finset.sum_congr rfl fun z _ => h (y, z)
 
 /-- **Corollary of decomposition.** For `J' ⊆ J`, `B ⊥^P U_J | C` implies `B ⊥^P U_{J'} | C`.
 
 Paper node: Corollary C.14 (§C.3). -/
 theorem CondIndepEventVar.of_proj_subset {P : Dist (Pt Ω)} {B C : Set (Pt Ω)} {J' J : Finset I}
     (hJ : J' ⊆ J) (h : CondIndepEventVar P B (proj J) C) : CondIndepEventVar P B (proj J') C := by
-  sorry
+  classical
+  intro α'
+  have key : ∀ (D : Set (Pt Ω)) (α : PtOn Ω J),
+      D ∩ fiber (proj J') α' ∩ C ∩ proj J ⁻¹' {α} =
+        if restrict hJ α = α' then D ∩ fiber (proj J) α ∩ C else ∅ := by
+    intro D α
+    by_cases hα : restrict hJ α = α'
+    · rw [if_pos hα]
+      ext ω
+      simp only [fiber, Set.mem_inter_iff, Set.mem_setOf_eq, Set.mem_preimage,
+        Set.mem_singleton_iff]
+      constructor
+      · rintro ⟨⟨⟨hD, _⟩, hC⟩, hp⟩
+        exact ⟨⟨hD, hp⟩, hC⟩
+      · rintro ⟨⟨hD, hp⟩, hC⟩
+        refine ⟨⟨⟨hD, ?_⟩, hC⟩, hp⟩
+        rw [← hα]
+        exact congrArg (restrict hJ) hp
+    · rw [if_neg hα]
+      ext ω
+      simp only [fiber, Set.mem_inter_iff, Set.mem_setOf_eq, Set.mem_preimage,
+        Set.mem_singleton_iff, Set.mem_empty_iff_false, iff_false]
+      rintro ⟨⟨⟨_, hp'⟩, _⟩, hp⟩
+      exact hα (by rw [← hp]; exact hp')
+  have e : ∀ D : Set (Pt Ω), P.prob (D ∩ fiber (proj J') α' ∩ C) =
+      ∑ α : PtOn Ω J, if restrict hJ α = α' then P.prob (D ∩ fiber (proj J) α ∩ C) else 0 := by
+    intro D
+    refine (P.prob_eq_sum_prob_inter_preimage (proj J) _).trans
+      (Finset.sum_congr rfl fun α _ => ?_)
+    rw [key D α]
+    split_ifs
+    · rfl
+    · exact P.prob_empty
+  have eC : P.prob (fiber (proj J') α' ∩ C) =
+      ∑ α : PtOn Ω J, if restrict hJ α = α' then P.prob (fiber (proj J) α ∩ C) else 0 := by
+    simpa only [Set.univ_inter] using e Set.univ
+  unfold CondIndep
+  rw [eC, e B, Finset.mul_sum, Finset.sum_mul]
+  refine Finset.sum_congr rfl fun α _ => ?_
+  split_ifs with hα
+  · exact h α
+  · ring
 
 /-! ## Lemma C.15: probability of a product event -/
 
@@ -413,7 +726,27 @@ Paper node: Lemma C.15 (§C.3). -/
 theorem Dist.prob_cyl_inter_cyl {J : Finset I} {P : Dist (Pt Ω)}
     (hP : P = Dist.outerCompl (P.marg J) (P.marg Jᶜ)) (A : Set (PtOn Ω J)) (B : Set (PtOn Ω Jᶜ)) :
     P.prob (cyl J A ∩ cyl Jᶜ B) = (P.marg J).prob A * (P.marg Jᶜ).prob B := by
-  sorry
+  classical
+  have hmass : ∀ (α : PtOn Ω J) (β : PtOn Ω Jᶜ),
+      P.mass ((splitEquiv J).symm (α, β)) = (P.marg J).mass α * (P.marg Jᶜ).mass β := by
+    intro α β
+    conv_lhs => rw [hP]
+    rw [Dist.outerCompl_mass, proj_splitEquiv_symm, proj_compl_splitEquiv_symm]
+  have hterm : ∀ (α : PtOn Ω J) (β : PtOn Ω Jᶜ),
+      (cyl J A ∩ cyl Jᶜ B).indicator P.mass ((splitEquiv J).symm (α, β))
+        = A.indicator (P.marg J).mass α * B.indicator (P.marg Jᶜ).mass β := by
+    intro α β
+    by_cases hA : α ∈ A
+    · by_cases hB : β ∈ B
+      · rw [Set.indicator_of_mem (by simp [cyl, hA, hB]), Set.indicator_of_mem hA,
+          Set.indicator_of_mem hB, hmass]
+      · rw [Set.indicator_of_notMem (by simp [cyl, hB]), Set.indicator_of_notMem hB, mul_zero]
+    · rw [Set.indicator_of_notMem (by simp [cyl, hA]), Set.indicator_of_notMem hA, zero_mul]
+  rw [Dist.prob_eq_sum_split P J,
+    Finset.sum_congr rfl fun α _ => Finset.sum_congr rfl fun β _ => hterm α β]
+  simp_rw [← Finset.mul_sum]
+  rw [← Finset.sum_mul]
+  rfl
 
 /-! ## Lemma C.16: slicing at a `J`-value -/
 
@@ -421,13 +754,64 @@ theorem Dist.prob_cyl_inter_cyl {J : Finset I} {P : Dist (Pt Ω)}
 def sliceAt (J : Finset I) (α : PtOn Ω J) (D : Set (Pt Ω)) : Set (Pt Ω) :=
   D ∩ fiber (proj J) α
 
+omit [∀ i, Fintype (Ω i)] in
+/-- The `I∖J`-parts of the slice `D^α` are exactly the `β` with `α · β ∈ D`. -/
+lemma mem_projSet_compl_sliceAt (J : Finset I) (α : PtOn Ω J) (D : Set (Pt Ω))
+    (β : PtOn Ω Jᶜ) : β ∈ projSet Jᶜ (sliceAt J α D) ↔ (splitEquiv J).symm (α, β) ∈ D := by
+  constructor
+  · rintro ⟨ω, ⟨hωD, hωα⟩, rfl⟩
+    rw [show α = proj J ω from (hωα : proj J ω = α).symm, splitEquiv_symm_proj]
+    exact hωD
+  · intro hD
+    exact ⟨(splitEquiv J).symm (α, β), ⟨hD, by simp [fiber]⟩, by simp⟩
+
+open scoped Classical in
+/-- `P_{I∖J}(D^α_{I∖J})` written as a sum over the `I∖J`-coordinates. -/
+private lemma prob_projSet_sliceAt (J : Finset I) (α : PtOn Ω J) (D : Set (Pt Ω))
+    (Q : Dist (PtOn Ω Jᶜ)) :
+    Q.prob (projSet Jᶜ (sliceAt J α D))
+      = ∑ β : PtOn Ω Jᶜ, (if (splitEquiv J).symm (α, β) ∈ D then Q.mass β else 0) := by
+  rw [Dist.prob]
+  refine Finset.sum_congr rfl fun β _ => ?_
+  by_cases hβ : (splitEquiv J).symm (α, β) ∈ D
+  · rw [Set.indicator_of_mem ((mem_projSet_compl_sliceAt J α D β).mpr hβ), if_pos hβ]
+  · rw [Set.indicator_of_notMem fun hc => hβ ((mem_projSet_compl_sliceAt J α D β).mp hc),
+      if_neg hβ]
+
 /-- **Slicing (1).** For factorizing `P`: `P(D^α) = P_J(α) · P_{I∖J}(D^α_{I∖J})`.
 
 Paper node: Lemma C.16 (§C.3). -/
 theorem Factorizes.prob_sliceAt {P : Dist (Pt Ω)} (hP : Factorizes P) (J : Finset I)
     (α : PtOn Ω J) (D : Set (Pt Ω)) :
     P.prob (sliceAt J α D) = (P.marg J).mass α * (P.marg Jᶜ).prob (projSet Jᶜ (sliceAt J α D)) := by
-  sorry
+  classical
+  have hmass : ∀ (α' : PtOn Ω J) (β : PtOn Ω Jᶜ),
+      P.mass ((splitEquiv J).symm (α', β)) = (P.marg J).mass α' * (P.marg Jᶜ).mass β := by
+    intro α' β
+    conv_lhs => rw [hP.eq_outerCompl J]
+    rw [Dist.outerCompl_mass, proj_splitEquiv_symm, proj_compl_splitEquiv_symm]
+  have hterm : ∀ α' : PtOn Ω J,
+      (∑ β : PtOn Ω Jᶜ, (sliceAt J α D).indicator P.mass ((splitEquiv J).symm (α', β)))
+        = if α' = α then
+            ∑ β : PtOn Ω Jᶜ, (P.marg J).mass α *
+              (if (splitEquiv J).symm (α, β) ∈ D then (P.marg Jᶜ).mass β else 0)
+          else 0 := by
+    intro α'
+    by_cases hα : α' = α
+    · subst hα
+      rw [if_pos rfl]
+      refine Finset.sum_congr rfl fun β _ => ?_
+      by_cases hD : (splitEquiv J).symm (α', β) ∈ D
+      · rw [Set.indicator_of_mem (show (splitEquiv J).symm (α', β) ∈ sliceAt J α' D from
+          ⟨hD, by simp [fiber]⟩), if_pos hD, hmass]
+      · rw [Set.indicator_of_notMem fun hc => hD hc.1, if_neg hD, mul_zero]
+    · rw [if_neg hα]
+      refine Finset.sum_eq_zero fun β _ => ?_
+      refine Set.indicator_of_notMem (fun hc => hα ?_) _
+      simpa [fiber] using hc.2
+  rw [Dist.prob_eq_sum_split P J, prob_projSet_sliceAt J α D (P.marg Jᶜ), Finset.mul_sum,
+    Finset.sum_congr rfl fun α' _ => hterm α']
+  simp
 
 /-- **Slicing (2).** `(δ_α ⊗ P_{I∖J})(D) = P_{I∖J}(D^α_{I∖J})`.  (The paper assumes `P`
 factorizes here; the identity needs no such hypothesis.)
@@ -437,15 +821,88 @@ theorem Dist.prob_outerCompl_delta (P : Dist (Pt Ω)) (J : Finset I) (α : PtOn 
     (D : Set (Pt Ω)) :
     (Dist.outerCompl (Dist.delta α) (P.marg Jᶜ)).prob D =
       (P.marg Jᶜ).prob (projSet Jᶜ (sliceAt J α D)) := by
-  sorry
+  classical
+  have hterm : ∀ α' : PtOn Ω J,
+      (∑ β : PtOn Ω Jᶜ, D.indicator (Dist.outerCompl (Dist.delta α) (P.marg Jᶜ)).mass
+          ((splitEquiv J).symm (α', β)))
+        = if α' = α then
+            ∑ β : PtOn Ω Jᶜ, (if (splitEquiv J).symm (α, β) ∈ D then (P.marg Jᶜ).mass β else 0)
+          else 0 := by
+    intro α'
+    by_cases hα : α' = α
+    · subst hα
+      rw [if_pos rfl]
+      have hm : ∀ β : PtOn Ω Jᶜ,
+          (Dist.outerCompl (Dist.delta α') (P.marg Jᶜ)).mass ((splitEquiv J).symm (α', β))
+            = (P.marg Jᶜ).mass β := by
+        intro β
+        rw [Dist.outerCompl_mass, proj_splitEquiv_symm, proj_compl_splitEquiv_symm,
+          Dist.delta_mass, if_pos rfl, one_mul]
+      refine Finset.sum_congr rfl fun β _ => ?_
+      by_cases hD : (splitEquiv J).symm (α', β) ∈ D
+      · rw [Set.indicator_of_mem hD, if_pos hD, hm β]
+      · rw [Set.indicator_of_notMem hD, if_neg hD]
+    · rw [if_neg hα]
+      have hm : ∀ β : PtOn Ω Jᶜ,
+          (Dist.outerCompl (Dist.delta α) (P.marg Jᶜ)).mass ((splitEquiv J).symm (α', β)) = 0 := by
+        intro β
+        rw [Dist.outerCompl_mass, proj_splitEquiv_symm, proj_compl_splitEquiv_symm,
+          Dist.delta_mass, if_neg hα, zero_mul]
+      refine Finset.sum_eq_zero fun β _ => ?_
+      by_cases hD : (splitEquiv J).symm (α', β) ∈ D
+      · rw [Set.indicator_of_mem hD, hm β]
+      · rw [Set.indicator_of_notMem hD]
+  rw [Dist.prob_eq_sum_split _ J, prob_projSet_sliceAt J α D (P.marg Jᶜ),
+    Finset.sum_congr rfl fun α' _ => hterm α']
+  simp
 
 /-! ## Lemma C.17: the history's factors are independent of the rest -/
+
+/-- The content of Lemma C.17: whenever `J` disintegrates `C`, the `J`-coordinates and the
+`(I∖J)`-coordinates are conditionally independent given `C` in every factorizing `P`.  The
+paper states it only for `J = H(A | C)`, where the disintegration comes from Lemma 4.7. -/
+lemma condIndepVarEvent_proj_of_disintegrates {J : Finset I} {C : Set (Pt Ω)}
+    (hd : Disintegrates J C) {P : Dist (Pt Ω)} (hP : Factorizes P) :
+    CondIndepVarEvent P (proj J) (proj Jᶜ) C := by
+  classical
+  intro x y
+  -- `J` disintegrates `C`, so `C = C_J × C_{I∖J}`
+  have hCsplit : C = cyl J (projSet J C) ∩ cyl Jᶜ (projSet Jᶜ C) :=
+    (hd.trans (prodSplit_eq_splice J C)).trans (splice_eq_cyl_inter J C C)
+  have hC15 : ∀ (S : Set (PtOn Ω J)) (T : Set (PtOn Ω Jᶜ)),
+      P.prob (cyl J S ∩ cyl Jᶜ T) = (P.marg J).prob S * (P.marg Jᶜ).prob T :=
+    fun S T => Dist.prob_cyl_inter_cyl (hP.eq_outerCompl J) S T
+  have e1 : fiber (proj J) x ∩ C = cyl J ({x} ∩ projSet J C) ∩ cyl Jᶜ (projSet Jᶜ C) := by
+    conv_lhs => rw [hCsplit]
+    ext ω
+    simp only [fiber, cyl, Set.mem_inter_iff, Set.mem_preimage, Set.mem_setOf_eq,
+      Set.mem_singleton_iff]
+    tauto
+  have e2 : fiber (proj Jᶜ) y ∩ C = cyl J (projSet J C) ∩ cyl Jᶜ ({y} ∩ projSet Jᶜ C) := by
+    conv_lhs => rw [hCsplit]
+    ext ω
+    simp only [fiber, cyl, Set.mem_inter_iff, Set.mem_preimage, Set.mem_setOf_eq,
+      Set.mem_singleton_iff]
+    tauto
+  have e3 : fiber (proj J) x ∩ fiber (proj Jᶜ) y ∩ C
+      = cyl J ({x} ∩ projSet J C) ∩ cyl Jᶜ ({y} ∩ projSet Jᶜ C) := by
+    conv_lhs => rw [hCsplit]
+    ext ω
+    simp only [fiber, cyl, Set.mem_inter_iff, Set.mem_preimage, Set.mem_setOf_eq,
+      Set.mem_singleton_iff]
+    tauto
+  have eC : P.prob C = (P.marg J).prob (projSet J C) * (P.marg Jᶜ).prob (projSet Jᶜ C) := by
+    conv_lhs => rw [hCsplit]
+    exact hC15 _ _
+  unfold CondIndep
+  rw [e1, e2, e3, eC, hC15, hC15, hC15]
+  ring
 
 /-- **`U_J ⊥^⊗ U_{I∖J} | C` for `J = H(A | C)`.**
 
 Paper node: Lemma C.17 (§C.3). -/
 theorem condIndepVarEvent_proj_history (A C : Set (Pt Ω)) (P : Dist (Pt Ω)) (hP : Factorizes P) :
-    CondIndepVarEvent P (proj (eventHistory A C)) (proj (eventHistory A C)ᶜ) C := by
-  sorry
+    CondIndepVarEvent P (proj (eventHistory A C)) (proj (eventHistory A C)ᶜ) C :=
+  condIndepVarEvent_proj_of_disintegrates (generates_history (indic A) C).2 hP
 
 end FactoredSpaces
