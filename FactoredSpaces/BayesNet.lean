@@ -61,142 +61,9 @@ universe uI vΩ
 
 variable {S : Type uI} [Fintype S]
 
-/-- A finite type carrying a distribution is nonempty (its masses sum to `1`). -/
-private lemma dist_nonempty (P : Dist S) : Nonempty S := by
-  by_contra hS
-  rw [not_nonempty_iff] at hS
-  have h := P.sum_eq_one
-  rw [Finset.univ_eq_empty, Finset.sum_empty] at h
-  exact zero_ne_one h
-
 variable {I : Type uI} [DecidableEq I] [Fintype I] {Ω : I → Type vΩ} [∀ i, Fintype (Ω i)]
 
-/-- Under a product distribution, the probability that `ω` agrees with a fixed point `f`
-on a finite set `S` of coordinates is the product of the corresponding masses. -/
-private lemma prob_prod_agree_on (p : ∀ i, Dist (Ω i)) (S : Finset I) (f : Pt Ω) :
-    (Dist.prod p).prob {ω | ∀ i ∈ S, ω i = f i} = ∏ i ∈ S, (p i).mass (f i) := by
-  classical
-  have hset : Finset.univ.filter (fun ω : Pt Ω => ω ∈ {ω : Pt Ω | ∀ i ∈ S, ω i = f i})
-      = Fintype.piFinset (fun j => if j ∈ S then ({f j} : Finset (Ω j)) else Finset.univ) := by
-    ext ω
-    simp only [Finset.mem_filter, Finset.mem_univ, true_and, Set.mem_setOf_eq,
-      Fintype.mem_piFinset]
-    constructor
-    · intro h j
-      by_cases hj : j ∈ S
-      · simp [hj, h j hj]
-      · simp [hj]
-    · intro h j hj
-      have := h j
-      simpa [hj] using this
-  rw [Dist.prob_eq_sum_filter, hset]
-  simp only [Dist.prod_mass]
-  rw [← Finset.prod_univ_sum]
-  have hsum : ∀ j : I, (∑ b ∈ (if j ∈ S then ({f j} : Finset (Ω j)) else Finset.univ),
-      (p j).mass b) = if j ∈ S then (p j).mass (f j) else 1 := by
-    intro j
-    by_cases hj : j ∈ S
-    · simp [hj]
-    · simp [hj, (p j).sum_eq_one]
-  simp only [hsum]
-  rw [Finset.prod_ite_mem, Finset.univ_inter]
-
-/-- Under a product distribution, an event invariant under changing the `i`-th coordinate
-is independent of that coordinate. -/
-private lemma prob_prod_inter_bg (p : ∀ i, Dist (Ω i)) (i : I) (a : Ω i) {E : Set (Pt Ω)}
-    (hE : ∀ (ω : Pt Ω) (b : Ω i), ω ∈ E → Function.update ω i b ∈ E) :
-    (Dist.prod p).prob (E ∩ {ω | ω i = a}) = (p i).mass a * (Dist.prod p).prob E := by
-  classical
-  have hupd : ∀ (ω : Pt Ω) (b : Ω i),
-      ∏ j ∈ Finset.univ.erase i, (p j).mass (Function.update ω i b j)
-        = ∏ j ∈ Finset.univ.erase i, (p j).mass (ω j) := fun ω b =>
-    Finset.prod_congr rfl fun j hj => by
-      rw [Function.update_of_ne (Finset.ne_of_mem_erase hj) b ω]
-  have hmass : ∀ ω : Pt Ω, (Dist.prod p).mass ω
-      = (p i).mass (ω i) * ∏ j ∈ Finset.univ.erase i, (p j).mass (ω j) := fun ω =>
-    (Finset.mul_prod_erase Finset.univ (fun j => (p j).mass (ω j)) (Finset.mem_univ i)).symm
-  have hmem : ∀ (ω : Pt Ω) (b : Ω i), Function.update ω i b ∈ E ↔ ω ∈ E := by
-    intro ω b
-    refine ⟨fun h => ?_, fun h => hE ω b h⟩
-    have := hE _ (ω i) h
-    rwa [Function.update_idem, Function.update_eq_self] at this
-  have hGsum : ∀ b : Ω i,
-      (∑ ω ∈ Finset.univ.filter (fun ω : Pt Ω => ω ∈ E ∧ ω i = b),
-        ∏ j ∈ Finset.univ.erase i, (p j).mass (ω j))
-      = ∑ ω ∈ Finset.univ.filter (fun ω : Pt Ω => ω ∈ E ∧ ω i = a),
-        ∏ j ∈ Finset.univ.erase i, (p j).mass (ω j) := by
-    intro b
-    refine Finset.sum_nbij' (fun ω => Function.update ω i a) (fun ω => Function.update ω i b)
-      ?_ ?_ ?_ ?_ ?_
-    · intro ω hω
-      simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hω ⊢
-      exact ⟨(hmem ω a).mpr hω.1, Function.update_self _ _ _⟩
-    · intro ω hω
-      simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hω ⊢
-      exact ⟨(hmem ω b).mpr hω.1, Function.update_self _ _ _⟩
-    · intro ω hω
-      simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hω
-      rw [Function.update_idem, ← hω.2, Function.update_eq_self]
-    · intro ω hω
-      simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hω
-      rw [Function.update_idem, ← hω.2, Function.update_eq_self]
-    · intro ω _
-      exact (hupd ω a).symm
-  have hkey : ∀ b : Ω i,
-      (∑ ω ∈ Finset.univ.filter (fun ω : Pt Ω => ω ∈ E ∧ ω i = b), (Dist.prod p).mass ω)
-      = (p i).mass b * ∑ ω ∈ Finset.univ.filter (fun ω : Pt Ω => ω ∈ E ∧ ω i = a),
-          ∏ j ∈ Finset.univ.erase i, (p j).mass (ω j) := by
-    intro b
-    rw [← hGsum b, Finset.mul_sum]
-    refine Finset.sum_congr rfl fun ω hω => ?_
-    simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hω
-    rw [hmass ω, hω.2]
-  have hLHS : (Dist.prod p).prob (E ∩ {ω | ω i = a})
-      = ∑ ω ∈ Finset.univ.filter (fun ω : Pt Ω => ω ∈ E ∧ ω i = a), (Dist.prod p).mass ω := by
-    rw [Dist.prob_eq_sum_filter]
-    refine Finset.sum_congr ?_ fun _ _ => rfl
-    ext ω
-    simp [Set.mem_inter_iff]
-  have hRHS : (Dist.prod p).prob E
-      = ∑ b : Ω i, ∑ ω ∈ Finset.univ.filter (fun ω : Pt Ω => ω ∈ E ∧ ω i = b),
-          (Dist.prod p).mass ω := by
-    rw [Dist.prob_eq_sum_filter,
-      ← Finset.sum_fiberwise (Finset.univ.filter (fun ω : Pt Ω => ω ∈ E)) (fun ω : Pt Ω => ω i)
-        (Dist.prod p).mass]
-    refine Finset.sum_congr rfl fun b _ => ?_
-    refine Finset.sum_congr ?_ fun _ _ => rfl
-    rw [Finset.filter_filter]
-  rw [hLHS, hRHS, hkey a]
-  simp only [hkey]
-  rw [← Finset.sum_mul, (p i).sum_eq_one, one_mul]
-
 variable {α : Type*}
-
-/-- A factor lies in the (unconditional) history of `X` exactly when `X` is sensitive to
-it: two points agreeing off `i` with different `X`-values exist.  (Both directions of
-`exists_ne_of_mem_history`, which gives the weaker conclusion `a i ≠ b i`.) -/
-private lemma mem_history_iff_exists_ne [Nonempty α] (X : Pt Ω → α) (i : I) :
-    i ∈ history X (Set.univ : Set (Pt Ω)) ↔
-      ∃ a b : Pt Ω, (∀ j, j ≠ i → a j = b j) ∧ X a ≠ X b := by
-  classical
-  constructor
-  · intro hi
-    by_contra hcon
-    push Not at hcon
-    have hgen : Generates (Finset.univ.erase i) X (Set.univ : Set (Pt Ω)) := by
-      rw [generates_iff]
-      refine ⟨disintegrates_univ_set _, fun a _ b _ hab => ?_⟩
-      exact hcon a b fun j hj => hab j (Finset.mem_erase.mpr ⟨hj, Finset.mem_univ j⟩)
-    exact (Finset.mem_erase.mp (history_subset_of_generates hgen hi)).1 rfl
-  · rintro ⟨a, b, hab, hne⟩
-    by_contra hi
-    have hsub : history X (Set.univ : Set (Pt Ω)) ⊆ Finset.univ.erase i := fun j hj =>
-      Finset.mem_erase.mpr ⟨fun h => hi (h ▸ hj), Finset.mem_univ j⟩
-    have hgen : Generates (Finset.univ.erase i) X (Set.univ : Set (Pt Ω)) :=
-      (generates_iff_history_subset (disintegrates_univ_set _)).mpr hsub
-    rw [generates_iff] at hgen
-    exact hne (hgen.2 a (Set.mem_univ _) b (Set.mem_univ _) fun j hj =>
-      hab j (Finset.mem_erase.mp hj).1)
 
 end Aux
 
@@ -411,7 +278,7 @@ noncomputable def condCPD (P : Dist (Pt Val)) (hP : P.StrictlyPositive) : CPD (G
         exact div_nonneg (P.prob_nonneg _) (P.prob_nonneg _)
       sum_eq_one := by
         classical
-        obtain ⟨x₀⟩ := dist_nonempty P
+        obtain ⟨x₀⟩ := P.nonempty_carrier
         obtain ⟨x, hx⟩ := exists_parentConfig x₀ v y
         have hCpos : 0 < P.prob {x | parentConfig G Val x v = y} := by
           rw [P.prob_pos_iff]
@@ -465,7 +332,7 @@ theorem prob_jointVar_fiber (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val))
             ∀ i ∈ Finset.image κ Finset.univ, ω i = constTable G Val x i} := by
         rw [hset]; conv_lhs => rw [hPΩ]
     _ = ∏ i ∈ Finset.image κ Finset.univ, (PΩ.margAt i).mass (constTable G Val x i) :=
-        prob_prod_agree_on _ _ _
+        Dist.prob_prod_agree_on _ _ _
     _ = ∏ v, (PΩ.margAt (κ v)).mass (constTable G Val x (κ v)) := Finset.prod_image hinj
     _ = ∏ v, (PΩ.margAt ⟨v, parentConfig G Val x v⟩).mass (x v) := rfl
 
@@ -522,7 +389,7 @@ lemma tauInv_condCPD_strictlyPositive (hG : G.IsAcyclic) (P : Dist (Pt Val))
     (tauInv (condCPD (G := G) P hpos)).StrictlyPositive := by
   classical
   intro ω
-  obtain ⟨x₀⟩ := dist_nonempty P
+  obtain ⟨x₀⟩ := P.nonempty_carrier
   rw [show (tauInv (condCPD (G := G) P hpos)).mass ω
       = ∏ i, (condCPD (G := G) P hpos i.1 i.2).mass (ω i) from rfl]
   refine Finset.prod_pos fun i _ => ?_
@@ -568,7 +435,7 @@ private lemma condProb_tau_eq (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val
     rw [parentConfig_jointVar_update hG v ω ⟨v, y⟩ rfl b]
     exact hω
   have hEpos : 0 < PΩ.prob E := by
-    obtain ⟨x₀⟩ := dist_nonempty (tau hG PΩ)
+    obtain ⟨x₀⟩ := (tau hG PΩ).nonempty_carrier
     obtain ⟨x, hx⟩ := exists_parentConfig x₀ v y
     rw [PΩ.prob_pos_iff]
     refine ⟨constTable G Val x, ?_, hpos _⟩
@@ -585,7 +452,7 @@ private lemma condProb_tau_eq (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val
     rfl
   have hkey : (Dist.prod (fun i => PΩ.margAt i)).prob (E ∩ {ω | ω ⟨v, y⟩ = a})
       = (PΩ.margAt ⟨v, y⟩).mass a * (Dist.prod (fun i => PΩ.margAt i)).prob E :=
-    prob_prod_inter_bg (fun i => PΩ.margAt i) ⟨v, y⟩ a hinv
+    Dist.prob_prod_inter_bg (fun i => PΩ.margAt i) ⟨v, y⟩ a hinv
   rw [← hPΩ] at hkey
   rw [Dist.condProb, h1, h2, hkey, mul_div_assoc, div_self hEpos.ne', mul_one]
 
@@ -640,7 +507,7 @@ theorem tauPos_bijective (hG : G.IsAcyclic) : Function.Bijective (tauPos (G := G
     exact tauInv_condCPD_congr _ _ hEq
   · rintro ⟨P, hfac, hpos⟩
     obtain ⟨φ, hφ⟩ := hfac
-    obtain ⟨x₀⟩ := dist_nonempty P
+    obtain ⟨x₀⟩ := P.nonempty_carrier
     have hφpos : ∀ (v : V) (y : ParentVals G Val v) (a : Val v), 0 < (φ v y).mass a := by
       intro v y a
       obtain ⟨x, hx1, hx2⟩ := exists_parentConfig_val hG x₀ v y a

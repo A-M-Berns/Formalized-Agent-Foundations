@@ -1036,4 +1036,105 @@ lemma outerCompl_delta_eq_prod {J : Finset I} {P : Dist (Pt Ω)} (hP : Factorize
     exact (Finset.prod_congr rfl fun i _ => by
       rw [dif_neg (Finset.mem_compl.mp i.2)]; rfl).symm
 
+/-! ## Product distributions and single coordinates -/
+
+/-- Under a product distribution, the probability that `ω` agrees with a fixed point `f`
+on a finite set `S` of coordinates is the product of the corresponding masses. -/
+lemma Dist.prob_prod_agree_on (p : ∀ i, Dist (Ω i)) (S : Finset I) (f : Pt Ω) :
+    (Dist.prod p).prob {ω | ∀ i ∈ S, ω i = f i} = ∏ i ∈ S, (p i).mass (f i) := by
+  classical
+  have hset : Finset.univ.filter (fun ω : Pt Ω => ω ∈ {ω : Pt Ω | ∀ i ∈ S, ω i = f i})
+      = Fintype.piFinset (fun j => if j ∈ S then ({f j} : Finset (Ω j)) else Finset.univ) := by
+    ext ω
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and, Set.mem_setOf_eq,
+      Fintype.mem_piFinset]
+    constructor
+    · intro h j
+      by_cases hj : j ∈ S
+      · simp [hj, h j hj]
+      · simp [hj]
+    · intro h j hj
+      have := h j
+      simpa [hj] using this
+  rw [Dist.prob_eq_sum_filter, hset]
+  simp only [Dist.prod_mass]
+  rw [← Finset.prod_univ_sum]
+  have hsum : ∀ j : I, (∑ b ∈ (if j ∈ S then ({f j} : Finset (Ω j)) else Finset.univ),
+      (p j).mass b) = if j ∈ S then (p j).mass (f j) else 1 := by
+    intro j
+    by_cases hj : j ∈ S
+    · simp [hj]
+    · simp [hj, (p j).sum_eq_one]
+  simp only [hsum]
+  rw [Finset.prod_ite_mem, Finset.univ_inter]
+
+/-- Under a product distribution, an event invariant under changing the `i`-th coordinate
+is independent of that coordinate. -/
+lemma Dist.prob_prod_inter_bg (p : ∀ i, Dist (Ω i)) (i : I) (a : Ω i) {E : Set (Pt Ω)}
+    (hE : ∀ (ω : Pt Ω) (b : Ω i), ω ∈ E → Function.update ω i b ∈ E) :
+    (Dist.prod p).prob (E ∩ {ω | ω i = a}) = (p i).mass a * (Dist.prod p).prob E := by
+  classical
+  have hupd : ∀ (ω : Pt Ω) (b : Ω i),
+      ∏ j ∈ Finset.univ.erase i, (p j).mass (Function.update ω i b j)
+        = ∏ j ∈ Finset.univ.erase i, (p j).mass (ω j) := fun ω b =>
+    Finset.prod_congr rfl fun j hj => by
+      rw [Function.update_of_ne (Finset.ne_of_mem_erase hj) b ω]
+  have hmass : ∀ ω : Pt Ω, (Dist.prod p).mass ω
+      = (p i).mass (ω i) * ∏ j ∈ Finset.univ.erase i, (p j).mass (ω j) := fun ω =>
+    (Finset.mul_prod_erase Finset.univ (fun j => (p j).mass (ω j)) (Finset.mem_univ i)).symm
+  have hmem : ∀ (ω : Pt Ω) (b : Ω i), Function.update ω i b ∈ E ↔ ω ∈ E := by
+    intro ω b
+    refine ⟨fun h => ?_, fun h => hE ω b h⟩
+    have := hE _ (ω i) h
+    rwa [Function.update_idem, Function.update_eq_self] at this
+  have hGsum : ∀ b : Ω i,
+      (∑ ω ∈ Finset.univ.filter (fun ω : Pt Ω => ω ∈ E ∧ ω i = b),
+        ∏ j ∈ Finset.univ.erase i, (p j).mass (ω j))
+      = ∑ ω ∈ Finset.univ.filter (fun ω : Pt Ω => ω ∈ E ∧ ω i = a),
+        ∏ j ∈ Finset.univ.erase i, (p j).mass (ω j) := by
+    intro b
+    refine Finset.sum_nbij' (fun ω => Function.update ω i a) (fun ω => Function.update ω i b)
+      ?_ ?_ ?_ ?_ ?_
+    · intro ω hω
+      simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hω ⊢
+      exact ⟨(hmem ω a).mpr hω.1, Function.update_self _ _ _⟩
+    · intro ω hω
+      simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hω ⊢
+      exact ⟨(hmem ω b).mpr hω.1, Function.update_self _ _ _⟩
+    · intro ω hω
+      simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hω
+      rw [Function.update_idem, ← hω.2, Function.update_eq_self]
+    · intro ω hω
+      simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hω
+      rw [Function.update_idem, ← hω.2, Function.update_eq_self]
+    · intro ω _
+      exact (hupd ω a).symm
+  have hkey : ∀ b : Ω i,
+      (∑ ω ∈ Finset.univ.filter (fun ω : Pt Ω => ω ∈ E ∧ ω i = b), (Dist.prod p).mass ω)
+      = (p i).mass b * ∑ ω ∈ Finset.univ.filter (fun ω : Pt Ω => ω ∈ E ∧ ω i = a),
+          ∏ j ∈ Finset.univ.erase i, (p j).mass (ω j) := by
+    intro b
+    rw [← hGsum b, Finset.mul_sum]
+    refine Finset.sum_congr rfl fun ω hω => ?_
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hω
+    rw [hmass ω, hω.2]
+  have hLHS : (Dist.prod p).prob (E ∩ {ω | ω i = a})
+      = ∑ ω ∈ Finset.univ.filter (fun ω : Pt Ω => ω ∈ E ∧ ω i = a), (Dist.prod p).mass ω := by
+    rw [Dist.prob_eq_sum_filter]
+    refine Finset.sum_congr ?_ fun _ _ => rfl
+    ext ω
+    simp [Set.mem_inter_iff]
+  have hRHS : (Dist.prod p).prob E
+      = ∑ b : Ω i, ∑ ω ∈ Finset.univ.filter (fun ω : Pt Ω => ω ∈ E ∧ ω i = b),
+          (Dist.prod p).mass ω := by
+    rw [Dist.prob_eq_sum_filter,
+      ← Finset.sum_fiberwise (Finset.univ.filter (fun ω : Pt Ω => ω ∈ E)) (fun ω : Pt Ω => ω i)
+        (Dist.prod p).mass]
+    refine Finset.sum_congr rfl fun b _ => ?_
+    refine Finset.sum_congr ?_ fun _ _ => rfl
+    rw [Finset.filter_filter]
+  rw [hLHS, hRHS, hkey a]
+  simp only [hkey]
+  rw [← Finset.sum_mul, (p i).sum_eq_one, one_mul]
+
 end FactoredSpaces

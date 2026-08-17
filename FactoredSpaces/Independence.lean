@@ -80,6 +80,32 @@ lemma mem_history_bg_of_mem_history [Nonempty α] {X : Pt Ω → α} {i : I}
   refine hne (hgen.2 a (Set.mem_univ _) b (Set.mem_univ _) fun j hj => ?_)
   exact hab j (fun h => hnot (h ▸ hj))
 
+/-- A factor lies in the (unconditional) history of `X` exactly when `X` is sensitive to
+it: two points agreeing off `i` with different `X`-values exist.  (Both directions of
+`exists_ne_of_mem_history`, which gives the weaker conclusion `a i ≠ b i`.) -/
+lemma mem_history_iff_exists_ne [Nonempty α] (X : Pt Ω → α) (i : I) :
+    i ∈ history X (Set.univ : Set (Pt Ω)) ↔
+      ∃ a b : Pt Ω, (∀ j, j ≠ i → a j = b j) ∧ X a ≠ X b := by
+  classical
+  constructor
+  · intro hi
+    by_contra hcon
+    push Not at hcon
+    have hgen : Generates (Finset.univ.erase i) X (Set.univ : Set (Pt Ω)) := by
+      rw [generates_iff]
+      refine ⟨disintegrates_univ_set _, fun a _ b _ hab => ?_⟩
+      exact hcon a b fun j hj => hab j (Finset.mem_erase.mpr ⟨hj, Finset.mem_univ j⟩)
+    exact (Finset.mem_erase.mp (history_subset_of_generates hgen hi)).1 rfl
+  · rintro ⟨a, b, hab, hne⟩
+    by_contra hi
+    have hsub : history X (Set.univ : Set (Pt Ω)) ⊆ Finset.univ.erase i := fun j hj =>
+      Finset.mem_erase.mpr ⟨fun h => hi (h ▸ hj), Finset.mem_univ j⟩
+    have hgen : Generates (Finset.univ.erase i) X (Set.univ : Set (Pt Ω)) :=
+      (generates_iff_history_subset (disintegrates_univ_set _)).mpr hsub
+    rw [generates_iff] at hgen
+    exact hne (hgen.2 a (Set.mem_univ _) b (Set.mem_univ _) fun j hj =>
+      hab j (Finset.mem_erase.mp hj).1)
+
 /-- **Structural time and structural independence**, the direction "`X ≤ Y` implies
 `Y ⊥ Z ⟹ X ⊥ Z` for every variable `Z`" (universe-polymorphic in `Val(Z)`).
 
