@@ -13,7 +13,7 @@ Numbering follows the paper's printed, independent-per-environment counters
 | E4 | Proposition 36, proof, first paragraph | "Since `X ⊥_D Y \| {Ω}`, `H_X ∩ H_V = {}`" | the database asserts `X ⊥_D V \| {Ω}`; `(X,Y,{Ω})` is in neither `O` nor `N` | stage 6 (§6.2 shard) |
 | E5 | Proposition 36, proof, third paragraph | "`H_X` and `H_V` are nonempty, because `¬(X ⊥_D Z \| {Ω})` and `¬(Y ⊥_D Z \| {Ω})`" | the second citation is `¬(V ⊥_D Z \| {Ω})`, which is what `N` contains | stage 6 |
 | E6 | Proposition 36, proof, last paragraph | `h^F(f⁻¹(Z)\|y) ⊆ h^F(f⁻¹(Z) ∨_S f⁻¹(Y)) = h_Z ∪ H_Y` | `H_Z ∪ H_Y` (case typo) | stage 6 |
-| E7 | Proposition 34, proof | `H_X ⊆ h^F(f⁻¹(Y) ∨_S f⁻¹(V)) = H_Y ∩ H_V` (and the `X`/`V` swap) | `H_Y ∪ H_V`: Proposition 13 clause 2 gives `h^F(X ∨_S Y) = h^F(X) ∪ h^F(Y)`, and the next sentence uses the union | stage 6 (Example 1 shard) |
+| E7 | Proposition 34, proof | `H_X ⊆ h^F(f⁻¹(Y) ∨_S f⁻¹(V)) = H_Y ∩ H_V` | `H_Y ∪ H_V`: Proposition 13 clause 2 gives `h^F(X ∨_S Y) = h^F(X) ∪ h^F(Y)`, and the next sentence uses the union. This is the *only* defect in Prop 34's proof — its citation of `X ⊥_D V \| {Ω}` is correct, unlike Prop 36's (E4) | stage 6 (Example 1 shard) |
 
 Not errata, but worth knowing beside them: the Lean proof of Lemma 2 does not follow
 the paper's `|X| = 2` / `|X| ≥ 3` case split — the `|X| = 2` computation runs as the step

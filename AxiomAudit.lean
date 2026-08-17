@@ -1042,13 +1042,15 @@ Same contract as the CF-INVENTORY block above: every declaration carrying a
 FFS-INVENTORY markers below, and `scripts/check-finite-factored-sets-nodes.py` enforces
 that in both directions.
 
-This formalization is **in progress**: the list below covers §2, §3, §4 and §5
-(§6–§7 are not yet claimed).  Several
+This formalization is **in progress**: the list below covers §2, §3, §4, §5 and §6
+(§7 is not yet claimed).  Several
 of the paper's §2.1 nodes have no Lean carrier at all because they are rendered by
 Mathlib vocabulary under the `dd:` tags in `FiniteFactoredSets.lean` — Definition 2
 (partition) is `Setoid`, Definition 5 (`∼_X`) is the setoid relation, Definition 6
 (finer) is `≤`, Definition 7 (`Dis_S`/`Ind_S`) is `⊥`/`⊤`, and Definition 9 (`∏(B)`) is
-the dependent product.  Those are recorded in `FiniteFactoredSets/README.md` rather than
+the dependent product; §5.1's Definitions 29 (evaluation) and 30 (support) and §6.1's
+Definition 39 (preimages) are rendered the same way.  Those are recorded in
+`FiniteFactoredSets/README.md` rather than
 inventoried here, because there is no declaration of this project's to axiom-check. -/
 
 open FiniteFactoredSets in
@@ -1408,6 +1410,11 @@ open FiniteFactoredSets in
   -- (FiniteFactoredSets/Inference.lean).  Definition 38's `Model` bundles the carrier, its
   -- factored set, the map to `Ω`, and — because the paper says *finite* factored set — a
   -- `Finite` field, so Definition 45's quantifier over models is the paper's (`dd:model`).
+  -- One precision: `Model : Type u → Type (u+1)` puts the carrier `S` in `Ω`'s own
+  -- universe, so "every model" below means every model with a `Type u` carrier.  That is
+  -- forced by Lean and mathematically empty — every carrier is finite, hence equivalent to
+  -- one in `Type 0` — but the repo has no transport lemma along such an equivalence, so it
+  -- is disclosed rather than discharged (`dd:model`).
   -- Definition 39's three preimages are Mathlib-rendered (README table); `Model.pullback`
   -- names the partition one and is a convenience, not a paper endpoint.  Definition 41 has
   -- two carriers, one per written form, as Definitions 18 and 19 do.  `Model` is spelled
@@ -1418,7 +1425,8 @@ open FiniteFactoredSets in
   -- §6.2, Example 1 (FiniteFactoredSets/InferenceExamples.lean).  `Example1.D` is the
   -- database of the worked example; Propositions 33 and 34 are consistency (witnessed by
   -- the identity model on `(Ω, {X, V})`) and the inferred order `X <_D Y`, which quantifies
-  -- over *every* model of `D` and so is a universal claim, not an instantiated one.
+  -- over every model of `D` — in the §6.1 sense above, `Type u` carriers — and so is a
+  -- universal claim, not an instantiated one.
   Example1.D Example1.D_consistent Example1.before_X_Y
   -- §6.2, Example 2 (FiniteFactoredSets/InferenceExamples.lean).  `Example2.D` is the
   -- database of the paper's second worked example; Propositions 35 and 36 are its
@@ -1426,8 +1434,9 @@ open FiniteFactoredSets in
   -- paper's own twelve-point model — `Example2.model`, on the carrier
   -- `Bool × Bool × Option Bool` whose `none` third coordinate is the paper's two-bit
   -- string — so the existential of Definition 43 is met by a construction, not a
-  -- stand-in.  Proposition 36 quantifies over *every* model of `D`, so it needs no
-  -- witness of its own; what makes it non-vacuous is Proposition 35, which supplies one.
+  -- stand-in.  Proposition 36 quantifies over every model of `D` in that same sense, so it
+  -- needs no witness of its own; what makes it non-vacuous is Proposition 35, which
+  -- supplies one.
   Example2.D Example2.D_consistent Example2.before_X_Y_Z
   -- §6.1 on the witnesses (FiniteFactoredSets/Examples.lean).  Definitions 42-45 quantify
   -- over *models* of a sample space, not over factored sets, so none of the §2-§5 witnesses
@@ -1441,22 +1450,27 @@ open FiniteFactoredSets in
   Examples.coordModel Examples.boolModel Examples.fstModel Examples.pointModel
   Examples.pullback_fstModel_bot Examples.history_pullback_fstModel_bot
   Examples.pullback_pointModel
-  -- Definitions 40-44 on four databases.  Two natural misreadings are ruled out here.
+  -- Definitions 40-44 on six databases.  Two natural misreadings are ruled out here.
   -- First, `Consistent` is cheap on `O` alone: `totalDB` asserts *every* triple orthogonal
   -- and is still consistent, because the one-point model satisfies all of `O` at once
   -- (`unitFS` has no factors) — so it is `N` that constrains, and
   -- `nonconstDB_forces_nonconstant` is the mechanism in its simplest form, a single
   -- `N`-entry forcing every model's map to be non-constant through Proposition 25.
-  -- Second, `Consistent` and `Complete` are independent: `emptyDB` is consistent and not
-  -- complete, `totalDB` is both, `coordDB` is consistent and not complete with both clauses
-  -- non-empty, and `contradictoryDB` — asserting one triple both ways — has no model at
-  -- all, which is what makes Definition 43's existential a real condition.
+  -- Second, `Consistent` and `Complete` are independent **in both directions**, and each
+  -- direction is now inhabited: `emptyDB` is consistent and not complete,
+  -- `completeInconsistentDB` — asserting every triple both ways — is complete and not
+  -- consistent, and `totalDB` is both.  `coordDB` repeats the consistent-and-not-complete
+  -- corner with both of its clauses non-empty, and `contradictoryDB` — asserting one triple
+  -- both ways — has no model at all, which is what makes Definition 43's existential a real
+  -- condition.
   -- `models_coordDB` is the Definition 42 computation proper, discharging both clauses on
   -- the identity model of `coordFS` from §4.3's own computations on that witness.
   Examples.emptyDB Examples.models_emptyDB Examples.emptyDB_consistent
   Examples.not_emptyDB_complete
   Examples.contradictoryDB Examples.not_contradictoryDB_consistent
   Examples.totalDB Examples.totalDB_complete Examples.totalDB_consistent
+  Examples.completeInconsistentDB Examples.completeInconsistentDB_complete
+  Examples.not_completeInconsistentDB_consistent
   Examples.nonconstDB Examples.nonconstDB_consistent
   Examples.nonconstDB_forces_nonconstant
   Examples.coordDB Examples.models_coordDB Examples.coordDB_consistent
@@ -1467,9 +1481,10 @@ open FiniteFactoredSets in
   -- paper's own ordering guards against — Propositions 33 and 35 (consistency) come before
   -- Propositions 34 and 36 (the inference).  The informative positive instances of
   -- Definition 45 are those two propositions in `InferenceExamples.lean`; nothing here
-  -- stands in for them, and `Examples.lean` does not import that file.
-  Examples.not_before_self_of_consistent Examples.not_nonconstDB_before_self
-  Examples.before_of_not_consistent Examples.contradictoryDB_before_all
+  -- stands in for them, and `Examples.lean` does not import that file.  The two generic
+  -- statements these instantiate are `OrthDatabase.not_before_self_of_consistent` and
+  -- `OrthDatabase.before_of_not_consistent`, on the consumer surface below.
+  Examples.not_nonconstDB_before_self Examples.contradictoryDB_before_all
 -- FFS-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Finite Factored Sets surface. -/
@@ -1579,5 +1594,9 @@ open FiniteFactoredSets in
   -- by Mathlib — `f⁻¹(ω)` and `f⁻¹(E)` are `Set.preimage` and `f⁻¹(X)` is `Setoid.comap` —
   -- so `Model.pullback` carries no paper-node annotation and belongs here rather than in
   -- the inventory above; `pullback_apply` is its unfolding, which is how a client reads a
-  -- Definition 42 or 45 statement pointwise.
+  -- Definition 42 or 45 statement pointwise.  `not_before_self_of_consistent` and
+  -- `before_of_not_consistent` are the two ways a client reads Definition 45 before
+  -- trusting it: irreflexive wherever `D` has a model, vacuously total where it has none.
+  -- Neither is a paper node; the paper's positive instances are Propositions 34 and 36.
   Model.pullback Model.pullback_apply
+  OrthDatabase.not_before_self_of_consistent OrthDatabase.before_of_not_consistent

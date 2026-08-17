@@ -94,7 +94,9 @@ lemma V_mem_basis : V ∈ F.B := Or.inr rfl
 /-- Proposition 33's model `M = (F, f)` with `f` the identity on `Ω`. -/
 def idModel : Model Ω := ⟨F, id⟩
 
-@[simp] lemma pullback_idModel (A : Setoid Ω) : idModel.pullback A = A := rfl
+/-- Pullback along `idModel` is the identity — `Model.pullback_id`, which is why every
+obligation below can be read directly as a statement about `F`. -/
+example (A : Setoid Ω) : idModel.pullback A = A := Model.pullback_id F A
 
 /-- `h^F(X) = {X}` by Proposition 13 clause 4: a factor is its own history. -/
 lemma history_X : F.history X = {X} :=
@@ -114,12 +116,10 @@ lemma orthogonal_X_V : F.Orthogonal X V := by
 lemma not_orthogonal_V_V : ¬ F.Orthogonal V V := fun h =>
   V_ne_top ((F.orthogonal_spec V V V).2.2.2.1 h)
 
-/-- **Proposition 33** — Example 1's database is consistent (the identity model on the
-factored set `(Ω, {X, V})` models it).
-
-Paper node: Proposition 33 (§6.2). -/
-theorem D_consistent : D.Consistent := by
-  refine ⟨idModel, fun A B C => ⟨fun h => ?_, fun h => ?_⟩⟩
+/-- The identity model on `(Ω, {X, V})` models `D`: its one orthogonality is Proposition 24
+applied to `X ⊥ V`, and its one non-orthogonality is `V` entangled with itself. -/
+lemma models_D : OrthDatabase.Models idModel D := by
+  refine fun A B C => ⟨fun h => ?_, fun h => ?_⟩
   · obtain ⟨rfl, rfl, rfl⟩ : A = X ∧ B = V ∧ C = ⊤ := by
       simpa [OrthDatabase.Orth, D, Prod.ext_iff] using h
     show F.OrthogonalGiven X V ⊤
@@ -128,6 +128,12 @@ theorem D_consistent : D.Consistent := by
       simpa [OrthDatabase.NotOrth, D, Prod.ext_iff] using h
     show ¬ F.OrthogonalGiven V V ⊤
     exact fun hg => not_orthogonal_V_V ((F.orthogonal_iff_orthogonalGiven_top V V).2 hg)
+
+/-- **Proposition 33** — Example 1's database is consistent (the identity model on the
+factored set `(Ω, {X, V})` models it).
+
+Paper node: Proposition 33 (§6.2). -/
+theorem D_consistent : D.Consistent := ⟨idModel, models_D⟩
 
 /-! ### The bit arithmetic behind Proposition 34
 
@@ -195,13 +201,17 @@ theorem before_X_Y : D.Before X Y := by
 
 Proposition 33 hands over a model of `D`, and Proposition 34 applies to *that* model to
 give a strict temporal order between the pullbacks — the two endpoints composed the way a
-downstream consumer would compose them, with `D` never unfolded. -/
+downstream consumer would compose them, with `D` never unfolded.  The witness is pinned at
+`idModel` rather than taken from `D_consistent`'s existential, so the strict order below is
+exhibited on a named factored set. -/
 
 example : D.Orth X V ⊤ := rfl
 
-example : ∃ M : Model Ω, M.F.StrictlyBefore (M.pullback X) (M.pullback Y) := by
-  obtain ⟨M, hM⟩ := D_consistent
-  exact ⟨M, before_X_Y M hM⟩
+example : idModel.F.StrictlyBefore (idModel.pullback X) (idModel.pullback Y) :=
+  before_X_Y idModel models_D
+
+example : ∃ M : Model Ω, M.F.StrictlyBefore (M.pullback X) (M.pullback Y) :=
+  ⟨idModel, before_X_Y idModel models_D⟩
 
 end Example1
 
@@ -246,8 +256,6 @@ private lemma pbX_iff (s t : M.S) : M.pullback X s t ↔ (M.f s).1 = (M.f t).1 :
 private lemma pbY_iff (s t : M.S) : M.pullback Y s t ↔ (M.f s).2.1 = (M.f t).2.1 := Iff.rfl
 private lemma pbV_iff (s t : M.S) :
     M.pullback V s t ↔ ((M.f s).1 == (M.f s).2.1) = ((M.f t).1 == (M.f t).2.1) := Iff.rfl
-
-private lemma pullback_top : M.pullback (⊤ : Setoid Ω) = ⊤ := Setoid.ext fun _ _ => Iff.rfl
 
 /-- `X ≤_Ω Y ∨_Ω V`, pulled back. -/
 private lemma pb_inf_YV_le_X : M.pullback Y ⊓ M.pullback V ≤ M.pullback X := by
@@ -635,7 +643,7 @@ lemma models_D : OrthDatabase.Models model D := by
     rcases h' with h' | h' | h'
     · simp only [Prod.mk.injEq] at h'
       obtain ⟨rfl, rfl, rfl⟩ := h'
-      rw [pullback_X, pullback_V, pullback_top]
+      rw [pullback_X, pullback_V, Model.pullback_top]
       exact (carrierFS.orthogonal_iff_orthogonalGiven_top X' V').1 orth_X'_V'
     · simp only [Prod.mk.injEq] at h'
       obtain ⟨rfl, rfl, rfl⟩ := h'
@@ -650,11 +658,11 @@ lemma models_D : OrthDatabase.Models model D := by
     rcases h' with h' | h' | h'
     · simp only [Prod.mk.injEq] at h'
       obtain ⟨rfl, rfl, rfl⟩ := h'
-      rw [pullback_X, pullback_Z, pullback_top]
+      rw [pullback_X, pullback_Z, Model.pullback_top]
       exact fun hc => not_orth_X'_ZP ((carrierFS.orthogonal_iff_orthogonalGiven_top X' ZP).2 hc)
     · simp only [Prod.mk.injEq] at h'
       obtain ⟨rfl, rfl, rfl⟩ := h'
-      rw [pullback_V, pullback_Z, pullback_top]
+      rw [pullback_V, pullback_Z, Model.pullback_top]
       exact fun hc => not_orth_V'_ZP ((carrierFS.orthogonal_iff_orthogonalGiven_top V' ZP).2 hc)
     · simp only [Prod.mk.injEq] at h'
       obtain ⟨rfl, rfl, rfl⟩ := h'
@@ -694,9 +702,8 @@ variable {M : Model Ω}
 private lemma inter_hist_nonempty_of_notOrth (hM : OrthDatabase.Models M D) {A B : Setoid Ω}
     (hAB : D.NotOrth A B ⊤) :
     (M.F.history (M.pullback A) ∩ M.F.history (M.pullback B)).Nonempty := by
-  haveI : Finite M.F.B := M.F.finite_basis_of_finite
   have h := (hM A B ⊤).2 hAB
-  rw [pullback_top] at h
+  rw [Model.pullback_top] at h
   have h' : ¬ M.F.Orthogonal (M.pullback A) (M.pullback B) := fun hc =>
     h ((M.F.orthogonal_iff_orthogonalGiven_top _ _).1 hc)
   rw [FactoredSet.orthogonal_def] at h'
@@ -704,9 +711,8 @@ private lemma inter_hist_nonempty_of_notOrth (hM : OrthDatabase.Models M D) {A B
 
 private lemma orth_XV (hM : OrthDatabase.Models M D) :
     M.F.history (M.pullback X) ∩ M.F.history (M.pullback V) = ∅ := by
-  haveI : Finite M.F.B := M.F.finite_basis_of_finite
   have h := (hM X V ⊤).1 (Or.inl rfl)
-  rw [pullback_top] at h
+  rw [Model.pullback_top] at h
   exact (M.F.orthogonal_iff_orthogonalGiven_top _ _).2 h
 
 private lemma notMem_histV_of_mem_histX (hM : OrthDatabase.Models M D) {b : Setoid M.S}
@@ -733,7 +739,6 @@ private lemma histV_nonempty (hM : OrthDatabase.Models M D) :
 private lemma histY_eq (hM : OrthDatabase.Models M D) :
     M.F.history (M.pullback Y)
       = M.F.history (M.pullback X) ∪ M.F.history (M.pullback V) := by
-  haveI : Finite M.F.B := M.F.finite_basis_of_finite
   have hunion : ∀ A B : Setoid M.S,
       M.F.history (A ⊓ B) = M.F.history A ∪ M.F.history B := fun A B =>
     (M.F.history_spec A B).2.1
@@ -757,7 +762,6 @@ private lemma histY_eq (hM : OrthDatabase.Models M D) :
 /-- The first half of Proposition 36 on a fixed model: `f⁻¹(X) <^F f⁻¹(Y)`. -/
 private lemma strictlyBefore_X_Y (hM : OrthDatabase.Models M D) :
     M.F.StrictlyBefore (M.pullback X) (M.pullback Y) := by
-  haveI : Finite M.F.B := M.F.finite_basis_of_finite
   obtain ⟨b, hb⟩ := histV_nonempty hM
   refine ⟨(histY_eq hM) ▸ Set.subset_union_left, fun hsub => ?_⟩
   have hbY : b ∈ M.F.history (M.pullback Y) := (histY_eq hM) ▸ Or.inr hb
@@ -797,7 +801,6 @@ private lemma exists_rFamily (hM : OrthDatabase.Models M D) {bX bV : Setoid M.S}
       (∀ b ∈ M.F.B, b ≠ bX → b ≠ bV → ∀ i j i' j', b (r i j) (r i' j')) ∧
       (∀ i j j', bX (r i j) (r i j')) ∧
       (∀ i i' j, bV (r i j) (r i' j)) := by
-  haveI : Finite M.F.B := M.F.finite_basis_of_finite
   obtain ⟨s₀, s₁, hs, hsX⟩ := M.F.exists_not_rel_of_mem_history hbX
   obtain ⟨t₀, t₁, ht, htV⟩ := M.F.exists_not_rel_of_mem_history hbV
   obtain ⟨sf, hsf1, hsf2⟩ := exists_boolIndexed (P := fun s => (M.f s).1) hs hsX
@@ -814,12 +817,12 @@ private lemma exists_rFamily (hM : OrthDatabase.Models M D) {bX bV : Setoid M.S}
   refine ⟨fun i j => M.F.chimera (M.F.history (M.pullback X)) (sf i) (tf j), ?_, ?_, ?_, ?_, ?_⟩
   · intro i j
     have : M.pullback X (M.F.chimera (M.F.history (M.pullback X)) (sf i) (tf j)) (sf i) :=
-      M.F.rel_of_forall_mem_history fun b hb => hmem b hb i j
+      M.F.commonRefinement_history_le _ (commonRefinement_iff.2 fun b hb => hmem b hb i j)
     exact (this : _ = _).trans (hsf1 i)
   · intro i j
     have : M.pullback V (M.F.chimera (M.F.history (M.pullback X)) (sf i) (tf j)) (tf j) :=
-      M.F.rel_of_forall_mem_history fun b hb =>
-        hnot b (M.F.history_subset _ hb) (fun h => notMem_histV_of_mem_histX hM h hb) i j
+      M.F.commonRefinement_history_le _ (commonRefinement_iff.2 fun b hb =>
+        hnot b (M.F.history_subset _ hb) (fun h => notMem_histV_of_mem_histX hM h hb) i j)
     exact (this : _ = _).trans (htf1 j)
   · intro b hb hbX' hbV' i j i' j'
     by_cases hbH : b ∈ M.F.history (M.pullback X)
@@ -861,7 +864,6 @@ private lemma exists_chimera_notMem (hM : OrthDatabase.Models M D) {C : Set (Set
                 ∃ b ∈ M.F.history (M.pullback X), b ∉ C))
     {y : Set M.S} (hy : y ∈ (M.pullback Y).classes) :
     ∃ u ∈ y, ∃ v ∈ y, M.F.chimera C u v ∉ y := by
-  haveI : Finite M.F.B := M.F.finite_basis_of_finite
   obtain ⟨v, rfl⟩ := hy
   have hb1 : ∀ c : Bool, (true == c) = c := by decide
   have hb2 : ∀ c : Bool, (false == !c) = c := by decide
@@ -916,7 +918,6 @@ private lemma histY_subset_of_inter (hM : OrthDatabase.Models M D) {A : Subparti
     {y : Set M.S} (hy : y ∈ (M.pullback Y).classes) (hdom : A.dom = y)
     (hne : (M.F.historySub A ∩ M.F.history (M.pullback Y)).Nonempty) :
     M.F.history (M.pullback Y) ⊆ M.F.historySub A := by
-  haveI : Finite M.F.B := M.F.finite_basis_of_finite
   have hclosed : ∀ u ∈ y, ∀ v ∈ y, M.F.chimera (M.F.historySub A) u v ∈ y := by
     intro u hu v hv
     have h := (M.F.generatesSub_iff_rel (M.F.historySub A) A).1
@@ -955,7 +956,6 @@ private lemma histSub_restrict_subset (W : Setoid M.S) {y : Set M.S}
     (hy : y ∈ (M.pullback Y).classes) :
     M.F.historySub ((Subpartition.ofSetoid W).restrict y) ⊆
       M.F.history (M.pullback Y) ∪ M.F.history W := by
-  haveI : Finite M.F.B := M.F.finite_basis_of_finite
   obtain ⟨v, rfl⟩ := hy
   have hE : (Subpartition.ofSetoid (M.pullback Y)).dom = (Subpartition.ofSetoid W).dom := by
     simp
@@ -998,7 +998,6 @@ private lemma histSub_restrict_X_eq (hM : OrthDatabase.Models M D) {y : Set M.S}
     (hy : y ∈ (M.pullback Y).classes) :
     M.F.historySub ((Subpartition.ofSetoid (M.pullback X)).restrict y)
       = M.F.history (M.pullback Y) := by
-  haveI : Finite M.F.B := M.F.finite_basis_of_finite
   have hsub : M.F.historySub ((Subpartition.ofSetoid (M.pullback X)).restrict y)
       ⊆ M.F.history (M.pullback Y) := by
     intro b hb
@@ -1025,7 +1024,6 @@ private lemma histSub_restrict_Z_disjoint (hM : OrthDatabase.Models M D) {y : Se
     (hy : y ∈ (M.pullback Y).classes) :
     M.F.historySub ((Subpartition.ofSetoid (M.pullback Z)).restrict y)
       ∩ M.F.history (M.pullback Y) = ∅ := by
-  haveI : Finite M.F.B := M.F.finite_basis_of_finite
   have h := (hM X Z Y).1 (Or.inr (Or.inl rfl)) y hy
   rw [FactoredSet.orthogonalGivenSet_def, histSub_restrict_X_eq hM hy, Set.inter_comm] at h
   exact h
@@ -1039,7 +1037,6 @@ private lemma mem_histZ_aux (hM : OrthDatabase.Models M D) {bZ bY : Setoid M.S}
     (hu : ∀ c ∈ M.F.B, c ≠ bZ → c u₀ u₁) (hu' : ¬ M.pullback Z u₀ u₁)
     (hq : ∀ c ∈ M.F.B, c ≠ bY → c q₀ q₁) (hq' : ¬ M.pullback Y q₀ q₁)
     (hq₀ : M.pullback Y q₀ u₀) : bY ∈ M.F.history (M.pullback Z) := by
-  haveI : Finite M.F.B := M.F.finite_basis_of_finite
   have hy : {w : M.S | M.pullback Y w u₀} ∈ (M.pullback Y).classes := ⟨u₀, rfl⟩
   have hu₀y : u₀ ∈ {w : M.S | M.pullback Y w u₀} := (M.pullback Y).refl' u₀
   have hin : ∀ (q : M.S), ∀ b ∈ M.F.history (M.pullback Y),
@@ -1049,7 +1046,7 @@ private lemma mem_histZ_aux (hM : OrthDatabase.Models M D) {bZ bY : Setoid M.S}
       b (M.F.chimera (M.F.history (M.pullback Y)) q u₀) u₀ :=
     fun q b hb hb' => M.F.chimera_rel_of_notMem _ _ hb hb'
   have hpY : ∀ q : M.S, M.pullback Y (M.F.chimera (M.F.history (M.pullback Y)) q u₀) q :=
-    fun q => M.F.rel_of_forall_mem_history (hin q)
+    fun q => M.F.commonRefinement_history_le _ (commonRefinement_iff.2 (hin q))
   have hbZY : bZ ∈ M.F.history (M.pullback Y) := (histY_eq hM) ▸ Or.inl hbZX
   have hu_out : ∀ b ∈ M.F.B, b ∉ M.F.history (M.pullback Y) → b u₀ u₁ := fun b hb hb' =>
     hu b hb fun h => hb' (by rw [← h] at hbZY; exact hbZY)
@@ -1101,7 +1098,6 @@ private lemma mem_histZ_aux (hM : OrthDatabase.Models M D) {bZ bY : Setoid M.S}
 
 private lemma histY_subset_histZ (hM : OrthDatabase.Models M D) :
     M.F.history (M.pullback Y) ⊆ M.F.history (M.pullback Z) := by
-  haveI : Finite M.F.B := M.F.finite_basis_of_finite
   intro bY hbY
   obtain ⟨bZ, hbZX, hbZZ⟩ := histX_inter_histZ_nonempty hM
   obtain ⟨u₀, u₁, hu, hu'⟩ := M.F.exists_not_rel_of_mem_history hbZZ
@@ -1130,7 +1126,6 @@ private lemma exists_block_histSubZ_nonempty (hM : OrthDatabase.Models M D) :
 /-- The second half of Proposition 36 on a fixed model: `f⁻¹(Y) <^F f⁻¹(Z)`. -/
 private lemma strictlyBefore_Y_Z (hM : OrthDatabase.Models M D) :
     M.F.StrictlyBefore (M.pullback Y) (M.pullback Z) := by
-  haveI : Finite M.F.B := M.F.finite_basis_of_finite
   refine ⟨histY_subset_histZ hM, fun hsub => ?_⟩
   obtain ⟨y, hy, b, hb⟩ := exists_block_histSubZ_nonempty hM
   have hbHY : b ∉ M.F.history (M.pullback Y) := by

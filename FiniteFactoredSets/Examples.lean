@@ -3038,7 +3038,7 @@ lemma not_orthogonalGiven_bot_bot_top_boolFS :
 
 Definitions 42–45 quantify over **models** of a sample space rather than over factored
 sets, so this is a family none of the §2–§5 witnesses inhabits.  What follows builds four
-models and four databases, and uses them to separate `Consistent`, `Complete` and `<_D`
+models and six databases, and uses them to separate `Consistent`, `Complete` and `<_D`
 from each other.
 
 Two readings are ruled out along the way, because both are natural and both are wrong.
@@ -3108,7 +3108,7 @@ lemma orthogonalGiven_unitFS (X Y Z : Setoid Unit) : unitFS.OrthogonalGiven X Y 
   intro z _
   rw [unitFS.orthogonalGivenSet_def, historySub_unitFS, Set.empty_inter]
 
-/-! ### Definitions 40–44: four databases, and what `Consistent` and `Complete` each cost -/
+/-! ### Definitions 40–44: six databases, and what `Consistent` and `Complete` each cost -/
 
 /-- The **empty** database on `Bool × Bool`: it asserts nothing at all. -/
 def emptyDB : OrthDatabase (Bool × Bool) := ⟨∅, ∅⟩
@@ -3156,6 +3156,23 @@ either. -/
 lemma totalDB_consistent : totalDB.Consistent := by
   refine ⟨pointModel, fun X Y Z => ⟨fun _ => orthogonalGiven_unitFS _ _ _, fun h => ?_⟩⟩
   simp only [OrthDatabase.NotOrth, totalDB, Set.mem_empty_iff_false] at h
+
+/-- The database asserting **every triple both ways**.  `Complete` holds for the same
+reason it holds of `totalDB` — Definition 44 asks only that `O ∪ N` cover every triple —
+while Definition 42's two clauses now contradict each other everywhere. -/
+def completeInconsistentDB : OrthDatabase (Bool × Bool) := ⟨Set.univ, Set.univ⟩
+
+/-- Definition 44 holds of it: `O` alone already covers every triple. -/
+lemma completeInconsistentDB_complete : completeInconsistentDB.Complete :=
+  fun _ _ _ => Or.inl (Set.mem_univ _)
+
+/-- …and Definition 43 fails of it, which is the direction the other databases leave open.
+`emptyDB` is consistent and not complete, `totalDB` is both, and this one is complete and
+not consistent — so Definition 44 neither implies nor is implied by Definition 43, and in
+particular is not a strengthening of it. -/
+lemma not_completeInconsistentDB_consistent : ¬ completeInconsistentDB.Consistent := by
+  rintro ⟨M, hM⟩
+  exact (hM ⊤ ⊤ ⊤).2 (Set.mem_univ _) ((hM ⊤ ⊤ ⊤).1 (Set.mem_univ _))
 
 /-- A database whose whole content sits in `N`: it asserts that `Dis_Ω` is **not**
 orthogonal to itself given `Ind_Ω`. -/
@@ -3220,30 +3237,21 @@ lemma not_coordDB_complete : ¬ coordDB.Complete := by
 
 /-! ### Definition 45: irreflexive where it is informative, vacuous where it is not -/
 
-/-- **Definition 45 is irreflexive on every consistent database.**  A model of `D` supplies
-a factored set on which `<^F` is a *strict* inclusion of histories, which no partition
-bears to itself.  So `X <_D Y` is not the total relation. -/
-lemma not_before_self_of_consistent {Ω : Type u} {D : OrthDatabase Ω} (hD : D.Consistent)
-    (X : Setoid Ω) : ¬ D.Before X X := by
-  obtain ⟨M, hM⟩ := hD
-  exact fun h => lt_irrefl _ (h M hM)
-
-/-- …instantiated at a database whose consistency is computed in this file, so the witness
-does not depend on §6.2. -/
+/-- `OrthDatabase.not_before_self_of_consistent` — Definition 45 is irreflexive wherever
+`D` has a model — instantiated at a database whose consistency is computed in this file, so
+the witness does not depend on §6.2. -/
 lemma not_nonconstDB_before_self (X : Setoid Bool) : ¬ nonconstDB.Before X X :=
-  not_before_self_of_consistent nonconstDB_consistent X
+  OrthDatabase.not_before_self_of_consistent nonconstDB_consistent X
 
 /-- The other side of the same coin, and the trap worth recording: on an **inconsistent**
 database Definition 45 is vacuously *total*, because it quantifies over models that do not
-exist.  `X <_D Y` is therefore an inference only once `D` is known consistent — which is
-why Propositions 33 and 35 come before Propositions 34 and 36 in the paper. -/
-lemma before_of_not_consistent {Ω : Type u} {D : OrthDatabase Ω} (hD : ¬ D.Consistent)
-    (X Y : Setoid Ω) : D.Before X Y := fun M hM => absurd ⟨M, hM⟩ hD
-
-/-- …exhibited on the contradictory database, where every pair is "inferred" both ways. -/
+exist (`OrthDatabase.before_of_not_consistent`).  `X <_D Y` is therefore an inference only
+once `D` is known consistent — which is why Propositions 33 and 35 come before
+Propositions 34 and 36 in the paper.  Exhibited here on the contradictory database, where
+every pair is "inferred" both ways. -/
 lemma contradictoryDB_before_all (X Y : Setoid (Bool × Bool)) :
     contradictoryDB.Before X Y :=
-  before_of_not_consistent not_contradictoryDB_consistent X Y
+  OrthDatabase.before_of_not_consistent not_contradictoryDB_consistent X Y
 
 end Examples
 end FiniteFactoredSets

@@ -28,57 +28,6 @@ universe u
 
 namespace FiniteFactoredSets
 
-/-! ## §3 working forms of Definition 17
-
-Temporal inference argues about an *arbitrary* factored set through its histories, so it
-needs Proposition 12's minimality in both directions pointwise: a factor lies in `h^F(X)`
-exactly when some pair of points agrees on every *other* factor without being `X`-related.
-These are the pointwise faces of `le_iff_history_subset` and belong to §3; they live here
-because §6.2 is the first consumer. -/
-
-namespace FactoredSet
-
-variable {S : Type u} (F : FactoredSet S)
-
-/-- Points agreeing on every factor of `h^F(X)` are `X`-related — the pointwise form of
-`h^F(X) ⊢^F X` (Proposition 12 through Proposition 10 clause 7). -/
-lemma rel_of_forall_mem_history [Finite F.B] {X : Setoid S} {s t : S}
-    (h : ∀ b ∈ F.history X, b s t) : X s t :=
-  ((F.le_iff_history_subset (F.history_subset X) X).2 subset_rfl)
-    (commonRefinement_iff.2 h : commonRefinement (F.history X) s t)
-
-/-- Minimality of `h^F(X)` in contrapositive form: a factor of the history is witnessed by
-a pair of points that agree on every other factor while failing to be `X`-related. -/
-lemma exists_not_rel_of_mem_history [Finite F.B] {X b : Setoid S} (hb : b ∈ F.history X) :
-    ∃ s t : S, (∀ c ∈ F.B, c ≠ b → c s t) ∧ ¬ X s t := by
-  by_contra hcon
-  have hle : commonRefinement (F.B \ {b}) ≤ X := by
-    intro s t hst
-    by_contra hX
-    exact hcon ⟨s, t, fun c hc hcb => commonRefinement_iff.1 hst c ⟨hc, hcb⟩, hX⟩
-  exact ((F.le_iff_history_subset Set.sdiff_subset X).1 hle hb).2 rfl
-
-/-- The converse of `exists_not_rel_of_mem_history`: such a pair puts `b` in `h^F(X)`.
-No `b ∈ B` hypothesis is needed — off the basis the hypothesis forces `s = t`. -/
-lemma mem_history_of_not_rel [Finite F.B] {X b : Setoid S} {s t : S}
-    (hst : ∀ c ∈ F.B, c ≠ b → c s t) (hX : ¬ X s t) : b ∈ F.history X := by
-  by_contra hbX
-  have hsub : F.history X ⊆ F.B \ {b} := fun c hc =>
-    ⟨F.history_subset X hc, fun hcb => hbX (by rw [← hcb]; exact hc)⟩
-  have hle := (F.le_iff_history_subset Set.sdiff_subset X).2 hsub
-  exact hX (hle (commonRefinement_iff.2 fun c hc => hst c hc.1 hc.2) : X s t)
-
-/-- If `s` already agrees with `t` on every factor of `C`, splicing changes nothing:
-`χ^F_C(s,t) = t`. -/
-lemma chimera_eq_right {C : Set (Setoid S)} {s t : S} (h : ∀ b ∈ C, b ∈ F.B → b s t) :
-    F.chimera C s t = t := by
-  refine F.eq_of_forall_rel fun b hb => ?_
-  by_cases hbC : b ∈ C
-  · exact b.trans' (F.chimera_rel_of_mem s t hb hbC) (h b hbC hb)
-  · exact F.chimera_rel_of_notMem s t hb hbC
-
-end FactoredSet
-
 /-! ## §6.1 Factored set models -/
 
 /-- Definition 38: a model of `Ω` — a finite factored set `F` together with a map from its
@@ -105,8 +54,9 @@ def pullback (M : Model Ω) (X : Setoid Ω) : Setoid M.S := Setoid.comap M.f X
 @[simp] lemma pullback_apply (M : Model Ω) (X : Setoid Ω) (s t : M.S) :
     M.pullback X s t ↔ X (M.f s) (M.f t) := Iff.rfl
 
-/-- The pullback of `Ind_Ω` is `Ind_S`: `f⁻¹({Ω}) = {S}`.  Every use of Proposition 24
-inside a `Models` obligation goes through this. -/
+/-- The pullback of `Ind_Ω` is `Ind_S`: `f⁻¹({Ω}) = {S}`.  This is the rewrite that turns a
+`Models` obligation at `Z = {Ω}` into an unconditional orthogonality, which is the shape
+Proposition 24 (`orthogonal_iff_orthogonalGiven_top`) consumes. -/
 @[simp] lemma pullback_top (M : Model Ω) : M.pullback (⊤ : Setoid Ω) = ⊤ := rfl
 
 /-- The pullback along a model whose map is the identity is the partition itself. -/
@@ -164,6 +114,41 @@ strictly before the pullback of `Y`.
 Paper node: Definition 45 (§6.1). -/
 def Before (D : OrthDatabase Ω) (X Y : Setoid Ω) : Prop :=
   ∀ M : Model Ω, Models M D → M.F.StrictlyBefore (M.pullback X) (M.pullback Y)
+
+/-! ### Reading Definition 45
+
+Definition 45 quantifies over the models of `D`, so its content depends entirely on there
+being any: irreflexive where `D` is consistent, vacuously total where it is not.  Both
+sides are one-liners, and both are what a client needs before treating `X <_D Y` as an
+inference. -/
+
+/-- **Definition 45 is irreflexive on every consistent database.**  A model of `D` supplies
+a factored set on which `<^F` is a *strict* inclusion of histories, which no partition
+bears to itself.  So `X <_D Y` is not the total relation. -/
+lemma not_before_self_of_consistent {D : OrthDatabase Ω} (hD : D.Consistent) (X : Setoid Ω) :
+    ¬ D.Before X X := by
+  obtain ⟨M, hM⟩ := hD
+  exact fun h => lt_irrefl _ (h M hM)
+
+/-- The other side of the same coin, and the trap worth recording: on an **inconsistent**
+database Definition 45 is vacuously *total*, because it quantifies over models that do not
+exist.  `X <_D Y` is therefore an inference only once `D` is known consistent — which is
+why Propositions 33 and 35 come before Propositions 34 and 36 in the paper. -/
+lemma before_of_not_consistent {D : OrthDatabase Ω} (hD : ¬ D.Consistent) (X Y : Setoid Ω) :
+    D.Before X Y := fun M hM => absurd ⟨M, hM⟩ hD
+
+/-- Client's-eye use of the first: against a consistent database an inferred order
+separates its two partitions. -/
+example {D : OrthDatabase Ω} (hD : D.Consistent) {X Y : Setoid Ω} (h : D.Before X Y) :
+    X ≠ Y := by
+  rintro rfl
+  exact not_before_self_of_consistent hD X h
+
+/-- …and of the second: against an inconsistent one it separates nothing, inferring every
+pair in both directions. -/
+example {D : OrthDatabase Ω} (hD : ¬ D.Consistent) (X Y : Setoid Ω) :
+    D.Before X Y ∧ D.Before Y X :=
+  ⟨before_of_not_consistent hD X Y, before_of_not_consistent hD Y X⟩
 
 end OrthDatabase
 

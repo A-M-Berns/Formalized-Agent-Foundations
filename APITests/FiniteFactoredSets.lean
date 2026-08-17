@@ -443,7 +443,9 @@ is discharged once, by instance search, at the point the client constructs its m
 no §6 statement afterwards carries a `[Finite …]` binder.  Second, Definition 45's
 `X <_D Y` quantifies over *models of `D`*, which makes it monotone in the database and
 irreflexive whenever the database is consistent; both of those are what a client needs in
-order to accumulate observations without accidentally "inferring" everything. -/
+order to accumulate observations without accidentally "inferring" everything.  The last
+group then consumes §6.2's own worked examples — Propositions 33–36 — through this same
+import, since an exported endpoint is only usable if a client can apply it. -/
 
 /-- A client's model of the sample space `Bool`: its own two-dimensional factored set,
 observed through the first coordinate.  Definition 38's `Finite S` field is supplied by
@@ -464,11 +466,23 @@ example : (⟨∅, ∅⟩ : OrthDatabase Bool).Consistent := by
   refine ⟨clientModel, fun _ _ _ => ⟨fun h => ?_, fun h => ?_⟩⟩ <;>
     simp only [OrthDatabase.Orth, OrthDatabase.NotOrth, Set.mem_empty_iff_false] at h
 
-/-- Definition 44 at the other extreme: a database asserting every triple orthogonal is
-`Complete` by construction.  Completeness is a statement about `O ∪ N` covering the
-triples, not about any model — so it neither implies nor is implied by consistency. -/
-example : (⟨Set.univ, ∅⟩ : OrthDatabase Bool).Complete :=
-  fun _ _ _ => Or.inl (Set.mem_univ _)
+/-- Definition 44 in its general form: a database is `Complete` as soon as `O` and `N`
+*jointly* cover the triples, and the split may be by any predicate whatever.  Neither
+clause has to be large, and no model is involved — completeness is a statement about the
+database alone. -/
+example (p : Setoid Bool × Setoid Bool × Setoid Bool → Prop) :
+    (⟨{t | p t}, {t | ¬ p t}⟩ : OrthDatabase Bool).Complete :=
+  fun X Y Z => Classical.em (p (X, Y, Z))
+
+/-- …which is why completeness neither implies nor is implied by consistency.  Taking the
+predicate above to be `True` and `¬ True` at once — `O = N = Set.univ` — gives a database
+that is `Complete` and has **no model at all**, since Definition 42's two clauses then
+contradict each other on every triple.  (`Examples.completeInconsistentDB` is the
+in-library witness of the same fact; a client importing only `FiniteFactoredSets.API`
+cannot reach it, so this re-derives it on the client's own sample space.) -/
+example : ¬ (⟨Set.univ, Set.univ⟩ : OrthDatabase Bool).Consistent := by
+  rintro ⟨M, hM⟩
+  exact (hM ⊤ ⊤ ⊤).2 (Set.mem_univ _) ((hM ⊤ ⊤ ⊤).1 (Set.mem_univ _))
 
 /-- **Definition 45 is monotone in the database.**  Extending `O` and `N` can only shrink
 the family of models, so an inferred `X <_D Y` survives every extension of `D`.  This is
@@ -487,5 +501,46 @@ example {Ω : Type u} {D : OrthDatabase Ω} (hD : D.Consistent) (X : Setoid Ω) 
     ¬ D.Before X X := by
   obtain ⟨M, hM⟩ := hD
   exact fun h => lt_irrefl _ (h M hM)
+
+/-! ### §6.2's worked examples, consumed through the API boundary
+
+Propositions 33–36 are exported, so a client does not re-derive them: it *uses* them.  The
+four examples below apply each of `Example1.D_consistent`, `Example1.before_X_Y`,
+`Example2.D_consistent` and `Example2.before_X_Y_Z` to prove something the paper does not
+state, which is the only way to check that those endpoints are usable from outside. -/
+
+/-- Proposition 33 is what makes Proposition 34's inference more than a vacuity: read
+together with the irreflexivity above, `Example1.D` infers `X <_D Y` and does *not* infer
+`X <_D X`. -/
+example : ¬ Example1.D.Before Example1.X Example1.X := by
+  obtain ⟨M, hM⟩ := Example1.D_consistent
+  exact fun h => lt_irrefl _ (h M hM)
+
+/-- The two together **separate the partitions**: a consistent database never infers
+`X <_D X`, so Proposition 34 forces `Example1.X ≠ Example1.Y` with no computation on the
+partitions themselves.  This is the shape of client reasoning §6 is for — a temporal
+conclusion used to derive a structural one. -/
+example : Example1.X ≠ Example1.Y := fun h => by
+  obtain ⟨M, hM⟩ := Example1.D_consistent
+  have hlt := Example1.before_X_Y M hM
+  rw [h] at hlt
+  exact lt_irrefl _ hlt
+
+/-- Proposition 35 in the same role for Example 2: `Example2.D` orders `X`, `Y`, `Z` and
+still infers nothing about `Z` against itself. -/
+example : ¬ Example2.D.Before Example2.Z Example2.Z := by
+  obtain ⟨M, hM⟩ := Example2.D_consistent
+  exact fun h => lt_irrefl _ (h M hM)
+
+/-- Proposition 36's chain **survives extending the database**, by the monotonicity above.
+A client that keeps accumulating observations on top of `Example2.D` never loses
+`X <_D Y <_D Z`, which is what makes the worked example a usable starting point rather
+than a closed computation. -/
+example {D' : OrthDatabase Example2.Ω} (hO : Example2.D.O ⊆ D'.O) (hN : Example2.D.N ⊆ D'.N) :
+    D'.Before Example2.X Example2.Y ∧ D'.Before Example2.Y Example2.Z :=
+  ⟨fun M hM => Example2.before_X_Y_Z.1 M fun A B C =>
+      ⟨fun hA => (hM A B C).1 (hO hA), fun hB => (hM A B C).2 (hN hB)⟩,
+    fun M hM => Example2.before_X_Y_Z.2 M fun A B C =>
+      ⟨fun hA => (hM A B C).1 (hO hA), fun hB => (hM A B C).2 (hN hB)⟩⟩
 
 end APITests.FiniteFactoredSets

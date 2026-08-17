@@ -235,6 +235,27 @@ lemma commonRefinement_history_le [Finite F.B] (X : Setoid S) :
     commonRefinement (F.history X) ≤ X :=
   (F.le_iff_history_subset (F.history_subset X) X).2 subset_rfl
 
+/-- Minimality of `h^F(X)` in contrapositive form: a factor of the history is witnessed by
+a pair of points that agree on every other factor while failing to be `X`-related. -/
+lemma exists_not_rel_of_mem_history [Finite F.B] {X b : Setoid S} (hb : b ∈ F.history X) :
+    ∃ s t : S, (∀ c ∈ F.B, c ≠ b → c s t) ∧ ¬ X s t := by
+  by_contra hcon
+  have hle : commonRefinement (F.B \ {b}) ≤ X := by
+    intro s t hst
+    by_contra hX
+    exact hcon ⟨s, t, fun c hc hcb => commonRefinement_iff.1 hst c ⟨hc, hcb⟩, hX⟩
+  exact ((F.le_iff_history_subset Set.sdiff_subset X).1 hle hb).2 rfl
+
+/-- The converse of `exists_not_rel_of_mem_history`: such a pair puts `b` in `h^F(X)`.
+No `b ∈ B` hypothesis is needed — off the basis the hypothesis forces `s = t`. -/
+lemma mem_history_of_not_rel [Finite F.B] {X b : Setoid S} {s t : S}
+    (hst : ∀ c ∈ F.B, c ≠ b → c s t) (hX : ¬ X s t) : b ∈ F.history X := by
+  by_contra hbX
+  have hsub : F.history X ⊆ F.B \ {b} := fun c hc =>
+    ⟨F.history_subset X hc, fun hcb => hbX (by rw [← hcb]; exact hc)⟩
+  have hle := (F.le_iff_history_subset Set.sdiff_subset X).2 hsub
+  exact hX (hle (commonRefinement_iff.2 fun c hc => hst c hc.1 hc.2) : X s t)
+
 /-- **Proposition 13** — the basic properties of history.  Clause 1's `X ≤_S Y` is
 Mathlib's `Y ≤ X` and clause 2's `X ∨_S Y` is `X ⊓ Y` (`dd:order-flip`); clause 3's
 `Ind_S` is `⊤`.

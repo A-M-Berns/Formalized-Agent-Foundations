@@ -365,6 +365,17 @@ lemma chimera_basis (s t : S) : F.chimera F.B s t = s :=
 lemma chimera_empty (s t : S) : F.chimera ∅ s t = t :=
   (F.chimera_spec ∅ ∅ s t t).2.2.2.2.2.2.2.2.2.2
 
+/-- The degenerate case of clause 1 that §4 and §6 both run on, and the one fact of this
+block that is not a projection of `chimera_spec`: if `s` already agrees with `t` on every
+factor of `C`, splicing changes nothing, `χ^F_C(s,t) = t`.  (Clause 11 is the special case
+`C = ∅`; clause 3 is `s = t`.) -/
+lemma chimera_eq_right {C : Set (Setoid S)} {s t : S} (h : ∀ b ∈ C, b ∈ F.B → b s t) :
+    F.chimera C s t = t := by
+  refine F.eq_of_forall_rel fun b hb => ?_
+  by_cases hbC : b ∈ C
+  · exact b.trans' (F.chimera_rel_of_mem s t hb hbC) (h b hbC hb)
+  · exact F.chimera_rel_of_notMem s t hb hbC
+
 /-! ### Setwise forms
 
 `chimeraImage` is what §3–§5 quantify over, so the three facts about it that recur —

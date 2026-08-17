@@ -41,13 +41,13 @@ Nothing here is complete, and this file says what is claimed and what is not.
 | 5.3 | Characteristic polynomials and conditional orthogonality | Lemma 3 |
 | 5.4 | Probability distributions on finite factored sets | Definitions 36, 37; Proposition 32 |
 | 5.5 | The fundamental theorem of finite factored sets | Theorem 3 |
-| 6.1 | Factored set models, orthogonality databases, consistency, completeness, inferred time | Definitions 38, 39, 40, 41, 42, 43, 44, 45 |
+| 6.1 | Factored set models, orthogonality databases, consistency, completeness, inferred time | Definitions 38, 40, 41, 42, 43, 44, 45 |
 | 6.2 | The two worked examples | Examples 1, 2; Propositions 33, 34, 35, 36 |
 
 §5.1's Definitions 29 (evaluation) and 30 (support) and §6.1's Definition 39 (preimages)
 are the three nodes of these sections
-with no declaration of ours; they are in the Mathlib-rendered table below, which is why
-the rows above sum to 81 rather than 84.
+with no declaration of ours. All three are left out of the rows above and appear in the
+Mathlib-rendered table below instead, which is why those rows name 81 nodes rather than 84.
 
 Six of those nodes are stated in halves — five in two, one in three — and every half is
 carried, so those nodes appear in the inventory more than once. The 81 nodes above are
@@ -242,7 +242,12 @@ Defined in full in the glossary at `FiniteFactoredSets.lean`. In brief:
   over carries one. `Finite M.F.B` is then found by instance search wherever an
   `M : Model Ω` is in scope, which is what lets a §6 proof call a §3–§4 endpoint
   (Proposition 25, in the case of `nonconstDB_forces_nonconstant`) with no hypothesis of
-  its own. The sample space `Ω` is unconstrained.
+  its own. The sample space `Ω` is unconstrained. One narrowing is disclosed rather than
+  discharged: `Model : Type u → Type (u+1)` pins the carrier to `Ω`'s own universe, so
+  Definitions 43 and 45 quantify over models with a `Type u` carrier rather than over models
+  in every universe — forced by Lean, and empty in content since every carrier is finite and
+  so equivalent to one in `Type 0`, but the library proves no transport along that
+  equivalence.
 
   Definition 39 has no carrier and is in the Mathlib-rendered table above.
   Definition 40's database is `OrthDatabase Ω`, a pair of sets of triples of partitions;
@@ -417,7 +422,7 @@ exactly; with every endpoint now proved it is inert throughout §5). Do not read
 
 §6 changes what is quantified over rather than adding vocabulary to `FactoredSet`:
 Definitions 42–45 range over **models** of a sample space, so none of the §2–§5 witnesses
-touches them. The same file therefore builds four models of two sample spaces and five
+touches them. The same file therefore builds four models of two sample spaces and six
 databases, and uses them to separate `Consistent`, `Complete` and `<_D` from each other.
 The paper's own Examples 1 and 2 are *not* among them — those are §6.2's numbered nodes,
 formalized in `InferenceExamples.lean`, and `Examples.lean` deliberately does not import
@@ -430,8 +435,8 @@ inventoried:
 | Definition 39 is computed, and moves in both directions | `pullback_fstModel_bot`, `history_pullback_fstModel_bot`, `pullback_pointModel` | `f⁻¹` being a formality. Under `fstModel` the pullback of `Dis_Ω` — the *finest* partition of the sample space — is a *factor* of `S`, whose §3 history is the singleton `{fstFactor}`; under `pointModel` every partition of `Ω` pulls back to `Ind_S`. So a §6 statement is a statement about `S`, not about `Ω` |
 | Definition 43 is a real condition, and Definition 42's two clauses are both exercised | `emptyDB`, `models_emptyDB`, `emptyDB_consistent`, `contradictoryDB`, `not_contradictoryDB_consistent`, `coordDB`, `models_coordDB`, `coordDB_consistent` | `Consistent` holding of everything, or of nothing. The empty database is modeled by every model; the database asserting one triple *both* ways has no model at all; and `models_coordDB` discharges both clauses of Definition 42 at once on the identity model of `coordFS`, from §4.3's own computations (`orthogonalGiven_fst_snd_top` and `not_orthogonalGiven_fst_fst_top`) rather than from anything in §6 |
 | `Consistent` is **cheap on `O` alone** — it is `N` that constrains | `totalDB`, `totalDB_complete`, `totalDB_consistent`, `nonconstDB`, `nonconstDB_consistent`, `nonconstDB_forces_nonconstant`, `pullback_pointModel` | reading a large `O` as hard to satisfy. A database asserting *every* triple orthogonal is consistent, because a one-point model satisfies all of `O` simultaneously (a zero-dimensional factored set has no factors). What excludes that model is a single `N` entry: `(Dis_Ω, Dis_Ω, Ind_Ω)` forces every model's map to be non-constant, through Proposition 25 |
-| `Consistent` and `Complete` are independent | `not_emptyDB_complete`, `totalDB_complete` with `totalDB_consistent`, `not_coordDB_complete` with `coordDB_consistent` | reading Definition 44 as a strengthening of Definition 43 or as incompatible with it. `emptyDB` is consistent and not complete, `totalDB` is both, `coordDB` is consistent and not complete with both of its clauses non-empty |
-| Definition 45 is irreflexive where it is informative and **vacuously total** where it is not | `not_before_self_of_consistent`, `not_nonconstDB_before_self`, `before_of_not_consistent`, `contradictoryDB_before_all` | `X <_D Y` being read as an inference regardless of `D`. It quantifies over models of `D`, so on an inconsistent database it holds of *every* pair; on a consistent one it is irreflexive, `<^F` being a strict inclusion of histories. This is why the paper proves consistency (Propositions 33 and 35) before it infers time (Propositions 34 and 36), and the consistency the second witness uses is computed here rather than cited from §6.2 |
+| `Consistent` and `Complete` are independent, in **both** directions | `not_emptyDB_complete`, `completeInconsistentDB` with `completeInconsistentDB_complete` and `not_completeInconsistentDB_consistent`, `totalDB_complete` with `totalDB_consistent`, `not_coordDB_complete` with `coordDB_consistent` | reading Definition 44 as a strengthening of Definition 43, as its converse, or as incompatible with it. `emptyDB` is consistent and not complete; `completeInconsistentDB` — asserting every triple *both* ways — is complete and not consistent, which is the direction the other witnesses leave open; `totalDB` is both; `coordDB` repeats the consistent-and-not-complete corner with both of its clauses non-empty |
+| Definition 45 is irreflexive where it is informative and **vacuously total** where it is not | `OrthDatabase.not_before_self_of_consistent` and `OrthDatabase.before_of_not_consistent` (`Inference.lean`), instantiated by `not_nonconstDB_before_self`, `contradictoryDB_before_all` | `X <_D Y` being read as an inference regardless of `D`. It quantifies over models of `D`, so on an inconsistent database it holds of *every* pair; on a consistent one it is irreflexive, `<^F` being a strict inclusion of histories. This is why the paper proves consistency (Propositions 33 and 35) before it infers time (Propositions 34 and 36), and the consistency the second witness uses is computed here rather than cited from §6.2 |
 
 The informative *positive* instances of Definition 45 — an actual inferred `X <_D Y` — are
 Propositions 34 and 36 themselves. Nothing in `Examples.lean` stands in for them, and the

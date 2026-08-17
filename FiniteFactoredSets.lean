@@ -118,7 +118,11 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
   say something else.  The consequence a reader should carry is that **no §6 declaration
   carries a finiteness binder of its own**, and `Finite M.F.B` is found by instance search
   wherever an `M : Model Ω` is in scope, which is what lets §6 proofs call the §3–§4
-  endpoints unencumbered.
+  endpoints unencumbered.  One disclosed narrowing: `Model : Type u → Type (u+1)` puts the
+  carrier in `Ω`'s own universe, so Definitions 43 and 45 quantify over models with a
+  `Type u` carrier rather than over models in every universe — forced by Lean, and empty in
+  content since every carrier is finite, but the library proves no transport along that
+  equivalence.
 
   Definition 39 is rendered by Mathlib and has no carrier: `f⁻¹(ω)` and `f⁻¹(E)` are
   `Set.preimage`, and `f⁻¹(X)` for a partition `X` of `Ω` is `Setoid.comap f X`, whose

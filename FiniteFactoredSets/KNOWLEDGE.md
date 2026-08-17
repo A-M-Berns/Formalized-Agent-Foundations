@@ -15,7 +15,7 @@ trust surface and `FiniteFactoredSets.lean` for the `dd:` glossary.
 | `dd:poly` | `Poly S := MvPolynomial (Set S) ℝ`; eval = `MvPolynomial.eval`, supp = `vars`, irreducible = Mathlib `Irreducible`; set sums via `finsum`/`finprod` | Blocks are variables verbatim under `dd:partition`. Definitions carry no finiteness; `[Finite S]` sits on the §5.1–5.2 *theorems* and helper lemmas whose statements quantify over `E ⊆ S` (the exact list is in API.lean, maintained per round — round 6 caught an undercount). `mono`/`monos`/`poly` take no `F` (paper superscript notational) — the `size` trap avoided at design time. |
 | `dd:probability` | Definition 36 = `structure ProbDist S` (`P : Set S → ℝ`, nonneg, `P ∅ = 0`, `P univ = 1`, finitely additive); Definition 37 = predicate `FactoredSet.IsDistribution F P := ∀ s, P {s} = ∏ᶠ b ∈ F.B, P (part b s)`; `Q^F_E(P)` = `MvPolynomial.eval P.P (F.Q E)`; Theorem 3 stated division-free | Verbatim the paper's elementary definitions — no measure theory, no type-(c) substitution; a Mathlib-probability bridge would be a separate lemma, never a stand-in. Definitions carry no finiteness (finprod). A Dirac point mass IS a distribution on every factored set (product of point-mass marginals) — the non-distribution witness is `diagDist` (uniform on the diagonal). |
 | `dd:subpartition` | A subpartition of `S` is a partial equivalence relation on `S` (`structure Subpartition`), domain `{s | r s s}` | Mathlib has no PER structure and `Σ E, Setoid E` would put dependent subtypes and domain transports into every §4 statement. The correspondence is exhibited (`toSetoid`, `ofSetoidOn`, round-trip lemmas). Payoff observed by the §4.1 shard: `X (χ_C s t) s` already implies `χ_C s t ∈ dom X` (`mem_dom_of_rel`), so half of Proposition 20's "extra condition" is free and Prop 21 clause 5 needs no `χ(E,E) = E` bookkeeping. |
-| `dd:model` | Definition 38's model is `structure Model Ω`: implicit carrier `S`, a `FactoredSet S`, `f : S → Ω`, and — because Definition 38 says *finite* factored set — a `Finite S` **field**, registered as an instance | Finiteness is part of the object, not a hypothesis on statements: the one place §6 departs from `dd:finiteness-minimal`, and it departs in the strict direction, since Definitions 43 and 45 quantify over models, so "for all models" must already mean "for all finite ones". Consequence to carry: **no §6 declaration carries a finiteness binder**, and `Finite M.F.B` is found by instance search wherever `M : Model Ω` is in scope (`Model.finite` → `instFiniteSetoid` → `Subtype.finite`). `Ω` is unconstrained. Definition 39 is Mathlib-rendered (`Set.preimage`, `Setoid.comap`); `Model.pullback` is a named alias for its third clause carrying no node annotation. Definition 41's `NotOrth` is a positive assertion *of the database*, not the negation of `Orth` — a database may assert both (Definition 43 then fails) or neither (Definition 44 fails). |
+| `dd:model` | Definition 38's model is `structure Model Ω`: implicit carrier `S`, a `FactoredSet S`, `f : S → Ω`, and — because Definition 38 says *finite* factored set — a `Finite S` **field**, registered as an instance | Finiteness is part of the object, not a hypothesis on statements: the one place §6 departs from `dd:finiteness-minimal`, and it departs in the strict direction, since Definitions 43 and 45 quantify over models, so "for all models" must already mean "for all finite ones". Consequence to carry: **no §6 declaration carries a finiteness binder**, and `Finite M.F.B` is found by instance search wherever `M : Model Ω` is in scope (`Model.finite` → `instFiniteSetoid` → `Subtype.finite`). `Ω` is unconstrained. Definition 39 is Mathlib-rendered (`Set.preimage`, `Setoid.comap`); `Model.pullback` is a named alias for its third clause carrying no node annotation. Definition 41's `NotOrth` is a positive assertion *of the database*, not the negation of `Orth` — a database may assert both (Definition 43 then fails) or neither (Definition 44 fails). Disclosed narrowing: `Model : Type u → Type (u+1)` pins the carrier to `Ω`'s universe, so Defs 43/45 quantify over `Type u`-carried models only — forced by Lean, empty in content (every carrier is finite), but no transport lemma along that equivalence exists here. |
 | history | `history X := ⋂₀ {C | C ⊆ F.B ∧ Generates C X}` | Definition 17's "smallest generating subset". `history_isLeast` (Proposition 12) is what earns "smallest", and it needs `[Finite F.B]` **genuinely**: over `S = ℕ → Bool` with the coordinate factors, every cofinite subset of `B` generates the "eventually equal" partition, so the intersection of all generating subsets is `∅`, which generates nothing. All of §3 is stated with `Finite F.B` (finite *dimension*) and never `Finite S`. |
 
 ## The order inversion — read this before writing any order statement
@@ -292,9 +292,11 @@ typos so far, none changing a statement. E1–E3 in §4.2 (E1 `h^Y(Y)` for `h^F(
 E4–E7 in §6.2's proofs: E4 Prop 36 cites `X ⊥_D Y | {Ω}` for `H_X ∩ H_V = {}` where the
 database asserts `X ⊥_D V | {Ω}`; E5 Prop 36 cites `¬(Y ⊥_D Z | {Ω})` where `N` contains
 `(V,Z,{Ω})`; E6 `h_Z` for `H_Z`; E7 Prop 34's proof writes `H_Y ∩ H_V` where Prop 13
-clause 2 gives the union (Prop 36 states the same step correctly). E4, E5 and E7 matter to
-anyone diffing the Lean against the page — the Lean cites different database entries, and
-uses the union; do not re-raise as divergences.
+clause 2 gives the union (Prop 36 states the same step correctly). E4 and E5 matter to
+anyone diffing the Lean against the page — the Lean cites different database entries. E7 is
+*only* the `∩`-for-`∪` typo: Prop 34's proof cites `X ⊥_D V | {Ω}` correctly, so do not go
+looking for an `X`/`V` swap there (an earlier parenthetical in the errata row claimed one;
+there is none). Do not re-raise any of these as divergences.
 
 ## Open questions
 
@@ -470,6 +472,70 @@ it belongs in the library as a stated open `Prop` with this note attached.
 * The node checker is whole-directory: during parallel shards it stays red until the last
   shard's inventory rows land; read the file names in its output, not the count.
 
+## Round 10 audit — durable lessons (§6 convergence round)
+
+* **The gates do not read prose.** `check-finite-factored-sets-nodes.py` enforces
+  annotated ⊆ inventory in both directions and node-number validity, and reads **neither**
+  AxiomAudit's FFS-INVENTORY *preamble* nor README.md's "What is claimed" arithmetic. Both
+  drifted through the whole of stage 6 while the checker printed `OK (88 citations, 81
+  distinct nodes, 98 numbered in the paper, 304 inventoried endpoints)` — the preamble still
+  said "§6–§7 are not yet claimed", and the README table named 82 nodes under a sentence
+  saying 81. **Recount those two by hand at every stage merge**, alongside API.lean's status
+  line and the repo-root CLAUDE.md.
+* **Definition 41's `¬(X ⊥_D Y | Z)` is notation for membership in `N`, not logical
+  negation.** The two carriers (`Orth`, `NotOrth`) are right and Definition 42 clause 2 must
+  stay `D.NotOrth X Y Z → ¬ OrthogonalGiven …`. A de-slop pass that "simplifies" `Models` to
+  `¬ D.Orth` would silently make `Consistent` satisfiable on a both-ways database and
+  `Complete` a tautology.
+* **`OrthDatabase.Before` (Definition 45) is STRICT; `FactoredSet.Before` (Definition 19) is
+  not.** Both base names occur in §6 expressions — read the namespace.
+  `D.Before X Y ↔ ∀ M, Models M D → M.F.StrictlyBefore …` is `Iff.rfl`. The naming follows
+  the paper, so this is a reading hazard, not a defect (raised and refuted in round 10).
+* **`Model.pullback_top` / `Model.pullback_id` exist and are `@[simp]`** (Inference.lean),
+  but §6.2 shadowed both with private copies inside `namespace Example*`, where the bare
+  name silently picks the local one. Check for the generic lemma before adding another
+  pullback convenience.
+* **Over an empty carrier every `OrthogonalGiven` holds vacuously** (`(⊤ : Setoid S).classes
+  = ∅` when `S` is empty, blocks being nonempty), so an empty-carrier model behaves for
+  Definition 42 exactly like `pointModel`: it satisfies any `O` and can satisfy no nonempty
+  `N`. That is why `nonconstDB_forces_nonconstant` is not falsified by an empty model, and
+  why "`Consistent` is cheap on `O` alone" survives even for empty `Ω`.
+* **Do not pin a factor's block count with `Nat.card (Quotient X) = n := rfl`.** Under
+  `open scoped Classical` the `Fintype (Quotient X)` instance is noncomputable and the card
+  is not defeq to the literal. Exhibit pairwise-unrelated points instead (`¬ Z' (f,f,none)
+  (f,f,some false)`, closed by `show (none : Option Bool) = some false from h`).
+* **`rw` with a lemma stated about `unitFS.history` fails on `pointModel.F.history`** —
+  `pointModel.F` is only *definitionally* `unitFS` and `rw` matches syntactically. State the
+  helper over `pointModel.F` (or over a fixed `M.F`); term-mode application still works,
+  since `pointModel.F.B` is defeq `∅`.
+* **Example 1's single `N`-entry is executably load-bearing.** `⟨{(X,V,⊤)}, ∅⟩` — same `O`,
+  empty `N` — does **not** infer `X <_D Y`, because `pointModel` models it and every history
+  there is `∅`. A candidate `Examples.lean` witness if a future round wants "`N` is what
+  constrains" pinned at the paper's own database rather than only at `nonconstDB`. The dual
+  `O`-is-load-bearing witness does not exist and would need a second factorization of
+  `Bool × Bool`.
+* **Byte-identical in-module/APITests example pairs are a recurring residue class** (round 9
+  for Lemma 3 clause 2, round 10 for `totalDB_complete`). A client re-derivation is
+  legitimate — APITests cannot import `Examples` — but vary it, or say in the docstring that
+  it mirrors the in-library witness.
+* **Cleared suspicions — do not re-chase in round 11.** (i) `Before` being vacuously total on
+  an inconsistent database is the paper's own meaning; Props 33/35 are what make 34/36
+  informative. (ii) `Setoid.comap f X` really is Definition 39: `classes` supplies the
+  "nonempty preimage" side condition. (iii) Example 1 needs no `¬ D.Before Y X` witness — it
+  follows from `before_X_Y` + `D_consistent`. (iv) Example 1's model is the paper's
+  `(Ω,{X,V})` with `f = id`, and the one-point model does **not** model `Example1.D` (the
+  `(V,V,⊤)` entry excludes it), so Prop 33 is not degenerately witnessed. (v) Example 2's
+  carrier `Bool × Bool × Option Bool` is the paper's twelve points (`Nat.card = 12`), with
+  `f (a,b,none) = (a,b,b)` reproducing `f(01)=011` — "copies the last bit" means copies the
+  **second** bit into the third slot; `Z'` (three blocks) and `ZP = f⁻¹(Z)` (two) are
+  distinct. (vi) Prop 36's `histSub_restrict_Z_disjoint` uses only `(X,Z,Y)`, as the paper
+  does; `(V,Z,Y)` is the symmetric spare. (vii) The paper's `S \ y` step is discharged by
+  `compl_mem_classes` — the Lean is stronger there, not weaker. (viii) §6 has exactly 14
+  printed nodes; Examples 3 and 4 are §7, so the out-of-scope ruling removes nothing from §6.
+  (ix) All §6 endpoints and witnesses print `[propext, Classical.choice, Quot.sound]` or a
+  subset. (x) `Example1.idModel` / `Example2.model` are deliberately uninventoried (the
+  checker enforces ⊆, not equality); both were checked clean directly.
+
 ## Stage 6 (§6) — durable lessons
 
 * **Registers after stage 6: 81 carriers / 88 annotations — 81 of the 96 in-scope nodes.**
@@ -533,18 +599,17 @@ it belongs in the library as a stated open `Prop` with this note attached.
   `Setoid` equality is a one-liner with `Setoid.ext_iff`: `X ≠ V` is
   `fun h => Bool.noConfusion ((Setoid.ext_iff.1 h (true, true) (true, false)).1 rfl)`, and
   `V ≠ ⊤` the same with `.2 trivial`.
-* **Four general §2.3/§3 helpers are parked in `Inference.lean`** under a block headed "§3
-  working forms of Definition 17" — `FactoredSet.rel_of_forall_mem_history`,
-  `exists_not_rel_of_mem_history`, `mem_history_of_not_rel`, `chimera_eq_right` — only
-  because §6.2 was the first consumer and no stage-6 fixer owned `History.lean`/`Basic.lean`.
-  Public and uninventoried. **Relocation candidates**: the first three to `History.lean`
-  (after `le_iff_history_subset`), `chimera_eq_right` to `Basic.lean`'s `chimera_*`
-  conveniences block. Same shape: `not_before_self_of_consistent` and
-  `before_of_not_consistent` are general facts about any `Ω`, `D` but live in `Examples.lean`,
-  which the API deliberately does not export — so the §6 APITests examples re-derive them.
-  That is not a rule-2b duplicate (the client genuinely cannot reach them), but both belong
-  on the consumer surface in `Inference.lean` beside `pullback_apply`. Proposal for the
-  convergence round, not done in stage 6 (`Inference.lean` was declared final).
+* **Stage-6 helper relocations — DONE in round 10.** Four general §2.3/§3 helpers were first
+  parked in `Inference.lean` because no stage-6 fixer owned `History.lean`/`Basic.lean`.
+  Now: `exists_not_rel_of_mem_history`, `mem_history_of_not_rel` live in `History.lean`
+  (after `commonRefinement_history_le`); `chimera_eq_right` in `Basic.lean`'s `chimera_*`
+  block; `rel_of_forall_mem_history` was DELETED as a re-proof of
+  `commonRefinement_history_le` (call form `F.commonRefinement_history_le X
+  (commonRefinement_iff.2 h)`). Likewise `not_before_self_of_consistent` /
+  `before_of_not_consistent` moved from `Examples.lean` to `Inference.lean` as
+  `OrthDatabase.*` (consumer-conveniences block of AxiomAudit), so clients need not
+  re-derive them. Known residue: `Subpartition.lean` (~L383, Prop 10 TFAE `6 → 7`) still
+  re-derives `chimera_eq_right`'s body inline — collapse it in a later de-slop pass.
 * **`mem_history_of_not_rel` needs NO `b ∈ F.B` hypothesis** — and Lean's `unusedVariables`
   linter is what found that. If `b ∉ B` the hypothesis `∀ c ∈ B, c ≠ b → c s t` degenerates
   to `∀ c ∈ B, c s t`, forcing `s = t` by Proposition 3 and contradicting `¬ X s t`. Do not
@@ -560,9 +625,14 @@ it belongs in the library as a stated open `Prop` with this note attached.
 * **A single `instance : Finite carrierFS.B := basis_finite.to_subtype` right after the
   model's `def carrierFS` suffices** — it is found for goals about `carrierFS.B` *and*
   through `model.F.B` inside `Models model D`, so the model need not be an `abbrev` and no
-  `haveI` sprinkling is needed (the opposite was budgeted for). In the model-generic half,
-  by contrast, every lemma opens with `haveI : Finite M.F.B := M.F.finite_basis_of_finite`,
-  since `Model` carries `[Finite S]` and Proposition 6 is what converts it.
+  `haveI` sprinkling is needed (the opposite was budgeted for). **The model-generic half
+  needs none either** — this bullet used to claim the opposite ("every lemma opens with
+  `haveI : Finite M.F.B := M.F.finite_basis_of_finite`, since `Model` carries `[Finite S]`
+  and Proposition 6 is what converts it") and that was wrong: `Model.finite` →
+  `instFiniteSetoid` → `Subtype.finite` gets there by instance search, as
+  `example (Ω : Type) (M : Model Ω) : Finite M.F.B := by infer_instance` shows. The 13 such
+  lines in `InferenceExamples.lean` were dead weight (removed in round 10); do not copy the
+  pattern into new §6 lemmas.
 * **Extracting a triple from a database set literal:** `h : D.Orth A B C` is definitionally
   the disjunction, so `have h' : (A,B,C) = (X,V,⊤) ∨ … := h` type-ascribes it with no
   `unfold` and no `Set.mem_insert_iff`; per branch,

@@ -215,8 +215,9 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   exhibited on a witness in `Examples`: `Consistent` is cheap on `O` alone (a one-point
   model satisfies every orthogonality assertion at once, since a zero-dimensional factored
   set has no factors), so it is `N` that constrains a model; `Consistent` and `Complete`
-  are independent; and `Before` quantifies over models of `D`, so on an *inconsistent* `D`
-  it holds of every pair vacuously — `X <_D Y` is an inference only once `D` is known
+  are independent in both directions (`completeInconsistentDB` is the complete but
+  inconsistent corner); and `Before` quantifies over models of `D`, so on an *inconsistent*
+  `D` it holds of every pair vacuously — `X <_D Y` is an inference only once `D` is known
   consistent.  §6.2's two worked databases are `Example1.D` and `Example2.D`, with
   `Example1.X/Y/V` and `Example2.X/Y/Z/V` the partitions they are stated over, and
   Propositions 33–36 (`D_consistent`, `before_X_Y`, `before_X_Y_Z`) the paper's own
@@ -371,7 +372,8 @@ accordingly: "for all models" already means "for all *finite* factored sets with
 `FiniteFactoredSets.Examples` — the constructed witnesses (`boolFS`, `coordFS`, `emptyFS`,
 `unitFS`, the distributions `uniform`, `biased`, `diagDist`, `unitDist` and
 `boolUniform`, and the §6 models `coordModel`, `boolModel`, `fstModel`, `pointModel` with
-the databases `emptyDB`, `contradictoryDB`, `totalDB`, `nonconstDB`, `coordDB`) and the
+the databases `emptyDB`, `contradictoryDB`, `totalDB`, `completeInconsistentDB`,
+`nonconstDB`, `coordDB`) and the
 §2.5, §3, §4, §5 and §6 vocabulary computed over them.  Import it
 explicitly when a concrete factored set or model is useful; it is a regression fixture, not
 a dependency surface.  §6.2's `Example1` and `Example2` are *not* excluded — they are the
